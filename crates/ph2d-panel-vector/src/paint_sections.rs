@@ -486,13 +486,29 @@ impl BodyCtx<'_> {
         if collapsed {
             return y;
         }
-        for (id, label) in [
-            (ids::VECTOR_BOOL_UNION, "Union"),
-            (ids::VECTOR_BOOL_SUBTRACT, "Subtract"),
-            (ids::VECTOR_BOOL_INTERSECT, "Intersect"),
-            (ids::VECTOR_BOOL_EXCLUDE, "Exclude"),
-        ] {
-            y = self.action_button(id, label, y);
+        // **As OITO** (plano 25 §8): as quatro de conjunto e as quatro receitas. Duas colunas —
+        // a fileira de oito botoes de largura cheia empurrava a linha Compound para fora da vista.
+        let ops = [
+            (ids::VECTOR_BOOL_UNION, tr("panel.vector.bool.union")),
+            (ids::VECTOR_BOOL_SUBTRACT, tr("panel.vector.bool.subtract")),
+            (
+                ids::VECTOR_BOOL_INTERSECT,
+                tr("panel.vector.bool.intersect"),
+            ),
+            (ids::VECTOR_BOOL_EXCLUDE, tr("panel.vector.bool.exclude")),
+            (
+                ids::VECTOR_BOOL_MINUS_BACK,
+                tr("panel.vector.bool.minus_back"),
+            ),
+            (ids::VECTOR_BOOL_TRIM, tr("panel.vector.bool.trim")),
+            (ids::VECTOR_BOOL_CROP, tr("panel.vector.bool.crop")),
+            (ids::VECTOR_BOOL_MERGE, tr("panel.vector.bool.merge")),
+        ];
+        let gap = Spacing::Sm.px();
+        let w = ((self.inner_w - gap) / 2.0).max(1.0);
+        for pair in ops.chunks(2) {
+            let [a, b] = pair else { continue };
+            y = self.row2(w, gap, [(a.0, a.1), (b.0, b.1)], y);
         }
         self.compound_row(y)
     }

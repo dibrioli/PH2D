@@ -579,6 +579,46 @@ cortes + apagar o pedaço do meio*, com `remove_path`/`remove_contour`, que já 
 
 ## §8 — W5: O PATHFINDER BARATO (edit-time, não toca a D4)
 
+### ✅ W5 — ENTREGUE (2026-08-01): as quatro ops + as duas higienes
+
+**Minus Back · Trim · Crop · Merge** shipam, e nenhuma trouxe geometria nova: são composições do
+fold que já existia (`ph2d-vec-boolean::pathfinder`). **Divide** e **Outline** seguem FORA, pelas
+razões abaixo — não foram tentadas.
+
+⚠️ **Dois enums, e não é cerimônia:** `BoolOp` é o vocabulário do MOTOR (o que o `linesweeper`
+entende, e o que o Build/Expand consomem); `PathfinderOp` é o do ARTISTA. Os quatro primeiros
+coincidem; os quatro novos **não são operações de conjunto**, são receitas sobre elas — Trim
+devolve uma forma POR FONTE, cada uma com o SEU estilo, e metê-las no `BoolOp` daria dois
+significados a `apply_many`.
+
+⚠️ **Divergência declarada do Illustrator:** o Trim dele REMOVE os traços; nós mantemos (apagar em
+silêncio o que o artista autorou é destruir trabalho). Uma linha, se o smoke pedir.
+
+⚠️ **Duas da mesma cor que NÃO se tocam continuam DUAS** no Merge — o motor agrupa por CONTENÇÃO.
+Eu esperava o contrário e a medição corrigiu; é também o que o Illustrator faz (*adjacent or
+overlapping*).
+
+**As duas higienes fecharam, e a segunda era pior do que a auditoria dizia:**
+
+- o `linesweeper::Error` deixou de ser engolido (`apply_many_checked` / `pathfinder` devolvem
+  `Result`), então **`Ok(vazio)` e `Err` deixaram de pintar o mesmo nada**;
+- ⚠️ **o motor PANICA com `NaN`** (`geom.rs:63`, `assert!(x.is_finite())`) em vez de devolver o
+  `Error::NaN` que declara: o `binary_op` dele só examina o BOUNDING BOX, e `min`/`max` com NaN
+  devolve o outro operando. A guarda de finitude é NOSSA, no choke point único
+  (`engine::binary_grouped_checked`) — e cobre o Expand e o Shape Builder, que não sabem que ela
+  existe. **É a diferença entre um toast e um crash**, e a entrada é alcançável (um `Transform`
+  degenerado assado na geometria, ADR-0111).
+
+Gates: 12 no motor (área como oráculo, nunca contagem) + a varredura dos **8** botões com ponteiro
+REAL + o mapeamento dos 8 ids. **8 mutações, 8 sangram** (a M7 sangra com o pânico do próprio
+`linesweeper` — a prova). LOC: `lib.rs` bateu 730 ⇒ split `engine.rs` (as OPERAÇÕES × a PASSAGEM).
+
+⚠️ **Um conceito meu foi REMOVIDO antes de shipar:** eu tinha um `consumes_every_source()` para
+decidir o que apagar do documento — e as oito instalam igual (todas as fontes saem, os resultados
+entram). Era distinção sem diferença, e o gate dela testava um conceito inventado.
+
+
+
 Temos **4 das 10** operações (`Union`/`Intersect`/`Subtract`/`Exclude`). Quatro das seis que faltam são
 baratas sobre primitivas que já existem:
 

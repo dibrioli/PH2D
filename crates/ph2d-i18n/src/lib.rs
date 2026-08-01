@@ -352,6 +352,16 @@ pub fn tr(key: &str) -> &'static str {
         "panel.vector.mode.width" => "Width",
         "panel.vector.mode.pencil" => "Pencil",
         "panel.vector.mode.cut" => "Cut",
+        // As oito operações do Pathfinder. As quatro primeiras eram literais no painel até a W5;
+        // passam por aqui agora porque a fileira é UMA e metade dela em i18n seria o pior dos dois.
+        "panel.vector.bool.union" => "Union",
+        "panel.vector.bool.subtract" => "Subtract",
+        "panel.vector.bool.intersect" => "Intersect",
+        "panel.vector.bool.exclude" => "Exclude",
+        "panel.vector.bool.minus_back" => "Minus Back",
+        "panel.vector.bool.trim" => "Trim",
+        "panel.vector.bool.crop" => "Crop",
+        "panel.vector.bool.merge" => "Merge",
         "panel.vector.cut.apply" => "Cut",
         "panel.vector.cut.discard" => "Discard Cut Line",
         "panel.vector.section.cut" => "Cut",

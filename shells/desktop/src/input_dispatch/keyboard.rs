@@ -159,10 +159,10 @@ impl App {
             && let PhysicalKey::Code(code) = physical_key
         {
             let op = match code {
-                KeyCode::KeyU => Some(ph2d_vec_boolean::BoolOp::Union),
-                KeyCode::KeyI => Some(ph2d_vec_boolean::BoolOp::Intersect),
-                KeyCode::KeyD => Some(ph2d_vec_boolean::BoolOp::Subtract),
-                KeyCode::KeyX => Some(ph2d_vec_boolean::BoolOp::Exclude),
+                KeyCode::KeyU => Some(ph2d_vec_boolean::PathfinderOp::Union),
+                KeyCode::KeyI => Some(ph2d_vec_boolean::PathfinderOp::Intersect),
+                KeyCode::KeyD => Some(ph2d_vec_boolean::PathfinderOp::Subtract),
+                KeyCode::KeyX => Some(ph2d_vec_boolean::PathfinderOp::Exclude),
                 _ => None,
             };
             if let Some(op) = op {

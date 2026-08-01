@@ -22,6 +22,11 @@ use kurbo::{BezPath, PathEl, Point, Shape};
 pub mod arrangement;
 pub use arrangement::{Arrangement, FaceId, MAX_BUILD_SHAPES, Membership};
 
+/// **O PATHFINDER** — o vocabulário do ARTISTA sobre o motor de regiões. Módulo irmão: as quatro
+/// operações novas são COMPOSIÇÕES do fold daqui, não geometria nova.
+pub mod pathfinder;
+pub use pathfinder::{PathfinderOp, pathfinder};
+
 /// **O CORTE por uma linha** — uma forma fechada cortada dá formas FECHADAS. Módulo irmão pela
 /// mesma razão do arranjo: o motor é o mesmo, e o trabalho todo é dar ao motor um cortador
 /// fechado (ele recusa contornos abertos, por contrato).
@@ -37,6 +42,12 @@ pub use expand::{
 };
 
 use linesweeper::{BinaryOp, FillRule as LsFillRule};
+
+/// **A fronteira com o motor** — conversão, guarda de entrada e o motivo da recusa. Irmão pelo
+/// teto de LOC, e o corte é por responsabilidade (aqui as OPERAÇÕES, ali a PASSAGEM).
+mod engine;
+pub use engine::SweepFailed;
+pub(crate) use engine::{binary_grouped, binary_grouped_checked};
 use ph2d_vec_scene::{Contour, FillRule, VecPath, VecVertex, VertexKind};
 
 /// Operação booleana entre duas regiões.
@@ -98,11 +109,24 @@ pub fn area(path: &VecPath) -> f64 {
 /// (interseção de disjuntos) ou se `paths` tem < 2 entradas.
 #[must_use]
 pub fn apply_many(paths: &[&VecPath], op: BoolOp) -> Vec<VecPath> {
+    apply_many_checked(paths, op).unwrap_or_default()
+}
+
+/// Como [`apply_many`], mas **propaga a falha do motor** em vez de a dobrar em vazio.
+///
+/// ⚠️ Esta é a porta do ARTISTA; a infalível é a dos consumidores internos (Expand, Shape
+/// Builder), que já tratam vazio como resposta. A distinção importa porque *"não há resposta"* e
+/// *"o motor desistiu"* pintam o mesmo nada na tela.
+///
+/// # Errors
+/// [`SweepFailed`] quando o `linesweeper` recusa a entrada (coordenada não-finita, precisão
+/// insuficiente).
+pub fn apply_many_checked(paths: &[&VecPath], op: BoolOp) -> Result<Vec<VecPath>, SweepFailed> {
     let ([first, rest @ ..], Some(style)) = (paths, paths.last()) else {
-        return Vec::new();
+        return Ok(Vec::new());
     };
     if rest.is_empty() {
-        return Vec::new();
+        return Ok(Vec::new());
     }
     let lop = op.to_linesweeper();
     let mut acc = to_bez(first);
@@ -122,42 +146,15 @@ pub fn apply_many(paths: &[&VecPath], op: BoolOp) -> Vec<VecPath> {
         // agrupamento do fold vira o resultado; os intermediários viram o próximo
         // acumulador — cujos contornos o linesweeper já orientou, então dali em
         // diante NonZero e EvenOdd concordam.
-        let Some(g) = binary_grouped(&acc, &to_bez(other), rule, lop) else {
-            return Vec::new();
-        };
+        let g = binary_grouped_checked(&acc, &to_bez(other), rule, lop)?;
         grouped = g;
         acc = flatten_groups(&grouped);
         acc_rule = FillRule::NonZero;
     }
-    grouped
+    Ok(grouped
         .iter()
         .filter_map(|group| compound_from(group, style))
-        .collect()
-}
-
-/// **A porta única do motor**: uma operação binária, com o resultado já AGRUPADO por
-/// containment (o contorno de fora primeiro, os de dentro depois). `None` = o sweep
-/// falhou.
-///
-/// Os contornos que saem daqui vêm **orientados** pelo linesweeper — e é isso que torna
-/// `NonZero` e `EvenOdd` equivalentes a jusante. Quem constrói um conjunto a partir de
-/// geometria de fora (o [`crate::expand`], que recebe contornos da kurbo) tem de passar por
-/// aqui antes de compor, senão dois contornos de sentidos opostos se CANCELAM sob NonZero e
-/// o resultado ganha um buraco que ninguém pediu.
-pub(crate) fn binary_grouped(
-    a: &BezPath,
-    b: &BezPath,
-    rule: LsFillRule,
-    op: BinaryOp,
-) -> Option<Vec<Vec<BezPath>>> {
-    let contours = linesweeper::binary_op(a, b, rule, op).ok()?;
-    Some(
-        contours
-            .grouped()
-            .iter()
-            .map(|g| g.iter().map(|&i| contours[i].path.clone()).collect())
-            .collect(),
-    )
+        .collect())
 }
 
 /// Os grupos de volta a um `BezPath` só — a forma que uma operação seguinte consome.

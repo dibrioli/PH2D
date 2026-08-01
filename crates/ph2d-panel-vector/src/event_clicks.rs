@@ -126,6 +126,10 @@ pub(super) fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         || (0..ids::MAX_ENVELOPE_PRESETS).any(|i| id == ids::vector_envelope_preset_id(i))
 
         || id == ids::VECTOR_BOOL_UNION
+        || id == ids::VECTOR_BOOL_MINUS_BACK
+        || id == ids::VECTOR_BOOL_TRIM
+        || id == ids::VECTOR_BOOL_CROP
+        || id == ids::VECTOR_BOOL_MERGE
         || id == ids::VECTOR_BOOL_SUBTRACT
         || id == ids::VECTOR_BOOL_INTERSECT
         || id == ids::VECTOR_BOOL_EXCLUDE

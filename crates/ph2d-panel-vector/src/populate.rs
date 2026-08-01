@@ -452,6 +452,11 @@ fn populate_ops(store: &mut WidgetStore) {
     filters::populate_filters(store);
     effects::populate_effects(store);
     button(store, ids::VECTOR_BOOL_UNION);
+    // As quatro da W5 — sem estas linhas os botoes pintam e ficam MORTOS sob o mouse.
+    button(store, ids::VECTOR_BOOL_MINUS_BACK);
+    button(store, ids::VECTOR_BOOL_TRIM);
+    button(store, ids::VECTOR_BOOL_CROP);
+    button(store, ids::VECTOR_BOOL_MERGE);
     button(store, ids::VECTOR_BOOL_SUBTRACT);
     button(store, ids::VECTOR_BOOL_INTERSECT);
     button(store, ids::VECTOR_BOOL_EXCLUDE);

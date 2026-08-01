@@ -1903,7 +1903,7 @@ impl crate::App {
             // on the DOCUMENT (shell-owned `vec_scene`), not the tool's Style, so
             // capture it here and apply after the drain (mirror of the U/I/D
             // hotkeys, next to the vector render).
-            let mut pending_vec_bool: Option<ph2d_vec_boolean::BoolOp> = None;
+            let mut pending_vec_bool: Option<ph2d_vec_boolean::PathfinderOp> = None;
             let mut pending_vec_expand: Option<crate::vec_expand::Expand> = None;
             // **A ESCALA da seleção de nós** (plano 25 §6, W3b): os dois alcances que o retângulo
             // não dá. Não são edições de documento — só mudam QUEM está selecionado —, então não

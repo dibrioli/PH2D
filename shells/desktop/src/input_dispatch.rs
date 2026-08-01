@@ -91,7 +91,7 @@ pub(crate) fn apply_vec_boolean(
     history: &mut ph2d_vec_edit::History,
     pen: &mut ph2d_vec_edit::PenTool,
     xforms: &ph2d_vec_scene::VecXforms,
-    op: ph2d_vec_boolean::BoolOp,
+    op: ph2d_vec_boolean::PathfinderOp,
 ) {
     let zs = selected_closed_z(scene, pen);
     if zs.len() < 2 {
@@ -111,11 +111,19 @@ pub(crate) fn apply_vec_boolean(
         })
         .collect();
     let refs: Vec<&ph2d_vec_scene::VecPath> = operands.iter().collect();
-    let results = ph2d_vec_boolean::apply_many(&refs, op);
-    if results.is_empty() {
-        eprintln!("[ph2d-vec] boolean {op:?}: resultado vazio");
-        return;
-    }
+    // ⚠️ **`Ok(vazio)` e `Err` sao coisas DIFERENTES, e ate' a W5 eram indistinguiveis:** o motor
+    // engolia a falha e o artista via o mesmo nada nos dois casos. A mensagem separa-os.
+    let results = match ph2d_vec_boolean::pathfinder(&refs, op) {
+        Ok(r) if r.is_empty() => {
+            eprintln!("[ph2d-vec] pathfinder {op:?}: sem resultado (as formas nao se cruzam?)");
+            return;
+        }
+        Ok(r) => r,
+        Err(e) => {
+            eprintln!("[ph2d-vec] pathfinder {op:?}: o motor recusou -- {e}");
+            return;
+        }
+    };
     let pre = scene.clone(); // undo da booleana
     // A base é a de trás: o resultado ocupa a fatia de z dela (não salta pro topo).
     // Os operandos removidos estão todos em z >= `at`, então o índice segue válido.
@@ -130,7 +138,10 @@ pub(crate) fn apply_vec_boolean(
         .collect();
     history.push_undo(pre);
     pen.select_many(&new_ids);
-    eprintln!("[ph2d-vec] boolean {op:?}: ok ({} path[s])", new_ids.len());
+    eprintln!(
+        "[ph2d-vec] pathfinder {op:?}: ok ({} path[s])",
+        new_ids.len()
+    );
 }
 
 /// Make / Release Compound sobre a seleção. **Make** funde os paths fechados
@@ -202,19 +213,26 @@ pub(crate) fn apply_vec_fill_rule(
 /// Map a Vector-panel Boolean button `NodeId` to its op (`None` for any other
 /// id). Pure — unit-tested; called from the render_loop drain to turn a
 /// `ToolPanelEvent::Click` into a document boolean.
-pub(crate) fn vec_bool_op_for_id(id: ph2d_editor::NodeId) -> Option<ph2d_vec_boolean::BoolOp> {
-    use ph2d_vec_boolean::BoolOp;
-    if id == ph2d_editor::ids::VECTOR_BOOL_UNION {
-        Some(BoolOp::Union)
-    } else if id == ph2d_editor::ids::VECTOR_BOOL_SUBTRACT {
-        Some(BoolOp::Subtract)
-    } else if id == ph2d_editor::ids::VECTOR_BOOL_INTERSECT {
-        Some(BoolOp::Intersect)
-    } else if id == ph2d_editor::ids::VECTOR_BOOL_EXCLUDE {
-        Some(BoolOp::Exclude)
-    } else {
-        None
-    }
+pub(crate) fn vec_bool_op_for_id(
+    id: ph2d_editor::NodeId,
+) -> Option<ph2d_vec_boolean::PathfinderOp> {
+    use ph2d_editor::ids as i;
+    use ph2d_vec_boolean::PathfinderOp as P;
+    // Uma TABELA, e não uma cadeia de `else if`: o 9º comando entra numa linha, e quem esquecer a
+    // linha vê o botão morto no gate de seam — em vez de o ver a cair no `None` em silêncio.
+    [
+        (i::VECTOR_BOOL_UNION, P::Union),
+        (i::VECTOR_BOOL_SUBTRACT, P::Subtract),
+        (i::VECTOR_BOOL_INTERSECT, P::Intersect),
+        (i::VECTOR_BOOL_EXCLUDE, P::Exclude),
+        (i::VECTOR_BOOL_MINUS_BACK, P::MinusBack),
+        (i::VECTOR_BOOL_TRIM, P::Trim),
+        (i::VECTOR_BOOL_CROP, P::Crop),
+        (i::VECTOR_BOOL_MERGE, P::Merge),
+    ]
+    .into_iter()
+    .find(|(k, _)| *k == id)
+    .map(|(_, op)| op)
 }
 
 /// Retype the Pen's SELECTED vertex (panel Vertex buttons), recording ONE undo
@@ -1483,7 +1501,7 @@ impl App {
     /// decompostos — o mesmo caminho usado pelos botões Boolean do painel (drain
     /// do render_loop, onde `self.gfx` já está destruturado e o método não é
     /// chamável).
-    fn vec_boolean(&mut self, op: ph2d_vec_boolean::BoolOp) {
+    fn vec_boolean(&mut self, op: ph2d_vec_boolean::PathfinderOp) {
         if let Some(gfx) = self.gfx.as_mut() {
             let xf = crate::vec_transform::build(&gfx.sim, &self.vec_entities);
             apply_vec_boolean(
@@ -5381,7 +5399,6 @@ mod tests {
         vec_vertex_kind_for_id,
     };
     use ph2d_tool_vector::DrawMode;
-    use ph2d_vec_boolean::BoolOp;
     use ph2d_vec_scene::ShapeKind;
     use ph2d_vec_scene::{FlipAxis, Rotate90, VertexKind, ZOrder};
 
@@ -5659,24 +5676,26 @@ mod tests {
         );
     }
 
+    /// **Os OITO ids do Pathfinder mapeiam para as suas ops** (plano 25 §8, W5).
+    ///
+    /// ⚠️ A lista é enumerada aqui à mão de propósito: derivá-la da tabela do produto tornaria o
+    /// gate um espelho (encolher a tabela encolheria a lista percorrida, e ele seguiria verde) —
+    /// o oráculo auto-referente que esta linha já pagou na varredura dos pills.
     #[test]
-    fn boolean_button_ids_map_to_their_ops() {
-        assert_eq!(
-            vec_bool_op_for_id(ph2d_editor::ids::VECTOR_BOOL_UNION),
-            Some(BoolOp::Union)
-        );
-        assert_eq!(
-            vec_bool_op_for_id(ph2d_editor::ids::VECTOR_BOOL_SUBTRACT),
-            Some(BoolOp::Subtract)
-        );
-        assert_eq!(
-            vec_bool_op_for_id(ph2d_editor::ids::VECTOR_BOOL_INTERSECT),
-            Some(BoolOp::Intersect)
-        );
-        assert_eq!(
-            vec_bool_op_for_id(ph2d_editor::ids::VECTOR_BOOL_EXCLUDE),
-            Some(BoolOp::Exclude)
-        );
+    fn pathfinder_button_ids_map_to_their_ops() {
+        use ph2d_vec_boolean::PathfinderOp as P;
+        for (id, want) in [
+            (ph2d_editor::ids::VECTOR_BOOL_UNION, P::Union),
+            (ph2d_editor::ids::VECTOR_BOOL_SUBTRACT, P::Subtract),
+            (ph2d_editor::ids::VECTOR_BOOL_INTERSECT, P::Intersect),
+            (ph2d_editor::ids::VECTOR_BOOL_EXCLUDE, P::Exclude),
+            (ph2d_editor::ids::VECTOR_BOOL_MINUS_BACK, P::MinusBack),
+            (ph2d_editor::ids::VECTOR_BOOL_TRIM, P::Trim),
+            (ph2d_editor::ids::VECTOR_BOOL_CROP, P::Crop),
+            (ph2d_editor::ids::VECTOR_BOOL_MERGE, P::Merge),
+        ] {
+            assert_eq!(vec_bool_op_for_id(id), Some(want), "{want:?}");
+        }
         // A non-boolean id (a mode button) is not a boolean op.
         assert_eq!(vec_bool_op_for_id(ph2d_editor::ids::VECTOR_MODE_PEN), None);
     }
@@ -5733,7 +5752,7 @@ mod tests {
             &mut history,
             &mut pen,
             &ph2d_vec_scene::VecXforms::new(),
-            ph2d_vec_boolean::BoolOp::Subtract,
+            ph2d_vec_boolean::PathfinderOp::Subtract,
         );
 
         assert_eq!(scene.paths().len(), 2, "resultado + o bystander intacto");
@@ -5761,7 +5780,7 @@ mod tests {
             &mut history,
             &mut pen,
             &ph2d_vec_scene::VecXforms::new(),
-            ph2d_vec_boolean::BoolOp::Union,
+            ph2d_vec_boolean::PathfinderOp::Union,
         );
         assert_eq!(scene.paths().len(), 2, "no-op");
     }

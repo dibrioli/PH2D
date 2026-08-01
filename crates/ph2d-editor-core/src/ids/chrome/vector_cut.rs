@@ -40,3 +40,20 @@ pub const VECTOR_CUT_APPLY: NodeId = hash_node_id("vector.cut.apply");
 /// **Discard Cut Line** — apaga a linha de corte. O par do de cima, e a razão de a linha poder
 /// ser um objeto persistente sem virar lixo na cena: há um gesto explícito para a tirar de lá.
 pub const VECTOR_CUT_DISCARD: NodeId = hash_node_id("vector.cut.discard");
+
+// ── As quatro operações NOVAS do Pathfinder (bloco APPEND-ONLY, plano 25 §8, W5) ──
+// Elas vivem no módulo do CORTE e não no do estilo pela mesma razão que o Join e o Reverse: são
+// a família que muda a TOPOLOGIA de um caminho. As quatro antigas (Union/Subtract/Intersect/
+// Exclude) ficam onde estavam — mover ids seria renomear strings, e um id é o hash de uma string.
+
+/// **Minus Back** — a forma da FRENTE menos a união de tudo o que está atrás.
+pub const VECTOR_BOOL_MINUS_BACK: NodeId = hash_node_id("vector.bool.minus_back");
+
+/// **Trim** — cada forma menos a união do que está ACIMA dela; todas sobrevivem, sem sobreposição.
+pub const VECTOR_BOOL_TRIM: NodeId = hash_node_id("vector.bool.trim");
+
+/// **Crop** — cada forma ∩ a do TOPO, e o topo é descartado (ele foi a moldura).
+pub const VECTOR_BOOL_CROP: NodeId = hash_node_id("vector.bool.crop");
+
+/// **Merge** — Trim, e depois as de MESMO preenchimento que se tocam viram uma.
+pub const VECTOR_BOOL_MERGE: NodeId = hash_node_id("vector.bool.merge");

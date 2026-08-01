@@ -1,11 +1,19 @@
 //! Geometria de teste — a fixture que os gates E as sondas compartilham.
 //!
-//! ⚠️ **A esfera UV é a fixture certa e não é escolha estética:** ela tem quads
-//! no corpo e triângulos nas calotas, então todo caminho que se ramifica em
-//! `Face::is_tri` é exercitado pela MESMA malha. Uma fixture só-triângulo — que
-//! é o que se escreve sem pensar — deixaria metade do código sem cobertura e os
-//! gates verdes, que é exatamente a forma de fixture que este repositório já
-//! pagou para aprender.
+//! ⚠️ **A esfera UV cobre o ramo tri/quad, e SÓ ele:** ela tem quads no corpo e
+//! triângulos nas calotas, então todo caminho que se ramifica em `Face::is_tri`
+//! é exercitado pela MESMA malha. Uma fixture só-triângulo — que é o que se
+//! escreve sem pensar — deixaria metade desses caminhos sem cobertura e os gates
+//! verdes.
+//!
+//! ⚠️ **E o que ela NÃO cobre está medido, então não confie neste arquivo para
+//! mais que aquilo.** Varridas as 18 dimensões que os gates usam, de `(5,8)` a
+//! `(96,144)`: **borda = 0, valência ≤ 2 = 0, face degenerada = 0** — em todas,
+//! e nos dois cubos. Não é acidente de tamanho: as funções daqui só sabem fazer
+//! malha fechada e bem formada. Quem precisa de um desses fenômenos usa a
+//! [`crate::shapes_open`], e a frase anterior deste cabeçalho — que se lia como
+//! cobertura geral — era exatamente a forma de nota que deixa uma classe de
+//! defeito invisível com a suíte verde.
 //!
 //! ⚠️ Estas funções usam `sin`/`cos` da `std`, que **não** são pinadas bit a bit
 //! entre sistemas operacionais. É seguro porque os gates daqui afirmam

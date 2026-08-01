@@ -62,3 +62,13 @@ pub use ray::{Hit, Ray};
 /// precisam dela**, e uma fixture duplicada entre o gate e a sonda é como as
 /// duas passam a medir malhas diferentes sem ninguém notar.
 pub mod shapes;
+
+/// Geometria de teste **malformada** — borda, valência baixa, face degenerada,
+/// sliver.
+///
+/// Módulo irmão da [`shapes`] e não uma extensão dela: aquela só sabe fazer
+/// malha fechada e bem formada, e é por isso que a classe de defeito inteira que
+/// vive aqui era invisível a todo gate do módulo. A separação é por
+/// responsabilidade — *o que a malha é quando está certa* × *o que ela é quando
+/// o arquivo de terceiro está errado*.
+pub mod shapes_open;

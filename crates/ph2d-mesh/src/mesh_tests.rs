@@ -22,9 +22,21 @@ fn a_cube_is_six_quads_and_twelve_triangles() {
 /// fora ⇔ `dot(normal, posição) > 0`. Este é o gate da CONVENÇÃO de winding, e
 /// ele falha se a fórmula de Newell inverter o sinal — o que a renderização
 /// mostraria como um objeto iluminado por dentro.
+///
+/// ⚠️ **É aqui que uma fixture nova mal-enrolada é pega, e por isso a
+/// `sliver_bipyramid` entra:** ela é convexa (os quatro arcos do anel são < 180°,
+/// então o centro fica estritamente dentro), logo o oráculo se aplica a ela sem
+/// emenda. As outras três fixtures malformadas **não** entram, e não é omissão:
+/// o `open_tube3` é aberto, o `pillow` tem volume zero e o `collapsed_tetra`
+/// colapsou num triângulo — nenhum é um sólido convexo, e enfiá-los aqui seria
+/// um gate falhando por não ser sobre eles.
 #[test]
 fn the_normals_of_a_convex_solid_point_outward() {
-    for m in [shapes::cube(2.0), shapes::uv_sphere(12, 16, 1.0)] {
+    for m in [
+        shapes::cube(2.0),
+        shapes::uv_sphere(12, 16, 1.0),
+        crate::shapes_open::sliver_bipyramid(),
+    ] {
         for (v, n) in m.normals().iter().enumerate() {
             let p = m.positions()[v];
             let dot = p[0] * n[0] + p[1] * n[1] + p[2] * n[2];

@@ -739,6 +739,10 @@ impl crate::App {
         self.flip_multiplane_smoke();
         #[cfg(feature = "sculpt3d")]
         self.sculpt3d_smoke();
+        // A DOAÇÃO: rasteriza a forma no tamanho que o Painter publicou no frame anterior e deixa o
+        // plano no canal. Quase sempre não faz nada — sem cena armada sai no primeiro `if`.
+        #[cfg(feature = "sculpt3d")]
+        self.sculpt3d_donate_form();
         self.flip_self_overlap_smoke();
         self.flip_airbrush_smoke();
         self.flip_hardness_smoke();
@@ -927,6 +931,34 @@ impl crate::App {
                     });
                 toasts.push(Toast::success(
                     "Impasto smoke: pick the Painter tool and drag".to_string(),
+                ));
+            }
+        }
+
+        // A cena da DOAÇÃO (`PH2D_SCULPT3D_SMOKE=2`): a mesma dança do impasto, para a tela em que a
+        // forma vai acender a tinta. A esfera nasce em `sculpt3d_smoke`; aqui nasce o que pintar.
+        #[cfg(feature = "sculpt3d")]
+        if let Some(hero) = hero_screen.as_mut()
+            && !std::mem::replace(&mut self.sculpt3d_canvas_done, true)
+        {
+            let ppm = hero.project.pixels_per_meter;
+            let cell = *next_import_cell;
+            if let Some(bits) = crate::sculpt3d::donation::spawn_canvas_if_enabled(
+                sim,
+                renderer,
+                asset_db,
+                cell,
+                ppm,
+                atlas_asset_map,
+            ) {
+                *next_import_cell = next_import_cell.saturating_add(1);
+                hero.gizmo.replace_selection(Some(bits));
+                hero.bus
+                    .push(ph2d_editor::action_bus::EditorAction::SetViewFocus {
+                        kind: ph2d_editor::ViewFocusKind::Selected,
+                    });
+                toasts.push(Toast::success(
+                    "Sculpt3d: esculpa, aperte D ate ler LUZ, e pinte".to_string(),
                 ));
             }
         }
@@ -3340,6 +3372,7 @@ impl crate::App {
                 &mut self.painter_commit_requested,
                 &mut self.painter_undo_requested,
                 &mut self.painter_redo_requested,
+                &mut self.donated_form,
                 toasts,
             );
             // Live-preview a non-selected sprite used as the brush Shape (so its opacity/blend remote-

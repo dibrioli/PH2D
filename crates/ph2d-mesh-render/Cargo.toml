@@ -30,6 +30,12 @@ wgpu = "28"
 # Pod/Zeroable + cast_slice para o uniform e os vertex buffers — a mesma
 # convencao do `instance_buffer` do ph2d-render.
 bytemuck = { version = "1", features = ["derive"] }
+# O G-buffer e `Rgba16Float` e a doacao volta pela CPU, entao alguem tem de
+# decodificar `f16`. ⚠️ NAO ha decodificador escrito a mao aqui de proposito: o
+# workspace ja tem UM (privado, na `ph2d-flip-render`) e o `half` ja esta no
+# `Cargo.lock` (dep da `ph2d-tool-color-equalization`), entao um terceiro seria a
+# terceira resposta a uma pergunta so -- e esta alimenta os pixels do artista.
+half = "2"
 
 [dev-dependencies]
 # Os gates de GPU sao headless e bloqueiam no request_adapter/map_async.

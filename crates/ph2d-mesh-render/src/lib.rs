@@ -29,6 +29,7 @@
 //! pura e tem gate sem device; quem executa é o [`MeshRenderer`].
 
 mod camera;
+mod form;
 mod lighting;
 mod pipeline;
 pub mod upload;

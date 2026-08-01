@@ -95,6 +95,10 @@ pub(super) fn dispatch(
     commit_requested: &mut bool,
     undo_requested: &mut bool,
     redo_requested: &mut bool,
+    // **A DOAÇÃO de forma** — o canal nos dois sentidos: aqui se PUBLICA o tamanho do canvas (o
+    // produtor precisa dele e não pode perguntar ao tool) e se CONSOME o plano que ele rasterizou.
+    // ⚠️ Nenhum tipo do módulo 3D atravessa: o que chega é `Vec<f32>`. Ver `donated_form`.
+    donated_form: &mut crate::donated_form::DonatedForm,
     toasts: &mut ToastQueue,
 ) -> bool {
     // Diagnostic TRAP for the mask-path FPS report (2026-07-24): `PH2D_PAINT_PERF=1` logs, per frame
@@ -233,6 +237,31 @@ pub(super) fn dispatch(
             // The bind abandons any pending Fill (tool side); close its now-orphaned adjust modal too, so
             // switching sprites never leaves a stale Fill modal floating over the new one.
             hero.store.close_fill_modal();
+        }
+    }
+
+    // ── A DOAÇÃO de forma: publica o TAMANHO, instala a NOTÍCIA ───────────
+    //
+    // Este é o único ponto do shell que liga uma escultura à tinta, e ele não sabe disso: o que ele
+    // vê é um plano de `f32` que alguém deixou no canal. É essa ignorância que mantém a promessa de
+    // `docs/3D/02.3` — apagar o módulo 3D deixa este bloco existindo, publicando um tamanho que
+    // ninguém lê e nunca recebendo notícia.
+    //
+    // ⚠️ **A ordem é publicar-DEPOIS-instalar, e ela é load-bearing:** o produtor lê o tamanho no
+    // frame SEGUINTE, então publicar aqui é o que faz um documento recém-bindado ser rasterizado.
+    // Instalar antes de publicar não muda nada hoje e mentiria sobre a dependência.
+    if painter_is_active
+        && let Some(tool) = tools.active_mut()
+        && let Some(painter) = tool
+            .as_any_mut()
+            .downcast_mut::<ph2d_tool_painter::PainterTool>()
+    {
+        let (w, h) = painter.canvas_size();
+        // Canvas vazio é **ausência**, não `(0, 0)`: o produtor tem de ficar quieto, e um par de
+        // zeros o faria rasterizar uma extensão que o `form_plane` recusa de qualquer jeito.
+        donated_form.canvas = (w != 0 && h != 0).then_some((w, h));
+        if let Some(news) = donated_form.news.take() {
+            painter.set_donated_form(news);
         }
     }
 

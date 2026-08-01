@@ -19,6 +19,15 @@ use ph2d_sculpt3d::{Brush, Dab, SculptStroke, Symmetry, Verb};
 
 use crate::app_state::App;
 
+/// **A DOAÇÃO** — o carimbo, a rasterização e o interruptor de três posições.
+/// Filho (`#[path]`) para alcançar os campos privados da cena; o corte é *o que
+/// o escultor FAZ* (aqui) contra *o que a forma DOA* (lá).
+#[path = "sculpt3d_donation.rs"]
+pub(crate) mod donation;
+
+use donation::FormRole;
+use donation::FormStamp;
+
 /// Quantos radianos um pixel de arrasto vale.
 ///
 /// Decisão de **smoke**, como a tolerância do RDP do Flip: 0,01 dá meia volta a
@@ -48,6 +57,24 @@ const RADIUS_STEP: f32 = 1.15;
 /// ferramenta quebrou; o teto porque acima de meio modelo o "pincel" é um
 /// deformador global, que é outra ferramenta (W6).
 const RADIUS_RANGE: (f32, f32) = (0.005, 0.5);
+
+/// A cena está armada? (`PH2D_SCULPT3D_SMOKE` em `1` ou `2`.)
+pub(crate) fn smoke_armed() -> bool {
+    matches!(
+        std::env::var("PH2D_SCULPT3D_SMOKE").ok().as_deref(),
+        Some("1" | "2")
+    )
+}
+
+/// `=2` — a cena da **DOAÇÃO**: a esfera E uma tela branca para pintar.
+///
+/// ⚠️ Cena própria, e não um passo a mais na `=1`: julgar a escultura e julgar a
+/// doação são duas perguntas, e a segunda precisa de uma tela que a primeira não
+/// quer ver. Misturá-las faria o smoke do barro abrir com um retângulo branco
+/// atrás dele sem nada explicando por quê.
+pub(crate) fn donation_scene() -> bool {
+    std::env::var("PH2D_SCULPT3D_SMOKE").ok().as_deref() == Some("2")
+}
 
 /// O que o arrasto está fazendo.
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -103,6 +130,15 @@ pub(crate) struct Sculpt3dScene {
     /// Os vértices que a GPU ainda não viu — acumulados entre frames, porque
     /// vários eventos de ponteiro cabem num quadro.
     dirty: Vec<u32>,
+    /// Quantas vezes a MALHA mudou. Entra no carimbo da doação — ver
+    /// `Sculpt3dScene::mesh_changed`, a porta única que o move.
+    edits: u64,
+    /// **O interruptor da doação** — ver [`FormRole`]. Nasce em `Clay` porque a
+    /// primeira coisa que se faz com uma escultura é esculpi-la; a doação é o
+    /// passo seguinte, e o `D` o dá.
+    role: FormRole,
+    /// O carimbo da última doação entregue — `None` enquanto nada foi doado.
+    donated: Option<FormStamp>,
 }
 
 impl Sculpt3dScene {
@@ -136,6 +172,9 @@ impl Sculpt3dScene {
             stroke: SculptStroke::default(),
             undo: Vec::new(),
             dirty: Vec::new(),
+            edits: 0,
+            role: FormRole::Clay,
+            donated: None,
         }
     }
 
@@ -161,23 +200,13 @@ impl Sculpt3dScene {
         size: (u32, u32),
     ) {
         self.viewport = size;
-        if !self.uploaded {
-            self.renderer.upload(&gpu.device, &gpu.queue, &self.mesh);
-            self.uploaded = true;
-            self.dirty.clear();
-        } else if !self.dirty.is_empty() {
-            // A região, e o cheio como fallback: `upload_region` recusa quando a
-            // topologia mudou, e recusar é a resposta certa — escrever a região
-            // sobre um buffer de outra topologia poria bytes válidos nos
-            // vértices errados.
-            if !self
-                .renderer
-                .upload_region(&gpu.queue, &self.mesh, &self.dirty)
-            {
-                self.renderer.upload(&gpu.device, &gpu.queue, &self.mesh);
-            }
-            self.dirty.clear();
+        // ⚠️ O viewport é atualizado ANTES da recusa: ele é o que converte um
+        // clique em raio, e um viewport parado faria o pincel cair no lugar
+        // errado no instante em que o artista voltasse ao barro.
+        if !self.shows_clay() {
+            return;
         }
+        self.sync_mesh(&gpu.device, &gpu.queue);
         // O rig é RESOLVIDO por frame, não guardado resolvido: a resolução é
         // barata (quatro lâmpadas) e uma cópia resolvida seria uma segunda
         // verdade sobre onde a luz está — a que fica velha no frame seguinte ao
@@ -227,7 +256,11 @@ impl Sculpt3dScene {
             &Dab::at(hit.point, brush.radius),
             self.symmetry,
         );
-        self.dirty.extend_from_slice(self.stroke.last_refreshed());
+        Self::mesh_changed(
+            &mut self.dirty,
+            &mut self.edits,
+            self.stroke.last_refreshed(),
+        );
         true
     }
 
@@ -268,8 +301,7 @@ impl Sculpt3dScene {
             // demais acumulando a cada Ctrl+Z. Um undo é user-paced — é o lugar
             // certo para pagar a resposta exata.
             self.mesh.rebuild();
-            self.dirty.clear();
-            self.uploaded = false;
+            self.mesh_rebuilt();
         }
         true
     }
@@ -277,12 +309,13 @@ impl Sculpt3dScene {
 
 impl App {
     /// `PH2D_SCULPT3D_SMOKE=1` — a cena pronta: uma esfera de barro para
-    /// esculpir. Roda uma vez, no primeiro frame com GPU.
+    /// esculpir. `=2` acrescenta a TELA e é a cena da **doação**
+    /// (`crate::sculpt3d::donation`). Roda uma vez, no primeiro frame com GPU.
     pub(crate) fn sculpt3d_smoke(&mut self) {
         // Guard estático, o mesmo idioma dos outros smokes do shell — evita um
         // campo em `App` que só existe para dizer "já rodei".
         static ARMED: AtomicBool = AtomicBool::new(false);
-        if std::env::var("PH2D_SCULPT3D_SMOKE").ok().as_deref() != Some("1")
+        if !crate::sculpt3d::smoke_armed()
             || self.gfx.is_none()
             || ARMED.swap(true, Ordering::Relaxed)
         {
@@ -303,6 +336,14 @@ impl App {
             mesh.face_count(),
             mesh.triangle_count()
         );
+        if crate::sculpt3d::donation_scene() {
+            eprintln!(
+                "[sculpt3d] =2 A DOACAO: ha uma TELA BRANCA embaixo, e a tecla D alterna\n\
+                 [sculpt3d]    BARRO (esculpir) -> LUZ (a forma acende a tinta) -> DESLIGADA (o A/B)\n\
+                 [sculpt3d]    esculpa, aperte D, pegue o Painter e pinte CHAPADO: a tinta tem de sair ACESA\n\
+                 [sculpt3d]    aperte D de novo e a MESMA tinta fica plana -- e essa diferenca e a wave"
+            );
+        }
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
@@ -329,6 +370,14 @@ impl App {
         let Some(scene) = self.sculpt3d_scene_mut() else {
             return false;
         };
+        // ⚠️ **Com o barro fora da tela, o ponteiro NÃO é da cena.** Sem esta
+        // pergunta a doação seria inalcançável pelo motivo mais bobo possível:
+        // o artista troca para o modo LUZ, vai pintar, e cada clique orbita um
+        // modelo invisível. É a mesma classe do clique-sobre-painel que o smoke
+        // da W2 pegou — quem não está na tela não recebe o gesto.
+        if !scene.shows_clay() {
+            return false;
+        }
         match button {
             winit::event::MouseButton::Left => {
                 // ⚠️ Os modificadores são lidos UMA vez, no pen-down, e valem o
@@ -409,6 +458,11 @@ impl App {
         let Some(scene) = self.sculpt3d_scene_mut() else {
             return false;
         };
+        // Mesma lei do `pointer_down`: barro fora da tela, roda do 2D. Sem isto
+        // o zoom do canvas ficaria preso enquanto a forma acende a tinta.
+        if !scene.shows_clay() {
+            return false;
+        }
         scene.camera.dolly(steps);
         true
     }
@@ -467,6 +521,19 @@ impl App {
                     "[sculpt3d] raio: {:.1}% do modelo",
                     scene.radius_frac * 100.0
                 );
+                true
+            }
+            // **O INTERRUPTOR DA DOAÇÃO** — barro ⇄ luz ⇄ desligada.
+            //
+            // ⚠️ Gesto de SMOKE, como o `Q`/`E`/`R`/`F` da luz: a UI final é o
+            // toggle *"iluminada pela forma abaixo"* na pilha de camadas
+            // (`docs/3D/05.2`), e ele espera a escultura ser uma CAMADA do
+            // documento. Enquanto ela é um viewport solto, uma tecla é a única
+            // porta honesta — um checkbox num painel diria que a forma pertence
+            // a um documento a que ela ainda não pertence.
+            K::KeyD => {
+                let label = scene.cycle_role();
+                eprintln!("[sculpt3d] a forma agora e: {label}");
                 true
             }
             K::KeyX | K::KeyY | K::KeyZ => {

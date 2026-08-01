@@ -5681,6 +5681,7 @@ version = "0.0.0"
 dependencies = [
  "bytemuck",
  "glam 0.30.10",
+ "half",
  "ph2d-light",
  "ph2d-mesh",
  "ph2d-sculpt3d",

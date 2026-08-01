@@ -862,3 +862,87 @@ fn a_mesh_turned_inside_out_lights_and_donates_like_one_that_is_not() {
         "o G-buffer doou a normal do avesso: {worst_n:.4}"
     );
 }
+
+/// **O plano que o Painter recebe é o G-buffer que o dispositivo escreveu — texel por texel.**
+///
+/// `form_plane` é a porta do PRODUTO (rasteriza, lê de volta, achata); o helper `gbuffer` acima é a
+/// rota independente que os gates de forma usam. As duas têm de concordar, e o que pode divergir é
+/// o **ACHATAMENTO**: linha-maior contra coluna-maior, uma linha de padding a mais, um `y` invertido.
+///
+/// ⚠️ **A cena é ASSIMÉTRICA de propósito.** Numa esfera centrada, inverter a ordem das linhas
+/// devolve quase os mesmos números e o gate ficaria verde sobre um plano de cabeça para baixo — o
+/// ponto cego que porta-contra-porta tem quando os dois lados se movem juntos. Com o modelo
+/// deslocado para um canto, a troca é gritante.
+#[test]
+#[ignore = "precisa de adapter"]
+fn the_plane_the_painter_gets_is_the_gbuffer_the_device_wrote() {
+    let Some((device, queue)) = device() else {
+        eprintln!("sem adapter — skip");
+        return;
+    };
+    let mesh = shapes::uv_sphere(24, 32, 1.0);
+    let mut camera = Camera3d::default();
+    camera.frame(mesh.bounds(), W as f32 / H as f32);
+    // O deslocamento que quebra a simetria: o alvo sai do centro, então a silhueta encosta num
+    // canto e a metade de cima do plano deixa de parecer com a de baixo.
+    camera.target.y += 0.55;
+    camera.target.x -= 0.35;
+
+    let expected = gbuffer(&device, &queue, &mesh, &camera);
+
+    let mut renderer = MeshRenderer::new(&device, FORMAT);
+    renderer.upload(&device, &queue, &mesh);
+    let plane = renderer
+        .form_plane(&device, &queue, &camera, (W, H))
+        .expect("com malha, o plano existe");
+    assert_eq!(plane.len(), (W * H * 4) as usize, "quatro floats por texel");
+
+    // Premissa: a cena de fato tem forma E vazio, senão a comparação é entre duas telas em branco.
+    let covered = expected.iter().filter(|(_, w)| *w > 0.5).count();
+    assert!(
+        covered > 200 && covered < (W * H) as usize - 200,
+        "a fixture tem de conter os dois casos — cobertos: {covered} de {}",
+        W * H
+    );
+
+    for (i, (n, w)) in expected.iter().enumerate() {
+        let got = &plane[i * 4..i * 4 + 4];
+        assert_eq!(
+            (got[0], got[1], got[2], got[3]),
+            (n[0], n[1], n[2], *w),
+            "texel {i} (linha {}, coluna {}) divergiu",
+            i / W as usize,
+            i % W as usize
+        );
+    }
+}
+
+/// **Sem malha não há plano** — e é `None`, não uma tela de zeros.
+///
+/// A diferença importa a montante: `Some(zeros)` instalaria uma doação cujo peso é zero em toda
+/// parte, e o passe de luz pagaria a leitura de um plano canvas-shaped por frame para descobrir
+/// que não há nada nele. `None` é a resposta que o chamador consegue usar.
+#[test]
+#[ignore = "precisa de adapter"]
+fn a_renderer_with_no_mesh_donates_nothing() {
+    let Some((device, queue)) = device() else {
+        eprintln!("sem adapter — skip");
+        return;
+    };
+    let mut renderer = MeshRenderer::new(&device, FORMAT);
+    let camera = Camera3d::default();
+    assert!(
+        renderer
+            .form_plane(&device, &queue, &camera, (W, H))
+            .is_none(),
+        "sem geometria, nada a doar"
+    );
+    // E com malha, mas extensão vazia: o mesmo silêncio, pelo outro motivo.
+    renderer.upload(&device, &queue, &shapes::uv_sphere(8, 12, 1.0));
+    assert!(
+        renderer
+            .form_plane(&device, &queue, &camera, (0, H))
+            .is_none(),
+        "canvas de largura zero não é um plano de zero texels — é ausência"
+    );
+}

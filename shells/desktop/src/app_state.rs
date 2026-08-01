@@ -470,6 +470,9 @@ pub(crate) struct App {
     pub(crate) mask_smoke_done: bool,
     /// Latch for the `PH2D_WETPAINT_SMOKE` canvas (Wet Paint mode, ADR-0134 W1; same rationale).
     pub(crate) wetpaint_smoke_done: bool,
+    /// Latch da tela de `PH2D_SCULPT3D_SMOKE=2` — a cena da DOAÇÃO. ⚠️ Sem `cfg`: um campo `bool`
+    /// não é um símbolo do módulo 3D, e gateá-lo obrigaria a gatear o `mem::replace` no laço.
+    pub(crate) sculpt3d_canvas_done: bool,
     /// Latch do `PH2D_STACK_SMOKE` (cena da composicao de clips, uma vez).
     pub(crate) stack_smoke_done: bool,
     /// Latch do `PH2D_NEST_SMOKE` (cena do nesting, uma vez).
@@ -733,6 +736,10 @@ pub(crate) struct App {
     /// concrete-tool downcast in the keyboard handler (keeps
     /// `architecture_no_downcast_to_concrete_tool_in_shell` green).
     pub(crate) painter_commit_requested: bool,
+    /// **A DOAÇÃO de forma** — o plano de normais que ilumina a tinta, e o tamanho do canvas que o
+    /// produtor precisa para rasterizá-lo. Ver [`crate::donated_form::DonatedForm`]: o canal não
+    /// menciona um único tipo do módulo 3D, e é isso que o mantém removível.
+    pub(crate) donated_form: crate::donated_form::DonatedForm,
     /// Transient flags set by the Cmd+Z / Cmd+Shift+Z keybind (only while the
     /// Painter tool is active) to undo/redo the last structural layer edit.
     /// Consumed (taken) by `painter_bridge::dispatch` — the downcast-allowed

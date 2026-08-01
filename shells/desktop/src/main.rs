@@ -71,6 +71,9 @@ mod corner_handles;
 mod cursor_pos;
 /// **O Width Tool** — as alças de largura na curva (plano 25 W2, ADR-0148).
 mod cut_smoke;
+/// O canal da **DOAÇÃO de forma** para a tinta do Painter — plano de normais + o tamanho do canvas.
+/// Sem `cfg`, de propósito: o que atravessa é `Vec<f32>`, nunca um tipo do módulo 3D.
+mod donated_form;
 mod envelope_gesture;
 mod envelope_live;
 /// As cenas de smoke do Envelope (ADR-0129) — irmão de `build_smoke`, teto de LOC.
@@ -489,6 +492,7 @@ impl App {
             dragging: None,
             title_dirty: true,
             impasto_smoke_done: false,
+            sculpt3d_canvas_done: false,
             mask_smoke_done: false,
             wetpaint_smoke_done: false,
             stack_smoke_done: false,
@@ -553,6 +557,7 @@ impl App {
             painter_shape_source_preview_gpu: None,
             painter_gpu_preview: None,
             painter_commit_requested: false,
+            donated_form: crate::donated_form::DonatedForm::default(),
             painter_undo_requested: false,
             painter_redo_requested: false,
             // ADR-0108 cutover: the Vector drawing tool's shell-held Pen +

@@ -2381,11 +2381,17 @@ fn symmetry_rects(
     host.paint::<VectorPanel>(&mut st, VIEWPORT)
 }
 
-/// **Os quatro tipos são pintados E vivos sob o mouse.**
+/// **Os quatro tipos são pintados, vivos sob o mouse, E chegam ao BARRAMENTO.**
 ///
-/// ⚠️ O oráculo é o CLIQUE, não o retângulo: pintar e hit-testar não basta — sem o registro no
-/// `populate` o chip nasce morto, e foi assim que dez chips do painel do impasto ficaram verdes e
-/// inertes. E a fileira é construída a partir de `SymmetryKind::ALL`, então um tipo novo entra
+/// ⚠️ **São TRÊS condições, não uma — e a primeira versão deste gate provava só duas.** Ela parava
+/// em `click_at(...)` não-vazio, que responde *"o ponteiro alcança o widget?"* (o registro no
+/// `populate`) e **nada** sobre o `Click` virar `ToolPanelEvent`. O produto shipou com os ids fora
+/// da allowlist do `event_clicks`: o artista clicava *On*, nada acontecia, e o log dizia
+/// `[hero] unhandled event`. O gate estava VERDE.
+///
+/// Agora a terceira condição é afirmada onde ela vive: `EventOutcome::Consumed` (o painel
+/// encaminhou) **e** o `drain_into_tool` mudando o estado da tool (alguém do outro lado o
+/// consumiu). A fileira é percorrida a partir de `SymmetryKind::ALL`, então um tipo novo entra
 /// neste gate sozinho.
 #[test]
 fn every_symmetry_kind_chip_is_painted_and_alive() {
@@ -2398,12 +2404,62 @@ fn every_symmetry_kind_chip_is_painted_and_alive() {
             .find(|(n, _)| *n == id)
             .map(|(_, r)| *r)
             .unwrap_or_else(|| panic!("o chip de {:?} tem de ser pintado", k));
+        // (a) o ponteiro o alcança — a checagem de focabilidade mora no store.
         let events = host.click_at(r.x + r.w * 0.5, r.y + r.h * 0.5);
         assert!(
             !events.is_empty(),
             "o chip de {k:?} está pintado e MORTO sob o mouse — falta o registro no `populate`"
         );
+        // (b) e o clique vira `ToolPanelEvent`, que é outra pergunta e outra lista.
+        let mut st = VectorPanelState;
+        let mut tool = VectorTool::default();
+        let outcome = host.apply_panel_event::<VectorPanel>(&mut st, WidgetEvent::Click(id));
+        assert_eq!(
+            outcome,
+            EventOutcome::Consumed,
+            "o chip de {k:?} não foi consumido — falta o id na allowlist do `event_clicks`"
+        );
+        assert!(
+            drain_into_tool(&mut host, &mut tool),
+            "o clique de {k:?} nunca virou ToolPanelEvent — o seam painel->tool está morto"
+        );
+        assert_eq!(
+            tool.ui_snapshot().symmetry.kind,
+            *k,
+            "e a tool tem de ficar com o tipo que foi clicado"
+        );
     }
+    ph2d_panel_vector::set_current_vector_style(None);
+}
+
+/// **O par `Enable` e o `Apply` chegam ao barramento** — os três ids que não são tipo, pela mesma
+/// prova em três degraus (pintado · vivo sob o mouse · consumido e drenado).
+#[test]
+fn the_enable_pair_and_the_apply_reach_the_bus() {
+    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    ph2d_panel_vector::state_symmetry::set_symmetry_live_count(1);
+    let _ = symmetry_rects(&mut host, ph2d_symmetry::SymmetryKind::MirrorX);
+    for (id, name) in [
+        (ids::VECTOR_SYM_ON, "On"),
+        (ids::VECTOR_SYM_OFF, "Off"),
+        (ids::VECTOR_SYM_FUSE_ON, "Fuse On"),
+        (ids::VECTOR_SYM_FUSE_OFF, "Fuse Off"),
+        (ids::VECTOR_SYM_APPLY, "Apply"),
+    ] {
+        let mut st = VectorPanelState;
+        let mut tool = VectorTool::default();
+        let outcome = host.apply_panel_event::<VectorPanel>(&mut st, WidgetEvent::Click(id));
+        assert_eq!(
+            outcome,
+            EventOutcome::Consumed,
+            "{name} não foi consumido — falta o id na allowlist do `event_clicks`"
+        );
+        assert!(
+            drain_into_tool(&mut host, &mut tool),
+            "o clique em {name} nunca virou ToolPanelEvent"
+        );
+    }
+    ph2d_panel_vector::state_symmetry::set_symmetry_live_count(0);
     ph2d_panel_vector::set_current_vector_style(None);
 }
 

@@ -152,16 +152,47 @@ impl Verb {
         matches!(self, Self::Mask)
     }
 
-    /// O sinal (o `Ctrl` de todo app de escultura) muda o que este verbo faz?
+    /// O sinal (o `Ctrl` de todo app de escultura) muda o RESULTADO deste verbo?
     ///
-    /// `Smooth`/`Sharpen` e `Pinch`/`Magnify` são pares de verbos **separados**,
-    /// então inverter não tem o que negar neles — e um controle que não faz nada
-    /// é pior que um que falta. A UI pergunta aqui antes de oferecer o chip.
+    /// ⚠️ **Era uma blacklist, e ela MENTIA.** Ao excluir só `Smooth`/`Sharpen` e
+    /// `Pinch`/`Magnify`, ela afirmava sinal para `Flatten`, `Fill` e `Scrape` —
+    /// e o `invert` **nunca chega neles**: o alvo dos três é `project(base,
+    /// plane)` (`stroke.rs:410-424`), que não lê o `reach`, o único canal por
+    /// onde o sinal viaja até um verbo de posição. Três controles mortos, com uma
+    /// função afirmando que estavam vivos.
+    ///
+    /// A lista verdadeira é a de quem CONSOME o sinal: `Draw`, `Inflate` e
+    /// `Clay` somam `reach` (`stroke.rs:397,398,427`), `Crease` soma `-reach`
+    /// (`:435`), e `Mask` troca o alvo do canal dele de 1 para 0
+    /// (`apply_mask`, `:481`).
+    ///
+    /// ⚠️ **Whitelist e não blacklist, e a direção é o conserto.** Numa
+    /// blacklist um verbo NOVO nasce reivindicando um sinal que talvez não tenha,
+    /// em silêncio — que é exatamente como este defeito nasceu. Numa whitelist
+    /// ele nasce sem sinal, e quem o tem escreve o nome aqui.
+    ///
+    /// ⚠️ **Isto NÃO é um `uses_reach()`.** O `Mask` não lê `reach` — o alvo de
+    /// posição dele é o próprio lugar — e mesmo assim tem oposto. A pergunta é
+    /// sobre *o resultado que o artista vê*, e `reach` e `apply_mask::goal` são
+    /// duas implementações dela.
+    ///
+    /// **As três alternativas, e por que cada uma morre:** *"faça o invert
+    /// funcionar no Flatten"* — não há o que negar, o Flatten projeta nos dois
+    /// sentidos e o oposto dele é ele mesmo; *"Ctrl troca Fill↔Scrape"* — é o
+    /// `_negative` do `Flatten.js`, mas ele tem UM tool com um toggle e nós temos
+    /// DOIS verbos com dois chips, então o rail destacaria "Fill" enquanto a
+    /// ferramenta raspa; *"Ctrl nega o `plane_offset`"* — o slider já tem sinal
+    /// nos dois sentidos, com gate provando
+    /// (`the_plane_offset_lifts_the_plane_the_verbs_project_onto`).
+    ///
+    /// ⚠️ **Nenhuma UI pergunta isto hoje** (o shell arma `invert = ctrl`
+    /// incondicionalmente, `sculpt3d.rs`): o consumidor é o [`Brush::reach`], e o
+    /// chip que decide oferecer ou não o controle é da wave que trouxer painel.
     #[must_use]
     pub fn honours_invert(self) -> bool {
-        !matches!(
+        matches!(
             self,
-            Self::Smooth | Self::Sharpen | Self::Pinch | Self::Magnify
+            Self::Draw | Self::Inflate | Self::Clay | Self::Crease | Self::Mask
         )
     }
 
@@ -248,6 +279,16 @@ impl Default for Brush {
 impl Brush {
     /// O deslocamento, com sinal, que um dab deste pincel alcança — em unidades
     /// de mundo. Porta única: Draw, Inflate, Clay e Crease perguntam aqui.
+    ///
+    /// ⚠️ **O termo `honours_invert()` aqui é INERTE hoje, e fica assim mesmo.**
+    /// Depois que o predicado passou a dizer a verdade, *todo* verbo que lê
+    /// `reach` está na whitelist ⇒ trocá-lo por um `if self.invert` puro daria o
+    /// mesmo número em todos os doze, e uma mutação que o remova **não sangra**.
+    /// Ele fica porque é aqui que a pergunta pertence — *o sinal é assunto do
+    /// VERBO, não do checkbox* —, e porque o dia em que entrar um verbo que
+    /// consome `reach` sem ter oposto é o dia em que ele deixa de ser inerte, sem
+    /// ninguém precisar lembrar. Defesa em camadas documentada em vez de gateada,
+    /// pelo precedente do ADR-0145.
     #[must_use]
     pub fn reach(&self, radius: f32) -> f32 {
         let s = if self.invert && self.verb.honours_invert() {

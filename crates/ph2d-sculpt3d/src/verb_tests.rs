@@ -146,6 +146,88 @@ fn invert_digs_where_the_verb_lifted() {
     );
 }
 
+/// `Verb::honours_invert` diz a verdade sobre TODOS os doze — medido no
+/// resultado, não na função.
+///
+/// ⚠️ **O gate que este substitui não podia falhar.** Ele afirmava
+/// `up.reach() > 0 && down.reach() < 0` para quem honra o sinal, e `reach` **é**
+/// `honours_invert` composto com um sinal — a asserção era verdadeira por
+/// construção, antes e depois da cura. É literalmente por isso que o defeito
+/// viveu com a suíte verde: `Flatten`/`Fill`/`Scrape` recebiam um `reach`
+/// negativo obediente e o descartavam três linhas adiante.
+///
+/// O oráculo aqui é o **estado da malha**: esculpe duas vezes, uma com o `Ctrl`
+/// e outra sem, e afirma que o par diverge **se e somente se** o predicado
+/// promete que diverge.
+///
+/// ⚠️ **A premissa é por CANAL, e a versão por-posição nasce vermelha no lugar
+/// errado.** `Verb::Mask` não move geometria por desenho (`up_move = 0,000000`),
+/// então exigir deslocamento de posição reprovaria o Mask **antes e depois** da
+/// cura, com o diagnóstico apontando para o verbo errado.
+#[test]
+fn invert_changes_the_result_of_exactly_the_verbs_that_have_an_opposite() {
+    let centre = [0.0, 0.0, 1.0];
+    let run = |brush: &Brush| -> (Vec<[f32; 3]>, Vec<f32>) {
+        let mut mesh = sphere();
+        let mut s = SculptStroke::default();
+        s.begin(&mesh);
+        s.dab(
+            &mut mesh,
+            brush,
+            &Dab::at(centre, brush.radius),
+            Symmetry::default(),
+        );
+        let n = mesh.vert_count();
+        let mask = mesh.masks().map_or_else(|| vec![0.0; n], <[f32]>::to_vec);
+        (mesh.positions().to_vec(), mask)
+    };
+    let moved = |a: &[[f32; 3]], b: &[[f32; 3]]| {
+        a.iter()
+            .zip(b)
+            .map(|(p, q)| {
+                let d = [q[0] - p[0], q[1] - p[1], q[2] - p[2]];
+                (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt()
+            })
+            .fold(0.0f32, f32::max)
+    };
+    let repainted = |a: &[f32], b: &[f32]| {
+        a.iter()
+            .zip(b)
+            .map(|(x, y)| (y - x).abs())
+            .fold(0.0, f32::max)
+    };
+
+    let rest = snapshot(&sphere());
+    for verb in Verb::ALL {
+        let b = Brush {
+            verb,
+            radius: 0.6,
+            strength: 1.0,
+            ..Brush::default()
+        };
+        let (up_pos, up_mask) = run(&Brush { invert: false, ..b });
+        let (down_pos, down_mask) = run(&Brush { invert: true, ..b });
+
+        let up_move = moved(&rest, &up_pos);
+        let up_paint = up_mask.iter().fold(0.0f32, |m, &x| m.max(x));
+        assert!(
+            up_move > 1e-4 || up_paint > 1e-4,
+            "{}: o dab não fez nada em canal nenhum — a comparação abaixo seria vácuo",
+            verb.label()
+        );
+
+        let differs = moved(&up_pos, &down_pos) > 1e-4 || repainted(&up_mask, &down_mask) > 1e-4;
+        assert_eq!(
+            differs,
+            verb.honours_invert(),
+            "{}: o Ctrl {} o resultado, e honours_invert() diz {}",
+            verb.label(),
+            if differs { "MUDA" } else { "não muda" },
+            verb.honours_invert()
+        );
+    }
+}
+
 #[test]
 fn smooth_flattens_a_spike_and_sharpen_deepens_it() {
     let spike_height = |mesh: &Mesh, i: usize| mesh.positions()[i][2];

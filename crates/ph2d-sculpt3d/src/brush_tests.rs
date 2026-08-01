@@ -90,39 +90,14 @@ fn the_mirrors_expand_to_powers_of_two_and_the_first_copy_is_the_original() {
     }
 }
 
-#[test]
-fn invert_flips_only_the_verbs_that_have_a_sign() {
-    let base = Brush {
-        radius: 2.0,
-        ..Brush::default()
-    };
-    for verb in Verb::ALL {
-        let up = Brush { verb, ..base };
-        let down = Brush {
-            verb,
-            invert: true,
-            ..base
-        };
-        if verb.honours_invert() {
-            assert!(
-                up.reach(2.0) > 0.0 && down.reach(2.0) < 0.0,
-                "{} devia inverter",
-                verb.label()
-            );
-        } else {
-            // Smooth/Sharpen e Pinch/Magnify são PARES DE VERBOS separados —
-            // inverter não tem o que negar neles, e um controle que não faz nada
-            // é pior que um que falta. É esta função que a UI pergunta antes de
-            // oferecer o chip.
-            assert_eq!(
-                up.reach(2.0),
-                down.reach(2.0),
-                "{} não devia ter sinal",
-                verb.label()
-            );
-        }
-    }
-}
+// ⚠️ **`invert_flips_only_the_verbs_that_have_a_sign` foi REMOVIDO, não movido.**
+// O oráculo dele era `Brush::reach`, que **é** `honours_invert` composto com um
+// sinal ⇒ a asserção era verdadeira por construção e não podia falhar — nem
+// antes nem depois da cura da whitelist. Mantê-lo ao lado do substituto seria
+// guardar um gate verde que já provou não ver o defeito que nomeia. Quem afirma
+// a propriedade agora é
+// `verb_tests::invert_changes_the_result_of_exactly_the_verbs_that_have_an_opposite`,
+// e o oráculo dele é o estado da MALHA.
 
 #[test]
 fn the_reach_is_a_fraction_of_the_radius_never_an_absolute_distance() {

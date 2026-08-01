@@ -93,17 +93,27 @@ impl SymmetryKind {
     }
 }
 
-/// **O ESTILO da simetria** — a parte que é da FERRAMENTA, não da forma.
+/// **O ESTILO da simetria** — a parte que é da FERRAMENTA, não da forma nem do lugar.
 ///
-/// A divisão não é arbitrária e decide onde cada coisa mora: *que espelho, quantas cópias, funde
-/// ou não* é uma preferência que sobrevive à forma seguinte (o artista escolhe Radial 6 e continua
-/// em Radial 6), enquanto *onde a linha está* pertence ao desenho e viaja no componente dele. Um
-/// centro guardado na ferramenta seria um campo que nunca se lê; um estilo guardado só na forma
-/// obrigaria o artista a re-escolher tudo a cada desenho novo.
+/// A divisão tem **três** lados e cada um mora onde só ele pode morar:
+///
+/// - o **estilo** (que espelho, quantas cópias, funde ou não) é uma preferência que sobrevive ao
+///   desenho seguinte — o artista escolhe Radial 6 e continua em Radial 6. É isto, e o painel
+///   edita-o directamente;
+/// - o **lugar** enquanto ninguém desenhou é da SESSÃO, e mora na shell porque nasce do centro do
+///   ECRÃ e só a shell tem câmera;
+/// - o **lugar** depois de um desenho é da FORMA, capturado no espaço local dela
+///   ([`SymmetrySpec`]) para que mover o objecto leve a linha junto.
+///
+/// Um centro guardado aqui seria um campo que a shell teria de reescrever por fora; um estilo
+/// guardado só na forma obrigaria o artista a re-escolher tudo a cada desenho novo.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SymmetryStyle {
-    /// A simetria está ARMADA? Desarmada, a ferramenta não pendura componente nenhum e as cópias
-    /// desaparecem sem destruir nada — nunca estiveram no documento.
+    /// O modo de desenho simétrico está LIGADO?
+    ///
+    /// ⚠️ Ele gateia o **cozimento**, não o componente: desligar esconde as cópias e religar
+    /// devolve-as inteiras, porque elas nunca estiveram no documento. E gateia a **adopção**:
+    /// desligado, nenhum desenho novo captura eixo nenhum.
     pub on: bool,
     pub kind: SymmetryKind,
     pub segments: u32,

@@ -4193,69 +4193,6 @@ impl crate::App {
                     crate::offset_live::retune(sim, &self.vec_entities, &sel, knobs);
                 }
             }
-            // ── A SIMETRIA de desenho (plano 25 W6.3) ────────────────────────────
-            // *"Melhor como uma opção para as tools de desenho exatamente como o modo painter"*
-            // (Enio, 2026-08-01). O ESTILO é global (que espelho, quantas cópias — a ferramenta é
-            // a dona) e o LUGAR é da FORMA (o eixo vive nas coordenadas locais dela, e é isso que
-            // o faz seguir o desenho quando o artista o move).
-            //
-            // ⚠️ **O seed é por-FORMA e acontece UMA vez.** *"A tela é a referência para a posição
-            // inicial da linha … em qualquer posição do canvas, ao ligar a opção de simetria, a
-            // linha aparece no centro da tela (não do mundo)"* — então o centro do ECRÃ é
-            // convertido para o local de cada forma no instante em que ela ganha simetria, e
-            // nunca mais. Re-derivar por frame contra a pose VIVA é precisamente o defeito que a
-            // âncora de joint da `line/physics` pagou em 25/07: o eixo passaria a escorregar pela
-            // forma sempre que ela se movesse.
-            {
-                let sel: Vec<ph2d_vec_scene::VecPathId> = self.vec_pen.selected_paths().to_vec();
-                let style = self.vec_draw_config.symmetry;
-                if style.on && !sel.is_empty() {
-                    let xf = crate::vec_transform::build(sim, &self.vec_entities);
-                    // O centro do ECRÃ, em MUNDO. Um por frame, o mesmo para toda a seleção: a
-                    // linha nasce onde o artista está a olhar, e cada forma a guarda relativa a
-                    // si.
-                    let (w, h) = (window_size.width as f32, window_size.height as f32);
-                    let c = camera.screen_to_world((w * 0.5, h * 0.5), window_size);
-                    let seed_world = [f64::from(c[0]), f64::from(c[1])];
-                    for id in &sel {
-                        let cur = crate::symmetry_live::spec_of(sim, &self.vec_entities, *id);
-                        // Uma forma que já tem simetria MANTÉM o lugar dela; só o estilo é
-                        // re-escrito. Sem isto, trocar de tipo teleportaria o eixo de volta ao
-                        // centro do ecrã — e o artista perderia onde o tinha posto.
-                        let (center, dir) = match cur {
-                            Some(s) => (s.center, s.dir),
-                            None => {
-                                let local = ph2d_vec_scene::xform_of(&xf, *id)
-                                    .inverse()
-                                    .map_or(seed_world, |inv| inv.apply(seed_world));
-                                (local, [0.0, 1.0])
-                            }
-                        };
-                        let spec =
-                            ph2d_vec_scene::symmetry::SymmetrySpec::from_style(style, center, dir);
-                        crate::symmetry_live::arm(
-                            sim,
-                            &self.vec_entities,
-                            std::slice::from_ref(id),
-                            Some(spec),
-                        );
-                    }
-                } else if !style.on {
-                    // Desarmar é a promessa inteira: *"se a simetria for desmarcada antes do
-                    // apply, as cópias somem mas não são destruídas"*. Elas nunca estiveram no
-                    // documento, então não há nada a destruir — o componente sai e pronto.
-                    crate::symmetry_live::arm(sim, &self.vec_entities, &sel, None);
-                }
-                // O painel só oferece o **Apply** quando há o que consolidar, e quem vê a cena é
-                // a shell.
-                let live = sel
-                    .iter()
-                    .filter(|id| {
-                        crate::symmetry_live::spec_of(sim, &self.vec_entities, **id).is_some()
-                    })
-                    .count();
-                ph2d_panel_vector::state_symmetry::set_symmetry_live_count(live);
-            }
             // ── A LARGURA VIVA (ADR-0148) ────────────────────────────────────────
             // Os quatro sliders `W Start/Mid/End/Pos` deixaram de ser parâmetros de um comando
             // e passaram a AUTORAR um perfil vivo: o traço engrossa e afina enquanto o slider
@@ -4488,7 +4425,10 @@ impl crate::App {
             // forma-fonte (o `sync` do frame seguinte despawna a entidade dela).
             if pending_vec_symmetry_apply {
                 let xf = crate::vec_transform::build(sim, &self.vec_entities);
-                let ids: Vec<ph2d_vec_scene::VecPathId> = self.vec_pen.selected_paths().to_vec();
+                // ⚠️ TODA forma armada, não a selecção: a simetria é um MODO, e *"consolidar a
+                // forma e desativar a simetria"* vale para o que o modo produziu. O porquê de
+                // consolidar só o seleccionado ser destrutivo está na `armed_paths`.
+                let ids = crate::symmetry_live::armed_paths(sim, &self.vec_entities, vec_scene);
                 crate::symmetry_live::materialise(
                     vec_scene,
                     sim,
@@ -5904,10 +5844,61 @@ impl crate::App {
             // aqui e desenhados no z da fonte — que entra na lista junto com eles.
             self.contour_live
                 .recook(vec_scene, sim, &self.vec_entities, &vec_xf);
+            // ── A SIMETRIA de DESENHO (plano 25 W6.3) ────────────────────────────
+            // *"A linha deve aparecer logo que se aperta o botão e não quando se inicia o desenho.
+            // A simetria funciona apenas para formas que serão desenhadas com a tool ligada … com
+            // o botão checado pode-se fazer quantos desenhos desejar que a linha permanece no
+            // lugar"* (Enio, 2026-08-01).
+            //
+            // ⚠️ **Aqui e não na malha de acções**, e por duas razões que se somam: o `sync` já
+            // correu (uma forma recém-desenhada já tem entidade, senão o componente não teria
+            // onde pousar) e o `settle_origins` já assentou o pivô do gesto que acabou — que é o
+            // frame em que a captura do eixo sela. É o mesmo sítio, e pela mesma razão, em que o
+            // LÁPIS pendura o perfil dele logo abaixo.
+            //
+            // ⚠️ A adopção olha para `drawing` — quem está EM GESTO —, **nunca** para a selecção.
+            // É essa ausência que cumpre *"não deve fazer simetria de formas que já existem
+            // previamente"*.
+            {
+                let style = self.vec_draw_config.symmetry;
+                let live = if style.on {
+                    // A semeadura acontece UMA vez, na aresta desligado→ligado: *"a tela é a
+                    // referência para a posição inicial da linha"*. Re-semear por frame faria a
+                    // linha seguir a câmera, e panhar o canvas arrastaria o eixo junto.
+                    let origin = *self.vec_symmetry_origin.get_or_insert_with(|| {
+                        let (w, h) = (window_size.width as f32, window_size.height as f32);
+                        let c = camera.screen_to_world((w * 0.5, h * 0.5), window_size);
+                        [f64::from(c[0]), f64::from(c[1])]
+                    });
+                    self.symmetry_live.adopt(
+                        sim,
+                        &self.vec_entities,
+                        vec_scene,
+                        &vec_xf,
+                        style,
+                        origin,
+                        &drawing,
+                    )
+                } else {
+                    // Desligado, o eixo de sessão morre: a próxima ligação re-semeia no centro do
+                    // ecrã, que é o que o artista pede ao ligar. Os COMPONENTES ficam — desarmar
+                    // esconde as cópias, não as destrói.
+                    self.vec_symmetry_origin = None;
+                    0
+                };
+                // O painel só oferece o **Apply** quando há o que consolidar — e "o que se vê" é
+                // vazio com o modo desligado, então um Apply ali consolidaria coisa invisível.
+                ph2d_panel_vector::state_symmetry::set_symmetry_live_count(live);
+            }
             // A SIMETRIA VIVA (plano 25 W6.3): as cópias do modo simétrico, cozidas aqui e
             // desenhadas no z da fonte — que entra na lista junto com elas.
-            self.symmetry_live
-                .recook(vec_scene, sim, &self.vec_entities, &vec_xf);
+            self.symmetry_live.recook(
+                vec_scene,
+                sim,
+                &self.vec_entities,
+                &vec_xf,
+                self.vec_draw_config.symmetry.on,
+            );
             // **O LÁPIS pendura o perfil que o GESTO pede** (W1d) — ao vivo, a cada frame em que
             // o traço está aberto. É aqui e não no `input_dispatch` porque o armamento precisa do
             // mundo ECS, e porque é o único lugar que corre entre o `sync` (que dá entidade ao
@@ -6164,8 +6155,22 @@ impl crate::App {
             // simetria não é um encaixe — é o eixo do que está a ser desenhado. Escondê-la com o
             // snap deixaria o artista com as cópias na tela e sem o eixo que as produz.
             {
-                let axes =
-                    crate::symmetry_live::live_axes(vec_scene, sim, &self.vec_entities, &vec_xf);
+                // Duas linhas, dois FATOS. A de SESSÃO diz *onde o próximo desenho vai espelhar* e
+                // fica onde foi semeada; a de cada forma diz *onde AQUELA forma espelha* e viaja
+                // com ela. Coincidem até o artista mover o desenho — e é exactamente aí que ver as
+                // duas passa a valer, porque a promessa de que a linha acompanha o objecto só é
+                // legível contra a que não acompanha.
+                let mut axes = if self.vec_draw_config.symmetry.on {
+                    crate::symmetry_live::live_axes(vec_scene, sim, &self.vec_entities, &vec_xf)
+                } else {
+                    Vec::new()
+                };
+                if let Some(origin) = self.vec_symmetry_origin {
+                    axes.push(crate::symmetry_live::session_axis(
+                        self.vec_draw_config.symmetry,
+                        origin,
+                    ));
+                }
                 if !axes.is_empty() {
                     let (sw, sh) =
                         crate::field_gizmo::scene_window_wh(hero.view.center_split, window_size);

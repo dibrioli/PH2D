@@ -4,12 +4,45 @@
 //! espelho, onde, quantas cópias) e a aparência é uma **função pura** dela, re-cozida aqui e
 //! desenhada por [`ph2d_vec_render::dispatch`] **no z da forma**.
 //!
-//! # A promessa que este módulo existe para cumprir
+//! # A simetria é da SESSÃO DE DESENHO, e não da forma seleccionada
 //!
-//! *"Se a simetria for desmarcada antes do apply, as cópias somem mas não são destruídas"* (Enio,
-//! 2026-08-01). Aqui isso não é uma regra a honrar — é o que **acontece**: as cópias nunca
-//! estiveram no documento. Desarmar remove o componente, a `LiveGeometry` deixa de ter a entrada,
-//! e o `dispatch` volta a desenhar a fonte. Não há estado a limpar porque não houve estado.
+//! *"A linha de simetria deve aparecer logo que se aperta o botão e não quando se inicia o
+//! desenho. A simetria funciona apenas para formas que serão desenhadas com a tool ligada e não
+//! deve fazer simetria de formas que já existem previamente. Com o botão checado pode-se fazer
+//! quantos desenhos desejar que a linha de simetria permanece no lugar"* (Enio, 2026-08-01).
+//!
+//! São três exigências e elas decidem o modelo inteiro:
+//!
+//! 1. **A linha existe sem forma nenhuma.** Logo ela não pode ser propriedade de uma forma: há um
+//!    **eixo de SESSÃO**, em coordenadas de MUNDO, semeado no centro do ECRÃ no instante em que o
+//!    botão liga. É ele que aparece, com a cena vazia e nada seleccionado.
+//! 2. **Só o que for DESENHADO com o modo ligado espelha.** Logo armar **nunca** toca a selecção —
+//!    a adopção acontece no nascimento, e o oráculo de *"o artista está a desenhar isto agora"* é
+//!    o [`crate::vec_transform::gesture_paths`], a mesma porta que o `settle_origins` usa. Um
+//!    diff de ids apanharia colar, o restore do undo e o próprio *Apply*, e espelharia coisas que
+//!    o artista não desenhou.
+//! 3. **O eixo fica no lugar entre desenhos.** Logo ele não segue a câmera depois de semeado nem
+//!    salta para cada forma nova: uma semeadura por LIGAÇÃO, e ela vale para a sessão toda.
+//!
+//! E a promessa original continua de pé — *"uma vez que o desenho é feito, a referência para a
+//! linha passa a ser o próprio desenho"*: cada forma **captura** o eixo de sessão no espaço LOCAL
+//! dela, e a partir daí move-se com ela.
+//!
+//! # A captura só sela quando o pivô assenta
+//!
+//! ⚠️ Enquanto a forma está em gesto o [`crate::vec_transform::settle_origins`] pula-a, e no frame
+//! em que o gesto acaba ele **translada a geometria e compensa no `Transform`** para pôr o pivô no
+//! centro. Um eixo capturado antes disso ficaria deslocado exactamente por essa translação — e em
+//! silêncio, porque nada falha. Por isso a re-derivação corre enquanto a forma está em gesto **e
+//! mais uma vez no frame seguinte** (o `prev_drawing`), que é justamente o frame em que o pivô
+//! assenta. Depois disso o eixo é DELA e ninguém lhe toca.
+//!
+//! # Desarmar esconde, não destrói
+//!
+//! *"Se a simetria for desmarcada antes do apply, as cópias somem mas não são destruídas"*. O
+//! interruptor gateia o **COZIMENTO**, não o componente: as cópias desaparecem porque deixam de
+//! ser cozidas, e voltam inteiras ao religar. Elas nunca estiveram no documento, então não há
+//! nada a destruir — e nada a reconstruir.
 //!
 //! # O cozimento é LOCAL, e a ORDEM é a espinha
 //!
@@ -53,11 +86,21 @@ struct Memo {
     out: Vec<VecPath>,
 }
 
+/// A direcção do eixo de SESSÃO, em mundo, antes de o `kind` opinar.
+///
+/// Hoje é sempre esta: não existe gesto para o artista desenhar a linha (item aberto, nomeado no
+/// handoff), então `Custom` cai na vertical — o que a [`SymmetrySpec::mirror_dir`] já faz para uma
+/// direcção degenerada. Os espelhos X/Y ignoram-na por construção.
+const SESSION_DIR: [f64; 2] = [0.0, 1.0];
+
 /// O cozimento vivo de todas as simetrias da cena, com memo por caminho.
 #[derive(Default)]
 pub(crate) struct SymmetryLive {
     memo: BTreeMap<VecPathId, Memo>,
     live: LiveGeometry,
+    /// Quem estava em gesto no frame ANTERIOR — o frame em que o pivô assenta. Ver o cabeçalho:
+    /// sem isto a captura fica deslocada pela translação do `settle_origins`, em silêncio.
+    prev_drawing: Vec<VecPathId>,
 }
 
 impl SymmetryLive {
@@ -67,16 +110,78 @@ impl SymmetryLive {
         &self.live
     }
 
+    /// **Adopta** o que está a ser desenhado e re-afina o ESTILO do que já está armado.
+    ///
+    /// `origin` é o eixo de sessão em MUNDO. Duas metades, e a divisão é a lei do modelo:
+    ///
+    /// - o que está **em gesto** (e o que acabou de sair dele) tem o eixo re-derivado do de
+    ///   sessão, porque a captura ainda não selou (ver o cabeçalho: o pivô assenta um frame
+    ///   depois);
+    /// - o que **já está armado** mantém o LUGAR dele e recebe só o estilo — é isto que faz
+    ///   arrastar *Segments* actualizar a sessão inteira sem teleportar eixo nenhum.
+    ///
+    /// ⚠️ Uma forma que não tem o componente e não está em gesto **nunca** é tocada: é essa
+    /// ausência que cumpre *"não deve fazer simetria de formas que já existem previamente"*.
+    ///
+    /// Devolve quantas formas estão armadas — o que o painel usa para oferecer o *Apply*.
+    // Quatro dos oito argumentos são o MUNDO (`sim`/`map`/`scene`/`xforms`), a mesma forma
+    // que o `recook` irmão já tem; agrupá-los num tipo só para calar a lint criaria uma
+    // struct cujo único trabalho é existir. Precedente: `physics::body_desc`.
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn adopt(
+        &mut self,
+        sim: &mut SimWorld,
+        map: &VecEntityMap,
+        scene: &VecScene,
+        xforms: &VecXforms,
+        style: ph2d_vec_scene::symmetry::SymmetryStyle,
+        origin: [f64; 2],
+        drawing: &[VecPathId],
+    ) -> usize {
+        for id in drawing.iter().chain(self.prev_drawing.iter()) {
+            // O eixo de sessão é de MUNDO; o componente guarda-o no LOCAL da forma. Uma pose
+            // não-invertível (escala zero) não tem local nenhum — fica com o mundo, que é o que
+            // ela desenha de qualquer maneira.
+            let (center, dir) = match ph2d_vec_scene::xform_of(xforms, *id).inverse() {
+                Some(inv) => (inv.apply(origin), inv.apply_vec(SESSION_DIR)),
+                None => (origin, SESSION_DIR),
+            };
+            let spec = SymmetrySpec::from_style(style, center, dir);
+            arm(sim, map, std::slice::from_ref(id), Some(spec));
+        }
+        self.prev_drawing.clear();
+        self.prev_drawing.extend_from_slice(drawing);
+
+        let mut live = 0;
+        for path in scene.paths() {
+            let Some(cur) = spec_of(sim, map, path.id) else {
+                continue;
+            };
+            live += 1;
+            let want = SymmetrySpec::from_style(style, cur.center, cur.dir);
+            arm(sim, map, std::slice::from_ref(&path.id), Some(want));
+        }
+        live
+    }
+
     /// Re-coze o que mudou. Chamado uma vez por frame, DEPOIS do `sync` (senão uma forma
     /// recém-criada ainda não tem entidade e o componente dela não seria encontrado).
+    ///
+    /// ⚠️ `on` gateia o COZIMENTO e não o componente — é o que faz desarmar esconder as cópias
+    /// sem as destruir, e religar trazê-las de volta inteiras. O memo sobrevive de propósito: ele
+    /// é chaveado por tudo o que determina a resposta, então religar não paga nada.
     pub(crate) fn recook(
         &mut self,
         scene: &VecScene,
         sim: &SimWorld,
         map: &VecEntityMap,
         xforms: &VecXforms,
+        on: bool,
     ) {
         self.live.clear();
+        if !on {
+            return;
+        }
         for path in scene.paths() {
             let Some(spec) = spec_of(sim, map, path.id) else {
                 continue;
@@ -122,6 +227,41 @@ impl SymmetryLive {
     pub(crate) fn forget(&mut self) {
         self.memo.clear();
         self.live.clear();
+        self.prev_drawing.clear();
+    }
+}
+
+/// **Toda forma armada da cena** — o alvo do *Apply*.
+///
+/// ⚠️ A selecção não entra nisto, e a razão é o modelo: a simetria é um MODO, então *"consolidar a
+/// forma e desativar a simetria"* vale para o que o modo produziu, não para o que estiver
+/// seleccionado no momento do clique. Consolidar só o seleccionado deixaria metade das cópias na
+/// tela com o modo já desligado — cópias que o cozimento gateado deixaria de desenhar, e o artista
+/// veria o trabalho evaporar.
+pub(crate) fn armed_paths(sim: &SimWorld, map: &VecEntityMap, scene: &VecScene) -> Vec<VecPathId> {
+    scene
+        .paths()
+        .iter()
+        .filter(|p| spec_of(sim, map, p.id).is_some())
+        .map(|p| p.id)
+        .collect()
+}
+
+/// **A linha de SESSÃO** — a que aparece no instante em que o botão liga, com a cena vazia.
+///
+/// ⚠️ A direcção sai da MESMA [`SymmetrySpec::mirror_dir`] que o kernel usa para reflectir: a
+/// linha de sessão e o eixo que a próxima forma vai capturar são o mesmo fato, e derivá-lo duas
+/// vezes desenharia a promessa num sítio e cumpri-la-ia noutro.
+pub(crate) fn session_axis(
+    style: ph2d_vec_scene::symmetry::SymmetryStyle,
+    origin: [f64; 2],
+) -> ph2d_vec_render::SymmetryAxis {
+    use ph2d_vec_scene::symmetry::SymmetryKind;
+    let spec = SymmetrySpec::from_style(style, origin, SESSION_DIR);
+    ph2d_vec_render::SymmetryAxis {
+        at: origin,
+        dir: spec.mirror_dir(),
+        segments: (spec.kind == SymmetryKind::Radial).then(|| spec.segments()),
     }
 }
 

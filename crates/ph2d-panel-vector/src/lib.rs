@@ -84,9 +84,9 @@ mod paint_markers;
 mod paint_modes;
 /// A seção PENCIL — irmã de `paint_modes` pelo teto de 600 LOC dos painéis.
 mod paint_pencil;
+mod paint_sections;
 /// A seção SYMMETRY — a simetria de desenho (plano 25 W6.3), irmã de `paint_pencil`.
 pub(crate) mod paint_symmetry;
-mod paint_sections;
 mod paint_transform;
 pub mod populate;
 /// De QUEM são os campos de parâmetro deste frame — e quando eles não são de ninguém (a

@@ -45,7 +45,9 @@
 
 use crate::{Contour, VecPath, VecVertex, reverse_contour};
 
-pub use ph2d_symmetry::{Axis, MAX_SEGMENTS, MIN_SEGMENTS, SymmetryKind, SymmetrySpec};
+pub use ph2d_symmetry::{
+    Axis, MAX_SEGMENTS, MIN_SEGMENTS, SymmetryKind, SymmetrySpec, SymmetryStyle,
+};
 
 /// Abaixo disto uma distância é zero.
 const EPS: f64 = 1e-12;

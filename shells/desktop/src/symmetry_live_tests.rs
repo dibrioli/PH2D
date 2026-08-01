@@ -1,23 +1,33 @@
-//! Gates da **SIMETRIA VIVA** — arquivo irmão de `symmetry_live.rs`.
+//! Gates da **SIMETRIA DE DESENHO** — arquivo irmão de `symmetry_live.rs`.
 //!
-//! Os dois factos do USUÁRIO que esta família existe para pinar (Enio, 2026-08-01):
+//! As exigências do USUÁRIO que esta família existe para pinar (Enio, 2026-08-01):
 //!
-//! > *"Uma vez que o desenho é feito, a referência para a linha passa a ser o próprio desenho, ou
-//! > seja, se o usuário mover o objeto no canvas a linha de simetria acompanha mantendo a mesma
-//! > distância relativa ao objeto."*
+//! > *"A linha de simetria deve aparecer logo que se aperta o botão e não quando se inicia o
+//! > desenho."*
+//!
+//! > *"A simetria funciona apenas para formas que serão desenhadas com a tool ligada e não deve
+//! > fazer simetria de formas que já existem previamente."*
+//!
+//! > *"Com o botão checado pode-se fazer quantos desenhos desejar que a linha de simetria permanece
+//! > no lugar."*
+//!
+//! > *"Uma vez que o desenho é feito, a referência para a linha passa a ser o próprio desenho … se
+//! > o usuário mover o objeto no canvas a linha de simetria acompanha."*
 //!
 //! > *"Se a simetria for desmarcada antes do apply, as cópias somem mas não são destruídas."*
 //!
-//! ⚠️ **O oráculo NÃO é "há duas formas desenhadas"** — isso é verdade em qualquer implementação
+//! ⚠️ **O oráculo NUNCA é "há duas formas desenhadas"** — isso é verdade em qualquer implementação
 //! que reflicta alguma coisa em algum lugar. Os oráculos daqui são: (a) o desenho inteiro TRANSLADA
-//! com a pose, ponto a ponto; (b) a curva autorada fica byte-idêntica através do ciclo
-//! armar→desarmar; (c) uma forma que já é simétrica no próprio eixo coincide com a própria cópia
-//! sob QUALQUER pose — que é a propriedade que só a ordem *reflectir → assar* tem.
+//! com a pose, ponto a ponto; (b) uma forma que ninguém desenhou continua **sem componente**; (c) o
+//! eixo capturado, levado de volta ao MUNDO, coincide com o de sessão; (d) a curva autorada fica
+//! byte-idêntica através do ciclo ligar→desligar; (e) uma forma já simétrica no próprio eixo
+//! coincide com a própria cópia sob QUALQUER pose — a propriedade que só a ordem *reflectir → assar*
+//! tem.
 
 use super::*;
 use crate::vec_entities::VecEntityMap;
 use ph2d_vec_scene::VecVertex;
-use ph2d_vec_scene::symmetry::SymmetryKind;
+use ph2d_vec_scene::symmetry::{SymmetryKind, SymmetryStyle};
 
 /// Um **meio-perfil aberto** com as pontas no eixo `x = 0`, posado. A fixture tem de conter o
 /// fenômeno: é a forma para a qual a simetria existe (metade desenhada, metade derivada), e é a
@@ -33,59 +43,49 @@ fn half_profile_scene() -> (
     let mut sim = ph2d_ecs::SimWorld::default();
     let mut map = VecEntityMap::new();
     let mut scene = VecScene::new();
-    let mut p = VecPath::default();
-    p.verts = [[0.0, -1.0], [0.8, -0.3], [0.5, 0.4], [0.0, 1.0]]
-        .map(VecVertex::corner)
-        .to_vec();
-    p.closed = false;
-    let id = scene.push_path(p);
-    let e = sim
-        .world_mut()
-        .spawn((
-            ph2d_ecs::Transform {
-                translation: ph2d_core::Vec2::new(3.0, 1.0),
-                ..ph2d_ecs::Transform::IDENTITY
-            },
-            ph2d_ecs::Name::new("Vase"),
-            ph2d_ecs::VecPathRef(id),
-        ))
-        .id();
-    map.insert(id, e.to_bits());
+    let id = scene.push_path(half_profile());
+    let e = spawn_for(&mut sim, &mut map, id, "Vase", [3.0, 1.0]);
     let xf = crate::vec_transform::build(&sim, &map);
     (scene, sim, map, xf, id, e)
 }
 
-/// Um **quadrado centrado em `x = 0`** — ele já é simétrico no eixo que a spec vai usar, e é isso
-/// que o torna oráculo da ORDEM (ver o gate da pose).
-fn symmetric_square_scene() -> (
-    VecScene,
-    ph2d_ecs::SimWorld,
-    VecEntityMap,
-    VecPathId,
-    ph2d_ecs::Entity,
-) {
-    let mut sim = ph2d_ecs::SimWorld::default();
-    let mut map = VecEntityMap::new();
-    let mut scene = VecScene::new();
-    let id = scene.push_path(ph2d_vec_scene::rectangle([-1.0, -1.0], [1.0, 1.0]));
+fn half_profile() -> VecPath {
+    VecPath {
+        verts: [[0.0, -1.0], [0.8, -0.3], [0.5, 0.4], [0.0, 1.0]]
+            .map(VecVertex::corner)
+            .to_vec(),
+        closed: false,
+        ..VecPath::default()
+    }
+}
+
+fn spawn_for(
+    sim: &mut ph2d_ecs::SimWorld,
+    map: &mut VecEntityMap,
+    id: VecPathId,
+    name: &str,
+    at: [f32; 2],
+) -> ph2d_ecs::Entity {
     let e = sim
         .world_mut()
         .spawn((
-            ph2d_ecs::Transform::IDENTITY,
-            ph2d_ecs::Name::new("Square"),
+            ph2d_ecs::Transform {
+                translation: ph2d_core::Vec2::new(at[0], at[1]),
+                ..ph2d_ecs::Transform::IDENTITY
+            },
+            ph2d_ecs::Name::new(name),
             ph2d_ecs::VecPathRef(id),
         ))
         .id();
     map.insert(id, e.to_bits());
-    (scene, sim, map, id, e)
+    e
 }
 
-/// A spec de espelho vertical pelo eixo local `x = 0` — o default de todos os gates daqui.
-fn mirror_x() -> SymmetrySpec {
-    SymmetrySpec {
-        kind: SymmetryKind::MirrorX,
-        center: [0.0, 0.0],
-        ..SymmetrySpec::default()
+/// O estilo ARMADO com o default de espelho vertical — o que o painel produz ao ligar o botão.
+fn armed() -> SymmetryStyle {
+    SymmetryStyle {
+        on: true,
+        ..SymmetryStyle::default()
     }
 }
 
@@ -102,16 +102,6 @@ fn drawn(live: &SymmetryLive, id: VecPathId) -> Vec<[f64; 2]> {
         .unwrap_or_default()
 }
 
-/// Todos os vértices AUTORADOS de um caminho, na ordem.
-fn authored(scene: &VecScene, id: VecPathId) -> Vec<VecVertex> {
-    scene
-        .path(id)
-        .expect("o caminho existe")
-        .verts_all()
-        .copied()
-        .collect()
-}
-
 /// Move a entidade por `delta` e devolve as poses re-construídas.
 fn nudge(
     sim: &mut ph2d_ecs::SimWorld,
@@ -126,266 +116,206 @@ fn nudge(
     crate::vec_transform::build(sim, map)
 }
 
-/// **A promessa central.** Mover o objeto no canvas leva a linha de simetria junto, *mantendo a
-/// mesma distância relativa ao objeto* — e a forma executável disso é que o desenho INTEIRO (fonte
-/// e cópia) translada pelo mesmo delta, ponto a ponto.
+/// O eixo capturado por `id`, levado de volta ao MUNDO — o oráculo de *"capturou o eixo de sessão"*.
+fn captured_axis_in_world(
+    sim: &ph2d_ecs::SimWorld,
+    map: &VecEntityMap,
+    xforms: &VecXforms,
+    id: VecPathId,
+) -> [f64; 2] {
+    let spec = spec_of(sim, map, id).expect("a forma tem simetria");
+    ph2d_vec_scene::xform_of(xforms, id).apply(spec.center)
+}
+
+// ── R1: a linha existe antes de qualquer desenho ───────────────────────────────────────
+
+/// **A linha aparece com a cena VAZIA.** *"Deve aparecer logo que se aperta o botão e não quando se
+/// inicia o desenho."*
 ///
-/// ⚠️ Este gate é também o do MEMO: o `recook` corre duas vezes sem ninguém limpar nada, então uma
-/// chave que ignorasse a pose devolveria o desenho velho e a asserção falha.
+/// ⚠️ O oráculo é o eixo de SESSÃO ser desenhável sem nenhuma forma no mundo — é isso que separa
+/// este modelo do anterior, em que a linha era propriedade de uma forma seleccionada e portanto não
+/// podia existir antes de haver uma.
 #[test]
-fn moving_the_shape_carries_the_axis_with_it() {
-    let (scene, mut sim, map, xf, id, e) = half_profile_scene();
-    assert_eq!(arm(&mut sim, &map, &[id], Some(mirror_x())), 1);
-
-    let mut live = SymmetryLive::default();
-    live.recook(&scene, &sim, &map, &xf);
-    let before = drawn(&live, id);
-    assert!(!before.is_empty(), "a simetria armada desenha alguma coisa");
-
-    let delta = [5.0_f32, -2.0_f32];
-    let xf2 = nudge(&mut sim, &map, e, delta);
-    live.recook(&scene, &sim, &map, &xf2);
-    let after = drawn(&live, id);
-
-    assert_eq!(before.len(), after.len(), "o desenho não muda de tamanho");
-    for (i, (a, b)) in before.iter().zip(after.iter()).enumerate() {
-        let want = [a[0] + f64::from(delta[0]), a[1] + f64::from(delta[1])];
-        assert!(
-            (b[0] - want[0]).abs() < 1e-9 && (b[1] - want[1]).abs() < 1e-9,
-            "ponto {i}: esperado {want:?}, veio {b:?} — o eixo ficou para trás"
-        );
-    }
-}
-
-/// **Desmarcar antes do Apply não destrói nada.** As cópias somem porque nunca estiveram no
-/// documento, e a curva autorada volta byte-idêntica.
-#[test]
-fn disarming_removes_the_copies_and_leaves_the_authored_curve_untouched() {
-    let (scene, mut sim, map, xf, id, _e) = half_profile_scene();
-    let pristine = authored(&scene, id);
-
-    assert_eq!(arm(&mut sim, &map, &[id], Some(mirror_x())), 1);
-    let mut live = SymmetryLive::default();
-    live.recook(&scene, &sim, &map, &xf);
+fn the_line_exists_before_anything_is_drawn() {
+    let ax = session_axis(armed(), [4.0, -2.0]);
+    assert_eq!(ax.at, [4.0, -2.0], "a linha nasce onde foi semeada");
     assert!(
-        !drawn(&live, id).is_empty(),
-        "armada, a simetria põe geometria derivada na tela"
+        ax.dir[0].abs() < 1e-9 && (ax.dir[1] - 1.0).abs() < 1e-9,
+        "o espelho X é uma linha VERTICAL: {:?}",
+        ax.dir
     );
+    assert!(ax.segments.is_none(), "um espelho não é uma rosácea");
 
-    assert_eq!(arm(&mut sim, &map, &[id], None), 1);
-    live.recook(&scene, &sim, &map, &xf);
-    assert!(
-        drawn(&live, id).is_empty(),
-        "desarmada, não sobra derivada nenhuma — o dispatch volta a desenhar a fonte"
-    );
-    assert_eq!(
-        authored(&scene, id),
-        pristine,
-        "a curva AUTORADA atravessou o ciclo sem ser tocada"
-    );
-}
-
-/// **A ordem é `reflectir → assar a pose`, e este é o oráculo que a distingue.**
-///
-/// Um quadrado centrado em `x = 0` **já é** simétrico no eixo da spec, então a reflexão local é a
-/// identidade sobre ele: a cópia tem de coincidir com a fonte sob QUALQUER pose. Reflectir depois
-/// de assar usaria uma linha que a pose não-conforme torna outra, e as duas deixam de coincidir.
-#[test]
-fn the_pose_is_baked_after_the_reflection_not_before() {
-    let (scene, mut sim, map, id, e) = symmetric_square_scene();
-    // Rotação + escala NÃO-uniforme: é a pose em que as duas ordens divergem. Sob escala uniforme
-    // (ou sem rotação) elas coincidem, e o gate não podia falhar.
-    if let Some(mut t) = sim.world_mut().get_mut::<ph2d_ecs::Transform>(e) {
-        t.rotation = 0.5;
-        t.scale = ph2d_core::Vec2::new(2.0, 1.0);
-    }
-    let xf = crate::vec_transform::build(&sim, &map);
-    assert_eq!(arm(&mut sim, &map, &[id], Some(mirror_x())), 1);
-
-    let mut live = SymmetryLive::default();
-    live.recook(&scene, &sim, &map, &xf);
-    let paths = live.live().get(&id).expect("há derivada");
-    assert_eq!(paths.len(), 2, "espelho simples: a fonte e a cópia");
-
-    // A cópia é percorrida ao contrário (a reposição do winding), então o conjunto de âncoras é
-    // que tem de coincidir — não a sequência.
-    let mut src: Vec<[f64; 2]> = paths[0].verts_all().map(|v| v.anchor).collect();
-    let mut cpy: Vec<[f64; 2]> = paths[1].verts_all().map(|v| v.anchor).collect();
-    let key = |p: &[f64; 2]| (p[0].to_bits(), p[1].to_bits());
-    src.sort_by_key(key);
-    cpy.sort_by_key(key);
-    assert_eq!(src.len(), cpy.len());
-    for (a, b) in src.iter().zip(cpy.iter()) {
-        assert!(
-            (a[0] - b[0]).abs() < 1e-9 && (a[1] - b[1]).abs() < 1e-9,
-            "a cópia de uma forma já simétrica saiu noutro lugar: {a:?} vs {b:?}"
-        );
-    }
-}
-
-/// **Radial põe `segments` formas na tela**, e a fonte é uma delas — o painel promete a contagem,
-/// e é ela que tem de aparecer.
-#[test]
-fn radial_draws_one_shape_per_segment() {
-    let (scene, mut sim, map, id, _e) = symmetric_square_scene();
-    let xf = crate::vec_transform::build(&sim, &map);
-    let spec = SymmetrySpec {
-        kind: SymmetryKind::Radial,
-        center: [3.0, 0.0],
-        segments: 5,
-        ..SymmetrySpec::default()
-    };
-    assert_eq!(arm(&mut sim, &map, &[id], Some(spec)), 1);
-
-    let mut live = SymmetryLive::default();
-    live.recook(&scene, &sim, &map, &xf);
-    assert_eq!(
-        live.live().get(&id).map(Vec::len),
-        Some(5),
-        "cinco pétalas, contando o original"
-    );
-}
-
-/// **Re-armar com a MESMA spec não mexe em nada** — é o guard que torna seguro um painel que
-/// re-emite o valor a cada frame de arrasto.
-#[test]
-fn arming_with_the_same_spec_touches_nothing() {
-    let (_scene, mut sim, map, _xf, id, _e) = half_profile_scene();
-    assert_eq!(arm(&mut sim, &map, &[id], Some(mirror_x())), 1);
-    assert_eq!(
-        arm(&mut sim, &map, &[id], Some(mirror_x())),
-        0,
-        "a segunda chamada é um no-op"
-    );
-}
-
-/// **`forget` limpa memo E derivada** — o load de projeto troca a cena debaixo do cozimento, e os
-/// `VecPathId` são reciclados entre documentos.
-#[test]
-fn forget_drops_the_memo_and_the_drawing() {
-    let (scene, mut sim, map, xf, id, _e) = half_profile_scene();
-    arm(&mut sim, &map, &[id], Some(mirror_x()));
-    let mut live = SymmetryLive::default();
-    live.recook(&scene, &sim, &map, &xf);
-    assert!(!drawn(&live, id).is_empty());
-    live.forget();
-    assert!(drawn(&live, id).is_empty(), "nada sobrevive ao forget");
-}
-
-/// **O `Apply` põe no documento EXACTAMENTE o que estava na tela.**
-///
-/// ⚠️ O oráculo é a IDENTIDADE ponto-a-ponto entre a geometria cozida e a materializada: um gate
-/// que só contasse formas ficaria verde sobre um Apply que produz a coisa certa *noutro lugar* —
-/// que é o defeito que o ADR-0128 pagou cinco vezes (a forma SALTAVA no clique porque preview e
-/// commit tinham portas diferentes).
-#[test]
-fn the_apply_lands_exactly_what_was_on_screen() {
-    let (mut scene, mut sim, map, xf, id, _e) = half_profile_scene();
-    // Sem fusão: assim a simetria produz DUAS formas, e o gate vê o conjunto inteiro.
-    let spec = SymmetrySpec {
-        fuse: false,
-        ..mirror_x()
-    };
-    arm(&mut sim, &map, &[id], Some(spec));
-    let mut live = SymmetryLive::default();
-    live.recook(&scene, &sim, &map, &xf);
-    let on_screen = drawn(&live, id);
-    assert!(!on_screen.is_empty());
-
-    let mut pen = ph2d_vec_edit::PenTool::default();
-    let mut history = ph2d_vec_edit::History::default();
-    assert!(materialise(
-        &mut scene,
-        &sim,
-        &mut pen,
-        &mut history,
-        &map,
-        &xf,
-        &[id]
-    ));
-
-    let in_doc: Vec<[f64; 2]> = scene
-        .paths()
-        .iter()
-        .flat_map(|p| p.verts_all().map(|v| v.anchor))
-        .collect();
-    assert_eq!(
-        in_doc.len(),
-        on_screen.len(),
-        "o documento tem de receber a mesma quantidade de geometria que estava na tela"
-    );
-    for (i, (a, b)) in on_screen.iter().zip(in_doc.iter()).enumerate() {
-        assert!(
-            (a[0] - b[0]).abs() < 1e-9 && (a[1] - b[1]).abs() < 1e-9,
-            "ponto {i}: a tela mostrava {a:?} e o documento recebeu {b:?} — a forma SALTOU"
-        );
-    }
-    assert!(
-        scene.path(id).is_none(),
-        "a forma-fonte sai da cena: o que fica são as materializadas"
-    );
-}
-
-/// **Sem simetria viva o `Apply` não toca no documento** — nem a geometria, nem o undo.
-#[test]
-fn the_apply_is_a_no_op_without_a_live_symmetry() {
-    let (mut scene, sim, map, xf, id, _e) = half_profile_scene();
-    let before = scene.clone();
-    let mut pen = ph2d_vec_edit::PenTool::default();
-    let mut history = ph2d_vec_edit::History::default();
-    assert!(
-        !materialise(&mut scene, &sim, &mut pen, &mut history, &map, &xf, &[id]),
-        "sem componente não há o que consolidar"
-    );
-    assert_eq!(
-        scene.paths().len(),
-        before.paths().len(),
-        "e o documento fica intacto"
-    );
-}
-
-/// **O eixo que o overlay desenha é o MESMO que a geometria espelha.**
-///
-/// ⚠️ A direcção passa por `mirror_dir()` — a porta que o kernel usa para reflectir — e sobe pela
-/// pose como VETOR (`apply_vec`), não como ponto. Levá-la como ponto a transladaria, e toda linha
-/// apontaria para o canto do ecrã; uma segunda derivação desenharia um eixo onde a geometria não
-/// espelha, e ninguém lê um número numa screenshot.
-#[test]
-fn the_drawn_axis_is_the_one_the_geometry_mirrors() {
-    let (scene, mut sim, map, xf, id, _e) = half_profile_scene();
-    arm(&mut sim, &map, &[id], Some(mirror_x()));
-    let axes = live_axes(&scene, &sim, &map, &xf);
-    assert_eq!(axes.len(), 1, "uma forma com simetria, um eixo");
-    let a = axes[0];
-    assert!(a.segments.is_none(), "um espelho não é uma rosácea");
-    // A pose da fixture é uma translação de (3,1): o ponto vai junto, a direcção NÃO.
-    assert!(
-        (a.at[0] - 3.0).abs() < 1e-9 && (a.at[1] - 1.0).abs() < 1e-9,
-        "o ponto do eixo sobe pela pose: {:?}",
-        a.at
-    );
-    assert!(
-        a.dir[0].abs() < 1e-9 && (a.dir[1] - 1.0).abs() < 1e-9,
-        "a direcção é VETOR — uma translação não a move: {:?}",
-        a.dir
-    );
-}
-
-/// **Uma rosácea desenha `segments` raios, não uma linha** — são figuras diferentes porque são
-/// fatos diferentes, e desenhar a rosácea como uma linha só a faria parecer um espelho quebrado.
-#[test]
-fn a_radial_draws_spokes_and_a_mirror_draws_a_line() {
-    let (scene, mut sim, map, xf, id, _e) = half_profile_scene();
-    arm(
-        &mut sim,
-        &map,
-        &[id],
-        Some(SymmetrySpec {
+    let radial = session_axis(
+        SymmetryStyle {
             kind: SymmetryKind::Radial,
             segments: 7,
-            ..SymmetrySpec::default()
-        }),
+            ..armed()
+        },
+        [0.0, 0.0],
     );
-    let axes = live_axes(&scene, &sim, &map, &xf);
-    assert_eq!(axes[0].segments, Some(7));
+    assert_eq!(
+        radial.segments,
+        Some(7),
+        "a rosácea de sessão desenha os raios que o estilo pede"
+    );
 }
+
+// ── R2: só o que for DESENHADO com o modo ligado espelha ───────────────────────────────
+
+/// **Uma forma que já existia NUNCA é adoptada.** *"Não deve fazer simetria de formas que já existem
+/// previamente."*
+///
+/// ⚠️ Este é o gate que o modelo anterior não podia passar: lá armar operava sobre a SELECÇÃO, e
+/// uma forma pré-existente seleccionada ganhava simetria no frame seguinte.
+#[test]
+fn a_shape_that_already_existed_is_never_adopted() {
+    let (scene, mut sim, map, xf, id, _e) = half_profile_scene();
+    let mut live = SymmetryLive::default();
+
+    // Ninguém está em gesto: a lista de desenho está vazia.
+    let armed_count = live.adopt(&mut sim, &map, &scene, &xf, armed(), [0.0, 0.0], &[]);
+
+    assert_eq!(armed_count, 0, "nenhuma forma armada");
+    assert!(
+        spec_of(&sim, &map, id).is_none(),
+        "a forma pré-existente continua SEM componente — o modo não a alcança"
+    );
+    live.recook(&scene, &sim, &map, &xf, true);
+    assert!(
+        drawn(&live, id).is_empty(),
+        "e portanto não há cópia nenhuma desenhada sobre ela"
+    );
+}
+
+/// **O que está em GESTO é adoptado, e captura o eixo de sessão.**
+#[test]
+fn what_is_being_drawn_captures_the_session_axis() {
+    let (scene, mut sim, map, xf, id, _e) = half_profile_scene();
+    let mut live = SymmetryLive::default();
+    let origin = [5.0, 0.5];
+
+    let n = live.adopt(&mut sim, &map, &scene, &xf, armed(), origin, &[id]);
+
+    assert_eq!(n, 1, "a forma em gesto está armada");
+    let world = captured_axis_in_world(&sim, &map, &xf, id);
+    assert!(
+        (world[0] - origin[0]).abs() < 1e-9 && (world[1] - origin[1]).abs() < 1e-9,
+        "o eixo capturado, de volta ao mundo, É o de sessão: {world:?} vs {origin:?}"
+    );
+}
+
+// ── R3: o eixo fica no lugar entre desenhos ────────────────────────────────────────────
+
+/// **Vários desenhos, UMA linha.** *"Com o botão checado pode-se fazer quantos desenhos desejar que
+/// a linha de simetria permanece no lugar."*
+///
+/// ⚠️ A fixture põe as duas formas em poses DIFERENTES de propósito: se o eixo fosse guardado em
+/// mundo (ou re-semeado por forma) as duas ainda coincidiriam num teste de pose única, e o gate não
+/// poderia falhar.
+#[test]
+fn the_axis_stays_put_across_several_drawings() {
+    let mut sim = ph2d_ecs::SimWorld::default();
+    let mut map = VecEntityMap::new();
+    let mut scene = VecScene::new();
+    let a = scene.push_path(half_profile());
+    spawn_for(&mut sim, &mut map, a, "A", [0.0, 0.0]);
+    let b = scene.push_path(half_profile());
+    spawn_for(&mut sim, &mut map, b, "B", [7.0, -3.0]);
+    let xf = crate::vec_transform::build(&sim, &map);
+
+    let mut live = SymmetryLive::default();
+    let origin = [2.0, 1.0];
+    // Primeiro desenho.
+    live.adopt(&mut sim, &map, &scene, &xf, armed(), origin, &[a]);
+    // Segundo desenho, mais tarde, com o MESMO eixo de sessão.
+    live.adopt(&mut sim, &map, &scene, &xf, armed(), origin, &[b]);
+
+    for (id, name) in [(a, "A"), (b, "B")] {
+        let world = captured_axis_in_world(&sim, &map, &xf, id);
+        assert!(
+            (world[0] - origin[0]).abs() < 1e-9 && (world[1] - origin[1]).abs() < 1e-9,
+            "{name} espelha na linha de sessão: {world:?} vs {origin:?}"
+        );
+    }
+}
+
+/// **A captura só SELA depois de o pivô assentar.**
+///
+/// ⚠️ O `settle_origins` translada a geometria e compensa no `Transform` no frame em que o gesto
+/// acaba, e o faz DEPOIS de a forma sair da lista de gesto. Um eixo capturado só durante o gesto
+/// ficaria deslocado exactamente por essa translação — e em SILÊNCIO, porque nada falha. A fixture
+/// reproduz a sequência real: um frame em gesto, o frame seguinte com a pose já mexida e a forma
+/// fora da lista.
+#[test]
+fn the_capture_seals_after_the_pivot_settles() {
+    let (scene, mut sim, map, xf, id, e) = half_profile_scene();
+    let mut live = SymmetryLive::default();
+    let origin = [1.5, -0.5];
+
+    // Frame N: em gesto.
+    live.adopt(&mut sim, &map, &scene, &xf, armed(), origin, &[id]);
+    // Frame N+1: o pivô assentou (a pose mudou) e o gesto acabou.
+    let xf2 = nudge(&mut sim, &map, e, [2.0, -4.0]);
+    live.adopt(&mut sim, &map, &scene, &xf2, armed(), origin, &[]);
+
+    let world = captured_axis_in_world(&sim, &map, &xf2, id);
+    assert!(
+        (world[0] - origin[0]).abs() < 1e-9 && (world[1] - origin[1]).abs() < 1e-9,
+        "depois do assentamento o eixo continua na linha de sessão: {world:?} vs {origin:?}"
+    );
+
+    // Frame N+2: nada mais re-deriva — daqui em diante o eixo é DA FORMA.
+    let xf3 = nudge(&mut sim, &map, e, [6.0, 6.0]);
+    live.adopt(&mut sim, &map, &scene, &xf3, armed(), origin, &[]);
+    let moved = captured_axis_in_world(&sim, &map, &xf3, id);
+    assert!(
+        (moved[0] - (origin[0] + 6.0)).abs() < 1e-9 && (moved[1] - (origin[1] + 6.0)).abs() < 1e-9,
+        "e a partir daí ele VIAJA com a forma: {moved:?}"
+    );
+}
+
+/// **O estilo segue a ferramenta; o LUGAR fica com a forma.** Arrastar *Segments* actualiza a
+/// sessão inteira sem teleportar eixo nenhum.
+///
+/// ⚠️ A fixture MOVE a forma antes de trocar o estilo, e é essa linha que dá dentes ao gate: com o
+/// eixo de sessão parado (que é o que o produto faz enquanto o modo está ligado), uma
+/// re-derivação indevida só é observável se a POSE tiver mudado — senão ela devolveria o mesmo
+/// número e o gate não poderia falhar.
+#[test]
+fn the_style_follows_the_tool_but_the_place_stays_with_the_shape() {
+    let (scene, mut sim, map, xf, id, e) = half_profile_scene();
+    let mut live = SymmetryLive::default();
+    let origin = [4.0, 4.0];
+    live.adopt(&mut sim, &map, &scene, &xf, armed(), origin, &[id]);
+    // O frame seguinte sela a captura (o pivô assentou; ver o gate irmão).
+    live.adopt(&mut sim, &map, &scene, &xf, armed(), origin, &[]);
+    let place = spec_of(&sim, &map, id).expect("armada").center;
+
+    // O artista move a forma e SÓ ENTÃO troca para Radial 9, sem desenhar nada.
+    let xf2 = nudge(&mut sim, &map, e, [8.0, -5.0]);
+    live.adopt(
+        &mut sim,
+        &map,
+        &scene,
+        &xf2,
+        SymmetryStyle {
+            kind: SymmetryKind::Radial,
+            segments: 9,
+            ..armed()
+        },
+        origin,
+        &[],
+    );
+
+    let now = spec_of(&sim, &map, id).expect("continua armada");
+    assert_eq!(now.kind, SymmetryKind::Radial, "o estilo chegou");
+    assert_eq!(now.segments, 9);
+    assert_eq!(
+        now.center, place,
+        "e o LUGAR não se mexeu — o eixo é da forma desde que ela foi desenhada"
+    );
+}
+
+#[path = "symmetry_cook_tests.rs"]
+mod cook;

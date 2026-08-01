@@ -584,6 +584,10 @@ pub fn blend_steps_to_track(steps: u32) -> f32 {
 /// O snapshot publicado por-frame — mora no irmão [`super::params_snapshot`] pelo teto de LOC,
 /// e é re-exportado aqui porque é por este caminho que os cerca de cinquenta sítios já o escrevem.
 pub use super::params_snapshot::VectorStyleSnapshot;
+/// A porta ÚNICA `kind → id` da SIMETRIA — mora no irmão [`super::params_symmetry`] pelo teto de
+/// 700 LOC, e o corte é por assunto: ela responde *"que chip é este espelho?"*, e não *"em que
+/// unidade este knob fala"*, que é do que este arquivo trata.
+pub use super::params_symmetry::symmetry_kind_id;
 
 #[cfg(test)]
 mod tests {
@@ -684,8 +688,3 @@ mod tests {
         );
     }
 }
-
-/// A porta ÚNICA `kind → id` da SIMETRIA — mora no irmão [`super::params_symmetry`] pelo teto de
-/// 700 LOC, e o corte é por assunto: ela responde *"que chip é este espelho?"*, e não *"em que
-/// unidade este knob fala"*, que é do que este arquivo trata.
-pub use super::params_symmetry::symmetry_kind_id;

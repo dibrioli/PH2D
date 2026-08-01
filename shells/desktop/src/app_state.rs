@@ -1026,6 +1026,14 @@ pub(crate) struct App {
     /// que faz *"desmarcar antes do Apply"* não destruir nada: as cópias nunca estiveram no
     /// documento.
     pub(crate) symmetry_live: crate::symmetry_live::SymmetryLive,
+    /// **O eixo de SESSÃO da simetria**, em MUNDO — a linha que aparece no instante em que o botão
+    /// liga, com a cena vazia e nada seleccionado.
+    ///
+    /// ⚠️ Mora aqui e não na ferramenta porque nasce do centro do **ecrã** (*"a tela é a referência
+    /// para a posição inicial da linha"*), e só a shell tem câmera. `None` = por semear: a
+    /// semeadura acontece na aresta desligado→ligado, e é isso que faz a linha ficar no lugar ao
+    /// longo de quantos desenhos o artista quiser.
+    pub(crate) vec_symmetry_origin: Option<[f64; 2]>,
     /// O **cozimento do FX raster VIVO** — as imagens de Blur/Glow/Drop Shadow por-forma
     /// (`ph2d_ecs::VecFilter`, plano 24). Runtime-only: o documento guarda a RELAÇÃO (o
     /// componente), e isto são os pixels derivados dela, injetados no z da forma.

@@ -82,6 +82,25 @@ mod fold;
 mod subgraph;
 
 #[cfg(feature = "panel-motion-graph")]
+#[path = "motion_bridge_group_bypass.rs"]
+mod group_bypass;
+// Without the graph panel there is no way to mute a group, so the cook always reads the
+// document graph — a shim keeps the per-frame cook path feature-agnostic (it uses `fold`/
+// `subgraph`, which are panel-gated).
+#[cfg(not(feature = "panel-motion-graph"))]
+mod group_bypass {
+    pub(super) fn cook_graph(_m: &super::MotionState) -> Option<ph2d_nodegraph::graph::Graph> {
+        None
+    }
+}
+
+#[path = "motion_bridge_clock.rs"]
+mod clock;
+// Re-exported at `motion_bridge` level: the cook loop here and the GPU/test siblings
+// all call `super::ticks_owed` / `motion_bridge::ticks_owed`.
+pub(crate) use clock::ticks_owed;
+
+#[cfg(feature = "panel-motion-graph")]
 #[path = "motion_bridge_intents.rs"]
 mod intents;
 #[cfg(feature = "panel-motion-graph")]
@@ -320,13 +339,23 @@ pub(super) fn dispatch(
     // (fully, or hybrid from a CPU boundary). `Handled` = the GPU produced this
     // frame → skip the CPU pump; `FellThrough` = run the pump below. The whole
     // policy + dispatch lives in the `gpu` module (see there); this stays a seam.
-    if let gpu::GpuOutcome::Handled = gpu::cook_gpu(motion, gpu, target, fixed_dt, &scopes) {
+    // ⚠️ A bypassed GROUP is short-circuited only on the CPU pump's graph (below),
+    // so the GPU path is skipped while one exists — a muted preview must not cook
+    // from the un-rewired graph (v1; the group-bypass module documents this).
+    if motion.doc.bypassed_subgraphs.is_empty()
+        && let gpu::GpuOutcome::Handled = gpu::cook_gpu(motion, gpu, target, fixed_dt, &scopes)
+    {
         return;
     }
 
+    // The graph the pump cooks: `doc.graph`, or a clone with every bypassed group
+    // rewired to pass input[0] → output[0]. `None` (the common case) means the pump
+    // reads the document graph unchanged. `output_nodes`/`time_scopes` above stay on
+    // `doc.graph` — a bypass removes no node, so the sinks and scopes are the same.
+    let cook = group_bypass::cook_graph(motion);
     for tick in ticks_owed(motion.pump.last_cooked_tick(), target) {
         motion.pump.advance_or_scrub_scoped(
-            &motion.doc.graph,
+            cook.as_ref().unwrap_or(&motion.doc.graph),
             &motion.registry,
             &motion.sinks,
             tick,
@@ -335,32 +364,6 @@ pub(super) fn dispatch(
             motion.default_size,
             &scopes,
         );
-    }
-}
-
-/// The ticks the cook still owes to reach `target`, given the last one it rendered.
-///
-/// **Forward: every tick, never a skip.** One cook + `pre`-advance per FIXED TICK,
-/// never per frame (M2-dynamics). A sequential node's trajectory (`integrate`,
-/// `spring`, `verlet_rope`) is the SUM of its steps, so a slow frame that produced
-/// two fixed steps — or a playhead running at `rate 2` — must sim BOTH, or the
-/// motion would depend on the frame rate (plan §1.4: dt fixo). The common frame
-/// owes exactly one tick, which takes the pump's cheap forward path.
-///
-/// **Backwards or a jump: one call.** The playhead was scrubbed, sought, or wrapped
-/// its loop. [`MotionCookPump::advance_or_scrub_scoped`] restores the newest
-/// checkpoint at or before the target and re-sims forward, bit-exact (M2.N2) —
-/// walking there tick by tick would instead re-cook from the ring on every step.
-/// Reading the marching future would show a spring mid-flight at a time it never
-/// was in.
-///
-/// **Standing still: the same tick.** A paused playhead re-issues its current tick,
-/// which the pump early-returns on unless a param drag / rewire dirtied the cook
-/// (zero-alloc paused frame, M0.T12).
-pub(super) fn ticks_owed(last_cooked: Option<u64>, target: u64) -> std::ops::RangeInclusive<u64> {
-    match last_cooked {
-        Some(last) if target > last => last + 1..=target,
-        _ => target..=target,
     }
 }
 

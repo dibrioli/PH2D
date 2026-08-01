@@ -172,6 +172,88 @@ pub(crate) fn arm(
     n
 }
 
+/// **MATERIALIZA** as cópias da seleção — o botão *Apply*.
+///
+/// *"Botão apply para consolidar a forma e desativar a simetria"* (Enio, 2026-08-01). É o único
+/// momento em que as cópias passam a existir no documento; até aqui elas eram desenho, e é isso
+/// que faz o desarmar não destruir nada.
+///
+/// ⚠️ **Uma porta, dois consumidores:** o `layers_for` daqui produz a MESMA lista que o
+/// [`SymmetryLive::recook`] cozinha — `symmetry_paths` sobre a curva local, e só então a pose. Se
+/// o Apply tivesse a sua própria produção, a forma SALTARIA no clique, que é o defeito que o
+/// ADR-0128 pagou cinco vezes.
+///
+/// ⚠️ **O componente não precisa de ser removido:** a forma-fonte SAI da cena (remove+insere) e o
+/// `vec_entities::sync` do frame seguinte despawna a entidade dela com o componente dentro. Quem
+/// não produziu nada fica — e fica COM a simetria, porque apagar a arte do artista num clique de
+/// *Apply* seria a pior resposta possível a *"não há nada aqui"*.
+///
+/// `false` = não havia simetria viva na seleção. **UM passo de undo** para o gesto inteiro.
+pub(crate) fn materialise(
+    scene: &mut VecScene,
+    sim: &SimWorld,
+    pen: &mut ph2d_vec_edit::PenTool,
+    history: &mut ph2d_vec_edit::History,
+    map: &VecEntityMap,
+    xforms: &VecXforms,
+    ids: &[VecPathId],
+) -> bool {
+    let live: Vec<(VecPathId, SymmetrySpec)> = ids
+        .iter()
+        .filter_map(|id| spec_of(sim, map, *id).map(|s| (*id, s)))
+        .collect();
+    if live.is_empty() {
+        return false;
+    }
+    let pre = scene.clone();
+    let touched =
+        crate::vec_expand::materialise_selection(scene, pen, xforms, ids, |id, local, xf| {
+            let Some((_, spec)) = live.iter().find(|(i, _)| *i == id) else {
+                return Vec::new();
+            };
+            // A MESMA ordem do cozimento: reflectir no espaço da forma, e só então assar a pose.
+            let mut out = symmetry_paths(&local, spec);
+            for p in &mut out {
+                bake_xform(p, xf);
+            }
+            out
+        });
+    if touched {
+        history.push_undo(pre);
+    }
+    eprintln!("[ph2d-vec] simetria materializada: {} forma(s)", live.len());
+    true
+}
+
+/// **Os eixos vivos da cena, em MUNDO** — o que o overlay desenha.
+///
+/// ⚠️ A direcção sai de [`SymmetrySpec::mirror_dir`], a MESMA porta que o kernel usa para
+/// reflectir, e só depois sobe pela pose (`apply_vec`, não `apply`: levar uma direção como ponto a
+/// transladaria). Uma segunda derivação aqui desenharia um eixo onde a geometria não espelha — e
+/// ninguém lê um número numa screenshot, então a divergência apareceria como *"a linha está
+/// torta"*, meses depois.
+pub(crate) fn live_axes(
+    scene: &VecScene,
+    sim: &SimWorld,
+    map: &VecEntityMap,
+    xforms: &VecXforms,
+) -> Vec<ph2d_vec_render::SymmetryAxis> {
+    use ph2d_vec_scene::symmetry::SymmetryKind;
+    scene
+        .paths()
+        .iter()
+        .filter_map(|p| spec_of(sim, map, p.id).map(|s| (p.id, s)))
+        .map(|(id, spec)| {
+            let xf = xform_of(xforms, id);
+            ph2d_vec_render::SymmetryAxis {
+                at: xf.apply(spec.center),
+                dir: xf.apply_vec(spec.mirror_dir()),
+                segments: (spec.kind == SymmetryKind::Radial).then(|| spec.segments()),
+            }
+        })
+        .collect()
+}
+
 #[cfg(test)]
 #[path = "symmetry_live_tests.rs"]
 mod tests;

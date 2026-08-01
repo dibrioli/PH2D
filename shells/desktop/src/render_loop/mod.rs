@@ -2008,6 +2008,7 @@ impl crate::App {
             // documento — logo abrem passo de undo, e cada uma abre exatamente um.
             let mut pending_vec_join = false;
             let mut pending_vec_cut = false;
+            let mut pending_vec_symmetry_apply = false;
             let mut pending_vec_cut_discard = false;
             let mut pending_vec_reverse = false;
             let mut pending_vec_average = false;
@@ -2338,6 +2339,8 @@ impl crate::App {
                                 pending_vec_average = true;
                             } else if *id == ph2d_editor::ids::VECTOR_CUT_APPLY {
                                 pending_vec_cut = true;
+                            } else if *id == ph2d_editor::ids::VECTOR_SYM_APPLY {
+                                pending_vec_symmetry_apply = true;
                             } else if *id == ph2d_editor::ids::VECTOR_CUT_DISCARD {
                                 pending_vec_cut_discard = true;
                             } else if let Some(order) =
@@ -4480,6 +4483,22 @@ impl crate::App {
             // **O CORTE e o DESCARTE da lâmina.** Mesmo par `begin`/`commit_if_changed` das três
             // acima: um passo de undo por gesto, e só se algo de facto mudou (uma lâmina que não
             // atravessa nada não pode deixar uma linha na fila do Ctrl+Z).
+            // **Apply Symmetry** — o único gesto desta seção que toca o documento. Até aqui as
+            // cópias eram DESENHO; a partir daqui são geometria, e a simetria sai com a
+            // forma-fonte (o `sync` do frame seguinte despawna a entidade dela).
+            if pending_vec_symmetry_apply {
+                let xf = crate::vec_transform::build(sim, &self.vec_entities);
+                let ids: Vec<ph2d_vec_scene::VecPathId> = self.vec_pen.selected_paths().to_vec();
+                crate::symmetry_live::materialise(
+                    vec_scene,
+                    sim,
+                    &mut self.vec_pen,
+                    &mut self.vec_history,
+                    &self.vec_entities,
+                    &xf,
+                    &ids,
+                );
+            }
             if pending_vec_cut {
                 self.vec_history.begin(vec_scene);
                 // A seleção que o corte exige é a da LÂMINA, e ela pode chegar por qualquer das
@@ -6138,6 +6157,25 @@ impl crate::App {
                     vector_scene,
                 );
                 ph2d_vec_render::draw_snap_guides(&self.vec_snap_guides, cam_affine, vector_scene);
+            }
+            // **As linhas da SIMETRIA** — *"quando ligada linhas aparecem no canvas"* (Enio).
+            //
+            // ⚠️ FORA do `overlay.snap_guides` de propósito: aquele toggle é do encaixe, e a
+            // simetria não é um encaixe — é o eixo do que está a ser desenhado. Escondê-la com o
+            // snap deixaria o artista com as cópias na tela e sem o eixo que as produz.
+            {
+                let axes =
+                    crate::symmetry_live::live_axes(vec_scene, sim, &self.vec_entities, &vec_xf);
+                if !axes.is_empty() {
+                    let (sw, sh) =
+                        crate::field_gizmo::scene_window_wh(hero.view.center_split, window_size);
+                    ph2d_vec_render::draw_symmetry_axes(
+                        &axes,
+                        [0.0, 0.0, f64::from(sw), f64::from(sh)],
+                        cam_affine,
+                        vector_scene,
+                    );
+                }
             }
             // **O realce do Shape Builder** — as faces sob o cursor e as já pintadas. Fora do
             // `overlay.edit` porque o Build não é um modo de edição de nó: o que ele

@@ -271,3 +271,121 @@ fn forget_drops_the_memo_and_the_drawing() {
     live.forget();
     assert!(drawn(&live, id).is_empty(), "nada sobrevive ao forget");
 }
+
+/// **O `Apply` põe no documento EXACTAMENTE o que estava na tela.**
+///
+/// ⚠️ O oráculo é a IDENTIDADE ponto-a-ponto entre a geometria cozida e a materializada: um gate
+/// que só contasse formas ficaria verde sobre um Apply que produz a coisa certa *noutro lugar* —
+/// que é o defeito que o ADR-0128 pagou cinco vezes (a forma SALTAVA no clique porque preview e
+/// commit tinham portas diferentes).
+#[test]
+fn the_apply_lands_exactly_what_was_on_screen() {
+    let (mut scene, mut sim, map, xf, id, _e) = half_profile_scene();
+    // Sem fusão: assim a simetria produz DUAS formas, e o gate vê o conjunto inteiro.
+    let spec = SymmetrySpec {
+        fuse: false,
+        ..mirror_x()
+    };
+    arm(&mut sim, &map, &[id], Some(spec));
+    let mut live = SymmetryLive::default();
+    live.recook(&scene, &sim, &map, &xf);
+    let on_screen = drawn(&live, id);
+    assert!(!on_screen.is_empty());
+
+    let mut pen = ph2d_vec_edit::PenTool::default();
+    let mut history = ph2d_vec_edit::History::default();
+    assert!(materialise(
+        &mut scene,
+        &sim,
+        &mut pen,
+        &mut history,
+        &map,
+        &xf,
+        &[id]
+    ));
+
+    let in_doc: Vec<[f64; 2]> = scene
+        .paths()
+        .iter()
+        .flat_map(|p| p.verts_all().map(|v| v.anchor))
+        .collect();
+    assert_eq!(
+        in_doc.len(),
+        on_screen.len(),
+        "o documento tem de receber a mesma quantidade de geometria que estava na tela"
+    );
+    for (i, (a, b)) in on_screen.iter().zip(in_doc.iter()).enumerate() {
+        assert!(
+            (a[0] - b[0]).abs() < 1e-9 && (a[1] - b[1]).abs() < 1e-9,
+            "ponto {i}: a tela mostrava {a:?} e o documento recebeu {b:?} — a forma SALTOU"
+        );
+    }
+    assert!(
+        scene.path(id).is_none(),
+        "a forma-fonte sai da cena: o que fica são as materializadas"
+    );
+}
+
+/// **Sem simetria viva o `Apply` não toca no documento** — nem a geometria, nem o undo.
+#[test]
+fn the_apply_is_a_no_op_without_a_live_symmetry() {
+    let (mut scene, sim, map, xf, id, _e) = half_profile_scene();
+    let before = scene.clone();
+    let mut pen = ph2d_vec_edit::PenTool::default();
+    let mut history = ph2d_vec_edit::History::default();
+    assert!(
+        !materialise(&mut scene, &sim, &mut pen, &mut history, &map, &xf, &[id]),
+        "sem componente não há o que consolidar"
+    );
+    assert_eq!(
+        scene.paths().len(),
+        before.paths().len(),
+        "e o documento fica intacto"
+    );
+}
+
+/// **O eixo que o overlay desenha é o MESMO que a geometria espelha.**
+///
+/// ⚠️ A direcção passa por `mirror_dir()` — a porta que o kernel usa para reflectir — e sobe pela
+/// pose como VETOR (`apply_vec`), não como ponto. Levá-la como ponto a transladaria, e toda linha
+/// apontaria para o canto do ecrã; uma segunda derivação desenharia um eixo onde a geometria não
+/// espelha, e ninguém lê um número numa screenshot.
+#[test]
+fn the_drawn_axis_is_the_one_the_geometry_mirrors() {
+    let (scene, mut sim, map, xf, id, _e) = half_profile_scene();
+    arm(&mut sim, &map, &[id], Some(mirror_x()));
+    let axes = live_axes(&scene, &sim, &map, &xf);
+    assert_eq!(axes.len(), 1, "uma forma com simetria, um eixo");
+    let a = axes[0];
+    assert!(a.segments.is_none(), "um espelho não é uma rosácea");
+    // A pose da fixture é uma translação de (3,1): o ponto vai junto, a direcção NÃO.
+    assert!(
+        (a.at[0] - 3.0).abs() < 1e-9 && (a.at[1] - 1.0).abs() < 1e-9,
+        "o ponto do eixo sobe pela pose: {:?}",
+        a.at
+    );
+    assert!(
+        a.dir[0].abs() < 1e-9 && (a.dir[1] - 1.0).abs() < 1e-9,
+        "a direcção é VETOR — uma translação não a move: {:?}",
+        a.dir
+    );
+}
+
+/// **Uma rosácea desenha `segments` raios, não uma linha** — são figuras diferentes porque são
+/// fatos diferentes, e desenhar a rosácea como uma linha só a faria parecer um espelho quebrado.
+#[test]
+fn a_radial_draws_spokes_and_a_mirror_draws_a_line() {
+    let (scene, mut sim, map, xf, id, _e) = half_profile_scene();
+    arm(
+        &mut sim,
+        &map,
+        &[id],
+        Some(SymmetrySpec {
+            kind: SymmetryKind::Radial,
+            segments: 7,
+            ..SymmetrySpec::default()
+        }),
+    );
+    let axes = live_axes(&scene, &sim, &map, &xf);
+    assert_eq!(axes[0].segments, Some(7));
+}

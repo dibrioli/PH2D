@@ -9,7 +9,8 @@
 
 use ph2d_vec_edit::{History, PenTool};
 use ph2d_vec_scene::{
-    LineJoin, OffsetSide, VecPath, VecPathId, VecScene, VecXforms, WidthStops, bake_xform, xform_of,
+    LineJoin, OffsetSide, VecPath, VecPathId, VecScene, VecXforms, WidthStops, Xform, bake_xform,
+    xform_of,
 };
 
 /// Qual comando o clique pediu.
@@ -97,7 +98,13 @@ pub(crate) fn apply_vec_expand(
 ) {
     let pre = scene.clone(); // UM passo de undo para o gesto inteiro
     let ids = pen.selected_paths().to_vec();
-    if expand_selection(scene, pen, xforms, &ids, |_| Some((cmd.clone(), d))) {
+    if materialise_selection(scene, pen, xforms, &ids, |_, local, xf| {
+        // ADR-0111: a pose vive no `Transform` da entidade e o resultado nasce world-space,
+        // então o operando é assado no MUNDO antes de entrar no motor — como na booleana.
+        let mut world = local;
+        bake_xform(&mut world, xf);
+        expand_layers(&world, cmd.clone(), d)
+    }) {
         history.push_undo(pre);
         eprintln!("[ph2d-vec] expand {cmd:?}: ok");
     } else {
@@ -105,20 +112,25 @@ pub(crate) fn apply_vec_expand(
     }
 }
 
-/// O NÚCLEO — offseta/converte cada path de `ids` no lugar (remove+insere) e re-seleciona
-/// o que saiu. Devolve `true` se mudou algo. **Sem undo**: quem chama decide.
+/// **A PORTA ÚNICA por onde geometria DERIVADA vira documento** — substitui cada path de `ids` no
+/// lugar (remove+insere), preserva o z, e re-seleciona o que saiu. Devolve `true` se mudou algo.
+/// **Sem undo**: quem chama decide.
 ///
-/// `cmd_for` responde *"o que faço com ESTE caminho?"* — `None` o deixa em paz. É por-caminho
-/// (e não um comando único) porque o Offset agora é VIVO: cada forma carrega o seu
-/// [`ph2d_ecs::VecOffset`], e materializar a seleção tem de honrar o de cada uma. Um segundo
-/// laço para o caso vivo seria a 2ª porta por onde a geometria do offset entra no documento —
-/// exatamente a doença que esta linha já pagou.
-pub(crate) fn expand_selection(
+/// `layers_for` responde *"o que este caminho produz?"* recebendo a curva **COZIDA e LOCAL** mais
+/// a pose dela, e devolvendo os caminhos em **MUNDO**. Lista vazia ⇒ a fonte fica onde está e
+/// segue selecionada (nada a materializar, e apagar a arte do artista num clique de *Apply* seria
+/// a pior resposta possível a *"não há nada aqui"*).
+///
+/// ⚠️ **A pose entra pela CLOSURE, não por aqui**, e é isso que faz desta porta a única: o Offset
+/// assa primeiro e offseta depois (a distância é de MUNDO), a Simetria reflecte primeiro e assa
+/// depois (o eixo é da FORMA). Se o `bake_xform` morasse neste laço, a simetria precisaria de um
+/// segundo laço — e o dia em que alguém corrigisse o z-order aqui, ele ficaria por corrigir lá.
+pub(crate) fn materialise_selection(
     scene: &mut VecScene,
     pen: &mut PenTool,
     xforms: &VecXforms,
     ids: &[VecPathId],
-    cmd_for: impl Fn(VecPathId) -> Option<(Expand, f64)>,
+    layers_for: impl Fn(VecPathId, VecPath, &Xform) -> Vec<VecPath>,
 ) -> bool {
     // Os z's dos alvos, de trás para a frente — cada path é substituído no lugar (o
     // total pode crescer), então se percorre da frente para trás.
@@ -138,19 +150,10 @@ pub(crate) fn expand_selection(
         let Some(src) = scene.paths().get(z).cloned() else {
             continue;
         };
-        let Some((cmd, d)) = cmd_for(src.id) else {
-            produced.push(src.id); // fora do comando: fica onde está, e segue selecionado
-            continue;
-        };
-        // ADR-0111: a pose vive no `Transform` da entidade e o resultado nasce world-space,
-        // então o operando é assado no MUNDO antes de entrar no motor — como na booleana.
         // ⚠️ **A fonte entra COZIDA** (quina viva + pilha de efeitos): materializar tem de
-        // congelar o que se VÊ. Sem o `cooked()` o Apply devolveria a curva crua offsetada e a
-        // forma saltaria no clique — a mesma lei do `bake_cooked`.
-        let mut world = src.cooked().into_owned();
-        bake_xform(&mut world, &xform_of(xforms, src.id));
-
-        let layers = expand_layers(&world, cmd, d);
+        // congelar o que se VÊ. Sem o `cooked()` o Apply devolveria a curva crua e a forma
+        // saltaria no clique — a mesma lei do `bake_cooked`.
+        let layers = layers_for(src.id, src.cooked().into_owned(), &xform_of(xforms, src.id));
         if layers.is_empty() {
             // Nada a fazer nesta forma (sem traço; ou um offset que a ANIQUILA). A fonte fica
             // onde está e segue selecionada — e, no caso vivo, o componente fica com ela: não

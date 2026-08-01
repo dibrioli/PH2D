@@ -565,6 +565,16 @@ impl Tool for VectorTool {
             // painel do impasto), então os chips abaixo só são clicáveis com ele ligado: não há
             // como escolher um tipo para um espelho que não existe.
             PanelEvent::Click(id) if id == ids::VECTOR_SYM_OFF => self.symmetry.on = false,
+            // **Apply DESARMA** — *"botão apply para consolidar a forma e desativar a simetria"*
+            // (Enio). A tool não materializa nada (não vê a cena); ela sabe que o modo acabou, e
+            // a shell faz a geometria. Duas metades de um gesto, cada uma na camada que a pode
+            // fazer — e o fato `on` continua com UM dono.
+            //
+            // ⚠️ A ordem dentro do frame é benigna e está medida: o espelho `vec_draw_config` só
+            // é reescrito DEPOIS do bloco que materializa, então o `on` que o arm lê nesse frame
+            // ainda é `true` (e o re-arm é um no-op, a spec não mudou); no frame seguinte ele lê
+            // `false` e desarma uma selecção que já são as formas NOVAS, sem componente.
+            PanelEvent::Click(id) if id == ids::VECTOR_SYM_APPLY => self.symmetry.on = false,
             PanelEvent::Click(id) if id == ids::VECTOR_SYM_ON => self.symmetry.on = true,
             PanelEvent::Click(id) if symmetry_kind(id).is_some() => {
                 if let Some(k) = symmetry_kind(id) {

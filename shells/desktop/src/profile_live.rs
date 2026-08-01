@@ -203,16 +203,22 @@ pub(crate) fn materialise(
         return false;
     }
     let pre = scene.clone();
-    let touched = crate::vec_expand::expand_selection(scene, pen, xforms, ids, |id| {
-        live.iter().find(|(i, _)| *i == id).map(|(_, stops)| {
-            (
+    let touched =
+        crate::vec_expand::materialise_selection(scene, pen, xforms, ids, |id, local, xf| {
+            let Some((_, stops)) = live.iter().find(|(i, _)| *i == id) else {
+                return Vec::new(); // fora do comando: fica onde está, e segue selecionado
+            };
+            // A fita de largura nasce em MUNDO, então a pose entra ANTES do motor.
+            let mut world = local;
+            ph2d_vec_scene::bake_xform(&mut world, xf);
+            crate::vec_expand::expand_layers(
+                &world,
                 crate::vec_expand::Expand::PowerStroke {
                     stops: stops.clone(),
                 },
                 0.0,
             )
-        })
-    });
+        });
     if touched {
         history.push_undo(pre);
     }

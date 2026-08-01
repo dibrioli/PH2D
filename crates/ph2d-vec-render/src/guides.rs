@@ -155,7 +155,7 @@ pub fn draw_document_guides(
 /// `t`, e a interseção dos dois é o trecho visível. Uma direção com componente zero num eixo
 /// é o caso NORMAL aqui (toda guia é paralela a um eixo), então ele é tratado no ramo, não por
 /// divisão por quase-zero.
-fn clip_line_to_rect(p: Point, d: Point, rect: [f64; 4]) -> Option<(Point, Point)> {
+pub(crate) fn clip_line_to_rect(p: Point, d: Point, rect: [f64; 4]) -> Option<(Point, Point)> {
     let (x0, y0, x1, y1) = (rect[0], rect[1], rect[0] + rect[2], rect[1] + rect[3]);
     let (mut lo, mut hi) = (f64::NEG_INFINITY, f64::INFINITY);
     for (num0, num1, den) in [(x0 - p.x, x1 - p.x, d.x), (y0 - p.y, y1 - p.y, d.y)] {

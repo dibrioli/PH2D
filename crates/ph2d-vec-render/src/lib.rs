@@ -37,6 +37,10 @@ mod cut_line;
 pub use cut_line::draw_cut_line;
 mod guides;
 pub use guides::{Guide, GuideKind, draw_document_guides, draw_snap_guides, draw_text_caret};
+/// As linhas de SIMETRIA no canvas (plano 25 W6.3) — irmão de `guides` e consumidor do mesmo
+/// recortador de reta: um eixo e uma guia atravessam a tela pela mesma aritmética.
+mod symmetry_overlay;
+pub use symmetry_overlay::{SymmetryAxis, draw_symmetry_axes};
 
 /// **As alças de ponta do conector** — os dois círculos que dizem onde a linha encosta na
 /// forma. O raio vive lá dentro, e o hit-test da shell o importa: desenhar num raio e agarrar

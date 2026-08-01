@@ -85,7 +85,6 @@ impl PhysicsBridge {
     /// precisa do dono já construído.
     pub(super) fn reconcile_parts(&mut self, sim: &SimWorld) {
         self.part_seen.clear();
-        let at_rest = self.last_stepped == 0;
         let world = sim.world();
         let mut q = self.part_query.take().expect("query built in dispatch");
 
@@ -101,15 +100,15 @@ impl PhysicsBridge {
                 continue;
             };
             self.part_seen.push(e);
-            // As duas poses de MUNDO — a mesma razão do corpo: o solver não tem
-            // hierarquia, e a pose relativa é o que ele quer.
+            // A pose de MUNDO da peça — é dela que sai a ESCALA que o
+            // `scaled_shape` do W6 lê.
             let Some(t_part) = space::world_transform(world, e, &mut self.chain) else {
                 continue;
             };
-            let Some(t_body) = space::world_transform(world, owner, &mut self.chain) else {
-                continue;
-            };
-            let Some(rel) = ph2d_ecs::Transform::inverse_compose(t_body, t_part) else {
+            // ⚠️ **A pose LOCAL vem da cadeia AUTORADA, não de um round-trip pelo
+            // solver** (docs de `space::local_in_ancestor`): é isso que a torna
+            // bit-estável durante o play e que apaga a razão do gate de repouso.
+            let Some(rel) = space::local_in_ancestor(world, e, owner, &mut self.chain) else {
                 continue;
             };
             // O `body_type` sai do DONO: uma peça não tem tipo próprio, e é isso
@@ -148,6 +147,20 @@ impl PhysicsBridge {
                 world.get::<crate::OneWayPlatform>(e).is_some(),
                 None,
             );
+            // ⚠️ **A POSE do `desc` é zerada, e é isso que torna a comparação
+            // abaixo honesta.** `attach_part` lê só a metade de COLLIDER do
+            // descriptor (docs dele); os campos `x`/`y`/`rotation` vêm da pose de
+            // MUNDO da peça e portanto mudam a cada frame em que o dono se move.
+            // Compará-los fazia a peça ser despendurada e re-pendurada em **133
+            // de 301 ticks** numa descida de rampa — churn puro, invisível porque
+            // o gate de repouso o escondia. Uma comparação tem de perguntar o que
+            // o CONSUMIDOR pergunta.
+            let desc = ph2d_physics::BodyDesc {
+                x: 0.0,
+                y: 0.0,
+                rotation: 0.0,
+                ..desc
+            };
             wanted.push((
                 e,
                 owner,
@@ -177,13 +190,15 @@ impl PhysicsBridge {
 
         for (e, owner, handle, desc, local) in wanted {
             match self.parts.get(&e) {
-                // ⚠️ **Re-descrever é gateado em REPOUSO**, como o corpo: a pose
-                // relativa é derivada das poses de MUNDO, e no play a do dono é
-                // a que o solver escreveu. Sem o gate, cada frame re-penduraria a
-                // peça na pose que a simulação acabou de produzir — e ela andaria
-                // pelo corpo, que é o slide que o W-AnchorFollow curou no pino.
+                // ⚠️ **Sem gate de repouso** (W-PartFace): a pose local sai da
+                // cadeia AUTORADA, então ela não muda sozinha durante o play e a
+                // comparação acima é exata. O gate que existia aqui — copiado do
+                // corpo, cuja pose o SOLVER escreve — tinha um preço medido:
+                // mover uma peça com o relógio andando movia o desenho e deixava
+                // o collider parado, e a forma atravessava o estático em
+                // silêncio. Uma peça é AUTORADA o tempo todo; o dono é que é
+                // simulado.
                 Some(p) if p.owner == owner && p.rest == desc && p.local == local => {}
-                Some(_) if !at_rest => {}
                 _ => {
                     if let Some(old) = self.parts.remove(&e) {
                         self.world.detach_part(old.handle);

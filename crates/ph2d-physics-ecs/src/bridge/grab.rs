@@ -45,8 +45,28 @@ use crate::interaction::InteractionSettings;
 use super::PhysicsBridge;
 
 impl PhysicsBridge {
+    /// **Qual corpo esta entidade É, ou de qual ela faz parte** (W-PartFace).
+    ///
+    /// Uma **PEÇA** (um filho com `Collider` e sem `RigidBody`) não tem corpo
+    /// próprio — ela é mais uma forma do dono. Sem esta pergunta, clicar numa
+    /// peça com a MÃO não pegava nada: o `self.bodies.get(&entity)` não a
+    /// encontrava, o gesto era recusado em silêncio, e o press caía adiante para
+    /// o **gizmo** — que arrasta o `Transform` e, com o relógio andando, movia o
+    /// desenho da peça deixando o collider onde estava. Os dois defeitos que o
+    /// Enio reportou eram este ponto.
+    ///
+    /// ⚠️ **A resposta sai do livro da PRÓPRIA ponte** (`self.parts`), não de um
+    /// walk pela árvore: quem pendurou a peça sabe em que corpo a pendurou, e
+    /// perguntar de novo ao ECS seria uma segunda resposta que pode discordar
+    /// daquela em que o solver de fato a prendeu.
+    fn body_of(&self, entity: Entity) -> Entity {
+        self.parts.get(&entity).map_or(entity, |p| p.owner)
+    }
+
     /// **Pegar `entity` pelo ponto de MUNDO `world_point`.** `false` quando não
     /// há o que segurar (entidade sem corpo, ou corpo não-dinâmico).
+    ///
+    /// ⚠️ Clicar numa **PEÇA** pega o DONO dela — ver [`Self::body_of`].
     ///
     /// Segura pela lei DEFAULT (a mola medida do W-Grab). Quem tem as settings do
     /// artista em mãos usa [`Self::grab_with`].
@@ -60,7 +80,7 @@ impl PhysicsBridge {
     /// Descarta o ring de checkpoints em caso de sucesso — ver as regras nos docs
     /// do módulo.
     pub fn grab_with(&mut self, entity: Entity, world_point: [f32; 2], spec: HoldSpec) -> bool {
-        let Some(b) = self.bodies.get(&entity) else {
+        let Some(b) = self.bodies.get(&self.body_of(entity)) else {
             return false;
         };
         if !self.world.grab_body_with(b.handle, world_point, spec) {

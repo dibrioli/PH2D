@@ -213,8 +213,19 @@ impl crate::App {
                   da face VAZIA; clica-la sobre algo que ja tem forma so apagava o que o\n     \
                   artista afinou (medido: a barra virava a caixa do sprite, com\n       \
                   offset, densidade e camada zerados).\n\n  \
+               === Os DOIS defeitos do smoke anterior ===\n  \
+               7. A MAO. Toque Play e, com a ferramenta de interacao em Hand, ARRASTE\n     \
+                  o palhetao (a peca) com o mouse. A chave inteira vem junto.\n     \
+                  Antes: a mao procurava um corpo que a peca nao tem, recusava em\n     \
+                  silencio, e o press caia adiante para o GIZMO.\n  \
+               8. E era o gizmo que produzia a penetracao: com o relogio ANDANDO, o\n     \
+                  re-describe da peca era gateado em REPOUSO, entao arrastar movia o\n     \
+                  DESENHO e deixava o collider onde estava -- a forma atravessava o\n     \
+                  estatico, sem erro e sem warning. Agora, com o Play rodando,\n     \
+                  selecione 'Wide Bit' e mude Half Width: a fenda responde NA HORA.\n\n  \
                (!) Toque B para o contorno: as pecas sao desenhadas na cor do DONO,\n     \
-                   porque e o corpo dele que as governa.\n",
+                   porque e o corpo dele que as governa. Com o Play rodando, o\n     \
+                   contorno da peca tem de acompanhar o desenho dela em toda edicao.\n",
             slot = SLOT_HALF,
             w0 = BIT_HALF_X[0],
             w1 = BIT_HALF_X[1],

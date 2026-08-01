@@ -34,6 +34,57 @@ pub(super) fn world_transform(
     ph2d_ecs::world_transform_into(world, e, scratch)
 }
 
+/// **Onde `e` está DENTRO de `ancestor`** — a pose local de uma PEÇA no corpo
+/// dela (W-Compound / W-PartFace).
+///
+/// ⚠️ **Compõe a cadeia AUTORADA e nunca pergunta ao solver**, e essa é a
+/// diferença inteira. A versão anterior derivava por
+/// `inverse_compose(mundo_do_dono, mundo_da_peça)` — um ROUND-TRIP pela pose que
+/// o solver acabou de escrever —, e por isso o `reconcile_parts` só podia
+/// re-descrever uma peça **em repouso**: durante o play o resultado é estável mas
+/// não é EXATO (medido, 300 ticks sobre uma rampa: 1,2e-7 em translação e 3,0e-8
+/// em rotação), então a comparação `local == local` falharia quase todo frame e
+/// a peça seria despendurada e re-pendurada sem parar.
+///
+/// O preço daquele gate era o defeito que o Enio reportou: mover uma peça com o
+/// relógio ANDANDO movia o desenho e **deixava o collider onde estava** — a forma
+/// atravessava o estático, sem erro e sem warning. Composta pela cadeia autorada,
+/// a resposta não depende do solver, é **bit-estável** enquanto ninguém edita, e
+/// o gate de repouso deixa de ter razão de existir.
+///
+/// ⚠️ **Um GRUPO no meio é atravessado**, pela mesma regra do `owner_body`: a
+/// cadeia é composta do ancestral para baixo, então pôr as formas de uma peça
+/// dentro de uma pasta continua sendo transparente.
+///
+/// `None` se `ancestor` não está na linhagem de `e`, ou se falta `Transform` a
+/// alguém no caminho.
+pub(super) fn local_in_ancestor(
+    world: &World,
+    e: Entity,
+    ancestor: Entity,
+    scratch: &mut Vec<Transform>,
+) -> Option<Transform> {
+    scratch.clear();
+    let mut cur = e;
+    loop {
+        scratch.push(*world.get::<Transform>(cur)?);
+        let parent = world
+            .get::<ph2d_ecs::ChildOf>(cur)
+            .map(ph2d_ecs::ChildOf::parent)?;
+        if parent == ancestor {
+            break;
+        }
+        cur = parent;
+    }
+    // `scratch` está da PEÇA para cima; compor de cima para baixo é
+    // `compose(pai, filho)`, então a dobra vai do fim para o começo.
+    let mut acc = *scratch.last()?;
+    for t in scratch.iter().rev().skip(1) {
+        acc = Transform::compose(acc, *t);
+    }
+    Some(acc)
+}
+
 /// Store a WORLD pose the solver produced onto the entity's LOCAL `Transform`.
 ///
 /// Writes translation and rotation only: a rigid body has a pose, not a scale,

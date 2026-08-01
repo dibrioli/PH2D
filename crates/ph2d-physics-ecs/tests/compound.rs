@@ -277,3 +277,290 @@ fn a_parts_combine_rules_reach_the_solver() {
          {avg:.3} — a peça está usando o default"
     );
 }
+
+/// **A pose de uma PEÇA editada com o relógio ANDANDO chega ao solver**
+/// (W-PartFace, report do Enio: *"houve penetração da Shape no Static"*).
+///
+/// O `reconcile_parts` só re-descrevia uma peça **em repouso** — um gate copiado
+/// do corpo, cuja pose o SOLVER escreve. Numa peça a pose é AUTORADA o tempo
+/// todo, e o preço do gate era exatamente o reportado: mover a peça movia o
+/// DESENHO e deixava o collider parado, então a forma atravessava o estático em
+/// silêncio.
+///
+/// O oráculo é a consequência FÍSICA, não a bookkeeping: a peça é empurrada para
+/// dentro de um teto estático, e o dono tem de ser empurrado para baixo. Medido
+/// antes do fix: `0.2990` com e sem o movimento — bit-idêntico, isto é, nada
+/// aconteceu.
+#[test]
+fn a_part_moved_while_the_clock_runs_takes_its_collider_along() {
+    fn owner_y(move_it: bool) -> f32 {
+        let mut sim = SimWorld::new();
+        sim.world_mut().spawn((
+            Name::new("Floor"),
+            RigidBody {
+                kind: BodyKind::Static,
+            },
+            box_of(20.0, 0.5),
+            Transform::from_translation(Vec2::new(0.0, -0.5)),
+        ));
+        sim.world_mut().spawn((
+            Name::new("Ceiling"),
+            RigidBody {
+                kind: BodyKind::Static,
+            },
+            box_of(20.0, 0.5),
+            Transform::from_translation(Vec2::new(0.0, 3.0)),
+        ));
+        let owner = sim
+            .world_mut()
+            .spawn((
+                Name::new("Owner"),
+                RigidBody {
+                    kind: BodyKind::Dynamic,
+                },
+                box_of(0.3, 0.3),
+                Transform::from_translation(Vec2::new(0.0, 0.3)),
+            ))
+            .id();
+        let part = sim
+            .world_mut()
+            .spawn((
+                Name::new("Part"),
+                box_of(0.3, 0.3),
+                Transform::from_translation(Vec2::new(1.0, 0.0)),
+                ChildOf(owner),
+            ))
+            .id();
+        let mut bridge = PhysicsBridge::new();
+        for t in 0..=60u64 {
+            bridge.dispatch(&mut sim, true, t);
+        }
+        if move_it {
+            // O artista arrasta a PEÇA para cima, até dentro do teto.
+            if let Some(mut t) = sim.world_mut().get_mut::<Transform>(part) {
+                t.translation.y = 2.6;
+            }
+        }
+        for t in 61..=200u64 {
+            bridge.dispatch(&mut sim, true, t);
+        }
+        world_y(&sim, owner)
+    }
+    let still = owner_y(false);
+    let moved = owner_y(true);
+    assert!(
+        moved < still - 0.05,
+        "mover a peça não mexeu no solver: dono em {moved:.4} contra {still:.4} \
+         parado — o collider ficou onde estava e o desenho atravessou o teto"
+    );
+}
+
+/// **Nada escreve de volta na pose AUTORADA de uma peça.**
+///
+/// O `readback` da física escreve o `Transform` dos CORPOS; uma peça não é um, e
+/// a pose dela é autoria pura. Sem isto, a simulação reescreveria o número que o
+/// artista digitou — a doença que o W5 curou nos corpos filhos, um nível abaixo.
+///
+/// ⚠️ **Este gate NÃO guarda a DERIVAÇÃO, e o nome antigo dizia que sim.** Ele
+/// nasceu chamado *"a pose local não deriva durante o play"*, e a mutação que
+/// devolve o round-trip pelo solver **passou por ele** — porque o que deriva é o
+/// `local` calculado DENTRO da ponte, que nenhum `Transform` mostra. Quem guarda
+/// aquilo é o gate de CHURN abaixo. Renomeado para afirmar o que de fato mede.
+#[test]
+fn nothing_writes_back_to_a_parts_authored_pose() {
+    let mut sim = SimWorld::new();
+    sim.world_mut().spawn((
+        Name::new("Floor"),
+        RigidBody {
+            kind: BodyKind::Static,
+        },
+        box_of(20.0, 0.5),
+        Transform::from_translation(Vec2::new(0.0, -0.5)),
+    ));
+    // Uma RAMPA: um corpo caindo reto não exercita a rotação, que é onde um
+    // round-trip deriva.
+    sim.world_mut().spawn((
+        Name::new("Ramp"),
+        RigidBody {
+            kind: BodyKind::Static,
+        },
+        box_of(3.0, 0.2),
+        Transform {
+            translation: Vec2::new(0.0, 1.0),
+            rotation: 0.35,
+            ..Transform::IDENTITY
+        },
+    ));
+    let owner = sim
+        .world_mut()
+        .spawn((
+            Name::new("Owner"),
+            RigidBody {
+                kind: BodyKind::Dynamic,
+            },
+            box_of(0.3, 0.3),
+            Transform::from_translation(Vec2::new(-1.0, 3.0)),
+        ))
+        .id();
+    let authored = Transform {
+        translation: Vec2::new(0.55, 0.1),
+        rotation: 0.4,
+        ..Transform::IDENTITY
+    };
+    let part = sim
+        .world_mut()
+        .spawn((
+            Name::new("Part"),
+            box_of(0.2, 0.2),
+            authored,
+            ChildOf(owner),
+        ))
+        .id();
+    let mut bridge = PhysicsBridge::new();
+    for t in 0..=300u64 {
+        bridge.dispatch(&mut sim, true, t);
+        let live = sim.world().get::<Transform>(part).copied().expect("t");
+        assert!(
+            live.translation.x == authored.translation.x
+                && live.translation.y == authored.translation.y
+                && live.rotation == authored.rotation,
+            "no tick {t} a pose autorada da peça andou para \
+             [{:.9}, {:.9}, {:.9}] — o readback está escrevendo nela",
+            live.translation.x,
+            live.translation.y,
+            live.rotation
+        );
+    }
+    // E o corpo de fato SIMULOU (senão a estabilidade acima é vácuo).
+    assert!(
+        (world_y(&sim, owner) - 3.0).abs() > 0.5,
+        "o dono não se moveu: a cena não exercita o que o gate afirma"
+    );
+}
+
+/// **A MÃO pega uma peça pelo DONO** (W-PartFace, report do Enio: *"a interação
+/// com o mouse na simulação não funcionou com a shape filha"*).
+///
+/// `grab_with` fazia `self.bodies.get(&entity)`, e uma peça não está lá — o gesto
+/// era recusado em silêncio e o press caía adiante para o gizmo.
+#[test]
+fn the_hand_grabs_a_part_by_its_owner() {
+    let mut sim = ell(false);
+    let mut bridge = run(&mut sim, 60);
+    let leg = named(&mut sim, "Leg");
+    let arm = named(&mut sim, "Arm");
+    assert!(
+        bridge.grab(leg, [0.8, 4.0]),
+        "clicar na PEÇA não pegou nada — a mão procurou um corpo que ela não tem"
+    );
+    bridge.release_grab();
+    // O CONTROLE: pegar o corpo direto sempre funcionou, então o gate acima só
+    // vale se este passar pelo mesmo caminho.
+    assert!(
+        bridge.grab(arm, [0.0, 5.0]),
+        "o corpo deixou de ser pegável"
+    );
+    bridge.release_grab();
+    // E a recusa honesta continua: um collider sem corpo acima não é peça de
+    // ninguém, e inventar um dono seria pior que recusar.
+    let mut lone = SimWorld::new();
+    let e = lone
+        .world_mut()
+        .spawn((
+            Name::new("Lone"),
+            box_of(0.3, 0.3),
+            Transform::from_translation(Vec2::new(0.0, 5.0)),
+        ))
+        .id();
+    let mut b2 = run(&mut lone, 10);
+    assert!(
+        !b2.grab(e, [0.0, 5.0]),
+        "uma forma solta foi pega por alguém"
+    );
+}
+
+/// **Uma PEÇA quieta é pendurada UMA vez** (W-PartFace).
+///
+/// O gate de churn, e ele existe porque nenhum outro oráculo o enxerga: uma peça
+/// despendurada e re-pendurada a cada frame **assenta igual** (o tremor medido
+/// foi `0,0`), então nem pose nem aparência denunciam. O que muda é o HANDLE.
+///
+/// Duas causas independentes, medidas numa descida de rampa de 301 ticks:
+///
+/// - **133** re-pendurações porque `p.rest == desc` comparava o `BodyDesc`
+///   INTEIRO, e os campos `x`/`y`/`rotation` dele são a pose de MUNDO da peça —
+///   que muda a cada frame em que o dono se move, e que `attach_part` **nem lê**;
+/// - **107** porque o `local` era derivado por round-trip pela pose que o SOLVER
+///   escreveu (estável a 1,2e-7, e a comparação é exata).
+///
+/// Cada cura sozinha deixa a outra: 133 → 107 com só a primeira. Com as duas: 1.
+///
+/// ⚠️ Isto só ficou VISÍVEL quando o gate de repouso saiu — ele escondia o churn
+/// ao proibir toda re-descrição durante o play, que era o defeito reportado.
+#[test]
+fn a_settled_part_is_attached_once_not_once_per_frame() {
+    let mut sim = SimWorld::new();
+    sim.world_mut().spawn((
+        Name::new("Floor"),
+        RigidBody {
+            kind: BodyKind::Static,
+        },
+        box_of(20.0, 0.5),
+        Transform::from_translation(Vec2::new(0.0, -0.5)),
+    ));
+    // Uma RAMPA: um corpo caindo reto não gira, e a rotação é metade do churn.
+    sim.world_mut().spawn((
+        Name::new("Ramp"),
+        RigidBody {
+            kind: BodyKind::Static,
+        },
+        box_of(3.0, 0.2),
+        Transform {
+            translation: Vec2::new(0.0, 1.0),
+            rotation: 0.35,
+            ..Transform::IDENTITY
+        },
+    ));
+    let owner = sim
+        .world_mut()
+        .spawn((
+            Name::new("Owner"),
+            RigidBody {
+                kind: BodyKind::Dynamic,
+            },
+            box_of(0.3, 0.3),
+            Transform::from_translation(Vec2::new(-1.0, 3.0)),
+        ))
+        .id();
+    let part = sim
+        .world_mut()
+        .spawn((
+            Name::new("Part"),
+            box_of(0.2, 0.2),
+            Transform {
+                translation: Vec2::new(0.55, 0.1),
+                rotation: 0.4,
+                ..Transform::IDENTITY
+            },
+            ChildOf(owner),
+        ))
+        .id();
+    let mut bridge = PhysicsBridge::new();
+    bridge.dispatch(&mut sim, true, 0);
+    let first = bridge.part_handle(part).expect("a peça foi pendurada");
+    for t in 1..=300u64 {
+        bridge.dispatch(&mut sim, true, t);
+        let now = bridge.part_handle(part).expect("a peça sumiu do solver");
+        assert!(
+            now == first,
+            "no tick {t} a peça foi RE-PENDURADA (handle {first:?} -> {now:?}) — \
+             ninguém a editou, então a comparação de re-descrição está \
+             respondendo a algo que o consumidor não lê"
+        );
+    }
+    // E o dono de fato desceu a rampa (senão a estabilidade acima é vácuo).
+    assert!(
+        (world_y(&sim, owner) - 3.0).abs() > 0.5,
+        "o dono não se moveu: a cena não exercita o que o gate afirma"
+    );
+}

@@ -30,6 +30,25 @@ impl PhysicsBridge {
         *hasher.finalize().as_bytes()
     }
 
+    /// **O collider que uma PEÇA tem no solver AGORA** — `None` se ela não está
+    /// pendurada (W-PartFace).
+    ///
+    /// ⚠️ Existe para gatear **CHURN**, que nenhum outro oráculo enxerga: uma
+    /// peça despendurada e re-pendurada a cada frame simula *quase* igual (ela
+    /// assenta, o tremor medido foi 0,0), então nem pose nem aparência
+    /// denunciam. O que muda é o HANDLE — e um handle que anda é a definição
+    /// exata do defeito.
+    ///
+    /// Medido antes da correção, numa descida de rampa de 301 ticks: **133**
+    /// re-pendurações pela pose de MUNDO dentro do `BodyDesc` (que `attach_part`
+    /// nem lê) e **107** pelo `local` derivado por round-trip no solver. Com as
+    /// duas curas: **1**, o spawn.
+    #[doc(hidden)]
+    #[must_use]
+    pub fn part_handle(&self, e: ph2d_ecs::Entity) -> Option<ph2d_physics::ColliderHandle> {
+        self.parts.get(&e).map(|p| p.handle)
+    }
+
     /// Capacity of the main per-frame scratch buffer — the zero-alloc gate
     /// asserts this is stable across steady-state frames (HR-3, capacity
     /// stability rather than a flaky global allocation counter).

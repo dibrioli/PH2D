@@ -5067,3 +5067,53 @@ números continuariam sendo impressos com um deles contendo o outro.
 Sabemos que `painter-dispatch` (3,9) e `hero-paint` (0,9) estão dentro dele, o
 que deixa **~3,4 ms sem dono**. O próximo log já dirá quanto do quadro é
 realmente espera — e se `fora-do-encode` for grande, o alvo não está no encode.
+
+### O item 1 FECHOU no primeiro log com a partição — e ele confirmou o que eu tinha retirado
+
+Cinco janelas de observação, com a partição nova:
+
+| | total | cpu-encode | **acquire (medido)** | fora-do-encode | tool-tick |
+|---|---|---|---|---|---|
+| 2 | 16,74 | 8,14 | **8,81** | 0,00 | 3,01 |
+| 3 | 16,71 | 7,37 | **8,70** | 0,65 | 3,34 |
+| 4 | 16,78 | 8,22 | **8,76** | 0,00 | 3,06 |
+| 5 | 16,65 | 8,36 | **8,34** | 0,00 | 3,10 |
+| 6 | 17,23 | 8,86 | **7,32** | 1,05 | 3,93 |
+
+**`acquire` medido em 7,32-8,81 ms** ⇒ o quadro de observação é **limitado pelo
+present**, e a CPU tem folga real. Pela regra que a §5.54 escreveu antes de
+medir, **o item 1 fecha sem wave.**
+
+⚠️ **E ele reabilita a frase que eu tinha retirado.** Eu havia dito ao Enio que
+*"a CPU passa metade do quadro esperando o GPU"* lendo o resíduo, e depois
+**retirei** a afirmação porque o instrumento não podia sustentá-la. Medido, ela
+está **certa** — mas a retirada continua certa também: *ela era infundada quando
+foi feita, e passou a ser fundada quando o acquire virou medição.* As duas
+coisas não se contradizem.
+
+⚠️ **E a partição derrubou um comentário do produto no primeiro log.** O bloco do
+profiler afirmava *"`stamp` + `tick` happen BEFORE `cpu_start`"*. Só o **stamp**:
+o flush coalescido roda na linha ~698 (antes do `cpu_start`, 712) e o `on_tick`
+na ~1198 — **dentro** do encode. O log é a prova: `fora-do-encode` mede
+**0,00-1,05 ms** nas janelas sem carimbo enquanto o `tool-tick` mede
+**3,01-3,93**, o que seria impossível se o tick estivesse fora. Comentário
+corrigido.
+
+### E o que a partição NOMEIA como o custo real do produto
+
+A janela em que o artista PINTA:
+
+```text
+total=59.58ms (~17 fps) | cpu-encode=1.51ms | acquire=8.27ms | fora-do-encode=49.80ms
+  stamps: media 47.05ms pico 320.96ms em 77/120 (508 entregas, 7.13ms cada)
+```
+
+**`fora-do-encode` 49,80 ≈ `stamps` 47,05** — a partição nova aponta o dedo
+exatamente para o flush coalescido, que é o único inquilino de fora da janela.
+**17 fps ao pintar**, com 508 entregas a 7,13 ms.
+
+⇒ **O item 1 não tem wave; o custo do produto é o CARIMBO**, que a §5.52 já
+mediu como **honestamente limitado pela pegada** (~30 ns/r², plano de raio 60 a
+400) e cuja alavanca embarcada é o **`Grid Size`** (0,34× na razão 2, 0,22× na 4
+— medido pela porta do artista). Um pincel no topo do slider a `Grid Size 1`
+custa 17 fps *por construção*, e o slider está sempre visível.

@@ -7652,8 +7652,17 @@ impl crate::App {
                 // Perf-audit extension (2026-07-07): the phases where a paint slowdown can hide —
                 // `tick` = active tool's on_tick (watercolor heartbeat recomposite), `stamp` = the
                 // pointer-driven stamps since last frame (Move → apply_watercolor), `hero` = the
-                // panel/chrome Vello encode (includes the Paper preview). `stamp` + `tick` happen
-                // BEFORE cpu_start, so they add to `total` but NOT to `cpu-encode(raw)`.
+                // panel/chrome Vello encode (includes the Paper preview).
+                //
+                // ⚠️ **Só o STAMP fica fora da janela de encode, e este comentário
+                // dizia "stamp + tick".** O flush coalescido roda na linha ~698,
+                // ANTES do `cpu_start` (712); o `on_tick` roda na ~1198, DEPOIS —
+                // ou seja DENTRO do encode. O log da partição de três provou
+                // isto no primeiro smoke: nas janelas sem carimbo o
+                // `fora-do-encode` mede **0,00-1,05 ms** enquanto o `tool-tick`
+                // mede **3,01-3,93**, o que seria impossível se o tick estivesse
+                // fora. Um comentário que contradiz o código shipado é pior que
+                // comentário nenhum.
                 let hero_ms = FRAME_PROF_HERO_US.with(|c| c.get()) as f64 / 1000.0;
                 // ⚠️ A JANELA, não a amostra: `média sobre os frames que trabalharam / pico / n`.
                 // Ler um frame sorteado fazia um traço inteiro caber entre duas impressões e as

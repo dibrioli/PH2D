@@ -1,5 +1,10 @@
 # HANDOFF DE INTEGRAÇÃO — `line/FLIP`: O CACHE DO AJUSTE E AS MEDIÇÕES QUE FECHARAM ITENS (2026-07-31)
 
+> ⚠️ **SUPERSEDED por [`HANDOFF_INTEGRACAO_line_FLIP_PONTAS_2026-08-01.md`](HANDOFF_INTEGRACAO_line_FLIP_PONTAS_2026-08-01.md)**,
+> que é o handoff MESTRE da linha (10 commits). Este cobre só os **5 primeiros** e **não** menciona o
+> bump de schema nem as pontas do traço — integrar por ele deixaria `PROJECT_SCHEMA` para trás.
+> O conteúdo abaixo segue válido como DETALHE daqueles cinco.
+
 > **Para o agente integrador.** Esta é a **continuação** da linha depois de a jornada do motor novo
 > ter integrado em 2026-07-30 (handoff mestre
 > [`HANDOFF_INTEGRACAO_line_FLIP_MOTOR_NOVO_2026-07-30.md`](HANDOFF_INTEGRACAO_line_FLIP_MOTOR_NOVO_2026-07-30.md)).

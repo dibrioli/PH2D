@@ -5497,15 +5497,27 @@ por onde o próximo passo começa.
 | **o tool** | os campos `heights`/`covers`/`mats` | irredutível — é o produto |
 | **`paint.stroke_undo`** | `capture_shape_model()`/`snapshot_model()` no pen-down (`tool/paint.rs:215`) | elidir o relevo na captura do TRAÇO |
 | **`cursor`** | `set_cursor(after.clone())` em `undo_record.rs:32/63/70`, **ANTES** do `split` (o comentário diz por quê: o cursor tem de ser o `after` COMPLETO) | elidir o relevo, e reconstruí-lo de `(vivo, journal)` — identidade medida em 233/233 (§5.28) |
-| **o QUARTO** | ⚠️ **não identificado** | ⚠️ **é aqui que o próximo passo começa** |
+| **a entrada do 1º traço** | `StoredPlane::Whole` — o 1º traço de uma camada CRIA o relevo, então não há `before` a diferenciar | não precisa sair: é **uma vez por camada** |
 
-⚠️ **O quarto é real e mede-se antes de escrever qualquer linha.** O censo diz `heights 4` dentro do
-gesto e `3` sem o `stroke_undo`; tool + cursor + `stroke_undo` são **três**. Os candidatos são a pilha
-de **redo**, o `set_cursor(before.clone())` da absorção (`undo_absorb.rs:62`) e uma entrada cujo delta
-tenha caído em `StoredPlane::Whole` — ⚠️ **este último é improvável e a medição já o diz**: a §5.28
-mede **2,36 MB por passo** (3,7 % de um documento), o que é a assinatura de `Patch`, não de `Whole`.
-*Um dono não identificado é a diferença entre a troca render 9,6 ms e render zero* (§5.14: remover um
-de quatro não compra milissegundo nenhum).
+✅ **O quarto foi identificado, e ele estava no comentário da minha própria sonda** — a `who_holds…`
+já dizia *"o PRIMEIRO traço numa camada CRIA os planos, então a entrada guarda `Whole`; do segundo em
+diante é `Patch` e não segura plano nenhum"*, e a saída dela mede exatamente isso:
+
+```text
+  apos 1 traco(s), dentro do gesto: heights 4 · covers 4 · mats 4
+  apos 2 traco(s), dentro do gesto: heights 3 · covers 3 · mats 3
+  apos 4 traco(s), dentro do gesto: heights 3 · covers 3 · mats 3
+```
+
+⇒ **O regime é TRÊS donos** (tool · `stroke_undo` · `cursor`), e o quarto é um transiente do primeiro
+traço de cada camada. *A nota que eu acabara de escrever (“não identificado”) sobreviveu ao fato por
+uma sessão inteira* — o dado estava medido e comentado, e eu o re-derivei em vez de o ler.
+
+⚠️ **E ele deixa um achado de MEMÓRIA que não é da troca e fica nomeado:** essa entrada retém o plano
+INTEIRO (`Whole.after`) — a 4096² são 16 + 64 + 112 = **192 MB numa única entrada**, contra os 2,36 MB
+que a §5.28 mede para um passo típico. Ela não é dona do plano VIVO depois do primeiro fork (o tool
+troca de `Arc`), então **não custa milissegundo nenhum**; custa o cap de bytes do histórico, que a
+evicta como qualquer outra. É o `OnlyAfter` do motor de delta chegando por outra porta.
 
 **A ordem, e por que ela não é negociável:**
 

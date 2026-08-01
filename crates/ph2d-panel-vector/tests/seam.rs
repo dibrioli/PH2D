@@ -2212,3 +2212,90 @@ fn every_tool_row_pill_answers_a_real_pointer() {
     }
     assert!(dead.is_empty(), "pills que nao respondem: {dead:?}");
 }
+
+/// **Os dois botões do corte só aparecem com o pill Cut escolhido** (Enio, 2026-07-31: *"as
+/// opções Cut e Discard Cut Line só aparecem se o botão Cut estiver checado"*).
+///
+/// As duas metades num gate só, porque as duas são o mesmo defeito visto de lados opostos:
+/// PRESENÇA (o gesto tem de ser alcançável quando é possível) e AUSÊNCIA (controles de uma
+/// ferramenta que não está na mão são ruído que o artista aprende a ignorar).
+///
+/// ⚠️ A terceira condição — a lâmina EXISTIR — é o gate irmão logo abaixo. São perguntas
+/// diferentes, e testá-las juntas deixaria passar quem esquecesse uma delas.
+#[test]
+fn the_cut_buttons_only_appear_with_the_cut_tool_in_hand() {
+    const VIEWPORT: Rect = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 1600.0,
+        h: 900.0,
+    };
+    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut panel_state = VectorPanelState;
+    ph2d_panel_vector::state::set_cut_line_exists(true);
+
+    for (mode, want) in [
+        (DrawMode::Cut, true),
+        (DrawMode::Select, false),
+        (DrawMode::Pen, false),
+        (DrawMode::Node, false),
+    ] {
+        ph2d_panel_vector::set_current_vector_style(Some(ph2d_tool_vector::VectorStyleSnapshot {
+            mode,
+            ..ph2d_tool_vector::VectorStyleSnapshot::default()
+        }));
+        for id in [ids::VECTOR_CUT_APPLY, ids::VECTOR_CUT_DISCARD] {
+            let painted = host
+                .painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
+                .is_some();
+            assert_eq!(
+                painted,
+                want,
+                "modo {mode:?}: o botao do corte deveria estar {}",
+                if want { "PINTADO" } else { "AUSENTE" }
+            );
+        }
+    }
+    ph2d_panel_vector::state::set_cut_line_exists(false);
+    ph2d_panel_vector::set_current_vector_style(None);
+}
+
+/// **Sem lâmina desenhada, os dois botões não existem** — a outra condição.
+///
+/// Um `Cut` sem linha não tem com que cortar e um `Discard` sem linha não tem o que descartar:
+/// seriam dois botões mudos no estado em que o artista entra no modo.
+#[test]
+fn the_cut_buttons_need_a_blade_to_exist() {
+    const VIEWPORT: Rect = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 1600.0,
+        h: 900.0,
+    };
+    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut panel_state = VectorPanelState;
+    ph2d_panel_vector::set_current_vector_style(Some(ph2d_tool_vector::VectorStyleSnapshot {
+        mode: DrawMode::Cut,
+        ..ph2d_tool_vector::VectorStyleSnapshot::default()
+    }));
+
+    ph2d_panel_vector::state::set_cut_line_exists(false);
+    for id in [ids::VECTOR_CUT_APPLY, ids::VECTOR_CUT_DISCARD] {
+        assert!(
+            host.painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
+                .is_none(),
+            "o botao do corte foi pintado sem lamina nenhuma"
+        );
+    }
+    // E o controle: com lâmina, aparecem (senão este gate seria verde por vácuo).
+    ph2d_panel_vector::state::set_cut_line_exists(true);
+    for id in [ids::VECTOR_CUT_APPLY, ids::VECTOR_CUT_DISCARD] {
+        assert!(
+            host.painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
+                .is_some(),
+            "com lamina desenhada o botao tem de aparecer"
+        );
+    }
+    ph2d_panel_vector::state::set_cut_line_exists(false);
+    ph2d_panel_vector::set_current_vector_style(None);
+}

@@ -122,8 +122,10 @@ fn announce(app: &mut crate::App) {
          TESOURA na ponta**; se ela nao aparecer, PARE; (3) repare que logo abaixo da fileira TOOL \
          nasceram DOIS botoes: **Cut** e **Discard Cut Line** -- eles nao existiam antes de a linha \
          existir; (4) pill **Select** e ARRASTE a linha de corte: ela e' um objeto como qualquer \
-         outro (mova-a, e no pill **Node** edite os nos dela); (5) volte a posiciona-la sobre o \
-         losango e clique **Cut**. \
+         outro (mova-a, e no pill **Node** edite os nos dela) -- **a hachura tem de permanecer** \
+         enquanto ela e' movida, e ela **nunca** pode ganhar preenchimento nem cor de traco (tente \
+         dar-lhe um Fill pela seccao Style: ela tem de continuar hachurada); (5) volte ao pill \
+         **Cut**, com a linha ainda selecionada, e clique **Cut**. \
          [A LEI] (6) o losango tem de virar DUAS formas **FECHADAS** (preenchidas!), nao duas \
          fitas abertas -- se sair fita, PARE: e' o defeito que esta wave existe para fechar; \
          (7) as pecas tem de ficar **ONDE o losango estava** -- nenhuma pode saltar para outro \
@@ -132,20 +134,25 @@ fn announce(app: &mut crate::App) {
          [A LINHA SOBREVIVE] (10) repare que a linha de corte **continua la'** depois do corte -- \
          mova-a para outro sitio e clique **Cut** de novo; (11) clique **Discard Cut Line**: ela \
          some, e os dois botoes somem com ela. \
-         [O QUE NAO CORTA, e e' correcto] (12) desenhe uma linha nova que PARE no meio de uma \
+         [AS TRES CONDICOES] (12) com a linha por cima de VARIAS formas sobrepostas, clique Cut: \
+         **TODAS** sao cortadas -- a seleccao nao estreita alvos; (13) pill **Select** e clique no \
+         VAZIO (a lamina deixa de estar selecionada); volte ao pill **Cut**: os dois botoes \
+         **somem** -- sem a lamina selecionada nao ha' o que cortar; (14) escolha outro pill \
+         (Pen, Node, Select): os dois botoes **somem** tambem -- eles sao controles desta \
+         ferramenta, e ela nao esta' na mao. \
+         [O QUE NAO CORTA, e e' correcto] (15) desenhe uma linha nova que PARE no meio de uma \
          forma e clique Cut: **nada acontece** -- uma regiao menos uma fenda continua inteira; \
-         (13) esconda ou TRAVE uma forma na Hierarquia e corte por cima dela: ela sobrevive \
-         intacta; (14) com a linha por cima de VARIAS formas, selecione UMA e clique Cut: so' a \
-         selecionada e' cortada (sem seleccao, corta todas as que a linha atravessar). \
-         [O CORTADOR FECHADO] (15) desenhe uma linha de corte **FECHADA** (termine-a clicando no \
+         (16) esconda ou TRAVE uma forma na Hierarquia e corte por cima dela: ela sobrevive \
+         intacta. \
+         [O CORTADOR FECHADO] (17) desenhe uma linha de corte **FECHADA** (termine-a clicando no \
          primeiro ponto) por cima de uma forma e clique Cut: sai o MIOLO e o resto -- um cortador \
          fechado nao precisa de extensao nenhuma. \
-         [AS FITAS] (16) as fitas VERDES/LARANJA sao ABERTAS: o corte nao as toca por ora, e isso \
+         [AS FITAS] (18) as fitas VERDES/LARANJA sao ABERTAS: o corte nao as toca por ora, e isso \
          esta' nomeado no handoff. Use-as para o **Join** (Select + Shift+clique + Join na secao \
          PATH) e o **Average** (pill Node, dois nos, Average) -- as pontas verdes estao a \
          {gap_near:.2}, muito acima da tolerancia de solda ({tol:e}), entao o Join tem de por um \
          SEGMENTO a liga-las; nas laranja (vao {gap_far:.2}) o segmento e' longo e obvio. \
-         [REVERSE] (17) clique a SETA roxa e, na secao PATH, **Reverse**; confirme com um MARKER \
+         [REVERSE] (19) clique a SETA roxa e, na secao PATH, **Reverse**; confirme com um MARKER \
          de ponta na secao Stroke -- ele salta de uma extremidade para a outra."
     );
 }

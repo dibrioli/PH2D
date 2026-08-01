@@ -4263,8 +4263,23 @@ impl crate::App {
             // atravessa nada não pode deixar uma linha na fila do Ctrl+Z).
             if pending_vec_cut {
                 self.vec_history.begin(vec_scene);
-                let selected = self.vec_pen.selected_paths().to_vec();
-                if crate::vec_cut_line::apply_cut(sim, vec_scene, &self.vec_entities, &selected) > 0
+                // A seleção que o corte exige é a da LÂMINA, e ela pode chegar por qualquer das
+                // duas listas do pen (a de objeto e a de caminho) — perguntar só a uma delas faria
+                // o botão recusar um gesto legítimo.
+                let mut selected = self.vec_pen.selected_paths().to_vec();
+                if let Some(one) = self.vec_pen.selected()
+                    && !selected.contains(&one)
+                {
+                    selected.push(one);
+                }
+                let armed = self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Cut;
+                if crate::vec_cut_line::apply_cut(
+                    sim,
+                    vec_scene,
+                    &self.vec_entities,
+                    &selected,
+                    armed,
+                ) > 0
                 {
                     // A seleção descreve formas que já não existem — as peças as substituíram.
                     self.vec_pen.select(None);
@@ -5846,24 +5861,30 @@ impl crate::App {
                         vector_scene,
                     );
                 }
-                // **A LINHA DE CORTE** (W4) — hachurada, com a tesoura na ponta. Ela é a única
-                // geometria da cena que o render de ARTE não desenha (perde fill e stroke ao ser
-                // adotada como lâmina), e é aqui que ela reaparece: uma ferramenta tem de ter
-                // vocabulário próprio, senão é indistinguível de um desenho.
-                for id in crate::vec_cut_line::cut_lines(sim, &self.vec_entities) {
-                    if let Some(p) = vec_scene.paths().iter().find(|p| p.id == id) {
-                        ph2d_vec_render::draw_cut_line(
-                            &ph2d_vec_render::build_bezpath(p),
-                            ph2d_vec_render::path_to_screen(&vec_xf, id, cam_affine),
-                            vector_scene,
-                        );
-                    }
-                }
                 // Box-select marquee (Shift+drag), in screen-space.
                 if let Some((start, cur)) = self.vec_marquee {
                     ph2d_vec_render::draw_marquee(
                         [f64::from(start.0), f64::from(start.1)],
                         [f64::from(cur.0), f64::from(cur.1)],
+                        vector_scene,
+                    );
+                }
+            }
+            // **A LINHA DE CORTE** (W4) — hachurada, com a tesoura na ponta. Ela é a única
+            // geometria da cena que o render de ARTE não desenha (perde fill e stroke ao ser
+            // adotada como lâmina), e é aqui que ela reaparece.
+            //
+            // ⚠️ **FORA do `overlay.edit`, e a razão é um defeito reportado** (Enio, 2026-07-31:
+            // *"quando movido com Select a aparência rachurada deve permanecer"*): aquele guard é
+            // FALSO no Select, então a lâmina — que o render de arte não desenha — **desaparecia
+            // por completo** justamente no modo em que se a move. A hachura não é feedback de um
+            // MODO: ela é a aparência do objeto, e um objeto não muda de aparência porque o
+            // artista pegou outra ferramenta.
+            for id in crate::vec_cut_line::cut_lines(sim, &self.vec_entities) {
+                if let Some(p) = vec_scene.paths().iter().find(|p| p.id == id) {
+                    ph2d_vec_render::draw_cut_line(
+                        &ph2d_vec_render::build_bezpath(p),
+                        ph2d_vec_render::path_to_screen(&vec_xf, id, cam_affine),
                         vector_scene,
                     );
                 }

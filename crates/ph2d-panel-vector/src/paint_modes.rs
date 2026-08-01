@@ -131,7 +131,7 @@ impl BodyCtx<'_> {
             let (id, label, m) = modes[i];
             (id, label, snap.mode == m)
         });
-        self.cut_line_row(y)
+        self.cut_line_row(snap, y)
     }
 
     /// **Os dois botões da LINHA DE CORTE** — executar e descartar.
@@ -140,12 +140,15 @@ impl BodyCtx<'_> {
     /// corte COMEÇA no pill (escolher `Cut`) e termina num botão, e separar as duas metades por
     /// meia tela é como o artista desenha a lâmina e não descobre o que fazer com ela.
     ///
-    /// ⚠️ **Só com lâmina desenhada.** Um `Cut` sem linha não tem com que cortar e um
-    /// `Discard` sem linha não tem o que descartar — pintados assim seriam dois botões mudos
-    /// no estado mais comum de todos, que é exatamente o defeito que o Average e os dois pills
-    /// desta wave já pagaram no mesmo dia.
-    fn cut_line_row(&mut self, y: f32) -> f32 {
-        if !state::cut_line_exists() {
+    /// ⚠️ **Só no modo Cut, e só com lâmina desenhada** — as duas condições (Enio, 2026-07-31:
+    /// *"as opções Cut e Discard Cut Line só aparecem se o botão Cut estiver checado"*).
+    ///
+    /// Um `Cut` sem linha não tem com que cortar e um `Discard` sem linha não tem o que descartar;
+    /// e fora do modo Cut os dois seriam controles de uma ferramenta que não está na mão. Pintados
+    /// assim seriam botões mudos no estado mais comum de todos — o defeito que o Average e os dois
+    /// pills desta wave já pagaram no mesmo dia.
+    fn cut_line_row(&mut self, snap: &VectorStyleSnapshot, y: f32) -> f32 {
+        if snap.mode != DrawMode::Cut || !state::cut_line_exists() {
             return y;
         }
         let gap = Spacing::Sm.px();

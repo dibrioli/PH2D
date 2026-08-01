@@ -219,3 +219,49 @@ fn the_shell_publishes_how_many_nodes_are_selected() {
         "a contagem não é zerada fora da ferramenta -- o painel de outra tool leria a nossa"
     );
 }
+
+/// **A lâmina é desenhada FORA do guard de modo** (Enio, 2026-07-31: *"quando movido com Select a
+/// aparência rachurada deve permanecer"*).
+///
+/// O bloco `if overlay.edit { … }` é **falso no Select** — e a lâmina, que o render de arte não
+/// desenha, desaparecia por completo justamente no modo em que se a move. A hachura não é feedback
+/// de um MODO: é a aparência do objeto.
+///
+/// ⚠️ O oráculo é a **PROFUNDIDADE DE CHAVES**, não a ordem: `draw_cut_line` estar *depois* de
+/// `if overlay.edit {` é verdade dentro E fora do bloco, então uma asserção de ordem não podia
+/// falhar pelo motivo que alega. Contar chaves diz de que lado do `}` a chamada está.
+#[test]
+fn the_cut_line_is_drawn_outside_the_edit_mode_guard() {
+    // Comentários fora do caminho: a região é densa em prosa, e prosa em português tem chaves.
+    let code: String = LOOP_SRC
+        .lines()
+        .map(|l| l.split("//").next().unwrap_or(""))
+        .collect::<Vec<_>>()
+        .join("\n");
+    let guard = at(&code, "if overlay.edit {");
+    let call = at(&code, "draw_cut_line(");
+    assert!(guard < call, "a chamada mudou de sitio -- reveja este gate");
+
+    // ⚠️ A pergunta é *o bloco FECHOU antes da chamada?* — e não *a chamada está em profundidade
+    // zero?*: ela está legitimamente aninhada no próprio `for`/`if`, então exigir zero seria um
+    // gate que falha sobre produto correto (foi o que ele fez na 1ª escrita).
+    let mut depth = 0i32;
+    let mut closed_before_call = false;
+    for c in code[guard..call].chars() {
+        match c {
+            '{' => depth += 1,
+            '}' => {
+                depth -= 1;
+                if depth == 0 {
+                    closed_before_call = true;
+                }
+            }
+            _ => {}
+        }
+    }
+    assert!(
+        closed_before_call,
+        "o desenho da lamina esta' DENTRO do `if overlay.edit` -- ela sumiria no modo Select, \
+         que e' onde o artista a move"
+    );
+}

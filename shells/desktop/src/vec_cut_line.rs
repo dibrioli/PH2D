@@ -35,27 +35,45 @@ pub(crate) fn upkeep(
     map: &VecEntityMap,
     pending: &mut Option<VecPathId>,
 ) {
-    let Some(id) = pending.take() else {
-        return;
-    };
-    let Some(&bits) = map.get(&id) else {
-        // A entidade ainda não nasceu (o `sync` deste frame não a viu). Devolve à fila: o
-        // caminho já está na cena, e desistir aqui deixaria uma lâmina que se desenha como arte.
-        *pending = Some(id);
-        return;
-    };
-    // A lâmina anterior morre — uma de cada vez (ver o doc do módulo).
-    for old in cut_lines(sim, map) {
-        if old != id {
-            scene.remove_path(old);
+    if let Some(id) = pending.take() {
+        if let Some(&bits) = map.get(&id) {
+            // A lâmina anterior morre — uma de cada vez (ver o doc do módulo).
+            for old in cut_lines(sim, map) {
+                if old != id {
+                    scene.remove_path(old);
+                }
+            }
+            if let Ok(mut em) = sim.world_mut().get_entity_mut(Entity::from_bits(bits)) {
+                em.insert(VecCutPath);
+            }
+        } else {
+            // A entidade ainda não nasceu (o `sync` deste frame não a viu). Devolve à fila: o
+            // caminho já está na cena, e desistir deixaria uma lâmina que se desenha como arte.
+            *pending = Some(id);
         }
     }
-    if let Ok(mut em) = sim.world_mut().get_entity_mut(Entity::from_bits(bits)) {
-        em.insert(VecCutPath);
-    }
-    if let Some(p) = scene.path_mut(id) {
-        p.fill = None;
-        p.stroke = None;
+    strip_style(scene, &cut_lines(sim, map));
+}
+
+/// **A lâmina não tem estilo, e a regra é re-afirmada a CADA frame** — não estampada uma vez.
+///
+/// Enio, 2026-07-31: *"o traço do CUT não pode receber um Fill"*. Estampar só na adoção não basta,
+/// e há pelo menos **duas** portas que devolvem estilo a um caminho depois dela: a caneta, que
+/// **preenche ao FECHAR** (`on_press`: fechar um caminho é o gesto que o torna uma forma, e uma
+/// forma nasce com o `fill` corrente), e o recolorir da seleção. Nenhuma delas sabe o que é uma
+/// lâmina, e ensiná-las seria espalhar a regra por tantos sítios quantas portas existirem —
+/// exactamente a enumeração que apodrece quando nasce a terceira.
+///
+/// ⚠️ **Isto não polui o undo**: o passo é registado por DIFF no fim do frame, e a limpeza acontece
+/// no mesmo frame em que o estilo foi escrito — o líquido é zero, e o Ctrl+Z não vê nada.
+fn strip_style(scene: &mut VecScene, lines: &[VecPathId]) {
+    for id in lines {
+        if let Some(p) = scene.path_mut(*id)
+            && (p.fill.is_some() || p.stroke.is_some())
+        {
+            p.fill = None;
+            p.stroke = None;
+        }
     }
 }
 
@@ -106,20 +124,38 @@ pub(crate) fn discard(sim: &SimWorld, scene: &mut VecScene, map: &VecEntityMap) 
 /// dela não é perdido — ele é absorvido pela geometria, e o `settle_origins` dá a cada peça um
 /// pivô no centro dela própria.
 ///
-/// # O escopo
+/// # O escopo: TUDO o que a lâmina atravessa
 ///
-/// A seleção estreita: com formas selecionadas, corta só essas; sem seleção, corta tudo o que a
-/// lâmina atravessar. É a regra da faca do Illustrator. A própria lâmina **nunca** é alvo — e
-/// quem a exclui é o marcador, não uma lista de ids que alguém teria de manter.
+/// A seleção **não estreita os alvos** (Enio, 2026-07-31: *"o corte deve acontecer em qualquer
+/// forma sobreposta e não apenas na forma selecionada"*) — e não é só preferência, é coerência:
+/// a seleção que este gesto exige é a da **própria lâmina**, então usá-la também para escolher
+/// alvos daria dois significados ao mesmo estado, e o artista não teria como pedir um deles.
+///
+/// A lâmina **nunca** é alvo de si mesma, e quem a exclui é o marcador — não uma lista de ids que
+/// alguém teria de manter.
+///
+/// # As duas condições para cortar
+///
+/// `armed` (o pill **Cut** está escolhido) **e** a lâmina está na seleção. As duas juntas são o
+/// que impede um corte acidental: a linha fica na cena depois de usada, e sem elas qualquer
+/// clique no botão — ou um atalho futuro — cortaria a cena outra vez com uma lâmina que o artista
+/// esqueceu lá.
 pub(crate) fn apply_cut(
     sim: &SimWorld,
     scene: &mut VecScene,
     map: &VecEntityMap,
     selected: &[VecPathId],
+    armed: bool,
 ) -> usize {
+    if !armed {
+        return 0;
+    }
     let Some(line_id) = cut_line(sim, map) else {
         return 0;
     };
+    if !selected.contains(&line_id) {
+        return 0;
+    }
     let xforms = crate::vec_transform::build(sim, map);
     let Some(line) = world_copy(scene, &xforms, line_id) else {
         return 0;
@@ -134,7 +170,6 @@ pub(crate) fn apply_cut(
         .map(|p| p.id)
         .filter(|id| *id != line_id)
         .filter(|id| view.is_pickable(*id))
-        .filter(|id| selected.is_empty() || selected.contains(id))
         .collect();
 
     let mut cut = 0usize;
@@ -171,3 +206,7 @@ fn world_copy(
     ph2d_vec_scene::bake_xform(&mut p, &ph2d_vec_scene::xform_of(xforms, id));
     Some(p)
 }
+
+#[cfg(test)]
+#[path = "vec_cut_line_tests.rs"]
+mod tests;

@@ -173,5 +173,12 @@ pub(crate) fn route(app: &mut crate::App, f: u32, level: u32) -> bool {
         crate::symmetry_smoke::frame(app, f);
         return true;
     }
+    // A cena do ALINHAMENTO do traço (=47) — irmã `align_smoke`. Mesma disciplina: dá o material
+    // (o trio de quadrados iguais, a rosquinha e a linha aberta) e **nasce toda em Centre**, que é
+    // o default do produto — quem escolhe Inner/Outer é o artista, no painel.
+    if level == 47 {
+        crate::align_smoke::frame(app, f);
+        return true;
+    }
     false
 }

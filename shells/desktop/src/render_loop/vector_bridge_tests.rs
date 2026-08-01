@@ -27,6 +27,7 @@ fn style() -> StrokeStyle {
         color: INK,
         cap: LineCap::Butt,
         join: LineJoin::Miter,
+        align: ph2d_vec_scene::StrokeAlign::Centre,
         dash: None,
         marker_start: Marker::None,
         marker_end: Marker::None,

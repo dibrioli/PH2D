@@ -13,7 +13,7 @@
 
 use ph2d_vec_edit::PenTool;
 use ph2d_vec_render::GradHandle;
-use ph2d_vec_scene::{LineCap, LineJoin, Paint, Rgba8, StrokeSpec, VecScene};
+use ph2d_vec_scene::{LineCap, LineJoin, Paint, Rgba8, StrokeAlign, StrokeSpec, VecScene};
 use std::cell::{Cell, RefCell};
 
 pub(crate) fn rgba(c: [u8; 4]) -> Rgba8 {
@@ -32,6 +32,8 @@ pub(crate) struct StrokeStyle {
     pub color: Rgba8,
     pub cap: LineCap,
     pub join: LineJoin,
+    /// De que lado da linha a faixa cai (Centre/Inner/Outer).
+    pub align: StrokeAlign,
     pub dash: Option<(f64, f64)>,
     pub marker_start: ph2d_vec_scene::Marker,
     pub marker_end: ph2d_vec_scene::Marker,
@@ -47,6 +49,7 @@ impl StrokeStyle {
         s.color != self.color
             || s.cap != self.cap
             || s.join != self.join
+            || s.align != self.align
             || s.dash != self.dash
             || s.marker_start != self.marker_start
             || s.marker_end != self.marker_end
@@ -63,6 +66,7 @@ impl StrokeStyle {
             width,
             cap: self.cap,
             join: self.join,
+            align: self.align,
             dash: self.dash,
             marker_start: self.marker_start,
             marker_end: self.marker_end,

@@ -75,7 +75,7 @@ use crate::params::{
     DrawMode, StrokeCap, StrokeJoin, VectorDrawConfig, VectorStyleSnapshot, marker_from_value,
     slider_to_dash, slider_to_gap, slider_to_opacity, slider_to_px,
 };
-use ph2d_vec_scene::Marker;
+use ph2d_vec_scene::{Marker, StrokeAlign};
 
 /// Curated stroke / fill preset palette: `(key, label, sRGB8)`. Retained as the
 /// seed source for the tool's defaults (and a stable named-colour reference);
@@ -158,6 +158,7 @@ pub struct VectorTool {
     /// (`dash = 0` = solid; `gap` is the space between dashes).
     cap: StrokeCap,
     join: StrokeJoin,
+    align: StrokeAlign,
     dash: f64,
     gap: f64,
     /// **Pontas do traço** (arrowheads): a do começo e a do fim. Propriedade do stroke,
@@ -192,6 +193,7 @@ impl Default for VectorTool {
             shape_values: default_shape_values(),
             cap: StrokeCap::Butt,
             join: StrokeJoin::Miter,
+            align: StrokeAlign::Centre,
             dash: 0.0,
             gap: crate::params::GAP_DEFAULT,
             marker_start: Marker::None,
@@ -306,6 +308,10 @@ impl VectorTool {
         self.join
     }
     #[must_use]
+    pub fn stroke_align(&self) -> StrokeAlign {
+        self.align
+    }
+    #[must_use]
     pub fn dash(&self) -> f64 {
         self.dash
     }
@@ -386,6 +392,14 @@ impl VectorTool {
         self.join = join;
         self.apply_to_selected = true;
     }
+    /// Escolhe de que lado da linha a faixa cai + marca a seleção para reestilizar.
+    ///
+    /// Mesmo caminho de cap/join — alinhamento é Style, então vale para a forma que está na
+    /// tela e não só para a próxima desenhada.
+    fn set_stroke_align(&mut self, align: StrokeAlign) {
+        self.align = align;
+        self.apply_to_selected = true;
+    }
 
     /// Escolhe a ponta do começo / do fim + marca a seleção para reestilizar (mesmo
     /// caminho de cap/join: a ponta é Style, então vale para o caminho que está na tela,
@@ -455,6 +469,7 @@ impl VectorTool {
             values: self.shape_values(self.shape),
             cap: self.cap,
             join: self.join,
+            align: self.align,
             dash: self.dash,
             gap: self.gap,
             marker_start: self.marker_start,
@@ -620,6 +635,15 @@ impl Tool for VectorTool {
             }
             // Stroke cap / join segmented rows + Dash slider. These are Style →
             // restyle the selected path (mirror of colour/width).
+            PanelEvent::Click(id) if id == ids::VECTOR_ALIGN_CENTRE => {
+                self.set_stroke_align(StrokeAlign::Centre);
+            }
+            PanelEvent::Click(id) if id == ids::VECTOR_ALIGN_INNER => {
+                self.set_stroke_align(StrokeAlign::Inner);
+            }
+            PanelEvent::Click(id) if id == ids::VECTOR_ALIGN_OUTER => {
+                self.set_stroke_align(StrokeAlign::Outer);
+            }
             PanelEvent::Click(id) if id == ids::VECTOR_CAP_BUTT => self.set_cap(StrokeCap::Butt),
             PanelEvent::Click(id) if id == ids::VECTOR_CAP_ROUND => self.set_cap(StrokeCap::Round),
             PanelEvent::Click(id) if id == ids::VECTOR_CAP_SQUARE => {

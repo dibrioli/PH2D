@@ -197,6 +197,56 @@ fn clicking_connect_pill_reaches_the_tool() {
     );
 }
 
+/// **Os três chips de ALINHAMENTO são clicáveis por um PONTEIRO e chegam ao tool.**
+///
+/// ⚠️ Um `WidgetEvent::Click` sintético — a forma que os gates vizinhos deste arquivo usam —
+/// entra pelo `apply_event` **sem passar pela checagem de focabilidade** do dispatcher, então ele
+/// consome e chega ao tool mesmo num chip que o `populate` esqueceu de registrar: pintado, com
+/// retângulo no hit index, e **morto sob o mouse**. Aqui o ponteiro é REAL, que é o que fecha as
+/// quatro condições de uma vez (existe · é pintado e registrado · o clique vira evento · a
+/// sequência leva a algum lugar).
+#[test]
+fn the_three_align_chips_are_clickable_and_reach_the_tool() {
+    use ph2d_vec_scene::StrokeAlign;
+    const VIEWPORT: Rect = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 1600.0,
+        h: 900.0,
+    };
+    let mut tool = VectorTool::default();
+    // O default é Centre — o mundo de quem nunca tocou nisto.
+    assert_eq!(tool.stroke_align(), StrokeAlign::Centre);
+
+    for (id, want) in [
+        (ids::VECTOR_ALIGN_INNER, StrokeAlign::Inner),
+        (ids::VECTOR_ALIGN_OUTER, StrokeAlign::Outer),
+        (ids::VECTOR_ALIGN_CENTRE, StrokeAlign::Centre),
+    ] {
+        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut panel_state = VectorPanelState;
+        let r = host
+            .painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
+            .unwrap_or_else(|| panic!("o chip {want:?} nao foi PINTADO com area clicavel"));
+        let evs = host.click_at(r.x + r.w * 0.5, r.y + r.h * 0.5);
+        assert!(
+            evs.iter()
+                .any(|e| matches!(e, WidgetEvent::Click(c) if *c == id)),
+            "o ponteiro sobre {want:?} nao virou Click — o chip esta' desenhado e nao existe \
+             para o dispatcher"
+        );
+        for ev in evs {
+            host.apply_panel_event::<VectorPanel>(&mut panel_state, ev);
+        }
+        drain_into_tool(&mut host, &mut tool);
+        assert_eq!(
+            tool.stroke_align(),
+            want,
+            "o clique em {want:?} nao chegou ao tool"
+        );
+    }
+}
+
 /// A Cap button + the Dash and Gap sliders reach the tool through the seam —
 /// the stroke-detail controls.
 #[test]

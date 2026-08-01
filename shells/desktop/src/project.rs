@@ -207,7 +207,7 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// `ProjectState` é a unidade do UNDO, e uma guia arrastada tem de desfazer.
 /// ⚠️ O número se CONTA contra o `main` do dia, não se escolhe — este 49 é
 /// PROVISÓRIO até a integração ([[feedback_numbers_that_sum_across_lines_count_dont_pick]]).
-const PROJECT_SCHEMA: u32 = 49;
+const PROJECT_SCHEMA: u32 = 50;
 
 /// O conteúdo de um arquivo de projeto.
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -450,6 +450,7 @@ impl crate::App {
         // O Pattern vivo pela MESMA razão (id reciclado entre documentos).
         self.pattern_live.forget();
         self.contour_live.forget();
+        self.align_live.forget();
         // A SIMETRIA viva pela MESMA razão (id reciclado; o memo é chaveado por `VecPathId`).
         self.symmetry_live.forget();
         // O FX raster vivo (plano 24) pela MESMA razão (id reciclado entre documentos).

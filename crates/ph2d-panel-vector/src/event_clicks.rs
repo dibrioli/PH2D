@@ -72,6 +72,9 @@ pub(super) fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         || id == ids::VECTOR_TEXT_ALIGN_LEFT
         || id == ids::VECTOR_TEXT_ALIGN_CENTER
         || id == ids::VECTOR_TEXT_ALIGN_RIGHT
+        || id == ids::VECTOR_ALIGN_CENTRE
+        || id == ids::VECTOR_ALIGN_INNER
+        || id == ids::VECTOR_ALIGN_OUTER
         || id == ids::VECTOR_CAP_BUTT
         || id == ids::VECTOR_CAP_ROUND
         || id == ids::VECTOR_CAP_SQUARE

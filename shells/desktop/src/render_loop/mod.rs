@@ -5943,6 +5943,12 @@ impl crate::App {
                     .iter()
                     .map(|(id, v)| (*id, v.clone())),
             );
+            // **O ALINHAMENTO roda por ÚLTIMO, e TRANSFORMA o mapa em vez de o estender.**
+            // Os cinco acima são mutuamente exclusivos (um componente cada, um por vez no
+            // painel), e é isso que torna o `extend` seguro. O alinhamento não é membro dessa
+            // família — é um campo do `StrokeSpec`, então convive com um offset vivo; fundido
+            // por `extend` ele apagaria o offset (ou seria apagado), em silêncio.
+            self.align_live.recook(vec_scene, &vec_xf, &mut vec_live);
             // A SILHUETA resolvida das formas TRAÇADAS: `preenchimento ∪ contorno-do-traço`,
             // pela booleana, memoizada na geometria de MUNDO. Sem ela o campo de distância de uma
             // forma com traço cai no caminho do raster, cuja semente discreta desenha o pente que

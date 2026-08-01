@@ -163,6 +163,9 @@ pub(super) fn dispatch(
     let fill = tool.fill_rgba();
     let cap = line_cap(tool.cap());
     let join = line_join(tool.join());
+    // Sem `match` de conversão: o alinhamento usa o tipo do DOCUMENTO (o precedente das
+    // PONTAS), então não há tabela de três braços a manter em dia como em cap/join.
+    let align = tool.stroke_align();
     let (marker_start, marker_end) = (tool.marker_start(), tool.marker_end());
     // Tamanho da cabeça + arredondamento das quinas dela: Style, como as pontas — valem para
     // o próximo caminho desenhado (via `PenStyle`) E para TODOS os selecionados (abaixo).
@@ -179,6 +182,7 @@ pub(super) fn dispatch(
         fill: rgba(fill),
         cap,
         join,
+        align,
         dash,
         marker_start,
         marker_end,
@@ -232,6 +236,7 @@ pub(super) fn dispatch(
             color: new_stroke,
             cap,
             join,
+            align,
             dash,
             marker_start,
             marker_end,

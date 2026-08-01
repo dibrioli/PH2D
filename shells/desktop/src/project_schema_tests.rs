@@ -151,7 +151,18 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // apendado ao `ProjectState`, que viaja DENTRO do `ProjectFile` — o mesmo raciocínio
         // posicional do `flip`. ⚠️ O 49 é PROVISÓRIO: ele se CONTA contra o `main` do dia da
         // integração, não se escolhe, e esta linha o escreveu contra o `main` de 2026-08-01.
-        (49, 13, 13),
+        // PROJECT 49→50 + VEC_SCENE 13→14 (vector, W6.4 — o ALINHAMENTO do traço): o
+        // `StrokeSpec` ganhou `align` (Centre/Inner/Outer). Campo APENDADO, e o bump é
+        // obrigatório nos DOIS sentidos — o postcard **não sinaliza ausência**, então um save
+        // v13 lido por v14 chega ao fim dos bytes no campo novo (`Hit the end of buffer`,
+        // MEDIDO numa sonda em 2026-08-01) e um v14 lido por v13 traz um byte a mais.
+        // ⚠️ E isto corrigiu uma afirmação FALSA que vivia no `stroke_style.rs`: o
+        // doc-comment do `marker_start` dizia que *"o postcard é posicional, então um save
+        // anterior a este campo segue legível"* — as duas metades não se seguem. Posicional é
+        // justamente o que IMPEDE a leitura; o `#[serde(default)]` serve a formatos
+        // auto-descritivos, e quem protege o arquivo é este número.
+        // ⚠️ O 50 é PROVISÓRIO pela mesma razão do 49 acima.
+        (50, 13, 14),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

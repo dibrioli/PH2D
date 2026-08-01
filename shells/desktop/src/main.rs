@@ -38,6 +38,8 @@
 //! - **M11** Vello text/widget overlay — needs surface-sharing pass.
 
 mod adapter_smoke;
+mod align_live;
+mod align_smoke;
 mod app_state;
 mod atlas_loader;
 mod attribute_demo_smoke;
@@ -627,6 +629,7 @@ impl App {
             offset_live: crate::offset_live::OffsetLive::default(),
             profile_live: crate::profile_live::ProfileLive::default(),
             contour_live: crate::contour_live::ContourLive::default(),
+            align_live: crate::align_live::AlignLive::default(),
             symmetry_live: crate::symmetry_live::SymmetryLive::default(),
             vec_symmetry_origin: None,
             pattern_live: crate::pattern_live::PatternLive::default(),

@@ -1026,6 +1026,12 @@ pub(crate) struct App {
     /// que faz *"desmarcar antes do Apply"* não destruir nada: as cópias nunca estiveram no
     /// documento.
     pub(crate) symmetry_live: crate::symmetry_live::SymmetryLive,
+    /// O **ALINHAMENTO do traço, vivo** — Inner/Outer como faixa recortada contra o interior da
+    /// forma. ⚠️ **Não é irmão dos cinco acima: ele TRANSFORMA o mapa que eles montaram.** Os
+    /// outros são mutuamente exclusivos (um componente cada, um por vez no painel) e por isso o
+    /// `render_loop` os funde com `extend`; o alinhamento é um campo do `StrokeSpec` e **compõe**
+    /// com qualquer um deles, então fundi-lo apagaria o vizinho em silêncio.
+    pub(crate) align_live: crate::align_live::AlignLive,
     /// **O eixo de SESSÃO da simetria**, em MUNDO — a linha que aparece no instante em que o botão
     /// liga, com a cena vazia e nada seleccionado.
     ///

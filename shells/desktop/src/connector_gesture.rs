@@ -125,6 +125,11 @@ impl App {
             width: style.stroke_w_px * px_to_world,
             cap: style.cap,
             join: style.join,
+            // Um conector é uma linha ABERTA, então o alinhamento é inerte aqui — mas ele viaja
+            // como todo campo vizinho: quem decide que Inner/Outer não significam nada sem
+            // interior é a `StrokeAlign::needs_a_region`, uma vez, e não um caso especial por
+            // sítio de construção.
+            align: style.align,
             dash: style.dash,
             marker_start: style.marker_start,
             // A ponta de seta é o que faz a linha ser um conector, e não um traço.

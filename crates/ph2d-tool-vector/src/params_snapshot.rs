@@ -2,7 +2,7 @@
 //! teto de 700 LOC, e o corte é por responsabilidade: aqui mora o que a tool **PUBLICA** para o
 //! painel pintar; no irmão, o que ela guarda e as conversões de unidade dos knobs.
 
-use ph2d_vec_scene::{Marker, ShapeKind, ShapeValues};
+use ph2d_vec_scene::{Marker, ShapeKind, ShapeValues, StrokeAlign};
 
 use super::params::*;
 
@@ -50,6 +50,13 @@ pub struct VectorStyleSnapshot {
     /// invisível ao primeiro toque.
     pub marker_scale: f64,
     pub marker_round: f64,
+    /// **De que lado da linha a faixa cai** — Centre/Inner/Outer.
+    ///
+    /// Tipo do DOCUMENTO (`ph2d_vec_scene::StrokeAlign`), pelo mesmo motivo das PONTAS logo
+    /// acima: um espelho de UI a mais só criaria uma tabela de conversão para manter em dia.
+    /// (`cap`/`join` são os espelhos ANTIGOS, e é por isso que o `vector_bridge` ainda carrega
+    /// um `match` de três braços para cada um.)
+    pub align: StrokeAlign,
 }
 
 impl VectorStyleSnapshot {
@@ -77,6 +84,7 @@ impl Default for VectorStyleSnapshot {
             shape: ShapeKind::Rectangle,
             values: ShapeKind::Rectangle.defaults(),
             cap: StrokeCap::Butt,
+            align: StrokeAlign::Centre,
             join: StrokeJoin::Miter,
             dash: 0.0,
             gap: GAP_DEFAULT,

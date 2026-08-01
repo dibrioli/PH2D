@@ -107,6 +107,14 @@ pub const VECTOR_FILL_OPACITY_NUM: NodeId = hash_node_id("vector.fill_opacity_nu
 // Dash length slider (0 = solid) + a Gap length slider (space between dashes).
 // Both are multiples of the stroke width. Drive the matching `VectorTool`
 // fields; the bridge applies them to new + selected paths (like colour/width).
+/// **Alinhamento do traço** — Centre / Inner / Outer (`ph2d_vec_scene::StrokeAlign`).
+///
+/// Vive ao lado de Cap/Join porque é a mesma família: *como a caneta se comporta*. O que o
+/// distingue é que Inner/Outer só significam alguma coisa sobre uma REGIÃO, então o painel
+/// pergunta a `StrokeAlign::needs_a_region` antes de anunciar as duas.
+pub const VECTOR_ALIGN_CENTRE: NodeId = hash_node_id("vector.align.centre");
+pub const VECTOR_ALIGN_INNER: NodeId = hash_node_id("vector.align.inner");
+pub const VECTOR_ALIGN_OUTER: NodeId = hash_node_id("vector.align.outer");
 pub const VECTOR_CAP_BUTT: NodeId = hash_node_id("vector.cap.butt");
 pub const VECTOR_CAP_ROUND: NodeId = hash_node_id("vector.cap.round");
 pub const VECTOR_CAP_SQUARE: NodeId = hash_node_id("vector.cap.square");

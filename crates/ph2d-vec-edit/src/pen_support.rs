@@ -4,7 +4,7 @@
 //! undo/redo stack over `VecScene`. Both are `pub` and re-exported by `lib.rs`, so `crate::PenStyle`
 //! / `crate::History` keep resolving for `shape.rs` and the tests. No `PenTool` coupling.
 
-use ph2d_vec_scene::{LineCap, LineJoin, Marker, Rgba8, StrokeSpec, VecScene};
+use ph2d_vec_scene::{LineCap, LineJoin, Marker, Rgba8, StrokeAlign, StrokeSpec, VecScene};
 
 /// Cor do traço do Pen (claro, sobre o canvas escuro).
 const PEN_STROKE: Rgba8 = Rgba8::new(240, 240, 245, 255);
@@ -30,6 +30,8 @@ pub struct PenStyle {
     /// Ponta / junção do traço.
     pub cap: LineCap,
     pub join: LineJoin,
+    /// De que lado da linha a faixa cai — ver `ph2d_vec_scene::StrokeAlign`.
+    pub align: StrokeAlign,
     /// Dash/vão como **múltiplos da largura**: `Some((dash, gap))` ⇒ traço e vão
     /// de `dash·width`/`gap·width`; `None` = contínuo. O render multiplica pela
     /// largura do path.
@@ -53,6 +55,7 @@ impl Default for PenStyle {
             fill: PEN_FILL,
             cap: LineCap::Butt,
             join: LineJoin::Miter,
+            align: StrokeAlign::Centre,
             dash: None,
             marker_start: Marker::None,
             marker_end: Marker::None,
@@ -71,6 +74,7 @@ impl PenStyle {
             width,
             cap: self.cap,
             join: self.join,
+            align: self.align,
             dash: self.dash,
             marker_start: self.marker_start,
             marker_end: self.marker_end,

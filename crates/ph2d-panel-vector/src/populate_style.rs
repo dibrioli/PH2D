@@ -69,6 +69,9 @@ pub(super) fn populate_style(store: &mut WidgetStore) {
     );
 
     // Stroke Cap / Join segmented buttons + Dash length slider (0 px = solid).
+    button(store, ids::VECTOR_ALIGN_CENTRE);
+    button(store, ids::VECTOR_ALIGN_INNER);
+    button(store, ids::VECTOR_ALIGN_OUTER);
     button(store, ids::VECTOR_CAP_BUTT);
     button(store, ids::VECTOR_CAP_ROUND);
     button(store, ids::VECTOR_CAP_SQUARE);

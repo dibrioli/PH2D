@@ -8084,3 +8084,116 @@ o transforma em apoio (o tronco sobe `0,32 m`, medido).
 **Aberto:** o **consumidor de GAMEPLAY** (colisão → sinal via script/timeline)
 segue não construído — é a próxima camada, cross-line, e continua decisão do
 Enio; o que esta wave fecha é a metade que o overlay mostra.
+
+---
+
+## W-CompoundZone — uma ZONA vê o corpo COMPOSTO inteiro (2026-08-01, cena `=72`, pendente de smoke)
+
+A W-PartSensor achou um canal que envelheceu quando a W-Compound tornou falso
+*"um corpo tem exatamente um collider"*. A varredura óbvia a seguir —
+`git grep "colliders().first()"` — achou **cinco** sítios com a mesma forma.
+
+### A medição, com CONTROLE
+
+Duas jangadas de **silhueta e massa idênticas** (`2,40 × 0,50`, massa `1,200000`
+nas duas, medida), uma feita de UMA caixa e outra de DUAS, largadas na MESMA
+poça de água plana:
+
+| | centro | inclinação |
+|---|---|---|
+| UMA forma (o controle) | `0,1251` | `0,000°` |
+| DUAS formas | `0,3006` | **`−90,007°`** |
+
+⚠️ **A composta CAPOTA — e o sintoma não é o que a intuição prevê.** Meia-força
+faria esperar *"afunda o dobro"*; o que acontece é que a força nasce
+**descentrada** (só a primeira forma a produz), logo há torque, logo o barco
+tomba. *Meia-força e força-no-lugar-errado são defeitos diferentes, e este é o
+segundo.*
+
+⚠️ **O CONTROLE é o que torna o número atribuível** — sem ele a medição não
+distingue *"a segunda forma é ignorada"* de *"a física é assim mesmo"*.
+
+### O defeito era invisível por COMPENSAÇÃO
+
+`to_float` recebia o corpo **uma vez por PAR de colliders**, e o laço anda sobre
+SOBREPOSIÇÕES: um corpo composto sobrepõe a zona com cada forma. Então uma
+jangada de duas metades iguais levava `2 × meia-força` = **a força certa**, por
+acidente aritmético.
+
+⚠️ **A linha d'água parecia correta; só a INCLINAÇÃO denunciava.** E consertar só
+o empuxo — sem o dedup — a faz boiar com METADE da submersão (`0,0624` contra os
+`0,125` que Arquimedes prevê): *meia correção é pior que nenhuma*.
+
+### A pergunta NOVA que o `.first()` escondia
+
+**Um sensor desloca fluido?** Não — ele é marcador, não matéria: atravessa tudo
+por definição, e o pé-sensor de um personagem (W-PartSensor) daria empuxo a um
+pedaço de nada. ⚠️ Isso **muda o comportamento de um caso que já existia** (um
+corpo cujo collider próprio é sensor deixa de boiar), e está gateado nos dois
+sentidos. É a resposta coerente com o resto do módulo — zona e one-way já são
+mutuamente exclusivos pela mesma razão.
+
+Mais duas coisas que a mudança arrasta:
+
+- **a pose passa a ser a do COLLIDER**, não a do corpo. Para a forma própria de
+  um corpo sem offset as duas coincidem — é por isso que sobreviveu tanto tempo
+  —, mas com o **offset** do W-Offset elas já divergiam;
+- **ordem FIXA por handle** nas três somas: `rb.colliders()` está em ordem de
+  inserção (detalhe interno) e somar `f32` não é associativo (HR-5, o mesmo
+  cuidado que a tabela `effectors` já toma).
+
+### O custo que o modelo ACEITA, nomeado
+
+Um corpo composto tem arestas **internas** — a emenda entre duas formas — e um
+modelo por-forma as vê encarando o escoamento. O shape drag de uma jangada de
+duas metades resiste, portanto, **mais** que o da caixa única de silhueta
+idêntica. É over-count honesto, e a alternativa não é *"não mudar nada"*:
+`.first()` erra nos **dois** eixos (resiste de menos **e** no lugar errado —
+medido, `−12,995°` de giro contra `0,000°`). A cura exata é a fronteira do casco
+convexo, que é outra operação e outra wave.
+
+### O que NÃO foi tocado, de propósito
+
+Sobram dois `.first()`, e os dois perguntam pela **ZONA**, não pelo corpo
+afetado. Uma zona é single-collider **por construção**: a face de PEÇA do §11 não
+pinta as rows de área (W-PartFace), então a família `Area*` só é autorável num
+corpo. O dia em que uma peça puder carregar uma zona é o dia em que os dois
+entram na porta nova.
+
+### Números
+
+⚠️ **`physics_ecs_c9` MUDA: `e216e367…` → `16ba80e8…`** — a cena tem a lane `C9
+Compound Leg` numa zona, e o comportamento dela mudou de verdade. **Atribuído por
+ablação:** sem o dedup o hash é um terceiro (`c556c5f5…`), o que prova que as
+duas metades do conserto são observáveis separadamente. Determinismo intacto
+(debug ≡ release, corridas repetidas idênticas).
+
+**Nenhum schema** (`PROJECT_SCHEMA` fica em **48**) · registro **fica em 24** ·
+**nenhum componente, nenhum id, nenhum ADR, zero `Cargo.toml`**. Módulo novo
+`ph2d-physics::world::shapes` (a porta única de *"de que este corpo é feito?"*).
+
+### Gates e a mutação que sobreviveu
+
+5 na crate ECS (a composta não capota · a linha d'água é a que Arquimedes prevê ·
+um sensor não desloca · o shape drag age nos lugares certos · a secção do ar é a
+da UNIÃO) + 4 na cena. **5 mutações, 5 sangram.**
+
+⚠️ **Uma sobreviveu, e o gate era o culpado:** o do shape drag media o **REPOUSO**,
+e arrasto de forma só age enquanto o corpo se move — um oráculo tirado depois de
+a jangada assentar mede exatamente a janela em que a coisa vigiada não acontece.
+Reescrito com a jangada **LANÇADA**, a mesma mutação sangra em `−12,995°`.
+
+⚠️ **E duas lições de fixture:** empuxo sem resistência é uma **mola sem
+amortecimento** — a primeira versão do gate não tinha `AreaDrag` e o controle foi
+medido em `1,0795`, porque o equilíbrio existe e a jangada nunca chega nele (*um
+oráculo de repouso precisa que o repouso exista*). E um limiar **emprestado** do
+gate irmão reprovou sobre produto correto: `0,1` onde a diferença real da outra
+fixture é `0,0625`.
+
+**Smoke: `PH2D_PHYSICS_SMOKE=72`** — três jangadas, **todas niveladas**: `Single`
+(o controle, `0,125`) · `Compound` (a mesma silhueta partida em duas, `0,125`) ·
+`Sensor Cargo` (a caixa larga com uma peça-sensor empilhada, `0,063` — desloca a
+mesma água e carrega peso a mais). ⚠️ **A carga do 3º lane é CENTRADA de
+propósito:** a primeira versão punha o sensor ao LADO e a jangada capotava —
+fisicamente correto e um desastre como demonstração, porque um barco de pé é
+exatamente a imagem do bug que a cena existe para mostrar consertado.

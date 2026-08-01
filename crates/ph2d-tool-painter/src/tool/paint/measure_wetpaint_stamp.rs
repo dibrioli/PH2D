@@ -402,3 +402,81 @@ fn measure_what_the_artist_asks_for_against_what_the_stroke_lays() {
          medido em vez de lido de uma constante."
     );
 }
+
+/// **O PINCEL GRANDE FICOU CARO — E O SLIDER QUE JÁ SHIPA É A RESPOSTA?**
+///
+/// ⚠️ A wave do cap (§5.51) tirou o teto do pincel, e a decomposição seguinte
+/// (`ph2d-wet-paint/tests/measure_dab_halves.rs`) mediu o depósito **plano em
+/// ~30 ns/r²** de raio 60 a 400 — ou seja, **honestamente limitado pela
+/// PEGADA**, sem anomalia a consertar. Isso RE-PRECIFICA a nota do §5.50, que
+/// via escala sub-linear (1 : 1,8 : 2,3) e a atribuía ao cap: era o cap
+/// ESCONDENDO trabalho, e a "wave com alvo" que ela nomeava não existe.
+///
+/// Mas um custo honesto continua sendo um custo: `O(r²)` sem teto significa que
+/// o artista pode pedir um pincel 8× mais caro que o de raio 141. A pergunta de
+/// PRODUTO passa a ser se a resposta já shipa — e ela deveria: o `Grid Size`
+/// mede o dab em CÉLULAS (`cell_r = raio / razão`), então a pegada em células
+/// cai com **razão²**.
+///
+/// ⚠️ **Previsão, não afirmação:** razão 2 deveria custar ~1/4 e razão 4 ~1/16.
+/// Se a tabela confirmar, não há wave — há um slider que o smoke tem de dizer
+/// se é descobrível. Se NÃO confirmar, o slider não protege o caso que ele
+/// existe para proteger, e aí sim há trabalho.
+#[test]
+#[ignore = "sonda de medicao (release); rode com --ignored --nocapture"]
+fn measure_whether_the_grid_slider_pays_for_a_big_brush() {
+    const SIDE: u32 = 4096;
+    const MOVES: u32 = 24;
+    const STEP_PX: f32 = 20.0;
+
+    println!("\n  O SLIDER `Grid Size` CONTRA O PINCEL GRANDE ({SIDE}x{SIDE})\n");
+    println!(
+        "    {:>7} {:>8} {:>14} {:>14} {:>12}",
+        "raio", "grid", "total ms", "por entrega", "vs razao 1"
+    );
+
+    // ⚠️ Os DOIS raios, porque a pergunta que sobra e' de que o piso e' feito:
+    // se o residual em razao 4 cair com a area em PIXELS, ele e' trabalho de
+    // pixel (o composite), que a grade do fluido nao encolhe por construcao.
+    for radius in [200.0f32, 400.0] {
+        let mut base = 0.0f64;
+        for ratio in [1.0f64, 2.0, 4.0] {
+            let mut t = wetted(SIDE, radius);
+            t.set_paint_media(PaintMedia::WetPaint);
+            // ⚠️ A razão é congelada por SESSÃO, então tem de ser escrita ANTES
+            // do pen-down — trocá-la no meio encerra a água (é o bake).
+            t.set_wet_grid_ratio(ratio);
+            t.set_brush_size_px(radius * 2.0);
+            let (x0, y0) = (600.0f32, 2048.0f32);
+            t.on_canvas_pointer(cp([x0, y0], PointerPhase::Down));
+            let mut ms = 0.0f64;
+            for k in 1..=MOVES {
+                let x = x0 + STEP_PX * k as f32;
+                let t0 = Instant::now();
+                t.on_canvas_pointer(cp([x, y0], PointerPhase::Move));
+                ms += t0.elapsed().as_secs_f64() * 1e3;
+                let _ = t.take_preview_arc();
+            }
+            t.on_canvas_pointer(cp([x0 + STEP_PX * MOVES as f32, y0], PointerPhase::Up));
+            if ratio == 1.0 {
+                base = ms;
+            }
+            println!(
+                "    {radius:>6.0}p {ratio:>7.0} {ms:>13.2} {:>13.3}ms {:>11.2}x",
+                ms / f64::from(MOVES),
+                ms / base.max(1e-9),
+            );
+        }
+    }
+    println!(
+        "\n    MEDIDO (2026-08-01): 1,00 / 0,34-0,35 / 0,22 — o slider paga 2,9x na razao 2\n    \
+         e 4,5x na razao 4, contra os 4x e 16x que a contagem de celulas sozinha preveria.\n    \
+         Resolvendo, ~13-18% de uma entrega NAO cai com a grade do fluido.\n\n    \
+         ⚠️ A coluna e' IDENTICA nos dois raios, e isso NAO discrimina de que o piso e'\n    \
+         feito: todo termo escala com r², entao o r cancela na razao por construcao. Os\n    \
+         candidatos (o composite, que escreve PIXELS, e o AA do `cell_subsamples`, cujo\n    \
+         n = min(razao, MAX_AA) mantem as avaliacoes de silhueta ~constantes em area de\n    \
+         canvas) ficam NOMEADOS e NAO atribuidos — separa-los exige um relogio por fase\n    \
+         dentro da entrega, e o veredito da sonda nao depende disso."
+    );
+}

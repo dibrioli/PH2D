@@ -4676,3 +4676,132 @@ verificando aritmética, não comportamento. A metade oposta (o piso) usa
 **A mutação (o cap de volta) sangra o primeiro e deixa o segundo VERDE** — que é
 exatamente o par certo: um gate que morresse nos dois estaria medindo a mesma
 coisa duas vezes.
+
+---
+
+## §5.52 — A "wave com alvo" do §5.50 DISSOLVEU na medição, e o cap escondia um segundo defeito (2026-08-01)
+
+A §5.50 fechou nomeando o próximo alvo: *"o carimbo custa 1,86 / 3,34 / 4,37 ms
+por entrega nos raios 100 / 200 / 300, e a escala é **sub-linear no raio**
+(1 : 1,8 : 2,3 contra 1 : 4 : 9 de uma pegada), provável assinatura do
+`TRAIL_HALF = 61` que clipa pincel grande. **Decompor o depósito de um dab é uma
+wave própria, e agora ela tem alvo.**"
+
+A wave seguinte (§5.51) **removeu esse cap**. O CLAUDE.md §0 é explícito sobre o
+que isso obriga — *quem move o número que tornava algo inalcançável tem de
+reconferir a nota* —, e a reconferência derrubou a nota inteira.
+
+### 1. O depósito é limitado pela PEGADA, e é plano
+
+`ph2d-wet-paint/tests/measure_dab_halves.rs`, 4096², 24 dabs, espaçamento do
+produto (0,025 do diâmetro):
+
+| raio | janela | accum ms | transf ms | total ms | **ns/r²** | transf % |
+|---|---|---|---|---|---|---|
+| 60 | 149 | 1,916 | 0,645 | 2,561 | **29,64** | 25,2% |
+| 100 | 245 | 5,209 | 1,856 | 7,065 | **29,44** | 26,3% |
+| 200 | 485 | 20,550 | 7,153 | 27,703 | **28,86** | 25,8% |
+| 300 | 725 | 46,806 | 18,218 | 65,024 | **30,10** | 28,0% |
+| 400 | 965 | 85,540 | 31,991 | 117,531 | **30,61** | 27,2% |
+
+**`ns/r²` é PLANO: 1,03× sobre 6,7× de raio.** O depósito custa exatamente o que
+uma pegada custa, e a divisão entre as duas metades é estável (**accumulate ~73%
+· transfer ~27%**).
+
+⚠️ **A sub-linearidade que a §5.50 mediu era o cap ESCONDENDO trabalho**, não uma
+propriedade do depósito. Com a janela seguindo o pincel a escala virou `r²`
+limpa — ou seja, **não há anomalia a consertar**. É a mesma forma do `soft_body`
+da `line/gpu-nodes`: *o último item da fila dissolveu na medição*.
+
+### 2. A fronteira com o HOST é grátis
+
+O produto não usa o falloff do motor: ele passa a silhueta do Painter por um
+`&mut dyn FnMut(i32,i32) -> f64` chamado **uma vez por pixel da caixa** do dab, e
+a caixa de um disco tem `4r²` contra `πr²` do disco ⇒ **21% das chamadas caem
+fora do pincel e devolvem zero**, pagando a chamada virtual do mesmo jeito.
+
+Ablação entre as duas PORTAS reais (`accumulate_paint` × `accumulate_paint_shaped`),
+com a `sil` fazendo a **mesma aritmética** do ramo interno — a diferença é a
+indireção e nada mais:
+
+| raio | motor ms | host ms | **razão** |
+|---|---|---|---|
+| 100 | 5,035 | 5,244 | **1,04×** |
+| 200 | 21,177 | 20,528 | **0,97×** |
+| 400 | 80,933 | 82,899 | **1,02×** |
+
+**A indireção não é o alvo.** O custo do depósito são os PIXELS — ~7,5 ns por
+pixel de caixa, com sete planos acessados de forma dispersa (`susp`, `sett`,
+`paper`, `film`, `wet` no canvas + `pig`/`water` na janela). É o mesmo regime
+limitado por banda em que o solver vive (8,9 ns/célula, §5.47), e a alavanca de
+CPU ali já foi gasta (§5.44, §5.46).
+
+### 3. O `Grid Size` paga — 4,5× e não 16×
+
+Um custo honesto continua sendo um custo: `O(r²)` **sem teto** significa que o
+artista pode pedir um pincel 8× mais caro que o de raio 141. A pergunta de
+produto vira *a resposta já shipa?*, e a previsão era que sim: o dab é medido em
+CÉLULAS (`cell_r = raio / razão`), então a pegada cairia com **razão²**.
+
+Medido pela porta do artista (`on_canvas_pointer`, 4096², 24 entregas):
+
+| raio | grid | total ms | por entrega | vs razão 1 |
+|---|---|---|---|---|
+| 200 | 1 | 76,67 | 3,195 ms | 1,00× |
+| 200 | 2 | 25,96 | 1,082 ms | **0,34×** |
+| 200 | 4 | 16,52 | 0,688 ms | **0,22×** |
+| 400 | 1 | 99,34 | 4,139 ms | 1,00× |
+| 400 | 2 | 35,15 | 1,465 ms | **0,35×** |
+| 400 | 4 | 21,62 | 0,901 ms | **0,22×** |
+
+**O slider paga 2,9× na razão 2 e 4,5× na razão 4** — real e grande, mas **não os
+4× e 16×** que a contagem de células sozinha preveria. Resolvendo o sistema,
+**~13-18% de uma entrega não cai com a grade do fluido**.
+
+⚠️ **E a coluna é IDÊNTICA nos dois raios, o que NÃO discrimina de que o piso é
+feito** — eu li isso primeiro como refutação do candidato "é o composite, que
+escreve pixels", e a leitura estava errada: **todo termo escala com `r²`, então o
+`r` cancela na razão por construção**. Os candidatos (o composite · e o AA do
+`cell_subsamples`, cujo `n = min(razão, MAX_AA)` mantém as avaliações de
+silhueta ~constantes em área de canvas, de propósito) ficam **NOMEADOS e não
+atribuídos**: separá-los exige um relógio por fase dentro da entrega, e nenhum
+veredito desta seção depende disso.
+
+### 4. ⚠️ E a reconferência achou um DEFEITO que a wave do cap deixou
+
+Indo ler o `transfer_paint` para decompor o custo — **não por suspeita** — o
+passo 1 (auto-limpeza do bico, SPEC §10) ia `0..N`, e `N` é a área da janela do
+**PISO** (`TRAIL_SIZE²` = 15129). Com o cap removido os buffers passaram a medir
+`size²`, então num pincel maior que o piso a limpeza cobria os 15129 primeiros
+índices **LINEARES** — que não são uma região, são as ~18 primeiras **LINHAS** de
+uma janela de 845 de largura. **O corpo do pincel nunca mais limpava.**
+
+É a classe que este repo já nomeou: **uma constante que era igual ao valor vivo**,
+deixada para trás no dia em que o vivo virou variável. Alcançável: `Knob::TipClean`
+é knob do grupo PAINT do painel Tuning (boot 0,0, faixa até 0,05).
+
+Medido pelo gate: no centro da janela de um pincel grande o knob movia o azul do
+bico de **164,16 para 164,16 — ZERO** — enquanto no controle (pincel dentro do
+teto do modelo) movia 164,16 → 165,44. O fix é `0..self.tip_r.len()`, e num
+pincel dentro do teto os dois números **coincidem** ⇒ fingerprint do ADR-0134
+byte-idêntico **por construção** (3/3), aceitação 9/9.
+
+⚠️ **Duas lições de gate, as duas minhas.** A 1ª versão lia o azul ANTES e DEPOIS
+de um transfer, e o número andava **para BAIXO nos dois mundos** (189,66 →
+165,44): o PICKUP e a LIMPEZA puxam em direções opostas dentro do mesmo transfer
+e o pickup puxa ~16× mais forte — *medir o LÍQUIDO de dois efeitos que competem
+não distingue "limpou" de "não limpou"*. O oráculo certo é o **A/B do próprio
+knob**. E o `422` do centro da janela estava hardcoded, **espelhando a fórmula do
+`fit_to` que o gate julga**; agora sai do `window_half_for_measure`.
+
+Mais: o doc-comment do `lane_trails` afirmava *"ONE 123² window"* e
+`lx >= TRAIL_SIZE`, os dois **falsos** desde a wave do cap.
+
+### O que isto fecha e o que deixa aberto
+
+✅ **FECHA a frente que a §5.50 abriu**: o depósito não tem anomalia, a fronteira
+com o host é grátis, e o custo do pincel grande já tem resposta embarcada.
+
+⚠️ **Aberto, com número:** os ~13-18% ratio-independentes de uma entrega (não
+atribuídos, candidatos nomeados) · e a pergunta de PRODUTO que só o smoke
+responde: **o artista encontra o `Grid Size` quando o pincel grande fica pesado?**

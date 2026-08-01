@@ -73,10 +73,7 @@ pub fn note_wait(ms: f32) {
 // ---------------------------------------------------------------------------
 
 static BUSY_US: AtomicU64 = AtomicU64::new(0);
-static AWAY_US: AtomicU64 = AtomicU64::new(0);
 static SLEEP_US: AtomicU64 = AtomicU64::new(0);
-/// O instante em que o motor SAIU (0 = está em casa) — ver [`note_away_open`].
-static AWAY_OPEN_US: AtomicU64 = AtomicU64::new(0);
 static CELLS: AtomicU64 = AtomicU64::new(0);
 static CELLS_N: AtomicU64 = AtomicU64::new(0);
 
@@ -108,7 +105,7 @@ fn now_us() -> u64 {
 /// É a MESMA classe do `sleep 909%` que a wave anterior curou, por outra via:
 /// lá a janela era assumida, aqui o intervalo atravessa a janela.
 pub fn note_away_open() {
-    AWAY_OPEN_US.store(now_us().max(1), Ordering::Release);
+    AWAY.open(now_us());
 }
 
 /// O motor VOLTOU — fecha o intervalo, creditando só o que ainda não foi.
@@ -117,10 +114,7 @@ pub fn note_away_open() {
 /// tirar o timestamp é quem credita aquele trecho, e o outro lado não o vê
 /// mais (nem duplica, nem perde).
 pub fn note_away_closed() {
-    let t = AWAY_OPEN_US.swap(0, Ordering::AcqRel);
-    if t != 0 {
-        AWAY_US.fetch_add(now_us().saturating_sub(t), Ordering::Relaxed);
-    }
+    AWAY.close(now_us());
 }
 
 /// O worker dormiu isto porque estava ADIANTADO (o ritmo de 40 Hz da SPEC).
@@ -147,19 +141,94 @@ pub fn note_sleep(us: u64) {
 /// "simplificar" o CAS achando que a suíte verde a autoriza.
 #[must_use]
 pub fn take_worker() -> (f64, f64, f64) {
-    let open = AWAY_OPEN_US.load(Ordering::Acquire);
-    if open != 0 {
-        let n = now_us().max(1);
-        if AWAY_OPEN_US
-            .compare_exchange(open, n, Ordering::AcqRel, Ordering::Acquire)
-            .is_ok()
-        {
-            AWAY_US.fetch_add(n.saturating_sub(open), Ordering::Relaxed);
+    let take = |c: &AtomicU64| c.swap(0, Ordering::Relaxed) as f64 / 1000.0;
+    (
+        take(&BUSY_US),
+        AWAY.drain(now_us()) as f64 / 1000.0,
+        take(&SLEEP_US),
+    )
+}
+
+/// **A CONTABILIDADE DE UM INTERVALO QUE ATRAVESSA JANELAS** — um tipo, e não
+/// um par de `static`s, porque é o único jeito de ela ter gate.
+///
+/// ⚠️ **A 1ª versão era um par de estáticos e o gate dela FLAKAVA**, por um
+/// motivo que uma trava entre os dois gates não resolve: o slot do intervalo
+/// aberto é **UM**, e os workers de ~900 outros testes da suíte o escrevem
+/// enquanto o gate mede. *Um gate sobre um singleton que o produto dirige em
+/// paralelo não é um gate — é uma corrida com asserção.*
+///
+/// Aqui a aritmética é do TIPO; o produto usa uma instância `static` e o gate
+/// usa a dele. Nenhuma cópia: é o mesmo código.
+#[derive(Default)]
+pub struct AwayLedger {
+    /// O instante em que o motor SAIU (0 = está em casa).
+    open: AtomicU64,
+    /// O que já foi creditado à janela corrente.
+    total: AtomicU64,
+}
+
+impl AwayLedger {
+    pub const fn new() -> Self {
+        Self {
+            open: AtomicU64::new(0),
+            total: AtomicU64::new(0),
         }
     }
-    let take = |c: &AtomicU64| c.swap(0, Ordering::Relaxed) as f64 / 1000.0;
-    (take(&BUSY_US), take(&AWAY_US), take(&SLEEP_US))
+
+    /// O motor FOI para o frame — abre o intervalo.
+    ///
+    /// ⚠️ **Um intervalo aberto pertence à janela em que ele está ABERTO, e não
+    /// àquela em que fecha** — foi assim que o log do Enio de 2026-07-31 trouxe
+    /// `busy 39% away 161% sleep 29%`, somando **229%** numa linha que diz
+    /// PARTIÇÃO. O motor tinha ficado com o frame por mais tempo que a janela
+    /// inteira (uma rajada de carimbos), e a versão anterior creditava os quatro
+    /// segundos inteiros à janela onde o `recv` voltou.
+    ///
+    /// É a MESMA classe do `sleep 909%` que a wave anterior curou, por outra
+    /// via: lá a janela era assumida, aqui o intervalo atravessa a janela.
+    pub fn open(&self, now: u64) {
+        self.open.store(now.max(1), Ordering::Release);
+    }
+
+    /// O motor VOLTOU — fecha o intervalo, creditando só o que ainda não foi.
+    ///
+    /// ⚠️ O `swap` é o que torna isto correto contra o leitor concorrente: quem
+    /// tirar o timestamp é quem credita aquele trecho, e o outro lado não o vê
+    /// mais (nem duplica, nem perde).
+    pub fn close(&self, now: u64) {
+        let t = self.open.swap(0, Ordering::AcqRel);
+        if t != 0 {
+            self.total
+                .fetch_add(now.saturating_sub(t), Ordering::Relaxed);
+        }
+    }
+
+    /// Drena a janela, **creditando primeiro a parte ABERTA** e re-baseando.
+    ///
+    /// ⚠️ O CAS é o que impede a contagem dupla: se o worker fechou o intervalo
+    /// entre a leitura e a troca, ele já creditou aquele trecho e o CAS falha —
+    /// nada é somado aqui, e nada se perde. **Ele é uma defesa DOCUMENTADA e
+    /// não gateada**: a mutação que o troca por um `store` não sangra, porque a
+    /// contagem dupla só existe sob corrida real (precedente do ADR-0145).
+    pub fn drain(&self, now: u64) -> u64 {
+        let open = self.open.load(Ordering::Acquire);
+        if open != 0 {
+            let n = now.max(1);
+            if self
+                .open
+                .compare_exchange(open, n, Ordering::AcqRel, Ordering::Acquire)
+                .is_ok()
+            {
+                self.total
+                    .fetch_add(n.saturating_sub(open), Ordering::Relaxed);
+            }
+        }
+        self.total.swap(0, Ordering::Relaxed)
+    }
 }
+
+static AWAY: AwayLedger = AwayLedger::new();
 
 /// **O TAMANHO DA POÇA sobre a qual o passo foi dado** — o divisor sem o qual
 /// *"a água está a 17,7 Hz"* não é atribuível.
@@ -219,46 +288,53 @@ mod tests {
     /// NADA É CONTADO DUAS VEZES.**
     ///
     /// ⚠️ Gate nascido de um log: `busy 39% away 161% sleep 29%` — soma **229%**
-    /// numa linha que diz PARTIÇÃO. O motor ficara com o frame por mais tempo
-    /// que a janela inteira (uma rajada de carimbos), e a versão anterior
-    /// creditava o intervalo INTEIRO à janela onde o `recv` voltou.
+    /// numa linha que diz PARTIÇÃO.
     ///
-    /// ⚠️ **UM teste, e não dois, porque os baldes são GLOBAIS.** A 1ª versão
-    /// eram dois gates e eles se drenaram mutuamente — a lição que o
-    /// `the_worker_reports_what_a_step_costs` já pregava (*ele é o único teste
-    /// não-`#[ignore]` que consome a janela global; um 2º leitor zeraria a dele
-    /// e o verde viraria sorte*), violada um arquivo adiante, com um
-    /// doc-comment meu afirmando o contrário.
+    /// ⚠️ **E ele testa uma instância PRÓPRIA do [`AwayLedger`], nunca o
+    /// `static` do produto.** A 1ª versão media os estáticos e **FLAKAVA**: o
+    /// slot do intervalo aberto é UM, e os workers de ~900 outros testes da
+    /// suíte o escrevem enquanto o gate mede. Uma trava entre os dois gates não
+    /// resolvia — os escritores não são gates. *Um gate sobre um singleton que
+    /// o produto dirige em paralelo não é um gate, é uma corrida com asserção.*
     ///
-    /// Duas mutações sangram: creditar só no `note_away_closed` (a 1ª metade
-    /// vira 0) · creditar sem o CAS de `take_worker` (a soma passa o intervalo).
+    /// O relógio é INJETADO pela mesma razão: `now_us()` é tempo de parede, e um
+    /// gate que dorme para produzir um número aposta na velocidade da máquina.
+    /// Com o relógio na mão o teste é exato e determinístico.
+    ///
+    /// Mutações que sangram: creditar só no `close` (a 1ª janela vira 0) ·
+    /// re-basear sem creditar (a 2ª janela recebe o intervalo inteiro).
     #[test]
     fn an_open_away_is_credited_to_the_window_it_spans_and_never_twice() {
-        let _ = take_worker(); // zera o que houver
-        let t0 = std::time::Instant::now();
-        note_away_open();
-        std::thread::sleep(std::time::Duration::from_millis(30));
-        let (_, first, _) = take_worker();
-        std::thread::sleep(std::time::Duration::from_millis(30));
-        note_away_closed();
-        let (_, second, _) = take_worker();
-        let real = t0.elapsed().as_secs_f64() * 1e3;
-        assert!(
-            first >= 20.0,
-            "a janela que CONTEM o intervalo aberto recebeu {first:.1} ms: um `away` mais \
-             longo que a janela volta a cair inteiro na janela onde fecha, e a linha de \
-             particao volta a somar mais de 100%"
+        let led = AwayLedger::new();
+        led.open(1_000);
+        // Janela 1 fecha com o intervalo AINDA aberto: ela leva o que correu.
+        assert_eq!(
+            led.drain(1_030),
+            30,
+            "a janela que CONTEM o intervalo aberto tem de receber o trecho que correu nela — senao um `away` mais longo que a janela volta a cair inteiro na janela onde fecha, e a particao volta a somar mais de 100%"
         );
-        assert!(
-            second >= 20.0,
-            "a 2a janela recebeu {second:.1} ms: o resto do intervalo tem de ser creditado \
-             onde ele de fato correu"
+        led.close(1_070);
+        // Janela 2 leva o RESTO, e só o resto.
+        assert_eq!(
+            led.drain(1_090),
+            40,
+            "a 2a janela tem de receber exatamente o resto do intervalo: nem menos (perda) nem o total (contagem dupla)"
         );
-        assert!(
-            first + second <= real * 1.25 + 5.0,
-            "as duas janelas somam {:.1} ms para um intervalo de {real:.1}: alguma parte \
-             foi creditada duas vezes",
-            first + second
+        // E nada sobra depois de fechado.
+        assert_eq!(
+            led.drain(1_200),
+            0,
+            "um intervalo fechado nao pode continuar creditando"
         );
+    }
+
+    /// **O intervalo que nunca abriu não credita nada** — o controle, sem o
+    /// qual o gate acima passaria com um ledger que soma sozinho.
+    #[test]
+    fn a_ledger_that_never_opened_credits_nothing() {
+        let led = AwayLedger::new();
+        assert_eq!(led.drain(5_000), 0);
+        led.close(6_000);
+        assert_eq!(led.drain(7_000), 0);
     }
 }

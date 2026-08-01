@@ -109,7 +109,13 @@ fn measure_what_the_preview_drain_costs_with_the_water_running() {
         );
     }
     println!(
-        "\n    Leitura: se o dreno da poca viva alcancar os ~11,8 ms do log, o alvo esta no\n    \
+        "\n    ⚠️ A RAZAO DESTA FIXTURE E' PESSIMISTA: ela usa tres tracos DIAGONAIS, e a bbox\n    \
+         de uma faixa diagonal e' um multiplo enorme da faixa. Medido pela porta do PRODUTO\n    \
+         (2026-08-01): 1,98-2,10 M px publicados para 1,44-1,52 M celulas vivas = 1,37x, nao\n    \
+         os 4,30x daqui. A poca que o artista faz e' compacta.\n"
+    );
+    println!(
+        "    Leitura: se o dreno da poca viva alcancar os ~11,8 ms do log, o alvo esta no\n    \
          TOOL e a atribuicao fecha aqui. Se ficar muito abaixo, o custo mora nas outras\n    \
          fases do dispatch (panel/overlay/upload), que so o `PH2D_PAINT_PERF` separa —\n    \
          e ai o proximo passo e' o DIVISOR na linha `[frame]`, nao uma hipotese."

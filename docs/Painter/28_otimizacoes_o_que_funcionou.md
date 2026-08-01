@@ -4984,3 +4984,36 @@ nomeado e agora tem instrumento: se um log futuro trouxer o par
 (o `row_lo`/`row_hi` que o `live_span_cells` já percorre É a faixa); se vier
 `dispatch alto + M px baixo`, o custo está noutra fase e o `PH2D_PAINT_PERF` a
 separa.
+
+### ⚠️ E O PRODUTO FECHOU A FRENTE — sem wave, e derrubando a minha fixture
+
+O log seguinte, com o instrumento consertado, é consistente em quatro janelas:
+
+| janela | dispatch | px publicados | poça | **razão** |
+|---|---|---|---|---|
+| 1 | 3,89 ms | 2,10 M | 1,52 M | **1,38×** |
+| 2 | 3,93 ms | 1,98 M | 1,45 M | **1,37×** |
+| 3 | 4,09 ms | 1,97 M | 1,44 M | **1,37×** |
+| 4 | 3,87 ms | 1,98 M | 1,45 M | **1,37×** |
+
+**O retângulo pede 1,37× a água viva — não os 4,30× que a sonda headless
+previu.** A `heavy_puddle()` são três traços **DIAGONAIS**, e a bbox de uma
+faixa diagonal é um múltiplo enorme dela; a poça que o artista faz é compacta.
+⚠️ É a lição deste doc pela terceira vez: *quando o número vira decisão de
+produto, ele tem de sair da porta do produto* — e desta vez ela custou uma
+hipótese de wave inteira.
+
+**O veredito, pela regra que a §5.53 escreveu antes de medir:**
+
+- publicar por FAIXA em vez de bbox compraria **1,37×** sobre 3,9 ms = **~1 ms**;
+- e o frame **não é limitado por CPU**: `cpu-encode(raw) 8,25` + `present/acquire-stall 8,35` somam os 16,6 ms de um quadro de 60 fps, ou seja **a CPU passa metade do quadro esperando o GPU**;
+- a água está em **39,5-40,5 Hz** (o nominal da SPEC) com `sleep 44-46%`.
+
+⇒ **Não há wave aqui.** O `painter-dispatch` é 3,9 ms num quadro com 8,3 ms de
+ociosidade, sobre uma região que já é quase justa. Os **11,80 ms** da §5.53 eram
+uma poça 2× maior numa cena de traços cruzados — o custo acompanha a poça, e o
+`Grid Size` continua sendo a alavanca de quem quiser cortá-lo.
+
+**O que fica desta wave é o INSTRUMENTO**, e ele se pagou duas vezes: expôs o
+meu erro de fórmula (o `0.00 M`) e depois **fechou a frente sem trabalho de
+produto** — que é o melhor resultado que uma medição pode ter.

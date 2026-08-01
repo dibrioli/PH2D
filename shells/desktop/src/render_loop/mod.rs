@@ -275,8 +275,25 @@ thread_local! {
     /// **2,07 M células** de água viva, ou seja o retângulo pede **3,99×**.
     static FRAME_PROF_PREVIEW_PX: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
     static FRAME_PROF_PREVIEW_N: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
+    /// A espera MEDIDA do `acquire_frame` (ver [`note_acquire_wait`]).
+    static FRAME_PROF_ACQUIRE_US: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+    static FRAME_PROF_ACQUIRE_N: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
     /// `paint_hero_screen` µs (panel/chrome Vello encode — includes the Paper preview).
     static FRAME_PROF_HERO_US: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+}
+
+/// Quanto o `acquire_frame` de fato BLOQUEOU neste quadro.
+///
+/// ⚠️ Sem isto a linha `[frame]` publicava `present/acquire-stall` como
+/// `total - encode`, e o encode só começa em `cpu_start` — **depois** do
+/// `tool-tick` e do flush de carimbo. O residuo se lia como *espera de GPU*
+/// enquanto continha trabalho de CPU: medido, `tick 3,31` de um "stall" de
+/// 7,91. Um numero derivado por subtração absorve tudo que ninguem mediu.
+pub(crate) fn note_acquire_wait(d: std::time::Duration) {
+    if frame_prof_on() {
+        FRAME_PROF_ACQUIRE_US.with(|c| c.set(c.get() + d.as_micros() as u64));
+        FRAME_PROF_ACQUIRE_N.with(|c| c.set(c.get() + 1));
+    }
 }
 
 /// O dreno do preview publicou `px` pixels neste quadro — o divisor do
@@ -7709,9 +7726,25 @@ impl crate::App {
                     0.0
                 };
                 let per = |sum: f64, n: u64| if n > 0 { sum / n as f64 } else { 0.0 };
+                // ⚠️ **A PARTIÇÃO DO QUADRO, com o acquire MEDIDO.** O residuo
+                // `total - encode` era publicado como "present/acquire-stall" e
+                // se lia como espera de GPU, mas o encode só começa em
+                // `cpu_start`: tudo antes dele (o `tool-tick`, o flush de
+                // carimbo, o pump de eventos) caía no residuo com o nome
+                // errado. Agora `acquire` é medido no sítio e `fora-do-encode`
+                // é o que sobra — CPU que o quadro paga e a linha escondia.
+                let acq_n = FRAME_PROF_ACQUIRE_N.with(std::cell::Cell::take);
+                let acq_us = FRAME_PROF_ACQUIRE_US.with(std::cell::Cell::take);
+                let acq_ms = if acq_n > 0 {
+                    acq_us as f64 / f64::from(acq_n) / 1000.0
+                } else {
+                    0.0
+                };
+                let outside_ms = (f64::from(total) - f64::from(encode) - acq_ms).max(0.0);
                 eprintln!(
                     "[frame] total={total:.2}ms (~{:.0} fps) | cpu-encode(raw)={encode:.2}ms \
-                     | present/acquire-stall={:.2}ms | painter-dispatch(cpu)={dispatch_ms:.2}ms \
+                     | acquire(medido)={acq_ms:.2}ms | fora-do-encode={outside_ms:.2}ms \
+                     | painter-dispatch(cpu)={dispatch_ms:.2}ms \
                      ({prev_mpx:.2} M px publicados em {prev_n} quadros) | hero-paint={hero_ms:.2}ms\n\
                      [frame]   tool-tick: media {tick_avg:.2}ms pico {tick_max:.2}ms em {tick_n}/120 frames \
                      | stamps: media {stamp_avg:.2}ms pico {stamp_max:.2}ms em {stamp_n}/120 \
@@ -7725,7 +7758,6 @@ impl crate::App {
                      (o custo por celula e CONSTANTE quando a agua fica lenta por TRABALHO, \
                      e sobe quando fica por CONTENCAO)",
                     1000.0 / f64::from(total).max(0.001),
-                    (f64::from(total) - f64::from(encode)).max(0.0),
                     per(sim_sum, sim_n),
                     per(comp_sum, comp_n),
                     per(wait_sum, wait_n),

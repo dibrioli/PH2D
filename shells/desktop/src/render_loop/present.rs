@@ -118,9 +118,18 @@ impl crate::App {
         // mouse-move stutter. The user opts into the non-blocking
         // `Immediate` mode via Config → Display to kill that stall.
         let work_before_acquire = cpu_start.elapsed();
+        // ⚠️ **A ESPERA DO ACQUIRE É MEDIDA, e antes desta linha ela não era.**
+        // O `[frame]` publicava `present/acquire-stall` como `total - encode` —
+        // uma SUBTRAÇÃO, não uma medição —, e o encode começa em `cpu_start`,
+        // depois do `tool-tick` e do flush de carimbo. Então o "stall" continha
+        // trabalho de CPU e se lia como espera de GPU: com `tick 3,31` de um
+        // "stall" de 7,91, a espera real é ~4,6 e a CPU trabalha ~12 ms de um
+        // quadro de 16,6 — não os 8,25 que a linha sugeria.
+        let acquire_t0 = Instant::now();
         match surface.acquire_frame() {
             Ok(frame) => {
                 let after_acquire = Instant::now();
+                super::note_acquire_wait(after_acquire.duration_since(acquire_t0));
                 // M14.5 — viewport / RT pipeline. Four GPU submissions
                 // each frame, all independent.
                 //

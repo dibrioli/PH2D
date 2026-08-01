@@ -5017,3 +5017,53 @@ uma poça 2× maior numa cena de traços cruzados — o custo acompanha a poça,
 **O que fica desta wave é o INSTRUMENTO**, e ele se pagou duas vezes: expôs o
 meu erro de fórmula (o `0.00 M`) e depois **fechou a frente sem trabalho de
 produto** — que é o melhor resultado que uma medição pode ter.
+
+---
+
+## §5.54 — O `stall` não era espera: era uma SUBTRAÇÃO com nome de medição (2026-08-01)
+
+Fechada a frente do dispatch, o maior item do quadro passou a ser o
+`cpu-encode(raw)` (8,25-10,02 ms). Antes de medi-lo, a primeira pergunta foi de
+onde vêm os OUTROS números da mesma linha — e a resposta derrubou uma frase que
+eu tinha acabado de escrever para o Enio.
+
+**`present/acquire-stall` era `total − encode`.** Uma subtração, não uma
+medição. E o `encode` (`frame_cpu_ms_ewma`) começa em **`cpu_start`**, que fica
+**depois** do `tool-tick`, do flush de carimbo e do pump de eventos — a linha 697
+do `render_loop` diz isso literalmente: *"Done before `cpu_start` so the re-stamp
+stays OUT of the encode window"*.
+
+⇒ **O resíduo continha trabalho de CPU sob um rótulo que diz *espera de GPU*.**
+Com `stall 7,91` e `tool-tick 3,31` no mesmo log, a espera real é **~4,6 ms** e a
+CPU trabalha **~12 ms** de um quadro de 16,6 — não os 8,25 que a linha sugeria.
+
+⚠️ **E eu li o 8,35 como ociosidade e reportei ao Enio que *"a CPU passa metade
+do quadro esperando o GPU"*.** Era o rótulo, não a máquina. *Um número derivado
+por subtração absorve tudo que ninguém mediu, e herda o nome de quem o
+publicou.*
+
+**A cura:** o `acquire_frame` passa a ser cronometrado **no sítio**
+(`note_acquire_wait`, em `present.rs`, dentro do braço `Ok`), e a linha publica
+uma partição de três que soma por construção:
+
+```text
+total | cpu-encode(raw) | acquire(medido) | fora-do-encode
+```
+
+onde `fora-do-encode = total − encode − acquire` é a CPU que o quadro paga
+**antes** da janela de encode — o `tool-tick`, o flush, o pump. Ela existia o
+tempo todo; só não tinha nome.
+
+⚠️ **O `cpu_total` do próprio present já excluía o acquire** (`work_before_acquire
++ work_after_acquire`), o que torna o encode uma medida honesta de CPU. O defeito
+nunca esteve nele — esteve em **chamar o resto de "stall"**.
+
+**Dois arch-gates, 2 mutações, 2 sangram** (uma em cada): tirar o cronômetro
+mata o primeiro; fazer o resíduo voltar a `total − encode` mata o segundo — e é
+essa segunda metade que impede a mentira de voltar em silêncio, porque os três
+números continuariam sendo impressos com um deles contendo o outro.
+
+**Aberto, e é o item 1 propriamente dito:** o `cpu-encode` continua sem split.
+Sabemos que `painter-dispatch` (3,9) e `hero-paint` (0,9) estão dentro dele, o
+que deixa **~3,4 ms sem dono**. O próximo log já dirá quanto do quadro é
+realmente espera — e se `fora-do-encode` for grande, o alvo não está no encode.

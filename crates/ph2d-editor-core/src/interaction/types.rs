@@ -457,6 +457,17 @@ pub const TIMELINE_EDGE_B: u8 = 1 << 3;
 pub const TIMELINE_STRIP_FADE_IN: u8 = 3;
 /// …and the fade grip at the end corner — see [`TIMELINE_STRIP_FADE_IN`].
 pub const TIMELINE_STRIP_FADE_OUT: u8 = 4;
+/// The fade **BAND** at the start edge — the striped wedge itself, not the grip on its tip.
+///
+/// The grip is a precision target for the fade's LENGTH; the band is the surface a
+/// right-click opens the fade's easing menu on (Enio, 2026-07-31: *"melhor que o menu
+/// apareça clicando em todo corpo da FADE"*). It exists because the grip is small, and
+/// because a crossfade between two overlapping strips has **no grip at all** — that fade is
+/// defined by the overlap, so its length is read-only and `hit_plan` refuses to register a
+/// handle for it. The band is the only surface that fade has.
+pub const TIMELINE_STRIP_FADE_BAND_IN: u8 = 7;
+/// …and the fade band at the end edge — see [`TIMELINE_STRIP_FADE_BAND_IN`].
+pub const TIMELINE_STRIP_FADE_BAND_OUT: u8 = 8;
 
 /// Accumulated wheel input over a timeline surface, drained by the panel. Three
 /// independent axes, split by modifier the way a dope sheet expects (plain =

@@ -63,8 +63,9 @@ pub use state::{InteractiveState, NamedPalette, WidgetStore};
 pub use types::{
     BlenderHitKind, BufferAction, GestureMods, GesturePhase, GraphGesture, GraphHitKind, GraphKey,
     GraphZoom, NoteData, PaletteIoKind, TIMELINE_EDGE_B, TIMELINE_EDGE_L, TIMELINE_EDGE_R,
-    TIMELINE_EDGE_T, TIMELINE_STRIP_FADE_IN, TIMELINE_STRIP_FADE_OUT, TL_NO_EASE_MODE,
-    TimelineGesture, TimelineHitKind, TimelineInterpPick, TimelineInterpScope, TimelineWheel,
+    TIMELINE_EDGE_T, TIMELINE_STRIP_FADE_BAND_IN, TIMELINE_STRIP_FADE_BAND_OUT,
+    TIMELINE_STRIP_FADE_IN, TIMELINE_STRIP_FADE_OUT, TL_NO_EASE_MODE, TimelineGesture,
+    TimelineHitKind, TimelineInterpPick, TimelineInterpScope, TimelineWheel,
 };
 // `ContextMenuKind`/`Request` live with `TrackMenuKind` (the menu-kind vocabulary).
 pub use types_menu::{ContextMenuKind, ContextMenuRequest, TrackMenuKind};

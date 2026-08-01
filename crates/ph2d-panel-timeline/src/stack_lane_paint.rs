@@ -266,7 +266,25 @@ fn paint_lane(
         })
         .flatten()
         .collect();
-    for (strip, edge, rect) in hit_plan(&spans, &eases, time_band) {
+    // **As FAIXAS de fade — a superfície que o menu de easing abre** (Enio, 2026-07-31).
+    // Vêm da MESMA porta que o pintor listra (`fade_bands`), senão o menu abriria onde nada
+    // foi desenhado. Registradas DEPOIS dos corpos e ANTES das quinas, então uma faixa
+    // ganha do corpo (é ela que se quer) e perde para os grips de aparar/esticar, que são
+    // alvos de precisão nas beiras.
+    //
+    // ⚠️ Numa SOBREPOSIÇÃO as faixas das duas strips se cruzam, e last-wins entrega a de
+    // quem CHEGA — que é exatamente a strip cuja `curve_in` governa aquele crossfade
+    // (`ClipLane::effective_curve`): a lane está ordenada por início, então a que chega é a
+    // que registra por último, e o alinhamento sai de graça em vez de ser mantido à mão.
+    let bands: Vec<(u64, u8, Rect)> = boxes
+        .iter()
+        .flat_map(|(s, body)| {
+            crate::strip_paint::fade_bands(s, view, *body)
+                .into_iter()
+                .map(|(edge, rect, _)| (s.id.0, edge, rect))
+        })
+        .collect();
+    for (strip, edge, rect) in hit_plan(&spans, &bands, &eases, time_band) {
         put_strip_hit(ctx, row, rect, index, strip, edge);
     }
 }
@@ -363,13 +381,22 @@ fn trim_cut_region(
 /// ([[feedback_disabled_button_still_dispatches]]).
 fn hit_plan(
     spans: &[(u64, Rect)],
+    bands: &[(u64, u8, Rect)],
     eases: &[(u64, u8, Rect, bool)],
     band: Rect,
 ) -> Vec<(u64, u8, Rect)> {
-    let mut out = Vec::with_capacity(spans.len() * 3 + eases.len());
+    let mut out = Vec::with_capacity(spans.len() * 3 + bands.len() + eases.len());
     for &(id, body) in spans {
         if let Some(r) = clipped(body, band) {
             out.push((id, 2, r));
+        }
+    }
+    // The fade BANDS sit between the bodies and the corner grips: a band outranks the body
+    // it is drawn on (that is the point — the menu is the band's whole reason to be hittable)
+    // and yields to the trim/stretch corners, which are the precision targets at the edges.
+    for &(id, edge, rect) in bands {
+        if let Some(r) = clipped(rect, band) {
+            out.push((id, edge, r));
         }
     }
     for &(id, body) in spans {

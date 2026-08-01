@@ -483,9 +483,32 @@ fn right_clicking_a_fade_opens_the_easing_menu_and_the_body_still_opens_the_stri
     use crate::interaction::{
         ContextMenuKind, TIMELINE_STRIP_FADE_IN, TIMELINE_STRIP_FADE_OUT, TimelineInterpScope,
     };
-    // `edge` -> the menu that zone must open. The two fade zones normalise to the
-    // document's edge vocabulary (`0` start, `1` end) on the way through.
+    use crate::interaction::{TIMELINE_STRIP_FADE_BAND_IN, TIMELINE_STRIP_FADE_BAND_OUT};
+    // `edge` -> the menu that zone must open. The four fade zones — the two GRIPS on the
+    // wedge tips and the two BANDS (the wedge itself) — normalise to the document's edge
+    // vocabulary (`0` start, `1` end) on the way through. The bands matter most: the grip
+    // is small, and a crossfade defined by an overlap has NO grip at all.
     for (zone, want) in [
+        (
+            TIMELINE_STRIP_FADE_BAND_IN,
+            ContextMenuKind::TimelineSegment {
+                scope: TimelineInterpScope::StripFade {
+                    lane: 2,
+                    strip: 9,
+                    edge: 0,
+                },
+            },
+        ),
+        (
+            TIMELINE_STRIP_FADE_BAND_OUT,
+            ContextMenuKind::TimelineSegment {
+                scope: TimelineInterpScope::StripFade {
+                    lane: 2,
+                    strip: 9,
+                    edge: 1,
+                },
+            },
+        ),
         (
             TIMELINE_STRIP_FADE_IN,
             ContextMenuKind::TimelineSegment {

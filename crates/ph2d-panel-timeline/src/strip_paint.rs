@@ -19,7 +19,9 @@ use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
 use ph2d_vector::{Affine, BezPath, Color, Fill, Stroke};
 
 use crate::graph::TimeView;
-use crate::stack_ease_grip::{EASE_BAR_W, EASE_IN, EASE_OUT, blend_px, strip_grips};
+use crate::stack_ease_grip::{
+    BAND_IN, BAND_OUT, EASE_BAR_W, EASE_IN, EASE_OUT, blend_px, strip_grips,
+};
 use crate::stack_lane_paint::EDGE_W;
 
 /// Below this, a rate is real time and the strip says nothing about it.
@@ -150,53 +152,11 @@ pub(crate) fn paint_strip(
 
     // **The fade areas are LISTRADAS (gray-striped)** so the crossfade reads at a glance
     // (Enio, 2026-07-16). A window at an end means the strip is fading there — into its
-    // neighbour if it has one (the overlap), out of nothing if it does not.
-    for (t_from, secs, fade) in [
-        (s.t_start, s.blend_in, fade_in_curve(s)),
-        (s.t_end - s.blend_out, s.blend_out, fade_out_curve(s)),
-    ] {
-        if secs <= 0.0 {
-            continue;
-        }
-        let a = view.x(t_from).max(body.x);
-        let b = view.x(t_from + secs).min(body.x + body.w);
-        if b > a {
-            paint_fade_region(ctx, theme, Rect::new(a, body.y, b - a, body.h), fade);
-        }
-    }
-
-    // **The OUTWARD fade-in area — the travel band in the gap BEFORE the strip.** It sits
-    // to the LEFT of the box (over empty lane time), striped like any fade. It reads as
-    // "this clip's entry reaches back here": the object crosses from the previous strip's
-    // pose to this clip's first frame over this band, then the clip plays clean.
-    if s.lead_in > 0.0 {
-        let a = view.x(s.t_start - s.lead_in);
-        let b = view.x(s.t_start);
-        if b > a {
-            paint_fade_region(
-                ctx,
-                theme,
-                Rect::new(a, body.y, b - a, body.h),
-                fade_in_curve(s),
-            );
-        }
-    }
-
-    // **The OUTWARD fade-out area — the travel band in the gap AFTER the strip** (Enio,
-    // 2026-07-19), the mirror of the lead-in band above. It sits to the RIGHT of the box:
-    // the clip plays to its last frame, then the object crosses from there to the next
-    // strip's start over this band.
-    if s.lead_out > 0.0 {
-        let a = view.x(s.t_end);
-        let b = view.x(s.t_end + s.lead_out);
-        if b > a {
-            paint_fade_region(
-                ctx,
-                theme,
-                Rect::new(a, body.y, b - a, body.h),
-                fade_out_curve(s),
-            );
-        }
+    // neighbour if it has one (the overlap), out of nothing if it does not; the two OUTWARD
+    // bands live in the gap BESIDE the box, where the object travels while the clip holds a
+    // frozen frame. All four come from [`fade_bands`], the same door the hit index reads.
+    for (_, rect, fade) in fade_bands(s, view, body) {
+        paint_fade_region(ctx, theme, rect, fade);
     }
 
     // **The change bars** — what each corner's last edit DID, still on screen long
@@ -337,6 +297,64 @@ fn paint_fade_region(ctx: &mut PaintCtx, theme: Theme, rect: Rect, curve: FadeCu
     paint_fade_curve(ctx, theme, rect, curve);
 }
 
+/// **As quatro faixas de fade de um strip, em pixels** — a porta ÚNICA que o pintor listra e
+/// que o índice de hit registra.
+///
+/// Duas respostas para *"onde está o fade?"* seriam um menu que abre onde nada foi desenhado
+/// (ou pior, uma listra que não aceita clique). O `edge` é o código de ZONA da faixa
+/// (`TIMELINE_STRIP_FADE_BAND_IN`/`_OUT`), e vem daqui em vez de ser escolhido pelo chamador
+/// pela mesma razão.
+///
+/// As duas faixas de DENTRO são recortadas ao corpo; as de FORA vivem no vão ao lado dele.
+/// Faixa de largura zero não entra na lista: uma faixa que não se vê não se clica.
+pub(crate) fn fade_bands(
+    s: &ph2d_timeline::StripView,
+    view: TimeView,
+    body: Rect,
+) -> Vec<(u8, Rect, FadeCurve)> {
+    let mut out = Vec::with_capacity(4);
+    let mut push = |a: f32, b: f32, edge: u8, fade: FadeCurve| {
+        if b > a {
+            out.push((edge, Rect::new(a, body.y, b - a, body.h), fade));
+        }
+    };
+    // INWARD, clipped to the box.
+    if s.blend_in > 0.0 {
+        push(
+            view.x(s.t_start).max(body.x),
+            view.x(s.t_start + s.blend_in).min(body.x + body.w),
+            BAND_IN,
+            fade_in_curve(s),
+        );
+    }
+    if s.blend_out > 0.0 {
+        push(
+            view.x(s.t_end - s.blend_out).max(body.x),
+            view.x(s.t_end).min(body.x + body.w),
+            BAND_OUT,
+            fade_out_curve(s),
+        );
+    }
+    // OUTWARD, in the gap beside the box.
+    if s.lead_in > 0.0 {
+        push(
+            view.x(s.t_start - s.lead_in),
+            view.x(s.t_start),
+            BAND_IN,
+            fade_in_curve(s),
+        );
+    }
+    if s.lead_out > 0.0 {
+        push(
+            view.x(s.t_end),
+            view.x(s.t_end + s.lead_out),
+            BAND_OUT,
+            fade_out_curve(s),
+        );
+    }
+    out
+}
+
 /// The start edge's fade, whichever side of the edge it lives on.
 ///
 /// The INWARD band (`blend_in`, inside the box) and the OUTWARD one (`lead_in`, out in the
@@ -365,7 +383,7 @@ fn fade_out_curve(s: &ph2d_timeline::StripView) -> FadeCurve {
 /// it), and it is passed rather than inferred from the rect because the two outward bands
 /// live OUTSIDE the strip's box: there is nothing in the geometry that says which way the
 /// weight goes.
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub(crate) struct FadeCurve {
     /// The easing that shapes it — `None` is the factory `smoothstep`. Already the
     /// EFFECTIVE curve (`StripView::curve_in`): an overlap-defined window arrives as `None`

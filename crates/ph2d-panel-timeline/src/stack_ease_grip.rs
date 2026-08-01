@@ -39,6 +39,14 @@ pub(crate) const EASE_BAR_W: f32 = 2.0; // LITERAL-PX-OK: uma linha, como o tra�
 pub(crate) const EASE_IN: u8 = ph2d_editor_core::interaction::TIMELINE_STRIP_FADE_IN;
 /// …and the fade-out grip (its end corner).
 pub(crate) const EASE_OUT: u8 = ph2d_editor_core::interaction::TIMELINE_STRIP_FADE_OUT;
+/// Hit code for the fade BAND at the start edge — the striped wedge itself.
+///
+/// The grip is the precision target for the fade's LENGTH; the band is the surface its
+/// easing MENU opens on. A crossfade defined by an overlap has no grip at all (its length is
+/// read-only, so `hit_plan` refuses to register one) — the band is the only surface it has.
+pub(crate) const BAND_IN: u8 = ph2d_editor_core::interaction::TIMELINE_STRIP_FADE_BAND_IN;
+/// …and the band at the end edge — see [`BAND_IN`].
+pub(crate) const BAND_OUT: u8 = ph2d_editor_core::interaction::TIMELINE_STRIP_FADE_BAND_OUT;
 
 /// **Both fade grips of one strip, placed together** — because they CONSTRAIN each other.
 ///

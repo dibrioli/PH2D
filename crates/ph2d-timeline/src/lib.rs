@@ -56,6 +56,7 @@ pub mod stack_edit;
 mod stack_eval;
 mod stack_frames;
 mod stack_hold;
+mod stack_weight;
 pub mod state;
 mod strip_edge_edit;
 

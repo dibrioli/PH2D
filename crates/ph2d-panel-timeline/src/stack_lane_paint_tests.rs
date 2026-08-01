@@ -47,7 +47,12 @@ fn rest_grips(id: u64, body: Rect, locked: (bool, bool)) -> Vec<(u64, u8, Rect, 
 #[test]
 fn the_corners_split_stretch_top_from_trim_bottom_and_the_fade_grip_survives() {
     let body = Rect::new(150.0, 60.0, 100.0, 20.0); // [150, 250), y [60, 80), mid 70
-    let plan = hit_plan(&[(1, body)], &rest_grips(1, body, (false, false)), band());
+    let plan = hit_plan(
+        &[(1, body)],
+        &[],
+        &rest_grips(1, body, (false, false)),
+        band(),
+    );
 
     // Left edge: TOP is stretch-start (green), BOTTOM is trim-start (red).
     assert_eq!(hit(&plan, 152.0, 62.0), Some((1, 5)), "top-left STRETCHES");
@@ -80,7 +85,12 @@ fn the_corners_split_stretch_top_from_trim_bottom_and_the_fade_grip_survives() {
 fn a_fade_defined_by_a_neighbour_is_painted_but_not_grabbable() {
     let body = Rect::new(150.0, 60.0, 100.0, 20.0);
     // The START is locked (a neighbour overlaps it); the END is the strip's own.
-    let plan = hit_plan(&[(1, body)], &rest_grips(1, body, (true, false)), band());
+    let plan = hit_plan(
+        &[(1, body)],
+        &[],
+        &rest_grips(1, body, (true, false)),
+        band(),
+    );
 
     assert!(
         !plan.iter().any(|(_, e, _)| *e == EASE_IN),
@@ -104,7 +114,12 @@ fn a_fade_defined_by_a_neighbour_is_painted_but_not_grabbable() {
 fn a_strip_too_narrow_for_the_fade_keeps_its_corners() {
     let tiny = Rect::new(150.0, 60.0, 20.0, 20.0); // < 2 * (EASE_REST_X + EASE_W)
     assert!(ease_grips(tiny, 0.0, 0.0).is_none());
-    let plan = hit_plan(&[(1, tiny)], &rest_grips(1, tiny, (false, false)), band());
+    let plan = hit_plan(
+        &[(1, tiny)],
+        &[],
+        &rest_grips(1, tiny, (false, false)),
+        band(),
+    );
     assert!(
         !plan.iter().any(|(_, e, _)| *e == EASE_IN || *e == EASE_OUT),
         "no fade grips on a strip this small"
@@ -125,7 +140,7 @@ fn a_strip_too_narrow_for_the_fade_keeps_its_corners() {
 fn the_left_strips_end_edge_survives_the_overlap_that_makes_the_crossfade() {
     let a = Rect::new(150.0, 60.0, 100.0, 20.0); // A: [150, 250)
     let b = Rect::new(200.0, 60.0, 100.0, 20.0); // B: [200, 300) — 50 px of overlap
-    let plan = hit_plan(&[(1, a), (2, b)], &[], band());
+    let plan = hit_plan(&[(1, a), (2, b)], &[], &[], band());
 
     assert_eq!(
         hit(&plan, 248.0, 70.0),
@@ -150,7 +165,7 @@ fn the_left_strips_end_edge_survives_the_overlap_that_makes_the_crossfade() {
 #[test]
 fn a_strip_that_starts_before_the_view_never_reaches_the_label_column() {
     let straddling = Rect::new(-300.0, 60.0, 600.0, 20.0); // starts far left
-    let plan = hit_plan(&[(1, straddling)], &[], band());
+    let plan = hit_plan(&[(1, straddling)], &[], &[], band());
 
     assert!(
         hit(&plan, 20.0, 70.0).is_none(),
@@ -173,7 +188,7 @@ fn a_strip_that_starts_before_the_view_never_reaches_the_label_column() {
 #[test]
 fn no_hit_rect_ever_escapes_the_band() {
     let over = Rect::new(120.0, 20.0, 600.0, 20.0); // above the band, and too wide
-    for (_, _, r) in hit_plan(&[(1, over)], &[], band()) {
+    for (_, _, r) in hit_plan(&[(1, over)], &[], &[], band()) {
         let b = band();
         assert!(
             r.x >= b.x && r.y >= b.y && r.x + r.w <= b.x + b.w && r.y + r.h <= b.y + b.h,
@@ -229,7 +244,7 @@ fn a_fade_grip_never_steals_a_neighbours_corner_grip() {
     let b = Rect::new(156.0, 60.0, 120.0, 20.0); // [156, 276) — a borda de B cai DENTRO de A
     let mut eases = rest_grips(1, a, (false, false));
     eases.extend(rest_grips(2, b, (false, false)));
-    let plan = hit_plan(&[(1, a), (2, b)], &eases, band());
+    let plan = hit_plan(&[(1, a), (2, b)], &[], &eases, band());
 
     // Os cantos iniciais de B ocupam [156, 162). Nada de A (nem sua alça de fade) pode
     // roubá-los: STRETCH no topo, TRIM embaixo.
@@ -379,7 +394,7 @@ fn an_outward_fade_grip_just_past_the_edge_is_still_grabbable() {
     );
 
     let eases = vec![(1, EASE_IN, a, false), (1, EASE_OUT, b, false)];
-    let plan = hit_plan(&[(1, body)], &eases, band());
+    let plan = hit_plan(&[(1, body)], &[], &eases, band());
     assert!(
         plan.iter().any(|(_, e, _)| *e == EASE_IN),
         "a alça de entrada tem de estar REGISTRADA (não derrubada pela quina): {plan:?}"
@@ -404,7 +419,7 @@ fn an_outward_fade_grip_just_past_the_edge_is_still_grabbable() {
 #[test]
 fn the_corner_highlight_asks_for_the_edge_the_hit_plan_registers() {
     let body = Rect::new(150.0, 60.0, 100.0, 20.0);
-    let plan = hit_plan(&[(1, body)], &[], band());
+    let plan = hit_plan(&[(1, body)], &[], &[], band());
     for (stretch, edge, x, y) in [
         (true, 0u8, 152.0, 62.0),  // topo-esquerda: stretch-start
         (true, 1u8, 248.0, 62.0),  // topo-direita: stretch-end
@@ -426,3 +441,45 @@ fn the_corner_highlight_asks_for_the_edge_the_hit_plan_registers() {
 // UM ADD (`stack_add_header::add_kind`, Enio 2026-07-21) e ele toma a tira inteira — com um
 // botão só o esmagamento do rótulo longo não é sequer expressável. Os gates que substituem
 // este vivem em `stack_add_header.rs`.
+
+// ── As FAIXAS de fade: a superfície do menu de easing (Enio, 2026-07-31) ────
+
+/// **Uma faixa de fade GANHA do corpo e PERDE para as quinas.**
+///
+/// As duas metades importam e são o desenho inteiro da ordem: ganhar do corpo é a razão de a
+/// faixa ser clicável (o menu do fade em vez do menu do strip), e perder para as quinas é o
+/// que impede a faixa de roubar o aparar/esticar — que são alvos de precisão nas beiras, e
+/// que o artista acerta muito mais vezes por dia.
+#[test]
+fn a_fade_band_outranks_the_body_and_yields_to_the_corners() {
+    let body = Rect::new(150.0, 60.0, 240.0, 20.0);
+    let band_in = Rect::new(150.0, 60.0, 60.0, 20.0); // a cunha de entrada, sobre o corpo
+    let plan = hit_plan(&[(1, body)], &[(1, 7, band_in)], &[], band());
+    // last-wins: quem vier DEPOIS ganha o pixel.
+    let pos = |edge: u8| plan.iter().position(|(_, e, _)| *e == edge);
+    assert!(
+        pos(7) > pos(2),
+        "a faixa tem de vir depois do corpo — senão o menu do fade nunca abre"
+    );
+    assert!(
+        pos(0) > pos(7) && pos(5) > pos(7),
+        "e ANTES das quinas de aparar/esticar, que são os alvos de precisão"
+    );
+}
+
+/// **A faixa é recortada à banda de tempo, como tudo o mais.**
+///
+/// Uma cunha de um strip que começa fora da tela à esquerda não pode registrar hit sobre a
+/// coluna de labels — é lá que moram os nomes das lanes.
+#[test]
+fn a_fade_band_is_clipped_to_the_time_band() {
+    let body = Rect::new(-100.0, 60.0, 400.0, 20.0);
+    let wedge = Rect::new(-100.0, 60.0, 150.0, 20.0);
+    let plan = hit_plan(&[(1, body)], &[(1, 7, wedge)], &[], band());
+    for (_, _, r) in &plan {
+        assert!(
+            r.x >= band().x - 0.001,
+            "hit em {r:?} invade a coluna de labels"
+        );
+    }
+}

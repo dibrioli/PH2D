@@ -94,6 +94,7 @@ pub(super) fn handle_down_menus(
         let timeline_menu = hit_id
             .and_then(|id| store.timeline_surface_at_id(id))
             .and_then(|(_, kind)| {
+                use crate::interaction as z;
                 use crate::interaction::{TimelineHitKind as K, TimelineInterpScope as S};
                 match kind {
                     K::Key { target, key } | K::CurveAnchor { target, key } => {
@@ -122,7 +123,10 @@ pub(super) fn handle_down_menus(
                     // is the easing catalogue (Enio, 2026-07-31). The zone the pointer is
                     // in is the whole question, and it already rode in on the hit.
                     K::Strip { lane, strip, edge } => Some(match edge {
-                        crate::interaction::TIMELINE_STRIP_FADE_IN => {
+                        // The GRIP on a wedge's tip, or the wedge's whole BAND — the same
+                        // fade either way, normalised to the document's edge vocabulary so
+                        // nothing downstream learns the panel's zone numbering.
+                        z::TIMELINE_STRIP_FADE_IN | z::TIMELINE_STRIP_FADE_BAND_IN => {
                             ContextMenuKind::TimelineSegment {
                                 scope: S::StripFade {
                                     lane,
@@ -131,7 +135,7 @@ pub(super) fn handle_down_menus(
                                 },
                             }
                         }
-                        crate::interaction::TIMELINE_STRIP_FADE_OUT => {
+                        z::TIMELINE_STRIP_FADE_OUT | z::TIMELINE_STRIP_FADE_BAND_OUT => {
                             ContextMenuKind::TimelineSegment {
                                 scope: S::StripFade {
                                     lane,

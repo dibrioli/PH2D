@@ -209,3 +209,62 @@ fn a_sliver_of_a_fade_draws_no_curve() {
         .is_empty()
     );
 }
+
+/// **O que se LISTRA é o que se CLICA** — a porta única das faixas.
+///
+/// O pintor desenha `fade_bands` e o índice de hit registra `fade_bands`. Duas respostas
+/// para *"onde está o fade?"* seriam um menu que abre sobre tela vazia, ou uma listra que
+/// não aceita clique — e nenhuma das duas falha um teste que só olhe um dos lados.
+#[test]
+fn every_striped_band_is_a_band_the_pointer_can_reach() {
+    let (view, body) = (view(), Rect::new(300.0, 60.0, 200.0, 20.0));
+    let mut s = strip([0.0; 4]); // [2, 4) -> corpo [300, 500)
+    s.blend_in = 0.5;
+    s.blend_out = 0.5;
+    s.lead_in = 0.0; // exclusivo com o blend_in
+    s.lead_out = 0.5;
+    let bands = crate::strip_paint::fade_bands(&s, view, body);
+    // Três faixas: as duas de dentro e a de fora na cauda.
+    assert_eq!(bands.len(), 3, "faixas desenhadas: {bands:?}");
+    // Cada uma leva o código de ZONA da sua borda — é ele que o menu lê.
+    let codes: Vec<u8> = bands.iter().map(|&(e, _, _)| e).collect();
+    assert!(codes.contains(&crate::stack_ease_grip::BAND_IN));
+    assert!(codes.contains(&crate::stack_ease_grip::BAND_OUT));
+    // E a de FORA vive além do fim do strip — no vão, onde não há corpo por baixo.
+    let (_, out_gap, _) = bands
+        .iter()
+        .find(|(e, r, _)| *e == crate::stack_ease_grip::BAND_OUT && r.x >= view.x(4.0) - 0.001)
+        .expect("a faixa de fora tem de existir e viver no vão");
+    assert!(out_gap.w > 0.0);
+}
+
+/// **Faixa de largura zero não entra na lista.** Uma faixa que não se vê não se clica — e
+/// registrá-la seria um hit invisível roubando o clique do corpo.
+///
+/// Duas maneiras de ter largura zero, e são casos DIFERENTES: o strip sem fade nenhum (os
+/// campos em `0`), e — o que o guard de pixels defende — um fade que EXISTE em segundos e
+/// mede zero pixels neste zoom. O segundo é o que acontece de verdade: afaste o suficiente e
+/// meio segundo de fade colapsa numa coluna.
+#[test]
+fn a_band_with_no_width_is_not_offered() {
+    let body = Rect::new(300.0, 60.0, 200.0, 20.0);
+    // (a) sem fade nenhum.
+    let s = strip([0.0; 4]);
+    assert!(crate::strip_paint::fade_bands(&s, view(), body).is_empty());
+
+    // (b) fade REAL, zoom em que ele não mede um pixel.
+    let far = TimeView {
+        time_x: 100.0,
+        right: 900.0,
+        view_start: 0.0,
+        px_per_s: 1e-9,
+    };
+    let mut s = strip([0.0; 4]);
+    s.blend_in = 0.5;
+    s.blend_out = 0.5;
+    s.lead_out = 0.5;
+    assert!(
+        crate::strip_paint::fade_bands(&s, far, body).is_empty(),
+        "meio segundo de fade que não mede um pixel não é uma faixa clicável"
+    );
+}

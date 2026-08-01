@@ -129,21 +129,44 @@ fn overlapping_two_strips_creates_the_crossfade() {
 /// to prevent, and what lets a partial clip (one that keys X but not Y) blend
 /// correctly with no mask.
 ///
-/// It holds because smoothstep is antisymmetric about its midpoint:
-/// `s(1 - u) == 1 - s(u)`.
+/// ⚠️ It used to hold because smoothstep is antisymmetric about its midpoint
+/// (`s(1 - u) == 1 - s(u)`) — an ACCIDENT of the factory curve, and the reason an
+/// authored curve was refused inside an overlap. It now holds **by construction**: a
+/// crossfade is one traversal shaped by ONE curve (the arriving strip's), and the
+/// departing side is that curve's explicit complement.
+///
+/// So the sweep runs with an **asymmetric** curve too, and that half is the load-bearing
+/// one: under the old model `Bounce Out` on one side made the pair sum to ~0.5 in places
+/// and the pose sagged toward the lanes below. A gate that only swept the default would
+/// stay green through exactly that regression.
 #[test]
 fn the_crossfade_weights_sum_to_exactly_one_through_the_whole_overlap() {
-    let mut lane = ClipLane::new("Base");
-    lane.insert(strip(0.0)); // [0, 2)
-    lane.insert(strip(1.0)); // [1, 3)
+    use ph2d_timeline::{Easing, EasingFamily, EasingMode};
+    for curve in [
+        None,
+        Some(Easing {
+            family: EasingFamily::Bounce,
+            mode: EasingMode::Out,
+        }),
+        Some(Easing {
+            family: EasingFamily::Back,
+            mode: EasingMode::In,
+        }),
+    ] {
+        let mut lane = ClipLane::new("Base");
+        lane.insert(strip(0.0)); // [0, 2)
+        let mut b = strip(1.0); // [1, 3)
+        b.curve_in = curve; // the ARRIVING strip governs the crossfade
+        lane.insert(b);
 
-    for step in 0..=100 {
-        let t = 1.0 + f64::from(step) * 0.01; // sweep the overlap [1, 2]
-        let sum = lane.weight_at(0, t) + lane.weight_at(1, t);
-        assert!(
-            (sum - 1.0).abs() < 1e-12,
-            "weights sum to {sum} at t={t}, not 1 — the blend would sag"
-        );
+        for step in 0..=100 {
+            let t = 1.0 + f64::from(step) * 0.01; // sweep the overlap [1, 2]
+            let sum = lane.weight_at(0, t) + lane.weight_at(1, t);
+            assert!(
+                (sum - 1.0).abs() < 1e-12,
+                "weights sum to {sum} at t={t} under {curve:?}, not 1 — the blend would sag"
+            );
+        }
     }
 }
 

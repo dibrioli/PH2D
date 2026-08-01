@@ -143,13 +143,20 @@ fn with_no_loop_the_head_fade_keeps_its_own_curve() {
     );
 }
 
-/// **A curva autorada NÃO alcança um crossfade de SOBREPOSIÇÃO**, e é a mesma lei que o
-/// `ease_in`/`ease_out` já obedece: ali a sobreposição É o blend, e os dois pesos precisam
-/// somar exatamente 1 (o que vale porque `smoothstep(1−u) == 1−smoothstep(u)`). Uma curva
-/// assimétrica de um lado só faria a lane somar menos que 1 no meio do crossfade e a pose
-/// afundaria para as lanes de baixo.
+/// **Numa SOBREPOSIÇÃO a curva alcança o crossfade — e ele continua somando 1.**
+///
+/// A decisão ANTIGA era recusá-la ali (a complementaridade valia por acidente:
+/// `smoothstep(1−u) == 1−smoothstep(u)`), e ela caiu quando o Enio pediu o menu no corpo
+/// INTEIRO do fade — inclusive o de duas strips sobrepostas, que não tem cunha. Um menu que
+/// autora um número que ninguém lê é o item morto que este projeto bane, então a saída foi
+/// tomar o complemento **explicitamente**: uma travessia, uma curva, e o lado que sai é
+/// `1 − c(u)` — exato para QUALQUER curva.
+///
+/// ⚠️ A metade que prova que a lei não se perdeu mora no `clip_stack.rs`
+/// (`the_crossfade_weights_sum_to_exactly_one_through_the_whole_overlap`, agora varrendo
+/// curvas ASSIMÉTRICAS). Aqui prova-se só que a curva de fato MOLDA.
 #[test]
-fn an_overlap_crossfade_ignores_the_authored_curve() {
+fn an_overlap_crossfade_wears_the_arriving_strips_curve() {
     let build = |curve: Option<Easing>| {
         let mut sim = SimWorld::new();
         let bits = sim
@@ -167,10 +174,9 @@ fn an_overlap_crossfade_ignores_the_authored_curve() {
         key(doc, bits, PropKind::TranslationX, 4.0, 5.0);
         doc.set_active(0);
         let lane = doc.add_lane("L".into()).unwrap();
-        let a = doc.add_strip(lane, 0, 0.0, 4.0).unwrap();
+        doc.add_strip(lane, 0, 0.0, 4.0).unwrap();
         let b = doc.add_strip(lane, c2, 3.0, 7.0).unwrap(); // 1 s de SOBREPOSIÇÃO
-        doc.strip_mut(lane, a).unwrap().curve_out = curve;
-        doc.strip_mut(lane, b).unwrap().curve_in = curve;
+        doc.strip_mut(lane, b).unwrap().curve_in = curve; // quem CHEGA governa
         (sim, st, bits)
     };
     let (mut sim, mut st, bits) = build(None);
@@ -178,9 +184,21 @@ fn an_overlap_crossfade_ignores_the_authored_curve() {
     let (mut sim, mut st, bits) = build(Some(LINEAR));
     let curved = x_at(&mut sim, &mut st, bits, 3.25);
     assert!(
-        (curved - plain).abs() < 1e-9,
-        "a sobreposição É o blend: a curva autorada não pode entrar nela — \
-         plain={plain} curved={curved}"
+        (curved - plain).abs() > 0.05,
+        "a curva de quem chega tem de moldar o crossfade: plain={plain} curved={curved}"
+    );
+
+    // …e a de quem PARTE não governa: uma travessia, uma curva.
+    let (mut sim, mut st, bits) = build(None);
+    {
+        let lane = 0;
+        let a = st.doc.stack()[lane].strips[0].id;
+        st.doc.strip_mut(lane, a).unwrap().curve_out = Some(LINEAR);
+    }
+    let departing = x_at(&mut sim, &mut st, bits, 3.25);
+    assert!(
+        (departing - plain).abs() < 1e-9,
+        "a curva de SAÍDA de quem parte não pode governar: {departing} vs {plain}"
     );
 }
 
@@ -263,13 +281,12 @@ fn the_intent_reaches_the_pose() {
     );
 }
 
-/// **O snapshot reporta a curva EFETIVA, não a autorada** — e é o que o painel desenha.
+/// **O snapshot reporta a curva EFETIVA** — e é ela que o painel desenha dentro da cunha.
 ///
-/// Onde uma SOBREPOSIÇÃO define a janela, o avaliador ignora a curva autorada (a
-/// complementaridade do crossfade é load-bearing — o gate acima o prova). Se o snapshot
-/// entregasse a autorada mesmo assim, o painel desenharia dentro da cunha uma curva que o
-/// blend não usa: uma mentira que **nenhum gate sobre o modelo pode ver**, porque o modelo
-/// está certo. Aqui a mesma curva é autorada nas duas bordas e só a livre sobrevive.
+/// As duas bordas de uma sobreposição mostram a MESMA curva (a de quem chega), porque é UMA
+/// travessia; fora dela, cada borda mostra a sua. Se o snapshot entregasse a autorada de cada
+/// strip, o painel desenharia no lado que PARTE uma curva que o blend não usa: uma mentira
+/// que **nenhum gate sobre o modelo pode ver**, porque o modelo está certo.
 #[test]
 fn the_snapshot_reports_the_curve_the_blend_actually_uses() {
     use ph2d_core::Playhead;
@@ -280,11 +297,11 @@ fn the_snapshot_reports_the_curve_the_blend_actually_uses() {
     let a = doc.add_strip(lane, 0, 0.0, 4.0).unwrap();
     let b = doc.add_strip(lane, c2, 3.0, 7.0).unwrap(); // 1 s de SOBREPOSIÇÃO
     {
-        // A: a saída está sobreposta pelo vizinho, a entrada é livre.
+        // A entrada de A é LIVRE; a saída dela é a sobreposição, governada por B.
         let s = doc.strip_mut(lane, a).unwrap();
         s.ease_in = 0.5;
         s.curve_in = Some(LINEAR);
-        s.curve_out = Some(LINEAR);
+        s.curve_out = None;
     }
     doc.strip_mut(lane, b).unwrap().curve_in = Some(LINEAR);
 
@@ -294,14 +311,16 @@ fn the_snapshot_reports_the_curve_the_blend_actually_uses() {
     assert_eq!(
         strips[0].curve_in,
         Some(LINEAR),
-        "a borda LIVRE tem de reportar a curva autorada"
+        "a borda LIVRE reporta a curva autorada nela"
     );
     assert_eq!(
-        strips[0].curve_out, None,
-        "a borda SOBREPOSTA tem de reportar a de fábrica — é ela que o blend usa"
+        strips[0].curve_out,
+        Some(LINEAR),
+        "a saída SOBREPOSTA reporta a de quem CHEGA — é ela que molda a travessia"
     );
     assert_eq!(
-        strips[1].curve_in, None,
-        "e o outro lado da mesma sobreposição também"
+        strips[1].curve_in,
+        Some(LINEAR),
+        "e o outro lado da mesma sobreposição reporta a mesma"
     );
 }

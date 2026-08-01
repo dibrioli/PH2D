@@ -8468,3 +8468,80 @@ solver. **Zero schema, zero componente, zero id, zero ADR.**
 sobre o dot que não segue o mouse:** ele media o `Transform` — que de fato anda —
 e **nunca perguntava onde a alça é desenhada**. Reescrito para exigir que cada
 lado siga o próprio arrasto.
+
+---
+
+## W-Signal — uma colisão FAZ alguma coisa acontecer (2026-08-01, cena `=73`)
+
+O **consumidor de gameplay** estava aberto desde o W7, e a nota dele dizia
+*"cross-line, decisão do Enio"*. ⚠️ **A decisão já estava tomada e ESCRITA no
+produto**, no ponto onde o `render_loop` drena os sinais da timeline (ADR-0143):
+
+> *"v1 consumer: a toast — the visible proof the decoupled channel round-trips.
+> **Audio/gameplay/Luau are the deferred cross-line consumers of the SAME
+> outbox**; the timeline emits an event and never calls any of them (ADR-0075)."*
+
+Então o consumidor **existe**; quem faltava era o **PUBLICADOR**. Esta wave não
+inventa um segundo barramento.
+
+### O desenho
+
+`SignalOnHit(String)` carrega um **NOME**, e a física nunca sabe quem escuta — o
+dia em que houver um script Luau ou uma pista de áudio ouvindo, nada aqui muda.
+Componente próprio ⇒ **zero bump de schema** (o precedente do `PhysicsJoint`/W3).
+
+**Duas fontes de chegada, uma porta:** um contato que COMEÇA (canal por TICK) e
+algo que ENTRA num sensor — **canal NOVO**, porque o mapa de trigger era o
+conjunto PERMANENTE e não tinha transições. Sem ele a **PORTA** — o caso canônico
+de gameplay — ficaria em silêncio: um sensor é atravessado, então nunca gera
+contato.
+
+⚠️ **A porta é DERIVADA dos canais que já existem, nunca uma terceira lista:** uma
+segunda resposta a *o que aconteceu neste quadro* descreveria, no dia em que
+discordassem, uma colisão que a tela não desenhou. Com isso ela herda de graça
+toda a disciplina que eles pagaram.
+
+⚠️ **CHEGADA, nunca saída** (o mesmo nome nos dois extremos seria ambíguo) · **a
+física não importa o tipo de sinal da timeline** (o SHELL funde as duas fontes) ·
+**drenado DEPOIS do dispatch** (lá em cima entregaria o quadro anterior).
+
+**Autoria:** row de texto *"Signal on hit…"* na §11, ao lado das rows de COLISÃO —
+ela responde *"e daí?"* à pergunta que Trigger/One-Way fazem. Pelo pipeline
+canônico de componente, porque o valor é uma **string**.
+
+### ⚠️ Duas coisas que a medição corrigiu, as duas minhas
+
+1. **A sonda achou um VAZAMENTO no meu próprio código.** O `rebuild_triggers` tem
+   um early-out quando nada sobrepõe, e a v1 do diff ficava DEPOIS dele ⇒
+   `trigger_events` guardava o último evento e era re-emitido para sempre: uma
+   bala a 60 m/s disparava a porta **58 vezes em 60 ticks**. *Um early-out que
+   pula uma limpeza não é um atalho, é um vazamento.* Virou gate.
+2. **Eu escrevi um número e a medição o desmentiu.** O doc dizia que o diff
+   por-dispatch fica cego a `2h/dt` (**60 m/s** para o sensor da sonda). Medido:
+   ele ainda dispara a **280** e só cega a **320** — cinco vezes a margem
+   prevista, porque a fase LARGA trabalha com AABBs **preditas** e o par entra no
+   grafo pelo MOVIMENTO. Doc corrigido com o número da medição (§0).
+
+### Gates
+
+9 na crate + 3 na cena. **4 mutações, 4 sangram.**
+
+⚠️ **E um gate MEU afirmava o OPOSTO da lei do módulo** — que re-armar com algo já
+dentro tinha de ser silencioso — e **falhou no código CORRETO**: a lei declarada
+do canal irmão é a leitura da Unity (*a baseline nasce vazia e o 1º frame simulado
+reporta o que achar; antes do primeiro passo não existe verdade anterior*), e
+durante o `hold` a fase estreita fica PARADA. Substituído pelo caso em que o
+descarte de história **é** observável: um scrub de volta para dentro da
+sobreposição.
+
+**c9 byte-idêntico** (`16ba80e8…`, 99 corpos) — sinal é readout. Registro **24→25**
+(o gate de contagem disparou, que é para isso que ele existe) · `PROJECT_SCHEMA`
+**intocado** · nenhum ADR · zero `Cargo.toml`.
+
+**Smoke: `PH2D_PHYSICS_SMOKE=73`** — *A PORTA*. Três bolas iguais: um SENSOR
+marcado, um SÓLIDO marcado, e o MESMO sólido **sem** componente. Sem o controle a
+cena não distingue *"o sinal disparou"* de *"tudo dispara"*. Medido: `door 1 ·
+bell 1 · quiet 0`.
+
+**Aberto:** o nome de SAÍDA (uma segunda pergunta, com uma segunda row) · um
+consumidor que não seja o toast (Luau/áudio) — e ele não muda uma linha da física.

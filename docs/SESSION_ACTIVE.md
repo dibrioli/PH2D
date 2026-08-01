@@ -19,7 +19,7 @@ N Implementadores; os Implementadores **leem antes de cada burst** e não escrev
 
 ---
 
-## Integração — jornada FECHADA (7 linhas), `ship.sh` VERDE, aguardando PUSH
+## Integração — jornada FECHADA (7 linhas), pushada, **CI VERDE**
 
 **Sete linhas integraram** (2026-08-01), na ordem **MEDIDA**: **`line/Vector`** (10 commits —
 o corte, o pathfinder, a reivindicação 2-D) → **`line/physics`** (7 — o rig sai da hierarquia,
@@ -45,7 +45,22 @@ idiomas do editor de nós) → **`line/FLIP`** (10 — as pontas do traço). **1
 **Verde na árvore COMBINADA** (rodado por linha, depois de cada ff-merge): impactados
 **7339 · 6958 · 4831 · 4854 · 7073 · 6786 · 6973**. E o **`ship.sh` fechou VERDE 7/7**
 (fmt · clippy · machete · deny · audit · typos · nextest `ci-test`) em **4 iterações**.
-⚠️ **NÃO foi pushado** — é ordem explícita do Enio (§0.7).
+**Pushado por ordem do Enio** (`25e1f48ef..deebc5550`, 113 commits) e o **CI fechou
+`success`**: https://github.com/dibrioli/PH2D/actions/runs/30690240926
+
+> ⚠️ **O primeiro run foi CANCELADO, e nada nele falhou** — lint, MSRV, os três OS com
+> check+tests, e o C9 de ubuntu e macOS todos verdes; só o C9 do `windows-latest` bateu
+> `timeout-minutes: 15` **no meio do 3º hash** (`fail-fast: false` está setado nessa
+> matriz, então não foi cascata: foi o teto). **E o comentário que justificava o 15 media
+> a coisa ERRADA** (*"single binary run + hash capture; observed ~3-5 min"*): os três
+> RUNS são baratos e não cresceram (physics C9 51s → 61s); quem custa é a **PRIMEIRA
+> invocação do cargo**, que paga a compilação inteira, e o preço dela é função de quanto
+> o `rust-cache` acertou. Medido no mesmo job, dois dias seguidos: o passo que paga o
+> build foi de **2m28 → 10m22 (4,2×)** e o total de **9m00 → 15m (a parede)**. Teto →
+> **45** (3× o pior observado, metade do que o job `test` irmão já orça para o MESMO
+> build no MESMO OS). No run seguinte ele fechou em **9m06** — com o cache quente, o que
+> confirma que o 15 foi batido por um cache FRIO logo depois do merge grande, que é
+> exatamente o caso que o teto novo existe para cobrir.
 
 **Gates `#[ignore]` rodados na RTX:** `ph2d-flip-render` **118/118** · `ph2d-mesh-render`
 **16/16** · `ph2d-render` os reais verdes. ⚠️ **E aqui uma lição do integrador:** `--ignored`

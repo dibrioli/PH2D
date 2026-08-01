@@ -3,7 +3,7 @@
 //! Os dois primeiros nasceram **VERMELHOS** contra o produto de 2026-07-30: ele abria a forma
 //! (peça aberta) em vez de a partir em duas fechadas.
 
-use super::{CutRefusal, cut_closed};
+use super::{CutRefusal, cut_closed, cut_with_line};
 use crate::area;
 use ph2d_vec_scene::{VecPath, VecVertex};
 
@@ -131,15 +131,119 @@ fn the_pieces_wear_the_sources_style() {
     }
 }
 
-/// Uma forma ABERTA não é assunto desta porta — quem a parte é o `cut_path_at_vertex`, e
-/// responder aqui seria a segunda porta da mesma pergunta.
+/// Uma forma ABERTA não é assunto da porta do FECHADO — cada topologia tem a sua, e a escolha
+/// entre elas é da `cut_with_line`.
 #[test]
-fn an_open_source_is_refused_here() {
+fn an_open_source_is_refused_by_the_closed_door() {
     let open = line([-2.0, 0.0], [2.0, 0.0]);
     assert_eq!(
         cut_closed(&open, &line([0.0, -4.0], [0.0, 4.0])).unwrap_err(),
         CutRefusal::Degenerate
     );
+}
+
+/// **Uma FITA cortada parte em duas fitas.** A única resposta possível: uma fita não tem interior,
+/// então não há região a dividir — o corte a PARTE.
+///
+/// Antes desta fatia a fonte aberta era um **no-op silencioso**: o motor devolvia `Degenerate` e a
+/// shell seguia adiante. O artista desenhava uma linha, cortava-a, e nada acontecia.
+#[test]
+fn an_open_source_is_split_into_open_pieces() {
+    let ribbon = line([-4.0, 0.0], [4.0, 0.0]);
+    let pieces = cut_with_line(&ribbon, &line([0.0, -2.0], [0.0, 2.0])).expect("a lâmina cruza");
+    assert_eq!(pieces.len(), 2, "uma fita cortada uma vez da' DUAS");
+    for p in &pieces {
+        assert!(!p.closed, "o corte FECHOU uma fita -- ela nao tem interior");
+        assert!(p.verts.len() >= 2, "peça degenerada");
+    }
+    // As duas metades encostam onde a lâmina passou (`x = 0`), e cada uma fica do seu lado.
+    let ends: Vec<f64> = pieces
+        .iter()
+        .map(|p| p.verts.last().expect("nao vazia").anchor[0])
+        .collect();
+    assert!(
+        (ends[0] - 0.0).abs() < 1e-6,
+        "a 1a metade nao acaba no corte: {ends:?}"
+    );
+    assert!(
+        (ends[1] - 4.0).abs() < 1e-6,
+        "a 2a metade nao acaba na ponta: {ends:?}"
+    );
+}
+
+/// **N cruzamentos dão N+1 peças** — e a ordem delas percorre a fita original.
+///
+/// ⚠️ A fixture tem TRÊS cruzamentos de propósito: com um só, cortar de trás para a frente e
+/// cortar de frente para trás dão o mesmo resultado, e o gate não distinguiria os dois. É a
+/// travessia descendente que mantém os índices dos cruzamentos que faltam válidos.
+#[test]
+fn three_crossings_give_four_pieces_in_order() {
+    let ribbon = VecPath {
+        verts: [[-6.0, 0.0], [6.0, 0.0]]
+            .into_iter()
+            .map(VecVertex::corner)
+            .collect(),
+        ..VecPath::default()
+    };
+    // Uma lâmina em ZIGUE-ZAGUE que cruza a fita em x = -3, 0, 3.
+    let blade = VecPath {
+        verts: [[-4.5, -1.0], [-1.5, 1.0], [1.5, -1.0], [4.5, 1.0]]
+            .into_iter()
+            .map(VecVertex::corner)
+            .collect(),
+        ..VecPath::default()
+    };
+    let pieces = cut_with_line(&ribbon, &blade).expect("três cruzamentos");
+    assert_eq!(pieces.len(), 4, "3 cortes dao 4 pedacos");
+    // ⚠️ **As fronteiras sao MEDIDAS, nao so' ordenadas.** Com `x < x'` apenas, um corte que pousa
+    // no lugar errado sai com o numero certo de pecas, em ordem, e passa -- foi exactamente assim
+    // que a mutacao da travessia sobreviveu ao 1o corte deste gate. Os tres cruzamentos estao em
+    // -3, 0 e 3 por construcao do zigue-zague.
+    let starts: Vec<f64> = pieces
+        .iter()
+        .map(|p| p.verts.first().expect("nao vazia").anchor[0])
+        .collect();
+    for (got, want) in starts.iter().zip([-6.0, -3.0, 0.0, 3.0]) {
+        assert!(
+            (got - want).abs() < 1e-6,
+            "peca comeca em {got}, devia comecar em {want}: {starts:?}"
+        );
+    }
+}
+
+/// A fita herda o estilo, como as peças fechadas herdam o delas.
+#[test]
+fn the_ribbon_pieces_wear_the_sources_stroke() {
+    let mut ribbon = line([-4.0, 0.0], [4.0, 0.0]);
+    ribbon.stroke = Some(ph2d_vec_scene::StrokeSpec::new(
+        ph2d_vec_scene::Rgba8::new(7, 8, 9, 255),
+        0.5,
+    ));
+    let pieces = cut_with_line(&ribbon, &line([0.0, -2.0], [0.0, 2.0])).expect("cruza");
+    for p in &pieces {
+        assert_eq!(p.stroke, ribbon.stroke, "traço perdido");
+    }
+}
+
+/// Uma lâmina que **não toca** a fita não a parte — e a recusa e' `Missed`, nao um pedaco so'.
+#[test]
+fn a_blade_that_misses_the_ribbon_splits_nothing() {
+    let ribbon = line([-4.0, 0.0], [4.0, 0.0]);
+    assert_eq!(
+        cut_with_line(&ribbon, &line([0.0, 2.0], [0.0, 5.0])).unwrap_err(),
+        CutRefusal::Missed
+    );
+}
+
+/// **A porta única despacha pela TOPOLOGIA da fonte** — fechada para o fechado, aberta para o
+/// aberto. É o que impede o chamador de decidir, e com ele o de decidir diferente.
+#[test]
+fn the_single_door_dispatches_on_the_sources_topology() {
+    let blade = line([0.0, -6.0], [0.0, 6.0]);
+    let closed = cut_with_line(&diamond(), &blade).expect("fechada corta");
+    assert!(closed.iter().all(|p| p.closed), "fechada deu peça aberta");
+    let open = cut_with_line(&line([-4.0, 0.0], [4.0, 0.0]), &blade).expect("aberta parte");
+    assert!(open.iter().all(|p| !p.closed), "aberta deu peça fechada");
 }
 
 /// Um **C** (côncavo): retângulo `[-2,2]×[-1,1]` com uma mordida no lado direito. A concavidade

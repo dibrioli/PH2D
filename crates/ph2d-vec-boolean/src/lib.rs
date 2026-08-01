@@ -26,7 +26,7 @@ pub use arrangement::{Arrangement, FaceId, MAX_BUILD_SHAPES, Membership};
 /// mesma razão do arranjo: o motor é o mesmo, e o trabalho todo é dar ao motor um cortador
 /// fechado (ele recusa contornos abertos, por contrato).
 pub mod cut;
-pub use cut::{CutRefusal, cut_closed};
+pub use cut::{CutRefusal, cut_closed, cut_open, cut_with_line};
 
 /// **Expand** — Outline Stroke (o traço vira forma) e Offset Path (a forma cresce). Módulo
 /// irmão: os dois são COMANDOS de edição sobre o motor daqui, não efeitos de pilha.

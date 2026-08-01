@@ -177,9 +177,10 @@ pub(crate) fn apply_cut(
         let Some(source) = world_copy(scene, &xforms, id) else {
             continue;
         };
-        // Uma fonte ABERTA não é assunto do corte fechado — ela fica intacta por ora, e a
-        // recusa é do motor, não desta função (uma segunda decisão aqui divergiria dele).
-        let Ok(pieces) = ph2d_vec_boolean::cut_closed(&source, &line) else {
+        // ⚠️ **Quem decide fechada-ou-aberta é o MOTOR**, pela porta única. Perguntar aqui
+        // `source.closed` seria a segunda resposta a *"o que sobra depois do corte?"*, e as duas
+        // divergiriam no dia em que uma das leis mudasse.
+        let Ok(pieces) = ph2d_vec_boolean::cut_with_line(&source, &line) else {
             continue;
         };
         let Some(z) = scene.paths().iter().position(|p| p.id == id) else {

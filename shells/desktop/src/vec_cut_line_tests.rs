@@ -143,3 +143,54 @@ fn the_blade_survives_the_cut_and_never_cuts_itself() {
     // O losango virou duas peças; a lâmina continua lá.
     assert_eq!(scene.paths().len(), before + 1, "contagem de caminhos");
 }
+
+/// **Uma FITA aberta é partida pelo caminho do produto** — e antes desta fatia ela era um
+/// **no-op silencioso**: o motor devolvia `Degenerate` e a shell seguia adiante, então o artista
+/// desenhava uma linha, cortava-a, e nada acontecia.
+///
+/// O gate corre pelo `apply_cut` (não pela porta do motor) porque o que se quer provar é a
+/// COSTURA: que a shell entrega a fita ao motor pela porta única, e que a resposta dele volta ao
+/// documento.
+#[test]
+fn an_open_ribbon_is_split_by_the_product_path() {
+    let (sim, mut scene, map, id) = world_with_blade(
+        vec![line([-4.0, 0.0], [4.0, 0.0])],
+        line([0.0, -3.0], [0.0, 3.0]),
+    );
+    let before = scene.paths().len();
+    assert_eq!(
+        apply_cut(&sim, &mut scene, &map, &[id], true),
+        1,
+        "a fita nao foi partida"
+    );
+    assert_eq!(scene.paths().len(), before + 1, "a fita devia virar DUAS");
+    for p in scene.paths().iter().filter(|p| p.id != id) {
+        assert!(!p.closed, "o corte FECHOU uma fita -- ela nao tem interior");
+    }
+}
+
+/// **A mesma lâmina corta o que é fechado E o que é aberto, no mesmo clique.** É a costura da
+/// porta única vista do lado do artista: ele não escolhe a lei, a topologia de cada forma escolhe.
+#[test]
+fn one_blade_cuts_shapes_and_ribbons_in_the_same_click() {
+    // ⚠️ A fita e' VERTICAL de proposito: a 1a escrita deste gate poe-la horizontal, ou seja
+    // COLINEAR com a lamina -- e uma lamina em cima de uma fita nao a atravessa. O gate falhava
+    // sobre produto correto, e a fixture e' que estava degenerada.
+    let (sim, mut scene, map, id) = world_with_blade(
+        vec![diamond([-6.0, 0.0]), line([6.0, -3.0], [6.0, 3.0])],
+        line([-12.0, 0.0], [12.0, 0.0]),
+    );
+    assert_eq!(
+        apply_cut(&sim, &mut scene, &map, &[id], true),
+        2,
+        "a lamina tem de alcancar os dois"
+    );
+    let closed = scene.paths().iter().filter(|p| p.closed).count();
+    let open = scene
+        .paths()
+        .iter()
+        .filter(|p| !p.closed && p.id != id)
+        .count();
+    assert_eq!(closed, 2, "o losango devia dar duas FECHADAS");
+    assert_eq!(open, 2, "a fita devia dar duas ABERTAS");
+}

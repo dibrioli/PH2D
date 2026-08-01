@@ -54,6 +54,122 @@ pub enum CutRefusal {
     Degenerate,
 }
 
+/// **A PORTA ÚNICA do corte** — corta `source` com `line`, tudo em MUNDO.
+///
+/// Ela decide pela **topologia da fonte**, e a decisão não pode viver no chamador: uma forma
+/// fechada e uma fita aberta têm respostas diferentes para *"o que sobra depois do corte?"*, e
+/// duas portas para essa pergunta divergiriam no dia em que uma das leis mudasse.
+///
+/// - **fechada** ⇒ peças **FECHADAS** ([`cut_closed`]), a lei do produto;
+/// - **aberta** ⇒ peças **abertas** ([`cut_open`]), que é a única resposta possível: uma fita não
+///   tem interior, então não há região a dividir — o que o corte faz é PARTI-LA.
+///
+/// # Errors
+/// Ver [`CutRefusal`].
+pub fn cut_with_line(source: &VecPath, line: &VecPath) -> Result<Vec<VecPath>, CutRefusal> {
+    if source.closed {
+        cut_closed(source, line)
+    } else {
+        cut_open(source, line)
+    }
+}
+
+/// **Corta a fita ABERTA `source` com a linha `line`** — tudo em MUNDO. Devolve as peças, todas
+/// abertas, na ordem em que percorrem a fita original.
+///
+/// # Por que aqui não entra o motor de arranjo
+///
+/// Uma fita não tem interior: não há região a dividir, e o `linesweeper` — que responde por
+/// REGIÕES — não tem o que dizer sobre ela. O que um corte faz a uma fita é **parti-la nos
+/// cruzamentos**, que é aritmética de curva e não de conjunto.
+///
+/// ⚠️ **Os cruzamentos saem da linha ACHATADA contra a curva EXATA da fonte.** A aproximação fica
+/// toda de um lado — o da lâmina —, e o lado que decide *onde* o vértice novo nasce é exato
+/// ([`blade_crossings`] refina por bisseção sobre a cúbica de verdade). Achatar os dois lados
+/// poria o corte a meio texel de onde o artista o vê.
+///
+/// # Errors
+/// Ver [`CutRefusal`]. Uma fonte fechada, compound ou degenerada é recusada aqui — a fechada tem
+/// porta própria.
+pub fn cut_open(source: &VecPath, line: &VecPath) -> Result<Vec<VecPath>, CutRefusal> {
+    if source.closed || source.is_compound() || source.verts.len() < 2 {
+        return Err(CutRefusal::Degenerate);
+    }
+    let crossings = crossings_along(source, line);
+    if crossings.is_empty() {
+        return Err(CutRefusal::Missed);
+    }
+    // ⚠️ **De trás para a frente, E com o `t` RE-PARAMETRIZADO.** Duas correções, não uma:
+    //
+    // 1. cada corte INSERE um vértice, então um cruzamento mais adiante deslocaria os índices dos
+    //    anteriores — descendo, os que faltam continuam válidos;
+    // 2. **o `t` é relativo ao SEGMENTO, e cortar encolhe o segmento.** Depois de partir em `t`, o
+    //    segmento que fica na cabeça cobre `[0, t]` do original: um cruzamento seguinte em `t'`
+    //    (menor) vive agora em `t' / t`. Sem isto, dois cortes na MESMA curva pousam no lugar
+    //    errado — e nada denuncia: sai o número certo de peças, em ordem, com as fronteiras
+    //    deslocadas. Foi assim que a mutação "cortar de frente para trás" sobreviveu ao 1º gate.
+    let mut head = source.clone();
+    let mut out: Vec<VecPath> = Vec::new();
+    let mut prev_seg = usize::MAX;
+    let mut upper = 1.0_f64;
+    for &(seg, t) in crossings.iter().rev() {
+        if seg != prev_seg {
+            prev_seg = seg;
+            upper = 1.0;
+        }
+        let local_t = if upper > f64::EPSILON { t / upper } else { t };
+        upper = t;
+        let Some(idx) = ph2d_vec_scene::split_segment(&mut head, seg, local_t) else {
+            continue;
+        };
+        // ⚠️ Nenhum guard de ponta aqui, e é medido: o `split_segment` **INSERE** um vértice, então
+        // o índice é sempre interior (`1 ..= len-2`). Um `if idx == 0` seria código morto que
+        // nunca dispara — a mutação que o remove não sangra nenhum gate, porque não há como.
+        let tail = head.verts[idx..].to_vec();
+        head.verts.truncate(idx + 1);
+        out.push(VecPath {
+            verts: tail,
+            closed: false,
+            stroke: source.stroke,
+            fill: source.fill.clone(),
+            effects: source.effects.clone(),
+            ..VecPath::default()
+        });
+    }
+    if out.is_empty() {
+        return Err(CutRefusal::Missed);
+    }
+    out.push(head);
+    out.reverse();
+    Ok(out)
+}
+
+/// Onde a lâmina cruza a fonte, em `(segmento PLANO, t)`, crescente e sem repetições.
+///
+/// A lâmina é achatada em segmentos retos e cada um deles pergunta à [`blade_crossings`], que é
+/// exata do lado da fonte. A tolerância do achatamento é **relativa à fonte** — uma constante
+/// absoluta seria fina demais numa forma minúscula e grosseira numa enorme.
+fn crossings_along(source: &VecPath, line: &VecPath) -> Vec<(usize, f64)> {
+    let bb = crate::to_bez(source).bounding_box();
+    let tol = (bb.width().hypot(bb.height()) * 1e-4).max(1e-9);
+    let mut pts: Vec<[f64; 2]> = Vec::new();
+    kurbo::flatten(
+        crate::to_bez_with(line, crate::Closing::AsDrawn).iter(),
+        tol,
+        |el| match el {
+            kurbo::PathEl::MoveTo(p) | kurbo::PathEl::LineTo(p) => pts.push([p.x, p.y]),
+            _ => {}
+        },
+    );
+    let mut out: Vec<(usize, f64)> = Vec::new();
+    for w in pts.windows(2) {
+        out.extend(blade_crossings(source, w[0], w[1]));
+    }
+    out.sort_by(|a, b| a.0.cmp(&b.0).then(a.1.total_cmp(&b.1)));
+    out.dedup_by(|a, b| a.0 == b.0 && (a.1 - b.1).abs() < 1e-7);
+    out
+}
+
 /// **Corta a forma FECHADA `source` com a linha `line`** — tudo em MUNDO. Devolve as peças, todas
 /// fechadas, ou o motivo de não ter cortado.
 ///

@@ -147,8 +147,11 @@ fn announce(app: &mut crate::App) {
          [O CORTADOR FECHADO] (17) desenhe uma linha de corte **FECHADA** (termine-a clicando no \
          primeiro ponto) por cima de uma forma e clique Cut: sai o MIOLO e o resto -- um cortador \
          fechado nao precisa de extensao nenhuma. \
-         [AS FITAS] (18) as fitas VERDES/LARANJA sao ABERTAS: o corte nao as toca por ora, e isso \
-         esta' nomeado no handoff. Use-as para o **Join** (Select + Shift+clique + Join na secao \
+         [AS FITAS TAMBEM SAO CORTADAS] (18) desenhe uma lamina atravessando uma fita VERDE ou \
+         LARANJA e clique Cut: ela parte em DUAS fitas **abertas** -- uma fita nao tem interior, \
+         entao nao ha' regiao a dividir, e parti-la e' a unica resposta possivel. A MESMA lamina \
+         corta fechadas e abertas no mesmo clique: a topologia de cada forma escolhe a lei, nao o \
+         artista. Use-as tambem para o **Join** (Select + Shift+clique + Join na secao \
          PATH) e o **Average** (pill Node, dois nos, Average) -- as pontas verdes estao a \
          {gap_near:.2}, muito acima da tolerancia de solda ({tol:e}), entao o Join tem de por um \
          SEGMENTO a liga-las; nas laranja (vao {gap_far:.2}) o segmento e' longo e obvio. \

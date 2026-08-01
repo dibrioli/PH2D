@@ -5598,20 +5598,31 @@ impl crate::App {
                 // Semente ONE-SHOT: só quando o alvo MUDA (senão brigaria com o arrasto).
                 // Além dos campos, a TOOL adota os params — assim painel, tool e objeto
                 // concordam, e a próxima forma desenhada herda (modelo Figma).
-                let target_id = target.as_ref().map(|(id, _, _, _)| *id);
-                if target_id != self.vec_shape_last_target {
-                    self.vec_shape_last_target = target_id;
-                    if let Some((_, _, kind, world)) = target.as_ref() {
-                        crate::vec_shape_params::seed_shape_fields(
-                            &mut hero.store,
-                            *kind,
-                            world,
-                            vec_px_to_world,
-                        );
-                        let ui =
-                            crate::vec_shape_params::ui_values_of(*kind, world, vec_px_to_world);
-                        vector_bridge::adopt_shape_values(tools, *kind, ui);
-                    }
+                // ⚠️ O gatilho é o PAR `(alvo, tipo)`. Só o alvo deixava *"nada selecionado,
+                // catálogo em Star"* e *"…em Polygon"* comparando iguais (`None == None`), e
+                // como os slots do store são por ÍNDICE — compartilhados por TODAS as formas —
+                // os campos ficavam com os números da forma anterior.
+                let catalog = vector_bridge::shape_catalog(tools);
+                let focus = crate::vec_shape_params::shape_seed_focus(
+                    target.as_ref().map(|(id, _, k, _)| (*id, *k)),
+                    catalog.map(|(k, _)| k).unwrap_or_default(),
+                );
+                if Some(focus) != self.vec_shape_last_focus {
+                    self.vec_shape_last_focus = Some(focus);
+                    // A conversão para UI é UMA, aqui: os dois consumidores (o store que o
+                    // painel pinta e a tool que adota) leem o MESMO array. Fazê-la dentro do
+                    // `seed_shape_fields` a duplicaria.
+                    let ui = match target.as_ref() {
+                        // Alvo vivo: os parâmetros DELE, que estão em mundo.
+                        Some((_, _, kind, world)) => {
+                            crate::vec_shape_params::ui_values_of(*kind, world, vec_px_to_world)
+                        }
+                        // Sem alvo: o que a tool guarda para aquele tipo — já em UI, e é o
+                        // default do próximo desenho.
+                        None => catalog.map(|(_, v)| v).unwrap_or_default(),
+                    };
+                    crate::vec_shape_params::seed_shape_fields(&mut hero.store, focus.1, &ui);
+                    vector_bridge::adopt_shape_values(tools, focus.1, ui);
                 }
             }
             // **Conectores, 1ª metade:** pendura o `VecConnector` na entidade (que nasceu no

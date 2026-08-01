@@ -301,7 +301,7 @@ impl crate::App {
         // A mesma forma (mesmo id) pode voltar com OUTROS parâmetros — zerar o alvo
         // força a re-semente dos sliders, senão o painel seguiria mostrando o valor
         // que o undo acabou de desfazer.
-        self.vec_shape_last_target = None;
+        self.vec_shape_last_focus = None;
         // O Colorize ao vivo guarda a base congelada de um desenho que este restore acaba de
         // substituir — re-Aplicar sobre ela apagaria o estado restaurado. A sessão termina.
         self.flip_colorize.end_live();

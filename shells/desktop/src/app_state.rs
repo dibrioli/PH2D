@@ -1161,7 +1161,11 @@ pub(crate) struct App {
     /// tool adota os params — uma vez. Zerado no restore (undo/load) porque a forma
     /// pode ter voltado com outros params sob o MESMO id: sem re-semear, o painel
     /// mostraria o valor desfeito.
-    pub(crate) vec_shape_last_target: Option<ph2d_vec_scene::VecPathId>,
+    /// ⚠️ O PAR `(alvo, tipo)`, nunca só o alvo: sem o tipo, *"nada selecionado, catálogo em
+    /// Star"* e *"nada selecionado, catálogo em Polygon"* comparam iguais e os campos ficam com
+    /// os números da forma anterior (report do Enio, 2026-08-01).
+    pub(crate) vec_shape_last_focus:
+        Option<(Option<ph2d_vec_scene::VecPathId>, ph2d_vec_scene::ShapeKind)>,
     /// `VecPathId` → entidade ECS que o representa na Hierarquia (ADR-0110). O
     /// invariante "um path ⟺ uma entidade" é mantido por `vec_entities::sync`.
     pub(crate) vec_entities: crate::vec_entities::VecEntityMap,

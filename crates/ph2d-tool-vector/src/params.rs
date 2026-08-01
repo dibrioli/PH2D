@@ -78,7 +78,18 @@ pub fn both_ends_label(on: bool) -> &'static str {
 /// (`StrokeSpec{width:0}` preserva a COR, `None` a esquece). É o que faz o zero ser reversível:
 /// arrastar de volta devolve o traço que estava lá.
 pub const WIDTH_MIN_PX: f64 = 0.0;
-pub const WIDTH_MAX_PX: f64 = 20.0;
+/// O teto da largura, em px de tela. **100 por decisão do Enio (2026-08-01)** — os 20 anteriores
+/// não eram um limite de recurso nenhum, e prendiam o traço a um quinto do que a ferramenta faz.
+///
+/// ⚠️ **O que MUDA com ele é a RESOLUÇÃO do slider, e o escape já existe:** a mesma barra passa a
+/// cobrir 5× mais faixa, então um pixel de arrasto vale 5× mais largura. Quem quer um número
+/// exacto o DIGITA na caixa ao lado (`VECTOR_WIDTH_NUM`), que é a razão de o par slider+chip
+/// existir — e é por isso que subir o teto não pede uma curva não-linear.
+///
+/// ⚠️ **Nada mais conhece este número:** a escala do slider, o offset e as duas conversões
+/// (`slider_to_px`/`px_to_slider`) são DERIVADAS dele, e os gates o citam em vez de o repetir.
+/// Um segundo literal em qualquer um deles seria um teto que discorda de si mesmo.
+pub const WIDTH_MAX_PX: f64 = 100.0;
 
 /// Affine slider mapping `display_px = track * SCALE + OFFSET` (track `0..=1`),
 /// consumed by `WidgetStore::link_slider_number_mapped` so the px chip mirrors

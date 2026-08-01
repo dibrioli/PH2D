@@ -56,6 +56,23 @@ pub(crate) fn set_mode(tools: &mut ToolRegistry, mode: ph2d_tool_vector::DrawMod
 /// painel (que pinta a partir da tool) para de mentir e a próxima desenhada os herda.
 ///
 /// Downcast confinado a este bridge, como o [`set_mode`].
+/// **O que o CATÁLOGO oferece agora** — o tipo activo da tool e os valores que ela guarda para
+/// ele (já em unidade de UI).
+///
+/// Existe para o sítio de decisão da semente não repetir o downcast: uma 2ª cópia dele é uma 2ª
+/// resposta a *"quem é a ferramenta de vetor?"*. `None` = a tool não está em cena, e aí não há
+/// catálogo nenhum a mostrar.
+pub(crate) fn shape_catalog(
+    tools: &mut ToolRegistry,
+) -> Option<(ph2d_vec_scene::ShapeKind, ph2d_vec_scene::ShapeValues)> {
+    let tool = tools.tool_by_id_mut(&ToolId::new("vector")).and_then(|t| {
+        t.as_any_mut()
+            .downcast_mut::<ph2d_tool_vector::VectorTool>()
+    })?;
+    let k = tool.shape();
+    Some((k, tool.shape_values(k)))
+}
+
 pub(crate) fn adopt_shape_values(
     tools: &mut ToolRegistry,
     kind: ph2d_vec_scene::ShapeKind,

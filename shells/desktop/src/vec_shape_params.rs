@@ -14,9 +14,9 @@
 //! Três peças, na ordem em que a shell as usa a cada frame:
 //!
 //! 1. [`panel_shape_target`] — quem é o alvo (a 1ª forma paramétrica da seleção).
-//! 2. [`seed_shape_fields`] + [`ui_values_of`] — quando o alvo MUDA, os campos são
-//!    semeados com os parâmetros dele e a tool os ADOTA (painel, tool e objeto passam a
-//!    concordar; e a próxima forma desenhada os herda — modelo Figma).
+//! 2. [`shape_seed_focus`] + [`seed_shape_fields`] + [`ui_values_of`] — quando o PAR
+//!    `(alvo, tipo)` muda, os campos são semeados e a tool os ADOTA (painel, tool e objeto
+//!    passam a concordar; e a próxima forma desenhada os herda — modelo Figma).
 //! 3. [`is_shape_field_id`] + [`apply_shape_field`] + [`edit_selected_shape`] — o
 //!    `SetValue` de um campo muta o `VecShape` e RE-COZINHA a geometria in-place.
 
@@ -97,21 +97,45 @@ pub(crate) fn ui_values_of(kind: ShapeKind, world: &ShapeValues, px_to_world: f6
     shapes::to_ui(kind, world, px_to_world)
 }
 
-/// Semente ONE-SHOT dos campos a partir do ALVO (chamada só quando o alvo MUDA): o store
-/// é a fonte que o painel pinta, então sem isto os campos mostrariam o último valor
-/// autorado em vez dos parâmetros da forma clicada. **Semear todo frame brigaria com o
-/// arrasto** — a mesma armadilha da semente do texto.
+/// **De quem são os campos de forma NESTE frame** — o par que decide a semente.
+///
+/// O ALVO manda quando existe (o artista está a editar uma forma viva); sem alvo mandam o
+/// CATÁLOGO e os valores que a tool guarda para aquele tipo, que é o default do próximo desenho.
+///
+/// ⚠️ **É um PAR, e não só o alvo.** Dois estados diferentes — *"nada selecionado, catálogo em
+/// Star"* e *"nada selecionado, catálogo em Polygon"* — têm o MESMO `None` de alvo, então uma memo
+/// que guardasse só o id os trataria como o mesmo frame e nunca re-semearia. Foi exactamente esse
+/// o defeito reportado.
+#[must_use]
+pub(crate) fn shape_seed_focus(
+    target: Option<(VecPathId, ShapeKind)>,
+    catalog: ShapeKind,
+) -> (Option<VecPathId>, ShapeKind) {
+    match target {
+        Some((id, kind)) => (Some(id), kind),
+        None => (None, catalog),
+    }
+}
+
+/// Semente ONE-SHOT dos campos, em unidade de **UI** (a que a caixa mostra): o store é a fonte
+/// que o painel pinta, então sem isto os campos mostrariam o último valor autorado em vez dos
+/// parâmetros da forma em foco. **Semear todo frame brigaria com o arrasto** — a mesma armadilha
+/// da semente do texto.
+///
+/// ⚠️ **Ela toma UI e não MUNDO**, e isso não é conveniência: o chamador já precisa dos valores
+/// de UI para o `adopt_shape_values` da tool, então converter aqui dentro faria a MESMA conversão
+/// duas vezes, em dois lugares — a forma exata de duas respostas que divergem no dia em que uma
+/// unidade nova entra ([[feedback_derived_coordinate_seed_must_match_sample]]). Agora a conversão
+/// é UMA, no chamador, e os dois consumidores leem o mesmo array.
+///
+/// ⚠️ **O gatilho é o PAR `(alvo, tipo)`** — ver [`shape_seed_focus`]. Com só o alvo, escolher
+/// outra forma no CATÁLOGO com nada selecionado comparava `None == None` e a semente nunca
+/// corria: os campos ficavam com os números da forma anterior (report do Enio, 2026-08-01).
 ///
 /// Semeia também a FAIXA de cada caixa (`set_number_range`): as faixas são por-forma (3
 /// lados · 500 px · 360°), então trocar de forma sem re-registrar deixaria a caixa
 /// clampando na faixa da forma anterior.
-pub(crate) fn seed_shape_fields(
-    store: &mut WidgetStore,
-    kind: ShapeKind,
-    world: &ShapeValues,
-    px_to_world: f64,
-) {
-    let ui = shapes::to_ui(kind, world, px_to_world);
+pub(crate) fn seed_shape_fields(store: &mut WidgetStore, kind: ShapeKind, ui: &ShapeValues) {
     let d = shapes::desc(kind);
     for (i, v) in ui.iter().enumerate().take(MAX_SHAPE_FIELDS) {
         let id = ph2d_editor::ids::vector_shape_field_id(i);

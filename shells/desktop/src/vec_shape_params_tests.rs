@@ -203,3 +203,67 @@ fn the_panel_target_is_the_live_parametric_shape_only() {
         "sem selecao, sem alvo"
     );
 }
+
+/// **RED-FIRST — trocar de FORMA no catálogo re-semeia os campos.**
+///
+/// ⚠️ O report do Enio: *"quando se escolhe outra shape, quase todos os parâmetros não são
+/// atualizados … mostram os parâmetros da outra shape previamente modificada"*. O mecanismo é
+/// que os slots do store são por **ÍNDICE** (`vector_shape_field_id(i)`), compartilhados entre
+/// TODAS as formas, e a semente só disparava quando o OBJETO selecionado mudava — nunca quando o
+/// tipo do catálogo mudava. Então o slot 0 seguia com o número da forma anterior.
+///
+/// O oráculo é o STORE, que é a fonte que o painel pinta.
+#[test]
+fn switching_the_catalog_shape_reseeds_the_fields() {
+    // ⚠️ O store REGISTRADO, não um vazio: `set_number_value` só alcança um widget que o
+    // `populate` do painel criou, e é esse o fluxo real. Um store vazio faria o gate falhar
+    // (ou passar) por um motivo que não tem nada a ver com a semente.
+    let mut store = WidgetStore::default();
+    <ph2d_panel_vector::VectorPanel as ph2d_editor::panel::Panel>::populate(&mut store);
+    let id0 = ph2d_editor::ids::vector_shape_field_id(0);
+
+    // A forma A é semeada e o artista mexe no 1º campo.
+    let a = ShapeKind::Star;
+    let mut va = ShapeValues::default();
+    va[0] = 9.0;
+    seed_shape_fields(&mut store, a, &va);
+    assert_eq!(store.number_value(id0), Some(9.0));
+
+    // Agora ele escolhe a forma B no catálogo, que tem OUTRO valor no mesmo slot.
+    let b = ShapeKind::Polygon;
+    let mut vb = ShapeValues::default();
+    vb[0] = 3.0;
+    seed_shape_fields(&mut store, b, &vb);
+    assert_eq!(
+        store.number_value(id0),
+        Some(3.0),
+        "o campo continua mostrando o numero da forma ANTERIOR"
+    );
+}
+
+/// **Quem manda na semente: o ALVO se houver, senão o CATÁLOGO** — e o par é o que decide
+/// re-semear.
+///
+/// ⚠️ A memo antiga guardava só o `VecPathId`, então dois estados diferentes — *"nada
+/// selecionado, catálogo em Star"* e *"nada selecionado, catálogo em Polygon"* — comparavam
+/// IGUAIS (`None == None`) e a semente nunca corria.
+#[test]
+fn the_seed_focus_is_the_target_or_the_catalog() {
+    let cat = ShapeKind::Polygon;
+    let tgt: VecPathId = 7;
+    assert_eq!(
+        shape_seed_focus(Some((tgt, ShapeKind::Star)), cat),
+        (Some(tgt), ShapeKind::Star),
+        "com alvo, manda o alvo"
+    );
+    assert_eq!(
+        shape_seed_focus(None, cat),
+        (None, cat),
+        "sem alvo, manda o catalogo"
+    );
+    // …e é por isso que a memo tem de ser o PAR: sem o tipo, estes dois são o mesmo estado.
+    assert_ne!(
+        shape_seed_focus(None, ShapeKind::Star),
+        shape_seed_focus(None, ShapeKind::Polygon)
+    );
+}

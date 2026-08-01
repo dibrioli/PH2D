@@ -53,6 +53,38 @@ fn muting_a_node_switches_it_off_recooks_and_is_one_undo_step() {
     assert!(!back.graph.node_bypassed(a), "Ctrl+Z un-mutes");
 }
 
+/// **Muting a GROUP mutes every node inside it** (Enio, smoke: *"Mute não funciona para
+/// grupos"*). A card id is not a graph node, so before the fix its `set_bypassed` was a no-op
+/// and the H verb / the right-click Mute did nothing to a group. The card is EXPANDED to its
+/// member nodes (at every depth), like delete/copy/duplicate. FALSIFIED by dropping the
+/// expansion: the card id names no node, and nothing is muted.
+#[test]
+fn muting_a_group_mutes_every_node_inside_it() {
+    use ph2d_motion_doc::subgraph::Subgraph;
+    let (mut m, _a) = cooked_with_a_node();
+    let b = m.doc.graph.add_node("motion.grid");
+    let c = m.doc.graph.add_node("motion.grid");
+    m.doc.subgraphs.push(Subgraph {
+        id: 1,
+        parent: None,
+        x: 0.0,
+        y: 0.0,
+        title: "Rig".into(),
+    });
+    m.doc.members.insert(b, 1);
+    m.doc.members.insert(c, 1);
+    assert!(!m.doc.graph.node_bypassed(b) && !m.doc.graph.node_bypassed(c));
+
+    // Mute the CARD (its tagged view id), not the member nodes.
+    let card = super::subgraph::view_id(1);
+    set_bypass(&mut m, vec![card], true);
+    assert!(
+        m.doc.graph.node_bypassed(b) && m.doc.graph.node_bypassed(c),
+        "muting the group card muted every member node inside it"
+    );
+    assert!(m.history.can_undo(), "and it is one undo step");
+}
+
 /// **A bypass on a non-existent node is inert.** A subgraph CARD's id is tagged, and a stale
 /// selection can name a deleted node; muting a phantom must change nothing — and never emit a `y`
 /// record the loader would reject. FALSIFIED by dropping the `graph.node(nid).is_some()` filter:

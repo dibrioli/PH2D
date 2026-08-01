@@ -21,9 +21,8 @@ pub(crate) enum NodeAction {
 }
 
 impl NodeAction {
-    /// The rows, in display order — the ONE list `menu_rows` draws AND `resolve_menu`
-    /// dispatches, so row `i` means the same thing on screen and under the cursor.
-    pub(crate) const ALL: [NodeAction; 6] = [
+    /// Every action, in display order.
+    const ALL: [NodeAction; 6] = [
         NodeAction::Cut,
         NodeAction::Copy,
         NodeAction::Duplicate,
@@ -31,6 +30,23 @@ impl NodeAction {
         NodeAction::Bypass,
         NodeAction::Rename,
     ];
+    /// **Whether this action needs a SINGLE subject.** Rename asks for one name; with many
+    /// nodes selected there is no single name to ask about, so its verb is inert and the row
+    /// must not appear (Enio, smoke: *"para múltiplos nós opções como rename não podem
+    /// aparecer"*). The rest act on any non-empty selection.
+    fn requires_single(self) -> bool {
+        matches!(self, NodeAction::Rename)
+    }
+    /// **The rows to show for a selection of this size** — the ONE list `menu_rows` draws AND
+    /// `resolve_menu` dispatches, so row `i` means the same thing on screen and under the
+    /// cursor. Single-subject actions drop out when the selection is `multi` (> 1).
+    pub(crate) fn visible(multi: bool) -> Vec<NodeAction> {
+        NodeAction::ALL
+            .iter()
+            .copied()
+            .filter(|a| !(multi && a.requires_single()))
+            .collect()
+    }
     pub(crate) fn label(self) -> &'static str {
         match self {
             NodeAction::Cut => "Cut (Ctrl+X)",
@@ -281,12 +297,12 @@ pub(crate) enum MenuBody {
         detach: Option<(u32, u16)>,
     },
     /// **The actions on a node** (right-click a NODE, doc 62) — the missing case of the
-    /// context-dependent right-press (backdrop → tints, wire → splice, node → actions). It
-    /// has no fields: the target is whatever `open_on_right_press` left SELECTED (the
-    /// right-clicked node, or the whole selection if it was part of one), and each pick
-    /// runs the matching keyboard verb via `apply_key`, which reads that selection. The row
-    /// list is [`NodeAction::ALL`].
-    NodeActions,
+    /// context-dependent right-press (backdrop → tints, wire → splice, node → actions). The
+    /// target is whatever `open_on_right_press` left SELECTED (the right-clicked node, or the
+    /// whole selection if it was part of one), and each pick runs the matching keyboard verb
+    /// via `apply_key`, which reads that selection. `multi` (> 1 selected, captured at open)
+    /// drops the single-subject rows (Rename) — [`NodeAction::visible`].
+    NodeActions { multi: bool },
 }
 
 /// Retained panel state.

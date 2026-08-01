@@ -183,8 +183,10 @@ pub(super) fn resolve_menu(
         // never do something subtly different from its shortcut. It acts on the selection
         // the right-press left set (`open_on_right_press`). `NodeAction::ALL` is the one
         // list the paint enumerates, so row `i` is the verb the label showed.
-        MenuBody::NodeActions => {
-            super::key::apply_key(state, crate::state::NodeAction::ALL[i].graph_key(), rect, snap);
+        MenuBody::NodeActions { multi } => {
+            // The SAME `visible` list the paint drew, so row `i` is the verb the label showed.
+            let acts = crate::state::NodeAction::visible(*multi);
+            super::key::apply_key(state, acts[i].graph_key(), rect, snap);
         }
         MenuBody::Library {
             connect_from,
@@ -262,7 +264,11 @@ pub(super) fn open_on_right_press(
                 state.selected.insert(node);
                 state.selected_backdrop = None;
             }
-            MenuBody::NodeActions
+            // `multi` decides which rows the menu offers (Rename drops out for many), captured
+            // now against the selection this press just settled.
+            MenuBody::NodeActions {
+                multi: state.selected.len() > 1,
+            }
         }
         _ => MenuBody::Library {
             connect_from: None,

@@ -441,7 +441,7 @@ fn right_press_over_a_node_opens_menu_and_release_keeps_it() {
     assert!(
         matches!(
             st.menu.as_ref().map(|m| &m.body),
-            Some(crate::state::MenuBody::NodeActions)
+            Some(crate::state::MenuBody::NodeActions { .. })
         ),
         "right-press over a node opens its actions menu"
     );

@@ -262,6 +262,37 @@ fn at_the_root_the_card_stands_in_for_its_contents() {
     }
 }
 
+/// **A group card draws muted only when EVERY member is muted** — muting a whole group (the H
+/// verb / the right-click Mute) has to be VISIBLE on the card, and the panel reads exactly this
+/// to decide mute-vs-unmute (so the toggle can unmute a fully-muted group). FALSIFIED by the old
+/// `bypassed: false`: a muted group looked identical to a live one, and the toggle could only
+/// ever mute, never unmute.
+#[test]
+fn a_group_card_is_muted_only_when_all_of_it_is() {
+    let mut m = MotionState::new();
+    let sid = m.doc.subgraphs[0].id;
+    let inside = subgraph::member_nodes_deep(&m.doc.subgraphs, &m.doc.members, sid);
+    assert!(inside.len() >= 2, "the demo group has members to mute");
+
+    let card_bypassed = |m: &MotionState| {
+        let mut snap = ph2d_panel_motion_graph::snapshot_from(&m.doc.graph, &m.registry);
+        fold::fold(m, &mut snap);
+        snap.nodes
+            .iter()
+            .find(|n| n.id == super::subgraph::view_id(sid))
+            .expect("the card is drawn")
+            .bypassed
+    };
+
+    assert!(!card_bypassed(&m), "a live group is not muted");
+    for n in &inside[..inside.len() - 1] {
+        m.doc.graph.set_bypassed(*n, true);
+    }
+    assert!(!card_bypassed(&m), "SOME members muted is not the group muted");
+    m.doc.graph.set_bypassed(*inside.last().unwrap(), true);
+    assert!(card_bypassed(&m), "EVERY member muted -> the card draws muted");
+}
+
 // ── The verbs ──────────────────────────────────────────────────────────────
 
 /// Ungroup puts everything back, exactly — the document round-trips.

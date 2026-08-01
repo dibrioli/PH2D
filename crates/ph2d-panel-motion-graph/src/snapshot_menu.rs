@@ -65,11 +65,12 @@ pub(crate) fn menu_rows<'a>(snap: &GraphViewSnapshot, menu: &'a Menu) -> Vec<Men
                 selected: false,
             })
             .collect(),
-        // The node context menu (doc 62): one row per keyboard verb, in `NodeAction::ALL`
-        // order. A neutral dot — a verb has no category to tint, and the label carries the
-        // shortcut, which is the row's whole job.
-        MenuBody::NodeActions => crate::state::NodeAction::ALL
-            .iter()
+        // The node context menu (doc 62): one row per applicable keyboard verb, in
+        // `NodeAction` order. A neutral dot — a verb has no category to tint, and the label
+        // carries the shortcut, which is the row's whole job. `multi` drops the single-subject
+        // rows (Rename) so a multi-selection is not offered a verb that would be inert.
+        MenuBody::NodeActions { multi } => crate::state::NodeAction::visible(*multi)
+            .into_iter()
             .map(|a| MenuRow {
                 label: a.label(),
                 dot: ColorToken::Text2,

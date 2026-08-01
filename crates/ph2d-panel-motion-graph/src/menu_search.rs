@@ -133,7 +133,7 @@ pub(crate) fn pick_first(menu: &crate::state::Menu) {
         // belt to that braces.
         crate::state::MenuBody::CardPorts { .. }
         | crate::state::MenuBody::BackdropTints { .. }
-        | crate::state::MenuBody::NodeActions => {}
+        | crate::state::MenuBody::NodeActions { .. } => {}
     }
 }
 

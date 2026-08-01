@@ -436,9 +436,13 @@ fn card_view(
         hot: inside.iter().any(|n| by_id(*n).is_some_and(|v| v.hot)),
         is_sink: inside.iter().any(|n| by_id(*n).is_some_and(|v| v.is_sink)),
         preview: head.and_then(|v| v.preview.clone()),
-        // A collapsed group is not itself a muted NODE (muting a whole group is its own
-        // question); the card draws normally even if a member inside it is bypassed.
-        bypassed: false,
+        // **A group draws muted iff ALL of it is muted** — muting a whole group (the H verb /
+        // the right-click menu) mutes every member, and the card has to SHOW that or the
+        // artist mutes a group and sees nothing change. A group with only SOME members
+        // bypassed still draws normally: it is not, as a whole, off. (Read from the graph, so
+        // members at every nested depth count, not just the ones this view happens to draw.)
+        bypassed: !inside.is_empty()
+            && inside.iter().all(|n| motion.doc.graph.node_bypassed(*n)),
     }
 }
 

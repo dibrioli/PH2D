@@ -255,8 +255,11 @@ fn right_clicking_a_node_opens_its_actions_and_a_pick_runs_the_verb() {
     g.button = PointerButton::Secondary;
     super::menu::open_on_right_press(&mut st, g, RECT, &snap);
     assert!(
-        matches!(st.menu.as_ref().map(|m| &m.body), Some(MenuBody::NodeActions)),
-        "a node right-press opens its actions"
+        matches!(
+            st.menu.as_ref().map(|m| &m.body),
+            Some(MenuBody::NodeActions { multi: false })
+        ),
+        "a node right-press opens its actions (single subject)"
     );
     assert_eq!(
         st.selected.iter().copied().collect::<Vec<_>>(),
@@ -264,9 +267,10 @@ fn right_clicking_a_node_opens_its_actions_and_a_pick_runs_the_verb() {
         "and selects the node it asked about"
     );
 
-    // Resolve the Delete row (NodeAction index 3) → GraphKey::Delete on the selection.
+    // Resolve the Delete row (NodeAction index 3, single selection → all rows shown) →
+    // GraphKey::Delete on the selection.
     let menu = st.menu.take().expect("the menu is open");
-    let panel = geom::menu_panel(&menu, NodeAction::ALL.len(), RECT);
+    let panel = geom::menu_panel(&menu, NodeAction::visible(false).len(), RECT);
     let del = geom::menu_row(&menu, panel, 3, 0.0);
     resolve_menu(
         &mut st,
@@ -280,6 +284,44 @@ fn right_clicking_a_node_opens_its_actions_and_a_pick_runs_the_verb() {
         drain_intents(),
         vec![GraphIntent::DeleteSelection { nodes: vec![1] }],
         "the Delete row ran the Delete verb on the selected node"
+    );
+}
+
+/// **A multi-selection is not offered single-subject verbs** (Enio, smoke: *"para múltiplos
+/// nós opções como rename não podem aparecer"*). Rename asks for one name; with many selected
+/// there is none, so the row drops out — while the verbs that act on a whole selection stay.
+/// A right-press within a multi-selection keeps it, and opens the menu in `multi` mode.
+/// FALSIFIED by `requires_single` returning false (Rename would linger as an inert row).
+#[test]
+fn the_node_menu_hides_rename_for_a_multi_selection() {
+    use crate::state::NodeAction;
+    let single = NodeAction::visible(false);
+    let multi = NodeAction::visible(true);
+    assert!(single.contains(&NodeAction::Rename), "one node: rename is offered");
+    assert!(!multi.contains(&NodeAction::Rename), "many nodes: rename drops out");
+    assert!(
+        multi.contains(&NodeAction::Delete) && multi.contains(&NodeAction::Bypass),
+        "the verbs that act on a whole selection stay"
+    );
+
+    // Right-clicking one of several selected nodes keeps the selection → the menu is `multi`.
+    let snap = two_node_snapshot();
+    let mut st = MotionGraphPanelState::default();
+    st.selected.extend([1, 2]);
+    let mut g = gesture(
+        GraphHitKind::Node { node: 1 },
+        GesturePhase::Begin,
+        RECT.x + 30.0,
+        RECT.y + 30.0,
+    );
+    g.button = PointerButton::Secondary;
+    super::menu::open_on_right_press(&mut st, g, RECT, &snap);
+    assert!(
+        matches!(
+            st.menu.as_ref().map(|m| &m.body),
+            Some(MenuBody::NodeActions { multi: true })
+        ),
+        "a right-press inside a multi-selection keeps it and opens in multi mode"
     );
 }
 

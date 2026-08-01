@@ -328,8 +328,23 @@ pub(super) fn apply_graph_intents(
             // arrange above.
             GraphIntent::SetBypass { nodes, on } => {
                 let pre = motion.doc.clone();
+                // A CARD in the selection stands for its member nodes — muting a GROUP mutes
+                // everything inside it, at every depth, exactly as delete/copy/duplicate expand
+                // it. A card id is not a graph node, so without this its `set_bypassed` was a
+                // no-op and the H verb did nothing to a group (Enio, smoke: *"Mute não funciona
+                // para grupos"*).
+                let mut targets: Vec<NodeId> = Vec::new();
                 for id in nodes {
-                    let nid = NodeId(id);
+                    match subgraph::subgraph_of(id) {
+                        Some(sid) => targets.extend(ph2d_motion_doc::subgraph::member_nodes_deep(
+                            &motion.doc.subgraphs,
+                            &motion.doc.members,
+                            sid,
+                        )),
+                        None => targets.push(NodeId(id)),
+                    }
+                }
+                for nid in targets {
                     if motion.doc.graph.node(nid).is_some() {
                         motion.doc.graph.set_bypassed(nid, on);
                     }

@@ -120,6 +120,19 @@ pub struct PainterTool {
     /// `painter_preview` cache holds an Arc clone (1 atomic increment per drain
     /// instead of a full memcpy). Seeded by `set_source` from the sprite.
     canvas_rgba: Arc<Vec<u8>>,
+    /// **A FORMA doada pelo módulo 3D** — `[nx, ny, nz, peso]` por texel do canvas (`docs/3D/05.2`).
+    ///
+    /// O passe de luz deriva a normal de `∇h` da tinta; com este plano na mão ele compõe as DUAS
+    /// fontes, e é isso que faz uma pincelada chapada acender pela escultura embaixo dela.
+    ///
+    /// ⚠️ **`None` é o mundo inteiro que existia antes**, e não por convenção: a soma do
+    /// `Rig::shade_over` com a forma neutra reduz *literalmente* à expressão que sempre shipou. Um
+    /// documento sem escultura não paga um byte nem um ramo.
+    ///
+    /// ⚠️ E ele é um plano PRONTO, do mesmo jeito que os três do relevo: quem rasteriza a malha é o
+    /// `ph2d-mesh-render`, uma vez, e o resultado chega aqui como números. É essa cerca que mantém o
+    /// Painter sem saber o que é um triângulo.
+    donated_form: Option<Arc<Vec<f32>>>,
     /// The runtime layer model — source of truth for layer structure + per-layer
     /// blend/opacity/visibility/flags. The ACTIVE layer's pixels live in
     /// `canvas_rgba`; non-active layers' pixels live in `images`.
@@ -328,6 +341,7 @@ impl Default for PainterTool {
         Self {
             params: PainterParams::default(),
             canvas_rgba: Arc::new(Vec::new()),
+            donated_form: None,
             layers: LayerStack::new(),
             images: BTreeMap::new(),
             heights: BTreeMap::new(),

@@ -155,6 +155,14 @@ pub(super) struct ReliefFields<'a> {
     /// (it comes off the brush). No plane is needed for it, which is what makes the whole per-pixel
     /// material cost one merge at commit instead of a second buffer per stroke.
     live_mat: MaterialBytes,
+    /// **A FORMA doada** pelo módulo 3D (`docs/3D/05.2`) — `[nx, ny, nz, peso]` por texel do canvas, ou
+    /// `None` num documento sem escultura.
+    ///
+    /// ⚠️ Ela é um plano PRONTO, exatamente como os três do relevo: a malha é rasterizada uma vez e
+    /// chega aqui como números. Um segundo rasterizador dentro do passe de luz seria uma segunda
+    /// resposta a *"que forma há neste pixel"* — a mesma cerca que mantém o FOLD do relevo fora do
+    /// shader.
+    form: Option<&'a [f32]>,
     /// `Material::NEUTRAL`, quantised ONCE — the ground the material fold starts from, and the material
     /// a layer with no entry reads as. It is a constant, and it is read per texel; deriving it in the
     /// loop is the kind of thing that costs half a millisecond and looks like nothing.
@@ -292,6 +300,25 @@ impl ReliefFields<'_> {
         c.clamp(0.0, 1.0)
     }
 
+    /// A forma doada neste pixel — `[nx, ny, nz, peso]`, ou [`NO_FORM`] onde não há escultura.
+    ///
+    /// ⚠️ **O guard de peso é load-bearing, e é uma armadilha de verdade:** o G-buffer escreve
+    /// `[0, 0, 0, 0]` fora da silhueta, e um `z` ZERO não é "nenhuma forma" — é uma normal DEITADA, que
+    /// somada à inclinação da tinta daria um vetor quase horizontal e uma faixa preta em volta de toda
+    /// escultura. O neutro de *"não há forma aqui"* é `[0, 0, 1]`, e é ele que faz a soma do
+    /// [`Rig::shade_over`] reduzir à expressão da tinta.
+    #[inline]
+    pub(super) fn form_at(&self, x: i64, y: i64) -> [f32; 4] {
+        let Some(f) = self.form else {
+            return super::impasto_shade::NO_FORM;
+        };
+        let i = self.index(x, y) * 4;
+        if f[i + 3] <= 0.0 {
+            return super::impasto_shade::NO_FORM;
+        }
+        [f[i], f[i + 1], f[i + 2], f[i + 3]]
+    }
+
     #[inline]
     fn index(&self, x: i64, y: i64) -> usize {
         let cx = x.clamp(0, self.width as i64 - 1) as usize;
@@ -307,8 +334,18 @@ impl PainterTool {
     /// Cheap enough to call per frame — the height map is empty for every document nobody has sculpted.
     #[must_use]
     pub fn impasto_visible(&self) -> bool {
-        self.paint.impasto_show
-            && (!self.heights.is_empty() || !self.paint.relief.stroke_height.is_empty())
+        // ⚠️ **A doação é a SEGUNDA razão para o passe existir, e ela não passa pelo `impasto_show`.**
+        //
+        // Aquele interruptor pergunta *"mostrar o relevo da TINTA?"*, e a forma de uma escultura não é
+        // relevo de tinta — é geometria de outra camada. Pendurar as duas no mesmo bit faria esconder
+        // o impasto apagar a escultura junto, que é uma coisa que ninguém pediu e que o artista leria
+        // como o 3D ter sumido.
+        //
+        // E sem esta metade a doação seria invisível no caso que ela existe para servir: um documento
+        // com uma escultura e NENHUM relevo de tinta não tem `heights`, então o passe nem correria.
+        self.donated_form.is_some()
+            || (self.paint.impasto_show
+                && (!self.heights.is_empty() || !self.paint.relief.stroke_height.is_empty()))
     }
 
     /// Whether `id` is visible *and every group above it is too*. Hiding a GROUP has to put out the
@@ -390,7 +427,16 @@ impl PainterTool {
                 active: is_active,
             });
         }
-        if layers.is_empty() {
+        // O plano só é aceito com a FORMA do canvas: um plano de outro tamanho descreveria a forma no
+        // lugar errado, e o modo de falha disso é uma luz torta que ninguém liga à escultura.
+        let form = self
+            .donated_form
+            .as_deref()
+            .map(Vec::as_slice)
+            .filter(|f| f.len() == n * 4);
+        // ⚠️ A segunda camada da mesma pergunta: sem camada de relevo E sem forma não há nada a
+        // iluminar. Com forma e nenhum relevo há — é *pintar sobre forma*, o objetivo O1 inteiro.
+        if layers.is_empty() && form.is_none() {
             return None;
         }
         Some(ReliefFields {
@@ -398,10 +444,37 @@ impl PainterTool {
             live_h,
             live_c,
             live_mat: self.paint.brush.material().to_bytes(),
+            // O plano só é aceito com a FORMA do canvas: um plano de outro tamanho descreveria a forma
+            // no lugar errado, e o modo de falha disso é uma luz torta que ninguém liga à escultura.
+            form,
             neutral: ph2d_painter_brush::material::Material::NEUTRAL.to_bytes(),
             width: w as usize,
             height: h as usize,
         })
+    }
+
+    /// **A porta da DOAÇÃO** — instala (ou remove) o plano de forma que o módulo 3D rasteriza.
+    ///
+    /// `form` é `[nx, ny, nz, peso]` por texel do canvas, em ordem de linha: a normal no espaço do rig
+    /// e quanto de forma há ali. `None` remove a doação, e remover é **byte-idêntico** ao mundo sem
+    /// escultura — a soma do [`super::impasto_shade::Rig::shade_over`] com a forma neutra reduz
+    /// literalmente à expressão da tinta.
+    ///
+    /// ⚠️ **Ele NÃO valida o tamanho aqui, e isso é deliberado:** quem valida é o
+    /// [`Self::impasto_fields`], contra a forma do canvas VIVO. Um canvas pode ser redimensionado
+    /// entre o instante em que a malha foi rasterizada e o instante em que a luz roda, e um plano com
+    /// a forma errada descreveria a escultura no lugar errado — cujo modo de falha é uma luz torta que
+    /// ninguém liga à escultura. Guardar e conferir na leitura é o que torna o descasamento
+    /// *inofensivo* em vez de invisível.
+    pub fn set_donated_form(&mut self, form: Option<std::sync::Arc<Vec<f32>>>) {
+        self.donated_form = form;
+    }
+
+    /// O plano de forma vigente, se houver. Existe para o gate poder afirmar o que o tool guarda sem
+    /// abrir o passe inteiro.
+    #[must_use]
+    pub fn donated_form(&self) -> Option<&[f32]> {
+        self.donated_form.as_deref().map(Vec::as_slice)
     }
 
     /// Light `rgba` — the pixels of `region`, freshly composited and NOT yet lit (`rgba` is
@@ -450,8 +523,14 @@ impl PainterTool {
                 if key != mat.key {
                     mat = light.resolve(key);
                 }
+                // ⚠️ O `body` toma o MÁXIMO das duas presenças, e não só a da tinta: a forma existe onde
+                // ela cobre, mesmo sobre papel nu, e é isso que faz *pintar sobre forma* funcionar
+                // desde a primeira pincelada. Sem isto a doação só apareceria onde já houvesse tinta —
+                // e onde já há tinta o artista não precisa dela para saber onde a forma está.
+                let form = fields.form_at(gx, gy);
+                let body = paint_body(cover).max(form[3]);
                 let (mul, add) =
-                    light.shade(&mat, paint_body(cover), gloss_body(cover), dhx, dhy, albedo);
+                    light.shade_over(&mat, body, gloss_body(cover), dhx, dhy, form, albedo);
                 if mul == [1.0; 3] && add == [0.0; 3] {
                     continue; // flat: byte-identical, and not even a rounding trip through f32
                 }

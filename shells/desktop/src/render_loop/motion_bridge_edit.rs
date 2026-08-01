@@ -124,7 +124,7 @@ pub(super) fn duplicate(
 /// edges reference node INDICES, not ids, so [`paste`] can land them in any level or
 /// after the originals are gone. `pre` (feedback) edges are dropped — the paste
 /// re-plumbs the copies' self-loops through `reconcile`, like a dropped node.
-pub(super) fn copy_selection(motion: &mut MotionState, nodes: Vec<u32>) {
+pub(super) fn copy_selection(motion: &mut MotionState, nodes: Vec<u32>, cards: Vec<u32>) {
     let sources: Vec<NodeId> = nodes
         .iter()
         .map(|id| NodeId(*id))
@@ -137,6 +137,29 @@ pub(super) fn copy_selection(motion: &mut MotionState, nodes: Vec<u32>) {
     // index pairs the paste can re-point at the copies it mints.
     let index: std::collections::BTreeMap<NodeId, usize> =
         sources.iter().enumerate().map(|(i, id)| (*id, i)).collect();
+
+    // The groups to carry: every subgraph inside a copied card, at any depth. A copy
+    // of loose nodes has no cards, so this is empty and the clip is byte-identical to
+    // the pre-nesting one. Sorted ascending (BTreeSet, deterministic) → a stable clip
+    // index the node/parent references below point at.
+    let relevant: std::collections::BTreeSet<u32> = cards
+        .iter()
+        .flat_map(|c| ph2d_motion_doc::subgraph::descendants(&motion.doc.subgraphs, *c))
+        .collect();
+    let sub_index: std::collections::BTreeMap<u32, usize> =
+        relevant.iter().enumerate().map(|(i, id)| (*id, i)).collect();
+    let clip_subgraphs: Vec<crate::motion_state::ClipSubgraph> = relevant
+        .iter()
+        .filter_map(|sid| ph2d_motion_doc::subgraph::find(&motion.doc.subgraphs, *sid))
+        .map(|s| crate::motion_state::ClipSubgraph {
+            title: s.title.clone(),
+            // A parent OUTSIDE the copied set becomes a top-level group of the clip
+            // (`None`), so the paste hangs it from whatever level it lands in.
+            parent: s.parent.and_then(|p| sub_index.get(&p).copied()),
+            x: s.x,
+            y: s.y,
+        })
+        .collect();
 
     let clip_nodes: Vec<crate::motion_state::ClipNode> = sources
         .iter()
@@ -157,6 +180,13 @@ pub(super) fn copy_selection(motion: &mut MotionState, nodes: Vec<u32>) {
                     .cloned()
                     .unwrap_or_default(),
                 pos: motion.doc.graph.pos(*src).unwrap_or(Pos { x: 0.0, y: 0.0 }),
+                // The clip index of the group holding it, or loose. A node whose live
+                // group is not among the copied cards' subtrees pastes loose.
+                subgraph: motion
+                    .doc
+                    .members
+                    .get(src)
+                    .and_then(|sid| sub_index.get(sid).copied()),
             }
         })
         .collect();
@@ -180,6 +210,7 @@ pub(super) fn copy_selection(motion: &mut MotionState, nodes: Vec<u32>) {
     motion.clip = Some(crate::motion_state::GraphClip {
         nodes: clip_nodes,
         edges: clip_edges,
+        subgraphs: clip_subgraphs,
         pastes: 0,
     });
 }
@@ -195,9 +226,10 @@ pub(super) fn copy_selection(motion: &mut MotionState, nodes: Vec<u32>) {
 /// into a group joins that group and a pasted sequential node arrives alive — exactly
 /// like a node dropped from the add-menu.
 ///
-/// **Limitation, named:** a copied group's NESTING is not recreated — its member
-/// nodes paste FLAT into the current level (with their internal wires). Re-nesting on
-/// paste is the same follow-up the duplicate solved with `subgraph::duplicate_nesting`.
+/// **A copied group pastes as a group** — its member nodes' wires AND the collapsed
+/// cards that held them are rebuilt (`subgraph::paste_nesting`), so Ctrl+V matches
+/// Ctrl+D on a group instead of exploding it flat. A copy of loose nodes carries no
+/// subgraphs, so that path is byte-identical to before.
 pub(super) fn paste(motion: &mut MotionState) {
     let Some(clip) = motion.clip.clone() else {
         return; // nothing copied yet
@@ -238,10 +270,15 @@ pub(super) fn paste(motion: &mut MotionState) {
     }
 
     super::reconcile(motion, &pre.graph);
+    // Rebuild the copied groups AFTER reconcile (it re-homes the nested nodes over the
+    // current-level membership reconcile just gave them), and inside the same undo
+    // step. The selection it returns is cards + loose nodes — for a loose-node clip it
+    // is every node, exactly as before.
+    let selection = super::subgraph::paste_nesting(motion, &clip, &new_ids, ox, oy);
     motion.history.push_undo(pre);
     motion.pump.mark_dirty();
 
-    ph2d_panel_motion_graph::request_graph_selection(new_ids.iter().map(|id| id.0).collect());
+    ph2d_panel_motion_graph::request_graph_selection(selection);
 
     // Cascade the NEXT paste one offset further (the clip stays, so paste-many works).
     if let Some(c) = motion.clip.as_mut() {

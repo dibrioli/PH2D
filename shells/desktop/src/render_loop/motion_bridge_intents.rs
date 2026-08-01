@@ -184,7 +184,9 @@ pub(super) fn apply_graph_intents(
                         .map(|n| n.0),
                     );
                 }
-                edit::copy_selection(motion, sources);
+                // `cards` carries the copied groups' subtrees into the clip, so Ctrl+V
+                // rebuilds the nesting exactly as Ctrl+D keeps it (`duplicate_nesting`).
+                edit::copy_selection(motion, sources, cards);
             }
             // Ctrl+V — replay the clipboard into the current level (one undo step).
             GraphIntent::Paste => edit::paste(motion),

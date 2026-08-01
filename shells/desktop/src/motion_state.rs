@@ -165,6 +165,13 @@ pub(crate) struct MotionState {
 pub(crate) struct GraphClip {
     pub(crate) nodes: Vec<ClipNode>,
     pub(crate) edges: Vec<ClipEdge>,
+    /// The **groups the copied set lived in**, portably (Ctrl+C on a collapsed card).
+    /// Empty for a copy of loose nodes — the common case, and byte-identical to the
+    /// pre-nesting clip. Like the edges, this is NodeId-free: a subgraph's parent is
+    /// an INDEX into this list (`None` = a top-level group of the clip), so the paste
+    /// rebuilds the fold in whatever level it lands in. It mirrors what `duplicate`
+    /// keeps with `subgraph::duplicate_nesting`, so Ctrl+V matches Ctrl+D on a group.
+    pub(crate) subgraphs: Vec<ClipSubgraph>,
     /// How many times this clip has already been pasted. Each paste cascades one
     /// offset further down-right (`copy_selection` resets it to 0), so pasting the
     /// same clip repeatedly does not stack every copy on one spot.
@@ -179,6 +186,22 @@ pub(crate) struct ClipNode {
     pub(crate) params: std::collections::BTreeMap<String, f32>,
     pub(crate) texts: std::collections::BTreeMap<String, String>,
     pub(crate) pos: ph2d_nodegraph::graph::Pos,
+    /// The group this node belongs to, as an INDEX into [`GraphClip::subgraphs`]
+    /// (`None` = loose at the clip's top level). Id-free like everything else in the
+    /// clip, so the paste re-homes the copy into the group it mints.
+    pub(crate) subgraph: Option<usize>,
+}
+
+/// One group in a [`GraphClip`] — the portable, NodeId-free record the paste rebuilds
+/// the collapsed cards from. `parent` is an INDEX into [`GraphClip::subgraphs`]
+/// (`None` = a top-level group of the clip, which hangs from whatever level the paste
+/// lands in); `x`/`y` are the card's position, offset by the paste like a node's.
+#[derive(Clone)]
+pub(crate) struct ClipSubgraph {
+    pub(crate) title: String,
+    pub(crate) parent: Option<usize>,
+    pub(crate) x: f32,
+    pub(crate) y: f32,
 }
 
 /// A wire with BOTH ends among the copied nodes, endpoints as `(index, port)` into

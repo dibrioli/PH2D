@@ -324,7 +324,7 @@ fn copy_then_paste_recreates_the_chain_with_params_and_internal_wires_only() {
     motion.doc.graph.set_param(mv, "dx", 3.5);
     let before = motion.doc.graph.nodes().len();
 
-    edit::copy_selection(&mut motion, vec![grid.0, mv.0]);
+    edit::copy_selection(&mut motion, vec![grid.0, mv.0], vec![]);
     edit::paste(&mut motion);
 
     let g = &motion.doc.graph;
@@ -376,7 +376,7 @@ fn copy_carries_the_text_param_through_the_clipboard() {
     let ex = motion.doc.graph.add_node("motion.expression");
     motion.doc.graph.set_text_param(ex, "expr", "sin(t) * a");
 
-    edit::copy_selection(&mut motion, vec![ex.0]);
+    edit::copy_selection(&mut motion, vec![ex.0], vec![]);
     edit::paste(&mut motion);
 
     let paste = motion
@@ -408,7 +408,7 @@ fn copy_does_not_touch_the_document_or_the_undo_history() {
     let (grid, mv, _out, _tint) = scene(&mut motion);
     let pre = motion.doc.clone();
 
-    edit::copy_selection(&mut motion, vec![grid.0, mv.0]);
+    edit::copy_selection(&mut motion, vec![grid.0, mv.0], vec![]);
 
     assert_eq!(motion.doc, pre, "copy left the document byte-identical");
     assert!(motion.clip.is_some(), "but the clipboard filled");
@@ -427,7 +427,7 @@ fn paste_is_one_undo_step() {
     let (grid, mv, _out, _tint) = scene(&mut motion);
     let before = motion.doc.graph.nodes().len();
 
-    edit::copy_selection(&mut motion, vec![grid.0, mv.0]);
+    edit::copy_selection(&mut motion, vec![grid.0, mv.0], vec![]);
     edit::paste(&mut motion);
     assert_eq!(motion.doc.graph.nodes().len(), before + 2, "two pastes landed");
 
@@ -459,7 +459,7 @@ fn paste_many_from_one_copy_makes_independent_cascaded_copies() {
     motion.doc.graph.set_pos(grid, ph2d_nodegraph::graph::Pos { x: 10.0, y: 20.0 });
     let before = motion.doc.graph.nodes().len();
 
-    edit::copy_selection(&mut motion, vec![grid.0]);
+    edit::copy_selection(&mut motion, vec![grid.0], vec![]);
     edit::paste(&mut motion);
     let first = NodeId(ph2d_panel_motion_graph::pending_graph_selection().unwrap()[0]);
     edit::paste(&mut motion);
@@ -492,6 +492,82 @@ fn paste_with_an_empty_clipboard_is_inert() {
 
     assert_eq!(motion.doc, pre, "an empty-clipboard paste changed nothing");
     assert!(!motion.history.can_undo(), "and pushed no undo step");
+}
+
+/// **A copied GROUP pastes AS a group** — Ctrl+V rebuilds the collapsed card and re-homes
+/// the pasted nodes into it, matching Ctrl+D (which never exploded it). The clip is
+/// portable, so this holds even though `paste` replays the CLIP, not the live group.
+/// FALSIFIED three ways: no nesting rebuild (the pastes land loose, member of nothing) ·
+/// re-homing into the ORIGINAL group id (a stored id instead of a fresh copy) · the title
+/// dropped. The loose-node paste above is the control (empty `cards` → flat, unchanged).
+#[test]
+fn paste_rebuilds_the_copied_groups_nesting() {
+    use ph2d_motion_doc::subgraph::Subgraph;
+    let mut motion = MotionState::new();
+    let (grid, mv, _out, _tint) = scene(&mut motion);
+    // `scene` resets the graph but not the demo doc's groups — clear them so the
+    // "new subgraph" below is unambiguously the pasted one.
+    motion.doc.subgraphs.clear();
+    motion.doc.members.clear();
+    // Collapse grid+move into subgraph 1, titled "Rig", at the root level.
+    motion.doc.subgraphs.push(Subgraph {
+        id: 1,
+        parent: None,
+        x: 10.0,
+        y: 20.0,
+        title: "Rig".into(),
+    });
+    motion.doc.members.insert(grid, 1);
+    motion.doc.members.insert(mv, 1);
+    let before_subs = motion.doc.subgraphs.len();
+    let orig: std::collections::BTreeSet<NodeId> =
+        motion.doc.graph.nodes().iter().map(|n| n.id).collect();
+    let before_nodes = orig.len();
+
+    // Copy the CARD (subgraph 1) with its members, then paste.
+    edit::copy_selection(&mut motion, vec![grid.0, mv.0], vec![1]);
+    edit::paste(&mut motion);
+
+    assert_eq!(motion.doc.graph.nodes().len(), before_nodes + 2, "two nodes pasted");
+    assert_eq!(
+        motion.doc.subgraphs.len(),
+        before_subs + 1,
+        "and a FRESH group to hold them (not re-using the original)"
+    );
+
+    // The new group is the one that is not the original id 1.
+    let (new_id, new_title, new_parent) = {
+        let s = motion.doc.subgraphs.iter().find(|s| s.id != 1).expect("a new subgraph");
+        (s.id, s.title.clone(), s.parent)
+    };
+    assert_eq!(new_title, "Rig", "the copied group's title rode the clip");
+    assert_eq!(new_parent, None, "a top-level clip group hangs from the current level (root)");
+
+    // Both pasted nodes are members of the NEW group, not the original.
+    let pasted: Vec<NodeId> = motion
+        .doc
+        .graph
+        .nodes()
+        .iter()
+        .map(|n| n.id)
+        .filter(|id| !orig.contains(id))
+        .collect();
+    assert_eq!(pasted.len(), 2);
+    for p in &pasted {
+        assert_eq!(
+            motion.doc.members.get(p),
+            Some(&new_id),
+            "the paste re-homed the copy into the COPY of the group, not the original id 1"
+        );
+    }
+
+    // The selection is the pasted CARD (one view id), not the two loose member nodes.
+    let sel = ph2d_panel_motion_graph::pending_graph_selection().expect("a selection");
+    assert_eq!(sel.len(), 1, "a group is grabbed by its card, not by its members");
+    assert!(
+        !sel.contains(&pasted[0].0) && !sel.contains(&pasted[1].0),
+        "the selection is the card view id, not a member node id"
+    );
 }
 
 /// The source feeding `(to, port)`, if any — the seam-side reader for the heal below.

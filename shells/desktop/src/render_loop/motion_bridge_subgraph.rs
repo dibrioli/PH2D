@@ -467,6 +467,76 @@ pub(super) fn duplicate_nesting(
     selection
 }
 
+/// **Rebuild a pasted clip's nesting** (Ctrl+V of a copied group) — the sibling of
+/// [`duplicate_nesting`], but sourced from the PORTABLE clip instead of the live doc,
+/// so it works after the originals are gone or in another level. It mints one subgraph
+/// per clip subgraph, rebuilds the parent chain among the copies (a clip TOP-LEVEL
+/// group — `parent: None` — hangs from the level the paste landed in), and re-homes
+/// each pasted node into the group its clip entry named, OVERWRITING the current-level
+/// membership `reconcile`/`adopt_new` just set (so this must run AFTER reconcile).
+///
+/// Returns the new selection: the top-level pasted cards + the loose pasted nodes (a
+/// node inside a group is represented by its card, not selected on its own). An empty
+/// `clip.subgraphs` (a copy of loose nodes) mints nothing and returns every node —
+/// byte-identical to the pre-nesting paste.
+pub(super) fn paste_nesting(
+    motion: &mut MotionState,
+    clip: &crate::motion_state::GraphClip,
+    new_ids: &[NodeId],
+    ox: f32,
+    oy: f32,
+) -> Vec<u32> {
+    let level = motion.level;
+    // Mint one new subgraph per clip subgraph; `new_of[i]` is the copy of
+    // `clip.subgraphs[i]`, so the parent/member references (indices) re-point at it.
+    let new_of: Vec<u32> = clip
+        .subgraphs
+        .iter()
+        .map(|cs| {
+            let id = subgraph::next_id(&motion.doc.subgraphs);
+            motion.doc.subgraphs.push(Subgraph {
+                id,
+                parent: None, // fixed below, once every id exists
+                x: cs.x + ox,
+                y: cs.y + oy,
+                title: cs.title.clone(),
+            });
+            id
+        })
+        .collect();
+    // Parent chain: a clip parent index maps to its copy; a top-level clip group hangs
+    // from the level the paste is standing in.
+    for (i, cs) in clip.subgraphs.iter().enumerate() {
+        let parent = match cs.parent {
+            Some(p) => Some(new_of[p]),
+            None => level,
+        };
+        if let Some(s) = motion.doc.subgraphs.iter_mut().find(|s| s.id == new_of[i]) {
+            s.parent = parent;
+        }
+    }
+    // Re-home each pasted node into its clip group; a loose node stays at the level.
+    for (i, cn) in clip.nodes.iter().enumerate() {
+        if let Some(ci) = cn.subgraph {
+            motion.doc.members.insert(new_ids[i], new_of[ci]);
+        }
+    }
+    // Selection: the top-level pasted cards + the loose pasted nodes.
+    let mut selection: Vec<u32> = clip
+        .subgraphs
+        .iter()
+        .enumerate()
+        .filter(|(_, cs)| cs.parent.is_none())
+        .map(|(i, _)| view_id(new_of[i]))
+        .collect();
+    for (i, cn) in clip.nodes.iter().enumerate() {
+        if cn.subgraph.is_none() {
+            selection.push(new_ids[i].0);
+        }
+    }
+    selection
+}
+
 /// How far a duplicated card lands from its source (mirrors the node duplicate's).
 const DUP_OFFSET: f32 = 40.0; // LITERAL-PX-OK: duplicate offset (graph space)
 

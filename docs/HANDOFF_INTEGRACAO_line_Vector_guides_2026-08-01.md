@@ -21,7 +21,7 @@ o gesto. Mais a UI (duas linhas na seção Snap) e o arquivo.
 | `7fa42c1d9` | A cena de smoke `=45` e o plano 25 §9 documentado |
 | `0ede804b7` | ⚠️ **O 1º fix de auditoria** — a régua vive com a ferramenta Vector, por UMA porta (§4.4) |
 | `df9a58bb3` | ⚠️ **O FIX do 1º smoke** — o movimento estava ligado no handler que não entrega movimento (§8.3) |
-| `<mirror>` | **O MIRROR** (W6.3): a simetria VIVA — `PathEffect::Mirror`, `MAX_FX_KINDS` 21→22, o split de `paint.rs` |
+| `9802b7be0` | **O MIRROR** (W6.3): a simetria VIVA — `PathEffect::Mirror`, `MAX_FX_KINDS` 21→22, o split de `paint.rs` |
 
 ---
 

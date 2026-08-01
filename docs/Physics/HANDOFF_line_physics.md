@@ -8197,3 +8197,54 @@ mesma água e carrega peso a mais). ⚠️ **A carga do 3º lane é CENTRADA de
 propósito:** a primeira versão punha o sensor ao LADO e a jangada capotava —
 fisicamente correto e um desastre como demonstração, porque um barco de pé é
 exatamente a imagem do bug que a cena existe para mostrar consertado.
+
+---
+
+## W-PartMass — o seed do `Mass: Auto → Manual` conhece as PEÇAS (2026-08-01, sem cena)
+
+A **terceira** instância da mesma premissa, e a mais irônica: o comentário do
+gesto diz, com todas as letras, que o seed existe
+
+> *"para a massa não saltar quando o toggle vira — a Unity semeia o campo manual
+> a partir do automático pela mesma razão"*
+
+e num corpo composto ele fazia **exatamente isso**. Medido numa jangada de duas
+metades iguais: **`0,600` semeado contra `1,200` reais.** Metade, em silêncio,
+no gesto cuja razão de existir é não mexer no número.
+
+### O desenho
+
+`parts::auto_mass_with_parts` — a MESMA porta que já responde *de quem é esta
+forma*. ⚠️ Ela **soma `Collider::auto_mass`**, nunca re-deriva área: uma segunda
+fórmula divergiria no dia em que uma forma nova entrar no enum, e o sintoma seria
+uma massa semeada que não bate com a do corpo — o defeito que esta função existe
+para fechar, de volta por outra porta.
+
+⚠️ **`QueryState::try_new` é o que salva a assinatura.** O `apply_physics_edit`
+toma `&SimWorld` **de propósito** — é um passe de LEITURA que ENFILEIRA escritas
+— e `World::query` exige `&mut`. Trocar a assinatura para semear um número teria
+feito a função deixar de prometer o que ela promete.
+
+⚠️ **Diferença DELIBERADA com o empuxo:** um sensor **não desloca fluido**
+(`world::shapes::displaces`, W-CompoundZone) mas **tem massa** no rapier — e a
+massa que um seed precisa reproduzir é a que o solver de fato usa. As duas
+perguntas são diferentes e as duas portas ficam separadas.
+
+### A mutação que sobreviveu, pela TERCEIRA vez
+
+A porta ignorando o **DONO** passava nos dois gates, porque a fixture tinha **um
+corpo só**: *"as peças deste corpo"* e *"todas as peças da cena"* eram o mesmo
+número. É o buraco exato que o `count_parts` da W-PartFace já teve, e o padrão
+merece nome — **um filtro por dono só é observável com um segundo dono**. A
+fixture ganhou um segundo corpo com três peças próprias.
+
+**Gate irmão de CONTROLE:** um corpo de UMA forma segue semeando `0,600`, o que
+impede a cura de virar regressão para todo corpo que não é composto.
+
+### Números
+
+**`physics_ecs_c9` INTOCADO** (`16ba80e8…`) — o seed é **autoria**, não alcança o
+solver. `PROJECT_SCHEMA` **48**, registro **24**, nenhum componente, nenhum id,
+nenhum ADR, zero `Cargo.toml`. Sem cena: o gesto vive na cena `=72` (selecionar a
+jangada composta e virar o toggle), e uma cena própria para um número de campo
+seria cena que não se julga de olho.

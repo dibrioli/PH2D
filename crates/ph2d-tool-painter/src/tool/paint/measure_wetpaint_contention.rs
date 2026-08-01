@@ -625,3 +625,83 @@ fn measure_the_stamp_while_the_sim_is_actually_running() {
          chama `bring_home()` BLOQUEANTE, e o worker so devolve em fronteira de estagio."
     );
 }
+
+/// **O CARIMBO SOBRE UMA POÇA GRANDE** — o ingrediente que faltava, e o log
+/// calmo do Enio é quem o nomeia.
+///
+/// ⚠️ **Este é o primeiro log de traço com a máquina SÃ** (2026-07-31): o
+/// `ns/célula` fica em **7,0-7,1 em TODAS as janelas**, inclusive nas que
+/// carimbam, então a contenção está descartada por medição. E mesmo assim:
+///
+/// ```text
+/// stamps: media  58,92ms pico 173,07ms em 42/120 (315 entregas,  7,86ms cada)
+/// stamps: media 130,89ms pico 212,38ms em  4/120 ( 49 entregas, 10,69ms cada)
+/// ```
+///
+/// **7,86-10,69 ms por entrega**, contra os **0,78 ms** que a sonda irmã mede
+/// com a mesma razão de grade e a sim rodando. **10-14×**, e a diferença não é
+/// a máquina.
+///
+/// A fixture da irmã pinta numa folha **limpa**; o artista pinta sobre a poça
+/// que ele acabou de fazer — **1,58-1,90 M células vivas** no log. Um dab que
+/// cai em água tem outro trabalho pela frente (as raias do trail, o pickup, a
+/// tinta que já está lá), e nada na sonda anterior continha isso.
+///
+/// A tabela mede o MESMO traço nas duas condições, na mesma corrida.
+#[test]
+#[ignore = "sonda de medicao (release); rode com --ignored --nocapture"]
+fn measure_the_stamp_landing_on_a_puddle_that_is_already_there() {
+    const MOVES: u32 = 40;
+    const STEP_PX: f32 = 24.0;
+
+    println!("\n  O CARIMBO NA FOLHA LIMPA x SOBRE A POCA QUE O ARTISTA JA FEZ\n");
+    println!(
+        "    {:>6} {:>16} {:>16} {:>10}   {:>14}",
+        "raio", "folha limpa ms", "sobre a poca ms", "razao", "por entrega"
+    );
+
+    for radius in [100.0f32, 200.0, 300.0] {
+        let mut row = [0.0f64; 2];
+        for (slot, wet) in [(0usize, false), (1, true)] {
+            // ⚠️ A poça é construída pela porta do PRODUTO (`heavy_puddle`), a
+            // mesma que o worker do log de fato simula — 1,6 M células vivas.
+            let mut t = if wet {
+                heavy_puddle()
+            } else {
+                wetted(4096, radius)
+            };
+            t.set_paint_media(PaintMedia::WetPaint);
+            t.set_brush_size_px(radius * 2.0);
+            // Um traço NOVO por cima, no meio da poça.
+            let (x0, y0) = (900.0f32, 900.0f32);
+            t.on_canvas_pointer(cp([x0, y0], PointerPhase::Down));
+            let mut ms = Vec::with_capacity(MOVES as usize);
+            let mut since_tick = Instant::now();
+            for k in 1..=MOVES {
+                if since_tick.elapsed().as_micros() >= 16_000 {
+                    t.wetpaint_tick(1.0 / 60.0);
+                    since_tick = Instant::now();
+                }
+                let x = x0 + STEP_PX * k as f32;
+                let t0 = Instant::now();
+                t.on_canvas_pointer(cp([x, y0], PointerPhase::Move));
+                ms.push(t0.elapsed().as_secs_f64() * 1e3);
+                let _ = t.take_preview_arc();
+            }
+            t.on_canvas_pointer(cp([x0 + STEP_PX * MOVES as f32, y0], PointerPhase::Up));
+            row[slot] = ms.iter().sum();
+        }
+        println!(
+            "    {radius:>5.0}p {:>15.2} {:>15.2} {:>9.2}x   {:>13.3}ms",
+            row[0],
+            row[1],
+            row[1] / row[0].max(1e-9),
+            row[1] / f64::from(MOVES),
+        );
+    }
+    println!(
+        "\n    Leitura: o produto reporta 7,86-10,69 ms por entrega com a maquina SA. Se a\n    \
+         coluna SOBRE A POCA alcancar esse numero, o ingrediente que faltava e a agua que\n    \
+         ja esta la — e o alvo e o dab que cai em agua, nao o dab."
+    );
+}

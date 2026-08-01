@@ -231,17 +231,18 @@ fn worker_loop(
     // janela do worker + o COMPUTE acumulado do passo em voo. Ver
     // [`crate::wet_diag`] — sem eles o log do produto imprimia `sim 0.00ms x0`,
     // e a pergunta *"a água lenta é trabalho ou agendamento?"* não tinha número.
-    let mut away_since: Option<Instant> = None;
     let mut step_us: u64 = 0;
     while let Ok(mut engine) = rx.recv() {
-        if let Some(t) = away_since.take() {
-            crate::wet_diag::note_away(t.elapsed().as_micros() as u64);
-        }
+        crate::wet_diag::note_away_closed();
         loop {
             if want.swap(false, Ordering::AcqRel) {
                 // Devolve em fronteira de ESTÁGIO — o pior caso de espera da UI.
                 // ⚠️ O relógio do `away` arma ANTES do `send`, que MOVE o engine.
-                away_since = Some(Instant::now());
+                // ⚠️ E o intervalo é PUBLICADO em vez de guardado aqui: uma
+                // retenção mais longa que a janela de diagnóstico tem de ser
+                // creditada às janelas que ela ATRAVESSA, não àquela em que
+                // fecha (`wet_diag::note_away_open`).
+                crate::wet_diag::note_away_open();
                 if tx.send(engine).is_err() {
                     return;
                 }

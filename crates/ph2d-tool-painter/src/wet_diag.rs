@@ -75,6 +75,8 @@ pub fn note_wait(ms: f32) {
 static BUSY_US: AtomicU64 = AtomicU64::new(0);
 static AWAY_US: AtomicU64 = AtomicU64::new(0);
 static SLEEP_US: AtomicU64 = AtomicU64::new(0);
+/// O instante em que o motor SAIU (0 = está em casa) — ver [`note_away_open`].
+static AWAY_OPEN_US: AtomicU64 = AtomicU64::new(0);
 static CELLS: AtomicU64 = AtomicU64::new(0);
 static CELLS_N: AtomicU64 = AtomicU64::new(0);
 
@@ -83,14 +85,42 @@ pub fn note_busy(us: u64) {
     BUSY_US.fetch_add(us, Ordering::Relaxed);
 }
 
-/// O motor esteve com o FRAME por isto — o worker bloqueado no `recv`.
+/// O relógio comum dos intervalos abertos — micros desde a 1ª leitura.
 ///
-/// ⚠️ É o intervalo do `send` até o `recv` seguinte VOLTAR, e não a duração do
-/// composite: entre os dois cabe a espera do tick, o composite, o resto do
-/// frame e a viagem de volta pelo canal. É o preço do handshake, e é por isso
-/// que ele é medido do lado que o PAGA.
-pub fn note_away(us: u64) {
-    AWAY_US.fetch_add(us, Ordering::Relaxed);
+/// `Instant` não cabe num atômico, e o `away` precisa ser lido pela thread do
+/// FRAME enquanto o worker ainda o está medindo (abaixo).
+fn now_us() -> u64 {
+    static BASE: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
+    BASE.get_or_init(std::time::Instant::now)
+        .elapsed()
+        .as_micros() as u64
+}
+
+/// O motor FOI para o frame — abre o intervalo de `away`.
+///
+/// ⚠️ **Um intervalo aberto pertence à janela em que ele está ABERTO, e não
+/// àquela em que ele fecha** — foi assim que o log do Enio de 2026-07-31
+/// trouxe `busy 39% away 161% sleep 29%`, somando **229%** numa linha que diz
+/// PARTIÇÃO. O motor tinha ficado com o frame por mais tempo que a janela
+/// inteira (uma rajada de carimbos), e a versão anterior creditava as quatro
+/// segundos inteiros à janela onde o `recv` voltou.
+///
+/// É a MESMA classe do `sleep 909%` que a wave anterior curou, por outra via:
+/// lá a janela era assumida, aqui o intervalo atravessa a janela.
+pub fn note_away_open() {
+    AWAY_OPEN_US.store(now_us().max(1), Ordering::Release);
+}
+
+/// O motor VOLTOU — fecha o intervalo, creditando só o que ainda não foi.
+///
+/// ⚠️ O `swap` é o que torna isto correto contra o leitor concorrente: quem
+/// tirar o timestamp é quem credita aquele trecho, e o outro lado não o vê
+/// mais (nem duplica, nem perde).
+pub fn note_away_closed() {
+    let t = AWAY_OPEN_US.swap(0, Ordering::AcqRel);
+    if t != 0 {
+        AWAY_US.fetch_add(now_us().saturating_sub(t), Ordering::Relaxed);
+    }
 }
 
 /// O worker dormiu isto porque estava ADIANTADO (o ritmo de 40 Hz da SPEC).
@@ -99,8 +129,34 @@ pub fn note_sleep(us: u64) {
 }
 
 /// `(busy, away, sleep)` em ms, ZERANDO a janela.
+///
+/// ⚠️ **Credita primeiro a parte ABERTA do `away`** e re-baseia o intervalo:
+/// sem isto uma retenção mais longa que a janela cai INTEIRA na janela onde
+/// termina, e a linha que diz *partição* soma 229% (o log de 2026-07-31).
+///
+/// O CAS é o que impede a contagem dupla: se o worker fechou o intervalo entre
+/// a leitura e a troca, ele já creditou aquele trecho e o CAS falha — nada é
+/// somado aqui, e nada se perde.
+///
+/// ⚠️ **E ele é uma defesa DOCUMENTADA e não gateada, de propósito:** a mutação
+/// que o troca por um `store` **não sangra**, porque a contagem dupla só existe
+/// sob corrida real com o worker e um teste single-threaded não a produz. É o
+/// precedente que esta linha já usou (ADR-0145: *duas defesas em camada
+/// documentadas em vez de gateadas — no regime que shipa não são
+/// observáveis*), e escrevê-lo aqui é o que impede a próxima pessoa de
+/// "simplificar" o CAS achando que a suíte verde a autoriza.
 #[must_use]
 pub fn take_worker() -> (f64, f64, f64) {
+    let open = AWAY_OPEN_US.load(Ordering::Acquire);
+    if open != 0 {
+        let n = now_us().max(1);
+        if AWAY_OPEN_US
+            .compare_exchange(open, n, Ordering::AcqRel, Ordering::Acquire)
+            .is_ok()
+        {
+            AWAY_US.fetch_add(n.saturating_sub(open), Ordering::Relaxed);
+        }
+    }
     let take = |c: &AtomicU64| c.swap(0, Ordering::Relaxed) as f64 / 1000.0;
     (take(&BUSY_US), take(&AWAY_US), take(&SLEEP_US))
 }
@@ -153,4 +209,56 @@ pub fn take_window() -> (Half, Half, Half) {
         take(&COMP_US, &COMP_MAX_US, &COMP_N),
         take(&WAIT_US, &WAIT_MAX_US, &WAIT_N),
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// **UM INTERVALO ABERTO É CREDITADO À JANELA EM QUE ELE ESTÁ ABERTO — E
+    /// NADA É CONTADO DUAS VEZES.**
+    ///
+    /// ⚠️ Gate nascido de um log: `busy 39% away 161% sleep 29%` — soma **229%**
+    /// numa linha que diz PARTIÇÃO. O motor ficara com o frame por mais tempo
+    /// que a janela inteira (uma rajada de carimbos), e a versão anterior
+    /// creditava o intervalo INTEIRO à janela onde o `recv` voltou.
+    ///
+    /// ⚠️ **UM teste, e não dois, porque os baldes são GLOBAIS.** A 1ª versão
+    /// eram dois gates e eles se drenaram mutuamente — a lição que o
+    /// `the_worker_reports_what_a_step_costs` já pregava (*ele é o único teste
+    /// não-`#[ignore]` que consome a janela global; um 2º leitor zeraria a dele
+    /// e o verde viraria sorte*), violada um arquivo adiante, com um
+    /// doc-comment meu afirmando o contrário.
+    ///
+    /// Duas mutações sangram: creditar só no `note_away_closed` (a 1ª metade
+    /// vira 0) · creditar sem o CAS de `take_worker` (a soma passa o intervalo).
+    #[test]
+    fn an_open_away_is_credited_to_the_window_it_spans_and_never_twice() {
+        let _ = take_worker(); // zera o que houver
+        let t0 = std::time::Instant::now();
+        note_away_open();
+        std::thread::sleep(std::time::Duration::from_millis(30));
+        let (_, first, _) = take_worker();
+        std::thread::sleep(std::time::Duration::from_millis(30));
+        note_away_closed();
+        let (_, second, _) = take_worker();
+        let real = t0.elapsed().as_secs_f64() * 1e3;
+        assert!(
+            first >= 20.0,
+            "a janela que CONTEM o intervalo aberto recebeu {first:.1} ms: um `away` mais \
+             longo que a janela volta a cair inteiro na janela onde fecha, e a linha de \
+             particao volta a somar mais de 100%"
+        );
+        assert!(
+            second >= 20.0,
+            "a 2a janela recebeu {second:.1} ms: o resto do intervalo tem de ser creditado \
+             onde ele de fato correu"
+        );
+        assert!(
+            first + second <= real * 1.25 + 5.0,
+            "as duas janelas somam {:.1} ms para um intervalo de {real:.1}: alguma parte \
+             foi creditada duas vezes",
+            first + second
+        );
+    }
 }

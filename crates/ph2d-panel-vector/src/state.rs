@@ -61,6 +61,8 @@ thread_local! {
     /// Whether shape-snapping is on (mirrored from the shell). The GRID toggle
     /// lives in the editor's universal Grid Snap panel, not here.
     static CURRENT_SNAP: Cell<bool> = const { Cell::new(true) };
+    static CURRENT_SNAP_PATH: Cell<bool> = const { Cell::new(false) };
+    static CURRENT_SNAP_CROSS: Cell<bool> = const { Cell::new(false) };
     /// "Set Center" armado: a próxima pressão no canvas reposiciona a origem.
     static CURRENT_PIVOT_EDIT: Cell<bool> = const { Cell::new(false) };
     /// A seleção tem alguma forma VIVA (paramétrica/texto, com `VecShape`) —
@@ -253,6 +255,24 @@ pub fn set_current_snap(on: bool) {
 /// Whether shape-snapping is on this frame.
 pub(crate) fn current_snap() -> bool {
     CURRENT_SNAP.with(|c| c.get())
+}
+
+/// Publish the two POSITION claims of the Snap section (plano 25 §9). They are separate from
+/// `set_current_snap` because they answer a different question: that one aligns one axis at a
+/// time, these two land the point somewhere.
+pub fn set_current_snap_position(path: bool, crossings: bool) {
+    CURRENT_SNAP_PATH.with(|c| c.set(path));
+    CURRENT_SNAP_CROSS.with(|c| c.set(crossings));
+}
+
+/// Whether snapping ONTO the geometry is on this frame.
+pub(crate) fn current_snap_path() -> bool {
+    CURRENT_SNAP_PATH.with(|c| c.get())
+}
+
+/// Whether snapping to curve crossings is on this frame.
+pub(crate) fn current_snap_crossings() -> bool {
+    CURRENT_SNAP_CROSS.with(|c| c.get())
 }
 
 /// The angle the Angle chip last reported this gesture (for the delta emit).

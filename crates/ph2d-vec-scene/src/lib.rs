@@ -49,6 +49,12 @@ pub use xform::{VecXforms, Xform, xform_of};
 mod path_ops;
 pub use path_ops::{bake_xform, curve_bbox_in_frame};
 
+/// **A SONDA DE CURVA** (plano 25 §9): projetar um ponto SOBRE a geometria e achar onde duas
+/// curvas se cruzam — as duas perguntas do snap de precisão. Irmã do [`geometry`], e separada
+/// dele porque a resposta é uma COORDENADA (que o artista vê ampliada), não um endereço no
+/// documento: as duas funções daqui refinam por Newton depois de amostrar.
+pub mod curve_probe;
+
 /// **O CORTE** — abrir um contorno num vértice, o primitivo de que a tesoura, a faca e a borracha
 /// de caminho são feitas (plano 25 §7). Módulo irmão de `path_ops` pelo mesmo teto de LOC, e o
 /// corte é por RESPONSABILIDADE: `path_ops` move e transforma um caminho INTEIRO; aqui a topologia

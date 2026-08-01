@@ -666,6 +666,81 @@ os *planos* da isométrica · **Transform Again** (⚠️ **`KeyD` já é o bool
 com o atalho do Illustrator) · **Measure tool / cotas** (**M** sobre `VecLabel`) · **autotrace** (**G**,
 motor espalhado).
 
+### ✅ W6.1 — ENTREGUE (2026-08-01): a reivindicação 2-D (path · cruzamentos · sprites)
+
+O motor de snap ganhou uma **segunda espécie de reivindicação**, e é a distinção que a wave
+inteira gira em torno.
+
+O que já existia é **ALINHAMENTO**: uma restrição 1-D por eixo, e é por isso que ela se
+decompõe (o X vem de uma vizinha, o Y da grade, e o resultado faz sentido — são duas retas que
+se cruzam). Encaixar **sobre uma curva** não é disso: é uma **POSIÇÃO**, restrição 0-D.
+*"Alinhar meu X com o X do ponto mais próximo daquela curva"* não quer dizer nada — todo X
+dentro da faixa da curva é o X de algum ponto dela. Uma posição vence os dois eixos ou nenhum.
+
+⚠️ **A lei que mantém as quinas alcançáveis.** A curva passa POR CIMA de cada âncora, então
+perto de um vértice as duas espécies competem — e se a posição vencesse sempre, o nó pousaria a
+uma fração de pixel do canto **para sempre**, sem gesto que corrigisse. A regra é *vértice vence
+curva* (a do Inkscape), enunciada como propriedade do **RESULTADO**: se o alinhamento já pousa
+exactamente sobre UM alvo (os dois eixos vindos do mesmo ponto), isso **é** uma coincidência com
+um ponto distinto, e a reivindicação 2-D **se retira**. O corolário é o que torna a mudança
+segura — sem curvas na lista, a lei nunca dispara e o encaixe é **byte-idêntico** ao que shipava
+(gate `geometry_in_the_target_list_changes_nothing_while_the_toggles_are_off`).
+
+**O kernel é geometria, não política** (`ph2d-vec-scene::curve_probe`, puro, sem kurbo):
+`nearest_on_segs` e `crossings_near` **amostram para escolher a bacia e refinam por NEWTON**.
+Amostrar não serve: numa reta de 1000 unidades as 17 amostras deixam o pé da perpendicular
+**31 unidades** fora, e o snap pousaria o nó onde o ímã não prometeu — a um zoom alto, meia tela.
+
+⛔ **A localização substituiu o cache que este plano previa.** Cruzamentos são `O(n²)` sobre os
+segmentos, e a §9 dizia "cachear por gesto". Não é preciso: o snap só quer os cruzamentos a até
+`max_d` do cursor, e filtrar os segmentos por essa vizinhança **antes** do laço par-a-par deixa o
+custo em `O(n + k·n)` com `k` ≈ 0..4. Um cache seria memória que envelhece; a localização não tem
+estado nenhum.
+
+⚠️ **Um cruzamento numa PONTA é descartado**: ele é a âncora que dois segmentos vizinhos
+compartilham por construção. Sem essa regra toda junta do desenho reportaria um "cruzamento", e o
+ímã dos cruzamentos disputaria cada canto com o das âncoras.
+
+**Sprites entraram junto** (o item **P** da tabela): nenhum concorrente tem, porque nenhum mistura
+raster e vetor na mesma árvore — nós misturamos (ADR-0110). A caixa vem da porta que o GIZMO usa
+(`anchor ± half`), e cada ponto sobe pelo afim **um a um**: sob rotação o alvo é o quadrilátero
+girado, não a caixa dele.
+
+**UI:** a seção **Snap** que já existia ganhou duas linhas — `Path` e `Cross` —, ambas nascendo
+**desligadas** (um ímã que agarra a linha inteira muda como todo gesto se comporta; ligá-lo por
+default mudaria o app debaixo de quem não pediu). **Visual:** quatro espécies, quatro marcas —
+tracejado+✕ (alinhamento) · ✕ (grade) · **anel** (sobre a curva) · **+** (cruzamento).
+
+**Zero schema** (`PROJECT_SCHEMA` 46, `VEC_SCENE_SCHEMA` 13 intactos — os ajustes de snap são
+estado de FERRAMENTA), **zero contrato congelado**, **zero `Cargo.toml`**. Ids novos no irmão
+`vector_snap.rs` (`vector.rs` estava em 685/700). **14 mutações, 14 sangram.**
+
+⚠️ **Quatro correções que a mutação me impôs, e valem mais que os números:**
+1. **Um bug de SINAL no Newton 2×2** (`J·Δ = −F` *e* subtrair = negação dupla; o refino caminhava
+   para longe da raiz). Um gate entre duas RETAS **não pode vê-lo**: ali a corda amostrada já é a
+   resposta, `F = 0`, e o Newton quebrado fica parado sobre o valor certo. Foi preciso curvatura.
+2. **A regra da ponta parecia gateada e não estava:** o helper de fixture fazia cúbicos
+   degenerados, cuja derivada é **zero nas pontas**, então o encontro morria no guard de
+   degeneração antes de chegar à regra — duas defesas em camada, uma gateada.
+3. **`each_toggle_governs_only_its_own_species` era verde por vácuo:** a fixture não tinha
+   cruzamento nenhum, então ligar ou desligar "Cross" dava o mesmo resultado.
+4. **Uma rotação de 90° não distingue "os pontos" de "a caixa dos pontos"** — ela leva caixa
+   alinhada em caixa alinhada. A fixture teve de ir para 45°.
+
+⚠️ **E um gate meu foi RENOMEADO por afirmar o que não podia ver:** `each_row_shows_its_own_state`
+não falhava quando as duas linhas liam o mesmo bool, porque `painted_rect` devolve GEOMETRIA e as
+opções são pintadas nas mesmas posições esteja qual estiver acesa. A prova da fiação mudou-se para
+onde ela é observável (os arch-gates `the_snap_toggles_are_not_crossed` e
+`each_pending_snap_toggle_lands_on_its_own_field`, na shell).
+
+⚠️ **Uma proteção NÃO é observável e está escrita em vez de creditada:** o guard `den ≈ 0` do
+Newton pode ser removido com os doze gates verdes, porque `0/0` vira `NaN`, o `clamp` o propaga e
+a aceitação final o recusa. Ele fica por tornar a intenção visível — depender de propagação de
+`NaN` morre em silêncio no dia em que alguém acrescentar um `is_finite` acima.
+
+**Aberto na W6** (a ordem da tabela §9): **guias e réguas** (o único **G**) · **mirror vivo** ·
+**rótulo de distância** nos smart guides.
+
 ## §10 — W0: A HIGIENE (defeitos que a auditoria achou, não features)
 
 Barata, e paga-se sozinha dentro da W1:

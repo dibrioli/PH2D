@@ -17,7 +17,27 @@
 //! ponto de rede INTEIRO (num hex/iso não existe "encaixar só o X"), e depois os
 //! pontos das outras formas **sobrescrevem eixo a eixo**: alinhar com o desenho
 //! importa mais do que alinhar com a régua.
+//!
+//! # Duas espécies de reivindicação (plano 25 §9, a W6)
+//!
+//! O que está acima é **ALINHAMENTO**: uma restrição 1-D por eixo, e é por isso que ela se
+//! decompõe (o X vem de uma vizinha, o Y da grade, e o resultado faz sentido — são duas retas
+//! que se cruzam). Encaixar **sobre uma curva** não é disso: é uma **POSIÇÃO**, uma restrição
+//! 0-D. "Alinhar meu X com o X do ponto mais próximo daquela curva" não quer dizer nada — todo
+//! X dentro da faixa da curva é o X de algum ponto dela. Uma posição vence os dois eixos ou
+//! nenhum.
+//!
+//! ⚠️ **A lei que mantém as quinas alcançáveis:** a curva passa POR CIMA de cada âncora, então
+//! perto de um vértice as duas espécies competem — e se a posição vencesse sempre, o nó pousaria
+//! a fração de pixel do canto, para sempre, sem gesto que corrigisse. A regra é *vértice vence
+//! curva* (a mesma do Inkscape), enunciada aqui como propriedade do **RESULTADO**: se o
+//! alinhamento já pousa exactamente sobre UM alvo (os dois eixos vindos do mesmo ponto), isso
+//! **é** uma coincidência com um ponto distinto, e a reivindicação 2-D **se retira**.
+//!
+//! O corolário é o que torna a mudança segura: sem curvas na lista de alvos, esta lei nunca
+//! dispara, e o encaixe é **byte-idêntico** ao que já shipava.
 
+use ph2d_vec_scene::curve_probe::{CubicSeg, crossings_near, nearest_on_segs, world_segs};
 use ph2d_vec_scene::{VecPathId, VecScene};
 
 /// Configuração de snap. `threshold` em **world-units** (o shell divide o limiar
@@ -29,7 +49,14 @@ pub struct SnapConfig {
     pub enabled: bool,
     /// Encaixar em âncoras e pontos-chave de bbox das outras formas.
     pub to_points: bool,
-    /// Distância máxima de encaixe em forma, por eixo.
+    /// Encaixar **sobre** a geometria — reivindicação de POSIÇÃO (os dois eixos).
+    pub to_path: bool,
+    /// Encaixar nos **cruzamentos** entre curvas. Também posição, e distinta: um cruzamento
+    /// é um ponto que o desenho produziu, não um lugar qualquer do contínuo.
+    pub to_crossings: bool,
+    /// Distância máxima de encaixe em forma, por eixo. Nas reivindicações de posição ela é
+    /// um RAIO — o alinhamento captura num quadrado, a posição num círculo, porque uma diz
+    /// respeito a cada eixo sozinho e a outra ao ponto.
     pub threshold: f64,
 }
 
@@ -38,6 +65,8 @@ impl Default for SnapConfig {
         Self {
             enabled: true,
             to_points: true,
+            to_path: false,
+            to_crossings: false,
             threshold: 0.0,
         }
     }
@@ -51,7 +80,30 @@ pub type GridSnapFn<'a> = &'a mut dyn FnMut([f64; 2]) -> Option<[f64; 2]>;
 /// Pontos da cena em que se pode encaixar.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct SnapTargets {
+    /// Alvos de ALINHAMENTO (1-D por eixo): âncoras e pontos-chave de bbox.
     pub points: Vec<[f64; 2]>,
+    /// A geometria, em MUNDO, para as reivindicações de POSIÇÃO. Guardada como segmentos
+    /// cúbicos e não como `VecPath` clonada: a projeção nunca lê estilo nem efeitos, e esta
+    /// lista é reconstruída por gesto.
+    ///
+    /// ⚠️ Os **cruzamentos não são um terceiro campo**: eles são derivados daqui na hora da
+    /// consulta, localizados em volta do cursor. Guardá-los seria memória que envelhece.
+    pub segs: Vec<CubicSeg>,
+}
+
+/// De onde veio um encaixe. É o que decide como a guia se desenha, e as quatro espécies
+/// dizem coisas diferentes ao artista: *alinhei com aquilo* · *caí na régua* · *estou SOBRE
+/// esta linha* · *estou no ponto onde duas linhas se cruzam*.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum SnapSource {
+    /// Um ponto de outra forma, por EIXO (âncora ou canto de bbox).
+    Shape,
+    /// A grade universal do editor.
+    Grid,
+    /// Um ponto **sobre** a geometria (posição, os dois eixos).
+    Curve,
+    /// Um **cruzamento** entre curvas (posição, os dois eixos).
+    Crossing,
 }
 
 /// Um encaixe achado num eixo.
@@ -64,8 +116,17 @@ pub struct SnapAxis {
     /// Ponto alvo. Num encaixe de grade é o ponto de rede — não há forma do outro
     /// lado, então a guia degenera numa cruz.
     pub target: [f64; 2],
-    /// Encaixou na grade, não num ponto de outra forma.
-    pub grid: bool,
+    /// De onde veio.
+    pub from: SnapSource,
+}
+
+impl SnapAxis {
+    /// Encaixou na grade? (o predicado que o desenho das guias fazia com o antigo campo
+    /// booleano — mantido como pergunta, não como estado.)
+    #[must_use]
+    pub fn is_grid(&self) -> bool {
+        self.from == SnapSource::Grid
+    }
 }
 
 /// O encaixe de um arrasto: até um por eixo, independentes.
@@ -122,14 +183,20 @@ pub fn bbox_key_points(lo: [f64; 2], hi: [f64; 2]) -> [[f64; 2]; 9] {
 /// `skip_paths` sai inteiro (a seleção que está sendo movida). `skip_verts` são
 /// âncoras individuais em movimento (índices PLANOS): elas saem, e a bbox do path
 /// que as contém também — uma bbox que está sendo deformada não é referência.
+///
+/// `curves` liga a coleta da GEOMETRIA (os alvos de posição). É um parâmetro e não sempre-
+/// ligado porque este recolhimento roda por movimento do gizmo: quem não ligou "Path" nem
+/// "Crossings" no painel não paga por percorrer os contornos da cena.
 #[must_use]
 pub fn collect_targets(
     scene: &VecScene,
     xforms: &ph2d_vec_scene::VecXforms,
     skip_paths: &[VecPathId],
     skip_verts: &[(VecPathId, usize)],
+    curves: bool,
 ) -> SnapTargets {
     let mut points = Vec::new();
+    let mut segs = Vec::new();
     for path in scene.paths() {
         if skip_paths.contains(&path.id) {
             continue;
@@ -144,15 +211,71 @@ pub fn collect_targets(
                 points.push(xf.apply(v.anchor));
             }
         }
-        if !deformed && let Some((lo, hi)) = scene.path_curve_bbox(path.id) {
+        if deformed {
+            // Uma forma cuja geometria está mudando debaixo do gesto não é referência —
+            // nem a caixa dela, nem as curvas.
+            continue;
+        }
+        if let Some((lo, hi)) = scene.path_curve_bbox(path.id) {
             // Os 9 pontos-chave são do bbox LOCAL; sobem um a um (uma forma girada
             // dá um quadrilátero, e os pontos dele seguem sendo os cantos/meios).
             for kp in bbox_key_points(lo, hi) {
                 points.push(xf.apply(kp));
             }
         }
+        if curves {
+            world_segs(path, &xf, &mut segs);
+        }
     }
-    SnapTargets { points }
+    SnapTargets { points, segs }
+}
+
+/// A reivindicação de POSIÇÃO: o ponto 2-D que vence os dois eixos, se houver.
+///
+/// **Cruzamento antes de curva**, e não por gosto: perto de um cruzamento as duas curvas
+/// passam por ali, então a distância à curva e a distância ao cruzamento são iguais a menos
+/// de ruído de `f64` — decidir por proximidade seria cara-ou-coroa, e metade das vezes o nó
+/// pousaria ao lado do ponto que o artista mirava.
+#[must_use]
+fn position_claim(
+    sources: &[[f64; 2]],
+    targets: &SnapTargets,
+    cfg: SnapConfig,
+) -> Option<(SnapSource, [f64; 2], [f64; 2])> {
+    if targets.segs.is_empty() || cfg.threshold <= 0.0 {
+        return None;
+    }
+    let mut best: Option<(f64, [f64; 2], [f64; 2])> = None;
+    if cfg.to_crossings {
+        for &s in sources {
+            for x in crossings_near(&targets.segs, s, cfg.threshold) {
+                keep_nearest(&mut best, s, x);
+            }
+        }
+        if let Some((_, s, t)) = best {
+            return Some((SnapSource::Crossing, s, t));
+        }
+    }
+    if cfg.to_path {
+        for &s in sources {
+            if let Some(p) = nearest_on_segs(&targets.segs, s, cfg.threshold) {
+                keep_nearest(&mut best, s, p);
+            }
+        }
+        if let Some((_, s, t)) = best {
+            return Some((SnapSource::Curve, s, t));
+        }
+    }
+    None
+}
+
+/// Guarda o par `(fonte, alvo)` de menor distância. Empate fica com o primeiro, como no
+/// alinhamento — determinístico.
+fn keep_nearest(best: &mut Option<(f64, [f64; 2], [f64; 2])>, s: [f64; 2], t: [f64; 2]) {
+    let d2 = (t[0] - s[0]).powi(2) + (t[1] - s[1]).powi(2);
+    if best.is_none_or(|(bd, _, _)| d2 < bd) {
+        *best = Some((d2, s, t));
+    }
 }
 
 /// Resolve o encaixe de `sources` contra `targets` e, opcionalmente, contra a
@@ -163,6 +286,10 @@ pub fn collect_targets(
 /// das outras formas então sobrescrevem eixo a eixo — cada um escolhendo o
 /// candidato de **menor** deslocamento dentro do limiar, independente do outro.
 /// Empate fica com o primeiro (determinístico).
+///
+/// A reivindicação de POSIÇÃO (curva/cruzamento) entra por último e vence os dois eixos de
+/// uma vez — **exceto** quando o alinhamento já pousou exactamente sobre um alvo, que é a
+/// lei *vértice vence curva* do cabeçalho do módulo.
 #[must_use]
 pub fn snap(
     sources: &[[f64; 2]],
@@ -191,7 +318,7 @@ pub fn snap(
                     delta: g[k] - s[k],
                     source: s,
                     target: g,
-                    grid: true,
+                    from: SnapSource::Grid,
                 })
             };
             (gx, gy) = (axis(0), axis(1));
@@ -214,12 +341,33 @@ pub fn snap(
                             delta,
                             source: s,
                             target: t,
-                            grid: false,
+                            from: SnapSource::Shape,
                         });
                     }
                 }
             }
         }
+    }
+
+    // 3. A reivindicação de POSIÇÃO. Ela se retira quando o alinhamento já pousou
+    //    exactamente sobre um alvo — *vértice vence curva*, enunciado sobre o resultado.
+    let coincident = match (px, py) {
+        (Some(a), Some(b)) => a.target == b.target,
+        _ => false,
+    };
+    if !coincident && let Some((from, s, t)) = position_claim(sources, targets, cfg) {
+        let axis = |k: usize| {
+            Some(SnapAxis {
+                delta: t[k] - s[k],
+                source: s,
+                target: t,
+                from,
+            })
+        };
+        return SnapResult {
+            x: axis(0),
+            y: axis(1),
+        };
     }
 
     SnapResult {
@@ -229,193 +377,5 @@ pub fn snap(
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use ph2d_vec_scene::{VecXforms, rectangle};
-
-    fn targets(pts: &[[f64; 2]]) -> SnapTargets {
-        SnapTargets {
-            points: pts.to_vec(),
-        }
-    }
-
-    fn cfg() -> SnapConfig {
-        SnapConfig {
-            threshold: 1.0,
-            ..SnapConfig::default()
-        }
-    }
-
-    /// Uma grade quadrada de passo `step`, com um raio de magnetismo — o mesmo
-    /// contrato do `GridSnapState` real (fora do raio ela não reivindica o ponto).
-    fn square_grid(step: f64, radius: f64) -> impl FnMut([f64; 2]) -> Option<[f64; 2]> {
-        move |p: [f64; 2]| {
-            let g = [(p[0] / step).round() * step, (p[1] / step).round() * step];
-            let d2 = (g[0] - p[0]).powi(2) + (g[1] - p[1]).powi(2);
-            (d2 <= radius * radius).then_some(g)
-        }
-    }
-
-    #[test]
-    fn a_point_inside_the_threshold_snaps_exactly_onto_the_target() {
-        let r = snap(&[[9.5, 20.4]], &targets(&[[10.0, 20.0]]), cfg(), None);
-        assert_eq!(r.apply([9.5, 20.4]), [10.0, 20.0]);
-        assert!(!r.x.unwrap().grid);
-    }
-
-    /// O ponto do lema: os eixos são independentes. Aqui só o X está no limiar —
-    /// o Y desliza livre. Sem isso não dá pra alinhar bordas sem colar o objeto.
-    #[test]
-    fn each_axis_snaps_on_its_own() {
-        let r = snap(&[[9.8, 50.0]], &targets(&[[10.0, 20.0]]), cfg(), None);
-        assert_eq!(r.apply([9.8, 50.0]), [10.0, 50.0]);
-        assert!(r.x.is_some() && r.y.is_none());
-    }
-
-    #[test]
-    fn nothing_snaps_beyond_the_threshold_or_when_disabled() {
-        assert!(
-            snap(&[[8.0, 20.0]], &targets(&[[10.0, 20.4]]), cfg(), None)
-                .x
-                .is_none()
-        );
-        let off = SnapConfig {
-            enabled: false,
-            ..cfg()
-        };
-        // Desligado (Alt segurado) ignora forma E grade.
-        let mut grid = square_grid(5.0, 1.0);
-        let r = snap(
-            &[[9.9, 20.0]],
-            &targets(&[[10.0, 20.0]]),
-            off,
-            Some(&mut grid),
-        );
-        assert_eq!(r.delta(), [0.0, 0.0]);
-    }
-
-    #[test]
-    fn the_nearest_candidate_wins_each_axis() {
-        let r = snap(
-            &[[10.0, 10.0]],
-            &targets(&[[10.7, 9.4], [10.2, 10.9]]),
-            cfg(),
-            None,
-        );
-        assert_eq!(r.x.unwrap().target, [10.2, 10.9], "dx = 0.2 < 0.7");
-        assert_eq!(r.y.unwrap().target, [10.7, 9.4], "dy = -0.6, |−0.6| < 0.9");
-    }
-
-    /// Vários pontos-fonte (a bbox de uma seleção): o melhor de todos vence.
-    #[test]
-    fn many_sources_offer_the_best_of_all() {
-        let bbox = bbox_key_points([0.0, 0.0], [10.0, 10.0]);
-        // Alvo colado no canto superior direito.
-        let r = snap(&bbox, &targets(&[[10.3, 10.0]]), cfg(), None);
-        assert!((r.x.unwrap().delta - 0.3).abs() < 1e-9);
-        assert_eq!(
-            r.x.unwrap().source,
-            [10.0, 0.0],
-            "o canto inferior-direito acha primeiro (empate → 1º)"
-        );
-        assert_eq!(r.y.unwrap().delta, 0.0);
-    }
-
-    /// A grade reivindica os DOIS eixos de uma vez — um ponto de rede é 2D, e
-    /// decompor por eixo só faria sentido num grid quadrado (existem nove tipos).
-    #[test]
-    fn the_grid_claims_both_axes_as_one_lattice_point() {
-        let mut grid = square_grid(5.0, 1.0);
-        let r = snap(
-            &[[9.6, 20.4]],
-            &SnapTargets::default(),
-            cfg(),
-            Some(&mut grid),
-        );
-        assert_eq!(r.apply([9.6, 20.4]), [10.0, 20.0]);
-        assert!(r.x.unwrap().grid && r.y.unwrap().grid);
-        assert_eq!(
-            r.x.unwrap().target,
-            r.y.unwrap().target,
-            "o mesmo ponto de rede"
-        );
-    }
-
-    /// Fora do raio de magnetismo a grade não reivindica nada — o arrasto segue
-    /// liso entre pontos de rede (comportamento Figma/Blender).
-    #[test]
-    fn outside_the_magnetism_radius_the_grid_stays_quiet() {
-        let mut grid = square_grid(5.0, 1.0);
-        let r = snap(
-            &[[12.5, 12.5]],
-            &SnapTargets::default(),
-            cfg(),
-            Some(&mut grid),
-        );
-        assert!(!r.any());
-    }
-
-    /// Forma vence régua, **por eixo**: o X encaixa na âncora vizinha e o Y fica
-    /// com o ponto de rede. É o que deixa alinhar com o desenho sem perder a grade.
-    #[test]
-    fn shape_points_override_the_grid_axis_by_axis() {
-        let mut grid = square_grid(5.0, 1.0);
-        // X: âncora em 9.9 (delta −0.1) bate o grid 10.0 (delta +0.1)? Não — quem
-        // decide não é a distância, é a precedência: o ponto SEMPRE sobrescreve.
-        let r = snap(
-            &[[9.8, 20.4]],
-            &targets(&[[9.5, 99.0]]),
-            cfg(),
-            Some(&mut grid),
-        );
-        assert_eq!(r.apply([9.8, 20.4]), [9.5, 20.0]);
-        assert!(!r.x.unwrap().grid, "X veio da forma");
-        assert!(r.y.unwrap().grid, "Y veio da grade");
-    }
-
-    /// Com "Shapes" desligado no painel, só a grade opera.
-    #[test]
-    fn with_points_off_only_the_grid_speaks() {
-        let mut grid = square_grid(5.0, 1.0);
-        let c = SnapConfig {
-            to_points: false,
-            ..cfg()
-        };
-        let r = snap(&[[9.6, 20.4]], &targets(&[[9.5, 20.5]]), c, Some(&mut grid));
-        assert_eq!(r.apply([9.6, 20.4]), [10.0, 20.0]);
-    }
-
-    #[test]
-    fn bbox_key_points_are_corners_mids_and_center() {
-        let k = bbox_key_points([0.0, 0.0], [10.0, 4.0]);
-        assert_eq!(k.len(), 9);
-        assert!(k.contains(&[0.0, 0.0]) && k.contains(&[10.0, 4.0]));
-        assert!(k.contains(&[5.0, 2.0]), "centro");
-        assert!(
-            k.contains(&[5.0, 0.0]) && k.contains(&[0.0, 2.0]),
-            "meios de aresta"
-        );
-    }
-
-    #[test]
-    fn collect_targets_skips_the_moving_paths_and_the_moving_anchors() {
-        let mut scene = VecScene::new();
-        let a = scene.push_path(rectangle([0.0, 0.0], [10.0, 10.0]));
-        let b = scene.push_path(rectangle([20.0, 0.0], [30.0, 10.0]));
-
-        // Nada excluído: 4 âncoras + 9 pontos de bbox, por path.
-        let all = collect_targets(&scene, &VecXforms::new(), &[], &[]);
-        assert_eq!(all.points.len(), 2 * (4 + 9));
-
-        // `a` inteiro fora (é ele que está sendo movido).
-        let no_a = collect_targets(&scene, &VecXforms::new(), &[a], &[]);
-        assert_eq!(no_a.points.len(), 4 + 9);
-        assert!(!no_a.points.contains(&[0.0, 0.0]));
-
-        // Uma âncora de `b` em movimento: ela sai E a bbox de `b` sai junto —
-        // uma caixa que está sendo deformada não serve de referência.
-        let deforming = collect_targets(&scene, &VecXforms::new(), &[], &[(b, 0)]);
-        assert_eq!(deforming.points.len(), (4 + 9) + 3);
-        assert!(!deforming.points.contains(&[20.0, 0.0]));
-    }
-}
+#[path = "snap_tests.rs"]
+mod tests;

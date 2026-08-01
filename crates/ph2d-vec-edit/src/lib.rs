@@ -41,7 +41,7 @@ pub use node_ops::WELD_TOL;
 pub use selection::SelectedKind;
 
 pub mod snap;
-pub use snap::{SnapConfig, SnapResult, SnapTargets, bbox_key_points, collect_targets};
+pub use snap::{SnapConfig, SnapResult, SnapSource, SnapTargets, bbox_key_points, collect_targets};
 
 /// A alça do **raio de quina** (Live Corners) — módulo irmão (LOC cap).
 pub mod corner_handle;

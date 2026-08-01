@@ -306,6 +306,8 @@ mod vec_selection;
 mod vec_shape_live;
 mod vec_shape_params;
 mod vec_snap;
+/// Os alvos de snap vindos do RASTER (irmão de `vec_snap`, teto de LOC).
+mod vec_snap_sprites;
 mod vec_text;
 mod vec_text_object;
 mod vec_text_reopen;

@@ -697,7 +697,7 @@ fn snap_targets_of_a_transformed_path_are_published_in_world_space() {
     let mut scene = VecScene::new();
     let id = scene.push_path(ph2d_vec_scene::rectangle([0.0, 0.0], [4.0, 4.0]));
     let xforms = moved_and_scaled(id);
-    let targets = crate::snap::collect_targets(&scene, &xforms, &[], &[]);
+    let targets = crate::snap::collect_targets(&scene, &xforms, &[], &[], false);
     assert!(
         targets
             .points

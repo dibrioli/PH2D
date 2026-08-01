@@ -2015,6 +2015,8 @@ impl crate::App {
             let mut pending_vec_fill_rule: Option<bool> = None;
             // Snap section: encaixar em formas (a grade é do painel de Grid).
             let mut pending_vec_snap_on: Option<bool> = None;
+            let mut pending_vec_snap_path: Option<bool> = None;
+            let mut pending_vec_snap_cross: Option<bool> = None;
 
             // Numeric Transform field edit (X/Y/W/H) — a SetValue document command.
             let mut pending_vec_transform: Option<(crate::input_dispatch::VecTransformField, f64)> =
@@ -2287,6 +2289,14 @@ impl crate::App {
                                 pending_vec_snap_on = Some(false);
                             } else if *id == ph2d_editor::ids::VECTOR_SNAP_ON {
                                 pending_vec_snap_on = Some(true);
+                            } else if *id == ph2d_editor::ids::VECTOR_SNAP_PATH_OFF {
+                                pending_vec_snap_path = Some(false);
+                            } else if *id == ph2d_editor::ids::VECTOR_SNAP_PATH_ON {
+                                pending_vec_snap_path = Some(true);
+                            } else if *id == ph2d_editor::ids::VECTOR_SNAP_CROSS_OFF {
+                                pending_vec_snap_cross = Some(false);
+                            } else if *id == ph2d_editor::ids::VECTOR_SNAP_CROSS_ON {
+                                pending_vec_snap_cross = Some(true);
                             } else if *id == ph2d_editor::ids::VECTOR_TEXT_FONT_PREV {
                                 pending_vec_font_cycle = Some(-1);
                             } else if *id == ph2d_editor::ids::VECTOR_TEXT_FONT_NEXT {
@@ -4214,6 +4224,12 @@ impl crate::App {
             if let Some(on) = pending_vec_snap_on {
                 self.vec_snap.on = on;
             }
+            if let Some(on) = pending_vec_snap_path {
+                self.vec_snap.path = on;
+            }
+            if let Some(on) = pending_vec_snap_cross {
+                self.vec_snap.crossings = on;
+            }
             if let Some(kind) = pending_vec_vertex_kind {
                 crate::input_dispatch::apply_vec_vertex_kind(
                     vec_scene,
@@ -4712,7 +4728,7 @@ impl crate::App {
                 sim,
                 &self.vec_entities,
                 self.vec_pivot_edit,
-                self.vec_snap.on,
+                self.vec_snap,
             );
             // Motion Nodes M0.T10: same phase as vector_bridge (AFTER the
             // ActivateTool drain, so a freshly-activated tool is seen this frame;

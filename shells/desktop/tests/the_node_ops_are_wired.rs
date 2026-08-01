@@ -265,3 +265,62 @@ fn the_cut_line_is_drawn_outside_the_edit_mode_guard() {
          que e' onde o artista a move"
     );
 }
+
+/// **Os dois interruptores de POSIÇÃO não estão cruzados** (plano 25 §9, a W6).
+///
+/// ⚠️ Este gate existe porque o seam do painel **não pode** provar isto: `painted_rect` devolve
+/// geometria, e as duas opções de uma linha ocupam as mesmas posições esteja qual estiver acesa.
+/// A fiação de facto mora aqui — cada id despacha para o seu `pending`, e trocá-los daria um
+/// painel em que ligar "Path" acende "Cross" e vice-versa, sem que teste de unidade nenhum
+/// enxergasse.
+#[test]
+fn the_snap_toggles_are_not_crossed() {
+    let code = std::fs::read_to_string("src/render_loop/mod.rs").expect("render_loop");
+    for (id, slot) in [
+        (
+            "VECTOR_SNAP_PATH_OFF",
+            "pending_vec_snap_path = Some(false)",
+        ),
+        ("VECTOR_SNAP_PATH_ON", "pending_vec_snap_path = Some(true)"),
+        (
+            "VECTOR_SNAP_CROSS_OFF",
+            "pending_vec_snap_cross = Some(false)",
+        ),
+        (
+            "VECTOR_SNAP_CROSS_ON",
+            "pending_vec_snap_cross = Some(true)",
+        ),
+    ] {
+        let at = code
+            .find(&format!("ids::{id} {{"))
+            .unwrap_or_else(|| panic!("{id} nao e' despachado no render_loop"));
+        let tail = &code[at..];
+        let end = tail.find("} else if").unwrap_or(tail.len());
+        assert!(
+            tail[..end].contains(slot),
+            "o braco de {id} nao escreve `{slot}` -- os interruptores estao cruzados"
+        );
+    }
+}
+
+/// E cada `pending` chega ao campo CORRESPONDENTE de `vec_snap`. O braço acima decide o
+/// destino; este decide o que o destino faz — trocar os dois aqui é o mesmo defeito um passo
+/// adiante, e o gate anterior não o vê.
+#[test]
+fn each_pending_snap_toggle_lands_on_its_own_field() {
+    let code = std::fs::read_to_string("src/render_loop/mod.rs").expect("render_loop");
+    for (pending, field) in [
+        ("pending_vec_snap_path", "self.vec_snap.path = on"),
+        ("pending_vec_snap_cross", "self.vec_snap.crossings = on"),
+    ] {
+        let at = code
+            .find(&format!("if let Some(on) = {pending} {{"))
+            .unwrap_or_else(|| panic!("{pending} nao e' aplicado"));
+        let tail = &code[at..];
+        let end = tail.find('}').unwrap_or(tail.len());
+        assert!(
+            tail[..end].contains(field),
+            "`{pending}` nao escreve `{field}`"
+        );
+    }
+}

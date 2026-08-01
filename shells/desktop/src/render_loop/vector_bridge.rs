@@ -102,9 +102,11 @@ pub(super) fn dispatch(
     // "Set Center" armado (ADR-0112): só muda o rótulo do botão.
     pivot_edit: bool,
     // Whether the transform gizmo's "Set Center" pivot-edit mode is armed.
-    // Whether shape-snapping is on, mirrored into the panel's Snap section. The
-    // GRID toggle lives in the editor's universal Grid Snap panel.
-    snap_on: bool,
+    // Os ajustes de snap do módulo, espelhados na seção Snap do painel. ⚠️ Passa o CONJUNTO e
+    // não um `bool` por interruptor: a lista já é longa, e a W6 acrescentou dois — o próximo
+    // custaria mais uma posição numa assinatura que ninguém lê ao chamar. A GRADE não está
+    // aqui (ela é do painel universal de Grid Snap).
+    snap: crate::vec_snap::VecSnapSettings,
 ) -> VectorDrawConfig {
     let vector_active = tools
         .active()
@@ -399,7 +401,9 @@ pub(super) fn dispatch(
     ph2d_panel_vector::set_current_pivot_edit(vector_active && pivot_edit);
     // Publish shape-snapping so the Snap section reflects (and drives) it.
     #[cfg(feature = "panel-vector")]
-    ph2d_panel_vector::set_current_snap(snap_on);
+    ph2d_panel_vector::set_current_snap(snap.on);
+    #[cfg(feature = "panel-vector")]
+    ph2d_panel_vector::set_current_snap_position(snap.path, snap.crossings);
 
     // Publish the selected path's fill rule — `Some` ONLY when it is a compound
     // path, since with a single contour both rules paint identically and the row

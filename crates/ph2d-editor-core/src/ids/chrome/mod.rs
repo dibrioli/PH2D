@@ -56,6 +56,7 @@ mod vector_patternpath;
 mod vector_pencil;
 /// A lista das seções colapsáveis do painel Vector — irmã de `vector` pelo teto de 700 LOC.
 mod vector_sections;
+mod vector_snap;
 /// Os ids da seção **Text on Path** — irmão de `vector` pelo teto de 700 LOC.
 mod vector_textpath;
 mod vector_width;
@@ -95,6 +96,7 @@ pub use vector_filters::*;
 pub use vector_patternpath::*;
 pub use vector_pencil::*;
 pub use vector_sections::*;
+pub use vector_snap::*;
 pub use vector_textpath::*;
 pub use vector_width::*;
 pub use wet_tuning::*;

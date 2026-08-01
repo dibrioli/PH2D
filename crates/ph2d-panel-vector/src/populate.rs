@@ -533,6 +533,10 @@ fn populate_ops(store: &mut WidgetStore) {
     // editor's universal Grid Snap panel.
     button(store, ids::VECTOR_SNAP_OFF);
     button(store, ids::VECTOR_SNAP_ON);
+    button(store, ids::VECTOR_SNAP_PATH_OFF);
+    button(store, ids::VECTOR_SNAP_PATH_ON);
+    button(store, ids::VECTOR_SNAP_CROSS_OFF);
+    button(store, ids::VECTOR_SNAP_CROSS_ON);
 
     // Fill-type selector (Solid / Linear / Radial) — act on the selected path.
     button(store, ids::VECTOR_FILL_KIND_SOLID);

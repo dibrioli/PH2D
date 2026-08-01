@@ -63,18 +63,40 @@ impl BodyCtx<'_> {
     /// A grade **não mora aqui**: o editor tem um subsistema universal de grade
     /// (nove tipos, magnetismo, subdivisões) com painel próprio, e o Vector só
     /// pergunta a ele. Ligar/desligar a grade é lá.
+    /// ⚠️ As três linhas são **independentes**, e não modos de um mesmo rádio: "Shapes" ALINHA
+    /// um eixo de cada vez (a lei do Figma), enquanto "Path" e "Cross" pousam o ponto num
+    /// lugar. Colapsá-las num seletor obrigaria o artista a abrir mão do alinhamento para
+    /// ganhar a linha, que são perguntas diferentes.
     pub(crate) fn snap_section(&mut self, y: f32) -> f32 {
         let on = state::current_snap();
+        let path = state::current_snap_path();
+        let cross = state::current_snap_crossings();
         let (y, collapsed) =
             self.section_header(ids::VECTOR_SECTION_SNAP, tr("panel.vector.section.snap"), y);
         if collapsed {
             return y;
         }
-        self.segmented(
+        let y = self.segmented(
             "Shapes",
             &[
                 (ids::VECTOR_SNAP_OFF, "Off", !on),
                 (ids::VECTOR_SNAP_ON, "On", on),
+            ],
+            y,
+        );
+        let y = self.segmented(
+            "Path",
+            &[
+                (ids::VECTOR_SNAP_PATH_OFF, "Off", !path),
+                (ids::VECTOR_SNAP_PATH_ON, "On", path),
+            ],
+            y,
+        );
+        self.segmented(
+            "Cross",
+            &[
+                (ids::VECTOR_SNAP_CROSS_OFF, "Off", !cross),
+                (ids::VECTOR_SNAP_CROSS_ON, "On", cross),
             ],
             y,
         )

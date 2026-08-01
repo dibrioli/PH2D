@@ -30,8 +30,7 @@ impl PathEffect {
             | Self::Twist(_)
             | Self::Knot(_)
             | Self::Sketch(_)
-            | Self::Hatch(_)
-            | Self::Mirror(_) => None,
+            | Self::Hatch(_) => None,
         }
     }
 
@@ -47,8 +46,7 @@ impl PathEffect {
             | Self::Twist(_)
             | Self::Knot(_)
             | Self::Sketch(_)
-            | Self::Hatch(_)
-            | Self::Mirror(_) => None,
+            | Self::Hatch(_) => None,
         }
     }
 
@@ -65,8 +63,7 @@ impl PathEffect {
             | Self::Twist(_)
             | Self::Knot(_)
             | Self::Sketch(_)
-            | Self::Hatch(_)
-            | Self::Mirror(_) => None,
+            | Self::Hatch(_) => None,
         }
     }
 
@@ -82,8 +79,7 @@ impl PathEffect {
             | Self::Twist(_)
             | Self::Knot(_)
             | Self::Sketch(_)
-            | Self::Hatch(_)
-            | Self::Mirror(_) => None,
+            | Self::Hatch(_) => None,
         }
     }
 
@@ -108,7 +104,6 @@ impl PathEffect {
             Self::Knot(_) => "Knot",
             Self::Sketch(_) => "Sketch",
             Self::Hatch(_) => "Hatch",
-            Self::Mirror(_) => "Mirror",
         }
     }
 
@@ -125,8 +120,7 @@ impl PathEffect {
             | Self::Twist(_)
             | Self::Knot(_)
             | Self::Sketch(_)
-            | Self::Hatch(_)
-            | Self::Mirror(_) => None,
+            | Self::Hatch(_) => None,
         }
     }
 
@@ -142,8 +136,7 @@ impl PathEffect {
             | Self::Twist(_)
             | Self::Knot(_)
             | Self::Sketch(_)
-            | Self::Hatch(_)
-            | Self::Mirror(_) => None,
+            | Self::Hatch(_) => None,
         }
     }
 
@@ -160,8 +153,7 @@ impl PathEffect {
             | Self::Twist(_)
             | Self::Knot(_)
             | Self::Sketch(_)
-            | Self::Hatch(_)
-            | Self::Mirror(_) => None,
+            | Self::Hatch(_) => None,
         }
     }
 
@@ -177,8 +169,7 @@ impl PathEffect {
             | Self::Twist(_)
             | Self::Knot(_)
             | Self::Sketch(_)
-            | Self::Hatch(_)
-            | Self::Mirror(_) => None,
+            | Self::Hatch(_) => None,
         }
     }
 
@@ -195,8 +186,7 @@ impl PathEffect {
             | Self::Falloff(_)
             | Self::Knot(_)
             | Self::Sketch(_)
-            | Self::Hatch(_)
-            | Self::Mirror(_) => None,
+            | Self::Hatch(_) => None,
         }
     }
 
@@ -212,8 +202,7 @@ impl PathEffect {
             | Self::Falloff(_)
             | Self::Knot(_)
             | Self::Sketch(_)
-            | Self::Hatch(_)
-            | Self::Mirror(_) => None,
+            | Self::Hatch(_) => None,
         }
     }
 
@@ -230,8 +219,7 @@ impl PathEffect {
             | Self::Falloff(_)
             | Self::Twist(_)
             | Self::Sketch(_)
-            | Self::Hatch(_)
-            | Self::Mirror(_) => None,
+            | Self::Hatch(_) => None,
         }
     }
 
@@ -247,8 +235,7 @@ impl PathEffect {
             | Self::Falloff(_)
             | Self::Twist(_)
             | Self::Sketch(_)
-            | Self::Hatch(_)
-            | Self::Mirror(_) => None,
+            | Self::Hatch(_) => None,
         }
     }
 
@@ -265,8 +252,7 @@ impl PathEffect {
             | Self::Falloff(_)
             | Self::Twist(_)
             | Self::Knot(_)
-            | Self::Hatch(_)
-            | Self::Mirror(_) => None,
+            | Self::Hatch(_) => None,
         }
     }
 
@@ -282,8 +268,7 @@ impl PathEffect {
             | Self::Falloff(_)
             | Self::Twist(_)
             | Self::Knot(_)
-            | Self::Hatch(_)
-            | Self::Mirror(_) => None,
+            | Self::Hatch(_) => None,
         }
     }
 
@@ -300,8 +285,7 @@ impl PathEffect {
             | Self::Falloff(_)
             | Self::Twist(_)
             | Self::Knot(_)
-            | Self::Sketch(_)
-            | Self::Mirror(_) => None,
+            | Self::Sketch(_) => None,
         }
     }
 
@@ -317,8 +301,7 @@ impl PathEffect {
             | Self::Falloff(_)
             | Self::Twist(_)
             | Self::Knot(_)
-            | Self::Sketch(_)
-            | Self::Mirror(_) => None,
+            | Self::Sketch(_) => None,
         }
     }
 }

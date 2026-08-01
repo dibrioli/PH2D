@@ -166,9 +166,9 @@ pub mod fx_sketch;
 /// Multi-output. Módulo irmão.
 pub mod fx_hatch;
 
-/// **Mirror** — a simetria VIVA: um eixo, e o outro lado é derivado. Multi-output, e o único
-/// efeito de determinante **negativo** (o `fx_repeat` não o alcança). Módulo irmão.
-pub mod fx_mirror;
+/// **A SIMETRIA de desenho** — o eixo é do artista, e o outro lado é derivado. ⚠️ NÃO é um
+/// efeito da pilha: é um MODO, como no Painter (Enio reprovou-a como efeito em 2026-08-01).
+pub mod symmetry;
 
 /// **Falloff** — o campo escalar espacial que modula a FORÇA do deformador seguinte na pilha
 /// (a ideia do *Falloff* do Cavalry). Ele não deforma nada sozinho: entra no deformador e escala

@@ -19,6 +19,7 @@ relacionados: ["[[05.2-Doacao-de-sombreamento-para-2D]]", "[[06.1-Waves-riscos-e
 |---|---|
 | **M1** | **`ph2d-light` deixa de estar vazia** — o rig (quantas lâmpadas, onde, com que força) e a conversão graus→vetor passam a ter **um dono**. O Painter re-exporta pelos nomes que já usava. |
 | **M2** | **A escultura acende pelo rig do artista** — o matcap procedural da W1 sai; entra o mesmo modelo **RELATIVO** da tinta, o mesmo piso ambiente, as mesmas lâmpadas. |
+| **S1 (a lei)** | `Rig::shade_over` — o passe compõe **duas** fontes de normal, e sem forma a aritmética é a que sempre shipou. |
 | **M3** | **O G-buffer** — `MeshRenderer::render_gbuffer` rasteriza normal (no espaço do rig) + **cobertura**. É a *"segunda fonte de normal"* que o `05.2` pede. |
 
 ## Os três números que a wave produziu
@@ -30,13 +31,33 @@ relacionados: ["[[05.2-Doacao-de-sombreamento-para-2D]]", "[[06.1-Waves-riscos-e
 - **`0,0019`** de desvio entre a lei (a razão relativa, em Rust) e o barro na tela, amostrado pela
   normal que o G-buffer doa.
 
+## A costura S1 — a LEI entrou; o produtor não
+
+`Rig::shade_over` compõe as **duas fontes de normal**, e a composição não é uma escolha:
+
+```text
+v = [ form.x − dhx·K ,  form.y − dhy·K ,  form.z ]
+```
+
+o *blend UDN* dos normal maps, que **degenera exato nos dois extremos** — sem forma
+(`NO_FORM = [0,0,1,0]`) `v` é *literalmente* `[-dhx·K, -dhy·K, 1]`, a expressão que sempre esteve ali,
+sem ramo e sem `if`; com tinta plana, `v` é a normal da forma. Não há *"qual fonte manda?"* a
+responder: o relevo da pincelada fica **por cima** da inclinação da forma, que é o que a mão faz.
+
+⚠️ A promessa do `02.3` (*"com a flag off o caminho da tinta sai byte-idêntico"*) deixou de ser
+promessa: `the_shade_with_no_form_is_the_shade_that_shipped` compara contra a **expressão antiga
+congelada verbatim**, não contra uma imagem de regressão.
+
 ## O que NÃO entra, e é a metade que decide
 
-**M4 — a doação chega à tinta.** Duas costuras, as duas nomeadas em `02.3`:
+**M4 — a doação chegar à tinta.** O que falta de S1, e depois S2:
 
-- **S1** — `ImpastoLightInput` aceita um plano de **normal + cobertura** opcional, e o shader escolhe a
-  fonte **por pixel** (`cobertura > 0` ⇒ a normal da malha; senão `∇h`). Com `None` é **byte-idêntico**
-  ao mundo de hoje, e é isso que o gate de fingerprint tem de provar.
+- **S1, o produtor** — o plano de forma no `ImpastoFields` (CPU) **e** no `ImpastoLightInput` +
+  o ramo no `impasto_light.wgsl` (GPU).
+  ⚠️ **Os dois lados ou nenhum**, e a razão é medida em cicatriz: o Painter tem dois produtores de
+  preview e a casa já pagou para aprender que *"as duas pistas TÊM de concordar ou o trabalho vai pra
+  pior delas"*. Uma doação que aparecesse na rota de CPU e não na de GPU seria uma escultura que
+  ilumina a tinta **até o artista redimensionar a janela**.
 - **S2** — `LayerKind::Sculpt3d(...)` **apendado** + o toggle *"iluminada pela forma abaixo"* na pilha
   de camadas.
 

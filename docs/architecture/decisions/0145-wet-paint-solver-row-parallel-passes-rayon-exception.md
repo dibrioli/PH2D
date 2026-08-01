@@ -248,3 +248,56 @@ distingue, e por isso fica escrito em vez de shipado.
 
 ⇒ **A próxima alavanca é a GPU**, que quebra o port 1:1 e o fingerprint pinado do ADR-0134, e exige ADR
 próprio + ordem do Enio (a mesma classe da palavra *"rayon"* que abriu este).
+
+---
+
+## Emenda 1 (2026-07-31) — o `build_flow_field` SAIU do ⛔, e a §2 acima está desatualizada
+
+⚠️ **A tabela da §2 lista `build_flow_field` como ⛔ sequencial, e o produto o roda
+row-paralelo desde a wave do doc 28 §5.46.** Esta emenda existe porque *um ADR que
+contradiz o código shipado é pior que ADR nenhum* — a mesma regra que esta linha já
+aplicou a um comentário de produto.
+
+**O que mudou não foi o veredito, foi o PASSE.** A §2 o recusou por dois mecanismos
+reais, e os dois continuam reais:
+
+- o freio de absorvência lê o `wet` **VIVO**, que o carimbo de umidade do mesmo passe
+  pode ter escrito alguns px adiante;
+- o backrun **ESPALHA** em `susp[nb]`/`sett[nb]`/`sett_rgb[nb]`.
+
+⚠️ **A cura não é agendamento, é DECOMPOSIÇÃO:** os dois efeitos viraram passes
+próprios e o que sobra — o núcleo, **99,4% do custo** — é um **gather puro** que
+escreve `flow_x`/`flow_y` e mais nada. A ORDEM dos três é a lei do passe (o carimbo
+DEPOIS do núcleo, o backrun por último), então todos leem o estado de entrada.
+
+**Os três invariantes da §3.1, re-verificados para o núcleo:**
+
+1. **Sem redução de ordem relevante** — o núcleo não reduz nada.
+2. **Sem estado mutável compartilhado** — cada tarefa escreve a fatia da própria linha
+   de `flow_x`/`flow_y`.
+3. ⚠️ **O `libm::sin`/`cos` do fingering** — que a §3.3 nomeava como o motivo de o
+   passe ficar serial — **vive no passe do BACKRUN**, que continua serial. O núcleo
+   paralelo não tem transcendental.
+
+⚠️ **E o backrun é *pure code motion*, por aritmética:** o levante é função **só do
+estado da célula levantada** — o vizinho que o dispara não entra em termo nenhum —,
+então aplicá-lo `n` vezes é `F^n`, e `F^n` independe da ordem em que os `n` gatilhos
+foram descobertos. O gather só precisa CONTAR.
+
+⚠️ **O ponto de operação que shipa é BYTE-IDÊNTICO nos dois modelos**, e é isso que
+mantém o fingerprint do ADR-0134 intacto (3/3): o carimbo só escreve onde `film > 3`,
+e o freio de quem sonda aquela célula já satura com o `brake` **default de 1,5** — *a
+única célula cujo `wet` este passe pode mudar é uma célula funda demais para que o
+`wet` dela importe*. A troca de modelo só é observável com `brake > 2`, e lá é o
+Gauss-Seidel quem **quebra a simetria** de uma cena espelhada.
+
+⇒ **A linha 61 da tabela da §2 deve ser lida como ✅ row-paralelo (o núcleo)**, com o
+carimbo de umidade e o backrun como passes irmãos seriais. Nenhuma dep nova: os
+walkers são os mesmos do `src/par.rs` que este ADR abriu.
+
+### O que continua ⛔
+
+`advect`, `drying_pass` e a SAIA do rebuild — pelos mecanismos que a §2 já nomeia.
+⚠️ E os dois primeiros **saíram do ⛔ depois**, por REFORMULAÇÃO do modelo e não por
+agendamento: é o [ADR-0147](0147-wet-paint-order-invariant-solver.md), que os torna
+independentes de ordem e paga o preço em desenho (o escorrido corre ~18% menos).

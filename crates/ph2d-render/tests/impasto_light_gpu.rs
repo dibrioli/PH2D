@@ -189,9 +189,81 @@ fn gpu_lit(gpu: &GpuContext, planes: &ImpastoPlanes, base: &[u8]) -> Vec<u8> {
         spec_lut: planes.spec_lut,
         lut_width: planes.lut_width,
         rough_levels: planes.rough_levels,
+        // A doação segue a MESMA janela dos outros planos, e `None` quando não há escultura.
+        form: planes.form.as_deref(),
     };
     let out = pass.run(gpu, &src, &input).expect("a well-formed dispatch");
     readback(gpu, out)
+}
+
+/// **A DOAÇÃO atravessa as DUAS rotas de preview, e elas concordam.**
+///
+/// ⚠️ Este gate é a razão pela qual o consumidor de CPU e o de GPU entraram no MESMO commit. O Painter
+/// tem dois produtores de preview, e a casa já pagou para aprender que *"as duas pistas TÊM de
+/// concordar ou o trabalho vai pra pior delas"*: uma doação que aparecesse numa e não na outra seria
+/// uma escultura que ilumina a tinta **até o artista redimensionar a janela**.
+///
+/// O oráculo é o passe canônico da CPU, como nos irmãos — não uma re-implementação, que concordaria
+/// com o bug.
+#[test]
+#[ignore = "needs a GPU device (GPU CI lane)"]
+fn gpu_impasto_light_matches_the_cpu_pass_with_a_donated_form() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let base = backdrop();
+    let mut t = sculpted(0.4, 0.5, 0.0, 0.0);
+
+    // Metade da tela coberta por uma forma inclinada; a outra metade é o que o G-buffer escreve FORA
+    // da silhueta. As duas metades importam: uma prova que a doação chega, a outra que o `[0,0,0,0]`
+    // é lido como AUSENTE e não como uma normal deitada.
+    let (w, h) = t.canvas_size();
+    let mut form = Vec::with_capacity((w * h * 4) as usize);
+    for _y in 0..h {
+        for x in 0..w {
+            if x < w / 2 {
+                form.extend_from_slice(&[0.0, 0.0, 0.0, 0.0]);
+            } else {
+                form.extend_from_slice(&[-0.5, -0.5, std::f32::consts::FRAC_1_SQRT_2, 1.0]);
+            }
+        }
+    }
+    t.set_donated_form(Some(std::sync::Arc::new(form)));
+
+    let planes = t
+        .impasto_gpu_planes()
+        .expect("the fixture is lit and sculpted");
+    assert!(
+        planes.form.is_some(),
+        "premissa: o plano de forma tem de atravessar o seam da CPU, senão isto compara dois nadas"
+    );
+    let cpu = cpu_lit(&t, &base);
+    let gpu_out = gpu_lit(&gpu, &planes, &base);
+
+    // E a doação tem de MOVER pixels, senão a paridade é vácuo.
+    let mut without = sculpted(0.4, 0.5, 0.0, 0.0);
+    without.set_donated_form(None);
+    assert_ne!(
+        cpu,
+        cpu_lit(&without, &base),
+        "a doação não mudou nada — a paridade seria sobre um no-op"
+    );
+
+    let d = compare(&cpu, &gpu_out);
+    eprintln!(
+        "doacao: paridade CPU x GPU: pior delta {} no byte {}, {} de {} bytes diferem",
+        d.max,
+        d.at,
+        d.differing,
+        cpu.len()
+    );
+    assert!(
+        d.max <= 2 && d.differing <= 16,
+        "as duas rotas divergiram com a forma doada: pior {} em {} bytes",
+        d.max,
+        d.differing
+    );
 }
 
 /// How far, where, and how many. Reported as well as asserted — a gate that only says "under the bar"
@@ -505,6 +577,7 @@ fn a_partial_plane_upload_lands_where_it_belongs_at_any_width() {
                 cover: &p.cover,
                 mat0: &p.mat0,
                 mat1: &p.mat1,
+                form: p.form.as_deref(),
                 lamps,
                 spec_lut: p.spec_lut,
                 lut_width: p.lut_width,
@@ -526,4 +599,151 @@ fn a_partial_plane_upload_lands_where_it_belongs_at_any_width() {
             d.differing
         );
     }
+}
+
+/// **O plano de forma atravessa a costura já NEUTRALIZADO — e é por isso que o shader não repete o
+/// guard.**
+///
+/// O G-buffer escreve `[0, 0, 0, 0]` fora da silhueta, e um `z` zero é uma normal DEITADA, não uma
+/// ausência. Quem troca isso pelo neutro `[0, 0, 1]` é o `ReliefFields::form_at`, na CPU, **antes** de
+/// o `impasto_gpu` materializar o plano. Então o que sobe ao device nunca tem `z` zero.
+///
+/// ⚠️ Este gate nasceu de uma mutação que sobreviveu: tirar um guard equivalente do shader não moveu
+/// um byte (paridade `0 de 16384`), o que provou que ele era **inalcançável** — uma segunda cópia da
+/// mesma regra, concordando por acidente. O guard saiu e o CONTRATO ficou aqui, onde pode falhar.
+#[test]
+fn the_form_plane_crosses_the_seam_already_neutralised() {
+    let mut t = sculpted(0.4, 0.5, 0.0, 0.0);
+    let (w, h) = t.canvas_size();
+    // Metade coberta, metade com o que o G-buffer escreve fora da malha.
+    let mut raw = Vec::with_capacity((w * h * 4) as usize);
+    for _y in 0..h {
+        for x in 0..w {
+            if x < w / 2 {
+                raw.extend_from_slice(&[0.0, 0.0, 0.0, 0.0]);
+            } else {
+                raw.extend_from_slice(&[-0.5, -0.5, std::f32::consts::FRAC_1_SQRT_2, 1.0]);
+            }
+        }
+    }
+    t.set_donated_form(Some(std::sync::Arc::new(raw)));
+    let planes = t
+        .impasto_gpu_planes()
+        .expect("o fixture tem tinta e relevo");
+    let form = planes.form.as_deref().expect("a doação atravessou");
+
+    let mut zero_z = 0usize;
+    for texel in form.chunks_exact(4) {
+        if texel[2] == 0.0 {
+            zero_z += 1;
+        }
+    }
+    assert_eq!(
+        zero_z, 0,
+        "{zero_z} texels chegaram ao device com `z` zero — a normal deitaria e a tinta fora da \
+         escultura seria iluminada por uma superfície vertical"
+    );
+    // E a metade que TEM forma continua sendo a forma — o neutro não engoliu a doação.
+    let mid = ((h / 2 * w + w * 3 / 4) * 4) as usize;
+    assert!(
+        form[mid + 2] < 0.9,
+        "a metade coberta perdeu a inclinação: z = {}",
+        form[mid + 2]
+    );
+}
+
+/// **Perder a escultura apaga a doação — a textura é PERSISTENTE, e a última forma não pode ficar
+/// acesa.**
+///
+/// As texturas de plano sobrevivem entre frames de propósito (é o que deixa o fold encolher para a
+/// janela suja). Então quando o artista apaga a camada de escultura, o plano de forma continua no
+/// device com a última doação. O que responde *"há doação ESTE frame?"* é o bit `has_form` do uniform —
+/// e sem ele o documento seguiria sendo iluminado por uma forma que não existe mais.
+///
+/// ⚠️ É a camada que o guard de peso NÃO cobre, e é por isso que ela tem gate próprio: os dois pareciam
+/// a mesma defesa e respondem perguntas diferentes ([[feedback_layered_defenses_need_per_layer_gates]]).
+#[test]
+#[ignore = "needs a GPU device (GPU CI lane)"]
+fn losing_the_sculpt_puts_the_donation_out() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let base = backdrop();
+    let mut t = sculpted(0.4, 0.5, 0.0, 0.0);
+    let (w, h) = t.canvas_size();
+    let form: Vec<f32> = (0..w * h)
+        .flat_map(|_| [-0.5, -0.5, std::f32::consts::FRAC_1_SQRT_2, 1.0])
+        .collect();
+
+    // O MESMO passe nas duas corridas — é isso que faz a textura carregar a doação velha.
+    let mut pass = ImpastoLightPass::new(&gpu);
+    let src = make_src(&gpu, &base);
+
+    t.set_donated_form(Some(std::sync::Arc::new(form)));
+    let with = t.impasto_gpu_planes().expect("com escultura");
+    let lit_with = run_pass(&gpu, &mut pass, &src, &with);
+
+    t.set_donated_form(None);
+    let without = t.impasto_gpu_planes().expect("sem escultura");
+    assert!(without.form.is_none(), "premissa: a doação saiu do seam");
+    let lit_without = run_pass(&gpu, &mut pass, &src, &without);
+
+    assert_ne!(
+        lit_with, lit_without,
+        "premissa: a doação tem de ter mudado alguma coisa, senão isto compara dois nadas"
+    );
+    // E o que sobrou tem de ser o que a CPU diz SEM forma — não a forma velha ainda acesa.
+    let d = compare(&cpu_lit(&t, &base), &lit_without);
+    eprintln!(
+        "apos perder a escultura: pior delta {} em {} bytes",
+        d.max, d.differing
+    );
+    assert!(
+        d.max <= 2 && d.differing <= 16,
+        "a ultima forma continuou acesa: pior {} em {} bytes",
+        d.max,
+        d.differing
+    );
+}
+
+/// Uma corrida do passe reusando a instância dada — é o que deixa um gate observar a PERSISTÊNCIA das
+/// texturas, que `gpu_lit` (que constrói um passe novo) esconde por construção.
+fn run_pass(
+    gpu: &GpuContext,
+    pass: &mut ImpastoLightPass,
+    src: &wgpu::Texture,
+    planes: &ImpastoPlanes,
+) -> Vec<u8> {
+    let lamps: Vec<GpuLamp> = planes
+        .lamps
+        .iter()
+        .map(|l| GpuLamp {
+            dir: l.dir,
+            half: l.half,
+            tint: l.tint,
+        })
+        .collect();
+    let input = ImpastoLightInput {
+        width: planes.width,
+        height: planes.height,
+        region: GpuRegion::full(planes.width, planes.height),
+        plane_region: GpuRegion {
+            x: planes.region.0,
+            y: planes.region.1,
+            w: planes.region.2,
+            h: planes.region.3,
+        },
+        relief: &planes.relief,
+        cover: &planes.cover,
+        mat0: &planes.mat0,
+        mat1: &planes.mat1,
+        form: planes.form.as_deref(),
+        lamps: &lamps,
+        spec_lut: planes.spec_lut,
+        lut_width: planes.lut_width,
+        rough_levels: planes.rough_levels,
+    };
+    let out = pass.run(gpu, src, &input).expect("a well-formed dispatch");
+    readback(gpu, out)
 }

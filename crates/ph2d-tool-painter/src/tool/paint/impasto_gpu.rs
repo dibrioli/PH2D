@@ -83,6 +83,10 @@ pub struct ImpastoPlanes {
     pub cover: Vec<u8>,
     /// `[shine, roughness, metallic, wax]` — the first 4 of the canvas's 7 material bytes.
     pub mat0: Vec<u8>,
+    /// **A FORMA doada** — `[nx, ny, nz, peso]` por texel da janela, ou `None` sem escultura
+    /// (`docs/3D/05.2`). O ausente NÃO viaja como um plano de zeros: um `z` zero é uma normal deitada,
+    /// e quem põe o neutro `[0, 0, 1]` é o shader, por um bit do uniform.
+    pub form: Option<Vec<f32>>,
     /// `[wax_r, wax_g, wax_b, 255]` — the last 3, padded to a texel. Seven bytes do not fit a GPU
     /// format; four and four do, and the split falls exactly on the boundary between the scalar
     /// properties and the Wax filter's colour.
@@ -185,6 +189,12 @@ impl PainterTool {
         let mut cover = vec![0u8; n];
         let mut mat0 = vec![0u8; n * 4];
         let mut mat1 = vec![0u8; n * 4];
+        // **A FORMA doada**, na MESMA janela dos outros planos (`docs/3D/05.2`, costura S1).
+        //
+        // ⚠️ `None` quando não há escultura, e não um plano neutro de zeros: quem substitui o neutro
+        // `[0, 0, 1]` é o shader, pelo bit `has_form` do uniform — materializar uma tela inteira de
+        // números para dizer "nada" custaria o mesmo que a doação de verdade.
+        let mut form = fields.has_form().then(|| vec![0f32; n * 4]);
         // The samplers are the light's OWN, asked in the same order as before, so a texel inside the
         // window carries the identical bytes a full fold would have given it. That is what makes
         // "partial" a statement about how MUCH is folded and never about WHAT it says.
@@ -198,6 +208,21 @@ impl PainterTool {
         // with 32 cores: the walk is the entire cost (0,1 ms of allocation against 183 ms of walk), and
         // it is the biggest single number a Painter frame can produce.
         let rww = rw as usize;
+        // A forma sai num passe próprio e não no `zip` acima, e é a escolha de menor risco: enfiá-la
+        // na cadeia obrigaria a `Option` a virar um plano sempre-alocado só para o tipo fechar, que é
+        // exatamente a tela de zeros que o parágrafo acima recusa. Ela é row-disjunta pelo mesmo
+        // argumento (ADR-0109) e byte-idêntica a uma varredura serial.
+        if let Some(f) = form.as_mut() {
+            f.par_chunks_mut(rww * 4)
+                .enumerate()
+                .for_each(|(row, frow)| {
+                    let y = i64::from(ry) + row as i64;
+                    for i in 0..rww {
+                        let v = fields.form_at(i64::from(rx) + i as i64, y);
+                        frow[i * 4..i * 4 + 4].copy_from_slice(&v);
+                    }
+                });
+        }
         relief
             .par_chunks_mut(rww)
             .zip(cover.par_chunks_mut(rww))
@@ -226,6 +251,7 @@ impl PainterTool {
             cover,
             mat0,
             mat1,
+            form,
             lamps,
             spec_lut: lut.table(),
             lut_width: ph2d_painter_brush::material::SPEC_LUT as u32,
@@ -507,13 +533,18 @@ mod tests {
             .find("\n    }\n")
             .expect("controle: a funcao tem de terminar");
         let body = &body[..end];
-        // Os QUATRO planos, porque um `zip` serial no meio de três paralelos serializa o conjunto todo:
+        // Os CINCO planos, porque um `zip` serial no meio de paralelos serializa o conjunto todo:
         // `par_chunks_mut(...).zip(cover.chunks_mut(...))` nem compila como `ParallelIterator`, mas a
-        // forma que compila e regride é trocar TODOS, e contar é o que distingue "três de quatro".
+        // forma que compila e regride é trocar TODOS, e contar é o que distingue "quatro de cinco".
+        //
+        // ⚠️ Eram QUATRO até a doação do módulo 3D (`docs/3D/05.2`) acrescentar o plano de FORMA. Ele
+        // sai num passe próprio e não no `zip` dos outros: como ele é `Option` — um documento sem
+        // escultura não paga um byte —, enfiá-lo na cadeia obrigaria o plano a ser sempre alocado só
+        // para o tipo fechar, que é exatamente a tela de zeros que o desenho recusa.
         let par = body.matches("par_chunks_mut(").count();
         assert_eq!(
-            par, 4,
-            "o walk do fold tem de percorrer os QUATRO planos em paralelo (achei {par}) — as linhas sao \
+            par, 5,
+            "o walk do fold tem de percorrer os CINCO planos em paralelo (achei {par}) — as linhas sao \
              disjuntas (ADR-0109) e este e o mecanismo dos 201,5 -> 14,55 ms a 4096². Nenhum gate de \
              razao ou de bytes pega esta regressao: serial e paralelo dao os MESMOS bytes e os dois sao \
              limitados pela janela"

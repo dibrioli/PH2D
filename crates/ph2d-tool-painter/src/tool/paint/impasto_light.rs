@@ -300,6 +300,12 @@ impl ReliefFields<'_> {
         c.clamp(0.0, 1.0)
     }
 
+    /// Há doação neste documento? A pergunta que decide se o plano de forma é materializado.
+    #[inline]
+    pub(super) fn has_form(&self) -> bool {
+        self.form.is_some()
+    }
+
     /// A forma doada neste pixel — `[nx, ny, nz, peso]`, ou [`NO_FORM`] onde não há escultura.
     ///
     /// ⚠️ **O guard de peso é load-bearing, e é uma armadilha de verdade:** o G-buffer escreve

@@ -108,8 +108,29 @@ fn a_mis_shaped_request_is_refused_without_a_device() {
         spec_lut: &lut,
         lut_width: 4,
         rough_levels: 2,
+        // O mundo sem escultura — e a doação é opcional exatamente para que ele continue existindo.
+        form: None,
     };
     assert_eq!(base().check(), Ok(()), "a well-formed request passes");
+
+    // ⚠️ E o plano de FORMA é conferido pela mesma porta: um plano curto chegaria ao `write_texture`,
+    // onde a falha é um erro de driver em vez de uma recusa com nome.
+    let short_form = vec![0f32; 4 * 4 - 1];
+    let mut bad_form = base();
+    bad_form.form = Some(&short_form);
+    assert_eq!(
+        bad_form.check(),
+        Err(ImpastoLightError::PlaneSize),
+        "a short form plane is refused, not silently read past"
+    );
+    let good_form = vec![0f32; 4 * 4];
+    let mut ok_form = base();
+    ok_form.form = Some(&good_form);
+    assert_eq!(
+        ok_form.check(),
+        Ok(()),
+        "quatro floats por texel é a forma certa"
+    );
 
     let mut short_relief = base();
     short_relief.relief = &relief[..3];

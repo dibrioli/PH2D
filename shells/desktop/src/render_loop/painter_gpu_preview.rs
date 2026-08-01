@@ -394,6 +394,9 @@ fn compose_light_premul(
             let input = ImpastoLightInput {
                 width,
                 height,
+                // A FORMA doada, na MESMA janela dos outros planos — ou `None` num documento sem
+                // escultura, que é o mundo inteiro que existia antes (`docs/3D/05.2`, costura S1).
+                form: planes.form.as_deref(),
                 // The WHOLE canvas, even when the composite refreshed only a region — and the asymmetry
                 // is the point. The light owns a SECOND persistent canvas, so its freshness cannot be
                 // inherited from whichever rectangle the compositor happened to touch: one frame with

@@ -113,6 +113,14 @@ pub struct ImpastoLightInput<'a> {
     pub spec_lut: &'a [f32],
     pub lut_width: u32,
     pub rough_levels: u32,
+    /// **A FORMA doada** pelo módulo 3D (`docs/3D/05.2`) — `[nx, ny, nz, peso]` por texel de
+    /// [`Self::plane_region`], ou `None` num documento sem escultura.
+    ///
+    /// ⚠️ `None` **não** é "uma textura de zeros": um `z` zero é uma normal DEITADA, e a soma com a
+    /// inclinação da tinta daria um vetor quase horizontal. O ausente viaja como um bit no uniform
+    /// (`has_form`), e é o shader que substitui o neutro `[0, 0, 1]` — exatamente como o `form_at` do
+    /// lado da CPU. Uma textura neutra uploadada por frame custaria uma tela inteira para dizer nada.
+    pub form: Option<&'a [f32]>,
 }
 
 impl ImpastoLightInput<'_> {
@@ -130,6 +138,9 @@ impl ImpastoLightInput<'_> {
         // would pass a full upload and reject every partial one — and checking nothing would let a short
         // buffer reach `write_texture`, where the failure is a driver error instead of a named refusal.
         let n = (self.plane_region.w as usize) * (self.plane_region.h as usize);
+        if self.form.is_some_and(|f| f.len() < n * 4) {
+            return Err(ImpastoLightError::PlaneSize);
+        }
         if self.width == 0 || self.height == 0 || self.region.w == 0 || self.region.h == 0 {
             return Err(ImpastoLightError::EmptyExtent);
         }
@@ -197,7 +208,11 @@ struct Globals {
     oy: u32,
     rw: u32,
     rh: u32,
-    pad0: u32,
+    /// `1` quando a textura de forma carrega a doação deste frame.
+    ///
+    /// ⚠️ Ocupa a vaga que era `pad0`: o uniform não muda de tamanho, então nenhum offset se move e o
+    /// gate que pina a forma do `Globals` continua medindo o que media.
+    has_form: u32,
     pad1: u32,
     pad2: u32,
 }
@@ -223,6 +238,10 @@ struct Canvas {
     relief: Plane,
     cover: Plane,
     mat0: Plane,
+    /// A forma doada — `[nx, ny, nz, peso]`. Vive com as outras porque tem a vida delas: o resize as
+    /// reconstrói juntas, e cinco checagens independentes seriam cinco chances de dois planos
+    /// discordarem sobre o tamanho da pintura.
+    form: Plane,
     mat1: Plane,
     out: Plane,
 }
@@ -278,6 +297,7 @@ impl ImpastoLightPass {
                     sampled(4), // mat0
                     sampled(5), // mat1
                     sampled(6), // spec LUT
+                    sampled(8), // a forma doada
                     wgpu::BindGroupLayoutEntry {
                         binding: 7,
                         visibility: wgpu::ShaderStages::COMPUTE,
@@ -371,6 +391,7 @@ impl ImpastoLightPass {
                 bind(4, &canvas.mat0.view),
                 bind(5, &canvas.mat1.view),
                 bind(6, &lut.view),
+                bind(8, &canvas.form.view),
                 wgpu::BindGroupEntry {
                     binding: 7,
                     resource: self.globals.as_entire_binding(),
@@ -420,6 +441,10 @@ impl ImpastoLightPass {
             cover: plane(gpu, "cover", w, h, F::R8Unorm, read),
             mat0: plane(gpu, "mat0", w, h, F::Rgba8Unorm, read),
             mat1: plane(gpu, "mat1", w, h, F::Rgba8Unorm, read),
+            // ⚠️ Ponto flutuante, e não um formato normalizado: as componentes de uma normal vivem em
+            // `[-1, 1]`, e um unorm exigiria codificar de um lado e decodificar do outro — duas
+            // metades que precisam concordar, num canal onde a discordância é uma luz levemente torta.
+            form: plane(gpu, "form", w, h, F::Rgba32Float, read),
             out: plane(
                 gpu,
                 "out",
@@ -475,6 +500,11 @@ impl ImpastoLightPass {
         write_plane(gpu, &c.cover, input.cover, r.w, r);
         write_plane(gpu, &c.mat0, input.mat0, r.w * 4, r);
         write_plane(gpu, &c.mat1, input.mat1, r.w * 4, r);
+        // Só quando há doação: sem ela o shader nem lê a textura (`has_form == 0`), então uploadar um
+        // plano neutro custaria uma tela inteira para dizer nada.
+        if let Some(f) = input.form {
+            write_plane(gpu, &c.form, bytemuck::cast_slice(f), r.w * 16, r);
+        }
     }
 
     /// **Do the plane textures for this canvas hold the artist's relief, everywhere?**
@@ -504,7 +534,7 @@ impl ImpastoLightPass {
             oy: input.region.y,
             rw: input.region.w,
             rh: input.region.h,
-            pad0: 0,
+            has_form: u32::from(input.form.is_some()),
             pad1: 0,
             pad2: 0,
         };

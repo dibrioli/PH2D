@@ -66,7 +66,13 @@ struct Globals {
     oy: u32,
     rw: u32,
     rh: u32,
-    pad0: u32,
+    // 1 quando a textura `form` carrega a doacao deste frame.
+    //
+    // ⚠️ Um bit, e nao "uma textura de zeros": um `z` ZERO nao e "nenhuma forma",
+    // e uma normal DEITADA, e somada a inclinacao da tinta daria um vetor quase
+    // horizontal. O neutro de "nao ha forma aqui" e [0, 0, 1] -- e uma textura
+    // neutra uploadada por frame custaria uma tela inteira para dizer nada.
+    has_form: u32,
     pad1: u32,
     pad2: u32,
 };
@@ -79,6 +85,9 @@ struct Globals {
 @group(0) @binding(5) var mat1: texture_2d<f32>;
 @group(0) @binding(6) var spec_lut: texture_2d<f32>;
 @group(0) @binding(7) var<uniform> u: Globals;
+// A FORMA doada pelo modulo 3D (docs/3D/05.2): xyz = a normal no espaco do rig,
+// w = quanta forma ha ali.
+@group(0) @binding(8) var form: texture_2d<f32>;
 
 // Wrap lighting (`Wax`): Valve's half-Lambert. At w = 0 this is `max(N.L, 0)` exactly, which is what
 // makes the neutral material the pass as it shaded before materials existed.
@@ -92,6 +101,26 @@ fn wrapped_ndl(ndl: f32, wax: f32) -> f32 {
 fn spec_at(level: i32, ndh: f32) -> f32 {
     let i = i32(clamp(ndh, 0.0, 1.0) * SPEC_LUT_LAST);
     return textureLoad(spec_lut, vec2<i32>(i, min(level, ROUGH_LAST)), 0).r;
+}
+
+// A forma doada neste pixel -- [nx, ny, nz, peso], ou o NEUTRO onde nao ha doacao.
+//
+// ⚠️ **O plano CHEGA NEUTRALIZADO, e por isso nao ha um guard de peso aqui.** Quem
+// le o G-buffer cru e o `ReliefFields::form_at` da CPU, que ja troca o [0,0,0,0] de
+// fora da silhueta pelo neutro [0,0,1,0] -- e e o resultado DELE que o
+// `impasto_gpu` materializa e sobe. Um segundo guard aqui seria uma segunda copia
+// da mesma regra, concordando por acidente; e ele foi MEDIDO inalcancavel (removido,
+// a paridade continuou em 0 de 16384 bytes). O contrato esta pinado em
+// `the_form_plane_crosses_the_seam_already_neutralised`.
+//
+// O que fica e o bit `has_form`, que responde outra pergunta: a textura e
+// PERSISTENTE, entao sem ele um documento que PERDEU a escultura continuaria sendo
+// iluminado pela ultima forma que passou por ali.
+fn form_at(c: vec2<i32>) -> vec4<f32> {
+    if (u.has_form == 0u) {
+        return vec4<f32>(0.0, 0.0, 1.0, 0.0);
+    }
+    return textureLoad(form, c, 0);
 }
 
 // The composed height, clamped to the CANVAS — so the central difference reads across the lit region's
@@ -143,12 +172,18 @@ fn cs_main(@builtin(global_invocation_id) gid: vec3<u32>) {
     let dhy = (height_at(coord + vec2<i32>(0, 1), dims) - height_at(coord - vec2<i32>(0, 1), dims)) * 0.5;
     // The weight IS the coverage: the pass multiplies a composited pixel, and at a stroke's translucent
     // edge that pixel is mostly paper showing through. Shading it in full means shading the paper.
-    let body = textureLoad(cover, coord, 0).r;
-    let gloss = body;
+    let cover_here = textureLoad(cover, coord, 0).r;
+    let f = form_at(coord);
+    // ⚠️ O `body` toma o MAXIMO das duas presencas: a forma existe onde ela cobre,
+    // mesmo sobre papel nu, e e isso que faz *pintar sobre forma* funcionar desde a
+    // primeira pincelada. (O `gloss` segue a TINTA: um realce e do material da
+    // tinta, e o barro ainda nao tem material -- docs/3D/05.1, W7.)
+    let body = max(cover_here, f.w);
+    let gloss = cover_here;
 
     // Flat paint — or bare paper — is untouched, to the byte. Writing the source back is byte-identical:
     // `textureLoad` returns an exact multiple of 1/255 and `quantise` reproduces it.
-    if ((dhx == 0.0 && dhy == 0.0) || body <= 0.0) {
+    if ((dhx == 0.0 && dhy == 0.0 && f.w <= 0.0) || body <= 0.0) {
         textureStore(dst, coord, texel);
         return;
     }
@@ -184,7 +219,10 @@ fn cs_main(@builtin(global_invocation_id) gid: vec3<u32>) {
     // so `scattered` is identically 0.0 and `direct + 0.0 * wax_tint` is exactly `direct`; and
     // metallic = 0, so `spec_tint` is exactly 1.0. Pinned by
     // `the_achromatic_fast_lane_is_the_coloured_one_to_the_bit`.
-    let v = vec3<f32>(-dhx * DEPTH_UNIT_PX, -dhy * DEPTH_UNIT_PX, 1.0);
+    // As DUAS fontes de normal, compostas: somar a inclinacao da tinta a normal da
+    // forma (o blend UDN) degenera EXATO nos dois extremos -- sem forma, `v` e
+    // literalmente [-dhx*K, -dhy*K, 1], a expressao que sempre esteve aqui.
+    let v = vec3<f32>(f.x - dhx * DEPTH_UNIT_PX, f.y - dhy * DEPTH_UNIT_PX, f.z);
     let len = max(sqrt(v.x * v.x + v.y * v.y + v.z * v.z), 1.0e-6);
     let nrm = v / len;
     // How much of the highlight takes the PAINT's colour instead of the LAMP's — the one line that

@@ -99,7 +99,11 @@ mod inspector_physics_area;
 mod inspector_physics_gesture_tests;
 mod inspector_physics_markers;
 #[cfg(test)]
-mod inspector_physics_tests;
+// ⚠️ `pub(crate)`: a porta `apply` (um edit do §11 aplicado ao ECS) é o caminho
+// do PRODUTO, e a cena 70 a usa para provar que afinar uma PEÇA muda a
+// simulação. Uma segunda cópia da fiação lá seria uma segunda resposta a *"o
+// que este edit faz"*.
+pub(crate) mod inspector_physics_tests;
 mod inspector_visibility;
 /// MEASUREMENT scaffold: onde as fases PANEL e CHROME do `painter_bridge::dispatch` gastam um frame.
 #[cfg(test)]

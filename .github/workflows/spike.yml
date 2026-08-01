@@ -414,8 +414,25 @@ jobs:
     name: ${{ matrix.os }} — C9 cross-platform replay hash
     runs-on: ${{ matrix.os }}
     needs: test
-    # Single binary run + hash capture; observed ~3-5 min.
-    timeout-minutes: 15
+    # ⚠️ O teto cobre o BUILD, não o run — e o comentário anterior media a coisa
+    # errada ("single binary run + hash capture; observed ~3-5 min", teto 15).
+    # O que ele descrevia são os TRÊS runs, que de fato são baratos e NÃO cresceram.
+    # Quem custa é a PRIMEIRA invocação do cargo, que paga a compilação inteira, e o
+    # preço dela é função de quanto o `rust-cache` acertou — coisa que este job não
+    # controla. Medido no windows-latest, mesmo job, dois dias seguidos:
+    #
+    #   passo                          31/07 (verde)   01/08 (cancelado)
+    #   rust-cache (restore)              1m51            1m34
+    #   C9 ECS  ← paga o BUILD            2m28           10m22    (4,2x)
+    #   physics C9                          51s             61s
+    #   physics-ECS C9 (bridge)           3m03           cortado aos 1m19
+    #   TOTAL                             9m00           15m -> parede
+    #
+    # A jornada de 7 linhas de 01/08 mexeu em crates suficientes para o cache
+    # restaurar menos, e o job bateu o teto NO MEIO do 3º hash — com tudo o mais
+    # do run verde. 45 é 3x o pior observado e metade do que o job `test` irmão já
+    # orça (90) para exatamente o mesmo build, no mesmo OS.
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:

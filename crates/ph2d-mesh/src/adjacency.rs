@@ -73,6 +73,38 @@ pub struct Adjacency {
 }
 
 impl Adjacency {
+    /// **Este vértice está na BORDA de uma malha aberta?**
+    ///
+    /// A identidade é a do `Mesh.js` do SculptGL (`vertOnEdge`, dentro do build
+    /// do anel): *nº de faces ≠ nº de vizinhos únicos*. Num vértice interior o
+    /// anel FECHA, e cada aresta é compartilhada por duas faces, então os dois
+    /// números batem; na beira o anel é aberto e sobra um vizinho.
+    ///
+    /// ⚠️ **Não há campo novo nem memória nova** — o dado já estava nos dois
+    /// CSRs, e a pergunta é `O(1)`. Materializá-lo seria guardar duas vezes um
+    /// fato que a estrutura já contém, e que teria de ser reconstruído a cada
+    /// mudança de topologia.
+    ///
+    /// ⚠️ **Vale para triângulo e para quad**, porque a conta é sobre o ANEL e
+    /// não sobre a forma da face: um vértice interior de grade de quads tem
+    /// quatro faces e quatro vizinhos; na beira, duas faces e três vizinhos.
+    #[must_use]
+    pub fn is_border(&self, v: usize) -> bool {
+        self.vert_faces.neighbours(v).len() != self.vert_verts.neighbours(v).len()
+    }
+
+    /// Quantos vizinhos este vértice tem — a **valência**.
+    ///
+    /// Abaixo de três não há superfície em volta dele (é a ponta de uma tira ou
+    /// um vértice colado), e é isso que o Smooth precisa saber para não o
+    /// escorregar para a corda entre os dois únicos vizinhos.
+    #[must_use]
+    pub fn valence(&self, v: usize) -> usize {
+        self.vert_verts.neighbours(v).len()
+    }
+}
+
+impl Adjacency {
     /// Constrói os dois anéis. `vert_count` é autoritativo: um vértice sem
     /// nenhuma face (solto num OBJ) existe e tem anel vazio, em vez de
     /// desaparecer e deslocar todos os índices depois dele.

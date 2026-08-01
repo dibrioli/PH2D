@@ -515,6 +515,10 @@ mod verb_culling;
 #[path = "verb_move_tests.rs"]
 mod verb_move;
 
+/// A BORDA, que só uma malha ABERTA revela — ver o cabeçalho dele.
+#[path = "verb_border_tests.rs"]
+mod verb_border;
+
 /// ⚠️ **RED-FIRST da W4.2, e o defeito é de COSTURA e não de kernel.** Um traço
 /// de máscara escreve um canal por vértice e **não move geometria**, então ele
 /// esquece a região refrescada de propósito (não há normal nova a subir). Quem

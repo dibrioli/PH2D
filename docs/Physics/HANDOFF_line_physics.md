@@ -7846,10 +7846,15 @@ das pernas difere. A da esquerda desce até o TAMPO tocar o chão (−0,65) e as
 atravessam (ponta em −2,60, 1,8 m abaixo do chão); a da direita para sobre as
 pernas (tampo 1,15, ponta −0,80, exatamente no chão).
 
-**Aberto:** uma peça não tem seção própria no Inspector (selecioná-la mostra a face
-vazia com a porta; editar a FORMA dela depois de criada passa pelas rows normais de
-collider, que já funcionam) · o `part_views` da ponte existe e **não tem consumidor**
-(o overlay desenha do ECS, que é a fonte que o artista arrasta).
+**Aberto:** uma peça não pode ser arrastada pelo **gizmo** com o relógio parado para
+dentro de outra peça do mesmo corpo (não há auto-colisão dentro de um corpo composto —
+é o que *"um corpo"* significa, e não é defeito).
+
+⚠️ **Duas metades desta nota MORRERAM e ficam registradas em vez de apagadas** (uma
+lista de pendências velha faz a próxima LLM propor construir o que existe): *"uma peça
+não tem seção própria no Inspector"* foi fechado pela **W-PartFace** no dia seguinte, e
+o `part_views` sem consumidor foi **REMOVIDO** pela mesma wave — o doc do
+`bridge/parts.rs` diz por quê. Conferido por grep em 2026-08-01, não por leitura.
 
 ---
 

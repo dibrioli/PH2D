@@ -946,3 +946,45 @@ fn a_renderer_with_no_mesh_donates_nothing() {
         "canvas de largura zero não é um plano de zero texels — é ausência"
     );
 }
+
+/// **SONDA (não é gate): quanto custa uma doação.**
+///
+/// O desenho inteiro da costura — o carimbo antes da rasterização — se apoia na frase *"a leitura
+/// de volta é cara"*. Esta sonda põe um número nela, porque uma frase sobre custo sem medição é um
+/// palpite esperando um smoke (§0).
+///
+/// ```text
+/// cargo test -p ph2d-mesh-render --release --test gpu_render -- --ignored measure_a_donation --nocapture
+/// ```
+#[test]
+#[ignore = "sonda, precisa de adapter"]
+fn measure_a_donation() {
+    let Some((device, queue)) = device() else {
+        eprintln!("sem adapter — skip");
+        return;
+    };
+    let mesh = shapes::uv_sphere(96, 144, 1.0);
+    let mut renderer = MeshRenderer::new(&device, FORMAT);
+    renderer.upload(&device, &queue, &mesh);
+    let mut camera = Camera3d::default();
+    camera.frame(mesh.bounds(), 1.0);
+
+    eprintln!(
+        "uma doacao, por lado de canvas (malha: {} triangulos)",
+        mesh.triangle_count()
+    );
+    for edge in [512u32, 1024, 2048, 4096] {
+        // A primeira é descartada: ela paga a alocação da textura de profundidade e o first-touch
+        // do buffer de leitura, que nenhuma doação seguinte paga.
+        let _ = renderer.form_plane(&device, &queue, &camera, (edge, edge));
+        let mut best = f64::MAX;
+        for _ in 0..5 {
+            let t0 = std::time::Instant::now();
+            let plane = renderer.form_plane(&device, &queue, &camera, (edge, edge));
+            best = best.min(t0.elapsed().as_secs_f64() * 1000.0);
+            assert!(plane.is_some());
+        }
+        let mb = f64::from(edge) * f64::from(edge) * 16.0 / 1_048_576.0;
+        eprintln!("  {edge:>5}²  {best:>7.2} ms   ({mb:>6.1} MB lidos)");
+    }
+}

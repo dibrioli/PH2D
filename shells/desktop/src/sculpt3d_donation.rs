@@ -23,11 +23,25 @@ use crate::app_state::App;
 
 /// A tela da cena `=2`, em pixels de lado.
 ///
-/// ⚠️ **1024, e o número é da DOAÇÃO, não do conforto.** A forma é rasterizada
-/// NO tamanho do canvas e volta pela CPU, então a tela é o que decide o custo de
-/// cada re-rasterização — e a 1024² ela é ~4 MB de leitura, que o artista não
-/// sente. A 4096² seriam 67 MB por giro de câmera, e o número tem de ser MEDIDO
-/// antes de a cena o pedir: é a frente aberta que o handoff nomeia.
+/// ⚠️ **1024, e o número é MEDIDO** (`measure_a_donation`, RTX, release) — a forma é rasterizada NO
+/// tamanho do canvas e volta pela CPU, então a tela é o que decide o custo de cada
+/// re-rasterização:
+///
+/// | canvas | uma doação | lidos |
+/// |---|---|---|
+/// | 512² | 1,54 ms | 4 MB |
+/// | **1024²** | **5,94 ms** | 16 MB |
+/// | 2048² | 27,72 ms | 64 MB |
+/// | 4096² | 123,49 ms | 256 MB |
+///
+/// ⚠️ **A primeira versão desta nota dizia *"a 1024² são ~4 MB, que o artista não sente"* — e
+/// errava DUAS vezes:** o plano é `[f32; 4]` = **16 B/texel**, não 4, e 5,94 ms é quase um terço de
+/// um quadro de 60 fps. É o §0 ao pé da letra: o número que fica escrito é o que a medição deu.
+///
+/// **Isto é o que torna o CARIMBO o desenho inteiro**, e não uma otimização: sem ele toda a tabela
+/// acima seria paga POR FRAME. Com ele, uma forma parada custa zero e o artista paga uma vez, ao
+/// apertar `D`. Girar a câmera em modo LUZ ainda pagaria por frame — mas girar é o que se faz no
+/// BARRO, onde não há doação.
 const CANVAS_EDGE: u32 = 1024;
 
 /// A tela branca da cena da doação (`PH2D_SCULPT3D_SMOKE=2`) — o mesmo gesto dos

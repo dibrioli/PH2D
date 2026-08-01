@@ -18,8 +18,11 @@
 //! consumindo a textura direto) que só se justifica **depois** de medir; e ela nasce devendo o gate
 //! de paridade que hoje é grátis.
 //!
-//! ⚠️ **Isto BLOQUEIA** (`map_async` + `poll`). É por isso que a porta não é chamada por frame: o
-//! chamador só a invoca quando a forma de fato mudou — a malha, a câmera ou o tamanho do canvas.
+//! ⚠️ **Isto BLOQUEIA** (`map_async` + `poll`), e o preço está MEDIDO (`measure_a_donation`, RTX,
+//! release): **1,54 ms a 512² · 5,94 a 1024² · 27,72 a 2048² · 123,49 a 4096²**. É por isso que a
+//! porta não é chamada por frame — o chamador carimba primeiro e só a invoca quando a forma de fato
+//! mudou (a malha, a câmera ou o tamanho do canvas). Sem esse carimbo, a tabela acima seria o custo
+//! de TODO quadro em que houvesse uma escultura doando.
 
 use crate::{Camera3d, MeshRenderer};
 

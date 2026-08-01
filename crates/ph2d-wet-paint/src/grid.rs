@@ -269,7 +269,15 @@ impl Grid {
         (self.by0..=self.by1)
             .map(|y| {
                 let (lo, hi) = self.span_x(y);
-                u64::try_from(hi - lo + 1).unwrap_or(0)
+                // A subtração é feita em `i64` DE PROPÓSITO. Numa linha sem faixa viva
+                // `clear_spans` deixa `row_lo = i32::MAX` e `row_hi = i32::MIN`, então
+                // `span_x` devolve esse par e `hi - lo` ESTOURA em `i32` — pânico em
+                // debug, embrulho silencioso em release. O `try_from(..).unwrap_or(0)`
+                // abaixo já é a resposta certa para a linha vazia (o resultado é
+                // negativo ⇒ 0); ele só precisa RECEBER o número, e para isso a conta
+                // tem de caber. Numa linha não-vazia (`hi >= lo`, ambos `i32`) o valor
+                // é idêntico ao que a expressão em `i32` produzia.
+                u64::try_from(i64::from(hi) - i64::from(lo) + 1).unwrap_or(0)
             })
             .sum()
     }
@@ -493,6 +501,10 @@ pub fn verify_spans(g: &Grid) {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "grid/live_span_tests.rs"]
+mod live_span_tests;
 
 #[path = "grid/canvas_ops.rs"]
 mod canvas_ops; // as AÇÕES de folha inteira (molhar/secar/limpar) — filho por LOC

@@ -8671,3 +8671,107 @@ parede sair do lugar, é bug).
 **Aberto:** um **Slider** como elo de corda segue o pai rigidamente, e uma lei de
 deslizamento para ele seria wave própria · a corda não colide com nada enquanto
 é arrastada (é pose, não simulação — o mesmo que vale para a IK).
+
+---
+
+## W-RopeStop — o LIMITADOR, e a força que empurrava de lado
+
+Pedido do Enio, com desenho: *"vamos criar limitadores de modo que tem a
+possibilidade dos objetos nunca colidirem com as polias. Os limitadores são dois
+por corda e são desenhados em cima da corda e com o mouse podem ser movidos por
+todo o trajeto da corda. Podem ser representados com um círculo com um x dentro.
+Outra melhoria: permita selecionar as polias com mouse no canvas"*.
+
+### O defeito é pior que *"colide"*, e foi medido antes de uma linha
+
+`tests/measure_rope_stop.rs`, guincho a 0,5 m/s sobre roldana de raio 0,5:
+
+| t (s) | folga de tangente | y da carga |
+|---|---|---|
+| 10,50 | 0,7823 | 7,241 |
+| **12,00** | **0,0000** | 7,905 |
+| 13,50 | 1,1998 | 7,688 |
+| 15,00 | 1,4607 | 7,095 |
+
+Passada a folga zero a rota **degenera**, o passe recusa a corda inteira
+(*"meia rota é pior que nenhuma"*) e a carga **deixa de ser segurada** — as duas
+últimas linhas são ela sendo devolvida, sem erro e sem aviso.
+
+⚠️ **A grandeza não foi escolhida:** `len = √(d² − r²)` zera **exatamente quando
+a amarração toca o ARO**, então `len ≥ s` é literalmente *"não encoste na
+roldana"*. Uma distância ao CENTRO diria meio metro de folga com a carga já
+encostada numa roldana de meio metro.
+
+### 2ª rodada de smoke — a força bizarra
+
+Enio: *"quando o corpo encosta no limitador gera uma força bizarra que empurra o
+objeto na direção x das polias e o objeto fica pendulando para dentro"*.
+
+**Medido pela porta do produto:** a força que segurava a carga estava **23,76°
+fora da corda**, e o desvio é pura geometria — `atan(r/s)`, de **9,5° a 76°** na
+tabela de `measure_stop_sideways`. Uma corda puxa ao longo de si mesma; qualquer
+componente perpendicular é força sem matéria que a transmita.
+
+**A v1 fazia a CORDA falar o radial** quando a ponta travava. Hoje quem cede é a
+**TRAVA**, e só na metade em que ela pode: ela **EMPURRA** por `u` (a direção da
+corda, a mesma que a rota entrega ao passe da corda) e segue **SENTINDO** por `g`
+(o gradiente radial). `End::k2` é a forma bilinear `gᵀM⁻¹u` que isso pede;
+`End::k` passa a ser `k2(dir, dir)`, uma porta só.
+
+⚠️ **Nenhuma das metades basta, e as duas foram medidas uma contra a outra:**
+
+| lei | deriva lateral (prumo, 3 s) | folga mínima (roda r=2,0, limitador 0,5) |
+|---|---|---|
+| sente e empurra pela CORDA | **0,0000 m** | **0,0000 m** (não segura nada) |
+| sente e empurra pelo RADIAL | **1,0445 m** | 0,4948 m |
+| sente radial, empurra corda | **0,0000 m** | **0,3685 m** |
+
+⚠️ **E a consequência visível é ONDE a carga descansa:** o centro do pêndulo
+depois de travar mede **−0,7266 ≈ −r** — embaixo do ponto de **TANGÊNCIA**, que é
+onde uma corda pendura. A lei radial a punha em `x ≈ 0`, embaixo do **CENTRO**.
+Os dois lugares distam exatamente o raio.
+
+⛔ **MEDIDO E REJEITADO — não refaça:** folgar o orçamento da corda pela violação
+da trava (*"o nó para a corda de correr"*, que a doc da v1 dizia em palavras)
+compra **0,0007 m**. Mecanismo que existe pela história e não pelo efeito saiu.
+
+⚠️ **A barra do gate da roda grande foi RE-MEDIDA (0,45 → 0,30), não herdada.**
+Ela era calibrada para a lei que empurrava pelo radial — que é justamente a que
+punha a carga de lado. O número honesto da lei correta é **0,3685**: um sub-passo
+de ultrapassagem sobre uma carga que balança ±3,5 m, a mesma classe do
+esticamento que o `PULLEY_BIAS` já nomeia.
+
+### Gates e mutações
+
+| # | mutação | sangra |
+|---|---|---|
+| M1 | a trava empurra pelo RADIAL | `a_stopped_load_hanging_plumb_is_not_pushed_sideways` (1,0455 m) + o gate do nó travado |
+| M2 | a trava SENTE pela corda | `the_stop_holds_on_a_big_wheel…` (0,0000 m) |
+
+Cada uma sangra no gate que lhe pertence **e em nenhum outro**: os dois não são
+redundantes. Mais `the_stop_pushes_where_the_rope_pulls`, que pina o invariante
+estrutural (`stop_leg` e `RopeRoute::dir_a` são o MESMO vetor) — se as convenções
+divergirem, o resíduo lateral volta e nenhum gate de comportamento diria de onde.
+
+⚠️ **Três defeitos meus nesta wave, todos pegos por medição e não por revisão:**
+o oráculo de *"a carga não pode ser atirada além do raio"* dizia o **oposto** do
+que o produto faz (a trava REDUZ o balanço: 3,976 m com ela contra 6,345 m sem) ·
+a instrução *"aperte B para ver"* na cena 75 **desligaria** o contorno, que já
+nasce ligado · e uma varredura de suíte truncada em `head -40` me fez ler verde
+onde havia vermelho — **conte os binários, não corte a saída**.
+
+**c9 `16ba80e8…`, 99 corpos, debug ≡ release — e IDÊNTICO antes e depois desta
+correção**, porque nenhuma corda dele carrega limitador. `PROJECT_SCHEMA` **48
+intocado** (componente novo cunha blob-key própria) · registro **25→26** · gizmo
+ids **972/973** (próximo livre **974**) · nenhum ADR · zero `Cargo.toml`.
+
+**Smoke: `PH2D_PHYSICS_SMOKE=75`** — dois guinchos idênticos, o vermelho sem
+limitador e o verde com 1,6 m. O verde trava em **1,5865 m** e fica imóvel; o
+vermelho entra na roldana e é devolvido (1,18 → 2,41 → 3,40). Arraste a marca do
+vermelho pela corda e ele também para. Clique no ANEL de uma roldana para
+selecioná-la; clique no MIOLO do disco e nada é selecionado, que é o certo.
+
+**Aberto:** a trava é uma restrição de **posição**, então um balanço violento a
+ultrapassa por um sub-passo (0,3685 contra 0,5 pedidos, na roda de raio 2,0 com o
+limitador 4× menor que ela) — mesma classe do esticamento da corda, e o número
+está pinado no gate.

@@ -51,20 +51,25 @@
 //! # A hierarquia é a MESMA do IK, e isso não é reuso preguiçoso
 //!
 //! Quem é a raiz — logo, quem é pai de quem — sai do [`super::ik::IkPlan`]: um
-//! corpo `Static`/`Kinematic` alcançável é a raiz, e sem nenhum a cadeia flutua e
-//! a raiz é o corpo mais distante. Uma segunda política de raiz aqui seria uma
-//! segunda resposta a *"para que lado desta cadeia é 'para cima'?"*, e as duas
-//! discordariam no primeiro rig que tivesse âncora dos dois lados.
+//! corpo `Static`/`Kinematic` alcançável é a raiz, e sem nenhum é a **cabeça
+//! AUTORADA** (o corpo que nunca é o lado B de um elo). Uma segunda política de
+//! raiz aqui seria uma segunda resposta a *"para que lado desta cadeia é 'para
+//! cima'?"*, e as duas discordariam no primeiro rig que tivesse âncora dos dois
+//! lados.
 //!
-//! ⚠️ **Corolário honesto:** numa cadeia SOLTA (sem âncora), a raiz é o corpo
-//! mais distante do que você pegou, então o pego é sempre uma folha e a FK gira
-//! só ele. É consistente (a cadeia não tem "para cima" nenhum, e a única
-//! resposta era escolher uma) e é o que a IK já faz com a mesma cena.
+//! ⚠️ **Este parágrafo trazia um "corolário honesto" que a wave seguinte
+//! DERRUBOU.** Ele dizia que numa cadeia solta a raiz é o corpo mais distante
+//! do que você pegou, *"e a única resposta era escolher uma"* — mas havia
+//! resposta: o par ordenado que o artista já autorou em cada joint. Com ela, a
+//! cabeça de uma cadeia solta é sempre a mesma, e pegá-la cai no ramo
+//! [`FkMotion::Rigid`] em vez de girar uma folha.
 
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 use ph2d_ecs::{Entity, SimWorld};
 use ph2d_physics::{FkDof, fk_dof, joint_coordinate_at};
+
+use crate::components::BodyKind;
 
 use super::PhysicsBridge;
 use super::anchors::JointSide;
@@ -219,10 +224,7 @@ impl PhysicsBridge {
         // silêncio.
         let mut node = tip;
         let mut arm: Option<(Entity, Entity, FkDof)> = None;
-        loop {
-            let Some(&(p, j)) = parent_of.get(&node) else {
-                break;
-            };
+        while let Some(&(p, j)) = parent_of.get(&node) {
             let kind = self.joints.get(&j)?.rest.kind;
             if let Some(d) = fk_dof(kind) {
                 arm = Some((p, j, d));
@@ -299,7 +301,21 @@ impl PhysicsBridge {
                     last: grab,
                 }
             }
-            None => FkMotion::Rigid { grab_pos: cursor },
+            // ⚠️ **A peça só viaja se o TOPO dela puder se mover.** A árvore
+            // enraíza no que *não se move ao posar* (uma parede `Static`, uma
+            // plataforma `Kinematic` que segue curva), e uma peça soldada a uma
+            // dessas não tem grau de liberdade nenhum — nem de rotação, nem de
+            // translação. Aí a recusa é a resposta honesta, e é a que o gesto
+            // sempre deu.
+            //
+            // Sem esta linha o gesto arrastava a PAREDE: medido, uma corrente
+            // soldada a um corpo estático movia **cinco** corpos, o estático
+            // incluso, e a cena inteira saía do lugar por um arrasto que devia
+            // não fazer nada.
+            None if self.bodies.get(&node).map(|b| b.kind) == Some(BodyKind::Dynamic) => {
+                FkMotion::Rigid { grab_pos: cursor }
+            }
+            None => return None,
         };
 
         Some(FkSession {
@@ -395,7 +411,10 @@ impl PhysicsBridge {
                         let (dx, dy) = (x - pivot[0], y - pivot[1]);
                         (
                             e,
-                            [pivot[0] + dx * cos - dy * sin, pivot[1] + dx * sin + dy * cos],
+                            [
+                                pivot[0] + dx * cos - dy * sin,
+                                pivot[1] + dx * sin + dy * cos,
+                            ],
                             r + d,
                         )
                     })

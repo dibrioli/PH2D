@@ -22,6 +22,7 @@ pub mod fk;
 mod grab;
 mod hold;
 pub mod ik;
+mod ik_lead;
 mod inspect;
 pub mod joint_break;
 pub mod joint_desc;

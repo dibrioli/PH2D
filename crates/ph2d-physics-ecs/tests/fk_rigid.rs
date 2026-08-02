@@ -97,10 +97,7 @@ fn a_fully_welded_chain_opens_a_gesture_instead_of_refusing() {
         "a peca soldada tem de viajar INTEIRA"
     );
     assert!(
-        bridge
-            .fk_session()
-            .expect("sessao viva")
-            .is_rigid(),
+        bridge.fk_session().expect("sessao viva").is_rigid(),
         "sem junta com grau de liberdade acima, o gesto e' uma TRANSLACAO"
     );
 }
@@ -116,8 +113,8 @@ fn the_piece_travels_without_turning_and_keeps_every_distance() {
     let poses = bridge.fk_move([1.5 + 2.0, 0.0 + 3.0]);
     assert_eq!(poses.len(), 3);
 
-    for (i, x0) in [0.5f32, 1.5, 2.5].iter().enumerate() {
-        let (t, r) = pose_of(&poses, e[i]);
+    for (i, (&x0, &ent)) in [0.5f32, 1.5, 2.5].iter().zip(&e).enumerate() {
+        let (t, r) = pose_of(&poses, ent);
         assert!(
             (t[0] - (x0 + 2.0)).abs() < 1e-4 && (t[1] - 3.0).abs() < 1e-4,
             "elo {i} devia seguir o cursor: {t:?}"
@@ -164,6 +161,37 @@ fn a_weld_under_a_hinge_still_bends_at_the_hinge() {
     );
 }
 
+/// **A peça só viaja se o TOPO dela puder se mover — a PAREDE não anda.**
+///
+/// ⚠️ Este gate existe porque a sonda `measure_lead_drag` achou o defeito que
+/// eu tinha acabado de escrever: uma corrente soldada a um corpo `Static` movia
+/// **cinco** corpos, o estático incluso, e a cena inteira saía do lugar por um
+/// arrasto que devia não fazer nada. A lei já estava escrita no módulo irmão —
+/// *a raiz é o que **não se move** ao posar* — e o ramo novo a atropelava.
+///
+/// Mutação (tirar a condição de `Dynamic`) ⇒ `fk_begin` abre, move 3 corpos e
+/// a parede viaja, RED.
+#[test]
+fn a_piece_welded_to_a_wall_has_no_gesture() {
+    let mut sim = SimWorld::new();
+    let _wall = body(&mut sim, "Wall", -0.5, BodyKind::Static);
+    let _l1 = body(&mut sim, "L1", 0.5, BodyKind::Dynamic);
+    let l2 = body(&mut sim, "L2", 1.5, BodyKind::Dynamic);
+    joint(&mut sim, "Wall", "L1", JointKind::Weld, 0.0);
+    joint(&mut sim, "L1", "L2", JointKind::Weld, 1.0);
+    let mut bridge = PhysicsBridge::new();
+    bridge.dispatch(&mut sim, false, 0);
+
+    assert!(
+        !bridge.fk_begin(&sim, l2, [1.5, 0.0]),
+        "uma peca soldada a uma parede nao tem grau de liberdade nenhum"
+    );
+    assert!(
+        bridge.fk_bodies().is_empty(),
+        "e nada foi posto no conjunto que o gesto moveria"
+    );
+}
+
 /// **O gesto é função do CURSOR, não da lista de Moves.** A lei que esta linha
 /// e a do Painter pagaram várias vezes: um produto sobre os eventos faz o
 /// resultado depender da taxa de polling do mouse.
@@ -186,9 +214,9 @@ fn the_same_cursor_gives_the_same_pose_however_many_moves_it_took() {
         many = bridge.fk_move([1.5 + 1.7 * f, -2.3 * f]);
     }
 
-    for i in 0..3 {
-        let (a, _) = pose_of(&one, e[i]);
-        let (b, _) = pose_of(&many, e[i]);
+    for (i, &ent) in e.iter().enumerate().take(3) {
+        let (a, _) = pose_of(&one, ent);
+        let (b, _) = pose_of(&many, ent);
         assert!(
             (a[0] - b[0]).abs() < 1e-5 && (a[1] - b[1]).abs() < 1e-5,
             "elo {i}: um passo {a:?} contra dez {b:?}"

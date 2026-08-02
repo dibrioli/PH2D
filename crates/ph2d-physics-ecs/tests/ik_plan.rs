@@ -77,10 +77,12 @@ fn a_static_neighbour_is_the_root() {
     assert_eq!(plan.edges[2].1, e[3]);
 }
 
+/// Sem gancho, a raiz é a **CABEÇA AUTORADA** — o corpo que nunca é o lado B de
+/// um elo. Aqui ela coincide com o elo mais distante da ponta, que era a regra
+/// antiga, e é por isso que este gate sozinho **não distingue as duas leis**;
+/// quem as separa é o irmão abaixo.
 #[test]
-fn a_free_chain_roots_at_the_far_end() {
-    // Sem gancho, a raiz é o elo mais DISTANTE da ponta — e o rapier lhe dá
-    // uma raiz livre, então a IK pode transladar o conjunto.
+fn a_free_chain_roots_at_the_authored_head() {
     let mut sim = SimWorld::new();
     let a = body(&mut sim, "A", 0.5, 0.0, BodyKind::Dynamic);
     let _b = body(&mut sim, "B", 1.5, 0.0, BodyKind::Dynamic);
@@ -92,6 +94,50 @@ fn a_free_chain_roots_at_the_far_end() {
     let plan = bridge.ik_plan(c).expect("a plan");
     assert_eq!(plan.root, a);
     assert_eq!(plan.edges.len(), 2);
+}
+
+/// **O rig tem UM "para cima", não um por gesto.**
+///
+/// A regra antiga — *a raiz é o corpo mais distante do que você pegou* — fazia a
+/// árvore depender de qual corpo a mão tocou: pegar a cauda enraizava na cabeça
+/// e pegar a cabeça enraizava na cauda. Pegar o MEIO é onde as duas leis dão
+/// respostas diferentes sem nenhum empate para esconder a diferença.
+///
+/// Mutação (voltar a `deepest.1`) ⇒ a raiz vira `C`, RED.
+#[test]
+fn the_root_is_the_same_whichever_link_the_hand_grabs() {
+    let mut sim = SimWorld::new();
+    let a = body(&mut sim, "A", 0.5, 0.0, BodyKind::Dynamic);
+    let b = body(&mut sim, "B", 1.5, 0.0, BodyKind::Dynamic);
+    let c = body(&mut sim, "C", 2.5, 0.0, BodyKind::Dynamic);
+    joint(&mut sim, "A", "B", JointKind::Pin, [1.0, 0.0]);
+    joint(&mut sim, "B", "C", JointKind::Pin, [2.0, 0.0]);
+    let mut bridge = PhysicsBridge::new();
+    bridge.dispatch(&mut sim, false, 0);
+    for grabbed in [a, b, c] {
+        let plan = bridge.ik_plan(grabbed).expect("a plan");
+        assert_eq!(
+            plan.root, a,
+            "a cabeca autorada e' A, seja qual for o elo que a mao pegou"
+        );
+    }
+}
+
+/// **A autoria INVERTIDA move a cabeça junto.** A regra lê o par ordenado do
+/// joint, e não a ordem em que os corpos foram criados nem a geometria.
+#[test]
+fn reversing_the_authoring_moves_the_head_to_the_other_end() {
+    let mut sim = SimWorld::new();
+    let _a = body(&mut sim, "A", 0.5, 0.0, BodyKind::Dynamic);
+    let _b = body(&mut sim, "B", 1.5, 0.0, BodyKind::Dynamic);
+    let c = body(&mut sim, "C", 2.5, 0.0, BodyKind::Dynamic);
+    // C→B→A: agora a cabeça é C, e ela é a MESMA ponta que a mão pega.
+    joint(&mut sim, "C", "B", JointKind::Pin, [2.0, 0.0]);
+    joint(&mut sim, "B", "A", JointKind::Pin, [1.0, 0.0]);
+    let mut bridge = PhysicsBridge::new();
+    bridge.dispatch(&mut sim, false, 0);
+    let plan = bridge.ik_plan(c).expect("a plan");
+    assert_eq!(plan.root, c, "a cabeca autorada agora e' C");
 }
 
 #[test]

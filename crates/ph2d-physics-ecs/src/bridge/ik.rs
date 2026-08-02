@@ -20,10 +20,18 @@
 //!    alcançado por BFS a partir da ponta), porque é ele que a cadeia de fato
 //!    pendura; empate desfeito pelos bits da entidade, para o plano ser
 //!    determinístico.
-//! 3. Sem nenhum, a cadeia flutua: a raiz é o corpo dinâmico **mais distante**
-//!    da ponta, e o rapier lhe dá uma raiz LIVRE (3 graus de liberdade) — a IK
-//!    pode transladar o conjunto inteiro, que é o que faz sentido para um rig
-//!    solto.
+//! 3. Sem nenhum, a cadeia flutua, e aí a raiz é a **CABEÇA AUTORADA** — o corpo
+//!    que nunca é o lado B de um elo ([`PhysicsBridge::authored_head`]). O
+//!    rapier lhe dá uma raiz LIVRE (3 graus de liberdade), então o conjunto
+//!    inteiro pode transladar, que é o que faz sentido para um rig solto.
+//!
+//! ⚠️ **O item 3 dizia *"o corpo mais distante da ponta"*, e o preço disso era
+//! medível:** a raiz dependia de **qual corpo a mão pegou** — numa cadeia
+//! `L1→L2→L3→L4`, pegar L1 enraizava em L4 e pegar L4 enraizava em L1. O rig
+//! não tinha um "para cima", tinha um por gesto. O par ordenado do joint é a
+//! resposta que já estava autorada, e o overlay já a desenha (a linha de posse
+//! de A é contínua, a de B tracejada). Onde a autoria não responde — um ciclo,
+//! ou dois braços — o critério antigo continua valendo.
 //!
 //! É a mesma família de leis do [`crate::jointed_group`] (o bake) e do
 //! [`crate::jointed_rig`] (o arrasto): *quem conduz* muda com a pergunta, e a
@@ -61,12 +69,38 @@ use super::PhysicsBridge;
 /// Nasce no press, morre no release. Nada aqui é estado da cena — o resultado
 /// de cada solve vai para o `Transform` AUTORADO, que é o que a cena guarda.
 pub struct IkSession {
-    chain: IkChain,
     /// O corpo que o gesto arrasta.
     pub tip: Entity,
     /// Todo corpo da árvore, raiz inclusa — o que o chamador precisa saber para
     /// tirar um snapshot de undo ANTES de a primeira pose ser escrita.
     pub bodies: Vec<Entity>,
+    /// Qual dos dois gestos este é. Ver [`IkMode`].
+    mode: IkMode,
+}
+
+/// **O que arrastar este corpo SIGNIFICA**, e a resposta muda com quem foi
+/// pego.
+///
+/// Pegar a PONTA de uma cadeia é pedir *"ponha a mão ali"*, e quem responde é o
+/// solver com a raiz parada. Pegar a RAIZ é pedir *"leve isto"*, e aí não há
+/// nada atrás para resolver — a cadeia é **arrastada**.
+///
+/// A versão anterior tinha só o primeiro e **recusava** o segundo (`root == tip`
+/// devolvia `None`), o que deixava sem gesto justamente o caso de levar o rig.
+enum IkMode {
+    /// A ponta vai ao alvo e a cadeia dobra atrás dela (o solver do wrapper).
+    ///
+    /// ⚠️ **Em caixa**: a árvore de multibody passa de 290 bytes e a corda não
+    /// chega a 60, então guardá-las lado a lado faria todo gesto pagar o
+    /// tamanho do maior.
+    Tip(Box<TipSolve>),
+    /// O líder vai ao cursor e a cadeia o segue — ver [`super::ik_lead`].
+    Lead(super::ik_lead::LeadDrag),
+}
+
+/// A árvore transitória que o solver resolve, e o que traduz a resposta dele.
+struct TipSolve {
+    chain: IkChain,
     /// `handle → entidade`, para traduzir a resposta do wrapper de volta.
     by_handle: BTreeMap<u32, Entity>,
     /// **Os handles com que a árvore foi CONSTRUÍDA**, para saber quando ela
@@ -120,6 +154,41 @@ impl PhysicsBridge {
     #[must_use]
     pub fn posing_bodies(&self) -> &[Entity] {
         self.ik.as_ref().map_or(&[], |s| &s.bodies)
+    }
+
+    /// **A CABEÇA que o artista autorou**, se a autoria a nomeia sem ambiguidade.
+    ///
+    /// O corpo da árvore que nunca aparece como lado **B** de um elo rígido cujo
+    /// lado **A** também está na árvore. `None` quando não há exatamente uma —
+    /// um ciclo não tem cabeça e uma árvore com dois braços tem duas, e nos dois
+    /// casos a autoria não respondeu.
+    ///
+    /// Puro sobre o estado reconciliado, como o [`Self::ik_plan`] que a chama.
+    fn authored_head(
+        &self,
+        adj: &BTreeMap<Entity, Vec<(Entity, Entity)>>,
+        tree: &BTreeMap<Entity, u32>,
+    ) -> Option<Entity> {
+        let mut has_parent: BTreeSet<Entity> = BTreeSet::new();
+        for (&e, ns) in adj {
+            if !tree.contains_key(&e) {
+                continue;
+            }
+            for &(n, je) in ns {
+                // ⚠️ **Só arestas de DENTRO da árvore contam.** Um elo que sai
+                // para um braço que este gesto não move não decide quem é a
+                // cabeça DELE — e um vizinho não-dinâmico já é fronteira.
+                if !tree.contains_key(&n) {
+                    continue;
+                }
+                if self.joints.get(&je).map(|j| j.entities) == Some((e, Some(n))) {
+                    has_parent.insert(n);
+                }
+            }
+        }
+        let mut heads = tree.keys().copied().filter(|e| !has_parent.contains(e));
+        let first = heads.next()?;
+        heads.next().is_none().then_some(first)
     }
 
     /// **Monta o plano da árvore** a partir de `tip`. Puro sobre o estado
@@ -196,12 +265,30 @@ impl PhysicsBridge {
                 }
             }
         }
-        let root = anchor.map_or(deepest.1, |(_, e)| e);
-        if root == tip {
-            // Uma cadeia de um corpo só: nada a dobrar. Arrastar isto é uma
-            // TRANSLAÇÃO, e essa já é a W-JG.
-            return None;
-        }
+        // ⚠️ **Sem âncora, a raiz é a que o ARTISTA autorou** — e a versão
+        // anterior desta linha dizia `deepest.1`, o corpo mais distante do que
+        // você pegou, com a justificativa de que *"a cadeia não tem 'para cima'
+        // nenhum, e a única resposta era escolher uma"*.
+        //
+        // Ela tem: o joint guarda um PAR ORDENADO (`body_a`, `body_b`), o
+        // overlay já desenha essa ordem (a linha de posse de A é contínua e a
+        // de B tracejada), e a §12 chama as duas pontas por nome. A ponta A é o
+        // lado de cima.
+        //
+        // O preço da regra antiga era medível: a raiz **dependia de qual corpo
+        // você pegou** — numa cadeia L1→L2→L3→L4, pegar L1 enraizava em L4 e
+        // pegar L4 enraizava em L1, então o rig não tinha um "para cima"
+        // estável, ele tinha um por gesto.
+        //
+        // A cabeça é o corpo da árvore que **nunca é o lado B** de um elo cujo
+        // lado A também está na árvore. Havendo exatamente uma, ela é a raiz;
+        // com zero (um ciclo) ou várias (dois braços), a autoria não responde e
+        // o critério antigo continua valendo — a regra nova só fala onde é
+        // inequívoca.
+        let root = match anchor {
+            Some((_, e)) => e,
+            None => self.authored_head(&adj, &depth).unwrap_or(deepest.1),
+        };
 
         // Segundo BFS, agora a partir da RAIZ, produzindo as arestas na ordem
         // pai→filho. Só os corpos que o primeiro percurso alcançou participam
@@ -241,6 +328,16 @@ impl PhysicsBridge {
     /// a monta — ver a nota de RE-CONSTRUÇÃO lá.
     fn build_ik_session(&self, tip: Entity) -> Option<IkSession> {
         let plan = self.ik_plan(tip)?;
+        // A mão pegou a RAIZ: não há cadeia atrás dela para um solver resolver,
+        // e o gesto é o revezamento da corda.
+        if plan.root == tip {
+            let lead = self.build_lead_drag(&plan)?;
+            return Some(IkSession {
+                tip,
+                bodies: lead.bodies(),
+                mode: IkMode::Lead(lead),
+            });
+        }
         let mut links = Vec::with_capacity(plan.edges.len());
         let mut by_handle = BTreeMap::new();
         let mut bodies = vec![plan.root];
@@ -277,11 +374,13 @@ impl PhysicsBridge {
         let tip_h = self.bodies.get(&tip).map(|b| b.handle)?;
         let chain = self.world.ik_chain(root_h, &links, tip_h)?;
         Some(IkSession {
-            chain,
             tip,
             bodies,
-            by_handle,
-            built_with,
+            mode: IkMode::Tip(Box::new(TipSolve {
+                chain,
+                by_handle,
+                built_with,
+            })),
         })
     }
 
@@ -311,10 +410,15 @@ impl PhysicsBridge {
         // **0,005–0,015 ms** — medido, um terço do custo de um solve. E não é
         // uma perda de *warm start*: o estado que importa é a POSE, e ela está
         // no mundo, que é justamente de onde a árvore nova se semeia.
-        let stale = self.ik.as_ref().is_some_and(|s| {
-            s.built_with
+        // ⚠️ A corda **não** guarda handles — ela vive em poses de mundo — então
+        // a re-montagem abaixo não a alcança nem precisa: re-montá-la jogaria
+        // fora a memória que ela É.
+        let stale = self.ik.as_ref().is_some_and(|s| match &s.mode {
+            IkMode::Tip(t) => t
+                .built_with
                 .iter()
-                .any(|(e, h)| self.bodies.get(e).map(|b| b.handle) != Some(*h))
+                .any(|(e, h)| self.bodies.get(e).map(|b| b.handle) != Some(*h)),
+            IkMode::Lead(_) => false,
         });
         if stale {
             let tip = self.ik.as_ref().map(|s| s.tip);
@@ -323,15 +427,22 @@ impl PhysicsBridge {
         let Some(s) = self.ik.as_mut() else {
             return Vec::new();
         };
-        let poses = self.world.ik_solve(&mut s.chain, target, angle, opts);
-        poses
-            .into_iter()
-            .filter_map(|p| {
-                s.by_handle
-                    .get(&p.body.0.into_raw_parts().0)
-                    .map(|&e| (e, p.translation, p.rotation))
-            })
-            .collect()
+        match &mut s.mode {
+            // O alvo é onde o LÍDER vai; o ângulo e as opções do solver não têm
+            // significado numa corda, e passá-los adiante seria fingir que têm.
+            IkMode::Lead(lead) => lead.advance(target),
+            IkMode::Tip(t) => {
+                let poses = self.world.ik_solve(&mut t.chain, target, angle, opts);
+                poses
+                    .into_iter()
+                    .filter_map(|p| {
+                        t.by_handle
+                            .get(&p.body.0.into_raw_parts().0)
+                            .map(|&e| (e, p.translation, p.rotation))
+                    })
+                    .collect()
+            }
+        }
     }
 
     /// Encerra o gesto. Idempotente — soltar sem ter pegado é o caso comum de

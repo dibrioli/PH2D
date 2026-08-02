@@ -160,16 +160,27 @@ fn measure_lead_drag() {
             let before: Vec<_> = (0..4).map(|i| pose(&sim, e[i])).collect();
             if b.ik_begin(e[0]) {
                 let n = b.posing_bodies().len();
-                // Arrasta L1 dois metros para CIMA, em dez passos (como a mão faz).
-                for k in 1..=10i16 {
-                    let t = [0.0, 2.0 * f32::from(k) / 10.0];
+                println!("  IK: abriu, arvore de {n} corpo(s)");
+                // ⚠️ O PERFIL no caminho, e não só o fim: *"o último se move por
+                // último"* é afirmação sobre o INSTANTE — puxada longa o
+                // bastante, tudo acaba andando, e o número final não distingue
+                // uma corda de um bloco.
+                for k in 1..=20i16 {
+                    let t = [0.0, 2.0 * f32::from(k) / 20.0];
                     let poses = b.ik_move(t, 0.0, IkOptions::default());
                     write(&mut sim, &poses);
                     b.dispatch(&mut sim, false, 0);
+                    if matches!(k, 1 | 2 | 4 | 10 | 20) {
+                        row(
+                            &format!("IK apos {:>4.2} m:", 2.0 * f32::from(k) / 20.0),
+                            &moved(&before, &sim, &e),
+                        );
+                    }
                 }
-                println!("  IK: abriu, arvore de {n} corpo(s)");
-                row("IK deslocamento:", &moved(&before, &sim, &e));
-                println!("  IK: L1 pedido em (0.000, 2.000), chegou em {:?}", pose(&sim, e[0]));
+                println!(
+                    "  IK: L1 pedido em (0.000, 2.000), chegou em {:?}",
+                    pose(&sim, e[0])
+                );
             } else {
                 println!("  IK: **NAO ABRIU** (ik_begin = false) -- nada se move");
             }

@@ -6384,3 +6384,57 @@ imprimir `(relevo pelo JOURNAL: Nx)`, e fica). Verdade geral, e continua valendo
 fizeram publicar um veredito falso sobre a minha própria medição. *Um doc-comment que nomeia um `cfg`
 é uma afirmação que EXPIRA: grepe o atributo, não leia a prosa.* Os dois foram corrigidos no mesmo
 commit que esta seção, cada um dizendo o que afirmava antes e o que a mentira custou.
+
+---
+
+## §5.68 — Um gate de MAX não é salvo por uma razão: quando a propriedade é estrutural, o oráculo é o fonte (2026-08-02)
+
+O `the_tick_never_waits_for_a_whole_stage` (a wave off-thread, §5.31-§5.38) falhou na suíte. A doc dele
+**já admitia a flake de carga com o número** — *30,64 ms sob a suíte em paralelo contra a barra de 30*,
+medido em 2026-07-29 — mandava *"re-rode sozinho antes de suspeitar de uma regressão"* e concluía que
+*"a barra fica onde está: subi-la para acomodar a máquina carregada tiraria o dente que separa 4 ms de
+espera de um estágio inteiro"*.
+
+Ficou. E com `load average 38` (outras linhas compilando nos mesmos 32 núcleos) ele passou a falhar
+**ISOLADO**: `FAILED / ok / FAILED` em três corridas seguidas, sozinho. ⚠️ *Um gate que alterna sob
+carga não é acreditado — é **silenciado**, que é a única coisa pior que não o ter.*
+
+### 1. A razão foi construída, medida e REPROVADA
+
+A cura óbvia — e a que este repo ensina em vários lugares (o kill do Deform, §W4: *"por ser razão é
+imune à deriva da máquina"*) — é trocar o wall-clock por uma **razão**: o pior tick dividido pelo custo
+de um passo, medido na mesma corrida pela porta `wet_step_sync` (que roda os MESMOS estágios do worker,
+então não é uma segunda resposta a *"quanto custa um passo?"*). A teoria: o modo de falha força
+`worst ≥ passo` **por construção**, e sob carga os dois termos inflam juntos.
+
+**Medido, quatro corridas:** `1,82 · 1,41 · ok · 0,77` — com o pior tick em **47,63 ms contra 26,12 de
+passo**. A razão flaka igual.
+
+⚠️ **E o número diz por quê:** `worst` é um **MAX sobre 90 amostras**. Ele não mede o desenho — mede *a
+pior preempção do SO em 1,5 s*. Isso é ruído **aditivo e só no numerador**, e razão nenhuma o cancela.
+
+> **A regra fica mais afiada, não invertida:** uma razão cancela a deriva da máquina quando os dois
+> termos são **reduções comparáveis do mesmo trabalho** (média contra média, mínimo contra mínimo). Um
+> **MAX** não é isso: ele é um ímã de outlier, e o denominador não tem outlier nenhum para cancelá-lo.
+
+### 2. O que ficou: a propriedade é ESTRUTURAL
+
+O que separa os dois desenhos não é um milissegundo — é a porta do tick (`WetSession::try_bring_home`)
+pedir o motor com **espera limitada**. Com um `recv()` nu no lugar do `recv_timeout(TICK_WAIT)`, o tick
+contém o estágio **por construção**; e isso um scanner de fonte vê em qualquer máquina.
+
+- **`the_tick_asks_for_the_engine_with_a_bounded_wait`** (roda em **0,00 s**), com **controle positivo
+  nas duas pontas** — o padrão do irmão `the_frame_does_not_run_a_sim_stage`: a porta **bloqueante**
+  `bring_home` tem de continuar com o `recv()` nu, senão o gate passaria por *o scanner estar olhando o
+  lugar errado*.
+- **`measure_the_worst_tick_against_a_step`** (`#[ignore]`) guarda o número, com o aviso de que sob
+  carga ele **não fala sobre o código**.
+
+**Mutações: 2, as 2 sangram.** `recv_timeout(TICK_WAIT)` → `recv()` na porta do tick ⇒ RED. E a porta
+bloqueante deixando de bloquear ⇒ RED no controle — ⚠️ essa segunda **não é só controle, é um defeito
+real**: um clique do artista voltaria de mãos vazias, que é o que o doc-comment dela promete que nunca
+acontece.
+
+⚠️ **E o precedente já estava escrito NESTE arquivo de testes**, doze linhas acima do gate que eu
+mantive por um ano: o 1,2× do relógio contínuo do worker *"fica sem gate, de propósito, com o número
+escrito no `worker_loop`"*. A prática existia; ela só não tinha sido aplicada ao vizinho.

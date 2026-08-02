@@ -183,6 +183,10 @@ pub(crate) fn view_state(sim: &SimWorld, map: &VecEntityMap) -> VecViewState {
     view
 }
 
+/// Teto de profundidade das caminhadas de ancestral (defesa, não limite de produto).
+/// Partilhado com o irmão [`selection`] — uma árvore corrompida tem UMA profundidade máxima.
+pub(super) const MAX_DEPTH: usize = 64;
+
 /// `Visibility` do próprio E de cada ancestral.
 fn visible_chain(w: &ph2d_ecs::World, entity: Entity) -> bool {
     let mut cur = Some(entity);
@@ -198,65 +202,22 @@ fn visible_chain(w: &ph2d_ecs::World, entity: Entity) -> bool {
     true
 }
 
-/// Teto de profundidade das caminhadas de ancestral (defesa, não limite de produto).
-const MAX_DEPTH: usize = 64;
+/// **A ancestralidade e o que uma SELEÇÃO significa** — módulo irmão, pelo teto de 600 LOC
+/// da shell. O corte é por assunto: aqui em cima mora o que a ponte MANTÉM (a identidade
+/// path ⟺ entidade, a ordem, o que a árvore esconde); ali, o que a árvore RESPONDE — *quem é
+/// o objeto que este clique nomeia, e o que selecioná-lo significa*.
+#[path = "vec_entities_selection.rs"]
+mod selection;
+pub(crate) use selection::{object_selection_for, selection_paths, subtree_paths, top_ancestor};
 
-/// O ancestral de topo de `entity` (ele mesmo, se já é raiz).
-#[must_use]
-pub(crate) fn top_ancestor(sim: &SimWorld, entity: Entity) -> Entity {
-    let w = sim.world();
-    let mut cur = entity;
-    for _ in 0..MAX_DEPTH {
-        match w.get::<ChildOf>(cur) {
-            Some(c) => cur = c.parent(),
-            None => break,
-        }
-    }
-    cur
+#[cfg(test)]
+fn setup() -> (SimWorld, VecScene, VecEntityMap) {
+    (SimWorld::default(), VecScene::new(), VecEntityMap::new())
 }
 
-/// Todos os paths vetoriais na sub-árvore de `entity` (ele mesmo, se for um path),
-/// **na ordem de z do documento** — a seleção fica estável entre frames.
-#[must_use]
-pub(crate) fn subtree_paths(sim: &SimWorld, scene: &VecScene, entity: Entity) -> Vec<VecPathId> {
-    let w = sim.world();
-    let mut found: Vec<VecPathId> = Vec::new();
-    let mut stack = vec![entity];
-    while let Some(e) = stack.pop() {
-        if let Some(vp) = w.get::<VecPathRef>(e) {
-            found.push(vp.0);
-        }
-        if let Some(kids) = w.get::<ph2d_ecs::Children>(e) {
-            stack.extend(kids.iter().copied());
-        }
-    }
-    scene
-        .paths()
-        .iter()
-        .map(|p| p.id)
-        .filter(|id| found.contains(id))
-        .collect()
-}
-
-/// A seleção de objeto que tocar `path` produz: as folhas vetoriais do ancestral
-/// de topo dele. Fora de qualquer grupo isso é só ele — o comportamento de sempre.
-#[must_use]
-pub(crate) fn object_selection_for(
-    sim: &SimWorld,
-    scene: &VecScene,
-    map: &VecEntityMap,
-    path: VecPathId,
-) -> Vec<VecPathId> {
-    let Some(&bits) = map.get(&path) else {
-        return vec![path];
-    };
-    let top = top_ancestor(sim, Entity::from_bits(bits));
-    let leaves = subtree_paths(sim, scene, top);
-    if leaves.is_empty() {
-        vec![path]
-    } else {
-        leaves
-    }
+#[cfg(test)]
+fn bits(map: &VecEntityMap, id: VecPathId) -> Entity {
+    Entity::from_bits(map[&id])
 }
 
 /// Agrupa as entidades `members` sob uma **entidade comum nova** (nome, `Transform`,
@@ -355,14 +316,6 @@ fn is_plain_group(sim: &SimWorld, e: Entity) -> bool {
 mod tests {
     use super::*;
     use ph2d_vec_scene::rectangle;
-
-    fn setup() -> (SimWorld, VecScene, VecEntityMap) {
-        (SimWorld::default(), VecScene::new(), VecEntityMap::new())
-    }
-
-    fn bits(map: &VecEntityMap, id: VecPathId) -> Entity {
-        Entity::from_bits(map[&id])
-    }
 
     /// O invariante da ponte: um path ⟺ uma entidade. Nas duas direções, e o
     /// sync é idempotente (rodar de novo não spawna fantasma).
@@ -555,24 +508,5 @@ mod tests {
         let v = view_state(&sim, &map);
         assert!(!v.is_pickable(a) && !v.is_pickable(b));
         assert!(!v.is_hidden(a), "travado não é escondido");
-    }
-
-    /// Clicar num filho seleciona o grupo inteiro; fora de grupo, só ele.
-    #[test]
-    fn object_selection_expands_to_the_top_group() {
-        let (mut sim, mut scene, mut map) = setup();
-        let a = scene.push_path(rectangle([0.0, 0.0], [1.0, 1.0]));
-        let b = scene.push_path(rectangle([2.0, 0.0], [3.0, 1.0]));
-        let c = scene.push_path(rectangle([4.0, 0.0], [5.0, 1.0]));
-        sync(&mut sim, &mut scene, &mut map);
-        assert_eq!(object_selection_for(&sim, &scene, &map, a), vec![a]);
-
-        group_entities(&mut sim, &[map[&a], map[&b]], "G".into()).unwrap();
-        assert_eq!(object_selection_for(&sim, &scene, &map, a), vec![a, b]);
-        assert_eq!(
-            object_selection_for(&sim, &scene, &map, c),
-            vec![c],
-            "solto"
-        );
     }
 }

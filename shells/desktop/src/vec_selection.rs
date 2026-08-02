@@ -7,7 +7,7 @@
 //!
 //! A ponte de identidade (path ⟺ entidade) é o módulo irmão [`crate::vec_entities`].
 
-use crate::vec_entities::{VecEntityMap, subtree_paths};
+use crate::vec_entities::{VecEntityMap, selection_paths, subtree_paths};
 use ph2d_ecs::{ChildOf, Entity, SimWorld, VecPathRef};
 use ph2d_editor::screens::hero::GizmoStateGroup;
 use ph2d_vec_scene::{VecPathId, VecScene};
@@ -157,11 +157,12 @@ pub(crate) fn sync_selection(
     if mine == state.bits {
         return;
     }
-    // Cada entidade nossa contribui com os paths da sub-árvore: selecionar um
-    // grupo seleciona o que há de vetorial dentro.
+    // Cada entidade nossa contribui com o que SELECIONÁ-LA significa: um grupo puro empresta o
+    // que há de vetorial dentro; uma FORMA responde por si (`selection_paths` é a porta única
+    // dessa lei, partilhada com o clique de canvas).
     let mut paths: Vec<VecPathId> = Vec::new();
     for &bits in &mine {
-        for id in subtree_paths(sim, scene, Entity::from_bits(bits)) {
+        for id in selection_paths(sim, scene, Entity::from_bits(bits)) {
             if !paths.contains(&id) {
                 paths.push(id);
             }
@@ -253,6 +254,73 @@ mod tests {
 
     fn setup() -> (SimWorld, VecScene, VecEntityMap) {
         (SimWorld::default(), VecScene::new(), VecEntityMap::new())
+    }
+
+    /// **O REPRO, na língua do report** (Enio 2026-08-02: *"se mudo as cores ou espessura do
+    /// stroke do pai, os filhos também mudam mesmo sem que estejam selecionados"*).
+    ///
+    /// Este gate não olha para a lista de caminhos: ele **restiliza** e mede a COR que sobrou em
+    /// cada forma, que é o que o artista vê. Nasceu VERMELHO com os dois filhos verdes.
+    ///
+    /// ⚠️ A seleção sai da porta do PRODUTO (`sync_selection`) — uma lista escrita à mão teria o
+    /// comprimento que o gate quisesse, e ficaria verde sobre o bug.
+    #[test]
+    fn restyling_a_parent_shape_leaves_its_children_alone() {
+        use crate::render_loop::vector_bridge::restyle_selected_strokes;
+        use ph2d_vec_scene::{Rgba8, StrokeSpec, rectangle};
+
+        let (mut sim, mut scene, mut map) = setup();
+        let red = Rgba8::new(255, 0, 0, 255);
+        let parent = scene.push_path(rectangle([0.0, 0.0], [9.0, 9.0]));
+        let kids = [
+            scene.push_path(rectangle([1.0, 1.0], [2.0, 2.0])),
+            scene.push_path(rectangle([3.0, 1.0], [4.0, 2.0])),
+        ];
+        for id in [parent, kids[0], kids[1]] {
+            scene.path_mut(id).expect("path").stroke = Some(StrokeSpec::new(red, 1.0));
+        }
+        crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+        let pe = Entity::from_bits(map[&parent]);
+        for id in kids {
+            sim.world_mut()
+                .entity_mut(Entity::from_bits(map[&id]))
+                .insert(ChildOf(pe));
+        }
+
+        // A Hierarquia acende a MOLDURA, e só ela.
+        let mut gizmo = GizmoStateGroup::default();
+        let mut pen = ph2d_vec_edit::PenTool::default();
+        let mut state = VecSelSync::default();
+        gizmo.replace_selection(Some(pe.to_bits()));
+        sync_selection(&mut gizmo, &sim, &scene, &map, &mut pen, &mut state, false);
+
+        let green = Rgba8::new(0, 255, 0, 255);
+        let style = crate::render_loop::vector_bridge::StrokeStyle {
+            color: green,
+            cap: ph2d_vec_scene::LineCap::Butt,
+            join: ph2d_vec_scene::LineJoin::Miter,
+            align: ph2d_vec_scene::StrokeAlign::Centre,
+            dash: None,
+            marker_start: ph2d_vec_scene::Marker::None,
+            marker_end: ph2d_vec_scene::Marker::None,
+            marker_scale: 1.0,
+            marker_round: 0.0,
+        };
+        let n = restyle_selected_strokes(&mut scene, pen.selected_paths(), &style, Some(3.0));
+
+        let colour = |id| scene.path(id).expect("path").stroke.expect("stroke").color;
+        assert_eq!(
+            n, 1,
+            "restilizou {n} traços — a moldura emprestou os filhos"
+        );
+        assert_eq!(colour(parent), green, "o pai é quem o artista escolheu");
+        for (i, id) in kids.iter().enumerate() {
+            assert_eq!(
+                colour(*id),
+                red,
+                "o filho {i} mudou de cor sem estar selecionado"
+            );
+        }
     }
 
     /// REGRESSÃO (Enio 2026-07-09: "ao selecionar sprites elas são desselecionadas

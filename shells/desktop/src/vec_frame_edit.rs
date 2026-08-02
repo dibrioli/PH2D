@@ -7,16 +7,20 @@
 //!
 //! # A moldura é a que CONTÉM a seleção
 //!
-//! ⚠️ Selecionar um contêiner **EXPANDE**: o [`crate::vec_selection`] entrega ao pen os
-//! `subtree_paths` da entidade — *"selecionar um grupo seleciona o que há de vetorial dentro"*.
-//! Então uma moldura com três filhos chega aqui como **quatro** caminhos, e uma regra de
-//! *"exatamente um selecionado"* responde `None` justamente sobre a única moldura que interessa: a
-//! que tem conteúdo. Foi o defeito reportado — *"não vejo em lugar nenhum a seção Frame"*.
+//! ⚠️ **Um GRUPO puro ainda expande** — o [`crate::vec_selection`] entrega ao pen o que
+//! `selection_paths` diz, e um grupo não tem geometria própria, logo empresta os filhos. Então
+//! uma moldura dentro de um grupo chega aqui junto com os irmãos, e uma regra de *"exactamente
+//! um selecionado"* responderia `None` sobre a moldura que interessa. Foi o defeito reportado —
+//! *"não vejo em lugar nenhum a seção Frame"*.
 //!
 //! A pergunta certa é o **INVERSO da expansão**, pela mesma relação de parentesco que a produziu:
-//! *qual moldura selecionada contém tudo o que está selecionado?* Ela responde igual pelas DUAS
-//! rotas (o clique de canvas publica só a moldura; a Hierarquia publica a sub-árvore inteira), e é
-//! isso que impede a resposta de depender de POR ONDE o artista selecionou.
+//! *qual moldura selecionada contém tudo o que está selecionado?* Ela responde igual pelas duas
+//! rotas de selecção, e é isso que impede a resposta de depender de POR ONDE o artista selecionou.
+//!
+//! ⚠️ E ela ficou MAIS simples em 2026-08-02, sem mudar de forma: uma **moldura** deixou de
+//! emprestar os filhos (ela é uma forma, e restilizá-la restilizava seis), então hoje a moldura
+//! costuma chegar aqui sozinha — e contém-se a si própria. Continua a ser o inverso da expansão
+//! porque a expansão continua a existir *para grupos*.
 //!
 //! O que ela recusa, e é o desenho:
 //!

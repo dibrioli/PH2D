@@ -113,17 +113,25 @@ impl Scene {
 
 /// **O REPRO** (Enio 2026-08-01: *"não vejo em lugar nenhum a seção Frame"*).
 ///
-/// Selecionar uma moldura COM CONTEÚDO pela Hierarquia expande a seleção para a sub-árvore
-/// inteira; a seção tem de aparecer na mesma. Nasceu VERMELHO: a regra antiga exigia UM caminho
-/// selecionado e a moldura com três filhos chega como quatro.
+/// Uma moldura que chega ACOMPANHADA dos filhos tem de reportar o recorte na mesma. Nasceu
+/// VERMELHO: a regra antiga exigia UM caminho selecionado e a moldura com três filhos chega
+/// como quatro.
+///
+/// ⚠️ **A fixture passou a selecionar o conjunto EXPLICITAMENTE (2026-08-02).** Antes ela
+/// pegava só a moldura e deixava a expansão produzir os quatro — e nesse dia uma moldura
+/// deixou de emprestar os filhos, o que faria este gate medir uma seleção de UM e continuar
+/// verde sobre outro fenómeno. Frame+filhos continua a ser uma seleção alcançável (box-select,
+/// Ctrl+A, a moldura dentro de um grupo), e é ela que este gate julga.
 #[test]
 fn a_frame_with_children_still_reports_its_clip() {
     let s = build(3, 0, true);
-    let sel = s.select(&[s.entity(s.frame)]);
+    let mut subjects = vec![s.entity(s.frame)];
+    subjects.extend(s.kids.iter().map(|&k| s.entity(k)));
+    let sel = s.select(&subjects);
     assert_eq!(
         sel.len(),
         4,
-        "premissa da fixture: a seleção de um contêiner EXPANDE (moldura + 3 filhos); \
+        "premissa da fixture: moldura + 3 filhos numa selecao so'; \
          sem isso este gate não contém o fenômeno"
     );
     assert_eq!(s.clip_of(&sel), Some(true));
@@ -184,12 +192,8 @@ fn the_outer_frame_wins_when_frames_nest() {
         .world_mut()
         .entity_mut(inner)
         .insert(VecFrame { clip: false });
-    let sel = s.select(&[s.entity(s.frame)]);
-    assert_eq!(
-        sel.len(),
-        2,
-        "premissa: a de fora expandiu para a de dentro"
-    );
+    let sel = s.select(&[s.entity(s.frame), inner]);
+    assert_eq!(sel.len(), 2, "premissa: as DUAS molduras na seleção");
     assert_eq!(s.clip_of(&sel), Some(true), "a de FORA");
     assert_eq!(
         s.clip_of(&[s.kids[0]]),
@@ -233,7 +237,10 @@ fn the_chip_writes_the_clip_and_a_no_op_changes_nothing() {
 #[test]
 fn the_chip_writes_through_an_expanded_selection() {
     let mut s = build(3, 0, true);
-    let sel = s.select(&[s.entity(s.frame)]);
+    let mut subjects = vec![s.entity(s.frame)];
+    subjects.extend(s.kids.iter().map(|&k| s.entity(k)));
+    let sel = s.select(&subjects);
+    assert_eq!(sel.len(), 4, "premissa: a selecao carrega os filhos junto");
     assert!(set_selected_frame_clip(&mut s.sim, &s.map, &sel, false));
     assert_eq!(s.clip_of(&sel), Some(false));
 }

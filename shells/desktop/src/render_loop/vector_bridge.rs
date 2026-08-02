@@ -32,11 +32,13 @@ use ph2d_vec_scene::{LineCap, LineJoin, Paint, VecScene};
 /// separam.
 #[path = "vector_bridge_style.rs"]
 mod style;
-pub(crate) use style::restyle_selected_strokes;
 use style::{
-    RECOLOR_PRE, StrokeStyle, rgba, seed_style_from_selection, selected_grad_color,
-    set_selected_grad_color, sync_opacity_slider,
+    RECOLOR_PRE, rgba, seed_style_from_selection, selected_grad_color, set_selected_grad_color,
+    sync_opacity_slider,
 };
+/// ⚠️ `StrokeStyle` sai junto porque o gate de CONSEQUÊNCIA do [`crate::vec_selection`]
+/// **restiliza de verdade** em vez de contar caminhos — o artista vê cores, não listas.
+pub(crate) use style::{StrokeStyle, restyle_selected_strokes};
 
 /// Troca o modo de desenho da tool Vector (a tool é a dona; o shell só espelha). O
 /// downcast fica confinado a este bridge (allowlist da gate

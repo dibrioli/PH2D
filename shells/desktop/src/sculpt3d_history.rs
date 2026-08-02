@@ -106,6 +106,21 @@ pub(super) enum StrokeUndo {
     /// preenchimento mexer num vértice antigo: nesse dia este `usize` para de
     /// ser suficiente, e o gate diz isso antes do artista.
     FilledHoles { verts: usize, faces: usize },
+    /// **A malha foi RECONSTRUÍDA por voxelização** — e a entrada carrega a
+    /// malha inteira de antes.
+    ///
+    /// ⚠️ **É a única operação do módulo sem representação mais barata, e isso é
+    /// uma propriedade dela, não preguiça.** Todas as outras compartilham
+    /// estrutura com o estado anterior — o traço congela só os vértices
+    /// tocados, tapar buraco só ACRESCENTA, subdividir deixa o nível de baixo
+    /// intacto. Um remesh não partilha nada: nem a contagem de vértices, nem a
+    /// de faces, nem a correspondência entre elas. O "antes" é a malha, e
+    /// guardá-la é o preço honesto.
+    ///
+    /// ⚠️ E ela é a **própria inversa**: aplicar é TROCAR a malha viva pela
+    /// carregada e devolver a que estava. Sem casos, sem um `Unremeshed` do
+    /// outro lado — a mesma forma do `Mask`.
+    Remeshed(Box<ph2d_mesh::Mesh>),
     /// **O preenchimento foi desfeito** — aplicá-la é tapar de novo.
     UnfilledHoles,
     /// **A reconstrução foi desfeita** — aplicá-la é refazê-la.
@@ -213,6 +228,28 @@ impl Sculpt3dScene {
         });
         // A contagem de vértices mudou: o traço em voo fala de outra malha e os
         // buffers do device mudaram de TAMANHO.
+        self.stroke = SculptStroke::default();
+        self.mesh_rebuilt();
+        Some(report)
+    }
+
+    /// **RECONSTRÓI a malha por voxelização** — o botão do W7.
+    ///
+    /// Devolve `None` com a pilha de multires montada, e a recusa é da MESMA
+    /// família da de tapar buraco: um remesh troca a topologia inteira, e todo
+    /// nível acima é `subdivide` da base — o detalhe deles passaria a descrever
+    /// uma malha que não existe mais. ⚠️ **A alternativa seria achatar a pilha
+    /// em silêncio**, e isso é destruir trabalho que o artista autorou sem
+    /// dizer; o log nomeia a recusa e o conserto.
+    pub(super) fn remesh(&mut self, resolution: u32) -> Option<ph2d_sdf::RemeshReport> {
+        if self.stack.level_count() != 1 {
+            return None;
+        }
+        let (out, report) = ph2d_sdf::remesh(self.stack.mesh(), resolution).ok()?;
+        let previous = core::mem::replace(self.stack.mesh_mut(), out);
+        self.record(StrokeUndo::Remeshed(Box::new(previous)));
+        // A malha é OUTRA: o traço em voo fala de vértices que não existem mais,
+        // e os buffers do device mudaram de tamanho.
         self.stroke = SculptStroke::default();
         self.mesh_rebuilt();
         Some(report)
@@ -355,7 +392,8 @@ impl Sculpt3dScene {
             // jeito que o do `Descended`.
             StrokeUndo::UnreversedLevel
             | StrokeUndo::FilledHoles { .. }
-            | StrokeUndo::UnfilledHoles => {
+            | StrokeUndo::UnfilledHoles
+            | StrokeUndo::Remeshed(_) => {
                 if self.stack.level() != 0 {
                     self.stack.select(0);
                 }
@@ -433,6 +471,16 @@ impl Sculpt3dScene {
                 } else {
                     StrokeUndo::FilledHoles { verts, faces }
                 }
+            }
+            // A troca. ⚠️ Ela **não valida** como o `truncate` do irmão acima
+            // porque não há o que validar: a malha carregada é uma malha
+            // inteira e coerente, e instalá-la não pode deixar índice apontando
+            // para fora.
+            StrokeUndo::Remeshed(previous) => {
+                let now = core::mem::replace(self.stack.mesh_mut(), *previous);
+                self.stroke = SculptStroke::default();
+                self.mesh_rebuilt();
+                StrokeUndo::Remeshed(Box::new(now))
             }
             StrokeUndo::UnfilledHoles => {
                 let report = ph2d_mesh::fill_holes(self.mesh_mut());

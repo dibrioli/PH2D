@@ -256,6 +256,10 @@ ph2d-mesh-render = { path = "../../crates/ph2d-mesh-render", optional = true }
 # opcional afirmaria uma removibilidade que ela nao tem.
 ph2d-light = { path = "../../crates/ph2d-light" }
 ph2d-sculpt3d = { path = "../../crates/ph2d-sculpt3d", optional = true }
+# O voxel remesh (W7). `optional` pelo mesmo motivo dos outros tres: e a
+# quarta crate do modulo, e a promessa de removibilidade so e verificavel se
+# todas elas caírem com a feature.
+ph2d-sdf = { path = "../../crates/ph2d-sdf", optional = true }
 # O balde (ADR-0114 W4) — solver CPU puro; o shell é a fronteira modelo↔solver.
 ph2d-flip-fill = { path = "../../crates/ph2d-flip-fill" }
 ph2d-flip-colorize = { path = "../../crates/ph2d-flip-colorize" }
@@ -373,7 +377,7 @@ lite = []
 # desligada nao e lintado e apodrece. A flag continua sendo o CONTRATO de
 # removibilidade (docs/3D/02.3): as deps sao `optional`, e desliga-la tem de
 # apagar o modulo do binario sem tocar em nada do 2D.
-sculpt3d = ["dep:ph2d-mesh", "dep:ph2d-mesh-render", "dep:ph2d-sculpt3d"]
+sculpt3d = ["dep:ph2d-mesh", "dep:ph2d-mesh-render", "dep:ph2d-sculpt3d", "dep:ph2d-sdf"]
 panel-widget-gallery = ["ph2d-panel-registry-init/panel-widget-gallery"]
 panel-hierarchy      = ["ph2d-panel-registry-init/panel-hierarchy", "dep:ph2d-panel-hierarchy"]
 panel-inspector      = ["ph2d-panel-registry-init/panel-inspector", "dep:ph2d-panel-inspector"]

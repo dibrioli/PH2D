@@ -556,10 +556,87 @@ fn the_holes_scene_says_how_big_the_hole_it_built_is() {
         punctured.contains(".filter(") && punctured.contains("faces()"),
         "o furo é feito ARRANCANDO faces, não desenhando uma beira"
     );
-    let smoke = function_body(&src, "sculpt3d_smoke");
-    let arm = braced_block(&smoke, "if crate::sculpt3d::holes_scene()");
+    // ⚠️ A declaração mora no `announce`, ao lado da fixture — e este gate já
+    // apontou para o `sculpt3d_smoke`, onde ela morava antes de o arquivo do
+    // gesto bater o teto de LOC. A PROPRIEDADE não mudou (*a cena `=4` imprime
+    // quantas beiras abriu*); o endereço mudou, e um gate ancorado em endereço
+    // expira. Este agora pergunta à porta que DECLARA.
+    let announce = function_body(&src, "announce");
+    let arm = braced_block(&announce, "if crate::sculpt3d::holes_scene()");
     assert!(
         arm.contains("valence(") && arm.contains("arestas de BEIRA"),
         "e a cena imprime quantas arestas de beira ela abriu"
+    );
+}
+
+#[test]
+fn the_remesh_has_a_key_and_it_says_both_counts() {
+    // ⚠️ Este botão **não muda a forma** — ele muda a MALHA. Sem os dois números
+    // no log, o artista aperta, vê a mesma escultura e conclui que a tecla está
+    // morta; é a mesma razão pela qual o `K` imprime a contagem nova.
+    let src = sculpt_src();
+    let key = function_body(&src, "sculpt3d_key");
+    let block = braced_block(&key, "code == K::KeyV");
+    assert!(
+        block.contains("scene.remesh("),
+        "o V tem de chamar a porta de remesh"
+    );
+    assert!(
+        block.contains("r.verts.0") && block.contains("r.verts.1"),
+        "o log tem de trazer o ANTES e o DEPOIS: um deles sozinho não diz que a malha mudou"
+    );
+    assert!(
+        block.contains("r.cells"),
+        "e o número de células, que é o que explica o tempo"
+    );
+}
+
+#[test]
+fn the_remesh_refuses_with_the_stack_built_instead_of_flattening_it() {
+    // ⚠️ A alternativa não é neutra: achatar a pilha em silêncio destrói níveis
+    // que o artista autorou. A recusa é a MESMA lei do `close_holes` — tapar e
+    // remesh trocam a topologia da base, e todo nível acima é `subdivide` dela.
+    let body = function_body(&sculpt_src(), "remesh");
+    assert!(
+        body.contains("level_count() != 1") && body.contains("return None"),
+        "o remesh tem de recusar com a pilha montada, e devolver o `None` que o log lê"
+    );
+    // E a recusa precisa CHEGAR ao artista, ou ele conclui que a tecla quebrou.
+    let key = function_body(&sculpt_src(), "sculpt3d_key");
+    let block = braced_block(&key, "code == K::KeyV");
+    assert!(
+        block.contains("None =>"),
+        "o braço da recusa tem de existir e dizer por quê"
+    );
+}
+
+#[test]
+fn undoing_a_remesh_swaps_the_whole_mesh_because_nothing_is_shared() {
+    // ⚠️ Toda outra entrada de undo deste módulo compartilha estrutura com o
+    // estado anterior — a janela do traço, o `truncate` de tapar buraco, o nível
+    // intocado embaixo de uma subdivisão. Um remesh não compartilha NADA: nem a
+    // contagem de vértices, nem a de faces, nem a correspondência entre elas. Se
+    // alguém trocar isto por uma janela ou por dois `usize`, o Ctrl+Z devolve
+    // uma malha que nunca existiu.
+    let src = sculpt_src();
+    assert!(
+        src.contains("Remeshed(Box<ph2d_mesh::Mesh>)"),
+        "a entrada tem de carregar a malha inteira de antes"
+    );
+    let apply = function_body(&src, "apply_entry");
+    let arm = braced_block(&apply, "StrokeUndo::Remeshed(previous)");
+    assert!(
+        arm.contains("mem::replace") && arm.contains("StrokeUndo::Remeshed(Box::new(now))"),
+        "aplicar é TROCAR e devolver o que estava lá — a entrada é a própria inversa"
+    );
+    // E o gesto tem de gravar a entrada, senão não há o que desfazer.
+    let body = function_body(&src, "remesh");
+    assert!(
+        body.contains("record(StrokeUndo::Remeshed"),
+        "o remesh tem de entrar na história"
+    );
+    assert!(
+        body.contains("mesh_rebuilt()"),
+        "a malha é OUTRA: o device precisa de tudo, não de uma janela"
     );
 }

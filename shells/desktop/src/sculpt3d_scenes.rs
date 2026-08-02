@@ -13,11 +13,11 @@
 
 use super::{Brush, Dab, SculptStroke, Symmetry, Verb};
 
-/// A cena está armada? (`PH2D_SCULPT3D_SMOKE` em `1`..`5`.)
+/// A cena está armada? (`PH2D_SCULPT3D_SMOKE` em `1`..`6`.)
 pub(crate) fn smoke_armed() -> bool {
     matches!(
         std::env::var("PH2D_SCULPT3D_SMOKE").ok().as_deref(),
-        Some("1" | "2" | "3" | "4" | "5")
+        Some("1" | "2" | "3" | "4" | "5" | "6")
     )
 }
 
@@ -77,6 +77,53 @@ fn ridged_sphere() -> ph2d_mesh::Mesh {
     mesh
 }
 
+/// `=6` — a cena do **REMESH**: uma esfera com um bico ESTICADO até o barro
+/// acabar.
+pub(crate) fn remesh_scene() -> bool {
+    std::env::var("PH2D_SCULPT3D_SMOKE").ok().as_deref() == Some("6")
+}
+
+/// A esfera com um BICO puxado longe demais — o modelo que pede um remesh.
+///
+/// ⚠️ **É a fixture certa porque ela nomeia o problema que o botão resolve**, e
+/// uma esfera lisa não nomeia nenhum. Um SnakeHook longo arrasta os mesmos
+/// vértices por uma distância grande: a densidade do bico despenca, os
+/// triângulos ficam compridos e finos, e a partir de certo ponto **não há mais
+/// barro ali para esculpir**. O remesh devolve densidade uniforme, e é isso que
+/// o artista vai julgar — não a forma, que tem de sobreviver.
+///
+/// ⚠️ **Puxado com o VERBO do produto**, como toda fixture deste arquivo: um bico
+/// escrito à mão nos vértices seria uma segunda resposta a *"o que um SnakeHook
+/// faz"*, e ela divergiria da primeira no dia em que o gancho mudasse.
+fn hooked_sphere() -> ph2d_mesh::Mesh {
+    let mut mesh = ph2d_mesh::shapes::uv_sphere(48, 72, 1.0);
+    let brush = Brush {
+        verb: Verb::SnakeHook,
+        radius: 0.35,
+        strength: 1.0,
+        ..Brush::default()
+    };
+    let mut stroke = SculptStroke::default();
+    stroke.begin(&mesh);
+    // O gancho AGARRA e leva: cada passo puxa o que está sob ele mais um pouco,
+    // e é a soma deles que estica o barro além do que a malha representa.
+    const STEPS: usize = 40;
+    let mut tip = [0.0f32, 0.0, 1.0];
+    for _ in 0..STEPS {
+        let step = [0.0f32, 0.028, 0.028];
+        stroke.dab(
+            &mut mesh,
+            &brush,
+            &Dab::hooking(tip, brush.radius, [0.0, 0.0, -1.0], step),
+            Symmetry::default(),
+        );
+        for k in 0..3 {
+            tip[k] += step[k];
+        }
+    }
+    mesh
+}
+
 /// `=3` — a cena da **REVERSÃO**: um modelo denso que É uma subdivisão.
 pub(crate) fn reversion_scene() -> bool {
     std::env::var("PH2D_SCULPT3D_SMOKE").ok().as_deref() == Some("3")
@@ -129,6 +176,9 @@ pub(crate) fn smoke_mesh() -> ph2d_mesh::Mesh {
     if turn_scene() {
         return ridged_sphere();
     }
+    if remesh_scene() {
+        return hooked_sphere();
+    }
     if holes_scene() {
         return punctured_sphere();
     }
@@ -155,9 +205,179 @@ pub(crate) fn donation_scene() -> bool {
     std::env::var("PH2D_SCULPT3D_SMOKE").ok().as_deref() == Some("2")
 }
 
+/// **A cena DECLARA o que montou** — o banner e as instruções de cada uma.
+///
+/// ⚠️ Mora aqui, ao lado da fixture, e não no arquivo do gesto: *que malha esta
+/// cena monta* e *o que ela pede ao artista para julgar* são a mesma pergunta,
+/// e mantê-las separadas foi o que deixou uma cena declarar um número que a
+/// outra metade não produzia. O gesto ficou com o gesto.
+///
+/// ⚠️ E declarar não é cortesia: um smoke que não diz o que montou é
+/// indistinguível da feature quebrada — a lição que o smoke do Colorize pagou, e
+/// que as cenas `=4` e `=6` pagam de novo com um NÚMERO (a beira, a aresta).
+pub(crate) fn announce(mesh: &ph2d_mesh::Mesh) {
+    // A cena IMPRIME o que montou. Um smoke que não se declara deixa o
+    // artista sem saber se está vendo a feature ou o app vazio — a lição
+    // que o smoke do Colorize pagou.
+    eprintln!(
+        "[sculpt3d] esfera com {} vértices / {} faces / {} triângulos\n\
+         [sculpt3d] ESQUERDO esculpe (fora do modelo, gira) · DIREITO gira · MEIO desloca · RODA aproxima\n\
+         [sculpt3d] Shift = Smooth enquanto segurar · Ctrl inverte Draw/Inflate/Clay/Crease e limpa a mascara\n\
+         [sculpt3d] 1..9,0 escolhem o verbo · A alarga (magnify) · M mascara · [ ] tamanho · X/Y/Z espelho · Ctrl+Z desfaz\n\
+         [sculpt3d] o pincel mede PIXELS DE TELA: aproxime com a roda e ele continua do mesmo tamanho\n\
+         [sculpt3d] a MASCARA (M) protege o que ela pinta e se VE (azul frio): C limpa · I inverte · B borra · N afia\n\
+         [sculpt3d] K = SUBDIVIDIR: 4 faces onde havia 1, e a forma ALISA (Catmull-Clark/Loop)\n\
+         [sculpt3d]     o log diz a contagem nova a cada toque -- ela quadruplica; Ctrl+Z desfaz\n\
+         [sculpt3d] , e . DESCEM e SOBEM na pilha de niveis: esculpa fino em cima, volte ao 0\n\
+         [sculpt3d]     para mover a FORMA GRANDE, e suba -- o detalhe fino continua la'\n\
+         [sculpt3d] J = DES-SUBDIVIDIR: reconstroi um nivel ABAIXO da base (o par do K)\n\
+         [sculpt3d]     so' funciona se a malha JA' for uma subdivisao -- o log diz quando nao e'\n\
+         [sculpt3d] O = TAPAR BURACO: todo contorno aberto ganha uma tampa (e o log diz quantos)\n\
+         [sculpt3d] V = RECONSTRUIR (voxel remesh): a malha vira um campo e volta com densidade\n\
+         [sculpt3d]     UNIFORME -- e' o que devolve barro onde um estica'o o gastou; a forma fica\n\
+         [sculpt3d] G = PEGAR o barro (grab): segure e arraste, e ele vem com o dedo\n\
+         [sculpt3d] H = ESTICAR (snake hook): a pegada ANDA com o cursor e sai um espinho\n\
+         [sculpt3d]     o G volta ao lugar quando voce volta; o H deixa a ponta la' -- essa e' a diferenca\n\
+         [sculpt3d] T = TORCER (twist): segure e VARRA um circulo em volta do ponto que voce pegou\n\
+         [sculpt3d] S = INFLAR/ENCOLHER (local scale): segure e arraste na HORIZONTAL\n\
+         [sculpt3d]     os dois voltam ao lugar quando voce varre de volta -- o gesto e' o TOTAL, nao a soma\n\
+         [sculpt3d] A LUZ e o rig do artista (o mesmo que acende a tinta): Q/E giram a lampada, R/F a sobem\n\
+         [sculpt3d] o espelho nasce DESLIGADO; PH2D_SCULPT3D_DIAG=1 mede se o pincel cai sob o cursor",
+        mesh.vert_count(),
+        mesh.face_count(),
+        mesh.triangle_count()
+    );
+    if crate::sculpt3d::holes_scene() {
+        // ⚠️ **A cena DECLARA o furo que montou.** Um smoke de fechar buraco
+        // sobre uma malha sem buraco é indistinguível da feature quebrada —
+        // a lição que o smoke do Colorize pagou, e aqui o número é a beira.
+        let edges = mesh.edges();
+        let border = (0..edges.len())
+            .filter(|&e| edges.valence(u32::try_from(e).unwrap_or(u32::MAX)) == 1)
+            .count();
+        eprintln!(
+            "[sculpt3d] =4 FECHAR BURACO: a malha abre com {border} arestas de BEIRA -- se este\n\
+             [sculpt3d]    numero for zero, PARE: nao ha' buraco e o resto do smoke nao diz nada.\n\
+             [sculpt3d]    Esta esfera CHEGOU QUEBRADA -- gire com o botao direito\n\
+             [sculpt3d]    ate' o furo, e olhe POR DENTRO dela (nao ha' culling: o interior aparece).\n\
+             [sculpt3d]    Aperte O: o log diz quantos buracos tapou, e o furo vira uma TAMPA.\n\
+             [sculpt3d]    A tampa e' um leque a partir do centro do contorno, entao ela AFUNDA --\n\
+             [sculpt3d]    passe o Smooth (3) nela e ela vira superficie. Ctrl+Z desfaz.\n\
+             [sculpt3d]    Depois de tapada, K subdivide e o modelo fica solido de verdade."
+        );
+    }
+    if crate::sculpt3d::turn_scene() {
+        // ⚠️ **A cena DECLARA que trouxe cristas.** Numa esfera LISA um
+        // Twist em torno do eixo da vista é quase invisível — ela é
+        // invariante por rotação —, e o smoke não teria como separar a
+        // feature funcionando da feature morta.
+        eprintln!(
+            "[sculpt3d] =5 TORCER e INFLAR: esta esfera tem uma CRUZ de cristas, e ela existe\n\
+             [sculpt3d]    porque numa esfera LISA um giro em torno do eixo da vista nao se ve.\n\
+             [sculpt3d]    Aperte T, pegue o CRUZAMENTO das cristas e VARRA um circulo em volta\n\
+             [sculpt3d]    dele: os bracos entortam em redemoinho. Varra de VOLTA ao comeco --\n\
+             [sculpt3d]    a cruz tem de voltar reta (o gesto e' o TOTAL varrido, nao a soma dos passos).\n\
+             [sculpt3d]    Perto do ponto que voce pegou ha' uma ZONA MORTA de 30 px: ali a direcao\n\
+             [sculpt3d]    e' ruido, e nada gira ate' voce sair dela.\n\
+             [sculpt3d]    Aperte S e arraste na HORIZONTAL: para a direita o cruzamento incha,\n\
+             [sculpt3d]    para a esquerda ele encolhe -- e volta ao lugar no caminho de volta.\n\
+             [sculpt3d]    Aperte X (espelho) e repita o T: as duas metades tem de girar para\n\
+             [sculpt3d]    lados OPOSTOS (um redemoinho no espelho gira ao contrario); com o S\n\
+             [sculpt3d]    as duas metades incham JUNTAS."
+        );
+    }
+    if crate::sculpt3d::remesh_scene() {
+        // ⚠️ **A cena DECLARA o esticamento que montou.** Um smoke de remesh
+        // sobre uma malha saudável é indistinguível da feature quebrada: a
+        // forma sobrevive nos dois casos, e é só a DENSIDADE que muda. O
+        // número aqui é a maior aresta — a mesma lição da cena `=4`.
+        let pos = mesh.positions();
+        let mut longest = 0.0f32;
+        let mut tris = Vec::new();
+        mesh.triangle_indices(&mut tris);
+        for t in &tris {
+            for k in 0..3 {
+                let a = pos[t[k] as usize];
+                let b = pos[t[(k + 1) % 3] as usize];
+                let d =
+                    ((a[0] - b[0]).powi(2) + (a[1] - b[1]).powi(2) + (a[2] - b[2]).powi(2)).sqrt();
+                longest = longest.max(d);
+            }
+        }
+        eprintln!(
+            "[sculpt3d] =6 O REMESH: a maior aresta desta malha mede {longest:.3} -- se este numero\n\
+             [sculpt3d]    nao passar de ~0.15, PARE: o bico nao esticou e o resto nao diz nada.\n\
+             [sculpt3d]    Esta esfera foi PUXADA por um snake hook ate' o barro acabar: gire e olhe\n\
+             [sculpt3d]    o bico -- ele esta' FACETADO, feito de poucos triangulos compridos.\n\
+             [sculpt3d]    (1) Tente esculpir na PONTA dele (Draw, tecla 1): quase nada acontece,\n\
+             [sculpt3d]        porque nao ha' vertices ali. Essa e' a doenca.\n\
+             [sculpt3d]    (2) Aperte V: o log diz vertices ANTES -> DEPOIS. A FORMA tem de\n\
+             [sculpt3d]        sobreviver -- se o bico sumir ou a esfera virar outra coisa, reprove.\n\
+             [sculpt3d]    (3) Esculpa na MESMA ponta de novo: agora ela responde. Esse e' o botao.\n\
+             [sculpt3d]    (4) Ctrl+Z devolve a malha esticada, inteira; Ctrl+Shift+Z refaz.\n\
+             [sculpt3d]    (5) Aperte K (subdividir) e depois V: ele RECUSA, e o log diz por que --\n\
+             [sculpt3d]        um remesh troca a topologia, e os niveis de cima sao subdivisao dela."
+        );
+    }
+    if crate::sculpt3d::reversion_scene() {
+        eprintln!(
+            "[sculpt3d] =3 A REVERSAO: esta malha densa CHEGOU PRONTA -- um nivel so', e por isso\n\
+             [sculpt3d]    o ',' nao leva a lugar nenhum. Aperte J: a malha NAO muda de forma\n\
+             [sculpt3d]    (e' esse o ponto), e nasce um nivel ABAIXO dela. Aperte J de novo.\n\
+             [sculpt3d]    Agora ',' desce ate' a base grossa: mova UM vertice la' e suba com '.'\n\
+             [sculpt3d]    -- a forma grande andou e a pele fina continua onde estava.\n\
+             [sculpt3d]    Ctrl+Z desfaz cada J; Ctrl+Shift+Z refaz."
+        );
+    }
+    if crate::sculpt3d::donation_scene() {
+        eprintln!(
+            "[sculpt3d] =2 A DOACAO: ha uma TELA BRANCA embaixo, e a tecla D alterna\n\
+             [sculpt3d]    BARRO (esculpir) -> LUZ (a forma acende a tinta) -> DESLIGADA (o A/B)\n\
+             [sculpt3d]    esculpa, aperte D, pegue o Painter e pinte CHAPADO: a tinta tem de sair ACESA\n\
+             [sculpt3d]    aperte D de novo e a MESMA tinta fica plana -- e essa diferenca e a wave"
+        );
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// ⚠️ **A cena `=6` só significa alguma coisa se o bico dela estiver
+    /// ESTICADO** — e a forma sobrevive ao remesh nos dois casos, então a
+    /// densidade é a única coisa que separa a feature funcionando da morta. O
+    /// oráculo é a maior ARESTA, que é a medida do esticamento.
+    #[test]
+    fn the_remesh_scene_opens_with_a_stretched_spike() {
+        let mesh = hooked_sphere();
+        let pos = mesh.positions();
+        let mut tris = Vec::new();
+        mesh.triangle_indices(&mut tris);
+        let mut longest = 0.0f32;
+        for t in &tris {
+            for k in 0..3 {
+                let a = pos[t[k] as usize];
+                let b = pos[t[(k + 1) % 3] as usize];
+                longest = longest.max(
+                    ((a[0] - b[0]).powi(2) + (a[1] - b[1]).powi(2) + (a[2] - b[2]).powi(2)).sqrt(),
+                );
+            }
+        }
+        // A esfera de 48×72 tem aresta ~0.09 em repouso; o gancho tem de
+        // multiplicar isso, senão não há barro gasto a demonstrar.
+        assert!(
+            longest > 0.15,
+            "a maior aresta mede {longest:.4}: o gancho nao esticou nada"
+        );
+        // E a ponta tem de ter SAÍDO da esfera — um bico que não anda é um
+        // esticamento que o olho não encontra.
+        let far = mesh
+            .positions()
+            .iter()
+            .map(|p| (p[0] * p[0] + p[1] * p[1] + p[2] * p[2]).sqrt())
+            .fold(0.0f32, f32::max);
+        assert!(far > 1.5, "a ponta chegou so' a {far:.3} de raio");
+    }
 
     /// ⚠️ **A cena `=5` só significa alguma coisa se a esfera dela TIVER cristas**,
     /// e isso é um fato sobre geometria que nenhum arch-gate de fonte enxerga —

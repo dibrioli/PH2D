@@ -27,92 +27,7 @@ impl App {
             return;
         }
         let mesh = crate::sculpt3d::smoke_mesh();
-        // A cena IMPRIME o que montou. Um smoke que não se declara deixa o
-        // artista sem saber se está vendo a feature ou o app vazio — a lição
-        // que o smoke do Colorize pagou.
-        eprintln!(
-            "[sculpt3d] esfera com {} vértices / {} faces / {} triângulos\n\
-             [sculpt3d] ESQUERDO esculpe (fora do modelo, gira) · DIREITO gira · MEIO desloca · RODA aproxima\n\
-             [sculpt3d] Shift = Smooth enquanto segurar · Ctrl inverte Draw/Inflate/Clay/Crease e limpa a mascara\n\
-             [sculpt3d] 1..9,0 escolhem o verbo · A alarga (magnify) · M mascara · [ ] tamanho · X/Y/Z espelho · Ctrl+Z desfaz\n\
-             [sculpt3d] o pincel mede PIXELS DE TELA: aproxime com a roda e ele continua do mesmo tamanho\n\
-             [sculpt3d] a MASCARA (M) protege o que ela pinta e se VE (azul frio): C limpa · I inverte · B borra · N afia\n\
-             [sculpt3d] K = SUBDIVIDIR: 4 faces onde havia 1, e a forma ALISA (Catmull-Clark/Loop)\n\
-             [sculpt3d]     o log diz a contagem nova a cada toque -- ela quadruplica; Ctrl+Z desfaz\n\
-             [sculpt3d] , e . DESCEM e SOBEM na pilha de niveis: esculpa fino em cima, volte ao 0\n\
-             [sculpt3d]     para mover a FORMA GRANDE, e suba -- o detalhe fino continua la'\n\
-             [sculpt3d] J = DES-SUBDIVIDIR: reconstroi um nivel ABAIXO da base (o par do K)\n\
-             [sculpt3d]     so' funciona se a malha JA' for uma subdivisao -- o log diz quando nao e'\n\
-             [sculpt3d] O = TAPAR BURACO: todo contorno aberto ganha uma tampa (e o log diz quantos)\n\
-             [sculpt3d] G = PEGAR o barro (grab): segure e arraste, e ele vem com o dedo\n\
-             [sculpt3d] H = ESTICAR (snake hook): a pegada ANDA com o cursor e sai um espinho\n\
-             [sculpt3d]     o G volta ao lugar quando voce volta; o H deixa a ponta la' -- essa e' a diferenca\n\
-             [sculpt3d] T = TORCER (twist): segure e VARRA um circulo em volta do ponto que voce pegou\n\
-             [sculpt3d] S = INFLAR/ENCOLHER (local scale): segure e arraste na HORIZONTAL\n\
-             [sculpt3d]     os dois voltam ao lugar quando voce varre de volta -- o gesto e' o TOTAL, nao a soma\n\
-             [sculpt3d] A LUZ e o rig do artista (o mesmo que acende a tinta): Q/E giram a lampada, R/F a sobem\n\
-             [sculpt3d] o espelho nasce DESLIGADO; PH2D_SCULPT3D_DIAG=1 mede se o pincel cai sob o cursor",
-            mesh.vert_count(),
-            mesh.face_count(),
-            mesh.triangle_count()
-        );
-        if crate::sculpt3d::holes_scene() {
-            // ⚠️ **A cena DECLARA o furo que montou.** Um smoke de fechar buraco
-            // sobre uma malha sem buraco é indistinguível da feature quebrada —
-            // a lição que o smoke do Colorize pagou, e aqui o número é a beira.
-            let edges = mesh.edges();
-            let border = (0..edges.len())
-                .filter(|&e| edges.valence(u32::try_from(e).unwrap_or(u32::MAX)) == 1)
-                .count();
-            eprintln!(
-                "[sculpt3d] =4 FECHAR BURACO: a malha abre com {border} arestas de BEIRA -- se este\n\
-                 [sculpt3d]    numero for zero, PARE: nao ha' buraco e o resto do smoke nao diz nada.\n\
-                 [sculpt3d]    Esta esfera CHEGOU QUEBRADA -- gire com o botao direito\n\
-                 [sculpt3d]    ate' o furo, e olhe POR DENTRO dela (nao ha' culling: o interior aparece).\n\
-                 [sculpt3d]    Aperte O: o log diz quantos buracos tapou, e o furo vira uma TAMPA.\n\
-                 [sculpt3d]    A tampa e' um leque a partir do centro do contorno, entao ela AFUNDA --\n\
-                 [sculpt3d]    passe o Smooth (3) nela e ela vira superficie. Ctrl+Z desfaz.\n\
-                 [sculpt3d]    Depois de tapada, K subdivide e o modelo fica solido de verdade."
-            );
-        }
-        if crate::sculpt3d::turn_scene() {
-            // ⚠️ **A cena DECLARA que trouxe cristas.** Numa esfera LISA um
-            // Twist em torno do eixo da vista é quase invisível — ela é
-            // invariante por rotação —, e o smoke não teria como separar a
-            // feature funcionando da feature morta.
-            eprintln!(
-                "[sculpt3d] =5 TORCER e INFLAR: esta esfera tem uma CRUZ de cristas, e ela existe\n\
-                 [sculpt3d]    porque numa esfera LISA um giro em torno do eixo da vista nao se ve.\n\
-                 [sculpt3d]    Aperte T, pegue o CRUZAMENTO das cristas e VARRA um circulo em volta\n\
-                 [sculpt3d]    dele: os bracos entortam em redemoinho. Varra de VOLTA ao comeco --\n\
-                 [sculpt3d]    a cruz tem de voltar reta (o gesto e' o TOTAL varrido, nao a soma dos passos).\n\
-                 [sculpt3d]    Perto do ponto que voce pegou ha' uma ZONA MORTA de 30 px: ali a direcao\n\
-                 [sculpt3d]    e' ruido, e nada gira ate' voce sair dela.\n\
-                 [sculpt3d]    Aperte S e arraste na HORIZONTAL: para a direita o cruzamento incha,\n\
-                 [sculpt3d]    para a esquerda ele encolhe -- e volta ao lugar no caminho de volta.\n\
-                 [sculpt3d]    Aperte X (espelho) e repita o T: as duas metades tem de girar para\n\
-                 [sculpt3d]    lados OPOSTOS (um redemoinho no espelho gira ao contrario); com o S\n\
-                 [sculpt3d]    as duas metades incham JUNTAS."
-            );
-        }
-        if crate::sculpt3d::reversion_scene() {
-            eprintln!(
-                "[sculpt3d] =3 A REVERSAO: esta malha densa CHEGOU PRONTA -- um nivel so', e por isso\n\
-                 [sculpt3d]    o ',' nao leva a lugar nenhum. Aperte J: a malha NAO muda de forma\n\
-                 [sculpt3d]    (e' esse o ponto), e nasce um nivel ABAIXO dela. Aperte J de novo.\n\
-                 [sculpt3d]    Agora ',' desce ate' a base grossa: mova UM vertice la' e suba com '.'\n\
-                 [sculpt3d]    -- a forma grande andou e a pele fina continua onde estava.\n\
-                 [sculpt3d]    Ctrl+Z desfaz cada J; Ctrl+Shift+Z refaz."
-            );
-        }
-        if crate::sculpt3d::donation_scene() {
-            eprintln!(
-                "[sculpt3d] =2 A DOACAO: ha uma TELA BRANCA embaixo, e a tecla D alterna\n\
-                 [sculpt3d]    BARRO (esculpir) -> LUZ (a forma acende a tinta) -> DESLIGADA (o A/B)\n\
-                 [sculpt3d]    esculpa, aperte D, pegue o Painter e pinte CHAPADO: a tinta tem de sair ACESA\n\
-                 [sculpt3d]    aperte D de novo e a MESMA tinta fica plana -- e essa diferenca e a wave"
-            );
-        }
+        crate::sculpt3d::announce(&mesh);
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
@@ -447,6 +362,23 @@ impl App {
                 ),
                 None => eprintln!(
                     "[sculpt3d] nao' tapa com a pilha montada: tapar muda a TOPOLOGIA, e todo nivel acima e' subdivisao dela -- tape ANTES de subdividir"
+                ),
+            }
+            return true;
+        }
+        // **RECONSTRUIR (voxel remesh).** ⚠️ O log traz o ANTES e o DEPOIS na
+        // mesma linha porque este botão não muda a forma — ele muda a MALHA, e
+        // sem os dois números o artista vê a mesma escultura e não tem como
+        // saber se a tecla fez alguma coisa. O número de células explica o
+        // tempo: ele é o cubo da resolução (medido em `measure_remesh`).
+        if code == K::KeyV {
+            match scene.remesh(ph2d_sdf::DEFAULT_RESOLUTION) {
+                Some(r) => eprintln!(
+                    "[sculpt3d] reconstruida: {} -> {} vertices / {} -> {} faces ({} celulas, {} buraco(s) tapado(s))",
+                    r.verts.0, r.verts.1, r.faces.0, r.faces.1, r.cells, r.holes_filled
+                ),
+                None => eprintln!(
+                    "[sculpt3d] nao' reconstroi com a pilha montada: o remesh troca a TOPOLOGIA, e todo nivel acima e' subdivisao dela -- reverta os niveis antes"
                 ),
             }
             return true;

@@ -115,7 +115,8 @@ const SCALE_PER_PX: f32 = 0.01;
 mod scenes;
 
 pub(crate) use scenes::{
-    donation_scene, holes_scene, reversion_scene, smoke_armed, smoke_mesh, turn_scene,
+    announce, donation_scene, holes_scene, remesh_scene, reversion_scene, smoke_armed, smoke_mesh,
+    turn_scene,
 };
 
 /// As quatro operações de máscara — ver [`Sculpt3dScene::mask_op`].

@@ -123,7 +123,12 @@ pub struct Hit {
 }
 
 /// Möller–Trumbore. Devolve a distância ao longo de `dir` (unitária), ou `None`.
-fn ray_triangle(
+///
+/// ⚠️ **Estrito nas bordas**, e o irmão [`crate::TriEdges::ray_hit`] é
+/// tolerante — leia o cabeçalho do `tri_geom.rs` para o porquê. `pub(crate)`
+/// só para o gate que pina a divergência entre os dois: sem ele, o par pode
+/// convergir sem ninguém notar que uma das duas perguntas mudou de resposta.
+pub(crate) fn ray_triangle(
     origin: [f32; 3],
     dir: [f32; 3],
     a: [f32; 3],

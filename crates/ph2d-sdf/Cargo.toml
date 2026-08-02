@@ -8,3 +8,20 @@ license.workspace = true
 authors.workspace = true
 
 [lib]
+
+# O VOXEL REMESH do modulo de escultura 3D (ADR-0150 §"a malha e primaria, o
+# campo e gerador"): malha -> campo de distancia com sinal -> malha nova, com
+# topologia uniforme e sem auto-intersecao. Quarta crate do modulo, ao lado de
+# `ph2d-mesh` / `ph2d-mesh-render` / `ph2d-sculpt3d`; apagar as quatro apaga o
+# modulo (docs/3D/02.3).
+[dependencies]
+# ph2d-mesh: a entrada e a saida sao `Mesh`. O campo nao e um formato proprio —
+# ele nasce de uma malha e morre virando outra, e e por isso que esta crate
+# depende da malha em vez de a malha depender dela.
+#
+# NAO ha `rayon` aqui, e a ausencia e deliberada: o flood fill e sequencial por
+# semantica (uma pilha que propaga um rotulo) e as caixas de dois triangulos se
+# SOBREPOEM, entao a escrita do voxelizador nao e disjunta — a condicao que o
+# ADR-0109 exige. Se a medicao pedir, o eixo honesto e a fatia em Z, e ela vem
+# com o numero ao lado.
+ph2d-mesh = { path = "../ph2d-mesh" }

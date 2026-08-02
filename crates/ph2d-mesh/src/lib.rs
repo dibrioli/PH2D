@@ -48,6 +48,7 @@ mod octree;
 mod ray;
 mod reversion;
 mod subdivide;
+mod tri_geom;
 
 pub use aabb::Aabb;
 pub use adjacency::{Adjacency, Csr};
@@ -65,6 +66,7 @@ pub use octree::{Octree, RefitScratch};
 pub use ray::{Hit, Ray};
 pub use reversion::{Reversed, reverse_subdivision};
 pub use subdivide::{Lerpable, Predicted, predict, subdivide};
+pub use tri_geom::TriEdges;
 
 /// Geometria de teste — um cubo e uma esfera UV.
 ///

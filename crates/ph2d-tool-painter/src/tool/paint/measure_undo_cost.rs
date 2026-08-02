@@ -138,3 +138,87 @@ fn what_a_ctrl_z_costs_with_and_without_the_elision() {
         println!();
     }
 }
+
+/// **DE QUE é feito o quadro depois do Ctrl+Z** — a atribuição, antes de qualquer conserto.
+///
+/// ⚠️ **381 ms é grande demais para o composite de UMA camada:** o fold do relevo custa 14,55 ms a
+/// 4096² desde que virou paralelo (doc 28 §4.8.2). Somar as peças de cabeça diria *"é o fold"* e
+/// mandaria a wave para o lugar errado — a lição da §5.13, que atribuiu um pen-up a um fork porque a
+/// aritmética fechava **por coincidência**.
+///
+/// Ablação pela ENTRADA em dois eixos que se cruzam:
+///
+/// * **impasto ON/OFF** — separa *o fold + a luz* do *composite*. O flag é do pincel, não do laço.
+/// * **quadro depois do UNDO × quadro NO MEIO de um traço** — o segundo passa pela pista PARCIAL
+///   (`composited` quente + `dirty_rect` da pegada), e é o **limite superior do prêmio**: é o que o
+///   quadro custaria se o undo publicasse a janela que ele reescreveu.
+#[test]
+#[ignore = "medicao — rode com --release --ignored"]
+fn what_the_frame_after_a_ctrl_z_is_made_of() {
+    use std::time::Instant;
+
+    /// `(quadro pos-undo, quadro no MEIO de um traco)` em ms.
+    fn split(side: u32, impasto: bool) -> (f64, f64) {
+        let mut t = armed(side);
+        if !impasto {
+            t.paint.brush.impasto = false;
+            for slot in &mut t.paint.brush_by_mode {
+                slot.impasto = false;
+            }
+        }
+        for k in 0..3u8 {
+            stroke(&mut t, 200.0 + f32::from(k) * 40.0);
+        }
+        let _ = t.take_preview_arc();
+
+        // (a) o quadro depois de um Ctrl+Z — a pista CHEIA
+        let mut post = Vec::new();
+        for _ in 0..6 {
+            assert!(t.undo_last(), "a fixture nao contem o fenomeno: fila vazia");
+            let t0 = Instant::now();
+            t.paint_tick(1.0 / 60.0);
+            let _ = t.take_preview_arc();
+            post.push(t0.elapsed().as_secs_f64() * 1e3);
+            assert!(
+                t.redo_last(),
+                "a fixture nao contem o fenomeno: nada a refazer"
+            );
+            t.paint_tick(1.0 / 60.0);
+            let _ = t.take_preview_arc();
+        }
+
+        // (b) o quadro NO MEIO de um traço — a pista PARCIAL, o limite superior do prêmio
+        let mut mid = Vec::new();
+        t.on_canvas_pointer(cp([60.0, 400.0], PointerPhase::Down));
+        for k in 1..=6u8 {
+            t.on_canvas_pointer(cp([60.0 + f32::from(k) * 30.0, 400.0], PointerPhase::Move));
+            let t0 = Instant::now();
+            t.paint_tick(1.0 / 60.0);
+            let _ = t.take_preview_arc();
+            mid.push(t0.elapsed().as_secs_f64() * 1e3);
+        }
+        t.on_canvas_pointer(cp([260.0, 400.0], PointerPhase::Up));
+
+        let med = |v: &mut Vec<f64>| {
+            v.sort_by(f64::total_cmp);
+            v[v.len() / 2]
+        };
+        (med(&mut post), med(&mut mid))
+    }
+
+    println!(
+        "\n{:<6} {:<9} {:>12} {:>12} {:>8}",
+        "tela", "impasto", "pos-undo", "meio-traco", "razao"
+    );
+    for side in [2048u32, 4096] {
+        for imp in [false, true] {
+            let (p, m) = split(side, imp);
+            println!(
+                "{side:<6} {:<9} {p:>12.2} {m:>12.2} {:>7.1}x",
+                if imp { "ON" } else { "OFF" },
+                if m > 0.0 { p / m } else { f64::INFINITY }
+            );
+        }
+    }
+    println!();
+}

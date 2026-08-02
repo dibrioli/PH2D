@@ -355,6 +355,12 @@ pub struct UndoController {
     /// corridas atribuiria a deriva dela ao ganho (§5.46). Nada no produto o lê.
     #[cfg(test)]
     pub(crate) elide_relief: bool,
+    /// **A ablação do CONFINAMENTO** — `false` faz todo passo se declarar não-confinado, devolvendo o
+    /// mundo em que um Ctrl+Z manda a tela inteira ser refeita. É por ela que o oráculo de correção
+    /// compara as duas rotas: a pista parcial tem de mostrar **exatamente** o que o repaint inteiro
+    /// mostra, e sem uma segunda rota não há contra quem comparar (doc 28 §5.63).
+    #[cfg(test)]
+    pub(crate) confine: bool,
     /// A outra metade da ablação: `false` faz o CURSOR voltar a segurar os planos.
     #[cfg(test)]
     pub(crate) elide_cursor: bool,
@@ -382,6 +388,8 @@ impl UndoController {
             installed: None,
             #[cfg(test)]
             elide_relief: true,
+            #[cfg(test)]
+            confine: true,
             #[cfg(test)]
             elide_cursor: true,
             // Um orçamento degenerado ainda tem de permitir UM passo — uma edição de camada inteira é
@@ -589,6 +597,12 @@ mod record; // como uma ENTRADA nasce: o cursor anda, o delta e partido, o cap m
 
 #[path = "undo_absorb.rs"]
 pub(crate) mod absorb; // a reconciliacao com escritas que nao passaram pela historia
+
+/// **Até onde um PASSO alcança** — filho pelo mesmo motivo do [`absorb`]: ele lê o `UndoEntry`
+/// privado. O corte: *o que a história guarda* fica aqui, *quanto da tela um passo obriga a repintar*
+/// fica lá (doc 28 §5.62).
+#[path = "undo_confine.rs"]
+pub(crate) mod confine;
 
 #[cfg(any(test, debug_assertions))]
 #[path = "undo_inspect.rs"]

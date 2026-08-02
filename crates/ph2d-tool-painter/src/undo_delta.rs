@@ -684,6 +684,12 @@ impl Strides {
 #[path = "undo_delta_journal.rs"]
 mod journal_route;
 
+/// **Até onde um passo ALCANÇA** — filho pelo mesmo motivo (ele lê os campos privados da janela para
+/// a converter de volta em região de canvas). O corte: *o que um plano guardado É* fica aqui, *quanto
+/// da figura ele pode ter mudado* fica lá.
+#[path = "undo_delta_confine.rs"]
+pub(crate) mod confine;
+
 #[cfg(test)]
 #[path = "undo_delta_tests.rs"]
 mod tests;

@@ -138,7 +138,7 @@ mod mask;
 mod ramp;
 mod ramp_lut; // ramp LUT baking (colour owner + colour/tone LUTs); split from `stamp_cache` (LOC cap)
 /// Pixel-region save/restore helpers for the drag preview (`dab_bbox`/`save_region`/`restore_region`).
-mod region;
+pub(crate) mod region;
 /// The **Selection** tool (ADR-0103) — the document-wide selection mask, undo integration + paint gate. [LOC split].
 mod selection;
 /// Selection **actions** (Wave 5): Select layer contents / Color Fill / Copy-Paste / Save-Load slots. [LOC split].

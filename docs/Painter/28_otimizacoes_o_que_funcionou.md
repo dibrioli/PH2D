@@ -5974,3 +5974,78 @@ qualquer coisa — mas **o delta SABE a própria janela**, e o S3 foi precisamen
 explícita (`PlaneDeltas` a guarda; o degrau 2 a fez a fonte do `before`). Publicar **a janela que o
 passo reescreveu** em vez do canvas inteiro é a continuação natural, e não é contrabando dentro de uma
 wave fechada: é wave própria, com smoke próprio, porque muda o que a tela repinta.
+
+### §5.63 — O UNDO PUBLICA A JANELA QUE ELE REESCREVEU: o quadro depois de um Ctrl+Z cai 381 → 3,2 ms e fica PLANO na tela
+
+A §5.62 mediu o quadro pós-Ctrl+Z em **97,7 ms a 2048² e 381,3 a 4096²** contra **0,000** de um tick
+ocioso, e nomeou a cura: *o delta SABE a própria janela, e o S3 foi a wave que a tornou explícita.*
+
+**Medido pela mesma sonda, com o `meio-traço` servindo de controle interno:**
+
+| tela | pós-undo antes | pós-undo depois | meio-traço (controle) |
+|---|---|---|---|
+| 2048² | 97,19 | **3,11–3,23** | 0,58–0,62 |
+| 4096² | 386,74 | **3,11–3,23** | 0,58–0,62 |
+
+⚠️ **O número que prova a wave não é o 124×, é a IGUALDADE das duas linhas.** Um custo plano na tela é a
+forma de trabalho limitado pela PEGADA; enquanto ele quadruplicava com a área, nenhuma constante o
+salvaria.
+
+#### A prova de confinamento tem duas metades, e as duas são destructure EXAUSTIVO
+
+* **os PLANOS** (`PlaneDeltas::confined_region`) — os dezenove são desestruturados sem `..`, então um
+  plano novo **não compila** até ser classificado.
+* **os METADADOS** (`ModelSnapshot::confined_to`) — os vinte e cinco campos, idem. Um passo pode não
+  tocar pixel nenhum e mudar a figura em toda parte (opacidade, blend, ordem, visibilidade): a cerca de
+  Chesterton do `invalidate_composite` **é estreitada, não derrubada**.
+
+A assimetria é o argumento inteiro: reivindicar **de menos** custa um repaint; reivindicar **de mais**
+deixa a figura anterior na tela **e nenhum gate de conteúdo pega**, porque dentro do retângulo está tudo
+certo. Por isso `PlaneReach::Whole` é o default de todo caso que o módulo não sabe descrever, e por isso
+o gate central é um **ORÁCULO** — duas telas comparadas byte a byte, uma com o confinamento ablacionado.
+
+#### TRÊS defeitos, e nenhum foi achado lendo código
+
+1. **`to_region` exigia alinhamento a pixel e devolvia `None` para todo traço.** O `diff_window` acha o
+   primeiro e o último **ELEMENTO** que diferem; num plano RGBA são quatro por pixel, e um passo que
+   muda um canal produz `col` que não é múltiplo de 4. A cura é arredondar **para FORA** — um dirty rect
+   tem de ser SUPERCONJUNTO —, e o gate afirma **contenção**, nunca igualdade.
+2. **Dois planos VAZIOS liam como `Whole`.** O `split` manda para `Whole` tudo o que não sabe medir, e
+   `fits()` recusa comprimento zero; as **seis** superfícies da sessão de Sculpt são vazias num traço de
+   pigmento comum. Isso era `Whole` conflando *"mudou em toda parte"* com *"não sei medir"* — e um plano
+   vazio não é nenhum dos dois. **Azedava TODO passo do produto** (`spre=WHOLE samt=WHOLE …` em cada
+   entrada).
+3. **`restore_selection` invalidava o composite incondicionalmente.** Com (1) e (2) curados o
+   confinamento disparava, o retângulo era publicado — e a drenagem seguia em `FullComposite`, com o
+   quadro em 381 ms. Achado por **backtrace**, não por leitura.
+
+#### ⚠️ Quatro lições, todas sobre mim
+
+* **A primeira leitura disse "PIOROU" (97 → 182 · 386 → 414) e era a MÁQUINA** (`load average 23`). O
+  que torna uma leitura confiável não é o número absoluto: é o **controle interno** — o `meio-traço`, que
+  ficou em 0,58 o tempo todo. Sem ele eu teria revertido uma wave correta.
+* **O meu scan de callees achou a função ERRADA:** procurei `fn restore_selection` e o grep casou com
+  `restore_selection_shapes`, noutro arquivo, reportando *"não invalida"*.
+  [[feedback_a_negative_search_needs_a_positive_control]].
+* **Duas de cinco mutações sobreviveram, e as duas acusaram os meus GATES.** A do arredondamento passou
+  porque a janela que o produto produz **calhava de ser alinhada** — a fixture não continha o fenômeno,
+  e a cura foi um gate de unidade com janelas construídas para o conter. A dos metadados passou porque o
+  gate estrutural mudava **só** a opacidade: sem escrita de canvas os planos já recusam sozinhos, então
+  ele era **verde por vácuo sobre a metade que dizia julgar**.
+* **O instrumento mora DENTRO do gate que precisa dele.** `confine_diagnosis`/`confine_report` ficaram
+  sem chamador quando a sonda de diagnóstico foi removida — cinco warnings de código morto. A cura não
+  foi apagá-los: eles entram nas **mensagens de falha**, e a próxima pessoa recebe a resposta em vez de
+  reconstruir o instrumento.
+
+**5 gates, 5 mutações, 5 sangram.** Suíte **948/0 debug · 950/0 release**, shell verde, clippy limpo,
+LOC 2/2 nos dois gates, contrato congelado **4/4**, fingerprint do ADR-0134 **3/3**, `PROJECT_SCHEMA`
+**intocado** (zero arquivos de shell tocados).
+
+#### Aberto, nomeado
+
+- **O PRIMEIRO traço de relevo numa camada não é confinado** e isso é correto: os planos entram como
+  `OnlyAfter` (o plano inteiro nasce), e restaurar isso muda o relevo onde quer que ele tivesse
+  cobertura — não há retângulo que descreva. Todo traço seguinte confina.
+- O `bump_all_layer_pixels` **continua bumpando todas as camadas** num passo confinado. Na pista de CPU
+  isso não custa nada (o número acima), e num documento de uma camada — o caso comum e o do smoke — ele
+  É o bump da ativa. Estreitá-lo é ganho de pista **GPU**, e quem decide é o próximo `PH2D_PAINT_PERF`.

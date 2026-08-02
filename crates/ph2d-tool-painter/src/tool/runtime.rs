@@ -71,8 +71,11 @@ impl PainterTool {
         // O VIVO é a base de que o relevo é materializado (degrau 3) — e ele é o MESMO snapshot que a
         // absorção acabou de construir, então recebê-lo não acrescenta trabalho.
         let live = self.snapshot_model();
+        // ⚠️ **A região é perguntada ANTES de aplicar o passo** — depois, a entrada já saiu da pilha.
+        // `None` = não confinado, e aí o restore é o de sempre (doc 28 §5.62).
+        let confined = self.undo.peek_confined_region(false);
         if let Some(model) = self.undo.undo(&live) {
-            self.restore_model(*model);
+            self.restore_model_confined(*model, confined);
             true
         } else {
             false
@@ -105,8 +108,11 @@ impl PainterTool {
         self.absorb_foreign_writes_now();
         self.audit_live_is_the_cursor("redo");
         let live = self.snapshot_model();
+        // ⚠️ **A região é perguntada ANTES de aplicar o passo** — depois, a entrada já saiu da pilha.
+        // `None` = não confinado, e aí o restore é o de sempre (doc 28 §5.62).
+        let confined = self.undo.peek_confined_region(true);
         if let Some(model) = self.undo.redo(&live) {
-            self.restore_model(*model);
+            self.restore_model_confined(*model, confined);
             true
         } else {
             false

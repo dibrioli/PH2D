@@ -27,7 +27,11 @@ impl PainterTool {
         self.undo.write_state.set(w);
     }
 
-    pub(super) fn mark_dirty(&mut self, rect: Region) {
+    /// ⚠️ `pub(crate)` e não `pub(super)`: o **undo** o chama também (`restore_model_confined`), e é
+    /// deliberado que ele passe por AQUI — esta é a porta única de *"a figura mudou neste retângulo"*,
+    /// e ela acumula por união. Um segundo escritor de `dirty_rect` seria a segunda resposta à mesma
+    /// pergunta, e a que esquecesse a união publicaria um retângulo menor que o que mudou.
+    pub(crate) fn mark_dirty(&mut self, rect: Region) {
         #[cfg(test)]
         self.marks.push(rect);
         self.dirty_rect = Some(self.dirty_rect.map_or(rect, |acc| union_region(acc, rect)));

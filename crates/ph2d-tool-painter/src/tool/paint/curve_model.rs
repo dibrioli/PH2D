@@ -21,7 +21,7 @@ use super::curve_tangent;
 /// transient grab lives in the owner ([`CurveGrab`]), so the model stays a pure value (Clone for undo).
 // `pub(crate)` (not `pub(super)`): a converted selection's `CurveModel` rides inside `SelectionShape` into
 // the crate-wide undo `ModelSnapshot`, so the type must be nameable crate-wide. Fields stay `pub(super)`.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub(crate) struct CurveModel {
     /// Control points (image-space px).
     pub(super) points: Vec<[f32; 2]>,

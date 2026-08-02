@@ -18,7 +18,21 @@ impl PainterTool {
     }
 
     /// Mark the composite stale so the next `current_preview` recomputes.
+    ///
+    /// ⚠️ **`PH2D_INVALIDATE_TRACE=1` diz QUEM derrubou o cache** (só em teste, e só com a env var).
+    /// Ele existe porque *"o cache foi derrubado"* é um fato sem autor: o `restore_model` chama uma
+    /// dúzia de restauradores, e um deles invalidava incondicionalmente — o que manteve o quadro
+    /// pós-Ctrl+Z em 381 ms **depois** de o undo já publicar o retângulo certo (doc 28 §5.63). Uma
+    /// varredura de callees respondeu ERRADO (casou com a função de nome parecido, noutro arquivo); um
+    /// backtrace respondeu em uma corrida.
     pub(crate) fn invalidate_composite(&mut self) {
+        #[cfg(test)]
+        if std::env::var_os("PH2D_INVALIDATE_TRACE").is_some() {
+            eprintln!(
+                "INVALIDATE:\n{}",
+                std::backtrace::Backtrace::force_capture()
+            );
+        }
         self.composited = None;
         // Drop any accumulated dirty-rect: a structural edit (opacity / blend /
         // visibility / reorder / add / select) can change the composite OUTSIDE

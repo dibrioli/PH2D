@@ -129,7 +129,12 @@ pub(super) fn region_pixels(buf: &[u8], region: Region, canvas_w: u32) -> Vec<u8
 
 /// Smallest region covering both `a` and `b` — the routes' dirty-rect fold (every stamp route
 /// imports it as `super::union_region`; moved here from `paint.rs` for the workspace file-LOC cap).
-pub(super) fn union_region(a: Region, b: Region) -> Region {
+///
+/// ⚠️ `pub(crate)` e não `pub(super)` porque a família do UNDO a usa também
+/// (`undo_delta_confine::Confine`, que junta as janelas dos planos de um passo guardado). Duas uniões
+/// de retângulo seriam duas respostas à mesma pergunta, e a que divergisse publicaria um retângulo que
+/// não cobre o que foi reescrito.
+pub(crate) fn union_region(a: Region, b: Region) -> Region {
     let x0 = a.x.min(b.x);
     let y0 = a.y.min(b.y);
     let x1 = (a.x + a.w).max(b.x + b.w);

@@ -22,6 +22,18 @@ impl PainterTool {
     /// structural undo/redo reinstalls a whole model snapshot, so the GPU
     /// compositor's per-slice cache (keyed by content version) re-uploads each
     /// layer rather than serving a stale slice from a prior identity.
+    /// O cache de composite está quente? — só para diagnóstico.
+    #[cfg(test)]
+    pub(crate) const fn composited_is_some(&self) -> bool {
+        self.composited.is_some()
+    }
+
+    /// O dirty-rect acumulado — só para diagnóstico.
+    #[cfg(test)]
+    pub(crate) const fn dirty_rect_now(&self) -> Option<crate::compositor::Region> {
+        self.dirty_rect
+    }
+
     pub(crate) fn bump_all_layer_pixels(&mut self) {
         let ids: Vec<RtLayerId> = self.layers.all_ids().collect();
         for id in ids {

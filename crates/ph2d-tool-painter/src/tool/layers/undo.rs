@@ -91,6 +91,24 @@ impl PainterTool {
     /// working buffer, and the panel selection, then refreshes every derived
     /// cache so the composite + GPU preview rebuild.
     pub(crate) fn restore_model(&mut self, m: crate::undo::ModelSnapshot) {
+        self.restore_model_confined(m, None);
+    }
+
+    /// [`Self::restore_model`] sabendo **a que região o passo estava confinado**.
+    ///
+    /// `None` = *não confinado*, e aí isto É o `restore_model` de sempre: derruba o cache de composite
+    /// e o dirty-rect, e a próxima drenagem refaz a tela inteira. `Some(r)` promete que **fora de `r` a
+    /// figura é a mesma**, e a drenagem pode usar a pista PARCIAL — medido, um quadro pós-Ctrl+Z a
+    /// 4096² com impasto cai de **381 ms para a ordem de 0,6** (doc 28 §5.62).
+    ///
+    /// ⚠️ **Quem responde é a HISTÓRIA, não este método** ([`crate::undo::UndoController::peek_confined_region`]):
+    /// a promessa exige os dezenove planos e os metadados dos DOIS endpoints, e nada disso está
+    /// disponível aqui — o snapshot que chega já é o resultado.
+    pub(crate) fn restore_model_confined(
+        &mut self,
+        m: crate::undo::ModelSnapshot,
+        confined: Option<crate::compositor::Region>,
+    ) {
         self.layers = m.layers;
         self.images = m.images;
         self.heights = m.heights;
@@ -165,7 +183,26 @@ impl PainterTool {
         // undoing a deform stroke rolls the warp back AND keeps Reconstruct able to un-warp what remains.
         self.restore_deform(m.deform);
         self.bump_all_layer_pixels();
-        self.invalidate_composite();
+        match confined {
+            // O caminho de sempre: um passo que pode ter mudado QUALQUER coisa (opacidade, blend,
+            // ordem, visibilidade, um ajuste) muda o composite fora de retângulo nenhum.
+            None => self.invalidate_composite(),
+            // ⚠️ **O passo é confinado, então o cache de composite SOBREVIVE e a região é publicada.**
+            // As duas metades andam juntas: a pista parcial da drenagem exige `composited.is_some()`
+            // **e** um `dirty_rect`, e derrubar um dos dois manda a tela inteira ser refeita.
+            //
+            // O que o `invalidate_composite` faz e continua sendo feito aqui: a revisão de publicação
+            // (o painel re-clona a pilha), o `edited_since_bind`, e o cache de CORTE dos ajustes — este
+            // último é dropado inteiro de propósito, porque é um cache que se re-preenche a frio e
+            // custa menos que raciocinar sobre quais cortes a região tocou.
+            Some(r) => {
+                self.mark_dirty(r);
+                self.edited_since_bind = true;
+                self.compositor_cache
+                    .invalidate_from(crate::layers::LayerId(0), &self.layers);
+                self.bump_layers_revision();
+            }
+        }
         // Watercolor: the canvas identity just changed under the wet session — its moisture map (+ frozen
         // base + union buffers) is now stale (the overlay showed the undone stroke's damp; the guard Arc no
         // longer matches). Tear it down so undo/redo clears the wetness (Enio 2026-07-11). No-op when dry.

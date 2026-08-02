@@ -58,6 +58,20 @@ impl PainterTool {
         crisp: Arc<Vec<u8>>,
         feather: f32,
     ) {
+        // ⚠️ **Mudou alguma coisa?** — perguntado ANTES de escrever, porque a resposta decide se a tela
+        // inteira precisa ser refeita. A esmagadora maioria dos undos não é sobre seleção nenhuma (um
+        // traço de pigmento não a toca), e invalidar ali derrubava o cache de composite de todo passo:
+        // era ELE que mantinha o quadro pós-Ctrl+Z em 381 ms a 4096² depois de o undo já publicar o
+        // retângulo certo (doc 28 §5.63 — o confinamento disparava e a drenagem caía no `FullComposite`
+        // assim mesmo).
+        //
+        // O teste é por IDENTIDADE de buffer, não por conteúdo: um plano que o delta deu como
+        // `Unchanged` volta como o MESMO `Arc`. Buffers diferentes mas iguais respondem "mudou" e
+        // pagam um repaint — lento, nunca errado.
+        let same = Arc::ptr_eq(&self.paint.selection_mask, &mask)
+            && Arc::ptr_eq(&self.paint.selection_crisp, &crisp)
+            && self.paint.selection_active == active
+            && self.paint.selection_feather.to_bits() == feather.to_bits();
         self.paint.selection_mask = mask;
         self.paint.selection_active = active;
         self.paint.selection_crisp = crisp;
@@ -67,7 +81,9 @@ impl PainterTool {
         // ring mode from operating on a stale base after undoing an Apply / Apply & Keep.
         self.reset_selection_offset();
         // The on-canvas overlay (marching ants / hatching) is derived from this, so refresh.
-        self.invalidate_composite();
+        if !same {
+            self.invalidate_composite();
+        }
     }
 
     /// Whether an active selection should RESTRICT painting to its region right now. False when there is

@@ -116,14 +116,13 @@ dígitos = o log não fala sobre o código*).
 
 ## §5 — Aberto (nomeado, com o número; não é dívida escondida)
 
-- ⚠️ **O QUADRO DEPOIS DE UM CTRL+Z é plane-bound: 97,7 ms a 2048² e 381,3 a 4096² no produtor de CPU**
-  (3,90× para 4× de área), contra **0,000 ms** de um tick ocioso — o controle que o torna um achado. É
-  ele que tem a forma do outlier de 71,2 ms do smoke (`preview` inteiro, `branch=idle`). **PRÉ-EXISTENTE
-  e exonerado por ablação**: o braço sem elisão paga os mesmos 381 ms, em duas corridas de sinais
-  opostos, com o controle de donos (2 → 1) provando que a ablação era real. A cura nomeada é publicar **a
-  janela que o passo reescreveu** — e o S3 é justamente a wave que a tornou explícita —, mas isso muda o
-  que a tela repinta ⇒ **wave própria, com smoke próprio**. Números e mecanismo:
-  [doc 28 §5.62](Painter/28_otimizacoes_o_que_funcionou.md).
+- ✅ **O QUADRO DEPOIS DE UM CTRL+Z FECHOU: 381,3 → 3,2 ms a 4096², e PLANO na tela** (2048² e 4096²
+  medem o mesmo — a forma de trabalho limitado pela pegada). O undo publica a janela que ele reescreveu,
+  provada por duas metades com destructure exaustivo (os 19 planos + os 25 campos do snapshot), e o gate
+  central é um **oráculo**: a pista parcial tem de mostrar byte a byte o que o repaint inteiro mostra.
+  ⚠️ Três defeitos no caminho, nenhum achado lendo código — o arredondamento da janela, **dois planos
+  vazios que liam como `Whole`** e o `restore_selection` invalidando o composite incondicionalmente.
+  Números, mecanismo e as quatro lições: [doc 28 §5.63](Painter/28_otimizacoes_o_que_funcionou.md).
 - **O pen-down segue sendo uma cópia de canvas** (§5.16 o pinou; 5,65 ms a 4096²). Não era o alvo desta
   wave e não se moveu. Quem o fecha é a captura do "antes" por **REGIÃO** (o *tile-based undo*), e ela
   quer a **porta única de escrita de canvas**.

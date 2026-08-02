@@ -84,6 +84,152 @@ pub(crate) struct PlaneDeltas {
 }
 
 impl PlaneDeltas {
+    /// **A região do canvas a que este passo está confinado**, ou `None` para *não confinado*.
+    ///
+    /// Quem responde `Some(r)` habilita o undo/redo a publicar `r` como dirty-rect em vez de mandar a
+    /// tela inteira ser refeita — medido, um quadro pós-Ctrl+Z a 4096² com impasto cai de **386,74 ms
+    /// para a ordem de 0,6 ms**, que é o que o MESMO quadro custa no meio de um traço (doc 28 §5.62).
+    ///
+    /// ⚠️ **Os campos são desestruturados um a um, sem `..`, DE PROPÓSITO.** Um plano novo que ninguém
+    /// classificasse aqui seria incluído numa reivindicação de confinamento sem nunca ter sido
+    /// examinado — e o modo de falha disso é servir pixels velhos em volta do retângulo, corrupção
+    /// visual que nenhum gate de conteúdo pega (o conteúdo DENTRO da janela está certo). Com o
+    /// destructure exaustivo, acrescentar um plano **não compila** até ele ser classificado.
+    ///
+    /// ⚠️ **`relief_indescribable` força `None`**: um passo cujo relevo não pôde ser descrito não pode
+    /// prometer que só mexeu num retângulo.
+    pub(crate) fn confined_region(&self, canvas_w: u32) -> Option<crate::compositor::Region> {
+        use crate::undo_delta::confine::Confine;
+        let Self {
+            canvas_rgba,
+            images,
+            heights,
+            covers,
+            mats,
+            mask_scratch,
+            selection_mask,
+            selection_crisp,
+            deform_disp,
+            deform_pre,
+            deform_pre_h,
+            deform_pre_cover,
+            deform_pre_mats,
+            sculpt_pre,
+            sculpt_amount,
+            sculpt_plane_sum,
+            sculpt_pre_cover,
+            sculpt_pre_mats,
+            sculpt_pre_rgba,
+            relief_indescribable,
+        } = self;
+        if *relief_indescribable {
+            return None;
+        }
+        let mut c = Confine::new(canvas_w);
+        c.add(canvas_rgba.reach());
+        c.add_images(images);
+        c.add_map(heights);
+        c.add_map(covers);
+        c.add_map(mats);
+        c.add(mask_scratch.reach());
+        c.add(selection_mask.reach());
+        c.add(selection_crisp.reach());
+        c.add(deform_disp.reach());
+        c.add(deform_pre.reach());
+        c.add(deform_pre_h.reach());
+        c.add(deform_pre_cover.reach());
+        c.add(deform_pre_mats.reach());
+        c.add(sculpt_pre.reach());
+        c.add(sculpt_amount.reach());
+        c.add(sculpt_plane_sum.reach());
+        c.add(sculpt_pre_cover.reach());
+        c.add(sculpt_pre_mats.reach());
+        c.add(sculpt_pre_rgba.reach());
+        c.finish()
+    }
+
+    /// **O alcance de CADA plano, por nome** — o instrumento que separa *"o passo não é confinado"* de
+    /// *"qual plano recusou"*. Sem ele o `None` é mudo, e um veredito mudo manda adivinhar.
+    #[cfg(test)]
+    pub(crate) fn confine_report(&self) -> String {
+        use crate::undo_delta::StoredEntry;
+        use crate::undo_delta::confine::PlaneReach;
+        let tag = |r: PlaneReach| match r {
+            PlaneReach::Untouched => "-",
+            PlaneReach::Window(_) => "win",
+            PlaneReach::Whole => "WHOLE",
+        };
+        let map = |v: Vec<PlaneReach>| {
+            if v.is_empty() {
+                "-".to_string()
+            } else {
+                v.into_iter().map(tag).collect::<Vec<_>>().join(",")
+            }
+        };
+        // ⚠️ Destructure EXAUSTIVO, como o `confined_region`: um relatório que enumera à mão esconde
+        // justamente o plano que ninguém lembrou de listar — que é o plano que está souring o veredito.
+        let Self {
+            canvas_rgba,
+            images,
+            heights,
+            covers,
+            mats,
+            mask_scratch,
+            selection_mask,
+            selection_crisp,
+            deform_disp,
+            deform_pre,
+            deform_pre_h,
+            deform_pre_cover,
+            deform_pre_mats,
+            sculpt_pre,
+            sculpt_amount,
+            sculpt_plane_sum,
+            sculpt_pre_cover,
+            sculpt_pre_mats,
+            sculpt_pre_rgba,
+            relief_indescribable,
+        } = self;
+        let mut out = vec![
+            format!("canvas={}", tag(canvas_rgba.reach())),
+            format!("images={}", map(images.reaches())),
+            format!(
+                "h={}",
+                map(heights.entries().map(StoredEntry::reach).collect())
+            ),
+            format!(
+                "c={}",
+                map(covers.entries().map(StoredEntry::reach).collect())
+            ),
+            format!(
+                "m={}",
+                map(mats.entries().map(StoredEntry::reach).collect())
+            ),
+        ];
+        for (n, r) in [
+            ("mask", mask_scratch.reach()),
+            ("selmask", selection_mask.reach()),
+            ("selcrisp", selection_crisp.reach()),
+            ("dsp", deform_disp.reach()),
+            ("dpre", deform_pre.reach()),
+            ("dh", deform_pre_h.reach()),
+            ("dc", deform_pre_cover.reach()),
+            ("dm", deform_pre_mats.reach()),
+            ("spre", sculpt_pre.reach()),
+            ("samt", sculpt_amount.reach()),
+            ("ssum", sculpt_plane_sum.reach()),
+            ("sc", sculpt_pre_cover.reach()),
+            ("sm", sculpt_pre_mats.reach()),
+            ("srgba", sculpt_pre_rgba.reach()),
+        ] {
+            if !matches!(r, PlaneReach::Untouched) {
+                out.push(format!("{n}={}", tag(r)));
+            }
+        }
+        out.push(format!("indescr={relief_indescribable}"));
+        out.join(" ")
+    }
+
     /// Extrai os deltas dos dois endpoints e **esvazia os dois**: depois disto os `ModelSnapshot`
     /// guardados carregam só metadados, e os pixels vivem aqui.
     pub(crate) fn split(

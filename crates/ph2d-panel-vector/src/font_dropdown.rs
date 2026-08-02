@@ -53,7 +53,7 @@ pub(crate) fn paint(ctx: &mut PaintCtx, chip_rect: Rect, theme: Theme) {
         .collect();
     let dd = Dropdown::new(id, "", options).selected(sel).open(true);
 
-    let panel = dd.popover_rect_clamped(chip_rect, ctx.viewport);
+    let panel = dd.popover_rect_clamped(chip_rect, ctx.layout.popover_region());
     let content_h = dd.content_height(chip_rect.h);
     let visible_h = panel.h;
     let max_scroll = (content_h - visible_h).max(0.0);

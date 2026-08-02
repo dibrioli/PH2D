@@ -120,6 +120,12 @@ pub fn selected_row(prop: u16) -> usize {
 ///
 /// Espelho exato do popover de mistura dos filtros, e pelo mesmo motivo: são oitenta linhas, e o
 /// card tem de rolar e ficar acima do scroll da seção.
+///
+/// ⚠️ **A região do clamp é a BANDA DE CHROME, nunca a janela** ([`HeroLayout::popover_region`]).
+/// Com oitenta e uma linhas nada cabe em lado nenhum, então o clamp escolhe *o lado com mais
+/// espaço* — e contra a JANELA isso encostava a lista na borda de cima: a linha de SOLTAR nascia a
+/// 2 px do topo, por cima da barra de ferramentas e 64 px acima do painel dela (reportado no smoke
+/// de 2026-08-02: *"selecionar None só funciona se clicar na parte de baixo do nome"*).
 pub(crate) fn paint_token_popover(ctx: &mut PaintCtx, prop: u16, chip: Rect, theme: Theme) {
     let id = if prop == 0 {
         ids::VECTOR_TOKEN_FILL
@@ -134,7 +140,7 @@ pub(crate) fn paint_token_popover(ctx: &mut PaintCtx, prop: u16, chip: Rect, the
         .selected(selected_row(prop))
         .open(true);
 
-    let panel = dd.popover_rect_clamped(chip, ctx.viewport);
+    let panel = dd.popover_rect_clamped(chip, ctx.layout.popover_region());
     let content_h = dd.content_height(chip.h);
     let visible_h = panel.h;
     let max_scroll = (content_h - visible_h).max(0.0);

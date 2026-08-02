@@ -399,6 +399,37 @@ impl HeroLayout {
         );
         self.timeline = self.motion_timeline_slot;
     }
+
+    /// **A região em que um popover flutuante pode nascer** — a BANDA DE CHROME, e nunca a janela
+    /// inteira.
+    ///
+    /// Um popover longo não cabe em lado nenhum, e aí
+    /// [`crate::widget::Dropdown::popover_rect_clamped`] toma *o lado com mais espaço, clampado à
+    /// região que lhe deram*. Dada a JANELA, "mais espaço" é quase sempre para CIMA, e o clamp
+    /// encosta a lista na borda de cima da janela — medido no frame real com o picker de token
+    /// (81 linhas, `PH2D_BUILD_SMOKE=50`): a primeira linha nascia em **`y ∈ [2, 30]`**, ou seja
+    /// **2 px da borda da janela**, 64 px ACIMA do painel a que pertence, por cima da barra de topo
+    /// (`(14, 14, 1338, 64)`) — e `WidgetStore::panel_at` respondia `None` ali, porque ali não há
+    /// painel nenhum. O `HitIndex` resolvia o clique (o popover regista por último), mas quem
+    /// pergunta *"isto está sobre um painel?"* — e o gestor de janelas, que é dono da faixa de
+    /// borda — não tem por que concordar. A cura não é disputar aquela faixa: é não nascer lá.
+    ///
+    /// A banda devolvida é **exatamente** a que o rail e os painéis docados ocupam (o `left_rail`
+    /// abrange-a por construção), então um popover aterra onde o painel dele vive. Nenhuma
+    /// constante nova: mover a banda de chrome move o popover junto.
+    ///
+    /// Largura = a da viewport, de propósito — um popover pode transbordar para o canvas na
+    /// horizontal (é o que a lista de 182 px faz por cima da cena), e é só na VERTICAL que ele
+    /// saía do sítio.
+    #[must_use]
+    pub fn popover_region(&self) -> Rect {
+        Rect::new(
+            self.viewport.x,
+            self.left_rail.y,
+            self.viewport.w,
+            self.left_rail.h,
+        )
+    }
 }
 
 #[cfg(test)]
@@ -411,6 +442,41 @@ mod split_tests {
 
     fn approx(a: f32, b: f32) -> bool {
         (a - b).abs() < 0.5
+    }
+
+    /// **A região de popover é a banda de CHROME** — começa abaixo da barra de topo, acaba acima
+    /// do HUD, e é a MESMA em que os painéis docados vivem.
+    ///
+    /// As três metades importam por motivos diferentes: *abaixo da barra* é o que tira a lista de
+    /// cima dos botões dela; *acima do HUD* é o que a mantém dentro da janela pela outra ponta; e
+    /// *a mesma dos painéis* é o que garante que um popover aterra onde o painel dele está, em vez
+    /// de num sítio que só a janela conhece. Devolver a viewport satisfaz zero das três.
+    #[test]
+    fn the_popover_region_is_the_chrome_band_not_the_window() {
+        let l = HeroLayout::for_viewport(vp());
+        let r = l.popover_region();
+        assert!(
+            r.y >= l.top_bar.y + l.top_bar.h,
+            "a regiao invade a barra de topo (region.y={} vs fim da barra={})",
+            r.y,
+            l.top_bar.y + l.top_bar.h
+        );
+        assert!(
+            r.y + r.h <= l.viewport.y + l.viewport.h,
+            "a regiao passa da borda de baixo da janela"
+        );
+        assert!(
+            r.y + r.h < l.viewport.y + l.viewport.h,
+            "a regiao encosta na borda de baixo — a mesma faixa de janela, do outro lado"
+        );
+        // É a banda dos painéis docados: um popover nasce onde o painel dele vive.
+        assert!(approx(r.y, l.inspector.y), "topo != topo do inspector");
+        assert!(
+            approx(r.y + r.h, l.inspector.y + l.inspector.h),
+            "base != base do inspector"
+        );
+        // E na horizontal ele PODE transbordar para o canvas — a largura é a da janela.
+        assert!(approx(r.x, l.viewport.x) && approx(r.w, l.viewport.w));
     }
 
     #[test]

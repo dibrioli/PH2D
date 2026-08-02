@@ -217,7 +217,7 @@ pub(crate) fn paint_marker_popover(ctx: &mut PaintCtx, slot: usize, chip: Rect, 
         .collect();
     let dd = Dropdown::new(id, "", options).selected(sel).open(true);
 
-    let panel = dd.popover_rect_clamped(chip, ctx.viewport);
+    let panel = dd.popover_rect_clamped(chip, ctx.layout.popover_region());
     let content_h = dd.content_height(chip.h);
     let visible_h = panel.h;
     let max_scroll = (content_h - visible_h).max(0.0);

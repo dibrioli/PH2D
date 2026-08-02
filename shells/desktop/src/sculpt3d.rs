@@ -13,7 +13,7 @@
 use ph2d_light::LightRig;
 use ph2d_mesh::{Mesh, Ray};
 use ph2d_mesh_render::{Camera3d, MeshRenderer};
-use ph2d_sculpt3d::{Brush, Dab, SculptStroke, Symmetry, Verb};
+use ph2d_sculpt3d::{Brush, Dab, Grip, SculptStroke, Symmetry, Verb};
 
 /// **A DOAÇÃO** — o carimbo, a rasterização e o interruptor de três posições.
 /// Filho (`#[path]`) para alcançar os campos privados da cena; o corte é *o que
@@ -169,11 +169,10 @@ pub(crate) struct Sculpt3dScene {
     /// delta de TODO arrasto (a órbita precisa dele por evento) e esta só anda
     /// quando um dab de fato saiu. Colapsá-las apagaria o carry.
     stroke_anchor: [f32; 2],
-    /// Onde o Grab **pegou** — o ponto de mundo do pen-down e o pixel dele.
-    ///
-    /// ⚠️ O Grab prende a pegada: o centro do dab é este ponto durante o traço
-    /// inteiro, e o que varia é o `pull`. Recalcular o centro por evento faria
-    /// dele um Snake Hook, que é outro verbo (a pegada anda e o barro estica).
+    /// Onde a mão **pegou** — o ponto de mundo do pen-down e o pixel dele. É a
+    /// âncora dos DOIS grips que puxam, e é dela que os dois derivam o mundo:
+    /// o [`Grip::Hold`] mede o puxão total até aqui, o [`Grip::Hook`] mede o
+    /// incremento entre dois passos do caminho.
     grab: Option<([f32; 3], (f32, f32))>,
     symmetry: Symmetry,
     /// **O rig de luz do artista** — as mesmas quatro lâmpadas que acendem a tinta
@@ -304,24 +303,46 @@ impl Sculpt3dScene {
         self.camera.ray_through(x, y, self.viewport)
     }
 
-    /// **O gesto de quem PUXA.** Devolve `false` enquanto não há pegada — e a
-    /// primeira chamada é quem a prende.
+    /// **PEGA o barro** — o pen-down dos dois grips que puxam. Devolve `false`
+    /// se o raio errou a malha (e aí o botão vira órbita, como em todo gesto).
     ///
-    /// ⚠️ Ele não re-pica: o centro é o do pen-down, e o que muda é o quanto o
-    /// dedo já andou desde então. Re-picar por evento arrastaria a pegada atrás
-    /// do cursor, que é o Snake Hook.
-    fn grab_at(&mut self, x: f32, y: f32) -> bool {
-        let Some((at, from)) = self.grab else {
-            let ray = self.ray_at(x, y);
-            let Some(hit) = self.mesh.raycast(&ray) else {
-                return false;
-            };
-            self.grab = Some((hit.point, (x, y)));
-            return true;
+    /// ⚠️ **Nem o Grab nem o Snake Hook re-picam depois disto**, e o Hook é o
+    /// caso surpreendente: ele arrasta uma ESFERA pelo espaço, não um acerto de
+    /// superfície (`Drag.js:59` consulta `pickVerticesInSphere` num centro
+    /// deslocado, sem raycast, e o `makeStroke` dele devolve `true` sempre).
+    /// Sair do modelo no meio do gesto não interrompe um espinho — é assim que
+    /// se puxa uma ponta para fora da silhueta.
+    fn take_hold(&mut self, x: f32, y: f32) -> bool {
+        let ray = self.ray_at(x, y);
+        let Some(hit) = self.mesh.raycast(&ray) else {
+            return false;
         };
-        let pull = self
+        self.grab = Some((hit.point, (x, y)));
+        true
+    }
+
+    /// Onde o dedo está, em MUNDO, na profundidade da pegada.
+    ///
+    /// Porta única dos dois grips que puxam, e é ela que os liga: o
+    /// [`Grip::Hold`] pede o vetor da âncora até aqui (o puxão TOTAL) e o
+    /// [`Grip::Hook`] pede a diferença entre dois destes (o INCREMENTO). Duas
+    /// aritméticas para *"onde o dedo está"* divergiriam no dia em que uma delas
+    /// ganhasse a perspectiva e a outra não.
+    fn finger_world(&self, at: [f32; 3], from: (f32, f32), x: f32, y: f32) -> [f32; 3] {
+        let d = self
             .camera
             .screen_delta_to_world(at, x - from.0, y - from.1, self.viewport);
+        [at[0] + d[0], at[1] + d[1], at[2] + d[2]]
+    }
+
+    /// **O gesto de quem SEGURA** ([`Grip::Hold`]): a pegada fica onde foi
+    /// presa e o que cresce é o puxão.
+    fn grab_at(&mut self, x: f32, y: f32) {
+        let Some((at, from)) = self.grab else {
+            return;
+        };
+        let f = self.finger_world(at, from, x, y);
+        let pull = [f[0] - at[0], f[1] - at[1], f[2] - at[2]];
         let brush = self.armed_brush(at);
         let eye = self.ray_at(x, y).dir();
         self.stroke.dab(
@@ -335,7 +356,36 @@ impl Sculpt3dScene {
             &mut self.edits,
             self.stroke.last_gpu_dirty(),
         );
-        true
+    }
+
+    /// **Um passo de quem ARRASTA** ([`Grip::Hook`]): a pegada anda de `from`
+    /// até `to` (pixels) e o dab recebe o INCREMENTO daquele trecho.
+    ///
+    /// ⚠️ **Os dois centros saem da ÂNCORA, não um do outro.** Somar
+    /// incrementos passo a passo acumularia o erro de cada conversão ao longo
+    /// de um arrasto inteiro, e a pegada iria escorregando para longe do
+    /// cursor. Derivando os dois da âncora, o incremento é a diferença de dois
+    /// absolutos e o centro está sempre onde o dedo está.
+    fn hook_step(&mut self, from: [f32; 2], to: [f32; 2]) {
+        let Some((at, origin)) = self.grab else {
+            return;
+        };
+        let c0 = self.finger_world(at, origin, from[0], from[1]);
+        let c1 = self.finger_world(at, origin, to[0], to[1]);
+        let step = [c1[0] - c0[0], c1[1] - c0[1], c1[2] - c0[2]];
+        let brush = self.armed_brush(c1);
+        let eye = self.ray_at(to[0], to[1]).dir();
+        self.stroke.dab(
+            &mut self.mesh,
+            &brush,
+            &Dab::hooking(c1, brush.radius, eye, step),
+            self.symmetry,
+        );
+        Self::mesh_changed(
+            &mut self.dirty,
+            &mut self.edits,
+            self.stroke.last_gpu_dirty(),
+        );
     }
 
     /// Aplica um dab onde o cursor aponta. Devolve `false` se o raio errou a

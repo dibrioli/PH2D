@@ -78,6 +78,27 @@ fn braced_block(src: &str, anchor: &str) -> String {
     panic!("`{anchor}` não fecha");
 }
 
+/// O corpo de um braço de `match`: o bloco `{...}` se houver, senão o resto da
+/// linha.
+///
+/// ⚠️ **Existe porque [`braced_block`] ATRAVESSA um braço de uma linha só.** Ele
+/// procura a próxima `{` a partir da âncora, e num braço como
+/// `Grip::Hold => scene.grab_at(x, y),` essa chave é a do braço **seguinte** —
+/// então uma asserção de ausência (*"este braço não chama `walk`"*) sai lendo o
+/// braço que chama, e um gate que passa por olhar o lugar errado é pior que
+/// gate nenhum.
+fn match_arm(src: &str, anchor: &str) -> String {
+    let at = src
+        .find(anchor)
+        .unwrap_or_else(|| panic!("não achei o braço `{anchor}`"));
+    let rest = &src[at + anchor.len()..];
+    if rest.trim_start().starts_with('{') {
+        braced_block(src, anchor)
+    } else {
+        rest.lines().next().unwrap_or_default().to_string()
+    }
+}
+
 /// A fiação do módulo 3D no shell, **os dois arquivos como um**.
 ///
 /// ⚠️ O corte entre *a cena* (`sculpt3d.rs`) e *o gesto* (`sculpt3d_input.rs`) é
@@ -101,7 +122,7 @@ fn the_left_button_sculpts_where_it_hits_and_orbits_where_it_misses() {
     // CARIMBA), e um gate ancorado numa delas ficou vermelho sobre produto
     // correto — a terceira vez nesta sessão que um proxy expirou.
     assert!(
-        body.contains("scene.grab_at(pos.0, pos.1)")
+        body.contains("scene.take_hold(pos.0, pos.1)")
             && body.contains("scene.sculpt_at(pos.0, pos.1)"),
         "as duas portas de pick têm de ser tentadas conforme o verbo PUXA ou não"
     );
@@ -334,9 +355,13 @@ fn a_pointer_event_is_walked_at_the_brushes_spacing_and_stops_where_the_ray_miss
     // A entrega do item 6c. Um evento de ponteiro não é um dab: o caminho é
     // percorrido a passos do espaçamento, e um passo que erra a malha PARA o
     // gesto (o `break` do `SculptBase.js:151`) em vez de carimbar através do vão.
+    // ⚠️ **O braço do CARIMBO, e não o do arrasto inteiro.** Desde o Snake Hook
+    // o `Drag::Sculpt` é um `match` sobre o `Grip` com três braços, e dois deles
+    // percorrem o caminho — a asserção de ausência abaixo (*a âncora não avança
+    // fora do ramo que carimbou*) lia os TRÊS e falhava sobre produto correto.
     let arm = braced_block(
         &function_body(&sculpt_src(), "sculpt3d_pointer_move"),
-        "Drag::Sculpt =>",
+        "Grip::Stamp =>",
     );
     assert!(
         arm.contains("ph2d_sculpt3d::walk(") && arm.contains("min_spacing("),
@@ -443,31 +468,98 @@ fn the_grab_holds_its_footprint_instead_of_re_picking() {
         "a pegada tem de ser LIDA do estado, não re-picada"
     );
     assert!(
-        grab.contains("screen_delta_to_world("),
+        grab.contains("finger_world("),
         "o gesto é o delta de TELA convertido pela câmera, senão o barro escapa do cursor ao aproximar"
     );
     assert!(
         grab.contains("Dab::pulling("),
         "e ele chega ao dab pelo construtor que PEDE o gesto"
     );
-
-    // O `raycast` só pode acontecer no ramo que PRENDE (o primeiro toque).
-    let first = braced_block(&grab, "else {");
     assert!(
-        first.contains("raycast("),
-        "o primeiro toque escolhe a pegada"
-    );
-    assert!(
-        !grab.replace(&first, "").contains("raycast("),
-        "e nenhum evento seguinte re-pica: isso arrastaria a pegada (Snake Hook)"
+        !grab.contains("raycast("),
+        "nenhum evento de arrasto re-pica: isso arrastaria a pegada, que é o outro verbo"
     );
 
-    // E o arrasto de quem puxa NÃO passa pelo walk do espaçamento: um Grab não
-    // carimba, então percorrer o caminho daria N dabs idênticos no mesmo lugar.
+    // E o arrasto de quem SEGURA não passa pelo walk do espaçamento: um Grab
+    // não carimba, então percorrer o caminho daria N dabs idênticos no mesmo
+    // lugar.
     let mv = function_body(&src, "sculpt3d_pointer_move");
-    let pulling = braced_block(&mv, "Drag::Sculpt if scene.brush.verb.pulls()");
+    let holding = match_arm(&mv, "Grip::Hold =>");
     assert!(
-        pulling.contains("grab_at(") && !pulling.contains("walk("),
-        "quem puxa arrasta a pegada, não percorre um caminho"
+        holding.contains("grab_at(") && !holding.contains("walk("),
+        "quem segura arrasta a pegada, não percorre um caminho"
+    );
+}
+
+/// ⚠️ **O Snake Hook PERCORRE, e é o walk que o torna um fato do caminho.**
+///
+/// A lei dele é uma soma sobre a lista de dabs (`Grip::Hook`), então sem o passo
+/// fixo na geometria arrastar devagar esticaria mais que arrastar rápido pelo
+/// mesmo traçado — a doença que este módulo inteiro existe para não ter. Nenhum
+/// gate de unidade vê isto: quem decide percorrer é a shell.
+#[test]
+fn the_hook_walks_the_path_and_hands_each_step_its_own_increment() {
+    let src = sculpt_src();
+    let mv = function_body(&src, "sculpt3d_pointer_move");
+    let hooking = match_arm(&mv, "Grip::Hook =>");
+    assert!(
+        hooking.contains("walk(") && hooking.contains("hook_step("),
+        "quem arrasta percorre o caminho, um passo de cada vez"
+    );
+    // ⚠️ **O predecessor de cada passo é o passo anterior**, não a âncora do
+    // traço: é a diferença entre entregar N incrementos e entregar N vezes o
+    // total, e a segunda forma esticaria N² vezes mais.
+    assert!(
+        hooking.contains("prev = step"),
+        "cada passo tem de virar o predecessor do seguinte"
+    );
+    // O CARRY vale igual aqui: a âncora só anda quando o walk de fato carimbou.
+    let deposited = braced_block(&hooking, "if let Some(steps)");
+    assert!(
+        deposited.contains("stroke_anchor = [x, y]"),
+        "a âncora avança dentro do ramo que carimbou"
+    );
+    assert!(
+        !hooking.replace(&deposited, "").contains("stroke_anchor ="),
+        "e não fora dele: é ali que o resíduo se acumula"
+    );
+
+    // ⚠️ **Os dois centros saem da MESMA porta que o Grab usa.** Duas
+    // aritméticas para *onde o dedo está em mundo* divergiriam no dia em que
+    // uma ganhasse a perspectiva e a outra não.
+    let step = function_body(&src, "hook_step");
+    assert_eq!(
+        step.matches("finger_world(").count(),
+        2,
+        "o centro anterior e o novo saem os dois da porta única"
+    );
+    assert!(
+        step.contains("Dab::hooking("),
+        "e chegam ao dab pelo construtor que declara ser um INCREMENTO"
+    );
+    assert!(
+        !step.contains("raycast("),
+        "o Hook arrasta uma ESFERA pelo espaço: sair do modelo não interrompe um espinho"
+    );
+}
+
+/// ⚠️ **O `match` do arrasto é EXAUSTIVO sobre o [`Grip`]**, e não uma cascata de
+/// predicados. Um quarto grip não pode cair no `else` do último `if` e nascer se
+/// comportando como um carimbo — ele tem de deixar de compilar até alguém dizer
+/// o que significa aqui.
+#[test]
+fn the_drag_asks_the_grip_and_answers_every_one_of_them() {
+    let src = sculpt_src();
+    let mv = function_body(&src, "sculpt3d_pointer_move");
+    let sculpting = braced_block(&mv, "Drag::Sculpt => match scene.brush.verb.grip()");
+    for arm in ["Grip::Hold", "Grip::Hook", "Grip::Stamp"] {
+        assert!(
+            sculpting.contains(arm),
+            "o arrasto tem de responder a {arm} explicitamente"
+        );
+    }
+    assert!(
+        !sculpting.contains(" _ =>"),
+        "um braço curinga faria o quarto grip nascer se comportando como carimbo, em silêncio"
     );
 }

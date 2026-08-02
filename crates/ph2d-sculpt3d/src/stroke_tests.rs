@@ -519,6 +519,11 @@ mod verb_move;
 #[path = "verb_border_tests.rs"]
 mod verb_border;
 
+/// O Snake Hook, que é a OUTRA LEI e só um caminho arrastado revela — ver o
+/// cabeçalho dele.
+#[path = "verb_hook_tests.rs"]
+mod verb_hook;
+
 /// ⚠️ **RED-FIRST da W4.2, e o defeito é de COSTURA e não de kernel.** Um traço
 /// de máscara escreve um canal por vértice e **não move geometria**, então ele
 /// esquece a região refrescada de propósito (não há normal nova a subir). Quem

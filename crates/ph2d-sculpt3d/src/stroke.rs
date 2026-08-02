@@ -37,7 +37,7 @@
 //! capturado é escrito. É isso que deixa o Smooth ler a vizinhança sem capturar
 //! o anel inteiro, e é por isso que `base_pos_of` cai na malha viva sem mentir.
 
-use crate::brush::{Brush, Symmetry, Verb};
+use crate::brush::{Brush, Grip, Symmetry, Verb};
 use ph2d_mesh::{DEFAULT_MASK, Mesh, QueryScratch, RegionScratch};
 
 /// Um toque de pincel: **onde a mão estava e com que força apertou**. O que a
@@ -64,15 +64,26 @@ pub struct Dab {
     /// chegava em 2 de 7 rotas, e nas outras 5 a feature simplesmente não
     /// acontecia — em silêncio, com o painel dizendo que sim.
     pub eye: [f32; 3],
-    /// **O gesto**: quanto o dedo puxou desde o pen-down, em MUNDO.
+    /// **O gesto**: o vetor de MUNDO que este dab tem para dar.
     ///
-    /// ⚠️ **É o deslocamento TOTAL, não o incremento do evento** — e essa é a
-    /// escolha que mantém a lei do traço de pé. O alvo do Grab é
-    /// `base + pull·falloff`, função do `pre` congelado: puxar de volta devolve
-    /// o barro ao lugar, re-carimbar a mesma lista não intensifica nada, e o
-    /// undo continua sendo o `base`. Com incrementos, cada um deles seria uma
-    /// soma sobre o resultado do anterior — o produto sobre a lista de dabs que
-    /// este módulo inteiro existe para não ter.
+    /// ⚠️ **A leitura é do [`crate::Grip`], e há duas** — o construtor nomeia
+    /// qual, e é ele o guarda:
+    ///
+    /// - [`Dab::pulling`] ([`Grip::Hold`]): o deslocamento **TOTAL** desde o
+    ///   pen-down. É o que mantém a lei do traço de pé — o alvo é `base + pull`,
+    ///   função do `pre` congelado, então puxar de volta devolve o barro ao
+    ///   lugar e re-carimbar não intensifica nada. Com incrementos aqui, cada um
+    ///   seria uma soma sobre o resultado do anterior: o produto sobre a lista
+    ///   de dabs que este módulo existe para não ter.
+    /// - [`Dab::hooking`] ([`Grip::Hook`]): o **INCREMENTO** desde o dab
+    ///   anterior. Ali a soma sobre a lista **é** a feature (esticar é
+    ///   transportar matéria), e o que a torna um fato do CAMINHO em vez da taxa
+    ///   de polling é o walk do espaçamento, que fixa o passo na geometria.
+    ///
+    /// Um campo com duas leituras é um risco declarado, e a alternativa é pior:
+    /// dois campos deixariam **um deles morto em doze verbos**, e o outro morto
+    /// no décimo terceiro. Nenhum tipo distingue um total de um incremento —
+    /// quem distingue é o nome de quem constrói.
     ///
     /// Só os verbos que respondem `true` a [`Brush::verb`]`.pulls()` o leem;
     /// para os outros ele é zero e inerte.
@@ -104,6 +115,19 @@ impl Dab {
             pull,
             ..Self::at(center, radius, eye)
         }
+    }
+
+    /// Um dab que **ARRASTA** — o gesto do Snake Hook, e `step` é o
+    /// **INCREMENTO** desde o dab anterior, não o total.
+    ///
+    /// ⚠️ Irmão de [`Dab::pulling`] e não um flag nele: a diferença entre um
+    /// total e um incremento não é visível no tipo, e um `Dab { pull, .. }`
+    /// construído à mão pode carregar qualquer um dos dois sem o compilador
+    /// piscar. O nome no sítio de construção é a única barreira que existe, e
+    /// por isso ela tem de estar lá.
+    #[must_use]
+    pub fn hooking(center: [f32; 3], radius: f32, eye: [f32; 3], step: [f32; 3]) -> Self {
+        Self::pulling(center, radius, eye, step)
     }
 }
 
@@ -292,16 +316,70 @@ impl SculptStroke {
         // *parece* funcionar em toda região parcial. Ela gateia quem MOVE
         // GEOMETRIA; quem edita o próprio canal a lê como dado, não como freio.
         let gated_by_mask = !brush.verb.paints_mask();
+        // ⚠️ **A outra LEI, decidida uma vez por dab** — ver [`Grip::Hook`]. Ela
+        // muda exatamente três coisas neste laço (de onde sai a distância · o
+        // que vai no `accum` · qual alvo é computado), e nada mais: a captura, a
+        // máscara, a simetria, o refit e o undo são os mesmos.
+        let relay = brush.verb.grip() == Grip::Hook;
+        // ⚠️ **Quem SEGURA trabalha sobre o que já TOCOU, não sobre a consulta
+        // deste dab — e sem isto o Grab PERDE barro.** A consulta sai das
+        // posições vivas, então um vértice arrastado para além do raio SAI da
+        // esfera e deixa de ser escrito: ele congela onde estava. Medido em
+        // `tests/measure_pull_profile.rs`, um grab de raio 0,4 puxado a 0,6 e
+        // trazido de volta deixava **0,52994** de resíduo — e *"puxar de volta
+        // devolve o barro ao lugar"* é a propriedade que o `Grip::Hold`
+        // PROMETE. O original congela o conjunto no pen-down
+        // (`Move.js:initMoveData`, chamado do `startSculpt`) e nunca o
+        // reconsulta.
+        //
+        // ⚠️ **O gate que existia não podia ver**: ele mede o vértice do MIOLO,
+        // que só escapa quando o puxão passa do raio. Quem vê é o gesto de ida e
+        // volta com puxão maior que a pegada.
+        //
+        // `touched` **é** esse conjunto congelado: depois do primeiro dab ele
+        // contém a pegada inteira, e ninguém a remove. Ele pode CRESCER (um
+        // vizinho que escorregou para dentro da esfera é capturado), e o filtro
+        // `w > 0` — medido contra a posição CONGELADA — devolve exatamente o
+        // conjunto do pen-down. É também ele que separa as cópias da simetria,
+        // que compartilham este vetor: um vértice da cópia oposta está fora do
+        // raio deste centro, logo pesa zero.
+        let held = brush.verb.grip() == Grip::Hold;
+        let work = if held {
+            self.touched.len()
+        } else {
+            self.footprint.len()
+        };
 
-        for i in 0..self.footprint.len() {
-            let v = self.footprint[i];
+        for i in 0..work {
+            let v = if held {
+                self.touched[i]
+            } else {
+                self.footprint[i]
+            };
             let vi = v as usize;
             let s = self.slot[vi] as usize;
             let base = self.base_pos[s];
+            // ⚠️ **De ONDE se mede a distância, e as duas respostas são certas
+            // para leis diferentes.** No envelope o peso tem de ser função do
+            // estado CONGELADO: se ele fosse recomputado sobre a superfície que
+            // o próprio traço moveu, dois dabs no mesmo lugar dariam pesos
+            // diferentes e a idempotência — a propriedade que o envelope existe
+            // para dar — cairia junto.
+            //
+            // No revezamento é o oposto, e é o que faz um espinho ser um
+            // espinho: a pegada ANDA, e um vértice que já foi arrastado para
+            // perto do novo centro **tem** de continuar sendo arrastado. Medido
+            // pelo `base`, esse mesmo vértice ficaria com peso ~0 (o `pre` dele
+            // está lá atrás), a ponta pararia de crescer e o gesto viraria um
+            // Grab com centro móvel. `Drag.js:99` lê `vAr[ind]`, a posição viva.
+            //
+            // A pegada (`verts_in_sphere`) já sai das posições vivas nos dois
+            // casos, então no revezamento pegada e peso concordam.
+            let from = if relay { mesh.positions()[vi] } else { base };
             let d = [
-                base[0] - dab.center[0],
-                base[1] - dab.center[1],
-                base[2] - dab.center[2],
+                from[0] - dab.center[0],
+                from[1] - dab.center[1],
+                from[2] - dab.center[2],
             ];
             let dist = (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt();
             // A máscara é lida do estado CONGELADO: um traço de Mask não pode
@@ -334,11 +412,28 @@ impl SculptStroke {
             // primeiro dab e nunca mais sobe. Sem esta exceção o barro andaria
             // UM evento e pararia, com o cursor seguindo em frente — e o alvo
             // que mudou não é o peso, é o `pull`. Ver `Verb::pulls`.
+            // ⚠️ **Peso zero não é um dab: ele não tem nada a dar.** Para os
+            // onze verbos de carimbo isto já saía do early-out abaixo (`0 <= 0`)
+            // e é redundante; para os dois que PUXAM ele é a linha que os mantém
+            // corretos, porque eles **dispensam** aquele early-out. Sem ela, um
+            // vértice de peso zero levaria `accum ← 0` e `target ← base`, e o
+            // dab seguinte de um Grab **desfaria** o que a cópia espelhada
+            // acabou de fazer — as duas cópias compartilham o `touched`.
+            if w <= 0.0 {
+                continue;
+            }
             if w <= self.accum[s] && !brush.verb.pulls() {
                 continue;
             }
-            self.accum[s] = w;
-            self.target[s] = self.compute_target(mesh, brush, dab, &plane, reach, shape, v, s);
+            // ⚠️ **O revezamento carimba `accum = 1` e põe o resultado INTEIRO
+            // no alvo**, e é isso que o faz caber no MESMO aplicador
+            // (`lerp(base, target, 1) == target`). Sem essa identidade haveria
+            // um segundo caminho de escrita de posição — e duas rotas para
+            // *"onde este vértice vai parar"* divergem no dia em que uma delas
+            // ganhar um caso especial. O `base` continua guardado e intocado,
+            // que é o que mantém o undo trivial nas duas leis.
+            self.accum[s] = if relay { 1.0 } else { w };
+            self.target[s] = self.compute_target(mesh, brush, dab, &plane, reach, shape, w, v, s);
             self.moved.push(v);
         }
 

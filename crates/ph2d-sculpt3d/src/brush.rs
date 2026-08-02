@@ -123,13 +123,63 @@ pub enum Verb {
     Crease,
     /// Não move geometria: escreve `mask[v]`, que **todos** os outros respeitam.
     Mask,
-    /// **Pega o barro e o traz junto** — ver [`Verb::pulls`].
+    /// **Pega o barro e o traz junto** — ver [`Grip::Hold`].
     Move,
+    /// **Estica o barro num espinho**: a pegada ANDA com o cursor e cada dab
+    /// entrega ao seguinte — ver [`Grip::Hook`].
+    SnakeHook,
+}
+
+/// **Como um verbo consome o GESTO** — a pergunta que separa o Draw do Grab e o
+/// Grab do Snake Hook, feita **uma vez**.
+///
+/// As três perguntas que pareciam independentes são facetas desta: *o pincel
+/// carimba ao longo do caminho ou segura uma pegada?* · *o verbo lê
+/// [`crate::Dab::pull`]?* · *o alvo é função do `pre` congelado ou um
+/// revezamento sobre o que já está lá?* Respondê-las em três predicados soltos
+/// seria a falha de três portas — a `line/Painter` a pagou em 2D quando uma
+/// condição **enumerava seus leitores** e o terceiro nasceu morto.
+///
+/// Um `match` exaustivo sobre isto é o que faz um verbo NOVO ser impossível de
+/// esquecer: quem acrescentar um quarto grip não compila até dizer, em cada
+/// consumidor, o que ele significa.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Grip {
+    /// **CARIMBA.** O caminho é percorrido a passos de
+    /// [`crate::min_spacing`], cada dab é um toque, e o alvo é função do `pre`
+    /// congelado. Onze verbos, e é a lei do envelope na forma pura.
+    Stamp,
+    /// **SEGURA.** A pegada é presa no pen-down e o [`crate::Dab::pull`] é o
+    /// deslocamento **TOTAL** desde então. O alvo continua sendo função do
+    /// `pre` (`base + pull`, atenuado pelo `accum`), então puxar de volta
+    /// devolve o barro ao lugar.
+    ///
+    /// ⚠️ **Não percorre o caminho**: o espaçamento existe para não deixar vão
+    /// entre dois carimbos, e isto não carimba — rodar o walk daria N dabs
+    /// idênticos no mesmo lugar.
+    Hold,
+    /// **ARRASTA.** A pegada anda com o cursor, o [`crate::Dab::pull`] é o
+    /// **INCREMENTO** entre dois dabs, e cada um entrega ao seguinte.
+    ///
+    /// ⚠️ **É a outra lei, e a diferença é visível na primeira pincelada:** o
+    /// alvo é `posição VIVA + incremento·peso`, não `base + algo`. Puxar para
+    /// fora e voltar deixa um espinho (a matéria foi transportada), onde o
+    /// [`Grip::Hold`] devolveria o barro. Isso não é um descuido — **é o que
+    /// esticar significa**, e nenhum app entrega um Snake Hook idempotente.
+    ///
+    /// ⚠️ **O que a lei do traço perde e o que ela mantém, com nome:** a
+    /// independência de amostragem vira uma **INTEGRAL DE LINHA** (`Σ dir·peso`
+    /// converge com o espaçamento, e o walk fixa o espaçamento no caminho, não
+    /// no polling) · a idempotência sob re-stamp **cai**, e nada a consome hoje
+    /// (nenhuma rota deste módulo re-carimba um traço) · **o undo continua
+    /// trivial**, porque `base` segue sendo o `pre` congelado de todo vértice
+    /// que a pegada tocou em qualquer momento do gesto.
+    Hook,
 }
 
 impl Verb {
     /// Todos, na ordem em que a UI os lista.
-    pub const ALL: [Self; 13] = [
+    pub const ALL: [Self; 14] = [
         Self::Draw,
         Self::Inflate,
         Self::Smooth,
@@ -143,6 +193,7 @@ impl Verb {
         Self::Crease,
         Self::Mask,
         Self::Move,
+        Self::SnakeHook,
     ];
 
     /// Este verbo escreve na MÁSCARA em vez da posição?
@@ -231,31 +282,46 @@ impl Verb {
             Self::Crease => "Crease",
             Self::Mask => "Mask",
             Self::Move => "Move / Grab",
+            Self::SnakeHook => "Snake Hook",
         }
     }
 
-    /// **Este verbo PUXA?** — a exceção declarada à lei do envelope.
+    /// **Como este verbo consome o gesto** — ver [`Grip`]. A porta única de que
+    /// [`Self::pulls`] é uma leitura, e sobre a qual o kernel e o shell fazem
+    /// perguntas diferentes.
+    #[must_use]
+    pub fn grip(self) -> Grip {
+        match self {
+            Self::Move => Grip::Hold,
+            Self::SnakeHook => Grip::Hook,
+            _ => Grip::Stamp,
+        }
+    }
+
+    /// **Este verbo PUXA?** — a exceção declarada ao *early-out* do envelope, e
+    /// uma leitura de [`Self::grip`] em vez de um segundo predicado.
     ///
     /// O envelope (`accum ← max`) existe porque *passar devagar não pode
     /// depositar mais*, e ele traz um early-out: um dab cujo peso não supera o
     /// que já está lá **não recomputa o alvo**, para re-carimbar a mesma lista
     /// não mandar a pegada inteira ao refit e ao upload a cada frame.
     ///
-    /// ⚠️ **Para quem puxa, re-carimbar É o gesto.** O Grab prende uma pegada no
-    /// pen-down e a arrasta: o peso de cada vértice é o do primeiro dab e nunca
-    /// mais sobe, então o early-out o congelaria — o barro andaria um evento e
-    /// pararia, com o cursor seguindo em frente. Aqui o alvo é reescrito a cada
-    /// dab, e é o `pull` que mudou.
+    /// ⚠️ **Os dois grips que puxam o quebram por motivos DIFERENTES, e é por
+    /// isso que a exceção é uma só.** No [`Grip::Hold`] a pegada é presa no
+    /// pen-down, então o peso de cada vértice é o do primeiro dab e **nunca mais
+    /// sobe** — o early-out congelaria o alvo e o barro andaria um evento,
+    /// parando com o cursor seguindo em frente. No [`Grip::Hook`] o `accum` vale
+    /// **1,0 por construção** (a lei é um revezamento, não um envelope), então
+    /// `w <= accum` é verdade **sempre** e o segundo dab de todo gesto seria
+    /// engolido. Nos dois o que mudou não é o peso — é o `pull`.
     ///
-    /// ⚠️ **E isto NÃO revoga a lei, só o early-out.** O alvo continua sendo
-    /// função do `pre` congelado (`base + pull·falloff`), então o traço é
-    /// idempotente sob re-stamp, puxar de volta devolve o barro ao lugar, e
-    /// dois TRAÇOS compõem — cada um congela um `pre` novo. É por isso que o
-    /// Grab não precisa da *composição de mapas* que o `04.1` prevê para o
-    /// Snake Hook: aquele move a PEGADA, este a prende.
+    /// ⚠️ **Só o [`Grip::Hold`] mantém a lei inteira.** O alvo dele segue função
+    /// do `pre` congelado, logo o traço é idempotente sob re-stamp e puxar de
+    /// volta devolve o barro ao lugar. O [`Grip::Hook`] troca de lei, e o que
+    /// ele mantém e o que ele perde está escrito lá.
     #[must_use]
     pub fn pulls(self) -> bool {
-        matches!(self, Self::Move)
+        !matches!(self.grip(), Grip::Stamp)
     }
 
     /// A força com que um pincel deste verbo **nasce**.

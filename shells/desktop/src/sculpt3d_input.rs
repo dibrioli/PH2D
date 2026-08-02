@@ -6,7 +6,9 @@
 //! chama, e todas recusam no primeiro `if` sem cena armada — a promessa de
 //! removibilidade do `docs/3D/02.3` no nível do frame.
 
-use super::{Drag, LIGHT_STEP_DEG, MaskOp, ORBIT_RAD_PER_PX, RADIUS_STEP, Sculpt3dScene, Verb};
+use super::{
+    Drag, Grip, LIGHT_STEP_DEG, MaskOp, ORBIT_RAD_PER_PX, RADIUS_STEP, Sculpt3dScene, Verb,
+};
 use crate::app_state::App;
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -36,6 +38,8 @@ impl App {
              [sculpt3d] o pincel mede PIXELS DE TELA: aproxime com a roda e ele continua do mesmo tamanho\n\
              [sculpt3d] a MASCARA (M) protege o que ela pinta e se VE (azul frio): C limpa · I inverte · B borra · N afia\n\
              [sculpt3d] G = PEGAR o barro (grab): segure e arraste, e ele vem com o dedo\n\
+             [sculpt3d] H = ESTICAR (snake hook): a pegada ANDA com o cursor e sai um espinho\n\
+             [sculpt3d]     o G volta ao lugar quando voce volta; o H deixa a ponta la' -- essa e' a diferenca\n\
              [sculpt3d] A LUZ e o rig do artista (o mesmo que acende a tinta): Q/E giram a lampada, R/F a sobem\n\
              [sculpt3d] o espelho nasce DESLIGADO; PH2D_SCULPT3D_DIAG=1 mede se o pincel cai sob o cursor",
             mesh.vert_count(),
@@ -102,10 +106,12 @@ impl App {
                 scene.grab = None;
                 // ⚠️ **Quem PUXA não carimba no pen-down: ele PEGA.** O primeiro
                 // toque escolhe a pegada e não move nada; o barro vem quando o
-                // dedo anda. Carimbar aqui daria um dab de gesto zero — inócuo,
-                // mas o `grab_at` já é a porta que decide isso.
+                // dedo anda. Vale para os DOIS grips que puxam — o Grab porque
+                // o puxão ainda é zero, o Snake Hook porque o incremento ainda
+                // é zero —, e é por isso que a pergunta é `pulls()` e não o
+                // nome de um verbo.
                 let took = if scene.brush.verb.pulls() {
-                    scene.grab_at(pos.0, pos.1)
+                    scene.take_hold(pos.0, pos.1)
                 } else {
                     scene.sculpt_at(pos.0, pos.1)
                 };
@@ -176,27 +182,50 @@ impl App {
             // usa isso para `break`). Interpolar em MUNDO entre dois acertos
             // seria outro algoritmo: ele carimbaria através do vão onde a
             // superfície não está — exatamente onde o original desiste.
-            // ⚠️ **Quem PUXA não percorre o caminho.** O espaçamento existe para
-            // não deixar buracos entre dois carimbos; um Grab não carimba — ele
-            // segura uma pegada e a arrasta, e o "caminho" dele é o vetor do
-            // pen-down até aqui. Rodar o walk num Grab daria N dabs idênticos
-            // no mesmo lugar.
-            Drag::Sculpt if scene.brush.verb.pulls() => {
-                scene.grab_at(x, y);
-            }
-            Drag::Sculpt => {
-                let spacing = ph2d_sculpt3d::min_spacing(scene.radius_px());
-                if let Some(steps) = ph2d_sculpt3d::walk(scene.stroke_anchor, [x, y], spacing) {
-                    for [sx, sy] in steps {
-                        if !scene.sculpt_at(sx, sy) {
-                            break;
+            // ⚠️ **Um `match` exaustivo sobre o [`Grip`], e não uma cascata de
+            // predicados.** Os três ramos abaixo respondem *o que este verbo faz
+            // com o caminho*, que é exatamente a pergunta que o grip nomeia — um
+            // quarto grip não compila até dizer o que significa aqui, em vez de
+            // cair no `else` do último `if` e nascer se comportando como um
+            // carimbo.
+            Drag::Sculpt => match scene.brush.verb.grip() {
+                // Quem SEGURA não percorre o caminho: o espaçamento existe para
+                // não deixar buracos entre dois carimbos, e um Grab não carimba
+                // — o "caminho" dele é o vetor do pen-down até aqui. Rodar o
+                // walk daria N dabs idênticos no mesmo lugar.
+                Grip::Hold => scene.grab_at(x, y),
+                // ⚠️ **Quem ARRASTA percorre, e é o walk que torna o espinho um
+                // fato do CAMINHO.** A lei do Hook é uma soma sobre a lista de
+                // dabs; sem o passo fixo na geometria, essa soma passaria a
+                // depender da taxa de polling — arrastar devagar esticaria mais
+                // que arrastar rápido pelo mesmo traçado. Com ele, o número de
+                // parcelas é função do comprimento percorrido.
+                Grip::Hook => {
+                    let spacing = ph2d_sculpt3d::min_spacing(scene.radius_px());
+                    if let Some(steps) = ph2d_sculpt3d::walk(scene.stroke_anchor, [x, y], spacing) {
+                        let mut prev = scene.stroke_anchor;
+                        for step in steps {
+                            scene.hook_step(prev, step);
+                            prev = step;
                         }
+                        scene.stroke_anchor = [x, y];
                     }
-                    // Só aqui: se o `walk` recusou, a âncora FICA e o resíduo
-                    // acumula — é o carry, e movê-la fora deste ramo o apaga.
-                    scene.stroke_anchor = [x, y];
                 }
-            }
+                Grip::Stamp => {
+                    let spacing = ph2d_sculpt3d::min_spacing(scene.radius_px());
+                    if let Some(steps) = ph2d_sculpt3d::walk(scene.stroke_anchor, [x, y], spacing) {
+                        for [sx, sy] in steps {
+                            if !scene.sculpt_at(sx, sy) {
+                                break;
+                            }
+                        }
+                        // Só aqui: se o `walk` recusou, a âncora FICA e o
+                        // resíduo acumula — é o carry, e movê-la fora deste ramo
+                        // o apaga.
+                        scene.stroke_anchor = [x, y];
+                    }
+                }
+            },
         }
         true
     }
@@ -241,12 +270,17 @@ impl App {
         // ⚠️ O **Move** fica no `G` (de *grab*) e não num número: os dez números
         // já estão tomados, e `G` é a tecla que Blender e SculptGL usam para o
         // mesmo gesto — um artista a tenta antes de procurar.
-        if code == K::KeyG {
-            scene.brush.verb = Verb::Move;
-            eprintln!("[sculpt3d] verbo: {}", Verb::Move.label());
-            return true;
-        }
-        let verb = match code {
+        // ⚠️ O **Move** fica no `G` (de *grab*) e o **Snake Hook** no `H` (de
+        // *hook*): os dez números já estão tomados, e o `G` é a tecla que
+        // Blender e SculptGL usam para o mesmo gesto — um artista a tenta antes
+        // de procurar. Os dois saem pela MESMA porta que os numerados usam
+        // (`arm_verb`), senão só eles perderiam o default de força.
+        let held = match code {
+            K::KeyG => Some(Verb::Move),
+            K::KeyH => Some(Verb::SnakeHook),
+            _ => None,
+        };
+        let verb = held.or(match code {
             K::Digit1 => Some(BY_NUMBER[0]),
             K::Digit2 => Some(BY_NUMBER[1]),
             K::Digit3 => Some(BY_NUMBER[2]),
@@ -259,7 +293,7 @@ impl App {
             K::Digit0 => Some(BY_NUMBER[9]),
             K::KeyM => Some(Verb::Mask),
             _ => None,
-        };
+        });
         // As QUATRO operações de máscara. ⚠️ Elas não são verbos: um verbo pinta
         // *onde a mão passou* e estas respondem a *o que já está pintado*, então
         // elas não podem entrar na lista de números (escolher uma não é pegar

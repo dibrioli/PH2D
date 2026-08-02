@@ -138,6 +138,15 @@ impl SculptStroke {
         plane: &PlaneFit,
         reach: f32,
         shape: f32,
+        // O peso COMPLETO deste dab (`falloff × intensidade × máscara`) — o
+        // mesmo `w` que o aplicador usaria como `accum`.
+        //
+        // ⚠️ **Ele é PASSADO e não recomputado**, e o motivo está no comentário
+        // do `w` em `stroke.rs`: derivá-lo aqui (`shape × strength × pressure`)
+        // re-associa o produto de três fatores, e **30,4% dos triplos divergem
+        // até um ulp**. Só o `Verb::SnakeHook` o lê — os outros treze compõem o
+        // alvo sem peso, e é o `accum` que os atenua.
+        w: f32,
         v: u32,
         s: usize,
     ) -> [f32; 3] {
@@ -214,11 +223,35 @@ impl SculptStroke {
             // O alvo de posição de um verbo de máscara é o próprio lugar: ele
             // não move geometria, e `apply_mask` é quem escreve o canal dele.
             Verb::Mask => base,
-            // **O GRAB.** O alvo é o `pre` deslocado pelo gesto, atenuado pelo
-            // falloff: o miolo acompanha o dedo e a borda fica, que é o que
-            // *"pego o barro e ele vem comigo"* significa. `shape` já traz a
-            // máscara, então uma região protegida não é arrastada.
-            Verb::Move => add_vec(base, dab.pull, shape),
+            // **O GRAB.** O alvo é o `pre` deslocado pelo gesto INTEIRO: o
+            // miolo acompanha o dedo e a borda fica, que é o que *"pego o barro
+            // e ele vem comigo"* significa.
+            //
+            // ⚠️ **O peso NÃO entra aqui, e ele entrava** (`add_vec(base, pull,
+            // shape)`, até 2026-08-01). O aplicador multiplica `(alvo − base)`
+            // pelo `accum`, então um alvo já pesado aplica o falloff **duas
+            // vezes** — medido em `tests/measure_pull_profile.rs`, a meio raio a
+            // referência move `0,22500` e nós movíamos `0,12226`, que é
+            // `pull·fall²` ao milésimo. O pincel saía pontudo: a borda da pegada
+            // mal andava e o gesto lia como *"o Grab pega menos barro do que o
+            // círculo promete"*. O `Move.js:120` aplica `fallOff` uma vez.
+            //
+            // ⚠️ **O gate do miolo não podia ver isto**: em `fall == 1` os dois
+            // são o mesmo número, e é o miolo que ele mede. Quem vê é o PERFIL.
+            // A máscara continua entrando uma vez, pelo `accum`.
+            Verb::Move => add_vec(base, dab.pull, 1.0),
+            // **O SNAKE HOOK** — o único alvo desta tabela que **não** parte do
+            // `base`: ele parte de onde o vértice ESTÁ e soma o incremento deste
+            // dab. É o revezamento ([`Grip::Hook`]), e é por isso que ele
+            // precisa do `w` — o `accum` dele vale 1 e não atenua nada.
+            //
+            // ⚠️ **A leitura da posição viva é a MESMA que o `dab_core` usou
+            // para medir a distância** (o `from` de lá): dois `mesh.positions()`
+            // no mesmo dab devolvem o mesmo número, então não há duas verdades
+            // — há uma verdade lida em dois lugares do mesmo instante. Se um dia
+            // o aplicador passar a escrever DENTRO do laço, esta é a linha que
+            // deixa de valer.
+            Verb::SnakeHook => add_vec(mesh.positions()[v as usize], dab.pull, w),
         }
     }
 

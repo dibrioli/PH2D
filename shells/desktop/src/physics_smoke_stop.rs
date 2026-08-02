@@ -130,7 +130,8 @@ impl crate::App {
         eprintln!(
             "[physics-smoke 75] O LIMITADOR -- a carga para ANTES da roldana.\n  \
                Dois guinchos IDENTICOS: o VERMELHO (esquerda) sem limitador, o VERDE\n  \
-               (direita) com um de {STOP_M} m. Aperte B para ver os colliders e a corda.\n\n  \
+               (direita) com um de {STOP_M} m. A corda, as roldanas e as marcas ja'\n  \
+               estao na tela (o contorno nasce LIGADO; B o desliga).\n\n  \
                1. De PLAY e olhe as duas cargas subirem.\n     \
                   -> A VERMELHA entra na roldana. Passado esse ponto a rota fica\n        \
                      DEGENERADA e a corda DEIXA DE SEGURAR: a carga cai de volta, sem\n        \

@@ -106,7 +106,7 @@ Todos com `--release`.
 
 | smoke | o que julgar |
 |---|---|
-| `PH2D_IMPASTO_SMOKE=2 PH2D_PAINT_PERF=1` | **o S3.** Pinte, desfaça, refaça: a tinta **e o RELEVO** voltam iguais. O traço tem de ficar liso, e o pen-up (soltar o pincel) não pode engasgar. |
+| `PH2D_IMPASTO_SMOKE=2 PH2D_PAINT_PERF=1` | **o S3 — ✅ APROVADO pelo Enio em 2026-08-01** (*"smoke OK em Undo/Redo do impasto"*). A tinta e o RELEVO voltam iguais. ⚠️ O log trouxe um outlier de **71,2 ms** que foi **atribuído por medição e NÃO é desta wave** — ver §5 e o [doc 28 §5.62](Painter/28_otimizacoes_o_que_funcionou.md). |
 | `PH2D_WETPAINT_SMOKE=1 PH2D_FLUID_PROFILE=1` | a água, canvas **4096**, pincel grande, faixas **SOBREPOSTAS**. No log: `busy + away + sleep ≈ 100%`, `TAXA DA AGUA` perto de 40 Hz (nunca acima) com `sleep > 0`, e a linha `poca:`. |
 | `PH2D_MASK_SMOKE=1` | a proteção, se o integrador quiser o controle da wave anterior. |
 
@@ -116,6 +116,14 @@ dígitos = o log não fala sobre o código*).
 
 ## §5 — Aberto (nomeado, com o número; não é dívida escondida)
 
+- ⚠️ **O QUADRO DEPOIS DE UM CTRL+Z é plane-bound: 97,7 ms a 2048² e 381,3 a 4096² no produtor de CPU**
+  (3,90× para 4× de área), contra **0,000 ms** de um tick ocioso — o controle que o torna um achado. É
+  ele que tem a forma do outlier de 71,2 ms do smoke (`preview` inteiro, `branch=idle`). **PRÉ-EXISTENTE
+  e exonerado por ablação**: o braço sem elisão paga os mesmos 381 ms, em duas corridas de sinais
+  opostos, com o controle de donos (2 → 1) provando que a ablação era real. A cura nomeada é publicar **a
+  janela que o passo reescreveu** — e o S3 é justamente a wave que a tornou explícita —, mas isso muda o
+  que a tela repinta ⇒ **wave própria, com smoke próprio**. Números e mecanismo:
+  [doc 28 §5.62](Painter/28_otimizacoes_o_que_funcionou.md).
 - **O pen-down segue sendo uma cópia de canvas** (§5.16 o pinou; 5,65 ms a 4096²). Não era o alvo desta
   wave e não se moveu. Quem o fecha é a captura do "antes" por **REGIÃO** (o *tile-based undo*), e ela
   quer a **porta única de escrita de canvas**.

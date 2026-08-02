@@ -5911,3 +5911,66 @@ congelado 4/4, fingerprint do ADR-0134 **3/3**, `PROJECT_SCHEMA` **intocado**.
 - O `relief_indescribable` **nunca disparou** na suíte depois das duas capturas. Se ele aparecer num
   caminho real, é o desenho da elisão que está errado, não o guard — e o readout diz qual das quatro
   causas foi.
+
+### §5.62 — O SMOKE APROVOU O S3 E TROUXE UM OUTLIER DE 71 ms: a elisão foi EXONERADA por medição, e o que sobrou é o QUADRO DEPOIS DO CTRL+Z, plano na tela
+
+O smoke do S3 (2026-08-01) voltou **aprovado no comportamento** — *"smoke OK em Undo/Redo do impasto"*,
+a tinta e o relevo voltam iguais — com um `[paint-perf]` trazendo:
+
+```
+dispatch max=71.2 [preview 71.2 panel 0.0 overlay 0.0 upload 0.0]
+WORST: GPU 4096x4096 branch=idle impasto=true trivial=true
+90f GPU 54/CPU 36 | frame p50=16.6 | dispatch p50=0.0
+```
+
+**100% em `preview`, num quadro `branch=idle`** — a assinatura de um re-fold do canvas inteiro (a mesma
+da §4.8.2), e o gesto que o smoke acabara de exercitar é justamente o que o força: um **Ctrl+Z**
+reinstala os três planos de relevo, e o passe de luz tem de reler a pintura toda.
+
+#### A pergunta não era *"quanto custa"*, era *"a elisão moveu isso?"*
+
+Ablação pela **ENTRADA** (`elide_relief` / `elide_cursor`), **costas-com-costas na MESMA corrida** —
+sonda nova `measure_undo_cost::what_a_ctrl_z_costs_with_and_without_the_elision`. Duas metades
+cronometradas **separadas**, porque o número do log vive no QUADRO e não na chamada de undo.
+
+| tela | elide | undo | +frame | redo | +frame | donos |
+|---|---|---|---|---|---|---|
+| 2048² | nenhum | 4,98 | 97,67 | 7,80 | 96,96 | 2 |
+| 2048² | os DOIS | 3,88 | **95,91** | 3,93 | 97,53 | **1** |
+| 4096² | nenhum | 30,23 | 381,27 | 29,36 | 381,01 | 2 |
+| 4096² | os DOIS | 31,34 | **393,68** | 31,45 | 391,44 | **1** |
+
+⚠️ **A leitura honesta é que não há sinal, e ela vem de DUAS corridas com SINAIS OPOSTOS:** na primeira
+o braço "os DOIS" saiu **mais rápido** (385,35 contra 387,12), na segunda **mais lento** (393,68 contra
+381,27). A dispersão entre corridas (~±3%) é maior que qualquer diferença entre os braços ⇒ **a elisão
+não toca o caminho do Ctrl+Z**. E o controle disparou nas duas (donos **2 → 1**), então a ablação era
+real: não é um A/B que mediu o mesmo caminho duas vezes.
+
+#### O que a sonda achou no lugar, e o controle que o torna um achado
+
+O irmão `measure_the_idle_tick` mede o MESMO `paint_tick` + dreno com nada sujo: **Impasto 4096² =
+0,000 ms**. Contra isso:
+
+| | tick ocioso | quadro depois de um Ctrl+Z |
+|---|---|---|
+| 2048² | 0,000 | **97,7** |
+| 4096² | 0,000 | **381,3** |
+
+**3,90× para 4× de área** ⇒ **plane-bound**: a forma exata de uma varredura de canvas inteiro, e não do
+trabalho que o gesto de fato mudou. E ele é **13× a chamada de undo** (29 ms), que é onde eu teria
+olhado se tivesse somado as duas metades — daí medi-las separadas.
+
+⚠️ **Os 381 ms (CPU) e os 71,2 ms (GPU do log) são o MESMO evento em produtores diferentes, não o mesmo
+número.** A sonda roda no compositor de CPU (um teste de unidade não tem device); o `WORST` do smoke diz
+`GPU`. Afirmar que um é o outro seria vender o que não foi medido — o que os dois compartilham é a
+FORMA (`preview` inteiro, `branch=idle`, plano na tela).
+
+#### É PRÉ-EXISTENTE, e a próxima alavanca ficou disponível por acidente feliz
+
+O braço "nenhum" — o mundo **antes** do degrau 4 — paga os mesmos 381 ms. Nada desta wave o criou.
+
+⚠️ **E o mecanismo já tem cura nomeada:** um undo marca tudo sujo porque, em tese, ele *pode* mudar
+qualquer coisa — mas **o delta SABE a própria janela**, e o S3 foi precisamente a wave que a tornou
+explícita (`PlaneDeltas` a guarda; o degrau 2 a fez a fonte do `before`). Publicar **a janela que o
+passo reescreveu** em vez do canvas inteiro é a continuação natural, e não é contrabando dentro de uma
+wave fechada: é wave própria, com smoke próprio, porque muda o que a tela repinta.

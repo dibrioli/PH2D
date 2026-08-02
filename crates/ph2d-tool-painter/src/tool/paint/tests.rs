@@ -18,6 +18,8 @@ mod measure_journal_cost; // captura por REGIÃO x fork do PLANO — o número q
 mod measure_pendown_cost; // o que COMEÇAR um traço custa (doc 28 §4.5); irmão do impasto_cost
 #[path = "measure_stroke_owners.rs"]
 mod measure_stroke_owners; // QUEM segura os planos quando um traço começa (doc 28 §7, a porta única)
+#[path = "measure_undo_cost.rs"]
+mod measure_undo_cost; // o que VOLTAR na história custa, e em qual metade (doc 28 §5.62)
 #[path = "measure_watercolor_cost.rs"]
 mod measure_watercolor_cost; // de que é feito um MOVE de aquarela (doc 28 §7); irmão do impasto_cost
 #[path = "measure_wetpaint_cost.rs"]

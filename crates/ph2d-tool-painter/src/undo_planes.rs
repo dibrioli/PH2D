@@ -148,6 +148,22 @@ impl PlaneDeltas {
         c.finish()
     }
 
+    /// **A VARIANTE de cada plano canvas-shaped, por nome** — o instrumento da §5.66 §4.
+    ///
+    /// O irmão [`Self::confine_report`] responde *"quem recusou o confinamento?"* e para isso colapsa
+    /// `Whole`/`OnlyBefore`/`OnlyAfter` num tag só. Aqui a pergunta é outra — **por qual porta este
+    /// plano virou `Whole`?** —, e ela decide onde a cura da posse mora.
+    #[cfg(test)]
+    pub(crate) fn variant_report(&self) -> String {
+        format!(
+            "canvas {} · heights [{}] · covers [{}] · mats [{}]",
+            self.canvas_rgba.variant(),
+            self.heights.variant_tags(),
+            self.covers.variant_tags(),
+            self.mats.variant_tags(),
+        )
+    }
+
     /// **O alcance de CADA plano, por nome** — o instrumento que separa *"o passo não é confinado"* de
     /// *"qual plano recusou"*. Sem ele o `None` é mudo, e um veredito mudo manda adivinhar.
     #[cfg(test)]

@@ -260,3 +260,44 @@ mod tests {
         assert_eq!((r.x, r.y, r.w, r.h), (6, 4, 7, 5));
     }
 }
+
+/// **A VARIANTE literal de um plano guardado** — irmã do [`StoredPlane::reach`] e feita para uma
+/// pergunta que ele **não** responde: o `reach` colapsa `Whole`, `OnlyBefore` e `OnlyAfter` num
+/// `PlaneReach::Whole` só (de propósito — para ELE as três significam *repinte tudo*), e a §5.66 §4
+/// precisa saber **por qual porta** um plano entrou no `Whole`.
+#[cfg(test)]
+impl<T> StoredPlane<T> {
+    pub(crate) const fn variant(&self) -> &'static str {
+        match self {
+            Self::Unchanged => "-",
+            Self::Patch { .. } => "patch",
+            Self::Whole { .. } => "WHOLE",
+        }
+    }
+}
+
+#[cfg(test)]
+impl<T> StoredEntry<T> {
+    pub(crate) const fn variant(&self) -> &'static str {
+        match self {
+            Self::Both(p) => p.variant(),
+            Self::OnlyBefore(_) => "ONLY-BEFORE",
+            Self::OnlyAfter(_) => "ONLY-AFTER",
+        }
+    }
+}
+
+#[cfg(test)]
+impl<T> StoredMap<T> {
+    /// Uma etiqueta por camada. Vazio = o mapa não guardou chave nenhuma.
+    pub(crate) fn variant_tags(&self) -> String {
+        if self.entries.is_empty() {
+            return "-".to_string();
+        }
+        self.entries
+            .values()
+            .map(StoredEntry::variant)
+            .collect::<Vec<_>>()
+            .join(",")
+    }
+}

@@ -280,6 +280,13 @@ fn the_journal_route_is_what_makes_the_elision_worth_anything() {
 /// `Whole` guarda um `Arc` de cada endpoint ⇒ **segundo dono permanente** ⇒ o `fork_par` do gesto
 /// seguinte copia os quatro planos canvas-sized.
 ///
+/// ⚠️⚠️ **ESTA SONDA NÃO VÊ O CAMINHO DO PRODUTO, e por isso ela IMPRIME em qual está.** O journal do
+/// relevo é `cfg(any(test, debug_assertions))`, e **`cargo test --release` liga `cfg(test)`** — então
+/// num binário de teste, mesmo em release, o commit passa pelo `from_journal` e **não** pelo
+/// `StoredPlane::split` que o `cargo run --release` toma. O contador `(relevo pelo JOURNAL: Nx)` é a
+/// testemunha: se ele anda, a linha ao lado descreve a rota do JOURNAL. *Um instrumento que não pode
+/// alcançar o produto tem de dizer isso na própria saída* (doc 28 §5.67).
+///
 /// ⚠️ **O traço curto é o CONTROLE, na MESMA corrida e no MESMO canvas** — sem ele a tabela não
 /// distingue *"a entrada grande segura"* de *"esta máquina/este canvas segura"*.
 #[test]
@@ -309,6 +316,14 @@ fn who_holds_the_planes_after_a_canvas_wide_stroke() {
                 }
                 let (c, h, cv, m) = owners(&t);
                 row.push_str(&format!("  apos {}: {c}/{h}/{cv}/{m}", k + 1));
+                if let Some(v) = t.undo.probe_top_variants() {
+                    let j = crate::undo_planes::RELIEF_FROM_JOURNAL.with(std::cell::Cell::get);
+                    eprintln!(
+                        "      [{}] entrada {}: {v}  (relevo pelo JOURNAL: {j}x)",
+                        if wide { "diag " } else { "curto" },
+                        k + 1
+                    );
+                }
             }
             eprintln!("  {name:26}{row}");
             // Duas ablações, e a ordem separa os dois donos que um `clear()` remove de uma vez.

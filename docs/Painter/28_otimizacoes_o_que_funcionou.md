@@ -6317,3 +6317,60 @@ governa wall-clock; aplicá-la a um invariante seria descartar uma medição sã
 **Consequência para o plano:** a wave não é *"mude o limiar"*. São **duas portas** para o `Whole`, uma
 identificada e uma não, e fechar só uma não compra milissegundo nenhum — a lei tudo-ou-nada que o
 próprio §1b do `measure_stroke_owners` já enuncia.
+
+## §5.67 — E a sonda não vê o caminho do produto: `cargo test --release` liga `cfg(test)` (2026-08-02)
+
+A §5.66 §4 terminou nomeando *"por qual porta o relevo entra no `Whole`"* como a próxima medição. Ela
+foi feita, em três saltos, e a resposta não estava entre as candidatas.
+
+### 1. A variante literal, por plano
+
+`PlaneDeltas::variant_report` (`cfg(test)`, irmão do `confine_report` — que colapsa
+`Whole`/`OnlyBefore`/`OnlyAfter` num tag só, de propósito, porque para ELE as três significam
+*repinte tudo*):
+
+```
+[curto] entrada 2: canvas patch · heights [patch]  · covers [patch]  · mats [patch]
+[diag ] entrada 2: canvas WHOLE · heights [WHOLE]  · covers [WHOLE]  · mats [WHOLE]
+```
+
+(A entrada 1 é `ONLY-AFTER` nos dois: o primeiro traço **cria** os planos e não tem lado `before`.)
+
+### 2. A ablação, agora COM o relatório
+
+Re-rodando o `Patch`-sempre da §5.66 §3 com a variante à vista: **canvas vira `patch`, relevo continua
+`WHOLE`** ⇒ o relevo não passa pelo limiar de tamanho. E instrumentando o outro braço
+(`before.len() != after.len() || !fits(…)`), ele dispara **só para planos VAZIOS** (`before 0 after 0`
+— os auxiliares de máscara/seleção/deform/sculpt, que `fits` recusa por `len != 0`). Nenhum relevo.
+
+### 3. ⚠️ Sobrou uma porta que eu tinha dado como fechada — e o instrumento a nomeou
+
+`StoredMap::from_journal` tem `Whole` PRÓPRIO, e o header dele diz *"tudo aqui é
+`cfg(any(test, debug_assertions))`"*, com o `undo_planes.rs` afirmando ao lado: *"**em release ela é
+hoje SEMPRE o caminho de sempre**, porque o journal ainda é `cfg(debug)`"*.
+
+**`cargo test --release` liga `cfg(test)`.** O contador `RELIEF_FROM_JOURNAL`, impresso ao lado da
+variante, anda **em toda entrada** — 1x, 2x, 3x… — num binário compilado em release:
+
+```
+[curto] entrada 3: … heights [patch]  (relevo pelo JOURNAL: 3x)
+[diag ] entrada 3: … heights [WHOLE]  (relevo pelo JOURNAL: 6x)
+```
+
+⇒ **toda medição deste subsistema tirada de um teste de unidade roda o JOURNAL**, inclusive as que
+concluíram coisas sobre "release". A frase do `undo_planes.rs` é verdadeira sobre o `cargo run` e
+falsa sobre a única coisa que a mede.
+
+**O que isto NÃO derruba:** a POSSE (§5.66 §1 e §4) é contagem de `Arc` e não depende da rota — as
+entradas seguram os quatro planos, medido. **O que derruba:** a *atribuição* de por qual porta, e a
+minha ablação como conduzida (ela mirou o `from_window`, que o relevo não visita ali).
+
+**O que fica em aberto, e agora com a forma certa:** no produto (`cargo run --release`, sem
+`cfg(test)`) o `relief_maps` cai no `split` → `from_window` → janela de 89% → **`Whole` também**, por
+LEITURA e não por medição. A conclusão de posse provavelmente sobrevive, **por outra rota**, e medir
+isso exige uma sonda em `tests/` (num teste de integração a LIB é compilada sem `cfg(test)`) — o que
+custa a superfície pública que ela precisaria.
+
+**A cura da sonda shipou junto:** ela **imprime em qual rota está**. *Um instrumento que não pode
+alcançar o produto tem de dizer isso na própria saída* — a quarta vez nesta linha que o instrumento
+respondeu com confiança à pergunta errada (`sleep 909%` · `away 161%` · `sim x0` · esta).

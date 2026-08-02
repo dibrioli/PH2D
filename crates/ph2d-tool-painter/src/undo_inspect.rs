@@ -35,4 +35,11 @@ impl UndoController {
         self.redo.clear();
         self.bytes = 0;
     }
+
+    /// **A variante que o TOPO da história guardou por plano** — ver
+    /// [`PlaneDeltas::variant_report`](crate::undo_planes::PlaneDeltas::variant_report).
+    #[cfg(test)]
+    pub(crate) fn probe_top_variants(&self) -> Option<String> {
+        Some(self.undo.last()?.planes.variant_report())
+    }
 }

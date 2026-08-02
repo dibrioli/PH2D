@@ -13,12 +13,39 @@
 
 use super::{Brush, Dab, SculptStroke, Symmetry, Verb};
 
-/// A cena está armada? (`PH2D_SCULPT3D_SMOKE` em `1`..`6`.)
+/// A cena está armada? (`PH2D_SCULPT3D_SMOKE` em `1`..`7`.)
 pub(crate) fn smoke_armed() -> bool {
     matches!(
         std::env::var("PH2D_SCULPT3D_SMOKE").ok().as_deref(),
-        Some("1" | "2" | "3" | "4" | "5" | "6")
+        Some("1" | "2" | "3" | "4" | "5" | "6" | "7")
     )
+}
+
+/// `=7` — **A CENA**: mais de um objeto, cada um com a sua pose.
+pub(crate) fn objects_scene() -> bool {
+    std::env::var("PH2D_SCULPT3D_SMOKE").ok().as_deref() == Some("7")
+}
+
+/// **As peças que a cena `=7` põe na mesa**, além da que a cena já abre.
+///
+/// ⚠️ Formas DIFERENTES de propósito, e não três esferas: o que o smoke julga é
+/// *"o pincel caiu na peça que eu cliquei"*, e três cópias da mesma silhueta
+/// tornariam a resposta certa indistinguível da errada. Tamanhos diferentes pelo
+/// mesmo motivo — a escala é metade da pose, e um trio de peças do mesmo tamanho
+/// deixaria essa metade sem oráculo nenhum na tela.
+pub(crate) fn scene_objects() -> Vec<(ph2d_mesh::Mesh, ph2d_mesh::Pose)> {
+    vec![
+        // O CUBO, à esquerda e GRANDE: a peça em que a escala se vê.
+        (
+            ph2d_mesh::shapes::cube(1.0),
+            ph2d_mesh::Pose::new([-2.6, 0.0, 0.0], 1.4),
+        ),
+        // O OCTAEDRO, à direita e pequeno.
+        (
+            ph2d_mesh::shapes::octahedron(1.0),
+            ph2d_mesh::Pose::new([2.2, 0.0, 0.0], 0.6),
+        ),
+    ]
 }
 
 /// `=5` — a cena do **TWIST e do LOCAL SCALE**: uma esfera com CRISTAS.
@@ -317,6 +344,24 @@ pub(crate) fn announce(mesh: &ph2d_mesh::Mesh) {
              [sculpt3d]    (4) Ctrl+Z devolve a malha esticada, inteira; Ctrl+Shift+Z refaz.\n\
              [sculpt3d]    (5) Aperte K (subdividir) e depois V: ele RECUSA, e o log diz por que --\n\
              [sculpt3d]        um remesh troca a topologia, e os niveis de cima sao subdivisao dela."
+        );
+    }
+    if crate::sculpt3d::objects_scene() {
+        eprintln!(
+            "[sculpt3d] =7 A CENA E' UMA LISTA: tres pecas, cada uma no SEU lugar e no SEU tamanho.\n\
+             [sculpt3d]    Uma esfera no meio, um CUBO grande a' esquerda, um OCTAEDRO pequeno a' direita.\n\
+             [sculpt3d]    (1) Gire (botao direito) e olhe: as tres tem de estar la', separadas, e a\n\
+             [sculpt3d]        perspectiva tem de ser coerente -- nenhuma pode nadar em relacao as outras.\n\
+             [sculpt3d]    (2) Esculpa no CUBO (esquerdo). O barro tem de ceder EXATAMENTE sob o cursor,\n\
+             [sculpt3d]        e a pegada tem de ter o mesmo tamanho APARENTE que na esfera do meio --\n\
+             [sculpt3d]        e' isso que prova que o pincel atravessou a escala da peca.\n\
+             [sculpt3d]    (3) Esculpa no OCTAEDRO (pequeno, a' direita): mesma coisa. Se a pegada dele\n\
+             [sculpt3d]        parecer MAIOR ou MENOR que a das outras, reprove.\n\
+             [sculpt3d]    (4) Esculpa uma peca, depois OUTRA, e aperte Ctrl+Z duas vezes: cada undo tem\n\
+             [sculpt3d]        de desfazer NA PECA CERTA. Se a segunda peca 'consertar' a primeira, reprove.\n\
+             [sculpt3d]    (5) Aproxime com a roda ate' o cubo ocupar a tela e esculpa: o pincel continua\n\
+             [sculpt3d]        do mesmo tamanho em PIXELS, como sempre foi.\n\
+             [sculpt3d]    (6) Onde as pecas se cruzam na tela, clicar tem de pegar a que esta' NA FRENTE."
         );
     }
     if crate::sculpt3d::reversion_scene() {

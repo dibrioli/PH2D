@@ -9,7 +9,7 @@
 
 use bytemuck::{Pod, Zeroable};
 use glam::Mat4;
-use ph2d_mesh::Mesh;
+use ph2d_mesh::{Mesh, Pose};
 use wgpu::util::DeviceExt as _;
 
 use crate::camera::Camera3d;
@@ -26,6 +26,14 @@ pub(crate) const MESH_WGSL: &str = include_str!("shaders/mesh.wgsl");
 struct CameraRaw {
     view_proj: [[f32; 4]; 4],
     view: [[f32; 4]; 4],
+}
+
+/// O uniform do objeto: **onde ele está**. Uma `mat4x4` alinha em 16 B, então
+/// não há padding a declarar.
+#[repr(C)]
+#[derive(Clone, Copy, Pod, Zeroable)]
+struct ObjectRaw {
+    model: [[f32; 4]; 4],
 }
 
 /// Os buffers da malha no device.
@@ -46,6 +54,24 @@ struct MeshGpu {
     index_capacity: usize,
 }
 
+/// **UM OBJETO no device** — a geometria e a pose que a põe no mundo.
+///
+/// ⚠️ O `model` é um buffer por objeto, e não um offset dinâmico num buffer só:
+/// um uniform dinâmico exige alinhamento de 256 B por entrada (`min_uniform_
+/// buffer_offset_alignment`), então uma cena de blocagem com uma dúzia de peças
+/// pagaria 3 KB de padding para poupar uma dúzia de alocações de 64 B. O dia em
+/// que a lista tiver centenas de objetos a conta se inverte — e aí a mudança é
+/// interna a este arquivo.
+struct Slot {
+    gpu: MeshGpu,
+    model: wgpu::Buffer,
+    bind: wgpu::BindGroup,
+}
+
+/// **COMO o passe é montado** — ver [`build`].
+#[path = "pipeline_build.rs"]
+mod build;
+
 /// O renderizador da malha.
 pub struct MeshRenderer {
     pipeline: wgpu::RenderPipeline,
@@ -53,9 +79,21 @@ pub struct MeshRenderer {
     uniform: wgpu::Buffer,
     rig_uniform: wgpu::Buffer,
     bind: wgpu::BindGroup,
+    /// O layout do grupo 1 — guardado porque um `Slot` novo nasce a cada objeto
+    /// que a cena ganha, e cada um precisa do seu bind group.
+    obj_bgl: wgpu::BindGroupLayout,
     depth: Option<wgpu::TextureView>,
     depth_size: (u32, u32),
-    mesh: Option<MeshGpu>,
+    /// **A LISTA.** Um objeto por posição; o índice é o mesmo que a cena usa.
+    slots: Vec<Slot>,
+    /// A pose de cada objeto, do lado da CPU.
+    ///
+    /// ⚠️ Ela é escrita ao device **no render**, e não no `set_pose`, porque
+    /// mover um objeto não é um evento de GPU: um arrasto de gizmo emitiria uma
+    /// escrita por movimento do mouse para um valor que só o próximo frame lê.
+    /// O vetor pode ser mais longo que `slots` (uma pose autorada antes de a
+    /// malha subir), e sobra é ignorada.
+    poses: Vec<Pose>,
     scratch_indices: Vec<[u32; 3]>,
     scratch_moved: Vec<u32>,
     scratch_runs: Vec<(u32, u32)>,
@@ -92,203 +130,58 @@ impl MeshRenderer {
     /// ninguém consegue nomear.
     pub const GBUFFER_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
 
-    #[must_use]
-    pub fn new(device: &wgpu::Device, target_format: wgpu::TextureFormat) -> Self {
-        let bgl = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("ph2d-mesh bgl"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::VERTEX,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                // O RIG. Buffer separado do da câmera de propósito: são duas
-                // frequências (a câmera muda a cada arrasto, o rig quando o
-                // artista abre o card) e, sobretudo, o gate do layout coluna-major
-                // da câmera continua olhando exatamente os mesmos 128 bytes que
-                // olhava antes desta wave.
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-            ],
-        });
-
-        let uniform = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("ph2d-mesh camera"),
-            size: size_of::<CameraRaw>() as u64,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-
-        let rig_uniform = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("ph2d-mesh rig"),
-            size: RigRaw::SIZE as u64,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-
-        let bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("ph2d-mesh bind"),
-            layout: &bgl,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: uniform.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: rig_uniform.as_entire_binding(),
-                },
-            ],
-        });
-
-        let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("ph2d-mesh layout"),
-            bind_group_layouts: &[&bgl],
-            immediate_size: 0,
-        });
-
-        let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("ph2d-mesh shader"),
-            source: wgpu::ShaderSource::Wgsl(MESH_WGSL.into()),
-        });
-
-        // Os atributos têm de viver tanto quanto o descritor, então são `const`
-        // e não temporários de uma closure — um slice emprestado de dentro de um
-        // construtor morre antes de o pipeline ser criado.
-        const fn vec3_attr(location: u32) -> [wgpu::VertexAttribute; 1] {
-            [wgpu::VertexAttribute {
-                format: wgpu::VertexFormat::Float32x3,
-                offset: 0,
-                shader_location: location,
-            }]
+    /// **A pose de um objeto** — onde ele está no mundo.
+    ///
+    /// Aceita um índice além da lista de malhas (a cena pode autorar a pose
+    /// antes de a geometria subir); o excedente é ignorado no desenho.
+    pub fn set_pose(&mut self, index: usize, pose: Pose) {
+        if self.poses.len() <= index {
+            self.poses.resize(index + 1, Pose::IDENTITY);
         }
-        const POS: [wgpu::VertexAttribute; 1] = vec3_attr(0);
-        const NRM: [wgpu::VertexAttribute; 1] = vec3_attr(1);
-        const MASK: [wgpu::VertexAttribute; 1] = [wgpu::VertexAttribute {
-            format: wgpu::VertexFormat::Float32,
-            offset: 0,
-            shader_location: 2,
-        }];
-        // Irmão do `vec3_buffer`, e uma CLOSURE pela mesma razão que ele: o
-        // `make` abaixo é chamado duas vezes (a cena e o G-buffer), e um valor
-        // capturado por move faria dele um `FnOnce`.
-        let f32_buffer = |attrs: &'static [wgpu::VertexAttribute]| wgpu::VertexBufferLayout {
-            array_stride: 4,
-            step_mode: wgpu::VertexStepMode::Vertex,
-            attributes: attrs,
-        };
-        let vec3_buffer = |attrs: &'static [wgpu::VertexAttribute]| wgpu::VertexBufferLayout {
-            array_stride: 12,
-            step_mode: wgpu::VertexStepMode::Vertex,
-            attributes: attrs,
-        };
-
-        // Os dois pipelines diferem em DOIS campos — a entrada do fragment e o
-        // formato do alvo — e em nada mais. Uma segunda cópia do descritor seria
-        // uma segunda resposta a "como esta malha é rasterizada": o dia em que
-        // alguém trocasse o `cull_mode` num e não no outro, o G-buffer passaria a
-        // descrever uma silhueta que a tela não mostra.
-        let make = |label: &str, entry: &str, format: wgpu::TextureFormat| {
-            device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                label: Some(label),
-                layout: Some(&layout),
-                vertex: wgpu::VertexState {
-                    module: &shader,
-                    entry_point: Some("vs_main"),
-                    compilation_options: wgpu::PipelineCompilationOptions::default(),
-                    buffers: &[vec3_buffer(&POS), vec3_buffer(&NRM), f32_buffer(&MASK)],
-                },
-                fragment: Some(wgpu::FragmentState {
-                    module: &shader,
-                    entry_point: Some(entry),
-                    compilation_options: wgpu::PipelineCompilationOptions::default(),
-                    targets: &[Some(wgpu::ColorTargetState {
-                        format,
-                        // Opaco: a escultura é sólida, e um blend aqui só serviria
-                        // para esconder um erro de profundidade atrás de uma mistura.
-                        blend: None,
-                        write_mask: wgpu::ColorWrites::ALL,
-                    })],
-                }),
-                primitive: wgpu::PrimitiveState {
-                    topology: wgpu::PrimitiveTopology::TriangleList,
-                    strip_index_format: None,
-                    front_face: wgpu::FrontFace::Ccw,
-                    // ⚠️ **Sem culling, de propósito.** Uma escultura em progresso é
-                    // frequentemente uma casca aberta, e um OBJ de terceiro chega com
-                    // winding misto; descartar a face de trás transformaria isso num
-                    // buraco, que é indistinguível de geometria faltando. O shader
-                    // vira a normal para o olho, então o verso acende como frente.
-                    cull_mode: None,
-                    polygon_mode: wgpu::PolygonMode::Fill,
-                    unclipped_depth: false,
-                    conservative: false,
-                },
-                depth_stencil: Some(wgpu::DepthStencilState {
-                    format: Self::DEPTH_FORMAT,
-                    depth_write_enabled: true,
-                    // `Less` com limpeza em 1.0: profundidade 3D comum. (O Flip usa
-                    // `Greater` porque a ordem dele é 2D por-traço, outra pergunta.)
-                    depth_compare: wgpu::CompareFunction::Less,
-                    stencil: wgpu::StencilState::default(),
-                    bias: wgpu::DepthBiasState::default(),
-                }),
-                multisample: wgpu::MultisampleState {
-                    count: 1,
-                    mask: !0,
-                    alpha_to_coverage_enabled: false,
-                },
-                multiview_mask: None,
-                cache: None,
-            })
-        };
-        let pipeline = make("ph2d-mesh pipeline", "fs_main", target_format);
-        let gbuffer_pipeline = make("ph2d-mesh gbuffer", "fs_gbuffer", Self::GBUFFER_FORMAT);
-
-        Self {
-            pipeline,
-            gbuffer_pipeline,
-            uniform,
-            rig_uniform,
-            bind,
-            depth: None,
-            depth_size: (0, 0),
-            mesh: None,
-            scratch_indices: Vec::new(),
-            scratch_moved: Vec::new(),
-            scratch_runs: Vec::new(),
-            scratch_masks: Vec::new(),
-        }
+        self.poses[index] = pose;
     }
 
-    /// Sobe a malha. Reusa os buffers quando cabem — um dab que só move
-    /// vértices não realoca nada.
-    pub fn upload(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, mesh: &Mesh) {
+    /// Quantos objetos o device tem.
+    #[must_use]
+    pub fn object_count(&self) -> usize {
+        self.slots.len()
+    }
+
+    /// Esquece os objetos a partir de `n`.
+    ///
+    /// ⚠️ Existe porque apagar um objeto da cena **sem** isto o deixaria
+    /// desenhado para sempre: os `slots` são a verdade do device, e uma lista
+    /// que só cresce descreveria uma cena que o artista já desmontou.
+    pub fn truncate_objects(&mut self, n: usize) {
+        self.slots.truncate(n);
+        self.poses.truncate(n);
+    }
+
+    /// Sobe a malha do objeto `index`. Reusa os buffers quando cabem — um dab
+    /// que só move vértices não realoca nada.
+    pub fn upload_at(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        index: usize,
+        mesh: &Mesh,
+    ) {
         mesh.triangle_indices(&mut self.scratch_indices);
         let verts = mesh.vert_count();
         let idx = self.scratch_indices.len();
         let index_count = (idx * 3) as u32;
 
         let fits = self
-            .mesh
-            .as_ref()
-            .is_some_and(|g| g.vert_capacity >= verts && g.index_capacity >= idx);
+            .slots
+            .get(index)
+            .is_some_and(|s| s.gpu.vert_capacity >= verts && s.gpu.index_capacity >= idx);
 
         if fits {
-            let g = self.mesh.as_mut().expect("acabou de ser conferido");
+            let g = &mut self
+                .slots
+                .get_mut(index)
+                .expect("acabou de ser conferido")
+                .gpu;
             queue.write_buffer(&g.positions, 0, bytemuck::cast_slice(mesh.positions()));
             queue.write_buffer(&g.normals, 0, bytemuck::cast_slice(mesh.normals()));
             queue.write_buffer(
@@ -308,7 +201,7 @@ impl MeshRenderer {
                 usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
             })
         };
-        self.mesh = Some(MeshGpu {
+        let gpu = MeshGpu {
             positions: vb("ph2d-mesh pos", bytemuck::cast_slice(mesh.positions())),
             normals: vb("ph2d-mesh nrm", bytemuck::cast_slice(mesh.normals())),
             masks: vb(
@@ -323,7 +216,38 @@ impl MeshRenderer {
             index_count,
             vert_capacity: verts,
             index_capacity: idx,
+        };
+        if let Some(slot) = self.slots.get_mut(index) {
+            // O bind group e o buffer de pose sobrevivem: só a geometria mudou.
+            slot.gpu = gpu;
+            return;
+        }
+        // Um objeto novo. ⚠️ Só o PRÓXIMO da lista pode nascer aqui — um índice
+        // salteado deixaria um buraco que o desenho percorreria como se fosse
+        // um objeto, e a pose de todos depois dele apontaria para a malha
+        // errada. A cena constrói a lista em ordem; se este `if` disparar, é
+        // porque alguém a construiu de outro jeito.
+        if index != self.slots.len() {
+            return;
+        }
+        let model = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("ph2d-mesh model"),
+            size: size_of::<ObjectRaw>() as u64,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
         });
+        let bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("ph2d-mesh object bind"),
+            layout: &self.obj_bgl,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: model.as_entire_binding(),
+            }],
+        });
+        self.slots.push(Slot { gpu, model, bind });
+        if self.poses.len() < self.slots.len() {
+            self.poses.resize(self.slots.len(), Pose::IDENTITY);
+        }
     }
 
     /// Sobe **só os vértices que um dab moveu** — posições e normais.
@@ -343,11 +267,17 @@ impl MeshRenderer {
     /// que este `moved` contém, e subir metade deixaria a malha iluminada por
     /// normais de antes do dab — um erro que só aparece na tela, nunca num
     /// número.
-    pub fn upload_region(&mut self, queue: &wgpu::Queue, mesh: &Mesh, moved: &[u32]) -> bool {
-        let Some(g) = self.mesh.as_ref() else {
+    pub fn upload_region_at(
+        &mut self,
+        queue: &wgpu::Queue,
+        index: usize,
+        mesh: &Mesh,
+        moved: &[u32],
+    ) -> bool {
+        let Some(slot) = self.slots.get(index) else {
             return false;
         };
-        if g.vert_capacity != mesh.vert_count() {
+        if slot.gpu.vert_capacity != mesh.vert_count() {
             return false;
         }
         if moved.is_empty() {
@@ -359,7 +289,7 @@ impl MeshRenderer {
         self.scratch_moved.dedup();
         upload::plan_runs(&self.scratch_moved, &mut self.scratch_runs);
         let masks = masks_of(mesh, &mut self.scratch_masks);
-        let g = self.mesh.as_ref().expect("conferido acima");
+        let g = &self.slots.get(index).expect("conferido acima").gpu;
 
         let stride = size_of::<[f32; 3]>() as u64;
         for &(a, b) in &self.scratch_runs {
@@ -392,10 +322,39 @@ impl MeshRenderer {
         upload::covered(&self.scratch_runs)
     }
 
-    /// Há geometria para desenhar?
+    /// Há geometria para desenhar? (Qualquer objeto da lista serve.)
     #[must_use]
     pub fn has_mesh(&self) -> bool {
-        self.mesh.as_ref().is_some_and(|g| g.index_count > 0)
+        self.slots.iter().any(|s| s.gpu.index_count > 0)
+    }
+
+    /// Escreve as poses e desenha **cada objeto**, com o pipeline dado.
+    ///
+    /// ⚠️ Porta única dos dois passes (a cena e o G-buffer), e por um motivo que
+    /// já mordeu este arquivo: eles diferem em DOIS campos e em nada mais, então
+    /// uma segunda cópia do laço seria a segunda resposta a *"o que este
+    /// renderizador desenha"* — e o dia em que a lista ganhasse um objeto num
+    /// dos dois, o G-buffer descreveria uma silhueta que a tela não mostra.
+    fn draw_all(&self, queue: &wgpu::Queue, pass: &mut wgpu::RenderPass<'_>) {
+        for (i, slot) in self.slots.iter().enumerate() {
+            if slot.gpu.index_count == 0 {
+                continue;
+            }
+            let pose = self.poses.get(i).copied().unwrap_or(Pose::IDENTITY);
+            queue.write_buffer(
+                &slot.model,
+                0,
+                bytemuck::bytes_of(&ObjectRaw {
+                    model: pose.to_cols_array_2d(),
+                }),
+            );
+            pass.set_bind_group(1, &slot.bind, &[]);
+            pass.set_vertex_buffer(0, slot.gpu.positions.slice(..));
+            pass.set_vertex_buffer(1, slot.gpu.normals.slice(..));
+            pass.set_vertex_buffer(2, slot.gpu.masks.slice(..));
+            pass.set_index_buffer(slot.gpu.indices.slice(..), wgpu::IndexFormat::Uint32);
+            pass.draw_indexed(0..slot.gpu.index_count, 0, 0..1);
+        }
     }
 
     /// Garante o depth-buffer do tamanho pedido (recria se mudou).
@@ -459,7 +418,6 @@ impl MeshRenderer {
         );
         queue.write_buffer(&self.rig_uniform, 0, bytemuck::bytes_of(&RigRaw::pack(rig)));
 
-        let g = self.mesh.as_ref().expect("has_mesh acabou de confirmar");
         let depth = self.depth.as_ref().expect("ensure_depth acabou de rodar");
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("ph2d-mesh pass"),
@@ -486,11 +444,7 @@ impl MeshRenderer {
         });
         pass.set_pipeline(&self.pipeline);
         pass.set_bind_group(0, &self.bind, &[]);
-        pass.set_vertex_buffer(0, g.positions.slice(..));
-        pass.set_vertex_buffer(1, g.normals.slice(..));
-        pass.set_vertex_buffer(2, g.masks.slice(..));
-        pass.set_index_buffer(g.indices.slice(..), wgpu::IndexFormat::Uint32);
-        pass.draw_indexed(0..g.index_count, 0, 0..1);
+        self.draw_all(queue, &mut pass);
     }
 
     /// **A DOAÇÃO, do lado de quem doa** — rasteriza a malha num G-buffer de normais.
@@ -532,7 +486,6 @@ impl MeshRenderer {
             }),
         );
 
-        let g = self.mesh.as_ref().expect("has_mesh acabou de confirmar");
         let depth = self.depth.as_ref().expect("ensure_depth acabou de rodar");
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("ph2d-mesh gbuffer pass"),
@@ -559,11 +512,7 @@ impl MeshRenderer {
         });
         pass.set_pipeline(&self.gbuffer_pipeline);
         pass.set_bind_group(0, &self.bind, &[]);
-        pass.set_vertex_buffer(0, g.positions.slice(..));
-        pass.set_vertex_buffer(1, g.normals.slice(..));
-        pass.set_vertex_buffer(2, g.masks.slice(..));
-        pass.set_index_buffer(g.indices.slice(..), wgpu::IndexFormat::Uint32);
-        pass.draw_indexed(0..g.index_count, 0, 0..1);
+        self.draw_all(queue, &mut pass);
     }
 }
 

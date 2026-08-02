@@ -34,7 +34,20 @@ impl App {
         let size = gfx.surface.size();
         let aspect = size.width as f32 / size.height.max(1) as f32;
         let device = std::sync::Arc::clone(&gfx.surface.gpu().device);
-        gfx.sculpt3d = Some(Sculpt3dScene::new(&device, mesh, aspect));
+        let mut scene = Sculpt3dScene::new(&device, mesh, aspect);
+        // ⚠️ **A cena `=7` é montada DEPOIS do `new`, pela porta pública.** Um
+        // construtor que recebesse a lista inteira seria a segunda resposta a
+        // *"como um objeto entra na cena"* — e a primeira é a que o gesto de
+        // blocagem vai usar.
+        if crate::sculpt3d::objects_scene() {
+            for (mesh, pose) in crate::sculpt3d::scene_objects() {
+                scene.push_object(mesh, pose);
+            }
+            // O enquadramento tem de conhecer a cena INTEIRA: o `new` enquadrou
+            // só a primeira peça, e as outras nasceram fora do quadro.
+            scene.frame_all(aspect);
+        }
+        gfx.sculpt3d = Some(scene);
     }
 
     /// O botão apertou. Devolve `true` se a cena 3D tomou o gesto.
@@ -73,7 +86,7 @@ impl App {
                 if shift {
                     scene.brush.verb = Verb::Smooth;
                 }
-                scene.stroke.begin(scene.stack.mesh());
+                scene.stroke.begin(scene.objects[scene.active].stack.mesh());
                 // A âncora do espaçamento nasce no pen-down: o 1º dab é o que
                 // está sob o dedo, e o resíduo passa a contar a partir dele.
                 scene.stroke_anchor = [pos.0, pos.1];
@@ -333,8 +346,8 @@ impl App {
             if scene.subdivide() {
                 eprintln!(
                     "[sculpt3d] subdividida: nivel {} de {} -- {} vertices / {} faces / {} triangulos",
-                    scene.stack.level(),
-                    scene.stack.level_count() - 1,
+                    scene.obj().stack.level(),
+                    scene.obj().stack.level_count() - 1,
                     scene.mesh().vert_count(),
                     scene.mesh().face_count(),
                     scene.mesh().triangle_count()
@@ -390,11 +403,11 @@ impl App {
         // não tem como saber se o gesto fez alguma coisa.
         if code == K::KeyJ {
             if scene.reverse_level() {
-                let base = scene.stack.level_mesh(0);
+                let base = scene.obj().stack.level_mesh(0);
                 eprintln!(
                     "[sculpt3d] revertida: nivel {} de {} -- a base nova tem {} vertices / {} faces",
-                    scene.stack.level(),
-                    scene.stack.level_count() - 1,
+                    scene.obj().stack.level(),
+                    scene.obj().stack.level_count() - 1,
                     base.map_or(0, ph2d_mesh::Mesh::vert_count),
                     base.map_or(0, ph2d_mesh::Mesh::face_count)
                 );
@@ -413,8 +426,8 @@ impl App {
             if scene.change_level(up) {
                 eprintln!(
                     "[sculpt3d] nivel {} de {} -- {} vertices",
-                    scene.stack.level(),
-                    scene.stack.level_count() - 1,
+                    scene.obj().stack.level(),
+                    scene.obj().stack.level_count() - 1,
                     scene.mesh().vert_count()
                 );
             } else {

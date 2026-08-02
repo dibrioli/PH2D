@@ -57,7 +57,7 @@ fn render_with_rig(
     rig: &LightRig,
 ) -> Vec<u8> {
     let mut renderer = MeshRenderer::new(device, FORMAT);
-    renderer.upload(device, queue, mesh);
+    renderer.upload_at(device, queue, 0, mesh);
     render_using_rig(device, queue, &mut renderer, camera, rig)
 }
 
@@ -401,7 +401,7 @@ fn a_region_upload_shows_exactly_what_a_full_upload_shows() {
     // Um renderizador semeado com a malha ORIGINAL, que daqui para a frente só
     // recebe regiões — é ele o caminho sob teste.
     let mut incremental = MeshRenderer::new(&device, FORMAT);
-    incremental.upload(&device, &queue, &mesh);
+    incremental.upload_at(&device, &queue, 0, &mesh);
 
     // Esculpe de verdade, pela porta do produto.
     let brush = Brush {
@@ -424,7 +424,7 @@ fn a_region_upload_shows_exactly_what_a_full_upload_shows() {
             Symmetry::default(),
         );
         assert!(
-            incremental.upload_region(&queue, &mesh, stroke.last_refreshed()),
+            incremental.upload_region_at(&queue, 0, &mesh, stroke.last_refreshed()),
             "o upload incremental recusou uma malha de mesma topologia"
         );
         uploaded += incremental.last_region_verts();
@@ -461,13 +461,13 @@ fn a_region_upload_refuses_a_mesh_whose_topology_changed() {
     let big = shapes::uv_sphere(20, 28, 1.0);
     let mut r = MeshRenderer::new(&device, FORMAT);
     // Sem nada subido ainda: não há com que reconciliar.
-    assert!(!r.upload_region(&queue, &small, &[0, 1, 2]));
-    r.upload(&device, &queue, &small);
-    assert!(r.upload_region(&queue, &small, &[0, 1, 2]));
+    assert!(!r.upload_region_at(&queue, 0, &small, &[0, 1, 2]));
+    r.upload_at(&device, &queue, 0, &small);
+    assert!(r.upload_region_at(&queue, 0, &small, &[0, 1, 2]));
     // Contagem diferente: recusar é a resposta certa. Escrever a região sobre um
     // buffer de outra topologia poria bytes VÁLIDOS nos vértices errados, e a
     // geometria seria puxada para lugares que ninguém tocou.
-    assert!(!r.upload_region(&queue, &big, &[0, 1, 2]));
+    assert!(!r.upload_region_at(&queue, 0, &big, &[0, 1, 2]));
 }
 
 #[test]
@@ -552,7 +552,7 @@ fn gbuffer(
     camera: &Camera3d,
 ) -> Vec<([f32; 3], f32)> {
     let mut renderer = MeshRenderer::new(device, FORMAT);
-    renderer.upload(device, queue, mesh);
+    renderer.upload_at(device, queue, 0, mesh);
     let target = device.create_texture(&wgpu::TextureDescriptor {
         label: Some("gbuffer"),
         size: wgpu::Extent3d {
@@ -893,7 +893,7 @@ fn the_plane_the_painter_gets_is_the_gbuffer_the_device_wrote() {
     let expected = gbuffer(&device, &queue, &mesh, &camera);
 
     let mut renderer = MeshRenderer::new(&device, FORMAT);
-    renderer.upload(&device, &queue, &mesh);
+    renderer.upload_at(&device, &queue, 0, &mesh);
     let plane = renderer
         .form_plane(&device, &queue, &camera, (W, H))
         .expect("com malha, o plano existe");
@@ -940,7 +940,7 @@ fn a_renderer_with_no_mesh_donates_nothing() {
         "sem geometria, nada a doar"
     );
     // E com malha, mas extensão vazia: o mesmo silêncio, pelo outro motivo.
-    renderer.upload(&device, &queue, &shapes::uv_sphere(8, 12, 1.0));
+    renderer.upload_at(&device, &queue, 0, &shapes::uv_sphere(8, 12, 1.0));
     assert!(
         renderer
             .form_plane(&device, &queue, &camera, (0, H))
@@ -967,7 +967,7 @@ fn measure_a_donation() {
     };
     let mesh = shapes::uv_sphere(96, 144, 1.0);
     let mut renderer = MeshRenderer::new(&device, FORMAT);
-    renderer.upload(&device, &queue, &mesh);
+    renderer.upload_at(&device, &queue, 0, &mesh);
     let mut camera = Camera3d::default();
     camera.frame(mesh.bounds(), 1.0);
 
@@ -1109,9 +1109,9 @@ fn a_mask_dab_reaches_the_device_through_the_incremental_path() {
     // O caminho do produto: a malha limpa já está no device, e só a janela suja
     // do dab é copiada por cima.
     let mut renderer = MeshRenderer::new(&device, FORMAT);
-    renderer.upload(&device, &queue, &plain);
+    renderer.upload_at(&device, &queue, 0, &plain);
     assert!(
-        renderer.upload_region(&queue, &masked, &dirty),
+        renderer.upload_region_at(&queue, 0, &masked, &dirty),
         "a região tem de ser aceita: a topologia não mudou"
     );
     let incremental = render_using(&device, &queue, &mut renderer, &cam);
@@ -1123,4 +1123,218 @@ fn a_mask_dab_reaches_the_device_through_the_incremental_path() {
         incremental, full,
         "o caminho incremental tem de mostrar o que o cheio mostra"
     );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// W8.1 — **A CENA É UMA LISTA**, e cada objeto tem a sua pose.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Rasteriza uma LISTA de objetos, cada um com a sua pose.
+fn render_objects(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    objects: &[(Mesh, ph2d_mesh::Pose)],
+    camera: &Camera3d,
+) -> Vec<u8> {
+    let mut renderer = MeshRenderer::new(device, FORMAT);
+    for (i, (mesh, pose)) in objects.iter().enumerate() {
+        renderer.upload_at(device, queue, i, mesh);
+        renderer.set_pose(i, *pose);
+    }
+    render_using(device, queue, &mut renderer, camera)
+}
+
+/// Quanto de tinta há numa faixa vertical da tela, em fração do total.
+fn coverage_in(px: &[u8], x0: u32, x1: u32) -> f32 {
+    let mut lit = 0usize;
+    for y in 0..H {
+        for x in x0..x1 {
+            let i = ((y * W + x) * 4) as usize;
+            if px[i] as u32 + px[i + 1] as u32 + px[i + 2] as u32 > 8 {
+                lit += 1;
+            }
+        }
+    }
+    lit as f32 / (W * H) as f32
+}
+
+/// **DOIS OBJETOS aparecem onde as poses deles os põem.**
+///
+/// ⚠️ O oráculo é a TELA, não a matriz: um `to_cols_array_2d` transposto, um
+/// bind group trocado ou um laço que desenha só o primeiro passariam por
+/// qualquer asserção sobre números da CPU, e todos os três aparecem aqui como
+/// tinta no lado errado — ou tinta em lado nenhum.
+///
+/// ⚠️ E o **CONTROLE é a pose identidade**: com as duas peças na origem a tinta
+/// é UMA silhueta central e as bordas ficam vazias. Sem essa metade o gate
+/// passaria com o modelo inteiro ignorado, porque duas esferas sobrepostas
+/// também cobrem o meio da tela.
+#[test]
+#[ignore = "precisa de adapter"]
+fn two_objects_are_drawn_where_their_poses_put_them() {
+    let Some((device, queue)) = device() else {
+        eprintln!("sem adapter: pulando");
+        return;
+    };
+    let mesh = shapes::uv_sphere(16, 24, 1.0);
+
+    // Enquadra o PAR: a caixa que vai de −2,5 a +2,5 em x.
+    let mut cam = Camera3d {
+        yaw: 0.0,
+        pitch: 0.0,
+        fov_y: core::f32::consts::FRAC_PI_4,
+        ..Camera3d::default()
+    };
+    cam.frame(
+        ph2d_mesh::Aabb {
+            min: [-2.5, -1.0, -1.0],
+            max: [2.5, 1.0, 1.0],
+        },
+        1.0,
+    );
+
+    let apart = render_objects(
+        &device,
+        &queue,
+        &[
+            (mesh.clone(), ph2d_mesh::Pose::at([-1.5, 0.0, 0.0])),
+            (mesh.clone(), ph2d_mesh::Pose::at([1.5, 0.0, 0.0])),
+        ],
+        &cam,
+    );
+    let left = coverage_in(&apart, 0, W / 3);
+    let right = coverage_in(&apart, 2 * W / 3, W);
+    assert!(
+        left > 0.02 && right > 0.02,
+        "as duas peças têm de aparecer nos dois lados: esq {left:.3} dir {right:.3}"
+    );
+    // ⚠️ **E do TAMANHO certo**, que é a metade que uma asserção de presença não
+    // faz — e a que pega a matriz TRANSPOSTA. Ela põe a translação na linha `w`
+    // em vez da coluna, o que não apaga a peça nem a desloca: **infla** as duas,
+    // porque o `w` de cada vértice deixa de ser 1. Medido, por terço de tela:
+    // **0,052 certo contra 0,314 transposto** — seis vezes de tinta.
+    //
+    // ⚠️ E a SIMETRIA não serve de oráculo aqui, apesar de parecer: as duas
+    // peças são imagens espelhadas uma da outra, então a razão entre elas fica
+    // em 1,0 com a transposição instalada (0,314 contra 0,320). Foi medido antes
+    // de ser escrito — a versão anterior desta prosa afirmava o contrário.
+    assert!(
+        (0.02..0.15).contains(&left) && (0.02..0.15).contains(&right),
+        "e do tamanho que o enquadramento promete: esq {left:.3} dir {right:.3}"
+    );
+
+    // O CONTROLE: as mesmas duas malhas na origem cobrem o MEIO e deixam as
+    // bordas vazias — é o que o mundo pré-pose desenhava.
+    let together = render_objects(
+        &device,
+        &queue,
+        &[
+            (mesh.clone(), ph2d_mesh::Pose::IDENTITY),
+            (mesh, ph2d_mesh::Pose::IDENTITY),
+        ],
+        &cam,
+    );
+    let c_left = coverage_in(&together, 0, W / 3);
+    let c_right = coverage_in(&together, 2 * W / 3, W);
+    assert!(
+        c_left < 0.005 && c_right < 0.005,
+        "sobrepostas, as bordas ficam vazias: esq {c_left:.3} dir {c_right:.3}"
+    );
+}
+
+/// **A ESCALA da pose chega à tela**, e a normal sobrevive a ela.
+///
+/// ⚠️ A segunda metade é a que uma asserção de silhueta não faz: uma escala que
+/// entrasse na posição e não na normal (ou o contrário) mudaria o TAMANHO sem
+/// mudar o sombreado, e o modelo sairia com a luz de outro tamanho. O oráculo é
+/// a razão entre a luminância média da tinta das duas — que tem de ser ~1, porque
+/// escalar uma esfera uniformemente **não muda para onde a superfície aponta**.
+#[test]
+#[ignore = "precisa de adapter"]
+fn the_pose_scale_grows_the_silhouette_without_tilting_the_light() {
+    let Some((device, queue)) = device() else {
+        eprintln!("sem adapter: pulando");
+        return;
+    };
+    let mesh = shapes::uv_sphere(16, 24, 1.0);
+    let cam = camera_for(&mesh);
+
+    let small = render_objects(
+        &device,
+        &queue,
+        &[(mesh.clone(), ph2d_mesh::Pose::IDENTITY)],
+        &cam,
+    );
+    let big = render_objects(
+        &device,
+        &queue,
+        &[(mesh, ph2d_mesh::Pose::new([0.0; 3], 1.5))],
+        &cam,
+    );
+
+    let (a, b) = (coverage(&small), coverage(&big));
+    assert!(
+        b > a * 1.6,
+        "1,5× de escala tem de cobrir bem mais tela: {a:.3} -> {b:.3}"
+    );
+
+    // A luz: o brilho MÉDIO da tinta não pode mudar com o tamanho.
+    let mean = |px: &[u8]| {
+        let lit: Vec<f32> = px
+            .chunks_exact(4)
+            .filter(|p| p[0] as u32 + p[1] as u32 + p[2] as u32 > 8)
+            .map(|p| (p[0] as f32 + p[1] as f32 + p[2] as f32) / 3.0)
+            .collect();
+        lit.iter().sum::<f32>() / lit.len().max(1) as f32
+    };
+    let (ma, mb) = (mean(&small), mean(&big));
+    assert!(
+        (ma / mb - 1.0).abs() < 0.08,
+        "escalar não inclina a normal: {ma:.1} vs {mb:.1}"
+    );
+}
+
+/// **Apagar um objeto o tira da tela.**
+///
+/// ⚠️ Sem o `truncate_objects` os `slots` só crescem, e a peça que o artista
+/// removeu continuaria desenhada para sempre — com a cena, do lado da CPU, já
+/// sem ela.
+#[test]
+#[ignore = "precisa de adapter"]
+fn truncating_the_list_stops_drawing_what_left_the_scene() {
+    let Some((device, queue)) = device() else {
+        eprintln!("sem adapter: pulando");
+        return;
+    };
+    let mesh = shapes::uv_sphere(16, 24, 1.0);
+    let mut cam = Camera3d {
+        yaw: 0.0,
+        pitch: 0.0,
+        fov_y: core::f32::consts::FRAC_PI_4,
+        ..Camera3d::default()
+    };
+    cam.frame(
+        ph2d_mesh::Aabb {
+            min: [-2.5, -1.0, -1.0],
+            max: [2.5, 1.0, 1.0],
+        },
+        1.0,
+    );
+
+    let mut renderer = MeshRenderer::new(&device, FORMAT);
+    renderer.upload_at(&device, &queue, 0, &mesh);
+    renderer.set_pose(0, ph2d_mesh::Pose::at([-1.5, 0.0, 0.0]));
+    renderer.upload_at(&device, &queue, 1, &mesh);
+    renderer.set_pose(1, ph2d_mesh::Pose::at([1.5, 0.0, 0.0]));
+    let both = render_using(&device, &queue, &mut renderer, &cam);
+    assert!(coverage_in(&both, 2 * W / 3, W) > 0.02, "as duas estão lá");
+
+    renderer.truncate_objects(1);
+    assert_eq!(renderer.object_count(), 1);
+    let one = render_using(&device, &queue, &mut renderer, &cam);
+    assert!(
+        coverage_in(&one, 2 * W / 3, W) < 0.005,
+        "a segunda saiu da cena e saiu da tela"
+    );
+    assert!(coverage_in(&one, 0, W / 3) > 0.02, "e a primeira ficou");
 }

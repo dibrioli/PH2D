@@ -45,8 +45,18 @@ struct Rig {
     n: u32,
 };
 
+// **ONDE ESTE OBJETO ESTÁ** (`ph2d_mesh::Pose`). Grupo PRÓPRIO, e não uma
+// terceira entrada do grupo 0, porque a frequência é outra: a câmera e o rig são
+// da CENA (um write por frame) e isto é do objeto (um bind por desenho). Juntá-los
+// obrigaria um bind group por objeto carregando cópias da câmera, que é a forma
+// de as duas ficarem em desacordo no dia em que uma delas for escrita a menos.
+struct Object {
+    model: mat4x4<f32>,
+};
+
 @group(0) @binding(0) var<uniform> cam: Camera;
 @group(0) @binding(1) var<uniform> rig: Rig;
+@group(1) @binding(0) var<uniform> obj: Object;
 
 // O piso AMBIENTE: o que uma face totalmente virada para longe da luz ainda
 // devolve. Sombra é mais escura, não é preta. ⚠️ É `ph2d_light::AMBIENT`, e a
@@ -102,12 +112,28 @@ fn vs_main(
     @location(2) mask: f32,
 ) -> VsOut {
     var out: VsOut;
-    out.clip = cam.view_proj * vec4<f32>(pos, 1.0);
+    out.clip = cam.view_proj * obj.model * vec4<f32>(pos, 1.0);
     out.mask = mask;
-    // `w = 0` ⇒ direção, não ponto: a translação da vista não entra. A matriz de
-    // vista é ortonormal (sai de uma `look_at`), então não há inverso-transposto
-    // a fazer — a normal viaja por ela como um vetor comum.
-    out.n_view = (cam.view * vec4<f32>(normal, 0.0)).xyz;
+    // `w = 0` ⇒ direção, não ponto: a translação da vista **e a do objeto** não
+    // entram. A matriz de vista é ortonormal (sai de uma `look_at`) e a do
+    // objeto é uma SIMILARIDADE (`Pose` é translação + escala UNIFORME), então
+    // não há inverso-transposto a fazer — a escala sobrevive como um fator
+    // comum e o `normalize` do `canvas_normal` a cancela.
+    //
+    // ⚠️ É esta linha que uma escala por-eixo quebraria, em silêncio: ela
+    // inclinaria a normal sem inclinar a superfície, e o sintoma seria uma luz
+    // levemente torta que ninguém consegue nomear. A `Pose` recusa esse caso na
+    // representação, e não por convenção.
+    //
+    // ⚠️ **MEDIDO: o `obj.model` daqui é INERTE hoje, e fica assim mesmo.**
+    // Tirá-lo deixa os 22 gates de GPU verdes — com translação e escala
+    // uniforme a translação some no `w = 0` e a escala é cancelada pelo
+    // `normalize` do `canvas_normal`. Ele é a fórmula GERAL, e é ela que passa a
+    // carregar peso no dia em que a `Pose` ganhar rotação: um shader que
+    // dispensasse a multiplicação continuaria correto até aquele dia e depois
+    // acenderia a forma com a normal de antes de ela girar. Mesma decisão, e
+    // mesmo motivo, do `Sculpt3dScene::dir_to_local`.
+    out.n_view = (cam.view * obj.model * vec4<f32>(normal, 0.0)).xyz;
     return out;
 }
 

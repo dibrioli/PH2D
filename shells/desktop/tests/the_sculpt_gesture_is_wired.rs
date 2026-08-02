@@ -149,7 +149,11 @@ fn the_mirror_is_off_until_the_artist_asks_for_it() {
     // Um default que só se descobre por acidente é pior que um default menos
     // ambicioso: com o espelho ligado o artista clicava de um lado e via uma
     // segunda protuberância do outro, sem nada na tela explicando por quê.
-    let body = function_body(&sculpt_src(), "new(");
+    // ⚠️ A âncora é a ASSINATURA, não `new(`: desde a W8.1 o cluster tem um
+    // segundo construtor (`SceneObject::new`, o objeto da lista) e ele vem
+    // ANTES no arquivo — o gate lia a função errada e ficava vermelho sobre
+    // produto correto.
+    let body = function_body(&sculpt_src(), "new(device: &wgpu::Device");
     assert!(
         body.contains("symmetry: Symmetry::default()"),
         "a simetria tem de nascer desligada; o `X` a liga"

@@ -195,8 +195,8 @@ impl Sculpt3dScene {
     /// A malha foi RECONSTRUÍDA (o undo) — o upload incremental não serve, e a doação envelheceu
     /// igual. Irmã do [`Self::mesh_changed`].
     pub(super) fn mesh_rebuilt(&mut self) {
-        self.dirty.clear();
-        self.uploaded = false;
+        self.obj_mut().dirty.clear();
+        self.obj_mut().uploaded = false;
         self.edits = self.edits.wrapping_add(1);
     }
 
@@ -208,21 +208,40 @@ impl Sculpt3dScene {
     /// Põe no device o que a CPU mudou. Porta única do upload — o laço de desenho e a doação passam
     /// pela MESMA, senão as duas rotas discordariam sobre que malha o dispositivo tem.
     pub(super) fn sync_mesh(&mut self, device: &wgpu::Device, queue: &wgpu::Queue) {
-        if !self.uploaded {
-            self.renderer.upload(device, queue, self.stack.mesh());
-            self.uploaded = true;
-            self.dirty.clear();
-        } else if !self.dirty.is_empty() {
-            // A região, e o cheio como fallback: `upload_region` recusa quando a topologia mudou, e
-            // recusar é a resposta certa — escrever a região sobre um buffer de outra topologia
-            // poria bytes válidos nos vértices errados.
-            if !self
-                .renderer
-                .upload_region(queue, self.stack.mesh(), &self.dirty)
-            {
-                self.renderer.upload(device, queue, self.stack.mesh());
+        // ⚠️ **TODO objeto, não só o ativo.** O `uploaded`/`dirty` é por objeto
+        // desde a W8.1, mas o LAÇO é o que faz esse par valer: um `sync` que só
+        // olhasse o ativo deixaria um objeto recém-criado — ou um que o undo
+        // reconstruiu enquanto a mão trabalhava outro — sem geometria nenhuma no
+        // device, e a cena mostraria menos peças do que tem.
+        self.renderer.truncate_objects(self.objects.len());
+        for i in 0..self.objects.len() {
+            self.renderer.set_pose(i, self.objects[i].pose);
+            // ⚠️ **A pergunta é *o device TEM esta malha?*, não *eu já a
+            // mandei?***: o `uploaded` é memória da CENA, e um `truncate` do
+            // renderizador (uma peça apagada) reaproveita o índice para outro
+            // objeto. Sem a segunda metade, o objeto que herda o slot fica
+            // desenhado com a geometria do que morreu.
+            if !self.objects[i].uploaded || self.renderer.object_count() <= i {
+                self.renderer
+                    .upload_at(device, queue, i, self.objects[i].stack.mesh());
+                self.objects[i].uploaded = true;
+                self.objects[i].dirty.clear();
+            } else if !self.objects[i].dirty.is_empty() {
+                // A região, e o cheio como fallback: `upload_region_at` recusa quando a topologia
+                // mudou, e recusar é a resposta certa — escrever a região sobre um buffer de outra
+                // topologia poria bytes válidos nos vértices errados.
+                let ok = self.renderer.upload_region_at(
+                    queue,
+                    i,
+                    self.objects[i].stack.mesh(),
+                    &self.objects[i].dirty,
+                );
+                if !ok {
+                    self.renderer
+                        .upload_at(device, queue, i, self.objects[i].stack.mesh());
+                }
+                self.objects[i].dirty.clear();
             }
-            self.dirty.clear();
         }
     }
 

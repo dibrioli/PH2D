@@ -158,11 +158,30 @@ pub fn sculpt_src() -> String {
         names.len() >= 4,
         "o cluster tem pelo menos quatro arquivos, e achei {names:?}"
     );
-    names
+    let joined = names
         .iter()
         .map(|n| source(n))
         .collect::<Vec<_>>()
-        .join("\n")
+        .join("\n");
+    elide_active_object(&joined)
+}
+
+/// A fonte com a **porta do objeto ativo ELIDIDA**.
+///
+/// ⚠️ Desde a W8.1 a cena é uma LISTA, e toda pilha é alcançada por uma de três
+/// grafias da MESMA porta: `self.obj().stack`, `self.obj_mut().stack` e —
+/// onde o borrow checker exige campos disjuntos — `self.objects[self.active].
+/// stack` (ver `sculpt3d_space.rs`). O que estes gates afirmam é **qual verbo da
+/// pilha é chamado**, nunca por qual das três grafias; sem esta normalização
+/// eles ficariam vermelhos a cada rearranjo de empréstimo, **sobre produto
+/// correto** — que é o proxy que expira, pela oitava vez nesta linha.
+///
+/// ⚠️ A elisão é do ENDEREÇO, não do verbo: `.mesh_mut()`, `.add_level()` e
+/// companhia atravessam intactos, e é sobre eles que as asserções falam.
+fn elide_active_object(src: &str) -> String {
+    src.replace("self.objects[self.active].stack", "self.stack")
+        .replace("self.obj_mut().stack", "self.stack")
+        .replace("self.obj().stack", "self.stack")
 }
 
 /// O corpo do braço de `match` que **CONTÉM** este padrão — mesmo quando ele é

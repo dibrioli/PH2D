@@ -11,7 +11,7 @@
 //! primeiro `if` e o frame 2D é byte-idêntico.
 
 use ph2d_light::LightRig;
-use ph2d_mesh::{Mesh, Multires, Ray};
+use ph2d_mesh::{Hit, Mesh, Multires, Pose, Ray};
 use ph2d_mesh_render::{Camera3d, MeshRenderer};
 use ph2d_sculpt3d::{Amount, Brush, Dab, Grip, SculptStroke, Symmetry, Verb};
 
@@ -33,7 +33,7 @@ mod input;
 #[path = "sculpt3d_history.rs"]
 mod history;
 
-use history::StrokeUndo;
+use history::{Entry, StrokeUndo};
 
 use donation::FormRole;
 use donation::FormStamp;
@@ -115,29 +115,9 @@ const SCALE_PER_PX: f32 = 0.01;
 mod scenes;
 
 pub(crate) use scenes::{
-    announce, donation_scene, holes_scene, remesh_scene, reversion_scene, smoke_armed, smoke_mesh,
-    turn_scene,
+    announce, donation_scene, holes_scene, objects_scene, remesh_scene, reversion_scene,
+    scene_objects, smoke_armed, smoke_mesh, turn_scene,
 };
-
-/// As quatro operações de máscara — ver [`Sculpt3dScene::mask_op`].
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum MaskOp {
-    Clear,
-    Invert,
-    Blur,
-    Sharpen,
-}
-
-impl MaskOp {
-    fn label(self) -> &'static str {
-        match self {
-            Self::Clear => "limpa",
-            Self::Invert => "inverte",
-            Self::Blur => "borra",
-            Self::Sharpen => "afia",
-        }
-    }
-}
 
 /// O que o arrasto está fazendo.
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -164,15 +144,63 @@ struct TwistSweep {
     total: f32,
 }
 
-/// A cena 3D viva: a malha, a câmera, o pincel e o pipeline que a desenha.
-pub(crate) struct Sculpt3dScene {
+/// **A MÁSCARA** — as quatro operações que agem na malha inteira. Filho
+/// (`#[path]`) pelo motivo dos outros: o corte é de responsabilidade.
+#[path = "sculpt3d_mask.rs"]
+mod mask;
+
+use mask::MaskOp;
+
+/// **ONDE as coisas estão** — as portas de espaço. Filho (`#[path]`) pelo motivo
+/// dos outros: o corte é de responsabilidade, e este é o assunto que a lista de
+/// objetos inventou.
+#[path = "sculpt3d_space.rs"]
+mod space;
+
+/// **UM OBJETO da cena** — a pilha de níveis dele e onde ele está.
+///
+/// ⚠️ `uploaded` e `dirty` são POR OBJETO, e não da cena: subir a malha de um
+/// não limpa a do outro, e um par compartilhado deixaria o segundo objeto
+/// desenhado com a geometria de antes do dab — sem erro, sem warning, e com
+/// todos os gates de CPU verdes.
+pub(crate) struct SceneObject {
     /// **A PILHA de níveis**, e não uma malha — ver [`Multires`]. O nível 0 é a
     /// base; o artista esculpe no que estiver selecionado.
     pub(crate) stack: Multires,
-    pub(crate) camera: Camera3d,
-    renderer: MeshRenderer,
+    /// Onde este objeto está no mundo — ver [`Pose`].
+    pub(crate) pose: Pose,
     /// A malha já subiu inteira ao device? Depois disso só sobem REGIÕES.
     uploaded: bool,
+    /// Os vértices que a GPU ainda não viu — acumulados entre frames, porque
+    /// vários eventos de ponteiro cabem num quadro.
+    dirty: Vec<u32>,
+}
+
+impl SceneObject {
+    fn new(mesh: Mesh, pose: Pose) -> Self {
+        Self {
+            stack: Multires::new(mesh),
+            pose,
+            uploaded: false,
+            dirty: Vec::new(),
+        }
+    }
+}
+
+/// A cena 3D viva: os objetos, a câmera, o pincel e o pipeline que a desenha.
+pub(crate) struct Sculpt3dScene {
+    /// **A CENA é uma LISTA.** Nunca vazia — a invariante que torna
+    /// [`Sculpt3dScene::obj`] total.
+    pub(crate) objects: Vec<SceneObject>,
+    /// Quem a mão está trabalhando. Sempre `< objects.len()`.
+    ///
+    /// ⚠️ **Ele NÃO é um modo escondido:** quem o move é o próprio pick do
+    /// pincel (clicar num objeto o torna ativo), então "o ativo" é sempre *o
+    /// último que você tocou* — e é por isso que a cena não precisa de um
+    /// realce de seleção para ser honesta.
+    pub(crate) active: usize,
+    pub(crate) camera: Camera3d,
+    renderer: MeshRenderer,
     drag: Option<Drag>,
     last: (f32, f32),
     viewport: (u32, u32),
@@ -205,16 +233,13 @@ pub(crate) struct Sculpt3dScene {
     /// aqui seria exatamente o que `docs/3D/05.2` proíbe.
     rig: LightRig,
     stroke: SculptStroke,
-    undo: Vec<StrokeUndo>,
+    undo: Vec<Entry>,
     /// **O futuro guardado** — o que um Ctrl+Z tirou e um Ctrl+Shift+Z devolve.
     ///
     /// ⚠️ Ela é populada por [`Sculpt3dScene::undo_stroke`] e esvaziada por
     /// [`Sculpt3dScene::record`], nunca por quem edita: uma edição nova torna
     /// este futuro inalcançável, e a lei mora na porta que grava.
-    redo: Vec<StrokeUndo>,
-    /// Os vértices que a GPU ainda não viu — acumulados entre frames, porque
-    /// vários eventos de ponteiro cabem num quadro.
-    dirty: Vec<u32>,
+    redo: Vec<Entry>,
     /// Quantas vezes a MALHA mudou. Entra no carimbo da doação — ver
     /// `Sculpt3dScene::mesh_changed`, a porta única que o move.
     edits: u64,
@@ -235,10 +260,10 @@ impl Sculpt3dScene {
         };
         camera.frame(mesh.bounds(), aspect);
         Self {
-            stack: Multires::new(mesh),
+            objects: vec![SceneObject::new(mesh, Pose::IDENTITY)],
+            active: 0,
             camera,
             renderer: MeshRenderer::new(device, ph2d_render::GameRt::FORMAT),
-            uploaded: false,
             drag: None,
             last: (0.0, 0.0),
             viewport: (1, 1),
@@ -258,51 +283,9 @@ impl Sculpt3dScene {
             stroke: SculptStroke::default(),
             undo: Vec::new(),
             redo: Vec::new(),
-            dirty: Vec::new(),
             edits: 0,
             role: FormRole::Clay,
             donated: None,
-        }
-    }
-
-    /// A malha do nível VIVO — a que o artista vê e esculpe.
-    ///
-    /// ⚠️ Porta, e não campo, desde que a pilha existe: *qual malha é esta cena*
-    /// passou a ter uma resposta que depende do nível selecionado, e um campo
-    /// paralelo seria a segunda cópia dessa resposta.
-    pub(crate) fn mesh(&self) -> &Mesh {
-        self.stack.mesh()
-    }
-
-    fn mesh_mut(&mut self) -> &mut Mesh {
-        self.stack.mesh_mut()
-    }
-
-    /// O raio autorado, **já clampado contra a tela desta janela**.
-    ///
-    /// Porta única, e é ela que faz um `resize` re-clampar sozinho: o cru é o
-    /// estado autorado e o limite é do viewport, então guardar o clampado seria
-    /// o mesmo número em dois lugares — e o segundo fica velho no primeiro
-    /// arrasto de janela.
-    fn radius_px(&self) -> f32 {
-        let ceiling =
-            (RADIUS_MAX_FRAC_OF_HEIGHT * self.viewport.1.max(1) as f32).max(RADIUS_MIN_PX);
-        self.radius_px.clamp(RADIUS_MIN_PX, ceiling)
-    }
-
-    /// O pincel com o raio resolvido em unidades de MUNDO, no ponto `at`.
-    ///
-    /// ⚠️ **O raio é função do ACERTO, não do pincel** — o mesmo pincel cobre
-    /// menos mundo perto da câmera e mais longe dela, que é o que "tamanho em
-    /// pixels" significa. Guardar um raio de mundo no `Brush` seria o mesmo
-    /// número em dois lugares, e o segundo ficaria velho a cada `dolly`.
-    fn armed_brush(&self, at: [f32; 3]) -> Brush {
-        Brush {
-            radius: self
-                .camera
-                .world_radius_for_screen_px(at, self.radius_px(), self.viewport)
-                .max(1e-6),
-            ..self.brush
         }
     }
 
@@ -354,11 +337,17 @@ impl Sculpt3dScene {
     /// Sair do modelo no meio do gesto não interrompe um espinho — é assim que
     /// se puxa uma ponta para fora da silhueta.
     fn take_hold(&mut self, x: f32, y: f32) -> bool {
-        let ray = self.ray_at(x, y);
-        let Some(hit) = self.mesh().raycast(&ray) else {
+        let Some((object, hit)) = self.pick(x, y) else {
             return false;
         };
-        self.grab = Some((hit.point, (x, y)));
+        // ⚠️ **Pegar o barro TROCA o objeto ativo**, e é isso que torna "o ativo"
+        // um fato sobre o gesto em vez de um modo escondido: a peça que a mão
+        // agarrou é a peça que ela trabalha.
+        self.active = object;
+        // ⚠️ **A âncora é guardada em MUNDO**, e não em local, porque quem a
+        // consome é a câmera (`screen_delta_to_world`): o dedo anda na TELA. A
+        // descida para o espaço da malha acontece no dab, uma vez, na porta.
+        self.grab = Some((self.pose().point_to_world(hit.point), (x, y)));
         true
     }
 
@@ -384,16 +373,20 @@ impl Sculpt3dScene {
         };
         let f = self.finger_world(at, from, x, y);
         let pull = [f[0] - at[0], f[1] - at[1], f[2] - at[2]];
-        let brush = self.armed_brush(at);
-        let eye = self.ray_at(x, y).dir();
+        // A âncora e o puxão descem juntos: o CENTRO é um ponto, o puxão é um
+        // deslocamento, e a [`Pose`] os trata diferente de propósito.
+        let center = self.pose().point_to_local(at);
+        let pull = self.pose().vector_to_local(pull);
+        let brush = self.armed_brush(center);
+        let eye = self.dir_to_local(self.ray_at(x, y).dir());
         self.stroke.dab(
-            self.stack.mesh_mut(),
+            self.objects[self.active].stack.mesh_mut(),
             &brush,
-            &Dab::pulling(at, brush.radius, eye, pull),
+            &Dab::pulling(center, brush.radius, eye, pull),
             self.symmetry,
         );
         Self::mesh_changed(
-            &mut self.dirty,
+            &mut self.objects[self.active].dirty,
             &mut self.edits,
             self.stroke.last_gpu_dirty(),
         );
@@ -414,16 +407,18 @@ impl Sculpt3dScene {
         let c0 = self.finger_world(at, origin, from[0], from[1]);
         let c1 = self.finger_world(at, origin, to[0], to[1]);
         let step = [c1[0] - c0[0], c1[1] - c0[1], c1[2] - c0[2]];
-        let brush = self.armed_brush(c1);
-        let eye = self.ray_at(to[0], to[1]).dir();
+        let center = self.pose().point_to_local(c1);
+        let step = self.pose().vector_to_local(step);
+        let brush = self.armed_brush(center);
+        let eye = self.dir_to_local(self.ray_at(to[0], to[1]).dir());
         self.stroke.dab(
-            self.stack.mesh_mut(),
+            self.objects[self.active].stack.mesh_mut(),
             &brush,
-            &Dab::hooking(c1, brush.radius, eye, step),
+            &Dab::hooking(center, brush.radius, eye, step),
             self.symmetry,
         );
         Self::mesh_changed(
-            &mut self.dirty,
+            &mut self.objects[self.active].dirty,
             &mut self.edits,
             self.stroke.last_gpu_dirty(),
         );
@@ -482,23 +477,32 @@ impl Sculpt3dScene {
         let Some((at, from)) = self.grab else {
             return;
         };
-        let brush = self.armed_brush(at);
-        let eye = self.ray_at(from.0, from.1).dir();
+        let center = self.pose().point_to_local(at);
+        let brush = self.armed_brush(center);
+        let eye = self.dir_to_local(self.ray_at(from.0, from.1).dir());
         let dab = match kind {
             Amount::Angle => {
                 let Some(radians) = self.swept_angle(from, x, y) else {
                     return;
                 };
-                Dab::turning(at, brush.radius, eye, radians)
+                Dab::turning(center, brush.radius, eye, radians)
             }
             // Arrastar para a DIREITA cresce. É o `mouseX - lastMouseX` do
-            // original, com o total no lugar do incremento.
-            Amount::Fraction => Dab::scaling(at, brush.radius, eye, (x - from.0) * SCALE_PER_PX),
+            // original, com o total no lugar do incremento. ⚠️ A fração é
+            // ADIMENSIONAL, então ela NÃO atravessa a pose — descê-la seria o
+            // erro simétrico de esquecer a descida de um deslocamento.
+            Amount::Fraction => {
+                Dab::scaling(center, brush.radius, eye, (x - from.0) * SCALE_PER_PX)
+            }
         };
-        self.stroke
-            .dab(self.stack.mesh_mut(), &brush, &dab, self.symmetry);
+        self.stroke.dab(
+            self.objects[self.active].stack.mesh_mut(),
+            &brush,
+            &dab,
+            self.symmetry,
+        );
         Self::mesh_changed(
-            &mut self.dirty,
+            &mut self.objects[self.active].dirty,
             &mut self.edits,
             self.stroke.last_gpu_dirty(),
         );
@@ -507,17 +511,21 @@ impl Sculpt3dScene {
     /// Aplica um dab onde o cursor aponta. Devolve `false` se o raio errou a
     /// malha — e errar é normal: a mão sai do modelo o tempo todo.
     fn sculpt_at(&mut self, x: f32, y: f32) -> bool {
-        let ray = self.ray_at(x, y);
-        let Some(hit) = self.mesh().raycast(&ray) else {
+        let Some((object, hit)) = self.pick(x, y) else {
             return false;
         };
+        // Pintar num objeto o torna o ativo — a mesma lei do `take_hold`.
+        self.active = object;
+        let ray = self.ray_at(x, y);
         if std::env::var("PH2D_SCULPT3D_DIAG").ok().as_deref() == Some("1") {
             // ⚠️ **O instrumento que responde *"o pincel cai onde o cursor
             // aponta?"* com um NÚMERO.** Ele reprojeta o acerto pela porta
             // `project` — o inverso exato do `ray_through` — e imprime o erro em
             // pixels. Um desvio grande acusa a fiação (viewport, escala, um
             // flip); zero acusa a percepção, e aí a causa é outra.
-            let back = self.camera.project(hit.point, self.viewport);
+            let back = self
+                .camera
+                .project(self.pose().point_to_world(hit.point), self.viewport);
             let err = back.map(|(bx, by)| ((bx - x).hypot(by - y), bx, by));
             eprintln!(
                 "[sculpt3d] clique ({x:.1}, {y:.1}) viewport {:?} -> acerto {:?} \
@@ -526,18 +534,19 @@ impl Sculpt3dScene {
             );
         }
         let brush = self.armed_brush(hit.point);
+        let eye = self.dir_to_local(ray.dir());
         self.stroke.dab(
-            self.stack.mesh_mut(),
+            self.objects[self.active].stack.mesh_mut(),
             &brush,
             // ⚠️ **O olho é o `dir` do raio que ACABOU de produzir este acerto**,
             // e não uma direção derivada da câmera de novo: duas respostas para
             // *"de onde se está olhando"* divergem no frame em que a câmera se
             // move entre o pick e o dab.
-            &Dab::at(hit.point, brush.radius, ray.dir()),
+            &Dab::at(hit.point, brush.radius, eye),
             self.symmetry,
         );
         Self::mesh_changed(
-            &mut self.dirty,
+            &mut self.objects[self.active].dirty,
             &mut self.edits,
             // ⚠️ **`last_gpu_dirty`, não `last_refreshed`.** Um traço de máscara
             // não move geometria, então ele não refresca normal nenhuma — e
@@ -546,35 +555,5 @@ impl Sculpt3dScene {
             self.stroke.last_gpu_dirty(),
         );
         true
-    }
-
-    /// **Uma operação de máscara**, com o undo e o upload que ela implica.
-    ///
-    /// ⚠️ **A entrada de undo é a MÁSCARA INTEIRA, e não a janela de um traço.**
-    /// Estas operações agem na malha toda por definição (o `blur` alcança todo
-    /// vértice cuja vizinhança tem máscara), então uma janela seria uma mentira
-    /// sobre o que mudou — e o que ela custa é `4 B × vértices`, o mesmo que o
-    /// plano que ela desfaz.
-    ///
-    /// ⚠️ E a GPU tem de re-ler a malha INTEIRA: o `dirty` incremental é a
-    /// janela de um dab, e aqui não houve dab.
-    fn mask_op(&mut self, op: MaskOp) {
-        let before = self.mesh().masks().map(<[f32]>::to_vec);
-        match op {
-            MaskOp::Clear => {
-                if !ph2d_sculpt3d::mask_ops::clear(self.mesh_mut()) {
-                    return;
-                }
-            }
-            MaskOp::Invert => ph2d_sculpt3d::mask_ops::invert(self.mesh_mut()),
-            MaskOp::Blur => ph2d_sculpt3d::mask_ops::blur(self.mesh_mut(), MASK_OP_PASSES),
-            MaskOp::Sharpen => ph2d_sculpt3d::mask_ops::sharpen(self.mesh_mut(), MASK_OP_PASSES),
-        }
-        self.record(StrokeUndo::Mask {
-            level: self.stack.level(),
-            before,
-        });
-        self.uploaded = false;
-        self.edits += 1;
     }
 }

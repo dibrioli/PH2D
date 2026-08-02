@@ -291,7 +291,7 @@ fn undoing_and_redoing_are_the_same_door() {
     );
     let step = function_body(&src, "step(&mut self, undoing");
     assert!(
-        step.contains("self.apply_entry(entry)"),
+        step.contains("self.apply_entry(entry.undo)"),
         "e as duas direções passam por ela"
     );
     // O que sai de uma fila entra na outra — sem isso o desfazer consome a
@@ -312,9 +312,10 @@ fn undoing_and_redoing_are_the_same_door() {
 #[test]
 fn a_new_edit_goes_through_the_door_that_clears_the_redo() {
     let src = sculpt_src();
-    let record = function_body(&src, "record(&mut self, entry");
+    let record = function_body(&src, "record(&mut self, undo");
     assert!(
-        record.contains("self.undo.push(entry)") && record.contains("self.redo.clear()"),
+        record.contains("self.undo.push(Entry { object, undo })")
+            && record.contains("self.redo.clear()"),
         "gravar é empurrar E limpar o futuro"
     );
     assert_eq!(
@@ -638,5 +639,86 @@ fn undoing_a_remesh_swaps_the_whole_mesh_because_nothing_is_shared() {
     assert!(
         body.contains("mesh_rebuilt()"),
         "a malha é OUTRA: o device precisa de tudo, não de uma janela"
+    );
+}
+
+/// **UM CTRL+Z VOLTA AO OBJETO DA EDIÇÃO** — a lei que a cena-lista inventou.
+///
+/// ⚠️ Sem ela o defeito é mudo e destrutivo: esculpir a peça A, esculpir a peça
+/// B, e o Ctrl+Z aplicar a janela de A **na malha de B** — índices certos, malha
+/// errada, sem erro nenhum. É a mesma lei do NÍVEL um degrau acima, e por isso
+/// ela vem ANTES: escolher o nível dentro do objeto errado não conserta nada.
+///
+/// A asserção é de ORDEM, e a ordem é o que carrega o peso: `self.active` tem de
+/// ser escrito **antes** de `apply_entry` ser chamada.
+#[test]
+fn undoing_returns_to_the_object_the_edit_was_made_on() {
+    let src = sculpt_src();
+    let step = function_body(&src, "step(&mut self, undoing");
+    let at_active = step
+        .find("self.active = entry.object")
+        .expect("o `step` tem de voltar ao objeto da entrada");
+    let at_apply = step.find("self.apply_entry(").expect("e depois aplicar");
+    assert!(
+        at_active < at_apply,
+        "voltar ao objeto vem ANTES de aplicar — depois já é tarde"
+    );
+
+    // E quem GRAVA carimba o ativo: uma entrada sem dono é uma entrada que o
+    // desfazer aplica em quem estiver na mão.
+    let record = function_body(&src, "record(&mut self, undo");
+    assert!(
+        record.contains("let object = self.active;") && record.contains("Entry { object, undo }"),
+        "gravar carimba o objeto ativo na entrada"
+    );
+}
+
+/// **O `sync_mesh` percorre TODOS os objetos.**
+///
+/// ⚠️ Um `sync` que olhasse só o ativo deixaria toda peça que a mão não está
+/// trabalhando **sem geometria no device** — a cena mostraria menos objetos do
+/// que tem, e nenhum gate de CPU veria isso (a malha está lá, correta, na RAM).
+#[test]
+fn every_object_reaches_the_device_not_only_the_active_one() {
+    let src = sculpt_src();
+    let sync = function_body(&src, "sync_mesh(&mut self, device");
+    assert!(
+        sync.contains("for i in 0..self.objects.len()"),
+        "o upload é por OBJETO, não só do ativo"
+    );
+    assert!(
+        sync.contains("self.renderer.set_pose(i, self.objects[i].pose)"),
+        "e a pose de cada um vai junto — sem ela todos desenhariam na origem"
+    );
+}
+
+/// **O pick compara em MUNDO, e o pincel desce a escala.**
+///
+/// ⚠️ Duas metades da mesma pergunta, e as duas são invisíveis num teste de
+/// forma: comparar acertos pelo `t` faz a peça de trás ganhar o clique quando as
+/// escalas diferem, e não dividir o raio pela escala encolhe a pegada num objeto
+/// grande. Nenhuma das duas levanta erro; as duas aparecem só como *"o pincel
+/// está estranho"*.
+#[test]
+fn the_pick_compares_in_world_and_the_brush_crosses_the_scale() {
+    let src = sculpt_src();
+    let pick = function_body(&src, "pick(&self, x: f32, y: f32)");
+    assert!(
+        pick.contains("o.pose.ray_to_local(&world)"),
+        "o RAIO desce ao espaço de cada malha"
+    );
+    assert!(
+        pick.contains("o.pose.point_to_world(hit.point)"),
+        "e a comparação sobe de volta ao mundo — um `t` mediria em réguas diferentes"
+    );
+
+    let brush = function_body(&src, "armed_brush(&self, local_at");
+    assert!(
+        brush.contains("pose.point_to_world(local_at)"),
+        "a câmera só responde sobre o mundo"
+    );
+    assert!(
+        brush.contains("/ pose.scale()"),
+        "e o raio volta para a régua da malha"
     );
 }

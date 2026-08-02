@@ -45,6 +45,7 @@ mod multires;
 mod normals;
 mod obj;
 mod octree;
+mod pose;
 mod ray;
 mod reversion;
 mod subdivide;
@@ -63,6 +64,7 @@ pub use normals::{
 };
 pub use obj::{ObjError, import_obj};
 pub use octree::{Octree, RefitScratch};
+pub use pose::Pose;
 pub use ray::{Hit, Ray};
 pub use reversion::{Reversed, reverse_subdivision};
 pub use subdivide::{Lerpable, Predicted, predict, subdivide};

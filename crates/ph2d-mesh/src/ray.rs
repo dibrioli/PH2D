@@ -95,9 +95,15 @@ impl Ray {
 pub struct Hit {
     /// A face acertada.
     pub face: u32,
-    /// Distância ao longo do raio, em unidades de mundo.
+    /// Distância ao longo do raio — na régua do ESPAÇO em que o raio foi dado.
+    ///
+    /// ⚠️ Desde a W8.1 esse espaço pode não ser o mundo: quem consulta uma malha
+    /// com pose leva o raio ao espaço LOCAL dela (`Pose::ray_to_local`), e o
+    /// `Ray` normaliza a direção na construção — então este `t` mede em unidades
+    /// locais. Comparar dois acertos de objetos com escalas diferentes por `t`
+    /// dá a resposta errada; compare os PONTOS, convertidos de volta.
     pub t: f32,
-    /// O ponto no mundo.
+    /// O ponto acertado, no espaço em que o raio foi dado (ver [`Self::t`]).
     pub point: [f32; 3],
     /// A normal **geométrica** da face (não a interpolada dos vértices): é a
     /// direção da superfície que de fato foi tocada, que é o que um pincel e um

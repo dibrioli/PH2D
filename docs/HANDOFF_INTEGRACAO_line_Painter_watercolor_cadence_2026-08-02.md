@@ -51,6 +51,29 @@ Num documento de UMA camada não há — e 335 MB de tráfego produziam a cor de
 
 ⚠️ O ganho é do documento de **uma camada**. Com camadas abaixo o caminho longo continua — corretamente.
 
+### 2.3 — O Smudge forkava o canvas em TODO evento (2026-08-02, tarde)
+
+Report do Enio: *"um pincel de 250px e as configurações na imagem provocam grande queda de FPS.
+Desempenho pior em imagens grandes (4096)."* Com os knobs dele (`Rewet 0.400`, `Smudge 0.197`,
+`Dilution 0.168`, `Charge 0.755`, `Pull 0.477`), traço de 1500 px, r=250:
+
+| | antes | depois | |
+|---|---|---|---|
+| carimbo (`on_canvas_pointer`) @4096² | 49,60 ms | **5,06** | **9,8×** |
+| carimbo, cresce com a tela | 7,40× | **1,01×** | limitado pela PEGADA |
+| **quadro** @4096² | **83,4 ms** | **27,4** | **3,05×** |
+| quadro, cresce com a tela | 2,87× | **0,89×** | plano |
+
+`smear_wet_base` muta a base pelo `Arc::make_mut`, e a re-partilha no fim da função restabelece o par
+de donos ⇒ o fork acontecia a **cada evento de ponteiro** (67 MB a 4096²), não uma vez como o
+comentário dele sugeria. **Cura: soltar a segunda referência ANTES do `make_mut`** — com um dono só ele
+MOVE. É a §5.12 do Wet Paint um módulo adiante. **Byte-idêntico por construção** (`make_mut` com um
+dono devolve o mesmo buffer); suíte **961 release / 959 debug**.
+
+⚠️ **A ablação por entrada é o que nomeou o dono:** sem Smudge o carimbo custa **1,62 ms nas DUAS
+telas**. O knob nasce em `0`, e é exatamente por isso que a tabela de decomposição do doc 31 o usou
+como **piso de ruído** — o custo dele nunca tinha sido medido.
+
 ## 3 — Foundational tocado
 
 **NENHUM.** Todo o diff mora em `crates/ph2d-tool-painter/`. Zero `Cargo.toml`, zero dep nova, zero
@@ -71,12 +94,21 @@ crate nova, nenhum ADR, nenhum id/token/i18n, **nenhum schema** (`PROJECT_SCHEMA
 | `pub(crate) mod watercolor_field` | `paint.rs` (era `mod`) | visibilidade alargada para o `PainterTool` alcançar a struct |
 | `compose::encode` | `compositor/compose.rs` | era privado, virou `pub(super)` para o gate da substituição |
 | `watercolor_cadence_tests` | filho de `watercolor_field` | 3 gates novos |
+| `WashCadence.window_px` / `.base_forks` | `watercolor_field.rs` | contadores do produto: área da janela e forks do canvas |
+| `watercolor_smudge_gate_tests` | filho de `tests` | os 2 gates do fork |
 
 ⚠️ **Não há campo `owed`.** *"Chegou um move neste quadro?"* já é `moved_this_frame`, que o `paint_tick`
 lê como `parked` — um segundo campo seria um segundo lugar para o mesmo fato, com ciclo de vida próprio
 a acertar.
 
 ## 6 — Gates novos e as provas de mutação
+
+**`watercolor_smudge_gate_tests`** (2): a **PROPRIEDADE** (o produto conta os forks em
+`WashCadence::base_forks`, irmão do `composites` — contagem, não relógio) e a **CONSEQUÊNCIA** (razão
+2048÷4096 do carimbo). Mutação (reinstalar o fork): **18 forks em 8 eventos** e razão **6,61×**; os
+dois sangram e não são redundantes. ⚠️ O oráculo do **endereço** do buffer foi tentado e **descartado
+por medição** — o alocador devolve a alocação recém-liberada, então o ponteiro sai e VOLTA, e o gate
+lia *"não moveu"* sobre um produto que copiava 67 MB por evento.
 
 **`watercolor_cadence_tests`** (3): a **CONTA** (um composite por quadro — um CONTADOR, não um relógio:
 uma razão sobre passadas de ~1 ms mede o escalonador desta máquina) · o **QUADRO** (a lavagem está viva

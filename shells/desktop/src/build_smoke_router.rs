@@ -180,6 +180,13 @@ pub(crate) fn route(app: &mut crate::App, f: u32, level: u32) -> bool {
         crate::align_smoke::frame(app, f);
         return true;
     }
+    // A cena do AUTO LAYOUT (=50, plano UI/UX W2) — irmã `layout_smoke`. Mesma disciplina: dá o
+    // material (duas molduras com seis filhos em desordem) e **nasce SEM fluxo** — quem escolhe
+    // Row é o artista, no painel, que é a costura inteira desta wave.
+    if level == 50 {
+        crate::layout_smoke::frame(app, f);
+        return true;
+    }
     // A cena da BOOLEANA VIVA (=48) — irmã `bool_smoke`. Mesma disciplina: dá o material (os três
     // rigs) e **nasce com o modo Live em OFF**, que é o default do produto — quem liga é o artista.
     if level == 48 {

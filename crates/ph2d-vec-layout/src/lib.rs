@@ -181,6 +181,21 @@ pub fn solve(nodes: &[Node]) -> Result<Vec<Solved>, LayoutError> {
     }
 
     let mut tree: TaffyTree<()> = TaffyTree::with_capacity(nodes.len());
+    // ⚠️ **O ARREDONDAMENTO SAI, e não é afinação — é uma diferença de UNIDADE.**
+    //
+    // O `taffy` arredonda o resultado para inteiros por default, e para um navegador isso está
+    // certo: a unidade dele é o PIXEL de dispositivo, e meio pixel não existe. A nossa é a unidade
+    // de MUNDO do documento, onde uma moldura inteira mede 9 e um filho mede 1,1 — arredondar ali
+    // é apagar a geometria.
+    //
+    // Medido, com a cena de smoke `=50` (moldura 9,0 · cinco botões de 1,1 · um espaçador de 0,7
+    // com `grow`): os botões saíam a **1,0** e o espaçador a **4,0** em vez de 1,1 e 3,5. A soma
+    // continuava a fechar em 9,0, que é precisamente o que torna o defeito difícil de ver.
+    //
+    // ⚠️ E ele atravessou a wave inteira porque **todas as fixtures usavam números inteiros**
+    // (molduras de 100×40, filhos de 10, vãos de 4 e 2): sob elas as duas versões são idênticas.
+    // O gate `a_fractional_layout_is_not_rounded_to_whole_units` é o que contém o fenómeno.
+    tree.disable_rounding();
     let mut ids: Vec<NodeId> = Vec::with_capacity(nodes.len());
     for n in nodes {
         ids.push(

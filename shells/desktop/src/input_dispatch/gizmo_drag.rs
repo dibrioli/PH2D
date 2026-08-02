@@ -545,6 +545,23 @@ impl App {
                             t.scale = ph2d_core::Vec2::new(new_scale[0], new_scale[1]);
                         }
                     }
+                } else if matches!(drag.kind, ph2d_editor::GizmoDragKind::Translate)
+                    && crate::layout_reorder::flow_parent(&gfx.sim, entity).is_some()
+                {
+                    // **DENTRO de um fluxo, arrastar é REORDENAR** (ADR-0153, corolário).
+                    //
+                    // ⚠️ E o `Transform` NÃO é escrito, o que é a metade que importa: a posição de
+                    // um filho colocado é derivada por frame, então a escrita seria invisível — e
+                    // ainda assim contaria, porque o undo deste editor regista por DIFF do mundo
+                    // ECS. O artista teria a forma a saltar de volta para a fila **e** um passo de
+                    // undo por cima.
+                    //
+                    // O cursor é lido em MUNDO porque a régua que decide o slot está em mundo (o
+                    // passe publica-a lá); converter de novo seria a segunda resposta a *"onde
+                    // está o dedo?"*.
+                    let window_size = gfx.surface.size();
+                    let cursor = gfx.camera.screen_to_world(drag.cursor_screen, window_size);
+                    crate::layout_reorder::drop_at(&mut gfx.sim, &self.layout_live, entity, cursor);
                 } else {
                     // Single-selection (any kind) + multi-selection TRANSLATE.
                     // Multi rotate/scale goes through the unified branch above,

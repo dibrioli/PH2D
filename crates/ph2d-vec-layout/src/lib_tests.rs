@@ -227,3 +227,54 @@ fn a_parent_that_does_not_flow_is_refused() {
         Err(LayoutError::ParentDoesNotFlow)
     );
 }
+
+/// **Uma disposição FRACIONÁRIA não é arredondada para unidades inteiras.**
+///
+/// ⚠️ Este gate nasceu VERMELHO sobre a wave inteira, e a razão de ele ter faltado é a lição:
+/// **todas as outras fixtures deste arquivo usam números inteiros** (10 de largura, vãos de 4),
+/// e sob elas o arredondamento do `taffy` é invisível — as duas versões dão a mesma resposta.
+///
+/// Ele é o `taffy` a assumir a unidade de um NAVEGADOR (o pixel de dispositivo, onde meio pixel
+/// não existe); a nossa é a unidade de MUNDO do documento. Medido na cena de smoke `=50`, com a
+/// moldura em 9,0: cinco filhos de 1,1 saíam a **1,0** e o espaçador de 0,7 com `grow` saía a
+/// **4,0** em vez de 3,5 — e **a soma continuava a fechar em 9,0**, que é o que torna o defeito
+/// difícil de ver de olho.
+#[test]
+fn a_fractional_layout_is_not_rounded_to_whole_units() {
+    let mut nodes = vec![Node {
+        parent: None,
+        frame: Some(FrameStyle::default()),
+        item: ItemStyle::default(),
+        size: [9.0, 2.6],
+    }];
+    for i in 0..6 {
+        nodes.push(Node {
+            parent: Some(0),
+            frame: None,
+            item: if i == 3 {
+                ItemStyle {
+                    grow: 1.0,
+                    ..ItemStyle::default()
+                }
+            } else {
+                ItemStyle::default()
+            },
+            size: [if i == 3 { 0.7 } else { 1.1 }, 0.84],
+        });
+    }
+    let s = solve(&nodes).expect("dispoe");
+    for (i, r) in s.iter().enumerate().skip(1) {
+        let want = if i == 4 { 3.5 } else { 1.1 };
+        assert!(
+            (r[2] - want).abs() < 1e-4,
+            "o filho {i} mede {:.4} em vez de {want} — a disposicao foi arredondada",
+            r[2]
+        );
+    }
+    // E o começo de cada um cai na fracção exacta, não numa grade de inteiros.
+    assert!(
+        (s[2][0] - 1.1).abs() < 1e-4,
+        "o segundo comeca em {:.4}, e nao em 1,1",
+        s[2][0]
+    );
+}

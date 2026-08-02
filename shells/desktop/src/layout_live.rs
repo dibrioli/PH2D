@@ -125,6 +125,9 @@ struct Collected {
     paths: Vec<VecPathId>,
     /// A caixa de mundo que ele ocupa HOJE.
     bbox: ([f64; 2], [f64; 2]),
+    /// A entidade deste nó e a moldura que o COLOCA — `None` na raiz, que não é colocada por
+    /// ninguém. É o que o gesto de reordenar consulta depois (ver [`FlowSlots`]).
+    who: Option<(Entity, Entity)>,
 }
 
 /// **O canto superior-esquerdo, em MUNDO, do retângulo que o motor resolveu.**
@@ -152,6 +155,19 @@ fn fit(from: ([f64; 2], [f64; 2]), to: ([f64; 2], [f64; 2])) -> Xform {
     Xform([sx, 0.0, 0.0, sy, tx - sx * fx, ty - sy * fy])
 }
 
+/// **Onde o último passe PÔS os filhos de uma moldura** — a régua que o gesto de reordenar lê.
+///
+/// ⚠️ Ela é PUBLICADA por quem colocou, e nunca re-derivada por quem arrasta. Um gesto que
+/// recalculasse as posições seria a segunda resposta a *"onde este filho está?"*, e as duas
+/// divergiriam no primeiro `grow` — o artista veria a forma numa posição e o slot ser escolhido
+/// por outra.
+pub(crate) struct FlowSlots {
+    /// O eixo PRINCIPAL do fluxo: `true` = X (linha e quebra-linha), `false` = Y (coluna).
+    pub(crate) main_x: bool,
+    /// Os filhos na ORDEM do fluxo, cada um com o seu centro no eixo principal (mundo).
+    pub(crate) kids: Vec<(Entity, f64)>,
+}
+
 /// **O auto layout de toda a cena.** Roda DEPOIS da booleana (ele coloca *o que os filhos de facto
 /// desenham*) e ANTES do alinhamento (que recorta a faixa do traço na largura AUTORADA — escalar
 /// depois de a recortar mudaria a espessura dela).
@@ -159,6 +175,11 @@ fn fit(from: ([f64; 2], [f64; 2]), to: ([f64; 2], [f64; 2])) -> Xform {
 pub(crate) struct LayoutLive {
     /// Quantos filhos o último passe colocou.
     placed: usize,
+    /// Por moldura que flui (bits da entidade), onde os filhos dela ficaram.
+    ///
+    /// ⚠️ `BTreeMap` e não `HashMap`: a ordem de iteração é parte do que o editor guarda, e o
+    /// `HashMap` é banido por lint neste repo justamente por não a ter.
+    slots: std::collections::BTreeMap<u64, FlowSlots>,
 }
 
 impl LayoutLive {
@@ -171,6 +192,23 @@ impl LayoutLive {
         self.placed
     }
 
+    /// Onde o último passe pôs os filhos desta moldura — `None` se ela não flui.
+    pub(crate) fn slots_of(&self, frame: Entity) -> Option<&FlowSlots> {
+        self.slots.get(&frame.to_bits())
+    }
+
+    /// Uma régua montada à mão — **só para os gates do gesto de reordenar**.
+    ///
+    /// ⚠️ Ela existe para o gate poder afirmar o GESTO sem montar uma cena vetorial inteira; o
+    /// produto nunca a chama, e o `cfg(test)` é o que impede um segundo produtor de posições de
+    /// nascer ao lado do passe (a lei do ADR-0153: a régua é publicada por quem coloca).
+    #[cfg(test)]
+    pub(crate) fn with_slots(frame: Entity, main_x: bool, kids: Vec<(Entity, f64)>) -> Self {
+        let mut me = Self::default();
+        me.slots.insert(frame.to_bits(), FlowSlots { main_x, kids });
+        me
+    }
+
     pub(crate) fn recook(
         &mut self,
         scene: &VecScene,
@@ -180,6 +218,7 @@ impl LayoutLive {
         live: &mut LiveGeometry,
     ) {
         self.placed = 0;
+        self.slots.clear();
         for frame in outermost_flowing_frames(scene, sim, map) {
             self.lay_out(scene, sim, xforms, live, frame);
         }
@@ -222,6 +261,7 @@ impl LayoutLive {
         collected.push(Collected {
             paths: Vec::new(), // a raiz não se move: ela é a régua
             bbox: root_bbox,
+            who: None,
         });
 
         // Os filhos, em largura, na ordem da HIERARQUIA — é ela que o artista vê e reordena.
@@ -257,7 +297,11 @@ impl LayoutLive {
                     size: [bbox.1[0] - bbox.0[0], bbox.1[1] - bbox.0[1]],
                 });
                 let idx = nodes.len() - 1;
-                collected.push(Collected { paths, bbox });
+                collected.push(Collected {
+                    paths,
+                    bbox,
+                    who: Some((kid, parent)),
+                });
                 if flows_here {
                     queue.push((kid, idx));
                 }
@@ -275,6 +319,27 @@ impl LayoutLive {
 
         for (i, c) in collected.iter().enumerate().skip(1) {
             let target = world_target(root_bbox, solved[i]);
+            // **Publica ONDE este filho ficou**, antes de qualquer early-out: o gesto de reordenar
+            // precisa da régua mesmo quando a colocação não moveu nada (uma moldura já arrumada é
+            // exactamente onde o artista vai arrastar).
+            if let Some((kid, parent)) = c.who
+                && let Some(l) = w.get::<VecLayout>(parent)
+            {
+                let main_x = !matches!(l.dir, ph2d_ecs::LayoutDir::Column);
+                let centre = if main_x {
+                    (target.0[0] + target.1[0]) * 0.5
+                } else {
+                    (target.0[1] + target.1[1]) * 0.5
+                };
+                self.slots
+                    .entry(parent.to_bits())
+                    .or_insert_with(|| FlowSlots {
+                        main_x,
+                        kids: Vec::new(),
+                    })
+                    .kids
+                    .push((kid, centre));
+            }
             let x = fit(c.bbox, target);
             if is_identity(&x) {
                 continue; // nada a fazer: não paga sequer a cópia

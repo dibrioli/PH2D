@@ -243,43 +243,50 @@ pub fn paint(
     model: &PaletteModel,
     viewport: Rect,
 ) {
+    // ── Card geometry independent of content height: width (centred) + the content box. ──
+    let card_w = CARD_MAX_W
+        .min(viewport.w - EDGE_MARGIN * 2.0)
+        .max(MIN_COL_W);
+    let card_x = viewport.x + (viewport.w - card_w) * 0.5;
+    let pad = Spacing::Md.px();
+    let content_x = card_x + pad;
+    let content_w = card_w - pad * 2.0;
+    let font = TypeToken::Md.px();
+
+    // ── Measure the category-card arrangement (card-local y from 0), then size the card to it so there
+    //    is no dead space below the last row — capped at CARD_MAX_H_FRAC of the viewport. ──
+    let (placed, content_h) = arrange(ts, model, content_x, content_w);
+    let card_h = (pad * 2.0 + HEADER_H + Spacing::Sm.px() + content_h)
+        .min(viewport.h * CARD_MAX_H_FRAC)
+        .min(viewport.h - EDGE_MARGIN * 2.0);
+    let card_y = viewport.y + (viewport.h - card_h) * 0.5;
+
     // ── Scrim: dim the whole app with the modal-backdrop token (heavy alpha). ──
     fill_rounded_rect(scene, viewport, 0.0, resolve(ColorToken::BgScrim, theme));
     hit_index.register(CMD_PALETTE_SCRIM, viewport);
 
-    // ── Card: centred, capped to the viewport. ──
-    let card_w = CARD_MAX_W
-        .min(viewport.w - EDGE_MARGIN * 2.0)
-        .max(MIN_COL_W);
-    let card_h = (viewport.h * CARD_MAX_H_FRAC).min(viewport.h - EDGE_MARGIN * 2.0);
-    let card_x = viewport.x + (viewport.w - card_w) * 0.5;
-    let card_y = viewport.y + (viewport.h - card_h) * 0.5;
+    // ── Card: centred, sized to its content. ──
     let card = Rect::new(card_x, card_y, card_w, card_h);
     let radius = Radius::Lg.px();
     fill_rounded_rect(scene, card, radius, resolve(ColorToken::BgElev, theme));
     stroke_rounded_rect(scene, card, radius, 1.0, resolve(ColorToken::Border, theme));
     hit_index.register(CMD_PALETTE_CARD, card);
 
-    let pad = Spacing::Md.px();
-    let inner_x = card.x + pad;
-    let inner_w = card.w - pad * 2.0;
-    let font = TypeToken::Md.px();
-
     // ── Header band: title left, count centre-right, close-X right. ──
-    let header_y = card.y + pad;
+    let header_y = card_y + pad;
     paint_text(
         ts,
         scene,
         &model.title,
-        inner_x,
+        content_x,
         header_y + (HEADER_H - font) * 0.5,
         font,
-        inner_w * 0.5,
+        content_w * 0.5,
         resolve(ColorToken::Text1, theme),
     );
     let count_str = format!("{} nodes", model.item_count());
     let count_w = ts.prefix_width(&count_str, TypeToken::Sm.px());
-    let close_x = card.x + card.w - CLOSE_W - pad;
+    let close_x = card_x + card_w - CLOSE_W - pad;
     paint_text(
         ts,
         scene,
@@ -307,16 +314,29 @@ pub fn paint(
         resolve(ColorToken::Text1, theme),
     );
 
-    // ── Content: category CARDS arranged like the approved mockup. Small categories stack in two
-    //    narrow columns on the left; the first BIG category (>= MIN_WIDE_ITEMS, in display order) is a
-    //    wide card on the right (its sub-clusters grid inside it); any further big categories are
-    //    full-width cards below. Everything is derived from category SIZE + display order, so a
-    //    new/renamed category never breaks a hardcoded map. Narrow window (< 3 columns) falls back to
-    //    a single stacked column. ──
-    let content_x = inner_x;
+    // ── Content: paint the measured category cards at the card's content origin. ──
     let content_y = header_y + HEADER_H + Spacing::Sm.px();
-    let content_w = inner_w;
+    for (cl, ox, oy, w) in &placed {
+        paint_card(scene, ts, theme, hit_index, cl, *ox, content_y + *oy, *w);
+    }
 
+    // Close-X last (wins its rect inside the card).
+    hit_index.register(CMD_PALETTE_CLOSE, close_rect);
+}
+
+/// Lay the category cards out (MEASURE only — no painting), in card-content-LOCAL y with the top at 0,
+/// like the approved mockup: small categories stack in two narrow columns on the left; the first BIG
+/// category (>= [`MIN_WIDE_ITEMS`], in display order) is a wide card on the right (its sub-clusters grid
+/// inside it); any further big categories are full-width cards below. Derived from category SIZE +
+/// display order, so a new/renamed category never breaks a hardcoded map. A narrow window (< 3 columns)
+/// falls back to a single stacked column. Returns each placed card `(layout, ox, oy, width)` and the
+/// total content height (so [`paint`] can size the card to it, leaving no dead space below).
+fn arrange(
+    ts: &mut TextSystem,
+    model: &PaletteModel,
+    content_x: f32,
+    content_w: f32,
+) -> (Vec<(CardLayout, f32, f32, f32)>, f32) {
     let mut small: Vec<&PaletteGroup> = Vec::new();
     let mut big: Vec<&PaletteGroup> = Vec::new();
     for g in &model.groups {
@@ -327,8 +347,8 @@ pub fn paint(
         }
     }
 
-    let wide_layout = content_w >= MIN_COL_W * 3.0 && !big.is_empty();
-    if wide_layout {
+    let mut placed: Vec<(CardLayout, f32, f32, f32)> = Vec::new();
+    if content_w >= MIN_COL_W * 3.0 && !big.is_empty() {
         // 4 units wide: [narrow][narrow][wide = 2 units]. Small cards fill the two narrow columns;
         // the first big card takes the wide slot on the right.
         let unit_w = (content_w - COL_GAP * 3.0) / 4.0;
@@ -336,50 +356,48 @@ pub fn paint(
         let wide_x = content_x + 2.0 * (unit_w + COL_GAP);
         let wide_w = 2.0 * unit_w + COL_GAP;
 
-        let mut col_bottom = [content_y, content_y];
+        let mut col_bottom = [0.0_f32, 0.0];
         for g in &small {
             let c = usize::from(col_bottom[1] < col_bottom[0]);
             let cx = content_x + c as f32 * (narrow_w + COL_GAP);
             let cl = layout_card(ts, g, narrow_w);
-            paint_card(
-                scene,
-                ts,
-                theme,
-                hit_index,
-                &cl,
-                cx,
-                col_bottom[c],
-                narrow_w,
-            );
-            col_bottom[c] += cl.height + SECT_GAP;
+            let h = cl.height;
+            placed.push((cl, cx, col_bottom[c], narrow_w));
+            col_bottom[c] += h + SECT_GAP;
         }
 
-        let mut col_c_bottom = content_y;
+        let mut col_c_bottom = 0.0_f32;
         if let Some(g) = big.first() {
             let cl = layout_card(ts, g, wide_w);
-            paint_card(scene, ts, theme, hit_index, &cl, wide_x, content_y, wide_w);
-            col_c_bottom = content_y + cl.height + SECT_GAP;
+            let h = cl.height;
+            placed.push((cl, wide_x, 0.0, wide_w));
+            col_c_bottom = h + SECT_GAP;
         }
 
         // Any remaining big categories are full-width cards below the top region.
         let mut y = col_bottom[0].max(col_bottom[1]).max(col_c_bottom);
         for g in big.iter().skip(1) {
             let cl = layout_card(ts, g, content_w);
-            paint_card(scene, ts, theme, hit_index, &cl, content_x, y, content_w);
-            y += cl.height + SECT_GAP;
+            let h = cl.height;
+            placed.push((cl, content_x, y, content_w));
+            y += h + SECT_GAP;
         }
     } else {
         // Fallback (narrow window / no big category): one stacked column of full-width cards.
-        let mut y = content_y;
+        let mut y = 0.0_f32;
         for g in &model.groups {
             let cl = layout_card(ts, g, content_w);
-            paint_card(scene, ts, theme, hit_index, &cl, content_x, y, content_w);
-            y += cl.height + SECT_GAP;
+            let h = cl.height;
+            placed.push((cl, content_x, y, content_w));
+            y += h + SECT_GAP;
         }
     }
 
-    // Close-X last (wins its rect inside the card).
-    hit_index.register(CMD_PALETTE_CLOSE, close_rect);
+    let content_h = placed
+        .iter()
+        .map(|(cl, _, oy, _)| oy + cl.height)
+        .fold(0.0_f32, f32::max);
+    (placed, content_h)
 }
 
 /// Item count of a group (decides the column span in [`paint`]: 1 column normally, 2 when big).

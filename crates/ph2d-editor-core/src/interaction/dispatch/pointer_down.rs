@@ -33,6 +33,28 @@ pub(super) fn dispatch_down<'frame>(
     mut ts: Option<&mut TextSystem>,
     events: &mut BumpVec<'frame, WidgetEvent>,
 ) {
+    // The command palette is a FULL-SCREEN MODAL — handle it first, and exclusively. Two things
+    // conspire against it otherwise: (1) the docked panels register their full-canvas
+    // graph/timeline/flip surface AFTER the hero chrome (last-wins in `hit_with_rect`), so it shadows
+    // every palette widget; and (2) the palette's pills / close-X / scrim are hit-registered WITHOUT a
+    // `WidgetStore` state, so the generic arm below (`is_focusable`) would reject them even unshadowed
+    // — exactly like the hierarchy chrome companions. So: resolve the hit skipping the panels'
+    // surfaces behind the modal, ARM that widget (its Up then emits a generic `Click(id)` that the
+    // palette's chrome handler routes), and RETURN — nothing behind a full-screen modal may act on the
+    // press. Without this the click was captured as a graph box-select and the palette never saw it
+    // (Enio smoke: *"nenhum botão funciona e o botão fechar não funciona"*).
+    if store.command_palette_model().is_some() {
+        if let Some((id, rect)) = hit_index.hit_with_rect_where(event.x, event.y, |id| {
+            store.graph_surface_at_id(id).is_none()
+                && store.timeline_surface_at_id(id).is_none()
+                && store.flip_strip_surface_at_id(id).is_none()
+        }) {
+            store.set_active(Some(id));
+            store.set_active_rect(Some(rect));
+        }
+        return;
+    }
+
     let hit = hit_index.hit_with_rect(event.x, event.y);
 
     // With a context menu open, a non-Secondary Down on a graph / timeline

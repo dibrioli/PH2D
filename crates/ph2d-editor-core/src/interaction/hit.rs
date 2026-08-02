@@ -71,6 +71,25 @@ impl HitIndex {
         None
     }
 
+    /// Like [`Self::hit_with_rect`] but only counting rects whose id passes `keep`. Used while a
+    /// full-screen modal (the command palette) is open: the docked panels register their full-canvas
+    /// graph/timeline/flip **surface** hit AFTER the hero chrome (last-wins), so it would otherwise
+    /// shadow every modal widget — resolving while skipping those surfaces lets the modal's pills /
+    /// close-X / scrim (registered under them) win the click.
+    pub fn hit_with_rect_where(
+        &self,
+        x: f32,
+        y: f32,
+        keep: impl Fn(NodeId) -> bool,
+    ) -> Option<(NodeId, Rect)> {
+        for (id, rect) in self.rects.iter().rev() {
+            if rect.contains(x, y) && keep(*id) {
+                return Some((*id, *rect));
+            }
+        }
+        None
+    }
+
     /// Look up the most recent registered rect for `id`, if any.
     /// Used to refresh `WidgetStore::active_rect` when geometry
     /// changes between Down and Up.

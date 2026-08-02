@@ -122,6 +122,84 @@ fn node_down_move_up_streams_begin_update_end() {
     assert!(store.active_rect().is_none());
 }
 
+/// **An open command palette (a full-screen modal) wins the click over the docked graph surface that
+/// is registered ON TOP of it.** The docked panels register their full-canvas graph surface AFTER the
+/// hero chrome each frame (last-wins in `hit_with_rect`), so a palette pill sits UNDER the graph
+/// background in the hit index. Without the modal-aware skip in `dispatch_down`, a click on a pill
+/// resolves to the graph bg and is captured as a box-select — the modal never sees it (Enio smoke:
+/// *"nenhum botão funciona e o botão fechar não funciona"*).
+///
+/// FALSIFIED by dropping the `command_palette_model` branch in [`super::super::pointer_down`]: the
+/// graph surface wins, a graph gesture is streamed, and no `Click(pill)` reaches the palette.
+#[test]
+fn an_open_palette_wins_the_click_over_a_shadowing_graph_surface() {
+    use crate::interaction::WidgetEvent;
+    use crate::widget::command_palette::{PaletteGroup, PaletteItem, PaletteModel, PaletteSub};
+    use ph2d_tokens::ColorToken;
+    use ph2d_tool_registry::hash_node_id;
+
+    let pill = hash_node_id("motion.boids");
+    let mut store = WidgetStore::with_capacity(8);
+    store.open_command_palette(PaletteModel {
+        title: "Add Node".into(),
+        groups: vec![PaletteGroup {
+            title: "Source".into(),
+            color: ColorToken::NodeCatSource,
+            subs: vec![PaletteSub {
+                title: None,
+                items: vec![PaletteItem {
+                    label: "Boids".into(),
+                    id: pill,
+                }],
+            }],
+        }],
+    });
+    // Registration order = paint order: the palette's pill FIRST, then the docked panel's full-canvas
+    // graph background LAST — exactly the frame order that shadows the modal.
+    let mut hits = HitIndex::new();
+    hits.register(pill, HIT);
+    hits.register(SURFACE, CANVAS);
+    store.register(
+        SURFACE,
+        InteractiveState::GraphSurface {
+            parent: SURFACE,
+            kind: GraphHitKind::Background,
+            canvas: CANVAS,
+        },
+    );
+    // Fixture: the raw (unfiltered) hit IS shadowed — this is the reported bug.
+    assert_eq!(
+        hits.hit(60.0, 60.0),
+        Some(SURFACE),
+        "fixture: the graph background must shadow the pill for this test to mean anything"
+    );
+
+    let arena = Bump::new();
+    let _ = dispatch_pointer(
+        &mut store,
+        &hits,
+        pointer(PointerKind::Down, 60.0, 60.0),
+        &arena,
+    );
+    let up: Vec<WidgetEvent> = dispatch_pointer(
+        &mut store,
+        &hits,
+        pointer(PointerKind::Up, 60.0, 60.0),
+        &arena,
+    )
+    .to_vec();
+
+    assert!(
+        store.drain_graph_gestures().next().is_none(),
+        "the modal swallows the click — the graph surface behind it must NOT capture a gesture"
+    );
+    assert!(
+        up.iter()
+            .any(|e| matches!(e, WidgetEvent::Click(id) if *id == pill)),
+        "the pill under the shadowing graph surface must still emit a Click: {up:?}"
+    );
+}
+
 #[test]
 fn down_up_without_movement_is_a_click() {
     let (mut store, hits) = graph_setup(GraphHitKind::Background);

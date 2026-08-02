@@ -469,9 +469,41 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
         }
         return true;
     }
-    // M14.E — entity-name TextInput edits.
-    if let WidgetEvent::TextChanged(id) = ev
-        && id == ids::INSP_ENTITY_NAME
+    if section_text_changed(host, ev) {
+        return true;
+    }
+    // ADR-0029 Phase C.1: showcase-shared events
+    // (`CTX_MENU_OUTLINE_*`, `CTX_MENU_CREATE_NOTE`, `SECTION_IDS`,
+    // radio/tab/tree pinning) are now routed at host level via
+    // `widget::showcase::apply_showcase_event`. The Inspector panel
+    // returns `Ignored` for those — host picks them up after the
+    // registry walk.
+    false
+}
+
+/// **Os campos de TEXTO do Inspector.** Os dois nomeiam alguma coisa — como o
+/// objeto se chama, e o que ele GRITA quando algo chega nele — e os dois
+/// viajam pelo mesmo barramento por-entidade, com o `InspectorNameInfo` no
+/// lugar de um campo de `PhysicsFieldEdit`: o valor é uma STRING, e todo o
+/// resto da §11 fala em número ou em chip. Um braço de string no enum dos
+/// campos numéricos seria um segundo formato de edição vivendo dentro do
+/// primeiro.
+///
+/// ⚠️ **Função própria pelo MESMO motivo que a `section_color_click` abaixo**, e
+/// pela mesma catraca: o `apply_event_impl` vive sob um teto que só pode
+/// ENCOLHER, e a row de sinal da W-Signal o empurrou de 452 para 470. Movê-la
+/// para cá é a correção certa — subir o número do allowlist seria usar como
+/// licença de crescimento uma entrada cuja prosa diz o contrário.
+///
+/// ⚠️ E ela ficou latente por uma causa que esta linha já pagou antes: este gate
+/// mora em `ph2d-editor-core/tests/`, então um fechamento por `cargo test -p`
+/// nas crates da física **não o alcança**.
+fn section_text_changed(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
+    let WidgetEvent::TextChanged(id) = ev else {
+        return false;
+    };
+    // M14.E — o nome da entidade.
+    if id == ids::INSP_ENTITY_NAME
         && let Some(info) = state::current_inspector_name()
     {
         let text = host.store().text(id).unwrap_or("").to_string();
@@ -482,14 +514,8 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
             }));
         return true;
     }
-    // W-Signal — o nome que este objeto GRITA quando algo chega nele.
-    //
-    // ⚠️ Pelo MESMO barramento por-entidade do nome, e não por um `PhysicsFieldEdit`
-    // novo: o valor é uma STRING, e todo o resto da §11 fala em número ou em chip.
-    // Um braço de string no enum de campos numéricos seria um segundo formato de
-    // edição vivendo dentro do primeiro.
-    if let WidgetEvent::TextChanged(id) = ev
-        && id == ids::INSP_PHYS_SIGNAL
+    // W-Signal — o nome que este objeto grita quando algo chega nele.
+    if id == ids::INSP_PHYS_SIGNAL
         && let Some(info) = state::current_inspector_physics()
     {
         let text = host.store().text(id).unwrap_or("").to_string();
@@ -500,12 +526,6 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
             }));
         return true;
     }
-    // ADR-0029 Phase C.1: showcase-shared events
-    // (`CTX_MENU_OUTLINE_*`, `CTX_MENU_CREATE_NOTE`, `SECTION_IDS`,
-    // radio/tab/tree pinning) are now routed at host level via
-    // `widget::showcase::apply_showcase_event`. The Inspector panel
-    // returns `Ignored` for those — host picks them up after the
-    // registry walk.
     false
 }
 

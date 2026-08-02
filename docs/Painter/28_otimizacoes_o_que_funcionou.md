@@ -6909,3 +6909,86 @@ sangram, e não são redundantes (um passe canvas-sized novo passaria pelo prime
   wave já devolveu, e ela pede um campo novo num arquivo que está em 700 LOC exatos. Sonda pronta:
   `measure_what_starting_a_watercolor_stroke_costs`.
 - **O tick segue em 22-33 ms** e é a maior metade agora; ele é window-bound e a janela é 1,4× a pegada.
+
+---
+
+## §5.74 — E o log do PRODUTO achou o que nenhuma sonda minha podia ver: o VÉU de umidade, 42,6 ms/quadro no shell (2026-08-02)
+
+> Enio, depois do relatório da §5.73: *"provável piora significativa mesmo com valores padrão (sem
+> smudge). Melhor colocar logs em todo lugar para ver se descobre."* **As duas metades da frase estavam
+> certas, e a segunda decidiu.**
+
+### 1. Os defaults: ele estava certo em desconfiar, e a medição refina
+
+| pincel, r=250 | 2048² | 4096² | de 16,6 ms |
+|---|---|---|---|
+| de fábrica | 9,6 | 9,5 | **0,6×** |
+| os knobs dele | 28,0 | 28,4 | **1,7×** |
+
+Tudo **plano na tela** depois da §5.73. Com o default o quadro CABE; com os knobs dele, não — e o dono
+mudou de metade: agora é o **TICK** (6,7 → 22,9 ms), e a ablação por entrada diz **`sem Rewet` → 12,9**,
+ou seja o `Rewet 0.400` paga **~10 dos 23 ms**.
+
+### 2. Mas o log do produto mostrou outro número, uma ordem de grandeza acima
+
+```
+CHROME p50/max: wet 2.13/4.68 → 9.67/30.47 → 42.64/48.67
+dispatch p50=44.7 [overlay 42.7 (chrome 42.7)]   frame p50=72.3   (~14 fps)
+EVENTO->FRAME p50=88.9 max=322.3
+```
+
+O custo **não estava no tool** — estava no **SHELL**, no `draw_wetness_overlay`: o véu de umidade do
+slider **`Preview`** (card Wetness, `0.300` na sessão dele). ⚠️ **Nenhuma sonda de bancada podia vê-lo**,
+porque todas medem o `PainterTool`; foi o log que o achou, e não uma suspeita minha. *Quando o número
+vira decisão de produto, ele tem de sair da porta do produto* — pela quarta vez nesta linha.
+
+**O mecanismo:** por quadro, sobre o rect **CUMULATIVO** de umidade (que só cresce), ele aloca um
+`f32` plane, borra-o com um box blur que aloca **mais dois**, monta um RGBA de `4·N` bytes e **faz o
+upload da imagem inteira**. Medido isolado (`measure_the_wetness_veil`):
+
+| região | M texels | build | ns/texel |
+|---|---|---|---|
+| 512² | 0,26 | 1,79 ms | 6,8 |
+| 1024² | 1,05 | 9,22 | 8,8 |
+| 2048² | 4,19 | **35,44** | 8,4 |
+| 4096² | 16,78 | **201,68** | 12,0 |
+
+Os 35 ms a 2048² casam com os 42,6 do log (o rect dele era maior, mais o upload).
+
+### 3. A cura é livre de mudança de aparência POR CONSTRUÇÃO
+
+**O véu só precisa cobrir o que a JANELA mostra.** O que está fora da viewport ninguém vê, então
+recortar troca um custo que cresce com a **PINTURA** por um limitado pela **TELA** — e não muda um
+pixel do que aparece. `clip_to_viewport` inverte a afim imagem→tela, leva os quatro cantos da janela
+de volta ao espaço da imagem e intersecta com o rect de umidade.
+
+⚠️ **A margem do blur é load-bearing:** o véu é borrado por `BLUR_R`, então um texel logo fora da
+janela contribui para um que está dentro. Sem a folga, a borda do véu mudaria conforme o artista
+**panha** — uma mudança de aparência que depende da posição da câmera, o tipo de defeito que ninguém
+reproduz. Afim degenerada devolve o rect inteiro (uma inversa que não existe não é motivo para o véu
+sumir).
+
+### 4. Três defeitos meus, os três pegos pelos próprios gates
+
+1. ⚠️ **A minha linha de log foi para o LOGGER ERRADO.** Eu a pus no bloco `[frame]` (env
+   `PH2D_FLUID_PROFILE`) e o Enio roda `PH2D_PAINT_PERF` — **ela não apareceu no log do smoke**. *Um
+   instrumento no logger errado é indistinguível de um instrumento que não existe.* Movida para o
+   relatório `[paint-perf]`, ao lado da linha `CHROME wet` que é a outra metade do mesmo quadro.
+2. ⚠️ **Os três gates de unidade do recorte são CEGOS à fiação:** apagada a CHAMADA, os três passam
+   verdes sobre um produto que reconstrói a pintura inteira. É a lição que a `line/anim` já pagou, e a
+   cura é o arch-gate que afirma *a atribuição acontece ANTES do build* (mutação: sangra).
+3. ⚠️ **E o arch-gate nasceu reprovando o código CORRETO:** ele ancorava na CHAMADA e depois exigia a
+   atribuição na fatia `call..build` — mas o `let` vem **antes** da chamada, na mesma linha, então a
+   fatia nunca podia contê-lo. *Uma âncora só é oráculo se descrever a forma que o produto tem.*
+
+### 5. Aberto, com número
+
+- **O `Rewet` paga ~10 dos 23 ms do tick** (r=250, os knobs dele). É por-pixel no composite, dentro da
+  janela — não é varredura de plano, é trabalho honesto de um efeito ligado. Se o smoke ainda achar
+  pesado, o alvo é o kernel do rewet, não a janela.
+- **O véu recortado ainda é `ns/texel` × área da VIEWPORT** por quadro (~8-12 ns/texel). Numa janela de
+  1920×1080 isso é ~2 M texels ⇒ **~20 ms** se o artista estiver com a tela inteira molhada e o zoom a
+  1:1. As duas alavancas seguintes são **construir em resolução reduzida** (o véu já é borrado e
+  desenhado em `ImageQuality::Low`) e **não reconstruir todo quadro** (a secagem leva ~10 s, então o
+  alfa muda ~1 nível por quadro) — as duas mexem na APARÊNCIA e por isso ficam para depois do smoke,
+  com o número ao lado em vez de contrabandeadas.

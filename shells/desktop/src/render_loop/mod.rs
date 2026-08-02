@@ -7787,38 +7787,6 @@ impl crate::App {
                         0.0
                     },
                 );
-                // A AQUARELA, quando ela pintou nesta janela. Linha PRÓPRIA e condicional de
-                // propósito: o `[frame]` já é denso, e uma linha de zeros num quadro sem aquarela
-                // treina o olho a pular justamente a linha que importa no quadro em que ela pinta.
-                //
-                // ⚠️ O `ns/texel` é o que separa dois mundos com curas OPOSTAS entre duas janelas —
-                // constante = o pincel/documento cresceu (TRABALHO, e há sliders para isso) · subindo
-                // = contenção, ou um passe caminhando mais do que a janela declara. É o irmão exato
-                // do `ns/celula` da água, que fechou um impasse que nenhuma sonda tinha fechado.
-                let wash = ph2d_tool_painter::wash_diag::take();
-                if wash.composite.n > 0 || wash.stamp.n > 0 {
-                    eprintln!(
-                        "[frame]   aquarela: composite media {:.2}ms pico {:.2}ms x{} \
-                         | carimbo media {:.2}ms pico {:.2}ms x{} \
-                         | pour {:.2}ms x{} | secagem {:.2}ms x{} | pen-down {:.2}ms x{}\n\
-                         [frame]     janela {:.2} M texels/composite | {:.1} ns/texel \
-                         (CONSTANTE entre janelas = trabalho; SUBINDO = contencao)",
-                        wash.composite.avg_ms,
-                        wash.composite.max_ms,
-                        wash.composite.n,
-                        wash.stamp.avg_ms,
-                        wash.stamp.max_ms,
-                        wash.stamp.n,
-                        wash.pour.avg_ms,
-                        wash.pour.n,
-                        wash.dry.avg_ms,
-                        wash.dry.n,
-                        wash.pendown.avg_ms,
-                        wash.pendown.n,
-                        wash.window_px_per_composite / 1e6,
-                        wash.ns_per_texel,
-                    );
-                }
             }
         }
     }

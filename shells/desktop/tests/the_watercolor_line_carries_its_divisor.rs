@@ -14,7 +14,7 @@
 //! Arch-gate sobre o fonte porque o `[frame]` só existe com janela — nenhum
 //! teste de unidade alcança aquele `eprintln`.
 
-const SRC: &str = include_str!("../src/render_loop/mod.rs");
+const SRC: &str = include_str!("../src/render_loop/paint_perf.rs");
 
 /// O `ns/texel` é impresso ao lado do tempo, com a janela que o produz.
 ///
@@ -24,7 +24,7 @@ const SRC: &str = include_str!("../src/render_loop/mod.rs");
 #[test]
 fn the_watercolor_line_prints_the_window_it_divides_by() {
     let line = SRC
-        .split("aquarela: composite media")
+        .split("AQUARELA p50/max: composite")
         .nth(1)
         .expect("o `[frame]` imprime a linha da aquarela");
     // ⚠️ A janela é a INSTRUÇÃO, não um número de bytes: um arch-gate ancorado em distância é um

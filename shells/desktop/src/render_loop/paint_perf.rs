@@ -361,6 +361,36 @@ fn emit(a: &Agg) {
         chrome.push_str(&format!(" {name} {v:.2}/{mx:.2}"));
     }
     eprintln!("[paint-perf]   CHROME p50/max:{chrome}");
+    // A AQUARELA do lado do TOOL, quando ela pintou nesta janela. Mora aqui e não no `[frame]` porque
+    // ⚠️ **é este o relatório que o artista roda** (`PH2D_PAINT_PERF`): a 1ª versão desta linha nasceu
+    // no bloco `[frame]`, que é de outra env, e **não apareceu no log do smoke** — um instrumento no
+    // logger errado é indistinguível de um instrumento que não existe.
+    //
+    // A linha `CHROME wet` acima é a metade do SHELL (o véu); esta é a metade do TOOL, e as duas
+    // juntas fecham o quadro. O `ns/texel` separa dois mundos com curas OPOSTAS entre duas janelas:
+    // constante = o pincel/documento cresceu (TRABALHO, e há sliders) · subindo = contenção.
+    let wash = ph2d_tool_painter::wash_diag::take();
+    if wash.composite.n > 0 || wash.stamp.n > 0 {
+        eprintln!(
+            "[paint-perf]   AQUARELA p50/max: composite {:.2}/{:.2} x{} | carimbo {:.2}/{:.2} x{} \
+             | pour {:.2} x{} | secagem {:.2} x{} | pen-down {:.2} x{} \
+             | janela {:.2} M texels/composite | {:.1} ns/texel",
+            wash.composite.avg_ms,
+            wash.composite.max_ms,
+            wash.composite.n,
+            wash.stamp.avg_ms,
+            wash.stamp.max_ms,
+            wash.stamp.n,
+            wash.pour.avg_ms,
+            wash.pour.n,
+            wash.dry.avg_ms,
+            wash.dry.n,
+            wash.pendown.avg_ms,
+            wash.pendown.n,
+            wash.window_px_per_composite / 1e6,
+            wash.ns_per_texel,
+        );
+    }
     // L0: o número que a pergunta do Enio cobra, com o alvo público ao lado dele — e com as DUAS
     // grandezas que dizem de onde ele vem (o período real do frame, e quantos eventos por frame).
     if !a.latency_ms.is_empty() {

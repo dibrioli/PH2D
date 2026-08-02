@@ -588,7 +588,7 @@ pub mod elide; // o TERCEIRO estado do relevo: descrito sem ser segurado
 mod record; // como uma ENTRADA nasce: o cursor anda, o delta e partido, o cap morde
 
 #[path = "undo_absorb.rs"]
-mod absorb; // a reconciliacao com escritas que nao passaram pela historia
+pub(crate) mod absorb; // a reconciliacao com escritas que nao passaram pela historia
 
 #[cfg(any(test, debug_assertions))]
 #[path = "undo_inspect.rs"]

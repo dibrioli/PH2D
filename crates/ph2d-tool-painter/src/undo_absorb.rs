@@ -6,6 +6,18 @@
 
 use super::{ModelSnapshot, UndoController, UndoEntry};
 
+#[cfg(test)]
+thread_local! {
+    /// **Quantas vezes a absorção de fato RE-PARTIU o topo neste thread.**
+    ///
+    /// ⚠️ Ela pop-a e push-a uma entrada, então `undo_depth()` **não muda** e `retained_bytes()` pode
+    /// não mudar: um gate que os observasse ficaria verde sobre um disparo espúrio — foi exatamente o
+    /// que aconteceu com a 1ª versão do `a_clean_pen_down_does_not_wake_the_absorption`, que
+    /// SOBREVIVEU à mutação. A pergunta é *"ela disparou?"*, e a forma honesta de a fazer é contar
+    /// (o idioma do `RELIEF_FROM_JOURNAL`).
+    pub(crate) static ABSORB_FIRED: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
+}
+
 impl UndoController {
     /// **Absorve, na entrada do topo, o que foi escrito no canvas SEM entrada de undo.**
     ///
@@ -80,6 +92,8 @@ impl UndoController {
             // aqui seria pior que a divergência: sai calado, exatamente como o `undo` faz.
             return;
         };
+        #[cfg(test)]
+        ABSORB_FIRED.with(|c| c.set(c.get() + 1));
         let old = self.undo.pop().expect("o topo que acabamos de ler");
         self.bytes -= old.heap_bytes();
         let entry = UndoEntry::split(*first_before, before.clone(), kind, None, None);

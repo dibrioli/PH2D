@@ -322,3 +322,113 @@ fn the_journals_refuse_to_answer_for_a_layer_they_did_not_capture() {
          seria silenciosa"
     );
 }
+
+/// **O TERCEIRO estado: um `before` que ELIDE não é lido como *"não existia"*** — o gate central do
+/// degrau 4 (doc 28 §5.60).
+///
+/// Sem ele, toda chave de um `before` elidido cai no braço `(None, Some(a))` do
+/// [`StoredMap::from_journal`](crate::undo_delta::StoredMap::from_journal), que **significa**
+/// `OnlyAfter` = *"não existia antes"* — e desfazer REMOVE a chave. O relevo do traço não volta
+/// alterado: ele **some**.
+///
+/// ⚠️ **Mutação que sangra:** colapsar o terceiro estado no segundo, isto é, trocar
+/// `let had = before.contains_key(&k) || before_elided.contains_key(&k);` por
+/// `let had = before.contains_key(&k);`. O undo passa a apagar o relevo da camada, e este gate é o
+/// único que o vê — a tinta volta certa, e nenhum gate de pigmento pisca.
+#[test]
+fn an_elided_before_is_not_read_as_a_layer_that_had_no_relief() {
+    let mut t = armed(512);
+    stroke(&mut t, 40.0); // o 1º traço: a camada passa a TER relevo
+    let layer = t.layers.active().expect("a camada ativa do fixture");
+    let before: Vec<f32> = (**t.heights.get(&layer).expect("o 1º traço deixou relevo")).clone();
+    assert!(
+        before.iter().any(|&h| h > 0.0),
+        "controle: o fixture nao deixou relevo, entao o undo nao tem o que restaurar"
+    );
+
+    stroke(&mut t, 120.0); // o 2º traço — o que vamos desfazer
+    let after: Vec<f32> = (**t.heights.get(&layer).expect("o 2º traço mantém o relevo")).clone();
+    assert_ne!(
+        before, after,
+        "controle: o 2o traco nao mudou o relevo, entao desfaze-lo nao diz nada"
+    );
+
+    let live = t.snapshot_model();
+    let restore = t.undo.undo(&live).expect("o 2º traço é desfazível");
+    t.restore_model(*restore);
+
+    let back = t.heights.get(&layer).map(|p| (**p).clone());
+    assert_eq!(
+        back.as_deref(),
+        Some(before.as_slice()),
+        "o undo nao devolveu o relevo do 1o traco — ou ele sumiu (a chave foi removida: o `before` \
+         elidido foi lido como `OnlyAfter`), ou voltou com os bytes errados"
+    );
+}
+
+/// **Ninguém além do TOOL segura os três planos de relevo** — a propriedade que a elisão compra, e o
+/// que faz a 1ª escrita de um traço ser NO LUGAR em vez de uma cópia do documento.
+///
+/// ⚠️ Sem relógio, logo sem ruído: a pergunta é `Arc::strong_count`, e a porta de fork pergunta
+/// exatamente ela (`strong_count > 1` — §5.15). O número em REPOUSO era **2** antes desta wave (o
+/// cursor era o segundo dono permanente, §5.14) e **3** dentro de um gesto.
+///
+/// ⚠️ **Mutação que sangra:** desligar qualquer uma das duas elisões
+/// (`UndoController::elide_cursor` / `elide_relief`) — e as duas contam, porque **nenhuma sozinha
+/// leva a contagem a um**.
+#[test]
+fn nobody_but_the_tool_holds_the_relief_planes() {
+    let mut t = armed(512);
+    stroke(&mut t, 40.0);
+    stroke(&mut t, 120.0);
+    let layer = t.layers.active().expect("a camada ativa do fixture");
+    let owners = |m: &std::collections::BTreeMap<
+        crate::layers::LayerId,
+        std::sync::Arc<Vec<f32>>,
+    >| { m.get(&layer).map_or(0, std::sync::Arc::strong_count) };
+    assert!(owners(&t.heights) > 0, "controle: a camada nao tem relevo");
+    assert_eq!(
+        (
+            owners(&t.heights),
+            t.covers.get(&layer).map_or(0, std::sync::Arc::strong_count),
+            t.mats.get(&layer).map_or(0, std::sync::Arc::strong_count),
+        ),
+        (1, 1, 1),
+        "alguem alem do tool segura o relevo em repouso — a proxima escrita vai COPIAR o plano \
+         inteiro em vez de escrever no lugar (doc 28 §5.60)"
+    );
+}
+
+/// **Um pen-down limpo NÃO acorda a absorção** — o defeito que a fase B mediu e que custava 31 ms por
+/// traço a 4096².
+///
+/// O detector da [`absorb_foreign_writes`](crate::undo::UndoController::absorb_foreign_writes)
+/// compara o cursor com o `before` pelo `PlaneDeltas::split`. Com o cursor ELIDINDO o relevo e o
+/// `before` segurando-o, toda camada saía como `OnlyAfter` = *"apareceu agora"*, `heap_bytes()` nunca
+/// era zero, e a absorção fazia um re-split + materialize completos **em todo pen-down**.
+///
+/// ⚠️ **O oráculo não é o relógio:** é o próprio detector devolvendo zero. Um bar de tempo mediria a
+/// máquina; este mede a pergunta.
+///
+/// ⚠️ **Mutação que sangra:** tirar a limpeza dos três mapas na entrada da absorção.
+#[test]
+fn a_clean_pen_down_does_not_wake_the_absorption() {
+    let mut t = armed(512);
+    stroke(&mut t, 40.0); // instala cursor + histórico + relevo
+    // O estado VIVO, exatamente como o `absorb_foreign_writes_now` do pen-down o constrói.
+    let live = t.snapshot_model();
+    assert!(
+        live.heights
+            .get(&t.layers.active().expect("camada"))
+            .is_some(),
+        "controle: o vivo nao carrega relevo, entao o detector nao tem o que confundir"
+    );
+    let seen = crate::undo::absorb::ABSORB_FIRED.with(std::cell::Cell::get);
+    t.undo.absorb_foreign_writes(&live);
+    assert_eq!(
+        crate::undo::absorb::ABSORB_FIRED.with(std::cell::Cell::get),
+        seen,
+        "a absorcao disparou num pen-down LIMPO: ela leu o relevo elidido do cursor como escrita \
+         estrangeira e re-partiu o topo (doc 28 §5.60)"
+    );
+}

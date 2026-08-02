@@ -622,6 +622,17 @@ pub(crate) struct WashCadence {
     /// retunado por isso, doc 28 §4.8.2). Contar é grátis — há no máximo um composite por quadro — e
     /// falha pelo motivo certo. Precedente: o gate do ADR-0120 que conta disparos do caminho rápido.
     pub(crate) composites: u32,
+    /// **Texels da JANELA DE LEITURA somados sobre os composites** — o trabalho que a reconstrução de
+    /// fato caminha, contado em vez de cronometrado.
+    ///
+    /// A janela é `dirty ⊕ pad` para a saída e `⊕ pad` de novo para a leitura ([`super::wash_window`]),
+    /// então ela é `dirty + 4·pad` por eixo e o `pad` responde aos KNOBS: `Rewet > 0` faz
+    /// `reach = spread`, e a água CARREGADA (`Dilution > 0`) o dobra. Um número de área separa duas
+    /// causas que um relógio funde — *este quadro caminhou mais texels* contra *esta máquina estava
+    /// disputada* — e é a única das duas que se pode medir com a máquina cheia (doc 28 §5.49).
+    ///
+    /// `u64` porque um traço longo a 4096² soma bem mais que `u32` aguenta.
+    pub(crate) window_px: u64,
 }
 
 #[cfg(test)]

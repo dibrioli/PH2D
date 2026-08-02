@@ -60,6 +60,12 @@ impl PainterTool {
         // bailed on an empty dirty rect is not a composite, and counting it would let the cadence gate
         // pass on a route that never painted anything.
         self.wash.composites = self.wash.composites.saturating_add(1);
+        // ...e a ÁREA que ele vai caminhar, pelo mesmo motivo: a contagem é o que ainda diz a verdade
+        // com a máquina disputada, e é ela que separa *o quadro caminhou mais* de *o box estava cheio*.
+        self.wash.window_px = self
+            .wash
+            .window_px
+            .saturating_add((w.rw as u64) * (w.rh as u64));
         let window::WashWindow {
             fw,
             fh,

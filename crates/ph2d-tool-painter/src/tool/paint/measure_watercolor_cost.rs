@@ -510,3 +510,187 @@ fn measure_what_a_watercolor_move_is_made_of() {
     );
     println!();
 }
+
+/// **Quanta ÁREA a aquarela caminha por quadro, com o pincel e os knobs do ARTISTA?**
+///
+/// ⚠️ Esta sonda **não olha o relógio**, de propósito: ela CONTA texels. Um retângulo tem área
+/// reprodutível com a máquina saturada, e a §5.49 fixou que nenhum número de tempo desta máquina vale
+/// nada com `load average` acima de ~5. A forma responde antes do relógio (§5.12).
+///
+/// Duas grandezas por quadro, e elas têm formas DIFERENTES:
+///
+/// - a **PEGADA** — o que um move DEVERIA custar. É `(2r)²` e não muda com a tela.
+/// - o **POUR** — `pour_canvas_wet` caminha `wet_stroke_dirty`, a união **CUMULATIVA** desde o
+///   pen-down (três sítios fazem união; só o pen-down zera), clampada ao canvas. Ele cresce com o
+///   TRAÇO, não com a pegada — e o clamp é o que o faz responder ao tamanho da tela: o mesmo gesto
+///   perto de uma borda é recortado a 2048² e não a 4096².
+///
+/// O que decide é a RAZÃO pour/pegada ao longo do traço: se ela cresce, o custo por quadro cresce
+/// junto e um traço longo fica quadrático no comprimento.
+#[test]
+#[ignore = "measurement, not a gate"]
+fn measure_the_area_the_wash_walks_per_frame() {
+    const RADIUS: f32 = 250.0;
+    const EV: u32 = 4;
+    const FRAMES: u32 = 48;
+    const DT: f32 = 1.0 / 60.0;
+    const PATH_PX: f32 = 1500.0;
+
+    // Os knobs do report do Enio (screenshot de 2026-08-02).
+    fn artist(t: &mut PainterTool) {
+        for slot in &mut t.paint.brush_by_mode {
+            slot.wet_charge = 0.755;
+            slot.wet_dilution = 0.168;
+            slot.wet_pull = 0.477;
+            slot.wet_rewet = 0.400;
+            slot.wet_smudge = 0.197;
+        }
+        t.paint.brush.wet_charge = 0.755;
+        t.paint.brush.wet_dilution = 0.168;
+        t.paint.brush.wet_pull = 0.477;
+        t.paint.brush.wet_rewet = 0.400;
+        t.paint.brush.wet_smudge = 0.197;
+    }
+
+    let foot = f64::from(2.0 * RADIUS) * f64::from(2.0 * RADIUS);
+    println!("\nraio {RADIUS:.0}, {EV} ev/quadro, caminho {PATH_PX:.0} px");
+    println!("pegada de um dab = {:.2} M texels\n", foot / 1e6);
+    println!(
+        "{:<8} {:>12} {:>12} {:>12} {:>12} {:>10}",
+        "canvas", "tela M", "pour 1º M", "pour últ M", "razão pour", "pour/pegada"
+    );
+
+    for size in [2048u32, 4096] {
+        let mut t = wash(size, RADIUS);
+        artist(&mut t);
+        let mid = f64::from(size / 2) as f32;
+        let x0 = RADIUS + 20.0;
+        assert!(
+            x0 + PATH_PX + RADIUS < size as f32,
+            "o traço tem de caber no canvas {size}"
+        );
+        let step = PATH_PX / f64::from(FRAMES * EV) as f32;
+        t.on_canvas_pointer(cp([x0, mid], PointerPhase::Down));
+        let _ = t.take_preview_arc();
+
+        let mut areas = Vec::new();
+        let mut k = 0u32;
+        for _ in 0..FRAMES {
+            for _ in 0..EV {
+                k += 1;
+                let x = x0 + step * f64::from(k) as f32;
+                t.on_canvas_pointer(cp([x, mid], PointerPhase::Move));
+            }
+            t.paint_tick(DT);
+            // O rect que o `pour` do PRÓXIMO quadro vai caminhar (clampado como ele clampa).
+            if let Some(r) = t.paint.wet_stroke_dirty {
+                let x1 = u64::from(r.x + r.w).min(u64::from(size));
+                let y1 = u64::from(r.y + r.h).min(u64::from(size));
+                let w = x1.saturating_sub(u64::from(r.x));
+                let h = y1.saturating_sub(u64::from(r.y));
+                areas.push((w * h) as f64);
+            }
+            let _ = t.take_preview_arc();
+        }
+        t.on_canvas_pointer(cp([x0 + PATH_PX, mid], PointerPhase::Up));
+
+        assert!(!areas.is_empty(), "a fixture tem de POUR — sem rect não há o que medir");
+        let q = areas.len() / 4;
+        let mean = |s: &[f64]| s.iter().sum::<f64>() / s.len() as f64;
+        let first = mean(&areas[..q]);
+        let last = mean(&areas[areas.len() - q..]);
+        let screen = f64::from(size) * f64::from(size);
+        println!(
+            "{size:<8} {:>12.2} {:>12.2} {:>12.2} {:>11.2}x {:>9.1}x",
+            screen / 1e6,
+            first / 1e6,
+            last / 1e6,
+            last / first,
+            last / foot
+        );
+    }
+    println!();
+}
+
+/// **Quantos texels um QUADRO de aquarela caminha, e qual knob paga por eles?**
+///
+/// Ablação **pela ENTRADA** (os knobs do painel, nunca instrumentação — uma sonda que refaz o laço
+/// fica cega à porta, §5.11), medindo a única grandeza que sobrevive à máquina disputada: a ÁREA da
+/// janela de leitura, somada pelo próprio produto em `WashCadence::window_px`.
+///
+/// ⚠️ A janela é `dirty ⊕ pad` (saída) `⊕ pad` (leitura), então ela é `dirty + 4·pad` por eixo — e o
+/// `pad` é FUNÇÃO DOS KNOBS: `Rewet > 0` faz `reach = spread`, e a água CARREGADA (`Dilution > 0`,
+/// que aloca `stroke_water`) o DOBRA. Um pad de duas dezenas de texels desaparece num pincel grande e
+/// domina num pequeno; é por isso que o número certo é a razão contra a PEGADA, não o absoluto.
+#[test]
+#[ignore = "measurement, not a gate"]
+fn measure_the_area_a_watercolor_frame_walks() {
+    const SIZE: u32 = 4096;
+    const EV: u32 = 4;
+    const FRAMES: u32 = 24;
+    const DT: f32 = 1.0 / 60.0;
+
+    // Os knobs do report do Enio (screenshot de 2026-08-02).
+    fn artist(t: &mut PainterTool, dilution: f32, rewet: f32) {
+        let set = |b: &mut BrushSpec| {
+            b.wet_charge = 0.755;
+            b.wet_pull = 0.477;
+            b.wet_smudge = 0.197;
+            b.wet_dilution = dilution;
+            b.wet_rewet = rewet;
+        };
+        set(&mut t.paint.brush);
+        for slot in &mut t.paint.brush_by_mode {
+            set(slot);
+        }
+    }
+
+    println!("\ncanvas {SIZE}², {EV} ev/quadro, {FRAMES} quadros — AREA, nao relogio\n");
+    println!(
+        "{:<7} {:>9} {:>26} {:>14} {:>12} {:>10}",
+        "raio", "pegada M", "ablacao", "janela/quadro M", "composites", "vs pegada"
+    );
+    for radius in [60.0f32, 250.0] {
+        let foot = f64::from(2.0 * radius) * f64::from(2.0 * radius);
+        for (name, dil, rew) in [
+            ("como o Enio ajustou", 0.168, 0.400),
+            ("sem Dilution", 0.0, 0.400),
+            ("sem Rewet", 0.168, 0.0),
+            ("sem os dois", 0.0, 0.0),
+        ] {
+            let mut t = wash(SIZE, radius);
+            artist(&mut t, dil, rew);
+            let mid = f64::from(SIZE / 2) as f32;
+            let x0 = radius + 20.0;
+            let path = 900.0f32;
+            let step = path / f64::from(FRAMES * EV) as f32;
+            t.on_canvas_pointer(cp([x0, mid], PointerPhase::Down));
+            let _ = t.take_preview_arc();
+            t.wash.window_px = 0;
+            t.wash.composites = 0;
+            let mut k = 0u32;
+            for _ in 0..FRAMES {
+                for _ in 0..EV {
+                    k += 1;
+                    t.on_canvas_pointer(cp(
+                        [x0 + step * f64::from(k) as f32, mid],
+                        PointerPhase::Move,
+                    ));
+                }
+                t.paint_tick(DT);
+                let _ = t.take_preview_arc();
+            }
+            let (px, n) = (t.wash.window_px, t.wash.composites);
+            t.on_canvas_pointer(cp([x0 + path, mid], PointerPhase::Up));
+            assert!(n > 0, "a fixture tem de COMPOR — sem composite nao ha area");
+            let per = px as f64 / f64::from(n);
+            println!(
+                "{radius:<7.0} {:>9.2} {name:>26} {:>14.2} {n:>12} {:>9.1}x",
+                foot / 1e6,
+                per / 1e6,
+                per / foot
+            );
+        }
+    }
+    println!();
+}

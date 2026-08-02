@@ -6693,3 +6693,108 @@ precisão de tabela de transferência (doc 24), então isso é medido, não supo
 - **Os shape editors (`DragDot`/`Anchored`/`Line`) compõem por evento mesmo com a cura**, porque
   `clear_wet_coverage` dobra o rect cumulativo no do quadro. No app eles são **coalescidos** pela shell
   (uma entrega por quadro), então não é um defeito vivo — mas é o mesmo mecanismo noutra rota.
+
+---
+
+## §5.60 — O Watercolor a 250 px: a CONTAGEM decidiu com a máquina cheia, e a premissa aberta desde §5.71 está VERIFICADA (2026-08-02)
+
+> Report do Enio: *"um pincel de 250px e as configurações na imagem provocam grande queda de FPS.
+> Desempenho pior em imagens grandes (4096)."* — com `Rewet 0.400`, `Smudge 0.197`, `Dilution 0.168`,
+> `Charge 0.755`, `Pull 0.477`, `Drying Time 10`. **Máquina a `load average 27,7`** ⇒ pela regra da
+> §5.49, **nenhum número de tempo desta sessão vale**. Então esta wave não mediu tempo nenhum: ela
+> **CONTOU TEXELS**, que é reprodutível sob carga, e leu os ESCRITORES em vez de supor.
+
+### 1. Duas coisas no report contradiziam a tabela herdada
+
+O doc 31 (o handoff que abriu a frente) media a aquarela em **3,07 / 3,12 ms** a 2048²/4096² — **plana
+na tela** — e decompunha o custo com **`Smudge` e `Rewet` em ZERO**, usando as duas linhas como o
+**piso de ruído** da sonda. O Enio pinta com os dois LIGADOS, e num raio que a sonda nunca visitou (ela
+mede **um raio só**, 100).
+
+### 2. O que a contagem achou — e o que ela REFUTOU
+
+**Sonda `measure_the_area_the_wash_walks_per_frame`** (áreas de retângulo, zero relógio), r=250,
+caminho de 1500 px, 48 quadros:
+
+| canvas | tela | pour 1º quarto | pour últ. quarto | razão | vs pegada |
+|---|---|---|---|---|---|
+| 2048² | 4,19 M | 0,35 M | **0,94 M** | **2,68×** | 3,7× |
+| 4096² | 16,78 M | 0,35 M | **0,94 M** | **2,68×** | 3,7× |
+
+⚠️ **A minha hipótese do CLAMP foi refutada na primeira corrida:** o pour é **idêntico nas duas
+telas**. Ele é limitado pelo **TRAÇO**, não pela tela — mas **cresce 2,68× dentro de um único traço** e
+termina em **3,7× a pegada de um dab**.
+
+**Sonda `measure_the_area_a_watercolor_frame_walks`** (ablação **pela ENTRADA** — knobs do painel —
+sobre o contador novo `WashCadence::window_px`, que o produto soma):
+
+| raio | ablação | janela/quadro | vs pegada |
+|---|---|---|---|
+| 250 | como o Enio ajustou | 0,36 M | 1,4× |
+| 250 | sem Dilution | 0,36 M | 1,4× |
+| 250 | sem Rewet | 0,35 M | 1,4× |
+| 250 | sem os dois | 0,32 M | 1,3× |
+| 60 | como o Enio ajustou | 0,05 M | 3,4× |
+
+⚠️ **E ela refutou a MINHA segunda hipótese, que eu já tinha escrito:** eu li em `window.rs:110` que
+`Dilution > 0` liga o `watered` e **dobra** o `reach` (`spread_any * 2`), e concluí que os knobs dele
+inflavam a janela. **Dobram o `reach` e não movem a janela** (0,36 contra 0,32) — porque o `spread`
+padrão é pequeno e o pad desaparece contra um pincel de 250 px. *Um multiplicador sobre um número
+pequeno continua pequeno; ler o código diz o FATOR, só a contagem diz o PESO.*
+
+**O retrato que sobra, por quadro a r=250:** a janela do composite é **0,36 M e PLANA**; o pour vai de
+0,35 a **0,94 M** e **não tem teto**. ⇒ *no fim de um traço longo o pour caminha 2,6× mais que a
+reconstrução óptica, e é o único dos dois que cresce.*
+
+### 3. A dependência de TELA é por TRAÇO, e está no pen-down
+
+`freeze_watercolor_ground` roda uma vez por traço e faz **três varreduras de plano inteiro**:
+
+| a 4096² | o quê |
+|---|---|
+| ~67 MB | `build_wet_backdrop` — aloca `n×4` e o preenche |
+| ~67 MB | `wet_substrate` — anda `n` floats pondo `NaN` (invalidação do memo de papel) |
+| ~16 MB | `wet_soak` — zera `n` bytes (só em sessão nova) |
+
+A 2048² é **um quarto** disso. É a única metade do módulo que responde ao tamanho do documento, e ela é
+paga **a cada traço** — com um pincel de 250 px, muitas vezes.
+
+⚠️ **E o `wet_substrate` é preenchido PREGUIÇOSAMENTE** (`fill_substrate_cache`, só sobre a região de
+SAÍDA do composite) ⇒ **o `NaN` de tela inteira invalida pixels que nunca foram preenchidos**.
+
+### 4. A premissa que estava aberta agora está VERIFICADA (e ela libera a wave)
+
+O handoff de 2026-08-02 deixou o pour em aberto com a ressalva *"a premissa não foi verificada — o
+filtro de dono por recência pode mudar a elegibilidade de um texel no meio do traço"*. **Verificada
+lendo os escritores, não supondo:**
+
+- `stroke_coverage` só é mutado **por-dab** (`watercolor_accum.rs:361-366`);
+- `wet_styles.owner` idem (`:364`) — a recência é escrita **onde o dab cai**;
+- os dois `zip` de plano inteiro daquele arquivo (`:322`, `:345`) são **backfills ÚNICOS**, guardados
+  por `len() != fw*fh` — não são por-evento, e é por isso que o censo mede o move plano;
+- e o pour é **idempotente** (max-blend, o doc dele na linha 270).
+
+⇒ **Um texel fora do rect do QUADRO não pode ter mudado nem de cobertura nem de dono**, e re-despejá-lo
+produz o mesmo byte. **O rect do quadro basta.** É a lei do S1/S2 (*a janela vem de quem ESCREVE*) no
+terceiro sítio deste módulo.
+
+### 5. O que ficou, e o que NÃO foi construído
+
+**Ficou** (tudo verificável sob carga): as duas sondas de contagem e o contador `window_px`, somado
+pelo produto ao lado do `composites`.
+
+⛔ **A wave NÃO foi construída, e o motivo é a regra da casa:** uma wave de performance sem um número
+de PRODUTO medido não é uma wave, e este box não pode produzir esse número hoje. A receita está pronta
+e é pequena:
+
+1. o acumulador de dabs **declara** onde escreveu (`wet_pour_dirty`, unido por-dab, no molde do
+   `declare_wrote` da §5.17-19), e `pour_canvas_wet` o **consome** em vez de ler o cumulativo;
+2. `freeze_watercolor_ground` invalida o `wet_substrate` **só onde ele foi preenchido** — a mesma
+   ideia, um plano adiante;
+3. o `build_wet_backdrop` é cacheável **dentro de uma sessão** com chave na pilha de camadas — ⚠️ este
+   é o de MAIOR risco (o modo de falha de esquecer uma entrada é um chão velho que ninguém vê que é
+   velho, a cerca que a nota do passe de luz já pregou), então ele vem por último e com gate próprio.
+
+⚠️ **Gate de cada um é BYTE-IDENTIDADE, não relógio** — o `canvas_wet` e a tela composta têm de sair
+iguais pelas duas rotas —, e o **benefício também se conta** (texels caminhados), então a wave inteira
+é auditável com a máquina cheia. Só o veredito final (*o Enio sente?*) pede o box calmo.

@@ -144,6 +144,10 @@ impl BodyCtx<'_> {
         // A MOLDURA vem logo depois da simetria: as duas são propriedades do OBJETO que se
         // acabou de desenhar, e a seção some inteira quando a seleção não é moldura.
         y = self.step(y, |b, y| b.frame_section(y));
+        // O AUTO LAYOUT vem logo DEPOIS da moldura, e a ordem é o assunto: a seção Frame diz o
+        // que o contêiner É, esta diz o que ele FAZ com o conteúdo. Some inteira quando não há
+        // moldura na seleção nem um filho dentro de um fluxo.
+        y = self.step(y, |b, y| b.layout_section(y));
         y = self.step(y, |b, y| b.shape_params_section(snap, y));
         // Os parâmetros do CONECTOR selecionado — irmã da seção acima (mesma estética,
         // mesmos widgets), logo abaixo dela: as duas respondem "o que é este objeto que

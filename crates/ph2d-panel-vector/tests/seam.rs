@@ -620,7 +620,9 @@ fn every_section_header_is_registered_as_collapsible() {
         // exactamente o que este gate existe para pegar.
         // +1 (plano 25 W6.3): SYMMETRY — a simetria de desenho, um MODO e não um efeito.
         // +1 (plano UI/UX W0): FRAME — o contêiner. Some inteira sem moldura na seleção.
-        30,
+        // +1 (plano UI/UX W2): LAYOUT — a moldura que EMPILHA. Some sem moldura E sem filho de
+        // fluxo na seleção.
+        31,
         "a lista de secoes mudou — confira que o paint pinta um header para cada uma"
     );
     for &id in ids::VECTOR_SECTIONS {

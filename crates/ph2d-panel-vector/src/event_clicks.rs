@@ -45,6 +45,21 @@ fn is_frame_widget(id: ph2d_a11y::NodeId) -> bool {
         || ph2d_tool_vector::frames::device_preset(id).is_some()
 }
 
+/// **Os chips do AUTO LAYOUT** que a SHELL honra (plano UI/UX W2) — direção, alinhamento e
+/// distribuição. Os valores moram no COMPONENTE, então o clique atravessa o barramento.
+///
+/// ⚠️ **Os dois chips do modo de recuo NÃO estão aqui**: eles só decidem quais campos são
+/// pintados, e o documento não sabe nada sobre isso. Mandá-los à shell seria uma porta com nada
+/// do outro lado — eles são resolvidos no painel, como o lado e a junção do Offset Path.
+///
+/// A lista é percorrida a partir do MESMO array que o `populate` regista, menos os dois do modo:
+/// uma variante nova entra numa lista só, e o gate de seam clica todas.
+fn is_layout_widget(id: ph2d_a11y::NodeId) -> bool {
+    id != ids::VECTOR_LAYOUT_PAD_ALL_MODE
+        && id != ids::VECTOR_LAYOUT_PAD_EACH_MODE
+        && crate::populate::layout::LAYOUT_CHIPS.contains(&id)
+}
+
 /// **Os treze pills de MODO + os três chips da fonte de largura do lápis.**
 ///
 /// ⚠️ **Extraído da cadeia porque ela bateu no teto de 200 LOC por função** — e o doc-comment do
@@ -181,6 +196,7 @@ pub(super) fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         // saber que o modo mudou (ela e' quem le' o modo no clique de uma das oito); e o Apply e'
         // um comando de DOCUMENTO. Fora daqui os tres pintariam e estariam MORTOS.
         || is_frame_widget(id)
+        || is_layout_widget(id)
         // As opções dos pickers de token (plano UI/UX W4). Fora daqui elas pintam, acendem sob
         // o mouse e o Click morre no painel — o artista escolheria um token e nada mudaria.
         || is_token_option(id)

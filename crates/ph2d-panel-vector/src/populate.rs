@@ -45,6 +45,9 @@ mod pencil;
 /// Os controles da seção FRAME (plano UI/UX W0) — irmão pelo teto de LOC.
 #[path = "populate_frame.rs"]
 mod frame;
+/// Os controles da seção LAYOUT (plano UI/UX W2, ADR-0153) — irmão pelo mesmo teto.
+#[path = "populate_layout.rs"]
+pub(crate) mod layout;
 #[path = "populate_symmetry.rs"]
 mod symmetry;
 /// Os dois chips de TOKEN (plano UI/UX W4) — irmão pelo teto de LOC.
@@ -280,6 +283,7 @@ fn populate_shape(store: &mut WidgetStore) {
     pencil::pencil_knobs(store);
     symmetry::symmetry_controls(store);
     frame::frame_controls(store);
+    layout::layout_controls(store);
     tokens::token_controls(store);
 
     // Os pills de MODO (Select … Fillet / Chamfer) + Convert — módulo irmão pelo teto de LOC.

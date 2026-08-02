@@ -81,6 +81,7 @@ mod paint_catalog;
 mod paint_connector;
 /// A seção FRAME — o contêiner (plano UI/UX W0), irmã de `paint_pencil`.
 mod paint_frame;
+mod paint_layout;
 /// As pontas do traço (arrowheads) — dois chips na seção Stroke + o popover diferido.
 mod paint_markers;
 mod paint_modes;

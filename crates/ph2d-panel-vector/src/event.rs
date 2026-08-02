@@ -200,11 +200,15 @@ pub(crate) fn apply_event(
         // Transform number fields (X/Y/W/H) — standalone NumberInputs (NOT slider-
         // linked): forward the committed VALUE as a document command; the shell
         // drain translates (X/Y) / scales (W/H) the selected path.
+        // Os nove campos do AUTO LAYOUT seguem exactamente a mesma rota, e pela mesma razão: o
+        // valor mora no COMPONENTE, então quem o escreve é a shell. A lista é a que o `populate`
+        // regista — um campo novo entra numa lista só.
         WidgetEvent::ValueChanged(id)
             if id == ids::VECTOR_TRANSFORM_X
                 || id == ids::VECTOR_TRANSFORM_Y
                 || id == ids::VECTOR_TRANSFORM_W
-                || id == ids::VECTOR_TRANSFORM_H =>
+                || id == ids::VECTOR_TRANSFORM_H
+                || crate::populate::layout::LAYOUT_FIELDS.contains(&id) =>
         {
             let val = host.store().number_value(id).unwrap_or(0.0);
             host.bus_mut()
@@ -330,28 +334,6 @@ pub(crate) fn apply_event(
             host.bus_mut().push(EditorAction::CancelActiveTool);
             true
         }
-        // A family row in the open Font dropdown: close the chip (light-dismiss
-        // won't fire — the click is INSIDE the popover) and forward the picked
-        // index over `SelectOption`; the shell resolves it to a family + regens.
-        WidgetEvent::Click(id) if state::font_option_index(id).is_some() => {
-            if let Some(i) = state::font_option_index(id) {
-                if let Some(InteractiveState::Dropdown {
-                    open,
-                    selected_index,
-                    ..
-                }) = host.store_mut().get_mut(ids::VECTOR_TEXT_FONT_DD)
-                {
-                    *open = false;
-                    *selected_index = Some(i);
-                }
-                host.bus_mut()
-                    .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
-                        ids::VECTOR_TEXT_FONT_DD,
-                        i.to_string(),
-                    )));
-            }
-            true
-        }
         // As PONTAS (Head Size / Head Round) e o CONECTOR (Route / Jetty / Spread / Corner)
         // tratam os seus ids nos módulos deles — que é onde o snapshot de cada um vive.
         // Delegar AQUI (em vez de mais seis arms) é o que mantém `apply_event` sob o teto de
@@ -359,6 +341,8 @@ pub(crate) fn apply_event(
         other => {
             crate::paint_markers::apply_event(host, other)
                 || crate::paint_connector::apply_event(host, other)
+                || crate::paint_layout::apply_event(host, other)
+                || crate::font_dropdown::apply_event(host, other)
         }
     };
     EventOutcome::from_bool(consumed)

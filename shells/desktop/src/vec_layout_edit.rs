@@ -1,0 +1,314 @@
+//! **O AUTO LAYOUT da seleção** — a projeção que o painel lê, e a porta que o edita (plano UI/UX
+//! W2, ADR-0153).
+//!
+//! Irmão do [`crate::vec_frame_edit`], e com a mesma divisão de donos: a verdade mora no ECS
+//! (`VecLayout` no pai, `VecLayoutItem` no filho) e isto é o que a shell publica por frame. O
+//! painel não alcança o mundo — se alcançasse, a resposta que DESENHA o chip aceso divergiria da
+//! que HONRA o clique.
+//!
+//! # Uma tabela, duas direções
+//!
+//! ⚠️ Os três rádios (direção · alinhamento · distribuição) precisam da mesma correspondência
+//! `enum ↔ chip` lida nos dois sentidos: **para publicar** o aceso e **para resolver** o clique.
+//! Escrevê-la duas vezes — um `match` que pinta e outro que honra — é como uma variante nova entra
+//! só numa delas, e o sintoma é um chip que acende e não faz nada. Aqui cada rádio é **um array**,
+//! e as duas perguntas são varreduras dele.
+//!
+//! # Quem é o SUJEITO da seção
+//!
+//! Duas metades, resolvidas por portas diferentes porque são perguntas diferentes:
+//!
+//! - **a moldura** é a que CONTÉM a seleção — a MESMA porta do W0
+//!   ([`crate::vec_frame_edit::frame_of_selection`]), que já sabe desfazer a expansão de seleção
+//!   dos contêineres;
+//! - **o filho** é a seleção quando ela é UMA forma cujo pai flui. Uma moldura aninhada responde
+//!   às duas, e é isso que faz os dois blocos aparecerem juntos nela.
+
+use ph2d_ecs::{
+    ChildOf, Entity, LayoutAlign, LayoutDir, LayoutJustify, SimWorld, VecLayout, VecLayoutItem,
+};
+use ph2d_editor::ids;
+use ph2d_panel_vector::state::{LayoutFlow, LayoutItem};
+use ph2d_vec_scene::VecPathId;
+
+use crate::vec_entities::VecEntityMap;
+
+/// A direção ⟷ o chip. `Off` não está aqui: ele é a AUSÊNCIA do componente, e por isso não tem
+/// variante a que corresponder.
+const DIRS: &[(ph2d_editor::NodeId, LayoutDir)] = &[
+    (ids::VECTOR_LAYOUT_DIR_ROW, LayoutDir::Row),
+    (ids::VECTOR_LAYOUT_DIR_COL, LayoutDir::Column),
+    (ids::VECTOR_LAYOUT_DIR_WRAP, LayoutDir::RowWrap),
+];
+
+const ALIGNS: &[(ph2d_editor::NodeId, LayoutAlign)] = &[
+    (ids::VECTOR_LAYOUT_ALIGN_START, LayoutAlign::Start),
+    (ids::VECTOR_LAYOUT_ALIGN_CENTER, LayoutAlign::Center),
+    (ids::VECTOR_LAYOUT_ALIGN_END, LayoutAlign::End),
+    (ids::VECTOR_LAYOUT_ALIGN_STRETCH, LayoutAlign::Stretch),
+];
+
+const JUSTIFIES: &[(ph2d_editor::NodeId, LayoutJustify)] = &[
+    (ids::VECTOR_LAYOUT_JUSTIFY_START, LayoutJustify::Start),
+    (ids::VECTOR_LAYOUT_JUSTIFY_CENTER, LayoutJustify::Center),
+    (ids::VECTOR_LAYOUT_JUSTIFY_END, LayoutJustify::End),
+    (
+        ids::VECTOR_LAYOUT_JUSTIFY_BETWEEN,
+        LayoutJustify::SpaceBetween,
+    ),
+    (
+        ids::VECTOR_LAYOUT_JUSTIFY_AROUND,
+        LayoutJustify::SpaceAround,
+    ),
+];
+
+/// O que um clique num chip do layout PEDE. Nomeado para o roteador não carregar cinco
+/// `Option<…>` paralelos que podem estar preenchidos ao mesmo tempo.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) enum LayoutEdit {
+    /// Uma direção — `None` = **Off**, que REMOVE o componente.
+    Dir(Option<LayoutDir>),
+    Align(LayoutAlign),
+    Justify(LayoutJustify),
+}
+
+/// Este id é um chip do layout? Porta única do roteador — a mesma varredura das três tabelas.
+#[must_use]
+pub(crate) fn layout_edit_for_id(id: ph2d_editor::NodeId) -> Option<LayoutEdit> {
+    if id == ids::VECTOR_LAYOUT_DIR_OFF {
+        return Some(LayoutEdit::Dir(None));
+    }
+    if let Some(&(_, d)) = DIRS.iter().find(|(i, _)| *i == id) {
+        return Some(LayoutEdit::Dir(Some(d)));
+    }
+    if let Some(&(_, a)) = ALIGNS.iter().find(|(i, _)| *i == id) {
+        return Some(LayoutEdit::Align(a));
+    }
+    JUSTIFIES
+        .iter()
+        .find(|(i, _)| *i == id)
+        .map(|&(_, j)| LayoutEdit::Justify(j))
+}
+
+/// Qual campo numérico do layout este id endereça, e o que ele escreve.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) enum LayoutField {
+    /// Vão: `0` principal, `1` transversal.
+    Gap(usize),
+    /// Recuo de UM lado (índice na ordem do CSS: topo, direita, base, esquerda).
+    Pad(usize),
+    /// Recuo dos QUATRO lados de uma vez (o campo do modo *All*).
+    PadAll,
+    Grow,
+    Shrink,
+}
+
+/// Porta única do roteador para os campos numéricos.
+#[must_use]
+pub(crate) fn layout_field_for_id(id: ph2d_editor::NodeId) -> Option<LayoutField> {
+    let f = match id {
+        _ if id == ids::VECTOR_LAYOUT_GAP_MAIN => LayoutField::Gap(0),
+        _ if id == ids::VECTOR_LAYOUT_GAP_CROSS => LayoutField::Gap(1),
+        _ if id == ids::VECTOR_LAYOUT_PAD_ALL => LayoutField::PadAll,
+        _ if id == ids::VECTOR_LAYOUT_PAD_T => LayoutField::Pad(0),
+        _ if id == ids::VECTOR_LAYOUT_PAD_R => LayoutField::Pad(1),
+        _ if id == ids::VECTOR_LAYOUT_PAD_B => LayoutField::Pad(2),
+        _ if id == ids::VECTOR_LAYOUT_PAD_L => LayoutField::Pad(3),
+        _ if id == ids::VECTOR_LAYOUT_ITEM_GROW => LayoutField::Grow,
+        _ if id == ids::VECTOR_LAYOUT_ITEM_SHRINK => LayoutField::Shrink,
+        _ => return None,
+    };
+    Some(f)
+}
+
+/// O chip aceso para uma variante — a MESMA tabela, lida ao contrário.
+fn chip_of<T: PartialEq + Copy>(table: &[(ph2d_editor::NodeId, T)], v: T) -> ph2d_editor::NodeId {
+    // ⚠️ O `unwrap_or` cai no PRIMEIRO chip da tabela, e nunca dispara: as tabelas são
+    // exaustivas sobre enums fechados, e um `match` no compilador não as cobre porque elas são
+    // dados. É o gate `every_layout_variant_has_a_chip` que o prova — e é ele que sangra no dia
+    // em que uma variante nova entrar no enum e não na tabela.
+    table
+        .iter()
+        .find(|(_, t)| *t == v)
+        .map_or(table[0].0, |(i, _)| *i)
+}
+
+/// O filho de fluxo da seleção: UMA forma cujo pai empilha.
+fn item_of_selection(sim: &SimWorld, map: &VecEntityMap, selected: &[VecPathId]) -> Option<Entity> {
+    // A moldura que contém tudo responde primeiro (uma moldura aninhada é ela própria um item);
+    // fora disso, só uma seleção de UMA forma tem um "filho" de que falar.
+    let subject = crate::vec_frame_edit::frame_of_selection(sim, map, selected).or_else(|| {
+        let [only] = selected else { return None };
+        let &bits = map.get(only)?;
+        let e = Entity::from_bits(bits);
+        sim.world().get_entity(e).ok().map(|_| e)
+    })?;
+    let parent = sim.world().get::<ChildOf>(subject)?.parent();
+    sim.world()
+        .get::<VecLayout>(parent)
+        .is_some()
+        .then_some(subject)
+}
+
+/// O fluxo da moldura da seleção — `None` = não há moldura, ou ela não empilha.
+#[must_use]
+pub(crate) fn selected_flow(
+    sim: &SimWorld,
+    map: &VecEntityMap,
+    selected: &[VecPathId],
+) -> Option<LayoutFlow> {
+    let e = crate::vec_frame_edit::frame_of_selection(sim, map, selected)?;
+    let l = sim.world().get::<VecLayout>(e)?;
+    Some(LayoutFlow {
+        dir: chip_of(DIRS, l.dir),
+        gap: l.gap,
+        pad: l.pad,
+        align: chip_of(ALIGNS, l.align),
+        justify: chip_of(JUSTIFIES, l.justify),
+    })
+}
+
+/// Como o filho selecionado se comporta — `None` = a seleção não está num fluxo.
+#[must_use]
+pub(crate) fn selected_item(
+    sim: &SimWorld,
+    map: &VecEntityMap,
+    selected: &[VecPathId],
+) -> Option<LayoutItem> {
+    let e = item_of_selection(sim, map, selected)?;
+    let it = sim
+        .world()
+        .get::<VecLayoutItem>(e)
+        .copied()
+        .unwrap_or_default();
+    Some(LayoutItem {
+        grow: f64::from(it.grow),
+        shrink: f64::from(it.shrink),
+    })
+}
+
+/// Aplica um clique de chip. Devolve `true` se o mundo mudou — o `post_frame_undo` regista por
+/// diff, então um no-op não custa passo de undo.
+pub(crate) fn apply_layout_edit(
+    sim: &mut SimWorld,
+    map: &VecEntityMap,
+    selected: &[VecPathId],
+    edit: LayoutEdit,
+) -> bool {
+    let Some(e) = crate::vec_frame_edit::frame_of_selection(sim, map, selected) else {
+        return false;
+    };
+    let cur = sim.world().get::<VecLayout>(e).copied();
+    let next = match edit {
+        // ⚠️ **Off REMOVE o componente** — vão, recuo e alinhamento vão junto. É o que o Figma faz
+        // ao tirar o auto layout, e é a única leitura honesta: um componente inerte guardado no
+        // arquivo seria uma regra que ninguém honra, invisível e a viajar em todo save.
+        LayoutEdit::Dir(None) => None,
+        LayoutEdit::Dir(Some(dir)) => Some(VecLayout {
+            dir,
+            ..cur.unwrap_or_default()
+        }),
+        // ⚠️ Alinhar uma moldura que ainda não flui **liga o fluxo** com o `Default` — o chip não
+        // é pintado nesse estado, então chegar aqui só acontece por um clique roteado errado; e
+        // escrever o alinhamento num componente que não existe seria perder o clique em silêncio.
+        LayoutEdit::Align(align) => Some(VecLayout {
+            align,
+            ..cur.unwrap_or_default()
+        }),
+        LayoutEdit::Justify(justify) => Some(VecLayout {
+            justify,
+            ..cur.unwrap_or_default()
+        }),
+    };
+    write_layout(sim, e, cur, next)
+}
+
+/// Aplica um valor de campo numérico.
+pub(crate) fn apply_layout_field(
+    sim: &mut SimWorld,
+    map: &VecEntityMap,
+    selected: &[VecPathId],
+    field: LayoutField,
+    v: f64,
+) -> bool {
+    match field {
+        LayoutField::Grow | LayoutField::Shrink => {
+            let Some(e) = item_of_selection(sim, map, selected) else {
+                return false;
+            };
+            let cur = sim.world().get::<VecLayoutItem>(e).copied();
+            let mut next = cur.unwrap_or_default();
+            // ⚠️ O piso em zero é o DOMÍNIO do modelo (o flexbox não exprime crescer negativo),
+            // não um teto de gosto — por isso ele mora aqui, na porta do documento, e não como
+            // faixa do widget. Não há teto: `grow = 1000` e `grow = 1` fazem a mesma coisa quando
+            // só um filho cresce.
+            let v = v.max(0.0) as f32;
+            match field {
+                LayoutField::Grow => next.grow = v,
+                _ => next.shrink = v,
+            }
+            if cur == Some(next) {
+                return false;
+            }
+            // O neutro DESTACA: um componente que não faz nada não viaja no arquivo.
+            if next == VecLayoutItem::default() {
+                if cur.is_none() {
+                    return false;
+                }
+                if let Ok(mut em) = sim.world_mut().get_entity_mut(e) {
+                    em.remove::<VecLayoutItem>();
+                    return true;
+                }
+                return false;
+            }
+            if let Ok(mut em) = sim.world_mut().get_entity_mut(e) {
+                em.insert(next);
+                return true;
+            }
+            false
+        }
+        LayoutField::Gap(_) | LayoutField::Pad(_) | LayoutField::PadAll => {
+            let Some(e) = crate::vec_frame_edit::frame_of_selection(sim, map, selected) else {
+                return false;
+            };
+            // Um campo de fluxo só é PINTADO sobre uma moldura que já flui, então não há aqui o
+            // caso de "ligar por engano": sem componente, não há campo.
+            let Some(cur) = sim.world().get::<VecLayout>(e).copied() else {
+                return false;
+            };
+            let mut next = cur;
+            let v = v.max(0.0);
+            match field {
+                LayoutField::Gap(i) => next.gap[i] = v,
+                LayoutField::Pad(i) => next.pad[i] = v,
+                _ => next.pad = [v; 4],
+            }
+            write_layout(sim, e, Some(cur), Some(next))
+        }
+    }
+}
+
+/// A ÚNICA escrita de `VecLayout` — inserir, mudar ou remover, com o no-op recusado antes de
+/// tocar no mundo.
+fn write_layout(
+    sim: &mut SimWorld,
+    e: Entity,
+    cur: Option<VecLayout>,
+    next: Option<VecLayout>,
+) -> bool {
+    if cur == next {
+        return false;
+    }
+    let Ok(mut em) = sim.world_mut().get_entity_mut(e) else {
+        return false;
+    };
+    match next {
+        Some(l) => em.insert(l),
+        None => em.remove::<VecLayout>(),
+    };
+    true
+}
+
+#[cfg(test)]
+#[path = "vec_layout_edit_tests.rs"]
+mod tests;

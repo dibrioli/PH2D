@@ -313,6 +313,21 @@ const PANEL_A11Y_DELEGATE_OK: &[(&str, &str)] = &[
         "ph2d-panel-vector/src/paint_frame.rs",
         "delegates to segmented/button_grid (paint_segmented/paint_button-backed) in paint_sections",
     ),
+    // A seção LAYOUT (plano UI/UX W2, ADR-0153) — a moldura que EMPILHA. Irmã exacta da FRAME
+    // acima: quatro `segmented` e cinco `number_cell`/`number_row`, todos de `paint_rows`.
+    (
+        "ph2d-panel-vector/src/paint_layout.rs",
+        "delegates to segmented/number_row/number_cell (paint_segmented/paint_number_input-backed) \
+         in paint_rows",
+    ),
+    // ⚠️ O Transform ENTROU nesta lista em 2026-08-02, e a razão é um MOVE: o `number_cell` que o
+    // fazia casar com o marcador `paint_number_input` mudou-se para `paint_rows.rs` quando o AUTO
+    // LAYOUT virou o segundo consumidor dele. O arquivo ficou orquestrador puro — a fiação de
+    // AccessKit não se perdeu, mudou de casa junto com o primitivo.
+    (
+        "ph2d-panel-vector/src/paint_transform.rs",
+        "orquestrador — o number_cell que ele chama (paint_number_input-backed) vive em paint_rows",
+    ),
     // O TRILHO da rampa do Gradient Map — split de `paint_filters.rs` pelo teto de 600 LOC.
     //
     // Os controles dele DELEGAM: o `+`/`−` vão por `BodyCtx::filter_icon` (→ `paint_icon_button`) e

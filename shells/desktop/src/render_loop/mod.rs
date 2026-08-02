@@ -2005,6 +2005,9 @@ impl crate::App {
             let mut pending_bool_apply = false;
             // A MOLDURA (plano UI/UX W0): o chip de recorte e o preset de dispositivo.
             let mut pending_frame_clip: Option<bool> = None;
+            // O AUTO LAYOUT (plano UI/UX W2, ADR-0153): um chip de radio e um campo numerico.
+            let mut pending_layout_edit: Option<crate::vec_layout_edit::LayoutEdit> = None;
+            let mut pending_layout_field: Option<(crate::vec_layout_edit::LayoutField, f64)> = None;
             // **O TOKEN escolhido no picker** (plano UI/UX W4): a propriedade + o token, ou
             // `None` no token = SOLTAR (a propriedade volta ao literal do documento).
             let mut pending_token_bind: Option<(ph2d_ecs::BoundProp, Option<&'static str>)> = None;
@@ -2341,6 +2344,12 @@ impl crate::App {
                                 // então o clique é da shell — o painel só mostra.
                                 pending_frame_clip =
                                     Some(*id == ph2d_editor::ids::VECTOR_FRAME_CLIP_ON);
+                            } else if let Some(e) = crate::vec_layout_edit::layout_edit_for_id(*id)
+                            {
+                                // O AUTO LAYOUT (plano UI/UX W2): direção, alinhamento e
+                                // distribuição moram no COMPONENTE, então o clique e' da shell —
+                                // o painel so' mostra qual chip esta' aceso.
+                                pending_layout_edit = Some(e);
                             } else if let Some(choice) = crate::vec_bindings::token_choice(*id) {
                                 // Uma escolha do picker de token. O valor mora no COMPONENTE
                                 // (mundo), então o clique é da shell — o painel só mostra.
@@ -2465,6 +2474,11 @@ impl crate::App {
                                 crate::input_dispatch::vec_transform_field_for_id(*id)
                             {
                                 pending_vec_transform = Some((field, *v));
+                            } else if let Some(f) = crate::vec_layout_edit::layout_field_for_id(*id)
+                            {
+                                // Vao, recuo, Grow e Shrink — mesma rota dos campos do Transform:
+                                // o valor mora no componente, entao quem escreve e' a shell.
+                                pending_layout_field = Some((f, *v));
                             } else if *id == ph2d_editor::ids::VECTOR_TRANSFORM_R {
                                 pending_vec_rotate_by = Some(*v);
                             } else if *id == ph2d_editor::ids::VECTOR_GRAD_ANGLE {
@@ -6076,6 +6090,25 @@ impl crate::App {
                 ph2d_panel_vector::state::set_frame_clip(
                     crate::vec_frame_edit::selected_frame_clip(sim, &self.vec_entities, &sel),
                 );
+                // **O AUTO LAYOUT** (plano UI/UX W2) — honra o clique ANTES de publicar, pela
+                // mesma razao do recorte acima: publicar primeiro deixaria o chip a piscar de
+                // volta ao valor antigo por um quadro.
+                if let Some(e) = pending_layout_edit {
+                    crate::vec_layout_edit::apply_layout_edit(sim, &self.vec_entities, &sel, e);
+                }
+                if let Some((f, v)) = pending_layout_field {
+                    crate::vec_layout_edit::apply_layout_field(sim, &self.vec_entities, &sel, f, v);
+                }
+                ph2d_panel_vector::state::set_layout_flow(crate::vec_layout_edit::selected_flow(
+                    sim,
+                    &self.vec_entities,
+                    &sel,
+                ));
+                ph2d_panel_vector::state::set_layout_item(crate::vec_layout_edit::selected_item(
+                    sim,
+                    &self.vec_entities,
+                    &sel,
+                ));
                 // **OS TOKENS** (plano UI/UX W4): aplicar a escolha, e depois publicar o que a
                 // seleção tem preso. Nesta ordem — publicar antes deixaria o chip a mostrar o
                 // token ANTERIOR por um frame, e o artista veria a escolha "não pegar".

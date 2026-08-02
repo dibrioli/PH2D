@@ -9,12 +9,14 @@
 //! arquivo ao teto.
 
 use super::paint_sections::{BodyCtx, LABEL_COL_W};
-use ph2d_editor_core::widget::showcase::paint_section_separator;
+use ph2d_editor_core::paint::{paint_text, resolve};
+use ph2d_editor_core::widget::showcase::{paint_section_separator, read_number_input};
 use ph2d_editor_core::widget::{
-    Button, ButtonKind, ButtonState, paint_button, paint_slider_with_chip_layout_adaptive,
+    Button, ButtonKind, ButtonState, NumberInput, paint_button, paint_number_input_with_buffer,
+    paint_slider_with_chip_layout_adaptive,
 };
 use ph2d_editor_core::zones::Rect;
-use ph2d_tokens::Spacing;
+use ph2d_tokens::{ColorToken, Spacing, TypeToken};
 
 impl BodyCtx<'_> {
     /// A full-width slider + linked value chip row; returns the advanced `y`.
@@ -91,6 +93,66 @@ impl BodyCtx<'_> {
         paint_button(&btn, rect, self.scene, self.text_system, self.theme);
         self.hit_index.register(id, rect);
         y + self.row_h + Spacing::Xs.px()
+    }
+
+    /// **Uma linha de DOIS campos numéricos rotulados** (X | Y, W | H, Gap principal | transversal).
+    ///
+    /// ⚠️ Ela nasceu privada no `paint_transform` e mudou-se para cá quando o AUTO LAYOUT virou o
+    /// **segundo** consumidor — que é exactamente o momento em que um ajudante deve ir para a casa
+    /// partilhada. Deixá-la lá obrigaria a seção nova a reescrever a aritmética de meia-largura, e
+    /// duas respostas para *"onde este campo senta?"* divergem no dia em que uma delas ganhar um
+    /// rótulo mais largo.
+    pub(crate) fn number_row(
+        &mut self,
+        la: &str,
+        ida: ph2d_a11y::NodeId,
+        lb: &str,
+        idb: ph2d_a11y::NodeId,
+        y: f32,
+    ) -> f32 {
+        let gap = Spacing::Sm.px();
+        let cw = ((self.inner_w - gap) / 2.0).max(1.0);
+        self.number_cell(la, ida, self.inner_x, cw, y);
+        self.number_cell(lb, idb, self.inner_x + cw + gap, cw, y);
+        y + self.row_h + self.row_gap
+    }
+
+    /// Um campo numérico rotulado (`<rótulo> [ valor ]`) numa célula; regista o hit.
+    pub(crate) fn number_cell(
+        &mut self,
+        label: &str,
+        id: ph2d_a11y::NodeId,
+        cx: f32,
+        cw: f32,
+        y: f32,
+    ) {
+        let lab_w = Spacing::Md.px();
+        paint_text(
+            self.text_system,
+            self.scene,
+            label,
+            cx,
+            y + (self.row_h - TypeToken::Sm.px()) * 0.5,
+            TypeToken::Sm.px(),
+            lab_w,
+            resolve(ColorToken::Text2, self.theme),
+        );
+        let field_x = cx + lab_w + Spacing::Xs.px();
+        let field_w = (cw - lab_w - Spacing::Xs.px()).max(1.0);
+        let rect = Rect::new(field_x, y, field_w, self.row_h);
+        self.hit_index.register(id, rect);
+        let (state, value, buffer, caret, anchor) = read_number_input(self.store, id);
+        let input = NumberInput::new(id, "", value).step(1.0).state(state);
+        paint_number_input_with_buffer(
+            &input,
+            Some(buffer),
+            caret,
+            anchor,
+            rect,
+            self.scene,
+            self.text_system,
+            self.theme,
+        );
     }
 
     /// A 2-column row of two half-width action buttons; returns the advanced `y`.

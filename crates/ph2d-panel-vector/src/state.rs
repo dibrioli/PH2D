@@ -49,6 +49,23 @@ mod frame_state;
 pub(crate) use frame_state::frame_clip;
 pub use frame_state::set_frame_clip;
 
+/// **O ÍMÃ e as RÉGUAS** — irmão pelo teto de 600 LOC dos painéis, e o corte é por assunto: as
+/// cinco chaves respondem *a que a ponta se agarra, e o que a borda do canvas mostra*, e nenhuma
+/// outra parte deste arquivo fala do gesto de apontar.
+#[path = "state_snap.rs"]
+mod snap_state;
+pub(crate) use snap_state::{
+    current_rulers, current_snap, current_snap_crossings, current_snap_guides, current_snap_path,
+};
+pub use snap_state::{set_current_guides, set_current_snap, set_current_snap_position};
+
+/// **O AUTO LAYOUT da seleção** (plano UI/UX W2, ADR-0153) — o fluxo da moldura, o comportamento
+/// do filho, e o modo do recuo (este último panel-local).
+#[path = "state_layout.rs"]
+mod layout_state;
+pub use layout_state::{LayoutFlow, LayoutItem, set_layout_flow, set_layout_item};
+pub(crate) use layout_state::{layout_flow, layout_item, layout_pad_each, set_layout_pad_each};
+
 /// **OS TOKENS da seleção** (plano UI/UX W4) — que propriedade dela segue um token, e qual.
 #[path = "state_tokens.rs"]
 mod token_state;
@@ -88,16 +105,6 @@ thread_local! {
     /// Fill rule of the selected path, `Some` only when it is a COMPOUND path —
     /// the two rules agree on a single contour, so the row would be a no-op there.
     static CURRENT_FILL_RULE: Cell<Option<PathFillRule>> = const { Cell::new(None) };
-    /// Whether shape-snapping is on (mirrored from the shell). The GRID toggle
-    /// lives in the editor's universal Grid Snap panel, not here.
-    static CURRENT_SNAP: Cell<bool> = const { Cell::new(true) };
-    static CURRENT_SNAP_PATH: Cell<bool> = const { Cell::new(false) };
-    static CURRENT_SNAP_CROSS: Cell<bool> = const { Cell::new(false) };
-    /// O ímã das GUIAS (W6.2). Nasce LIGADO — num documento sem guias ele é inerte.
-    static CURRENT_SNAP_GUIDES: Cell<bool> = const { Cell::new(true) };
-    /// As RÉGUAS à mostra (W6.2). Nasce LIGADO: elas são o gesto de onde as guias nascem, e
-    /// uma afordância que ninguém acha é uma que não existe.
-    static CURRENT_RULERS: Cell<bool> = const { Cell::new(true) };
     /// "Set Center" armado: a próxima pressão no canvas reposiciona a origem.
     static CURRENT_PIVOT_EDIT: Cell<bool> = const { Cell::new(false) };
     /// A seleção tem alguma forma VIVA (paramétrica/texto, com `VecShape`) —
@@ -274,54 +281,6 @@ pub fn set_current_fill_rule(rule: Option<PathFillRule>) {
 /// The selected compound path's fill rule this frame (`None` = not compound).
 pub(crate) fn current_fill_rule() -> Option<PathFillRule> {
     CURRENT_FILL_RULE.with(|c| c.get())
-}
-
-/// Publish whether shape-snapping is on, so the Snap section reflects it.
-pub fn set_current_snap(on: bool) {
-    CURRENT_SNAP.with(|c| c.set(on));
-}
-
-/// Whether shape-snapping is on this frame.
-pub(crate) fn current_snap() -> bool {
-    CURRENT_SNAP.with(|c| c.get())
-}
-
-/// Publish the two POSITION claims of the Snap section (plano 25 §9). They are separate from
-/// `set_current_snap` because they answer a different question: that one aligns one axis at a
-/// time, these two land the point somewhere.
-pub fn set_current_snap_position(path: bool, crossings: bool) {
-    CURRENT_SNAP_PATH.with(|c| c.set(path));
-    CURRENT_SNAP_CROSS.with(|c| c.set(crossings));
-}
-
-/// Whether snapping ONTO the geometry is on this frame.
-pub(crate) fn current_snap_path() -> bool {
-    CURRENT_SNAP_PATH.with(|c| c.get())
-}
-
-/// Whether snapping to curve crossings is on this frame.
-pub(crate) fn current_snap_crossings() -> bool {
-    CURRENT_SNAP_CROSS.with(|c| c.get())
-}
-
-/// Publish the two switches of the W6.2 — o ímã das GUIAS e a visibilidade das RÉGUAS.
-///
-/// ⚠️ São publicados juntos porque a seção os pinta juntos, mas respondem a perguntas
-/// diferentes: um decide se a guia ATRAI, o outro se ela pode ser MEXIDA (e se a faixa
-/// aparece). Colapsá-los faria esconder a régua desligar o ímã, que é o oposto do desejado.
-pub fn set_current_guides(snap: bool, rulers: bool) {
-    CURRENT_SNAP_GUIDES.with(|c| c.set(snap));
-    CURRENT_RULERS.with(|c| c.set(rulers));
-}
-
-/// Whether snapping to document guides is on this frame.
-pub(crate) fn current_snap_guides() -> bool {
-    CURRENT_SNAP_GUIDES.with(|c| c.get())
-}
-
-/// Whether the canvas rulers are on screen this frame.
-pub(crate) fn current_rulers() -> bool {
-    CURRENT_RULERS.with(|c| c.get())
 }
 
 /// The angle the Angle chip last reported this gesture (for the delta emit).

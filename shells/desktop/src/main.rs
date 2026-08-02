@@ -331,6 +331,7 @@ mod vec_glyph;
 mod vec_glyph_build;
 /// A porta única de "onde está o caminho-guia, e como se percorre por arco?" (texto E pattern).
 mod vec_guide;
+mod vec_layout_edit;
 mod vec_overlay;
 mod vec_overlay_diag;
 mod vec_pencil_input;

@@ -227,3 +227,42 @@ fn selected_index() -> usize {
             .unwrap_or(0)
     })
 }
+
+/// **Uma linha de família escolhida no popover aberto.**
+///
+/// ⚠️ O light-dismiss genérico **não dispara aqui** — o clique é DENTRO do popover —, então sem
+/// este fecho manual a lista fica pendurada sobre a seção depois de escolher, e o artista tem de
+/// a dispensar à mão. O índice segue por `SelectOption`; a shell o resolve para uma família e
+/// re-gera o texto.
+///
+/// Mora ao lado do paint do popover (e não no `apply_event`) porque é o MESMO assunto e pelo teto
+/// de 200 LOC por função dos painéis — o padrão de delegação das pontas e do conector.
+pub(crate) fn apply_event(
+    host: &mut dyn ph2d_editor_core::panel::PanelHostInternal,
+    ev: ph2d_editor_core::interaction::WidgetEvent,
+) -> bool {
+    use ph2d_editor_core::action_bus::EditorAction;
+    use ph2d_editor_core::interaction::WidgetEvent;
+    use ph2d_editor_core::tool::PanelEvent;
+    let WidgetEvent::Click(id) = ev else {
+        return false;
+    };
+    let Some(i) = state::font_option_index(id) else {
+        return false;
+    };
+    if let Some(InteractiveState::Dropdown {
+        open,
+        selected_index,
+        ..
+    }) = host.store_mut().get_mut(ids::VECTOR_TEXT_FONT_DD)
+    {
+        *open = false;
+        *selected_index = Some(i);
+    }
+    host.bus_mut()
+        .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
+            ids::VECTOR_TEXT_FONT_DD,
+            i.to_string(),
+        )));
+    true
+}

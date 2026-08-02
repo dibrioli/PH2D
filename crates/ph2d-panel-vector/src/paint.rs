@@ -152,6 +152,34 @@ fn seed_and_publish(
             state::set_rot_last(0.0);
         }
     }
+    // **Os campos do AUTO LAYOUT** (plano UI/UX W2) — semeados do que a shell publicou, e nunca
+    // sobre o campo em FOCO: o `NumberInput` é dono do próprio buffer enquanto o artista digita, e
+    // reescrevê-lo apagaria a tecla que ele acabou de premir (é a mesma regra dos campos do
+    // Transform, uma dúzia de linhas acima).
+    //
+    // ⚠️ O `pad` de *All* é semeado com o TOPO. Ele escreve os quatro lados, então mostrar um dos
+    // quatro é honesto; mostrar zero num recuo já autorado é que seria mentira.
+    {
+        let focus = store.focus_id();
+        let mut seed = |id, v: f64| {
+            if focus != Some(id) {
+                store.set_number_value(id, v);
+            }
+        };
+        if let Some(f) = state::layout_flow() {
+            seed(ids::VECTOR_LAYOUT_GAP_MAIN, f.gap[0]);
+            seed(ids::VECTOR_LAYOUT_GAP_CROSS, f.gap[1]);
+            seed(ids::VECTOR_LAYOUT_PAD_ALL, f.pad[0]);
+            seed(ids::VECTOR_LAYOUT_PAD_T, f.pad[0]);
+            seed(ids::VECTOR_LAYOUT_PAD_R, f.pad[1]);
+            seed(ids::VECTOR_LAYOUT_PAD_B, f.pad[2]);
+            seed(ids::VECTOR_LAYOUT_PAD_L, f.pad[3]);
+        }
+        if let Some(it) = state::layout_item() {
+            seed(ids::VECTOR_LAYOUT_ITEM_GROW, it.grow);
+            seed(ids::VECTOR_LAYOUT_ITEM_SHRINK, it.shrink);
+        }
+    }
     // Seed the variation-axis fields (value + range) from the published axes of the
     // current font. Fixed slots adapt to whatever axes the font has (paint reads the
     // seeded value; a change flows back as a `SetValue` the shell applies).

@@ -26,8 +26,11 @@ fn the_build_only_sees_the_visible_region() {
             "`draw_wetness_overlay` recorta o rect à janela E escreve o resultado de volta — um \
              recorte cujo resultado ninguém lê é um recorte que não recorta",
         );
+    // ⚠️ Âncora na ATRIBUIÇÃO (`= build_veil(`) e não nos argumentos: a 1ª versão citava `build_veil(wet,`
+    // e expirou no minuto em que o `rustfmt` quebrou a chamada em linhas — a definição da função tem a
+    // mesma cara dos argumentos, e o `=` é o que distingue a CHAMADA dela.
     let build = SRC
-        .find("build_veil(wet,")
+        .find("= build_veil(")
         .expect("`draw_wetness_overlay` constrói o véu");
     assert!(
         call < build,

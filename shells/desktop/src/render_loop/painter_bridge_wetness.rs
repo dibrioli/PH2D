@@ -70,12 +70,30 @@ pub(super) fn draw_wetness_overlay(
     // (a stroke's footprint edge / the fresh-vs-decayed step at a junction is ~1 px hard otherwise). The
     // moisture MAP is untouched — this is preview-only. (Safe now that the pour is per-footprint, Bug #9:
     // an earlier over-blur only spread the union-pour RECTANGLE — that root is fixed, so this just softens.)
-    let veil = build_veil(wet, cwu, (rx0 as usize, ry0 as usize), (rw, rh), max_alpha);
-    let affine = base * ph2d_vector::Affine::translate((f64::from(rx0), f64::from(ry0)));
+    // ⚠️ **E ele é construído na densidade em que vai ser VISTO.** O recorte acima resolve o zoom
+    // PARA DENTRO; este passo resolve o zoom PARA FORA, que é o caso do log de 2026-08-02: com a
+    // pintura de 4096² cabendo numa janela de ~1000 px, o véu era montado em resolução de IMAGEM para
+    // ser exibido em resolução de TELA — 16× de trabalho que a GPU descarta ao reduzir. Construir
+    // acima da densidade de exibição não é qualidade, é desperdício por definição.
+    let step = veil_downscale(base);
+    let (veil, vw, vh) = build_veil(
+        wet,
+        cwu,
+        (rx0 as usize, ry0 as usize),
+        (rw, rh),
+        max_alpha,
+        step,
+    );
+    // O sub-véu cavalga o `base` depois de um translate à origem do rect, e de uma escala que desfaz
+    // o downscale — a imagem é `step` vezes menor, então cada texel dela mede `step` px de imagem.
+    #[allow(clippy::cast_precision_loss)]
+    let affine = base
+        * ph2d_vector::Affine::translate((f64::from(rx0), f64::from(ry0)))
+        * ph2d_vector::Affine::scale(step as f64);
     vector_scene.draw_image_rgba_transformed(
         &std::sync::Arc::new(veil),
-        rw as u32,
-        rh as u32,
+        vw as u32,
+        vh as u32,
         affine,
         ph2d_vector::ImageQuality::Low,
     );
@@ -124,6 +142,33 @@ fn clip_to_viewport(
     (cx0, cy0, cx1, cy1)
 }
 
+/// **Quantos px de IMAGEM cabem num px de TELA** — o passo em que o véu é amostrado.
+///
+/// `base` leva px de imagem → tela, então `sqrt(|det|)` é quantos px de tela um px de imagem ocupa.
+/// Com o artista afastado esse número é menor que 1, e construir o véu em resolução de imagem produz
+/// detalhe que a GPU **descarta ao reduzir**. O passo é o inverso, truncado.
+///
+/// ⚠️ **Nunca menor que 1:** aproximar não é motivo para SUPERAMOSTRAR — 1:1 já é toda a densidade que
+/// a tela mostra, e o véu é um campo borrado desenhado em `ImageQuality::Low`.
+///
+/// ⚠️ **E é capeado**, porque um zoom muito longe levaria o véu a um punhado de texels e a borda dele
+/// passaria a piscar entre passos vizinhos conforme a câmera se move — trocar custo por cintilação é
+/// o negócio errado. O teto vem da MEDIÇÃO: a 4096² um passo de 8 já leva o build a 3,2 ms.
+fn veil_downscale(base: ph2d_vector::Affine) -> usize {
+    /// Teto do passo (ver acima).
+    const MAX_STEP: usize = 8; // LITERAL-PX-OK: geometria de amostragem
+    let [a, b, c, d, _, _] = base.as_coeffs();
+    let det = (a * d - b * c).abs();
+    if !det.is_finite() || det <= 0.0 {
+        return 1;
+    }
+    //  já foi provado finito e positivo acima, então a raiz é finita e positiva.
+    let screen_px_per_image_px = det.sqrt();
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+    let step = (1.0 / screen_px_per_image_px).floor() as usize;
+    step.clamp(1, MAX_STEP)
+}
+
 /// **O BUILD do véu, separado do DRAW** — extraído para poder ser MEDIDO (a sonda
 /// `measure_the_wetness_veil`) e, principalmente, para que a decisão *"com que frequência isto é
 /// reconstruído?"* tenha um lugar onde ser feita.
@@ -138,19 +183,38 @@ pub(super) fn build_veil(
     (rx0, ry0): (usize, usize),
     (rw, rh): (usize, usize),
     max_alpha: f32,
-) -> Vec<u8> {
+    step: usize,
+) -> (Vec<u8>, usize, usize) {
     const TINT: [u8; 3] = [34, 31, 28]; // LITERAL-COLOR-OK: damp-paper darkening (near-neutral, faint warm)
     const BLUR_R: usize = 4; // LITERAL-PX-OK: gentle veil softening — wet paper has no 1-px hard edges
-    let mut alpha = vec![0.0f32; rw * rh];
-    for y in 0..rh {
-        let src = (ry0 + y) * canvas_w + rx0;
-        let dst = y * rw;
-        for x in 0..rw {
-            alpha[dst + x] = f32::from(wet[src + x]) / 255.0 * max_alpha;
+    let step = step.max(1);
+    let (vw, vh) = (rw.div_ceil(step), rh.div_ceil(step));
+    if vw == 0 || vh == 0 {
+        return (Vec::new(), 0, 0);
+    }
+    // A MÉDIA do bloco, não uma amostra dele: um `nearest` num campo de umidade produz cintilação na
+    // borda conforme a câmera anda, e a média já é metade do desfoque que o véu quer.
+    #[allow(clippy::cast_precision_loss)]
+    let mut alpha = vec![0.0f32; vw * vh];
+    for vy in 0..vh {
+        for vx in 0..vw {
+            let (y0, x0) = (vy * step, vx * step);
+            let (y1, x1) = ((y0 + step).min(rh), (x0 + step).min(rw));
+            let mut acc = 0.0f32;
+            for y in y0..y1 {
+                let src = (ry0 + y) * canvas_w + rx0;
+                for x in x0..x1 {
+                    acc += f32::from(wet[src + x]);
+                }
+            }
+            let n = ((y1 - y0) * (x1 - x0)).max(1) as f32;
+            alpha[vy * vw + vx] = acc / n / 255.0 * max_alpha;
         }
     }
-    let alpha = box_blur_f32(&alpha, rw, rh, BLUR_R);
-    let mut veil = vec![0u8; rw * rh * 4];
+    // O raio do desfoque é em px de IMAGEM; na grade reduzida ele mede `BLUR_R / step`, e o piso de 1
+    // mantém a suavização que dá ao véu a franja orgânica (a média do bloco cobre o resto).
+    let alpha = box_blur_f32(&alpha, vw, vh, (BLUR_R / step).max(1));
+    let mut veil = vec![0u8; vw * vh * 4];
     for (i, &a) in alpha.iter().enumerate() {
         if a > 0.002 {
             let p = i * 4;
@@ -160,7 +224,7 @@ pub(super) fn build_veil(
             veil[p + 3] = (a * 255.0).clamp(0.0, 255.0) as u8;
         }
     }
-    veil
+    (veil, vw, vh)
 }
 
 /// Separable box blur of a `w×h` f32 map (sliding window, O(w·h) — safe on a full-canvas wet map). Edge
@@ -224,15 +288,16 @@ mod measure {
     fn measure_the_wetness_veil() {
         println!("\no VÉU de umidade — build por quadro\n");
         println!(
-            "{:<16} {:>10} {:>11} {:>12}",
-            "regiao", "M texels", "build ms", "ns/texel"
+            "{:<16} {:>6} {:>10} {:>11} {:>12}",
+            "regiao", "passo", "M texels", "build ms", "ns/texel"
         );
         let cw = 4096usize;
-        for (rw, rh) in [
-            (512usize, 512usize),
-            (1024, 1024),
-            (2048, 2048),
-            (4096, 4096),
+        for (rw, rh, step) in [
+            (512usize, 512usize, 1usize),
+            (2048, 2048, 1),
+            (4096, 4096, 1),
+            (4096, 4096, 4),
+            (4096, 4096, 8),
         ] {
             // Mapa PLAUSÍVEL (molhado no miolo, seco nas bordas): um mapa chapado deixaria o
             // `if a > 0.002` do preenchimento decidir tudo por um ramo só.
@@ -247,7 +312,7 @@ mod measure {
             let mut best = f64::MAX;
             for _ in 0..3 {
                 let t0 = Instant::now();
-                let veil = super::build_veil(&wet, cw, (0, 0), (rw, rh), 0.3 * 0.55);
+                let (veil, _, _) = super::build_veil(&wet, cw, (0, 0), (rw, rh), 0.3 * 0.55, step);
                 let ms = t0.elapsed().as_secs_f64() * 1e3;
                 assert!(
                     veil.iter().any(|&b| b > 0),
@@ -257,7 +322,7 @@ mod measure {
             }
             let n = (rw * rh) as f64;
             println!(
-                "{:<16} {:>10.2} {best:>11.3} {:>12.1}",
+                "{:<16} {step:>6} {:>10.2} {best:>11.3} {:>12.1}",
                 format!("{rw}x{rh}"),
                 n / 1e6,
                 best * 1e6 / n
@@ -326,5 +391,70 @@ mod clip_tests {
         let full = (10u32, 20u32, 300u32, 400u32);
         let squashed = Affine::new([0.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
         assert_eq!(clip_to_viewport(squashed, win(800, 600), full), full);
+    }
+}
+
+#[cfg(test)]
+mod downscale_tests {
+    use super::{build_veil, veil_downscale};
+    use ph2d_vector::Affine;
+
+    /// **Afastado, o véu é amostrado mais grosso; a 1:1 ou aproximado, nunca.**
+    ///
+    /// Mutação que sangra: devolver `1` sempre — o véu volta a ser construído em resolução de IMAGEM
+    /// para ser exibido em resolução de TELA, os 220 ms/quadro que o log mediu a 4096².
+    #[test]
+    fn the_veil_is_sampled_at_the_density_it_is_shown_at() {
+        assert_eq!(
+            veil_downscale(Affine::IDENTITY),
+            1,
+            "a 1:1 não se subamostra"
+        );
+        assert_eq!(
+            veil_downscale(Affine::scale(4.0)),
+            1,
+            "aproximar não SUPERAMOSTRA"
+        );
+        assert_eq!(
+            veil_downscale(Affine::scale(0.25)),
+            4,
+            "4 px de imagem por px de tela"
+        );
+        assert!(
+            veil_downscale(Affine::scale(0.001)) <= 8,
+            "o passo é capeado — trocar custo por cintilação de borda é o negócio errado"
+        );
+        assert_eq!(
+            veil_downscale(Affine::new([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])),
+            1,
+            "afim degenerada não pode escolher um passo"
+        );
+    }
+
+    /// **O véu grosso cobre a MESMA região e continua molhando** — um passo que perdesse a última
+    /// linha/coluna deixaria uma faixa seca na borda do desenho.
+    #[test]
+    fn a_coarser_veil_still_covers_the_whole_region() {
+        let (cw, rw, rh) = (64usize, 50usize, 30usize);
+        let wet = vec![200u8; cw * cw];
+        let (fine, fw, fh) = build_veil(&wet, cw, (0, 0), (rw, rh), 0.3, 1);
+        assert_eq!((fw, fh), (rw, rh));
+        for step in [2usize, 3, 4, 7] {
+            let (coarse, vw, vh) = build_veil(&wet, cw, (0, 0), (rw, rh), 0.3, step);
+            // `div_ceil`: a última coluna parcial TEM de existir, senão a borda fica sem véu.
+            assert_eq!((vw, vh), (rw.div_ceil(step), rh.div_ceil(step)));
+            assert!(
+                vw * step >= rw && vh * step >= rh,
+                "o véu grosso não cobre o rect"
+            );
+            assert!(
+                coarse.iter().any(|&b| b > 0),
+                "o véu grosso saiu SECO no passo {step}"
+            );
+            assert!(
+                coarse.len() < fine.len(),
+                "o passo {step} não economizou nada"
+            );
+        }
     }
 }

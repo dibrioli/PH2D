@@ -6992,3 +6992,67 @@ sumir).
   desenhado em `ImageQuality::Low`) e **não reconstruir todo quadro** (a secagem leva ~10 s, então o
   alfa muda ~1 nível por quadro) — as duas mexem na APARÊNCIA e por isso ficam para depois do smoke,
   com o número ao lado em vez de contrabandeadas.
+
+---
+
+## §5.75 — O véu é construído na densidade em que é VISTO: 220,8 → 16,6 ms a 4096² (2026-08-02)
+
+> O 2º log do Enio, com o recorte da §5.74 já dentro: `CHROME wet` seguia em **12,3 → 26,0 → 37,1 ms**.
+> ⚠️ **O recorte estava certo e não bastou** — ele resolve o zoom PARA DENTRO, e o artista estava
+> vendo a pintura INTEIRA: aí a viewport *é* o rect molhado, e recortar não recorta nada.
+
+### 1. O desperdício que o log expôs
+
+Com uma pintura de 4096² cabendo numa janela de ~1000 px, o véu era montado em resolução de **IMAGEM**
+para ser exibido em resolução de **TELA** — 16× de detalhe que a GPU descarta ao reduzir. *Construir
+acima da densidade de exibição não é qualidade, é desperdício por definição.*
+
+`veil_downscale` lê a escala da própria afim imagem→tela (`sqrt(|det|)`) e amostra o véu nesse passo.
+
+| região | passo | build | ns/texel |
+|---|---|---|---|
+| 4096² | 1 | **220,8 ms** | 13,2 |
+| 4096² | 4 | **16,6** | 1,0 |
+| 4096² | 8 | **8,8** | 0,5 |
+
+⚠️ **A média do bloco, nunca uma amostra dele:** um `nearest` num campo de umidade cintila na borda
+conforme a câmera anda — e a média já é metade do desfoque que o véu quer, então o raio do blur cai
+para `BLUR_R / step` (piso 1). ⚠️ **`div_ceil`, nunca `div`:** a última coluna parcial tem de existir,
+senão a borda do desenho fica sem véu (a mutação sangra). ⚠️ **O passo nunca é menor que 1** (aproximar
+não é motivo para superamostrar) e é **capeado em 8** (um zoom muito longe levaria o véu a um punhado
+de texels e a borda passaria a piscar entre passos vizinhos — trocar custo por cintilação é o negócio
+errado).
+
+### 2. E o log fechou a conta do quadro, o que nenhuma sonda tinha feito
+
+A linha `AQUARELA` nova (o lado do TOOL) ao lado do `CHROME wet` (o lado do SHELL):
+
+```
+composite 10,62 x47 | carimbo 2,31 x670 | pour 9,70 x47 | secagem 12,81 x90
+janela 0,66 M texels/composite | 16,1 ns/texel        CHROME wet 37,05
+```
+
+**10,6 + 9,7 + 12,8 + 37 ≈ 70 contra `frame p50 = 67,3`** — os baldes reconciliam com o quadro, que é
+o que separa uma atribuição de um palpite.
+
+⚠️ **E o `ns/texel` CAIU** (23,8 → 18,4 → 16,1) enquanto a janela crescia (0,13 → 0,27 → 0,66 M): pela
+leitura que a própria linha carrega, isso é **TRABALHO** e não contenção — o composite está honesto,
+a janela é que cresce com o pincel.
+
+### 3. ⚠️ E ele derrubou uma conclusão minha da §5.72
+
+Lá eu medi a rota do pour em **1,02×** e escrevi que *"o pour não é o custo"*. No log do produto ele é
+**9,70 ms/quadro**, e a `secagem` — que caminha o MESMO rect cumulativo — é **12,81**. A diferença é a
+FIXTURE: eu media um traço de 1500 px numa tela limpa, e a sessão do artista acumula. *Uma medição só
+vale sobre a cena que ela contém* — e as duas fases que caminham o rect cumulativo somam **22,5 ms**,
+que é a próxima frente e agora tem número.
+
+### 4. Aberto, em ordem de tamanho
+
+1. **`secagem` + `pour` = 22,5 ms/quadro**, os dois sobre o rect CUMULATIVO. A cura é a lei que este
+   doc repete: a janela vem de quem escreve. ⚠️ E a §5.73 provou que trocar o pour pelo rect do quadro
+   **muda a tinta** (o `dry_canvas_wet` do mesmo tick decai o alvo), então a cura tem de ser outra —
+   provavelmente o par *secar e despejar sobre o mesmo rect, uma vez, com o decaimento embutido*.
+2. **O `Rewet` paga ~10 dos 23 ms do tick** (r=250) — trabalho honesto de um efeito ligado, por-pixel
+   dentro da janela.
+3. **`composite max 163,39 ms`** num único quadro, contra p50 de 10,62 — outlier sem causa atribuída.

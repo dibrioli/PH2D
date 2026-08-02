@@ -8,6 +8,7 @@
 use crate::snapshot::{GraphNodeView, GraphViewSnapshot};
 use crate::state::{Menu, PreviewPos, ViewState};
 use ph2d_editor_core::zones::Rect;
+use ph2d_nodegraph::port::{Dim, Domain};
 
 // Card metrics in graph (logical) space. Shared with `paint` (draw) so the hit
 // geometry matches the rendered geometry exactly. These are canvas coordinate
@@ -139,8 +140,35 @@ pub(crate) fn card_h(n: &GraphNodeView) -> f32 {
 /// its size is what a future frame-hit would register), so the box drawn and the box reasoned
 /// about can never drift. It sits OUTSIDE the card body: below, one `PREVIEW_GAP` under the
 /// card bottom; above, one gap over the header.
+/// **Does this node own a preview moldura?** — the STABLE fact that its stamp frame (doc 86)
+/// exists, read off the node's declared OUTPUT TYPE and NOT off what it emitted this frame. Lives
+/// here, beside its only two consumers ([`preview_frame_rect`]/[`preview_toggle_rect`]): a pure
+/// function of the port type, like `snapshot::socket_glyph`, so the box drawn and the box hit
+/// both ask the SAME question.
+///
+/// A node whose primary output is a positional motion stream (`Instances`/`Vec2`, the `P` column
+/// the stamp scatters) has a slot; a value node (`Scalar` — its stamp is the number it already
+/// shows) has none, and neither does a field or a vector network (no `P` column to draw).
+///
+/// ⚠️ **This is the flicker cure (doc 86 §10 / B1).** `motion.emitter` is stateless, so its live
+/// count crosses zero at some ticks and its `preview` content winks to `None` — but its output
+/// PORT stays `Vec2` the whole time. Keying the frame's EXISTENCE on the content made the whole
+/// moldura (and its position toggle) blink Some↔None frame to frame; keying it on the declared
+/// type keeps the box put and lets an empty tick paint an empty frame instead of vanishing. The
+/// content (`preview`) still decides whether DOTS are drawn inside it.
+fn has_preview_slot(n: &GraphNodeView) -> bool {
+    n.outputs
+        .first()
+        .is_some_and(|p| p.domain == Domain::Instances && p.dim == Dim::Vec2)
+}
+
 pub(crate) fn preview_frame_rect(n: &GraphNodeView, view: &View, pos: PreviewPos) -> Option<Rect> {
-    n.preview.as_ref()?;
+    // The frame's EXISTENCE is the node's declared TYPE, never this frame's content (doc 86 B1):
+    // a preview-capable node keeps its moldura even on a tick where the stateless emitter emitted
+    // nothing (`n.preview == None`). The empty content then paints an empty box, not a vanished one.
+    if !has_preview_slot(n) {
+        return None;
+    }
     let top = match pos {
         PreviewPos::Below => n.y + card_h(n) + PREVIEW_GAP,
         PreviewPos::Above => n.y - PREVIEW_GAP - PREVIEW_FRAME_H,
@@ -159,7 +187,11 @@ pub(crate) fn preview_frame_rect(n: &GraphNodeView, view: &View, pos: PreviewPos
 /// paint (draw) and the hits (register) both read**, so the clickable square is exactly the
 /// drawn one.
 pub(crate) fn preview_toggle_rect(n: &GraphNodeView, view: &View) -> Option<Rect> {
-    n.preview.as_ref()?;
+    // Same stable slot as the frame (doc 86 B1): the position toggle belongs to a preview-CAPABLE
+    // node, so it never blinks out on an empty tick — the frame it repositions is always there.
+    if !has_preview_slot(n) {
+        return None;
+    }
     let gx = n.x + CARD_W - PREVIEW_TOGGLE_PAD - PREVIEW_TOGGLE_W;
     let gy = n.y + (HEADER_H - PREVIEW_TOGGLE_W) * 0.5;
     let (sx, sy) = view.pt(gx, gy);

@@ -27,8 +27,10 @@ pub(super) fn draw_preview(
     theme: Theme,
     pos: PreviewPos,
 ) {
-    let (Some(pts), Some(rect)) = (n.preview.as_ref(), geom::preview_frame_rect(n, view, pos))
-    else {
+    // The frame's presence is the node's TYPE, not this frame's content (doc 86 B1): a
+    // preview-capable node keeps its moldura even when the stateless emitter emitted nothing this
+    // tick. So the BOX is drawn whenever the slot exists; only the DOTS wait for content.
+    let Some(rect) = geom::preview_frame_rect(n, view, pos) else {
         return;
     };
     // The moldura is a box in its own right now (doc 86): a filled window PLUS a border, so it
@@ -48,9 +50,14 @@ pub(super) fn draw_preview(
     );
     // Zoomed out, the box is a few pixels tall: the dots would be sub-pixel mush that reads as
     // noise. Keep the framed window and stop — it holds its shape at every zoom.
-    if rect.h < PREVIEW_MIN_H || pts.is_empty() {
+    if rect.h < PREVIEW_MIN_H {
         return;
     }
+    // Preview-capable but empty THIS tick (the emitter crossing zero, doc 86 B1): the box stays,
+    // no dots. `preview` is the live content — `None` (or empty) here means an empty frame.
+    let Some(pts) = n.preview.as_ref().filter(|p| !p.is_empty()) else {
+        return;
+    };
 
     let (mut lo, mut hi) = ([f32::MAX; 2], [f32::MIN; 2]);
     for p in pts {

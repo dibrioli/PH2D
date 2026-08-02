@@ -460,17 +460,25 @@ mod tests {
         }
     }
 
-    /// **The preview toggle is a hit only over a stamped card** (doc 86). A stamped node
-    /// registers one `PreviewToggle` rect (so a click reaches the dispatch); a plain card
+    /// **The preview toggle is a hit only over a preview-capable card** (doc 86). A node whose
+    /// primary output is positional (`Instances`/`Vec2`) registers one `PreviewToggle` rect (so a
+    /// click reaches the dispatch), whatever it emits this frame (doc 86 B1); a value card
     /// registers none (no dead control). FALSIFIED by offering the hit unconditionally.
     #[test]
     fn the_preview_toggle_registers_a_hit_only_over_a_stamped_card() {
         let view = View::new(CANVAS, ViewState::default());
         let mut stamped = node(1, 10.0, 10.0);
-        stamped.preview = Some(vec![[0.0, 0.0]]);
+        // Preview-capability is the OUTPUT TYPE, not the content — this is what a click needs.
+        stamped.outputs = vec![PortView {
+            name: "P",
+            domain: Domain::Instances,
+            dim: Dim::Vec2,
+            clock: Clock::Frame,
+        }];
+        stamped.preview = None; // and it stays hittable on an empty tick (the B1 flicker)
         let mut hits = Vec::new();
         push_preview_toggle_hit(&mut hits, &stamped, &view, CANVAS);
-        assert_eq!(hits.len(), 1, "a stamped node exposes the toggle");
+        assert_eq!(hits.len(), 1, "a preview-capable node exposes the toggle");
         assert!(
             matches!(hits[0].1, GraphHitKind::PreviewToggle { node } if node == 1),
             "and it carries this node's id"
@@ -480,7 +488,7 @@ mod tests {
         push_preview_toggle_hit(&mut none, &node(2, 10.0, 10.0), &view, CANVAS);
         assert!(
             none.is_empty(),
-            "a card with no stamp has no toggle to click"
+            "a card with no positional output has no toggle to click"
         );
     }
 

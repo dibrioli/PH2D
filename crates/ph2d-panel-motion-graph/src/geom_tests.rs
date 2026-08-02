@@ -155,8 +155,23 @@ fn a_readout_grows_the_card_and_its_hit_rect_together() {
     );
 }
 
-fn stamped(id: u32, x: f32) -> GraphNodeView {
+/// A **preview-CAPABLE** node: its primary output is a positional motion stream
+/// (`Instances`/`Vec2`, the `P` column the stamp scatters). This is what owns a moldura by TYPE,
+/// whatever it emits this frame (doc 86 B1) — the fixture MUST carry the output, not just content,
+/// or it does not contain the phenomenon.
+fn positional(id: u32, x: f32) -> GraphNodeView {
     let mut n = node_with_inputs(id, x, 2);
+    n.outputs = vec![PortView {
+        name: "P",
+        domain: Domain::Instances,
+        dim: Dim::Vec2,
+        clock: Clock::Frame,
+    }];
+    n
+}
+
+fn stamped(id: u32, x: f32) -> GraphNodeView {
+    let mut n = positional(id, x);
     n.preview = Some(vec![[0.0, 0.0], [1.0, 1.0]]);
     n
 }
@@ -187,8 +202,67 @@ fn the_preview_frame_is_external_above_or_below() {
     assert!(above.y + above.h <= card.y, "above sits over the card");
     assert!(
         preview_frame_rect(&node_with_inputs(2, 0.0, 2), &view, PreviewPos::Below).is_none(),
-        "no stamp, no frame"
+        "no positional output, no frame"
     );
+}
+
+/// **B1: the moldura survives an empty stream** (doc 86 §10). `motion.emitter` is stateless, so
+/// its live count crosses zero and `preview` winks to `None` — but its output PORT stays `Vec2`,
+/// so the frame AND its position toggle must stay put (the flicker was tying their existence to
+/// the content). FALSIFIED by keying the frame off `n.preview` again: the empty tick returns
+/// `None` and the whole moldura blinks Some↔None frame to frame.
+#[test]
+fn the_preview_moldura_survives_an_empty_stream() {
+    let mut n = positional(1, 100.0);
+    n.preview = None; // this tick the stateless emitter emitted nothing
+    let view = View::new(Rect::new(0.0, 0.0, 800.0, 600.0), ViewState::default());
+    assert!(
+        preview_frame_rect(&n, &view, PreviewPos::Below).is_some(),
+        "a preview-capable node keeps its frame even with no content this tick"
+    );
+    assert!(
+        preview_toggle_rect(&n, &view).is_some(),
+        "and keeps its position toggle"
+    );
+}
+
+/// **The moldura does not move when the content winks** (doc 86 B1 — the measured invariant of the
+/// fix). The SAME positional node, once empty and once full, yields the byte-identical frame rect:
+/// the box neither vanishes nor shifts as the stateless emitter's count crosses zero. FALSIFIED by
+/// any dependence of the frame's GEOMETRY on `preview`.
+#[test]
+fn the_preview_moldura_is_identical_whether_empty_or_full() {
+    let view = View::new(Rect::new(0.0, 0.0, 800.0, 600.0), ViewState::default());
+    let mut empty = positional(1, 100.0);
+    empty.preview = None;
+    let mut full = positional(1, 100.0);
+    full.preview = Some(vec![[0.0, 0.0], [1.0, 1.0]]);
+    for pos in [PreviewPos::Below, PreviewPos::Above] {
+        assert_eq!(
+            preview_frame_rect(&empty, &view, pos),
+            preview_frame_rect(&full, &view, pos),
+            "the frame is the same box empty or full"
+        );
+    }
+    assert_eq!(
+        preview_toggle_rect(&empty, &view),
+        preview_toggle_rect(&full, &view),
+        "and so is its position toggle"
+    );
+}
+
+/// **A value node grows no moldura** (doc 86). Its output is `Scalar` — its stamp is the number
+/// it already shows, and an empty box under it would promise a picture that is not coming. The
+/// slot is a fact of the TYPE, so even a value node carrying stray `preview` content gets none.
+/// FALSIFIED by offering a frame on every card (`has_preview_slot` always true).
+#[test]
+fn a_value_node_has_no_preview_moldura() {
+    // `node_with_outputs` gives `Scalar` outputs — a value node.
+    let mut n = node_with_outputs(2, 0.0, 1);
+    n.preview = Some(vec![[0.0, 0.0]]); // even with stray content, a value has no slot
+    let view = View::new(Rect::new(0.0, 0.0, 800.0, 600.0), ViewState::default());
+    assert!(preview_frame_rect(&n, &view, PreviewPos::Below).is_none());
+    assert!(preview_toggle_rect(&n, &view).is_none());
 }
 
 /// **The header toggle exists only with a preview, and lives in the header** (doc 86). No
@@ -209,7 +283,7 @@ fn the_toggle_lives_in_the_header_only_with_a_preview() {
     );
     assert!(
         preview_toggle_rect(&node_with_inputs(2, 0.0, 2), &view).is_none(),
-        "no stamp, no toggle"
+        "no positional output, no toggle"
     );
 }
 

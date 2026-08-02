@@ -6122,6 +6122,21 @@ impl crate::App {
                     eprintln!("[ph2d-vec] boolean live: consolidada ({n} path[s])");
                 }
             }
+            // **O AUTO LAYOUT roda entre a booleana e o alinhamento** (ADR-0153), e as duas
+            // metades da ordem são a lei:
+            //
+            // - DEPOIS da booleana, porque ele coloca *o que os filhos de facto desenham* — um
+            //   grupo booleano é UMA forma para o fluxo, e ela tem de estar cozida antes de ser
+            //   medida;
+            // - ANTES do alinhamento, porque o alinhamento recorta a faixa do traço na largura
+            //   AUTORADA: escalar uma forma depois de a faixa estar recortada esticaria a
+            //   espessura dela junto, e o traço do artista mudaria de peso ao redimensionar a
+            //   moldura.
+            //
+            // E ele TRANSFORMA o mapa (não o estende) pelo motivo do `bool_live`: é um componente
+            // do PAI, então convive com o offset vivo de cada filho.
+            self.layout_live
+                .recook(vec_scene, sim, &self.vec_entities, &vec_xf, &mut vec_live);
             // **O ALINHAMENTO roda por ÚLTIMO, e TRANSFORMA o mapa em vez de o estender.**
             // Os cinco acima são mutuamente exclusivos (um componente cada, um por vez no
             // painel), e é isso que torna o `extend` seguro. O alinhamento não é membro dessa

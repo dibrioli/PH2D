@@ -5441,6 +5441,7 @@ dependencies = [
  "ph2d-vec-connect",
  "ph2d-vec-edit",
  "ph2d-vec-envelope",
+ "ph2d-vec-layout",
  "ph2d-vec-render",
  "ph2d-vec-scene",
  "ph2d-vector",

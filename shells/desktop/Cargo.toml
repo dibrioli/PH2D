@@ -233,6 +233,9 @@ ph2d-vec-render = { path = "../../crates/ph2d-vec-render" }
 # ADR-0108 Fase 1.1: máquinas de edição interativa (Pen agora) sobre a cena nova.
 ph2d-vec-edit = { path = "../../crates/ph2d-vec-edit" }
 ph2d-guides = { path = "../../crates/ph2d-guides" }
+# O motor de AUTO LAYOUT (ADR-0153): a crate-folha que confina o `taffy`. A shell monta a árvore a
+# partir do ECS e consome retângulos — o motor não conhece ECS, documento nem tema.
+ph2d-vec-layout = { path = "../../crates/ph2d-vec-layout" }
 # ADR-0108 Fase 1: booleanas edit-time (union/intersect/subtract via linesweeper).
 ph2d-vec-boolean = { path = "../../crates/ph2d-vec-boolean" }
 # Conectores: o roteador (A*/OVG) da linha que gruda em duas formas e as segue. A

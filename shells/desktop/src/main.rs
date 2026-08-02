@@ -189,6 +189,7 @@ mod keymap;
 mod knot_smoke;
 mod ktx2_smoke;
 mod label_live;
+mod layout_live;
 mod mask_smoke;
 mod morph_fade_smoke;
 mod morph_live;
@@ -647,6 +648,7 @@ impl App {
             offset_live: crate::offset_live::OffsetLive::default(),
             profile_live: crate::profile_live::ProfileLive::default(),
             contour_live: crate::contour_live::ContourLive::default(),
+            layout_live: crate::layout_live::LayoutLive::default(),
             align_live: crate::align_live::AlignLive::default(),
             bool_live: crate::bool_live::BoolLive::default(),
             symmetry_live: crate::symmetry_live::SymmetryLive::default(),

@@ -95,12 +95,17 @@ pub struct ItemStyle {
 }
 
 impl Default for ItemStyle {
-    /// O neutro: não cresce, **encolhe** (o default do CSS, e o que impede um filho grande de
-    /// transbordar a moldura no primeiro arrasto de alça), sem base própria.
+    /// O neutro é **INERTE**: não cresce, não encolhe, sem base própria — o item não participa da
+    /// repartição, e o tamanho que ele traz é o tamanho que ele fica com.
+    ///
+    /// ⚠️ Diverge do CSS de propósito (lá `flex-shrink` nasce em `1`). O default do CSS é uma
+    /// POLÍTICA — *encolher é gentil com texto* —, e aqui o conteúdo é o desenho do artista:
+    /// espremer as formas dele sem ninguém pedir é o oposto de um neutro. Neste repo `Default`
+    /// significa *não faz nada*, que é a mesma lei do ponto neutro de cada efeito da rack de áudio.
     fn default() -> Self {
         Self {
             grow: 0.0,
-            shrink: 1.0,
+            shrink: 0.0,
             basis: None,
         }
     }

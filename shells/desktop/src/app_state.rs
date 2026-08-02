@@ -1031,6 +1031,8 @@ pub(crate) struct App {
     /// outros são mutuamente exclusivos (um componente cada, um por vez no painel) e por isso o
     /// `render_loop` os funde com `extend`; o alinhamento é um campo do `StrokeSpec` e **compõe**
     /// com qualquer um deles, então fundi-lo apagaria o vizinho em silêncio.
+    /// O AUTO LAYOUT vivo (ADR-0153): as posições que uma moldura com fluxo deriva por frame.
+    pub(crate) layout_live: crate::layout_live::LayoutLive,
     pub(crate) align_live: crate::align_live::AlignLive,
     /// **A BOOLEANA VIVA** — um grupo cujos filhos se combinam e continuam editáveis.
     /// ⚠️ Segundo membro da família do `align_live`: ele **TRANSFORMA** o mapa em vez de o

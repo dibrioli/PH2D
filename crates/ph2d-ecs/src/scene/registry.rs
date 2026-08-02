@@ -298,6 +298,13 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // que estava debaixo do token — a arte apareceria inteira, com a cor de antes de o artista
     // bindar, e nada indicaria que uma referência tinha evaporado.
     reg.register::<crate::VecBindings>("ph2d::ecs::VecBindings");
+    // O AUTO LAYOUT (plano UI/UX W2, ADR-0153): a regra no PAI e o comportamento no FILHO. Dois
+    // componentes porque são duas perguntas — *"esta moldura empilha?"* × *"este filho cresce?"* —
+    // e porque o que eles descrevem é uma REGRA: a posição que dela sai é derivada por frame e
+    // nunca entra no `Transform` autorado (é o que impede cada redimensionamento de virar um passo
+    // de undo).
+    reg.register::<crate::VecLayout>("ph2d::ecs::VecLayout");
+    reg.register::<crate::VecLayoutItem>("ph2d::ecs::VecLayoutItem");
     // O vínculo TEXTO -> caminho-guia. Mesma razão de todos os irmãos, e mais forte: sem o
     // registro, um Ctrl+Z (ou reabrir o projeto) devolveria o texto DESLIGADO do caminho, reto,
     // no meio da cena -- e o caminho continuaria lá, parecendo certo.
@@ -377,7 +384,8 @@ mod tests {
         // + 1 simetria viva (VecSymmetry, plano 25 §9 W6.3)
         // + 1 booleana viva (VecBoolGroup, plano UI/UX W1)
         // + 1 moldura (VecFrame, plano UI/UX W0)
-        // + 1 tabela de bindings de token (VecBindings, plano UI/UX W4).
+        // + 1 tabela de bindings de token (VecBindings, plano UI/UX W4)
+        // + 2 auto layout (VecLayout no pai + VecLayoutItem no filho, plano UI/UX W2).
         //
         // **Este número existe para doer.** Um componente que não passa por aqui é
         // DESCARTADO em silêncio pelo snapshot — o undo e o save o perdem, e o bug só
@@ -389,8 +397,10 @@ mod tests {
         // `VecConnector`, e as duas linhas, sozinhas, diziam 27 — por motivos diferentes. A
         // árvore combinada tem 28. Escolher "um dos lados" aqui é o erro que deixa o
         // workspace vermelho com dois merges verdes.
-        assert_eq!(reg.len(), 44);
+        assert_eq!(reg.len(), 46);
         assert!(reg.get_by_name("ph2d::ecs::VecBindings").is_some());
+        assert!(reg.get_by_name("ph2d::ecs::VecLayout").is_some());
+        assert!(reg.get_by_name("ph2d::ecs::VecLayoutItem").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecCutPath").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecSymmetry").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecPatternPath").is_some());

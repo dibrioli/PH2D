@@ -199,6 +199,15 @@ impl Mesh {
         self.masks.take()
     }
 
+    /// **Tira o plano de COR da malha**, se houver — o espelho de
+    /// [`Self::take_masks`], e ele existe porque *restaurar* um estado tem de
+    /// poder devolver a malha ao que ela era, inclusive a **não ter** o plano.
+    /// Sem ele, desfazer uma operação que criou a cor deixaria a malha pagando
+    /// 12 B/vértice por um canal que ninguém pediu.
+    pub fn take_colors(&mut self) -> Option<Vec<[f32; 3]>> {
+        self.colors.take()
+    }
+
     /// Devolve o plano tirado por [`Self::take_masks`].
     ///
     /// ⚠️ **Recusa em silêncio um plano do tamanho errado** — não: ele PANICA,

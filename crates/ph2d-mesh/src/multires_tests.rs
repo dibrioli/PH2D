@@ -45,7 +45,7 @@ fn a_round_trip_that_changes_nothing_below_is_exact() {
     }
     let before = m.mesh().positions().to_vec();
 
-    assert!(m.lower());
+    assert!(m.lower().is_some());
     assert_eq!(m.level(), 0);
     assert!(m.higher());
     assert_eq!(m.level(), 1);
@@ -90,7 +90,7 @@ fn sculpting_the_base_moves_the_level_above_it() {
     let mut m = Multires::new(shapes::uv_sphere(8, 12, 1.0));
     assert!(m.add_level());
     let before = m.mesh().positions().to_vec();
-    assert!(m.lower());
+    assert!(m.lower().is_some());
     for p in m.mesh_mut().positions_mut() {
         p[0] += 0.37;
     }
@@ -112,7 +112,7 @@ fn sculpting_the_base_moves_the_level_above_it() {
     let mut m = Multires::new(shapes::uv_sphere(8, 12, 1.0));
     assert!(m.add_level());
     let before = m.mesh().positions().to_vec();
-    assert!(m.lower());
+    assert!(m.lower().is_some());
     bump(m.mesh_mut(), 4, 0.4);
     assert!(m.higher());
     let moved = worst(&before, m.mesh().positions());
@@ -149,7 +149,7 @@ fn the_detail_survives_a_change_to_the_base() {
         "a fixture tem de ter detalhe: {detail_before}"
     );
 
-    assert!(m.lower());
+    assert!(m.lower().is_some());
     // Translada a base INTEIRA — o teste mais limpo, porque uma translação não
     // gira frame nenhum e isola *o detalhe sobreviveu?* de *o frame girou?*.
     for p in m.mesh_mut().positions_mut() {
@@ -178,8 +178,9 @@ fn the_detail_survives_a_change_to_the_base() {
 }
 
 /// ⚠️ **A base compartilha os V primeiros vértices com o topo**, e é disso que
-/// o `copy_shared_down` depende. Se a subdivisão numerasse os vértices novos
-/// antes dos velhos, descer copiaria lixo para a base sem levantar erro.
+/// o carimbo da descida depende. Se a subdivisão numerasse os vértices novos
+/// antes dos velhos, descer somaria diferenças nos vértices errados sem levantar
+/// erro.
 #[test]
 fn the_even_vertices_keep_their_index_through_a_subdivision() {
     let mesh = shapes::uv_sphere(9, 13, 1.0);
@@ -204,7 +205,7 @@ fn the_even_vertices_keep_their_index_through_a_subdivision() {
 fn a_level_is_only_added_from_the_top() {
     let mut m = Multires::new(shapes::cube(2.0));
     assert!(m.add_level());
-    assert!(m.lower());
+    assert!(m.lower().is_some());
     assert!(!m.add_level(), "do meio, não");
     assert_eq!(m.level_count(), 2);
     assert!(m.higher());
@@ -216,7 +217,7 @@ fn a_level_is_only_added_from_the_top() {
 #[test]
 fn the_ends_of_the_stack_refuse_instead_of_wrapping() {
     let mut m = Multires::new(shapes::cube(2.0));
-    assert!(!m.lower());
+    assert!(m.lower().is_none());
     assert!(!m.higher());
     assert_eq!(m.level(), 0);
     assert!(m.add_level());
@@ -299,7 +300,7 @@ fn a_detached_level_comes_back_the_way_it_left() {
 ///
 /// A alternativa barata — refazer uma subdivisão chamando `add_level` de novo —
 /// só reproduz o nível enquanto o de baixo estiver como estava, e **`lower`
-/// escreve no de baixo** (`copy_shared_down`). Depois de UMA viagem para baixo a
+/// escreve no de baixo** (o carimbo). Depois de UMA viagem para baixo COM trabalho, a
 /// recomputação devolve uma malha *parecida*, que é a pior forma de errado
 /// porque ninguém a vê. Este gate mede as duas rotas sobre a mesma pilha.
 #[test]
@@ -308,7 +309,7 @@ fn recomputing_the_subdivision_is_not_the_level_that_was_dropped() {
     assert!(m.add_level());
     // Num vértice COMPARTILHADO: é o que a descida carimba na base.
     bump(m.mesh_mut(), 7, 0.3);
-    assert!(m.lower());
+    assert!(m.lower().is_some());
     assert!(m.higher());
     let top = m.mesh().positions().to_vec();
 
@@ -330,37 +331,193 @@ fn recomputing_the_subdivision_is_not_the_level_that_was_dropped() {
 
 /// ⚠️ **O QUE O ARTISTA VÊ AO DESCER** — o gate que faltava, achado por mutação.
 ///
-/// Apagar o `copy_shared_down` **sobrevive a todos os gates de viagem**: sem ele
+/// Apagar o carimbo da descida **sobrevive a todos os gates de viagem**: sem ele
 /// a base fica como estava, a previsão sai a mesma dos dois lados, e a ida e
 /// volta continua EXATA — só que descer passa a mostrar uma malha que ignora
 /// tudo o que o artista esculpiu em cima. *O trabalho está guardado no detalhe e
 /// invisível no lugar onde ele foi ao procurá-lo.*
 #[test]
 fn descending_shows_the_work_that_was_done_above() {
-    let mut m = Multires::new(shapes::uv_sphere(10, 14, 1.0));
+    // ⚠️ **A régua é a posição da BASE, não a do topo.** A primeira versão deste
+    // gate media o deslocamento da base a partir de onde o TOPO estava — dois
+    // pontos diferentes (a regra par separa os dois níveis por até 0,038), e
+    // ele acusou o produto de mover 83% do que devia.
+    let start = shapes::uv_sphere(10, 14, 1.0);
+    let before = start.positions().to_vec();
+    let mut m = Multires::new(start);
     assert!(m.add_level());
     const V: usize = 7; // um vértice que a base COMPARTILHA com o topo
-    let was = m.mesh().positions()[V];
+    let was = before[V];
+    let top_was = m.mesh().positions()[V];
     bump(m.mesh_mut(), V, 0.3);
-    let sculpted = m.mesh().positions()[V];
+    let pushed = sub3(m.mesh().positions()[V], top_was); // o que o artista moveu
 
-    assert!(m.lower());
+    assert!(m.lower().is_some());
     let base = m.mesh().positions()[V];
-    let moved =
-        ((base[0] - was[0]).powi(2) + (base[1] - was[1]).powi(2) + (base[2] - was[2]).powi(2))
-            .sqrt();
+    let moved = norm3(sub3(base, was));
     assert!(
         moved > 0.25,
         "a base tem de mostrar o empurrão de 0,3 e mostrou {moved}"
     );
-    // E ela mostra EXATAMENTE o que o topo tem: o vértice é o mesmo objeto nos
-    // dois níveis, não uma aproximação dele.
+
+    // ⚠️ **E ela move o que o ARTISTA moveu, nem um décimo a mais.**
+    //
+    // A metade anterior deste gate dizia *a base é EXATAMENTE o topo* — e era
+    // essa frase que continha o defeito: para um vértice par, `topo[i]` é a
+    // REGRA PAR aplicada à base, ou seja um alisamento. Afirmá-la obrigava a
+    // descida a carimbar esse alisamento na base, e o preço, medido, era o
+    // modelo do artista encolhendo 2,81% no primeiro `,` e mais a cada ciclo.
     for k in 0..3 {
+        let got = base[k] - was[k];
         assert!(
-            (base[k] - sculpted[k]).abs() < 1e-6,
-            "eixo {k}: a base diz {} e o topo dizia {}",
-            base[k],
-            sculpted[k]
+            (got - pushed[k]).abs() < 1e-6,
+            "eixo {k}: o artista moveu {} e a base andou {got}",
+            pushed[k]
         );
     }
+
+    // ⚠️ E o outro lado da mesma lei: **quem não foi tocado não anda.** É esta
+    // metade que o alisamento violava em TODO vértice da malha.
+    let quiet = before
+        .iter()
+        .zip(m.mesh().positions())
+        .enumerate()
+        .filter(|(i, _)| *i != V)
+        .map(|(_, (a, b))| norm3(sub3(*a, *b)))
+        .fold(0.0f32, f32::max);
+    assert!(
+        quiet == 0.0,
+        "descer moveu {quiet} num vértice que ninguém esculpiu"
+    );
+}
+
+fn sub3(a: [f32; 3], b: [f32; 3]) -> [f32; 3] {
+    [a[0] - b[0], a[1] - b[1], a[2] - b[2]]
+}
+
+fn norm3(v: [f32; 3]) -> f32 {
+    (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]).sqrt()
+}
+
+/// ⚠️ **ANDAR ENTRE NÍVEIS NÃO É EDITAR** — o gate do defeito que o Enio
+/// reportou, e o oráculo é BIT-EXATO de propósito.
+///
+/// Antes, `K` seguido de `,` — **sem esculpir nada** — encolhia a base de raio
+/// médio 1,000 para **0,972** e a deslocava 0,038, porque a descida copiava
+/// `topo[..V]` (a regra par, um alisamento) para a base. E **compunha**: 2,81%
+/// num ciclo, 3,32% em dois, 3,45% em três. O artista perdia o modelo por ter
+/// olhado, e nada na tela dizia por quê.
+#[test]
+fn walking_the_levels_without_sculpting_does_not_move_a_single_vertex() {
+    let start = shapes::uv_sphere(10, 14, 1.0);
+    let orig = start.positions().to_vec();
+    let mut m = Multires::new(start);
+
+    for round in 1..=3 {
+        m.select(m.level_count() - 1);
+        assert!(m.add_level());
+        // Sobe e desce várias vezes — é o gesto de quem está conferindo a forma.
+        for _ in 0..4 {
+            m.select(0);
+            m.select(m.level_count() - 1);
+        }
+        m.select(0);
+        assert_eq!(
+            m.mesh().positions(),
+            &orig[..],
+            "depois de {round} ciclo(s) de resolução a base tem de estar INTACTA"
+        );
+    }
+
+    // E o carimbo de um passeio ocioso diz que não carimbou nada — é o que faz a
+    // entrada de desfazer dele custar dezesseis bytes.
+    m.select(1);
+    let stamped = m.lower().expect("desceu");
+    assert!(
+        stamped.is_noop(),
+        "descer sem esculpir tem de reportar carimbo VAZIO"
+    );
+    assert_eq!(stamped.level(), 0);
+}
+
+/// ⚠️ **E o passeio continua ocioso DEPOIS de o artista ter esculpido** — o
+/// gate que faltava, achado por mutação.
+///
+/// O irmão acima nunca esculpe, então o detalhe fica exatamente zero e a régua
+/// recomputada acerta ao bit: **ele fica verde com o piso em 0**. É com detalhe
+/// que a ida-e-volta do frame erra 1,49e-8, e sem piso *cada* volta carimbaria
+/// esse ulp na base — uma entrada de desfazer do tamanho da base por gesto de
+/// quem só foi olhar, e uma deriva que ninguém nomeia.
+#[test]
+fn a_second_walk_stamps_nothing_once_the_work_is_already_down() {
+    let mut m = Multires::new(shapes::uv_sphere(10, 14, 1.0));
+    assert!(m.add_level());
+    for v in [3usize, 7, 11] {
+        bump(m.mesh_mut(), v, 0.3);
+    }
+    // A primeira descida carimba — é o trabalho descendo.
+    assert!(!m.lower().expect("desceu").is_noop());
+    let base = m.mesh().positions().to_vec();
+
+    // As seguintes não têm o que carimbar, e a base não anda um bit.
+    for round in 1..=5 {
+        assert!(m.higher());
+        let stamped = m.lower().expect("desceu");
+        assert!(
+            stamped.is_noop(),
+            "a volta {round} carimbou o que ninguém esculpiu"
+        );
+        assert_eq!(
+            m.mesh().positions(),
+            &base[..],
+            "e a base andou na volta {round}"
+        );
+    }
+}
+
+/// **Desfazer uma descida devolve à base o que ela carimbou** — e o topo
+/// continua exato depois disso.
+#[test]
+fn undoing_a_descent_gives_the_base_back() {
+    // ⚠️ **O carimbo é IDEMPOTENTE**, então a fixture só tem o que carimbar na
+    // PRIMEIRA descida depois de esculpir — a primeira versão deste gate descia
+    // duas vezes e depois exigia um carimbo não-vazio da segunda.
+    let start = shapes::uv_sphere(10, 14, 1.0);
+    let base_before = start.positions().to_vec();
+    let mut m = Multires::new(start);
+    assert!(m.add_level());
+    for v in [3usize, 7, 11] {
+        bump(m.mesh_mut(), v, 0.3);
+    }
+    let top = m.mesh().positions().to_vec();
+
+    let stamped = m.lower().expect("desceu");
+    let base_stamped = m.mesh().positions().to_vec();
+    assert!(!stamped.is_noop(), "a fixture tem de ter o que carimbar");
+    assert_ne!(
+        base_stamped, base_before,
+        "e a descida tem de ter mesmo mexido na base"
+    );
+
+    assert!(m.undo_descent(&stamped), "desfazer a descida");
+    assert_eq!(m.level(), 1, "e ela volta ao nível de onde saiu");
+    assert_eq!(m.mesh().positions(), &top[..], "o topo não foi tocado");
+
+    // ⚠️ **E descer OUTRA VEZ, à mão, carimba a MESMA coisa** — é este o dente
+    // do gate, e é a propriedade que se perde quando o desfazer re-encoda em vez
+    // de restaurar o detalhe: o re-encode faz o detalhe absorver a escultura, a
+    // descida seguinte mede diferença zero, e a base deixa de mostrar o trabalho
+    // que o artista continua vendo lá em cima.
+    m.select(0);
+    assert_eq!(
+        m.mesh().positions(),
+        &base_stamped[..],
+        "descer de novo tem de carimbar o mesmo — o desfazer devolveu base E detalhe"
+    );
+    m.select(1);
+    // ⚠️ Aqui o oráculo é o mesmo do resto do módulo (< 1e-5) e não a igualdade
+    // de bits: a volta passa por um encode e uma síntese, cujo round-trip de
+    // frame erra um ulp. As bases acima SÃO bit-exatas porque nada as projeta.
+    let err = worst(&top, m.mesh().positions());
+    assert!(err < 1e-5, "o topo se reconstrói, e desviou {err}");
 }

@@ -322,7 +322,12 @@ fn a_new_edit_goes_through_the_door_that_clears_the_redo() {
         1,
         "e essa é a única resposta a *quando o refazer morre*"
     );
-    for edit in ["close_stroke", "subdivide(&mut self)", "mask_op"] {
+    for edit in [
+        "close_stroke",
+        "subdivide(&mut self)",
+        "mask_op",
+        "change_level",
+    ] {
         let body = function_body(&src, edit);
         assert!(
             body.contains("self.record("),
@@ -339,13 +344,44 @@ fn a_new_edit_goes_through_the_door_that_clears_the_redo() {
     );
 }
 
-/// ⚠️ **Descer e subir não é uma edição** — e por isso `change_level` não pode
-/// passar pela porta que grava: olhar não apaga um refazer guardado.
+/// ⚠️ **TROCAR DE NÍVEL É UMA EDIÇÃO, e a versão anterior deste gate afirmava o
+/// contrário** — ele exigia que `change_level` **não** gravasse, sob o lema
+/// *"olhar não é editar"*.
+///
+/// A frase é bonita e era falsa: **descer ESCREVE na malha de baixo** (o carimbo
+/// do que foi esculpido em cima). Uma mutação fora da história é uma mutação sem
+/// inverso, e o Enio reportou o sintoma — *artefatos na malha* — como a
+/// consequência de o undo não guardar cada etapa.
 #[test]
-fn walking_the_levels_does_not_kill_the_redo() {
+fn walking_the_levels_is_recorded_because_descending_writes() {
     let body = function_body(&sculpt_src(), "change_level");
     assert!(
-        !body.contains("self.record(") && !body.contains("redo"),
-        "trocar de nível não é uma edição: ele não toca nenhuma das duas filas"
+        body.contains("self.record("),
+        "trocar de nível grava: a descida CARIMBA a base"
+    );
+    // ⚠️ E as duas direções são entradas DISTINTAS: descer carrega o carimbo a
+    // devolver, subir não carrega nada (ele só escreve o que a base e o detalhe
+    // já determinam). Um caso só para as duas teria de mentir num dos lados.
+    assert!(
+        body.contains("StrokeUndo::Ascended") && body.contains("StrokeUndo::Descended"),
+        "subir e descer não são a mesma entrada"
+    );
+    assert!(
+        body.contains("self.stack.lower()") && body.contains("self.stack.higher()"),
+        "e cada uma sai da porta da pilha que lhe corresponde"
+    );
+
+    // O outro lado: aplicá-las devolve uma a inversa da outra.
+    let undo = function_body(&sculpt_src(), "apply_entry");
+    let action = &undo[undo.rfind("match entry {").expect("o match que AGE")..];
+    let down = braced_block(action, "StrokeUndo::Descended { from, stamped } =>");
+    assert!(
+        down.contains("self.stack.undo_descent(&stamped)") && down.contains("Ascended"),
+        "desfazer uma descida devolve o carimbo e vira a subida inversa"
+    );
+    let up = braced_block(action, "StrokeUndo::Ascended { from } =>");
+    assert!(
+        up.contains("self.stack.lower()") && up.contains("Descended"),
+        "desfazer uma subida é descer, e o carimbo que sair vira a inversa"
     );
 }

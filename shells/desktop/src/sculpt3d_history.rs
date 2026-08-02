@@ -19,7 +19,7 @@
 //! o que volta para a outra fila é *o que de fato estava lá* — uma segunda
 //! leitura, feita depois da escrita, devolveria o valor recém-instalado.
 
-use ph2d_mesh::DetachedLevel;
+use ph2d_mesh::{DetachedLevel, Stamped};
 
 use super::{Sculpt3dScene, SculptStroke};
 
@@ -68,8 +68,9 @@ pub(super) enum StrokeUndo {
     ///
     /// ⚠️ **Refazer NÃO é subdividir de novo**, e a diferença é medível: uma
     /// subdivisão recomputada só reproduz o nível enquanto o de baixo estiver
-    /// byte-a-byte como estava, e **descer escreve no de baixo**
-    /// (`copy_shared_down`). Depois de uma única viagem para baixo, um redo por
+    /// byte-a-byte como estava, e **descer escreve no de baixo** (o carimbo do
+    /// que foi esculpido em cima). Depois de uma viagem para baixo COM trabalho,
+    /// um redo por
     /// recomputação devolveria uma malha PARECIDA — que é a pior forma de
     /// errado, porque ninguém vê. Carregar o nível é exato, e **não é cópia**:
     /// ele é movido para fora da pilha e movido de volta.
@@ -77,6 +78,19 @@ pub(super) enum StrokeUndo {
     /// ⚠️ `Box` porque um nível é o maior objeto do módulo, e sem ele todo
     /// elemento das duas filas mediria isso.
     DroppedLevel(Box<DetachedLevel>),
+    /// **O artista DESCEU** de `from` para o nível de baixo, e a descida
+    /// CARIMBOU na base o que ele tinha esculpido em cima.
+    ///
+    /// ⚠️ **Descer é uma EDIÇÃO, e é por isso que ela entra na história.** A
+    /// versão anterior tratava a troca de nível como navegação — *olhar não é
+    /// editar* —, e a frase era falsa: a descida escreve na malha de baixo. Sem
+    /// registro, o carimbo ficava sem inverso, e o Ctrl+Z de uma subdivisão
+    /// devolvia o artista a uma base que ele nunca autorou.
+    Descended { from: usize, stamped: Box<Stamped> },
+    /// **O artista SUBIU** de `from` para o nível de cima. Desfazer é descer — e
+    /// é exato de graça, porque subir só escreve no topo valores que
+    /// `(base, detalhe)` já determinam.
+    Ascended { from: usize },
 }
 
 /// **Instala `values` nos índices `verts` e devolve o que estava lá** — uma
@@ -135,23 +149,34 @@ impl Sculpt3dScene {
 
     /// **Troca de nível** — `up` sobe, senão desce. Devolve `false` na ponta.
     ///
-    /// ⚠️ **Não é uma edição, então não entra na fila de undo**: o gesto é o
-    /// próprio inverso, e uma pilha que registrasse navegação faria o Ctrl+Z
-    /// gastar toques desfazendo o que o artista fez para OLHAR. Pela mesma razão
-    /// ela não passa pelo [`Sculpt3dScene::record`]: olhar não pode apagar um
-    /// refazer guardado.
+    /// ⚠️ **Ela ENTRA na história, e a versão anterior estava errada.** O doc
+    /// dela dizia *"não é uma edição: o gesto é o próprio inverso"* — e a
+    /// segunda metade é falsa, porque **descer ESCREVE na malha de baixo** (o
+    /// carimbo do que foi esculpido em cima). Uma mutação fora da história é uma
+    /// mutação sem inverso: o Enio reportou o sintoma como *artefatos na malha*,
+    /// e ele era exatamente isto — desfazer uma subdivisão devolvia o artista a
+    /// uma base que ele nunca autorou.
     pub(super) fn change_level(&mut self, up: bool) -> bool {
-        let moved = if up {
-            self.stack.higher()
+        let from = self.stack.level();
+        let entry = if up {
+            if !self.stack.higher() {
+                return false;
+            }
+            StrokeUndo::Ascended { from }
         } else {
-            self.stack.lower()
+            let Some(stamped) = self.stack.lower() else {
+                return false;
+            };
+            StrokeUndo::Descended {
+                from,
+                stamped: Box::new(stamped),
+            }
         };
-        if moved {
-            // O traço em voo fala de outra malha; a GPU precisa de tudo.
-            self.stroke = SculptStroke::default();
-            self.mesh_rebuilt();
-        }
-        moved
+        self.record(entry);
+        // O traço em voo fala de outra malha; a GPU precisa de tudo.
+        self.stroke = SculptStroke::default();
+        self.mesh_rebuilt();
+        true
     }
 
     /// Fecha o traço e guarda o desfazer.
@@ -228,6 +253,23 @@ impl Sculpt3dScene {
                     self.stack.select(top);
                 }
             }
+            // ⚠️ Uma troca de nível é aplicada DE ONDE ELA POUSOU — descer se
+            // desfaz do nível de baixo, subir do de cima. E com todas as trocas
+            // registradas este `select` nunca tem o que fazer: a ordem LIFO já
+            // devolveu a pilha ao lugar. Ele fica como rede, e o `lower` dele é o
+            // único que não é gravado — seguro porque um passeio sem escultura
+            // carimba exatamente nada.
+            StrokeUndo::Descended { from, .. } => {
+                let landed = from.saturating_sub(1);
+                if self.stack.level() != landed {
+                    self.stack.select(landed);
+                }
+            }
+            StrokeUndo::Ascended { from } => {
+                if self.stack.level() != from + 1 {
+                    self.stack.select(from + 1);
+                }
+            }
         }
         match entry {
             // Uma operação de máscara mexeu na malha inteira: o estado anterior
@@ -263,6 +305,31 @@ impl Sculpt3dScene {
                 self.stroke = SculptStroke::default();
                 self.mesh_rebuilt();
                 StrokeUndo::AddedLevel
+            }
+            // As duas trocas de nível, e elas são a inversa uma da outra: descer
+            // se desfaz devolvendo o carimbo E subindo; subir se desfaz descendo,
+            // o que produz o carimbo que a inversa vai precisar.
+            StrokeUndo::Descended { from, stamped } => {
+                self.stack.undo_descent(&stamped);
+                self.stroke = SculptStroke::default();
+                self.mesh_rebuilt();
+                StrokeUndo::Ascended {
+                    from: from.saturating_sub(1),
+                }
+            }
+            StrokeUndo::Ascended { from } => {
+                let stamped = self.stack.lower();
+                self.stroke = SculptStroke::default();
+                self.mesh_rebuilt();
+                match stamped {
+                    Some(s) => StrokeUndo::Descended {
+                        from: from + 1,
+                        stamped: Box::new(s),
+                    },
+                    // Só alcançável se a pilha já estivesse no 0 — e aí não houve
+                    // descida: a inversa honesta é *nada foi feito*.
+                    None => StrokeUndo::Ascended { from },
+                }
             }
             StrokeUndo::Stroke {
                 level,

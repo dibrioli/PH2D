@@ -65,7 +65,13 @@ pub fn function_body(src: &str, name: &str) -> String {
 pub fn braced_block(src: &str, anchor: &str) -> String {
     let at = src
         .find(anchor)
-        .unwrap_or_else(|| panic!("não achei `{anchor}`"));
+        .unwrap_or_else(|| panic!("não achei `{anchor}`"))
+        // ⚠️ **Depois do FIM da âncora, não do começo dela.** Um braço de `match`
+        // sobre struct traz chaves no próprio padrão
+        // (`StrokeUndo::Descended { from, stamped } =>`), e procurar a partir do
+        // início devolvia esse `{ from, stamped }` como se fosse o corpo — um
+        // bloco que existe, fecha, e não contém nada do que a asserção procura.
+        + anchor.len();
     let open = src[at..].find('{').expect("bloco") + at;
     let mut depth = 0i32;
     for (i, c) in src[open..].char_indices() {

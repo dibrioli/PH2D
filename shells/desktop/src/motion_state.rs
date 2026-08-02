@@ -152,12 +152,29 @@ pub(crate) struct MotionState {
     /// outlive the nodes it snapshotted. See [`GraphClip`].
     pub(crate) clip: Option<GraphClip>,
     /// **Add Node palette handshake.** `open_library` is the TRANSIENT trigger the `OpenLibrary` intent
-    /// sets (graph-space spawn); the bridge — which owns the editor `WidgetStore` — takes it and opens
-    /// the full-screen palette. `library_spawn` then PERSISTS while the palette is up so the routed pick
-    /// lands the node where the artist opened it (the panel and the store live in different structs, so
-    /// the spawn has to ride the handshake here). Both are runtime-only (never serialized).
-    pub(crate) open_library: Option<(f32, f32)>,
-    pub(crate) library_spawn: Option<(f32, f32)>,
+    /// sets (spawn + wire context); the bridge — which owns the editor `WidgetStore` — takes it, filters
+    /// the model to the compatible types and opens the full-screen palette. `library_open` then PERSISTS
+    /// while the palette is up so the routed pick lands where the artist opened it AND carries the wire
+    /// context ([`ph2d_panel_motion_graph::library_pick`] turns it into add / smart-connect / splice).
+    /// Both are runtime-only (never serialized).
+    pub(crate) open_library: Option<LibraryOpen>,
+    pub(crate) library_open: Option<LibraryOpen>,
+}
+
+/// **What opened the Add-Node palette** — the spawn point plus the wire context of the gesture, so the
+/// pick becomes the right edit (plain add, smart-connect, or splice). Carried on the handshake because
+/// the panel that gestured and the store that holds the palette live in different structs.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub(crate) struct LibraryOpen {
+    /// Graph-space point the picked node lands at.
+    pub spawn: (f32, f32),
+    /// The output socket a wire was dragged FROM and dropped on empty canvas (smart-connect).
+    pub connect_from: Option<(u32, u16)>,
+    /// The wire (target `(to_node, to_port)`) an R-press landed ON (splice into it).
+    pub splice: Option<(u32, u16)>,
+    /// For smart-connect, the node types that output can feed — the palette shows only these. Empty
+    /// for the unfiltered cases (whole catalog). Only read at open time (never at pick time).
+    pub compatible: Vec<&'static str>,
 }
 
 /// A **portable snapshot of copied nodes** — the graph clipboard (Ctrl+C/Ctrl+V).
@@ -389,7 +406,7 @@ impl MotionState {
             clip: None,
             // No palette open until the `A` key asks.
             open_library: None,
-            library_spawn: None,
+            library_open: None,
         }
     }
 

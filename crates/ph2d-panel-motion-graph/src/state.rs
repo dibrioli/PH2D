@@ -245,27 +245,7 @@ pub(crate) struct Menu {
     /// Graph-space point the chosen node lands at (the R-click point mapped
     /// through the view — stable under a later pan/zoom while the menu is open).
     pub spawn: (f32, f32),
-    /// **What the artist has typed** — mirrored from the search field's `TextInput` at the
-    /// top of every `process`, so the store owns the buffer (caret, selection, keyboard) and
-    /// this is only ever a READ of it. Two copies of the same string, edited on both sides,
-    /// is the bug that field is famous for.
-    pub query: String,
-    /// The search field claims focus exactly ONCE, on the frame the menu opens — re-claiming
-    /// it every frame would fight anything else the artist focuses, and re-seeding the buffer
-    /// would stomp what they are typing. (Same flag, same reason, as the timeline's inline
-    /// rename.)
-    pub opened: bool,
     pub body: MenuBody,
-}
-
-impl Menu {
-    /// **Only the library has a search field.** Eighty-eight node types is a list you have to
-    /// search; eight tints and a handful of ports are lists you READ. A field on those two is a
-    /// box that filters nothing and *takes the keyboard while it does it* — which is what it had
-    /// been doing on the card-ports menu since the search landed (doc 59), quietly.
-    pub(crate) fn has_search(&self) -> bool {
-        matches!(self.body, MenuBody::Library { .. })
-    }
 }
 
 /// What the popup is a list OF.
@@ -275,23 +255,9 @@ impl Menu {
 /// guess which question it was asking.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum MenuBody {
-    /// **The node library.** Plain `A` / R-click lists all 86 types.
-    ///
-    /// `connect_from` is **smart-connect** (F2): the output socket a wire was dragged
-    /// FROM and dropped on empty canvas. When set, the popup lists only the node types
-    /// with an input this wire can feed, and picking one both creates it AND wires it —
-    /// the gesture already said what it wanted, so making the artist draw the wire a
-    /// second time would be asking twice.
-    ///
-    /// `splice` is the wire (its unique target `(to_node, to_port)`) the R-press landed ON:
-    /// picking a node then **inserts it into that wire** — source → new → target, one undo
-    /// step, the shell validating and refusing if the type does not fit (the generalisation
-    /// of the double-click reroute to any chosen node). Mutually exclusive with `connect_from`
-    /// (you are either dragging a loose end or aiming at an existing wire, never both).
-    Library {
-        connect_from: Option<(u32, u16)>,
-        splice: Option<(u32, u16)>,
-    },
+    // The node library moved to the shell's full-screen palette (the `OpenLibrary` intent). Plain
+    // `A` / R-click, a wire-splice, and a loose-end smart-connect all open THAT now; this enum keeps
+    // only the small, read-by-eye local popups.
     /// **The eight tints a backdrop can take** (doc 62) — R-click on a backdrop's header.
     ///
     /// A backdrop's colour is the only thing about it the artist could not change: the tint

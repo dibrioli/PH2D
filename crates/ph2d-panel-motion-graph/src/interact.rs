@@ -73,8 +73,6 @@ pub(crate) fn process(
         state.selected_wires.clear();
     }
 
-    crate::menu_search::mirror_query(state, ctx);
-
     // The wheel over an OPEN add-menu scrolls its list; only otherwise does it zoom the canvas.
     if let Some(z) = ctx.host.store_mut().take_graph_zoom(panel)
         && !scroll_menu(state, rect, snap, &z)
@@ -96,7 +94,6 @@ pub(crate) fn process(
         apply_gesture(state, g, rect, center, snap);
     }
 
-    crate::menu_search::settle_focus(state, ctx);
     crate::rename::settle_focus(state, ctx);
 }
 

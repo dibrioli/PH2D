@@ -175,8 +175,9 @@ fn socket_drag_over_compatible_input_emits_connect() {
 }
 
 #[test]
-fn socket_drag_into_empty_space_emits_nothing() {
+fn socket_drag_into_empty_space_opens_the_palette() {
     let _ = drain_intents();
+    crate::snapshot::set_current_node_catalog(Vec::new());
     let snap = two_node_snapshot();
     let mut st = MotionGraphPanelState::default();
     let out = GraphHitKind::SocketOut { node: 1, port: 0 };
@@ -201,7 +202,21 @@ fn socket_drag_into_empty_space_emits_nothing() {
         CENTER,
         &snap,
     );
-    assert!(drain_intents().is_empty());
+    // No local menu and no premature connect — a loose end dropped in space just asks the shell to
+    // open the palette in smart-connect mode (the actual wire happens when the shell routes the pick).
+    assert!(st.menu.is_none());
+    let intents = drain_intents();
+    assert!(
+        matches!(
+            intents.as_slice(),
+            [GraphIntent::OpenLibrary {
+                connect_from: Some((1, 0)),
+                splice: None,
+                ..
+            }]
+        ),
+        "the drop opens the palette in smart-connect mode: {intents:?}"
+    );
 }
 
 #[test]
@@ -363,40 +378,29 @@ fn a_doubled_key_press_collapses_to_one() {
 }
 
 #[test]
-fn right_click_background_opens_menu_then_left_pick_adds_node() {
+fn right_click_background_opens_the_palette() {
     let _ = drain_intents();
-    crate::snapshot::set_current_node_catalog(vec![crate::snapshot::NodeChoice {
-        type_name: "motion.grid",
-        display: "Grid",
-        category: NodeUiCategory::Source,
-        inputs: &[],
-    }]);
     let mut st = MotionGraphPanelState::default();
-    // R-press opens the menu at the cursor (on Begin, movement-independent).
+    // R-press on empty canvas asks the shell to open the full-screen palette at the cursor (plain
+    // library — no wire context). Movement-independent (on Begin), and NO local dropdown: the pick
+    // (add at the spawn) happens shell-side when it routes the palette choice.
     let mut rc = gesture(GraphHitKind::Background, GesturePhase::Begin, 120.0, 90.0);
     rc.button = PointerButton::Secondary;
     apply_gesture(&mut st, rc, RECT, CENTER, &two_node_snapshot());
-    let menu = st.menu.clone().expect("menu opened");
-    assert_eq!(menu.spawn, (120.0, 90.0)); // identity view → graph == screen
-    // Left-click the first (only) row → AddNode at the spawn point.
-    let panel = geom::menu_panel(&menu, 1, RECT);
-    let row = geom::menu_row(&menu, panel, 0, 0.0);
-    let pick = gesture(
-        GraphHitKind::Background,
-        GesturePhase::Click,
-        row.x + 2.0,
-        row.y + 2.0,
+    assert!(
+        st.menu.is_none(),
+        "no local dropdown - the palette is the shell's"
     );
-    apply_gesture(&mut st, pick, RECT, CENTER, &two_node_snapshot());
     assert_eq!(
         drain_intents(),
-        vec![GraphIntent::AddNode {
-            type_name: "motion.grid",
-            x: 120.0,
+        vec![GraphIntent::OpenLibrary {
+            x: 120.0, // identity view → graph == screen
             y: 90.0,
-        }]
+            connect_from: None,
+            splice: None,
+            compatible: Vec::new(),
+        }],
     );
-    assert!(st.menu.is_none()); // picking closes the menu
 }
 
 #[test]

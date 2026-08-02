@@ -119,6 +119,9 @@ pub(super) fn apply_key(
             push_intent(GraphIntent::OpenLibrary {
                 x: spawn.0,
                 y: spawn.1,
+                connect_from: None,
+                splice: None,
+                compatible: Vec::new(),
             });
         }
         // Ctrl+A — select every node at THIS level (the snapshot is level-scoped). A backdrop is

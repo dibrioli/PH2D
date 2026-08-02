@@ -12,7 +12,7 @@ use ph2d_panel_motion_graph::GraphIntent;
 #[test]
 fn the_palette_model_groups_the_catalog_by_category_with_subclusters() {
     let m = MotionState::new();
-    let model = super::library::build_palette_model(&m.registry);
+    let model = super::library::build_palette_model(&m.registry, &[]);
 
     let titles: Vec<&str> = model.groups.iter().map(|g| g.title.as_str()).collect();
     assert_eq!(
@@ -71,16 +71,58 @@ fn the_palette_model_groups_the_catalog_by_category_with_subclusters() {
     );
 }
 
-/// **The `OpenLibrary` intent stashes the spawn for the bridge to open the palette.** The bridge — which
-/// owns the editor `WidgetStore` — reads `open_library` after the drain and opens the full-screen palette.
-/// FALSIFIED by not handling `OpenLibrary` (the stash stays `None`, the `A` key opens nothing).
+/// **A non-empty `compatible` filters the palette to the smart-connect allow-list.** A loose end dropped
+/// in space opens the palette showing ONLY the types that wire can feed. FALSIFIED by ignoring
+/// `compatible` (the whole catalog would show, and the artist would pick something the shell then
+/// refuses).
 #[test]
-fn open_library_intent_stashes_the_spawn() {
+fn the_palette_model_is_filtered_to_the_compatible_types() {
+    let m = MotionState::new();
+    let full = super::library::build_palette_model(&m.registry, &[]);
+    let filtered = super::library::build_palette_model(&m.registry, &["motion.boids"]);
+    assert!(
+        full.item_count() > filtered.item_count(),
+        "the allow-list narrows the catalog"
+    );
+    assert_eq!(
+        filtered.item_count(),
+        1,
+        "only the one allowed type is shown"
+    );
+    let boids = ph2d_tool_registry::hash_node_id("motion.boids");
+    assert!(
+        filtered
+            .groups
+            .iter()
+            .flat_map(|g| &g.subs)
+            .flat_map(|s| &s.items)
+            .any(|it| it.id == boids),
+        "and it is the allowed type"
+    );
+}
+
+/// **The `OpenLibrary` intent stashes the spawn AND the wire context for the bridge to open the palette.**
+/// The bridge — which owns the editor `WidgetStore` — reads `open_library` after the drain, filters the
+/// model to `compatible` and opens the full-screen palette. FALSIFIED by not handling `OpenLibrary` (the
+/// stash stays `None`, the gesture opens nothing) or by dropping the wire context (smart-connect / splice
+/// would fall back to a plain add).
+#[test]
+fn open_library_intent_stashes_the_spawn_and_wire_context() {
+    use crate::motion_state::LibraryOpen;
     let mut m = MotionState::new();
-    assert_eq!(m.open_library, None, "nothing stashed before the intent");
+    assert!(
+        m.open_library.is_none(),
+        "nothing stashed before the intent"
+    );
 
     let _ = ph2d_panel_motion_graph::drain_intents(); // clear the boot document's intents, if any
-    ph2d_panel_motion_graph::push_intent(GraphIntent::OpenLibrary { x: 12.0, y: 34.0 });
+    ph2d_panel_motion_graph::push_intent(GraphIntent::OpenLibrary {
+        x: 12.0,
+        y: 34.0,
+        connect_from: Some((7, 1)),
+        splice: None,
+        compatible: vec!["motion.grid"],
+    });
     super::apply_graph_intents(
         &mut m,
         &mut ph2d_core::Playhead::default(),
@@ -90,7 +132,12 @@ fn open_library_intent_stashes_the_spawn() {
 
     assert_eq!(
         m.open_library,
-        Some((12.0, 34.0)),
-        "OpenLibrary stashes the graph-space spawn; the bridge opens the palette with it"
+        Some(LibraryOpen {
+            spawn: (12.0, 34.0),
+            connect_from: Some((7, 1)),
+            splice: None,
+            compatible: vec!["motion.grid"],
+        }),
+        "OpenLibrary stashes the spawn + the wire context; the bridge opens the palette with them"
     );
 }

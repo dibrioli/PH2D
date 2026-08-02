@@ -34,9 +34,9 @@ pub use snapshot::{
     GraphViewSnapshot, HiddenPorts, NodeChoice, NodeViewKind, PROBE_SAMPLES, PortChoice, PortView,
     ProbeView, RenameTarget, SUBGRAPH_VIEW_TAG, card_hidden_ports,
     current_graph_backdrop_selection, current_graph_selection, drain_intents, is_subgraph_view,
-    pending_graph_selection, push_intent, request_graph_selection, set_card_hidden_ports,
-    set_current_motion_graph, set_current_node_catalog, set_graph_backdrop_selection,
-    set_graph_selection, snapshot_from,
+    library_pick, pending_graph_selection, push_intent, request_graph_selection,
+    set_card_hidden_ports, set_current_motion_graph, set_current_node_catalog,
+    set_graph_backdrop_selection, set_graph_selection, snapshot_from,
 };
 pub use state::MotionGraphPanelState;
 
@@ -52,12 +52,6 @@ pub fn menu_is_open(state: &MotionGraphPanelState) -> bool {
 
 /// The first row's rect, as the PAINT laid it out — the row the artist clicks. `None` when no
 /// menu is open (or nothing matched the search).
-/// The add-menu's search field id (seam gates: *does the field hold the keyboard, and does it
-/// give it back?*).
-pub fn menu_search_widget() -> NodeId {
-    hits::menu_search_id()
-}
-
 /// Screen → graph, through the panel's OWN view (seam gates: a test that places a node "under
 /// the cursor" has to use the same map the panel draws with, or it places it somewhere else).
 pub fn graph_point(
@@ -80,9 +74,6 @@ pub fn first_menu_row(state: &MotionGraphPanelState, rect: zones::Rect) -> Optio
     Some(geom::menu_row(menu, panel, 0, menu.scroll))
 }
 use ph2d_editor_core::zones;
-
-#[path = "menu_search.rs"]
-mod menu_search;
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::ids;
@@ -131,24 +122,10 @@ impl Panel for MotionGraphPanel {
         _host: &mut dyn PanelHostInternal,
         ev: WidgetEvent,
     ) -> EventOutcome {
-        // The graph's own gestures arrive on the `GraphSurface` dispatch channel, not here.
-        // The ONE widget in this panel is the add-menu's search field (doc 59), and it owns
-        // the keyboard while it is open — so Enter and Esc are ITS events, not the graph's.
+        // The graph's own gestures arrive on the `GraphSurface` dispatch channel, not here. The
+        // node library is the shell's full-screen palette now (it owns its own search + Enter/Esc);
+        // the one widget left in THIS panel is the inline rename box.
         match ev {
-            // **Enter takes the top match.** A search box where the obvious key does nothing
-            // makes you reach for the mouse to click the row you are already looking at.
-            WidgetEvent::Submit(id) if id == hits::menu_search_id() => {
-                if let Some(menu) = state.menu.take() {
-                    menu_search::pick_first(&menu);
-                }
-                EventOutcome::Consumed
-            }
-            // **Esc closes the popup**, rather than merely blurring the field and leaving a
-            // menu on screen that no longer answers the keyboard.
-            WidgetEvent::Cancel(id) if id == hits::menu_search_id() => {
-                state.menu = None;
-                EventOutcome::Consumed
-            }
             // **Enter names the thing** (doc 61). The box is the other widget in this panel, and
             // it owns the keyboard while it is open, so Enter and Esc are ITS events too.
             WidgetEvent::Submit(id) if id == hits::rename_id() => {

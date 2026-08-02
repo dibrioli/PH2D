@@ -181,10 +181,11 @@ fn p_arms_the_probe_and_the_next_click_picks_the_node() {
     assert_eq!(st.probe, None);
 }
 
-/// **Smart-connect.** A wire dropped on empty canvas opens the add-menu carrying
-/// the source socket, the menu lists ONLY the types that can take that wire, and
-/// picking one emits a single `SmartConnect` (add + wire = one gesture, one undo).
-/// FALSIFIED by the old behaviour: dropping a wire in space was a silent no-op.
+/// **Smart-connect.** A wire dropped on empty canvas opens the shell's full-screen palette carrying
+/// the source socket and FILTERED to only the types that can take that wire; the shell's
+/// `library_pick` turns the pick into a single `SmartConnect` (add + wire = one gesture, one undo).
+/// The panel only ASKS (`OpenLibrary`) — it opens no local dropdown. FALSIFIED by the old behaviour:
+/// dropping a wire in space was a silent no-op.
 #[test]
 fn a_wire_dropped_in_space_offers_only_what_can_take_it() {
     use ph2d_nodegraph::node::PortSpec;
@@ -226,56 +227,23 @@ fn a_wire_dropped_in_space_offers_only_what_can_take_it() {
     ] {
         apply_gesture(&mut st, gesture(out, phase, x, y), RECT, CENTER, &snap);
     }
-    let menu = st
-        .menu
-        .clone()
-        .expect("the drop opened the smart-connect menu");
-    assert_eq!(
-        menu.body,
-        crate::state::MenuBody::Library {
-            connect_from: Some((1, 0)),
-            splice: None,
-        },
-        "it remembers the wire"
-    );
-
-    // Only the compatible type is listed — and the DRAWN rows say the same thing, because
-    // they are the same list (they were not, once: the paint enumerated all 86 types while
-    // the click resolved against this filtered one).
-    let rows = crate::snapshot::menu_catalog(&snap, Some((1, 0)));
-    assert_eq!(rows.len(), 1, "the incompatible type is not offered");
-    assert_eq!(rows[0].type_name, "motion.takes");
-    assert_eq!(
-        crate::snapshot::menu_rows(&snap, &menu).len(),
-        1,
-        "and the popup DRAWS one row - paint and hit enumerate one list"
-    );
-
-    // Picking it adds AND wires, in one intent.
-    let panel = geom::menu_panel(&menu, rows.len(), RECT);
-    let row = geom::menu_row(&menu, panel, 0, 0.0);
-    apply_gesture(
-        &mut st,
-        gesture(
-            GraphHitKind::Background,
-            GesturePhase::Click,
-            row.x + 2.0,
-            row.y + 2.0,
-        ),
-        RECT,
-        CENTER,
-        &snap,
+    // No local dropdown — the palette is the shell's. The drop pushes ONE `OpenLibrary` carrying the
+    // source socket and FILTERED to the single compatible type; the shell turns the pick into a
+    // `SmartConnect`. (The incompatible "Refuses" is not in `compatible`, so the palette never shows it.)
+    assert!(
+        st.menu.is_none(),
+        "the drop opens the shell palette, not a local menu"
     );
     assert_eq!(
         drain_intents(),
-        vec![GraphIntent::SmartConnect {
-            from_node: 1,
-            from_port: 0,
-            to_type: "motion.takes",
+        vec![GraphIntent::OpenLibrary {
             x: 500.0,
             y: 400.0,
+            connect_from: Some((1, 0)),
+            splice: None,
+            compatible: vec!["motion.takes"],
         }],
-        "one intent: the add and the wire are one gesture"
+        "it opens the palette filtered to the one compatible type, remembering the wire"
     );
     crate::snapshot::set_current_node_catalog(Vec::new());
 }
@@ -521,13 +489,15 @@ fn an_empty_input_draws_a_wire_backwards_to_an_output() {
     );
 }
 
-/// **A right-press ON a wire arms a SPLICE** — the menu remembers the wire it landed on (its
-/// unique target `(to_node, to_port)`), so picking a node INSERTS it into that wire rather than
-/// dropping it beside the canvas. The mirror of the smart-connect "it remembers the wire" above,
-/// one gesture over. Mutation — the `Wire` arm falling through to the plain `_` default (`splice:
-/// None`) — would leave the pick an ordinary `AddNode`; this asserts the wire is captured.
+/// **A right-press ON a wire arms a SPLICE** — the palette opens remembering the wire it landed on
+/// (its unique target `(to_node, to_port)`), so picking a node INSERTS it into that wire rather than
+/// dropping it beside the canvas. The mirror of the smart-connect "it remembers the wire" above, one
+/// gesture over, and the panel opens no local menu — it pushes `OpenLibrary` with `splice` set.
+/// Mutation — the `Wire` arm falling through to the plain `_` default (`splice: None`) — would leave
+/// the pick an ordinary `AddNode`; this asserts the wire is captured.
 #[test]
 fn a_right_press_on_a_wire_arms_a_splice_onto_it() {
+    let _ = drain_intents();
     let snap = two_node_snapshot();
     let mut st = MotionGraphPanelState::default();
     // The hit handle encodes the wire's target the way `paint::wire_target` decodes it.
@@ -541,12 +511,17 @@ fn a_right_press_on_a_wire_arms_a_splice_onto_it() {
     );
     g.button = ph2d_host::PointerButton::Secondary;
     apply_gesture(&mut st, g, RECT, CENTER, &snap);
-    assert_eq!(
-        st.menu.expect("the right-press opened the add-menu").body,
-        crate::state::MenuBody::Library {
-            connect_from: None,
-            splice: Some((to_node, to_port)),
-        },
-        "the menu remembers the wire, so the pick will splice into it"
+    assert!(
+        st.menu.is_none(),
+        "no local menu - the palette is the shell's"
+    );
+    let intents = drain_intents();
+    assert!(
+        matches!(
+            intents.as_slice(),
+            [GraphIntent::OpenLibrary { connect_from: None, splice: Some((n, p)), compatible, .. }]
+                if *n == to_node && *p == to_port && compatible.is_empty()
+        ),
+        "the palette opens in splice mode, remembering the wire: {intents:?}"
     );
 }

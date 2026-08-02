@@ -5,6 +5,47 @@
 //! Two concerns, one place: `build_catalog` is the flat list the graph menu publishes; `build_palette_model`
 //! groups that same list into the coloured, sub-clustered model the shell's "Add Node" palette renders.
 //! Both derive from the registry — the single source of what a node is called and which category it wears.
+//! Plus the two handshake ends: `open_pending_palette` (a gesture asked → open, filtered) and
+//! `route_palette_pick` (last frame's pick → the right graph edit).
+
+use crate::motion_state::MotionState;
+use ph2d_editor::HeroScreen;
+
+/// Route LAST frame's palette pick into a graph edit — mapping the picked id back to its canonical
+/// `type_name`, then turning it (WITH the gesture's wire context, drained from `library_open`) into the
+/// right intent via `library_pick`: a plain add, a smart-connect, or a splice. Call BEFORE draining
+/// intents so the edit lands this frame. A click and an Enter on the palette both arrive here, so they
+/// route identically.
+pub(super) fn route_palette_pick(hero: &mut HeroScreen, motion: &mut MotionState) {
+    let Some(id) = hero.store.take_command_pick() else {
+        return;
+    };
+    let type_name = motion
+        .registry
+        .manifests()
+        .map(|m| m.name)
+        .find(|name| ph2d_tool_registry::hash_node_id(name) == id);
+    if let Some(type_name) = type_name {
+        let open = motion.library_open.take().unwrap_or_default();
+        ph2d_panel_motion_graph::push_intent(ph2d_panel_motion_graph::library_pick(
+            open.connect_from,
+            open.splice,
+            type_name,
+            open.spawn,
+        ));
+    }
+}
+
+/// If a gesture asked (`OpenLibrary`, stashed in `open_library`), open the full-screen palette on the
+/// live catalog — FILTERED to the compatible types for a smart-connect — and remember the wire context
+/// in `library_open` for [`route_palette_pick`].
+pub(super) fn open_pending_palette(hero: &mut HeroScreen, motion: &mut MotionState) {
+    if let Some(open) = motion.open_library.take() {
+        hero.store
+            .open_command_palette(build_palette_model(&motion.registry, &open.compatible));
+        motion.library_open = Some(open);
+    }
+}
 
 /// Build the addable-node catalog from the registry (canonical name + English display label + category),
 /// sorted by category then label so the menu groups by colour (the palette teaches the library map,
@@ -36,15 +77,23 @@ pub(super) fn build_catalog(
 /// order, each with the `node-cat-*` colour from the panel's single `cat_token`, and the two overloaded
 /// categories (Transform, Utility) split into named sub-clusters so the layout stays scannable. Every
 /// item id is `hash_node_id(type_name)` — the same hash the pick round-trips through.
+///
+/// `compatible` is the smart-connect allow-list: when non-empty, only those node types are shown (a wire
+/// dropped in empty space opens the palette filtered to what it can feed, replacing the old dropdown's
+/// filter). Empty = the whole catalog (plain `A` / R-click).
 pub(super) fn build_palette_model(
     registry: &ph2d_node_registry::NodeRegistry,
+    compatible: &[&'static str],
 ) -> ph2d_editor::widget::command_palette::PaletteModel {
     use ph2d_editor::widget::command_palette::{
         PaletteGroup, PaletteItem, PaletteModel, PaletteSub,
     };
     use ph2d_node_registry::NodeUiCategory;
 
-    let cat = build_catalog(registry); // already sorted by (category, display)
+    let mut cat = build_catalog(registry); // already sorted by (category, display)
+    if !compatible.is_empty() {
+        cat.retain(|nc| compatible.contains(&nc.type_name));
+    }
     const ORDER: [(NodeUiCategory, &str); 7] = [
         (NodeUiCategory::Source, "Source"),
         (NodeUiCategory::Distribute, "Distribute"),

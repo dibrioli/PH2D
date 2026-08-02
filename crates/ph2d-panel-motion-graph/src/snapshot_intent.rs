@@ -59,11 +59,30 @@ pub enum GraphIntent {
     /// Remove the edge feeding an input port (alt-click a wire). Identified by its
     /// unique target `(to_node, to_port)`. One undo step; re-cooks.
     Disconnect { to_node: u32, to_port: u16 },
-    /// Open the full-screen "Add Node" palette (the `A` key). Carries the graph-space `(x, y)` where a
-    /// picked node should land (the canvas centre). The shell owns the palette (it lives in the editor's
-    /// `WidgetStore`, over the whole app), so the panel only asks — it does not open a local menu. UI-only
-    /// (no undo step); the actual add arrives later as an [`Self::AddNode`] when the shell routes the pick.
-    OpenLibrary { x: f32, y: f32 },
+    /// Open the full-screen "Add Node" palette. Carries the graph-space `(x, y)` where a picked node
+    /// should land, plus the WIRE CONTEXT the gesture was opened with — so the ONE palette replaces the
+    /// old in-panel dropdown in every case:
+    ///
+    /// - plain `A` / R-click on empty canvas → `connect_from = None`, `splice = None`, `compatible = []`
+    ///   (the whole library, a plain [`Self::AddNode`] on the pick);
+    /// - R-press ON a wire → `splice = Some((to_node, to_port))` (the pick INSERTS into that wire,
+    ///   [`Self::SpliceNode`]);
+    /// - a loose output dropped on empty canvas → `connect_from = Some((from_node, from_port))` and
+    ///   `compatible` = the node types that output can feed (the pick creates AND wires,
+    ///   [`Self::SmartConnect`]).
+    ///
+    /// The shell owns the palette (it lives in the editor's `WidgetStore`, over the whole app), so the
+    /// panel only asks — it does not open a local menu. `compatible` is empty for the unfiltered cases
+    /// (the shell shows the whole catalog); when non-empty it is an allow-list of `&'static` canonical
+    /// names off the published [`NodeChoice`] catalog. UI-only (no undo step); the actual edit arrives
+    /// later via [`library_pick`] when the shell routes the pick.
+    OpenLibrary {
+        x: f32,
+        y: f32,
+        connect_from: Option<(u32, u16)>,
+        splice: Option<(u32, u16)>,
+        compatible: Vec<&'static str>,
+    },
     /// Add a node of the given canonical type at a graph-space position (add-node
     /// menu). `type_name` is a `&'static` canonical name from the published
     /// [`NodeChoice`] catalog. One undo step; re-cooks.
@@ -248,15 +267,15 @@ pub enum GraphIntent {
     Paste,
 }
 
-/// The intent a **node-library pick** produces, given the wire context the menu was opened
-/// with: a loose end WIRES the new node ([`GraphIntent::SmartConnect`]), a wire under the
-/// R-press INSERTS it into that wire ([`GraphIntent::SpliceNode`]), and neither just ADDS it
-/// ([`GraphIntent::AddNode`]). The one door the mouse pick and the Enter pick both go through
-/// — two callers choosing the same way, so a fourth context (should one appear) is decided
-/// here once instead of drifting between them. `connect_from` and `splice` are mutually
+/// The intent a **palette pick** produces, given the wire context the gesture opened the palette
+/// with ([`GraphIntent::OpenLibrary`]): a loose end WIRES the new node ([`GraphIntent::SmartConnect`]),
+/// a wire under the R-press INSERTS it into that wire ([`GraphIntent::SpliceNode`]), and neither just
+/// ADDS it ([`GraphIntent::AddNode`]). The shell's pick router is the ONE door — a click and an Enter
+/// on the full-screen palette both land here, so the rule cannot fork between them, and a fourth
+/// context (should one appear) is decided here once. `connect_from` and `splice` are mutually
 /// exclusive; `connect_from` wins if both are somehow set.
 #[must_use]
-pub(crate) fn library_pick(
+pub fn library_pick(
     connect_from: Option<(u32, u16)>,
     splice: Option<(u32, u16)>,
     to_type: &'static str,
@@ -291,9 +310,9 @@ pub(crate) fn library_pick(
 mod library_pick_tests {
     use super::*;
 
-    /// The wire context decides the pick — and the mouse pick (`interact_menu`) and the Enter
-    /// pick (`menu_search`) BOTH go through this one function, so the rule cannot fork between
-    /// them. Mutation — dropping the `splice` branch so a wire-context pick falls back to a
+    /// The wire context decides the pick — and the palette's click and Enter BOTH go through this one
+    /// function (the shell's pick router), so the rule cannot fork between them. Mutation — dropping the
+    /// `splice` branch so a wire-context pick falls back to a
     /// plain `AddNode` (a node dumped beside the wire instead of inserted into it) — sangra on
     /// the third case; and `connect_from` winning over `splice` is the documented precedence.
     #[test]

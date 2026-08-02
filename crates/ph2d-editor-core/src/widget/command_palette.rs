@@ -389,7 +389,13 @@ pub fn paint(
     let sb_w = (count_x - Spacing::Md.px() - sb_x).max(MIN_COL_W * 0.5);
     let sb = Rect::new(sb_x, header_y + (HEADER_H - search_h) * 0.5, sb_w, search_h);
     fill_rounded_rect(scene, sb, Radius::Sm.px(), resolve(ColorToken::Bg3, theme));
-    stroke_rounded_rect(scene, sb, Radius::Sm.px(), 1.0, resolve(ColorToken::Border, theme));
+    stroke_rounded_rect(
+        scene,
+        sb,
+        Radius::Sm.px(),
+        1.0,
+        resolve(ColorToken::Border, theme),
+    );
     let (search_text, search_color) = if query.is_empty() {
         ("Search", resolve(ColorToken::Text2, theme))
     } else {
@@ -412,7 +418,12 @@ pub fn paint(
             .min(sb.x + sb.w - Spacing::Xs.px());
         fill_rounded_rect(
             scene,
-            Rect::new(caret_x, sb.y + Spacing::Xs.px(), 1.5, sb.h - Spacing::Xs.px() * 2.0), // LITERAL-PX-OK: 1.5px text caret
+            Rect::new(
+                caret_x,
+                sb.y + Spacing::Xs.px(),
+                1.5,
+                sb.h - Spacing::Xs.px() * 2.0,
+            ), // LITERAL-PX-OK: 1.5px text caret
             0.0,
             resolve(ColorToken::Text1, theme),
         );

@@ -8,7 +8,7 @@
 
 use super::{GraphViewSnapshot, Menu, MotionGraphPanelState, geom};
 use crate::snapshot::ChoiceTarget;
-use crate::snapshot::{GraphIntent, menu_matches, menu_rows, push_intent};
+use crate::snapshot::{GraphIntent, menu_rows, push_intent};
 use crate::state::MenuBody;
 use ph2d_editor_core::interaction::GraphZoom;
 use ph2d_editor_core::zones::Rect;
@@ -209,23 +209,6 @@ pub(super) fn resolve_menu(
                 }
             }
         }
-        MenuBody::Library {
-            connect_from,
-            splice,
-        } => {
-            // The SAME list the paint drew: filtered by the query AND ranked by it. Reading
-            // the raw catalog here is exactly the bug this popup already had once.
-            let c = menu_matches(snap, menu, *connect_from)[i];
-            // ONE undo step whatever the shape (and the shell, which mints the id, is the only
-            // one that can name the node it just created). `library_pick` is the shared door the
-            // Enter pick (`menu_search::pick_first`) also uses — one rule, two callers.
-            push_intent(crate::snapshot::library_pick(
-                *connect_from,
-                *splice,
-                c.type_name,
-                menu.spawn,
-            ));
-        }
     }
 }
 
@@ -250,28 +233,37 @@ pub(super) fn open_on_right_press(
         return;
     }
     let spawn = super::View::new(rect, state.view).graph(g.x, g.y);
+    // A LOCAL menu body (backdrop tints / node actions), or `None` when the gesture opens the
+    // full-screen palette instead (the node library — plain, or splice into a wire). The palette
+    // is the shell's, so those cases only push an `OpenLibrary` intent and open no local popup.
     let body = match g.kind {
         GraphHitKind::Backdrop { id } => {
             let id = id as u32;
             // A right-press selects what it is asking about, like every other press does.
             state.selected.clear();
             state.selected_backdrop = Some(id);
-            MenuBody::BackdropTints {
+            Some(MenuBody::BackdropTints {
                 backdrop: id,
                 current: snap
                     .backdrops
                     .iter()
                     .find(|b| b.id == id)
                     .map_or(0, |b| b.color),
-            }
+            })
         }
-        // R-press ON a wire arms a SPLICE: picking a node inserts it INTO this wire
+        // R-press ON a wire arms a SPLICE: the palette pick inserts a node INTO this wire
         // (its unique target `(to_node, to_port)` names it) — source → new → target. The
         // generalisation of the double-click reroute (doc 45) to any type the artist chooses.
-        GraphHitKind::Wire { edge } => MenuBody::Library {
-            connect_from: None,
-            splice: Some(crate::paint::wire_target(edge)),
-        },
+        GraphHitKind::Wire { edge } => {
+            push_intent(GraphIntent::OpenLibrary {
+                x: spawn.0,
+                y: spawn.1,
+                connect_from: None,
+                splice: Some(crate::paint::wire_target(edge)),
+                compatible: Vec::new(),
+            });
+            None
+        }
         // R-press ON a node: the ACTIONS on it (doc 62) — the case the context-dependent
         // right-press was missing. A right-click SELECTS what it is asking about (like the
         // backdrop above): a node not already in the selection becomes the whole selection,
@@ -294,23 +286,30 @@ pub(super) fn open_on_right_press(
                     .iter()
                     .next()
                     .is_some_and(|id| crate::snapshot::is_subgraph_view(*id));
-            MenuBody::NodeActions {
+            Some(MenuBody::NodeActions {
                 multi: state.selected.len() > 1,
                 group,
-            }
+            })
         }
-        _ => MenuBody::Library {
-            connect_from: None,
-            splice: None,
-        },
+        // Canvas / socket: the plain node library in the full-screen palette.
+        _ => {
+            push_intent(GraphIntent::OpenLibrary {
+                x: spawn.0,
+                y: spawn.1,
+                connect_from: None,
+                splice: None,
+                compatible: Vec::new(),
+            });
+            None
+        }
     };
-    state.menu = Some(super::Menu {
-        scroll: 0.0,
-        screen: (g.x, g.y),
-        spawn,
-        query: String::new(),
-        opened: false,
-        body,
-    });
+    if let Some(body) = body {
+        state.menu = Some(super::Menu {
+            scroll: 0.0,
+            screen: (g.x, g.y),
+            spawn,
+            body,
+        });
+    }
     state.interaction = super::Interaction::Idle;
 }

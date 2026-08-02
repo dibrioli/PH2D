@@ -34,7 +34,6 @@ pub(crate) const MENU_ROW_H: f32 = 22.0; // LITERAL-PX-OK: add-menu row height
 pub(crate) const MENU_HEADER_H: f32 = 22.0; // LITERAL-PX-OK: add-menu header height
 pub(crate) const MENU_PAD: f32 = 5.0; // LITERAL-PX-OK: add-menu inner padding
 /// The search field's band, between the header and the list.
-pub(crate) const MENU_SEARCH_H: f32 = 26.0; // LITERAL-PX-OK: add-menu search field height
 /// Breathing room between the popup and the canvas edge (it is capped to the canvas height, so
 /// without this it would sit flush against the top and bottom).
 const MENU_MARGIN: f32 = 8.0; // LITERAL-PX-OK: add-menu margin from the canvas edge
@@ -253,16 +252,10 @@ fn intersects(a: Rect, b: Rect) -> bool {
 /// The library has 86 node types. A menu as tall as its list runs off the bottom of the screen and
 /// the last forty are unreachable (Enio's screenshot). So the panel is CAPPED, and what does not
 /// fit SCROLLS.
-/// The popup's chrome above the list: the header, plus the search field **when there is one**
-/// (only the library has one — doc 62). Every rect below is measured from this, so the list of a
-/// fieldless popup starts where the field would have been and nothing is left floating.
-pub(crate) fn menu_chrome_h(menu: &Menu) -> f32 {
+/// The popup's chrome above the list: just the header. The library (which used to add a search
+/// field here) is the shell's full-screen palette now; the remaining local popups are read by eye.
+pub(crate) fn menu_chrome_h(_menu: &Menu) -> f32 {
     MENU_HEADER_H
-        + if menu.has_search() {
-            MENU_SEARCH_H
-        } else {
-            0.0
-        }
 }
 
 pub(crate) fn menu_panel(menu: &Menu, count: usize, canvas: Rect) -> Rect {
@@ -291,16 +284,6 @@ pub(crate) fn menu_list(menu: &Menu, panel: Rect) -> Rect {
         panel.y + top + MENU_PAD,
         panel.w - 2.0 * MENU_PAD,
         (panel.h - top - 2.0 * MENU_PAD).max(0.0),
-    )
-}
-
-/// The search field's rect — under the header, above the list.
-pub(crate) fn menu_search_rect(panel: Rect) -> Rect {
-    Rect::new(
-        panel.x + MENU_PAD,
-        panel.y + MENU_HEADER_H,
-        panel.w - 2.0 * MENU_PAD,
-        MENU_SEARCH_H - MENU_PAD,
     )
 }
 
@@ -543,11 +526,11 @@ mod tests {
             scroll: 0.0,
             screen: (290.0, 190.0),
             spawn: (0.0, 0.0),
-            query: String::new(),
-            opened: false,
-            body: crate::state::MenuBody::Library {
-                connect_from: None,
-                splice: None,
+            // Any body — clamping is geometry, not content. (The node library moved to the shell
+            // palette; the local popups left are read by eye.)
+            body: crate::state::MenuBody::NodeActions {
+                multi: false,
+                group: false,
             },
         };
         let p = menu_panel(&menu, 3, canvas);

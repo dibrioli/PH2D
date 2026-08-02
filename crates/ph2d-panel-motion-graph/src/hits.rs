@@ -263,11 +263,6 @@ fn sock_in_id(node: u32, port: usize) -> NodeId {
 fn sock_out_id(node: u32, port: usize) -> NodeId {
     fnv_id(&format!("motion_graph/sock_out/{node}/{port}"))
 }
-/// The add-menu's search field. One id — there is only ever one menu open.
-pub(crate) fn menu_search_id() -> NodeId {
-    fnv_id("motion_graph/menu_search")
-}
-
 /// The inline rename box (doc 61). One id — only one thing is being renamed at a time, and the
 /// box is over it.
 pub(crate) fn rename_id() -> NodeId {

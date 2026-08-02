@@ -12,9 +12,7 @@
 //! And the click itself is dispatched the way a hand makes it: **press, drift a pixel, release**
 //! ([[feedback_a_click_is_a_press_that_drifted]]).
 
-use ph2d_editor_core::interaction::{
-    GestureMods, GesturePhase, GraphGesture, GraphHitKind, InteractiveState,
-};
+use ph2d_editor_core::interaction::{GestureMods, GesturePhase, GraphGesture, GraphHitKind};
 use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::screens::layout::{CenterSplit, HeroLayout};
 use ph2d_editor_core::zones::Rect;

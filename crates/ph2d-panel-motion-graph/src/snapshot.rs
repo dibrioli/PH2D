@@ -16,7 +16,7 @@ use std::cell::RefCell;
 
 #[path = "snapshot_intent.rs"]
 mod intent;
-pub(crate) use intent::library_pick;
+pub use intent::library_pick;
 pub use intent::{GraphIntent, RenameTarget};
 
 #[path = "snapshot_drop.rs"]
@@ -27,10 +27,9 @@ mod menu;
 pub use drop_targets::{
     ChoiceTarget, HiddenPorts, PortChoice, card_hidden_ports, set_card_hidden_ports,
 };
-pub(crate) use menu::{menu_matches, menu_rows};
-// The raw (unranked) catalog is the gates' business only: production code reads the popup
-// through `menu_rows`, which is the point.
-#[cfg(test)]
+pub(crate) use menu::menu_rows;
+// The compatible-type filter for smart-connect: a loose end dropped in empty space opens the
+// palette showing only the node types that output can feed (`interact_drop`).
 pub(crate) use menu::menu_catalog;
 
 /// One socket on a node card. **Colour ← [`Domain`], shape ← [`Dim`]** (plan §2.4) —

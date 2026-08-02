@@ -13,8 +13,8 @@
 //!   wire it on the pick (dropping in space used to be a silent no-op).
 
 use super::{View, geom, push_intent};
-use crate::snapshot::{GraphIntent, GraphViewSnapshot};
-use crate::state::{Menu, MenuBody, MotionGraphPanelState};
+use crate::snapshot::{GraphIntent, GraphViewSnapshot, menu_catalog};
+use crate::state::MotionGraphPanelState;
 
 /// Resolve a forward wire dropped at `(x, y)` that landed on no input socket. Always terminal — it
 /// sets `state.menu` or pushes an intent, and the caller returns.
@@ -53,18 +53,21 @@ pub(super) fn resolve_loose_output_drop(
         return;
     }
     // Empty canvas — smart-connect: the gesture already said what it wanted (a consumer for THIS
-    // wire), so open the add-menu filtered to the node types that can take it, and wire it on the
-    // pick.
-    state.menu = Some(Menu {
-        scroll: 0.0,
-        screen: (x, y),
-        spawn: view.graph(x, y),
-        query: String::new(),
-        opened: false,
-        body: MenuBody::Library {
-            connect_from: Some((from_node, from_port)),
-            splice: None,
-        },
+    // wire), so open the full-screen palette FILTERED to the node types that can take this output,
+    // and wire it on the pick. The compatible list is the SAME `menu_catalog` filter the old
+    // in-panel dropdown used (domain/dim/clock); the shell still has the last word on cycles and
+    // the membrane when it applies the `SmartConnect`.
+    let compatible: Vec<&'static str> = menu_catalog(snap, Some((from_node, from_port)))
+        .into_iter()
+        .map(|c| c.type_name)
+        .collect();
+    let spawn = view.graph(x, y);
+    push_intent(GraphIntent::OpenLibrary {
+        x: spawn.0,
+        y: spawn.1,
+        connect_from: Some((from_node, from_port)),
+        splice: None,
+        compatible,
     });
 }
 

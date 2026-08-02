@@ -112,11 +112,22 @@ pub(super) fn apply_graph_intents(
                     apply_disconnect(motion, toasts, t.0, tp);
                 }
             }
-            // Ask to open the full-screen palette: stash the spawn here (the store lives in the bridge's
-            // `HeroScreen`, out of reach of this fn) — the bridge takes `open_library` after this loop and
-            // opens it. UI-only, no undo step.
-            GraphIntent::OpenLibrary { x, y } => {
-                motion.open_library = Some((x, y));
+            // Ask to open the full-screen palette: stash the spawn + wire context here (the store lives in
+            // the bridge's `HeroScreen`, out of reach of this fn) — the bridge takes `open_library` after
+            // this loop and opens it, filtered to `compatible`. UI-only, no undo step.
+            GraphIntent::OpenLibrary {
+                x,
+                y,
+                connect_from,
+                splice,
+                compatible,
+            } => {
+                motion.open_library = Some(crate::motion_state::LibraryOpen {
+                    spawn: (x, y),
+                    connect_from,
+                    splice,
+                    compatible,
+                });
             }
             GraphIntent::AddNode { type_name, x, y } => {
                 let pre = motion.doc.clone();

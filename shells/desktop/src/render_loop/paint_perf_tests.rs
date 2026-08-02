@@ -4,7 +4,7 @@
 //! `ON` cacheado e o `AGG` são privados a cada gate — nenhum contamina o outro.
 
 use super::{
-    FrameInfo, end_frame, force_on, latency_samples, pq, record_dispatch, record_input,
+    FrameInfo, InputPhase, end_frame, force_on, latency_samples, pq, record_dispatch, record_input,
     stamp_pointer,
 };
 
@@ -111,8 +111,8 @@ fn the_event_counter_counts_every_event_not_every_batch() {
 #[test]
 fn the_input_cost_is_per_frame_not_a_running_total() {
     arm();
-    record_input(4.0);
-    record_input(6.0);
+    record_input(4.0, InputPhase::Move);
+    record_input(6.0, InputPhase::Move);
     record_dispatch(FrameInfo::default());
     end_frame(1.0);
     record_dispatch(FrameInfo::default());
@@ -129,5 +129,43 @@ fn the_input_cost_is_per_frame_not_a_running_total() {
         "o 2o frame nao recebeu evento nenhum e mesmo assim reportou {:.1} ms — o acumulador virou \
          um total corrido, e o p50 do relatorio sobe sozinho a cada frame",
         hist[1]
+    );
+}
+
+/// **As três fases não se misturam** — o divisor que o log de 2026-08-01 cobrou.
+///
+/// `INPUT p50=0,0 max=1016,5` admitia *"um pen-up custa um segundo"* e *"um move custa um segundo"*,
+/// que pedem curas OPOSTAS. Um balde só não pode responder, e três baldes que somam no mesmo lugar
+/// são um balde só com três nomes — daí o gate ser sobre a SEPARAÇÃO, não sobre o total.
+///
+/// ⚠️ **Mutação que deve sangrar:** indexar o balde por uma constante (todo evento em `Move`).
+#[test]
+fn the_input_cost_is_split_by_phase_so_a_slow_pen_up_names_itself() {
+    arm();
+    record_input(1.0, InputPhase::Down);
+    record_input(2.0, InputPhase::Move);
+    record_input(64.0, InputPhase::Up);
+    record_dispatch(FrameInfo::default());
+    end_frame(1.0);
+    let (d, m, u) = super::input_hist_by_phase();
+    assert_eq!(
+        (d.len(), m.len(), u.len()),
+        (1, 1, 1),
+        "cada fase mantem o proprio historico por frame"
+    );
+    assert!(
+        (d[0] - 1.0).abs() < 1e-3 && (m[0] - 2.0).abs() < 1e-3 && (u[0] - 64.0).abs() < 1e-3,
+        "as fases se misturaram: down={:.1} move={:.1} up={:.1} — um pen-up caro fica indistinguivel \
+         de um move caro, e as duas curas sao opostas",
+        d[0],
+        m[0],
+        u[0]
+    );
+    // …e o leitor agregado segue somando as tres, que e' o que ele sempre quis dizer.
+    let all = super::input_hist();
+    assert!(
+        (all[0] - 67.0).abs() < 1e-3,
+        "a soma das fases e' {:.1}",
+        all[0]
     );
 }

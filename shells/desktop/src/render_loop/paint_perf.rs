@@ -88,9 +88,13 @@ struct Agg {
     /// nunca apareceu em `frame`, nem em `dispatch`, nem em nenhum dos 17 sub-slots. A 1ª leitura com
     /// período real mostrou o buraco: `frame p50 16,7 ms` e **período 99,9 ms/frame**, com 8,8 eventos
     /// por frame — 83 ms por frame fora de tudo que o relatório media.
-    input_ms: f32,
+    /// ⚠️ **Por FASE (`[down, move, up]`), e não um número só.** O log de 2026-08-01 trouxe
+    /// `INPUT p50=0,0 max=1016,5 ms`: mediana grátis e UM evento de um segundo — que admite *"um
+    /// pen-up custa um segundo"* e *"um move custa um segundo"*, **curas opostas**. Um custo sem a sua
+    /// fase é inatribuível, exatamente como `stamps` era antes de publicar as entregas (§5.48).
+    input_ms: [f32; 3],
     /// Por-frame, o acumulado acima.
-    input_hist: Vec<f32>,
+    input_hist: [Vec<f32>; 3],
     /// Início da janela, para o **PERÍODO** real do frame (`span / frames`).
     ///
     /// ⚠️ O `frame p50` mede o **TRABALHO** dentro do frame, não o intervalo entre frames — e a
@@ -134,11 +138,32 @@ pub(crate) fn stamp_pointer() {
 ///
 /// Irmão do [`stamp_pointer`]: aquele diz quando o evento CHEGOU, este diz quanto ele CUSTOU. Os dois
 /// juntos são a diferença entre *"o frame demora a sair"* e *"pintar é caro e ninguém estava olhando"*.
-pub(crate) fn record_input(ms: f32) {
+pub(crate) fn record_input(ms: f32, phase: InputPhase) {
     if !on() {
         return;
     }
-    AGG.with(|cell| cell.borrow_mut().input_ms += ms);
+    AGG.with(|cell| cell.borrow_mut().input_ms[phase as usize] += ms);
+}
+
+/// A fase de um evento de ponteiro, para o balde de INPUT. Um `Down` abre um traço (e paga o clone de
+/// canvas), um `Move` carimba dabs, um `Up` fecha e COMMITA — três custos de natureza diferente.
+#[derive(Clone, Copy, Debug)]
+pub(crate) enum InputPhase {
+    Down = 0,
+    Move = 1,
+    Up = 2,
+}
+
+impl InputPhase {
+    /// A fase de um evento de canvas. Mora AQUI, ao lado do enum que ela produz, e não no sítio de
+    /// chamada — o `painter_canvas_input.rs` está no teto de 600 LOC, e o mapeamento é do balde.
+    pub(crate) const fn of(phase: ph2d_editor::tool::PointerPhase) -> Self {
+        match phase {
+            ph2d_editor::tool::PointerPhase::Down => Self::Down,
+            ph2d_editor::tool::PointerPhase::Up => Self::Up,
+            _ => Self::Move,
+        }
+    }
 }
 
 /// Whether `PH2D_PAINT_PERF` is set (cached — no per-frame syscall).
@@ -174,7 +199,9 @@ pub(super) fn end_frame(total_ms: f32) {
         }
         a.samples.push(cur);
         a.frame_ms.push(total_ms);
-        a.input_hist.push(std::mem::take(&mut a.input_ms));
+        for i in 0..3 {
+            a.input_hist[i].push(std::mem::take(&mut a.input_ms[i]));
+        }
         if cur.gpu {
             a.gpu += 1;
         } else {
@@ -185,7 +212,9 @@ pub(super) fn end_frame(total_ms: f32) {
             a.samples.clear();
             a.frame_ms.clear();
             a.latency_ms.clear();
-            a.input_hist.clear();
+            for h in &mut a.input_hist {
+                h.clear();
+            }
             a.events = 0;
             a.window_start = None;
             a.gpu = 0;
@@ -302,14 +331,18 @@ fn emit(a: &Agg) {
         eprintln!(
             "[paint-perf]   EVENTO->FRAME p50={:.1} p95={:.1} max={:.1} ms (n={}) · alvo 9 \
              | periodo real {period:.1} ms/frame · {:.1} eventos/frame \
-             | INPUT (fora do frame) p50={:.1} max={:.1} ms",
+             | INPUT (fora do frame) down {:.1}/{:.1} move {:.1}/{:.1} up {:.1}/{:.1} ms (p50/max)",
             pq(&a.latency_ms, 0.5),
             pq(&a.latency_ms, 0.95),
             a.latency_ms.iter().fold(0.0f32, |m, v| m.max(*v)),
             a.latency_ms.len(),
             f32::from(u16::try_from(a.events).unwrap_or(u16::MAX)) / frames,
-            p50(&a.input_hist),
-            a.input_hist.iter().fold(0.0f32, |m, v| m.max(*v)),
+            p50(&a.input_hist[0]),
+            a.input_hist[0].iter().fold(0.0f32, |m, v| m.max(*v)),
+            p50(&a.input_hist[1]),
+            a.input_hist[1].iter().fold(0.0f32, |m, v| m.max(*v)),
+            p50(&a.input_hist[2]),
+            a.input_hist[2].iter().fold(0.0f32, |m, v| m.max(*v)),
         );
     }
 }
@@ -357,8 +390,27 @@ pub(super) fn force_on() {
 
 /// Só em teste: o custo do input por frame, na janela corrente.
 #[cfg(test)]
+pub(super) fn input_hist_by_phase() -> (Vec<f32>, Vec<f32>, Vec<f32>) {
+    AGG.with(|a| {
+        let h = &a.borrow().input_hist;
+        (h[0].clone(), h[1].clone(), h[2].clone())
+    })
+}
+
+/// A soma das três fases por frame — o leitor agregado.
+///
+/// ⚠️ `cfg(test)`: o RELATÓRIO passou a imprimir as três fases separadas (é esse o ponto do divisor),
+/// então quem soma é só o gate que afirma *"as fases não se perderam"*. Um `pub` sem chamador de
+/// produto seria uma segunda resposta esperando alguém chamá-la.
+#[cfg(test)]
 pub(super) fn input_hist() -> Vec<f32> {
-    AGG.with(|a| a.borrow().input_hist.clone())
+    // A soma das três fases — o que este leitor sempre quis dizer (*quanto o input custou neste frame*).
+    AGG.with(|a| {
+        let h = &a.borrow().input_hist;
+        (0..h[0].len())
+            .map(|i| h[0][i] + h[1][i] + h[2][i])
+            .collect()
+    })
 }
 
 /// Só em teste: quantos eventos a janela corrente viu.

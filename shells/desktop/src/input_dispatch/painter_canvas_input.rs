@@ -478,9 +478,12 @@ impl App {
         // que o `PaintFrameTimer` cronometra — então até aqui carimbar dabs a 4096² não aparecia em
         // `frame`, nem em `dispatch`, nem em nenhum dos 17 sub-slots do relatório.
         let t0 = crate::render_loop::paint_perf::on().then(std::time::Instant::now);
+        // ⚠️ A fase é lida ANTES da chamada: `ev` é movido para dentro dela.
+        let phase = crate::render_loop::paint_perf::InputPhase::of(ev.phase);
         let consumed = painter.on_canvas_pointer(ev);
         if let Some(t0) = t0 {
-            crate::render_loop::paint_perf::record_input(t0.elapsed().as_secs_f64() as f32 * 1e3);
+            let ms = t0.elapsed().as_secs_f64() as f32 * 1e3;
+            crate::render_loop::paint_perf::record_input(ms, phase);
         }
         consumed
     }

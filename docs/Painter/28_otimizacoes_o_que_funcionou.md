@@ -6049,3 +6049,44 @@ LOC 2/2 nos dois gates, contrato congelado **4/4**, fingerprint do ADR-0134 **3/
 - O `bump_all_layer_pixels` **continua bumpando todas as camadas** num passo confinado. Na pista de CPU
   isso não custa nada (o número acima), e num documento de uma camada — o caso comum e o do smoke — ele
   É o bump da ativa. Estreitá-lo é ganho de pista **GPU**, e quem decide é o próximo `PH2D_PAINT_PERF`.
+
+### §5.64 — "DEPOIS DE VÁRIOS TRAÇOS O IMPASTO FICA LENTO": três hipóteses minhas, três refutações, e o divisor que o log passou a publicar
+
+Report do Enio (2026-08-01) com log. ⚠️ **O log já isenta o dispatch** (`max=12,4`, e `0,0` nas duas
+janelas seguintes) e nomeia o balde: **`INPUT (fora do frame) p50=0,0 max=1016,5 ms`** — mediana grátis
+e **UM evento de um segundo**, com `período real 73,6 ms/frame` contra `frame p50=16,1`.
+
+⛔ **TRÊS hipóteses, TRÊS rejeições por medição — nenhuma confirmada:**
+
+1. **O(histórico)** (*"depois de vários"* é a assinatura). **Refutada:** 80 traços a 4096², histórico de
+   201 → **375 MB**, e pen-down/moves/pen-up ficam em **~7 ms cada, PLANOS**. Nenhum pico, inclusive
+   depois de o cap de bytes morder.
+2. **A CADÊNCIA do quadro** (a 1ª sonda nunca drenava o preview, e §5.49 mostrou que o handshake por
+   quadro muda o custo por evento). **Refutada** por ablação 2×2: com dreno e sem dreno, **4,31 × 4,33 ·
+   5,40 × 5,69 · 12,33 × 12,84 ms** nos raios 40/100/200. O dreno custa **zero**.
+3. **O PINCEL grande.** Real, mas pequeno demais: o pior evento sobe para **40 / 71 / 66 ms** nos raios
+   100 / 200 / 300 — e são **pen-down e pen-up**, não moves. Fica a **14× de distância** dos 1016 ms.
+
+⚠️ **E a 2ª sonda quase virou uma atribuição errada:** ela mudou raio **e** cadência ao mesmo tempo e
+reportou *"40-71 ms contra os 7 de antes"*, que se lê como *"a cadência custa 10×"*. Uma diferença
+medida com dois fatores é uma diferença **sem dono** — o 2×2 é que separou, e a resposta era o outro
+fator. *Ablação com confundidor produz um culpado plausível e errado.*
+
+#### O que ficou: o log ganhou o DIVISOR que faltava
+
+`INPUT p50=0,0 max=1016,5` admite **"um pen-up custa um segundo"** e **"um move custa um segundo"** —
+e as duas pedem curas **opostas** (o commit do histórico × o carimbo de dabs). É literalmente a doença
+da §5.48 (`stamps` sem as entregas) um sistema adiante, e a cura é a mesma: **publicar a fase**.
+
+```
+INPUT (fora do frame) down 0.0/0.0 move 0.0/0.0 up 0.0/0.0 ms (p50/max)
+```
+
+`input_ms` virou `[f32; 3]`, o mapeamento mora **ao lado do enum que ele produz** (o sítio de chamada
+está no teto de 600 LOC), e o gate é sobre a **SEPARAÇÃO**, não sobre o total: três baldes que somam no
+mesmo lugar são um balde só com três nomes. **Mutação (todo evento no balde `Move`): sangra.**
+
+⚠️ **O que NÃO foi feito, e por quê:** nenhuma cura foi escrita. O maior evento que a sonda reproduz é
+~71 ms e o produto marcou 1016 — **construir sobre esse vão seria escolher um culpado por eliminação**,
+que é exatamente o que as três refutações acima mostram dar errado. O próximo log nomeia a fase, e a
+fase escolhe a wave.

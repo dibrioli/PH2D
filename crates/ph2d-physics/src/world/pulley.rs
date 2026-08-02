@@ -354,13 +354,14 @@ pub fn apply(
         // trava segura mesmo com a corda bamba, porque o que ela impede não é só
         // a corda puxar a carga para dentro da roda — é a carga CHEGAR lá, por
         // qualquer motivo. No-op quando os dois números são zero.
-        let jam = apply_stops(bodies, p, live, scratch, dt, bias);
-        // ⚠️ **Uma ponta TRAVADA puxa RADIALMENTE** (W-RopeStop), e o vetor é
-        // derivado: com o nó no bloco a corda não corre, logo o arco é constante,
-        // logo `L = len + const` e `∂L/∂âncora` **é** o `g` da trava. A corda
-        // continua segurando o peso; o que some é a componente tangencial, que era
-        // a que arrastava a carga em volta do eixo.
-        let dir_a = jam[0].unwrap_or_else(|| Vector2::new(route.dir_a[0], route.dir_a[1]));
+        apply_stops(bodies, p, live, scratch, dt, bias);
+        // ⚠️ **Uma ponta travada NÃO troca de direção** (W-RopeStop, 2ª rodada de
+        // smoke). A versão anterior substituía isto pelo gradiente RADIAL da trava,
+        // e o preço foi a corda puxando **23,76° fora de si mesma** — a *"força
+        // bizarra que empurra o objeto na direção x das polias"*. Hoje quem cedeu
+        // foi a TRAVA, que passou a falar esta mesma direção: colineares, o resíduo
+        // entre as duas não tem eixo lateral para onde apontar.
+        let dir_a = Vector2::new(route.dir_a[0], route.dir_a[1]);
         // ⚠️ **A ponta B entra ENGRENADA** (W4). `weight_b` é `1.0` em toda corda
         // sem tambor diferencial — e `x * 1.0 == x` é exato —, então isto é
         // byte-neutro para tudo que já existia.
@@ -371,8 +372,7 @@ pub fn apply(
         // código próprio, e é o que faz a vantagem mecânica contínua sair de
         // graça: a tensão em B é `weight_b` vezes a de A, porque o impulso lá é
         // `−λ·weight_b·u_b`.
-        let dir_b =
-            jam[1].unwrap_or_else(|| Vector2::new(route.dir_b[0], route.dir_b[1])) * route.weight_b;
+        let dir_b = Vector2::new(route.dir_b[0], route.dir_b[1]) * route.weight_b;
         // Os tambores. Avança DEPOIS da rota — ela não depende do recolhido — e
         // antes da conta, de modo que o sub-passo que recolhe é o mesmo que
         // corrige; um passo de atraso aqui seria o guincho subindo um sub-passo
@@ -406,6 +406,12 @@ pub fn apply(
         } else {
             lag * route.weight_max * p.motor_rate.abs() * dt
         };
+        // ⚠️ **A folga que o NÓ TRAVADO cria** (W-RopeStop, 2ª rodada). Enquanto a
+        // trava está sendo violada, o guincho pede corda que o nó não deixa passar
+        // — então a corda simplesmente não puxa aquele tanto. Sem isto a trava
+        // trava um cabo-de-guerra contra um motor que nunca cansa, e ela perde: na
+        // roda de raio 2,0 com limitador 0,5 a carga chegava ao ARO (folga 0,0000).
+        // Zero em toda corda sem limitador ⇒ byte-idêntico.
         let c = route.length - (p.total_length - reeled);
         if c <= 0.0 {
             continue;
@@ -506,13 +512,28 @@ impl End {
         self.v.dot(&dir)
     }
 
-    /// A contribuição desta ponta para a massa efetiva.
+    /// A contribuição desta ponta para a massa efetiva, na forma **BILINEAR**
+    /// `aᵀ M⁻¹ b` — que é o que se pede quando o Jacobiano `a` e a direção do
+    /// impulso `b` **não são o mesmo vetor**.
     ///
-    /// ⚠️ Forma QUADRÁTICA sobre a inversa de massa por-eixo, porque é o
-    /// `effective_inv_mass` que carrega o Freeze X/Y (cabeçalho do módulo).
+    /// ⚠️ Isso não é generalidade especulativa: é o [`super::stop`]. Uma corda só
+    /// puxa ao longo de si mesma, mas a grandeza que o limitador vigia é a folga,
+    /// cujo gradiente é RADIAL. Sentir por um vetor e empurrar por outro é a única
+    /// forma que honra as duas coisas — e é legítimo porque `g·u = 1 > 0`, então
+    /// empurrar pela corda sempre corrige a folga.
+    ///
+    /// ⚠️ Sobre a inversa de massa por-EIXO, porque é o `effective_inv_mass` que
+    /// carrega o Freeze X/Y (cabeçalho do módulo).
+    fn k2(&self, a: Vector2<f32>, b: Vector2<f32>) -> f32 {
+        let ca = self.r.x * a.y - self.r.y * a.x;
+        let cb = self.r.x * b.y - self.r.y * b.x;
+        a.x * b.x * self.inv_m.x + a.y * b.y * self.inv_m.y + self.inv_i * ca * cb
+    }
+
+    /// A contribuição para a massa efetiva quando Jacobiano e impulso são a MESMA
+    /// direção — o caso da corda. É `k2(dir, dir)`, por UMA porta.
     fn k(&self, dir: Vector2<f32>) -> f32 {
-        let cross = self.r.x * dir.y - self.r.y * dir.x;
-        dir.x * dir.x * self.inv_m.x + dir.y * dir.y * self.inv_m.y + self.inv_i * cross * cross
+        self.k2(dir, dir)
     }
 }
 

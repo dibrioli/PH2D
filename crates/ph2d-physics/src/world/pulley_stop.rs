@@ -44,20 +44,41 @@
 //! TANGÊNCIA, a marca desenhada **é** o lugar onde a amarração vai parar — o que
 //! um limitador desenhado em cima da corda tem de significar.
 //!
-//! # A restrição
+//! # A restrição — SENTE pelo gradiente, EMPURRA pela corda
 //!
 //! ```text
 //! C   = s − len                      (violação, em metros; só age com C > 0)
-//! ∂C/∂âncora = −g ,  ∂C/∂centro = +g ,  g = (âncora − centro)/len
-//! Ċ   = v(âncora)·(−g) + v(centro)·(+g)
+//! g   = (âncora − centro)/len        (o GRADIENTE da folga; |g| = d/len ≥ 1)
+//! u   = (âncora − tangência)/len     (a direção da CORDA, unitária)
+//! Ċ   = v(âncora)·(−g) + v(eixo)·(+g)
+//! k   = gᵀ M⁻¹ u                     (bilinear — `End::k2`)
 //! λ   = (Ċ + β·C/dt) / k             , λ ≥ 0
+//! impulso = +λ·u na âncora, −λ·u no eixo
 //! ```
 //!
-//! ⚠️ **`g` NÃO é o versor do trecho** — ele aponta do centro da roda para a
-//! amarração, com magnitude `d/len ≥ 1`. Com raio zero os dois coincidem (`d =
-//! len`), e é por isso que a forma errada passaria despercebida em toda cena de
-//! roldana-ponto e mentiria por `d/len` justamente na roda grande, que é onde o
-//! artista pede o limitador.
+//! ⚠️ **Os dois vetores são DIFERENTES, e cada um responde a uma pergunta que só
+//! ele pode responder.**
+//!
+//! **Empurrar** tem de ser por `u`: *uma corda puxa ao longo de si mesma*, e a
+//! parte de `g` perpendicular a ela é força que nenhum fio transmite. Decompondo,
+//! `g = u + (r/len)·n` com `n ⊥ u`. Foi essa parte que o smoke do Enio viu como
+//! *"uma força bizarra que empurra o objeto na direção x das polias"* — medido,
+//! **1,3964 m** de deriva lateral em 3 s sobre uma carga que devia estar parada, e
+//! `atan(r/s)` de desvio: de 9,5° a **76°** na tabela de `measure_stop_sideways`.
+//!
+//! **Sentir** tem de ser por `g`: a folga muda com o balanço PERPENDICULAR à corda
+//! à taxa `r/len`, que numa roda de raio 2,0 com 0,5 m de folga é **4×** o que a
+//! corda percebe. Uma trava que só sente pela corda **não vê a carga chegando** —
+//! medido, folga mínima **0,0000** naquela roda contra **0,3685**.
+//!
+//! ⚠️ **E isso é a formulação padrão, não um remendo:** `g·u = 1` **identicamente**
+//! (porque `n ⊥ u` e `|u| = 1`), então empurrar pela corda sempre corrige a folga,
+//! e `λ = (Ċ + β·C/dt)/(gᵀM⁻¹u)` zera `Ċ` exatamente. Jacobiano `g`, direção de
+//! impulso `u` — o impulso sequencial não-simétrico.
+//!
+//! ⚠️ **A CORDA nunca muda de direção.** A v1 desta wave fazia o oposto — mandava a
+//! CORDA falar `g` quando a ponta travava —, e era isso que punha a força fora do
+//! eixo dela. Hoje quem se adapta é a trava, e só na metade em que ela pode.
 //!
 //! ⚠️ **`λ ≥ 0`: um limitador só AFASTA.** Ele não puxa a carga de volta para a
 //! roldana quando ela está longe — é a mesma desigualdade da corda, pelo lado
@@ -176,40 +197,41 @@ pub fn stop_at_point(leg: &StopLeg, p: [f32; 2]) -> f32 {
 /// a corda bamba — é outra coisa que ela impede (um corpo empurrado contra a
 /// roldana por um contato, por uma zona de força, pela mão).
 ///
-/// # Por que ele DEVOLVE alguma coisa — a metade que a medição exigiu
+/// # O nó travado — a órbita, e por que ela NÃO pede uma lei própria
 ///
-/// A primeira versão só empurrava, e a sonda mostrou a carga **orbitando a
-/// roldana**: com a folga radial presa em `s`, o orçamento `L ≤ L0` ainda
-/// encurtava pelo **ARCO**, então o guincho arrastava a carga por cima do eixo
-/// (`y` final **9,545 m** com a roldana a 8,0 — medido).
+/// A primeira versão empurrava pelo **gradiente radial**, e a sonda mostrou a
+/// carga **orbitando a roldana**: a trava empurrava por `g`, a corda puxava por
+/// `u`, e o resíduo entre duas direções que discordam é `λ·(r/len)·n` — lateral. O
+/// guincho arrastava a carga por cima do eixo (`y` final **9,545 m** com a roldana
+/// a 8,0 — medido).
 ///
-/// A física que faltava é o que um nó travado É: ele impede a corda de **CORRER**
-/// pelo bloco. O arco fica do outro lado do nó, então encurtá-lo exigiria
-/// exatamente a corrida que o nó proíbe.
+/// A cura da época foi obrigar a **CORDA** a falar `g` quando a ponta travava. Ela
+/// matava a órbita — e comprava, pelo mesmo preço, o defeito que o smoke reportou
+/// em seguida: passava a ser a corda que puxava **23,76° fora de si mesma**.
 ///
-/// A expressão disso no kernel é uma linha, e ela é **derivada, não escolhida**:
-/// com a corda impedida de correr, o arco fica CONSTANTE, logo `L = len + const`
-/// e o Jacobiano daquela ponta deixa de ser o versor do trecho e passa a ser
-/// `∂len/∂âncora`, que é o **`g` radial** — o mesmo vetor que a trava usa.
+/// **A cura que fica é a inversa:** quem cede é a TRAVA, e só na metade em que ela
+/// pode — ela **empurra** por `u`, a mesma direção da corda, e segue **sentindo**
+/// por `g`. Os dois impulsos da ponta ficam colineares, o resíduo perde o eixo
+/// lateral para onde apontar, e a órbita morre **sem** ninguém mexer no Jacobiano
+/// da corda.
 ///
-/// Em uma frase: *com o nó travado a corda só consegue puxar a ponta CONTRA o
-/// bloco; puxá-la de lado exigiria a corda correr, que é o que o nó proíbe.*
+/// ⚠️ **Ceder a metade errada foi MEDIDO e reprovado:** fazer a trava sentir por
+/// `u` também deixa a folga mínima da roda grande em **0,0000** — ela para de ver
+/// o balanço, que é 4× mais rápido que a corda ali.
 ///
-/// ⚠️ **A primeira versão tirava a ponta da restrição INTEIRA, e isso foi
-/// REPROVADO pelo gate da roda grande:** sem o termo da corda a ponta perde o
-/// SUPORTE, cai em queda livre, destrava ao se afastar, é apanhada de volta com
-/// um tranco — e o ciclo INJETA energia (medido: a carga atirada a `x = 3,976 m`
-/// numa roda de raio 2,0). Substituir o Jacobiano em vez de o apagar mantém a
-/// corda segurando o peso e tira **só** a componente tangencial, que é
-/// exatamente a que arrastaria a carga em volta do eixo.
+/// ⚠️ **Isto NÃO é apagar a lei do nó travado — é descobrir que ela era um
+/// SINTOMA.** Apagar só a substituição, mantendo o `g` da trava, **reproduz a
+/// órbita** (controle medido, mesma sonda: `x` final **1,686 m ao LADO** da
+/// roldana, `y` **7,73 m** com o eixo a 6,0). O que importava nunca foi *quem*
+/// fala `g` — era *que os dois falem a mesma coisa*.
 ///
-/// ⚠️ **E isso NÃO paralisa o outro lado**, que é o teste de que a lei está certa:
-/// com A travado, um contrapeso em B que desça ALONGA a rota, `C > 0`, e a corda o
-/// segura — que é o que uma corda com um nó preso no bloco faz.
+/// ⚠️ **E o outro lado não paralisa:** com A travado, um contrapeso em B que desça
+/// ALONGA a rota, `C > 0`, e a corda o segura — que é o que uma corda com um nó
+/// preso no bloco faz.
 ///
 /// No-op para toda corda cujos dois números são zero — o estado de tudo o que já
 /// existia —, e o `continue` sai antes de qualquer leitura de corpo, então aquelas
-/// cenas ficam **byte-idênticas** e a devolução é `[false, false]`.
+/// cenas ficam **byte-idênticas**.
 pub(super) fn apply_stops(
     bodies: &mut RigidBodySet,
     p: &PulleyDesc,
@@ -217,9 +239,8 @@ pub(super) fn apply_stops(
     legs: &[Tangent],
     dt: f32,
     bias: f32,
-) -> [Option<Vector2<f32>>; 2] {
-    let mut jammed = [None, None];
-    for (side, (&stop, jam)) in p.stops.iter().zip(jammed.iter_mut()).enumerate() {
+) {
+    for (side, &stop) in p.stops.iter().enumerate() {
         // ⚠️ **Não-finito é DESLIGADO, e não `<= 0.0`:** um `NaN` compara falso
         // com tudo, então a forma curta o deixaria atravessar até virar uma pose
         // `NaN` e daí o hash do `physics_ecs_c9`. Um `∞` seria uma trava mais
@@ -230,22 +251,27 @@ pub(super) fn apply_stops(
         let Some(leg) = stop_leg(legs, live, side) else {
             continue;
         };
-        // ⚠️ **A trava é declarada pela GEOMETRIA, não pelo impulso.** Ela vale
-        // mesmo quando o `λ` sai zero (a ponta já está se afastando sozinha):
-        // *o nó está encostado no bloco* é um fato sobre onde as coisas estão, e
-        // é ele que a corda tem de honrar.
-        // O gradiente da folga em relação à amarração. Um trecho degenerado daria
-        // `NaN` — e um `NaN` chega ao `physics_ecs_c9`.
+        // Um trecho degenerado daria `NaN` — e um `NaN` chega ao `physics_ecs_c9`.
         if leg.len <= f32::EPSILON {
             continue;
         }
+        // **A direção da CORDA** — da tangência para a amarração, unitária, e a
+        // MESMA que a rota entrega ao passe da corda (`RopeRoute::dir_a`/`dir_b`).
+        // O gradiente exato da folga é o radial, e é exatamente por ele que uma
+        // corda não consegue puxar: ver o cabeçalho.
+        // **O GRADIENTE** da folga — radial, do centro da roda para a amarração,
+        // com magnitude `d/len ≥ 1`. É por ele que a trava SENTE.
         let g = Vector2::new(
             (leg.anchor[0] - leg.centre[0]) / leg.len,
             (leg.anchor[1] - leg.centre[1]) / leg.len,
         );
-        if leg.len <= stop {
-            *jam = Some(g);
-        }
+        // **A DIREÇÃO DA CORDA** — da tangência para a amarração, unitária, e a
+        // MESMA que a rota entrega ao passe da corda (`RopeRoute::dir_a`/`dir_b`).
+        // É por ela que a trava EMPURRA.
+        let u = Vector2::new(
+            (leg.anchor[0] - leg.touch[0]) / leg.len,
+            (leg.anchor[1] - leg.touch[1]) / leg.len,
+        );
         let c = stop - leg.len;
         if c <= 0.0 {
             continue;
@@ -258,7 +284,7 @@ pub(super) fn apply_stops(
         let Some(e) = end(bodies, handle, local) else {
             continue;
         };
-        let mut k = e.k(g);
+        let mut k = e.k2(g, u);
         let mut c_dot = e.rate(-g);
         // A outra ponta da MESMA restrição: o eixo, quando ele é de um corpo.
         let axle = live
@@ -266,7 +292,7 @@ pub(super) fn apply_stops(
             .and_then(|w| Some((w.body?, w.local)))
             .and_then(|(h, l)| Some((h, end(bodies, h, l)?)));
         if let Some((_, ref ea)) = axle {
-            k += ea.k(g);
+            k += ea.k2(g, u);
             c_dot += ea.rate(g);
         }
         if k <= f32::EPSILON {
@@ -276,10 +302,9 @@ pub(super) fn apply_stops(
         if lambda <= 0.0 {
             continue;
         }
-        push(bodies, handle, e.point, lambda, g);
+        push(bodies, handle, e.point, lambda, u);
         if let Some((h, ea)) = axle {
-            push(bodies, h, ea.point, -lambda, g);
+            push(bodies, h, ea.point, -lambda, u);
         }
     }
-    jammed
 }

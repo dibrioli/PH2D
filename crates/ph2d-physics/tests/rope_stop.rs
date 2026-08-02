@@ -267,21 +267,30 @@ fn the_b_end_measures_against_the_last_wheel() {
     assert_eq!(b.wheel, 1);
 }
 
-/// **NUMA RODA GRANDE o gradiente não é o versor do trecho** — e é ele que decide
-/// ONDE a trava segura.
+/// **NUMA RODA GRANDE a trava tem de SENTIR pelo gradiente** — o radial —, ainda
+/// que empurre pela corda.
 ///
-/// ⚠️ **Este gate existe porque a mutação sobreviveu aos outros sete.** Trocar
-/// `(âncora − centro)/len` pelo versor do trecho passa em toda cena de roldana
-/// pequena, porque ali os dois quase coincidem: o ângulo entre eles é
-/// `acos(len/d)`, que numa roda de raio 0,5 com 1,5 m de folga vale **18°** e
-/// numa de raio 2,0 com 0,5 m de folga vale **76°**.
+/// ⚠️ **Este gate existe porque a mutação sobreviveu aos outros sete.** Fazer a
+/// trava *sentir* pelo versor do trecho passa em toda cena de roldana pequena,
+/// porque ali os dois quase coincidem: o ângulo entre eles é `acos(len/d)`, que
+/// numa roda de raio 0,5 com 1,5 m de folga vale **18°** e numa de raio 2,0 com
+/// 0,5 m de folga vale **76°**. Nesta cena o balanço perpendicular consome folga
+/// `r/len = 4×` mais rápido do que a corda a repõe, então uma trava que só sente
+/// pela corda **não vê a carga chegando**.
 ///
-/// Medido nesta cena (roda de raio 2,0, guincho a 0,5 m/s):
+/// Medido nesta cena (roda de raio 2,0, limitador 0,5, guincho a 0,5 m/s):
 ///
-/// | limitador | folga mínima CERTA | com o gradiente errado |
-/// |---|---|---|
-/// | 0,50 | **0,4883** | **0,0000** (a trava não segura nada) |
-/// | 1,00 | **0,9902** | 0,6883 (segura 31% cedo demais) |
+/// | lei | folga mínima |
+/// |---|---|
+/// | sente pelo radial, empurra pela corda (a que shipa) | **0,3685** |
+/// | sente E empurra pela corda | **0,0000** (a trava não segura nada) |
+///
+/// ⚠️ **A barra foi RE-MEDIDA, não herdada.** Ela dizia `> 0,45`, calibrada para a
+/// lei que empurrava pelo radial (0,4948) — e essa lei era a que punha a carga de
+/// lado (ver [`a_stopped_load_hanging_plumb_is_not_pushed_sideways`]). Com a força
+/// de volta ao eixo da corda o número honesto é **0,3685**: um sub-passo de
+/// ultrapassagem sobre uma carga que balança ±3,5 m, a mesma classe do
+/// esticamento que o `PULLEY_BIAS` já nomeia.
 ///
 /// ⚠️ **E o oráculo que eu escrevi primeiro estava ERRADO e o CONTROLE o
 /// derrubou:** eu afirmei que a carga não podia ser atirada de lado além do raio,
@@ -332,8 +341,122 @@ fn the_stop_holds_on_a_big_wheel_where_the_gradient_is_not_the_leg() {
         lowest = lowest.min((d * d - BIG_R * BIG_R).max(0.0).sqrt());
     }
     assert!(
-        lowest > 0.45,
+        lowest > 0.30,
         "o limitador de 0,5 m numa roda de raio 2,0 segurou em {lowest:.4} m — \
-         o gradiente saiu pelo TRECHO em vez de sair do eixo"
+         a trava deixou de SENTIR pelo radial (medido: 0,3685 certo · 0,0000 errado)"
     );
+}
+
+/// **A CARGA SEGURA PELA TRAVA NÃO É EMPURRADA DE LADO.**
+///
+/// Enio, 2ª rodada de smoke: *"quando o corpo encosta no limitador gera uma força
+/// bizarra que empurra o objeto na direção x das polias e o objeto fica pendulando
+/// para dentro"*.
+///
+/// ⚠️ **O oráculo é o PRUMO, e ele é geometria, não gosto.** Uma corda vertical
+/// deixa a roda pela TANGENTE, então em `(−r, eixo − s)` a corda desce a prumo e o
+/// peso é vertical: quem segura ao longo da corda equilibra exatamente e a carga
+/// **não anda de lado**. Quem segura pelo radial empurra com `tan(atan(r/s))` do
+/// peso — 44% nesta cena.
+///
+/// Medido (`measure_stop_sideways`, roda 0,7 · limitador 1,6 · guincho 0,5 m/s):
+///
+/// | lei | desvio lateral em 3 s |
+/// |---|---|
+/// | empurra pela corda (a que shipa) | **0,0000 m** |
+/// | empurra pelo radial | **1,3964 m** (e `vx` a ±1,69 m/s, sem parar) |
+///
+/// ⚠️ **E a consequência visível é ONDE a carga descansa:** o centro do pêndulo
+/// depois de travar mede **−0,7266 m ≈ −r** — embaixo do ponto de TANGÊNCIA, que é
+/// onde uma corda pendura. A lei radial a punha em **x ≈ 0**, embaixo do CENTRO.
+#[test]
+fn a_stopped_load_hanging_plumb_is_not_pushed_sideways() {
+    const R: f32 = 0.7;
+    const WY: f32 = 6.0;
+    const STOP: f32 = 1.6;
+    const BODY_R: f32 = 0.3;
+    let mut w = PhysicsWorld::new();
+    let area = std::f32::consts::PI * BODY_R * BODY_R;
+    let (dead, _) = w.add_static_cuboid(2.0, WY, 0.15, 0.15);
+    // O prumo da tangência: a corda desce reta do aro, e o peso é vertical.
+    let (load, _) = w.add_dynamic_circle(-R, WY - STOP, BODY_R, 1.0 / area);
+    let mut wheels = vec![RopeWheel {
+        centre: [0.0, WY],
+        radius: R,
+        id: 1,
+        ..RopeWheel::default()
+    }];
+    let mut scratch = Vec::new();
+    rope_route::resolve_sides([-R, WY - STOP], [2.0, WY], &mut wheels, &mut scratch);
+    let desc = PulleyDesc {
+        id: 1,
+        body_a: load,
+        body_b: dead,
+        local_a: [0.0, 0.0],
+        local_b: [0.0, 0.0],
+        wheel_start: 0,
+        wheel_count: 1,
+        total_length: 0.0,
+        motor_rate: 0.5,
+        break_force: f32::INFINITY,
+        stops: [0.0, 0.0],
+    };
+    w.set_pulleys(vec![desc], wheels.clone());
+    let mut d = desc;
+    d.total_length = w.pulley_span(&d).expect("rota sã");
+    d.stops = [STOP, 0.0];
+    w.set_pulleys(vec![d], wheels);
+
+    let mut worst = 0.0f32;
+    for _ in 0..180 {
+        w.step();
+        let x = w.bodies().get(load).expect("corpo").translation().x;
+        worst = worst.max((x + R).abs());
+    }
+    assert!(
+        worst < 0.02,
+        "a carga travada andou {worst:.4} m de lado em 3 s — a trava empurrou \
+         FORA do eixo da corda (medido: 0,0000 certo · 1,3964 pelo radial)"
+    );
+}
+
+/// **A trava empurra pela MESMA direção em que a corda puxa.**
+///
+/// ⚠️ Este é o invariante que impede o defeito de voltar por outra porta: o
+/// limitador deriva `u` do próprio [`stop_leg`] e a corda usa `RopeRoute::dir_a`.
+/// Se as duas convenções divergirem — um sinal trocado em [`rope_route`], uma
+/// ponta invertida — o resíduo entre as duas restrições volta a ter eixo lateral,
+/// e **nenhum gate de comportamento diria de onde veio**.
+#[test]
+fn the_stop_pushes_where_the_rope_pulls() {
+    let mut wheels = vec![
+        RopeWheel {
+            centre: [0.0, 4.0],
+            radius: 0.6,
+            id: 1,
+            ..RopeWheel::default()
+        },
+        RopeWheel {
+            centre: [5.0, 4.0],
+            radius: 0.9,
+            id: 2,
+            ..RopeWheel::default()
+        },
+    ];
+    let (a, b) = ([-1.0, 0.0], [6.0, 0.5]);
+    let mut scratch = Vec::new();
+    rope_route::resolve_sides(a, b, &mut wheels, &mut scratch);
+    let route = rope_route::route(a, b, &wheels, &mut scratch).expect("rota sã");
+    for (side, want) in [(0usize, route.dir_a), (1, route.dir_b)] {
+        let leg = stop_leg(&scratch, &wheels, side).expect("as duas pontas têm roldana");
+        let got = [
+            (leg.anchor[0] - leg.touch[0]) / leg.len,
+            (leg.anchor[1] - leg.touch[1]) / leg.len,
+        ];
+        assert!(
+            (got[0] - want[0]).abs() < 1e-5 && (got[1] - want[1]).abs() < 1e-5,
+            "ponta {side}: a trava empurra {got:?} e a corda puxa {want:?} — \
+             as duas discordam, e o resíduo entre elas é lateral"
+        );
+    }
 }

@@ -11,7 +11,7 @@
 //! primeiro `if` e o frame 2D é byte-idêntico.
 
 use ph2d_light::LightRig;
-use ph2d_mesh::{Mesh, Ray};
+use ph2d_mesh::{Mesh, Multires, Ray};
 use ph2d_mesh_render::{Camera3d, MeshRenderer};
 use ph2d_sculpt3d::{Brush, Dab, Grip, SculptStroke, Symmetry, Verb};
 
@@ -26,6 +26,14 @@ pub(crate) mod donation;
 /// *o que a mão FAZ* (lá), o mesmo que separa a [`donation`].
 #[path = "sculpt3d_input.rs"]
 mod input;
+
+/// **O que a cena LEMBRA** — a pilha de níveis e a fila de desfazer. Filho
+/// (`#[path]`) para alcançar os campos privados; o corte é *o que a cena É e o
+/// que a mão faz* (aqui) contra *o que ela guarda para poder voltar* (lá).
+#[path = "sculpt3d_history.rs"]
+mod history;
+
+use history::StrokeUndo;
 
 use donation::FormRole;
 use donation::FormStamp;
@@ -132,41 +140,11 @@ enum Drag {
     Sculpt,
 }
 
-/// **O estado anterior de um gesto** — a entrada de undo.
-///
-/// ⚠️ **Um enum e não um struct com bandeiras.** Ele começou como um `struct`
-/// com `whole_mask: bool`, porque duas formas cabiam em um discriminante; com a
-/// TERCEIRA (a topologia) o bool viraria um par de bandeiras cujas quatro
-/// combinações incluem duas que não significam nada. Aqui esquecer um caso não
-/// compila.
-enum StrokeUndo {
-    /// A janela de um traço. Não há um segundo sistema a construir: a lei do
-    /// traço já congela o `pre` por vértice tocado, e `touched` +
-    /// `base_positions` É a janela.
-    Stroke {
-        verts: Vec<u32>,
-        positions: Vec<[f32; 3]>,
-        /// As máscaras de antes, quando o traço PINTOU máscara.
-        masks: Option<Vec<f32>>,
-    },
-    /// Uma operação de máscara mexeu na malha inteira: o estado anterior é o
-    /// plano INTEIRO. ⚠️ O `None` aqui quer dizer *não havia máscara*, o que se
-    /// desfaz REMOVENDO o plano — e é por isso que ele é um caso e não a
-    /// ausência de um campo: desfazer um `Invert` sobre malha virgem tem de
-    /// deixá-la virgem outra vez.
-    Mask(Option<Vec<f32>>),
-    /// **A TOPOLOGIA mudou** (subdividir): a malha inteira, porque a contagem
-    /// de vértices é outra e um índice de antes não nomeia nada de agora.
-    ///
-    /// ⚠️ Caro por natureza e não por descuido — guardar uma janela exige que os
-    /// dois lados falem dos mesmos vértices, e aqui eles não falam. `Box` porque
-    /// uma `Mesh` dentro do enum daria a TODA entrada o tamanho dela.
-    Topology(Box<Mesh>),
-}
-
 /// A cena 3D viva: a malha, a câmera, o pincel e o pipeline que a desenha.
 pub(crate) struct Sculpt3dScene {
-    pub(crate) mesh: Mesh,
+    /// **A PILHA de níveis**, e não uma malha — ver [`Multires`]. O nível 0 é a
+    /// base; o artista esculpe no que estiver selecionado.
+    pub(crate) stack: Multires,
     pub(crate) camera: Camera3d,
     renderer: MeshRenderer,
     /// A malha já subiu inteira ao device? Depois disso só sobem REGIÕES.
@@ -224,7 +202,7 @@ impl Sculpt3dScene {
         };
         camera.frame(mesh.bounds(), aspect);
         Self {
-            mesh,
+            stack: Multires::new(mesh),
             camera,
             renderer: MeshRenderer::new(device, ph2d_render::GameRt::FORMAT),
             uploaded: false,
@@ -250,6 +228,19 @@ impl Sculpt3dScene {
             role: FormRole::Clay,
             donated: None,
         }
+    }
+
+    /// A malha do nível VIVO — a que o artista vê e esculpe.
+    ///
+    /// ⚠️ Porta, e não campo, desde que a pilha existe: *qual malha é esta cena*
+    /// passou a ter uma resposta que depende do nível selecionado, e um campo
+    /// paralelo seria a segunda cópia dessa resposta.
+    pub(crate) fn mesh(&self) -> &Mesh {
+        self.stack.mesh()
+    }
+
+    fn mesh_mut(&mut self) -> &mut Mesh {
+        self.stack.mesh_mut()
     }
 
     /// O raio autorado, **já clampado contra a tela desta janela**.
@@ -329,7 +320,7 @@ impl Sculpt3dScene {
     /// se puxa uma ponta para fora da silhueta.
     fn take_hold(&mut self, x: f32, y: f32) -> bool {
         let ray = self.ray_at(x, y);
-        let Some(hit) = self.mesh.raycast(&ray) else {
+        let Some(hit) = self.mesh().raycast(&ray) else {
             return false;
         };
         self.grab = Some((hit.point, (x, y)));
@@ -361,7 +352,7 @@ impl Sculpt3dScene {
         let brush = self.armed_brush(at);
         let eye = self.ray_at(x, y).dir();
         self.stroke.dab(
-            &mut self.mesh,
+            self.stack.mesh_mut(),
             &brush,
             &Dab::pulling(at, brush.radius, eye, pull),
             self.symmetry,
@@ -391,7 +382,7 @@ impl Sculpt3dScene {
         let brush = self.armed_brush(c1);
         let eye = self.ray_at(to[0], to[1]).dir();
         self.stroke.dab(
-            &mut self.mesh,
+            self.stack.mesh_mut(),
             &brush,
             &Dab::hooking(c1, brush.radius, eye, step),
             self.symmetry,
@@ -407,7 +398,7 @@ impl Sculpt3dScene {
     /// malha — e errar é normal: a mão sai do modelo o tempo todo.
     fn sculpt_at(&mut self, x: f32, y: f32) -> bool {
         let ray = self.ray_at(x, y);
-        let Some(hit) = self.mesh.raycast(&ray) else {
+        let Some(hit) = self.mesh().raycast(&ray) else {
             return false;
         };
         if std::env::var("PH2D_SCULPT3D_DIAG").ok().as_deref() == Some("1") {
@@ -426,7 +417,7 @@ impl Sculpt3dScene {
         }
         let brush = self.armed_brush(hit.point);
         self.stroke.dab(
-            &mut self.mesh,
+            self.stack.mesh_mut(),
             &brush,
             // ⚠️ **O olho é o `dir` do raio que ACABOU de produzir este acerto**,
             // e não uma direção derivada da câmera de novo: duas respostas para
@@ -458,112 +449,22 @@ impl Sculpt3dScene {
     /// ⚠️ E a GPU tem de re-ler a malha INTEIRA: o `dirty` incremental é a
     /// janela de um dab, e aqui não houve dab.
     fn mask_op(&mut self, op: MaskOp) {
-        let before = self.mesh.masks().map(<[f32]>::to_vec);
+        let before = self.mesh().masks().map(<[f32]>::to_vec);
         match op {
             MaskOp::Clear => {
-                if !ph2d_sculpt3d::mask_ops::clear(&mut self.mesh) {
+                if !ph2d_sculpt3d::mask_ops::clear(self.mesh_mut()) {
                     return;
                 }
             }
-            MaskOp::Invert => ph2d_sculpt3d::mask_ops::invert(&mut self.mesh),
-            MaskOp::Blur => ph2d_sculpt3d::mask_ops::blur(&mut self.mesh, MASK_OP_PASSES),
-            MaskOp::Sharpen => ph2d_sculpt3d::mask_ops::sharpen(&mut self.mesh, MASK_OP_PASSES),
+            MaskOp::Invert => ph2d_sculpt3d::mask_ops::invert(self.mesh_mut()),
+            MaskOp::Blur => ph2d_sculpt3d::mask_ops::blur(self.mesh_mut(), MASK_OP_PASSES),
+            MaskOp::Sharpen => ph2d_sculpt3d::mask_ops::sharpen(self.mesh_mut(), MASK_OP_PASSES),
         }
-        self.undo.push(StrokeUndo::Mask(before));
+        self.undo.push(StrokeUndo::Mask {
+            level: self.stack.level(),
+            before,
+        });
         self.uploaded = false;
         self.edits += 1;
-    }
-
-    /// **SUBDIVIDE a malha uma vez** — quatro faces onde havia uma.
-    ///
-    /// ⚠️ **Isto encerra o traço em voo, e é obrigatório**: o `SculptStroke`
-    /// carrega índices e um `pre` congelado da topologia ANTIGA, e o `begin`
-    /// seguinte só reconstrói os vetores se a contagem mudou — o que ela mudou,
-    /// mas a janela de undo pendente falaria de vértices que não existem mais.
-    ///
-    /// ⚠️ **O custo é do REBUILD, não da aritmética** (sonda
-    /// `measure_subdivide`): numa malha de 24 mil vértices o gesto inteiro custa
-    /// **7,3 ms**, dos quais 6,4 são reconstruir adjacência, octree e normais da
-    /// malha quatro vezes maior — o plano e os canais são 0,7. É por isso que
-    /// não há teto escrito aqui: o que aperta primeiro é a MEMÓRIA (~100 B por
-    /// vértice de saída), e o log diz o número depois de cada nível.
-    fn subdivide(&mut self) {
-        self.undo
-            .push(StrokeUndo::Topology(Box::new(self.mesh.clone())));
-        self.mesh = ph2d_mesh::subdivide(&self.mesh);
-        self.stroke = SculptStroke::default();
-        self.mesh_rebuilt();
-    }
-
-    /// Fecha o traço e guarda o desfazer.
-    fn close_stroke(&mut self) {
-        if self.stroke.touched().is_empty() {
-            return;
-        }
-        self.undo.push(StrokeUndo::Stroke {
-            verts: self.stroke.touched().to_vec(),
-            positions: self.stroke.base_positions().to_vec(),
-            masks: self
-                .brush
-                .verb
-                .paints_mask()
-                .then(|| self.stroke.base_masks().to_vec()),
-        });
-    }
-
-    /// Desfaz o último traço. Devolve `false` se não havia nada.
-    fn undo_stroke(&mut self) -> bool {
-        let Some(entry) = self.undo.pop() else {
-            return false;
-        };
-        match entry {
-            // Uma operação de máscara mexeu na malha inteira: o estado anterior
-            // é o plano INTEIRO, e `None` quer dizer *não havia máscara* — o
-            // que se desfaz REMOVENDO o plano, não zerando-o.
-            StrokeUndo::Mask(before) => {
-                match before {
-                    Some(m) => self.mesh.put_masks(m),
-                    None => {
-                        self.mesh.take_masks();
-                    }
-                }
-                self.uploaded = false;
-                self.edits += 1;
-            }
-            // ⚠️ **A malha INTEIRA volta**, e com ela o traço em voo tem de
-            // morrer: o `SculptStroke` guarda índices e um `pre` de uma
-            // topologia que deixou de existir.
-            StrokeUndo::Topology(mesh) => {
-                self.mesh = *mesh;
-                self.stroke = SculptStroke::default();
-                self.mesh_rebuilt();
-            }
-            StrokeUndo::Stroke {
-                verts,
-                positions,
-                masks,
-            } => {
-                if let Some(masks) = masks {
-                    let out = self.mesh.masks_mut();
-                    for (&v, m) in verts.iter().zip(&masks) {
-                        out[v as usize] = *m;
-                    }
-                } else {
-                    let out = self.mesh.positions_mut();
-                    for (&v, p) in verts.iter().zip(&positions) {
-                        out[v as usize] = *p;
-                    }
-                    // ⚠️ O `rebuild` inteiro, e não um `refresh_region`:
-                    // desfazer devolve posições que o refit incremental já
-                    // tinha "seguido" para outro lugar, e um refit sobre a
-                    // volta deixaria caixas frouxas grandes demais acumulando a
-                    // cada Ctrl+Z. Um undo é user-paced — é o lugar certo para
-                    // pagar a resposta exata.
-                    self.mesh.rebuild();
-                    self.mesh_rebuilt();
-                }
-            }
-        }
-        true
     }
 }

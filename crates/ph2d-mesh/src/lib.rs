@@ -40,6 +40,7 @@ mod adjacency;
 mod edges;
 mod face;
 mod mesh;
+mod multires;
 mod normals;
 mod obj;
 mod octree;
@@ -51,6 +52,7 @@ pub use adjacency::{Adjacency, Csr};
 pub use edges::Edges;
 pub use face::{Face, TRI};
 pub use mesh::{DEFAULT_COLOR, DEFAULT_MASK, Mesh, MeshError, QueryScratch, RegionScratch};
+pub use multires::Multires;
 pub use normals::{
     PAR_MIN, face_normal, face_normals_of, recompute_face_normals, recompute_vertex_normals,
     vertex_normals_of,
@@ -58,7 +60,7 @@ pub use normals::{
 pub use obj::{ObjError, import_obj};
 pub use octree::{Octree, RefitScratch};
 pub use ray::{Hit, Ray};
-pub use subdivide::{Lerpable, subdivide};
+pub use subdivide::{Lerpable, Predicted, predict, subdivide};
 
 /// Geometria de teste — um cubo e uma esfera UV.
 ///

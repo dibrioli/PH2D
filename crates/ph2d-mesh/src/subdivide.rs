@@ -151,25 +151,64 @@ impl Plan {
 pub fn subdivide(mesh: &Mesh) -> Mesh {
     let edges = mesh.edges();
     let plan = Plan::build(mesh, &edges);
-    let n = plan.out_verts;
+    let p = predict_with(mesh, &edges, &plan);
 
-    let mut positions = vec![[0.0f32; 3]; n];
-    subdivide_channel(mesh, &edges, &plan, mesh.positions(), &mut positions);
-
-    let mut out = Mesh::from_parts(positions, plan.faces.clone())
+    let mut out = Mesh::from_parts(p.positions, plan.faces)
         .expect("a subdivisão só nomeia vértices que ela mesma criou");
-
-    if let Some(src) = mesh.colors() {
-        let mut dst = vec![[0.0f32; 3]; n];
-        subdivide_channel(mesh, &edges, &plan, src, &mut dst);
-        out.colors_mut().copy_from_slice(&dst);
+    if let Some(c) = p.colors {
+        out.colors_mut().copy_from_slice(&c);
     }
-    if let Some(src) = mesh.masks() {
-        let mut dst = vec![0.0f32; n];
-        subdivide_channel(mesh, &edges, &plan, src, &mut dst);
-        out.masks_mut().copy_from_slice(&dst);
+    if let Some(m) = p.masks {
+        out.masks_mut().copy_from_slice(&m);
     }
     out
+}
+
+/// **O que a subdivisão FARIA com os canais, sem construir a malha** — o
+/// `partialSubdivision` do original.
+///
+/// ⚠️ **É a metade barata, e a diferença não é marginal:** a sonda mede o gesto
+/// inteiro em 7,3 ms numa malha de 24 mil vértices, dos quais **6,4 são o
+/// `rebuild`** (adjacência, octree, normais) da malha quatro vezes maior. Quem
+/// só precisa das POSIÇÕES — a multiresolução, que troca de nível sobre uma
+/// topologia que já existe — paga 0,9 em vez de 7,3.
+///
+/// ⚠️ E é o MESMO corpo do [`subdivide`], não uma segunda resposta: ele chama
+/// esta função e só acrescenta o `Mesh::from_parts`. Duas rotas para *"onde vai
+/// o vértice novo"* fariam a malha SALTAR ao trocar de nível.
+#[must_use]
+pub fn predict(mesh: &Mesh) -> Predicted {
+    let edges = mesh.edges();
+    let plan = Plan::build(mesh, &edges);
+    predict_with(mesh, &edges, &plan)
+}
+
+/// Os canais que a subdivisão produziria — ver [`predict`].
+pub struct Predicted {
+    pub positions: Vec<[f32; 3]>,
+    pub colors: Option<Vec<[f32; 3]>>,
+    pub masks: Option<Vec<f32>>,
+}
+
+fn predict_with(mesh: &Mesh, edges: &Edges, plan: &Plan) -> Predicted {
+    let n = plan.out_verts;
+    let mut positions = vec![[0.0f32; 3]; n];
+    subdivide_channel(mesh, edges, plan, mesh.positions(), &mut positions);
+    let colors = mesh.colors().map(|src| {
+        let mut dst = vec![[0.0f32; 3]; n];
+        subdivide_channel(mesh, edges, plan, src, &mut dst);
+        dst
+    });
+    let masks = mesh.masks().map(|src| {
+        let mut dst = vec![0.0f32; n];
+        subdivide_channel(mesh, edges, plan, src, &mut dst);
+        dst
+    });
+    Predicted {
+        positions,
+        colors,
+        masks,
+    }
 }
 
 /// O corpo: aplica a tabela de pesos a UM canal.

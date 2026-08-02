@@ -39,6 +39,8 @@ impl App {
              [sculpt3d] a MASCARA (M) protege o que ela pinta e se VE (azul frio): C limpa · I inverte · B borra · N afia\n\
              [sculpt3d] K = SUBDIVIDIR: 4 faces onde havia 1, e a forma ALISA (Catmull-Clark/Loop)\n\
              [sculpt3d]     o log diz a contagem nova a cada toque -- ela quadruplica; Ctrl+Z desfaz\n\
+             [sculpt3d] , e . DESCEM e SOBEM na pilha de niveis: esculpa fino em cima, volte ao 0\n\
+             [sculpt3d]     para mover a FORMA GRANDE, e suba -- o detalhe fino continua la'\n\
              [sculpt3d] G = PEGAR o barro (grab): segure e arraste, e ele vem com o dedo\n\
              [sculpt3d] H = ESTICAR (snake hook): a pegada ANDA com o cursor e sai um espinho\n\
              [sculpt3d]     o G volta ao lugar quando voce volta; o H deixa a ponta la' -- essa e' a diferenca\n\
@@ -101,7 +103,7 @@ impl App {
                 if shift {
                     scene.brush.verb = Verb::Smooth;
                 }
-                scene.stroke.begin(&scene.mesh);
+                scene.stroke.begin(scene.stack.mesh());
                 // A âncora do espaçamento nasce no pen-down: o 1º dab é o que
                 // está sob o dedo, e o resíduo passa a contar a partir dele.
                 scene.stroke_anchor = [pos.0, pos.1];
@@ -317,13 +319,38 @@ impl App {
         // toque. Um botão que quadruplica a malha sem dizer quanto ela ficou é
         // um botão que o artista aperta uma vez a mais.
         if code == K::KeyK {
-            scene.subdivide();
-            eprintln!(
-                "[sculpt3d] subdividida: {} vertices / {} faces / {} triangulos",
-                scene.mesh.vert_count(),
-                scene.mesh.face_count(),
-                scene.mesh.triangle_count()
-            );
+            if scene.subdivide() {
+                eprintln!(
+                    "[sculpt3d] subdividida: nivel {} de {} -- {} vertices / {} faces / {} triangulos",
+                    scene.stack.level(),
+                    scene.stack.level_count() - 1,
+                    scene.mesh().vert_count(),
+                    scene.mesh().face_count(),
+                    scene.mesh().triangle_count()
+                );
+            } else {
+                eprintln!("[sculpt3d] so' do TOPO: suba (.) antes de subdividir");
+            }
+            return true;
+        }
+        // ⚠️ **Descer e subir NÃO é uma edição** — ver `change_level`. O log diz o
+        // nível porque a malha de baixo se PARECE com a de cima alisada: sem o
+        // número, o artista não sabe em qual está.
+        if code == K::Comma || code == K::Period {
+            let up = code == K::Period;
+            if scene.change_level(up) {
+                eprintln!(
+                    "[sculpt3d] nivel {} de {} -- {} vertices",
+                    scene.stack.level(),
+                    scene.stack.level_count() - 1,
+                    scene.mesh().vert_count()
+                );
+            } else {
+                eprintln!(
+                    "[sculpt3d] ja' esta' no {}",
+                    if up { "TOPO" } else { "nivel 0" }
+                );
+            }
             return true;
         }
         if let Some(v) = verb {

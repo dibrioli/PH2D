@@ -209,15 +209,18 @@ impl Sculpt3dScene {
     /// pela MESMA, senão as duas rotas discordariam sobre que malha o dispositivo tem.
     pub(super) fn sync_mesh(&mut self, device: &wgpu::Device, queue: &wgpu::Queue) {
         if !self.uploaded {
-            self.renderer.upload(device, queue, &self.mesh);
+            self.renderer.upload(device, queue, self.stack.mesh());
             self.uploaded = true;
             self.dirty.clear();
         } else if !self.dirty.is_empty() {
             // A região, e o cheio como fallback: `upload_region` recusa quando a topologia mudou, e
             // recusar é a resposta certa — escrever a região sobre um buffer de outra topologia
             // poria bytes válidos nos vértices errados.
-            if !self.renderer.upload_region(queue, &self.mesh, &self.dirty) {
-                self.renderer.upload(device, queue, &self.mesh);
+            if !self
+                .renderer
+                .upload_region(queue, self.stack.mesh(), &self.dirty)
+            {
+                self.renderer.upload(device, queue, self.stack.mesh());
             }
             self.dirty.clear();
         }

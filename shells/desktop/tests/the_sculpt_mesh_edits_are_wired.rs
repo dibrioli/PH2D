@@ -9,14 +9,6 @@
 mod sculpt_source;
 use sculpt_source::{braced_block, function_body, sculpt_src};
 
-/// ⚠️ **A ORDEM é a feature: guardar a malha ANTES de trocá-la.**
-///
-/// Um `push` depois da substituição guardaria a malha NOVA, e o Ctrl+Z seguinte
-/// devolveria exatamente o que já está na tela — um undo que não desfaz nada,
-/// com todos os gates de contagem verdes. É uma relação posicional dentro de uma
-/// função (a mesma classe do *o load instala depois do rebuild* da física), não
-/// uma distância em bytes.
-
 #[test]
 fn the_gpu_is_handed_the_window_that_answers_for_every_channel() {
     // ⚠️ Este gate existe porque o defeito É este, e um gate de GPU o pegou: o
@@ -71,7 +63,7 @@ fn undoing_rebuilds_the_index_instead_of_refitting_the_way_back() {
     // user-paced — é o lugar certo para pagar a resposta exata.
     let body = function_body(&sculpt_src(), "undo_stroke");
     assert!(
-        body.contains("self.mesh.rebuild()"),
+        body.contains("self.mesh_mut().rebuild()"),
         "desfazer tem de reconstruir o índice"
     );
     assert!(
@@ -128,7 +120,7 @@ fn the_four_mask_operations_have_a_gesture_and_an_undo() {
     // nesta linha. O que o gate quer dizer é *desfazer distingue a janela de um
     // traço do plano INTEIRO*, e isso é o braço.
     assert!(
-        undo.contains("StrokeUndo::Mask(") && undo.contains("StrokeUndo::Stroke"),
+        undo.contains("StrokeUndo::Mask {") && undo.contains("StrokeUndo::Stroke"),
         "desfazer tem de distinguir a janela de um traço da máscara INTEIRA"
     );
     // ⚠️ E `None` quer dizer *não havia máscara*, que se desfaz REMOVENDO o
@@ -141,21 +133,31 @@ fn the_four_mask_operations_have_a_gesture_and_an_undo() {
     );
 }
 
+/// ⚠️ **Com a PILHA, o desfazer de uma subdivisão deixou de guardar a malha.**
+///
+/// A entrada anterior era `Topology(Box<Mesh>)` — uma cópia do documento — e a
+/// ORDEM importava (guardar antes de trocar; guardar depois teria salvo a malha
+/// NOVA, um undo que não desfaz nada com todos os gates de contagem verdes).
+/// Com a pilha, o nível de baixo **nunca foi tocado**: ele continua ali, e
+/// desfazer é descartar o topo. Não há o que guardar, então não há ordem a
+/// errar — *a representação apagou o caso especial*.
 #[test]
-fn subdividing_stores_the_mesh_before_it_replaces_it() {
+fn undoing_a_subdivision_drops_the_top_level_instead_of_restoring_a_mesh() {
     let src = sculpt_src();
     let body = function_body(&src, "subdivide(&mut self)");
-    let push = body
-        .find("StrokeUndo::Topology")
-        .expect("a entrada de undo é de TOPOLOGIA: a contagem de vértices muda");
-    let swap = body
-        .find("self.mesh = ph2d_mesh::subdivide")
-        .expect("a malha nova sai da porta do kernel");
     assert!(
-        push < swap,
-        "o estado anterior tem de ser guardado ANTES de a malha ser trocada"
+        body.contains("self.stack.add_level()"),
+        "subdividir é acrescentar um nível à pilha"
     );
-    // ⚠️ E o traço em voo MORRE: ele carrega índices e um `pre` congelado de uma
+    assert!(
+        body.contains("StrokeUndo::AddedLevel"),
+        "a entrada é o FATO de um nível ter entrado, não uma cópia da malha"
+    );
+    assert!(
+        !body.contains("clone()"),
+        "guardar a malha inteira é o que a pilha existe para não fazer"
+    );
+    // ⚠️ O traço em voo MORRE: ele carrega índices e um `pre` congelado de uma
     // topologia que deixou de existir.
     assert!(
         body.contains("self.stroke = SculptStroke::default()"),
@@ -166,22 +168,58 @@ fn subdividing_stores_the_mesh_before_it_replaces_it() {
         "os buffers do device mudaram de TAMANHO: o upload incremental não serve"
     );
 
-    // O outro lado: desfazer devolve a malha inteira e mata o traço junto.
+    // O outro lado: desfazer descarta o topo e mata o traço junto.
+    //
+    // ⚠️ O `undo_stroke` tem DOIS `match entry` — o primeiro escolhe o nível
+    // (e `AddedLevel` não participa dele, com um braço vazio que existe para o
+    // enum continuar exaustivo), o segundo AGE. Sem recortar o segundo, o
+    // `braced_block` acha o braço vazio e a asserção mede o lugar errado.
     let undo = function_body(&src, "undo_stroke");
-    let arm = braced_block(&undo, "StrokeUndo::Topology(mesh) =>");
+    let action = &undo[undo.rfind("match entry {").expect("o match que AGE")..];
+    let arm = braced_block(action, "StrokeUndo::AddedLevel =>");
     assert!(
-        arm.contains("self.mesh = *mesh") && arm.contains("SculptStroke::default()"),
-        "desfazer uma topologia devolve a malha E encerra o traço"
+        arm.contains("self.stack.drop_top()") && arm.contains("SculptStroke::default()"),
+        "desfazer um nível o descarta E encerra o traço"
     );
 
-    // E a tecla existe, com o log que diz o preço.
+    // ⚠️ **E a entrada de EDIÇÃO carrega o NÍVEL**, senão desfazer um traço do
+    // nível 0 de pé no 2 escreveria posições certas nos vértices errados — em
+    // silêncio, porque os índices existem nos dois.
+    assert!(
+        undo.contains("self.stack.select(level)"),
+        "desfazer volta ao nível em que a edição aconteceu"
+    );
+
+    // E as teclas existem, com o log que diz onde o artista está.
     let key = function_body(&src, "sculpt3d_key");
     assert!(
         key.contains("K::KeyK") && key.contains("scene.subdivide()"),
         "a tecla K chega à porta"
     );
     assert!(
-        key.contains("triangle_count()"),
-        "o log tem de dizer a contagem NOVA: esta tecla quadruplica a malha"
+        key.contains("K::Comma") && key.contains("scene.change_level(up)"),
+        "as teclas de nível chegam à porta"
+    );
+    assert!(
+        key.contains("stack.level()"),
+        "o log tem de dizer o NÍVEL: a malha de baixo se parece com a de cima alisada"
+    );
+}
+
+/// ⚠️ **Desfazer uma subdivisão de pé NOUTRO nível** — o gate que a mutação
+/// pediu.
+///
+/// `drop_top` só age no topo (descartar do meio deixaria detalhes descrevendo um
+/// nível que não existe mais), então sem subir primeiro o Ctrl+Z era consumido e
+/// **não fazia nada** — a forma exata de *"o undo parou de funcionar"*.
+#[test]
+fn undoing_an_added_level_climbs_back_to_the_top_first() {
+    let undo = function_body(&sculpt_src(), "undo_stroke");
+    // O PRIMEIRO `match entry` é o que escolhe o nível; o segundo AGE.
+    let at = undo.find("match entry {").expect("o match que SELECIONA");
+    let arm = braced_block(&undo[at..], "StrokeUndo::AddedLevel =>");
+    assert!(
+        arm.contains("level_count()") && arm.contains("self.stack.select(top)"),
+        "desfazer um nível tem de SUBIR ao topo antes de descartá-lo"
     );
 }

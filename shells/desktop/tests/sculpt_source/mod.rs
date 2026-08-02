@@ -104,13 +104,30 @@ pub fn match_arm(src: &str, anchor: &str) -> String {
     }
 }
 
-/// A fiação do módulo 3D no shell, **os dois arquivos como um**.
+/// A fiação do módulo 3D no shell, **o CLUSTER inteiro**.
 ///
-/// ⚠️ O corte entre *a cena* (`sculpt3d.rs`) e *o gesto* (`sculpt3d_input.rs`) é
-/// de responsabilidade e já se moveu uma vez (o teto de LOC). Um gate que
-/// nomeia o ARQUIVO de cada função vira vermelho no próximo split, sobre
-/// produto correto — a `line/Vector` pagou isso duas vezes. As asserções aqui
-/// são sobre o que a fiação FAZ, então elas leem o par.
+/// ⚠️ O corte entre *a cena* (`sculpt3d.rs`), *o gesto* (`_input.rs`), *a
+/// doação* (`_donation.rs`) e *a história* (`_history.rs`) é de responsabilidade
+/// e já se moveu DUAS vezes (o teto de LOC). Um gate que nomeia o ARQUIVO de
+/// cada função vira vermelho no próximo split, **sobre produto correto** — a
+/// `line/Vector` pagou isso duas vezes e esta linha pagou uma. As asserções aqui
+/// são sobre o que a fiação FAZ, então ela lê **todo `sculpt3d*.rs`**: o quinto
+/// arquivo nasce coberto, que é como o quarto nasceu descoberto.
 pub fn sculpt_src() -> String {
-    format!("{}\n{}", source("sculpt3d.rs"), source("sculpt3d_input.rs"))
+    let dir = format!("{}/src", env!("CARGO_MANIFEST_DIR"));
+    let mut names: Vec<String> = fs::read_dir(&dir)
+        .expect("src/")
+        .filter_map(|e| e.ok().map(|e| e.file_name().to_string_lossy().into_owned()))
+        .filter(|n| n.starts_with("sculpt3d") && n.ends_with(".rs"))
+        .collect();
+    names.sort();
+    assert!(
+        names.len() >= 4,
+        "o cluster tem pelo menos quatro arquivos, e achei {names:?}"
+    );
+    names
+        .iter()
+        .map(|n| source(n))
+        .collect::<Vec<_>>()
+        .join("\n")
 }

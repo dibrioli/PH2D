@@ -19,6 +19,7 @@
 //! All per-pixel math is table lookups + sums/mults (HR-5) — LUTs in [`super::watercolor_lut`], the
 //! integer-hash value noise in [`super::watercolor_field`]; no transcendental runs in the hot loop.
 
+mod diag; // o envelope de diagnóstico do composite (LOC split)
 mod window;
 
 use super::watercolor_field::*;
@@ -36,17 +37,7 @@ pub(super) const SS0: f32 = 0.12; // LITERAL-PX-OK: coverage-hardening smoothste
 pub(super) const SS1: f32 = 0.60; // LITERAL-PX-OK: coverage-hardening smoothstep high edge (wet_edges)
 
 impl PainterTool {
-    /// Composite the watercolor wash over the frozen base ([`PaintState::watercolor_base`](super::PaintState)).
-    ///
-    /// Reads the coverage + deposited-colour buffers, reconstructs the optical density `D`, and applies
-    /// per-channel Beer–Lambert in linear light — see the module docs. The base is a separate `Arc` (each
-    /// frame recomposites from the pristine pre-stroke pixels, no overlay peel); `commit` drops it at the
-    /// pen-up bake (inside the undo transaction), the live passes keep it for the next frame.
-    ///
-    /// **Dirty-rect (wet_edges `renderFrame`/`endStroke`):** live passes recomposite ONLY the frame
-    /// dirty rect (dabs since the last composite) padded by the influence radius; the pen-up bake makes
-    /// one cumulative pass from a tracked bbox — never a full scan. Returns the region (`None` = no-op).
-    pub(super) fn apply_watercolor(&mut self, commit: bool) -> Option<Region> {
+    fn apply_watercolor_inner(&mut self, commit: bool) -> Option<Region> {
         // Window arithmetic (frozen bases + dirty-rect consumption + influence
         // padding + read window) — moved verbatim to [`window::WashWindow`];
         // `None` = nothing to composite, and the commit still drops the base.

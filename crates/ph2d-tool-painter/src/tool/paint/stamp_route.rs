@@ -70,6 +70,7 @@ impl PainterTool {
                 self.paint.dab_groups.clear();
                 dabs
             };
+            let t_wash = std::time::Instant::now();
             self.accumulate_wet_coverage(wet_dabs);
             // Smudge > 0 = TRUE SMEAR: each dab physically drags the frozen base's paint dab-to-dab
             // (`smear_wet_base`) and the wash composites over the smeared base. Cumulative methods
@@ -87,6 +88,7 @@ impl PainterTool {
                 self.smear_wet_base(dabs);
             }
             self.accumulate_wet_color(wet_dabs);
+            crate::wash_diag::note_stamp(t_wash.elapsed().as_secs_f32() * 1e3);
             return;
         }
         // Wet Paint enforces the canvas gates ITSELF — keep-lerp toward the

@@ -33,6 +33,7 @@ pub mod undo;
 mod undo_delta;
 /// A LISTA dos planos que o delta cobre — o irmão de `undo_delta` (o motor).
 mod undo_planes;
+pub mod wash_diag; // o split do quadro da aquarela para o log do produto (PH2D_PAINT_PERF)
 pub mod wet_diag; // o split do tick da agua para o log do produto (PH2D_FLUID_PROFILE)
 
 pub use compositor::{

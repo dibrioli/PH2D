@@ -24,6 +24,13 @@ impl PainterTool {
     /// pixel; zeroing it per stroke re-rendered the neighbour wash weaker, Enio 2026-07-09).
     /// No-op (clears both) when the watercolor render-path is off.
     pub(super) fn freeze_watercolor_ground(&mut self, wet_session: bool) {
+        // Envelope de diagnóstico — o corpo é o `_inner` (ver `apply_watercolor`).
+        let t0 = std::time::Instant::now();
+        self.freeze_watercolor_ground_inner(wet_session);
+        crate::wash_diag::note_pendown(t0.elapsed().as_secs_f32() * 1e3);
+    }
+
+    fn freeze_watercolor_ground_inner(&mut self, wet_session: bool) {
         if !self.watercolor_render_active() {
             self.paint.watercolor_base = None;
             self.paint.wet_backdrop = None;
@@ -278,6 +285,13 @@ impl PainterTool {
     /// (Enio 2026-07-11 "retângulo gigante na união"; the per-stroke RECT of #4 only shrank it). The owner
     /// map is exactly this stroke's footprint (its overlap with a prior wash included, by recency).
     pub(super) fn pour_canvas_wet(&mut self) {
+        // Envelope de diagnóstico — o corpo é o `_inner` (ver `apply_watercolor`).
+        let t0 = std::time::Instant::now();
+        self.pour_canvas_wet_inner();
+        crate::wash_diag::note_pour(t0.elapsed().as_secs_f32() * 1e3);
+    }
+
+    fn pour_canvas_wet_inner(&mut self) {
         let (fw, fh) = self.source_size;
         let (fw, fh) = (fw as usize, fh as usize);
         let n = fw * fh;
@@ -336,6 +350,13 @@ impl PainterTool {
     /// recedes faster than the interior ([`WET_ERODE_GAIN`]), a wet pool shrinking from its perimeter like
     /// real paper. Drops the buffer once fully dry, restoring the moisture-free fast path.
     pub(super) fn dry_canvas_wet(&mut self, dt_s: f32) {
+        // Envelope de diagnóstico — o corpo é o `_inner` (ver `apply_watercolor`).
+        let t0 = std::time::Instant::now();
+        self.dry_canvas_wet_inner(dt_s);
+        crate::wash_diag::note_dry(t0.elapsed().as_secs_f32() * 1e3);
+    }
+
+    fn dry_canvas_wet_inner(&mut self, dt_s: f32) {
         let Some((x0, y0, x1, y1)) = self.paint.canvas_wet_rect else {
             return;
         };

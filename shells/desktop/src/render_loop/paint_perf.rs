@@ -445,7 +445,13 @@ pub(super) fn input_hist_by_phase() -> (Vec<f32>, Vec<f32>, Vec<f32>) {
 /// produto seria uma segunda resposta esperando alguém chamá-la.
 #[cfg(test)]
 pub(super) fn fold_hist() -> Vec<(f32, bool)> {
-    AGG.with(|a| a.borrow().samples.iter().map(|f| (f.fold_ms, f.fold_full)).collect())
+    AGG.with(|a| {
+        a.borrow()
+            .samples
+            .iter()
+            .map(|f| (f.fold_ms, f.fold_full))
+            .collect()
+    })
 }
 
 #[cfg(test)]

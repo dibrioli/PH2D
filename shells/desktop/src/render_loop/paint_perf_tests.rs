@@ -236,9 +236,9 @@ fn the_gpu_preview_times_the_fold_where_its_window_is_resolved() {
     let win = src
         .find("let plane_win = tool")
         .expect("o sitio que resolve a janela do fold sumiu");
-    let call = src[win..]
-        .find("note_gpu_fold(")
-        .expect("o fold do relevo deixou de ser cronometrado — o `preview` volta a ser um balde so'");
+    let call = src[win..].find("note_gpu_fold(").expect(
+        "o fold do relevo deixou de ser cronometrado — o `preview` volta a ser um balde so'",
+    );
     let matched = src[win..]
         .find("let finished")
         .expect("o consumidor dos planos sumiu");

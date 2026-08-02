@@ -192,17 +192,18 @@ fn measure_which_half_of_the_frame_grows() {
 /// culpado, por mais caro que seja.
 #[test]
 #[ignore = "measurement, not a gate"]
-fn measure_which_knob_pays_the_stamp() {
+fn measure_which_knob_pays_the_tick() {
     const RADIUS: f32 = 250.0;
-    println!("\nraio {RADIUS:.0} — CARIMBO por quadro, ablação por entrada\n");
+    println!("\nraio {RADIUS:.0} — TICK por quadro (o composite), ablação por entrada\n");
     println!(
         "{:<24} {:>12} {:>12} {:>10}",
         "ablacao", "2048 ms", "4096 ms", "cresce"
     );
     type Tweak = fn(&mut BrushSpec);
-    let cases: [(&str, Tweak); 6] = [
+    let cases: [(&str, Tweak); 7] = [
         ("como o Enio ajustou", |_b| {}),
         ("sem Charge (mixer)", |b| b.wet_charge = 0.0),
+        ("sem Edge Darkening", |b| b.edge_gain = 0.0),
         ("sem Dilution (agua)", |b| b.wet_dilution = 0.0),
         ("sem Pull", |b| b.wet_pull = 0.0),
         ("sem Rewet", |b| b.wet_rewet = 0.0),
@@ -224,7 +225,6 @@ fn measure_which_knob_pays_the_stamp() {
             let mut stamps = Vec::new();
             let mut k = 0u32;
             for _ in 0..FRAMES {
-                let s0 = Instant::now();
                 for _ in 0..EV {
                     k += 1;
                     t.on_canvas_pointer(cp(
@@ -232,8 +232,9 @@ fn measure_which_knob_pays_the_stamp() {
                         PointerPhase::Move,
                     ));
                 }
-                stamps.push(s0.elapsed().as_secs_f64() * 1e3);
+                let s0 = Instant::now();
                 t.paint_tick(DT);
+                stamps.push(s0.elapsed().as_secs_f64() * 1e3);
                 let _ = t.take_preview_arc();
             }
             t.on_canvas_pointer(cp([x0 + PATH, mid], PointerPhase::Up));
@@ -288,6 +289,79 @@ fn measure_what_starting_a_watercolor_stroke_costs() {
             }
         );
         prev = med;
+    }
+    println!();
+}
+
+/// **O DEFAULT também é caro? As duas metades do quadro, pincel de fábrica contra os knobs do Enio.**
+///
+/// A wave do smudge (doc 28 §5.73) curou o CARIMBO. Sobra o tick, e ele não depende de knob nenhum
+/// dos que o report citava — se o default já estoura o quadro, o alvo é outro e é maior.
+#[test]
+#[ignore = "measurement, not a gate"]
+fn measure_whether_the_default_watercolor_already_blows_the_frame() {
+    println!("\nas duas metades do quadro — DEFAULT contra os knobs do Enio\n");
+    println!(
+        "{:<22} {:<7} {:>7} {:>11} {:>11} {:>11} {:>9}",
+        "pincel", "canvas", "raio", "carimbo ms", "tick ms", "quadro ms", "de 16,6"
+    );
+    for radius in [100.0f32, 250.0] {
+        for (name, artist) in [("de FÁBRICA", false), ("knobs do Enio", true)] {
+            for size in [2048u32, 4096] {
+                let mut t = if artist {
+                    artist_wash(size, radius)
+                } else {
+                    // O pincel que o botão Reset entrega — `wet_*` todos no default do `BrushSpec`.
+                    let mut t = artist_wash(size, radius);
+                    let d = BrushSpec::default();
+                    let set = |b: &mut BrushSpec| {
+                        b.wet_charge = d.wet_charge;
+                        b.wet_dilution = d.wet_dilution;
+                        b.wet_pull = d.wet_pull;
+                        b.wet_rewet = d.wet_rewet;
+                        b.wet_smudge = d.wet_smudge;
+                    };
+                    set(&mut t.paint.brush);
+                    for slot in &mut t.paint.brush_by_mode {
+                        set(slot);
+                    }
+                    t
+                };
+                let mid = f64::from(size / 2) as f32;
+                let x0 = radius + 20.0;
+                let step = PATH / f64::from(FRAMES * EV) as f32;
+                t.on_canvas_pointer(cp([x0, mid], PointerPhase::Down));
+                let _ = t.take_preview_arc();
+                let (mut st, mut tk) = (Vec::new(), Vec::new());
+                let mut k = 0u32;
+                for _ in 0..FRAMES {
+                    let a = Instant::now();
+                    for _ in 0..EV {
+                        k += 1;
+                        t.on_canvas_pointer(cp(
+                            [x0 + step * f64::from(k) as f32, mid],
+                            PointerPhase::Move,
+                        ));
+                    }
+                    st.push(a.elapsed().as_secs_f64() * 1e3);
+                    let b = Instant::now();
+                    t.paint_tick(DT);
+                    tk.push(b.elapsed().as_secs_f64() * 1e3);
+                    let _ = t.take_preview_arc();
+                }
+                t.on_canvas_pointer(cp([x0 + PATH, mid], PointerPhase::Up));
+                let med = |v: &mut Vec<f64>| {
+                    v.sort_by(|a, b| a.partial_cmp(b).expect("finite"));
+                    v[v.len() / 2]
+                };
+                let (s, k2) = (med(&mut st), med(&mut tk));
+                println!(
+                    "{name:<22} {size:<7} {radius:>7.0} {s:>11.3} {k2:>11.3} {:>11.3} {:>8.1}x",
+                    s + k2,
+                    (s + k2) / 16.6
+                );
+            }
+        }
     }
     println!();
 }

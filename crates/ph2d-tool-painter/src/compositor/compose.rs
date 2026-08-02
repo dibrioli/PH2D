@@ -114,14 +114,6 @@ pub fn composite_below(
     anchor: LayerId,
     ground: [u8; 3],
 ) -> Vec<u8> {
-    // Seed the accumulator with the opaque ground (decoded to linear once).
-    let g = [
-        super::decode_byte(ground[0]),
-        super::decode_byte(ground[1]),
-        super::decode_byte(ground[2]),
-        1.0f32,
-    ];
-    let mut acc = vec![g; (width as usize) * (height as usize)];
     // The below-slices along the root→anchor path, outermost first.
     let mut slices: Vec<&[LayerId]> = Vec::new();
     fn descend<'a>(
@@ -149,17 +141,44 @@ pub fn composite_below(
         }
         false
     }
-    if descend(stack, stack.root(), anchor, &mut slices, 0) {
-        for ids in slices {
-            composite_into(
-                &mut acc, ids, stack, src, width, 0, 0, width, height, 0, None,
-            );
+    let found = descend(stack, stack.root(), anchor, &mut slices, 0);
+    // ⚠️ **Nothing below ⇒ the ground IS the answer, and the accumulator never exists.** Compositing
+    // an empty set over the ground leaves the ground, so the long path below would spend a
+    // `[f32;4]`-per-pixel buffer plus an encode to reproduce a flat colour: at 4096² that is **268 MB
+    // written and read back, plus 67 MB encoded**, and it is what a ONE-LAYER document paid on every
+    // watercolor pen-down (measured: 75-112 ms, near-flat in brush radius because none of it looks at
+    // the dab). The allocation used to sit above `descend`, so the early-out was unreachable by
+    // construction — the guard existed and the work happened anyway.
+    //
+    // Byte-identical, and the premise is a gate rather than an argument: the flat fill is the same
+    // bytes as `encode(decode_byte(ground))` only because the sRGB byte round-trip is the identity on
+    // all 256 values (`the_srgb_byte_round_trip_is_the_identity`). Conservative on purpose — a
+    // non-empty slice of layers that all happen to be invisible still takes the long path, because
+    // *"empty"* is a fact about the list and *"invisible"* is a fact about each layer.
+    if !found || slices.iter().all(|s| s.is_empty()) {
+        let mut ground_only = vec![0u8; (width as usize) * (height as usize) * 4];
+        for px in ground_only.chunks_exact_mut(4) {
+            px.copy_from_slice(&[ground[0], ground[1], ground[2], 255]);
         }
+        return ground_only;
+    }
+    // Seed the accumulator with the opaque ground (decoded to linear once).
+    let g = [
+        super::decode_byte(ground[0]),
+        super::decode_byte(ground[1]),
+        super::decode_byte(ground[2]),
+        1.0f32,
+    ];
+    let mut acc = vec![g; (width as usize) * (height as usize)];
+    for ids in slices {
+        composite_into(
+            &mut acc, ids, stack, src, width, 0, 0, width, height, 0, None,
+        );
     }
     encode(&acc)
 }
 
-fn encode(acc: &[[f32; 4]]) -> Vec<u8> {
+pub(super) fn encode(acc: &[[f32; 4]]) -> Vec<u8> {
     // Force each LazyLock once per composite, not per pixel.
     let thresh = &*SRGB_ENCODE_THRESH;
     let coarse = &*SRGB_ENCODE_COARSE;

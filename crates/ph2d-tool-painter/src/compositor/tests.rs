@@ -653,3 +653,52 @@ fn cache_hit_skips_below_layers() {
         "above layer `top` must recompose"
     );
 }
+
+/// **O round-trip de byte da transferência sRGB é a IDENTIDADE nos 256 valores.**
+///
+/// É a premissa que autoriza um atalho no `composite_below`: quando NADA está abaixo da âncora, o
+/// resultado é o chão puro, e devolvê-lo como preenchimento chapado de bytes só é byte-idêntico ao
+/// caminho longo (`decode_byte` → acumulador `[f32;4]` → `encode`) se decodificar e recodificar um byte
+/// devolver o mesmo byte. Este repo já se queimou presumindo precisão de tabela de transferência
+/// (doc 24), então a premissa é MEDIDA aqui em vez de argumentada.
+#[test]
+fn the_srgb_byte_round_trip_is_the_identity() {
+    let thresh = &*super::SRGB_ENCODE_THRESH;
+    let coarse = &*super::SRGB_ENCODE_COARSE;
+    for b in 0u8..=255 {
+        let back = super::encode_byte(thresh, coarse, super::decode_byte(b));
+        assert_eq!(
+            back, b,
+            "decode→encode moveu o byte {b} para {back}: um chão chapado NÃO é byte-idêntico ao \
+             caminho pelo acumulador, e o atalho do backdrop não pode existir nesta forma"
+        );
+    }
+}
+
+/// **O preenchimento chapado É o que o caminho do acumulador teria codificado.**
+///
+/// A substituição que o atalho de `composite_below` faz, afirmada diretamente: dado um chão, encher
+/// bytes na mão tem de dar o MESMO buffer que semear o acumulador `[f32;4]` com ele e passar pelo
+/// `encode`. Cobre o alfa junto (o acumulador carrega `1.0`, o preenchimento carrega `255`), que o
+/// gate do round-trip sozinho não vê.
+#[test]
+fn the_flat_ground_fill_is_what_the_accumulator_path_would_encode() {
+    const N: usize = 64;
+    for ground in [[0u8, 0, 0], [255, 255, 255], [37, 201, 7], [128, 128, 128]] {
+        let g = [
+            super::decode_byte(ground[0]),
+            super::decode_byte(ground[1]),
+            super::decode_byte(ground[2]),
+            1.0f32,
+        ];
+        let via_accumulator = super::compose::encode(&vec![g; N]);
+        let mut flat = vec![0u8; N * 4];
+        for px in flat.chunks_exact_mut(4) {
+            px.copy_from_slice(&[ground[0], ground[1], ground[2], 255]);
+        }
+        assert_eq!(
+            via_accumulator, flat,
+            "chão {ground:?}: o atalho do backdrop devolveria bytes diferentes do caminho longo"
+        );
+    }
+}

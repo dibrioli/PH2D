@@ -267,7 +267,20 @@ impl SculptStroke {
             // distância sai do `pre` congelado e uma rotação em torno de um eixo
             // que passa pela âncora **preserva** a distância à âncora — as duas
             // metades concordam por construção, e não por sorte.
-            Verb::Twist => rotate_about(base, dab.center, dab.eye, dab.amount * w),
+            // ⚠️ **O eixo é MENOS o olho, e o sinal é a ferramenta inteira.** O
+            // [`Dab::eye`] aponta *do olho para a superfície* — para DENTRO da
+            // tela —, e pela regra da mão direita um giro positivo em torno dele
+            // sai **horário** para quem olha. Varrer o dedo no anti-horário
+            // torceria o barro ao contrário: manipulação direta invertida, que é
+            // o mesmo erro que o smoke pegou nos dois sinais da órbita. O
+            // original nega exatamente aqui (`Twist.js:41`,
+            // `vec3.negate(twistData.normal, picking.getEyeDirection())`).
+            Verb::Twist => rotate_about(
+                base,
+                dab.center,
+                [-dab.eye[0], -dab.eye[1], -dab.eye[2]],
+                dab.amount * w,
+            ),
             // **O LOCAL SCALE** — afasta (ou aproxima) o `pre` da âncora.
             //
             // ⚠️ **O fator é clampado em ZERO, e o limite não é um palpite:** é

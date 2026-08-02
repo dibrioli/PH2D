@@ -86,6 +86,49 @@ fn a_twist_turns_the_clay_around_the_anchor() {
     );
 }
 
+/// ⚠️ **O SENTIDO, e ele não se argumenta — mede-se NA TELA.**
+///
+/// Este gate nasceu VERMELHO: o [`Dab::eye`] aponta *do olho para a superfície*
+/// (para DENTRO da tela), e girar em torno dele pela regra da mão direita sai
+/// **horário** para quem olha — medido, um vértice à direita da âncora descia
+/// `−0,1063` com um gesto positivo. Varrer o dedo no anti-horário torceria o
+/// barro ao contrário, que é *manipulação direta invertida*: o mesmo erro que o
+/// smoke pegou nos dois sinais da órbita, e o mesmo remédio (o gate mede o barro
+/// na tela em vez de argumentar sobre sinais).
+///
+/// A cena: o observador em `+Z` olhando para `−Z`, então `right = +X` e
+/// `up = +Y`. Com um `amount` **positivo**, um vértice à DIREITA da âncora tem
+/// de SUBIR — anti-horário, o mesmo lado para que a mão varreu.
+#[test]
+fn a_positive_sweep_turns_the_clay_the_same_way_the_hand_swept() {
+    let mut mesh = sphere();
+    let before = snapshot(&mesh);
+    let brush = turn(Verb::Twist, 0.5);
+    let mut stroke = SculptStroke::default();
+    stroke.begin(&mesh);
+    stroke.dab(
+        &mut mesh,
+        &brush,
+        &Dab::turning(PIVOT, brush.radius, EYE, 0.8),
+        Symmetry::default(),
+    );
+    // O vértice mais à direita da âncora, a meio raio.
+    let mut best = (f32::MAX, 0usize);
+    for (i, p) in before.iter().enumerate() {
+        let d = (p[0] - 0.25).powi(2) + p[1].powi(2) + (p[2] - 0.96).powi(2);
+        if d < best.0 {
+            best = (d, i);
+        }
+    }
+    let (a, b) = (before[best.1], mesh.positions()[best.1]);
+    let dy = b[1] - a[1];
+    assert!(
+        dy > 0.05,
+        "um vértice à DIREITA da âncora andou {dy:+.4} em `y`: com um gesto positivo ele tem de \
+         SUBIR (anti-horário na tela), senão o barro torce ao contrário da mão"
+    );
+}
+
 /// ⚠️ **O gate que separa uma ROTAÇÃO de um lerp, e é ele que a corda quebra.**
 ///
 /// Se o alvo fosse a posição girada pelo ângulo CHEIO e o peso entrasse pelo

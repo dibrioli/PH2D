@@ -155,10 +155,8 @@ pub struct WriteState {
     /// [`Self::journal_describes_step_at`] responde `false`, e o commit cai no caminho de sempre —
     /// *lento, nunca errado*. Sem ela, um sítio esquecido daria o lado `before` de um passado que não é
     /// o do passo, e o undo devolveria pixels que nunca existiram.
-    #[cfg(any(test, debug_assertions))]
     journal_since: std::cell::Cell<Option<u64>>,
     /// Os bytes velhos dos três planos de RELEVO — ver [`ReliefJournals`].
-    #[cfg(any(test, debug_assertions))]
     relief: std::cell::RefCell<ReliefJournals>,
 }
 
@@ -175,7 +173,6 @@ pub struct WriteState {
 /// passa pela porta GENÉRICA (`fork_par`) não sabe dizer de que plano é, então o journal do relevo não
 /// pode afirmar que descreve o passo. Ele responde `false`, o commit deriva como sempre, e cada sítio
 /// que aprende a sua porta nomeada passa a pagar só a região — *lento, nunca errado*.
-#[cfg(any(test, debug_assertions))]
 #[derive(Debug, Default)]
 struct ReliefJournals {
     layer: Option<crate::layers::LayerId>,
@@ -199,7 +196,6 @@ struct ReliefJournals {
     mats: crate::undo::journal::TileJournal<ph2d_painter_brush::material::MaterialBytes>,
 }
 
-#[cfg(any(test, debug_assertions))]
 impl ReliefJournals {
     /// Uma captura chegou para `l`. Se ela é de outra camada, o que estava guardado descreve OUTRO
     /// plano — e o journal se declara misturado em vez de responder um byte do lugar errado.
@@ -345,44 +341,28 @@ impl WriteState {
     }
 
     /// O passo fechou: o journal esquece o que capturou.
-    #[cfg(any(test, debug_assertions))]
     pub(crate) fn reset_journal(&self) {
+        // O journal do CANVAS segue sendo rede de debug: o `before` do canvas não é elidido, então
+        // capturar dele em release seria custo sem contrapartida (a fase B promoveu só o RELEVO).
+        #[cfg(any(test, debug_assertions))]
         self.canvas.borrow_mut().reset();
         self.relief.borrow_mut().reset();
         self.journal_since.set(None);
     }
 
-    #[cfg(not(any(test, debug_assertions)))]
-    #[expect(
-        clippy::unused_self,
-        reason = "no-op em release; o journal é rede de debug"
-    )]
-    pub(crate) fn reset_journal(&self) {}
-
-    /// **Um passo de undo COMEÇA aqui** — o journal esquece o intervalo anterior e passa a descrever
-    /// exatamente o que vier a partir de `writes`.
+    /// **Um passo de undo começou aqui** — ancora o journal, que a partir de agora descreve os bytes
+    /// velhos desde este ponto.
     ///
-    /// ⚠️ A distinção que isto instala é o que separa o journal-como-rede do journal-como-FONTE. Ancorado
-    /// no último **commit**, ele mistura as escritas estrangeiras (o escorrido do Wet Paint) com as do
-    /// passo, e nos tiles que as duas tocam a primeira captura é a da gota — o lado `before` sairia do
-    /// passo *anterior*. Ancorado no **passo**, ele responde a pergunta certa.
-    #[cfg(any(test, debug_assertions))]
+    /// ⚠️ Ele é a metade de PROVENIÊNCIA: sem esta âncora o journal fala de um passado mais VELHO que
+    /// o passo, e [`Self::journal_describes_step_at`] responde `false` — o commit cai no caminho de
+    /// sempre, *lento nunca, errado jamais*.
     pub(crate) fn begin_step(&self, writes: u64) {
-        self.canvas.borrow_mut().reset();
-        self.relief.borrow_mut().reset();
+        self.reset_journal();
         self.journal_since.set(Some(writes));
     }
 
-    #[cfg(not(any(test, debug_assertions)))]
-    #[expect(
-        clippy::unused_self,
-        reason = "no-op em release; o journal é rede de debug"
-    )]
-    pub(crate) fn begin_step(&self, _writes: u64) {}
-
     /// **O journal descreve o passo que começou em `writes`?** — a pergunta que autoriza usá-lo como
-    /// lado `before`. Ver [`Self::journal_since`].
-    #[cfg(any(test, debug_assertions))]
+    /// lado `before`.
     #[must_use]
     pub(crate) fn journal_describes_step_at(&self, writes: u64) -> bool {
         self.journal_since.get() == Some(writes)
@@ -390,7 +370,6 @@ impl WriteState {
 
     /// **Captura o relevo antes de ele ser escrito** — um por plano, porque cada um tem um tipo de
     /// elemento e o journal é tipado. `area` em ELEMENTOS (o relevo carrega um por pixel).
-    #[cfg(any(test, debug_assertions))]
     pub(crate) fn capture_heights(
         &self,
         layer: crate::layers::LayerId,
@@ -404,7 +383,6 @@ impl WriteState {
     }
 
     /// Ver [`Self::capture_heights`].
-    #[cfg(any(test, debug_assertions))]
     pub(crate) fn capture_covers(
         &self,
         layer: crate::layers::LayerId,
@@ -418,7 +396,6 @@ impl WriteState {
     }
 
     /// Ver [`Self::capture_heights`].
-    #[cfg(any(test, debug_assertions))]
     pub(crate) fn capture_mats(
         &self,
         layer: crate::layers::LayerId,
@@ -450,7 +427,6 @@ impl WriteState {
 /// Os três juntos e não um a um porque a rota é **tudo-ou-nada**: eles descrevem um passo, e um passo
 /// que só souber dizer a altura deixaria a cobertura e o material saírem por outro caminho — dois
 /// modelos do mesmo fato, que é o que o `SculptSnap` do doc 18 §10.4 já custou uma vez.
-#[cfg(any(test, debug_assertions))]
 pub(crate) struct ReliefBefore<'a> {
     pub(crate) heights: &'a crate::undo::journal::TileJournal<f32>,
     pub(crate) covers: &'a crate::undo::journal::TileJournal<u8>,
@@ -483,14 +459,7 @@ impl WriteState {
     /// ⚠️ Não é gateado por `cfg` pela mesma razão do [`Self::note_untracked_write`]: as três portas o
     /// chamam em qualquer perfil, e um canal que só existisse em debug daria duas formas às portas.
     pub(crate) fn note_absent_relief(&self, layer: crate::layers::LayerId, which: ReliefPlane) {
-        #[cfg(any(test, debug_assertions))]
-        {
-            self.relief.borrow_mut().note_absent(layer, which);
-        }
-        #[cfg(not(any(test, debug_assertions)))]
-        {
-            let _ = (layer, which);
-        }
+        self.relief.borrow_mut().note_absent(layer, which);
     }
 
     /// Quais planos de relevo este passo escreveu **sem que houvesse um antes** — o que a rede confere
@@ -530,53 +499,10 @@ impl WriteState {
     /// As três irmãs de release das capturas acima — no-ops, como a do canvas. Sem elas as portas
     /// nomeadas teriam de carregar o `cfg` dentro do corpo, e uma porta com duas formas é o começo de
     /// duas respostas.
-    #[cfg(not(any(test, debug_assertions)))]
-    #[expect(
-        clippy::unused_self,
-        reason = "no-op em release; o journal é rede de debug"
-    )]
-    pub(crate) fn capture_heights(
-        &self,
-        _layer: crate::layers::LayerId,
-        _buf: &[f32],
-        _stride: usize,
-        _area: Option<(usize, usize, usize, usize)>,
-    ) {
-    }
-
     /// Ver [`Self::capture_heights`].
-    #[cfg(not(any(test, debug_assertions)))]
-    #[expect(
-        clippy::unused_self,
-        reason = "no-op em release; o journal é rede de debug"
-    )]
-    pub(crate) fn capture_covers(
-        &self,
-        _layer: crate::layers::LayerId,
-        _buf: &[u8],
-        _stride: usize,
-        _area: Option<(usize, usize, usize, usize)>,
-    ) {
-    }
-
     /// Ver [`Self::capture_heights`].
-    #[cfg(not(any(test, debug_assertions)))]
-    #[expect(
-        clippy::unused_self,
-        reason = "no-op em release; o journal é rede de debug"
-    )]
-    pub(crate) fn capture_mats(
-        &self,
-        _layer: crate::layers::LayerId,
-        _buf: &[ph2d_painter_brush::material::MaterialBytes],
-        _stride: usize,
-        _area: Option<(usize, usize, usize, usize)>,
-    ) {
-    }
-
     /// **Por que os journals de relevo não descrevem o passo** — o readout que separa *"não havia o que
     /// descrever"* de *"havia e eles não sabem"*, e só o segundo é dívida de migração.
-    #[cfg(any(test, debug_assertions))]
     #[must_use]
     pub(crate) fn relief_state(&self) -> &'static str {
         let r = self.relief.borrow();
@@ -607,7 +533,6 @@ impl WriteState {
     /// que a proveniência ([`Self::journal_describes_step_at`]) existe para impedir.
     ///
     /// `None` = não descrevem; o chamador cai no caminho de sempre (*lento nunca, errado jamais*).
-    #[cfg(any(test, debug_assertions))]
     pub(crate) fn with_relief_before<R>(
         &self,
         writes: u64,
@@ -631,7 +556,6 @@ impl WriteState {
     /// É o que autoriza usar o cursor REIDRATADO como base do relevo: com o journal em silêncio, o
     /// plano vivo (o mesmo objeto que a testemunha do cursor aponta) ainda carrega os bytes da era
     /// dele. Uma única captura o derruba — aí o objeto pode ser o mesmo e o conteúdo não.
-    #[cfg(any(test, debug_assertions))]
     #[must_use]
     pub(crate) fn relief_untouched(&self) -> bool {
         let r = self.relief.borrow();
@@ -639,7 +563,6 @@ impl WriteState {
     }
 
     /// **Os journals de relevo descrevem o passo que começou em `writes`, para a camada `layer`?**
-    #[cfg(any(test, debug_assertions))]
     #[must_use]
     pub(crate) fn relief_describes_step_at(
         &self,

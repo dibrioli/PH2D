@@ -15,18 +15,12 @@ use ph2d_painter_brush::material::MaterialBytes;
 /// ⚠️ **Não é gateado por `cfg`, e a razão é a mesma do [`ReliefPlane`](crate::undo::window::ReliefPlane):**
 /// ele atravessa a assinatura de [`PlaneDeltas::split`], que o commit chama em **qualquer** perfil. Um
 /// tipo que só existisse em debug daria duas formas à porta — e uma porta com duas formas é o começo de
-/// duas respostas. Em release o `Some` simplesmente cai no caminho de sempre, porque o journal é quem
-/// ainda é debug-only.
-#[cfg_attr(
-    not(any(test, debug_assertions)),
-    expect(
-        dead_code,
-        reason = "degrau 2: em release o journal ainda é cfg(debug), então os três campos só são lidos \
-                  no ramo de debug de `relief_maps`. É `expect` e não `allow` de propósito — quando o \
-                  degrau 4 promover o journal os campos passam a ser lidos, e aí o próprio atributo \
-                  vira erro e obriga a removê-lo. Um `allow` sobreviveria calado à promoção."
-    )
-)]
+/// duas respostas.
+///
+/// ⚠️ **E o `expect(dead_code)` que morava aqui MORREU na promoção, como ele próprio prometia:** ele
+/// dizia que em release os três campos só eram lidos no ramo de debug, e que o degrau 4 os faria
+/// serem lidos — aí o atributo viraria erro e obrigaria a removê-lo. Foi exatamente o que aconteceu.
+/// Um `allow` teria sobrevivido calado.
 pub(crate) struct ReliefSource<'a> {
     pub(crate) state: &'a crate::undo::window::WriteState,
     /// O contador de escritas do `before` — a metade de PROVENIÊNCIA do guard.
@@ -233,7 +227,6 @@ impl PlaneDeltas {
         StoredMap<MaterialBytes>,
         bool,
     ) {
-        #[cfg(any(test, debug_assertions))]
         {
             if let Some(src) = relief {
                 let el = &before.relief_elided;
@@ -286,8 +279,6 @@ impl PlaneDeltas {
                 }
             }
         }
-        #[cfg(not(any(test, debug_assertions)))]
-        let _ = relief;
         // ⚠️ **A recusa não pode cair no `split` quando o `before` ELIDIU** (degrau 4, doc 28 §5.60).
         // O `split` lê os mapas fortes, que num snapshot elidido estão vazios: toda chave sairia como
         // `OnlyAfter` = *"não existia antes"*, e desfazer **apagaria o relevo**. Um `before` elidido não

@@ -68,21 +68,21 @@ impl PainterTool {
     /// elidisse e segurasse carregaria o fato duas vezes — e o dono extra que ele deixaria é
     /// exatamente o que a elisão existe para remover.
     ///
-    /// ⚠️ **E ela só elide onde o JOURNAL existe** (hoje `cfg(any(test, debug_assertions))`). O lado
-    /// `before` de um passo elidido **é** o journal; sem ele não há de onde tirá-lo, e todo commit
-    /// cairia no `relief_indescribable` — a história inteira descartada a cada traço. Os dois têm de
-    /// ser promovidos JUNTOS (doc 28 §5.58.1), e é por isso que a promoção é a fase seguinte e não
-    /// um detalhe desta.
+    /// ⚠️ **Ela e o JOURNAL do relevo shipam JUNTOS** (doc 28 §5.58.1). O lado `before` de um passo
+    /// elidido **é** o journal; elidir sem ele faria todo commit cair no `relief_indescribable` — a
+    /// história inteira descartada a cada traço —, e promover o journal sozinho pagaria captura *e*
+    /// fork até o fork morrer. A fase B desta wave subiu os dois no mesmo commit.
     pub(crate) fn snapshot_model_eliding_relief(&self) -> crate::undo::ModelSnapshot {
         let mut m = self.snapshot_model();
-        #[cfg(any(test, debug_assertions))]
-        {
-            m.relief_elided =
-                crate::undo::elide::ElidedRelief::of(&self.heights, &self.covers, &self.mats);
-            m.heights.clear();
-            m.covers.clear();
-            m.mats.clear();
+        #[cfg(test)]
+        if !self.undo.elide_relief {
+            return m; // a ablação do A/B — ver `UndoController::elide_relief`
         }
+        m.relief_elided =
+            crate::undo::elide::ElidedRelief::of(&self.heights, &self.covers, &self.mats);
+        m.heights.clear();
+        m.covers.clear();
+        m.mats.clear();
         m
     }
 

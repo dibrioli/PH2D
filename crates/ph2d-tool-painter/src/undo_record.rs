@@ -47,15 +47,13 @@ impl UndoController {
         if !entry.relief_indescribable() {
             return false;
         }
-        // O readout do journal vai JUNTO: *"indescritível"* admite quatro causas (misturado,
-        // incompleto, camada errada, plano trocado) e elas pedem correções diferentes.
-        #[cfg(any(test, debug_assertions))]
+        // O readout do journal vai JUNTO — em QUALQUER perfil: *"indescritível"* admite quatro causas
+        // (misturado, incompleto, camada errada, plano trocado) e elas pedem correções diferentes.
+        // Um descarte de história é evento real, e um log que não diz por quê manda quem o lê adivinhar.
         eprintln!(
             "[painter-undo] o relevo deste passo nao e' descritivel ({}): historico descartado",
             self.write_state.relief_state()
         );
-        #[cfg(not(any(test, debug_assertions)))]
-        eprintln!("[painter-undo] o relevo deste passo nao e' descritivel: historico descartado");
         debug_assert!(
             false,
             "o `before` elidiu o relevo e o journal recusou — ver undo_planes::relief_maps (doc 28 \
@@ -87,7 +85,6 @@ impl UndoController {
         if base.relief_elided.is_empty() {
             return Some(base); // nada elidido: o cursor já É a base
         }
-        #[cfg(any(test, debug_assertions))]
         if !self.write_state.relief_untouched() {
             return None;
         }
@@ -113,8 +110,11 @@ impl UndoController {
     /// `absorb_foreign_writes` e a extensão do run coalescido passaram a receber nesta wave, porque
     /// materializar contra um cursor sem planos devolve `None` e as duas rotas morreriam em silêncio.
     pub(super) fn set_cursor(&mut self, mut at: ModelSnapshot) {
-        #[cfg(any(test, debug_assertions))]
-        {
+        #[cfg(test)]
+        let elide = self.elide_cursor;
+        #[cfg(not(test))]
+        let elide = true;
+        if elide {
             at.relief_elided =
                 crate::undo::elide::ElidedRelief::of(&at.heights, &at.covers, &at.mats);
             at.heights.clear();

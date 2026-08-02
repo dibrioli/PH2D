@@ -350,6 +350,14 @@ pub struct UndoController {
     /// o passo seguinte não tem base. Emular o instalador é modelar o contrato, não contorná-lo.
     #[cfg(test)]
     installed: Option<Box<ModelSnapshot>>,
+    /// **A ablação do degrau 4** — `false` devolve o mundo em que o cursor e o `before` SEGURAM os
+    /// planos de relevo. Só em teste, e só para o A/B: a máquina é compartilhada, então comparar duas
+    /// corridas atribuiria a deriva dela ao ganho (§5.46). Nada no produto o lê.
+    #[cfg(test)]
+    pub(crate) elide_relief: bool,
+    /// A outra metade da ablação: `false` faz o CURSOR voltar a segurar os planos.
+    #[cfg(test)]
+    pub(crate) elide_cursor: bool,
     max_bytes: usize,
     /// Soma corrida de [`UndoEntry::heap_bytes`] das DUAS pilhas (o redo retém tanto quanto o undo).
     bytes: usize,
@@ -372,6 +380,10 @@ impl UndoController {
             cursor: None,
             #[cfg(test)]
             installed: None,
+            #[cfg(test)]
+            elide_relief: true,
+            #[cfg(test)]
+            elide_cursor: true,
             // Um orçamento degenerado ainda tem de permitir UM passo — uma edição de camada inteira é
             // irredutivelmente uma camada por passo, e recusar o único passo possível seria um histórico
             // que não existe.
@@ -562,7 +574,6 @@ pub mod window;
 /// vivo que ninguém constrói vira quatro warnings de dead-code que só aparecem em `--release` (latentes
 /// desde o degrau 1: `cargo clippy -p` roda em debug). Quando o journal virar a fonte do `before`, este
 /// `cfg` sai junto com o do campo, e os dois têm de sair na mesma edição.
-#[cfg(any(test, debug_assertions))]
 #[path = "undo_journal.rs"]
 pub(crate) mod journal;
 

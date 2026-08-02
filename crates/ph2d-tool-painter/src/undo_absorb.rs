@@ -42,6 +42,23 @@ impl UndoController {
         // `split` esvazia o que recebe, então ele come CÓPIAS — e uma cópia de `ModelSnapshot` é um
         // punhado de refcounts.
         let (mut a, mut b) = (cursor.clone(), before.clone());
+        // ⚠️ **O RELEVO não participa do detector, e a razão é medida.** O cursor o ELIDE (degrau 4),
+        // então ele não tem como testemunhar sobre bytes que não segura: comparado com um `before` que
+        // os segura, toda camada sai como `OnlyAfter` = *"apareceu agora"*, `heap_bytes()` nunca é
+        // zero, e **a absorção dispara em TODO pen-down** — um re-split + materialize completos por
+        // traço. Medido a 4096²: pen-down **5,70 → 36,2 ms**, e a atribuição só apareceu depois de a
+        // hipótese óbvia (o alocador reciclando os planos liberados) ser REFUTADA por medição — segurar
+        // os planos não devolvia um milissegundo.
+        //
+        // E a exclusão é honesta, não um atalho: esta porta existe para a escrita de CANVAS que não
+        // registrou entrada (o escorrido do Wet Paint). Uma escrita de relevo fora da história é outra
+        // pergunta, e quem a responde é o journal — `base_for_top` recusa a base quando ela existe.
+        for m in [&mut a, &mut b] {
+            m.heights.clear();
+            m.covers.clear();
+            m.mats.clear();
+            m.relief_elided = crate::undo::elide::ElidedRelief::default();
+        }
         if crate::undo_planes::PlaneDeltas::split(&mut a, &mut b, None, None).heap_bytes() == 0 {
             return; // o topo já termina onde este passo começa: o caso comum, e ele não custa nada
         }

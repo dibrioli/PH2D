@@ -21,6 +21,16 @@ const SETTLE_MAX_PX: f32 = 4.0;
 /// That is what makes the crop **byte-identical** rather than an approximation. // CLAMP-OK
 pub(super) const SETTLE_REACH_PX: u32 = SETTLE_MAX_PX as u32;
 
+/// **Onde o pool de threads se paga, em TAPS** — medido, não escolhido (a varredura vive em
+/// `measure_stroke_extent::where_the_settle_pool_pays_for_itself`). Um tap é uma soma do box blur, e o
+/// trabalho de um passe é `células × (2r+1)`; abaixo disto o spin-up do rayon custa mais que a linha.
+const BLUR_PAR_MIN_TAPS: usize = 1 << 21;
+
+/// **Onde o pool se paga para um kernel por-texel BARATO** (um `max`, um `over` de 7 canais) — medido na
+/// mesma varredura do [`BLUR_PAR_MIN_TAPS`]. Aqui a régua é a CÉLULA e não o tap, porque o trabalho por
+/// texel é constante.
+const PAR_ROWS_MIN_CELLS: usize = 1 << 18;
+
 /// Take ownership of a shared plane: free when nobody else holds it (the common case), a copy when an
 /// undo snapshot does. Copy-on-write, and the `Arc` is exactly what buys it — the snapshot that used to
 /// deep-clone 80 MB of relief + coverage per stroke at 4096` now bumps a refcount.
@@ -37,6 +47,44 @@ pub(super) fn for_each_in(rect: Region, w: u32, mut f: impl FnMut(usize)) {
             f(row + x as usize);
         }
     }
+}
+
+/// **A irmã PARALELA do [`for_each_in`]** — para quando a saída é canvas-shaped e o kernel é puro
+/// por-texel.
+///
+/// Visita todo índice de canvas dentro de `rect`, entregando ao kernel o índice GLOBAL (para as entradas
+/// canvas-shaped que ele lê) e o elemento de saída correspondente. As linhas de saída são **disjuntas** e
+/// a entrada é lida, nunca escrita ⇒ a propriedade que o ADR-0109 exige; e o kernel é o MESMO em qualquer
+/// agendamento, então a rota é **byte-idêntica por construção** (o padrão *um corpo, dois walkers*).
+///
+/// ⚠️ **O piso é MEDIDO** ([`PAR_ROWS_MIN_CELLS`]): a janela de um pincel comum é pequena demais para
+/// pagar o spin-up do pool, e mandá-la para o rayon a deixaria mais LENTA.
+pub(super) fn par_rows_in<T: Send>(
+    dst: &mut [T],
+    rect: Region,
+    w: u32,
+    f: impl Fn(usize, &mut T) + Sync + Send,
+) {
+    let (wi, rx0, ry0) = (w as usize, rect.x as usize, rect.y as usize);
+    let (rw, rh) = (rect.w as usize, rect.h as usize);
+    let (lo, hi) = (ry0 * wi, (ry0 + rh) * wi);
+    if hi > dst.len() {
+        return;
+    }
+    if rw * rh < PAR_ROWS_MIN_CELLS {
+        for_each_in(rect, w, |i| f(i, &mut dst[i]));
+        return;
+    }
+    use rayon::prelude::*;
+    dst[lo..hi]
+        .par_chunks_mut(wi)
+        .enumerate()
+        .for_each(|(ry, row)| {
+            let base = (ry0 + ry) * wi + rx0;
+            for rx in 0..rw {
+                f(base + rx, &mut row[rx0 + rx]);
+            }
+        });
 }
 
 /// Let a height field **settle** under its own weight: a separable box blur, applied in place.
@@ -82,22 +130,48 @@ pub(super) fn box_blur(field: &mut [f32], w: u32, h: u32, r: u32) {
     transpose(&t3, &mut field[..wi * hi], hi, wi);
 }
 
-/// One separable pass: box-blur every row of `src` (a `w × h` buffer) into `dst`, clamping at the edges.
-/// Each output re-sums its own window, in a fixed order — so the result never depends on how far the row
-/// has run (a sliding sum would drift, and the crop's byte-identity rests on it not drifting).
+/// **O CORPO de uma linha** — a aritmética inteira do passe separável, num lugar só.
+///
+/// Cada saída re-soma a própria janela, em ordem FIXA, então o resultado nunca depende de quão longe a
+/// linha já correu (uma soma corrida derivaria, e a byte-identidade do crop se apoia em ela não derivar).
+/// Ele é `#[inline]` e **os dois walkers o chamam** — não existe uma versão paralela do kernel para
+/// divergir da serial, que é a lei que o ADR-0145 nomeia ([[feedback_an_identity_gate_cannot_see_a_defect_in_the_shared_body]]).
+#[inline]
+fn blur_one_row(src_row: &[f32], out: &mut [f32], w: usize, r: usize, inv: f32) {
+    let last = w - 1;
+    for (x, o) in out.iter_mut().enumerate() {
+        let mut sum = 0.0;
+        for k in 0..=2 * r {
+            let sx = (x + k).saturating_sub(r).min(last);
+            sum += src_row[sx];
+        }
+        *o = sum * inv;
+    }
+}
+
+/// Um passe separável: box-blur de toda linha de `src` (buffer `w × h`) em `dst`, clampando nas bordas.
+///
+/// **As linhas de saída são DISJUNTAS e a entrada é só-leitura** — a propriedade que o ADR-0109 exige, a
+/// mesma de `sculpt_offset` / `sculpt_close` / o campo da aquarela / o fold da luz. A rota paralela é
+/// **byte-idêntica por construção**: ela muda qual thread avalia qual linha, nunca o que a linha diz.
+///
+/// ⚠️ **O piso é de CÉLULA-TAP, não de célula** — o trabalho por texel é `2r+1` somas, então um `r` maior
+/// paga o pool numa janela menor. Um piso em contagem de células mandaria a janela de um pincel pequeno
+/// (onde o pool custa mais que o trabalho) para a rota errada num raio e para a certa noutro.
 fn blur_rows(src: &[f32], dst: &mut [f32], w: usize, h: usize, r: usize) {
     let inv = 1.0 / (2 * r + 1) as f32;
-    let last = w - 1;
+    let n = w * h;
+    if n.saturating_mul(2 * r + 1) >= BLUR_PAR_MIN_TAPS {
+        use rayon::prelude::*;
+        dst[..n]
+            .par_chunks_mut(w)
+            .enumerate()
+            .for_each(|(y, out)| blur_one_row(&src[y * w..y * w + w], out, w, r, inv));
+        return;
+    }
     for y in 0..h {
-        let row = y * w;
-        for x in 0..w {
-            let mut sum = 0.0;
-            for k in 0..=2 * r {
-                let sx = (x + k).saturating_sub(r).min(last);
-                sum += src[row + sx];
-            }
-            dst[row + x] = sum * inv;
-        }
+        let (a, b) = (y * w, y * w + w);
+        blur_one_row(&src[a..b], &mut dst[a..b], w, r, inv);
     }
 }
 
@@ -126,3 +200,10 @@ pub(super) fn union_dirty(
         h: y1 - y0,
     }
 }
+
+/// ⚠️ **FILHO, não irmão** — os gates comparam a rota paralela contra a serial CONGELADA e precisam
+/// alcançar o kernel privado; e `paint.rs` está no teto de LOC congelado (700), então uma declaração lá
+/// não cabia. Ver o cabeçalho do arquivo para por que são dois gates e não um.
+#[cfg(test)]
+#[path = "impasto_settle_tests.rs"]
+mod tests;

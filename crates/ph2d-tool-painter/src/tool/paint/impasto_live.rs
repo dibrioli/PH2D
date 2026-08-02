@@ -4,7 +4,7 @@
 //! hold the design together are documented on the deposit half's module header.
 
 use super::Region;
-use super::impasto_settle::{RELIEF_EPS, SETTLE_REACH_PX, for_each_in, settle};
+use super::impasto_settle::{RELIEF_EPS, SETTLE_REACH_PX, for_each_in, par_rows_in, settle};
 use super::region::grow_region;
 use crate::tool::PainterTool;
 use ph2d_painter_brush::height::derive_height;
@@ -60,12 +60,13 @@ impl PainterTool {
             if dst.len() != n {
                 dst.resize(n, 0);
             }
-            for_each_in(rect, w, |i| {
-                dst[i] = dst[i].max(film.get(i).copied().unwrap_or(0));
+            par_rows_in(dst, rect, w, |i, d| {
+                *d = (*d).max(film.get(i).copied().unwrap_or(0));
             });
         }
         // A janela deste acesso é EXATAMENTE o `rect` do commit (o bloco acima só escreve por
-        // `for_each_in(rect, …)`), então o histórico não precisa varrer o plano para redescobri-la.
+        // `par_rows_in(rect, …)`, cuja rota serial É o `for_each_in`), então o histórico não precisa
+        // varrer o plano para redescobri-la.
         self.declare_wrote(Some(rect));
         // The MATERIAL rides the same stroke — it is what the paint this stroke laid IS
         // (`ph2d_painter_brush::material`). Deposited from the brush, so Symmetry / Tiling / the shape
@@ -106,16 +107,16 @@ impl PainterTool {
             });
             self.paint.relief.live_mat_base = base;
             self.paint.relief.live_film = kept_film;
-            for_each_in(rect, w, |i| {
+            par_rows_in(dst, rect, w, |i, d| {
                 let a = u32::from(film.get(i).copied().unwrap_or(0));
                 if a == 0 {
                     return; // no paint from this stroke here: the material under it is untouched
                 }
                 for c in 0..mat.len() {
                     // `over` in 8-bit, rounded: dst = dst·(1−a) + src·a.
-                    let old = u32::from(dst[i][c]);
+                    let old = u32::from(d[c]);
                     let new = u32::from(mat[c]);
-                    dst[i][c] = ((old * (255 - a) + new * a + 127) / 255) as u8;
+                    d[c] = ((old * (255 - a) + new * a + 127) / 255) as u8;
                 }
             });
         }
@@ -177,13 +178,28 @@ impl PainterTool {
         // brush's: a drag-sized Anchored ball is as tall committed as it was live, and dialling the
         // Size slider after the stroke does not re-scale relief already on the canvas.
         let brush = self.paint.brush;
-        let mut spec_i = brush;
-        let mut field: Vec<f32> = Vec::with_capacity(cells);
-        for_each_in(rect, w, |i| {
-            let g = f32::from(self.paint.relief.live_grain[i]) / 255.0;
-            spec_i.radius_px = self.paint.relief.live_radius[i];
-            field.push(derive_height(&spec_i, self.paint.relief.live_paint[i], g));
-        });
+        // ⚠️ **Por LINHA, não por `push`** — a derivação é pura por-texel e as linhas de saída são
+        // disjuntas (ADR-0109), então cada thread avalia um conjunto de linhas e **nenhuma expressão
+        // muda**: byte-idêntica por construção. O `push` sequencial era o que a prendia numa thread.
+        let mut field: Vec<f32> = vec![0.0; cells];
+        {
+            use rayon::prelude::*;
+            let (grain, radius, paint) = (
+                &self.paint.relief.live_grain,
+                &self.paint.relief.live_radius,
+                &self.paint.relief.live_paint,
+            );
+            field.par_chunks_mut(rw).enumerate().for_each(|(ry, out)| {
+                let mut spec_i = brush;
+                let row = (rect.y as usize + ry) * (w as usize) + rect.x as usize;
+                for (rx, o) in out.iter_mut().enumerate() {
+                    let i = row + rx;
+                    let g = f32::from(grain[i]) / 255.0;
+                    spec_i.radius_px = radius[i];
+                    *o = derive_height(&spec_i, paint[i], g);
+                }
+            });
+        }
 
         // 2. Settle it. The window's border is zero (it was grown by the blur's reach), so the settle's
         //    edge-clamp replicates the same zero a whole-canvas pass would have read from outside — the
@@ -227,41 +243,69 @@ impl PainterTool {
         if target.len() != n {
             target.resize(n, 0.0);
         }
-        let (mut x0, mut y0, mut x1, mut y1) = (u32::MAX, u32::MAX, 0u32, 0u32);
-        let mut any_relief = false;
-        for ry in 0..rh {
-            for rx in 0..rw {
-                let c = ry * rw + rx;
-                let i = (rect.y as usize + ry) * (w as usize) + rect.x as usize + rx;
-                // Strokes ADD — up to the glass ceiling (see [`H_CEIL`]). A lone stroke never reaches it
-                // (`|depth| ≤ 1`), so the clamp only ever bites where strokes genuinely pile up.
-                let g0 = if has_base { base[c] } else { 0.0 };
-                // `R₁` IS the displacement (it sums to zero), so the ground plus a scaled copy of it is
-                // the whole story — and it is linear in Push, which is what keeps the knob live.
-                let under = if has_push {
-                    g0 + push * self.paint.relief.live_push[i]
-                } else {
-                    g0
-                };
-                let next = (field[c] + under).clamp(
-                    -super::impasto_ceiling::H_MAX,
-                    super::impasto_ceiling::H_MAX,
-                );
-                if next != 0.0 {
-                    any_relief = true;
-                }
-                // A texel that moved by less than a 16-bit tick of the height range cannot change a
-                // single output byte; chasing it would repaint the canvas for nothing.
-                if (next - target[i]).abs() > RELIEF_EPS {
-                    let (px, py) = (rect.x + rx as u32, rect.y + ry as u32);
-                    x0 = x0.min(px);
-                    y0 = y0.min(py);
-                    x1 = x1.max(px);
-                    y1 = y1.max(py);
-                }
-                target[i] = next;
-            }
-        }
+        // ⚠️ **Por LINHA, com a caixa REDUZIDA** — a escrita é pura por-texel e as linhas do `target` são
+        // disjuntas (ADR-0109); a caixa que ela acumula sai de `min`/`max` sobre índices, que são
+        // **associativos e comutativos**, então a árvore de redução do rayon devolve os MESMOS quatro
+        // números em qualquer agendamento. Byte-idêntica por construção: nenhuma expressão muda, só quem
+        // avalia qual linha. (O mesmo desenho do `PlaneDeltas::split`, doc 28 §5.14.)
+        let (x0, y0, x1, y1, any_relief) = {
+            use rayon::prelude::*;
+            let live_push = &self.paint.relief.live_push;
+            let (wi, rx0, ry0) = (w as usize, rect.x as usize, rect.y as usize);
+            let (lo, hi) = (ry0 * wi, (ry0 + rh) * wi);
+            const NONE_BOX: (u32, u32, u32, u32, bool) = (u32::MAX, u32::MAX, 0, 0, false);
+            target[lo..hi]
+                .par_chunks_mut(wi)
+                .enumerate()
+                .map(|(ry, trow)| {
+                    let mut acc = NONE_BOX;
+                    let row = (ry0 + ry) * wi + rx0;
+                    for rx in 0..rw {
+                        let c = ry * rw + rx;
+                        // Strokes ADD — up to the glass ceiling (see [`H_CEIL`]). A lone stroke never
+                        // reaches it (`|depth| ≤ 1`), so the clamp only bites where strokes pile up.
+                        let g0 = if has_base { base[c] } else { 0.0 };
+                        // `R₁` IS the displacement (it sums to zero), so the ground plus a scaled copy of
+                        // it is the whole story — and it is linear in Push, which keeps the knob live.
+                        let under = if has_push {
+                            g0 + push * live_push[row + rx]
+                        } else {
+                            g0
+                        };
+                        let next = (field[c] + under).clamp(
+                            -super::impasto_ceiling::H_MAX,
+                            super::impasto_ceiling::H_MAX,
+                        );
+                        if next != 0.0 {
+                            acc.4 = true;
+                        }
+                        // A texel that moved by less than a 16-bit tick of the height range cannot change
+                        // a single output byte; chasing it would repaint the canvas for nothing.
+                        let t = &mut trow[rx0 + rx];
+                        if (next - *t).abs() > RELIEF_EPS {
+                            let (px, py) = (rect.x + rx as u32, rect.y + ry as u32);
+                            acc.0 = acc.0.min(px);
+                            acc.1 = acc.1.min(py);
+                            acc.2 = acc.2.max(px);
+                            acc.3 = acc.3.max(py);
+                        }
+                        *t = next;
+                    }
+                    acc
+                })
+                .reduce(
+                    || NONE_BOX,
+                    |a, b| {
+                        (
+                            a.0.min(b.0),
+                            a.1.min(b.1),
+                            a.2.max(b.2),
+                            a.3.max(b.3),
+                            a.4 || b.4,
+                        )
+                    },
+                )
+        };
         self.paint.relief.live_relief_base = base; // PRISTINE — the ground is re-read on every knob edit
 
         // 4. A layer that carried nothing before this stroke and carries nothing now (Depth 0) drops its

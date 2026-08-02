@@ -4745,42 +4745,20 @@ impl App {
                             hero.gizmo.extra_selection.clear();
                         }
                     }
-                    // **SELECIONAR UMA ROLDANA CLICANDO NELA** (W-RopeStop) —
-                    // Enio: *"permita selecionar as polias com mouse no canvas"*.
-                    //
-                    // Até aqui uma roldana só era alcançável pela Hierarquia: ela
-                    // não tem sprite, então o `pick_sprites_at_world` não a vê, e
-                    // as alças dela (centro/aro) só nascem DEPOIS de ela estar
-                    // selecionada — o laço em que a única porta de entrada era uma
-                    // lista de nomes.
-                    //
-                    // ⚠️ **Depois das alças, e não antes:** uma alça agarrada tem
-                    // de vencer, senão arrastar o aro da roldana selecionada
-                    // apenas a re-selecionaria. E **só com o contorno na tela**,
-                    // porque o alvo é o desenho: clicar no que não está desenhado
-                    // é um clique que acerta algo invisível.
-                    let mut began_wheel_select = false;
-                    if !began_pivot
+                    // **SELECIONAR UMA ROLDANA CLICANDO NELA** — ver `select_wheel_at`.
+                    let began_wheel_select = !began_pivot
                         && !began_joint_anchor
                         && anchor_hit.is_none()
                         && self.show_colliders
                         && hero.store.panel_at(evt.x, evt.y).is_none()
                         && !menu_open_before
-                    {
-                        let win = gfx.surface.size();
-                        let w = gfx.camera.screen_to_world((evt.x, evt.y), win);
-                        // ⚠️ **A MESMA `SNAP_PX` do ímã de âncora e do
-                        // conta-gotas de corda**, convertida em mundo pelo zoom —
-                        // um app onde dois alvos de canvas respondem a distâncias
-                        // diferentes é um app que se aprende duas vezes.
-                        let tol = crate::joint_anchor_drag::SNAP_PX * gfx.camera.height_world
-                            / win.height as f32;
-                        if let Some(wheel) = gfx.physics.wheel_at_world(w, tol) {
-                            hero.gizmo.selection = Some(wheel.to_bits());
-                            hero.gizmo.extra_selection.clear();
-                            began_wheel_select = true;
-                        }
-                    }
+                        && select_wheel_at(
+                            &gfx.physics,
+                            &gfx.camera,
+                            gfx.surface.size(),
+                            hero,
+                            (evt.x, evt.y),
+                        );
                     if began_pivot || began_joint_anchor || began_wheel_select {
                         // Pivot or joint-anchor drag opened; Move events drive it.
                     } else if is_specific_handle
@@ -6051,4 +6029,39 @@ mod spectral_axis_tests {
         assert_eq!(freq_at_y(&v, v.rect.y - 500.0), 1.0);
         assert_eq!(freq_at_y(&v, v.rect.y + v.rect.h + 500.0), 0.0);
     }
+}
+
+/// **A roldana sob o cursor vira a SELEÇÃO** (W-RopeStop) — o pedido do Enio
+/// *"permita selecionar as polias com mouse no canvas"*.
+///
+/// Até aqui uma roldana só era alcançável pela Hierarquia: ela não tem sprite,
+/// então o `pick_sprites_at_world` não a vê, e as alças dela (centro/aro) só
+/// nascem DEPOIS de ela estar selecionada — o laço em que a única porta de
+/// entrada era uma lista de nomes.
+///
+/// ⚠️ **A tolerância é a MESMA `SNAP_PX` do ímã de âncora e do conta-gotas de
+/// corda**, convertida em mundo pelo zoom: um app onde dois alvos de canvas
+/// respondem a distâncias diferentes é um app que se aprende duas vezes.
+///
+/// Devolve se alguma roldana foi de fato selecionada — o chamador usa isso para
+/// consumir o Down, como faz com o pivô e com a âncora.
+/// ⚠️ Toma os TRÊS pedaços do `AppGfx` de que precisa, e não `&AppGfx`: quem
+/// chama já segura um `&mut` em `gfx.hero_screen` — empréstimos por CAMPO são
+/// disjuntos, um reborrow da struct inteira não é. A mesma assinatura, pelo mesmo
+/// motivo, que o `joint_anchor_drag::open_drag`.
+fn select_wheel_at(
+    physics: &ph2d_physics_ecs::PhysicsBridge,
+    camera: &ph2d_render::Camera2d,
+    win: ph2d_host::WindowSize,
+    hero: &mut ph2d_editor::HeroScreen,
+    at: (f32, f32),
+) -> bool {
+    let w = camera.screen_to_world(at, win);
+    let tol = crate::joint_anchor_drag::SNAP_PX * camera.height_world / win.height as f32;
+    let Some(wheel) = physics.wheel_at_world(w, tol) else {
+        return false;
+    };
+    hero.gizmo.selection = Some(wheel.to_bits());
+    hero.gizmo.extra_selection.clear();
+    true
 }

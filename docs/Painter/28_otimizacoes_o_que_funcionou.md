@@ -5723,6 +5723,21 @@ as duas elisões juntas levam a **1**.
 
 ### §5.60 — E O DEGRAU 4 FOI RE-DESENHADO PELA TERCEIRA VEZ: elidir o `before` NÃO remove um dono, TROCA o dono de lugar — e "elidido" é indistinguível de "não existia"
 
+> ⚠️ **CORREÇÃO (§5.61 — a wave FOI construída e mediu):** duas afirmações desta seção não
+> sobreviveram à construção, e a §5.61 traz o número de cada uma.
+>
+> 1. *"Aceitar `layer.is_none()` como 'nada mudou' é INVÁLIDO"* — **é VÁLIDO com a testemunha.** O que
+>    tornava o silêncio ambíguo era não haver como saber se alguém trocara o plano por fora; um `Weak`
+>    por plano responde isso. Sem a correção, **64 gates** caíam no descarte.
+> 2. *A testemunha `ptr_eq` como recusa do caminho quente* — **estrita demais, medido:** o próprio fold
+>    substitui o `Arc` em todo traço de impasto, e exigi-la reprovava **58 gates**. Ela ficou onde é
+>    necessária *e* suficiente: quando o journal está CALADO sobre aquele plano — e ali pegou o eraser
+>    ao vivo.
+>
+> A ordem em 6 passos ao fim desta seção foi **seguida**, e o passo 3 escondia o custo real: não era o
+> alocador (hipótese refutada por medição), era o **detector da absorção** disparando em todo pen-down.
+
+
 O §5.59 fechou com a frase *"só as duas elisões juntas levam a 1"*, e ela está **ERRADA**. Indo
 construir o passo 1 da ordem revisada, três medições — nenhuma delas um relógio — derrubaram o desenho
 outra vez. As três ficam escritas porque **cada uma sozinha faria o degrau 4 perder relevo em silêncio**,
@@ -5774,3 +5789,125 @@ em `load average` 4-8. O que decide aqui é forma e contagem, e é só isso que 
 5. os gates: a sonda de donos vira gate (tem de ir a **1**), o comportamental *pinte · desfaça · refaça
    — a tinta **e o relevo** voltam iguais*, e a razão do fold;
 6. re-medir com a máquina calma (`load average` < 5), porque nenhum número desta sessão serve.
+
+---
+
+### §5.61 — O DEGRAU 4 FECHOU: o relevo é DESCRITO em vez de segurado, os donos caem de 3 para 1 e o pen-up cai 4× — mas a causa do custo que quase matou a wave não era a que eu escrevi
+
+**Estado: construído, medido, verde nos dois perfis. Pendente de smoke.**
+
+O prêmio que a §5.16 nomeou e a §5.60 re-desenhou três vezes: o `cursor` era o **segundo dono
+permanente** dos três planos de relevo (§5.14: dois donos em repouso, `undo.clear()` levava a um), e o
+`before` do traço era o terceiro. Com três donos, a 1ª escrita de todo traço **copiava o documento**.
+
+Medido pela porta do produto, **costas-com-costas na MESMA corrida** (a máquina é compartilhada e um
+A/B cross-run atribuiria a deriva dela ao ganho — §5.46), com a ablação pela **ENTRADA**
+(`UndoController::elide_relief` / `elide_cursor`, `cfg(test)`):
+
+| tela | elide | pen-down | pen-up | donos |
+|---|---|---|---|---|
+| 2048² | nenhum | 3,43 | 10,54 | 3 |
+| 2048² | **os DOIS** | 3,43 | **3,94** | **1** |
+| 4096² | nenhum | 5,77 | 22,22 | 3 |
+| 4096² | só o BEFORE | 5,86 | 22,29 | 2 |
+| 4096² | só o CURSOR | 5,68 | 21,31 | 2 |
+| 4096² | **os DOIS** | 5,65 | **5,57** | **1** |
+
+**pen-up 22,22 → 5,57 ms a 4096² (3,99×)** e **10,54 → 3,94 a 2048² (2,68×)**, com o pen-down
+**intocado**. ⚠️ **E só as duas elisões JUNTAS entregam:** nenhuma sozinha move o pen-up (21,31 e 22,29
+contra 22,22 do controle) — é a §5.59 (*"só as duas elisões juntas levam a 1"*) confirmada pelo relógio
+depois de o ter sido pela contagem.
+
+#### O TERCEIRO estado, e por que ele não é cerimônia
+
+`ModelSnapshot` ganhou `relief_elided` (`crate::undo::elide::ElidedRelief`): três
+`BTreeMap<LayerId, Weak<Vec<T>>>`. **Três estados e não dois** — *presente* (a chave está no mapa),
+*ausente* (não está) e **ELIDIDO** (não está, e este campo diz que ele EXISTIA). A §5.60 mediu o que
+acontece sem ele: toda chave cai no braço `(None, Some(a))` do `from_journal`, que **significa**
+`OnlyAfter` = *"não existia antes"* ⇒ desfazer REMOVE a chave e **o undo apaga o relevo**.
+
+⚠️ **O `Weak` não conta como dono** — `Arc::make_mut` só copia com outro *strong* (§5.12 mediu 0,0000 ms
+com só um `Weak` vivo) e a porta de fork pergunta `strong_count > 1` (§5.15). É essa propriedade que
+torna a elisão um ganho em vez de um rearranjo.
+
+#### TRÊS afirmações minhas que a construção derrubou
+
+**(1) O `speaks_for` aceitando um journal SILENCIOSO é VÁLIDO — a §5.60 o marcou como inválido, e o que
+mudou foi a testemunha.** Um passo que não tocou relevo tem `layer == None`, e recusá-lo fazia **64
+gates** caírem no descarte. O silêncio era ambíguo (*nada mudou* × *alguém trocou o plano por fora*);
+com um `Weak` por plano ele vira afirmação verificada.
+
+**(2) A testemunha `ptr_eq` como recusa do caminho quente é ESTRITA DEMAIS, e isso está medido:** o
+próprio fold (`commit_stroke_height`) monta um plano novo e o INSERE, então o `Arc` muda de identidade
+em **todo traço de impasto** — exigi-la reprovava **58 gates** do caminho normal, com os bytes
+perfeitamente cobertos pela captura. Ela ficou onde é necessária *e* suficiente: **quando o journal
+está calado sobre aquele plano**. Nessa forma ela pegou o **ERASER** ao vivo, com a suíte verde em tudo
+o mais — o sítio que a §5.60 nomeara por leitura de código.
+
+**(3) A base do `materialize` do TOPO não é o vivo.** Passar `after` ali fez o gate
+`a_coalesced_run_recomposes_the_delta` sangrar com `32.0` onde o estado adjacente tinha `26.0` — *a
+base é o estado ADJACENTE à entrada, e nem sempre ele é o de agora*, que é literalmente o que o
+`undo_planes.rs` já avisava. A porta única `base_for_top` devolve o **cursor REIDRATADO** pelas
+testemunhas, e só quando o journal diz que ninguém escreveu relevo desde o commit (`relief_untouched`);
+senão recusa, e a absorção e o run coalescido caem nos seus early-outs de sempre.
+
+#### ⛔ A hipótese que quase virou a explicação — REFUTADA por medição
+
+A primeira medição da fase B deu **pen-down 5,70 → 36,2 ms a 4096²**: a wave seria uma **PERDA líquida
+de ~15 ms por traço**. A explicação natural era o alocador — a elisão passou a LIBERAR ~200 MB por
+commit, e o `impasto.rs` **já documenta** que `vec![0.0; n]` só é barato enquanto o `alloc_zeroed`
+recebe páginas frescas do SO (a troca por `clear() + resize` foi medida e reprovada em 2026-07-25:
+17,6 → 47,5 ms). A hipótese fechava com o mecanismo, com a escala (≈ 4× a área) e com a aritmética.
+
+**E está errada.** Segurar os planos liberados num `Vec` (a configuração `os DOIS + PIN` da sonda)
+**não devolveu um milissegundo** — 36,23 → 37,53. *Repita antes de explicar.*
+
+A causa era o **detector da absorção**. `absorb_foreign_writes` compara o cursor com o `before` pelo
+`PlaneDeltas::split`; com o cursor ELIDINDO o relevo e o `before` segurando-o, **toda camada saía como
+`OnlyAfter`** = *"apareceu agora"*, `heap_bytes()` nunca era zero, e a absorção fazia um re-split +
+materialize completos **em todo pen-down**. O relevo saiu do detector, com o porquê escrito: aquela
+porta existe para a escrita de **canvas** que não registrou entrada (o escorrido do Wet Paint), e
+escrita de relevo fora da história é outra pergunta — quem a responde é o journal, pelo `base_for_top`.
+
+#### E quando a aposta é perdida, a história é DESCARTADA
+
+Elidir é apostar que o journal descreverá o passo. Perder a aposta significa que o estado de antes
+**não existe em lugar nenhum** — nem na entrada, nem no tool, que o sobrescreveu no lugar. Guardar a
+entrada assim mesmo seria o pior dos desfechos (ela sairia dizendo `Unchanged`/`OnlyAfter` e desfazê-la
+**apagaria** o relevo, em silêncio). `discard_if_relief_is_lost` descarta, com o readout do journal ao
+lado (*misturado · incompleto · camada errada · plano trocado* pedem correções diferentes) e um
+`debug_assert` que a torna LOUD na suíte inteira. Os dois sítios que trocam o plano por inteiro agora
+CAPTURAM — é a cura de projeto; a testemunha é a rede para o sítio que ninguém listou.
+
+#### A promoção levou os dois JUNTOS
+
+O journal do **RELEVO** e a proveniência saíram de `cfg(debug)` no mesmo commit que a elisão (§5.58.1 —
+promover o journal sozinho paga captura *e* fork até o fork morrer). O journal do **CANVAS fica em
+debug**: o `before` do canvas não é elidido, então capturar dele em release seria custo sem
+contrapartida. O `expect(dead_code)` do `ReliefSource` virou erro e saiu **exatamente como ele próprio
+prometia** — um `allow` teria sobrevivido calado.
+
+#### Os gates, e o que o terceiro deles ensinou
+
+- `an_elided_before_is_not_read_as_a_layer_that_had_no_relief` — o central. A mutação (colapsar o
+  terceiro estado no segundo) faz o undo apagar o relevo **e a tinta volta certa**, então nenhum gate de
+  pigmento pisca: este é o único que vê.
+- `nobody_but_the_tool_holds_the_relief_planes` — sem relógio, logo sem ruído: a pergunta é
+  `Arc::strong_count`, a MESMA que a porta de fork faz. Mutação: `(2,2,2)` contra `(1,1,1)`.
+- `a_clean_pen_down_does_not_wake_the_absorption` — ⚠️ **o oráculo dele nasceu VAZIO.** A 1ª versão
+  afirmava que `undo_depth()` não mudava, e a absorção faz **pop + push**: a profundidade não muda nem
+  quando ela dispara, então o gate **não podia falhar pelo motivo que alegava**. A mutação SOBREVIVEU e
+  o denunciou. A pergunta é *"ela disparou?"* e a forma honesta de a fazer é **contar** (`ABSORB_FIRED`,
+  o idioma do `RELIEF_FROM_JOURNAL`); assim a mesma mutação sangra 1 contra 0.
+
+**3 mutações, 3 sangram.** Suíte **942/0 debug · 944/0 release**, clippy limpo, LOC 2/2, contrato
+congelado 4/4, fingerprint do ADR-0134 **3/3**, `PROJECT_SCHEMA` **intocado**.
+
+#### Aberto, com o número ao lado
+
+- O **pen-down segue sendo uma cópia de canvas** (§5.16 o pinou; ele não era o alvo desta wave e não se
+  moveu: 5,65 ms a 4096²). A captura do "antes" por REGIÃO — o *tile-based undo* — é o que o fecha, e
+  ela quer a porta única de escrita de canvas.
+- O `relief_indescribable` **nunca disparou** na suíte depois das duas capturas. Se ele aparecer num
+  caminho real, é o desenho da elisão que está errado, não o guard — e o readout diz qual das quatro
+  causas foi.

@@ -35,6 +35,40 @@ bancada.
 
 ---
 
+## §0.4 — ⬛ A WAVE FECHOU (2026-08-01) — leia isto antes do resto
+
+**O degrau 4 foi construído, medido e está verde nos dois perfis. Pendente de SMOKE.** Tudo abaixo
+desta seção descreve o estado ANTERIOR e vale como histórico — em especial a §4 e a §5, cujas
+premissas a construção corrigiu.
+
+**O registro completo, com os números, é o [doc 28 §5.61](Painter/28_otimizacoes_o_que_funcionou.md).**
+
+O que ficou, em três linhas:
+
+- **pen-up 22,22 → 5,57 ms a 4096² (3,99×)** e **10,54 → 3,94 a 2048² (2,68×)**, pen-down intocado;
+  donos dos três planos de relevo **3 → 1**. ⚠️ **Só as duas elisões juntas entregam.**
+- O **terceiro estado** (`crate::undo::elide::ElidedRelief`, um `Weak` por plano) é o que impede o
+  `before` elidido de ser lido como *"não existia antes"* — sem ele o undo **apaga** o relevo.
+- O journal do **relevo** e a elisão subiram para release **juntos** (§5.58.1); o journal do **canvas**
+  fica em debug.
+
+⚠️ **Três coisas que a §4/§5 afirmam e que a construção derrubou** — não as re-derive:
+
+1. *"Aceitar `layer.is_none()` é INVÁLIDO"* → é **válido com a testemunha** (sem isso, 64 gates caem).
+2. *A testemunha `ptr_eq` como recusa do caminho quente* → **estrita demais** (o fold troca o `Arc` em
+   todo traço; 58 gates reprovavam). Ela vale só onde o journal está CALADO — e ali pegou o eraser.
+3. *A base do `materialize` do topo* → **não é o vivo** (mediu `32.0` onde o adjacente tinha `26.0`).
+   A porta é `UndoController::base_for_top`.
+
+⛔ **E a hipótese que quase virou explicação foi REFUTADA:** o pen-down subiu para 36 ms na 1ª medição e
+a causa **não** era o alocador reciclando os planos liberados (segurá-los não devolveu um
+milissegundo). Era o **detector da absorção** disparando em todo pen-down. *Repita antes de explicar.*
+
+**Smoke:** `env PH2D_IMPASTO_SMOKE=2 PH2D_PAINT_PERF=1 cargo run -p ph2d-host-desktop --release` —
+pinte, desfaça, refaça: a tinta **e o RELEVO** têm de voltar iguais, e o traço tem de ficar liso.
+
+---
+
 ## §0.5 — O QUE JÁ ESTÁ FEITO (não reconstrua)
 
 | degrau | estado | onde |
@@ -42,7 +76,7 @@ bancada.
 | 1 · identificar o 4º dono | ✅ | §5.58.1 — são **três** (tool · `stroke_undo` · `cursor`) |
 | **2 · `split_from_journal`** | ✅ **construído, 5 gates, 7 mutações, 7 sangram** | `undo_delta_journal.rs` (filho novo) · `journal_delta_tests.rs` |
 | **3 · a materialização parte do VIVO** | ✅ **construído, net + mutação** | `PlaneDeltas::side` ganhou duas bases |
-| 4 · a elisão + a promoção | ⛔ **redesenhado 2×** — ver §4 + doc 28 **§5.60** | — |
+| 4 · a elisão + a promoção | ✅ **FECHADO** (2026-08-01) — doc 28 **§5.61**; pendente de smoke | `undo_elide.rs` · `base_for_top` · os 3 gates |
 
 **Duas correções ao plano, as duas achadas por gate vermelho:**
 

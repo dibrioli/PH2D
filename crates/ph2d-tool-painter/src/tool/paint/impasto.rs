@@ -83,7 +83,7 @@ impl PainterTool {
                         .filter(|c| c.len() == n);
                     let c = c.unwrap_or_else(|| vec![0u8; n]);
                     // ⚠️ **A CAPTURA do plano inteiro, e ela é o que torna o eraser descritível**
-                    // (degrau 4, doc 28 §5.60). Este sítio **arranca** o plano do mapa e devolve outro
+                    // (degrau 4, doc 28 §5.72). Este sítio **arranca** o plano do mapa e devolve outro
                     // objeto lá adiante: nenhuma porta de fork o vê, então sem isto o journal fica em
                     // silêncio sobre bytes que mudaram — e um `before` elidido não tem de onde tirá-los.
                     // `None` na área é exatamente o caso que ela nomeia: *o sítio não sabe onde vai

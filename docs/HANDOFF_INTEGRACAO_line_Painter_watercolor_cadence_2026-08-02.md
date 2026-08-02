@@ -9,10 +9,10 @@
 |---|---|
 | Branch | `line/Painter` |
 | Worktree | `Worktrees/line-Painter` |
-| HEAD | `6a6a21bcf` |
+| HEAD | `d7ef0c946` (atualizar após o commit final) |
 | Base | `main` a `a9f5977e9` (rebase era no-op ao assumir; **re-rodar `git rebase main` antes de integrar**) |
-| Commits desta sessão | **4** (`56f9f372f`, `fd0155916`, `873d68806`, `6a6a21bcf`) |
-| Commits acumulados da linha | **57** (53 herdados do motor de undo + 4 desta sessão) |
+| Commits desta sessão | **11** — a cadência (4) + a avaliação sob carga (2) + a wave do SMUDGE (5) |
+| Commits acumulados da linha | **64** (53 herdados do motor de undo + os desta sessão) |
 
 ## 2 — O que entra
 
@@ -188,7 +188,7 @@ errada.
 
 - **O `pour_canvas_wet` ainda caminha o rect CUMULATIVO** uma vez por quadro ⇒ o custo por quadro cresce
   **1,23× / 1,32× / 1,51×** do 1º para o 4º quarto (traços de 24/48/96 quadros). ✅ **A premissa foi
-  VERIFICADA em 2026-08-02** (doc 28 §5.60, lendo os escritores em vez de supor): `stroke_coverage` e
+  VERIFICADA em 2026-08-02** (doc 28 §5.72, lendo os escritores em vez de supor): `stroke_coverage` e
   `wet_styles.owner` só são mutados **por-dab**, os dois `zip` de plano inteiro do acumulador são
   **backfills únicos** (guardados por `len() != fw*fh`), e o pour é **idempotente** (max-blend) ⇒ um
   texel fora do rect do QUADRO não pode ter mudado, e o rect do quadro basta **byte a byte**. A cura é a

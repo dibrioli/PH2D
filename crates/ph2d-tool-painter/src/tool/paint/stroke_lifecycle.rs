@@ -47,7 +47,7 @@ impl PainterTool {
         // **O passo de undo começa AQUI** (doc 28 §5.26): a cadeia é reconciliada e o journal passa a
         // descrever este traço em vez do intervalo desde o último commit.
         self.begin_undo_step();
-        // ⚠️ **ELIDINDO o relevo** (degrau 4, doc 28 §5.60): este `before` DESCREVE os três planos em
+        // ⚠️ **ELIDINDO o relevo** (degrau 4, doc 28 §5.72): este `before` DESCREVE os três planos em
         // vez de os segurar, e é isso que deixa o 1º dab escrever no lugar — a porta de fork copia
         // quando `strong_count > 1`, e um `Weak` não conta. O lado `before` do delta sai do journal.
         let before = self.snapshot_model_eliding_relief();

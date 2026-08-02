@@ -1,7 +1,7 @@
 //! **O `pour_canvas_wet`: quanto ele cobra, e o que a rota do quadro MUDA na tinta.**
 //!
 //! O pour caminha `wet_stroke_dirty` — a união **cumulativa** desde o pen-down — uma vez por quadro,
-//! então o custo por quadro cresce com o comprimento do traço (doc 28 §5.60: 0,35 → 0,94 M texels num
+//! então o custo por quadro cresce com o comprimento do traço (doc 28 §5.72: 0,35 → 0,94 M texels num
 //! traço de 1500 px, contra uma janela de composite PLANA em 0,36 M).
 //!
 //! ⚠️ **As duas perguntas são separadas e as duas precisam de resposta**, porque a troca **não** é
@@ -254,7 +254,7 @@ fn measure_which_knob_pays_the_stamp() {
 ///
 /// `freeze_watercolor_ground` roda uma vez por traço e caminha o plano TRÊS vezes (backdrop, substrato,
 /// soak). É a única metade do módulo que responde ao tamanho do documento depois que o smudge parou de
-/// forkar o canvas (doc 28 §5.61) — e com um pincel de 250 px o artista paga isso a cada traço.
+/// forkar o canvas (doc 28 §5.73) — e com um pincel de 250 px o artista paga isso a cada traço.
 #[test]
 #[ignore = "measurement, not a gate"]
 fn measure_what_starting_a_watercolor_stroke_costs() {

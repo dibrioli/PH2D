@@ -6696,7 +6696,7 @@ precisão de tabela de transferência (doc 24), então isso é medido, não supo
 
 ---
 
-## §5.60 — O Watercolor a 250 px: a CONTAGEM decidiu com a máquina cheia, e a premissa aberta desde §5.71 está VERIFICADA (2026-08-02)
+## §5.72 — O Watercolor a 250 px: a CONTAGEM decidiu com a máquina cheia, e a premissa aberta desde §5.71 está VERIFICADA (2026-08-02)
 
 > Report do Enio: *"um pincel de 250px e as configurações na imagem provocam grande queda de FPS.
 > Desempenho pior em imagens grandes (4096)."* — com `Rewet 0.400`, `Smudge 0.197`, `Dilution 0.168`,
@@ -6801,10 +6801,10 @@ iguais pelas duas rotas —, e o **benefício também se conta** (texels caminha
 
 ---
 
-## §5.61 — E era o SMUDGE forkando o canvas em todo evento: o quadro 83,4 → 27,4 ms, e PLANO na tela (2026-08-02)
+## §5.73 — E era o SMUDGE forkando o canvas em todo evento: o quadro 83,4 → 27,4 ms, e PLANO na tela (2026-08-02)
 
-> Continuação direta da §5.60, com a máquina calma (`load average 1,40`) e o Enio autorizando medir.
-> A §5.60 tinha contado texels e apontado para o `pour`. **A medição matou esse alvo e achou outro.**
+> Continuação direta da §5.72, com a máquina calma (`load average 1,40`) e o Enio autorizando medir.
+> A §5.72 tinha contado texels e apontado para o `pour`. **A medição matou esse alvo e achou outro.**
 
 ### 1. O alvo da §5.60 morreu na primeira medição
 
@@ -6817,14 +6817,14 @@ O `pour` foi construído com rota de ablação e medido **costas-com-costas na m
 ⛔ **Todo o custo, nenhum benefício** ⇒ a porta foi **REVERTIDA inteira** (a lei da §5.44: *um doc que
 justifica uma porta com um número que ela não entrega é pior que porta nenhuma*).
 
-⚠️ **E a premissa de byte-identidade da §5.60 estava ERRADA, com um buraco que eu mesmo abri:** eu
+⚠️ **E a premissa de byte-identidade da §5.72 estava ERRADA, com um buraco que eu mesmo abri:** eu
 enumerei as FONTES do pour (`stroke_coverage`, `wet_styles.owner` — as duas só mutadas por-dab) e
 esqueci que o **ALVO decai**. O `dry_canvas_wet` roda no MESMO `paint_tick`, então `canvas_wet` seca a
 cada quadro e o pour cumulativo o levanta de volta sobre a pegada inteira; caminhar só o quadro deixa a
 cauda do traço secar enquanto o artista pinta. *Enumerar as fontes de uma escrita não basta quando o
 destino tem vida própria.*
 
-⚠️ **E a lição maior, sobre o método da §5.60: ÁREA NÃO É CUSTO.** O pour caminha **2,6× mais texels**
+⚠️ **E a lição maior, sobre o método da §5.72: ÁREA NÃO É CUSTO.** O pour caminha **2,6× mais texels**
 que o composite e custa **~2%** dele — o composite faz ordens de grandeza mais trabalho por texel.
 Contar é imune à carga, mas contagem é **proxy**, e um proxy precisa ser calibrado contra o real pelo
 menos uma vez antes de virar alvo.

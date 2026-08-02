@@ -574,7 +574,7 @@ fn what_an_undo_costs() {
 }
 
 /// **DE QUEM É O PREÇO DO RELEVO NO PEN-UP** — a decomposição por DONO que decide o degrau 4
-/// (doc 28 §5.60).
+/// (doc 28 §5.72).
 ///
 /// A §5.14 mediu *quantos* donos existem e a `what_the_pen_up_is_made_of_by_ablation` mediu *quanto o
 /// commit custa*; nenhuma das duas responde **qual dos donos paga o quê**, e é essa a pergunta, porque
@@ -589,7 +589,7 @@ fn what_an_undo_costs() {
 ///
 /// ⚠️ **Ablar o relevo do `before` MUDA A FORMA do delta** (mapas vazios ⇒ `OnlyAfter`, que guarda um
 /// `Arc` do plano VIVO), então esta configuração **não** é o degrau 4: ela é o limite superior do que
-/// **O QUE A ELISÃO COMPRA, medido COSTAS-COM-COSTAS na mesma corrida** — o degrau 4 (doc 28 §5.60).
+/// **O QUE A ELISÃO COMPRA, medido COSTAS-COM-COSTAS na mesma corrida** — o degrau 4 (doc 28 §5.72).
 ///
 /// ⚠️ **A/B cross-run não serve, e isto está medido nesta linha:** a máquina é compartilhada e o
 /// MESMO passo do produto já variou 14,5–30,2 ms sem uma linha mudar (§5.46). As duas rotas são

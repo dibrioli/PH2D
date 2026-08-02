@@ -243,7 +243,7 @@ fn what_the_journal_retains_for_one_real_stroke() {
 }
 
 /// **O PRÊMIO DO DEGRAU 4 É CONDICIONAL À ROTA DO JOURNAL, e isto é FORMA — não relógio**
-/// (doc 28 §5.60).
+/// (doc 28 §5.72).
 ///
 /// A elisão do relevo no `before` do pen-down parecia remover um dono. Ela **não remove: troca de
 /// lugar.** Com o mapa `before` vazio o `split` cai em [`StoredEntry::OnlyAfter`], que guarda um `Arc`

@@ -324,7 +324,7 @@ fn the_journals_refuse_to_answer_for_a_layer_they_did_not_capture() {
 }
 
 /// **O TERCEIRO estado: um `before` que ELIDE não é lido como *"não existia"*** — o gate central do
-/// degrau 4 (doc 28 §5.60).
+/// degrau 4 (doc 28 §5.72).
 ///
 /// Sem ele, toda chave de um `before` elidido cai no braço `(None, Some(a))` do
 /// [`StoredMap::from_journal`](crate::undo_delta::StoredMap::from_journal), que **significa**
@@ -395,7 +395,7 @@ fn nobody_but_the_tool_holds_the_relief_planes() {
         ),
         (1, 1, 1),
         "alguem alem do tool segura o relevo em repouso — a proxima escrita vai COPIAR o plano \
-         inteiro em vez de escrever no lugar (doc 28 §5.60)"
+         inteiro em vez de escrever no lugar (doc 28 §5.72)"
     );
 }
 
@@ -428,7 +428,7 @@ fn a_clean_pen_down_does_not_wake_the_absorption() {
         crate::undo::absorb::ABSORB_FIRED.with(std::cell::Cell::get),
         seen,
         "a absorcao disparou num pen-down LIMPO: ela leu o relevo elidido do cursor como escrita \
-         estrangeira e re-partiu o topo (doc 28 §5.60)"
+         estrangeira e re-partiu o topo (doc 28 §5.72)"
     );
 }
 

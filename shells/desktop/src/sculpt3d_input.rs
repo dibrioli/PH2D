@@ -86,6 +86,12 @@ impl App {
                 if shift {
                     scene.brush.verb = Verb::Smooth;
                 }
+                // ⚠️ **MIRAR VEM ANTES DE COMEÇAR**, e a ordem é a wave inteira:
+                // o `begin` dimensiona os planos por-vértice na malha ATIVA, e
+                // se a peça sob o cursor for outra o traço passa a escrever
+                // índices de uma malha noutra. Com a peça nova maior que a
+                // velha, isso é um pânico no primeiro dab.
+                scene.aim(pos.0, pos.1);
                 scene.stroke.begin(scene.objects[scene.active].stack.mesh());
                 // A âncora do espaçamento nasce no pen-down: o 1º dab é o que
                 // está sob o dedo, e o resíduo passa a contar a partir dele.

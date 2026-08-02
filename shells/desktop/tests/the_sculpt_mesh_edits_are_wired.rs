@@ -722,3 +722,49 @@ fn the_pick_compares_in_world_and_the_brush_crosses_the_scale() {
         "e o raio volta para a régua da malha"
     );
 }
+
+/// **UM TRAÇO PERTENCE A UMA PEÇA**, escolhida no pen-down.
+///
+/// ⚠️ Isto não é preferência de UX, é a diferença entre desenhar e **panicar**:
+/// o `SculptStroke::begin` dimensiona os planos por-vértice na malha em que o
+/// traço COMEÇOU (`slot`, `stamp`), e um dab noutra peça indexa esses planos com
+/// os índices dela. Enquanto a peça nova for menor, o defeito é mudo; assim que
+/// for maior, o primeiro dab estoura. Medido: tocar o cubo (8 vértices) e depois
+/// a esfera (6050) panicava.
+///
+/// As duas metades, e as duas são necessárias:
+/// 1. o pen-down **MIRA antes de começar** — a ordem é o conserto;
+/// 2. os dois gestos consultam a peça **ATIVA**, nunca a lista, então nada troca
+///    de objeto no meio de uma pincelada.
+#[test]
+fn a_stroke_belongs_to_the_piece_it_started_on() {
+    let src = sculpt_src();
+    let down = function_body(&src, "sculpt3d_pointer_down(&mut self");
+    let at_aim = down.find("scene.aim(").expect("o pen-down tem de MIRAR");
+    let at_begin = down
+        .find("scene.stroke.begin(")
+        .expect("e depois começar o traço");
+    assert!(
+        at_aim < at_begin,
+        "mirar vem ANTES de começar — depois já é a malha errada"
+    );
+
+    // ⚠️ E o `aim` é a ÚNICA porta que move o objeto ativo. Um segundo escritor
+    // seria exatamente o repique que esta lei existe para proibir.
+    assert_eq!(
+        src.matches("self.active = ").count(),
+        2,
+        "só o `aim` e o `step` do undo escrevem no ativo"
+    );
+    for gesture in ["sculpt_at(&mut self", "take_hold(&mut self"] {
+        let body = function_body(&src, gesture);
+        assert!(
+            body.contains("self.pick_active(x, y)"),
+            "`{gesture}` consulta a peça ATIVA"
+        );
+        assert!(
+            !body.contains("self.pick(x, y)"),
+            "`{gesture}` NÃO pode repicar a lista no meio de um gesto"
+        );
+    }
+}

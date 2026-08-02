@@ -194,10 +194,16 @@ pub(crate) struct Sculpt3dScene {
     pub(crate) objects: Vec<SceneObject>,
     /// Quem a mão está trabalhando. Sempre `< objects.len()`.
     ///
-    /// ⚠️ **Ele NÃO é um modo escondido:** quem o move é o próprio pick do
-    /// pincel (clicar num objeto o torna ativo), então "o ativo" é sempre *o
-    /// último que você tocou* — e é por isso que a cena não precisa de um
-    /// realce de seleção para ser honesta.
+    /// ⚠️ **Ele NÃO é um modo escondido:** quem o move é o `aim` do PEN-DOWN
+    /// (mirar uma peça a torna ativa), então "a ativa" é sempre *a última que
+    /// você tocou* — e é por isso que a cena não precisa de um realce de seleção
+    /// para ser honesta.
+    ///
+    /// ⚠️ **E ele não se move DENTRO de um gesto**, o que não é preferência: o
+    /// `SculptStroke` dimensiona os planos por-vértice na malha em que o traço
+    /// começou, então trocar de peça no meio escreve índices de uma malha noutra
+    /// — mudo enquanto a nova for menor, **pânico** assim que for maior. Ver
+    /// `Sculpt3dScene::aim`.
     pub(crate) active: usize,
     pub(crate) camera: Camera3d,
     renderer: MeshRenderer,
@@ -337,13 +343,12 @@ impl Sculpt3dScene {
     /// Sair do modelo no meio do gesto não interrompe um espinho — é assim que
     /// se puxa uma ponta para fora da silhueta.
     fn take_hold(&mut self, x: f32, y: f32) -> bool {
-        let Some((object, hit)) = self.pick(x, y) else {
+        // ⚠️ **Na peça ATIVA, e ela já foi escolhida** — pelo `aim` do pen-down,
+        // antes de o traço começar. Repicar aqui trocaria o objeto no meio de um
+        // gesto cujos planos por-vértice já estão dimensionados na malha antiga.
+        let Some(hit) = self.pick_active(x, y) else {
             return false;
         };
-        // ⚠️ **Pegar o barro TROCA o objeto ativo**, e é isso que torna "o ativo"
-        // um fato sobre o gesto em vez de um modo escondido: a peça que a mão
-        // agarrou é a peça que ela trabalha.
-        self.active = object;
         // ⚠️ **A âncora é guardada em MUNDO**, e não em local, porque quem a
         // consome é a câmera (`screen_delta_to_world`): o dedo anda na TELA. A
         // descida para o espaço da malha acontece no dab, uma vez, na porta.
@@ -511,11 +516,11 @@ impl Sculpt3dScene {
     /// Aplica um dab onde o cursor aponta. Devolve `false` se o raio errou a
     /// malha — e errar é normal: a mão sai do modelo o tempo todo.
     fn sculpt_at(&mut self, x: f32, y: f32) -> bool {
-        let Some((object, hit)) = self.pick(x, y) else {
+        // Na peça ATIVA — quem a escolheu foi o `aim` do pen-down. Ver o doc
+        // dele: um traço pertence a uma peça, e trocar no meio é um pânico.
+        let Some(hit) = self.pick_active(x, y) else {
             return false;
         };
-        // Pintar num objeto o torna o ativo — a mesma lei do `take_hold`.
-        self.active = object;
         let ray = self.ray_at(x, y);
         if std::env::var("PH2D_SCULPT3D_DIAG").ok().as_deref() == Some("1") {
             // ⚠️ **O instrumento que responde *"o pincel cai onde o cursor

@@ -591,3 +591,47 @@ fn a_mask_dab_publishes_a_gpu_window_even_though_it_refreshes_no_normal() {
         "para geometria a janela da GPU é o superconjunto, nunca os movidos"
     );
 }
+
+/// **UM DAB TEM DE CAIR NA MALHA EM QUE O TRAÇO COMEÇOU** — e quando não cai, a
+/// mensagem diz isso.
+///
+/// ⚠️ Este é o repro do pânico que a cena-lista trouxe: o pen-down começava o
+/// traço na peça ATIVA e o pick escolhia a peça sob o cursor, então tocar um
+/// cubo (8 vértices) e depois uma esfera (6050) indexava os planos por-vértice
+/// de 8 com índices de 6050. A lei mora no chamador; o `assert` existe para o
+/// dia em que alguém a quebrar de novo **não** receber *"index out of bounds"*.
+#[test]
+#[should_panic(expected = "um dab tem de cair na malha em que o traço COMEÇOU")]
+fn a_dab_on_a_bigger_mesh_than_the_stroke_began_on_says_so() {
+    let small = ph2d_mesh::shapes::cube(1.0);
+    let mut big = ph2d_mesh::shapes::uv_sphere(24, 32, 1.0);
+    assert!(
+        big.vert_count() > small.vert_count(),
+        "a fixture contém o caso"
+    );
+
+    let mut stroke = SculptStroke::default();
+    stroke.begin(&small);
+    stroke.dab(
+        &mut big,
+        &Brush::default(),
+        &Dab::at([0.0, 0.0, 1.0], 0.5, [0.0, 0.0, -1.0]),
+        Symmetry::default(),
+    );
+}
+
+/// E o CONTROLE: na malha certa o dab passa. Sem esta metade o gate acima
+/// passaria com um `assert!(false)` no lugar da comparação.
+#[test]
+fn a_dab_on_the_mesh_the_stroke_began_on_is_fine() {
+    let mut mesh = ph2d_mesh::shapes::uv_sphere(24, 32, 1.0);
+    let mut stroke = SculptStroke::default();
+    stroke.begin(&mesh);
+    let moved = stroke.dab(
+        &mut mesh,
+        &Brush::default(),
+        &Dab::at([0.0, 0.0, 1.0], 0.5, [0.0, 0.0, -1.0]),
+        Symmetry::default(),
+    );
+    assert!(moved > 0, "o dab tem de mover alguma coisa");
+}

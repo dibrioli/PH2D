@@ -130,6 +130,39 @@ impl Sculpt3dScene {
     /// mede na régua LOCAL do seu objeto (o [`Ray`] normaliza a direção na
     /// construção), então uma peça a metade do tamanho devolveria um `t` duas
     /// vezes maior para o mesmo lugar — e a peça de trás ganharia o clique.
+    /// **MIRAR** — escolhe a peça que este gesto vai trabalhar. `false` se o
+    /// raio não achou nada (e aí o botão vira órbita, como em todo gesto).
+    ///
+    /// ⚠️ **Ela roda no PEN-DOWN, ANTES de o traço começar, e é a ÚNICA coisa
+    /// que move o `active`.** Um traço pertence a UMA peça, e isso não é
+    /// preferência: o `SculptStroke` dimensiona os planos por-vértice na malha
+    /// em que ele COMEÇOU, então trocar de objeto no meio escreve índices de uma
+    /// malha noutra — e com a peça nova maior que a velha isso é um **pânico**,
+    /// não um desenho errado. É a mesma lei do NÍVEL, um degrau acima.
+    pub(super) fn aim(&mut self, x: f32, y: f32) -> bool {
+        match self.pick(x, y) {
+            Some((object, _)) => {
+                self.active = object;
+                true
+            }
+            None => false,
+        }
+    }
+
+    /// Onde o raio bate **na peça ATIVA** — a pergunta de todo dab.
+    ///
+    /// ⚠️ Irmã do [`Self::pick`] e não a mesma: aquela responde *que peça o
+    /// artista mirou* e roda uma vez por gesto; esta responde *onde na peça que
+    /// ele já escolheu*, e roda a cada dab. Usar a primeira aqui faria o pincel
+    /// PULAR para outra peça no meio de uma pincelada — que é o defeito acima,
+    /// pela outra ponta.
+    pub(super) fn pick_active(&self, x: f32, y: f32) -> Option<Hit> {
+        let o = self.obj();
+        o.stack
+            .mesh()
+            .raycast(&o.pose.ray_to_local(&self.ray_at(x, y)))
+    }
+
     pub(super) fn pick(&self, x: f32, y: f32) -> Option<(usize, Hit)> {
         let world = self.ray_at(x, y);
         let eye = world.origin();

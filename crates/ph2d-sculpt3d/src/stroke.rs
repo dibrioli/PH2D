@@ -358,7 +358,29 @@ impl SculptStroke {
     ///   contrário), e espelhar os TRÊS eixos não é uma reflexão — é uma rotação
     ///   de 180°, e o produto dos sinais devolve `+1` sozinho, sem caso especial;
     /// - o [`Amount::Fraction`] é um **ESCALAR comum** e o espelho não a toca.
+    ///
+    /// # ⚠️ A malha tem de ser a MESMA em que o traço COMEÇOU
+    ///
+    /// Os planos por-vértice (`slot`, `stamp`) são dimensionados no
+    /// [`Self::begin`], então um dab noutra malha os indexa com índices que não
+    /// são deles. Enquanto a malha nova for MENOR o defeito é mudo — escreve na
+    /// vizinhança errada e ninguém vê; assim que for maior, estoura.
+    ///
+    /// Este `assert` custa uma comparação de `usize` por dab e troca *"index out
+    /// of bounds"* por uma frase. Ele já se pagou: numa cena com mais de um
+    /// objeto, o pen-down começava o traço na peça ATIVA e o pick escolhia a
+    /// peça sob o cursor — tocar um cubo de 8 vértices e depois uma esfera de
+    /// 6050 panicava. A lei mora no chamador (*um traço pertence a uma peça*), e
+    /// isto é o que a nomeia quando alguém a quebrar de novo.
     pub fn dab(&mut self, mesh: &mut Mesh, brush: &Brush, dab: &Dab, sym: Symmetry) -> usize {
+        assert_eq!(
+            self.slot.len(),
+            mesh.vert_count(),
+            "um dab tem de cair na malha em que o traço COMEÇOU: \
+             `begin` dimensionou {} vértices e esta malha tem {}",
+            self.slot.len(),
+            mesh.vert_count()
+        );
         let (signs, n) = sym.signs();
         let handed = matches!(brush.verb.grip(), Grip::Turn(Amount::Angle));
         let mut total = 0;

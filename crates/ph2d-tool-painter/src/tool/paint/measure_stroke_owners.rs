@@ -39,6 +39,17 @@
 //! `Whole` do journal faz `after: Arc::clone(live)` ⇒ **o `after` É o segundo dono**; o `before` dele já
 //! é material próprio (`par_clone` + patch) e não segura nada.
 //!
+//! ### 1d. E metade disso FECHOU: o `Whole` por limiar do journal saiu (doc 28 §5.69)
+//!
+//! A premissa que o justificava (*"ali o `Whole` guardaria os dois planos inteiros de qualquer forma"*)
+//! **só vale na outra porta**, onde ele MOVE `Arc` que já existem; na do journal ele COPIA por cima de
+//! um `before`/`after` já extraídos. Medido: commit **272,5 → 151,6 ms a 4096²**, bytes por passo
+//! **8,00 → 7,66** planos RGBA, e os **três planos de relevo** caem para **UM** dono.
+//!
+//! ⚠️ **O canvas NÃO** — ele segue `WHOLE` com três donos (`tool` · `cursor` · a entrada), pela porta
+//! barata; e ⚠️ **o FOLD não melhorou**, porque *dentro* do gesto os donos são os três da §1b. O S3
+//! continua **tudo-ou-nada**: esta wave entrega o commit, não a cópia do gesto.
+//!
 //! (As seções sobre o CUSTO — o fork, o pen-up, o commit — mudaram-se para o irmão junto com as sondas
 //! que as mediram; o que segue é a atribuição de posse, que é o assunto deste arquivo.)
 //!
@@ -419,5 +430,43 @@ fn what_a_stroke_declares_against_what_it_changes() {
         eprintln!("  covers  {fc:6.2}%  ({rc}x{cc})");
         eprintln!("  mats    {fm:6.2}%  ({rm}x{cm})");
         eprintln!("  canvas  {fr:6.2}%  ({rr}x{cr} elementos)");
+    }
+}
+
+/// **O OUTRO LADO DO TRADE do `Whole` do journal: BYTES e PASSOS retidos.**
+///
+/// A ablação do limiar mediu o TEMPO (o commit a 4096² cai 272,5 → 151,6 ms), e tempo
+/// sozinho não decide: o `Whole` existe para guardar **1 plano** onde o `Patch` de uma
+/// janela de 90% guarda **1,8**, e o orçamento do histórico é em BYTES (`2 × documento
+/// + 256 MB`, U1) — menos bytes por passo é mais UNDO para o artista.
+///
+/// Então esta sonda mede as duas grandezas que a decisão precisa, na mesma corrida: os
+/// bytes retidos depois de N traços canvas-wide, e quantos passos sobrevivem ao
+/// orçamento. Rode-a **nas duas rotas** (o limiar do `from_journal` ligado e desligado)
+/// e compare — é o mesmo protocolo de ablação-por-fonte das §5.66/§5.67.
+#[test]
+#[ignore = "medicao — rode com --release --ignored --nocapture --test-threads=1 e load < 5"]
+fn what_the_journal_whole_costs_in_bytes_and_steps() {
+    for side in [2048u32, 4096] {
+        let mut t = armed(side);
+        let doc = f64::from(side) * f64::from(side);
+        for k in 0..8u8 {
+            let span = side as f32 - 200.0;
+            let y0 = 200.0 + f32::from(k) * 9.0;
+            t.on_canvas_pointer(cp([60.0, y0], PointerPhase::Down));
+            for m in 1..=12u8 {
+                let f = f32::from(m) / 12.0;
+                t.on_canvas_pointer(cp([60.0 + span * f, y0 + span * f], PointerPhase::Move));
+            }
+            t.on_canvas_pointer(cp([60.0 + span, y0 + span], PointerPhase::Up));
+        }
+        let mb = t.undo.retained_bytes() as f64 / 1e6;
+        let steps = t.undo.undo_depth();
+        eprintln!(
+            "[bytes] {side}x{side}: {steps} passos retidos · {mb:.1} MB \
+             ({:.2} MB/passo = {:.1}% de um plano RGBA)",
+            mb / steps.max(1) as f64,
+            100.0 * (mb / steps.max(1) as f64) / (doc * 4.0 / 1e6)
+        );
     }
 }

@@ -6438,3 +6438,76 @@ acontece.
 ⚠️ **E o precedente já estava escrito NESTE arquivo de testes**, doze linhas acima do gate que eu
 mantive por um ano: o 1,2× do relógio contínuo do worker *"fica sem gate, de propósito, com o número
 escrito no `worker_loop`"*. A prática existia; ela só não tinha sido aplicada ao vizinho.
+
+---
+
+## §5.69 — O `Whole` por limiar da rota do journal: uma regra transplantada para onde a premissa dela é falsa (2026-08-02)
+
+A caçada das §5.66/§5.67 terminou nomeando um alvo singular: os sítios que constroem `Whole` guardando
+`Arc::clone(live)` no lado `after`. Com a máquina calma (`load 0,37`), o payoff foi medido — e ele é
+**maior e mais simples** do que o desenho que eu tinha esboçado (elidir o `after` atrás de uma
+testemunha `Weak`), porque a medição derrubou a premissa que sustentava o ramo inteiro.
+
+### 1. O alvo, pela porta do produto
+
+Pen-up de uma diagonal de canto a canto, impasto (`what_the_commit_half_is_made_of`):
+
+| tela | pen-up | com o histórico LIMPO | ⇒ o commit custa |
+|---|---|---|---|
+| 2048² | 95,60 ms | 24,85 | **70,75 (74%)** |
+| 4096² | 380,57 ms | 108,05 | **272,52 (72%)** |
+
+### 2. A ablação pelo LIMIAR, e ela atribuiu a UMA das duas portas
+
+Forçando a rota `Patch` (o limiar de 50% desarmado), o commit a 4096² cai para **151,60 ms** — **−120,9
+ms**. ⚠️ E desarmando **também** o limiar do `from_window` o pen-up **PIORA** (257,02 → 281,46): aquele
+está certo como está. *A doença é só a porta do JOURNAL.*
+
+### 3. A premissa era falsa, e o doc-comment a declarava
+
+O ramo dizia, por escrito, que *"ali o `Whole` guardaria os dois planos inteiros de qualquer forma — o
+`split` clássico faz exatamente a mesma escolha, no mesmo limiar"*. A escolha é a mesma; **a premissa
+não é**:
+
+- no `from_window` o `Whole` **MOVE** os `Arc` que já existem — custo zero, nenhuma cópia;
+- no `from_journal` ele **COPIA**: `par_clone` do plano inteiro **mais** uma varredura `j.get(i)` de
+  plano inteiro — e faz isso **descartando o `before`/`after` que as duas linhas acima já extraíram**.
+
+⇒ Uma regra transplantada para o sítio onde o que a justificava não vale. O ramo saiu.
+
+### 4. ⚠️ E ele perdia no eixo em que eu supunha que ganhava: BYTES
+
+Eu ia escrever que o trade era *tempo contra memória* (`Whole` guarda 1 plano, `Patch` 1,8). **Medido,
+é o contrário** — `Whole` guarda **os dois lados dos QUATRO planos inteiros**:
+
+| rota | bytes/passo (2048²) | bytes/passo (4096²) | passos retidos |
+|---|---|---|---|
+| `Whole` (como shipava) | 134,22 MB = **8,00×** um plano RGBA | 536,87 MB = **8,00×** | 3 · 1 |
+| `Patch` (a cura) | 123,70 MB = **7,37×** | 513,95 MB = **7,66×** | 3 · 1 |
+
+O **8,00× exato nas duas telas** é a assinatura: `4 + 4 + 1 + 7 = 16 B/px` × dois lados = 32 B/px = 8
+planos RGBA. Não há trade — o ramo perdia em tempo, em bytes **e** na posse.
+
+### 5. O resultado, e o que ele NÃO comprou
+
+**Commit 272,5 → 151,6 ms a 4096²** (pen-up 380,6 → **256,3**) e 70,8 → 42,3 a 2048² (95,6 → **64,7**).
+Posse: os **três planos de relevo** deixam de ter um segundo dono permanente (2 → 1).
+
+⚠️ **O FOLD não melhorou** (108,5 → 104,2 ms, dentro do ruído) — e a explicação já estava escrita no
+cabeçalho da sonda de posse: *dentro* do gesto os donos são **três** (`tool` · `cursor` ·
+`paint.stroke_undo`), então remover um não compra milissegundo nenhum. **O S3 continua tudo-ou-nada**;
+o que esta wave entrega é o commit.
+
+⚠️ **O canvas continua `WHOLE` e com 3 donos** — ele vai pela outra porta (a barata, que move `Arc`), e
+os donos dele são o `cursor` e a entrada. Essa é a fronteira que resta.
+
+### 6. O gate, e por que ele não existia
+
+`a_wide_window_stays_a_patch_and_never_pins_the_live_plane`. ⚠️ **Todas as fixtures do arquivo de gates
+do journal usavam um traço CURTO**, cuja janela nunca alcança os 50% — *o ramo removido nunca era
+executado por nenhum gate deste repo*. O cabeçalho do `tool_mid_step` já avisava a versão irmã disto (a
+256² as duas rotas colapsam no mesmo `Whole` e **três mutações reais sobreviveram**).
+
+O **controle positivo usa um mecanismo INDEPENDENTE**: a rota clássica ainda carrega o limiar de 50%,
+então se ela cai em `Whole` sobre o mesmo passo, a janela da fixture de fato cruza o limiar. **Mutação:
+devolver o ramo ⇒ RED**, nomeando `heights [WHOLE]`.

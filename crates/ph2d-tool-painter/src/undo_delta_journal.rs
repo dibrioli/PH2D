@@ -122,10 +122,25 @@ impl<T: Copy + PartialEq + Send + Sync> StoredPlane<T> {
     /// política do `undeclared` do S1 e do `journal_describes_step_at` do S2: um caso que o journal não
     /// cobre degrada o passo para *lento*, nunca para *errado*.
     ///
-    /// ⛔ **O caminho de `Whole` MATERIALIZA, e é deliberado** (o "atalho 1 morto" da §5.58.2 proíbe
-    /// materializar no caso comum, não neste): ele só é tomado quando a janela cobre mais de metade do
-    /// plano, e ali o `Whole` guardaria os dois planos inteiros de qualquer forma — o `split` clássico
-    /// faz exatamente a mesma escolha, no mesmo limiar.
+    /// ⛔ **O `Whole` POR LIMIAR foi REMOVIDO, e a medição é o motivo** (doc 28 §5.69). Este
+    /// doc-comment dizia que ele *"só é tomado quando a janela cobre mais de metade do plano, e ali o
+    /// `Whole` guardaria os dois planos inteiros de qualquer forma — o `split` clássico faz exatamente a
+    /// mesma escolha, no mesmo limiar"*. A escolha era a mesma; ⚠️ **a PREMISSA não**: no
+    /// [`super::StoredPlane::from_window`] o `Whole` **MOVE** os `Arc` que já existem (custo zero e
+    /// nenhuma cópia), e aqui ele **COPIA** — `par_clone` do plano inteiro mais uma varredura
+    /// `j.get(i)` de plano inteiro — **por cima de um `before`/`after` que as linhas acima já
+    /// extraíram**. Era uma regra transplantada para o sítio onde o que a justificava é falso.
+    ///
+    /// Medido pela porta do produto, diagonal de canto a canto (§5.69): o commit cai de **272,5 para
+    /// 151,6 ms a 4096²** e de 70,8 para 42,3 a 2048² — e ele **também perdia em BYTES**, que era o
+    /// único eixo em que eu supunha que ele ganhava: `Whole` guarda os dois lados dos QUATRO planos
+    /// inteiros (**8,00× um plano RGBA por passo**, exato nas duas telas) contra **7,66×** do `Patch`.
+    /// Mais a posse: o `after: Arc::clone(live)` era um **segundo dono permanente** do plano vivo, que
+    /// fazia a primeira escrita do gesto seguinte copiar o documento.
+    ///
+    /// ⚠️ **O `Whole` de CAPTURA-INTEIRA (logo abaixo) FICA** — ali o journal tem o plano completo e não
+    /// há janela a extrair, então `w.to_vec()` é uma cópia contra as DUAS que um `Patch` de plano
+    /// inteiro faria. A premissa que o limiar não tinha, este tem.
     pub(crate) fn from_journal(
         live: &Arc<Vec<T>>,
         j: &crate::undo::journal::TileJournal<T>,
@@ -167,18 +182,9 @@ impl<T: Copy + PartialEq + Send + Sync> StoredPlane<T> {
             // reportaria uma diferença de memória como se fosse de conteúdo.
             return Some(Self::Unchanged);
         }
-        if 2 * win.elems() >= live.len() {
-            let mut b = crate::plane_copy::par_clone(live);
-            for (i, v) in b.iter_mut().enumerate() {
-                if let Some(old) = j.get(i) {
-                    *v = old;
-                }
-            }
-            return Some(Self::Whole {
-                before: Arc::new(b),
-                after: Arc::clone(live),
-            });
-        }
+        // ⚠️ **Nenhum limiar aqui, e é a entrega da §5.69.** `before` e `after` já estão extraídos:
+        // qualquer ramo que os descarte para materializar o plano inteiro paga uma cópia a mais, guarda
+        // mais bytes, e ainda pina o plano vivo. Ver o ⛔ do doc acima.
         Some(Self::Patch { win, before, after })
     }
 }

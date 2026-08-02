@@ -431,3 +431,73 @@ fn a_clean_pen_down_does_not_wake_the_absorption() {
          estrangeira e re-partiu o topo (doc 28 §5.60)"
     );
 }
+
+/// O MESMO script do [`tool_mid_step`], mas com um traço que atravessa a tela — a janela que o
+/// limiar de 50% capturava, e que nenhuma fixture deste arquivo continha.
+fn tool_wide_step(side: u32, hold: bool) -> crate::tool::PainterTool {
+    let mut t = armed(side);
+    stroke(&mut t, 40.0);
+    t.begin_undo_step();
+    let span = side as f32 - 120.0;
+    t.on_canvas_pointer(cp([60.0, 60.0], PointerPhase::Down));
+    if hold {
+        t.paint.stroke_undo = Some(t.snapshot_model());
+    }
+    for k in 1..=12u8 {
+        let f = f32::from(k) / 12.0;
+        t.on_canvas_pointer(cp([60.0 + span * f, 60.0 + span * f], PointerPhase::Move));
+    }
+    t.commit_stroke_height();
+    t
+}
+
+/// **UMA JANELA GRANDE SAI COMO `Patch` — e o `Whole` por LIMIAR não existe mais** (doc 28 §5.69).
+///
+/// A rota do journal tinha o mesmo limiar de 50% da clássica, e **a premissa que o justifica só vale
+/// lá**: no [`StoredPlane::from_window`](crate::undo_delta) o `Whole` MOVE `Arc` que já existem, aqui
+/// ele COPIA — `par_clone` do plano inteiro mais uma varredura de plano inteiro — **descartando o
+/// `before`/`after` que a função já extraiu**. Medido pela porta do produto, diagonal de canto a canto:
+/// commit **272,5 → 151,6 ms a 4096²**, bytes por passo **8,00 → 7,66 planos RGBA**, e os três planos
+/// de relevo deixam de ter um segundo dono permanente (2 → 1).
+///
+/// ⚠️ **A FIXTURE é a metade que faltava:** todo gate deste arquivo usava um traço curto, cuja janela
+/// nunca alcança o limiar — *o ramo que este gate recusa nunca era executado por nenhum deles*. O
+/// cabeçalho do [`tool_mid_step`] já avisava a versão irmã disto (a 256² as duas rotas colapsam no
+/// mesmo `Whole` e três mutações reais sobreviveram).
+///
+/// ⚠️ **Mutação que sangra:** devolver o ramo `Whole { before: par_clone…, after: Arc::clone(live) }`
+/// ao [`StoredPlane::from_journal`](crate::undo_delta::StoredPlane::from_journal).
+#[test]
+fn a_wide_window_stays_a_patch_and_never_pins_the_live_plane() {
+    let t = tool_wide_step(512, false);
+    let (j, _) = one_route(&t, true);
+    let report = j.variant_report();
+
+    // ⚠️ **CONTROLE por um mecanismo INDEPENDENTE:** a rota CLÁSSICA ainda carrega o limiar de 50%
+    // (e ali ele é correto — o `Whole` dela MOVE os `Arc`). Se ela cai em `Whole` sobre este mesmo
+    // passo, então a janela da fixture cruza o limiar, que é a única coisa capaz de tornar este gate
+    // uma afirmação. Sem isto ele passaria sobre um traço curto — que é exatamente como o ramo
+    // removido atravessou este arquivo inteiro sem nunca ser executado.
+    let (c, _) = one_route(&tool_wide_step(512, true), false);
+    let creport = c.variant_report();
+    assert!(
+        creport.contains("canvas WHOLE") || creport.contains("heights [WHOLE"),
+        "controle: a rota CLASSICA nao caiu em Whole ({creport}), logo a janela desta fixture NAO \
+         cruza os 50% e este gate nao exercita o ramo que ele existe para recusar"
+    );
+
+    assert!(
+        !report.contains("heights [WHOLE"),
+        "o relevo voltou a sair como WHOLE pelo limiar ({report}) — ele copia o plano inteiro por \
+         cima de um before/after ja extraidos, retem MAIS bytes, e pina o plano vivo (§5.69)"
+    );
+    assert!(
+        report.contains("heights [patch"),
+        "o relevo nao saiu como Patch ({report}): a fixture pode ter deixado de escrever relevo, e \
+         entao este gate nao julga nada"
+    );
+
+    // E o conteúdo não muda: as duas rotas continuam descrevendo os mesmos dois endpoints, agora
+    // também na janela grande — a metade que o `Patch` teria de quebrar se estivesse errado.
+    assert_routes_agree(&tool_wide_step(512, false), &tool_wide_step(512, true));
+}

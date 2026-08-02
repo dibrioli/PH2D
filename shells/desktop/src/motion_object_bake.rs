@@ -105,6 +105,15 @@ impl ObjectBake {
         })
     }
 
+    /// The baked tile for ONE named shape, or `None` if it isn't baked (doc 86 §2
+    /// A4). A group child that is a vector resolves its appearance through this.
+    pub(crate) fn tile_for(&self, name: &str) -> Option<BakedTile> {
+        self.cache.get(name).map(|b| BakedTile {
+            texture_id: b.texture_id,
+            size: b.size,
+        })
+    }
+
     /// Re-bake every named vector whose drawing changed; evict + RELEASE the
     /// texture of any name that vanished. Runs at the fx phase, where every
     /// handle (`renderer`, `gpu`, the vector scene + transforms + live geometry)

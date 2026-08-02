@@ -110,6 +110,15 @@ impl FlipObjectBake {
         })
     }
 
+    /// The baked tile for ONE named Flip object, or `None` if it isn't baked (doc 86
+    /// §2 A4). A group child that is a Flip object resolves its appearance here.
+    pub(crate) fn tile_for(&self, name: &str) -> Option<BakedTile> {
+        self.cache.get(name).map(|b| BakedTile {
+            texture_id: b.texture_id,
+            size: b.size,
+        })
+    }
+
     /// Re-bake every named Flip object whose resolved frame changed; evict + RELEASE
     /// the texture of any name that vanished. Runs at the fx phase, where the doc, the
     /// entity map, the playhead, the GPU + the sprite renderer are in hand. Cached by

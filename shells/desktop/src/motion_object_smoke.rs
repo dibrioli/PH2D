@@ -6,9 +6,10 @@
 //!
 //! 1. **o objeto** chamado **`Object`** na Hierarchy (o nome é a referência
 //!    inteira, doc 86 §2) — um **sprite** (`=1`, A1), uma **forma vetorial**
-//!    (`=2`, A2: a estrela é rasterizada numa tile pela membrana) ou um **objeto
+//!    (`=2`, A2: a estrela é rasterizada numa tile pela membrana), um **objeto
 //!    Flip** (`=3`, A3: as camadas do Flip são compostas no frame atual e assadas
-//!    numa tile pela membrana);
+//!    numa tile pela membrana) ou um **grupo de mídia mista** (`=4`, A4: o grupo
+//!    emite os filhos como N instâncias vivas no seu layout relativo);
 //! 2. **o grafo**: `source.object → motion.duplicator ← motion.grid → output` —
 //!    o MESMO grafo nos dois modos (o `source.object` é media-agnóstico).
 //!
@@ -113,8 +114,14 @@ fn name_vector_entity(sim: &mut ph2d_ecs::SimWorld, map: &crate::vec_entities::V
 /// nome sem o smoke precisar nomear nada (≠ do vetor). A membrana compõe as DUAS
 /// camadas no frame atual numa tile.
 fn spawn_flip_object(flip: &mut ph2d_flip::FlipDoc) {
+    spawn_flip_object_named(flip, OBJECT);
+}
+
+/// Como `spawn_flip_object`, mas com um nome dado (o filho Flip de um grupo precisa
+/// de um nome distinto do grupo, doc 86 §2 A4).
+fn spawn_flip_object_named(flip: &mut ph2d_flip::FlipDoc, name: &str) {
     use ph2d_flip::{Hold, KeyKind, Rgba};
-    let oid = flip.push_object(OBJECT);
+    let oid = flip.push_object(name);
     let obj = flip.object_mut(oid).expect("objeto Flip recém-criado");
     obj.fps = 12.0;
     // BG: um retângulo azul preenchido (o campo).
@@ -156,10 +163,27 @@ fn flip_rect(min: Vec2, max: Vec2, color: ph2d_flip::Rgba) -> ph2d_flip::FlipStr
     s
 }
 
+/// Um `Transform` LOCAL (relativo ao grupo) numa posição, resto identidade (A4).
+fn child_at(x: f32, y: f32) -> Transform {
+    Transform {
+        translation: Vec2::new(x, y),
+        ..Transform::IDENTITY
+    }
+}
+
+/// Acha a entidade-GRUPO pelo nome (`Name` + `GroupedChildren`), doc 86 §2 A4.
+fn find_group(sim: &mut ph2d_ecs::SimWorld, name: &str) -> Option<ph2d_ecs::Entity> {
+    let mut q = sim
+        .world_mut()
+        .query_filtered::<(ph2d_ecs::Entity, &Name), ph2d_ecs::With<ph2d_ecs::GroupedChildren>>();
+    let world = sim.world();
+    q.iter(world).find(|(_, n)| n.0 == name).map(|(e, _)| e)
+}
+
 /// O frame corrente do roteiro (o hook não pode acrescentar campo em `App`).
 static FRAME: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
 
-/// O modo, lido UMA vez: `0` = off · `1` = sprite (A1) · `2` = vetor (A2) · `3` = Flip (A3).
+/// O modo: `0` off · `1` sprite (A1) · `2` vetor (A2) · `3` Flip (A3) · `4` grupo (A4).
 fn mode() -> u32 {
     static M: std::sync::OnceLock<u32> = std::sync::OnceLock::new();
     *M.get_or_init(|| {
@@ -232,6 +256,66 @@ impl crate::App {
                      grade 4x4 = 16 copias. A arte de CADA copia e o objeto composto (as duas \
                      camadas, nao um quad chapado). Cacheada por conteudo (LIVE): editar/animar o \
                      Flip re-assa; renomear na Hierarchy e as copias somem."
+                );
+            }
+            // A4 — grupo: um GRUPO 'Object' com filhos de MIDIA MISTA (sprite + vetor
+            // + flip) nos seus lugares relativos. O grupo emite os filhos como N
+            // instancias VIVAS; carimbar o grupo replica o layout inteiro.
+            4 if f == 3 => {
+                let gfx = self.gfx.as_mut().expect("gfx");
+                // O grupo (Name "Object" + GroupedChildren) + um sprite filho a esquerda.
+                let group = gfx
+                    .sim
+                    .world_mut()
+                    .spawn((
+                        Name::new(OBJECT),
+                        ph2d_ecs::GroupedChildren,
+                        Transform::IDENTITY,
+                    ))
+                    .id();
+                gfx.sim.world_mut().spawn((
+                    Sprite::atlas(DEMO_TILE_KEY, [0.7, 0.7], [1.0, 1.0, 1.0, 1.0]),
+                    child_at(-1.1, 0.0),
+                    ph2d_ecs::ChildOf(group),
+                ));
+                // O vetor + o flip entram agora; suas ENTIDADES nascem no sync dos
+                // frames seguintes, quando serao nomeadas e parenteadas ao grupo.
+                gfx.vec_scene.push_path(star_shape());
+                spawn_flip_object_named(&mut gfx.flip, "GFlip");
+            }
+            4 if f == 6 => {
+                let vec_map = self.vec_entities.clone();
+                let flip_map = self.flip_entities.clone();
+                let gfx = self.gfx.as_mut().expect("gfx");
+                if let Some(group) = find_group(&mut gfx.sim, OBJECT) {
+                    // O vetor (a unica forma da cena) vira filho NOMEADO no centro.
+                    if let Some((_, &bits)) = vec_map.iter().next() {
+                        let e = ph2d_ecs::Entity::from_bits(bits);
+                        if let Ok(mut ent) = gfx.sim.world_mut().get_entity_mut(e) {
+                            ent.insert((Name::new("GVec"), child_at(0.0, 0.0), ph2d_ecs::ChildOf(group)));
+                        }
+                    }
+                    // O flip (o unico objeto Flip) vira filho a direita. O sync ja
+                    // carimbou a entidade com Name "GFlip" (do push_object), entao so
+                    // parenteamos + posicionamos.
+                    if let Some((_, &bits)) = flip_map.iter().next() {
+                        let e = ph2d_ecs::Entity::from_bits(bits);
+                        if let Ok(mut ent) = gfx.sim.world_mut().get_entity_mut(e) {
+                            ent.insert((child_at(1.1, 0.0), ph2d_ecs::ChildOf(group)));
+                        }
+                    }
+                }
+            }
+            4 if f == 9 => {
+                let gfx = self.gfx.as_mut().expect("gfx");
+                let out = build_stamp_graph(&mut gfx.motion.doc.graph, OBJECT);
+                gfx.motion.sinks.push(out);
+                let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+                eprintln!(
+                    "[motion.obj smoke =4] O GRUPO 'Object' (sprite + estrela vetor + objeto Flip, \
+                     MIDIA MISTA) esta carimbado numa grade 4x4 = 16 copias. Cada copia mostra o \
+                     GRUPO INTEIRO no layout dele (3 filhos lado a lado), e cada filho continua VIVO \
+                     (o Flip anima independente). Renomeie o grupo na Hierarchy e as copias somem."
                 );
             }
             _ => {}

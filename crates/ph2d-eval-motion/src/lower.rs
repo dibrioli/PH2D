@@ -50,6 +50,15 @@ pub fn lower_to_instances_onto(
     let rot = stream.get("rot");
     let tint = stream.get("tint");
     let uv_rect = stream.get("uv_rect");
+    // doc 86 §2: the ONE substrate addition. A `texture_id` column names which
+    // texture each instance samples — the sprite/vector/Flip a `source.*` node
+    // brought in through the membrane. ABSENT → every id is `0` (the shared
+    // atlas), which is exactly what this lowering did before ⇒ byte-identical
+    // for any graph without an object source. A `texture_id` is a small `u32`
+    // (an atlas sentinel `0`, or an `IndividualTextureStore` handle < 2²⁴,
+    // exact in f32); the saturating `as u32` guards a non-finite/negative
+    // column value to `0` rather than trusting the producer.
+    let tex = stream.get("texture_id");
     out.reserve(n);
     // Each instance is a pure function of its own index (a five-column gather +
     // one `sin_cos`); no cross-element dependency. Above the threshold
@@ -82,7 +91,7 @@ pub fn lower_to_instances_onto(
             per_corner_tint: [[1.0; 4]; 4],
             opacity: 1.0,
             flip_uv: 0,
-            texture_id: 0,
+            texture_id: scalar_at(tex, i, 0.0) as u32,
             // Node-graph emit doesn't have a hierarchy slot — every
             // motion node's instances share `z_order = 0`. Renderer's
             // tiebreaker (`texture_id`) groups them into one run.

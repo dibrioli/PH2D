@@ -801,6 +801,7 @@ impl crate::App {
         self.flip_segment_smoke();
         self.blend_smoke();
         self.motion_node_path_smoke();
+        self.motion_object_smoke();
         self.motion_delay_smoke();
         self.motion_fx_smoke();
         self.adapter_smoke();
@@ -5078,6 +5079,10 @@ impl crate::App {
             // one place the document, the world, the entity map and the transforms are all in
             // hand at once.
             motion_bridge::publish_shapes(motion, sim, vec_scene, &self.vec_entities, &vec_xf_ops);
+            // doc 86 §2: and the engine OBJECTS (named sprites) into the same
+            // external table — AFTER shapes (which clears it), so the cook sees
+            // both curves and objects. The atlas resolves each sprite's tile.
+            motion_bridge::publish_objects(motion, sim, renderer.atlas());
             motion_bridge::dispatch(
                 hero,
                 tools,

@@ -44,6 +44,7 @@ ph2d-node-motion-distribute-curve = { path = "../ph2d-node-motion-distribute-cur
 ph2d-node-motion-distribute-poisson = { path = "../ph2d-node-motion-distribute-poisson" }
 ph2d-node-motion-distribute-radial = { path = "../ph2d-node-motion-distribute-radial" }
 ph2d-node-motion-drive = { path = "../ph2d-node-motion-drive" }
+ph2d-node-motion-duplicator = { path = "../ph2d-node-motion-duplicator" }
 ph2d-node-motion-emitter = { path = "../ph2d-node-motion-emitter" }
 ph2d-node-motion-expression = { path = "../ph2d-node-motion-expression" }
 ph2d-node-motion-falloff = { path = "../ph2d-node-motion-falloff" }
@@ -104,6 +105,7 @@ ph2d-node-sim-lifetime = { path = "../ph2d-node-sim-lifetime" }
 ph2d-node-sim-spawn = { path = "../ph2d-node-sim-spawn" }
 ph2d-node-sim-step = { path = "../ph2d-node-sim-step" }
 ph2d-node-sim-zone = { path = "../ph2d-node-sim-zone" }
+ph2d-node-source-object = { path = "../ph2d-node-source-object" }
 ph2d-node-util-reroute = { path = "../ph2d-node-util-reroute" }
 ph2d-node-value-attribute = { path = "../ph2d-node-value-attribute" }
 ph2d-node-value-curve = { path = "../ph2d-node-value-curve" }

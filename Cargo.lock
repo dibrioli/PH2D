@@ -5954,6 +5954,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-node-motion-duplicator"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
 name = "ph2d-node-motion-emitter"
 version = "0.0.0"
 dependencies = [
@@ -6388,6 +6396,7 @@ dependencies = [
  "ph2d-node-motion-distribute-poisson",
  "ph2d-node-motion-distribute-radial",
  "ph2d-node-motion-drive",
+ "ph2d-node-motion-duplicator",
  "ph2d-node-motion-emitter",
  "ph2d-node-motion-expression",
  "ph2d-node-motion-falloff",
@@ -6449,6 +6458,7 @@ dependencies = [
  "ph2d-node-sim-spawn",
  "ph2d-node-sim-step",
  "ph2d-node-sim-zone",
+ "ph2d-node-source-object",
  "ph2d-node-sync",
  "ph2d-node-util-reroute",
  "ph2d-node-value-attribute",
@@ -6566,6 +6576,14 @@ version = "0.0.0"
 dependencies = [
  "ph2d-node-registry",
  "ph2d-node-registry-init",
+ "ph2d-nodegraph",
+]
+
+[[package]]
+name = "ph2d-node-source-object"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
  "ph2d-nodegraph",
 ]
 

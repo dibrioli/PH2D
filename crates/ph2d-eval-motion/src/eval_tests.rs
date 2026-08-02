@@ -212,3 +212,30 @@ fn pump_cooks_on_change_and_skips_a_paused_frame() {
     assert!(pump.pump(&g, &Ops, &[], 2, 0.0, uv, size));
     assert!(pump.instances.is_empty());
 }
+
+#[test]
+fn the_lowering_reads_the_texture_id_column() {
+    // doc 86 §2: the ONE substrate addition. The fixture carries two DIFFERENT
+    // ids so the fallback `0` cannot mask a lowering that ignores the column
+    // (mutation: `texture_id: 0` → both read 0, RED). A `texture_id` is a small
+    // integer stored exactly in f32, so the `as u32` is lossless here.
+    let s = Stream::new(2)
+        .with("P", Column::Vec2(vec![[0.0, 0.0], [1.0, 0.0]]))
+        .with("texture_id", Column::Scalar(vec![7.0, 3.0]));
+    let out = lower_to_instances(&s);
+    assert_eq!(out[0].texture_id, 7);
+    assert_eq!(out[1].texture_id, 3);
+}
+
+#[test]
+fn a_stream_without_texture_id_lowers_every_id_to_zero() {
+    // The regression half: any graph WITHOUT an object source has no
+    // `texture_id` column, and every instance must still read the shared-atlas
+    // sentinel `0` — byte-identical to the pre-doc-86 lowering. A non-finite or
+    // negative value also lands on 0 (the saturating cast guards the producer).
+    let s = Stream::new(3)
+        .with("P", Column::Vec2(vec![[0.0, 0.0], [1.0, 0.0], [2.0, 0.0]]))
+        .with("texture_id", Column::Scalar(vec![0.0, f32::NAN, -5.0]));
+    let out = lower_to_instances(&s);
+    assert!(out.iter().all(|i| i.texture_id == 0));
+}

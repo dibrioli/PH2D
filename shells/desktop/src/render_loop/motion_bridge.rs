@@ -53,6 +53,12 @@ mod backdrops;
 #[path = "motion_bridge_shapes.rs"]
 mod shapes;
 
+// doc 86 §2: the OBJECT membrane (sibling of `shapes`) — every named sprite
+// becomes an external the graph can source (`source.object`). Unconditional
+// like `shapes`: a graph cooks in the background whatever tool is active.
+#[path = "motion_bridge_objects.rs"]
+mod objects;
+
 #[cfg(feature = "panel-motion-graph")]
 #[path = "motion_bridge_edit.rs"]
 mod edit;
@@ -579,4 +585,20 @@ pub(super) fn publish_shapes(
     xforms: &ph2d_vec_scene::VecXforms,
 ) {
     shapes::publish(&mut motion.pump.cook, sim, scene, map, xforms);
+}
+
+/// **Publish the engine objects into the cook** (doc 86 §2) — the sibling of
+/// [`publish_shapes`] for `source.object`. Every named sprite becomes an
+/// external the graph can bring in.
+///
+/// ⚠️ **Call AFTER [`publish_shapes`]:** `shapes::publish` clears the external
+/// table first and this APPENDS objects into it, so the cook sees both the
+/// curves and the objects. The atlas resolves each sprite's tile the way the
+/// sprite renderer does; it is in hand at this phase (`renderer.atlas()`).
+pub(super) fn publish_objects(
+    motion: &mut MotionState,
+    sim: &mut ph2d_ecs::SimWorld,
+    atlas: &ph2d_render::TextureAtlas,
+) {
+    objects::publish(&mut motion.pump.cook, sim, atlas);
 }

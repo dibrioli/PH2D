@@ -44,6 +44,7 @@ pub fn register_all_nodes(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     ph2d_node_motion_distribute_poisson::register(reg)?;
     ph2d_node_motion_distribute_radial::register(reg)?;
     ph2d_node_motion_drive::register(reg)?;
+    ph2d_node_motion_duplicator::register(reg)?;
     ph2d_node_motion_emitter::register(reg)?;
     ph2d_node_motion_expression::register(reg)?;
     ph2d_node_motion_falloff::register(reg)?;
@@ -104,6 +105,7 @@ pub fn register_all_nodes(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     ph2d_node_sim_spawn::register(reg)?;
     ph2d_node_sim_step::register(reg)?;
     ph2d_node_sim_zone::register(reg)?;
+    ph2d_node_source_object::register(reg)?;
     ph2d_node_util_reroute::register(reg)?;
     ph2d_node_value_attribute::register(reg)?;
     ph2d_node_value_curve::register(reg)?;

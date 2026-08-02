@@ -8554,3 +8554,120 @@ bell 1 · quiet 0`.
 
 **Aberto:** o nome de SAÍDA (uma segunda pergunta, com uma segunda row) · um
 consumidor que não seja o toast (Luau/áudio) — e ele não muda uma linha da física.
+
+---
+
+## W-LeadDrag — arrastar o corpo da âncora A leva o SISTEMA (2026-08-02, cena `=74`)
+
+Pedido do Enio: *"em Pin e Weld, se arrasto o objeto onde está a âncora A, todo
+o sistema vai junto — FK de forma rígida, IK com o último objeto da cadeia se
+movendo por último, como se arrastando uma corda pela ponta"*.
+
+**A sonda `measure_lead_drag` mediu o produto ANTES de eu tocar em código**, e o
+retrato justificava o pedido inteiro:
+
+| cena | FK ao pegar a cabeça | IK ao pegar a cabeça |
+|---|---|---|
+| Pin, cadeia SOLTA | move **1 corpo** (0,615 m; os outros três em 0,000) | 2,000 / **2,255** / 1,764 / 1,425 — o 2º elo andando MAIS que a mão |
+| Pin, ancorada | 1 corpo | decai corretamente (a IK clássica) |
+| Weld, SOLTA | **não abre** (`fk_begin = false`) | rígido, correto |
+| Weld, ancorada | **não abre** | tudo zero (nada pode mover) |
+
+### Etapa A — sem junta acima, a peça ANDA INTEIRA
+
+A subida do `build_fk_session` procura a primeira junta com grau de liberdade
+acima do corpo pego; chegando ao TOPO sem achar nenhuma ela fechava num `?` e a
+sessão nascia `None`. ⚠️ **E o cabeçalho do próprio módulo já prometia o
+contrário** — *"a peça soldada viaja junta, que é o que 'soldado' quer dizer"* —,
+o que torna isto uma promessa não cumprida e não uma capacidade nova.
+
+`FkMotion` agora tem dois variants, e os cinco números que só uma JUNTA tem
+(pivô, eixo, faixa, coordenada de press, referência) mudaram-se para DENTRO do
+variant dela: soltos na sessão, o caso rígido os carregaria sem significado e o
+primeiro leitor que esquecesse de perguntar o modo leria um pivô que não existe.
+
+⚠️ **A peça só viaja se o TOPO dela puder se mover**, e esta linha foi escrita
+depois de a sonda achar o defeito: sem ela uma corrente soldada a uma parede
+movia **cinco** corpos, o estático incluso. A lei já estava escrita no módulo
+irmão (*a raiz é o que **não se move** ao posar*) e o ramo novo a atropelava.
+
+### Etapa B — a raiz é a que o ARTISTA autorou, e pegá-la ARRASTA a corda
+
+O item 3 do cabeçalho do `ik.rs` dizia que numa cadeia solta a raiz é o corpo
+**mais distante da ponta**, *"e a única resposta era escolher uma"*. ⚠️ **Havia
+resposta:** o par ordenado `(body_a, body_b)` que o artista já autora em cada
+joint, e que o overlay já desenha (posse de A **contínua**, de B **tracejada**).
+
+O preço da regra antiga era medível: numa cadeia `L1→L2→L3→L4`, pegar L1
+enraizava em L4 e pegar L4 enraizava em L1 — **o rig não tinha um "para cima",
+tinha um por gesto**. `authored_head` responde onde a autoria é inequívoca (um
+ciclo não tem cabeça, dois braços têm duas), e onde não é, o critério antigo
+continua valendo.
+
+Com a cabeça estável, pegá-la vira `root == tip` — que o plano **recusava**.
+Agora ela abre o **revezamento** (`bridge/ik_lead.rs`): a mão leva o líder, cada
+elo põe a própria âncora onde o pai a levou e gira para continuar apontando a
+**junta seguinte**. Sem solver, sem resíduo, `O(n)`.
+
+⚠️ **A MEDIÇÃO REPROVOU A MINHA PRIMEIRA LEI.** Apontar o **CENTRO** de cada
+corpo faz um bastão pivotar em torno da âncora levantada e jogar a outra ponta
+com **ALAVANCA de gangorra** — perfil `0,100 / 0,010 / 0,028 / 0,043`, o fim da
+corda andando **quatro vezes** o começo dela. Encadeando as **JUNTAS** a alavanca
+não existe: `0,100 / 0,050 / 0,005 / 0,005`. É a formulação clássica do
+*follow-the-leader*, e num corpo-FOLHA o centro é a resposta honesta porque não
+há junta seguinte.
+
+⚠️ **E o oráculo tinha de ser o PERFIL no INSTANTE.** Aos 2 m de puxada o
+deslocamento é `2,000 / 1,562 / 1,102 / 1,030` — tudo andou, e o número final
+não distingue uma corda de um bloco. Foi essa distinção que expôs a lei errada.
+
+⚠️ **Só uma DOBRADIÇA dobra.** A árvore admite Pin, Weld e Slider; a lei é
+ANGULAR e só o Pin oferece o ângulo que ela escolhe. Weld e Slider seguem o pai
+**rigidamente** — inventar um deslizamento daria a um trilho um comportamento
+que ninguém autorou, e recusá-lo em silêncio daria um elo que não acompanha.
+
+⚠️ **É o ÚNICO gesto desta linha com MEMÓRIA, e é de propósito.** Todo outro
+re-deriva da fonte congelada; uma corda **não pode**, porque a forma dela é
+função do CAMINHO e não da posição em que a mão parou. O que a lei congelada
+existe para prevenir é **divergência** com o refino da amostragem, e aqui o
+refino **CONVERGE** (a tractriz é o limite contínuo) — há gate medindo essa
+frase, e não uma prosa.
+
+### Três prosas que a implementação tornou falsas foram reescritas
+
+O item 3 do `ik.rs` · o *"corolário honesto"* do `fk.rs` (que declarava a
+arbitrariedade da raiz como inevitável) · e o pseudocódigo do `ik_lead.rs`, que
+descrevia a lei do centro depois de ela ter sido substituída.
+
+### Gates
+
+**5** em `fk_rigid.rs` + **6** em `ik_lead.rs` + **2** novos em `ik_plan.rs` +
+**5** na cena. ⚠️ E o gate `a_free_chain_roots_at_the_far_end` foi **renomeado e
+reescrito**: ele passa nas DUAS leis (naquela fixture a cabeça autorada coincide
+com o corpo mais distante) e agora **diz isso**, com o irmão que de fato as
+separa ao lado.
+
+**7 mutações, 7 sangram**, cada uma no seu gate:
+
+| # | mutação | sangra |
+|---|---|---|
+| M1 | a subida volta a morrer no topo | 3 de FK, e o CONTROLE fica **verde** |
+| M2 | a translação gira os corpos | só o gate de *anda e não vira* |
+| M3 | TODO gesto vira rígido | o CONTROLE + **6 gates pré-existentes** |
+| M4 | a referência anda com o cursor | só a invariância de caminho |
+| M5 | a raiz volta a ser a mais distante | 4 (2 no plano, 2 na corda) |
+| M6 | a puxada aponta o CENTRO | só o perfil, **com os números da medição** |
+| M7 | sem a checagem de `Dynamic` | só o gate da parede |
+
+**c9 byte-idêntico** (`16ba80e8…`, 99 corpos) — isto é **autoria**, não entra no
+solver · `PROJECT_SCHEMA` **48 intocado** · registro **25 intocado** · nenhum
+ADR · nenhum id/token · zero `Cargo.toml`.
+
+**Smoke: `PH2D_PHYSICS_SMOKE=74`** — *A CORDA E A PEÇA*. Quatro rigs: a corrente
+solta (FK rígido × IK corda), a peça soldada (o gesto morto), o braço no poste
+(o CONTROLE — continua dobrando) e o suporte soldado à parede (recusa; se a
+parede sair do lugar, é bug).
+
+**Aberto:** um **Slider** como elo de corda segue o pai rigidamente, e uma lei de
+deslizamento para ele seria wave própria · a corda não colide com nada enquanto
+é arrastada (é pose, não simulação — o mesmo que vale para a IK).

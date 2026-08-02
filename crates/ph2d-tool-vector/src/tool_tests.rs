@@ -14,6 +14,36 @@ fn fresh_tool_defaults() {
     assert_eq!(t.stroke_width_px(), DEFAULT_STROKE_WIDTH_PX);
 }
 
+/// **Uma largura AUTORADA acende o one-shot; uma cor não.**
+///
+/// As duas metades importam. Sem a primeira, a forma selecionada nunca é reengrossada e o
+/// controlo fica mudo — que é o defeito que a caixa numérica de Width tinha, porque ela chega por
+/// este MESMO evento e o bridge perguntava pelo arrasto do slider (Enio 2026-08-01). Sem a
+/// segunda, escolher uma cor reescreveria a largura da forma para a do tool, que é a cerca que o
+/// `width_dragging` guardava — e é ela que este one-shot tem de continuar guardando.
+#[test]
+fn authoring_a_width_arms_the_one_shot_and_a_colour_does_not() {
+    let mut t = VectorTool::new();
+    assert!(!t.take_width_authored(), "nasce desarmado");
+
+    Tool::handle_panel_event(&mut t, PanelEvent::SetValue(ids::VECTOR_WIDTH, 0.7));
+    assert!(t.take_width_authored(), "a largura foi autorada");
+    assert!(
+        !t.take_width_authored(),
+        "e é ONE-SHOT: dois frames depois a largura não pode voltar a ser escrita sozinha"
+    );
+
+    t.set_stroke_rgba([220, 60, 60, 255]);
+    assert!(
+        t.take_apply_to_selected(),
+        "a cor ainda pede o restyle (o controlo)"
+    );
+    assert!(
+        !t.take_width_authored(),
+        "mas uma escolha de COR nunca autora largura — se autorasse, um pick reengrossaria a linha"
+    );
+}
+
 #[test]
 fn width_slider_maps_normalized_to_px() {
     let mut t = VectorTool::new();

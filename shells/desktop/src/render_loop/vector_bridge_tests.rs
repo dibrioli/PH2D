@@ -95,25 +95,28 @@ fn head_size_and_round_reach_every_selected_path() {
     }
 }
 
-/// A largura **não** acompanha a tool fora do arrasto do slider: uma escolha de cor (ou de
-/// Head Size) não pode reengrossar a linha. Com `Some(w)`, acompanha.
+/// A largura só é reescrita quando o chamador a ENTREGA: com `None` ela é preservada (é isso que
+/// impede uma escolha de cor — ou de Head Size — de reengrossar a linha), com `Some(w)` ela segue.
+///
+/// ⚠️ Este gate prova a **canalização**, não a política. Ele chamava-se *"…while the slider is
+/// dragged"* e o nome afirmava uma lei que era do CHAMADOR e estava errada: quem decide o `Some`
+/// é o `vector_bridge`, e ele perguntava se o slider estava em arrasto — o que deixava a caixa
+/// numérica ao lado muda sobre a forma selecionada. Quem pina a política é o
+/// `the_width_reaches_the_selection_when_it_is_authored_not_when_a_slider_is_dragged`.
 #[test]
-fn the_width_only_follows_the_tool_while_the_slider_is_dragged() {
+fn the_width_is_rewritten_only_when_the_caller_hands_one() {
     let (mut scene, ids) = scene_with(1);
 
     restyle_selected_strokes(&mut scene, &ids, &style(), None);
     let kept = scene.paths()[0].stroke.expect("traco").width;
     assert!(
         (kept - W).abs() < f64::EPSILON,
-        "sem arrasto do slider a largura tem de ser PRESERVADA: {kept} != {W}"
+        "sem largura entregue ela tem de ser PRESERVADA: {kept} != {W}"
     );
 
     restyle_selected_strokes(&mut scene, &ids, &style(), Some(0.5));
-    let dragged = scene.paths()[0].stroke.expect("traco").width;
-    assert!(
-        (dragged - 0.5).abs() < f64::EPSILON,
-        "arrastando, ela segue"
-    );
+    let handed = scene.paths()[0].stroke.expect("traco").width;
+    assert!((handed - 0.5).abs() < f64::EPSILON, "entregue, ela segue");
 }
 
 /// **O detector e o gravador falam da MESMA ficha.** `differs_from` é o portão do

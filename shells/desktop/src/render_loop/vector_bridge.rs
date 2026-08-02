@@ -229,12 +229,19 @@ pub(super) fn dispatch(
 
     // ── 4. Restyle the selected path — colour + width (undoable, one step per
     //    gesture). A width-slider DRAG is a gesture like a picker drag, so scope
-    //    its undo the same way (one step per drag). Width follows the tool ONLY
-    //    while the slider is dragged, so a plain colour pick never resizes it.
+    //    its undo the same way (one step per drag).
+    //
+    // ⚠️ **Duas perguntas diferentes, e elas dividiam uma resposta.** *"Há um gesto em curso?"*
+    // (para AGRUPAR o undo) é sobre um arrasto, e o estado do slider responde certo. *"A largura
+    // foi autorada?"* (para ESCREVÊ-LA na seleção) não é sobre arrasto nenhum — a caixa numérica
+    // ao lado autora pelo mesmo `SetValue(VECTOR_WIDTH)` e nunca põe o slider em `Dragging`, então
+    // enquanto as duas partilhavam `width_dragging` digitar um número mudava o tool e **não mudava
+    // a forma selecionada** (Enio 2026-08-01). Quem sabe a segunda é o TOOL, que recebeu o evento.
     let width_dragging = matches!(
         hero.store.slider(ph2d_editor::ids::VECTOR_WIDTH),
         Some((ph2d_editor::widget::SliderState::Dragging, _))
     );
+    let width_authored = tool.take_width_authored();
     let session = stroke_open || fill_open || width_dragging;
     // The selected gradient handle, kept only if it still addresses a colour on the
     // current fill (a stale handle after a kind switch resolves to `None` and falls
@@ -276,7 +283,7 @@ pub(super) fn dispatch(
         let differs = |p: &ph2d_vec_scene::VecPath| {
             let stroke_differs = p.stroke.is_some_and(|s| {
                 stroke_style.differs_from(&s)
-                    || (width_dragging && (s.width - new_w).abs() > f64::EPSILON)
+                    || (width_authored && (s.width - new_w).abs() > f64::EPSILON)
             });
             let fill_differs = if let Some(h) = active_handle {
                 // Recolour the selected gradient slot (point / ramp stop).
@@ -304,13 +311,14 @@ pub(super) fn dispatch(
                     *c.borrow_mut() = Some(scene.clone());
                 }
             });
-            // O TRAÇO de todos os selecionados, de uma vez (a largura só acompanha enquanto o
-            // slider é arrastado — uma escolha de cor nunca pode reengrossar a linha).
+            // O TRAÇO de todos os selecionados, de uma vez (a largura só acompanha quando FOI
+            // autorada — arrastando o slider ou digitando na caixa; uma escolha de cor nunca pode
+            // reengrossar a linha, e é o `None` daqui que a impede).
             restyle_selected_strokes(
                 scene,
                 &sel_ids,
                 &stroke_style,
-                width_dragging.then_some(new_w),
+                width_authored.then_some(new_w),
             );
             for &id in &sel_ids {
                 let Some(path) = scene.path_mut(id) else {

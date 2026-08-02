@@ -419,8 +419,7 @@ fn a_clean_pen_down_does_not_wake_the_absorption() {
     let live = t.snapshot_model();
     assert!(
         live.heights
-            .get(&t.layers.active().expect("camada"))
-            .is_some(),
+            .contains_key(&t.layers.active().expect("camada")),
         "controle: o vivo nao carrega relevo, entao o detector nao tem o que confundir"
     );
     let seen = crate::undo::absorb::ABSORB_FIRED.with(std::cell::Cell::get);

@@ -6229,3 +6229,68 @@ fold do relevo para o passe de luz re-materializou os três planos*, que são cu
 o segundo: os planos são materializados por frame sujo, de propósito, porque uma versão teria de
 rastrear toda entrada do fold). É a receita que se pagou três vezes nesta sessão (§5.48 · §5.64 · esta):
 *um balde cujo p50 e cujo max admitem curas opostas tem de publicar suas sub-partes*.
+
+## §5.66 — A janela NÃO é o problema: o bbox da MUDANÇA já é 89% (2026-08-02)
+
+A §5.65 fechou nomeando dois itens abertos e eu escolhi o maior (o commit, 280 ms dos 392 do pen-up
+diagonal). A cadeia que o commit `52dfff2b6` registrou era: *bbox ~98% → `from_window` manda para
+`Whole` → `Whole` segura o plano VIVO → o `fork_par` do traço seguinte copia 267 MB*.
+
+**Duas medições depois, ela está metade certa e metade REFUTADA.**
+
+### 1. A posse, com o CONTROLE na mesma corrida
+
+`who_holds_the_planes_after_a_canvas_wide_stroke` conta os donos em repouso, traço curto contra
+diagonal, no mesmo canvas e na mesma corrida:
+
+| fixture | após 1 | após 2 | após 3 | sem o histórico |
+|---|---|---|---|---|
+| curto (200 px) — o CONTROLE | 2/2/2/2 | **2/1/1/1** | 2/1/1/1 | 1/1/1/1 |
+| diagonal de canto a canto | 3/2/2/2 | **3/2/2/2** | 3/2/2/2 | 1/1/1/1 |
+
+(canvas/heights/covers/mats; idêntico a 2048² e 4096².) O controle **cai** para um dono nos três
+planos de relevo — a elisão do degrau 4 funciona — e o diagonal **não cai nunca**. É por isso que o
+pen-up seguinte paga o fork: `make_mut` copia com qualquer coisa acima de um.
+
+⚠️ **E isto corrige o cabeçalho do `measure_stroke_owners` (§1b)**, que afirma *"do segundo traço em
+diante a entrada é `Patch` e não segura nada"*. A frase foi medida com o traço de 200 px — **0,1% da
+área a 4096²** — e é falsa para o traço que o artista dá.
+
+### 2. ⛔ REFUTADO: apertar a janela não cura
+
+O item (3) da §5.65 dizia que a janela declarada é o **bbox** e a pegada é 2,8% dele, então declarar
+menos resolveria. **O delta não precisa de onde se escreveu — precisa de onde o conteúdo DIFERE**, e
+`what_a_stroke_declares_against_what_it_changes` mede exatamente isso comparando os planos antes e
+depois:
+
+| plano | 2048² | 4096² |
+|---|---|---|
+| heights | 79,13% | **89,26%** |
+| covers | 78,48% | 88,92% |
+| mats | 78,48% | 88,92% |
+| canvas | 78,47% | 88,91% |
+
+O corte do `from_window` é **50%**. Ou seja: mesmo a janela **derivada** — a mais apertada que existe
+sem trocar de representação — cai em `Whole`. *Um traço diagonal tem bbox de ~90% do plano por
+GEOMETRIA, não por declaração larga.* Nenhum aperto de declaração compra um byte, e a cura teria de
+trocar o RETÂNGULO por **tiles** (que é o journal do S3, hoje `cfg(debug_assertions)`).
+
+### 3. E a minha atribuição estava incompleta — o `Patch` cura o CANVAS, não o relevo
+
+Ablação de uma linha (`from_window` nunca escolhe `Whole` por tamanho), medida e revertida:
+
+| | canvas | heights | covers | mats |
+|---|---|---|---|---|
+| como shipa | 3 | 2 | 2 | 2 |
+| `Patch` sempre | **2** | 2 | 2 | 2 |
+
+⚠️ **O `Whole` era o TERCEIRO dono do canvas e nada mais.** Os três planos de relevo têm um segundo
+dono que **sobrevive à ablação**, não é o `Whole` por tamanho, e não é o cursor (que elide relevo
+incondicionalmente em release — `set_cursor`, degrau 4). `undo.clear()` o remove, então ele mora no
+controller. **Quem é, está aberto** — os candidatos são o braço de forma/stride do `split` (que
+devolve `Whole` e é exigido por correção), `OnlyBefore`/`OnlyAfter`, e a entrada de um run coalescido.
+
+**Consequência para o plano:** a wave não é *"mude o limiar"*. São **dois** donos a remover, um
+identificado e um não, e remover só um não compra milissegundo nenhum — a lei tudo-ou-nada que o
+próprio §1b do `measure_stroke_owners` já enuncia. O próximo passo é barato e é uma medição: imprimir
+a VARIANTE que cada plano recebe no traço diagonal.

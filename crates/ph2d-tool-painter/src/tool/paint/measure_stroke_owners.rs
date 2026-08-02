@@ -269,3 +269,118 @@ fn the_journal_route_is_what_makes_the_elision_worth_anything() {
          posse — `OnlyAfter` — e a elisao nao comprou nada.)\n"
     );
 }
+
+/// **E UM TRAÇO GRANDE DEIXA A ENTRADA SEGURANDO OS PLANOS — para sempre.**
+///
+/// O cabeçalho deste arquivo (§1b) afirma que *"do segundo traço em diante a entrada é `Patch` e não
+/// segura nada"*. A frase foi medida com a [`stroke`] de 200 px — **0,1% da área a 4096²** — e é falsa
+/// para o traço que o artista de fato dá: a janela declarada é o **BBOX**, um traço diagonal tem bbox
+/// de ~98% da tela, e [`StoredPlane::from_window`](crate::undo_delta::StoredPlane) manda para `Whole`
+/// toda janela ≥ 50% do plano (*"o delta guarda DOIS lados, então só compensa abaixo de metade"*).
+/// `Whole` guarda um `Arc` de cada endpoint ⇒ **segundo dono permanente** ⇒ o `fork_par` do gesto
+/// seguinte copia os quatro planos canvas-sized.
+///
+/// ⚠️ **O traço curto é o CONTROLE, na MESMA corrida e no MESMO canvas** — sem ele a tabela não
+/// distingue *"a entrada grande segura"* de *"esta máquina/este canvas segura"*.
+#[test]
+#[ignore = "medicao — rode com --release --ignored --nocapture --test-threads=1"]
+fn who_holds_the_planes_after_a_canvas_wide_stroke() {
+    fn diagonal(t: &mut PainterTool, side: f32, y0: f32) {
+        let span = side - 200.0;
+        t.on_canvas_pointer(cp([60.0, y0], PointerPhase::Down));
+        for k in 1..=12u8 {
+            let f = f32::from(k) / 12.0;
+            t.on_canvas_pointer(cp([60.0 + span * f, y0 + span * f], PointerPhase::Move));
+        }
+        t.on_canvas_pointer(cp([60.0 + span, y0 + span], PointerPhase::Up));
+    }
+
+    for side in [2048u32, 4096] {
+        eprintln!("\n[donos] {side}x{side}, em REPOUSO depois de N tracos");
+        for (name, wide) in [("curto (200 px, o CONTROLE)", false), ("diagonal", true)] {
+            let mut t = armed(side);
+            let mut row = String::new();
+            for k in 0..3u8 {
+                let y = 200.0 + f32::from(k) * 9.0;
+                if wide {
+                    diagonal(&mut t, side as f32, y);
+                } else {
+                    stroke(&mut t, y);
+                }
+                let (c, h, cv, m) = owners(&t);
+                row.push_str(&format!("  apos {}: {c}/{h}/{cv}/{m}", k + 1));
+            }
+            eprintln!("  {name:26}{row}");
+            t.undo.clear();
+            let (c, h, cv, m) = owners(&t);
+            eprintln!("  {:26}  sem o historico: {c}/{h}/{cv}/{m}", "");
+        }
+        eprintln!("  (canvas/heights/covers/mats — 1 = so o tool ⇒ a proxima escrita e IN PLACE)");
+    }
+}
+
+/// **A JANELA DECLARADA CONTRA A REGIÃO QUE DE FATO MUDA** — o número que decide onde a cura mora.
+///
+/// A entrada acima mostra a POSSE; esta pergunta *por quê*. `from_window` manda para `Whole` toda
+/// janela ≥ 50% do plano, e a janela declarada é o **bbox** do que o passo escreveu. Mas o delta não
+/// precisa de onde se escreveu — precisa de **onde o conteúdo DIFERE** (escrever o mesmo valor de volta
+/// não é uma mudança a desfazer), e é isso que o `diff_window` deriva quando não há janela declarada.
+///
+/// Se as duas coincidirem, a cura tem de estar no motor de delta (o contrato do `Whole`); se a mudança
+/// for uma fração, a janela declarada é que está larga demais.
+#[test]
+#[ignore = "medicao — rode com --release --ignored --nocapture --test-threads=1"]
+fn what_a_stroke_declares_against_what_it_changes() {
+    fn changed_frac<T: PartialEq>(before: &[T], after: &[T], w: usize) -> (f64, usize, usize) {
+        let (mut r0, mut r1, mut c0, mut c1) = (usize::MAX, 0usize, usize::MAX, 0usize);
+        for (i, (a, b)) in before.iter().zip(after).enumerate() {
+            if a != b {
+                let (r, c) = (i / w, i % w);
+                r0 = r0.min(r);
+                r1 = r1.max(r);
+                c0 = c0.min(c);
+                c1 = c1.max(c);
+            }
+        }
+        if r0 == usize::MAX {
+            return (0.0, 0, 0);
+        }
+        let (rows, cols) = (r1 - r0 + 1, c1 - c0 + 1);
+        let n = before.len() as f64;
+        ((rows * cols) as f64 / n * 100.0, rows, cols)
+    }
+
+    for side in [2048u32, 4096] {
+        let mut t = armed(side);
+        let span = side as f32 - 200.0;
+        // Um traço de aquecimento: o PRIMEIRO cria os planos e não tem lado `before`.
+        t.on_canvas_pointer(cp([60.0, 200.0], PointerPhase::Down));
+        t.on_canvas_pointer(cp([260.0, 200.0], PointerPhase::Up));
+        let a = t.layers.active().unwrap();
+        let (h0, c0, m0) = (
+            t.heights[&a].clone(),
+            t.covers[&a].clone(),
+            t.mats[&a].clone(),
+        );
+        let rgba0 = t.canvas_rgba.clone();
+
+        t.on_canvas_pointer(cp([60.0, 300.0], PointerPhase::Down));
+        for k in 1..=12u8 {
+            let f = f32::from(k) / 12.0;
+            t.on_canvas_pointer(cp([60.0 + span * f, 300.0 + span * f], PointerPhase::Move));
+        }
+        t.on_canvas_pointer(cp([60.0 + span, 300.0 + span], PointerPhase::Up));
+
+        let w = side as usize;
+        let (fh, rh, ch) = changed_frac(&h0, &t.heights[&a], w);
+        let (fc, rc, cc) = changed_frac(&c0, &t.covers[&a], w);
+        let (fm, rm, cm) = changed_frac(&m0, &t.mats[&a], w);
+        let (fr, rr, cr) = changed_frac(&rgba0, &t.canvas_rgba, w * 4);
+        eprintln!("\n[janela] {side}x{side}, traco DIAGONAL de canto a canto");
+        eprintln!("  bbox da MUDANCA, em % do plano (>=50% ⇒ a entrada vira `Whole`)");
+        eprintln!("  heights {fh:6.2}%  ({rh}x{ch})");
+        eprintln!("  covers  {fc:6.2}%  ({rc}x{cc})");
+        eprintln!("  mats    {fm:6.2}%  ({rm}x{cm})");
+        eprintln!("  canvas  {fr:6.2}%  ({rr}x{cr} elementos)");
+    }
+}

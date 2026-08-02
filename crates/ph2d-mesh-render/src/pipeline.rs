@@ -581,8 +581,16 @@ pub fn camera_uniform_bytes(camera: &Camera3d, aspect: f32) -> [u8; 128] {
 }
 
 /// A matriz de vista-projeção que o shader recebe, reconstruída dos bytes.
+///
 /// Existe para o gate provar que a coluna-major do `glam` é a coluna-major que
 /// o WGSL espera — trocar isso transpõe a cena e nada avisa.
+///
+/// ⚠️ **O gate que esta frase prometia não existia até 2026-08-02**, e esta e a
+/// [`camera_uniform_bytes`] eram duas `pub fn` sem chamador nenhum: um doc
+/// afirmando um consumidor que não havia. Ele agora é o
+/// `tests/camera_uniform_layout.rs`, e a metade que lhe dá dentes é a câmera
+/// **enviesada** — numa câmera de frente a matriz é quase simétrica, e uma
+/// transposição passaria em metade das entradas.
 #[must_use]
 pub fn view_proj_from_bytes(bytes: &[u8; 128]) -> Mat4 {
     let mut cols = [0f32; 16];

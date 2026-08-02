@@ -1,10 +1,19 @@
 # HANDOFF / Tracker — `line/physics` (o motor de física global)
 
-> ⚠️ **A LINHA ESTÁ FECHADA (2026-08-01) e o handoff de integração é
-> [`HANDOFF_INTEGRACAO_line_physics_2026-08-01.md`](HANDOFF_INTEGRACAO_line_physics_2026-08-01.md)**
-> — quatro waves (W-JointCopy · W-Rig · W-SoftWeld · W-Compound), cenas `=66`..`=69`, **todos os
-> smokes aprovados**. `PROJECT_SCHEMA` **47**, c9 **99 corpos / `556cb652…`**, zero `Cargo.toml`
-> tocado. Ela **não** integrou e **não** pushou.
+> ⚠️ **A LINHA ESTÁ FECHADA (2026-08-01, 2ª jornada do dia) e o handoff de integração é
+> [`HANDOFF_INTEGRACAO_line_physics_compound_signal_2026-08-01.md`](HANDOFF_INTEGRACAO_line_physics_compound_signal_2026-08-01.md)**
+> — **24 commits, sete waves**: a varredura dos consumidores que assumiam a premissa que a
+> W-Compound tornou falsa (**W-PartFace · W-PartSensor · W-CompoundZone · W-PartMass ·
+> W-CompoundContact**, cenas `=69`..`=72`) mais as três que o Enio pediu por nome
+> (**W-WorldPinGlyph · W-WorldPinLocal · W-Signal**, cenas `=65` e `=73`). **Todos os smokes
+> aprovados.** ⚠️ **`PROJECT_SCHEMA` INTOCADO em 48** (o único componente novo cunha blob-key
+> própria), registro **24→25**, c9 **99 corpos / `16ba80e8…` byte-idêntico ao `main`**, zero
+> `Cargo.toml`, nenhum ADR. Já **rebasada** sobre o `main` de hoje. Ela **não** integrou e
+> **não** pushou.
+>
+> (O [`HANDOFF_INTEGRACAO_line_physics_2026-08-01.md`](HANDOFF_INTEGRACAO_line_physics_2026-08-01.md)
+> — quatro waves, W-JointCopy · W-Rig · W-SoftWeld · W-Compound, cenas `=66`..`=69` — **já está no
+> `main`** e é histórico.)
 >
 > ⚠️ **VAI ASSUMIR ESTA LINHA? Comece por
 > [`HANDOFF_REABERTURA_line_physics_2026-07-22.md`](HANDOFF_REABERTURA_line_physics_2026-07-22.md)** —

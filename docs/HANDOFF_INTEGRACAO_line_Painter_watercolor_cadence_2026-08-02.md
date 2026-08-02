@@ -133,9 +133,14 @@ estado virou sub-struct num irmão e os gates viraram filhos de `watercolor_fiel
 
 ## 10 — O que SMOKE-TESTAR
 
+```fish
+cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Painter && env PH2D_WETPAINT_SMOKE=1 cargo run -p ph2d-host-desktop --release
 ```
-env PH2D_WETPAINT_SMOKE=1 cargo run -p ph2d-host-desktop --release
-```
+⚠️ **O `cd` faz parte do comando.** Este trabalho está na worktree da linha, e os MESMOS caminhos
+relativos existem na árvore primária — rodar da raiz compila e abre o app do `main`, sem um único
+erro, mostrando exatamente o comportamento ANTIGO. Um smoke que reprova por isso reprova a coisa
+errada.
+
 ⚠️ O smoke abre em **Digital** de propósito — escolha **Watercolor** no dropdown de Paint Mode.
 
 1. **Canvas 4096, pincel GRANDE (raio 200-400), traço longo.** A pergunta é de mão: o traço tem de sair

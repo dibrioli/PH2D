@@ -6,7 +6,7 @@
 //! uma entrada é DESFEITA* (aqui). O segundo é o que carrega as três leis de
 //! endereçamento — o objeto, o nível e a janela —, e elas crescem juntas.
 
-use super::{Entry, Sculpt3dScene, SculptStroke, StrokeUndo, swap_window};
+use super::{Entry, ObjectId, Sculpt3dScene, SculptStroke, StrokeUndo, swap_window};
 
 impl Sculpt3dScene {
     /// Desfaz o último gesto. Devolve `false` se não havia nada.
@@ -40,15 +40,19 @@ impl Sculpt3dScene {
         // VOLTA ao objeto da edição, que é também o que o artista espera de um
         // Ctrl+Z.
         //
-        // O clamp cobre um objeto que deixou de existir: a entrada é aplicada em
-        // quem sobrou em vez de indexar fora da lista. É honestamente pior que
-        // recusar, e é por isso que **apagar um objeto tem de limpar a fila** — a
-        // wave que trouxer o delete traz essa metade.
-        self.active = entry.object.min(self.objects.len() - 1);
-        let object = self.active;
+        // ⚠️ **A peça pode não existir, e o caso NÃO é degenerado: é o delete.**
+        // A entrada que a recria é exatamente esta, e ela mesma escolhe o ativo
+        // ao recolocá-la — então aqui a ausência é silêncio, não erro. Para
+        // qualquer outra entrada a peça está lá **por construção**: a fila é
+        // LIFO e a entrada do delete fica ACIMA de toda entrada mais velha
+        // daquela peça, então ela é desfeita antes.
+        if let Some(i) = self.index_of(entry.object) {
+            self.active = i;
+        }
+        let object = entry.object;
         let inverse = Entry {
             object,
-            undo: self.apply_entry(entry.undo),
+            undo: self.apply_entry(object, entry.undo),
         };
         if undoing {
             self.redo.push(inverse);
@@ -59,7 +63,7 @@ impl Sculpt3dScene {
     }
 
     /// **Aplica uma entrada e devolve a inversa dela.**
-    fn apply_entry(&mut self, entry: StrokeUndo) -> StrokeUndo {
+    fn apply_entry(&mut self, object: ObjectId, entry: StrokeUndo) -> StrokeUndo {
         // ⚠️ **Ir ao nível certo vem PRIMEIRO.** Uma janela de traço é uma lista
         // de índices, e índices pertencem a uma topologia — aplicá-los noutro
         // nível escreve posições certas nos vértices errados sem levantar erro
@@ -82,6 +86,12 @@ impl Sculpt3dScene {
                     self.obj_mut().stack.select(top);
                 }
             }
+            // ⚠️ **As duas da LISTA não têm nível a escolher**, e não é omissão:
+            // uma peça inteira entra ou sai com a pilha DELA dentro — não há um
+            // "nível certo" na peça que fica, porque a que importa é a que vai
+            // nascer ou morrer. Um braço que caísse no `_` aqui selecionaria um
+            // nível na peça ERRADA.
+            StrokeUndo::AddedObject | StrokeUndo::RemovedObject(_) => {}
             // ⚠️ Uma troca de nível é aplicada DE ONDE ELA POUSOU — descer se
             // desfaz do nível de baixo, subir do de cima. E com todas as trocas
             // registradas este `select` nunca tem o que fazer: a ordem LIFO já
@@ -202,6 +212,27 @@ impl Sculpt3dScene {
                 self.stroke = SculptStroke::default();
                 self.mesh_rebuilt();
                 StrokeUndo::Remeshed(Box::new(now))
+            }
+            StrokeUndo::AddedObject => {
+                // Tirar a peça que a entrada acrescentou. Ela sai INTEIRA e vira
+                // a inversa — o mesmo `mem::replace` de sempre, um nível acima.
+                let Some(i) = self.index_of(object) else {
+                    return StrokeUndo::AddedObject;
+                };
+                let gone = self.objects.remove(i);
+                self.active = self.active.min(self.objects.len().saturating_sub(1));
+                self.mesh_rebuilt();
+                StrokeUndo::RemovedObject(Box::new(gone))
+            }
+            StrokeUndo::RemovedObject(piece) => {
+                // Recolocar. ⚠️ **No FIM da lista, e o índice não é preservado:**
+                // ele nunca foi identidade (é o que o `ObjectId` existe para
+                // dizer), e nada na cena depende da ordem — não há z-order aqui.
+                // Preservá-lo seria inventar um invariante que ninguém tem.
+                self.objects.push(*piece);
+                self.active = self.objects.len() - 1;
+                self.mesh_rebuilt();
+                StrokeUndo::AddedObject
             }
             StrokeUndo::UnfilledHoles => {
                 let report = ph2d_mesh::fill_holes(self.mesh_mut());

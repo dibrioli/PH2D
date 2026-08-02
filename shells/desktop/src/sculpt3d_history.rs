@@ -21,7 +21,7 @@
 
 use ph2d_mesh::{DetachedLevel, Reversal, Stamped};
 
-use super::{Sculpt3dScene, SculptStroke};
+use super::{ObjectId, SceneObject, Sculpt3dScene, SculptStroke};
 
 /// **O estado anterior de um gesto** — a entrada de undo.
 ///
@@ -121,6 +121,18 @@ pub(super) enum StrokeUndo {
     /// carregada e devolver a que estava. Sem casos, sem um `Unremeshed` do
     /// outro lado — a mesma forma do `Mask`.
     Remeshed(Box<ph2d_mesh::Mesh>),
+    /// **Uma PEÇA foi acrescentada à cena** — aplicá-la é tirá-la.
+    ///
+    /// ⚠️ Irmã exata do [`Self::AddedLevel`] um nível acima da pilha: a peça
+    /// nova não partilha estrutura com nada, então o "antes" é *a cena sem ela*
+    /// — e isso não é um estado a guardar, é uma remoção a fazer.
+    AddedObject,
+    /// **Uma peça foi TIRADA** — aplicá-la é recolocá-la, e ela vem junto.
+    ///
+    /// ⚠️ `Box` pelo motivo do [`Self::DroppedLevel`]: uma peça é o maior objeto
+    /// que uma entrada pode carregar, e sem ele todo elemento das duas filas
+    /// mediria isso.
+    RemovedObject(Box<SceneObject>),
     /// **O preenchimento foi desfeito** — aplicá-la é tapar de novo.
     UnfilledHoles,
     /// **A reconstrução foi desfeita** — aplicá-la é refazê-la.
@@ -157,8 +169,12 @@ fn swap_window<T: Copy>(out: &mut [T], verts: &[u32], values: &[T]) -> Vec<T> {
 /// de A na malha de B. Um campo, num lugar só, em vez de repetido em cada
 /// variante do [`StrokeUndo`] — a lista que nasce incompleta no dia em que
 /// aparece a quarta.
+///
+/// ⚠️ **E é o [`ObjectId`], não o índice.** Apagar a peça 1 de três faz a antiga
+/// 2 virar 1; com índices, toda entrada que apontava para 2 passaria a nomear
+/// outra peça, em silêncio e com o índice ainda válido.
 pub(super) struct Entry {
-    pub(super) object: usize,
+    pub(super) object: ObjectId,
     pub(super) undo: StrokeUndo,
 }
 
@@ -177,7 +193,17 @@ impl Sculpt3dScene {
     /// nasce incompleta no dia em que aparece o quarto. Aqui o quarto nasce
     /// certo.
     pub(super) fn record(&mut self, undo: StrokeUndo) {
-        let object = self.active;
+        self.record_for(self.obj().id, undo);
+    }
+
+    /// A mesma porta, com a peça **escolhida** em vez da ativa.
+    ///
+    /// ⚠️ Ela existe por UM chamador — o delete, que grava o id da peça que
+    /// SAIU, não o da que ficou ativa. E é uma porta, não um segundo caminho:
+    /// o [`Self::record`] delega, então continua havendo **uma** resposta a
+    /// *quando o refazer morre*. A primeira versão desta wave escreveu um
+    /// `push` paralelo em `sculpt3d_objects.rs`, e o gate da contagem o pegou.
+    pub(super) fn record_for(&mut self, object: ObjectId, undo: StrokeUndo) {
         self.undo.push(Entry { object, undo });
         self.redo.clear();
     }

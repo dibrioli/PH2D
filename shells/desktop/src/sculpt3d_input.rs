@@ -7,7 +7,8 @@
 //! removibilidade do `docs/3D/02.3` no nível do frame.
 
 use super::{
-    Drag, Grip, LIGHT_STEP_DEG, MaskOp, ORBIT_RAD_PER_PX, RADIUS_STEP, Sculpt3dScene, Verb,
+    Drag, Grip, LIGHT_STEP_DEG, MaskOp, ORBIT_RAD_PER_PX, Primitive, RADIUS_STEP, Sculpt3dScene,
+    Verb,
 };
 use crate::app_state::App;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -306,6 +307,50 @@ impl App {
         // Chesterton, era capacidade. O `A` é de *amplify*, a mesma família da
         // palavra que o rótulo mostra; o `P`, que seria o mnemônico do PAR,
         // levaria a mão ao oposto do que ela procura.
+        // ⚠️ **OS VERBOS DA LISTA vêm ANTES dos verbos do PINCEL**, e a ordem é
+        // o que os torna alcançáveis: `Shift+1..4` compartilham o código com os
+        // dígitos que escolhem ferramenta, e o `match` de baixo não olha o
+        // `shift`. Perguntar depois seria a mesma classe do item de menu que
+        // nasce morto porque outro consumidor pegou o evento primeiro.
+        if shift {
+            let primitive = match code {
+                K::Digit1 => Some(Primitive::Sphere),
+                K::Digit2 => Some(Primitive::Cube),
+                K::Digit3 => Some(Primitive::Cylinder),
+                K::Digit4 => Some(Primitive::Torus),
+                _ => None,
+            };
+            if let Some(kind) = primitive {
+                let i = scene.add_primitive(kind);
+                eprintln!(
+                    "[sculpt3d] + {} (peca {i}, a cena tem {}) -- Ctrl+Z a tira",
+                    kind.label(),
+                    scene.objects.len()
+                );
+                return true;
+            }
+            if code == K::KeyD {
+                scene.duplicate_active();
+                eprintln!(
+                    "[sculpt3d] DUPLICOU: a cena tem {} pecas -- a copia nasce AO LADO na tela",
+                    scene.objects.len()
+                );
+                return true;
+            }
+        }
+        if code == K::Delete {
+            // ⚠️ A recusa é REPORTADA. Um Delete que não faz nada e não diz nada
+            // é indistinguível de uma tecla que não chegou.
+            if scene.delete_active() {
+                eprintln!(
+                    "[sculpt3d] APAGOU: sobram {} pecas -- Ctrl+Z a devolve INTEIRA",
+                    scene.objects.len()
+                );
+            } else {
+                eprintln!("[sculpt3d] a ULTIMA peca nao e apagavel: a cena ficaria vazia");
+            }
+            return true;
+        }
         let held = match code {
             K::KeyG => Some(Verb::Move),
             K::KeyH => Some(Verb::SnakeHook),

@@ -7,7 +7,8 @@
 //! e toda conversão entre os dois espaços mora neste arquivo, num lugar só.
 
 use super::{
-    Brush, Hit, Mesh, Pose, RADIUS_MAX_FRAC_OF_HEIGHT, RADIUS_MIN_PX, SceneObject, Sculpt3dScene,
+    Brush, Hit, Mesh, ObjectId, Pose, RADIUS_MAX_FRAC_OF_HEIGHT, RADIUS_MIN_PX, SceneObject,
+    Sculpt3dScene,
 };
 
 impl Sculpt3dScene {
@@ -17,8 +18,21 @@ impl Sculpt3dScene {
     /// pegar cada uma: quem escolhe é o pincel do artista, no clique. Uma
     /// fixture que quisesse o contrário diria isso explicitamente.
     pub(crate) fn push_object(&mut self, mesh: Mesh, pose: Pose) -> usize {
-        self.objects.push(SceneObject::new(mesh, pose));
+        let id = self.mint_id();
+        self.objects.push(SceneObject::new(id, mesh, pose));
         self.objects.len() - 1
+    }
+
+    /// Cunha um [`ObjectId`] novo. **Nunca reusa** — ver o doc do tipo.
+    pub(super) fn mint_id(&mut self) -> ObjectId {
+        let id = ObjectId(self.next_id);
+        self.next_id = self.next_id.wrapping_add(1);
+        id
+    }
+
+    /// Onde na lista está a peça `id`, se ela ainda existe.
+    pub(super) fn index_of(&self, id: ObjectId) -> Option<usize> {
+        self.objects.iter().position(|o| o.id == id)
     }
 
     /// A caixa de **todos** os objetos, em mundo.

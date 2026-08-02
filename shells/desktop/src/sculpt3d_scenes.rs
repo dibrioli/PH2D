@@ -361,7 +361,16 @@ pub(crate) fn announce(mesh: &ph2d_mesh::Mesh) {
              [sculpt3d]        de desfazer NA PECA CERTA. Se a segunda peca 'consertar' a primeira, reprove.\n\
              [sculpt3d]    (5) Aproxime com a roda ate' o cubo ocupar a tela e esculpa: o pincel continua\n\
              [sculpt3d]        do mesmo tamanho em PIXELS, como sempre foi.\n\
-             [sculpt3d]    (6) Onde as pecas se cruzam na tela, clicar tem de pegar a que esta' NA FRENTE."
+             [sculpt3d]    (6) Onde as pecas se cruzam na tela, clicar tem de pegar a que esta' NA FRENTE.\n\
+             [sculpt3d]    (7) OS VERBOS DA LISTA: Shift+1 esfera, Shift+2 cubo, Shift+3 cilindro,\n\
+             [sculpt3d]        Shift+4 toro. A peca nova nasce ONDE VOCE ESTA' OLHANDO e ja' vem ativa --\n\
+             [sculpt3d]        esculpa nela sem clicar em mais nada.\n\
+             [sculpt3d]    (8) Shift+D DUPLICA a ativa: a copia nasce AO LADO na tela (gire e confira que\n\
+             [sculpt3d]        ela continua ao lado do ponto de vista NOVO, nao presa a um eixo de mundo).\n\
+             [sculpt3d]    (9) Delete APAGA a ativa, e Ctrl+Z tem de devolve-la INTEIRA -- com o que voce\n\
+             [sculpt3d]        esculpiu nela. Tente apagar ate' sobrar UMA: a ultima o log RECUSA.\n\
+             [sculpt3d]   (10) O teste duro do undo: esculpa a peca A, acrescente B, esculpa B, apague B,\n\
+             [sculpt3d]        e va' desfazendo. Cada passo tem de voltar NA PECA CERTA, na ordem inversa."
         );
     }
     if crate::sculpt3d::reversion_scene() {

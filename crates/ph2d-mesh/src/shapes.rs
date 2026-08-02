@@ -212,3 +212,79 @@ pub fn shuffled(mesh: &Mesh, seed: u64) -> Mesh {
     }
     out
 }
+
+/// Um CILINDRO em pé no eixo Y: raio `radius`, altura `height`, `segments`
+/// fatias — **quads no corpo, leques nas tampas**.
+///
+/// ⚠️ **As tampas têm um POLO cada, como a esfera UV, e é uma escolha.** A
+/// alternativa (uma grade de quads no disco) evita a valência alta mas inventa
+/// uma tesselação interna que a silhueta não pede, e ela some no primeiro
+/// `subdivide`. O polo aqui é o mesmo fenômeno que a `uv_sphere` já traz — e o
+/// corpo, que é onde um escultor trabalha, é quad puro.
+#[must_use]
+pub fn cylinder(segments: usize, radius: f32, height: f32) -> Mesh {
+    let segments = segments.max(3);
+    let h = height * 0.5;
+    // 0 = centro do topo, 1 = centro da base; os anéis vêm depois.
+    let mut positions = vec![[0.0, h, 0.0], [0.0, -h, 0.0]];
+    for j in 0..segments {
+        let theta = core::f32::consts::TAU * (j as f32) / (segments as f32);
+        let (st, ct) = theta.sin_cos();
+        positions.push([radius * ct, h, radius * st]);
+    }
+    for j in 0..segments {
+        let theta = core::f32::consts::TAU * (j as f32) / (segments as f32);
+        let (st, ct) = theta.sin_cos();
+        positions.push([radius * ct, -h, radius * st]);
+    }
+    let top = |j: usize| -> u32 { (2 + j % segments) as u32 };
+    let bot = |j: usize| -> u32 { (2 + segments + j % segments) as u32 };
+
+    let mut faces = Vec::new();
+    for j in 0..segments {
+        faces.push(Face::tri(0, top(j + 1), top(j)));
+        faces.push(Face::tri(1, bot(j), bot(j + 1)));
+        faces.push(Face::quad(top(j), top(j + 1), bot(j + 1), bot(j)));
+    }
+    Mesh::from_parts(positions, faces).expect("o cilindro é construído aqui e é válido")
+}
+
+/// Um TORO no plano XZ: raio maior `major`, raio menor `minor`, `major_segments`
+/// voltas e `minor_segments` por volta.
+///
+/// ⚠️ **É a única primitiva daqui sem POLO nenhum** — quad puro, valência 4 em
+/// todo vértice. É por isso que ela é a fixture certa para qualquer coisa que
+/// discuta *topologia regular*, e é também a forma que um escultor recebe de
+/// melhor grado: ela subdivide sem estrela nenhuma para o alisamento contornar.
+#[must_use]
+pub fn torus(major_segments: usize, minor_segments: usize, major: f32, minor: f32) -> Mesh {
+    let (mj, mn) = (major_segments.max(3), minor_segments.max(3));
+    let mut positions = Vec::with_capacity(mj * mn);
+    for i in 0..mj {
+        let u = core::f32::consts::TAU * (i as f32) / (mj as f32);
+        let (su, cu) = u.sin_cos();
+        for k in 0..mn {
+            let v = core::f32::consts::TAU * (k as f32) / (mn as f32);
+            let (sv, cv) = v.sin_cos();
+            let r = major + minor * cv;
+            positions.push([r * cu, minor * sv, r * su]);
+        }
+    }
+    let at = |i: usize, k: usize| -> u32 { ((i % mj) * mn + (k % mn)) as u32 };
+    let mut faces = Vec::with_capacity(mj * mn);
+    for i in 0..mj {
+        for k in 0..mn {
+            faces.push(Face::quad(
+                at(i, k),
+                at(i, k + 1),
+                at(i + 1, k + 1),
+                at(i + 1, k),
+            ));
+        }
+    }
+    Mesh::from_parts(positions, faces).expect("o toro é construído aqui e é válido")
+}
+
+#[cfg(test)]
+#[path = "shapes_tests.rs"]
+mod tests;

@@ -151,6 +151,13 @@ mod mask;
 
 use mask::MaskOp;
 
+/// **OS VERBOS DA LISTA** — acrescentar, duplicar, apagar. Filho (`#[path]`)
+/// pelo motivo dos outros: o corte é de responsabilidade.
+#[path = "sculpt3d_objects.rs"]
+mod objects;
+
+pub(crate) use objects::Primitive;
+
 /// **ONDE as coisas estão** — as portas de espaço. Filho (`#[path]`) pelo motivo
 /// dos outros: o corte é de responsabilidade, e este é o assunto que a lista de
 /// objetos inventou.
@@ -163,7 +170,19 @@ mod space;
 /// não limpa a do outro, e um par compartilhado deixaria o segundo objeto
 /// desenhado com a geometria de antes do dab — sem erro, sem warning, e com
 /// todos os gates de CPU verdes.
+/// A identidade **DURÁVEL** de um objeto.
+///
+/// ⚠️ **Um ÍNDICE não serve para a fila de undo**, e o mecanismo é conhecido:
+/// apagar a peça 1 de três faz a antiga 2 virar 1, e toda entrada que apontava
+/// para 2 passa a nomear outra peça — em silêncio, com os índices ainda
+/// válidos. É a mesma lição que a timeline pagou no `wire_id` e a física no
+/// `stable_name_id`: **posição é endereço de alocação, não identidade**.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub(crate) struct ObjectId(u32);
+
 pub(crate) struct SceneObject {
+    /// Quem esta peça É — ver [`ObjectId`].
+    pub(crate) id: ObjectId,
     /// **A PILHA de níveis**, e não uma malha — ver [`Multires`]. O nível 0 é a
     /// base; o artista esculpe no que estiver selecionado.
     pub(crate) stack: Multires,
@@ -177,8 +196,9 @@ pub(crate) struct SceneObject {
 }
 
 impl SceneObject {
-    fn new(mesh: Mesh, pose: Pose) -> Self {
+    fn new(id: ObjectId, mesh: Mesh, pose: Pose) -> Self {
         Self {
+            id,
             stack: Multires::new(mesh),
             pose,
             uploaded: false,
@@ -205,6 +225,10 @@ pub(crate) struct Sculpt3dScene {
     /// — mudo enquanto a nova for menor, **pânico** assim que for maior. Ver
     /// `Sculpt3dScene::aim`.
     pub(crate) active: usize,
+    /// O próximo [`ObjectId`] a cunhar. Ele **nunca reusa**: um id reciclado
+    /// faria uma entrada de undo velha nomear uma peça nova, que é exatamente o
+    /// que o índice já fazia.
+    next_id: u32,
     pub(crate) camera: Camera3d,
     renderer: MeshRenderer,
     drag: Option<Drag>,
@@ -266,8 +290,9 @@ impl Sculpt3dScene {
         };
         camera.frame(mesh.bounds(), aspect);
         Self {
-            objects: vec![SceneObject::new(mesh, Pose::IDENTITY)],
+            objects: vec![SceneObject::new(ObjectId(0), mesh, Pose::IDENTITY)],
             active: 0,
+            next_id: 1,
             camera,
             renderer: MeshRenderer::new(device, ph2d_render::GameRt::FORMAT),
             drag: None,

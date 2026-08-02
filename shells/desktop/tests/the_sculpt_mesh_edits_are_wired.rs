@@ -291,7 +291,7 @@ fn undoing_and_redoing_are_the_same_door() {
     );
     let step = function_body(&src, "step(&mut self, undoing");
     assert!(
-        step.contains("self.apply_entry(entry.undo)"),
+        step.contains("self.apply_entry(object, entry.undo)"),
         "e as duas direções passam por ela"
     );
     // O que sai de uma fila entra na outra — sem isso o desfazer consome a
@@ -312,16 +312,24 @@ fn undoing_and_redoing_are_the_same_door() {
 #[test]
 fn a_new_edit_goes_through_the_door_that_clears_the_redo() {
     let src = sculpt_src();
-    let record = function_body(&src, "record(&mut self, undo");
+    let record = function_body(&src, "record_for(&mut self, object");
     assert!(
         record.contains("self.undo.push(Entry { object, undo })")
             && record.contains("self.redo.clear()"),
         "gravar é empurrar E limpar o futuro"
     );
+    // ⚠️ **UMA resposta a *quando o refazer morre*.** A W8.2 quase abriu a
+    // segunda: o delete precisa gravar com a peça que SAIU (e não com a ativa) e
+    // a primeira versão escreveu um `push` paralelo em `sculpt3d_objects.rs`.
+    // Este gate o pegou; a cura foi `record_for`, com o `record` delegando.
     assert_eq!(
         src.matches("self.redo.clear()").count(),
         1,
         "e essa é a única resposta a *quando o refazer morre*"
+    );
+    assert!(
+        function_body(&src, "delete_active(&mut self").contains("self.record_for("),
+        "o delete grava pela porta, com a peça que saiu"
     );
     for edit in [
         "close_stroke",
@@ -656,20 +664,28 @@ fn undoing_returns_to_the_object_the_edit_was_made_on() {
     let src = sculpt_src();
     let step = function_body(&src, "step(&mut self, undoing");
     let at_active = step
-        .find("self.active = entry.object")
-        .expect("o `step` tem de voltar ao objeto da entrada");
+        .find("self.index_of(entry.object)")
+        .expect("o `step` tem de resolver a peça da entrada");
     let at_apply = step.find("self.apply_entry(").expect("e depois aplicar");
     assert!(
         at_active < at_apply,
-        "voltar ao objeto vem ANTES de aplicar — depois já é tarde"
+        "voltar à peça vem ANTES de aplicar — depois já é tarde"
     );
 
-    // E quem GRAVA carimba o ativo: uma entrada sem dono é uma entrada que o
+    // ⚠️ E a resolução é pela IDENTIDADE, não pelo índice: apagar a peça 1 de
+    // três faz a antiga 2 virar 1, e um índice guardado passaria a nomear outra
+    // peça em silêncio.
+    assert!(
+        src.contains("pub(super) object: ObjectId,"),
+        "a entrada aponta pelo `ObjectId`, nunca por posição"
+    );
+
+    // E quem GRAVA carimba a peça: uma entrada sem dono é uma entrada que o
     // desfazer aplica em quem estiver na mão.
     let record = function_body(&src, "record(&mut self, undo");
     assert!(
-        record.contains("let object = self.active;") && record.contains("Entry { object, undo }"),
-        "gravar carimba o objeto ativo na entrada"
+        record.contains("self.record_for(self.obj().id, undo)"),
+        "gravar carimba a peça ativa e delega à porta única"
     );
 }
 
@@ -749,12 +765,16 @@ fn a_stroke_belongs_to_the_piece_it_started_on() {
         "mirar vem ANTES de começar — depois já é a malha errada"
     );
 
-    // ⚠️ E o `aim` é a ÚNICA porta que move o objeto ativo. Um segundo escritor
-    // seria exatamente o repique que esta lei existe para proibir.
+    // ⚠️ **A pergunta certa é quem consulta a LISTA, não quantos escrevem no
+    // ativo.** A contagem de `self.active =` era o proxy da primeira versão e
+    // expirou na wave seguinte: os verbos da lista (acrescentar, duplicar,
+    // apagar) escrevem nele por definição, e todos fora de um traço. O que a lei
+    // proíbe é **repicar a lista no meio de um gesto**, e isso se afirma no
+    // `pick`: ele tem UM chamador, o `aim`.
     assert_eq!(
-        src.matches("self.active = ").count(),
-        2,
-        "só o `aim` e o `step` do undo escrevem no ativo"
+        src.matches("self.pick(x, y)").count(),
+        1,
+        "só o `aim` consulta a lista — quem repica no meio do gesto troca de peça"
     );
     for gesture in ["sculpt_at(&mut self", "take_hold(&mut self"] {
         let body = function_body(&src, gesture);
@@ -767,4 +787,82 @@ fn a_stroke_belongs_to_the_piece_it_started_on() {
             "`{gesture}` NÃO pode repicar a lista no meio de um gesto"
         );
     }
+}
+
+/// **OS VERBOS DA LISTA são desfazíveis**, e a peça apagada volta INTEIRA.
+///
+/// ⚠️ A alternativa que a W8.1 anotou — *apagar limpa a fila* — trocaria um
+/// trabalho perdido por outro: o artista recuperaria a peça e perderia a
+/// história de todas as outras. Carregar a peça na entrada custa um `Box` e
+/// devolve a pilha de níveis, a máscara e a pose junto.
+#[test]
+fn the_list_verbs_are_undoable_and_the_last_piece_is_not_deletable() {
+    let src = sculpt_src();
+
+    for verb in ["add_primitive(&mut self", "duplicate_active(&mut self"] {
+        let body = function_body(&src, verb);
+        assert!(
+            body.contains("self.record(StrokeUndo::AddedObject)"),
+            "`{verb}` grava, senão a peça nova é irremovível por Ctrl+Z"
+        );
+        assert!(
+            body.contains("self.active = self.objects.len() - 1"),
+            "`{verb}` torna a peça nova ativa — escolher uma coisa USA ela"
+        );
+    }
+
+    let del = function_body(&src, "delete_active(&mut self");
+    assert!(
+        del.contains("if self.objects.len() <= 1") && del.contains("return false"),
+        "a ÚLTIMA peça não é apagável: a cena nunca-vazia é o que torna `obj()` total"
+    );
+    assert!(
+        del.contains("StrokeUndo::RemovedObject(Box::new(gone))"),
+        "a peça sai INTEIRA para dentro da fila"
+    );
+    // ⚠️ E com o id da peça que SAIU, não com o da que ficou ativa: é ela que o
+    // `RemovedObject` vai recolocar.
+    let at_id = del
+        .find("let object = self.obj().id;")
+        .expect("o id da peça que sai");
+    let at_remove = del
+        .find("self.objects.remove(")
+        .expect("e depois a remoção");
+    assert!(
+        at_id < at_remove,
+        "o id é lido ANTES de a peça sair da lista"
+    );
+
+    // A volta: recolocar torna a peça ativa, senão o artista desfaz e continua
+    // trabalhando outra.
+    let arm = arm_with(&src, "StrokeUndo::RemovedObject(piece)");
+    assert!(
+        arm.contains("self.objects.push(*piece)") && arm.contains("self.active ="),
+        "desfazer um delete recoloca a peça E volta para ela"
+    );
+}
+
+/// **As quatro primitivas cabem na MESMA esfera unitária.**
+///
+/// ⚠️ Sem essa normalização a escala da pose teria de depender da forma, e o
+/// artista veria o cubo nascer de outro tamanho que a esfera pelo mesmo gesto —
+/// com o mesmo número na pose. É gate de fonte porque a cena precisa de device;
+/// o oráculo geométrico das primitivas em si vive na `ph2d-mesh`.
+#[test]
+fn every_primitive_is_born_in_the_same_unit_ball() {
+    let src = sculpt_src();
+    let body = function_body(&src, "mesh(self) -> Mesh");
+    for kind in ["Sphere", "Cube", "Cylinder", "Torus"] {
+        assert!(
+            body.contains(&format!("Self::{kind} =>")),
+            "a primitiva {kind} tem de ter malha"
+        );
+    }
+    // A aresta do cubo é 2/√3 justamente para a DIAGONAL medir 2 — a mesma
+    // esfera envolvente da bola de raio 1. Um `cube(2.0)` aqui nasceria com a
+    // diagonal em 3,46 e o gesto pareceria dar tamanhos diferentes.
+    assert!(
+        body.contains("shapes::cube(2.0 / 3.0_f32.sqrt())"),
+        "o cubo é normalizado pela DIAGONAL, não pela aresta"
+    );
 }

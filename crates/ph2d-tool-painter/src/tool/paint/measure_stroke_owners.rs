@@ -21,9 +21,23 @@
 //! `tool` (irredutível) · `cursor` · `paint.stroke_undo` — este último porque `snapshot_model` clona os
 //! `BTreeMap`, o que bumpa um `Arc` por plano. O **quarto** que aparece logo após o PRIMEIRO traço é a
 //! entrada dele: um traço que **cria** os planos de relevo não tem lado `before` a diferenciar, então o
-//! delta grava `Whole { before, after }` e segura o plano vivo; do segundo traço em diante a entrada é
-//! `Patch` e não segura nada. ⚠️ **`make_mut` copia com qualquer coisa acima de um** ⇒ remover UMA das
-//! três não compra milissegundo nenhum: o S3 é tudo-ou-nada, e o alvo são as três.
+//! delta grava `Whole { before, after }` e segura o plano vivo. ⚠️ **`make_mut` copia com qualquer
+//! coisa acima de um** ⇒ remover UMA das três não compra milissegundo nenhum: o S3 é tudo-ou-nada, e o
+//! alvo são as três.
+//!
+//! ### 1c. E a entrada de um traço GRANDE também segura — para sempre (doc 28 §5.67)
+//!
+//! Esta seção dizia *"do segundo traço em diante a entrada é `Patch` e não segura nada"*. A frase foi
+//! medida com a [`stroke`] de 200 px — **0,1% da área a 4096²** — e é falsa para o traço que o artista
+//! de fato dá: a janela declarada é o **BBOX**, um traço diagonal tem bbox de ~90% do plano, e os dois
+//! construtores de delta mandam para `Whole` toda janela ≥ 50% (*"o delta guarda DOIS lados, então só
+//! compensa abaixo de metade"*).
+//!
+//! ⚠️ **São DUAS portas com o MESMO limiar** — [`StoredPlane::from_window`](crate::undo_delta) e
+//! `from_journal` — e foi isso que atrasou a bisseção: uma ablação que mirou só a primeira curou o
+//! canvas e deixou o relevo intacto, o que eu li como *"o relevo entra por outro lugar"*. O braço
+//! `Whole` do journal faz `after: Arc::clone(live)` ⇒ **o `after` É o segundo dono**; o `before` dele já
+//! é material próprio (`par_clone` + patch) e não segura nada.
 //!
 //! (As seções sobre o CUSTO — o fork, o pen-up, o commit — mudaram-se para o irmão junto com as sondas
 //! que as mediram; o que segue é a atribuição de posse, que é o assunto deste arquivo.)
@@ -227,11 +241,14 @@ fn what_the_journal_retains_for_one_real_stroke() {
 /// da rota do journal (ele extrai uma JANELA em `Vec`), e por isso a rota deixa de ser uma otimização
 /// e passa a ser **pré-requisito** da elisão.
 ///
-/// ⚠️ **Roda em DEBUG de propósito, e sem cronômetro.** O journal é `cfg(debug_assertions)`, então em
-/// release esta pergunta não existe ainda; e a resposta é uma CONTAGEM, que uma máquina carregada não
-/// sabe distorcer (a §5.49: nenhum relógio desta máquina significa nada com o load acima de ~5).
+/// ⚠️ **Roda nos DOIS perfis, e sem cronômetro.** Este parágrafo dizia *"roda em DEBUG de propósito —
+/// o journal é `cfg(debug_assertions)`, em release esta pergunta não existe ainda"*, e isso é **FALSO
+/// desde o degrau 4**: quem é `cfg(any(test, debug_assertions))` é o journal do CANVAS; o do RELEVO
+/// **shipa** (veja o cabeçalho de `undo_delta_journal.rs`). O único `#[cfg(test)]` no caminho é o
+/// INCREMENTO do contador — a testemunha, nunca a rota. E a resposta é uma CONTAGEM, que uma máquina
+/// carregada não sabe distorcer (a §5.49: nenhum relógio desta máquina significa nada com load > ~5).
 #[test]
-#[ignore = "medicao — rode SEM --release (o journal e cfg(debug))"]
+#[ignore = "medicao — rode com --release --ignored --nocapture --test-threads=1"]
 fn the_journal_route_is_what_makes_the_elision_worth_anything() {
     let mut t = armed(1024);
     stroke(&mut t, 200.0);
@@ -272,23 +289,24 @@ fn the_journal_route_is_what_makes_the_elision_worth_anything() {
 
 /// **E UM TRAÇO GRANDE DEIXA A ENTRADA SEGURANDO OS PLANOS — para sempre.**
 ///
-/// O cabeçalho deste arquivo (§1b) afirma que *"do segundo traço em diante a entrada é `Patch` e não
-/// segura nada"*. A frase foi medida com a [`stroke`] de 200 px — **0,1% da área a 4096²** — e é falsa
-/// para o traço que o artista de fato dá: a janela declarada é o **BBOX**, um traço diagonal tem bbox
-/// de ~98% da tela, e [`StoredPlane::from_window`](crate::undo_delta::StoredPlane) manda para `Whole`
-/// toda janela ≥ 50% do plano (*"o delta guarda DOIS lados, então só compensa abaixo de metade"*).
-/// `Whole` guarda um `Arc` de cada endpoint ⇒ **segundo dono permanente** ⇒ o `fork_par` do gesto
-/// seguinte copia os quatro planos canvas-sized.
+/// É esta sonda que derrubou a §1b e escreveu a §1c do cabeçalho: a janela declarada é o **BBOX**, e um
+/// traço diagonal tem bbox de ~90% do plano (medido: 78,5% a 2048², 88,9% a 4096²) ⇒ os dois
+/// construtores de delta caem em `Whole`, que segura um `Arc` de cada endpoint ⇒ **segundo dono
+/// permanente** ⇒ o `fork_par` do gesto seguinte copia os quatro planos canvas-sized.
 ///
-/// ⚠️⚠️ **ESTA SONDA NÃO VÊ O CAMINHO DO PRODUTO, e por isso ela IMPRIME em qual está.** O journal do
-/// relevo é `cfg(any(test, debug_assertions))`, e **`cargo test --release` liga `cfg(test)`** — então
-/// num binário de teste, mesmo em release, o commit passa pelo `from_journal` e **não** pelo
-/// `StoredPlane::split` que o `cargo run --release` toma. O contador `(relevo pelo JOURNAL: Nx)` é a
-/// testemunha: se ele anda, a linha ao lado descreve a rota do JOURNAL. *Um instrumento que não pode
-/// alcançar o produto tem de dizer isso na própria saída* (doc 28 §5.67).
+/// ⚠️ **O traço curto NÃO é redundante — é o CONTROLE, na MESMA corrida e no MESMO canvas:** ele cai em
+/// `Patch` pela mesma regra, então *a entrada grande segura* e *esta máquina/este canvas segura* deixam
+/// de ser indistinguíveis. Sem ele a tabela não decide nada.
 ///
-/// ⚠️ **O traço curto é o CONTROLE, na MESMA corrida e no MESMO canvas** — sem ele a tabela não
-/// distingue *"a entrada grande segura"* de *"esta máquina/este canvas segura"*.
+/// ⚠️ **O contador `(relevo pelo JOURNAL: Nx)` diz por qual rota o commit passou** — e a leitura dele
+/// é a mesma nos dois perfis, porque **o journal do relevo SHIPA** (só o do canvas é `cfg`; veja o
+/// cabeçalho de `undo_delta_journal.rs`).
+///
+/// ⚠️ **Este bloco afirmava o oposto até 2026-08-02** (*"esta sonda não vê o caminho do produto: o
+/// journal do relevo é `cfg(any(test, debug_assertions))` e `cargo test --release` liga `cfg(test)`"*)
+/// — a segunda metade é verdadeira e **irrelevante aqui**, porque o `cfg(test)` cobre o INCREMENTO do
+/// contador e não a rota. Eu li dois doc-comments obsoletos do produto, não grepei o atributo, e
+/// publiquei o veredito errado (doc 28 §5.67). *Um `cfg` se confere no atributo, nunca na prosa.*
 #[test]
 #[ignore = "medicao — rode com --release --ignored --nocapture --test-threads=1"]
 fn who_holds_the_planes_after_a_canvas_wide_stroke() {

@@ -6318,10 +6318,11 @@ governa wall-clock; aplicá-la a um invariante seria descartar uma medição sã
 identificada e uma não, e fechar só uma não compra milissegundo nenhum — a lei tudo-ou-nada que o
 próprio §1b do `measure_stroke_owners` já enuncia.
 
-## §5.67 — E a sonda não vê o caminho do produto: `cargo test --release` liga `cfg(test)` (2026-08-02)
+## §5.67 — O relevo entra no `Whole` pelo journal — e dois doc-comments MENTIAM (2026-08-02)
 
-A §5.66 §4 terminou nomeando *"por qual porta o relevo entra no `Whole`"* como a próxima medição. Ela
-foi feita, em três saltos, e a resposta não estava entre as candidatas.
+> ⚠️ **Esta seção foi publicada com o veredito ERRADO e reescrita horas depois.** O que ela dizia —
+> *"a sonda não vê o caminho do produto, porque o journal é `cfg(test)`"* — é **falso**, e o texto
+> abaixo diz por quê. O caminho até o erro fica registrado porque ele é a lição.
 
 ### 1. A variante literal, por plano
 
@@ -6339,38 +6340,47 @@ foi feita, em três saltos, e a resposta não estava entre as candidatas.
 ### 2. A ablação, agora COM o relatório
 
 Re-rodando o `Patch`-sempre da §5.66 §3 com a variante à vista: **canvas vira `patch`, relevo continua
-`WHOLE`** ⇒ o relevo não passa pelo limiar de tamanho. E instrumentando o outro braço
+`WHOLE`** ⇒ o relevo não passa pelo limiar do `from_window`. E instrumentando o outro braço
 (`before.len() != after.len() || !fits(…)`), ele dispara **só para planos VAZIOS** (`before 0 after 0`
 — os auxiliares de máscara/seleção/deform/sculpt, que `fits` recusa por `len != 0`). Nenhum relevo.
 
-### 3. ⚠️ Sobrou uma porta que eu tinha dado como fechada — e o instrumento a nomeou
+### 3. ⛔ A conclusão que eu tirei daí, e por que ela era falsa
 
-`StoredMap::from_journal` tem `Whole` PRÓPRIO, e o header dele diz *"tudo aqui é
-`cfg(any(test, debug_assertions))`"*, com o `undo_planes.rs` afirmando ao lado: *"**em release ela é
-hoje SEMPRE o caminho de sempre**, porque o journal ainda é `cfg(debug)`"*.
+Sobrou o `StoredMap::from_journal`, cujo header dizia *"tudo aqui é `cfg(any(test, debug_assertions))`"*
+e ao lado do qual o `undo_planes.rs` afirmava *"em release ela é hoje SEMPRE o caminho de sempre,
+porque o journal ainda é `cfg(debug)`"*. Como **`cargo test --release` LIGA `cfg(test)`** (isso é
+verdade), eu concluí que a sonda rodava um caminho que o produto não toma, e publiquei.
 
-**`cargo test --release` liga `cfg(test)`.** O contador `RELIEF_FROM_JOURNAL`, impresso ao lado da
-variante, anda **em toda entrada** — 1x, 2x, 3x… — num binário compilado em release:
+**Os dois doc-comments estavam OBSOLETOS.** `undo_delta_journal.rs` não tem **um** `#[cfg]`, e
+`mod journal_route` também não; o único `#[cfg]` dentro do `relief_maps` é o contador da sonda. O que
+é `cfg(debug)` é o journal do **CANVAS** (`WriteState::capture_canvas` tem no-op de release ao lado) —
+o do **RELEVO** foi promovido pelo degrau 4, e tinha de ser: elidir o `before` sem journal derruba a
+história a cada traço (o próprio `snapshot_model_eliding_relief` diz isso). *As duas frases eram
+verdadeiras no degrau 2 e ninguém as reconferiu quando o degrau 4 as tornou falsas.*
 
+### 4. E a resposta verdadeira, que reconcilia tudo
+
+`from_journal` tem **o mesmo limiar de 50%** do `from_window`, e o seu braço `Whole` faz:
+
+```rust
+return Some(Self::Whole { before: Arc::new(b), after: Arc::clone(live) });
 ```
-[curto] entrada 3: … heights [patch]  (relevo pelo JOURNAL: 3x)
-[diag ] entrada 3: … heights [WHOLE]  (relevo pelo JOURNAL: 6x)
-```
 
-⇒ **toda medição deste subsistema tirada de um teste de unidade roda o JOURNAL**, inclusive as que
-concluíram coisas sobre "release". A frase do `undo_planes.rs` é verdadeira sobre o `cargo run` e
-falsa sobre a única coisa que a mede.
+⇒ **`after: Arc::clone(live)` É o segundo dono.** A ablação da §5.66 §3 mirou o limiar do
+`from_window` e não o gêmeo dele, e é exatamente por isso que o canvas curou e o relevo não. Tudo
+fecha: os quatro planos entram no `Whole` pelo MESMO limiar, por duas portas irmãs.
 
-**O que isto NÃO derruba:** a POSSE (§5.66 §1 e §4) é contagem de `Arc` e não depende da rota — as
-entradas seguram os quatro planos, medido. **O que derruba:** a *atribuição* de por qual porta, e a
-minha ablação como conduzida (ela mirou o `from_window`, que o relevo não visita ali).
+**O alvo da cura é agora singular e nomeado:** os **quatro** sítios que constroem `Whole` guardando
+`Arc::clone(live)` no lado `after`. O `before` deles já é material próprio (`par_clone` + patch do
+journal) e não segura nada — *só o `after` é o dono extra*.
 
-**O que fica em aberto, e agora com a forma certa:** no produto (`cargo run --release`, sem
-`cfg(test)`) o `relief_maps` cai no `split` → `from_window` → janela de 89% → **`Whole` também**, por
-LEITURA e não por medição. A conclusão de posse provavelmente sobrevive, **por outra rota**, e medir
-isso exige uma sonda em `tests/` (num teste de integração a LIB é compilada sem `cfg(test)`) — o que
-custa a superfície pública que ela precisaria.
+### 5. As duas lições, e a segunda é a cara
 
-**A cura da sonda shipou junto:** ela **imprime em qual rota está**. *Um instrumento que não pode
-alcançar o produto tem de dizer isso na própria saída* — a quarta vez nesta linha que o instrumento
-respondeu com confiança à pergunta errada (`sleep 909%` · `away 161%` · `sim x0` · esta).
+**(a)** `cargo test --release` liga `cfg(test)`: uma sonda de unidade **não pode** observar um caminho
+gateado nele, e quando isso importar ela tem de **imprimir em que rota está** (a sonda passou a
+imprimir `(relevo pelo JOURNAL: Nx)`, e fica). Verdade geral, e continua valendo.
+
+**(b)** ⚠️ **Mas aqui o defeito não era o instrumento — eram DOIS doc-comments do produto**, e eles me
+fizeram publicar um veredito falso sobre a minha própria medição. *Um doc-comment que nomeia um `cfg`
+é uma afirmação que EXPIRA: grepe o atributo, não leia a prosa.* Os dois foram corrigidos no mesmo
+commit que esta seção, cada um dizendo o que afirmava antes e o que a mentira custou.

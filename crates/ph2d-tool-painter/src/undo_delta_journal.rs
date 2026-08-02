@@ -6,9 +6,16 @@
 //! escrita de gesto pagar `Arc::make_mut` sobre o documento inteiro. Aqui o lado `before` **não é um
 //! buffer**: são os bytes velhos que o journal capturou na hora da escrita.
 //!
-//! ⚠️ **Tudo aqui é `cfg(any(test, debug_assertions))`, junto com o journal.** A promoção para release
-//! é do degrau 4, e ela tem de levar os dois — promover o journal sozinho paga captura *e* fork até o
-//! fork morrer, que é regressão pura (doc 28 §5.58.1).
+//! ⚠️ **Isto SHIPA em release** — o degrau 4 promoveu o journal do RELEVO junto com a elisão do
+//! `before`, e os dois têm de shipar juntos (elidir sem journal derruba a história a cada traço;
+//! promover o journal sozinho paga captura *e* fork até o fork morrer — doc 28 §5.58.1). **Só o
+//! journal do CANVAS continua `cfg(any(test, debug_assertions))`** (`WriteState::capture_canvas` tem
+//! um no-op de release ao lado).
+//!
+//! ⚠️ **Este parágrafo dizia o contrário até 2026-08-02, e a mentira custou um diagnóstico:** ele
+//! afirmava *"tudo aqui é `cfg(any(test, debug_assertions))`"* — verdade no degrau 2, falsa depois da
+//! promoção —, e uma investigação da posse concluiu (e publicou) que a sonda não via o caminho do
+//! produto. Não há `#[cfg]` nenhum neste arquivo; *grepe o atributo, não leia a prosa* (§5.67).
 
 use std::collections::BTreeMap;
 use std::sync::Arc;

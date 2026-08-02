@@ -374,9 +374,14 @@ impl PlaneDeltas {
     /// três passarem. Esvaziar à medida deixaria o `heights` drenado quando o `mats` recusasse, e o
     /// caminho de fallback partiria de mapas vazios — perdendo o relevo em silêncio.
     ///
-    /// ⚠️ **Em release ela é hoje SEMPRE o caminho de sempre**, porque o journal ainda é `cfg(debug)`.
-    /// Isso é o degrau 2 por desenho: byte-idêntico e sem ganho, com o gate de igualdade a provar a
-    /// rota antes de o degrau 4 lhe dar consumidor.
+    /// ⚠️ **Em release ela toma a rota do JOURNAL**, e é isso que faz o 1º dab escrever no lugar: o
+    /// degrau 4 promoveu o journal do relevo junto com a elisão do `before`, e um sem o outro é
+    /// regressão nos dois sentidos. Só o journal do CANVAS ficou `cfg(debug)`.
+    ///
+    /// ⚠️ **Este parágrafo afirmava o oposto até 2026-08-02** (*"em release ela é hoje SEMPRE o caminho
+    /// de sempre, porque o journal ainda é `cfg(debug)`"* — verdade no degrau 2, falsa depois da
+    /// promoção), e foi ele que fez uma investigação de posse mirar a porta errada e publicar um
+    /// veredito falso (doc 28 §5.67).
     fn relief_maps(
         before: &mut crate::undo::ModelSnapshot,
         after: &mut crate::undo::ModelSnapshot,

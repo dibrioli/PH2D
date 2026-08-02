@@ -5,23 +5,82 @@
 //! duas respostas para *"esta seleção é uma moldura?"*, e a que desenha a seção divergiria da que
 //! honra o clique.
 //!
-//! ⚠️ A pergunta é feita ao caminho **selecionado**, não à entidade selecionada na Hierarquia: o
-//! painel Vector fala em `VecPathId` em toda parte, e é essa a seleção que o artista vê realçada
-//! no canvas.
+//! # A moldura é a que CONTÉM a seleção
+//!
+//! ⚠️ Selecionar um contêiner **EXPANDE**: o [`crate::vec_selection`] entrega ao pen os
+//! `subtree_paths` da entidade — *"selecionar um grupo seleciona o que há de vetorial dentro"*.
+//! Então uma moldura com três filhos chega aqui como **quatro** caminhos, e uma regra de
+//! *"exatamente um selecionado"* responde `None` justamente sobre a única moldura que interessa: a
+//! que tem conteúdo. Foi o defeito reportado — *"não vejo em lugar nenhum a seção Frame"*.
+//!
+//! A pergunta certa é o **INVERSO da expansão**, pela mesma relação de parentesco que a produziu:
+//! *qual moldura selecionada contém tudo o que está selecionado?* Ela responde igual pelas DUAS
+//! rotas (o clique de canvas publica só a moldura; a Hierarquia publica a sub-árvore inteira), e é
+//! isso que impede a resposta de depender de POR ONDE o artista selecionou.
+//!
+//! O que ela recusa, e é o desenho:
+//!
+//! - **um filho sozinho** não oferece a seção — o artista selecionou a forma, não o contêiner;
+//! - **duas molduras irmãs** não têm resposta única (nenhuma contém a outra);
+//! - **moldura + forma solta** também não: o chip editaria o que o artista não está a olhar.
+//!
+//! Aninhadas, a de FORA contém as de dentro ⇒ ela é a resposta, que é a moldura em que o artista
+//! de facto clicou.
 
-use ph2d_ecs::{Entity, SimWorld, VecFrame};
+use ph2d_ecs::{ChildOf, Entity, SimWorld, VecFrame};
 use ph2d_vec_scene::VecPathId;
 
 use crate::vec_entities::VecEntityMap;
 
-/// A entidade do caminho selecionado, se houver exactamente um.
-fn selected_entity(sim: &SimWorld, map: &VecEntityMap, selected: &[VecPathId]) -> Option<Entity> {
-    // Com dois selecionados a pergunta *"esta moldura recorta?"* não tem UMA resposta, e um chip
-    // que mostra a do primeiro editaria o que o artista não está a olhar.
-    let [id] = selected else { return None };
-    let &bits = map.get(id)?;
+/// Teto de profundidade da caminhada de ancestral — defesa contra árvore corrompida, o mesmo
+/// número e pelo mesmo motivo do [`crate::vec_selection`].
+const MAX_DEPTH: usize = 64;
+
+/// `who` é `root`, ou descende dela?
+fn is_within(sim: &SimWorld, root: Entity, who: Entity) -> bool {
+    let w = sim.world();
+    let mut cur = who;
+    for _ in 0..MAX_DEPTH {
+        if cur == root {
+            return true;
+        }
+        let Some(parent) = w.get::<ChildOf>(cur).map(|c| c.parent()) else {
+            return false;
+        };
+        cur = parent;
+    }
+    false
+}
+
+/// A entidade VIVA de um caminho.
+fn entity_of(sim: &SimWorld, map: &VecEntityMap, id: VecPathId) -> Option<Entity> {
+    let &bits = map.get(&id)?;
     let e = Entity::from_bits(bits);
     sim.world().get_entity(e).ok().map(|_| e)
+}
+
+/// A moldura que CONTÉM a seleção inteira — `None` se não houver.
+fn frame_of_selection(
+    sim: &SimWorld,
+    map: &VecEntityMap,
+    selected: &[VecPathId],
+) -> Option<Entity> {
+    if selected.is_empty() {
+        return None;
+    }
+    let members: Vec<Entity> = selected
+        .iter()
+        .filter_map(|id| entity_of(sim, map, *id))
+        .collect();
+    // ⚠️ Um caminho selecionado sem entidade viva descreve um mundo que já não existe, e ali
+    // *"contém tudo"* deixaria de significar o que diz — a moldura pareceria conter uma seleção
+    // cuja metade ausente ninguém conferiu.
+    if members.len() != selected.len() {
+        return None;
+    }
+    members.iter().copied().find(|&f| {
+        sim.world().get::<VecFrame>(f).is_some() && members.iter().all(|&m| is_within(sim, f, m))
+    })
 }
 
 /// A moldura da seleção deste frame: `None` = não é moldura.
@@ -31,7 +90,7 @@ pub(crate) fn selected_frame_clip(
     map: &VecEntityMap,
     selected: &[VecPathId],
 ) -> Option<bool> {
-    let e = selected_entity(sim, map, selected)?;
+    let e = frame_of_selection(sim, map, selected)?;
     sim.world().get::<VecFrame>(e).map(|f| f.clip)
 }
 
@@ -43,7 +102,7 @@ pub(crate) fn set_selected_frame_clip(
     selected: &[VecPathId],
     clip: bool,
 ) -> bool {
-    let Some(e) = selected_entity(sim, map, selected) else {
+    let Some(e) = frame_of_selection(sim, map, selected) else {
         return false;
     };
     // ⚠️ Só escreve numa entidade que JÁ é moldura. O chip só é pintado sobre uma, então chegar

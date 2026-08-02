@@ -7,7 +7,7 @@
 //! [`sculpt_source`], porque duas cópias dos helpers divergiriam.
 
 mod sculpt_source;
-use sculpt_source::{braced_block, call_args, function_body, sculpt_src, source};
+use sculpt_source::{arm_with, braced_block, call_args, function_body, sculpt_src, source};
 
 #[test]
 fn the_gpu_is_handed_the_window_that_answers_for_every_channel() {
@@ -328,6 +328,7 @@ fn a_new_edit_goes_through_the_door_that_clears_the_redo() {
         "mask_op",
         "change_level",
         "reverse_level",
+        "close_holes",
     ] {
         let body = function_body(&src, edit);
         assert!(
@@ -446,11 +447,11 @@ fn undoing_a_reversal_removes_the_level_and_redoing_it_rebuilds_it() {
     // pagou uma vez.
     let seek = &apply[..apply.rfind("match entry {").expect("o match que AGE")];
     assert!(
-        braced_block(seek, "StrokeUndo::ReversedLevel(_) =>").contains("select(1)"),
+        arm_with(seek, "StrokeUndo::ReversedLevel(_)").contains("select(1)"),
         "desfazer uma reversão acontece do nível 1, onde ela deixou o artista"
     );
     assert!(
-        braced_block(seek, "StrokeUndo::UnreversedLevel =>").contains("select(0)"),
+        arm_with(seek, "StrokeUndo::UnreversedLevel").contains("select(0)"),
         "e refazê-la, do nível 0"
     );
 }
@@ -473,5 +474,92 @@ fn the_reversion_scene_opens_with_a_mesh_that_is_a_subdivision() {
         arm.matches("subdivide(").count(),
         2,
         "duas subdivisões: uma só daria um nível a reconstruir, e a cena mostra dois"
+    );
+}
+
+/// ⚠️ **TAPAR BURACO tem TRÊS desfechos, e o log fala nos três.** *"Tapei N"*,
+/// *"não havia nenhum"* e *"não posso, a pilha está montada"* são respostas
+/// diferentes, e colapsar as duas últimas em silêncio é como o artista conclui
+/// que a tecla não funciona.
+#[test]
+fn closing_holes_is_offered_on_its_own_key_and_it_says_which_of_the_three_happened() {
+    let src = sculpt_src();
+    let key = function_body(&src, "sculpt3d_key");
+    assert!(key.contains("K::KeyO"), "tapar buraco tem tecla própria");
+    let block = braced_block(&key, "if code == K::KeyO");
+    assert!(
+        block.contains("scene.close_holes()"),
+        "e ela sai pela porta que grava"
+    );
+    for said in ["tapados", "nenhum buraco", "pilha montada"] {
+        assert!(
+            block.contains(said),
+            "o log tem de falar no desfecho `{said}`"
+        );
+    }
+}
+
+/// ⚠️ **Desfazer um preenchimento é TRUNCAR, e isso não é um atalho: é uma
+/// propriedade do algoritmo.** Um remendo é geometria nova colada na beira, então
+/// nenhum vértice antigo é tocado e o estado anterior são duas contagens. Guardar
+/// a malha aqui seria a cópia do documento que a pilha de níveis existe para não
+/// fazer — e o gate do `ph2d-mesh` que afirma o *só acrescenta* é quem sangra no
+/// dia em que isso deixar de valer.
+#[test]
+fn undoing_a_hole_fill_truncates_instead_of_restoring_a_mesh() {
+    let src = sculpt_src();
+    let body = function_body(&src, "close_holes");
+    assert!(
+        body.contains("ph2d_mesh::fill_holes"),
+        "tapar sai da porta da malha"
+    );
+    assert!(
+        body.contains("self.stack.level_count() != 1"),
+        "com a pilha montada ela RECUSA: tapar muda a topologia que os níveis de cima subdividem"
+    );
+    assert!(
+        !body.contains("clone()"),
+        "guardar a malha é o que o truncar existe para não fazer"
+    );
+
+    let apply = function_body(&src, "apply_entry");
+    let action = &apply[apply.rfind("match entry {").expect("o match que AGE")..];
+    let undo = braced_block(action, "StrokeUndo::FilledHoles { verts, faces } =>");
+    assert!(
+        undo.contains("truncate(verts, faces)") && undo.contains("UnfilledHoles"),
+        "desfazer trunca e vira a inversa"
+    );
+    assert!(
+        undo.contains("StrokeUndo::FilledHoles { verts, faces }"),
+        "e uma recusa devolve a MESMA entrada em vez de consumi-la"
+    );
+    let redo = braced_block(action, "StrokeUndo::UnfilledHoles =>");
+    assert!(
+        redo.contains("ph2d_mesh::fill_holes") && redo.contains("FilledHoles"),
+        "refazer é tapar de novo — é determinístico"
+    );
+}
+
+/// ⚠️ **A cena `=4` DECLARA o furo que montou.** Um smoke de fechar buraco sobre
+/// uma malha fechada é indistinguível da feature quebrada, e a única coisa que
+/// separa os dois é o número da beira aparecer ANTES de o artista apertar nada.
+#[test]
+fn the_holes_scene_says_how_big_the_hole_it_built_is() {
+    let src = sculpt_src();
+    let mesh = function_body(&src, "smoke_mesh");
+    assert!(
+        mesh.contains("holes_scene()") && mesh.contains("punctured_sphere()"),
+        "a cena escolhe a malha dela"
+    );
+    let punctured = function_body(&src, "punctured_sphere");
+    assert!(
+        punctured.contains(".filter(") && punctured.contains("faces()"),
+        "o furo é feito ARRANCANDO faces, não desenhando uma beira"
+    );
+    let smoke = function_body(&src, "sculpt3d_smoke");
+    let arm = braced_block(&smoke, "if crate::sculpt3d::holes_scene()");
+    assert!(
+        arm.contains("valence(") && arm.contains("arestas de BEIRA"),
+        "e a cena imprime quantas arestas de beira ela abriu"
     );
 }

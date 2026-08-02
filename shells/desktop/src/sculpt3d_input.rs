@@ -43,6 +43,7 @@ impl App {
              [sculpt3d]     para mover a FORMA GRANDE, e suba -- o detalhe fino continua la'\n\
              [sculpt3d] J = DES-SUBDIVIDIR: reconstroi um nivel ABAIXO da base (o par do K)\n\
              [sculpt3d]     so' funciona se a malha JA' for uma subdivisao -- o log diz quando nao e'\n\
+             [sculpt3d] O = TAPAR BURACO: todo contorno aberto ganha uma tampa (e o log diz quantos)\n\
              [sculpt3d] G = PEGAR o barro (grab): segure e arraste, e ele vem com o dedo\n\
              [sculpt3d] H = ESTICAR (snake hook): a pegada ANDA com o cursor e sai um espinho\n\
              [sculpt3d]     o G volta ao lugar quando voce volta; o H deixa a ponta la' -- essa e' a diferenca\n\
@@ -52,6 +53,25 @@ impl App {
             mesh.face_count(),
             mesh.triangle_count()
         );
+        if crate::sculpt3d::holes_scene() {
+            // ⚠️ **A cena DECLARA o furo que montou.** Um smoke de fechar buraco
+            // sobre uma malha sem buraco é indistinguível da feature quebrada —
+            // a lição que o smoke do Colorize pagou, e aqui o número é a beira.
+            let edges = mesh.edges();
+            let border = (0..edges.len())
+                .filter(|&e| edges.valence(u32::try_from(e).unwrap_or(u32::MAX)) == 1)
+                .count();
+            eprintln!(
+                "[sculpt3d] =4 FECHAR BURACO: a malha abre com {border} arestas de BEIRA -- se este\n\
+                 [sculpt3d]    numero for zero, PARE: nao ha' buraco e o resto do smoke nao diz nada.\n\
+                 [sculpt3d]    Esta esfera CHEGOU QUEBRADA -- gire com o botao direito\n\
+                 [sculpt3d]    ate' o furo, e olhe POR DENTRO dela (nao ha' culling: o interior aparece).\n\
+                 [sculpt3d]    Aperte O: o log diz quantos buracos tapou, e o furo vira uma TAMPA.\n\
+                 [sculpt3d]    A tampa e' um leque a partir do centro do contorno, entao ela AFUNDA --\n\
+                 [sculpt3d]    passe o Smooth (3) nela e ela vira superficie. Ctrl+Z desfaz.\n\
+                 [sculpt3d]    Depois de tapada, K subdivide e o modelo fica solido de verdade."
+            );
+        }
         if crate::sculpt3d::reversion_scene() {
             eprintln!(
                 "[sculpt3d] =3 A REVERSAO: esta malha densa CHEGOU PRONTA -- um nivel so', e por isso\n\
@@ -360,6 +380,28 @@ impl App {
                 );
             } else {
                 eprintln!("[sculpt3d] so' do TOPO: suba (.) antes de subdividir");
+            }
+            return true;
+        }
+        // **TAPAR BURACO.** ⚠️ O log diz o número dos DOIS desfechos, e o segundo
+        // é o que importa: uma beira que não fecha deixa a malha aberta ali, e
+        // *deixar em silêncio* é como o artista conclui que a tecla não funciona.
+        if code == K::KeyO {
+            match scene.close_holes() {
+                Some(r) if r.is_noop() => eprintln!(
+                    "[sculpt3d] nenhum buraco: a malha ja' e' fechada ({} arestas de beira sobrando)",
+                    r.left_open()
+                ),
+                Some(r) => eprintln!(
+                    "[sculpt3d] tapados {} buraco(s) -- {} vertices / {} faces ({} arestas de beira sobrando)",
+                    r.filled(),
+                    scene.mesh().vert_count(),
+                    scene.mesh().face_count(),
+                    r.left_open()
+                ),
+                None => eprintln!(
+                    "[sculpt3d] nao' tapa com a pilha montada: tapar muda a TOPOLOGIA, e todo nivel acima e' subdivisao dela -- tape ANTES de subdividir"
+                ),
             }
             return true;
         }

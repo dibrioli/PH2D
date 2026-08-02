@@ -208,6 +208,52 @@ impl Mesh {
         self.colors.take()
     }
 
+    /// **Descarta os vértices e faces do FIM** — a inversa exata de uma
+    /// operação que só ACRESCENTA (hoje: fechar buraco).
+    ///
+    /// ⚠️ **Ela VALIDA em vez de confiar, e a validação é o motivo de ela
+    /// existir como porta.** Um `verts` que corte abaixo do que as faces
+    /// sobreviventes referenciam deixa índices pendurados — a mesma classe de
+    /// defeito que o [`Self::from_parts`] recusa na entrada, e que sem checagem
+    /// vira leitura errada em cada kernel que tocar aquele vértice.
+    ///
+    /// ⚠️ **Não é um `remove` genérico.** Ela só sabe desfazer um *append*, e
+    /// quem a usar para outra coisa vai descobrir que os índices do meio não se
+    /// deslocam — por isso o nome diz o fim, e por isso o único chamador é o
+    /// desfazer do preenchimento.
+    pub fn truncate(&mut self, verts: usize, faces: usize) -> Result<(), MeshError> {
+        if verts > self.positions.len() || faces > self.faces.len() {
+            return Err(MeshError::VertexOutOfRange {
+                face: faces,
+                vertex: verts as u32,
+                vert_count: self.positions.len(),
+            });
+        }
+        let n = verts as u32;
+        for (fi, f) in self.faces[..faces].iter().enumerate() {
+            for &v in f.verts() {
+                if v >= n {
+                    return Err(MeshError::VertexOutOfRange {
+                        face: fi,
+                        vertex: v,
+                        vert_count: verts,
+                    });
+                }
+            }
+        }
+        self.faces.truncate(faces);
+        self.positions.truncate(verts);
+        self.normals.truncate(verts);
+        if let Some(c) = self.colors.as_mut() {
+            c.truncate(verts);
+        }
+        if let Some(m) = self.masks.as_mut() {
+            m.truncate(verts);
+        }
+        self.rebuild();
+        Ok(())
+    }
+
     /// Devolve o plano tirado por [`Self::take_masks`].
     ///
     /// ⚠️ **Recusa em silêncio um plano do tamanho errado** — não: ele PANICA,

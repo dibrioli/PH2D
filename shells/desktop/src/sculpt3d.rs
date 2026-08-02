@@ -94,17 +94,53 @@ const RADIUS_MIN_PX: f32 = 1.0;
 /// padrão o modelo ocupa 49% da altura, então 1/8 de tela é meio modelo.
 const RADIUS_MAX_FRAC_OF_HEIGHT: f32 = 0.125;
 
-/// A cena está armada? (`PH2D_SCULPT3D_SMOKE` em `1`, `2` ou `3`.)
+/// A cena está armada? (`PH2D_SCULPT3D_SMOKE` em `1`, `2`, `3` ou `4`.)
 pub(crate) fn smoke_armed() -> bool {
     matches!(
         std::env::var("PH2D_SCULPT3D_SMOKE").ok().as_deref(),
-        Some("1" | "2" | "3")
+        Some("1" | "2" | "3" | "4")
     )
 }
 
 /// `=3` — a cena da **REVERSÃO**: um modelo denso que É uma subdivisão.
 pub(crate) fn reversion_scene() -> bool {
     std::env::var("PH2D_SCULPT3D_SMOKE").ok().as_deref() == Some("3")
+}
+
+/// `=4` — a cena de **FECHAR BURACO**: uma esfera com um pedaço arrancado.
+pub(crate) fn holes_scene() -> bool {
+    std::env::var("PH2D_SCULPT3D_SMOKE").ok().as_deref() == Some("4")
+}
+
+/// A esfera com um FURO — o modelo que chega quebrado.
+///
+/// ⚠️ **O furo é feito ARRANCANDO faces, não desenhando uma beira**, e é isso que
+/// o torna a fixture certa: a beira resultante é a que uma malha de verdade tem
+/// (um contorno irregular, seguindo a grade da esfera), e não uma que eu
+/// escolhi. Os vértices que ficam sem face nenhuma sobrevivem soltos, como
+/// sobreviveriam num OBJ de terceiro.
+fn punctured_sphere() -> ph2d_mesh::Mesh {
+    let sphere = ph2d_mesh::shapes::uv_sphere(24, 32, 1.0);
+    let keep: Vec<ph2d_mesh::Face> = sphere
+        .faces()
+        .iter()
+        .copied()
+        .filter(|f| {
+            let vs = f.verts();
+            let n = vs.len() as f32;
+            let mut c = [0.0f32; 3];
+            for &v in vs {
+                let p = sphere.positions()[v as usize];
+                for k in 0..3 {
+                    c[k] += p[k] / n;
+                }
+            }
+            // Uma calota lateral, bem visível no enquadramento padrão.
+            !(c[0] > 0.45 && c[1] > 0.15)
+        })
+        .collect();
+    ph2d_mesh::Mesh::from_parts(sphere.positions().to_vec(), keep)
+        .expect("arrancar face não inventa índice")
 }
 
 /// A malha com que cada cena abre.
@@ -115,6 +151,9 @@ pub(crate) fn reversion_scene() -> bool {
 /// conta própria estaria medindo outra malha no dia em que esta mudasse.
 #[must_use]
 pub(crate) fn smoke_mesh() -> ph2d_mesh::Mesh {
+    if holes_scene() {
+        return punctured_sphere();
+    }
     if reversion_scene() {
         // ⚠️ **Ela é DUAS vezes subdividida de propósito**: um modelo denso que
         // chega pronto não tem um nível embaixo, e a cena só demonstra a

@@ -39,6 +39,7 @@ mod aabb;
 mod adjacency;
 mod edges;
 mod face;
+mod holes;
 mod mesh;
 mod multires;
 mod normals;
@@ -52,6 +53,7 @@ pub use aabb::Aabb;
 pub use adjacency::{Adjacency, Csr};
 pub use edges::Edges;
 pub use face::{Face, TRI};
+pub use holes::{HoleFill, fill_holes};
 pub use mesh::{DEFAULT_COLOR, DEFAULT_MASK, Mesh, MeshError, QueryScratch, RegionScratch};
 pub use multires::{DetachedLevel, Multires, Reversal, Stamped};
 pub use normals::{

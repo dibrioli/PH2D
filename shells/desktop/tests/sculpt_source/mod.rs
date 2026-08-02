@@ -164,3 +164,23 @@ pub fn sculpt_src() -> String {
         .collect::<Vec<_>>()
         .join("\n")
 }
+
+/// O corpo do braço de `match` que **CONTÉM** este padrão — mesmo quando ele é
+/// um de vários no mesmo braço (`A | B | C => { … }`).
+///
+/// ⚠️ Existe porque [`braced_block`] ancora no TEXTO do padrão, e um braço
+/// agrupado não tem `=>` logo depois de cada um deles: o gate da reversão
+/// quebrou exatamente assim no dia em que um segundo caso passou a partilhar o
+/// mesmo corpo — vermelho sobre produto correto, o sétimo proxy a expirar nesta
+/// linha. A pergunta que o gate quer fazer é *o que o braço DESTE caso faz*, e
+/// isso não muda quando ele ganha companhia.
+pub fn arm_with(src: &str, pattern: &str) -> String {
+    let at = src
+        .find(pattern)
+        .unwrap_or_else(|| panic!("não achei o padrão `{pattern}`"));
+    let rest = &src[at..];
+    let arrow = rest
+        .find("=>")
+        .unwrap_or_else(|| panic!("`{pattern}` não está num braço de match"));
+    match_arm(rest, &rest[..arrow + 2])
+}

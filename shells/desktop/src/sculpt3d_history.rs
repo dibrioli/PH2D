@@ -97,6 +97,17 @@ pub(super) enum StrokeUndo {
     /// nível acima, e desfazer é despermutar. São 4 B por vértice por nível
     /// (um terço de um plano de posições) contra o clone da pilha inteira.
     ReversedLevel(Box<Reversal>),
+    /// **Os buracos foram TAPADOS** — aplicá-la é truncar a malha de volta.
+    ///
+    /// ⚠️ **Dois `usize` e nada mais, e não é um atalho: é uma propriedade do
+    /// algoritmo.** Um remendo é geometria NOVA colada na beira — nenhum vértice
+    /// nem face que já existia é tocado —, então desfazer é descartar o fim. Há
+    /// gate afirmando o *só acrescenta*, e é ele que sangra no dia em que o
+    /// preenchimento mexer num vértice antigo: nesse dia este `usize` para de
+    /// ser suficiente, e o gate diz isso antes do artista.
+    FilledHoles { verts: usize, faces: usize },
+    /// **O preenchimento foi desfeito** — aplicá-la é tapar de novo.
+    UnfilledHoles,
     /// **A reconstrução foi desfeita** — aplicá-la é refazê-la.
     ///
     /// ⚠️ **Ela não carrega nada, e isso é o oposto do [`Self::DroppedLevel`].**
@@ -178,6 +189,33 @@ impl Sculpt3dScene {
         self.stroke = SculptStroke::default();
         self.mesh_rebuilt();
         true
+    }
+
+    /// **TAPA todo buraco da malha.** Devolve o relatório, ou `None` se não
+    /// havia buraco — ou se a pilha tem mais de um nível.
+    ///
+    /// ⚠️ **A recusa com pilha é estrutural, não cautela.** Tapar muda a
+    /// TOPOLOGIA da base, e todo nível acima é `subdivide` dela: o detalhe deles
+    /// passaria a descrever uma malha que não existe mais. Descer não resolve —
+    /// o que resolveria é reconstruir a pilha, que é outra operação. O log diz
+    /// para tapar ANTES de subdividir.
+    pub(super) fn close_holes(&mut self) -> Option<ph2d_mesh::HoleFill> {
+        if self.stack.level_count() != 1 {
+            return None;
+        }
+        let report = ph2d_mesh::fill_holes(self.stack.mesh_mut());
+        if report.is_noop() {
+            return Some(report);
+        }
+        self.record(StrokeUndo::FilledHoles {
+            verts: report.verts_before(),
+            faces: report.faces_before(),
+        });
+        // A contagem de vértices mudou: o traço em voo fala de outra malha e os
+        // buffers do device mudaram de TAMANHO.
+        self.stroke = SculptStroke::default();
+        self.mesh_rebuilt();
+        Some(report)
     }
 
     /// **Troca de nível** — `up` sobe, senão desce. Devolve `false` na ponta.
@@ -311,7 +349,13 @@ impl Sculpt3dScene {
                     self.stack.select(1);
                 }
             }
-            StrokeUndo::UnreversedLevel => {
+            // ⚠️ Tapar buraco só existe em pilha de UM nível, então este `select`
+            // nunca tem o que fazer: a ordem LIFO já devolveu a pilha ao lugar
+            // antes de a entrada ser alcançada. Ele fica como rede, do mesmo
+            // jeito que o do `Descended`.
+            StrokeUndo::UnreversedLevel
+            | StrokeUndo::FilledHoles { .. }
+            | StrokeUndo::UnfilledHoles => {
                 if self.stack.level() != 0 {
                     self.stack.select(0);
                 }
@@ -375,6 +419,32 @@ impl Sculpt3dScene {
                     // Só alcançável se a pilha já estivesse no 0 — e aí não houve
                     // descida: a inversa honesta é *nada foi feito*.
                     None => StrokeUndo::Ascended { from },
+                }
+            }
+            // Tapar buraco e o desfazer dele. ⚠️ O `truncate` VALIDA, e a recusa
+            // devolve a mesma entrada em vez de consumi-la — a malha ficou como
+            // estava, então a única coisa capaz de desfazer continua na fila.
+            StrokeUndo::FilledHoles { verts, faces } => {
+                let ok = self.mesh_mut().truncate(verts, faces).is_ok();
+                self.stroke = SculptStroke::default();
+                self.mesh_rebuilt();
+                if ok {
+                    StrokeUndo::UnfilledHoles
+                } else {
+                    StrokeUndo::FilledHoles { verts, faces }
+                }
+            }
+            StrokeUndo::UnfilledHoles => {
+                let report = ph2d_mesh::fill_holes(self.mesh_mut());
+                self.stroke = SculptStroke::default();
+                self.mesh_rebuilt();
+                if report.is_noop() {
+                    StrokeUndo::UnfilledHoles
+                } else {
+                    StrokeUndo::FilledHoles {
+                        verts: report.verts_before(),
+                        faces: report.faces_before(),
+                    }
                 }
             }
             // A reconstrução e o desfazer dela. ⚠️ O `false` do `unreverse` não

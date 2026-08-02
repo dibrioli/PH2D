@@ -6090,3 +6090,114 @@ mesmo lugar são um balde só com três nomes. **Mutação (todo evento no balde
 ~71 ms e o produto marcou 1016 — **construir sobre esse vão seria escolher um culpado por eliminação**,
 que é exatamente o que as três refutações acima mostram dar errado. O próximo log nomeia a fase, e a
 fase escolhe a wave.
+
+## §5.65 — E a fase era o PEN-UP: a fixture não continha o fenômeno (2026-08-02)
+
+O divisor da §5.64 respondeu no primeiro log: **`INPUT (fora do frame) down 0,0/17,1 · move 0,0/106,1 ·
+up 0,0/512,9 ms`**. É o pen-up, contra os **5,57 ms** que a sonda do S3 mede a 4096².
+
+⚠️ **Duas ordens de grandeza não são deriva de máquina.** Toda sonda desta família usa o
+`measure_stroke_owners::stroke`, que vai de `x=60` a `x=260` — **200 px numa tela de 4096, 0,1% da
+área** — e o artista atravessa a tela. É a fixture certa para *quem segura os planos* e a errada para a
+pergunta do artista ([[reference_topic_fixture_discipline]]).
+
+### O que a fixture certa mediu
+
+`what_a_pen_up_costs_as_the_stroke_crosses_the_canvas` imprime **a janela do delta AO LADO do relógio**:
+um relógio sozinho diria *"ficou lento"*, o par diz *por quê*. E a 1ª linha da tabela é o traço de 200 px
+como **CONTROLE INTERNO** — sob máquina carregada nenhum número absoluto se defende sozinho; o que se
+defende é ele ficar onde sempre esteve enquanto as linhas de baixo explodem (a lição que salvou a wave da
+§5.63).
+
+| 4096², impasto, r=40 | pen-up | janela |
+|---|---|---|
+| 200 px (o controle) | 5,98 | 0,4% |
+| 1200 px reto | 18,67 | 1,6% |
+| 3896 px reto | 44,90 | 4,9% |
+| 1200 px **diagonal** | 68,45 | 11,3% |
+| **3896 px diagonal** | **656,20** | ~98% |
+
+**O custo é linear na ÁREA DA JANELA** (11,3% → 68 · 98% → 656).
+
+### As duas metades, e depois os dois knobs
+
+Ablação pela ENTRADA (`paint.stroke_undo = None` faz o `close_stroke` pular o commit estrutural): **fold
+348 · commit 269**. Dentro do fold, ablação pelos dois controles que o artista de fato tem (Smoothing e
+Push — knobs do painel, **nunca instrumentação**, para a sonda não ficar cega à porta):
+
+| 4096², diagonal | ms |
+|---|---|
+| fold como shipa | 343,25 |
+| sem Smoothing | 149,14 ⇒ **o `settle` custa 194,11** |
+| sem Push | 343,55 ⇒ o Push **default é 0** |
+| os dois em zero | **147,59** (o piso) |
+
+⚠️ E a coluna do Push é o **controle que a tabela trouxe sem eu planejar**: `impasto_push` nasce em 0,0
+no Deposit, então aquela linha é um no-op que mede o piso de ruído da sonda (−1,27 a −15,74) — o mesmo
+serviço que `wet_smudge`/`wet_rewet` prestaram na §5.10.
+
+### A cura: três caminhadas por LINHA
+
+O `settle` é um box blur `O(n·r)` que **re-soma a janela por texel de propósito** (a soma corrida deriva
+ao longo da linha e quebraria a byte-identidade do crop, §11) — e rodava num núcleo com 32 disponíveis.
+Ele, a derivação da altura e a escrita com a caixa passam a andar por linha (ADR-0109, o desenho que esta
+linha já usa em cinco lugares; `rayon` já é dep desta crate ⇒ **nenhum ADR novo**).
+
+⚠️ **O padrão é *um corpo, dois walkers*:** o kernel de uma linha (`blur_one_row`) é `#[inline]` e **os
+dois caminhos o chamam**, então não existe versão paralela para divergir da serial. A caixa de dirty sai
+de `min`/`max` sobre índices — **associativos e comutativos** —, então a árvore de redução do rayon
+devolve os mesmos quatro números em qualquer agendamento.
+
+Depois, as três construções de **PATCH** que a edição viva do card Body lê (`live_mat_base` 117 MB ·
+`live_film` 16 MB · `live_relief_base` 67 MB a 4096²) — `Vec::with_capacity` + `push`, ~200 MB numa
+thread — foram para `patch_in`, cujo mapeamento `c → índice global` é **uma expressão só** que os dois
+walkers usam. O `collect` indexado do rayon aloca uma vez e preenche em paralelo, sem a escrita dupla de
+um `vec![neutro; n]` sobrescrito (e a crate é `forbid(unsafe_code)`, então `set_len` não era opção —
+nem precisou ser).
+
+### Medido pela porta do produto
+
+| | antes | depois |
+|---|---|---|
+| `settle` isolado | 194,11 | **46,61** (4,2×) |
+| fold (diagonal 4096²) | 348 | **106,14** (3,3×) |
+| **pen-up diagonal 4096²** | **656,20** | **382,33** (1,7×) |
+| pen-up reto 4096² | 44,90 | **27,54** |
+| controle de 200 px | 5,98 | 4,73 |
+
+⚠️ **Uma leitura foi DESCARTADA por o controle ter se movido:** logo após a suíte, com `load 5,68`, o
+controle mediu 9,95 (2,3× o conhecido) — a corrida inteira foi jogada fora e re-medida até ele voltar,
+que é exatamente o que a §5.49 prescreve.
+
+⚠️ **E os três primeiros números que eu ia publicar vieram das TRÊS sondas rodando em PARALELO** — elas
+disputam o mesmo pool de rayon, então cada uma media o agendador das outras. `--test-threads=1` não é
+higiene: é parte da fixture quando o que se mede é paralelismo.
+
+**2 gates, 3 mutações, 3 sangram** — a identidade contra a rota serial **CONGELADA** sob `cfg(test)` (o
+código que shipava, verbatim: um `pub` sem chamador seria uma segunda resposta esperando alguém chamá-la)
+e a caminhada por linhas contra o `for_each_in`, que **segue vivo como a rota curta** ⇒ não é oráculo
+morto. ⚠️ A mutação da identidade do `max` derruba **119 testes existentes**: aquela metade já era
+coberta, e descobri-lo custou uma corrida em vez de um gate novo.
+
+### ⚠️ O que a medição REFUTOU, e por isso a próxima wave não foi aberta
+
+O commit é agora **276,19 ms = 72% do pen-up**. A hipótese óbvia era *"ele extrai uma janela
+canvas-sized dos quatro planos"* — e o diagnóstico por-plano do próprio produto diz o contrário:
+
+```
+metadados=true planos=None | canvas=WHOLE images=- h=WHOLE c=WHOLE m=WHOLE
+```
+
+**Todos os quatro caem em `Whole`**, que guarda `Arc` e não copia byte nenhum. Então o custo dele é
+outra coisa, e escrever uma cura em cima da hipótese refutada seria escolher um culpado por eliminação —
+o erro que esta jornada documentou três vezes. **A próxima wave começa por uma decomposição do commit,
+não por código.**
+
+### E o item ESTRUTURAL que a tabela expõe, com o número
+
+A janela é o **BBOX do traço**, não a pegada dele. Num traço diagonal de r=40 a tinta cobre uma banda de
+~80 px ao longo de 5737 px de diagonal = **~2,8% do retângulo** que as duas metades percorrem: o bbox
+reivindica **35× demais**. Curar isso vale mais que paralelizar tudo o que sobra — e **muda o crop
+byte-idêntico**, que é a joia deste módulo (o `settle` de uma janela é bit-a-bit o de um canvas porque a
+borda dela é zero; uma janela em TILES precisa que cada tile carregue a própria halo de reach). É wave
+própria, com gates próprios, e não entra de carona num fix de perf.

@@ -39,7 +39,7 @@ use ph2d_render::{Sprite, WHITE_TILE_KEY};
 const PAUSED_SCENES: &[&str] = &[
     "3", "7", "14", "15", "16", "17", "21", "22", "23", "24", "37", "38", "39", "40", "41", "43",
     "44", "45", "46", "47", "51", "54", "58", "63", "64", "65", "66", "67", "68", "69", "70", "71",
-    "72", "73", "74",
+    "72", "73", "74", "75",
 ];
 
 /// Static floor, centered at `y = -1` (top at `y = -0.8`). The sprite quad
@@ -151,6 +151,7 @@ impl crate::App {
             "72" => self.physics_smoke_raft(),
             "73" => self.physics_smoke_signal(),
             "74" => self.physics_smoke_lead(),
+            "75" => self.physics_smoke_stop(),
             _ => self.physics_smoke_drop(),
         }
 

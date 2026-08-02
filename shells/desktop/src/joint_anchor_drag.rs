@@ -196,35 +196,6 @@ fn param_value(v: &ph2d_physics_ecs::JointView, kind: PointHandleKind) -> Option
     }
 }
 
-/// **Os dois limitadores autorados de uma corda** (W-RopeStop) — `[A, B]`.
-///
-/// Porta única de LEITURA: o `open_drag` a usa para o agarre relativo, o apply
-/// para preservar a outra ponta, e o publicador de alças para saber onde pôr a
-/// marca. Ausente é `[0, 0]`, que é a trava no próprio aro — o estado de toda
-/// corda que ninguém limitou.
-pub(crate) fn stops_of(sim: &SimWorld, rope: ph2d_ecs::Entity) -> [f32; 2] {
-    sim.world()
-        .get::<ph2d_physics_ecs::RopeStops>(rope)
-        .map_or([0.0, 0.0], |s| s.pair())
-}
-
-/// **Escrever um limitador**, preservando o outro.
-///
-/// ⚠️ **Insere o componente quando ele não existe**, e é isso que faz o gesto
-/// funcionar numa corda que nunca foi limitada: `RopeStops` é opcional (ausente ==
-/// zero), então o primeiro arrasto é também o que o cria. O undo global por-diff
-/// captura as duas coisas como captura qualquer edição de objeto.
-fn write_stop(sim: &mut SimWorld, rope: ph2d_ecs::Entity, side: usize, value: f32) {
-    let mut pair = stops_of(sim, rope);
-    pair[side] = value.max(0.0);
-    sim.world_mut()
-        .entity_mut(rope)
-        .insert(ph2d_physics_ecs::RopeStops {
-            a: pair[0],
-            b: pair[1],
-        });
-}
-
 /// World bearing of `p` seen from `from`, radians.
 ///
 /// ⚠️ `libm`, the crate-wide convention — though the reason the rest of the
@@ -376,8 +347,8 @@ impl App {
                 if let Some(side) = drag.kind.rope_stop_side()
                     && let Some(leg) = gfx.physics.rope_stop_legs(entity)[side]
                 {
-                    let s = (ph2d_physics_ecs::stop_at_point(&leg, cursor) + off)
-                        .clamp(0.0, leg.len);
+                    let s =
+                        (ph2d_physics_ecs::stop_at_point(&leg, cursor) + off).clamp(0.0, leg.len);
                     write_stop(&mut gfx.sim, entity, side, s);
                 }
                 None
@@ -606,6 +577,16 @@ impl JointAnchorDrag {
 
 #[path = "joint_anchor_drag_wheel.rs"]
 mod wheel;
+
+/// **A metade do LIMITADOR do gesto de alça** (W-RopeStop) — filho pelo teto de
+/// 600 LOC, e o corte é o mesmo do irmão acima: lá o gesto autora um **JOINT**,
+/// no `wheel` uma **RODLANA**, e aqui o **`RopeStops` da CORDA**, que é uma
+/// terceira entidade com uma terceira porta de escrita.
+#[path = "joint_anchor_drag_stop.rs"]
+mod stop;
+
+pub(crate) use stop::stops_of;
+use stop::write_stop;
 
 #[cfg(test)]
 #[path = "joint_anchor_drag_tests.rs"]

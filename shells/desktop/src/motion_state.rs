@@ -159,6 +159,11 @@ pub(crate) struct MotionState {
     /// Both are runtime-only (never serialized).
     pub(crate) open_library: Option<LibraryOpen>,
     pub(crate) library_open: Option<LibraryOpen>,
+    /// doc 86 §2 (A2): the vector→tile bake cache (+ its scratch `VelloPass`). A
+    /// named vector shape a `source.object` brings in is rasterized once into a
+    /// tile here; the membrane publishes the result. Cached by content, filled at
+    /// the fx phase (`motion_bridge::bake_objects`), read by `publish_objects`.
+    pub(crate) object_bake: crate::motion_object_bake::ObjectBake,
 }
 
 /// **What opened the Add-Node palette** — the spawn point plus the wire context of the gesture, so the
@@ -407,6 +412,9 @@ impl MotionState {
             // No palette open until the `A` key asks.
             open_library: None,
             library_open: None,
+            // doc 86 §2 (A2): the vector→tile bake cache, empty until the fx
+            // phase bakes a named vector a `source.object` brings in.
+            object_bake: crate::motion_object_bake::ObjectBake::default(),
         }
     }
 

@@ -600,5 +600,29 @@ pub(super) fn publish_objects(
     sim: &mut ph2d_ecs::SimWorld,
     atlas: &ph2d_render::TextureAtlas,
 ) {
-    objects::publish(&mut motion.pump.cook, sim, atlas);
+    // `&mut pump.cook` and `&object_bake` are disjoint fields — sprites resolve
+    // live from the atlas here; baked vector tiles come from `object_bake`, which
+    // the fx phase filled last frame (doc 86 §2 A2).
+    objects::publish(&mut motion.pump.cook, sim, atlas, &motion.object_bake);
+}
+
+/// **Bake the named vector shapes to tiles** (doc 86 §2 A2) — runs at the fx
+/// phase, where `renderer` + `gpu` + the vector scene/transforms are all in
+/// hand. Cached by content, so a static scene bakes once; the membrane publishes
+/// the results next frame (`publish_objects`).
+#[allow(clippy::too_many_arguments)]
+pub(super) fn bake_objects(
+    motion: &mut MotionState,
+    scene: &ph2d_vec_scene::VecScene,
+    map: &crate::vec_entities::VecEntityMap,
+    xforms: &ph2d_vec_scene::VecXforms,
+    live: &ph2d_vec_render::LiveGeometry,
+    gpu: &ph2d_gpu::GpuContext,
+    surface_format: wgpu::TextureFormat,
+    renderer: &mut ph2d_render::SpriteRenderer,
+    sim: &ph2d_ecs::SimWorld,
+) {
+    motion
+        .object_bake
+        .bake(scene, map, xforms, live, gpu, surface_format, renderer, sim);
 }

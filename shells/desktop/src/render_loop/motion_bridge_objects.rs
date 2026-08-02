@@ -85,10 +85,15 @@ fn appearance_tile(size: [f32; 2], tint: [f32; 4], uv_rect: [f32; 4], texture_id
 /// Called once a frame, before the pump. Republishing is free: the external's
 /// revision is a hash of its content, so a sprite nobody touched invalidates
 /// nothing (`ph2d_nodegraph::external`).
-pub(super) fn publish(cook: &mut Cook, sim: &mut SimWorld, atlas: &TextureAtlas) {
-    // A `(&Sprite, &Name)` query walks exactly the entities that can be a source
-    // — a sprite that is also named. `world_mut()` builds the `QueryState` (it
-    // caches on the world); the iteration itself is read-only over `world()`.
+pub(super) fn publish(
+    cook: &mut Cook,
+    sim: &mut SimWorld,
+    atlas: &TextureAtlas,
+    bakes: &crate::motion_object_bake::ObjectBake,
+) {
+    // Sprites resolve directly (a sprite already IS a tile). A `(&Sprite, &Name)`
+    // query walks exactly the entities that can be a source; `world_mut()` builds
+    // the `QueryState` (it caches on the world), the iteration is read-only.
     let mut q = sim.world_mut().query::<(&Sprite, &Name)>();
     let world = sim.world();
     for (spr, name) in q.iter(world) {
@@ -98,6 +103,17 @@ pub(super) fn publish(cook: &mut Cook, sim: &mut SimWorld, atlas: &TextureAtlas)
         if let Some(tile) = sprite_tile(spr, atlas) {
             cook.set_external(name.0.clone(), tile);
         }
+    }
+
+    // Vectors come as BAKED tiles (doc 86 §2 A2): the fx phase rasterized each
+    // named shape once into an individual texture; here the tile's `texture_id`
+    // rides the same appearance stream a sprite's does. The shape's colours are
+    // baked in, so the stream tint is WHITE (the tile is not re-tinted).
+    for (name, tile) in bakes.tiles() {
+        cook.set_external(
+            name.to_string(),
+            appearance_tile(tile.size, [1.0, 1.0, 1.0, 1.0], [0.0, 0.0, 1.0, 1.0], tile.texture_id),
+        );
     }
 }
 

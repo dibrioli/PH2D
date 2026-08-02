@@ -200,6 +200,7 @@ mod morph_live;
 mod motion_delay_smoke;
 mod motion_fx_smoke;
 mod motion_node_path_smoke;
+mod motion_object_bake;
 mod motion_object_smoke;
 mod motion_path_smoke;
 mod motion_state;

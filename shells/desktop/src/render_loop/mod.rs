@@ -6300,6 +6300,21 @@ impl crate::App {
                 surface.format(),
                 vello_pass,
             );
+            // doc 86 §2 (A2): bake the named vector shapes to tiles, right where
+            // the FX stack bakes — the same handles (renderer, gpu, scene,
+            // transforms, live geometry) are in hand. Cached by content ⇒ a
+            // static scene bakes once; the membrane publishes the tiles next frame.
+            motion_bridge::bake_objects(
+                motion,
+                vec_scene,
+                &self.vec_entities,
+                &vec_xf,
+                &vec_live,
+                surface.gpu(),
+                surface.format(),
+                renderer,
+                sim,
+            );
             let vec_fx = self.fx_live.images();
             ph2d_vec_render::dispatch(
                 vec_scene,

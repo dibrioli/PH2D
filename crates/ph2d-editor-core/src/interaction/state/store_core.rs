@@ -59,6 +59,7 @@ impl WidgetStore {
             onion_modal: None,
             command_palette: None,
             command_pick: None,
+            command_palette_query: String::new(),
             section_outline_color: BTreeMap::new(),
             notes_per_panel: BTreeMap::new(),
             last_context_menu: None,

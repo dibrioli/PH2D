@@ -308,12 +308,37 @@ impl WidgetStore {
     pub fn open_command_palette(&mut self, model: crate::widget::command_palette::PaletteModel) {
         self.command_palette = Some(model);
         self.command_pick = None;
+        self.command_palette_query.clear();
     }
 
     /// Close the command palette (the close-X, a click on the dimmed scrim, or Esc). Leaves any pending
     /// pick alone — the shell drains it via [`Self::take_command_pick`] on the same frame it routes.
     pub fn close_command_palette(&mut self) {
         self.command_palette = None;
+        self.command_palette_query.clear();
+    }
+
+    /// The live search text typed into the open palette (empty = no filter). The widget reads this to
+    /// filter the model + highlight; the shell reads it to compute the `Enter` top-match.
+    #[must_use]
+    pub fn command_palette_query(&self) -> &str {
+        &self.command_palette_query
+    }
+
+    /// Append a printable character to the palette's search text (a full-screen modal captures the key).
+    /// Control characters are ignored — the shell filters them, but this is the single door, so it does
+    /// too. No-op when the palette is closed (nothing to type into).
+    pub fn command_palette_push_char(&mut self, c: char) {
+        if self.command_palette.is_some() && !c.is_control() {
+            self.command_palette_query.push(c);
+        }
+    }
+
+    /// Drop the last character of the palette's search text (Backspace). No-op when closed or empty.
+    pub fn command_palette_backspace(&mut self) {
+        if self.command_palette.is_some() {
+            self.command_palette_query.pop();
+        }
     }
 
     /// The open palette's model, or `None` when closed. The painter gates the whole full-screen render +

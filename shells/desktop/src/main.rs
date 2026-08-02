@@ -67,6 +67,8 @@ mod build_smoke_drive;
 mod build_smoke_expand;
 mod build_smoke_router;
 mod chrome_hit;
+/// Teclado do palette de "Add Node" (busca/filtro, Enter/Backspace/Esc).
+mod command_palette_input;
 /// O gesto que cria um conector (Down numa forma, Up noutra).
 mod connector_gesture;
 /// Conectores vivos: a linha que gruda em duas formas e as segue (re-cook por frame).

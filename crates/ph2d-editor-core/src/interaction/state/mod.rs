@@ -482,6 +482,11 @@ pub struct WidgetStore {
     /// `None` = nothing picked since the last take. This is the generic-widget/shell-routes seam (mirrors the
     /// colour picker's `picker_target` read-back), so editor-core never learns what an item *means*.
     pub(super) command_pick: Option<NodeId>,
+    /// The live search text typed into the open palette (empty = show everything). The shell feeds
+    /// characters here while the palette is open (it is a full-screen modal, so it eats the keys); the
+    /// widget filters the model by it, and `Enter` picks the top match. Cleared on open/close so a fresh
+    /// palette never inherits the last query.
+    pub(super) command_palette_query: String,
     /// Section-header id → highlighter color index (0..4 for the 5
     /// canonical colors; missing entry == "no outline"). Painted by
     /// the inspector as a colored stroke around the section block.

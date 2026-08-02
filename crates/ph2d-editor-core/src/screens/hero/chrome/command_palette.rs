@@ -33,7 +33,15 @@ pub fn paint_command_palette(
     let Some(model) = store.command_palette_model() else {
         return;
     };
-    command_palette::paint(scene, text_system, theme, hit_index, model, viewport);
+    command_palette::paint(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        model,
+        store.command_palette_query(),
+        viewport,
+    );
 }
 
 /// Dispatch the command palette's widget events (wired into `chrome::dispatch_all`). Only acts while the
@@ -167,5 +175,35 @@ mod tests {
             &mut hero,
             WidgetEvent::Click(hash_node_id("motion.grid"))
         ));
+    }
+
+    /// **The search text is typed, backspaced, ignores control chars, and clears on open/close.** The
+    /// shell feeds these ops while the palette is modal; a fresh palette must never inherit a stale query.
+    /// FALSIFIED by not clearing on open (the last search would linger) or by pushing control chars.
+    #[test]
+    fn the_search_query_is_typed_backspaced_and_cleared_on_open() {
+        let mut hero = HeroScreen::new(NodeId(1));
+        hero.store.open_command_palette(model());
+        assert_eq!(
+            hero.store.command_palette_query(),
+            "",
+            "a fresh palette starts with an empty search"
+        );
+
+        hero.store.command_palette_push_char('b');
+        hero.store.command_palette_push_char('o');
+        hero.store.command_palette_push_char('\n'); // control char: ignored
+        assert_eq!(hero.store.command_palette_query(), "bo");
+        hero.store.command_palette_backspace();
+        assert_eq!(hero.store.command_palette_query(), "b");
+
+        // Re-open clears the query (no stale search leaks into a new palette).
+        hero.store.open_command_palette(model());
+        assert_eq!(hero.store.command_palette_query(), "");
+
+        // Closed store: typing is a no-op (nothing to search into).
+        hero.store.close_command_palette();
+        hero.store.command_palette_push_char('z');
+        assert_eq!(hero.store.command_palette_query(), "");
     }
 }

@@ -113,6 +113,68 @@ impl PaletteModel {
     }
 }
 
+/// Does `label` match the live search `query`? Case-insensitive substring. This is the SINGLE predicate
+/// the palette's on-screen filter and its `Enter` top-match both call — so what the artist SEES filtered
+/// and what `Enter` adds can never disagree. An empty query matches everything.
+#[must_use]
+pub fn item_matches(query: &str, label: &str) -> bool {
+    query.is_empty() || label.to_lowercase().contains(&query.to_lowercase())
+}
+
+/// The first item (in display order) whose label matches `query`, or `None`. The shell calls this on
+/// `Enter` to add the top result — through the same [`item_matches`] the filter paints with. An EMPTY
+/// query returns `None` (Enter with no search is a no-op, never "add the first random node").
+#[must_use]
+pub fn top_match(model: &PaletteModel, query: &str) -> Option<NodeId> {
+    if query.is_empty() {
+        return None;
+    }
+    model
+        .groups
+        .iter()
+        .flat_map(|g| &g.subs)
+        .flat_map(|s| &s.items)
+        .find(|it| item_matches(query, &it.label))
+        .map(|it| it.id)
+}
+
+/// A copy of `model` keeping only items whose label matches `query`, dropping any sub-cluster or category
+/// that ends up empty — so a filtered library never shows a coloured header with nothing under it. An
+/// empty query is handled by the caller (it uses the model unfiltered); here every item still matches.
+fn filter_model(model: &PaletteModel, query: &str) -> PaletteModel {
+    let groups = model
+        .groups
+        .iter()
+        .filter_map(|g| {
+            let subs: Vec<PaletteSub> = g
+                .subs
+                .iter()
+                .filter_map(|s| {
+                    let items: Vec<PaletteItem> = s
+                        .items
+                        .iter()
+                        .filter(|it| item_matches(query, &it.label))
+                        .cloned()
+                        .collect();
+                    (!items.is_empty()).then(|| PaletteSub {
+                        title: s.title.clone(),
+                        items,
+                    })
+                })
+                .collect();
+            (!subs.is_empty()).then(|| PaletteGroup {
+                title: g.title.clone(),
+                color: g.color,
+                subs,
+            })
+        })
+        .collect();
+    PaletteModel {
+        title: model.title.clone(),
+        groups,
+    }
+}
+
 // ── Internal placement: a category card laid out at card-local coordinates (origin at the card's
 //    top-left), plus its total height so the arrangement can stack cards before painting. ──
 enum Placed {
@@ -241,8 +303,20 @@ pub fn paint(
     theme: Theme,
     hit_index: &mut HitIndex,
     model: &PaletteModel,
+    query: &str,
     viewport: Rect,
 ) {
+    // ── The live search text filters the model (empty = show everything). Filtering keeps only the
+    //    matching items and drops emptied sub-clusters / categories; `Enter` adds the same top match. ──
+    let filtered;
+    let model = if query.is_empty() {
+        model
+    } else {
+        filtered = filter_model(model, query);
+        &filtered
+    };
+    let no_match = model.groups.is_empty();
+
     // ── Card geometry independent of content height: width (centred) + the content box. ──
     let card_w = CARD_MAX_W
         .min(viewport.w - EDGE_MARGIN * 2.0)
@@ -256,6 +330,13 @@ pub fn paint(
     // ── Measure the category-card arrangement (card-local y from 0), then size the card to it so there
     //    is no dead space below the last row — capped at CARD_MAX_H_FRAC of the viewport. ──
     let (placed, content_h) = arrange(ts, model, content_x, content_w);
+    // With no matches the arrangement is empty (height 0); reserve a row for the "No matches" message so
+    // the card doesn't collapse to just the header.
+    let content_h = if no_match {
+        TypeToken::Md.px() + Spacing::Lg.px()
+    } else {
+        content_h
+    };
     let card_h = (pad * 2.0 + HEADER_H + Spacing::Sm.px() + content_h)
         .min(viewport.h * CARD_MAX_H_FRAC)
         .min(viewport.h - EDGE_MARGIN * 2.0);
@@ -272,8 +353,9 @@ pub fn paint(
     stroke_rounded_rect(scene, card, radius, 1.0, resolve(ColorToken::Border, theme));
     hit_index.register(CMD_PALETTE_CARD, card);
 
-    // ── Header band: title left, count centre-right, close-X right. ──
+    // ── Header band: title left, search box in the middle, count centre-right, close-X right. ──
     let header_y = card_y + pad;
+    let title_w = ts.prefix_width(&model.title, font).min(content_w * 0.35);
     paint_text(
         ts,
         scene,
@@ -281,22 +363,60 @@ pub fn paint(
         content_x,
         header_y + (HEADER_H - font) * 0.5,
         font,
-        content_w * 0.5,
+        title_w,
         resolve(ColorToken::Text1, theme),
     );
     let count_str = format!("{} nodes", model.item_count());
     let count_w = ts.prefix_width(&count_str, TypeToken::Sm.px());
     let close_x = card_x + card_w - CLOSE_W - pad;
+    let count_x = close_x - count_w - Spacing::Sm.px();
     paint_text(
         ts,
         scene,
         &count_str,
-        close_x - count_w - Spacing::Sm.px(),
+        count_x,
         header_y + (HEADER_H - TypeToken::Sm.px()) * 0.5,
         TypeToken::Sm.px(),
         count_w,
         resolve(ColorToken::Text2, theme),
     );
+
+    // ── Search box: a Bg3 rounded field showing the typed query (or a "Search" placeholder), the app's
+    //    keyboard feeds it while the palette is open (a full-screen modal captures the keys). ──
+    let sm = TypeToken::Sm.px();
+    let search_h = (HEADER_H - Spacing::Sm.px()).max(PILL_H);
+    let sb_x = content_x + title_w + Spacing::Md.px();
+    let sb_w = (count_x - Spacing::Md.px() - sb_x).max(MIN_COL_W * 0.5);
+    let sb = Rect::new(sb_x, header_y + (HEADER_H - search_h) * 0.5, sb_w, search_h);
+    fill_rounded_rect(scene, sb, Radius::Sm.px(), resolve(ColorToken::Bg3, theme));
+    stroke_rounded_rect(scene, sb, Radius::Sm.px(), 1.0, resolve(ColorToken::Border, theme));
+    let (search_text, search_color) = if query.is_empty() {
+        ("Search", resolve(ColorToken::Text2, theme))
+    } else {
+        (query, resolve(ColorToken::Text1, theme))
+    };
+    let text_y = sb.y + (sb.h - sm) * 0.5;
+    paint_text(
+        ts,
+        scene,
+        search_text,
+        sb.x + Spacing::Sm.px(),
+        text_y,
+        sm,
+        sb.w - Spacing::Sm.px() * 2.0,
+        search_color,
+    );
+    // Caret at the end of the typed text (only while there IS a query — the placeholder needs none).
+    if !query.is_empty() {
+        let caret_x = (sb.x + Spacing::Sm.px() + ts.prefix_width(query, sm))
+            .min(sb.x + sb.w - Spacing::Xs.px());
+        fill_rounded_rect(
+            scene,
+            Rect::new(caret_x, sb.y + Spacing::Xs.px(), 1.5, sb.h - Spacing::Xs.px() * 2.0), // LITERAL-PX-OK: 1.5px text caret
+            0.0,
+            resolve(ColorToken::Text1, theme),
+        );
+    }
     let close_rect = Rect::new(
         close_x,
         header_y + (HEADER_H - CLOSE_W) * 0.5,
@@ -314,10 +434,24 @@ pub fn paint(
         resolve(ColorToken::Text1, theme),
     );
 
-    // ── Content: paint the measured category cards at the card's content origin. ──
+    // ── Content: paint the measured category cards at the card's content origin — or a "No matches"
+    //    message when the search filtered everything out. ──
     let content_y = header_y + HEADER_H + Spacing::Sm.px();
-    for (cl, ox, oy, w) in &placed {
-        paint_card(scene, ts, theme, hit_index, cl, *ox, content_y + *oy, *w);
+    if no_match {
+        paint_text(
+            ts,
+            scene,
+            "No matches",
+            content_x,
+            content_y,
+            font,
+            content_w,
+            resolve(ColorToken::Text2, theme),
+        );
+    } else {
+        for (cl, ox, oy, w) in &placed {
+            paint_card(scene, ts, theme, hit_index, cl, *ox, content_y + *oy, *w);
+        }
     }
 
     // Close-X last (wins its rect inside the card).
@@ -508,3 +642,9 @@ fn dot(scene: &mut VectorScene, cx: f32, cy: f32, color: Color) {
         color,
     );
 }
+
+// Gates for the search filter live in a `#[path]` sibling so they remain a CHILD module (reaching the
+// private `filter_model`) while keeping this file under the LOC cap.
+#[cfg(test)]
+#[path = "command_palette_tests.rs"]
+mod tests;

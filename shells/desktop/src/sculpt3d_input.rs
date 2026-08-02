@@ -34,7 +34,7 @@ impl App {
             "[sculpt3d] esfera com {} vértices / {} faces / {} triângulos\n\
              [sculpt3d] ESQUERDO esculpe (fora do modelo, gira) · DIREITO gira · MEIO desloca · RODA aproxima\n\
              [sculpt3d] Shift = Smooth enquanto segurar · Ctrl inverte Draw/Inflate/Clay/Crease e limpa a mascara\n\
-             [sculpt3d] 1..9,0 escolhem o verbo · M mascara · [ ] tamanho · X/Y/Z espelho · Ctrl+Z desfaz\n\
+             [sculpt3d] 1..9,0 escolhem o verbo · A alarga (magnify) · M mascara · [ ] tamanho · X/Y/Z espelho · Ctrl+Z desfaz\n\
              [sculpt3d] o pincel mede PIXELS DE TELA: aproxime com a roda e ele continua do mesmo tamanho\n\
              [sculpt3d] a MASCARA (M) protege o que ela pinta e se VE (azul frio): C limpa · I inverte · B borra · N afia\n\
              [sculpt3d] K = SUBDIVIDIR: 4 faces onde havia 1, e a forma ALISA (Catmull-Clark/Loop)\n\
@@ -47,6 +47,9 @@ impl App {
              [sculpt3d] G = PEGAR o barro (grab): segure e arraste, e ele vem com o dedo\n\
              [sculpt3d] H = ESTICAR (snake hook): a pegada ANDA com o cursor e sai um espinho\n\
              [sculpt3d]     o G volta ao lugar quando voce volta; o H deixa a ponta la' -- essa e' a diferenca\n\
+             [sculpt3d] T = TORCER (twist): segure e VARRA um circulo em volta do ponto que voce pegou\n\
+             [sculpt3d] S = INFLAR/ENCOLHER (local scale): segure e arraste na HORIZONTAL\n\
+             [sculpt3d]     os dois voltam ao lugar quando voce varre de volta -- o gesto e' o TOTAL, nao a soma\n\
              [sculpt3d] A LUZ e o rig do artista (o mesmo que acende a tinta): Q/E giram a lampada, R/F a sobem\n\
              [sculpt3d] o espelho nasce DESLIGADO; PH2D_SCULPT3D_DIAG=1 mede se o pincel cai sob o cursor",
             mesh.vert_count(),
@@ -70,6 +73,26 @@ impl App {
                  [sculpt3d]    A tampa e' um leque a partir do centro do contorno, entao ela AFUNDA --\n\
                  [sculpt3d]    passe o Smooth (3) nela e ela vira superficie. Ctrl+Z desfaz.\n\
                  [sculpt3d]    Depois de tapada, K subdivide e o modelo fica solido de verdade."
+            );
+        }
+        if crate::sculpt3d::turn_scene() {
+            // ⚠️ **A cena DECLARA que trouxe cristas.** Numa esfera LISA um
+            // Twist em torno do eixo da vista é quase invisível — ela é
+            // invariante por rotação —, e o smoke não teria como separar a
+            // feature funcionando da feature morta.
+            eprintln!(
+                "[sculpt3d] =5 TORCER e INFLAR: esta esfera tem uma CRUZ de cristas, e ela existe\n\
+                 [sculpt3d]    porque numa esfera LISA um giro em torno do eixo da vista nao se ve.\n\
+                 [sculpt3d]    Aperte T, pegue o CRUZAMENTO das cristas e VARRA um circulo em volta\n\
+                 [sculpt3d]    dele: os bracos entortam em redemoinho. Varra de VOLTA ao comeco --\n\
+                 [sculpt3d]    a cruz tem de voltar reta (o gesto e' o TOTAL varrido, nao a soma dos passos).\n\
+                 [sculpt3d]    Perto do ponto que voce pegou ha' uma ZONA MORTA de 30 px: ali a direcao\n\
+                 [sculpt3d]    e' ruido, e nada gira ate' voce sair dela.\n\
+                 [sculpt3d]    Aperte S e arraste na HORIZONTAL: para a direita o cruzamento incha,\n\
+                 [sculpt3d]    para a esquerda ele encolhe -- e volta ao lugar no caminho de volta.\n\
+                 [sculpt3d]    Aperte X (espelho) e repita o T: as duas metades tem de girar para\n\
+                 [sculpt3d]    lados OPOSTOS (um redemoinho no espelho gira ao contrario); com o S\n\
+                 [sculpt3d]    as duas metades incham JUNTAS."
             );
         }
         if crate::sculpt3d::reversion_scene() {
@@ -140,13 +163,18 @@ impl App {
                 // está sob o dedo, e o resíduo passa a contar a partir dele.
                 scene.stroke_anchor = [pos.0, pos.1];
                 scene.grab = None;
-                // ⚠️ **Quem PUXA não carimba no pen-down: ele PEGA.** O primeiro
-                // toque escolhe a pegada e não move nada; o barro vem quando o
-                // dedo anda. Vale para os DOIS grips que puxam — o Grab porque
-                // o puxão ainda é zero, o Snake Hook porque o incremento ainda
-                // é zero —, e é por isso que a pergunta é `pulls()` e não o
-                // nome de um verbo.
-                let took = if scene.brush.verb.pulls() {
+                // O ângulo varrido é do GESTO, então ele morre com o gesto
+                // anterior — deixá-lo vivo faria o traço seguinte começar já
+                // torcido, no lugar onde o anterior parou.
+                scene.twist = None;
+                // ⚠️ **Quem tem ÂNCORA não carimba no pen-down: ele PEGA.** O
+                // primeiro toque escolhe o ponto e não move nada; o barro vem
+                // quando o dedo anda. Vale para os TRÊS grips com âncora — o
+                // Grab porque o puxão ainda é zero, o Snake Hook porque o
+                // incremento ainda é zero, o Twist e o Local Scale porque o
+                // ângulo e a fração ainda são zero —, e é por isso que a
+                // pergunta é `anchors()` e não o nome de um verbo.
+                let took = if scene.brush.verb.anchors() {
                     scene.take_hold(pos.0, pos.1)
                 } else {
                     scene.sculpt_at(pos.0, pos.1)
@@ -247,6 +275,13 @@ impl App {
                         scene.stroke_anchor = [x, y];
                     }
                 }
+                // ⚠️ **Quem GIRA não percorre o caminho tampouco, e por um
+                // motivo mais forte que o do Grab: o "caminho" dele não é uma
+                // trilha, é um ÂNGULO.** Rodar o walk sobre a varredura daria N
+                // dabs com o mesmo total acumulado no mesmo lugar — trabalho
+                // idêntico repetido, porque o alvo do [`Grip::Turn`] é função do
+                // `pre` congelado e do gesto TOTAL.
+                Grip::Turn(kind) => scene.turn_at(kind, x, y),
                 Grip::Stamp => {
                     let spacing = ph2d_sculpt3d::min_spacing(scene.radius_px());
                     if let Some(steps) = ph2d_sculpt3d::walk(scene.stroke_anchor, [x, y], spacing) {
@@ -324,14 +359,25 @@ impl App {
         // ⚠️ O **Move** fica no `G` (de *grab*) e não num número: os dez números
         // já estão tomados, e `G` é a tecla que Blender e SculptGL usam para o
         // mesmo gesto — um artista a tenta antes de procurar.
-        // ⚠️ O **Move** fica no `G` (de *grab*) e o **Snake Hook** no `H` (de
-        // *hook*): os dez números já estão tomados, e o `G` é a tecla que
-        // Blender e SculptGL usam para o mesmo gesto — um artista a tenta antes
-        // de procurar. Os dois saem pela MESMA porta que os numerados usam
-        // (`arm_verb`), senão só eles perderiam o default de força.
+        // ⚠️ O **Move** fica no `G` (de *grab*), o **Snake Hook** no `H` (de
+        // *hook*), o **Twist** no `T` e o **Local Scale** no `S` (de *scale*):
+        // os dez números já estão tomados, e o `G` é a tecla que Blender e
+        // SculptGL usam para o mesmo gesto — um artista a tenta antes de
+        // procurar. Os quatro saem pela MESMA porta que os numerados usam,
+        // senão só eles perderiam o default de força.
+        // ⚠️ **E o `A` é o MAGNIFY, que não tinha tecla nenhuma.** Onze verbos
+        // de carimbo queriam dez dígitos, e ele foi o que transbordou — sem uma
+        // linha dizendo isso: existia no enum, tinha alvo, era varrido por todo
+        // gate, e o artista **não conseguia pegá-lo**. Não era cerca de
+        // Chesterton, era capacidade. O `A` é de *amplify*, a mesma família da
+        // palavra que o rótulo mostra; o `P`, que seria o mnemônico do PAR,
+        // levaria a mão ao oposto do que ela procura.
         let held = match code {
             K::KeyG => Some(Verb::Move),
             K::KeyH => Some(Verb::SnakeHook),
+            K::KeyT => Some(Verb::Twist),
+            K::KeyS => Some(Verb::LocalScale),
+            K::KeyA => Some(Verb::Magnify),
             _ => None,
         };
         let verb = held.or(match code {

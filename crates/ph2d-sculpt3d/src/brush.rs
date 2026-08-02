@@ -128,6 +128,43 @@ pub enum Verb {
     /// **Estica o barro num espinho**: a pegada ANDA com o cursor e cada dab
     /// entrega ao seguinte — ver [`Grip::Hook`].
     SnakeHook,
+    /// **TORCE** o barro em torno do eixo da vista — o redemoinho. Ver
+    /// [`Grip::Turn`].
+    Twist,
+    /// **INFLA ou ENCOLHE** o barro em torno da âncora, radialmente. Ver
+    /// [`Grip::Turn`].
+    ///
+    /// ⚠️ **Não é o [`Self::Inflate`], e a diferença é o CENTRO.** O Inflate
+    /// empurra cada vértice pela PRÓPRIA normal (a forma engorda em relação à
+    /// superfície dela); este empurra cada vértice para longe de UM ponto — o
+    /// que cresce é a região inteira, como um balão que se enche a partir do
+    /// lugar onde a mão está.
+    LocalScale,
+}
+
+/// **A grandeza escalar que um gesto de [`Grip::Turn`] entrega**, e o que um
+/// espelho faz com ela.
+///
+/// ⚠️ **Ela mora DENTRO do grip, e não num predicado ao lado, porque as duas
+/// perguntas têm sempre a mesma resposta**: um verbo que gira em torno de uma
+/// âncora *tem* de dizer em que unidade o gesto chega, e um verbo sem unidade
+/// não pode ser um `Turn`. Carregada aqui, a contradição é **inexprimível** —
+/// e os dois consumidores (o espelho no kernel, o gesto no shell) casam
+/// exaustivamente sobre o mesmo dado.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Amount {
+    /// Um **ÂNGULO** em radianos, com sinal.
+    ///
+    /// ⚠️ **É um PSEUDOESCALAR: um espelho troca o sinal dele.** Um redemoinho
+    /// visto no espelho gira ao contrário — a mesma geometria que separa força
+    /// de torque no módulo de física, e a razão de o espelho da simetria não
+    /// poder tratar as duas grandezas igual.
+    Angle,
+    /// Uma **FRAÇÃO** de escala (`0` não mexe, `+1` dobra, `−1` colapsa).
+    ///
+    /// É um escalar comum: um espelho não a toca. Uma esfera que dobra de
+    /// tamanho dobra de tamanho no espelho também.
+    Fraction,
 }
 
 /// **Como um verbo consome o GESTO** — a pergunta que separa o Draw do Grab e o
@@ -175,11 +212,36 @@ pub enum Grip {
     /// trivial**, porque `base` segue sendo o `pre` congelado de todo vértice
     /// que a pegada tocou em qualquer momento do gesto.
     Hook,
+    /// **GIRA (ou ESCALA) em torno de uma ÂNCORA.** A pegada é congelada no
+    /// pen-down como no [`Grip::Hold`], a distância sai do `pre` congelado, e o
+    /// gesto que chega é o **TOTAL** desde então — o ângulo varrido, ou a fração
+    /// de escala acumulada.
+    ///
+    /// ⚠️ **A lei do traço fica INTEIRA, e é por isso que este grip existe em
+    /// vez de o Twist ser um [`Grip::Hook`].** O original aplica o incremento de
+    /// cada evento sobre o resultado do anterior (`Twist.js:47` lê
+    /// `_lastMouseX`), que é o **produto sobre a lista de dabs** que este módulo
+    /// existe para não ter — e no Local Scale ele morde de verdade, porque
+    /// `Π(1 + sᵢ·wᵢ) ≠ 1 + Σsᵢ·wᵢ`: arrastar devagar cresceria mais que arrastar
+    /// rápido pelo mesmo caminho. Ancorado no `pre` com o gesto TOTAL, o alvo é
+    /// função do estado congelado ⇒ independência de amostragem, idempotência
+    /// sob re-stamp e *varrer de volta devolve o barro ao lugar*, as três
+    /// propriedades que o cabeçalho do `stroke` promete.
+    ///
+    /// ⚠️ **O alvo já traz o PESO (`accum = 1`), e isso NÃO é cosmética.**
+    /// Interpolar entre o `base` e a posição girada cortaria pela **CORDA** do
+    /// arco: o vértice andaria por dentro da circunferência e o barro
+    /// **encolheria** na direção da âncora quanto maior o giro — o mesmo defeito
+    /// que o tween do Flip pagou antes de trocar o lerp pela espiral. O peso
+    /// entra no ÂNGULO (`θ·w`), onde ele pertence.
+    ///
+    /// ⚠️ **O [`Amount`] viaja aqui dentro** — ver o doc dele.
+    Turn(Amount),
 }
 
 impl Verb {
     /// Todos, na ordem em que a UI os lista.
-    pub const ALL: [Self; 14] = [
+    pub const ALL: [Self; 16] = [
         Self::Draw,
         Self::Inflate,
         Self::Smooth,
@@ -194,6 +256,8 @@ impl Verb {
         Self::Mask,
         Self::Move,
         Self::SnakeHook,
+        Self::Twist,
+        Self::LocalScale,
     ];
 
     /// Este verbo escreve na MÁSCARA em vez da posição?
@@ -242,6 +306,12 @@ impl Verb {
     /// ⚠️ **Nenhuma UI pergunta isto hoje** (o shell arma `invert = ctrl`
     /// incondicionalmente, `sculpt3d.rs`): o consumidor é o [`Brush::reach`], e o
     /// chip que decide oferecer ou não o controle é da wave que trouxer painel.
+    ///
+    /// ⚠️ **Os dois [`Grip::Turn`] ficam de fora, e a razão é que o gesto já tem
+    /// sinal:** varrer para o outro lado torce ao contrário, arrastar para a
+    /// esquerda encolhe. Um `Ctrl` ali seria a segunda maneira de dizer a mesma
+    /// coisa — e uma que **compõe** com a primeira, então varrer ao contrário
+    /// com `Ctrl` apertado voltaria a torcer no sentido original.
     #[must_use]
     pub fn honours_invert(self) -> bool {
         matches!(
@@ -283,44 +353,39 @@ impl Verb {
             Self::Mask => "Mask",
             Self::Move => "Move / Grab",
             Self::SnakeHook => "Snake Hook",
+            Self::Twist => "Twist",
+            Self::LocalScale => "Local Scale",
         }
     }
 
     /// **Como este verbo consome o gesto** — ver [`Grip`]. A porta única de que
-    /// [`Self::pulls`] é uma leitura, e sobre a qual o kernel e o shell fazem
+    /// [`Self::anchors`] é uma leitura, e sobre a qual o kernel e o shell fazem
     /// perguntas diferentes.
     #[must_use]
     pub fn grip(self) -> Grip {
         match self {
             Self::Move => Grip::Hold,
             Self::SnakeHook => Grip::Hook,
+            Self::Twist => Grip::Turn(Amount::Angle),
+            Self::LocalScale => Grip::Turn(Amount::Fraction),
             _ => Grip::Stamp,
         }
     }
 
-    /// **Este verbo PUXA?** — a exceção declarada ao *early-out* do envelope, e
-    /// uma leitura de [`Self::grip`] em vez de um segundo predicado.
+    /// **Este verbo PEGA uma âncora no pen-down** em vez de carimbar? — uma
+    /// leitura de [`Self::grip`] em vez de um segundo predicado.
     ///
-    /// O envelope (`accum ← max`) existe porque *passar devagar não pode
-    /// depositar mais*, e ele traz um early-out: um dab cujo peso não supera o
-    /// que já está lá **não recomputa o alvo**, para re-carimbar a mesma lista
-    /// não mandar a pegada inteira ao refit e ao upload a cada frame.
+    /// Os três grips que não são [`Grip::Stamp`] têm em comum que o primeiro
+    /// toque **escolhe um ponto e não move nada**: o barro só anda quando o dedo
+    /// anda, porque no instante do pen-down o gesto ainda vale zero (o puxão, o
+    /// incremento, o ângulo varrido, a fração de escala).
     ///
-    /// ⚠️ **Os dois grips que puxam o quebram por motivos DIFERENTES, e é por
-    /// isso que a exceção é uma só.** No [`Grip::Hold`] a pegada é presa no
-    /// pen-down, então o peso de cada vértice é o do primeiro dab e **nunca mais
-    /// sobe** — o early-out congelaria o alvo e o barro andaria um evento,
-    /// parando com o cursor seguindo em frente. No [`Grip::Hook`] o `accum` vale
-    /// **1,0 por construção** (a lei é um revezamento, não um envelope), então
-    /// `w <= accum` é verdade **sempre** e o segundo dab de todo gesto seria
-    /// engolido. Nos dois o que mudou não é o peso — é o `pull`.
-    ///
-    /// ⚠️ **Só o [`Grip::Hold`] mantém a lei inteira.** O alvo dele segue função
-    /// do `pre` congelado, logo o traço é idempotente sob re-stamp e puxar de
-    /// volta devolve o barro ao lugar. O [`Grip::Hook`] troca de lei, e o que
-    /// ele mantém e o que ele perde está escrito lá.
+    /// ⚠️ **O nome era `pulls()`, e ele passou a MENTIR quando o
+    /// [`Grip::Turn`] chegou** — um redemoinho não puxa nada. O que a pergunta
+    /// sempre quis dizer é *este verbo tem âncora?*, e é essa a palavra que
+    /// sobrevive a um quinto grip.
     #[must_use]
-    pub fn pulls(self) -> bool {
+    pub fn anchors(self) -> bool {
         !matches!(self.grip(), Grip::Stamp)
     }
 

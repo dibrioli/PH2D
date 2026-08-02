@@ -37,8 +37,13 @@
 //! capturado é escrito. É isso que deixa o Smooth ler a vizinhança sem capturar
 //! o anel inteiro, e é por isso que `base_pos_of` cai na malha viva sem mentir.
 
-use crate::brush::{Brush, Grip, Symmetry, Verb};
+use crate::brush::{Amount, Brush, Grip, Symmetry, Verb};
 use ph2d_mesh::{DEFAULT_MASK, Mesh, QueryScratch, RegionScratch};
+
+/// Um ponto ou vetor refletido pelo trio de sinais de uma cópia da simetria.
+fn mirror(v: [f32; 3], s: &[f32; 3]) -> [f32; 3] {
+    [v[0] * s[0], v[1] * s[1], v[2] * s[2]]
+}
 
 /// Um toque de pincel: **onde a mão estava e com que força apertou**. O que a
 /// ferramenta É vive no [`Brush`].
@@ -85,9 +90,24 @@ pub struct Dab {
     /// no décimo terceiro. Nenhum tipo distingue um total de um incremento —
     /// quem distingue é o nome de quem constrói.
     ///
-    /// Só os verbos que respondem `true` a [`Brush::verb`]`.pulls()` o leem;
+    /// Só os verbos que respondem `true` a [`Brush::verb`]`.anchors()` o leem;
     /// para os outros ele é zero e inerte.
     pub pull: [f32; 3],
+    /// **O gesto ESCALAR**: quanto o [`Grip::Turn`] girou ou cresceu desde o
+    /// pen-down. A unidade é a que o [`crate::Amount`] do verbo nomeia — radianos
+    /// para o [`crate::Verb::Twist`], fração para o [`crate::Verb::LocalScale`].
+    ///
+    /// ⚠️ **É o TOTAL desde o pen-down, nunca um incremento**, e é essa escolha
+    /// que mantém a lei do traço de pé para os dois verbos que o leem — ver
+    /// [`Grip::Turn`]. Os construtores [`Dab::turning`] e [`Dab::scaling`] são
+    /// quem nomeia a unidade, exatamente como [`Dab::pulling`] e
+    /// [`Dab::hooking`] nomeiam a leitura do [`Self::pull`]: nenhum tipo
+    /// distingue um radiano de uma fração.
+    ///
+    /// ⚠️ **Um campo a mais, e não dois**, pelo motivo que o [`Self::pull`] já
+    /// pagou: dois campos deixariam cada um morto em quinze dos dezesseis
+    /// verbos, e o dia em que entrasse o terceiro gesto escalar seriam três.
+    pub amount: f32,
 }
 
 impl Dab {
@@ -100,6 +120,7 @@ impl Dab {
             pressure: 1.0,
             eye,
             pull: [0.0; 3],
+            amount: 0.0,
         }
     }
 
@@ -128,6 +149,44 @@ impl Dab {
     #[must_use]
     pub fn hooking(center: [f32; 3], radius: f32, eye: [f32; 3], step: [f32; 3]) -> Self {
         Self::pulling(center, radius, eye, step)
+    }
+
+    /// Um dab que **TORCE** — o gesto do Twist, e `radians` é o ângulo varrido
+    /// **TOTAL** desde o pen-down.
+    ///
+    /// ⚠️ **O EIXO é o olho, e ele entra unitário daqui**: a rotação é em torno
+    /// da reta que passa pela âncora na direção de quem olha, e Rodrigues exige
+    /// um eixo de norma 1 (com norma `k` ele devolveria uma rotação *mais uma
+    /// escala*, e o barro encolheria com o giro). Um espelho preserva
+    /// comprimento, então normalizar no sítio de construção basta para todas as
+    /// cópias da simetria.
+    ///
+    /// ⚠️ **Sem eixo não há giro:** um olho degenerado zera o ÂNGULO em vez de
+    /// produzir um eixo inventado. É a diferença entre um dab que não faz nada e
+    /// um dab que colapsa a pegada na âncora.
+    #[must_use]
+    pub fn turning(center: [f32; 3], radius: f32, eye: [f32; 3], radians: f32) -> Self {
+        let len = (eye[0] * eye[0] + eye[1] * eye[1] + eye[2] * eye[2]).sqrt();
+        let (axis, amount) = if len.is_finite() && len > 1e-12 {
+            ([eye[0] / len, eye[1] / len, eye[2] / len], radians)
+        } else {
+            (eye, 0.0)
+        };
+        Self {
+            amount,
+            ..Self::at(center, radius, axis)
+        }
+    }
+
+    /// Um dab que **INFLA ou ENCOLHE** — o gesto do Local Scale, e `fraction` é
+    /// a fração **TOTAL** desde o pen-down (`0` não mexe, `+1` dobra o raio da
+    /// pegada, `−1` a colapsa na âncora).
+    #[must_use]
+    pub fn scaling(center: [f32; 3], radius: f32, eye: [f32; 3], fraction: f32) -> Self {
+        Self {
+            amount: fraction,
+            ..Self::at(center, radius, eye)
+        }
     }
 }
 
@@ -271,17 +330,45 @@ impl SculptStroke {
     ///
     /// ⚠️ O plano do espelho passa pela **origem do mundo**. Quando uma malha
     /// ganhar `Transform` próprio (W8), é o frame local dela que entra aqui —
-    /// e será uma mudança nesta função, não nos doze verbos.
+    /// e será uma mudança nesta função, não nos dezesseis verbos.
+    ///
+    /// ⚠️ **O espelho alcança o DAB INTEIRO, e até 2026-08-02 ele alcançava só o
+    /// centro** — o `eye` e o `pull` atravessavam sem tocar, e o preço está
+    /// medido: um Grab com espelho puxava as duas metades na MESMA direção de
+    /// mundo, **0,343574** de erro de simetria num pincel de raio 0,4 (a metade
+    /// espelhada ia parar em `x = +1,1540` onde a simetria pede `+0,8076`). O
+    /// doc do [`Dab::eye`] já **afirmava** que a cópia espelhada tinha o olho
+    /// dela; a linha que o faria nunca existiu.
+    ///
+    /// ⚠️ **E o `eye` só é observável onde a pegada atravessa a TERMINADOR** —
+    /// medido `0,047`–`0,094` ali e **0,000001** em qualquer outro lugar, porque
+    /// longe dela o conjunto frontal é *tudo* (e o fallback do `fit_plane` cobre
+    /// o caso em que ele é *nada*). Era a fixture que não continha o fenômeno,
+    /// não o defeito que era pequeno.
+    ///
+    /// # A lei, e por que ela não é um `for` sobre os campos
+    ///
+    /// Cada canal do dab tem uma **espécie geométrica**, e um espelho trata as
+    /// três de maneiras diferentes:
+    ///
+    /// - o `center` é um **PONTO** e o `eye`/`pull` são **VETORES** — todos
+    ///   componente a componente pelo sinal do eixo;
+    /// - o [`Amount::Angle`] é um **PSEUDOESCALAR**: ele troca de sinal com o
+    ///   **determinante** do espelho (um redemoinho no espelho gira ao
+    ///   contrário), e espelhar os TRÊS eixos não é uma reflexão — é uma rotação
+    ///   de 180°, e o produto dos sinais devolve `+1` sozinho, sem caso especial;
+    /// - o [`Amount::Fraction`] é um **ESCALAR comum** e o espelho não a toca.
     pub fn dab(&mut self, mesh: &mut Mesh, brush: &Brush, dab: &Dab, sym: Symmetry) -> usize {
         let (signs, n) = sym.signs();
+        let handed = matches!(brush.verb.grip(), Grip::Turn(Amount::Angle));
         let mut total = 0;
         for s in signs.iter().take(n) {
+            let det = s[0] * s[1] * s[2];
             let mirrored = Dab {
-                center: [
-                    dab.center[0] * s[0],
-                    dab.center[1] * s[1],
-                    dab.center[2] * s[2],
-                ],
+                center: mirror(dab.center, s),
+                eye: mirror(dab.eye, s),
+                pull: mirror(dab.pull, s),
+                amount: if handed { dab.amount * det } else { dab.amount },
                 ..*dab
             };
             total += self.dab_core(mesh, brush, &mirrored);
@@ -316,11 +403,29 @@ impl SculptStroke {
         // *parece* funcionar em toda região parcial. Ela gateia quem MOVE
         // GEOMETRIA; quem edita o próprio canal a lê como dado, não como freio.
         let gated_by_mask = !brush.verb.paints_mask();
-        // ⚠️ **A outra LEI, decidida uma vez por dab** — ver [`Grip::Hook`]. Ela
-        // muda exatamente três coisas neste laço (de onde sai a distância · o
-        // que vai no `accum` · qual alvo é computado), e nada mais: a captura, a
-        // máscara, a simetria, o refit e o undo são os mesmos.
-        let relay = brush.verb.grip() == Grip::Hook;
+        // ⚠️ **A LEI deste verbo, resolvida UMA vez, numa TABELA onde os quatro
+        // grips aparecem lado a lado.** Ela muda exatamente quatro coisas neste
+        // laço, e nada mais — a captura, a máscara, a simetria, o refit e o undo
+        // são os mesmos para todos:
+        //
+        // - `frozen` — trabalha sobre a pegada CONGELADA no pen-down (`touched`)
+        //   em vez da consulta deste dab;
+        // - `from_live` — a distância sai da posição VIVA em vez do `pre`;
+        // - `unit_accum` — o alvo já traz o peso, então o `accum` vale 1;
+        // - `early_out` — um dab que não supera o envelope é descartado.
+        //
+        // ⚠️ **Uma tabela e não três predicados soltos:** as quatro colunas são
+        // *facetas* de uma escolha só, e os quatro grips têm combinações que se
+        // cruzam (o `Turn` congela como o `Hold` e carimba `accum = 1` como o
+        // `Hook`). Escritas como predicados independentes, um grip novo nasceria
+        // com a combinação de quem alguém lembrou de atualizar; escritas aqui,
+        // ele **não compila** até a linha dele existir.
+        let (frozen, from_live, unit_accum, early_out) = match brush.verb.grip() {
+            Grip::Stamp => (false, false, false, true),
+            Grip::Hold => (true, false, false, false),
+            Grip::Hook => (false, true, true, false),
+            Grip::Turn(_) => (true, false, true, false),
+        };
         // ⚠️ **Quem SEGURA trabalha sobre o que já TOCOU, não sobre a consulta
         // deste dab — e sem isto o Grab PERDE barro.** A consulta sai das
         // posições vivas, então um vértice arrastado para além do raio SAI da
@@ -343,15 +448,20 @@ impl SculptStroke {
         // conjunto do pen-down. É também ele que separa as cópias da simetria,
         // que compartilham este vetor: um vértice da cópia oposta está fora do
         // raio deste centro, logo pesa zero.
-        let held = brush.verb.grip() == Grip::Hold;
-        let work = if held {
+        //
+        // ⚠️ **O [`Grip::Turn`] congela pelo MESMO motivo, e nele o efeito é
+        // mais forte:** um Local Scale empurra os vértices para longe da âncora,
+        // então a pegada consultada a cada dab ENCOLHE em contagem enquanto a
+        // forma cresce — o barro da borda sairia do raio e congelaria a meio
+        // caminho, deixando um degrau na fronteira do pincel.
+        let work = if frozen {
             self.touched.len()
         } else {
             self.footprint.len()
         };
 
         for i in 0..work {
-            let v = if held {
+            let v = if frozen {
                 self.touched[i]
             } else {
                 self.footprint[i]
@@ -375,7 +485,11 @@ impl SculptStroke {
             //
             // A pegada (`verts_in_sphere`) já sai das posições vivas nos dois
             // casos, então no revezamento pegada e peso concordam.
-            let from = if relay { mesh.positions()[vi] } else { base };
+            let from = if from_live {
+                mesh.positions()[vi]
+            } else {
+                base
+            };
             let d = [
                 from[0] - dab.center[0],
                 from[1] - dab.center[1],
@@ -407,14 +521,14 @@ impl SculptStroke {
             // `<`, re-carimbar a mesma lista de dabs reescreveria a pegada
             // inteira e a mandaria para o refit do octree e para o upload
             // incremental, todo frame, sem um pixel mudar.
-            // ⚠️ **Quem PUXA não pode ser freado pelo early-out**: a pegada
-            // do Grab é presa no pen-down, então o peso de cada vértice é o do
-            // primeiro dab e nunca mais sobe. Sem esta exceção o barro andaria
-            // UM evento e pararia, com o cursor seguindo em frente — e o alvo
-            // que mudou não é o peso, é o `pull`. Ver `Verb::pulls`.
+            // ⚠️ **Quem tem ÂNCORA não pode ser freado pelo early-out**: a
+            // pegada dos três é presa no pen-down (ou o `accum` deles vale 1),
+            // então o peso de cada vértice nunca mais sobe. Sem esta exceção o
+            // barro andaria UM evento e pararia, com o cursor seguindo em frente
+            // — e o que mudou não é o peso, é o gesto. Ver a tabela dos grips.
             // ⚠️ **Peso zero não é um dab: ele não tem nada a dar.** Para os
-            // onze verbos de carimbo isto já saía do early-out abaixo (`0 <= 0`)
-            // e é redundante; para os dois que PUXAM ele é a linha que os mantém
+            // doze verbos de carimbo isto já saía do early-out abaixo (`0 <= 0`)
+            // e é redundante; para os que têm âncora ele é a linha que os mantém
             // corretos, porque eles **dispensam** aquele early-out. Sem ela, um
             // vértice de peso zero levaria `accum ← 0` e `target ← base`, e o
             // dab seguinte de um Grab **desfaria** o que a cópia espelhada
@@ -422,17 +536,17 @@ impl SculptStroke {
             if w <= 0.0 {
                 continue;
             }
-            if w <= self.accum[s] && !brush.verb.pulls() {
+            if early_out && w <= self.accum[s] {
                 continue;
             }
-            // ⚠️ **O revezamento carimba `accum = 1` e põe o resultado INTEIRO
-            // no alvo**, e é isso que o faz caber no MESMO aplicador
-            // (`lerp(base, target, 1) == target`). Sem essa identidade haveria
-            // um segundo caminho de escrita de posição — e duas rotas para
-            // *"onde este vértice vai parar"* divergem no dia em que uma delas
-            // ganhar um caso especial. O `base` continua guardado e intocado,
-            // que é o que mantém o undo trivial nas duas leis.
-            self.accum[s] = if relay { 1.0 } else { w };
+            // ⚠️ **Quem carrega o peso no ALVO carimba `accum = 1`**, e é isso
+            // que o faz caber no MESMO aplicador (`lerp(base, target, 1) ==
+            // target`). Sem essa identidade haveria um segundo caminho de
+            // escrita de posição — e duas rotas para *"onde este vértice vai
+            // parar"* divergem no dia em que uma delas ganhar um caso especial.
+            // O `base` continua guardado e intocado, que é o que mantém o undo
+            // trivial nas três leis.
+            self.accum[s] = if unit_accum { 1.0 } else { w };
             self.target[s] = self.compute_target(mesh, brush, dab, &plane, reach, shape, w, v, s);
             self.moved.push(v);
         }

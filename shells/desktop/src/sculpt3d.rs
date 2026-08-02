@@ -13,7 +13,7 @@
 use ph2d_light::LightRig;
 use ph2d_mesh::{Mesh, Multires, Ray};
 use ph2d_mesh_render::{Camera3d, MeshRenderer};
-use ph2d_sculpt3d::{Brush, Dab, Grip, SculptStroke, Symmetry, Verb};
+use ph2d_sculpt3d::{Amount, Brush, Dab, Grip, SculptStroke, Symmetry, Verb};
 
 /// **A DOAÇÃO** — o carimbo, a rasterização e o interruptor de três posições.
 /// Filho (`#[path]`) para alcançar os campos privados da cena; o corte é *o que
@@ -94,88 +94,29 @@ const RADIUS_MIN_PX: f32 = 1.0;
 /// padrão o modelo ocupa 49% da altura, então 1/8 de tela é meio modelo.
 const RADIUS_MAX_FRAC_OF_HEIGHT: f32 = 0.125;
 
-/// A cena está armada? (`PH2D_SCULPT3D_SMOKE` em `1`, `2`, `3` ou `4`.)
-pub(crate) fn smoke_armed() -> bool {
-    matches!(
-        std::env::var("PH2D_SCULPT3D_SMOKE").ok().as_deref(),
-        Some("1" | "2" | "3" | "4")
-    )
-}
-
-/// `=3` — a cena da **REVERSÃO**: um modelo denso que É uma subdivisão.
-pub(crate) fn reversion_scene() -> bool {
-    std::env::var("PH2D_SCULPT3D_SMOKE").ok().as_deref() == Some("3")
-}
-
-/// `=4` — a cena de **FECHAR BURACO**: uma esfera com um pedaço arrancado.
-pub(crate) fn holes_scene() -> bool {
-    std::env::var("PH2D_SCULPT3D_SMOKE").ok().as_deref() == Some("4")
-}
-
-/// A esfera com um FURO — o modelo que chega quebrado.
+/// A zona morta do **Twist**, em pixels de tela.
 ///
-/// ⚠️ **O furo é feito ARRANCANDO faces, não desenhando uma beira**, e é isso que
-/// o torna a fixture certa: a beira resultante é a que uma malha de verdade tem
-/// (um contorno irregular, seguindo a grade da esfera), e não uma que eu
-/// escolhi. Os vértices que ficam sem face nenhuma sobrevivem soltos, como
-/// sobreviveriam num OBJ de terceiro.
-fn punctured_sphere() -> ph2d_mesh::Mesh {
-    let sphere = ph2d_mesh::shapes::uv_sphere(24, 32, 1.0);
-    let keep: Vec<ph2d_mesh::Face> = sphere
-        .faces()
-        .iter()
-        .copied()
-        .filter(|f| {
-            let vs = f.verts();
-            let n = vs.len() as f32;
-            let mut c = [0.0f32; 3];
-            for &v in vs {
-                let p = sphere.positions()[v as usize];
-                for k in 0..3 {
-                    c[k] += p[k] / n;
-                }
-            }
-            // Uma calota lateral, bem visível no enquadramento padrão.
-            !(c[0] > 0.45 && c[1] > 0.15)
-        })
-        .collect();
-    ph2d_mesh::Mesh::from_parts(sphere.positions().to_vec(), keep)
-        .expect("arrancar face não inventa índice")
-}
+/// ⚠️ **Ela não é conforto, é a fronteira onde a grandeza deixa de existir:**
+/// perto da âncora a direção *âncora → cursor* é RUÍDO, e um tremor de um pixel
+/// a um pixel de distância vale meio radiano. Trinta é o número do SculptGL
+/// (`Twist.js:92`), e como todo número de gesto deste arquivo ele é decisão de
+/// **smoke** — não é teto de recurso nenhum.
+const TWIST_DEADZONE_PX: f32 = 30.0;
 
-/// A malha com que cada cena abre.
-///
-/// ⚠️ **Porta única, e ela existe para o gate.** A cena `=3` só significa alguma
-/// coisa se a malha dela de fato reverter, e isso é um fato sobre a GEOMETRIA
-/// que nenhum arch-gate de fonte enxerga. Um gate que reconstruísse a malha por
-/// conta própria estaria medindo outra malha no dia em que esta mudasse.
-#[must_use]
-pub(crate) fn smoke_mesh() -> ph2d_mesh::Mesh {
-    if holes_scene() {
-        return punctured_sphere();
-    }
-    if reversion_scene() {
-        // ⚠️ **Ela é DUAS vezes subdividida de propósito**: um modelo denso que
-        // chega pronto não tem um nível embaixo, e a cena só demonstra a
-        // reversão se houver mais de um para reconstruir. A esfera UV mistura
-        // quads no corpo com triângulos nos polos, que é o caso que exercita os
-        // dois ramos do reconhecedor de uma vez.
-        let coarse = ph2d_mesh::shapes::uv_sphere(12, 18, 1.0);
-        ph2d_mesh::subdivide(&ph2d_mesh::subdivide(&coarse))
-    } else {
-        ph2d_mesh::shapes::uv_sphere(96, 144, 1.0)
-    }
-}
+/// Quanto de escala vale um pixel de arrasto horizontal no **Local Scale**
+/// (`+1` dobra o raio da pegada). Cem pixels dobram; decisão de smoke, como o
+/// [`ORBIT_RAD_PER_PX`].
+const SCALE_PER_PX: f32 = 0.01;
 
-/// `=2` — a cena da **DOAÇÃO**: a esfera E uma tela branca para pintar.
-///
-/// ⚠️ Cena própria, e não um passo a mais na `=1`: julgar a escultura e julgar a
-/// doação são duas perguntas, e a segunda precisa de uma tela que a primeira não
-/// quer ver. Misturá-las faria o smoke do barro abrir com um retângulo branco
-/// atrás dele sem nada explicando por quê.
-pub(crate) fn donation_scene() -> bool {
-    std::env::var("PH2D_SCULPT3D_SMOKE").ok().as_deref() == Some("2")
-}
+/// **AS CENAS DO SMOKE** — a fixture de cada uma. Filho (`#[path]`) pelo motivo
+/// dos outros três: o corte é de responsabilidade, e a lista de cenas cresce uma
+/// entrada por wave.
+#[path = "sculpt3d_scenes.rs"]
+mod scenes;
+
+pub(crate) use scenes::{
+    donation_scene, holes_scene, reversion_scene, smoke_armed, smoke_mesh, turn_scene,
+};
 
 /// As quatro operações de máscara — ver [`Sculpt3dScene::mask_op`].
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -205,6 +146,23 @@ enum Drag {
     Sculpt,
 }
 
+/// **O ângulo VARRIDO desde o pen-down**, acumulado evento a evento.
+///
+/// ⚠️ **Acumulado, e não um `atan2` da direção inicial à atual** — este é o
+/// único jeito de uma varredura passar de meia volta. Um ângulo com sinal
+/// satura em `±π`, então a 181° ele voltaria a `−179°` e a torção **inverteria**
+/// no meio do gesto. Somando os deltas (que são pequenos) o total cresce sem
+/// teto, e a soma é EXATA: ângulos se somam, então subdividir o caminho não
+/// muda o resultado — que é o que o [`Grip::Turn`] exige do gesto que o
+/// alimenta.
+struct TwistSweep {
+    /// A última direção unitária *âncora → cursor*, em componentes de CÂMERA.
+    /// `None` enquanto o cursor está dentro da zona morta: sem direção não há
+    /// delta a somar, e a próxima saída re-semeia sem inventar um salto.
+    last: Option<[f32; 2]>,
+    total: f32,
+}
+
 /// A cena 3D viva: a malha, a câmera, o pincel e o pipeline que a desenha.
 pub(crate) struct Sculpt3dScene {
     /// **A PILHA de níveis**, e não uma malha — ver [`Multires`]. O nível 0 é a
@@ -232,6 +190,9 @@ pub(crate) struct Sculpt3dScene {
     /// o [`Grip::Hold`] mede o puxão total até aqui, o [`Grip::Hook`] mede o
     /// incremento entre dois passos do caminho.
     grab: Option<([f32; 3], (f32, f32))>,
+    /// **O ângulo já varrido** pelo gesto do Twist — ver [`TwistSweep`]. `None`
+    /// fora de um gesto; o pen-down o zera.
+    twist: Option<TwistSweep>,
     symmetry: Symmetry,
     /// **O rig de luz do artista** — as mesmas quatro lâmpadas que acendem a tinta
     /// do Painter (`ph2d-light`).
@@ -284,6 +245,7 @@ impl Sculpt3dScene {
             radius_px: DEFAULT_RADIUS_PX,
             stroke_anchor: [0.0, 0.0],
             grab: None,
+            twist: None,
             // ⚠️ **DESLIGADA por default, e é decisão do smoke.** O ZBrush
             // nasce com espelho ligado — e MOSTRA isso. Aqui o artista clicava
             // de um lado e via uma segunda protuberância do outro, sem nada na
@@ -459,6 +421,81 @@ impl Sculpt3dScene {
             &Dab::hooking(c1, brush.radius, eye, step),
             self.symmetry,
         );
+        Self::mesh_changed(
+            &mut self.dirty,
+            &mut self.edits,
+            self.stroke.last_gpu_dirty(),
+        );
+    }
+
+    /// **O ângulo varrido em torno da âncora**, do pen-down até aqui.
+    ///
+    /// `None` quando o gesto ainda não começou: dentro da zona morta e com nada
+    /// varrido, não há torção a aplicar — e um dab de ângulo zero pagaria a
+    /// pegada inteira (consulta, refit, upload) para não mover um vértice.
+    ///
+    /// ⚠️ **O sinal é o da TELA, e a conversão mora aqui:** `y` de janela cresce
+    /// para BAIXO e o eixo `up` da câmera aponta para CIMA, então a componente
+    /// vertical entra NEGADA — a mesma negação que o `screen_delta_to_world`
+    /// faz, e pelo mesmo motivo. Com ela, varrer no sentido anti-horário na tela
+    /// dá ângulo positivo em torno do eixo que aponta para o observador, que é
+    /// o que o artista vê o barro fazer.
+    fn swept_angle(&mut self, from: (f32, f32), x: f32, y: f32) -> Option<f32> {
+        let d = [x - from.0, from.1 - y];
+        let len = (d[0] * d[0] + d[1] * d[1]).sqrt();
+        let g = self.twist.get_or_insert(TwistSweep {
+            last: None,
+            total: 0.0,
+        });
+        if len < TWIST_DEADZONE_PX {
+            // O total FICA: o barro não desfaz a torção porque o dedo passou
+            // perto do pivô. O que se perde é a referência de direção.
+            g.last = None;
+            return if g.total == 0.0 { None } else { Some(g.total) };
+        }
+        let dir = [d[0] / len, d[1] / len];
+        if let Some(p) = g.last {
+            g.total += (p[0] * dir[1] - p[1] * dir[0]).atan2(p[0] * dir[0] + p[1] * dir[1]);
+        }
+        g.last = Some(dir);
+        Some(g.total)
+    }
+
+    /// **O gesto de quem GIRA** ([`Grip::Turn`]): a âncora fica onde foi presa e
+    /// o que cresce é o ângulo varrido (ou a fração de escala).
+    ///
+    /// ⚠️ **O [`Amount`] chega por PARÂMETRO, e não é cerimônia:** ele vem do
+    /// `match` sobre o grip que o chamador já faz, então as duas espécies de
+    /// gesto são exaustivas aqui dentro — um terceiro `Amount` **não compila**
+    /// até alguém dizer que gesto o produz. Derivá-lo do verbo aqui abriria a
+    /// segunda porta para a mesma pergunta.
+    ///
+    /// ⚠️ **O EIXO é o raio que PEGOU o barro, não o raio de agora.** O cursor
+    /// varre um círculo em volta da âncora, então o raio que passa por ele
+    /// aponta para uma direção que muda alguns graus ao longo da varredura — e a
+    /// torção passaria a ser em torno de um eixo que bamboleia. O original
+    /// congela o dele no `startSculpt` (`Twist.js:31`) pelo mesmo motivo. Aqui
+    /// ele nem precisa ser guardado: a câmera não se mexe durante um arrasto de
+    /// escultura, então o raio do pixel de pen-down **é** o eixo congelado.
+    fn turn_at(&mut self, kind: Amount, x: f32, y: f32) {
+        let Some((at, from)) = self.grab else {
+            return;
+        };
+        let brush = self.armed_brush(at);
+        let eye = self.ray_at(from.0, from.1).dir();
+        let dab = match kind {
+            Amount::Angle => {
+                let Some(radians) = self.swept_angle(from, x, y) else {
+                    return;
+                };
+                Dab::turning(at, brush.radius, eye, radians)
+            }
+            // Arrastar para a DIREITA cresce. É o `mouseX - lastMouseX` do
+            // original, com o total no lugar do incremento.
+            Amount::Fraction => Dab::scaling(at, brush.radius, eye, (x - from.0) * SCALE_PER_PX),
+        };
+        self.stroke
+            .dab(self.stack.mesh_mut(), &brush, &dab, self.symmetry);
         Self::mesh_changed(
             &mut self.dirty,
             &mut self.edits,

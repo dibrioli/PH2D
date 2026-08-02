@@ -325,7 +325,7 @@ fn the_hook_walks_the_path_and_hands_each_step_its_own_increment() {
 }
 
 /// ⚠️ **O `match` do arrasto é EXAUSTIVO sobre o [`Grip`]**, e não uma cascata de
-/// predicados. Um quarto grip não pode cair no `else` do último `if` e nascer se
+/// predicados. Um grip novo não pode cair no `else` do último `if` e nascer se
 /// comportando como um carimbo — ele tem de deixar de compilar até alguém dizer
 /// o que significa aqui.
 #[test]
@@ -333,7 +333,7 @@ fn the_drag_asks_the_grip_and_answers_every_one_of_them() {
     let src = sculpt_src();
     let mv = function_body(&src, "sculpt3d_pointer_move");
     let sculpting = braced_block(&mv, "Drag::Sculpt => match scene.brush.verb.grip()");
-    for arm in ["Grip::Hold", "Grip::Hook", "Grip::Stamp"] {
+    for arm in ["Grip::Hold", "Grip::Hook", "Grip::Turn", "Grip::Stamp"] {
         assert!(
             sculpting.contains(arm),
             "o arrasto tem de responder a {arm} explicitamente"
@@ -341,6 +341,129 @@ fn the_drag_asks_the_grip_and_answers_every_one_of_them() {
     }
     assert!(
         !sculpting.contains(" _ =>"),
-        "um braço curinga faria o quarto grip nascer se comportando como carimbo, em silêncio"
+        "um braço curinga faria o grip novo nascer se comportando como carimbo, em silêncio"
     );
+}
+
+/// ⚠️ **Quem GIRA não percorre o caminho, e o eixo é o raio do PEN-DOWN.**
+///
+/// Os dois são invisíveis a todo gate de unidade — quem escolhe percorrer e quem
+/// escolhe o eixo é a shell —, e os dois são defeitos silenciosos: o walk daria
+/// N dabs com o mesmo total no mesmo lugar, e um eixo re-derivado do cursor
+/// bambolearia alguns graus ao longo da varredura, porque o cursor está
+/// justamente andando em círculo.
+#[test]
+fn the_turn_takes_its_axis_from_the_ray_that_grabbed_the_clay() {
+    let src = sculpt_src();
+    let mv = function_body(&src, "sculpt3d_pointer_move");
+    let turning = match_arm(&mv, "Grip::Turn(kind) =>");
+    assert!(
+        turning.contains("turn_at(kind"),
+        "o arrasto tem de entregar o Amount que o grip carrega, e não re-derivá-lo do verbo"
+    );
+    assert!(
+        !turning.contains("walk("),
+        "um gesto de giro não é um caminho a percorrer: o alvo é função do TOTAL varrido"
+    );
+
+    let turn = function_body(&src, "turn_at");
+    assert!(
+        turn.contains("let Some((at, from)) = self.grab"),
+        "a âncora tem de ser LIDA do estado, como a do Grab"
+    );
+    // ⚠️ **`from`, e não `x, y`** — é a linha inteira deste gate.
+    assert!(
+        turn.contains("self.ray_at(from.0, from.1).dir()"),
+        "o eixo sai do pixel do PEN-DOWN; derivá-lo do cursor faz o eixo bambolear"
+    );
+    assert!(
+        !turn.contains("raycast("),
+        "girar não re-pica: sair do modelo no meio da varredura não interrompe a torção"
+    );
+    // Os dois construtores que NOMEIAM a unidade do gesto.
+    assert!(
+        turn.contains("Dab::turning(") && turn.contains("Dab::scaling("),
+        "cada Amount chega ao dab pelo construtor que declara a unidade dele"
+    );
+}
+
+/// ⚠️ **O ângulo varrido é ACUMULADO, e sem isso a torção inverte sozinha a 180°.**
+///
+/// Um ângulo com sinal satura em `±π`: medido da direção inicial à atual, a 181°
+/// ele volta a `−179°` e o barro **desanda** no meio do gesto. Somando os deltas
+/// (pequenos por construção) o total cresce sem teto — e a soma é exata, então o
+/// gesto continua sendo um fato do que a mão varreu.
+#[test]
+fn the_swept_angle_accumulates_instead_of_saturating_at_half_a_turn() {
+    let src = sculpt_src();
+    let body = function_body(&src, "swept_angle");
+    assert!(
+        body.contains("g.total +=") && body.contains("atan2("),
+        "o total tem de SOMAR o delta de cada evento"
+    );
+    // A zona morta: perto da âncora a direção é ruído, e o que se perde ali é a
+    // REFERÊNCIA, nunca o que já foi varrido.
+    assert!(
+        body.contains("TWIST_DEADZONE_PX"),
+        "a zona morta tem de existir: a um pixel da âncora um tremor vale meio radiano"
+    );
+    let dead = braced_block(&body, "if len < TWIST_DEADZONE_PX");
+    assert!(
+        dead.contains("g.last = None"),
+        "dentro dela a referência de direção morre, senão a saída seguinte soma um salto"
+    );
+    assert!(
+        !dead.contains("g.total = 0"),
+        "e o que já foi varrido FICA: o barro não desfaz a torção porque o dedo passou perto do pivô"
+    );
+    // O gesto morre com o gesto: um traço novo não começa torcido.
+    assert!(
+        function_body(&src, "sculpt3d_pointer_down").contains("twist = None"),
+        "o pen-down tem de zerar o ângulo varrido"
+    );
+}
+
+/// ⚠️ **TODO verbo tem de ser alcançável pelo teclado**, e este gate nasceu
+/// vermelho: o **Magnify** não tinha tecla nenhuma. Onze verbos de carimbo
+/// queriam dez dígitos, ele foi o que transbordou, e nada disse — existia no
+/// enum, tinha braço de alvo, era varrido por todos os gates de verbo, e o
+/// artista simplesmente não conseguia pegá-lo.
+///
+/// ⚠️ **A lista sai do PRODUTO, nunca do gate.** Ele lê o `Verb::ALL` da fonte do
+/// kernel: uma lista escrita à mão aqui ficaria velha exatamente no commit em
+/// que o verbo dezessete entrasse, que é o único momento em que este gate tem
+/// alguma coisa a dizer.
+#[test]
+fn every_verb_is_reachable_from_the_keyboard() {
+    let brush = std::fs::read_to_string(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../crates/ph2d-sculpt3d/src/brush.rs"
+    ))
+    .expect("a fonte do kernel");
+    // ⚠️ **Ancorado no `impl Verb`, e não no primeiro `pub const ALL:`** — o
+    // `Falloff` tem um do mesmo nome e vem ANTES no arquivo. O controle abaixo
+    // pegou isso na primeira corrida, lendo `["Smooth", "Sphere", "Sharper", …]`.
+    let imp = brush.find("impl Verb {").expect("o `impl Verb`");
+    let at = imp + brush[imp..].find("pub const ALL:").expect("o Verb::ALL");
+    let body = &brush[at..][..brush[at..].find("];").expect("o fim do ALL")];
+    let verbs: Vec<&str> = body
+        .split("Self::")
+        .skip(1)
+        .map(|s| s.split(&[',', '\n'][..]).next().unwrap_or("").trim())
+        .filter(|s| !s.is_empty())
+        .collect();
+    // O controle: sem ele um `ALL` que o parser não entendesse deixaria o gate
+    // verde sobre uma lista VAZIA.
+    assert!(
+        verbs.len() >= 16,
+        "não consegui ler o Verb::ALL (achei {verbs:?})"
+    );
+
+    let keys = function_body(&sculpt_src(), "sculpt3d_key");
+    for v in verbs {
+        assert!(
+            keys.contains(&format!("Verb::{v}")),
+            "o verbo {v} não tem tecla: ele existe, tem alvo, e o artista não consegue pegá-lo"
+        );
+    }
 }

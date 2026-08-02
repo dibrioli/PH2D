@@ -39,6 +39,6 @@ pub mod mask_ops;
 mod spacing;
 mod stroke;
 
-pub use brush::{Brush, Falloff, Grip, REACH_FRACTION, Symmetry, Verb};
+pub use brush::{Amount, Brush, Falloff, Grip, REACH_FRACTION, Symmetry, Verb};
 pub use spacing::{MIN_SPACING_FRACTION, Walk, min_spacing, walk};
 pub use stroke::{Dab, SculptStroke};

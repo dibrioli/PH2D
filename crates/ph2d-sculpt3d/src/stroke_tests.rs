@@ -40,15 +40,24 @@ fn dab_at(center: [f32; 3], radius: f32) -> Dab {
 /// nada*. O gate do `honours_invert` pegou isso sozinho no dia em que o `Move`
 /// entrou no enum — ele se recusa a comparar dois dabs inertes —, e enumerar a
 /// exceção em cada gate é o que apodrece quando chega o próximo verbo com
-/// gesto (Snake Hook, Twist, Local Scale).
+/// gesto.
+///
+/// ⚠️ **Exaustiva sobre o [`crate::Grip`], e não um `if verb.anchors()`:** cada
+/// grip pede um gesto de espécie DIFERENTE (um vetor, um ângulo, uma fração), e
+/// um `else` genérico daria a um grip novo o gesto de outro — a fixture mediria
+/// vácuo com todos os gates verdes. Assim ela **não compila** até alguém dizer
+/// com que gesto o grip novo se exercita.
 fn dab_for(verb: Verb, center: [f32; 3], radius: f32) -> Dab {
-    if verb.pulls() {
+    let base = dab_at(center, radius);
+    match verb.grip() {
+        crate::Grip::Stamp => base,
         // Um puxão tangente à superfície: ele move de fato, e não empurra o
         // vértice para dentro (o que confundiria um gate de deslocamento).
-        let base = dab_at(center, radius);
-        Dab::pulling(center, radius, base.eye, [0.0, radius * 0.5, 0.0])
-    } else {
-        dab_at(center, radius)
+        crate::Grip::Hold | crate::Grip::Hook => {
+            Dab::pulling(center, radius, base.eye, [0.0, radius * 0.5, 0.0])
+        }
+        crate::Grip::Turn(crate::Amount::Angle) => Dab::turning(center, radius, base.eye, 1.0),
+        crate::Grip::Turn(crate::Amount::Fraction) => Dab::scaling(center, radius, base.eye, 0.5),
     }
 }
 
@@ -523,6 +532,11 @@ mod verb_border;
 /// cabeçalho dele.
 #[path = "verb_hook_tests.rs"]
 mod verb_hook;
+
+/// O Twist e o Local Scale, que giram em torno de uma âncora — e o ESPELHO, que
+/// eles obrigaram a alcançar o dab inteiro. Ver o cabeçalho dele.
+#[path = "verb_turn_tests.rs"]
+mod verb_turn;
 
 /// ⚠️ **RED-FIRST da W4.2, e o defeito é de COSTURA e não de kernel.** Um traço
 /// de máscara escreve um canal por vértice e **não move geometria**, então ele

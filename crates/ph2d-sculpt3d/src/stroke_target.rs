@@ -144,8 +144,9 @@ impl SculptStroke {
         // ⚠️ **Ele é PASSADO e não recomputado**, e o motivo está no comentário
         // do `w` em `stroke.rs`: derivá-lo aqui (`shape × strength × pressure`)
         // re-associa o produto de três fatores, e **30,4% dos triplos divergem
-        // até um ulp**. Só o `Verb::SnakeHook` o lê — os outros treze compõem o
-        // alvo sem peso, e é o `accum` que os atenua.
+        // até um ulp**. Leem-no os TRÊS verbos cujo alvo já é a posição final
+        // (`SnakeHook`, `Twist`, `LocalScale` — os que carimbam `accum = 1`); os
+        // outros treze compõem o alvo sem peso, e é o `accum` que os atenua.
         w: f32,
         v: u32,
         s: usize,
@@ -252,6 +253,37 @@ impl SculptStroke {
             // o aplicador passar a escrever DENTRO do laço, esta é a linha que
             // deixa de valer.
             Verb::SnakeHook => add_vec(mesh.positions()[v as usize], dab.pull, w),
+            // **O TWIST** — gira o `pre` em torno da reta que passa pela âncora
+            // na direção de quem olha. Ver [`Grip::Turn`].
+            //
+            // ⚠️ **O peso entra no ÂNGULO, e é essa linha inteira.** O aplicador
+            // recebe `accum = 1`, então o que sai daqui é a posição FINAL — e
+            // tem de ser, porque interpolar entre `base` e a posição girada
+            // cortaria pela corda do arco e encolheria o barro na direção da
+            // âncora quanto maior o giro. Com `θ·w` o vértice anda **sobre** a
+            // circunferência, e a distância dele ao eixo é a mesma no fim.
+            //
+            // ⚠️ **É por isso que o peso é constante ao longo do gesto:** a
+            // distância sai do `pre` congelado e uma rotação em torno de um eixo
+            // que passa pela âncora **preserva** a distância à âncora — as duas
+            // metades concordam por construção, e não por sorte.
+            Verb::Twist => rotate_about(base, dab.center, dab.eye, dab.amount * w),
+            // **O LOCAL SCALE** — afasta (ou aproxima) o `pre` da âncora.
+            //
+            // ⚠️ **O fator é clampado em ZERO, e o limite não é um palpite:** é
+            // onde a operação deixa de estar definida. Um fator negativo não
+            // encolhe mais — ele **reflete** a pegada através da âncora, virando
+            // aquele pedaço da malha do avesso (normais para dentro, faces
+            // invertidas). Colapsar na âncora é o fim honesto do gesto.
+            Verb::LocalScale => {
+                let f = (1.0 + dab.amount * w).max(0.0);
+                let d = [
+                    base[0] - dab.center[0],
+                    base[1] - dab.center[1],
+                    base[2] - dab.center[2],
+                ];
+                add_vec(dab.center, d, f)
+            }
         }
     }
 
@@ -325,6 +357,35 @@ fn add(p: [f32; 3], dir: [f32; 3], k: f32) -> [f32; 3] {
 
 fn add_vec(p: [f32; 3], v: [f32; 3], k: f32) -> [f32; 3] {
     [p[0] + v[0] * k, p[1] + v[1] * k, p[2] + v[2] * k]
+}
+
+/// `p` girado de `angle` radianos em torno da reta que passa por `pivot` na
+/// direção `axis` — **Rodrigues**, e o eixo tem de chegar UNITÁRIO
+/// ([`Dab::turning`] é quem garante).
+///
+/// ⚠️ **Dois transcendentais por vértice por dab**, e é o único ponto deste
+/// módulo que os paga (o falloff é polinomial e a raiz é instrução de hardware).
+/// Um `sin_cos` é UMA chamada para os dois — pedir `sin` e `cos` separados
+/// dobraria a redução de argumento. O preço está medido na sonda
+/// `measure_brush_kernel`; ele não é aproximável por tabela, porque quantizar o
+/// ângulo faria a torção sair em degraus e interpolar entre nós de uma tabela
+/// devolveria uma rotação de norma menor que 1 — o encolhimento, de novo, por
+/// outra porta.
+fn rotate_about(p: [f32; 3], pivot: [f32; 3], axis: [f32; 3], angle: f32) -> [f32; 3] {
+    let (s, c) = angle.sin_cos();
+    let v = [p[0] - pivot[0], p[1] - pivot[1], p[2] - pivot[2]];
+    let dot = axis[0] * v[0] + axis[1] * v[1] + axis[2] * v[2];
+    let cross = [
+        axis[1] * v[2] - axis[2] * v[1],
+        axis[2] * v[0] - axis[0] * v[2],
+        axis[0] * v[1] - axis[1] * v[0],
+    ];
+    let k = dot * (1.0 - c);
+    [
+        pivot[0] + v[0] * c + cross[0] * s + axis[0] * k,
+        pivot[1] + v[1] * c + cross[1] * s + axis[1] * k,
+        pivot[2] + v[2] * c + cross[2] * s + axis[2] * k,
+    ]
 }
 
 fn signed_distance(p: [f32; 3], plane: &PlaneFit) -> f32 {

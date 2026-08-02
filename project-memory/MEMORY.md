@@ -81,6 +81,7 @@
 - [Capacidade sem PORTA passa em todo gate](feedback_a_capability_without_a_door_passes_every_gate.md) — grepe quem ESCREVE o campo, nao quem le
 - [Costura de UI (12)](reference_topic_ui_seam_discipline.md) — pintado/populado/clicado · duas portas · dimmed despacha · default é lei
 - [Gate de identidade não vê defeito no CORPO compartilhado](feedback_an_identity_gate_cannot_see_a_defect_in_the_shared_body.md) — rota A==rota B só prova o walker; o corpo quer oráculo externo
+- [Largar a POSSE cega todo comparador daquele lado](feedback_dropping_ownership_blinds_every_comparator_that_reads_that_side.md) — elidir um dado faz o detector que o lê responder "mudou" para sempre
 - [Ganho por-passe passa pela CADÊNCIA](feedback_a_per_pass_gain_becomes_a_product_gain_only_through_the_cadence.md) — 1,56× virou 1,10×; e razão não se transporta entre cenas
 - [Instrumento MUDO lê-se como resultado](feedback_a_silenced_instrument_reads_as_a_result.md) — zero ≠ não-medido; gateie a presença de cada balde
 - [Doc-comment que nomeia um `cfg` EXPIRA](feedback_a_doc_comment_naming_a_cfg_expires_grep_the_attribute.md) — grepe o atributo; e `cargo test --release` LIGA `cfg(test)`

@@ -155,10 +155,20 @@ errada.
 ## 11 — Aberto, com número
 
 - **O `pour_canvas_wet` ainda caminha o rect CUMULATIVO** uma vez por quadro ⇒ o custo por quadro cresce
-  **1,23× / 1,32× / 1,51×** do 1º para o 4º quarto (traços de 24/48/96 quadros). A cura tem a mesma
-  forma, mas **a premissa não foi verificada** (o filtro de dono por recência pode mudar a elegibilidade
-  de um texel no meio do traço) ⇒ wave própria, com gate de byte-identidade de `canvas_wet`. Sonda
-  pronta: `measure_whether_the_frame_cost_grows_along_the_stroke`.
+  **1,23× / 1,32× / 1,51×** do 1º para o 4º quarto (traços de 24/48/96 quadros). ✅ **A premissa foi
+  VERIFICADA em 2026-08-02** (doc 28 §5.60, lendo os escritores em vez de supor): `stroke_coverage` e
+  `wet_styles.owner` só são mutados **por-dab**, os dois `zip` de plano inteiro do acumulador são
+  **backfills únicos** (guardados por `len() != fw*fh`), e o pour é **idempotente** (max-blend) ⇒ um
+  texel fora do rect do QUADRO não pode ter mudado, e o rect do quadro basta **byte a byte**. A cura é a
+  lei do S1/S2 (*a janela vem de quem ESCREVE*): o acumulador declara `wet_pour_dirty` por-dab e o pour o
+  consome. ⚠️ **Segue não construída de propósito** — perf sem número de PRODUTO não é wave, e a máquina
+  estava a `load average 27,7`. Sondas prontas: `measure_whether_the_frame_cost_grows_along_the_stroke`
+  (tempo, exige box calmo) e `measure_the_area_the_wash_walks_per_frame` (**contagem, vale sob carga**).
+- **E a dependência de TELA é por TRAÇO, não por quadro** (achada na mesma varredura): o
+  `freeze_watercolor_ground` do pen-down faz **três varreduras de plano inteiro** — backdrop ~67 MB +
+  substrato ~67 MB + soak ~16 MB a 4096², um quarto disso a 2048². ⚠️ O `wet_substrate` é preenchido
+  **preguiçosamente** (só sobre a região de saída do composite), então o `NaN` de tela inteira invalida
+  pixels que **nunca foram preenchidos** — mesma cura, um plano adiante.
 - **O WARP segue sendo 56%** do que a aquarela cobra sobre o Digital e **não tem caminho de CPU**: os 9
   taps de AA foram a CURA da borda serrilhada e cortá-los está fora de discussão. Aproximar o warp
   dentro do texel é a classe que este repo já mediu e **rejeitou duas vezes** ⇒ exige oráculo de

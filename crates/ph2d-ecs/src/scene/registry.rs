@@ -294,6 +294,10 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // continuaria toda lá, e o recorte simplesmente teria evaporado. É o modo de falha mais
     // enganoso da lista: nada some, tudo aparece, e o desenho está errado.
     reg.register::<crate::VecFrame>("ph2d::ecs::VecFrame");
+    // Os BINDINGS de token. Sem o registro, reabrir o projeto devolveria a forma com o LITERAL
+    // que estava debaixo do token — a arte apareceria inteira, com a cor de antes de o artista
+    // bindar, e nada indicaria que uma referência tinha evaporado.
+    reg.register::<crate::VecBindings>("ph2d::ecs::VecBindings");
     // O vínculo TEXTO -> caminho-guia. Mesma razão de todos os irmãos, e mais forte: sem o
     // registro, um Ctrl+Z (ou reabrir o projeto) devolveria o texto DESLIGADO do caminho, reto,
     // no meio da cena -- e o caminho continuaria lá, parecendo certo.
@@ -372,7 +376,8 @@ mod tests {
         // + 1 linha de corte (VecCutPath, plano 25 §7)
         // + 1 simetria viva (VecSymmetry, plano 25 §9 W6.3)
         // + 1 booleana viva (VecBoolGroup, plano UI/UX W1)
-        // + 1 moldura (VecFrame, plano UI/UX W0).
+        // + 1 moldura (VecFrame, plano UI/UX W0)
+        // + 1 tabela de bindings de token (VecBindings, plano UI/UX W4).
         //
         // **Este número existe para doer.** Um componente que não passa por aqui é
         // DESCARTADO em silêncio pelo snapshot — o undo e o save o perdem, e o bug só
@@ -384,7 +389,8 @@ mod tests {
         // `VecConnector`, e as duas linhas, sozinhas, diziam 27 — por motivos diferentes. A
         // árvore combinada tem 28. Escolher "um dos lados" aqui é o erro que deixa o
         // workspace vermelho com dois merges verdes.
-        assert_eq!(reg.len(), 43);
+        assert_eq!(reg.len(), 44);
+        assert!(reg.get_by_name("ph2d::ecs::VecBindings").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecCutPath").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecSymmetry").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecPatternPath").is_some());

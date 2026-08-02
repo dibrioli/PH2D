@@ -301,3 +301,65 @@ fn encode_cost_by_n() {
         );
     }
 }
+
+/// **O `dispatch` HONRA a tinta dos tokens** (plano UI/UX §4/W4).
+///
+/// ⚠️ Este gate existe porque uma mutação real sobreviveu a todos os outros: os gates de unidade
+/// do `painted()` e do resolvedor chamam a porta DIRETAMENTE, então trocar `path.painted(bound)`
+/// de volta por `path` no laço de desenho deixava os sete verdes e **todo binding inerte na tela**.
+/// A costura entre a porta e o desenho é um fato próprio, e precisa de um oráculo próprio.
+///
+/// O oráculo não é *"os encodes diferem"* (verdade em qualquer mudança), e sim a IDENTIDADE:
+/// desenhar a forma **bindada** ao token tem de produzir exatamente o mesmo encode que desenhar
+/// uma forma cujo LITERAL já é aquela cor.
+#[test]
+fn the_dispatch_draws_the_token_colour_not_the_literal() {
+    use ph2d_vec_scene::{BoundPaint, Paint, Rgba8};
+
+    let token = Rgba8::new(11, 222, 33, 255);
+    let encode = |scene: &VecScene, view: &VecViewState| {
+        let mut t = VectorScene::new();
+        dispatch(
+            scene,
+            view,
+            &VecXforms::default(),
+            &LiveGeometry::new(),
+            &FxImages::new(),
+            Affine::IDENTITY,
+            &mut t,
+        );
+        t.inner().encoding().draw_data.clone()
+    };
+
+    // (a) O literal, sem binding: a referência de que a mutação NÃO pode ser igual.
+    let (scene, id) = one_square();
+    let literal = encode(&scene, &VecViewState::default());
+
+    // (b) A mesma forma, BINDADA ao token.
+    let bound_view = VecViewState {
+        bound: vec![BoundPaint {
+            path: id,
+            fill: Some(token),
+            stroke: None,
+        }],
+        ..VecViewState::default()
+    };
+    let bound = encode(&scene, &bound_view);
+
+    // (c) Uma forma cujo LITERAL já é a cor do token — o alvo.
+    let (mut target_scene, target_id) = one_square();
+    if let Some(p) = target_scene.path_mut(target_id) {
+        p.fill = Some(Paint::Solid(token));
+    }
+    let target = encode(&target_scene, &VecViewState::default());
+
+    assert_ne!(
+        bound, literal,
+        "o `dispatch` desenhou o LITERAL — o binding nao chegou ao desenho (o laco perdeu o \
+         `painted()`), e os gates da porta continuam verdes"
+    );
+    assert_eq!(
+        bound, target,
+        "a forma bindada tem de encodar exatamente como a forma cujo literal ja' e' a cor do token"
+    );
+}

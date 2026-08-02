@@ -41,6 +41,8 @@ mod recook;
 
 /// Pilha de z + recorte de copy/paste. A ÁRVORE de objetos é a Hierarchy do
 /// editor (ADR-0110): nome/visibilidade/trava/parentesco são da entidade ECS.
+mod paint_bind;
+pub use paint_bind::BoundPaint;
 mod structure;
 pub use structure::{VecClip, VecClipSpan, VecViewState};
 

@@ -479,7 +479,83 @@ que estica; redimensionar a moldura de telefone para desktop.
 
 ---
 
-### W4 — OS TOKENS CHEGAM AO DOCUMENTO
+### W4a — OS TOKENS CHEGAM AO DOCUMENTO ✅ **CONSTRUÍDA (2026-08-02)**
+
+> A metade **(a)** desta wave — *a referência no documento* — shipou. As metades **(b)** (a tabela
+> autorável: modos como DADO, aliases, math, ciclo, DTCG) e **(c)** (`PropKind::Token`, o animável)
+> **não**, e o porquê está no fim desta secção.
+
+⚠️ **O censo do §1.3.1 estava certo e a construção o levou mais longe: `ColorToken::resolve(theme)`
+já ERA a porta única**, com 80 folhas chaveadas por string kebab que casa com o JSON. A wave só
+precisou da **inversa** — `ColorToken::from_key`, gerada pela MESMA macro que gera a `key()`, e é
+isso que impede as duas de discordarem — mais `ColorToken::ALL`, que faz o picker ser DADO.
+
+⚠️ **E o plano supunha construir o seletor de modo; ele JÁ EXISTE.** A tecla **`M`** cicla
+Forge→Workshop→Sunstone→Blueprint em runtime (`input_handlers.rs`), com toast, e todo leitor de
+tema lê `hero.theme` por frame. A frase *"trocar de modo `Forge → Sunstone` re-veste o card **e o
+app inteiro**"* do smoke abaixo é literal, e não precisou de uma linha de UI nova.
+
+**As três portas únicas:**
+
+| Pergunta | Porta |
+|---|---|
+| *Que cor tem este token, neste modo?* | `ph2d_tokens::ColorToken::from_key` + `.resolve(theme)` — três consumidores (o resolvedor, o painel, os gates) |
+| *Que tinta esta forma desenha?* | **`VecPath::painted(&bound) -> Cow`** — o irmão EXACTO do `cooked()` (ADR-0121), agora na TINTA |
+| *Que propriedade segue um token?* | `ph2d_ecs::VecBindings` — tabela **LATERAL**, nunca um campo em `Paint`/`StrokeSpec` |
+
+⚠️ **O `Cow` é a peça que torna a wave barata:** sem binding ele devolve `Borrowed` — o mesmo
+ponteiro, zero cópia — e por isso a porta pôde ser ligada no ponto único de desenho sem mover um
+byte de nenhum documento que já existe. É literalmente o que permitiu ao ADR-0121 ligar o cozido em
+TODO consumidor de geometria.
+
+⚠️ **A chave é o NOME do token, nunca o índice.** Guardar o índice do variant amarraria todo
+projeto salvo à ORDEM da lista. Corolário que a wave seguinte colhe: quando a tabela virar
+autorável, os tokens do ARTISTA entram **sem migração** — a chave já é o endereço.
+
+⚠️ **Preenchimento e traço não se comportam igual, e o motivo é geometria:** um `Paint::Solid`
+descreve um preenchimento por INTEIRO (bindá-lo numa forma sem preenchimento é autoria completa),
+enquanto um traço precisa também de LARGURA — então o token do traço **pinta o traço que existe** e
+nunca inventa um. É por isso que a row do traço só é oferecida quando há traço.
+
+**Schema/contrato.** +1 componente no registro (**43 → 44**, e os dois espelhos `ph2d-render`/
+`ph2d-script` **44 → 45** — ⚠️ o contador é TRÊS, a família que já ficou vermelho-latente duas vezes
+nesta linha). **Sem bump de `PROJECT_SCHEMA`** (componente novo cunha `stable_type_id` próprio) ·
+`VEC_SCENE_SCHEMA` **intocado** (é o ponto da tabela lateral) · contrato congelado intacto · nenhuma
+dep nova · nenhum ADR.
+
+**UI.** A row **Token** vive DENTRO das secções Fill e Stroke, ao lado da swatch — ⚠️ e não numa
+secção à parte, porque é essa adjacência que responde à pior pergunta que a feature pode gerar
+(*"por que a cor que eu escolhi não aparece?"*). O picker é um popover rolável de 81 linhas (as 80
+da tabela + **Unbind**), pintado no passe DIFERIDO como o de mistura dos filtros.
+
+**Gates (8 + 5 de seam + 2 arch).** ⚠️ **Uma mutação SOBREVIVEU e nomeou um buraco real:** trocar
+`path.painted(bound)` de volta por `path` no laço do `dispatch` deixava os sete gates de unidade
+**verdes** e todo binding inerte na tela — eles chamam a porta directamente. O gate que faltava é
+`the_dispatch_draws_the_token_colour_not_the_literal`, e o oráculo dele não é *"os encodes
+diferem"* (verdade em qualquer mudança) e sim a IDENTIDADE: desenhar a forma **bindada** ao token
+tem de encodar exactamente como desenhar uma forma cujo LITERAL já é aquela cor. Ele nasceu
+VERMELHO sobre a mutação. **7 mutações, 7 sangram.**
+
+**Smoke** (**`PH2D_BUILD_SMOKE=50`** — ⚠️ o plano dizia `=52`; o número se **CONTA**, e 50 é o
+próximo livre): um card (fundo + borda + texto), um **CONTROLE idêntico** ao lado que fica no
+literal, e uma forma **SEM traço**. Bindar três propriedades e apertar **`M`**.
+
+**Aberto, e é o resto da W4:**
+- **(b) A tabela AUTORÁVEL** — modos como DADO (hoje são 4 variantes de `enum`), aliases
+  (`{color.brand.500}`), math, detecção de ciclo, import/export DTCG. É uma reforma do
+  `ph2d-tokens`, que 44 widgets consomem por consts gerados: wave própria, com o gate
+  `design_token_sync` como rede.
+- **(c) O ANIMÁVEL** (`PropKind::Token`) — cruza a fronteira para a timeline (`DOC_VERSION` +1) e
+  quer a (b) primeiro: animar um token anônimo pressupõe que um token possa ser criado.
+- **Tokens de ESCALA** (`CornerRadius`, `StrokeWidth`, `LayoutGap`): o `BoundProp` é append-only e
+  os espera, mas cada um precisa do canal que o resolve — acrescentá-los agora seria oferecer um
+  alvo que nada preenche.
+- **Multi-seleção**: as rows só aparecem com UMA forma selecionada. Bindar várias de uma vez
+  precisa de resposta a *"e se elas discordarem?"*, que é decisão de produto.
+
+---
+
+### W4 (original) — OS TOKENS CHEGAM AO DOCUMENTO
 
 **O quê.** Uma propriedade qualquer (cor, raio, espessura, tamanho, gap) deixa de ser um literal e
 passa a **referenciar um token**, resolvido por **modo**. É a feature de maior alavancagem do Vol. 2
@@ -846,7 +922,8 @@ escreveu**:
 |---|---|---|---|---|---|---|
 | **W1** ✅ | booleana não-destrutiva, animável | +1 (**42**) | — | — | — | `=48` |
 | **W0** ✅ | a moldura | +1 (**43**) | — | — | — | `=49` |
-| **W4** | tokens no documento + modos + animar token | +1 (47) | `DOC_VERSION`, seção | — | sim (indireção) | `=52` |
+| **W4a** ✅ | o binding de token no documento + o modo re-veste | +1 (**44**) | — | — | — | `=50` |
+| **W4b/c** | tabela autorável (aliases/math/DTCG) + animar token | — | `DOC_VERSION`, seção | — | sim (indireção) | — |
 | **W2** | auto layout | +2 (45) | ⚠️ bump (W2a) | **taffy** | **sim** | `=50` |
 | **W3** | âncoras | +1 (46) | — | — | — | `=51` |
 | **W5** | componentes/variants | +2 (49) | — | — | sim (prefab) | `=53` |

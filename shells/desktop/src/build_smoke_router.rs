@@ -192,5 +192,12 @@ pub(crate) fn route(app: &mut crate::App, f: u32, level: u32) -> bool {
         crate::frame_smoke::frame(app, f);
         return true;
     }
+    // A cena dos TOKENS (=50) — irmã `token_smoke`. Mesma disciplina: dá o material (o card, o
+    // CONTROLE idêntico ao lado e a forma sem traço) e **nada nasce bindado** — quem prende é o
+    // artista, e é isso que faz a costura painel→shell→ECS→desenho ser de facto exercitada.
+    if level == 50 {
+        crate::token_smoke::frame(app, f);
+        return true;
+    }
     false
 }

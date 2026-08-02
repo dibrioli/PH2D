@@ -32,6 +32,13 @@ pub struct VecViewState {
     /// de dentro primeiro fecharia na ordem errada. Quem produz esta lista caminha a árvore de
     /// cima para baixo, e é isso que torna o emparelhamento LIFO correto por construção.
     pub clips: Vec<VecClipSpan>,
+    /// **A tinta que os TOKENS produzem neste modo** (`ph2d_ecs::VecBindings` resolvido contra o
+    /// tema vigente). Vazio = nada bindado, e o desenho é **byte-idêntico** ao mundo pré-token.
+    ///
+    /// Mora aqui, e não num 8º argumento do `dispatch`, porque é a MESMA categoria de fato que os
+    /// vizinhos: algo que só a shell sabe, projetado do ECS uma vez por frame. O documento não
+    /// conhece tema nenhum.
+    pub bound: Vec<crate::BoundPaint>,
 }
 
 /// **Uma moldura que recorta**, dita em termos da pilha de z: *do `first` (inclusive) até o
@@ -57,6 +64,17 @@ pub struct VecClipSpan {
 }
 
 impl VecViewState {
+    /// A tinta resolvida desta forma, se algum token a dirige.
+    ///
+    /// ⚠️ **Perguntada UMA vez por forma-FONTE**, e a resposta serve a forma e a toda geometria
+    /// derivada dela (offset, pattern, espelho): as derivadas são cópias com id próprio, então
+    /// procurá-las na tabela não acharia nada e o token pararia na borda do primeiro efeito — a
+    /// forma re-vestiria e as cópias dela ficariam com a cor velha.
+    #[must_use]
+    pub fn bound_paint(&self, id: VecPathId) -> Option<&crate::BoundPaint> {
+        self.bound.iter().find(|b| b.path == id)
+    }
+
     /// O path não desenha.
     #[must_use]
     pub fn is_hidden(&self, id: VecPathId) -> bool {

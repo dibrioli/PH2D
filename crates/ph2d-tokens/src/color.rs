@@ -268,6 +268,30 @@ macro_rules! color_tokens {
             pub const fn key(self) -> &'static str {
                 match self { $( Self::$variant => $key ),* }
             }
+
+            /// **A INVERSA de [`key`](Self::key)** — a chave kebab-case de volta ao token.
+            ///
+            /// É o que deixa um DOCUMENTO referenciar um token: um binding guarda a chave
+            /// (`"accent"`), que é a identidade estável do sistema de tokens — a mesma que o
+            /// `tokens.json` usa e a que o DTCG fala. Guardar o índice do variant amarraria todo
+            /// projeto salvo à ORDEM desta lista, e reordenar a lista (ou inserir um token no
+            /// meio) re-pintaria arte que ninguém tocou.
+            ///
+            /// ⚠️ **Gerada pela MESMA lista que a `key`**, e é isso que importa: as duas não podem
+            /// discordar. Uma tabela escrita à mão ao lado seria a segunda porta que aceita uma
+            /// chave que a `key` nunca emite — ou recusa uma que ela emite.
+            #[must_use]
+            pub fn from_key(key: &str) -> Option<Self> {
+                match key { $( $key => Some(Self::$variant), )* _ => None }
+            }
+
+            /// Todos os tokens de cor, na ordem em que a lista os declara (agrupada por família:
+            /// fundos, bordas, texto, acento, semânticos…).
+            ///
+            /// É a lista que o PICKER oferece. Ela é DADO — um token novo entra na lista da macro
+            /// e aparece no picker sem que ninguém toque na UI; uma lista escrita à mão no painel
+            /// envelheceria no primeiro token acrescentado.
+            pub const ALL: &'static [Self] = &[ $( Self::$variant ),* ];
         }
     };
 }

@@ -183,15 +183,20 @@ pub fn dispatch(
         if let Some(img) = fx.get(&path.id) {
             draw_fx_image(img, target);
         } else {
+            // A TINTA que os tokens dão a esta forma neste modo, perguntada UMA vez — e ela vale
+            // também para a geometria DERIVADA dela: as cópias de offset/pattern/espelho têm id
+            // próprio, então procurá-las na tabela não acharia nada e o token pararia na borda do
+            // primeiro efeito (a forma re-vestiria e as cópias ficariam com a cor velha).
+            let bound = view.bound_paint(path.id);
             // A derivada já está em MUNDO (a shell assou a pose dentro dela), então ela sobe pela
             // CÂMERA e não pelo afim do path — aplicar a pose duas vezes foi bug real desta linha.
             if let Some(items) = live.get(&path.id) {
                 for item in items {
-                    draw_path(item, camera, target);
+                    draw_path(&item.painted(bound), camera, target);
                 }
             } else {
                 let transform = path_to_screen(xforms, path.id, camera);
-                draw_path(path, transform, target);
+                draw_path(&path.painted(bound), transform, target);
             }
         }
     }

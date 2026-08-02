@@ -2005,6 +2005,9 @@ impl crate::App {
             let mut pending_bool_apply = false;
             // A MOLDURA (plano UI/UX W0): o chip de recorte e o preset de dispositivo.
             let mut pending_frame_clip: Option<bool> = None;
+            // **O TOKEN escolhido no picker** (plano UI/UX W4): a propriedade + o token, ou
+            // `None` no token = SOLTAR (a propriedade volta ao literal do documento).
+            let mut pending_token_bind: Option<(ph2d_ecs::BoundProp, Option<&'static str>)> = None;
             let mut pending_frame_preset: Option<ph2d_tool_vector::frames::DevicePreset> = None;
             // **A ESCALA da seleção de nós** (plano 25 §6, W3b): os dois alcances que o retângulo
             // não dá. Não são edições de documento — só mudam QUEM está selecionado —, então não
@@ -2338,6 +2341,10 @@ impl crate::App {
                                 // então o clique é da shell — o painel só mostra.
                                 pending_frame_clip =
                                     Some(*id == ph2d_editor::ids::VECTOR_FRAME_CLIP_ON);
+                            } else if let Some(choice) = crate::vec_bindings::token_choice(*id) {
+                                // Uma escolha do picker de token. O valor mora no COMPONENTE
+                                // (mundo), então o clique é da shell — o painel só mostra.
+                                pending_token_bind = Some(choice);
                             } else if let Some(p) = ph2d_tool_vector::frames::device_preset(*id) {
                                 // Um preset é uma 2ª forma de PEDIR a edição de W/H — ele cai na
                                 // MESMA porta que os campos numéricos do Transform.
@@ -5793,6 +5800,10 @@ impl crate::App {
             if let Some(live) = hero_live.as_ref() {
                 vec_view.clips = crate::vec_frame_spans::clip_spans(sim, &live.z_snapshot);
             }
+            // **OS TOKENS** (plano UI/UX W4): a tinta que cada binding produz no modo VIGENTE.
+            // Resolvido aqui, no passe de DESENHO, e não dentro do `view_state` — aquela porta é
+            // chamada por todo hit-test e gesto, e nenhum deles pergunta de que cor a forma é.
+            vec_view.bound = crate::vec_bindings::resolve(sim, &self.vec_entities, hero.theme);
             // ADR-0111 — cada path tem `Transform`. A geometria dele é LOCAL; este é
             // o afim que a leva ao mundo (a cadeia de pais inclusa).
             let mut vec_xf = crate::vec_transform::build(sim, &self.vec_entities);
@@ -6064,6 +6075,26 @@ impl crate::App {
                 }
                 ph2d_panel_vector::state::set_frame_clip(
                     crate::vec_frame_edit::selected_frame_clip(sim, &self.vec_entities, &sel),
+                );
+                // **OS TOKENS** (plano UI/UX W4): aplicar a escolha, e depois publicar o que a
+                // seleção tem preso. Nesta ordem — publicar antes deixaria o chip a mostrar o
+                // token ANTERIOR por um frame, e o artista veria a escolha "não pegar".
+                if let Some((prop, token)) = pending_token_bind {
+                    crate::vec_bindings::set_selected_binding(
+                        sim,
+                        &self.vec_entities,
+                        &sel,
+                        prop,
+                        token,
+                    );
+                }
+                ph2d_panel_vector::state::set_token_bindings(
+                    crate::vec_bindings::selected_bindings(
+                        sim,
+                        vec_scene,
+                        &self.vec_entities,
+                        &sel,
+                    ),
                 );
                 // **As ETIQUETAS das molduras** (Enio 2026-08-01) — publicadas em TODO frame, com
                 // qualquer ferramenta em mãos. ⚠️ Aqui não vale a cerca da RÉGUA (que só vive com

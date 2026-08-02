@@ -258,6 +258,12 @@ impl BodyCtx<'_> {
             .register(ids::VECTOR_STROKE_SWATCH, stroke_swatch_rect);
         y += self.row_h + self.row_gap;
 
+        // **O TOKEN do traço** (plano UI/UX W4), logo abaixo da cor que ele cobre. Só é oferecido
+        // quando a seleção TEM traço: o token colore o traço que existe e nunca inventa largura.
+        if let Some(b) = crate::state::token_bindings().filter(|b| b.stroke_exists) {
+            y = self.token_row(ids::VECTOR_TOKEN_STROKE, 1, b.stroke.as_deref(), y);
+        }
+
         // Stroke Opacity slider (single source of the stroke alpha).
         let track = self
             .store
@@ -412,6 +418,11 @@ impl BodyCtx<'_> {
         self.hit_index
             .register(ids::VECTOR_FILL_SWATCH, fill_swatch_rect);
         y += self.row_h + self.row_gap;
+
+        // **O TOKEN do preenchimento** (plano UI/UX W4), logo abaixo da swatch que ele cobre.
+        if let Some(b) = crate::state::token_bindings() {
+            y = self.token_row(ids::VECTOR_TOKEN_FILL, 0, b.fill.as_deref(), y);
+        }
 
         let track = self
             .store

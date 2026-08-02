@@ -90,6 +90,7 @@ mod paint_rows;
 mod paint_sections;
 /// A seção SYMMETRY — a simetria de desenho (plano 25 W6.3), irmã de `paint_pencil`.
 pub(crate) mod paint_symmetry;
+mod paint_tokens;
 mod paint_transform;
 pub mod populate;
 /// De QUEM são os campos de parâmetro deste frame — e quando eles não são de ninguém (a

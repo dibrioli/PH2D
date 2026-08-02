@@ -183,6 +183,10 @@ pub fn tr(key: &str) -> &'static str {
         "panel.vector.section.symmetry" => "Symmetry",
         // A MOLDURA (plano UI/UX W0) — o contêiner.
         "panel.vector.section.frame" => "Frame",
+        // **Os TOKENS** (plano UI/UX W4): a row que diz de que token a propriedade segue.
+        "panel.vector.token" => "Token",
+        // A linha que SOLTA a propriedade — ela volta ao literal do documento.
+        "panel.vector.token.none" => "None (use literal)",
         "panel.vector.frame.clip" => "Clip content",
         "panel.vector.frame.clip.off" => "Off",
         "panel.vector.frame.clip.on" => "On",

@@ -49,6 +49,12 @@ mod frame_state;
 pub(crate) use frame_state::frame_clip;
 pub use frame_state::set_frame_clip;
 
+/// **OS TOKENS da seleção** (plano UI/UX W4) — que propriedade dela segue um token, e qual.
+#[path = "state_tokens.rs"]
+mod token_state;
+pub use token_state::{TokenBindings, set_token_bindings};
+pub(crate) use token_state::{set_pending_token_dd, take_pending_token_dd, token_bindings};
+
 thread_local! {
     static CURRENT_TEXT_VISIBLE: Cell<bool> = const { Cell::new(false) };
     static CURRENT_TEXT: RefCell<Option<String>> = const { RefCell::new(None) };

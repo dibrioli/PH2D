@@ -27,6 +27,17 @@ use crate::ids;
 /// ⚠️ **A cadeia abaixo está EXACTAMENTE no teto de 200 LOC** depois desta wave. A próxima adição
 /// não cabe: ela tem de extrair uma FAMÍLIA (os catorze pills de modo são a candidata óbvia) —
 /// e isso é trabalho de quem for dono da cadeia, não contrabando dentro de outra feature.
+/// **As opções dos dois pickers de TOKEN** (plano UI/UX W4). Um helper, e não 162 linhas na
+/// cadeia — o mesmo motivo do `is_frame_widget`.
+///
+/// ⚠️ Os CHIPS não entram: eles são `Dropdown`, e abrir/fechar é do dispatch genérico. Só as
+/// opções são `Click` puro que a shell aplica.
+fn is_token_option(id: ph2d_a11y::NodeId) -> bool {
+    (0..=1_u16).any(|prop| {
+        (0..=ph2d_tokens::ColorToken::ALL.len()).any(|i| id == ids::vector_token_option_id(prop, i))
+    })
+}
+
 fn is_frame_widget(id: ph2d_a11y::NodeId) -> bool {
     id == ids::VECTOR_MODE_FRAME
         || id == ids::VECTOR_FRAME_CLIP_OFF
@@ -34,37 +45,42 @@ fn is_frame_widget(id: ph2d_a11y::NodeId) -> bool {
         || ph2d_tool_vector::frames::device_preset(id).is_some()
 }
 
+/// **Os treze pills de MODO + os três chips da fonte de largura do lápis.**
+///
+/// ⚠️ **Extraído da cadeia porque ela bateu no teto de 200 LOC por função** — e o doc-comment do
+/// `is_frame_widget` já tinha nomeado esta família como a candidata óbvia quando o momento
+/// chegasse. O corte é por ASSUNTO: *que ferramenta está na mão* é uma pergunta, e a cadeia
+/// abaixo responde a outra (*este clique é meu ou do shell?*).
+///
+/// Fora daqui qualquer um deles pinta, ACENDE sob o mouse e o Click morre no painel — nunca vira
+/// `ToolPanelEvent`. É o defeito que o smoke do Line/Arc pegou (Enio 2026-07-09) e o que o gate
+/// `clicking_connect_pill_reaches_the_tool` vigia.
+fn is_mode_pill(id: ph2d_a11y::NodeId) -> bool {
+    matches!(
+        id,
+        x if x == ids::VECTOR_MODE_SELECT
+            || x == ids::VECTOR_MODE_NODE
+            || x == ids::VECTOR_MODE_PEN
+            || x == ids::VECTOR_MODE_PENCIL
+            || x == ids::VECTOR_MODE_SHAPE
+            || x == ids::VECTOR_MODE_TEXT
+            || x == ids::VECTOR_MODE_CONNECT
+            || x == ids::VECTOR_MODE_BUILD
+            || x == ids::VECTOR_MODE_PICKBLEND
+            || x == ids::VECTOR_MODE_FILLET
+            || x == ids::VECTOR_MODE_CHAMFER
+            || x == ids::VECTOR_MODE_WIDTH
+            || x == ids::VECTOR_MODE_CUT
+            // A FONTE da largura do lápis (W1d) — três chips exclusivos, do mesmo assunto:
+            // com que ferramenta, e como, o traço nasce.
+            || x == ids::VECTOR_PENCIL_W_UNIFORM
+            || x == ids::VECTOR_PENCIL_W_SPEED
+            || x == ids::VECTOR_PENCIL_W_PRESSURE
+    )
+}
+
 pub(super) fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
-    id == ids::VECTOR_MODE_SELECT
-        || id == ids::VECTOR_MODE_NODE
-        || id == ids::VECTOR_MODE_PEN
-        // **O lápis** (o 11º modo). Fora daqui o chip pinta, ACENDE sob o mouse e o Click
-        // morre no painel — nunca vira `ToolPanelEvent`.
-        || id == ids::VECTOR_MODE_PENCIL
-        // **A FONTE da largura do lápis** (W1d) — três chips exclusivos. Fora daqui eles pintam,
-        // acendem sob o mouse e o Click morre no painel: o artista escolheria "Speed" e todo
-        // traço continuaria uniforme, sem nada dizer por quê.
-        || id == ids::VECTOR_PENCIL_W_UNIFORM
-        || id == ids::VECTOR_PENCIL_W_SPEED
-        || id == ids::VECTOR_PENCIL_W_PRESSURE
-        // O 5º pill: re-arma o gesto de forma. Ausente daqui, o botão pintaria e estaria
-        // MORTO — exatamente o bug que o smoke do Line/Arc pegou (Enio 2026-07-09).
-        || id == ids::VECTOR_MODE_SHAPE
-        || id == ids::VECTOR_MODE_TEXT
-        // O 6º pill (Connect). Fora daqui, o botão pinta e está MORTO — é o gate do
-        // seam (`clicking_connect_pill_reaches_the_tool`).
-        || id == ids::VECTOR_MODE_CONNECT
-        // O 7º pill (Build / Shape Builder).
-        || id == ids::VECTOR_MODE_BUILD
-        // O 8º pill (Pick Shapes / Blend). Fora daqui, o pill pinta e está MORTO.
-        || id == ids::VECTOR_MODE_PICKBLEND
-        // O 9º e 10º pills (Fillet / Chamfer). Fora daqui, pintam e estão MORTOS.
-        || id == ids::VECTOR_MODE_FILLET
-        || id == ids::VECTOR_MODE_CHAMFER
-        // O 12º modo (Width). Fora daqui, o pill pinta e está MORTO.
-        || id == ids::VECTOR_MODE_WIDTH
-        // O 13º modo (Corte). Fora daqui, o pill pinta e está MORTO.
-        || id == ids::VECTOR_MODE_CUT
+    is_mode_pill(id)
         // Os dois botões da seção CUT — executar e descartar a linha de corte.
         || id == ids::VECTOR_CUT_APPLY
         || id == ids::VECTOR_CUT_DISCARD
@@ -165,6 +181,9 @@ pub(super) fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         // saber que o modo mudou (ela e' quem le' o modo no clique de uma das oito); e o Apply e'
         // um comando de DOCUMENTO. Fora daqui os tres pintariam e estariam MORTOS.
         || is_frame_widget(id)
+        // As opções dos pickers de token (plano UI/UX W4). Fora daqui elas pintam, acendem sob
+        // o mouse e o Click morre no painel — o artista escolheria um token e nada mudaria.
+        || is_token_option(id)
         || id == ids::VECTOR_BOOL_LIVE_OFF
         || id == ids::VECTOR_BOOL_LIVE_ON
         || id == ids::VECTOR_BOOL_APPLY

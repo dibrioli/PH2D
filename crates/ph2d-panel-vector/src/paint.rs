@@ -345,4 +345,9 @@ pub(crate) fn paint(_state: &mut VectorPanelState, ctx: &mut PaintCtx) {
     if let Some((row, chip_rect)) = state::take_pending_blend_dd() {
         crate::paint_sections::filters_blend::paint_blend_popover(ctx, row, chip_rect, theme);
     }
+    // Idem para o picker de TOKEN (plano UI/UX W4): oitenta linhas + a de soltar, dentro do
+    // scroll da seção Fill/Stroke — sem o passe diferido a lista seria cortada na borda dela.
+    if let Some((prop, chip_rect)) = state::take_pending_token_dd() {
+        crate::paint_tokens::paint_token_popover(ctx, prop, chip_rect, theme);
+    }
 }

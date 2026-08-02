@@ -47,6 +47,9 @@ mod pencil;
 mod frame;
 #[path = "populate_symmetry.rs"]
 mod symmetry;
+/// Os dois chips de TOKEN (plano UI/UX W4) — irmão pelo teto de LOC.
+#[path = "populate_tokens.rs"]
+mod tokens;
 
 /// **As OPERAÇÕES** — vértice, topologia (as três da W4 + o corte), booleana, regra de
 /// preenchimento, o ímã, o tipo de fill e o alinhamento. Irmão pelo teto de 600 LOC, e o corte é
@@ -277,6 +280,7 @@ fn populate_shape(store: &mut WidgetStore) {
     pencil::pencil_knobs(store);
     symmetry::symmetry_controls(store);
     frame::frame_controls(store);
+    tokens::token_controls(store);
 
     // Os pills de MODO (Select … Fillet / Chamfer) + Convert — módulo irmão pelo teto de LOC.
     modes::mode_buttons(store);

@@ -280,6 +280,9 @@ mod timeline_onion_smoke;
 mod timeline_orphan_tests;
 mod timeline_persist;
 mod timescale_smoke;
+/// **AS MOLDURAS** (plano UI/UX W0): que intervalo da pilha de z cada `VecFrame` recorta. A
+/// metade que a shell possui — o renderer sabe desenhar, a shell sabe a ÁRVORE.
+mod token_smoke;
 mod transport;
 /// A cena de smoke do Twist (o remoinho + o Falloff a modulá-lo) — irmão de `build_smoke`.
 mod twist_smoke;
@@ -302,6 +305,7 @@ mod value_time_smoke;
 mod value_unary_smoke;
 mod value_wave_smoke;
 mod value_wrap_smoke;
+mod vec_bindings;
 mod vec_blend;
 /// O painel edita o CONECTOR selecionado (Route / Jetty / Spread) — resolve o valor
 /// EFETIVO que o painel exibe e aplica a edição a TODOS os conectores selecionados.
@@ -319,8 +323,6 @@ mod vec_font;
 mod vec_font_preview;
 /// A moldura da SELEÇÃO (plano UI/UX W0): o que o painel mostra, e o que o chip escreve.
 mod vec_frame_edit;
-/// **AS MOLDURAS** (plano UI/UX W0): que intervalo da pilha de z cada `VecFrame` recorta. A
-/// metade que a shell possui — o renderer sabe desenhar, a shell sabe a ÁRVORE.
 mod vec_frame_labels;
 mod vec_frame_spans;
 mod vec_gizmo_view;

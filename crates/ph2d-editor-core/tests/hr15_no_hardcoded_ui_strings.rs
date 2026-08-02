@@ -47,6 +47,14 @@ const BASELINE: &[(&str, usize)] = &[
     // sections.rs to sections/identity.rs in the §T2.1 per-section split;
     // i18n migration tracked separately (replaced when Fluent ships).
     ("ph2d-panel-inspector/src/sections/identity.rs", 1),
+    // W-Signal: o placeholder do campo de sinal da §11 ("Signal on hit…"). É
+    // exatamente o caso do irmão acima — o MESMO widget (`TextInput`), no MESMO
+    // painel, pelo MESMO motivo (dizer para que serve um campo vazio) — e a
+    // `ph2d-panel-inspector` não depende de `ph2d-i18n`, então a alternativa
+    // seria uma dependência nova para uma string, com um segundo mecanismo de
+    // texto convivendo com o primeiro. Migra junto com ele quando o Fluent
+    // chegar.
+    ("ph2d-panel-inspector/src/sections/physics_rows.rs", 1),
     // The Audio Editor's empty-state TextInput placeholder ("No clip loaded").
     // Generic English fallback — replaced when Fluent runtime ships.
     // The clip-name placeholder moved to `paint_sections.rs` when the panel was split

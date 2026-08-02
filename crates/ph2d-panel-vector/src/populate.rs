@@ -42,6 +42,9 @@ mod modes;
 mod pencil;
 
 /// Os controles da SIMETRIA de desenho — irmão pelo teto de LOC (600) do painel.
+/// Os controles da seção FRAME (plano UI/UX W0) — irmão pelo teto de LOC.
+#[path = "populate_frame.rs"]
+mod frame;
 #[path = "populate_symmetry.rs"]
 mod symmetry;
 
@@ -273,6 +276,7 @@ fn populate_shape(store: &mut WidgetStore) {
     // e os dez chips do Painter já pagaram.
     pencil::pencil_knobs(store);
     symmetry::symmetry_controls(store);
+    frame::frame_controls(store);
 
     // Os pills de MODO (Select … Fillet / Chamfer) + Convert — módulo irmão pelo teto de LOC.
     modes::mode_buttons(store);

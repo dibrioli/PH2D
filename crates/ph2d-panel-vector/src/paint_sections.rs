@@ -141,6 +141,9 @@ impl BodyCtx<'_> {
         // do traço nasce derivado enquanto está ligada), então mora ao lado do que decide o que se
         // desenha — e não entre os deformadores, que é onde ela estava quando era um efeito.
         y = self.step(y, |b, y| b.symmetry_section(snap, y));
+        // A MOLDURA vem logo depois da simetria: as duas são propriedades do OBJETO que se
+        // acabou de desenhar, e a seção some inteira quando a seleção não é moldura.
+        y = self.step(y, |b, y| b.frame_section(y));
         y = self.step(y, |b, y| b.shape_params_section(snap, y));
         // Os parâmetros do CONECTOR selecionado — irmã da seção acima (mesma estética,
         // mesmos widgets), logo abaixo dela: as duas respondem "o que é este objeto que

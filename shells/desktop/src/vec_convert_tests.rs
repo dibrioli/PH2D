@@ -365,7 +365,7 @@ fn a_frozen_shape_recipe_is_not_resurrected_and_keeps_its_corner_radii() {
     crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
 
     // FRAME: ela nasce viva.
-    crate::vec_shape_live::make_committed_shape_live(&mut sim, &mut scene, &map, &mut tool);
+    crate::vec_shape_live::make_committed_shape_live(&mut sim, &mut scene, &map, &mut tool, false);
     let e = entity_of(&map, id);
     assert!(
         sim.world().get::<VecShape>(e).is_some(),
@@ -382,7 +382,9 @@ fn a_frozen_shape_recipe_is_not_resurrected_and_keeps_its_corner_radii() {
 
     // DOIS frames depois — é aqui que a receita ressuscitava e varria os raios.
     for _ in 0..2 {
-        crate::vec_shape_live::make_committed_shape_live(&mut sim, &mut scene, &map, &mut tool);
+        crate::vec_shape_live::make_committed_shape_live(
+            &mut sim, &mut scene, &map, &mut tool, false,
+        );
     }
 
     assert!(

@@ -186,5 +186,11 @@ pub(crate) fn route(app: &mut crate::App, f: u32, level: u32) -> bool {
         crate::bool_smoke::frame(app, f);
         return true;
     }
+    // A cena da MOLDURA (=49) — irmã `frame_smoke`. Duas molduras idênticas, só uma recortando: o
+    // par CONTROLE, para a resposta ser visível sem tocar num controle.
+    if level == 49 {
+        crate::frame_smoke::frame(app, f);
+        return true;
+    }
     false
 }

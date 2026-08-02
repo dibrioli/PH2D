@@ -23,6 +23,37 @@ use crate::{VecPath, VecPathId, VecScene};
 pub struct VecViewState {
     pub hidden: Vec<VecPathId>,
     pub locked: Vec<VecPathId>,
+    /// As MOLDURAS que recortam neste frame (`ph2d_ecs::VecFrame`), já resolvidas para o
+    /// intervalo que cada uma ocupa na pilha de z. Vazio = nenhuma moldura recorta, e o desenho é
+    /// **byte-idêntico** ao mundo pré-moldura.
+    ///
+    /// ⚠️ **A ordem é de FORA para DENTRO.** Duas molduras aninhadas podem abrir no MESMO path (o
+    /// descendente mais ao fundo é o mesmo para as duas), e a camada de clip é uma pilha: abrir a
+    /// de dentro primeiro fecharia na ordem errada. Quem produz esta lista caminha a árvore de
+    /// cima para baixo, e é isso que torna o emparelhamento LIFO correto por construção.
+    pub clips: Vec<VecClipSpan>,
+}
+
+/// **Uma moldura que recorta**, dita em termos da pilha de z: *do `first` (inclusive) até o
+/// `frame` (exclusive), o desenho é recortado à silhueta do `frame`*.
+///
+/// Duas coisas fazem este par de ids bastar, e as duas são fatos do repo e não escolhas:
+///
+/// 1. **A sub-árvore é CONTÍGUA em z.** A pilha é a projeção DFS da árvore
+///    (`vec_zorder::z_order`), e o passe de recorte de SPRITE já se apoia nisso literalmente
+///    (*"a clip group's runs are contiguous — subtree contiguity in z"*). Logo o intervalo entre
+///    o descendente mais ao fundo e a moldura é exatamente a sub-árvore dela.
+/// 2. **A moldura vem por ÚLTIMO na própria sub-árvore.** O DFS lista o pai ANTES dos filhos e a
+///    pilha de z é o inverso disso ⇒ um pai desenha na FRENTE dos filhos. Para um grupo isso é
+///    invisível (grupo não tem geometria); a moldura é o primeiro pai COM geometria, e é por isso
+///    que ela precisa de tratamento: o preenchimento dela é o **fundo** do card, e tem de ser
+///    desenhado ao ABRIR o intervalo, não ao chegar a vez dela.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct VecClipSpan {
+    /// A moldura: a silhueta que recorta, e o preenchimento que faz de fundo.
+    pub frame: VecPathId,
+    /// O descendente mais ao FUNDO — onde o intervalo abre.
+    pub first: VecPathId,
 }
 
 impl VecViewState {
@@ -33,9 +64,18 @@ impl VecViewState {
     }
 
     /// O path pode ser agarrado no canvas (visível E destravado).
+    ///
+    /// ⚠️ **O recorte não entra aqui, de propósito.** Um filho que a moldura esconde continua
+    /// selecionável (pela Hierarquia e pelo canvas) — é o que Figma e Illustrator fazem, e o
+    /// contrário tornaria impossível recuperar algo que se arrastou para fora por engano.
     #[must_use]
     pub fn is_pickable(&self, id: VecPathId) -> bool {
         !self.hidden.contains(&id) && !self.locked.contains(&id)
+    }
+
+    /// As molduras cujo intervalo ABRE neste path, na ordem de fora para dentro.
+    pub fn clips_opening_at(&self, id: VecPathId) -> impl Iterator<Item = &VecClipSpan> {
+        self.clips.iter().filter(move |c| c.first == id)
     }
 }
 

@@ -42,7 +42,7 @@ mod recook;
 /// Pilha de z + recorte de copy/paste. A ÁRVORE de objetos é a Hierarchy do
 /// editor (ADR-0110): nome/visibilidade/trava/parentesco são da entidade ECS.
 mod structure;
-pub use structure::{VecClip, VecViewState};
+pub use structure::{VecClip, VecClipSpan, VecViewState};
 
 /// ADR-0111: a geometria do path é LOCAL. O afim que a leva ao mundo vem da
 /// entidade (`Transform` ∘ cadeia de pais) e é publicado pela shell a cada frame.

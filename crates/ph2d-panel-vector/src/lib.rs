@@ -79,6 +79,8 @@ mod paint_arrange;
 mod paint_catalog;
 /// A seção do CONECTOR (Route / Jetty / Spread) — snapshot + seed + paint + evento.
 mod paint_connector;
+/// A seção FRAME — o contêiner (plano UI/UX W0), irmã de `paint_pencil`.
+mod paint_frame;
 /// As pontas do traço (arrowheads) — dois chips na seção Stroke + o popover diferido.
 mod paint_markers;
 mod paint_modes;

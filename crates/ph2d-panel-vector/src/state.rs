@@ -42,6 +42,13 @@ mod bool_state;
 pub(crate) use bool_state::bool_group_selected;
 pub use bool_state::{bool_live_on, set_bool_group_selected, set_bool_live_on};
 
+/// **A MOLDURA selecionada** (plano UI/UX W0) — um `Option<bool>` que responde às duas
+/// perguntas: existe moldura na seleção, e ela recorta?
+#[path = "state_frame.rs"]
+mod frame_state;
+pub(crate) use frame_state::frame_clip;
+pub use frame_state::set_frame_clip;
+
 thread_local! {
     static CURRENT_TEXT_VISIBLE: Cell<bool> = const { Cell::new(false) };
     static CURRENT_TEXT: RefCell<Option<String>> = const { RefCell::new(None) };

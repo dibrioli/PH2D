@@ -122,6 +122,13 @@ impl BodyCtx<'_> {
                 tr("panel.vector.mode.cut"),
                 DrawMode::Cut,
             ),
+            // **Moldura** — o 14º pill, e fica no FIM porque é o único que produz um CONTÊINER:
+            // os anteriores desenham ou editam uma forma, este cria o lugar onde as formas moram.
+            (
+                ids::VECTOR_MODE_FRAME,
+                tr("panel.vector.mode.frame"),
+                DrawMode::Frame,
+            ),
             // NOTA: o **Pick Shapes** (`VECTOR_MODE_PICKBLEND`) NÃO fica aqui — ele é uma etapa do
             // Blend (escolher as formas na ordem), e mora na seção BLEND, ao lado do botão que as
             // liga (ADR-0128 C2b). É um modo de tool, mas seu botão vive lá, não nesta fileira.

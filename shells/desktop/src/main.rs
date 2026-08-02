@@ -143,6 +143,8 @@ mod flip_tween_phase_smoke;
 mod flip_tween_smoke;
 mod flip_tween_torsion_smoke;
 mod forwarding;
+/// A cena de smoke da MOLDURA (`PH2D_BUILD_SMOKE=49`) — irmã de `build_smoke`, teto de LOC.
+mod frame_smoke;
 mod fx_adjust_smoke;
 mod fx_atlas;
 mod fx_blend_smoke;
@@ -315,6 +317,11 @@ mod vec_expand;
 mod vec_font;
 #[cfg(feature = "panel-vector")]
 mod vec_font_preview;
+/// A moldura da SELEÇÃO (plano UI/UX W0): o que o painel mostra, e o que o chip escreve.
+mod vec_frame_edit;
+/// **AS MOLDURAS** (plano UI/UX W0): que intervalo da pilha de z cada `VecFrame` recorta. A
+/// metade que a shell possui — o renderer sabe desenhar, a shell sabe a ÁRVORE.
+mod vec_frame_spans;
 mod vec_gizmo_view;
 mod vec_glyph;
 mod vec_glyph_build;

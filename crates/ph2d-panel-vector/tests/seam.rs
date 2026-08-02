@@ -142,6 +142,10 @@ fn mode_button_click_switches_tool_mode_through_seam() {
         // registrados, mas mortos se ausentes da allowlist de `event.rs` ou do switch da tool.
         (ids::VECTOR_MODE_FILLET, DrawMode::Fillet),
         (ids::VECTOR_MODE_CHAMFER, DrawMode::Chamfer),
+        // O 14º pill: a **MOLDURA** (plano UI/UX W0). O clique tem de TROCAR o modo — pintado e
+        // registado, mas ausente da allowlist, ele acende sob o mouse e não faz nada (foi
+        // exactamente o que este gate pegou quando a wave foi escrita).
+        (ids::VECTOR_MODE_FRAME, DrawMode::Frame),
     ] {
         let outcome =
             host.apply_panel_event::<VectorPanel>(&mut panel_state, WidgetEvent::Click(id));
@@ -615,7 +619,8 @@ fn every_section_header_is_registered_as_collapsible() {
         // escolhe: ele é o tamanho da lista de hoje, e mexer nele sem acrescentar um header é
         // exactamente o que este gate existe para pegar.
         // +1 (plano 25 W6.3): SYMMETRY — a simetria de desenho, um MODO e não um efeito.
-        29,
+        // +1 (plano UI/UX W0): FRAME — o contêiner. Some inteira sem moldura na seleção.
+        30,
         "a lista de secoes mudou — confira que o paint pinta um header para cada uma"
     );
     for &id in ids::VECTOR_SECTIONS {

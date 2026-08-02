@@ -307,6 +307,12 @@ const PANEL_A11Y_DELEGATE_OK: &[(&str, &str)] = &[
         "ph2d-panel-vector/src/paint_arrange.rs",
         "delegates to row2/action_button (paint_button-backed) in paint_sections",
     ),
+    // A seção FRAME (plano UI/UX W0) — o contêiner. Um `segmented` (Clip content) e um
+    // `button_grid` (os presets de dispositivo), os dois de `paint_sections`/`paint_rows`.
+    (
+        "ph2d-panel-vector/src/paint_frame.rs",
+        "delegates to segmented/button_grid (paint_segmented/paint_button-backed) in paint_sections",
+    ),
     // O TRILHO da rampa do Gradient Map — split de `paint_filters.rs` pelo teto de 600 LOC.
     //
     // Os controles dele DELEGAM: o `+`/`−` vão por `BodyCtx::filter_icon` (→ `paint_icon_button`) e

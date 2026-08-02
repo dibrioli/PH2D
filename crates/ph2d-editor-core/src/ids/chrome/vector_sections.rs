@@ -57,4 +57,6 @@ pub const VECTOR_SECTIONS: &[NodeId] = &[
     VECTOR_SECTION_PENCIL,
     // A SIMETRIA de desenho (plano 25 §9 W6.3): um MODO, não um efeito.
     super::vector_symmetry::VECTOR_SECTION_SYMMETRY,
+    // A MOLDURA (plano UI/UX W0): o contêiner.
+    super::vector_frame::VECTOR_SECTION_FRAME,
 ];

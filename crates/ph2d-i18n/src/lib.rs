@@ -181,6 +181,11 @@ pub fn tr(key: &str) -> &'static str {
         // `ph2d_symmetry::SymmetryKind::label`, ao lado do enum, porque uma segunda lista
         // divergiria da primeira no dia em que o vocabulário ganhasse o quinto tipo.
         "panel.vector.section.symmetry" => "Symmetry",
+        // A MOLDURA (plano UI/UX W0) — o contêiner.
+        "panel.vector.section.frame" => "Frame",
+        "panel.vector.frame.clip" => "Clip content",
+        "panel.vector.frame.clip.off" => "Off",
+        "panel.vector.frame.clip.on" => "On",
         "panel.vector.symmetry.off" => "Off",
         "panel.vector.symmetry.on" => "On",
         "panel.vector.symmetry.enable" => "Enable",
@@ -363,6 +368,7 @@ pub fn tr(key: &str) -> &'static str {
         "panel.vector.mode.width" => "Width",
         "panel.vector.mode.pencil" => "Pencil",
         "panel.vector.mode.cut" => "Cut",
+        "panel.vector.mode.frame" => "Frame",
         // As oito operações do Pathfinder. As quatro primeiras eram literais no painel até a W5;
         // passam por aqui agora porque a fileira é UMA e metade dela em i18n seria o pior dos dois.
         "panel.vector.bool.union" => "Union",

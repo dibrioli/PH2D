@@ -538,6 +538,11 @@ impl Tool for VectorTool {
             PanelEvent::Click(id) if id == ids::VECTOR_MODE_CUT => {
                 self.mode = DrawMode::Cut;
             }
+            // **Moldura** (plano UI/UX W0) — o 14º pill. O gesto é o do retângulo; o que ele
+            // acrescenta ao soltar é o componente `VecFrame` (a shell o pendura).
+            PanelEvent::Click(id) if id == ids::VECTOR_MODE_FRAME => {
+                self.mode = DrawMode::Frame;
+            }
             PanelEvent::Click(id) if id == ids::VECTOR_MODE_PENCIL => {
                 self.mode = DrawMode::Pencil;
             }

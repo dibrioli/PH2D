@@ -204,7 +204,36 @@ algum lugar**. As quatro são independentes; nenhuma implica a outra.
 
 ---
 
-### W0 — A MOLDURA (Frame)
+### W0 — A MOLDURA (Frame) ✅ **CONSTRUÍDA (2026-08-01)**
+
+> Fechada por ordem do Enio (*"Próximo"*, depois do smoke da W1). O que shipou está abaixo; onde a
+> construção corrigiu o plano, a correção está marcada ⚠️ no texto.
+
+⚠️ **A construção derrubou TRÊS afirmações deste plano, e a terceira é a mais cara:**
+>
+> 1. *"O recorte delega ao `ClipChildren` que já existe."* **Falso.** `ClipChildren` é do pipeline
+>    de **SPRITE** (o passe de stencil em `ph2d-render`) e não alcança um caminho vetorial — quem
+>    desenha vetor é o Vello. O recorte é uma **camada de clip do Vello** (`push_clip`), a mesma
+>    que os painéis roláveis já usam. Corolário: uma moldura recorta os descendentes **vetoriais**;
+>    um sprite filho continua com o `ClipChildren` dele.
+> 2. *"O preenchimento da moldura desenha onde ela está."* **Não pode.** O DFS lista o pai ANTES
+>    dos filhos e a pilha de z é o **inverso** disso (`z_order`: `entries…rev()`), então **um pai
+>    desenha na FRENTE dos filhos** — invisível para um grupo (sem geometria), fatal para uma
+>    moldura, que cobriria o próprio conteúdo. O desenho dela é antecipado para a ABERTURA do
+>    intervalo: é isso que "fundo do card" quer dizer, e é o que o Figma faz.
+> 3. *"Os presets escrevem os pontos do aparelho (390×844)."* **A câmera não deixa.**
+>    `Camera2d::ZOOM_MAX_HEIGHT_WORLD = 100.0` (e ela abre em `10.0`): um telefone de 844 seria
+>    **8,4× mais alto do que a maior distância a que se pode afastar** — o artista veria 12% da
+>    moldura e nunca a moldura. A tabela guarda os **pontos reais** (auditáveis, e é o que a
+>    exportação vai querer) e uma porta única os converte para o documento com o lado maior em
+>    **`LONG_SIDE = 8`** — medido contra a câmera, aspecto EXATO. É esta função que passa a dizer
+>    "uma unidade vale N pixels" no dia em que a W8 decidir.
+
+⚠️ **E o `is_screen` NÃO foi construído.** Nada a jusante o consumiria hoje, e um checkbox que não
+muda nada é o controle morto que a política de UI deste repo existe para impedir. Ele nasce com a
+exportação — e o custo do adiamento está nomeado: apender campo a componente **existente** bumpa o
+schema, então a wave que o trouxer paga um bump.
+
 
 **O quê.** O contêiner: uma tela, um card, um painel. Tem tamanho autorado, recorta o que
 transborda, e é a raiz de tudo que é responsivo.
@@ -816,7 +845,7 @@ escreveu**:
 | Wave | Entrega | Componentes | Schema | Dep | ADR | Smoke |
 |---|---|---|---|---|---|---|
 | **W1** ✅ | booleana não-destrutiva, animável | +1 (**42**) | — | — | — | `=48` |
-| **W0** | a moldura | +1 (43) | — | — | — | `=49` |
+| **W0** ✅ | a moldura | +1 (**43**) | — | — | — | `=49` |
 | **W4** | tokens no documento + modos + animar token | +1 (47) | `DOC_VERSION`, seção | — | sim (indireção) | `=52` |
 | **W2** | auto layout | +2 (45) | ⚠️ bump (W2a) | **taffy** | **sim** | `=50` |
 | **W3** | âncoras | +1 (46) | — | — | — | `=51` |

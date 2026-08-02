@@ -35,4 +35,7 @@ pub(super) fn mode_buttons(store: &mut WidgetStore) {
     // este doc-comment prometia: o pill pintava, acendia sob o mouse e o clique **nunca virava
     // evento**. Reportado no smoke: *"botão não funciona"*.
     button(store, ids::VECTOR_MODE_CUT);
+    // **Moldura** (plano UI/UX W0) — o 14º pill. Sem esta linha ele pinta, acende sob o mouse e o
+    // clique NUNCA vira evento; é o defeito que este arquivo já pagou três vezes.
+    button(store, ids::VECTOR_MODE_FRAME);
 }

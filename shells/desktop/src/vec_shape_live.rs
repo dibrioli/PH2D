@@ -84,11 +84,17 @@ pub(crate) fn recook_into(scene: &mut VecScene, id: VecPathId, shape: &VecShape)
 /// `recook_into` — que faz `p.verts = geom.verts` e **apaga todo `corner_radius` do caminho**.
 /// Sobrevivia só o raio escrito depois do recook: *"a mesma ferramenta desfaz o que tinha feito
 /// no outro ponto"* (Enio). [[feedback_a_condition_that_enumerates_its_readers_rots]]
+///
+/// `as_frame` diz que o gesto foi o da ferramenta **Moldura** (plano UI/UX W0): a forma nasce
+/// exactamente igual — é um retângulo vivo — e ganha, além do `VecShape`, o `VecFrame`. Um
+/// parâmetro e não uma segunda função: a moldura NÃO é um segundo caminho de nascer, é o mesmo
+/// caminho com um componente a mais, e duas portas divergiriam no dia em que o nascimento mudasse.
 pub(crate) fn make_committed_shape_live(
     sim: &mut SimWorld,
     scene: &mut VecScene,
     map: &VecEntityMap,
     tool: &mut ShapeTool,
+    as_frame: bool,
 ) {
     let Some(id) = tool.pending_live() else {
         return;
@@ -118,6 +124,12 @@ pub(crate) fn make_committed_shape_live(
             t.translation = ph2d_core::Vec2::new(cx, cy);
         }
         e.insert(shape);
+        if as_frame {
+            // ⚠️ **Recorta por default**, como o *Clip content* do Figma: o artista que desenha um
+            // contêiner está a dizer *isto é uma tela*, e uma tela que deixa o conteúdo escapar
+            // pelas bordas não é uma. O chip da seção Frame desliga.
+            e.insert(ph2d_ecs::VecFrame { clip: true });
+        }
         // O nascimento ACONTECEU: consome o pedido. Daqui em diante, a ausência do `VecShape`
         // significa "o artista congelou", e ninguém a ressuscita.
         tool.clear_pending_live();

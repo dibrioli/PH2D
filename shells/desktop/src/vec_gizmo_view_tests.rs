@@ -226,7 +226,7 @@ fn a_hidden_or_locked_shape_is_not_pickable() {
     let id = scene.paths()[0].id;
     let hidden = VecViewState {
         hidden: vec![id],
-        locked: Vec::new(),
+        ..Default::default()
     };
     assert_eq!(
         pick_at_world(
@@ -241,8 +241,8 @@ fn a_hidden_or_locked_shape_is_not_pickable() {
         None
     );
     let locked = VecViewState {
-        hidden: Vec::new(),
         locked: vec![id],
+        ..Default::default()
     };
     assert_eq!(
         pick_at_world(

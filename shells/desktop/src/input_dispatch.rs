@@ -1183,7 +1183,15 @@ pub(crate) fn apply_vec_transform(
 fn shape_kind_for_mode(
     cfg: &ph2d_tool_vector::VectorDrawConfig,
 ) -> Option<ph2d_vec_scene::ShapeKind> {
-    (cfg.mode == ph2d_tool_vector::DrawMode::Shape).then_some(cfg.shape)
+    match cfg.mode {
+        ph2d_tool_vector::DrawMode::Shape => Some(cfg.shape),
+        // ⚠️ **A MOLDURA é um retângulo, e o gesto dela é literalmente o do retângulo.** Esta
+        // linha é o que lhe dá Shift/Alt, a pose, o undo, a Live Shape e o nascimento — de graça,
+        // e pelo MESMO caminho. O que a distingue acontece uma linha depois, no
+        // `make_committed_shape_live`: ela ganha um componente.
+        ph2d_tool_vector::DrawMode::Frame => Some(ph2d_vec_scene::ShapeKind::Rectangle),
+        _ => None,
+    }
 }
 
 /// As restrições do gesto de forma a partir do teclado — as de todo editor vetorial:
@@ -1203,7 +1211,10 @@ fn shape_constraint(mods: winit::keyboard::ModifiersState) -> ph2d_vec_edit::Sha
 /// a panel button (mode switch / boolean / close) while in a shape mode would
 /// silently swallow the click, leaving every button dead.
 fn shape_up_consumes(mode: ph2d_tool_vector::DrawMode, shape_active: bool) -> bool {
-    mode == ph2d_tool_vector::DrawMode::Shape && shape_active
+    matches!(
+        mode,
+        ph2d_tool_vector::DrawMode::Shape | ph2d_tool_vector::DrawMode::Frame
+    ) && shape_active
 }
 
 /// O `anchor` e o meio-tamanho **intrínsecos** de um objeto do canvas, na linguagem

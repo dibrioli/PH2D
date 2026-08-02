@@ -17,6 +17,23 @@ use crate::ids;
 /// shell/tool aplicar (modos, Cap/Join, Vertex, Boolean, Arrange, Fill kind, Align/
 /// Distribute, alinhamento de texto…). Extraído de `apply_event` para caber no teto de
 /// 200 LOC por função dos painéis — a lista só cresce.
+/// **Os sete widgets da MOLDURA** (plano UI/UX W0) — o pill do 14º modo, os dois chips de recorte
+/// e os quatro presets de dispositivo. Um helper, e não sete linhas na cadeia, pelo mesmo motivo
+/// que o `filters::is_filter_button`.
+///
+/// Fora daqui os sete pintam, acendem sob o mouse e **não fazem nada**: o pill nunca troca o modo,
+/// os chips nunca alcançam o componente e os presets nunca escrevem W/H.
+///
+/// ⚠️ **A cadeia abaixo está EXACTAMENTE no teto de 200 LOC** depois desta wave. A próxima adição
+/// não cabe: ela tem de extrair uma FAMÍLIA (os catorze pills de modo são a candidata óbvia) —
+/// e isso é trabalho de quem for dono da cadeia, não contrabando dentro de outra feature.
+fn is_frame_widget(id: ph2d_a11y::NodeId) -> bool {
+    id == ids::VECTOR_MODE_FRAME
+        || id == ids::VECTOR_FRAME_CLIP_OFF
+        || id == ids::VECTOR_FRAME_CLIP_ON
+        || ph2d_tool_vector::frames::device_preset(id).is_some()
+}
+
 pub(super) fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
     id == ids::VECTOR_MODE_SELECT
         || id == ids::VECTOR_MODE_NODE
@@ -147,6 +164,7 @@ pub(super) fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         // A BOOLEANA VIVA: os dois chips de modo sao panel-local no VALOR, mas a shell precisa
         // saber que o modo mudou (ela e' quem le' o modo no clique de uma das oito); e o Apply e'
         // um comando de DOCUMENTO. Fora daqui os tres pintariam e estariam MORTOS.
+        || is_frame_widget(id)
         || id == ids::VECTOR_BOOL_LIVE_OFF
         || id == ids::VECTOR_BOOL_LIVE_ON
         || id == ids::VECTOR_BOOL_APPLY

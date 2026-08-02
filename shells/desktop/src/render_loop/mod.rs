@@ -2003,6 +2003,9 @@ impl crate::App {
             // NESTE frame, então ele não pode correr aqui — corre logo depois do `recook`, onde o
             // plano existe. Aqui só se anota o clique.
             let mut pending_bool_apply = false;
+            // A MOLDURA (plano UI/UX W0): o chip de recorte e o preset de dispositivo.
+            let mut pending_frame_clip: Option<bool> = None;
+            let mut pending_frame_preset: Option<ph2d_tool_vector::frames::DevicePreset> = None;
             // **A ESCALA da seleção de nós** (plano 25 §6, W3b): os dois alcances que o retângulo
             // não dá. Não são edições de documento — só mudam QUEM está selecionado —, então não
             // abrem passo de undo (o `post_frame_undo` compara o ESTADO, e a seleção não é dele).
@@ -2328,6 +2331,17 @@ impl crate::App {
                                 ph2d_panel_vector::state::set_bool_live_on(
                                     *id == ph2d_editor::ids::VECTOR_BOOL_LIVE_ON,
                                 );
+                            } else if *id == ph2d_editor::ids::VECTOR_FRAME_CLIP_OFF
+                                || *id == ph2d_editor::ids::VECTOR_FRAME_CLIP_ON
+                            {
+                                // A MOLDURA recorta ou não. O valor mora no COMPONENTE (mundo),
+                                // então o clique é da shell — o painel só mostra.
+                                pending_frame_clip =
+                                    Some(*id == ph2d_editor::ids::VECTOR_FRAME_CLIP_ON);
+                            } else if let Some(p) = ph2d_tool_vector::frames::device_preset(*id) {
+                                // Um preset é uma 2ª forma de PEDIR a edição de W/H — ele cai na
+                                // MESMA porta que os campos numéricos do Transform.
+                                pending_frame_preset = Some(p);
                             } else if *id == ph2d_editor::ids::VECTOR_BOOL_APPLY {
                                 pending_bool_apply = true;
                             } else if let Some(op) = crate::input_dispatch::vec_bool_op_for_id(*id)
@@ -4555,6 +4569,25 @@ impl crate::App {
                     target,
                 );
             }
+            // **O preset de dispositivo da MOLDURA** (plano UI/UX W0) — dois números pela porta
+            // que os campos W/H já usam. Um preset não é um caminho novo: é o mesmo pedido feito
+            // de outra forma, e é por isso que ele herda o undo e o clamp de dimensão degenerada.
+            if let Some(p) = pending_frame_preset {
+                let (pw, ph) = p.size();
+                for (field, target) in [
+                    (crate::input_dispatch::VecTransformField::W, pw),
+                    (crate::input_dispatch::VecTransformField::H, ph),
+                ] {
+                    crate::input_dispatch::apply_vec_transform(
+                        vec_scene,
+                        &mut self.vec_history,
+                        &self.vec_pen,
+                        &vec_xf_ops,
+                        field,
+                        target,
+                    );
+                }
+            }
             if let Some(deg) = pending_vec_rotate_by {
                 crate::input_dispatch::apply_vec_rotate_by(
                     vec_scene,
@@ -5343,6 +5376,8 @@ impl crate::App {
                 vec_scene,
                 &self.vec_entities,
                 &mut self.vec_shape,
+                // O gesto foi o da ferramenta MOLDURA? A forma nasce igual e ganha o `VecFrame`.
+                vec_cfg.mode == ph2d_tool_vector::DrawMode::Frame,
             );
             // "Convert to Curves": assa a(s) forma(s) viva(s) selecionada(s) em paths
             // crus — o TEXTO explode num grupo por-letra; as PARAMÉTRICAS descartam o
@@ -5751,7 +5786,13 @@ impl crate::App {
                 let order = crate::vec_entities::z_order(&live.z_snapshot);
                 vec_scene.reorder_to(&order);
             }
-            let vec_view = crate::vec_entities::view_state(sim, &self.vec_entities);
+            let mut vec_view = crate::vec_entities::view_state(sim, &self.vec_entities);
+            // **As MOLDURAS** (plano UI/UX W0): que intervalo da pilha cada uma recorta. Sai do
+            // MESMO snapshot que acabou de ditar a pilha de z — derivá-lo de outra fonte seria uma
+            // segunda resposta a *"em que ordem estas formas estão?"*.
+            if let Some(live) = hero_live.as_ref() {
+                vec_view.clips = crate::vec_frame_spans::clip_spans(sim, &live.z_snapshot);
+            }
             // ADR-0111 — cada path tem `Transform`. A geometria dele é LOCAL; este é
             // o afim que a leva ao mundo (a cadeia de pais inclusa).
             let mut vec_xf = crate::vec_transform::build(sim, &self.vec_entities);
@@ -6009,6 +6050,21 @@ impl crate::App {
             // pergunta seria um Apply pintado sobre uma seleção que não tem o que consolidar.
             {
                 let sel: Vec<ph2d_vec_scene::VecPathId> = self.vec_pen.selected_paths().to_vec();
+                // **A MOLDURA da seleção** (plano UI/UX W0): honra o chip e publica o estado. O
+                // clique é honrado ANTES da publicação para o painel mostrar, no mesmo frame, o
+                // valor que o artista acabou de escolher — publicar primeiro deixaria o chip a
+                // piscar de volta ao valor antigo por um quadro.
+                if let Some(clip) = pending_frame_clip {
+                    crate::vec_frame_edit::set_selected_frame_clip(
+                        sim,
+                        &self.vec_entities,
+                        &sel,
+                        clip,
+                    );
+                }
+                ph2d_panel_vector::state::set_frame_clip(
+                    crate::vec_frame_edit::selected_frame_clip(sim, &self.vec_entities, &sel),
+                );
                 let group = crate::bool_gesture::group_of_selection(sim, &self.vec_entities, &sel);
                 ph2d_panel_vector::state::set_bool_group_selected(group.is_some());
                 if pending_bool_apply

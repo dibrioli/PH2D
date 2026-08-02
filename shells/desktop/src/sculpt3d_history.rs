@@ -19,7 +19,7 @@
 //! o que volta para a outra fila é *o que de fato estava lá* — uma segunda
 //! leitura, feita depois da escrita, devolveria o valor recém-instalado.
 
-use ph2d_mesh::{DetachedLevel, Stamped};
+use ph2d_mesh::{DetachedLevel, Reversal, Stamped};
 
 use super::{Sculpt3dScene, SculptStroke};
 
@@ -91,6 +91,20 @@ pub(super) enum StrokeUndo {
     /// é exato de graça, porque subir só escreve no topo valores que
     /// `(base, detalhe)` já determinam.
     Ascended { from: usize },
+    /// **Um nível foi reconstruído EMBAIXO** — aplicá-la é tirá-lo.
+    ///
+    /// ⚠️ Ela carrega a RENUMERAÇÃO, não a malha: inserir uma base renumera todo
+    /// nível acima, e desfazer é despermutar. São 4 B por vértice por nível
+    /// (um terço de um plano de posições) contra o clone da pilha inteira.
+    ReversedLevel(Box<Reversal>),
+    /// **A reconstrução foi desfeita** — aplicá-la é refazê-la.
+    ///
+    /// ⚠️ **Ela não carrega nada, e isso é o oposto do [`Self::DroppedLevel`].**
+    /// Lá o redo TEM de trazer o nível, porque recomputá-lo depende de uma base
+    /// que o carimbo já mudou. Aqui reverter é função pura da malha, e desfazer
+    /// devolve a malha ao bit (permutar move dados, não os computa) — então
+    /// refazer é chamá-la de novo e receber o mesmo resultado. Há gate.
+    UnreversedLevel,
 }
 
 /// **Instala `values` nos índices `verts` e devolve o que estava lá** — uma
@@ -142,6 +156,25 @@ impl Sculpt3dScene {
             return false;
         }
         self.record(StrokeUndo::AddedLevel);
+        self.stroke = SculptStroke::default();
+        self.mesh_rebuilt();
+        true
+    }
+
+    /// **RECONSTRÓI o nível de baixo** a partir da base — o des-subdividir.
+    /// `false` se a base não é uma subdivisão, ou se o artista não está nela.
+    ///
+    /// ⚠️ **É o único jeito de uma malha IMPORTADA ganhar multiresolução.** O
+    /// `subdivide` só acrescenta para cima, então um OBJ denso nasce com um
+    /// nível: dá para esculpir a pele e **não** para mover a forma grande. O
+    /// preço é que a malha inteira é renumerada — ver o `multires_reverse.rs`.
+    pub(super) fn reverse_level(&mut self) -> bool {
+        let Some(rev) = self.stack.reverse() else {
+            return false;
+        };
+        self.record(StrokeUndo::ReversedLevel(Box::new(rev)));
+        // O traço em voo fala de índices que a renumeração acabou de mover, e a
+        // GPU tem de receber a malha inteira: os vértices trocaram de lugar.
         self.stroke = SculptStroke::default();
         self.mesh_rebuilt();
         true
@@ -270,6 +303,19 @@ impl Sculpt3dScene {
                     self.stack.select(from + 1);
                 }
             }
+            // ⚠️ A MESMA lei outra vez, e aqui os dois lados pousam em níveis
+            // DIFERENTES: reverter deixa o artista no nível 1 (a malha que ele
+            // tinha, com uma base nova embaixo) e desfazê-la o deixa no 0.
+            StrokeUndo::ReversedLevel(_) => {
+                if self.stack.level() != 1 {
+                    self.stack.select(1);
+                }
+            }
+            StrokeUndo::UnreversedLevel => {
+                if self.stack.level() != 0 {
+                    self.stack.select(0);
+                }
+            }
         }
         match entry {
             // Uma operação de máscara mexeu na malha inteira: o estado anterior
@@ -329,6 +375,28 @@ impl Sculpt3dScene {
                     // Só alcançável se a pilha já estivesse no 0 — e aí não houve
                     // descida: a inversa honesta é *nada foi feito*.
                     None => StrokeUndo::Ascended { from },
+                }
+            }
+            // A reconstrução e o desfazer dela. ⚠️ O `false` do `unreverse` não
+            // é ignorado: devolver a MESMA entrada mantém a reversão viva na
+            // fila oposta, em vez de consumir a única coisa capaz de desfazê-la.
+            StrokeUndo::ReversedLevel(rev) => {
+                let undone = self.stack.unreverse(&rev);
+                self.stroke = SculptStroke::default();
+                self.mesh_rebuilt();
+                if undone {
+                    StrokeUndo::UnreversedLevel
+                } else {
+                    StrokeUndo::ReversedLevel(rev)
+                }
+            }
+            StrokeUndo::UnreversedLevel => {
+                let again = self.stack.reverse();
+                self.stroke = SculptStroke::default();
+                self.mesh_rebuilt();
+                match again {
+                    Some(r) => StrokeUndo::ReversedLevel(Box::new(r)),
+                    None => StrokeUndo::UnreversedLevel,
                 }
             }
             StrokeUndo::Stroke {

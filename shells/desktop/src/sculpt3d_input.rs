@@ -26,7 +26,7 @@ impl App {
         {
             return;
         }
-        let mesh = ph2d_mesh::shapes::uv_sphere(96, 144, 1.0);
+        let mesh = crate::sculpt3d::smoke_mesh();
         // A cena IMPRIME o que montou. Um smoke que não se declara deixa o
         // artista sem saber se está vendo a feature ou o app vazio — a lição
         // que o smoke do Colorize pagou.
@@ -41,6 +41,8 @@ impl App {
              [sculpt3d]     o log diz a contagem nova a cada toque -- ela quadruplica; Ctrl+Z desfaz\n\
              [sculpt3d] , e . DESCEM e SOBEM na pilha de niveis: esculpa fino em cima, volte ao 0\n\
              [sculpt3d]     para mover a FORMA GRANDE, e suba -- o detalhe fino continua la'\n\
+             [sculpt3d] J = DES-SUBDIVIDIR: reconstroi um nivel ABAIXO da base (o par do K)\n\
+             [sculpt3d]     so' funciona se a malha JA' for uma subdivisao -- o log diz quando nao e'\n\
              [sculpt3d] G = PEGAR o barro (grab): segure e arraste, e ele vem com o dedo\n\
              [sculpt3d] H = ESTICAR (snake hook): a pegada ANDA com o cursor e sai um espinho\n\
              [sculpt3d]     o G volta ao lugar quando voce volta; o H deixa a ponta la' -- essa e' a diferenca\n\
@@ -50,6 +52,16 @@ impl App {
             mesh.face_count(),
             mesh.triangle_count()
         );
+        if crate::sculpt3d::reversion_scene() {
+            eprintln!(
+                "[sculpt3d] =3 A REVERSAO: esta malha densa CHEGOU PRONTA -- um nivel so', e por isso\n\
+                 [sculpt3d]    o ',' nao leva a lugar nenhum. Aperte J: a malha NAO muda de forma\n\
+                 [sculpt3d]    (e' esse o ponto), e nasce um nivel ABAIXO dela. Aperte J de novo.\n\
+                 [sculpt3d]    Agora ',' desce ate' a base grossa: mova UM vertice la' e suba com '.'\n\
+                 [sculpt3d]    -- a forma grande andou e a pele fina continua onde estava.\n\
+                 [sculpt3d]    Ctrl+Z desfaz cada J; Ctrl+Shift+Z refaz."
+            );
+        }
         if crate::sculpt3d::donation_scene() {
             eprintln!(
                 "[sculpt3d] =2 A DOACAO: ha uma TELA BRANCA embaixo, e a tecla D alterna\n\
@@ -348,6 +360,28 @@ impl App {
                 );
             } else {
                 eprintln!("[sculpt3d] so' do TOPO: suba (.) antes de subdividir");
+            }
+            return true;
+        }
+        // **DES-SUBDIVIDIR.** ⚠️ Fica no `J` porque é o vizinho do `K`, e o par
+        // diz o que faz: `K` acrescenta um nível ACIMA, `J` reconstrói um
+        // ABAIXO. O log diz a contagem NOVA pela razão inversa à do `K` — aqui a
+        // malha que o artista vê não muda de forma nenhuma, e sem o número ele
+        // não tem como saber se o gesto fez alguma coisa.
+        if code == K::KeyJ {
+            if scene.reverse_level() {
+                let base = scene.stack.level_mesh(0);
+                eprintln!(
+                    "[sculpt3d] revertida: nivel {} de {} -- a base nova tem {} vertices / {} faces",
+                    scene.stack.level(),
+                    scene.stack.level_count() - 1,
+                    base.map_or(0, ph2d_mesh::Mesh::vert_count),
+                    base.map_or(0, ph2d_mesh::Mesh::face_count)
+                );
+            } else {
+                eprintln!(
+                    "[sculpt3d] nao' reverte: esta malha nao e' uma subdivisao (ou desca ao nivel 0 antes)"
+                );
             }
             return true;
         }

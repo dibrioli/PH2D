@@ -94,12 +94,38 @@ const RADIUS_MIN_PX: f32 = 1.0;
 /// padrão o modelo ocupa 49% da altura, então 1/8 de tela é meio modelo.
 const RADIUS_MAX_FRAC_OF_HEIGHT: f32 = 0.125;
 
-/// A cena está armada? (`PH2D_SCULPT3D_SMOKE` em `1` ou `2`.)
+/// A cena está armada? (`PH2D_SCULPT3D_SMOKE` em `1`, `2` ou `3`.)
 pub(crate) fn smoke_armed() -> bool {
     matches!(
         std::env::var("PH2D_SCULPT3D_SMOKE").ok().as_deref(),
-        Some("1" | "2")
+        Some("1" | "2" | "3")
     )
+}
+
+/// `=3` — a cena da **REVERSÃO**: um modelo denso que É uma subdivisão.
+pub(crate) fn reversion_scene() -> bool {
+    std::env::var("PH2D_SCULPT3D_SMOKE").ok().as_deref() == Some("3")
+}
+
+/// A malha com que cada cena abre.
+///
+/// ⚠️ **Porta única, e ela existe para o gate.** A cena `=3` só significa alguma
+/// coisa se a malha dela de fato reverter, e isso é um fato sobre a GEOMETRIA
+/// que nenhum arch-gate de fonte enxerga. Um gate que reconstruísse a malha por
+/// conta própria estaria medindo outra malha no dia em que esta mudasse.
+#[must_use]
+pub(crate) fn smoke_mesh() -> ph2d_mesh::Mesh {
+    if reversion_scene() {
+        // ⚠️ **Ela é DUAS vezes subdividida de propósito**: um modelo denso que
+        // chega pronto não tem um nível embaixo, e a cena só demonstra a
+        // reversão se houver mais de um para reconstruir. A esfera UV mistura
+        // quads no corpo com triângulos nos polos, que é o caso que exercita os
+        // dois ramos do reconhecedor de uma vez.
+        let coarse = ph2d_mesh::shapes::uv_sphere(12, 18, 1.0);
+        ph2d_mesh::subdivide(&ph2d_mesh::subdivide(&coarse))
+    } else {
+        ph2d_mesh::shapes::uv_sphere(96, 144, 1.0)
+    }
 }
 
 /// `=2` — a cena da **DOAÇÃO**: a esfera E uma tela branca para pintar.

@@ -327,6 +327,7 @@ fn a_new_edit_goes_through_the_door_that_clears_the_redo() {
         "subdivide(&mut self)",
         "mask_op",
         "change_level",
+        "reverse_level",
     ] {
         let body = function_body(&src, edit);
         assert!(
@@ -383,5 +384,94 @@ fn walking_the_levels_is_recorded_because_descending_writes() {
     assert!(
         up.contains("self.stack.lower()") && up.contains("Descended"),
         "desfazer uma subida é descer, e o carimbo que sair vira a inversa"
+    );
+}
+
+/// ⚠️ **A REVERSÃO é o par do `K`, e o gate afirma os dois lados.** Ela
+/// reconstrói um nível ABAIXO da base, o que renumera a malha inteira — então
+/// ela tem de gravar (o irmão acima já cobre isso) e tem de DIZER o que fez: o
+/// artista não vê nada mudar, por construção, e um gesto sem resposta na tela
+/// nem no log é indistinguível de um gesto quebrado.
+#[test]
+fn reversing_is_offered_on_its_own_key_and_it_says_what_it_did() {
+    let src = sculpt_src();
+    let key = function_body(&src, "sculpt3d_key");
+    assert!(
+        key.contains("K::KeyJ"),
+        "des-subdividir tem tecla própria, vizinha do K que subdivide"
+    );
+    let block = braced_block(&key, "if code == K::KeyJ");
+    assert!(
+        block.contains("scene.reverse_level()"),
+        "e ela sai pela porta que grava"
+    );
+    // As DUAS metades: o que aconteceu e o que NÃO aconteceu. Sem a segunda, uma
+    // malha que não é subdivisão devolveria silêncio — que é como o artista
+    // conclui que a tecla não existe.
+    assert!(
+        block.contains("revertida:") && block.contains("nao' reverte"),
+        "o log fala nos dois desfechos"
+    );
+}
+
+/// ⚠️ **Desfazer uma reversão é TIRAR o nível, e refazer é reconstruí-lo — não
+/// há estado guardado para o segundo.** É o oposto exato do `DroppedLevel`, que
+/// TEM de carregar o nível porque recomputá-lo dependeria de uma base que o
+/// carimbo já mudou; aqui reverter é função pura da malha. Trocar um pelo outro
+/// não falha: produz uma pilha PARECIDA, que é a pior forma de errado.
+#[test]
+fn undoing_a_reversal_removes_the_level_and_redoing_it_rebuilds_it() {
+    let src = sculpt_src();
+    let apply = function_body(&src, "apply_entry");
+    let action = &apply[apply.rfind("match entry {").expect("o match que AGE")..];
+
+    let undo = braced_block(action, "StrokeUndo::ReversedLevel(rev) =>");
+    assert!(
+        undo.contains("self.stack.unreverse(&rev)") && undo.contains("UnreversedLevel"),
+        "desfazer despermuta a pilha e vira a inversa"
+    );
+    assert!(
+        undo.contains("StrokeUndo::ReversedLevel(rev)"),
+        "e uma recusa devolve a MESMA entrada, em vez de consumir a única que desfaz"
+    );
+
+    let redo = braced_block(action, "StrokeUndo::UnreversedLevel =>");
+    assert!(
+        redo.contains("self.stack.reverse()") && redo.contains("ReversedLevel"),
+        "refazer é chamar a reversão de novo — ela é determinística"
+    );
+
+    // E o `seek`: os dois lados pousam em níveis DIFERENTES, e aplicar uma
+    // entrada do nível errado é o no-op silencioso que o gate do `AddedLevel` já
+    // pagou uma vez.
+    let seek = &apply[..apply.rfind("match entry {").expect("o match que AGE")];
+    assert!(
+        braced_block(seek, "StrokeUndo::ReversedLevel(_) =>").contains("select(1)"),
+        "desfazer uma reversão acontece do nível 1, onde ela deixou o artista"
+    );
+    assert!(
+        braced_block(seek, "StrokeUndo::UnreversedLevel =>").contains("select(0)"),
+        "e refazê-la, do nível 0"
+    );
+}
+
+/// ⚠️ **A cena `=3` só significa alguma coisa se a malha dela REVERTER**, e isso
+/// é um fato sobre geometria que nenhum gate de fonte enxerga. Este aqui pina a
+/// metade que a fonte pode dizer — que ela é construída SUBDIVIDINDO, que é a
+/// condição necessária —, e a metade geométrica vive no
+/// `ph2d-mesh::reversion_tests`, sobre exatamente esta forma.
+#[test]
+fn the_reversion_scene_opens_with_a_mesh_that_is_a_subdivision() {
+    let src = sculpt_src();
+    let body = function_body(&src, "smoke_mesh");
+    assert!(
+        body.contains("reversion_scene()"),
+        "a cena escolhe a malha dela"
+    );
+    let arm = braced_block(&body, "if reversion_scene()");
+    assert_eq!(
+        arm.matches("subdivide(").count(),
+        2,
+        "duas subdivisões: uma só daria um nível a reconstruir, e a cena mostra dois"
     );
 }

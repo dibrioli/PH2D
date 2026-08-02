@@ -153,3 +153,62 @@ pub fn sphere_with_triangles(target: usize, radius: f32) -> Mesh {
     let r = ((target as f64 / 2.0).sqrt().round() as usize).max(3);
     uv_sphere(r, r, radius)
 }
+
+/// **A mesma malha, com os vértices EMBARALHADOS** — o que um OBJ importado é.
+///
+/// ⚠️ **Ela existe porque sem ela as fixtures da reversão NÃO CONTINHAM o
+/// fenômeno, e isso foi medido.** A [`crate::subdivide`] numera os vértices
+/// originais PRIMEIRO, então reverter `subdivide(cube)` devolve a permutação
+/// IDENTIDADE — e toda a maquinaria de renumeração, inclusive a cascata que
+/// renumera os níveis acima, fica invisível a qualquer gate escrito sobre ela.
+/// Duas mutações sobreviveram por isto antes de esta função existir.
+///
+/// Um arquivo de terceiro não tem obrigação nenhuma de ordenar vértices, e é
+/// exatamente esse arquivo que a reversão serve. Fisher-Yates com um LCG:
+/// **determinístico** dado o `seed`, e sem dependência nova.
+#[must_use]
+pub fn shuffled(mesh: &Mesh, seed: u64) -> Mesh {
+    let n = mesh.vert_count();
+    let mut order: Vec<u32> = (0..n as u32).collect();
+    let mut s = seed | 1;
+    for i in (1..n).rev() {
+        s = s
+            .wrapping_mul(6_364_136_223_846_793_005)
+            .wrapping_add(1_442_695_040_888_963_407);
+        let j = (s >> 33) as usize % (i + 1);
+        order.swap(i, j);
+    }
+    let mut inv = vec![0u32; n];
+    for (j, &o) in order.iter().enumerate() {
+        inv[o as usize] = u32::try_from(j).unwrap_or(u32::MAX);
+    }
+    let positions: Vec<[f32; 3]> = order
+        .iter()
+        .map(|&o| mesh.positions()[o as usize])
+        .collect();
+    let faces: Vec<Face> = mesh
+        .faces()
+        .iter()
+        .map(|f| {
+            let mut g = *f;
+            for k in 0..f.vert_count() {
+                g.0[k] = inv[g.0[k] as usize];
+            }
+            g
+        })
+        .collect();
+    let mut out = Mesh::from_parts(positions, faces).expect("embaralhar não inventa índice");
+    if let Some(c) = mesh.colors() {
+        let dst = out.colors_mut();
+        for (j, &o) in order.iter().enumerate() {
+            dst[j] = c[o as usize];
+        }
+    }
+    if let Some(m) = mesh.masks() {
+        let dst = out.masks_mut();
+        for (j, &o) in order.iter().enumerate() {
+            dst[j] = m[o as usize];
+        }
+    }
+    out
+}

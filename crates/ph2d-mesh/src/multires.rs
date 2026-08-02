@@ -150,6 +150,16 @@ impl Multires {
         &self.levels[self.sel]
     }
 
+    /// A malha de um nível QUALQUER — para quem precisa dizer alguma coisa sobre
+    /// um nível que não é o selecionado (um log, uma sonda).
+    ///
+    /// ⚠️ Só leitura, e de propósito: escrever num nível que o artista não está
+    /// vendo pularia o `lower`/`higher`, que são quem mantém o detalhe coerente.
+    #[must_use]
+    pub fn level_mesh(&self, k: usize) -> Option<&Mesh> {
+        self.levels.get(k)
+    }
+
     /// A malha do nível atual, para esculpir.
     pub fn mesh_mut(&mut self) -> &mut Mesh {
         &mut self.levels[self.sel]
@@ -656,6 +666,13 @@ fn sub(a: [f32; 3], b: [f32; 3]) -> [f32; 3] {
 fn dot(a: [f32; 3], b: [f32; 3]) -> f32 {
     a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
 }
+
+/// A reversão mora num filho porque mexe nos campos privados da pilha — ver o
+/// cabeçalho dele.
+#[path = "multires_reverse.rs"]
+mod reverse;
+
+pub use reverse::Reversal;
 
 #[cfg(test)]
 #[path = "multires_tests.rs"]

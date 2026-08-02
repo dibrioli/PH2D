@@ -249,3 +249,45 @@ fn measure_which_knob_pays_the_stamp() {
     }
     println!();
 }
+
+/// **O que COMEÇAR um traço de aquarela custa, e qual varredura de plano paga.**
+///
+/// `freeze_watercolor_ground` roda uma vez por traço e caminha o plano TRÊS vezes (backdrop, substrato,
+/// soak). É a única metade do módulo que responde ao tamanho do documento depois que o smudge parou de
+/// forkar o canvas (doc 28 §5.61) — e com um pincel de 250 px o artista paga isso a cada traço.
+#[test]
+#[ignore = "measurement, not a gate"]
+fn measure_what_starting_a_watercolor_stroke_costs() {
+    const RADIUS: f32 = 250.0;
+    println!("\nraio {RADIUS:.0}, knobs do Enio — o PEN-DOWN\n");
+    println!("{:<8} {:>12} {:>12}", "canvas", "pen-down ms", "cresce");
+    let mut prev = 0.0f64;
+    for size in [2048u32, 4096] {
+        // Três traços; o 1º paga o first-touch das alocações e é descartado (§5.13).
+        let mut t = artist_wash(size, RADIUS);
+        let mid = f64::from(size / 2) as f32;
+        let mut downs = Vec::new();
+        for s in 0..3 {
+            let x0 = RADIUS + 20.0 + f64::from(s) as f32 * 40.0;
+            let t0 = Instant::now();
+            t.on_canvas_pointer(cp([x0, mid], PointerPhase::Down));
+            downs.push(t0.elapsed().as_secs_f64() * 1e3);
+            let _ = t.take_preview_arc();
+            t.on_canvas_pointer(cp([x0 + 30.0, mid], PointerPhase::Move));
+            t.paint_tick(DT);
+            t.on_canvas_pointer(cp([x0 + 60.0, mid], PointerPhase::Up));
+            let _ = t.take_preview_arc();
+        }
+        let med = (downs[1] + downs[2]) / 2.0;
+        println!(
+            "{size:<8} {med:>12.3} {:>11}",
+            if prev > 0.0 {
+                format!("{:.2}x", med / prev)
+            } else {
+                "-".into()
+            }
+        );
+        prev = med;
+    }
+    println!();
+}

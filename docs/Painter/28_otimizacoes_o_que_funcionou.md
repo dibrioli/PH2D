@@ -6898,9 +6898,14 @@ sangram, e não são redundantes (um passe canvas-sized novo passaria pelo prime
 
 ### 5. Aberto, com número
 
-- **O pen-down ainda é do tamanho da TELA: 34 ms @2048² contra 63 @4096².** É o
-  `freeze_watercolor_ground`, com três varreduras de plano inteiro (backdrop ~67 MB + substrato ~67 MB
-  + soak ~16 MB a 4096²). ⚠️ O `wet_substrate` é preenchido **preguiçosamente** (só sobre a região de
-  saída do composite), então o `NaN` de tela inteira invalida pixels que **nunca foram preenchidos** —
-  a cura é a mesma lei (*a janela vem de quem escreve*) e continua não construída.
+- **O pen-down: 33,4 ms @2048² contra 46,0 @4096², `1,38×`** — ⚠️ **re-medido DEPOIS do fix, e o fix
+  moveu o número** (a leitura de antes era 34/63, com o fork do smudge dentro dela; §0: *quem move o
+  número reconfere a nota*). Só **~12,6 ms** dele responde ao tamanho da tela; os outros ~33 são
+  limitados pela pegada, em qualquer documento. A parte canvas-sized é o `freeze_watercolor_ground`
+  (backdrop ~67 MB + substrato ~67 MB + soak ~16 MB a 4096²), e ⚠️ o `wet_substrate` é preenchido
+  **preguiçosamente** (só sobre a região de saída do composite), então o `NaN` de tela inteira invalida
+  pixels que **nunca foram preenchidos** — a cura é a mesma lei (*a janela vem de quem escreve*).
+  **Não construída**: o teto do que ela compra é uma fração de 12,6 ms, contra os 56 ms/quadro que esta
+  wave já devolveu, e ela pede um campo novo num arquivo que está em 700 LOC exatos. Sonda pronta:
+  `measure_what_starting_a_watercolor_stroke_costs`.
 - **O tick segue em 22-33 ms** e é a maior metade agora; ele é window-bound e a janela é 1,4× a pegada.

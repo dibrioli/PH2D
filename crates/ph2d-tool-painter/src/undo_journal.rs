@@ -276,6 +276,14 @@ impl<T: Copy + Send + Sync> TileJournal<T> {
     }
 
     /// O valor que o elemento `i` tinha no início do passo, se o tile dele foi capturado.
+    ///
+    /// ⚠️ **Ele carrega o MESMO `cfg` dos chamadores desde a §5.70.** O caminho de commit deixou de
+    /// perguntar por elemento (quem lê o lado `before` é o [`Self::read_row_into`], que resolve o tile
+    /// uma vez por corrida), e o que sobrou são os quatro `*_before` da rede de conferência em
+    /// `undo_window.rs` — todos `#[cfg(any(test, debug_assertions))]`. Sem este atributo o método fica
+    /// **sem chamador NENHUM num build de release**, e o `dead_code` acusa: um `pub(crate)` órfão é uma
+    /// segunda resposta a *"o que este elemento era antes?"* esperando alguém chamá-la.
+    #[cfg(any(test, debug_assertions))]
     pub(crate) fn get(&self, i: usize) -> Option<T> {
         if let Some(w) = &self.whole {
             return w.get(i).copied();
@@ -290,6 +298,49 @@ impl<T: Copy + Send + Sync> TileJournal<T> {
         let (tx, ty) = (x / TILE, y / TILE);
         let tile = self.data.get(ty * self.tiles_x + tx)?.as_ref()?;
         tile.get((y % TILE) * self.tile_w(tx) + (x % TILE)).copied()
+    }
+
+    /// **Uma FAIXA de uma linha, resolvendo o tile uma vez por CORRIDA** — a mesma resposta que
+    /// `(x0..x0+cols).map(|x| self.get(y*stride + x).unwrap_or(live[..]))`, sem repetir a aritmética
+    /// de tile por elemento (doc 28 §5.70).
+    ///
+    /// ⚠️ **O que ela remove é DIVISÃO INTEIRA, não uma leitura.** Dentro de uma linha `y` é fixo, logo
+    /// `ty` e `y % TILE` são fixos; dentro de uma corrida de `TILE` colunas `tx` também é. O
+    /// [`Self::get`] recomputava os quatro (`i/stride`, `i%stride`, `x/TILE`, `y/TILE`, mais os dois
+    /// restos) **por elemento** — e o lado `before` de um passo canvas-wide o chamava ~16,7 M vezes por
+    /// plano. É a família do `is_probe_cell` da §5.42.
+    ///
+    /// ⚠️ **Tile não capturado ⇒ o valor de agora**, que é a lei do `before` (§5.28): *dentro da caixa,
+    /// o que ninguém tomou não mudou*. Aqui ela é honrada por corrida em vez de por elemento.
+    pub(crate) fn read_row_into(&self, y: usize, x0: usize, cols: usize, live: &[T], out: &mut Vec<T>)
+    where
+        T: Copy,
+    {
+        let row = y * self.stride;
+        if let Some(w) = &self.whole {
+            out.extend_from_slice(&w[row + x0..row + x0 + cols]);
+            return;
+        }
+        if self.stride == 0 || y >= self.rows {
+            out.extend_from_slice(&live[row + x0..row + x0 + cols]);
+            return;
+        }
+        let (ty, in_y) = (y / TILE, y % TILE);
+        let mut x = x0;
+        let end = x0 + cols;
+        while x < end {
+            let tx = x / TILE;
+            let run = (((tx + 1) * TILE).min(end)) - x;
+            match self.data.get(ty * self.tiles_x + tx).and_then(Option::as_ref) {
+                Some(tile) => {
+                    let w = self.tile_w(tx);
+                    let s = in_y * w + (x - tx * TILE);
+                    out.extend_from_slice(&tile[s..s + run]);
+                }
+                None => out.extend_from_slice(&live[row + x..row + x + run]),
+            }
+            x += run;
+        }
     }
 }
 

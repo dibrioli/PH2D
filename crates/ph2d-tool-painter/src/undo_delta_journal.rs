@@ -89,11 +89,35 @@ impl PlaneWindow {
     /// `journal.get(i).unwrap_or(vivo[i])`, elemento a elemento. Irmã do [`Self::extract`], e as duas
     /// percorrem a janela na MESMA ordem — o `Patch` guarda os dois lados e eles têm de se corresponder
     /// índice a índice.
+    /// A rota ELEMENTO-A-ELEMENTO, **CONGELADA** como oráculo — é o código que shipava antes da
+    /// §5.70, verbatim.
+    ///
+    /// ⚠️ Ela vive sob `cfg(test)` e não como um método sem chamador: um segundo caminho vivo é uma
+    /// **segunda resposta** esperando alguém chamá-la (a lição do `warp_axis` e do `serial_side`).
+    #[cfg(test)]
     fn extract_by<T>(&self, mut f: impl FnMut(usize) -> T) -> Box<[T]> {
         let mut out = Vec::with_capacity(self.elems());
         for r in 0..self.rows {
             let s = (self.row + r) * self.stride + self.col;
             out.extend((s..s + self.cols).map(&mut f));
+        }
+        out.into_boxed_slice()
+    }
+
+    /// **O lado `before` da janela, lido do journal POR CORRIDA de tile** (doc 28 §5.70).
+    ///
+    /// Mesma resposta que `extract_by(|i| j.get(i).unwrap_or(live[i]))`, sem repetir a aritmética de
+    /// tile por elemento — ver [`TileJournal::read_row_into`](crate::undo::journal::TileJournal), que é
+    /// quem sabe onde os tiles moram. A ORDEM de percurso é a mesma do [`Self::extract`], e ela é
+    /// load-bearing: o `Patch` guarda os dois lados e eles se correspondem índice a índice.
+    fn extract_journal<T: Copy + Send + Sync>(
+        &self,
+        j: &crate::undo::journal::TileJournal<T>,
+        live: &[T],
+    ) -> Box<[T]> {
+        let mut out = Vec::with_capacity(self.elems());
+        for r in 0..self.rows {
+            j.read_row_into(self.row + r, self.col, self.cols, live, &mut out);
         }
         out.into_boxed_slice()
     }
@@ -174,7 +198,7 @@ impl<T: Copy + PartialEq + Send + Sync> StoredPlane<T> {
             Some(h) => jwin.intersect(h)?,
             None => jwin,
         };
-        let before = win.extract_by(|i| j.get(i).unwrap_or(live[i]));
+        let before = win.extract_journal(j, live);
         let after = win.extract(live);
         if before == after {
             // Escreveu os mesmos bytes de volta — o `split` clássico chega aqui pelo `diff_window`, que
@@ -291,5 +315,93 @@ impl<T: Copy + PartialEq + Send + Sync> StoredMap<T> {
             entries.insert(k, e);
         }
         Some(Self { entries })
+    }
+}
+
+#[cfg(test)]
+mod extract_tests {
+    //! **A leitura POR CORRIDA é a leitura POR ELEMENTO, ao bit** (doc 28 §5.70).
+    //!
+    //! O oráculo é a rota congelada [`PlaneWindow::extract_by`] — *o código que shipava* — e não uma
+    //! re-derivação: as duas têm de percorrer a janela na MESMA ordem, senão o `Patch` guarda dois
+    //! lados que não se correspondem índice a índice e o undo instala bytes trocados de lugar.
+
+    use super::PlaneWindow;
+    use crate::undo::journal::TileJournal;
+
+    /// Um plano ESTRUTURADO — um campo chato faria qualquer leitura concordar, e o gate seria verde
+    /// por vácuo.
+    fn plane(stride: usize, rows: usize) -> Vec<u8> {
+        (0..stride * rows)
+            .map(|i| u8::try_from((i * 37 + i / stride * 11) % 251).expect("cabe em u8"))
+            .collect()
+    }
+
+    /// ⚠️ **A fixture tem de conter tile CAPTURADO e tile NÃO capturado**, e janelas que ATRAVESSAM a
+    /// fronteira de 128: dentro de um tile só, as duas rotas leem o mesmo bloco e a corrida nunca é
+    /// exercitada — que é a forma de passar sem julgar nada.
+    #[test]
+    fn the_run_walk_reads_what_the_element_walk_reads() {
+        let mut from_journal = 0usize;
+        let (stride, rows) = (400usize, 300usize);
+        let before = plane(stride, rows);
+        let mut live = before.clone();
+        for (i, v) in live.iter_mut().enumerate() {
+            *v = v.wrapping_add(u8::try_from(i % 7).expect("cabe")).wrapping_add(1);
+        }
+
+        for area in [
+            Some((10usize, 5usize, 260usize, 200usize)), // atravessa 128 nos dois eixos
+            Some((0, 0, 128, 128)),                      // um tile exato
+            Some((130, 130, 140, 140)),                  // um pedaço de UM tile interior
+            None,                                        // captura de plano inteiro
+        ] {
+            let mut j = TileJournal::default();
+            j.capture(&before, stride, area);
+
+            for win in [
+                PlaneWindow::tiles(0, rows, 0, stride, stride, before.len()),
+                PlaneWindow::tiles(3, 210, 7, 300, stride, before.len()),
+                PlaneWindow::tiles(129, 40, 127, 5, stride, before.len()),
+            ]
+            .into_iter()
+            .flatten()
+            {
+                let fast = win.extract_journal(&j, &live);
+                let slow = win.extract_by(|i| j.get(i).unwrap_or(live[i]));
+                assert_eq!(
+                    fast.len(),
+                    slow.len(),
+                    "as duas rotas devolvem tamanhos diferentes (area {area:?})"
+                );
+                let bad = fast.iter().zip(&slow).filter(|(a, b)| a != b).count();
+                assert_eq!(
+                    bad, 0,
+                    "{bad} elementos divergiram da leitura por-elemento (area {area:?})"
+                );
+                // ⚠️ Controle de COBERTURA, e ele é do CONJUNTO e não de cada par: uma janela que
+                // não cruza a área capturada lê tudo do plano vivo — legítimo, e é justamente um dos
+                // casos a testar. O que não pode é NENHUM par tocar o journal, porque aí a igualdade
+                // seria sobre o plano vivo e não julgaria resolução de tile nenhuma.
+                if slow.iter().zip(win_indices(&win)).any(|(v, i)| *v != live[i]) {
+                    from_journal += 1;
+                }
+            }
+        }
+        assert!(
+            from_journal >= 4,
+            "controle: so' {from_journal} par(es) leram bytes do JOURNAL — a igualdade estaria \
+             sendo medida sobre o plano vivo, que as duas rotas leem igual por construcao"
+        );
+    }
+
+    /// Os índices globais que a janela percorre, na ordem em que as duas rotas os percorrem.
+    fn win_indices(w: &PlaneWindow) -> Vec<usize> {
+        let mut v = Vec::new();
+        for r in 0..w.rows {
+            let s = (w.row + r) * w.stride + w.col;
+            v.extend(s..s + w.cols);
+        }
+        v
     }
 }

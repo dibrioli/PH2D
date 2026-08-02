@@ -6511,3 +6511,64 @@ executado por nenhum gate deste repo*. O cabeçalho do `tool_mid_step` já avisa
 O **controle positivo usa um mecanismo INDEPENDENTE**: a rota clássica ainda carrega o limiar de 50%,
 então se ela cai em `Whole` sobre o mesmo passo, a janela da fixture de fato cruza o limiar. **Mutação:
 devolver o ramo ⇒ RED**, nomeando `heights [WHOLE]`.
+
+---
+
+## §5.70 — E o que sobrava do commit era DIVISÃO INTEIRA por elemento: 151,6 → 67,0 ms (2026-08-02)
+
+A §5.69 deixou o commit em **151,6 ms** a 4096² e não disse de que ele era feito. Ele era do lado
+`before`: `win.extract_by(|i| j.get(i).unwrap_or(live[i]))` — e o `TileJournal::get` faz, **por
+elemento**, `i/stride` · `i%stride` · `x/TILE` · `y/TILE` · `y%TILE` · `x%TILE`, mais dois lookups com
+bounds check. Numa janela de ~96% a 4096² isso são ~16,7 M chamadas **por plano**.
+
+⚠️ **É a família do `is_probe_cell` da §5.42** (*"duas divisões inteiras no laço mais quente"*) e do
+`alpha_of_mass` da §5.43 (*"`%` em `f64` é uma chamada a `fmod`, não uma instrução"*): o custo não era o
+trabalho, era **a pergunta sendo refeita**.
+
+### A fatoração, e ela é exata
+
+Dentro de uma linha `y` é fixo ⇒ `ty` e `y % TILE` são fixos; dentro de uma corrida de `TILE` colunas
+`tx` também é. `TileJournal::read_row_into` resolve o tile **uma vez por corrida** e copia
+contiguamente (`extend_from_slice`); tile não capturado cai no plano vivo pela mesma lei do `before`
+(§5.28), agora honrada por corrida em vez de por elemento.
+
+| 4096², diagonal de canto a canto | §5.68 (antes) | §5.69 | §5.70 |
+|---|---|---|---|
+| commit de undo | 272,5 ms | 151,6 | **67,0** |
+| pen-up | 380,6 ms | 256,3 | **179,1** |
+
+E a 2048²: commit **70,8 → 40,1 → 18,6**; pen-up **95,6 → 64,7 → 43,3**. Acumulado, o commit ficou
+**4,07× mais barato** e o pen-up **2,12×**.
+
+### ⚠️ E o `dead_code` que só o build de RELEASE mostra
+
+Trocar o chamador de produção deixou o `TileJournal::get` **sem chamador num build de release** — os
+quatro que restam (`canvas_before`, `heights_before`, `covers_before`, `mats_before`, a rede de
+conferência) são `#[cfg(any(test, debug_assertions))]`. Ele leva o mesmo `cfg`.
+
+**A lição é sobre onde eu procurei.** Rodei `clippy --profile ci-test --all-targets` e ele saiu limpo,
+porque em build de teste os chamadores existem; e `cargo check` (perfil dev) também, pelo mesmo motivo.
+⚠️ *Um aviso de código morto pode ser visível só na forma de build em que o chamador some* — e esta é a
+imagem espelhada do miss da mesma sessão, em que o `items after a test module` só aparecia **com**
+`--all-targets`. **Nenhuma das duas formas basta sozinha.**
+
+⚠️ **E o meu grep de "todo chamador" terminava em `| head`** — ele cortou os quatro de `undo_window.rs`,
+eu li a saída como completa e congelei o método sob `cfg(test)`, o que **quebrou o build**. *Uma busca
+por "todos os X" com `head` responde outra pergunta.*
+
+### O gate, e o controle que teve de mudar de nível
+
+`the_run_walk_reads_what_the_element_walk_reads`, contra a rota por-elemento **CONGELADA sob
+`cfg(test)`** — *o código que shipava*, não uma re-derivação (a lição do `warp_axis`/`serial_side`). A
+ORDEM de percurso é parte da afirmação: o `Patch` guarda os dois lados e eles se correspondem índice a
+índice.
+
+⚠️ **A fixture cruza fronteira de tile nos dois eixos**, e inclui tile capturado, tile **não**
+capturado, um tile exato e a captura de plano inteiro — dentro de um tile só as duas rotas leem o mesmo
+bloco e a corrida nunca é exercitada.
+
+⚠️ **E o controle nasceu ERRADO por um nível:** eu o escrevi por PAR (*"esta janela contém bytes do
+journal"*) e ele **disparou** — uma janela que não cruza a área capturada lê tudo do plano vivo, o que é
+legítimo e é justamente um dos casos a testar. A cobertura é propriedade do **CONJUNTO**: o que não pode
+é *nenhum* par tocar o journal. **3 mutações, 3 sangram** (o offset dentro da corrida · o comprimento da
+corrida · o offset de coluna do fallback).

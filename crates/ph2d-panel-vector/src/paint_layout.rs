@@ -106,14 +106,11 @@ impl BodyCtx<'_> {
                 y,
             );
         } else {
-            self.number_cell(
+            y = self.lone_number_row(
                 tr("panel.vector.layout.gap"),
                 ids::VECTOR_LAYOUT_GAP_MAIN,
-                self.inner_x,
-                self.inner_w,
                 y,
             );
-            y += self.row_h + self.row_gap;
         }
         y = self.layout_padding_rows(y);
         y = self.layout_align_rows(&f, y);
@@ -155,14 +152,7 @@ impl BodyCtx<'_> {
                 y,
             );
         } else {
-            self.number_cell(
-                "All",
-                ids::VECTOR_LAYOUT_PAD_ALL,
-                self.inner_x,
-                self.inner_w,
-                y,
-            );
-            y += self.row_h + self.row_gap;
+            y = self.lone_number_row("All", ids::VECTOR_LAYOUT_PAD_ALL, y);
         }
         y
     }

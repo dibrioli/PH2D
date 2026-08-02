@@ -83,10 +83,91 @@ fn click_reaches_bus(id: ph2d_a11y::NodeId, what: &str) {
 
 /// O widget `id` foi pintado com área clicável?
 fn painted(id: ph2d_a11y::NodeId) -> bool {
+    rect(id).is_some()
+}
+
+/// O retângulo em que o painel pintou `id`.
+fn rect(id: ph2d_a11y::NodeId) -> Option<Rect> {
     let mut host = MockPanelHost::with_panel::<VectorPanel>();
     let mut panel_state = VectorPanelState;
     host.painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)
-        .is_some()
+}
+
+fn rect_of(id: ph2d_a11y::NodeId, what: &str) -> Rect {
+    rect(id).unwrap_or_else(|| panic!("{what} nao foi pintado"))
+}
+
+/// A calha de rótulo que a versão anterior dava a TODO campo: um caractere (`Spacing::Md`) mais
+/// o vão até o campo (`Spacing::Xs`). Literal aqui de propósito — é o número do DEFEITO, e o
+/// gate tem de continuar a falhar se alguém reintroduzir a constante com outro nome.
+const OLD_FIXED_GUTTER_PX: f32 = 8.0 + 4.0;
+
+/// **O REPRO da label sobreposta** (Enio 2026-08-02: *"caixas de input numérico grande e label
+/// sobreposta"*).
+///
+/// A calha era fixa em oito pixels — um caractere —, então `paint_text` recortava "Gap" em "G"
+/// e o campo era desenhado por cima do resto. Nasceu VERMELHO em exactamente `12.0`.
+#[test]
+fn a_multi_letter_label_gets_more_room_than_one_character() {
+    clear();
+    state::set_frame_clip(Some(true));
+    state::set_layout_flow(Some(row_flow()));
+    let inner_x = rect_of(ids::VECTOR_LAYOUT_DIR_OFF, "o chip Off").x;
+    let gap = rect_of(ids::VECTOR_LAYOUT_GAP_MAIN, "o campo Gap");
+    assert!(
+        gap.x - inner_x > OLD_FIXED_GUTTER_PX,
+        "a calha do rotulo 'Gap' e' de {:.1} px — o campo comeca em cima do proprio rotulo",
+        gap.x - inner_x
+    );
+    clear();
+}
+
+/// **E a calha SEGUE o rótulo** — um rótulo mais largo empurra o campo mais para a direita.
+///
+/// ⚠️ É a metade que distingue *medir* de *escolher uma constante maior*: com um número fixo
+/// (qualquer que seja) os dois campos começariam no MESMO x, e o próximo rótulo mais longo que
+/// ele voltaria a ser recortado.
+#[test]
+fn a_wider_label_pushes_its_field_further_right() {
+    clear();
+    state::set_frame_clip(Some(true));
+    state::set_layout_flow(Some(row_flow()));
+    state::set_layout_item(Some(LayoutItem {
+        grow: 0.0,
+        shrink: 1.0,
+    }));
+    // "Gap" e "Grow" são os dois campos da coluna ESQUERDA — mesma origem de célula, então o x
+    // deles é a calha e mais nada.
+    let gap = rect_of(ids::VECTOR_LAYOUT_GAP_MAIN, "o campo Gap");
+    let grow = rect_of(ids::VECTOR_LAYOUT_ITEM_GROW, "o campo Grow");
+    assert!(
+        grow.x > gap.x,
+        "'Grow' e 'Gap' comecam no mesmo x ({:.1}) — a calha e' uma constante, nao a medida",
+        gap.x
+    );
+    clear();
+}
+
+/// **Um campo SOZINHO ocupa meia largura, não a linha inteira** (a outra metade do report: o
+/// *"input numérico grande"*).
+///
+/// O oráculo é a borda direita do painel, lida do último chip da fileira de direção — nenhum
+/// número escrito à mão, então ele continua certo se a largura do painel mudar.
+#[test]
+fn a_lone_number_field_sits_in_half_the_row() {
+    clear();
+    state::set_frame_clip(Some(true));
+    state::set_layout_flow(Some(row_flow()));
+    let wrap = rect_of(ids::VECTOR_LAYOUT_DIR_WRAP, "o chip Wrap");
+    let inner_right = wrap.x + wrap.w;
+    let gap = rect_of(ids::VECTOR_LAYOUT_GAP_MAIN, "o campo Gap");
+    let right = gap.x + gap.w;
+    assert!(
+        right < inner_right - gap.w * 0.5,
+        "o campo Gap vai ate' {right:.1} e a linha acaba em {inner_right:.1} — ele tomou a \
+         largura inteira do painel"
+    );
+    clear();
 }
 
 /// **Os quatro chips de DIREÇÃO estão vivos numa moldura**, incluindo o Off.

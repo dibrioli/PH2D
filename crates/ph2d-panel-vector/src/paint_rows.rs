@@ -110,14 +110,41 @@ impl BodyCtx<'_> {
         idb: ph2d_a11y::NodeId,
         y: f32,
     ) -> f32 {
-        let gap = Spacing::Sm.px();
-        let cw = ((self.inner_w - gap) / 2.0).max(1.0);
+        let cw = self.half_cell_w();
         self.number_cell(la, ida, self.inner_x, cw, y);
-        self.number_cell(lb, idb, self.inner_x + cw + gap, cw, y);
+        self.number_cell(lb, idb, self.inner_x + cw + Spacing::Sm.px(), cw, y);
+        y + self.row_h + self.row_gap
+    }
+
+    /// **A largura de UMA célula da grade de dois** — a mesma expressão para quem preenche as
+    /// duas e para quem preenche só a da esquerda. Duas cópias divergem no dia em que o vão
+    /// mudar, e o resultado é uma fileira desalinhada da de cima.
+    fn half_cell_w(&self) -> f32 {
+        ((self.inner_w - Spacing::Sm.px()) / 2.0).max(1.0)
+    }
+
+    /// **Um campo numérico SOZINHO**, na célula esquerda da mesma grade de dois.
+    ///
+    /// ⚠️ Ele ocupa meia largura e não a linha inteira, e isto é o report do Enio (2026-08-02:
+    /// *"caixas de input numérico grande"*): um número curto — um vão, um recuo — numa caixa
+    /// da largura do painel lê como o controlo mais importante da seção, quando é o menor. A
+    /// grade já existe (X | Y, W | H); um campo solto senta numa célula dela.
+    pub(crate) fn lone_number_row(&mut self, label: &str, id: ph2d_a11y::NodeId, y: f32) -> f32 {
+        let cw = self.half_cell_w();
+        self.number_cell(label, id, self.inner_x, cw, y);
         y + self.row_h + self.row_gap
     }
 
     /// Um campo numérico rotulado (`<rótulo> [ valor ]`) numa célula; regista o hit.
+    ///
+    /// ⚠️ **A calha do rótulo é MEDIDA, com `Spacing::Md` de PISO.** Ela era o piso e mais nada
+    /// — oito pixels, o tamanho de um caractere —, e isso bastou enquanto todo rótulo desta
+    /// função era `X`/`Y`/`W`/`H`. O AUTO LAYOUT trouxe `Gap`, `All`, `Grow` e `Shrink`, e o
+    /// resultado foi o report do Enio: *"label sobreposta"* — o texto recortado em `G` e o
+    /// campo desenhado por cima do resto (`paint_text` recebe a calha como largura máxima).
+    ///
+    /// Medir em vez de escolher uma constante maior é o que mantém `X`/`Y` **onde sempre
+    /// estiveram**: um caractere mede menos que o piso, então a seção Transform não se move.
     pub(crate) fn number_cell(
         &mut self,
         label: &str,
@@ -126,7 +153,10 @@ impl BodyCtx<'_> {
         cw: f32,
         y: f32,
     ) {
-        let lab_w = Spacing::Md.px();
+        let lab_w = self
+            .text_system
+            .prefix_width(label, TypeToken::Sm.px())
+            .max(Spacing::Md.px());
         paint_text(
             self.text_system,
             self.scene,

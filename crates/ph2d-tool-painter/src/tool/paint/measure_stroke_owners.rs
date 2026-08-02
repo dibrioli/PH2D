@@ -311,9 +311,13 @@ fn who_holds_the_planes_after_a_canvas_wide_stroke() {
                 row.push_str(&format!("  apos {}: {c}/{h}/{cv}/{m}", k + 1));
             }
             eprintln!("  {name:26}{row}");
+            // Duas ablações, e a ordem separa os dois donos que um `clear()` remove de uma vez.
+            t.undo.probe_drop_entries();
+            let (c, h, cv, m) = owners(&t);
+            eprintln!("  {:26}  so' as ENTRADAS fora: {c}/{h}/{cv}/{m}", "");
             t.undo.clear();
             let (c, h, cv, m) = owners(&t);
-            eprintln!("  {:26}  sem o historico: {c}/{h}/{cv}/{m}", "");
+            eprintln!("  {:26}  …e o cursor tambem:   {c}/{h}/{cv}/{m}", "");
         }
         eprintln!("  (canvas/heights/covers/mats — 1 = so o tool ⇒ a proxima escrita e IN PLACE)");
     }

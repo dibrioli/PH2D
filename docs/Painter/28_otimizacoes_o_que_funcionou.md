@@ -6290,7 +6290,30 @@ incondicionalmente em release — `set_cursor`, degrau 4). `undo.clear()` o remo
 controller. **Quem é, está aberto** — os candidatos são o braço de forma/stride do `split` (que
 devolve `Whole` e é exigido por correção), `OnlyBefore`/`OnlyAfter`, e a entrada de um run coalescido.
 
-**Consequência para o plano:** a wave não é *"mude o limiar"*. São **dois** donos a remover, um
-identificado e um não, e remover só um não compra milissegundo nenhum — a lei tudo-ou-nada que o
-próprio §1b do `measure_stroke_owners` já enuncia. O próximo passo é barato e é uma medição: imprimir
-a VARIANTE que cada plano recebe no traço diagonal.
+### 4. A bisseção fecha a POSSE: são as ENTRADAS, nos quatro planos
+
+O `undo.clear()` remove duas coisas de uma vez, então a ablação foi partida
+(`UndoController::probe_drop_entries`, `cfg(test)`: derruba as pilhas e deixa o cursor de pé):
+
+| diagonal, 2048² e 4096² | canvas | heights | covers | mats |
+|---|---|---|---|---|
+| como shipa | 3 | 2 | 2 | 2 |
+| só as ENTRADAS fora | **2** | **1** | **1** | **1** |
+| …e o cursor também | 1 | 1 | 1 | 1 |
+
+**As entradas seguram os quatro**; o cursor segura só o canvas (ele elide relevo
+incondicionalmente), e é o mesmo 2 que o traço CURTO tem — pré-existente e fora deste assunto.
+
+⚠️ **Isto corrige o §3 acima:** o `Patch`-sempre deixou o relevo em 2 **e o dono continua sendo a
+entrada** ⇒ os três planos de relevo **não entram no `Whole` pelo limiar de tamanho**. Sobram o braço
+de forma/stride do `split` (exigido por correção) e `OnlyBefore`/`OnlyAfter`. O canvas entra pelo
+limiar (a ablação o curou); o relevo entra por outra porta, **e ela é o próximo passo** — uma medição,
+não uma hipótese: imprimir a VARIANTE de cada plano.
+
+⚠️ **A tabela foi medida com `load average 23,9`** (outra linha compilando ao lado), e vale mesmo
+assim: isto é **CONTAGEM de `Arc`, não relógio** — determinística e imune à carga. A regra da §5.49
+governa wall-clock; aplicá-la a um invariante seria descartar uma medição sã.
+
+**Consequência para o plano:** a wave não é *"mude o limiar"*. São **duas portas** para o `Whole`, uma
+identificada e uma não, e fechar só uma não compra milissegundo nenhum — a lei tudo-ou-nada que o
+próprio §1b do `measure_stroke_owners` já enuncia.

@@ -22,4 +22,17 @@ impl UndoController {
     pub(crate) fn cursor_for_audit(&self) -> Option<&ModelSnapshot> {
         self.cursor.as_deref()
     }
+
+    /// **Derruba as ENTRADAS e deixa o cursor de pé** — a ablação que separa os dois donos que o
+    /// `undo.clear()` remove de uma vez (doc 28 §5.66 §3).
+    ///
+    /// ⚠️ Ela não finge nada que o produto faça: é a metade de um `clear()`, e existe porque a pergunta
+    /// *"quem segura o plano vivo?"* tem duas respostas possíveis no controller e a contagem de donos
+    /// sozinha não as distingue.
+    #[cfg(test)]
+    pub(crate) fn probe_drop_entries(&mut self) {
+        self.undo.clear();
+        self.redo.clear();
+        self.bytes = 0;
+    }
 }

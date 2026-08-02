@@ -6572,3 +6572,124 @@ journal"*) e ele **disparou** — uma janela que não cruza a área capturada l�
 legítimo e é justamente um dos casos a testar. A cobertura é propriedade do **CONJUNTO**: o que não pode
 é *nenhum* par tocar o journal. **3 mutações, 3 sangram** (o offset dentro da corrida · o comprimento da
 corrida · o offset de coluna do fallback).
+
+---
+
+## §5.71 — A lavagem reconstruía uma vez por EVENTO de ponteiro, e o doc dela dizia QUADRO (2026-08-02)
+
+A tarefa era *avaliar o modo Watercolor e tentar otimizá-lo*, e o handoff 31 entregava a base já
+medida: **3,1 ms/move**, plano no tamanho da tela, com o **warp valendo 56%** do que a aquarela cobra
+sobre o Digital — mais o veredito honesto de que *"3,1 ms contra um orçamento de 16,6 não é um
+problema de performance hoje"*.
+
+⚠️ **Aquele veredito era verdadeiro exatamente onde foi medido: raio 100.** A tabela inteira mede um
+único raio, o slider vai a `BRUSH_SIZE_MAX_PX = 512`, e o relato mais recente do Enio (§5.51) é de
+pintar a **raio 300**. Reconferir a nota quando alguém move o número que a tornava verdadeira é o §0.
+
+### 5.71.1 A varredura de raio, e o confound que ela tinha de evitar
+
+O espaçamento de um dab é `spacing × 2 × raio`, então um passo de mouse FIXO emite ~10 dabs a r=20 e
+**menos de um** a r=300 — uma mediana por-move passa a pegar justamente o move que não carimbou nada,
+e foi assim que uma varredura anterior deste repo viu **o Digital ficar mais barato com pincel maior**.
+Medindo o **traço inteiro sobre caminho de comprimento fixo** (o que o artista faz: arrastar o mouse
+uma distância), a 4096²:
+
+| raio | moves | por move | pen-down |
+|---|---|---|---|
+| 20 | 20,6 ms | 0,71 | 81,5 |
+| 100 | 85,5 | 2,93 | 82,1 |
+| 300 | 267,5 | **9,20** | 97,7 |
+| 400 | 342,7 | **11,87** | 112,3 |
+
+**Linear no raio** (0,0295 × raio, constante em toda a faixa) ⇒ a r=400 um único movimento custa **71%
+de um quadro**. E o **pen-down é ~75-112 ms quase INDEPENDENTE do raio** — trabalho de TELA, que a
+tabela de ablação não vê porque o `move_ms` dela descarta o pen-down de propósito.
+
+### 5.71.2 A pergunta que decidiu tudo: por DAB ou por EVENTO?
+
+O mesmo caminho de 1200 px, entregue em passos diferentes (r=100):
+
+| eventos | aquarela | Digital |
+|---|---|---|
+| 30 | 87,5 ms (1,00×) | 34,7 (1,00×) |
+| 240 | **172,5 (1,97×)** | 36,0 (**1,04×**) |
+
+O Digital é **plano** — o custo dele é por dab, a taxa de polling não compra trabalho, e ele é o
+**controle que prova que o teste sabe dizer "não há patologia"**. A aquarela dobra: ela pagava trabalho
+do tamanho da PEGADA **por evento de ponteiro**.
+
+### 5.71.3 O mecanismo, e a cura que já tinha sido tentada do lado errado
+
+`paint_extend` chamava `apply_watercolor` + `pour_canvas_wet` em TODO Move. A janela da lavagem é
+*"os dabs desde o último composite" **padeada pelo raio de influência***, que é do tamanho da pegada —
+então o pad domina e encolher o passo do mouse **não encolhe a passada**, só multiplica quantas vezes
+ela acontece. E o doc do `apply_watercolor` dizia **três vezes** que a cadência é o QUADRO (*"each
+frame recomposites"*, *"renderFrame"*, *"the frame dirty rect"*).
+
+⚠️ **A duplicação já tinha sido VISTA.** O comentário do soak em `paint_tick` registra um profile de
+2026-07-07 onde `stamps` e `tool-tick` carregavam cada um um composite cheio — e a correção de então
+suprimiu **o do TICK**, o único-por-quadro, sob a premissa de que *"o flush de Move já recompôs a
+janela deste quadro"*. A premissa vale para os métodos **COALESCIDOS** (uma entrega por quadro) e é
+falsa para o freehand incremental, que é o pincel de aquarela padrão: ali o flush é um por evento raw.
+
+⚠️ **E a atribuição inicial estava INVERTIDA.** O composite é gateado em dab (`wet_frame_dirty` só
+existe com região de dab, então um evento sem dab não compõe); quem **não** era gateado em nada era o
+`pour_canvas_wet`, que ainda por cima caminha o rect **CUMULATIVO** desde o pen-down. Era ELE o termo
+que escalava sem limite com a contagem de eventos. Os dois moravam no mesmo braço, então a cura pega
+os dois — mas a frase *"o composite roda mesmo com zero dabs"* era falsa e está corrigida aqui.
+
+### 5.71.4 O resultado, e a propriedade que autorizou a deferição
+
+Mesmo traço, 30 quadros (0,5 s), variando só quantos eventos caem em cada quadro:
+
+| dispositivo | ev/quadro | por evento (antes) | **por quadro (agora)** | ganho |
+|---|---|---|---|---|
+| 120 Hz | 2 | 130,9 ms | **92,2 (1,00×)** | 1,42× |
+| 240 Hz | 4 | 146,6 | **89,9 (0,97×)** | 1,63× |
+| 480 Hz | 8 | 179,0 | **90,6 (0,98×)** | 1,98× |
+| 960 Hz | 16 | 234,1 (1,79×) | **91,3 (0,99×)** | **2,56×** |
+
+**Plano em 8× a taxa do dispositivo** — o custo passa a depender do DESENHO e não do mouse do artista.
+
+⚠️ **Byte-idêntico, MEDIDO e não argumentado:** o mesmo caminho em 15 e em 120 eventos pinta telas que
+diferem em **0 bytes**. Isso responde de quebra a hipótese pior — *a aparência da aquarela não dependia
+da taxa do mouse*. E o `pour_canvas_wet` é seguro pelo mesmo motivo por outra via: ele escreve
+`max(existente, cobertura)` sobre uma cobertura que só CRESCE, então `max(max(a,b),c) = max(a,b,c)`.
+
+⚠️ **Latência ZERO, e é a ordem do frame que garante:** o tick roda em `render_loop` ~1198, depois do
+flush de ponteiro (~698) e **antes** do upload do preview (~3397). O quadro que recebeu os Moves é o
+quadro que mostra a tinta.
+
+⚠️ **NEGATIVO honesto: a 1 evento por quadro a cura não compra nada** (21,3 contra 20,6 ms — ruído).
+As duas rotas fazem o mesmo número de composites ali. Ela paga a partir de 2 ev/quadro, que é todo
+dispositivo moderno a 60 fps.
+
+### 5.71.5 O pen-down: 268 MB para reproduzir uma cor chapada
+
+`composite_below` **alocava e PREENCHIA** o acumulador `[f32;4]` — 268,4 MB a 4096² — antes de a linha
+seguinte perguntar se há algo abaixo da âncora. Num documento de **uma camada** não há: o `descend`
+não produz fatia nenhuma, o laço de composite não roda, e 335 MB de tráfego produzem a cor de papel.
+*O guard existia; a alocação estava ACIMA dele, então o early-out era inalcançável por construção.*
+
+**pen-down 81,5 → 26,4 ms** (r=20) · 82,1 → 36,7 (r=100) · 112,3 → 62,2 (r=400).
+
+⚠️ Byte-idêntico por construção (compor o conjunto vazio sobre o chão deixa o chão) — e a premissa que
+faltava virou **gate**: o preenchimento chapado só bate com `encode(decode_byte(chão))` porque o
+round-trip de byte do sRGB é a **identidade nos 256 valores**. Este repo já se queimou presumindo
+precisão de tabela de transferência (doc 24), então isso é medido, não suposto.
+
+### 5.71.6 O que fica ABERTO, com número
+
+- **O pour ainda caminha o rect CUMULATIVO** uma vez por quadro ⇒ o custo por quadro cresce ao longo
+  do traço: **1,23× / 1,32× / 1,51×** do 1º para o 4º quarto, em traços de 24 / 48 / 96 quadros
+  (`measure_whether_the_frame_cost_grows_along_the_stroke`). A cura tem a mesma forma (dar-lhe o rect
+  do QUADRO), **mas a premissa não foi verificada**: o filtro de dono (`wet_styles.owner`, por
+  recência) pode mudar a elegibilidade de um texel no meio do traço. Wave própria, com gate de
+  byte-identidade de `canvas_wet` — não construída porque a correção não está provada.
+- **O WARP segue sendo 56%** do que a aquarela cobra sobre o Digital, e **não tem caminho de CPU**: os
+  9 taps de AA foram a CURA da borda serrilhada (warp 48: 226 degraus → zero) e cortá-los está fora de
+  discussão. O que resta é aproximar o warp dentro do texel — classe que este repo já mediu e
+  **rejeitou duas vezes** no AA do impasto —, e exige oráculo de APARÊNCIA + ordem do Enio.
+- **Os shape editors (`DragDot`/`Anchored`/`Line`) compõem por evento mesmo com a cura**, porque
+  `clear_wet_coverage` dobra o rect cumulativo no do quadro. No app eles são **coalescidos** pela shell
+  (uma entrega por quadro), então não é um defeito vivo — mas é o mesmo mecanismo noutra rota.

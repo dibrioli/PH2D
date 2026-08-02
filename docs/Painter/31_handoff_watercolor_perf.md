@@ -1,5 +1,23 @@
 # 31 — Handoff: avaliar e otimizar o modo **Watercolor**
 
+> ⚠️ **CUMPRIDO em 2026-08-02 — leia a §5.71 do [doc 28](28_otimizacoes_o_que_funcionou.md) e o
+> [handoff de integração](../HANDOFF_INTEGRACAO_line_Painter_watercolor_cadence_2026-08-02.md).**
+> Este documento continua **válido e correto no que mede** (a tabela de ablação, o piso de ruído, as
+> três coisas que ele proíbe). O que ele não sabia:
+>
+> - **A §7 dizia *"comece rodando a sonda da §2.2"*, e a sonda mede um raio só (100).** O custo é
+>   **LINEAR no raio** — 11,87 ms/move a r=400 — e o Enio pinta a 300. A conclusão *"3,1 ms não é um
+>   problema"* valia exatamente onde foi medida.
+> - **A aquarela cobrava por EVENTO de ponteiro, não por dab** (o Digital, no mesmo teste, é plano):
+>   o mesmo desenho custava **2,56×** mais num dispositivo de 960 Hz. Curado — a reconstrução agora é
+>   uma por QUADRO, byte-idêntica e com latência zero.
+> - **O pen-down (~75-112 ms) não aparece em nenhuma tabela daqui**, porque o `move_ms` da sonda o
+>   descarta de propósito. Era 268 MB alocados para reproduzir uma cor chapada. Curado.
+>
+> A §3 (o que **não** fazer) **segue inteiramente de pé**: os 9 taps do warp continuam intocáveis, a
+> fatoração dos dois eixos continua sem render produto, e aproximar o warp continua exigindo ordem do
+> Enio. O warp segue sendo 56% do que a aquarela cobra sobre o Digital.
+
 > Escrito em 2026-08-02 para o agente que assume a `line/Painter` com esta tarefa.
 > Leia isto **antes** de medir qualquer coisa. Ele existe para você não gastar a sessão
 > redescobrindo o que já está medido, nem construindo o que já foi reprovado.

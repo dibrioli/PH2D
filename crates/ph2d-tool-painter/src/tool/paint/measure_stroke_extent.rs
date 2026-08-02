@@ -217,3 +217,4 @@ fn what_the_fold_of_a_canvas_wide_stroke_is_made_of() {
         eprintln!("  os dois em zero       {floor:8.2} ms   <- o PISO: derive + material + escrita");
     }
 }
+

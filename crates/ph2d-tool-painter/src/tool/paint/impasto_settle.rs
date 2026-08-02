@@ -87,6 +87,29 @@ pub(super) fn par_rows_in<T: Send>(
         });
 }
 
+/// **O PATCH da janela** — junta num `Vec` denso, indexado por `c = ry*rect.w + rx`, o que o kernel lê
+/// de um buffer canvas-shaped.
+///
+/// É a terceira caminhada da mesma família: o mapeamento `c → índice global` é **uma expressão só**
+/// (`idx`), e os dois walkers a usam — a rota paralela não pode visitar outro texel que a serial. O
+/// `collect` indexado do rayon aloca UMA vez e preenche em paralelo, então não há a escrita dupla de um
+/// `vec![neutro; n]` seguido de sobrescrita (e esta crate é `forbid(unsafe_code)`, então `set_len` não
+/// é uma opção — nem precisa ser).
+pub(super) fn patch_in<T: Send>(
+    rect: Region,
+    w: u32,
+    f: impl Fn(usize) -> T + Sync + Send,
+) -> Vec<T> {
+    let (wi, rx0, ry0) = (w as usize, rect.x as usize, rect.y as usize);
+    let (rw, rh) = (rect.w as usize, rect.h as usize);
+    let idx = move |c: usize| (ry0 + c / rw) * wi + rx0 + c % rw;
+    if rw * rh < PAR_ROWS_MIN_CELLS {
+        return (0..rw * rh).map(|c| f(idx(c))).collect();
+    }
+    use rayon::prelude::*;
+    (0..rw * rh).into_par_iter().map(|c| f(idx(c))).collect()
+}
+
 /// Let a height field **settle** under its own weight: a separable box blur, applied in place.
 ///
 /// Two box passes ≈ a triangle kernel, which is what a viscous medium relaxing actually looks like — and

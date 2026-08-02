@@ -4,7 +4,7 @@
 //! hold the design together are documented on the deposit half's module header.
 
 use super::Region;
-use super::impasto_settle::{RELIEF_EPS, SETTLE_REACH_PX, for_each_in, par_rows_in, settle};
+use super::impasto_settle::{RELIEF_EPS, SETTLE_REACH_PX, par_rows_in, patch_in, settle};
 use super::region::grow_region;
 use crate::tool::PainterTool;
 use ph2d_painter_brush::height::derive_height;
@@ -99,14 +99,8 @@ impl PainterTool {
             // The ground the material sits on, and the film it merges with — kept as patches over the
             // window so the four material knobs stay LIVE on the stroke the artist just laid, exactly
             // like Depth and Body are. (`over` does not compose, so a re-bake must start from the base.)
-            let mut base = Vec::with_capacity((rect.w as usize) * (rect.h as usize));
-            let mut kept_film = Vec::with_capacity((rect.w as usize) * (rect.h as usize));
-            for_each_in(rect, w, |i| {
-                base.push(dst[i]);
-                kept_film.push(film.get(i).copied().unwrap_or(0));
-            });
-            self.paint.relief.live_mat_base = base;
-            self.paint.relief.live_film = kept_film;
+            self.paint.relief.live_mat_base = patch_in(rect, w, |i| dst[i]);
+            self.paint.relief.live_film = patch_in(rect, w, |i| film.get(i).copied().unwrap_or(0));
             par_rows_in(dst, rect, w, |i, d| {
                 let a = u32::from(film.get(i).copied().unwrap_or(0));
                 if a == 0 {
@@ -129,11 +123,7 @@ impl PainterTool {
         // 64 MB copy per stroke at 4096², for a ground that is only ever read inside the window.
         self.paint.relief.live_relief_had_entry = self.heights.contains_key(&active);
         self.paint.relief.live_relief_base = match self.heights.get(&active) {
-            Some(f) if f.len() == (w as usize) * (h as usize) => {
-                let mut base = Vec::with_capacity((rect.w as usize) * (rect.h as usize));
-                for_each_in(rect, w, |i| base.push(f[i]));
-                base
-            }
+            Some(f) if f.len() == (w as usize) * (h as usize) => patch_in(rect, w, |i| f[i]),
             _ => Vec::new(),
         };
         self.paint.relief.live_relief_rect = Some(rect);

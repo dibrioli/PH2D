@@ -251,6 +251,7 @@ pub use overrides::{
     LockPositionX, LockPositionY, LockRotation, MassOverride, MaterialCombine, OneWayPlatform,
 };
 pub use rope::{
-    PulleyWheel, WestonAxle, WrapSide, reseat_mounted_axle, reseat_wheel_geometry, rope_joint_of,
+    PulleyWheel, RopeStops, WestonAxle, WrapSide, reseat_mounted_axle, reseat_wheel_geometry,
+    rope_joint_of,
 };
 pub use signal::SignalOnHit;

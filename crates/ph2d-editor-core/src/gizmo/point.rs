@@ -99,6 +99,19 @@ pub enum PointHandleKind {
     /// cairia exatamente sobre o de entrada — duas alças no mesmo pixel são uma
     /// alça que às vezes faz outra coisa.
     WheelRimOut,
+    /// **O LIMITADOR da ponta A** (W-RopeStop) — até onde aquela ponta pode
+    /// subir antes de encostar na roldana.
+    ///
+    /// Enio: *"criar limitadores de modo que os objetos nunca colidam com as
+    /// polias… desenhados em cima da corda… movidos por todo o trajeto"*. A alça
+    /// mora SOBRE a corda e o lugar dela **é** o valor: arrastá-la para longe da
+    /// roldana afasta a trava, e o corpo para exatamente onde a marca está.
+    ///
+    /// ⚠️ **Ela autora a CORDA, não a roda nem o joint** — é a quarta família de
+    /// alça, e a segunda cujo alvo não é o `PhysicsJoint`.
+    RopeStopA,
+    /// O mesmo na ponta B.
+    RopeStopB,
 }
 
 impl PointHandleKind {
@@ -127,6 +140,32 @@ impl PointHandleKind {
     #[must_use]
     pub fn is_wheel_radius(self) -> bool {
         matches!(self, Self::WheelRim | Self::WheelRimOut)
+    }
+
+    /// **Esta alça é um LIMITADOR de corda?** (W-RopeStop) — a quarta família.
+    ///
+    /// Porta única, como as três irmãs acima: o publicador pergunta para decidir
+    /// de onde vem a geometria, e o `open_drag`/apply para escolher onde o número
+    /// pousa.
+    #[must_use]
+    pub fn is_rope_stop(self) -> bool {
+        matches!(self, Self::RopeStopA | Self::RopeStopB)
+    }
+
+    /// Qual ponta da corda esta alça autora — `0` = A, `1` = B.
+    ///
+    /// ⚠️ Devolve o mesmo índice que o [`StopLeg`] e que o `stops` do descritor
+    /// consomem, para que *"qual é a ponta A?"* seja respondido UMA vez em todo o
+    /// caminho: publicar, desenhar, arrastar e resolver.
+    ///
+    /// [`StopLeg`]: https://docs.rs/ph2d-physics-ecs
+    #[must_use]
+    pub fn rope_stop_side(self) -> Option<usize> {
+        match self {
+            Self::RopeStopA => Some(0),
+            Self::RopeStopB => Some(1),
+            _ => None,
+        }
     }
 }
 
@@ -211,6 +250,17 @@ const SNAP_CROSS_PX: f32 = 20.0;
 /// be moved*; the line itself says what the value is.
 const JOINT_PARAM_GRIP_PX: f32 = 6.0;
 
+/// Raio da marca de um LIMITADOR de corda (W-RopeStop) — o círculo com um X
+/// dentro que o Enio desenhou por cima da foto.
+///
+/// Entre o dot da âncora (9) e o anel dela (15): ele tem de ser legível como um
+/// SÍMBOLO (o X precisa de espaço) sem competir com a âncora, que é a marca mais
+/// pesada da corda. E o X é o que o distingue — a cor é a MESMA âmbar, porque um
+/// limitador é parte da corda, e nesta linha o vermelho já quer dizer *isto não
+/// está segurando* (a lição do par de glifos que o smoke da timeline reprovou:
+/// quem distingue é a FIGURA, nunca o identificador).
+const ROPE_STOP_PX: f32 = 8.0;
+
 /// Half-extent of a handle's hit square, screen px, **by kind**.
 ///
 /// ⚠️ These are the VISUAL radii, deliberately: a mark drawn larger than the
@@ -221,6 +271,7 @@ const fn hit_half_px(kind: PointHandleKind) -> f32 {
     match kind {
         PointHandleKind::AnchorA => JOINT_ANCHOR_DOT_PX,
         PointHandleKind::AnchorB => JOINT_ANCHOR_RING_PX,
+        PointHandleKind::RopeStopA | PointHandleKind::RopeStopB => ROPE_STOP_PX,
         // A parameter grip gets a touch more than it draws: it sits on a thin
         // line, so the extra couple of pixels are what make it catchable
         // without widening the mark into the arc it grips.
@@ -273,6 +324,8 @@ pub fn point_handle_id(key: u64, kind: PointHandleKind) -> NodeId {
         PointHandleKind::WheelCentre => (ids::GIZMO_WHEEL_CENTRE, 0x_9E37_79B9_7F4A_7C15_u64),
         PointHandleKind::WheelRim => (ids::GIZMO_WHEEL_RIM, 0x_BF58_476D_1CE4_E5B9_u64),
         PointHandleKind::WheelRimOut => (ids::GIZMO_WHEEL_RIM_OUT, 0x_94D0_49BB_1331_11EB_u64),
+        PointHandleKind::RopeStopA => (ids::GIZMO_ROPE_STOP_A, 0x_2545_F491_4F6C_DD1D_u64),
+        PointHandleKind::RopeStopB => (ids::GIZMO_ROPE_STOP_B, 0x_D125_7B8D_5C63_9E7B_u64),
     };
     NodeId(canonical.0 ^ key.wrapping_mul(mul))
 }
@@ -410,6 +463,38 @@ pub fn paint_point_gizmo(
                         &dot,
                     );
                 }
+                // **O LIMITADOR: um círculo com um X dentro** (W-RopeStop), a
+                // figura que o Enio desenhou. Ele mora SOBRE a corda, então a
+                // silhueta tem de dizer *trava* e não *ponto de agarre* — e o
+                // raio vem da MESMA tabela de alvo (`half`), como nas alças de
+                // roldana, para que desenho e hit sejam um número só.
+                PointHandleKind::RopeStopA | PointHandleKind::RopeStopB => {
+                    let r = f64::from(half);
+                    let ring = Circle::new(centre, r);
+                    let stroke = Stroke::new(JOINT_ANCHOR_RING_STROKE_PX);
+                    scene.inner_mut().stroke(
+                        &stroke,
+                        Affine::IDENTITY,
+                        handle_color(view.inert),
+                        None,
+                        &ring,
+                    );
+                    // O X, inscrito: as duas diagonais param no círculo (`r/√2`),
+                    // senão elas o furam e a figura lê como uma estrela.
+                    let a = r * std::f64::consts::FRAC_1_SQRT_2;
+                    let mut cross = BezPath::new();
+                    cross.move_to(Point::new(centre.x - a, centre.y - a));
+                    cross.line_to(Point::new(centre.x + a, centre.y + a));
+                    cross.move_to(Point::new(centre.x - a, centre.y + a));
+                    cross.line_to(Point::new(centre.x + a, centre.y - a));
+                    scene.inner_mut().stroke(
+                        &stroke,
+                        Affine::IDENTITY,
+                        handle_color(view.inert),
+                        None,
+                        &cross,
+                    );
+                }
                 // A grip on the overlay's own line — small, filled, same amber.
                 PointHandleKind::LimitMin | PointHandleKind::LimitMax | PointHandleKind::Length => {
                     let dot = Circle::new(centre, f64::from(JOINT_PARAM_GRIP_PX));
@@ -458,6 +543,12 @@ const fn paint_rank(kind: PointHandleKind) -> u8 {
         PointHandleKind::WheelRim => 5,
         PointHandleKind::WheelRimOut => 6,
         PointHandleKind::WheelCentre => 7,
+        // Os limitadores por ÚLTIMO: eles ficam sobre a corda, e uma marca de
+        // trava sob o anel de uma âncora coincidente seria uma figura que o
+        // artista vê pela metade. Ficam acima de tudo, e por isso pegam o clique
+        // quando coincidem — que é o certo: a alça mais específica ganha.
+        PointHandleKind::RopeStopA => 8,
+        PointHandleKind::RopeStopB => 9,
     }
 }
 

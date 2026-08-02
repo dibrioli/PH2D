@@ -9,6 +9,7 @@
 //! chega aqui, não lá.
 
 use ph2d_ecs::{Entity, Name, stable_name_id};
+use ph2d_physics::world::pulley::{self, StopLeg};
 use ph2d_physics::world::rope_route::{self, RopeWheel};
 
 use super::PhysicsBridge;
@@ -526,6 +527,84 @@ impl PhysicsBridge {
             let d = route_distance(v.anchor_a, v.anchor_b, &wheels, p);
             if d <= tol && best.is_none_or(|(_, bd)| d < bd) {
                 best = Some((v.entity, d));
+            }
+        }
+        best.map(|(e, _)| e)
+    }
+
+    /// **As duas pontas de uma corda, do ponto de vista do LIMITADOR**
+    /// (W-RopeStop) — onde a corda se amarra, onde ela encosta na roldana daquela
+    /// ponta, e quanta corda há entre as duas.
+    ///
+    /// ⚠️ **Geometria e mais nada.** O número que o artista autorou mora no
+    /// [`crate::RopeStops`] da entidade da corda, e quem o lê é o chamador — a
+    /// mesma divisão que o resto desta ponte faz entre *onde as coisas estão* (o
+    /// solver) e *o que foi autorado* (o ECS). Devolver os dois juntos daria a
+    /// esta porta uma opinião sobre a autoria que ela não tem como sustentar.
+    ///
+    /// ⚠️ **A rota é a MESMA `rope_route::route` que DESENHA a corda**, pelo mesmo
+    /// motivo do [`Self::rope_at_world`]: a marca é posta sobre o traço que está na
+    /// tela, e uma segunda derivação a poria sobre uma corda que só existe no
+    /// código.
+    ///
+    /// `None` numa ponta que não tem contra o que travar — corda sem roldana, ou
+    /// rota degenerada. É a mesma recusa do passe de impulso, feita pela mesma
+    /// função.
+    #[must_use]
+    pub fn rope_stop_legs(&self, rope: Entity) -> [Option<StopLeg>; 2] {
+        let Some(v) = self
+            .joint_views()
+            .find(|v| v.entity == rope && v.kind == crate::JointKind::Pulley)
+        else {
+            return [None, None];
+        };
+        let wheels: Vec<RopeWheel> = self.rope_wheels(rope).map(|(_, w)| w).collect();
+        let mut segs = Vec::new();
+        if rope_route::route(v.anchor_a, v.anchor_b, &wheels, &mut segs).is_none() {
+            return [None, None];
+        }
+        [
+            pulley::stop_leg(&segs, &wheels, 0),
+            pulley::stop_leg(&segs, &wheels, 1),
+        ]
+    }
+
+    /// **A roldana sob o cursor** (W-RopeStop) — o pedido do Enio *"permita
+    /// selecionar as polias com mouse no canvas"*.
+    ///
+    /// ⚠️ **O alvo é o que está DESENHADO: o ARO e o cubo, nunca o disco.** Uma
+    /// roldana grande cobre a arte que passa por dentro dela, e reclamar o disco
+    /// inteiro faria a polia engolir o clique de tudo o que ela emoldura. O
+    /// overlay desenha um anel (dois num tambor diferencial) mais um raio-guia; o
+    /// hit-test responde exatamente por eles, mais o centro — que é a única coisa
+    /// que existe numa roldana de raio zero.
+    ///
+    /// Empate resolvido pela MENOR distância, como o irmão da corda.
+    #[must_use]
+    pub fn wheel_at_world(&self, p: [f32; 2], tol: f32) -> Option<Entity> {
+        let mut best: Option<(Entity, f32)> = None;
+        // A arena INTEIRA, emparelhada com as entidades — a mesma dupla que o
+        // desenho lê. ⚠️ Um eixo de Weston aparece DUAS vezes com a mesma
+        // entidade (dois contatos, um eixo); o `best` escolhe uma e as duas
+        // respostas são o mesmo objeto.
+        for (&w, &e) in self
+            .world
+            .pulley_wheels()
+            .iter()
+            .zip(self.wheel_entities.iter())
+        {
+            let d = (p[0] - w.centre[0]).hypot(p[1] - w.centre[1]);
+            // O cubo, e depois cada aro que o desenho de fato traça. O segundo só
+            // existe num tambor diferencial — a mesma regra do overlay, que não
+            // desenha o anel de saída quando ele cai sobre o de entrada.
+            let mut hit = d;
+            hit = hit.min((d - w.radius).abs());
+            let out = w.radius_out();
+            if out != w.radius {
+                hit = hit.min((d - out).abs());
+            }
+            if hit <= tol && best.is_none_or(|(_, bd)| hit < bd) {
+                best = Some((e, hit));
             }
         }
         best.map(|(e, _)| e)

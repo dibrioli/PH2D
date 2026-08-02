@@ -187,10 +187,21 @@ pub fn stop_at_point(leg: &StopLeg, p: [f32; 2]) -> f32 {
 /// pelo bloco. O arco fica do outro lado do nó, então encurtá-lo exigiria
 /// exatamente a corrida que o nó proíbe.
 ///
-/// A expressão disso no kernel é uma linha: **uma ponta travada sai da restrição
-/// da corda** — nem massa efetiva, nem taxa, nem impulso. É a MESMA frase que o
-/// [`end`] já faz para um corpo não-dinâmico, pelo mesmo motivo: quem segura a
-/// tensão ali é o nó contra o bloco, e não o corpo.
+/// A expressão disso no kernel é uma linha, e ela é **derivada, não escolhida**:
+/// com a corda impedida de correr, o arco fica CONSTANTE, logo `L = len + const`
+/// e o Jacobiano daquela ponta deixa de ser o versor do trecho e passa a ser
+/// `∂len/∂âncora`, que é o **`g` radial** — o mesmo vetor que a trava usa.
+///
+/// Em uma frase: *com o nó travado a corda só consegue puxar a ponta CONTRA o
+/// bloco; puxá-la de lado exigiria a corda correr, que é o que o nó proíbe.*
+///
+/// ⚠️ **A primeira versão tirava a ponta da restrição INTEIRA, e isso foi
+/// REPROVADO pelo gate da roda grande:** sem o termo da corda a ponta perde o
+/// SUPORTE, cai em queda livre, destrava ao se afastar, é apanhada de volta com
+/// um tranco — e o ciclo INJETA energia (medido: a carga atirada a `x = 3,976 m`
+/// numa roda de raio 2,0). Substituir o Jacobiano em vez de o apagar mantém a
+/// corda segurando o peso e tira **só** a componente tangencial, que é
+/// exatamente a que arrastaria a carga em volta do eixo.
 ///
 /// ⚠️ **E isso NÃO paralisa o outro lado**, que é o teste de que a lei está certa:
 /// com A travado, um contrapeso em B que desça ALONGA a rota, `C > 0`, e a corda o
@@ -206,8 +217,8 @@ pub(super) fn apply_stops(
     legs: &[Tangent],
     dt: f32,
     bias: f32,
-) -> [bool; 2] {
-    let mut jammed = [false, false];
+) -> [Option<Vector2<f32>>; 2] {
+    let mut jammed = [None, None];
     for (side, (&stop, jam)) in p.stops.iter().zip(jammed.iter_mut()).enumerate() {
         // ⚠️ **Não-finito é DESLIGADO, e não `<= 0.0`:** um `NaN` compara falso
         // com tudo, então a forma curta o deixaria atravessar até virar uma pose
@@ -223,14 +234,8 @@ pub(super) fn apply_stops(
         // mesmo quando o `λ` sai zero (a ponta já está se afastando sozinha):
         // *o nó está encostado no bloco* é um fato sobre onde as coisas estão, e
         // é ele que a corda tem de honrar.
-        *jam = leg.len <= stop;
-        let c = stop - leg.len;
-        if c <= 0.0 {
-            continue;
-        }
-        // O gradiente da folga em relação à amarração. `len` já é positivo aqui
-        // (`c > 0` exige `len < stop`, e `len < 0` é impossível), mas um trecho
-        // degenerado daria `NaN` — e um `NaN` chega ao `physics_ecs_c9`.
+        // O gradiente da folga em relação à amarração. Um trecho degenerado daria
+        // `NaN` — e um `NaN` chega ao `physics_ecs_c9`.
         if leg.len <= f32::EPSILON {
             continue;
         }
@@ -238,6 +243,13 @@ pub(super) fn apply_stops(
             (leg.anchor[0] - leg.centre[0]) / leg.len,
             (leg.anchor[1] - leg.centre[1]) / leg.len,
         );
+        if leg.len <= stop {
+            *jam = Some(g);
+        }
+        let c = stop - leg.len;
+        if c <= 0.0 {
+            continue;
+        }
         let (handle, local) = if side == 0 {
             (p.body_a, p.local_a)
         } else {

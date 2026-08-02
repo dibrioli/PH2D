@@ -80,6 +80,13 @@ enum Grab {
     /// canvas. Reusing [`Grab::Angle`] for them is what shipped a grip that
     /// authored a bearing into a field read as metres (see `write_limit`).
     Rail([f32; 2]),
+    /// **Limitador de corda:** a diferença, em metros de corda, entre o número
+    /// autorado e o que a projeção do cursor sobre o trecho vale (W-RopeStop).
+    ///
+    /// Um escalar e não um ponto: a marca não é livre no plano — ela ANDA SOBRE A
+    /// CORDA, e o que o gesto autora é *quanta corda sobra*. Guardar um vetor
+    /// deixaria a alça sair do traço no primeiro pixel fora dele.
+    Along(f32),
 }
 
 /// Snap radius in **screen** pixels, converted to world at the current zoom so
@@ -125,6 +132,15 @@ pub(crate) fn open_drag(
         Grab::World([anchor[0] - cursor[0], anchor[1] - cursor[1]])
     } else if kind.is_wheel() {
         wheel::open_grab(sim, joint, kind, cursor)?
+    } else if let Some(side) = kind.rope_stop_side() {
+        // ⚠️ **A geometria vem da PONTE e o número, do ECS** — a mesma divisão de
+        // toda esta família: o solver sabe onde a corda está, o componente sabe o
+        // que o artista pediu. O `stop_at_point` é a inversa exata do `stop_mark`
+        // que desenhou a marca, então o agarre é relativo e ela não salta no
+        // clique.
+        let leg = physics.rope_stop_legs(joint)[side]?;
+        let held = stops_of(sim, joint)[side];
+        Grab::Along(held - ph2d_physics_ecs::stop_at_point(&leg, cursor))
     } else {
         // A parameter grip measures against the joint's LIVE geometry, which is
         // the same `JointView` the overlay drew the arc and the ring from.
@@ -172,8 +188,41 @@ fn param_value(v: &ph2d_physics_ecs::JointView, kind: PointHandleKind) -> Option
         | PointHandleKind::AnchorB
         | PointHandleKind::WheelCentre
         | PointHandleKind::WheelRim
-        | PointHandleKind::WheelRimOut => None,
+        | PointHandleKind::WheelRimOut
+        // Um limitador não é parâmetro do JOINT: ele mora no `RopeStops` da
+        // corda, e o valor dele é lido por `stops_of`.
+        | PointHandleKind::RopeStopA
+        | PointHandleKind::RopeStopB => None,
     }
+}
+
+/// **Os dois limitadores autorados de uma corda** (W-RopeStop) — `[A, B]`.
+///
+/// Porta única de LEITURA: o `open_drag` a usa para o agarre relativo, o apply
+/// para preservar a outra ponta, e o publicador de alças para saber onde pôr a
+/// marca. Ausente é `[0, 0]`, que é a trava no próprio aro — o estado de toda
+/// corda que ninguém limitou.
+pub(crate) fn stops_of(sim: &SimWorld, rope: ph2d_ecs::Entity) -> [f32; 2] {
+    sim.world()
+        .get::<ph2d_physics_ecs::RopeStops>(rope)
+        .map_or([0.0, 0.0], |s| s.pair())
+}
+
+/// **Escrever um limitador**, preservando o outro.
+///
+/// ⚠️ **Insere o componente quando ele não existe**, e é isso que faz o gesto
+/// funcionar numa corda que nunca foi limitada: `RopeStops` é opcional (ausente ==
+/// zero), então o primeiro arrasto é também o que o cria. O undo global por-diff
+/// captura as duas coisas como captura qualquer edição de objeto.
+fn write_stop(sim: &mut SimWorld, rope: ph2d_ecs::Entity, side: usize, value: f32) {
+    let mut pair = stops_of(sim, rope);
+    pair[side] = value.max(0.0);
+    sim.world_mut()
+        .entity_mut(rope)
+        .insert(ph2d_physics_ecs::RopeStops {
+            a: pair[0],
+            b: pair[1],
+        });
 }
 
 /// World bearing of `p` seen from `from`, radians.
@@ -313,6 +362,23 @@ impl App {
                 {
                     let end = [cursor[0] + off[0], cursor[1] + off[1]];
                     write_rail_end(&mut gfx.sim, entity, drag.kind, anchor, end);
+                }
+                None
+            }
+            // **O LIMITADOR anda SOBRE a corda** (W-RopeStop). A perna é relida
+            // VIVA a cada frame — a corda se move, e uma perna congelada no press
+            // deixaria a marca para trás do traço que o artista está vendo.
+            //
+            // ⚠️ Sem ímã, e pelo mesmo motivo declarado no `Grab::Angle`: os nove
+            // pontos de collider de uma âncora não respondem *"que comprimento de
+            // corda é redondo?"*. É um vão com nome, não um esquecimento.
+            Grab::Along(off) => {
+                if let Some(side) = drag.kind.rope_stop_side()
+                    && let Some(leg) = gfx.physics.rope_stop_legs(entity)[side]
+                {
+                    let s = (ph2d_physics_ecs::stop_at_point(&leg, cursor) + off)
+                        .clamp(0.0, leg.len);
+                    write_stop(&mut gfx.sim, entity, side, s);
                 }
                 None
             }

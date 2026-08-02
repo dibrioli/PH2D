@@ -466,3 +466,70 @@ impl PulleyWheel {
             || self.local != other.local
     }
 }
+
+/// **OS LIMITADORES DE UMA CORDA** — quanta corda tem de sobrar em cada ponta,
+/// em metros (W-RopeStop).
+///
+/// Enio: *"criar limitadores de modo que os objetos nunca colidam com as polias.
+/// Os limitadores são dois por corda e são desenhados em cima da corda"*.
+///
+/// Vive na entidade da **CORDA** (o joint [`JointKind::Pulley`]), não na roldana:
+/// o número é *quanta corda sobra nesta ponta*, e uma ponta é da corda. Numa
+/// roldana ele seria um controle por-roda que só as duas das extremidades saberiam
+/// honrar — inerte em toda roldana do meio.
+///
+/// ⚠️ **Componente novo NÃO custa bump de `PROJECT_SCHEMA`** — o blob é chaveado
+/// pelo hash do nome do tipo, enquanto apendar campo ao [`crate::PhysicsJoint`] é
+/// postcard POSICIONAL, e um bump **recusa todo projeto já salvo**. É a mesma
+/// razão pela qual a família das zonas tem sete componentes em vez de uma struct
+/// com sete campos, e a nona vez que esta linha a aplica.
+///
+/// ⚠️ **Ausente é o mesmo que zero**, e é isso que faz toda corda já salva abrir
+/// sem limitador nenhum: o `0` põe a trava no próprio aro, que é onde a corda já
+/// podia chegar.
+///
+/// [`JointKind::Pulley`]: crate::JointKind::Pulley
+#[derive(Component, Copy, Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct RopeStops {
+    /// A folga mínima da ponta **A**, em metros. `0` é desligado.
+    pub a: f32,
+    /// A folga mínima da ponta **B**, em metros. `0` é desligado.
+    pub b: f32,
+}
+
+impl SimComponent for RopeStops {}
+
+impl RopeStops {
+    /// A porta de carga, como o `clamped()` do joint e o da roldana.
+    ///
+    /// ⚠️ **Não-finito cai em ZERO, e não num default** — zero quer dizer
+    /// *desligado*, que é a leitura segura de um número que não é número; um
+    /// `NaN` aqui viraria uma folga `NaN`, e daí a pose de um corpo e o hash do
+    /// `physics_ecs_c9`. Negativo é a mesma coisa dita ao contrário: uma trava
+    /// atrás do aro não é uma trava.
+    #[must_use]
+    pub fn clamped(self) -> Self {
+        Self {
+            a: if self.a.is_finite() {
+                self.a.max(0.0)
+            } else {
+                0.0
+            },
+            b: if self.b.is_finite() {
+                self.b.max(0.0)
+            } else {
+                0.0
+            },
+        }
+    }
+
+    /// Os dois números na ordem que o descritor da polia consome (`[A, B]`).
+    ///
+    /// Porta única: o fold da ponte e todo consumidor de UI leem daqui, para que
+    /// *qual campo é a ponta A?* seja respondido uma vez só.
+    #[must_use]
+    pub fn pair(self) -> [f32; 2] {
+        let c = self.clamped();
+        [c.a, c.b]
+    }
+}

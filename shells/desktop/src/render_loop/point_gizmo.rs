@@ -224,6 +224,58 @@ pub(super) fn build_point_view(
     })
 }
 
+/// **AS DUAS MARCAS DE LIMITADOR de cada corda** (W-RopeStop) — o círculo com um
+/// X que fica em cima da corda.
+///
+/// ⚠️ **De TODA polia, não só da selecionada**, ao contrário das alças de
+/// roldana: são duas por corda e cada uma fica no seu trecho, então elas não se
+/// empilham — e, sobretudo, **a marca É a feature**. Escondê-la atrás de uma
+/// seleção faria o artista ter de descobrir que ela existe antes de poder
+/// descobri-la. É a mesma lei que as âncoras de joint já seguem (W-J2b).
+///
+/// ⚠️ **Uma marca em zero fica no ponto de tangência** — encostada na roldana, que
+/// é onde a corda de fato já podia chegar. É a leitura honesta de *desligado*, e
+/// é o que dá ao gesto um lugar de partida: arrastar dali para baixo é o gesto
+/// inteiro, sem painel e sem armar nada.
+///
+/// A geometria vem da PONTE (a rota que o solver roda e o overlay desenha) e o
+/// número, do ECS — a mesma divisão do `open_drag` que os arrasta.
+#[must_use]
+pub(super) fn rope_stop_handles(
+    sim: &SimWorld,
+    physics: &PhysicsBridge,
+    show_overlay: bool,
+    at_rest: bool,
+) -> Vec<PointHandle> {
+    let mut out = Vec::new();
+    if !show_overlay || !at_rest {
+        return out;
+    }
+    for v in physics
+        .joint_views()
+        .filter(|v| v.kind == ph2d_physics_ecs::JointKind::Pulley)
+    {
+        let legs = physics.rope_stop_legs(v.entity);
+        let stops = crate::joint_anchor_drag::stops_of(sim, v.entity);
+        for (side, kind) in [PointHandleKind::RopeStopA, PointHandleKind::RopeStopB]
+            .into_iter()
+            .enumerate()
+        {
+            // `None` numa ponta sem roldana contra a qual travar, ou numa rota
+            // degenerada — a MESMA recusa que o passe de impulso faz, e por isso
+            // não há alça sobre uma corda que não está segurando.
+            let Some(leg) = legs[side] else { continue };
+            out.push(PointHandle {
+                key: v.entity.to_bits(),
+                kind,
+                world: ph2d_physics_ecs::stop_mark(&leg, stops[side]),
+            });
+        }
+    }
+    out.sort_by_key(|h| (h.key, h.kind));
+    out
+}
+
 /// **As duas alças da roldana SELECIONADA** — o centro e o aro.
 ///
 /// O pedido (6) do artista: *"um ponto central para deslocamento e um ponto no

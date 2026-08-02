@@ -355,7 +355,12 @@ pub fn apply(
         // a corda puxar a carga para dentro da roda — é a carga CHEGAR lá, por
         // qualquer motivo. No-op quando os dois números são zero.
         let jam = apply_stops(bodies, p, live, scratch, dt, bias);
-        let dir_a = Vector2::new(route.dir_a[0], route.dir_a[1]);
+        // ⚠️ **Uma ponta TRAVADA puxa RADIALMENTE** (W-RopeStop), e o vetor é
+        // derivado: com o nó no bloco a corda não corre, logo o arco é constante,
+        // logo `L = len + const` e `∂L/∂âncora` **é** o `g` da trava. A corda
+        // continua segurando o peso; o que some é a componente tangencial, que era
+        // a que arrastava a carga em volta do eixo.
+        let dir_a = jam[0].unwrap_or_else(|| Vector2::new(route.dir_a[0], route.dir_a[1]));
         // ⚠️ **A ponta B entra ENGRENADA** (W4). `weight_b` é `1.0` em toda corda
         // sem tambor diferencial — e `x * 1.0 == x` é exato —, então isto é
         // byte-neutro para tudo que já existia.
@@ -366,7 +371,8 @@ pub fn apply(
         // código próprio, e é o que faz a vantagem mecânica contínua sair de
         // graça: a tensão em B é `weight_b` vezes a de A, porque o impulso lá é
         // `−λ·weight_b·u_b`.
-        let dir_b = Vector2::new(route.dir_b[0], route.dir_b[1]) * route.weight_b;
+        let dir_b =
+            jam[1].unwrap_or_else(|| Vector2::new(route.dir_b[0], route.dir_b[1])) * route.weight_b;
         // Os tambores. Avança DEPOIS da rota — ela não depende do recolhido — e
         // antes da conta, de modo que o sub-passo que recolhe é o mesmo que
         // corrige; um passo de atraso aqui seria o guincho subindo um sub-passo
@@ -404,24 +410,8 @@ pub fn apply(
         if c <= 0.0 {
             continue;
         }
-        // ⚠️ **Uma ponta TRAVADA sai da restrição da corda** (W-RopeStop): quem
-        // segura a tensão ali é o nó contra o bloco, não o corpo. Sem isto o
-        // orçamento continuava encurtando pelo ARCO e o guincho arrastava a carga
-        // POR CIMA do eixo — medido, `y` 9,545 m com a roldana a 8,0.
-        //
-        // Escrito como dois termos e não como um `if` em torno da soma para que a
-        // corda SEM limitador some exatamente `a.k + b.k`, na mesma ordem: toda
-        // cena anterior fica byte-idêntica.
-        let (ka, kb) = (
-            if jam[0] { 0.0 } else { a.k(dir_a) },
-            if jam[1] { 0.0 } else { b.k(dir_b) },
-        );
-        let (ra, rb) = (
-            if jam[0] { 0.0 } else { a.rate(dir_a) },
-            if jam[1] { 0.0 } else { b.rate(dir_b) },
-        );
-        let mut k = ka + kb;
-        let mut c_dot = ra + rb;
+        let mut k = a.k(dir_a) + b.k(dir_b);
+        let mut c_dot = a.rate(dir_a) + b.rate(dir_b);
         // **W3 — cada eixo MONTADO é mais uma ponta da mesma restrição.** A
         // roldana pregada no cenário não contribui com nada (o `None` sai fora), e
         // é isso que mantém toda cena anterior byte-idêntica.
@@ -441,12 +431,8 @@ pub fn apply(
         if lambda <= 0.0 {
             continue;
         }
-        if !jam[0] {
-            push(bodies, p.body_a, a.point, -lambda, dir_a);
-        }
-        if !jam[1] {
-            push(bodies, p.body_b, b.point, -lambda, dir_b);
-        }
+        push(bodies, p.body_a, a.point, -lambda, dir_a);
+        push(bodies, p.body_b, b.point, -lambda, dir_b);
         // O impulso no eixo é `−λ·∂L/∂C`, a MESMA forma das duas pontas — e é aqui
         // que a vantagem mecânica aparece sozinha: num enlace de 180° o Jacobiano
         // tem magnitude **2**, então a cadernal móvel recebe o DOBRO da tensão da

@@ -140,4 +140,15 @@ pub mod ids {
     /// roldana comum ele cairia exatamente sobre o de entrada, e duas alças no
     /// mesmo pixel são uma alça que às vezes faz outra coisa.
     pub const GIZMO_WHEEL_RIM_OUT: NodeId = NodeId(971);
+
+    /// **OS LIMITADORES da corda** (W-RopeStop) — as duas marcas que dizem até
+    /// onde cada ponta pode subir antes de encostar na roldana.
+    ///
+    /// Elas autoram o [`RopeStops`] da entidade da CORDA, e não o joint nem a
+    /// roda: o número é *quanta corda sobra nesta ponta*. Canônicas só; as vivas
+    /// são chaveadas por corda como todas as outras.
+    ///
+    /// [`RopeStops`]: https://docs.rs/ph2d-physics-ecs
+    pub const GIZMO_ROPE_STOP_A: NodeId = NodeId(972);
+    pub const GIZMO_ROPE_STOP_B: NodeId = NodeId(973);
 }

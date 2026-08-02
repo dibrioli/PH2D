@@ -51,8 +51,8 @@ pub use components::{
     AreaBuoyancy, AreaDrag, AreaEffector, AreaFalloff, AreaForceWorldAxes, AreaFormDrag,
     AreaTorque, BodyKind, Ccd, Collider, ColliderShape, CombineRule, DampMode, DampingOverride,
     Dominance, GravityScale, InitialVelocity, LockPositionX, LockPositionY, LockRotation,
-    MassOverride, MaterialCombine, OneWayPlatform, PulleyWheel, RigidBody, SignalOnHit, WestonAxle,
-    WrapSide, reseat_mounted_axle, reseat_wheel_geometry, rope_joint_of,
+    MassOverride, MaterialCombine, OneWayPlatform, PulleyWheel, RigidBody, RopeStops, SignalOnHit,
+    WestonAxle, WrapSide, reseat_mounted_axle, reseat_wheel_geometry, rope_joint_of,
 };
 pub use interaction::{
     HoldMode, InteractionSettings, InteractionTool, MAX_ATTRACT_FORCE, MAX_BLAST_IMPULSE,
@@ -62,6 +62,12 @@ pub use joint::{JointKind, JointWorldAnchor, LengthField, MotorMode, PhysicsJoin
 pub use joint_group::{jointed_by, jointed_group, jointed_rig};
 pub use joint_tool::{DragReach, JointGesture, JointTool};
 pub use parts::{auto_mass_with_parts, count_parts, governing_kind, is_part, owner_body};
+/// A geometria do LIMITADOR (W-RopeStop) — a marca, e a inversa dela.
+///
+/// Re-exportada ao lado da `rope_route` e pelo mesmo motivo: o desenho e o
+/// arrasto do shell autoram sobre a corda, e têm de fazê-lo pelas MESMAS funções
+/// que o solver usa para decidir onde a trava age.
+pub use ph2d_physics::world::pulley::{StopLeg, stop_at_point, stop_mark};
 pub use ph2d_physics::world::rope_route;
 pub use ph2d_physics::{IkOptions, JointLoad};
 pub use rig::{RIG_LIMIT_DEG, rig_edges, rig_limits, subtree_parts};
@@ -117,6 +123,7 @@ pub fn register_physics_components(reg: &mut ComponentRegistry) {
     reg.register::<AreaForceWorldAxes>("ph2d::physics::AreaForceWorldAxes");
     reg.register::<AreaFalloff>("ph2d::physics::AreaFalloff");
     reg.register::<WestonAxle>("ph2d::physics::WestonAxle");
+    reg.register::<RopeStops>("ph2d::physics::RopeStops");
     reg.register::<JointWorldAnchor>("ph2d::physics::JointWorldAnchor");
 }
 
@@ -131,7 +138,7 @@ mod tests {
     fn registers_every_physics_component() {
         let mut reg = ComponentRegistry::new();
         register_physics_components(&mut reg);
-        assert_eq!(reg.len(), 25);
+        assert_eq!(reg.len(), 26);
         assert!(reg.get_by_name("ph2d::physics::RigidBody").is_some());
         assert!(reg.get_by_name("ph2d::physics::Collider").is_some());
         assert!(reg.get_by_name("ph2d::physics::PhysicsJoint").is_some());
@@ -159,5 +166,6 @@ mod tests {
         );
         assert!(reg.get_by_name("ph2d::physics::AreaFalloff").is_some());
         assert!(reg.get_by_name("ph2d::physics::WestonAxle").is_some());
+        assert!(reg.get_by_name("ph2d::physics::RopeStops").is_some());
     }
 }

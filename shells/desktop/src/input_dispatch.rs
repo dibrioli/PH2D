@@ -4745,7 +4745,43 @@ impl App {
                             hero.gizmo.extra_selection.clear();
                         }
                     }
-                    if began_pivot || began_joint_anchor {
+                    // **SELECIONAR UMA ROLDANA CLICANDO NELA** (W-RopeStop) —
+                    // Enio: *"permita selecionar as polias com mouse no canvas"*.
+                    //
+                    // Até aqui uma roldana só era alcançável pela Hierarquia: ela
+                    // não tem sprite, então o `pick_sprites_at_world` não a vê, e
+                    // as alças dela (centro/aro) só nascem DEPOIS de ela estar
+                    // selecionada — o laço em que a única porta de entrada era uma
+                    // lista de nomes.
+                    //
+                    // ⚠️ **Depois das alças, e não antes:** uma alça agarrada tem
+                    // de vencer, senão arrastar o aro da roldana selecionada
+                    // apenas a re-selecionaria. E **só com o contorno na tela**,
+                    // porque o alvo é o desenho: clicar no que não está desenhado
+                    // é um clique que acerta algo invisível.
+                    let mut began_wheel_select = false;
+                    if !began_pivot
+                        && !began_joint_anchor
+                        && anchor_hit.is_none()
+                        && self.show_colliders
+                        && hero.store.panel_at(evt.x, evt.y).is_none()
+                        && !menu_open_before
+                    {
+                        let win = gfx.surface.size();
+                        let w = gfx.camera.screen_to_world((evt.x, evt.y), win);
+                        // ⚠️ **A MESMA `SNAP_PX` do ímã de âncora e do
+                        // conta-gotas de corda**, convertida em mundo pelo zoom —
+                        // um app onde dois alvos de canvas respondem a distâncias
+                        // diferentes é um app que se aprende duas vezes.
+                        let tol = crate::joint_anchor_drag::SNAP_PX * gfx.camera.height_world
+                            / win.height as f32;
+                        if let Some(wheel) = gfx.physics.wheel_at_world(w, tol) {
+                            hero.gizmo.selection = Some(wheel.to_bits());
+                            hero.gizmo.extra_selection.clear();
+                            began_wheel_select = true;
+                        }
+                    }
+                    if began_pivot || began_joint_anchor || began_wheel_select {
                         // Pivot or joint-anchor drag opened; Move events drive it.
                     } else if is_specific_handle
                         && !over_open_vec_stroke

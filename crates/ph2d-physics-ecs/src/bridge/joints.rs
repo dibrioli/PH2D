@@ -421,7 +421,12 @@ impl PhysicsBridge {
                         entity: e,
                         entities: (ea, eb),
                         desc: PulleyDesc {
-                            stops: [0.0, 0.0],
+                            // **OS LIMITADORES** (W-RopeStop) — ausente é o mesmo
+                            // que zero, e zero é a trava no próprio aro: toda
+                            // corda já salva abre exatamente como abria.
+                            stops: world
+                                .get::<crate::RopeStops>(e)
+                                .map_or([0.0, 0.0], |s| s.pair()),
                             // A corda é ela mesma através das trocas de tabela
                             // pelo NOME dela — a mesma chave por que ela aponta os
                             // corpos e por que as roldanas a apontam.

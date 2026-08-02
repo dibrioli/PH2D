@@ -1881,6 +1881,16 @@ impl crate::App {
                         self.show_colliders,
                         at_rest,
                     ));
+                    // E a QUARTA: os limitadores da corda (W-RopeStop). De toda
+                    // polia, como as âncoras — a marca É a feature, e escondê-la
+                    // atrás de uma seleção faria o artista ter de descobrir que
+                    // ela existe antes de poder descobri-la.
+                    hs.extend(point_gizmo::rope_stop_handles(
+                        sim,
+                        physics,
+                        self.show_colliders,
+                        at_rest,
+                    ));
                     hs
                 },
                 // The candidate a live anchor drag has caught (the crosshair).

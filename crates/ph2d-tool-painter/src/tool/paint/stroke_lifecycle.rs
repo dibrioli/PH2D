@@ -210,11 +210,30 @@ impl PainterTool {
             &mut dabs,
         );
         self.stamp_stroke_dabs(&dabs);
-        // Watercolor render-path: recomposite over the frozen base (no overlay peel — the base is
-        // untouched, so each frame recomposites cleanly from the grown coverage + colour).
-        if self.watercolor_render_active() {
-            self.apply_watercolor(false);
-            self.pour_canvas_wet(); // #2: moisture is laid LIVE (the damp shows during the stroke, not at pen-up)
+        // Watercolor render-path: the dabs are ACCUMULATED here (the path is the data, so this is per
+        // event and stays per event) and the optical reconstruction is **left to the frame**, not run
+        // here. `paint_tick` pays it once — it already knows a Move arrived, from `moved_this_frame`,
+        // which it reads as `parked` — and that is the cadence `apply_watercolor`'s own doc names
+        // ("each frame recomposites", "renderFrame", "the frame dirty rect").
+        //
+        // ⚠️ **This used to recomposite per pointer event, and that was the whole defect.** The wash
+        // window is padded by the influence radius — footprint-sized — so every event paid a near-full
+        // footprint pass whether or not the spacing emitted a single dab: the same 1200 px path cost
+        // 87,5 ms delivered in 30 events and **172,5 ms in 240** (1,97×), while Digital measured
+        // 34,7 → 36,0 (1,00×) on the identical test. A high-Hz tablet was buying the artist nothing but
+        // work. Skipping the intermediates is byte-identical because the reconstruction is a pure
+        // function of the frozen base plus the accumulators — measured at 0 differing bytes by
+        // `measure_whether_the_wash_depends_on_the_polling_rate`, not assumed.
+        //
+        // ⚠️ **The doubling was already SEEN and cured on the wrong side.** The soak comment in
+        // `paint_tick` records a 2026-07-07 profile where `stamps` and `tool-tick` each carried a full
+        // composite, and the fix suppressed the tick's — the ONE per frame — on the premise that "the
+        // pointer-Move flush already recomposited this frame's window". That premise holds for the
+        // COALESCED methods (one delivery per frame) and is false for the incremental freehand path,
+        // which is the default watercolor brush: there the flush is one per raw event.
+        if self.watercolor_render_active() && self.wash.per_event {
+            self.apply_watercolor(false); // the frozen legacy route — measurement + mutation only
+            self.pour_canvas_wet();
         }
         self.paint.dabs = dabs;
         self.paint.stroke = Some(stroke);
@@ -297,7 +316,11 @@ impl PainterTool {
             });
             stamped |= parked;
         }
-        if wet && stamped {
+        // THE frame composite. `stamped` is this tick's own airbrush/settle/dwell work; `owed` is the
+        // frame's pointer Moves, which now accumulate without recompositing. Either way it runs at most
+        // ONCE per frame, and the tick sits after the pointer flush and before the preview upload, so
+        // what the artist sees this frame is fully reconstructed — the deferral costs no latency.
+        if wet && (stamped || (!parked && !self.wash.per_event)) {
             self.apply_watercolor(false);
             self.pour_canvas_wet(); // #2: live moisture on the held/settling heartbeat too
         }

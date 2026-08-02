@@ -589,3 +589,41 @@ pub(super) fn water_at(
     let bot = s(ix, iy1) + (s(ix1, iy1) - s(ix, iy1)) * tx;
     (top + (bot - top) * ty, wx, wy)
 }
+
+/// **A cadência da reconstrução óptica da lavagem** — o estado que responde *"quantas vezes por
+/// quadro a lavagem é recomposta, e como se prova isso"*.
+///
+/// Mora aqui, ao lado de [`WetSessionStyles`], porque `paint.rs` guarda o modelo e os irmãos guardam
+/// os sub-estados dele — e porque o arquivo está no teto de LOC, que é o mecanismo que força
+/// exatamente esta arrumação.
+///
+/// ⚠️ **Não há um campo `owed`.** A pergunta *"chegou um move neste quadro?"* já está respondida por
+/// `PaintState::moved_this_frame`, que o `paint_tick` consome como `parked` — um segundo campo seria
+/// um segundo lugar para o mesmo fato, e o segundo lugar é o que fica para trás. Ele também nasceria
+/// com um ciclo de vida próprio a acertar (um traço que morre com a dívida de pé), que assim não
+/// existe: o `moved_this_frame` é limpo em todo tick, com traço ou sem.
+#[derive(Default, Clone, Copy)]
+pub(crate) struct WashCadence {
+    /// **A rota de ablação** — `true` restaura o comportamento pré-2026-08-02 de recompor dentro de
+    /// cada Move de ponteiro. O produto é sempre `false`; só medição e mutação escrevem aqui.
+    ///
+    /// Existe por dois motivos. Um A/B cujas metades rodassem em processos diferentes atribuiria a
+    /// deriva desta máquina à mudança (o mesmo passo de produto já foi medido a 14,5 e a 30,2 ms
+    /// neste box sem uma linha mudar), e um gate que afirma *"a lavagem compõe uma vez por quadro"*
+    /// precisa de uma alavanca que o faça ir VERMELHO. Precedente: `Sim::order_invariant` na
+    /// `ph2d-wet-paint` (ADR-0147), mantido para exatamente estes dois serviços.
+    pub(crate) per_event: bool,
+    /// Quantas vezes `apply_watercolor` de fato compôs (janela resolvida, trabalho feito) — o
+    /// observável que deixa um gate afirmar a CADÊNCIA sem relógio.
+    ///
+    /// *uma vez por quadro* contra *uma vez por evento* é uma diferença numa CONTAGEM, e contagem é
+    /// justamente o que uma barra de tempo não consegue afirmar com honestidade: uma razão sobre
+    /// passadas de ~1 ms mede o escalonador desta máquina (o gate de razão do fold teve de ser
+    /// retunado por isso, doc 28 §4.8.2). Contar é grátis — há no máximo um composite por quadro — e
+    /// falha pelo motivo certo. Precedente: o gate do ADR-0120 que conta disparos do caminho rápido.
+    pub(crate) composites: u32,
+}
+
+#[cfg(test)]
+#[path = "watercolor_cadence_tests.rs"]
+mod watercolor_cadence_tests; // os gates de [`WashCadence`], ao lado da struct que eles exercitam

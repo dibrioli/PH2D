@@ -258,10 +258,21 @@ impl PainterTool {
                 .is_some_and(|c| Arc::ptr_eq(c, &self.canvas_rgba))
     }
 
-    /// EDGE-1: pour the finished stroke's coverage into the persistent canvas MOISTURE map
-    /// (max-blend over THIS STROKE's OWN footprint). Called at the bake, AFTER the commit composite —
-    /// the stroke's own rim renders against dry paper; only strokes that follow within the drying
-    /// window merge into it. Restricted to the pixels THIS stroke OWNS (`wet_styles.owner == cur_o`,
+    /// EDGE-1: pour the stroke's coverage-so-far into the persistent canvas MOISTURE map (max-blend
+    /// over THIS STROKE's OWN footprint).
+    ///
+    /// ⚠️ **This doc used to say "Called at the bake, AFTER the commit composite", and that has not
+    /// been true for a long time** — the moisture is laid LIVE (`#2`), so the damp shows *during* the
+    /// stroke. Three live call sites plus the bake: `paint_begin`, `paint_tick`, the legacy per-event
+    /// route in `paint_extend`, and `paint_end`. A function that names itself a once-per-stroke cost is
+    /// a function an auditor walks past, and this one was the LARGER half of the per-event footprint
+    /// bill this module carried until 2026-08-02: it is not gated on a dab landing, and it walks
+    /// `wet_stroke_dirty`, the **cumulative** union since pen-down. Cheap only because the max-blend
+    /// makes re-pouring idempotent — never because it is rare.
+    ///
+    /// The stroke's own rim still renders against dry paper (the bake is what the rim reads); only
+    /// strokes that follow within the drying window merge into it. Restricted to the pixels THIS stroke
+    /// OWNS (`wet_styles.owner == cur_o`,
     /// recency): `stroke_coverage` is the whole session UNION, so pouring it over any RECT re-wet the
     /// earlier washes' pixels that fell inside the rect — a rectangular re-wet patch over the neighbour
     /// (Enio 2026-07-11 "retângulo gigante na união"; the per-stroke RECT of #4 only shrank it). The owner

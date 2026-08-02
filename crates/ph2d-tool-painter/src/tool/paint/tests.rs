@@ -74,6 +74,20 @@ fn white_canvas(size: u32, radius: f32) -> PainterTool {
     t
 }
 
+/// **Close a FRAME.** The app delivers the frame's pointer events and *then* ticks the active tool
+/// (`render_loop` ~698, then ~1198, both before the preview upload at ~3397). Since 2026-08-02 the
+/// watercolor's optical reconstruction is **owed to that tick** rather than run inside every Move
+/// (the tick composites when the frame was not `parked`), because the wash window is padded by the
+/// influence radius and a
+/// per-event reconstruction made the same drawing cost up to 2,56× more on a high-Hz device.
+///
+/// ⚠️ So a watercolor fixture that drives Moves and never lands here is measuring a wash that **never
+/// recomposites** — the assertion it makes about live pixels is about the old cadence, not about the
+/// product. Every gate below that reads canvas pixels mid-stroke closes its frames through here.
+fn frame(t: &mut PainterTool) {
+    t.paint_tick(1.0 / 60.0);
+}
+
 fn px(t: &PainterTool, size: u32, x: u32, y: u32) -> [u8; 4] {
     let i = ((y * size + x) * 4) as usize;
     [
@@ -12204,6 +12218,7 @@ fn watercolor_wash_is_live_before_pen_up() {
     for x in [32.0, 40.0, 48.0, 56.0, 64.0] {
         t.on_canvas_pointer(cp([x, 48.0], PointerPhase::Move));
     }
+    frame(&mut t); // the frame those Moves belong to — the reconstruction is owed to it
     // Pointer still down: the wash is ALREADY on the canvas (interior differs from the white base) and
     // its rim is ALREADY darker than the centreline.
     let interior = px(&t, size, 44, 48);
@@ -12427,6 +12442,7 @@ fn watercolor_live_recomposite_is_local_to_the_frame() {
     assert!(t.on_canvas_pointer(cp([30.0, 128.0], PointerPhase::Down)));
     t.on_canvas_pointer(cp([50.0, 128.0], PointerPhase::Move));
     t.on_canvas_pointer(cp([70.0, 128.0], PointerPhase::Move));
+    frame(&mut t);
     let washed = px(&t, size, 30, 128);
     assert_ne!(
         washed,
@@ -12442,8 +12458,11 @@ fn watercolor_live_recomposite_is_local_to_the_frame() {
         buf[i..i + 4].copy_from_slice(&SENTINEL);
     }
     // Extend the stroke far to the right: the live passes recomposite only around the new dabs.
+    // Both Moves ride the SAME frame, so the window this tick composites is their union — still local
+    // to the frontier, which is the property under test (a full-bbox pass would eat the sentinel).
     t.on_canvas_pointer(cp([120.0, 128.0], PointerPhase::Move));
     t.on_canvas_pointer(cp([170.0, 128.0], PointerPhase::Move));
+    frame(&mut t);
     assert_eq!(
         px(&t, size, 30, 128),
         SENTINEL,
@@ -12507,7 +12526,10 @@ fn watercolor_moving_preview_restores_the_old_position() {
         "the dot preview is washed at the press point"
     );
     // Drag the dot far away: the old position is no longer covered → the live pass restores the base.
+    // (Drag Dot is a re-stamp method, so the shell coalesces its Moves to ONE delivery per frame
+    // anyway — the tick is where its composite lands either way.)
     t.on_canvas_pointer(cp([24.0, 32.0], PointerPhase::Move));
+    frame(&mut t);
     assert_eq!(
         px(&t, size, 70, 32),
         [255, 255, 255, 255],
@@ -12650,11 +12672,16 @@ fn watercolor_incremental_composite_matches_full_recompose() {
     for slot in &mut t.paint.brush_by_mode {
         *slot = t.paint.brush;
     }
-    // Long diagonal live stroke, pen still down.
+    // Long diagonal live stroke, pen still down — TWO Moves per frame (a 120 Hz mouse at 60 fps), so
+    // each composite covers the UNION of that frame's dabs. That is the harder case for the property
+    // under test: a wider window has more room to leave a pixel stale, not less.
     assert!(t.on_canvas_pointer(cp([30.0, 30.0], PointerPhase::Down)));
     for i in 1..=40 {
         let p = 30.0 + i as f32 * 4.5;
         t.on_canvas_pointer(cp([p, 30.0 + i as f32 * 3.5], PointerPhase::Move));
+        if i % 2 == 0 {
+            frame(&mut t);
+        }
     }
     let incremental: Vec<u8> = t.canvas_rgba.to_vec();
     // Force ONE full recompose of the whole cumulative bbox (what the old code did every frame).
@@ -12730,6 +12757,9 @@ fn watercolor_incremental_composite_matches_full_with_water() {
     for i in 1..=40 {
         let p = 30.0 + i as f32 * 4.5;
         t.on_canvas_pointer(cp([p, 30.0 + i as f32 * 3.5], PointerPhase::Move));
+        if i % 2 == 0 {
+            frame(&mut t); // dois Moves por quadro: a janela viva é a UNIÃO deles
+        }
     }
     let incremental: Vec<u8> = t.canvas_rgba.to_vec();
     t.paint.wet_frame_dirty = t.paint.wet_cum_dirty;
@@ -15059,6 +15089,7 @@ fn watercolor_granulation_bake_settles_beyond_the_live_preview() {
     for i in 1..=20 {
         t.on_canvas_pointer(cp([12.0 + i as f32 * 2.0, 32.0], PointerPhase::Move));
     }
+    frame(&mut t); // the frame that pays those Moves' reconstruction — this IS "the last composite"
     // LIVE snapshot (last composite before release; the Up lands at the same position, so the
     // coverage is already saturated — the only delta left is the settle).
     let live: Vec<u8> = t.canvas_rgba.to_vec();

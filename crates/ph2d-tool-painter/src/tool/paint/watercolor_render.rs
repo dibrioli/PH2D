@@ -56,6 +56,10 @@ impl PainterTool {
             }
             return None;
         };
+        // Counted AFTER the window resolves, so it counts composites that did WORK — a call that
+        // bailed on an empty dirty rect is not a composite, and counting it would let the cadence gate
+        // pass on a route that never painted anything.
+        self.wash.composites = self.wash.composites.saturating_add(1);
         let window::WashWindow {
             fw,
             fh,

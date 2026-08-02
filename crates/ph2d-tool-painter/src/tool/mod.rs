@@ -120,6 +120,11 @@ pub struct PainterTool {
     /// `painter_preview` cache holds an Arc clone (1 atomic increment per drain
     /// instead of a full memcpy). Seeded by `set_source` from the sprite.
     canvas_rgba: Arc<Vec<u8>>,
+    /// **A cadência com que a lavagem de aquarela é reconstruída** sobre estes pixels: uma vez por
+    /// QUADRO, não uma por evento de ponteiro. Mora aqui, e não no `PaintState`, pela mesma razão que
+    /// o `canvas_rgba` mora: é bookkeeping sobre ESCREVER a tela, não sobre o modelo de pintura.
+    /// O porquê, a medição e a alavanca de mutação: [`paint::watercolor_field::WashCadence`].
+    wash: paint::watercolor_field::WashCadence,
     /// **A FORMA doada pelo módulo 3D** — `[nx, ny, nz, peso]` por texel do canvas (`docs/3D/05.2`).
     ///
     /// O passe de luz deriva a normal de `∇h` da tinta; com este plano na mão ele compõe as DUAS
@@ -341,6 +346,7 @@ impl Default for PainterTool {
         Self {
             params: PainterParams::default(),
             canvas_rgba: Arc::new(Vec::new()),
+            wash: paint::watercolor_field::WashCadence::default(),
             donated_form: None,
             layers: LayerStack::new(),
             images: BTreeMap::new(),

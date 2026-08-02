@@ -325,32 +325,92 @@ fn the_water_runs_at_a_usable_rate_under_a_real_frame_loop() {
 /// `recv`: a versão bloqueante media **60,6 ms de pior tick** na poça pesada,
 /// porque esperava o estágio inteiro DENTRO do frame.
 ///
-/// ⚠️ Barra de wall-clock ⇒ só em release (em debug o passo é ordens de
-/// grandeza mais caro e o número mediria o perfil, não o desenho).
+/// ⚠️ **ESTE GATE ERA UM RELÓGIO E VIROU ESTRUTURA — e a razão intermediária
+/// TAMBÉM flakou** (2026-08-02, doc 28 §5.68). O histórico inteiro fica porque
+/// ele é sobre o oráculo, não sobre o código:
 ///
-/// ⚠️ **FLAKE DE CARGA CONHECIDA, e o número dela está aqui:** a fixture é a
-/// poça PESADA por desenho (com um traço só a versão bloqueante media 10,5 ms e
-/// passaria — a fixture é parte do gate), então o pior tick mede também a
-/// contenção da máquina. Medido em 2026-07-29: **30,64 ms sob a suíte inteira
-/// em paralelo, contra a barra de 30**, e VERDE nas duas corridas seguintes
-/// isolado e em suíte. Irmão da flake do `the_cost_of_depth_is_linear_not_explosive`
-/// da timeline: **re-rode sozinho antes de suspeitar de uma regressão.** A barra
-/// fica onde está — subi-la para acomodar a máquina carregada tiraria o dente
-/// que separa 4 ms de espera de um estágio inteiro.
+/// 1. **Wall-clock `worst < 30.0`.** A doc dele já admitia a flake com o número
+///    (**30,64 ms sob a suíte em paralelo**, 2026-07-29), mandava *"re-rode
+///    sozinho"* e concluía *"a barra fica onde está"*. Ficou — e em `load 38`
+///    passou a falhar **ISOLADA**: FAILED / ok / FAILED em três corridas.
+/// 2. **Razão `worst / passo`**, pela teoria de que sob carga os dois termos
+///    inflam juntos. **Medida, e REPROVADA:** 1,82 · 1,41 · ok · 0,77 — o pior
+///    tick chegou a **47,63 ms contra 26,12 de passo**. A premissa estava errada
+///    e o número diz por quê: **`worst` é um MAX sobre 90 amostras**, então ele
+///    não mede o desenho e sim *a pior preempção do SO em 1,5 s* — ruído aditivo
+///    só no numerador, que razão nenhuma cancela.
+///
+/// ⇒ **A propriedade é estrutural, então o oráculo é o fonte.** O que separa os
+/// dois desenhos não é um milissegundo: é [`WetSession::try_bring_home`] pedir o
+/// motor com espera LIMITADA. Com `recv()` no lugar do `recv_timeout(TICK_WAIT)`
+/// o tick contém o estágio **por construção** — e isso um scanner vê em qualquer
+/// máquina, carregada ou não.
+///
+/// ⚠️ **Controle positivo nas duas pontas** (o padrão do irmão
+/// [`the_frame_does_not_run_a_sim_stage`]): a porta BLOQUEANTE `bring_home` tem
+/// de continuar com o `recv()` nu — ela é a das ESCRITAS, e um artista não tem
+/// "no frame seguinte". Sem essa metade o gate passaria por o scanner estar
+/// olhando o lugar errado.
 #[test]
-#[cfg_attr(debug_assertions, ignore = "barra de wall-clock: rode em --release")]
-fn the_tick_never_waits_for_a_whole_stage() {
+fn the_tick_asks_for_the_engine_with_a_bounded_wait() {
+    let src = include_str!("offthread.rs");
+    let i = src
+        .find("fn try_bring_home")
+        .expect("a porta do tick mora neste arquivo");
+    let j = src[i..].find("\n    }").expect("a porta do tick termina");
+    let tick_door = &src[i..i + j];
+    assert!(
+        tick_door.contains("recv_timeout(TICK_WAIT)"),
+        "a porta do TICK deixou de pedir o motor com espera limitada — com um `recv` nu \
+         ela contem o estagio de sim POR CONSTRUCAO (medido: pior tick 60,6 ms)"
+    );
+
+    // Controle positivo: a porta das ESCRITAS ainda bloqueia. Se as duas
+    // usassem `recv_timeout`, a asserção acima passaria sobre um desenho em que
+    // um clique do artista pode voltar de mãos vazias.
+    let k = src
+        .find("fn bring_home")
+        .expect("a porta bloqueante mora neste arquivo");
+    let l = src[k..].find("\n    }").expect("a porta bloqueante termina");
+    assert!(
+        src[k..k + l].contains(".recv()"),
+        "controle: nem a porta BLOQUEANTE usa `recv` — o scanner esta olhando o lugar \
+         errado e a asserção acima nao pode falhar"
+    );
+}
+
+/// **E o número que o gate estrutural NÃO afirma** — medição, nunca barra.
+///
+/// O pior tick contra o custo de um passo. Um desenho bloqueante mede razão
+/// **≥ 1** (o tick CONTÉM o passo; medido em 60,6 ms contra ~25); o que shipa
+/// mede ~0,5 numa máquina calma. ⚠️ **Sob carga o número não fala sobre o
+/// código** — a §5.49 vale aqui na forma mais aguda, porque um MAX amplifica a
+/// preempção do SO: com `load 38` esta mesma sonda deu 1,82 sobre um produto
+/// correto.
+///
+/// ⚠️ **A régua é [`PainterTool::wet_step_sync`], não um laço próprio** — ela roda
+/// os MESMOS estágios do worker (há gate de identidade por-estágio na crate do
+/// motor), então esta não é uma segunda resposta a *"quanto custa um passo?"*; e
+/// ela é medida **ANTES** do laço porque a poça SECA, e uma unidade colhida no
+/// fim (mais barata) inflaria a razão pelo motivo errado.
+#[test]
+#[ignore = "medicao — rode com --release --ignored --nocapture --test-threads=1 e load < 5"]
+fn measure_the_worst_tick_against_a_step() {
     let mut t = heavy_puddle();
+    let mut unit = f32::INFINITY;
+    for _ in 0..3 {
+        let a = Instant::now();
+        t.wet_step_sync(1);
+        unit = unit.min(a.elapsed().as_secs_f32() * 1e3);
+    }
     let mut worst = 0.0f32;
     for _ in 0..90 {
         worst = worst.max(frame(&mut t));
     }
-    // Um estágio da poça grande custa ~10 ms e um passo ~25; o tick tem de
-    // ficar na ordem da ESPERA (4 ms) mais o composite, nunca do passo.
-    assert!(
-        worst < 30.0,
-        "o pior tick foi {worst:.2} ms — o frame voltou a esperar trabalho de sim \
-         (a versao bloqueante media 60,6 ms aqui)"
+    println!(
+        "\n[tick] pior {worst:.2} ms · passo {unit:.2} ms · razao {:.2}x \
+         (bloqueante >= 1,0 · o que shipa ~0,5 em maquina calma)\n",
+        worst / unit
     );
 }
 

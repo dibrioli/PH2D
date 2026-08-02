@@ -289,6 +289,24 @@ pub fn paint_hero_screen(
             &mut hero.gizmo.point_hit_map,
         );
     }
+    // **As ETIQUETAS das molduras** — desenho puro, sem hit (a decisão mora no `frame_label`).
+    // Depois do gizmo e antes do chrome: elas pertencem ao canvas, e um painel passa por cima
+    // delas como passa por cima da arte.
+    if !hero.gizmo.frame_labels.is_empty()
+        && let Some(view) = hero.grid.view
+    {
+        let view = crate::grid::GridView {
+            canvas: layout.canvas,
+            ..view
+        };
+        crate::frame_label::paint_frame_labels(
+            scene,
+            &view,
+            &hero.gizmo.frame_labels,
+            text_system,
+            hero.theme,
+        );
+    }
     paint_top_bar(
         &layout,
         scene,

@@ -6065,6 +6065,18 @@ impl crate::App {
                 ph2d_panel_vector::state::set_frame_clip(
                     crate::vec_frame_edit::selected_frame_clip(sim, &self.vec_entities, &sel),
                 );
+                // **As ETIQUETAS das molduras** (Enio 2026-08-01) — publicadas em TODO frame, com
+                // qualquer ferramenta em mãos. ⚠️ Aqui não vale a cerca da RÉGUA (que só vive com
+                // o Vector porque OCUPA a borda do canvas e comeria o pen-down do Painter): uma
+                // etiqueta é desenho puro, sem região de hit, e uma moldura é mobília de cena que
+                // se precisa reconhecer mesmo enquanto se pinta dentro dela.
+                hero.gizmo.frame_labels = crate::vec_frame_labels::frame_labels(
+                    sim,
+                    vec_scene,
+                    &self.vec_entities,
+                    &vec_xf,
+                    &sel,
+                );
                 let group = crate::bool_gesture::group_of_selection(sim, &self.vec_entities, &sel);
                 ph2d_panel_vector::state::set_bool_group_selected(group.is_some());
                 if pending_bool_apply

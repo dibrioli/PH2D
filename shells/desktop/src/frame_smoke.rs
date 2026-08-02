@@ -127,6 +127,9 @@ fn announce(app: &mut crate::App) {
         gfx.vec_scene.paths().len()
     );
     eprintln!("[frame] o roteiro (pegue a ferramenta VECTOR primeiro):");
+    eprintln!("  0. ⚠️ **AS ETIQUETAS**, antes de clicar em nada: cada moldura traz o NOME dela");
+    eprintln!("     acima do canto superior-esquerdo, em tamanho fixo. De zoom e pan: a etiqueta");
+    eprintln!("     ACOMPANHA a moldura e NAO cresce. A da moldura selecionada acende.");
     eprintln!("  1. ⚠️ A pergunta da wave, sem tocar em nada: a BARRA vermelha transborda pela");
     eprintln!("     direita nas duas molduras. Na da ESQUERDA ela e' CORTADA na borda; na da");
     eprintln!("     DIREITA ela sai inteira. A bolinha verde entre as duas nao e' filha de");
@@ -145,6 +148,9 @@ fn announce(app: &mut crate::App) {
     eprintln!("     moldura nova, ja' recortando. Arraste uma forma para dentro dela na");
     eprintln!("     Hierarquia — ela passa a ser recortada.");
     eprintln!("  6. Ctrl+Z depois de cada passo: o chip, o preset e a moldura nova desfazem.");
+    eprintln!("  7. ⚠️ **O WIDTH pela CAIXA**: selecione a barra vermelha e DIGITE um numero na");
+    eprintln!("     caixa ao lado do slider Width (Enter). O traco tem de engrossar na hora —");
+    eprintln!("     era esse o bug. Depois escolha uma COR: a largura NAO pode mudar junto.");
 }
 
 #[cfg(test)]

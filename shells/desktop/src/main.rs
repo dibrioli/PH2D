@@ -321,6 +321,7 @@ mod vec_font_preview;
 mod vec_frame_edit;
 /// **AS MOLDURAS** (plano UI/UX W0): que intervalo da pilha de z cada `VecFrame` recorta. A
 /// metade que a shell possui — o renderer sabe desenhar, a shell sabe a ÁRVORE.
+mod vec_frame_labels;
 mod vec_frame_spans;
 mod vec_gizmo_view;
 mod vec_glyph;

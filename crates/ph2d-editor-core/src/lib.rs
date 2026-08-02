@@ -34,6 +34,7 @@
 
 pub mod action_bus;
 pub mod floating_panel;
+pub mod frame_label;
 pub mod gizmo;
 pub mod grid;
 pub mod grid_snap;

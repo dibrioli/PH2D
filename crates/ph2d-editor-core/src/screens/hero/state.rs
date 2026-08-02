@@ -177,6 +177,15 @@ pub struct GizmoStateGroup {
     /// find the joint in the Hierarchy are not on the canvas at all. `None` ⇒
     /// nothing painted. See [`crate::gizmo::point`].
     pub point_view: Option<crate::gizmo::PointGizmoView>,
+    /// **As ETIQUETAS das molduras** — o nome que se lê acima do canto superior-esquerdo de cada
+    /// moldura vetorial, publicado pela shell todo frame (o `editor-core` não alcança a cena
+    /// vetorial nem o ECS, e uma segunda resposta a *"quais molduras existem?"* divergiria da que
+    /// as desenha). Vazio ⇒ nada é pintado.
+    ///
+    /// ⚠️ Ao contrário do [`point_view`](Self::point_view), isto **não regista hit nenhum**: um
+    /// alvo aqui engoliria o pen-down de toda ferramenta logo acima de cada moldura. Ver
+    /// [`crate::frame_label`].
+    pub frame_labels: Vec<crate::frame_label::FrameLabel>,
     /// Reverse lookup from a hit `NodeId` to the anchor handle it belongs to —
     /// the point gizmo's own [`gizmo_hit_map`](Self::gizmo_hit_map).
     ///

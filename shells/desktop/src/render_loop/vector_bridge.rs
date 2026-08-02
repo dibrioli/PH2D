@@ -189,6 +189,9 @@ pub(super) fn dispatch(
         },
     );
 
+    // **Uma cor autorada SOLTA o token** (plano UI/UX W4a) — o one-shot do tool, drenado aqui e
+    // consumido pelo passe que tem o mundo e a seleção na mão.
+    crate::vec_bindings::note_colour_authored(tool.take_colour_authored());
     let stroke = tool.stroke_rgba();
     let fill = tool.fill_rgba();
     let cap = line_cap(tool.cap());

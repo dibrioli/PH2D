@@ -42,7 +42,24 @@ fn options(prop: u16) -> Vec<DropdownOption<usize>> {
     .collect()
 }
 
+/// A espessura da rachura, em px de TELA.
+const SLASH_W_PX: f32 = 2.0; // LITERAL-PX-OK: espessura de chrome, irmã do 1.0 do foco
+
 impl BodyCtx<'_> {
+    /// **A rachura sobre uma swatch cujo valor um token cobre.**
+    ///
+    /// Porta ÚNICA das duas swatches: elas fazem a mesma afirmação (*o que se vê aqui não é o que
+    /// a arte desenha*), e duas chamadas com números diferentes seriam duas marcas para o mesmo
+    /// facto.
+    pub(crate) fn token_slash(&mut self, rect: Rect) {
+        ph2d_editor_core::paint_shapes::fill_slash(
+            self.scene,
+            rect,
+            SLASH_W_PX,
+            ph2d_editor_core::paint::resolve(ColorToken::Danger, self.theme),
+        );
+    }
+
     /// A fileira `<rótulo> [token ▾]` de uma propriedade. Devolve o `y` seguinte.
     ///
     /// Mesmo desenho da fileira de Blend de um filtro — a mesma estética para a mesma pergunta
@@ -87,6 +104,18 @@ impl BodyCtx<'_> {
     }
 }
 
+/// **Que linha do popover está vigente** — `0` é *Unbind*, `i + 1` é `ColorToken::ALL[i]`.
+///
+/// ⚠️ Porta ÚNICA das duas perguntas que TÊM de concordar: qual linha o popover destaca, e qual
+/// rótulo o chip mostra. Duas contas divergiriam no dia em que a lista ganhasse um membro, e o
+/// artista veria o chip a dizer um token e o picker a destacar outro.
+pub fn selected_row(prop: u16) -> usize {
+    let b = state::token_bindings().unwrap_or_default();
+    let key = if prop == 0 { b.fill } else { b.stroke };
+    key.and_then(|k| ColorToken::ALL.iter().position(|t| t.key() == k))
+        .map_or(0, |i| i + 1)
+}
+
 /// **O popover dos tokens** — pintado no passe DIFERIDO, por cima de todas as seções.
 ///
 /// Espelho exato do popover de mistura dos filtros, e pelo mesmo motivo: são oitenta linhas, e o
@@ -98,7 +127,12 @@ pub(crate) fn paint_token_popover(ctx: &mut PaintCtx, prop: u16, chip: Rect, the
         ids::VECTOR_TOKEN_STROKE
     };
     let opts = options(prop);
-    let dd = Dropdown::new(id, "", opts).selected(0).open(true);
+    // ⚠️ A linha DESTACADA é a do token vigente, nunca um índice cravado. Com `0` cravado o
+    // popover dizia "None" mesmo sobre uma forma bindada — e então escolher None de volta parecia
+    // um no-op, porque o picker já afirmava estar lá (reportado no smoke de 2026-08-02).
+    let dd = Dropdown::new(id, "", opts)
+        .selected(selected_row(prop))
+        .open(true);
 
     let panel = dd.popover_rect_clamped(chip, ctx.viewport);
     let content_h = dd.content_height(chip.h);

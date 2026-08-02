@@ -186,6 +186,18 @@ pub struct VectorTool {
     /// o valor da caixa de texto ao lado do slider Width não muda o stroke"*). Quem sabe que uma
     /// largura foi autorada é quem a recebeu — e é aqui.
     width_authored: bool,
+    /// **Uma COR foi autorada neste gesto** — `(fill, stroke)`, armado nos dois setters e drenado
+    /// por [`Self::take_colour_authored`].
+    ///
+    /// ⚠️ Irmão exacto do [`Self::width_authored`], e existe pela decisão de produto do plano de
+    /// UI/UX W4a: **escolher uma cor SOLTA o token** daquela propriedade (o *detach* do Figma).
+    /// Sem ele o artista escolheria uma cor, o token continuaria a cobri-la, e a swatch mostraria
+    /// um valor que a arte não usa — o pior estado possível para um controlo.
+    ///
+    /// ⚠️ **Arma só quando o valor MUDA.** O read-back do picker corre em TODO frame em que ele
+    /// está aberto, então armar incondicionalmente soltaria o token no instante em que o picker
+    /// abrisse — antes de o artista tocar em coisa nenhuma.
+    colour_authored: (bool, bool),
 }
 
 impl Default for VectorTool {
@@ -213,6 +225,7 @@ impl Default for VectorTool {
             marker_round: crate::params::DEFAULT_MARKER_ROUND,
             apply_to_selected: false,
             width_authored: false,
+            colour_authored: (false, false),
         }
     }
 }
@@ -434,6 +447,7 @@ impl VectorTool {
     /// recolour. `a = 0` is accepted (a fully-transparent stroke is unusual but
     /// not rejected here — the panel drives opaque picks).
     pub fn set_stroke_rgba(&mut self, rgba: [u8; 4]) {
+        self.colour_authored.1 |= self.stroke != rgba;
         self.stroke = rgba;
         self.apply_to_selected = true;
     }
@@ -441,6 +455,7 @@ impl VectorTool {
     /// Set the fill colour (picker read-back) + flag the selected path for
     /// recolour. `a = 0` ⇒ "None" (no fill).
     pub fn set_fill_rgba(&mut self, rgba: [u8; 4]) {
+        self.colour_authored.0 |= self.fill != rgba;
         self.fill = rgba;
         self.apply_to_selected = true;
     }
@@ -482,6 +497,12 @@ impl VectorTool {
     /// deixa-o falso, e é isso que impede um pick de reengrossar a linha.
     pub fn take_width_authored(&mut self) -> bool {
         std::mem::take(&mut self.width_authored)
+    }
+
+    /// `(fill, stroke)` — uma cor foi autorada desde a última drenagem? Ver
+    /// [`Self::colour_authored`].
+    pub fn take_colour_authored(&mut self) -> (bool, bool) {
+        std::mem::take(&mut self.colour_authored)
     }
 }
 

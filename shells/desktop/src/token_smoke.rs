@@ -100,12 +100,18 @@ fn announce(app: &mut crate::App) {
     eprintln!("     Sunstone/Blueprint). O card da esquerda re-veste E O APP INTEIRO re-veste");
     eprintln!("     junto: e' a MESMA tabela que veste os 44 widgets do editor.");
     eprintln!("     O card da DIREITA nao se mexe — ele e' o CONTROLE, ainda no literal.");
-    eprintln!("  6. Volte ao chip do fundo e escolha 'None (use literal)'. ⚠️ A cor ORIGINAL");
-    eprintln!("     volta: bindar nunca apagou o literal, so' o cobriu.");
-    eprintln!("  7. Selecione a forma da direita (a SEM TRACO). ⚠️ A row de token do Fill esta'");
+    eprintln!("  6. ⚠️ Repare na swatch de Fill: ela tem uma RACHURA vermelha. A cor que ela");
+    eprintln!("     mostra e' o literal, e o token o cobre — a rachura diz que ele nao esta'");
+    eprintln!("     em uso. Reabra o chip: a linha DESTACADA e' a do token, nao 'None'.");
+    eprintln!("  7. Volte ao chip do fundo e escolha 'None (use literal)'. ⚠️ A cor ORIGINAL");
+    eprintln!("     volta (bindar nunca apagou o literal) e a rachura some.");
+    eprintln!("  8. ⚠️ Binde outra vez e agora CLIQUE NA SWATCH e escolha uma cor no picker: o");
+    eprintln!("     token volta sozinho para None. Escolher uma cor SOLTA o token — senao a");
+    eprintln!("     swatch mostraria um valor que a arte nao usa.");
+    eprintln!("  9. Selecione a forma da direita (a SEM TRACO). ⚠️ A row de token do Fill esta'");
     eprintln!("     la', e a do Stroke NAO: um token de cor nao inventa a largura que falta.");
-    eprintln!("  8. Ctrl+Z depois de bindar e de soltar — os dois desfazem.");
-    eprintln!("  9. Ctrl+S e Ctrl+O: o binding sobrevive ao arquivo.");
+    eprintln!(" 10. Ctrl+Z depois de bindar e de soltar — os dois desfazem.");
+    eprintln!(" 11. Ctrl+S e Ctrl+O: o binding sobrevive ao arquivo.");
 }
 
 #[cfg(test)]

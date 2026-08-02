@@ -256,11 +256,16 @@ impl BodyCtx<'_> {
         paint_color_swatch(&stroke_swatch, stroke_swatch_rect, self.scene, self.theme);
         self.hit_index
             .register(ids::VECTOR_STROKE_SWATCH, stroke_swatch_rect);
+        // A rachura, pela mesma razão do preenchimento.
+        let bindings = crate::state::token_bindings();
+        if bindings.as_ref().is_some_and(|b| b.stroke.is_some()) {
+            self.token_slash(stroke_swatch_rect);
+        }
         y += self.row_h + self.row_gap;
 
         // **O TOKEN do traço** (plano UI/UX W4), logo abaixo da cor que ele cobre. Só é oferecido
         // quando a seleção TEM traço: o token colore o traço que existe e nunca inventa largura.
-        if let Some(b) = crate::state::token_bindings().filter(|b| b.stroke_exists) {
+        if let Some(b) = bindings.filter(|b| b.stroke_exists) {
             y = self.token_row(ids::VECTOR_TOKEN_STROKE, 1, b.stroke.as_deref(), y);
         }
 
@@ -417,10 +422,16 @@ impl BodyCtx<'_> {
         paint_color_swatch(&fill_swatch, fill_swatch_rect, self.scene, self.theme);
         self.hit_index
             .register(ids::VECTOR_FILL_SWATCH, fill_swatch_rect);
+        // ⚠️ **A RACHURA**: com um token a cobrir, a cor que a swatch mostra NÃO é a que a arte
+        // desenha — e uma swatch que afirma um valor que ninguém usa é a pior UI possível.
+        let bindings = crate::state::token_bindings();
+        if bindings.as_ref().is_some_and(|b| b.fill.is_some()) {
+            self.token_slash(fill_swatch_rect);
+        }
         y += self.row_h + self.row_gap;
 
         // **O TOKEN do preenchimento** (plano UI/UX W4), logo abaixo da swatch que ele cobre.
-        if let Some(b) = crate::state::token_bindings() {
+        if let Some(b) = bindings {
             y = self.token_row(ids::VECTOR_TOKEN_FILL, 0, b.fill.as_deref(), y);
         }
 

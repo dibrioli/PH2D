@@ -184,3 +184,99 @@ fn every_option_the_picker_paints_is_registered() {
     );
     state::set_token_bindings(None);
 }
+
+/// **O picker DESTACA o token vigente, não a linha de soltar.**
+///
+/// Repro do smoke de 2026-08-02 (*"ao reabrir o dropdown já está em None embora eu tenha escolhido
+/// outro"*): a linha destacada saía de um `0` cravado, então o picker afirmava "None" sobre uma
+/// forma bindada — e escolher None de volta parecia um no-op, porque ele já dizia estar lá.
+#[test]
+fn the_picker_highlights_the_bound_token_not_none() {
+    let accent = ColorToken::ALL
+        .iter()
+        .position(|t| t.key() == "accent")
+        .expect("accent existe");
+
+    // Sem binding: a linha vigente é a de SOLTAR (índice 0).
+    state::set_token_bindings(Some(bound(None, None, true)));
+    assert_eq!(ph2d_panel_vector::selected_token_row(0), 0);
+
+    // Com binding: a linha do token, e NUNCA a 0.
+    state::set_token_bindings(Some(bound(Some("accent"), None, true)));
+    assert_eq!(
+        ph2d_panel_vector::selected_token_row(0),
+        accent + 1,
+        "o picker tem de destacar o token vigente"
+    );
+    assert_ne!(
+        ph2d_panel_vector::selected_token_row(0),
+        0,
+        "destacar None sobre uma forma bindada faz escolher None parecer um no-op"
+    );
+
+    // E as duas propriedades não se confundem.
+    assert_eq!(
+        ph2d_panel_vector::selected_token_row(1),
+        0,
+        "o traco nao esta' bindado — a linha dele e' a de soltar"
+    );
+    state::set_token_bindings(None);
+}
+
+/// **Escolher FECHA o chip.**
+///
+/// ⚠️ O light-dismiss não dispara aqui — o clique é DENTRO do popover —, então sem o braço no
+/// `apply_event` o card fica aberto por cima da secção e o artista tem de o dispensar à mão
+/// (reportado no smoke de 2026-08-02).
+#[test]
+fn choosing_a_token_closes_the_chip() {
+    state::set_token_bindings(Some(bound(None, None, true)));
+    for (prop, chip) in [
+        (0_u16, ids::VECTOR_TOKEN_FILL),
+        (1, ids::VECTOR_TOKEN_STROKE),
+    ] {
+        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut st = VectorPanelState;
+        host.set_dropdown_open(chip, true);
+        press(
+            &mut host,
+            &mut st,
+            ids::vector_token_option_id(prop, 1),
+            "a escolha",
+        );
+        assert_eq!(
+            host.dropdown_is_open(chip),
+            Some(false),
+            "o chip ficou ABERTO depois da escolha — o artista tem de o dispensar a' mao"
+        );
+    }
+    state::set_token_bindings(None);
+}
+
+/// **A RACHURA é desenhada nas DUAS swatches, e só quando um token as cobre.**
+///
+/// ⚠️ Arch-gate sobre o fonte, e não um oráculo de pixels: a rachura é desenho PURO (uma chamada
+/// de fill), então mutá-la deixa toda a suíte verde — o mesmo ponto cego que o anel do pincel do
+/// Painter documenta. A APARÊNCIA dela é do smoke; o que se pode afirmar aqui é que ela é chamada,
+/// para as duas, e **atrás da pergunta certa**.
+///
+/// A geometria em si é gateada onde ela vive (`paint_shapes::fill_slash`).
+#[test]
+fn the_slash_is_painted_for_both_swatches_and_only_when_bound() {
+    const SECTIONS: &str = include_str!("../src/paint_sections.rs");
+    assert_eq!(
+        SECTIONS.matches("self.token_slash(").count(),
+        2,
+        "a rachura tem de sair nas DUAS swatches — a que nao a tem afirma uma cor que a arte nao usa"
+    );
+    for guard in [
+        "b.fill.is_some()) {\n            self.token_slash(",
+        "b.stroke.is_some()) {\n            self.token_slash(",
+    ] {
+        assert!(
+            SECTIONS.contains(guard),
+            "a rachura saiu de tras da pergunta *ha' token nesta propriedade?* — riscada sempre, \
+             ela deixa de significar coisa nenhuma"
+        );
+    }
+}

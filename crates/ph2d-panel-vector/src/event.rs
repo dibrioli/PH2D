@@ -312,6 +312,13 @@ pub(crate) fn apply_event(
         // (sets the mode); Boolean clicks are picked up by the shell drain, which
         // applies the op to the document (they are not Style edits, so the tool
         // ignores them). Same forwarder shape either way.
+        // Uma linha do picker de TOKEN aberto: fecha o chip e encaminha a escolha.
+        //
+        // ⚠️ O light-dismiss NÃO dispara aqui — o clique é DENTRO do popover —, então sem este
+        // braço o card fica aberto por cima da seção depois de escolher, e o artista tem de o
+        // dispensar à mão. É a mesma cicatriz que a row de família do dropdown de FONTE já
+        // carrega, e a razão de este braço vir ANTES do encaminhador genérico.
+        WidgetEvent::Click(id) if token_option_chip(id).is_some() => pick_token(host, id),
         WidgetEvent::Click(id) if forwards_plain_click(id) => {
             seam_reset_button(host, id);
             host.bus_mut()
@@ -474,6 +481,41 @@ fn expand_side_index(id: ph2d_a11y::NodeId) -> Option<u8> {
         _ if id == ids::VECTOR_EXPAND_SIDE_BOTH => Some(2),
         _ => None,
     }
+}
+
+/// **Uma linha do picker de TOKEN foi escolhida:** fecha o chip e encaminha a escolha.
+///
+/// ⚠️ O light-dismiss NÃO dispara aqui — o clique é DENTRO do popover —, então sem o fecho o card
+/// fica aberto por cima da secção depois de escolher e o artista tem de o dispensar à mão (Enio,
+/// 2026-08-02). É a mesma cicatriz que a row de família do dropdown de FONTE já carrega.
+///
+/// ⚠️ O corpo vive numa função e não no braço, como o `pick_expand_side` ao lado: o `apply_event`
+/// está no teto de 200 LOC por função, e onze linhas dentro do `match` o estouram — foi o que
+/// aconteceu ao escrever isto.
+fn pick_token(host: &mut dyn PanelHostInternal, id: ph2d_a11y::NodeId) -> bool {
+    if let Some(chip) = token_option_chip(id)
+        && let Some(InteractiveState::Dropdown { open, .. }) = host.store_mut().get_mut(chip)
+    {
+        *open = false;
+    }
+    host.bus_mut()
+        .push(EditorAction::ToolPanelEvent(PanelEvent::Click(id)));
+    true
+}
+
+/// **De que CHIP esta linha de picker de token é** — `None` se o id não é uma linha de picker.
+///
+/// A enumeração é a mesma do `event_clicks::is_token_option` (um `NodeId` é hash e não se
+/// inverte); o que muda é a resposta, porque aqui a pergunta é *de quem é este popover?*.
+fn token_option_chip(id: ph2d_a11y::NodeId) -> Option<ph2d_a11y::NodeId> {
+    let n = ph2d_tokens::ColorToken::ALL.len();
+    [
+        (0_u16, ids::VECTOR_TOKEN_FILL),
+        (1, ids::VECTOR_TOKEN_STROKE),
+    ]
+    .into_iter()
+    .find(|&(prop, _)| (0..=n).any(|i| id == ids::vector_token_option_id(prop, i)))
+    .map(|(_, chip)| chip)
 }
 
 /// A lista de ids cujo `Click` é apenas ENCAMINHADO — irmão pelo teto de 600 LOC do painel.

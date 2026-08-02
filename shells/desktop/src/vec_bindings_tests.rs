@@ -67,7 +67,7 @@ fn an_unknown_token_falls_back_to_the_literal() {
     assert!(token_color("no-such-token", Theme::Forge).is_none());
     assert!(
         resolve(&sim, &map, Theme::Forge).is_empty(),
-        "nada resolvido ⇒ nada publicado ⇒ o desenho usa o literal do documento"
+        "nada resolvido = nada publicado = o desenho usa o literal do documento"
     );
 }
 
@@ -177,5 +177,62 @@ fn unbinding_the_last_property_detaches_the_component() {
     assert!(
         sim.world().get::<VecBindings>(e).is_none(),
         "um componente VAZIO ficou anexado — ele entra no diff do undo e no save"
+    );
+}
+
+/// **Escolher uma cor SOLTA o token daquela propriedade** — o *detach* do Figma (Enio,
+/// 2026-08-02: *"ao selecionar uma nova cor no Fill/Stroke, o Token deve voltar para None"*).
+///
+/// ⚠️ **E o CONTROLE é a metade que importa:** o read-back do picker corre em TODO frame em que
+/// ele está aberto, então um flag armado incondicionalmente soltaria o token no instante em que o
+/// picker abrisse — antes de o artista tocar em coisa nenhuma. É por isso que o `colour_authored`
+/// do tool arma só quando o valor MUDA, e é isso que a primeira metade deste gate mede.
+#[test]
+fn authoring_a_colour_detaches_that_token_and_only_that_one() {
+    use ph2d_tool_vector::VectorTool;
+
+    // CONTROLE: re-escrever a MESMA cor não é autoria — o picker aberto não solta nada.
+    let mut t = VectorTool::default();
+    let same = t.ui_snapshot().fill;
+    let _ = t.take_colour_authored();
+    t.set_fill_rgba(same);
+    assert_eq!(
+        t.take_colour_authored(),
+        (false, false),
+        "o picker apenas ABERTO nao pode soltar o token — ele re-escreve a mesma cor todo frame"
+    );
+
+    // E uma cor DIFERENTE é autoria, só do lado que mudou.
+    t.set_fill_rgba([1, 2, 3, 255]);
+    assert_eq!(t.take_colour_authored(), (true, false));
+    t.set_stroke_rgba([9, 9, 9, 255]);
+    assert_eq!(t.take_colour_authored(), (false, true));
+
+    // A ponta da corrente: o one-shot solta a propriedade autorada e DEIXA a outra.
+    let (mut sim, _scene, map, id) = scene();
+    set_selected_binding(&mut sim, &map, &[id], BoundProp::Fill, Some("accent"));
+    set_selected_binding(
+        &mut sim,
+        &map,
+        &[id],
+        BoundProp::StrokeColor,
+        Some("border"),
+    );
+    note_colour_authored((true, false));
+    detach_on_authored_colour(&mut sim, &map, &[id]);
+    let e = Entity::from_bits(map[&id]);
+    let b = sim
+        .world()
+        .get::<VecBindings>(e)
+        .expect("o traco sobrevive");
+    assert_eq!(
+        b.get(BoundProp::Fill),
+        None,
+        "a cor autorada soltou o token"
+    );
+    assert_eq!(
+        b.get(BoundProp::StrokeColor),
+        Some("border"),
+        "e NAO soltou a outra propriedade"
     );
 }

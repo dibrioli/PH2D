@@ -6079,6 +6079,10 @@ impl crate::App {
                 // **OS TOKENS** (plano UI/UX W4): aplicar a escolha, e depois publicar o que a
                 // seleção tem preso. Nesta ordem — publicar antes deixaria o chip a mostrar o
                 // token ANTERIOR por um frame, e o artista veria a escolha "não pegar".
+                // ⚠️ O detach vem ANTES da escolha do picker: no mesmo frame em que o artista
+                // escolhe um TOKEN o `colour_authored` está limpo, então nenhum dos dois pisa no
+                // outro — mas na ordem inversa uma cor autorada soltaria o token recém-escolhido.
+                crate::vec_bindings::detach_on_authored_colour(sim, &self.vec_entities, &sel);
                 if let Some((prop, token)) = pending_token_bind {
                     crate::vec_bindings::set_selected_binding(
                         sim,

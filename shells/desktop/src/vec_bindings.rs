@@ -146,6 +146,40 @@ pub(crate) fn selected_bindings(
     })
 }
 
+thread_local! {
+    /// `(fill, stroke)` — uma cor foi AUTORADA neste frame, e a propriedade tem de soltar o token.
+    static COLOUR_AUTHORED: std::cell::Cell<(bool, bool)> = const { std::cell::Cell::new((false, false)) };
+}
+
+/// A ponte drena o one-shot do tool aqui; o passe de aplicação o consome.
+///
+/// ⚠️ Um canal interno da shell, e não um argumento a mais: quem SABE que uma cor foi autorada é o
+/// tool (a ponte é quem fala com ele), e quem pode SOLTAR o token é o passe que tem o mundo e a
+/// seleção na mão. Os dois correm no mesmo frame, em ordem — a ponte primeiro.
+pub(crate) fn note_colour_authored(v: (bool, bool)) {
+    COLOUR_AUTHORED.with(|c| c.set(v));
+}
+
+/// **Escolher uma cor SOLTA o token daquela propriedade** — o *detach* do Figma.
+///
+/// ⚠️ Sem isto o artista escolheria uma cor, o token continuaria a cobri-la, e a swatch mostraria
+/// um valor que a arte não usa: o pior estado possível para um controlo (decisão do Enio,
+/// 2026-08-02). E é por isso que o `colour_authored` do tool arma só quando o valor MUDA — o
+/// read-back do picker corre em todo frame em que ele está aberto.
+pub(crate) fn detach_on_authored_colour(
+    sim: &mut SimWorld,
+    map: &VecEntityMap,
+    selected: &[ph2d_vec_scene::VecPathId],
+) {
+    let (fill, stroke) = COLOUR_AUTHORED.with(std::cell::Cell::take);
+    if fill {
+        set_selected_binding(sim, map, selected, BoundProp::Fill, None);
+    }
+    if stroke {
+        set_selected_binding(sim, map, selected, BoundProp::StrokeColor, None);
+    }
+}
+
 #[cfg(test)]
 #[path = "vec_bindings_tests.rs"]
 mod tests;

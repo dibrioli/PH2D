@@ -58,6 +58,9 @@ mod shapes;
 // like `shapes`: a graph cooks in the background whatever tool is active.
 #[path = "motion_bridge_objects.rs"]
 mod objects;
+// The membrane's object-bake wrappers, re-exported so `motion_bridge::publish_objects`
+// / `bake_objects` / `bake_flip_objects` resolve unchanged for the render loop.
+pub(super) use objects::{bake_flip_objects, bake_objects, publish_objects};
 
 #[cfg(feature = "panel-motion-graph")]
 #[path = "motion_bridge_edit.rs"]
@@ -587,42 +590,6 @@ pub(super) fn publish_shapes(
     shapes::publish(&mut motion.pump.cook, sim, scene, map, xforms);
 }
 
-/// **Publish the engine objects into the cook** (doc 86 §2) — the sibling of
-/// [`publish_shapes`] for `source.object`. Every named sprite becomes an
-/// external the graph can bring in.
-///
-/// ⚠️ **Call AFTER [`publish_shapes`]:** `shapes::publish` clears the external
-/// table first and this APPENDS objects into it, so the cook sees both the
-/// curves and the objects. The atlas resolves each sprite's tile the way the
-/// sprite renderer does; it is in hand at this phase (`renderer.atlas()`).
-pub(super) fn publish_objects(
-    motion: &mut MotionState,
-    sim: &mut ph2d_ecs::SimWorld,
-    atlas: &ph2d_render::TextureAtlas,
-) {
-    // `&mut pump.cook` and `&object_bake` are disjoint fields — sprites resolve
-    // live from the atlas here; baked vector tiles come from `object_bake`, which
-    // the fx phase filled last frame (doc 86 §2 A2).
-    objects::publish(&mut motion.pump.cook, sim, atlas, &motion.object_bake);
-}
-
-/// **Bake the named vector shapes to tiles** (doc 86 §2 A2) — runs at the fx
-/// phase, where `renderer` + `gpu` + the vector scene/transforms are all in
-/// hand. Cached by content, so a static scene bakes once; the membrane publishes
-/// the results next frame (`publish_objects`).
-#[allow(clippy::too_many_arguments)]
-pub(super) fn bake_objects(
-    motion: &mut MotionState,
-    scene: &ph2d_vec_scene::VecScene,
-    map: &crate::vec_entities::VecEntityMap,
-    xforms: &ph2d_vec_scene::VecXforms,
-    live: &ph2d_vec_render::LiveGeometry,
-    gpu: &ph2d_gpu::GpuContext,
-    surface_format: wgpu::TextureFormat,
-    renderer: &mut ph2d_render::SpriteRenderer,
-    sim: &ph2d_ecs::SimWorld,
-) {
-    motion
-        .object_bake
-        .bake(scene, map, xforms, live, gpu, surface_format, renderer, sim);
-}
+// The object-bake wiring (`publish_objects`/`bake_objects`/`bake_flip_objects`,
+// doc 86 §2 A2/A3) lives in the `objects` membrane module and is re-exported below,
+// so `motion_bridge::…` call sites are unchanged and this file stays under the cap.

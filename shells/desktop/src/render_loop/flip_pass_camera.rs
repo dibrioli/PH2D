@@ -40,7 +40,7 @@ pub(super) fn parallax_model(model: &Xform, cam_center: [f32; 2], depth: f32) ->
 /// model`, e a espessura escalada pela escala média do objeto (`px_per_world ·
 /// mean_scale`) — para o traço engrossar junto quando o gizmo escala. É isto que
 /// deixa o gizmo de sprite mover/girar/escalar a arte SEM reescrever geometria.
-pub(super) fn fold_model(base: &CameraRaw, model: &Xform) -> CameraRaw {
+pub(crate) fn fold_model(base: &CameraRaw, model: &Xform) -> CameraRaw {
     let [a, b, c, d, e, f] = model.0;
     // `model` como 4×4 col-major (`m[col][row]`): local (x, y, 0, 1) → mundo.
     let m: [[f32; 4]; 4] = [
@@ -81,7 +81,7 @@ pub(super) fn fold_model(base: &CameraRaw, model: &Xform) -> CameraRaw {
 /// absoluto, Enio 2026-07-11). Enio 2026-07-17 reverteu: *"a largura do traço está
 /// relativa ao zoom do canvas e não é fixa no mundo"*. O `fold_model` de um objeto
 /// escalado multiplica por `mean_scale` por cima (a arte engrossa junto com o gizmo).
-pub(super) fn camera_raw(camera: &Camera2d, window: WindowSize) -> CameraRaw {
+pub(crate) fn camera_raw(camera: &Camera2d, window: WindowSize) -> CameraRaw {
     let vp = camera.view_proj(window).to_cols_array_2d();
     let px_per_world = window.height as f32 / camera.height_world.max(f32::EPSILON);
     CameraRaw::new(

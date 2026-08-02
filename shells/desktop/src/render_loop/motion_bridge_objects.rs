@@ -37,6 +37,8 @@ use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::Cook;
 use ph2d_render::{RenderInstance, Sprite, SpriteSource, TextureAtlas};
 
+use crate::motion_state::MotionState;
+
 /// The appearance tile for one sprite: one instance at the origin carrying
 /// `(P, size, tint, uv_rect, texture_id)`. `None` for a source the atlas cannot
 /// resolve here (a cooked KTX2 sprite needs the renderer's cooked-texture store,
@@ -90,6 +92,7 @@ pub(super) fn publish(
     sim: &mut SimWorld,
     atlas: &TextureAtlas,
     bakes: &crate::motion_object_bake::ObjectBake,
+    flip_bakes: &crate::motion_flip_bake::FlipObjectBake,
 ) {
     // Sprites resolve directly (a sprite already IS a tile). A `(&Sprite, &Name)`
     // query walks exactly the entities that can be a source; `world_mut()` builds
@@ -115,6 +118,75 @@ pub(super) fn publish(
             appearance_tile(tile.size, [1.0, 1.0, 1.0, 1.0], [0.0, 0.0, 1.0, 1.0], tile.texture_id),
         );
     }
+
+    // Flip objects come as BAKED tiles too (doc 86 §2 A3): the fx phase composed each
+    // named object's layers at the current frame into an individual texture. Same
+    // appearance stream, same WHITE tint (the colours are baked in), so the sink can't
+    // tell a baked Flip from a baked vector — the `source.object` node stays media-
+    // agnostic. Objects publish after curves; the last write on a name clash wins.
+    for (name, tile) in flip_bakes.tiles() {
+        cook.set_external(
+            name.to_string(),
+            appearance_tile(tile.size, [1.0, 1.0, 1.0, 1.0], [0.0, 0.0, 1.0, 1.0], tile.texture_id),
+        );
+    }
+}
+
+/// **Publish the engine objects into the cook** (doc 86 §2) — the sibling of
+/// `publish_shapes` for `source.object`. Every named sprite (live from the atlas),
+/// baked vector tile and baked Flip tile becomes an external the graph can bring in.
+///
+/// ⚠️ **Call AFTER `publish_shapes`:** it clears the external table first and this
+/// APPENDS objects into it, so the cook sees both the curves and the objects.
+pub(crate) fn publish_objects(motion: &mut MotionState, sim: &mut SimWorld, atlas: &TextureAtlas) {
+    // `&mut pump.cook` and the two `_bake` reads are disjoint fields — sprites resolve
+    // live from the atlas; the fx phase filled `object_bake`/`flip_object_bake` last
+    // frame (doc 86 §2 A2/A3).
+    publish(
+        &mut motion.pump.cook,
+        sim,
+        atlas,
+        &motion.object_bake,
+        &motion.flip_object_bake,
+    );
+}
+
+/// **Bake the named vector shapes to tiles** (doc 86 §2 A2) — at the fx phase, where
+/// `renderer` + `gpu` + the vector scene/transforms are in hand. Cached by content, so
+/// a static scene bakes once; `publish_objects` publishes the results next frame.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn bake_objects(
+    motion: &mut MotionState,
+    scene: &ph2d_vec_scene::VecScene,
+    map: &crate::vec_entities::VecEntityMap,
+    xforms: &ph2d_vec_scene::VecXforms,
+    live: &ph2d_vec_render::LiveGeometry,
+    gpu: &ph2d_gpu::GpuContext,
+    surface_format: wgpu::TextureFormat,
+    renderer: &mut ph2d_render::SpriteRenderer,
+    sim: &SimWorld,
+) {
+    motion
+        .object_bake
+        .bake(scene, map, xforms, live, gpu, surface_format, renderer, sim);
+}
+
+/// **Bake the named Flip objects to tiles** (doc 86 §2 A3) — sibling of `bake_objects`,
+/// at the fx phase. Composes each object's layers at the current frame through a
+/// scratch Flip raster + compositor into an individual texture; cached by resolved-frame
+/// content, so a static hold bakes once.
+pub(crate) fn bake_flip_objects(
+    motion: &mut MotionState,
+    flip: &ph2d_flip::FlipDoc,
+    map: &crate::flip_entities::FlipEntityMap,
+    playhead: &ph2d_core::Playhead,
+    gpu: &ph2d_gpu::GpuContext,
+    renderer: &mut ph2d_render::SpriteRenderer,
+    sim: &SimWorld,
+) {
+    motion
+        .flip_object_bake
+        .bake(flip, map, playhead, gpu, renderer, sim);
 }
 
 #[cfg(test)]

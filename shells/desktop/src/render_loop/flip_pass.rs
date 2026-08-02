@@ -197,7 +197,7 @@ pub(crate) fn render(
 /// finita, e o rasterizador (união global + eleição por depth) não está na família. Medido contra o
 /// depósito do Painter, o pico na ponta: raster **+129/+131/+175** contra percurso
 /// **−12/−17/−46** (durezas 0,2/0,4/0,7).
-fn new_engine_armed() -> bool {
+pub(crate) fn new_engine_armed() -> bool {
     static ARMED: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
     *ARMED.get_or_init(|| walk_from_env(std::env::var("PH2D_FLIP_NEW_ENGINE").ok().as_deref()))
 }
@@ -569,8 +569,12 @@ fn layer_key(object_id: u64, layer_id: u32) -> u64 {
     object_id.wrapping_mul(0x9E37_79B9_7F4A_7C15) ^ (layer_id as u64)
 }
 
+// `pub(crate)` (era `mod` privado) para a membrana de bake de objetos
+// (`motion_flip_bake`, doc 86 A3) reusar `camera_raw`/`fold_model` — a MESMA
+// convenção de câmera que a tela usa. Duas cópias divergiriam no Y ou na régua
+// de espessura, e a tile assada sairia diferente do Flip desenhado direto.
 #[path = "flip_pass_camera.rs"]
-mod camera;
+pub(crate) mod camera;
 use camera::{camera_raw, fold_model, parallax_model};
 
 #[cfg(test)]

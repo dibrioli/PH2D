@@ -47,12 +47,12 @@ use crate::vec_entities::VecEntityMap;
 /// never re-bakes. 256 px/unit is crisp for a stamped tile at typical sizes;
 /// the world size the sink stamps is the bbox, so this is only the tile's inner
 /// resolution, not its on-screen scale.
-const BAKE_DPI: f64 = 256.0;
+pub(crate) const BAKE_DPI: f64 = 256.0;
 
 /// Cap on a tile side (px) — a VRAM + GPU-limit guard. A shape whose world bbox
 /// would exceed this at `BAKE_DPI` is clamped to it (a coarser effective DPI),
 /// never refused: a huge tile is a perf choice, not a correctness limit.
-const MAX_TILE_SIDE: u32 = 2048;
+pub(crate) const MAX_TILE_SIDE: u32 = 2048;
 
 /// What a baked vector is on the render side: the individual `texture_id` + the
 /// tile's WORLD size (so the sink stamps it at the shape's natural size).

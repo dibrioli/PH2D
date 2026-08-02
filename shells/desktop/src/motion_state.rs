@@ -164,6 +164,9 @@ pub(crate) struct MotionState {
     /// tile here; the membrane publishes the result. Cached by content, filled at
     /// the fx phase (`motion_bridge::bake_objects`), read by `publish_objects`.
     pub(crate) object_bake: crate::motion_object_bake::ObjectBake,
+    /// doc 86 §2 A3: named Flip objects baked to tiles (the same `BakedTile` output
+    /// as `object_bake`, driven through the Flip raster + compositor).
+    pub(crate) flip_object_bake: crate::motion_flip_bake::FlipObjectBake,
 }
 
 /// **What opened the Add-Node palette** — the spawn point plus the wire context of the gesture, so the
@@ -415,6 +418,7 @@ impl MotionState {
             // doc 86 §2 (A2): the vector→tile bake cache, empty until the fx
             // phase bakes a named vector a `source.object` brings in.
             object_bake: crate::motion_object_bake::ObjectBake::default(),
+            flip_object_bake: crate::motion_flip_bake::FlipObjectBake::default(),
         }
     }
 

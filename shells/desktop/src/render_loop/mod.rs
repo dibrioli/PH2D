@@ -6315,6 +6315,19 @@ impl crate::App {
                 renderer,
                 sim,
             );
+            // doc 86 §2 (A3): bake the named FLIP objects to tiles, alongside the
+            // vector bake. The Flip doc is destructured above (`flip`); the entity
+            // map + playhead are disjoint `self` fields. Composes each object's
+            // layers at the current frame through a scratch Flip raster + compositor.
+            motion_bridge::bake_flip_objects(
+                motion,
+                flip,
+                &self.flip_entities,
+                &self.playhead,
+                surface.gpu(),
+                renderer,
+                sim,
+            );
             let vec_fx = self.fx_live.images();
             ph2d_vec_render::dispatch(
                 vec_scene,

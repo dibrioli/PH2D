@@ -5,8 +5,10 @@
 //! cena monta as duas metades da resposta:
 //!
 //! 1. **o objeto** chamado **`Object`** na Hierarchy (o nome é a referência
-//!    inteira, doc 86 §2) — um **sprite** (`=1`, A1) ou uma **forma vetorial**
-//!    (`=2`, A2: a estrela é rasterizada numa tile pela membrana);
+//!    inteira, doc 86 §2) — um **sprite** (`=1`, A1), uma **forma vetorial**
+//!    (`=2`, A2: a estrela é rasterizada numa tile pela membrana) ou um **objeto
+//!    Flip** (`=3`, A3: as camadas do Flip são compostas no frame atual e assadas
+//!    numa tile pela membrana);
 //! 2. **o grafo**: `source.object → motion.duplicator ← motion.grid → output` —
 //!    o MESMO grafo nos dois modos (o `source.object` é media-agnóstico).
 //!
@@ -105,10 +107,59 @@ fn name_vector_entity(sim: &mut ph2d_ecs::SimWorld, map: &crate::vec_entities::V
     }
 }
 
+/// Modo `=3`: um objeto FLIP de 2 camadas (BG azul + FG laranja), empurrado no
+/// `FlipDoc`. A ENTIDADE dele (com `Name` "Object") é criada pelo
+/// `flip_entities::sync` — que copia o nome do objeto —, então o grafo o acha pelo
+/// nome sem o smoke precisar nomear nada (≠ do vetor). A membrana compõe as DUAS
+/// camadas no frame atual numa tile.
+fn spawn_flip_object(flip: &mut ph2d_flip::FlipDoc) {
+    use ph2d_flip::{Hold, KeyKind, Rgba};
+    let oid = flip.push_object(OBJECT);
+    let obj = flip.object_mut(oid).expect("objeto Flip recém-criado");
+    obj.fps = 12.0;
+    // BG: um retângulo azul preenchido (o campo).
+    let bg = obj.add_layer("BG");
+    if let Some(d) = obj.insert_frame(bg, 0, Hold::Implicit, KeyKind::Keyframe) {
+        obj.drawing_mut(d).expect("desenho BG").strokes.push(flip_rect(
+            Vec2::new(-0.9, -0.6),
+            Vec2::new(0.9, 0.6),
+            Rgba::new(0.2, 0.5, 0.95, 1.0),
+        ));
+    }
+    // FG: um quadrado laranja menor por cima — a arte que torna a tile assada
+    // INCONFUNDÍVEL (duas camadas compostas, não um quad chapado).
+    let fg = obj.add_layer("FG");
+    if let Some(d) = obj.insert_frame(fg, 0, Hold::Implicit, KeyKind::Keyframe) {
+        obj.drawing_mut(d).expect("desenho FG").strokes.push(flip_rect(
+            Vec2::new(-0.35, -0.35),
+            Vec2::new(0.35, 0.35),
+            Rgba::new(0.98, 0.7, 0.15, 1.0),
+        ));
+    }
+}
+
+/// Um retângulo Flip FECHADO e PREENCHIDO (espelha `flip_demo::filled_rect`).
+fn flip_rect(min: Vec2, max: Vec2, color: ph2d_flip::Rgba) -> ph2d_flip::FlipStroke {
+    use ph2d_flip::{Fill, FlipStroke, Point};
+    let mut s = FlipStroke::new();
+    for corner in [min, Vec2::new(max.x, min.y), max, Vec2::new(min.x, max.y)] {
+        s.push_point(Point {
+            pos: corner,
+            width: 0.04,
+            opacity: 1.0,
+            color,
+        });
+    }
+    s.closed = true;
+    s.hardness = 1.0;
+    s.fill = Some(Fill { color, opacity: 1.0 });
+    s
+}
+
 /// O frame corrente do roteiro (o hook não pode acrescentar campo em `App`).
 static FRAME: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
 
-/// O modo, lido UMA vez: `0` = off · `1` = sprite (A1) · `2` = vetor (A2).
+/// O modo, lido UMA vez: `0` = off · `1` = sprite (A1) · `2` = vetor (A2) · `3` = Flip (A3).
 fn mode() -> u32 {
     static M: std::sync::OnceLock<u32> = std::sync::OnceLock::new();
     *M.get_or_init(|| {
@@ -161,6 +212,26 @@ impl crate::App {
                      membrana e esta carimbada numa grade 4x4 = 16 copias. A arte de CADA copia e a \
                      estrela (assada uma vez, cacheada por conteudo). Edite a forma com a tool \
                      Vector e as copias RE-ASSAM (LIVE); renomeie e as copias somem."
+                );
+            }
+            // A3 — Flip: o objeto entra no FlipDoc (frame 3); a ENTIDADE dele (Name
+            // "Object") e criada pelo `flip_entities::sync`, entao o grafo o acha pelo
+            // nome no frame 6 (sem nomear a mao — o sync copia o nome do objeto).
+            3 if f == 3 => {
+                let gfx = self.gfx.as_mut().expect("gfx");
+                spawn_flip_object(&mut gfx.flip);
+            }
+            3 if f == 6 => {
+                let gfx = self.gfx.as_mut().expect("gfx");
+                let out = build_stamp_graph(&mut gfx.motion.doc.graph, OBJECT);
+                gfx.motion.sinks.push(out);
+                let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+                eprintln!(
+                    "[motion.obj smoke =3] O OBJETO Flip 'Object' (BG azul + FG laranja, 2 camadas) \
+                     foi COMPOSTO no frame atual e ASSADO numa tile pela membrana, carimbado numa \
+                     grade 4x4 = 16 copias. A arte de CADA copia e o objeto composto (as duas \
+                     camadas, nao um quad chapado). Cacheada por conteudo (LIVE): editar/animar o \
+                     Flip re-assa; renomear na Hierarchy e as copias somem."
                 );
             }
             _ => {}

@@ -347,7 +347,9 @@ mod extract_tests {
         let before = plane(stride, rows);
         let mut live = before.clone();
         for (i, v) in live.iter_mut().enumerate() {
-            *v = v.wrapping_add(u8::try_from(i % 7).expect("cabe")).wrapping_add(1);
+            *v = v
+                .wrapping_add(u8::try_from(i % 7).expect("cabe"))
+                .wrapping_add(1);
         }
 
         for area in [
@@ -383,7 +385,11 @@ mod extract_tests {
                 // não cruza a área capturada lê tudo do plano vivo — legítimo, e é justamente um dos
                 // casos a testar. O que não pode é NENHUM par tocar o journal, porque aí a igualdade
                 // seria sobre o plano vivo e não julgaria resolução de tile nenhuma.
-                if slow.iter().zip(win_indices(&win)).any(|(v, i)| *v != live[i]) {
+                if slow
+                    .iter()
+                    .zip(win_indices(&win))
+                    .any(|(v, i)| *v != live[i])
+                {
                     from_journal += 1;
                 }
             }

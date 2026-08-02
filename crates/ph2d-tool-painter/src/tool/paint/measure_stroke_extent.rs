@@ -76,7 +76,10 @@ fn pct(win: Option<Region>, side: u32) -> String {
 fn what_a_pen_up_costs_as_the_stroke_crosses_the_canvas() {
     for side in [2048u32, 4096] {
         eprintln!("\n[extensao] pen-up a {side}x{side}, impasto, pincel r=40");
-        eprintln!("  {:>6}  {:>4}  {:>9}   janela do delta", "span", "diag", "pen-up ms");
+        eprintln!(
+            "  {:>6}  {:>4}  {:>9}   janela do delta",
+            "span", "diag", "pen-up ms"
+        );
         for (span, diag) in [
             (200.0f32, false), // <- o CONTROLE: o traço que todas as outras sondas medem
             (600.0, false),
@@ -134,7 +137,10 @@ fn which_half_of_a_long_pen_up_is_the_expensive_one() {
 
     eprintln!("\n[metades] pen-up = commit de undo + fold do relevo");
     eprintln!("  (a ablacao e' pela ENTRADA: stroke_undo = None ⇒ close_stroke pula o commit)");
-    eprintln!("  {:>6}  {:>4}  {:>9} {:>9} {:>9}", "span", "diag", "completo", "so fold", "commit");
+    eprintln!(
+        "  {:>6}  {:>4}  {:>9} {:>9} {:>9}",
+        "span", "diag", "completo", "so fold", "commit"
+    );
     for side in [2048u32, 4096] {
         eprintln!("  --- {side}x{side} ---");
         for (span, diag) in [
@@ -212,12 +218,19 @@ fn what_the_fold_of_a_canvas_wide_stroke_is_made_of() {
         let floor = fold_ms(side, Some(0.0), Some(0.0));
         eprintln!("[fold] {side}x{side}, traço na diagonal de canto a canto");
         eprintln!("  como shipa            {full:8.2} ms");
-        eprintln!("  sem Smoothing         {no_settle:8.2} ms   (o settle custa {:.2})", full - no_settle);
-        eprintln!("  sem Push              {no_push:8.2} ms   (o push   custa {:.2})", full - no_push);
-        eprintln!("  os dois em zero       {floor:8.2} ms   <- o PISO: derive + material + escrita");
+        eprintln!(
+            "  sem Smoothing         {no_settle:8.2} ms   (o settle custa {:.2})",
+            full - no_settle
+        );
+        eprintln!(
+            "  sem Push              {no_push:8.2} ms   (o push   custa {:.2})",
+            full - no_push
+        );
+        eprintln!(
+            "  os dois em zero       {floor:8.2} ms   <- o PISO: derive + material + escrita"
+        );
     }
 }
-
 
 /// **DE QUE É FEITA A METADE DO COMMIT** — a que sobrou sem atribuição, e é 72% do pen-up.
 ///
@@ -266,8 +279,17 @@ fn what_the_commit_half_is_made_of() {
         let no_hist = pen_up_ms(side, true, true, false);
         eprintln!("\n[commit] {side}x{side}, diagonal de canto a canto");
         eprintln!("  como shipa                 {full:8.2} ms");
-        eprintln!("  sem a elisao do CURSOR     {no_cursor:8.2} ms   (delta {:+.2})", no_cursor - full);
-        eprintln!("  sem a elisao do RELEVO     {no_relief:8.2} ms   (delta {:+.2})", no_relief - full);
-        eprintln!("  historico LIMPO no pen-up  {no_hist:8.2} ms   (delta {:+.2})", no_hist - full);
+        eprintln!(
+            "  sem a elisao do CURSOR     {no_cursor:8.2} ms   (delta {:+.2})",
+            no_cursor - full
+        );
+        eprintln!(
+            "  sem a elisao do RELEVO     {no_relief:8.2} ms   (delta {:+.2})",
+            no_relief - full
+        );
+        eprintln!(
+            "  historico LIMPO no pen-up  {no_hist:8.2} ms   (delta {:+.2})",
+            no_hist - full
+        );
     }
 }

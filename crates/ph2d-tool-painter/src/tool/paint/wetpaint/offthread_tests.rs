@@ -371,7 +371,9 @@ fn the_tick_asks_for_the_engine_with_a_bounded_wait() {
     let k = src
         .find("fn bring_home")
         .expect("a porta bloqueante mora neste arquivo");
-    let l = src[k..].find("\n    }").expect("a porta bloqueante termina");
+    let l = src[k..]
+        .find("\n    }")
+        .expect("a porta bloqueante termina");
     assert!(
         src[k..k + l].contains(".recv()"),
         "controle: nem a porta BLOQUEANTE usa `recv` — o scanner esta olhando o lugar \

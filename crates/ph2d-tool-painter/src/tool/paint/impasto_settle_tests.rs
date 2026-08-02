@@ -13,8 +13,8 @@
 //! ou a fixture encolher, então o irmão de RAZÃO existe para dizer que a rota rápida de fato correu —
 //! *um defeito que só um relógio enxerga é um defeito que máquina carregada esconde*.
 
-use super::*;
 use super::super::Region;
+use super::*;
 
 /// A rota SERIAL do box blur, **CONGELADA** — é o código que shipava antes desta wave, verbatim.
 ///
@@ -102,7 +102,10 @@ fn the_parallel_settle_is_the_serial_settle_to_the_byte() {
             .zip(&slow)
             .filter(|(a, b)| a.to_bits() != b.to_bits())
             .count();
-        assert_eq!(bad, 0, "{w}x{h} r={r}: {bad} texels divergiram do blur serial");
+        assert_eq!(
+            bad, 0,
+            "{w}x{h} r={r}: {bad} texels divergiram do blur serial"
+        );
     }
 }
 
@@ -157,9 +160,19 @@ fn the_parallel_settle_is_faster_than_the_serial_one() {
     let ms = |mut f: Vec<f32>, par: bool| {
         let t0 = Instant::now();
         if par {
-            settle(&mut f, u32::try_from(w).unwrap(), u32::try_from(h).unwrap(), 1.0);
+            settle(
+                &mut f,
+                u32::try_from(w).unwrap(),
+                u32::try_from(h).unwrap(),
+                1.0,
+            );
         } else {
-            serial_box_blur(&mut f, u32::try_from(w).unwrap(), u32::try_from(h).unwrap(), 4);
+            serial_box_blur(
+                &mut f,
+                u32::try_from(w).unwrap(),
+                u32::try_from(h).unwrap(),
+                4,
+            );
         }
         t0.elapsed().as_secs_f64() * 1000.0
     };

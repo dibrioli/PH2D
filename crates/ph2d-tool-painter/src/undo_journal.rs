@@ -312,8 +312,14 @@ impl<T: Copy + Send + Sync> TileJournal<T> {
     ///
     /// ⚠️ **Tile não capturado ⇒ o valor de agora**, que é a lei do `before` (§5.28): *dentro da caixa,
     /// o que ninguém tomou não mudou*. Aqui ela é honrada por corrida em vez de por elemento.
-    pub(crate) fn read_row_into(&self, y: usize, x0: usize, cols: usize, live: &[T], out: &mut Vec<T>)
-    where
+    pub(crate) fn read_row_into(
+        &self,
+        y: usize,
+        x0: usize,
+        cols: usize,
+        live: &[T],
+        out: &mut Vec<T>,
+    ) where
         T: Copy,
     {
         let row = y * self.stride;
@@ -331,7 +337,11 @@ impl<T: Copy + Send + Sync> TileJournal<T> {
         while x < end {
             let tx = x / TILE;
             let run = (((tx + 1) * TILE).min(end)) - x;
-            match self.data.get(ty * self.tiles_x + tx).and_then(Option::as_ref) {
+            match self
+                .data
+                .get(ty * self.tiles_x + tx)
+                .and_then(Option::as_ref)
+            {
                 Some(tile) => {
                     let w = self.tile_w(tx);
                     let s = in_y * w + (x - tx * TILE);

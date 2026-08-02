@@ -250,6 +250,10 @@ fn apply_gesture(
         GraphHitKind::SocketIn { node, port } => {
             socket::apply_socket_in(state, g, node as u32, port, rect, snap)
         }
+        // The header preview toggle (doc 86): a Click moves the stamp above↔below — panel-local view state, not a doc edit (so no `GraphIntent`, no undo step).
+        GraphHitKind::PreviewToggle { node } if g.phase == GesturePhase::Click => {
+            state.toggle_preview_position(node as u32)
+        }
         _ => {}
     }
 }

@@ -563,3 +563,25 @@ fn ctrl_box_drag_subtracts_the_covered_nodes() {
         "node 2 (under the box) was deselected; node 1 (outside) stays"
     );
 }
+
+/// **The header toggle flips the stamp above/below** (doc 86) — a Click on a `PreviewToggle`
+/// hit reaches the dispatch and moves this node's preview. FALSIFIED by dropping the arm: the
+/// click would fall to the no-op `_` and the preview would never move.
+#[test]
+fn a_click_on_the_preview_toggle_flips_the_position() {
+    use crate::state::PreviewPos;
+    let mut st = MotionGraphPanelState::default();
+    assert_eq!(st.preview_position(5), PreviewPos::Below, "starts Below");
+    let g = gesture(
+        GraphHitKind::PreviewToggle { node: 5 },
+        GesturePhase::Click,
+        10.0,
+        10.0,
+    );
+    apply_gesture(&mut st, g, RECT, CENTER, &two_node_snapshot());
+    assert_eq!(
+        st.preview_position(5),
+        PreviewPos::Above,
+        "the click moved it up"
+    );
+}

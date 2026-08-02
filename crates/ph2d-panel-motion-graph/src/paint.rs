@@ -31,7 +31,7 @@ mod paint_stamp;
 mod paint_wire;
 #[path = "paint_wires.rs"]
 mod paint_wires;
-use paint_stamp::draw_preview;
+use paint_stamp::{draw_preview, draw_preview_toggle};
 pub(crate) use paint_wire::{
     WireEmphasis, detached_edge, draw_wire, draw_wire_ghost, draws_wire_ghost, wire_endpoints,
     wire_hit_polyline, wires_crossed,
@@ -39,7 +39,10 @@ pub(crate) use paint_wire::{
 use paint_wires::{WirePass, draw_wires};
 
 use crate::geom::{self, View, card_h, socket_center};
-use crate::hits::{bg_hit_id, push_backdrop_hits, push_card_hit, push_socket_hits, register_hits};
+use crate::hits::{
+    bg_hit_id, push_backdrop_hits, push_card_hit, push_preview_toggle_hit, push_socket_hits,
+    register_hits,
+};
 use crate::snapshot::{
     GraphNodeView, GraphViewSnapshot, PortView, SocketGlyph, current_snapshot, socket_glyph,
 };
@@ -216,9 +219,10 @@ pub(crate) fn paint(state: &mut MotionGraphPanelState, ctx: &mut PaintCtx) {
         let body = draw_card(ctx, state, n, &view, theme, dim);
         push_card_hit(&mut hits, n, body, rect);
     }
-    // Sockets last so they win the overlap with the node edge they sit on.
+    // Sockets + the header toggle last, so both beat the card body under them (doc 86).
     for n in &on_screen {
         push_socket_hits(&mut hits, n, &view, rect);
+        push_preview_toggle_hit(&mut hits, n, &view, rect);
     }
     // Overlays above the cards, still clipped: the in-progress wire ghost (it
     // tracks a CAPTURED pointer, which routinely leaves the panel) and the
@@ -397,6 +401,8 @@ fn draw_card(
         stroke_rounded_rect(ctx.scene, body, r, 2.0, resolve(ColorToken::Accent, theme));
     }
 
+    // A stamped node's title clips short of its header toggle (doc 86).
+    let toggle_w = geom::PREVIEW_TOGGLE_W * f32::from(u8::from(n.preview.is_some()));
     paint_text_title(
         ctx.text_system,
         ctx.scene,
@@ -404,7 +410,7 @@ fn draw_card(
         sx + TITLE_PAD_X * view.zoom,
         sy + TITLE_PAD_Y * view.zoom,
         TITLE_SIZE * view.zoom,
-        w - TITLE_INSET_R * view.zoom,
+        w - (TITLE_INSET_R + toggle_w) * view.zoom,
         resolve(ColorToken::Text1, theme),
     );
 
@@ -434,7 +440,9 @@ fn draw_card(
         );
     }
 
-    draw_preview(ctx, n, view, theme);
+    let pos = state.preview_position(n.id);
+    draw_preview(ctx, n, view, theme, pos);
+    draw_preview_toggle(ctx, n, view, theme, pos);
 
     // **Veiled** — the card is not part of what the artist is looking at. Two reasons, ONE
     // veil (a card veiled twice is just darker, and the artist cannot read "why" out of a

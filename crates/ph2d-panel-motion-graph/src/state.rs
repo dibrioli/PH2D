@@ -4,7 +4,7 @@
 
 use crate::snapshot::PortChoice;
 use ph2d_editor_core::interaction::GraphKey;
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 /// **A row of the node context menu** (right-click a node or a group card, doc 62). The menu is
 /// an alternate TRIGGER, never a second implementation: each row routes back through the SAME door
@@ -310,9 +310,26 @@ pub(crate) enum MenuBody {
 }
 
 /// Retained panel state.
+/// **Where a node's postage stamp sits** (doc 86, Feature B) — its own moldura,
+/// ABOVE or BELOW the card, chosen by the header toggle. It is a VIEW preference
+/// (like `selected`): panel-local, non-undoable, not serialized. `Below` is the
+/// default, so the map below only holds the nodes an artist has flipped up.
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+pub(crate) enum PreviewPos {
+    Above,
+    #[default]
+    Below,
+}
+
 #[derive(Default)]
 pub struct MotionGraphPanelState {
     pub(crate) view: ViewState,
+    /// **Per-node preview-frame position** (doc 86) — a node absent from the map
+    /// takes the `PreviewPos` default (`Below`). Runtime-only, like `selected`:
+    /// it does not travel the graph text format, so it is not persisted (moving
+    /// the preview by default would change how every saved graph looks). Keyed by
+    /// node id (`NodeId.0`).
+    pub(crate) preview_pos: BTreeMap<u32, PreviewPos>,
     /// `false` until the first paint auto-fits the graph (then user-controlled).
     pub(crate) fitted: bool,
     /// A MANUAL fit (the chip or `F`) asked to frame the SELECTION, not the whole
@@ -413,11 +430,52 @@ impl MotionGraphPanelState {
         self.fitted = false;
         self.fit_selection = !self.selected.is_empty();
     }
+
+    /// Where node `id`'s preview frame sits — the stored value, or `Below` for a
+    /// node nobody has flipped. The paint reads it to place the moldura and the
+    /// header toggle's indicator; the same one door the flip below writes.
+    pub(crate) fn preview_position(&self, id: u32) -> PreviewPos {
+        self.preview_pos.get(&id).copied().unwrap_or_default()
+    }
+
+    /// Flip node `id`'s preview between Above and Below (the header toggle). Stores
+    /// the value explicitly (not "remove to reset"), so a flip is a plain toggle
+    /// whatever the current state.
+    pub(crate) fn toggle_preview_position(&mut self, id: u32) {
+        let e = self.preview_pos.entry(id).or_default();
+        *e = match e {
+            PreviewPos::Below => PreviewPos::Above,
+            PreviewPos::Above => PreviewPos::Below,
+        };
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// **The preview default is Below, and the header toggle flips it** (doc 86).
+    /// A node nobody touched reads `Below`; toggling walks Below→Above→Below, and
+    /// two nodes are independent. FALSIFIED by a toggle that always sets the same
+    /// value (the preview would never come back down), or a default of `Above`.
+    #[test]
+    fn toggling_flips_the_preview_position() {
+        let mut st = MotionGraphPanelState::default();
+        assert_eq!(
+            st.preview_position(7),
+            PreviewPos::Below,
+            "default is Below"
+        );
+        st.toggle_preview_position(7);
+        assert_eq!(st.preview_position(7), PreviewPos::Above);
+        st.toggle_preview_position(7);
+        assert_eq!(st.preview_position(7), PreviewPos::Below, "and back down");
+        assert_eq!(
+            st.preview_position(9),
+            PreviewPos::Below,
+            "an untouched node is unaffected"
+        );
+    }
 
     #[test]
     fn entering_or_leaving_a_level_re_fits_and_staying_put_does_not() {

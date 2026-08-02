@@ -6,7 +6,7 @@
 //! apart. All sizes are logical; the transform scales them by `zoom`.
 
 use crate::snapshot::{GraphNodeView, GraphViewSnapshot};
-use crate::state::{Menu, ViewState};
+use crate::state::{Menu, PreviewPos, ViewState};
 use ph2d_editor_core::zones::Rect;
 
 // Card metrics in graph (logical) space. Shared with `paint` (draw) so the hit
@@ -110,36 +110,64 @@ pub(crate) fn crumb_rect(canvas: Rect, titles: &[String], i: usize) -> Rect {
     Rect::new(x, canvas.y + CRUMB_INSET, crumb_w(&titles[i]), CRUMB_H)
 }
 
-/// The postage stamp's strip (F3): the little scatter of what the node emits, under its
-/// readout. Wide as the card, tall enough to tell a spiral from a grid.
-pub(crate) const PREVIEW_H: f32 = 52.0; // LITERAL-PX-OK: postage-stamp strip height
-const PREVIEW_PAD: f32 = 6.0; // LITERAL-PX-OK: inset of the stamp inside its strip
+/// The postage stamp's own moldura (doc 86, Feature B): a detached frame ABOVE or BELOW the
+/// card, wide as the card — a box in its own right, not a strip glued to the card body. Tall
+/// enough to tell a spiral from a grid.
+pub(crate) const PREVIEW_FRAME_H: f32 = 120.0; // LITERAL-PX-OK: preview moldura height
+const PREVIEW_GAP: f32 = 8.0; // LITERAL-PX-OK: gap between the card and its preview moldura
+
+/// The header toggle (doc 86) that moves the preview above/below — a small square at the
+/// header's right edge. `PREVIEW_TOGGLE_W` doubles as the extra right-inset the title takes,
+/// so a long name never runs under the button.
+pub(crate) const PREVIEW_TOGGLE_W: f32 = 13.0; // LITERAL-PX-OK: preview-position toggle side
+const PREVIEW_TOGGLE_PAD: f32 = 6.0; // LITERAL-PX-OK: toggle inset from the header's right edge
 
 /// The card's height. A node with a live **readout** is one row taller (the number sits under
-/// the sockets), and a node with a **postage stamp** carries the strip under that.
+/// the sockets). The postage stamp NO LONGER lives in the card — it has its own moldura
+/// (doc 86, [`preview_frame_rect`]) — so nothing here reserves room for it.
 ///
 /// This lives in `geom` (not in `paint`) because the hit-test and the paint MUST agree: a
 /// card that is drawn taller than it is clickable has a dead strip along its bottom edge,
 /// and a card clickable past its own border steals from the canvas behind it.
 pub(crate) fn card_h(n: &GraphNodeView) -> f32 {
     let readout = if n.readout.is_some() { ROW_H } else { 0.0 };
-    let preview = if n.preview.is_some() { PREVIEW_H } else { 0.0 };
-    HEADER_H + card_rows(n) * ROW_H + readout + preview + PAD_BOTTOM
+    HEADER_H + card_rows(n) * ROW_H + readout + PAD_BOTTOM
 }
 
-/// The postage stamp's rect in SCREEN space, inset inside the card — or `None` when the node
-/// has no stamp. Shared by the paint (there is no hit path: the stamp is part of the card body,
-/// and clicking a card must select it wherever you click it).
-pub(crate) fn preview_rect(n: &GraphNodeView, view: &View) -> Option<Rect> {
+/// The preview moldura's rect in SCREEN space — its own frame ABOVE or BELOW the card, or
+/// `None` when the node has no stamp. **The one door the paint reads to draw the box** (and
+/// its size is what a future frame-hit would register), so the box drawn and the box reasoned
+/// about can never drift. It sits OUTSIDE the card body: below, one `PREVIEW_GAP` under the
+/// card bottom; above, one gap over the header.
+pub(crate) fn preview_frame_rect(n: &GraphNodeView, view: &View, pos: PreviewPos) -> Option<Rect> {
     n.preview.as_ref()?;
-    let readout = if n.readout.is_some() { ROW_H } else { 0.0 };
-    let top = n.y + HEADER_H + card_rows(n) * ROW_H + readout;
-    let (sx, sy) = view.pt(n.x + PREVIEW_PAD, top);
+    let top = match pos {
+        PreviewPos::Below => n.y + card_h(n) + PREVIEW_GAP,
+        PreviewPos::Above => n.y - PREVIEW_GAP - PREVIEW_FRAME_H,
+    };
+    let (sx, sy) = view.pt(n.x, top);
     Some(Rect::new(
         sx,
         sy,
-        (CARD_W - 2.0 * PREVIEW_PAD) * view.zoom,
-        (PREVIEW_H - PREVIEW_PAD) * view.zoom,
+        CARD_W * view.zoom,
+        PREVIEW_FRAME_H * view.zoom,
+    ))
+}
+
+/// The header toggle button's rect in SCREEN space — a small square at the top-right of the
+/// header — or `None` when the node has no preview (nothing to reposition). **The one door the
+/// paint (draw) and the hits (register) both read**, so the clickable square is exactly the
+/// drawn one.
+pub(crate) fn preview_toggle_rect(n: &GraphNodeView, view: &View) -> Option<Rect> {
+    n.preview.as_ref()?;
+    let gx = n.x + CARD_W - PREVIEW_TOGGLE_PAD - PREVIEW_TOGGLE_W;
+    let gy = n.y + (HEADER_H - PREVIEW_TOGGLE_W) * 0.5;
+    let (sx, sy) = view.pt(gx, gy);
+    Some(Rect::new(
+        sx,
+        sy,
+        PREVIEW_TOGGLE_W * view.zoom,
+        PREVIEW_TOGGLE_W * view.zoom,
     ))
 }
 
@@ -361,181 +389,5 @@ pub(crate) fn menu_scroll_at(menu: &Menu, panel: Rect, count: usize, y: f32, gra
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::snapshot::{GraphNodeView, GraphViewSnapshot, PortView};
-    use crate::state::Menu;
-    use ph2d_node_registry::{NodeSilhouette, NodeUiCategory};
-    use ph2d_nodegraph::port::{Clock, Dim, Domain};
-
-    fn node_with_inputs(id: u32, x: f32, n_in: usize) -> GraphNodeView {
-        GraphNodeView {
-            kind: crate::snapshot::NodeViewKind::Node,
-            id,
-            display_name: "n".into(),
-            category: NodeUiCategory::Utility,
-            silhouette: NodeSilhouette::Rect,
-            x,
-            y: 0.0,
-            inputs: (0..n_in)
-                .map(|_| PortView {
-                    name: "i",
-                    domain: Domain::Instances,
-                    dim: Dim::Scalar,
-                    clock: Clock::Frame,
-                })
-                .collect(),
-            outputs: vec![],
-            readout: None,
-            count: None,
-            hot: false,
-            is_sink: false,
-            preview: None,
-            bypassed: false,
-        }
-    }
-
-    fn one_node(node: GraphNodeView) -> GraphViewSnapshot {
-        GraphViewSnapshot {
-            level: None,
-            breadcrumb: Vec::new(),
-            nodes: vec![node],
-            edges: vec![],
-            backdrops: vec![],
-            probe: None,
-            now: 0.0,
-        }
-    }
-
-    fn node_with_outputs(id: u32, x: f32, n_out: usize) -> GraphNodeView {
-        let mut n = node_with_inputs(id, x, 0);
-        n.outputs = (0..n_out)
-            .map(|_| PortView {
-                name: "o",
-                domain: Domain::Instances,
-                dim: Dim::Scalar,
-                clock: Clock::Frame,
-            })
-            .collect();
-        n
-    }
-
-    #[test]
-    fn nearest_input_socket_resolves_the_right_port() {
-        let snap = one_node(node_with_inputs(7, 100.0, 2));
-        let view = View::new(Rect::new(0.0, 0.0, 800.0, 600.0), ViewState::default());
-        // Input 0 center: (100, HEADER_H + ROW_H*0.5) = (100, 37).
-        let (n0, p0) = socket_center(&snap.nodes[0], &view, false, 0);
-        assert_eq!(nearest_input_socket(&snap, &view, n0, p0), Some((7, 0)));
-        // Input 1 center: (100, HEADER_H + ROW_H*1.5) = (100, 59).
-        let (n1, p1) = socket_center(&snap.nodes[0], &view, false, 1);
-        assert_eq!(nearest_input_socket(&snap, &view, n1, p1), Some((7, 1)));
-        // Far from any socket → no snap.
-        assert_eq!(nearest_input_socket(&snap, &view, 400.0, 400.0), None);
-    }
-
-    /// **A near-miss SNAPS to the socket** — a drop 15 px above input 0 (past the 9 px exact
-    /// hit box, inside the 22 px magnet) still lands on it. FALSIFIED by shrinking `SNAP_R` to
-    /// `SOCKET_HIT_R`: 15 > 9, so the near-miss resolves to nothing and the wire is dropped.
-    #[test]
-    fn a_near_miss_snaps_to_the_socket() {
-        let snap = one_node(node_with_inputs(7, 100.0, 2));
-        let view = View::new(Rect::new(0.0, 0.0, 800.0, 600.0), ViewState::default());
-        // Input 0 center (100, 37); 15 px above it — only input 0 is within reach.
-        assert_eq!(
-            nearest_input_socket(&snap, &view, 100.0, 22.0),
-            Some((7, 0))
-        );
-    }
-
-    /// Between two in-range sockets the magnet takes the **nearer** one — a drop at y=54 is
-    /// 17 px from input 0 and 5 px from input 1. FALSIFIED by returning the first socket found
-    /// rather than the closest: input 0 (found first, still in range) would win.
-    #[test]
-    fn snap_takes_the_nearest_of_two_sockets() {
-        let snap = one_node(node_with_inputs(7, 100.0, 2));
-        let view = View::new(Rect::new(0.0, 0.0, 800.0, 600.0), ViewState::default());
-        assert_eq!(
-            nearest_input_socket(&snap, &view, 100.0, 54.0),
-            Some((7, 1))
-        );
-    }
-
-    /// The output magnet reads **output** sockets (right edge), not inputs — the mirror used by
-    /// the backward wire drag. FALSIFIED by resolving against the input side, which this node
-    /// does not have.
-    #[test]
-    fn the_output_magnet_reads_output_sockets() {
-        let snap = one_node(node_with_outputs(9, 100.0, 1));
-        let view = View::new(Rect::new(0.0, 0.0, 800.0, 600.0), ViewState::default());
-        let (ox, oy) = socket_center(&snap.nodes[0], &view, true, 0);
-        assert_eq!(
-            nearest_output_socket(&snap, &view, ox + 12.0, oy),
-            Some((9, 0))
-        );
-        assert_eq!(nearest_input_socket(&snap, &view, ox + 12.0, oy), None);
-    }
-
-    /// **A readout makes the card taller — and the HIT geometry grows with it.**
-    ///
-    /// `card_h` is the one source of truth for both the paint and the hit-test, which is
-    /// why the readout's row is added here and not in `paint`. FALSIFIED by adding the row
-    /// only where the card is drawn: the card would gain a dead strip along its bottom edge
-    /// — a place that looks like the node and does not answer the mouse.
-    #[test]
-    fn a_readout_grows_the_card_and_its_hit_rect_together() {
-        let bare = node_with_inputs(1, 0.0, 2);
-        let mut with_readout = node_with_inputs(2, 0.0, 2);
-        with_readout.readout = Some("12 inst".into());
-
-        assert_eq!(
-            card_h(&with_readout) - card_h(&bare),
-            ROW_H,
-            "one row taller"
-        );
-
-        let view = View::new(Rect::new(0.0, 0.0, 800.0, 600.0), ViewState::default());
-        let (bare_r, read_r) = (card_rect(&bare, &view), card_rect(&with_readout, &view));
-        assert_eq!(read_r.h - bare_r.h, ROW_H, "…and so is what the mouse hits");
-
-        // A point in the readout's own row is INSIDE the card that has one, and outside the
-        // card that does not. That is the strip that would have gone dead.
-        let y = bare_r.y + bare_r.h + ROW_H * 0.5;
-        let band = Rect::new(0.0, y - 1.0, 10.0, 2.0);
-        let snap = GraphViewSnapshot {
-            level: None,
-            breadcrumb: Vec::new(),
-            nodes: vec![bare, with_readout],
-            edges: vec![],
-            backdrops: vec![],
-            probe: None,
-            now: 0.0,
-        };
-        assert_eq!(
-            nodes_in_box(&snap, &view, band),
-            vec![2],
-            "only the taller card reaches down into that row"
-        );
-    }
-
-    #[test]
-    fn menu_panel_clamps_into_the_canvas() {
-        let canvas = Rect::new(0.0, 0.0, 300.0, 200.0);
-        // Opened past the right/bottom edge → clamped fully inside.
-        let menu = Menu {
-            scroll: 0.0,
-            screen: (290.0, 190.0),
-            spawn: (0.0, 0.0),
-            // Any body — clamping is geometry, not content. (The node library moved to the shell
-            // palette; the local popups left are read by eye.)
-            body: crate::state::MenuBody::NodeActions {
-                multi: false,
-                group: false,
-            },
-        };
-        let p = menu_panel(&menu, 3, canvas);
-        assert!(p.x + p.w <= canvas.x + canvas.w + 0.01);
-        assert!(p.y + p.h <= canvas.y + canvas.h + 0.01);
-        assert!(p.x >= canvas.x && p.y >= canvas.y);
-    }
-}
+#[path = "geom_tests.rs"]
+mod tests;

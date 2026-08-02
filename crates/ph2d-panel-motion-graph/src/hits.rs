@@ -180,6 +180,29 @@ pub(crate) fn push_wire_hits(
     }
 }
 
+/// Push the header preview-position toggle's hit rect (doc 86) — the small square that moves the
+/// stamp above/below. **Registered AFTER the card body** (last wins, see [`register_hits`]) so a
+/// click on the button flips the preview instead of selecting the card. Only a node with a stamp
+/// has one ([`geom::preview_toggle_rect`] returns `None` otherwise), so a plain card never grows a
+/// dead control.
+pub(crate) fn push_preview_toggle_hit(
+    hits: &mut Vec<(NodeId, GraphHitKind, Rect)>,
+    n: &GraphNodeView,
+    view: &View,
+    canvas: Rect,
+) {
+    let Some(rect) = geom::preview_toggle_rect(n, view) else {
+        return;
+    };
+    if let Some(r) = clip_rect(rect, canvas) {
+        hits.push((
+            preview_toggle_hit_id(n.id),
+            GraphHitKind::PreviewToggle { node: n.id as u64 },
+            r,
+        ));
+    }
+}
+
 /// Push a node's input + output socket hit rects (square, fixed screen size),
 /// clipped to the canvas.
 pub(crate) fn push_socket_hits(
@@ -256,6 +279,9 @@ pub(crate) fn bg_hit_id() -> NodeId {
 }
 fn node_hit_id(node: u32) -> NodeId {
     fnv_id(&format!("motion_graph/node/{node}"))
+}
+fn preview_toggle_hit_id(node: u32) -> NodeId {
+    fnv_id(&format!("motion_graph/preview_toggle/{node}"))
 }
 fn sock_in_id(node: u32, port: usize) -> NodeId {
     fnv_id(&format!("motion_graph/sock_in/{node}/{port}"))
@@ -432,6 +458,30 @@ mod tests {
         for (_, _, r) in &badges {
             assert!(r.w <= 2.0 * (PRE_BADGE_R + 4.0) && r.h <= 2.0 * (PRE_BADGE_R + 4.0));
         }
+    }
+
+    /// **The preview toggle is a hit only over a stamped card** (doc 86). A stamped node
+    /// registers one `PreviewToggle` rect (so a click reaches the dispatch); a plain card
+    /// registers none (no dead control). FALSIFIED by offering the hit unconditionally.
+    #[test]
+    fn the_preview_toggle_registers_a_hit_only_over_a_stamped_card() {
+        let view = View::new(CANVAS, ViewState::default());
+        let mut stamped = node(1, 10.0, 10.0);
+        stamped.preview = Some(vec![[0.0, 0.0]]);
+        let mut hits = Vec::new();
+        push_preview_toggle_hit(&mut hits, &stamped, &view, CANVAS);
+        assert_eq!(hits.len(), 1, "a stamped node exposes the toggle");
+        assert!(
+            matches!(hits[0].1, GraphHitKind::PreviewToggle { node } if node == 1),
+            "and it carries this node's id"
+        );
+
+        let mut none = Vec::new();
+        push_preview_toggle_hit(&mut none, &node(2, 10.0, 10.0), &view, CANVAS);
+        assert!(
+            none.is_empty(),
+            "a card with no stamp has no toggle to click"
+        );
     }
 
     #[test]

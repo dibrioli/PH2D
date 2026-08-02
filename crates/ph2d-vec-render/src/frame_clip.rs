@@ -30,7 +30,9 @@ use crate::{LiveGeometry, build::build_fill_bezpath, fill_rule, path_to_screen};
 /// nada.
 #[derive(Default)]
 pub(crate) struct OpenFrames {
-    stack: Vec<VecPathId>,
+    /// A moldura aberta e **se ela empurrou camada** — uma que só serve de fundo não empurrou, e
+    /// dar-lhe um `pop_layer` fecharia a camada de outra pessoa.
+    stack: Vec<(VecPathId, bool)>,
 }
 
 impl OpenFrames {
@@ -61,21 +63,34 @@ impl OpenFrames {
             if !view.is_hidden(span.frame) {
                 crate::draw_path(path, xf, target);
             }
-            let mut bp = build_fill_bezpath(path);
-            bp.apply_affine(xf);
-            // A regra é a da PRÓPRIA moldura: um retângulo com furo (um card vazado) recorta pelo
-            // furo, e sob `NonZero` o furo ainda tomaria tinta.
-            target.push_clip_with_rule(&bp, fill_rule(path));
-            self.stack.push(span.frame);
+            // ⚠️ **Desenhar na abertura é incondicional; recortar não.** As duas metades vinham
+            // juntas porque só molduras com recorte tinham intervalo — e era isso que fazia uma
+            // moldura de LAYOUT (recorte desligado) pintar por cima do conteúdo dela.
+            if span.clip {
+                let mut bp = build_fill_bezpath(path);
+                bp.apply_affine(xf);
+                // A regra é a da PRÓPRIA moldura: um retângulo com furo (um card vazado) recorta
+                // pelo furo, e sob `NonZero` o furo ainda tomaria tinta.
+                target.push_clip_with_rule(&bp, fill_rule(path));
+            }
+            self.stack.push((span.frame, span.clip));
         }
     }
 
-    /// Se `id` é a moldura aberta mais interna, fecha a camada dela e devolve `true` — e o
+    /// Se `id` é a moldura aberta mais interna, fecha o intervalo dela e devolve `true` — e o
     /// chamador **não a desenha**, porque ela já foi desenhada na abertura.
+    ///
+    /// ⚠️ **O `true` é sobre o DESENHO, não sobre a camada**: uma moldura que só serve de fundo
+    /// também já foi desenhada, e desenhá-la outra vez aqui a poria por cima do conteúdo — que é
+    /// exactamente o defeito que o intervalo dela existe para curar. O `pop_layer` é que anda com
+    /// o `clip`.
     pub(crate) fn close_if_frame(&mut self, id: VecPathId, target: &mut VectorScene) -> bool {
-        if self.stack.last() == Some(&id) {
-            self.stack.pop();
-            target.pop_layer();
+        if self.stack.last().is_some_and(|(f, _)| *f == id) {
+            if let Some((_, clipped)) = self.stack.pop()
+                && clipped
+            {
+                target.pop_layer();
+            }
             return true;
         }
         false
@@ -86,8 +101,10 @@ impl OpenFrames {
     /// a lista vem de fora, e uma cena com uma camada pendurada envenena **o resto do frame**, que
     /// é chrome que esta crate nem desenha.
     pub(crate) fn close_all(&mut self, target: &mut VectorScene) {
-        for _ in self.stack.drain(..) {
-            target.pop_layer();
+        for (_, clipped) in self.stack.drain(..) {
+            if clipped {
+                target.pop_layer();
+            }
         }
     }
 }

@@ -368,3 +368,43 @@ fn a_selected_child_alone_still_gets_its_two_rows() {
     );
     clear();
 }
+
+/// **UMA FILEIRA QUE NÃO CABE QUEBRA EM LINHAS** (Enio 2026-08-02: *"botões não se adaptam à
+/// largura do painel e se amontoam (veja Between e Around)"*).
+///
+/// A fileira de distribuição tem CINCO opções, e os rótulos `Between`/`Around` não cabem num
+/// quinto da largura do painel: eles eram espremidos e o texto invadia o vizinho.
+///
+/// ⚠️ **O par é o que torna o gate honesto:** a de distribuição (5) tem de quebrar, e a de
+/// alinhamento (4) tem de continuar numa linha só. Um gate que só exigisse a quebra passaria com
+/// um refluxo que quebra TUDO, e o painel inteiro viraria uma coluna de botões.
+#[test]
+fn a_row_that_does_not_fit_wraps_and_one_that_fits_does_not() {
+    clear();
+    state::set_frame_clip(Some(true));
+    state::set_layout_flow(Some(row_flow()));
+
+    let first = rect_of(
+        ids::VECTOR_LAYOUT_JUSTIFY_START,
+        "o chip Start da distribuição",
+    );
+    let last = rect_of(ids::VECTOR_LAYOUT_JUSTIFY_AROUND, "o chip Around");
+    assert!(
+        last.y > first.y,
+        "os cinco chips ficaram na MESMA linha ({:.1}) — 'Between' e 'Around' espremidos",
+        first.y
+    );
+
+    let a_first = rect_of(
+        ids::VECTOR_LAYOUT_ALIGN_START,
+        "o chip Start do alinhamento",
+    );
+    let a_last = rect_of(ids::VECTOR_LAYOUT_ALIGN_STRETCH, "o chip Stretch");
+    assert!(
+        (a_last.y - a_first.y).abs() < 0.5,
+        "a fileira de QUATRO quebrou sem precisar: {:.1} vs {:.1}",
+        a_first.y,
+        a_last.y
+    );
+    clear();
+}

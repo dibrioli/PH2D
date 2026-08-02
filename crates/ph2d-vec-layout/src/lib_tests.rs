@@ -66,6 +66,79 @@ fn padding_offsets_everything_and_a_column_stacks_down() {
     assert!(approx(out[2][1], 24.0), "{out:?}");
 }
 
+/// **O vão PRINCIPAL é o que empilha, seja qual for a direção** (Enio 2026-08-02: *"Gap não
+/// funciona em Column"* + *"Cross, que só aparece para Wrap, afeta Column"* — um defeito, visto
+/// pelas duas pontas).
+///
+/// ⚠️ **A fixture `frame()` passa `[gap, gap]`** — o mesmo valor nos dois eixos —, e é por isso
+/// que o defeito atravessou a wave com os gates verdes: com main == cross, trocar um pelo outro
+/// não muda um número. Este gate dá valores DIFERENTES, e é o que o torna capaz de falhar.
+///
+/// Nasceu VERMELHO: numa coluna o `main` ia para o `width` do taffy (entre COLUNAS, inerte sem
+/// wrap) e o `cross` para o `height`, que é o que de facto separa os filhos empilhados.
+#[test]
+fn the_main_gap_is_the_one_that_stacks_in_either_direction() {
+    let column = FrameStyle {
+        dir: Dir::Column,
+        gap: [7.0, 100.0], // principal 7 · transversal absurdo, para o engano gritar
+        ..FrameStyle::default()
+    };
+    let mut f = frame(Dir::Column, 0.0, [100.0, 100.0]);
+    f.frame = Some(column);
+    let out = solve(&[f, child([10.0, 10.0]), child([10.0, 10.0])]).expect("resolve");
+    assert!(
+        approx(out[2][1], 17.0),
+        "o 2o filho da COLUNA devia pousar em 10 + 7 (o vão PRINCIPAL): {out:?}"
+    );
+
+    // E o controle: em LINHA o mesmo par continua certo, que é onde a versão antiga acertava.
+    let mut r = frame(Dir::Row, 0.0, [100.0, 100.0]);
+    r.frame = Some(FrameStyle {
+        dir: Dir::Row,
+        gap: [7.0, 100.0],
+        ..FrameStyle::default()
+    });
+    let out = solve(&[r, child([10.0, 10.0]), child([10.0, 10.0])]).expect("resolve");
+    assert!(
+        approx(out[2][0], 17.0),
+        "o 2o filho da LINHA devia pousar em 10 + 7: {out:?}"
+    );
+}
+
+/// **E o vão TRANSVERSAL é o que separa as FAIXAS de um `Wrap`** — a outra metade da mesma lei.
+///
+/// ⚠️ **A moldura tem a altura EXACTA do conteúdo (10 + 9 + 10), e isso é da fixture, não do
+/// gosto.** A primeira versão deste gate dava-lhe 100 de altura e mediu a 2ª faixa em **54,5**:
+/// sobrando espaço no eixo transversal, o `taffy` DISTRIBUI as faixas por ele (o `align_content`
+/// dele nasce em *stretch*), e o gate teria reprovado por uma razão que não é a que ele julga.
+/// Sem folga não há o que distribuir, e o que resta é o vão.
+///
+/// ⚠️ **E isso é um achado sobre o MODELO, não só sobre o gate:** a moldura não expõe
+/// `align_content`, então numa `Wrap` com folga as faixas espalham-se e o vão transversal
+/// autorado deixa de ser a distância que se vê. É controlo a decidir (o Figma tem-no), **não
+/// construído aqui** — mas nomeado, para não ser descoberto por acidente.
+#[test]
+fn the_cross_gap_is_the_one_that_separates_wrapped_lines() {
+    let mut f = frame(Dir::RowWrap, 0.0, [25.0, 29.0]);
+    f.frame = Some(FrameStyle {
+        dir: Dir::RowWrap,
+        gap: [0.0, 9.0], // sem vão entre irmãos; 9 entre faixas
+        ..FrameStyle::default()
+    });
+    // Três de 10 numa moldura de 25 de largura: dois na primeira faixa, um na segunda.
+    let out = solve(&[
+        f,
+        child([10.0, 10.0]),
+        child([10.0, 10.0]),
+        child([10.0, 10.0]),
+    ])
+    .expect("resolve");
+    assert!(
+        approx(out[3][1], 19.0),
+        "o 3o devia abrir faixa em 10 + 9 (o vão TRANSVERSAL): {out:?}"
+    );
+}
+
 /// **`grow` reparte a SOBRA, e reparte-a na proporção pedida.**
 ///
 /// ⚠️ O oráculo é a conta: 100 de largura, dois filhos de 10, sobra 80; com `grow` 1 e 3 o segundo

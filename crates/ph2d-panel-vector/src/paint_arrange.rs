@@ -7,7 +7,9 @@ use crate::paint_sections::BodyCtx;
 use crate::state::{FillKind, PathFillRule};
 use crate::{ids, state};
 use ph2d_editor_core::paint::{paint_text, resolve};
-use ph2d_editor_core::widget::panel_chrome::paint_segmented_button;
+use ph2d_editor_core::widget::panel_chrome::{
+    paint_segmented_button, paint_segmented_group_adaptive,
+};
 use ph2d_editor_core::widget::{Button, ButtonKind, ButtonState, paint_button};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
@@ -17,7 +19,20 @@ use ph2d_tokens::{ColorToken, Spacing, TypeToken};
 const FULL_TURN_DEG: f64 = 360.0; // LITERAL-PX-OK: degrees in a full turn (math constant)
 
 impl BodyCtx<'_> {
-    /// A labelled 2-across segmented button row (sibling of `segmented3`).
+    /// A labelled segmented button row (sibling of `segmented3`).
+    ///
+    /// ⚠️ **Ela REFLUI**: uma fileira que não cabe quebra em linhas, em vez de espremer os
+    /// rótulos uns contra os outros. A versão anterior dividia a largura por `n` e pronto, o que
+    /// bastou enquanto toda fileira deste painel tinha duas a quatro opções — e o report do Enio
+    /// (2026-08-02) chegou com a de CINCO: *"botões não se adaptam à largura do painel e se
+    /// amontoam (veja Between e Around)"*.
+    ///
+    /// ⚠️ **E ela não implementa o refluxo: DELEGA.** O `paint_segmented_group_adaptive` é a
+    /// resposta canónica do design system a *"como um grupo segmentado quebra"* — a mesma que o
+    /// painel do Painter usa desde a lista de dez ferramentas do impasto —, e dentro de cada
+    /// linha ele reparte a largura por igual, exactamente como aqui se fazia. Logo **toda fileira
+    /// que já cabia é pintada igualzinha**; só a que não cabia muda. Uma segunda regra de quebra
+    /// vivendo neste painel é como uma seção passa a ser medida por uma e preenchida por outra.
     pub(crate) fn segmented(
         &mut self,
         label: &str,
@@ -25,9 +40,6 @@ impl BodyCtx<'_> {
         mut y: f32,
     ) -> f32 {
         let font = TypeToken::Sm.px();
-        let gap = Spacing::Sm.px();
-        let n = opts.len().max(1) as f32;
-        let w = ((self.inner_w - gap * (n - 1.0)) / n).max(1.0);
         paint_text(
             self.text_system,
             self.scene,
@@ -39,22 +51,18 @@ impl BodyCtx<'_> {
             resolve(ColorToken::Text2, self.theme),
         );
         y += font + Spacing::Xs.px();
-        for (i, (id, lbl, active)) in opts.iter().enumerate() {
-            let rx = self.inner_x + i as f32 * (w + gap);
-            let rect = Rect::new(rx, y, w, self.row_h);
-            let st = self.store.button_state(*id).unwrap_or(ButtonState::Normal);
-            paint_segmented_button(
-                rect,
-                lbl,
-                *active,
-                st,
-                self.scene,
-                self.text_system,
-                self.theme,
-            );
-            self.hit_index.register(*id, rect);
-        }
-        y + self.row_h + self.row_gap
+        let segs: Vec<(&str, bool, ph2d_a11y::NodeId)> =
+            opts.iter().map(|(id, lbl, on)| (*lbl, *on, *id)).collect();
+        let used = paint_segmented_group_adaptive(
+            Rect::new(self.inner_x, y, self.inner_w, self.row_h),
+            &segs,
+            self.scene,
+            self.text_system,
+            self.theme,
+            self.store,
+            self.hit_index,
+        );
+        y + used + self.row_gap
     }
 
     /// Snap em FORMAS — ajuste da ferramenta (não da seleção), sempre visível.

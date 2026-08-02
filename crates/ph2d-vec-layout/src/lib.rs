@@ -264,9 +264,23 @@ fn style_of(n: &Node) -> Style {
     };
     s.flex_direction = dirn;
     s.flex_wrap = wrap;
-    s.gap = TaffySize {
-        width: length(f.gap[0] as f32),
-        height: length(f.gap[1] as f32),
+    // ⚠️ **O vão é MAIN e CROSS; quem os traduz para x/y é a DIREÇÃO.** O `taffy` fala em eixos
+    // FÍSICOS (`width` = entre colunas, `height` = entre linhas), e escrever `[main, cross]` neles
+    // direto está certo em `Row`/`RowWrap` e INVERTIDO em `Column` — onde o principal é vertical.
+    //
+    // Foi o report do Enio (2026-08-02), e ele chegou como DOIS: *"Gap não funciona em Column"* e
+    // *"Cross, que só aparece para Wrap, afeta Column"*. É um só, visto pelas duas pontas — o
+    // número do artista ia para o eixo errado, e o do eixo errado governava o dele.
+    let (main, cross) = (length(f.gap[0] as f32), length(f.gap[1] as f32));
+    s.gap = match f.dir {
+        Dir::Column => TaffySize {
+            width: cross,
+            height: main,
+        },
+        Dir::Row | Dir::RowWrap => TaffySize {
+            width: main,
+            height: cross,
+        },
     };
     s.padding = TaffyRect {
         top: length(f.pad[0] as f32),

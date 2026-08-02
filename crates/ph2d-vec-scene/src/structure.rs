@@ -61,6 +61,16 @@ pub struct VecClipSpan {
     pub frame: VecPathId,
     /// O descendente mais ao FUNDO — onde o intervalo abre.
     pub first: VecPathId,
+    /// A moldura **RECORTA** o conteúdo, ou só lhe serve de fundo?
+    ///
+    /// ⚠️ Toda moldura com conteúdo tem intervalo, e é isso que faz o preenchimento dela ser
+    /// antecipado para a abertura — *o fundo do card*. Antes, o intervalo só existia quando ela
+    /// recortava, e uma moldura de LAYOUT com recorte desligado desenhava por cima do próprio
+    /// conteúdo (Enio, 2026-08-02: *"os filhos estão ficando atrás do pai, logo não podem ser
+    /// vistos a menos que reduza a opacidade"*).
+    ///
+    /// Recortar é a metade OPCIONAL; ser fundo não é.
+    pub clip: bool,
 }
 
 impl VecViewState {

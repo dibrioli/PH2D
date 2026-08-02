@@ -41,15 +41,19 @@ pub(crate) fn clip_spans(sim: &SimWorld, snap: &HierarchySnapshot) -> Vec<VecCli
             continue;
         };
         let entity = Entity::from_bits(e.entity);
-        // Só molduras que RECORTAM. Uma moldura com `clip` desligado continua sendo uma moldura
-        // (dona de um tamanho autorado); ela só não abre camada.
-        if !w.get::<VecFrame>(entity).is_some_and(|f| f.clip) {
+        // ⚠️ **TODA moldura com conteúdo tem intervalo** — e o `clip` só decide se ela também
+        // abre camada. O intervalo é, antes de mais nada, *onde o preenchimento dela é
+        // antecipado*: a pilha de z põe o pai NA FRENTE dos filhos (ela é o DFS invertido), então
+        // sem intervalo a moldura pinta por cima do próprio conteúdo. Enquanto só molduras que
+        // recortavam o tinham, uma moldura de LAYOUT com recorte desligado fazia exatamente isso.
+        let Some(frame) = w.get::<VecFrame>(entity) else {
             continue;
-        }
+        };
         if let Some(first) = bottom_descendant(snap, i, e.depth) {
             out.push(VecClipSpan {
                 frame: frame_path,
                 first,
+                clip: frame.clip,
             });
         }
     }

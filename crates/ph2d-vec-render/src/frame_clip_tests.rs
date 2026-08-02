@@ -88,6 +88,7 @@ fn the_frame_opens_one_layer_closes_it_and_draws_its_background_once() {
         clips: vec![VecClipSpan {
             frame,
             first: kids[0],
+            clip: true,
         }],
         ..Default::default()
     };
@@ -95,6 +96,37 @@ fn the_frame_opens_one_layer_closes_it_and_draws_its_background_once() {
     assert_eq!(clips, 2, "um abre e um fecha");
     assert_eq!(open, 0, "a camada FECHA");
     assert_eq!(paths, 5, "3 formas + os 2 caminhos de uma camada");
+}
+
+/// **UMA MOLDURA SEM RECORTE AINDA É O FUNDO** (Enio 2026-08-02: *"os filhos estão ficando atrás
+/// do pai, logo não podem ser vistos a menos que reduza a opacidade"*).
+///
+/// A pilha de z é o DFS invertido, então um pai desenha na FRENTE dos filhos; o intervalo existe
+/// para antecipar o desenho dele. Enquanto só molduras que RECORTAM tinham intervalo, uma moldura
+/// de LAYOUT (recorte desligado) não tinha — e pintava por cima do próprio conteúdo.
+///
+/// ⚠️ O oráculo separa as duas metades por CONTAGEM, e é isso que o torna capaz de falhar nos
+/// dois sentidos: **zero camadas** (ela não recorta) e **3 caminhos** (as três formas, cada uma
+/// uma vez). Nasceu VERMELHO — sem intervalo a moldura desenhava na vez dela, por cima; e uma
+/// cura que empurrasse camada mesmo assim daria 2 clips.
+#[test]
+fn a_frame_that_does_not_clip_is_still_the_backdrop() {
+    let (scene, frame, kids) = framed_scene();
+    let view = VecViewState {
+        clips: vec![VecClipSpan {
+            frame,
+            first: kids[0],
+            clip: false,
+        }],
+        ..Default::default()
+    };
+    let (clips, open, paths) = encode(&scene, &view);
+    assert_eq!(
+        clips, 0,
+        "ela nao recorta — nenhuma camada devia ser empurrada"
+    );
+    assert_eq!(open, 0, "e nenhuma ficou pendurada");
+    assert_eq!(paths, 3, "as tres formas, cada uma UMA vez");
 }
 
 /// ⚠️ **O gate que decide a ordem dentro do laço.** A abertura corre ANTES do filtro de escondido:
@@ -108,6 +140,7 @@ fn a_hidden_first_child_still_pairs_the_layer() {
         clips: vec![VecClipSpan {
             frame,
             first: kids[0],
+            clip: true,
         }],
         ..Default::default()
     };
@@ -126,6 +159,7 @@ fn a_hidden_frame_draws_no_background_but_still_pairs() {
         clips: vec![VecClipSpan {
             frame,
             first: kids[0],
+            clip: true,
         }],
         ..Default::default()
     };
@@ -148,10 +182,12 @@ fn nested_frames_pair_lifo() {
             VecClipSpan {
                 frame: outer,
                 first: leaf,
+                clip: true,
             },
             VecClipSpan {
                 frame: inner,
                 first: leaf,
+                clip: true,
             },
         ],
         ..Default::default()
@@ -177,6 +213,7 @@ fn a_malformed_span_never_leaves_a_layer_open() {
             // Invertido: a "moldura" é a primeira da pilha e o intervalo abre na última.
             frame: kids[0],
             first: frame,
+            clip: true,
         }],
         ..Default::default()
     };

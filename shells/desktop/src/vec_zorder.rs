@@ -81,6 +81,12 @@ mod zorder_fixpoint_tests;
 /// A Hierarquia lista em DFS com a primeira linha à frente (convenção
 /// Illustrator/Figma), então a pilha de z é o inverso.
 ///
+/// ⚠️ **Corolário load-bearing: um contêiner é o ÚLTIMO membro da própria sub-árvore.** O
+/// recorte de moldura (`ph2d_vec_render::frame_clip`) empurra a camada na ABERTURA do intervalo
+/// e a fecha quando a vez da moldura chega — se ela deixasse de ser a última, o `pop_layer`
+/// fecharia a camada de outra pessoa e sumiria com arte alheia. E é por isso que *"o pai pinta
+/// atrás dos filhos"* **não** se resolve aqui: quem antecipa o desenho dele é o renderer.
+///
 /// **A fonte é o snapshot da ÁRVORE, não a lista do painel** — e isso não é
 /// arrumação, é o conserto de BUGS #15. O painel publica a lista dele no prólogo do
 /// frame, **antes** de o [`sync`] dar entidade à forma recém-criada; projetar por

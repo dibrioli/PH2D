@@ -73,11 +73,25 @@ fn the_span_opens_at_the_descendant_that_draws_first() {
     }
 }
 
-/// Uma moldura com `clip` desligado continua sendo moldura, e não abre camada nenhuma.
+/// **Uma moldura com `clip` desligado TEM intervalo — ela só não abre camada.**
+///
+/// ⚠️ Este gate afirmava o contrário (*"não produz intervalo"*), e **consagrava o defeito**: sem
+/// intervalo, o preenchimento dela não é antecipado, e como a pilha de z é o DFS invertido ela
+/// pinta na FRENTE do próprio conteúdo. Foi o report do Enio de 2026-08-02 — *"os filhos estão
+/// ficando atrás do pai"* —, e a mutação *"só quem recorta tem intervalo"* SOBREVIVEU a esta
+/// suíte enquanto ele estava escrito assim.
+///
+/// O intervalo é *onde a moldura é desenhada*; recortar é a metade opcional que o `clip` decide.
 #[test]
-fn an_unclipped_frame_produces_no_span() {
+fn an_unclipped_frame_still_gets_a_span_it_just_does_not_clip() {
     let (mut sim, _, _, _) = scene(3, false);
-    assert!(spans_of(&mut sim).is_empty());
+    let spans = spans_of(&mut sim);
+    assert_eq!(
+        spans.len(),
+        1,
+        "a moldura precisa de intervalo para ser o FUNDO"
+    );
+    assert!(!spans[0].clip, "e ela nao recorta");
 }
 
 /// Sem descendente vetorial não há o que recortar — e um intervalo vazio faria a moldura abrir e

@@ -59,6 +59,7 @@ fn rig(mass_a: f32, mass_b: f32, slack: f32) -> (PhysicsWorld, PulleyDesc) {
     let b = w.spawn_body(ball(1.0, mass_b));
     let span = WHEEL_Y - START_Y;
     let d = PulleyDesc {
+        stops: [0.0, 0.0],
         body_a: a,
         body_b: b,
         local_a: [0.0, 0.0],
@@ -167,6 +168,7 @@ fn the_rope_pulls_and_never_pushes() {
             let span = WHEEL_Y - START_Y;
             w.set_pulleys(
                 vec![PulleyDesc {
+                    stops: [0.0, 0.0],
                     body_a: a,
                     body_b: b,
                     local_a: [0.0, 0.0],
@@ -267,6 +269,7 @@ fn a_frozen_axis_is_infinite_mass_to_the_rope() {
         let span = WHEEL_Y - START_Y;
         w.set_pulleys(
             vec![PulleyDesc {
+                stops: [0.0, 0.0],
                 body_a: a,
                 body_b: b,
                 local_a: [0.0, 0.0],
@@ -329,6 +332,7 @@ fn a_wall_is_infinite_mass_to_the_rope() {
         let b = w.spawn_body(ball(1.0, 3.0));
         let span = WHEEL_Y - START_Y;
         let d = PulleyDesc {
+            stops: [0.0, 0.0],
             body_a: a,
             body_b: b,
             local_a: [0.0, 0.0],
@@ -370,6 +374,7 @@ fn a_kinematic_body_is_a_winch() {
     let span = WHEEL_Y - START_Y;
     w.set_pulleys(
         vec![PulleyDesc {
+            stops: [0.0, 0.0],
             body_a: a,
             body_b: b,
             local_a: [0.0, 0.0],
@@ -419,6 +424,7 @@ fn a_taut_rope_that_is_slackening_fast_still_never_pushes() {
             let span = WHEEL_Y - START_Y;
             w.set_pulleys(
                 vec![PulleyDesc {
+                    stops: [0.0, 0.0],
                     body_a: a,
                     body_b: b,
                     local_a: [0.0, 0.0],
@@ -463,6 +469,7 @@ fn the_winch_does_not_lag_further_the_faster_it_reels() {
         let span = WHEEL_Y - START_Y;
         w.set_pulleys(
             vec![PulleyDesc {
+                stops: [0.0, 0.0],
                 body_a: a,
                 body_b: b,
                 local_a: [0.0, 0.0],
@@ -540,6 +547,7 @@ fn the_route_cost_is_linear_in_the_wheel_count() {
             &mut Vec::new(),
         );
         let desc = PulleyDesc {
+            stops: [0.0, 0.0],
             body_a: a,
             body_b: b,
             local_a: [0.0, 0.0],
@@ -654,6 +662,7 @@ fn the_bias_holds_its_accuracy_when_the_wheels_have_radius() {
         .expect("a rota de repouso resolve")
         .length;
         let desc = PulleyDesc {
+            stops: [0.0, 0.0],
             body_a: a,
             body_b: b,
             local_a: [0.0, 0.0],

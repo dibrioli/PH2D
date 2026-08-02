@@ -60,6 +60,7 @@ fn winch(radius: f32, omega: f32, mass: f32) -> (PhysicsWorld, PulleyDesc, Rigid
         ..RopeWheel::default()
     };
     let probe = PulleyDesc {
+        stops: [0.0, 0.0],
         id: 1,
         body_a: anchor,
         body_b: load,
@@ -76,6 +77,7 @@ fn winch(radius: f32, omega: f32, mass: f32) -> (PhysicsWorld, PulleyDesc, Rigid
     w.set_pulleys(vec![probe], vec![wheel]);
     let span = w.pulley_span(&probe).expect("rota valida");
     let d = PulleyDesc {
+        stops: [0.0, 0.0],
         total_length: span,
         ..probe
     };
@@ -187,12 +189,14 @@ fn two_drums_on_one_rope_sum_their_rates() {
     let (mut two, _, l2) = winch(0.5, 1.0, 1.0);
     // A ponte somaria 0,5 + 0,5 = 1,0 m/s; aqui a soma e escrita a mao.
     let doubled = PulleyDesc {
+        stops: [0.0, 0.0],
         motor_rate: 0.5 + 0.5,
         break_force: f32::INFINITY,
         ..d1
     };
     two.set_pulleys(
         vec![PulleyDesc {
+            stops: [0.0, 0.0],
             body_a: doubled.body_a,
             body_b: l2,
             ..doubled

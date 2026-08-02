@@ -130,6 +130,7 @@ fn rig(mounted: bool) -> (PhysicsWorld, RigidBodyHandle, RigidBodyHandle) {
         .length;
     w.set_pulleys(
         vec![PulleyDesc {
+            stops: [0.0, 0.0],
             body_a: a,
             body_b: load,
             local_a: [0.0, 0.0],

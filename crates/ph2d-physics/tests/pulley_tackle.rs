@@ -65,6 +65,7 @@ fn tackle(
         vec![fixed]
     };
     let desc = PulleyDesc {
+        stops: [0.0, 0.0],
         id: 1,
         body_a: if mounted { dead } else { block },
         body_b: haul,
@@ -243,6 +244,7 @@ fn the_mount_fields_are_inert_without_a_body() {
             },
         ];
         let desc = PulleyDesc {
+            stops: [0.0, 0.0],
             id: 1,
             body_a: a,
             body_b: b,

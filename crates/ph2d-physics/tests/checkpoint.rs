@@ -417,6 +417,7 @@ fn a_snapped_rope_comes_back_when_the_clock_does() {
         ..RopeWheel::default()
     };
     let probe = PulleyDesc {
+        stops: [0.0, 0.0],
         id: 3,
         body_a: anchor,
         body_b: load,
@@ -432,6 +433,7 @@ fn a_snapped_rope_comes_back_when_the_clock_does() {
     w.set_pulleys(vec![probe], vec![wheel]);
     let span = w.pulley_span(&probe).expect("rota válida");
     let d = PulleyDesc {
+        stops: [0.0, 0.0],
         total_length: span,
         ..probe
     };
@@ -492,6 +494,7 @@ fn a_winch_carries_what_it_reeled_through_a_checkpoint() {
             ..RopeWheel::default()
         };
         let probe = PulleyDesc {
+            stops: [0.0, 0.0],
             id: 7,
             body_a: anchor,
             body_b: load,
@@ -506,6 +509,7 @@ fn a_winch_carries_what_it_reeled_through_a_checkpoint() {
         w.set_pulleys(vec![probe], vec![wheel]);
         let span = w.pulley_span(&probe).expect("rota válida");
         let d = PulleyDesc {
+            stops: [0.0, 0.0],
             total_length: span,
             ..probe
         };

@@ -61,6 +61,7 @@ fn atwood(mass: f32, radius: f32) -> (PhysicsWorld, PulleyDesc) {
         .expect("a rota de repouso resolve")
         .length;
     let desc = PulleyDesc {
+        stops: [0.0, 0.0],
         body_a: a,
         body_b: b,
         local_a: [0.0, 0.0],

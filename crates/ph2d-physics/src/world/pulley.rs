@@ -108,6 +108,13 @@ use super::rope_route::{self, RopeWheel, Tangent};
 use rapier2d::dynamics::{RigidBodyHandle, RigidBodySet};
 use rapier2d::na::{Point2, Vector2};
 
+/// A superfície que o MUNDO expõe sobre polias — instalar, medir, consultar.
+///
+/// Filho pelo teto de LOC deste arquivo, e o corte é *o que a corda FAZ* aqui
+/// contra *o que se PERGUNTA a ela* ali.
+#[path = "pulley_world.rs"]
+mod world_api;
+
 /// A metade da polia que fala de roldanas MONTADAS num corpo (W3).
 ///
 /// Módulo FILHO e não irmão: ele precisa do [`End`] e do [`end`], que são
@@ -125,6 +132,15 @@ mod mount;
 /// corpos* aqui, *o que um tambor faz com a corda* ali.
 #[path = "pulley_winch.rs"]
 mod winch;
+
+/// **O LIMITADOR** (W-RopeStop): a trava que impede uma ponta de entrar na
+/// roldana. Filho pelo mesmo par de motivos — ele é mais uma restrição sobre a
+/// mesma corda (logo partilha [`End`]/[`end`]), e este arquivo está no teto.
+#[path = "pulley_stop.rs"]
+mod stop;
+
+use stop::apply_stops;
+pub use stop::{StopLeg, stop_at_point, stop_leg, stop_mark};
 
 pub use winch::PULLEY_CORRECTION_LAG;
 use winch::reel;
@@ -196,6 +212,25 @@ pub struct PulleyDesc {
     /// O que difere de ponto para ponto é o **EIXO de cada roldana**, que carrega
     /// a RESULTANTE do desvio — e esse número mora em [`RopeWheel::break_force`].
     pub break_force: f32,
+    /// **OS LIMITADORES** — quanta corda tem de sobrar em cada ponta, em metros
+    /// (`[A, B]`; W-RopeStop).
+    ///
+    /// Enio: *"criar limitadores de modo que os objetos nunca colidam com as
+    /// polias"*. O número é a **folga de tangente** que aquela ponta não pode
+    /// cruzar — e `√(d² − r²)` chega a zero exatamente quando a amarração toca o
+    /// ARO, então este é literalmente *"não encoste na roldana"*, e não uma
+    /// distância ao centro que o raio faria mentir.
+    ///
+    /// ⚠️ **`0` é DESLIGADO, e não há um segundo booleano** — a lei P7 da polia, a
+    /// mesma do `motor_speed` e do `∞ = off` da ruptura. Zero põe a trava no
+    /// próprio aro, que é onde a corda já podia chegar: toda cena que já existia
+    /// fica **byte-idêntica**, porque o passe sai antes de tocar num corpo.
+    ///
+    /// ⚠️ **Sem roldana não há limitador.** Um limitador é uma trava CONTRA uma
+    /// roldana; numa corda reta entre dois corpos as duas pontas partilham o único
+    /// trecho, e os dois números pediriam a mesma coisa duas vezes — um controle e
+    /// a redundância dele ao lado.
+    pub stops: [f32; 2],
 }
 
 impl PulleyDesc {
@@ -315,6 +350,11 @@ pub fn apply(
         ) else {
             continue;
         };
+        // **OS LIMITADORES**, e eles vêm ANTES do early-out de corda frouxa: uma
+        // trava segura mesmo com a corda bamba, porque o que ela impede não é só
+        // a corda puxar a carga para dentro da roda — é a carga CHEGAR lá, por
+        // qualquer motivo. No-op quando os dois números são zero.
+        let jam = apply_stops(bodies, p, live, scratch, dt, bias);
         let dir_a = Vector2::new(route.dir_a[0], route.dir_a[1]);
         // ⚠️ **A ponta B entra ENGRENADA** (W4). `weight_b` é `1.0` em toda corda
         // sem tambor diferencial — e `x * 1.0 == x` é exato —, então isto é
@@ -364,8 +404,24 @@ pub fn apply(
         if c <= 0.0 {
             continue;
         }
-        let mut k = a.k(dir_a) + b.k(dir_b);
-        let mut c_dot = a.rate(dir_a) + b.rate(dir_b);
+        // ⚠️ **Uma ponta TRAVADA sai da restrição da corda** (W-RopeStop): quem
+        // segura a tensão ali é o nó contra o bloco, não o corpo. Sem isto o
+        // orçamento continuava encurtando pelo ARCO e o guincho arrastava a carga
+        // POR CIMA do eixo — medido, `y` 9,545 m com a roldana a 8,0.
+        //
+        // Escrito como dois termos e não como um `if` em torno da soma para que a
+        // corda SEM limitador some exatamente `a.k + b.k`, na mesma ordem: toda
+        // cena anterior fica byte-idêntica.
+        let (ka, kb) = (
+            if jam[0] { 0.0 } else { a.k(dir_a) },
+            if jam[1] { 0.0 } else { b.k(dir_b) },
+        );
+        let (ra, rb) = (
+            if jam[0] { 0.0 } else { a.rate(dir_a) },
+            if jam[1] { 0.0 } else { b.rate(dir_b) },
+        );
+        let mut k = ka + kb;
+        let mut c_dot = ra + rb;
         // **W3 — cada eixo MONTADO é mais uma ponta da mesma restrição.** A
         // roldana pregada no cenário não contribui com nada (o `None` sai fora), e
         // é isso que mantém toda cena anterior byte-idêntica.
@@ -385,8 +441,12 @@ pub fn apply(
         if lambda <= 0.0 {
             continue;
         }
-        push(bodies, p.body_a, a.point, -lambda, dir_a);
-        push(bodies, p.body_b, b.point, -lambda, dir_b);
+        if !jam[0] {
+            push(bodies, p.body_a, a.point, -lambda, dir_a);
+        }
+        if !jam[1] {
+            push(bodies, p.body_b, b.point, -lambda, dir_b);
+        }
         // O impulso no eixo é `−λ·∂L/∂C`, a MESMA forma das duas pontas — e é aqui
         // que a vantagem mecânica aparece sozinha: num enlace de 180° o Jacobiano
         // tem magnitude **2**, então a cadernal móvel recebe o DOBRO da tensão da
@@ -543,158 +603,5 @@ fn push(
         && body.is_dynamic()
     {
         body.apply_impulse_at_point(dir * magnitude, at, true);
-    }
-}
-
-impl super::PhysicsWorld {
-    /// **Install the pulley table**, replacing whatever was there.
-    ///
-    /// Wholesale rather than per-pulley because a pulley is not owned by a body:
-    /// the bridge re-derives the whole set from the authored components every
-    /// dispatch (the same shape the joint reconcile has), so an incremental API
-    /// would need a removal door whose only caller would be a diff nobody keeps.
-    pub fn set_pulleys(&mut self, pulleys: Vec<PulleyDesc>, wheels: Vec<RopeWheel>) {
-        self.pulleys = pulleys;
-        self.pulley_wheels = wheels;
-    }
-
-    /// Sweep door for the table on [`PULLEY_BIAS`] — see the field's own note.
-    pub fn set_pulley_bias(&mut self, bias: f32) {
-        self.pulley_bias = bias;
-    }
-
-    /// A porta de varredura de [`PULLEY_CORRECTION_LAG`], irmã da de cima e pelo
-    /// mesmo motivo: a tabela do teto é medida contra o PRODUTO.
-    pub fn set_pulley_correction_lag(&mut self, lag: f32) {
-        self.pulley_lag = lag;
-    }
-
-    /// **Trocar a tabela pela do chamador**, devolvendo-lhe a anterior.
-    ///
-    /// É por aqui que a ponte instala as polias todo dispatch: ela reconstrói a
-    /// lista num scratch próprio e troca, então o caso comum não aloca nada — o
-    /// que o gate de zero-alloc do caminho quente exige. `set_pulleys` fica para
-    /// fixtures, onde a alocação não importa e a leitura é mais direta.
-    pub fn swap_pulleys(&mut self, other: &mut Vec<PulleyDesc>, wheels: &mut Vec<RopeWheel>) {
-        std::mem::swap(&mut self.pulleys, other);
-        std::mem::swap(&mut self.pulley_wheels, wheels);
-    }
-
-    /// **Pôr os eixos MONTADOS onde os corpos deles estão AGORA** (W-Pulley W3).
-    ///
-    /// A [`mount::refresh_mounts`] tem DOIS chamadores e eles pedem coisas
-    /// diferentes, então nenhum dos dois é redundante:
-    ///
-    /// - o `step` a roda por SUB-PASSO, para o SOLVER: geometria de um sub-passo
-    ///   atrás puxa numa direção que já não é a da corda;
-    /// - a PONTE a roda uma vez no fim de todo dispatch, para o DESENHO — e essa
-    ///   é a metade que faltava. A arena é reinstalada a cada dispatch com o
-    ///   centro derivado da pose de REPOUSO (é o que a colheita do ECS sabe), e
-    ///   um quadro mais rápido que o tique não dá passo nenhum ⇒ ele desenhava a
-    ///   roldana **onde ela foi autorada**. Medido num bloco que viaja: salto de
-    ///   **1,27 m** entre um quadro e o seguinte, com a simulação correta o tempo
-    ///   todo — o tremor que o smoke da talha reportou.
-    ///
-    /// No-op para toda roldana pregada no cenário, que é o que toda roldana era
-    /// antes do W3.
-    pub fn refresh_mounted_wheels(&mut self) {
-        mount::refresh_mounts(&self.bodies, &mut self.pulley_wheels);
-    }
-
-    /// The live pulleys — what the overlay draws the rope from.
-    #[must_use]
-    pub fn pulleys(&self) -> &[PulleyDesc] {
-        &self.pulleys
-    }
-
-    /// A arena de roldanas que as faixas de [`PulleyDesc`] indexam.
-    #[must_use]
-    pub fn pulley_wheels(&self) -> &[RopeWheel] {
-        &self.pulley_wheels
-    }
-
-    /// **Quanto de corda os tambores desta corda já recolheram**, em metros —
-    /// zero para uma corda sem motor, que é o estado de toda corda que ninguém
-    /// dirigiu.
-    ///
-    /// É o número que o readout mostra e o que os gates comparam contra `ω·r·t`;
-    /// o comprimento que a restrição de fato segura é
-    /// `total_length − pulley_reeled`.
-    ///
-    /// ⚠️ **O mapa NÃO é podado quando uma corda sai da tabela**, e isso é
-    /// deliberado: uma corda que pisca fora por um dispatch (um `active`
-    /// desmarcado, um rename a caminho) mantém o guincho onde ele estava, em vez
-    /// de o rebobinar em silêncio. O preço, nomeado: apagar uma corda e criar
-    /// outra **com o mesmo nome** no MESMO run herda o recolhido — a mesma
-    /// exposição de toda ligação por nome deste editor, e o Reset a cura, porque
-    /// ele constrói um mundo novo.
-    #[must_use]
-    pub fn pulley_reeled(&self, desc: &PulleyDesc) -> f32 {
-        self.pulley_payout.get(&desc.id).copied().unwrap_or(0.0)
-    }
-
-    /// A massa efetiva de cada ponta — diagnóstico para as tabelas de
-    /// `measure_pulley.rs`, que precisam distinguir *quanto* cada lado absorve
-    /// do *onde* ele está.
-    #[must_use]
-    pub fn pulley_branch_k(&self, desc: &PulleyDesc) -> Option<(f32, f32)> {
-        let a = end(&self.bodies, desc.body_a, desc.local_a)?;
-        let b = end(&self.bodies, desc.body_b, desc.local_b)?;
-        let mut scratch = Vec::new();
-        let r = rope_route::route(
-            [a.point.x, a.point.y],
-            [b.point.x, b.point.y],
-            desc.wheels(&self.pulley_wheels),
-            &mut scratch,
-        )?;
-        Some((
-            a.k(Vector2::new(r.dir_a[0], r.dir_a[1])),
-            b.k(Vector2::new(r.dir_b[0], r.dir_b[1])),
-        ))
-    }
-
-    /// **A que velocidade a corda CORRE**, em m/s, positiva no sentido A → B.
-    ///
-    /// É o que faz uma roldana girar (`ω = s·lado/r`), e é UM número por corda e
-    /// não um por roda: a corda é inextensível, então ela passa por todas as
-    /// roldanas na mesma taxa. Derivar por roda seria N respostas para um fato.
-    ///
-    /// Sai do ramo A: se ele se ALONGA, a corda está sendo puxada de B para A,
-    /// logo ela corre no sentido B → A — daí o sinal trocado.
-    #[must_use]
-    pub fn pulley_rope_speed(&self, desc: &PulleyDesc) -> Option<f32> {
-        let a = end(&self.bodies, desc.body_a, desc.local_a)?;
-        let b = end(&self.bodies, desc.body_b, desc.local_b)?;
-        let mut scratch = Vec::new();
-        let r = rope_route::route(
-            [a.point.x, a.point.y],
-            [b.point.x, b.point.y],
-            desc.wheels(&self.pulley_wheels),
-            &mut scratch,
-        )?;
-        Some(-a.rate(Vector2::new(r.dir_a[0], r.dir_a[1])))
-    }
-
-    /// O comprimento de rota de uma polia **como ela está agora**, para o
-    /// chamador semear `total_length` da pose de repouso em vez de pedir ao
-    /// artista que meça uma corda com régua.
-    ///
-    /// `None` quando a rota é degenerada — a mesma recusa que o `apply` faz,
-    /// perguntada pela mesma porta, para que um semeio nunca nomeie um
-    /// comprimento que o passe depois se recuse a segurar.
-    #[must_use]
-    pub fn pulley_span(&self, desc: &PulleyDesc) -> Option<f32> {
-        let a = end(&self.bodies, desc.body_a, desc.local_a)?;
-        let b = end(&self.bodies, desc.body_b, desc.local_b)?;
-        let mut scratch = Vec::new();
-        Some(
-            rope_route::route(
-                [a.point.x, a.point.y],
-                [b.point.x, b.point.y],
-                desc.wheels(&self.pulley_wheels),
-                &mut scratch,
-            )?
-            .length,
-        )
     }
 }

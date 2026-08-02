@@ -49,6 +49,7 @@ fn atwood(mass_a: f32, mass_b: f32) -> (PhysicsWorld, PulleyDesc, ph2d_physics::
     let (a, _) = w.add_dynamic_circle(-1.0, 2.0, R, mass_a / area);
     let (b, _) = w.add_dynamic_circle(1.0, 2.0, R, mass_b / area);
     let desc = PulleyDesc {
+        stops: [0.0, 0.0],
         body_a: a,
         body_b: b,
         local_a: [0.0, 0.0],
@@ -173,6 +174,7 @@ fn sweep_the_bias_against_a_contact() {
         let (a, _) = w.add_dynamic_circle(-1.0, 0.4, R, 4.0 / area);
         let (b, _) = w.add_dynamic_circle(1.0, 3.0, R, 1.0 / area);
         let d = PulleyDesc {
+            stops: [0.0, 0.0],
             body_a: a,
             body_b: b,
             local_a: [0.0, 0.0],
@@ -265,6 +267,7 @@ fn what_a_frozen_axis_looks_like_to_the_rope() {
         let a = w.spawn_body(d0);
         let (b, _) = w.add_dynamic_circle(1.0, 2.0, R, 3.0 / area);
         let d = PulleyDesc {
+            stops: [0.0, 0.0],
             body_a: a,
             body_b: b,
             local_a: [0.0, 0.0],
@@ -338,6 +341,7 @@ fn what_the_rate_term_of_a_non_dynamic_body_buys() {
         let a = w.spawn_body(drum);
         let (b, _) = w.add_dynamic_circle(1.0, 2.0, R, 1.0 / area);
         let d = PulleyDesc {
+            stops: [0.0, 0.0],
             body_a: a,
             body_b: b,
             local_a: [0.0, 0.0],
@@ -401,6 +405,7 @@ fn sweep_the_winch() {
             ..RopeWheel::default()
         };
         let probe = PulleyDesc {
+            stops: [0.0, 0.0],
             id: 1,
             body_a: anchor,
             body_b: load,
@@ -417,6 +422,7 @@ fn sweep_the_winch() {
         w.set_pulleys(vec![probe], vec![wheel]);
         let span = w.pulley_span(&probe).expect("rota valida");
         let d = PulleyDesc {
+            stops: [0.0, 0.0],
             total_length: span,
             ..probe
         };
@@ -529,6 +535,7 @@ fn sweep_the_winch() {
             ..RopeWheel::default()
         };
         let probe = PulleyDesc {
+            stops: [0.0, 0.0],
             id: 1,
             body_a: anchor,
             body_b: load,
@@ -543,6 +550,7 @@ fn sweep_the_winch() {
         w.set_pulleys(vec![probe], vec![wheel]);
         let span = w.pulley_span(&probe).expect("rota valida");
         let d = PulleyDesc {
+            stops: [0.0, 0.0],
             total_length: span,
             ..probe
         };
@@ -649,6 +657,7 @@ fn sweep_the_break() {
             ..RopeWheel::default()
         };
         let probe = PulleyDesc {
+            stops: [0.0, 0.0],
             id: 1,
             body_a: anchor,
             body_b: load,
@@ -663,6 +672,7 @@ fn sweep_the_break() {
         w.set_pulleys(vec![probe], vec![wheel]);
         let span = w.pulley_span(&probe).expect("rota valida");
         let d = PulleyDesc {
+            stops: [0.0, 0.0],
             total_length: span,
             ..probe
         };
@@ -717,6 +727,7 @@ fn sweep_the_break() {
             ..RopeWheel::default()
         };
         let probe = PulleyDesc {
+            stops: [0.0, 0.0],
             id: 1,
             body_a: anchor,
             body_b: load,
@@ -731,6 +742,7 @@ fn sweep_the_break() {
         w.set_pulleys(vec![probe], vec![wheel]);
         let span = w.pulley_span(&probe).expect("rota valida");
         let d = PulleyDesc {
+            stops: [0.0, 0.0],
             total_length: span,
             ..probe
         };
@@ -748,6 +760,7 @@ fn sweep_the_break() {
     println!("\n=== QUANDO PARTE (corda de 5 N, carga de 1 kg = 9,81 N) ===");
     let (mut w, d) = rig(1.0, 0.5);
     let weak = PulleyDesc {
+        stops: [0.0, 0.0],
         break_force: 5.0,
         ..d
     };

@@ -130,6 +130,7 @@ fn rig(mounted: bool) -> (PhysicsWorld, PulleyDesc, RigidBodyHandle, RigidBodyHa
         .expect("a rota de repouso resolve")
         .length;
     let desc = PulleyDesc {
+        stops: [0.0, 0.0],
         body_a: a,
         body_b: load,
         local_a: [0.0, 0.0],

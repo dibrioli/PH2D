@@ -110,6 +110,7 @@ fn weston(
     let mut scratch = Vec::new();
     rope_route::resolve_sides([0.8, 6.0], [-0.8, 8.0], &mut wheels, &mut scratch);
     let desc = PulleyDesc {
+        stops: [0.0, 0.0],
         id: 1,
         body_a: haul,
         body_b: dead,
@@ -164,6 +165,7 @@ fn adjacent(
     let mut scratch = Vec::new();
     rope_route::resolve_sides([0.8, 6.0], [-0.8, 8.0], &mut wheels, &mut scratch);
     let desc = PulleyDesc {
+        stops: [0.0, 0.0],
         id: 1,
         body_a: haul,
         body_b: dead,
@@ -367,6 +369,7 @@ fn a_refused_pair_falls_back_to_the_tackle_alone() {
             let mut scratch = Vec::new();
             rope_route::resolve_sides([0.8, 6.0], [-0.8, 8.0], &mut ws, &mut scratch);
             let mut d = PulleyDesc {
+                stops: [0.0, 0.0],
                 id: 1,
                 body_a: haul,
                 body_b: dead,
@@ -461,6 +464,7 @@ fn measure_the_driven_hoist_rate() {
         let ea = [0.8, SHEAVE_Y - 2.0];
         rope_route::resolve_sides(ea, [-0.8, SHEAVE_Y], &mut wheels, &mut scratch);
         let mut d = PulleyDesc {
+            stops: [0.0, 0.0],
             id: 1,
             body_a: effort,
             body_b: dead,

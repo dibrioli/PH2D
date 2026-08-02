@@ -35,6 +35,7 @@ fn rig(
         ..RopeWheel::default()
     };
     let probe = PulleyDesc {
+        stops: [0.0, 0.0],
         id: ROPE_ID,
         body_a: anchor,
         body_b: load,
@@ -49,6 +50,7 @@ fn rig(
     w.set_pulleys(vec![probe], vec![wheel]);
     let span = w.pulley_span(&probe).expect("rota válida");
     let d = PulleyDesc {
+        stops: [0.0, 0.0],
         total_length: span,
         ..probe
     };

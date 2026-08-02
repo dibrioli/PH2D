@@ -53,6 +53,7 @@ fn scene(ropes: usize, wheels_each: usize) -> (PhysicsWorld, Vec<PulleyDesc>) {
             });
         }
         descs.push(PulleyDesc {
+            stops: [0.0, 0.0],
             body_a: a,
             body_b: b,
             local_a: [0.0, 0.0],

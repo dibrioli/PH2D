@@ -87,6 +87,7 @@ fn windlass_tackle(
     let mut scratch = Vec::new();
     rope_route::resolve_sides([0.4, 6.0], [-0.4, 8.0], &mut wheels, &mut scratch);
     let desc = PulleyDesc {
+        stops: [0.0, 0.0],
         id: 1,
         body_a: haul,
         body_b: dead,

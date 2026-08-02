@@ -76,6 +76,7 @@ fn tackle(
         vec![fixed]
     };
     let desc = PulleyDesc {
+        stops: [0.0, 0.0],
         id: 1,
         // No controle 1:1 a ponta morta É o bloco: a corda o segura por um ramo.
         body_a: if mounted { dead } else { block },
@@ -221,6 +222,7 @@ fn sweep_the_cost() {
                 })
                 .collect();
             let mut desc = PulleyDesc {
+                stops: [0.0, 0.0],
                 id: 1,
                 body_a: dead,
                 body_b: haul,

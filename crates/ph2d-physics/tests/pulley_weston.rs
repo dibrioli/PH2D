@@ -84,6 +84,7 @@ fn rig(
     let mut scratch = Vec::new();
     rope_route::resolve_sides([0.8, 6.0], [-0.8, SHEAVE_Y], &mut wheels, &mut scratch);
     let mut desc = PulleyDesc {
+        stops: [0.0, 0.0],
         id: 1,
         body_a: haul,
         body_b: dead,
@@ -352,6 +353,7 @@ fn a_motor_on_a_compound_axle_hoists_at_the_differential_rate() {
         let ea = [0.8, SHEAVE_Y - 2.0];
         rope_route::resolve_sides(ea, [-0.8, SHEAVE_Y], &mut wheels, &mut scratch);
         let mut d = PulleyDesc {
+            stops: [0.0, 0.0],
             id: 1,
             body_a: effort,
             body_b: dead,

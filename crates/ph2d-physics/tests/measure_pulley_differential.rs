@@ -50,6 +50,7 @@ fn windlass(
     let mut scratch = Vec::new();
     rope_route::resolve_sides([-1.0, 5.0], [1.0, 5.0], &mut wheels, &mut scratch);
     let desc = PulleyDesc {
+        stops: [0.0, 0.0],
         id: 1,
         body_a: a,
         body_b: b,
@@ -169,6 +170,7 @@ fn cost_of(r_out: Option<f32>) -> f64 {
             ..RopeWheel::default()
         });
         pulleys.push(PulleyDesc {
+            stops: [0.0, 0.0],
             id: i as u64 + 1,
             body_a: a,
             body_b: b,

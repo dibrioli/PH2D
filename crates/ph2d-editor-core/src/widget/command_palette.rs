@@ -39,15 +39,17 @@ const EDGE_MARGIN: f32 = 40.0; // LITERAL-PX-OK: min gap from the viewport edge 
 const CARD_MAX_H_FRAC: f32 = 0.86; // LITERAL-PX-OK: card height fraction of the viewport
 const HEADER_H: f32 = 44.0; // LITERAL-PX-OK: the "Add Node" + search + close band height
 const CLOSE_W: f32 = 24.0; // LITERAL-PX-OK: close-X square
-const MIN_COL_W: f32 = 200.0; // LITERAL-PX-OK: narrow column min width (below this, fewer columns)
-const MAX_COLS: usize = 4; // LITERAL-PX-OK: CONTAGEM de colunas estreitas, nao medida
-// A category with this many items reads as a pile-up when stacked in ONE narrow column, so it
-// spans TWO columns instead (a short wide block, not a tall pile). Motion's catalog splits cleanly:
+const MIN_COL_W: f32 = 200.0; // LITERAL-PX-OK: min narrow-column width (below 3x this: stacked fallback)
+// A category with this many items gets the wide card + gridded sub-clusters (Transform/Utility),
+// instead of stacking in a narrow column. Motion's catalog splits cleanly:
 // the small categories cap at 15 items, the two big ones (Transform/Utility) have 39/41 — any
 // threshold in [16, 38] is equivalent. This is a LAYOUT choice (readability), not a resource cap.
 const MIN_WIDE_ITEMS: usize = 20; // LITERAL-PX-OK: CONTAGEM que promove uma categoria a 2 colunas, nao medida
-const COL_GAP: f32 = 20.0; // LITERAL-PX-OK: gap between masonry columns
-const SECT_GAP: f32 = 18.0; // LITERAL-PX-OK: vertical gap between category sections in a column
+const COL_GAP: f32 = 16.0; // LITERAL-PX-OK: gap between category cards (columns and rows)
+const SECT_GAP: f32 = 12.0; // LITERAL-PX-OK: vertical gap between stacked cards in a column
+const CARD_PAD: f32 = 12.0; // LITERAL-PX-OK: inner padding of a category card
+const SUB_MIN_W: f32 = 210.0; // LITERAL-PX-OK: min sub-column width inside a card (below this, fewer)
+const SUB_GAP: f32 = 16.0; // LITERAL-PX-OK: gap between sub-clusters inside a card
 const RULE_H: f32 = 2.0; // LITERAL-PX-OK: the coloured underline under a category header
 const PILL_H: f32 = 26.0; // LITERAL-PX-OK: node pill height
 const PILL_GAP: f32 = 6.0; // LITERAL-PX-OK: gap between pills
@@ -111,14 +113,14 @@ impl PaletteModel {
     }
 }
 
-// ── Internal placement: a group laid out at column-local coordinates (origin at the group's top-left),
-//    plus its total height so the masonry can pick the shortest column before painting. ──
+// ── Internal placement: a category card laid out at card-local coordinates (origin at the card's
+//    top-left), plus its total height so the arrangement can stack cards before painting. ──
 enum Placed {
-    /// The category header: dot + title + "· N" count + a coloured underline rule.
+    /// The category header: dot + title + "· N" count + a coloured underline rule (drawn at CARD_PAD).
     Header { title: String, count: usize, y: f32 },
-    /// A sub-cluster header (grey, small).
-    Sub { title: String, y: f32 },
-    /// A node pill: its rect (column-local) + the item behind it.
+    /// A sub-cluster header (grey, small), at a card-local (x, y).
+    Sub { title: String, x: f32, y: f32 },
+    /// A node pill: its card-local rect + the item behind it.
     Pill {
         rect: Rect,
         id: NodeId,
@@ -126,63 +128,107 @@ enum Placed {
     },
 }
 
-struct GroupLayout {
+struct CardLayout {
     color: ColorToken,
     placed: Vec<Placed>,
     height: f32,
 }
 
-/// Lay one group out into a column of width `col_w`, measuring pill widths from their labels. Pills wrap
-/// to a new row when they would overflow the column. Returns the placement (column-local) + total height.
-fn layout_group(ts: &mut TextSystem, group: &PaletteGroup, col_w: f32) -> GroupLayout {
-    let font = TypeToken::Sm.px();
-    let sub_font = TypeToken::Xs.px();
-    let mut placed = Vec::new();
-    let mut y = 0.0_f32;
+/// Height of the category header block inside a card (name row + gap + coloured rule + gap).
+fn card_head_h() -> f32 {
+    TypeToken::Sm.px() + Spacing::Xs.px() + RULE_H + Spacing::Sm.px()
+}
 
-    let count: usize = group.subs.iter().map(|s| s.items.len()).sum();
-    placed.push(Placed::Header {
-        title: group.title.clone(),
-        count,
-        y,
-    });
-    y += HEADER_H;
-
-    for sub in &group.subs {
-        if let Some(t) = &sub.title {
-            placed.push(Placed::Sub {
-                title: t.clone(),
-                y,
-            });
-            y += sub_font + Spacing::Xs.px();
-        }
-        // Wrap pills across rows within the column.
-        let mut x = 0.0_f32;
-        let mut row_started = false;
-        for it in &sub.items {
-            let text_w = ts.prefix_width(&it.label, font);
-            let pill_w = (DOT_R * 2.0 + Spacing::Xs.px() + text_w + PILL_PAD_X * 2.0).min(col_w);
-            if row_started && x + pill_w > col_w {
-                // wrap
-                x = 0.0;
-                y += PILL_H + PILL_GAP;
-            }
-            placed.push(Placed::Pill {
-                rect: Rect::new(x, y, pill_w, PILL_H),
-                id: it.id,
-                label: it.label.clone(),
-            });
-            x += pill_w + PILL_GAP;
-            row_started = true;
-        }
-        if row_started {
+/// Append pill placements for `items`, wrapping to new rows at `width`, starting at card-local
+/// `(ox, oy)`. Returns the y just below the last row (including the trailing pill gap).
+fn flow_pills(
+    placed: &mut Vec<Placed>,
+    ts: &mut TextSystem,
+    items: &[PaletteItem],
+    ox: f32,
+    oy: f32,
+    width: f32,
+    font: f32,
+) -> f32 {
+    let mut x = 0.0_f32;
+    let mut y = oy;
+    let mut row_started = false;
+    for it in items {
+        let text_w = ts.prefix_width(&it.label, font);
+        let pill_w = (DOT_R * 2.0 + Spacing::Xs.px() + text_w + PILL_PAD_X * 2.0).min(width);
+        if row_started && x + pill_w > width {
+            x = 0.0;
             y += PILL_H + PILL_GAP;
         }
+        placed.push(Placed::Pill {
+            rect: Rect::new(ox + x, y, pill_w, PILL_H),
+            id: it.id,
+            label: it.label.clone(),
+        });
+        x += pill_w + PILL_GAP;
+        row_started = true;
     }
-    GroupLayout {
+    if row_started {
+        y += PILL_H + PILL_GAP;
+    }
+    y
+}
+
+/// Lay one category out as a CARD of width `card_w`: header at the top, then pills — flowing directly
+/// for a flat category, or as a masonry of sub-blocks across `inner_cols` sub-columns when the category
+/// has named sub-clusters (so a big category reads as a tidy grid, not one tall list). All placements
+/// are card-local (origin at the card's top-left).
+fn layout_card(ts: &mut TextSystem, group: &PaletteGroup, card_w: f32) -> CardLayout {
+    let font = TypeToken::Sm.px();
+    let sub_font = TypeToken::Xs.px();
+    let content_x = CARD_PAD;
+    let content_w = (card_w - CARD_PAD * 2.0).max(PILL_H);
+
+    let count: usize = group.subs.iter().map(|s| s.items.len()).sum();
+    let mut placed = vec![Placed::Header {
+        title: group.title.clone(),
+        count,
+        y: CARD_PAD,
+    }];
+    let top = CARD_PAD + card_head_h();
+
+    let content_bottom = if group.subs.iter().any(|s| s.title.is_some()) {
+        // Masonry the sub-clusters into sub-columns (widest a big category needs to stay short).
+        let inner_cols = group
+            .subs
+            .len()
+            .min(((content_w / SUB_MIN_W).floor() as usize).max(1));
+        let sub_w = (content_w - SUB_GAP * (inner_cols as f32 - 1.0)) / inner_cols as f32;
+        let mut sub_bottom = vec![top; inner_cols];
+        for sub in &group.subs {
+            let c = shortest_slot(&sub_bottom, 1);
+            let ox = content_x + c as f32 * (sub_w + SUB_GAP);
+            let mut sy = sub_bottom[c];
+            if let Some(t) = &sub.title {
+                placed.push(Placed::Sub {
+                    title: t.clone(),
+                    x: ox,
+                    y: sy,
+                });
+                sy += sub_font + Spacing::Xs.px();
+            }
+            sy = flow_pills(&mut placed, ts, &sub.items, ox, sy, sub_w, font);
+            sub_bottom[c] = sy + SUB_GAP;
+        }
+        sub_bottom.iter().copied().fold(top, f32::max) - SUB_GAP
+    } else {
+        let all: Vec<PaletteItem> = group
+            .subs
+            .iter()
+            .flat_map(|s| s.items.iter().cloned())
+            .collect();
+        flow_pills(&mut placed, ts, &all, content_x, top, content_w, font) - PILL_GAP
+    };
+
+    CardLayout {
         color: group.color,
         placed,
-        height: y,
+        height: content_bottom + CARD_PAD,
     }
 }
 
@@ -261,38 +307,74 @@ pub fn paint(
         resolve(ColorToken::Text1, theme),
     );
 
-    // ── Content: ONE balanced column masonry, so no column piles up and none is left empty.
-    //    Categories are placed LARGEST-FIRST (LPT bin-packing), each in the slot whose columns are
-    //    currently shortest. A BIG category (>= MIN_WIDE_ITEMS) spans TWO columns, so a 40-node
-    //    category is a short WIDE block (the mockup's Transform/Utility) instead of a tall pile; a
-    //    small one takes a single column. Every column is a stack of similar height — the mockup's
-    //    balanced look — derived from category SIZE, so a new/renamed category never breaks it. ──
+    // ── Content: category CARDS arranged like the approved mockup. Small categories stack in two
+    //    narrow columns on the left; the first BIG category (>= MIN_WIDE_ITEMS, in display order) is a
+    //    wide card on the right (its sub-clusters grid inside it); any further big categories are
+    //    full-width cards below. Everything is derived from category SIZE + display order, so a
+    //    new/renamed category never breaks a hardcoded map. Narrow window (< 3 columns) falls back to
+    //    a single stacked column. ──
     let content_x = inner_x;
     let content_y = header_y + HEADER_H + Spacing::Sm.px();
     let content_w = inner_w;
 
-    let n_cols = ((content_w / MIN_COL_W).floor() as usize).clamp(1, MAX_COLS);
-    let col_w = (content_w - COL_GAP * (n_cols as f32 - 1.0)) / n_cols as f32;
-    let span_w = |span: usize| col_w * span as f32 + COL_GAP * (span as f32 - 1.0);
-    let col_x = |c: usize| content_x + c as f32 * (col_w + COL_GAP);
-
-    let mut order: Vec<&PaletteGroup> = model.groups.iter().collect();
-    order.sort_by_key(|g| std::cmp::Reverse(group_count(g)));
-
-    let mut col_bottom = vec![content_y; n_cols];
-    for g in order {
-        let span = if group_count(g) >= MIN_WIDE_ITEMS {
-            n_cols.min(2)
+    let mut small: Vec<&PaletteGroup> = Vec::new();
+    let mut big: Vec<&PaletteGroup> = Vec::new();
+    for g in &model.groups {
+        if group_count(g) >= MIN_WIDE_ITEMS {
+            big.push(g);
         } else {
-            1
-        };
-        let c = shortest_slot(&col_bottom, span);
-        let base_y = col_bottom[c..c + span].iter().copied().fold(content_y, f32::max);
-        let gl = layout_group(ts, g, span_w(span));
-        paint_group(scene, ts, theme, hit_index, &gl, col_x(c), base_y, span_w(span));
-        let bottom = base_y + gl.height + SECT_GAP;
-        for b in &mut col_bottom[c..c + span] {
-            *b = bottom;
+            small.push(g);
+        }
+    }
+
+    let wide_layout = content_w >= MIN_COL_W * 3.0 && !big.is_empty();
+    if wide_layout {
+        // 4 units wide: [narrow][narrow][wide = 2 units]. Small cards fill the two narrow columns;
+        // the first big card takes the wide slot on the right.
+        let unit_w = (content_w - COL_GAP * 3.0) / 4.0;
+        let narrow_w = unit_w;
+        let wide_x = content_x + 2.0 * (unit_w + COL_GAP);
+        let wide_w = 2.0 * unit_w + COL_GAP;
+
+        let mut col_bottom = [content_y, content_y];
+        for g in &small {
+            let c = usize::from(col_bottom[1] < col_bottom[0]);
+            let cx = content_x + c as f32 * (narrow_w + COL_GAP);
+            let cl = layout_card(ts, g, narrow_w);
+            paint_card(
+                scene,
+                ts,
+                theme,
+                hit_index,
+                &cl,
+                cx,
+                col_bottom[c],
+                narrow_w,
+            );
+            col_bottom[c] += cl.height + SECT_GAP;
+        }
+
+        let mut col_c_bottom = content_y;
+        if let Some(g) = big.first() {
+            let cl = layout_card(ts, g, wide_w);
+            paint_card(scene, ts, theme, hit_index, &cl, wide_x, content_y, wide_w);
+            col_c_bottom = content_y + cl.height + SECT_GAP;
+        }
+
+        // Any remaining big categories are full-width cards below the top region.
+        let mut y = col_bottom[0].max(col_bottom[1]).max(col_c_bottom);
+        for g in big.iter().skip(1) {
+            let cl = layout_card(ts, g, content_w);
+            paint_card(scene, ts, theme, hit_index, &cl, content_x, y, content_w);
+            y += cl.height + SECT_GAP;
+        }
+    } else {
+        // Fallback (narrow window / no big category): one stacked column of full-width cards.
+        let mut y = content_y;
+        for g in &model.groups {
+            let cl = layout_card(ts, g, content_w);
+            paint_card(scene, ts, theme, hit_index, &cl, content_x, y, content_w);
+            y += cl.height + SECT_GAP;
         }
     }
 
@@ -320,53 +402,62 @@ fn shortest_slot(bottoms: &[f32], span: usize) -> usize {
     best
 }
 
+/// Paint one category card: a rounded `Bg2` box + `Border`, then its header (dot + name + count +
+/// coloured rule), the grey sub-cluster headers, and the pills (each registering its hit rect).
 #[allow(clippy::too_many_arguments)]
-fn paint_group(
+fn paint_card(
     scene: &mut VectorScene,
     ts: &mut TextSystem,
     theme: Theme,
     hit_index: &mut HitIndex,
-    gl: &GroupLayout,
+    cl: &CardLayout,
     ox: f32,
     oy: f32,
-    col_w: f32,
+    card_w: f32,
 ) {
-    let cat_color = resolve(gl.color, theme);
+    let radius = Radius::Md.px();
+    let card = Rect::new(ox, oy, card_w, cl.height);
+    fill_rounded_rect(scene, card, radius, resolve(ColorToken::Bg2, theme));
+    stroke_rounded_rect(scene, card, radius, 1.0, resolve(ColorToken::Border, theme));
+
+    let cat_color = resolve(cl.color, theme);
     let sm = TypeToken::Sm.px();
     let xs = TypeToken::Xs.px();
-    for p in &gl.placed {
+    let content_w = card_w - CARD_PAD * 2.0;
+    for p in &cl.placed {
         match p {
             Placed::Header { title, count, y } => {
+                let hx = ox + CARD_PAD;
                 let hy = oy + *y;
-                dot(scene, ox + DOT_R, hy + sm * 0.5, cat_color);
+                dot(scene, hx + DOT_R, hy + sm * 0.5, cat_color);
                 let label = format!("{title} \u{00b7} {count}");
                 paint_text(
                     ts,
                     scene,
                     &label,
-                    ox + DOT_R * 2.0 + Spacing::Xs.px(),
+                    hx + DOT_R * 2.0 + Spacing::Xs.px(),
                     hy,
                     sm,
-                    col_w,
+                    content_w,
                     cat_color,
                 );
-                // Coloured underline rule across the column.
+                // Coloured underline rule across the card content width.
                 fill_rounded_rect(
                     scene,
-                    Rect::new(ox, hy + sm + Spacing::Xs.px(), col_w, RULE_H),
+                    Rect::new(hx, hy + sm + Spacing::Xs.px(), content_w, RULE_H),
                     RULE_H * 0.5,
                     cat_color,
                 );
             }
-            Placed::Sub { title, y } => {
+            Placed::Sub { title, x, y } => {
                 paint_text(
                     ts,
                     scene,
                     title,
-                    ox,
+                    ox + *x,
                     oy + *y,
                     xs,
-                    col_w,
+                    content_w,
                     resolve(ColorToken::Text2, theme),
                 );
             }

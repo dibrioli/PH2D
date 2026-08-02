@@ -218,3 +218,56 @@ fn what_the_fold_of_a_canvas_wide_stroke_is_made_of() {
     }
 }
 
+
+/// **DE QUE É FEITA A METADE DO COMMIT** — a que sobrou sem atribuição, e é 72% do pen-up.
+///
+/// A `which_half_…` diz *quanto*; ela não diz *o quê*. E a hipótese óbvia — *"ele extrai uma janela
+/// canvas-sized dos quatro planos"* — está **REFUTADA pelo próprio produto**: numa janela grande os
+/// quatro caem em `Whole`, que guarda `Arc` e não copia byte nenhum. Então o custo é outra coisa.
+///
+/// Ablação pelas DUAS alavancas que o S3 deixou (`elide_cursor` · `elide_relief`) mais o histórico
+/// inteiro fora do caminho. ⚠️ Elas são `cfg(test)`, e é justamente por isso que uma sonda pode
+/// perguntar ao produto em vez de fingir o que ele faz.
+#[test]
+#[ignore = "medicao — rode com --release --ignored --test-threads=1"]
+fn what_the_commit_half_is_made_of() {
+    fn pen_up_ms(side: u32, cursor: bool, relief: bool, history: bool) -> f64 {
+        let span = f64::from(side) as f32 - 200.0;
+        let mut t = armed(side);
+        t.undo.elide_cursor = cursor;
+        t.undo.elide_relief = relief;
+        let mut v = Vec::new();
+        for k in 0..5u8 {
+            let y0 = 200.0 + f32::from(k) * 9.0;
+            t.on_canvas_pointer(cp([60.0, y0], PointerPhase::Down));
+            for j in 1..=12u8 {
+                let f = f32::from(j) / 12.0;
+                t.on_canvas_pointer(cp([60.0 + span * f, y0 + span * f], PointerPhase::Move));
+            }
+            if !history {
+                // A ablação mais grosseira: sem entrada nenhuma na pilha, o `record_structural` não
+                // tem cursor para mover nem delta para partir.
+                t.undo.clear();
+            }
+            let t0 = Instant::now();
+            t.on_canvas_pointer(cp([60.0 + span, y0 + span], PointerPhase::Up));
+            let ms = t0.elapsed().as_secs_f64() * 1000.0;
+            if k > 0 {
+                v.push(ms);
+            }
+        }
+        median(v)
+    }
+
+    for side in [2048u32, 4096] {
+        let full = pen_up_ms(side, true, true, true);
+        let no_cursor = pen_up_ms(side, false, true, true);
+        let no_relief = pen_up_ms(side, true, false, true);
+        let no_hist = pen_up_ms(side, true, true, false);
+        eprintln!("\n[commit] {side}x{side}, diagonal de canto a canto");
+        eprintln!("  como shipa                 {full:8.2} ms");
+        eprintln!("  sem a elisao do CURSOR     {no_cursor:8.2} ms   (delta {:+.2})", no_cursor - full);
+        eprintln!("  sem a elisao do RELEVO     {no_relief:8.2} ms   (delta {:+.2})", no_relief - full);
+        eprintln!("  historico LIMPO no pen-up  {no_hist:8.2} ms   (delta {:+.2})", no_hist - full);
+    }
+}

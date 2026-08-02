@@ -123,14 +123,17 @@ dígitos = o log não fala sobre o código*).
   ⚠️ Três defeitos no caminho, nenhum achado lendo código — o arredondamento da janela, **dois planos
   vazios que liam como `Whole`** e o `restore_selection` invalidando o composite incondicionalmente.
   Números, mecanismo e as quatro lições: [doc 28 §5.63](Painter/28_otimizacoes_o_que_funcionou.md).
-- ✅ **O PEN-UP DE UM TRAÇO LONGO CAIU 656 → 382 ms (1,7×), e o fold dentro dele 348 → 106 (3,3×)**
+- ✅ **O PEN-UP CAIU 512,9 → 64-82 ms NO PRODUTO (6-8×) — SMOKE APROVADO 2026-08-02**; na sonda de pior caso (diagonal de canto a canto) são 656 → 382 (1,7×), e o fold dentro dele 348 → 106 (3,3×)
   — o `INPUT up max=512,9 ms` do log do Enio era uma fixture que não continha o fenômeno (toda sonda
   desta família pinta 200 px numa tela de 4096). Três caminhadas do fold passam a andar por linha
   (ADR-0109, `rayon` já é dep desta crate ⇒ **nenhum ADR novo**), no padrão *um corpo, dois walkers*.
   ⚠️ **O commit é agora 72% do pen-up (276 ms) e a hipótese óbvia está REFUTADA:** os quatro planos caem
   em `Whole` (`Arc`, zero cópia), então o custo dele **não é a extração da janela** — a próxima wave
-  começa por uma decomposição, não por código. Números, gates e o item estrutural (a janela é o BBOX e a
-  pegada é 2,8% dele): [doc 28 §5.65](Painter/28_otimizacoes_o_que_funcionou.md).
+  começa por uma decomposição, não por código. ⚠️ **E o log do smoke moveu a fronteira:** o maior número
+  agora é `dispatch max = 54,3 ms`, 100% em `preview` com `branch=idle` — **não é desta wave** (o fold
+  roda no `on_canvas_pointer`, nunca no dispatch, e a assinatura já aparecia com 26-39 ms antes dela).
+  Números, gates e o item estrutural (a janela é o BBOX e a pegada é 2,8% dele):
+  [doc 28 §5.65](Painter/28_otimizacoes_o_que_funcionou.md).
 - **O pen-down segue sendo uma cópia de canvas** (§5.16 o pinou; 5,65 ms a 4096²). Não era o alvo desta
   wave e não se moveu. Quem o fecha é a captura do "antes" por **REGIÃO** (o *tile-based undo*), e ela
   quer a **porta única de escrita de canvas**.

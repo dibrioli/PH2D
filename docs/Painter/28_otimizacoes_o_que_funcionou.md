@@ -6201,3 +6201,31 @@ reivindica **35× demais**. Curar isso vale mais que paralelizar tudo o que sobr
 byte-idêntico**, que é a joia deste módulo (o `settle` de uma janela é bit-a-bit o de um canvas porque a
 borda dela é zero; uma janela em TILES precisa que cada tile carregue a própria halo de reach). É wave
 própria, com gates próprios, e não entra de carona num fix de perf.
+
+### ✅ SMOKE APROVADO (2026-08-02) — e o número do PRODUTO é maior que o da sonda
+
+| `INPUT (fora do frame)` max, 4096² impasto | antes | depois |
+|---|---|---|
+| **up** | **512,9** | **82,3 · 64,4** |
+| move | 106,1 | 18,2 · 28,7 |
+| down | 17,1 | 11,3 · 13,5 |
+
+⚠️ **6-8× no produto contra 1,7× na sonda, e a diferença NÃO é sorte:** a sonda mede a diagonal de canto
+a canto — o pior caso construído —, e o gesto do artista tem bbox menor, onde a fração paralelizada pesa
+mais. *Uma sonda de pior caso subestima o ganho de produto pela mesma razão que uma fixture de melhor
+caso o superestima.*
+
+⚠️ **E o log moveu a fronteira outra vez.** Com o INPUT em baixo, o maior número passou a ser
+**`dispatch max = 54,3 ms`, 100% em `preview`, com `branch=idle` e `trivial=true`** — *a drenagem não
+fez nada e o preview custou 54 ms*.
+
+**Isto NÃO é desta wave, e o mecanismo diz por quê:** o `commit_stroke_height` roda dentro do
+`on_canvas_pointer` no pen-up, **nunca** dentro do dispatch, e a caixa de dirty que ele publica é a mesma
+(a redução devolve os mesmos quatro números). A assinatura já aparecia antes: **26,8-39,3 ms** no log
+anterior e o outlier de **71,2 ms** do smoke do S3 (§5.62).
+
+**O `preview` é o próximo balde a ganhar DIVISOR** — ele admite *o composite drenou a tela inteira* e *o
+fold do relevo para o passe de luz re-materializou os três planos*, que são curas opostas (§4.8.2 nomeia
+o segundo: os planos são materializados por frame sujo, de propósito, porque uma versão teria de
+rastrear toda entrada do fold). É a receita que se pagou três vezes nesta sessão (§5.48 · §5.64 · esta):
+*um balde cujo p50 e cujo max admitem curas opostas tem de publicar suas sub-partes*.

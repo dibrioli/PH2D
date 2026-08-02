@@ -366,6 +366,18 @@ fn contains_path(
 /// não entraria.
 ///
 /// `paths` está em ordem de z (fundo → topo), então varre-se ao contrário.
+///
+/// # Uma MOLDURA é o fundo do que ela contém — para desenhar E para apontar
+///
+/// ⚠️ Na pilha de z crua o contêiner é o ÚLTIMO membro da própria sub-árvore (é o que emparelha
+/// o push e o pop da camada de recorte), logo o mais À FRENTE dela. O renderer sabe disso e
+/// **antecipa** o desenho da moldura para a abertura do intervalo; o apontar não sabia, e o
+/// retângulo dela ganhava todo clique dos próprios filhos — *"quando dentro do Frame não consigo
+/// selecionar as formas"* (Enio, 2026-08-02).
+///
+/// Duas respostas para *"onde nesta pilha está esta moldura?"*: desenhada no fundo, apontada na
+/// frente. A cura lê a MESMA fonte que o renderer (`VecViewState::clips`, que é literalmente
+/// *quem foi antecipado*) e demove quem ela nomeia para trás dos próprios descendentes.
 #[must_use]
 pub(crate) fn pick_all_at_world(
     sim: &SimWorld,
@@ -388,11 +400,67 @@ pub(crate) fn pick_all_at_world(
         if sim.world().get_entity(e).is_ok()
             && contains_path(sim, scene, live, e, path.id, p, stroke_hit_r)
         {
-            out.push(bits);
+            out.push((bits, path.id));
         }
     }
-    out
+    demote_hoisted_frames(sim, view_state, &mut out);
+    out.into_iter().map(|(bits, _)| bits).collect()
 }
+
+/// Põe cada moldura ANTECIPADA atrás dos descendentes dela que também foram acertados.
+///
+/// A chave é *quantos dos outros acertos descendem de mim* — e ela é uma ordem total válida
+/// porque a descendência é uma floresta: se `a` é ancestral de `b`, todo descendente de `b` é
+/// descendente de `a`, **mais o próprio `b`**, logo a contagem de `a` é estritamente maior. A
+/// ordenação é ESTÁVEL, então dois irmãos sem parentesco mantêm a ordem de z que já tinham.
+///
+/// ⚠️ **Só quem o renderer antecipou é demovido.** Uma forma qualquer com uma forma filha NÃO é
+/// antecipada — ela desenha na frente —, e demovê-la aqui faria o apontar discordar do desenho
+/// pelo outro lado, que é exactamente o defeito que esta função existe para fechar.
+fn demote_hoisted_frames(
+    sim: &SimWorld,
+    view_state: &VecViewState,
+    hits: &mut [(u64, ph2d_vec_scene::VecPathId)],
+) {
+    let hoisted = |id| view_state.clips.iter().any(|c| c.frame == id);
+    let depth_below = |me: u64, id| {
+        if !hoisted(id) {
+            return 0usize;
+        }
+        hits.iter()
+            .filter(|(other, _)| *other != me && is_descendant_of(sim, *other, me))
+            .count()
+    };
+    let keys: Vec<usize> = hits
+        .iter()
+        .map(|(bits, id)| depth_below(*bits, *id))
+        .collect();
+    let mut idx: Vec<usize> = (0..hits.len()).collect();
+    idx.sort_by_key(|&i| keys[i]); // estável: empate mantém a ordem de z
+    let reordered: Vec<_> = idx.into_iter().map(|i| hits[i]).collect();
+    hits.copy_from_slice(&reordered);
+}
+
+/// `who` desce de `root` na árvore do editor?
+fn is_descendant_of(sim: &SimWorld, who: u64, root: u64) -> bool {
+    let w = sim.world();
+    let mut cur = Entity::from_bits(who);
+    let root = Entity::from_bits(root);
+    for _ in 0..MAX_PICK_DEPTH {
+        let Some(parent) = w.get::<ph2d_ecs::ChildOf>(cur).map(|c| c.parent()) else {
+            return false;
+        };
+        if parent == root {
+            return true;
+        }
+        cur = parent;
+    }
+    false
+}
+
+/// Teto de profundidade da caminhada de ancestral — defesa contra árvore corrompida, o mesmo
+/// número e pelo mesmo motivo do [`crate::vec_selection`].
+const MAX_PICK_DEPTH: usize = 64;
 
 /// A forma mais ao topo sob `p`, ou `None`. Conveniência dos testes: o canvas
 /// consome a lista inteira ([`pick_all_at_world`]) para poder ciclar entre

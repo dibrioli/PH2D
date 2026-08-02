@@ -14,8 +14,8 @@
 
 use super::*;
 use ph2d_core::Vec2;
-use ph2d_ecs::Transform;
-use ph2d_vec_scene::{Marker, Rgba8, StrokeSpec, VecPathId, line};
+use ph2d_ecs::{ChildOf, Transform};
+use ph2d_vec_scene::{Marker, Rgba8, StrokeSpec, VecPathId, line, rectangle};
 
 /// Uma linha horizontal LONGA, de (0,0) a (100,0), com traco de largura `width` e a ponta
 /// `marker` no fim.
@@ -153,5 +153,114 @@ fn a_closed_shape_keeps_the_tight_border_slop() {
         !hits(&sim, &scene, &map, [11.4_f32, 5.0], r),
         "a borda de uma forma fechada ganhou a folga ampliada — ela vai roubar cliques do que \
          esta atras dela"
+    );
+}
+
+/// **DENTRO DE UMA MOLDURA, O CLIQUE PEGA O FILHO** (Enio 2026-08-02: *"quando dentro do Frame
+/// não consigo selecionar as formas"*).
+///
+/// A moldura é o ÚLTIMO membro da própria sub-árvore na pilha de z — é o que emparelha o push e
+/// o pop da camada de recorte —, logo a mais À FRENTE. O renderer sabe disso e antecipa o
+/// desenho dela; o apontar não sabia, e o retângulo dela ganhava todo clique dos filhos. Duas
+/// respostas para *"onde nesta pilha está esta moldura?"*: desenhada no fundo, apontada na
+/// frente.
+///
+/// ⚠️ **A premissa da fixture é o intervalo** (`clips`): é ele que diz *quem foi antecipado*, e
+/// é dele que a demoção lê. Uma moldura sem intervalo não é demovida, e é isso que impede o
+/// apontar de discordar do desenho pelo outro lado.
+///
+/// Nasceu VERMELHO com a moldura em primeiro.
+#[test]
+fn a_click_inside_a_frame_lands_on_the_child_not_the_frame() {
+    let mut sim = SimWorld::default();
+    let mut scene = VecScene::new();
+    let mut map = VecEntityMap::new();
+
+    // ⚠️ **O FILHO entra na cena PRIMEIRO, e isso é a premissa.** A pilha de z que o produto
+    // projeta (`vec_zorder::z_order`) põe o contêiner por ÚLTIMO na sub-árvore dele — logo à
+    // FRENTE —, e é dessa posição que vem o defeito. Empurrar a moldura primeiro deixaria o
+    // filho na frente por acidente da fixture, e o gate ficaria verde sem conter o fenómeno.
+    let kid = scene.push_path(rectangle([2.0, 2.0], [4.0, 4.0]));
+    let frame = scene.push_path(rectangle([0.0, 0.0], [10.0, 10.0]));
+    let fe = sim
+        .world_mut()
+        .spawn((Transform::IDENTITY, VecPathRef(frame)))
+        .id();
+    let ke = sim
+        .world_mut()
+        .spawn((Transform::IDENTITY, VecPathRef(kid), ChildOf(fe)))
+        .id();
+    map.insert(frame, fe.to_bits());
+    map.insert(kid, ke.to_bits());
+
+    let vs = VecViewState {
+        clips: vec![ph2d_vec_scene::VecClipSpan {
+            frame,
+            first: kid,
+            clip: false, // uma moldura de LAYOUT: e' fundo, nao recorta
+        }],
+        ..Default::default()
+    };
+    // Um ponto que os DOIS contêm — o interior do filho está dentro da moldura por construção.
+    let hits = pick_all_at_world(
+        &sim,
+        &scene,
+        &Default::default(),
+        &vs,
+        &map,
+        [3.0, 3.0],
+        0.0,
+    );
+    assert_eq!(
+        hits.first(),
+        Some(&ke.to_bits()),
+        "o clique pegou a MOLDURA — dentro dela nenhuma forma e' selecionavel: {hits:?}"
+    );
+    assert!(
+        hits.contains(&fe.to_bits()),
+        "e a moldura tem de continuar na lista, atras dele (o clique-ciclico a alcanca)"
+    );
+}
+
+/// **Uma forma que NÃO foi antecipada continua na frente dos filhos dela** — o apontar segue o
+/// desenho, e o desenho só antecipa quem tem intervalo.
+///
+/// ⚠️ É a metade que impede a cura de virar o defeito espelhado: sem ela, uma demoção cega faria
+/// toda forma-pai perder o clique para quem está dentro, inclusive as que pintam por cima.
+#[test]
+fn a_parent_that_was_not_hoisted_still_wins_the_click() {
+    let mut sim = SimWorld::default();
+    let mut scene = VecScene::new();
+    let mut map = VecEntityMap::new();
+
+    // A mesma premissa do gate irmão: o pai é o mais à frente na ordem crua.
+    let kid = scene.push_path(rectangle([2.0, 2.0], [4.0, 4.0]));
+    let parent = scene.push_path(rectangle([0.0, 0.0], [10.0, 10.0]));
+    let pe = sim
+        .world_mut()
+        .spawn((Transform::IDENTITY, VecPathRef(parent)))
+        .id();
+    let ke = sim
+        .world_mut()
+        .spawn((Transform::IDENTITY, VecPathRef(kid), ChildOf(pe)))
+        .id();
+    map.insert(parent, pe.to_bits());
+    map.insert(kid, ke.to_bits());
+
+    // Sem `clips`: ninguem foi antecipado.
+    let vs = VecViewState::default();
+    let hits = pick_all_at_world(
+        &sim,
+        &scene,
+        &Default::default(),
+        &vs,
+        &map,
+        [3.0, 3.0],
+        0.0,
+    );
+    assert_eq!(
+        hits.first(),
+        Some(&pe.to_bits()),
+        "o pai desenha na frente e tem de ser apontado na frente: {hits:?}"
     );
 }

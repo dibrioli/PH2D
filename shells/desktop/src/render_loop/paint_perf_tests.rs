@@ -169,3 +169,86 @@ fn the_input_cost_is_split_by_phase_so_a_slow_pen_up_names_itself() {
         all[0]
     );
 }
+
+/// **O FOLD é creditado ao QUADRO que o pediu, e a janela viaja junto com o relógio.**
+///
+/// O log de 2026-08-02 trouxe `preview 54,3 ms` com `branch=idle` — a drenagem de CPU não fez nada e o
+/// preview custou 54 ms. Naquele caminho quem trabalha é o produtor GPU, e a **única metade de CPU** ali
+/// é o fold dos três planos de relevo, cujo custo depende de a janela ser um retângulo ou a tela inteira
+/// (§4.8.2: 0,38 contra 14,55 ms a 4096²). *Um relógio sozinho não distingue as duas, e elas pedem curas
+/// opostas.*
+///
+/// ⚠️ **Duas metades, e as duas são necessárias:** o número tem de chegar ao quadro certo, **e** o
+/// acumulador tem de ZERAR — senão um quadro sem fold herda o número do anterior e o `max` do relatório
+/// aponta para um quadro inocente (a doença exata do `input_ms` acima, um sistema adiante).
+#[test]
+fn the_fold_is_credited_to_the_frame_that_asked_for_it_and_the_bucket_drains() {
+    arm();
+    super::note_gpu_fold(9.0, true);
+    super::note_gpu_fold(3.0, false);
+    record_dispatch(FrameInfo::default());
+    end_frame(1.0);
+    record_dispatch(FrameInfo::default()); // um quadro SEM fold nenhum
+    end_frame(1.0);
+    let folds = super::fold_hist();
+    assert_eq!(folds.len(), 2);
+    assert!(
+        (folds[0].0 - 12.0).abs() < 1e-3 && folds[0].1,
+        "o 1o quadro somou {:.1} ms (janela cheia={}) em vez dos 12 ms e TELA que recebeu",
+        folds[0].0,
+        folds[0].1
+    );
+    assert!(
+        folds[1].0.abs() < 1e-3 && !folds[1].1,
+        "o 2o quadro nao pediu fold nenhum e mesmo assim reportou {:.1} ms (cheia={}) — o acumulador \
+         virou um total corrido e o `max` do relatorio acusa um quadro inocente",
+        folds[1].0,
+        folds[1].1
+    );
+}
+
+/// **A linha do `WORST split` PUBLICA o divisor** — o instrumento não pode emudecer (§5.40).
+///
+/// ⚠️ A âncora é o **placeholder de formatação**, nunca a prosa: a 1ª versão do gate irmão do carimbo
+/// casou com o próprio doc-comment que citava a linha do log, e *um oráculo que casa com a documentação
+/// de si mesmo não está olhando para o produto* (§5.48).
+#[test]
+fn the_worst_split_publishes_the_fold_divisor() {
+    let src = include_str!("paint_perf.rs");
+    for needle in ["(fold {:.1} janela={})", "worst.fold_ms", "worst.fold_full"] {
+        assert!(
+            src.contains(needle),
+            "o WORST split parou de publicar `{needle}` — um `preview` sem o fold ao lado nao \
+             distingue *o device demorou* de *a CPU dobrou o canvas*"
+        );
+    }
+}
+
+/// **A anotação sai do sítio onde a JANELA é resolvida** — arch-gate, porque `compose_light_premul`
+/// exige um device e nenhum teste de unidade a alcança.
+///
+/// Duas afirmações, e a segunda é a que tem dentes: a chamada existe, **e** o `full` é derivado da
+/// comparação com a tela inteira. Um `false` cravado deixaria o relógio publicado e a pergunta que
+/// decide a cura sem resposta — verde, mudo, e pior que instrumento nenhum.
+#[test]
+fn the_gpu_preview_times_the_fold_where_its_window_is_resolved() {
+    let src = include_str!("painter_gpu_preview.rs");
+    let win = src
+        .find("let plane_win = tool")
+        .expect("o sitio que resolve a janela do fold sumiu");
+    let call = src[win..]
+        .find("note_gpu_fold(")
+        .expect("o fold do relevo deixou de ser cronometrado — o `preview` volta a ser um balde so'");
+    let matched = src[win..]
+        .find("let finished")
+        .expect("o consumidor dos planos sumiu");
+    assert!(
+        call < matched,
+        "a anotacao tem de cercar o fold, nao vir depois de quem consome os planos"
+    );
+    assert!(
+        src[win..win + matched].contains("plane_win == (0, 0, width, height)"),
+        "o `full` parou de sair da comparacao com a tela inteira — um literal ali publica um relogio \
+         sem a pergunta que decide a cura (retangulo x canvas dobrado)"
+    );
+}

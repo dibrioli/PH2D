@@ -379,7 +379,18 @@ fn compose_light_premul(
         .preview_gpu_region()
         .filter(|_| session.light.planes_seeded(width, height))
         .unwrap_or((0, 0, width, height));
-    let finished: &wgpu::Texture = match tool.impasto_gpu_planes_in(plane_win) {
+    // O DIVISOR: este fold é a única metade de CPU do caminho GPU, e a única cujo custo depende de a
+    // janela ser um retângulo ou a tela. O relógio SOZINHO não decide a cura (device lento × canvas
+    // dobrado), então a janela viaja junto com ele.
+    let m_fold = super::paint_perf::on().then(std::time::Instant::now);
+    let planes = tool.impasto_gpu_planes_in(plane_win);
+    if let Some(t0) = m_fold {
+        super::paint_perf::note_gpu_fold(
+            t0.elapsed().as_secs_f64() as f32 * 1e3,
+            plane_win == (0, 0, width, height),
+        );
+    }
+    let finished: &wgpu::Texture = match planes {
         None => comp_out,
         Some(planes) => {
             let lamps: Vec<ImpastoLamp> = planes

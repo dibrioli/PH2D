@@ -746,6 +746,11 @@ pub(super) fn dispatch(
             panel_sub: ph_panel_sub,
             chrome_sub: ph_chrome_sub,
             upload_ms: elapsed_ms(m_upload),
+            // ⚠️ Preenchidos pelo `record_dispatch` a partir do acumulador: o fold é anotado de DENTRO
+            // do `try_drive` (que roda na fase `preview` acima), onde a janela dele é resolvida — aqui
+            // não há como saber se ela foi um retângulo ou a tela.
+            fold_ms: 0.0,
+            fold_full: false,
             w: dbg_dims.0,
             h: dbg_dims.1,
             gray: dbg_gray,

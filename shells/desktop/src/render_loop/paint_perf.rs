@@ -47,6 +47,15 @@ pub(super) struct FrameInfo {
     /// (labels in [`CHROME_LABELS`]).
     pub chrome_sub: [f32; CHROME_SUB],
     pub upload_ms: f32,
+    /// **O DIVISOR do `preview` na rota GPU** — dentro do `try_drive` o composite e a luz correm no
+    /// device, mas o FOLD dos três planos de relevo roda na CPU, e ele é o único item ali cujo custo
+    /// depende de a janela ser um retângulo ou a tela inteira (§4.8.2: 0,38 ms contra 14,55 a 4096²).
+    /// Sem esta linha um `preview 54,3 ms` com `branch=idle` não distingue *o device demorou* de *a
+    /// CPU dobrou o canvas*, que são curas opostas.
+    pub fold_ms: f32,
+    /// `true` quando o fold percorreu a TELA INTEIRA — a pergunta que decide a cura, e que nenhum
+    /// relógio sozinho responde.
+    pub fold_full: bool,
     pub w: u32,
     pub h: u32,
     pub gray: bool,
@@ -93,6 +102,8 @@ struct Agg {
     /// pen-up custa um segundo"* e *"um move custa um segundo"*, **curas opostas**. Um custo sem a sua
     /// fase é inatribuível, exatamente como `stamps` era antes de publicar as entregas (§5.48).
     input_ms: [f32; 3],
+    fold_ms: f32,
+    fold_full: bool,
     /// Por-frame, o acumulado acima.
     input_hist: [Vec<f32>; 3],
     /// Início da janela, para o **PERÍODO** real do frame (`span / frames`).
@@ -138,6 +149,20 @@ pub(crate) fn stamp_pointer() {
 ///
 /// Irmão do [`stamp_pointer`]: aquele diz quando o evento CHEGOU, este diz quanto ele CUSTOU. Os dois
 /// juntos são a diferença entre *"o frame demora a sair"* e *"pintar é caro e ninguém estava olhando"*.
+/// Registra o custo do FOLD dos planos de relevo (a metade de CPU do `try_drive`) e se ele percorreu a
+/// tela inteira. Chamado de [`super::painter_gpu_preview`], onde a janela é resolvida — o `record_dispatch`
+/// o drena para o `FrameInfo` do quadro. No-op sem a env var.
+pub(crate) fn note_gpu_fold(ms: f32, full: bool) {
+    if !on() {
+        return;
+    }
+    AGG.with(|cell| {
+        let mut a = cell.borrow_mut();
+        a.fold_ms += ms;
+        a.fold_full |= full;
+    });
+}
+
 pub(crate) fn record_input(ms: f32, phase: InputPhase) {
     if !on() {
         return;
@@ -178,7 +203,16 @@ pub(crate) fn on() -> bool {
 
 /// Record this frame's painter dispatch. Call only when the painter is active.
 pub(super) fn record_dispatch(info: FrameInfo) {
-    AGG.with(|a| a.borrow_mut().cur = Some(info));
+    AGG.with(|a| {
+        let mut a = a.borrow_mut();
+        // ⚠️ O fold é anotado DENTRO do `try_drive`, que roda na fase `preview` deste mesmo quadro —
+        // então drená-lo aqui o credita ao quadro certo. Zerar depois de ler é o que impede um quadro
+        // sem fold de herdar o número do anterior.
+        let mut info = info;
+        info.fold_ms = std::mem::take(&mut a.fold_ms);
+        info.fold_full = std::mem::take(&mut a.fold_full);
+        a.cur = Some(info);
+    });
 }
 
 /// Close the frame with its whole-frame wall clock; aggregate + emit a summary every `WINDOW`
@@ -297,8 +331,15 @@ fn emit(a: &Agg) {
     // do canvas) é invisível numa mediana por construção: ele é exatamente o outlier que a mediana
     // existe para descartar. Sem esta linha, "muito delay no primeiro traço" não tem onde ser lido.
     eprintln!(
-        "[paint-perf] WORST split: dispatch={:.1} [preview {:.1} panel {:.1} overlay {:.1} upload {:.1}]",
-        worst.dispatch_ms, worst.preview_ms, worst.panel_ms, worst.overlay_ms, worst.upload_ms
+        "[paint-perf] WORST split: dispatch={:.1} [preview {:.1} (fold {:.1} janela={}) panel {:.1} \
+         overlay {:.1} upload {:.1}]",
+        worst.dispatch_ms,
+        worst.preview_ms,
+        worst.fold_ms,
+        if worst.fold_full { "TELA" } else { "rect" },
+        worst.panel_ms,
+        worst.overlay_ms,
+        worst.upload_ms
     );
     // The two aggregate phases, split by step. Printed on their own lines (and only for the steps that
     // register anything) so the dominant one is named rather than shared.
@@ -402,6 +443,11 @@ pub(super) fn input_hist_by_phase() -> (Vec<f32>, Vec<f32>, Vec<f32>) {
 /// ⚠️ `cfg(test)`: o RELATÓRIO passou a imprimir as três fases separadas (é esse o ponto do divisor),
 /// então quem soma é só o gate que afirma *"as fases não se perderam"*. Um `pub` sem chamador de
 /// produto seria uma segunda resposta esperando alguém chamá-la.
+#[cfg(test)]
+pub(super) fn fold_hist() -> Vec<(f32, bool)> {
+    AGG.with(|a| a.borrow().samples.iter().map(|f| (f.fold_ms, f.fold_full)).collect())
+}
+
 #[cfg(test)]
 pub(super) fn input_hist() -> Vec<f32> {
     // A soma das três fases — o que este leitor sempre quis dizer (*quanto o input custou neste frame*).

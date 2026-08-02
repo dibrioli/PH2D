@@ -594,7 +594,10 @@ fn measure_the_area_the_wash_walks_per_frame() {
         }
         t.on_canvas_pointer(cp([x0 + PATH_PX, mid], PointerPhase::Up));
 
-        assert!(!areas.is_empty(), "a fixture tem de POUR — sem rect não há o que medir");
+        assert!(
+            !areas.is_empty(),
+            "a fixture tem de POUR — sem rect não há o que medir"
+        );
         let q = areas.len() / 4;
         let mean = |s: &[f64]| s.iter().sum::<f64>() / s.len() as f64;
         let first = mean(&areas[..q]);
@@ -625,7 +628,6 @@ fn measure_the_area_the_wash_walks_per_frame() {
 #[test]
 #[ignore = "measurement, not a gate"]
 fn measure_the_area_a_watercolor_frame_walks() {
-    const SIZE: u32 = 4096;
     const EV: u32 = 4;
     const FRAMES: u32 = 24;
     const DT: f32 = 1.0 / 60.0;
@@ -645,12 +647,12 @@ fn measure_the_area_a_watercolor_frame_walks() {
         }
     }
 
-    println!("\ncanvas {SIZE}², {EV} ev/quadro, {FRAMES} quadros — AREA, nao relogio\n");
+    println!("\n{EV} ev/quadro, {FRAMES} quadros — AREA, nao relogio\n");
     println!(
-        "{:<7} {:>9} {:>26} {:>14} {:>12} {:>10}",
-        "raio", "pegada M", "ablacao", "janela/quadro M", "composites", "vs pegada"
+        "{:<7} {:<7} {:>9} {:>22} {:>14} {:>10}",
+        "canvas", "raio", "pegada M", "ablacao", "janela/quadro M", "vs pegada"
     );
-    for radius in [60.0f32, 250.0] {
+    for (canvas, radius) in [(2048u32, 250.0f32), (4096, 250.0), (4096, 60.0)] {
         let foot = f64::from(2.0 * radius) * f64::from(2.0 * radius);
         for (name, dil, rew) in [
             ("como o Enio ajustou", 0.168, 0.400),
@@ -658,9 +660,9 @@ fn measure_the_area_a_watercolor_frame_walks() {
             ("sem Rewet", 0.168, 0.0),
             ("sem os dois", 0.0, 0.0),
         ] {
-            let mut t = wash(SIZE, radius);
+            let mut t = wash(canvas, radius);
             artist(&mut t, dil, rew);
-            let mid = f64::from(SIZE / 2) as f32;
+            let mid = f64::from(canvas / 2) as f32;
             let x0 = radius + 20.0;
             let path = 900.0f32;
             let step = path / f64::from(FRAMES * EV) as f32;
@@ -685,7 +687,7 @@ fn measure_the_area_a_watercolor_frame_walks() {
             assert!(n > 0, "a fixture tem de COMPOR — sem composite nao ha area");
             let per = px as f64 / f64::from(n);
             println!(
-                "{radius:<7.0} {:>9.2} {name:>26} {:>14.2} {n:>12} {:>9.1}x",
+                "{canvas:<7} {radius:<7.0} {:>9.2} {name:>22} {:>14.2} {:>9.1}x",
                 foot / 1e6,
                 per / 1e6,
                 per / foot

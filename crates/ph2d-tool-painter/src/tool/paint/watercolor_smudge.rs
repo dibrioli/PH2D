@@ -51,6 +51,19 @@ impl PainterTool {
             (Some(s), Some(w)) => Arc::ptr_eq(s, w),
             _ => false,
         };
+        // ⚠️ **Solta a SEGUNDA referência antes do `make_mut`.** Quando os dois campos apontam o mesmo
+        // `Arc`, o `make_mut` abaixo vê dois donos fortes e **CLONA O CANVAS INTEIRO** — 67 MB a 4096²,
+        // e não uma vez: a re-partilha no fim desta função restabelece o par, então o fork acontecia
+        // **em TODO evento de smudge**. Medido: o carimbo custava 49,6 ms/quadro a 4096² contra 1,6 sem
+        // Smudge, e crescia 7,4× com a tela enquanto o resto da aquarela é limitado pela PEGADA.
+        //
+        // Largando a cópia aqui, `make_mut` fica com um dono só e **MOVE** em vez de copiar; a
+        // re-partilha no fim devolve o invariante (o pickup do mixer lê a tinta esfregada). É a mesma
+        // cura da §5.12 no Wet Paint — *uma pergunta de identidade não se paga com POSSE* — e é
+        // byte-idêntica por construção: `make_mut` com um dono devolve o mesmo buffer.
+        if shared {
+            self.paint.watercolor_base = None;
+        }
         let Some(base_arc) = self
             .paint
             .wet_session_base
@@ -63,6 +76,8 @@ impl PainterTool {
             return;
         }
         let spec = self.paint.brush;
+        // Conta o que a cura existe para impedir: mais de um dono forte aqui é uma cópia do documento.
+        let forked = Arc::strong_count(base_arc) > 1;
         let buf = Arc::make_mut(base_arc);
         // Pre-smear snapshot of the gated footprint (base bytes, row-major within the region).
         let before: Option<Vec<u8>> = gate_region.map(|r| {
@@ -148,6 +163,9 @@ impl PainterTool {
                     }
                 }
             }
+        }
+        if forked {
+            self.wash.base_forks = self.wash.base_forks.saturating_add(1);
         }
         if shared {
             self.paint.watercolor_base = self.paint.wet_session_base.clone();

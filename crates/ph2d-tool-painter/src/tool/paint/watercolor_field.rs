@@ -633,6 +633,15 @@ pub(crate) struct WashCadence {
     ///
     /// `u64` porque um traço longo a 4096² soma bem mais que `u32` aguenta.
     pub(crate) window_px: u64,
+    /// **Quantas vezes o smudge FORKOU o canvas** — o `Arc::make_mut` de `smear_wet_base` vendo mais de
+    /// um dono forte, o que clona o documento inteiro (67 MB a 4096²).
+    ///
+    /// É o irmão exato do `composites`: um CONTADOR, porque *quantas cópias* é uma pergunta que uma
+    /// barra de tempo não responde com honestidade — e porque um defeito que só um relógio enxerga é um
+    /// defeito que máquina carregada esconde. O oráculo do ponteiro do buffer foi tentado antes deste e
+    /// **descartado**: o endereço se move e volta (o alocador reusa a alocação recém-liberada), então
+    /// ele lia igual em todo evento sobre um produto que copiava em todos eles.
+    pub(crate) base_forks: u32,
 }
 
 #[cfg(test)]

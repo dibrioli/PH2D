@@ -24,6 +24,8 @@ mod measure_stroke_owners; // QUEM segura os planos quando um traço começa (do
 mod measure_undo_cost; // o que VOLTAR na história custa, e em qual metade (doc 28 §5.62)
 #[path = "measure_watercolor_cost.rs"]
 mod measure_watercolor_cost; // de que é feito um MOVE de aquarela (doc 28 §7); irmão do impasto_cost
+#[path = "measure_watercolor_pour.rs"]
+mod measure_watercolor_pour; // o que o pour cobra e o que a rota do quadro muda (doc 28 §5.60)
 #[path = "measure_wetpaint_cost.rs"]
 mod measure_wetpaint_cost; // de que é feito um MOVE de Wet Paint (doc 28 §7, frente V)
 #[path = "measure_window_premise.rs"]
@@ -31,7 +33,9 @@ mod measure_window_premise;
 #[path = "undo_confine_tests.rs"]
 mod undo_confine_tests; // um Ctrl+Z repinta so' o que ele mudou (doc 28 §5.63)
 #[path = "undo_live_base_tests.rs"]
-mod undo_live_base_tests; // a premissa do S3, MEDIDA: o vivo serve de base p/ o delta? (doc 28 §5.20)
+mod undo_live_base_tests;
+#[path = "watercolor_smudge_gate_tests.rs"]
+mod watercolor_smudge_gate_tests; // o smudge não forka o canvas (doc 28 §5.61) // a premissa do S3, MEDIDA: o vivo serve de base p/ o delta? (doc 28 §5.20)
 
 use super::*;
 use crate::tool::paint::{ImpastoLight, MAX_IMPASTO_LIGHTS};

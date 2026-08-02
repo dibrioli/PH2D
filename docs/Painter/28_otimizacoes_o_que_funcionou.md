@@ -6798,3 +6798,109 @@ e é pequena:
 ⚠️ **Gate de cada um é BYTE-IDENTIDADE, não relógio** — o `canvas_wet` e a tela composta têm de sair
 iguais pelas duas rotas —, e o **benefício também se conta** (texels caminhados), então a wave inteira
 é auditável com a máquina cheia. Só o veredito final (*o Enio sente?*) pede o box calmo.
+
+---
+
+## §5.61 — E era o SMUDGE forkando o canvas em todo evento: o quadro 83,4 → 27,4 ms, e PLANO na tela (2026-08-02)
+
+> Continuação direta da §5.60, com a máquina calma (`load average 1,40`) e o Enio autorizando medir.
+> A §5.60 tinha contado texels e apontado para o `pour`. **A medição matou esse alvo e achou outro.**
+
+### 1. O alvo da §5.60 morreu na primeira medição
+
+O `pour` foi construído com rota de ablação e medido **costas-com-costas na mesma corrida** (§5.46):
+
+| | ganho | o que muda na tinta |
+|---|---|---|
+| rect do QUADRO contra o cumulativo | **1,02–1,03×** | **100% dos texels molhados**, pior delta 20/255 |
+
+⛔ **Todo o custo, nenhum benefício** ⇒ a porta foi **REVERTIDA inteira** (a lei da §5.44: *um doc que
+justifica uma porta com um número que ela não entrega é pior que porta nenhuma*).
+
+⚠️ **E a premissa de byte-identidade da §5.60 estava ERRADA, com um buraco que eu mesmo abri:** eu
+enumerei as FONTES do pour (`stroke_coverage`, `wet_styles.owner` — as duas só mutadas por-dab) e
+esqueci que o **ALVO decai**. O `dry_canvas_wet` roda no MESMO `paint_tick`, então `canvas_wet` seca a
+cada quadro e o pour cumulativo o levanta de volta sobre a pegada inteira; caminhar só o quadro deixa a
+cauda do traço secar enquanto o artista pinta. *Enumerar as fontes de uma escrita não basta quando o
+destino tem vida própria.*
+
+⚠️ **E a lição maior, sobre o método da §5.60: ÁREA NÃO É CUSTO.** O pour caminha **2,6× mais texels**
+que o composite e custa **~2%** dele — o composite faz ordens de grandeza mais trabalho por texel.
+Contar é imune à carga, mas contagem é **proxy**, e um proxy precisa ser calibrado contra o real pelo
+menos uma vez antes de virar alvo.
+
+### 2. O que a decomposição achou
+
+Traço de 1500 px, r=250, os knobs do report do Enio, quadro = 4 eventos + tick:
+
+| | 2048² | 4096² | cresce |
+|---|---|---|---|
+| **carimbo** (`on_canvas_pointer`) | 6,9 ms | **50,1 ms** | **7,28×** |
+| tick (composite + pour + secagem) | 22,2 | 33,3 | 1,50× |
+| quadro | 29,1 | **83,4** | 2,87× |
+
+⇒ é o **CARIMBO**, e ele cresce **pior que linear na área**. Três hipóteses minhas caíram antes disso,
+todas por medição: o **clamp** (o pour mede igual nas duas telas), o **pad da janela** (`Dilution`
+dobra o `reach` e move a janela de 0,32 para 0,36 M — *ler o código dá o FATOR, só a contagem dá o
+PESO*), e o **segundo dono do `Arc`** do canvas (`strong_count = 1`, medido; e o preview custa 0,3%).
+A janela do composite é **idêntica** a 2048² e 4096² (0,36 M texels) e não há trabalho `n`-sized dentro
+dele: o composite é honestamente window-bound.
+
+**A ablação por ENTRADA sobre o carimbo nomeou o dono em uma linha:**
+
+| ablação | 2048 | 4096 | cresce |
+|---|---|---|---|
+| como o Enio ajustou | 6,71 | 49,60 | 7,40× |
+| sem Charge / Dilution / Pull / Rewet | ~6,3 | ~49,5 | ~7,8× |
+| **sem Smudge** | **1,62** | **1,65** | **1,01×** |
+
+### 3. A causa, e o código a documentava
+
+`smear_wet_base` muta a base pelo `Arc::make_mut`, e o comentário dele diz: *"na primeira pincelada da
+sessão os dois campos compartilham um `Arc`, então o `make_mut` os FORKA"* — mas a **re-partilha no fim
+da função restabelece o par**, então o fork acontecia em **TODO evento de smudge**, não uma vez. A
+67 MB por cópia a 4096², com 4 eventos por quadro, isso é ~268 MB de memcpy por quadro.
+
+**A cura é a da §5.12, um módulo adiante: soltar a segunda referência ANTES do `make_mut`** — com um
+dono só ele **MOVE** em vez de copiar, e a re-partilha no fim devolve o invariante (o pickup do mixer
+lê a tinta esfregada). *Uma pergunta de identidade não se paga com POSSE.*
+
+| | antes | depois | |
+|---|---|---|---|
+| carimbo @4096² | 49,60 ms | **5,06** | **9,8×** |
+| carimbo, cresce com a tela | 7,40× | **1,01×** | limitado pela PEGADA |
+| **quadro @4096²** | **83,4 ms** | **27,4** | **3,05×** |
+| quadro, cresce com a tela | 2,87× | **0,89×** | plano |
+
+Suíte **961 verde em release, 959 em debug** — a byte-identidade está preservada por construção
+(`make_mut` com um dono devolve o mesmo buffer).
+
+### 4. Os gates, e os três defeitos que eles tiveram antes de morder
+
+**`the_smudge_does_not_fork_the_canvas_on_every_event`** (contagem, sem relógio: o produto conta os
+forks em `WashCadence::base_forks`, irmão do `composites`) · **`the_smudging_stamp_is_footprint_bound_not_canvas_bound`**
+(razão 2048÷4096). Mutação (reinstalar o fork): **18 forks em 8 eventos** e razão **6,61×** — os dois
+sangram, e não são redundantes (um passe canvas-sized novo passaria pelo primeiro e cairia no segundo).
+
+⚠️ **Três coisas minhas erraram primeiro, e as três valem mais que o resultado:**
+
+1. **O oráculo do ENDEREÇO do buffer foi derrotado pelo ALOCADOR.** A 1ª versão do gate de propriedade
+   comparava `as_ptr()` da base a cada evento. Sob a mutação ele lia *"não moveu"* — porque o fork
+   libera a alocação anterior e o alocador a devolve no evento seguinte, então o ponteiro **sai e
+   VOLTA**. *Um oráculo que o alocador pode satisfazer por acidente não é oráculo.* Trocado por um
+   contador no produto.
+2. **A 1ª fixture da razão era pequena demais** (r=100, 1024÷2048): o fork é proporcional à ÁREA, e
+   contra um fundo grande a razão ficava sob a barra. O par tem de ser **onde o fenômeno foi medido**.
+3. ⚠️ **E eu passei quatro rodadas medindo um gate que nunca tinha sido escrito:** um `cd` relativo
+   falhou, o `&&` curto-circuitou, e o `python3` que reescrevia o arquivo **nunca rodou** — com o teste
+   seguinte passando sobre a versão antiga. É a armadilha de cwd que o `project-memory` já registra;
+   a regra que a fecha é **caminho absoluto em toda edição de arquivo**, não só no `cargo`.
+
+### 5. Aberto, com número
+
+- **O pen-down ainda é do tamanho da TELA: 34 ms @2048² contra 63 @4096².** É o
+  `freeze_watercolor_ground`, com três varreduras de plano inteiro (backdrop ~67 MB + substrato ~67 MB
+  + soak ~16 MB a 4096²). ⚠️ O `wet_substrate` é preenchido **preguiçosamente** (só sobre a região de
+  saída do composite), então o `NaN` de tela inteira invalida pixels que **nunca foram preenchidos** —
+  a cura é a mesma lei (*a janela vem de quem escreve*) e continua não construída.
+- **O tick segue em 22-33 ms** e é a maior metade agora; ele é window-bound e a janela é 1,4× a pegada.

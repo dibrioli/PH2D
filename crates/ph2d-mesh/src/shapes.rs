@@ -6,10 +6,15 @@
 //! escreve sem pensar — deixaria metade desses caminhos sem cobertura e os gates
 //! verdes.
 //!
+//! ⚠️ **E o [`octahedron`] existe porque a esfera UV NÃO isola o ramo de
+//! triângulo:** ela é mista, então um gate escrito sobre ela não distingue a
+//! regra de Loop da de Catmull-Clark. Ele é a única fixture daqui que é fechada
+//! e **só-triângulo**.
+//!
 //! ⚠️ **E o que ela NÃO cobre está medido, então não confie neste arquivo para
 //! mais que aquilo.** Varridas as 18 dimensões que os gates usam, de `(5,8)` a
 //! `(96,144)`: **borda = 0, valência ≤ 2 = 0, face degenerada = 0** — em todas,
-//! e nos dois cubos. Não é acidente de tamanho: as funções daqui só sabem fazer
+//! nos dois cubos e no octaedro. Não é acidente de tamanho: as funções daqui só sabem fazer
 //! malha fechada e bem formada. Quem precisa de um desses fenômenos usa a
 //! [`crate::shapes_open`], e a frase anterior deste cabeçalho — que se lia como
 //! cobertura geral — era exatamente a forma de nota que deixa uma classe de
@@ -53,6 +58,39 @@ pub fn cube(size: f32) -> Mesh {
         Face::quad(0, 1, 5, 4), // -Y
     ];
     Mesh::from_parts(positions, faces).expect("o cubo é construído aqui e é válido")
+}
+
+/// Um octaedro de "raio" `size` — **8 triângulos**, 6 vértices, valência 4 em
+/// todo vértice.
+///
+/// ⚠️ **A fixture que faltava: fechada e SÓ-TRIÂNGULO.** A esfera UV tem quads
+/// no corpo e o cubo é todo quad, então até aqui nenhuma malha fechada isolava o
+/// ramo de **Loop** — o de Catmull-Clark cobria os dois e um gate escrito sobre
+/// ela não distinguiria as duas regras. Valência 4 de propósito: a valência 3
+/// cairia nos pesos de Warren, que são um caso especial dentro do caso.
+#[must_use]
+pub fn octahedron(size: f32) -> Mesh {
+    let s = size;
+    let positions = vec![
+        [s, 0.0, 0.0],  // 0  +X
+        [-s, 0.0, 0.0], // 1  -X
+        [0.0, s, 0.0],  // 2  +Y
+        [0.0, -s, 0.0], // 3  -Y
+        [0.0, 0.0, s],  // 4  +Z
+        [0.0, 0.0, -s], // 5  -Z
+    ];
+    // Winding CCW visto de fora, o mesmo critério do [`cube`].
+    let faces = vec![
+        Face::tri(0, 2, 4),
+        Face::tri(2, 1, 4),
+        Face::tri(1, 3, 4),
+        Face::tri(3, 0, 4),
+        Face::tri(2, 0, 5),
+        Face::tri(1, 2, 5),
+        Face::tri(3, 1, 5),
+        Face::tri(0, 3, 5),
+    ];
+    Mesh::from_parts(positions, faces).expect("o octaedro é construído aqui e é válido")
 }
 
 /// Uma esfera UV de raio `radius`, com `rings` anéis e `segments` segmentos.

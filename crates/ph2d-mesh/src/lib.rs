@@ -37,15 +37,18 @@
 
 mod aabb;
 mod adjacency;
+mod edges;
 mod face;
 mod mesh;
 mod normals;
 mod obj;
 mod octree;
 mod ray;
+mod subdivide;
 
 pub use aabb::Aabb;
 pub use adjacency::{Adjacency, Csr};
+pub use edges::Edges;
 pub use face::{Face, TRI};
 pub use mesh::{DEFAULT_COLOR, DEFAULT_MASK, Mesh, MeshError, QueryScratch, RegionScratch};
 pub use normals::{
@@ -55,6 +58,7 @@ pub use normals::{
 pub use obj::{ObjError, import_obj};
 pub use octree::{Octree, RefitScratch};
 pub use ray::{Hit, Ray};
+pub use subdivide::{Lerpable, subdivide};
 
 /// Geometria de teste — um cubo e uma esfera UV.
 ///

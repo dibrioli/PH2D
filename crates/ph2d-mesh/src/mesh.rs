@@ -20,6 +20,7 @@
 
 use crate::aabb::Aabb;
 use crate::adjacency::Adjacency;
+use crate::edges::Edges;
 use crate::face::Face;
 use crate::normals;
 use crate::octree::{Octree, RefitScratch};
@@ -133,6 +134,18 @@ impl Mesh {
     #[must_use]
     pub fn adjacency(&self) -> &Adjacency {
         &self.adjacency
+    }
+
+    /// **O grafo de arestas desta malha**, construído AGORA.
+    ///
+    /// ⚠️ Ele não é um campo, e a [`crate::Edges`] explica por quê: hoje o único
+    /// consumidor é a subdivisão, que roda quando o artista aperta um botão.
+    /// Guardá-lo cobraria a construção em todo `rebuild` — inclusive o de cada
+    /// undo — para responder uma pergunta que ninguém faz naquele instante.
+    /// Quem precisa dele duas vezes seguidas guarda o retorno.
+    #[must_use]
+    pub fn edges(&self) -> Edges {
+        Edges::build(&self.faces, &self.adjacency)
     }
 
     #[must_use]

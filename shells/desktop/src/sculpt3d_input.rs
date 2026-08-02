@@ -37,6 +37,8 @@ impl App {
              [sculpt3d] 1..9,0 escolhem o verbo · M mascara · [ ] tamanho · X/Y/Z espelho · Ctrl+Z desfaz\n\
              [sculpt3d] o pincel mede PIXELS DE TELA: aproxime com a roda e ele continua do mesmo tamanho\n\
              [sculpt3d] a MASCARA (M) protege o que ela pinta e se VE (azul frio): C limpa · I inverte · B borra · N afia\n\
+             [sculpt3d] K = SUBDIVIDIR: 4 faces onde havia 1, e a forma ALISA (Catmull-Clark/Loop)\n\
+             [sculpt3d]     o log diz a contagem nova a cada toque -- ela quadruplica; Ctrl+Z desfaz\n\
              [sculpt3d] G = PEGAR o barro (grab): segure e arraste, e ele vem com o dedo\n\
              [sculpt3d] H = ESTICAR (snake hook): a pegada ANDA com o cursor e sai um espinho\n\
              [sculpt3d]     o G volta ao lugar quando voce volta; o H deixa a ponta la' -- essa e' a diferenca\n\
@@ -308,6 +310,20 @@ impl App {
         if let Some(op) = mask_op {
             scene.mask_op(op);
             eprintln!("[sculpt3d] mascara: {}", op.label());
+            return true;
+        }
+        // **SUBDIVIDIR.** ⚠️ O log imprime a contagem NOVA porque o preço desta
+        // tecla é exponencial e invisível: quatro faces onde havia uma, a cada
+        // toque. Um botão que quadruplica a malha sem dizer quanto ela ficou é
+        // um botão que o artista aperta uma vez a mais.
+        if code == K::KeyK {
+            scene.subdivide();
+            eprintln!(
+                "[sculpt3d] subdividida: {} vertices / {} faces / {} triangulos",
+                scene.mesh.vert_count(),
+                scene.mesh.face_count(),
+                scene.mesh.triangle_count()
+            );
             return true;
         }
         if let Some(v) = verb {

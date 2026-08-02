@@ -7,7 +7,7 @@
 //! [`sculpt_source`], porque duas cópias dos helpers divergiriam.
 
 mod sculpt_source;
-use sculpt_source::{braced_block, function_body, sculpt_src};
+use sculpt_source::{braced_block, call_args, function_body, sculpt_src, source};
 
 #[test]
 fn the_gpu_is_handed_the_window_that_answers_for_every_channel() {
@@ -61,7 +61,7 @@ fn undoing_rebuilds_the_index_instead_of_refitting_the_way_back() {
     // abaixo do que já viu), então cada Ctrl+Z deixaria a árvore um pouco mais
     // gorda e a consulta um pouco mais lenta, para sempre. Um undo é
     // user-paced — é o lugar certo para pagar a resposta exata.
-    let body = function_body(&sculpt_src(), "undo_stroke");
+    let body = function_body(&sculpt_src(), "apply_entry");
     assert!(
         body.contains("self.mesh_mut().rebuild()"),
         "desfazer tem de reconstruir o índice"
@@ -113,7 +113,7 @@ fn the_four_mask_operations_have_a_gesture_and_an_undo() {
         "a lista de números é dos DEZ verbos"
     );
 
-    let undo = function_body(&src, "undo_stroke");
+    let undo = function_body(&src, "apply_entry");
     // ⚠️ **A âncora é o CASO, não a bandeira.** Isto dizia `entry.whole_mask` e
     // ficou vermelho sobre produto correto no dia em que a terceira forma de
     // entrada (a topologia) trocou o bool por um enum — o sexto proxy a expirar
@@ -170,16 +170,29 @@ fn undoing_a_subdivision_drops_the_top_level_instead_of_restoring_a_mesh() {
 
     // O outro lado: desfazer descarta o topo e mata o traço junto.
     //
-    // ⚠️ O `undo_stroke` tem DOIS `match entry` — o primeiro escolhe o nível
-    // (e `AddedLevel` não participa dele, com um braço vazio que existe para o
-    // enum continuar exaustivo), o segundo AGE. Sem recortar o segundo, o
-    // `braced_block` acha o braço vazio e a asserção mede o lugar errado.
-    let undo = function_body(&src, "undo_stroke");
+    // ⚠️ O `apply_entry` tem DOIS `match entry` — o primeiro vai ao nível
+    // (e a topologia participa dele por outro braço), o segundo AGE. Sem
+    // recortar o segundo, o `braced_block` acha o braço da seleção e a asserção
+    // mede o lugar errado.
+    let undo = function_body(&src, "apply_entry");
     let action = &undo[undo.rfind("match entry {").expect("o match que AGE")..];
     let arm = braced_block(action, "StrokeUndo::AddedLevel =>");
     assert!(
         arm.contains("self.stack.drop_top()") && arm.contains("SculptStroke::default()"),
         "desfazer um nível o descarta E encerra o traço"
+    );
+    // ⚠️ **E o que sai vira a INVERSA, inteiro.** Refazer por recomputação
+    // (`add_level` de novo) diverge assim que o artista tiver descido uma vez —
+    // medido em `recomputing_the_subdivision_is_not_the_level_that_was_dropped`,
+    // **0,236 numa esfera de raio 1**.
+    assert!(
+        arm.contains("StrokeUndo::DroppedLevel"),
+        "o nível destacado tem de virar a entrada de refazer"
+    );
+    let back = braced_block(action, "StrokeUndo::DroppedLevel(level) =>");
+    assert!(
+        back.contains("self.stack.push_level(*level)") && !back.contains("add_level"),
+        "refazer RECOLOCA o nível que saiu; recomputá-lo devolve outra malha"
     );
 
     // ⚠️ **E a entrada de EDIÇÃO carrega o NÍVEL**, senão desfazer um traço do
@@ -214,12 +227,125 @@ fn undoing_a_subdivision_drops_the_top_level_instead_of_restoring_a_mesh() {
 /// **não fazia nada** — a forma exata de *"o undo parou de funcionar"*.
 #[test]
 fn undoing_an_added_level_climbs_back_to_the_top_first() {
-    let undo = function_body(&sculpt_src(), "undo_stroke");
+    let undo = function_body(&sculpt_src(), "apply_entry");
     // O PRIMEIRO `match entry` é o que escolhe o nível; o segundo AGE.
     let at = undo.find("match entry {").expect("o match que SELECIONA");
-    let arm = braced_block(&undo[at..], "StrokeUndo::AddedLevel =>");
+    // ⚠️ **As DUAS metades da topologia sobem**, e o braço é um só de propósito:
+    // `push_level` recusa fora do topo exatamente como o `drop_top`, então um
+    // refazer de pé no nível de baixo seria o mesmo no-op silencioso — com a
+    // agravante de **consumir** o nível que ele deveria devolver.
+    let arm = braced_block(
+        &undo[at..],
+        "StrokeUndo::AddedLevel | StrokeUndo::DroppedLevel(_) =>",
+    );
     assert!(
         arm.contains("level_count()") && arm.contains("self.stack.select(top)"),
-        "desfazer um nível tem de SUBIR ao topo antes de descartá-lo"
+        "mexer na pilha tem de SUBIR ao topo antes"
+    );
+}
+
+/// ⚠️ **O ATALHO DE REFAZER DESFAZIA MAIS UM PASSO** — o defeito reportado, e
+/// ele é pior que um botão inerte: `Ctrl+Shift+Z` caía no mesmo braço do
+/// `Ctrl+Z` porque o `shift` **nunca chegava** à cena.
+///
+/// ⚠️ E o gate lê as DUAS metades. A metade da cena sozinha fica verde com o
+/// `shift` preso em `false` no chamador — uma capacidade sem porta passa em todo
+/// gate que só olha o lado de dentro.
+#[test]
+fn the_redo_shortcut_redoes_instead_of_undoing_one_more() {
+    let key = function_body(&sculpt_src(), "sculpt3d_key");
+    assert!(
+        key.contains("scene.redo_stroke()") && key.contains("scene.undo_stroke()"),
+        "as duas direções têm de existir na tecla"
+    );
+    assert!(
+        key.contains("if shift"),
+        "e o que as separa é o SHIFT, não a ordem"
+    );
+
+    // A outra metade: quem chama entrega o modificador.
+    let keyboard = source("input_dispatch/keyboard.rs");
+    let call = call_args(&keyboard, "self.sculpt3d_key");
+    assert!(
+        call.contains("shift_key()"),
+        "o shift tem de CHEGAR: sem ele o redo é inalcançável com a cena verde"
+    );
+}
+
+/// ⚠️ **Desfazer e refazer são a MESMA porta**, e é isso que impede um segundo
+/// motor de divergir do primeiro no dia em que um deles ganhar um caso especial.
+#[test]
+fn undoing_and_redoing_are_the_same_door() {
+    let src = sculpt_src();
+    for (name, arg) in [("undo_stroke", "true"), ("redo_stroke", "false")] {
+        let body = function_body(&src, &format!("{name}(&mut self)"));
+        assert!(
+            body.contains(&format!("self.step({arg})")),
+            "`{name}` tem de delegar à porta comum"
+        );
+    }
+    assert_eq!(
+        src.matches("fn apply_entry").count(),
+        1,
+        "há UMA função que aplica uma entrada"
+    );
+    let step = function_body(&src, "step(&mut self, undoing");
+    assert!(
+        step.contains("self.apply_entry(entry)"),
+        "e as duas direções passam por ela"
+    );
+    // O que sai de uma fila entra na outra — sem isso o desfazer consome a
+    // entrada e o refazer nunca tem o que fazer.
+    assert!(
+        step.contains("self.redo.push(inverse)") && step.contains("self.undo.push(inverse)"),
+        "aplicar devolve a inversa, e ela vai para a fila oposta"
+    );
+}
+
+/// ⚠️ **Uma edição nova torna o futuro guardado inalcançável**, e a lei mora na
+/// porta que grava — não numa lista dos sítios que editam.
+///
+/// Enumerar os sítios (hoje três: o traço, a máscara, a subdivisão) é a lista
+/// que nasce incompleta no dia em que aparece o quarto: ele gravaria por fora,
+/// o refazer sobreviveria a uma edição que o tornou impossível, e um Ctrl+Shift+Z
+/// instalaria um estado que **nunca existiu**.
+#[test]
+fn a_new_edit_goes_through_the_door_that_clears_the_redo() {
+    let src = sculpt_src();
+    let record = function_body(&src, "record(&mut self, entry");
+    assert!(
+        record.contains("self.undo.push(entry)") && record.contains("self.redo.clear()"),
+        "gravar é empurrar E limpar o futuro"
+    );
+    assert_eq!(
+        src.matches("self.redo.clear()").count(),
+        1,
+        "e essa é a única resposta a *quando o refazer morre*"
+    );
+    for edit in ["close_stroke", "subdivide(&mut self)", "mask_op"] {
+        let body = function_body(&src, edit);
+        assert!(
+            body.contains("self.record("),
+            "`{edit}` tem de gravar pela porta"
+        );
+    }
+    // ⚠️ Contagem, e é o dente do gate: um quarto sítio que empurre direto na
+    // fila tem de passar por aqui para justificar-se. Os dois legítimos são a
+    // porta que grava e o `step`, que devolve a inversa.
+    assert_eq!(
+        src.matches("self.undo.push(").count(),
+        2,
+        "só a porta que grava e o `step` empurram no desfazer"
+    );
+}
+
+/// ⚠️ **Descer e subir não é uma edição** — e por isso `change_level` não pode
+/// passar pela porta que grava: olhar não apaga um refazer guardado.
+#[test]
+fn walking_the_levels_does_not_kill_the_redo() {
+    let body = function_body(&sculpt_src(), "change_level");
+    assert!(
+        !body.contains("self.record(") && !body.contains("redo"),
+        "trocar de nível não é uma edição: ele não toca nenhuma das duas filas"
     );
 }

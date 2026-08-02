@@ -1,10 +1,25 @@
-//! **O QUE A CENA LEMBRA** — a pilha de níveis e a fila de desfazer.
+//! **O QUE A CENA LEMBRA** — a pilha de níveis e as duas filas de desfazer.
 //!
 //! Filho (`#[path]`) de [`super`] para alcançar os campos privados da
 //! [`Sculpt3dScene`]. O corte é de responsabilidade: *o que a cena É e o que a
 //! mão faz com ela* fica no pai; *o que ela guarda para poder voltar* fica aqui
-//! — e as duas metades desta pergunta (a pilha e a fila) são a mesma coisa,
+//! — e as duas metades desta pergunta (a pilha e as filas) são a mesma coisa,
 //! porque desde a multiresolução **acrescentar um nível é uma entrada de undo**.
+//!
+//! # Desfazer e refazer são a MESMA operação
+//!
+//! Toda entrada é uma **troca**: aplicá-la instala o estado que ela carrega e
+//! devolve, na mesma passada, o estado que estava ali — que é exatamente a
+//! entrada inversa. Então não há um motor de desfazer e outro de refazer para
+//! divergirem; há [`Sculpt3dScene::apply_entry`], e as duas direções só diferem
+//! em **de que fila se tira e para qual se empurra**.
+//!
+//! ⚠️ E é por isso que o `positions`/`masks` de um traço saem por
+//! `mem::replace`: ler-e-escrever num passo não é economia, é a garantia de que
+//! o que volta para a outra fila é *o que de fato estava lá* — uma segunda
+//! leitura, feita depois da escrita, devolveria o valor recém-instalado.
+
+use ph2d_mesh::DetachedLevel;
 
 use super::{Sculpt3dScene, SculptStroke};
 
@@ -40,17 +55,61 @@ pub(super) enum StrokeUndo {
         level: usize,
         before: Option<Vec<f32>>,
     },
-    /// **Um NÍVEL foi acrescentado** — desfazer é tirá-lo.
+    /// **Um NÍVEL foi acrescentado** — aplicá-la é tirá-lo.
     ///
-    /// ⚠️ **E ele deixou de guardar a malha inteira, que é o que a pilha
+    /// ⚠️ **E ela deixou de guardar a malha inteira, que é o que a pilha
     /// compra.** Antes de existirem níveis, desfazer uma subdivisão exigia uma
     /// cópia do documento: a contagem de vértices mudava e não havia onde o
     /// estado anterior estivesse. Com a pilha, o nível de baixo **nunca foi
     /// tocado** — desfazer é descartar o topo e devolver a seleção.
     AddedLevel,
+    /// **Um nível foi tirado** — aplicá-la é recolocá-lo. É a inversa da de
+    /// cima, e ela **carrega** o nível.
+    ///
+    /// ⚠️ **Refazer NÃO é subdividir de novo**, e a diferença é medível: uma
+    /// subdivisão recomputada só reproduz o nível enquanto o de baixo estiver
+    /// byte-a-byte como estava, e **descer escreve no de baixo**
+    /// (`copy_shared_down`). Depois de uma única viagem para baixo, um redo por
+    /// recomputação devolveria uma malha PARECIDA — que é a pior forma de
+    /// errado, porque ninguém vê. Carregar o nível é exato, e **não é cópia**:
+    /// ele é movido para fora da pilha e movido de volta.
+    ///
+    /// ⚠️ `Box` porque um nível é o maior objeto do módulo, e sem ele todo
+    /// elemento das duas filas mediria isso.
+    DroppedLevel(Box<DetachedLevel>),
+}
+
+/// **Instala `values` nos índices `verts` e devolve o que estava lá** — uma
+/// TROCA, numa passada só.
+///
+/// ⚠️ É a peça que faz desfazer e refazer serem a mesma operação, e ela é uma
+/// função solta para poder ser TESTADA: o resto do caminho vive numa
+/// [`Sculpt3dScene`], que precisa de um device, e o defeito que ela previne não
+/// tem sintoma imediato. Uma segunda leitura feita *depois* da escrita
+/// devolveria o valor recém-instalado, a fila oposta guardaria um estado que
+/// nunca existiu, e o artista só descobriria no **segundo** Ctrl+Shift+Z.
+fn swap_window<T: Copy>(out: &mut [T], verts: &[u32], values: &[T]) -> Vec<T> {
+    verts
+        .iter()
+        .zip(values)
+        .map(|(&v, x)| std::mem::replace(&mut out[v as usize], *x))
+        .collect()
 }
 
 impl Sculpt3dScene {
+    /// **A porta única por onde uma edição entra na história.**
+    ///
+    /// ⚠️ **Ela limpa a fila de refazer, e é por isso que é uma porta.** Uma
+    /// edição nova torna o futuro que estava guardado impossível de alcançar (o
+    /// estado de que ele partia deixou de existir), e enumerar os sítios que
+    /// gravam — hoje três: o traço, a máscara, a subdivisão — é a lista que
+    /// nasce incompleta no dia em que aparece o quarto. Aqui o quarto nasce
+    /// certo.
+    pub(super) fn record(&mut self, entry: StrokeUndo) {
+        self.undo.push(entry);
+        self.redo.clear();
+    }
+
     /// **SUBDIVIDE a malha uma vez** — quatro faces onde havia uma.
     ///
     /// ⚠️ **Isto encerra o traço em voo, e é obrigatório**: o `SculptStroke`
@@ -68,7 +127,7 @@ impl Sculpt3dScene {
         if !self.stack.add_level() {
             return false;
         }
-        self.undo.push(StrokeUndo::AddedLevel);
+        self.record(StrokeUndo::AddedLevel);
         self.stroke = SculptStroke::default();
         self.mesh_rebuilt();
         true
@@ -78,7 +137,9 @@ impl Sculpt3dScene {
     ///
     /// ⚠️ **Não é uma edição, então não entra na fila de undo**: o gesto é o
     /// próprio inverso, e uma pilha que registrasse navegação faria o Ctrl+Z
-    /// gastar toques desfazendo o que o artista fez para OLHAR.
+    /// gastar toques desfazendo o que o artista fez para OLHAR. Pela mesma razão
+    /// ela não passa pelo [`Sculpt3dScene::record`]: olhar não pode apagar um
+    /// refazer guardado.
     pub(super) fn change_level(&mut self, up: bool) -> bool {
         let moved = if up {
             self.stack.higher()
@@ -98,7 +159,7 @@ impl Sculpt3dScene {
         if self.stroke.touched().is_empty() {
             return;
         }
-        self.undo.push(StrokeUndo::Stroke {
+        let entry = StrokeUndo::Stroke {
             level: self.stack.level(),
             verts: self.stroke.touched().to_vec(),
             positions: self.stroke.base_positions().to_vec(),
@@ -107,18 +168,48 @@ impl Sculpt3dScene {
                 .verb
                 .paints_mask()
                 .then(|| self.stroke.base_masks().to_vec()),
-        });
+        };
+        self.record(entry);
     }
 
-    /// Desfaz o último traço. Devolve `false` se não havia nada.
+    /// Desfaz o último gesto. Devolve `false` se não havia nada.
     pub(super) fn undo_stroke(&mut self) -> bool {
-        let Some(entry) = self.undo.pop() else {
+        self.step(true)
+    }
+
+    /// Refaz o último gesto desfeito. Devolve `false` se não havia nada.
+    pub(super) fn redo_stroke(&mut self) -> bool {
+        self.step(false)
+    }
+
+    /// Tira uma entrada de uma fila, aplica, e põe a INVERSA na outra.
+    ///
+    /// ⚠️ As duas direções são esta função com as filas trocadas — não há um
+    /// caminho de refazer para divergir do de desfazer.
+    fn step(&mut self, undoing: bool) -> bool {
+        let entry = if undoing {
+            self.undo.pop()
+        } else {
+            self.redo.pop()
+        };
+        let Some(entry) = entry else {
             return false;
         };
-        // ⚠️ **Voltar ao nível da edição vem PRIMEIRO.** Uma janela de traço
-        // é uma lista de índices, e índices pertencem a uma topologia — aplicá-
-        // los noutro nível escreve posições certas nos vértices errados sem
-        // levantar erro nenhum.
+        let inverse = self.apply_entry(entry);
+        if undoing {
+            self.redo.push(inverse);
+        } else {
+            self.undo.push(inverse);
+        }
+        true
+    }
+
+    /// **Aplica uma entrada e devolve a inversa dela.**
+    fn apply_entry(&mut self, entry: StrokeUndo) -> StrokeUndo {
+        // ⚠️ **Ir ao nível certo vem PRIMEIRO.** Uma janela de traço é uma lista
+        // de índices, e índices pertencem a uma topologia — aplicá-los noutro
+        // nível escreve posições certas nos vértices errados sem levantar erro
+        // nenhum.
         match entry {
             StrokeUndo::Stroke { level, .. } | StrokeUndo::Mask { level, .. } => {
                 if self.stack.level() != level {
@@ -126,12 +217,12 @@ impl Sculpt3dScene {
                     self.mesh_rebuilt();
                 }
             }
-            // ⚠️ **A MESMA lei, e ela não é simetria de estilo:** descartar o
-            // topo só é possível DE PÉ nele, então desfazer uma subdivisão
+            // ⚠️ **A MESMA lei, e ela não é simetria de estilo:** tirar ou pôr um
+            // nível só é possível DE PÉ no topo, então desfazer uma subdivisão
             // depois de descer (`,`) era um **no-op silencioso** — o artista
             // apertava Ctrl+Z, a pilha ficava como estava, e a entrada era
             // consumida. Achado por mutação.
-            StrokeUndo::AddedLevel => {
+            StrokeUndo::AddedLevel | StrokeUndo::DroppedLevel(_) => {
                 let top = self.stack.level_count().saturating_sub(1);
                 if self.stack.level() != top {
                     self.stack.select(top);
@@ -142,7 +233,8 @@ impl Sculpt3dScene {
             // Uma operação de máscara mexeu na malha inteira: o estado anterior
             // é o plano INTEIRO, e `None` quer dizer *não havia máscara* — o
             // que se desfaz REMOVENDO o plano, não zerando-o.
-            StrokeUndo::Mask { before, .. } => {
+            StrokeUndo::Mask { level, before } => {
+                let now = self.mesh().masks().map(<[f32]>::to_vec);
                 match before {
                     Some(m) => self.mesh_mut().put_masks(m),
                     None => {
@@ -151,31 +243,43 @@ impl Sculpt3dScene {
                 }
                 self.uploaded = false;
                 self.edits += 1;
+                StrokeUndo::Mask { level, before: now }
             }
-            // Descartar o topo — o nível de baixo nunca foi tocado.
+            // Tirar o topo — o nível de baixo nunca foi tocado. O que sai vira a
+            // inversa, inteiro.
             StrokeUndo::AddedLevel => {
-                self.stack.drop_top();
+                let gone = self.stack.drop_top();
                 self.stroke = SculptStroke::default();
                 self.mesh_rebuilt();
+                match gone {
+                    Some(level) => StrokeUndo::DroppedLevel(Box::new(level)),
+                    // Só alcançável se a pilha tiver um nível só, e aí não havia
+                    // nada a tirar: a inversa honesta é *nada foi tirado*.
+                    None => StrokeUndo::AddedLevel,
+                }
+            }
+            StrokeUndo::DroppedLevel(level) => {
+                self.stack.push_level(*level);
+                self.stroke = SculptStroke::default();
+                self.mesh_rebuilt();
+                StrokeUndo::AddedLevel
             }
             StrokeUndo::Stroke {
+                level,
                 verts,
                 positions,
                 masks,
-                ..
             } => {
                 if let Some(masks) = masks {
-                    let out = self.mesh_mut().masks_mut();
-                    for (&v, m) in verts.iter().zip(&masks) {
-                        out[v as usize] = *m;
+                    let now = swap_window(self.mesh_mut().masks_mut(), &verts, &masks);
+                    StrokeUndo::Stroke {
+                        level,
+                        verts,
+                        positions,
+                        masks: Some(now),
                     }
                 } else {
-                    {
-                        let out = self.mesh_mut().positions_mut();
-                        for (&v, p) in verts.iter().zip(&positions) {
-                            out[v as usize] = *p;
-                        }
-                    }
+                    let now = swap_window(self.mesh_mut().positions_mut(), &verts, &positions);
                     // ⚠️ O `rebuild` inteiro, e não um `refresh_region`:
                     // desfazer devolve posições que o refit incremental já
                     // tinha "seguido" para outro lugar, e um refit sobre a
@@ -184,9 +288,49 @@ impl Sculpt3dScene {
                     // pagar a resposta exata.
                     self.mesh_mut().rebuild();
                     self.mesh_rebuilt();
+                    StrokeUndo::Stroke {
+                        level,
+                        verts,
+                        positions: now,
+                        masks: None,
+                    }
                 }
             }
         }
-        true
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::swap_window;
+
+    /// ⚠️ **A troca devolve o que ESTAVA lá, não o que ela instalou.**
+    ///
+    /// É o dente do modelo inteiro: se ela devolvesse o valor novo, o desfazer
+    /// funcionaria (o estado certo é instalado) e o refazer seria um no-op que
+    /// **consome** a entrada — a forma de "o redo às vezes não faz nada" que
+    /// nenhum gate de contagem vê.
+    #[test]
+    fn the_window_swap_returns_what_was_there_not_what_it_installed() {
+        let mut plane = [10.0f32, 11.0, 12.0, 13.0];
+        let verts = [3u32, 1];
+
+        let was = swap_window(&mut plane, &verts, &[99.0, 98.0]);
+        assert_eq!(
+            plane,
+            [10.0, 98.0, 12.0, 99.0],
+            "instalou nos índices certos"
+        );
+        assert_eq!(
+            was,
+            vec![13.0, 11.0],
+            "e colheu o que estava lá, na ordem dos índices"
+        );
+
+        // E ela é a própria inversa: aplicar o que voltou restaura o começo — que
+        // é literalmente o que a fila oposta faz.
+        let back = swap_window(&mut plane, &verts, &was);
+        assert_eq!(plane, [10.0, 11.0, 12.0, 13.0], "a volta restaura");
+        assert_eq!(back, vec![99.0, 98.0], "e devolve o que o refazer precisa");
     }
 }

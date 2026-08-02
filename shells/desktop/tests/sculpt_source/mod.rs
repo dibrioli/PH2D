@@ -83,6 +83,33 @@ pub fn braced_block(src: &str, anchor: &str) -> String {
     panic!("`{anchor}` não fecha");
 }
 
+/// Os argumentos de uma chamada `name(...)`, balanceando **parênteses**.
+///
+/// ⚠️ Existe porque [`braced_block`] procura a próxima CHAVE, e uma chamada não
+/// tem nenhuma: apontá-lo a uma devolve o bloco seguinte, e a asserção passa a
+/// medir outro lugar. Foi exatamente o que a primeira versão do gate do `shift`
+/// fez — ela leu o corpo do `if` e disse que o modificador não chegava.
+pub fn call_args(src: &str, name: &str) -> String {
+    let at = src
+        .find(name)
+        .unwrap_or_else(|| panic!("não achei a chamada `{name}`"));
+    let open = src[at..].find('(').expect("a chamada abre") + at;
+    let mut depth = 0i32;
+    for (i, c) in src[open..].char_indices() {
+        match c {
+            '(' => depth += 1,
+            ')' => {
+                depth -= 1;
+                if depth == 0 {
+                    return src[open..open + i + 1].to_string();
+                }
+            }
+            _ => {}
+        }
+    }
+    panic!("a chamada `{name}` não fecha");
+}
+
 /// O corpo de um braço de `match`: o bloco `{...}` se houver, senão o resto da
 /// linha.
 ///

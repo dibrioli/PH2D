@@ -61,6 +61,25 @@ struct Details {
     masks: Option<Vec<f32>>,
 }
 
+/// **Um nível fora da pilha** — a malha e o detalhe dela, como uma coisa só.
+///
+/// Opaco de propósito: quem o segura (a fila de refazer do editor) não tem nada
+/// a perguntar a ele — só a devolvê-lo inteiro. Ver [`Multires::drop_top`].
+///
+/// ⚠️ **O `details` viaja junto e HOJE nenhum gate o vê** — a mutação que o troca
+/// por um vazio passa nos doze. O mecanismo: `details[i]` só é lido por
+/// [`Multires::higher`] ao ENTRAR no nível `i`, o que exige estar em `i − 1`, o
+/// que exige um [`Multires::lower`] antes — e o `lower` **reescreve**
+/// `details[i]`. O detalhe que um nível destacado carrega é, portanto,
+/// sobrescrito antes de qualquer leitura. Ele fica porque *um nível É malha e
+/// detalhe* e porque carregá-lo é um move, não uma cópia; a alternativa seria um
+/// tipo que se diz um nível e devolve metade dele.
+#[derive(Clone, Debug)]
+pub struct DetachedLevel {
+    mesh: Mesh,
+    details: Details,
+}
+
 /// **A pilha de níveis.** O nível 0 é a base; cada nível acima é uma subdivisão
 /// do anterior mais o detalhe que o artista pôs nele.
 #[derive(Clone, Debug)]
@@ -179,18 +198,44 @@ impl Multires {
         true
     }
 
-    /// **Descarta o nível do TOPO** e desce a seleção — o desfazer do
-    /// [`Multires::add_level`].
+    /// **Destaca o nível do TOPO** e desce a seleção — o desfazer do
+    /// [`Multires::add_level`]. Devolve o nível, ou `None` se não havia o que
+    /// destacar.
     ///
     /// ⚠️ Só do topo, e só se houver mais de um: descartar do meio deixaria uma
     /// pilha cujos detalhes descrevem um nível que não existe mais.
-    pub fn drop_top(&mut self) -> bool {
+    ///
+    /// ⚠️ **Ele ENTREGA o que tira, em vez de deixar cair** — e é o que torna o
+    /// refazer exato. A alternativa (redo = subdividir de novo) só acerta
+    /// enquanto o nível de baixo estiver byte-a-byte como estava, e **`lower`
+    /// escreve nele** (o `copy_shared_down`): depois de descer uma vez, uma
+    /// subdivisão recomputada não é a mesma malha. Entregar o nível não custa
+    /// memória de PICO — ele é MOVIDO para fora e MOVIDO de volta, nunca
+    /// clonado; o que muda é só quanto tempo ele vive.
+    pub fn drop_top(&mut self) -> Option<DetachedLevel> {
         if self.levels.len() < 2 || self.sel + 1 != self.levels.len() {
+            return None;
+        }
+        let mesh = self.levels.pop()?;
+        let details = self.details.pop()?;
+        self.sel -= 1;
+        Some(DetachedLevel { mesh, details })
+    }
+
+    /// **Recoloca no topo** um nível destacado, e o seleciona — a inversa exata
+    /// de [`Multires::drop_top`].
+    ///
+    /// ⚠️ Só do topo, pela mesma razão do [`Multires::add_level`]: um nível que
+    /// entrasse no meio deixaria o detalhe de cima descrevendo outro pai.
+    /// Devolve `false` (e **consome** o nível) se a pilha não estiver no topo —
+    /// o chamador sobe primeiro, como já faz para descartar.
+    pub fn push_level(&mut self, level: DetachedLevel) -> bool {
+        if self.sel + 1 != self.levels.len() {
             return false;
         }
-        self.levels.pop();
-        self.details.pop();
-        self.sel -= 1;
+        self.levels.push(level.mesh);
+        self.details.push(level.details);
+        self.sel += 1;
         true
     }
 

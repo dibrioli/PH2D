@@ -179,6 +179,12 @@ pub(crate) struct Sculpt3dScene {
     rig: LightRig,
     stroke: SculptStroke,
     undo: Vec<StrokeUndo>,
+    /// **O futuro guardado** — o que um Ctrl+Z tirou e um Ctrl+Shift+Z devolve.
+    ///
+    /// ⚠️ Ela é populada por [`Sculpt3dScene::undo_stroke`] e esvaziada por
+    /// [`Sculpt3dScene::record`], nunca por quem edita: uma edição nova torna
+    /// este futuro inalcançável, e a lei mora na porta que grava.
+    redo: Vec<StrokeUndo>,
     /// Os vértices que a GPU ainda não viu — acumulados entre frames, porque
     /// vários eventos de ponteiro cabem num quadro.
     dirty: Vec<u32>,
@@ -223,6 +229,7 @@ impl Sculpt3dScene {
             rig: LightRig::default(),
             stroke: SculptStroke::default(),
             undo: Vec::new(),
+            redo: Vec::new(),
             dirty: Vec::new(),
             edits: 0,
             role: FormRole::Clay,
@@ -460,7 +467,7 @@ impl Sculpt3dScene {
             MaskOp::Blur => ph2d_sculpt3d::mask_ops::blur(self.mesh_mut(), MASK_OP_PASSES),
             MaskOp::Sharpen => ph2d_sculpt3d::mask_ops::sharpen(self.mesh_mut(), MASK_OP_PASSES),
         }
-        self.undo.push(StrokeUndo::Mask {
+        self.record(StrokeUndo::Mask {
             level: self.stack.level(),
             before,
         });

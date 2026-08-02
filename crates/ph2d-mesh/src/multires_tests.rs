@@ -266,6 +266,68 @@ fn select_walks_to_the_level_it_was_asked_for() {
     assert_eq!(m.level(), 3);
 }
 
+/// **Um nível destacado volta EXATAMENTE como saiu** — a inversa que o refazer
+/// de uma subdivisão precisa.
+#[test]
+fn a_detached_level_comes_back_the_way_it_left() {
+    let mut m = Multires::new(shapes::uv_sphere(10, 14, 1.0));
+    assert!(m.add_level());
+    for v in [3usize, 17, 42] {
+        bump(m.mesh_mut(), v, 0.2);
+    }
+    let top = m.mesh().positions().to_vec();
+
+    let gone = m.drop_top().expect("havia um topo");
+    assert_eq!(m.level(), 0);
+    assert_eq!(m.level_count(), 1);
+
+    assert!(m.push_level(gone));
+    assert_eq!(
+        m.level(),
+        1,
+        "recolocar também SELECIONA — é a inversa inteira"
+    );
+    assert_eq!(m.level_count(), 2);
+    assert_eq!(
+        m.mesh().positions(),
+        &top[..],
+        "o nível voltou aproximado em vez de exato"
+    );
+}
+
+/// ⚠️ **E é por isso que ele é CARREGADO em vez de recomputado.**
+///
+/// A alternativa barata — refazer uma subdivisão chamando `add_level` de novo —
+/// só reproduz o nível enquanto o de baixo estiver como estava, e **`lower`
+/// escreve no de baixo** (`copy_shared_down`). Depois de UMA viagem para baixo a
+/// recomputação devolve uma malha *parecida*, que é a pior forma de errado
+/// porque ninguém a vê. Este gate mede as duas rotas sobre a mesma pilha.
+#[test]
+fn recomputing_the_subdivision_is_not_the_level_that_was_dropped() {
+    let mut m = Multires::new(shapes::uv_sphere(10, 14, 1.0));
+    assert!(m.add_level());
+    // Num vértice COMPARTILHADO: é o que a descida carimba na base.
+    bump(m.mesh_mut(), 7, 0.3);
+    assert!(m.lower());
+    assert!(m.higher());
+    let top = m.mesh().positions().to_vec();
+
+    // A rota que shipa: destaca e devolve.
+    let gone = m.drop_top().expect("havia um topo");
+    assert!(m.push_level(gone));
+    assert_eq!(m.mesh().positions(), &top[..], "carregar o nível é exato");
+
+    // A rota barata: destaca, joga fora, subdivide de novo.
+    let gone = m.drop_top().expect("havia um topo");
+    drop(gone);
+    assert!(m.add_level());
+    let err = worst(&top, m.mesh().positions());
+    assert!(
+        err > 0.05,
+        "recomputar tinha de DIVERGIR depois de uma descida, e desviou só {err}"
+    );
+}
+
 /// ⚠️ **O QUE O ARTISTA VÊ AO DESCER** — o gate que faltava, achado por mutação.
 ///
 /// Apagar o `copy_shared_down` **sobrevive a todos os gates de viagem**: sem ele

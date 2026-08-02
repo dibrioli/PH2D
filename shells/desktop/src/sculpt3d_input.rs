@@ -249,13 +249,31 @@ impl App {
     }
 
     /// As teclas da cena 3D. Devolve `true` se consumiu.
-    pub(crate) fn sculpt3d_key(&mut self, code: winit::keyboard::KeyCode, ctrl: bool) -> bool {
+    pub(crate) fn sculpt3d_key(
+        &mut self,
+        code: winit::keyboard::KeyCode,
+        ctrl: bool,
+        shift: bool,
+    ) -> bool {
         use winit::keyboard::KeyCode as K;
         let Some(scene) = self.sculpt3d_scene_mut() else {
             return false;
         };
         if ctrl {
-            return code == K::KeyZ && scene.undo_stroke();
+            if code != K::KeyZ {
+                return false;
+            }
+            // ⚠️ **O `shift` é o que separa desfazer de refazer, e enquanto ele
+            // não chegava aqui o atalho de REFAZER desfazia mais um passo** —
+            // a forma de *"o redo não funciona"* que **destrói** trabalho em vez
+            // de não fazer nada. Ele é o mesmo par do resto do app (Ctrl+Z /
+            // Ctrl+Shift+Z): um terceiro atalho só para esta cena seria uma
+            // segunda gramática a aprender.
+            return if shift {
+                scene.redo_stroke()
+            } else {
+                scene.undo_stroke()
+            };
         }
         // Os dez primeiros verbos por número; o Mask fica no `M` porque ele não
         // é uma escultura a mais, é o canal que todos os outros respeitam.

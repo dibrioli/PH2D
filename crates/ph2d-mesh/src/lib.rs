@@ -52,7 +52,7 @@ pub use adjacency::{Adjacency, Csr};
 pub use edges::Edges;
 pub use face::{Face, TRI};
 pub use mesh::{DEFAULT_COLOR, DEFAULT_MASK, Mesh, MeshError, QueryScratch, RegionScratch};
-pub use multires::Multires;
+pub use multires::{DetachedLevel, Multires};
 pub use normals::{
     PAR_MIN, face_normal, face_normals_of, recompute_face_normals, recompute_vertex_normals,
     vertex_normals_of,

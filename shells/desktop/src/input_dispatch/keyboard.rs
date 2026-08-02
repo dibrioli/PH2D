@@ -64,7 +64,11 @@ impl App {
         #[cfg(feature = "sculpt3d")]
         if state == ElementState::Pressed
             && let PhysicalKey::Code(code) = physical_key
-            && self.sculpt3d_key(code, self.modifiers.control_key())
+            && self.sculpt3d_key(
+                code,
+                self.modifiers.control_key(),
+                self.modifiers.shift_key(),
+            )
         {
             return;
         }

@@ -142,8 +142,12 @@ impl StampPass {
     ///
     /// ⚠️ Esta v1 sobe a região e a lê de volta: o `canvas_rgba` continua **autoritativo** na CPU, e
     /// nenhum dos ~25 leitores dele precisa saber que a GPU existe. Tornar a tela residente no
-    /// device é a fatia S4 do doc 33, e só se a medição da FRONTEIRA pedir.
-    #[must_use]
+    /// device é a fatia S4 do doc 33, e a medição da FRONTEIRA disse que ela **não é necessária**.
+    ///
+    /// ⚠️ **`None` é uma RECUSA, e nunca um resultado.** A primeira versão devolvia a BASE quando o
+    /// readback falhava, o que o chamador escreveria de volta como se fosse tinta — o traço sumiria
+    /// **em silêncio**. Recusar é o que faz o lote cair na rota da CPU e o modo de falha ser *lento,
+    /// nunca errado*.
     pub fn run(
         &self,
         base: &[u8],
@@ -151,11 +155,11 @@ impl StampPass {
         lut: &[f32],
         dabs: &[GpuDab],
         preserve_alpha: bool,
-    ) -> Vec<u8> {
+    ) -> Option<Vec<u8>> {
         let n = (region.w as usize) * (region.h as usize);
         assert_eq!(base.len(), n * 4, "base tem de medir a região");
         if n == 0 || dabs.is_empty() || lut.is_empty() {
-            return base.to_vec();
+            return None;
         }
         let params = Params {
             rx: region.x,
@@ -252,9 +256,8 @@ impl StampPass {
         });
         let _ = self.device.poll(wgpu::PollType::wait_indefinitely());
         let out = match rx.recv() {
-            Ok(Ok(())) => slice.get_mapped_range().to_vec(),
-            // Um readback que falha devolve a BASE, não lixo: o chamador escreve o que já estava lá.
-            _ => base.to_vec(),
+            Ok(Ok(())) => Some(slice.get_mapped_range().to_vec()),
+            _ => None,
         };
         read.unmap();
         out

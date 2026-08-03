@@ -215,6 +215,8 @@ pub(crate) mod painter_bridge_selection_gizmos;
 pub(crate) mod painter_bridge_selection_overlay;
 pub(crate) mod painter_gpu_flatten;
 pub(crate) mod painter_gpu_preview;
+/// A ponte do carimbo de pigmento para o dispositivo (doc 33 §S3) — a metade do lado do shell.
+pub(crate) mod painter_stamp_device;
 /// The joint-anchor point gizmo's publish rule — extracted from `snapshots` so
 /// "which entity gets a point handle" is gated headless.
 pub(crate) mod point_gizmo;
@@ -8237,6 +8239,9 @@ impl crate::App {
                 // então este é o ÚNICO leitor (a lei do `wash_diag`).
                 let dep = ph2d_tool_painter::band_diag::take();
                 let (band_par, band_ser, band_dabs) = (dep.banded, dep.serial, dep.dabs);
+                // ⚠️ Sem este balde, *"não melhorou"* admite duas leituras opostas — a rota do device não é
+                // tomada, ou é tomada e o tempo está noutro lugar — e as curas são opostas (doc 33 §S3).
+                let band_dev = dep.device;
                 // ⚠️ **VISITAS, não o raio.** O custo de um lote é quadrático no raio do pincel,
                 // então um log com `dabs` e sem o raio convida a uma aritmética infundada — foi o
                 // que eu quase publiquei lendo o smoke de 2026-08-03. A soma das pegadas É o
@@ -8327,8 +8332,9 @@ impl crate::App {
                      [frame]   tool-tick: media {tick_avg:.2}ms pico {tick_max:.2}ms em {tick_n}/120 frames \
                      | stamps: media {stamp_avg:.2}ms pico {stamp_max:.2}ms em {stamp_n}/120 \
                      ({stamp_ev} entregas, {stamp_per:.2}ms cada)\n\
-                     [frame]   deposito: {band_par} lote(s) em BANDA x {band_ser} serial(is), \
-                     {band_dabs} dabs, {band_mvis:.2} M visitas ({band_ns:.1} ns/visita)\n\
+                     [frame]   deposito: {band_dev} no DEVICE, {band_par} em BANDA, \
+                     {band_ser} serial(is), {band_dabs} dabs, {band_mvis:.2} M visitas \
+                     ({band_ns:.1} ns/visita)\n\
                      [frame]   re-stamp por entrega: restore {rs_restore:.2}ms | relevo \
                      {rs_relief:.2}ms | save {rs_save:.2}ms | CARIMBO {rs_stamp:.2}ms \
                      (x{} entregas)\n\

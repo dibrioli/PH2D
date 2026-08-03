@@ -36,6 +36,10 @@ mod undo_planes;
 pub mod wash_diag; // o split do quadro da aquarela para o log do produto (PH2D_PAINT_PERF)
 pub mod wet_diag; // o split do tick da agua para o log do produto (PH2D_FLUID_PROFILE)
 
+/// **O lote de carimbo publicado para um dispositivo** — dado simples, para o shell montar a ponte
+/// sem que `wgpu` entre nesta crate nem o Painter alcance o kernel (doc 33 §S3).
+pub use tool::paint::stamp_device::{DeviceDab, DeviceStamp, DeviceStampJob};
+
 pub use compositor::{
     LayerImage, LayerPixelSource, MapPixelSource, Region, composite, composite_region,
 };

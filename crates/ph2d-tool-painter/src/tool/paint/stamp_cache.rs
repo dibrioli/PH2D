@@ -458,6 +458,20 @@ impl PainterTool {
                 brush.stroke_method,
             );
         }
+        // **O lote para o DISPOSITIVO**, resolvido antes de a tela ser forkada. Ele estreita o mesmo
+        // pincel de falloff puro do ramo abaixo com mais três cláusulas — blend `Mix`, sem pigmento
+        // RYB, sem Smooth Edges —, cada uma uma lei que o kernel não transcreve
+        // ([`super::stamp_device::eligible`]). Sem ponte instalada, ou fora do predicado, `None`: o
+        // lote segue para a rota em banda da CPU e nada muda.
+        let plain = !textured && !shape_active && !accumulate_cap && image.is_none();
+        let device = (plain && self.device_stamp.is_some() && super::stamp_device::eligible(brush))
+            .then(|| {
+                (
+                    super::stamp_device::device_dabs(dabs, brush),
+                    self.lut_cache.get(brush),
+                    self.device_stamp.as_ref().expect("checado no predicado"),
+                )
+            });
         let buf = super::plane_fork::fork_canvas(
             &mut self.canvas_rgba,
             &self.undo.write_state,
@@ -472,9 +486,26 @@ impl PainterTool {
         // DEFAULT (*"a bare falloff brush stays on the per-pixel path"*), e é onde o re-stamp de uma
         // forma gasta os 30-119 ms medidos em 2026-08-03. Abaixo do piso, ou com qualquer um dos três
         // presentes, a porta cai no laço `for d in dabs` de sempre — byte-idêntico.
-        if !textured && !shape_active && !accumulate_cap && image.is_none() {
-            let touched =
-                super::stamp_banded::stamp_plain_dabs_banded(buf, w, h, dabs, brush, alpha_locked);
+        if plain {
+            // O device primeiro; ele devolve `None` quando declina (sem região, ou a ponte falhou),
+            // e aí o MESMO lote cai na rota em banda — o modo de falha é lento, nunca errado.
+            let mut touched = None;
+            if let Some((dev, lut, bridge)) = device.as_ref() {
+                touched =
+                    super::stamp_device::stamp(bridge, buf, w, h, dev, lut, dabs, alpha_locked);
+            }
+            let on_device = touched.is_some();
+            super::stamp_banded::diag::note_device(on_device);
+            if !on_device {
+                touched = super::stamp_banded::stamp_plain_dabs_banded(
+                    buf,
+                    w,
+                    h,
+                    dabs,
+                    brush,
+                    alpha_locked,
+                );
+            }
             // O stream de RNG é consumido pelas BASES de textura, que este pincel não tem — mas o
             // `enter` por dab é o que faz o stream ANDAR, e ele tem de andar igual.
             for di in 0..dabs.len() {

@@ -291,16 +291,31 @@ pub mod diag {
         static DABS: Cell<u32> = const { Cell::new(0) };
         static VISITS: Cell<u64> = const { Cell::new(0) };
         static DELIVERIES: Cell<u32> = const { Cell::new(0) };
+        static DEVICE: Cell<u32> = const { Cell::new(0) };
         static RESTORE_US: Cell<u64> = const { Cell::new(0) };
         static RELIEF_US: Cell<u64> = const { Cell::new(0) };
         static SAVE_US: Cell<u64> = const { Cell::new(0) };
         static STAMP_US: Cell<u64> = const { Cell::new(0) };
     }
 
+    /// **O lote foi para o DISPOSITIVO?** — o instrumento que a wave da GPU exige pela mesma razão
+    /// que o `banded`/`serial` existe: sem ele, *"não melhorou"* admite duas leituras opostas (a
+    /// rota não é tomada · é tomada e o tempo está noutro lugar), e as curas são opostas.
+    pub(in crate::tool::paint) fn note_device(on_device: bool) {
+        if on_device {
+            DEVICE.with(|c| c.set(c.get().saturating_add(1)));
+        }
+    }
+
     pub(super) fn note(banded: bool, dabs: usize, work: usize) {
         let bucket = if banded { &BANDED } else { &SERIAL };
         bucket.with(|c| c.set(c.get().saturating_add(1)));
-        DABS.with(|c| c.set(c.get().saturating_add(u32::try_from(dabs).unwrap_or(u32::MAX))));
+        DABS.with(|c| {
+            c.set(
+                c.get()
+                    .saturating_add(u32::try_from(dabs).unwrap_or(u32::MAX)),
+            )
+        });
         VISITS.with(|c| c.set(c.get().saturating_add(work as u64)));
     }
 
@@ -330,6 +345,8 @@ pub mod diag {
     pub struct DepositDiag {
         /// Lotes que tomaram a rota em BANDA.
         pub banded: u32,
+        /// Lotes carimbados pelo DISPOSITIVO (subconjunto dos que entram no ramo de falloff puro).
+        pub device: u32,
         /// Lotes que ficaram seriais (pequenos demais para dividir).
         pub serial: u32,
         /// Dabs somados sobre os lotes.
@@ -350,6 +367,7 @@ pub mod diag {
         DepositDiag {
             banded: BANDED.with(Cell::take),
             serial: SERIAL.with(Cell::take),
+            device: DEVICE.with(Cell::take),
             dabs: DABS.with(Cell::take),
             visits: VISITS.with(Cell::take),
             deliveries: DELIVERIES.with(Cell::take),

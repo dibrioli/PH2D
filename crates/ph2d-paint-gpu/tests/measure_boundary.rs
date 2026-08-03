@@ -74,11 +74,15 @@ fn the_boundary_is_what_decides_this_wave() {
     );
 
     // A 1a corrida paga alocação e caminho frio — descartada, como toda sonda desta linha.
-    let _ = pass.run(&base, region(), &lut, &list, false);
+    let _ = pass
+        .run(&base, region(), &lut, &list, false)
+        .expect("o passe recusou");
     let mut samples = Vec::new();
     for _ in 0..7 {
         let t0 = std::time::Instant::now();
-        let out = pass.run(&base, region(), &lut, &list, false);
+        let out = pass
+            .run(&base, region(), &lut, &list, false)
+            .expect("o passe recusou");
         samples.push(t0.elapsed().as_secs_f64() * 1000.0);
         assert_eq!(out.len(), base.len());
         // O CONTROLE: se o passe não pintou nada, o relógio mede um no-op e o veredito é vazio.
@@ -175,7 +179,9 @@ fn the_wiring_choice_between_a_copy_and_full_width_rows() {
         (0..7)
             .map(|_| {
                 let t0 = std::time::Instant::now();
-                let out = pass.run(&scratch, region(), &lut, &list, false);
+                let out = pass
+                    .run(&scratch, region(), &lut, &list, false)
+                    .expect("o passe recusou");
                 let ms = t0.elapsed().as_secs_f64() * 1000.0;
                 assert_eq!(out.len(), scratch.len());
                 ms
@@ -194,7 +200,9 @@ fn the_wiring_choice_between_a_copy_and_full_width_rows() {
         (0..7)
             .map(|_| {
                 let t0 = std::time::Instant::now();
-                let out = pass.run(wide_base, wide_region, &lut, &list, false);
+                let out = pass
+                    .run(wide_base, wide_region, &lut, &list, false)
+                    .expect("o passe recusou");
                 let ms = t0.elapsed().as_secs_f64() * 1000.0;
                 assert_eq!(out.len(), wide_base.len());
                 ms

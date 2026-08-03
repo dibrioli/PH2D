@@ -125,6 +125,16 @@ pub struct PainterTool {
     /// o `canvas_rgba` mora: é bookkeeping sobre ESCREVER a tela, não sobre o modelo de pintura.
     /// O porquê, a medição e a alavanca de mutação: [`paint::watercolor_field::WashCadence`].
     wash: paint::watercolor_field::WashCadence,
+    /// **A ponte para um dispositivo**, instalada pelo shell — `None` é o mundo inteiro que existia
+    /// antes, e todo lote cai na rota em banda da CPU.
+    ///
+    /// ⚠️ **O molde é o do `denoise_ml_with_progress`:** a crate pesada nunca alcança o tool. Este
+    /// campo é um `Fn` sobre dado simples (bytes, uma tabela, discos), então nem `wgpu` entra aqui
+    /// nem o Painter alcança o kernel — a contenção que impede um segundo motor de ter opinião
+    /// sobre a lei do falloff. Ver [`paint::stamp_device`].
+    device_stamp: Option<paint::stamp_device::DeviceStamp>,
+    /// A tabela do perfil que sobe ao device, reconstruída só quando a LEI que a define muda.
+    lut_cache: paint::stamp_device::LutCache,
     /// **A FORMA doada pelo módulo 3D** — `[nx, ny, nz, peso]` por texel do canvas (`docs/3D/05.2`).
     ///
     /// O passe de luz deriva a normal de `∇h` da tinta; com este plano na mão ele compõe as DUAS
@@ -347,6 +357,8 @@ impl Default for PainterTool {
             params: PainterParams::default(),
             canvas_rgba: Arc::new(Vec::new()),
             wash: paint::watercolor_field::WashCadence::default(),
+            device_stamp: None,
+            lut_cache: paint::stamp_device::LutCache::default(),
             donated_form: None,
             layers: LayerStack::new(),
             images: BTreeMap::new(),

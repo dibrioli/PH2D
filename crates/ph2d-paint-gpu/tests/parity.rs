@@ -162,7 +162,9 @@ fn the_device_paints_what_the_cpu_paints() {
         for alpha_lock in [false, true] {
             let list = dabs(n);
             let want = cpu(&s, &list, alpha_lock);
-            let got = pass.run(&base(), region, &lut(&s), &gpu_dabs(&s, &list), alpha_lock);
+            let got = pass
+                .run(&base(), region, &lut(&s), &gpu_dabs(&s, &list), alpha_lock)
+                .expect("o passe recusou");
             let painted = want.iter().zip(&base()).filter(|(a, b)| a != b).count();
             assert!(
                 painted > 0,

@@ -229,6 +229,9 @@ pub(super) fn dispatch(
                 painter_preview_gpu,
                 toasts,
             );
+            // E instala a ponte do CARIMBO no mesmo vão, pela mesma razão: construir o passe
+            // compila um shader, e o custo não pode cair no primeiro traço (doc 33 §S3).
+            super::painter_stamp_device::install(painter, renderer);
             // Impasto smoke: arm the brush the first time a document binds, so the artist drags and sees
             // thick lit paint instead of hunting for the knobs. One-shot; never overwrites their edits.
             crate::impasto_smoke::arm_brush_once(painter);

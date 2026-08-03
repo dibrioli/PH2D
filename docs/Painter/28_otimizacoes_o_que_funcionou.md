@@ -7056,3 +7056,94 @@ que é a próxima frente e agora tem número.
 2. **O `Rewet` paga ~10 dos 23 ms do tick** (r=250) — trabalho honesto de um efeito ligado, por-pixel
    dentro da janela.
 3. **`composite max 163,39 ms`** num único quadro, contra p50 de 10,62 — outlier sem causa atribuída.
+
+---
+
+## §5.76 — E os dois passes por-quadro da umidade caminham em PARALELO: 40,9 → 3,6 ms/quadro (2026-08-02)
+
+O 2º log do Enio fechou a conta do quadro dele — `composite 10,62 · pour 9,70 ·
+secagem 12,81 · CHROME wet 37,05 ≈ 70` contra um `frame p50 = 67,3` — e depois
+que a §5.75 derrubou o véu, **os dois maiores itens que sobraram eram a SECAGEM
+e o DESPEJO**, os dois caminhando a união cumulativa em todo quadro.
+
+### ⛔ Três curas construídas, três medidas em ~1,00× — não as refaça
+
+A hipótese natural era a FORMA do passe de secagem: ele tirava um **snapshot do
+rect inteiro** (`vec![0; rw*rh]` alocado por quadro + a cópia completa) só para
+que o gather de 4 vizinhos lesse valores pré-passo. Três curas byte-idênticas
+saíram daí, e as três foram **medidas pela porta do produto**:
+
+| cura | ganho |
+|---|---|
+| **janela deslizante** (`up` de uma linha de scratch · `left` de um ESCALAR · `down`/`right` do mapa ainda não escrito) | **1,02×** |
+| **piso da erosão** (`erode = gap·step·2/255` só alcança 1 acima de `ceil(255/(step·2))`, e `gap ≤ o` ⇒ abaixo do piso os 4 vizinhos não mudam um byte) | ~1,00× |
+| **o rect ENCOLHE** para a bbox do não-zero (a secagem é edges-to-centre por desenho, então a poça recua) | ~1,00× |
+
+⚠️ **A alocação e a cópia NÃO eram o custo.** O passe custa **2,2 ns/texel**, e o
+que ele faz é caminhar: 12,85 M texels a 4096² = **28,5-30,4 ms/quadro**. A
+janela deslizante foi **REVERTIDA** — não por ser errada (ela é byte-idêntica e
+estritamente menos trabalho), mas porque a **dependência entre linhas** que ela
+cria é exatamente o que impede o paralelo que funciona. *Uma otimização que não
+mede nada e bloqueia a que mede é pior que nenhuma.*
+
+O piso da erosão e o rect que encolhe **ficaram**: valem ~1,0× no relógio, são
+byte-idênticos, e o rect é lido também pelo **véu de umidade do shell** — o
+consumidor que a §5.75 acabou de baratear.
+
+### ✅ O que move: os dois passes são row-parallel
+
+Emenda de 2026-08-02 no [ADR-0109]. Os três invariantes dele valem verbatim, e o
+que a cerca de contenção nomeia — *"redução/acumulação cuja ordem importe"* — é
+justamente o caso que ela isenta: a redução da secagem é `max` sobre `u8` (o
+`wettest`, que decide o teardown da sessão) e `min`/`max` sobre índices (a bbox),
+**associativas e comutativas sobre inteiros**; o despejo **não tem redução
+nenhuma**.
+
+Medido pela porta do produto, mesma corrida, estado restaurado antes de cada
+amostra:
+
+| | antes | agora | |
+|---|---|---|---|
+| secagem, um passe @4096² | 30,44 ms | **3,28** | **9,3×** |
+| secagem, 120 quadros secando | 28,50 ms/quadro | **2,93** | **9,7×** |
+| despejo @4096² | 12,46 ms | **0,63** | **19,8×** |
+| secagem @2048² | 7,96 ms | 1,09 | 7,3× |
+
+⚠️ O 19,8× do despejo inclui a **tabela de dureza** (`smoothstep(SS0,SS1,c/255)·255`
+é função pura de um `u8` ⇒ 256 respostas), porque o oráculo congelado é o produto
+pré-wave inteiro. E ⚠️ **essa corrida saiu com `load average 6,7`**: as razões
+sobrevivem (as duas rotas são cronometradas costas-com-costas, a carga é fator
+comum) e os **absolutos não** — a corrida calma, `load 1,0`, dava 28,87 → 3,45.
+
+### As lições de gate, todas minhas
+
+1. **A 1ª versão do gate de identidade usava só 128²**, abaixo do piso do pool
+   ⇒ ela **nunca entrou na rota paralela que a wave instala**. Verde sobre o
+   caminho que não mudou. Hoje varre os dois lados do piso.
+2. **O `step` é fixture tanto quanto o tamanho.** A mutação *"leia um vizinho já
+   escrito"* **SOBREVIVEU** ao gate original: a erosão é inteira, o erro vale
+   ~`step`, e ele só atravessa a quantização quando `step² · 2 ≥ 255` — ou seja
+   `step ≥ 12`, e eu tinha escolhido 5. O produto anda a `step = 1`, onde o erro
+   é invisível; mas *"invisível no ponto de operação de hoje"* é como um vizinho
+   errado vive até alguém mexer no Drying Time. O gate varre 1/5/17/51.
+3. **O gate da tabela era uma TAUTOLOGIA** — comparava a LUT com a função que a
+   constrói. Mudar a expressão movia os dois lados. O oráculo é a lei ESCRITA no
+   teste. (A `line/physics` documentou essa forma em três gates.)
+4. **Comparar as duas rotas do PRODUTO provaria só o walker**, porque as duas
+   compartilham o mesmo corpo — a lição do [ADR-0145]. Os dois oráculos são
+   rotinas congeladas sob `cfg(test)`, e é por isso que a mutação *"o `base`
+   esquece o offset da banda"* sangra.
+5. **Serial e paralelo dão os MESMOS bytes** — que é a propriedade que torna a
+   cura segura, e exatamente por isso nenhum gate de identidade pega a regressão
+   de **uma letra** (`par_chunks_mut` → `chunks_mut`). Daí o arch-gate, irmão do
+   que o fold do impasto já carrega neste crate.
+
+**7 mutações vivas, 7 sangram.** Suíte 966 verde, clippy limpo, `PROJECT_SCHEMA`
+intocado, nenhuma dep nova (o `rayon` já era desta crate desde o ADR-0109).
+
+**Aberto, com número:** o `composite` (10,6 ms p50, 163 ms de pico num quadro
+isolado, ainda sem causa atribuída) e o `Rewet 0.400`, que paga ~10 dos 23 ms do
+tick e é trabalho honesto por-pixel dentro da janela.
+
+[ADR-0109]: ../architecture/decisions/0109-rayon-exception-watercolor-composite.md
+[ADR-0145]: ../architecture/decisions/0145-wet-paint-solver-row-parallel-passes-rayon-exception.md

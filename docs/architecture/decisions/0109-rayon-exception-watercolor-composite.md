@@ -173,3 +173,11 @@ amostra: um passe **30,44 → 3,28 ms a 4096² (9,3×)** e 7,96 → 1,09 a 2048�
 varrendo o `step` (1/5/17/51) e **os dois lados do piso do pool**. ⚠️ A primeira
 versão do gate usava só 128², abaixo do piso: ela nunca entrou na rota paralela
 que a wave instala.
+
+**Escopo somado no mesmo dia: o DESPEJO** (`pour_canvas_wet`, o irmão que molha
+o mapa que a secagem seca). Mesma forma por linhas, e o caso mais simples dos
+dois: **não há redução nenhuma** — cada linha lê `owner`/`stroke_coverage`
+(imutáveis) e escreve só a própria fatia; o rect é unido depois, fora do laço.
+Medido **12,46 → 0,63 ms a 4096²** (o número inclui a tabela de dureza, porque o
+oráculo congelado é o produto pré-wave inteiro). Os dois passes compartilham o
+piso do pool `WET_PAR_MIN`, que mora com o mapa.

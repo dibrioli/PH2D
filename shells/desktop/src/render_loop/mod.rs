@@ -4684,6 +4684,8 @@ impl crate::App {
             let vec_xf_ops = crate::vec_transform::build(sim, &self.vec_entities);
             if let Some((field, target)) = pending_vec_transform {
                 crate::input_dispatch::apply_vec_transform(
+                    sim,
+                    &self.vec_entities,
                     vec_scene,
                     &mut self.vec_history,
                     &self.vec_pen,
@@ -4702,6 +4704,8 @@ impl crate::App {
                     (crate::input_dispatch::VecTransformField::H, ph),
                 ] {
                     crate::input_dispatch::apply_vec_transform(
+                        sim,
+                        &self.vec_entities,
                         vec_scene,
                         &mut self.vec_history,
                         &self.vec_pen,

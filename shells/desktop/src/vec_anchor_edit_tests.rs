@@ -64,13 +64,19 @@ fn an_unnamed_pair_lights_nothing() {
     assert_eq!(chip_of(H, [0.25, 0.25]), None);
 }
 
-/// **Sem componente, a seção mostra o NEUTRO** — que é o que a ausência de facto produz.
+/// **Sem componente, NENHUM chip acende** — e a seção continua a ser oferecida.
+///
+/// ⚠️ Este gate dizia o contrário (*"a seção mostra o NEUTRO, que é o que a ausência de facto
+/// produz"*) e **pinava o defeito**: a ausência não produz o neutro desde que uma alça possa
+/// mexer na aresta mínima — sem regra o filho não anda, com a neutra ele anda com ela. Acender
+/// `Left`/`Bottom` mostrava ao artista dois chips já escolhidos sobre um filho que não seguia
+/// nada, e é por isso que ele não clicava.
 #[test]
-fn a_child_without_a_rule_shows_the_neutral_lit() {
+fn a_child_without_a_rule_lights_no_chip() {
     let (sim, _scene, map, ids) = frame_with(1);
     let a = selected_anchors(&sim, &map, &[ids[1]]).expect("o filho e' ancoravel");
-    assert_eq!(a.h, Some(ids::VECTOR_ANCHOR_H_START));
-    assert_eq!(a.v, Some(ids::VECTOR_ANCHOR_V_END), "Bottom, o Y-up");
+    assert_eq!(a.h, None, "nenhuma regra, nenhum chip");
+    assert_eq!(a.v, None);
 }
 
 /// **A seção NÃO é oferecida num fluxo** — a mesma porta que o passe usa para recusar.
@@ -127,12 +133,18 @@ fn changing_the_chip_keeps_the_ruler_that_was_captured() {
     assert_eq!(a.min, [0.5, 0.0]);
 }
 
-/// **O neutro DESTACA** — uma regra que não move nada não viaja no arquivo.
+/// **Voltar ao neutro MANTÉM a regra — e mantém a RÉGUA.**
+///
+/// ⚠️ Este gate afirmava o oposto (*"o neutro DESTACA: uma regra que não move nada não viaja no
+/// arquivo"*), e era ele que pinava o report do Enio: `Left`+`Bottom` **é** a regra neutra, então
+/// escolhê-la apagava a própria regra pedida. O que se perdia junto era o `base` — a régua contra
+/// a qual *"quanto a moldura mudou"* é medido —, e sem ela nenhuma regra futura sabe de onde
+/// partir.
 #[test]
-fn returning_to_the_neutral_detaches_the_component() {
+fn returning_to_the_neutral_keeps_the_rule_and_its_ruler() {
     let (mut sim, scene, map, ids) = frame_with(1);
     apply_anchor_edit(&mut sim, &scene, &map, &[ids[1]], AnchorEdit::H([1.0, 1.0]));
-    assert!(rule_of(&sim, &map, ids[1]).is_some());
+    let armed = rule_of(&sim, &map, ids[1]).expect("armou");
     assert!(apply_anchor_edit(
         &mut sim,
         &scene,
@@ -140,14 +152,30 @@ fn returning_to_the_neutral_detaches_the_component() {
         &[ids[1]],
         AnchorEdit::H([0.0, 0.0]),
     ));
-    assert!(rule_of(&sim, &map, ids[1]).is_none(), "destacou");
+    let now = rule_of(&sim, &map, ids[1]).expect("a regra NAO destacou");
+    assert_eq!([now.min, now.max], [[0.0, 0.0], [0.0, 0.0]], "e' a neutra");
+    assert_eq!(now.base, armed.base, "a regua sobreviveu");
 }
 
-/// **Clicar o chip que já está aceso é um no-op** — o `post_frame_undo` regista por diff, e um
-/// passo de undo sem mudança nenhuma é lixo que o artista tem de desfazer.
+/// **Escolher `Left`/`Bottom` num filho sem regra ARMA a regra** — o report do Enio, feito gate.
+///
+/// ⚠️ Aqui estava o seu oposto (*"clicar o chip que já está aceso é um no-op"*), verdadeiro
+/// enquanto a ausência e o neutro fossem a mesma coisa. Não são: este clique é o que dá ao filho
+/// uma régua, e sem ele `Constrain Left` não tem por onde medir.
 #[test]
-fn re_clicking_the_lit_chip_changes_nothing() {
+fn choosing_the_min_edge_on_an_unruled_child_arms_the_rule() {
     let (mut sim, scene, map, ids) = frame_with(1);
+    assert!(rule_of(&sim, &map, ids[1]).is_none(), "nasce sem regra");
+    assert!(apply_anchor_edit(
+        &mut sim,
+        &scene,
+        &map,
+        &[ids[1]],
+        AnchorEdit::H([0.0, 0.0]),
+    ));
+    let a = rule_of(&sim, &map, ids[1]).expect("armou com o clique em Left");
+    assert_eq!(a.base, [0.0, 0.0, 100.0, 40.0], "capturou a regua");
+    // E agora sim: o segundo clique no MESMO chip é o no-op honesto.
     assert!(!apply_anchor_edit(
         &mut sim,
         &scene,
@@ -155,5 +183,4 @@ fn re_clicking_the_lit_chip_changes_nothing() {
         &[ids[1]],
         AnchorEdit::H([0.0, 0.0]),
     ));
-    assert!(rule_of(&sim, &map, ids[1]).is_none());
 }

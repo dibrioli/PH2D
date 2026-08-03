@@ -1123,7 +1123,18 @@ pub(crate) fn vec_transform_field_for_id(id: ph2d_editor::NodeId) -> Option<VecT
 /// bbox top-left to `target`; W/H scale (about the bbox min) so that dimension
 /// becomes `target` (clamped > 0; a degenerate dimension can't be resized).
 /// Records ONE undo step iff it changed. Free fn (mirror of [`apply_vec_boolean`]).
+///
+/// ⚠️ **O `sim`/`map` estão aqui pela RECEITA, e não por conveniência.** Um `W`/`H` escala a
+/// GEOMETRIA (`scale_path`), e a geometria de uma forma VIVA é derivada do `w`/`h` guardado no
+/// `VecShape::Param`. Escrever só os `verts` deixa a receita a descrever a caixa antiga, e a
+/// primeira edição de qualquer parâmetro re-cozinha a partir dela — medido, `100 → 50 → 100`:
+/// **o redimensionamento evapora em silêncio**. Este defeito é ANTERIOR à alça do gizmo (este
+/// caminho era o único que escalava geometria de forma viva), e a alça só o tornou fácil de
+/// alcançar. A porta é a MESMA que ela usa ([`crate::vec_shape_live::resize_recipe`]).
+#[allow(clippy::too_many_arguments)] // a receita mora no ECS; a geometria, na cena
 pub(crate) fn apply_vec_transform(
+    sim: &mut ph2d_ecs::SimWorld,
+    map: &crate::vec_entities::VecEntityMap,
     scene: &mut ph2d_vec_scene::VecScene,
     history: &mut ph2d_vec_edit::History,
     pen: &ph2d_vec_edit::PenTool,
@@ -1157,7 +1168,9 @@ pub(crate) fn apply_vec_transform(
                 false
             } else {
                 let sx = target.max(1e-4) / w;
-                (sx - 1.0).abs() > 1e-9 && scene.scale_path(sel, sx, 1.0, local_lo)
+                (sx - 1.0).abs() > 1e-9
+                    && scene.scale_path(sel, sx, 1.0, local_lo)
+                    && keep_recipe_in_step(sim, map, sel, sx, 1.0)
             }
         }
         VecTransformField::H => {
@@ -1166,13 +1179,39 @@ pub(crate) fn apply_vec_transform(
                 false
             } else {
                 let sy = target.max(1e-4) / h;
-                (sy - 1.0).abs() > 1e-9 && scene.scale_path(sel, 1.0, sy, local_lo)
+                (sy - 1.0).abs() > 1e-9
+                    && scene.scale_path(sel, 1.0, sy, local_lo)
+                    && keep_recipe_in_step(sim, map, sel, 1.0, sy)
             }
         }
     };
     if changed {
         history.push_undo(pre);
     }
+}
+
+/// A receita da forma VIVA de `id` passa a medir a caixa escalada por `(sx, sy)`. Devolve
+/// **sempre `true`** — a geometria já mudou, e um path CRU (sem receita) não é falha nenhuma.
+///
+/// ⚠️ Ela vive dentro do `&&` do braço de propósito: pendurada ali, um braço de escala novo que
+/// esqueça de a chamar **não conta como escala** — o `changed` fica `false` e o undo grita.
+/// Escrita depois do `match`, ela seria uma linha que o próximo braço não sabe que existe.
+fn keep_recipe_in_step(
+    sim: &mut ph2d_ecs::SimWorld,
+    map: &crate::vec_entities::VecEntityMap,
+    id: ph2d_vec_scene::VecPathId,
+    sx: f64,
+    sy: f64,
+) -> bool {
+    if let Some(&bits) = map.get(&id) {
+        let e = ph2d_ecs::Entity::from_bits(bits);
+        if let Some(ph2d_ecs::VecShape::Param { w, h, .. }) =
+            sim.world().get::<ph2d_ecs::VecShape>(e).cloned()
+        {
+            crate::vec_shape_live::resize_recipe(sim, e, w * sx, h * sy);
+        }
+    }
+    true
 }
 
 /// The shape kind a Vector draw-mode maps to (`None` = Pen, the non-shape
@@ -5597,12 +5636,17 @@ mod tests {
 
         let mut scene = VecScene::new();
         let id = scene.push_path(rectangle([0.0, 0.0], [10.0, 4.0]));
+        // Um path CRU: sem receita a manter em passo (o `keep_recipe_in_step` sai calado).
+        let mut sim = ph2d_ecs::SimWorld::default();
+        let map = crate::vec_entities::VecEntityMap::new();
         let mut hist = ph2d_vec_edit::History::new();
         let mut pen = ph2d_vec_edit::PenTool::new();
         pen.select(Some(id));
 
         // X → 5 moves the bbox min; W → 20 doubles the width.
         apply_vec_transform(
+            &mut sim,
+            &map,
             &mut scene,
             &mut hist,
             &pen,
@@ -5612,6 +5656,8 @@ mod tests {
         );
         assert!((scene.path_bbox(id).unwrap().0[0] - 5.0).abs() < 1e-9);
         apply_vec_transform(
+            &mut sim,
+            &map,
             &mut scene,
             &mut hist,
             &pen,

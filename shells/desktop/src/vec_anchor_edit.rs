@@ -15,12 +15,22 @@
 //! *"Top"* é a âncora `1` e *"Bottom"* é a `0`. Os ids não carregam número, e o motor
 //! ([`ph2d_ecs::VecAnchors`]) não conhece as palavras — quem as liga é esta tabela.
 //!
-//! # A ausência do componente ACENDE o neutro
+//! # A ausência do componente NÃO é o neutro (corrigido 2026-08-03)
 //!
-//! Um filho sem regra fica colado na aresta mínima quando a moldura cresce — que é exactamente o
-//! que `Left`/`Bottom` diz. Então a seção mostra esses dois acesos em vez de mostrar nada, e o
-//! artista vê o estado em que ele já está. Clicar neles é um no-op honesto; clicar noutro é que
-//! arma a regra (e captura a régua).
+//! ⚠️ Esta seção dizia o contrário — *"um filho sem regra fica colado na aresta mínima quando a
+//! moldura cresce, que é exactamente o que `Left`/`Bottom` diz"* — e era verdade **enquanto a
+//! aresta mínima da moldura não se movesse**, que é o que o `w`/`h` do painel garante (ele escala
+//! em torno do canto mínimo). A alça do gizmo move-a, e aí as duas divergem: **sem regra o filho
+//! não anda; com a regra neutra ele anda COM a aresta mínima.**
+//!
+//! O preço de ler uma como a outra foi o report do Enio (*"Constrain Left e Bottom pararam de
+//! funcionar"*): `Left` e `Bottom` **são** as duas arestas mínimas, então escolher as duas dava a
+//! regra neutra, que o `apply_anchor_edit` DESTACAVA — o clique apagava a própria regra que
+//! acabara de pedir, e com ela a **régua** (`VecAnchors::base`), que é a carga útil.
+//!
+//! Hoje: a regra neutra grava-se como qualquer outra, e um filho sem regra **não acende chip
+//! nenhum** — o mesmo precedente dos perfis de largura (*"aí nenhuma acende, que é a verdade"*).
+//! O primeiro clique arma e captura a régua.
 
 use ph2d_ecs::{Entity, SimWorld, VecAnchors};
 use ph2d_editor::ids;
@@ -106,12 +116,14 @@ pub(crate) fn selected_anchors(
     selected: &[VecPathId],
 ) -> Option<AnchorState> {
     let (kid, _) = anchored_subject(sim, map, selected)?;
-    // Sem componente, o neutro: é o que a ausência de facto produz.
-    let a = sim
-        .world()
-        .get::<VecAnchors>(kid)
-        .copied()
-        .unwrap_or_else(|| VecAnchors::armed([0.0; 4]));
+    // ⚠️ **Sem componente, nenhum chip aceso** — e não o neutro fabricado, que é o que estava
+    // aqui. Um filho sem regra não segue aresta nenhuma (ver o § do cabeçalho), então acender
+    // `Left`/`Bottom` descrevia um comportamento que ele não tem: o artista via os dois já
+    // escolhidos, não clicava, e a moldura crescia para a esquerda deixando-o para trás.
+    // A seção continua a existir (é `Some`) — o que some é a mentira sobre o estado.
+    let Some(a) = sim.world().get::<VecAnchors>(kid).copied() else {
+        return Some(AnchorState { h: None, v: None });
+    };
     Some(AnchorState {
         h: chip_of(H, [a.min[0], a.max[0]]),
         v: chip_of(V, [a.min[1], a.max[1]]),
@@ -164,18 +176,11 @@ pub(crate) fn apply_anchor_edit(
     if cur == Some(next) {
         return false;
     }
-    // O neutro DESTACA: uma regra que não move nada não viaja no arquivo (o precedente do
-    // `VecLayoutItem`). Ver [`VecAnchors::is_neutral`] para a condição que revoga isto.
-    if next.is_neutral() {
-        if cur.is_none() {
-            return false;
-        }
-        if let Ok(mut em) = sim.world_mut().get_entity_mut(kid) {
-            em.remove::<VecAnchors>();
-            return true;
-        }
-        return false;
-    }
+    // ⚠️ **A regra NEUTRA grava-se como qualquer outra.** Aqui havia um destaque
+    // (`if next.is_neutral() { remove::<VecAnchors>() }`) sob o argumento de que *"uma regra
+    // que não move nada não viaja no arquivo"* — e ela move, desde que uma alça possa mexer na
+    // aresta mínima. Pior: o que se apagava junto era a **régua**, sem a qual não há contra o
+    // que medir o crescimento. Ver o § do cabeçalho.
     if let Ok(mut em) = sim.world_mut().get_entity_mut(kid) {
         em.insert(next);
         return true;

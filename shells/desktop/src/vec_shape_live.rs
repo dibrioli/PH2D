@@ -54,6 +54,42 @@ pub(crate) fn recook_shape(shape: &VecShape) -> Option<VecPath> {
     Some(ph2d_vec_scene::cook(k, a, b, values))
 }
 
+/// **A caixa AUTORADA de uma forma viva passa a medir `w × h`** — a porta que mantém a RECEITA
+/// em passo com a geometria. `false` se a entidade não tem receita paramétrica (um path cru, um
+/// texto): aí não há nada a manter em passo, e isso não é erro.
+///
+/// ⚠️ **Sem ela, redimensionar apaga-se sozinho.** A geometria de uma forma viva é DERIVADA
+/// (`recook_shape` cozinha de `w`/`h`), e todo redimensionamento do documento escreve os `verts`
+/// e mais nada — o `w`/`h` do painel desde sempre, e a alça da moldura desde esta wave. A receita
+/// fica a descrever a caixa ANTIGA, e a primeira edição de qualquer parâmetro re-cozinha a partir
+/// dela: medido, `100 → 50 → 100`, **o redimensionamento evapora em silêncio**.
+///
+/// ⚠️ **O sinal é preservado**, e não é detalhe: a reta guarda a DIREÇÃO em `w`/`h`
+/// ([`recook_shape`]), então tomar o módulo aqui viraria uma reta ao contrário no primeiro
+/// re-cook.
+pub(crate) fn resize_recipe(sim: &mut SimWorld, entity: Entity, w: f64, h: f64) -> bool {
+    let Some(VecShape::Param {
+        kind,
+        w: w0,
+        h: h0,
+        values,
+    }) = sim.world().get::<VecShape>(entity).cloned()
+    else {
+        return false;
+    };
+    let next = VecShape::Param {
+        kind,
+        w: w0.signum() * w.abs(),
+        h: h0.signum() * h.abs(),
+        values,
+    };
+    if let Ok(mut e) = sim.world_mut().get_entity_mut(entity) {
+        e.insert(next);
+        return true;
+    }
+    false
+}
+
 /// Substitui a GEOMETRIA do path `id` pela forma re-cozida (centrada), preservando id e
 /// estilo (fill/stroke). `true` se re-cozinhou.
 pub(crate) fn recook_into(scene: &mut VecScene, id: VecPathId, shape: &VecShape) -> bool {

@@ -591,7 +591,7 @@ impl App {
                     } else {
                         1.0
                     };
-                    crate::vec_frame_resize::apply(&mut gfx.vec_scene, start, fx, fy);
+                    crate::vec_frame_resize::apply(&mut gfx.sim, &mut gfx.vec_scene, start, fx, fy);
                 } else if matches!(drag.kind, ph2d_editor::GizmoDragKind::Translate)
                     && crate::layout_reorder::flow_parent(&gfx.sim, entity).is_some()
                 {

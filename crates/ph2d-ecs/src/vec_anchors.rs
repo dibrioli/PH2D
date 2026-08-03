@@ -101,18 +101,24 @@ impl VecAnchors {
         }
     }
 
-    /// A regra é a NEUTRA (colada na aresta mínima nos dois eixos)?
-    ///
-    /// ⚠️ É por ela que o componente **DESTACA**: uma regra que não move nada não tem por que
-    /// viajar em todo save (o precedente literal do `VecLayoutItem`). Ela coincide com a ausência
-    /// do componente **enquanto a aresta mínima da moldura ficar parada** — e é isso que o
-    /// `w`/`h` do painel garante hoje (ele escala em torno do canto mínimo). Uma alça futura que
-    /// cresça a moldura para a ESQUERDA quebra a coincidência, e aí esta regra de destacar tem de
-    /// ser revista junto com ela.
-    #[must_use]
-    pub fn is_neutral(&self) -> bool {
-        self.min == [0.0, 0.0] && self.max == [0.0, 0.0]
-    }
+    // ⚠️ **O `is_neutral` MORREU, e a cerca que ele carregava disparou** (report do Enio,
+    // 2026-08-03: *"Constrain Left e Bottom pararam de funcionar"*).
+    //
+    // Ele existia para DESTACAR a regra neutra — *"uma regra que não move nada não tem por que
+    // viajar em todo save"* — e o próprio doc dele nomeava o gatilho que a revogava: isso
+    // *"coincide com a ausência do componente **enquanto a aresta mínima da moldura ficar
+    // parada**"*, garantido pelo `w`/`h` do painel, que escala em torno do canto mínimo, e
+    // *"uma alça futura que cresça a moldura para a ESQUERDA quebra a coincidência"*.
+    //
+    // A alça chegou. `Left` e `Bottom` SÃO as duas arestas mínimas, então escolher as duas
+    // produzia exactamente a regra que o destaque apagava — e o filho ficava sem regra
+    // nenhuma, que não é a mesma coisa: **sem regra ele não anda; com a regra neutra ele anda
+    // COM a aresta mínima**. As duas só coincidiam enquanto aquela aresta estivesse presa.
+    //
+    // A régua (`base`) é o que se perdia junto, e é ela a carga útil: sem um `base` guardado
+    // não há contra o que medir *"quanto a moldura mudou"*, então a regra neutra **tem de ser
+    // gravada como qualquer outra**. Um destaque que apaga a régua não economiza um no-op,
+    // apaga a única coisa que a regra sabe.
 
     /// **O deslocamento das duas pontas do filho, em unidades LOCAIS da moldura** — `[dmin, dmax]`.
     ///
@@ -212,12 +218,26 @@ mod tests {
         assert_eq!(dmin, [6.0, 0.0]);
     }
 
-    /// A regra recém-armada é a neutra, e a régua dela é a moldura de agora.
+    /// A regra recém-armada cola-se na aresta mínima, e a régua dela é a moldura de agora.
     #[test]
-    fn an_armed_rule_is_neutral_and_remembers_the_frame_it_saw() {
+    fn an_armed_rule_hugs_the_min_edge_and_remembers_the_frame_it_saw() {
         let a = VecAnchors::armed(BASE);
-        assert!(a.is_neutral());
+        assert_eq!([a.min, a.max], [[0.0, 0.0], [0.0, 0.0]]);
         assert_eq!(a.base, BASE);
-        assert!(!rule([1.0, 0.0], [1.0, 0.0]).is_neutral());
+    }
+
+    /// **A regra NEUTRA anda com a aresta mínima — ela não é a ausência de regra.**
+    ///
+    /// ⚠️ É o gate que a cerca do `is_neutral` pedia e que ninguém tinha escrito: as duas
+    /// coisas coincidem enquanto a aresta mínima ficar parada, e divergem no instante em que
+    /// uma alça a move. Sem regra o filho não anda; com esta, anda os 4 inteiros — e é por
+    /// isso que ela precisa de ser GRAVADA (o `base` é a carga útil).
+    #[test]
+    fn the_neutral_rule_is_not_the_absence_of_a_rule() {
+        // A moldura cresceu para a ESQUERDA: a aresta mínima andou −4, o tamanho subiu 4.
+        let now = [-4.0, 0.0, 10.0, 4.0];
+        let [dmin, dmax] = rule([0.0, 0.0], [0.0, 0.0]).delta_local(now);
+        assert_eq!(dmin, [-4.0, 0.0], "a ponta minima segue a aresta minima");
+        assert_eq!(dmax, [-4.0, 0.0], "e a maxima tambem: e' uma translacao");
     }
 }

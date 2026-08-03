@@ -341,3 +341,64 @@ fn arming_a_rule_captures_the_ruler_the_pass_samples() {
     assert_eq!(ll.anchored(), 0, "armar nao pode mover a arte no clique");
     assert!(live.is_empty());
 }
+
+/// **`Constrain Left` funciona: armar pelo painel, arrastar a borda ESQUERDA, o filho vai junto.**
+///
+/// ⚠️ É o gate que faltava, e a falta tem a mesma forma da do redimensionamento: os irmãos acima
+/// **injetam** o `VecAnchors` à mão e provam o PASSE; os do `vec_anchor_edit` provam a PORTA de
+/// autoria. Nenhum dos dois atravessa a corrente inteira — *clicar o chip → arrastar a alça →
+/// o passe honrar* —, e era exactamente aí que o report do Enio vivia (*"Constrain Left e Bottom
+/// pararam de funcionar"*): o clique em `Left` apagava a própria regra que pedia, porque `Left`
+/// **é** a aresta mínima e o neutro DESTACAVA.
+///
+/// O oráculo é o que o artista vê: a caixa DESENHADA do filho.
+#[test]
+fn constrain_left_survives_the_click_and_the_handle() {
+    let (mut sim, mut scene, map, frame, kids) = frame_now(100.0, 1);
+    let frame_id = sim
+        .world()
+        .get::<ph2d_ecs::VecPathRef>(frame)
+        .expect("a moldura")
+        .0;
+    // 1. O artista escolhe `Left` (eixo X). ⚠️ Só o PRIMEIRO clique muda o mundo: a regra nasce
+    //    colada nas duas arestas mínimas, então pedir `Bottom` a seguir é um no-op honesto — e
+    //    exigir `true` dele foi a 1ª versão deste gate a reprovar produto correto.
+    assert!(
+        crate::vec_anchor_edit::apply_anchor_edit(
+            &mut sim,
+            &scene,
+            &map,
+            &[kids[0]],
+            crate::vec_anchor_edit::AnchorEdit::H([0.0, 0.0]),
+        ),
+        "o clique em Left tem de armar a regra"
+    );
+    let armed = sim
+        .world()
+        .get::<VecAnchors>(Entity::from_bits(map[&kids[0]]))
+        .copied()
+        .expect("a regra ficou gravada");
+    assert_eq!([armed.min, armed.max], [[0.0, 0.0], [0.0, 0.0]]);
+    assert_eq!(armed.base, [0.0, 0.0, 100.0, 40.0], "capturou a regua");
+    // 2. A alça arrasta a borda ESQUERDA: o pivô é a borda direita (x = 100), e a moldura
+    //    cresce 50 para a esquerda.
+    let xf = VecXforms::default();
+    let st =
+        crate::vec_frame_resize::begin(&scene, &xf, frame.to_bits(), frame_id, [100.0, 20.0], None)
+            .expect("armou o redimensionamento");
+    crate::vec_frame_resize::apply(&mut sim, &mut scene, &st, 1.5, 1.0);
+    let (flo, _fhi) = scene.path_curve_bbox(frame_id).expect("a moldura");
+    assert!(
+        approx(flo[0], -50.0),
+        "a fixture nao moveu a aresta minima: {flo:?}"
+    );
+    // 3. O passe honra: o filho anda os mesmos 50 para a esquerda.
+    let mut live = LiveGeometry::new();
+    let _ = run(&sim, &scene, &map, &mut live);
+    let (lo, _hi) = drawn(&live, &scene, kids[0]);
+    assert!(
+        approx(lo[0], -50.0),
+        "o filho nao seguiu a aresta esquerda: x={} (devia ser -50)",
+        lo[0]
+    );
+}

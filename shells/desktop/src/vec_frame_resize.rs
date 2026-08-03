@@ -63,6 +63,13 @@ pub(crate) struct FrameResizeStart {
     path: VecPath,
     /// O ponto FIXO do gesto, em coordenadas LOCAIS da moldura.
     anchor: [f64; 2],
+    /// A caixa AUTORADA da receita no pen-down (`VecShape::Param { w, h }`), se a forma for
+    /// VIVA. `None` para um path cru — que não tem receita a manter em passo.
+    ///
+    /// ⚠️ Ela é fotografada com a geometria e pela MESMA razão: a razão do gizmo é ABSOLUTA
+    /// contra o pen-down, então multiplicar a receita a cada movimento a levaria para o
+    /// infinito. O que se escreve é `w0 · sx`, nunca `w · sx`.
+    recipe: Option<[f64; 2]>,
 }
 
 impl FrameResizeStart {
@@ -117,6 +124,7 @@ pub(crate) fn begin(
     entity_bits: u64,
     id: VecPathId,
     pivot_world: [f32; 2],
+    recipe: Option<[f64; 2]>,
 ) -> Option<FrameResizeStart> {
     let path = scene.paths().iter().find(|p| p.id == id)?.clone();
     let (llo, lhi) = scene.path_curve_bbox(id)?;
@@ -131,6 +139,7 @@ pub(crate) fn begin(
         id,
         path,
         anchor,
+        recipe,
     })
 }
 
@@ -139,7 +148,13 @@ pub(crate) fn begin(
 /// Devolve `false` se a moldura já não está na cena (apagada a meio do arrasto). Razão `1,1` repõe
 /// o instantâneo e sai — arrastar de volta ao ponto de partida devolve a moldura exatamente ao
 /// que era, **ao bit**, e não a uma vizinhança dela.
-pub(crate) fn apply(scene: &mut VecScene, start: &FrameResizeStart, sx: f64, sy: f64) -> bool {
+pub(crate) fn apply(
+    sim: &mut SimWorld,
+    scene: &mut VecScene,
+    start: &FrameResizeStart,
+    sx: f64,
+    sy: f64,
+) -> bool {
     let Some(p) = scene.path_mut(start.id) else {
         return false;
     };
@@ -147,6 +162,19 @@ pub(crate) fn apply(scene: &mut VecScene, start: &FrameResizeStart, sx: f64, sy:
     let (sx, sy) = (clamp_ratio(sx), clamp_ratio(sy));
     if (sx - 1.0).abs() > 1e-9 || (sy - 1.0).abs() > 1e-9 {
         scene.scale_path(start.id, sx, sy, start.anchor);
+    }
+    // ⚠️ **A RECEITA anda junto, e é por isso que `sim` está aqui.** A geometria de uma forma
+    // viva é DERIVADA do `w`/`h` guardado; escrever só os `verts` deixa a receita a descrever a
+    // caixa antiga, e a primeira edição de qualquer parâmetro re-cozinha a partir dela —
+    // medido, `100 → 50 → 100`: **o redimensionamento evapora**. Escrever aqui, e não no
+    // chamador, é o que torna esquecer impossível.
+    if let Some([w0, h0]) = start.recipe {
+        crate::vec_shape_live::resize_recipe(
+            sim,
+            Entity::from_bits(start.entity_bits),
+            w0 * sx,
+            h0 * sy,
+        );
     }
     true
 }
@@ -171,7 +199,11 @@ impl crate::App {
         let entity = Entity::from_bits(entity_bits);
         let id = resizable_frame(&gfx.sim, entity)?;
         let xf = crate::vec_transform::build(&gfx.sim, &self.vec_entities);
-        begin(&gfx.vec_scene, &xf, entity_bits, id, pivot_world)
+        let recipe = match gfx.sim.world().get::<ph2d_ecs::VecShape>(entity) {
+            Some(ph2d_ecs::VecShape::Param { w, h, .. }) => Some([*w, *h]),
+            _ => None,
+        };
+        begin(&gfx.vec_scene, &xf, entity_bits, id, pivot_world, recipe)
     }
 }
 

@@ -111,19 +111,19 @@ fn a_group_without_geometry_still_scales() {
 /// de baixo-esquerda mantém o MÁXIMO — sem tabela de cantos e sem análise de qual alça foi pegada.
 #[test]
 fn the_corner_the_gizmo_pinned_is_the_corner_that_stays() {
-    let (_sim, mut scene, _map, ids) = frame_and_kid();
+    let (mut sim, mut scene, _map, ids) = frame_and_kid();
     let x = VecXforms::default();
     // Pivô no canto mínimo (arrastando a alça oposta): o mínimo não se move.
-    let s = begin(&scene, &x, 1, ids[0], [0.0, 0.0]).expect("armou");
-    apply(&mut scene, &s, 2.0, 1.0);
+    let s = begin(&scene, &x, 1, ids[0], [0.0, 0.0], None).expect("armou");
+    apply(&mut sim, &mut scene, &s, 2.0, 1.0);
     let (lo, hi) = box_of(&scene, ids[0]);
     assert!((lo[0] - 0.0).abs() < 1e-9, "o minimo andou: {lo:?}");
     assert!((hi[0] - 200.0).abs() < 1e-6, "o maximo nao seguiu: {hi:?}");
 
     // Pivô no canto MÁXIMO: agora é ele que fica, e o mínimo é que anda.
     let (_sim2, mut scene2, _m2, ids2) = frame_and_kid();
-    let s2 = begin(&scene2, &x, 1, ids2[0], [100.0, 40.0]).expect("armou");
-    apply(&mut scene2, &s2, 2.0, 1.0);
+    let s2 = begin(&scene2, &x, 1, ids2[0], [100.0, 40.0], None).expect("armou");
+    apply(&mut sim, &mut scene2, &s2, 2.0, 1.0);
     let (lo2, hi2) = box_of(&scene2, ids2[0]);
     assert!((hi2[0] - 100.0).abs() < 1e-9, "o maximo andou: {hi2:?}");
     assert!(
@@ -138,10 +138,10 @@ fn the_corner_the_gizmo_pinned_is_the_corner_that_stays() {
 /// centro no pen-down, e uma segunda resposta local nem saberia que isso aconteceu.
 #[test]
 fn a_centre_pivot_needs_no_special_case() {
-    let (_sim, mut scene, _map, ids) = frame_and_kid();
+    let (mut sim, mut scene, _map, ids) = frame_and_kid();
     let x = VecXforms::default();
-    let s = begin(&scene, &x, 1, ids[0], [50.0, 20.0]).expect("armou");
-    apply(&mut scene, &s, 2.0, 1.0);
+    let s = begin(&scene, &x, 1, ids[0], [50.0, 20.0], None).expect("armou");
+    apply(&mut sim, &mut scene, &s, 2.0, 1.0);
     let (lo, hi) = box_of(&scene, ids[0]);
     assert!(
         (lo[0] + 50.0).abs() < 1e-6,
@@ -161,17 +161,17 @@ fn a_centre_pivot_needs_no_special_case() {
 /// Painter curou quatro vezes (*a lei é fato do CAMINHO, nunca de quão fino ele foi amostrado*).
 #[test]
 fn ten_moves_to_double_it_double_it_once() {
-    let (_sim, mut one, _m, ids) = frame_and_kid();
+    let (mut sim, mut one, _m, ids) = frame_and_kid();
     let x = VecXforms::default();
-    let s = begin(&one, &x, 1, ids[0], [0.0, 0.0]).expect("armou");
-    apply(&mut one, &s, 2.0, 2.0);
+    let s = begin(&one, &x, 1, ids[0], [0.0, 0.0], None).expect("armou");
+    apply(&mut sim, &mut one, &s, 2.0, 2.0);
 
     let (_sim2, mut many, _m2, ids2) = frame_and_kid();
-    let s2 = begin(&many, &x, 1, ids2[0], [0.0, 0.0]).expect("armou");
+    let s2 = begin(&many, &x, 1, ids2[0], [0.0, 0.0], None).expect("armou");
     // O gizmo entrega uma razão absoluta por CursorMoved; o caminho até 2× não pode contar.
     for k in 1..=10 {
         let f = 1.0 + f64::from(k) / 10.0;
-        apply(&mut many, &s2, f, f);
+        apply(&mut sim, &mut many, &s2, f, f);
     }
     assert_eq!(
         box_of(&one, ids[0]),
@@ -183,7 +183,7 @@ fn ten_moves_to_double_it_double_it_once() {
 /// **Voltar ao ponto de partida devolve a geometria AO BIT.**
 #[test]
 fn dragging_back_to_where_it_started_restores_the_geometry_exactly() {
-    let (_sim, mut scene, _map, ids) = frame_and_kid();
+    let (mut sim, mut scene, _map, ids) = frame_and_kid();
     let x = VecXforms::default();
     let pristine = scene
         .paths()
@@ -191,9 +191,9 @@ fn dragging_back_to_where_it_started_restores_the_geometry_exactly() {
         .find(|p| p.id == ids[0])
         .expect("a moldura")
         .clone();
-    let s = begin(&scene, &x, 1, ids[0], [0.0, 0.0]).expect("armou");
-    apply(&mut scene, &s, 3.7, 0.4);
-    apply(&mut scene, &s, 1.0, 1.0);
+    let s = begin(&scene, &x, 1, ids[0], [0.0, 0.0], None).expect("armou");
+    apply(&mut sim, &mut scene, &s, 3.7, 0.4);
+    apply(&mut sim, &mut scene, &s, 1.0, 1.0);
     assert_eq!(
         scene.paths().iter().find(|p| p.id == ids[0]),
         Some(&pristine),
@@ -206,11 +206,11 @@ fn dragging_back_to_where_it_started_restores_the_geometry_exactly() {
 /// âncoras — e é ele que decide, não o gizmo).
 #[test]
 fn resizing_the_frame_does_not_touch_the_child_geometry() {
-    let (_sim, mut scene, _map, ids) = frame_and_kid();
+    let (mut sim, mut scene, _map, ids) = frame_and_kid();
     let x = VecXforms::default();
     let before = box_of(&scene, ids[1]);
-    let s = begin(&scene, &x, 1, ids[0], [0.0, 0.0]).expect("armou");
-    apply(&mut scene, &s, 2.5, 0.5);
+    let s = begin(&scene, &x, 1, ids[0], [0.0, 0.0], None).expect("armou");
+    apply(&mut sim, &mut scene, &s, 2.5, 0.5);
     assert_eq!(box_of(&scene, ids[1]), before, "o filho esticou");
 }
 
@@ -223,10 +223,10 @@ fn resizing_the_frame_does_not_touch_the_child_geometry() {
 /// ela a leva para o outro lado da âncora*, e é isso que se mede.
 #[test]
 fn a_frame_does_not_flip_through_itself() {
-    let (_sim, mut scene, _map, ids) = frame_and_kid();
+    let (mut sim, mut scene, _map, ids) = frame_and_kid();
     let x = VecXforms::default();
-    let s = begin(&scene, &x, 1, ids[0], [0.0, 0.0]).expect("armou");
-    apply(&mut scene, &s, -2.0, 1.0);
+    let s = begin(&scene, &x, 1, ids[0], [0.0, 0.0], None).expect("armou");
+    apply(&mut sim, &mut scene, &s, -2.0, 1.0);
     let (lo, hi) = box_of(&scene, ids[0]);
     assert!(
         lo[0].abs() < 1e-9,
@@ -241,7 +241,7 @@ fn a_frame_does_not_flip_through_itself() {
 fn a_snapshot_belongs_to_the_drag_that_took_it() {
     let (_sim, scene, _map, ids) = frame_and_kid();
     let x = VecXforms::default();
-    let s = begin(&scene, &x, 7, ids[0], [0.0, 0.0]).expect("armou");
+    let s = begin(&scene, &x, 7, ids[0], [0.0, 0.0], None).expect("armou");
     assert!(s.is_for(7));
     assert!(!s.is_for(8));
 }
@@ -273,7 +273,7 @@ fn a_snapshot_belongs_to_the_drag_that_took_it() {
 /// julga; este mede a coisa que ele afirma.
 #[test]
 fn the_border_the_gizmo_pinned_does_not_walk_across_drags() {
-    let (sim, mut scene, map, id) = live_frame();
+    let (mut sim, mut scene, map, id) = live_frame();
     let kind = ph2d_editor::GizmoDragKind::ScaleEdge { axis: 0, sign: 1.0 };
     let mut lefts = Vec::new();
     for _ in 0..3 {
@@ -285,8 +285,8 @@ fn the_border_the_gizmo_pinned_does_not_walk_across_drags() {
         let pivot = ph2d_editor::anchor_pivot_world(kind, anchor, half, snap, false);
         let xf = crate::vec_transform::build(&sim, &map);
         lefts.push(scene.path_world_curve_bbox(&xf, id).expect("mundo").0[0]);
-        let st = begin(&scene, &xf, 1, id, pivot).expect("armou");
-        apply(&mut scene, &st, 0.5, 1.0);
+        let st = begin(&scene, &xf, 1, id, pivot, None).expect("armou");
+        apply(&mut sim, &mut scene, &st, 0.5, 1.0);
     }
     let xf = crate::vec_transform::build(&sim, &map);
     lefts.push(scene.path_world_curve_bbox(&xf, id).expect("mundo").0[0]);
@@ -314,8 +314,8 @@ fn the_pinned_point_survives_a_rotated_frame() {
     // Y antes de girar é o que põe o fenómeno dentro da fixture.
     {
         let xf0 = crate::vec_transform::build(&sim, &map);
-        let st = begin(&scene, &xf0, 1, id, [200.0, 80.0]).expect("armou");
-        apply(&mut scene, &st, 1.0, 0.5);
+        let st = begin(&scene, &xf0, 1, id, [200.0, 80.0], None).expect("armou");
+        apply(&mut sim, &mut scene, &st, 1.0, 0.5);
     }
     if let Some(mut t) = sim.world_mut().get_mut::<ph2d_ecs::Transform>(e) {
         t.rotation = 0.7;
@@ -377,4 +377,122 @@ fn snapshot_of(
         rotation: t.rotation,
         scale: [t.scale.x, t.scale.y],
     }
+}
+
+/// **Redimensionar mantém a RECEITA em passo — senão o redimensionamento evapora.**
+///
+/// ⚠️ A geometria de uma forma VIVA é DERIVADA (`recook_shape` cozinha de `w`/`h`), e todo
+/// redimensionamento do documento escreve os `verts` e mais nada. Sem esta costura a receita fica
+/// a descrever a caixa ANTIGA, e a primeira edição de qualquer parâmetro re-cozinha a partir dela:
+/// medido antes da cura, **`100 → 50 → 100`**, em silêncio e sem passo de undo que o explique.
+///
+/// ⚠️ O defeito é ANTERIOR à alça (o `W`/`H` do painel escala geometria desde sempre, e era o
+/// único caminho que o alcançava); a alça só o tornou fácil de encontrar. O oráculo é a caixa
+/// DEPOIS do re-cook, que é o que o artista vê.
+#[test]
+fn resizing_a_live_shape_keeps_its_recipe_in_step() {
+    use ph2d_ecs::VecShape;
+    let mut sim = SimWorld::default();
+    let mut scene = VecScene::new();
+    let mut map = VecEntityMap::new();
+    let shape = VecShape::Param {
+        kind: 0,
+        w: 100.0,
+        h: 40.0,
+        values: Default::default(),
+    };
+    let id = scene.push_path(crate::vec_shape_live::recook_shape(&shape).expect("cozinha"));
+    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    let e = Entity::from_bits(map[&id]);
+    sim.world_mut().entity_mut(e).insert(shape);
+    sim.world_mut()
+        .entity_mut(e)
+        .insert(VecFrame { clip: false });
+    let width = |s: &VecScene| {
+        let (lo, hi) = s.path_curve_bbox(id).expect("a forma");
+        hi[0] - lo[0]
+    };
+    assert!((width(&scene) - 100.0).abs() < 1e-9);
+
+    // A alça encolhe a moldura a metade, pinada na borda esquerda.
+    let xf = VecXforms::default();
+    let st = begin(
+        &scene,
+        &xf,
+        e.to_bits(),
+        id,
+        [-50.0, 0.0],
+        Some([100.0, 40.0]),
+    )
+    .expect("armou");
+    apply(&mut sim, &mut scene, &st, 0.5, 1.0);
+    assert!(
+        (width(&scene) - 50.0).abs() < 1e-9,
+        "a fixture nao encolheu"
+    );
+
+    // E agora o artista mexe num parâmetro qualquer: o re-cook TEM de partir dos 50.
+    assert!(crate::vec_shape_params::edit_selected_shape(
+        &mut sim,
+        &mut scene,
+        &map,
+        &[id],
+        |_k, _v| true
+    ));
+    assert!(
+        (width(&scene) - 50.0).abs() < 1e-9,
+        "o re-cook ressuscitou a caixa antiga: {} (devia ser 50)",
+        width(&scene)
+    );
+}
+
+/// **E o `W` do PAINEL mantém a receita em passo pela MESMA porta.**
+///
+/// ⚠️ Este gate nasceu porque a mutação do irmão acima **SOBREVIVEU**: aquele atravessa a porta da
+/// ALÇA (`begin`/`apply`), e neutralizar a escrita do lado do painel não o tocava. São dois
+/// escritores de geometria, então são dois gates — e o do painel é o do defeito **pré-existente**,
+/// o único caminho que alcançava isto antes desta wave.
+#[test]
+fn the_panels_width_field_keeps_the_recipe_in_step_too() {
+    use ph2d_ecs::VecShape;
+    let mut sim = SimWorld::default();
+    let mut scene = VecScene::new();
+    let mut map = VecEntityMap::new();
+    let shape = VecShape::Param {
+        kind: 0,
+        w: 100.0,
+        h: 40.0,
+        values: Default::default(),
+    };
+    let id = scene.push_path(crate::vec_shape_live::recook_shape(&shape).expect("cozinha"));
+    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    sim.world_mut()
+        .entity_mut(Entity::from_bits(map[&id]))
+        .insert(shape);
+    let mut hist = ph2d_vec_edit::History::new();
+    let mut pen = ph2d_vec_edit::PenTool::new();
+    pen.select(Some(id));
+    crate::input_dispatch::apply_vec_transform(
+        &mut sim,
+        &map,
+        &mut scene,
+        &mut hist,
+        &pen,
+        &VecXforms::default(),
+        crate::input_dispatch::VecTransformField::W,
+        50.0,
+    );
+    assert!(crate::vec_shape_params::edit_selected_shape(
+        &mut sim,
+        &mut scene,
+        &map,
+        &[id],
+        |_k, _v| true
+    ));
+    let (lo, hi) = scene.path_curve_bbox(id).expect("a forma");
+    assert!(
+        (hi[0] - lo[0] - 50.0).abs() < 1e-9,
+        "o re-cook ressuscitou a caixa antiga pelo caminho do painel: {}",
+        hi[0] - lo[0]
+    );
 }

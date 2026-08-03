@@ -49,6 +49,22 @@ pub(crate) fn write_prop(
         m.t = f;
         return;
     }
+    // **Os parâmetros de um JOINT** — o alvo do servo, a taxa do motor, os dois
+    // comprimentos. `PhysicsJoint` mora na `ph2d-physics-ecs`, que o runtime base
+    // não quer conhecer, então a dep é opcional atrás da feature `physics` —
+    // exatamente a forma que o `Opacity` logo abaixo usa para o `ph2d-render`.
+    //
+    // ⚠️ **Uma escrita por si só não move o solver** — quem a leva ao rapier é o
+    // `drive_joint_params` da ponte, por TICK. Sem ele o número chegaria uma vez
+    // por quadro e, num replay, nunca.
+    #[cfg(feature = "physics")]
+    if let AnimValue::Float(f) = v
+        && let Some(field) = joint_field(prop)
+        && let Some(mut j) = world.get_mut::<ph2d_physics_ecs::PhysicsJoint>(entity)
+    {
+        *field.of_mut(&mut j) = f;
+        return;
+    }
     // Non-Transform properties. `Opacity` needs the render crate (Sprite lives
     // there); gated so the base timeline runtime stays GPU-free.
     #[cfg(feature = "render")]
@@ -126,6 +142,13 @@ pub(crate) fn read_prop_kind(world: &World, entity: Entity, prop: PropKind) -> O
     if prop == PropKind::Morph {
         return world.get::<ph2d_ecs::VecMorph>(entity).map(|m| m.t);
     }
+    // Os parâmetros de joint — o braço espelho do `write_prop`, na mesma ordem.
+    #[cfg(feature = "physics")]
+    if let Some(field) = joint_field(prop) {
+        return world
+            .get::<ph2d_physics_ecs::PhysicsJoint>(entity)
+            .map(|j| *field.of(&j));
+    }
     #[cfg(feature = "render")]
     if prop == PropKind::Opacity {
         return world
@@ -134,4 +157,53 @@ pub(crate) fn read_prop_kind(world: &World, entity: Entity, prop: PropKind) -> O
     }
     let _ = (world, entity);
     None
+}
+
+/// **Qual campo do `PhysicsJoint` um [`PropKind`] nomeia** — e `None` para todo
+/// kind que não é de joint.
+///
+/// Existe para que o par [`write_prop`]/[`read_prop_kind`] tenha **uma** tabela em
+/// vez de dois `match` espelhados: a lição que o próprio cabeçalho deste arquivo
+/// carrega é que dois braços separados param de ser inversos sem ninguém notar, e
+/// aqui seriam oito. Com a tabela, um kind novo entra **uma** vez e os dois lados
+/// o ganham juntos.
+#[cfg(feature = "physics")]
+#[derive(Clone, Copy)]
+pub(crate) enum JointField {
+    MotorTarget,
+    MotorSpeed,
+    RestLength,
+    MaxLength,
+}
+
+#[cfg(feature = "physics")]
+impl JointField {
+    fn of<'a>(self, j: &'a ph2d_physics_ecs::PhysicsJoint) -> &'a f32 {
+        match self {
+            JointField::MotorTarget => &j.motor_target,
+            JointField::MotorSpeed => &j.motor_speed,
+            JointField::RestLength => &j.rest_length,
+            JointField::MaxLength => &j.max_length,
+        }
+    }
+
+    fn of_mut<'a>(self, j: &'a mut ph2d_physics_ecs::PhysicsJoint) -> &'a mut f32 {
+        match self {
+            JointField::MotorTarget => &mut j.motor_target,
+            JointField::MotorSpeed => &mut j.motor_speed,
+            JointField::RestLength => &mut j.rest_length,
+            JointField::MaxLength => &mut j.max_length,
+        }
+    }
+}
+
+#[cfg(feature = "physics")]
+pub(crate) fn joint_field(prop: PropKind) -> Option<JointField> {
+    Some(match prop {
+        PropKind::JointMotorTarget => JointField::MotorTarget,
+        PropKind::JointMotorSpeed => JointField::MotorSpeed,
+        PropKind::JointRestLength => JointField::RestLength,
+        PropKind::JointMaxLength => JointField::MaxLength,
+        _ => return None,
+    })
 }

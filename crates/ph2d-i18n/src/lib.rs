@@ -149,6 +149,10 @@ pub fn tr(key: &str) -> &'static str {
         "panel.timeline.prop.time" => "Time",
         "panel.timeline.prop.morph" => "Morph",
         "panel.timeline.prop.position" => "Position",
+        "panel.timeline.prop.motor_target" => "Motor Target",
+        "panel.timeline.prop.motor_speed" => "Motor Speed",
+        "panel.timeline.prop.rest_length" => "Rest Length",
+        "panel.timeline.prop.max_length" => "Max Length",
         // Per-track extrapolation badges (plan §6) — the dashed-region mode label,
         // shown on the dope-sheet only when the side is not the default Hold.
         "panel.timeline.extrap.loop" => "Loop",

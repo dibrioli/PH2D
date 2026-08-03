@@ -564,6 +564,10 @@ pub(crate) fn prop_label(p: PropKind) -> &'static str {
         PropKind::TimeRemap => ph2d_i18n::tr("panel.timeline.prop.time"),
         PropKind::Morph => ph2d_i18n::tr("panel.timeline.prop.morph"),
         PropKind::Position => ph2d_i18n::tr("panel.timeline.prop.position"),
+        PropKind::JointMotorTarget => ph2d_i18n::tr("panel.timeline.prop.motor_target"),
+        PropKind::JointMotorSpeed => ph2d_i18n::tr("panel.timeline.prop.motor_speed"),
+        PropKind::JointRestLength => ph2d_i18n::tr("panel.timeline.prop.rest_length"),
+        PropKind::JointMaxLength => ph2d_i18n::tr("panel.timeline.prop.max_length"),
     }
 }
 

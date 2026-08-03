@@ -7281,6 +7281,7 @@ dependencies = [
  "ph2d-ecs",
  "ph2d-expr",
  "ph2d-expr-parse",
+ "ph2d-physics-ecs",
  "ph2d-render",
  "postcard",
  "serde",

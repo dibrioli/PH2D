@@ -368,6 +368,24 @@ pub const TIMELINE_ADDPROP_POS: NodeId = hash_node_id("timeline.addprop.position
 /// `len()` da tabela): só a linha nunca entrou, então o único gesto que criava uma
 /// track de Morph era programático.
 pub const TIMELINE_ADDPROP_MORPH: NodeId = hash_node_id("timeline.addprop.morph");
+/// "+Track" -> **Motor Target**: o alvo de um servo (`PhysicsJoint::motor_target`).
+///
+/// ⚠️ Os quatro `ADDPROP_JOINT_*` são as portas de autoria de
+/// `PropKind::JointMotorTarget ..= JointMaxLength`, e a lista é a MESMA para todo
+/// objeto selecionado — como já era para o Morph, que é oferecido a um sprite sem
+/// `VecMorph`. Filtrar por componente seria uma decisão de produto própria (e a
+/// lista teria de saber ler a cena, que hoje ela não faz).
+pub const TIMELINE_ADDPROP_JOINT_MOTOR_TARGET: NodeId =
+    hash_node_id("timeline.addprop.joint_motor_target");
+/// "+Track" -> **Motor Speed**: a taxa de um motor (`PhysicsJoint::motor_speed`).
+pub const TIMELINE_ADDPROP_JOINT_MOTOR_SPEED: NodeId =
+    hash_node_id("timeline.addprop.joint_motor_speed");
+/// "+Track" -> **Rest Length**: o comprimento que uma mola quer.
+pub const TIMELINE_ADDPROP_JOINT_REST_LENGTH: NodeId =
+    hash_node_id("timeline.addprop.joint_rest_length");
+/// "+Track" -> **Max Length**: o teto de uma corda, o tamanho de uma barra.
+pub const TIMELINE_ADDPROP_JOINT_MAX_LENGTH: NodeId =
+    hash_node_id("timeline.addprop.joint_max_length");
 /// The time ruler strip (scrub hit-target).
 pub const TIMELINE_RULER: NodeId = hash_node_id("timeline.ruler");
 /// The drag grip at the veil's left edge (the authored-duration end) — resizing

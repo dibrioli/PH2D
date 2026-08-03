@@ -260,7 +260,16 @@ fn every_prop_kind_interpolates_and_a_discrete_one_would_break_this() {
             // Transform entity has got; the blend math is the same code and is covered above.
             // Opacity lives on `Sprite`, Morph on `VecMorph`, and Position needs a path
             // on its binding — none of which this bare Transform entity has got.
-            PropKind::Opacity | PropKind::TimeRemap | PropKind::Morph | PropKind::Position => {
+            PropKind::Opacity
+            | PropKind::TimeRemap
+            | PropKind::Morph
+            | PropKind::Position
+            // E os params de joint moram no `PhysicsJoint`, que esta entidade
+            // pelada também não tem. A aritmética do blend é a MESMA função.
+            | PropKind::JointMotorTarget
+            | PropKind::JointMotorSpeed
+            | PropKind::JointRestLength
+            | PropKind::JointMaxLength => {
                 continue;
             }
         };

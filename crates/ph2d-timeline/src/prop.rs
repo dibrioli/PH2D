@@ -75,6 +75,54 @@ pub enum PropKind {
     ///
     /// [ADR-0141]: ../../../docs/architecture/decisions/0141-timeline-position-is-one-2d-channel-and-separate-axes-are-a-mode.md
     Position = 8,
+    /// **O ALVO de um servo** — `PhysicsJoint::motor_target`: o ângulo (dobradiça)
+    /// ou a posição (trilho) para onde o motor puxa. O canal com que se ANIMA uma
+    /// máquina em vez de a assistir.
+    ///
+    /// ⚠️ **A unidade depende do TIPO do joint** (`JointKind::motor_in_metres`): é
+    /// radiano num Pin e metro num Slider. Por isso [`PropKind::fit_channel`] o
+    /// trata como escalar linear e **não** como ângulo, ao contrário de
+    /// [`PropKind::Rotation`] — desenrolar um sawtooth de ±2π num número que às
+    /// vezes é comprimento seria consertar o que não está quebrado e quebrar o que
+    /// está certo. E um alvo de servo não CHEGA como sawtooth de qualquer forma:
+    /// ele é digitado ou keyado, nunca derivado de um `atan2` de gizmo, que é o
+    /// mecanismo inteiro pelo qual a rotação precisa do unwrap.
+    ///
+    /// Fora de [`PropKind::ALL`] e de [`PropKind::AUTOKEYED`] pelo mesmo motivo do
+    /// `TimeRemap`: `ALL` é a pose de um sprite, e o auto-key diffa a pose que o
+    /// artista ARRASTA. Um parâmetro de joint é digitado no Inspector, e a porta
+    /// que o keya é o `K` sobre a track (a mesma de todo canal que não é pose).
+    /// Appended — the discriminant is a frozen wire value.
+    JointMotorTarget = 9,
+    /// **A TAXA de um motor** — `PhysicsJoint::motor_speed`: a velocidade que a
+    /// dobradiça motorizada, o trilho ou o guincho perseguem. A esteira que
+    /// acelera, o guindaste que recolhe mais rápido perto do fim.
+    ///
+    /// Irmã de [`PropKind::JointMotorTarget`] e **não** a mesma coisa: o alvo diz
+    /// ONDE parar, a taxa diz QUÃO RÁPIDO ir, e o modo do motor
+    /// (`MotorMode::Position`/`Velocity`) decide qual dos dois o solver lê. Manter
+    /// os dois canais é o que deixa o artista animar o número que o motor DELE de
+    /// fato usa, em vez de descobrir que keyou o outro.
+    /// Appended — the discriminant is a frozen wire value.
+    JointMotorSpeed = 10,
+    /// **O comprimento que uma mola QUER** — `PhysicsJoint::rest_length`: o
+    /// músculo que contrai, o pistão que estende, a suspensão que baixa.
+    ///
+    /// É o canal que anima uma mola sem tocar na rigidez dela — animar
+    /// `stiffness` seria animar o CARÁTER do mecanismo, e é o *"tweak to correct
+    /// its behavior"* que a pesquisa do plano 02 pegou o Unity documentando como
+    /// knob-fudge. Appended — the discriminant is a frozen wire value.
+    JointRestLength = 11,
+    /// **O comprimento que um vínculo GOVERNA** — `PhysicsJoint::max_length`: o
+    /// teto de uma corda, o tamanho de uma barra. A corda que é recolhida, o
+    /// mastro que telescopa.
+    ///
+    /// Os dois tipos partilham o campo porque partilham o NÚMERO (`LengthField`),
+    /// e é o tipo que diz se ele é um teto ou uma igualdade — o que também vale
+    /// aqui: keyar este canal encurta uma corda ou encolhe uma barra, e a
+    /// diferença é do joint, não da track.
+    /// Appended — the discriminant is a frozen wire value.
+    JointMaxLength = 12,
 }
 
 impl PropKind {
@@ -139,6 +187,10 @@ impl PropKind {
             6 => Some(PropKind::TimeRemap),
             7 => Some(PropKind::Morph),
             8 => Some(PropKind::Position),
+            9 => Some(PropKind::JointMotorTarget),
+            10 => Some(PropKind::JointMotorSpeed),
+            11 => Some(PropKind::JointRestLength),
+            12 => Some(PropKind::JointMaxLength),
             _ => None,
         }
     }
@@ -158,6 +210,10 @@ impl PropKind {
             PropKind::TimeRemap => "time",
             PropKind::Morph => "morph",
             PropKind::Position => "position",
+            PropKind::JointMotorTarget => "motor_target",
+            PropKind::JointMotorSpeed => "motor_speed",
+            PropKind::JointRestLength => "rest_length",
+            PropKind::JointMaxLength => "max_length",
         }
     }
 
@@ -184,6 +240,10 @@ impl PropKind {
             "opacity" | "alpha" | "a" => Some(PropKind::Opacity),
             "position" | "pos" | "p" => Some(PropKind::Position),
             "morph" | "m" => Some(PropKind::Morph),
+            "motor_target" | "motortarget" => Some(PropKind::JointMotorTarget),
+            "motor_speed" | "motorspeed" => Some(PropKind::JointMotorSpeed),
+            "rest_length" | "restlength" => Some(PropKind::JointRestLength),
+            "max_length" | "maxlength" => Some(PropKind::JointMaxLength),
             _ => None,
         }
     }
@@ -201,7 +261,17 @@ impl PropKind {
             PropKind::ScaleY => Some(SpriteProp::ScaleY),
             // Position drives TWO Transform fields through a trajectory, so it is
             // not one `SpriteProp` — `crate::apply_path` is its resolver.
-            PropKind::Opacity | PropKind::TimeRemap | PropKind::Morph | PropKind::Position => None,
+            PropKind::Opacity
+            | PropKind::TimeRemap
+            | PropKind::Morph
+            | PropKind::Position
+            // Um parâmetro de joint não é uma pose de sprite: ele mora no
+            // `PhysicsJoint` da entidade-JOINT, e o resolver dele é o
+            // `crate::apply_prop`.
+            | PropKind::JointMotorTarget
+            | PropKind::JointMotorSpeed
+            | PropKind::JointRestLength
+            | PropKind::JointMaxLength => None,
         }
     }
 
@@ -238,7 +308,16 @@ impl PropKind {
             // Distance along a path. Bounded in principle by the path's length — but
             // that bound MOVES when an anchor does, and a fit that clamped to a
             // stale one would pin a recorded pose to the wrong end.
-            | PropKind::Position => ph2d_anim::FitChannel::LINEAR,
+            | PropKind::Position
+            // ⚠️ **`LINEAR` e não `ANGLE` no alvo do servo, de propósito** — a
+            // mesma unidade é radiano numa dobradiça e metro num trilho
+            // (`JointKind::motor_in_metres`), e o unwrap existe para um
+            // sawtooth que só um `atan2` de gizmo produz. Os comprimentos e a
+            // taxa são escalares sem fronteira nenhuma.
+            | PropKind::JointMotorTarget
+            | PropKind::JointMotorSpeed
+            | PropKind::JointRestLength
+            | PropKind::JointMaxLength => ph2d_anim::FitChannel::LINEAR,
         }
     }
 
@@ -272,6 +351,14 @@ impl PropKind {
             // halfway between "3 m along" and "7 m along" is "5 m along", still on
             // the curve, where blending the two POINTS would cut the corner off it.
             PropKind::Position => Algebra::Sum,
+            // Alvo, taxa e comprimento: neutro 0, e uma lane aditiva quer dizer
+            // *"mais um tanto"* — o argumento do Morph, para a mesma espécie de
+            // grandeza. Por RAZÃO, dois comprimentos de 0,5 m dariam 0,25 m, que
+            // é menos que qualquer um dos dois e não é coisa que alguém quis.
+            PropKind::JointMotorTarget
+            | PropKind::JointMotorSpeed
+            | PropKind::JointRestLength
+            | PropKind::JointMaxLength => Algebra::Sum,
         }
     }
 }

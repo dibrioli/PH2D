@@ -154,6 +154,7 @@ impl crate::App {
             "75" => self.physics_smoke_stop(),
             "76" => self.physics_smoke_signal_leave(),
             "77" => self.physics_smoke_rail_rope(),
+            "78" => self.physics_smoke_joint_anim(),
             _ => self.physics_smoke_drop(),
         }
 

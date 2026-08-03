@@ -288,6 +288,10 @@ fn reading_a_property_back_is_the_inverse_of_writing_it() {
             PropKind::Morph => "morph",
             // O relógio da entidade não é valor de cena — filtrado pelo chamador.
             PropKind::TimeRemap => "time",
+            PropKind::JointMotorTarget => "motor_target",
+            PropKind::JointMotorSpeed => "motor_speed",
+            PropKind::JointRestLength => "rest_length",
+            PropKind::JointMaxLength => "max_length",
         }
     }
 
@@ -302,6 +306,21 @@ fn reading_a_property_back_is_the_inverse_of_writing_it() {
         // Opacity precisa da feature `render` (o `Sprite` mora na crate de GPU); sem ela
         // NEM escreve NEM lê, o que é consistente.
         if prop == PropKind::Opacity && cfg!(not(feature = "render")) {
+            continue;
+        }
+        // Os params de joint precisam da feature `physics`, pelo motivo idêntico: o
+        // `PhysicsJoint` mora na crate da ponte de física. Sem ela nem escrevem nem
+        // leem — a mesma consistência.
+        if PropKind::from_target(AnimTarget::new(id)).is_some_and(|p| {
+            matches!(
+                p,
+                PropKind::JointMotorTarget
+                    | PropKind::JointMotorSpeed
+                    | PropKind::JointRestLength
+                    | PropKind::JointMaxLength
+            )
+        }) && cfg!(not(feature = "physics"))
+        {
             continue;
         }
 
@@ -329,6 +348,14 @@ fn reading_a_property_back_is_the_inverse_of_writing_it() {
                 [10.0, 10.0],
                 [1.0, 1.0, 1.0, 1.0],
             ));
+        // Idem para os params de joint: sem um `PhysicsJoint` na entidade os quatro
+        // braços novos nem escrevem nem leem, e o gate acusaria o produto por um
+        // buraco da fixture — que é literalmente como a linha do `Sprite` acima
+        // nasceu.
+        #[cfg(feature = "physics")]
+        sim.world_mut()
+            .entity_mut(Entity::from_bits(e))
+            .insert(ph2d_physics_ecs::PhysicsJoint::default());
 
         let mut st = TimelineState::new();
         let doc = &mut st.doc;

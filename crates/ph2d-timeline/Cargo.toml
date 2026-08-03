@@ -18,6 +18,20 @@ publish.workspace = true
 # `Sprite` lives in `ph2d-render` (a GPU crate); gating keeps the base timeline
 # runtime free of wgpu. The desktop shell enables this feature.
 render = ["dep:ph2d-render"]
+# `physics` adds the joint-parameter resolvers, which write `PhysicsJoint`
+# fields (the servo's target, the motor's rate, a spring's rest length, a
+# rope's ceiling).
+#
+# ⚠️ **Feature e não dep direta, e o precedente é o `render` logo acima** — a
+# mesma forma, pelo mesmo motivo. O tracker registrava que ligar a timeline ao
+# `PhysicsJoint` exigia *"(a) o editor de animação depender do motor de física,
+# (b) mover o componente para o `ph2d-ecs`, ou (c) um canal genérico"*, e as
+# três eram decisões de arquitetura. Havia uma QUARTA, já shipada nesta crate: o
+# `Opacity` dirige um campo do `ph2d_render::Sprite` — outra crate que o runtime
+# base não quer conhecer — por dep OPCIONAL atrás de uma feature que a shell
+# liga. O runtime base da timeline segue sem física, exatamente como segue sem
+# wgpu, e nada de novo foi inventado.
+physics = ["dep:ph2d-physics-ecs"]
 
 [dependencies]
 # bevy_ecs for the #[derive(Component)] on SpriteAnimation (same direct-dep
@@ -51,6 +65,10 @@ postcard = { version = "1", features = ["alloc"] }
 # Opacity resolver only (feature-gated): the `Sprite` component whose tint alpha
 # is the sprite opacity channel.
 ph2d-render = { path = "../ph2d-render", optional = true }
+# Joint-parameter resolvers only (feature-gated): the `PhysicsJoint` component
+# whose motor target/speed and lengths are the animatable channels of a machine.
+# Irmã exata da linha acima — ver o comentário da feature `physics`.
+ph2d-physics-ecs = { path = "../ph2d-physics-ecs", optional = true }
 
 [dev-dependencies]
 # JSON round-trip of the document in serde tests.

@@ -342,6 +342,22 @@ pub(crate) fn sample_prop_value(
         // — which is what the authoring slice builds. Refusing here keeps this
         // function honest about what it is.
         PropKind::Position => return None,
+        // **Os parâmetros de um joint são valores de CENA**, como o `t` do Morph:
+        // o artista afina o servo no Inspector até a máquina parecer certa e
+        // aperta K. (Sem `PhysicsJoint` na entidade não há o que capturar, e o
+        // `?` recusa — que é o mesmo que o Morph faz num sprite comum.)
+        PropKind::JointMotorTarget => {
+            Float(world.get::<ph2d_physics_ecs::PhysicsJoint>(e)?.motor_target)
+        }
+        PropKind::JointMotorSpeed => {
+            Float(world.get::<ph2d_physics_ecs::PhysicsJoint>(e)?.motor_speed)
+        }
+        PropKind::JointRestLength => {
+            Float(world.get::<ph2d_physics_ecs::PhysicsJoint>(e)?.rest_length)
+        }
+        PropKind::JointMaxLength => {
+            Float(world.get::<ph2d_physics_ecs::PhysicsJoint>(e)?.max_length)
+        }
     })
 }
 

@@ -53,11 +53,18 @@ impl crate::app_state::App {
         };
         let n = scene.objects.len();
 
-        let Some(path) = rfd::FileDialog::new()
-            .add_filter(
-                "Mesh",
-                MeshFormat::ALL.map(MeshFormat::extension).as_slice(),
-            )
+        // ⚠️ **UM FILTRO POR FORMATO, e o report do Enio é o motivo:** com um
+        // filtro único listando as três extensões, o diálogo nativo (o portal
+        // XDG, o GTK, o Windows) **completa o nome com a PRIMEIRA delas** — o
+        // artista digitava `volta.ply` e o arquivo saía `volta.ply.obj`. Não é
+        // uma segunda porta para *"que formato é este?"*: quem decide continua
+        // sendo a extensão do caminho FINAL, e o filtro é só como o diálogo
+        // ajuda a escrevê-la.
+        let mut dialog = rfd::FileDialog::new();
+        for f in MeshFormat::ALL {
+            dialog = dialog.add_filter(f.extension().to_uppercase(), &[f.extension()]);
+        }
+        let Some(path) = dialog
             .set_file_name(format!("sculpt.{}", MeshFormat::Obj.extension()))
             .save_file()
         else {

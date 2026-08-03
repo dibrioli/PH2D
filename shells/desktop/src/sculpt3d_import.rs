@@ -183,17 +183,36 @@ impl Sculpt3dScene {
         [right + IMPORT_SPAN, 0.0, 0.0]
     }
 
-    /// **Põe na cena peças já colocadas** ([`place`]).
+    /// **Põe na cena peças já colocadas** ([`place`]), cada uma com sua entrada
+    /// de desfazer.
     ///
-    /// ⚠️ Cada uma entra pelo `push_object`, que é a porta que GRAVA UNDO — um
-    /// import trazido por engano some com um Ctrl+Z, como qualquer peça.
+    /// ⚠️ **O doc anterior desta função afirmava que o `push_object` grava undo.
+    /// Era FALSO, e o Enio pegou no smoke:** o `push_object` só empurra na
+    /// lista — quem grava são o `add_primitive` e o `duplicate_active`, cada um
+    /// chamando `record(AddedObject)` por conta. Um import trazido por engano
+    /// ficava na cena para sempre, e a única saída era apagar peça a peça.
+    ///
+    /// ⚠️ **Uma entrada POR PEÇA, não uma pelo lote**, e a razão é o tipo: a fila
+    /// nomeia UMA peça por `ObjectId` (`StrokeUndo::AddedObject` carimba o
+    /// ativo), então um lote precisaria de um verbo novo que agrupasse. Ele
+    /// existiria para dizer *"desfaça o arquivo inteiro"* — e essa é a decisão
+    /// que o gesto do artista ainda não pediu: importar duas peças e querer só
+    /// uma delas é tão provável quanto querer nenhuma.
     pub(crate) fn push_placed(
         &mut self,
         pieces: impl IntoIterator<Item = (ImportedPiece, Pose)>,
         aspect: f32,
     ) {
         for (p, pose) in pieces {
-            self.push_object(p.mesh, pose);
+            let i = self.push_object(p.mesh, pose);
+            // ⚠️ **`record_for` e não `record`**, porque `push_object` **não**
+            // torna a peça ativa (decisão documentada lá: montar uma cena é pôr
+            // peças na mesa, não pegar cada uma). O `record` carimba o ATIVO, e
+            // aqui ele nomearia a peça errada — o desfazer removeria uma que o
+            // import não trouxe. É a mesma razão pela qual o delete usa esta
+            // porta.
+            let id = self.objects[i].id;
+            self.record_for(id, super::StrokeUndo::AddedObject);
         }
         self.frame_all(aspect);
     }

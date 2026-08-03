@@ -286,6 +286,49 @@ fn the_loss_warning_reads_the_same_table_the_writer_does() {
     );
 }
 
+/// **Cada peça importada grava a PRÓPRIA entrada de desfazer.**
+///
+/// ⚠️ **O doc desta função afirmava que o `push_object` grava undo, e era FALSO
+/// — o Enio pegou no smoke:** ele só empurra na lista; quem grava são o
+/// `add_primitive` e o `duplicate_active`, cada um chamando `record` por conta.
+/// Um import trazido por engano ficava na cena para sempre.
+///
+/// ⚠️ E é `record_for`, não `record`: o `push_object` **não** torna a peça
+/// ativa, então o `record` — que carimba o ATIVO — nomearia a peça errada, e o
+/// desfazer removeria uma que o import não trouxe.
+#[test]
+fn every_imported_piece_records_its_own_undo_entry() {
+    let body = function_body(&sculpt_src(), "push_placed");
+    assert!(
+        body.contains("record_for(") && body.contains("AddedObject"),
+        "cada peça importada tem de gravar a entrada dela"
+    );
+    assert!(
+        !body.contains("self.record("),
+        "…e por `record_for`: o `record` carimba o ATIVO, que o import não move"
+    );
+}
+
+/// **O diálogo oferece UM FILTRO POR FORMATO.**
+///
+/// ⚠️ Report do Enio: *"ao salvar em outro formato que não .obj a app coloca
+/// .obj no final"*. Com um filtro único listando as três extensões, o diálogo
+/// nativo COMPLETA o nome com a primeira delas — `volta.ply` virava
+/// `volta.ply.obj`. Não é uma segunda porta para *"que formato é este?"*: quem
+/// decide continua sendo a extensão do caminho final.
+#[test]
+fn the_save_dialog_offers_one_filter_per_format() {
+    let body = function_body(&sculpt_src(), "sculpt3d_export");
+    assert!(
+        body.contains("for f in MeshFormat::ALL") && body.contains("add_filter("),
+        "um filtro POR formato, senão o diálogo completa com a primeira extensão"
+    );
+    assert!(
+        !body.contains("MeshFormat::ALL.map(MeshFormat::extension)"),
+        "…e nunca um filtro único com as três extensões juntas"
+    );
+}
+
 /// **A colocação roda sobre a lista inteira, ANTES de qualquer peça entrar.**
 ///
 /// ⚠️ O caso que isto protege é o mais comum de todos — um arquivo, uma peça,

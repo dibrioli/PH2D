@@ -637,6 +637,67 @@ fn apply_and_keep_deposits_on_every_press_with_nothing_touched_between() {
     assert!(t.commit_open_shape_keep(), "3o aperto");
     let m3 = grid_mass(&t);
     eprintln!("REPRO massas: m1={m1:.1} m2={m2:.1} m3={m3:.1}");
-    assert!(m2 > m1 * 1.5, "o 2o aperto nao depositou (m1 {m1}, m2 {m2})");
-    assert!(m3 > m2 * 1.2, "o 3o aperto nao depositou (m2 {m2}, m3 {m3})");
+    assert!(
+        m2 > m1 * 1.5,
+        "o 2o aperto nao depositou (m1 {m1}, m2 {m2})"
+    );
+    assert!(
+        m3 > m2 * 1.2,
+        "o 3o aperto nao depositou (m2 {m2}, m3 {m3})"
+    );
+}
+
+/// **SONDA: o que o ESBOÇO promete contra o que a ÁGUA entrega** (Enio 2026-08-03: *"o preview ainda
+/// usa o Digital"*). O esboço plano é a decisão do doc 21 (autoria un-owned pelo pipeline normal), e
+/// esta sonda mede o TAMANHO dessa decisão em vez de discuti-la.
+///
+/// ⚠️ O conjunto de referência é **os texels que o esboço pintou**, nos DOIS lados — medir estrutura
+/// sobre a caixa da figura mede a caixa (74% dela é papel nu, e o número vira a razão de enchimento).
+/// E varre DOIS raios porque a peneira de cerdas é densa num pincel pequeno e estruturada num grande:
+/// a escala em que o artista trabalha é parte da fixture.
+///
+/// `cargo test -p ph2d-tool-painter --lib probe_sketch_vs_deposit -- --ignored --nocapture`
+#[test]
+#[ignore = "sonda"]
+fn probe_sketch_vs_deposit() {
+    for radius in [10.0f32, 60.0] {
+        let ink = |t: &PainterTool| -> Vec<f64> {
+            t.canvas_rgba
+                .chunks_exact(4)
+                .map(|p| f64::from(255 - p[1].min(p[2])))
+                .collect()
+        };
+        let mut t = wet_tool();
+        // ⚠️ O falloff da fixture-mae e' `Constant` (borda dura), e com ele o esboco sai
+        // uniforme POR CONSTRUCAO — um `sd = 0` que fala da fixture, nao do produto. O
+        // artista pinta com o falloff macio, entao a sonda usa o do PRODUTO.
+        t.paint.brush.falloff = Falloff::Smooth;
+        t.paint.brush.hardness = 0.5;
+        t.set_brush_size_px(radius);
+        draw_ellipse(&mut t);
+        let sk = ink(&t);
+        assert!(t.commit_open_shape(), "fixture: forma aberta");
+        let dp = ink(&t);
+        // A referencia: onde o ESBOCO pos tinta.
+        let idx: Vec<usize> = (0..sk.len()).filter(|&i| sk[i] > 4.0).collect();
+        let stat = |v: &[f64]| {
+            let m = idx.iter().map(|&i| v[i]).sum::<f64>() / idx.len() as f64;
+            let sd = (idx.iter().map(|&i| (v[i] - m) * (v[i] - m)).sum::<f64>() / idx.len() as f64)
+                .sqrt();
+            let holes = idx.iter().filter(|&&i| v[i] < 32.0).count() as f64 / idx.len() as f64;
+            (m, sd, holes)
+        };
+        let (ms, ss, hs) = stat(&sk);
+        let (md, sd_, hd) = stat(&dp);
+        eprintln!("--- raio {radius} ({} texels de referencia)", idx.len());
+        eprintln!(
+            "  esboco  : tinta {ms:6.1}  sd {ss:5.1}  furos {:5.1}%",
+            hs * 100.0
+        );
+        eprintln!(
+            "  deposito: tinta {md:6.1}  sd {sd_:5.1}  furos {:5.1}%",
+            hd * 100.0
+        );
+        eprintln!("  razao de tinta {:.2}x", md / ms.max(1e-9));
+    }
 }

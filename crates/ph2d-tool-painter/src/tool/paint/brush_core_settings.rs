@@ -247,7 +247,12 @@ mod tests {
     use ph2d_painter_brush::{BrushSpec, Falloff, StrokeMethod};
 
     fn cp(pos: [f32; 2], phase: PointerPhase) -> CanvasPointer {
-        CanvasPointer { pos, pressure: 1.0, tilt: [0.0, 0.0], phase }
+        CanvasPointer {
+            pos,
+            pressure: 1.0,
+            tilt: [0.0, 0.0],
+            phase,
+        }
     }
 
     /// Um editor de forma ABERTO sobre papel branco, carimbado em vermelho opaco.
@@ -285,7 +290,10 @@ mod tests {
     fn the_live_shape_takes_the_new_colour_without_being_touched() {
         let mut t = open_ellipse();
         let before = most_painted(&t);
-        assert!(before[0] > 200 && before[1] < 40, "fixture: vermelho na tela, veio {before:?}");
+        assert!(
+            before[0] > 200 && before[1] < 40,
+            "fixture: vermelho na tela, veio {before:?}"
+        );
         t.set_brush_color_srgb8([0, 0, 255]);
         let after = most_painted(&t);
         assert!(

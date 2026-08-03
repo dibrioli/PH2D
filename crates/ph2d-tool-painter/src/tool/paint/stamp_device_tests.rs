@@ -21,18 +21,25 @@ fn cpx(pos: [f32; 2], phase: PointerPhase) -> ph2d_editor_core::tool::CanvasPoin
     }
 }
 
-/// O tool na armação do smoke: Digital de fábrica, pincel 40, elipse viva sobre 1024².
+/// O tool na armação do smoke: Digital de fábrica, elipse viva sobre 1024².
+///
+/// ⚠️ **A figura tem de estar ACIMA do piso de redundância** ([`super::MIN_REDUNDANCY`]), senão o
+/// lote fica legitimamente na CPU e todo gate da ponte vira vácuo. A primeira versão usava um
+/// pincel de raio 40 numa elipse larga — redundância abaixo do piso —, e três gates ficaram
+/// VERMELHOS no instante em que o piso entrou. *Foi a fixture que deixou de conter o fenômeno, não
+/// o produto que quebrou.*
 fn figure_tool() -> crate::tool::PainterTool {
     let mut t = crate::tool::PainterTool::default();
     t.set_source(vec![255u8; 1024 * 1024 * 4], 1024, 1024);
-    t.set_brush_size_px(40.0);
+    t.set_brush_size_px(70.0); // ⚠️ este setter é o RAIO, não o diâmetro
     t.paint.brush.stroke_method = StrokeMethod::Ellipse;
     t
 }
 
+/// Uma figura compacta: o `Down` é o CENTRO da elipse, o `Move` dá os semi-eixos.
 fn draw(t: &mut crate::tool::PainterTool) {
-    t.on_canvas_pointer(cpx([100.0, 412.0], PointerPhase::Down));
-    t.on_canvas_pointer(cpx([900.0, 612.0], PointerPhase::Move));
+    t.on_canvas_pointer(cpx([512.0, 512.0], PointerPhase::Down));
+    t.on_canvas_pointer(cpx([692.0, 652.0], PointerPhase::Move));
 }
 
 /// **Cada recusa nomeia uma LEI que o kernel não transcreve** — e o controle positivo é o pincel de
@@ -366,4 +373,69 @@ fn the_footprint_of_the_batch_is_the_footprint_of_each_dab() {
         assert_eq!(dev.radius, d.radius_px);
         assert_eq!(dev.color, d.color);
     }
+}
+
+/// **O piso de redundância existe porque a rota do device PERDE sem ele** — e essa é a metade que
+/// nenhum gate de correção pega.
+///
+/// As duas rotas escalam com grandezas diferentes (a fronteira com a ÁREA da região, a CPU com as
+/// VISITAS), então há um regime em que subir a janela custa mais que carimbá-la. Medido pela porta
+/// do artista: sem piso, uma figura de redundância 0,3× fica **4,5× MAIS LENTA** no device.
+///
+/// ⚠️ O gate afirma a PROPRIEDADE nos dois lados — o lote dos discos empilhados sobe, o lote
+/// espalhado não —, e o oráculo é o próprio `wants_device`, que é a porta que o produto consulta.
+/// Recomputar a regra aqui deixaria o gate verde com o produto decidindo outra coisa.
+#[test]
+fn a_spread_out_batch_stays_on_the_cpu_and_a_stacked_one_does_not() {
+    let dab = |c: [f32; 2], r: f32| Dab {
+        center: c,
+        radius_px: r,
+        coverage: 0.6,
+        color: [0.2, 0.3, 0.9],
+        rotation: [1.0, 0.0],
+        dir: [1.0, 0.0],
+        arc_len: 0.0,
+        stroke_radius_px: r,
+    };
+    // EMPILHADOS: 60 discos de raio 100 num arco de raio 120 — muita visita, região pequena.
+    let stacked: Vec<Dab> = (0..60)
+        .map(|i| {
+            #[allow(clippy::cast_precision_loss)]
+            let t = (i as f32) / 60.0 * std::f32::consts::TAU;
+            dab([800.0 + t.cos() * 120.0, 800.0 + t.sin() * 120.0], 100.0)
+        })
+        .collect();
+    // ESPALHADOS: os MESMOS 60 discos, o mesmo trabalho, numa região dez vezes maior. ⚠️ A tela é
+    // folgada de propósito: um arco que encosta na borda tem as pegadas RECORTADAS, e aí os dois
+    // lotes deixariam de custar o mesmo — a fixture pararia de isolar a região.
+    let spread: Vec<Dab> = (0..60)
+        .map(|i| {
+            #[allow(clippy::cast_precision_loss)]
+            let t = (i as f32) / 60.0 * std::f32::consts::TAU;
+            dab([800.0 + t.cos() * 620.0, 800.0 + t.sin() * 620.0], 100.0)
+        })
+        .collect();
+    assert!(
+        super::wants_device(&stacked, 1600, 1600),
+        "um lote empilhado (muita visita sobre pouca região) TEM de subir — é o caso do report"
+    );
+    assert!(
+        !super::wants_device(&spread, 1600, 1600),
+        "um lote espalhado sobe a mesma região por muito menos trabalho: no device ele PERDE, \
+         medido em 4,5× no pior caso da varredura"
+    );
+    // E o mesmo trabalho nos dois: o que difere é a REGIÃO, não a quantidade de tinta.
+    let (a, b) = (
+        super::super::stamp_banded::batch_work(&stacked, 1600, 1600),
+        super::super::stamp_banded::batch_work(&spread, 1600, 1600),
+    );
+    // ⚠️ **Essencialmente o mesmo, não idêntico:** `dab_write_bounds` devolve uma caixa INTEIRA, e
+    // dois arcos de raios diferentes pousam os centros em frações distintas de pixel — as caixas
+    // diferem por um pixel aqui e ali. Medido: 0,03%. Exigir igualdade exata seria um gate que
+    // reprova por aritmética de arredondamento, não pela propriedade que ele afirma.
+    let (lo, hi) = (a.min(b) as f64, a.max(b) as f64);
+    assert!(
+        hi / lo < 1.01,
+        "a fixture não isola a região: os dois lotes têm de custar o MESMO trabalho ({a} x {b})"
+    );
 }

@@ -176,6 +176,51 @@ fn bounds(dabs: &[Dab], w: u32, h: u32) -> Option<DirtyRect> {
         })
 }
 
+/// **Redundância mínima para o device valer** — visitas de texel por pixel de região.
+///
+/// ⚠️ **Derivada da tabela, não escolhida.** As duas rotas escalam com grandezas DIFERENTES: a
+/// fronteira é ~linear na ÁREA DA REGIÃO (sobe e desce a mesma janela) e o carimbo da CPU é ~linear
+/// nas VISITAS (`Σ` pegadas). A razão entre as duas — a redundância — é o que decide, e sem um piso
+/// a rota do device **PERDE** exatamente onde ela parece mais atraente. Medido pela porta do artista
+/// (`ph2d-paint-gpu/tests/measure_product_stamp.rs`, RTX, 4096², pincel r=155):
+///
+/// | figura | região | visitas | redundância | CPU | device | ganho |
+/// |---|---|---|---|---|---|---|
+/// | 300 | 1,36 M | 8,56 M | 6,3× | 7,21 ms | 2,75 ms | **2,62×** |
+/// | 600 | 4,05 M | 17,04 M | 4,2× | 15,83 | 10,66 | **1,48×** |
+/// | 1200 | 13,77 M | 34,00 M | 2,5× | 38,31 | 53,89 | **0,71×** |
+/// | 1900 | 16,78 M | 5,63 M | 0,3× | 18,25 | 82,23 | **0,22×** |
+///
+/// Ajustando as duas retas: ~3 ns por pixel de região no device (conservador — o custo por pixel
+/// PIORA com a região, 1,7 → 3,9 ns/px na varredura) contra ~1 ns por visita na CPU. O ponto de
+/// virada cai entre 2,5× e 4,2×, e o piso fica na ponta ALTA de propósito: superestimar o device é o
+/// erro seguro, porque ele manda o lote duvidoso para a rota que já shipa.
+///
+/// ⚠️ E a figura do report do artista tem redundância **9,9×** (17,3 M visitas sobre um bbox de
+/// 1440×1216) — bem acima do piso, que é o que faz a wave alcançar o caso que a motivou.
+pub(super) const MIN_REDUNDANCY: f32 = 4.0;
+
+/// **Vale subir este lote?** — a porta ÚNICA, perguntada pelo produto para DECIDIR e pelo gate para
+/// AFIRMAR (o padrão do `wants_bands`, um nível acima).
+///
+/// ⚠️ Ela pergunta o TRABALHO à mesma função que a rota em banda usa (`batch_work`): duas contas do
+/// que um lote custa divergiriam, e cada rota decidiria por um número diferente.
+pub(super) fn wants_device(dabs: &[Dab], w: u32, h: u32) -> bool {
+    let Some(r) = bounds(dabs, w, h) else {
+        return false;
+    };
+    let region = (r.w as usize) * (r.h as usize);
+    if region == 0 {
+        return false;
+    }
+    #[allow(clippy::cast_precision_loss)]
+    let (work, region) = (
+        super::stamp_banded::batch_work(dabs, w, h) as f32,
+        region as f32,
+    );
+    work >= MIN_REDUNDANCY * region
+}
+
 /// Carimba o lote pelo device, devolvendo a região escrita — ou `None` para o chamador cair na rota
 /// em banda.
 ///

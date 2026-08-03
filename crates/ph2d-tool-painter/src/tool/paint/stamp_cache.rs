@@ -464,14 +464,17 @@ impl PainterTool {
         // ([`super::stamp_device::eligible`]). Sem ponte instalada, ou fora do predicado, `None`: o
         // lote segue para a rota em banda da CPU e nada muda.
         let plain = !textured && !shape_active && !accumulate_cap && image.is_none();
-        let device = (plain && self.device_stamp.is_some() && super::stamp_device::eligible(brush))
-            .then(|| {
-                (
-                    super::stamp_device::device_dabs(dabs, brush),
-                    self.lut_cache.get(brush),
-                    self.device_stamp.as_ref().expect("checado no predicado"),
-                )
-            });
+        let device = (plain
+            && self.device_stamp.is_some()
+            && super::stamp_device::eligible(brush)
+            && super::stamp_device::wants_device(dabs, w, h))
+        .then(|| {
+            (
+                super::stamp_device::device_dabs(dabs, brush),
+                self.lut_cache.get(brush),
+                self.device_stamp.as_ref().expect("checado no predicado"),
+            )
+        });
         let buf = super::plane_fork::fork_canvas(
             &mut self.canvas_rgba,
             &self.undo.write_state,

@@ -29,3 +29,8 @@ pollster = "0.4"
 # a segunda resposta que esta crate existe para não ter. `dev`, não `dependencies`: o `src/` não a
 # toca ⇒ machete-safe, o padrão que a `ph2d-flip-render` já usa pelo mesmo motivo.
 ph2d-painter-brush = { path = "../ph2d-painter-brush" }
+# ⚠️ E o TOOL, so' para a sonda que mede pela porta do ARTISTA (`measure_product_stamp`): a
+# decisao *"vale ligar a ponte?"* tem de sair do `on_canvas_pointer`, nao de um banco de teste.
+# `dev`, entao o `src/` segue sem alcanca-lo e a seta continua apontando so' para um lado.
+ph2d-tool-painter = { path = "../ph2d-tool-painter" }
+ph2d-editor-core = { path = "../ph2d-editor-core" }

@@ -530,3 +530,84 @@ fn the_route_belt_refuses_a_non_incremental_live_batch() {
         "the belt let a non-incremental live batch deposit"
     );
 }
+
+/// **O commit deposita o PIGMENTO e a ÁGUA — e a sim ANDA com eles.**
+///
+/// Pedido do Enio (2026-08-03): *"deve funcionar como o wet paint, depositando o pigmento e a água
+/// (como um traço normal) para iniciar simulação ao apertar Enter (Apply no painel)"*.
+///
+/// ⚠️ **A metade da ÁGUA não estava gateada, e é ela que o pedido nomeia.** O
+/// [`the_commit_deposits_exactly_once_and_it_is_the_preview`] afirma `susp + sett > 1` — tinta. Um
+/// commit que despejasse pigmento com `film = 0` passaria em todos os gates desta suíte, e o artista
+/// veria tinta que **não escorre**: sem filme não há o que o solver transporte. Medido no produto:
+/// `film = 3262`, `susp = 5,82 M` logo depois do Enter.
+///
+/// ⚠️ **A mutação teve de matar DUAS portas, e isso é um fato sobre o produto** (`trail/transfer.rs`):
+/// a célula VIRGEM bebe a água uma vez no próprio ramo e a passada GERAL a soma de novo, então numa
+/// folha limpa cada uma sozinha ainda enche o filme — matar uma só deixa este gate verde
+/// ([[feedback_layered_defenses_need_per_layer_gates]]). Com as duas mortas o `film` cai de **3262,3
+/// para 0,051** — o piso de traço, e nada mais.
+///
+/// ⚠️ **A mutação da segunda metade fica UM NÍVEL ACIMA, e a caçada por ela é o achado.** Matar o
+/// `g.sett[i] = sett` do `drying.rs` **não** sangra: o `dry_cell` tem DUAS rotas (a Gauss-Seidel e a
+/// independente de ordem do ADR-0147) e eu mutei primeiro a que o produto não toma — a lição de *um
+/// corpo, dois walkers* que o ADR-0145 já pagou. Matar a rota certa também não sangra, porque o
+/// assentamento é produzido por mais de um caminho. O que sangra é a porta que o gate de fato
+/// afirma: **o tick nunca entregar o motor ao worker** (`hand_off_sim`) — aí nada assenta em 5 s.
+///
+/// ⚠️ **E a segunda metade é uma CONDIÇÃO, não uma espera.** A sim mora numa thread própria (doc 29):
+/// o tick ENTREGA o motor e o recolhe depois, então doze ticks em microssegundos não compram um
+/// único passo. Cravar uma duração seria apostar na velocidade da máquina
+/// ([[feedback_a_gate_that_waits_a_fixed_duration_bets_on_machine_speed]]) — o laço abaixo pergunta
+/// *"a tinta assentou?"* e desiste num prazo folgado, então uma máquina lenta o deixa mais lento,
+/// nunca vermelho.
+#[test]
+fn the_commit_deposits_water_as_well_as_pigment_and_the_sim_runs() {
+    let mut t = wet_tool();
+    draw_ellipse(&mut t);
+    let read = |t: &mut PainterTool| {
+        t.paint
+            .wetpaint
+            .session
+            .as_mut()
+            .map_or((0.0, 0.0, 0.0), |s| {
+                s.bring_home();
+                let g = &s.engine.layers[0].grid;
+                (
+                    g.film.iter().map(|&v| f64::from(v)).sum::<f64>(),
+                    g.susp.iter().map(|&v| f64::from(v)).sum::<f64>(),
+                    g.sett.iter().map(|&v| f64::from(v)).sum::<f64>(),
+                )
+            })
+    };
+    assert_eq!(
+        read(&mut t),
+        (0.0, 0.0, 0.0),
+        "a autoria depositou no fluido ANTES do commit — a fixture não separa as duas metades"
+    );
+
+    assert!(t.commit_open_shape(), "fixture: havia uma forma aberta");
+    let (film, susp, sett) = read(&mut t);
+    assert!(
+        susp + sett > 1.0,
+        "o commit não depositou PIGMENTO (susp {susp}, sett {sett})"
+    );
+    assert!(
+        film > 1.0,
+        "o commit depositou pigmento e NENHUMA ÁGUA (film {film}): sem filme o solver não tem o que \
+         transportar, e o Enter deixaria tinta parada em vez de um traço molhado"
+    );
+
+    // A CONDIÇÃO: a tinta assenta. `sett` nasce em zero e só cresce quando o solver de fato roda.
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+    let mut settled = sett;
+    while settled <= 0.0 && std::time::Instant::now() < deadline {
+        t.on_tick(0.016);
+        std::thread::sleep(std::time::Duration::from_millis(20));
+        settled = read(&mut t).2;
+    }
+    assert!(
+        settled > 0.0,
+        "a simulação não andou depois do Enter: nada assentou em 5 s (film {film}, susp {susp})"
+    );
+}

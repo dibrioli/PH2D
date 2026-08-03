@@ -9,10 +9,10 @@
 |---|---|
 | Branch | `line/Painter` |
 | Worktree | `Worktrees/line-Painter` |
-| HEAD | `d7ef0c946` (atualizar após o commit final) |
+| HEAD | `fa3ea9ae3` (atualizar após o commit final) |
 | Base | `main` a `a9f5977e9` (rebase era no-op ao assumir; **re-rodar `git rebase main` antes de integrar**) |
-| Commits desta sessão | **11** — a cadência (4) + a avaliação sob carga (2) + a wave do SMUDGE (5) |
-| Commits acumulados da linha | **64** (53 herdados do motor de undo + os desta sessão) |
+| Commits desta sessão | **18** — a cadência (4) + a avaliação sob carga (2) + o SMUDGE (5) + a instrumentação e o VÉU (4) + os dois passes da umidade em PARALELO (3) |
+| Commits acumulados da linha | **71** (53 herdados do motor de undo + os desta sessão) |
 
 ## 2 — O que entra
 
@@ -74,6 +74,40 @@ dono devolve o mesmo buffer); suíte **961 release / 959 debug**.
 telas**. O knob nasce em `0`, e é exatamente por isso que a tabela de decomposição do doc 31 o usou
 como **piso de ruído** — o custo dele nunca tinha sido medido.
 
+### 2.4 — Os dois passes por-quadro da umidade caminham em PARALELO (2026-08-02, noite)
+
+O 2º log do Enio fechou a conta do quadro (`composite 10,62 · pour 9,70 · secagem 12,81 · CHROME wet
+37,05 ≈ 70` contra `frame p50 = 67,3`), e depois que o véu caiu (§2.3b/§5.75) os dois maiores itens
+restantes eram a **SECAGEM** e o **DESPEJO** — os dois caminhando a união cumulativa em todo quadro,
+pinte-se ou não (o papel seca no heartbeat).
+
+⛔ **TRÊS curas single-thread foram construídas antes da que funciona, e as três mediram ~1,00×** —
+está no [doc 28 §5.76](Painter/28_otimizacoes_o_que_funcionou.md) para ninguém as reconstruir: a
+**janela deslizante** no lugar do snapshot do rect (1,02×), o **piso da erosão** e o **rect que
+encolhe**. A alocação e a cópia não eram o custo; o custo é o **caminhar**, 2,2 ns/texel. A janela
+deslizante foi **revertida**, porque a dependência entre linhas que ela cria é exatamente o que
+impede o paralelo que funciona; o piso e o rect **ficaram** (byte-idênticos, e o rect é lido também
+pelo véu do shell).
+
+**O que move:** os dois passes são row-parallel, sob **emenda de 2026-08-02 no ADR-0109** (escrita no
+próprio ADR). Os três invariantes dele valem verbatim, e a redução é do tipo que a cerca de contenção
+**isenta**: `max`/`min` sobre INTEIROS na secagem, e **nenhuma** no despejo.
+
+| | antes | agora | |
+|---|---|---|---|
+| secagem, um passe @4096² | 30,44 ms | **3,28** | **9,3×** |
+| secagem, 120 quadros secando | 28,50 ms/quadro | **2,93** | **9,7×** |
+| despejo @4096² | 12,46 ms | **0,63** | **19,8×** |
+
+⚠️ O 19,8× inclui a tabela de dureza (o oráculo congelado é o produto pré-wave inteiro), e a corrida
+dele saiu com `load 6,7`: **as razões sobrevivem, os absolutos não** (a corrida calma dava 28,87 →
+3,45 na secagem).
+
+⚠️ **LOC:** o `watercolor_backdrop.rs` bateu **696/700** — quatro linhas de folga é dívida latente,
+então o decaimento saiu por ASSUNTO para o irmão novo **`watercolor_dry.rs`** (*o que molha o papel*
+× *o que o seca*). 547 + 161. O piso do pool passou a morar com o MAPA, que os dois passes
+compartilham (`WET_PAR_MIN`).
+
 ## 3 — Foundational tocado
 
 **NENHUM.** Todo o diff mora em `crates/ph2d-tool-painter/`. Zero `Cargo.toml`, zero dep nova, zero
@@ -86,6 +120,11 @@ crate nova, nenhum ADR, nenhum id/token/i18n, **nenhum schema** (`PROJECT_SCHEMA
 `PanelEvent=4` intactos.
 
 ## 5 — Superfície nova (para o integrador detectar colisão)
+
+**Módulo novo (privado):** `tool/paint/watercolor_dry.rs` (+ `watercolor_dry_tests.rs`) — split de LOC
+por assunto, `mod` declarado em `paint.rs` ao lado do `watercolor_backdrop`. `PaintState` ganhou
+`canvas_wet_snapshot: Vec<u8>` (scratch persistente do decaimento) e `watercolor_backdrop` exporta
+`pub(super) WET_PAR_MIN`. **Nada disto é público fora do `tool::paint`.**
 
 | símbolo | onde | o que é |
 |---|---|---|
@@ -128,6 +167,22 @@ preenchimento chapado **é** o que o acumulador teria codificado (alfa incluso).
 `Sim::order_invariant` (ADR-0147): um A/B cross-process atribuiria a deriva desta máquina (o mesmo passo
 de produto já foi medido a 14,5 e 30,2 ms) à mudança; e o gate de cadência precisa de uma alavanca que o
 faça ir VERMELHO. Produto é sempre `false`.
+
+### 6.x — Os gates da wave do paralelo (5 gates, 7 mutações, 7 sangram)
+
+`watercolor_dry_tests.rs`: identidade da **secagem** contra a rotina que SHIPAVA (congelada sob
+`cfg(test)`), varrendo `step` 1/5/17/51 **e os dois lados do piso do pool** · identidade do
+**despejo** contra o serial congelado ESCRITO NO TESTE · o **rect recua nos 4 lados** sem deixar
+umidade fora dele · a **tabela de dureza** contra a expressão escrita no gate · e o **arch-gate do
+`par_chunks_mut`** nos dois passes. Mais a sonda `#[ignore]`
+`the_cost_of_the_drying_pass_by_both_routes`.
+
+⚠️ **Quatro lições de gate, todas minhas, e todas registradas no doc 28 §5.76:** a 1ª versão usava só
+128² (abaixo do piso ⇒ **nunca entrava na rota paralela que a wave instala**) · o `step` é fixture
+tanto quanto o tamanho (a mutação *"leia um vizinho já escrito"* **sobreviveu** a `step = 5`, porque a
+erosão é inteira e o erro só atravessa a quantização em `step ≥ 12`) · o gate da tabela era uma
+**tautologia** (comparava a LUT com a função que a constrói) · e comparar as duas rotas do PRODUTO
+provaria só o *walker*, porque as duas compartilham o corpo (ADR-0145).
 
 ## 7 — ⚠️ Seis fixtures existentes foram corrigidas
 

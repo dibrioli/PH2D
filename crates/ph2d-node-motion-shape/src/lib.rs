@@ -93,7 +93,7 @@ impl ShapeKind {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ShapeParams {
     pub kind: ShapeKind,
-    /// Primary size in px (radius for round kinds, half-extent for boxes).
+    /// Primary size in world units (radius for round kinds, half-extent for boxes).
     pub size: f32,
     /// Height ÷ width (1.0 = circle/square; the ellipse/rectangle stretch).
     pub aspect: f32,
@@ -180,7 +180,7 @@ pub const MANIFEST: NodeManifest = NodeManifest {
         },
         ParamSpec {
             name: param::SIZE,
-            default: 100.0,
+            default: 1.0,
         },
         ParamSpec {
             name: param::ASPECT,
@@ -260,9 +260,9 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: param::SIZE,
         label: "Size",
-        min: 1.0,
-        max: 500.0,
-        step: 1.0,
+        min: 0.05,
+        max: 10.0,
+        step: 0.05,
         widget: ParamWidget::Slider,
     },
     ParamUiHint {

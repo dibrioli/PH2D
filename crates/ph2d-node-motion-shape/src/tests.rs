@@ -30,7 +30,7 @@ fn kind_index_round_trips_and_labels_align() {
 fn the_key_is_deterministic_and_separates_every_param() {
     let base = ShapeParams {
         kind: ShapeKind::Star,
-        size: 100.0,
+        size: 1.0,
         aspect: 1.0,
         sides: 5,
         inner: 0.45,
@@ -43,7 +43,7 @@ fn the_key_is_deterministic_and_separates_every_param() {
     // shapes would resolve to the same stored geometry.
     let mutate: &[fn(&mut ShapeParams)] = &[
         |p| p.kind = ShapeKind::Circle,
-        |p| p.size = 101.0,
+        |p| p.size = 2.0,
         |p| p.aspect = 1.5,
         |p| p.sides = 6,
         |p| p.inner = 0.5,
@@ -77,7 +77,7 @@ fn read_over_manifest_defaults_gives_the_default_shape() {
     };
     let p = ShapeParams::read(default_of);
     assert_eq!(p.kind, ShapeKind::Circle);
-    assert_eq!(p.size, 100.0);
+    assert_eq!(p.size, 1.0);
     assert_eq!(p.aspect, 1.0);
     assert_eq!(p.sides, 6);
     assert_eq!(p.inner, 0.45);

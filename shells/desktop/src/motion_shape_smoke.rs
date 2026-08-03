@@ -45,7 +45,7 @@ fn build_shape_graph(graph: &mut Graph, kind: f32) -> (NodeId, NodeId) {
         wire(dup, 0, out, 0); // duplicator -> output
     }
     graph.set_param(src, "kind", kind);
-    graph.set_param(src, "size", 40.0);
+    graph.set_param(src, "size", 0.4);
     graph.set_param(src, "sides", 6.0);
     // Uma grade folgada 4x4 = 16 carimbos.
     graph.set_param(grid, "rows", 4.0);

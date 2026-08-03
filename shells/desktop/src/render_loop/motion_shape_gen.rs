@@ -89,7 +89,7 @@ pub(crate) fn read_params(overrides: Option<&BTreeMap<String, f32>>) -> ShapePar
 /// `corner` is absolute world units. Eight FILLABLE closed shapes (the draw entry
 /// fills; open curves like arc/spiral are follow-ups).
 pub(crate) fn build_shape_path(p: &ShapeParams) -> VecPath {
-    let s = f64::from(p.size.max(0.5));
+    let s = f64::from(p.size.max(0.01));
     let ry = s * f64::from(p.aspect.clamp(0.05, 20.0));
     let sides = p.sides.clamp(3, 512);
     let inner = f64::from(p.inner.clamp(0.0, 1.0));

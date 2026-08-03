@@ -21,7 +21,7 @@ fn publish_then_cook_the_node_reads_its_own_shape() {
     let mut state = MotionState::new();
     let n = state.doc.graph.add_node("source.shape");
     state.doc.graph.set_param(n, "kind", 5.0); // Star
-    state.doc.graph.set_param(n, "size", 80.0);
+    state.doc.graph.set_param(n, "size", 0.8);
     state.doc.graph.set_param(n, "sides", 6.0);
 
     // The real publish: intern the geometry + set the external on the pump's cook.
@@ -145,7 +145,7 @@ fn a_shape_stamped_on_a_grid_lowers_to_sixteen_vectors() {
         let dup = g.add_node("motion.duplicator");
         let out = g.add_node("motion.output");
         g.set_param(src, "kind", 5.0); // Star
-        g.set_param(src, "size", 40.0);
+        g.set_param(src, "size", 0.4);
         g.set_param(grid, "rows", 4.0);
         g.set_param(grid, "cols", 4.0);
         let mut wire = |a: NodeId, ap: u16, b: NodeId, bp: u16| {

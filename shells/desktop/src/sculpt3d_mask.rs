@@ -38,23 +38,38 @@ impl Sculpt3dScene {
     ///
     /// ⚠️ E a GPU tem de re-ler a malha INTEIRA: o `dirty` incremental é a
     /// janela de um dab, e aqui não houve dab.
+    /// A malha do nível vivo, **garantida pelo guard do [`Self::mask_op`]**.
+    fn piece_mesh_mut(&mut self) -> &mut ph2d_mesh::Mesh {
+        self.mesh_mut().expect("o guard do mask_op garante a peça")
+    }
+
     pub(super) fn mask_op(&mut self, op: MaskOp) {
+        // ⚠️ Sem peça não há máscara a operar, e a saída é ANTES de qualquer
+        // coisa: gravar uma entrada de undo aqui nomearia uma edição que não
+        // aconteceu.
+        if self.obj().is_none() {
+            return;
+        }
         let before = self.mesh().masks().map(<[f32]>::to_vec);
         match op {
             MaskOp::Clear => {
-                if !ph2d_sculpt3d::mask_ops::clear(self.mesh_mut()) {
+                if !ph2d_sculpt3d::mask_ops::clear(self.piece_mesh_mut()) {
                     return;
                 }
             }
-            MaskOp::Invert => ph2d_sculpt3d::mask_ops::invert(self.mesh_mut()),
-            MaskOp::Blur => ph2d_sculpt3d::mask_ops::blur(self.mesh_mut(), MASK_OP_PASSES),
-            MaskOp::Sharpen => ph2d_sculpt3d::mask_ops::sharpen(self.mesh_mut(), MASK_OP_PASSES),
+            MaskOp::Invert => ph2d_sculpt3d::mask_ops::invert(self.piece_mesh_mut()),
+            MaskOp::Blur => ph2d_sculpt3d::mask_ops::blur(self.piece_mesh_mut(), MASK_OP_PASSES),
+            MaskOp::Sharpen => {
+                ph2d_sculpt3d::mask_ops::sharpen(self.piece_mesh_mut(), MASK_OP_PASSES)
+            }
         }
         self.record(StrokeUndo::Mask {
-            level: self.obj().stack.level(),
+            level: self.level(),
             before,
         });
-        self.obj_mut().uploaded = false;
+        if let Some(o) = self.obj_mut() {
+            o.uploaded = false;
+        }
         self.edits += 1;
     }
 }

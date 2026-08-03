@@ -62,16 +62,40 @@ impl Sculpt3dScene {
         true
     }
 
+    /// A peça ativa, **garantida pelo guard do [`Self::apply_entry`]**.
+    ///
+    /// ⚠️ Invariante local e curta de propósito: o guard está três linhas acima
+    /// de todo chamador, no topo da mesma função, e o pânico — se alguém a
+    /// chamar de outro lugar — nomeia o conserto no sítio exato. Espalhar um
+    /// `Option` pelos catorze braços descreveria catorze vezes o mesmo nada.
+    fn piece_mut(&mut self) -> &mut super::SceneObject {
+        self.obj_mut()
+            .expect("o guard do apply_entry garante a peça")
+    }
+
     /// **Aplica uma entrada e devolve a inversa dela.**
+    ///
+    /// ⚠️ **Os dois verbos de LISTA rodam SEM peça viva**, e é isso que faz o
+    /// *"apaguei tudo"* ser desfazível: o `RemovedObject` recoloca numa cena que
+    /// pode estar VAZIA. Todos os outros descrevem uma edição DENTRO de uma
+    /// peça, e sem ela não há o que aplicar — a entrada volta intacta, e a fila
+    /// não a perde.
     fn apply_entry(&mut self, object: ObjectId, entry: StrokeUndo) -> StrokeUndo {
+        let list_verb = matches!(
+            entry,
+            StrokeUndo::AddedObject | StrokeUndo::RemovedObject(_)
+        );
+        if !list_verb && self.obj().is_none() {
+            return entry;
+        }
         // ⚠️ **Ir ao nível certo vem PRIMEIRO.** Uma janela de traço é uma lista
         // de índices, e índices pertencem a uma topologia — aplicá-los noutro
         // nível escreve posições certas nos vértices errados sem levantar erro
         // nenhum.
         match entry {
             StrokeUndo::Stroke { level, .. } | StrokeUndo::Mask { level, .. } => {
-                if self.obj().stack.level() != level {
-                    self.obj_mut().stack.select(level);
+                if self.level() != level {
+                    self.select_level(level);
                     self.mesh_rebuilt();
                 }
             }
@@ -81,9 +105,9 @@ impl Sculpt3dScene {
             // apertava Ctrl+Z, a pilha ficava como estava, e a entrada era
             // consumida. Achado por mutação.
             StrokeUndo::AddedLevel | StrokeUndo::DroppedLevel(_) => {
-                let top = self.obj().stack.level_count().saturating_sub(1);
-                if self.obj().stack.level() != top {
-                    self.obj_mut().stack.select(top);
+                let top = self.level_count().saturating_sub(1);
+                if self.level() != top {
+                    self.select_level(top);
                 }
             }
             // ⚠️ **As duas da LISTA não têm nível a escolher**, e não é omissão:
@@ -100,21 +124,21 @@ impl Sculpt3dScene {
             // carimba exatamente nada.
             StrokeUndo::Descended { from, .. } => {
                 let landed = from.saturating_sub(1);
-                if self.obj().stack.level() != landed {
-                    self.obj_mut().stack.select(landed);
+                if self.level() != landed {
+                    self.select_level(landed);
                 }
             }
             StrokeUndo::Ascended { from } => {
-                if self.obj().stack.level() != from + 1 {
-                    self.obj_mut().stack.select(from + 1);
+                if self.level() != from + 1 {
+                    self.select_level(from + 1);
                 }
             }
             // ⚠️ A MESMA lei outra vez, e aqui os dois lados pousam em níveis
             // DIFERENTES: reverter deixa o artista no nível 1 (a malha que ele
             // tinha, com uma base nova embaixo) e desfazê-la o deixa no 0.
             StrokeUndo::ReversedLevel(_) => {
-                if self.obj().stack.level() != 1 {
-                    self.obj_mut().stack.select(1);
+                if self.level() != 1 {
+                    self.select_level(1);
                 }
             }
             // ⚠️ Tapar buraco só existe em pilha de UM nível, então este `select`
@@ -125,8 +149,8 @@ impl Sculpt3dScene {
             | StrokeUndo::FilledHoles { .. }
             | StrokeUndo::UnfilledHoles
             | StrokeUndo::Remeshed(_) => {
-                if self.obj().stack.level() != 0 {
-                    self.obj_mut().stack.select(0);
+                if self.level() != 0 {
+                    self.select_level(0);
                 }
             }
         }
@@ -137,19 +161,19 @@ impl Sculpt3dScene {
             StrokeUndo::Mask { level, before } => {
                 let now = self.mesh().masks().map(<[f32]>::to_vec);
                 match before {
-                    Some(m) => self.mesh_mut().put_masks(m),
+                    Some(m) => self.piece_mut().stack.mesh_mut().put_masks(m),
                     None => {
-                        self.mesh_mut().take_masks();
+                        self.piece_mut().stack.mesh_mut().take_masks();
                     }
                 }
-                self.obj_mut().uploaded = false;
+                self.piece_mut().uploaded = false;
                 self.edits += 1;
                 StrokeUndo::Mask { level, before: now }
             }
             // Tirar o topo — o nível de baixo nunca foi tocado. O que sai vira a
             // inversa, inteiro.
             StrokeUndo::AddedLevel => {
-                let gone = self.obj_mut().stack.drop_top();
+                let gone = self.piece_mut().stack.drop_top();
                 self.stroke = SculptStroke::default();
                 self.mesh_rebuilt();
                 match gone {
@@ -160,7 +184,7 @@ impl Sculpt3dScene {
                 }
             }
             StrokeUndo::DroppedLevel(level) => {
-                self.obj_mut().stack.push_level(*level);
+                self.piece_mut().stack.push_level(*level);
                 self.stroke = SculptStroke::default();
                 self.mesh_rebuilt();
                 StrokeUndo::AddedLevel
@@ -169,7 +193,7 @@ impl Sculpt3dScene {
             // se desfaz devolvendo o carimbo E subindo; subir se desfaz descendo,
             // o que produz o carimbo que a inversa vai precisar.
             StrokeUndo::Descended { from, stamped } => {
-                self.obj_mut().stack.undo_descent(&stamped);
+                self.piece_mut().stack.undo_descent(&stamped);
                 self.stroke = SculptStroke::default();
                 self.mesh_rebuilt();
                 StrokeUndo::Ascended {
@@ -177,7 +201,7 @@ impl Sculpt3dScene {
                 }
             }
             StrokeUndo::Ascended { from } => {
-                let stamped = self.obj_mut().stack.lower();
+                let stamped = self.piece_mut().stack.lower();
                 self.stroke = SculptStroke::default();
                 self.mesh_rebuilt();
                 match stamped {
@@ -194,7 +218,12 @@ impl Sculpt3dScene {
             // devolve a mesma entrada em vez de consumi-la — a malha ficou como
             // estava, então a única coisa capaz de desfazer continua na fila.
             StrokeUndo::FilledHoles { verts, faces } => {
-                let ok = self.mesh_mut().truncate(verts, faces).is_ok();
+                let ok = self
+                    .piece_mut()
+                    .stack
+                    .mesh_mut()
+                    .truncate(verts, faces)
+                    .is_ok();
                 self.stroke = SculptStroke::default();
                 self.mesh_rebuilt();
                 if ok {
@@ -208,7 +237,7 @@ impl Sculpt3dScene {
             // inteira e coerente, e instalá-la não pode deixar índice apontando
             // para fora.
             StrokeUndo::Remeshed(previous) => {
-                let now = core::mem::replace(self.obj_mut().stack.mesh_mut(), *previous);
+                let now = core::mem::replace(self.piece_mut().stack.mesh_mut(), *previous);
                 self.stroke = SculptStroke::default();
                 self.mesh_rebuilt();
                 StrokeUndo::Remeshed(Box::new(now))
@@ -235,7 +264,7 @@ impl Sculpt3dScene {
                 StrokeUndo::AddedObject
             }
             StrokeUndo::UnfilledHoles => {
-                let report = ph2d_mesh::fill_holes(self.mesh_mut());
+                let report = ph2d_mesh::fill_holes(self.piece_mut().stack.mesh_mut());
                 self.stroke = SculptStroke::default();
                 self.mesh_rebuilt();
                 if report.is_noop() {
@@ -251,7 +280,7 @@ impl Sculpt3dScene {
             // é ignorado: devolver a MESMA entrada mantém a reversão viva na
             // fila oposta, em vez de consumir a única coisa capaz de desfazê-la.
             StrokeUndo::ReversedLevel(rev) => {
-                let undone = self.obj_mut().stack.unreverse(&rev);
+                let undone = self.piece_mut().stack.unreverse(&rev);
                 self.stroke = SculptStroke::default();
                 self.mesh_rebuilt();
                 if undone {
@@ -261,7 +290,7 @@ impl Sculpt3dScene {
                 }
             }
             StrokeUndo::UnreversedLevel => {
-                let again = self.obj_mut().stack.reverse();
+                let again = self.piece_mut().stack.reverse();
                 self.stroke = SculptStroke::default();
                 self.mesh_rebuilt();
                 match again {
@@ -276,7 +305,11 @@ impl Sculpt3dScene {
                 masks,
             } => {
                 if let Some(masks) = masks {
-                    let now = swap_window(self.mesh_mut().masks_mut(), &verts, &masks);
+                    let now = swap_window(
+                        self.piece_mut().stack.mesh_mut().masks_mut(),
+                        &verts,
+                        &masks,
+                    );
                     StrokeUndo::Stroke {
                         level,
                         verts,
@@ -284,14 +317,18 @@ impl Sculpt3dScene {
                         masks: Some(now),
                     }
                 } else {
-                    let now = swap_window(self.mesh_mut().positions_mut(), &verts, &positions);
+                    let now = swap_window(
+                        self.piece_mut().stack.mesh_mut().positions_mut(),
+                        &verts,
+                        &positions,
+                    );
                     // ⚠️ O `rebuild` inteiro, e não um `refresh_region`:
                     // desfazer devolve posições que o refit incremental já
                     // tinha "seguido" para outro lugar, e um refit sobre a
                     // volta deixaria caixas frouxas grandes demais acumulando a
                     // cada Ctrl+Z. Um undo é user-paced — é o lugar certo para
                     // pagar a resposta exata.
-                    self.mesh_mut().rebuild();
+                    self.piece_mut().stack.mesh_mut().rebuild();
                     self.mesh_rebuilt();
                     StrokeUndo::Stroke {
                         level,

@@ -63,7 +63,7 @@ fn undoing_rebuilds_the_index_instead_of_refitting_the_way_back() {
     // user-paced — é o lugar certo para pagar a resposta exata.
     let body = function_body(&sculpt_src(), "apply_entry");
     assert!(
-        body.contains("self.mesh_mut().rebuild()"),
+        body.contains("mesh_mut().rebuild()"),
         "desfazer tem de reconstruir o índice"
     );
     assert!(
@@ -146,7 +146,7 @@ fn undoing_a_subdivision_drops_the_top_level_instead_of_restoring_a_mesh() {
     let src = sculpt_src();
     let body = function_body(&src, "subdivide(&mut self)");
     assert!(
-        body.contains("self.stack.add_level()"),
+        body.contains(".stack.add_level()"),
         "subdividir é acrescentar um nível à pilha"
     );
     assert!(
@@ -386,7 +386,7 @@ fn walking_the_levels_is_recorded_because_descending_writes() {
         "subir e descer não são a mesma entrada"
     );
     assert!(
-        body.contains("self.stack.lower()") && body.contains("self.stack.higher()"),
+        body.contains(".stack.lower()") && body.contains(".stack.higher()"),
         "e cada uma sai da porta da pilha que lhe corresponde"
     );
 
@@ -692,7 +692,7 @@ fn undoing_returns_to_the_object_the_edit_was_made_on() {
     // desfazer aplica em quem estiver na mão.
     let record = function_body(&src, "record(&mut self, undo");
     assert!(
-        record.contains("self.record_for(self.obj().id, undo)"),
+        record.contains("self.obj().map(|o| o.id)") && record.contains("self.record_for(id, undo)"),
         "gravar carimba a peça ativa e delega à porta única"
     );
 }
@@ -804,7 +804,7 @@ fn a_stroke_belongs_to_the_piece_it_started_on() {
 /// história de todas as outras. Carregar a peça na entrada custa um `Box` e
 /// devolve a pilha de níveis, a máscara e a pose junto.
 #[test]
-fn the_list_verbs_are_undoable_and_the_last_piece_is_not_deletable() {
+fn the_list_verbs_are_undoable_and_the_last_piece_is_deletable_too() {
     let src = sculpt_src();
 
     for verb in ["add_primitive(&mut self", "duplicate_active(&mut self"] {
@@ -819,10 +819,35 @@ fn the_list_verbs_are_undoable_and_the_last_piece_is_not_deletable() {
         );
     }
 
-    let del = function_body(&src, "delete_active(&mut self");
+    // ⚠️ **E o desfazer alcança a cena VAZIA**, que é o que torna *"apaguei
+    // tudo"* reversível: o `RemovedObject` recoloca a peça onde não há nenhuma.
+    // Sem esta isenção, o guard do `apply_entry` recusaria justamente a entrada
+    // que devolve a última peça — e o artista ficaria com uma cena vazia e um
+    // Ctrl+Z que não faz nada. Achado por mutação: nenhum outro gate a via.
+    let apply = function_body(&src, "apply_entry");
     assert!(
-        del.contains("if self.objects.len() <= 1") && del.contains("return false"),
-        "a ÚLTIMA peça não é apagável: a cena nunca-vazia é o que torna `obj()` total"
+        apply.contains("let list_verb = matches!"),
+        "o guard tem de distinguir os verbos de LISTA dos de peça"
+    );
+    assert!(
+        apply.contains("!list_verb && self.obj().is_none()"),
+        "…e ISENTAR os de lista: sem isso, desfazer o delete da última peça \
+         seria recusado pelo próprio guard"
+    );
+
+    let del = function_body(&src, "delete_active(&mut self");
+    // ⚠️ **A ÚLTIMA peça É apagável, e este gate afirmava o CONTRÁRIO.** O Enio
+    // derrubou a cerca no smoke (*"não consigo deletar todos os objetos"*): ela
+    // defendia uma invariante nossa — a lista nunca-vazia que tornava o `obj()`
+    // total —, não um interesse do artista. Hoje o `obj()` devolve `Option` e a
+    // cena pode esvaziar; o que recusa é a cena que JÁ está vazia.
+    assert!(
+        !del.contains("self.objects.len() <= 1"),
+        "a última peça voltou a ser inapagável — a cerca foi derrubada de propósito"
+    );
+    assert!(
+        del.contains("let Some(object) = self.obj()") && del.contains("return false"),
+        "…e o que recusa é não HAVER peça, não ela ser a última"
     );
     assert!(
         del.contains("StrokeUndo::RemovedObject(Box::new(gone))"),
@@ -831,7 +856,7 @@ fn the_list_verbs_are_undoable_and_the_last_piece_is_not_deletable() {
     // ⚠️ E com o id da peça que SAIU, não com o da que ficou ativa: é ela que o
     // `RemovedObject` vai recolocar.
     let at_id = del
-        .find("let object = self.obj().id;")
+        .find("let Some(object) = self.obj().map(|o| o.id)")
         .expect("o id da peça que sai");
     let at_remove = del
         .find("self.objects.remove(")

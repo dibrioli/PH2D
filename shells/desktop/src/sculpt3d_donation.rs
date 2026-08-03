@@ -195,8 +195,10 @@ impl Sculpt3dScene {
     /// A malha foi RECONSTRUÍDA (o undo) — o upload incremental não serve, e a doação envelheceu
     /// igual. Irmã do [`Self::mesh_changed`].
     pub(super) fn mesh_rebuilt(&mut self) {
-        self.obj_mut().dirty.clear();
-        self.obj_mut().uploaded = false;
+        if let Some(o) = self.obj_mut() {
+            o.dirty.clear();
+            o.uploaded = false;
+        }
         self.edits = self.edits.wrapping_add(1);
     }
 

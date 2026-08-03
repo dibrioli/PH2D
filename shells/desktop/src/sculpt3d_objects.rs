@@ -163,7 +163,10 @@ impl Sculpt3dScene {
     /// o arrasto de barro usa (`screen_delta_to_world`), então as duas
     /// respondem a *"que direção é 'para a direita'?"* com o mesmo número.
     pub(super) fn duplicate_active(&mut self) -> bool {
-        let src = self.obj();
+        // Sem peça não há o que duplicar.
+        let Some(src) = self.obj() else {
+            return false;
+        };
         let mesh = src.stack.mesh().clone();
         let pose = src.pose;
         let world = pose.bounds_to_world(src.stack.mesh().bounds());
@@ -207,25 +210,35 @@ impl Sculpt3dScene {
         true
     }
 
-    /// **APAGA a peça ativa.** Devolve `false` quando ela é a última.
+    /// **APAGA a peça ativa.** Devolve `false` só quando não há nenhuma.
     ///
-    /// ⚠️ **A última NÃO é apagável, e a recusa é honesta:** uma cena vazia
-    /// deixaria o `obj()` sem resposta (a lista nunca-vazia é a invariante que o
-    /// torna total) e daria ao artista uma tela preta sem nada dizendo por quê.
-    /// O verbo que ele quer nesse caso é *substituir*, e ele já o tem: acrescente
-    /// a peça nova e apague a velha.
+    /// ⚠️ **A última ERA inapagável, e o Enio derrubou a cerca no smoke** (*"não
+    /// consigo deletar todos os objetos da tela"*). A recusa era honesta sobre o
+    /// mecanismo — a lista nunca-vazia é o que tornava o `obj()` total — mas ela
+    /// defendia uma invariante nossa, não um interesse do artista: *esvaziar a
+    /// cena* é um gesto legítimo, e o verbo que a nota antiga oferecia
+    /// (*substituir*: acrescente a nova e apague a velha) só serve a quem quer
+    /// outra peça, não a quem quer nenhuma.
+    ///
+    /// ⚠️ **O preço foi 54 sítios**, e a cura é a representação admitindo o que
+    /// já era verdade: `obj()` devolve `Option`, porque *"qual é a peça ativa?"*
+    /// honestamente pode não ter resposta. O que sobrou de `expect` é local e
+    /// curto — um guard três linhas acima, na mesma função.
+    ///
+    /// ⚠️ **E desfazer CONTINUA trazendo a peça de volta**, inclusive a última:
+    /// o `RemovedObject` é um dos dois verbos que o `apply_entry` deixa rodar
+    /// numa cena VAZIA, e é isso que faz *"apaguei tudo"* ser reversível.
     ///
     /// ⚠️ **A peça sai INTEIRA para dentro da fila** — com a pilha de níveis, a
     /// máscara e a pose. Limpar a fila em vez disso (o que a W8.1 anotou como
     /// saída) trocaria um trabalho perdido por outro: o artista recuperaria a
     /// peça e perderia a história de todas as outras.
     pub(super) fn delete_active(&mut self) -> bool {
-        if self.objects.len() <= 1 {
+        let Some(object) = self.obj().map(|o| o.id) else {
             return false;
-        }
-        let object = self.obj().id;
+        };
         let gone = self.objects.remove(self.active);
-        self.active = self.active.min(self.objects.len() - 1);
+        self.active = self.active.min(self.objects.len().saturating_sub(1));
         // ⚠️ A entrada é gravada com o id da peça que SAIU, não com o da que
         // ficou ativa — é ela que o `RemovedObject` vai recolocar, e o `record`
         // carimba o ativo. Por isso a construção é explícita aqui.

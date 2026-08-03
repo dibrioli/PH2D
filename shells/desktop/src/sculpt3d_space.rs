@@ -67,17 +67,31 @@ impl Sculpt3dScene {
     /// malha na MESMA expressão) o mesmo acesso aparece escrito por extenso,
     /// `self.objects[self.active]`. É a mesma porta, não uma segunda — o índice
     /// é o que ela devolve.
-    pub(super) fn obj(&self) -> &SceneObject {
-        &self.objects[self.active]
+    /// A peça ativa — **`None` numa cena VAZIA**.
+    ///
+    /// ⚠️ **Ela devolvia `&SceneObject` e a lista era nunca-vazia**, o que
+    /// tornava *"apagar a última"* uma recusa: o Enio a reportou como *"não
+    /// consigo deletar todos os objetos da tela"*. A invariante existia para
+    /// esta função ser total, e trocá-la por `Option` é a representação
+    /// admitindo o que já era verdade — **uma cena vazia é um estado que o
+    /// artista pode querer**, e nenhum gesto tem resposta sem peça.
+    pub(super) fn obj(&self) -> Option<&SceneObject> {
+        self.objects.get(self.active)
     }
 
-    pub(super) fn obj_mut(&mut self) -> &mut SceneObject {
-        &mut self.objects[self.active]
+    /// A peça ativa, para escrever — **`None` numa cena VAZIA**.
+    pub(super) fn obj_mut(&mut self) -> Option<&mut SceneObject> {
+        self.objects.get_mut(self.active)
     }
 
     /// Onde o objeto ativo está — ver [`Pose`].
+    ///
+    /// ⚠️ **`IDENTITY` numa cena vazia, e é o valor CERTO:** não há peça para
+    /// posicionar, e todo consumidor desta função usa a pose para transformar
+    /// algo que também não existe. Devolver `Option` aqui espalharia o `?` por
+    /// vinte sítios para descrever o mesmo nada.
     pub(super) fn pose(&self) -> Pose {
-        self.obj().pose
+        self.obj().map_or(Pose::IDENTITY, |o| o.pose)
     }
 
     /// A malha do nível VIVO — a que o artista vê e esculpe.
@@ -85,12 +99,49 @@ impl Sculpt3dScene {
     /// ⚠️ Porta, e não campo, desde que a pilha existe: *qual malha é esta cena*
     /// passou a ter uma resposta que depende do nível selecionado, e um campo
     /// paralelo seria a segunda cópia dessa resposta.
+    /// ⚠️ **Numa cena VAZIA devolve a malha vazia**, e não um `Option`: os
+    /// consumidores desenham, medem caixa e fazem raycast — e as três respostas
+    /// certas sobre nada são *nada desenhado*, *caixa vazia* e *nenhum acerto*,
+    /// que é exatamente o que uma `Mesh` sem vértices já dá. Um `Option` aqui
+    /// obrigaria vinte sítios a escrever o mesmo `else` para chegar ao mesmo
+    /// lugar.
     pub(crate) fn mesh(&self) -> &Mesh {
-        self.obj().stack.mesh()
+        static EMPTY: std::sync::OnceLock<Mesh> = std::sync::OnceLock::new();
+        self.obj().map_or_else(
+            || EMPTY.get_or_init(|| Mesh::from_parts(Vec::new(), Vec::new()).expect("vazia")),
+            |o| o.stack.mesh(),
+        )
     }
 
-    pub(super) fn mesh_mut(&mut self) -> &mut Mesh {
-        self.obj_mut().stack.mesh_mut()
+    /// **O nível selecionado da peça ativa** — `0` numa cena vazia.
+    ///
+    /// ⚠️ Porta única para a pergunta que o desfazer faz doze vezes (*em que
+    /// nível esta entrada foi gravada?*). Sem ela, cada braço do `apply_entry`
+    /// escreveria o próprio `else` para a cena vazia — doze cópias de uma
+    /// resposta só.
+    pub(super) fn level(&self) -> usize {
+        self.obj().map_or(0, |o| o.stack.level())
+    }
+
+    /// **Escolhe o nível da peça ativa** — no-op numa cena vazia.
+    pub(super) fn select_level(&mut self, k: usize) {
+        if let Some(o) = self.obj_mut() {
+            o.stack.select(k);
+        }
+    }
+
+    /// Quantos níveis a peça ativa tem — `0` numa cena vazia.
+    pub(super) fn level_count(&self) -> usize {
+        self.obj().map_or(0, |o| o.stack.level_count())
+    }
+
+    /// A malha do nível vivo, para escrever — **`None` numa cena vazia**.
+    ///
+    /// ⚠️ Aqui o `Option` FICA, ao contrário da leitura: escrever exige um alvo,
+    /// e um alvo-sentinela mutável aceitaria a escrita e a jogaria fora — um
+    /// traço que não aparece, sem nada dizendo por quê.
+    pub(super) fn mesh_mut(&mut self) -> Option<&mut Mesh> {
+        Some(self.obj_mut()?.stack.mesh_mut())
     }
 
     /// O raio autorado, **já clampado contra a tela desta janela**.
@@ -171,7 +222,7 @@ impl Sculpt3dScene {
     /// PULAR para outra peça no meio de uma pincelada — que é o defeito acima,
     /// pela outra ponta.
     pub(super) fn pick_active(&self, x: f32, y: f32) -> Option<Hit> {
-        let o = self.obj();
+        let o = self.obj()?;
         o.stack
             .mesh()
             .raycast(&o.pose.ray_to_local(&self.ray_at(x, y)))

@@ -187,6 +187,24 @@ fn elide_active_object(src: &str) -> String {
     src.replace("self.objects[self.active].stack", "self.stack")
         .replace("self.obj_mut().stack", "self.stack")
         .replace("self.obj().stack", "self.stack")
+        // ⚠️ **A wave que deixou a cena ESVAZIAR acrescentou três grafias**, e
+        // é a mesma razão das três de cima: o `obj()` passou a devolver
+        // `Option`, então a peça é alcançada por um `piece_mut()` guardado
+        // (dentro do `apply_entry`) e o nível por portas próprias
+        // (`level`/`select_level`/`level_count`, que existem para os catorze
+        // braços do desfazer não escreverem catorze vezes o mesmo `else`). O
+        // que os gates afirmam continua sendo **qual verbo da pilha é
+        // chamado**, e ele não mudou.
+        .replace("self.piece_mut().stack", "self.stack")
+        // ⚠️ **Os DOIS receptores**, e o segundo não é simetria: o gesto lê a
+        // cena por uma variável (`scene.level()`, em `sculpt3d_input.rs`) e o
+        // resto por `self`. Elidir só um deixaria o gate do log do nível
+        // vermelho sobre produto correto — foi o que aconteceu.
+        .replace("self.level_count()", "self.stack.level_count()")
+        .replace("scene.level_count()", "scene.stack.level_count()")
+        .replace("self.select_level(", "self.stack.select(")
+        .replace("self.level()", "self.stack.level()")
+        .replace("scene.level()", "scene.stack.level()")
 }
 
 /// O corpo do braço de `match` que **CONTÉM** este padrão — mesmo quando ele é

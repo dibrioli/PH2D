@@ -398,8 +398,8 @@ impl App {
             if scene.subdivide() {
                 eprintln!(
                     "[sculpt3d] subdividida: nivel {} de {} -- {} vertices / {} faces / {} triangulos",
-                    scene.obj().stack.level(),
-                    scene.obj().stack.level_count() - 1,
+                    scene.level(),
+                    scene.level_count().saturating_sub(1),
                     scene.mesh().vert_count(),
                     scene.mesh().face_count(),
                     scene.mesh().triangle_count()
@@ -455,11 +455,11 @@ impl App {
         // não tem como saber se o gesto fez alguma coisa.
         if code == K::KeyJ {
             if scene.reverse_level() {
-                let base = scene.obj().stack.level_mesh(0);
+                let base = scene.obj().and_then(|o| o.stack.level_mesh(0));
                 eprintln!(
                     "[sculpt3d] revertida: nivel {} de {} -- a base nova tem {} vertices / {} faces",
-                    scene.obj().stack.level(),
-                    scene.obj().stack.level_count() - 1,
+                    scene.level(),
+                    scene.level_count().saturating_sub(1),
                     base.map_or(0, ph2d_mesh::Mesh::vert_count),
                     base.map_or(0, ph2d_mesh::Mesh::face_count)
                 );
@@ -478,8 +478,8 @@ impl App {
             if scene.change_level(up) {
                 eprintln!(
                     "[sculpt3d] nivel {} de {} -- {} vertices",
-                    scene.obj().stack.level(),
-                    scene.obj().stack.level_count() - 1,
+                    scene.level(),
+                    scene.level_count().saturating_sub(1),
                     scene.mesh().vert_count()
                 );
             } else {

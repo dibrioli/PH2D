@@ -193,7 +193,13 @@ impl Sculpt3dScene {
     /// nasce incompleta no dia em que aparece o quarto. Aqui o quarto nasce
     /// certo.
     pub(super) fn record(&mut self, undo: StrokeUndo) {
-        self.record_for(self.obj().id, undo);
+        // ⚠️ Sem peça não há o que gravar — e o caso existe desde que a cena
+        // pode esvaziar: um verbo que chegasse aqui numa cena vazia gravaria
+        // uma entrada nomeando um `ObjectId` que não é de ninguém.
+        let Some(id) = self.obj().map(|o| o.id) else {
+            return;
+        };
+        self.record_for(id, undo);
     }
 
     /// A mesma porta, com a peça **escolhida** em vez da ativa.
@@ -222,7 +228,10 @@ impl Sculpt3dScene {
     /// não há teto escrito aqui: o que aperta primeiro é a MEMÓRIA (~100 B por
     /// vértice de saída), e o log diz o número depois de cada nível.
     pub(super) fn subdivide(&mut self) -> bool {
-        if !self.obj_mut().stack.add_level() {
+        let Some(o) = self.obj_mut() else {
+            return false;
+        };
+        if !o.stack.add_level() {
             return false;
         }
         self.record(StrokeUndo::AddedLevel);
@@ -239,7 +248,7 @@ impl Sculpt3dScene {
     /// nível: dá para esculpir a pele e **não** para mover a forma grande. O
     /// preço é que a malha inteira é renumerada — ver o `multires_reverse.rs`.
     pub(super) fn reverse_level(&mut self) -> bool {
-        let Some(rev) = self.obj_mut().stack.reverse() else {
+        let Some(rev) = self.obj_mut().and_then(|o| o.stack.reverse()) else {
             return false;
         };
         self.record(StrokeUndo::ReversedLevel(Box::new(rev)));
@@ -259,10 +268,10 @@ impl Sculpt3dScene {
     /// o que resolveria é reconstruir a pilha, que é outra operação. O log diz
     /// para tapar ANTES de subdividir.
     pub(super) fn close_holes(&mut self) -> Option<ph2d_mesh::HoleFill> {
-        if self.obj().stack.level_count() != 1 {
+        if self.level_count() != 1 {
             return None;
         }
-        let report = ph2d_mesh::fill_holes(self.obj_mut().stack.mesh_mut());
+        let report = ph2d_mesh::fill_holes(self.mesh_mut()?);
         if report.is_noop() {
             return Some(report);
         }
@@ -286,11 +295,11 @@ impl Sculpt3dScene {
     /// em silêncio**, e isso é destruir trabalho que o artista autorou sem
     /// dizer; o log nomeia a recusa e o conserto.
     pub(super) fn remesh(&mut self, resolution: u32) -> Option<ph2d_sdf::RemeshReport> {
-        if self.obj().stack.level_count() != 1 {
+        if self.level_count() != 1 {
             return None;
         }
-        let (out, report) = ph2d_sdf::remesh(self.obj().stack.mesh(), resolution).ok()?;
-        let previous = core::mem::replace(self.obj_mut().stack.mesh_mut(), out);
+        let (out, report) = ph2d_sdf::remesh(self.mesh(), resolution).ok()?;
+        let previous = core::mem::replace(self.mesh_mut()?, out);
         self.record(StrokeUndo::Remeshed(Box::new(previous)));
         // A malha é OUTRA: o traço em voo fala de vértices que não existem mais,
         // e os buffers do device mudaram de tamanho.
@@ -309,14 +318,17 @@ impl Sculpt3dScene {
     /// e ele era exatamente isto — desfazer uma subdivisão devolvia o artista a
     /// uma base que ele nunca autorou.
     pub(super) fn change_level(&mut self, up: bool) -> bool {
-        let from = self.obj().stack.level();
+        if self.obj().is_none() {
+            return false;
+        }
+        let from = self.level();
         let entry = if up {
-            if !self.obj_mut().stack.higher() {
+            if !self.obj_mut().is_some_and(|o| o.stack.higher()) {
                 return false;
             }
             StrokeUndo::Ascended { from }
         } else {
-            let Some(stamped) = self.obj_mut().stack.lower() else {
+            let Some(stamped) = self.obj_mut().and_then(|o| o.stack.lower()) else {
                 return false;
             };
             StrokeUndo::Descended {
@@ -337,7 +349,7 @@ impl Sculpt3dScene {
             return;
         }
         let entry = StrokeUndo::Stroke {
-            level: self.obj().stack.level(),
+            level: self.level(),
             verts: self.stroke.touched().to_vec(),
             positions: self.stroke.base_positions().to_vec(),
             masks: self

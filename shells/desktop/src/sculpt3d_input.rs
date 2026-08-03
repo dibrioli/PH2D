@@ -40,8 +40,9 @@ impl App {
         // construtor que recebesse a lista inteira seria a segunda resposta a
         // *"como um objeto entra na cena"* — e a primeira é a que o gesto de
         // blocagem vai usar.
-        if crate::sculpt3d::objects_scene() {
-            for (mesh, pose) in crate::sculpt3d::scene_objects() {
+        let extra = crate::sculpt3d::scene_objects();
+        if !extra.is_empty() {
+            for (mesh, pose) in extra {
                 scene.push_object(mesh, pose);
             }
             // O enquadramento tem de conhecer a cena INTEIRA: o `new` enquadrou

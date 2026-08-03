@@ -318,14 +318,22 @@ fn a_new_edit_goes_through_the_door_that_clears_the_redo() {
             && record.contains("self.redo.clear()"),
         "gravar é empurrar E limpar o futuro"
     );
-    // ⚠️ **UMA resposta a *quando o refazer morre*.** A W8.2 quase abriu a
-    // segunda: o delete precisa gravar com a peça que SAIU (e não com a ativa) e
-    // a primeira versão escreveu um `push` paralelo em `sculpt3d_objects.rs`.
-    // Este gate o pegou; a cura foi `record_for`, com o `record` delegando.
+    // ⚠️ **UMA resposta a *quando uma EDIÇÃO NOVA torna o futuro inalcançável*.**
+    // A W8.2 quase abriu a segunda: o delete precisa gravar com a peça que SAIU
+    // (e não com a ativa) e a primeira versão escreveu um `push` paralelo em
+    // `sculpt3d_objects.rs`. Este gate o pegou; a cura foi `record_for`, com o
+    // `record` delegando.
+    //
+    // ⚠️ **O `forget_history` da W8.3 é excluído, e não é isenção de
+    // conveniência:** ele responde a OUTRA pergunta — *a sessão trocou de
+    // documento* — e por isso limpa as DUAS filas, não só o futuro. Um load é o
+    // fim da história inteira; uma edição é a poda de um ramo dela. Contá-lo
+    // aqui faria o gate exigir que um load fosse uma edição.
+    let edits_only = src.replace(&function_body(&src, "forget_history"), "");
     assert_eq!(
-        src.matches("self.redo.clear()").count(),
+        edits_only.matches("self.redo.clear()").count(),
         1,
-        "e essa é a única resposta a *quando o refazer morre*"
+        "e essa é a única resposta a *quando uma edição nova mata o refazer*"
     );
     assert!(
         function_body(&src, "delete_active(&mut self").contains("self.record_for("),

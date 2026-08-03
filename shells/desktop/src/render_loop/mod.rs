@@ -791,6 +791,10 @@ impl crate::App {
         self.flip_multiplane_smoke();
         #[cfg(feature = "sculpt3d")]
         self.sculpt3d_smoke();
+        // A escultura que um Ctrl+O deixou pendente — ela espera o device, que o
+        // load não tinha (ADR-0150 W8.3).
+        #[cfg(feature = "sculpt3d")]
+        self.sculpt3d_install_pending();
         // A DOAÇÃO: rasteriza a forma no tamanho que o Painter publicou no frame anterior e deixa o
         // plano no canal. Quase sempre não faz nada — sem cena armada sai no primeiro `if`.
         #[cfg(feature = "sculpt3d")]

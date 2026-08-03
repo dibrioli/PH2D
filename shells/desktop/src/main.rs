@@ -565,6 +565,9 @@ impl App {
             title_dirty: true,
             impasto_smoke_done: false,
             sculpt3d_canvas_done: false,
+            sculpt_doc: Vec::new(),
+            #[cfg(feature = "sculpt3d")]
+            sculpt3d_pending: None,
             mask_smoke_done: false,
             wetpaint_smoke_done: false,
             stack_smoke_done: false,

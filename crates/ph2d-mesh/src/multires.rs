@@ -674,6 +674,11 @@ mod reverse;
 
 pub use reverse::Reversal;
 
+/// A metade que fala com um DOCUMENTO — filho porque `levels`/`details`/`sel`
+/// são privados, e é assim que se quer (ver o cabeçalho dele).
+#[path = "multires_persist.rs"]
+mod persist;
+
 #[cfg(test)]
 #[path = "multires_tests.rs"]
 mod tests;

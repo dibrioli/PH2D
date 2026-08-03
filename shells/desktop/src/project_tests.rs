@@ -42,6 +42,11 @@ fn empty_state() -> ProjectState {
 ///
 /// `timeline` são os bytes do `TimelineDoc` (vazio = projeto sem animação).
 fn write_project_with(path: &std::path::Path, schema: u32, timeline: Vec<u8>) {
+    write_project_full(path, schema, timeline, Vec::new());
+}
+
+/// O mesmo, com os bytes da ESCULTURA — o 8º campo do arquivo (v52).
+fn write_project_full(path: &std::path::Path, schema: u32, timeline: Vec<u8>, sculpt: Vec<u8>) {
     let file = ProjectFile {
         state: empty_state(),
         assets: Vec::new(),
@@ -50,6 +55,7 @@ fn write_project_with(path: &std::path::Path, schema: u32, timeline: Vec<u8>) {
         timeline,
         physics: Default::default(),
         tokens: Vec::new(),
+        sculpt,
     };
     let bytes = postcard::to_allocvec(&(schema, &file)).expect("serializa");
     std::fs::write(path, bytes).expect("grava o arquivo de projeto");
@@ -329,6 +335,7 @@ fn project_file_round_trips_through_postcard() {
         timeline: animation_of_hero(),
         physics: Default::default(),
         tokens: Vec::new(),
+        sculpt: Vec::new(),
     };
     let bytes = postcard::to_allocvec(&(PROJECT_SCHEMA, &file)).unwrap();
     let (ver, back): (u32, ProjectFile) = postcard::from_bytes(&bytes).unwrap();
@@ -389,6 +396,7 @@ fn the_world_settings_survive_the_project_file() {
         timeline: Vec::new(),
         physics: authored,
         tokens: Vec::new(),
+        sculpt: Vec::new(),
     };
     let bytes = postcard::to_allocvec(&(PROJECT_SCHEMA, &file)).expect("serializa");
     std::fs::write(&path, bytes).expect("grava");
@@ -422,7 +430,10 @@ fn the_world_settings_survive_the_project_file() {
 /// código do produto, o gate lê o código do produto.
 #[test]
 fn the_load_installs_the_world_settings_after_the_rebuild() {
-    let src = include_str!("project.rs");
+    // ⚠️ O arquivo mudou quando o load saiu do `project.rs` (teto de LOC do
+    // HR-18) — o gate segue o FATO, que é a ordem de duas chamadas dentro do
+    // load, e não o endereço onde ele morava.
+    let src = include_str!("project_load.rs");
     let rebuild = src
         .find("physics.rebuild()")
         .expect("o load precisa derrubar o mundo derivado do documento anterior");
@@ -494,3 +505,10 @@ fn an_unreadable_animation_refuses_the_whole_file_and_leaves_the_session_alone()
         "e nada da animação do arquivo entrou pela metade"
     );
 }
+
+/// **O que um load faz com a ESCULTURA** — filho (`#[path]`) pelo teto de LOC do
+/// HR-18, e FILHO e não irmão porque as fixtures desta suíte (`headless_app`,
+/// `write_project_full`, `tmp_path`) são as portas dele: copiá-las seria um
+/// segundo escritor de arquivo de projeto, e ele divergiria no próximo bump.
+#[path = "project_sculpt_tests.rs"]
+mod sculpt;

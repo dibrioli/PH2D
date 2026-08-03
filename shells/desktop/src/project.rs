@@ -223,9 +223,14 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// v51 (plano UI/UX W6): o arquivo carrega a **tabela de COR autorada** (`tokens`), campo
 /// apendado ao `ProjectFile`. Postcard é posicional ⇒ o bump é obrigatório nos dois sentidos,
 /// pelo mesmo motivo do v50 logo acima.
-/// ⚠️ O número se CONTA contra o `main` do dia, não se escolhe — este 51 é
+/// v52 (3D, W8.3 — o documento da escultura): campo de ARQUIVO novo, `sculpt`, um blob
+/// opaco que carrega a própria versão (`SCULPT_DOC_VERSION`) — o precedente do
+/// `TimelineDoc`, e é ele que deixa o módulo evoluir muitas waves sem tocar este número
+/// de novo (docs/3D/02.3 previu exatamente isto). O bump é obrigatório porque o postcard
+/// é POSICIONAL: um campo novo no fim faz o leitor velho chegar ao fim dos bytes.
+/// ⚠️ O número se CONTA contra o `main` do dia, não se escolhe — este 52 é
 /// PROVISÓRIO até a integração ([[feedback_numbers_that_sum_across_lines_count_dont_pick]]).
-const PROJECT_SCHEMA: u32 = 51;
+const PROJECT_SCHEMA: u32 = 52;
 
 /// O conteúdo de um arquivo de projeto.
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -281,6 +286,19 @@ struct ProjectFile {
     /// variant: guardar o índice amarraria todo projeto salvo à ORDEM da lista, e acrescentar um
     /// token no meio da tabela re-pintaria o app com as cores trocadas. É a mesma lei do `W4a`.
     tokens: Vec<crate::project_tokens::SavedToken>,
+    /// **A ESCULTURA** (ADR-0150 W8.3) — a lista de peças, cada uma com a pilha de
+    /// níveis e a pose, em postcard. Ver [`crate::sculpt3d`] (`sculpt3d_doc.rs`).
+    ///
+    /// Fora do `ProjectState` pelo mesmo motivo de `motion`/`timeline`/`physics`: o
+    /// `ProjectState` é a unidade do undo GLOBAL, e a escultura tem fila própria —
+    /// um Ctrl+Z do canvas não pode rebobinar uma pincelada de barro.
+    ///
+    /// ⚠️ **`Vec<u8>` opaco e SEM `cfg`**, e é isso que sustenta a promessa de
+    /// removibilidade do `docs/3D/02.3`: o campo existe com o módulo desligado (o
+    /// postcard é posicional — um campo condicional daria DUAS formas de arquivo com o
+    /// mesmo número de schema), e um binário sem escultura **carrega os bytes adiante**
+    /// em vez de os triturar. Ele carrega a própria versão lá dentro.
+    sculpt: Vec<u8>,
 }
 
 /// Uma imagem de sprite embutida no projeto: os pixels RGBA + a célula de atlas que
@@ -303,6 +321,22 @@ impl crate::App {
     /// Caminho do arquivo de projeto (env `PH2D_PROJECT_PATH`, default no CWD).
     fn project_path() -> String {
         std::env::var("PH2D_PROJECT_PATH").unwrap_or_else(|_| "ph2d_project.postcard".to_string())
+    }
+
+    /// **Os bytes da escultura que este save vai gravar.**
+    ///
+    /// A cena VIVA é a verdade sempre que ela existe; quando não existe, a verdade são
+    /// os bytes como vieram do arquivo — o que cobre os dois casos honestos: um projeto
+    /// aberto antes de a GPU aparecer (o `pending` ainda não instalou) e um binário
+    /// construído **sem** o módulo, que carrega adiante o que não sabe ler.
+    fn sculpt_bytes_for_save(&self) -> Vec<u8> {
+        #[cfg(feature = "sculpt3d")]
+        if let Some(gfx) = self.gfx.as_ref()
+            && let Some(scene) = gfx.sculpt3d.as_ref()
+        {
+            return scene.to_doc_bytes();
+        }
+        self.sculpt_doc.clone()
     }
 
     /// Ctrl+S: serializa o projeto inteiro (mundo + geometria + pixels) para o disco.
@@ -347,6 +381,7 @@ impl crate::App {
                 .map(|g| g.physics.settings())
                 .unwrap_or_default(),
             tokens: crate::project_tokens::collect(),
+            sculpt: self.sculpt_bytes_for_save(),
         };
         let bytes = match postcard::to_allocvec(&(PROJECT_SCHEMA, &file)) {
             Ok(b) => b,
@@ -372,172 +407,6 @@ impl crate::App {
         }
     }
 
-    /// Ctrl+O: carrega o projeto do caminho da sessão (env `PH2D_PROJECT_PATH`).
-    pub(crate) fn project_load(&mut self) {
-        self.project_load_from(&Self::project_path());
-    }
-
-    /// O load de verdade, com o caminho **injetado** — substitui a cena atual e assenta a
-    /// sessão (relógio + histórico).
-    ///
-    /// O caminho é parâmetro (e não a env var) porque é isto que torna o load **dirigível
-    /// sem janela**: um `App` recém-construído tem `window`/`host`/`gfx` em `None` (o winit
-    /// só cria a janela no `resumed`), e todo passo daqui que depende de `gfx` já degrada
-    /// para no-op. Os gates em `tests` dirigem ESTA função — o corpo inteiro que o Ctrl+O
-    /// executa (o `project_load` acima só resolve o caminho) — e não uma cópia da decisão
-    /// posta num helper que ninguém chama.
-    pub(crate) fn project_load_from(&mut self, path: &str) {
-        let bytes = match std::fs::read(path) {
-            Ok(b) => b,
-            Err(e) => {
-                eprintln!("[proj] sem arquivo {path}: {e}");
-                return;
-            }
-        };
-        let (ver, file): (u32, ProjectFile) = match postcard::from_bytes(&bytes) {
-            Ok(v) => v,
-            Err(e) => {
-                eprintln!("[proj] erro ao ler {path}: {e}");
-                return;
-            }
-        };
-        if ver != PROJECT_SCHEMA {
-            eprintln!("[proj] schema {ver} != {PROJECT_SCHEMA} — recusado");
-            self.toast(format!(
-                "Project refused: file format {ver}, this build reads {PROJECT_SCHEMA}"
-            ));
-            return;
-        }
-        // A ANIMAÇÃO É PARTE DO ARQUIVO, e um documento que este binário não sabe ler faz o
-        // load inteiro ser RECUSADO — não "abre sem a animação".
-        //
-        // Abrir sem ela seria a pior das opções: a cena aparece, parece certa, a timeline
-        // aparece vazia, e o próximo Ctrl+S grava esse vazio POR CIMA do arquivo. A animação
-        // não some por um bug — some porque o app abriu, mentiu e salvou. Recusar é a única
-        // leitura honesta (a mesma regra da versão do projeto, logo acima), e o parse vem ANTES
-        // de qualquer mutação da sessão, então a recusa não custa nada ao documento aberto.
-        let timeline = match crate::timeline_persist::install_from_project(&file.timeline) {
-            Ok(t) => t,
-            Err(e) => {
-                eprintln!("[proj] timeline ilegivel — load RECUSADO: {e}");
-                self.toast(format!(
-                    "Project refused: its animation is from another version ({e})"
-                ));
-                return;
-            }
-        };
-        // ---- Daqui pra baixo o arquivo foi ACEITO. ----
-        //
-        // **A SESSÃO ESQUECE O DOCUMENTO ANTERIOR.** Este bloco fica colado na decisão de
-        // aceitar, e não lá no fim: entre o aceite e o esquecimento não sobra nenhum passo que
-        // dependa de `gfx`, então o que o gate headless observa é exatamente o que o app com
-        // janela faz. (O `MotionState::install` faz a MESMA lista pro runtime dele; a lição é
-        // a mesma — o que nomeia o documento antigo por id/bits/relógio não "fica velho", é
-        // ADOTADO por quem herdar o número.)
-        //
-        // **O relógio volta a zero — e PAUSA.** O Motion não tem transporte próprio (W4.T7): o
-        // `install` não pode se rebobinar sozinho, e o `Playhead` é do editor. Um playhead
-        // adiantado sobre uma simulação que nunca rodou mentiria sobre um estado que não existe
-        // (o pump entraria pelo caminho de SCRUB e abriria o documento no meio da nevasca —
-        // `motion_state_tests::a_clock_that_was_not_rewound_opens_the_document_mid_scene`). E o
-        // `rewind` NÃO pausa (`Playhead` doc: *"keeps rate + play state"*), então sem o `pause`
-        // o projeto recém-aberto ficava em t=0 por UM frame e saía correndo — o app pausa o
-        // próprio playhead no boot pela mesma razão (`main.rs`), e um load é o boot de um
-        // documento.
-        self.playhead.rewind();
-        self.playhead.pause();
-        // …e o Motion re-ENTRA. O auto-play dele é edge-triggered na entrada na tool, e um load
-        // não muda a tool — muda o DOCUMENTO. Sem isto, quem estivesse com o Motion aberto abriria
-        // um projeto e veria o grafo congelado em t=0 até apertar Space (o `pause` acima é novo).
-        crate::render_loop::motion_bridge::forget_tool_transition();
-        self.undo = ProjectUndo::default(); // documento novo, histórico novo
-        // O mundo rígido é DERIVADO das components (ADR-0131 D2), então o do
-        // documento anterior morre aqui — o `reconcile` do próximo frame o
-        // re-deriva das components carregadas (entidades novas, bits novos).
-        if let Some(gfx) = self.gfx.as_mut() {
-            gfx.physics.rebuild();
-            // ...e as settings do ARQUIVO entram DEPOIS do rebuild, nunca antes:
-            // `rebuild` constrói um `PhysicsWorld` novo, que nasce nos defaults
-            // do motor. Instalar antes seria escrever num mundo que o rebuild
-            // joga fora, e a cena carregaria com a gravidade do documento
-            // ANTERIOR — em silêncio.
-            gfx.physics.set_settings(file.physics);
-        }
-        // **A TABELA DE COR do documento anterior morre aqui, e a do arquivo entra** (W6) —
-        // detalhe e razão no irmão `project_tokens`.
-        crate::project_tokens::install(&file.tokens);
-        // **A TIMELINE do documento anterior morre aqui** — a do arquivo entra no fim (W4.T6/B5).
-        //
-        // Não é higiene: as bindings do documento anterior nomeiam entidades que o
-        // `apply_project` vai despawnar logo abaixo — e o `timeline_persist::upkeep` RECONECTA
-        // binding órfã por **hash do Name** (é o que cura delete+undo). Nomes se repetem entre
-        // projetos ("Layer 1", "sprite_001"), então, deixada viva, a animação do projeto A
-        // adotaria os objetos homônimos do projeto B no frame seguinte e passaria a dirigir a
-        // pose deles — uma animação que não está em arquivo nenhum, e com a fila de undo já
-        // zerada logo acima.
-        self.timeline = ph2d_timeline::TimelineState::new();
-        self.timeline_intents.clear();
-        // E as poses que uma expressão ainda DEVE de volta (`expr_owed`, ADR-0144): elas são
-        // chaveadas por `AnimTarget`, e o documento novo aloca os SEUS targets a partir do
-        // zero — então uma nota do projeto A seria entregue ao binding do projeto B que
-        // herdou o número. É a MESMA razão da linha acima, um nível abaixo.
-        ph2d_timeline::expr_owed::forget_owed_poses();
-        self.forget_live_producers();
-        self.timeline_insert_key = false;
-        self.timeline_reveal_after_apply = false;
-        self.autokey = Default::default(); // pins/baselines de pose keyados por bits mortos
-        self.materialize_assets(&file.assets);
-        self.apply_project(&file.state);
-        // Depois do mundo: os sprites já existem (com bits novos), e é pelo `PaintedDoc` que cada um
-        // reencontra o documento que era dele.
-        self.restore_painted_docs(file.painted);
-        // O grafo de Motion. Um erro de parse NÃO aborta o load: a cena, a geometria e os
-        // pixels já entraram, e recusar tudo por causa do grafo perderia o resto do
-        // trabalho. O grafo em memória permanece, e o motivo vai pro log.
-        if !file.motion.is_empty()
-            && let Some(gfx) = self.gfx.as_mut()
-            && let Err(e) = gfx.motion.load_text(&file.motion)
-        {
-            eprintln!("[proj] grafo de motion ilegivel, mantido o atual: {e:?}");
-        }
-        // **A ANIMAÇÃO** (W4.T6/B5). Já parseada lá em cima (um documento ilegível recusa o
-        // arquivo INTEIRO, antes de tocar na sessão). As bindings entram DESTACADAS — `entity`
-        // zerada — e o `upkeep` do frame as recola nos objetos que o `apply_project` acabou de
-        // spawnar, pelo hash do `Name`: a MESMA função que cura delete+undo. Por isso este
-        // passo não precisa do mundo, e por isso o load não pode divergir do undo — a
-        // resolução por nome existe uma vez só.
-        let tracks = timeline.doc.bindings().len();
-        self.timeline = timeline;
-        // **O LOOP mora no CLIP** e é POR-VISTA (`NamedClip.loop_range` para a timeline,
-        // `keys_loop_range` para o relógio do clip), e cada `Playhead` é só a cópia viva.
-        // Publicamos OS DOIS: sem isso o loop salvo nunca voltava — e, pior, o loop do projeto
-        // ANTERIOR continuava armado no transporte, fazendo o projeto novo repetir sobre um
-        // intervalo de um arquivo que o artista já fechou. Cada relógio adota o loop da SUA vista.
-        ph2d_timeline::sync_transport_loop(&self.timeline.doc, &mut self.playhead, false);
-        ph2d_timeline::sync_transport_loop(&self.timeline.doc, &mut self.clip_playhead, true);
-        // **O baseline do undo fica DESARMADO** — e é o `post_frame_undo` que o arma, depois
-        // que o frame assentar.
-        //
-        // Capturá-lo aqui seria capturar um mundo que ainda não terminou de virar este projeto:
-        // o `restore_painted_docs` troca o `texture_id` de cada sprite pintado (o do save morreu
-        // com o processo que o criou), e a animação recém-instalada só escreve a pose quando as
-        // bindings recolam — um frame depois. Qualquer baseline tirado agora estaria errado por
-        // uma dessas duas razões, e o `post_frame_undo` do MESMO frame (o Ctrl+O é input) veria a
-        // diferença e gravaria um passo espúrio: o primeiro Ctrl+Z do artista não desfazia a
-        // ação dele — devolvia uma textura morta, ou a pose do arquivo.
-        //
-        // `None` significa "ainda não sei", e o `post_frame_undo` já sabe o que fazer com isso:
-        // arma o baseline com o mundo assentado e NÃO registra passo. A fila nova nasce vazia de
-        // verdade. [[feedback_tool_unit_green_integration_dead]]
-        self.undo_baseline = None;
-        eprintln!("[proj] carregado: {path} ({tracks} track(s) de animacao)");
-        self.toast(if tracks == 0 {
-            "Project loaded".to_string()
-        } else {
-            format!("Project loaded · {tracks} animation track(s)")
-        });
-    }
-
     /// Um aviso na tela — não só no terminal. O Ctrl+O é destrutivo (troca a cena, zera o undo)
     /// e o Ctrl+S é silencioso; um `eprintln!` num app de janela é uma mensagem para ninguém.
     fn toast(&mut self, msg: String) {
@@ -546,6 +415,12 @@ impl crate::App {
         }
     }
 }
+
+/// **O lado da LEITURA** — irmão pelo teto de LOC (HR-18); o corte é por
+/// responsabilidade: aqui fica *o que um arquivo É e como ele é escrito*, lá *como
+/// ele é lido e a sessão esquece o documento anterior*.
+#[path = "project_load.rs"]
+mod load;
 
 /// **Os pixels que o undo não guarda** — irmão pelo teto de LOC (HR-18); o corte é por
 /// responsabilidade: aqui fica *o que um arquivo É*, lá *como os pixels vão e voltam do atlas*.

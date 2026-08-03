@@ -115,8 +115,8 @@ const SCALE_PER_PX: f32 = 0.01;
 mod scenes;
 
 pub(crate) use scenes::{
-    announce, donation_scene, holes_scene, objects_scene, remesh_scene, reversion_scene,
-    scene_objects, smoke_armed, smoke_mesh, turn_scene,
+    announce, donation_scene, holes_scene, remesh_scene, reversion_scene, scene_objects,
+    smoke_armed, smoke_mesh, turn_scene,
 };
 
 /// O que o arrasto está fazendo.
@@ -164,48 +164,33 @@ pub(crate) use objects::Primitive;
 #[path = "sculpt3d_space.rs"]
 mod space;
 
+/// **O DOCUMENTO** — a cena como bytes, e os bytes como cena. Filho pelo mesmo
+/// motivo: ele lê `objects`/`active`/`next_id` e as filas de desfazer.
+#[path = "sculpt3d_doc.rs"]
+mod doc;
+
+// ⚠️ Só o que ATRAVESSA a fronteira do módulo: o `SCULPT_DOC_VERSION` e o
+// `SculptDocError` são assunto de dentro (o load só formata o `Display` do
+// erro), e re-exportá-los seria superfície que ninguém pede.
+pub(crate) use doc::{LoadedPiece, decode as decode_doc};
+
+// ⚠️ O ESCRITOR atravessa a fronteira só para os gates: as fixtures de
+// `project_tests` precisam de um documento de escultura VÁLIDO, e montá-lo à mão
+// lá seria um segundo escritor — que concordaria com este exatamente onde ele
+// erra. O `cfg(test)` é o que diz que a superfície é isso e nada mais.
+#[cfg(test)]
+pub(crate) use doc::encode as encode_doc;
+
 /// **UM OBJETO da cena** — a pilha de níveis dele e onde ele está.
 ///
 /// ⚠️ `uploaded` e `dirty` são POR OBJETO, e não da cena: subir a malha de um
 /// não limpa a do outro, e um par compartilhado deixaria o segundo objeto
 /// desenhado com a geometria de antes do dab — sem erro, sem warning, e com
 /// todos os gates de CPU verdes.
-/// A identidade **DURÁVEL** de um objeto.
-///
-/// ⚠️ **Um ÍNDICE não serve para a fila de undo**, e o mecanismo é conhecido:
-/// apagar a peça 1 de três faz a antiga 2 virar 1, e toda entrada que apontava
-/// para 2 passa a nomear outra peça — em silêncio, com os índices ainda
-/// válidos. É a mesma lição que a timeline pagou no `wire_id` e a física no
-/// `stable_name_id`: **posição é endereço de alocação, não identidade**.
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub(crate) struct ObjectId(u32);
-
-pub(crate) struct SceneObject {
-    /// Quem esta peça É — ver [`ObjectId`].
-    pub(crate) id: ObjectId,
-    /// **A PILHA de níveis**, e não uma malha — ver [`Multires`]. O nível 0 é a
-    /// base; o artista esculpe no que estiver selecionado.
-    pub(crate) stack: Multires,
-    /// Onde este objeto está no mundo — ver [`Pose`].
-    pub(crate) pose: Pose,
-    /// A malha já subiu inteira ao device? Depois disso só sobem REGIÕES.
-    uploaded: bool,
-    /// Os vértices que a GPU ainda não viu — acumulados entre frames, porque
-    /// vários eventos de ponteiro cabem num quadro.
-    dirty: Vec<u32>,
-}
-
-impl SceneObject {
-    fn new(id: ObjectId, mesh: Mesh, pose: Pose) -> Self {
-        Self {
-            id,
-            stack: Multires::new(mesh),
-            pose,
-            uploaded: false,
-            dirty: Vec::new(),
-        }
-    }
-}
+/// **O QUE UMA PEÇA É** — ela mora com os verbos da LISTA (`objects`), que é o
+/// assunto de que ela é o elemento; re-exportada aqui porque meio módulo a
+/// nomeia por `super::SceneObject`.
+pub(crate) use objects::{ObjectId, SceneObject};
 
 /// A cena 3D viva: os objetos, a câmera, o pincel e o pipeline que a desenha.
 pub(crate) struct Sculpt3dScene {

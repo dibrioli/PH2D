@@ -24,7 +24,7 @@ pub const TRI: u32 = u32::MAX;
 /// `repr(transparent)` para que `&[Face]` seja `&[[u32; 4]]` ao bit — é assim
 /// que ela sobe para o device sem uma conversão que poderia divergir.
 #[repr(transparent)]
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Face(pub [u32; 4]);
 
 impl Face {

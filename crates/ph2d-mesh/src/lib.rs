@@ -45,6 +45,7 @@ mod multires;
 mod normals;
 mod obj;
 mod octree;
+mod persist;
 mod pose;
 mod ray;
 mod reversion;
@@ -64,6 +65,7 @@ pub use normals::{
 };
 pub use obj::{ObjError, import_obj};
 pub use octree::{Octree, RefitScratch};
+pub use persist::{DetailData, DocError, MeshData, PoseData, StackData};
 pub use pose::Pose;
 pub use ray::{Hit, Ray};
 pub use reversion::{Reversed, reverse_subdivision};

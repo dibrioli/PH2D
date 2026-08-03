@@ -5692,7 +5692,9 @@ name = "ph2d-mesh"
 version = "0.0.0"
 dependencies = [
  "dhat",
+ "postcard",
  "rayon",
+ "serde",
 ]
 
 [[package]]

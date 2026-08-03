@@ -13,27 +13,62 @@
 
 use super::{Brush, Dab, SculptStroke, Symmetry, Verb};
 
-/// A cena está armada? (`PH2D_SCULPT3D_SMOKE` em `1`..`7`.)
+/// A cena está armada? (`PH2D_SCULPT3D_SMOKE` em `1`..`8`.)
 pub(crate) fn smoke_armed() -> bool {
     matches!(
         std::env::var("PH2D_SCULPT3D_SMOKE").ok().as_deref(),
-        Some("1" | "2" | "3" | "4" | "5" | "6" | "7")
+        Some("1" | "2" | "3" | "4" | "5" | "6" | "7" | "8")
     )
 }
 
 /// `=7` — **A CENA**: mais de um objeto, cada um com a sua pose.
-pub(crate) fn objects_scene() -> bool {
+///
+/// ⚠️ Privada: o bootstrap não pergunta mais *qual cena é esta*, ele pergunta
+/// *quais peças eu ponho* ([`scene_objects`]).
+fn objects_scene() -> bool {
     std::env::var("PH2D_SCULPT3D_SMOKE").ok().as_deref() == Some("7")
 }
 
-/// **As peças que a cena `=7` põe na mesa**, além da que a cena já abre.
+/// `=8` — a cena do **DOCUMENTO**: a escultura que tem de sobreviver a fechar o app.
+pub(crate) fn document_scene() -> bool {
+    std::env::var("PH2D_SCULPT3D_SMOKE").ok().as_deref() == Some("8")
+}
+
+/// **As peças que uma cena põe na mesa**, além da que ela já abre — vazio nas
+/// que abrem com uma peça só.
 ///
-/// ⚠️ Formas DIFERENTES de propósito, e não três esferas: o que o smoke julga é
+/// ⚠️ **UMA porta para duas cenas, e não um `if` por cena no bootstrap.** A
+/// pergunta que o `sculpt3d_smoke` faz é *"esta cena tem mais peças?"*, e ela é
+/// a mesma para a `=7` e para a `=8`; um segundo ramo lá seria a lista de cenas
+/// escrita num lugar que não é o das cenas, e ela apodrece na nona.
+///
+/// ⚠️ Formas DIFERENTES de propósito, e não três esferas: o que a `=7` julga é
 /// *"o pincel caiu na peça que eu cliquei"*, e três cópias da mesma silhueta
 /// tornariam a resposta certa indistinguível da errada. Tamanhos diferentes pelo
 /// mesmo motivo — a escala é metade da pose, e um trio de peças do mesmo tamanho
 /// deixaria essa metade sem oráculo nenhum na tela.
 pub(crate) fn scene_objects() -> Vec<(ph2d_mesh::Mesh, ph2d_mesh::Pose)> {
+    if document_scene() {
+        // ⚠️ **Um CUBO e um OCTAEDRO, cada um com pose própria** — e a peça que
+        // a cena abre é a esfera com CRISTAS. As três escolhas são o oráculo: o
+        // que este smoke pergunta é *"o que eu salvei é o que eu abro?"*, e uma
+        // esfera lisa reaberta é indistinguível de uma esfera lisa recém-nascida.
+        // A pose entra pelo mesmo motivo — sem ela, "a lista voltou" e "a lista
+        // voltou na ordem certa, no lugar certo" seriam a mesma imagem.
+        return vec![
+            (
+                ph2d_mesh::shapes::cube(1.0),
+                ph2d_mesh::Pose::new([-2.6, 0.4, 0.0], 1.1),
+            ),
+            (
+                ph2d_mesh::shapes::octahedron(1.0),
+                ph2d_mesh::Pose::new([2.4, -0.5, 0.0], 0.7),
+            ),
+        ];
+    }
+    if !objects_scene() {
+        return Vec::new();
+    }
     vec![
         // O CUBO, à esquerda e GRANDE: a peça em que a escala se vê.
         (
@@ -200,7 +235,10 @@ fn punctured_sphere() -> ph2d_mesh::Mesh {
 /// conta própria estaria medindo outra malha no dia em que esta mudasse.
 #[must_use]
 pub(crate) fn smoke_mesh() -> ph2d_mesh::Mesh {
-    if turn_scene() {
+    // ⚠️ A `=8` abre com as CRISTAS pelo motivo que o `scene_objects` explica:
+    // uma esfera lisa reaberta é indistinguível de uma recém-nascida, e o smoke
+    // do documento pergunta exatamente *o que eu salvei é o que eu abro?*.
+    if turn_scene() || document_scene() {
         return ridged_sphere();
     }
     if remesh_scene() {
@@ -346,7 +384,17 @@ pub(crate) fn announce(mesh: &ph2d_mesh::Mesh) {
              [sculpt3d]        um remesh troca a topologia, e os niveis de cima sao subdivisao dela."
         );
     }
-    if crate::sculpt3d::objects_scene() {
+    if document_scene() {
+        // ⚠️ **A cena DECLARA quantas peças montou e com que forma.** Um smoke
+        // de persistência sobre uma esfera LISA é indistinguível da feature
+        // quebrada — reabrir e ver uma esfera não diz se ela VOLTOU ou se
+        // NASCEU. Por isso a peça central tem cristas, e por isso o número aqui
+        // é a contagem de peças: se ele não for 3, PARE.
+        eprintln!(
+            "[sculpt3d] =8 O DOCUMENTO: 3 pecas na mesa -- a esfera com CRISTAS no centro,\n             [sculpt3d]    um CUBO grande a` esquerda e um OCTAEDRO pequeno a` direita, cada um\n             [sculpt3d]    com pose propria. Se voce nao ver TRES formas diferentes, PARE.\n             [sculpt3d]    1) Esculpa: marque a esfera com um traco que voce reconheca depois.\n             [sculpt3d]    2) Aperte K (subdividir), esculpa um detalhe FINO, e aperte , (descer ao 0).\n             [sculpt3d]       -- e' esta a janela em que o detalhe fino so' existe no documento.\n             [sculpt3d]    3) Ctrl+S. FECHE o app. Abra de novo com a MESMA variavel e Ctrl+O.\n             [sculpt3d]    A escultura tem de voltar INTEIRA: as tres pecas, nas mesmas poses,\n             [sculpt3d]    com o seu traco -- e no nivel 0, que e' onde voce estava.\n             [sculpt3d]    4) Aperte . (subir): o detalhe fino do passo 2 tem de estar la'.\n             [sculpt3d]    Ctrl+Z depois de abrir NAO pode desfazer nada da sessao anterior."
+        );
+    }
+    if objects_scene() {
         eprintln!(
             "[sculpt3d] =7 A CENA E' UMA LISTA: tres pecas, cada uma no SEU lugar e no SEU tamanho.\n\
              [sculpt3d]    Uma esfera no meio, um CUBO grande a' esquerda, um OCTAEDRO pequeno a' direita.\n\

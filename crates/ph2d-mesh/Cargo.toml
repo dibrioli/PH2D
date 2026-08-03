@@ -23,9 +23,29 @@ authors.workspace = true
 # oraculo de paridade byte-a-byte.
 rayon = "1"
 
+# serde: a crate SERIALIZA A SI MESMA (`src/persist.rs`). A alternativa seria o
+# shell ler `Mesh`/`Multires` pelas portas publicas e montar o documento la —
+# mas `levels`/`details` sao privados de proposito, e um serializador fora da
+# crate seria uma SEGUNDA CASA que sabe do que uma pilha e feita, divergindo no
+# dia em que a codificacao do detalhe mudar. Sem `postcard` aqui: so os TIPOS
+# sao serializaveis; quem escolhe o formato e quem grava o arquivo (o shell), o
+# mesmo corte de `ph2d-guides` e `ph2d-stroke-width`.
+serde = { version = "1", features = ["derive"] }
+
 # dhat-rs: o HR-13 emendado pelo ADR-0117 — *quem declara budget possui um gate
 # que MEDE*. A sonda `measure_memory` responde "quantos MB residentes por milhao
 # de triangulos", que e a entrada do teto por tier (ADR-0104) e do K1/K2 de
 # docs/3D/03.5. Ela mede ANTES de qualquer `MAX_*` ser escrito.
 [dev-dependencies]
 dhat = "0.3"
+
+# postcard: SO no gate `the_shape_of_a_saved_mesh_is_pinned`. O `src/` nao o
+# toca (o formato e escolha de quem grava o arquivo) ⇒ machete-safe, o padrao
+# das crates-no em `[dev-dependencies]` da `ph2d-gpu-cook`.
+#
+# ⚠️ Ele mora AQUI e nao so no shell de proposito: os gates de
+# `shells/desktop/tests/` correm apenas na varredura impactada, e um fechamento
+# por `cargo test -p ph2d-mesh` nao os alcanca — este repositorio ja pagou esse
+# vermelho-latente tres vezes. O alarme de forma tem de tocar na crate onde a
+# forma muda.
+postcard = { version = "1", features = ["alloc"] }

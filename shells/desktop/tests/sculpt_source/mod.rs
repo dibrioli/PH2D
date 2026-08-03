@@ -151,7 +151,12 @@ pub fn sculpt_src() -> String {
     let mut names: Vec<String> = fs::read_dir(&dir)
         .expect("src/")
         .filter_map(|e| e.ok().map(|e| e.file_name().to_string_lossy().into_owned()))
-        .filter(|n| n.starts_with("sculpt3d") && n.ends_with(".rs"))
+        // ⚠️ **Os `_tests.rs` do cluster ficam de FORA**, e não é higiene: um
+        // arch-gate que afirma AUSÊNCIA (*"esta fiação não chama X"*) passaria a
+        // ler o texto dos próprios testes, onde a palavra proibida aparece de
+        // propósito — um oráculo que casa com o teste de si mesmo não está
+        // olhando para o produto.
+        .filter(|n| n.starts_with("sculpt3d") && n.ends_with(".rs") && !n.ends_with("_tests.rs"))
         .collect();
     names.sort();
     assert!(

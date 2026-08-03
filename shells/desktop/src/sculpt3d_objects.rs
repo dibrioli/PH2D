@@ -13,7 +13,64 @@
 
 use ph2d_mesh::{Mesh, Pose, shapes};
 
-use super::{SceneObject, Sculpt3dScene, StrokeUndo};
+use super::{Multires, Sculpt3dScene, StrokeUndo};
+
+/// A identidade **DURÁVEL** de um objeto.
+///
+/// ⚠️ **Um ÍNDICE não serve para a fila de undo**, e o mecanismo é conhecido:
+/// apagar a peça 1 de três faz a antiga 2 virar 1, e toda entrada que apontava
+/// para 2 passa a nomear outra peça — em silêncio, com os índices ainda
+/// válidos. É a mesma lição que a timeline pagou no `wire_id` e a física no
+/// `stable_name_id`: **posição é endereço de alocação, não identidade**.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub(crate) struct ObjectId(pub(super) u32);
+
+pub(crate) struct SceneObject {
+    /// Quem esta peça É — ver [`ObjectId`].
+    pub(crate) id: ObjectId,
+    /// **A PILHA de níveis**, e não uma malha — ver [`Multires`]. O nível 0 é a
+    /// base; o artista esculpe no que estiver selecionado.
+    pub(crate) stack: Multires,
+    /// Onde este objeto está no mundo — ver [`Pose`].
+    pub(crate) pose: Pose,
+    /// A malha já subiu inteira ao device? Depois disso só sobem REGIÕES.
+    ///
+    /// ⚠️ `pub(super)` — o MESMO alcance que ela tinha antes do split (o módulo
+    /// `sculpt3d` e os irmãos dele), e não um byte a mais: quem escreve nestes
+    /// dois campos é a fiação da GPU, nunca um chamador de fora.
+    pub(super) uploaded: bool,
+    /// Os vértices que a GPU ainda não viu — acumulados entre frames, porque
+    /// vários eventos de ponteiro cabem num quadro.
+    pub(super) dirty: Vec<u32>,
+}
+
+impl SceneObject {
+    pub(super) fn new(id: ObjectId, mesh: Mesh, pose: Pose) -> Self {
+        Self {
+            id,
+            stack: Multires::new(mesh),
+            pose,
+            uploaded: false,
+            dirty: Vec::new(),
+        }
+    }
+
+    /// Uma peça vinda de um DOCUMENTO: a pilha inteira, e **nada no device**.
+    ///
+    /// ⚠️ Mora ao lado do [`SceneObject::new`] de propósito: os dois são *como
+    /// uma peça nasce*, e a diferença entre eles é só de onde vem a pilha. Um
+    /// construtor no módulo do documento teria de abrir `uploaded`/`dirty` para
+    /// fora — e são justamente os dois campos que ninguém de fora deve escrever.
+    pub(super) fn from_stack(id: ObjectId, stack: Multires, pose: Pose) -> Self {
+        Self {
+            id,
+            stack,
+            pose,
+            uploaded: false,
+            dirty: Vec::new(),
+        }
+    }
+}
 
 /// Quantas fatias uma primitiva nasce tendo.
 ///

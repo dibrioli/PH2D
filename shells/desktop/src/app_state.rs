@@ -480,6 +480,21 @@ pub(crate) struct App {
     /// Latch da tela de `PH2D_SCULPT3D_SMOKE=2` — a cena da DOAÇÃO. ⚠️ Sem `cfg`: um campo `bool`
     /// não é um símbolo do módulo 3D, e gateá-lo obrigaria a gatear o `mem::replace` no laço.
     pub(crate) sculpt3d_canvas_done: bool,
+    /// **O documento de escultura como veio do arquivo.** ⚠️ **Sem `cfg`, e é
+    /// deliberado:** ele é `Vec<u8>` opaco, não um símbolo do módulo, e é isso
+    /// que faz um binário construído SEM a escultura ser um **passa-adiante** em
+    /// vez de um triturador — ele carrega os bytes do load ao save sem os ler.
+    /// Com o módulo ligado ele é a fonte do save enquanto a cena não existir
+    /// (projeto aberto antes de a GPU aparecer).
+    pub(crate) sculpt_doc: Vec<u8>,
+    /// A escultura **já decodificada**, esperando o device (ADR-0150 W8.3).
+    ///
+    /// ⚠️ Ela é decodificada no LOAD, e não aqui: a recusa de um documento
+    /// ilegível tem de acontecer **antes** de qualquer mutação da sessão, e isso
+    /// exige lê-lo. Guardar o resultado evita a segunda decodificação — que é
+    /// `O(vértices)` com octree e adjacência POR NÍVEL.
+    #[cfg(feature = "sculpt3d")]
+    pub(crate) sculpt3d_pending: Option<(Vec<crate::sculpt3d::LoadedPiece>, usize)>,
     /// Latch do `PH2D_STACK_SMOKE` (cena da composicao de clips, uma vez).
     pub(crate) stack_smoke_done: bool,
     /// Latch do `PH2D_NEST_SMOKE` (cena do nesting, uma vez).

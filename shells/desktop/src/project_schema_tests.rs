@@ -168,7 +168,18 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // se movem: a tabela é do ARQUIVO, não da cena — ela vive fora do `ProjectState` pelo
         // mesmo motivo que `physics`/`motion`/`timeline` (um Ctrl+Z do canvas não rebobina a
         // cara do editor). O 51 é PROVISÓRIO pela mesma razão dos dois acima.
-        (51, 13, 14),
+        // PROJECT 51→52 (3D, W8.3 — o DOCUMENTO da escultura): o `ProjectFile` ganhou
+        // `sculpt`, um blob que carrega a própria versão (`SCULPT_DOC_VERSION`) — o
+        // precedente EXATO do `timeline`. Campo apendado ao `ProjectFile`, e o postcard é
+        // posicional ⇒ o bump é obrigatório. ⚠️ Ele bumpa **UMA vez, agora**: daqui em
+        // diante o módulo 3D pode evoluir muitas waves sem tocar este número, porque a
+        // versão vive DENTRO do blob (é por isso que o `TimelineDoc` foi de v9 a v17 com
+        // este schema quieto). E o campo é `Vec<u8>` **incondicional**, sem `cfg`: um
+        // campo condicional daria DUAS formas de arquivo sob UM número de schema, e é o
+        // que torna um build sem a feature um **passa-adiante** em vez de um triturador.
+        // ⚠️ O 52 é PROVISÓRIO pela mesma razão do 49/50/51 acima: ele se CONTA contra o
+        // `main` do dia da integração.
+        (52, 13, 14),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

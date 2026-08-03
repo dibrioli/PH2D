@@ -57,6 +57,11 @@ pub(crate) const MAX_TILE_SIDE: u32 = 2048;
 /// What a baked vector is on the render side: the individual `texture_id` + the
 /// tile's WORLD size (so the sink stamps it at the shape's natural size).
 struct Baked {
+    /// The artist's name for this shape, if any. **Metadata, not the cache key** —
+    /// the cache is keyed by [`VecPathId`] (undo/rename-stable), so a rename refreshes
+    /// this field without re-baking, and an UNNAMED group child (`None`) still gets a
+    /// tile. `tiles()` (the individual publish) yields only the named ones.
+    name: Option<String>,
     key: BakeKey,
     texture_id: u32,
     size: [f32; 2],
@@ -90,31 +95,63 @@ pub(crate) struct BakedTile {
 #[derive(Default)]
 pub(crate) struct ObjectBake {
     scratch: Option<VelloPass>,
-    cache: BTreeMap<String, Baked>,
+    /// Keyed by the shape's own [`VecPathId`] (undo/rename-stable), NOT its name — so
+    /// an unnamed group child gets a tile and a rename doesn't evict it.
+    cache: BTreeMap<VecPathId, Baked>,
 }
 
 impl ObjectBake {
-    /// The `name -> tile` map the membrane publishes. Read-only — the bake ran
-    /// at the fx phase; here the membrane only reads the results.
+    /// The `name -> tile` map the membrane publishes individually (the picker path).
+    /// Read-only — the bake ran at the fx phase; here the membrane only reads results.
+    /// Only the NAMED entries are yielded: an unnamed group child has a tile (for the
+    /// group stamp) but nothing to type into a node. On a name clash the higher id wins
+    /// the `set_external` (id-ascending iteration ⇒ later), as the name-keyed map did.
     pub(crate) fn tiles(&self) -> impl Iterator<Item = (&str, BakedTile)> {
-        self.cache.iter().map(|(n, b)| {
-            (
-                n.as_str(),
-                BakedTile {
-                    texture_id: b.texture_id,
-                    size: b.size,
-                },
-            )
+        self.cache.values().filter_map(|b| {
+            b.name.as_deref().map(|n| {
+                (
+                    n,
+                    BakedTile {
+                        texture_id: b.texture_id,
+                        size: b.size,
+                    },
+                )
+            })
         })
     }
 
-    /// The baked tile for ONE named shape, or `None` if it isn't baked (doc 86 §2
-    /// A4). A group child that is a vector resolves its appearance through this.
-    pub(crate) fn tile_for(&self, name: &str) -> Option<BakedTile> {
-        self.cache.get(name).map(|b| BakedTile {
+    /// The baked tile for ONE shape by its [`VecPathId`], or `None` if it isn't baked
+    /// (doc 86 §2 A4). A group child that is a vector resolves its appearance through
+    /// this — by its drawing id, so an unnamed child still resolves.
+    pub(crate) fn tile_for_id(&self, id: VecPathId) -> Option<BakedTile> {
+        self.cache.get(&id).map(|b| BakedTile {
             texture_id: b.texture_id,
             size: b.size,
         })
+    }
+
+    /// Seed a fake tile under `id` — for headless membrane gates that drive
+    /// `resolve_leaf` without a GPU bake.
+    #[cfg(test)]
+    pub(crate) fn seed_for_test(&mut self, id: VecPathId, texture_id: u32, size: [f32; 2]) {
+        self.cache.insert(
+            id,
+            Baked {
+                name: None,
+                key: BakeKey {
+                    path: VecPath::default(),
+                    linear: [0.0; 4],
+                    dpi_q: 0,
+                },
+                texture_id,
+                size,
+                thumb: ph2d_panel_motion_graph::PreviewThumb {
+                    rgba: std::sync::Arc::new(Vec::new()),
+                    w: 0,
+                    h: 0,
+                },
+            },
+        );
     }
 
     /// The baked-tile THUMBNAIL for `texture_id`, or `None` (doc 86 A5). The membrane
@@ -147,40 +184,30 @@ impl ObjectBake {
         renderer: &mut SpriteRenderer,
         sim: &SimWorld,
     ) {
-        // The named vectors present this frame, by name (last id wins on a name
-        // clash — the artist's business, like `motion_bridge_shapes`).
-        let mut present: BTreeMap<String, VecPathId> = BTreeMap::new();
+        // The drawings to tile this frame, keyed by VecPathId → the artist's name
+        // (`None` for an unnamed group child): named ∪ group-referenced (see
+        // `select_present`). Keying by id — not name — is what lets an unnamed group
+        // child get a tile and a rename keep it.
         let world = sim.world();
-        for (&id, &bits) in map {
-            let Ok(entity) = world.get_entity(Entity::from_bits(bits)) else {
-                continue;
-            };
-            let Some(name) = entity.get::<Name>().map(|n| n.0.clone()) else {
-                continue; // unnamed: nothing for the artist to type into the node
-            };
-            if name.trim().is_empty() {
-                continue;
-            }
-            present.insert(name, id);
-        }
+        let present = select_present(world, map);
 
-        // Evict the names that vanished (deleted / un-named / renamed away),
-        // releasing their texture so a tile never leaks VRAM.
-        let gone: Vec<String> = self
+        // Evict the ids that vanished (deleted, or an unnamed shape no group references
+        // any more), releasing their texture so a tile never leaks VRAM.
+        let gone: Vec<VecPathId> = self
             .cache
             .keys()
-            .filter(|n| !present.contains_key(*n))
-            .cloned()
+            .filter(|id| !present.contains_key(*id))
+            .copied()
             .collect();
-        for n in gone {
-            if let Some(b) = self.cache.remove(&n) {
+        for id in gone {
+            if let Some(b) = self.cache.remove(&id) {
                 renderer.individual_mut().release(b.texture_id);
             }
         }
 
         // Bake the new + changed. A cache hit is a `VecPath`/xform equality — no
         // GPU work, no readback.
-        for (name, id) in present {
+        for (id, name) in present {
             let Some(path) = scene.paths().iter().find(|p| p.id == id) else {
                 continue;
             };
@@ -190,11 +217,16 @@ impl ObjectBake {
                 linear: [c[0], c[1], c[2], c[3]],
                 dpi_q: BAKE_DPI as u32,
             };
-            if self.cache.get(&name).is_some_and(|b| b.key == key) {
-                continue; // unchanged — the tile is still valid
+            if self.cache.get(&id).is_some_and(|b| b.key == key) {
+                // Content unchanged — refresh the (metadata) NAME so a rename
+                // re-publishes without a re-bake, and continue.
+                if let Some(b) = self.cache.get_mut(&id) {
+                    b.name = name;
+                }
+                continue;
             }
             // Changed or new: release the previous texture (if any) and re-bake.
-            let old = self.cache.remove(&name).map(|b| b.texture_id);
+            let old = self.cache.remove(&id).map(|b| b.texture_id);
             let baked = bake_one(
                 &mut self.scratch,
                 scene,
@@ -210,8 +242,9 @@ impl ObjectBake {
             }
             if let Some((texture_id, size, thumb)) = baked {
                 self.cache.insert(
-                    name,
+                    id,
                     Baked {
+                        name,
                         key,
                         texture_id,
                         size,
@@ -221,6 +254,35 @@ impl ObjectBake {
             }
         }
     }
+}
+
+/// The vector drawings to bake this frame, keyed by [`VecPathId`] → the artist's name
+/// (`None` for an unnamed group child). A drawing is baked iff it is **named** (the
+/// picker path — the artist can type it into a node) OR its entity is inside a **named
+/// group** ([`entity_is_in_a_named_group`], so the group stamp has its tile). Unnamed
+/// canvas art that no group references is NOT baked ⇒ no wasted VRAM. Pure ECS, so the
+/// selection — the load-bearing "which drawings" decision — is a headless gate.
+fn select_present(
+    world: &ph2d_ecs::World,
+    map: &VecEntityMap,
+) -> BTreeMap<VecPathId, Option<String>> {
+    use crate::render_loop::motion_bridge::entity_is_in_a_named_group;
+    let mut present: BTreeMap<VecPathId, Option<String>> = BTreeMap::new();
+    for (&id, &bits) in map {
+        let entity = Entity::from_bits(bits);
+        if world.get_entity(entity).is_err() {
+            continue; // stale bits (despawned): its tile is evicted, not baked
+        }
+        let name = world
+            .get::<Name>(entity)
+            .map(|n| n.0.clone())
+            .filter(|s| !s.trim().is_empty());
+        if name.is_none() && !entity_is_in_a_named_group(world, entity) {
+            continue; // unnamed AND no group references it — nothing needs its tile
+        }
+        present.insert(id, name);
+    }
+    present
 }
 
 /// Bake ONE path into a fresh individual texture; returns `(texture_id, world
@@ -457,5 +519,69 @@ mod tests {
                 "alpha is the coverage average of the merged pair"
             );
         }
+    }
+
+    #[test]
+    fn select_present_bakes_named_and_group_children_but_not_loose_art() {
+        // doc 86 §9.6: the bake tiles a vector drawing iff it is NAMED (the picker path)
+        // OR sits inside a named group (so the group stamp has its child's tile) — and
+        // NOTHING else, so unnamed canvas art never wastes a tile (§0 VRAM). The three
+        // rows are the whole decision table; two mutations each break a distinct row.
+        use ph2d_ecs::{ChildOf, GroupedChildren};
+        let mut sim = SimWorld::new();
+        let named = sim.world_mut().spawn((Name::new("Named"),)).id();
+        let group = sim
+            .world_mut()
+            .spawn((Name::new("Group"), GroupedChildren))
+            .id();
+        let child = sim.world_mut().spawn((ChildOf(group),)).id(); // UNNAMED group child
+        let loose = sim.world_mut().spawn(()).id(); // unnamed, no group
+
+        // The map is VecPathId -> entity bits (the same thing `sync` builds).
+        let mut map = VecEntityMap::new();
+        map.insert(10, named.to_bits());
+        map.insert(20, child.to_bits());
+        map.insert(30, loose.to_bits());
+
+        let present = select_present(sim.world(), &map);
+
+        assert_eq!(
+            present.get(&10),
+            Some(&Some("Named".to_string())),
+            "a named drawing is tiled, carrying its name"
+        );
+        // ⚠️ Mutation `if name.is_none()` (drop the group check) SKIPS this — the exact
+        // doc-86 item-3 bug (an unnamed group child gets no tile).
+        assert_eq!(
+            present.get(&20),
+            Some(&None),
+            "an UNNAMED group child is tiled by its id, with no name"
+        );
+        // ⚠️ Mutation dropping the `continue` (bake-all) makes this present — a wasted tile.
+        assert!(
+            !present.contains_key(&30),
+            "unnamed canvas art no group references is NOT tiled"
+        );
+    }
+
+    #[test]
+    fn select_present_skips_stale_bits() {
+        // A map value whose entity was despawned must not be baked — its tile is evicted,
+        // not resurrected. ⚠️ This pins the END-TO-END invariant, not the `get_entity`
+        // guard specifically: a despawned entity also has no `Name`, so it falls into the
+        // unnamed-AND-no-group skip even without the guard — dropping the guard does NOT
+        // falsify this. The guard is robustness (it mirrors `vec_entities::sync`'s own
+        // `get_entity(..).is_err()`); it earns its keep the day a Name-independent tiling
+        // path appears, which is exactly what this gate would then catch.
+        let mut sim = SimWorld::new();
+        let live = sim.world_mut().spawn((Name::new("Live"),)).id();
+        let dead = sim.world_mut().spawn((Name::new("Dead"),)).id();
+        sim.world_mut().despawn(dead);
+        let mut map = VecEntityMap::new();
+        map.insert(1, live.to_bits());
+        map.insert(2, dead.to_bits());
+        let present = select_present(sim.world(), &map);
+        assert!(present.contains_key(&1), "the live drawing is tiled");
+        assert!(!present.contains_key(&2), "the despawned drawing is skipped");
     }
 }

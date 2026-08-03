@@ -61,6 +61,10 @@ mod objects;
 // The membrane's object-bake wrappers, re-exported so `motion_bridge::publish_objects`
 // / `bake_objects` / `bake_flip_objects` resolve unchanged for the render loop.
 pub(super) use objects::{bake_flip_objects, bake_objects, publish_objects};
+// The named-group membership predicate, re-exported pub(crate) so the object/flip bakes'
+// `select_present` (top-level shell modules) reach it. It is the SAME tree relation
+// `objects::group_externals` descends, and the object-bake gate pins that they agree.
+pub(crate) use objects::entity_is_in_a_named_group;
 
 #[cfg(feature = "panel-motion-graph")]
 #[path = "motion_bridge_edit.rs"]

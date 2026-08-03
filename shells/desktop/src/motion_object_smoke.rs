@@ -315,15 +315,14 @@ impl crate::App {
                 let flip_map = self.flip_entities.clone();
                 let gfx = self.gfx.as_mut().expect("gfx");
                 if let Some(group) = find_group(&mut gfx.sim, OBJECT) {
-                    // O vetor (a unica forma da cena) vira filho NOMEADO no centro.
+                    // O vetor (a unica forma da cena) vira filho SEM NOME no centro — o
+                    // caso do item 3 (doc 86 §9.6): um filho vetor/flip de grupo sem Name
+                    // continua carimbado, resolvido pelo seu DRAWING id (`VecPathRef`), nao
+                    // pelo nome. O bake o tila porque ele esta num grupo NOMEADO.
                     if let Some((_, &bits)) = vec_map.iter().next() {
                         let e = ph2d_ecs::Entity::from_bits(bits);
                         if let Ok(mut ent) = gfx.sim.world_mut().get_entity_mut(e) {
-                            ent.insert((
-                                Name::new("GVec"),
-                                child_at(0.0, 0.0),
-                                ph2d_ecs::ChildOf(group),
-                            ));
+                            ent.insert((child_at(0.0, 0.0), ph2d_ecs::ChildOf(group)));
                         }
                     }
                     // O flip (o unico objeto Flip) vira filho a direita. O sync ja
@@ -343,10 +342,13 @@ impl crate::App {
                 gfx.motion.sinks.push(out);
                 let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
                 eprintln!(
-                    "[motion.obj smoke =4] O GRUPO 'Object' (sprite + estrela vetor + objeto Flip, \
-                     MIDIA MISTA) esta carimbado numa grade 4x4 = 16 copias. Cada copia mostra o \
-                     GRUPO INTEIRO no layout dele (3 filhos lado a lado), e cada filho continua VIVO \
-                     (o Flip anima independente). Renomeie o grupo na Hierarchy e as copias somem."
+                    "[motion.obj smoke =4] O GRUPO 'Object' (sprite SEM NOME + estrela vetor SEM \
+                     NOME + objeto Flip 'GFlip', MIDIA MISTA) esta carimbado numa grade 4x4 = 16 \
+                     copias. Cada copia mostra o GRUPO INTEIRO (3 filhos lado a lado) e cada filho \
+                     continua VIVO (o Flip anima independente). A estrela vetor do CENTRO NAO tem \
+                     nome (item 3): ela e tilada porque esta num grupo nomeado e resolvida pelo seu \
+                     drawing id, nao pelo nome. SE ela aparecer nas 16 copias, o item 3 passou; se \
+                     o centro sair em branco, FALHOU. Renomeie o grupo e as copias somem."
                 );
             }
             _ => {}

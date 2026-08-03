@@ -197,3 +197,44 @@ fn a_baked_flip_object_carries_the_composed_two_layer_silhouette() {
 
     renderer.individual_mut().release(tid);
 }
+
+/// **The Flip twin of `motion_object_bake::select_present`** (doc 86 §9.6): a Flip object
+/// is tiled iff it is NAMED or sits inside a named group — and nothing else, so unnamed
+/// canvas art never wastes a tile. The three rows are the whole decision table; two
+/// mutations each break a distinct row (drop the group check ⇒ the group child vanishes;
+/// drop the `continue` ⇒ loose art is tiled).
+#[test]
+fn select_present_bakes_named_and_group_flip_objects_but_not_loose_art() {
+    use ph2d_ecs::{ChildOf, GroupedChildren};
+    let mut sim = SimWorld::new();
+    let named = sim.world_mut().spawn((Name::new("Named"),)).id();
+    let group = sim
+        .world_mut()
+        .spawn((Name::new("Group"), GroupedChildren))
+        .id();
+    let child = sim.world_mut().spawn((ChildOf(group),)).id(); // UNNAMED group child
+    let loose = sim.world_mut().spawn(()).id(); // unnamed, no group
+
+    // The map is FlipObjectId -> entity bits (what `flip_entities::sync` builds).
+    let mut map = FlipEntityMap::new();
+    map.insert(FlipObjectId(10), named.to_bits());
+    map.insert(FlipObjectId(20), child.to_bits());
+    map.insert(FlipObjectId(30), loose.to_bits());
+
+    let present = select_present(sim.world(), &map);
+
+    assert_eq!(
+        present.get(&FlipObjectId(10)),
+        Some(&Some("Named".to_string())),
+        "a named Flip object is tiled, carrying its name"
+    );
+    assert_eq!(
+        present.get(&FlipObjectId(20)),
+        Some(&None),
+        "an UNNAMED group child is tiled by its id, with no name"
+    );
+    assert!(
+        !present.contains_key(&FlipObjectId(30)),
+        "unnamed canvas Flip art no group references is NOT tiled"
+    );
+}

@@ -76,6 +76,10 @@ const SCRATCH_HDR: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
 /// tile's WORLD size (so the sink stamps it at the object's natural size), keyed by a
 /// content hash of the resolved frame.
 struct FlipBaked {
+    /// The artist's name, if any. **Metadata, not the cache key** — the cache is keyed by
+    /// [`FlipObjectId`] (undo/rename-stable), so a rename refreshes it and an unnamed group
+    /// child (`None`) still gets a tile. `tiles()` (the individual publish) yields only named.
+    name: Option<String>,
     key: u64,
     texture_id: u32,
     size: [f32; 2],
@@ -96,32 +100,61 @@ pub(crate) struct FlipObjectBake {
     /// version 0 — the injected slices are what's really composed (the same dummy the
     /// frame-pass `FlipComposite` keeps; never uploaded because version 0 matches).
     dummy: Vec<u8>,
-    cache: BTreeMap<String, FlipBaked>,
+    /// Keyed by the object's own [`FlipObjectId`] (undo/rename-stable), NOT its name —
+    /// so an unnamed group child gets a tile and a rename doesn't evict it. Mirrors
+    /// `motion_object_bake`.
+    cache: BTreeMap<FlipObjectId, FlipBaked>,
 }
 
 impl FlipObjectBake {
-    /// The `name -> tile` map the membrane publishes. Read-only — the bake ran at the
-    /// fx phase; here the membrane only reads the results (the SAME `BakedTile` a
-    /// vector bake yields, so the membrane treats the two media identically).
+    /// The `name -> tile` map the membrane publishes individually (the picker path).
+    /// Read-only — the bake ran at the fx phase (the SAME `BakedTile` a vector bake
+    /// yields, so the membrane treats the two media identically). Only NAMED entries
+    /// are yielded: an unnamed group child has a tile (for the group stamp) but nothing
+    /// to type into a node.
     pub(crate) fn tiles(&self) -> impl Iterator<Item = (&str, BakedTile)> {
-        self.cache.iter().map(|(n, b)| {
-            (
-                n.as_str(),
-                BakedTile {
-                    texture_id: b.texture_id,
-                    size: b.size,
-                },
-            )
+        self.cache.values().filter_map(|b| {
+            b.name.as_deref().map(|n| {
+                (
+                    n,
+                    BakedTile {
+                        texture_id: b.texture_id,
+                        size: b.size,
+                    },
+                )
+            })
         })
     }
 
-    /// The baked tile for ONE named Flip object, or `None` if it isn't baked (doc 86
-    /// §2 A4). A group child that is a Flip object resolves its appearance here.
-    pub(crate) fn tile_for(&self, name: &str) -> Option<BakedTile> {
-        self.cache.get(name).map(|b| BakedTile {
+    /// The baked tile for ONE Flip object by its `FlipObjectId` (the raw `u64` a
+    /// `FlipObjectRef` carries), or `None` if it isn't baked (doc 86 §2 A4). A group
+    /// child that is a Flip object resolves its appearance here — by its drawing id, so
+    /// an unnamed child still resolves.
+    pub(crate) fn tile_for_id(&self, id: u64) -> Option<BakedTile> {
+        self.cache.get(&FlipObjectId(id)).map(|b| BakedTile {
             texture_id: b.texture_id,
             size: b.size,
         })
+    }
+
+    /// Seed a fake tile under `id` — for headless membrane gates that drive
+    /// `resolve_leaf` without a GPU bake.
+    #[cfg(test)]
+    pub(crate) fn seed_for_test(&mut self, id: u64, texture_id: u32, size: [f32; 2]) {
+        self.cache.insert(
+            FlipObjectId(id),
+            FlipBaked {
+                name: None,
+                key: 0,
+                texture_id,
+                size,
+                thumb: ph2d_panel_motion_graph::PreviewThumb {
+                    rgba: std::sync::Arc::new(Vec::new()),
+                    w: 0,
+                    h: 0,
+                },
+            },
+        );
     }
 
     /// The baked-tile THUMBNAIL for `texture_id`, or `None` (doc 86 A5) — the Flip
@@ -155,39 +188,29 @@ impl FlipObjectBake {
         // frame pass uses (`flip_transform::build`).
         let models = build_flip_models(sim, map);
 
-        // The named Flip objects present this frame, by name (last id wins on a name
-        // clash — the artist's business, like `motion_bridge_shapes`).
-        let mut present: BTreeMap<String, FlipObjectId> = BTreeMap::new();
+        // The objects to tile this frame, keyed by FlipObjectId → the artist's name
+        // (`None` for an unnamed group child): named ∪ group-referenced (`select_present`).
+        // Keying by id — not name — is what lets an unnamed group child get a tile and a
+        // rename keep it.
         let world = sim.world();
-        for (&oid, &bits) in map {
-            let Ok(entity) = world.get_entity(Entity::from_bits(bits)) else {
-                continue;
-            };
-            let Some(name) = entity.get::<Name>().map(|n| n.0.clone()) else {
-                continue; // unnamed: nothing for the artist to type into the node
-            };
-            if name.trim().is_empty() {
-                continue;
-            }
-            present.insert(name, oid);
-        }
+        let present = select_present(world, map);
 
-        // Evict the names that vanished (deleted / un-named / renamed away), releasing
-        // their texture so a tile never leaks VRAM.
-        let gone: Vec<String> = self
+        // Evict the ids that vanished (deleted, or an unnamed object no group references
+        // any more), releasing their texture so a tile never leaks VRAM.
+        let gone: Vec<FlipObjectId> = self
             .cache
             .keys()
-            .filter(|n| !present.contains_key(*n))
-            .cloned()
+            .filter(|id| !present.contains_key(*id))
+            .copied()
             .collect();
-        for n in gone {
-            if let Some(b) = self.cache.remove(&n) {
+        for id in gone {
+            if let Some(b) = self.cache.remove(&id) {
                 renderer.individual_mut().release(b.texture_id);
             }
         }
 
         // Bake the new + changed. A cache hit is a content-hash equality — no GPU work.
-        for (name, oid) in present {
+        for (oid, name) in present {
             let Some(obj) = flip.objects().iter().find(|o| o.id == oid) else {
                 continue;
             };
@@ -196,18 +219,24 @@ impl FlipObjectBake {
                 .find(|(id, _)| *id == oid)
                 .map_or(Xform::IDENTITY, |(_, x)| *x);
             let key = content_key(obj, &model, playhead);
-            if self.cache.get(&name).is_some_and(|b| b.key == key) {
-                continue; // unchanged — the tile is still valid
+            if self.cache.get(&oid).is_some_and(|b| b.key == key) {
+                // Content unchanged — refresh the (metadata) NAME so a rename
+                // re-publishes without a re-bake, and continue.
+                if let Some(b) = self.cache.get_mut(&oid) {
+                    b.name = name;
+                }
+                continue;
             }
-            let old = self.cache.remove(&name).map(|b| b.texture_id);
+            let old = self.cache.remove(&oid).map(|b| b.texture_id);
             let baked = self.bake_one(obj, &model, playhead, gpu, renderer);
             if let Some(t) = old {
                 renderer.individual_mut().release(t);
             }
             if let Some((texture_id, size, thumb)) = baked {
                 self.cache.insert(
-                    name,
+                    oid,
                     FlipBaked {
+                        name,
                         key,
                         texture_id,
                         size,
@@ -387,6 +416,34 @@ impl FlipObjectBake {
         let texture_id = renderer.acquire_individual(wpx, hpx, &rgba[..need]).ok()?;
         Some((texture_id, [bw, bh], thumb))
     }
+}
+
+/// The Flip objects to bake this frame, keyed by [`FlipObjectId`] → the artist's name
+/// (`None` for an unnamed group child). Baked iff **named** (the picker path) OR inside a
+/// **named group** ([`entity_is_in_a_named_group`], so the group stamp has its tile);
+/// unnamed canvas objects no group references are NOT baked ⇒ no wasted VRAM. Pure ECS,
+/// so the selection is a headless gate. The twin of `motion_object_bake::select_present`.
+fn select_present(
+    world: &ph2d_ecs::World,
+    map: &FlipEntityMap,
+) -> BTreeMap<FlipObjectId, Option<String>> {
+    use crate::render_loop::motion_bridge::entity_is_in_a_named_group;
+    let mut present: BTreeMap<FlipObjectId, Option<String>> = BTreeMap::new();
+    for (&oid, &bits) in map {
+        let entity = Entity::from_bits(bits);
+        if world.get_entity(entity).is_err() {
+            continue; // stale bits (despawned): its tile is evicted, not baked
+        }
+        let name = world
+            .get::<Name>(entity)
+            .map(|n| n.0.clone())
+            .filter(|s| !s.trim().is_empty());
+        if name.is_none() && !entity_is_in_a_named_group(world, entity) {
+            continue; // unnamed AND no group references it — nothing needs its tile
+        }
+        present.insert(oid, name);
+    }
+    present
 }
 
 /// One visible layer prepared for the composite drive.

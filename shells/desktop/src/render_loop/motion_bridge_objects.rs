@@ -33,7 +33,8 @@
 //! two-doors bug this repo hunts, so it is the *same* `region_uv`.
 
 use ph2d_ecs::{
-    Children, Entity, FlipObjectRef, GroupedChildren, Name, SimWorld, Transform, VecPathRef, With,
+    ChildOf, Children, Entity, FlipObjectRef, GroupedChildren, Name, SimWorld, Transform,
+    VecPathRef, With,
 };
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::Cook;
@@ -173,9 +174,10 @@ pub(super) fn publish(
 /// would freeze it); it emits its children as N quads, each resolving its own tile
 /// every frame. This is the liveness the tier (§2) prioritises.
 ///
-/// ⚠️ **v1 limits, named not silent:** a vector/flip child is resolved by its NAME
-/// (its A2/A3 tile) — an UNNAMED vector/flip child is skipped (a sprite child needs
-/// no name). And a child tile carries the orientation it was baked at (its world
+/// ⚠️ **An UNNAMED vector/flip child stamps too** (doc 86 §9.6 follow-up): a child is
+/// resolved by its DRAWING id (`resolve_leaf`), and the bake tiles exactly the drawings
+/// a named group references ([`entity_is_in_a_named_group`]), so a child needs no name.
+/// A **v1 limit remains:** a child tile carries the orientation it was baked at (its world
 /// pose), so the layout is exact for an axis-aligned group; a rotated/scaled GROUP
 /// re-orienting its vector/flip children is a follow-up.
 fn group_externals(
@@ -250,9 +252,46 @@ fn walk_group_transforms(
     }
 }
 
+/// **Is `entity` inside a named GROUP's subtree?** (doc 86 §9.6 follow-up) — the bake
+/// tiles a vector/flip drawing iff it is named OR this is true, so an unnamed group child
+/// gets a tile without wasting one on unnamed canvas art. Walks UP the `ChildOf` chain
+/// (bounded, the `container_of` precedent), which is the SAME tree relation
+/// `group_externals` descends DOWN from every named group — a gate pins that the two
+/// agree, so the set the bake tiles and the set the membrane stamps cannot diverge.
+///
+/// A "named group" is a `GroupedChildren` entity with a non-empty `Name` — exactly what
+/// `group_externals` starts from. INCLUSIVE of `entity` itself, because a named group is
+/// in its own subtree (`walk_group_transforms` pushes the group), so a group that also
+/// carries geometry resolves as a leaf.
+pub(crate) fn entity_is_in_a_named_group(world: &ph2d_ecs::World, entity: Entity) -> bool {
+    const MAX_DEPTH: usize = 64;
+    let mut cur = entity;
+    for _ in 0..MAX_DEPTH {
+        let named = world
+            .get::<Name>(cur)
+            .is_some_and(|n| !n.0.trim().is_empty());
+        if named && world.get::<GroupedChildren>(cur).is_some() {
+            return true;
+        }
+        match world.get::<ChildOf>(cur) {
+            Some(c) => cur = c.parent(),
+            None => break,
+        }
+    }
+    false
+}
+
 /// Resolve ONE entity's appearance as a group leaf, at `acc` (its pose relative to
 /// the group). Sprite → direct (atlas/individual); vector/flip → its A2/A3 tile by
-/// name. `None` for a pure container (a group node) or an unresolvable leaf.
+/// its DRAWING id. `None` for a pure container (a group node) or an unresolvable leaf.
+///
+/// ⚠️ **The tile is keyed by the drawing's own id** (`VecPathRef`/`FlipObjectRef`,
+/// the `VecPathId`/`FlipObjectId`), NOT by the entity's `Name` — so a group child
+/// with **no name** still resolves (its drawing was baked under its id). The id is
+/// also undo/rename-stable (unlike `Entity::to_bits`, which the bake never uses), so
+/// the lookup survives a respawn. The bake's [`crate::motion_object_bake::select_present`]
+/// bakes exactly the drawings a named group references, via
+/// [`entity_is_in_a_named_group`] — the same tree relation this walk descends.
 fn resolve_leaf(
     world: &ph2d_ecs::World,
     entity: Entity,
@@ -278,12 +317,24 @@ fn resolve_leaf(
             tid,
         });
     }
-    // A vector/flip child is resolved by its NAME (its baked tile).
-    let name = world.get::<Name>(entity).map(|n| n.0.clone());
-    let tile = if world.get::<VecPathRef>(entity).is_some() {
-        name.as_deref().and_then(|n| bakes.tile_for(n))?
-    } else if world.get::<FlipObjectRef>(entity).is_some() {
-        name.as_deref().and_then(|n| flip_bakes.tile_for(n))?
+    resolve_drawing_leaf(world, entity, acc, bakes, flip_bakes)
+}
+
+/// Resolve a vector/flip group child by its **drawing id** (its baked tile) — name-free,
+/// so an unnamed child still stamps. Split from [`resolve_leaf`] so it is headless-testable:
+/// the sprite branch needs the atlas, this one needs only the bakes (and the drawing id
+/// off the `VecPathRef`/`FlipObjectRef`). `None` for a group container or a non-drawable.
+fn resolve_drawing_leaf(
+    world: &ph2d_ecs::World,
+    entity: Entity,
+    acc: &Transform,
+    bakes: &crate::motion_object_bake::ObjectBake,
+    flip_bakes: &crate::motion_flip_bake::FlipObjectBake,
+) -> Option<LeafInstance> {
+    let tile = if let Some(r) = world.get::<VecPathRef>(entity) {
+        bakes.tile_for_id(r.0)?
+    } else if let Some(r) = world.get::<FlipObjectRef>(entity) {
+        flip_bakes.tile_for_id(r.0)?
     } else {
         return None; // a group container or an entity with no drawable appearance
     };
@@ -391,111 +442,5 @@ pub(crate) fn bake_flip_objects(
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn the_membrane_publishes_exactly_the_columns_the_sink_reads() {
-        // doc 86 §6 gate 3 (`bake_source_is_the_same_columns_the_sink_reads`):
-        // the tile the membrane emits, lowered by the render sink, carries the
-        // appearance back to the `RenderInstance` — the publish side and the
-        // read side cannot diverge (the two-doors bug this repo hunts). A DUMMY
-        // texture_id 7 that is neither the atlas sentinel (0) nor a size/tint
-        // value, so a lowering that ignored the column could not pass.
-        let tile = appearance_tile([2.0, 3.0], [1.0, 0.0, 0.0, 1.0], [0.1, 0.2, 0.3, 0.4], 7);
-        let inst = ph2d_eval_motion::lower_to_instances(&tile);
-        assert_eq!(inst.len(), 1);
-        assert_eq!(inst[0].texture_id, 7, "which texture");
-        assert_eq!(inst[0].size, [2.0, 3.0]);
-        assert_eq!(inst[0].tint, [1.0, 0.0, 0.0, 1.0]);
-        assert_eq!(inst[0].atlas_uv, [0.1, 0.2, 0.3, 0.4], "the atlas cell");
-        assert_eq!(inst[0].world_pos, [0.0, 0.0], "at the origin — a template");
-    }
-
-    #[test]
-    fn a_group_lays_its_children_out_relative_to_the_group() {
-        // doc 86 §2 A4: a named group emits its subtree's leaves at their transform
-        // RELATIVE to the group — the group's OWN pose is EXCLUDED (the tile is a
-        // template stamped at each point's `P`). The walk composes down the chain,
-        // so a nested subgroup lays out correctly. This is the load-bearing layout;
-        // the per-medium appearance is the column gate above + the smoke.
-        use ph2d_core::Vec2;
-        use ph2d_ecs::ChildOf;
-        let at = |x: f32, y: f32| Transform {
-            translation: Vec2::new(x, y),
-            ..Transform::IDENTITY
-        };
-        let mut sim = SimWorld::new();
-        // The group carries its OWN translation (100,50) — it must NOT leak into
-        // the children's layout.
-        let group = sim
-            .world_mut()
-            .spawn((Name::new("Group"), GroupedChildren, at(100.0, 50.0)))
-            .id();
-        let c1 = sim.world_mut().spawn((at(2.0, 0.0), ChildOf(group))).id();
-        let c2 = sim.world_mut().spawn((at(-2.0, 1.0), ChildOf(group))).id();
-        // A nested subgroup at (5,0) with a grandchild at (1,0) ⇒ the grandchild
-        // relative to the TOP group is (6,0).
-        let sub = sim
-            .world_mut()
-            .spawn((GroupedChildren, at(5.0, 0.0), ChildOf(group)))
-            .id();
-        let gc = sim.world_mut().spawn((at(1.0, 0.0), ChildOf(sub))).id();
-
-        let mut out: Vec<(Entity, Transform)> = Vec::new();
-        walk_group_transforms(sim.world(), group, Transform::IDENTITY, &mut out);
-
-        let pos = |e: Entity| {
-            out.iter()
-                .find(|(x, _)| *x == e)
-                .map(|(_, t)| [t.translation.x, t.translation.y])
-        };
-        // ⚠️ If the walk folded the group's own transform in, the group would be at
-        // (100,50) and c1 at (102,50) — these assertions are the mutation guard.
-        assert_eq!(
-            pos(group),
-            Some([0.0, 0.0]),
-            "the group's OWN pose is excluded"
-        );
-        assert_eq!(
-            pos(c1),
-            Some([2.0, 0.0]),
-            "a direct child at its local position"
-        );
-        assert_eq!(pos(c2), Some([-2.0, 1.0]), "the second direct child");
-        assert_eq!(
-            pos(gc),
-            Some([6.0, 0.0]),
-            "a grandchild composed down the chain (5+1)"
-        );
-    }
-
-    #[test]
-    fn the_group_stream_lowers_to_one_instance_per_child() {
-        // doc 86 §2 A4: the N-instance stream a group publishes, lowered by the
-        // sink, yields ONE `RenderInstance` per child at its position + texture —
-        // the two-doors coverage for the group path (the single-object version is
-        // the column gate above). DISTINCT texture_ids (3, 9) that are neither the
-        // atlas sentinel nor a coordinate, so a lowering that dropped the column
-        // could not pass.
-        let leaf = |p: [f32; 2], size: [f32; 2], tid: u32| LeafInstance {
-            p,
-            rot_deg: 0.0,
-            size,
-            tint: [1.0, 1.0, 1.0, 1.0],
-            uv: [0.0, 0.0, 1.0, 1.0],
-            tid,
-        };
-        let leaves = vec![
-            leaf([-1.0, 0.0], [0.5, 0.5], 3),
-            leaf([1.0, 0.5], [0.7, 0.7], 9),
-        ];
-        let inst = ph2d_eval_motion::lower_to_instances(&group_stream(&leaves));
-        assert_eq!(inst.len(), 2, "one instance per child");
-        assert_eq!(inst[0].world_pos, [-1.0, 0.0]);
-        assert_eq!(inst[0].texture_id, 3);
-        assert_eq!(inst[1].world_pos, [1.0, 0.5]);
-        assert_eq!(inst[1].texture_id, 9);
-        assert_eq!(inst[1].size, [0.7, 0.7], "each child keeps its own size");
-    }
-}
+#[path = "motion_bridge_objects_tests.rs"]
+mod tests;

@@ -145,24 +145,40 @@ impl PainterTool {
     /// cai no braço plano de `commit_drag_preview`, que é um no-op. Só um gesto de forma (arrastar uma
     /// alça) refazia o lote, e é exatamente esse gesto que o gate antigo tinha na fixture.
     ///
-    /// ⚠️ **É WET-ONLY, e a diferença não é escopo escolhido — é o que o commit PRODUZ.** No digital os
-    /// pixels assados *são* o preview (a mesma tinta, no mesmo lugar), então o editor já mostra o que
-    /// vai commitar e re-carimbar pintaria a figura DUAS vezes (borda mais escura, o desenho aprovado
-    /// se movendo). Em wet o commit produz outra coisa — o fluido —, o esboço é peelado, e o que sobra
-    /// é um editor que não mostra nada. O re-stamp restaura o invariante que todo modo tem: **uma forma
-    /// aberta está carimbada no canvas**, e por isso o aperto seguinte tem o que depositar.
+    /// ⚠️ **O que é RE-ARMADO é o LOTE, nunca o esboço — e a primeira versão desta correção fez o
+    /// contrário e foi REPROVADA na tela** (Enio 2026-08-03, no smoke seguinte: *"agora a simulação não
+    /// acontece, a tinta não escorre"*). Re-carimbar o esboço restaurava o invariante *"uma forma aberta
+    /// está carimbada no canvas"* e depositava por aperto — mas um esboço vivo **CONGELA a água** (lei D,
+    /// `wet_authoring_hold` = `drag_preview.is_some()`, que existe para o composite não apagar o esboço
+    /// dentro do próprio dirty rect). Depositar por aperto e a água correr **não** são incompatíveis; o
+    /// que era incompatível era manter o esboço.
     ///
-    /// ⚠️ Corolário que mantém o modelo honesto: com o esboço de volta a água **congela** (lei D,
-    /// `wet_authoring_hold` = `drag_preview.is_some()`) até a forma ser aplicada ou cancelada. É o
-    /// preço do que se vê: enquanto há esboço na tela, ele é o que o próximo commit deposita — e um
-    /// Enter depois de N keeps deposita a figura que está à vista, não uma cópia invisível.
+    /// Sem esboço o artista vê o que há de melhor para ver: **a água de verdade**, correndo, com as
+    /// alças ainda na tela. Um clone da lista de dabs por aperto é o preço, e é barato.
+    ///
+    /// ⚠️ **É WET-ONLY, e a diferença não é escopo escolhido — é o que o commit PRODUZ.** No digital os
+    /// pixels assados *são* o preview (a mesma tinta, no mesmo lugar), então o aperto seguinte não tem
+    /// o que acrescentar e o lote é consumido de propósito. Em wet o commit produz outra coisa — o
+    /// fluido — e o mesmo lote pode ser despejado de novo.
+    ///
+    /// ⚠️ **Isto abre uma exceção ao invariante do G11** (*"o stash cavalga o preview"*), e a exceção é
+    /// estreita: o lote só sobrevive **enquanto um editor de forma está ABERTO**, que é exatamente o
+    /// estado em que um commit é esperado. Todo chamador de `commit_drag_preview` alcançável daqui é um
+    /// gesto de commit (Apply, Apply & Keep, o bake da troca de método) — e o Esc continua limpando o
+    /// lote pela porta de cancelamento, que é o que impede um despejo órfão.
     pub fn commit_open_shape_keep(&mut self) -> bool {
+        // O commit em wet CONSOME o lote (`mem::take`, doc 21 lei C) — guarde-o antes.
+        let stash = matches!(self.paint.paint_mode, super::PaintMode::WetPaint)
+            .then(|| self.paint.wetpaint.pending_deposit.clone());
         let committed = self.curve_commit_keep()
             || self.ellipse_commit_keep()
             || self.polygon_commit_keep()
             || self.line_commit_keep();
-        if committed && matches!(self.paint.paint_mode, super::PaintMode::WetPaint) {
-            self.refill_open_shape();
+        if committed
+            && let Some(stash) = stash
+            && !stash.is_empty()
+        {
+            self.paint.wetpaint.pending_deposit = stash;
         }
         committed
     }

@@ -177,8 +177,29 @@ fn the_one_shot_deposit_matches_the_live_feed() {
 /// Doc 21 G11: the stash rides the preview — `pending_deposit` non-empty ⇒
 /// a preview record exists, across the verb battery; and CANCEL clears it.
 /// Mutation that bleeds it: dropping the stash-clear from the peel door.
+///
+/// ⚠️ **UMA exceção, e ela é deliberada:** o **Apply & Keep** em wet re-arma o lote SEM esboço, para
+/// que o aperto seguinte deposite de novo **com a água correndo** (um esboço vivo a congelaria — lei
+/// D). O lote só sobrevive enquanto um editor de forma está ABERTO, e o Esc continua limpando-o — que
+/// é a propriedade que de fato protege contra um despejo órfão, e é ela que este gate afirma no caso.
 #[test]
 fn cancel_leaves_no_pending_deposit_and_the_stash_rides_the_preview() {
+    // A exceção do Apply & Keep: lote armado sem esboço — e o Esc ainda o limpa.
+    {
+        let mut t = wet_tool();
+        draw_ellipse(&mut t);
+        assert!(t.commit_open_shape_keep());
+        assert!(
+            !t.paint.wetpaint.pending_deposit.is_empty() && t.paint.drag_preview.is_none(),
+            "o Apply & Keep tem de deixar o lote armado SEM esboço (a água corre, o aperto seguinte \
+             deposita)"
+        );
+        assert!(t.cancel_open_shape());
+        assert!(
+            t.paint.wetpaint.pending_deposit.is_empty(),
+            "o Esc deixou um lote que um commit posterior despejaria"
+        );
+    }
     let inv = |t: &PainterTool, ctx: &str| {
         assert!(
             t.paint.wetpaint.pending_deposit.is_empty() || t.paint.drag_preview.is_some(),
@@ -625,17 +646,37 @@ fn the_commit_deposits_water_as_well_as_pigment_and_the_sim_runs() {
 /// chama), e o oráculo é a MASSA no fluido, não o retorno do botão: antes do fix ele devolvia `true`
 /// nos três apertos, gravava três entradas de undo e depositava `5824835,5` nos três — ao dígito.
 ///
-/// **Mutação que sangra:** tirar o `refill_open_shape()` do braço wet de `commit_open_shape_keep`.
+/// ⚠️ **E as DUAS metades vivem no mesmo gate de propósito.** A primeira correção depositava por
+/// aperto RE-CARIMBANDO o esboço, e o smoke seguinte a reprovou — *"agora a simulação não acontece, a
+/// tinta não escorre"* — porque um esboço vivo congela a água (lei D). Separar *"depositou de novo"* de
+/// *"a água ainda corre"* em dois gates é como uma cura volta a comprar a outra: aqui um aperto tem de
+/// fazer as duas coisas, e a asserção do hold é a que o smoke reprovado teria pego.
+///
+/// **Mutação que sangra:** re-armar o esboço (`refill_open_shape()`) em vez do lote — a massa continua
+/// crescendo e a metade do `wet_authoring_hold` fica VERMELHA.
 #[test]
-fn apply_and_keep_deposits_on_every_press_with_nothing_touched_between() {
+fn apply_and_keep_deposits_on_every_press_and_leaves_the_water_running() {
     let mut t = wet_tool();
     draw_ellipse(&mut t);
     assert!(t.commit_open_shape_keep(), "1o aperto");
     let m1 = grid_mass(&t);
+    assert!(
+        !t.wet_authoring_hold(),
+        "a agua ficou CONGELADA depois do Apply & Keep — o esboco vivo segura o tick (lei D), e o \
+         artista ve a tinta parar de escorrer"
+    );
     assert!(t.commit_open_shape_keep(), "2o aperto");
     let m2 = grid_mass(&t);
     assert!(t.commit_open_shape_keep(), "3o aperto");
     let m3 = grid_mass(&t);
+    assert!(
+        !t.wet_authoring_hold(),
+        "a agua congelou depois do 3o aperto"
+    );
+    assert!(
+        t.paint.ellipse.is_some(),
+        "o editor morreu — Apply & Keep tem de manter a forma editavel"
+    );
     eprintln!("REPRO massas: m1={m1:.1} m2={m2:.1} m3={m3:.1}");
     assert!(
         m2 > m1 * 1.5,

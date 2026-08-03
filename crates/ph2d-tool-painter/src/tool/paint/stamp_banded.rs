@@ -263,24 +263,42 @@ pub(super) fn stamp_plain_dabs_banded_with(
 /// ⚠️ **UM leitor só:** `take` ZERA os contadores, então dois leitores publicariam pedaços do mesmo
 /// quadro como se fossem quadros — a mesma lei do `wash_diag`. O leitor é a linha `[paint-perf]`.
 pub mod diag {
-    use std::sync::atomic::{AtomicU32, Ordering};
+    use std::cell::Cell;
 
-    static BANDED: AtomicU32 = AtomicU32::new(0);
-    static SERIAL: AtomicU32 = AtomicU32::new(0);
-    static DABS: AtomicU32 = AtomicU32::new(0);
+    // ⚠️ **POR THREAD, não atômicos globais.** Estes baldes são lidos por um gate que afirma
+    // `banda > 0`, e poluição só SOMA — um teste vizinho carimbando em paralelo tornaria essa
+    // afirmação verdadeira mesmo com a fixture tomando a rota serial: **falso VERDE**, a metade
+    // exata que a flake do `ph2d-painter-brush` (2026-08-01) provou ser a vulnerável. Contador
+    // por thread torna a poluição estruturalmente impossível e não deixa lista de quem precisa
+    // se isolar.
+    //
+    // ⚠️ **O invariante que isto assume:** quem CARIMBA e quem LÊ são a mesma thread. No app são
+    // as duas o laço do quadro (o flush coalescido roda antes do `cpu_start`, e o `[frame]` o lê
+    // no fim). `note` é chamado ANTES do `thread::scope` do lote, então as bandas não contam.
+    // Se um dia o carimbo sair da thread do quadro, este balde **emudece** — e um balde mudo
+    // lê-se como resultado; quem mover o carimbo move este contador junto.
+    thread_local! {
+        static BANDED: Cell<u32> = const { Cell::new(0) };
+        static SERIAL: Cell<u32> = const { Cell::new(0) };
+        static DABS: Cell<u32> = const { Cell::new(0) };
+    }
 
     pub(super) fn note(banded: bool, dabs: usize) {
-        if banded { &BANDED } else { &SERIAL }.fetch_add(1, Ordering::Relaxed);
-        DABS.fetch_add(u32::try_from(dabs).unwrap_or(u32::MAX), Ordering::Relaxed);
+        let bucket = if banded { &BANDED } else { &SERIAL };
+        bucket.with(|c| c.set(c.get().saturating_add(1)));
+        DABS.with(|c| c.set(c.get().saturating_add(u32::try_from(dabs).unwrap_or(u32::MAX))));
     }
 
     /// `(lotes em banda, lotes seriais, dabs no total)` desde a última chamada — e ZERA.
+    ///
+    /// Como ele ZERA, há **um leitor só** por thread (a lei do `wash_diag`): dois leitores
+    /// publicariam pedaços do mesmo quadro como se fossem quadros.
     #[must_use]
     pub fn take() -> (u32, u32, u32) {
         (
-            BANDED.swap(0, Ordering::Relaxed),
-            SERIAL.swap(0, Ordering::Relaxed),
-            DABS.swap(0, Ordering::Relaxed),
+            BANDED.with(Cell::take),
+            SERIAL.with(Cell::take),
+            DABS.with(Cell::take),
         )
     }
 }

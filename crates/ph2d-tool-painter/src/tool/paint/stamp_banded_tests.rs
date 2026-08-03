@@ -232,6 +232,67 @@ fn cpx(
     }
 }
 use ph2d_editor_core::tool::{CanvasPaintTool as _, PointerPhase, RasterEditTool as _};
+
+/// **O pincel do ARTISTA toma a rota nova?** — a metade do report de 2026-08-03 (*"não houve
+/// melhora real nem no modo digital simples"*) que **não precisa de relógio**.
+///
+/// A pergunta admitia duas leituras opostas — *o ramo em banda não dispara neste pincel* contra
+/// *dispara e o tempo está noutro lugar* — e eu pedi um log ao Enio para separá-las. Metade dela é
+/// **estrutural**: qual rota o despacho toma é função da configuração, não da máquina, e responde-se
+/// em processo. O `band_diag` é por-thread (ver o doc dele), então este gate é imune ao paralelismo
+/// da suíte — poluição aqui produziria **falso VERDE**, porque a afirmação é positiva.
+///
+/// A fixture é a do smoke: **Digital**, pincel de fábrica em `set_brush_size_px(40)` (o que o
+/// `PH2D_IMPASTO_SMOKE` arma), elipse grande, entregue pela porta do artista.
+#[test]
+fn the_artists_default_brush_takes_the_banded_road_on_a_live_figure() {
+    use ph2d_painter_brush::StrokeMethod;
+    let mut t = crate::tool::PainterTool::default();
+    t.set_source(vec![255u8; 1024 * 1024 * 4], 1024, 1024);
+    assert_eq!(
+        t.paint_media(),
+        crate::tool::paint::media::PaintMedia::Digital,
+        "a fixture tem de ser o Digital de fábrica — é o meio do report"
+    );
+    t.set_brush_size_px(40.0);
+    t.paint.brush.stroke_method = StrokeMethod::Ellipse;
+
+    let _ = super::stamp_banded::diag::take(); // zera o que esta thread trouxe
+    t.on_canvas_pointer(cpx([100.0, 412.0], PointerPhase::Down));
+    t.on_canvas_pointer(cpx([900.0, 612.0], PointerPhase::Move));
+    let (banded, serial, dabs) = super::stamp_banded::diag::take();
+
+    // ⚠️ **O controle positivo NÃO passa pelo instrumento sob teste.** A 1ª versão perguntava
+    // `dabs > 0` para provar *"a fixture pintou"*, e sob a mutação (o ramo desligado) ela falhava
+    // dizendo **"a fixture não carimbou nada"** — falso: a fixture carimbou, pela rota antiga, e
+    // `dabs` só conta quem chega a ESTE módulo. Um contador que zera nas duas hipóteses não as
+    // separa. Quem prova que a fixture contém o fenômeno é o CANVAS.
+    assert!(
+        t.canvas_rgba.iter().any(|&b| b != 255),
+        "a fixture não pintou um pixel — ela não contém o fenômeno"
+    );
+    assert!(
+        banded > 0,
+        "o pincel DEFAULT do Digital não alcança o depósito em banda: {banded} em banda x \
+         {serial} serial(is), {dabs} dabs no módulo. A wave está INERTE no produto."
+    );
+
+    // E o CONTROLE pela mesma porta: uma figura pequena com pincel pequeno segue serial — sem esta
+    // metade, uma mutação que ligasse a banda SEMPRE passaria por aqui.
+    let mut t = crate::tool::PainterTool::default();
+    t.set_source(vec![255u8; 256 * 256 * 4], 256, 256);
+    t.set_brush_size_px(3.0);
+    t.paint.brush.stroke_method = StrokeMethod::Ellipse;
+    let _ = super::stamp_banded::diag::take();
+    t.on_canvas_pointer(cpx([100.0, 118.0], PointerPhase::Down));
+    t.on_canvas_pointer(cpx([140.0, 138.0], PointerPhase::Move));
+    let (banded, serial, dabs) = super::stamp_banded::diag::take();
+    assert!(dabs > 0, "o controle não carimbou nada");
+    assert_eq!(
+        banded, 0,
+        "uma figura pequena não paga o custo de dividir: {banded} em banda x {serial} serial(is)"
+    );
+}
 /// **O modo de pintura SOBREVIVE a um stroke vivo?** — o report do Enio de 2026-08-03
 /// (*"Wet Paint regride para digital ao usar os strokes vivos"*).
 #[test]

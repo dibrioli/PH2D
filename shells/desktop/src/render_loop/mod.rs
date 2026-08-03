@@ -237,10 +237,20 @@ use ph2d_editor::{Layout as EditorLayout, RequestedSpriteStrategy, Toast, paint_
 use std::time::Instant;
 
 thread_local! {
-    /// Frame-phase profiler (shares the `PH2D_FLUID_PROFILE` env so no new flag):
+    /// Frame-phase profiler (`PH2D_FLUID_PROFILE` **ou** `PH2D_PAINT_PERF`):
     /// `-1` = unread, else cached on/off. Splits the frame into CPU-encode (raw)
     /// vs the present/acquire stall, plus the painter bridge dispatch (CPU preview)
     /// — to pin a slowdown the `[fluid]` profiler proves is OUTSIDE the fluid drive.
+    ///
+    /// ⚠️ **Por que o `PH2D_PAINT_PERF` liga este bloco também** (2026-08-03): o
+    /// carimbo roda no flush coalescido, na linha ~698, **ANTES** do `cpu_start`
+    /// — ou seja fora da janela de encode e fora do `painter-dispatch`. O
+    /// `[paint-perf]` é, por construção, **CEGO ao carimbo**: ele reporta
+    /// `dispatch p50=0.0` tanto num traço de graça quanto num que custa 300 ms.
+    /// A linha `stamps:` (e o `deposito:` ao lado dela) vive só aqui, então um
+    /// smoke rodado com o flag que NOMEIA performance de pintura media tudo
+    /// menos a pintura e voltava tranquilizando. Um instrumento silencioso é
+    /// pior que um ausente.
     static FRAME_PROF_ON: std::cell::Cell<i8> = const { std::cell::Cell::new(-1) };
     static FRAME_PROF_N: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
     /// ⚠️ **O RELÓGIO da janela de diagnóstico, MEDIDO.** Ele existe porque a
@@ -326,9 +336,13 @@ const RESIZE_SETTLE_FRAMES: u32 = 30;
 fn frame_prof_on() -> bool {
     FRAME_PROF_ON.with(|c| {
         if c.get() < 0 {
-            c.set(i8::from(
-                std::env::var("PH2D_FLUID_PROFILE").is_ok_and(|v| v != "0"),
-            ));
+            // Os DOIS flags acendem esta partição — ver o porquê no doc do `FRAME_PROF_ON`:
+            // a linha `stamps:`/`deposito:` mora só aqui, e quem mede pintura pede o
+            // `PH2D_PAINT_PERF`.
+            let on = ["PH2D_FLUID_PROFILE", "PH2D_PAINT_PERF"]
+                .iter()
+                .any(|k| std::env::var(k).is_ok_and(|v| v != "0"));
+            c.set(i8::from(on));
         }
         c.get() > 0
     })

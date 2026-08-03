@@ -1,0 +1,28 @@
+[package]
+name = "ph2d-paint-gpu"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+# ⚠️ **A AUSÊNCIA de `ph2d-painter-brush` aqui é o desenho, não um esquecimento.**
+#
+# A armadilha desta wave é [[feedback_two_engines_one_state_is_worse_than_a_slow_engine]]: um kernel
+# de GPU que RE-DERIVASSE a silhueta do dab seria uma segunda resposta a *"que forma tem este dab?"*,
+# divergindo no único lugar onde ninguém lê um número — uma screenshot. A cura é a mesma do
+# `ImpastoLightPass` (o LUT especular sobe PRONTO, e o `powf` nunca roda no device): a CPU calcula o
+# falloff com a função que JÁ shipa e manda a TABELA; o device só a amostra.
+#
+# Não depender da crate do pincel torna isso **estrutural em vez de disciplinar**: esta crate não tem
+# acesso ao `falloff_weight`, então ela não CONSEGUE ter uma opinião sobre a lei. O que ela recebe é
+# dado simples — uma tabela e uma lista de discos.
+[dependencies]
+ph2d-gpu = { path = "../ph2d-gpu" }
+wgpu = "28"
+bytemuck = { version = "1", features = ["derive"] }
+
+[dev-dependencies]
+pollster = "0.4"
+
+[lints]
+workspace = true

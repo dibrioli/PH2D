@@ -1,5 +1,11 @@
 # HANDOFF DE INTEGRAÇÃO — `line/physics` (2026-08-01, 2ª jornada do dia)
 
+> ⚠️ **SUPERSEDIDO por [`HANDOFF_INTEGRACAO_line_physics_MESTRE_2026-08-02.md`](HANDOFF_INTEGRACAO_line_physics_MESTRE_2026-08-02.md)**, que cobre os **38**
+> commits da linha inteira. Este aqui cobria só os 24 primeiros, e **os números de
+> identidade dele estão DESATUALIZADOS** — a linha ganhou mais uma wave (W-LeadDrag)
+> e o limitador (W-RopeStop) depois que ele foi escrito. Fica como histórico das três
+> waves do fim daquela jornada.
+
 > **Para o agente integrador.** A linha está **FECHADA**. **24 commits, sete waves,
 > todos os smokes aprovados pelo Enio.** Ela **não** integrou e **não** pushou —
 > DIRETRIZ §1.5.9.

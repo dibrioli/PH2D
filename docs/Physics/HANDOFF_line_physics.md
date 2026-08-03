@@ -8913,3 +8913,140 @@ O passo 3 do roteiro é o conserto do write-only: selecione a porta e as duas ro
 **Aberto:** um consumidor que não seja o toast (Luau/áudio) — **cross-line, e
 continua decisão do Enio**; ele não muda uma linha da física, porque a outbox já é
 a mesma da timeline.
+
+---
+
+## W-PartAdopt · W-RopeSays · W-RailRope — os três abertos que tinham cura (2026-08-03)
+
+Ordem do Enio: *"escolha e vamos até o fim de todos os ítens"*. A varredura de
+TODA linha `Aberto` do tracker deu seis candidatos; **três tinham cura e três
+estão bloqueados por uma decisão que não é de engenharia** — e a evidência dos
+três bloqueados está medida abaixo, porque *um item bloqueado sem o número ao
+lado vira trabalho planejado no ano seguinte*.
+
+### ⚠️ W-PartAdopt — `Make Independent Body` APAGAVA a forma autorada (cena `=70`)
+
+A nota deste aberto dizia *"o rótulo não avisa que a peça vai SALTAR"*. **O
+rótulo era o menor dos problemas.** Medido antes de tocar em código:
+
+| | antes | depois |
+|---|---|---|
+| forma | `0,17 × 0,91` | **`0,10 × 0,50`** (a caixa do sprite) |
+| offset | `[0,13, −0,07]` | **`[0, 0]`** |
+| densidade · camada · restituição | `3,5 · 2 · 0,42` | **`1 · 0 · 0`** |
+
+O braço `Add` deriva um `Collider` da caixa do SPRITE e o escreve por cima, e ele
+é a porta das **TRÊS** faces da §11 — a VAZIA (onde semear é o certo: não há
+forma nenhuma) e a de PEÇA (onde a forma já existe e é autorada).
+
+É o MESMO defeito que a W-PartFace mediu e curou para o `Add Shape` (*"a porta
+que CRIA a peça, clicada de novo, reescreve o collider com os defaults e apaga a
+forma autorada em silêncio"*): **a lei era dita numa das duas portas e não na
+outra**. Agora é uma só — *semear é para quem não tem forma*.
+
+⚠️ **E o SALTO não acontece** — medido, não acreditado: a pose de mundo não se
+move (o `Transform` de uma peça é LOCAL e continua local; o que muda é quem a
+integra, e o readback volta pela álgebra invertível do W5). O próprio parêntese
+da nota já se contradizia (*"ela já estava lá"*). Um aviso para um salto que não
+acontece seria a UI mentindo com convicção.
+
+**Gates:** o repro + o **CONTROLE** da face vazia (um sprite pelado tem de GANHAR
+um collider — senão a cura vira *nunca semeie* e a porta que faz a física existir
+na cena nasce sem forma) + a asserção de que a peça não salta. 1 mutação, sangra
+UM gate, o certo.
+
+### ⚠️ W-RopeSays — o readout de uma corda que não roteia DIZ isso (cena `=58`..)
+
+O desenho de uma corda degenerada já vestia o **VERMELHO** do *não-segura* desde
+o W-PulleyDegenerate, e o número ao lado continuava **ÂMBAR** dizendo `0 N` —
+**duas metades do mesmo fato discordando, com a metade que carrega o NÚMERO
+afirmando a mais tranquilizadora das duas**. E `0 N` não é uma medição: o passe da
+polia sai por `continue` ANTES de medir coisa alguma.
+
+Agora ele diz **`no route`**, na mesma cor que o desenho veste.
+
+⚠️ **O fato sai da MESMA chamada que desenha** — a frase que já governava a COR
+três parágrafos acima no mesmo laço. O `joint_marks` devolve
+`JointMarks { paths, not_acting }` e o readout LÊ a lista; uma
+`rope_route_resolves()` própria seria uma segunda resposta a *esta corda está
+segurando?*, e no dia em que discordasse voltaria exatamente este defeito.
+
+⚠️ **Uma struct, e não um out-param.** A 1ª versão passava `&mut Vec<Entity>` e o
+clippy a recusou (8/7 argumentos) — e ele estava certo pelo motivo de DESENHO, não
+pelo número: esta passada **produz** dois fatos, ela não preenche um buffer que o
+chamador empresta.
+
+**Gates:** o repro (o desenho publica · o readout honra · a cor bate) + o CONTROLE
+(uma corda SADIA continua mostrando `58.9 / 60 N`). **2 mutações, 2 sangram**, e
+cada uma só a metade que lhe pertence.
+
+**LOC:** `physics_overlay_joints.rs` cruzou 600 ⇒ split por ASSUNTO em
+`physics_overlay_joint_ghost.rs` — o pai desenha *o que um joint É*; o fantasma
+responde *onde este arrasto vai parar o corpo*, a única coisa deste overlay que
+descreve um FUTURO e a única que precisa do `SimWorld`.
+
+### ⬛ W-RailRope — o TRILHO como elo de corda (cena `=77`)
+
+O W-LeadDrag deixou um tipo de elo de fora com o motivo escrito: *"a lei é
+ANGULAR e só o Pin oferece o ângulo que ela escolhe; um Slider desliza ao longo de
+um EIXO, que é outra coordenada e pediria outra lei"*, concluindo que inventar um
+deslizamento *"daria a um trilho um comportamento que ninguém autorou"*.
+
+⚠️ **A lei não era outra — era a MESMA na outra coordenada.** O princípio é *use a
+sua única liberdade para atrapalhar o menos possível*:
+
+| elo | liberdade | o que a puxada escolhe |
+|---|---|---|
+| **Pin** | ângulo na âncora | o ângulo que mantém o ponto apontado |
+| **Slider** | distância pelo eixo | o **deslize**, clampado ao **CURSO** |
+| **Weld** | nenhuma | nada — a peça viaja inteira |
+
+Deslizar não é invenção: é a única liberdade que um trilho **TEM**.
+
+**Medido**, curso `±0,5 m`, puxada de 2 m ao longo do eixo:
+
+```
+[2,0 · 1,5 · 1,0 · 0,5]
+```
+
+Cada trilho come exatamente meio metro e passa o resto adiante — um **mastro
+telescópico** — e o perfil decai da mão para a cauda, que é o que arrastar uma
+corda parece. **De través: `[2, 2, 2, 2]`** — um rail não tem liberdade na
+perpendicular, e essa metade é o que impede a lei de virar *deslize sempre*.
+
+⚠️ **O CURSO é load-bearing.** Um `PhysicsJoint` nasce com
+`limits_enabled: false`, então a corrente PADRÃO é de trilhos sem batente e o
+primeiro absorve a puxada inteira (`[2, 0, 0, 0]`). Sem o clamp o carrinho sairia
+do trilho e o desenho seria de um rail com percurso infinito. **A fixture com
+batentes existe porque sem ela o clamp NÃO É EXERCITADO POR NADA** e um gate
+escrito sobre a corrente padrão ficaria verde com ele deletado.
+
+⚠️ **O eixo vem do frame do PAI** (o desc o guarda nos dois): é o pai que se move
+primeiro e é contra o frame dele que o rígido é composto. O do filho daria a mesma
+direção só enquanto os dois estivessem alinhados — o caso em que nenhum gate
+distingue os dois.
+
+⚠️ **O `s` ACUMULA**, como o resto desta corda: o deslize é função do CAMINHO.
+
+**Gates:** 3 na crate + 4 na cena. **3 mutações, 3 sangram**, cada uma só o gate
+que lhe pertence.
+
+**Smoke: `PH2D_PHYSICS_SMOKE=77`.**
+
+### ⛔ Os três que NÃO têm cura de engenharia — com a evidência
+
+| item | o que a medição diz |
+|---|---|
+| **o consumidor de GAMEPLAY do sinal** | `AppGfx.script` é um `Option<ScriptHost>` **nunca tickado** em lugar nenhum da shell, e o próprio `init_script_host` diz *"real script-driven gameplay goes here once the editor's script panel exists"*. Não há superfície de autoria de script, e a de áudio (uma tabela nome→clipe) é **desenho de produto que ninguém fez**. ⚠️ E a mesma outbox recebe os sinais da TIMELINE, cujo consumidor também é um toast: **o consumidor é cross-cutting dos dois produtores, não da física** |
+| **um Ctrl+Z para as duas metades do bake** | O `timeline_key` roda ANTES e CONSOME o acorde quando o painel está aberto e há passo; o `undo_owner` **não tem dono Timeline nenhum** na cadeia. Para um acorde desfazer as duas metades o roteador teria de saber que um bake produziu um PAR em duas filas — e as duas podem derivar (o artista faz outras coisas no meio), então errar significa desfazer um passo global ALHEIO. É redesenho do roteador de undo |
+| **params de joint keyframáveis** | ⚠️ **A premissa registrada aqui estava FALSA e foi corrigida.** Ela dizia *"`PropKind` é enum FECHADO de 7 variants, **todas de POSE** … não é apendar variant"*. O `PropKind::Morph` (a linha do Vector) **já dirige um campo de componente** (`VecMorph.t`), com par read/write em `apply_prop.rs` — o padrão existe e apendar variant **é** a forma. **O bloqueio real é outro:** aquele par funciona porque *"`VecMorph` lives in `ph2d-ecs`, which this crate already depends on"*, e `PhysicsJoint` mora na **`ph2d-physics-ecs`**, que a `ph2d-timeline` **não** conhece. Ligar os dois é (a) o editor de animação passar a depender do motor de física — o espelho exato do que o `signals.rs` recusa —, (b) mover o `PhysicsJoint` para o `ph2d-ecs`, ou (c) um canal genérico que nenhuma das duas possua. **Decisão de arquitetura, com três saídas nomeadas** |
+
+⚠️ **A correção da premissa do terceiro é o achado mais valioso desta varredura** e
+é literalmente a regra do §0: *"fora de escopo porque é inalcançável é uma
+afirmação sobre um número que outra pessoa pode mudar; quem move o número tem de
+reconferir a nota"*. A linha do Vector moveu, e a nota daqui não foi reconferida.
+
+**Números da jornada:** c9 **`16ba80e8…`, 99 corpos, debug ≡ release, BYTE-IDÊNTICO**
+· `PROJECT_SCHEMA` **48 intocado** · registro **26→27** (`SignalOnLeave`, da wave
+anterior desta mesma sessão) · gizmo ids **nenhum novo** (próximo livre **974**) ·
+**nenhum ADR** · **zero `Cargo.toml`** · contrato congelado intacto.

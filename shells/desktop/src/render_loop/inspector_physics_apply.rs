@@ -44,11 +44,6 @@ pub(crate) fn apply_physics_edit(
     let world = sim.world();
 
     if matches!(edit, PhysicsFieldEdit::Add) {
-        let half = world
-            .get::<ph2d_render::Sprite>(entity)
-            .map_or([0.5, 0.5], |s| {
-                [(s.size[0] * 0.5).max(1e-3), (s.size[1] * 0.5).max(1e-3)]
-            });
         queue_set(
             queue,
             registry,
@@ -58,19 +53,45 @@ pub(crate) fn apply_physics_edit(
                 kind: BodyKind::Dynamic,
             },
         );
-        queue_set(
-            queue,
-            registry,
-            entity_bits,
-            COLLIDER,
-            &Collider {
-                shape: ColliderShape::Cuboid {
-                    half_x: half[0],
-                    half_y: half[1],
+        // ⚠️ **SEMEAR É PARA QUEM NÃO TEM FORMA** (W-PartAdopt).
+        //
+        // Este braço é a porta das TRÊS faces da §11, e as duas em que ela
+        // aparece querem coisas opostas:
+        //
+        // - a face **VAZIA** (*Add Physics Body*) descreve um sprite pelado, e
+        //   semear a caixa dele é a única forma inicial que não pode discordar do
+        //   que está desenhado — sem isto a física seria autorável em lugar
+        //   nenhum;
+        // - a face de **PEÇA** (*Make Independent Body*) descreve um `Collider`
+        //   que o artista JÁ autorou, e tornar-se um corpo independente não muda
+        //   a forma de nada. Escrever por cima apagava o trabalho **em
+        //   silêncio** — medido numa peça `0,17 × 0,91` com offset
+        //   `[0,13, −0,07]`, densidade `3,5`, camada `2` e restituição `0,42`:
+        //   ela voltava `0,10 × 0,50` com tudo zerado.
+        //
+        // É a MESMA lei que o `AddShape` logo abaixo já honra (a porta que CRIA a
+        // peça recusa reescrever uma que existe, W-PartFace) — ela era dita numa
+        // das duas portas e não na outra.
+        if world.get::<Collider>(entity).is_none() {
+            let half = world
+                .get::<ph2d_render::Sprite>(entity)
+                .map_or([0.5, 0.5], |s| {
+                    [(s.size[0] * 0.5).max(1e-3), (s.size[1] * 0.5).max(1e-3)]
+                });
+            queue_set(
+                queue,
+                registry,
+                entity_bits,
+                COLLIDER,
+                &Collider {
+                    shape: ColliderShape::Cuboid {
+                        half_x: half[0],
+                        half_y: half[1],
+                    },
+                    ..Collider::default()
                 },
-                ..Collider::default()
-            },
-        );
+            );
+        }
         return;
     }
     // **A peça** (W-Compound): o MESMO collider que o `Add` faz — a caixa do

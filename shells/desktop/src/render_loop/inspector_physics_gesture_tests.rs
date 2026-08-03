@@ -200,3 +200,149 @@ fn authoring_both_signal_names_makes_the_door_open_and_close() {
         "autorar os dois nomes pelo caminho do commit tem de abrir E fechar a porta"
     );
 }
+
+/// **`Make Independent Body` PRESERVA a forma que o artista autorou** (W-PartAdopt).
+///
+/// ⚠️ **Nasceu VERMELHO sobre um defeito silencioso do produto.** O braço `Add`
+/// deriva um `Collider` da caixa do SPRITE e o escreve por cima, e ele é a porta
+/// das TRÊS faces da §11 — a vazia (onde semear é o certo: não há forma nenhuma)
+/// e a de PEÇA (onde a forma já existe e é autorada). Medido numa peça `0,17 ×
+/// 0,91` com offset `[0,13, −0,07]`, densidade `3,5`, camada `2` e restituição
+/// `0,42`, clicar o botão devolvia `0,10 × 0,50` com **tudo zerado**.
+///
+/// É o MESMO defeito que a W-PartFace mediu e curou para o `Add Shape`
+/// (*"a porta que CRIA a peça, clicada de novo, reescreve o collider com os
+/// defaults e apaga a forma autorada em silêncio"*) — a cura foi aplicada a uma
+/// das duas portas, e a outra ficou. ⚠️ **E a nota do tracker chamava o aberto
+/// desta face de *"o rótulo não avisa que a peça vai saltar"***: o rótulo era o
+/// menor dos problemas, e uma nota que nomeia o sintoma cosmético de um defeito
+/// de dados é pior que nota nenhuma, porque ela TRANQUILIZA.
+///
+/// A lei é a mesma que o `Add Shape` já honra, dita uma vez: **semear é para quem
+/// não tem forma**. Numa peça o botão só anexa o `RigidBody` — que é literalmente
+/// o que *"tornar-se um corpo independente"* significa.
+///
+/// Mutação (semear incondicionalmente) ⇒ este gate sangra e o irmão da face
+/// vazia fica VERDE, que é por que os dois existem.
+#[test]
+fn make_independent_body_keeps_the_shape_the_artist_authored() {
+    use ph2d_ecs::{ChildOf, Name};
+    use ph2d_render::Sprite;
+
+    let mut sim = SimWorld::new();
+    let torso = sim
+        .world_mut()
+        .spawn((
+            Name::new("Torso"),
+            RigidBody {
+                kind: BodyKind::Dynamic,
+            },
+            Collider {
+                shape: ColliderShape::Cuboid {
+                    half_x: 0.4,
+                    half_y: 0.8,
+                },
+                ..Collider::default()
+            },
+            Transform::from_translation(Vec2::new(0.0, 1.0)),
+        ))
+        .id();
+    let part = sim
+        .world_mut()
+        .spawn((
+            Name::new("Wide Bit"),
+            Collider {
+                shape: ColliderShape::Cuboid {
+                    half_x: 0.17,
+                    half_y: 0.91,
+                },
+                offset: [0.13, -0.07],
+                density: 3.5,
+                layer: 2,
+                restitution: 0.42,
+                ..Collider::default()
+            },
+            // ⚠️ O sprite é de OUTRO tamanho, de propósito: é dele que o braço
+            // derivava a caixa, então sem esta linha o gate não distingue
+            // *preservou* de *re-derivou e deu no mesmo*.
+            Sprite::atlas(
+                ph2d_render::WHITE_TILE_KEY,
+                [0.2, 1.0],
+                [1.0, 1.0, 1.0, 1.0],
+            ),
+            Transform::from_translation(Vec2::new(0.5, 0.0)),
+            ChildOf(torso),
+        ))
+        .id();
+
+    let before = *sim
+        .world()
+        .get::<Collider>(part)
+        .expect("a peça tem collider");
+    apply(&mut sim, part, PhysicsFieldEdit::Add);
+    let after = *sim
+        .world()
+        .get::<Collider>(part)
+        .expect("collider após o Add");
+
+    assert!(
+        sim.world().get::<RigidBody>(part).is_some(),
+        "o botao nao tornou a peca um corpo -- e' a unica coisa que ele deve fazer"
+    );
+    assert_eq!(
+        after, before,
+        "o botao REESCREVEU o collider autorado: {before:?} -> {after:?}. \
+         Semear e' para quem NAO tem forma; numa peca ele so' anexa o corpo."
+    );
+
+    // ⚠️ **E a peça NÃO SALTA** — a outra metade da nota do tracker, medida em
+    // vez de acreditada. Ela dizia que *"o rótulo não avisa que a peça vai
+    // SALTAR para a pose de mundo dela"*, com um parêntese que já se contradizia
+    // (*"ela já estava lá"*). Está: o `Transform` de uma peça é LOCAL e continua
+    // local depois do Add — o que muda é QUEM a integra, e o `readback` volta
+    // pela álgebra invertível do W5. Um aviso para um salto que não acontece
+    // seria a UI mentindo com convicção.
+    let mut bridge = PhysicsBridge::new();
+    let world_of = |sim: &SimWorld| {
+        let t = sim.world().get::<Transform>(part).expect("a peça tem pose");
+        let p = sim
+            .world()
+            .get::<Transform>(torso)
+            .expect("o dono tem pose");
+        [
+            p.translation.x + t.translation.x,
+            p.translation.y + t.translation.y,
+        ]
+    };
+    let before_pose = world_of(&sim);
+    bridge.dispatch(&mut sim, true, 0);
+    let after_pose = world_of(&sim);
+    let d = (after_pose[0] - before_pose[0]).hypot(after_pose[1] - before_pose[1]);
+    assert!(
+        d < 1e-3,
+        "a peca SALTOU {d:.4} m ao virar corpo ({before_pose:?} -> {after_pose:?})"
+    );
+}
+
+/// **E na face VAZIA o botão SEMEIA** — o controle do gate acima.
+///
+/// Sem ele a cura vira *"nunca semeie"*, e a porta que torna um sprite pelado
+/// física — o único gesto que faz a física existir na cena — nasceria sem forma.
+#[test]
+fn adding_a_body_to_a_plain_sprite_still_seeds_a_collider_from_it() {
+    let (mut sim, e) = sprite_scene();
+    assert!(
+        sim.world().get::<Collider>(e).is_none(),
+        "a fixture tem de comecar SEM collider, senao este gate mede o outro caso"
+    );
+    apply(&mut sim, e, PhysicsFieldEdit::Add);
+    let col = sim
+        .world()
+        .get::<Collider>(e)
+        .expect("um sprite pelado tem de GANHAR um collider");
+    assert!(
+        matches!(col.shape, ColliderShape::Cuboid { half_x, half_y } if half_x > 0.0 && half_y > 0.0),
+        "o collider semeado nao tem tamanho: {:?}",
+        col.shape
+    );
+}

@@ -5395,6 +5395,7 @@ dependencies = [
  "ph2d-node-registry-init",
  "ph2d-node-util-reroute",
  "ph2d-nodegraph",
+ "ph2d-paint-gpu",
  "ph2d-painter-brush",
  "ph2d-painter-effects",
  "ph2d-panel-audio-editor",
@@ -6823,8 +6824,10 @@ name = "ph2d-paint-gpu"
 version = "0.0.0"
 dependencies = [
  "bytemuck",
+ "ph2d-editor-core",
  "ph2d-gpu",
  "ph2d-painter-brush",
+ "ph2d-tool-painter",
  "pollster",
  "wgpu",
 ]

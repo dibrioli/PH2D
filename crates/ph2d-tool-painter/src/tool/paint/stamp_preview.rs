@@ -61,9 +61,17 @@ impl PainterTool {
             self.peel_drag_preview();
             return;
         }
+        // ⚠️ **As quatro fases são MEDIDAS aqui, no código que SHIPA** (o precedente do split do
+        // composite da água): uma sonda com laço próprio ficaria cega à porta, e o report de
+        // 2026-08-03 (*"não houve melhora real"*) provou que a atribuição por raciocínio erra — o
+        // log dizia `31,12 ms por entrega` sem dizer quanto disso é o carimbo, e as curas de cada
+        // fase são diferentes. Quatro `Instant::now()` custam ~80 ns contra dezenas de ms.
+        let t_restore = std::time::Instant::now();
         if let Some(prev) = self.paint.drag_preview.take() {
             self.restore_region(&prev.rect, &prev.pixels);
         }
+        let restore_us = t_restore.elapsed().as_micros() as u64;
+        let t_relief = std::time::Instant::now();
         // The pixels were just restored to their pre-preview state and the WHOLE shape is about to be
         // re-stamped — so the relief has to be restored too. Without this the height envelope keeps the
         // ridge of every intermediate shape the artist dragged through, and a curve leaves a fan of
@@ -75,6 +83,7 @@ impl PainterTool {
         // layer's own plane live, so it has to actually restore it. Without this a Curve would carve deeper
         // on every pointer move while the artist merely LOOKED at it (`super::sculpt`, §4).
         self.restamp_reset_sculpt();
+        let relief_us = t_relief.elapsed().as_micros() as u64;
         // Coverage bbox over the wrapped Tiling copies (the stamp re-tiles them itself).
         let coverage_storage;
         let coverage: &[Dab] = if self.paint.tiling[0] || self.paint.tiling[1] {
@@ -93,14 +102,25 @@ impl PainterTool {
         // a Composite Brush's Smear layer must chain fresh within THIS batch — clear the cross-batch
         // source (a Line's dabs then smear from the anchor; a single Drag-Dot dab simply has no source).
         self.paint.last_smear_pos = None;
+        let (save_us, stamp_us);
         match bbox {
             Some(rect) => {
+                let t_save = std::time::Instant::now();
                 let pixels = self.save_region(&rect);
+                save_us = t_save.elapsed().as_micros() as u64;
+                let t_stamp = std::time::Instant::now();
                 self.stamp_dabs(dabs);
+                stamp_us = t_stamp.elapsed().as_micros() as u64;
                 self.paint.drag_preview = Some(DragPreview { rect, pixels });
             }
-            None => self.stamp_dabs(dabs),
+            None => {
+                save_us = 0;
+                let t_stamp = std::time::Instant::now();
+                self.stamp_dabs(dabs);
+                stamp_us = t_stamp.elapsed().as_micros() as u64;
+            }
         }
+        super::stamp_banded::diag::note_restamp(restore_us, relief_us, save_us, stamp_us);
         // Doc 21 law B: record the batch this preview just painted — the
         // commit deposit IS the preview by construction (nothing re-derived
         // at commit: seed / offset / boolean-trace drift is structurally

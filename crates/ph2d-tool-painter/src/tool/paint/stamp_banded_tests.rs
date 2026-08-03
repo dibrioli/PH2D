@@ -260,7 +260,8 @@ fn the_artists_default_brush_takes_the_banded_road_on_a_live_figure() {
     let _ = super::stamp_banded::diag::take(); // zera o que esta thread trouxe
     t.on_canvas_pointer(cpx([100.0, 412.0], PointerPhase::Down));
     t.on_canvas_pointer(cpx([900.0, 612.0], PointerPhase::Move));
-    let (banded, serial, dabs) = super::stamp_banded::diag::take();
+    let d = super::stamp_banded::diag::take();
+    let (banded, serial, dabs) = (d.banded, d.serial, d.dabs);
 
     // ⚠️ **O controle positivo NÃO passa pelo instrumento sob teste.** A 1ª versão perguntava
     // `dabs > 0` para provar *"a fixture pintou"*, e sob a mutação (o ramo desligado) ela falhava
@@ -286,7 +287,8 @@ fn the_artists_default_brush_takes_the_banded_road_on_a_live_figure() {
     let _ = super::stamp_banded::diag::take();
     t.on_canvas_pointer(cpx([100.0, 118.0], PointerPhase::Down));
     t.on_canvas_pointer(cpx([140.0, 138.0], PointerPhase::Move));
-    let (banded, serial, dabs) = super::stamp_banded::diag::take();
+    let d = super::stamp_banded::diag::take();
+    let (banded, serial, dabs) = (d.banded, d.serial, d.dabs);
     assert!(dabs > 0, "o controle não carimbou nada");
     assert_eq!(
         banded, 0,

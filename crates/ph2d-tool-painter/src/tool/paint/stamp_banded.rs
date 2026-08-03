@@ -89,6 +89,19 @@ fn union(a: DirtyRect, b: DirtyRect) -> DirtyRect {
 /// ⚠️ E ela existe como FUNÇÃO, não como aritmética inline, porque um gate que recomputa a regra por
 /// conta própria afirma a própria conta e fica verde com o produto decidindo outra coisa — foi o que a
 /// primeira versão deste gate fazia.
+/// O TRABALHO do lote: a soma das pegadas, em visitas de texel.
+///
+/// ⚠️ **É esta a grandeza que se publica, nunca o raio.** O custo de um lote é quadrático no raio
+/// do pincel, então um log que traz `dabs` e omite o raio convida a uma aritmética infundada — eu
+/// derivei um `ns/visita` de um raio ASSUMIDO antes de escrever isto. A soma das pegadas não
+/// assume nada: ela É o trabalho.
+pub(super) fn batch_work(dabs: &[Dab], w: u32, h: u32) -> usize {
+    dabs.iter()
+        .filter_map(|d| dab_write_bounds(d.center, d.radius_px, w, h))
+        .map(|b| (b.w as usize) * (b.h as usize))
+        .sum()
+}
+
 pub(super) fn wants_bands(dabs: &[Dab], w: u32, h: u32, min_area: usize) -> bool {
     if dabs.len() < 2 {
         return false;
@@ -99,12 +112,7 @@ pub(super) fn wants_bands(dabs: &[Dab], w: u32, h: u32, min_area: usize) -> bool
     if (bounds.h as usize) <= 1 {
         return false;
     }
-    let work: usize = dabs
-        .iter()
-        .filter_map(|d| dab_write_bounds(d.center, d.radius_px, w, h))
-        .map(|b| (b.w as usize) * (b.h as usize))
-        .sum();
-    work >= min_area
+    batch_work(dabs, w, h) >= min_area
 }
 
 /// Carimba o lote **inteiro** de dabs de falloff puro, dividindo as LINHAS entre os núcleos.
@@ -171,7 +179,7 @@ pub(super) fn stamp_plain_dabs_banded_with(
     let bounds = batch_bounds(dabs, w, h)?;
     let rows = bounds.h as usize;
     let bands = wants_bands(dabs, w, h, min_area);
-    diag::note(bands, dabs.len());
+    diag::note(bands, dabs.len(), batch_work(dabs, w, h));
     if !bands {
         return serial(buf);
     }
@@ -281,24 +289,74 @@ pub mod diag {
         static BANDED: Cell<u32> = const { Cell::new(0) };
         static SERIAL: Cell<u32> = const { Cell::new(0) };
         static DABS: Cell<u32> = const { Cell::new(0) };
+        static VISITS: Cell<u64> = const { Cell::new(0) };
+        static DELIVERIES: Cell<u32> = const { Cell::new(0) };
+        static RESTORE_US: Cell<u64> = const { Cell::new(0) };
+        static RELIEF_US: Cell<u64> = const { Cell::new(0) };
+        static SAVE_US: Cell<u64> = const { Cell::new(0) };
+        static STAMP_US: Cell<u64> = const { Cell::new(0) };
     }
 
-    pub(super) fn note(banded: bool, dabs: usize) {
+    pub(super) fn note(banded: bool, dabs: usize, work: usize) {
         let bucket = if banded { &BANDED } else { &SERIAL };
         bucket.with(|c| c.set(c.get().saturating_add(1)));
         DABS.with(|c| c.set(c.get().saturating_add(u32::try_from(dabs).unwrap_or(u32::MAX))));
+        VISITS.with(|c| c.set(c.get().saturating_add(work as u64)));
     }
 
-    /// `(lotes em banda, lotes seriais, dabs no total)` desde a última chamada — e ZERA.
+    /// As QUATRO fases de um quadro de re-stamp, em µs.
+    ///
+    /// ⚠️ **Elas dividem o dreno com os baldes do lote de propósito.** Descrevem o MESMO evento (uma
+    /// entrega de ponteiro que re-carimba a figura), e dois drenos publicariam janelas diferentes
+    /// como se fossem a mesma — a lei do `wash_diag`, que esta sessão já pagou duas vezes.
+    pub(in crate::tool::paint) fn note_restamp(
+        restore_us: u64,
+        relief_us: u64,
+        save_us: u64,
+        stamp_us: u64,
+    ) {
+        DELIVERIES.with(|c| c.set(c.get().saturating_add(1)));
+        RESTORE_US.with(|c| c.set(c.get().saturating_add(restore_us)));
+        RELIEF_US.with(|c| c.set(c.get().saturating_add(relief_us)));
+        SAVE_US.with(|c| c.set(c.get().saturating_add(save_us)));
+        STAMP_US.with(|c| c.set(c.get().saturating_add(stamp_us)));
+    }
+
+    /// O que o depósito fez desde a última chamada — e ZERA.
     ///
     /// Como ele ZERA, há **um leitor só** por thread (a lei do `wash_diag`): dois leitores
     /// publicariam pedaços do mesmo quadro como se fossem quadros.
+    #[derive(Debug, Clone, Copy, Default)]
+    pub struct DepositDiag {
+        /// Lotes que tomaram a rota em BANDA.
+        pub banded: u32,
+        /// Lotes que ficaram seriais (pequenos demais para dividir).
+        pub serial: u32,
+        /// Dabs somados sobre os lotes.
+        pub dabs: u32,
+        /// **Visitas de texel** — a soma das pegadas. É o TRABALHO, e não assume raio nenhum.
+        pub visits: u64,
+        /// Quadros de re-stamp (entregas que passaram pelo `stamp_drag_preview`).
+        pub deliveries: u32,
+        /// µs somados em cada fase de um quadro de re-stamp.
+        pub restore_us: u64,
+        pub relief_us: u64,
+        pub save_us: u64,
+        pub stamp_us: u64,
+    }
+
     #[must_use]
-    pub fn take() -> (u32, u32, u32) {
-        (
-            BANDED.with(Cell::take),
-            SERIAL.with(Cell::take),
-            DABS.with(Cell::take),
-        )
+    pub fn take() -> DepositDiag {
+        DepositDiag {
+            banded: BANDED.with(Cell::take),
+            serial: SERIAL.with(Cell::take),
+            dabs: DABS.with(Cell::take),
+            visits: VISITS.with(Cell::take),
+            deliveries: DELIVERIES.with(Cell::take),
+            restore_us: RESTORE_US.with(Cell::take),
+            relief_us: RELIEF_US.with(Cell::take),
+            save_us: SAVE_US.with(Cell::take),
+            stamp_us: STAMP_US.with(Cell::take),
+        }
     }
 }

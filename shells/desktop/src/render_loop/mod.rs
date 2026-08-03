@@ -8235,7 +8235,33 @@ impl crate::App {
                 // real"*) admitia duas leituras opostas — o ramo em banda não dispara neste pincel, ou
                 // dispara e o tempo está noutro lugar — e nenhum número no log as separava. `take` ZERA,
                 // então este é o ÚNICO leitor (a lei do `wash_diag`).
-                let (band_par, band_ser, band_dabs) = ph2d_tool_painter::band_diag::take();
+                let dep = ph2d_tool_painter::band_diag::take();
+                let (band_par, band_ser, band_dabs) = (dep.banded, dep.serial, dep.dabs);
+                // ⚠️ **VISITAS, não o raio.** O custo de um lote é quadrático no raio do pincel,
+                // então um log com `dabs` e sem o raio convida a uma aritmética infundada — foi o
+                // que eu quase publiquei lendo o smoke de 2026-08-03. A soma das pegadas É o
+                // trabalho e não assume nada.
+                #[allow(clippy::cast_precision_loss)]
+                let band_mvis = dep.visits as f64 / 1.0e6;
+                #[allow(clippy::cast_precision_loss)]
+                let band_ns = if dep.visits > 0 {
+                    (dep.restore_us + dep.relief_us + dep.save_us + dep.stamp_us) as f64 * 1000.0
+                        / dep.visits as f64
+                } else {
+                    0.0
+                };
+                // As quatro fases, POR ENTREGA — cada uma tem cura diferente.
+                #[allow(clippy::cast_precision_loss)]
+                let per_delivery = |us: u64| {
+                    if dep.deliveries > 0 {
+                        us as f64 / f64::from(dep.deliveries) / 1000.0
+                    } else {
+                        0.0
+                    }
+                };
+                let (rs_restore, rs_relief) =
+                    (per_delivery(dep.restore_us), per_delivery(dep.relief_us));
+                let (rs_save, rs_stamp) = (per_delivery(dep.save_us), per_delivery(dep.stamp_us));
                 let stamp_ev = FRAME_PROF_STAMP_EV.with(std::cell::Cell::take);
                 // O custo POR ENTREGA — a média acima dividida pelo que ela soma.
                 let stamp_per = if stamp_ev > 0 {
@@ -8302,7 +8328,10 @@ impl crate::App {
                      | stamps: media {stamp_avg:.2}ms pico {stamp_max:.2}ms em {stamp_n}/120 \
                      ({stamp_ev} entregas, {stamp_per:.2}ms cada)\n\
                      [frame]   deposito: {band_par} lote(s) em BANDA x {band_ser} serial(is), \
-                     {band_dabs} dabs (banda 0 = o ramo paralelo NAO dispara neste pincel)\n\
+                     {band_dabs} dabs, {band_mvis:.2} M visitas ({band_ns:.1} ns/visita)\n\
+                     [frame]   re-stamp por entrega: restore {rs_restore:.2}ms | relevo \
+                     {rs_relief:.2}ms | save {rs_save:.2}ms | CARIMBO {rs_stamp:.2}ms \
+                     (x{} entregas)\n\
                      [frame]   agua: sim media {:.2}ms pico {sim_max:.2}ms x{sim_n} \
                      | composite media {:.2}ms pico {comp_max:.2}ms x{comp_n} \
                      | ESPERA media {:.2}ms pico {wait_max:.2}ms x{wait_n} (total {:.0}ms)\n\
@@ -8312,6 +8341,7 @@ impl crate::App {
                      (o custo por celula e CONSTANTE quando a agua fica lenta por TRABALHO, \
                      e sobe quando fica por CONTENCAO)",
                     1000.0 / f64::from(total).max(0.001),
+                    dep.deliveries,
                     per(sim_sum, sim_n),
                     per(comp_sum, comp_n),
                     per(wait_sum, wait_n),

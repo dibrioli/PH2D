@@ -532,7 +532,18 @@ pub(crate) struct PaintState {
     /// base: one wash, one rim. Empty = dry (tick drops it + the session).
     canvas_wet: Vec<u8>,
     /// Live bounding rect of the wet area (the decay/pour window) — `None` = dry, zero idle cost.
+    ///
+    /// ⚠️ **Ele ENCOLHE.** A secagem é edges-to-centre por desenho, então a área molhada recua; o rect
+    /// é re-derivado do conjunto NÃO-ZERO a cada passe de decaimento (2026-08-02), e não é mais a união
+    /// histórica que só crescia. A troca é **byte-idêntica na tinta**: a lei de fronteira do decaimento
+    /// já conta *fora do rect* como seco, e fora da bbox do não-zero o valor **é** zero — o vizinho lido
+    /// dá o mesmo número pelas duas rotas. O que muda é o CUSTO, e ele é pago por dois consumidores
+    /// (o decaimento e o véu de umidade do shell).
     canvas_wet_rect: Option<(usize, usize, usize, usize)>,
+    /// Scratch de UMA LINHA para o decaimento (a linha de cima, `up`) — persistente para não alocar por
+    /// quadro. Ver [`PainterTool::dry_canvas_wet`]: a janela deslizante substituiu o snapshot do rect
+    /// inteiro, e este buffer é tudo o que sobrou dele.
+    canvas_wet_snapshot: Vec<u8>,
     /// Fractional drying carry between whole-byte decay steps (heartbeat dt accumulator).
     canvas_wet_carry: f32,
     /// EDGE-1 (doc 13 #11): paper drying RATE in wetness-bytes/second — CANVAS-level (not per-brush,
@@ -697,4 +708,6 @@ mod impasto_aa_tests;
 #[cfg(test)]
 mod sculpt_tests;
 #[cfg(test)]
-mod watercolor_aa_tests; // screen-space AA of the thin-stroke watercolor silhouette // screen-space AA of the impasto film silhouette (BUGS #16, impasto half)
+mod watercolor_aa_tests;
+#[cfg(test)]
+mod watercolor_dry_tests; // o decaimento da umidade: janela deslizante + rect que encolhe // screen-space AA of the thin-stroke watercolor silhouette // screen-space AA of the impasto film silhouette (BUGS #16, impasto half)

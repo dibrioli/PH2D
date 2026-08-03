@@ -239,6 +239,45 @@ pub(super) const WET_CANVAS_REWET: f32 = 0.8;
 /// makes a sharp front dry ~3× the interior rate.
 pub(super) const WET_ERODE_GAIN: u32 = 2;
 
+/// Piso do pool do decaimento em TEXELS: abaixo disto o passe roda serial, porque o fork do rayon
+/// custa mais que o trabalho. MEDIDO, não escolhido — a sonda `the_cost_of_the_drying_pass_by_both_routes`
+/// varre os tamanhos, e o molde é o limiar em bytes do [`crate::plane_copy`].
+const DRY_PAR_MIN: usize = 64 << 10;
+
+/// A dureza que o [`PainterTool::pour_canvas_wet`] despeja, **tabelada** — `cobertura u8 -> umidade u8`.
+///
+/// O despejo roda sobre a união CUMULATIVA do traço em todo quadro que compõe, e a expressão que ele
+/// avaliava por texel (`smoothstep(SS0, SS1, c/255) * 255`) é **função pura de um byte**: 256 respostas
+/// possíveis. Preguiçosa, porque uma sessão que nunca pinta aquarela não paga a construção.
+///
+/// ⚠️ **A tabela É a expressão, não uma aproximação dela** — cada entrada é computada pela MESMA
+/// `smoothstep` com as MESMAS constantes, e o gate `the_pour_table_is_the_expression_it_replaces`
+/// compara as 256 contra o cálculo direto. Um erro aqui não seria arredondamento: seria a umidade
+/// discordando da silhueta que o composite desenha.
+pub(super) fn pour_hardening_lut() -> &'static [u8; 256] {
+    static LUT: std::sync::OnceLock<[u8; 256]> = std::sync::OnceLock::new();
+    LUT.get_or_init(|| {
+        let mut t = [0u8; 256];
+        for (i, v) in t.iter_mut().enumerate() {
+            *v = pour_hardening(i as u8);
+        }
+        t
+    })
+}
+
+/// A expressão que a tabela substitui, isolada para o gate poder compará-las — e **usada** por ela,
+/// então não há duas respostas para a mesma pergunta (a lição do `warp_axis`: um oráculo congelado que
+/// o produto não chama é uma segunda resposta esperando um chamador).
+pub(super) fn pour_hardening(coverage: u8) -> u8 {
+    let cov = f32::from(coverage) / 255.0;
+    let cw = super::watercolor_field::smoothstep(
+        super::watercolor_render::SS0,
+        super::watercolor_render::SS1,
+        cov,
+    );
+    (cw * 255.0) as u8
+}
+
 impl PainterTool {
     /// EDGE-1: whether the stroke beginning NOW continues the live **wet session** (one wash):
     /// watercolor mode, some paper still wet, the session base is sized, the union buffers exist,
@@ -327,13 +366,12 @@ impl PainterTool {
                 // Pour the HARDENED coverage (the composite's own `cw` smoothstep): moisture is
                 // "the wash is here", so the wash INTERIOR is fully wet even at low dab flow —
                 // pouring the raw coverage left the rim only half-suppressed at the junction.
-                let cov = f32::from(self.paint.stroke_coverage[row + x]) / 255.0;
-                let cw = super::watercolor_field::smoothstep(
-                    super::watercolor_render::SS0,
-                    super::watercolor_render::SS1,
-                    cov,
-                );
-                let c = (cw * 255.0) as u8;
+                //
+                // ⚠️ **A dureza é função PURA de um `u8`**, então ela é uma TABELA de 256 entradas e
+                // não cinco operações de ponto flutuante por texel (a mesma leitura que a §5.43 fez do
+                // `alpha_of_mass`). Byte-idêntica por construção — a tabela guarda exatamente a
+                // expressão que rodava aqui, e o gate a confere entrada por entrada.
+                let c = pour_hardening_lut()[usize::from(self.paint.stroke_coverage[row + x])];
                 if c > self.paint.canvas_wet[row + x] {
                     self.paint.canvas_wet[row + x] = c;
                 }
@@ -380,39 +418,101 @@ impl PainterTool {
             return;
         }
         self.paint.canvas_wet_carry -= f32::from(step);
-        // Snapshot the rect so the 4-neighbour gap reads the PRE-step moisture (order-independent);
-        // outside the rect counts as dry (0), so the wet front recedes at the rect edge too.
+        // O gap de 4 vizinhos tem de ler a umidade PRÉ-passo (a lei é independente de ordem); fora do
+        // rect conta como seco (0), então a frente molhada recua também na borda do rect.
+        //
+        // ⚠️ **O custo deste passe é o CAMINHAR, e isso foi medido, não suposto** (2026-08-02). O log do
+        // produto o mostrou em 10-16 ms/quadro a 4096², o maior item isolado do quadro do artista. Três
+        // curas byte-idênticas foram construídas e **MEDIDAS EM ~1,00×** antes desta: trocar o snapshot
+        // por uma janela deslizante (1,02×), pular o gather onde a erosão não pode disparar, e encolher
+        // o rect. A conta é 2,2 ns/texel, e nenhuma delas a move — o que a move é o número de núcleos.
+        //
+        // **Row-parallel sob o [ADR-0109]** (emenda de 2026-08-02): cada linha de saída lê o snapshot
+        // IMUTÁVEL e escreve só a própria fatia; a redução é `max`/`min` sobre inteiros, associativa e
+        // comutativa, então a ordem entre threads não pode mudar um byte — os três invariantes do ADR
+        // valem verbatim. Medido: **28,87 -> 3,45 ms a 4096² (8,4x)**, 7,74 -> 1,30 a 2048² (6,0x).
+        //
+        // [ADR-0109]: ../../../../docs/architecture/decisions/0109-rayon-exception-watercolor-composite.md
         let (rw, rh) = (x1 - x0, y1 - y0);
-        let mut old = vec![0u8; rw * rh];
+        // A erosão `gap*step*2/255` só alcança 1 quando `gap >= ceil(255/(step*2))`, e `gap <= o`:
+        // abaixo deste piso os quatro vizinhos não mudam um byte e não precisam ser lidos. No `step = 1`
+        // que o produto anda quase sempre o piso é **128**. Byte-idêntico, não aproximação.
+        let erode_floor = 255u32.div_ceil(u32::from(step) * WET_ERODE_GAIN);
+        let snap = &mut self.paint.canvas_wet_snapshot;
+        snap.resize(rw * rh, 0);
         for oy in 0..rh {
             let src = (y0 + oy) * fw + x0;
-            old[oy * rw..oy * rw + rw].copy_from_slice(&self.paint.canvas_wet[src..src + rw]);
+            snap[oy * rw..oy * rw + rw].copy_from_slice(&self.paint.canvas_wet[src..src + rw]);
         }
-        let mut wettest = 0u8;
-        for oy in 0..rh {
+        let old = &self.paint.canvas_wet_snapshot[..rw * rh];
+        let band = &mut self.paint.canvas_wet[y0 * fw..(y0 + rh) * fw];
+        let fold = |oy: usize, row: &mut [u8]| {
+            let mut acc = (0u8, usize::MAX, usize::MAX, 0usize, 0usize);
             for ox in 0..rw {
                 let o = old[oy * rw + ox];
                 if o == 0 {
                     continue;
                 }
-                let up = if oy > 0 { old[(oy - 1) * rw + ox] } else { 0 };
-                let down = if oy + 1 < rh {
-                    old[(oy + 1) * rw + ox]
+                let nv = if u32::from(o) < erode_floor {
+                    o.saturating_sub(step)
                 } else {
-                    0
+                    let up = if oy > 0 { old[(oy - 1) * rw + ox] } else { 0 };
+                    let down = if oy + 1 < rh {
+                        old[(oy + 1) * rw + ox]
+                    } else {
+                        0
+                    };
+                    let left = if ox > 0 { old[oy * rw + ox - 1] } else { 0 };
+                    let right = if ox + 1 < rw {
+                        old[oy * rw + ox + 1]
+                    } else {
+                        0
+                    };
+                    let gap = o.saturating_sub(up.min(down).min(left).min(right));
+                    let erode = ((u32::from(gap) * u32::from(step) * WET_ERODE_GAIN) / 255) as u8;
+                    o.saturating_sub(step.saturating_add(erode))
                 };
-                let left = if ox > 0 { old[oy * rw + ox - 1] } else { 0 };
-                let right = if ox + 1 < rw {
-                    old[oy * rw + ox + 1]
-                } else {
-                    0
-                };
-                let gap = o.saturating_sub(up.min(down).min(left).min(right));
-                let erode = ((u32::from(gap) * u32::from(step) * WET_ERODE_GAIN) / 255) as u8;
-                let nv = o.saturating_sub(step.saturating_add(erode));
-                self.paint.canvas_wet[(y0 + oy) * fw + x0 + ox] = nv;
-                wettest = wettest.max(nv);
+                row[x0 + ox] = nv;
+                if nv != 0 {
+                    acc = (
+                        acc.0.max(nv),
+                        acc.1.min(ox),
+                        acc.2.min(oy),
+                        acc.3.max(ox),
+                        acc.4.max(oy),
+                    );
+                }
             }
+            acc
+        };
+        let join = |a: (u8, usize, usize, usize, usize), b: (u8, usize, usize, usize, usize)| {
+            (
+                a.0.max(b.0),
+                a.1.min(b.1),
+                a.2.min(b.2),
+                a.3.max(b.3),
+                a.4.max(b.4),
+            )
+        };
+        let zero = (0u8, usize::MAX, usize::MAX, 0usize, 0usize);
+        // Piso do pool MEDIDO (ver `the_cost_of_the_drying_pass_by_both_routes`): abaixo dele o fork
+        // do rayon custa mais que o passe, exatamente como o limiar em BYTES do `plane_copy`.
+        let (wettest, bx0, by0, bx1, by1) = if rw * rh >= DRY_PAR_MIN {
+            use rayon::prelude::*;
+            band.par_chunks_mut(fw)
+                .enumerate()
+                .map(|(oy, row)| fold(oy, row))
+                .reduce(|| zero, join)
+        } else {
+            band.chunks_mut(fw)
+                .enumerate()
+                .map(|(oy, row)| fold(oy, row))
+                .fold(zero, join)
+        };
+        // O rect segue a poça para dentro (ver o doc do `canvas_wet_rect`); com `wettest == 0` ele é
+        // assunto do teardown abaixo, que deixa o mapa zerado no lugar quando há traço aberto.
+        if wettest > 0 {
+            self.paint.canvas_wet_rect = Some((x0 + bx0, y0 + by0, x0 + bx1 + 1, y0 + by1 + 1));
         }
         // Fully dry = the wet SESSION is over — but the teardown is ATOMIC and deferred past any
         // OPEN stroke: the drying deadline can land mid-stroke (a stroke started near the end of

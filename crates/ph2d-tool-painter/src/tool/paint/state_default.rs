@@ -206,6 +206,7 @@ impl Default for PaintState {
             stroke_deplete: Vec::new(),
             canvas_wet: Vec::new(),
             canvas_wet_rect: None,
+            canvas_wet_snapshot: Vec::new(),
             canvas_wet_carry: 0.0,
             dry_rate_per_s: super::watercolor_backdrop::CANVAS_WET_DRY_DEFAULT,
             wet_preview_intensity: super::watercolor_backdrop::WET_PREVIEW_DEFAULT,

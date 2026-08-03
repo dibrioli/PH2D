@@ -125,3 +125,51 @@ semântica** (o brake lê wetness viva escrita antes na mesma passada; o drying 
 o vizinho da esquerda pós-update; o advect subtrai dos cantos-fonte) — a mesma
 razão que o ADR-0134 já registra. Depois desta emenda o passo de sim é **89% do
 frame** com Pigment mixing ligado, e é lá que fica o teto.
+
+---
+
+## Emenda (2026-08-02) — o passe de SECAGEM do mapa de umidade, por linhas
+
+- **Status:** ACEITO. **Escopo somado:** `dry_canvas_wet` (o decaimento do
+  `canvas_wet`, em `tool/paint/watercolor_backdrop.rs`), paralelizado **por
+  LINHAS**. Segue **não** abrindo `rayon` para o resto do codebase.
+
+**O número que motiva.** O log do produto (`PH2D_PAINT_PERF`, Enio, canvas
+4096², pincel 250) mostrou `secagem 10-16 ms` **em todo quadro** — o maior item
+isolado do quadro do artista, e ele roda pinte-se ou não, porque o papel seca no
+heartbeat. Medido pela porta do produto: **28,50 ms/quadro** sobre um rect de
+12,85 M texels, ou **2,2 ns/texel**.
+
+**⚠️ E três curas single-thread foram construídas ANTES desta e as três
+mediram ~1,00×** — o que importa registrar, para ninguém as reconstruir: trocar
+o snapshot do rect por uma **janela deslizante** (`up` de uma linha de scratch,
+`left` de um escalar, `down`/`right` do mapa ainda não escrito) deu **1,02×**; o
+**piso da erosão** e o **rect que encolhe** deram o mesmo. A hipótese era que a
+alocação e a cópia do snapshot fossem o custo; a medição diz que o custo é o
+**caminhar**. A janela deslizante foi **revertida**, porque a dependência que ela
+cria entre linhas é exatamente o que impede o paralelo que funciona.
+
+**Por que é o mesmo caso, e não um caso novo.** Os três invariantes do §2 valem
+verbatim: cada linha de saída é função pura de um **snapshot imutável** (que já
+existia — a lei do decaimento é independente de ordem por desenho, e o snapshot
+é o que a garante), cada task escreve **só a própria fatia** de `canvas_wet`, e
+não há RNG nem transcendental. É o mesmo crate que este ADR já abriu.
+
+**A redução, que é o que a cerca de contenção do §2 nomeia.** Ela existe e é
+**exatamente do tipo que a cerca isenta**: `max` sobre `u8` (o `wettest`, que
+decide o teardown da sessão) e `min`/`max` sobre índices (a bbox do que sobrou
+molhado). Associativas e comutativas sobre inteiros — não há soma em ponto
+flutuante cuja ordem entre threads pudesse mudar um byte. É a mesma leitura que
+o ADR-0147 fez para o gather do `advect`.
+
+**Medido pela porta do produto**, mesma corrida, estado restaurado antes de cada
+amostra: um passe **30,44 → 3,28 ms a 4096² (9,3×)** e 7,96 → 1,09 a 2048²
+(7,3×); a sequência de secagem de 120 quadros, **28,50 → 2,93 ms/quadro
+(9,7×)**. Piso do pool `DRY_PAR_MIN` em texels, no molde do limiar em bytes do
+`plane_copy`.
+
+**Byte-idêntico, e provado contra a rotina que SHIPAVA** — congelada sob
+`cfg(test)` (`watercolor_dry_tests::decay_snapshot`) e comparada a cada passe,
+varrendo o `step` (1/5/17/51) e **os dois lados do piso do pool**. ⚠️ A primeira
+versão do gate usava só 128², abaixo do piso: ela nunca entrou na rota paralela
+que a wave instala.

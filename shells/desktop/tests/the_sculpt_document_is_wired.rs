@@ -1,10 +1,13 @@
-//! **Arch-gates do DOCUMENTO da escultura** (ADR-0150 W8.3).
+//! **Arch-gates do DOCUMENTO e da PORTA DE ENTRADA** (ADR-0150 W8.3 e W8.4) —
+//! como uma escultura ENTRA na sessão, venha ela de um projeto ou de um arquivo
+//! soltado.
 //!
-//! Os gates de unidade de `sculpt3d::doc` e de `project::tests` cobrem o que é
-//! dirigível **sem janela**: o par escrita↔leitura, as três recusas, e o que o
-//! load estaciona. O que sobra aqui é o que nenhum deles alcança — **ordem** de
-//! chamadas e **presença** de uma linha de fiação, que num `App` headless nem
-//! roda porque `gfx` é `None`.
+//! Os gates de unidade de `sculpt3d::doc`, `sculpt3d::import` e `project::tests`
+//! cobrem o que é dirigível **sem janela**: o par escrita↔leitura, as três
+//! recusas, o que o load estaciona e onde cada peça de um arquivo pousa. O que
+//! sobra aqui é o que nenhum deles alcança — **ordem** de chamadas e
+//! **presença** de uma linha de fiação, que num `App` headless nem roda porque
+//! `gfx` é `None`.
 //!
 //! É o mesmo padrão (e o mesmo motivo) do
 //! `the_load_installs_the_world_settings_after_the_rebuild`: quando o fato é a
@@ -112,5 +115,71 @@ fn the_save_prefers_the_live_scene_and_falls_back_to_the_bytes() {
         live < stashed,
         "a cena viva tem de ser consultada PRIMEIRO: o fallback nao pode vencer \
          o trabalho desta sessao"
+    );
+}
+
+/// **Uma malha soltada sai da fila ANTES do filtro de imagem.**
+///
+/// ⚠️ A ordem é a asserção inteira, e o modo de falha dela é o pior possível: o
+/// filtro emite um toast *"Skipped non-image"* por arquivo que não reconhece,
+/// então um `.obj` que chegasse lá produziria **um aviso de que foi ignorado** —
+/// a resposta errada, com a confiança da resposta certa. Nenhum teste de unidade
+/// alcança isto: `handle_dropped_files` sai no `gfx.is_none()` de um `App` sem
+/// janela, que é o único que um gate headless tem.
+#[test]
+fn a_dropped_mesh_leaves_the_queue_before_the_image_filter() {
+    let body = function_body(&source("input_drop.rs"), "handle_dropped_files");
+    let claim = body
+        .find("is_mesh_file")
+        .expect("o drop precisa reconhecer um arquivo de malha");
+    let skip = body
+        .find("Skipped non-image")
+        .expect("o filtro de imagem continua avisando o que ele pula");
+    assert!(
+        claim < skip,
+        "as malhas saem DEPOIS do filtro de imagem: soltar um .obj avisaria \
+         que ele foi ignorado, e depois o importaria"
+    );
+    assert!(
+        body.contains("sculpt3d_import_files"),
+        "…e o desvio tem de CHAMAR o import, nao so' reconhecer a extensao"
+    );
+}
+
+/// **Soltar uma malha ARMA o módulo** — a mesma lei do load de projeto (W8.3).
+///
+/// ⚠️ Sem isto o artista solta um modelo e não acontece nada, com o app sabendo
+/// ler o arquivo: a cena 3D só existiria sob a variável do smoke, que é uma
+/// porta de desenvolvimento, não um gesto.
+#[test]
+fn dropping_a_mesh_arms_the_module() {
+    let body = function_body(&sculpt_src(), "sculpt3d_import_files");
+    assert!(
+        body.contains("Sculpt3dScene::new(") && body.contains("gfx.sculpt3d = Some(scene)"),
+        "sem cena, o import tem de CRIAR uma"
+    );
+}
+
+/// **A colocação roda sobre a lista inteira, ANTES de qualquer peça entrar.**
+///
+/// ⚠️ O caso que isto protege é o mais comum de todos — um arquivo, uma peça,
+/// nenhuma cena aberta —, e ali a peça que abre a cena é a única que passaria
+/// sem centrar: o defeito que a wave paga, sobrevivendo justamente onde ninguém
+/// olharia. Um gate de unidade não o vê porque `place` estaria correta.
+#[test]
+fn the_placement_runs_before_any_piece_enters_the_scene() {
+    let body = function_body(&sculpt_src(), "sculpt3d_import_files");
+    let placed = body.find("place(&mut loaded").expect("a colocação roda");
+    let opened = body
+        .find("Sculpt3dScene::new(")
+        .expect("a cena pode nascer aqui");
+    assert!(
+        placed < opened,
+        "a peça que abre a cena entraria SEM ser centrada — e o plano do \
+         espelho dela ficaria fora do modelo"
+    );
+    assert!(
+        body.contains("scene.set_pose(0,"),
+        "…e a peça que abriu a cena tem de receber a pose que a colocação deu"
     );
 }

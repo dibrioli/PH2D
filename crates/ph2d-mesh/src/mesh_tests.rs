@@ -459,3 +459,60 @@ fn a_refitted_tree_answers_exactly_what_a_rebuilt_one_answers() {
         "a caixa do mundo divergiu do que uma reconstrução daria"
     );
 }
+
+/// **A origem local vai para o centro da caixa** — e o oráculo é o ESPELHO, que
+/// é o mecanismo que exige isto.
+///
+/// ⚠️ Um gate que só medisse `bounds().center() == 0` estaria testando a
+/// aritmética. O que quebra sem `recenter` é o gesto: uma malha a dez unidades
+/// do zero reflete em torno de um plano que não passa por ela, e a cópia
+/// espelhada sai longe do modelo.
+#[test]
+fn recentering_puts_the_mirror_plane_through_the_model() {
+    // Um triângulo inteiramente à direita do zero — o caso do arquivo que o
+    // autor modelou fora da origem.
+    let mut m = Mesh::from_parts(
+        vec![[10.0, 0.0, 0.0], [12.0, 0.0, 0.0], [10.0, 2.0, 0.0]],
+        vec![Face::tri(0, 1, 2)],
+    )
+    .expect("malha");
+    let far = m.bounds().center()[0];
+    assert!(far > 5.0, "a premissa: o modelo está longe do zero ({far})");
+
+    let removed = m.recenter();
+
+    assert_eq!(
+        removed,
+        [far, 1.0, 0.0],
+        "o deslocamento retirado é devolvido"
+    );
+    let c = m.bounds().center();
+    assert!(
+        c[0].abs() < 1e-6 && c[1].abs() < 1e-6,
+        "o centro tem de ficar na origem, e ficou em {c:?}"
+    );
+    // O que o espelho vê: a cópia refletida cai SOBRE o modelo, não a 20
+    // unidades dele.
+    let x: Vec<f32> = m.positions().iter().map(|p| p[0]).collect();
+    let span =
+        x.iter().cloned().fold(f32::MIN, f32::max) - x.iter().cloned().fold(f32::MAX, f32::min);
+    let mirrored_gap = x.iter().cloned().fold(f32::MAX, f32::min).abs() * 2.0;
+    assert!(
+        mirrored_gap <= span,
+        "a metade espelhada tem de encostar no modelo: vão {mirrored_gap}, largura {span}"
+    );
+}
+
+/// **Uma malha já centrada não é reescrita** — `recenter` devolve zero e não
+/// toca um vértice.
+#[test]
+fn recentering_a_centred_mesh_is_a_no_op() {
+    let mut m = Mesh::from_parts(
+        vec![[-1.0, -0.5, 0.0], [1.0, -0.5, 0.0], [0.0, 0.5, 0.0]],
+        vec![Face::tri(0, 1, 2)],
+    )
+    .expect("malha");
+    let before = m.positions().to_vec();
+    assert_eq!(m.recenter(), [0.0, 0.0, 0.0]);
+    assert_eq!(m.positions(), before.as_slice());
+}

@@ -13,12 +13,57 @@
 
 use super::{Brush, Dab, SculptStroke, Symmetry, Verb};
 
-/// A cena está armada? (`PH2D_SCULPT3D_SMOKE` em `1`..`8`.)
+/// A cena está armada? (`PH2D_SCULPT3D_SMOKE` em `1`..`9`.)
 pub(crate) fn smoke_armed() -> bool {
     matches!(
         std::env::var("PH2D_SCULPT3D_SMOKE").ok().as_deref(),
-        Some("1" | "2" | "3" | "4" | "5" | "6" | "7" | "8")
+        Some("1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9")
     )
+}
+
+/// `=9` — a cena do **IMPORT**: um arquivo para o artista soltar na janela.
+pub(crate) fn import_scene() -> bool {
+    std::env::var("PH2D_SCULPT3D_SMOKE").ok().as_deref() == Some("9")
+}
+
+/// **Escreve o OBJ-fixture da cena `=9`** e devolve o caminho.
+///
+/// ⚠️ **A cena FABRICA o arquivo em vez de pedir um ao artista**, e o motivo é
+/// que ela precisa de um que CONTENHA o fenômeno: dois objetos (`o`), longe da
+/// origem e enormes. Um `.obj` qualquer que estivesse à mão poderia já vir
+/// centrado e do tamanho certo — e o smoke ficaria verde sem exercitar nada.
+fn write_import_fixture() -> std::path::PathBuf {
+    // Duas pirâmides: a "cabeça" pequena acima da "corpo" grande, as duas a 400
+    // unidades da origem e medindo centenas de unidades. É o arquivo que sai de
+    // um software de modelagem com o modelo onde o autor o deixou.
+    let mut obj = String::from("# fixture do smoke =9 -- 2 objetos, longe do zero, enorme\n");
+    let piece = |obj: &mut String, name: &str, at: [f32; 3], s: f32, base: usize| {
+        obj.push_str(&format!("o {name}\n"));
+        for (dx, dy, dz) in [
+            (0.0, 0.0, 0.0),
+            (1.0, 0.0, 0.0),
+            (0.5, 0.0, 1.0),
+            (0.5, 1.0, 0.5),
+        ] {
+            obj.push_str(&format!(
+                "v {} {} {}\n",
+                at[0] + dx * s,
+                at[1] + dy * s,
+                at[2] + dz * s
+            ));
+        }
+        for (a, b, c) in [(1, 2, 4), (2, 3, 4), (3, 1, 4), (1, 3, 2)] {
+            obj.push_str(&format!("f {} {} {}\n", base + a, base + b, base + c));
+        }
+    };
+    piece(&mut obj, "corpo", [400.0, 400.0, 400.0], 300.0, 0);
+    piece(&mut obj, "cabeca", [500.0, 750.0, 500.0], 120.0, 4);
+
+    let path = std::env::temp_dir().join("ph2d_smoke_import.obj");
+    if let Err(e) = std::fs::write(&path, obj) {
+        eprintln!("[sculpt3d] =9 NAO consegui escrever o fixture: {e}");
+    }
+    path
 }
 
 /// `=7` — **A CENA**: mais de um objeto, cada um com a sua pose.
@@ -48,6 +93,31 @@ pub(crate) fn document_scene() -> bool {
 /// mesmo motivo — a escala é metade da pose, e um trio de peças do mesmo tamanho
 /// deixaria essa metade sem oráculo nenhum na tela.
 pub(crate) fn scene_objects() -> Vec<(ph2d_mesh::Mesh, ph2d_mesh::Pose)> {
+    if import_scene() {
+        // ⚠️ **A cena DECLARA o caminho do arquivo que escreveu.** Um smoke de
+        // import sem um arquivo para soltar é indistinguível da feature
+        // quebrada — e um arquivo já centrado não exercitaria nada, então este
+        // vem a 400 unidades da origem e medindo centenas.
+        let path = write_import_fixture();
+        eprintln!(
+            "[sculpt3d] =9 O IMPORT: escrevi um OBJ de DOIS objetos em\n\
+             [sculpt3d]    {}\n\
+             [sculpt3d]    Ele esta' a 400 unidades da origem e mede ~450 -- que e' como um\n\
+             [sculpt3d]    arquivo de verdade chega. Se a linha acima nao aparecer, PARE.\n\
+             [sculpt3d]    1) ARRASTE esse arquivo para dentro da janela e SOLTE.\n\
+             [sculpt3d]       Duas piramides tem de aparecer, do tamanho da esfera e AO LADO\n\
+             [sculpt3d]       dela -- nao por cima, e nao fora do quadro.\n\
+             [sculpt3d]    2) A cabeca tem de estar ACIMA do corpo: o arranjo do arquivo\n\
+             [sculpt3d]       sobrevive, e a cabeca continua menor que o corpo.\n\
+             [sculpt3d]    3) Clique numa delas e aperte X (espelho), depois esculpa:\n\
+             [sculpt3d]       a copia espelhada tem de sair DENTRO da peca. Se ela sair longe,\n\
+             [sculpt3d]       o plano do espelho ficou fora do modelo -- e' a divida desta wave.\n\
+             [sculpt3d]    4) Ctrl+Z desfaz o import peca por peca.\n\
+             [sculpt3d]    5) Solte uma IMAGEM: ela tem de virar sprite como sempre, sem aviso\n\
+             [sculpt3d]       de arquivo ignorado -- as duas rotas convivem.",
+            path.display()
+        );
+    }
     if document_scene() {
         // ⚠️ **Um CUBO e um OCTAEDRO, cada um com pose própria** — e a peça que
         // a cena abre é a esfera com CRISTAS. As três escolhas são o oráculo: o

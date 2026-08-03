@@ -169,6 +169,13 @@ mod space;
 #[path = "sculpt3d_doc.rs"]
 mod doc;
 
+/// **A PORTA DE ENTRADA** — um arquivo de malha vira peças. Filho pelo mesmo
+/// motivo: ele constrói `SceneObject`s e mexe na lista.
+#[path = "sculpt3d_import.rs"]
+mod import;
+
+pub(crate) use import::is_mesh_file;
+
 // ⚠️ Só o que ATRAVESSA a fronteira do módulo: o `SCULPT_DOC_VERSION` e o
 // `SculptDocError` são assunto de dentro (o load só formata o `Display` do
 // erro), e re-exportá-los seria superfície que ninguém pede.

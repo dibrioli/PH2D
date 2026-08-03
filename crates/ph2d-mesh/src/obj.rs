@@ -68,15 +68,48 @@ impl core::error::Error for ObjError {}
 
 /// Lê um OBJ de texto.
 ///
-/// Devolve a malha **já construída** (normais, adjacência e octree derivados),
-/// e a cor por vértice só é materializada se o arquivo de fato trouxer cor — a
-/// preguiça dos planos, honrada desde a porta de entrada.
-pub fn import_obj(text: &str) -> Result<Mesh, ObjError> {
+/// **Uma peça que veio de um arquivo** — a malha e o nome que o `o` lhe deu.
+///
+/// ⚠️ O nome viaja porque um arquivo de personagem diz `o cabeca` / `o corpo`, e
+/// jogá-lo fora aqui obrigaria o artista a redescobrir qual peça é qual olhando
+/// a silhueta. Ele é `Option` porque um arquivo sem `o` não nomeia nada — e
+/// inventar um nome seria pior que não ter (ninguém saberia que foi inventado).
+pub struct ImportedPiece {
+    pub name: Option<String>,
+    pub mesh: Mesh,
+}
+
+/// Devolve **uma peça por `o`** — as malhas já construídas (normais, adjacência
+/// e octree derivados), e a cor por vértice só materializada se o arquivo de
+/// fato trouxer cor (a preguiça dos planos, honrada desde a porta de entrada).
+///
+/// ⚠️ **Um arquivo multi-objeto vira VÁRIAS peças, e isto é a dívida que a W8.1
+/// nomeou.** Até ela existir, "a cena" e "a malha" eram a mesma coisa e um
+/// arquivo com cabeça, corpo e olhos entrava como um bloco só — impossível de
+/// posar, esconder ou apagar em separado. Agora a cena é uma LISTA, e a
+/// tradução honesta de `o` é *uma peça*.
+///
+/// ⚠️ **O pool de vértices é do ARQUIVO, não do objeto** — os índices de `f` são
+/// globais em OBJ e podem apontar para vértices declarados antes do `o`. Cada
+/// peça é COMPACTADA no fim (só os vértices que ela usa, com os índices
+/// remapeados); ler os índices como se fossem locais é o defeito clássico deste
+/// formato, e ele produz geometria embaralhada em vez de um erro.
+///
+/// ⚠️ **Um arquivo SEM `o` devolve exatamente uma peça** — é o comportamento de
+/// antes desta wave, e há gate pinando que ele não se moveu.
+///
+/// # Errors
+/// Linha `v` malformada, índice de `f` fora de alcance, ou geometria que não
+/// forma malha.
+pub fn import_obj(text: &str) -> Result<Vec<ImportedPiece>, ObjError> {
     let mut positions: Vec<[f32; 3]> = Vec::new();
     let mut colors: Vec<[f32; 3]> = Vec::new();
     let mut has_colors = false;
-    let mut faces: Vec<Face> = Vec::new();
     let mut idx: Vec<u32> = Vec::new();
+    // A peça em construção: o nome do `o` mais recente e as faces desde ele.
+    let mut name: Option<String> = None;
+    let mut faces: Vec<Face> = Vec::new();
+    let mut pieces: Vec<(Option<String>, Vec<Face>)> = Vec::new();
 
     // ⚠️ **O BOM é comido na porta.** Ele é marcador de codificação — todo editor
     // de Windows o escreve —, não geometria: sem isto o primeiro token vira
@@ -132,15 +165,69 @@ pub fn import_obj(text: &str) -> Result<Mesh, ObjError> {
                 }
                 push_face(&idx, &mut faces);
             }
+            Some("o") => {
+                // ⚠️ **Um `o` fecha a peça anterior SÓ se ela tiver faces.** Um
+                // arquivo que abre com `o corpo` (o caso normal) não pode
+                // produzir uma peça vazia antes dele — e uma malha sem face é
+                // recusada pelo `from_parts`, então o arquivo inteiro morreria
+                // por causa de um cabeçalho.
+                if !faces.is_empty() {
+                    pieces.push((name.take(), core::mem::take(&mut faces)));
+                }
+                name = Some(it.collect::<Vec<_>>().join(" "));
+            }
             _ => {}
         }
     }
-
-    let mut mesh = Mesh::from_parts(positions, faces).map_err(ObjError::Mesh)?;
-    if has_colors {
-        mesh.colors_mut().copy_from_slice(&colors);
+    if !faces.is_empty() || pieces.is_empty() {
+        pieces.push((name, faces));
     }
-    Ok(mesh)
+
+    let mut out = Vec::with_capacity(pieces.len());
+    for (name, faces) in pieces {
+        let (verts, cols, faces) = compact(&positions, &colors, &faces);
+        let mut mesh = Mesh::from_parts(verts, faces).map_err(ObjError::Mesh)?;
+        if has_colors {
+            mesh.colors_mut().copy_from_slice(&cols);
+        }
+        out.push(ImportedPiece { name, mesh });
+    }
+    Ok(out)
+}
+
+/// **Só os vértices que estas faces usam**, com os índices remapeados.
+///
+/// ⚠️ Ela existe porque o pool é do ARQUIVO: sem a compactação, cada peça de um
+/// arquivo de dez objetos carregaria os vértices dos outros nove — malha
+/// inteira em memória por peça, com uma nuvem de vértices órfãos que o
+/// `from_parts` aceita, o octree indexa e a caixa da câmera enxerga (a peça
+/// nasceria enquadrada no arquivo inteiro em vez de nela mesma).
+fn compact(
+    positions: &[[f32; 3]],
+    colors: &[[f32; 3]],
+    faces: &[Face],
+) -> (Vec<[f32; 3]>, Vec<[f32; 3]>, Vec<Face>) {
+    let mut remap = vec![u32::MAX; positions.len()];
+    let (mut verts, mut cols) = (Vec::new(), Vec::new());
+    let mut out = Vec::with_capacity(faces.len());
+    for f in faces {
+        let n = f.verts().len();
+        let mut mapped = f.0;
+        // ⚠️ **Só os `n` primeiros slots** — o 4º de um triângulo é a sentinela
+        // `TRI` (`u32::MAX`), e remapeá-la a transformaria num índice de vértice
+        // que a malha não tem. É o mesmo motivo por que o `verts()` existe.
+        for slot in &mut mapped[..n] {
+            let old = *slot as usize;
+            if remap[old] == u32::MAX {
+                remap[old] = u32::try_from(verts.len()).unwrap_or(u32::MAX);
+                verts.push(positions[old]);
+                cols.push(colors[old]);
+            }
+            *slot = remap[old];
+        }
+        out.push(Face(mapped));
+    }
+    (verts, cols, out)
 }
 
 /// Os números de uma linha `v`, ou `None` se ela não descreve um vértice.

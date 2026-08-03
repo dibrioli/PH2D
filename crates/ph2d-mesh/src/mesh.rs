@@ -280,6 +280,42 @@ impl Mesh {
         &mut self.positions
     }
 
+    /// **Põe a origem local no centro da caixa** e devolve o deslocamento que
+    /// foi retirado.
+    ///
+    /// ⚠️ **Isto NÃO é cosmético, e não dá para fazer pela `Pose`.** O espelho
+    /// da escultura reflete NEGANDO uma coordenada
+    /// (`ph2d_sculpt3d::Symmetry::signs`), então **o plano de simetria É a
+    /// origem local** — uma malha que o autor deixou a dez unidades do zero
+    /// espelha em torno de um plano que não passa por ela, e o gesto vira lixo.
+    /// A `Pose` move o objeto no MUNDO; ela não move a origem local em relação
+    /// à geometria, que é exatamente a grandeza aqui.
+    ///
+    /// ⚠️ **A escala NÃO é tocada, e a assimetria tem razão:** centrar é exigido
+    /// por um mecanismo, redimensionar não é exigido por nenhum (o pincel mede
+    /// PIXELS DE TELA desde a W4, e a câmera enquadra). O tamanho é assunto da
+    /// `Pose`, onde não custa reescrever os números do autor.
+    ///
+    /// Devolve `[0, 0, 0]` numa malha já centrada — e nesse caso não escreve um
+    /// vértice sequer.
+    pub fn recenter(&mut self) -> [f32; 3] {
+        let c = self.bounds.center();
+        if c == [0.0, 0.0, 0.0] {
+            return c;
+        }
+        for p in &mut self.positions {
+            p[0] -= c[0];
+            p[1] -= c[1];
+            p[2] -= c[2];
+        }
+        // ⚠️ Só a CAIXA e o octree — as normais e a adjacência são invariantes
+        // por translação, e um `rebuild` inteiro aqui pagaria por recomputá-las
+        // sem que um número mudasse.
+        self.bounds = Aabb::from_points(&self.positions);
+        self.octree = Octree::build(&self.positions, &self.faces);
+        c
+    }
+
     /// Os vértices dentro da esfera — a consulta que um dab faz.
     ///
     /// O octree responde com as faces das folhas tocadas (conservador); aqui

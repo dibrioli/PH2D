@@ -63,7 +63,7 @@ pub use normals::{
     PAR_MIN, face_normal, face_normals_of, recompute_face_normals, recompute_vertex_normals,
     vertex_normals_of,
 };
-pub use obj::{ObjError, import_obj};
+pub use obj::{ImportedPiece, ObjError, import_obj};
 pub use octree::{Octree, RefitScratch};
 pub use persist::{DetailData, DocError, MeshData, PoseData, StackData};
 pub use pose::Pose;

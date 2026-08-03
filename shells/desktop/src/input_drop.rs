@@ -19,6 +19,25 @@ impl App {
     /// platforms. Honors `grid_snap_state` so multi-drop forms a
     /// tidy grid.
     pub(crate) fn handle_dropped_files(&mut self, paths: &[std::path::PathBuf]) {
+        // ⚠️ **As malhas saem da fila ANTES do filtro de imagem**, e não é ordem
+        // arbitrária: o filtro abaixo emite um toast *"Skipped non-image"* por
+        // arquivo que não reconhece, então sem este desvio soltar um `.obj`
+        // produziria um aviso de que ele foi ignorado — a resposta errada, com
+        // a certeza da resposta certa.
+        #[cfg(feature = "sculpt3d")]
+        let paths: Vec<std::path::PathBuf> = {
+            let (mesh, rest): (Vec<_>, Vec<_>) = paths
+                .iter()
+                .cloned()
+                .partition(|p| crate::sculpt3d::is_mesh_file(p));
+            self.sculpt3d_import_files(&mesh);
+            rest
+        };
+        #[cfg(feature = "sculpt3d")]
+        let paths: &[std::path::PathBuf] = &paths;
+        if paths.is_empty() {
+            return;
+        }
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };

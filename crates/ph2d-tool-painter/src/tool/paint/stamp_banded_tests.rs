@@ -219,3 +219,54 @@ fn the_banded_batch_is_materially_faster_than_the_serial_one() {
         par * 1e3
     );
 }
+
+fn cpx(
+    pos: [f32; 2],
+    phase: ph2d_editor_core::tool::PointerPhase,
+) -> ph2d_editor_core::tool::CanvasPointer {
+    ph2d_editor_core::tool::CanvasPointer {
+        pos,
+        pressure: 1.0,
+        tilt: [0.0, 0.0],
+        phase,
+    }
+}
+use ph2d_editor_core::tool::{CanvasPaintTool as _, PointerPhase, RasterEditTool as _};
+/// **O modo de pintura SOBREVIVE a um stroke vivo?** — o report do Enio de 2026-08-03
+/// (*"Wet Paint regride para digital ao usar os strokes vivos"*).
+#[test]
+fn the_paint_media_survives_every_live_shape_method() {
+    use ph2d_painter_brush::StrokeMethod;
+    for method in [
+        StrokeMethod::Line,
+        StrokeMethod::Ellipse,
+        StrokeMethod::Polygon,
+        StrokeMethod::Arc,
+        StrokeMethod::FreeHand,
+    ] {
+        let mut t = crate::tool::PainterTool::default();
+        t.set_source(vec![255u8; 256 * 256 * 4], 256, 256);
+        t.set_paint_media(crate::tool::paint::media::PaintMedia::WetPaint);
+        assert_eq!(
+            t.paint_media(),
+            crate::tool::paint::media::PaintMedia::WetPaint,
+            "{method:?}: o meio nem chegou a armar"
+        );
+        t.paint.brush.stroke_method = method;
+        t.on_canvas_pointer(cpx([80.0, 128.0], PointerPhase::Down));
+        t.on_canvas_pointer(cpx([170.0, 128.0], PointerPhase::Move));
+        let after_move = t.paint_media();
+        t.on_canvas_pointer(cpx([170.0, 128.0], PointerPhase::Up));
+        let after_up = t.paint_media();
+        assert_eq!(
+            after_move,
+            crate::tool::paint::media::PaintMedia::WetPaint,
+            "{method:?}: o meio REGREDIU durante o arrasto -> {after_move:?}"
+        );
+        assert_eq!(
+            after_up,
+            crate::tool::paint::media::PaintMedia::WetPaint,
+            "{method:?}: o meio REGREDIU no pen-up -> {after_up:?}"
+        );
+    }
+}

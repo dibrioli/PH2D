@@ -170,7 +170,9 @@ pub(super) fn stamp_plain_dabs_banded_with(
     }
     let bounds = batch_bounds(dabs, w, h)?;
     let rows = bounds.h as usize;
-    if !wants_bands(dabs, w, h, min_area) {
+    let bands = wants_bands(dabs, w, h, min_area);
+    diag::note(bands, dabs.len());
+    if !bands {
         return serial(buf);
     }
     let threads = std::thread::available_parallelism()
@@ -250,4 +252,35 @@ pub(super) fn stamp_plain_dabs_banded_with(
                 Some(acc.map_or(r, |a| union(a, r)))
             })
     })
+}
+
+/// **Qual rota o carimbo tomou** — o instrumento que o report de 2026-08-03 exigiu.
+///
+/// ⚠️ Ele existe porque eu media o EVENTO, celebrei 10× e o produto não sentiu: sem saber se o ramo em
+/// banda sequer DISPARA no documento do artista, *"não melhorou"* admite duas leituras opostas — a rota
+/// não é tomada, ou é tomada e o tempo está noutro lugar. Um número no log separa as duas.
+///
+/// ⚠️ **UM leitor só:** `take` ZERA os contadores, então dois leitores publicariam pedaços do mesmo
+/// quadro como se fossem quadros — a mesma lei do `wash_diag`. O leitor é a linha `[paint-perf]`.
+pub mod diag {
+    use std::sync::atomic::{AtomicU32, Ordering};
+
+    static BANDED: AtomicU32 = AtomicU32::new(0);
+    static SERIAL: AtomicU32 = AtomicU32::new(0);
+    static DABS: AtomicU32 = AtomicU32::new(0);
+
+    pub(super) fn note(banded: bool, dabs: usize) {
+        if banded { &BANDED } else { &SERIAL }.fetch_add(1, Ordering::Relaxed);
+        DABS.fetch_add(u32::try_from(dabs).unwrap_or(u32::MAX), Ordering::Relaxed);
+    }
+
+    /// `(lotes em banda, lotes seriais, dabs no total)` desde a última chamada — e ZERA.
+    #[must_use]
+    pub fn take() -> (u32, u32, u32) {
+        (
+            BANDED.swap(0, Ordering::Relaxed),
+            SERIAL.swap(0, Ordering::Relaxed),
+            DABS.swap(0, Ordering::Relaxed),
+        )
+    }
 }

@@ -44,6 +44,9 @@ pub use layers::{
     LayerStack, MAX_GROUP_DEPTH, MaskLayer, RasterLayer, ReliefComposite, TextureLayer,
 };
 pub use params::PainterParams;
+/// **Qual rota o depósito de pigmento tomou** — o instrumento que separa *"o ramo não dispara"*
+/// de *"dispara e o tempo está noutro lugar"* (doc 28 §5.78).
+pub use tool::paint::stamp_banded::diag as band_diag;
 /// O documento pintado, serializável — a unidade que o arquivo de projeto guarda.
 pub use tool::persist::PaintedDocument;
 // Re-export the effects surface so the layers panel can name adjustment params /

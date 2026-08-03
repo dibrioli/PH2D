@@ -175,7 +175,7 @@ mod shape_ramp;
 mod smear_warp;
 mod snapshot;
 /// The Blender-style cached brush stamp (render falloff×texture once, scale-blit per dab).
-mod stamp_banded;
+pub mod stamp_banded;
 mod stamp_cache;
 mod stamp_preview; // interactive drag-preview stamping (restore+re-stamp, dirty-rect); split for the LOC cap
 mod stamp_route;

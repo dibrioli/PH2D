@@ -315,3 +315,55 @@ fn what_a_shape_move_is_made_of() {
         );
     }
 }
+
+/// **O que o QUADRO custa, não o que o evento custa** — a lição que o report do Enio de 2026-08-03
+/// impôs: eu medi o carimbo, celebrei 10×, e o produto não sentiu.
+///
+/// O `on_canvas_pointer` é a porta do EVENTO; o artista paga a porta do QUADRO, e ela tem uma segunda
+/// metade que a primeira não vê: o **composite da pilha** (`take_preview_arc`) sobre o retângulo que o
+/// re-stamp acabou de marcar sujo — e um re-stamp marca a **figura INTEIRA** todo quadro, duas vezes
+/// (o restore da pegada anterior e o carimbo novo).
+///
+/// ⚠️ **A coluna que decide é a razão `quadro ÷ evento`.** Se ela for ~1, o carimbo é o quadro e o
+/// ganho chegou; se for grande, o que sobra vive no composite e a wave atacou a metade errada.
+#[test]
+#[ignore = "measurement, not a gate — run explicitly"]
+fn what_a_frame_of_a_live_shape_costs_not_just_the_event() {
+    println!("[frame] evento x QUADRO num arrasto de figura (ms) — Digital, pincel r=24");
+    println!(
+        "{:>6} {:>8}  {:>9} {:>9} {:>9}",
+        "tela", "raio", "evento", "composite", "razão"
+    );
+    for side in [2048u32, 4096] {
+        for r in [200.0f32, 500.0] {
+            let mut t = tool(side, PaintMedia::Digital, 24.0);
+            t.paint.brush.stroke_method = StrokeMethod::Ellipse;
+            #[allow(clippy::cast_precision_loss)]
+            let cx = (side / 2) as f32;
+            t.on_canvas_pointer(cp([cx, cx], PointerPhase::Down));
+            let mut ev = Vec::new();
+            let mut co = Vec::new();
+            for k in 0..8 {
+                let d = r + if k % 2 == 0 { 2.0 } else { -2.0 };
+                let e = cp([cx + d, cx], PointerPhase::Move);
+                let a = ms(&mut || {
+                    t.on_canvas_pointer(e);
+                });
+                // O que a shell faz DEPOIS de todo evento, uma vez por quadro.
+                let b = ms(&mut || {
+                    let _ = t.take_preview_arc();
+                });
+                if k > 0 {
+                    ev.push(a);
+                    co.push(b);
+                }
+            }
+            t.on_canvas_pointer(cp([cx + r, cx], PointerPhase::Up));
+            let (e, c) = (median(&mut ev), median(&mut co));
+            println!(
+                "{side:>6} {r:>8.0}  {e:>9.3} {c:>9.3} {:>8.2}x",
+                (e + c) / e.max(1e-9)
+            );
+        }
+    }
+}

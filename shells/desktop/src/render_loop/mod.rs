@@ -8217,6 +8217,11 @@ impl crate::App {
                     &FRAME_PROF_STAMP_MAX_US,
                     &FRAME_PROF_STAMP_N,
                 );
+                // ⚠️ **Qual rota o depósito tomou.** O report de 2026-08-03 (*"não houve melhora
+                // real"*) admitia duas leituras opostas — o ramo em banda não dispara neste pincel, ou
+                // dispara e o tempo está noutro lugar — e nenhum número no log as separava. `take` ZERA,
+                // então este é o ÚNICO leitor (a lei do `wash_diag`).
+                let (band_par, band_ser, band_dabs) = ph2d_tool_painter::band_diag::take();
                 let stamp_ev = FRAME_PROF_STAMP_EV.with(std::cell::Cell::take);
                 // O custo POR ENTREGA — a média acima dividida pelo que ela soma.
                 let stamp_per = if stamp_ev > 0 {
@@ -8282,6 +8287,8 @@ impl crate::App {
                      [frame]   tool-tick: media {tick_avg:.2}ms pico {tick_max:.2}ms em {tick_n}/120 frames \
                      | stamps: media {stamp_avg:.2}ms pico {stamp_max:.2}ms em {stamp_n}/120 \
                      ({stamp_ev} entregas, {stamp_per:.2}ms cada)\n\
+                     [frame]   deposito: {band_par} lote(s) em BANDA x {band_ser} serial(is), \
+                     {band_dabs} dabs (banda 0 = o ramo paralelo NAO dispara neste pincel)\n\
                      [frame]   agua: sim media {:.2}ms pico {sim_max:.2}ms x{sim_n} \
                      | composite media {:.2}ms pico {comp_max:.2}ms x{comp_n} \
                      | ESPERA media {:.2}ms pico {wait_max:.2}ms x{wait_n} (total {:.0}ms)\n\

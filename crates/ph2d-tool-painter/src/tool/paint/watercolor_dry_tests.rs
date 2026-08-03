@@ -59,9 +59,8 @@ fn decay_snapshot(wet: &mut [u8], fw: usize, rect: (usize, usize, usize, usize),
                 0
             };
             let gap = o.saturating_sub(up.min(down).min(left).min(right));
-            let erode =
-                ((u32::from(gap) * u32::from(step) * super::watercolor_backdrop::WET_ERODE_GAIN)
-                    / 255) as u8;
+            let erode = ((u32::from(gap) * u32::from(step) * super::watercolor_dry::WET_ERODE_GAIN)
+                / 255) as u8;
             let nv = o.saturating_sub(step.saturating_add(erode));
             wet[(y0 + oy) * fw + x0 + ox] = nv;
             wettest = wettest.max(nv);
@@ -120,7 +119,7 @@ fn the_parallel_pass_decays_exactly_like_the_serial_one_it_replaced() {
     // ponto de operação de hoje"* é como um vizinho errado vive até alguém mexer no Drying Time.
     // O gate pina a LEI, então varre o `step` — e é ele que cruza o piso da erosão nos dois sentidos.
     // ⚠️ **E o TAMANHO é fixture tanto quanto o `step`.** O produto roda serial abaixo do piso do
-    // pool (`DRY_PAR_MIN`) e paralelo acima dele; a 1ª versão deste gate usava só 128² = 10.816
+    // pool (`WET_PAR_MIN`) e paralelo acima dele; a 1ª versão deste gate usava só 128² = 10.816
     // texels e portanto **nunca entrou na rota paralela que a wave existe para instalar** — verde
     // sobre o caminho que não mudou. Os dois lados do piso, então.
     for &n in &[128usize, 384] {
@@ -255,6 +254,113 @@ fn the_cost_of_the_drying_pass_by_both_routes() {
             before_total / f64::from(ran),
             now_total / f64::from(ran)
         );
+
+        // E o DESPEJO, o segundo maior item do quadro no log do Enio (9,6-13,6 ms).
+        let nn = n * n;
+        let cov: Vec<u8> = (0..nn).map(|i| ((i * 37) % 256) as u8).collect();
+        let wet0: Vec<u8> = (0..nn).map(|i| ((i * 91) % 200) as u8).collect();
+        t.paint.stroke_coverage = cov.clone();
+        t.paint.wet_styles.owner = Vec::new();
+        t.paint.wet_stroke_dirty = Some(Region {
+            x: rect.0 as u32,
+            y: rect.1 as u32,
+            w: (rect.2 - rect.0) as u32,
+            h: (rect.3 - rect.1) as u32,
+        });
+        let (mut pd, mut pf) = (Vec::new(), Vec::new());
+        for _ in 0..5 {
+            t.paint.canvas_wet = wet0.clone();
+            let a = std::time::Instant::now();
+            t.pour_canvas_wet();
+            pd.push(a.elapsed().as_secs_f64() * 1e3);
+            let mut m = wet0.clone();
+            let b = std::time::Instant::now();
+            pour_reference(&mut m, &cov, &[], 0, n, rect);
+            pf.push(b.elapsed().as_secs_f64() * 1e3);
+        }
+        pd.sort_by(f64::total_cmp);
+        pf.sort_by(f64::total_cmp);
+        println!(
+            "  DESPEJO {n}x{n}                | antes {:.2} ms | agora {:.2} ms | {:.2}x",
+            pf[2],
+            pd[2],
+            pf[2] / pd[2]
+        );
+    }
+}
+
+/// O DESPEJO que shipou até 2026-08-02, **congelado**: laço serial, expressão de dureza por texel.
+/// Oráculo externo — comparar a rota paralela do produto com a serial do produto provaria só o
+/// *walker*, porque as duas compartilham o mesmo corpo (a lição do ADR-0145).
+fn pour_reference(
+    wet: &mut [u8],
+    cov: &[u8],
+    owner: &[u8],
+    cur_o: u8,
+    fw: usize,
+    rect: (usize, usize, usize, usize),
+) {
+    let (x0, y0, x1, y1) = rect;
+    let has_owner = owner.len() == wet.len();
+    for y in y0..y1 {
+        let row = y * fw;
+        for x in x0..x1 {
+            if has_owner && owner[row + x] != cur_o {
+                continue;
+            }
+            let c = f32::from(cov[row + x]) / 255.0;
+            let cw = super::watercolor_field::smoothstep(
+                super::watercolor_render::SS0,
+                super::watercolor_render::SS1,
+                c,
+            );
+            let c = (cw * 255.0) as u8;
+            if c > wet[row + x] {
+                wet[row + x] = c;
+            }
+        }
+    }
+}
+
+#[test]
+fn the_pour_lands_exactly_where_the_serial_one_it_replaced_landed() {
+    // ⚠️ Os DOIS lados do piso do pool, pelo mesmo motivo do gate do decaimento: o produto só entra na
+    // rota paralela acima dele, e uma fixture pequena provaria o caminho que não mudou.
+    for &n in &[128usize, 384] {
+        for &with_owner in &[false, true] {
+            let mut t = PainterTool::default();
+            t.set_source(vec![255u8; n * n * 4], n as u32, n as u32);
+            let (m, nn) = (n / 8, n * n);
+            let rect = (m, m, n - m, n - m);
+            // Cobertura com estrutura (o `smoothstep` tem de ver os dois patamares e a rampa) e uma
+            // umidade prévia não-trivial, senão o `if c > wet` nunca é exercitado nos dois sentidos.
+            let cov: Vec<u8> = (0..nn).map(|i| ((i * 37) % 256) as u8).collect();
+            let wet0: Vec<u8> = (0..nn).map(|i| ((i * 91) % 200) as u8).collect();
+            // `current_owner()` é `table.len()`, e a tabela nasce vazia ⇒ 0. Metade do rect pertence a
+            // outro dono, então o `continue` dispara — é o ramo que um `base` errado atravessaria calado.
+            let owner: Vec<u8> = if with_owner {
+                (0..nn).map(|i| u8::from(i % 3 == 0)).collect()
+            } else {
+                Vec::new()
+            };
+            t.paint.canvas_wet = wet0.clone();
+            t.paint.stroke_coverage = cov.clone();
+            t.paint.wet_styles.owner = owner.clone();
+            t.paint.wet_stroke_dirty = Some(Region {
+                x: rect.0 as u32,
+                y: rect.1 as u32,
+                w: (rect.2 - rect.0) as u32,
+                h: (rect.3 - rect.1) as u32,
+            });
+            t.pour_canvas_wet();
+
+            let mut want = wet0;
+            pour_reference(&mut want, &cov, &owner, 0, n, rect);
+            assert_eq!(
+                t.paint.canvas_wet, want,
+                "n {n}, owner {with_owner}: o despejo divergiu do serial congelado"
+            );
+        }
     }
 }
 
@@ -274,7 +380,7 @@ fn the_cost_of_the_drying_pass_by_both_routes() {
 /// **Mutação que deve sangrar:** `par_chunks_mut` → `chunks_mut` no walk do decaimento.
 #[test]
 fn the_drying_pass_walks_in_parallel_because_the_rows_are_disjoint() {
-    let src = include_str!("watercolor_backdrop.rs");
+    let src = include_str!("watercolor_dry.rs");
     // Controle positivo: a função tem de ser ENCONTRADA, senão o gate passa por não achar nada.
     let at = src
         .find("fn dry_canvas_wet_inner(")
@@ -293,8 +399,22 @@ fn the_drying_pass_walks_in_parallel_because_the_rows_are_disjoint() {
     // E a rota serial CONTINUA lá, com o piso do pool a escolher: um passe pequeno pagaria mais pelo
     // fork do que pelo trabalho, e é por isso que o gate de identidade varre os dois lados do piso.
     assert!(
-        body.contains("chunks_mut(fw)") && body.contains("DRY_PAR_MIN"),
+        body.contains("chunks_mut(fw)") && body.contains("WET_PAR_MIN"),
         "o piso do pool e a rota serial abaixo dele fazem parte do desenho, nao sao resto"
+    );
+    // E o DESPEJO, o irmão: mesma forma, mesmo piso, e o caso mais simples dos dois (sem redução).
+    let src = include_str!("watercolor_backdrop.rs");
+    let at = src
+        .find("fn pour_canvas_wet_inner(")
+        .expect("controle: o corpo do despejo tem de existir");
+    let body = &src[at..];
+    let end = body
+        .find("\n    }\n")
+        .expect("controle: a funcao tem de terminar");
+    assert!(
+        body[..end].contains("par_chunks_mut("),
+        "o walk do despejo tem de percorrer as linhas em paralelo — 9,6-13,6 ms/quadro no log do \
+         produto, e nenhum gate de bytes pega a regressao de uma letra"
     );
 }
 

@@ -274,7 +274,11 @@ impl crate::App {
         let world_pos = gfx.camera.screen_to_world((x, y), win);
         // Rotate pivota no centro da arte (= a translação do TRS); scale, no canto/
         // borda OPOSTOS (ou no centro com Ctrl) — a mesma política do sprite.
-        let pivot = ph2d_editor::anchor_pivot_world(hit.kind, t.h_local, world_snap, ctrl);
+        // O `anchor` é `[0, 0]` porque o `start` já É o centro da caixa (`pose_trs` põe o
+        // `c_local` na translação) — a caixa está centrada no próprio pivô, e o termo
+        // reduz LITERALMENTE ao que havia antes (`+ 0.0 * scale` é exato).
+        let pivot =
+            ph2d_editor::anchor_pivot_world(hit.kind, [0.0, 0.0], t.h_local, world_snap, ctrl);
         self.flip_pose_drag = Some(FlipPoseDrag {
             drag: ph2d_editor::GizmoDragState {
                 kind: hit.kind,

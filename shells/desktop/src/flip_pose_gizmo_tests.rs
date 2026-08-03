@@ -308,7 +308,7 @@ fn a_corner_scale_drag_anchors_the_opposite_corner() {
         dx_sign: 1.0,
         dy_sign: 1.0,
     };
-    let pivot = ph2d_editor::anchor_pivot_world(kind, h, start, false);
+    let pivot = ph2d_editor::anchor_pivot_world(kind, [0.0, 0.0], h, start, false);
     assert_eq!(pivot, [10.0, 20.0]);
     let start_cursor = [30.0, 40.0];
     let mut drag = ph2d_editor::GizmoDragState {

@@ -91,6 +91,17 @@ pub fn compose_snapshot(parent: TransformSnapshot, child: TransformSnapshot) -> 
     }
 }
 
+/// A LOCAL scale seen from the world: `parent.scale ⊙ local`.
+///
+/// ⚠️ It exists so the two halves of a scale drag speak the same units.
+/// The pivot is built from the composed WORLD snapshot, so inverting it
+/// with a LOCAL scale pinned the wrong point for a child of a scaled
+/// parent — silently, and only there.
+#[inline]
+fn world_scale(parent: TransformSnapshot, local: [f32; 2]) -> [f32; 2] {
+    [parent.scale[0] * local[0], parent.scale[1] * local[1]]
+}
+
 pub fn compute_gizmo_transform(
     drag: &GizmoDragState,
     camera: &GizmoCamera,
@@ -135,7 +146,10 @@ pub fn compute_gizmo_transform(
                 scale: drag.start_transform.scale,
             }
         }
-        GizmoDragKind::ScaleCorner { dx_sign, dy_sign } => {
+        // ⚠️ Os sinais da alça NÃO aparecem aqui: a razão sai da projeção do cursor contra o
+        // pivô, e a re-ancoragem recupera o deslocamento DO pivô (`rescale_about_pivot`).
+        // Quem decide o ponto fixo é quem o calculou, uma vez.
+        GizmoDragKind::ScaleCorner { .. } => {
             // Pivot stays fixed at the opposite-corner location.
             // Ratio measured along the chip's WORLD axes (= parent
             // rotation + local rotation); pre-parent-fix usava
@@ -191,14 +205,12 @@ pub fn compute_gizmo_transform(
             let translation = if drag.anchor_is_center {
                 drag.start_transform.translation
             } else {
-                let world_t = opposite_anchor_translation(
+                let world_t = rescale_about_pivot(
                     drag.pivot_world,
-                    drag.sprite_half_intrinsic,
-                    [-dx_sign, -dy_sign],
-                    [scale_x, scale_y],
-                    rot,
+                    compose_snapshot(drag.parent_world, drag.start_transform),
+                    world_scale(drag.parent_world, [scale_x, scale_y]),
                 );
-                // `opposite_anchor_translation` produz world coords;
+                // `rescale_about_pivot` produz world coords;
                 // a Transform.translation que vamos escrever é LOCAL.
                 world_translation_to_local(drag.parent_world, world_t)
             };
@@ -208,7 +220,7 @@ pub fn compute_gizmo_transform(
                 scale: [scale_x, scale_y],
             }
         }
-        GizmoDragKind::ScaleEdge { axis, sign } => {
+        GizmoDragKind::ScaleEdge { axis, .. } => {
             // Axis-only scale: one component changes, the other
             // sticks to its start value. Ratio em WORLD axes do chip
             // (= parent + local rotation); compense parent-rotation
@@ -245,22 +257,16 @@ pub fn compute_gizmo_transform(
                 scale[other] = (drag.start_transform.scale[other] * ratio).max(0.001);
             }
             // Translation re-anchor: same logic as ScaleCorner. The
-            // opposite-edge midpoint stays fixed at `pivot_world` —
-            // its local offset is along the dragged axis only.
-            let opposite_local_sign = if axis == 0 {
-                [-sign, 0.0]
-            } else {
-                [0.0, -sign]
-            };
+            // opposite-edge midpoint stays fixed at `pivot_world`, and
+            // `rescale_about_pivot` recovers its offset from the pivot
+            // itself — no per-kind sign table to keep in step.
             let translation = if drag.anchor_is_center {
                 drag.start_transform.translation
             } else {
-                let world_t = opposite_anchor_translation(
+                let world_t = rescale_about_pivot(
                     drag.pivot_world,
-                    drag.sprite_half_intrinsic,
-                    opposite_local_sign,
-                    scale,
-                    rot,
+                    compose_snapshot(drag.parent_world, drag.start_transform),
+                    world_scale(drag.parent_world, scale),
                 );
                 world_translation_to_local(drag.parent_world, world_t)
             };
@@ -415,10 +421,34 @@ pub fn pivot_snap_candidates(
 /// helper multiplies by `snap.scale` and rotates by `snap.rotation`
 /// to project to world.
 ///
+/// `sprite_anchor` is where the BOX CENTER sits relative to the pivot,
+/// in the same intrinsic frame — the app-wide invariant
+/// `box center = translation + R·(anchor ⊙ scale)`, which a sprite
+/// states through `Sprite::anchor` and a vector shape through its local
+/// bbox center (`vec_gizmo_view::anchor_half`).
+///
+/// ⚠️ **Dropping that term pins the wrong point, and the drift is
+/// exactly `anchor ⊙ scale`.** It stayed invisible while every box was
+/// centered on its own pivot — which `settle_origins` guarantees for a
+/// plain vector path, and which a Live Shape gets at birth. Measured on
+/// a frame that a previous resize had left off-center: the helper
+/// answered `175.0` for an edge the gizmo was DRAWING at `150.0`, so the
+/// far border walked `150 → 162.5 → 175` over three drags. A sprite whose
+/// pivot was moved (`Sprite::anchor != 0`) carried the same defect.
+///
+/// `anchor = [0, 0]` reduces LITERALLY to the previous expression
+/// (`+ 0.0 * scale` is exact in IEEE-754), so every caller whose box is
+/// centered on its pivot is untouched to the bit.
+///
 /// `Translate` and `Rotate` ignore the toggle and always pivot on the
-/// sprite center (those drags don't have a natural opposite anchor).
+/// entity's PIVOT (those drags don't have a natural opposite anchor, and
+/// rotating about the pivot is what a pivot is for). Ctrl/Cmd likewise
+/// keeps scaling about the pivot — the artist who moved it chose that
+/// center, and re-reading it as the box center would be a product change
+/// with no defect behind it.
 pub fn anchor_pivot_world(
     kind: GizmoDragKind,
+    sprite_anchor: [f32; 2],
     sprite_half_size: [f32; 2],
     snap: TransformSnapshot,
     use_center_anchor: bool,
@@ -428,18 +458,29 @@ pub fn anchor_pivot_world(
     } else {
         match kind {
             GizmoDragKind::ScaleCorner { dx_sign, dy_sign } => [
-                -dx_sign * sprite_half_size[0],
-                -dy_sign * sprite_half_size[1],
+                sprite_anchor[0] - dx_sign * sprite_half_size[0],
+                sprite_anchor[1] - dy_sign * sprite_half_size[1],
             ],
+            // ⚠️ The CROSS axis carries the anchor too: the pivot is the
+            // opposite edge's MIDPOINT, and a midpoint's other coordinate
+            // is the box center. It is inert without rotation and load-
+            // bearing with it — the ratio projects `(cursor − pivot)` onto
+            // the rotated axis, so both components enter.
             GizmoDragKind::ScaleEdge { axis, sign } => {
                 if axis == 0 {
-                    [-sign * sprite_half_size[0], 0.0]
+                    [
+                        sprite_anchor[0] - sign * sprite_half_size[0],
+                        sprite_anchor[1],
+                    ]
                 } else {
-                    [0.0, -sign * sprite_half_size[1]]
+                    [
+                        sprite_anchor[0],
+                        sprite_anchor[1] - sign * sprite_half_size[1],
+                    ]
                 }
             }
             // Translate / Rotate don't have an "opposite" anchor —
-            // fall back to the sprite center.
+            // fall back to the entity's pivot.
             _ => return snap.translation,
         }
     };
@@ -456,32 +497,58 @@ pub fn anchor_pivot_world(
     ]
 }
 
-/// Compute the sprite-center translation that keeps `pivot_world`
-/// fixed at the OPPOSITE anchor's world position under a new scale.
+/// Compute the WORLD translation that keeps `pivot_world` exactly where
+/// it is while the object's world scale becomes `new_world_scale`.
 ///
-/// `opposite_local_sign` are the (sign_x, sign_y) of the
-/// opposite-corner local offset (e.g. `[-1, -1]` for the SW corner
-/// when the user drags the NE corner). Pass `0.0` on an axis that
-/// doesn't move (Edge handles use one zero component).
+/// `start_world` is the object's world transform at pen-down
+/// (`compose_snapshot(parent, start_transform)`).
 ///
-/// Math (no rotation case): `pivot_world = new_translation +
-/// opposite_local_sign * sprite_half_intrinsic * new_scale`. Solve
-/// for `new_translation`. With rotation, the local offset rotates
-/// by `rotation` (world +X = (cos, sin), world +Y = (-sin, cos))
-/// before subtracting from `pivot_world`.
-pub(super) fn opposite_anchor_translation(
+/// ⚠️ **The offset is RECOVERED from the pivot, not re-derived from the
+/// box.** By construction the drag captured
+/// `pivot = t + R·(v ⊙ scale)`, so the intrinsic offset of the pinned
+/// point is `v = R⁻¹·(pivot − t) ⊘ scale` — and the answer is
+/// `pivot − R·(v ⊙ new_scale)`. Nothing here needs to know which handle
+/// was grabbed, how big the box is, or where its center sits.
+///
+/// That is the whole point: whoever computes the pivot **decides** the
+/// fixed point, and this inverts THAT. The previous version rebuilt the
+/// offset from `half × a sign table`, which is a second answer to a
+/// question [`anchor_pivot_world`] had already answered — and the two
+/// diverged for every box whose center is not its pivot, which is what
+/// the artist saw as *"the far border moves"*.
+///
+/// It closes a sibling defect for free: the pivot was built with the
+/// WORLD scale and inverted with the LOCAL one, so a child of a SCALED
+/// parent was pinned wrong too. Here the same `v` is divided and
+/// multiplied by quantities of the same kind, so they cannot disagree.
+///
+/// A degenerate start scale (`|s| <= 1e-6`) has no recoverable offset —
+/// dividing would blow up, so the pivot is returned unchanged.
+pub(super) fn rescale_about_pivot(
     pivot_world: [f32; 2],
-    sprite_half_intrinsic: [f32; 2],
-    opposite_local_sign: [f32; 2],
-    new_scale: [f32; 2],
-    rotation: f32,
+    start_world: TransformSnapshot,
+    new_world_scale: [f32; 2],
 ) -> [f32; 2] {
-    let local_x = opposite_local_sign[0] * sprite_half_intrinsic[0] * new_scale[0];
-    let local_y = opposite_local_sign[1] * sprite_half_intrinsic[1] * new_scale[1];
     // T1.3.5 cross-OS bit-identical (R2 Lens E follow-up).
-    let (sin_r, cos_r) = libm::sincosf(rotation);
-    let rotated_x = local_x * cos_r - local_y * sin_r;
-    let rotated_y = local_x * sin_r + local_y * cos_r;
+    let (sin_r, cos_r) = libm::sincosf(start_world.rotation);
+    let dx = pivot_world[0] - start_world.translation[0];
+    let dy = pivot_world[1] - start_world.translation[1];
+    // Unrotate → the pivot's offset in the object's own (still scaled) frame.
+    let ux = dx * cos_r + dy * sin_r;
+    let uy = -dx * sin_r + dy * cos_r;
+    // Unscale → intrinsic; rescale → where that same point wants to be.
+    let vx = if start_world.scale[0].abs() > 1e-6 {
+        ux / start_world.scale[0] * new_world_scale[0]
+    } else {
+        ux
+    };
+    let vy = if start_world.scale[1].abs() > 1e-6 {
+        uy / start_world.scale[1] * new_world_scale[1]
+    } else {
+        uy
+    };
+    let rotated_x = vx * cos_r - vy * sin_r;
+    let rotated_y = vx * sin_r + vy * cos_r;
     [pivot_world[0] - rotated_x, pivot_world[1] - rotated_y]
 }
 

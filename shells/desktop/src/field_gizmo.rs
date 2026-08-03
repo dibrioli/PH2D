@@ -362,7 +362,10 @@ impl crate::App {
             // Rotate pivota no centro; scale, no canto/borda OPOSTOS (ou no centro com
             // Ctrl) — a mesma política do sprite/pose. `parent_world` = identidade: um
             // field não tem pai, e o param JÁ é de mundo, então o `world_snap` é o `start`.
-            let pivot = ph2d_editor::anchor_pivot_world(hit.kind, intrinsic_half, start, ctrl);
+            // `anchor = [0, 0]`: o `start` de um field É o centro dele — a caixa está
+            // centrada no próprio pivô, e o termo reduz literalmente ao de antes.
+            let pivot =
+                ph2d_editor::anchor_pivot_world(hit.kind, [0.0, 0.0], intrinsic_half, start, ctrl);
             FieldGizmoDrag {
                 drag: GizmoDragState {
                     kind: hit.kind,

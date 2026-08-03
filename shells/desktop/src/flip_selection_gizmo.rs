@@ -410,7 +410,10 @@ impl crate::App {
         let world_pos = gfx.camera.screen_to_world((x, y), win);
         // Rotate pivota no centro da seleção; scale, no canto/borda OPOSTOS (ou no
         // centro com Ctrl) — a mesma política do sprite/pose.
-        let pivot = ph2d_editor::anchor_pivot_world(hit.kind, t.h_local, world_snap, ctrl);
+        // `anchor = [0, 0]`: o `start` já É o centro da seleção (ver o irmão em
+        // `flip_pose_gizmo`), então o termo reduz literalmente ao de antes.
+        let pivot =
+            ph2d_editor::anchor_pivot_world(hit.kind, [0.0, 0.0], t.h_local, world_snap, ctrl);
         self.flip_selection_drag = Some(FlipSelectionDrag {
             drag: ph2d_editor::GizmoDragState {
                 kind: hit.kind,

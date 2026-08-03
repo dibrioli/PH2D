@@ -4801,8 +4801,17 @@ impl App {
                             };
                             let use_center_anchor =
                                 self.modifiers.control_key() || self.modifiers.super_key();
-                            let sprite_half_intrinsic =
-                                gizmo_anchor_half(&gfx.sim, &gfx.vec_scene, &gfx.flip, entity).1;
+                            // ⚠️ **As DUAS metades.** O `.1` sozinho descartava o
+                            // `anchor` — *onde a caixa está em relação ao pivô* — e
+                            // `anchor_pivot_world` então fixava um ponto deslocado de
+                            // `anchor ⊙ scale`. Ficou invisível enquanto toda caixa
+                            // estava centrada no próprio pivô (o `settle_origins`
+                            // garante isso para um path comum, e uma Live Shape nasce
+                            // assim), e apareceu quando redimensionar uma moldura passou
+                            // a deixá-la fora do centro: a borda oposta caminhava
+                            // 150 → 162,5 → 175 em três arrastos.
+                            let (sprite_anchor_intrinsic, sprite_half_intrinsic) =
+                                gizmo_anchor_half(&gfx.sim, &gfx.vec_scene, &gfx.flip, entity);
                             // Onda 2C: pivot world depends on target.
                             // PrimaryIndividual / ExtraIndividual use the
                             // sprite's own anchor (transforms local to it).
@@ -4825,6 +4834,7 @@ impl App {
                                 let world_snap = ph2d_editor::compose_snapshot(parent_world, snap);
                                 ph2d_editor::anchor_pivot_world(
                                     gkind,
+                                    sprite_anchor_intrinsic,
                                     sprite_half_intrinsic,
                                     world_snap,
                                     use_center_anchor,

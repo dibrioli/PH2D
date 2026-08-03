@@ -1,5 +1,5 @@
 use super::paint::{ROTATE_HANDLE_OFFSET, corner_outer_rect, world_to_screen};
-use super::transform::{opposite_anchor_translation, quantize};
+use super::transform::{quantize, rescale_about_pivot};
 use super::*;
 use crate::interaction::HitIndex;
 use crate::zones::Rect;
@@ -537,6 +537,7 @@ fn anchor_pivot_world_default_returns_opposite_corner_for_ne_handle() {
             dx_sign: 1.0,
             dy_sign: 1.0,
         },
+        [0.0, 0.0],
         [2.0, 3.0],
         snap,
         false,
@@ -567,7 +568,7 @@ fn anchor_pivot_world_center_anchor_returns_translation() {
         },
         GizmoDragKind::ScaleEdge { axis: 1, sign: 1.0 },
     ] {
-        let pivot = anchor_pivot_world(kind, [5.0, 7.0], snap, true);
+        let pivot = anchor_pivot_world(kind, [0.0, 0.0], [5.0, 7.0], snap, true);
         assert_eq!(
             pivot, snap.translation,
             "kind {kind:?} with center anchor should pivot on translation"
@@ -593,6 +594,7 @@ fn anchor_pivot_world_respects_scale_and_rotation() {
             dx_sign: 1.0,
             dy_sign: 1.0,
         },
+        [0.0, 0.0],
         [2.0, 3.0],
         snap,
         false,
@@ -615,6 +617,7 @@ fn anchor_pivot_world_edge_handle_opposite_midpoint() {
     };
     let pivot = anchor_pivot_world(
         GizmoDragKind::ScaleEdge { axis: 0, sign: 1.0 },
+        [0.0, 0.0],
         [2.0, 3.0],
         snap,
         false,
@@ -635,7 +638,7 @@ fn anchor_pivot_world_translate_and_rotate_fall_back_to_center() {
         scale: [2.0, 2.0],
     };
     for kind in [GizmoDragKind::Translate, GizmoDragKind::Rotate] {
-        let pivot = anchor_pivot_world(kind, [1.0, 1.0], snap, false);
+        let pivot = anchor_pivot_world(kind, [0.0, 0.0], [1.0, 1.0], snap, false);
         assert_eq!(pivot, snap.translation, "{kind:?} must fall back to center");
     }
 }
@@ -752,6 +755,74 @@ fn scale_corner_center_anchor_keeps_translation_unchanged() {
     );
 }
 
+/// **A borda oposta fica fixa mesmo com o pai ESCALADO** — o irmão do defeito da âncora,
+/// e ele estava aberto pelo mesmo motivo: as duas metades falavam unidades diferentes.
+///
+/// ⚠️ O pivô era construído do snapshot de MUNDO (`compose_snapshot`, cuja escala é
+/// `pai ⊙ local`) e invertido com a escala **LOCAL** nova. Enquanto o pai vale 1 as duas
+/// coincidem e ninguém nota; com o pai a 2×, a re-ancoragem devolvia metade do
+/// deslocamento e a borda que devia estar pinada andava.
+///
+/// O oráculo é o MUNDO, que é onde o artista olha: filho local `(5, 2,5)` sob um pai a
+/// 2× está em `(10, 5)`, e a borda esquerda dele em `9`.
+#[test]
+fn the_opposite_edge_stays_put_under_a_scaled_parent() {
+    let c = cam();
+    let parent = TransformSnapshot {
+        translation: [0.0, 0.0],
+        rotation: 0.0,
+        scale: [2.0, 2.0],
+    };
+    let start_local = TransformSnapshot {
+        translation: [5.0, 2.5],
+        rotation: 0.0,
+        scale: [1.0, 1.0],
+    };
+    let world = compose_snapshot(parent, start_local);
+    // Meia-extensão intrínseca 0,5 ⇒ meia-extensão de mundo 1,0 ⇒ borda esquerda em 9.
+    let half = [0.5_f32, 0.5_f32];
+    let pivot_world = anchor_pivot_world(
+        GizmoDragKind::ScaleEdge { axis: 0, sign: 1.0 },
+        [0.0, 0.0],
+        half,
+        world,
+        false,
+    );
+    assert!(
+        (pivot_world[0] - 9.0).abs() < 1e-4,
+        "a fixture nao monta a cena que diz: pivo {pivot_world:?}"
+    );
+    let mut drag = GizmoDragState {
+        kind: GizmoDragKind::ScaleEdge { axis: 0, sign: 1.0 },
+        entity_bits: 1,
+        start_screen: (0.0, 0.0),
+        cursor_screen: (0.0, 0.0),
+        start_transform: start_local,
+        pivot_world,
+        start_cursor_world: [11.0, 5.0],
+        sprite_half_intrinsic: half,
+        anchor_is_center: false,
+        target: super::GizmoTarget::PrimaryIndividual,
+        parent_world: parent,
+        turns: 0,
+    };
+    drag.cursor_screen = cursor_for_world(&c, [13.0, 5.0]);
+    let t = compute_gizmo_transform(
+        &drag,
+        &c,
+        GizmoModifiers::default(),
+        GizmoSnap::default(),
+        None,
+    );
+    let new_world = compose_snapshot(parent, t);
+    let left_x = new_world.translation[0] - half[0] * new_world.scale[0];
+    assert!(
+        (left_x - pivot_world[0]).abs() < 1e-3,
+        "a borda esquerda andou sob pai escalado: {left_x} != {}",
+        pivot_world[0]
+    );
+}
+
 #[test]
 fn scale_edge_default_anchor_keeps_opposite_edge_fixed() {
     // Right-edge drag on a 2×2 sprite at (10, 5). Opposite edge
@@ -850,16 +921,52 @@ fn scale_corner_with_snap_closure_quantizes_cursor() {
     );
 }
 
+/// **A re-ancoragem devolve o MESMO número de antes numa caixa centrada.**
+///
+/// A cena é a do gate anterior (`opposite_anchor_translation_no_rotation`), reescrita para
+/// a porta nova: pivô em (10, 10), objeto a começar em (11, 11) na escala 1 — o que põe o
+/// deslocamento intrínseco do pivô em (−1, −1) —, escala nova (2, 3). A resposta continua
+/// (12, 13), e é isso que prova que a reformulação **não mexeu no caso que já shipava**:
+/// ela só deixou de re-derivar o deslocamento a partir de `meia-caixa × tabela de sinais`.
 #[test]
-fn opposite_anchor_translation_no_rotation() {
-    // Pivot at (10, 10), sprite half (1, 1), opposite-local-sign
-    // (-1, -1), new scale (2, 3), rotation 0.
-    // Local = (-1*1*2, -1*1*3) = (-2, -3). Rotation 0 → rotated
-    // = local. Translation = pivot - rotated = (12, 13).
-    let t = opposite_anchor_translation([10.0, 10.0], [1.0, 1.0], [-1.0, -1.0], [2.0, 3.0], 0.0);
+fn rescaling_about_a_pivot_reproduces_the_old_anchor_math() {
+    let start = TransformSnapshot {
+        translation: [11.0, 11.0],
+        rotation: 0.0,
+        scale: [1.0, 1.0],
+    };
+    let t = rescale_about_pivot([10.0, 10.0], start, [2.0, 3.0]);
     assert!(
         (t[0] - 12.0).abs() < 1e-4 && (t[1] - 13.0).abs() < 1e-4,
         "got {t:?}"
+    );
+}
+
+/// **O ponto fixo fica onde está, mesmo com a caixa FORA do centro do pivô** — a
+/// propriedade que a aritmética antiga não tinha, e o defeito que o Enio viu.
+///
+/// Um objeto cujo centro de caixa está deslocado do pivô (uma moldura já redimensionada,
+/// um sprite com o pivô movido) é escalado 0,5× em torno de um pivô à esquerda. O ponto
+/// fixo é, por definição, aquele que a nova pose leva de volta a si mesmo.
+#[test]
+fn the_pinned_point_stays_pinned_when_the_box_is_off_center() {
+    let start = TransformSnapshot {
+        translation: [200.0, 100.0],
+        rotation: 0.0,
+        scale: [1.0, 1.0],
+    };
+    // O pivô é a borda esquerda de uma caixa cujo centro está 25 à ESQUERDA do pivô.
+    let pivot = [150.0, 100.0];
+    let new_t = rescale_about_pivot(pivot, start, [0.5, 1.0]);
+    // Onde aquele mesmo ponto intrínseco aterra sob a pose nova.
+    let v = [
+        (pivot[0] - start.translation[0]) / start.scale[0],
+        (pivot[1] - start.translation[1]) / start.scale[1],
+    ];
+    let landed = [new_t[0] + v[0] * 0.5, new_t[1] + v[1] * 1.0];
+    assert!(
+        (landed[0] - pivot[0]).abs() < 1e-3 && (landed[1] - pivot[1]).abs() < 1e-3,
+        "o ponto fixo andou: {landed:?} != {pivot:?}"
     );
 }
 

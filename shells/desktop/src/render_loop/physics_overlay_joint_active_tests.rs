@@ -60,6 +60,7 @@ fn marks(active: bool) -> Vec<(BezPath, [f32; 4])> {
         &camera(),
         window(),
     )
+    .paths
 }
 
 /// **Um joint desligado desenha a MESMA figura, apagada — e nada dele fica

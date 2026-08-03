@@ -172,6 +172,7 @@ pub(crate) mod physics_overlay;
 mod physics_overlay_annotations;
 mod physics_overlay_contacts;
 mod physics_overlay_gesture;
+mod physics_overlay_joint_ghost;
 mod physics_overlay_joint_glyphs;
 mod physics_overlay_joint_readout;
 mod physics_overlay_joints;

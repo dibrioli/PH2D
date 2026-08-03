@@ -308,11 +308,13 @@ fn a_rope_that_cannot_route_wears_the_not_holding_colour() {
         win,
     );
     let broken_els: usize = painted
+        .paths
         .iter()
         .filter(|(_, c)| *c == JOINT_BROKEN_RGBA)
         .map(|(p, _)| p.elements().len())
         .sum();
     let amber_els: usize = painted
+        .paths
         .iter()
         .filter(|(_, c)| *c == JOINT_RGBA)
         .map(|(p, _)| p.elements().len())
@@ -350,7 +352,8 @@ fn a_rope_that_routes_stays_in_the_holding_colour() {
         super::joint_tests::G,
         &camera(),
         window(),
-    );
+    )
+    .paths;
     let amber: usize = painted
         .iter()
         .filter(|(_, c)| *c == JOINT_RGBA)
@@ -366,4 +369,95 @@ fn a_rope_that_routes_stays_in_the_holding_colour() {
         broken == 0,
         "a corda sadia pintou {broken} elementos na cor do não-segura"
     );
+}
+
+/// **E o NÚMERO ao lado dela diz por quê** (W-RopeSays).
+///
+/// ⚠️ **O desenho já vestia o vermelho do *não-segura* e o readout continuava
+/// âmbar dizendo `0 N`** — duas metades do mesmo fato discordando, com a metade
+/// que carrega o NÚMERO afirmando a mais tranquilizadora das duas. E `0 N` não é
+/// uma medição: o passe da polia sai por `continue` antes de medir coisa alguma,
+/// então não houve carga a ler.
+///
+/// ⚠️ **O fato vem da MESMA chamada que desenha.** O `joint_marks` publica quem
+/// não está segurando e o readout lê a lista; uma `rope_route_resolves()` própria
+/// seria uma segunda resposta a *esta corda está segurando?* — e no dia em que
+/// discordasse voltaria exactamente este defeito.
+///
+/// Mutação (o readout ignorar a lista) ⇒ volta o `0 N` âmbar e este gate sangra
+/// nas DUAS metades.
+#[test]
+fn the_readout_of_a_rope_that_cannot_route_says_so_instead_of_zero() {
+    use super::super::physics_overlay_joint_readout::joint_readouts;
+    use super::super::physics_overlay_joints::{JOINT_BROKEN_RGBA, joint_marks};
+
+    let (mut v, mut wheels) = elevator();
+    wheels[0].centre = v.anchor_a;
+    wheels[0].radius = 1.0;
+    // Um teto, para a corda GANHAR readout (só um joint quebrável ou selecionado
+    // desenha número — sem isto o gate mediria a ausência pelo motivo errado).
+    v.break_force = 60.0;
+    let (cam, win) = (camera(), window());
+
+    // O desenho publica o fato…
+    let not_acting = joint_marks(
+        true,
+        std::slice::from_ref(&v),
+        &wheels,
+        &[0.0; 2],
+        super::joint_tests::G,
+        &cam,
+        win,
+    )
+    .not_acting;
+    assert_eq!(
+        not_acting,
+        vec![v.entity],
+        "o desenho nao publicou que a corda nao esta' segurando"
+    );
+
+    // …e o readout o HONRA.
+    let out = joint_readouts(true, std::slice::from_ref(&v), None, &cam, win, &not_acting);
+    let texts: Vec<&str> = out.iter().map(|r| r.text.as_str()).collect();
+    assert_eq!(
+        texts,
+        ["no route"],
+        "o readout de uma corda degenerada tem de DIZER por que nao ha' numero"
+    );
+    assert!(
+        out.iter().all(|r| r.rgba == JOINT_BROKEN_RGBA),
+        "o numero saiu numa cor diferente da que o desenho vestiu"
+    );
+}
+
+/// **E a corda SADIA continua mostrando a carga** — o controle do gate acima.
+///
+/// Sem ele, imprimir `"no route"` em toda polia passaria.
+#[test]
+fn the_readout_of_a_rope_that_routes_still_shows_the_load() {
+    use super::super::physics_overlay_joint_readout::joint_readouts;
+    use super::super::physics_overlay_joints::joint_marks;
+
+    let (mut v, wheels) = elevator();
+    v.break_force = 60.0;
+    v.load.force = 58.9;
+    v.peak.force = 58.9;
+    let (cam, win) = (camera(), window());
+    let not_acting = joint_marks(
+        true,
+        std::slice::from_ref(&v),
+        &wheels,
+        &[0.0; 2],
+        super::joint_tests::G,
+        &cam,
+        win,
+    )
+    .not_acting;
+    assert!(
+        not_acting.is_empty(),
+        "a fixture do controle degenerou -- o gate mediria o outro caso"
+    );
+    let out = joint_readouts(true, std::slice::from_ref(&v), None, &cam, win, &not_acting);
+    let texts: Vec<&str> = out.iter().map(|r| r.text.as_str()).collect();
+    assert_eq!(texts, ["58.9 / 60 N"]);
 }

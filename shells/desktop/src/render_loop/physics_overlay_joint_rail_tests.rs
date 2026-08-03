@@ -168,7 +168,7 @@ fn a_rails_ghost_slides_along_the_axis_instead_of_turning() {
 
     // O centro da silhueta, em MUNDO, reconstruído da caixa que ela desenha.
     let centre = |limit: f32| -> [f64; 2] {
-        let p = crate::render_loop::physics_overlay_joints::limit_ghost(
+        let p = crate::render_loop::physics_overlay_joint_ghost::limit_ghost(
             &sim,
             &views,
             Some((views[0].entity, limit)),

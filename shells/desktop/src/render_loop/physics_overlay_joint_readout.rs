@@ -108,6 +108,9 @@ pub(super) fn joint_readouts(
     selected: Option<Entity>,
     camera: &Camera2d,
     window: WindowSize,
+    // As cordas cuja ROTA não resolve (W-RopeSays), publicadas pela MESMA
+    // chamada que as desenhou vermelhas.
+    not_acting: &[Entity],
 ) -> Vec<Readout> {
     if !show {
         return Vec::new();
@@ -145,6 +148,22 @@ pub(super) fn joint_readouts(
             });
             *line += 1.0;
         };
+        // **Uma corda que não resolve a rota DIZ ISSO** (W-RopeSays), em vez de
+        // um `0 N` em âmbar.
+        //
+        // ⚠️ O desenho dela já veste o vermelho do *não-segura* desde o
+        // W-PulleyDegenerate, e o número ao lado continuava âmbar dizendo zero —
+        // **duas metades do mesmo fato discordando**, com a metade que carrega o
+        // NÚMERO afirmando a mais tranquilizadora das duas. E zero não é uma
+        // medição: o passe da polia sai por `continue` antes de medir coisa
+        // alguma, então não houve carga a ler.
+        //
+        // O texto substitui a linha de carga inteira — imprimir *"no route"* e
+        // um teto ao lado sugeriria que o teto está sendo comparado com algo.
+        if not_acting.contains(&v.entity) {
+            push("no route".to_string(), JOINT_BROKEN_RGBA, &mut line);
+            continue;
+        }
         let rgba = if v.broken {
             JOINT_BROKEN_RGBA
         } else {

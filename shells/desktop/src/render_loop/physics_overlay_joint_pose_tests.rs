@@ -101,7 +101,7 @@ fn the_ghost_draws_the_limit_pose_without_moving_the_body() {
     let views = [v];
     let before = *sim.world().get::<Transform>(arm).expect("arm");
 
-    let flat = crate::render_loop::physics_overlay_joints::limit_ghost(
+    let flat = crate::render_loop::physics_overlay_joint_ghost::limit_ghost(
         &sim,
         &views,
         Some((views[0].entity, 0.0)),
@@ -109,7 +109,7 @@ fn the_ghost_draws_the_limit_pose_without_moving_the_body() {
         window(),
     )
     .expect("um limite em 0 já tem fantasma (sobre o corpo)");
-    let turned = crate::render_loop::physics_overlay_joints::limit_ghost(
+    let turned = crate::render_loop::physics_overlay_joint_ghost::limit_ghost(
         &sim,
         &views,
         Some((views[0].entity, std::f32::consts::FRAC_PI_2)),
@@ -147,7 +147,7 @@ fn the_ghost_draws_the_limit_pose_without_moving_the_body() {
 
     // Sem arrasto, sem fantasma.
     assert!(
-        crate::render_loop::physics_overlay_joints::limit_ghost(
+        crate::render_loop::physics_overlay_joint_ghost::limit_ghost(
             &sim,
             &views,
             None,

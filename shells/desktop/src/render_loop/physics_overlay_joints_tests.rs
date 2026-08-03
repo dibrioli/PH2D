@@ -111,6 +111,7 @@ pub(super) fn marks(v: &JointView) -> Vec<(BezPath, [f32; 4])> {
         &camera(),
         window(),
     )
+    .paths
 }
 
 /// Todos os pontos desenhados numa cor.
@@ -382,6 +383,7 @@ fn a_length_scales_with_the_world_and_an_angle_does_not() {
             &zoomed,
             window(),
         )
+        .paths
     };
 
     // ⚠️ O anel se mede pela ASSINATURA — MUITOS pontos a UM raio — e não pelo
@@ -528,7 +530,8 @@ fn a_slack_rope_sags_along_gravity_and_a_taut_one_is_straight() {
         [0.0, 0.0],
         &camera(),
         window(),
-    );
+    )
+    .paths;
     assert!(
         extent(&zero_g, JOINT_RGBA).1 < taut_h + 1.0,
         "sem gravidade a corda ainda pendurou — a barriga estava vindo de um \
@@ -547,8 +550,9 @@ fn the_toggle_silences_the_joint_marks_too() {
             &[0.0; 2],
             G,
             &camera(),
-            window()
+            window(),
         )
+        .paths
         .is_empty()
     );
 }
@@ -556,7 +560,11 @@ fn the_toggle_silences_the_joint_marks_too() {
 /// **Uma cena sem joints não custa nada.**
 #[test]
 fn no_joints_no_paths() {
-    assert!(joint_marks(true, &[], &wheels(), &[0.0; 2], G, &camera(), window()).is_empty());
+    assert!(
+        joint_marks(true, &[], &wheels(), &[0.0; 2], G, &camera(), window(),)
+            .paths
+            .is_empty()
+    );
 }
 
 /// **Um pino em repouso ainda desenha alguma coisa.**

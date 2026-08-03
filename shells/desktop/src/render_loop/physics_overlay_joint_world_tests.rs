@@ -40,6 +40,7 @@ fn marks(v: &JointView, g: [f32; 2]) -> Vec<(BezPath, [f32; 4])> {
         &camera(),
         window(),
     )
+    .paths
 }
 
 fn body_pin() -> JointView {

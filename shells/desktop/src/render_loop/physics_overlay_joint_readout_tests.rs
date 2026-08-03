@@ -68,6 +68,7 @@ fn texts(v: &JointView, selected: bool) -> Vec<String> {
         selected.then(E1),
         &camera(),
         window(),
+        &[],
     )
     .into_iter()
     .map(|r| r.text)
@@ -150,6 +151,7 @@ fn a_broken_joint_shows_the_load_that_broke_it_not_the_zero_it_carries_now() {
         None,
         &camera(),
         window(),
+        &[],
     )
     .into_iter()
     .map(|r| r.rgba)
@@ -163,6 +165,7 @@ fn a_broken_joint_shows_the_load_that_broke_it_not_the_zero_it_carries_now() {
         None,
         &camera(),
         window(),
+        &[],
     )
     .into_iter()
     .map(|r| r.rgba)
@@ -227,6 +230,7 @@ fn the_readout_respects_the_overlay_switch() {
             Some(E1()),
             &camera(),
             window(),
+            &[],
         )
         .is_empty()
     );

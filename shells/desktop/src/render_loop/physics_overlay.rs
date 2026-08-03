@@ -431,7 +431,7 @@ pub(super) fn draw(
     // O FANTASMA primeiro: ele é o fundo do arco que o artista está arrastando,
     // e desenhá-lo por cima do glifo faria a silhueta apagar a agulha viva.
     if show
-        && let Some(ghost) = super::physics_overlay_joints::limit_ghost(
+        && let Some(ghost) = super::physics_overlay_joint_ghost::limit_ghost(
             sim,
             joint_views,
             posed_limit,
@@ -442,12 +442,18 @@ pub(super) fn draw(
         vector_scene.inner_mut().stroke(
             &Stroke::new(OUTLINE_PX),
             Affine::IDENTITY,
-            &Brush::Solid(Color::new(super::physics_overlay_joints::JOINT_GHOST_RGBA)),
+            &Brush::Solid(Color::new(
+                super::physics_overlay_joint_ghost::JOINT_GHOST_RGBA,
+            )),
             None,
             &ghost,
         );
     }
-    for (path, rgba) in joint_marks(
+    // ⚠️ **A lista sai do DESENHO e é lida pelo READOUT**, nesta ordem
+    // (W-RopeSays): quem sabe se a rota de uma corda resolve é a chamada que a
+    // desenhou, e uma segunda pergunta divergiria — o desenho vermelho com um
+    // `0 N` âmbar ao lado era exatamente essa divergência.
+    let marks = joint_marks(
         show,
         joint_views,
         joint_wheels,
@@ -455,7 +461,8 @@ pub(super) fn draw(
         joint_gravity,
         camera,
         window,
-    ) {
+    );
+    for (path, rgba) in marks.paths {
         vector_scene.inner_mut().stroke(
             &Stroke::new(OUTLINE_PX),
             Affine::IDENTITY,
@@ -473,6 +480,7 @@ pub(super) fn draw(
         selected_joint,
         camera,
         window,
+        &marks.not_acting,
     ) {
         // Centrado numa caixa larga o bastante para o rótulo mais longo
         // (`1234 / 1234 N.m`) e alta o bastante para uma linha.

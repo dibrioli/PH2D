@@ -60,6 +60,16 @@ fn is_layout_widget(id: ph2d_a11y::NodeId) -> bool {
         && crate::populate::layout::LAYOUT_CHIPS.contains(&id)
 }
 
+/// **Os oito chips das ÂNCORAS** (plano UI/UX W3). Todos atravessam o barramento — ao contrário do
+/// modo de recuo do layout, aqui não há chip panel-local: cada um escreve o par de âncoras no
+/// COMPONENTE, e a régua é capturada do outro lado.
+///
+/// Percorre o MESMO array que o `populate` regista, pela mesma razão: um chip novo entra numa
+/// lista só, e o gate de seam clica todas.
+fn is_anchor_widget(id: ph2d_a11y::NodeId) -> bool {
+    crate::populate::anchors::ANCHOR_CHIPS.contains(&id)
+}
+
 /// **Os treze pills de MODO + os três chips da fonte de largura do lápis.**
 ///
 /// ⚠️ **Extraído da cadeia porque ela bateu no teto de 200 LOC por função** — e o doc-comment do
@@ -197,6 +207,7 @@ pub(super) fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         // um comando de DOCUMENTO. Fora daqui os tres pintariam e estariam MORTOS.
         || is_frame_widget(id)
         || is_layout_widget(id)
+        || is_anchor_widget(id)
         // As opções dos pickers de token (plano UI/UX W4). Fora daqui elas pintam, acendem sob
         // o mouse e o Click morre no painel — o artista escolheria um token e nada mudaria.
         || is_token_option(id)

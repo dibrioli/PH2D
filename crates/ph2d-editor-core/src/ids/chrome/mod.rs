@@ -53,6 +53,7 @@ mod vector_cut;
 mod vector_filters;
 mod vector_frame;
 /// Os ids do **AUTO LAYOUT** (plano UI/UX W2, ADR-0153) — irmão de `vector_frame` pelo mesmo teto.
+mod vector_anchors;
 mod vector_layout;
 /// Os ids da seção **Pattern on Path** (plano 23) — irmão de `vector` pelo teto de 700 LOC.
 mod vector_patternpath;
@@ -103,6 +104,7 @@ pub use vector_contour::*;
 pub use vector_cut::*;
 pub use vector_filters::*;
 pub use vector_frame::*;
+pub use vector_anchors::*;
 pub use vector_layout::*;
 pub use vector_patternpath::*;
 pub use vector_pencil::*;

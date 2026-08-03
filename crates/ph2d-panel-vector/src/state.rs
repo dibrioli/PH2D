@@ -59,6 +59,12 @@ pub(crate) use snap_state::{
 };
 pub use snap_state::{set_current_guides, set_current_snap, set_current_snap_position};
 
+/// **AS ÂNCORAS da seleção** (plano UI/UX W3) — a regra do filho que NÃO flui.
+#[path = "state_anchors.rs"]
+mod anchor_state;
+pub use anchor_state::{AnchorState, set_anchor_state};
+pub(crate) use anchor_state::anchor_state;
+
 /// **O AUTO LAYOUT da seleção** (plano UI/UX W2, ADR-0153) — o fluxo da moldura, o comportamento
 /// do filho, e o modo do recuo (este último panel-local).
 #[path = "state_layout.rs"]

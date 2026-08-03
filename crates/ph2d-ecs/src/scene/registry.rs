@@ -305,6 +305,14 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // de undo).
     reg.register::<crate::VecLayout>("ph2d::ecs::VecLayout");
     reg.register::<crate::VecLayoutItem>("ph2d::ecs::VecLayoutItem");
+    // AS ÂNCORAS (plano UI/UX W3): a outra metade da responsividade — a regra do filho que NÃO
+    // está num fluxo. Sem o registro, um Ctrl+Z (ou reabrir o projeto) devolveria a arte inteira,
+    // com todas as formas no lugar certo, e a REGRA evaporada: a moldura voltaria a redimensionar
+    // sem que nada a acompanhasse, e nada na tela diria porquê. E há aqui um agravante que o
+    // `VecLayout` não tem — o componente carrega a RÉGUA (a moldura contra a qual a regra foi
+    // autorada), que é insubstituível: re-armar depois de a perder captura a moldura de AGORA, e
+    // o redimensionamento que o artista já tinha feito fica assado no lugar errado.
+    reg.register::<crate::VecAnchors>("ph2d::ecs::VecAnchors");
     // O vínculo TEXTO -> caminho-guia. Mesma razão de todos os irmãos, e mais forte: sem o
     // registro, um Ctrl+Z (ou reabrir o projeto) devolveria o texto DESLIGADO do caminho, reto,
     // no meio da cena -- e o caminho continuaria lá, parecendo certo.
@@ -385,7 +393,8 @@ mod tests {
         // + 1 booleana viva (VecBoolGroup, plano UI/UX W1)
         // + 1 moldura (VecFrame, plano UI/UX W0)
         // + 1 tabela de bindings de token (VecBindings, plano UI/UX W4)
-        // + 2 auto layout (VecLayout no pai + VecLayoutItem no filho, plano UI/UX W2).
+        // + 2 auto layout (VecLayout no pai + VecLayoutItem no filho, plano UI/UX W2)
+        // + 1 âncoras (VecAnchors, plano UI/UX W3).
         //
         // **Este número existe para doer.** Um componente que não passa por aqui é
         // DESCARTADO em silêncio pelo snapshot — o undo e o save o perdem, e o bug só
@@ -397,7 +406,8 @@ mod tests {
         // `VecConnector`, e as duas linhas, sozinhas, diziam 27 — por motivos diferentes. A
         // árvore combinada tem 28. Escolher "um dos lados" aqui é o erro que deixa o
         // workspace vermelho com dois merges verdes.
-        assert_eq!(reg.len(), 46);
+        assert_eq!(reg.len(), 47);
+        assert!(reg.get_by_name("ph2d::ecs::VecAnchors").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecBindings").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecLayout").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecLayoutItem").is_some());

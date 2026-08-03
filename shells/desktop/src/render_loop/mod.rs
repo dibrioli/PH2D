@@ -2089,6 +2089,7 @@ impl crate::App {
             let mut pending_frame_clip: Option<bool> = None;
             // O AUTO LAYOUT (plano UI/UX W2, ADR-0153): um chip de radio e um campo numerico.
             let mut pending_layout_edit: Option<crate::vec_layout_edit::LayoutEdit> = None;
+            let mut pending_anchor_edit: Option<crate::vec_anchor_edit::AnchorEdit> = None;
             let mut pending_layout_field: Option<(crate::vec_layout_edit::LayoutField, f64)> = None;
             // **O TOKEN escolhido no picker** (plano UI/UX W4): a propriedade + o token, ou
             // `None` no token = SOLTAR (a propriedade volta ao literal do documento).
@@ -2433,6 +2434,12 @@ impl crate::App {
                                 // distribuição moram no COMPONENTE, então o clique e' da shell —
                                 // o painel so' mostra qual chip esta' aceso.
                                 pending_layout_edit = Some(e);
+                            } else if let Some(e) = crate::vec_anchor_edit::anchor_edit_for_id(*id)
+                            {
+                                // AS ÂNCORAS (plano UI/UX W3): o par de âncoras mora no
+                                // COMPONENTE, e a RÉGUA e' capturada do lado da shell — que e'
+                                // quem mede a moldura. O painel so' mostra qual chip esta' aceso.
+                                pending_anchor_edit = Some(e);
                             } else if let Some(choice) = crate::vec_bindings::token_choice(*id) {
                                 // Uma escolha do picker de token. O valor mora no COMPONENTE
                                 // (mundo), então o clique é da shell — o painel só mostra.
@@ -6191,6 +6198,21 @@ impl crate::App {
                 if let Some((f, v)) = pending_layout_field {
                     crate::vec_layout_edit::apply_layout_field(sim, &self.vec_entities, &sel, f, v);
                 }
+                // AS ÂNCORAS (plano UI/UX W3): aplicar, e só depois publicar — publicar antes
+                // deixaria o chip a mostrar a regra ANTERIOR por um frame, e o artista veria a
+                // escolha "não pegar" (a mesma ordem que os tokens abaixo).
+                if let Some(e) = pending_anchor_edit {
+                    crate::vec_anchor_edit::apply_anchor_edit(
+                        sim,
+                        vec_scene,
+                        &self.vec_entities,
+                        &sel,
+                        e,
+                    );
+                }
+                ph2d_panel_vector::state::set_anchor_state(
+                    crate::vec_anchor_edit::selected_anchors(sim, &self.vec_entities, &sel),
+                );
                 ph2d_panel_vector::state::set_layout_flow(crate::vec_layout_edit::selected_flow(
                     sim,
                     &self.vec_entities,

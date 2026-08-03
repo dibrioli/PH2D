@@ -107,6 +107,7 @@ pub use vec_blend::VecBlend;
 /// A ORDEM dos filhos de uma entidade — a porta única que a reescreve (o `bevy` só a guarda
 /// como ordem de INSERÇÃO, e re-inserir na sequência certa é um detalhe do motor).
 mod children_order;
+mod vec_anchors;
 mod vec_bindings;
 mod vec_bool_group;
 mod vec_contour;
@@ -123,6 +124,7 @@ mod vec_stroke_profile;
 mod vec_symmetry;
 mod vec_text_path;
 pub use children_order::reinsert_children_in_order;
+pub use vec_anchors::VecAnchors;
 pub use vec_bindings::{BoundProp, TokenRef, VecBindings};
 pub use vec_bool_group::VecBoolGroup;
 pub use vec_contour::{MAX_CONTOUR_STEPS, VecContour};

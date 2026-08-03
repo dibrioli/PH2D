@@ -79,6 +79,12 @@ pub use ph2d_editor_core::ids::{
     VECTOR_VERT_DELETE, VECTOR_VERT_SEL_SAME, VECTOR_VERT_SEL_SUBPATH, VECTOR_VERT_SMOOTH,
     VECTOR_VERT_SYMMETRIC, VECTOR_WIDTH, VECTOR_WIDTH_NUM,
 };
+/// **AS ÂNCORAS** (plano UI/UX W3): a seção + as duas fileiras de quatro chips.
+pub use ph2d_editor_core::ids::{
+    VECTOR_ANCHOR_H_CENTER, VECTOR_ANCHOR_H_END, VECTOR_ANCHOR_H_START, VECTOR_ANCHOR_H_STRETCH,
+    VECTOR_ANCHOR_V_CENTER, VECTOR_ANCHOR_V_END, VECTOR_ANCHOR_V_START, VECTOR_ANCHOR_V_STRETCH,
+    VECTOR_SECTION_ANCHORS,
+};
 /// Os campos da RELAÇÃO do conector (a seção só existe com um conector na seleção).
 pub use ph2d_editor_core::ids::{
     VECTOR_CONNECTOR_CORNER, VECTOR_CONNECTOR_CURVE, VECTOR_CONNECTOR_JETTY,

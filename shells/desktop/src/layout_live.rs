@@ -191,6 +191,8 @@ pub(crate) struct LayoutLive {
     /// ⚠️ Os dois saem do MESMO `x`, uma linha um do outro: é isso que impede a pose publicada de
     /// divergir da geometria assada.
     poses: std::collections::BTreeMap<VecPathId, Xform>,
+    /// Quantos filhos ANCORADOS o último passe moveu (o braço do W3).
+    anchored: usize,
 }
 
 impl LayoutLive {
@@ -203,9 +205,31 @@ impl LayoutLive {
         self.placed
     }
 
+    /// Quantos filhos ANCORADOS o último passe moveu — o irmão do [`Self::placed`], e `cfg(test)`
+    /// pela mesma razão.
+    #[cfg(test)]
+    pub(crate) fn anchored(&self) -> usize {
+        self.anchored
+    }
+
     /// **A tabela de poses deste frame**, para o `VecViewState` que a shell publica.
     pub(crate) fn poses(&self) -> Vec<(VecPathId, Xform)> {
         self.poses.iter().map(|(id, x)| (*id, *x)).collect()
+    }
+
+    /// **A ÚNICA porta que publica uma pose** — e ela COMPÕE, nunca sobrescreve.
+    ///
+    /// ⚠️ Um caminho pode ser movido DUAS vezes no mesmo frame: o fluxo coloca a moldura interna e
+    /// a âncora depois move a moldura externa inteira, ou o inverso. A geometria compõe sozinha (o
+    /// segundo braço assa por cima do que o primeiro deixou em `live`), mas a TABELA não: um
+    /// `insert` cru guardaria só o último afim, e quem **aponta** — o hit-test, a caixa do gizmo,
+    /// as âncoras do modo Node — procuraria a forma a meio caminho de onde ela está.
+    fn add_pose(&mut self, id: VecPathId, x: Xform) {
+        let composed = match self.poses.get(&id) {
+            Some(prev) => prev.then(&x),
+            None => x,
+        };
+        self.poses.insert(id, composed);
     }
 
     /// Onde o último passe pôs os filhos desta moldura — `None` se ela não flui.
@@ -234,11 +258,23 @@ impl LayoutLive {
         live: &mut LiveGeometry,
     ) {
         self.placed = 0;
+        self.anchored = 0;
         self.slots.clear();
         self.poses.clear();
         for frame in outermost_flowing_frames(scene, sim, map) {
             self.lay_out(scene, sim, xforms, live, frame);
         }
+        // ⚠️ **As âncoras DEPOIS do fluxo, e a ordem é load-bearing pela MEDIÇÃO** (plano UI/UX
+        // W3). A âncora lê a caixa da moldura; o fluxo DECIDE essa caixa. Ao contrário, o fluxo
+        // mediria a moldura pela sub-árvore que a âncora acabou de colocar — e a âncora colocou-a
+        // lendo a caixa que o fluxo ainda ia decidir: um laço.
+        //
+        // ⚠️ E a razão NÃO é a que parece: para uma colocação que é `translate ∘ scale`, as duas
+        // ordens dão o MESMO ponto (`S·(x+d) + t` contra `S·x + t + S·d` — a mesma expressão), e
+        // a primeira versão do gate ficou verde sobre a ordem trocada por causa disso. O que
+        // discrimina é só o tamanho MEDIDO do nó, e é exactamente isso que o gate
+        // `the_anchor_does_not_feed_back_into_the_flows_measurement` afirma.
+        self.anchor_all(scene, sim, map, xforms, live);
     }
 
     /// Uma moldura (e tudo o que flui dentro dela).
@@ -368,7 +404,7 @@ impl LayoutLive {
                 }
                 live.insert(id, items);
                 // O MESMO afim, como número: quem não desenha geometria precisa dele.
-                self.poses.insert(id, x);
+                self.add_pose(id, x);
             }
             self.placed += 1;
         }
@@ -451,6 +487,12 @@ fn has_flowing_ancestor(sim: &SimWorld, e: Entity) -> bool {
     }
     false
 }
+
+/// O braço das ÂNCORAS — a outra metade do passe (plano UI/UX W3). Módulo FILHO para poder usar
+/// os helpers privados daqui sem os tornar públicos, e para o dono da tabela de poses continuar a
+/// ser UM.
+#[path = "layout_live_anchors.rs"]
+pub(crate) mod anchors;
 
 #[cfg(test)]
 #[path = "layout_live_tests.rs"]

@@ -622,7 +622,9 @@ fn every_section_header_is_registered_as_collapsible() {
         // +1 (plano UI/UX W0): FRAME — o contêiner. Some inteira sem moldura na seleção.
         // +1 (plano UI/UX W2): LAYOUT — a moldura que EMPILHA. Some sem moldura E sem filho de
         // fluxo na seleção.
-        31,
+        // +1 (plano UI/UX W3): ANCHORS — a regra do filho que NÃO flui. Ela e a LAYOUT nunca
+        // aparecem juntas: a shell só publica a regra para um filho cujo pai não empilha.
+        32,
         "a lista de secoes mudou — confira que o paint pinta um header para cada uma"
     );
     for &id in ids::VECTOR_SECTIONS {

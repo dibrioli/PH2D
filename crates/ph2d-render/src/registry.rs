@@ -31,7 +31,7 @@ mod tests {
         // + 1 render component (Sprite). SAO DOIS contadores: quem registra
         // um componente novo no ECS tem de somar aqui tambem, e este gate so
         // roda na suite da ph2d-render.
-        assert_eq!(reg.len(), 47);
+        assert_eq!(reg.len(), 48);
         assert!(reg.get_by_name("ph2d::render::Sprite").is_some());
     }
 }

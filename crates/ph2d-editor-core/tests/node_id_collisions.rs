@@ -673,6 +673,19 @@ const CHROME_IDS: &[(&str, NodeId)] = &[
     // O 6º pill: o CONECTOR (a linha que gruda em duas formas e as segue).
     ("VECTOR_MODE_CONNECT", ids::VECTOR_MODE_CONNECT),
     ("VECTOR_SHAPE_GROUP_DD", ids::VECTOR_SHAPE_GROUP_DD),
+    // AS ÂNCORAS (plano UI/UX W3). ⚠️ Os ids do AUTO LAYOUT (W2) NÃO estão nesta tabela — ela é
+    // mantida à mão e aquela wave não a alimentou, exactamente o apodrecimento que o comentário
+    // do `filter_*_id` lá em baixo já documenta. Acrescentar só os desta wave não conserta a
+    // lista, mas deixa de a piorar.
+    ("VECTOR_SECTION_ANCHORS", ids::VECTOR_SECTION_ANCHORS),
+    ("VECTOR_ANCHOR_H_START", ids::VECTOR_ANCHOR_H_START),
+    ("VECTOR_ANCHOR_H_CENTER", ids::VECTOR_ANCHOR_H_CENTER),
+    ("VECTOR_ANCHOR_H_END", ids::VECTOR_ANCHOR_H_END),
+    ("VECTOR_ANCHOR_H_STRETCH", ids::VECTOR_ANCHOR_H_STRETCH),
+    ("VECTOR_ANCHOR_V_START", ids::VECTOR_ANCHOR_V_START),
+    ("VECTOR_ANCHOR_V_CENTER", ids::VECTOR_ANCHOR_V_CENTER),
+    ("VECTOR_ANCHOR_V_END", ids::VECTOR_ANCHOR_V_END),
+    ("VECTOR_ANCHOR_V_STRETCH", ids::VECTOR_ANCHOR_V_STRETCH),
     ("VECTOR_SECTION_TOOL", ids::VECTOR_SECTION_TOOL),
     ("VECTOR_SECTION_SHAPE", ids::VECTOR_SECTION_SHAPE),
     (

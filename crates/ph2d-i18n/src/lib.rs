@@ -190,6 +190,18 @@ pub fn tr(key: &str) -> &'static str {
         "panel.vector.frame.clip" => "Clip content",
         "panel.vector.frame.clip.off" => "Off",
         "panel.vector.frame.clip.on" => "On",
+        // **AS ÂNCORAS** (plano UI/UX W3) — a regra do filho que NÃO está num fluxo.
+        // ⚠️ A vertical é nomeada pelo que se VÊ ("Top"/"Bottom"), e não pelo sinal: o documento é
+        // Y-up, então "Top" é a âncora 1. A tradução mora numa tabela só, na shell.
+        "panel.vector.section.anchors" => "Constraints",
+        "panel.vector.anchors.h" => "Horizontal",
+        "panel.vector.anchors.v" => "Vertical",
+        "panel.vector.anchors.left" => "Left",
+        "panel.vector.anchors.right" => "Right",
+        "panel.vector.anchors.top" => "Top",
+        "panel.vector.anchors.bottom" => "Bottom",
+        "panel.vector.anchors.center" => "Center",
+        "panel.vector.anchors.stretch" => "Stretch",
         // **O AUTO LAYOUT** (plano UI/UX W2, ADR-0153) — a moldura que empilha os filhos.
         // ⚠️ Os rótulos de direção incluem o "Off" porque *"esta moldura flui?"* e *"em que
         // direção?"* são a MESMA pergunta (o `display` do CSS) — ver `VECTOR_LAYOUT_DIR_OFF`.

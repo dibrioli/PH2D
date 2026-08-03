@@ -148,6 +148,11 @@ impl BodyCtx<'_> {
         // que o contêiner É, esta diz o que ele FAZ com o conteúdo. Some inteira quando não há
         // moldura na seleção nem um filho dentro de um fluxo.
         y = self.step(y, |b, y| b.layout_section(y));
+        // AS ÂNCORAS vêm logo a seguir ao layout, e são a OUTRA metade da mesma pergunta
+        // (*o que este filho faz quando a moldura muda de tamanho?*): o layout responde por quem
+        // está num fluxo, esta por quem não está. Elas nunca aparecem juntas — a shell só publica
+        // a regra para um filho cujo pai NÃO flui.
+        y = self.step(y, |b, y| b.anchors_section(y));
         y = self.step(y, |b, y| b.shape_params_section(snap, y));
         // Os parâmetros do CONECTOR selecionado — irmã da seção acima (mesma estética,
         // mesmos widgets), logo abaixo dela: as duas respondem "o que é este objeto que

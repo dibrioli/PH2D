@@ -79,6 +79,8 @@ mod paint_arrange;
 mod paint_catalog;
 /// A seção do CONECTOR (Route / Jetty / Spread) — snapshot + seed + paint + evento.
 mod paint_connector;
+/// A seção CONSTRAINTS — as âncoras (plano UI/UX W3), irmã de `paint_layout`.
+mod paint_anchors;
 /// A seção FRAME — o contêiner (plano UI/UX W0), irmã de `paint_pencil`.
 mod paint_frame;
 mod paint_layout;

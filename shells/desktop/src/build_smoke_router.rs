@@ -213,5 +213,13 @@ pub(crate) fn route(app: &mut crate::App, f: u32, level: u32) -> bool {
         crate::token_smoke::frame(app, f);
         return true;
     }
+    // A cena das ÂNCORAS (=52, plano UI/UX W3) — irmã `anchor_smoke`. Mesma disciplina: dá o
+    // material (uma moldura com quatro peças coladas onde um artista as poria) e **nada nasce
+    // ancorado** — quem arma a regra é o artista, e é isso que faz a costura painel→shell→ECS→
+    // desenho ser de facto exercitada.
+    if level == 52 {
+        crate::anchor_smoke::frame(app, f);
+        return true;
+    }
     false
 }

@@ -330,6 +330,11 @@ const PANEL_A11Y_DELEGATE_OK: &[(&str, &str)] = &[
         "delegates to segmented/number_row/number_cell (paint_segmented/paint_number_input-backed) \
          in paint_rows",
     ),
+    (
+        "ph2d-panel-vector/src/paint_anchors.rs",
+        "delegates to segmented (paint_segmented-backed) in paint_rows — a seção só tem as duas \
+         fileiras de chips",
+    ),
     // ⚠️ O Transform ENTROU nesta lista em 2026-08-02, e a razão é um MOVE: o `number_cell` que o
     // fazia casar com o marcador `paint_number_input` mudou-se para `paint_rows.rs` quando o AUTO
     // LAYOUT virou o segundo consumidor dele. O arquivo ficou orquestrador puro — a fiação de

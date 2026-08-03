@@ -37,6 +37,7 @@
 //!   `ph2d.input` Luau snapshot is a follow-up.
 //! - **M11** Vello text/widget overlay — needs surface-sharing pass.
 
+mod anchor_smoke;
 mod adapter_smoke;
 mod align_live;
 mod align_smoke;
@@ -320,6 +321,7 @@ mod value_time_smoke;
 mod value_unary_smoke;
 mod value_wave_smoke;
 mod value_wrap_smoke;
+mod vec_anchor_edit;
 mod vec_bindings;
 mod vec_blend;
 /// O painel edita o CONECTOR selecionado (Route / Jetty / Spread) — resolve o valor

@@ -182,7 +182,18 @@ pub struct GraphNodeView {
     /// dimmed with a strike, so *"this node is inert on purpose"* reads at a glance instead of
     /// looking like a chain the artist forgot to wire.
     pub bypassed: bool,
+    /// **The baked-tile THUMBNAIL** (doc 86 A5): a mini-render of the OBJECT this node is a
+    /// source of, shown in the moldura in place of the point scatter. `Some` only when the
+    /// node's stream carries a **uniform, non-zero `texture_id`** (a `source.object` / a
+    /// duplicator of one shape) — the shell fills it from the object bake (§A2/A3) by that id.
+    /// A positional-only node (no object) keeps `None` and draws its scatter: the two answer
+    /// different questions — *what* an instance draws vs *where* the copies go.
+    pub thumbnail: Option<PreviewThumb>,
 }
+
+#[path = "snapshot_thumb.rs"]
+mod thumb;
+pub use thumb::PreviewThumb;
 
 /// One wire in the view. Its color is the source port's [`Domain`].
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -455,6 +466,7 @@ pub fn snapshot_from(graph: &Graph, registry: &NodeRegistry) -> GraphViewSnapsho
                 preview: None,
                 // Read straight from the graph — bypass is authored state, not a cook result.
                 bypassed: graph.node_bypassed(inst.id),
+                thumbnail: None,
             }
         })
         .collect();

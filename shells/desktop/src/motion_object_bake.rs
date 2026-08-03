@@ -60,6 +60,9 @@ struct Baked {
     key: BakeKey,
     texture_id: u32,
     size: [f32; 2],
+    /// A mini-render of the tile for the source node's card preview (doc 86 A5),
+    /// downsampled once at bake ⇒ cached like everything else here.
+    thumb: ph2d_panel_motion_graph::PreviewThumb,
 }
 
 /// The change-detector (the `fx_live_memo::FxKey` pattern). Compared by
@@ -112,6 +115,17 @@ impl ObjectBake {
             texture_id: b.texture_id,
             size: b.size,
         })
+    }
+
+    /// The baked-tile THUMBNAIL for `texture_id`, or `None` (doc 86 A5). The membrane
+    /// hands it to the source node's snapshot so the card shows a mini-render of the
+    /// object it references instead of a single origin dot. O(cache) — a handful of
+    /// named shapes, read once a frame; the tid comes from the stream's own column.
+    pub(crate) fn thumbnail_for(&self, texture_id: u32) -> Option<ph2d_panel_motion_graph::PreviewThumb> {
+        self.cache
+            .values()
+            .find(|b| b.texture_id == texture_id)
+            .map(|b| b.thumb.clone())
     }
 
     /// Re-bake every named vector whose drawing changed; evict + RELEASE the
@@ -182,8 +196,16 @@ impl ObjectBake {
             if let Some(t) = old {
                 renderer.individual_mut().release(t);
             }
-            if let Some((texture_id, size)) = baked {
-                self.cache.insert(name, Baked { key, texture_id, size });
+            if let Some((texture_id, size, thumb)) = baked {
+                self.cache.insert(
+                    name,
+                    Baked {
+                        key,
+                        texture_id,
+                        size,
+                        thumb,
+                    },
+                );
             }
         }
     }
@@ -202,7 +224,7 @@ fn bake_one(
     gpu: &GpuContext,
     surface_format: wgpu::TextureFormat,
     renderer: &mut SpriteRenderer,
-) -> Option<(u32, [f32; 2])> {
+) -> Option<(u32, [f32; 2], ph2d_panel_motion_graph::PreviewThumb)> {
     // A fixed-DPI "camera": world units → tile pixels. NOT the live camera, so
     // the tile is zoom-independent. Bounds honour the stroke half-width + miter.
     let camera = Affine::scale(BAKE_DPI);
@@ -236,11 +258,75 @@ fn bake_one(
     if rgba.len() < want {
         return None;
     }
+    // The card thumbnail (doc 86 A5) comes from these SAME bytes before they are
+    // dropped — one downsample per content change, cached with the tile.
+    let thumb = thumbnail(&rgba[..want], wpx, hpx);
     // Upload as an individual texture — the SAME raw bytes the FX GPU→GPU copy
     // would move, so the colour behaviour matches; no Sprite is mutated.
     let texture_id = renderer.acquire_individual(wpx, hpx, &rgba[..want]).ok()?;
     let size = [(x1 - x0) as f32 / BAKE_DPI as f32, (y1 - y0) as f32 / BAKE_DPI as f32];
-    Some((texture_id, size))
+    Some((texture_id, size, thumb))
+}
+
+/// A small tile side (px) for a card thumbnail — big enough to read the shape,
+/// small enough that the bytes ride the snapshot per frame for free (~37 KB at
+/// 96²). Shared by the vector (A2) and Flip (A3) bakes.
+pub(crate) const THUMB_MAX: u32 = 96;
+
+/// Downsample straight RGBA8 (`w`×`h`) to a card thumbnail (doc 86 A5): at most
+/// [`THUMB_MAX`] on its long side, aspect preserved, never upscaled. Box-average in
+/// PREMULTIPLIED space (`Σ c·a / Σ a`) so a transparent edge does not bleed a dark
+/// halo into the shrunk shape — the premul trap the overlay lesson names (ADR-0120
+/// neighbourhood). One pass per bake; the result is cached with the tile.
+pub(crate) fn thumbnail(rgba: &[u8], w: u32, h: u32) -> ph2d_panel_motion_graph::PreviewThumb {
+    let (w, h) = (w.max(1), h.max(1));
+    let long = w.max(h);
+    let (tw, th) = if long <= THUMB_MAX {
+        (w, h)
+    } else {
+        let s = THUMB_MAX as f32 / long as f32;
+        (
+            ((w as f32 * s).round() as u32).max(1),
+            ((h as f32 * s).round() as u32).max(1),
+        )
+    };
+    let mut out = vec![0u8; (tw * th * 4) as usize];
+    for oy in 0..th {
+        let sy0 = oy * h / th;
+        let sy1 = ((oy + 1) * h / th).max(sy0 + 1).min(h);
+        for ox in 0..tw {
+            let sx0 = ox * w / tw;
+            let sx1 = ((ox + 1) * w / tw).max(sx0 + 1).min(w);
+            let (mut sr, mut sg, mut sb, mut sa, mut n) = (0u64, 0u64, 0u64, 0u64, 0u64);
+            for sy in sy0..sy1 {
+                for sx in sx0..sx1 {
+                    let i = ((sy * w + sx) * 4) as usize;
+                    let a = rgba[i + 3] as u64;
+                    sr += rgba[i] as u64 * a;
+                    sg += rgba[i + 1] as u64 * a;
+                    sb += rgba[i + 2] as u64 * a;
+                    sa += a;
+                    n += 1;
+                }
+            }
+            let o = ((oy * tw + ox) * 4) as usize;
+            // `sa == 0` ⇒ the block was fully transparent; leave the colour at 0 (already
+            // zeroed), which is what a transparent thumbnail texel should carry.
+            if let (Some(r), Some(g), Some(b)) =
+                (sr.checked_div(sa), sg.checked_div(sa), sb.checked_div(sa))
+            {
+                out[o] = r as u8;
+                out[o + 1] = g as u8;
+                out[o + 2] = b as u8;
+            }
+            out[o + 3] = (sa / n.max(1)) as u8;
+        }
+    }
+    ph2d_panel_motion_graph::PreviewThumb {
+        rgba: std::sync::Arc::new(out),
+        w: tw,
+        h: th,
+    }
 }
 
 #[cfg(test)]
@@ -277,5 +363,64 @@ mod tests {
             dpi_q: 256,
         };
         assert_ne!(base, edited, "editing the shape re-bakes");
+    }
+
+    /// **The A5 thumbnail is bounded and keeps aspect** (doc 86 A5). A wide opaque tile
+    /// downsamples so its LONG side is `THUMB_MAX`, the 3:1 aspect survives, the bytes are
+    /// tightly packed, and an opaque colour comes out unchanged. FALSIFIED by an unbounded
+    /// or stretched thumbnail.
+    #[test]
+    fn the_thumbnail_is_bounded_and_keeps_aspect() {
+        let (w, h) = (600u32, 200u32);
+        let rgba = vec![255u8; (w * h * 4) as usize]; // opaque white
+        let t = thumbnail(&rgba, w, h);
+        assert_eq!(t.w.max(t.h), THUMB_MAX, "long side capped at THUMB_MAX");
+        assert!(
+            (t.w as f32 / t.h as f32 - 3.0).abs() < 0.05,
+            "the 3:1 aspect is preserved"
+        );
+        assert_eq!(t.rgba.len(), (t.w * t.h * 4) as usize, "tightly packed RGBA8");
+        assert!(
+            t.rgba.chunks(4).all(|p| p == [255, 255, 255, 255]),
+            "an opaque solid colour survives the downsample"
+        );
+    }
+
+    /// **A tile under the cap is never upscaled** (doc 86 A5) — the thumbnail of a small
+    /// shape is the tile itself, not a blurry blow-up. FALSIFIED by scaling toward THUMB_MAX.
+    #[test]
+    fn a_small_tile_is_never_upscaled() {
+        let (w, h) = (10u32, 8u32);
+        let rgba = vec![128u8; (w * h * 4) as usize];
+        let t = thumbnail(&rgba, w, h);
+        assert_eq!((t.w, t.h), (w, h), "under the cap the thumbnail is the tile");
+    }
+
+    /// **The downsample does not bleed a dark halo into a transparent edge** (doc 86 A5).
+    /// A row of alternating opaque-RED / fully-transparent pixels merges pairwise: the
+    /// PREMULTIPLIED average keeps the surviving colour pure red (`Σc·a/Σa = 255`); a naive
+    /// STRAIGHT average would pull it toward black (`(255+0)/2 = 127`), the premul trap the
+    /// overlay lesson names. FALSIFIED by averaging straight RGBA.
+    #[test]
+    fn the_downsample_does_not_bleed_a_halo_into_a_transparent_edge() {
+        let (w, h) = (THUMB_MAX * 2, 1u32); // 2:1 downsample merges pixel pairs
+        let mut rgba = vec![0u8; (w * h * 4) as usize];
+        for x in (0..w).step_by(2) {
+            let i = (x * 4) as usize;
+            rgba[i..i + 4].copy_from_slice(&[255, 0, 0, 255]); // opaque red; odd stays transparent
+        }
+        let t = thumbnail(&rgba, w, h);
+        assert_eq!(t.w, THUMB_MAX, "downsampled 2:1");
+        for p in t.rgba.chunks(4) {
+            assert_eq!(
+                &p[0..3],
+                &[255, 0, 0],
+                "colour stays pure red — a straight average would darken it to 127"
+            );
+            assert!(
+                (p[3] as i32 - 127).abs() <= 1,
+                "alpha is the coverage average of the merged pair"
+            );
+        }
     }
 }

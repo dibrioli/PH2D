@@ -219,6 +219,7 @@ mod tests {
             is_sink: false,
             preview: None,
             bypassed: false,
+            thumbnail: None,
         }
     }
 

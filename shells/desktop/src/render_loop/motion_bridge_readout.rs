@@ -187,6 +187,20 @@ fn preview_points(stream: &Stream) -> Option<Vec<[f32; 2]>> {
     Some(p.iter().step_by(step).copied().collect())
 }
 
+/// The single non-zero `texture_id` this node's stream carries on EVERY instance, or
+/// `None` (doc 86 A5). It is the signal that a node is a source of ONE object — a
+/// `source.object`, or a duplicator of one shape — which earns a baked-tile thumbnail
+/// in the moldura in place of its scatter. A mixed-tid group (each child a different
+/// tile) or a positional-only node (`texture_id` absent / 0) reads `None` and keeps
+/// its dots: *what one instance draws* is only a single answer when there IS one.
+fn uniform_tid(stream: &Stream) -> Option<u32> {
+    let Some(Column::Scalar(v)) = stream.get("texture_id") else {
+        return None;
+    };
+    let first = *v.first()? as u32;
+    (first != 0 && v.iter().all(|&t| t as u32 == first)).then_some(first)
+}
+
 /// Stamp every card with what it produced this frame: its readout, the MASS of its stream (the
 /// wire's width), whether the value CHANGED since last frame (the wire's march), and whether it
 /// is a sink (where the panel's reachability walk starts).
@@ -258,6 +272,24 @@ pub(super) fn stamp(
             (None, Some(s)) => preview_points(s),
             (None, None) => None,
         };
+        // The baked-tile THUMBNAIL (doc 86 A5): a node that is a source of ONE object
+        // (a uniform, non-zero `texture_id`) shows a mini-render of what it draws in
+        // place of its scatter — the tid comes from the stream's own column, and the
+        // tile is looked up in whichever bake (vector A2 / Flip A3) made it. `None`
+        // keeps the dots. Extracted as an owned tid FIRST so the bake lookup borrows a
+        // disjoint field, not the memo the stream came from.
+        let tid = match (cooked, sampled) {
+            (Some(o), _) => o.first().map(|v| v.as_stream()),
+            (None, Some(s)) => Some(s),
+            (None, None) => None,
+        }
+        .and_then(uniform_tid);
+        node.thumbnail = tid.and_then(|t| {
+            motion
+                .object_bake
+                .thumbnail_for(t)
+                .or_else(|| motion.flip_object_bake.thumbnail_for(t))
+        });
 
         // A node the cook never pulled is NEVER hot — no data flows through a wire nothing
         // consumes, and a dead branch flickering with dashes would be the loudest lie on the

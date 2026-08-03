@@ -8,7 +8,7 @@ use crate::geom::{self, View};
 use crate::snapshot::GraphNodeView;
 use crate::state::PreviewPos;
 use ph2d_editor_core::paint::{fill_rounded_rect, resolve, stroke_rounded_rect};
-use ph2d_editor_core::paint_batch::fill_dots;
+use ph2d_editor_core::paint_batch::{draw_image, fill_dots};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, Theme};
@@ -48,9 +48,31 @@ pub(super) fn draw_preview(
         1.0,
         resolve(ColorToken::Border, theme),
     );
-    // Zoomed out, the box is a few pixels tall: the dots would be sub-pixel mush that reads as
+    // Zoomed out, the box is a few pixels tall: the content would be sub-pixel mush that reads as
     // noise. Keep the framed window and stop — it holds its shape at every zoom.
     if rect.h < PREVIEW_MIN_H {
+        return;
+    }
+    // **The baked-tile THUMBNAIL** (doc 86 A5): when this node is a source of ONE object (a
+    // uniform, non-zero `texture_id`), draw a mini-render of what it draws instead of the scatter
+    // — the scatter answers *where the copies go*, the thumbnail *what each copy IS*, and for a
+    // `source.object` the scatter is a single useless dot at the origin. Aspect-fit, centred, y-up
+    // like the canvas (the tile is straight RGBA8 with its own +y-down rows, so `draw_image_rgba`
+    // places it upright — the moldura is a window onto the render, not the world's y-up scatter).
+    if let Some(thumb) = &n.thumbnail {
+        let pad = PREVIEW_INSET * view.zoom;
+        let (tw, th) = (thumb.w.max(1) as f32, thumb.h.max(1) as f32);
+        let s = ((rect.w - 2.0 * pad) / tw).min((rect.h - 2.0 * pad) / th).max(0.0);
+        let (dw, dh) = (tw * s, th * s);
+        let (cx, cy) = (rect.x + rect.w * 0.5, rect.y + rect.h * 0.5);
+        let (x0, y0) = ((cx - dw * 0.5) as f64, (cy - dh * 0.5) as f64);
+        draw_image(
+            ctx.scene,
+            &thumb.rgba,
+            thumb.w,
+            thumb.h,
+            (x0, y0, x0 + dw as f64, y0 + dh as f64),
+        );
         return;
     }
     // Preview-capable but empty THIS tick (the emitter crossing zero, doc 86 B1): the box stays,

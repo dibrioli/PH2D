@@ -77,6 +77,9 @@ struct FlipBaked {
     key: u64,
     texture_id: u32,
     size: [f32; 2],
+    /// A mini-render of the composed tile for the source node's card preview (doc 86
+    /// A5), downsampled once at bake ⇒ cached like the tile.
+    thumb: ph2d_panel_motion_graph::PreviewThumb,
 }
 
 /// The Flip bake cache + its scratch renderers (own `FlipRenderer`/`FlipCompose`/
@@ -117,6 +120,16 @@ impl FlipObjectBake {
             texture_id: b.texture_id,
             size: b.size,
         })
+    }
+
+    /// The baked-tile THUMBNAIL for `texture_id`, or `None` (doc 86 A5) — the Flip
+    /// twin of `ObjectBake::thumbnail_for`, so the membrane looks a source node's tid
+    /// up in BOTH bakes without caring which medium answered.
+    pub(crate) fn thumbnail_for(&self, texture_id: u32) -> Option<ph2d_panel_motion_graph::PreviewThumb> {
+        self.cache
+            .values()
+            .find(|b| b.texture_id == texture_id)
+            .map(|b| b.thumb.clone())
     }
 
     /// Re-bake every named Flip object whose resolved frame changed; evict + RELEASE
@@ -186,8 +199,16 @@ impl FlipObjectBake {
             if let Some(t) = old {
                 renderer.individual_mut().release(t);
             }
-            if let Some((texture_id, size)) = baked {
-                self.cache.insert(name, FlipBaked { key, texture_id, size });
+            if let Some((texture_id, size, thumb)) = baked {
+                self.cache.insert(
+                    name,
+                    FlipBaked {
+                        key,
+                        texture_id,
+                        size,
+                        thumb,
+                    },
+                );
             }
         }
     }
@@ -202,7 +223,7 @@ impl FlipObjectBake {
         playhead: &Playhead,
         gpu: &GpuContext,
         renderer: &mut SpriteRenderer,
-    ) -> Option<(u32, [f32; 2])> {
+    ) -> Option<(u32, [f32; 2], ph2d_panel_motion_graph::PreviewThumb)> {
         let frame = obj.frame_at(playhead);
 
         // The visible layers WITH geometry at this frame, bottom-to-top. Each carries
@@ -338,8 +359,11 @@ impl FlipObjectBake {
         if rgba.len() < need {
             return None;
         }
+        // The card thumbnail (doc 86 A5) from the SAME composed bytes, via the shared
+        // downsampler the vector bake uses — one twin, one look.
+        let thumb = crate::motion_object_bake::thumbnail(&rgba[..need], wpx, hpx);
         let texture_id = renderer.acquire_individual(wpx, hpx, &rgba[..need]).ok()?;
-        Some((texture_id, [bw, bh]))
+        Some((texture_id, [bw, bh], thumb))
     }
 }
 

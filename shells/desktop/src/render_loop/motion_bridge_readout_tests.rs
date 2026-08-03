@@ -487,3 +487,24 @@ fn a_gpu_driven_frame_fills_the_cards_and_quotes_the_exact_count() {
         hi - lo
     );
 }
+
+/// **A uniform, non-zero `texture_id` is the thumbnail signal** (doc 86 A5). A stream where
+/// every instance carries the SAME non-zero tid names a source of ONE object → `Some(tid)`; a
+/// MIXED-tid group, a zero tid (positional-only), or no `texture_id` column at all → `None`, so
+/// the card keeps its scatter. FALSIFIED by dropping the all-equal check (a mixed group would
+/// wrongly borrow the first child's tile) or the non-zero guard (a bare emitter would grow a
+/// blank thumbnail).
+#[test]
+fn a_uniform_nonzero_texture_id_earns_a_thumbnail() {
+    let uni = Stream::new(3).with("texture_id", Column::Scalar(vec![7.0, 7.0, 7.0]));
+    assert_eq!(uniform_tid(&uni), Some(7), "all instances share tile 7");
+
+    let mixed = Stream::new(3).with("texture_id", Column::Scalar(vec![7.0, 9.0, 7.0]));
+    assert_eq!(uniform_tid(&mixed), None, "a mixed-tid group has no single answer");
+
+    let zero = Stream::new(2).with("texture_id", Column::Scalar(vec![0.0, 0.0]));
+    assert_eq!(uniform_tid(&zero), None, "tid 0 is a positional-only node");
+
+    let no_col = Stream::new(2).with("P", Column::Vec2(vec![[0.0, 0.0], [1.0, 1.0]]));
+    assert_eq!(uniform_tid(&no_col), None, "no texture_id column, no thumbnail");
+}

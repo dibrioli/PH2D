@@ -7,7 +7,22 @@
 //! set of shapes never has to learn that the hard way (doc 53: the motion graph's postage stamps
 //! did, at ~4 000 draw objects a frame, and took the frame rate with them).
 
-use ph2d_vector::{Affine, BezPath, Color, Fill, Stroke, VectorScene};
+use ph2d_vector::{Affine, BezPath, Color, Fill, ImageQuality, Stroke, VectorScene};
+
+/// **A single straight-RGBA8 image placed in a screen rect** — a baked-tile thumbnail in a card's
+/// preview moldura (doc 86 A5), or any bitmap a panel wants to blit without learning
+/// [`ph2d_vector`]'s `ImageQuality` axis. Bilinear ([`ImageQuality::Medium`]): a thumbnail is a
+/// shrunk render, so smoothing between texels reads better than the blocky nearest a *measurement*
+/// (a spectrogram cell) wants. The bytes are shared by refcount — the caller owns the `Arc`.
+pub fn draw_image(
+    scene: &mut VectorScene,
+    rgba: &std::sync::Arc<Vec<u8>>,
+    w: u32,
+    h: u32,
+    dest: (f64, f64, f64, f64),
+) {
+    scene.draw_image_rgba(rgba, w, h, dest, ImageQuality::Medium);
+}
 
 /// **Many little dots, ONE draw call.**
 ///

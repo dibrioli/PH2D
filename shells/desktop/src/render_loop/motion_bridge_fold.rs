@@ -442,6 +442,7 @@ fn card_view(
         // group is NOT muting each member (enter it and mute nodes for that) — this reads the
         // group flag, not the members', so a group with a few muted members still draws normally.
         bypassed: motion.doc.subgraph_bypassed(sid),
+        thumbnail: None,
     }
 }
 

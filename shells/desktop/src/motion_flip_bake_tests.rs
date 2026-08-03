@@ -130,7 +130,7 @@ fn a_baked_flip_object_carries_the_composed_two_layer_silhouette() {
     renderer.individual_mut().release(warm.0);
 
     let t0 = std::time::Instant::now();
-    let (tid, wsize) = bake
+    let (tid, wsize, _thumb) = bake
         .bake_one(obj, &Xform::IDENTITY, &Playhead::default(), &gpu, &mut renderer)
         .expect("the bake produced a tile");
     let dt = t0.elapsed();

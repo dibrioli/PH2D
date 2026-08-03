@@ -311,10 +311,10 @@ fn the_anchor_does_not_feed_back_into_the_flows_measurement() {
         drawn(&live, &scene, inner_id)
     }
     let (clo, chi) = inner_box(false);
-    let (alo, ahi) = inner_box(true);
+    let (rlo, rhi) = inner_box(true);
     assert!(
-        approx(clo[0], alo[0]) && approx(chi[0], ahi[0]),
-        "a moldura interna foi colocada em {alo:?}..{ahi:?} com a regra e em {clo:?}..{chi:?} sem \
+        approx(clo[0], rlo[0]) && approx(chi[0], rhi[0]),
+        "a moldura interna foi colocada em {rlo:?}..{rhi:?} com a regra e em {clo:?}..{chi:?} sem \
          ela — a ancora esta' a realimentar a medicao do fluxo"
     );
 }

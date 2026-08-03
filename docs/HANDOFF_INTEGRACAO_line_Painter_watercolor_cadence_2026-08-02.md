@@ -1,5 +1,9 @@
 # HANDOFF DE INTEGRAÇÃO — `line/Painter`, a cadência da aquarela (2026-08-02)
 
+> ⚠️ **SUPERSEDIDO para a INTEGRAÇÃO pelo [handoff MESTRE](HANDOFF_INTEGRACAO_line_Painter_MESTRE_2026-08-02.md)** — este cobre só a
+> metade **B (a aquarela)**. Ele segue válido no DETALHE de cada wave; o mestre é o que a integração precisa
+> (colisão, ADRs, schema, os dois arquivos de alta colisão e o ponteiro de memória pendurado).
+
 > Para o **agente integrador**. A linha NÃO integrou e NÃO fez push.
 > Detalhe técnico e as medições: [`docs/Painter/28_otimizacoes_o_que_funcionou.md` §5.71](Painter/28_otimizacoes_o_que_funcionou.md).
 

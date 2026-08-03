@@ -23,11 +23,11 @@ pub const VECTOR_SYM_OFF: NodeId = hash_node_id("vector.sym.off");
 /// Ver [`VECTOR_SYM_OFF`].
 pub const VECTOR_SYM_ON: NodeId = hash_node_id("vector.sym.on");
 
-/// **Mirror X** — reflecte esquerda↔direita numa linha vertical.
+/// **Mirror X** — reflete esquerda↔direita numa linha vertical.
 pub const VECTOR_SYM_KIND_X: NodeId = hash_node_id("vector.sym.kind_x");
-/// **Mirror Y** — reflecte cima↔baixo numa linha horizontal.
+/// **Mirror Y** — reflete cima↔baixo numa linha horizontal.
 pub const VECTOR_SYM_KIND_Y: NodeId = hash_node_id("vector.sym.kind_y");
-/// **Custom** — reflecte na linha que o artista desenhou.
+/// **Custom** — reflete na linha que o artista desenhou.
 pub const VECTOR_SYM_KIND_CUSTOM: NodeId = hash_node_id("vector.sym.kind_custom");
 /// **Radial** — `segments` cópias em rotação (a *circular* que o Enio pediu explicitamente).
 pub const VECTOR_SYM_KIND_RADIAL: NodeId = hash_node_id("vector.sym.kind_radial");

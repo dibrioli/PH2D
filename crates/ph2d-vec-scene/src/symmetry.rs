@@ -14,10 +14,10 @@
 //!
 //! [`ph2d_symmetry`] guarda *que espelho, onde, quantas cópias* — porque o **documento** também
 //! precisa dele (`ph2d_ecs::VecSymmetry`) e a fundação não vê este crate. Aqui fica só o que
-//! precisa de `VecPath`: reflectir vértices, repor o winding, fundir as metades. Os tipos são
+//! precisa de `VecPath`: refletir vértices, restaurar o winding, fundir as metades. Os tipos são
 //! re-exportados, então quem já escrevia `symmetry::SymmetrySpec` continua a escrever.
 //!
-//! # A reflexão inverte o WINDING, e sem repor abre-se um buraco
+//! # A reflexão inverte o WINDING, e sem restaurá-lo abre-se um buraco
 //!
 //! Sob [`crate::FillRule::NonZero`] dois contornos sobrepostos de sentidos OPOSTOS cancelam-se:
 //! quem espelha uma forma através de um eixo que a atravessa veria um **buraco** onde esperava um
@@ -66,7 +66,7 @@ const EPS: f64 = 1e-12;
 /// já se vê no ecrã. Há gate a varrer exactamente esta tabela.
 const FUSE_TOL_FRAC: f64 = 0.01;
 
-/// Reflecte um vértice. O `corner_radius` é um comprimento LOCAL e a reflexão é uma isometria,
+/// Reflete um vértice. O `corner_radius` é um comprimento LOCAL e a reflexão é uma isometria,
 /// então ele sobrevive intacto.
 fn reflect_vert(v: &VecVertex, ax: Axis) -> VecVertex {
     VecVertex {

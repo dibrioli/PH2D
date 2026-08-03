@@ -49,7 +49,9 @@ use ph2d_flip::{FlipDoc, FlipObject, FlipObjectId};
 use ph2d_flip_render::{FlipCompose, FlipRenderer, pack_drawing};
 use ph2d_gpu::GpuContext;
 use ph2d_host::WindowSize;
-use ph2d_render::layer_compositor::{LayerCompositor, LayerOp, LayerPixelProvider, LayerPixels, Region};
+use ph2d_render::layer_compositor::{
+    LayerCompositor, LayerOp, LayerPixelProvider, LayerPixels, Region,
+};
 use ph2d_render::{Camera2d, SpriteRenderer};
 use ph2d_vec_scene::Xform;
 
@@ -125,7 +127,10 @@ impl FlipObjectBake {
     /// The baked-tile THUMBNAIL for `texture_id`, or `None` (doc 86 A5) — the Flip
     /// twin of `ObjectBake::thumbnail_for`, so the membrane looks a source node's tid
     /// up in BOTH bakes without caring which medium answered.
-    pub(crate) fn thumbnail_for(&self, texture_id: u32) -> Option<ph2d_panel_motion_graph::PreviewThumb> {
+    pub(crate) fn thumbnail_for(
+        &self,
+        texture_id: u32,
+    ) -> Option<ph2d_panel_motion_graph::PreviewThumb> {
         self.cache
             .values()
             .find(|b| b.texture_id == texture_id)
@@ -334,10 +339,24 @@ impl FlipObjectBake {
             } else {
                 fold_model(&base, &l.lm)
             };
-            let slice = compose.stage_layer(&gpu.device, &gpu.queue, render, &layer_cam, &data, (wpx, hpx));
-            if let Err(e) =
-                compositor.inject_slice_from_texture(gpu, &ops, l.key, slice, wpx, hpx, (0, 0, wpx, hpx), 0)
-            {
+            let slice = compose.stage_layer(
+                &gpu.device,
+                &gpu.queue,
+                render,
+                &layer_cam,
+                &data,
+                (wpx, hpx),
+            );
+            if let Err(e) = compositor.inject_slice_from_texture(
+                gpu,
+                &ops,
+                l.key,
+                slice,
+                wpx,
+                hpx,
+                (0, 0, wpx, hpx),
+                0,
+            ) {
                 eprintln!("[motion.flip bake] inject falhou: {e}");
                 return None;
             }
@@ -349,8 +368,11 @@ impl FlipObjectBake {
         if self.dummy.len() != need {
             self.dummy.resize(need, 0);
         }
-        let provider = DummyProvider { pixels: &self.dummy };
-        if let Err(e) = compositor.composite(gpu, &ops, &provider, wpx, hpx, Region::full(wpx, hpx)) {
+        let provider = DummyProvider {
+            pixels: &self.dummy,
+        };
+        if let Err(e) = compositor.composite(gpu, &ops, &provider, wpx, hpx, Region::full(wpx, hpx))
+        {
             eprintln!("[motion.flip bake] composite falhou: {e}");
             return None;
         }

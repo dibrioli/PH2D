@@ -51,7 +51,12 @@ fn sprite_tile(spr: &Sprite, atlas: &TextureAtlas) -> Option<Stream> {
     // `collapsed_tint` = self_tint × tint (the per-sprite modulate). The
     // inherited ancestor cascade the extract folds in is a refinement of a
     // template, deferred: a source is *this object's* appearance.
-    Some(appearance_tile(spr.size, spr.collapsed_tint(), uv_rect, texture_id))
+    Some(appearance_tile(
+        spr.size,
+        spr.collapsed_tint(),
+        uv_rect,
+        texture_id,
+    ))
 }
 
 /// The `(uv_rect, texture_id)` a sprite resolves to — the branch `sim_extract`
@@ -61,7 +66,9 @@ fn sprite_appearance(spr: &Sprite, atlas: &TextureAtlas) -> Option<([f32; 4], u3
     match spr.source {
         // Atlas → the packed cell's UV, sampling the shared atlas (`0`); the
         // cheap direct path (no bake) the sprite renderer already uses.
-        SpriteSource::Atlas { key } => Some((atlas.region_uv(key), RenderInstance::ATLAS_TEXTURE_ID)),
+        SpriteSource::Atlas { key } => {
+            Some((atlas.region_uv(key), RenderInstance::ATLAS_TEXTURE_ID))
+        }
         // Individual → the full unit rect + the store handle it already carries.
         SpriteSource::Individual { texture_id } => Some(([0.0, 0.0, 1.0, 1.0], texture_id)),
         // Cooked KTX2 resolves through `renderer.cooked_texture_id`, not in hand.
@@ -123,7 +130,12 @@ pub(super) fn publish(
     for (name, tile) in bakes.tiles() {
         cook.set_external(
             name.to_string(),
-            appearance_tile(tile.size, [1.0, 1.0, 1.0, 1.0], [0.0, 0.0, 1.0, 1.0], tile.texture_id),
+            appearance_tile(
+                tile.size,
+                [1.0, 1.0, 1.0, 1.0],
+                [0.0, 0.0, 1.0, 1.0],
+                tile.texture_id,
+            ),
         );
     }
 
@@ -135,7 +147,12 @@ pub(super) fn publish(
     for (name, tile) in flip_bakes.tiles() {
         cook.set_external(
             name.to_string(),
-            appearance_tile(tile.size, [1.0, 1.0, 1.0, 1.0], [0.0, 0.0, 1.0, 1.0], tile.texture_id),
+            appearance_tile(
+                tile.size,
+                [1.0, 1.0, 1.0, 1.0],
+                [0.0, 0.0, 1.0, 1.0],
+                tile.texture_id,
+            ),
         );
     }
 
@@ -224,7 +241,10 @@ fn walk_group_transforms(
     out.push((entity, acc));
     if let Some(children) = world.get::<Children>(entity) {
         for &child in children.iter() {
-            let child_t = world.get::<Transform>(child).copied().unwrap_or(Transform::IDENTITY);
+            let child_t = world
+                .get::<Transform>(child)
+                .copied()
+                .unwrap_or(Transform::IDENTITY);
             walk_group_transforms(world, child, Transform::compose(acc, child_t), out);
         }
     }
@@ -249,7 +269,10 @@ fn resolve_leaf(
         return Some(LeafInstance {
             p,
             rot_deg: acc.rotation.to_degrees(),
-            size: [spr.size[0] * acc.scale.x.abs(), spr.size[1] * acc.scale.y.abs()],
+            size: [
+                spr.size[0] * acc.scale.x.abs(),
+                spr.size[1] * acc.scale.y.abs(),
+            ],
             tint: spr.collapsed_tint(),
             uv,
             tid,
@@ -273,7 +296,10 @@ fn leaf_from_tile(acc: &Transform, tile: BakedTile) -> LeafInstance {
     LeafInstance {
         p: [acc.translation.x, acc.translation.y],
         rot_deg: 0.0,
-        size: [tile.size[0] * acc.scale.x.abs(), tile.size[1] * acc.scale.y.abs()],
+        size: [
+            tile.size[0] * acc.scale.x.abs(),
+            tile.size[1] * acc.scale.y.abs(),
+        ],
         tint: [1.0, 1.0, 1.0, 1.0],
         uv: [0.0, 0.0, 1.0, 1.0],
         tid: tile.texture_id,
@@ -285,10 +311,22 @@ fn leaf_from_tile(acc: &Transform, tile: BakedTile) -> LeafInstance {
 fn group_stream(leaves: &[LeafInstance]) -> Stream {
     Stream::new(leaves.len())
         .with("P", Column::Vec2(leaves.iter().map(|l| l.p).collect()))
-        .with("size", Column::Vec2(leaves.iter().map(|l| l.size).collect()))
-        .with("rot", Column::Scalar(leaves.iter().map(|l| l.rot_deg).collect()))
-        .with("tint", Column::Vec4(leaves.iter().map(|l| l.tint).collect()))
-        .with("uv_rect", Column::Vec4(leaves.iter().map(|l| l.uv).collect()))
+        .with(
+            "size",
+            Column::Vec2(leaves.iter().map(|l| l.size).collect()),
+        )
+        .with(
+            "rot",
+            Column::Scalar(leaves.iter().map(|l| l.rot_deg).collect()),
+        )
+        .with(
+            "tint",
+            Column::Vec4(leaves.iter().map(|l| l.tint).collect()),
+        )
+        .with(
+            "uv_rect",
+            Column::Vec4(leaves.iter().map(|l| l.uv).collect()),
+        )
         .with(
             "texture_id",
             Column::Scalar(leaves.iter().map(|l| l.tid as f32).collect()),
@@ -414,10 +452,22 @@ mod tests {
         };
         // ⚠️ If the walk folded the group's own transform in, the group would be at
         // (100,50) and c1 at (102,50) — these assertions are the mutation guard.
-        assert_eq!(pos(group), Some([0.0, 0.0]), "the group's OWN pose is excluded");
-        assert_eq!(pos(c1), Some([2.0, 0.0]), "a direct child at its local position");
+        assert_eq!(
+            pos(group),
+            Some([0.0, 0.0]),
+            "the group's OWN pose is excluded"
+        );
+        assert_eq!(
+            pos(c1),
+            Some([2.0, 0.0]),
+            "a direct child at its local position"
+        );
         assert_eq!(pos(c2), Some([-2.0, 1.0]), "the second direct child");
-        assert_eq!(pos(gc), Some([6.0, 0.0]), "a grandchild composed down the chain (5+1)");
+        assert_eq!(
+            pos(gc),
+            Some([6.0, 0.0]),
+            "a grandchild composed down the chain (5+1)"
+        );
     }
 
     #[test]
@@ -436,7 +486,10 @@ mod tests {
             uv: [0.0, 0.0, 1.0, 1.0],
             tid,
         };
-        let leaves = vec![leaf([-1.0, 0.0], [0.5, 0.5], 3), leaf([1.0, 0.5], [0.7, 0.7], 9)];
+        let leaves = vec![
+            leaf([-1.0, 0.0], [0.5, 0.5], 3),
+            leaf([1.0, 0.5], [0.7, 0.7], 9),
+        ];
         let inst = ph2d_eval_motion::lower_to_instances(&group_stream(&leaves));
         assert_eq!(inst.len(), 2, "one instance per child");
         assert_eq!(inst[0].world_pos, [-1.0, 0.0]);

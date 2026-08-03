@@ -308,7 +308,7 @@ impl VecScene {
 ///
 /// ⚠️ **Porta ÚNICA, e é por isso que ela existe.** A pergunta *"como se inverte um contorno?"*
 /// tinha um dono ([`crate::VecScene::reverse_path`], o botão **Reverse** da seção Vertex) e
-/// ganhou um segundo consumidor no [`crate::fx_mirror`], que precisa de repor o winding que a
+/// ganhou um segundo consumidor no [`crate::fx_mirror`], que precisa de restaurar o winding que a
 /// reflexão inverte. Duas cópias de duas linhas divergem no dia em que uma delas aprender sobre
 /// um campo novo do vértice — e a que esquecer reescreve o desenho sem erro nenhum.
 ///

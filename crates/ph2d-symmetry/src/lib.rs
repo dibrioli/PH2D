@@ -18,7 +18,7 @@
 //!
 //! # Duas famílias com propriedades OPOSTAS
 //!
-//! Uma reflexão tem determinante **−1** (inverte o sentido do contorno, e repor é obrigatório
+//! Uma reflexão tem determinante **−1** (inverte o sentido do contorno, e restaurá-lo é obrigatório
 //! senão a sobreposição abre um buraco sob `NonZero`); uma rotação tem **+1** (preserva por
 //! construção, e **não** deve passar pela reposição). [`SymmetryKind::reflects`] é a pergunta que
 //! separa as duas — uniformizar o tratamento inverteria as cópias radiais em silêncio.
@@ -35,13 +35,13 @@ pub const MAX_SEGMENTS: u32 = 12;
 /// **Que simetria** — o vocabulário do Painter, palavra por palavra.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub enum SymmetryKind {
-    /// Reflecte esquerda↔direita numa linha **vertical** pelo centro (a "X" que os artistas
+    /// Reflete esquerda↔direita numa linha **vertical** pelo centro (a "X" que os artistas
     /// esperam: ela espelha a coordenada X).
     #[default]
     MirrorX,
-    /// Reflecte cima↔baixo numa linha **horizontal** pelo centro.
+    /// Reflete cima↔baixo numa linha **horizontal** pelo centro.
     MirrorY,
-    /// Reflecte na linha arbitrária pelo centro, com a direcção que o artista desenhou.
+    /// Reflete na linha arbitrária pelo centro, com a direção que o artista desenhou.
     Custom,
     /// `segments` cópias em rotação à volta do centro — a *circular*.
     Radial,
@@ -197,7 +197,7 @@ impl SymmetrySpec {
         self.segments.clamp(MIN_SEGMENTS, MAX_SEGMENTS)
     }
 
-    /// A direcção UNITÁRIA da linha de espelho — vertical no X, horizontal no Y, a autorada no
+    /// A direção UNITÁRIA da linha de espelho — vertical no X, horizontal no Y, a autorada no
     /// Custom (com queda para vertical se for degenerada).
     ///
     /// ⚠️ Porta única: o kernel usa-a para reflectir e o **overlay** para desenhar a linha. Duas

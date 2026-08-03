@@ -3,7 +3,7 @@
 //! *"Quando ligada linhas aparecem no canvas"* (Enio, 2026-08-01). Este módulo desenha-as, e nada
 //! mais — o eixo já foi resolvido por quem sabe onde ele está.
 //!
-//! # A direcção vem da MESMA porta que reflecte
+//! # A direção vem da MESMA porta que reflete
 //!
 //! O chamador pergunta `SymmetrySpec::mirror_dir()` e passa o resultado. Uma segunda derivação
 //! aqui desenharia um eixo onde a geometria não espelha — e ninguém lê um número numa screenshot,

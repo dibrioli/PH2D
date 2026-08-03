@@ -121,7 +121,10 @@ impl ObjectBake {
     /// hands it to the source node's snapshot so the card shows a mini-render of the
     /// object it references instead of a single origin dot. O(cache) — a handful of
     /// named shapes, read once a frame; the tid comes from the stream's own column.
-    pub(crate) fn thumbnail_for(&self, texture_id: u32) -> Option<ph2d_panel_motion_graph::PreviewThumb> {
+    pub(crate) fn thumbnail_for(
+        &self,
+        texture_id: u32,
+    ) -> Option<ph2d_panel_motion_graph::PreviewThumb> {
         self.cache
             .values()
             .find(|b| b.texture_id == texture_id)
@@ -192,7 +195,16 @@ impl ObjectBake {
             }
             // Changed or new: release the previous texture (if any) and re-bake.
             let old = self.cache.remove(&name).map(|b| b.texture_id);
-            let baked = bake_one(&mut self.scratch, scene, xforms, live, id, gpu, surface_format, renderer);
+            let baked = bake_one(
+                &mut self.scratch,
+                scene,
+                xforms,
+                live,
+                id,
+                gpu,
+                surface_format,
+                renderer,
+            );
             if let Some(t) = old {
                 renderer.individual_mut().release(t);
             }
@@ -264,7 +276,10 @@ fn bake_one(
     // Upload as an individual texture — the SAME raw bytes the FX GPU→GPU copy
     // would move, so the colour behaviour matches; no Sprite is mutated.
     let texture_id = renderer.acquire_individual(wpx, hpx, &rgba[..want]).ok()?;
-    let size = [(x1 - x0) as f32 / BAKE_DPI as f32, (y1 - y0) as f32 / BAKE_DPI as f32];
+    let size = [
+        (x1 - x0) as f32 / BAKE_DPI as f32,
+        (y1 - y0) as f32 / BAKE_DPI as f32,
+    ];
     Some((texture_id, size, thumb))
 }
 
@@ -349,12 +364,24 @@ mod tests {
         // the transform are unchanged; only the translation moved, and the tile
         // does not carry it. A ROTATE (linear changes) or an EDIT (path changes)
         // re-bakes. A key that folded translation in would re-bake on every drag.
-        let base = BakeKey { path: star(), linear: [1.0, 0.0, 0.0, 1.0], dpi_q: 256 };
+        let base = BakeKey {
+            path: star(),
+            linear: [1.0, 0.0, 0.0, 1.0],
+            dpi_q: 256,
+        };
         // A move never touches the local path or the linear coeffs.
-        let moved = BakeKey { path: star(), linear: [1.0, 0.0, 0.0, 1.0], dpi_q: 256 };
+        let moved = BakeKey {
+            path: star(),
+            linear: [1.0, 0.0, 0.0, 1.0],
+            dpi_q: 256,
+        };
         assert_eq!(base, moved, "a move is a cache hit — no re-bake");
         // A rotate changes the linear part.
-        let rotated = BakeKey { path: star(), linear: [0.0, 1.0, -1.0, 0.0], dpi_q: 256 };
+        let rotated = BakeKey {
+            path: star(),
+            linear: [0.0, 1.0, -1.0, 0.0],
+            dpi_q: 256,
+        };
         assert_ne!(base, rotated, "a rotate re-bakes");
         // An edit changes the authored path.
         let edited = BakeKey {
@@ -379,7 +406,11 @@ mod tests {
             (t.w as f32 / t.h as f32 - 3.0).abs() < 0.05,
             "the 3:1 aspect is preserved"
         );
-        assert_eq!(t.rgba.len(), (t.w * t.h * 4) as usize, "tightly packed RGBA8");
+        assert_eq!(
+            t.rgba.len(),
+            (t.w * t.h * 4) as usize,
+            "tightly packed RGBA8"
+        );
         assert!(
             t.rgba.chunks(4).all(|p| p == [255, 255, 255, 255]),
             "an opaque solid colour survives the downsample"
@@ -393,7 +424,11 @@ mod tests {
         let (w, h) = (10u32, 8u32);
         let rgba = vec![128u8; (w * h * 4) as usize];
         let t = thumbnail(&rgba, w, h);
-        assert_eq!((t.w, t.h), (w, h), "under the cap the thumbnail is the tile");
+        assert_eq!(
+            (t.w, t.h),
+            (w, h),
+            "under the cap the thumbnail is the tile"
+        );
     }
 
     /// **The downsample does not bleed a dark halo into a transparent edge** (doc 86 A5).

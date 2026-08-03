@@ -536,7 +536,7 @@ fn every_kind_round_trips_and_is_named() {
         SymmetryKind::MirrorX,
         "um wire fora de alcance cai no default, nunca em pânico"
     );
-    // E só o Radial NÃO reflecte — é a partição que separa as duas famílias.
+    // E só o Radial NÃO reflete — é a partição que separa as duas famílias.
     for k in SymmetryKind::ALL {
         assert_eq!(k.reflects(), *k != SymmetryKind::Radial);
     }

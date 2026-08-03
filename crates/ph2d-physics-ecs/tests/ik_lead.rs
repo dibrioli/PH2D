@@ -109,7 +109,7 @@ fn drag(kind: JointKind, dist: f32, steps: i16) -> Vec<f32> {
 /// **O gesto EXISTE.** Repro: antes da correção `ik_begin` devolvia `false` ao
 /// pegar a cabeça de uma cadeia livre — o plano recusava com `root == tip`.
 ///
-/// Mutação (repor a recusa) ⇒ RED aqui e nos quatro abaixo.
+/// Mutação (restaurar a recusa) ⇒ RED aqui e nos quatro abaixo.
 #[test]
 fn grabbing_the_head_of_a_free_chain_opens_a_gesture() {
     let (_sim, mut bridge, e) = chain(JointKind::Pin);

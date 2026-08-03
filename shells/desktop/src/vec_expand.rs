@@ -122,7 +122,7 @@ pub(crate) fn apply_vec_expand(
 /// a pior resposta possível a *"não há nada aqui"*).
 ///
 /// ⚠️ **A pose entra pela CLOSURE, não por aqui**, e é isso que faz desta porta a única: o Offset
-/// assa primeiro e offseta depois (a distância é de MUNDO), a Simetria reflecte primeiro e assa
+/// assa primeiro e offseta depois (a distância é de MUNDO), a Simetria reflete primeiro e assa
 /// depois (o eixo é da FORMA). Se o `bake_xform` morasse neste laço, a simetria precisaria de um
 /// segundo laço — e o dia em que alguém corrigisse o z-order aqui, ele ficaria por corrigir lá.
 pub(crate) fn materialise_selection(

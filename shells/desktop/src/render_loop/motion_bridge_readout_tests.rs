@@ -500,11 +500,19 @@ fn a_uniform_nonzero_texture_id_earns_a_thumbnail() {
     assert_eq!(uniform_tid(&uni), Some(7), "all instances share tile 7");
 
     let mixed = Stream::new(3).with("texture_id", Column::Scalar(vec![7.0, 9.0, 7.0]));
-    assert_eq!(uniform_tid(&mixed), None, "a mixed-tid group has no single answer");
+    assert_eq!(
+        uniform_tid(&mixed),
+        None,
+        "a mixed-tid group has no single answer"
+    );
 
     let zero = Stream::new(2).with("texture_id", Column::Scalar(vec![0.0, 0.0]));
     assert_eq!(uniform_tid(&zero), None, "tid 0 is a positional-only node");
 
     let no_col = Stream::new(2).with("P", Column::Vec2(vec![[0.0, 0.0], [1.0, 1.0]]));
-    assert_eq!(uniform_tid(&no_col), None, "no texture_id column, no thumbnail");
+    assert_eq!(
+        uniform_tid(&no_col),
+        None,
+        "no texture_id column, no thumbnail"
+    );
 }

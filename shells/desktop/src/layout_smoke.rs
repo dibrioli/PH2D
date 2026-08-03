@@ -218,7 +218,7 @@ mod tests {
     /// ⚠️ Os três gates acima medem os NÚMEROS que eu escrevi; este mede o que o passe FAZ com
     /// eles. É a diferença que a política de smoke deste repo cobra — *"a sonda headless roda
     /// antes de a mensagem ser escrita"* —, porque uma cena pode ter folga, desordem e um
-    /// espaçador estreito e mesmo assim não produzir fila nenhuma (uma moldura que o colector
+    /// espaçador estreito e mesmo assim não produzir fila nenhuma (uma moldura que o coletor
     /// recusa, um filho sem caminho, uma bbox degenerada).
     ///
     /// O oráculo é o que o passo 2 do roteiro promete de OLHO: **os seis centros passam a estar em

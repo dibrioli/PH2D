@@ -329,7 +329,7 @@ impl LayoutLive {
         }
 
         let Ok(solved) = ph2d_vec_layout::solve(&nodes) else {
-            // O motor recusou (uma árvore que este colector não devia produzir): a arte fica como
+            // O motor recusou (uma árvore que este coletor não devia produzir): a arte fica como
             // está, em vez de piscar para posições que ninguém pediu.
             return;
         };

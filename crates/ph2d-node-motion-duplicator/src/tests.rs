@@ -161,8 +161,7 @@ impl OpResolver for Ops {
                 .with("P", Column::Vec2(vec![[0.0, 0.0]]))
                 .with("texture_id", Column::Scalar(vec![9.0]))
         });
-        static POINTS: FixedSrc =
-            FixedSrc(&POINTS_MAN, || points(&[[1.0, 0.0], [2.0, 0.0]]));
+        static POINTS: FixedSrc = FixedSrc(&POINTS_MAN, || points(&[[1.0, 0.0], [2.0, 0.0]]));
         static DUP: MotionDuplicator = MotionDuplicator;
         match ty {
             t if t == SHAPE_MAN.id => Some(&SHAPE),

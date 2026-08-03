@@ -62,7 +62,9 @@ pub(super) fn draw_preview(
     if let Some(thumb) = &n.thumbnail {
         let pad = PREVIEW_INSET * view.zoom;
         let (tw, th) = (thumb.w.max(1) as f32, thumb.h.max(1) as f32);
-        let s = ((rect.w - 2.0 * pad) / tw).min((rect.h - 2.0 * pad) / th).max(0.0);
+        let s = ((rect.w - 2.0 * pad) / tw)
+            .min((rect.h - 2.0 * pad) / th)
+            .max(0.0);
         let (dw, dh) = (tw * s, th * s);
         let (cx, cy) = (rect.x + rect.w * 0.5, rect.y + rect.h * 0.5);
         let (x0, y0) = ((cx - dw * 0.5) as f64, (cy - dh * 0.5) as f64);

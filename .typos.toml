@@ -531,6 +531,33 @@ multiplicativo = "multiplicativo"
 Multiplicativo = "Multiplicativo"
 MULTIPLICATIVO = "MULTIPLICATIVO"
 
+# pt-BR da jornada de 2026-08-02 (integração de 5 linhas). Todas em doc-comment ou em nome de
+# fixture de teste, lidas como inglês torto pelo dicionário en-US; são as palavras portuguesas.
+# ⚠️ O critério é o do topo desta seção — *allowlistar isto pode esconder um typo real?*. Onde a
+# resposta foi SIM, o texto foi REESCRITO em vez de entrar aqui, e ficam registradas as quatro:
+#   * `repor` → "restaurar" (colide com `report`, que este repo diz o tempo todo);
+#   * `cpy` → `mirrored` (colide com `cpu`, e este repo compara CPU×GPU em dezenas de gates);
+#   * `reflecte`/`colector`/`direcção` → `reflete`/`coletor`/`direção` — grafia pt-PT num
+#     projeto escrito em pt-BR, ou seja um erro DE VERDADE, não um falso positivo.
+#   `caracteres` — plural de `caractere`, que já está acima (keyboard.rs, gate do divisor).
+#   `balanceado` — o masonry BALANCEADO do command-palette (cena de smoke do sculpt).
+#   `transportar` — "…TRANSPORTAR o deslocamento" no traço 3D (`ph2d-sculpt3d/src/stroke.rs`).
+#   `substituto` — o SUBSTITUTO que o gate do pincel usa como controle.
+#   `expresso`/`EXPRESSO` — "…o nível EXPRESSO na pilha de multires" (`ph2d-mesh/src/multires.rs`);
+#     lido como "espresso", que é café.
+#   `extrator` — o EXTRATOR de superfície (Surface Nets, `ph2d-sdf/src/surface_nets_tests.rs`).
+#   `refere` — "…se REFERE ao vínculo de pintura" (`ph2d-vec-scene/src/paint_bind.rs`).
+#   `metalness` — termo PBR consagrado (o canal do material), não um "metallicity" torto.
+caracteres = "caracteres"
+balanceado = "balanceado"
+transportar = "transportar"
+substituto = "substituto"
+expresso = "expresso"
+EXPRESSO = "EXPRESSO"
+extrator = "extrator"
+refere = "refere"
+metalness = "metalness"
+
 [files]
 extend-exclude = [
     "target/**",

@@ -143,12 +143,12 @@ fn the_pose_is_baked_after_the_reflection_not_before() {
     // A cópia é percorrida ao contrário (a reposição do winding), então o conjunto de âncoras é
     // que tem de coincidir — não a sequência.
     let mut src: Vec<[f64; 2]> = paths[0].verts_all().map(|v| v.anchor).collect();
-    let mut cpy: Vec<[f64; 2]> = paths[1].verts_all().map(|v| v.anchor).collect();
+    let mut mirrored: Vec<[f64; 2]> = paths[1].verts_all().map(|v| v.anchor).collect();
     let key = |p: &[f64; 2]| (p[0].to_bits(), p[1].to_bits());
     src.sort_by_key(key);
-    cpy.sort_by_key(key);
-    assert_eq!(src.len(), cpy.len());
-    for (a, b) in src.iter().zip(cpy.iter()) {
+    mirrored.sort_by_key(key);
+    assert_eq!(src.len(), mirrored.len());
+    for (a, b) in src.iter().zip(mirrored.iter()) {
         assert!(
             (a[0] - b[0]).abs() < 1e-9 && (a[1] - b[1]).abs() < 1e-9,
             "a cópia de uma forma já simétrica saiu noutro lugar: {a:?} vs {b:?}"

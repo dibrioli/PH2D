@@ -45,8 +45,20 @@ fn build_stamp_graph(graph: &mut Graph, name: &str) -> NodeId {
     // Layout acima do grafo da neve (que ocupa a faixa 0..).
     graph.set_pos(src, Pos { x: 0.0, y: -260.0 });
     graph.set_pos(grid, Pos { x: 0.0, y: -140.0 });
-    graph.set_pos(dup, Pos { x: 210.0, y: -200.0 });
-    graph.set_pos(out, Pos { x: 420.0, y: -200.0 });
+    graph.set_pos(
+        dup,
+        Pos {
+            x: 210.0,
+            y: -200.0,
+        },
+    );
+    graph.set_pos(
+        out,
+        Pos {
+            x: 420.0,
+            y: -200.0,
+        },
+    );
     // shape → duplicator.shape (input 0); grid → duplicator.points (input 1).
     let wire = |g: &mut Graph, a: NodeId, ap: u16, b: NodeId, bp: u16| {
         g.connect(Edge {
@@ -87,14 +99,20 @@ fn spawn_sprite(sim: &mut ph2d_ecs::SimWorld) {
 fn star_shape() -> VecPath {
     let mut p = ph2d_vec_scene::star([0.0, 0.0], 0.5, 0.5, 5, 0.45);
     p.fill = Some(Paint::solid(Rgba8::new(255, 170, 40, 255)));
-    p.stroke = Some(ph2d_vec_scene::StrokeSpec::new(Rgba8::new(60, 40, 10, 255), 0.02));
+    p.stroke = Some(ph2d_vec_scene::StrokeSpec::new(
+        Rgba8::new(60, 40, 10, 255),
+        0.02,
+    ));
     p
 }
 
 /// Modo `=2` frame 6: a entidade da forma já existe (o `sync` do frame a criou),
 /// então ela ganha o **nome** que o `source.object` procura. A única forma da
 /// cena é a nossa.
-fn name_vector_entity(sim: &mut ph2d_ecs::SimWorld, map: &crate::vec_entities::VecEntityMap) -> bool {
+fn name_vector_entity(
+    sim: &mut ph2d_ecs::SimWorld,
+    map: &crate::vec_entities::VecEntityMap,
+) -> bool {
     let Some((_, &bits)) = map.iter().next() else {
         return false;
     };
@@ -127,21 +145,27 @@ fn spawn_flip_object_named(flip: &mut ph2d_flip::FlipDoc, name: &str) {
     // BG: um retângulo azul preenchido (o campo).
     let bg = obj.add_layer("BG");
     if let Some(d) = obj.insert_frame(bg, 0, Hold::Implicit, KeyKind::Keyframe) {
-        obj.drawing_mut(d).expect("desenho BG").strokes.push(flip_rect(
-            Vec2::new(-0.9, -0.6),
-            Vec2::new(0.9, 0.6),
-            Rgba::new(0.2, 0.5, 0.95, 1.0),
-        ));
+        obj.drawing_mut(d)
+            .expect("desenho BG")
+            .strokes
+            .push(flip_rect(
+                Vec2::new(-0.9, -0.6),
+                Vec2::new(0.9, 0.6),
+                Rgba::new(0.2, 0.5, 0.95, 1.0),
+            ));
     }
     // FG: um quadrado laranja menor por cima — a arte que torna a tile assada
     // INCONFUNDÍVEL (duas camadas compostas, não um quad chapado).
     let fg = obj.add_layer("FG");
     if let Some(d) = obj.insert_frame(fg, 0, Hold::Implicit, KeyKind::Keyframe) {
-        obj.drawing_mut(d).expect("desenho FG").strokes.push(flip_rect(
-            Vec2::new(-0.35, -0.35),
-            Vec2::new(0.35, 0.35),
-            Rgba::new(0.98, 0.7, 0.15, 1.0),
-        ));
+        obj.drawing_mut(d)
+            .expect("desenho FG")
+            .strokes
+            .push(flip_rect(
+                Vec2::new(-0.35, -0.35),
+                Vec2::new(0.35, 0.35),
+                Rgba::new(0.98, 0.7, 0.15, 1.0),
+            ));
     }
 }
 
@@ -159,7 +183,10 @@ fn flip_rect(min: Vec2, max: Vec2, color: ph2d_flip::Rgba) -> ph2d_flip::FlipStr
     }
     s.closed = true;
     s.hardness = 1.0;
-    s.fill = Some(Fill { color, opacity: 1.0 });
+    s.fill = Some(Fill {
+        color,
+        opacity: 1.0,
+    });
     s
 }
 
@@ -292,7 +319,11 @@ impl crate::App {
                     if let Some((_, &bits)) = vec_map.iter().next() {
                         let e = ph2d_ecs::Entity::from_bits(bits);
                         if let Ok(mut ent) = gfx.sim.world_mut().get_entity_mut(e) {
-                            ent.insert((Name::new("GVec"), child_at(0.0, 0.0), ph2d_ecs::ChildOf(group)));
+                            ent.insert((
+                                Name::new("GVec"),
+                                child_at(0.0, 0.0),
+                                ph2d_ecs::ChildOf(group),
+                            ));
                         }
                     }
                     // O flip (o unico objeto Flip) vira filho a direita. O sync ja

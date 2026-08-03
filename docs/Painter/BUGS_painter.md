@@ -25,6 +25,158 @@
 | [17](#bug-17--a-tinta-atravessando-a-máscara-saía-craquelada-a-proteção-era-um-fato-sobre-o-mouse-e-depois-um-teto-que-erodia) | **A tinta atravessando a máscara saía CRAQUELADA** — a força da proteção era um fato sobre o MOUSE, e depois um teto que ERODIA | Gate de proteção/seleção (`stamp_dabs` → o pull-back) | ✅ Resolvido em 2 rodadas (smoke Enio 2026-07-25) | 2026-07-25 |
 | [16](#bug-16--aquarela-borda-dura-pixelada-o-aa-alimentado-na-densidade-era-comido-pela-saturação-óptica) | **Aquarela**: "borda dura pixelada" em traço fino — o 1º fix foi verde nos gates e invisível no produto | Watercolor composite (hardening + óptica exponencial) | ✅ Resolvido (forma × sombreamento: fração como ALPHA linear na aparência; estendido a todo traço + Ragged Edge alto) | 2026-07-20 |
 
+| [18](#bug-18--a-lavagem-cobrava-por-evento-de-ponteiro-e-o-doc-dela-dizia-quadro) | **Aquarela**: a lavagem reconstruía por **EVENTO de ponteiro** e o doc dela afirmava QUADRO (+ o pen-down alocando 268 MB) | Watercolor render-path (cadência) + `freeze_watercolor_ground` | ✅ Resolvido (smoke Enio 2026-08-02) | 2026-08-02 |
+| [19](#bug-19--o-smudge-forkava-o-canvas-do-documento-em-todo-evento-e-o-oráculo-por-endereço-não-via) | **Aquarela**: o **Smudge** forkava o canvas do DOCUMENTO em todo evento (67 MB) — e o gate por ENDEREÇO lia "não moveu" | `smear_wet_base` (`Arc::make_mut` com dois donos) | ✅ Resolvido (carimbo 9,8× · quadro 3,05×) | 2026-08-02 |
+| [20](#bug-20--o-véu-de-umidade-426-msquadro-no-shell-invisível-a-toda-sonda-de-bancada) | **Aquarela**: o **véu de umidade** custava 42,6 ms/quadro no SHELL — invisível a toda sonda de bancada | `draw_wetness_overlay` (densidade de construção ≠ de exibição) | ✅ Resolvido (220,8 → 16,6 ms; smoke Enio 2026-08-02) | 2026-08-02 |
+| [21](#bug-21--a-secagem-custava-10-16-ms-em-todo-quadro-e-três-curas-byte-idênticas-mediram-100) | **Aquarela**: a **secagem** custava 10-16 ms em TODO quadro — e três curas byte-idênticas mediram **1,00×** | `dry_canvas_wet` / `pour_canvas_wet` (o custo era o CAMINHAR) | ✅ Resolvido (9,3× e 19,8×, row-parallel; smoke Enio 2026-08-02) | 2026-08-02 |
+
+## Bug #21 — A secagem custava 10-16 ms em TODO quadro, e três curas byte-idênticas mediram 1,00×
+
+**Sintoma.** O log do produto do Enio (`PH2D_PAINT_PERF`, canvas 4096², pincel 250) trazia
+`secagem 10-16 ms` **por quadro** — o maior item isolado do quadro, e ele roda **pinte-se ou não**
+(o papel seca no heartbeat). Ao lado dele, `pour 9,7-13,6`.
+
+**A hipótese, que era minha e estava errada.** O passe tirava um **snapshot do rect inteiro**
+(`vec![0; rw*rh]` alocado por quadro + a cópia completa) só para que o gather de 4 vizinhos lesse
+valores pré-passo. Parecia óbvio que a alocação e a cópia fossem o custo.
+
+**Três curas construídas, três medidas pela porta do produto:**
+
+| cura | ganho |
+|---|---|
+| **janela deslizante** (`up` de uma linha de scratch · `left` de um ESCALAR · `down`/`right` do mapa ainda não escrito) | **1,02×** |
+| **piso da erosão** (`erode = gap·step·2/255` só alcança 1 acima de `ceil(255/(step·2))`, e `gap ≤ o`) | ~1,00× |
+| **o rect ENCOLHE** para a bbox do não-zero | ~1,00× |
+
+**A causa real.** O **CAMINHAR**: 2,2 ns/texel × 12,85 M texels = 28-30 ms. A alocação e a cópia não
+apareciam.
+
+**A solução.** Os dois passes são **row-parallel** (emenda de 2026-08-02 no ADR-0109): cada linha lê
+o snapshot IMUTÁVEL — que já existia, porque a lei do decaimento é independente de ordem *por
+desenho* — e escreve só a própria fatia; a redução é `max`/`min` sobre **inteiros**, que é exatamente
+o caso que a cerca de contenção do ADR isenta. Secagem **30,44 → 3,28 ms** (9,3×), sequência de 120
+quadros **28,50 → 2,93 ms/quadro** (9,7×), despejo **12,46 → 0,63** (19,8×).
+
+⚠️ **A janela deslizante teve de ser REVERTIDA** — não por estar errada (ela é byte-idêntica e
+estritamente menos trabalho), mas porque a **dependência entre linhas** que ela cria é precisamente o
+que impede o paralelo que funciona.
+
+**Lições generalizáveis.**
+1. *Uma otimização que não mede nada **e** bloqueia a que mede é pior que nenhuma.*
+2. **O `step` é parte da fixture.** A mutação *"leia um vizinho já escrito"* **SOBREVIVEU** ao gate
+   original: a erosão é inteira, o erro vale ~`step`, e ele só atravessa a quantização em
+   `step² · 2 ≥ 255` — ou seja `step ≥ 12`, e eu tinha escolhido 5. O produto anda a `step = 1`, onde
+   o erro é invisível; *"invisível no ponto de operação de hoje"* é como um vizinho errado sobrevive
+   até alguém mexer no slider de Drying Time.
+3. **O TAMANHO também é fixture.** A 1ª versão do gate de identidade usava 128² = 10.816 texels,
+   **abaixo do piso do pool** ⇒ ela nunca entrou na rota paralela que a wave instala.
+4. **Serial e paralelo dão os MESMOS bytes** — a propriedade que torna a cura segura, e exatamente
+   por isso nenhum gate de identidade pega a regressão de **uma letra** (`par_chunks_mut` →
+   `chunks_mut`). Daí o arch-gate.
+5. Um gate que compara a tabela com a função que a **constrói** é uma **tautologia**.
+
+---
+
+## Bug #20 — O véu de umidade: 42,6 ms/quadro no shell, invisível a toda sonda de bancada
+
+**Sintoma.** FPS baixo com o Preview de umidade ligado, enquanto todas as sondas do tool mediam bem.
+
+**Causa.** `draw_wetness_overlay` reconstruía um véu RGBA sobre o rect cumulativo molhado **a cada
+quadro**, na resolução da **IMAGEM**, para ser exibido na resolução da **TELA** — um documento de
+4096² cabendo numa janela de ~1000 px.
+
+⚠️ **Por que nenhuma sonda o via:** elas medem o **TOOL**; o véu vive no **SHELL**. Quem o nomeou foi
+o log do PRODUTO (`PH2D_PAINT_PERF`, a linha `CHROME wet`), depois de eu ter instrumentado a aquarela
+com o `wash_diag`. *Uma sonda de bancada não pode ver o que não está na bancada.*
+
+**A solução, em dois passos, e o 1º não bastou.** Primeiro o **recorte à viewport** — que resolve o
+zoom para *dentro* e não faz nada quando o artista vê a pintura inteira, que é o caso do smoke.
+Depois a **amostragem na densidade de EXIBIÇÃO**: `veil_downscale` lê `sqrt(|det|)` da afim e amostra
+nesse passo.
+
+**Medido:** construção do véu a 4096² **220,8 → 16,6 ms** (passo 4) e 8,8 (passo 8); no produto,
+`CHROME wet` **42,64 → 37,05 → ~6 ms**.
+
+**Duas armadilhas de implementação, ambas pagas:** a amostragem é **média de BLOCO** e não `nearest`
+(nearest **cintila** quando o artista panha, porque o texel escolhido troca com o movimento
+sub-pixel), e as dimensões usam `div_ceil` (sem isso a última coluna parcial não existe e a borda do
+véu some).
+
+**Lições generalizáveis.**
+1. **Construir acima da densidade de exibição é desperdício por definição** — e é invisível em toda
+   métrica que não seja o relógio do quadro.
+2. O instrumento tem de morar na porta do **PRODUTO**. O `wash_diag` (irmão do `wet_diag`) foi o que
+   transformou *"a aquarela está lenta"* em quatro baldes com nome.
+3. ⚠️ **Um gate de unidade é cego à fiação do shell:** apagar a chamada de recorte deixava os três
+   gates de unidade **verdes**; quem sangra é o arch-gate. E a âncora dele **expirou duas vezes** —
+   uma quando o `rustfmt` quebrou a chamada em linhas. *Um arch-gate afirma uma relação estrutural,
+   nunca uma distância em bytes.*
+
+---
+
+## Bug #19 — O Smudge forkava o canvas do DOCUMENTO em todo evento, e o oráculo por ENDEREÇO não via
+
+**Sintoma.** Com Smudge ligado, o carimbo custava **49,60 ms/quadro** a 4096² contra 1,6 sem ele — e
+**crescia 7,4× com a tela**, enquanto todo o resto da aquarela é limitado pela **PEGADA**. Subir com
+a área é a assinatura de uma varredura de plano inteiro.
+
+**Causa.** `smear_wet_base` mantinha as **duas** referências (`wet_session_base` e `watercolor_base`)
+apontando o mesmo `Arc`; o `Arc::make_mut` seguinte via **dois donos fortes** e **clonava o documento
+inteiro** — 67 MB. E não uma vez: a re-partilha no fim da função restabelecia o par, então o fork
+acontecia **em TODO evento de ponteiro**.
+
+⚠️ **A armadilha de diagnóstico, e ela quase fechou a investigação:** o gate comparava
+`samples().as_ptr()` entre eventos. O fork **libera** a alocação anterior, e o alocador a **devolve**
+no evento seguinte ⇒ o ponteiro vai e volta, e o gate lia *"não moveu"* sobre um produto copiando
+67 MB por evento.
+
+**A solução.** Soltar a segunda referência **ANTES** do `make_mut`: com um dono só ele **MOVE** em vez
+de copiar, e a re-partilha no fim devolve o invariante. É a mesma cura da §5.12 do Wet Paint — *uma
+pergunta de IDENTIDADE não se paga com POSSE*. E o oráculo virou um **contador no produto**
+(`base_forks`), não um endereço.
+
+**Medido:** carimbo **49,60 → 5,06 ms** (9,8×) e **plano na tela**; quadro **83,4 → 27,4** (3,05×).
+Byte-idêntico por construção (`make_mut` com um dono devolve o mesmo buffer).
+
+**Lições generalizáveis.**
+1. **Endereço de heap não é identidade** — o alocador reusa. É o mesmo ABA que o ADR-0124 pagou no
+   editor de áudio; lá a cura foi uma **versão**, aqui um **contador do evento que se quer proibir**.
+2. **A FORMA responde antes do relógio:** *"o custo sobe com a tela num caminho limitado pela
+   pegada"* já nomeia a classe do defeito antes de qualquer profiler.
+3. A fixture do gate de razão tem de ser medida **onde o fenômeno domina** — a 1024²/2048² o fork é
+   ruído contra a pegada e a razão fica verde.
+
+---
+
+## Bug #18 — A lavagem cobrava por EVENTO de ponteiro, e o doc dela dizia QUADRO
+
+**Sintoma.** Aquarela "pesada" com pincel grande, pior em documentos grandes.
+
+**Causa.** A reconstrução óptica do traço rodava **uma vez por evento de ponteiro**, não por quadro.
+⚠️ E o doc do `paint_tick` **afirmava o contrário**: ele registrava um perfil de 2026-07-07 em que
+`stamps` e `tool-tick` carregavam cada um um composite completo, e justificava suprimir o do tick
+*"porque o flush do ponteiro já recompôs esta janela neste quadro"*. **Essa premissa vale para os
+métodos COALESCED** (uma entrega por quadro) **e é falsa para o freehand incremental** — que é o
+pincel de aquarela padrão, onde o flush é um por evento CRU.
+
+**Medido:** o mesmo desenho custava **2,56×** mais num dispositivo de 960 Hz que num de 125 Hz — *a
+taxa de polling do mouse vazava para o custo da obra*.
+
+**A solução.** A reconstrução é **uma por QUADRO**, byte-idêntica, e com **latência zero** (o tick
+roda depois do flush do ponteiro e antes do upload do preview, então o que o artista vê naquele
+quadro está inteiramente reconstruído).
+
+**No mesmo diagnóstico:** o **pen-down** alocava **268 MB** por traço (`freeze_watercolor_ground`
+percorre o plano três vezes) para reproduzir uma cor chapada.
+
+**Lições generalizáveis.**
+1. **Um doc que descreve CADÊNCIA é uma afirmação sobre o produto, e ela expira.** Este descrevia
+   corretamente o mundo de 2026-07-07 e mentia sobre o de 2026-08-02 — pior que doc nenhum, porque
+   tranquiliza quem o lê durante uma auditoria de custo.
+2. Uma premissa que vale para *uma família de métodos* precisa dizer **qual**; escrita sem o
+   qualificador, ela é lida como universal.
+
+
 ## Bug #17 — A tinta atravessando a máscara saía CRAQUELADA: a proteção era um fato sobre o MOUSE, e depois um teto que ERODIA
 
 **Área:** o gate de proteção/seleção do stamp (`paint/stamp_route.rs::stamp_dabs` → `paint/mask.rs`),

@@ -1,7 +1,14 @@
 # 31 — Handoff: avaliar e otimizar o modo **Watercolor**
 
-> ⚠️ **CUMPRIDO em 2026-08-02 — leia a §5.71 do [doc 28](28_otimizacoes_o_que_funcionou.md) e o
-> [handoff de integração](../HANDOFF_INTEGRACAO_line_Painter_watercolor_cadence_2026-08-02.md).**
+> ⚠️ **CUMPRIDO em 2026-08-02 — o retrato final está no [doc 32](32_aquarela_o_que_custa_hoje.md)**
+> (o MAPA: o que cada peça custa hoje, as sete soluções, as cinco tentativas medidas em ~1,00×, e as
+> duas alavancas que sobraram). O log cronológico é o [doc 28](28_otimizacoes_o_que_funcionou.md)
+> §5.71-§5.77; os bugs cuja causa enganava são o [`BUGS_painter.md`](BUGS_painter.md) #18-#21; e o
+> [handoff de integração](../HANDOFF_INTEGRACAO_line_Painter_watercolor_cadence_2026-08-02.md) é
+> para o integrador.
+>
+> **Resultado, pelo smoke do Enio:** *"pela primeira vez consegui pintar uma imagem de 4096 com
+> fluidez nos parâmetros padrão da aquarela"*.
 > Este documento continua **válido e correto no que mede** (a tabela de ablação, o piso de ruído, as
 > três coisas que ele proíbe). O que ele não sabia:
 >

@@ -3,7 +3,9 @@ name = "ph2d-paint-gpu"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
-publish = false
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
 
 # ⚠️ **A AUSÊNCIA de `ph2d-painter-brush` aqui é o desenho, não um esquecimento.**
 #
@@ -18,11 +20,12 @@ publish = false
 # dado simples — uma tabela e uma lista de discos.
 [dependencies]
 ph2d-gpu = { path = "../ph2d-gpu" }
-wgpu = "28"
+wgpu = { version = "28", features = ["wgsl"] }
 bytemuck = { version = "1", features = ["derive"] }
 
 [dev-dependencies]
 pollster = "0.4"
-
-[lints]
-workspace = true
+# ⚠️ O gate de paridade precisa da função REAL do Painter como ORÁCULO — uma reescrita local seria
+# a segunda resposta que esta crate existe para não ter. `dev`, não `dependencies`: o `src/` não a
+# toca ⇒ machete-safe, o padrão que a `ph2d-flip-render` já usa pelo mesmo motivo.
+ph2d-painter-brush = { path = "../ph2d-painter-brush" }

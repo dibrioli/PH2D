@@ -6819,6 +6819,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-paint-gpu"
+version = "0.0.0"
+dependencies = [
+ "bytemuck",
+ "ph2d-gpu",
+ "ph2d-painter-brush",
+ "pollster",
+ "wgpu",
+]
+
+[[package]]
 name = "ph2d-painter-brush"
 version = "0.0.0"
 

@@ -181,180 +181,233 @@ impl PhysicsWorld {
         // exactly what makes a rebuild reproduce the same constraint.
         self.bodies.get(a)?;
         self.bodies.get(b)?;
-        let anchor_a = Point2::new(desc.anchor_a[0], desc.anchor_a[1]);
-        let anchor_b = Point2::new(desc.anchor_b[0], desc.anchor_b[1]);
-
-        let mut joint: rapier2d::dynamics::GenericJoint = match desc.kind {
-            JointKind::Pin => {
-                let mut builder = RevoluteJointBuilder::new()
-                    .local_anchor1(anchor_a)
-                    .local_anchor2(anchor_b);
-                if let Some([min, max]) = desc.limits {
-                    builder = builder.limits([min, max]);
-                }
-                builder.into()
-            }
-            JointKind::Spring => {
-                SpringJointBuilder::new(desc.rest_length, desc.stiffness, desc.damping)
-                    .local_anchor1(anchor_a)
-                    .local_anchor2(anchor_b)
-                    .into()
-            }
-            JointKind::Rope => RopeJointBuilder::new(desc.max_length)
-                .local_anchor1(anchor_a)
-                .local_anchor2(anchor_b)
-                .into(),
-            // **The Rod is a Spring told to be rigid**, for the reason the enum
-            // spells out: rapier's coupled linear *limit* is unilateral, so the
-            // only two-sided distance constraint it offers is a motor. Same
-            // builder as `Spring`, different numbers — and the numbers are the
-            // whole difference, so they are named constants with the table that
-            // chose them.
-            JointKind::Rod => SpringJointBuilder::new(
-                rod_length(desc.max_length),
-                JointDesc::ROD_STIFFNESS,
-                JointDesc::ROD_DAMPING,
-            )
-            .local_anchor1(anchor_a)
-            .local_anchor2(anchor_b)
-            .into(),
-            // **The weld that GIVES** — nothing locked, three position motors at
-            // zero. The gap it fills is the mirror of the Rod's: this kit could
-            // hold an ANGLE absolutely (Weld, Slider) or leave it entirely free
-            // (Spring, Rope, Rod, Wheel's spin), and nothing in between. A
-            // signpost that sways and springs back was inexpressible.
-            //
-            // ⚠️ **The two linear axes stay LOCKED, and that is the measurement
-            // that chose the design.** Leaving all three soft (nothing locked,
-            // three position motors) was built and measured first: under its own
-            // weight the arm drifted **0.92 m** away from the wall and swung
-            // 104° peak-to-peak without ever settling — the pieces come APART,
-            // which reads as the weld failing rather than flexing. Locked, the
-            // anchors coincide to **0.0000 m** in every case swept and only the
-            // ANGLE gives, which is what a soft weld is.
-            //
-            // ⚠️ **A `GenericJoint` and not a spring on the `FixedJoint`:** rapier
-            // masks motors on locked axes (`motor_axes.bits() & !locked_axes`), so
-            // a spring on a fixed joint is silently nothing. See
-            // [`JointDesc::soft`].
-            //
-            // ⚠️ **The angular gain converts the unit** — see
-            // [`JointDesc::SOFT_WELD_ANGULAR_GAIN`], where the sweep that chose it
-            // lives.
-            JointKind::Weld if desc.soft => {
-                GenericJointBuilder::new(JointAxesMask::LIN_X | JointAxesMask::LIN_Y)
-                    .local_anchor1(anchor_a)
-                    .local_anchor2(anchor_b)
-                    .motor_position(
-                        JointAxis::AngX,
-                        0.0,
-                        desc.stiffness * JointDesc::SOFT_WELD_ANGULAR_GAIN,
-                        desc.damping * JointDesc::SOFT_WELD_ANGULAR_GAIN,
-                    )
-                    .build()
-            }
-            // A rigid lock: the anchors coincide (shared-point policy) and no
-            // relative rotation is allowed. No tunable parameters.
-            JointKind::Weld => FixedJointBuilder::new()
-                .local_anchor1(anchor_a)
-                .local_anchor2(anchor_b)
-                .into(),
-            // The mirror of the Pin: one translational degree of freedom, no
-            // rotation. The two local axes are the SAME world direction seen from
-            // each body (see `JointDesc::axis_a`), so they are set separately —
-            // `PrismaticJointBuilder::new` would put one vector in both frames,
-            // which is only right when the bodies were authored at the same
-            // rotation.
-            JointKind::Slider => {
-                let mut builder = PrismaticJointBuilder::new(unit_or_x(desc.axis_a))
-                    .local_axis1(unit_or_x(desc.axis_a))
-                    .local_axis2(unit_or_x(desc.axis_b))
-                    .local_anchor1(anchor_a)
-                    .local_anchor2(anchor_b);
-                // Stroke limits, in METRES — the same `limits` field a Pin uses
-                // for radians, because the limit belongs to whichever degree of
-                // freedom the joint left free (rapier models it exactly so).
-                if let Some([min, max]) = desc.limits {
-                    builder = builder.limits([min, max]);
-                }
-                builder.into()
-            }
-            // **The wheel: everything free except sideways.** One axis locked
-            // (`LIN_Y`, the direction the hub may not be pushed), which leaves
-            // the suspension travel on `LinX` and the spin on `AngX`.
-            //
-            // The suspension is a **position motor at zero** — zero because the
-            // anchors coincide where the artist put them (`shares_a_point`), so
-            // "the spring is at rest exactly where you built it" and the car
-            // settles DOWN from the authored pose by however much it sags. The
-            // stiffness and damping are the artist's own, the same two fields a
-            // Spring uses, because it is the same physical thing.
-            //
-            // ⚠️ **`coupled_axes` is left empty and that is what makes the
-            // travel limit real.** A rope or a spring couples its linear axes,
-            // which routes the limit through rapier's `limit_linear_coupled` —
-            // unilateral, the dead end the Rod measured. Here nothing is
-            // coupled, so `[min, max]` is the bump stop and the droop stop.
-            JointKind::Wheel => {
-                let mut builder = GenericJointBuilder::new(JointAxesMask::LIN_Y)
-                    .local_axis1(unit_or_x(desc.axis_a))
-                    .local_axis2(unit_or_x(desc.axis_b))
-                    .local_anchor1(anchor_a)
-                    .local_anchor2(anchor_b)
-                    .motor_position(JointAxis::LinX, 0.0, desc.stiffness, desc.damping);
-                if let Some([min, max]) = desc.limits {
-                    builder = builder.limits(JointAxis::LinX, [min, max]);
-                }
-                builder.build()
-            }
-        };
-        // **The motor, applied ONCE for every kind that has one.** The builders
-        // are three different types with three identical `motor_*` families, so
-        // spelling the motor out per arm would be three chances to forget a
-        // mode; the only kind-dependent part is the axis, and that is a
-        // function (`motor_axis`).
-        //
-        // ⚠️ Byte-identical to the per-arm version it replaced, for the case
-        // that existed before this: `RevoluteJointBuilder::motor_velocity(v, f)`
-        // is `set_motor(AngX, target_pos, v, 0.0, f)` with the fresh builder's
-        // `target_pos` still `0.0` — which is exactly the Velocity arm below.
-        // (Pinned by the `physics_ecs_c9` hash and by a fingerprint gate.)
-        if let (Some(axis), Some(m)) = (motor_axis(desc.kind), desc.motor) {
-            match m.mode {
-                // `damping` here is the measured tracking constant, NOT the
-                // artist's `max_force`. The two stay separate on purpose: speed
-                // is what the motor wants, max_force is what it may spend.
-                MotorMode::Velocity => joint.set_motor(axis, 0.0, m.speed, 0.0, tracking),
-                // A servo pulls towards a place, so it needs a stiffness; the
-                // target velocity is zero because *arriving* is the instruction.
-                MotorMode::Position => {
-                    joint.set_motor(axis, m.target, 0.0, servo_stiffness, servo_damping)
-                }
-            };
-            joint.set_motor_max_force(axis, m.max_force);
-        }
-        // ⚠️ **Jointed bodies do not collide with each other by DEFAULT**, and
-        // rapier's default is the opposite (`contacts_enabled: true`). Box2D
-        // (`collideConnected`) and Unity (`enableCollision`) both default to
-        // false, and the reason is the canonical case: the links of a chain
-        // OVERLAP at their pins by construction. Left enabled, every joint hands
-        // the contact solver a permanent interpenetration to fight, and the
-        // measurement that found this had a motor told to spin at 4 rad/s
-        // reading -80 while the hub ball thrashed inside the plank it was
-        // pinned to. It is a knob from W-J8 because the other case is real too
-        // (a door and its frame); the DEFAULT is what the measurement bought.
-        joint.contacts_enabled = desc.contacts_enabled;
-        // W-J8: an inactive joint is BUILT and disabled, never skipped — see
-        // `JointDesc::enabled`. `set_enabled` is rapier's own door, the same one
-        // a break goes through.
-        joint.set_enabled(desc.enabled);
-        // W-J7: the break thresholds ride in the joint's own `user_data`, so a
-        // checkpoint carries them and no side table can fall out of step. `(∞, ∞)`
-        // packs to zero, which is what `GenericJoint::default` already holds.
-        joint.user_data = joint_break::pack_thresholds(desc.break_force, desc.break_torque);
+        let joint = build_joint(&desc, servo_stiffness, servo_damping, tracking);
         Some(self.impulse_joints.insert(a, b, joint, true))
     }
 
+    /// **Re-descrever um joint VIVO sem tocar as arenas** — a metade de
+    /// [`Self::spawn_joint`] que não é estrutural.
+    ///
+    /// Um `ImpulseJoint` é `{ body1, body2, data, impulses }`, e um edit de
+    /// PARÂMETRO só mexe no `data`. Remover-e-inserir para escrever um número
+    /// funciona e cobra um preço que não é do parâmetro: a inserção devolve
+    /// handles novos, então **o ring de checkpoints é invalidado** (`bridge`
+    /// limpa em toda mudança estrutural, e com razão — um checkpoint indexa as
+    /// arenas). Com um param KEYFRAMADO isso acontece em **todo tick de play**,
+    /// e o scrub bit-exato do W1.5 morre pelo resto da cena.
+    ///
+    /// ⚠️ **UM construtor, dois consumidores** ([`build_joint`]): se o retune
+    /// montasse o `GenericJoint` por conta própria, um joint reafinado deixaria
+    /// de ser byte-idêntico ao mesmo joint respawnado — e a divergência
+    /// apareceria só num scrub, que é onde ninguém olha um número.
+    ///
+    /// Devolve `false` quando o handle não nomeia um joint vivo (o chamador
+    /// respawna). **Acorda os dois corpos**: um param novo num par adormecido
+    /// não é lido até alguém o cutucar, e o `insert` que este caminho substitui
+    /// acorda por conta própria.
+    pub fn retune_joint(&mut self, handle: ImpulseJointHandle, desc: &JointDesc) -> bool {
+        let joint = build_joint(desc, SERVO_STIFFNESS, SERVO_DAMPING, MOTOR_TRACKING);
+        match self.impulse_joints.get_mut(handle, true) {
+            Some(live) => {
+                live.data = joint;
+                true
+            }
+            None => false,
+        }
+    }
+}
+
+/// **O `GenericJoint` que um [`JointDesc`] descreve** — a única porta que
+/// traduz o vocabulário do editor no do solver.
+///
+/// Extraída de [`PhysicsWorld::spawn_joint_tuned`] quando ela ganhou um segundo
+/// consumidor ([`PhysicsWorld::retune_joint`]). É função LIVRE e não método de
+/// propósito: ela não lê nem escreve o mundo, e é isso que torna *"inserir"* e
+/// *"sobrescrever"* duas decisões do chamador em vez de dois construtores.
+fn build_joint(
+    desc: &JointDesc,
+    servo_stiffness: f32,
+    servo_damping: f32,
+    tracking: f32,
+) -> rapier2d::dynamics::GenericJoint {
+    // The anchors arrive ALREADY local (see [`JointDesc::anchor_a`]), so this
+    // function has no opinion about where the bodies are — which is exactly
+    // what makes a rebuild reproduce the same constraint.
+    let anchor_a = Point2::new(desc.anchor_a[0], desc.anchor_a[1]);
+    let anchor_b = Point2::new(desc.anchor_b[0], desc.anchor_b[1]);
+
+    let mut joint: rapier2d::dynamics::GenericJoint = match desc.kind {
+        JointKind::Pin => {
+            let mut builder = RevoluteJointBuilder::new()
+                .local_anchor1(anchor_a)
+                .local_anchor2(anchor_b);
+            if let Some([min, max]) = desc.limits {
+                builder = builder.limits([min, max]);
+            }
+            builder.into()
+        }
+        JointKind::Spring => {
+            SpringJointBuilder::new(desc.rest_length, desc.stiffness, desc.damping)
+                .local_anchor1(anchor_a)
+                .local_anchor2(anchor_b)
+                .into()
+        }
+        JointKind::Rope => RopeJointBuilder::new(desc.max_length)
+            .local_anchor1(anchor_a)
+            .local_anchor2(anchor_b)
+            .into(),
+        // **The Rod is a Spring told to be rigid**, for the reason the enum
+        // spells out: rapier's coupled linear *limit* is unilateral, so the
+        // only two-sided distance constraint it offers is a motor. Same
+        // builder as `Spring`, different numbers — and the numbers are the
+        // whole difference, so they are named constants with the table that
+        // chose them.
+        JointKind::Rod => SpringJointBuilder::new(
+            rod_length(desc.max_length),
+            JointDesc::ROD_STIFFNESS,
+            JointDesc::ROD_DAMPING,
+        )
+        .local_anchor1(anchor_a)
+        .local_anchor2(anchor_b)
+        .into(),
+        // **The weld that GIVES** — nothing locked, three position motors at
+        // zero. The gap it fills is the mirror of the Rod's: this kit could
+        // hold an ANGLE absolutely (Weld, Slider) or leave it entirely free
+        // (Spring, Rope, Rod, Wheel's spin), and nothing in between. A
+        // signpost that sways and springs back was inexpressible.
+        //
+        // ⚠️ **The two linear axes stay LOCKED, and that is the measurement
+        // that chose the design.** Leaving all three soft (nothing locked,
+        // three position motors) was built and measured first: under its own
+        // weight the arm drifted **0.92 m** away from the wall and swung
+        // 104° peak-to-peak without ever settling — the pieces come APART,
+        // which reads as the weld failing rather than flexing. Locked, the
+        // anchors coincide to **0.0000 m** in every case swept and only the
+        // ANGLE gives, which is what a soft weld is.
+        //
+        // ⚠️ **A `GenericJoint` and not a spring on the `FixedJoint`:** rapier
+        // masks motors on locked axes (`motor_axes.bits() & !locked_axes`), so
+        // a spring on a fixed joint is silently nothing. See
+        // [`JointDesc::soft`].
+        //
+        // ⚠️ **The angular gain converts the unit** — see
+        // [`JointDesc::SOFT_WELD_ANGULAR_GAIN`], where the sweep that chose it
+        // lives.
+        JointKind::Weld if desc.soft => {
+            GenericJointBuilder::new(JointAxesMask::LIN_X | JointAxesMask::LIN_Y)
+                .local_anchor1(anchor_a)
+                .local_anchor2(anchor_b)
+                .motor_position(
+                    JointAxis::AngX,
+                    0.0,
+                    desc.stiffness * JointDesc::SOFT_WELD_ANGULAR_GAIN,
+                    desc.damping * JointDesc::SOFT_WELD_ANGULAR_GAIN,
+                )
+                .build()
+        }
+        // A rigid lock: the anchors coincide (shared-point policy) and no
+        // relative rotation is allowed. No tunable parameters.
+        JointKind::Weld => FixedJointBuilder::new()
+            .local_anchor1(anchor_a)
+            .local_anchor2(anchor_b)
+            .into(),
+        // The mirror of the Pin: one translational degree of freedom, no
+        // rotation. The two local axes are the SAME world direction seen from
+        // each body (see `JointDesc::axis_a`), so they are set separately —
+        // `PrismaticJointBuilder::new` would put one vector in both frames,
+        // which is only right when the bodies were authored at the same
+        // rotation.
+        JointKind::Slider => {
+            let mut builder = PrismaticJointBuilder::new(unit_or_x(desc.axis_a))
+                .local_axis1(unit_or_x(desc.axis_a))
+                .local_axis2(unit_or_x(desc.axis_b))
+                .local_anchor1(anchor_a)
+                .local_anchor2(anchor_b);
+            // Stroke limits, in METRES — the same `limits` field a Pin uses
+            // for radians, because the limit belongs to whichever degree of
+            // freedom the joint left free (rapier models it exactly so).
+            if let Some([min, max]) = desc.limits {
+                builder = builder.limits([min, max]);
+            }
+            builder.into()
+        }
+        // **The wheel: everything free except sideways.** One axis locked
+        // (`LIN_Y`, the direction the hub may not be pushed), which leaves
+        // the suspension travel on `LinX` and the spin on `AngX`.
+        //
+        // The suspension is a **position motor at zero** — zero because the
+        // anchors coincide where the artist put them (`shares_a_point`), so
+        // "the spring is at rest exactly where you built it" and the car
+        // settles DOWN from the authored pose by however much it sags. The
+        // stiffness and damping are the artist's own, the same two fields a
+        // Spring uses, because it is the same physical thing.
+        //
+        // ⚠️ **`coupled_axes` is left empty and that is what makes the
+        // travel limit real.** A rope or a spring couples its linear axes,
+        // which routes the limit through rapier's `limit_linear_coupled` —
+        // unilateral, the dead end the Rod measured. Here nothing is
+        // coupled, so `[min, max]` is the bump stop and the droop stop.
+        JointKind::Wheel => {
+            let mut builder = GenericJointBuilder::new(JointAxesMask::LIN_Y)
+                .local_axis1(unit_or_x(desc.axis_a))
+                .local_axis2(unit_or_x(desc.axis_b))
+                .local_anchor1(anchor_a)
+                .local_anchor2(anchor_b)
+                .motor_position(JointAxis::LinX, 0.0, desc.stiffness, desc.damping);
+            if let Some([min, max]) = desc.limits {
+                builder = builder.limits(JointAxis::LinX, [min, max]);
+            }
+            builder.build()
+        }
+    };
+    // **The motor, applied ONCE for every kind that has one.** The builders
+    // are three different types with three identical `motor_*` families, so
+    // spelling the motor out per arm would be three chances to forget a
+    // mode; the only kind-dependent part is the axis, and that is a
+    // function (`motor_axis`).
+    //
+    // ⚠️ Byte-identical to the per-arm version it replaced, for the case
+    // that existed before this: `RevoluteJointBuilder::motor_velocity(v, f)`
+    // is `set_motor(AngX, target_pos, v, 0.0, f)` with the fresh builder's
+    // `target_pos` still `0.0` — which is exactly the Velocity arm below.
+    // (Pinned by the `physics_ecs_c9` hash and by a fingerprint gate.)
+    if let (Some(axis), Some(m)) = (motor_axis(desc.kind), desc.motor) {
+        match m.mode {
+            // `damping` here is the measured tracking constant, NOT the
+            // artist's `max_force`. The two stay separate on purpose: speed
+            // is what the motor wants, max_force is what it may spend.
+            MotorMode::Velocity => joint.set_motor(axis, 0.0, m.speed, 0.0, tracking),
+            // A servo pulls towards a place, so it needs a stiffness; the
+            // target velocity is zero because *arriving* is the instruction.
+            MotorMode::Position => {
+                joint.set_motor(axis, m.target, 0.0, servo_stiffness, servo_damping)
+            }
+        };
+        joint.set_motor_max_force(axis, m.max_force);
+    }
+    // ⚠️ **Jointed bodies do not collide with each other by DEFAULT**, and
+    // rapier's default is the opposite (`contacts_enabled: true`). Box2D
+    // (`collideConnected`) and Unity (`enableCollision`) both default to
+    // false, and the reason is the canonical case: the links of a chain
+    // OVERLAP at their pins by construction. Left enabled, every joint hands
+    // the contact solver a permanent interpenetration to fight, and the
+    // measurement that found this had a motor told to spin at 4 rad/s
+    // reading -80 while the hub ball thrashed inside the plank it was
+    // pinned to. It is a knob from W-J8 because the other case is real too
+    // (a door and its frame); the DEFAULT is what the measurement bought.
+    joint.contacts_enabled = desc.contacts_enabled;
+    // W-J8: an inactive joint is BUILT and disabled, never skipped — see
+    // `JointDesc::enabled`. `set_enabled` is rapier's own door, the same one
+    // a break goes through.
+    joint.set_enabled(desc.enabled);
+    // W-J7: the break thresholds ride in the joint's own `user_data`, so a
+    // checkpoint carries them and no side table can fall out of step. `(∞, ∞)`
+    // packs to zero, which is what `GenericJoint::default` already holds.
+    joint.user_data = joint_break::pack_thresholds(desc.break_force, desc.break_torque);
+    joint
+}
+
+impl PhysicsWorld {
     /// A world point → the same point in the frame of a body **at the pose you
     /// name**, which is not necessarily the pose it is in.
     ///

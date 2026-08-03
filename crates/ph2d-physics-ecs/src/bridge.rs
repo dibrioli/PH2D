@@ -26,6 +26,7 @@ mod ik_lead;
 mod inspect;
 pub mod joint_break;
 pub mod joint_desc;
+mod joint_drive;
 mod joint_respawn;
 pub mod joints;
 mod kinematic;
@@ -172,6 +173,15 @@ pub struct PhysicsBridge {
     joints_seen: Vec<Entity>,
     joints_to_spawn: Vec<PendingJoint>,
     joints_to_remove: Vec<Entity>,
+    /// **Joints que só mudaram de NÚMERO** — os que ganham o `data` reescrito no
+    /// lugar em vez de remover-e-inserir (`PhysicsWorld::retune_joint`).
+    ///
+    /// ⚠️ A separação é o que salva o ring: uma mudança estrutural o invalida
+    /// (um checkpoint indexa as arenas), e antes disto **todo edit de parâmetro
+    /// contava como estrutural** — arrastar um slider limpava o cache de scrub a
+    /// cada quadro, e um param keyframado o limparia a cada TICK. Scratch:
+    /// limpo por reconcile.
+    joints_to_retune: Vec<(Entity, ph2d_physics::JointDesc)>,
     /// Joints whose body-local anchors were just derived from their world
     /// `Transform` (the seed) — written back after the query borrow releases so
     /// a body move never re-derives them again. Scratch: cleared per reconcile.
@@ -364,6 +374,7 @@ impl PhysicsBridge {
             joints_seen: Vec::new(),
             joints_to_spawn: Vec::new(),
             joints_to_remove: Vec::new(),
+            joints_to_retune: Vec::new(),
             joints_to_seed: Vec::new(),
             wheels_to_seed: Vec::new(),
             pulleys_to_install: Vec::new(),
@@ -522,6 +533,12 @@ impl PhysicsBridge {
                     } else {
                         (i + 1) as f32 / owed as f32
                     };
+                    // E os PARÂMETROS que o documento dá a este tick — a outra
+                    // metade da mesma frase que a linha acima diz das poses
+                    // (`bridge::joint_drive`). Sem ela um `motor_target`
+                    // keyframado chega uma vez por QUADRO, com o valor do quadro
+                    // aplicado a todos os ticks devidos.
+                    self.drive_joint_params(sim, false);
                     self.drive_kinematic(sim, f);
                     self.world.step();
                     self.steps_taken += 1;

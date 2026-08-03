@@ -156,6 +156,7 @@ impl PhysicsBridge {
         self.joints_seen.clear();
         self.joints_to_spawn.clear();
         self.joints_to_remove.clear();
+        self.joints_to_retune.clear();
         self.joints_to_seed.clear();
         self.pulley_records.clear();
         self.harvest_rope_wheels(world);
@@ -471,31 +472,66 @@ impl PhysicsBridge {
             // compensação ela não veria o que importa: **mover o ponto não muda
             // o `desc`** (o `local_b` é `[0,0]` onde quer que a âncora esteja),
             // então sem comparar o PONTO arrastar o dot não moveria o pino.
-            let unchanged = |j: &JointRef| match handles.1 {
-                Some(hb) => j.bodies == (handles.0, hb) && j.rest == desc,
-                None => j.bodies.0 == handles.0 && j.world_anchor == world_point && j.rest == desc,
+            // **Este joint vivo ainda está preso onde estava?** — a pergunta
+            // ESTRUTURAL, e só ela obriga a passar pelas arenas.
+            //
+            // ⚠️ Num pino de MUNDO a comparação de handles não tem o que
+            // detectar — a âncora é NOSSA, ninguém a respawna por baixo — e em
+            // compensação ela não veria o que importa: **mover o ponto não muda
+            // o `desc`** (o `local_b` é `[0,0]` onde quer que a âncora esteja),
+            // então sem comparar o PONTO arrastar o dot não moveria o pino.
+            let attached = |j: &JointRef| match handles.1 {
+                Some(hb) => j.bodies == (handles.0, hb),
+                None => j.bodies.0 == handles.0 && j.world_anchor == world_point,
             };
             match self.joints.get(&e) {
                 None => self
                     .joints_to_spawn
                     .push((e, desc, handles, (ea, eb), world_point)),
-                // Re-described whenever `desc` changed — a parameter or anchor
-                // edit — with NO `at_rest` gate, so a spring tunes while it
-                // bounces (module docs; the anchor is safe because it is seeded
-                // from the rest pose). `desc` is stable frame-to-frame absent an
-                // edit, so a body move never lands here and never churns the
-                // ring. Also fires when the bodies it binds have been re-spawned
-                // underneath it, or the joint would hold handles into an arena
-                // that has moved on.
-                Some(j) if !unchanged(j) => {
+                // Preso no mesmo lugar, descrito de outro jeito: **um edit de
+                // NÚMERO**, e ele é reescrito no lugar (`retune_joint`). Sem
+                // `at_rest` gate, então uma mola afina enquanto quica (module
+                // docs; a âncora é segura porque é semeada da pose de repouso).
+                //
+                // ⚠️ **Isto é o que salva o ring.** Antes, um param edit ia pela
+                // rota de remover-e-inserir, e QUALQUER item nas duas listas
+                // limpa o cache de checkpoints logo abaixo — um slider arrastado
+                // matava o scrub bit-exato a cada quadro, e um parâmetro
+                // keyframado o mataria a cada tick de play, para o resto da cena.
+                Some(j) if attached(j) => {
+                    if j.rest != desc {
+                        self.joints_to_retune.push((e, desc));
+                    }
+                }
+                // Os corpos (ou o ponto de mundo) mudaram debaixo dele: aí sim é
+                // estrutural — um joint segurando handles para uma arena que
+                // seguiu em frente está preso a nada, em silêncio.
+                Some(_) => {
                     self.joints_to_spawn
                         .push((e, desc, handles, (ea, eb), world_point));
                     self.joints_to_remove.push(e);
                 }
-                Some(_) => {}
             }
         }
         self.joint_query = Some(q);
+
+        // **Os edits de NÚMERO, escritos no lugar** — depois de o empréstimo da
+        // query soltar, como o semeio de âncoras logo abaixo e pelo mesmo
+        // motivo. Não toca as arenas, então não entra na conta do `ring.clear()`.
+        for i in 0..self.joints_to_retune.len() {
+            let (e, desc) = self.joints_to_retune[i];
+            let Some(j) = self.joints.get_mut(&e) else {
+                continue;
+            };
+            // ⚠️ O memo só anda quando a escrita PEGOU. Um handle que não nomeia
+            // mais um joint vivo devolve `false`, e gravar o `rest` mesmo assim
+            // faria o reconcile do próximo quadro achar que está tudo em dia com
+            // um solver que nunca recebeu o número.
+            if self.world.retune_joint(j.handle, &desc) {
+                j.rest = desc;
+            }
+        }
+        self.joints_to_retune.clear();
 
         // Instalar as polias deste frame. A tabela do solver é DERIVADA do
         // registro — uma lista, duas leituras (a outra é o DESENHO) — e a troca

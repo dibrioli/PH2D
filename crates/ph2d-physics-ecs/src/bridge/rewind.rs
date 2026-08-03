@@ -83,9 +83,28 @@ impl PhysicsBridge {
             // bridge rests on: the world is a function of the tick, given the
             // authored rest state AND the authored curves — both reproducible.
             scene.put(sim, from + i + 1);
+            // ⚠️ **O `force` na PRIMEIRA volta é o que torna um scrub igual a um
+            // play**, e é o único lugar do produto que precisa dele: um seed do
+            // ring devolve ao solver os parâmetros do CHECKPOINT, enquanto o memo
+            // (`JointRef::rest`) segue descrevendo a cena autorada. Sem ele o
+            // `drive_joint_params` compararia contra o memo, diria *"nada mudou"*,
+            // e o replay correria com os números de outro tick.
+            self.drive_joint_params(sim, i == 0);
             self.drive_kinematic(sim, 1.0);
             self.world.step();
             self.steps_taken += 1;
+        }
+        // ⚠️ **Um seed que replaya ZERO ticks deixa o memo mentindo.** O ring
+        // acerta o alvo em cheio (o `STRIDE` divide o tick pedido), o laço acima
+        // não roda, e então: o solver segura os parâmetros do CHECKPOINT — que
+        // são os certos — enquanto o `JointRef::rest` segue descrevendo o tick de
+        // onde viemos. O próximo push compara contra essa resposta errada, e se
+        // o valor autorado do tick seguinte por acaso COINCIDIR com o memo ele
+        // decide *"nada mudou"* e o solver corre com o número do checkpoint pelo
+        // resto da corrida. Custo: um `put` + um push por rewind, nunca por tick.
+        if replayed == 0 {
+            scene.put(sim, target);
+            self.drive_joint_params(sim, true);
         }
         self.readback(sim);
         self.last_stepped = target;

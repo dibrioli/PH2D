@@ -7147,3 +7147,91 @@ tick e é trabalho honesto por-pixel dentro da janela.
 
 [ADR-0109]: ../architecture/decisions/0109-rayon-exception-watercolor-composite.md
 [ADR-0145]: ../architecture/decisions/0145-wet-paint-solver-row-parallel-passes-rayon-exception.md
+
+---
+
+## §5.77 — E o composite virou a fronteira: a atribuição, e o piso de banda que a fecha (2026-08-02)
+
+O smoke do Enio validou a §5.76 — *"pela primeira vez consegui pintar uma imagem
+de 4096 com fluidez **nos parâmetros padrão** da aquarela"*. A palavra que abre
+esta seção é **padrão**: na foto dele o **Rewet estava em 0,400**, e é ele que
+sobra.
+
+### O que o Rewet cobra, e por quê
+
+Sonda nova `measure_the_window_the_composite`, que pede ao próprio `wash_diag` o
+divisor que o log do produto publica:
+
+| | composite | janela | ns/texel |
+|---|---|---|---|
+| Rewet 0,400 (Enio) | **19,40 ms** | 0,38 Mtex | 50,8 |
+| Rewet 0 (padrão) | **8,18 ms** | 0,23 Mtex | 35,1 |
+
+⚠️ **Ele cobra nas DUAS pontas**: a janela cresce 1,65× (o `reach` do pad sai de
+`core_r` para `spread`, e **dobra** sob `soaked || watered`) *e* o custo por
+texel cresce 1,45×. Não é um dos dois — são os dois.
+
+### A decomposição, e a lição de como quase a li errado
+
+⚠️ **Eu instrumentei o composite por estágio, li a tabela do PRIMEIRO e a chamei
+de "o composite".** Ela dizia `substrato 6,67 ms de 20,7` — porque no primeiro
+composite o cache de substrato está **frio** e tudo é falha. O `wash_diag`
+reporta a **MÉDIA**. Com a média de 14 composites quentes:
+
+| estágio | delta |
+|---|---|
+| A `cov_src` + B `hard` (seriais) | 0,36 |
+| C blur do feather | 0,73 |
+| **D `build_rewet_fields`** | **8,74** |
+| E campos de estilo | 1,79 |
+| F substrato | **0,08** |
+| **H laço paralelo** | **5,45** |
+
+*Um custo de UMA VEZ é invisível numa média, e uma média é invisível numa amostra
+de uma vez.* As duas metades da mesma armadilha, no mesmo dia.
+
+### ✅ O que entra
+
+**`fill_substrate_cache` era serial POR DESENHO** — o doc do chamador dizia que o
+pré-passe enche as falhas *"serialmente para o laço paralelo ler imutável"*. A
+segunda metade continua verdadeira; **a primeira nunca foi necessária**. Row-
+parallel sob a mesma emenda do ADR-0109, e o caso mais simples da família:
+`paper_h_px` é função pura de `(x, y)`, escritas disjuntas, **zero redução**.
+Medido **19,40 → 18,49 ms**: os 0,9 ms são o custo dos quadros **FRIOS**, que é
+exatamente onde ele estava.
+
+### ⛔ E o que foi medido e NÃO é resultado
+
+**O `box_blur` alocava o buffer de prefixo por LINHA** — ~12 mil alocações por
+quadro nas dez chamadas. Trocado por `for_each_init` (um buffer por *task*,
+mesma aritmética na mesma ordem ⇒ byte-idêntico): **18,49 → 18,28, dentro do
+ruído**. Fica por ser estritamente menos trabalho, **não por ser um ganho** — o
+mesmo veredito do `value_noise_pair` (§5.11) e das três curas da §5.76.
+
+### O que fica NOMEADO, com número
+
+**`build_rewet_fields` = 8,74 ms, 51% do composite**, e são **DEZ box blurs em
+resolução CHEIA** (4 *near* em `r1`, 4 *far* em `r2`, mais os halos de soak e
+água) — o downsample `ds` fica em **1**, porque o Spread do artista não alcança o
+limiar `REWET_DS_SPREAD`. Dentro dele: preencher 0,88 · os 4 *near* 3,27 · os
+halos + *far* 4,51.
+
+⚠️ **E o blur não é o problema que parece:** ele já é **O(n) por prefix sums e já
+é paralelo**. A 2,1 ns/texel sobre ~12 MB movidos por chamada, ele está no **piso
+de largura de banda** — as duas curas de constante que tentei (alocação por linha,
+e antes disso o cache de substrato) mediram 0,2 e 0,9 ms.
+
+**As duas alavancas que restam são decisões de PRODUTO, não de engenharia:**
+
+1. **Baixar `REWET_DS_SPREAD`** para o downsample disparar em Spread pequeno.
+   Corta o custo por `ds²` — e **muda o LOOK** (o campo de rewet passa a ser
+   aproximado onde hoje é exato).
+2. **Cachear os campos derivados da base congelada.** `pres`/`wr`/`wg`/`wb`
+   dependem só de `base` (a base da sessão) e `ground` (o backdrop) — **os dois
+   congelados pela sessão** —, então os blurs deles são constantes canvas-ancoradas
+   e são recomputados todo quadro. O preço é **4 planos canvas-sized de `f32`** —
+   268 MB a 4096², que é a classe de número que o ADR-0117 existe para não deixar
+   passar sem medição.
+
+**Nenhuma das duas é minha para escolher.** O que a sessão entrega é o número ao
+lado de cada uma.

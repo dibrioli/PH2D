@@ -28,7 +28,13 @@ pub const MOD_END: &str = "// <ph2d-widget-sync:end>";
 /// Widgets that should be declared `pub mod` instead of `mod`. The
 /// canonical list (today: panel_chrome + showcase). Adding a new public
 /// widget = append here (Coord-A decision — most widgets are private).
-const PUB_MODULE_OVERRIDE: &[&str] = &["panel_chrome", "showcase"];
+const PUB_MODULE_OVERRIDE: &[&str] = &["command_palette", "panel_chrome", "showcase"];
+// `command_palette` entra aqui, e nao como re-export achatado, pelo criterio que esta doc ja
+// enuncia: os chamadores alcancam SUB-CAMINHOS dele direto (`command_palette::paint`,
+// `::top_match`, `::PaletteModel`) — e o `paint` dele se chama `paint`, nao `paint_command_palette`,
+// entao achata-lo colidiria com o `chrome::paint_command_palette`, que e outra funcao.
+// A decisao ja tinha sido tomada pela linha; o que faltava era registra-la AQUI, onde o bloco
+// gerado nasce — editar a SAIDA do gerador e o que deixa o gate de staleness vermelho.
 
 /// Scan widget dir for `*.rs` files (excluding `mod.rs`). Returns
 /// stems (snake_case), sorted alphabetically.

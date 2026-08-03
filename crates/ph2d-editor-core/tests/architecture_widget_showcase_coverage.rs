@@ -25,6 +25,10 @@ use std::path::{Path, PathBuf};
 /// Each entry: (file slug under `widget/`, one-line reason).
 const WIDGET_OPT_OUT: &[(&str, &str)] = &[
     (
+        "command_palette",
+        "chrome-internal: full-screen modal opened by a key (A), no idle visual — same reason as modal/context_menu",
+    ),
+    (
         "blender_color_picker",
         "chrome-internal: full picker is painted out-of-band atop every panel",
     ),

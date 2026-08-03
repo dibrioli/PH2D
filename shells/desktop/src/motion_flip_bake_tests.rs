@@ -15,19 +15,25 @@ fn two_layer_object(fg_half: f32) -> (FlipDoc, FlipObjectId) {
     obj.fps = 12.0;
     let bg = obj.add_layer("BG");
     if let Some(d) = obj.insert_frame(bg, 0, Hold::Implicit, KeyKind::Keyframe) {
-        obj.drawing_mut(d).expect("bg drawing").strokes.push(filled_rect(
-            [-0.6, -0.4],
-            [0.6, 0.4],
-            Rgba::new(0.2, 0.5, 0.9, 1.0),
-        ));
+        obj.drawing_mut(d)
+            .expect("bg drawing")
+            .strokes
+            .push(filled_rect(
+                [-0.6, -0.4],
+                [0.6, 0.4],
+                Rgba::new(0.2, 0.5, 0.9, 1.0),
+            ));
     }
     let fg = obj.add_layer("FG");
     if let Some(d) = obj.insert_frame(fg, 0, Hold::Implicit, KeyKind::Keyframe) {
-        obj.drawing_mut(d).expect("fg drawing").strokes.push(filled_rect(
-            [-fg_half, -fg_half],
-            [fg_half, fg_half],
-            Rgba::new(0.95, 0.7, 0.2, 1.0),
-        ));
+        obj.drawing_mut(d)
+            .expect("fg drawing")
+            .strokes
+            .push(filled_rect(
+                [-fg_half, -fg_half],
+                [fg_half, fg_half],
+                Rgba::new(0.95, 0.7, 0.2, 1.0),
+            ));
     }
     (doc, oid)
 }
@@ -49,7 +55,10 @@ fn filled_rect(a: [f32; 2], b: [f32; 2], color: Rgba) -> FlipStroke {
     }
     s.closed = true;
     s.hardness = 1.0;
-    s.fill = Some(Fill { color, opacity: 1.0 });
+    s.fill = Some(Fill {
+        color,
+        opacity: 1.0,
+    });
     s
 }
 
@@ -87,9 +96,13 @@ fn moving_the_object_does_not_rebake_but_rotating_and_editing_do() {
         let obj = doc.objects().iter().find(|o| o.id == oid).expect("object");
         distinct.insert(content_key(obj, &Xform::IDENTITY, &ph));
     }
-    assert_eq!(distinct.len(), 1, "a static hold bakes ONCE, not per-frame (25 frames → 1 key)");
+    assert_eq!(
+        distinct.len(),
+        1,
+        "a static hold bakes ONCE, not per-frame (25 frames -> 1 key)"
+    );
 
-    // An edit: a LARGER FG square (different geometry) → a different content key.
+    // An edit: a LARGER FG square (different geometry) -> a different content key.
     let (edited, eid) = two_layer_object(0.35);
     let key_e = key_of(&edited, eid, Xform::IDENTITY);
     assert_ne!(base, key_e, "editing the geometry re-bakes");
@@ -125,17 +138,31 @@ fn a_baked_flip_object_carries_the_composed_two_layer_silhouette() {
     // representative bake cost is the SECOND one — the first would let the cold path
     // define the product (§0).
     let warm = bake
-        .bake_one(obj, &Xform::IDENTITY, &Playhead::default(), &gpu, &mut renderer)
+        .bake_one(
+            obj,
+            &Xform::IDENTITY,
+            &Playhead::default(),
+            &gpu,
+            &mut renderer,
+        )
         .expect("the warm-up bake produced a tile");
     renderer.individual_mut().release(warm.0);
 
     let t0 = std::time::Instant::now();
     let (tid, wsize, _thumb) = bake
-        .bake_one(obj, &Xform::IDENTITY, &Playhead::default(), &gpu, &mut renderer)
+        .bake_one(
+            obj,
+            &Xform::IDENTITY,
+            &Playhead::default(),
+            &gpu,
+            &mut renderer,
+        )
         .expect("the bake produced a tile");
     let dt = t0.elapsed();
 
-    let (w, h, rgba) = renderer.readback_individual(tid).expect("readback the tile");
+    let (w, h, rgba) = renderer
+        .readback_individual(tid)
+        .expect("readback the tile");
     let (mut opaque, mut blue, mut orange) = (0usize, 0usize, 0usize);
     for px in rgba.chunks_exact(4) {
         let (r, g, b, a) = (i32::from(px[0]), i32::from(px[1]), i32::from(px[2]), px[3]);
@@ -158,9 +185,15 @@ fn a_baked_flip_object_carries_the_composed_two_layer_silhouette() {
         coverage * 100.0,
         dt.as_secs_f64() * 1000.0
     );
-    assert!(coverage > 0.5, "the composed object fills its bbox (coverage {coverage:.2})");
+    assert!(
+        coverage > 0.5,
+        "the composed object fills its bbox (coverage {coverage:.2})"
+    );
     assert!(blue > 0, "the BG (blue) layer is present in the tile");
-    assert!(orange > 0, "the FG (orange) layer is present — the two layers COMPOSED");
+    assert!(
+        orange > 0,
+        "the FG (orange) layer is present — the two layers COMPOSED"
+    );
 
     renderer.individual_mut().release(tid);
 }

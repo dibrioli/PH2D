@@ -21,6 +21,19 @@ fn readback_individual_only_in_texture_edit_chokepoint() {
         if path.ends_with("hero_intents/texture_edit.rs") {
             return;
         }
+        // A `*_tests.rs` sibling is a `#[cfg(test)]` module (the repo-wide convention for a test
+        // child split out under the LOC cap) — it does NOT ship. The bug class this gate exists to
+        // prevent is a TOOL dropping `Sprite.premultiplied` in a user's document; a gate that ships
+        // nothing cannot do that. Keeping them in scope would force every bake test that asserts on
+        // GPU output to route through a door built for tools, which is the gate dictating how a
+        // test observes the device rather than how the product writes a sprite.
+        if path
+            .file_name()
+            .and_then(|s| s.to_str())
+            .is_some_and(|n| n.ends_with("_tests.rs"))
+        {
+            return;
+        }
         for (i, line) in contents.lines().enumerate() {
             let trimmed = line.trim_start();
             // Skip doc / line comments — only flag actual call sites.

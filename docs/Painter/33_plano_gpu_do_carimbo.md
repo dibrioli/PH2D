@@ -95,10 +95,32 @@ computa e lê de volta. Estimativa a conferir: bbox ~1,7 M px × 4 B = **6,8 MB 
 o par contra os 18,3 ms do carimbo. ⚠️ **Estimativa é minha; o número é do produto** — esta linha já
 errou por aritmética três vezes nesta sessão.
 
-**S3 — a fiação.** O tool não tem device (e não deve ter): ele publica o lote + a região, e o SHELL
-roda o passe, no molde do `denoise_ml_with_progress` (callback puro, a ponte é do shell).
+**S3 — a fiação. FEITA** (`stamp_device.rs` no tool · `painter_stamp_device.rs` no shell). O tool
+não tem device e não deve ter: ele publica o lote + a região, e o SHELL roda o passe, no molde do
+`denoise_ml_with_progress` (callback puro, a ponte é do shell). A contenção corta nos dois sentidos —
+`wgpu` não entra na `ph2d-tool-painter`, e a `ph2d-paint-gpu` não alcança o `falloff_weight`.
 
-**S4 — só se o S2 disser que a fronteira dói:** a tela fica RESIDENTE no device durante o gesto e o
+⚠️ **E a S3 achou o eixo que a S2 tinha escondido: a REDUNDÂNCIA.** As duas rotas escalam com
+grandezas diferentes — a fronteira com a **área da REGIÃO** (ela sobe e desce a mesma janela), o
+carimbo da CPU com as **VISITAS** (`Σ` pegadas) — então o que decide é `visitas ÷ região`. Medido
+pela porta do artista (`measure_product_stamp`, 4096², pincel r=155):
+
+| figura | região | visitas | redundância | CPU | device | ganho |
+|---|---|---|---|---|---|---|
+| 300 | 1,36 M | 8,56 M | **6,3×** | 7,21 ms | 2,75 ms | **2,62×** |
+| 600 | 4,05 M | 17,04 M | **4,2×** | 15,83 | 10,66 | **1,48×** |
+| 1200 | 13,77 M | 34,00 M | 2,5× | 38,31 | 53,89 | **0,71×** |
+| 1900 | 16,78 M | 5,63 M | 0,3× | 18,25 | 82,23 | **0,22×** |
+
+⚠️ **Sem piso a wave tornaria a figura grande 4,5× MAIS LENTA**, e o 6,55× da S2 não dizia isso
+porque a fixture dela comparava um passe sobre a **bbox** do artista (1,75 M px) contra o
+**trabalho** do artista (17,3 M visitas): uma redundância de 9,9× embutida sem ninguém ter escrito o
+eixo. Um número medido sobre dois lados que escalam diferente **não é uma razão, é um ponto de uma
+curva**. `wants_device` (piso 4,0, ajustado das duas retas) é a porta única, e com ela as figuras
+grandes ficam na CPU a 1,00-1,01× — sem regressão.
+
+**S4 — NÃO é necessária** (a S2 mediu a fronteira em 2,80 ms contra os 18,30 da CPU, e a S3
+confirmou o ganho no produto acima do piso). Fica escrita para o dia em que a residência valha: a tela fica RESIDENTE no device durante o gesto e o
 readback acontece uma vez, no commit. ⚠️ Isso torna o `canvas_rgba` **stale durante o arrasto** e
 exige a porta `bring_home()` para os ~25 leitores — exatamente o padrão que o worker da sim do Wet
 Paint já construiu nesta crate. **Não fazer antes de o S2 pedir.**

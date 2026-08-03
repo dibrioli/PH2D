@@ -201,6 +201,9 @@ struct CardLayout {
     height: f32,
 }
 
+/// Paint the palette over the whole `viewport` (a no-op decision is the chrome handler's; by the time we
+/// are called the palette is open). Registers hit rects for the scrim (first, so it loses), the card
+/// (next), and the close-X + every item pill (last, so they win inside the card).
 pub fn paint(
     scene: &mut VectorScene,
     ts: &mut TextSystem,

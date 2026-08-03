@@ -112,10 +112,6 @@ fn layout_card(ts: &mut TextSystem, group: &PaletteGroup, card_w: f32) -> CardLa
     }
 }
 
-/// Paint the palette over the whole `viewport` (a no-op decision is the chrome handler's; by the time we
-/// are called the palette is open). Registers hit rects for the scrim (first, so it loses), the card
-/// (next), and the close-X + every item pill (last, so they win inside the card).
-
 /// Lay the category cards out (MEASURE only — no painting), in card-content-LOCAL y with the top at 0,
 /// like the approved mockup: small categories stack in two narrow columns on the left; the first BIG
 /// category (>= [`MIN_WIDE_ITEMS`], in display order) is a wide card on the right (its sub-clusters grid

@@ -41,6 +41,9 @@ pub(super) const PIN_RING_PX: f64 = 6.5; // LITERAL-PX-OK: chrome de overlay
 
 /// Meia-diagonal do quadrado do WELD, px de tela.
 pub(super) const WELD_HALF_PX: f64 = 5.5; // LITERAL-PX-OK: chrome de overlay
+/// Raio do hexágono do CUSTOM, px de tela. Entre o anel do pino e o quadrado da
+/// solda: os três têm de ser distinguíveis lado a lado no MESMO zoom.
+pub(super) const CUSTOM_HEX_PX: f64 = 7.0; // LITERAL-PX-OK: chrome de overlay
 
 /// Meia-largura da BARRA, px de tela. Menor que o anel do pino (`PIN_RING_PX`)
 /// para as duas paralelas passarem POR DENTRO dos anéis das pontas em vez de
@@ -328,6 +331,44 @@ pub(super) fn weld_glyph(
     p.move_to(corners[3]);
     for c in corners {
         p.line_to(c);
+    }
+    p
+}
+
+/// **O glifo do CUSTOM** — um HEXÁGONO, e um anel dentro dele quando o eixo de
+/// rotação está livre.
+///
+/// O hexágono é a figura que diz *"a configuração deste é autorada"*: ele não é
+/// o anel do pino nem o quadrado da solda, e a distinção é de **geometria**, não
+/// de identificador (a cicatriz do par `Layer`/`Layers` que um smoke da timeline
+/// reprovou por serem a mesma figura com nomes diferentes).
+///
+/// ⚠️ **O anel interno reusa o vocabulário do PINO de propósito** — ali ele já
+/// significa *"estes dois giram em torno deste ponto"*, e é exatamente o que ele
+/// significa aqui. Um Custom com o angular travado não o ganha.
+///
+/// ⚠️ **E o glifo NÃO desenha as direções dos eixos lineares, o que seria a
+/// informação mais rica.** Elas vivem no frame do próprio joint (a rotação da
+/// entidade-joint, via `PhysicsWorld::axis_locals`), e a [`JointView`] não a
+/// carrega — desenhá-las a partir do ângulo do corpo A seria uma figura que
+/// MENTE em todo joint rotacionado. O que está desenhado é o que é verdade sem
+/// frame nenhum: *é um Custom* e *ele gira ou não*.
+///
+/// [`JointView`]: ph2d_physics_ecs::JointView
+pub(super) fn custom_glyph(centre: Point, rotation_free: bool) -> BezPath {
+    let mut p = BezPath::new();
+    let r = CUSTOM_HEX_PX;
+    for i in 0..=6 {
+        let th = std::f64::consts::TAU * f64::from(i) / 6.0;
+        let pt = Point::new(centre.x + r * th.cos(), centre.y + r * th.sin());
+        if i == 0 {
+            p.move_to(pt);
+        } else {
+            p.line_to(pt);
+        }
+    }
+    if rotation_free {
+        ring_px(centre, CUSTOM_HEX_PX * 0.45, &mut p);
     }
     p
 }

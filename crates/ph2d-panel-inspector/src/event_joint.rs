@@ -60,6 +60,10 @@ pub(crate) fn apply_joint_event(host: &mut dyn PanelHostInternal, ev: WidgetEven
                 Some(JointFieldEdit::AnchorToWorld(i == 1))
             } else if let Some(i) = ids::INSP_JOINT_SOFT.iter().position(|&o| o == id) {
                 Some(JointFieldEdit::Soft(i == 1))
+            } else if let Some(i) = ids::INSP_JOINT_MOTOR_AXIS.iter().position(|&o| o == id) {
+                Some(JointFieldEdit::MotorAxis(i as u8))
+            } else if let Some(e) = axis_mode_edit(id) {
+                Some(e)
             } else {
                 ids::INSP_JOINT_MOTOR_MODE
                     .iter()
@@ -81,7 +85,7 @@ pub(crate) fn apply_joint_event(host: &mut dyn PanelHostInternal, ev: WidgetEven
                 ids::INSP_JOINT_MAX_LENGTH => Some(JointFieldEdit::MaxLength(v)),
                 ids::INSP_JOINT_BREAK_FORCE => Some(JointFieldEdit::BreakForce(v)),
                 ids::INSP_JOINT_BREAK_TORQUE => Some(JointFieldEdit::BreakTorque(v)),
-                _ => None,
+                _ => axis_limit_edit(id, v),
             }
         }
         _ => None,
@@ -94,4 +98,30 @@ pub(crate) fn apply_joint_event(host: &mut dyn PanelHostInternal, ev: WidgetEven
         return true;
     }
     false
+}
+
+/// **O clique num chip de modo de eixo** — `(eixo, modo)`, achado varrendo a
+/// matriz 3×3 dos ids.
+///
+/// ⚠️ Varredura e não uma tabela paralela: a matriz de ids JÁ pareia eixo com
+/// modo pela posição, e uma segunda lista seria a que apodrece no dia em que um
+/// quarto modo chegar (a lição do `ADDPROP_BUTTONS`, um painel adiante).
+fn axis_mode_edit(id: ph2d_a11y::NodeId) -> Option<JointFieldEdit> {
+    for (ax, group) in ids::INSP_JOINT_AXIS_MODE.iter().enumerate() {
+        if let Some(mode) = group.iter().position(|&o| o == id) {
+            return Some(JointFieldEdit::AxisMode(ax as u8, mode as u8));
+        }
+    }
+    None
+}
+
+/// O valor digitado num batente por eixo — `Min` e `Max`, pela mesma varredura.
+fn axis_limit_edit(id: ph2d_a11y::NodeId, v: f32) -> Option<JointFieldEdit> {
+    if let Some(ax) = ids::INSP_JOINT_AXIS_MIN.iter().position(|&o| o == id) {
+        return Some(JointFieldEdit::AxisMin(ax as u8, v));
+    }
+    ids::INSP_JOINT_AXIS_MAX
+        .iter()
+        .position(|&o| o == id)
+        .map(|ax| JointFieldEdit::AxisMax(ax as u8, v))
 }

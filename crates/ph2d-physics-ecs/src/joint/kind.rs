@@ -93,6 +93,24 @@ pub enum JointKind {
     ///
     /// ⚠️ **Não parte sob carga** — ver [`JointKind::can_break`].
     Pulley,
+    /// **Custom** — a configuração de eixos é AUTORADA, não um preset.
+    ///
+    /// Todo tipo acima é este com os eixos fixos: um Pin trava os dois lineares
+    /// e deixa o angular, um Slider trava `LinY` e o angular, uma solda trava os
+    /// três. O Custom expõe o `GenericJoint` que o construtor sempre teve —
+    /// cada grau de liberdade é **Free / Limited / Locked** (o modelo do Unreal)
+    /// e o motor diz em qual deles age.
+    ///
+    /// ⚠️ **Ele não substitui os presets, e isso não é cortesia:** um Pin diz
+    /// *"isto é uma dobradiça"* — e é essa frase que o glifo do overlay desenha,
+    /// que o `fk_dof` lê para posar, que o `is_rigid_link` lê para montar a
+    /// árvore de IK. Um Custom com a mesma máscara é a mesma restrição e uma
+    /// afirmação mais fraca.
+    ///
+    /// ⚠️ **A UNIDADE do motor deixa de ser propriedade do TIPO nele** (ver
+    /// [`PhysicsJoint::motor_in_metres`]): o eixo é escolhido, então metro ou
+    /// radiano é escolhido junto.
+    Custom,
 }
 
 /// **Em que campo do componente o comprimento de um tipo MORA.**
@@ -134,7 +152,7 @@ impl JointKind {
     /// to_a_distinct_kind`), que é exaustivo por `match` e falha a compilar com
     /// um tipo novo. Aqui há um gate exigindo que ela tenha um elemento por
     /// discriminante e nenhum repetido.
-    pub const ALL: [JointKind; 8] = [
+    pub const ALL: [JointKind; 9] = [
         JointKind::Pin,
         JointKind::Spring,
         JointKind::Rope,
@@ -143,6 +161,7 @@ impl JointKind {
         JointKind::Rod,
         JointKind::Wheel,
         JointKind::Pulley,
+        JointKind::Custom,
     ];
 
     /// Ver [`LengthField`]. `None` para quem não tem comprimento nenhum.
@@ -161,7 +180,12 @@ impl JointKind {
             JointKind::Rope | JointKind::Rod | JointKind::Pulley => Some(LengthField::Max),
             // ⚠️ Um Wheel **não** tem comprimento: a distância cubo↔chassi é
             // onde o artista o montou, e o que a governa é o par mola/curso.
-            JointKind::Pin | JointKind::Weld | JointKind::Slider | JointKind::Wheel => None,
+            // O Custom não tem UM comprimento: os batentes dele são por eixo.
+            JointKind::Pin
+            | JointKind::Weld
+            | JointKind::Slider
+            | JointKind::Wheel
+            | JointKind::Custom => None,
         }
     }
 
@@ -194,7 +218,14 @@ impl JointKind {
     pub fn translates(self) -> bool {
         matches!(
             self,
-            JointKind::Slider | JointKind::Rope | JointKind::Wheel | JointKind::Pulley
+            JointKind::Slider
+                | JointKind::Rope
+                | JointKind::Wheel
+                | JointKind::Pulley
+                // Um Custom translada sempre que um eixo linear não está
+                // travado — e como isso é por INSTÂNCIA, a resposta do tipo é a
+                // permissiva.
+                | JointKind::Custom
         )
     }
 
@@ -238,7 +269,17 @@ impl JointKind {
     pub fn has_motor(self) -> bool {
         matches!(
             self,
-            JointKind::Pin | JointKind::Slider | JointKind::Rope | JointKind::Wheel
+            JointKind::Pin
+                | JointKind::Slider
+                | JointKind::Rope
+                | JointKind::Wheel
+                // ⚠️ **E o Custom, sempre** — o que ele escolhe não é SE tem
+                // motor, é em qual eixo ele age. Este `matches!` respondeu
+                // `false` para ele em silêncio, e um `matches!` não cobra
+                // resposta como um `match` exaustivo cobra: a cena de smoke
+                // mostrou a barra caindo sem motor nenhum, com a workspace
+                // inteira verde.
+                | JointKind::Custom
         )
     }
 
@@ -262,12 +303,16 @@ impl JointKind {
     pub fn limits_in_metres(self) -> bool {
         match self {
             JointKind::Slider | JointKind::Wheel => true,
+            // ⚠️ **Inalcançável num Custom** — o `has_limits` dele é `false`
+            // (os batentes são POR EIXO, com unidade por eixo), então esta
+            // pergunta nunca é feita. `false` é a resposta conservadora.
             JointKind::Pin
             | JointKind::Spring
             | JointKind::Rope
             | JointKind::Weld
             | JointKind::Rod
-            | JointKind::Pulley => false,
+            | JointKind::Pulley
+            | JointKind::Custom => false,
         }
     }
 
@@ -288,12 +333,20 @@ impl JointKind {
     pub fn motor_in_metres(self) -> bool {
         match self {
             JointKind::Slider | JointKind::Rope => true,
+            // ⚠️ **O Custom NÃO é respondível por aqui, e este `false` é um
+            // default, não a resposta.** O eixo do motor dele é AUTORADO, então
+            // metro-ou-radiano é escolhido junto — a pergunta deixou de ser do
+            // tipo e virou da INSTÂNCIA. Quem a responde é
+            // [`super::PhysicsJoint::motor_in_metres`], e é a ela que a UI
+            // pergunta; um leitor que use esta porta num Custom rotula em graus
+            // um número que o solver lê em metros.
             JointKind::Pin
             | JointKind::Spring
             | JointKind::Weld
             | JointKind::Rod
             | JointKind::Wheel
-            | JointKind::Pulley => false,
+            | JointKind::Pulley
+            | JointKind::Custom => false,
         }
     }
 
@@ -370,7 +423,13 @@ impl JointKind {
     /// declara, e o nono tipo não compila sem dizer a sua.
     pub fn shares_a_point(self) -> bool {
         match self {
-            JointKind::Pin | JointKind::Weld | JointKind::Slider | JointKind::Wheel => true,
+            // O Custom é uma restrição NUM PONTO: as âncoras coincidem e o que
+            // varia é quais graus de liberdade sobrevivem ali.
+            JointKind::Pin
+            | JointKind::Weld
+            | JointKind::Slider
+            | JointKind::Wheel
+            | JointKind::Custom => true,
             JointKind::Spring | JointKind::Rope | JointKind::Rod | JointKind::Pulley => false,
         }
     }
@@ -394,7 +453,8 @@ impl JointKind {
             | JointKind::Weld
             | JointKind::Slider
             | JointKind::Wheel
-            | JointKind::Pulley => false,
+            | JointKind::Pulley
+            | JointKind::Custom => false,
         }
     }
 
@@ -418,13 +478,21 @@ impl JointKind {
     pub fn can_be_soft(self) -> bool {
         match self {
             JointKind::Weld => true,
+            // ⚠️ **O Custom NÃO herda a solda mole, e não é omissão:** o
+            // `soft` é a receita ESPECÍFICA de uma solda que cede (dois eixos
+            // travados + um motor de posição no angular, com o ganho medido do
+            // `SOFT_WELD_ANGULAR_GAIN`). Num Custom o artista já pode escrever
+            // essa receita à mão — deixar o eixo angular livre e pôr o motor de
+            // posição nele — e um segundo caminho para a mesma coisa é o que
+            // divergiria no dia em que o ganho mudasse.
             JointKind::Pin
             | JointKind::Spring
             | JointKind::Rope
             | JointKind::Slider
             | JointKind::Rod
             | JointKind::Wheel
-            | JointKind::Pulley => false,
+            | JointKind::Pulley
+            | JointKind::Custom => false,
         }
     }
 

@@ -65,7 +65,7 @@ pub(super) fn paint_motor_rows(
         &MOTOR_MODE_LABELS,
         info.motor_mode_tag,
     );
-    let (rate_unit, place_unit) = motor_units(info.kind_tag);
+    let (rate_unit, place_unit) = motor_units(info);
     let (label, id) = if info.motor_mode_tag == MOTOR_MODE_POSITION {
         (
             format!("Target ({place_unit})"),

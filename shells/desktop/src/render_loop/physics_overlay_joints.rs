@@ -334,6 +334,13 @@ fn kind_marks(
             glyph = weld_glyph(camera, window, v.anchor_a, v.angle_a);
             ring_px(b, JOINT_DOT_PX, &mut glyph);
         }
+        // **O CUSTOM compartilha um ponto como o Pin e o Weld** (`shares_a_point`),
+        // então o glifo mora na âncora e o span fica vazio — a deformação
+        // continua sendo o que o vermelho logo abaixo desenha.
+        JointKind::Custom => {
+            glyph = super::physics_overlay_joint_glyphs::custom_glyph(a, v.rotation_free);
+            ring_px(b, JOINT_DOT_PX, &mut glyph);
+        }
         // **A POLIA:** a corda NÃO vai de âncora a âncora — ela sobe até uma
         // roldana, atravessa por cima, e desce até a outra ponta. Um span reto
         // A→B descreveria uma corda que não existe na cena, e é por isso que

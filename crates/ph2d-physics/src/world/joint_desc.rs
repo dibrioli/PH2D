@@ -95,6 +95,15 @@ pub enum JointKind {
     /// [`JointDesc::stiffness`]/[`JointDesc::damping`] pair a Spring already
     /// owns — the same authored fields, because it is the same physical thing.
     Wheel,
+    /// **Custom** — a configuração de eixos é AUTORADA, e não um preset.
+    ///
+    /// Todo tipo acima é este com uma configuração fixa (o Pin trava os dois
+    /// lineares, o Slider trava `LinY` + o angular, a solda trava os três), e é
+    /// por isso que este não traz geometria nova nenhuma: ele expõe o
+    /// `GenericJoint` que o construtor sempre teve. Cada grau de liberdade é
+    /// livre, limitado ou travado ([`super::joint_custom::AxisMode`]), e o motor
+    /// diz em qual deles age.
+    Custom,
 }
 
 /// What a motor is *aiming at*. The two things a driven joint can be told, and
@@ -241,6 +250,12 @@ pub struct JointDesc {
     /// rebuild clears it). A joint that is authored inactive comes back inactive
     /// from a Reset; a broken one comes back holding.
     pub enabled: bool,
+    /// [`JointKind::Custom`]: a configuração de eixos AUTORADA.
+    ///
+    /// Ignorada por todo outro tipo, exactamente como `limits` é ignorada por um
+    /// Weld — e pelo mesmo motivo: a resolução do que um tipo lê acontece UMA
+    /// vez, na fronteira (`bridge::joint_desc`), perguntando às portas do tipo.
+    pub custom: super::joint_custom::CustomDesc,
     /// [`JointKind::Weld`]: **does this weld GIVE?**
     ///
     /// A weld is the only kind that holds the two bodies' *orientation*, and it
@@ -314,6 +329,10 @@ impl Default for JointDesc {
             // Jointed bodies do not collide — see the field, where the number
             // that decided it lives.
             contacts_enabled: false,
+            // Todo eixo livre e o motor no linear X: um Custom recém-criado é o
+            // joint mais SOLTO que existe, e o artista trava o que quiser. O
+            // contrário (tudo travado) nasceria indistinguível de uma solda.
+            custom: super::joint_custom::CustomDesc::default(),
         }
     }
 }

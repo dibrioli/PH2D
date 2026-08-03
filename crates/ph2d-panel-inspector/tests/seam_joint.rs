@@ -83,6 +83,14 @@ fn joint(kind_tag: u8) -> InspectorJointInfo {
         // que chega ao estado por atalho inverte de sentido quando o default se
         // move e segue verde testando o oposto.
         paste_targets: 0,
+        // W-JointCustom: a fixture-base põe o eixo X em `Limited` para que o par
+        // Min/Max esteja NA TELA (ele só é pintado nesse modo), e os outros dois
+        // em Free/Locked — os três estados representados de uma vez, que é o que
+        // faz a varredura tocar cada um deles.
+        axis_mode_tag: [1, 0, 2],
+        axis_min_ui: [-1.0, -1.0, -45.0],
+        axis_max_ui: [1.0, 1.0, 45.0],
+        motor_axis_tag: 0,
     }
 }
 
@@ -147,6 +155,8 @@ fn expect(actions: &[EditorAction], edit: JointFieldEdit, what: &str) {
 /// pegou foi o aviso de código morto — o uso que a justificava tinha sumido
 /// junto com a exceção.
 const KIND_PULLEY: u8 = 7;
+/// Tag do CUSTOM — a configuração de eixos autorada (W-JointCustom).
+const KIND_CUSTOM: u8 = 8;
 
 /// **Every kind chip is clickable and picks its own kind.**
 #[test]
@@ -471,12 +481,15 @@ fn each_kind_paints_only_the_rows_it_uses() {
         // ao solver). ⚠️ Um Wheel carrega os DOIS e não colidem, porque a mola
         // dele mora no eixo LINEAR e o motor no ANGULAR.
         for &id in &MOTOR_ROWS {
-            let driven = kind == 0 || kind == 2 || kind == 4 || kind == 6;
+            // ⚠️ **E no CUSTOM** (tag 8), onde o motor sempre existe e o que se
+            // escolhe é o EIXO em que ele age — a wave que fez a pergunta
+            // *"metro ou radiano?"* deixar de ser do tipo.
+            let driven = kind == 0 || kind == 2 || kind == 4 || kind == 6 || kind == 8;
             assert_eq!(
                 painted(id),
                 driven,
-                "kind {kind} {} {id:?}: um motor existe no Pin, no Slider, na Rope \
-                 e no Wheel",
+                "kind {kind} {} {id:?}: um motor existe no Pin, no Slider, na Rope, \
+                 no Wheel e no Custom",
                 if driven {
                     "must paint"
                 } else {
@@ -961,6 +974,12 @@ fn every_number_row_the_section_paints_is_seeded_synced_and_routed() {
         &ids::INSP_JOINT_ANCHOR_B[..],
         // W-SoftWeld: o par Rigid|Soft de uma solda.
         &ids::INSP_JOINT_SOFT[..],
+        // W-JointCustom: os nove chips de modo de eixo e os três de eixo do
+        // motor. Chips, não caixas de número.
+        &ids::INSP_JOINT_AXIS_MODE[0][..],
+        &ids::INSP_JOINT_AXIS_MODE[1][..],
+        &ids::INSP_JOINT_AXIS_MODE[2][..],
+        &ids::INSP_JOINT_MOTOR_AXIS[..],
     ] {
         not_a_number.extend_from_slice(group);
     }
@@ -974,6 +993,10 @@ fn every_number_row_the_section_paints_is_seeded_synced_and_routed() {
         ids::INSP_JOINT_COLLIDE_GROUP,
         ids::INSP_JOINT_ANCHOR_B_GROUP,
         ids::INSP_JOINT_SOFT_GROUP,
+        ids::INSP_JOINT_AXIS_GROUP[0],
+        ids::INSP_JOINT_AXIS_GROUP[1],
+        ids::INSP_JOINT_AXIS_GROUP[2],
+        ids::INSP_JOINT_MOTOR_AXIS_GROUP,
         ids::INSP_JOINT_SWAP,
         // O botão que acrescenta uma roldana (W-Pulley W1) — botão, não número.
         ids::INSP_JOINT_ADD_WHEEL,
@@ -999,8 +1022,11 @@ fn every_number_row_the_section_paints_is_seeded_synced_and_routed() {
     // `populate_physics` (-45 · 45 · 114 · 0 · 10 · 1 · 30 · 0,5 · 100 · 50),
     // e todas dentro da faixa MAIS ESTREITA de todas as rows (a razão, 0,01..100)
     // — uma sentinela fora da faixa seria clampada e o gate mediria o clamp.
-    const SENTINELS: [f32; 12] = [
+    const SENTINELS: [f32; 18] = [
         61.0, 62.0, 63.0, 64.0, 65.0, 66.0, 67.0, 68.0, 69.0, 70.0, 71.0, 72.0,
+        // W-JointCustom: os seis batentes por eixo. Distintos entre si porque o
+        // gate também exige que duas rows não espelhem o MESMO campo.
+        73.0, 74.0, 75.0, 76.0, 77.0, 78.0,
     ];
     let numbered = |kind: u8| InspectorJointInfo {
         limit_min_ui: SENTINELS[0],
@@ -1014,6 +1040,11 @@ fn every_number_row_the_section_paints_is_seeded_synced_and_routed() {
         max_length: SENTINELS[8],
         break_force: SENTINELS[10],
         break_torque: SENTINELS[11],
+        axis_min_ui: [SENTINELS[12], SENTINELS[14], SENTINELS[16]],
+        axis_max_ui: [SENTINELS[13], SENTINELS[15], SENTINELS[17]],
+        // ⚠️ Os TRÊS eixos em `Limited`, para que os seis pares estejam na tela:
+        // a fixture-base deixa dois deles fora, e o gate varre o que É pintado.
+        axis_mode_tag: [1, 1, 1],
         ..joint(kind)
     };
 
@@ -1233,5 +1264,95 @@ fn the_paste_label_says_how_many_joints_it_will_touch() {
             many.contains(&n.to_string()),
             "um clique que muda {n} objetos tem de dizer isso ANTES ({many:?})"
         );
+    }
+}
+
+/// **Os nove chips de modo de eixo estão VIVOS sob o mouse, e cada um emite o
+/// seu par `(eixo, modo)`** (W-JointCustom).
+///
+/// ⚠️ Os ids nascem de uma MATRIZ 3×3, e a lição das 36 células da matriz de
+/// camadas (W2c) é exatamente esta: um id registrado em laço fica fora do
+/// `architecture_panel_wiring_parity`, e o seam que CLICA cada um é a única
+/// coisa que o cobre. `click_real` dirige o despachante real, então tirar o
+/// grupo do `populate` deixa isto vermelho.
+#[test]
+fn every_axis_mode_chip_is_alive_and_names_its_own_axis() {
+    for (ax, group) in ids::INSP_JOINT_AXIS_MODE.iter().enumerate() {
+        for (mode, &id) in group.iter().enumerate() {
+            let acts = click_real(joint(KIND_CUSTOM), id);
+            assert_eq!(
+                acts,
+                vec![EditorAction::InspectorJointEdit {
+                    entity_bits: ENTITY,
+                    edit: JointFieldEdit::AxisMode(ax as u8, mode as u8),
+                }],
+                "o chip do eixo {ax} modo {mode} tem de nomear o PRÓPRIO par"
+            );
+        }
+    }
+}
+
+/// **Os três chips de eixo do motor**, idem.
+#[test]
+fn every_motor_axis_chip_is_alive_and_names_its_own_axis() {
+    for (i, &id) in ids::INSP_JOINT_MOTOR_AXIS.iter().enumerate() {
+        let acts = click_real(joint(KIND_CUSTOM), id);
+        assert_eq!(
+            acts,
+            vec![EditorAction::InspectorJointEdit {
+                entity_bits: ENTITY,
+                edit: JointFieldEdit::MotorAxis(i as u8),
+            }]
+        );
+    }
+}
+
+/// **O par Min/Max de um eixo existe SÓ no modo `Limited`.**
+///
+/// A lei do knob-morto, e as duas metades: no modo certo ele está na tela, e nos
+/// outros dois **não é pintado**. Um batente num eixo travado é um número que o
+/// solver não lê, e um controle que parece funcionar é pior que um que falta.
+#[test]
+fn an_axis_shows_its_stops_only_while_it_is_limited() {
+    for mode in 0u8..3 {
+        let mut info = joint(KIND_CUSTOM);
+        info.axis_mode_tag = [mode, mode, mode];
+        let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+        let mut state = InspectorState::default();
+        set_current_inspector_joint(Some(info));
+        let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+        let painted = |id| rects.iter().any(|(n, _)| *n == id);
+        let want = mode == 1;
+        for i in 0..3 {
+            assert_eq!(
+                painted(ids::INSP_JOINT_AXIS_MIN[i]),
+                want,
+                "eixo {i} no modo {mode}: o Min {} devia estar na tela",
+                if want { "SIM" } else { "NÃO" }
+            );
+            assert_eq!(painted(ids::INSP_JOINT_AXIS_MAX[i]), want);
+        }
+    }
+}
+
+/// **Os presets NÃO ganham as rows de eixo** — elas são a família do Custom.
+///
+/// A metade de AUSÊNCIA, e ela é o gate: sem ela, pintar as rows para todo tipo
+/// passaria despercebido, e um Pin ganharia três segmentados que o solver ignora.
+#[test]
+fn only_a_custom_paints_the_axis_rows() {
+    for tag in 0u8..8 {
+        let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+        let mut state = InspectorState::default();
+        set_current_inspector_joint(Some(joint(tag)));
+        let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+        for group in &ids::INSP_JOINT_AXIS_MODE {
+            for &id in group {
+                assert!(
+                    !rects.iter().any(|(n, _)| *n == id),
+                    "o tipo {tag} não é um Custom e não pode pintar {id:?}"
+                );
+            }
+        }
     }
 }

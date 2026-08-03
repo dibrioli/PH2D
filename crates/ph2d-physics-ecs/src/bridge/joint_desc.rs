@@ -46,6 +46,7 @@ pub fn joint_desc(
             JointKind::Slider => ph2d_physics::JointKind::Slider,
             JointKind::Rod => ph2d_physics::JointKind::Rod,
             JointKind::Wheel => ph2d_physics::JointKind::Wheel,
+            JointKind::Custom => ph2d_physics::JointKind::Custom,
         },
         anchor_a: local_a,
         anchor_b: local_b,
@@ -118,5 +119,41 @@ pub fn joint_desc(
         // breaks_on_torque` a usa para decidir se o limiar de torque é
         // alcançável, e lá a mutação sangra.
         soft: j.kind.can_be_soft() && j.soft,
+        // ⚠️ **Resolvido aqui como todo o resto**: um Custom que virou Pin não
+        // pode continuar a travar eixos, e a configuração que ele tinha fica
+        // guardada no componente para quando ele voltar — a política que o
+        // `Collider` já usa para a pegada e que esta função aplica a `limits`,
+        // `motor`, `soft` e agora a isto.
+        custom: if j.kind == JointKind::Custom {
+            ph2d_physics::CustomDesc {
+                axes: [
+                    axis_spec(j.custom.axis(crate::joint::CustomAxis::X)),
+                    axis_spec(j.custom.axis(crate::joint::CustomAxis::Y)),
+                    axis_spec(j.custom.axis(crate::joint::CustomAxis::Rotation)),
+                ],
+                motor_axis: match j.custom.motor_axis {
+                    crate::joint::CustomAxis::X => ph2d_physics::CustomAxis::X,
+                    crate::joint::CustomAxis::Y => ph2d_physics::CustomAxis::Y,
+                    crate::joint::CustomAxis::Rotation => ph2d_physics::CustomAxis::Rotation,
+                },
+            }
+        } else {
+            ph2d_physics::CustomDesc::default()
+        },
     })
+}
+
+/// Um eixo autorado → o do wrapper. O `match` é exaustivo dos dois lados, então
+/// um estado novo não compila até que ambos o conheçam — a lei do
+/// `authored_kind`, aqui na direção contrária.
+fn axis_spec(a: crate::joint::AxisSpec) -> ph2d_physics::AxisSpec {
+    ph2d_physics::AxisSpec {
+        mode: match a.mode {
+            crate::joint::AxisMode::Free => ph2d_physics::AxisMode::Free,
+            crate::joint::AxisMode::Limited => ph2d_physics::AxisMode::Limited,
+            crate::joint::AxisMode::Locked => ph2d_physics::AxisMode::Locked,
+        },
+        min: a.min,
+        max: a.max,
+    }
 }

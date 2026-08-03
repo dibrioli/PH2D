@@ -147,7 +147,7 @@ pub(crate) fn read_prop_kind(world: &World, entity: Entity, prop: PropKind) -> O
     if let Some(field) = joint_field(prop) {
         return world
             .get::<ph2d_physics_ecs::PhysicsJoint>(entity)
-            .map(|j| *field.of(&j));
+            .map(|j| *field.of(j));
     }
     #[cfg(feature = "render")]
     if prop == PropKind::Opacity {
@@ -178,7 +178,7 @@ pub(crate) enum JointField {
 
 #[cfg(feature = "physics")]
 impl JointField {
-    fn of<'a>(self, j: &'a ph2d_physics_ecs::PhysicsJoint) -> &'a f32 {
+    fn of(self, j: &ph2d_physics_ecs::PhysicsJoint) -> &f32 {
         match self {
             JointField::MotorTarget => &j.motor_target,
             JointField::MotorSpeed => &j.motor_speed,
@@ -187,7 +187,7 @@ impl JointField {
         }
     }
 
-    fn of_mut<'a>(self, j: &'a mut ph2d_physics_ecs::PhysicsJoint) -> &'a mut f32 {
+    fn of_mut(self, j: &mut ph2d_physics_ecs::PhysicsJoint) -> &mut f32 {
         match self {
             JointField::MotorTarget => &mut j.motor_target,
             JointField::MotorSpeed => &mut j.motor_speed,

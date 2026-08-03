@@ -76,6 +76,18 @@ mod properties;
 mod kind;
 pub use kind::{JointKind, LengthField};
 
+/// **A configuração de eixos de um `Custom`** — módulo irmão pelo cap de 700
+/// LOC, cortado na mesma linha do `kind.rs`: *o que um grau de liberdade pode
+/// fazer* × *que espécie de restrição é esta*.
+mod custom;
+pub use custom::{AxisMode, AxisSpec, CustomAxes, CustomAxis};
+
+/// **O que um número VÁLIDO é** () — módulo irmão pelo cap de 700 LOC.
+mod clamp;
+
+/// **As perguntas que a INSTÂNCIA responde e o tipo não** — idem.
+mod ports;
+
 /// What a driven joint is *aiming at* — the editor's mirror of
 /// [`ph2d_physics::MotorMode`]. **Append-only**, for the same postcard reason
 /// [`JointKind`] is.
@@ -229,6 +241,14 @@ pub struct PhysicsJoint {
     /// Inserir no meio faria todo joint de todo projeto salvo decodificar como
     /// outra coisa — em silêncio, que é o oposto de recusar o arquivo.
     pub soft: bool,
+    /// [`JointKind::Custom`]: o que cada grau de liberdade pode fazer, e em qual
+    /// deles o motor age.
+    ///
+    /// ⚠️ **Ignorado por todo outro tipo** — como `limits` é ignorada por um
+    /// Weld, e resolvido no MESMO lugar (`bridge::joint_desc`), perguntando às
+    /// portas do tipo. É isso que impede uma configuração deixada para trás por
+    /// uma troca de tipo de seguir em vigor em silêncio.
+    pub custom: CustomAxes,
     // ⚠️ **As ROLDANAS de uma polia NÃO moram aqui** — cada uma é uma ENTIDADE
     // própria, com `PulleyWheel` e `Transform` (W-Pulley W1). Elas viveram neste
     // struct, como dois pontos de mundo mais um `ratio`, e os três campos saíram
@@ -280,6 +300,11 @@ impl Default for PhysicsJoint {
             // precede esta wave abre com o `FixedJoint` com que foi autorado — e
             // é isso que mantém o `physics_ecs_c9` dos corpos antigos intacto.
             soft: false,
+            // Todo eixo LIVRE e o motor no linear X: um Custom recém-criado é o
+            // joint mais solto que existe, e o artista trava o que quiser. O
+            // contrário (tudo travado) nasceria indistinguível de uma solda, e
+            // o artista não veria diferença nenhuma ao escolher o tipo.
+            custom: CustomAxes::default(),
         }
     }
 }
@@ -484,87 +509,6 @@ impl PhysicsJoint {
             damping,
             ..Self::default()
         }
-    }
-
-    /// This joint with every number forced back into a range the solver can
-    /// use. **The door a loaded project file comes through.**
-    ///
-    /// The Inspector already sanitises what it writes, but a component is
-    /// `serde` and travels in the project file, so the Inspector is not the
-    /// only way values arrive — and this is the last place before rapier.
-    /// `PhysicsSettings::clamped` exists for exactly this reason on the world
-    /// side; without the twin, joints were the one loader-facing surface in
-    /// the line that did not clamp.
-    ///
-    /// Measured on the unclamped version: `stiffness = NaN` drove the body's
-    /// pose to `(NaN, NaN)` within 120 steps, and `readback` then wrote NaN
-    /// straight into the entity's `Transform` — where it flows into the
-    /// cross-OS determinism hash. `max_length = -1` behaved as an unrelated
-    /// length, silently.
-    ///
-    /// ⚠️ **Inverted limits are a WELD, not a wide hinge.** `limit_min` and
-    /// `limit_max` are authored independently, so `min > max` is one keystroke
-    /// away — and rapier, handed `[min, max]` that way, froze the plank solid
-    /// (measured: `rot 0.000` after 180 steps). A hinge the artist believes is
-    /// limited to ±45° being a weld is the kind of wrong that has no symptom
-    /// to search for, so the pair is ordered here.
-    /// **ESTE joint pode partir sob TORQUE?** — a pergunta que o painel faz para
-    /// oferecer a row e a ponte faz para entregar o limiar.
-    ///
-    /// [`JointKind::breaks_on_torque`] responde pelo TIPO; esta responde pela
-    /// INSTÂNCIA, e a diferença é uma solda mole. rapier publica a reação de um
-    /// eixo angular *limitado ou motorizado* e **nada** de um TRAVADO — e o
-    /// `soft` é exatamente o que troca um pelo outro. Medido na mesma viga em
-    /// balanço, com os mesmos defaults:
-    ///
-    /// | solda | força | torque |
-    /// |---|---|---|
-    /// | rígida | 1,9620 N | **0,0000 N·m** |
-    /// | mole | 2,0044 N | **0,9619 N·m** |
-    ///
-    /// ⚠️ **É o caso do [`JointKind::Wheel`] outra vez** (o eixo dele é livre com
-    /// o motor desligado e motorizado com ele ligado, 0,0000 contra 0,5125): quem
-    /// manda é *o estado em que a row pode ser alcançada*, e negá-la deixaria a
-    /// torção ser o único jeito de arrancar uma solda mole sem que exista o
-    /// número que a segura. O preço, igual ao do Wheel, é que a caixa de Break
-    /// de uma solda RÍGIDA mostra um limiar de torque que nunca dispara.
-    #[must_use]
-    pub fn breaks_on_torque(&self) -> bool {
-        self.kind.breaks_on_torque() || (self.kind.can_be_soft() && self.soft)
-    }
-
-    pub fn clamped(mut self) -> Self {
-        fn finite(v: f32, fallback: f32) -> f32 {
-            if v.is_finite() { v } else { fallback }
-        }
-        let d = Self::default();
-        self.limit_min = finite(self.limit_min, d.limit_min);
-        self.limit_max = finite(self.limit_max, d.limit_max);
-        if self.limit_min > self.limit_max {
-            std::mem::swap(&mut self.limit_min, &mut self.limit_max);
-        }
-        self.motor_speed = finite(self.motor_speed, d.motor_speed);
-        // A servo's target flows into rapier's `target_pos`; a NaN there poisons
-        // the pose exactly as a NaN stiffness does (measured, above).
-        self.motor_target = finite(self.motor_target, d.motor_target);
-        self.motor_max_force = finite(self.motor_max_force, d.motor_max_force).max(0.0);
-        // A threshold flows into the comparison that decides a break. A NaN there
-        // makes EVERY comparison false — the joint would be silently unbreakable
-        // with the checkbox ticked — and a negative one makes every comparison
-        // true, so it would part on the first frame under its own weight.
-        self.break_force = finite(self.break_force, d.break_force).max(0.0);
-        self.break_torque = finite(self.break_torque, d.break_torque).max(0.0);
-        self.rest_length = finite(self.rest_length, d.rest_length).max(0.0);
-        self.stiffness = finite(self.stiffness, d.stiffness).max(0.0);
-        self.damping = finite(self.damping, d.damping).max(0.0);
-        // rapier's own docs require a rope's distance to be strictly positive.
-        self.max_length = finite(self.max_length, d.max_length).max(Self::MIN_LENGTH);
-        // A local anchor flows straight into rapier's `local_anchor1/2`; a NaN
-        // there poisons the body's pose (the same failure `stiffness = NaN`
-        // caused above). Guard each component back to the body's centre.
-        self.local_a = [finite(self.local_a[0], 0.0), finite(self.local_a[1], 0.0)];
-        self.local_b = [finite(self.local_b[0], 0.0), finite(self.local_b[1], 0.0)];
-        self
     }
 
     /// Is this joint fully specified — does it name two *different* bodies?

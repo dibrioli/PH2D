@@ -62,6 +62,12 @@ pub struct JointView {
     pub body_b: Option<Entity>,
     /// Rotação viva do corpo A (rad). O arco de limite é desenhado no frame
     /// DELE — o limite do rapier é sobre o ângulo RELATIVO `θb − θa`.
+    /// **[`JointKind::Custom`]: o eixo de rotação está LIVRE?**
+    ///
+    /// O desenho precisa disto e nada mais da configuração de eixos: é a única
+    /// metade dela que é verdade sem conhecer o frame do joint (ver
+    /// `custom_glyph`). `false` em todo outro tipo — eles têm glifo próprio.
+    pub rotation_free: bool,
     pub angle_a: f32,
     /// Rotação viva do corpo B (rad): onde a agulha do arco aponta AGORA.
     pub angle_b: f32,
@@ -152,6 +158,7 @@ fn authored_kind(k: ph2d_physics::JointKind) -> JointKind {
         ph2d_physics::JointKind::Slider => JointKind::Slider,
         ph2d_physics::JointKind::Rod => JointKind::Rod,
         ph2d_physics::JointKind::Wheel => JointKind::Wheel,
+        ph2d_physics::JointKind::Custom => JointKind::Custom,
     }
 }
 
@@ -255,6 +262,8 @@ impl PhysicsBridge {
                 centre_a: [pose_a.translation.x, pose_a.translation.y],
                 centre_b: [pose_b.translation.x, pose_b.translation.y],
                 body_b: Some(r.entities.1),
+                // Uma polia não é um Custom.
+                rotation_free: false,
                 angle_a: pose_a.rotation.angle(),
                 angle_b: pose_b.rotation.angle(),
                 limits: None,
@@ -315,6 +324,13 @@ impl PhysicsBridge {
                 centre_a: [pose_a.translation.x, pose_a.translation.y],
                 centre_b: [pose_b.translation.x, pose_b.translation.y],
                 body_b: j.entities.1,
+                // ⚠️ Lido do DESC que o solver de fato recebeu — não do
+                // componente —, pelo mesmo motivo que os limites e o motor
+                // abaixo: é o desc que já passou pelas portas do tipo, então uma
+                // configuração deixada por uma troca de tipo não pode desenhar.
+                rotation_free: kind == JointKind::Custom
+                    && j.rest.custom.axes[ph2d_physics::CustomAxis::Rotation as usize].mode
+                        == ph2d_physics::AxisMode::Free,
                 angle_a: pose_a.rotation.angle(),
                 angle_b: pose_b.rotation.angle(),
                 // ⚠️ **Sem re-filtrar por tipo, e é o ponto:** o `rest` É o

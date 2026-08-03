@@ -237,7 +237,7 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// aquele já guarde as malhas: o parser dele é `#[cfg(feature = "sculpt3d")]`, e um objeto
 /// assado tem de ser legível **sem o módulo 3D no build** — é isso que a rota A promete.
 /// ⚠️ Este 53 é PROVISÓRIO pelo mesmo motivo que o 52 era.
-const PROJECT_SCHEMA: u32 = 53;
+const PROJECT_SCHEMA: u32 = 54;
 
 /// O conteúdo de um arquivo de projeto.
 #[derive(serde::Serialize, serde::Deserialize)]

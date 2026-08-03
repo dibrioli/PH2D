@@ -6,6 +6,9 @@
 //! `tracks.rs` é o que PINTA.
 
 use super::*;
+// O  é usado só por estes gates — o pai deixou de o importar
+// quando os rótulos saíram para o .
+use ph2d_timeline::PropKind;
 
 /// The one door that says "mark it or not": every non-Hold mode has a badge
 /// key; Hold is the plain default and gets NONE (no dash, no badge).

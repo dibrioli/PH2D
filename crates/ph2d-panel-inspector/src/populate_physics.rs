@@ -43,6 +43,14 @@ pub(super) fn populate_joint(store: &mut WidgetStore) {
     register_button_ids(store, &ids::INSP_JOINT_ACTIVE);
     register_button_ids(store, &ids::INSP_JOINT_COLLIDE);
     register_button_ids(store, &ids::INSP_JOINT_ANCHOR_B);
+    // W-JointCustom: os três eixos e o eixo do motor. **Registrados aqui como
+    // todo grupo irmão** — um chip que o pintor desenha e o `populate` pula é
+    // pintado, hit-registrado e MORTO sob o mouse (a lição das 36 células do
+    // W2c, que esta seção já cita duas linhas acima).
+    for group in &ids::INSP_JOINT_AXIS_MODE {
+        register_button_ids(store, group);
+    }
+    register_button_ids(store, &ids::INSP_JOINT_MOTOR_AXIS);
     // W-SoftWeld — mesma razão da linha acima.
     register_button_ids(store, &ids::INSP_JOINT_SOFT);
     register_button_ids(
@@ -90,6 +98,16 @@ pub(super) fn populate_joint(store: &mut WidgetStore) {
         (ids::INSP_JOINT_REST_LENGTH, 1.0, 0.0, 1000.0, 0.01),     // LITERAL-PX-OK: meters
         (ids::INSP_JOINT_STIFFNESS, 30.0, 0.0, 100000.0, 1.0),     // LITERAL-PX-OK: spring constant
         (ids::INSP_JOINT_DAMPING, 0.5, 0.0, 1000.0, 0.1), // LITERAL-PX-OK: damping constant
+        // Os batentes por eixo de um Custom. A faixa tem de segurar as DUAS
+        // unidades que a row pode mostrar (metros nos lineares, graus na
+        // rotação), pelo mesmo motivo que a do motor acima: uma faixa por eixo
+        // seria um segundo lugar decidindo a unidade.
+        (ids::INSP_JOINT_AXIS_MIN[0], -1.0, -3600.0, 3600.0, 0.01), // LITERAL-PX-OK: m
+        (ids::INSP_JOINT_AXIS_MAX[0], 1.0, -3600.0, 3600.0, 0.01),  // LITERAL-PX-OK: m
+        (ids::INSP_JOINT_AXIS_MIN[1], -1.0, -3600.0, 3600.0, 0.01), // LITERAL-PX-OK: m
+        (ids::INSP_JOINT_AXIS_MAX[1], 1.0, -3600.0, 3600.0, 0.01),  // LITERAL-PX-OK: m
+        (ids::INSP_JOINT_AXIS_MIN[2], -45.0, -3600.0, 3600.0, 1.0), // LITERAL-PX-OK: degrees
+        (ids::INSP_JOINT_AXIS_MAX[2], 45.0, -3600.0, 3600.0, 1.0),  // LITERAL-PX-OK: degrees
         // Break thresholds (W-J7). The seed and the span come off the MEASURED
         // scale (`ph2d-physics/tests/measure_joint_break.rs`): a hanging weight
         // reads its own weight exactly, so 100 N is "it holds about ten kilos"

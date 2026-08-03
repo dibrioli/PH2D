@@ -40,6 +40,16 @@ pub(crate) fn sync_joint_fields(host: &mut dyn PanelHostInternal) {
         // re-selecting the joint shows the seed instead of what was authored.
         (ids::INSP_JOINT_BREAK_FORCE, info.break_force),
         (ids::INSP_JOINT_BREAK_TORQUE, info.break_torque),
+        // W-JointCustom, os seis batentes por eixo — **pelo mesmo motivo que os
+        // dois acima**: sem eles as rows são WRITE-ONLY (digitar funciona, e
+        // re-selecionar o joint mostra a semente em vez do que foi autorado), a
+        // falha que a família de zonas de fato shipou.
+        (ids::INSP_JOINT_AXIS_MIN[0], info.axis_min_ui[0]),
+        (ids::INSP_JOINT_AXIS_MAX[0], info.axis_max_ui[0]),
+        (ids::INSP_JOINT_AXIS_MIN[1], info.axis_min_ui[1]),
+        (ids::INSP_JOINT_AXIS_MAX[1], info.axis_max_ui[1]),
+        (ids::INSP_JOINT_AXIS_MIN[2], info.axis_min_ui[2]),
+        (ids::INSP_JOINT_AXIS_MAX[2], info.axis_max_ui[2]),
     ] {
         host.store_mut().set_number_value(id, f64::from(v));
     }

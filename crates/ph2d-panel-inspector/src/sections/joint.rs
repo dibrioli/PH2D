@@ -16,6 +16,10 @@
 mod cards;
 use cards::{paint_break_rows, paint_motor_rows};
 
+#[path = "joint_custom.rs"]
+mod custom;
+use custom::{paint_axis_rows, paint_motor_axis_row};
+
 use super::rows::{num_row, seg_row};
 use super::*;
 use ph2d_editor_core::screens::hero::InspectorJointInfo;
@@ -23,8 +27,8 @@ use ph2d_editor_core::screens::hero::InspectorJointInfo;
 /// Joint-kind labels, indexed by the tag the snapshot carries. Hardcoded here
 /// (not read from `ph2d-physics-ecs`) so the panel stays loose-coupled, like
 /// every sibling section. English per HR-15.
-const KIND_LABELS: [&str; 8] = [
-    "Pin", "Spring", "Rope", "Weld", "Slider", "Rod", "Wheel", "Pulley",
+const KIND_LABELS: [&str; 9] = [
+    "Pin", "Spring", "Rope", "Weld", "Slider", "Rod", "Wheel", "Pulley", "Custom",
 ];
 
 /// The two Pin-only switches. A two-option segmented IS a switch, and it is
@@ -85,6 +89,10 @@ const KIND_WHEEL: u8 = 6;
 /// primeiro que não pode PARTIR: nada mede a reação de algo que não está no
 /// `ImpulseJointSet`, então a caixa de Break não é oferecida a ele.
 pub(crate) const KIND_PULLEY: u8 = 7;
+/// Tag do CUSTOM — a configuração de eixos é AUTORADA. É o primeiro tipo cujo
+/// par de limites único não é usado (os batentes são POR EIXO) e cuja UNIDADE de
+/// motor não é função do tipo.
+pub(crate) const KIND_CUSTOM: u8 = 8;
 
 /// Does this kind have a limit RANGE? A Pin's angular arc, a Slider's stroke,
 /// a Wheel's suspension travel.
@@ -155,11 +163,13 @@ const fn kind_can_break(_kind_tag: u8) -> bool {
 /// a motor to the solver, so a kind that gained a card here without gaining one
 /// there would paint a knob the solver drops; a seam gate walks all five kinds
 /// and pins which ones offer the card.
-const fn kind_has_motor(kind_tag: u8) -> bool {
+pub(crate) const fn kind_has_motor(kind_tag: u8) -> bool {
     kind_tag == KIND_PIN
         || kind_tag == KIND_SLIDER
         || kind_tag == KIND_ROPE
         || kind_tag == KIND_WHEEL
+        // O Custom sempre tem motor — o que ele escolhe é o EIXO em que ele age.
+        || kind_tag == KIND_CUSTOM
 }
 
 /// The unit pair the motor rows are labelled with, **for this kind**:
@@ -169,13 +179,28 @@ const fn kind_has_motor(kind_tag: u8) -> bool {
 /// range at all and still has a linear motor, so one function answering both
 /// questions would label a winch's target in degrees. Engine-side the same two
 /// doors are `limits_in_metres` and `motor_in_metres`.
-const fn motor_units(kind_tag: u8) -> (&'static str, &'static str) {
-    if kind_tag == KIND_PIN || kind_tag == KIND_WHEEL {
+///
+/// ⚠️ **Toma o `info` inteiro e não o tag, desde que o `Custom` chegou:** nos
+/// sete presets o grau de liberdade livre É uma propriedade do tipo, mas num
+/// Custom ele é ESCOLHIDO — a resposta passou a ser da instância. Engine-side a
+/// porta correspondente é `PhysicsJoint::motor_in_metres` (e não a do
+/// `JointKind`), e as duas têm de concordar ou o rótulo mente sobre o número que
+/// o solver lê.
+pub(crate) fn motor_units(info: &InspectorJointInfo) -> (&'static str, &'static str) {
+    let angular = if info.kind_tag == KIND_CUSTOM {
+        info.motor_axis_tag == AXIS_ROTATION
+    } else {
+        info.kind_tag == KIND_PIN || info.kind_tag == KIND_WHEEL
+    };
+    if angular {
         ("\u{00b0}/s", "\u{00b0}")
     } else {
         ("m/s", "m")
     }
 }
+
+/// A tag do eixo de ROTAÇÃO — o único dos três que é angular.
+pub(crate) const AXIS_ROTATION: u8 = 2;
 
 /// Velocity · Position — the two things a motor can be told.
 const MOTOR_MODE_LABELS: [&str; 2] = ["Velocity", "Position"];
@@ -293,6 +318,13 @@ pub(crate) fn paint_joint_section(
     // too, and burying the card in one kind's arm is how the other two would have
     // been given a knob the solver ignores.
     if kind_has_motor(info.kind_tag) {
+        // ⚠️ **Num Custom o eixo do motor vem ANTES dos knobs dele**, porque é
+        // ele que decide a UNIDADE que os rótulos abaixo mostram: um alvo em
+        // metros rotulado em graus é o artista digitando 90 e a peça andando
+        // 1,57 m.
+        if info.kind_tag == KIND_CUSTOM && info.motor_enabled {
+            yy = paint_motor_axis_row(scene, text_system, theme, hit_index, store, x, w, yy, info);
+        }
         yy = paint_motor_rows(scene, text_system, theme, hit_index, store, x, w, yy, info);
     }
 
@@ -370,6 +402,12 @@ fn paint_kind_params(
     info: &InspectorJointInfo,
 ) -> f32 {
     let mut yy = y;
+    // **O Custom descreve os EIXOS**, e essa é a família inteira dele: ele não
+    // usa o par de limites único (a unidade seria de qual eixo?) nem um
+    // comprimento. Módulo irmão pelo cap de LOC.
+    if info.kind_tag == KIND_CUSTOM {
+        yy = paint_axis_rows(scene, text_system, theme, hit_index, store, x, w, yy, info);
+    }
     // ⚠️ **Perguntas INDEPENDENTES, não uma cadeia `else if`** — o
     // [`KIND_WHEEL`] é o primeiro tipo que quer DUAS famílias de linha (o curso,
     // que era do Pin/Slider, e a mola, que era da Spring), e numa cadeia ele

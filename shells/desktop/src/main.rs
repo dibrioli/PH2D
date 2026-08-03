@@ -245,6 +245,7 @@ mod physics_smoke_joint_anim;
 mod physics_smoke_joint_bake;
 mod physics_smoke_joint_break;
 mod physics_smoke_joint_copy;
+mod physics_smoke_joint_custom;
 mod physics_smoke_joint_draw;
 mod physics_smoke_joint_glyphs;
 mod physics_smoke_joint_handles;

@@ -185,7 +185,15 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // não se movem: os canais são campo de sprite, e nem sequer entraram no blob `sculpt`
         // — o parser dele é `cfg(feature = "sculpt3d")`, e um objeto assado tem de ser legível
         // SEM o módulo 3D no build (é o que a *rota A* do `docs/3D/02.2` promete).
-        (53, 13, 14),
+        // PROJECT 53→54: `PhysicsJoint` ganhou `custom` (W-JointCustom — a configuração de
+        // eixos autorada de um `JointKind::Custom`). UM campo apendado, o mesmo padrão dos
+        // v32/v33/v34, e o postcard é posicional ⇒ um save v53 lido por v54 chega ao fim dos
+        // bytes no campo novo. ⚠️ A linha escreveu **51** aqui, contra o `main` em que ela
+        // nasceu (50); o `main` do dia da integração dizia **53** — a tabela de cor do vector
+        // e os dois degraus do 3D entraram no meio ⇒ o valor CONTADO é 54, e ele não estava
+        // em nenhum dos dois lados do conflito
+        // ([[feedback_numbers_that_sum_across_lines_count_dont_pick]]).
+        (54, 13, 14),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

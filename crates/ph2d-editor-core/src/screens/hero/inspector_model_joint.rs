@@ -81,6 +81,17 @@ pub struct InspectorJointInfo {
     /// `2` B. The §12 draws that slot's eyedropper pressed (accent) so the
     /// artist sees the picker is waiting for a click on a body. The shell owns
     /// the armed state (`App.joint_body_pick`); this mirrors it for the paint.
+    /// **[`JointKind::Custom`]: o modo de cada eixo**, indexado X/Y/Rotação,
+    /// como tag do segmented (0 Free · 1 Limited · 2 Locked).
+    pub axis_mode_tag: [u8; 3],
+    /// O par de batentes de cada eixo, **na unidade que a row mostra**: metros
+    /// nos lineares, GRAUS na rotação. A conversão acontece na fronteira do
+    /// painel, como a do `limit_min_ui` ao lado, e pelo mesmo motivo — um
+    /// número que o artista digita e o que a row mostra têm de ser o mesmo.
+    pub axis_min_ui: [f32; 3],
+    pub axis_max_ui: [f32; 3],
+    /// Em qual eixo o motor age (0 X · 1 Y · 2 Rotação).
+    pub motor_axis_tag: u8,
     pub pick_armed: u8,
     /// **Quantas roldanas esta corda atravessa** (W-Pulley W1).
     ///
@@ -203,6 +214,13 @@ pub enum JointFieldEdit {
     /// (`PhysicsJoint::swapped`): the anchors travel with their bodies and every
     /// signed quantity measured between them is negated, so the joint does
     /// exactly what it did and only the labelling changes.
+    /// [`JointKind::Custom`]: o modo de um eixo — `(eixo, tag do modo)`.
+    AxisMode(u8, u8),
+    /// [`JointKind::Custom`]: um batente — `(eixo, valor NA UNIDADE DA ROW)`.
+    AxisMin(u8, f32),
+    AxisMax(u8, f32),
+    /// [`JointKind::Custom`]: em qual eixo o motor age.
+    MotorAxis(u8),
     Swap,
     /// **Acrescentar uma roldana a esta corda** (W-Pulley W1) — o pedido (4) do
     /// artista. Estrutural, como o `Remove`: a shell SPAWNA um objeto, e o undo

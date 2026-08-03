@@ -92,6 +92,13 @@ fn the_unit_doors_disagree_about_a_rope_and_that_is_the_point() {
             // A polia translada (a corda) e nada mais: a faixa dela É o
             // comprimento, e um guincho seria motor de outra wave.
             Pulley => (true, false, false, false, false),
+            // ⚠️ **O Custom é o único cuja última coluna é um DEFAULT, não a
+            // resposta.** Ele translada (os lineares podem estar livres) e tem
+            // motor SEMPRE — o que ele escolhe é o EIXO. Não usa o par de
+            // limites único (os batentes são por eixo, com unidade por eixo), e
+            // `motor_in_metres` do TIPO não pode saber: quem responde é
+            // `PhysicsJoint::motor_in_metres`, gateada em `joint_custom_unit`.
+            Custom => (true, false, false, true, false),
         }
     }
     for k in JointKind::ALL {
@@ -369,6 +376,9 @@ fn the_length_and_break_doors_are_declared_per_kind() {
             // e PARTE, desde o W2: o passe dela publica a própria tensão
             // (`λ/dt`), então a exceção que a excluía caiu.
             Pulley => (Some(LengthField::Max), false, false, true),
+            // O Custom não tem UM comprimento (os batentes são por eixo), é uma
+            // restrição num PONTO, e parte como todo joint do rapier.
+            Custom => (None, false, true, true),
         }
     }
     for k in JointKind::ALL {

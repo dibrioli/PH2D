@@ -11,6 +11,10 @@
 //! background) so the dope-sheet gestures reach `interact` (E5b: click-select,
 //! drag-move, clear-on-empty).
 
+#[path = "tracks_label.rs"]
+mod label;
+pub(crate) use label::{prop_label, track_label};
+
 use ph2d_editor_core::interaction::{InteractiveState, TimelineHitKind, TrackMenuKind};
 use ph2d_editor_core::paint::{
     fill_rounded_rect, paint_text_centered, rect_to_vello, resolve, stroke_rounded_rect,
@@ -19,7 +23,7 @@ use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::text_elide::paint_text_elided;
 use ph2d_editor_core::widget::{Button, ButtonState, paint_button};
 use ph2d_editor_core::zones::Rect;
-use ph2d_timeline::{Extrap, PropKind, SelectedKey, TimelineViewSnapshot};
+use ph2d_timeline::{Extrap, SelectedKey, TimelineViewSnapshot};
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, Theme, TypeToken};
 use ph2d_vector::{Affine, BezPath, Brush, Fill, Stroke};
 
@@ -550,46 +554,6 @@ pub(crate) fn paint_diamond(
         None,
         &p,
     );
-}
-
-/// The display label for a property (the panel's presentation of `PropKind`).
-pub(crate) fn prop_label(p: PropKind) -> &'static str {
-    match p {
-        PropKind::TranslationX => ph2d_i18n::tr("panel.timeline.prop.translate_x"),
-        PropKind::TranslationY => ph2d_i18n::tr("panel.timeline.prop.translate_y"),
-        PropKind::Rotation => ph2d_i18n::tr("panel.timeline.prop.rotation"),
-        PropKind::ScaleX => ph2d_i18n::tr("panel.timeline.prop.scale_x"),
-        PropKind::ScaleY => ph2d_i18n::tr("panel.timeline.prop.scale_y"),
-        PropKind::Opacity => ph2d_i18n::tr("panel.timeline.prop.opacity"),
-        PropKind::TimeRemap => ph2d_i18n::tr("panel.timeline.prop.time"),
-        PropKind::Morph => ph2d_i18n::tr("panel.timeline.prop.morph"),
-        PropKind::Position => ph2d_i18n::tr("panel.timeline.prop.position"),
-        PropKind::JointMotorTarget => ph2d_i18n::tr("panel.timeline.prop.motor_target"),
-        PropKind::JointMotorSpeed => ph2d_i18n::tr("panel.timeline.prop.motor_speed"),
-        PropKind::JointRestLength => ph2d_i18n::tr("panel.timeline.prop.rest_length"),
-        PropKind::JointMaxLength => ph2d_i18n::tr("panel.timeline.prop.max_length"),
-    }
-}
-
-/// **How this app names an animated channel** — `Ball · Position X`, or the short id
-/// `Position X  #7294` when the object published no name (FASE C.3 do plano 12).
-///
-/// A porta ÚNICA, e a razão é literal: o card de Expressão nasceu montando esta string
-/// por conta própria, e o doc-comment dele **prometia** `"Ball · Position Y"` desde o
-/// primeiro dia enquanto o código escrevia `#nnnn` — a row e o card do mesmo canal
-/// dizendo coisas diferentes é exactamente o que uma segunda cópia produz.
-///
-/// **O nome vem primeiro** porque é o que o artista varre numa coluna estreita: com
-/// seis tracks do mesmo objeto, a propriedade é o que muda de linha para linha, e o
-/// nome é a âncora que diz de quem é o bloco.
-pub(crate) fn track_label(name: Option<&str>, entity: u64, prop: PropKind) -> String {
-    match name {
-        Some(n) => format!("{n} · {}", prop_label(prop)),
-        // O fallback é o rótulo que o dope-sheet sempre teve. Ele NÃO é sinal de erro:
-        // um objeto sem `Name` é transiente, e mostrar `#nnnn` continua distinguindo
-        // duas rows do mesmo tipo em objetos diferentes.
-        None => format!("{}  #{}", prop_label(prop), entity % 10_000),
-    }
 }
 
 /// A subtle zebra fill for alternate rows.

@@ -43,6 +43,7 @@ pub(super) fn view(kind: JointKind) -> JointView {
         centre_a: [-1.0, 0.0],
         centre_b: [1.0, 0.0],
         body_b: Some(ph2d_ecs::Entity::from_bits(3)),
+        rotation_free: false,
         angle_a: 0.0,
         angle_b: 0.0,
         limits: None,

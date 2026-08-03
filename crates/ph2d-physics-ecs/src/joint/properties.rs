@@ -101,6 +101,10 @@ impl PhysicsJoint {
             break_torque,
             collide_connected,
             soft,
+            // A configuração de eixos de um Custom é *o que a restrição faz*, e
+            // por isso viaja inteira: colar um Custom sobre outro é colar
+            // exactamente essa descrição.
+            custom,
         } = *source;
 
         Self {
@@ -130,6 +134,7 @@ impl PhysicsJoint {
             break_torque,
             collide_connected,
             soft,
+            custom,
         }
     }
 }
@@ -158,6 +163,29 @@ mod tests {
             local_a: [0.5, -0.5],
             local_b: [1.5, 2.5],
             anchored: true,
+            // ⚠️ Longe do default, como todo campo desta fixture: um `custom`
+            // que deixasse de viajar apareceria como uma diferença e não como
+            // uma coincidência, que é a razão de existir dela.
+            custom: super::super::CustomAxes {
+                axes: [
+                    super::super::AxisSpec {
+                        mode: super::super::AxisMode::Limited,
+                        min: -0.75,
+                        max: 0.25,
+                    },
+                    super::super::AxisSpec {
+                        mode: super::super::AxisMode::Locked,
+                        min: -2.0,
+                        max: 2.0,
+                    },
+                    super::super::AxisSpec {
+                        mode: super::super::AxisMode::Free,
+                        min: -3.0,
+                        max: 3.0,
+                    },
+                ],
+                motor_axis: super::super::CustomAxis::Rotation,
+            },
             motor_mode: MotorMode::Position,
             motor_target: 1.75,
             break_enabled: true,

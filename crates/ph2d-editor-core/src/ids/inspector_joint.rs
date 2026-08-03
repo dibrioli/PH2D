@@ -39,7 +39,7 @@ pub const INSP_JOINT_MOTOR_GROUP: NodeId = hash_node_id("insp_joint_motor_group"
 /// warning. Foi o que aconteceu quando o Slider chegou (W-J5), e o gate de seam
 /// não pegou porque ele iterava justamente a lista CURTA. Há um teste no painel
 /// comparando os dois comprimentos.
-pub const INSP_JOINT_KIND: [NodeId; 8] = [
+pub const INSP_JOINT_KIND: [NodeId; 9] = [
     hash_node_id("insp_joint_kind_pin"),
     hash_node_id("insp_joint_kind_spring"),
     hash_node_id("insp_joint_kind_rope"),
@@ -48,6 +48,58 @@ pub const INSP_JOINT_KIND: [NodeId; 8] = [
     hash_node_id("insp_joint_kind_rod"),
     hash_node_id("insp_joint_kind_wheel"),
     hash_node_id("insp_joint_kind_pulley"),
+    hash_node_id("insp_joint_kind_custom"),
+];
+
+/// **Os três eixos de um `Custom`**, cada um com o seu segmented
+/// *Free / Limited / Locked* e o seu par Min/Max.
+///
+/// ⚠️ **Arrays const e não ids gerados num laço**: o `node_id_collisions` varre
+/// consts, e a lição das 36 células da matriz de camadas (W2c) é que um id
+/// registrado dentro de um `for` fica fora do `architecture_panel_wiring_parity`
+/// — o seam que CLICA cada um é a única coisa que os cobre.
+pub const INSP_JOINT_AXIS_GROUP: [NodeId; 3] = [
+    hash_node_id("insp_joint_axis_x_group"),
+    hash_node_id("insp_joint_axis_y_group"),
+    hash_node_id("insp_joint_axis_rot_group"),
+];
+/// `[eixo][modo]` — três eixos × (Free, Limited, Locked).
+pub const INSP_JOINT_AXIS_MODE: [[NodeId; 3]; 3] = [
+    [
+        hash_node_id("insp_joint_axis_x_free"),
+        hash_node_id("insp_joint_axis_x_limited"),
+        hash_node_id("insp_joint_axis_x_locked"),
+    ],
+    [
+        hash_node_id("insp_joint_axis_y_free"),
+        hash_node_id("insp_joint_axis_y_limited"),
+        hash_node_id("insp_joint_axis_y_locked"),
+    ],
+    [
+        hash_node_id("insp_joint_axis_rot_free"),
+        hash_node_id("insp_joint_axis_rot_limited"),
+        hash_node_id("insp_joint_axis_rot_locked"),
+    ],
+];
+/// O par Min/Max de cada eixo — pintado só no modo `Limited`, que é a lei do
+/// knob-morto: um batente num eixo travado é um número que ninguém lê.
+pub const INSP_JOINT_AXIS_MIN: [NodeId; 3] = [
+    hash_node_id("insp_joint_axis_x_min"),
+    hash_node_id("insp_joint_axis_y_min"),
+    hash_node_id("insp_joint_axis_rot_min"),
+];
+pub const INSP_JOINT_AXIS_MAX: [NodeId; 3] = [
+    hash_node_id("insp_joint_axis_x_max"),
+    hash_node_id("insp_joint_axis_y_max"),
+    hash_node_id("insp_joint_axis_rot_max"),
+];
+/// **Em qual eixo o motor age** — a pergunta que num Custom deixa de ser do
+/// tipo. Ver `PhysicsJoint::motor_in_metres`.
+pub const INSP_JOINT_MOTOR_AXIS_GROUP: NodeId = hash_node_id("insp_joint_motor_axis_group");
+pub const INSP_JOINT_MOTOR_AXIS: [NodeId; 3] = [
+    hash_node_id("insp_joint_motor_axis_x"),
+    hash_node_id("insp_joint_motor_axis_y"),
+    hash_node_id("insp_joint_motor_axis_rot"),
 ];
 
 /// Off · On, for the two Pin-only switches. Segmented rather than a checkbox

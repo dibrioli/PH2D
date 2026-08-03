@@ -234,11 +234,17 @@ pub(super) fn multibody_joint(desc: &JointDesc) -> rapier2d::dynamics::GenericJo
             }
             builder.into()
         }
+        // ⚠️ **O Custom está aqui pela mesma INALCANÇABILIDADE do Rod e do
+        // Wheel** (`is_rigid_link` o recusa como aresta), e pelo motivo do
+        // Wheel: ele pode deixar até TRÊS graus livres, e uma árvore de pose
+        // modela um por junta. Se um dia ele virar elo, a resposta não é
+        // escolher qual eixo — é o artista escolher, que é outro gesto.
         JointKind::Weld
         | JointKind::Spring
         | JointKind::Rope
         | JointKind::Rod
-        | JointKind::Wheel => FixedJointBuilder::new()
+        | JointKind::Wheel
+        | JointKind::Custom => FixedJointBuilder::new()
             .local_anchor1(a)
             .local_anchor2(b)
             .into(),
@@ -315,11 +321,16 @@ pub fn fk_dof(kind: JointKind) -> Option<FkDof> {
         // mais:** ele tem DOIS graus de liberdade (a suspensão e o giro), e
         // [`FkDof`] modela **um**. Se ele um dia virar elo, a resposta não é
         // escolher qual dos dois — é o artista escolher, o que é outro gesto.
+        // ⚠️ **E o Custom pelo argumento do Wheel, agora explícito:** `FkDof`
+        // modela UM grau de liberdade e um Custom pode oferecer três. Escolher
+        // por ele seria a mágica que o `motor_axis` autorado existe para não
+        // fazer.
         JointKind::Weld
         | JointKind::Spring
         | JointKind::Rope
         | JointKind::Rod
-        | JointKind::Wheel => None,
+        | JointKind::Wheel
+        | JointKind::Custom => None,
     }
 }
 

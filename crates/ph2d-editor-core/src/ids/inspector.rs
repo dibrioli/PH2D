@@ -631,7 +631,7 @@ pub const INSP_PHYS_SIGNAL_LEAVE: NodeId = hash_node_id("insp_phys_signal_leave"
 /// escolher** (Enio: *"Slider não aparece no painel de joints"*): o `seg_row` faz
 /// `option_ids.zip(labels)`, então o rótulo a mais foi silenciosamente descartado.
 /// Há um gate que compara os comprimentos dos DOIS pares.
-pub const INSP_PHYS_JOIN_KIND: [NodeId; 8] = [
+pub const INSP_PHYS_JOIN_KIND: [NodeId; 9] = [
     hash_node_id("insp_phys_join_kind_pin"),
     hash_node_id("insp_phys_join_kind_spring"),
     hash_node_id("insp_phys_join_kind_rope"),
@@ -640,4 +640,5 @@ pub const INSP_PHYS_JOIN_KIND: [NodeId; 8] = [
     hash_node_id("insp_phys_join_kind_rod"),
     hash_node_id("insp_phys_join_kind_wheel"),
     hash_node_id("insp_phys_join_kind_pulley"),
+    hash_node_id("insp_phys_join_kind_custom"),
 ];

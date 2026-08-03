@@ -100,9 +100,13 @@ const MIN_ROD_LENGTH: f32 = 0.001;
 /// one), so writing a second motor there would silently overwrite the spring the
 /// artist authored — the stiffness and damping would vanish and the joint would
 /// become a rate-driven rod. A Weld has no free axis at all.
+///
+/// ⚠️ **Toma o DESC e não o `kind`, desde que o `Custom` chegou:** ali o eixo é
+/// AUTORADO, então a resposta deixou de ser função do tipo. Todo outro braço
+/// ignora o resto do descritor, o que mantém a frase acima verdadeira para eles.
 #[must_use]
-pub fn motor_axis(kind: JointKind) -> Option<JointAxis> {
-    match kind {
+pub fn motor_axis(desc: &JointDesc) -> Option<JointAxis> {
+    match desc.kind {
         JointKind::Pin => Some(JointAxis::AngX),
         JointKind::Slider | JointKind::Rope => Some(JointAxis::LinX),
         // ⚠️ **A Rod gets `None` for the SAME mechanical reason as the Spring,
@@ -120,6 +124,10 @@ pub fn motor_axis(kind: JointKind) -> Option<JointAxis> {
         // not collide because they are different axes. Driving `LinX` here
         // instead would overwrite the suspension exactly as it would a Spring's.
         JointKind::Wheel => Some(JointAxis::AngX),
+        // **O único caso em que o eixo é do JOINT e não do tipo.** Um Custom
+        // pode deixar três graus livres, então perguntar ao tipo não tem
+        // resposta — o artista escolhe.
+        JointKind::Custom => Some(desc.custom.motor_axis.rapier()),
     }
 }
 
@@ -359,6 +367,46 @@ fn build_joint(
             }
             builder.build()
         }
+        // **O joint que o artista descreve por EIXO.**
+        //
+        // Nada aqui é geometria nova: é o MESMO `GenericJointBuilder` que o
+        // Wheel e a solda mole usam, com a máscara e os batentes vindo do
+        // descritor em vez de uma constante. Todo tipo acima é este com uma
+        // configuração fixa, e é isso que faz do Custom uma exposição do
+        // construtor e não um segundo motor.
+        //
+        // ⚠️ **Um batente só é escrito num eixo `Limited`.** No rapier
+        // `locked_axes` e `limits` são coisas separadas, e um limite num eixo
+        // travado é um número que ninguém lê — escrevê-lo mesmo assim deixaria
+        // o artista afinar um knob inerte.
+        JointKind::Custom => {
+            use super::joint_custom::{AxisMode, CustomAxis};
+            let mut mask = JointAxesMask::empty();
+            for ax in CustomAxis::ALL {
+                if desc.custom.axes[ax as usize].mode == AxisMode::Locked {
+                    mask |= ax.mask();
+                }
+            }
+            let mut builder = GenericJointBuilder::new(mask)
+                .local_axis1(unit_or_x(desc.axis_a))
+                .local_axis2(unit_or_x(desc.axis_b))
+                .local_anchor1(anchor_a)
+                .local_anchor2(anchor_b);
+            for ax in CustomAxis::ALL {
+                let spec = desc.custom.axes[ax as usize];
+                if spec.mode == AxisMode::Limited {
+                    // `min`/`max` na ordem que o solver espera: um par invertido
+                    // SOLDA o eixo, que é o bug que o W3 já pagou uma vez.
+                    let (lo, hi) = if spec.min <= spec.max {
+                        (spec.min, spec.max)
+                    } else {
+                        (spec.max, spec.min)
+                    };
+                    builder = builder.limits(ax.rapier(), [lo, hi]);
+                }
+            }
+            builder.build()
+        }
     };
     // **The motor, applied ONCE for every kind that has one.** The builders
     // are three different types with three identical `motor_*` families, so
@@ -371,7 +419,7 @@ fn build_joint(
     // is `set_motor(AngX, target_pos, v, 0.0, f)` with the fresh builder's
     // `target_pos` still `0.0` — which is exactly the Velocity arm below.
     // (Pinned by the `physics_ecs_c9` hash and by a fingerprint gate.)
-    if let (Some(axis), Some(m)) = (motor_axis(desc.kind), desc.motor) {
+    if let (Some(axis), Some(m)) = (motor_axis(desc), desc.motor) {
         match m.mode {
             // `damping` here is the measured tracking constant, NOT the
             // artist's `max_force`. The two stay separate on purpose: speed

@@ -21,8 +21,8 @@ use super::*;
 /// `KIND_LABELS`, and it must list every kind that one does: this is the selector
 /// that decides what gets CREATED, so a kind missing here is a kind the artist
 /// cannot reach at all.
-const JOIN_KIND_LABELS: [&str; 8] = [
-    "Pin", "Spring", "Rope", "Weld", "Slider", "Rod", "Wheel", "Pulley",
+const JOIN_KIND_LABELS: [&str; 9] = [
+    "Pin", "Spring", "Rope", "Weld", "Slider", "Rod", "Wheel", "Pulley", "Custom",
 ];
 
 /// Paint the joint-creation gesture: the "Join As" kind selector (Pin/Spring/

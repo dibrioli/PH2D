@@ -312,6 +312,21 @@ impl App {
                     self.project_save();
                     return;
                 }
+                // ⚠️ **Ctrl+Shift+O importa uma MALHA** (ADR-0150 W8.4). Ele mora
+                // aqui, e não no `sculpt3d_key`, por um motivo que decide a
+                // feature: aquele handler sai no `sculpt3d_scene_mut()` quando
+                // não há cena — e o caso que importa é justamente o de não haver
+                // uma, porque **trazer um arquivo é o que ARMA o módulo**.
+                //
+                // ⚠️ E o `shift` passou a ser PERGUNTADO: até aqui este braço
+                // ignorava o modificador, então Ctrl+Shift+O carregava projeto —
+                // indistinguível do Ctrl+O, o que é acidente e não desenho. O par
+                // é o mesmo do Ctrl+Z/Ctrl+Shift+Z que a própria cena 3D usa.
+                #[cfg(feature = "sculpt3d")]
+                KeyCode::KeyO if self.modifiers.shift_key() => {
+                    self.sculpt3d_pick_and_import();
+                    return;
+                }
                 KeyCode::KeyO => {
                     self.project_load();
                     return;

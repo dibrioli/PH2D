@@ -150,6 +150,31 @@ fn only_mesh_extensions_are_claimed() {
     }
 }
 
+/// **Toda extensão da lista atravessa o roteador**, em qualquer caixa.
+///
+/// ⚠️ Este gate é honesto sobre o que pode e o que **não** pode falhar hoje.
+/// Enquanto `MESH_EXTS` tiver um elemento só, *ler a lista* e *comparar com o
+/// literal `"obj"`* são indistinguíveis por comportamento — a mutação que troca
+/// um pelo outro não sangra aqui, e quem a mata é o arch-gate
+/// `the_picker_goes_through_the_same_import_door_as_the_drop`, que lê o fonte.
+/// O que ESTE prova é o dia seguinte: acrescentar o STL à lista sem que o
+/// roteador o aceite fica vermelho na hora.
+#[test]
+fn every_listed_extension_reaches_the_router() {
+    assert!(
+        MESH_EXTS.contains(&"obj"),
+        "o OBJ é o formato que a W1 lê — perdê-lo da lista é perder a porta inteira"
+    );
+    for ext in MESH_EXTS {
+        for name in [format!("m.{ext}"), format!("m.{}", ext.to_uppercase())] {
+            assert!(
+                is_mesh_file(std::path::Path::new(&name)),
+                "a lista oferece `{ext}` e o roteador o recusa: {name}"
+            );
+        }
+    }
+}
+
 /// **A porta é a do arquivo REAL** — um OBJ multi-objeto atravessa o leitor e a
 /// colocação, e sai como peças utilizáveis.
 ///

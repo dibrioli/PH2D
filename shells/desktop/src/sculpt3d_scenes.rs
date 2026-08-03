@@ -104,17 +104,21 @@ pub(crate) fn scene_objects() -> Vec<(ph2d_mesh::Mesh, ph2d_mesh::Pose)> {
              [sculpt3d]    {}\n\
              [sculpt3d]    Ele esta' a 400 unidades da origem e mede ~450 -- que e' como um\n\
              [sculpt3d]    arquivo de verdade chega. Se a linha acima nao aparecer, PARE.\n\
-             [sculpt3d]    1) ARRASTE esse arquivo para dentro da janela e SOLTE.\n\
+             [sculpt3d]    1) Aperte Ctrl+SHIFT+O e escolha esse arquivo.\n\
              [sculpt3d]       Duas piramides tem de aparecer, do tamanho da esfera e AO LADO\n\
              [sculpt3d]       dela -- nao por cima, e nao fora do quadro.\n\
+             [sculpt3d]       (ARRASTAR o arquivo faz o mesmo -- em X11, macOS e Windows. No\n\
+             [sculpt3d]       WAYLAND o winit 0.30 nao entrega arquivo soltado, entao o cursor\n\
+             [sculpt3d]       para na beirada da janela: e' a plataforma, nao esta feature, e\n\
+             [sculpt3d]       vale para o drop de IMAGEM tambem.)\n\
              [sculpt3d]    2) A cabeca tem de estar ACIMA do corpo: o arranjo do arquivo\n\
              [sculpt3d]       sobrevive, e a cabeca continua menor que o corpo.\n\
              [sculpt3d]    3) Clique numa delas e aperte X (espelho), depois esculpa:\n\
              [sculpt3d]       a copia espelhada tem de sair DENTRO da peca. Se ela sair longe,\n\
              [sculpt3d]       o plano do espelho ficou fora do modelo -- e' a divida desta wave.\n\
              [sculpt3d]    4) Ctrl+Z desfaz o import peca por peca.\n\
-             [sculpt3d]    5) Solte uma IMAGEM: ela tem de virar sprite como sempre, sem aviso\n\
-             [sculpt3d]       de arquivo ignorado -- as duas rotas convivem.",
+             [sculpt3d]    5) Aperte Ctrl+O (sem shift): ele tem de continuar sendo o LOAD de\n\
+             [sculpt3d]       projeto -- o import nao pode ter comido o atalho do vizinho.",
             path.display()
         );
     }

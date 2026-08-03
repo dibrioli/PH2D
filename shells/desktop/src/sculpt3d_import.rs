@@ -27,6 +27,30 @@
 //! segunda invisível. Um fator para o arquivo INTEIRO, na escala da pose: os
 //! tamanhos relativos das peças sobrevivem e os números do autor não são
 //! reescritos.
+//!
+//! ## Dois GESTOS, uma porta — e o drop não basta
+//!
+//! ⚠️ **O drag-and-drop de arquivo NÃO EXISTE no Wayland**, e isto está medido,
+//! não suposto: no winit 0.30.13 o `WindowEvent::DroppedFile` é emitido pelos
+//! backends **x11**, **macos** e **windows**, e por nenhum sítio de
+//! `platform_impl/linux/wayland/` (as duas ocorrências de *drag* ali são
+//! `drag_window`/`drag_resize_window`, que movem a janela). O compositor nem
+//! chega a oferecer a janela como alvo — o cursor de arrasto para na beirada do
+//! app, que foi exatamente o que o smoke da W8.4 reportou.
+//!
+//! ⚠️ **Isso não é defeito desta wave, e ela não pode consertá-lo** — é o
+//! `handle_dropped_files` inteiro que está inalcançável nessa sessão, então o
+//! import de IMAGEM por arrasto também nunca funcionou ali. Implementar o
+//! protocolo é trabalho de upstream. O que esta wave deve, e paga aqui, é não
+//! ter escolhido como gesto ÚNICO justamente o que a plataforma do dono não
+//! oferece.
+//!
+//! A segunda porta é a que o resto do app já usa para trazer arquivo para
+//! dentro — o seletor nativo do `rfd`, que no Wayland vai pelo portal XDG (a
+//! paleta, o áudio, as texturas do Painter e a fonte do texto vetorial entram
+//! todos por ele). **Dois gestos, UMA porta**: os dois terminam em
+//! [`App::sculpt3d_import_files`], senão o arquivo escolhido no diálogo e o
+//! arquivo arrastado poderiam pousar em lugares diferentes.
 
 use ph2d_mesh::{ImportedPiece, Pose};
 
@@ -42,6 +66,14 @@ const IMPORT_SPAN: f32 = 2.0;
 
 /// As extensões que este módulo reconhece.
 ///
+/// ⚠️ **Uma lista, DOIS consumidores** — o roteador do drop ([`is_mesh_file`]) e
+/// o filtro do seletor de arquivo. Duas cópias divergiriam no dia em que o STL
+/// entrar: o drop passaria a aceitar um formato que o diálogo não oferece, e a
+/// diferença apareceria como *"pelo botão não dá, arrastando dá"*.
+pub(crate) const MESH_EXTS: &[&str] = &["obj"];
+
+/// Se este arquivo é da escultura.
+///
 /// ⚠️ **Por EXTENSÃO, e não por conteúdo** — e aqui isso não é preguiça: um
 /// `.obj` nunca é uma imagem, então a pergunta *"de quem é este arquivo?"* não
 /// tem ambiguidade a resolver. (O roteador de decode do áudio olha o CONTEÚDO
@@ -49,7 +81,7 @@ const IMPORT_SPAN: f32 = 2.0;
 pub(crate) fn is_mesh_file(path: &std::path::Path) -> bool {
     path.extension()
         .and_then(|e| e.to_str())
-        .is_some_and(|e| e.eq_ignore_ascii_case("obj"))
+        .is_some_and(|e| MESH_EXTS.iter().any(|m| e.eq_ignore_ascii_case(m)))
 }
 
 /// **Onde cada peça do arquivo vai parar** — a pose de cada uma, já centrada e
@@ -201,6 +233,26 @@ impl crate::app_state::App {
             gfx.sculpt3d = Some(scene);
         }
         self.sculpt3d_toast(format!("Imported {n} mesh piece(s)"));
+    }
+
+    /// **Escolher um arquivo de malha e importá-lo** — o gesto que funciona em
+    /// toda plataforma (Ctrl+Shift+O).
+    ///
+    /// ⚠️ Ele **não decide nada** sobre onde a peça pousa: pergunta o caminho e
+    /// entrega à mesma [`App::sculpt3d_import_files`] que o drop usa. Reimplementar
+    /// a leitura aqui daria duas respostas a *como uma malha entra na cena*, e a
+    /// que diverge é sempre a que o gate não dirige.
+    ///
+    /// ⚠️ Aceita VÁRIOS arquivos, como o drop: o import já recebe uma lista, e um
+    /// `pick_file` singular tornaria o botão mais pobre que o arrasto sem que
+    /// nada o exigisse.
+    pub(crate) fn sculpt3d_pick_and_import(&mut self) {
+        let picked = rfd::FileDialog::new()
+            .add_filter("Mesh", MESH_EXTS)
+            .pick_files();
+        if let Some(paths) = picked {
+            self.sculpt3d_import_files(&paths);
+        }
     }
 
     fn sculpt3d_toast(&mut self, msg: String) {

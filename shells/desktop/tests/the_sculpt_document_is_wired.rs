@@ -160,6 +160,65 @@ fn dropping_a_mesh_arms_the_module() {
     );
 }
 
+/// **O gesto de diálogo termina na MESMA porta do drop.**
+///
+/// ⚠️ Duas maneiras de PEDIR, uma de FAZER. Se este método voltar a ler o
+/// arquivo por conta própria, as duas passam a responder *onde a peça pousa* — e
+/// a que diverge é sempre a que gate nenhum dirige, porque um diálogo nativo não
+/// é dirigível sem alguém clicando nele.
+#[test]
+fn the_picker_goes_through_the_same_import_door_as_the_drop() {
+    let body = function_body(&sculpt_src(), "sculpt3d_pick_and_import");
+    assert!(
+        body.contains("sculpt3d_import_files("),
+        "o seletor tem de ENTREGAR ao import, e nao importar por conta propria"
+    );
+    assert!(
+        !body.contains("import_obj"),
+        "…e nao pode reabrir o arquivo: seria a segunda resposta a como uma malha entra"
+    );
+    assert!(
+        body.contains("MESH_EXTS"),
+        "o filtro do dialogo le a LISTA — um literal divergiria do roteador do drop \
+         no dia em que o STL entrar"
+    );
+    assert!(
+        function_body(&sculpt_src(), "is_mesh_file").contains("MESH_EXTS"),
+        "…e o roteador do drop le a mesma lista, que e' o que os mantem de acordo"
+    );
+}
+
+/// **O braço com `shift` vem ANTES do braço genérico.**
+///
+/// ⚠️ Este é o gate que de fato morde, e o modo de falha é silencioso: um `match`
+/// escolhe o PRIMEIRO padrão que casa, e um `KeyCode::KeyO` sem guarda posto
+/// acima deixa o braço com `if shift` **inalcançável** — sem que o compilador
+/// diga nada, porque ele não consegue provar cobertura através de uma guarda.
+/// O sintoma seria Ctrl+Shift+O carregando projeto: a resposta errada, com a
+/// confiança da resposta certa.
+///
+/// ⚠️ E ele afirma as duas metades. Sem a guarda de `shift` o import comeria o
+/// Ctrl+O de projeto inteiro, que é pior do que não ter o atalho.
+#[test]
+fn the_mesh_import_chord_is_reachable_and_does_not_eat_the_project_open() {
+    let body = function_body(&source("input_dispatch/keyboard.rs"), "key_input");
+    let guarded = body
+        .find("KeyCode::KeyO if self.modifiers.shift_key()")
+        .expect("o import de malha e' Ctrl+SHIFT+O — a guarda faz parte do atalho");
+    let plain = body
+        .find("self.project_load()")
+        .expect("Ctrl+O continua carregando projeto");
+    assert!(
+        guarded < plain,
+        "o braço com `shift` esta' DEPOIS do generico: ele nasce inalcancavel, e \
+         Ctrl+Shift+O carregaria projeto em silencio"
+    );
+    assert!(
+        body.contains("sculpt3d_pick_and_import()"),
+        "…e o acorde tem de CHAMAR o seletor"
+    );
+}
+
 /// **A colocação roda sobre a lista inteira, ANTES de qualquer peça entrar.**
 ///
 /// ⚠️ O caso que isto protege é o mais comum de todos — um arquivo, uma peça,

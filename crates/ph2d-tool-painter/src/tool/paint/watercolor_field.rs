@@ -170,31 +170,38 @@ pub(super) fn box_blur(src: &[f32], w: usize, h: usize, radius: usize) -> Vec<f3
     let mut tmp = vec![0.0f32; w * h];
     tmp.par_chunks_mut(w)
         .zip(src.par_chunks(w))
-        .for_each(|(trow, srow)| {
-            let mut pref = vec![0.0f32; w + 1];
-            for x in 0..w {
-                pref[x + 1] = pref[x] + srow[x];
-            }
-            for (x, t) in trow.iter_mut().enumerate() {
-                let lo = x.saturating_sub(radius);
-                let hi = (x + radius).min(w - 1);
-                *t = (pref[hi + 1] - pref[lo]) / (hi - lo + 1) as f32;
-            }
-        });
+        // ⚠️ `for_each_init` em vez de `for_each`: o `pref` era alocado POR LINHA (608 alocações por
+        // passe, ~12 mil nas dez chamadas de um quadro). O init do rayon dá um buffer por TASK, e a
+        // aritmética é a mesma na mesma ordem ⇒ byte-idêntico.
+        .for_each_init(
+            || vec![0.0f32; w + 1],
+            |pref, (trow, srow)| {
+                for x in 0..w {
+                    pref[x + 1] = pref[x] + srow[x];
+                }
+                for (x, t) in trow.iter_mut().enumerate() {
+                    let lo = x.saturating_sub(radius);
+                    let hi = (x + radius).min(w - 1);
+                    *t = (pref[hi + 1] - pref[lo]) / (hi - lo + 1) as f32;
+                }
+            },
+        );
     // Vertical pass (tmp column `x` → `out_t` row `x`): the per-column prefix from `y = 0` is exactly the
     // serial `prefc`. Writing the TRANSPOSED layout keeps each task's output contiguous (a safe chunk).
     let mut out_t = vec![0.0f32; w * h]; // out_t[x * h + y]
-    out_t.par_chunks_mut(h).enumerate().for_each(|(x, ocol)| {
-        let mut pref = vec![0.0f32; h + 1];
-        for y in 0..h {
-            pref[y + 1] = pref[y] + tmp[y * w + x];
-        }
-        for (y, o) in ocol.iter_mut().enumerate() {
-            let lo = y.saturating_sub(radius);
-            let hi = (y + radius).min(h - 1);
-            *o = (pref[hi + 1] - pref[lo]) / (hi - lo + 1) as f32;
-        }
-    });
+    out_t.par_chunks_mut(h).enumerate().for_each_init(
+        || vec![0.0f32; h + 1],
+        |pref, (x, ocol)| {
+            for y in 0..h {
+                pref[y + 1] = pref[y] + tmp[y * w + x];
+            }
+            for (y, o) in ocol.iter_mut().enumerate() {
+                let lo = y.saturating_sub(radius);
+                let hi = (y + radius).min(h - 1);
+                *o = (pref[hi + 1] - pref[lo]) / (hi - lo + 1) as f32;
+            }
+        },
+    );
     // Transpose out_t (x*h + y) → out (y*w + x), row-parallel (each output row is contiguous).
     let mut out = vec![0.0f32; w * h];
     out.par_chunks_mut(w).enumerate().for_each(|(y, orow)| {

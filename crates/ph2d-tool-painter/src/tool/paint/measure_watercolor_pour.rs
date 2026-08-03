@@ -365,3 +365,57 @@ fn measure_whether_the_default_watercolor_already_blows_the_frame() {
     }
     println!();
 }
+
+/// **De que é feito o TICK da aquarela — a janela, e o custo por texel dela.**
+///
+/// A ablação por knob diz *qual entrada paga*; esta diz *quantos texels o composite caminha e a que
+/// preço*. É o divisor que o `wash_diag` publica no log do produto (`ns/texel`), aqui pela porta do
+/// tool, para o número do log e o número da bancada poderem ser confrontados.
+///
+/// ⚠️ Ela DRENA os contadores globais do `wash_diag` — rode-a sozinha (`--test-threads=1`), senão
+/// outra sonda leva a janela dela.
+#[test]
+#[ignore = "measurement, not a gate"]
+fn measure_the_window_the_composite_walks() {
+    const RADIUS: f32 = 250.0;
+    println!("\nraio {RADIUS:.0} — a JANELA do composite e o preço por texel\n");
+    println!(
+        "{:<22} {:>10} {:>12} {:>12} {:>12}",
+        "config", "composite", "janela Mtex", "ns/texel", "despejo ms"
+    );
+    for (name, rewet) in [("Rewet 0.400 (Enio)", 0.4f32), ("Rewet 0 (padrão)", 0.0)] {
+        let size = 4096u32;
+        let mut t = artist_wash(size, RADIUS);
+        t.paint.brush.wet_rewet = rewet;
+        for slot in &mut t.paint.brush_by_mode {
+            slot.wet_rewet = rewet;
+        }
+        let mid = f64::from(size / 2) as f32;
+        let x0 = RADIUS + 20.0;
+        let step = PATH / f64::from(FRAMES * EV) as f32;
+        t.on_canvas_pointer(cp([x0, mid], PointerPhase::Down));
+        let _ = t.take_preview_arc();
+        let mut k = 0u32;
+        for _ in 0..FRAMES {
+            for _ in 0..EV {
+                k += 1;
+                t.on_canvas_pointer(cp(
+                    [x0 + step * f64::from(k) as f32, mid],
+                    PointerPhase::Move,
+                ));
+            }
+            t.paint_tick(DT);
+            let _ = t.take_preview_arc();
+        }
+        t.on_canvas_pointer(cp([x0 + PATH, mid], PointerPhase::Up));
+        let rd = crate::wash_diag::take();
+        println!(
+            "{name:<22} {:>9.2}ms {:>12.2} {:>12.1} {:>11.2}ms",
+            rd.composite.avg_ms,
+            rd.window_px_per_composite / 1e6,
+            rd.ns_per_texel,
+            rd.pour.avg_ms
+        );
+    }
+    println!();
+}

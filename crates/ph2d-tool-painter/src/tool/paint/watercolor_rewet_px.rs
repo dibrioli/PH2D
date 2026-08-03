@@ -43,22 +43,35 @@ pub(super) fn fill_substrate_cache(
     tile: NoiseTile,
 ) {
     let (x0, y0, bw, bh) = region;
-    for by in 0..bh {
-        let gy = y0 + by;
+    // ⚠️ **Este era o MAIOR item isolado do composite: 6,67 ms de 20,7** (decomposição por estágio,
+    // 2026-08-02, raio 250 @4096²) — e era serial *por desenho*, porque o doc do chamador diz que o
+    // pré-passe enche as falhas "serialmente para o laço paralelo ler imutável". A segunda metade
+    // dessa frase continua verdadeira; a primeira nunca foi necessária.
+    //
+    // **Row-parallel sob a emenda de 2026-08-02 do [ADR-0109]**, e é o caso mais simples da família:
+    // `paper_h_px` é função PURA de `(x, y)` mais parâmetros imutáveis, cada linha escreve só a
+    // própria fatia do plano, e **não há redução nenhuma**. A memoização não muda nada disso — duas
+    // threads nunca disputam o mesmo texel, e o teste `is_nan` é por-texel.
+    //
+    // [ADR-0109]: ../../../../docs/architecture/decisions/0109-rayon-exception-watercolor-composite.md
+    let fill_row = |gy: usize, row: &mut [f32]| {
         for bx in 0..bw {
-            let sidx = gy * fw + (x0 + bx);
-            if substrate[sidx].is_nan() {
-                substrate[sidx] = paper_h_px(
-                    paper_active,
-                    paper_tex,
-                    paper_img,
-                    paper_rot,
-                    x0 + bx,
-                    gy,
-                    tile,
-                );
+            let gx = x0 + bx;
+            if row[gx].is_nan() {
+                row[gx] = paper_h_px(paper_active, paper_tex, paper_img, paper_rot, gx, gy, tile);
             }
         }
+    };
+    let band = &mut substrate[y0 * fw..(y0 + bh) * fw];
+    if bw * bh >= super::watercolor_backdrop::WET_PAR_MIN {
+        use rayon::prelude::*;
+        band.par_chunks_mut(fw)
+            .enumerate()
+            .for_each(|(by, row)| fill_row(y0 + by, row));
+    } else {
+        band.chunks_mut(fw)
+            .enumerate()
+            .for_each(|(by, row)| fill_row(y0 + by, row));
     }
 }
 

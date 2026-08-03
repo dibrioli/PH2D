@@ -167,6 +167,12 @@ pub(crate) struct MotionState {
     /// doc 86 §2 A3: named Flip objects baked to tiles (the same `BakedTile` output
     /// as `object_bake`, driven through the Flip raster + compositor).
     pub(crate) flip_object_bake: crate::motion_flip_bake::FlipObjectBake,
+    /// ADR-0154: content-addressed store of `source.shape` geometry. The publish
+    /// pass interns each shape's `VecPath` here (keyed by its content) and the
+    /// instance carries the handle in its `geometry_id` column; the present encode
+    /// looks it up to draw the shape live. Kept across frames — a static shape
+    /// builds once.
+    pub(crate) shape_store: crate::render_loop::motion_shape_gen::VecPathStore,
 }
 
 /// **What opened the Add-Node palette** — the spawn point plus the wire context of the gesture, so the
@@ -419,6 +425,8 @@ impl MotionState {
             // phase bakes a named vector a `source.object` brings in.
             object_bake: crate::motion_object_bake::ObjectBake::default(),
             flip_object_bake: crate::motion_flip_bake::FlipObjectBake::default(),
+            // ADR-0154: empty until the publish pass interns a `source.shape`.
+            shape_store: crate::render_loop::motion_shape_gen::VecPathStore::default(),
         }
     }
 

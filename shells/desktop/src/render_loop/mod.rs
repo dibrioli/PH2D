@@ -214,6 +214,10 @@ pub(crate) mod painter_gpu_preview;
 /// The joint-anchor point gizmo's publish rule — extracted from `snapshots` so
 /// "which entity gets a point handle" is gated headless.
 pub(crate) mod point_gizmo;
+/// ADR-0154: the shell half of `source.shape` — build each shape's `VecPath` from
+/// its node params, publish it into the cook, and draw the cooked instances as
+/// live GPU vector into the shared vector scene.
+pub(crate) mod motion_shape_gen;
 mod present;
 mod sim_extract;
 mod snapshots;
@@ -815,6 +819,7 @@ impl crate::App {
         self.blend_smoke();
         self.motion_node_path_smoke();
         self.motion_object_smoke();
+        self.motion_shape_smoke();
         self.motion_delay_smoke();
         self.motion_fx_smoke();
         self.adapter_smoke();
@@ -5357,6 +5362,11 @@ impl crate::App {
             // one place the document, the world, the entity map and the transforms are all in
             // hand at once.
             motion_bridge::publish_shapes(motion, sim, vec_scene, &self.vec_entities, &vec_xf_ops);
+            // ADR-0154: and every `source.shape` node's geometry, right after (the
+            // clear above already ran) — it only ADDS, under the `shape:` content-key
+            // namespace the node reads. The shell builds the `VecPath` from the node
+            // params and interns it in `motion.shape_store`.
+            motion_shape_gen::publish(motion);
             // doc 86 §2: and the engine OBJECTS (named sprites) into the same
             // external table — AFTER shapes (which clears it), so the cook sees
             // both curves and objects. The atlas resolves each sprite's tile.
@@ -6798,6 +6808,20 @@ impl crate::App {
                 cam_affine,
                 vector_scene,
             );
+            // ADR-0154: the live GPU shapes of the Motion scene. Gated on the
+            // Motion tool like the Motion sprites (present.rs) — a `source.shape`'s
+            // `geometry_id` instances are drawn into the SAME scene the vector
+            // document rides in, so they composite behind the chrome and over the
+            // sprites (Fase 1: vector over sprite), aligned with the Motion sprites
+            // by the same `cam_affine`.
+            if motion_tool_active {
+                motion_shape_gen::encode(
+                    &motion.pump.vector_instances,
+                    &motion.shape_store,
+                    cam_affine,
+                    vector_scene,
+                );
+            }
             // O **overlay** do Blend Object (ADR-0128): os passos virtuais + as fontes de cima
             // reempilhadas, na ordem de z (a última fonte por cima do último passo). Desenha depois
             // do `dispatch` (que já pôs as fontes no z da cena, embaixo); o overlay reestabelece a

@@ -5388,6 +5388,7 @@ dependencies = [
  "ph2d-mesh-render",
  "ph2d-motion-doc",
  "ph2d-node-fx-glow",
+ "ph2d-node-motion-shape",
  "ph2d-node-motion-time-remap",
  "ph2d-node-registry",
  "ph2d-node-registry-init",
@@ -6169,6 +6170,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-node-motion-shape"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
 name = "ph2d-node-motion-slit-scan"
 version = "0.0.0"
 dependencies = [
@@ -6427,6 +6436,7 @@ dependencies = [
  "ph2d-node-motion-rotate",
  "ph2d-node-motion-scale",
  "ph2d-node-motion-scatter",
+ "ph2d-node-motion-shape",
  "ph2d-node-motion-slit-scan",
  "ph2d-node-motion-soft-body",
  "ph2d-node-motion-sort",

@@ -45,6 +45,10 @@ bytemuck = { version = "1", features = ["extern_crate_alloc"] }
 ph2d-nodegraph = { path = "../../crates/ph2d-nodegraph" }
 ph2d-node-registry = { path = "../../crates/ph2d-node-registry" }
 ph2d-eval-motion = { path = "../../crates/ph2d-eval-motion" }
+# ADR-0154: `source.shape` — the shell builds each shape's `VecPath` from the
+# node's params (`ShapeParams::read`) under its content key (`shape_key`) and
+# publishes it into the cook, then draws it live (GPU vector, not a baked tile).
+ph2d-node-motion-shape = { path = "../../crates/ph2d-node-motion-shape" }
 # Motion Nodes module (docs/Motion Nodes/): document model + full node registry.
 # `MotionState` (motion_state.rs) holds the persistent `Cook`, the registry (all
 # registered node ops) and the transport; `motion_bridge` cooks it per frame

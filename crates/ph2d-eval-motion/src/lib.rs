@@ -46,8 +46,8 @@ pub use checkpoint::{CPU_RING_BYTES, CheckpointRing, RECENT_DENSE};
 
 mod lower;
 pub use lower::{
-    evaluate_motion, evaluate_motion_into, lower_to_instances, lower_to_instances_into,
-    lower_to_instances_onto,
+    VectorInstance, evaluate_motion, evaluate_motion_into, lower_to_instances,
+    lower_to_instances_into, lower_to_instances_onto, lower_to_vector_instances_onto,
 };
 
 /// Per-frame Motion cook driver (plan §1.8). Owns the persistent [`Cook`] (its
@@ -64,6 +64,11 @@ pub struct MotionCookPump {
     pub cook: Cook,
     /// Reused per-frame lowering buffer — zero-alloc in steady state.
     pub instances: Vec<RenderInstance>,
+    /// The cooked VECTOR shape instances this frame (ADR-0154) — the other side
+    /// of the `geometry_id` convention, drawn by the shell through
+    /// `ph2d-vec-render` into the Vello scene. Reused per-frame like `instances`
+    /// (zero-alloc in steady state); empty for any graph without a shape source.
+    pub vector_instances: Vec<VectorInstance>,
     /// The transport tick `instances` currently reflects (`None` = never cooked).
     last_cooked_tick: Option<u64>,
     /// Set by a graph edit so the next frame re-cooks even at the same tick.
@@ -129,6 +134,7 @@ impl MotionCookPump {
         Self {
             cook: Cook::new(),
             instances: Vec::new(),
+            vector_instances: Vec::new(),
             last_cooked_tick: None,
             dirty: true,
             last_error: None,
@@ -285,6 +291,7 @@ impl MotionCookPump {
                 default_size,
             } => {
                 self.instances.clear();
+                self.vector_instances.clear();
                 for &sink in sinks {
                     // A sink that fails to cook (an unknown type mid-edit, or a
                     // sequential node caught inside a remapped time scope)
@@ -293,11 +300,22 @@ impl MotionCookPump {
                     match self.cook.cook_scoped(graph, ops, sink, playhead, scopes) {
                         Ok(outputs) => {
                             if let Some(v) = outputs.first() {
+                                let stream = v.as_stream();
+                                // The SAME cooked stream feeds both sides of the
+                                // `geometry_id` convention (ADR-0154): textured-quad
+                                // rows lower to `instances`, vector-shape rows to
+                                // `vector_instances`. Disjoint by construction (each
+                                // reads/skips on the same `geometry_id > 0` test), so
+                                // a shape is drawn once, as vector.
                                 lower_to_instances_onto(
-                                    v.as_stream(),
+                                    stream,
                                     default_uv_rect,
                                     default_size,
                                     &mut self.instances,
+                                );
+                                lower_to_vector_instances_onto(
+                                    stream,
+                                    &mut self.vector_instances,
                                 );
                             }
                         }
@@ -560,3 +578,7 @@ mod scrub_tests;
 #[cfg(test)]
 #[path = "boundary_tests.rs"]
 mod boundary_tests;
+
+#[cfg(test)]
+#[path = "lower_tests.rs"]
+mod lower_tests;

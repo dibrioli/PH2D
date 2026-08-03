@@ -103,10 +103,80 @@ pub fn lower_to_instances_onto(
             clip_meta: 0,
         }
     };
-    if n >= PAR_THRESHOLD {
-        out.par_extend((0..n).into_par_iter().map(make));
-    } else {
-        out.extend((0..n).map(make));
+    // doc 86 gave `texture_id`; ADR-0154 gives its sibling `geometry_id`. A row
+    // whose `geometry_id` is a LIVE handle (`> 0`) is a crisp VECTOR shape drawn
+    // by the vector pass (`lower_to_vector_instances_onto`), so it is skipped
+    // here — a shape is never ALSO stamped as a shared-atlas quad. No such
+    // column ⇒ the original `0..n` lowering, VERBATIM ⇒ byte-identical for every
+    // pre-shape graph (the whole point of a convention column).
+    match stream.get("geometry_id") {
+        None => {
+            if n >= PAR_THRESHOLD {
+                out.par_extend((0..n).into_par_iter().map(make));
+            } else {
+                out.extend((0..n).map(make));
+            }
+        }
+        Some(geo) => {
+            // `filter` preserves order ⇒ the surviving sprite rows are
+            // byte-identical to what the pre-shape lowering produced for them.
+            let is_sprite = move |&i: &usize| scalar_at(Some(geo), i, 0.0) <= 0.5;
+            if n >= PAR_THRESHOLD {
+                out.par_extend((0..n).into_par_iter().filter(is_sprite).map(make));
+            } else {
+                out.extend((0..n).filter(is_sprite).map(make));
+            }
+        }
+    }
+}
+
+/// A cooked **vector** shape instance (ADR-0154) — the other side of the
+/// `geometry_id` convention. Unlike [`RenderInstance`] this is NOT a GPU `Pod`:
+/// it is consumed on the CPU by the shell, which looks `geometry_id` up in its
+/// `VecPathStore` and encodes the `VecPath` at `world_pos`/`basis`/`size` into
+/// the Vello scene the `VelloPass` already draws. `basis` is the same 2×2
+/// rotation matrix `[cos, sin, -sin, cos]` a Motion stream carries (no skew).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct VectorInstance {
+    pub geometry_id: u32,
+    pub world_pos: [f32; 2],
+    pub size: [f32; 2],
+    pub basis: [f32; 4],
+    pub tint: [f32; 4],
+}
+
+/// **Stream → VECTOR instances** (ADR-0154) — the sibling of
+/// [`lower_to_instances_onto`] for the other side of the `geometry_id`
+/// convention. Each row whose `geometry_id` is a LIVE handle (`> 0`) lowers to a
+/// [`VectorInstance`] the shell draws through `ph2d-vec-render` into the Vello
+/// scene (a crisp path, not a textured quad). Rows with id 0 (or no column) are
+/// sprites ⇒ skipped. **Appends** (the pump clears once), so a graph with no
+/// shapes leaves `out` empty ⇒ byte-identical. Serial: shapes are a handful, and
+/// the cost is the per-shape Vello encode downstream, not this gather.
+pub fn lower_to_vector_instances_onto(stream: &Stream, out: &mut Vec<VectorInstance>) {
+    let Some(geo) = stream.get("geometry_id") else {
+        return; // no shapes in this stream
+    };
+    let n = stream.count();
+    let p = stream.get("P");
+    let size = stream.get("size");
+    let rot = stream.get("rot");
+    let tint = stream.get("tint");
+    for i in 0..n {
+        let id = scalar_at(Some(geo), i, 0.0);
+        if id <= 0.5 {
+            continue; // a sprite row — lowered by `lower_to_instances_onto`
+        }
+        // Same degrees→basis edge conversion as the sprite lowering (the `rot`
+        // column is the app's one authored-angle unit).
+        let (sin_r, cos_r) = scalar_at(rot, i, 0.0).to_radians().sin_cos();
+        out.push(VectorInstance {
+            geometry_id: id as u32,
+            world_pos: vec2_at(p, i, [0.0, 0.0]),
+            size: vec2_at(size, i, [1.0, 1.0]),
+            basis: [cos_r, sin_r, -sin_r, cos_r],
+            tint: vec4_at(tint, i, [1.0, 1.0, 1.0, 1.0]),
+        });
     }
 }
 

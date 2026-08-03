@@ -420,6 +420,28 @@ pub(crate) fn draw_path(path: &VecPath, transform: Affine, target: &mut VectorSc
     }
 }
 
+/// **Desenha UMA forma de instância de Motion** (ADR-0154) — a porta pública que o
+/// passe vetorial de Motion usa. O `VecPath` é geometria **PURA** (a cor não mora
+/// nele: instâncias iguais compartilham a MESMA geometria content-cached no
+/// `VecPathStore`), então o preenchimento usa o `tint` da instância, não o `fill`
+/// do path. Espelha o ramo de FILL do [`draw_path`] (a mesma `build_contours` +
+/// `fill_rule`) e omite o traço — uma forma de Motion é uma silhueta preenchida.
+/// `transform` já leva a geometria LOCAL à tela (o basis da instância ∘ câmera).
+/// A `fill_rule` vem do path, então um anel (`EvenOdd`) desenha o furo.
+pub fn draw_shape_instance(
+    path: &VecPath,
+    transform: Affine,
+    tint: [f32; 4],
+    target: &mut VectorScene,
+) {
+    let cooked = path.cooked();
+    let fill_bp = build_contours(&cooked, Some(true));
+    let brush = Brush::Solid(Color::new(tint));
+    target
+        .inner_mut()
+        .fill(fill_rule(path), transform, &brush, None, &fill_bp);
+}
+
 /// **O overlay de EDIÇÃO** (as âncoras, os handles) — módulo irmão pelo teto de 700 LOC. O corte
 /// é por assunto: aqui o desenho da ARTE, ali o dos controles que a editam.
 mod overlays;

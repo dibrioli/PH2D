@@ -5,7 +5,8 @@
 //!
 //! The whole module is gated on both Motion panels — its parent declares it with
 //! the same `all(panel-motion-graph, panel-motion-params)` cfg — so the helpers
-//! carry no per-fn gate. All entry points are `pub(super)` for `dispatch`.
+//! carry no per-fn gate. Entry points are `pub(super)` for `dispatch`; the snapshot
+//! builder is `pub(crate)` so a sibling shape test can drive it (ADR-0154 gates).
 
 use super::color::{color_groups, linear_rgba_to_srgb8};
 use crate::motion_state::MotionState;
@@ -256,7 +257,7 @@ pub(crate) fn selected_motion_node() -> Option<u32> {
 /// with its `ParamUiHint` (range / widget / label) and its current value (the
 /// per-instance override, else the manifest default). `None` unless exactly one
 /// node is selected and resolvable.
-pub(super) fn build_params_snapshot(
+pub(crate) fn build_params_snapshot(
     motion: &MotionState,
 ) -> Option<ph2d_panel_motion_params::ParamsSnapshot> {
     use ph2d_node_registry::ParamWidget;
@@ -289,6 +290,7 @@ pub(super) fn build_params_snapshot(
         .map(|u| u.display_name.to_string())
         .unwrap_or_else(|| inst.type_name.clone());
     let hints = motion.registry.param_ui(type_id);
+    let gates = motion.registry.param_gates(type_id);
     let overrides = motion.doc.graph.node_param_overrides(nid);
     let value_of = |name: &str| -> f32 {
         if let Some(v) = overrides.and_then(|m| m.get(name)).copied() {
@@ -299,6 +301,14 @@ pub(super) fn build_params_snapshot(
             .iter()
             .find(|p| p.name == name)
             .map_or(0.0, |p| p.default)
+    };
+    // Conditional visibility (`ParamGate`): a param with a gate whose `when` value
+    // is not one of its `values` is HIDDEN (filtered off both loops below), so a
+    // `source.shape` shows only the controls its current `kind` uses.
+    let shown = |param: &str| -> bool {
+        !gates.into_iter().flatten().any(|g| {
+            g.param == param && !g.values.contains(&(value_of(g.when).round() as i32))
+        })
     };
 
     // Channels folded into a colour swatch (or into a `Channels` picker's `mode`) —
@@ -324,7 +334,7 @@ pub(super) fn build_params_snapshot(
     // each as a row FIRST, reading the graph's text channel (docs/Motion Nodes/32-33).
     // `Curve` rides the SAME text channel as `Text` but paints an interactive curve editor
     // (A1-ui): draggable handles over the serialized curve, never the string.
-    for h in hints.into_iter().flatten() {
+    for h in hints.into_iter().flatten().filter(|h| shown(h.param)) {
         // A named-channel picker (plan §1.1): the artist-facing face of a stream-column
         // TEXT param. It reads the live column (a text param) + its `mode` (an f32
         // param), matches them to a channel, and folds `mode` in (consumed, so it gets
@@ -426,7 +436,7 @@ pub(super) fn build_params_snapshot(
         }
     }
 
-    for spec in manifest.params {
+    for spec in manifest.params.iter().filter(|s| shown(s.name)) {
         let hint = hints.and_then(|hs| hs.iter().find(|h| h.param == spec.name));
         // A `Color`-anchored param emits ONE swatch row for its 4 channels.
         if let Some(h) = hint

@@ -91,9 +91,9 @@ pub(crate) fn read_params(overrides: Option<&BTreeMap<String, f32>>) -> ShapePar
 pub(crate) fn build_shape_path(p: &ShapeParams) -> VecPath {
     let s = f64::from(p.size.max(0.01));
     let ry = s * f64::from(p.aspect.clamp(0.05, 20.0));
-    let sides = p.sides.clamp(3, 512);
-    let inner = f64::from(p.inner.clamp(0.0, 1.0));
-    let corner = f64::from(p.corner.max(0.0));
+    let sides = p.sides.clamp(3, 32);
+    // `corner` is a FRACTION of the size → a world-unit radius that scales.
+    let corner = f64::from(p.corner.clamp(0.0, 1.0)) * s;
     match p.kind {
         ShapeKind::Circle => ellipse([0.0, 0.0], s, s),
         ShapeKind::Ellipse => ellipse([0.0, 0.0], s, ry),
@@ -101,23 +101,27 @@ pub(crate) fn build_shape_path(p: &ShapeParams) -> VecPath {
         ShapeKind::Rectangle => rounded_rect([-s, -ry], [s, ry], corner.min(s.min(ry))),
         ShapeKind::Polygon => regular_polygon_rounded([0.0, 0.0], s, s, sides, corner),
         ShapeKind::Star => {
-            // `inner` is the star DEPTH directly (the param doc: "star depth").
-            let ratio = inner.clamp(0.05, 0.95);
+            let ratio = f64::from(p.star_depth.clamp(0.05, 0.95));
             star_rounded([0.0, 0.0], s, s, sides, ratio, corner, corner)
         }
-        ShapeKind::Heart => heart([-s, -s], [s, s], inner.clamp(0.0, 0.9)),
+        ShapeKind::Heart => heart([-s, -s], [s, s], f64::from(p.cleft.clamp(0.02, 0.45))),
         ShapeKind::Gear => {
-            // `inner` is the tooth DEPTH (fraction of radius); `sides` = teeth.
-            let depth = inner.clamp(0.05, 0.6);
-            gear([-s, -s], [s, s], f64::from(sides), depth, 0.0)
+            // `sides` = teeth; `tooth_depth` = fraction of radius; `hole` = centre bore.
+            let depth = f64::from(p.tooth_depth.clamp(0.05, 0.6));
+            let hole = f64::from(p.hole.clamp(0.0, 1.0));
+            gear([-s, -s], [s, s], f64::from(sides), depth, hole)
         }
     }
 }
 
-/// Publish every `source.shape` node's geometry into the cook (ADR-0154). Runs
-/// once a frame, AFTER the drawn-curve publish (`shapes::publish` cleared the
-/// externals; this only ADDS, under the `shape:` key namespace). The node's `eval`
-/// clones the external we set here.
+/// Publish every `source.shape` node's geometry into the cook (ADR-0154).
+///
+/// ⚠️ **Called from the bridge POST-drain, pre-cook** — after `apply_graph_intents`
+/// has applied this frame's param edits and before the pump cooks. Publishing it
+/// earlier (before the drain) would set the PRE-edit key while the cook reads the
+/// POST-edit key ⇒ the node clones an empty external for one frame ⇒ the shape
+/// vanishes = **flicker on edit**. It only ADDS (the drawn-curve publish already
+/// ran `clear_externals`), under the `shape:` key namespace the node reads.
 pub(crate) fn publish(motion: &mut MotionState) {
     // Collect the (key, params) jobs first so the graph borrow drops before we
     // mutate the store and the cook (three disjoint fields of `MotionState`).

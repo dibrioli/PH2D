@@ -94,9 +94,10 @@ impl crate::App {
                 let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
                 eprintln!(
                     "[shape smoke =1] source.shape (STAR) carimbada numa grade 4x4 = 16 COPIAS \
-                     nitidas (vetor VIVO na GPU, nao uma tile assada). Cada copia carrega o MESMO \
-                     geometry_id — a geometria e construida UMA vez e compartilhada. No frame 90 o \
-                     kind vira ENGRENAGEM ao vivo."
+                     nitidas (vetor VIVO na GPU, nao uma tile assada). O no nasce SELECIONADO: o \
+                     painel de params mostra SO os controles que a estrela usa (Shape, Size, \
+                     Sides/Points, Corner, Point Depth) — nao os da engrenagem. Edite-os e as 16 \
+                     copias mudam SEM PISCAR. No frame 90 o kind vira ENGRENAGEM ao vivo."
                 );
             }
             // Frame 90: troca o kind para Gear — as 16 copias re-constroem.
@@ -106,9 +107,10 @@ impl crate::App {
                     let gfx = self.gfx.as_mut().expect("gfx");
                     gfx.motion.doc.graph.set_param(NodeId(src), "kind", GEAR);
                     eprintln!(
-                        "[shape smoke =1] kind -> ENGRENAGEM: as 16 copias RE-CONSTROEM ao vivo. \
-                         Mudar UM numero (o kind) re-coze o no e so o que esta a jusante dele — \
-                         cada copia continua nitida em qualquer zoom."
+                        "[shape smoke =1] kind -> ENGRENAGEM: as 16 copias RE-CONSTROEM ao vivo, \
+                         SEM PISCAR. Agora o painel troca para os controles da engrenagem (Teeth, \
+                         Tooth Depth, Hole) e ela tem um FURO central de verdade. Mudar um numero \
+                         re-coze so o que esta a jusante; cada copia continua nitida em qualquer zoom."
                     );
                 }
             }

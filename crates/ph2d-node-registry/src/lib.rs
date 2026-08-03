@@ -21,8 +21,8 @@ use std::collections::BTreeMap;
 
 mod ui;
 pub use ui::{
-    NodeSilhouette, NodeUiCategory, NodeUiManifest, ParamHardMax, ParamUiHint, ParamWidget,
-    ReadChannel,
+    NodeSilhouette, NodeUiCategory, NodeUiManifest, ParamGate, ParamHardMax, ParamUiHint,
+    ParamWidget, ReadChannel,
 };
 
 /// A registered set of node operations, keyed by their stable type id.
@@ -39,6 +39,10 @@ pub struct NodeRegistry {
     /// registration is a single insert; the params panel reads it to build rows.
     param_ui: BTreeMap<NodeTypeId, &'static [ParamUiHint]>,
     param_hard_max: BTreeMap<NodeTypeId, &'static [ParamHardMax]>,
+    /// Per-type conditional-visibility gates ([`ParamGate`]) — the params panel
+    /// hides a row whose gate's `when` param is not one of the gate's `values`.
+    /// Absent ⇒ every param is always shown (the pre-gate behaviour).
+    param_gates: BTreeMap<NodeTypeId, &'static [ParamGate]>,
     /// GPU/M5 Fase 1 (ADR-0126) — per-type WGSL compute kernel, keyed the same
     /// way and kept OUT of the frozen `NodeManifest` exactly like the UI
     /// metadata. Opt-in: a node without one runs its CPU `eval` (the canonical
@@ -138,6 +142,17 @@ impl NodeRegistry {
     /// param has no hint).
     pub fn param_ui(&self, id: NodeTypeId) -> Option<&'static [ParamUiHint]> {
         self.param_ui.get(&id).copied()
+    }
+
+    /// Register a node type's conditional-visibility gates ([`ParamGate`]).
+    /// Additive; last write wins.
+    pub fn register_param_gates(&mut self, id: NodeTypeId, gates: &'static [ParamGate]) {
+        self.param_gates.insert(id, gates);
+    }
+
+    /// The param gates for `id`, if any. Absent ⇒ no param is gated (all shown).
+    pub fn param_gates(&self, id: NodeTypeId) -> Option<&'static [ParamGate]> {
+        self.param_gates.get(&id).copied()
     }
 
     /// Register the params whose typed entry reaches past their slider
@@ -357,6 +372,25 @@ mod tests {
         assert_eq!(got[0].param, "rows");
         assert!(got[0].widget.is_integer());
         assert!(reg.param_ui(NodeTypeId::of("nope")).is_none());
+    }
+
+    #[test]
+    fn param_gates_round_trip() {
+        static GATES: &[ParamGate] = &[ParamGate {
+            param: "hole",
+            when: "kind",
+            values: &[7],
+        }];
+        let mut reg = NodeRegistry::new();
+        reg.register(Box::new(Src)).unwrap();
+        assert!(reg.param_gates(SRC_MAN.id).is_none()); // none until registered
+        reg.register_param_gates(SRC_MAN.id, GATES);
+        let got = reg.param_gates(SRC_MAN.id).expect("registered");
+        assert_eq!(got.len(), 1);
+        assert_eq!(got[0].param, "hole");
+        assert_eq!(got[0].when, "kind");
+        assert_eq!(got[0].values, &[7]);
+        assert!(reg.param_gates(NodeTypeId::of("nope")).is_none());
     }
 
     #[test]

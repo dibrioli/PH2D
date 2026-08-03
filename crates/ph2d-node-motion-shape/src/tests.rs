@@ -33,9 +33,11 @@ fn the_key_is_deterministic_and_separates_every_param() {
         size: 1.0,
         aspect: 1.0,
         sides: 5,
-        inner: 0.45,
         corner: 0.0,
-        frame: 0.0,
+        star_depth: 0.45,
+        cleft: 0.2,
+        tooth_depth: 0.35,
+        hole: 0.45,
     };
     assert_eq!(shape_key(&base), shape_key(&base), "deterministic");
 
@@ -46,9 +48,11 @@ fn the_key_is_deterministic_and_separates_every_param() {
         |p| p.size = 2.0,
         |p| p.aspect = 1.5,
         |p| p.sides = 6,
-        |p| p.inner = 0.5,
-        |p| p.corner = 8.0,
-        |p| p.frame = 4.0,
+        |p| p.corner = 0.3,
+        |p| p.star_depth = 0.6,
+        |p| p.cleft = 0.3,
+        |p| p.tooth_depth = 0.4,
+        |p| p.hole = 0.5,
     ];
     for (i, m) in mutate.iter().enumerate() {
         let mut v = base;
@@ -80,9 +84,11 @@ fn read_over_manifest_defaults_gives_the_default_shape() {
     assert_eq!(p.size, 1.0);
     assert_eq!(p.aspect, 1.0);
     assert_eq!(p.sides, 6);
-    assert_eq!(p.inner, 0.45);
     assert_eq!(p.corner, 0.0);
-    assert_eq!(p.frame, 0.0);
+    assert_eq!(p.star_depth, 0.45);
+    assert_eq!(p.cleft, 0.2);
+    assert_eq!(p.tooth_depth, 0.35);
+    assert_eq!(p.hole, 0.45);
 }
 
 /// Every UI hint names a param the manifest declares (a hint for a non-existent
@@ -95,5 +101,28 @@ fn every_hint_names_a_declared_param() {
             "hint '{}' names a param the manifest declares",
             hint.param
         );
+    }
+}
+
+/// Every gate names declared params (`param` + `when`) and lists only valid kind
+/// indices, and only params PAST `size` are gated (`kind`/`size` are always shown).
+/// FALSIFIED by a typo, an out-of-range kind index, or gating a base control.
+#[test]
+fn every_gate_names_declared_params_and_valid_kinds() {
+    let declared = |name: &str| MANIFEST.params.iter().any(|s| s.name == name);
+    for g in PARAM_GATES {
+        assert!(declared(g.param), "gate param '{}' is declared", g.param);
+        assert!(declared(g.when), "gate when '{}' is declared", g.when);
+        assert!(
+            g.param != param::KIND && g.param != param::SIZE,
+            "kind/size are always shown — not gated"
+        );
+        assert!(!g.values.is_empty(), "a gate with no values hides forever");
+        for &v in g.values {
+            assert!(
+                (0..KIND_LABELS.len() as i32).contains(&v),
+                "gate value {v} is a valid kind index"
+            );
+        }
     }
 }

@@ -354,6 +354,7 @@ pub(super) fn dispatch(
     // chain into an Output node and it draws). `None` (no Output node) → the pump
     // renders nothing. Recomputed each frame so add/delete/rewire just works.
     motion.sinks = output_nodes(&motion.doc.graph);
+    super::motion_shape_gen::publish(motion); // ADR-0154: post-drain, pre-cook (no flicker)
     // Time scopes (M2.N1): each `motion.time_remap` node rewrites the clock of
     // its upstream subtree. Rebuilt per frame — one pass over the node list, and
     // empty for a graph with no remapper (the common case), so the cook takes

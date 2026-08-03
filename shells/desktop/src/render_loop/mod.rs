@@ -5362,11 +5362,10 @@ impl crate::App {
             // one place the document, the world, the entity map and the transforms are all in
             // hand at once.
             motion_bridge::publish_shapes(motion, sim, vec_scene, &self.vec_entities, &vec_xf_ops);
-            // ADR-0154: and every `source.shape` node's geometry, right after (the
-            // clear above already ran) — it only ADDS, under the `shape:` content-key
-            // namespace the node reads. The shell builds the `VecPath` from the node
-            // params and interns it in `motion.shape_store`.
-            motion_shape_gen::publish(motion);
+            // ADR-0154: `source.shape` geometry is NOT published here — it is published
+            // by the bridge POST-drain, pre-cook (a param edit is drained inside the
+            // bridge, so publishing here would set the pre-edit key while the cook reads
+            // the post-edit key ⇒ a 1-frame vanish = flicker). See `motion_bridge`.
             // doc 86 §2: and the engine OBJECTS (named sprites) into the same
             // external table — AFTER shapes (which clears it), so the cook sees
             // both curves and objects. The atlas resolves each sprite's tile.

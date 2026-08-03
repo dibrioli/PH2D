@@ -118,4 +118,46 @@ frame 90 as 16 devem virar engrenagens sem re-abrir nada. ⚠️ **Pendente de s
 - **Visibilidade:** as formas renderizam gated em `motion_tool_active` (como os sprites do Motion). Se o Enio
   quiser a cena Motion sempre visível, é decisão de produto (muda o gate).
 
+## 2ª rodada (mesmo dia) — flicker, per-shape params, gear
+
+Cinco pedidos do Enio: (1) editar a forma faz ela PISCAR; (2) `sides` ≤ 32;
+(3) cada forma mostra só os ajustes que USA; (4) mais params por forma + a
+engrenagem estava ruim; (5) melhore tudo.
+
+- **Flicker FECHADO.** A causa era ordem de frame: `apply_graph_intents`
+  (motion_bridge.rs:264) drena o edit de param DENTRO da bridge, mas o shape
+  publish rodava ANTES da bridge (mod.rs:5091) — então publicava a chave PRÉ-edit
+  enquanto o cook (pós-drain) lia a chave PÓS-edit ⇒ o nó clonava um external
+  vazio por 1 frame ⇒ a forma sumia. Movido para **pós-drain, pré-cook**
+  (motion_bridge.rs:356, `super::motion_shape_gen::publish(motion)`); o call-site
+  em mod.rs:5091 só ganhou um comentário. O doc-comment de `publish` registra a lei.
+- **`sides` 128 → 32** (min 3).
+- ⚠️ **Per-shape params = uma ADIÇÃO FOUNDATIONAL a `ph2d-node-registry`
+  (append-only):** o canal novo **`ParamGate { param, when, values }`** +
+  `register_param_gates`/`param_gates` — o gêmeo exato de `register_param_ui`
+  (mesmo `BTreeMap<NodeTypeId, &'static [T]>`, `#[derive(Default)]` ⇒ zero init).
+  **Nenhum campo do `NodeManifest`** (contrato congelado intacto), **zero churn
+  nos 78 nós** (um nó sem gate = tudo visível, o pré-comportamento). O tipo mora
+  em `ui.rs` (ao lado de `ParamHardMax`), re-exportado em `lib.rs`; round-trip
+  gated (`param_gates_round_trip`).
+- **O filtro é UMA porta** em `build_params_snapshot` (motion_bridge_params.rs):
+  `shown(param)` = sem gate OU o `when` corrente está nos `values`; aplicado por
+  `.filter()` nos DOIS laços de row. ⚠️ `build_params_snapshot` foi de `pub(super)`
+  para **`pub(crate)`** para o gate de shell alcançá-lo.
+- **Params redesenhados (9, cada um gated ao seu kind):** `size` (todos) ·
+  `aspect` (Ellipse/Rectangle) · `sides` (Polygon/Star/Gear) · `corner`
+  (Square/Rectangle/Polygon/Star, agora **fração do size** ⇒ escala) · `star_depth`
+  (Star) · `cleft` (Heart) · `tooth_depth` + `hole` (Gear). O `frame` MORTO foi
+  removido; o `inner` reusado virou params dedicados (labels honestos). O key
+  hasheia os 9 (params escondidos ficam no default ⇒ formas iguais ainda dedupam).
+- **Gear consertado:** passava `hole = 0.0` (disco dentado sem furo — o "muito
+  ruim"); agora `hole` (default 0.45) + `tooth_depth` (0.35) dedicados.
+
+**Gates novos (todos mutation-proven, DEBUG+RELEASE):** registry
+`param_gates_round_trip` · node `every_gate_names_declared_params_and_valid_kinds`
+· shell **`the_params_panel_shows_only_the_shapes_kind_params`** (Circle esconde 7,
+Gear mostra sides/tooth_depth/hole; mutação: neutralizar o filtro ⇒ Circle mostra
+os 9, RED). Range/behavior tests da params-panel (5+14) seguem verdes. Contrato
+§6 intacto, LOC caps ok (motion_bridge.rs 600, motion_bridge_params.rs 596).
+
 **A linha está FECHADA. Não integrei nem pushei (§0.7). Aguardando ordem explícita do Enio.**

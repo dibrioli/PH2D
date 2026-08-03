@@ -26,7 +26,7 @@
 //! content-revision rides in the cook fingerprint, so editing a slider re-cooks
 //! this node and only what is downstream of it.
 
-use ph2d_node_registry::{NodeRegistry, ParamUiHint, ParamWidget, RegistryError};
+use ph2d_node_registry::{NodeRegistry, ParamGate, ParamUiHint, ParamWidget, RegistryError};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
@@ -86,37 +86,45 @@ impl ShapeKind {
 }
 
 /// **The whole shape descriptor** — a pure value the node emits (as a key) and the
-/// shell reads (to build the `VecPath`). Seven params, several REUSED across kinds
-/// (a cleaner model than MiniCavalry's per-kind param explosion): `sides` is
-/// polygon-sides / star-points / gear-teeth; `inner` is star-depth / ring-hole /
-/// gear-tooth-depth; `aspect` stretches ellipse/rectangle.
+/// shell reads (to build the `VecPath`). Each shape shows only the params it uses
+/// (the `ParamGate`s below): a circle is just `size`, a gear adds `tooth_depth` +
+/// `hole`. A few params are shared where the geometry genuinely is (`aspect` for
+/// ellipse/rectangle, `sides` for polygon/star/gear, `corner` rounds boxes/polys/
+/// star points); the rest are dedicated so every slider reads honestly.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ShapeParams {
     pub kind: ShapeKind,
     /// Primary size in world units (radius for round kinds, half-extent for boxes).
     pub size: f32,
-    /// Height ÷ width (1.0 = circle/square; the ellipse/rectangle stretch).
+    /// Height ÷ width — ellipse / rectangle stretch (`1.0` = round/square).
     pub aspect: f32,
-    /// Corner count: polygon sides / star points / gear teeth.
+    /// Sides / points / teeth — polygon / star / gear.
     pub sides: u32,
-    /// Inner fraction `0..1`: star depth / ring hole / gear tooth depth / arc sweep.
-    pub inner: f32,
-    /// Corner radius in px (rounded rectangle / polygon).
+    /// Corner rounding as a FRACTION of `size` (`0` = sharp) — box/polygon/star.
     pub corner: f32,
-    /// Outline thickness in px (`0` = filled; `>0` = a hollow frame).
-    pub frame: f32,
+    /// Star point depth: the inner-radius ratio `0.05..0.95` (small = spiky).
+    pub star_depth: f32,
+    /// Heart cleft: how deep the top dip sits (`0.02..0.45`).
+    pub cleft: f32,
+    /// Gear tooth depth as a fraction of the radius (`0.05..0.6`).
+    pub tooth_depth: f32,
+    /// Gear centre hole as a fraction of the root circle (`0` = solid).
+    pub hole: f32,
 }
 
 /// The names of the f32 params — the ONE list the manifest, the UI hints, the
-/// node's `eval` and the shell's reader all key off (no drifting string literal).
+/// gates, the node's `eval` and the shell's reader all key off (no drifting
+/// string literal).
 pub mod param {
     pub const KIND: &str = "kind";
     pub const SIZE: &str = "size";
     pub const ASPECT: &str = "aspect";
     pub const SIDES: &str = "sides";
-    pub const INNER: &str = "inner";
     pub const CORNER: &str = "corner";
-    pub const FRAME: &str = "frame";
+    pub const STAR_DEPTH: &str = "star_depth";
+    pub const CLEFT: &str = "cleft";
+    pub const TOOTH_DEPTH: &str = "tooth_depth";
+    pub const HOLE: &str = "hole";
 }
 
 impl ShapeParams {
@@ -130,13 +138,14 @@ impl ShapeParams {
             kind: ShapeKind::from_index(get(param::KIND)),
             size: get(param::SIZE),
             aspect: get(param::ASPECT),
-            // Clamp is deliberate here (not in `from_index`): a polygon needs ≥ 3,
-            // but the store/build clamps per-kind; keep the raw-ish int here so the
-            // key is stable and the builder decides the floor.
-            sides: (get(param::SIDES).round() as i64).clamp(2, 512) as u32,
-            inner: get(param::INNER),
+            // Clamp is deliberate here (not in `from_index`): the UI caps at 32, but
+            // the builder decides the floor; keep the int stable so the key is exact.
+            sides: (get(param::SIDES).round() as i64).clamp(3, 32) as u32,
             corner: get(param::CORNER),
-            frame: get(param::FRAME),
+            star_depth: get(param::STAR_DEPTH),
+            cleft: get(param::CLEFT),
+            tooth_depth: get(param::TOOTH_DEPTH),
+            hole: get(param::HOLE),
         }
     }
 }
@@ -145,24 +154,29 @@ impl ShapeParams {
 /// node reads and the shell publishes under. Content-addressed: identical
 /// descriptors share ONE `VecPath` in the store. Deterministic and exact — the
 /// same f32 bits format the same string, so the node's lookup and the shell's
-/// publish cannot diverge (gated).
+/// publish cannot diverge (gated). Hashes the WHOLE descriptor: a hidden param
+/// stays at its default for any shape an artist authors, so identical shapes still
+/// share geometry, and no per-kind branch can drift from the reader.
 #[must_use]
 pub fn shape_key(p: &ShapeParams) -> String {
     format!(
-        "shape:{}:{}:{}:{}:{}:{}:{}",
+        "shape:{}:{}:{}:{}:{}:{}:{}:{}:{}",
         p.kind as u32,
         p.size.to_bits(),
         p.aspect.to_bits(),
         p.sides,
-        p.inner.to_bits(),
         p.corner.to_bits(),
-        p.frame.to_bits(),
+        p.star_depth.to_bits(),
+        p.cleft.to_bits(),
+        p.tooth_depth.to_bits(),
+        p.hole.to_bits(),
     )
 }
 
 /// The static contract of this node type (ADR-0031). The `kind` param is an
-/// enum index; the six geometry params are f32 sliders. Frozen `NodeManifest`
-/// (8 fields) untouched — these are `ParamSpec`s (f32), not new fields.
+/// enum index; the eight geometry params are f32 sliders, gated per-kind by
+/// [`PARAM_GATES`]. Frozen `NodeManifest` (8 fields) untouched — these are
+/// `ParamSpec`s (f32), not new fields.
 pub const MANIFEST: NodeManifest = NodeManifest {
     id: NodeTypeId::of("source.shape"),
     name: "source.shape",
@@ -191,16 +205,24 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             default: 6.0,
         },
         ParamSpec {
-            name: param::INNER,
-            default: 0.45,
-        },
-        ParamSpec {
             name: param::CORNER,
             default: 0.0,
         },
         ParamSpec {
-            name: param::FRAME,
-            default: 0.0,
+            name: param::STAR_DEPTH,
+            default: 0.45,
+        },
+        ParamSpec {
+            name: param::CLEFT,
+            default: 0.2,
+        },
+        ParamSpec {
+            name: param::TOOTH_DEPTH,
+            default: 0.35,
+        },
+        ParamSpec {
+            name: param::HOLE,
+            default: 0.45,
         },
     ],
     lowerings: &[LoweringKind::Cpu],
@@ -239,13 +261,14 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_gates(MANIFEST.id, PARAM_GATES);
     Ok(())
 }
 
 /// The param rows: a real dropdown for the shape family (the segmented `Enum`
-/// widget the Vector panel uses for Cap/Join), then the geometry sliders. Several
-/// rows are inert for some kinds (a circle ignores `sides`) — v1 shows them all,
-/// like MiniCavalry's `defaultParams`; per-kind visibility is a follow-up.
+/// widget the Vector panel uses for Cap/Join), then the geometry sliders. Every
+/// row past `size` is gated by [`PARAM_GATES`], so the panel shows ONLY the
+/// controls the current `kind` uses.
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: param::KIND,
@@ -267,7 +290,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: param::ASPECT,
-        label: "Aspect",
+        label: "Aspect (H/W)",
         min: 0.1,
         max: 4.0,
         step: 0.01,
@@ -275,35 +298,102 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     ParamUiHint {
         param: param::SIDES,
-        label: "Sides / Points",
-        min: 2.0,
-        max: 128.0,
+        label: "Sides / Points / Teeth",
+        min: 3.0,
+        max: 32.0,
         step: 1.0,
         widget: ParamWidget::IntSlider,
     },
     ParamUiHint {
-        param: param::INNER,
-        label: "Inner",
+        param: param::CORNER,
+        label: "Corner Radius",
         min: 0.0,
         max: 1.0,
         step: 0.01,
         widget: ParamWidget::Slider,
     },
     ParamUiHint {
-        param: param::CORNER,
-        label: "Corner",
-        min: 0.0,
-        max: 200.0,
-        step: 1.0,
+        param: param::STAR_DEPTH,
+        label: "Point Depth",
+        min: 0.05,
+        max: 0.95,
+        step: 0.01,
         widget: ParamWidget::Slider,
     },
     ParamUiHint {
-        param: param::FRAME,
-        label: "Frame",
-        min: 0.0,
-        max: 100.0,
-        step: 1.0,
+        param: param::CLEFT,
+        label: "Cleft",
+        min: 0.02,
+        max: 0.45,
+        step: 0.01,
         widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: param::TOOTH_DEPTH,
+        label: "Tooth Depth",
+        min: 0.05,
+        max: 0.6,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: param::HOLE,
+        label: "Hole",
+        min: 0.0,
+        max: 0.9,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
+];
+
+/// **Per-kind visibility** — a param appears only when `kind` is one of the listed
+/// values (the enum indices from [`ShapeKind`]). `kind` and `size` have no gate
+/// (always shown). This is the SAME per-kind truth the builder keys off, so a
+/// shown control is a control that does something.
+static PARAM_GATES: &[ParamGate] = &[
+    ParamGate {
+        param: param::ASPECT,
+        when: param::KIND,
+        values: &[ShapeKind::Ellipse as i32, ShapeKind::Rectangle as i32],
+    },
+    ParamGate {
+        param: param::SIDES,
+        when: param::KIND,
+        values: &[
+            ShapeKind::Polygon as i32,
+            ShapeKind::Star as i32,
+            ShapeKind::Gear as i32,
+        ],
+    },
+    ParamGate {
+        param: param::CORNER,
+        when: param::KIND,
+        values: &[
+            ShapeKind::Square as i32,
+            ShapeKind::Rectangle as i32,
+            ShapeKind::Polygon as i32,
+            ShapeKind::Star as i32,
+        ],
+    },
+    ParamGate {
+        param: param::STAR_DEPTH,
+        when: param::KIND,
+        values: &[ShapeKind::Star as i32],
+    },
+    ParamGate {
+        param: param::CLEFT,
+        when: param::KIND,
+        values: &[ShapeKind::Heart as i32],
+    },
+    ParamGate {
+        param: param::TOOTH_DEPTH,
+        when: param::KIND,
+        values: &[ShapeKind::Gear as i32],
+    },
+    ParamGate {
+        param: param::HOLE,
+        when: param::KIND,
+        values: &[ShapeKind::Gear as i32],
     },
 ];
 

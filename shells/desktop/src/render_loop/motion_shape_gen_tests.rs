@@ -127,6 +127,50 @@ fn an_unpublished_handle_is_none_and_encodes_without_panic() {
     // Reaching here without a panic IS the assertion.
 }
 
+/// **The per-shape param gate, end to end.** The params bridge shows ONLY the
+/// controls the current `kind` uses (`ParamGate`): a circle is Shape + Size; a gear
+/// adds Sides + Tooth Depth + Hole and nothing else. FALSIFIED by dropping the
+/// `gated_off` filter in `build_params_snapshot` (a circle would show all nine).
+#[cfg(all(feature = "panel-motion-graph", feature = "panel-motion-params"))]
+#[test]
+fn the_params_panel_shows_only_the_shapes_kind_params() {
+    use ph2d_panel_motion_params::ParamRow;
+    let names = |motion: &MotionState| -> Vec<&'static str> {
+        crate::render_loop::motion_bridge::params::build_params_snapshot(motion)
+            .expect("shape node resolvable")
+            .rows
+            .iter()
+            .filter_map(|r| match r {
+                ParamRow::Enum(e) => Some(e.name),
+                ParamRow::Scalar(s) => Some(s.name),
+                _ => None,
+            })
+            .collect()
+    };
+    let mut motion = MotionState::new();
+    let n = motion.doc.graph.add_node("source.shape"); // default kind = Circle
+    ph2d_panel_motion_graph::set_graph_selection(vec![n.0]);
+
+    let circle = names(&motion);
+    assert!(
+        circle.contains(&"kind") && circle.contains(&"size"),
+        "a circle shows Shape + Size"
+    );
+    for p in ["aspect", "sides", "corner", "star_depth", "cleft", "tooth_depth", "hole"] {
+        assert!(!circle.contains(&p), "a circle hides {p}");
+    }
+
+    motion.doc.graph.set_param(n, "kind", ShapeKind::Gear as u32 as f32);
+    let gear = names(&motion);
+    for p in ["kind", "size", "sides", "tooth_depth", "hole"] {
+        assert!(gear.contains(&p), "a gear shows {p}");
+    }
+    for p in ["aspect", "corner", "star_depth", "cleft"] {
+        assert!(!gear.contains(&p), "a gear hides {p}");
+    }
+    ph2d_panel_motion_graph::set_graph_selection(Vec::new());
+}
+
 /// **The whole path, end to end** — the smoke's number, gated. A `source.shape`
 /// (Star) is crossed with a `motion.grid` (4×4) through a `motion.duplicator`; the
 /// cooked sink lowers to 16 `VectorInstance`s, every copy carrying the ONE handle

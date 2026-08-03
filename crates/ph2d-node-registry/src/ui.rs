@@ -204,3 +204,20 @@ pub struct ParamHardMax {
     /// The typed-entry ceiling. Must be ≥ the hint's `max` to mean anything.
     pub max: f32,
 }
+
+/// **Show a param row only when another param has one of a set of values** — the
+/// side-channel that makes a param CONDITIONAL, so a node shows only the controls
+/// that apply to its current mode (a `source.shape` gear shows `hole`/`tooth_depth`;
+/// a circle shows neither). Side-metadata like [`ParamHardMax`], **never** a field
+/// of the frozen `NodeManifest` — a param with no gate here is always shown, which
+/// is what every existing param already means, so nothing moves by default.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct ParamGate {
+    /// The `ParamSpec::name` this gate conditionally SHOWS.
+    pub param: &'static str,
+    /// The `ParamSpec::name` whose current value decides.
+    pub when: &'static str,
+    /// The allowed `when` values (rounded to int — an `Enum` stores its index as
+    /// f32) for `param` to appear. Empty ⇒ the param is never shown.
+    pub values: &'static [i32],
+}

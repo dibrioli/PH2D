@@ -85,6 +85,11 @@ pub use ph2d_editor_core::ids::{
     VECTOR_ANCHOR_V_CENTER, VECTOR_ANCHOR_V_END, VECTOR_ANCHOR_V_START, VECTOR_ANCHOR_V_STRETCH,
     VECTOR_SECTION_ANCHORS,
 };
+/// **OS COMPONENTES** (plano UI/UX W5): a seção + os quatro verbos.
+pub use ph2d_editor_core::ids::{
+    VECTOR_COMPONENT_CREATE, VECTOR_COMPONENT_DETACH, VECTOR_COMPONENT_PLACE,
+    VECTOR_COMPONENT_RESET, VECTOR_SECTION_COMPONENT,
+};
 /// Os campos da RELAÇÃO do conector (a seção só existe com um conector na seleção).
 pub use ph2d_editor_core::ids::{
     VECTOR_CONNECTOR_CORNER, VECTOR_CONNECTOR_CURVE, VECTOR_CONNECTOR_JETTY,

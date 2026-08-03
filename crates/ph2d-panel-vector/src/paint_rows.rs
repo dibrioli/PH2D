@@ -100,6 +100,27 @@ impl BodyCtx<'_> {
         y + self.row_h + self.row_gap
     }
 
+    /// **Uma linha de texto e nada mais** — um readout, sem id e sem hit-rect.
+    ///
+    /// ⚠️ Ela existe porque a alternativa seria pintar um botão desativado, e *dimmed que
+    /// despacha mente* — ou pior, dimmed que **não** despacha e ainda parece clicável. Um facto
+    /// que o artista precisa de ler (a instância cujo mestre sumiu) é uma FRASE; um facto sobre
+    /// que ele pode agir é um botão. Sem id, o `architecture_panel_wiring_parity` não tem o que
+    /// exigir aqui, e é correto: não há nada a registar.
+    pub(crate) fn label_line(&mut self, text: &str, y: f32) -> f32 {
+        paint_text(
+            self.text_system,
+            self.scene,
+            text,
+            self.inner_x,
+            y + (self.row_h - TypeToken::Sm.px()) * 0.5,
+            TypeToken::Sm.px(),
+            self.inner_w,
+            resolve(ColorToken::Text2, self.theme),
+        );
+        y + self.row_h + Spacing::Xs.px()
+    }
+
     /// A full-width action button (Boolean / Vertex-delete / Duplicate).
     pub(crate) fn action_button(&mut self, id: ph2d_a11y::NodeId, label: &str, y: f32) -> f32 {
         self.action_button_kind(id, label, ButtonKind::Default, y)

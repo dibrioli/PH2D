@@ -221,5 +221,13 @@ pub(crate) fn route(app: &mut crate::App, f: u32, level: u32) -> bool {
         crate::anchor_smoke::frame(app, f);
         return true;
     }
+    // A cena dos COMPONENTES (=53, plano UI/UX W5) — irmã `component_smoke`. Mesma disciplina: dá
+    // o material (um botão de duas peças e um controle) e **nada nasce sendo componente** — quem
+    // promove, coloca e destaca é o artista, e é isso que faz a costura painel→shell→ECS→desenho
+    // ser de facto exercitada.
+    if level == 53 {
+        crate::component_smoke::frame(app, f);
+        return true;
+    }
     false
 }

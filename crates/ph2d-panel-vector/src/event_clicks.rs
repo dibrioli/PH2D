@@ -217,6 +217,12 @@ pub(super) fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         || id == ids::VECTOR_BOOL_LIVE_OFF
         || id == ids::VECTOR_BOOL_LIVE_ON
         || id == ids::VECTOR_BOOL_APPLY
+        // Os quatro verbos de COMPONENTE (plano UI/UX W5): mestre e instância moram no ECS, então
+        // o clique é da SHELL — o painel só mostra que verbos fazem sentido.
+        || id == ids::VECTOR_COMPONENT_CREATE
+        || id == ids::VECTOR_COMPONENT_PLACE
+        || id == ids::VECTOR_COMPONENT_DETACH
+        || id == ids::VECTOR_COMPONENT_RESET
         || id == ids::VECTOR_BOOL_MINUS_BACK
         || id == ids::VECTOR_BOOL_TRIM
         || id == ids::VECTOR_BOOL_CROP

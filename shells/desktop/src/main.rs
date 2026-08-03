@@ -70,13 +70,14 @@ mod build_smoke_router;
 mod chrome_hit;
 /// Teclado do palette de "Add Node" (busca/filtro, Enter/Backspace/Esc).
 mod command_palette_input;
+/// **Contour** (pesquisa `20_*` #9) — o cozimento vivo do `VecContour`: N anéis concêntricos
+/// com rampa de cor, irmão do `offset_live` de que é a generalização.
+mod component_smoke;
 /// O gesto que cria um conector (Down numa forma, Up noutra).
 mod connector_gesture;
 /// Conectores vivos: a linha que gruda em duas formas e as segue (re-cook por frame).
 mod connector_handles;
 mod connector_live;
-/// **Contour** (pesquisa `20_*` #9) — o cozimento vivo do `VecContour`: N anéis concêntricos
-/// com rampa de cor, irmão do `offset_live` de que é a generalização.
 mod contour_live;
 /// A cena de smoke do **Contour** (`PH2D_BUILD_SMOKE=25`) — irmã de `build_smoke`, teto de LOC.
 mod contour_smoke;
@@ -182,6 +183,7 @@ mod input_dispatch;
 mod input_drop;
 mod input_handlers;
 mod input_log;
+mod instance_live;
 mod integration;
 mod joint_anchor_drag;
 mod joint_draw;
@@ -324,6 +326,7 @@ mod value_wrap_smoke;
 mod vec_anchor_edit;
 mod vec_bindings;
 mod vec_blend;
+mod vec_component_edit;
 /// O painel edita o CONECTOR selecionado (Route / Jetty / Spread) — resolve o valor
 /// EFETIVO que o painel exibe e aplica a edição a TODOS os conectores selecionados.
 mod vec_connector_panel;
@@ -668,6 +671,7 @@ impl App {
             offset_live: crate::offset_live::OffsetLive::default(),
             profile_live: crate::profile_live::ProfileLive::default(),
             contour_live: crate::contour_live::ContourLive::default(),
+            instance_live: crate::instance_live::InstanceLive::default(),
             layout_live: crate::layout_live::LayoutLive::default(),
             vec_view_derived: ph2d_vec_scene::VecViewState::default(),
             align_live: crate::align_live::AlignLive::default(),

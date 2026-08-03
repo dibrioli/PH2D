@@ -90,3 +90,29 @@ fn removing_the_override_returns_to_the_derived_answer() {
     w.entity_mut(frame).remove::<VecResizeBox>();
     assert!(resizes_box(&w, frame), "voltou ao default derivado");
 }
+
+/// **Uma INSTÂNCIA escala a pose — mesmo dentro de uma moldura** (plano UI/UX W5).
+///
+/// ⚠️ Nasceu porque a isenção shipou **sem gate**: a mutação que a remove passava em toda a suíte,
+/// e o preço é do artista — a alça reescreveria o retângulo-SUPORTE da cópia (o número que ninguém
+/// olha) e o desenho, que é derivado, ficaria exatamente onde estava. Um arrasto que não faz nada.
+#[test]
+fn an_instance_scales_its_pose_even_inside_a_frame() {
+    let mut w = World::new();
+    let frame = w.spawn(VecFrame { clip: false }).id();
+    let plain_kid = w.spawn(crate::ChildOf(frame)).id();
+    let instance_kid = w
+        .spawn((crate::ChildOf(frame), crate::VecInstance::new(1)))
+        .id();
+    assert!(
+        resizes_box(&w, plain_kid),
+        "um filho comum de moldura reescreve a caixa (o controle)"
+    );
+    assert!(
+        !resizes_box(&w, instance_kid),
+        "a instância reescreveria o suporte e o desenho não se mexeria"
+    );
+    // ⚠️ E o override do artista continua a vencer: a isenção é um DEFAULT, não uma proibição.
+    w.entity_mut(instance_kid).insert(VecResizeBox(true));
+    assert!(resizes_box(&w, instance_kid));
+}

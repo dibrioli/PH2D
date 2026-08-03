@@ -53,6 +53,14 @@ pub struct VecResizeBox(pub bool);
 /// escala como qualquer objeto de game.
 #[must_use]
 pub fn default_for(world: &bevy_ecs::world::World, e: Entity) -> bool {
+    // ⚠️ **Uma INSTÂNCIA escala a pose, mesmo dentro de uma moldura** (plano UI/UX W5). A caixa
+    // guardada de uma instância é um SUPORTE — um retângulo do tamanho do mestre —, e o que se vê
+    // é derivado dele; reescrever esse retângulo mudaria o número que ninguém olha e deixaria o
+    // desenho exatamente onde estava. A regra da moldura (*"filho de moldura reescreve a caixa,
+    // porque o tamanho é ENTRADA da disposição"*) vale para quem TEM caixa própria.
+    if world.get::<crate::VecInstance>(e).is_some() {
+        return false;
+    }
     if world.get::<VecFrame>(e).is_some() {
         return true;
     }

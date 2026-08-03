@@ -355,6 +355,13 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // sombra/brilho, com a curva certa por baixo. O FX é DESENHO derivado; o snapshot guarda a
     // RELAÇÃO, e é este componente.
     reg.register::<crate::VecFilter>("ph2d::ecs::VecFilter");
+    // OS COMPONENTES (plano UI/UX W5): o mestre e a instância. Mesma razão de todos os irmãos, e
+    // aqui com dois modos de falha distintos — sem o registro do MARCADOR, um Ctrl+Z devolveria a
+    // arte com as instâncias a apontar para um caminho que já não se declara mestre (todas órfãs
+    // de uma vez); sem o registro da INSTÂNCIA, o que se perde é o vínculo E os overrides
+    // autorados, e o que sobra é um caminho vazio no lugar onde havia uma cópia.
+    reg.register::<crate::VecComponentMain>("ph2d::ecs::VecComponentMain");
+    reg.register::<crate::VecInstance>("ph2d::ecs::VecInstance");
 }
 
 #[cfg(test)]
@@ -413,7 +420,7 @@ mod tests {
         // `VecConnector`, e as duas linhas, sozinhas, diziam 27 — por motivos diferentes. A
         // árvore combinada tem 28. Escolher "um dos lados" aqui é o erro que deixa o
         // workspace vermelho com dois merges verdes.
-        assert_eq!(reg.len(), 48);
+        assert_eq!(reg.len(), 50);
         assert!(reg.get_by_name("ph2d::ecs::VecAnchors").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecResizeBox").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecBindings").is_some());

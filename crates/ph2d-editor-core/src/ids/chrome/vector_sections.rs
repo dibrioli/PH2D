@@ -63,4 +63,6 @@ pub const VECTOR_SECTIONS: &[NodeId] = &[
     super::vector_layout::VECTOR_SECTION_LAYOUT,
     // AS ÂNCORAS (plano UI/UX W3): a regra do filho que NÃO flui.
     super::vector_anchors::VECTOR_SECTION_ANCHORS,
+    // OS COMPONENTES (plano UI/UX W5): o mestre e a instância.
+    super::vector_components::VECTOR_SECTION_COMPONENT,
 ];

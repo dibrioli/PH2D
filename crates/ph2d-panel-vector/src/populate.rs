@@ -44,13 +44,16 @@ mod pencil;
 /// Os controles da seção CONSTRAINTS (plano UI/UX W3) — irmão pelo mesmo teto.
 #[path = "populate_anchors.rs"]
 pub(crate) mod anchors;
-/// Os controles da SIMETRIA de desenho — irmão pelo teto de LOC (600) do painel.
+/// Os quatro verbos da seção COMPONENT (plano UI/UX W5) — irmão pelo mesmo teto.
+#[path = "populate_components.rs"]
+mod components;
 /// Os controles da seção FRAME (plano UI/UX W0) — irmão pelo teto de LOC.
 #[path = "populate_frame.rs"]
 mod frame;
 /// Os controles da seção LAYOUT (plano UI/UX W2, ADR-0153) — irmão pelo mesmo teto.
 #[path = "populate_layout.rs"]
 pub(crate) mod layout;
+/// Os controles da SIMETRIA de desenho — irmão pelo teto de LOC (600) do painel.
 #[path = "populate_symmetry.rs"]
 mod symmetry;
 /// Os dois chips de TOKEN (plano UI/UX W4) — irmão pelo teto de LOC.
@@ -288,6 +291,7 @@ fn populate_shape(store: &mut WidgetStore) {
     frame::frame_controls(store);
     layout::layout_controls(store);
     anchors::anchor_controls(store);
+    components::component_controls(store);
     tokens::token_controls(store);
 
     // Os pills de MODO (Select … Fillet / Chamfer) + Convert — módulo irmão pelo teto de LOC.

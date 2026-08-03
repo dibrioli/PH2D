@@ -330,6 +330,15 @@ const PANEL_A11Y_DELEGATE_OK: &[(&str, &str)] = &[
         "delegates to segmented/number_row/number_cell (paint_segmented/paint_number_input-backed) \
          in paint_rows",
     ),
+    // ⚠️ O `label_line` desta seção pinta TEXTO e regista NADA — de propósito. Ele é o readout de
+    // *"main missing"*, um facto a LER; um facto a AGIR é um botão, e esses são os quatro
+    // `action_button` (paint_button-backed) logo ao lado. Dar-lhe um nó de AccessKit sem id nem
+    // hit-rect seria anunciar um controlo que não existe.
+    (
+        "ph2d-panel-vector/src/paint_components.rs",
+        "delegates to action_button (paint_button-backed) in paint_rows — o único não-botão é o \
+         readout de texto, que não é um controlo",
+    ),
     (
         "ph2d-panel-vector/src/paint_anchors.rs",
         "delegates to segmented (paint_segmented-backed) in paint_rows — a seção só tem as duas \

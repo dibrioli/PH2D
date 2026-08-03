@@ -1021,6 +1021,9 @@ pub(crate) struct App {
     /// (`ph2d_ecs::VecContour`, pesquisa `20_*` item #9), irmão do `offset_live` de que é a
     /// generalização. Runtime-only e memoizado POR ANEL.
     pub(crate) contour_live: crate::contour_live::ContourLive,
+    /// **As INSTÂNCIAS de componente, vivas** (plano UI/UX W5) — o mestre desenhado na pose de
+    /// cada cópia. O 9º produtor de `LiveGeometry`.
+    pub(crate) instance_live: crate::instance_live::InstanceLive,
     /// O **cozimento da SIMETRIA VIVA** — as cópias que o modo simétrico desenha
     /// (`ph2d_ecs::VecSymmetry`, plano 25 W6.3), irmão do `offset_live`. Runtime-only, e é isso
     /// que faz *"desmarcar antes do Apply"* não destruir nada: as cópias nunca estiveram no

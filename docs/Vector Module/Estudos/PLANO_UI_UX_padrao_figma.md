@@ -641,7 +641,34 @@ keyframar `color.accent` e ver a UI toda pulsar.
 
 ---
 
-### W5 — OS COMPONENTES (o prefab)
+### W5 — OS COMPONENTES (o prefab) ✅ **W5a CONSTRUÍDA (2026-08-03)**
+
+> **O que MUDOU do que está escrito abaixo** (a §0 manda quem move um número reconferir a nota):
+>
+> - ⚠️ **O plano carregava DOIS endereços para a mesma pergunta** — `VecComponentMain { key: String }`
+>   no mestre **e** `VecInstance { main: VecPathId }` na instância. Duas respostas a *"qual mestre é
+>   este?"* divergem no dia em que uma ganha um caso, então uma morreu: **o id vence** (o precedente
+>   literal do `VecPatternPath::path` / `VecTextPath::path`), e o mestre ficou **marcador puro** — o
+>   nome de exibição é o `Name` que a Hierarquia já mostra.
+> - ⚠️ **`PropPath` NÃO EXISTE** (a W4b não foi construída), então o override tem vocabulário
+>   FECHADO: `Fill([u8;4])` e `Hidden`, endereçados pelo id da peça no mestre. Inventar uma
+>   enumeração geral sem o consumidor que a exige seria desenhar no escuro; quando a W4b chegar ela
+>   estende **esta** lista ou a absorve — o que não pode é nascerem duas.
+> - ⚠️ **A ordem dos overrides é LEI, não arrumação:** o `canonicalize` do undo compara os BYTES do
+>   componente, então duas instâncias logicamente iguais com a lista em ordens diferentes
+>   comparariam DIFERENTE — e cada frame viraria um passo de undo espúrio. `VecInstance::set` é a
+>   porta única que a mantém.
+> - ⚠️ **Uma instância ESCALA a pose, mesmo dentro de uma moldura** (isenção no `resize_box_default`):
+>   a caixa guardada dela é um **suporte** e o que se vê é derivado, então reescrever o retângulo
+>   mudaria um número que ninguém olha e deixaria o desenho onde estava.
+> - **Registro 48 → 50** (o plano previa 47 → 49: o `VecResizeBox` da W3b não estava contado), e os
+>   dois espelhos (`ph2d-render`/`ph2d-script`) **49 → 51**. Sem bump de `PROJECT_SCHEMA`.
+> - **NÃO construídos, nomeados:** *Update Main* (pede editar uma instância no lugar) e *Swap* (pede
+>   um picker de componentes + a regra de compatibilidade) — a **W5b**, junto com os **variants**
+>   (`VecInstance.props`, que ficou fora do componente).
+> - Smoke: **`=53`**, e ela **não cria componente nenhum** — quem promove, coloca e destaca é o
+>   artista, que é a costura inteira da wave.
+
 
 **O quê.** Mestre + instâncias com **overrides esparsos**; **variants** (size/state/color) sob
 properties. O Vol. 2 §3 — e, como o próprio estudo diz, **isto é o sistema de prefabs do engine**.
@@ -945,7 +972,8 @@ escreveu**:
 | **W4b/c** | tabela autorável (aliases/math/DTCG) + animar token | — | `DOC_VERSION`, seção | — | sim (indireção) | — |
 | **W2** ✅ | auto layout | +2 (**46**) | — (W2a fica) | **taffy** | **0153** | `=50` |
 | **W3** ✅ | âncoras | +1 (**47**) | — | — | — | `=52` |
-| **W5** | componentes/variants | +2 (49) | — | — | sim (prefab) | `=53` |
+| **W5a** ✅ | mestre + instância + override esparso | +2 (**50**) | — | — | — | `=53` |
+| **W5b** | variants/props · Update Main · Swap | — | — | — | sim (prefab) | — |
 | **W6** | vínculo com o widget | +1 (50) | — | — | sim (§2) | `=54` |
 | **W7** | estados + Smart Animate | — | `DOC_VERSION` | — | sim (HSM) | `=55` |
 | **W8** | runtime + codegen | — | seção | — | sim (fronteira) | `=56` |

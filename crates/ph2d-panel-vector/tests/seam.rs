@@ -624,7 +624,9 @@ fn every_section_header_is_registered_as_collapsible() {
         // fluxo na seleção.
         // +1 (plano UI/UX W3): ANCHORS — a regra do filho que NÃO flui. Ela e a LAYOUT nunca
         // aparecem juntas: a shell só publica a regra para um filho cujo pai não empilha.
-        32,
+        // +1 (plano UI/UX W5): COMPONENT — o prefab. Some inteira sem exactamente uma forma
+        // selecionada, e cada verbo dela aparece só onde faz sentido.
+        33,
         "a lista de secoes mudou — confira que o paint pinta um header para cada uma"
     );
     for &id in ids::VECTOR_SECTIONS {

@@ -203,6 +203,15 @@ pub fn tr(key: &str) -> &'static str {
         "panel.vector.anchors.bottom" => "Bottom",
         "panel.vector.anchors.center" => "Center",
         "panel.vector.anchors.stretch" => "Stretch",
+        // **OS COMPONENTES** (plano UI/UX W5) — o prefab: mestre, instância, override.
+        // ⚠️ "Main" e não "Master": é a palavra que o Figma passou a usar, e é a que aparece no
+        // readout de órfã — os dois lados têm de falar a mesma.
+        "panel.vector.section.component" => "Component",
+        "panel.vector.component.create" => "Create Component",
+        "panel.vector.component.place" => "Place Instance",
+        "panel.vector.component.detach" => "Detach Instance",
+        "panel.vector.component.reset" => "Reset Overrides",
+        "panel.vector.component.missing" => "Main missing",
         // **O AUTO LAYOUT** (plano UI/UX W2, ADR-0153) — a moldura que empilha os filhos.
         // ⚠️ Os rótulos de direção incluem o "Off" porque *"esta moldura flui?"* e *"em que
         // direção?"* são a MESMA pergunta (o `display` do CSS) — ver `VECTOR_LAYOUT_DIR_OFF`.

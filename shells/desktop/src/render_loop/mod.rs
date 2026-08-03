@@ -2081,6 +2081,8 @@ impl crate::App {
             // hotkeys, next to the vector render).
             let mut pending_vec_bool: Option<ph2d_vec_boolean::PathfinderOp> = None;
             let mut pending_vec_expand: Option<crate::vec_expand::Expand> = None;
+            // OS COMPONENTES (plano UI/UX W5): o verbo pedido neste frame.
+            let mut pending_component: Option<crate::vec_component_edit::ComponentEdit> = None;
             // **A BOOLEANA VIVA** (plano UI/UX W1): o Apply consolida o que o produtor cozinhou
             // NESTE frame, então ele não pode correr aqui — corre logo depois do `recook`, onde o
             // plano existe. Aqui só se anota o clique.
@@ -2441,6 +2443,13 @@ impl crate::App {
                                 // **Resize Box** (plano UI/UX W3b): o override mora no COMPONENTE,
                                 // entao o clique e' da shell — o painel so' mostra o estado.
                                 pending_resize_box = true;
+                            } else if let Some(e) =
+                                crate::vec_component_edit::component_edit_for_id(*id)
+                            {
+                                // OS COMPONENTES (plano UI/UX W5): mestre e instância moram no
+                                // ECS, entao o clique e' da shell — o painel so' mostra que
+                                // verbos fazem sentido.
+                                pending_component = Some(e);
                             } else if let Some(e) = crate::vec_anchor_edit::anchor_edit_for_id(*id)
                             {
                                 // AS ÂNCORAS (plano UI/UX W3): o par de âncoras mora no
@@ -4414,6 +4423,61 @@ impl crate::App {
                     self.vec_profile_mirrored = (sel.len() == 1).then(|| sel[0]);
                 }
             }
+            // ── OS COMPONENTES (plano UI/UX W5) ──────────────────────────────────
+            // Aqui e não no bloco de publicação: o **Place** empurra um caminho, e quem lhe dá
+            // entidade é o `vec_entities::sync`, que corre mais abaixo NESTE frame. Aplicado
+            // depois dele, o vínculo teria de esperar o frame seguinte — e a cópia nasceria um
+            // quadro sem desenho nenhum.
+            let mut arm_instance_of: Option<(
+                ph2d_vec_scene::VecPathId,
+                ph2d_vec_scene::VecPathId,
+            )> = None;
+            let mut arm_detached_under: Option<(
+                ph2d_vec_scene::VecPathId,
+                Vec<ph2d_vec_scene::VecPathId>,
+            )> = None;
+            if let Some(verb) = pending_component {
+                let sel: Vec<ph2d_vec_scene::VecPathId> = self.vec_pen.selected_paths().to_vec();
+                match verb {
+                    crate::vec_component_edit::ComponentEdit::Create => {
+                        crate::vec_component_edit::create_main(sim, &self.vec_entities, &sel);
+                    }
+                    crate::vec_component_edit::ComponentEdit::Place => {
+                        if let Some(&main) = sel.first()
+                            && let Some(new_id) = crate::vec_component_edit::place_instance(
+                                sim,
+                                vec_scene,
+                                &self.vec_entities,
+                                &sel,
+                            )
+                        {
+                            arm_instance_of = Some((new_id, main));
+                        }
+                    }
+                    crate::vec_component_edit::ComponentEdit::Detach => {
+                        // ⚠️ A geometria vem do PRODUTOR — a mesma lista que o `dispatch`
+                        // consumiu no frame anterior. Re-derivá-la aqui seria a segunda porta, e
+                        // ela faria a arte SALTAR no clique.
+                        let drawn = sel
+                            .first()
+                            .and_then(|id| self.instance_live.live().get(id))
+                            .cloned();
+                        if let Some((root, extra)) = crate::vec_component_edit::detach(
+                            sim,
+                            vec_scene,
+                            &self.vec_entities,
+                            &sel,
+                            drawn.as_deref(),
+                        ) && !extra.is_empty()
+                        {
+                            arm_detached_under = Some((root, extra));
+                        }
+                    }
+                    crate::vec_component_edit::ComponentEdit::Reset => {
+                        crate::vec_component_edit::reset_overrides(sim, &self.vec_entities, &sel);
+                    }
+                }
+            }
             if let Some(cmd) = pending_vec_expand {
                 let xf = crate::vec_transform::build(sim, &self.vec_entities);
                 // **Apply Offset MATERIALIZA o offset vivo** — é o único momento em que os
@@ -5489,6 +5553,21 @@ impl crate::App {
             // entidades (path novo ⇒ entidade; entidade apagada ⇒ path), projeta a
             // ordem de z da árvore na pilha, e lê visibilidade/trava herdadas.
             crate::vec_entities::sync(sim, vec_scene, &mut self.vec_entities);
+            // OS COMPONENTES (plano UI/UX W5): o caminho que o **Place** empurrou já tem
+            // entidade — é agora que o vínculo pousa. Mesmo sítio, e pela mesma razão, em que o
+            // `make_committed_shape_live` faz uma forma recém-desenhada nascer viva.
+            if let Some((new_id, main)) = arm_instance_of {
+                crate::vec_component_edit::arm_instance(
+                    sim,
+                    &self.vec_entities,
+                    new_id,
+                    main,
+                    crate::vec_component_edit::place_offset(),
+                );
+            }
+            if let Some((root, pieces)) = arm_detached_under {
+                crate::vec_component_edit::arm_detached(sim, &self.vec_entities, root, &pieces);
+            }
             // ADR-0114: idem para os objetos Flip (objeto novo ⇒ entidade; entidade
             // apagada ⇒ objeto). No W0 é no-op (nenhuma tool cria objetos ainda); a
             // tool do W2 passa a populá-lo.
@@ -6135,6 +6214,11 @@ impl crate::App {
             // z da fonte — que continua sendo a curva autorada que o modo Node edita.
             self.profile_live
                 .recook(vec_scene, sim, &self.vec_entities, &vec_xf);
+            // **AS INSTÂNCIAS** (plano UI/UX W5): o mestre desenhado na pose de cada cópia. Aqui,
+            // e depois do `sync`, pela razão de todos os irmãos — uma instância recém-colocada só
+            // tem entidade (e portanto componente) a partir dele.
+            self.instance_live
+                .recook(vec_scene, sim, &self.vec_entities, &vec_xf);
             // O `dispatch` recebe UMA `LiveGeometry`. Uma forma é offset OU pattern OU contour
             // (nunca dois — cada um é um componente próprio e o painel oferece um de cada vez),
             // então fundir é seguro; começa do offset (em cena típica dos outros, vazio ⇒ clone
@@ -6160,6 +6244,12 @@ impl crate::App {
             );
             vec_live.extend(
                 self.profile_live
+                    .live()
+                    .iter()
+                    .map(|(id, v)| (*id, v.clone())),
+            );
+            vec_live.extend(
+                self.instance_live
                     .live()
                     .iter()
                     .map(|(id, v)| (*id, v.clone())),
@@ -6223,6 +6313,17 @@ impl crate::App {
                 }
                 ph2d_panel_vector::state::set_anchor_state(
                     crate::vec_anchor_edit::selected_anchors(sim, &self.vec_entities, &sel),
+                );
+                // OS COMPONENTES (plano UI/UX W5): publicar DEPOIS de o produtor ter cozido —
+                // é dele que vem a resposta *"esta instância está órfã?"*, e perguntá-la aqui
+                // outra vez seria a segunda porta.
+                ph2d_panel_vector::state::set_component_state(
+                    crate::vec_component_edit::selected_component(
+                        sim,
+                        &self.vec_entities,
+                        &sel,
+                        self.instance_live.orphans(),
+                    ),
                 );
                 // **Resize Box** (plano UI/UX W3b): honrar e so' depois publicar, a mesma ordem
                 // dos irmaos acima — publicar antes deixaria a caixa a mostrar o estado ANTERIOR

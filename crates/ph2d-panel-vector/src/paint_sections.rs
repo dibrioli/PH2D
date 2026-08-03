@@ -153,6 +153,9 @@ impl BodyCtx<'_> {
         // está num fluxo, esta por quem não está. Elas nunca aparecem juntas — a shell só publica
         // a regra para um filho cujo pai NÃO flui.
         y = self.step(y, |b, y| b.anchors_section(y));
+        // OS COMPONENTES (plano UI/UX W5): o prefab. Depois das ÂNCORAS porque uma instância é
+        // primeiro uma forma (pose, moldura, regra) e só depois uma cópia de outra coisa.
+        y = self.step(y, |b, y| b.component_section(y));
         y = self.step(y, |b, y| b.shape_params_section(snap, y));
         // Os parâmetros do CONECTOR selecionado — irmã da seção acima (mesma estética,
         // mesmos widgets), logo abaixo dela: as duas respondem "o que é este objeto que

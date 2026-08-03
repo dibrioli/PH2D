@@ -79,6 +79,7 @@ mod paint_anchors;
 mod paint_arrange;
 /// O catálogo de formas (categoria em dropdown + grade de thumbnails cozidos).
 mod paint_catalog;
+mod paint_components;
 /// A seção do CONECTOR (Route / Jetty / Spread) — snapshot + seed + paint + evento.
 mod paint_connector;
 /// A seção FRAME — o contêiner (plano UI/UX W0), irmã de `paint_pencil`.

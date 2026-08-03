@@ -611,3 +611,32 @@ fn the_commit_deposits_water_as_well_as_pigment_and_the_sim_runs() {
         "a simulação não andou depois do Enter: nada assentou em 5 s (film {film}, susp {susp})"
     );
 }
+
+/// **Apply & Keep deposita POR APERTO, sem que o artista toque em mais nada** (Enio 2026-08-03:
+/// *"Apply&keep deveria depositar várias vezes, só deposita 1"*).
+///
+/// ⚠️ **O gate irmão [`apply_and_keep_deposits_per_press_and_the_editor_survives`] era VERDE sobre
+/// este defeito**, e a diferença é uma linha de FIXTURE: ele *cutuca uma alça* entre os apertos, e é
+/// justamente esse gesto que refaz o lote (`ellipse_refill` → `stamp_drag_preview` → o stash). O gesto
+/// que o Enio faz — apertar o botão duas vezes — não estava em fixture nenhuma, e a lei que o doc já
+/// afirmava (*"Apply & Keep deposita POR aperto"*) nunca tinha sido medida sozinha.
+///
+/// A porta é a do PRODUTO (`commit_open_shape_keep`, o que o botão `PAINTER_BRUSH_STROKE_APPLY_KEEP`
+/// chama), e o oráculo é a MASSA no fluido, não o retorno do botão: antes do fix ele devolvia `true`
+/// nos três apertos, gravava três entradas de undo e depositava `5824835,5` nos três — ao dígito.
+///
+/// **Mutação que sangra:** tirar o `refill_open_shape()` do braço wet de `commit_open_shape_keep`.
+#[test]
+fn apply_and_keep_deposits_on_every_press_with_nothing_touched_between() {
+    let mut t = wet_tool();
+    draw_ellipse(&mut t);
+    assert!(t.commit_open_shape_keep(), "1o aperto");
+    let m1 = grid_mass(&t);
+    assert!(t.commit_open_shape_keep(), "2o aperto");
+    let m2 = grid_mass(&t);
+    assert!(t.commit_open_shape_keep(), "3o aperto");
+    let m3 = grid_mass(&t);
+    eprintln!("REPRO massas: m1={m1:.1} m2={m2:.1} m3={m3:.1}");
+    assert!(m2 > m1 * 1.5, "o 2o aperto nao depositou (m1 {m1}, m2 {m2})");
+    assert!(m3 > m2 * 1.2, "o 3o aperto nao depositou (m2 {m2}, m3 {m3})");
+}

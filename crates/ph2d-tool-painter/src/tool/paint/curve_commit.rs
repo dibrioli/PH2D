@@ -136,11 +136,35 @@ impl PainterTool {
 
     /// Commit whichever on-canvas shape editor is open but KEEP it editable (the **Apply & Keep** button)
     /// — the keep-mode aggregator paired with [`PainterTool::commit_open_shape`]. At most one is open.
+    ///
+    /// ⚠️ **Em Wet Paint o keep RE-CARIMBA o esboço, e sem isso o botão só funciona UMA vez** (Enio
+    /// 2026-08-03: *"Apply&keep deveria depositar várias vezes, só deposita 1"* — medido pela porta do
+    /// produto: 3 apertos, massa `5824835,5` nos três, ao dígito). O motivo é que o commit em wet
+    /// **CONSOME** o lote (`wetpaint_commit_deposit` faz `mem::take` do `pending_deposit`, doc 21 lei C)
+    /// e o esboço plano é PELADO — então o editor fica aberto sobre um lote vazio, e o aperto seguinte
+    /// cai no braço plano de `commit_drag_preview`, que é um no-op. Só um gesto de forma (arrastar uma
+    /// alça) refazia o lote, e é exatamente esse gesto que o gate antigo tinha na fixture.
+    ///
+    /// ⚠️ **É WET-ONLY, e a diferença não é escopo escolhido — é o que o commit PRODUZ.** No digital os
+    /// pixels assados *são* o preview (a mesma tinta, no mesmo lugar), então o editor já mostra o que
+    /// vai commitar e re-carimbar pintaria a figura DUAS vezes (borda mais escura, o desenho aprovado
+    /// se movendo). Em wet o commit produz outra coisa — o fluido —, o esboço é peelado, e o que sobra
+    /// é um editor que não mostra nada. O re-stamp restaura o invariante que todo modo tem: **uma forma
+    /// aberta está carimbada no canvas**, e por isso o aperto seguinte tem o que depositar.
+    ///
+    /// ⚠️ Corolário que mantém o modelo honesto: com o esboço de volta a água **congela** (lei D,
+    /// `wet_authoring_hold` = `drag_preview.is_some()`) até a forma ser aplicada ou cancelada. É o
+    /// preço do que se vê: enquanto há esboço na tela, ele é o que o próximo commit deposita — e um
+    /// Enter depois de N keeps deposita a figura que está à vista, não uma cópia invisível.
     pub fn commit_open_shape_keep(&mut self) -> bool {
-        self.curve_commit_keep()
+        let committed = self.curve_commit_keep()
             || self.ellipse_commit_keep()
             || self.polygon_commit_keep()
-            || self.line_commit_keep()
+            || self.line_commit_keep();
+        if committed && matches!(self.paint.paint_mode, super::PaintMode::WetPaint) {
+            self.refill_open_shape();
+        }
+        committed
     }
 
     /// **Simplify** the editable curve (the Simplify button): re-fit it to as FEW anchors as the shape allows,

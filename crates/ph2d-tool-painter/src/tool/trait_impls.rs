@@ -412,9 +412,9 @@ impl Tool for PainterTool {
                     && let (Ok(r), Ok(g), Ok(b)) =
                         (r.parse::<u8>(), g.parse::<u8>(), b.parse::<u8>())
                 {
-                    self.set_brush_color_channel(0, f32::from(r) / 255.0);
-                    self.set_brush_color_channel(1, f32::from(g) / 255.0);
-                    self.set_brush_color_channel(2, f32::from(b) / 255.0);
+                    // Uma chamada, não três: a porta única re-carimba a forma aberta ao mudar a cor,
+                    // e três chamadas de canal seriam três re-stamps para uma escolha só.
+                    self.set_brush_color_srgb8([r, g, b]);
                 }
             }
             // ── Watercolor PAPER colour from the shared picker: value = "r,g,b" (8-bit native),

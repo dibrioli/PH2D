@@ -95,11 +95,38 @@ impl PainterTool {
         self.paint.brush.radius_px
     }
 
+    /// **A porta única de *"a cor de pintura mudou"*:** escreve, espelha nos slots de todo modo e — se o
+    /// valor de fato MUDOU — re-carimba a forma aberta.
+    ///
+    /// ⚠️ **O re-stamp mora AQUI porque a cor chega por DUAS portas, e só uma delas re-carimbava**
+    /// (Enio 2026-08-03: *"mudar a cor no painel não muda a cor no stroke vivo até que se mova o
+    /// stroke"* — medido: o pixel mais tingido ficava em `[255, 0, 0]` depois de pedir azul). O painel
+    /// emite `PanelEvent::SelectOption(PAINTER_COLOR_THUMB)` e o `handle_panel_event` fecha com
+    /// `refill_if_appearance_changed`, que re-carimba; **a shell** encaminha o picker por conta própria
+    /// (`painter_bridge`, a metade que existe para capturar a escolha FINAL, a que fecha o picker) e
+    /// nunca passa por aquele funil. Pior: o `brush_color_readback` do painel só empurra o evento
+    /// *quando a cor difere da do pincel* — então, na ordem em que a shell escreve primeiro, o guard do
+    /// painel devolve `return` e **o evento que re-carimbava nunca é emitido**. Duas portas, e a
+    /// segunda desligou a primeira em silêncio.
+    ///
+    /// ⚠️ **O early-return não é higiene, é o orçamento:** a shell encaminha o picker a CADA QUADRO
+    /// enquanto ele está aberto, e um re-stamp de forma custa milissegundos — sem o guard de igualdade
+    /// isto seria um re-carimbo por quadro com a cor parada.
+    fn set_brush_color_rgb(&mut self, rgb: [f32; 3]) {
+        if self.paint.brush.color == rgb {
+            return; // a shell reencaminha o mesmo valor todo quadro — nada mudou, nada re-carimba
+        }
+        self.paint.brush.color = rgb;
+        self.sync_brush_color_across_modes();
+        self.refill_open_shape();
+    }
+
     /// Set one straight-RGB colour channel (`0..3`) of the brush, clamped `0..1`.
     pub fn set_brush_color_channel(&mut self, ch: usize, v: f32) {
         if ch < 3 {
-            self.paint.brush.color[ch] = v.clamp(0.0, 1.0);
-            self.sync_brush_color_across_modes();
+            let mut c = self.paint.brush.color;
+            c[ch] = v.clamp(0.0, 1.0);
+            self.set_brush_color_rgb(c);
         }
     }
 
@@ -133,10 +160,7 @@ impl PainterTool {
     /// edge to catch the final pick that closes the picker), so brush = Fill = picker are always the one
     /// colour and Fill never applies the previous colour (Enio 2026-07-03).
     pub fn set_brush_color_srgb8(&mut self, rgb: [u8; 3]) {
-        for (ch, &v) in rgb.iter().enumerate() {
-            self.paint.brush.color[ch] = f32::from(v) / 255.0;
-        }
-        self.sync_brush_color_across_modes();
+        self.set_brush_color_rgb(rgb.map(|v| f32::from(v) / 255.0));
     }
 
     /// Set the brush blend mode from a wire discriminant (out-of-range → Mix).
@@ -214,4 +238,59 @@ impl PainterTool {
 
     // The Grain-texture / Stencil / Dab setters (set_brush_texture_* / _stencil_* / _dab_*) live in the
     // sibling `brush_texture_settings` module (workspace file-LOC cap).
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::tool::PainterTool;
+    use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, RasterEditTool};
+    use ph2d_painter_brush::{BrushSpec, Falloff, StrokeMethod};
+
+    fn cp(pos: [f32; 2], phase: PointerPhase) -> CanvasPointer {
+        CanvasPointer { pos, pressure: 1.0, tilt: [0.0, 0.0], phase }
+    }
+
+    /// Um editor de forma ABERTO sobre papel branco, carimbado em vermelho opaco.
+    fn open_ellipse() -> PainterTool {
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; 200 * 120 * 4], 200, 120);
+        t.paint.brush = BrushSpec {
+            radius_px: 12.0,
+            hardness: 1.0,
+            falloff: Falloff::Constant,
+            color: [1.0, 0.0, 0.0],
+            space_attenuation: false,
+            ..Default::default()
+        };
+        t.set_brush_stroke_method(StrokeMethod::Ellipse.to_u8());
+        t.on_canvas_pointer(cp([60.0, 60.0], PointerPhase::Down));
+        t.on_canvas_pointer(cp([100.0, 80.0], PointerPhase::Move));
+        t.on_canvas_pointer(cp([100.0, 80.0], PointerPhase::Up));
+        t
+    }
+
+    /// O pixel mais tingido da tela (o oráculo é o que o ARTISTA vê, nunca a assinatura).
+    fn most_painted(t: &PainterTool) -> [u8; 3] {
+        t.canvas_rgba
+            .chunks_exact(4)
+            .map(|p| [p[0], p[1], p[2]])
+            .min_by_key(|p| u32::from(p[0]) + u32::from(p[1]) + u32::from(p[2]))
+            .unwrap_or([255, 255, 255])
+    }
+
+    /// REPRO (Enio 2026-08-03): *"mudar a cor no painel não muda a cor no stroke vivo até que se mova
+    /// o stroke"*. Trocar a cor pela porta que o PICKER usa tem de re-carimbar a forma aberta — sem
+    /// nenhum evento de ponteiro no meio.
+    #[test]
+    fn the_live_shape_takes_the_new_colour_without_being_touched() {
+        let mut t = open_ellipse();
+        let before = most_painted(&t);
+        assert!(before[0] > 200 && before[1] < 40, "fixture: vermelho na tela, veio {before:?}");
+        t.set_brush_color_srgb8([0, 0, 255]);
+        let after = most_painted(&t);
+        assert!(
+            after[2] > 200 && after[0] < 40,
+            "o traço vivo continuou vermelho depois de trocar a cor: {after:?}"
+        );
+    }
 }

@@ -922,15 +922,22 @@ escreveu**:
 |---|---|---|---|---|---|---|
 | **W1** ✅ | booleana não-destrutiva, animável | +1 (**42**) | — | — | — | `=48` |
 | **W0** ✅ | a moldura | +1 (**43**) | — | — | — | `=49` |
-| **W4a** ✅ | o binding de token no documento + o modo re-veste | +1 (**44**) | — | — | — | `=50` |
+| **W4a** ✅ | o binding de token no documento + o modo re-veste | +1 (**44**) | — | — | — | `=51` |
 | **W4b/c** | tabela autorável (aliases/math/DTCG) + animar token | — | `DOC_VERSION`, seção | — | sim (indireção) | — |
-| **W2** | auto layout | +2 (45) | ⚠️ bump (W2a) | **taffy** | **sim** | `=50` |
-| **W3** | âncoras | +1 (46) | — | — | — | `=51` |
+| **W2** ✅ | auto layout | +2 (**46**) | — (W2a fica) | **taffy** | **0153** | `=50` |
+| **W3** | âncoras | +1 (47) | — | — | — | `=52` |
 | **W5** | componentes/variants | +2 (49) | — | — | sim (prefab) | `=53` |
 | **W6** | vínculo com o widget | +1 (50) | — | — | sim (§2) | `=54` |
 | **W7** | estados + Smart Animate | — | `DOC_VERSION` | — | sim (HSM) | `=55` |
 | **W8** | runtime + codegen | — | seção | — | sim (fronteira) | `=56` |
 | **W9** | DTCG / SVG / export | — | — | — | — | — |
+
+⚠️ **Os números de CENA desta tabela são previsões, e uma delas já colidiu.** O W2 e o W4a
+previam os dois `=50`; o auto layout chegou primeiro e a cena dos TOKENS ficou **inalcançável em
+silêncio** (o roteador é uma lista de `if level == N` e o primeiro vence). Ela mudou para `=51`, e
+as previsões seguintes deslizaram um. O gate `no_two_smoke_scenes_claim_the_same_level` é o que
+torna a próxima colisão alta em vez de silenciosa — **confira o número livre no roteador**, não
+nesta tabela.
 
 ⚠️ Os números de ADR são **PROVISÓRIOS** até a integração — o valor se conta contra o `main` do dia
 (seis renumerações já aconteceram neste repo). ⚠️ **E o mesmo vale para os números de cena de smoke:**

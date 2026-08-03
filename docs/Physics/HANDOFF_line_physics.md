@@ -8775,3 +8775,141 @@ selecioná-la; clique no MIOLO do disco e nada é selecionado, que é o certo.
 ultrapassa por um sub-passo (0,3685 contra 0,5 pedidos, na roda de raio 2,0 com o
 limitador 4× menor que ela) — mesma classe do esticamento da corda, e o número
 está pinado no gate.
+
+---
+
+## W-SignalLeave — a porta que FECHA, e a row que era write-only (2026-08-03, cena `=76`)
+
+O W-Signal (01/08) deixou **um** item aberto e deu o motivo dele por escrito:
+
+> *"o nome de SAÍDA (uma segunda pergunta, com uma segunda row)"* · *"emitir o
+> MESMO nome nos dois extremos tornaria o sinal ambíguo — quem escuta não saberia
+> se a porta abriu ou fechou"*.
+
+Esta wave o constrói **como o motivo prescreve**: um segundo NOME, num segundo
+COMPONENTE, com uma segunda ROW.
+
+### O desenho
+
+`SignalOnLeave(String)` é o gêmeo exato do `SignalOnHit`, e as duas fontes de
+cada extremo espelham as dele: um contato que **TERMINA** e algo que **SAI** de
+um sensor.
+
+⚠️ **Componente PRÓPRIO, e a razão é o custo de um BUMP.** `SignalOnHit` é uma
+tupla serializada **posicionalmente** pelo postcard, então apendar o segundo nome
+nela seria um bump de `PROJECT_SCHEMA` — e **um bump RECUSA todo projeto já
+salvo**. Um componente recém-registrado é chaveado pelo hash do próprio nome de
+tipo e é puramente aditivo. É o trade que o **W-AreaDrag** já pagou (`AreaEffector`
++ `AreaDrag` separados pelo mesmo motivo), agora escrito no cabeçalho do módulo
+para ninguém "arrumar" os dois num struct só.
+
+⚠️ **E o evento NÃO carrega FASE.** O contrato é o **NOME** (ADR-0143), quem
+escuta casa numa string, e esta outbox é a **MESMA** em que a timeline emite os
+sinais dos markers — que não têm fase nenhuma. Um campo de fase obrigaria todo
+consumidor a perguntar duas coisas para saber uma; `door_open` e `door_close`
+são **dois contratos**, e é assim que se lê.
+
+⚠️ **Um extremo sem o componente dele é SILÊNCIO, não o outro nome.** Marcar só a
+chegada é o mundo que já existia, e ele fica intacto — senão toda cena já autorada
+passaria a disparar o dobro. É a terceira pista da cena, e o gate que a pina.
+
+### ⚠️ A metade da SAÍDA percorre a BASELINE, não o conjunto de agora
+
+O `rebuild_triggers` só cria a chave de um sensor **quando há alguém dentro**,
+então um sensor que esvaziou **não tem entrada nenhuma** no conjunto novo. Um diff
+que percorresse `self.triggers` procurando quem sumiu não teria por onde começar —
+e perderia exatamente o caso que a porta existe para cobrir: **o último corpo a
+sair**. A fixture do gate é a mais degenerada possível (UM corpo, que entra e sai)
+porque é ela que distingue as duas varreduras.
+
+⚠️ **Um diff, não dois.** As duas listas saem da MESMA comparação: duas varreduras
+seriam duas respostas a *quem estava dentro*, e o dia em que discordassem a porta
+fecharia sem ter aberto.
+
+### ⚠️ E a row de CHEGADA era WRITE-ONLY — o defeito que o W-Signal shipou
+
+O `InspectorPhysicsInfo` **não tinha campo de sinal nenhum**, então a row era
+write-only **por construção**: digitar `door` funcionava, e re-selecionar a
+entidade mostrava um campo em **BRANCO** sobre um componente que dizia `door` —
+indistinguível de *"o nome não foi guardado"*.
+
+É a **terceira** vez que este módulo shipa essa falha pela mesma causa (as cinco
+rows de área no **W-AreaTorque**, os dois campos de ruptura no **W-J7**), e nas
+três a cura é a mesma: **o snapshot carrega o valor AUTORADO e o `sync` o espelha
+no widget**. ⚠️ O laço do texto é PRÓPRIO e não mais duas linhas na tabela de
+números: um `TextInput` tem **caret** e **âncora de seleção**, e um seed que os
+deixasse para trás poria o cursor depois do fim do texto novo.
+
+E mais duas metades que faltavam à row de chegada:
+
+- ela shipou **fora do `node_id_collisions`** (a lista é mantida à mão, então um id
+  novo só participa da checagem quando alguém lembra de o trazer) — os dois entram
+  juntos;
+- ela shipou **sem NENHUM gate de seam**: `INSP_PHYS_SIGNAL` aparecia em quatro
+  sítios de `src/` e em **zero** de `tests/`, ou seja das quatro condições de UI
+  que este módulo exige de toda wave, a **terceira** (*o gesto CHEGA ao
+  barramento*) nunca foi verificada para ela.
+
+### Gates
+
+| onde | quantos |
+|---|---|
+| `ph2d-physics-ecs/tests/signal.rs` | 5 |
+| `ph2d-panel-inspector/tests/seam_physics.rs` | 2 (dispatch + sync) |
+| `inspector_physics.rs` (o snapshot da shell) | 1 |
+| `inspector_physics_gesture_tests.rs` (a 4ª condição) | 1 |
+| a cena `=76` | 4 |
+
+**6 mutações, 5 sangram.** A 6ª é **defesa em camada** e está documentada **com o
+CONTROLE que prova não ser buraco desta wave**: apagar `trigger_exits.clear()` do
+`discard_trigger_history` **não sangra** — e apagar o `trigger_events.clear()`
+**PRÉ-EXISTENTE** também não. Todo caminho que descarta a história segue para o
+`rebuild_triggers` do mesmo dispatch, e o `diff_trigger_entries` limpa as duas
+listas no topo. Precedente do ADR-0145 (*duas defesas em camada documentadas em
+vez de gateadas*).
+
+⚠️ **O gate de gesto cobre o que o de seam não pode:** o seam prova que digitar na
+row emite a ação; o de gesto prova que os **BYTES** que o commit escreve viram um
+componente que o publicador lê. Entre os dois há uma codificação postcard passada
+pelo REGISTRO, e é ali que mora a armadilha que esta wave recusou —
+`SignalOnHit`/`SignalOnLeave` são newtypes de `String` e **hoje codificam igual**,
+então serializar a string e chamá-la de componente passaria HOJE e escreveria
+lixo bem-formado no dia em que um dos dois ganhasse um campo. Cada arm serializa
+o SEU tipo; o que é partilhado é o **caminho**, não a codificação.
+
+### Números
+
+**c9 `16ba80e8…`, 99 corpos, debug ≡ release — BYTE-IDÊNTICO ao `main`**: sinal é
+readout, e nenhum corpo do c9 o carrega.
+
+Medido na cena `=76` (6 s, pela porta real): `["half_open", "door_open",
+"bell_hit", "bell_part", "door_close"]` — a porta abre e depois fecha, o sino bate
+e desencosta, e o **CONTROLE** abre **uma** vez e nunca fecha.
+
+`PROJECT_SCHEMA` **48 INTOCADO** · registro **26→27** (`SignalOnLeave`) · gizmo
+ids **nenhum novo** (o último segue 973, próximo livre **974**) · ids de painel
+`INSP_PHYS_SIGNAL_LEAVE` · **nenhum ADR** · **zero `Cargo.toml`** · contrato
+congelado intacto.
+
+**LOC:** `inspector_physics_gesture_tests.rs` cruzou 600 ⇒ split por **ASSUNTO**
+em `inspector_physics_gesture_zone_tests.rs` — o mesmo corte que esta linha já
+desenhou em `components/area.rs` e `inspector_physics_area.rs` (*o que este CORPO
+é* contra *o que esta ÁREA faz a outros*); o pai fica com o corpo e o que ele
+GRITA.
+
+⚠️ **HR-15:** a entrada da §11 **saiu** da baseline, e a dívida **não**. O scanner
+conta literais dentro de `.placeholder("…")`, e os dois textos passaram para uma
+TABELA — então nenhum deles cruza o padrão que o gate procura. As duas strings
+continuam hardcoded em `sections/physics_rows.rs` ("Signal on hit…" / "Signal on
+leave…"), nomeadas no comentário da baseline, e migram junto com o irmão da row de
+Name quando o Fluent chegar. O gate segue afiado para o próximo literal ali.
+
+**Smoke: `PH2D_PHYSICS_SMOKE=76`** — *A PORTA QUE FECHA*. Três andarilhos iguais
+cruzam três pistas: um sensor com os dois nomes (abre e fecha), um sólido com os
+dois (bate e desencosta) e o **controle** marcado só na chegada (abre e cala).
+O passo 3 do roteiro é o conserto do write-only: selecione a porta e as duas rows
+**mostram** `door_open` e `door_close`.
+
+**Aberto:** um consumidor que não seja o toast (Luau/áudio) — **cross-line, e
+continua decisão do Enio**; ele não muda uma linha da física, porque a outbox já é
+a mesma da timeline.

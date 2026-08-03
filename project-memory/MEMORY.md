@@ -98,6 +98,8 @@
 - [Mutação sem sangue acusa o ORÁCULO](feedback_a_mutation_that_does_not_bleed_may_indict_the_oracle_not_the_finding.md) — meça a propriedade que a mudança É antes de descartar o achado
 - [Aproximação dentro de ponto fixo CAMINHA](feedback_an_approximation_inside_a_fixed_point_walks_it_does_not_merely_err.md) — tabela num laço de realimentação: meça deriva sob iteração, não erro de chamada única
 - [Sonda de PARALELISMO roda sozinha](feedback_probes_that_measure_parallelism_must_run_alone.md) — concorrentes disputam o pool e medem uma à outra; o controle interno é o detector
+- [Varredura `--ignored` ≠ varredura dos gates de GPU](feedback_an_ignored_sweep_is_not_the_gpu_gate_sweep.md) — ela roda placeholders `unimplemented!()` e sondas lentas junto; rode os NOMES do handoff, por crate
+- [Replace sem âncora renomeia identificador INGLÊS dentro de prosa pt-BR](feedback_an_unanchored_replace_renames_english_identifiers_inside_pt_br_prose.md) — troque a FRASE; depois `git diff | grep "^[-+].*fn "`
 - [Disciplina de fixture (4)](reference_topic_fixture_discipline.md) — só prova o que contém; ordem de setup mascara bug de ordem
 - [Mexeu na fixture? re-rode a MUTAÇÃO](feedback_changing_a_fixture_invalidates_the_mutation_proof.md) — encolher para matar flake tira os dentes do gate em silêncio
 - [Duas grandezas que devem DIFERIR coincidem por fase do fixture](feedback_two_quantities_that_should_differ_can_coincide_by_fixture_phase.md) — max≠last verde-sobre-nada; ache fixture onde diferem por FÍSICA

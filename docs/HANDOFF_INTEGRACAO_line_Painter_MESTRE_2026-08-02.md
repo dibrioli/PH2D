@@ -17,10 +17,10 @@
 |---|---|
 | Branch | `line/Painter` |
 | Worktree | `Worktrees/line-Painter` |
-| HEAD | *(o commit deste arquivo — confira com `git log -1`)* |
+| HEAD | `bc0817ce3` **ou o commit desta correção** — confira com `git log -1` (o handoff é ele próprio um commit) |
 | Base | `main` a **`a9f5977e9`** |
 | **Rebase** | ✅ **`main` é ancestral de `HEAD` — o rebase é NO-OP hoje.** Re-confira antes de integrar (`git merge-base --is-ancestor main HEAD`) |
-| Commits | **75** |
+| Commits | **76** |
 | Diff | **97 arquivos, +13.313 / −734** |
 | Crates tocadas | `ph2d-tool-painter` · `ph2d-painter-brush` · `ph2d-wet-paint` · `shells/desktop` |
 

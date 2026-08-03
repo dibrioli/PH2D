@@ -16,6 +16,8 @@ mod measure_input_cost;
 mod measure_journal_cost; // captura por REGIÃO x fork do PLANO — o número que decide o S3 (doc 28 §7)
 #[path = "measure_pendown_cost.rs"]
 mod measure_pendown_cost; // o que COMEÇAR um traço custa (doc 28 §4.5); irmão do impasto_cost
+#[path = "measure_shape_cost.rs"]
+mod measure_shape_cost; // o que um MOVE de SHAPE EDITOR custa — o re-stamp da figura inteira
 #[path = "measure_stroke_extent.rs"]
 mod measure_stroke_extent; // o pen-up é função do que o traço COBRE — a fixture que faltava (§5.65)
 #[path = "measure_stroke_owners.rs"]

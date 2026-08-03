@@ -1033,6 +1033,18 @@ pub(crate) struct App {
     /// com qualquer um deles, então fundi-lo apagaria o vizinho em silêncio.
     /// O AUTO LAYOUT vivo (ADR-0153): as posições que uma moldura com fluxo deriva por frame.
     pub(crate) layout_live: crate::layout_live::LayoutLive,
+    /// **Os fatos DERIVADOS por frame sobre os caminhos** — os intervalos das molduras e as poses
+    /// que o auto layout deu —, publicados pelo passe de DESENHO para quem vier depois.
+    ///
+    /// ⚠️ **Existe porque quem APONTA não pode reconstruí-los.** O hit-test monta o `VecViewState`
+    /// dele do zero a cada evento (`vec_entities::view_state`), e aquela porta só sabe o que a
+    /// ÁRVORE diz — escondido e travado. Os intervalos e as poses são resultado do passe de
+    /// layout, que roda no desenho; sem os republicar, todo consumidor de ponteiro os vê VAZIOS e
+    /// decide como se nenhuma moldura existisse.
+    ///
+    /// Um frame de atraso é a semântica CERTA, não uma concessão: o artista clica no que está na
+    /// tela, e o que está na tela é o último frame desenhado.
+    pub(crate) vec_view_derived: ph2d_vec_scene::VecViewState,
     pub(crate) align_live: crate::align_live::AlignLive,
     /// **A BOOLEANA VIVA** — um grupo cujos filhos se combinam e continuam editáveis.
     /// ⚠️ Segundo membro da família do `align_live`: ele **TRANSFORMA** o mapa em vez de o

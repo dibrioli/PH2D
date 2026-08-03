@@ -23,7 +23,8 @@
 
 use super::*;
 use crate::{FxImages, dispatch};
-use ph2d_vec_scene::{Paint, Rgba8, VecClipSpan, VecVertex};
+use ph2d_vec_scene::{Paint, Rgba8, VecClipSpan, VecVertex, VecXforms};
+use ph2d_vector::Point;
 
 /// Um quadrado preenchido de lado `s`, na origem.
 fn square(scene: &mut VecScene, s: f64) -> VecPathId {
@@ -220,4 +221,38 @@ fn a_malformed_span_never_leaves_a_layer_open() {
     let (clips, open, _) = encode(&scene, &view);
     assert!(clips > 0, "a fixture TEM de abrir uma camada");
     assert_eq!(open, 0, "o `close_all` fecha o que sobrou");
+}
+
+/// **AS ÂNCORAS SEGUEM A POSE DO LAYOUT** (Enio 2026-08-02: *"os Path das formas aparecem no
+/// lugar de origem"*).
+///
+/// O overlay de edição desenha a partir da curva LOCAL + o transform do caminho, e o auto layout
+/// não escreve transform nenhum (ADR-0153: *"o passe publica ONDE as coisas ficam"*). Sem a pose
+/// as âncoras ficam onde a forma foi autorada enquanto o desenho está onde a moldura a pôs.
+///
+/// ⚠️ O oráculo é o PONTO que a origem local vai parar, não "o afim mudou": um gate sobre a
+/// matriz passaria com a composição na ordem errada, que desloca pela pose ESCALADA.
+#[test]
+fn the_anchors_follow_the_pose_the_layout_gave() {
+    use ph2d_vec_scene::{VecViewState, Xform};
+    let xforms = VecXforms::default();
+    let cam = Affine::IDENTITY;
+
+    let bare = VecViewState::default();
+    let at_rest = crate::overlay_transform(&bare, &xforms, 7, cam) * Point::new(0.0, 0.0);
+    assert!(
+        (at_rest.x - 0.0).abs() < 1e-9 && (at_rest.y - 0.0).abs() < 1e-9,
+        "sem pose a ancora fica onde foi autorada: {at_rest:?}"
+    );
+
+    // A moldura empurrou-a 10 para a direita e dobrou-a.
+    let placed = VecViewState {
+        poses: vec![(7, Xform([2.0, 0.0, 0.0, 2.0, 10.0, 0.0]))],
+        ..Default::default()
+    };
+    let moved = crate::overlay_transform(&placed, &xforms, 7, cam) * Point::new(1.0, 0.0);
+    assert!(
+        (moved.x - 12.0).abs() < 1e-9 && (moved.y - 0.0).abs() < 1e-9,
+        "a ancora local (1,0) devia pousar em 10 + 2*1 = 12: {moved:?}"
+    );
 }

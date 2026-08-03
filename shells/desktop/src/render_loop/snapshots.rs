@@ -96,6 +96,9 @@ pub(super) fn publish(
     // ADR-0112: …mas NÃO nos modos de desenho/edição de nós. As alças do gizmo
     // registram hit-rects e comeriam o clique da âncora.
     vec_gizmo_on: bool,
+    // Os fatos DERIVADOS por frame (as poses do auto layout): sem eles a caixa do gizmo de um
+    // filho colocado aparece onde a forma foi AUTORADA, e não onde a moldura a pôs.
+    vec_view: &ph2d_vec_scene::VecViewState,
     // ADR-0114/ADR-0111: um objeto Flip TAMBÉM publica `GizmoView` (mesma caixa/pivô/
     // rotação, da bbox local da arte + `Transform`), fora dos modos Draw/Erase da
     // tool Flip (senão o gizmo comeria o clique do canvas).
@@ -321,6 +324,7 @@ pub(super) fn publish(
                     return crate::vec_gizmo_view::view(
                         sim,
                         vec_scene,
+                        vec_view,
                         sim_entity,
                         camera,
                         window_size,

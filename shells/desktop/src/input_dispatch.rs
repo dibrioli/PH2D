@@ -3899,6 +3899,7 @@ impl App {
                                     &mut gfx.sim,
                                     &gfx.vec_scene,
                                     self.offset_live.live(),
+                                    &self.vec_view_derived,
                                     env_container,
                                     [w[0] as f64, w[1] as f64],
                                     px_to_world,
@@ -4470,8 +4471,11 @@ impl App {
                         let world_pos = gfx.camera.screen_to_world((evt.x, evt.y), window_size);
                         // ADR-0111: as formas vetoriais desenham POR CIMA dos sprites,
                         // então entram na frente da lista do clique-cíclico.
-                        let vec_view =
-                            crate::vec_entities::view_state(&gfx.sim, &self.vec_entities);
+                        let vec_view = crate::vec_entities::view_state_for_pick(
+                            &gfx.sim,
+                            &self.vec_entities,
+                            &self.vec_view_derived,
+                        );
                         let mut hits = crate::vec_gizmo_view::pick_all_at_world(
                             &gfx.sim,
                             &gfx.vec_scene,
@@ -4547,8 +4551,11 @@ impl App {
                     let over_open_vec_stroke = {
                         let window_size = gfx.surface.size();
                         let world_pos = gfx.camera.screen_to_world((evt.x, evt.y), window_size);
-                        let vec_view =
-                            crate::vec_entities::view_state(&gfx.sim, &self.vec_entities);
+                        let vec_view = crate::vec_entities::view_state_for_pick(
+                            &gfx.sim,
+                            &self.vec_entities,
+                            &self.vec_view_derived,
+                        );
                         let hits = crate::vec_gizmo_view::pick_all_at_world(
                             &gfx.sim,
                             &gfx.vec_scene,
@@ -4628,6 +4635,7 @@ impl App {
                                     &gfx.sim,
                                     &gfx.vec_scene,
                                     self.offset_live.live(),
+                                    &self.vec_view_derived,
                                     entity,
                                     world_pos,
                                     crate::vec_gizmo_view::stroke_hit_r(&gfx.camera, window_size),
@@ -4885,8 +4893,11 @@ impl App {
                         let world_pos = gfx.camera.screen_to_world((evt.x, evt.y), window_size);
                         // ADR-0111: as formas vetoriais desenham POR CIMA dos sprites,
                         // então entram na frente da lista do clique-cíclico.
-                        let vec_view =
-                            crate::vec_entities::view_state(&gfx.sim, &self.vec_entities);
+                        let vec_view = crate::vec_entities::view_state_for_pick(
+                            &gfx.sim,
+                            &self.vec_entities,
+                            &self.vec_view_derived,
+                        );
                         let mut hits = crate::vec_gizmo_view::pick_all_at_world(
                             &gfx.sim,
                             &gfx.vec_scene,
@@ -5175,8 +5186,11 @@ impl App {
                                 gfx.camera.screen_to_world(rb.current_screen, window_size);
                             let rmin = [world_a[0].min(world_b[0]), world_a[1].min(world_b[1])];
                             let rmax = [world_a[0].max(world_b[0]), world_a[1].max(world_b[1])];
-                            let vec_view =
-                                crate::vec_entities::view_state(&gfx.sim, &self.vec_entities);
+                            let vec_view = crate::vec_entities::view_state_for_pick(
+                                &gfx.sim,
+                                &self.vec_entities,
+                                &self.vec_view_derived,
+                            );
                             let mut bits = crate::vec_gizmo_view::pick_in_world_rect(
                                 &gfx.sim,
                                 &gfx.vec_scene,

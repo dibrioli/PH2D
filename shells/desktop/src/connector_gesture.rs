@@ -66,7 +66,11 @@ impl App {
     pub(crate) fn shape_under_cursor(&self, world: [f64; 2]) -> Option<VecPathId> {
         let gfx = self.gfx.as_ref()?;
         let window_size = gfx.surface.size();
-        let view = crate::vec_entities::view_state(&gfx.sim, &self.vec_entities);
+        let view = crate::vec_entities::view_state_for_pick(
+            &gfx.sim,
+            &self.vec_entities,
+            &self.vec_view_derived,
+        );
         let hits = crate::vec_gizmo_view::pick_all_at_world(
             &gfx.sim,
             &gfx.vec_scene,

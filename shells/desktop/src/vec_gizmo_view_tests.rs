@@ -5,77 +5,7 @@
 use super::*;
 use ph2d_core::Vec2;
 use ph2d_ecs::Transform;
-use ph2d_vec_scene::{line, rectangle};
-
-/// REGRESSÃO (Enio 2026-07-09: "line e arc não podem ser transformadas com o
-/// gizmo"). Uma forma ABERTA não tem interior — sem raio de traço ela nunca é
-/// pega, e o gizmo de Select nunca a agarra. Com raio, o clique no traço pega.
-#[test]
-fn an_open_line_is_picked_by_stroke_proximity_not_interior() {
-    let mut sim = SimWorld::default();
-    let mut scene = VecScene::new();
-    let mut map = VecEntityMap::new();
-    let id = scene.push_path(line([0.0, 0.0], [10.0, 0.0]));
-    let e = sim
-        .world_mut()
-        .spawn((Transform::IDENTITY, VecPathRef(id)))
-        .id();
-    map.insert(id, e.to_bits());
-    let vs = VecViewState::default();
-    // Um clique 0.4 ACIMA da linha (fora do traço): sem raio não pega — uma linha
-    // aberta não tem interior.
-    assert_eq!(
-        pick_at_world(
-            &sim,
-            &scene,
-            &Default::default(),
-            &vs,
-            &map,
-            [5.0, 0.4],
-            0.0
-        ),
-        None
-    );
-    // Com raio 1.0 (> 0.4): pega pela proximidade do traço.
-    assert_eq!(
-        pick_at_world(
-            &sim,
-            &scene,
-            &Default::default(),
-            &vs,
-            &map,
-            [5.0, 0.4],
-            1.0
-        ),
-        Some(e.to_bits())
-    );
-    // Longe do traço, mesmo com raio: não pega.
-    assert_eq!(
-        pick_at_world(
-            &sim,
-            &scene,
-            &Default::default(),
-            &vs,
-            &map,
-            [5.0, 5.0],
-            1.0
-        ),
-        None
-    );
-}
-
-fn scene_with_square() -> (SimWorld, VecScene, VecEntityMap, Entity) {
-    let mut sim = SimWorld::default();
-    let mut scene = VecScene::new();
-    let mut map = VecEntityMap::new();
-    let id = scene.push_path(rectangle([-1.0, -1.0], [1.0, 1.0]));
-    let e = sim
-        .world_mut()
-        .spawn((Transform::IDENTITY, VecPathRef(id)))
-        .id();
-    map.insert(id, e.to_bits());
-    (sim, scene, map, e)
-}
+use ph2d_vec_scene::rectangle;
 
 /// O gizmo lê a forma como um sprite: `anchor` = centro da bbox local,
 /// `half` = meia-extensão dela. Um quadrado [-1,1]² centrado na origem.
@@ -102,7 +32,17 @@ fn the_gizmo_box_follows_the_transform_of_the_entity() {
         scale: Vec2::new(3.0, 3.0),
         ..Transform::IDENTITY
     });
-    let v = view(&sim, &scene, e, &cam, ws, (0.0, 0.0), false).unwrap();
+    let v = view(
+        &sim,
+        &scene,
+        &Default::default(),
+        e,
+        &cam,
+        ws,
+        (0.0, 0.0),
+        false,
+    )
+    .unwrap();
     assert_eq!(v.pivot_world, [10.0, 5.0]);
     assert_eq!(v.bbox_min_world, [7.0, 2.0], "10±3, 5±3");
     assert_eq!(v.bbox_max_world, [13.0, 8.0]);
@@ -120,13 +60,35 @@ fn a_blend_spine_publishes_no_gizmo() {
         height: 600,
     };
     // Sem o componente, a forma tem gizmo.
-    assert!(view(&sim, &scene, e, &cam, ws, (0.0, 0.0), false).is_some());
+    assert!(
+        view(
+            &sim,
+            &scene,
+            &Default::default(),
+            e,
+            &cam,
+            ws,
+            (0.0, 0.0),
+            false
+        )
+        .is_some()
+    );
     // Com o `VecBlend` (a entidade é um spine de blend), NÃO tem.
     sim.world_mut()
         .entity_mut(e)
         .insert(ph2d_ecs::VecBlend::new(vec![1, 2], 3));
     assert!(
-        view(&sim, &scene, e, &cam, ws, (0.0, 0.0), false).is_none(),
+        view(
+            &sim,
+            &scene,
+            &Default::default(),
+            e,
+            &cam,
+            ws,
+            (0.0, 0.0),
+            false
+        )
+        .is_none(),
         "o spine do blend não tem gizmo (a linha é Node-only)"
     );
 }
@@ -168,127 +130,63 @@ fn an_envelope_container_publishes_a_union_gizmo_box() {
     assert!(container_view(&sim, &scene, plain, &cam, ws, (0.0, 0.0), false).is_none());
 }
 
-/// O picking respeita o `Transform`: o interior está onde a forma é DESENHADA,
-/// não onde ela é guardada.
+/// **A CAIXA DO GIZMO segue a pose do layout** — o terceiro consumidor da mesma lei (os outros são
+/// as âncoras e o hit-test).
+///
+/// Sem ela o artista seleciona um filho colocado e a caixa de transformação aparece onde a forma
+/// foi AUTORADA: as alças ficam longe da arte que elas manipulam.
+///
+/// ⚠️ O oráculo é o CENTRO em mundo, não "mudou": a pose entra depois do transform, então uma
+/// composição na ordem errada desloca pela pose ESCALADA e passaria num gate de desigualdade.
 #[test]
-fn picking_finds_the_shape_where_the_transform_puts_it() {
-    let (mut sim, scene, map, e) = scene_with_square();
-    let vs = VecViewState::default();
-    assert!(
-        pick_at_world(
-            &sim,
-            &scene,
-            &Default::default(),
-            &vs,
-            &map,
-            [0.0, 0.0],
-            0.0
-        )
-        .is_some()
-    );
+fn the_gizmo_box_follows_the_pose_the_layout_gave() {
+    let mut sim = SimWorld::default();
+    let mut scene = VecScene::new();
+    let id = scene.push_path(rectangle([-1.0, -1.0], [1.0, 1.0]));
+    let e = sim
+        .world_mut()
+        .spawn((Transform::IDENTITY, VecPathRef(id)))
+        .id();
+    let cam = Camera2d::default();
+    let ws = WindowSize {
+        width: 800,
+        height: 600,
+    };
 
-    sim.world_mut().entity_mut(e).insert(Transform {
-        translation: Vec2::new(50.0, 0.0),
-        ..Transform::IDENTITY
-    });
-    assert_eq!(
-        pick_at_world(
-            &sim,
-            &scene,
-            &Default::default(),
-            &vs,
-            &map,
-            [0.0, 0.0],
-            0.0
-        ),
-        None,
-        "a origem ficou vazia"
-    );
-    assert_eq!(
-        pick_at_world(
-            &sim,
-            &scene,
-            &Default::default(),
-            &vs,
-            &map,
-            [50.0, 0.0],
-            0.0
-        ),
-        Some(e.to_bits()),
-        "a forma está onde o transform a pôs"
-    );
-}
+    let bare = view(
+        &sim,
+        &scene,
+        &Default::default(),
+        e,
+        &cam,
+        ws,
+        (0.0, 0.0),
+        false,
+    )
+    .expect("gizmo");
+    let c0 = [
+        (bare.bbox_min_world[0] + bare.bbox_max_world[0]) * 0.5,
+        (bare.bbox_min_world[1] + bare.bbox_max_world[1]) * 0.5,
+    ];
+    assert!(c0[0].abs() < 1e-5 && c0[1].abs() < 1e-5, "sem pose: {c0:?}");
 
-/// Travada ou escondida não é selecionável no canvas — como um sprite.
-#[test]
-fn a_hidden_or_locked_shape_is_not_pickable() {
-    let (sim, scene, map, _) = scene_with_square();
-    let id = scene.paths()[0].id;
-    let hidden = VecViewState {
-        hidden: vec![id],
+    // A moldura empurrou-a 10 para a direita e dobrou-a.
+    let placed = VecViewState {
+        poses: vec![(id, ph2d_vec_scene::Xform([2.0, 0.0, 0.0, 2.0, 10.0, 0.0]))],
         ..Default::default()
     };
-    assert_eq!(
-        pick_at_world(
-            &sim,
-            &scene,
-            &Default::default(),
-            &hidden,
-            &map,
-            [0.0, 0.0],
-            0.0
-        ),
-        None
-    );
-    let locked = VecViewState {
-        locked: vec![id],
-        ..Default::default()
-    };
-    assert_eq!(
-        pick_at_world(
-            &sim,
-            &scene,
-            &Default::default(),
-            &locked,
-            &map,
-            [0.0, 0.0],
-            0.0
-        ),
-        None
-    );
-}
-
-/// O marquee pega a forma pela bbox de MUNDO.
-#[test]
-fn the_marquee_selects_a_translated_shape_by_its_world_bbox() {
-    let (mut sim, scene, map, e) = scene_with_square();
-    let vs = VecViewState::default();
-    sim.world_mut().entity_mut(e).insert(Transform {
-        translation: Vec2::new(20.0, 20.0),
-        ..Transform::IDENTITY
-    });
+    let v = view(&sim, &scene, &placed, e, &cam, ws, (0.0, 0.0), false).expect("gizmo");
+    let c = [
+        (v.bbox_min_world[0] + v.bbox_max_world[0]) * 0.5,
+        (v.bbox_min_world[1] + v.bbox_max_world[1]) * 0.5,
+    ];
+    let half = (v.bbox_max_world[0] - v.bbox_min_world[0]) * 0.5;
     assert!(
-        pick_in_world_rect(
-            &sim,
-            &scene,
-            &Default::default(),
-            &vs,
-            &map,
-            [-5.0, -5.0],
-            [5.0, 5.0]
-        )
-        .is_empty()
+        (c[0] - 10.0).abs() < 1e-4 && c[1].abs() < 1e-4,
+        "a caixa devia centrar-se em (10, 0): {c:?}"
     );
-    assert_eq!(
-        pick_in_world_rect(
-            &sim,
-            &scene,
-            &Default::default(),
-            &vs,
-            &map,
-            [15.0, 15.0],
-            [25.0, 25.0]
-        ),
-        vec![e.to_bits()]
+    assert!(
+        (half - 2.0).abs() < 1e-4,
+        "e medir 2 de meia-largura (1 x 2): {half}"
     );
 }

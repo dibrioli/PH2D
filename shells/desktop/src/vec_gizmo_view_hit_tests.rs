@@ -50,7 +50,16 @@ fn scene_with_line(
 fn hits(sim: &SimWorld, scene: &VecScene, map: &VecEntityMap, p: [f32; 2], r: f64) -> bool {
     let id = *map.keys().next().expect("um path");
     let e = Entity::from_bits(map[&id]);
-    contains_path(sim, scene, &Default::default(), e, id, p, r)
+    contains_path(
+        sim,
+        scene,
+        &Default::default(),
+        &Default::default(),
+        e,
+        id,
+        p,
+        r,
+    )
 }
 
 /// **O GATE.** O corpo da ponta de seta pega o clique.
@@ -262,5 +271,74 @@ fn a_parent_that_was_not_hoisted_still_wins_the_click() {
         hits.first(),
         Some(&pe.to_bits()),
         "o pai desenha na frente e tem de ser apontado na frente: {hits:?}"
+    );
+}
+
+/// **UMA FORMA QUE O LAYOUT COLOCOU É APONTADA ONDE ELA ESTÁ** (Enio 2026-08-02: *"os Path das
+/// formas aparecem no lugar de origem e talvez por isso não consigo selecioná-las"*).
+///
+/// O passe do auto layout assa o resultado na `LiveGeometry`, e é por isso que a forma APARECE no
+/// lugar certo. Quem não desenha geometria — o hit-test, as âncoras do modo Node, a caixa do
+/// gizmo — lê a pose AUTORADA, e ela não se mexeu: o clique procurava a forma onde ela saiu.
+///
+/// ⚠️ **O oráculo tem as DUAS metades**, e é o par que o torna capaz de falhar: onde a forma
+/// ESTÁ agora tem de pegar, e onde ela ESTAVA não pode mais.
+#[test]
+fn a_shape_the_layout_moved_is_picked_where_it_now_is() {
+    let mut sim = SimWorld::default();
+    let mut scene = VecScene::new();
+    let mut map = VecEntityMap::new();
+    let id = scene.push_path(rectangle([0.0, 0.0], [2.0, 2.0]));
+    let e = sim
+        .world_mut()
+        .spawn((Transform::IDENTITY, VecPathRef(id)))
+        .id();
+    map.insert(id, e.to_bits());
+
+    // A moldura empurrou-a 10 para a direita.
+    let vs = VecViewState {
+        poses: vec![(id, ph2d_vec_scene::Xform([1.0, 0.0, 0.0, 1.0, 10.0, 0.0]))],
+        ..Default::default()
+    };
+    assert_eq!(
+        pick_at_world(
+            &sim,
+            &scene,
+            &Default::default(),
+            &vs,
+            &map,
+            [11.0, 1.0],
+            0.0
+        ),
+        Some(e.to_bits()),
+        "o clique ONDE A FORMA ESTA' nao a pegou"
+    );
+    assert_eq!(
+        pick_at_world(
+            &sim,
+            &scene,
+            &Default::default(),
+            &vs,
+            &map,
+            [1.0, 1.0],
+            0.0
+        ),
+        None,
+        "e ela continua clicavel no lugar de ORIGEM — o hit-test ficou nos dois sitios"
+    );
+
+    // O controle: sem pose, ela e' apontada onde foi autorada, como sempre.
+    let bare = VecViewState::default();
+    assert_eq!(
+        pick_at_world(
+            &sim,
+            &scene,
+            &Default::default(),
+            &bare,
+            &map,
+            [1.0, 1.0],
+            0.0
+        ),
+        Some(e.to_bits())
     );
 }

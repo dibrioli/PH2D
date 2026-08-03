@@ -39,6 +39,26 @@ pub struct VecViewState {
     /// vizinhos: algo que só a shell sabe, projetado do ECS uma vez por frame. O documento não
     /// conhece tema nenhum.
     pub bound: Vec<crate::BoundPaint>,
+    /// **ONDE O AUTO LAYOUT PÔS ESTA FORMA** — o afim de MUNDO que a moldura lhe deu neste frame
+    /// (ADR-0153). Vazio = ninguém flui, e tudo se lê exactamente como antes.
+    ///
+    /// # Por que uma POSE, e não só a geometria assada
+    ///
+    /// O passe do layout já assa o resultado dentro da `LiveGeometry`, e é por isso que a forma
+    /// **aparece** no lugar certo. Mas quem não desenha a geometria — as ÂNCORAS do modo Node, a
+    /// caixa do gizmo, o hit-test — lê a pose AUTORADA, e ela não se mexeu: as âncoras ficavam no
+    /// lugar de origem e o clique procurava a forma onde ela já não está (Enio, 2026-08-02:
+    /// *"os Path das formas aparecem no lugar de origem e talvez por isso não consigo
+    /// selecioná-las"*).
+    ///
+    /// ⚠️ **É uma pose porque o layout é uma pose** — `translate ∘ scale` sobre a geometria de
+    /// mundo, sem reshape nenhum. Um Offset ou um Pattern, que MUDAM a curva, não entram aqui: as
+    /// âncoras deles ficam mesmo na fonte, que é o que o modo Node edita (a convenção do
+    /// `inkscape:original-d`).
+    ///
+    /// ⚠️ **Composição:** o mundo desta forma é `pose ∘ xform_of(id)` — a pose vem DEPOIS, porque
+    /// ela age sobre a geometria já posta no mundo.
+    pub poses: Vec<(VecPathId, crate::Xform)>,
 }
 
 /// **Uma moldura que recorta**, dita em termos da pilha de z: *do `first` (inclusive) até o
@@ -74,6 +94,19 @@ pub struct VecClipSpan {
 }
 
 impl VecViewState {
+    /// A pose que o AUTO LAYOUT deu a `id` neste frame — identidade quando ele não a colocou.
+    ///
+    /// ⚠️ **Porta única.** Quem precisa de saber *onde esta forma está* — as âncoras, a caixa do
+    /// gizmo, o hit-test — pergunta aqui; duas leituras diferentes da mesma tabela é como o
+    /// clique volta a procurar a forma onde ela não está.
+    #[must_use]
+    pub fn layout_pose(&self, id: VecPathId) -> crate::Xform {
+        self.poses
+            .iter()
+            .find(|(p, _)| *p == id)
+            .map_or(crate::Xform::IDENTITY, |(_, x)| *x)
+    }
+
     /// A tinta resolvida desta forma, se algum token a dirige.
     ///
     /// ⚠️ **Perguntada UMA vez por forma-FONTE**, e a resposta serve a forma e a toda geometria

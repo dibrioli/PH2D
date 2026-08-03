@@ -180,6 +180,17 @@ pub(crate) struct LayoutLive {
     /// ⚠️ `BTreeMap` e não `HashMap`: a ordem de iteração é parte do que o editor guarda, e o
     /// `HashMap` é banido por lint neste repo justamente por não a ter.
     slots: std::collections::BTreeMap<u64, FlowSlots>,
+    /// **A POSE que cada caminho colocado recebeu** — o mesmo afim que foi assado na geometria,
+    /// publicado também como número.
+    ///
+    /// ⚠️ Assar serve a quem DESENHA; quem **aponta** e quem **anota** (as âncoras do modo Node,
+    /// a caixa do gizmo, o hit-test) não desenha geometria nenhuma — lê a pose autorada, que não
+    /// se mexeu. Sem esta tabela as âncoras ficam no lugar de origem e o clique procura a forma
+    /// onde ela já não está.
+    ///
+    /// ⚠️ Os dois saem do MESMO `x`, uma linha um do outro: é isso que impede a pose publicada de
+    /// divergir da geometria assada.
+    poses: std::collections::BTreeMap<VecPathId, Xform>,
 }
 
 impl LayoutLive {
@@ -190,6 +201,11 @@ impl LayoutLive {
     #[cfg(test)]
     pub(crate) fn placed(&self) -> usize {
         self.placed
+    }
+
+    /// **A tabela de poses deste frame**, para o `VecViewState` que a shell publica.
+    pub(crate) fn poses(&self) -> Vec<(VecPathId, Xform)> {
+        self.poses.iter().map(|(id, x)| (*id, *x)).collect()
     }
 
     /// Onde o último passe pôs os filhos desta moldura — `None` se ela não flui.
@@ -219,6 +235,7 @@ impl LayoutLive {
     ) {
         self.placed = 0;
         self.slots.clear();
+        self.poses.clear();
         for frame in outermost_flowing_frames(scene, sim, map) {
             self.lay_out(scene, sim, xforms, live, frame);
         }
@@ -350,6 +367,8 @@ impl LayoutLive {
                     bake_xform(p, &x);
                 }
                 live.insert(id, items);
+                // O MESMO afim, como número: quem não desenha geometria precisa dele.
+                self.poses.insert(id, x);
             }
             self.placed += 1;
         }

@@ -652,6 +652,7 @@ impl App {
             profile_live: crate::profile_live::ProfileLive::default(),
             contour_live: crate::contour_live::ContourLive::default(),
             layout_live: crate::layout_live::LayoutLive::default(),
+            vec_view_derived: ph2d_vec_scene::VecViewState::default(),
             align_live: crate::align_live::AlignLive::default(),
             bool_live: crate::bool_live::BoolLive::default(),
             symmetry_live: crate::symmetry_live::SymmetryLive::default(),

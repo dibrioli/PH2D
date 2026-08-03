@@ -90,6 +90,7 @@ fn press_arms_on_the_world_corner_under_the_cursor() {
         &mut sim,
         &vscene,
         &Default::default(),
+        &Default::default(),
         Some(container),
         [tr[0] + 0.3, tr[1] + 0.2],
         PX_TO_WORLD,
@@ -106,6 +107,7 @@ fn press_arms_on_the_world_corner_under_the_cursor() {
     assert!(!press(
         &mut sim,
         &vscene,
+        &Default::default(),
         &Default::default(),
         Some(container),
         rect_corners()[2],
@@ -132,6 +134,7 @@ fn press_misses_when_far_from_every_corner_and_off_the_art() {
         &mut sim,
         &vscene,
         &Default::default(),
+        &Default::default(),
         Some(container),
         [50.0 + POSE[0], 50.0 + POSE[1]],
         PX_TO_WORLD,
@@ -152,6 +155,7 @@ fn press_ignores_a_non_envelope_entity() {
         &mut sim,
         &scene,
         &Default::default(),
+        &Default::default(),
         Some(plain),
         [7.0, 5.0],
         PX_TO_WORLD,
@@ -169,6 +173,7 @@ fn press_with_no_selection_arms_nothing() {
     assert!(!press(
         &mut sim,
         &vscene,
+        &Default::default(),
         &Default::default(),
         None,
         world_corners()[2],
@@ -282,6 +287,7 @@ fn a_press_on_the_cooked_art_is_swallowed_without_arming() {
         press(
             &mut sim,
             &vscene,
+            &Default::default(),
             &Default::default(),
             Some(container),
             [5.0 + POSE[0], 3.0 + POSE[1]],

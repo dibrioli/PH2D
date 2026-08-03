@@ -1770,6 +1770,9 @@ impl crate::App {
                     .active()
                     .is_some_and(|t| t.id() == ph2d_editor::ToolId::new("vector"))
                     || self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Select,
+                // As poses que o último desenho derivou — sem elas a caixa do gizmo de um filho
+                // colocado aparece onde a forma foi AUTORADA.
+                &self.vec_view_derived,
                 flip,
                 // Idem para o objeto Flip: gizmo fora da tool Flip, ou no modo Select
                 // dela — em Draw/Erase ele comeria o clique do canvas (ADR-0112 parity).
@@ -6170,6 +6173,16 @@ impl crate::App {
             // do PAI, então convive com o offset vivo de cada filho.
             self.layout_live
                 .recook(vec_scene, sim, &self.vec_entities, &vec_xf, &mut vec_live);
+            // **A POSE que cada filho colocado recebeu**, publicada para quem NÃO desenha
+            // geometria: as âncoras do modo Node, a caixa do gizmo e o hit-test leem a pose
+            // AUTORADA, e ela não se mexeu com o layout.
+            vec_view.poses = self.layout_live.poses();
+            // **E os dois fatos derivados são PUBLICADOS** para quem vier depois do desenho. O
+            // hit-test monta o `VecViewState` dele do zero a cada evento de ponteiro, e aquela
+            // porta só sabe o que a ÁRVORE diz (escondido, travado) — sem isto ele decide como se
+            // nenhuma moldura existisse e nenhuma forma tivesse sido colocada.
+            self.vec_view_derived.clips.clone_from(&vec_view.clips);
+            self.vec_view_derived.poses.clone_from(&vec_view.poses);
             // **O ALINHAMENTO roda por ÚLTIMO, e TRANSFORMA o mapa em vez de o estender.**
             // Os cinco acima são mutuamente exclusivos (um componente cada, um por vez no
             // painel), e é isso que torna o `extend` seguro. O alinhamento não é membro dessa

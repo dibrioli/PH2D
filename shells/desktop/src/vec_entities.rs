@@ -159,6 +159,32 @@ pub(crate) fn next_root_order(sim: &mut SimWorld) -> u32 {
     max.map_or(0, |m| m.saturating_add(1))
 }
 
+/// **O estado de vista que um GESTO deve consultar** — o que a árvore diz AGORA, mais os fatos
+/// que o último DESENHO derivou.
+///
+/// ⚠️ Existe porque as duas metades têm relógios diferentes, e as duas estão certas:
+///
+/// - *escondido* e *travado* saem do mundo **deste instante** (o artista pode ter acabado de
+///   apagar o olhinho, e o clique tem de honrá-lo já);
+/// - os **intervalos das molduras** e as **poses do auto layout** são resultado do passe de
+///   layout, que roda no desenho — e o artista clica no que está na TELA, que é o último frame
+///   desenhado.
+///
+/// Sem esta fusão o gesto vê as duas listas VAZIAS e decide como se nenhuma moldura existisse:
+/// a moldura ganha o clique dos próprios filhos, e o hit-test procura cada forma colocada no
+/// lugar de onde ela saiu.
+#[must_use]
+pub(crate) fn view_state_for_pick(
+    sim: &SimWorld,
+    map: &VecEntityMap,
+    derived: &VecViewState,
+) -> VecViewState {
+    let mut v = view_state(sim, map);
+    v.clips.clone_from(&derived.clips);
+    v.poses.clone_from(&derived.poses);
+    v
+}
+
 /// O que a árvore esconde ou trava, com a herança já resolvida.
 ///
 /// Visibilidade é `AND` da cadeia de pais (esconder um grupo esconde os filhos sem

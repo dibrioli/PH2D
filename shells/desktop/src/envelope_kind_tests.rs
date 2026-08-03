@@ -136,6 +136,7 @@ fn a_side_handle_is_only_grabbable_in_the_mesh_gesture() {
         &mut sim,
         &scene,
         &Default::default(),
+        &Default::default(),
         Some(container),
         on_handle,
         PX_TO_WORLD,
@@ -151,6 +152,7 @@ fn a_side_handle_is_only_grabbable_in_the_mesh_gesture() {
         crate::envelope_gesture::press(
             &mut sim,
             &scene,
+            &Default::default(),
             &Default::default(),
             Some(container),
             on_handle,

@@ -466,6 +466,33 @@ impl PainterTool {
         );
         let mut mask: Option<&mut [u8]> =
             accumulate_cap.then_some(self.paint.stroke_mask.as_mut_slice());
+        // ⚠️ **O LOTE, não o dab** (doc 28 §5.78). Um pincel de falloff puro — sem Shape, sem Grain,
+        // sem cap de Accumulate — não tem estado por-dab nem compartilhado, então a figura inteira pode
+        // ser dividida por LINHAS entre os núcleos. É a rota que este dispatch nomeia para o pincel
+        // DEFAULT (*"a bare falloff brush stays on the per-pixel path"*), e é onde o re-stamp de uma
+        // forma gasta os 30-119 ms medidos em 2026-08-03. Abaixo do piso, ou com qualquer um dos três
+        // presentes, a porta cai no laço `for d in dabs` de sempre — byte-idêntico.
+        if !textured && !shape_active && !accumulate_cap && image.is_none() {
+            let touched =
+                super::stamp_banded::stamp_plain_dabs_banded(buf, w, h, dabs, brush, alpha_locked);
+            // O stream de RNG é consumido pelas BASES de textura, que este pincel não tem — mas o
+            // `enter` por dab é o que faz o stream ANDAR, e ele tem de andar igual.
+            for di in 0..dabs.len() {
+                let _ = dab_rng.enter(&groups, di);
+            }
+            self.paint.tex_rng = dab_rng.finish();
+            let touched = touched.map(|r| Region {
+                x: r.x,
+                y: r.y,
+                w: r.w,
+                h: r.h,
+            });
+            self.declare_wrote(touched);
+            if let Some(rect) = touched {
+                self.mark_dirty(rect);
+            }
+            return;
+        }
         let mut touched: Option<Region> = None;
         for (di, d) in dabs.iter().enumerate() {
             let tex_rng = dab_rng.enter(&groups, di);

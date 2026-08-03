@@ -32,6 +32,8 @@ mod measure_watercolor_pour; // o que o pour cobra e o que a rota do quadro muda
 mod measure_wetpaint_cost; // de que é feito um MOVE de Wet Paint (doc 28 §7, frente V)
 #[path = "measure_window_premise.rs"]
 mod measure_window_premise;
+#[path = "stamp_banded_tests.rs"]
+mod stamp_banded_tests; // o lote em bandas pinta o que o laco serial pintava (doc 28 §5.78)
 #[path = "undo_confine_tests.rs"]
 mod undo_confine_tests; // um Ctrl+Z repinta so' o que ele mudou (doc 28 §5.63)
 #[path = "undo_live_base_tests.rs"]

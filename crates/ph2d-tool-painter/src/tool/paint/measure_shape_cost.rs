@@ -199,9 +199,16 @@ fn the_same_path_costs_this_much_by_each_road() {
 
     let free_per_px = free_ms * 1e3 / 2000.0;
     let shape_per_px = shape_ms * 1e3 / 2000.0;
-    println!("  mão livre : traço de 2000 px em 50 eventos = {free_ms:8.3} ms  => {free_per_px:6.2} us/px");
-    println!("  re-stamp  : UM move, perímetro 2000 px     = {shape_ms:8.3} ms  => {shape_per_px:6.2} us/px");
-    println!("  razão por pixel de caminho: {:.2}x", shape_per_px / free_per_px.max(1e-9));
+    println!(
+        "  mão livre : traço de 2000 px em 50 eventos = {free_ms:8.3} ms  => {free_per_px:6.2} us/px"
+    );
+    println!(
+        "  re-stamp  : UM move, perímetro 2000 px     = {shape_ms:8.3} ms  => {shape_per_px:6.2} us/px"
+    );
+    println!(
+        "  razão por pixel de caminho: {:.2}x",
+        shape_per_px / free_per_px.max(1e-9)
+    );
 }
 
 /// **O Per-Layer Color hoje** — o handoff de 2026-07-04 fechou a frente de CPU em 7,9 ms/move com o
@@ -273,7 +280,10 @@ fn the_per_layer_colour_costs_this_much_today() {
 #[ignore = "measurement, not a gate — run explicitly"]
 fn what_a_shape_move_is_made_of() {
     println!("[shape] ablação por ENTRADA — Ellipse r=400, pincel r=24");
-    println!("{:>6}  {:>10} {:>10} {:>10}", "tela", "Digital", "Impasto", "razão");
+    println!(
+        "{:>6}  {:>10} {:>10} {:>10}",
+        "tela", "Digital", "Impasto", "razão"
+    );
     for side in [1024u32, 2048, 4096] {
         let mut out = Vec::new();
         for media in [PaintMedia::Digital, PaintMedia::Impasto] {

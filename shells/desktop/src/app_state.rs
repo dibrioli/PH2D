@@ -1201,6 +1201,11 @@ pub(crate) struct App {
     /// Cleared when the drag ends. Cached on `App` (not in
     /// `GizmoDragState`) so the pixel readback stays a shell concern.
     pub(crate) pivot_content_center: Option<[f32; 2]>,
+    /// A moldura fotografada no arrasto de escala em curso — a geometria de partida contra a qual
+    /// a razão ABSOLUTA do gizmo é aplicada (`vec_frame_resize`). `None` entre gestos e quando o
+    /// sujeito do arrasto não é uma moldura. Mora no `App` e não no `GizmoDragState` porque este é
+    /// `Copy`, e um instantâneo de geometria não é.
+    pub(crate) frame_resize_start: Option<crate::vec_frame_resize::FrameResizeStart>,
     /// Fase 0f: canvas rubber-band box select. `Some` while the user
     /// is left-dragging on empty canvas (no sprite hit, no gizmo
     /// handle hit). Anchored at the Down point in screen coords —

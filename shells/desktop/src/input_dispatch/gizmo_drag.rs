@@ -5,10 +5,14 @@
 //! enough that keeping them inline tipped the window-event dispatch hub
 //! past 600 LOC. The begin/end of a drag still live in the MouseInput
 //! arm; only the per-move advance moved here.
-// ph2d-loc-cap: 680 LOC — the keyed-handle-id multi-select rotate/scale/translate
+// ph2d-loc-cap: ~735 LOC — the keyed-handle-id multi-select rotate/scale/translate
 // advance paths are inherently large; a finer per-path split is a desktop-gizmo follow-up.
 // +12 (gold-standard joint anchor): the joint tail — REMOVED again by W-J2; the
 // anchor dots open `crate::joint_anchor_drag`, which writes one side's local.
+// +43 (frame resize): the snapshot install + the `else if` arm that resizes a frame's
+// box instead of writing its pose. Both DELEGATE (`crate::vec_frame_resize`), so the
+// arm is the branch and the ratio, nothing else — the same shape as the flow-reorder
+// arm below it.
 
 use crate::{App, Transform};
 
@@ -39,6 +43,8 @@ impl App {
             // No drag in flight → drop any cached content-bbox center so
             // the next MovePivot drag recomputes it for ITS sprite.
             self.pivot_content_center = None;
+            // O mesmo para o instantâneo da moldura: ele descreve um gesto que acabou.
+            self.frame_resize_start = None;
             return;
         };
         let ctrl = self.modifiers.control_key() || self.modifiers.super_key();
@@ -57,11 +63,30 @@ impl App {
         // Scale-snap vetorial: se a forma arrastada é vetorial e o gesto é scale, o
         // canto arrastado encaixa nas OUTRAS formas (bordas/centros/vértices), como no
         // translate. Recolhe os alvos + cfg agora, fora do borrow mutável de gfx.
-        let vec_scale_ids = if matches!(
+        let is_scale_drag = matches!(
             drag.kind,
             ph2d_editor::GizmoDragKind::ScaleCorner { .. }
                 | ph2d_editor::GizmoDragKind::ScaleEdge { .. }
-        ) {
+        );
+        // **A moldura fotografa-se na primeira movida do arrasto** (corolário do W3).
+        //
+        // A alça de uma moldura muda a CAIXA dela e não a pose, e a razão que o gizmo entrega é
+        // ABSOLUTA contra o pen-down — logo a geometria de partida tem de sobreviver ao gesto
+        // inteiro. Preguiçoso e no `App`, como o `pivot_content_center` acima e pela mesma razão:
+        // um instantâneo de geometria não cabe num `GizmoDragState`, que é `Copy`.
+        //
+        // ⚠️ A guarda é `is_for`, não `is_none`: soltar e voltar a pegar sem um `CursorMoved` pelo
+        // meio não passa pela limpeza lá em cima, e reporia a geometria da moldura ANTERIOR por
+        // cima desta.
+        if is_scale_drag
+            && !self
+                .frame_resize_start
+                .as_ref()
+                .is_some_and(|s| s.is_for(drag.entity_bits))
+        {
+            self.frame_resize_start = self.begin_frame_resize(drag.entity_bits, drag.pivot_world);
+        }
+        let vec_scale_ids = if is_scale_drag {
             self.dragged_vec_path_ids(drag.entity_bits)
         } else {
             Vec::new()
@@ -189,11 +214,7 @@ impl App {
                         ]
                     })
                     .unwrap_or([0.0, 0.0]);
-                let is_scale = matches!(
-                    drag.kind,
-                    ph2d_editor::GizmoDragKind::ScaleCorner { .. }
-                        | ph2d_editor::GizmoDragKind::ScaleEdge { .. }
-                );
+                let is_scale = is_scale_drag;
                 // Onda 2 hotfix: for a Global gizmo drag, the axis math
                 // inside `compute_gizmo_transform` projects the cursor
                 // delta into the PRIMARY's LOCAL rotated frame —
@@ -545,6 +566,32 @@ impl App {
                             t.scale = ph2d_core::Vec2::new(new_scale[0], new_scale[1]);
                         }
                     }
+                } else if is_scale
+                    && let Some(start) = self.frame_resize_start.as_ref()
+                    && start.is_for(drag.entity_bits)
+                {
+                    // **UMA MOLDURA REDIMENSIONA; ela não ESCALA** (corolário do W3).
+                    //
+                    // ⚠️ E o `Transform` NÃO é escrito — é a metade que importa. A pose de um pai é
+                    // herdada por todo descendente (é isso que um grafo de cena é), então escrevê-la
+                    // ESTICA os filhos: a tipografia achata e a regra de âncora nunca corre, porque
+                    // a moldura não mudou de CAIXA, mudou de ESCALA. O `W`/`H` do painel já fazia o
+                    // certo; isto leva a alça à mesma porta.
+                    //
+                    // A razão é ABSOLUTA contra o `start_transform` (o gizmo recomputa-a a cada
+                    // `CursorMoved`), e é por isso que a porta repõe o instantâneo antes de escalar.
+                    let (ssx, ssy) = (drag.start_transform.scale[0], drag.start_transform.scale[1]);
+                    let fx = if ssx.abs() > 1e-6 {
+                        f64::from(new_t.scale[0] / ssx)
+                    } else {
+                        1.0
+                    };
+                    let fy = if ssy.abs() > 1e-6 {
+                        f64::from(new_t.scale[1] / ssy)
+                    } else {
+                        1.0
+                    };
+                    crate::vec_frame_resize::apply(&mut gfx.vec_scene, start, fx, fy);
                 } else if matches!(drag.kind, ph2d_editor::GizmoDragKind::Translate)
                     && crate::layout_reorder::flow_parent(&gfx.sim, entity).is_some()
                 {

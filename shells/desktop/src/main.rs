@@ -37,10 +37,10 @@
 //!   `ph2d.input` Luau snapshot is a follow-up.
 //! - **M11** Vello text/widget overlay — needs surface-sharing pass.
 
-mod anchor_smoke;
 mod adapter_smoke;
 mod align_live;
 mod align_smoke;
+mod anchor_smoke;
 mod app_state;
 mod atlas_loader;
 mod attribute_demo_smoke;
@@ -341,6 +341,7 @@ mod vec_font_preview;
 /// A moldura da SELEÇÃO (plano UI/UX W0): o que o painel mostra, e o que o chip escreve.
 mod vec_frame_edit;
 mod vec_frame_labels;
+mod vec_frame_resize;
 mod vec_frame_spans;
 mod vec_gizmo_view;
 mod vec_glyph;
@@ -572,6 +573,7 @@ impl App {
             frame_cpu_ms_ewma: 1.0, // optimistic baseline; reseeds on
             // the first frame's measurement
             pivot_content_center: None,
+            frame_resize_start: None,
             rubber_band: None,
             pending_single_replace: None,
             group_drag_starts: Vec::new(),

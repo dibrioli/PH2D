@@ -5365,6 +5365,10 @@ impl App {
                     // the next single-select drag doesn't accidentally
                     // pull stale extras along.
                     self.group_drag_starts.clear();
+                    // O instantâneo da moldura redimensionada descreve um gesto que acabou. A
+                    // limpeza do `advance_gizmo_drag` só corre num `CursorMoved`, e soltar e voltar
+                    // a pegar não passa necessariamente por um.
+                    self.frame_resize_start = None;
                     // Onda 2 polish: release the global drag-start view
                     // so snapshots::publish reverts to the live-union
                     // computation for the next frame.

@@ -50,6 +50,9 @@ mod eyedropper;
 pub(crate) mod fill_drag;
 mod gizmo_drag;
 mod keyboard;
+
+/// **Os acordes de ARQUIVO** — irmão do `keyboard`, cortado dele pelo cap de LOC.
+mod keyboard_files;
 mod keyboard_timeline;
 pub(crate) mod painter_canvas_input;
 pub(crate) mod painter_falloff_input;

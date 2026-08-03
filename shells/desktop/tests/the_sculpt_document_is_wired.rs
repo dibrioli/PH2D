@@ -201,7 +201,10 @@ fn the_picker_goes_through_the_same_import_door_as_the_drop() {
 /// Ctrl+O de projeto inteiro, que é pior do que não ter o atalho.
 #[test]
 fn the_mesh_import_chord_is_reachable_and_does_not_eat_the_project_open() {
-    let body = function_body(&source("input_dispatch/keyboard.rs"), "key_input");
+    // ⚠️ O bloco mudou de ARQUIVO quando o `keyboard.rs` cruzou o cap de
+    // LOC, e o gate segue o FATO em vez do endereço: a propriedade que ele
+    // afirma é sobre a ordem dos braços, não sobre em que arquivo eles moram.
+    let body = function_body(&source("input_dispatch/keyboard_files.rs"), "file_chords");
     let guarded = body
         .find("KeyCode::KeyO if self.modifiers.shift_key()")
         .expect("o import de malha e' Ctrl+SHIFT+O — a guarda faz parte do atalho");
@@ -216,6 +219,70 @@ fn the_mesh_import_chord_is_reachable_and_does_not_eat_the_project_open() {
     assert!(
         body.contains("sculpt3d_pick_and_import()"),
         "…e o acorde tem de CHAMAR o seletor"
+    );
+}
+
+/// **O que sai é o nível VIVO, e a POSE entra junto.**
+///
+/// ⚠️ As duas metades falham diferente e as duas são invisíveis num arquivo que
+/// "abriu": sem `pose`, todas as peças saem **empilhadas na origem** — o defeito
+/// espelho exato do que o import curou; sem o nível vivo, o artista que desceu
+/// para trabalhar grosso recebe de volta os milhões de triângulos do topo.
+#[test]
+fn the_export_writes_the_live_level_through_the_pose() {
+    let body = function_body(&sculpt_src(), "export_pieces");
+    // ⚠️ **A asserção é sobre o CAMPO, não sobre o corpo**, e a diferença foi
+    // medida: com `body.contains("o.stack.mesh()")` a mutação
+    // `level_mesh(0).unwrap_or_else(|| o.stack.mesh())` **sobrevive** — ela
+    // mantém a string como fallback e exporta a base. Presença de um texto no
+    // corpo não é o mesmo que ele ser a FONTE do valor.
+    assert!(
+        body.contains("mesh: o.stack.mesh(),"),
+        "o export tem de escrever o nível VIVO da pilha"
+    );
+    assert!(
+        body.contains("pose: o.pose,"),
+        "…e levar a pose junto, senão as peças saem empilhadas na origem"
+    );
+}
+
+/// **A extensão desconhecida é RECUSADA, nunca dobrada num default.**
+///
+/// ⚠️ Um default calado escreveria um OBJ com o nome `.fbx`, e o primeiro
+/// programa a abri-lo diria que **o arquivo** está corrompido — apontando para o
+/// lugar errado, que é a forma de erro mais cara que existe.
+#[test]
+fn an_unknown_export_extension_is_refused_not_silently_defaulted() {
+    let body = function_body(&sculpt_src(), "sculpt3d_export");
+    assert!(
+        body.contains("from_extension"),
+        "a extensão é quem decide o formato"
+    );
+    assert!(
+        !body.contains("unwrap_or(MeshFormat::") && !body.contains("unwrap_or_default()"),
+        "uma extensão desconhecida não pode virar um formato por default"
+    );
+    assert!(
+        body.contains("Unknown extension"),
+        "…ela tem de ser NOMEADA ao artista"
+    );
+}
+
+/// **O aviso do que se perde sai da MESMA tabela que o escritor consulta.**
+///
+/// ⚠️ Uma segunda lista aqui diria *"cor preservada"* sobre um STL no dia em que
+/// alguém trocasse o escritor — e um aviso errado é pior que aviso nenhum,
+/// porque o artista confia nele e só descobre no outro programa.
+#[test]
+fn the_loss_warning_reads_the_same_table_the_writer_does() {
+    let body = function_body(&sculpt_src(), "lost_by");
+    assert!(
+        body.contains("keeps_colour()") && body.contains("keeps_pieces()"),
+        "o aviso tem de PERGUNTAR ao formato, não repetir a tabela"
+    );
+    assert!(
+        body.contains("\"mask\""),
+        "a máscara não sobrevive a nenhum dos três, então é dita SEMPRE"
     );
 }
 

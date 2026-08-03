@@ -298,41 +298,13 @@ impl App {
             }
         }
 
-        // Ctrl+S / Ctrl+O — save/load de PROJETO, GLOBAL (qualquer tool). O projeto é
-        // mundo + geometria + pixels (`crate::project`). Cede a um campo de texto
-        // focado (senão Ctrl+S num nome roubaria o atalho).
-        if state == ElementState::Pressed
-            && !repeat
-            && (self.modifiers.control_key() || self.modifiers.super_key())
-            && !self.vector_text_field_focused()
-            && let PhysicalKey::Code(code) = physical_key
-        {
-            match code {
-                KeyCode::KeyS => {
-                    self.project_save();
-                    return;
-                }
-                // ⚠️ **Ctrl+Shift+O importa uma MALHA** (ADR-0150 W8.4). Ele mora
-                // aqui, e não no `sculpt3d_key`, por um motivo que decide a
-                // feature: aquele handler sai no `sculpt3d_scene_mut()` quando
-                // não há cena — e o caso que importa é justamente o de não haver
-                // uma, porque **trazer um arquivo é o que ARMA o módulo**.
-                //
-                // ⚠️ E o `shift` passou a ser PERGUNTADO: até aqui este braço
-                // ignorava o modificador, então Ctrl+Shift+O carregava projeto —
-                // indistinguível do Ctrl+O, o que é acidente e não desenho. O par
-                // é o mesmo do Ctrl+Z/Ctrl+Shift+Z que a própria cena 3D usa.
-                #[cfg(feature = "sculpt3d")]
-                KeyCode::KeyO if self.modifiers.shift_key() => {
-                    self.sculpt3d_pick_and_import();
-                    return;
-                }
-                KeyCode::KeyO => {
-                    self.project_load();
-                    return;
-                }
-                _ => {}
-            }
+        // **Os acordes de ARQUIVO** — salvar, abrir, importar malha, exportar
+        // malha. Extraídos para o irmão `keyboard_files.rs` quando este arquivo
+        // cruzou o cap de 600 LOC do HR-18; a CHAMADA fica exatamente onde o
+        // bloco estava, porque a posição dele na cadeia é load-bearing (ele
+        // precede o clipboard, que também usa Ctrl).
+        if self.file_chords(physical_key, state, repeat) {
+            return;
         }
 
         // ADR-0108 Fase 2: undo/redo + clipboard com Ctrl/Cmd. Ctrl+Z desfaz (GLOBAL,

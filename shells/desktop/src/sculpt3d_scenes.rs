@@ -11,13 +11,13 @@
 //! segunda resposta a *"como uma crista é feita"*, e ela divergiria da primeira
 //! no dia em que o depósito mudasse.
 
-use super::{Brush, Dab, SculptStroke, Symmetry, Verb};
+use super::fixtures::{hooked_sphere, punctured_sphere, ridged_sphere};
 
-/// A cena está armada? (`PH2D_SCULPT3D_SMOKE` em `1`..`9`.)
+/// A cena está armada? (`PH2D_SCULPT3D_SMOKE` em `1`..`10`.)
 pub(crate) fn smoke_armed() -> bool {
     matches!(
         std::env::var("PH2D_SCULPT3D_SMOKE").ok().as_deref(),
-        Some("1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9")
+        Some("1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | "10")
     )
 }
 
@@ -122,6 +122,46 @@ pub(crate) fn scene_objects() -> Vec<(ph2d_mesh::Mesh, ph2d_mesh::Pose)> {
             path.display()
         );
     }
+    if export_scene() {
+        // ⚠️ **A fixture TEM de conter as três coisas que um formato pode
+        // perder**, senão o smoke não distingue um export honesto de um que
+        // joga fora metade: peças SEPARADAS (só o OBJ as guarda), COR pintada
+        // (o STL não a tem) e POSES diferentes (sem elas, *local* e *mundo*
+        // coincidem e o gate mais importante fica verde por vácuo).
+        let mut a = ph2d_mesh::shapes::cube(1.0);
+        for (i, c) in a.colors_mut().iter_mut().enumerate() {
+            *c = if i % 2 == 0 {
+                [0.95, 0.25, 0.15]
+            } else {
+                [0.15, 0.35, 0.95]
+            };
+        }
+        let mut b = ph2d_mesh::shapes::octahedron(1.0);
+        for c in b.colors_mut() {
+            *c = [0.2, 0.85, 0.3];
+        }
+        eprintln!(
+            "[sculpt3d] =10 A PORTA DE SAIDA: tres pecas, COLORIDAS, em poses diferentes.\n\
+             [sculpt3d]    O oraculo e' a IDA E VOLTA, e ela nao precisa de outro programa.\n\
+             [sculpt3d]    1) Ctrl+Shift+E e salve como  volta.obj  -- o toast diz quantas\n\
+             [sculpt3d]       pecas sairam e o que o formato NAO leva.\n\
+             [sculpt3d]    2) Ctrl+Shift+O e escolha esse mesmo arquivo. As tres pecas voltam\n\
+             [sculpt3d]       AO LADO das originais, na mesma disposicao e COM as cores.\n\
+             [sculpt3d]       Se voltarem empilhadas na origem, a pose nao viajou.\n\
+             [sculpt3d]    3) Repita com  volta.ply : as cores voltam, mas as tres viram UMA\n\
+             [sculpt3d]       peca so' -- e o toast tinha avisado (pieces merged).\n\
+             [sculpt3d]    4) Repita com  volta.stl : a forma volta e a COR nao (tudo branco).\n\
+             [sculpt3d]       O toast tinha avisado. E a peca tem de continuar ESCULPIVEL:\n\
+             [sculpt3d]       clique nela e passe o pincel -- se ela for de triangulos soltos,\n\
+             [sculpt3d]       nada acontece.\n\
+             [sculpt3d]    5) Salve como  volta.xyz : ele tem de RECUSAR com o nome, nunca\n\
+             [sculpt3d]       escrever um OBJ disfarcado."
+        );
+        return vec![
+            (a, ph2d_mesh::Pose::new([-2.8, 0.6, 0.0], 1.0)),
+            (b, ph2d_mesh::Pose::new([2.6, -0.4, 0.0], 0.8)),
+        ];
+    }
     if document_scene() {
         // ⚠️ **Um CUBO e um OCTAEDRO, cada um com pose própria** — e a peça que
         // a cena abre é a esfera com CRISTAS. As três escolhas são o oráculo: o
@@ -157,107 +197,25 @@ pub(crate) fn scene_objects() -> Vec<(ph2d_mesh::Mesh, ph2d_mesh::Pose)> {
     ]
 }
 
+/// `=10` — a cena da **PORTA DE SAÍDA**: exportar, e trazer de volta.
+///
+/// ⚠️ **O oráculo é o ROUND-TRIP, e ele mora DENTRO do app** — é por isso que
+/// esta wave trouxe os leitores de STL e PLY junto com os escritores. Sem eles o
+/// smoke dependeria de o artista abrir o Blender para julgar, e um smoke que
+/// precisa de outro programa não é um smoke: é uma tarefa.
+pub(crate) fn export_scene() -> bool {
+    std::env::var("PH2D_SCULPT3D_SMOKE").ok().as_deref() == Some("10")
+}
+
 /// `=5` — a cena do **TWIST e do LOCAL SCALE**: uma esfera com CRISTAS.
 pub(crate) fn turn_scene() -> bool {
     std::env::var("PH2D_SCULPT3D_SMOKE").ok().as_deref() == Some("5")
-}
-
-/// A esfera com uma CRUZ de cristas — o modelo em que um giro se VÊ.
-///
-/// ⚠️ **Uma esfera lisa é a fixture errada para o Twist, e não por gosto:** ela é
-/// invariante por rotação em torno de qualquer eixo que passe pelo centro, então
-/// torcer a calota frontal a deixa quase idêntica a ela mesma. O gesto
-/// funcionaria e o smoke não teria como dizer. As cristas dão ao redemoinho uma
-/// forma que o olho segue — e ao inchaço do Local Scale uma referência de
-/// tamanho.
-///
-/// ⚠️ **Elas são desenhadas com o VERBO do produto**: um relevo escrito à mão nos
-/// vértices seria uma segunda resposta a *"como uma crista é feita"*, e ela
-/// divergiria da primeira no dia em que o depósito mudasse.
-///
-/// ⚠️ **São TRÊS traços, e a contagem sai da lei do envelope.** Um traço deixa
-/// exatamente um `reach` de altura por mais dabs que ele carimbe — é essa a
-/// promessa —, e um `reach` aqui é `raio × 0,2 = 0,028`, cerca de 1,4% do
-/// diâmetro: no enquadramento padrão isso são ~5 px, uma ondulação que o olho
-/// não segue. Cada `begin` re-congela o `pre`, então os traços empilham; três é
-/// o que a medição pôs em ~4% do diâmetro (gate abaixo).
-fn ridged_sphere() -> ph2d_mesh::Mesh {
-    let mut mesh = ph2d_mesh::shapes::uv_sphere(96, 144, 1.0);
-    let brush = Brush {
-        verb: Verb::Draw,
-        radius: 0.14,
-        strength: 1.0,
-        ..Brush::default()
-    };
-    let mut stroke = SculptStroke::default();
-    const STEPS: usize = 48;
-    for _ in 0..3 {
-        stroke.begin(&mesh);
-        for i in 0..=STEPS {
-            let u = -0.6 + 1.2 * i as f32 / STEPS as f32;
-            for c in [
-                [u, 0.0, (1.0 - u * u).max(1e-3).sqrt()],
-                [0.0, u, (1.0 - u * u).max(1e-3).sqrt()],
-            ] {
-                stroke.dab(
-                    &mut mesh,
-                    &brush,
-                    // O olho aponta da superfície para o centro: é o raio que
-                    // teria produzido este acerto vindo de fora.
-                    &Dab::at(c, brush.radius, [-c[0], -c[1], -c[2]]),
-                    Symmetry::default(),
-                );
-            }
-        }
-    }
-    mesh
 }
 
 /// `=6` — a cena do **REMESH**: uma esfera com um bico ESTICADO até o barro
 /// acabar.
 pub(crate) fn remesh_scene() -> bool {
     std::env::var("PH2D_SCULPT3D_SMOKE").ok().as_deref() == Some("6")
-}
-
-/// A esfera com um BICO puxado longe demais — o modelo que pede um remesh.
-///
-/// ⚠️ **É a fixture certa porque ela nomeia o problema que o botão resolve**, e
-/// uma esfera lisa não nomeia nenhum. Um SnakeHook longo arrasta os mesmos
-/// vértices por uma distância grande: a densidade do bico despenca, os
-/// triângulos ficam compridos e finos, e a partir de certo ponto **não há mais
-/// barro ali para esculpir**. O remesh devolve densidade uniforme, e é isso que
-/// o artista vai julgar — não a forma, que tem de sobreviver.
-///
-/// ⚠️ **Puxado com o VERBO do produto**, como toda fixture deste arquivo: um bico
-/// escrito à mão nos vértices seria uma segunda resposta a *"o que um SnakeHook
-/// faz"*, e ela divergiria da primeira no dia em que o gancho mudasse.
-fn hooked_sphere() -> ph2d_mesh::Mesh {
-    let mut mesh = ph2d_mesh::shapes::uv_sphere(48, 72, 1.0);
-    let brush = Brush {
-        verb: Verb::SnakeHook,
-        radius: 0.35,
-        strength: 1.0,
-        ..Brush::default()
-    };
-    let mut stroke = SculptStroke::default();
-    stroke.begin(&mesh);
-    // O gancho AGARRA e leva: cada passo puxa o que está sob ele mais um pouco,
-    // e é a soma deles que estica o barro além do que a malha representa.
-    const STEPS: usize = 40;
-    let mut tip = [0.0f32, 0.0, 1.0];
-    for _ in 0..STEPS {
-        let step = [0.0f32, 0.028, 0.028];
-        stroke.dab(
-            &mut mesh,
-            &brush,
-            &Dab::hooking(tip, brush.radius, [0.0, 0.0, -1.0], step),
-            Symmetry::default(),
-        );
-        for k in 0..3 {
-            tip[k] += step[k];
-        }
-    }
-    mesh
 }
 
 /// `=3` — a cena da **REVERSÃO**: um modelo denso que É uma subdivisão.
@@ -268,37 +226,6 @@ pub(crate) fn reversion_scene() -> bool {
 /// `=4` — a cena de **FECHAR BURACO**: uma esfera com um pedaço arrancado.
 pub(crate) fn holes_scene() -> bool {
     std::env::var("PH2D_SCULPT3D_SMOKE").ok().as_deref() == Some("4")
-}
-
-/// A esfera com um FURO — o modelo que chega quebrado.
-///
-/// ⚠️ **O furo é feito ARRANCANDO faces, não desenhando uma beira**, e é isso que
-/// o torna a fixture certa: a beira resultante é a que uma malha de verdade tem
-/// (um contorno irregular, seguindo a grade da esfera), e não uma que eu
-/// escolhi. Os vértices que ficam sem face nenhuma sobrevivem soltos, como
-/// sobreviveriam num OBJ de terceiro.
-fn punctured_sphere() -> ph2d_mesh::Mesh {
-    let sphere = ph2d_mesh::shapes::uv_sphere(24, 32, 1.0);
-    let keep: Vec<ph2d_mesh::Face> = sphere
-        .faces()
-        .iter()
-        .copied()
-        .filter(|f| {
-            let vs = f.verts();
-            let n = vs.len() as f32;
-            let mut c = [0.0f32; 3];
-            for &v in vs {
-                let p = sphere.positions()[v as usize];
-                for k in 0..3 {
-                    c[k] += p[k] / n;
-                }
-            }
-            // Uma calota lateral, bem visível no enquadramento padrão.
-            !(c[0] > 0.45 && c[1] > 0.15)
-        })
-        .collect();
-    ph2d_mesh::Mesh::from_parts(sphere.positions().to_vec(), keep)
-        .expect("arrancar face não inventa índice")
 }
 
 /// A malha com que cada cena abre.
@@ -312,7 +239,10 @@ pub(crate) fn smoke_mesh() -> ph2d_mesh::Mesh {
     // ⚠️ A `=8` abre com as CRISTAS pelo motivo que o `scene_objects` explica:
     // uma esfera lisa reaberta é indistinguível de uma recém-nascida, e o smoke
     // do documento pergunta exatamente *o que eu salvei é o que eu abro?*.
-    if turn_scene() || document_scene() {
+    // ⚠️ A `=10` abre com as CRISTAS pelo mesmo motivo da `=8`: uma esfera lisa
+    // que volta de um arquivo é indistinguível de uma recém-nascida, e o que
+    // este smoke pergunta é *a FORMA atravessou?*.
+    if turn_scene() || document_scene() || export_scene() {
         return ridged_sphere();
     }
     if remesh_scene() {

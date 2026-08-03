@@ -52,7 +52,7 @@
 //! [`App::sculpt3d_import_files`], senão o arquivo escolhido no diálogo e o
 //! arquivo arrastado poderiam pousar em lugares diferentes.
 
-use ph2d_mesh::{ImportedPiece, Pose};
+use ph2d_mesh::{ImportedPiece, MeshFormat, Pose};
 
 use super::Sculpt3dScene;
 
@@ -70,7 +70,12 @@ const IMPORT_SPAN: f32 = 2.0;
 /// o filtro do seletor de arquivo. Duas cópias divergiriam no dia em que o STL
 /// entrar: o drop passaria a aceitar um formato que o diálogo não oferece, e a
 /// diferença apareceria como *"pelo botão não dá, arrastando dá"*.
-pub(crate) const MESH_EXTS: &[&str] = &["obj"];
+///
+/// ⚠️ **E esse dia CHEGOU na wave seguinte** — a porta de saída trouxe os
+/// leitores de STL e PLY junto, e a lista cresceu num lugar só. Ela é derivada
+/// do [`MeshFormat`], porque *"que formatos de malha existem?"* já tem dono, e
+/// uma segunda lista aqui divergiria no formato número quatro.
+pub(crate) const MESH_EXTS: &[&str] = &["obj", "ply", "stl"];
 
 /// Se este arquivo é da escultura.
 ///
@@ -82,6 +87,41 @@ pub(crate) fn is_mesh_file(path: &std::path::Path) -> bool {
     path.extension()
         .and_then(|e| e.to_str())
         .is_some_and(|e| MESH_EXTS.iter().any(|m| e.eq_ignore_ascii_case(m)))
+}
+
+/// Lê UM arquivo e devolve as peças dele, **roteando pelo formato**.
+///
+/// ⚠️ **Lê BYTES, não texto**, e isso não é detalhe: um STL binário e um PLY
+/// binário **não são UTF-8**, então o `read_to_string` que servia ao OBJ falharia
+/// neles com uma mensagem sobre codificação — apontando para o encoding quando o
+/// problema seria não haver nenhum.
+///
+/// ⚠️ **Só o OBJ traz PEÇAS.** STL e PLY não têm o conceito, então um arquivo
+/// desses é sempre uma peça — o que é o fato do formato, não uma limitação
+/// nossa, e é a mesma coisa que o `MeshFormat::keeps_pieces` diz na saída.
+fn read_pieces(path: &std::path::Path) -> Result<Vec<ImportedPiece>, String> {
+    let bytes = std::fs::read(path).map_err(|e| e.to_string())?;
+    let fmt = path
+        .extension()
+        .and_then(|e| e.to_str())
+        .and_then(MeshFormat::from_extension)
+        .ok_or_else(|| "unknown extension".to_string())?;
+    let name = path
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .map(str::to_string);
+    let mesh = match fmt {
+        MeshFormat::Obj => {
+            // ⚠️ `from_utf8_lossy` e não `from_utf8`: um OBJ é texto por
+            // definição, e um byte estranho num comentário não é razão para
+            // recusar a geometria inteira. O parser ignora o que não entende.
+            return ph2d_mesh::import_obj(&String::from_utf8_lossy(&bytes))
+                .map_err(|e| e.to_string());
+        }
+        MeshFormat::Ply => ph2d_mesh::import_ply(&bytes).map_err(|e| e.to_string())?,
+        MeshFormat::Stl => ph2d_mesh::import_stl(&bytes).map_err(|e| e.to_string())?,
+    };
+    Ok(vec![ImportedPiece { name, mesh }])
 }
 
 /// **Onde cada peça do arquivo vai parar** — a pose de cada uma, já centrada e
@@ -191,10 +231,7 @@ impl crate::app_state::App {
         let mut loaded: Vec<ImportedPiece> = Vec::new();
         for path in paths {
             let name = path.file_name().and_then(|s| s.to_str()).unwrap_or("?");
-            match std::fs::read_to_string(path)
-                .map_err(|e| e.to_string())
-                .and_then(|t| ph2d_mesh::import_obj(&t).map_err(|e| e.to_string()))
-            {
+            match read_pieces(path) {
                 Ok(pieces) => loaded.extend(pieces),
                 Err(e) => self.sculpt3d_toast(format!("Mesh refused: {name} ({e})")),
             }
@@ -255,7 +292,12 @@ impl crate::app_state::App {
         }
     }
 
-    fn sculpt3d_toast(&mut self, msg: String) {
+    /// O canal de aviso do módulo.
+    ///
+    /// ⚠️ `pub(super)` — o irmão [`super::export`] o usa pelo MESMO motivo (um
+    /// gesto de arquivo que falha em silêncio é indistinguível de um app
+    /// travado), e uma segunda função de toast daria duas vozes ao módulo.
+    pub(super) fn sculpt3d_toast(&mut self, msg: String) {
         if let Some(gfx) = self.gfx.as_mut() {
             gfx.toasts.push(ph2d_editor::Toast::info(msg));
         }

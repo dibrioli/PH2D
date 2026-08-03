@@ -114,6 +114,12 @@ const SCALE_PER_PX: f32 = 0.01;
 #[path = "sculpt3d_scenes.rs"]
 mod scenes;
 
+/// **AS MALHAS DE FIXTURE** — como cada modelo de smoke é esculpido. Irmão das
+/// cenas, e o corte é entre *que cena o smoke monta* e *como a malha dela é
+/// FEITA*; ele nasceu quando o arquivo das cenas cruzou o cap de LOC.
+#[path = "sculpt3d_fixtures.rs"]
+mod fixtures;
+
 pub(crate) use scenes::{
     announce, donation_scene, holes_scene, remesh_scene, reversion_scene, scene_objects,
     smoke_armed, smoke_mesh, turn_scene,
@@ -173,6 +179,11 @@ mod doc;
 /// motivo: ele constrói `SceneObject`s e mexe na lista.
 #[path = "sculpt3d_import.rs"]
 mod import;
+
+/// **A PORTA DE SAÍDA** — a cena vira um arquivo que outro programa abre. Irmão
+/// da entrada, e o par dela: sem isto a escultura entra, salva e não sai.
+#[path = "sculpt3d_export.rs"]
+mod export;
 
 pub(crate) use import::is_mesh_file;
 

@@ -38,6 +38,7 @@
 mod aabb;
 mod adjacency;
 mod edges;
+mod export;
 mod face;
 mod holes;
 mod mesh;
@@ -46,15 +47,18 @@ mod normals;
 mod obj;
 mod octree;
 mod persist;
+mod ply;
 mod pose;
 mod ray;
 mod reversion;
+mod stl;
 mod subdivide;
 mod tri_geom;
 
 pub use aabb::Aabb;
 pub use adjacency::{Adjacency, Csr};
 pub use edges::Edges;
+pub use export::{ExportPiece, MeshFormat, triangle_count, write_obj, write_ply, write_stl};
 pub use face::{Face, TRI};
 pub use holes::{HoleFill, fill_holes};
 pub use mesh::{DEFAULT_COLOR, DEFAULT_MASK, Mesh, MeshError, QueryScratch, RegionScratch};
@@ -66,9 +70,11 @@ pub use normals::{
 pub use obj::{ImportedPiece, ObjError, import_obj};
 pub use octree::{Octree, RefitScratch};
 pub use persist::{DetailData, DocError, MeshData, PoseData, StackData};
+pub use ply::{PlyError, import_ply};
 pub use pose::Pose;
 pub use ray::{Hit, Ray};
 pub use reversion::{Reversed, reverse_subdivision};
+pub use stl::{StlError, import_stl};
 pub use subdivide::{Lerpable, Predicted, predict, subdivide};
 pub use tri_geom::TriEdges;
 

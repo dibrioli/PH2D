@@ -244,3 +244,167 @@ fn whoever_the_hand_grabbed_is_the_one_that_moves_most() {
         d[3]
     );
 }
+
+// ===========================================================================
+// W-RailRope — o TRILHO como elo de corda
+// ===========================================================================
+
+/// Arrasta a cabeça `d` metros na direção `dir` e devolve o deslocamento de cada
+/// elo. Irmão do [`drag`], com a DIREÇÃO como parâmetro — sem ela a fixture não
+/// distingue o eixo do trilho da perpendicular, que é a distinção inteira.
+fn drag_dir(kind: JointKind, dir: [f32; 2], d: f32, steps: i16) -> Vec<f32> {
+    let (mut sim, mut b, e) = chain(kind);
+    let before: Vec<_> = (0..4).map(|i| pose(&sim, e[i])).collect();
+    assert!(b.ik_begin(e[0]), "pegar a cabeca tem de abrir gesto");
+    for k in 1..=steps {
+        let f = d * f32::from(k) / f32::from(steps);
+        let t = [before[0][0] + dir[0] * f, before[0][1] + dir[1] * f];
+        let poses = b.ik_move(t, 0.0, IkOptions::default());
+        write(&mut sim, &poses);
+        b.dispatch(&mut sim, false, 0);
+    }
+    (0..4)
+        .map(|i| {
+            let (a, c) = (before[i], pose(&sim, e[i]));
+            (c[0] - a[0]).hypot(c[1] - a[1])
+        })
+        .collect()
+}
+
+/// **SONDA:** o perfil de uma corrente de TRILHOS, nas duas direções.
+///
+/// `cargo test -p ph2d-physics-ecs probe_rail_rope -- --ignored --nocapture`
+#[test]
+#[ignore = "sonda de medição"]
+fn probe_rail_rope() {
+    println!("\n=== o TRILHO como elo de corda ===");
+    for (label, dir, d) in [
+        ("ao longo do trilho (+X)", [1.0, 0.0], 2.0),
+        ("perpendicular (+Y)", [0.0, 1.0], 2.0),
+        ("ao longo, curto (+X)", [1.0, 0.0], 0.3),
+    ] {
+        let s = drag_dir(JointKind::Slider, dir, d, 20);
+        let p = drag_dir(JointKind::Pin, dir, d, 20);
+        println!("  {label:<24} slider {s:?}");
+        println!("  {:<24} pin    {p:?}", "");
+    }
+    println!("\n  --- com o CURSO ligado (+/-0,5 m) ---");
+    for (label, dir, d) in [
+        ("ao longo, 2 m (+X)", [1.0, 0.0], 2.0),
+        ("ao longo, 0,3 m (+X)", [1.0, 0.0], 0.3),
+    ] {
+        let s = drag_dir_limited(dir, d, 20);
+        println!("  {label:<24} slider {s:?}");
+    }
+}
+
+/// A MESMA corrente de trilhos, com o CURSO ligado — o que o default deixa
+/// desligado.
+///
+/// ⚠️ Sem esta fixture o clamp de curso **não é exercitado por nada**: um
+/// `PhysicsJoint` nasce com `limits_enabled: false`, então a corrente do probe
+/// acima é de trilhos SEM batente, e um gate escrito sobre ela ficaria verde com
+/// o clamp inteiro deletado.
+fn drag_dir_limited(dir: [f32; 2], d: f32, steps: i16) -> Vec<f32> {
+    let (mut sim, mut b, e) = chain(JointKind::Slider);
+    // Liga o curso em TODO joint da corrente.
+    let mut q = sim.world_mut().query::<&mut PhysicsJoint>();
+    for mut j in q.iter_mut(sim.world_mut()) {
+        j.limits_enabled = true;
+    }
+    b.dispatch(&mut sim, false, 0);
+    let before: Vec<_> = (0..4).map(|i| pose(&sim, e[i])).collect();
+    assert!(b.ik_begin(e[0]), "pegar a cabeca tem de abrir gesto");
+    for k in 1..=steps {
+        let f = d * f32::from(k) / f32::from(steps);
+        let t = [before[0][0] + dir[0] * f, before[0][1] + dir[1] * f];
+        let poses = b.ik_move(t, 0.0, IkOptions::default());
+        write(&mut sim, &poses);
+        b.dispatch(&mut sim, false, 0);
+    }
+    (0..4)
+        .map(|i| {
+            let (a, c) = (before[i], pose(&sim, e[i]));
+            (c[0] - a[0]).hypot(c[1] - a[1])
+        })
+        .collect()
+}
+
+/// **A afirmação da wave:** uma corrente de TRILHOS puxada PELO eixo lada — cada
+/// elo come exatamente o próprio curso e arrasta o resto.
+///
+/// ⚠️ **A lei não é nova, é a MESMA na outra coordenada.** A dobradiça escolhe o
+/// ângulo que mantém o ponto apontado; o trilho escolhe o deslize. Até esta wave
+/// um Slider seguia o pai **rigidamente**, com a nota dizendo que *"inventar um
+/// deslizamento daria a um trilho um comportamento que ninguém autorou"* — o
+/// deslizamento não é inventado, é a única liberdade que ele TEM.
+///
+/// Medido, curso `±0,5 m`, puxada de 2 m: `[2,0 · 1,5 · 1,0 · 0,5]`. Cada trilho
+/// absorve meio metro e passa o resto adiante — um mastro telescópico —, e o
+/// perfil decai da mão para a cauda, que é o que arrastar uma corda parece.
+///
+/// Mutação (`LeadMotion::Slide` de volta a `Rigid`) ⇒ `[2, 2, 2, 2]` e este gate
+/// sangra.
+#[test]
+fn a_chain_of_rails_pulled_along_the_axis_lags_by_its_stroke() {
+    let d = drag_dir_limited([1.0, 0.0], 2.0, 20);
+    assert!(
+        (d[0] - 2.0).abs() < 1e-3,
+        "a cabeca segue o cursor exatamente: {:.3}",
+        d[0]
+    );
+    // O perfil DECAI — a assinatura de corda, e o que distingue de um bloco.
+    for i in 1..4 {
+        assert!(
+            d[i] < d[i - 1] - 0.1,
+            "o elo {i} nao ficou atras do {}: {:?}",
+            i - 1,
+            d
+        );
+    }
+    // E o atraso de cada um é o CURSO dele, meio metro — o número que o clamp
+    // impõe. Sem o clamp o primeiro trilho comeria a puxada inteira.
+    for i in 1..4 {
+        let lag = d[i - 1] - d[i];
+        assert!(
+            (lag - 0.5).abs() < 0.05,
+            "o elo {i} atrasou {lag:.3} m e o curso dele e' 0,5: {d:?}"
+        );
+    }
+}
+
+/// **O CURSO é load-bearing** — o controle que prova que o clamp trabalha.
+///
+/// ⚠️ Um `PhysicsJoint` nasce com `limits_enabled: false`, então a corrente
+/// PADRÃO é de trilhos **sem batente** e o primeiro deles absorve a puxada
+/// inteira: `[2, 0, 0, 0]`. Sem esta comparação um gate sobre a corrente padrão
+/// ficaria verde com o clamp deletado, e o desenho seria de um rail com percurso
+/// infinito — que o solver desfaz com um estalo no Play seguinte.
+#[test]
+fn an_unlimited_rail_absorbs_the_whole_pull_and_a_limited_one_does_not() {
+    let free = drag_dir(JointKind::Slider, [1.0, 0.0], 2.0, 20);
+    let held = drag_dir_limited([1.0, 0.0], 2.0, 20);
+    assert!(
+        free[1] < 1e-3,
+        "um trilho SEM curso tem de absorver a puxada inteira: {free:?}"
+    );
+    assert!(
+        held[1] > 1.0,
+        "um trilho COM curso tem de arrastar o vizinho depois do batente: {held:?}"
+    );
+}
+
+/// **Na PERPENDICULAR o trilho não tem liberdade, e a corrente vai inteira.**
+///
+/// A outra metade da lei, e a que impede *"deslize sempre"*: um rail só é livre
+/// ao longo do eixo. Puxar de través move tudo junto, exatamente como um Weld.
+#[test]
+fn a_chain_of_rails_pulled_across_the_axis_travels_whole() {
+    let d = drag_dir(JointKind::Slider, [0.0, 1.0], 2.0, 20);
+    for (i, v) in d.iter().enumerate() {
+        assert!(
+            (v - 2.0).abs() < 1e-3,
+            "o elo {i} nao acompanhou de traves: {v:.3} ({d:?})"
+        );
+    }
+}

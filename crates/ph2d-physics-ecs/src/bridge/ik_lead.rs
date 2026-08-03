@@ -49,17 +49,37 @@
 //! `a_finer_drag_of_the_same_path_converges_instead_of_diverging` é essa frase
 //! com número.
 //!
-//! # ⚠️ Só uma DOBRADIÇA dobra
+//! # Cada elo usa o grau de liberdade que ELE tem (W-RailRope)
 //!
 //! A árvore admite três tipos de elo ([`ph2d_physics::is_rigid_link`]): Pin,
-//! Weld e Slider. A lei acima é ANGULAR, e só o Pin oferece o ângulo que ela
-//! escolhe — um Weld é uma peça só (por definição não dobra) e um Slider
-//! desliza ao longo de um EIXO, que é outra coordenada e pediria outra lei.
+//! Weld e Slider, e a lei acima é enunciada em ÂNGULO porque foi escrita para o
+//! primeiro. ⚠️ **Mas o princípio não é angular — é *use a sua única liberdade
+//! para atrapalhar o menos possível***, e essa frase tem uma resposta em CADA
+//! coordenada:
 //!
-//! Os dois seguem o pai **rigidamente**, mantendo a pose relativa do repouso.
-//! Inventar um deslizamento aqui seria dar a um trilho um comportamento que
-//! ninguém autorou; recusá-lo em silêncio, um elo que não acompanha. Seguir
-//! rígido é o que os dois já significam quando ninguém está puxando.
+//! | elo | grau de liberdade | o que a puxada escolhe |
+//! |---|---|---|
+//! | **Pin** | ângulo em torno da âncora | o ângulo que mantém o ponto apontado |
+//! | **Slider** | distância ao longo do eixo | o **deslize** que mantém o ponto apontado, **clampado ao curso** |
+//! | **Weld** | nenhum | nada: a peça viaja inteira, que é o que *soldado* significa |
+//!
+//! ⚠️ **O trilho LAGA, e é isso que o torna uma corda em vez de um bloco:** o
+//! filho segue o pai rigidamente e depois **desliza para trás** ao longo do
+//! eixo, exatamente o quanto o eixo permite recuperar do movimento que ele
+//! sofreu. Puxe o líder pela direção do trilho e o carrinho arrasta atrás; puxe
+//! na perpendicular e ele vai junto, porque um trilho não tem liberdade nessa
+//! direção.
+//!
+//! ⚠️ **E o CURSO é load-bearing.** Sem o clamp em [`JointDesc::limits`] o
+//! carrinho deslizaria para fora do trilho, e o desenho seria de um rail com
+//! percurso infinito — o solver o traria de volta com um estalo no Play
+//! seguinte. Com ele, chegar ao fim do curso e passar a viajar junto é o que um
+//! trilho de verdade faz.
+//!
+//! Um **Weld** segue rígido, e continua: ele não tem uma segunda coordenada onde
+//! a mesma pergunta pudesse ser feita.
+//!
+//! [`JointDesc::limits`]: ph2d_physics::JointDesc::limits
 
 use std::collections::BTreeMap;
 
@@ -96,9 +116,36 @@ struct LeadLink {
     /// *follow-the-leader*. Num corpo-FOLHA não há junta seguinte e o centro é
     /// a resposta honesta — não há nada além dele para apontar.
     far_c: [f32; 2],
-    /// `None` = este elo NÃO dobra: o filho segue o pai rigidamente, com a pose
-    /// relativa guardada aqui (`posição`, `ângulo`, no frame do pai).
-    rigid: Option<Pose>,
+    /// **O que este elo deixa a puxada escolher** (W-RailRope).
+    motion: LeadMotion,
+}
+
+/// A liberdade de um elo, resolvida no build.
+enum LeadMotion {
+    /// **Dobradiça:** o filho põe a âncora onde o pai a levou e gira.
+    Bend,
+    /// **Trilho:** o filho segue rígido e depois DESLIZA pelo eixo.
+    ///
+    /// Carrega a pose relativa de repouso (o rígido), o eixo no frame do PAI, e
+    /// o curso — o deslize acumulado nunca sai dele.
+    Slide {
+        rel: Pose,
+        /// O eixo do trilho no frame do PAI, já normalizado.
+        ///
+        /// ⚠️ **Do pai e não do filho**, porque é o pai que se move primeiro e é
+        /// contra o frame dele que o rígido é composto; usar o do filho daria a
+        /// mesma direção só enquanto os dois estivessem alinhados, que é
+        /// precisamente o caso em que nenhum gate distingue os dois.
+        axis_p: [f32; 2],
+        /// `[min, max]` do curso, metros. `None` = trilho sem batentes.
+        limits: Option<[f32; 2]>,
+        /// Onde o carrinho está no curso AGORA. **É memória, como o resto desta
+        /// corda** — e pelo mesmo motivo: o deslize é função do CAMINHO que a mão
+        /// fez, não da posição em que ela parou.
+        s: f32,
+    },
+    /// **Solda:** nenhuma liberdade; a peça viaja inteira.
+    Rigid(Pose),
 }
 
 /// Uma corda viva: quem é o líder, onde cada corpo está AGORA, e os elos na
@@ -184,15 +231,39 @@ impl PhysicsBridge {
                 (jr.rest.anchor_b, jr.rest.anchor_a)
             };
 
-            let bends =
-                is_rigid_link(jr.rest.kind) && matches!(fk_dof(jr.rest.kind), Some(FkDof::Hinge));
+            // ⚠️ **`is_rigid_link` PRIMEIRO**: um Spring/Rope nem é elo — a pose
+            // dele é resultado de forças —, e chegar aqui perguntando o DOF dele
+            // daria a um par que só a física decide um comportamento de pose.
+            let dof = is_rigid_link(jr.rest.kind)
+                .then(|| fk_dof(jr.rest.kind))
+                .flatten();
+            let motion = match dof {
+                Some(FkDof::Hinge) => LeadMotion::Bend,
+                Some(FkDof::Slide) => LeadMotion::Slide {
+                    rel: relative(pp, cp),
+                    // O eixo vem do lado que É o pai neste percurso — o desc o
+                    // guarda nos DOIS frames justamente para não ter de
+                    // re-derivá-lo contra a pose em que os corpos derivaram.
+                    axis_p: unit(if from_a {
+                        jr.rest.axis_a
+                    } else {
+                        jr.rest.axis_b
+                    }),
+                    limits: jr.rest.limits,
+                    // O carrinho começa onde está: zero deslize SOBRE o rígido
+                    // de repouso, que é o que `rel` já descreve.
+                    s: 0.0,
+                },
+                // Weld (e todo elo sem grau de liberdade): a peça viaja inteira.
+                None => LeadMotion::Rigid(relative(pp, cp)),
+            };
             links.push(LeadLink {
                 parent,
                 child,
                 local_p,
                 local_c,
                 far_c: out_anchor.get(&child).copied().unwrap_or([0.0, 0.0]),
-                rigid: (!bends).then(|| relative(pp, cp)),
+                motion,
             });
         }
         Some(LeadDrag {
@@ -215,18 +286,22 @@ impl LeadDrag {
             p.0 = cursor;
         }
 
-        for link in &self.links {
+        for link in &mut self.links {
             let Some(&parent) = self.live.get(&link.parent) else {
                 continue;
             };
-            let next = match link.rigid {
-                Some(rel) => compose(parent, rel),
-                None => {
-                    let Some(&child) = self.live.get(&link.child) else {
-                        continue;
-                    };
-                    bend(parent, child, link)
-                }
+            let Some(&child) = self.live.get(&link.child) else {
+                continue;
+            };
+            let next = match &mut link.motion {
+                LeadMotion::Rigid(rel) => compose(parent, *rel),
+                LeadMotion::Bend => bend(parent, child, link.local_p, link.local_c, link.far_c),
+                LeadMotion::Slide {
+                    rel,
+                    axis_p,
+                    limits,
+                    s,
+                } => slide(parent, child, link.far_c, *rel, *axis_p, *limits, s),
             };
             self.live.insert(link.child, next);
         }
@@ -243,24 +318,21 @@ impl LeadDrag {
 
 /// O elo que DOBRA: o filho põe a própria âncora onde o pai a levou e gira para
 /// continuar apontando o ponto que ele já apontava.
-fn bend(parent: Pose, child: Pose, link: &LeadLink) -> Pose {
-    let a = to_world(parent, link.local_p);
+fn bend(parent: Pose, child: Pose, local_p: [f32; 2], local_c: [f32; 2], far_c: [f32; 2]) -> Pose {
+    let a = to_world(parent, local_p);
     // Da âncora deste elo até o ponto apontado, no frame do FILHO — constante,
     // porque ele é rígido.
-    let off = [
-        link.far_c[0] - link.local_c[0],
-        link.far_c[1] - link.local_c[1],
-    ];
+    let off = [far_c[0] - local_c[0], far_c[1] - local_c[1]];
     let len = off[0].hypot(off[1]);
     // ⚠️ As duas âncoras no MESMO ponto do filho: não há braço, logo não há
     // direção que a puxada possa escolher. O filho vai para a âncora com a
     // atitude que tinha — recusar seria um elo que não acompanha, e inventar um
     // ângulo seria girar um corpo por um motivo que ninguém autorou.
     if len < 1e-6 {
-        return (place(a, child.1, link.local_c), child.1);
+        return (place(a, child.1, local_c), child.1);
     }
     let phi = libm::atan2f(off[1], off[0]);
-    let far_old = to_world(child, link.far_c);
+    let far_old = to_world(child, far_c);
     let v = [far_old[0] - a[0], far_old[1] - a[1]];
     // Degenerado só se o ponto apontado já caiu EXATAMENTE sobre a âncora nova;
     // aí a direção anterior é a única informação honesta que resta.
@@ -270,7 +342,7 @@ fn bend(parent: Pose, child: Pose, link: &LeadLink) -> Pose {
         libm::atan2f(v[1], v[0])
     };
     let rotation = psi - phi;
-    (place(a, rotation, link.local_c), rotation)
+    (place(a, rotation, local_c), rotation)
 }
 
 /// Onde fica o CENTRO de um corpo cuja âncora `local` tem de pousar em `a` com
@@ -282,4 +354,79 @@ fn place(a: [f32; 2], rotation: f32, local: [f32; 2]) -> [f32; 2] {
         a[0] - (local[0] * c - local[1] * s),
         a[1] - (local[0] * s + local[1] * c),
     ]
+}
+
+/// Um vetor normalizado; `+X` para um eixo degenerado — a MESMA queda que o
+/// `spawn_joint` faz, para o desenho da puxada e a restrição do solver não
+/// escolherem direções diferentes num eixo que ninguém autorou.
+fn unit(v: [f32; 2]) -> [f32; 2] {
+    let n = v[0].hypot(v[1]);
+    if n.is_finite() && n > 1e-6 {
+        [v[0] / n, v[1] / n]
+    } else {
+        [1.0, 0.0]
+    }
+}
+
+/// **O elo que DESLIZA** (W-RailRope): o filho segue o pai rigidamente e depois
+/// escorrega pelo eixo, exatamente o quanto o eixo permite recuperar do
+/// movimento que ele acabou de sofrer.
+///
+/// # É o MESMO princípio do [`bend`], na outra coordenada
+///
+/// A dobradiça escolhe o **ângulo** que mantém o ponto apontado onde estava;
+/// o trilho escolhe o **deslize**. Em ambos a pergunta é *"use a sua única
+/// liberdade para atrapalhar o menos possível"*, e é por isso que isto não é um
+/// comportamento inventado: é a lei que já shipava, dita na coordenada que um
+/// Slider de fato tem.
+///
+/// # O que ele faz, e o que ele NÃO pode fazer
+///
+/// 1. `rigid` = onde o filho estaria seguindo o pai sem liberdade nenhuma.
+/// 2. `want` = o quanto o ponto apontado se afastou de onde estava.
+/// 3. **Só a componente ao longo do EIXO é recuperável** — na perpendicular um
+///    trilho não tem liberdade, e o carrinho vai junto. É exatamente isso que
+///    faz puxar *pela* direção do trilho arrastar o carrinho atrás e puxar *na
+///    perpendicular* levá-lo inteiro.
+/// 4. O deslize acumula em `s` e é **CLAMPADO ao curso**. ⚠️ Sem o clamp o
+///    carrinho sairia do trilho e o desenho seria de um rail com percurso
+///    infinito, que o solver desfaz com um estalo no Play seguinte.
+///
+/// ⚠️ **O `s` acumula em vez de ser re-derivado**, como toda esta corda: o
+/// deslize é função do CAMINHO que a mão fez. Ir até o fim do curso, voltar, e
+/// ir de novo tem de deixar o carrinho onde a soma dos movimentos o pôs — não
+/// onde a posição final do cursor sugere.
+fn slide(
+    parent: Pose,
+    child: Pose,
+    far_c: [f32; 2],
+    rel: Pose,
+    axis_p: [f32; 2],
+    limits: Option<[f32; 2]>,
+    s: &mut f32,
+) -> Pose {
+    // O eixo em MUNDO: o trilho gira com o pai.
+    let (sp, cp) = rot(parent.1);
+    let ax = [
+        axis_p[0] * cp - axis_p[1] * sp,
+        axis_p[0] * sp + axis_p[1] * cp,
+    ];
+    // Onde o filho ficaria sem liberdade nenhuma, JÁ com o deslize acumulado.
+    let base = compose(parent, rel);
+    let rigid = ([base.0[0] + ax[0] * *s, base.0[1] + ax[1] * *s], base.1);
+    // O ponto apontado: onde ele estava, e onde o rígido o levaria.
+    let was = to_world(child, far_c);
+    let now = to_world(rigid, far_c);
+    let want = [was[0] - now[0], was[1] - now[1]];
+    // Só o que o eixo alcança.
+    let along = want[0] * ax[0] + want[1] * ax[1];
+    let mut next = *s + along;
+    if let Some([lo, hi]) = limits {
+        // ⚠️ `min`/`max` na ordem que sobrevive a um par INVERTIDO: um autor
+        // pode digitar `[0.5, -0.5]`, e um `clamp` panica nesse caso. A mesma
+        // cautela que o §12 já toma ao ler os limites de uma dobradiça.
+        next = next.max(lo.min(hi)).min(lo.max(hi));
+    }
+    *s = next;
+    ([base.0[0] + ax[0] * next, base.0[1] + ax[1] * next], base.1)
 }

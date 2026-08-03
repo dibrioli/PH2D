@@ -97,6 +97,8 @@ mod inspector_physics_apply;
 mod inspector_physics_area;
 #[cfg(test)]
 mod inspector_physics_gesture_tests;
+#[cfg(test)]
+mod inspector_physics_gesture_zone_tests;
 mod inspector_physics_markers;
 #[cfg(test)]
 // ⚠️ `pub(crate)`: a porta `apply` (um edit do §11 aplicado ao ECS) é o caminho
@@ -2336,6 +2338,7 @@ impl crate::App {
                 Vec::new();
             let mut name_edit: Option<ph2d_editor::InspectorNameInfo> = None;
             let mut signal_edit: Option<ph2d_editor::InspectorNameInfo> = None;
+            let mut signal_leave_edit: Option<ph2d_editor::InspectorNameInfo> = None;
             let mut bgremoval_leftover: Vec<ph2d_editor::action_bus::EditorAction> = Vec::new();
             // Painter Apply leftover — same shape as bgremoval (drained
             // back into the bus so `image_edit::dispatch`'s
@@ -3250,6 +3253,12 @@ impl crate::App {
                         // Mesma coalescência: um `TextChanged` por tecla, e só a
                         // última do quadro vira comando (W-Signal).
                         signal_edit = Some(info);
+                    }
+                    EditorAction::InspectorSignalLeaveEdit(info) => {
+                        // O gêmeo (W-SignalLeave), com slot PRÓPRIO: coalescer os
+                        // dois no mesmo faria a última tecla de uma row apagar o
+                        // que a outra tinha acabado de dizer.
+                        signal_leave_edit = Some(info);
                     }
                     EditorAction::SetImageFilter { mode } => {
                         // Single global image-filter toggle. Rebuilds the
@@ -7333,6 +7342,7 @@ impl crate::App {
                 visibility_edit,
                 name_edit,
                 signal_edit,
+                signal_leave_edit,
                 sprite_source_change,
                 &sprite_edits,
                 &ordering_edits,

@@ -227,6 +227,11 @@ const CHROME_IDS: &[(&str, NodeId)] = &[
     ("INSP_PHYS_LAYER[5]", ids::INSP_PHYS_LAYER[5]),
     ("INSP_PHYS_LAYER[6]", ids::INSP_PHYS_LAYER[6]),
     ("INSP_PHYS_LAYER[7]", ids::INSP_PHYS_LAYER[7]),
+    // Os dois nomes de sinal (W-Signal · W-SignalLeave). ⚠️ O de CHEGADA shipou
+    // fora desta lista: a lista é mantida à mão, então um id novo só participa
+    // da checagem quando alguém lembra de o trazer. Os dois entram juntos.
+    ("INSP_PHYS_SIGNAL", ids::INSP_PHYS_SIGNAL),
+    ("INSP_PHYS_SIGNAL_LEAVE", ids::INSP_PHYS_SIGNAL_LEAVE),
     // §12 Physics Joint (W3).
     ("INSP_PHYS_JOIN", ids::INSP_PHYS_JOIN),
     ("INSP_LIVE_JOINT_SECTION", ids::INSP_LIVE_JOINT_SECTION),

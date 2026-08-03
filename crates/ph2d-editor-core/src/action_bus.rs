@@ -439,6 +439,15 @@ pub enum EditorAction {
     /// string —, e um tipo novo idêntico ao existente seria um segundo formato
     /// para a mesma pergunta.
     InspectorSignalEdit(crate::screens::hero::InspectorNameInfo),
+    /// **O nome do sinal que este objeto emite quando algo SAI dele**
+    /// (W-SignalLeave) — o gêmeo exato do irmão acima.
+    ///
+    /// ⚠️ **Uma AÇÃO própria, e não um `leave: bool` na de cima.** As duas rows
+    /// escrevem componentes diferentes, então um flag obrigaria o dreno a
+    /// perguntar duas coisas para saber uma — e a primeira vez que alguém
+    /// esquecesse de o ler, o nome de saída pousaria no componente de chegada e
+    /// a porta abriria ao fechar.
+    InspectorSignalLeaveEdit(crate::screens::hero::InspectorNameInfo),
 
     /// Transport control from the TopBar Play/Pause/Reset chips
     /// (`chrome::transport`). The shell owns the ONE clock

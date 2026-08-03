@@ -27,17 +27,32 @@
 //! dia em que houver um script Luau ou uma pista de áudio ouvindo, nada aqui
 //! muda.
 //!
-//! # Um nome só, e quando ele dispara
+//! # Dois nomes, porque são duas perguntas (W-SignalLeave)
 //!
-//! ⚠️ **CHEGADA, nunca saída.** Emitir o MESMO nome nos dois extremos tornaria o
-//! sinal ambíguo — quem escuta não saberia se a porta abriu ou fechou —, e um
-//! segundo nome é uma segunda pergunta com uma segunda row. Deferido com o
-//! motivo, não esquecido.
+//! ⚠️ **Emitir o MESMO nome nos dois extremos tornaria o sinal ambíguo** — quem
+//! escuta não saberia se a porta abriu ou fechou. O W-Signal deferiu a saída com
+//! esse motivo; esta wave a constrói do jeito que o motivo prescreve: um
+//! **segundo nome**, num **segundo componente**, com uma **segunda row**.
 //!
-//! ⚠️ **E uma entidade é sólida OU sensor**, então as duas fontes de chegada (um
-//! contato que COMEÇA · algo que ENTRA num sensor) são mutuamente exclusivas na
-//! prática: um nome por entidade responde às duas sem um knob que escolha entre
-//! elas.
+//! ⚠️ **E o par NÃO é `(nome, fase)`.** O contrato é o NOME (ADR-0143), e quem
+//! escuta casa numa string — a mesma outbox recebe os sinais da timeline, que
+//! não têm fase nenhuma. Um campo de fase seria uma segunda resposta a *o que
+//! aconteceu*, e obrigaria todo consumidor a perguntar duas coisas para saber
+//! uma. `door_open` e `door_close` são dois contratos, e é assim que se lê.
+//!
+//! ⚠️ **E uma entidade é sólida OU sensor**, então as duas fontes de cada extremo
+//! (um contato que COMEÇA/TERMINA · algo que ENTRA/SAI de um sensor) são
+//! mutuamente exclusivas na prática: um nome por extremo responde às duas sem um
+//! knob que escolha entre elas.
+//!
+//! # ⚠️ Dois componentes, e a razão é o custo de um BUMP
+//!
+//! `SignalOnHit` é uma tupla serializada **posicionalmente** pelo postcard, então
+//! apendar o segundo nome nela seria um bump de `PROJECT_SCHEMA` — e **um bump
+//! RECUSA todo projeto já salvo**. Um componente recém-*registrado* é chaveado
+//! pelo hash do próprio nome de tipo e é puramente aditivo. É o mesmo trade que o
+//! W-AreaDrag pagou (`AreaEffector` + `AreaDrag` separados pelo mesmo motivo),
+//! escrito aqui para ninguém "arrumar" os dois num struct só.
 
 use bevy_ecs::prelude::Component;
 use ph2d_ecs::SimComponent;
@@ -70,9 +85,48 @@ impl SignalOnHit {
     /// duas metades passam a discordar sobre uma string com um espaço.
     #[must_use]
     pub fn name(&self) -> Option<&str> {
-        let t = self.0.trim();
-        (!t.is_empty()).then_some(t)
+        signal_name(&self.0)
     }
 }
 
 impl SimComponent for SignalOnHit {}
+
+/// **O sinal que esta entidade emite quando algo SAI dela** (W-SignalLeave).
+///
+/// O gêmeo exato do [`SignalOnHit`], e as duas fontes espelham as dele: um
+/// contato que TERMINA e algo que sai de um sensor. Ausente = não emite nada.
+///
+/// ⚠️ **Componente próprio e não um campo do irmão** — ver o cabeçalho do módulo:
+/// apendar num tipo serializado posicionalmente é um bump de `PROJECT_SCHEMA`, e
+/// um bump recusa todo projeto já salvo.
+///
+/// ⚠️ **Um `Ended` é honesto mesmo quando o outro corpo foi DELETADO** — é o que
+/// o [`ContactPhase::Ended`] já declara (*"o contato terminou, e **por quê** é a
+/// pergunta de quem chama"*). Uma porta que fecha quando o jogador é destruído
+/// dentro dela é o comportamento certo, não um caso especial.
+///
+/// [`ContactPhase::Ended`]: crate::ContactPhase::Ended
+#[derive(Component, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SignalOnLeave(pub String);
+
+impl SignalOnLeave {
+    /// O nome, ou `None` se estiver em branco — a MESMA regra do irmão, pela
+    /// mesma função: duas cópias de *o que conta como um sinal?* discordariam
+    /// sobre uma string com um espaço.
+    #[must_use]
+    pub fn name(&self) -> Option<&str> {
+        signal_name(&self.0)
+    }
+}
+
+impl SimComponent for SignalOnLeave {}
+
+/// **O que conta como um sinal** — a porta ÚNICA dos dois componentes.
+///
+/// Aparada, e nunca vazia. Não é um detalhe de implementação partilhado por
+/// conveniência: é a resposta a uma pergunta que os dois lados TÊM de responder
+/// igual, e é por isso que ela não é escrita duas vezes.
+fn signal_name(raw: &str) -> Option<&str> {
+    let t = raw.trim();
+    (!t.is_empty()).then_some(t)
+}

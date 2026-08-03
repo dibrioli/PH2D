@@ -339,23 +339,49 @@ pub(super) fn paint_collision_rows(
             u8::from(one_way),
         );
     }
-    // **O que este objeto GRITA quando algo chega nele** (W-Signal).
+    // **O que este objeto GRITA quando algo chega nele — e quando algo sai**
+    // (W-Signal · W-SignalLeave).
     //
-    // ⚠️ Aqui e não num card próprio: ele responde *"e daí?"* à pergunta que as
+    // ⚠️ Aqui e não num card próprio: elas respondem *"e daí?"* à pergunta que as
     // rows acima fazem — um Trigger sem sinal detecta e não acorda nada —, e um
     // controle que só faz sentido junto de outros tem de estar onde eles estão
     // (o argumento do `INSP_JOINT_ANCHOR_B_GROUP`, palavra por palavra).
     //
-    // ⚠️ **Oferecido em TODO collider**, sólido ou sensor: as duas fontes de
-    // chegada são um contato que COMEÇA e uma entrada em sensor, e restringir a
-    // row a um dos dois deixaria metade dos casos sem porta. Uma entidade é uma
-    // coisa ou a outra, então um nome só responde às duas.
-    yy = signal_row(scene, text_system, theme, hit_index, store, x, w, yy);
+    // ⚠️ **Oferecidas em TODO collider**, sólido ou sensor: as fontes de cada
+    // extremo são um contato que começa/termina e uma entrada/saída de sensor, e
+    // restringir a row a um dos dois deixaria metade dos casos sem porta. Uma
+    // entidade é uma coisa ou a outra, então um nome por extremo responde às duas.
+    //
+    // ⚠️ **DUAS rows, e não uma com seletor:** os dois extremos são dois
+    // CONTRATOS que o artista quer autorar ao mesmo tempo (`door_open` /
+    // `door_close`), e um campo que trocasse de significado tornaria o caso de
+    // uso inteiro inexprimível.
+    for (id, placeholder) in [
+        (ids::INSP_PHYS_SIGNAL, "Signal on hit\u{2026}"),
+        (ids::INSP_PHYS_SIGNAL_LEAVE, "Signal on leave\u{2026}"),
+    ] {
+        yy = signal_row(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            w,
+            yy,
+            id,
+            placeholder,
+        );
+    }
     yy
 }
 
-/// A row do nome do sinal — um `TextInput`, porque o valor É uma string e o
+/// A row de um nome de sinal — um `TextInput`, porque o valor É uma string e o
 /// contrato é por NOME (ADR-0143).
+///
+/// ⚠️ **Uma função, dois extremos.** Chegada e saída desenham a MESMA coisa e só
+/// diferem no id e no placeholder; duas cópias divergiriam no dia em que uma
+/// delas ganhasse um estado (foco, erro, dimmed) e a outra não.
 #[allow(clippy::too_many_arguments)]
 fn signal_row(
     scene: &mut VectorScene,
@@ -366,10 +392,12 @@ fn signal_row(
     x: f32,
     w: f32,
     y: f32,
+    id: ph2d_a11y::NodeId,
+    placeholder: &str,
 ) -> f32 {
     let host = Rect::new(x, y, w, ROW_H_PX);
-    hit_index.register(ids::INSP_PHYS_SIGNAL, host);
-    let (state, text, caret, anchor) = match store.get(ids::INSP_PHYS_SIGNAL) {
+    hit_index.register(id, host);
+    let (state, text, caret, anchor) = match store.get(id) {
         Some(InteractiveState::TextInput {
             state,
             text,
@@ -378,9 +406,7 @@ fn signal_row(
         }) => (*state, Some(text.as_str()), *caret, *selection_anchor),
         _ => (TextInputState::Normal, None, 0, None),
     };
-    let input = TextInput::new(ids::INSP_PHYS_SIGNAL, "")
-        .placeholder("Signal on hit\u{2026}")
-        .state(state);
+    let input = TextInput::new(id, "").placeholder(placeholder).state(state);
     paint_text_input_with_buffer(
         &input,
         text,

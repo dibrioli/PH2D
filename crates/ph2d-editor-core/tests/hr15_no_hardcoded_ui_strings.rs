@@ -47,14 +47,23 @@ const BASELINE: &[(&str, usize)] = &[
     // sections.rs to sections/identity.rs in the §T2.1 per-section split;
     // i18n migration tracked separately (replaced when Fluent ships).
     ("ph2d-panel-inspector/src/sections/identity.rs", 1),
-    // W-Signal: o placeholder do campo de sinal da §11 ("Signal on hit…"). É
-    // exatamente o caso do irmão acima — o MESMO widget (`TextInput`), no MESMO
-    // painel, pelo MESMO motivo (dizer para que serve um campo vazio) — e a
-    // `ph2d-panel-inspector` não depende de `ph2d-i18n`, então a alternativa
-    // seria uma dependência nova para uma string, com um segundo mecanismo de
-    // texto convivendo com o primeiro. Migra junto com ele quando o Fluent
-    // chegar.
-    ("ph2d-panel-inspector/src/sections/physics_rows.rs", 1),
+    // ⚠️ **W-SignalLeave: a entrada da §11 saiu daqui, e a DÍVIDA NÃO.** O
+    // scanner conta literais dentro de `.placeholder("…")`, e a §11 passou a ter
+    // DOIS campos de sinal (chegada e saída) pintados por uma função só, com os
+    // dois textos numa TABELA — então nenhum dos dois cruza o padrão que este
+    // gate procura, e a contagem caiu de 1 para 0.
+    //
+    // As duas strings continuam hardcoded, em
+    // `ph2d-panel-inspector/src/sections/physics_rows.rs` ("Signal on hit…" e
+    // "Signal on leave…"), e migram junto com o irmão da row de Name quando o
+    // Fluent chegar — a `ph2d-panel-inspector` não depende de `ph2d-i18n`, e a
+    // alternativa hoje seria uma dependência nova para duas strings, com um
+    // segundo mecanismo de texto convivendo com o primeiro.
+    //
+    // A entrada é REMOVIDA em vez de zerada porque o gate exige que a lista seja
+    // exata: uma entrada em 0 vale o mesmo que ausência, e ausência é o que o
+    // arquivo de fato tem *pelo padrão que este scanner enxerga*. O gate segue
+    // afiado para o próximo `.placeholder("literal")` que nascer ali.
     // The Audio Editor's empty-state TextInput placeholder ("No clip loaded").
     // Generic English fallback — replaced when Fluent runtime ships.
     // The clip-name placeholder moved to `paint_sections.rs` when the panel was split

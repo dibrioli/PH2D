@@ -114,18 +114,21 @@ pub(super) fn populate_joint(store: &mut WidgetStore) {
         store.set_number_range(id, min, max, step);
     }
 
-    // A row do **sinal** (W-Signal). Sem este registro ela nasceria pintada,
-    // hit-registrada e MORTA sob o mouse — a falha que este arquivo existe para
-    // impedir, e que o `architecture_panel_wiring_parity` pega.
-    store.register(
-        ids::INSP_PHYS_SIGNAL,
-        InteractiveState::TextInput {
-            state: TextInputState::Normal,
-            text: String::new(),
-            caret: 0,
-            selection_anchor: None,
-        },
-    );
+    // As rows dos **sinais** (W-Signal · W-SignalLeave). Sem este registro elas
+    // nasceriam pintadas, hit-registradas e MORTAS sob o mouse — a falha que este
+    // arquivo existe para impedir, e que o `architecture_panel_wiring_parity`
+    // pega.
+    for id in [ids::INSP_PHYS_SIGNAL, ids::INSP_PHYS_SIGNAL_LEAVE] {
+        store.register(
+            id,
+            InteractiveState::TextInput {
+                state: TextInputState::Normal,
+                text: String::new(),
+                caret: 0,
+                selection_anchor: None,
+            },
+        );
+    }
 }
 
 /// §13 Pulley Wheel (W-Pulley W1) — o mesmo dever da irmã acima.

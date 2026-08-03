@@ -611,6 +611,14 @@ pub const INSP_PHYS_ADD_SHAPE: NodeId = hash_node_id("insp_phys_add_shape");
 /// só faz sentido junto de outros tem de estar onde eles estão (o argumento do
 /// `INSP_JOINT_ANCHOR_B_GROUP`, palavra por palavra).
 pub const INSP_PHYS_SIGNAL: NodeId = hash_node_id("insp_phys_signal");
+/// **Signal on leave** (W-SignalLeave) — o nome que este objeto GRITA quando
+/// algo SAI dele.
+///
+/// ⚠️ **Uma row PRÓPRIA, e não um modo da row acima:** os dois extremos são dois
+/// CONTRATOS (`door_open` / `door_close`), e quem escuta casa numa string — um
+/// seletor que trocasse o significado do mesmo campo tornaria impossível autorar
+/// os dois ao mesmo tempo, que é o caso de uso inteiro.
+pub const INSP_PHYS_SIGNAL_LEAVE: NodeId = hash_node_id("insp_phys_signal_leave");
 /// §11 join-kind selector, indexed by `JointKind` tag (Pin / Spring / Rope /
 /// Weld / Slider). Painted beside *Join Selected Bodies* so the artist creates
 /// the joint TYPE they want in one gesture, instead of making a Pin and

@@ -154,6 +154,19 @@ pub struct InspectorPhysicsInfo {
     pub join_kind_tag: u8,
     /// Is this collider a **sensor** (trigger, W7)? Passes through, reports overlaps; the overlay lights it up. `false` is solid.
     pub is_sensor: bool,
+    /// **O nome que este objeto GRITA quando algo CHEGA nele** (W-Signal), vazio
+    /// se ele não emite nada. Espelha o `SignalOnHit`.
+    ///
+    /// ⚠️ **Este campo NASCEU no W-SignalLeave, e a ausência dele era um bug:** a
+    /// row do sinal shipou **WRITE-ONLY** — digitar funcionava e re-selecionar a
+    /// entidade mostrava um campo em branco sobre um componente que dizia
+    /// `door`. É a falha exata que as rows de área shipou (W-AreaTorque) e que os
+    /// dois campos de ruptura shipou (W-J7), e as duas vezes a cura foi a mesma:
+    /// o snapshot carrega o valor AUTORADO e o `sync` o espelha no widget.
+    pub signal: String,
+    /// **O nome que este objeto GRITA quando algo SAI dele** (W-SignalLeave),
+    /// vazio se ele não emite nada. Espelha o `SignalOnLeave`.
+    pub signal_leave: String,
     /// Which pose channels the Bake writes: `0` All · `1` Position · `2` Rotation (a global bake option the shell owns).
     pub bake_channels_tag: u8,
     /// Per-body gravity multiplier (W8): `1.0` full gravity, `0.0` weightless,

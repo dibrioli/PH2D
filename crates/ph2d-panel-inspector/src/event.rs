@@ -514,13 +514,27 @@ fn section_text_changed(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bo
             }));
         return true;
     }
-    // W-Signal — o nome que este objeto grita quando algo chega nele.
+    // W-Signal · W-SignalLeave — os nomes que este objeto grita quando algo
+    // CHEGA nele e quando algo SAI. Duas rows, dois contratos, duas ações: um
+    // `leave` enfiado na mesma ação com um bool tornaria impossível ler o
+    // barramento sem perguntar duas coisas para saber uma.
     if id == ids::INSP_PHYS_SIGNAL
         && let Some(info) = state::current_inspector_physics()
     {
         let text = host.store().text(id).unwrap_or("").to_string();
         host.bus_mut()
             .push(EditorAction::InspectorSignalEdit(InspectorNameInfo {
+                entity_bits: info.entity_bits,
+                name: text,
+            }));
+        return true;
+    }
+    if id == ids::INSP_PHYS_SIGNAL_LEAVE
+        && let Some(info) = state::current_inspector_physics()
+    {
+        let text = host.store().text(id).unwrap_or("").to_string();
+        host.bus_mut()
+            .push(EditorAction::InspectorSignalLeaveEdit(InspectorNameInfo {
                 entity_bits: info.entity_bits,
                 name: text,
             }));

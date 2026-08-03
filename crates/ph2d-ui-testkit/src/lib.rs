@@ -145,6 +145,27 @@ impl MockPanelHost {
         }
     }
 
+    /// Set a registered text input's buffer — what a real keystroke would have
+    /// left there before dispatch emits `TextChanged(id)`. Panics if `id` is
+    /// absent or not a `TextInput`.
+    ///
+    /// **Por que o testkit precisa disto:** um arm de `TextChanged` LÊ o buffer
+    /// (`host.store().text(id)`) em vez de receber a string no evento, então um
+    /// seam que só despacha o evento testaria sempre a string vazia — e um arm
+    /// que mandasse o texto errado passaria. O caret vai para o fim, como depois
+    /// de digitar.
+    pub fn set_text(&mut self, id: NodeId, value: &str) {
+        match self.store.get_mut(id) {
+            Some(InteractiveState::TextInput { text, caret, .. }) => {
+                text.clear();
+                text.push_str(value);
+                *caret = text.len();
+            }
+            Some(_) => panic!("set_text: {id:?} is registered but is not a TextInput"),
+            None => panic!("set_text: {id:?} is not registered (did populate run?)"),
+        }
+    }
+
     /// Set a registered toggle's stored on-state — what the paint pass mirrors
     /// from the snapshot before dispatch emits `Toggled(id)`. Panics if `id` is
     /// absent or not a `Toggle`.

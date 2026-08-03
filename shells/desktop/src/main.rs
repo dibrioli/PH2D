@@ -266,6 +266,7 @@ mod physics_smoke_rig;
 mod physics_smoke_rigs;
 mod physics_smoke_rod;
 mod physics_smoke_signal;
+mod physics_smoke_signal_leave;
 mod physics_smoke_soft_weld;
 mod physics_smoke_stop;
 mod physics_smoke_wheel;

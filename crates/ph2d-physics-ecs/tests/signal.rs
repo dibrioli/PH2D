@@ -9,7 +9,7 @@ use ph2d_core::Vec2;
 use ph2d_ecs::{Entity, Name, SimWorld, Transform};
 use ph2d_physics_ecs::{
     BodyKind, Collider, ColliderShape, GravityScale, InitialVelocity, PhysicsBridge, RigidBody,
-    SignalOnHit,
+    SignalOnHit, SignalOnLeave,
 };
 
 fn cuboid(hx: f32, hy: f32) -> Collider {
@@ -404,5 +404,251 @@ fn a_scrub_back_into_an_overlap_is_silent() {
     assert!(
         fired.is_empty(),
         "o scrub de volta para dentro da sobreposição gritou: {fired:?}"
+    );
+}
+
+// ===========================================================================
+// W-SignalLeave — o nome de SAÍDA
+// ===========================================================================
+//
+// O W-Signal deferiu a saída com o motivo escrito: *emitir os dois extremos sob
+// o MESMO nome tornaria o sinal ambíguo, e um segundo nome é uma segunda
+// pergunta com uma segunda row*. Estes gates constroem exatamente isso.
+
+/// **A afirmação da wave:** algo que ATRAVESSA um sensor grita a chegada E
+/// depois a saída — dois nomes, na ordem em que aconteceram.
+///
+/// ⚠️ O oráculo é a SEQUÊNCIA, não a contagem: `["in", "out"]` na ordem é o que
+/// separa uma porta que funciona de uma que fecha antes de abrir.
+///
+/// Mutação (o diff não varrer a baseline) ⇒ só `in` sai, e este gate sangra.
+#[test]
+fn passing_through_a_sensor_shouts_the_arrival_then_the_departure() {
+    let mut sim = SimWorld::new();
+    let mut door = sim.world_mut().spawn((
+        Name::new("Door"),
+        RigidBody {
+            kind: BodyKind::Static,
+        },
+        Collider {
+            is_sensor: true,
+            ..cuboid(0.5, 0.5)
+        },
+        SignalOnHit("in".to_string()),
+        Transform::from_translation(Vec2::new(0.0, 0.0)),
+    ));
+    door.insert(SignalOnLeave("out".to_string()));
+    sim.world_mut().spawn((
+        Name::new("Walker"),
+        RigidBody {
+            kind: BodyKind::Dynamic,
+        },
+        GravityScale(0.0),
+        InitialVelocity {
+            linvel: [4.0, 0.0],
+            angvel: 0.0,
+        },
+        cuboid(0.1, 0.1),
+        Transform::from_translation(Vec2::new(-2.0, 0.0)),
+    ));
+    let names: Vec<String> = run(&mut sim, 120).into_iter().map(|(n, _, _)| n).collect();
+    assert_eq!(
+        names,
+        vec!["in".to_string(), "out".to_string()],
+        "uma travessia tem de gritar a chegada e DEPOIS a saida"
+    );
+}
+
+/// **O último corpo a sair ainda grita** — e este é o caso que uma varredura do
+/// conjunto de AGORA perderia.
+///
+/// ⚠️ O `rebuild_triggers` só cria a chave de um sensor quando há alguém dentro,
+/// então um sensor que esvaziou **não tem entrada nenhuma** no conjunto novo.
+/// Um diff que percorresse `self.triggers` procurando quem sumiu não teria por
+/// onde começar. Por isso a metade da saída percorre a BASELINE.
+///
+/// A fixture é a mais degenerada possível — UM corpo, que entra e sai — porque é
+/// exatamente ela que distingue as duas varreduras.
+#[test]
+fn the_last_body_to_leave_still_shouts() {
+    let mut sim = SimWorld::new();
+    let mut door = sim.world_mut().spawn((
+        Name::new("Door"),
+        RigidBody {
+            kind: BodyKind::Static,
+        },
+        Collider {
+            is_sensor: true,
+            ..cuboid(0.5, 0.5)
+        },
+        Transform::from_translation(Vec2::new(0.0, 0.0)),
+    ));
+    // SÓ o nome de saída: um extremo sem o componente do outro é SILÊNCIO, e é
+    // isso que torna esta contagem inequívoca.
+    door.insert(SignalOnLeave("out".to_string()));
+    sim.world_mut().spawn((
+        Name::new("Walker"),
+        RigidBody {
+            kind: BodyKind::Dynamic,
+        },
+        GravityScale(0.0),
+        InitialVelocity {
+            linvel: [4.0, 0.0],
+            angvel: 0.0,
+        },
+        cuboid(0.1, 0.1),
+        Transform::from_translation(Vec2::new(-2.0, 0.0)),
+    ));
+    let out: Vec<String> = run(&mut sim, 120).into_iter().map(|(n, _, _)| n).collect();
+    assert_eq!(
+        out,
+        vec!["out".to_string()],
+        "o ultimo corpo a sair de um sensor tem de gritar a saida, e UMA vez"
+    );
+}
+
+/// **Um contato que TERMINA grita a saída** — o extremo sólido, irmão do
+/// `Began`.
+///
+/// A bola quica: cada pouso é um `Began` e cada decolagem um `Ended`, então os
+/// dois nomes alternam. O oráculo é justamente essa alternância — uma
+/// implementação que lesse o componente errado daria o mesmo nome duas vezes.
+#[test]
+fn a_contact_that_ends_shouts_the_leave_name() {
+    let mut sim = SimWorld::new();
+    let mut g = sim.world_mut().spawn((
+        Name::new("Ground"),
+        RigidBody {
+            kind: BodyKind::Static,
+        },
+        cuboid(10.0, 0.5),
+        SignalOnHit("land".to_string()),
+        Transform::from_translation(Vec2::new(0.0, -0.5)),
+    ));
+    g.insert(SignalOnLeave("lift".to_string()));
+    sim.world_mut().spawn((
+        Name::new("Ball"),
+        RigidBody {
+            kind: BodyKind::Dynamic,
+        },
+        Collider {
+            restitution: 0.8,
+            ..cuboid(0.3, 0.3)
+        },
+        Transform::from_translation(Vec2::new(0.0, 3.0)),
+    ));
+    let names: Vec<String> = run(&mut sim, 240).into_iter().map(|(n, _, _)| n).collect();
+    assert_eq!(
+        names.first().map(String::as_str),
+        Some("land"),
+        "o primeiro evento de uma queda e' o POUSO -- {names:?}"
+    );
+    assert!(
+        names.iter().any(|n| n == "lift"),
+        "a bola quicou e nunca gritou a decolagem -- {names:?}"
+    );
+    // A alternância: nenhum nome sai duas vezes seguidas.
+    for w in names.windows(2) {
+        assert_ne!(
+            w[0], w[1],
+            "dois eventos seguidos com o MESMO nome -- {names:?}: um dos dois \
+             extremos esta' lendo o componente do outro"
+        );
+    }
+}
+
+/// **Marcar só a CHEGADA é o mundo que já existia, ao evento.**
+///
+/// O regressão-guard da wave: um corpo sem `SignalOnLeave` não pode ganhar
+/// eventos novos, senão toda cena já autorada passa a gritar o dobro.
+#[test]
+fn an_entity_without_the_leave_component_is_silent_on_departure() {
+    let mut sim = SimWorld::new();
+    sim.world_mut().spawn((
+        Name::new("Door"),
+        RigidBody {
+            kind: BodyKind::Static,
+        },
+        Collider {
+            is_sensor: true,
+            ..cuboid(0.5, 0.5)
+        },
+        SignalOnHit("in".to_string()),
+        Transform::from_translation(Vec2::new(0.0, 0.0)),
+    ));
+    sim.world_mut().spawn((
+        Name::new("Walker"),
+        RigidBody {
+            kind: BodyKind::Dynamic,
+        },
+        GravityScale(0.0),
+        InitialVelocity {
+            linvel: [4.0, 0.0],
+            angvel: 0.0,
+        },
+        cuboid(0.1, 0.1),
+        Transform::from_translation(Vec2::new(-2.0, 0.0)),
+    ));
+    let names: Vec<String> = run(&mut sim, 120).into_iter().map(|(n, _, _)| n).collect();
+    assert_eq!(
+        names,
+        vec!["in".to_string()],
+        "uma entidade marcada so' na chegada passou a gritar na saida"
+    );
+}
+
+/// **Um scrub que sai de uma sobreposição é SILENCIOSO.**
+///
+/// O espelho exato do irmão da chegada, e aqui a consequência é pior: sem o
+/// re-baseline, arrastar a régua para um tempo em que nada estava dentro
+/// gritaria uma saída que a simulação nunca atravessou — e o consumidor fecharia
+/// uma porta que, no tempo para onde o artista foi, está aberta.
+///
+/// Mutação (o `rewind` não descartar a história) ⇒ o scrub grita.
+#[test]
+fn a_scrub_out_of_an_overlap_is_silent() {
+    let mut sim = SimWorld::new();
+    let mut door = sim.world_mut().spawn((
+        Name::new("Door"),
+        RigidBody {
+            kind: BodyKind::Static,
+        },
+        Collider {
+            is_sensor: true,
+            ..cuboid(0.5, 0.5)
+        },
+        Transform::from_translation(Vec2::new(0.0, 0.0)),
+    ));
+    door.insert(SignalOnLeave("out".to_string()));
+    sim.world_mut().spawn((
+        Name::new("Walker"),
+        RigidBody {
+            kind: BodyKind::Dynamic,
+        },
+        GravityScale(0.0),
+        InitialVelocity {
+            linvel: [4.0, 0.0],
+            angvel: 0.0,
+        },
+        cuboid(0.1, 0.1),
+        Transform::from_translation(Vec2::new(-2.0, 0.0)),
+    ));
+    let mut bridge = PhysicsBridge::new();
+    // Avança até DENTRO do sensor (o walker cruza x=0 por volta do tick 30).
+    for t in 0..=30 {
+        bridge.dispatch(&mut sim, true, t);
+        let _ = bridge.signal_events(&sim);
+    }
+    // Volta ao tick 0, onde ele está longe: a sobreposição desaparece SEM que a
+    // simulação tenha atravessado a saída.
+    bridge.dispatch(&mut sim, true, 0);
+    let after: Vec<String> = bridge
+        .signal_events(&sim)
+        .into_iter()
+        .map(|s| s.name)
+        .collect();
+    assert!(
+        after.is_empty(),
+        "o scrub gritou {after:?} -- uma descontinuidade do relogio nao e' uma saida"
     );
 }

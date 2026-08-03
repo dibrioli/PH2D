@@ -19,6 +19,10 @@
 // accumulated W2/W3 ship (Coord ship-prep 2026-06-02). +12 (gold-standard
 // joint anchor): a joint's Position commit re-seats the A anchor — through the
 // bridge's anchor door, from `mod.rs` (see the tail of the Transform drain).
+// ⚠️ O número acima estava OBSOLETO (651 contra 687 medidos): o marcador só
+// precisa EXISTIR para o gate passar, então ele não envelhece com barulho.
+// Re-medido em W-SignalLeave, que soma +22 fundindo os DOIS nomes de sinal num
+// laço só em vez de duplicar o arm inteiro.
 
 use crate::EPS_PIXELS_PER_METER;
 use ph2d_asset::{AssetDb, AssetId};
@@ -106,6 +110,7 @@ pub(super) fn dispatch(
     visibility_edit: Option<InspectorVisibilityInfo>,
     name_edit: Option<InspectorNameInfo>,
     signal_edit: Option<InspectorNameInfo>,
+    signal_leave_edit: Option<InspectorNameInfo>,
     sprite_source_change: Option<(u64, RequestedSpriteStrategy)>,
     sprite_edits: &[(u64, SpriteFieldEdit)],
     ordering_edits: &[(u64, OrderingFieldEdit)],
@@ -400,12 +405,33 @@ pub(super) fn dispatch(
     // ⚠️ O `type_id` sai do REGISTRO em vez de ser mais um parâmetro enfiado por
     // dez assinaturas: o registro já é argumento desta função, e ele é a fonte
     // de quem sabe o id de um componente.
-    if let Some(info) = signal_edit {
-        let sig = ph2d_physics_ecs::SignalOnHit(info.name.clone());
-        match (
-            postcard::to_allocvec(&sig),
-            component_registry.get_by_name("ph2d::physics::SignalOnHit"),
-        ) {
+    //
+    // ⚠️ **Os dois extremos, e cada tipo é codificado pelo `Serialize` DELE.**
+    // `SignalOnHit`/`SignalOnLeave` são newtypes de `String` e hoje codificam
+    // igual — mas serializar uma string e chamá-la de componente amarraria os
+    // bytes a esse acidente, e o dia em que um dos dois ganhasse um campo o
+    // commit escreveria lixo bem-formado. Cada arm serializa o SEU tipo; o que é
+    // partilhado é o CAMINHO, não a codificação.
+    for (edit, encoded, type_name) in [
+        (
+            signal_edit.as_ref(),
+            signal_edit
+                .as_ref()
+                .map(|i| postcard::to_allocvec(&ph2d_physics_ecs::SignalOnHit(i.name.clone()))),
+            "ph2d::physics::SignalOnHit",
+        ),
+        (
+            signal_leave_edit.as_ref(),
+            signal_leave_edit
+                .as_ref()
+                .map(|i| postcard::to_allocvec(&ph2d_physics_ecs::SignalOnLeave(i.name.clone()))),
+            "ph2d::physics::SignalOnLeave",
+        ),
+    ] {
+        let (Some(info), Some(encoded)) = (edit, encoded) else {
+            continue;
+        };
+        match (encoded, component_registry.get_by_name(type_name)) {
             (Ok(data), Some(entry)) => {
                 let push_res = editor_queue.push(EditorCommand::SetComponent {
                     entity: info.entity_bits,
@@ -425,7 +451,7 @@ pub(super) fn dispatch(
                 toasts.push(Toast::error(format!("Signal encode failed: {e}")));
             }
             (_, None) => {
-                toasts.push(Toast::error("SignalOnHit is not registered".to_string()));
+                toasts.push(Toast::error(format!("{type_name} is not registered")));
             }
         }
     }

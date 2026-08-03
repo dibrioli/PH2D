@@ -132,14 +132,21 @@ impl PhysicsBridge {
     }
 
     /// Diff the standing set against the previous one to fill
-    /// [`trigger_events`](Self::trigger_events) — *quem ENTROU num sensor*
-    /// (W-Signal).
+    /// [`trigger_events`](Self::trigger_events) e
+    /// [`trigger_exits`](Self::trigger_exits) — *quem ENTROU* e *quem SAIU* de um
+    /// sensor (W-Signal · W-SignalLeave).
     ///
-    /// # Por que ENTRADA e não os dois extremos
+    /// # Os dois extremos, cada um com o SEU nome
     ///
-    /// O canal existe para acordar coisas, e a saída é uma segunda pergunta com
-    /// um segundo nome — ver o doc de [`crate::SignalOnHit`]. Emitir os dois sob
-    /// o MESMO nome tornaria o sinal ambíguo para quem escuta.
+    /// O W-Signal deferiu a saída porque emitir os dois sob o MESMO nome tornaria
+    /// o sinal ambíguo para quem escuta. A resposta é a que o deferral prescreveu:
+    /// **duas listas**, lidas por **dois componentes** ([`crate::SignalOnHit`] e
+    /// [`crate::SignalOnLeave`]), e nunca uma fase enfiada no mesmo evento.
+    ///
+    /// ⚠️ **Um diff, não dois** — as duas listas saem da MESMA comparação entre o
+    /// conjunto de agora e o de antes. Duas varreduras seriam duas respostas a
+    /// *quem estava dentro*, e o dia em que discordassem a porta fecharia sem ter
+    /// aberto.
     ///
     /// # ⚠️ Este diff é por DISPATCH, e o irmão de contato é por TICK
     ///
@@ -181,6 +188,7 @@ impl PhysicsBridge {
     /// nada.
     fn diff_trigger_entries(&mut self) {
         self.trigger_events.clear();
+        self.trigger_exits.clear();
         if !self.triggers_continuous {
             self.trigger_since = self.triggers.clone();
             self.triggers_continuous = true;
@@ -197,15 +205,43 @@ impl PhysicsBridge {
                 }
             }
         }
+        // A metade da SAÍDA percorre a baseline, não o conjunto de agora — um
+        // sensor que esvaziou por completo não tem entrada nenhuma em
+        // `self.triggers` (o `rebuild` só cria a chave quando há alguém dentro),
+        // então varrer o conjunto de agora perderia exatamente o caso que a
+        // porta existe para cobrir: o último corpo a sair.
+        for (sensor, before) in &self.trigger_since {
+            let now = self.triggers.get(sensor);
+            for &other in before {
+                if !now.is_some_and(|v| v.contains(&other)) {
+                    self.trigger_exits.push(TriggerEvent {
+                        sensor: *sensor,
+                        other,
+                    });
+                }
+            }
+        }
         self.trigger_since.clone_from(&self.triggers);
     }
 
     /// Forget what was inside every sensor, **sem reportar nada** — o irmão
     /// exato do `discard_contact_history`, chamado das mesmas duas
     /// descontinuidades.
+    ///
+    /// ⚠️ **As duas limpezas de lista aqui são DEFESA EM CAMADA, e a medição o
+    /// diz** (W-SignalLeave): todo caminho que descarta a história segue para o
+    /// `rebuild_triggers` do mesmo dispatch, e o `diff_trigger_entries` limpa as
+    /// duas listas no topo. Mutação: apagar `trigger_exits.clear()` **não
+    /// sangra** — e o CONTROLE prova que não é buraco de gate desta wave, porque
+    /// apagar o `trigger_events.clear()` **pré-existente** também não sangra. As
+    /// duas ficam pelo mesmo motivo do precedente do ADR-0145: no regime que
+    /// shipa a segunda camada não é observável, e um `discard` que deixasse
+    /// eventos para trás seria um bug óbvio no dia em que alguém lesse este
+    /// canal fora do dispatch.
     pub(super) fn discard_trigger_history(&mut self) {
         self.trigger_since.clear();
         self.trigger_events.clear();
+        self.trigger_exits.clear();
         self.triggers_continuous = false;
     }
 
@@ -214,6 +250,18 @@ impl PhysicsBridge {
     #[must_use]
     pub fn trigger_events(&self) -> &[TriggerEvent] {
         &self.trigger_events
+    }
+
+    /// **Quem SAIU de um sensor** neste dispatch (W-SignalLeave) — o espelho
+    /// exato do irmão, do mesmo diff.
+    ///
+    /// ⚠️ **Uma descontinuidade re-baseliza em SILÊNCIO nos dois canais**, e aqui
+    /// isso importa mais: sem o re-baseline, um scrub que sai da sobreposição
+    /// gritaria uma saída que a simulação nunca atravessou — e o consumidor
+    /// fecharia uma porta que, no tempo para onde o artista foi, está aberta.
+    #[must_use]
+    pub fn trigger_exits(&self) -> &[TriggerEvent] {
+        &self.trigger_exits
     }
 
     /// Is `entity` a **sensor** with at least one body inside it right now? The

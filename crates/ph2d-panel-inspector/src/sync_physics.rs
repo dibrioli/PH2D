@@ -13,7 +13,9 @@
 
 use crate::state;
 use ph2d_editor_core::ids;
+use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::panel::PanelHostInternal;
+use ph2d_editor_core::widget::TextInputState;
 
 /// §12 Physics Joint — mirror the snapshot into the number boxes, exactly as
 /// the body's dimensions are mirrored below. Only the numbers: the three
@@ -91,6 +93,38 @@ pub(crate) fn sync_physics_fields(host: &mut dyn PanelHostInternal) {
         (ids::INSP_PHYS_AREA_FORM_DRAG, info.area_form_drag),
     ] {
         host.store_mut().set_number_value(id, f64::from(v));
+    }
+    // **Os dois nomes de sinal** (W-Signal · W-SignalLeave).
+    //
+    // ⚠️ **A row de CHEGADA shipou WRITE-ONLY no W-Signal**, e este é o conserto:
+    // digitar `door` funcionava, e re-selecionar a entidade mostrava um campo em
+    // BRANCO sobre um componente que dizia `door` — indistinguível de *"o nome
+    // não foi guardado"*. É a MESMA falha que as rows de área shiparam
+    // (W-AreaTorque) e que os dois campos de ruptura shiparam (W-J7), a terceira
+    // vez pela mesma causa: o snapshot não carregava o valor, então não havia o
+    // que espelhar.
+    //
+    // ⚠️ **Números e texto não usam a mesma porta:** um `TextInput` tem CARETO e
+    // ÂNCORA de seleção, e um seed que os deixasse para trás poria o cursor
+    // depois do fim do texto novo. Daí o laço próprio, e não mais duas linhas na
+    // tabela acima.
+    for (id, name) in [
+        (ids::INSP_PHYS_SIGNAL, info.signal.clone()),
+        (ids::INSP_PHYS_SIGNAL_LEAVE, info.signal_leave.clone()),
+    ] {
+        if let Some(InteractiveState::TextInput {
+            state,
+            text,
+            caret,
+            selection_anchor,
+        }) = host.store_mut().get_mut(id)
+        {
+            *state = TextInputState::Normal;
+            text.clear();
+            text.push_str(&name);
+            *caret = text.len();
+            *selection_anchor = None;
+        }
     }
 }
 

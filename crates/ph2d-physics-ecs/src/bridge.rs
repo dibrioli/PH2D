@@ -295,6 +295,9 @@ pub struct PhysicsBridge {
     trigger_since: BTreeMap<Entity, Vec<Entity>>,
     /// Quem ENTROU num sensor neste dispatch, drenado pelo shell.
     trigger_events: Vec<triggers::TriggerEvent>,
+    /// Quem SAIU de um sensor neste dispatch (W-SignalLeave) — o espelho do
+    /// campo acima, preenchido pelo MESMO diff.
+    trigger_exits: Vec<triggers::TriggerEvent>,
     /// `trigger_since` descreve o dispatch imediatamente anterior? Falso
     /// depois de toda descontinuidade do relógio — ver `diff_trigger_entries`.
     triggers_continuous: bool,
@@ -385,6 +388,7 @@ impl PhysicsBridge {
             triggers: BTreeMap::new(),
             trigger_since: BTreeMap::new(),
             trigger_events: Vec::new(),
+            trigger_exits: Vec::new(),
             triggers_continuous: true,
             contacts: Vec::new(),
             contact_since: BTreeMap::new(),

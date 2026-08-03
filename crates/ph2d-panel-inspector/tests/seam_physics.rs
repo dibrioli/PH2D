@@ -59,6 +59,11 @@ fn with_body() -> InspectorPhysicsInfo {
         // by the label gate below, not this base fixture.
         bake_start_seconds: 0.0,
         is_sensor: false,
+        // Nenhum dos dois nomes autorado — o default, DECLARADO e não herdado
+        // (a lição da fixture que muda de sentido quando o default se move). Os
+        // gates que exercitam as rows preenchem estes campos.
+        signal: String::new(),
+        signal_leave: String::new(),
         // The zone's own frame — the DEFAULT, declared rather than inherited. A fixture
         // that reaches its state implicitly flips meaning the day the default moves and
         // stays green testing the opposite.
@@ -2087,5 +2092,108 @@ fn a_compound_body_says_so_and_the_rows_below_make_room() {
         compound > plain,
         "um corpo com 2 peças pintou a MESMA seção de um de forma única \
          (Offset X em {compound} nos dois) — o readout não existe"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Os NOMES DE SINAL — chegada e saída (W-Signal · W-SignalLeave)
+// ---------------------------------------------------------------------------
+//
+// ⚠️ **A row de CHEGADA shipou sem NENHUM gate de seam.** O `INSP_PHYS_SIGNAL`
+// aparecia em quatro sítios de `src/` e em zero de `tests/`, então das quatro
+// condições de UI que o módulo exige de toda wave (existe · é pintado e
+// registrado · o gesto CHEGA ao barramento · a sequência leva a algum lugar), a
+// terceira nunca foi verificada para ela. As duas rows a ganham aqui.
+
+/// Digitar num dos nomes emite a ação DAQUELE extremo — e só a dele.
+///
+/// ⚠️ **O oráculo é a ação, não o texto:** o arm LÊ o buffer do store em vez de
+/// receber a string no evento, então um arm que despachasse o id errado passaria
+/// num teste que só conferisse *"alguma ação de sinal saiu"*. Cada row é dirigida
+/// com um texto DIFERENTE, e o gate exige que o par (ação, texto) case.
+#[test]
+fn each_signal_row_dispatches_its_own_end() {
+    for (id, want_hit, text) in [
+        (ids::INSP_PHYS_SIGNAL, true, "door_open"),
+        (ids::INSP_PHYS_SIGNAL_LEAVE, false, "door_close"),
+    ] {
+        let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+        let mut state = InspectorState::default();
+        set_current_inspector_physics(Some(with_body()));
+        host.set_text(id, text);
+        let _ = host.apply_panel_event::<InspectorPanel>(&mut state, WidgetEvent::TextChanged(id));
+        let out = host.drained_actions();
+        set_current_inspector_physics(None);
+        let hit = out.iter().find_map(|a| match a {
+            EditorAction::InspectorSignalEdit(i) => Some(i.name.clone()),
+            _ => None,
+        });
+        let leave = out.iter().find_map(|a| match a {
+            EditorAction::InspectorSignalLeaveEdit(i) => Some(i.name.clone()),
+            _ => None,
+        });
+        let (got, other) = if want_hit { (hit, leave) } else { (leave, hit) };
+        assert_eq!(
+            got.as_deref(),
+            Some(text),
+            "digitar {text:?} em {id:?} não emitiu a ação daquele extremo — {out:?}"
+        );
+        assert!(
+            other.is_none(),
+            "digitar em {id:?} emitiu TAMBÉM a ação do outro extremo: o nome de \
+             saída pousaria no componente de chegada e a porta abriria ao fechar"
+        );
+    }
+}
+
+/// **Selecionar uma entidade MOSTRA os nomes que ela carrega.**
+///
+/// ⚠️ Este é o conserto do defeito que o W-Signal shipou: a row era **write-only**
+/// — digitar `door` funcionava, e re-selecionar a entidade mostrava um campo em
+/// BRANCO sobre um componente que dizia `door`, indistinguível de *"o nome não foi
+/// guardado"*. A mesma falha das rows de área (W-AreaTorque) e dos campos de
+/// ruptura (W-J7), pela mesma causa nas três vezes.
+///
+/// Mutação: apagar o laço de seed do `sync_physics_fields` ⇒ os dois campos saem
+/// vazios e este gate sangra.
+#[test]
+fn selecting_an_entity_shows_the_signal_names_it_carries() {
+    use ph2d_editor_core::zones::Rect;
+    const VIEWPORT: Rect = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 320.0,
+        h: 2400.0,
+    };
+    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut state = InspectorState::default();
+    set_current_inspector_physics(Some(InspectorPhysicsInfo {
+        signal: "door_open".to_string(),
+        signal_leave: "door_close".to_string(),
+        ..with_body()
+    }));
+    // ⚠️ O `sync` deriva *"que entidade é esta?"* do snapshot de TRANSFORM, não do
+    // de física — toda entidade selecionada de verdade tem um. Sem ele a aresta de
+    // seleção não dispara e o gate mediria o sync não ter rodado, em vez de o sync
+    // estar errado.
+    set_current_inspector_transform(Some(InspectorTransformInfo {
+        entity_bits: ENTITY,
+        translation: [0.0, 0.0],
+        rotation_rad: 0.0,
+        scale: [1.0, 1.0],
+        skew_rad: [0.0, 0.0],
+    }));
+    let _ = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+    set_current_inspector_physics(None);
+    set_current_inspector_transform(None);
+    assert_eq!(
+        host.store().text(ids::INSP_PHYS_SIGNAL),
+        Some("door_open"),
+        "a row de CHEGADA não mostra o nome autorado — ela é write-only"
+    );
+    assert_eq!(
+        host.store().text(ids::INSP_PHYS_SIGNAL_LEAVE),
+        Some("door_close"),
+        "a row de SAÍDA não mostra o nome autorado — ela é write-only"
     );
 }

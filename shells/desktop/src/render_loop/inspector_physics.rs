@@ -177,6 +177,11 @@ pub(crate) fn build_physics_info(
             join_draw_armed,
             join_kind_tag,
             is_sensor: false,
+            // Nenhum dos dois nomes é lido aqui, e é uma decisão: esta face
+            // descreve algo que ainda NÃO é corpo, e as rows de sinal só são
+            // pintadas com um collider em mãos.
+            signal: String::new(),
+            signal_leave: String::new(),
             bake_channels_tag,
             gravity_scale: GravityScale::NEUTRAL,
             cap_half_height: 0.25,
@@ -261,6 +266,20 @@ pub(crate) fn build_physics_info(
         bake_seconds,
         bake_start_seconds,
         is_sensor: col.is_sensor,
+        // Os dois nomes AUTORADOS. Sem eles as rows são write-only — o defeito
+        // que o W-Signal shipou e que as rows de área (W-AreaTorque) e as de
+        // ruptura (W-J7) já tinham shipado antes, cada vez pela mesma causa: o
+        // snapshot não carregava o valor, então não havia o que espelhar.
+        signal: world
+            .get::<ph2d_physics_ecs::SignalOnHit>(entity)
+            .and_then(ph2d_physics_ecs::SignalOnHit::name)
+            .unwrap_or_default()
+            .to_string(),
+        signal_leave: world
+            .get::<ph2d_physics_ecs::SignalOnLeave>(entity)
+            .and_then(ph2d_physics_ecs::SignalOnLeave::name)
+            .unwrap_or_default()
+            .to_string(),
         bake_channels_tag,
         gravity_scale,
         cap_half_height,
@@ -299,7 +318,67 @@ mod tests {
     use ph2d_ecs::Transform;
     use ph2d_physics_ecs::{
         AreaEffector, AreaForceWorldAxes, BodyKind, Collider, ColliderShape, RigidBody,
+        SignalOnHit, SignalOnLeave,
     };
+
+    /// **O snapshot CARREGA os dois nomes de sinal** (W-Signal · W-SignalLeave).
+    ///
+    /// ⚠️ **A metade que faltava desde o W-Signal.** O `InspectorPhysicsInfo` não
+    /// tinha campo de sinal nenhum, então a row era **write-only por
+    /// construção**: digitar `door` funcionava e re-selecionar a entidade
+    /// mostrava um campo em branco, indistinguível de *"o nome não foi
+    /// guardado"*. O gate de seam prova que o painel MOSTRA o que o snapshot
+    /// carrega; este prova que o snapshot carrega o que o COMPONENTE diz — e as
+    /// duas metades juntas são a volta inteira.
+    ///
+    /// Mutação (o `build_physics_info` devolver `String::new()` num dos dois) ⇒
+    /// este gate sangra e o de seam fica VERDE, que é exatamente por que os dois
+    /// existem.
+    #[test]
+    fn the_snapshot_carries_both_authored_signal_names() {
+        let mut world = World::new();
+        let e = world
+            .spawn((
+                Transform::from_translation(Vec2::new(0.0, 0.0)),
+                RigidBody {
+                    kind: BodyKind::Static,
+                },
+                Collider {
+                    shape: ColliderShape::Cuboid {
+                        half_x: 1.0,
+                        half_y: 1.0,
+                    },
+                    ..Collider::default()
+                },
+                SignalOnHit("door_open".to_string()),
+                SignalOnLeave("door_close".to_string()),
+            ))
+            .id();
+        let info = build_physics_info(&world, e.to_bits(), 0, 0, 0, false, 0, (0.0, 5.0), 0)
+            .expect("um corpo tem Transform, então a §11 o descreve");
+        assert_eq!(
+            info.signal, "door_open",
+            "o nome de CHEGADA não chegou ao snapshot — a row é write-only"
+        );
+        assert_eq!(
+            info.signal_leave, "door_close",
+            "o nome de SAÍDA não chegou ao snapshot — a row é write-only"
+        );
+        // E o silêncio é silêncio: uma entidade sem os componentes traz os dois
+        // vazios, senão a row nasceria mostrando o nome da seleção anterior.
+        let plain = world
+            .spawn((
+                Transform::from_translation(Vec2::new(0.0, 0.0)),
+                RigidBody {
+                    kind: BodyKind::Static,
+                },
+                Collider::default(),
+            ))
+            .id();
+        let info = build_physics_info(&world, plain.to_bits(), 0, 0, 0, false, 0, (0.0, 5.0), 0)
+            .expect("idem");
+        assert!(info.signal.is_empty() && info.signal_leave.is_empty());
+    }
 
     /// **Selecting a zone shows the frame it was AUTHORED with** (W-AreaFrame).
     ///

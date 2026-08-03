@@ -1,6 +1,21 @@
 # HANDOFF / Tracker — `line/physics` (o motor de física global)
 
-> ⚠️ **A LINHA ESTÁ FECHADA (2026-08-01, 2ª jornada do dia) e o handoff de integração é
+> ⚠️ **A LINHA ESTÁ FECHADA (2026-08-03) e o handoff de integração é
+> [`HANDOFF_INTEGRACAO_line_physics_2026-08-03.md`](HANDOFF_INTEGRACAO_line_physics_2026-08-03.md)**
+> — **6 commits, quatro waves**: **W-SignalLeave** (a porta que FECHA, e a row de
+> chegada que shipou write-only), **W-PartAdopt** (⚠️ `Make Independent Body`
+> apagava a forma autorada, em silêncio), **W-RopeSays** (o readout de uma corda
+> que não roteia diz `no route`) e **W-RailRope** (o TRILHO como elo de corda).
+> Gate impactado **7239/7239**. `PROJECT_SCHEMA` **intocado por esta linha**,
+> registro **26→27**, c9 `16ba80e8…` **byte-idêntico**, zero `Cargo.toml`, nenhum
+> ADR. Ela **não** integrou e **não** pushou.
+>
+> **Pendente de smoke:** as cenas `=76` · `=77` · `=70` · `=58`.
+>
+> (A jornada anterior — 2026-08-01, 2ª do dia — **já está no `main`** e é
+> histórica:)
+>
+> ⚠️ **~~A LINHA ESTÁ FECHADA (2026-08-01, 2ª jornada do dia)~~ e o handoff dela é
 > [`HANDOFF_INTEGRACAO_line_physics_compound_signal_2026-08-01.md`](HANDOFF_INTEGRACAO_line_physics_compound_signal_2026-08-01.md)**
 > — **24 commits, sete waves**: a varredura dos consumidores que assumiam a premissa que a
 > W-Compound tornou falsa (**W-PartFace · W-PartSensor · W-CompoundZone · W-PartMass ·
@@ -8886,7 +8901,10 @@ Medido na cena `=76` (6 s, pela porta real): `["half_open", "door_open",
 "bell_hit", "bell_part", "door_close"]` — a porta abre e depois fecha, o sino bate
 e desencosta, e o **CONTROLE** abre **uma** vez e nunca fecha.
 
-`PROJECT_SCHEMA` **48 INTOCADO** · registro **26→27** (`SignalOnLeave`) · gizmo
+`PROJECT_SCHEMA` **INTOCADO por esta linha** (o `main` de hoje diz **50** — a
+`line/Vector` levou o 49 e o 50 na mesma janela; ⚠️ **a fonte é o `project.rs`, e
+esta linha é o espelho**, que é por que a §5 do CLAUDE.md já registrou este mesmo
+número FALSO quatro vezes) · registro **26→27** (`SignalOnLeave`) · gizmo
 ids **nenhum novo** (o último segue 973, próximo livre **974**) · ids de painel
 `INSP_PHYS_SIGNAL_LEAVE` · **nenhum ADR** · **zero `Cargo.toml`** · contrato
 congelado intacto.
@@ -9047,6 +9065,8 @@ afirmação sobre um número que outra pessoa pode mudar; quem move o número te
 reconferir a nota"*. A linha do Vector moveu, e a nota daqui não foi reconferida.
 
 **Números da jornada:** c9 **`16ba80e8…`, 99 corpos, debug ≡ release, BYTE-IDÊNTICO**
-· `PROJECT_SCHEMA` **48 intocado** · registro **26→27** (`SignalOnLeave`, da wave
+· `PROJECT_SCHEMA` **INTOCADO por esta linha** (o `main` diz **50**; conferido por
+`git diff main --name-only`, que não traz `project.rs` — não pelo número, que
+envelhece) · registro **26→27** (`SignalOnLeave`, da wave
 anterior desta mesma sessão) · gizmo ids **nenhum novo** (próximo livre **974**) ·
 **nenhum ADR** · **zero `Cargo.toml`** · contrato congelado intacto.

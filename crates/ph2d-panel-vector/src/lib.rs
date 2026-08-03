@@ -74,13 +74,13 @@ pub(crate) fn rotation_from_track(t: f64) -> f64 {
 pub(crate) fn rotation_to_track(deg: f64) -> f32 {
     ((deg / ROTATION_MAX) * 0.5 + 0.5) as f32
 }
+/// A seção CONSTRAINTS — as âncoras (plano UI/UX W3), irmã de `paint_layout`.
+mod paint_anchors;
 mod paint_arrange;
 /// O catálogo de formas (categoria em dropdown + grade de thumbnails cozidos).
 mod paint_catalog;
 /// A seção do CONECTOR (Route / Jetty / Spread) — snapshot + seed + paint + evento.
 mod paint_connector;
-/// A seção CONSTRAINTS — as âncoras (plano UI/UX W3), irmã de `paint_layout`.
-mod paint_anchors;
 /// A seção FRAME — o contêiner (plano UI/UX W0), irmã de `paint_pencil`.
 mod paint_frame;
 mod paint_layout;

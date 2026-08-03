@@ -2090,6 +2090,9 @@ impl crate::App {
             // O AUTO LAYOUT (plano UI/UX W2, ADR-0153): um chip de radio e um campo numerico.
             let mut pending_layout_edit: Option<crate::vec_layout_edit::LayoutEdit> = None;
             let mut pending_anchor_edit: Option<crate::vec_anchor_edit::AnchorEdit> = None;
+            // **Resize Box** (plano UI/UX W3b): o clique e' um TOGGLE, entao nao ha' operando —
+            // um bool basta para dizer *"houve clique"*.
+            let mut pending_resize_box = false;
             let mut pending_layout_field: Option<(crate::vec_layout_edit::LayoutField, f64)> = None;
             // **O TOKEN escolhido no picker** (plano UI/UX W4): a propriedade + o token, ou
             // `None` no token = SOLTAR (a propriedade volta ao literal do documento).
@@ -2434,6 +2437,10 @@ impl crate::App {
                                 // distribuição moram no COMPONENTE, então o clique e' da shell —
                                 // o painel so' mostra qual chip esta' aceso.
                                 pending_layout_edit = Some(e);
+                            } else if *id == ph2d_editor::ids::VECTOR_TRANSFORM_RESIZE_BOX {
+                                // **Resize Box** (plano UI/UX W3b): o override mora no COMPONENTE,
+                                // entao o clique e' da shell — o painel so' mostra o estado.
+                                pending_resize_box = true;
                             } else if let Some(e) = crate::vec_anchor_edit::anchor_edit_for_id(*id)
                             {
                                 // AS ÂNCORAS (plano UI/UX W3): o par de âncoras mora no
@@ -4001,7 +4008,7 @@ impl crate::App {
                             #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
                             FilterHit::Seed(_) => op.seed = x.clamp(0.0, 255.0).round() as u8,
                             FilterHit::Grow(_) => op.grow = x,
-                            // ⚠️ **GRAUS -> VOLTAS**, o inverso exacto da linha que publica o
+                            // ⚠️ **GRAUS -> VOLTAS**, o inverso exato da linha que publica o
                             // snapshot. As duas conversões são as ÚNICAS do eixo, e é por isso
                             // que ficam nomeadas uma na outra.
                             FilterHit::Hue(_) => op.hue = x / 360.0,
@@ -4561,7 +4568,7 @@ impl crate::App {
             if pending_vec_select_same {
                 self.vec_pen.select_verts_of_same_kind(vec_scene);
             }
-            // **As três da W4.** Um passo de undo por gesto, e só se algo de facto mudou — o
+            // **As três da W4.** Um passo de undo por gesto, e só se algo de fato mudou — o
             // `begin`/`commit_if_changed` é o mesmo par do lápis e das ferramentas de quina.
             for (armed, op) in [
                 (pending_vec_join, 0u8),
@@ -4582,16 +4589,16 @@ impl crate::App {
                 }
             }
             // **O CORTE e o DESCARTE da lâmina.** Mesmo par `begin`/`commit_if_changed` das três
-            // acima: um passo de undo por gesto, e só se algo de facto mudou (uma lâmina que não
+            // acima: um passo de undo por gesto, e só se algo de fato mudou (uma lâmina que não
             // atravessa nada não pode deixar uma linha na fila do Ctrl+Z).
             // **Apply Symmetry** — o único gesto desta seção que toca o documento. Até aqui as
             // cópias eram DESENHO; a partir daqui são geometria, e a simetria sai com a
             // forma-fonte (o `sync` do frame seguinte despawna a entidade dela).
             if pending_vec_symmetry_apply {
                 let xf = crate::vec_transform::build(sim, &self.vec_entities);
-                // ⚠️ TODA forma armada, não a selecção: a simetria é um MODO, e *"consolidar a
+                // ⚠️ TODA forma armada, não a seleção: a simetria é um MODO, e *"consolidar a
                 // forma e desativar a simetria"* vale para o que o modo produziu. O porquê de
-                // consolidar só o seleccionado ser destrutivo está na `armed_paths`.
+                // consolidar só o selecionado ser destrutivo está na `armed_paths`.
                 let ids = crate::symmetry_live::armed_paths(sim, &self.vec_entities, vec_scene);
                 crate::symmetry_live::materialise(
                     vec_scene,
@@ -5711,7 +5718,7 @@ impl crate::App {
                                 scale: f64::from(op.scale),
                                 // ⚠️ **`detail_clamped`, não `detail`** — a mesma metade de
                                 // HONRAR que o produtor da GPU usa. O painel mostra o número que
-                                // o dispositivo de facto soma.
+                                // o dispositivo de fato soma.
                                 detail: op.detail_clamped(),
                                 seed: op.seed,
                                 grow: f64::from(op.grow),
@@ -6060,13 +6067,13 @@ impl crate::App {
             // o botão checado pode-se fazer quantos desenhos desejar que a linha permanece no
             // lugar"* (Enio, 2026-08-01).
             //
-            // ⚠️ **Aqui e não na malha de acções**, e por duas razões que se somam: o `sync` já
+            // ⚠️ **Aqui e não na malha de ações**, e por duas razões que se somam: o `sync` já
             // correu (uma forma recém-desenhada já tem entidade, senão o componente não teria
             // onde pousar) e o `settle_origins` já assentou o pivô do gesto que acabou — que é o
             // frame em que a captura do eixo sela. É o mesmo sítio, e pela mesma razão, em que o
             // LÁPIS pendura o perfil dele logo abaixo.
             //
-            // ⚠️ A adopção olha para `drawing` — quem está EM GESTO —, **nunca** para a selecção.
+            // ⚠️ A adopção olha para `drawing` — quem está EM GESTO —, **nunca** para a seleção.
             // É essa ausência que cumpre *"não deve fazer simetria de formas que já existem
             // previamente"*.
             {
@@ -6156,7 +6163,7 @@ impl crate::App {
             // **A BOOLEANA VIVA roda DEPOIS dos cinco e ANTES do alinhamento**, e a ordem é a lei
             // da wave — trocar dois destes termos dá arte diferente sem nenhum gate vermelho:
             //
-            // - depois dos cinco, porque ela consome *o que os filhos de facto desenham* (um
+            // - depois dos cinco, porque ela consome *o que os filhos de fato desenham* (um
             //   operando com offset vivo tem de entrar deslocado);
             // - antes do alinhamento, porque o alinhamento é um campo do `StrokeSpec` do
             //   RESULTADO — alinhar os operandos e só então os combinar responderia outra
@@ -6212,6 +6219,15 @@ impl crate::App {
                 }
                 ph2d_panel_vector::state::set_anchor_state(
                     crate::vec_anchor_edit::selected_anchors(sim, &self.vec_entities, &sel),
+                );
+                // **Resize Box** (plano UI/UX W3b): honrar e so' depois publicar, a mesma ordem
+                // dos irmaos acima — publicar antes deixaria a caixa a mostrar o estado ANTERIOR
+                // por um frame, e o artista veria o clique "nao pegar".
+                if pending_resize_box {
+                    crate::vec_resize_box_edit::toggle_resize_box(sim, &self.vec_entities, &sel);
+                }
+                ph2d_panel_vector::state::set_resize_box(
+                    crate::vec_resize_box_edit::selected_resize_box(sim, &self.vec_entities, &sel),
                 );
                 ph2d_panel_vector::state::set_layout_flow(crate::vec_layout_edit::selected_flow(
                     sim,
@@ -6272,7 +6288,7 @@ impl crate::App {
             // **O AUTO LAYOUT roda entre a booleana e o alinhamento** (ADR-0153), e as duas
             // metades da ordem são a lei:
             //
-            // - DEPOIS da booleana, porque ele coloca *o que os filhos de facto desenham* — um
+            // - DEPOIS da booleana, porque ele coloca *o que os filhos de fato desenham* — um
             //   grupo booleano é UMA forma para o fluxo, e ela tem de estar cozida antes de ser
             //   medida;
             // - ANTES do alinhamento, porque o alinhamento recorta a faixa do traço na largura
@@ -6542,8 +6558,8 @@ impl crate::App {
             {
                 // Duas linhas, dois FATOS. A de SESSÃO diz *onde o próximo desenho vai espelhar* e
                 // fica onde foi semeada; a de cada forma diz *onde AQUELA forma espelha* e viaja
-                // com ela. Coincidem até o artista mover o desenho — e é exactamente aí que ver as
-                // duas passa a valer, porque a promessa de que a linha acompanha o objecto só é
+                // com ela. Coincidem até o artista mover o desenho — e é exatamente aí que ver as
+                // duas passa a valer, porque a promessa de que a linha acompanha o objeto só é
                 // legível contra a que não acompanha.
                 let mut axes = if self.vec_draw_config.symmetry.on {
                     crate::symmetry_live::live_axes(vec_scene, sim, &self.vec_entities, &vec_xf)

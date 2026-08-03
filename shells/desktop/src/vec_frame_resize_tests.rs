@@ -1,15 +1,16 @@
-//! Os gates da porta que faz uma moldura REDIMENSIONAR em vez de ESCALAR.
+//! Os gates da porta que faz a alça REDIMENSIONAR a caixa em vez de ESCALAR a pose.
 //!
-//! O que só se pode afirmar aqui: que o sujeito é a moldura e não a filiação, que o ponto fixo sai
-//! do PIVÔ (e não de uma tabela de cantos), que a razão é ABSOLUTA — logo o resultado é um facto
-//! do gesto e não de quantos eventos de rato ele durou — e que voltar ao início devolve a
-//! geometria **ao bit**.
+//! O que só se pode afirmar aqui: que o default segue a HIERARQUIA e que o checkbox o vence nas
+//! duas direcções, que o ponto fixo sai do PIVÔ (e não de uma tabela de cantos), que a razão é
+//! ABSOLUTA — logo o resultado é um fato do gesto e não de quantos eventos de rato ele durou — e
+//! que voltar ao início devolve a geometria **ao bit**.
 //!
 //! A outra metade — *o braço existe no `advance_gizmo_drag` e NÃO escreve `Transform`* — precisa
 //! de `App` + janela, e vive no arch-gate irmão
 //! (`tests/a_frames_handle_resizes_it_and_does_not_scale_it.rs`).
 
 use super::*;
+use ph2d_ecs::VecFrame;
 use ph2d_vec_scene::{VecXforms, rectangle};
 
 use crate::vec_entities::VecEntityMap;
@@ -38,31 +39,72 @@ fn box_of(scene: &VecScene, id: VecPathId) -> ([f64; 2], [f64; 2]) {
     scene.path_curve_bbox(id).expect("a forma tem geometria")
 }
 
-/// **O sujeito é a MOLDURA — e a filiação não conta.**
+/// **A moldura E o filho dela redimensionam; o objeto solto ESCALA.**
 ///
-/// ⚠️ É a correção explícita da proposta *"marque também os filhos de molduras"*: um path solto
-/// dentro de uma moldura é um desenho-folha, e escalá-lo continua a ser escalá-lo. Uma moldura
-/// ANINHADA é apanhada porque **é** moldura, não porque é filha.
+/// ⚠️ O terceiro é o CONTROLO, e é a metade que o Enio nomeou: *o comportamento anterior era
+/// correto para objetos de game*. Sem ele o gate não distingue *"a regra segue a hierarquia"* de
+/// *"a regra vale sempre"*.
 #[test]
-fn a_frame_is_the_subject_and_a_child_of_one_is_not() {
-    let (mut sim, _scene, map, ids) = frame_and_kid();
+fn a_frame_and_its_child_resize_and_a_loose_object_scales() {
+    let (sim, _scene, map, ids) = frame_and_kid();
     let frame = Entity::from_bits(map[&ids[0]]);
     let kid = Entity::from_bits(map[&ids[1]]);
     assert_eq!(resizable_frame(&sim, frame), Some(ids[0]));
     assert_eq!(
         resizable_frame(&sim, kid),
-        None,
-        "um desenho-folha dentro de uma moldura escala, como sempre"
-    );
-    // A moldura aninhada: o MESMO filho, agora ele próprio uma moldura.
-    sim.world_mut()
-        .entity_mut(kid)
-        .insert(VecFrame { clip: false });
-    assert_eq!(
-        resizable_frame(&sim, kid),
         Some(ids[1]),
-        "moldura-idade, nao filiacao"
+        "o filho da moldura"
     );
+
+    // O controlo: a MESMA forma, agora fora da moldura.
+    let (mut sim2, mut scene2, mut map2, _ids2) = frame_and_kid();
+    let loose_id = scene2.push_path(rectangle([0.0, 0.0], [5.0, 5.0]));
+    crate::vec_entities::sync(&mut sim2, &mut scene2, &mut map2);
+    let loose = Entity::from_bits(map2[&loose_id]);
+    assert_eq!(
+        resizable_frame(&sim2, loose),
+        None,
+        "um objeto de game escala, como sempre"
+    );
+}
+
+/// **O checkbox VENCE o default, e a direcção que importa é DESMARCAR a moldura.**
+///
+/// ⚠️ É o pedido do Enio feito função: um contentor que é *cenário* e não *layout* quer escalar o
+/// conteúdo junto, e sem o override isso ficava inexprimível dentro de uma moldura.
+#[test]
+fn the_checkbox_overrides_the_default_in_both_directions() {
+    let (mut sim, _scene, map, ids) = frame_and_kid();
+    let frame = Entity::from_bits(map[&ids[0]]);
+    sim.world_mut()
+        .entity_mut(frame)
+        .insert(ph2d_ecs::VecResizeBox(false));
+    assert_eq!(
+        resizable_frame(&sim, frame),
+        None,
+        "a moldura desmarcada volta a escalar tudo"
+    );
+
+    // E a outra direcção: uma forma solta MARCADA reescreve a caixa.
+    let (mut sim2, mut scene2, mut map2, _ids2) = frame_and_kid();
+    let loose_id = scene2.push_path(rectangle([0.0, 0.0], [5.0, 5.0]));
+    crate::vec_entities::sync(&mut sim2, &mut scene2, &mut map2);
+    let loose = Entity::from_bits(map2[&loose_id]);
+    sim2.world_mut()
+        .entity_mut(loose)
+        .insert(ph2d_ecs::VecResizeBox(true));
+    assert_eq!(resizable_frame(&sim2, loose), Some(loose_id));
+}
+
+/// **Um GRUPO marcado não tem caixa a reescrever, e por isso escala.**
+///
+/// ⚠️ Uma entidade sem `VecPathRef` é um contentor sem geometria própria. Sem esta recusa o braço
+/// do gizmo receberia um `Some` e não teria o que fotografar.
+#[test]
+fn a_group_without_geometry_still_scales() {
+    let (mut sim, _scene, _map, _ids) = frame_and_kid();
+    let group = sim.world_mut().spawn(ph2d_ecs::VecResizeBox(true)).id();
+    assert_eq!(resizable_frame(&sim, group), None);
 }
 
 /// **O ponto fixo sai do PIVÔ.** Arrastar a alça de cima-direita mantém o canto mínimo; arrastar a
@@ -111,12 +153,12 @@ fn a_centre_pivot_needs_no_special_case() {
     );
 }
 
-/// **A razão é ABSOLUTA: o resultado é um facto do GESTO, não de quantos eventos ele durou.**
+/// **A razão é ABSOLUTA: o resultado é um fato do GESTO, não de quantos eventos ele durou.**
 ///
 /// ⚠️ A mutação que este gate existe para matar é a barata: escalar a geometria VIVA a cada
 /// movimento em vez de restaurar o instantâneo. Ela é invisível num teste de um movimento só e
 /// multiplica a razão uma vez por evento de rato num arrasto real — o mesmo mal que o depósito do
-/// Painter curou quatro vezes (*a lei é facto do CAMINHO, nunca de quão fino ele foi amostrado*).
+/// Painter curou quatro vezes (*a lei é fato do CAMINHO, nunca de quão fino ele foi amostrado*).
 #[test]
 fn ten_moves_to_double_it_double_it_once() {
     let (_sim, mut one, _m, ids) = frame_and_kid();
@@ -160,7 +202,7 @@ fn dragging_back_to_where_it_started_restores_the_geometry_exactly() {
 }
 
 /// **O FILHO não é tocado.** É o defeito que o Enio reportou, medido: a moldura muda de caixa e a
-/// geometria do filho fica exactamente onde estava (quem o move, se ele tiver regra, é o passe de
+/// geometria do filho fica exatamente onde estava (quem o move, se ele tiver regra, é o passe de
 /// âncoras — e é ele que decide, não o gizmo).
 #[test]
 fn resizing_the_frame_does_not_touch_the_child_geometry() {
@@ -177,7 +219,7 @@ fn resizing_the_frame_does_not_touch_the_child_geometry() {
 /// ⚠️ **O oráculo é o PONTO FIXO ficar do lado em que estava**, e a 1ª versão deste gate
 /// sobreviveu à mutação por afirmar as duas coisas erradas: `hi > lo` **não pode falhar** (uma
 /// caixa é normalizada por construção) e `hi < 1` passa com a caixa espelhada, porque espelhar
-/// leva o máximo exactamente para cima do ponto fixo. *Uma razão negativa não encolhe a caixa —
+/// leva o máximo exatamente para cima do ponto fixo. *Uma razão negativa não encolhe a caixa —
 /// ela a leva para o outro lado da âncora*, e é isso que se mede.
 #[test]
 fn a_frame_does_not_flip_through_itself() {
@@ -194,7 +236,7 @@ fn a_frame_does_not_flip_through_itself() {
 }
 
 /// **Um instantâneo pertence a UM arrasto.** Sem isto, soltar e voltar a pegar noutra forma
-/// reporia a geometria da anterior por cima dela.
+/// restauraria a geometria da anterior por cima dela.
 #[test]
 fn a_snapshot_belongs_to_the_drag_that_took_it() {
     let (_sim, scene, _map, ids) = frame_and_kid();

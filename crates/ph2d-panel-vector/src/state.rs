@@ -49,6 +49,14 @@ mod frame_state;
 pub(crate) use frame_state::frame_clip;
 pub use frame_state::set_frame_clip;
 
+/// **RESIZE BOX** (plano UI/UX W3b) — o que a alça do gizmo faz ao objeto selecionado. Irmão do
+/// `frame_clip` na forma (`Option<bool>` = *existe resposta* + *qual é*) e na razão: a verdade
+/// mora no ECS, isto é a projeção por frame.
+#[path = "state_resize_box.rs"]
+mod resize_box_state;
+pub(crate) use resize_box_state::resize_box;
+pub use resize_box_state::set_resize_box;
+
 /// **O ÍMÃ e as RÉGUAS** — irmão pelo teto de 600 LOC dos painéis, e o corte é por assunto: as
 /// cinco chaves respondem *a que a ponta se agarra, e o que a borda do canvas mostra*, e nenhuma
 /// outra parte deste arquivo fala do gesto de apontar.
@@ -62,8 +70,8 @@ pub use snap_state::{set_current_guides, set_current_snap, set_current_snap_posi
 /// **AS ÂNCORAS da seleção** (plano UI/UX W3) — a regra do filho que NÃO flui.
 #[path = "state_anchors.rs"]
 mod anchor_state;
-pub use anchor_state::{AnchorState, set_anchor_state};
 pub(crate) use anchor_state::anchor_state;
+pub use anchor_state::{AnchorState, set_anchor_state};
 
 /// **O AUTO LAYOUT da seleção** (plano UI/UX W2, ADR-0153) — o fluxo da moldura, o comportamento
 /// do filho, e o modo do recuo (este último panel-local).

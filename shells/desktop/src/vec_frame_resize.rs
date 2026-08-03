@@ -1,10 +1,10 @@
-//! **UMA MOLDURA REDIMENSIONA; ela não ESCALA** — o que a alça do gizmo significa quando o sujeito
-//! é uma moldura (plano UI/UX, corolário do W3).
+//! **A alça REDIMENSIONA a caixa em vez de ESCALAR a pose** — quando o objeto assim o diz (plano
+//! UI/UX, W3b).
 //!
 //! # O defeito, e o mecanismo dele
 //!
 //! O gizmo escreve a **pose** (`Transform.scale` da entidade) e a pose de um pai é herdada por
-//! todo descendente — é isso que um grafo de cena É. Numa forma-folha isso é exactamente o certo:
+//! todo descendente — é isso que um grafo de cena É. Numa forma-folha isso é exatamente o certo:
 //! escalar um desenho é escalar o desenho. Numa MOLDURA é o oposto do que o artista pede: os
 //! filhos esticam junto, a tipografia achata, e a regra de âncora que ele acabou de armar nunca
 //! chega a correr, porque a moldura não mudou de **caixa** — ela mudou de **escala**.
@@ -14,29 +14,30 @@
 //! leva a alça do gizmo à mesma porta, para que as duas metades da interface não respondam
 //! diferente à mesma pergunta.
 //!
-//! # A lei numa frase
+//! # Quem decide é o OBJECTO, pelo checkbox **Resize Box** (decisão do Enio, 2026-08-03)
 //!
-//! **O SUJEITO decide.** Moldura ⇒ a alça muda a caixa e os filhos respondem pelas regras deles.
-//! Qualquer outra coisa ⇒ escala, como sempre. É a divisão do Figma (a alça de uma frame
-//! redimensiona; escalar tudo é a ferramenta *Scale*), do Unity (Rect tool × Scale tool) e do
-//! Rive (redimensionar um artboard não escala o conteúdo).
+//! A regra vive em [`ph2d_ecs::resizes_box`]: molduras e os filhos delas nascem marcados, todo o
+//! resto nasce desmarcado, e o checkbox da seção Transform é o override.
 //!
-//! ⚠️ **Não é um checkbox no objeto**, e a razão é que a pergunta não é sobre o OBJETO — é sobre a
-//! intenção do GESTO. A mesma moldura merece as duas respostas em momentos diferentes, e um
-//! interruptor persistente obriga a *marcar → gesto → desmarcar*: esquecer de desmarcar torna o
-//! **próximo** gesto silenciosamente errado, meses depois, num ficheiro que já foi salvo.
+//! ⚠️ **Eu argumentei contra o checkbox e a decisão foi revertida — as duas metades ficam aqui**,
+//! porque uma cerca de Chesterton sem o lado que perdeu é um convite a refazer o argumento. O que
+//! eu disse: um interruptor persistente responde com estado por-OBJECTO a uma pergunta sobre a
+//! intenção do GESTO, e esquecer de o restaurar torna o *próximo* gesto silenciosamente errado.
 //!
-//! ⚠️ **E a regra é da moldura-idade, não da filiação.** Um path solto dentro de uma moldura é um
-//! desenho-folha: escalá-lo continua a ser escalá-lo. Uma moldura ANINHADA é apanhada porque *é*
-//! moldura, não porque é filha.
+//! O que a decisão viu e o argumento não: **o comportamento antigo é o CERTO para um objeto de
+//! game**, e ele tem de continuar alcançável *dentro* de uma moldura — um contentor que é cenário,
+//! e não layout, quer escalar o conteúdo junto. Sem o override isso ficava inexprimível: a única
+//! saída era seleccionar o conteúdo, o que muda o que o gizmo mede.
 //!
-//! # Escalar a moldura inteira continua possível
+//! ⚠️ **E nos FILHOS o checkbox não é decoração:** o tamanho de um filho é ENTRADA da disposição, e
+//! o passe de layout mede a **caixa**. Escalar a pose de um filho num fluxo deixa a caixa onde
+//! estava, e o fluxo re-flui em volta de um número que já não descreve o que se vê.
 //!
-//! Seleccione o **conteúdo** e arraste: uma multi-selecção escala pelo caminho de sempre, e o
-//! `Transform` de cada membro é escrito. Outra selecção, outro verbo — sem estado novo no
-//! ficheiro, e escolhido no momento em vez de dois painéis atrás.
+//! O default derivado (em vez de um bool escrito em cada entidade) é o que faz uma forma arrastada
+//! para dentro de uma moldura passar a valer a regra de dentro no mesmo frame — ver
+//! [`ph2d_ecs::resize_box_default`].
 
-use ph2d_ecs::{Entity, SimWorld, VecFrame, VecPathRef};
+use ph2d_ecs::{Entity, SimWorld, VecPathRef};
 use ph2d_vec_scene::{VecPath, VecPathId, VecScene};
 
 /// A menor razão de escala que um redimensionamento aceita.
@@ -49,7 +50,7 @@ const MIN_RATIO: f64 = 1e-4;
 /// **O que a moldura era quando o arrasto começou.**
 ///
 /// ⚠️ Guardar a geometria de partida — em vez de aplicar a razão INCREMENTAL a cada movimento — é
-/// o que torna o resultado um facto do **gesto** e não da taxa de amostragem do rato. O gizmo
+/// o que torna o resultado um fato do **gesto** e não da taxa de amostragem do rato. O gizmo
 /// recomputa uma transformação ABSOLUTA contra o `start_transform` a cada `CursorMoved`; compor
 /// isso sobre a geometria já escalada multiplicaria a razão uma vez por evento. É a mesma lei que
 /// o depósito do Painter e o solver da física seguem, e pela mesma razão.
@@ -72,14 +73,21 @@ impl FrameResizeStart {
     }
 }
 
-/// **A moldura que este arrasto redimensiona** — `None` para tudo o mais.
+/// **A forma que este arrasto redimensiona** — `None` quando a alça deve ESCALAR.
 ///
-/// ⚠️ Porta única, perguntada pelo braço do gizmo. Uma segunda pergunta (*"o pai é moldura?"*, por
-/// exemplo) faria o gesto e a regra discordarem sobre quem é contêiner.
+/// ⚠️ Porta única, e a pergunta é delegada ao [`ph2d_ecs::resizes_box`]: molduras e os filhos delas
+/// reescrevem a caixa por default, e o checkbox **Resize Box** da seção Transform é o override.
+/// Uma segunda pergunta local (*"é moldura?"*) faria o gesto e o checkbox discordarem — o artista
+/// veria a caixa marcada e a alça a esticar os filhos.
+///
+/// ⚠️ **Sem `VecPathRef` não há caixa a reescrever** e o arrasto cai no caminho de sempre: um
+/// GRUPO é uma entidade sem geometria própria, então ele escala, que é o que um grupo faz.
 #[must_use]
 pub(crate) fn resizable_frame(sim: &SimWorld, entity: Entity) -> Option<VecPathId> {
     let w = sim.world();
-    w.get::<VecFrame>(entity)?;
+    if !ph2d_ecs::resizes_box(w, entity) {
+        return None;
+    }
     Some(w.get::<VecPathRef>(entity)?.0)
 }
 
@@ -100,7 +108,7 @@ fn ratio(world: f64, local: f64) -> f64 {
 /// respondeu no pen-down (`anchor_pivot_world`), e divergiria no primeiro caso que ela não
 /// enumerasse — que é precisamente o CTRL, que ancora no CENTRO. Aqui o centro cai fora de graça.
 ///
-/// ⚠️ A conversão é exacta enquanto o mapa local→mundo for alinhado aos eixos, e aproximada sob
+/// ⚠️ A conversão é exata enquanto o mapa local→mundo for alinhado aos eixos, e aproximada sob
 /// ROTAÇÃO — a mesma aproximação declarada que a caixa do gizmo e o passe de âncoras carregam.
 #[must_use]
 pub(crate) fn begin(
@@ -129,7 +137,7 @@ pub(crate) fn begin(
 /// **Aplica a razão ABSOLUTA do gesto**: repõe a geometria de partida e escala-a UMA vez.
 ///
 /// Devolve `false` se a moldura já não está na cena (apagada a meio do arrasto). Razão `1,1` repõe
-/// o instantâneo e sai — arrastar de volta ao ponto de partida devolve a moldura exactamente ao
+/// o instantâneo e sai — arrastar de volta ao ponto de partida devolve a moldura exatamente ao
 /// que era, **ao bit**, e não a uma vizinhança dela.
 pub(crate) fn apply(scene: &mut VecScene, start: &FrameResizeStart, sx: f64, sy: f64) -> bool {
     let Some(p) = scene.path_mut(start.id) else {

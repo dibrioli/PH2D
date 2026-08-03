@@ -188,6 +188,7 @@ pub fn tr(key: &str) -> &'static str {
         // A linha que SOLTA a propriedade — ela volta ao literal do documento.
         "panel.vector.token.none" => "None (use literal)",
         "panel.vector.frame.clip" => "Clip content",
+        "panel.vector.transform.resize_box" => "Resize Box",
         "panel.vector.frame.clip.off" => "Off",
         "panel.vector.frame.clip.on" => "On",
         // **AS ÂNCORAS** (plano UI/UX W3) — a regra do filho que NÃO está num fluxo.

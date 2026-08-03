@@ -313,6 +313,12 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // autorada), que é insubstituível: re-armar depois de a perder captura a moldura de AGORA, e
     // o redimensionamento que o artista já tinha feito fica assado no lugar errado.
     reg.register::<crate::VecAnchors>("ph2d::ecs::VecAnchors");
+    // RESIZE BOX (plano UI/UX W3b): o override de *"a alca reescreve a caixa deste objeto?"*.
+    // Sem o registro, um Ctrl+Z (ou reabrir o projeto) devolveria a arte inteira com a moldura
+    // que o artista mandou ESCALAR de volta a redimensionar -- e o gesto seguinte faria a coisa
+    // errada em silencio. O componente so' existe quando ele discorda do default derivado, entao
+    // perde-lo e' perder exatamente a decisao que ele tomou.
+    reg.register::<crate::VecResizeBox>("ph2d::ecs::VecResizeBox");
     // O vínculo TEXTO -> caminho-guia. Mesma razão de todos os irmãos, e mais forte: sem o
     // registro, um Ctrl+Z (ou reabrir o projeto) devolveria o texto DESLIGADO do caminho, reto,
     // no meio da cena -- e o caminho continuaria lá, parecendo certo.
@@ -394,7 +400,8 @@ mod tests {
         // + 1 moldura (VecFrame, plano UI/UX W0)
         // + 1 tabela de bindings de token (VecBindings, plano UI/UX W4)
         // + 2 auto layout (VecLayout no pai + VecLayoutItem no filho, plano UI/UX W2)
-        // + 1 âncoras (VecAnchors, plano UI/UX W3).
+        // + 1 âncoras (VecAnchors, plano UI/UX W3)
+        // + 1 resize-box (VecResizeBox, plano UI/UX W3b).
         //
         // **Este número existe para doer.** Um componente que não passa por aqui é
         // DESCARTADO em silêncio pelo snapshot — o undo e o save o perdem, e o bug só
@@ -406,8 +413,9 @@ mod tests {
         // `VecConnector`, e as duas linhas, sozinhas, diziam 27 — por motivos diferentes. A
         // árvore combinada tem 28. Escolher "um dos lados" aqui é o erro que deixa o
         // workspace vermelho com dois merges verdes.
-        assert_eq!(reg.len(), 47);
+        assert_eq!(reg.len(), 48);
         assert!(reg.get_by_name("ph2d::ecs::VecAnchors").is_some());
+        assert!(reg.get_by_name("ph2d::ecs::VecResizeBox").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecBindings").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecLayout").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecLayoutItem").is_some());

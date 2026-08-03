@@ -12,8 +12,8 @@ use super::paint_sections::{BodyCtx, LABEL_COL_W};
 use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::widget::showcase::{paint_section_separator, read_number_input};
 use ph2d_editor_core::widget::{
-    Button, ButtonKind, ButtonState, NumberInput, paint_button, paint_number_input_with_buffer,
-    paint_slider_with_chip_layout_adaptive,
+    Button, ButtonKind, ButtonState, Checkbox, CheckboxValue, NumberInput, paint_button,
+    paint_checkbox, paint_number_input_with_buffer, paint_slider_with_chip_layout_adaptive,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, Spacing, TypeToken};
@@ -73,6 +73,33 @@ impl BodyCtx<'_> {
         paint_section_separator(self.scene, self.theme, self.inner_x, self.inner_w, y)
     }
 
+    /// **Uma linha de CHECKBOX** — caixa à esquerda, rótulo à direita.
+    ///
+    /// ⚠️ Este painel dizia booleano com um `segmented` Off/On (o *Clip* da moldura), e este é o
+    /// primeiro checkbox de verdade dele. A diferença não é estética: um `segmented` é uma escolha
+    /// entre MODOS nomeados, e um checkbox é uma PROPRIEDADE que o objeto tem ou não tem — e
+    /// *Resize Box* é a segunda (o Enio pediu-o assim). O primitivo é o do design system
+    /// ([`paint_checkbox`]), o mesmo que o Inspector e o painel do Painter usam, então não há uma
+    /// segunda resposta a *"como é uma caixa de marcar neste app?"*.
+    pub(crate) fn checkbox_row(
+        &mut self,
+        id: ph2d_a11y::NodeId,
+        label: &str,
+        checked: bool,
+        y: f32,
+    ) -> f32 {
+        let value = if checked {
+            CheckboxValue::Checked
+        } else {
+            CheckboxValue::Unchecked
+        };
+        let cb = Checkbox::new(id, label).value(value);
+        let rect = Rect::new(self.inner_x, y, self.inner_w, self.row_h);
+        paint_checkbox(&cb, rect, self.scene, self.text_system, self.theme);
+        self.hit_index.register(id, rect);
+        y + self.row_h + self.row_gap
+    }
+
     /// A full-width action button (Boolean / Vertex-delete / Duplicate).
     pub(crate) fn action_button(&mut self, id: ph2d_a11y::NodeId, label: &str, y: f32) -> f32 {
         self.action_button_kind(id, label, ButtonKind::Default, y)
@@ -98,7 +125,7 @@ impl BodyCtx<'_> {
     /// **Uma linha de DOIS campos numéricos rotulados** (X | Y, W | H, Gap principal | transversal).
     ///
     /// ⚠️ Ela nasceu privada no `paint_transform` e mudou-se para cá quando o AUTO LAYOUT virou o
-    /// **segundo** consumidor — que é exactamente o momento em que um ajudante deve ir para a casa
+    /// **segundo** consumidor — que é exatamente o momento em que um ajudante deve ir para a casa
     /// partilhada. Deixá-la lá obrigaria a seção nova a reescrever a aritmética de meia-largura, e
     /// duas respostas para *"onde este campo senta?"* divergem no dia em que uma delas ganhar um
     /// rótulo mais largo.

@@ -219,7 +219,7 @@ pub const VECTOR_CONVERT_TO_CURVES: NodeId = hash_node_id("vector.convert_to_cur
 /// (index into the shell's pickable list `[bundled] ++ imported ++ system`). Runtime
 /// `format!` (the family count is only known at runtime); the FNV twin keeps it in
 /// the same id space as the `hash_node_id` consts. Mirrors the Painter option-id
-/// factories (`painter_brush_*_option_id`).
+/// fatories (`painter_brush_*_option_id`).
 #[must_use]
 pub fn vector_text_font_option_id(index: usize) -> NodeId {
     fnv_node_id_runtime(&format!("vector.text.fontopt.{index}"))
@@ -364,6 +364,18 @@ pub const VECTOR_TRANSFORM_H: NodeId = hash_node_id("vector.transform.h");
 /// rotates the selected path by the delta about its bbox center. Seeded to 0 while
 /// unfocused; the panel owns the per-gesture accumulator.
 pub const VECTOR_TRANSFORM_R: NodeId = hash_node_id("vector.transform.r");
+
+/// **Resize Box** — o checkbox que decide o que a alça do gizmo faz a ESTE objeto (plano UI/UX
+/// W3b, decisão do Enio 2026-08-03).
+///
+/// Marcado, arrastar a alça reescreve a **CAIXA** (a geometria). Desmarcado, escala a **POSE**,
+/// que é herdada por todo descendente — o comportamento correto para um objeto de **game**, e o
+/// que este editor sempre fez.
+///
+/// ⚠️ Molduras e os filhos delas nascem marcados; o resto nasce desmarcado. O default é DERIVADO
+/// da hierarquia (`ph2d_ecs::resize_box_default`) e o componente só grava a discordância — então
+/// re-marcar no valor de fábrica DESTACA, e o ficheiro fica limpo.
+pub const VECTOR_TRANSFORM_RESIZE_BOX: NodeId = hash_node_id("vector.transform.resize_box");
 
 // ── Path shape (ADR-0108 — whole-path handle ops) ────────────────────────────
 // One-shot buttons acting on ALL vertices of the SELECTED path (document commands
@@ -569,7 +581,7 @@ pub const VECTOR_ENVELOPE_CLEAR_PINS: NodeId = hash_node_id("vector.envelope.cle
 /// Seção **EFFECTS** — os efeitos não-destrutivos e empilháveis do caminho selecionado.
 pub const VECTOR_SECTION_EFFECTS: NodeId = hash_node_id("vector.section.effects");
 /// O teto de TIPOS de efeito que o menu "Add" oferece. O painel registra este número de
-/// botões, sempre, e pinta só os que a tabela publicada de facto traz.
+/// botões, sempre, e pinta só os que a tabela publicada de fato traz.
 ///
 /// ⚠️ Tem de ser `>=` a `PathEffect::KINDS.len()` do motor, senão os últimos tipos ficam
 /// inalcançáveis no menu Add (o `.take(MAX_FX_KINDS)` os corta). Gate em

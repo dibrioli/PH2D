@@ -41,13 +41,13 @@ mod modes;
 #[path = "populate_pencil.rs"]
 mod pencil;
 
+/// Os controles da seção CONSTRAINTS (plano UI/UX W3) — irmão pelo mesmo teto.
+#[path = "populate_anchors.rs"]
+pub(crate) mod anchors;
 /// Os controles da SIMETRIA de desenho — irmão pelo teto de LOC (600) do painel.
 /// Os controles da seção FRAME (plano UI/UX W0) — irmão pelo teto de LOC.
 #[path = "populate_frame.rs"]
 mod frame;
-/// Os controles da seção CONSTRAINTS (plano UI/UX W3) — irmão pelo mesmo teto.
-#[path = "populate_anchors.rs"]
-pub(crate) mod anchors;
 /// Os controles da seção LAYOUT (plano UI/UX W2, ADR-0153) — irmão pelo mesmo teto.
 #[path = "populate_layout.rs"]
 pub(crate) mod layout;
@@ -468,4 +468,14 @@ fn populate_transform_fields(store: &mut WidgetStore) {
         // scrub live via `set_number_drag_rate(px_to_world)` so a chip drag is 1:1
         // with the shape's on-screen movement at any zoom.
     }
+    // **Resize Box** (plano UI/UX W3b) — sem este registo o checkbox ficaria pintado, com
+    // hit-rect, e MORTO sob o rato: a checagem de focabilidade mora no store. É o defeito que
+    // este painel já pagou cinco vezes (os pills de modo, o Cut, a simetria, o layout, as
+    // âncoras), e o seam é o que o prova.
+    store.register(
+        ids::VECTOR_TRANSFORM_RESIZE_BOX,
+        InteractiveState::Button {
+            state: ButtonState::Normal,
+        },
+    );
 }

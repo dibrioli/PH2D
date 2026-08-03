@@ -109,10 +109,13 @@ pub(super) fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         // Os dois botões da seção CUT — executar e descartar a linha de corte.
         || id == ids::VECTOR_CUT_APPLY
         || id == ids::VECTOR_CUT_DISCARD
+        // **Resize Box** (W3b) — o override mora no COMPONENTE, então o clique atravessa o
+        // barramento. Sem esta linha ele pintaria, acenderia sob o rato e o Click morreria aqui.
+        || id == ids::VECTOR_TRANSFORM_RESIZE_BOX
         // **A SIMETRIA de desenho** (W6.3) — o par que arma, os quatro tipos, o par do Fuse e o
         // Apply. Fora daqui eles pintam, ACENDEM sob o mouse e o Click morre no painel: o artista
         // clicaria "On" e nada aconteceria, com o log a dizer `[hero] unhandled event`. Foi
-        // exactamente o que aconteceu no primeiro smoke desta wave.
+        // exatamente o que aconteceu no primeiro smoke desta wave.
         //
         // ⚠️ Os quatro tipos são percorridos pela MESMA porta que os pinta e que resolve o clique
         // (`SymmetryKind::ALL` → `symmetry_kind_id`): um tipo novo entra aqui sozinho.

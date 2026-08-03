@@ -44,6 +44,8 @@ mod rail_painter;
 mod timeline;
 mod topbar;
 mod vector;
+/// Os ids do **AUTO LAYOUT** (plano UI/UX W2, ADR-0153) — irmão de `vector_frame` pelo mesmo teto.
+mod vector_anchors;
 /// Os ids da seção **Contour** (pesquisa `20_*` #9) — irmão de `vector` pelo teto de 700 LOC.
 mod vector_bool;
 mod vector_contour;
@@ -52,8 +54,6 @@ mod vector_cut;
 /// Os ids da seção **Filters** (FX raster, plano 24) — irmão de `vector` pelo teto de 700 LOC.
 mod vector_filters;
 mod vector_frame;
-/// Os ids do **AUTO LAYOUT** (plano UI/UX W2, ADR-0153) — irmão de `vector_frame` pelo mesmo teto.
-mod vector_anchors;
 mod vector_layout;
 /// Os ids da seção **Pattern on Path** (plano 23) — irmão de `vector` pelo teto de 700 LOC.
 mod vector_patternpath;
@@ -99,12 +99,12 @@ pub use rail_painter::*;
 pub use timeline::*;
 pub use topbar::*;
 pub use vector::*;
+pub use vector_anchors::*;
 pub use vector_bool::*;
 pub use vector_contour::*;
 pub use vector_cut::*;
 pub use vector_filters::*;
 pub use vector_frame::*;
-pub use vector_anchors::*;
 pub use vector_layout::*;
 pub use vector_patternpath::*;
 pub use vector_pencil::*;

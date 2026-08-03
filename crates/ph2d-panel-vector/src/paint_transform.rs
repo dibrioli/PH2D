@@ -41,6 +41,22 @@ impl BodyCtx<'_> {
         // center). Standalone row (no paired field).
         self.number_cell("R", ids::VECTOR_TRANSFORM_R, self.inner_x, self.inner_w, y);
         y += self.row_h + self.row_gap;
+        // **Resize Box** (plano UI/UX W3b) — o que a ALÇA do gizmo faz a este objeto: reescrever
+        // a caixa, ou escalar a pose (que é herdada pelos filhos — o certo para objeto de game).
+        //
+        // ⚠️ Ele mora AQUI, ao lado do W/H, e não numa seção própria: o `W`/`H` já reescrevem a
+        // caixa, então esta linha diz *"a alça faz o mesmo que estes campos"*. Numa seção Frame
+        // ela seria inalcançável para os FILHOS, que é metade do pedido.
+        //
+        // `None` = a seleção não tem resposta (nada, ou seleção múltipla) e a linha não existe.
+        if let Some(on) = state::resize_box() {
+            y = self.checkbox_row(
+                ids::VECTOR_TRANSFORM_RESIZE_BOX,
+                tr("panel.vector.transform.resize_box"),
+                on,
+                y,
+            );
+        }
         // "Set Center" — arma a edição de pivô; a próxima pressão no canvas põe a
         // ORIGEM da entidade ali (a geometria desloca junto, a forma não se move).
         // ADR-0112: o pivô nasce no centro da forma; este botão o move.

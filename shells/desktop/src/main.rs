@@ -354,6 +354,7 @@ mod vec_overlay_diag;
 mod vec_pencil_input;
 /// O **Picker de caminho-guia** — o gesto de duas mãos partilhado pelo Pattern e pelo Text on Path.
 mod vec_pick;
+mod vec_resize_box_edit;
 mod vec_selection;
 mod vec_shape_live;
 mod vec_shape_params;

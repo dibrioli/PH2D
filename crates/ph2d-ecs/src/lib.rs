@@ -120,6 +120,7 @@ mod vec_layout;
 mod vec_offset;
 mod vec_pattern_path;
 mod vec_pattern_rotation;
+mod vec_resize_box;
 mod vec_stroke_profile;
 mod vec_symmetry;
 mod vec_text_path;
@@ -135,6 +136,7 @@ pub use vec_layout::{LayoutAlign, LayoutDir, LayoutJustify, VecLayout, VecLayout
 pub use vec_offset::VecOffset;
 pub use vec_pattern_path::VecPatternPath;
 pub use vec_pattern_rotation::VecPatternRotation;
+pub use vec_resize_box::{VecResizeBox, default_for as resize_box_default, resizes_box};
 pub use vec_stroke_profile::VecStrokeProfile;
 pub use vec_symmetry::VecSymmetry;
 pub use vec_text_path::VecTextPath;

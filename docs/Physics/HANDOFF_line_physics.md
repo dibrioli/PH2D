@@ -9070,3 +9070,141 @@ reconferir a nota"*. A linha do Vector moveu, e a nota daqui não foi reconferid
 envelhece) · registro **26→27** (`SignalOnLeave`, da wave
 anterior desta mesma sessão) · gizmo ids **nenhum novo** (próximo livre **974**) ·
 **nenhum ADR** · **zero `Cargo.toml`** · contrato congelado intacto.
+
+---
+
+## Jornada de 2026-08-03 (2ª sessão) — W-JointAnim + W-JointCustom
+
+**Os dois últimos itens do horizonte do plano 02 §8**, por ordem do Enio. Os dois
+estavam registrados como *condicionados*, e a condição de um deles era
+literalmente *"só se um caso real pedir"*.
+
+### W-JointAnim — um parâmetro de joint é uma entrada por TICK (cena `=78`)
+
+O tracker registrava este item como bloqueado por **uma de três decisões de
+arquitetura**: (a) o editor de animação depender do motor de física, (b) mover o
+`PhysicsJoint` para o `ph2d-ecs`, ou (c) um canal genérico que nenhuma das duas
+possua.
+
+⚠️ **Havia uma QUARTA, já shipada na própria `ph2d-timeline`.** O
+`PropKind::Opacity` dirige um campo do `ph2d_render::Sprite` — outra crate que o
+runtime base não quer conhecer — por **dep OPCIONAL atrás de uma feature** que a
+shell liga. A feature `physics` é a irmã exata dela: o runtime base segue sem
+física, como segue sem wgpu, e nada de novo foi inventado. *A saída estava no
+arquivo ao lado da pergunta.*
+
+Quatro canais apendados — `JointMotorTarget` (o alvo do servo) ·
+`JointMotorSpeed` (a taxa) · `JointRestLength` (o que a mola quer) ·
+`JointMaxLength` (o que a corda governa) — com **UMA tabela** (`JointField`) em
+vez de dois `match` espelhados, porque o cabeçalho do `apply_prop.rs` já carrega
+a lição de que dois braços separados param de ser inversos sem ninguém notar.
+
+⚠️ **E a wave é CORREÇÃO antes de ser capacidade.** O `reconcile_joints` roda
+uma vez por DISPATCH, e os laços de play e de replay dão N passos dentro dele:
+
+| sem o passe | o que acontece |
+|---|---|
+| laço para a FRENTE | o valor do quadro é aplicado a **todos** os ticks devidos |
+| laço de REPLAY | o número **nunca** chega — ali o reconcile não roda de todo |
+
+`PhysicsBridge::drive_joint_params` é o irmão exato do `drive_kinematic`, na
+outra metade da mesma frase (a auditoria do W4b, no eixo do parâmetro em vez do
+da pose). Ele empurra por tick, com `force` na 1ª volta do replay (o seed do ring
+devolve ao solver os params do CHECKPOINT enquanto o memo descreve outro tick) e
+no caso `replayed == 0` (o ring acerta o alvo em cheio, o laço não roda, e o memo
+fica mentindo).
+
+⚠️ **`PhysicsWorld::retune_joint` — um edit de parâmetro NÃO é estrutural.** Um
+`ImpulseJoint` é `{ body1, body2, data, impulses }`, e escrever um número mexe só
+no `data`. Remover-e-inserir funciona e cobra um preço que não é do parâmetro: a
+inserção devolve handles novos ⇒ **o ring de checkpoints é invalidado**. Antes
+disto, *arrastar um slider matava o scrub bit-exato a cada quadro*, e um
+parâmetro keyframado o mataria **a cada tick**. UM construtor (`build_joint`),
+dois consumidores — inserir e sobrescrever —, porque uma segunda porta divergiria
+só num scrub, que é onde ninguém lê um número.
+
+⚠️ **A FIXTURE precisou de um DEGRAU, e a lição é a do W1.5 outra vez.** Com uma
+rampa lisa, as duas mutações do push de replay **SOBREVIVEM**: um servo é um
+sistema amortecido, ele converge para o alvo e **esquece o caminho**, então
+comparar o endpoint é verde sobre um replay que correu com os parâmetros errados.
+Os gates passaram a comparar **NO tick scrubado**, contra a pose que o play de
+fato mostrou ali, e a curva ganhou um degrau no tick 61 cujo platô vale o mesmo
+que no tick 120 — a coincidência exata que faz o memo mentir sem ser notado.
+
+⚠️ **E uma mutação acusou o meu DOC, não um buraco de gate.** Neutralizar a rota
+de retune do reconcile deixa o gate do cache de scrub **VERDE**, porque com um
+param animado quem o salva é o `drive_joint_params` (ele já escreveu e atualizou
+o memo antes de o reconcile do quadro seguinte olhar). A rota do reconcile é a do
+**SLIDER do Inspector**, e ganhou gate próprio
+([[feedback_layered_defenses_need_per_layer_gates]]).
+
+**Números:** `PROJECT_SCHEMA` **intocado** · c9 **byte-idêntico** (os quatro
+canais são autoria; nenhum joint do harness é keyframado) · 5 mutações, 5
+sangram.
+
+### W-JointCustom — o joint descrito por EIXO (cena `=79`)
+
+Cada grau de liberdade é **Free / Limited / Locked** (o modelo do Unreal) e o
+motor diz em QUAL deles age. **Zero geometria nova:** todo tipo do kit já é um
+`GenericJoint` com a configuração FIXA, e o Custom expõe o construtor que sempre
+esteve lá.
+
+⚠️ **Ele NÃO substitui os presets.** Um Pin diz *"isto é uma dobradiça"* — e é
+essa frase que o glifo do overlay desenha, que o `fk_dof` lê para posar, que o
+`is_rigid_link` lê para montar a árvore de IK. Um Custom com a mesma máscara é a
+mesma restrição e **uma afirmação mais fraca**.
+
+⚠️ **Duas perguntas deixaram de ser do TIPO e viraram da INSTÂNCIA** (módulo
+irmão `joint/ports.rs`, que existe por causa disto):
+
+| pergunta | por que o tipo não pode responder |
+|---|---|
+| `motor_in_metres` | o eixo é AUTORADO ⇒ metro-ou-radiano é escolhido junto |
+| `breaks_on_torque` | o eixo angular só publica reação se estiver restringido |
+
+⚠️ **O modo de falha da primeira é MUDO e caro:** o alvo de um servo é convertido
+na fronteira do painel. Rotulado em graus um número que o solver lê em metros, o
+artista digita **90** e a peça anda **1,57 m** — nada erra, nada avisa, e o número
+na tela concorda consigo mesmo. Por isso a UI pergunta a `motor_units(&info)` e o
+componente a `PhysicsJoint::motor_in_metres`, cada uma com gate próprio.
+
+⚠️ **A CENA expôs dois buracos que a workspace verde escondia.** Os `matches!` de
+`has_motor` e `translates` respondiam `false` para o Custom **em silêncio** — *um
+`matches!` não cobra resposta como um `match` exaustivo cobra* —, e a barra caía
+**122 m** com o motor girando no ar. E uma **máscara VAZIA é ausência de
+restrição**: um Custom com os três eixos livres não prende nada. Travar um eixo é
+o que faz dele um joint, e a bancada 3 da cena tem `Y` travado por isso.
+
+⚠️ **E dois gates EXISTENTES pegaram gaps reais**, cada um o que foi escrito para
+pegar: o `the_create_list_and_the_convert_list_know_the_same_kinds` mostrou que a
+lista de **CRIAR** (§11 "Join As") não conhecia o Custom — *ninguém conseguiria
+criar um* — e as duas tabelas exaustivas do `joint_motor` cobraram as cinco
+respostas por tipo.
+
+**O glifo é um HEXÁGONO**, com um anel dentro quando o eixo de rotação está
+livre. ⚠️ Ele **não** desenha as direções dos eixos lineares, que seria a
+informação mais rica: elas vivem no frame do próprio joint e a `JointView` não o
+carrega — desenhá-las a partir do ângulo do corpo A seria uma figura que **mente**
+em todo joint rotacionado. O que está desenhado é o que é verdade sem frame
+nenhum.
+
+**Números:** **`PROJECT_SCHEMA` 50→51** (⚠️ PROVISÓRIO — o valor se CONTA contra
+o `main` do dia) · registro `ph2d-physics-ecs` **fica em 27** (nenhum componente
+novo — a configuração é campo do `PhysicsJoint`) · **c9 `8c7ba624…`, 101 corpos,
+debug ≡ release** · gizmo ids **nenhum novo** (próximo livre **974**) · **nenhum
+ADR** · **zero `Cargo.toml`** · contrato congelado intacto.
+
+### O que fica ABERTO
+
+- **O §8 do plano 02 tem UM item**, e ele segue condicionado: *rows de readout
+  tingidas* — a condição **NÃO** está satisfeita (o readout de carga do W-J7b
+  vive no OVERLAY, não em row).
+- **`GenericJoint` por eixo com ACOPLAMENTO** (`coupled_axes`) não é oferecido: o
+  Rod já mediu que o limite acoplado do rapier é unilateral, e expor um knob que
+  só funciona num sentido é pior que não o ter.
+- **Um Custom não vira elo de árvore de IK/FK** (`is_rigid_link` o recusa), e é
+  deliberado: `FkDof` modela UM grau de liberdade e um Custom pode oferecer três.
+  Escolher por ele seria a mesma mágica que o `motor_axis` autorado existe para
+  não fazer.
+- Os três sem cura de engenharia da sessão anterior seguem lá (consumidor de
+  gameplay do sinal · um Ctrl+Z para as duas metades do bake).

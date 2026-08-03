@@ -52,10 +52,11 @@ diagnóstico da pesquisa:
 > **⚠️ ESTE QUADRO É O DIAGNÓSTICO DE 2026-07-25, NÃO O ESTADO DE HOJE.** As sete limitações
 > estão **FECHADAS**: L1→W-J1 · L2→W-J2/W-J2b · L3→W-J4/W-J4b · L4→W-J5/W-J6 (+ os tipos que o
 > §8 não previa: **Rod** · **Wheel** · **Pulley**) · L5→W-J3 · L6→W-J7/W-J7b · L7→W-J8. O §7
-> abaixo carrega o ✅ e a cena de cada uma. O que sobra do plano é o **§8**: **três** itens,
-> **nenhum escalonado e os três condicionados** — params keyframáveis (cross-line com a timeline,
-> pede decisão do Enio) · Custom/GenericJoint (*só se um caso real pedir*) · rows de readout tingidas
-> (⚠️ **condição NÃO satisfeita** — o readout de carga vive no OVERLAY, não em row).
+> abaixo carrega o ✅ e a cena de cada uma. O que sobra do plano é o **§8**: **UM** item, e ele
+> segue condicionado — **rows de readout tingidas** (⚠️ **condição NÃO satisfeita**: o readout de
+> carga vive no OVERLAY, não em row). ⚠️ Os outros dois FECHARAM em 2026-08-03: **params
+> keyframáveis** (W-JointAnim, cena `=78`) e **Custom/GenericJoint** (W-JointCustom, cena `=79`),
+> este por ordem direta do Enio — que é literalmente o *"se um caso real pedir"* que o item exigia.
 > ⚠️ **Duas saíram da lista construídas**: a metade autorável do Pin-to-world (W-JointWorld,
 > cena `=65`, §9) e o **copy/paste de propriedades** (W-JointCopy, cena `=66`, §10). Dos
 > quatro que restam, três estão condicionados a *"se o uso pedir"*.
@@ -271,12 +272,26 @@ UI→componente tem gate que dá flush (a lição do W-JointParams).
 
 ## §8 — Horizonte (nomeado para não re-derivar, sem wave)
 
-- **Params de joint KEYFRAMÁVEIS** (Newton faz; para uma suíte de animação é o degrau seguinte natural —
-  motor speed animado = maquinário). Cross-line com a timeline; pedir decisão do Enio quando as waves J
-  fecharem.
-- **Custom/GenericJoint** (lock/limit/motor por eixo — o godot-proposals 15126): só se um caso real pedir.
-  ⚠️ **O Wheel NÃO é esse caso** (ver abaixo): ele quer a *plumbing* do `GenericJoint`, não a UI
-  por-eixo — o artista pede *"uma roda"*, não *"LinY livre com mola"*.
+- ~~**Params de joint KEYFRAMÁVEIS**~~ — **FECHADO (W-JointAnim, 2026-08-03, cena `=78`).**
+  ⚠️ **As três saídas que o tracker nomeava eram todas caras, e havia uma QUARTA já shipada
+  na própria `ph2d-timeline`:** o `PropKind::Opacity` dirige um campo do `ph2d_render::Sprite`
+  — outra crate que o runtime base não quer conhecer — por **dep OPCIONAL atrás de uma feature**
+  que a shell liga. A feature `physics` é a irmã exata dela; o runtime base segue sem física,
+  como segue sem wgpu, e nada de novo foi inventado.
+  ⚠️ **E a wave é CORREÇÃO antes de ser capacidade:** um parâmetro keyframado é uma **entrada
+  por TICK**, do mesmo jeito que a pose de um corpo cinemático (a auditoria do W4b). O
+  `reconcile_joints` roda uma vez por DISPATCH e os laços de play e replay dão N passos dentro
+  dele, então sem o `drive_joint_params` o número chegaria uma vez por QUADRO e, num replay,
+  **nunca**.
+- ~~**Custom/GenericJoint**~~ (lock/limit/motor por eixo — o godot-proposals 15126) —
+  **FECHADO (W-JointCustom, 2026-08-03, cena `=79`), porque o caso real pediu: o Enio.**
+  ⚠️ **A nota de que o Wheel NÃO era esse caso continua CERTA** — ele queria a *plumbing* do
+  `GenericJoint`, não a UI por-eixo —, e é por isso que o Custom **não substitui** os presets:
+  um Pin diz *"isto é uma dobradiça"*, e é essa frase que o glifo desenha, que o `fk_dof` lê
+  para posar e que o `is_rigid_link` lê para montar a árvore de IK.
+  ⚠️ **O que a wave descobriu e a nota não previa:** duas perguntas deixam de ser do TIPO num
+  Custom — a UNIDADE do motor e a reação ANGULAR —, e a primeira falha em SILÊNCIO (rotulada em
+  graus, um alvo que o solver lê em metros faz o artista digitar 90 e a peça andar 1,57 m).
 - ~~**Wheel preset**~~ — **FECHADO (W-Wheel, 2026-07-27, cena `=57`).** ⚠️ E o nome do item estava
   errado em duas frentes: não é *preset* (não empilha joints — é **UM** `GenericJoint` travando
   `LIN_Y`, e dois joints sobre o mesmo par dariam ao solver duas restrições brigando) e não é

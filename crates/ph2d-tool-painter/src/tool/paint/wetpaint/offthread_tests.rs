@@ -541,3 +541,104 @@ fn the_worker_reports_what_a_step_costs() {
          'a agua esta lenta' deixa de ser atribuivel a trabalho ou a contencao"
     );
 }
+
+/// **A pausa da autoria tem de ser REAL, não só visual** (Enio 2026-08-03: *"ao transformar o stroke
+/// vivo há uma pausa falsa na simulação — pausa no visual mas está ocorrendo por trás"*).
+///
+/// ⚠️ **Isto é uma REGRESSÃO que a wave off-thread (doc 29) plantou numa lei que estava certa.** A lei
+/// D do doc 21 diz *"a água CONGELA sob a mão do autor — zero passos, zero composites"*, e o `return`
+/// do `wetpaint_tick` a cumpria **enquanto a sim rodava DENTRO do tick**. Ao mudar a sim para a thread
+/// própria, o mesmo `return` deixou de significar *"não dê passo"* e passou a significar *"não OLHE"*:
+/// o motor já está com o worker desde o tick anterior, o `return` sai antes do `hand_off_sim` — e
+/// ninguém o traz para casa. O worker segue no relógio dele, o display fica parado, e o artista vê a
+/// evolução acumulada aparecer de uma vez quando solta. O comentário continuou dizendo "zero passos".
+///
+/// ⚠️ **O oráculo é o contador do WORKER (`sim_steps`), nunca o `sim_frame`** — este último chama
+/// `wet_bring_home`, que traria o motor e **pararia a sim que o gate está medindo**: a leitura criaria
+/// a resposta.
+///
+/// **Mutação que sangra:** tirar o `try_bring_home` do ramo de hold do `wetpaint_tick`.
+#[test]
+fn the_authoring_pause_stops_the_sim_and_not_merely_the_display() {
+    let mut t = small_puddle();
+    // CONTROLE: sem autoria, a água anda — senão este gate seria verde por vácuo.
+    frame(&mut t);
+    let c0 = t
+        .paint
+        .wetpaint
+        .session
+        .as_ref()
+        .expect("sessao")
+        .sim_steps();
+    std::thread::sleep(Duration::from_millis(300));
+    let c1 = t
+        .paint
+        .wetpaint
+        .session
+        .as_ref()
+        .expect("sessao")
+        .sim_steps();
+    assert!(
+        c1 > c0,
+        "premissa: a agua andava antes da autoria ({c0} -> {c1})"
+    );
+
+    // O artista abre uma forma: o esboço plano fica vivo ⇒ a lei D manda congelar.
+    t.set_brush_stroke_method(ph2d_painter_brush::StrokeMethod::Ellipse.to_u8());
+    t.on_canvas_pointer(cp([60.0, 60.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([100.0, 80.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([100.0, 80.0], PointerPhase::Up));
+    assert!(
+        t.wet_authoring_hold(),
+        "premissa: o esboco vivo segura o tick"
+    );
+    frame(&mut t); // o tick que tem de trazer o motor para casa
+
+    let a = t
+        .paint
+        .wetpaint
+        .session
+        .as_ref()
+        .expect("sessao")
+        .sim_steps();
+    std::thread::sleep(Duration::from_millis(300));
+    let b = t
+        .paint
+        .wetpaint
+        .session
+        .as_ref()
+        .expect("sessao")
+        .sim_steps();
+    assert_eq!(
+        a,
+        b,
+        "a sim ANDOU {} passos em 300 ms com o display congelado: a pausa da autoria e' falsa, e a \
+         evolucao acumulada salta na tela quando o artista solta",
+        b - a
+    );
+
+    // ⚠️ E a pausa tem de TERMINAR — as duas metades no mesmo gate, porque uma cura que congela
+    // para sempre passaria na primeira e e' exatamente o defeito irmao ("a tinta nao escorre").
+    assert!(t.commit_open_shape_keep(), "fixture: Apply & Keep");
+    frame(&mut t); // o tick que devolve o motor ao worker
+    let r0 = t
+        .paint
+        .wetpaint
+        .session
+        .as_ref()
+        .expect("sessao")
+        .sim_steps();
+    std::thread::sleep(Duration::from_millis(300));
+    let r1 = t
+        .paint
+        .wetpaint
+        .session
+        .as_ref()
+        .expect("sessao")
+        .sim_steps();
+    assert!(
+        r1 > r0,
+        "a agua nao voltou a correr depois do commit ({r0} -> {r1}): a pausa da autoria virou \
+         permanente"
+    );
+}

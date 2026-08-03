@@ -232,6 +232,28 @@ impl PainterTool {
         // state, no release door; commit/cancel drop the record and the
         // next tick simply resumes.
         if self.wet_authoring_hold() {
+            // ⚠️ **TRAZER O MOTOR PARA CASA é o que torna a pausa REAL** — sem
+            // isto o `return` congela só o DISPLAY (Enio 2026-08-03: *"uma pausa
+            // falsa na simulação — pausa no visual mas está ocorrendo por
+            // trás"*; medido: **12 passos em 300 ms**, o ritmo nominal cheio,
+            // com a tela parada).
+            //
+            // ⚠️ **A lei estava certa e foi a MUDANÇA DE THREAD que a quebrou.**
+            // Enquanto a sim rodava dentro do tick, este `return` de fato
+            // significava *zero passos*; com a sim em thread própria (doc 29) o
+            // motor já está com o worker desde o tick anterior, e o mesmo
+            // `return` passou a significar apenas *não OLHE*. O worker seguia no
+            // relógio dele e a evolução acumulada SALTAVA na tela quando o
+            // artista soltava — e o comentário aqui continuou afirmando "zero
+            // passos" por uma wave inteira. *Um `return` que congelava o mundo
+            // congela só a vista no dia em que o mundo muda de thread.*
+            //
+            // Pede e não espera (a porta do tick): se o motor está no canal, o
+            // `want` fica armado e o tick seguinte o encontra — no máximo um
+            // punhado de passos escapa antes de a pausa fechar.
+            if let Some(sess) = self.paint.wetpaint.session.as_mut() {
+                sess.try_bring_home();
+            }
             return;
         }
         let facts = self.wet_facts();

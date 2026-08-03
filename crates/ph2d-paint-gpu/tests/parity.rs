@@ -17,7 +17,7 @@ const W: u32 = 192;
 const H: u32 = 160;
 /// Nós do perfil. Quanto mais fino, menor o degrau que a amostragem *nearest* do device introduz
 /// contra a avaliação EXATA que a CPU faz — e o gate MEDE o que sobra em vez de o supor.
-const LUT_N: usize = 4096;
+const LUT_N: usize = 65_536;
 
 fn spec() -> BrushSpec {
     BrushSpec {
@@ -173,17 +173,23 @@ fn the_device_paints_what_the_cpu_paints() {
                 worst <= 1,
                 "n={n} alpha_lock={alpha_lock}: pior delta {worst} (>1 nível)"
             );
-            // ⚠️ **A barra fica ENTRE dois números medidos, não num palpite.** Correto na RTX:
-            // 14/15 (n=1), 182-190 (n=12), 275-300 (n=90) de 122.880 = **até 0,24%**. Com a lei do
-            // `u8` entre dabs removida — a mutação que eu quase shipei — sobe a **7744 = 6,3%**.
-            // 1% deixa 4× de folga sobre o correto e ainda pega a mutação por 6×.
+            // ⚠️ **A barra fica ENTRE dois números medidos, não num palpite.** Correto na RTX com os
+            // 65 536 nós que shipam: **1 (n=1), 9-12 (n=12), 15-18 (n=90) de 122.880 = 0,015%**. Com
+            // a lei do `u8` entre dabs removida — a mutação que eu quase shipei — sobe a **7744 =
+            // 6,3%**. 0,25% deixa ~17× de folga sobre o correto (para outro adaptador contrair um
+            // FMA diferente) e ainda pega a mutação por 25×.
+            //
+            // ⚠️ **O que sobra é a ESCADA da tabela, e isso está medido, não suposto:** varrendo os
+            // nós com todo o resto igual, 1 024 REPROVA (2 níveis) · 16 384 → 71 · 65 536 → 18 ·
+            // 262 144 → 8. A hipótese de que a divergência vinha do blend foi refutada — trocar
+            // `stamp_rgba` pelo `blend_over` do produto deixou os seis números **idênticos**.
             //
             // ⚠️ E é por isso que `n=1` NÃO basta como fixture: sem sobreposição a ida-e-volta por
             // `u8` não tem o que fazer, e a mesma mutação mede 14 bytes — dentro de qualquer barra.
             // A fixture tem de conter o fenômeno, e o fenômeno é a sobreposição.
             assert!(
-                diff * 100 <= want.len(),
-                "n={n} alpha_lock={alpha_lock}: {diff} de {} bytes diferem (>1%)",
+                diff * 400 <= want.len(),
+                "n={n} alpha_lock={alpha_lock}: {diff} de {} bytes diferem (>0,25%)",
                 want.len()
             );
             eprintln!(

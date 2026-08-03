@@ -5,7 +5,7 @@
 // um kernel que re-derivasse o perfil seria uma segunda resposta a *"que forma tem este dab?"*,
 // divergindo só numa screenshot. Ver `docs/Painter/33_plano_gpu_do_carimbo.md` §2.
 //
-// A aritmética abaixo é a de `dab/bands.rs::stamp_band` + `stamp_rgba` + `encode`, transcrita na
+// A aritmética abaixo é a de `dab/bands.rs::stamp_band` + `blend::blend_over` + `encode`, transcrita na
 // MESMA ordem de operações — a ordem é o que decide a paridade, porque a única liberdade que resta
 // ao driver é contrair `a*b + c` num FMA.
 
@@ -45,9 +45,12 @@ struct Params {
 
 // A tabela do perfil, amostrada em `t ∈ [0,1]`. `t >= 1` é fora do dab — zero, sem consultar.
 //
-// ⚠️ **Nearest, nunca linear.** A CPU avalia `falloff_weight(t)` EXATO por texel; interpolar entre
-// nós daria um terceiro número, que não é nem a lei nem a tabela. A paridade vem de a CPU consultar
-// a MESMA tabela pelo MESMO índice — quem constrói o LUT é quem define a resolução.
+// ⚠️ **Nearest, e a RESOLUÇÃO é o parâmetro de paridade** — quem constrói a tabela a define. A CPU
+// avalia `falloff_weight(t)` EXATO por texel, então o degrau entre nós é a ÚNICA fonte de
+// divergência que sobra depois de todo o resto ser transcrito (medido: é ela, e não o blend). O
+// gate varre a escada e o produto usa **65 536 nós = 256 KB**, o joelho — e a tabela é função só de
+// `hardness`/`falloff`, que não mudam dentro de um traço, então o preenchimento é UMA vez por
+// traço, nunca por lote.
 fn profile(t: f32) -> f32 {
     if (t >= 1.0) {
         return 0.0;
@@ -73,22 +76,34 @@ fn pack(c: vec4<f32>) -> u32 {
     return u32(q.x) | (u32(q.y) << 8u) | (u32(q.z) << 16u) | (u32(q.w) << 24u);
 }
 
-// `stamp_rgba`: lerp PREmultiplicado com saída straight. Transcrito termo a termo.
-fn stamp_rgba(dst: vec4<f32>, color: vec3<f32>, sa: f32, m_in: f32) -> vec4<f32> {
-    let s = clamp(sa, 0.0, 1.0);
-    let m = clamp(m_in, 0.0, 1.0);
-    let da = dst.w;
-    let out_a = da * (1.0 - m) + s * m;
-    if (out_a <= 0.0) {
+// `blend_over(BrushBlend::Mix, …)` — o source-over de alfa STRAIGHT que esta rota de fato usa.
+//
+// ⚠️ **É esta a função do produto**, e a primeira versão deste shader transcreveu a ERRADA: o
+// `stamp_rgba` (o lerp premultiplicado), que só é o caminho do produto no modo
+// `RampAlphaMode::TextureAlpha` — precisamente o que este predicado exclui. Com `sa = 1` os dois são
+// *algebricamente* o mesmo, e eu previ que a troca fecharia a divergência de 14-300 bytes, porque
+// `(b·ab)·(1−a)` e `b·(ab·(1−a))` não são o mesmo número em `f32` (a multiplicação IEEE-754 é
+// comutativa e **não é associativa**).
+//
+// ⚠️ **A medição REFUTOU essa previsão: os seis números saíram idênticos, byte a byte.** A
+// divergência inteira era a resolução da TABELA (varrida: 1 024 reprova · 16 384 → 71 · 65 536 → 18
+// · 262 144 → 8 bytes). A transcrição certa fica pelo motivo que sempre valeu — *é a função que
+// shipa*, e um doc dizendo o contrário seria um doc que mente —, não por um ganho que ela não deu.
+//
+// O `pigment_mix` do `blend_over_pigment` é excluído pelo predicado de estreitamento (o crossfade
+// RYB é outra lei); com ele em zero aquela função devolve `plain` — este valor — sem tocá-lo.
+fn blend_over_mix(dst: vec4<f32>, color: vec3<f32>, a_in: f32) -> vec4<f32> {
+    let a = clamp(a_in, 0.0, 1.0);
+    let ab = dst.w;
+    let ao = a + ab * (1.0 - a);
+    if (ao <= 0.0) {
         return vec4<f32>(0.0);
     }
-    let bk = da * (1.0 - m);
-    let fr = s * m;
     return vec4<f32>(
-        (dst.x * bk + color.x * fr) / out_a,
-        (dst.y * bk + color.y * fr) / out_a,
-        (dst.z * bk + color.z * fr) / out_a,
-        out_a,
+        (color.x * a + dst.x * ab * (1.0 - a)) / ao,
+        (color.y * a + dst.y * ab * (1.0 - a)) / ao,
+        (color.z * a + dst.z * ab * (1.0 - a)) / ao,
+        ao,
     );
 }
 
@@ -132,7 +147,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         // ESTRITAMENTE MAIS PRECISO e por isso **diverge** — e com a sobreposição de ~10× que uma
         // figura tem por quadro (doc 33 §1) a diferença não é sutil. Precisão a mais é uma segunda
         // resposta como qualquer outra.
-        acc = unpack(pack(stamp_rgba(acc, dab.color, 1.0, a)));
+        acc = unpack(pack(blend_over_mix(acc, dab.color, a)));
     }
     out[i] = pack(acc);
 }

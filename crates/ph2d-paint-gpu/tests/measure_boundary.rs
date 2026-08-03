@@ -116,3 +116,117 @@ fn region() -> Region {
         h: RH,
     }
 }
+
+/// **A fiação tem uma escolha, e ela se MEDE.** O passe recebe uma fatia CONTÍGUA; a região da
+/// figura é um retângulo dentro de um canvas maior, logo há duas formas de a entregar:
+///
+/// - **bbox + cópia:** extrai o retângulo para um buffer próprio, sobe 7,0 MB, e escreve de volta.
+///   Duas passadas de memcpy sobre a região que não existiam antes.
+/// - **linhas de largura CHEIA:** `&canvas[y0·stride .. y1·stride]` já é contíguo ⇒ **zero cópia**,
+///   e é literalmente o que o `stamp_plain_dabs_banded` faz para dividir as bandas. O preço é subir
+///   a largura do CANVAS em vez da largura da figura.
+///
+/// Nenhuma das duas é obviamente melhor: uma paga memcpy, a outra paga banda de PCIe. O número
+/// decide.
+#[test]
+#[ignore = "mede a escolha de fiação; rode com `-- --ignored --nocapture`"]
+fn the_wiring_choice_between_a_copy_and_full_width_rows() {
+    let Some(gpu) = ph2d_gpu::GpuContext::new(ph2d_gpu::GpuContext::default_instance(), None).ok()
+    else {
+        eprintln!("sem adapter: skip");
+        return;
+    };
+    let pass = StampPass::new(&gpu);
+    const CANVAS: usize = 4096;
+    let canvas = vec![128u8; CANVAS * CANVAS * 4];
+    let lut: Vec<f32> = (0..LUT_N)
+        .map(|i| {
+            #[allow(clippy::cast_precision_loss)]
+            let t = i as f32 / (LUT_N - 1) as f32;
+            (1.0 - t * t).max(0.0)
+        })
+        .collect();
+    let list = dabs();
+    let stride = CANVAS * 4;
+
+    // (a) O CUSTO DA CÓPIA — extrair a bbox e escrevê-la de volta, serial, linha a linha.
+    let mut scratch = vec![0u8; (RW as usize) * (RH as usize) * 4];
+    let row = (RW as usize) * 4;
+    let med_of = |mut v: Vec<f64>| {
+        v.sort_by(f64::total_cmp);
+        v[v.len() / 2]
+    };
+    let copy_ms = med_of(
+        (0..7)
+            .map(|_| {
+                let t0 = std::time::Instant::now();
+                for r in 0..RH as usize {
+                    let src = r * stride;
+                    scratch[r * row..(r + 1) * row].copy_from_slice(&canvas[src..src + row]);
+                }
+                t0.elapsed().as_secs_f64() * 1000.0
+            })
+            .collect(),
+    );
+    assert_eq!(scratch.len(), (RW as usize) * (RH as usize) * 4);
+
+    // (b) A FRONTEIRA com a bbox (o que a S2 mediu) e com as linhas de largura cheia.
+    let bbox = med_of(
+        (0..7)
+            .map(|_| {
+                let t0 = std::time::Instant::now();
+                let out = pass.run(&scratch, region(), &lut, &list, false);
+                let ms = t0.elapsed().as_secs_f64() * 1000.0;
+                assert_eq!(out.len(), scratch.len());
+                ms
+            })
+            .collect(),
+    );
+    #[allow(clippy::cast_possible_truncation)]
+    let wide_region = Region {
+        x: 0,
+        y: 0,
+        w: CANVAS as u32,
+        h: RH,
+    };
+    let wide_base = &canvas[..(CANVAS * (RH as usize) * 4)];
+    let wide = med_of(
+        (0..7)
+            .map(|_| {
+                let t0 = std::time::Instant::now();
+                let out = pass.run(wide_base, wide_region, &lut, &list, false);
+                let ms = t0.elapsed().as_secs_f64() * 1000.0;
+                assert_eq!(out.len(), wide_base.len());
+                ms
+            })
+            .collect(),
+    );
+
+    #[allow(clippy::cast_precision_loss)]
+    let mb = |px: usize| (px * 4) as f64 / 1.0e6;
+    eprintln!(
+        "[fiacao] bbox {RW}x{RH} = {:.1} MB/sentido | linhas cheias {CANVAS}x{RH} = {:.1} MB/sentido",
+        mb((RW as usize) * (RH as usize)),
+        mb(CANVAS * (RH as usize))
+    );
+    eprintln!(
+        "[fiacao] copia (extrair + devolver, serial): {:.2} ms",
+        copy_ms * 2.0
+    );
+    eprintln!(
+        "[fiacao] bbox + copia:      {:.2} ms  (fronteira {bbox:.2} + copia {:.2})",
+        bbox + copy_ms * 2.0,
+        copy_ms * 2.0
+    );
+    eprintln!("[fiacao] linhas cheias:     {wide:.2} ms  (zero copia)");
+    eprintln!("[fiacao] o carimbo da CPU no PRODUTO: {CPU_MS:.2} ms");
+    let (best, name) = if bbox + copy_ms * 2.0 <= wide {
+        (bbox + copy_ms * 2.0, "bbox + copia")
+    } else {
+        (wide, "linhas cheias")
+    };
+    eprintln!(
+        "[fiacao] VENCE: {name} -- {:.2}x sobre a CPU",
+        CPU_MS / best
+    );
+}

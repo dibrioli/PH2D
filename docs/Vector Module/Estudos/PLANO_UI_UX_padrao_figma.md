@@ -446,7 +446,26 @@ medição**, não do gosto.
 
 ---
 
-### W3 — AS ÂNCORAS (constraints sem solver)
+### W3 — AS ÂNCORAS (constraints sem solver) ✅ **CONSTRUÍDA (2026-08-03)**
+
+> **O que MUDOU do que está escrito abaixo** (a §0 manda quem move um número reconferir a nota):
+>
+> - ⚠️ **`offset` NÃO existe no componente.** O plano previa o par da Unity (âncora + offsets em
+>   píxeis); guardar os offsets tornaria a pose do filho função **só** do componente, e **arrastar
+>   o filho deixaria de fazer alguma coisa** — o passe sobrescreveria o gesto a cada frame. O
+>   offset é **derivado** por frame da caixa que o filho de facto tem. No lugar dele entrou
+>   **`base`**: a caixa **LOCAL** da moldura quando a regra foi armada, que é o que torna
+>   *"mudou de tamanho"* uma pergunta com resposta.
+> - ⚠️ **A UI não é o widget de 9 pontos**, é **duas segmentadas de quatro** (Left/Center/Right/
+>   Stretch e Top/Center/Bottom/Stretch) — o que o Figma de facto tem, e o superset do que o
+>   modelo exprime. Sem chip *Off*: *"colado na aresta mínima"* já É a resposta neutra, e um Off
+>   ao lado dela seria um segundo chip com o mesmo efeito.
+> - ⚠️ **A ordem `âncoras depois do fluxo` é load-bearing pela MEDIÇÃO, não pela colocação:** para
+>   um `translate ∘ scale` as duas ordens dão o mesmo ponto; o que discrimina é o tamanho **medido**
+>   do nó (a âncora lê a caixa que o fluxo decide ⇒ ao contrário é um laço).
+> - Smoke: **`=52`**, e ela **não arma regra nenhuma** — quem escolhe *Right* e *Stretch* é o
+>   artista, que é a costura inteira da wave.
+
 
 **O quê.** A regra de ancoragem no resize para os filhos que **não** estão num fluxo: *gruda à
 direita*, *centraliza*, *estica com o pai*. O outro metade do Vol. 2 §2.
@@ -925,7 +944,7 @@ escreveu**:
 | **W4a** ✅ | o binding de token no documento + o modo re-veste | +1 (**44**) | — | — | — | `=51` |
 | **W4b/c** | tabela autorável (aliases/math/DTCG) + animar token | — | `DOC_VERSION`, seção | — | sim (indireção) | — |
 | **W2** ✅ | auto layout | +2 (**46**) | — (W2a fica) | **taffy** | **0153** | `=50` |
-| **W3** | âncoras | +1 (47) | — | — | — | `=52` |
+| **W3** ✅ | âncoras | +1 (**47**) | — | — | — | `=52` |
 | **W5** | componentes/variants | +2 (49) | — | — | sim (prefab) | `=53` |
 | **W6** | vínculo com o widget | +1 (50) | — | — | sim (§2) | `=54` |
 | **W7** | estados + Smart Animate | — | `DOC_VERSION` | — | sim (HSM) | `=55` |

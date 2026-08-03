@@ -205,7 +205,13 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// `ProjectState`, que viaja DENTRO do `ProjectFile` — o mesmo raciocínio posicional
 /// do `flip`, e o mesmo motivo de estar ali e não num campo de arquivo próprio: o
 /// `ProjectState` é a unidade do UNDO, e uma guia arrastada tem de desfazer.
-/// ⚠️ O número se CONTA contra o `main` do dia, não se escolhe — este 49 é
+/// v50 (vector, W6.4 — o alinhamento do traço): o `StrokeSpec` ganhou **`align`**
+/// (Centre/Inner/Outer), e ele mora dentro do `VecScene` — que viaja no `ProjectState`. O bump
+/// é obrigatório nos DOIS sentidos e pelo motivo medido em `VEC_SCENE_SCHEMA_VERSION` v14: o
+/// postcard não sinaliza ausência, então um save antigo lido pelo novo chega ao fim dos bytes
+/// no campo novo e o novo lido pelo antigo traz um byte a mais. O número transforma os dois num
+/// erro de VERSÃO em vez de num postcard a falhar longe da causa.
+/// ⚠️ O número se CONTA contra o `main` do dia, não se escolhe — este 50 é
 /// PROVISÓRIO até a integração ([[feedback_numbers_that_sum_across_lines_count_dont_pick]]).
 const PROJECT_SCHEMA: u32 = 50;
 

@@ -57,6 +57,12 @@ pub fn topbar_clusters() -> Vec<(ph2d_a11y::NodeId, TopBarCluster)> {
             ids::TOPBAR_PHYSICS,
             TopBarCluster::single("PHYS", IconId::Physics),
         ),
+        // Tokens (mundo) — abre a tabela de cor do design system, o mesmo bool que a tecla `T`.
+        // Ao lado do PHYS pelo mesmo motivo dele: um painel de MUNDO não tem chip no rail.
+        (
+            ids::TOPBAR_TOKENS,
+            TopBarCluster::single("TOK", IconId::Palette),
+        ),
         // Audio Mixer — toggles the floating mixer panel (Master strip:
         // fader + live meter + mute). Left group, next to Image Tools.
         (

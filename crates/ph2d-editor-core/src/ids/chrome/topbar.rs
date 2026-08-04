@@ -80,3 +80,11 @@ pub const TOPBAR_GRID_SETTINGS: NodeId = hash_node_id("topbar_grid_settings");
 /// que só existe para quem sabe o atalho. O pill é esse abridor, e é a MESMA
 /// visibilidade que a tecla escreve — duas portas para o mesmo bool.
 pub const TOPBAR_PHYSICS: NodeId = hash_node_id("topbar_physics");
+
+/// **O pill TOK** — o abridor visível do painel de Tokens (plano UI/UX W6).
+///
+/// ⚠️ Irmão exacto do `TOPBAR_PHYSICS` acima, e pela MESMA razão: um painel de MUNDO não tem chip
+/// no rail (que é de FERRAMENTAS), então sem um abridor visível ele é uma feature que só existe
+/// para quem já sabe o atalho — a queixa que o Enio fez sobre o painel de física em 2026-07-27, e
+/// que ele fez outra vez sobre este em 2026-08-04. É a MESMA visibilidade que a tecla `T` escreve.
+pub const TOPBAR_TOKENS: NodeId = hash_node_id("topbar_tokens");

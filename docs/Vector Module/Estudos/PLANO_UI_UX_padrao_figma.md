@@ -953,6 +953,16 @@ de 2026-07-29 criou para este ramo); e o outro ancorava no literal `"Toast key (
 doc-comment desta mesma wave **cita**. *Um oráculo que casa com a documentação de si mesmo não está
 a olhar para o produto* (a lição do `[frame]` do Flip, §5.48).
 
+**O abridor VISÍVEL** (pergunta do Enio, 2026-08-04 — *"onde fica o botão para abrir esse painel?"*):
+o pill **TOK** no topbar, ao lado do PHYS. ⚠️ **É a mesma queixa que ele fez sobre o painel de
+física em 2026-07-27**, e a resposta é a mesma: um painel de MUNDO não tem chip no rail (que é de
+FERRAMENTAS), então sem pill ele é *uma feature que só existe para quem já sabe que ela existe*. O
+pill **LÊ** a visibilidade que a tecla escreve — um bool próprio é como o botão passa a dizer
+*fechado* sobre um painel aberto pelo atalho. ⚠️ E com dois pills irmãos nasce um modo de falha
+novo: o handler saiu de um `cp` do de física, e um `if id != …` que sobrevivesse à cópia faria o TOK
+abrir o painel VELHO — gate próprio (`each_pill_opens_only_its_own_panel`), e a mutação sangra em 3
+dos 4.
+
 **Smoke** (**`=59`**): a cena **não monta geometria de assunto** — o sujeito é o próprio editor. Ela
 abre o painel, põe três formas de CONTROLE (a arte não é chrome) e **imprime quantos tokens o painel
 vai listar**; se for zero, PARE.

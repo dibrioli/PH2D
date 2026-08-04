@@ -41,6 +41,7 @@ mod edges;
 mod export;
 mod face;
 mod holes;
+mod merge;
 mod mesh;
 mod multires;
 mod normals;
@@ -61,6 +62,7 @@ pub use edges::Edges;
 pub use export::{ExportPiece, MeshFormat, triangle_count, write_obj, write_ply, write_stl};
 pub use face::{Face, TRI};
 pub use holes::{HoleFill, fill_holes};
+pub use merge::merge;
 pub use mesh::{DEFAULT_COLOR, DEFAULT_MASK, Mesh, MeshError, QueryScratch, RegionScratch};
 pub use multires::{DetachedLevel, Multires, Reversal, Stamped};
 pub use normals::{

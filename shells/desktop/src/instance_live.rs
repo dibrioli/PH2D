@@ -217,7 +217,11 @@ pub(crate) fn visible_pieces(
 ///
 /// A ordem sai da cena e não da árvore: é ela que decide o que fica por cima, e re-derivá-la de um
 /// DFS daria uma segunda resposta a uma pergunta que o documento já responde.
-fn subtree_paths(
+///
+/// ⚠️ **A W5b deu-lhe um segundo consumidor: a LISTA de peças do painel** — que é a sub-árvore
+/// INTEIRA, e não o [`visible_pieces`]. Esconder uma peça tira-a da segunda lista; se a primeira
+/// fosse a mesma, o interruptor perderia a própria linha e o gesto não teria volta.
+pub(crate) fn subtree_paths(
     scene: &VecScene,
     sim: &SimWorld,
     map: &VecEntityMap,

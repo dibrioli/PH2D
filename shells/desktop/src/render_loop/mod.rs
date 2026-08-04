@@ -4053,6 +4053,26 @@ impl crate::App {
                         }
                     });
                 }
+                // **A cor de uma PEÇA de instância** (W5b) — o mesmo picker OKLCH partilhado, o
+                // mesmo desenho do halo acima: a swatch só ABRE, e o valor é lido do alvo. ⚠️ O
+                // `set_piece_colour` recusa a cor IGUAL, senão o picker aberto escreveria o mesmo
+                // override a cada frame e o `post_frame_undo` gravaria um passo por frame.
+                if let Some(target) = hero.store.picker_target()
+                    && let Some(row) = crate::vec_component_pieces::colour_target(target)
+                    && let Some((value, _, _, _)) = hero
+                        .store
+                        .blender_picker(ph2d_editor::ids::INSP_BLENDER_PICKER)
+                    && let Some(&bits) = sel.first().and_then(|id| self.vec_entities.get(id))
+                {
+                    crate::vec_component_pieces::set_piece_colour(
+                        sim,
+                        vec_scene,
+                        &self.vec_entities,
+                        ph2d_ecs::Entity::from_bits(bits),
+                        row,
+                        value.rgba,
+                    );
+                }
             }
             // Pattern on Path (plano 23): os sliders afinam o vínculo do MOTIVO — que é o caminho
             // LINKADO da seleção (`linked_motif`), não o primário: depois de prender, o primário
@@ -4480,6 +4500,47 @@ impl crate::App {
                     }
                     crate::vec_component_edit::ComponentEdit::Reset => {
                         crate::vec_component_edit::reset_overrides(sim, &self.vec_entities, &sel);
+                    }
+                    // ── AS DIFERENÇAS (W5b) ──────────────────────────────────────
+                    // O interruptor de uma PEÇA. A linha `row` é só onde ela foi pintada; o que
+                    // fica guardado é o `VecPathId` da peça no MESTRE, resolvido pela porta única
+                    // que publicou a lista neste mesmo frame.
+                    crate::vec_component_edit::ComponentEdit::PieceVisible(row) => {
+                        if let Some(&bits) = sel.first().and_then(|id| self.vec_entities.get(id)) {
+                            crate::vec_component_pieces::toggle_piece_visible(
+                                sim,
+                                vec_scene,
+                                &self.vec_entities,
+                                ph2d_ecs::Entity::from_bits(bits),
+                                row,
+                            );
+                        }
+                    }
+                    crate::vec_component_edit::ComponentEdit::UpdateMain => {
+                        if let Some(&bits) = sel.first().and_then(|id| self.vec_entities.get(id)) {
+                            let (taken, refused) = crate::vec_component_pieces::update_main(
+                                sim,
+                                vec_scene,
+                                ph2d_ecs::Entity::from_bits(bits),
+                            );
+                            // ⚠️ O que NÃO subiu é dito. Um `Hidden` que ficasse em silêncio
+                            // faria o *Reset* continuar aceso depois de um "Update Main" que o
+                            // artista julga ter absorvido tudo.
+                            if refused > 0 {
+                                eprintln!(
+                                    "[ph2d-vec] update main: {taken} cor(es) absorvida(s), \
+                                     {refused} diferenca(s) fica(m) na copia (o mestre nao guarda \
+                                     'peca escondida')"
+                                );
+                            }
+                        }
+                    }
+                    // O conta-gotas: arma e sai. O clique seguinte no canvas é dele
+                    // (`vec_path_pick_click`), pela guarda modal que precede o picking/gizmo.
+                    crate::vec_component_edit::ComponentEdit::Swap => {
+                        if let Some(&at) = sel.first() {
+                            self.vec_path_pick = Some(crate::vec_pick::PathPick::InstanceMain(at));
+                        }
                     }
                 }
             }
@@ -6342,8 +6403,34 @@ impl crate::App {
                         &self.vec_entities,
                         &sel,
                         self.instance_live.orphans(),
+                        matches!(
+                            self.vec_path_pick,
+                            Some(crate::vec_pick::PathPick::InstanceMain(_))
+                        ),
                     ),
                 );
+                // **AS PEÇAS da instância selecionada** (W5b) — a porta do override. A lista sai
+                // da MESMA travessia que resolve um clique nela (`addressed_pieces`), e é a
+                // sub-árvore INTEIRA do mestre: só as visíveis fariam o interruptor perder a
+                // própria linha ao esconder uma peça.
+                let pieces = sel
+                    .first()
+                    .and_then(|id| self.vec_entities.get(id))
+                    .map(|&bits| ph2d_ecs::Entity::from_bits(bits))
+                    .and_then(|e| Some((e, sim.world().get::<ph2d_ecs::VecInstance>(e)?.clone())))
+                    .and_then(|(_, inst)| {
+                        let main_e =
+                            ph2d_ecs::Entity::from_bits(*self.vec_entities.get(&inst.main)?);
+                        Some(crate::vec_component_pieces::piece_rows(
+                            sim,
+                            vec_scene,
+                            &self.vec_entities,
+                            main_e,
+                            &inst,
+                        ))
+                    });
+                let (rows, beyond) = pieces.unwrap_or_default();
+                ph2d_panel_vector::state::set_instance_pieces(rows, beyond);
                 // **Resize Box** (plano UI/UX W3b): honrar e so' depois publicar, a mesma ordem
                 // dos irmaos acima — publicar antes deixaria a caixa a mostrar o estado ANTERIOR
                 // por um frame, e o artista veria o clique "nao pegar".

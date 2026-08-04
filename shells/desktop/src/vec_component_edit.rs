@@ -35,9 +35,19 @@ pub(crate) enum ComponentEdit {
     Place,
     Detach,
     Reset,
+    /// **Update Main** (W5b) — as diferenças desta instância passam a ser o mestre.
+    UpdateMain,
+    /// **Swap Main** (W5b) — arma o conta-gotas; o clique seguinte no canvas escolhe o mestre.
+    Swap,
+    /// O interruptor de visibilidade da PEÇA `row` desta instância (W5b).
+    PieceVisible(usize),
 }
 
 /// Este id é um verbo de componente? Porta única do roteador.
+///
+/// ⚠️ A varredura das linhas de peça é sobre [`ph2d_editor::ids::MAX_INSTANCE_PIECES`] — o mesmo
+/// intervalo que o `populate` regista. As duas pontas leem a MESMA constante: um teto que o
+/// roteador conhecesse e o registro não deixaria as últimas linhas mortas sob o rato.
 #[must_use]
 pub(crate) fn component_edit_for_id(id: ph2d_editor::NodeId) -> Option<ComponentEdit> {
     match id {
@@ -45,7 +55,13 @@ pub(crate) fn component_edit_for_id(id: ph2d_editor::NodeId) -> Option<Component
         _ if id == ph2d_editor::ids::VECTOR_COMPONENT_PLACE => Some(ComponentEdit::Place),
         _ if id == ph2d_editor::ids::VECTOR_COMPONENT_DETACH => Some(ComponentEdit::Detach),
         _ if id == ph2d_editor::ids::VECTOR_COMPONENT_RESET => Some(ComponentEdit::Reset),
-        _ => None,
+        _ if id == ph2d_editor::ids::VECTOR_COMPONENT_UPDATE_MAIN => {
+            Some(ComponentEdit::UpdateMain)
+        }
+        _ if id == ph2d_editor::ids::VECTOR_COMPONENT_SWAP => Some(ComponentEdit::Swap),
+        _ => (0..ph2d_editor::ids::MAX_INSTANCE_PIECES)
+            .find(|&r| ph2d_editor::ids::vector_instance_piece_show_id(r) == id)
+            .map(ComponentEdit::PieceVisible),
     }
 }
 
@@ -71,6 +87,7 @@ pub(crate) fn selected_component(
     map: &VecEntityMap,
     selected: &[VecPathId],
     orphans: &[VecPathId],
+    swap_armed: bool,
 ) -> Option<ph2d_panel_vector::state::ComponentState> {
     let (id, e) = subject(sim, map, selected)?;
     let inst = sim.world().get::<VecInstance>(e);
@@ -78,6 +95,7 @@ pub(crate) fn selected_component(
         is_main: sim.world().get::<VecComponentMain>(e).is_some(),
         is_instance: inst.is_some(),
         has_overrides: inst.is_some_and(|i| !i.overrides.is_empty()),
+        swap_armed,
         // ⚠️ A órfã é decidida pelo PRODUTOR, e o painel lê a resposta dele. Re-perguntar aqui
         // (*"o mestre existe?"*) seria a segunda resposta, e ela divergiria no frame em que o
         // produtor recusasse por outra razão — pose degenerada, laço — e o painel dissesse que

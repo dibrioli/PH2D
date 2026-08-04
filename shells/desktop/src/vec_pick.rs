@@ -26,6 +26,13 @@ pub(crate) enum PathPick {
     PatternMotif(VecPathId),
     /// Um TEXTO do Text on Path à espera do caminho que ele vai seguir.
     TextObject(VecPathId),
+    /// Uma INSTÂNCIA de componente (W5b) à espera do MESTRE por que vai ser trocada.
+    ///
+    /// ⚠️ Ela cabe aqui e não num modal próprio porque o gesto é o MESMO — arma, o clique
+    /// seguinte resolve, o Escape desiste, o hover realça —, e o que muda é só o que se faz com o
+    /// par. Um segundo modal duplicaria a guarda do dispatch, o realce e a desistência; e a
+    /// segunda cópia é a que esquece o Escape.
+    InstanceMain(VecPathId),
 }
 
 impl PathPick {
@@ -33,7 +40,9 @@ impl PathPick {
     /// forma a si mesma não quer dizer nada, e o `link` a recusaria de qualquer modo.
     pub(crate) fn source(self) -> VecPathId {
         match self {
-            PathPick::PatternMotif(id) | PathPick::TextObject(id) => id,
+            PathPick::PatternMotif(id) | PathPick::TextObject(id) | PathPick::InstanceMain(id) => {
+                id
+            }
         }
     }
 }

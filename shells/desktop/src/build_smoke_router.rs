@@ -243,5 +243,12 @@ pub(crate) fn route(app: &mut crate::App, f: u32, level: u32) -> bool {
         crate::component_resize_smoke::frame(app, f);
         return true;
     }
+    // A cena das DIFERENÇAS (=56) — irmã `component_pieces_smoke`. Como a `=53`, ela **não arma
+    // componente nenhum**: o que esta prova é a lista de PEÇAS (o override, o Update Main, o
+    // Swap), e criar/colocar já é gesto provado — repeti-lo é barato e não esconde costura.
+    if level == 56 {
+        crate::component_pieces_smoke::frame(app, f);
+        return true;
+    }
     false
 }

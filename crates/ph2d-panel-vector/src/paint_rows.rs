@@ -12,8 +12,9 @@ use super::paint_sections::{BodyCtx, LABEL_COL_W};
 use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::widget::showcase::{paint_section_separator, read_number_input};
 use ph2d_editor_core::widget::{
-    Button, ButtonKind, ButtonState, Checkbox, CheckboxValue, NumberInput, paint_button,
-    paint_checkbox, paint_number_input_with_buffer, paint_slider_with_chip_layout_adaptive,
+    Button, ButtonKind, ButtonState, Checkbox, CheckboxValue, ColorSwatch, NumberInput, SwatchSize,
+    paint_button, paint_checkbox, paint_color_swatch, paint_number_input_with_buffer,
+    paint_slider_with_chip_layout_adaptive,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, Spacing, TypeToken};
@@ -96,6 +97,47 @@ impl BodyCtx<'_> {
         let cb = Checkbox::new(id, label).value(value);
         let rect = Rect::new(self.inner_x, y, self.inner_w, self.row_h);
         paint_checkbox(&cb, rect, self.scene, self.text_system, self.theme);
+        self.hit_index.register(id, rect);
+        y + self.row_h + self.row_gap
+    }
+
+    /// **Uma linha `rótulo … swatch de cor`** — a porta única das linhas de cor deste painel.
+    ///
+    /// ⚠️ `a11y` é separado do `label` de propósito: o rótulo é o que o artista LÊ na coluna da
+    /// esquerda (*"Color"*, *"Color B"*, *"Colour (own)"*) e o `a11y` é o que o leitor de tela
+    /// anuncia sobre a swatch. Colapsá-los faria um leitor de tela dizer *"Color"* para três
+    /// swatches de assuntos diferentes.
+    ///
+    /// ⚠️ E ela **não regista o widget no store** — a swatch é alvo de PICKER
+    /// (`register_picker_swatch`), o que é decisão do `populate`; aqui só se pinta e se põe o
+    /// hit-rect.
+    pub(crate) fn colour_swatch_row(
+        &mut self,
+        id: ph2d_a11y::NodeId,
+        colour: [u8; 4],
+        label: &str,
+        a11y: &str,
+        y: f32,
+    ) -> f32 {
+        let swatch_w = SwatchSize::Md.px();
+        paint_text(
+            self.text_system,
+            self.scene,
+            label,
+            self.inner_x,
+            y + (self.row_h - self.font) * 0.5,
+            self.font,
+            LABEL_COL_W,
+            resolve(ColorToken::Text1, self.theme),
+        );
+        let rect = Rect::new(
+            self.inner_x + self.inner_w - swatch_w,
+            y,
+            swatch_w,
+            self.row_h,
+        );
+        let swatch = ColorSwatch::new(id, a11y, colour).size(SwatchSize::Md);
+        paint_color_swatch(&swatch, rect, self.scene, self.theme);
         self.hit_index.register(id, rect);
         y + self.row_h + self.row_gap
     }

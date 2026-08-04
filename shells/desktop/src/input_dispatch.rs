@@ -2141,6 +2141,30 @@ impl App {
                 text,
                 guide,
             ),
+            // **Swap Main** (W5b): o clicado tem de ser um MESTRE. Se não for, o pick fica
+            // armado — desarmar aqui faria um clique fora do alvo parecer que a troca aconteceu.
+            crate::vec_pick::PathPick::InstanceMain(inst) => self
+                .vec_entities
+                .get(&inst)
+                .copied()
+                .and_then(|bits| {
+                    crate::vec_component_pieces::swap_main(
+                        &mut gfx.sim,
+                        &gfx.vec_scene,
+                        &self.vec_entities,
+                        ph2d_ecs::Entity::from_bits(bits),
+                        guide,
+                    )
+                })
+                .is_some_and(|(swapped, dropped)| {
+                    if swapped && dropped > 0 {
+                        eprintln!(
+                            "[ph2d-vec] swap: {dropped} override(s) descartado(s) — as pecas nao \
+                             existem no mestre novo"
+                        );
+                    }
+                    swapped
+                }),
         };
         if done {
             self.vec_path_pick = None;

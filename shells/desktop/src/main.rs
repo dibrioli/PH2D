@@ -72,6 +72,7 @@ mod chrome_hit;
 mod command_palette_input;
 /// **Contour** (pesquisa `20_*` #9) — o cozimento vivo do `VecContour`: N anéis concêntricos
 /// com rampa de cor, irmão do `offset_live` de que é a generalização.
+mod component_pieces_smoke;
 mod component_resize_smoke;
 mod component_smoke;
 /// O gesto que cria um conector (Down numa forma, Up noutra).
@@ -329,6 +330,7 @@ mod vec_anchor_edit;
 mod vec_bindings;
 mod vec_blend;
 mod vec_component_edit;
+mod vec_component_pieces;
 /// O painel edita o CONECTOR selecionado (Route / Jetty / Spread) — resolve o valor
 /// EFETIVO que o painel exibe e aplica a edição a TODOS os conectores selecionados.
 mod vec_connector_panel;

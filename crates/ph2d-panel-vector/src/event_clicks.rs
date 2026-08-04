@@ -223,6 +223,12 @@ pub(super) fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         || id == ids::VECTOR_COMPONENT_PLACE
         || id == ids::VECTOR_COMPONENT_DETACH
         || id == ids::VECTOR_COMPONENT_RESET
+        || id == ids::VECTOR_COMPONENT_UPDATE_MAIN
+        || id == ids::VECTOR_COMPONENT_SWAP
+        // **Os interruptores de PEÇA** (W5b) — o override mora no ECS, então o clique atravessa o
+        // barramento. A swatch de cor NÃO entra: ela é alvo de picker, e o `register_picker_swatch`
+        // é quem trata o clique dela (o precedente da swatch de Fill).
+        || (0..ids::MAX_INSTANCE_PIECES).any(|r| ids::vector_instance_piece_show_id(r) == id)
         || id == ids::VECTOR_BOOL_MINUS_BACK
         || id == ids::VECTOR_BOOL_TRIM
         || id == ids::VECTOR_BOOL_CROP

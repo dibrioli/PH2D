@@ -29,6 +29,12 @@ pub use ph2d_editor_core::ids::{
     vector_fx_card_id, vector_fx_down_id, vector_fx_hide_id, vector_fx_param_id,
     vector_fx_param_num_id, vector_fx_remove_id, vector_fx_toggle_id, vector_fx_up_id,
 };
+/// **OS COMPONENTES** (plano UI/UX W5): a seção, os verbos, e as linhas de PEÇA da W5b.
+pub use ph2d_editor_core::ids::{
+    MAX_INSTANCE_PIECES, VECTOR_COMPONENT_CREATE, VECTOR_COMPONENT_DETACH, VECTOR_COMPONENT_PLACE,
+    VECTOR_COMPONENT_RESET, VECTOR_COMPONENT_SWAP, VECTOR_COMPONENT_UPDATE_MAIN,
+    VECTOR_SECTION_COMPONENT, vector_instance_piece_colour_id, vector_instance_piece_show_id,
+};
 pub use ph2d_editor_core::ids::{
     MAX_SHAPE_FIELD_SLOTS, vector_shape_choice_id, vector_shape_field_id, vector_shape_group_id,
     vector_shape_id,
@@ -84,11 +90,6 @@ pub use ph2d_editor_core::ids::{
     VECTOR_ANCHOR_H_CENTER, VECTOR_ANCHOR_H_END, VECTOR_ANCHOR_H_START, VECTOR_ANCHOR_H_STRETCH,
     VECTOR_ANCHOR_V_CENTER, VECTOR_ANCHOR_V_END, VECTOR_ANCHOR_V_START, VECTOR_ANCHOR_V_STRETCH,
     VECTOR_SECTION_ANCHORS,
-};
-/// **OS COMPONENTES** (plano UI/UX W5): a seção + os quatro verbos.
-pub use ph2d_editor_core::ids::{
-    VECTOR_COMPONENT_CREATE, VECTOR_COMPONENT_DETACH, VECTOR_COMPONENT_PLACE,
-    VECTOR_COMPONENT_RESET, VECTOR_SECTION_COMPONENT,
 };
 /// Os campos da RELAÇÃO do conector (a seção só existe com um conector na seleção).
 pub use ph2d_editor_core::ids::{

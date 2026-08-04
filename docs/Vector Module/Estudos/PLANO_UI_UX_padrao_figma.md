@@ -641,7 +641,32 @@ keyframar `color.accent` e ver a UI toda pulsar.
 
 ---
 
-### W5 — OS COMPONENTES (o prefab) ✅ **W5a CONSTRUÍDA (2026-08-03)**
+### W5 — OS COMPONENTES (o prefab) ✅ **W5a + W5b CONSTRUÍDAS (2026-08-03/04)**
+
+> **W5b — AS DIFERENÇAS (2026-08-04).** A W5a shipou `OverrideSlot::Fill`/`Hidden` com gates e
+> **sem porta que os produzisse**: o único escritor era um teste, e o *Reset Overrides* era um
+> botão que nunca podia ser preciso ([[feedback_a_capability_without_a_door_passes_every_gate]] —
+> e nenhum gate a via, porque cada metade estava certa sozinha).
+>
+> - **A porta é uma LISTA de PEÇAS** na seção Component: uma linha por peça do mestre, com um
+>   interruptor de visibilidade (cujo rótulo é o `Name` da Hierarquia) e uma swatch de cor.
+>   ⚠️ A lista é a **sub-árvore INTEIRA** do mestre, nunca as peças visíveis — se fosse o
+>   `visible_pieces`, esconder uma peça tirar-lhe-ia a própria linha e o gesto seria de mão única.
+> - ⚠️ **A cor mora numa linha PRÓPRIA** porque a swatch é alvo de PICKER e o interruptor é um
+>   botão: **um id só pode ter um tipo de widget no store** (a cicatriz do `vector_fx_toggle_id`).
+> - **Update Main** absorve o que o mestre SABE guardar — a cor. ⚠️ O `Hidden` **não sobe**: um
+>   mestre não tem *"peça escondida"*, e a única forma de a esconder lá seria apagá-la. A recusa é
+>   por ESPÉCIE dentro da porta, e é **contada e dita** (recusar no botão levaria junto as cores
+>   que ele pode absorver).
+> - **Swap Main** é o conta-gotas — uma variante nova do `PathPick`, e não um modal próprio: arma,
+>   o clique resolve, o Escape desiste, o hover realça. ⚠️ **A regra de compatibilidade é a única
+>   honesta que este endereço permite:** um override aponta o `VecPathId` de uma peça do mestre
+>   ANTIGO, e esses ids não existem no novo — os que não resolvem caem, e o terminal diz quantos.
+>   Casar por NOME seria o endereço que a W5a recusou.
+> - **`MAX_INSTANCE_PIECES = 16`** é teto de **TABELA DE IDS** (o `populate` regista o intervalo, o
+>   roteador varre o mesmo), **não** do mestre: as peças além dele continuam a desenhar e a herdar,
+>   e o excedente é **escrito no painel** em vez de truncado em silêncio.
+> - **Zero schema, zero ADR, zero dep** — `VecInstance` já tinha tudo. Smoke **`=56`**.
 
 > **O que MUDOU do que está escrito abaixo** (a §0 manda quem move um número reconferir a nota):
 >
@@ -663,9 +688,13 @@ keyframar `color.accent` e ver a UI toda pulsar.
 >   mudaria um número que ninguém olha e deixaria o desenho onde estava.
 > - **Registro 48 → 50** (o plano previa 47 → 49: o `VecResizeBox` da W3b não estava contado), e os
 >   dois espelhos (`ph2d-render`/`ph2d-script`) **49 → 51**. Sem bump de `PROJECT_SCHEMA`.
-> - **NÃO construídos, nomeados:** *Update Main* (pede editar uma instância no lugar) e *Swap* (pede
->   um picker de componentes + a regra de compatibilidade) — a **W5b**, junto com os **variants**
->   (`VecInstance.props`, que ficou fora do componente).
+> - ~~**NÃO construídos, nomeados:** *Update Main* e *Swap*~~ — **os dois LANDARAM na W5b**
+>   (2026-08-04, ver o bloco no topo desta seção). ⚠️ E a premissa de então estava errada num
+>   ponto: *"o Update Main pede editar uma instância no lugar"* — não pede. As edições de instância
+>   **são** os overrides, e absorver é lê-los e escrevê-los no mestre. O que faltava não era um
+>   modo de edição, era a **porta que produz um override**. Segue de fora só os **variants**
+>   (`VecInstance.props`), que são a **W5c** e custam um bump (apender campo ao componente é
+>   postcard posicional).
 > - Smoke: **`=53`**, e ela **não cria componente nenhum** — quem promove, coloca e destaca é o
 >   artista, que é a costura inteira da wave.
 
@@ -973,7 +1002,8 @@ escreveu**:
 | **W2** ✅ | auto layout | +2 (**46**) | — (W2a fica) | **taffy** | **0153** | `=50` |
 | **W3** ✅ | âncoras | +1 (**47**) | — | — | — | `=52` |
 | **W5a** ✅ | mestre + instância + override esparso | +2 (**50**) | — | — | — | `=53` |
-| **W5b** | variants/props · Update Main · Swap | — | — | — | sim (prefab) | — |
+| **W5b** ✅ | a lista de PEÇAS (a porta do override) · Update Main · Swap | — | — | — | — | `=56` |
+| **W5c** | variants/props (o `VecInstance.props` que ficou de fora) | — | ⚠️ **bump** | — | sim (prefab) | — |
 | **W6** | vínculo com o widget | +1 (50) | — | — | sim (§2) | `=54` |
 | **W7** | estados + Smart Animate | — | `DOC_VERSION` | — | sim (HSM) | `=55` |
 | **W8** | runtime + codegen | — | seção | — | sim (fronteira) | `=56` |

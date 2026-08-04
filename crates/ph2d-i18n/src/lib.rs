@@ -212,6 +212,16 @@ pub fn tr(key: &str) -> &'static str {
         "panel.vector.component.detach" => "Detach Instance",
         "panel.vector.component.reset" => "Reset Overrides",
         "panel.vector.component.missing" => "Main missing",
+        // **AS DIFERENÇAS** (W5b) — a lista de peças, o absorver e a troca de mestre.
+        "panel.vector.component.pieces" => "Pieces",
+        "panel.vector.component.piece_colour" => "Colour",
+        // ⚠️ Rótulo PRÓPRIO para a cor que esta cópia autorou: sem ele, *"esta peça está
+        // diferente"* só se descobre carregando em Reset e vendo o que muda.
+        "panel.vector.component.piece_colour_own" => "Colour (own)",
+        "panel.vector.component.pieces_beyond" => "more pieces (edit them in the main)",
+        "panel.vector.component.update_main" => "Update Main",
+        "panel.vector.component.swap" => "Swap Main",
+        "panel.vector.component.swap_armed" => "Click a component to swap",
         // **O AUTO LAYOUT** (plano UI/UX W2, ADR-0153) — a moldura que empilha os filhos.
         // ⚠️ Os rótulos de direção incluem o "Off" porque *"esta moldura flui?"* e *"em que
         // direção?"* são a MESMA pergunta (o `display` do CSS) — ver `VECTOR_LAYOUT_DIR_OFF`.

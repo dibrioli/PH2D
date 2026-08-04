@@ -345,13 +345,13 @@ fn reset_on_a_clean_instance_is_a_no_op() {
 #[test]
 fn the_panel_is_told_which_verbs_make_sense() {
     let (mut sim, _scene, map, id) = one_shape();
-    let plain = selected_component(&sim, &map, &[id], &[]).expect("uma forma tem seção");
+    let plain = selected_component(&sim, &map, &[id], &[], false).expect("uma forma tem seção");
     assert!(!plain.is_main && !plain.is_instance && !plain.has_overrides);
 
     let e = Entity::from_bits(map[&id]);
     sim.world_mut().entity_mut(e).insert(VecComponentMain);
     assert!(
-        selected_component(&sim, &map, &[id], &[])
+        selected_component(&sim, &map, &[id], &[], false)
             .expect("mestre")
             .is_main
     );
@@ -360,7 +360,7 @@ fn the_panel_is_told_which_verbs_make_sense() {
     let mut inst = VecInstance::new(7);
     inst.set(1, OverrideSlot::Hidden);
     sim.world_mut().entity_mut(e).insert(inst);
-    let s = selected_component(&sim, &map, &[id], &[id]).expect("instância");
+    let s = selected_component(&sim, &map, &[id], &[id], false).expect("instância");
     assert!(s.is_instance && s.has_overrides && s.main_missing);
 }
 
@@ -368,11 +368,11 @@ fn the_panel_is_told_which_verbs_make_sense() {
 #[test]
 fn no_section_without_exactly_one_selected_shape() {
     let (sim, mut scene, mut map, id) = one_shape();
-    assert!(selected_component(&sim, &map, &[], &[]).is_none());
+    assert!(selected_component(&sim, &map, &[], &[], false).is_none());
     let other = scene.push_path(rectangle([0.0, 0.0], [1.0, 1.0]));
     let mut sim2 = sim;
     crate::vec_entities::sync(&mut sim2, &mut scene, &mut map);
-    assert!(selected_component(&sim2, &map, &[id, other], &[]).is_none());
+    assert!(selected_component(&sim2, &map, &[id, other], &[], false).is_none());
 }
 
 /// **A órfã vem do PRODUTOR** — o painel lê a resposta dele, não uma segunda.
@@ -386,7 +386,7 @@ fn the_missing_readout_comes_from_the_producers_answer() {
     let e = Entity::from_bits(map[&id]);
     // Um mestre que EXISTE — mas o produtor, por outra razão, recusou.
     sim.world_mut().entity_mut(e).insert(VecInstance::new(id));
-    let s = selected_component(&sim, &map, &[id], &[id]).expect("instância");
+    let s = selected_component(&sim, &map, &[id], &[id], false).expect("instância");
     assert!(s.main_missing, "o painel ignorou a recusa do produtor");
 }
 

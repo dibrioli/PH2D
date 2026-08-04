@@ -519,6 +519,9 @@ impl BodyCtx<'_> {
         y + self.row_h + self.row_gap
     }
 
+    /// ⚠️ **Delega** à porta única [`BodyCtx::colour_swatch_row`] — a W5b deu-lhe um segundo
+    /// consumidor (a cor de uma peça de instância), e duas cópias da mesma linha divergiriam no
+    /// primeiro ajuste de layout.
     pub(crate) fn filter_color_swatch(
         &mut self,
         id: ph2d_a11y::NodeId,
@@ -526,26 +529,6 @@ impl BodyCtx<'_> {
         label: &str,
         y: f32,
     ) -> f32 {
-        let swatch_w = SwatchSize::Md.px();
-        paint_text(
-            self.text_system,
-            self.scene,
-            label,
-            self.inner_x,
-            y + (self.row_h - self.font) * 0.5,
-            self.font,
-            LABEL_COL_W,
-            resolve(ColorToken::Text1, self.theme),
-        );
-        let rect = Rect::new(
-            self.inner_x + self.inner_w - swatch_w,
-            y,
-            swatch_w,
-            self.row_h,
-        );
-        let swatch = ColorSwatch::new(id, "Filter effect color", colour).size(SwatchSize::Md);
-        paint_color_swatch(&swatch, rect, self.scene, self.theme);
-        self.hit_index.register(id, rect);
-        y + self.row_h + self.row_gap
+        self.colour_swatch_row(id, colour, label, "Filter effect color", y)
     }
 }

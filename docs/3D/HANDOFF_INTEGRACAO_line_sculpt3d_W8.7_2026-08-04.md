@@ -189,6 +189,49 @@ congelado intacto. O diff inteiro mora em `ph2d-mesh` + `shells/desktop/src/scul
 quarteto de primitivas iguais o bug do slot é **invisível**, e é ele que o passo (2) do roteiro
 manda apagar-e-olhar.
 
+## 8.ter. E A TERCEIRA, também na mesma branch — **W9.1: A TOPOLOGIA DINÂMICA** (⚠️ pendente de smoke)
+
+> **Commits:** `<mesh>` (o motor na malha) · `<tool>` (o editor). **Cena `=14`.**
+
+`P` liga, `U` cicla o detalhe, e o traço passa a **adensar onde o pincel toca** em vez de ficar preso
+à resolução com que o modelo nasceu.
+
+⚠️ **A MEDIÇÃO MUDOU O DESENHO ANTES DA PRIMEIRA LINHA, e o integrador deve saber disso porque o
+PLANO dizia o contrário.** O `06.1` afirmava que a wave *"não pode herdar"* dois pré-requisitos
+(anéis mutáveis, octree de folhas mutáveis). É uma afirmação sobre um número, e a sonda
+`ph2d-mesh/tests/measure_dyntopo.rs` a derrubou: reconstruir custa **0,59 ms a 6k · 1,55 a 24k · 5,50
+a 98k** vértices, contra o K1 de 8 ms por dab. Então o refino nasce sobre o `rebuild` que já existe,
+a estrutura mutável virou **W9.2**, e o gatilho dela é um número medido em vez de um palpite. (O mesmo
+dab toca 0,33% das faces a 98k — razão 307× —, que é o tamanho do ganho que ela vai comprar.)
+
+**Onde o código mora:** `ph2d-mesh/src/dyntopo.rs` (o motor, gateável sem device) ·
+`Mesh::triangulate` · `shells/desktop/src/sculpt3d_dyntopo.rs` (o arm) ·
+`ph2d-sculpt3d::SculptStroke::grow_to`.
+
+⚠️ **A peça que faz a wave ser correta é o `grow_to`, e ela é a que um integrador desavisado
+"consertaria":** depois de refinar, a malha mudou — o instinto é chamar `stroke.begin()` de novo.
+Isso é a doença do produto-por-dab que a `line/Painter` curou **quatro vezes**, e ela **não quebra
+nada visivelmente**: o traço só fica mais forte quanto mais o refino disparar. ⛔ Não troque; há
+gate (`refining_grows_the_stroke_instead_of_restarting_it`) e a razão está no doc do `grow_to`.
+
+**Colisão:** **zero** `Cargo.toml`, **zero** dep, **zero** crate nova, **zero** ADR (roda sob o
+**ADR-0150**), **zero** id/token, `PROJECT_SCHEMA` **intocado** (nada disto é serializado), registro
+do `ph2d-ecs` **intocado**, contrato congelado intacto.
+
+**Gates: 17 · mutações: 18, 18 sangram** (1 documentada e não-sangrante, de propósito). ⚠️ **Três
+mutações acusaram AFIRMAÇÕES minhas em vez de buracos**, e as três ficaram escritas no lugar da
+linha que elas derrubaram — a varredura de todas as faces **não** é o que fecha a rachadura (é o
+padrão, total sobre qualquer subconjunto) · o `sort` das arestas **não** é o que torna o refino
+determinístico · e um gate media `capacity_bytes` para julgar um encolhimento que `Vec::resize` não
+devolve. ⚠️ **E um gate ficou VERMELHO sobre produto correto** porque casava um literal que o
+`rustfmt` reflowou — a cura entrou no helper (`squeezed`) e vale para todo gate de fonte do cluster.
+
+**Smoke:** `env PH2D_SCULPT3D_SMOKE=14 cargo run -p ph2d-host-desktop --release`. A cena abre uma
+esfera **GROSSA** de propósito (10×14): a de 96×144 que o resto do módulo usa já tem arestas menores
+que o alvo de qualquer pincel razoável, e o smoke ficaria verde mostrando NADA. O passo (1) é o
+CONTROLE (esculpir com o modo desligado e ver a faceta), e o (4) é a lei do traço — devagar e rápido
+sobre o mesmo caminho têm de deixar o mesmo relevo.
+
 ## 9. Aberto, com o preço ao lado
 
 - ⚠️ **O mapa é keyed por bits de entidade, e o undo global RESPAWNA.** Depois de um Ctrl+Z que

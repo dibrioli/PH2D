@@ -246,6 +246,9 @@ impl NodeOp for MotionPinConstraint {
 /// `ph2d-node-registry-init::register_all_nodes`.
 pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register(Box::new(MotionPinConstraint))?;
+    // ADR-0155: a pin PRODUCES `inv_mass` (pins by zeroing it); inert without a
+    // solver (integrate/sim.step/spring/collide) downstream to read it.
+    reg.register_couplings(MANIFEST.id, &[ph2d_node_registry::Coupling::Produces("inv_mass")]);
     reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     reg.register_ui(
         MANIFEST.id,

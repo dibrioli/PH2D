@@ -1,0 +1,20 @@
+[package]
+name = "ph2d-motion-diagnose"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+ph2d-nodegraph = { path = "../ph2d-nodegraph" }
+ph2d-node-registry = { path = "../ph2d-node-registry" }
+
+[dev-dependencies]
+# Only the tests build the full registry (to prove every producer declares its
+# coupling and to diagnose realistic graphs). The library itself never depends on
+# the node crates — it reads the graph + the registry side-channel, nothing more.
+ph2d-node-registry-init = { path = "../ph2d-node-registry-init" }

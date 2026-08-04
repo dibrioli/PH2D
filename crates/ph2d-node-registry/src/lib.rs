@@ -21,7 +21,7 @@ use std::collections::BTreeMap;
 
 mod ui;
 pub use ui::{
-    NodeSilhouette, NodeUiCategory, NodeUiManifest, ParamGate, ParamHardMax, ParamUiHint,
+    Coupling, NodeSilhouette, NodeUiCategory, NodeUiManifest, ParamGate, ParamHardMax, ParamUiHint,
     ParamWidget, ReadChannel,
 };
 
@@ -79,6 +79,13 @@ pub struct NodeRegistry {
     /// side-channel shape; a node opts in with a slice of [`LutSpec`]s the
     /// sequencer fills from that text param before its kernel pass.
     luts: BTreeMap<NodeTypeId, &'static [LutSpec]>,
+    /// ADR-0155 — per-type semantic [`Coupling`]s (produces/consumes/requires/
+    /// generates a stream column), keyed the same way and kept OUT of the frozen
+    /// `NodeManifest` like every other side channel. Opt-in and default-empty: a
+    /// node with no couplings is semantically neutral. The setup diagnoser walks
+    /// the graph reading this to find a producer whose output is inert (a
+    /// `force.*` with no `motion.integrate` downstream).
+    couplings: BTreeMap<NodeTypeId, &'static [Coupling]>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -153,6 +160,18 @@ impl NodeRegistry {
     /// The param gates for `id`, if any. Absent ⇒ no param is gated (all shown).
     pub fn param_gates(&self, id: NodeTypeId) -> Option<&'static [ParamGate]> {
         self.param_gates.get(&id).copied()
+    }
+
+    /// Register a node type's semantic [`Coupling`]s (ADR-0155). Additive; last
+    /// write wins.
+    pub fn register_couplings(&mut self, id: NodeTypeId, couplings: &'static [Coupling]) {
+        self.couplings.insert(id, couplings);
+    }
+
+    /// The semantic couplings for `id`, if any. Absent ⇒ the node is neutral
+    /// (produces / consumes / requires / generates nothing).
+    pub fn couplings(&self, id: NodeTypeId) -> Option<&'static [Coupling]> {
+        self.couplings.get(&id).copied()
     }
 
     /// Register the params whose typed entry reaches past their slider
@@ -391,6 +410,21 @@ mod tests {
         assert_eq!(got[0].when, "kind");
         assert_eq!(got[0].values, &[7]);
         assert!(reg.param_gates(NodeTypeId::of("nope")).is_none());
+    }
+
+    #[test]
+    fn couplings_round_trip() {
+        static COUPLINGS: &[Coupling] = &[Coupling::Produces("accel"), Coupling::Requires("P")];
+        let mut reg = NodeRegistry::new();
+        reg.register(Box::new(Src)).unwrap();
+        assert!(reg.couplings(SRC_MAN.id).is_none()); // none until registered
+        reg.register_couplings(SRC_MAN.id, COUPLINGS);
+        let got = reg.couplings(SRC_MAN.id).expect("registered");
+        assert_eq!(got.len(), 2);
+        assert_eq!(got[0], Coupling::Produces("accel"));
+        assert_eq!(got[0].column(), "accel");
+        assert_eq!(got[1], Coupling::Requires("P"));
+        assert!(reg.couplings(NodeTypeId::of("nope")).is_none());
     }
 
     #[test]

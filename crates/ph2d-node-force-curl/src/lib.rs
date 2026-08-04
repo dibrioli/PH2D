@@ -251,6 +251,8 @@ impl NodeOp for ForceCurl {
 /// `ph2d-node-registry-init::register_all_nodes`.
 pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register(Box::new(ForceCurl))?;
+    // ADR-0155: a force accumulates `accel`; inert without an integrator downstream.
+    reg.register_couplings(MANIFEST.id, &[ph2d_node_registry::Coupling::Produces("accel")]);
     reg.register_ui(
         MANIFEST.id,
         ph2d_node_registry::NodeUiManifest {

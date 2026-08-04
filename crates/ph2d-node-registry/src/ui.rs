@@ -221,3 +221,47 @@ pub struct ParamGate {
     /// f32) for `param` to appear. Empty ⇒ the param is never shown.
     pub values: &'static [i32],
 }
+
+/// **What a node PRODUCES, CONSUMES, REQUIRES, or GENERATES on its instance
+/// stream** — the semantic side-channel (ADR-0155) that lets the editor detect a
+/// node placed where its output is INERT. The canonical case: a `force.*` node is
+/// `Pure` and accumulates into the transient column `accel`; only `motion.integrate`
+/// (and `sim.step`) consume it, so a force with no integrator downstream writes
+/// `accel`, nothing reads it, and the scene stays static — with no error. The
+/// substrate has no reachability analysis; this declaration is what makes one
+/// possible.
+///
+/// Side-metadata like [`ParamGate`], **never** a field of the frozen
+/// `NodeManifest` — a node with no entry here is semantically neutral (produces,
+/// consumes, requires, and generates nothing), which is what every un-annotated
+/// node already means, so nothing moves by default.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum Coupling {
+    /// Writes a transient column that is INERT unless a downstream node
+    /// [`Consumes`](Coupling::Consumes) it. `force.*` → `Produces("accel")`;
+    /// `field.*` → `Produces("falloff")`; `motion.pin_constraint` →
+    /// `Produces("inv_mass")`.
+    Produces(&'static str),
+    /// Consumes a transient column — the plumbing that makes a producer live.
+    /// `motion.integrate`/`sim.step` → `Consumes("accel")`.
+    Consumes(&'static str),
+    /// Requires a column present on its input to do its job. `motion.bend` →
+    /// `Requires("P")` (a deformer with no points is a no-op).
+    Requires(&'static str),
+    /// Generates a column from nothing (a source). `motion.grid` →
+    /// `Generates("P")`.
+    Generates(&'static str),
+}
+
+impl Coupling {
+    /// The column this coupling names, whatever its kind.
+    #[must_use]
+    pub fn column(self) -> &'static str {
+        match self {
+            Coupling::Produces(c)
+            | Coupling::Consumes(c)
+            | Coupling::Requires(c)
+            | Coupling::Generates(c) => c,
+        }
+    }
+}

@@ -395,6 +395,15 @@ fn pairing(rest: &Stream, state: &Stream, n: usize) -> Option<Vec<Option<usize>>
 /// `ph2d-node-registry-init::register_all_nodes`.
 pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register(Box::new(MotionIntegrate))?;
+    // ADR-0155: the integrator CONSUMES `accel` (Euler) and reads `inv_mass` (PBD
+    // weight) — it is what makes a `force.*`/`motion.pin_constraint` upstream live.
+    reg.register_couplings(
+        MANIFEST.id,
+        &[
+            ph2d_node_registry::Coupling::Consumes("accel"),
+            ph2d_node_registry::Coupling::Consumes("inv_mass"),
+        ],
+    );
     reg.register_ui(
         MANIFEST.id,
         ph2d_node_registry::NodeUiManifest {

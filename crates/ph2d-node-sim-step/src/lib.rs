@@ -283,6 +283,15 @@ impl NodeOp for SimStep {
 
 pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register(Box::new(SimStep))?;
+    // ADR-0155: the particle integrator CONSUMES `accel` and reads `inv_mass` — the
+    // sibling of `motion.integrate` for a `sim.spawn` chain.
+    reg.register_couplings(
+        MANIFEST.id,
+        &[
+            ph2d_node_registry::Coupling::Consumes("accel"),
+            ph2d_node_registry::Coupling::Consumes("inv_mass"),
+        ],
+    );
     reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     reg.register_ui(
         MANIFEST.id,

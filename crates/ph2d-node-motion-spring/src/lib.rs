@@ -223,6 +223,9 @@ fn pairing(input: &Stream, state: &Stream, n: usize) -> Option<Vec<Option<usize>
 /// `ph2d-node-registry-init::register_all_nodes`.
 pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register(Box::new(MotionSpring))?;
+    // ADR-0155: a solver reads `inv_mass` — so a `motion.pin_constraint` upstream
+    // is live under a spring too.
+    reg.register_couplings(MANIFEST.id, &[ph2d_node_registry::Coupling::Consumes("inv_mass")]);
     reg.register_gpu_kernel(MANIFEST.id, kernel::GPU_KERNEL);
     // ADR-0130: per-element: chases a target, never reorders/rewrites id.
     reg.register_dense_window(MANIFEST.id);

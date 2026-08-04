@@ -1,0 +1,31 @@
+# ADR-0155 — O setup do grafo de Motion é DIAGNOSTICADO e CURADO no gesto, não recusado
+
+**Status:** Aceito (proposto na linha `line/motion-value`). ⚠️ **Número PROVISÓRIO** — um ADR escolhido numa linha paralela renumera na integração (precedente: 0130→0131, 0134→0140, 0145→0148/0149/0150). O `main` do dia manda.
+
+**Data:** 2026-08-03 · **Contexto do pedido (Enio):** *"se eu tentar colocar algumas forças físicas diretamente na cadeia horizontal de nós não irá funcionar. Será necessário usar um Integrate. Mas o artista não entende isso. Isso precisa ser automático. Quando o artista colocar um nó no lugar errado o app corrige imediatamente o setup."* Plano detalhado: [`docs/Motion Nodes/87_plano_correcao_automatica_setup.md`](../../Motion%20Nodes/87_plano_correcao_automatica_setup.md).
+
+## Contexto
+
+- **O grafo de Motion tem uma classe de erro que não dá erro.** Uma `force.*` é um nó `Pure` que acumula na coluna transiente `accel` (convenção Houdini POP); os ÚNICOS consumidores são os integradores (`motion.integrate`, `sim.step`, via `ColumnAccess::Consume`). Uma força wireada em direção ao sink **sem integrador no caminho** escreve `accel`, nada o lê, o `lower_to_instances` **ignora** a coluna, e a cena fica **estática, em silêncio**. `Graph::validate` só checa tipo de porta e membrana — **zero análise de alcançabilidade**.
+- **Há uma família inteira de acoplamentos transientes, não só `accel`:** `field.*`/`motion.falloff` produzem `falloff` que forças/deformers leem; `motion.pin_constraint` produz `inv_mass` que os solvers (integrate/sim.step/spring/collide) leem. Cada um é inerte sem o seu consumidor a jusante.
+- **A pesquisa (§1 do plano) é unânime num ponto:** ninguém no mercado auto-reescreve uma dependência SEMÂNTICA em silêncio no instante em que você larga um nó. O mais perto que a indústria chega é o **Node Wrangler (Ctrl+T) do Blender** (um nó implica um rig; o atalho o materializa) e o **auto-cast** do Unreal/nosso **Adapter** (arrastar um fio incompatível INSERE o conversor). O padrão comum: curar **no gesto**, com toast + seleção + **um Ctrl+Z sempre desfaz** — automático e imediato, mas **nunca silencioso, nunca irreversível**.
+
+## Decisão
+
+**Um nó pode DECLARAR seus acoplamentos semânticos** — um canal side-metadata novo no `ph2d-node-registry`, o gêmeo exato do `ParamGate`: `enum Coupling { Produces / Consumes / Requires / Generates(&'static str) }`, keyed por `NodeTypeId`, **NUNCA campo do `NodeManifest` congelado**. Ausência ⇒ nó neutro (nada muda por default; zero churn nos ~96 nós não anotados).
+
+**Uma função pura DIAGNOSTICA o grafo** — `ph2d-motion-diagnose::diagnose(graph, reg) -> Vec<Diagnostic>` (crate leaf nova). Para cada produtor, BFS pelas arestas para frente (não-`delayed`): se algum nó alcançado consome a coluna, saudável; senão **inerte**, com um `Fix` que diz a agressividade da cura:
+- **`Insert(node)` — AUTO-CURA:** a peça faltante é tubulação inequívoca (`accel` → `motion.integrate`, ou `sim.step` num grafo de partículas). É o caso do Enio.
+- **`Reorder` — OFERTA:** um integrador existe mas fora do caminho do produtor (força a jusante do integrador). A cura é reordenar, **nunca inserir um segundo** (um integrador aplica).
+- **`Offer` — OFERTA/AVISO:** consumidor faltante é escolha criativa sem inserção canônica (`inv_mass` precisa de *um* solver; `falloff` de *uma* força/deformer). Nunca adivinha.
+
+Esta função é a **PORTA ÚNICA**: a auto-cura (W2), os badges (W3) e os gates leem DELA, então não podem divergir.
+
+**A cura dispara no gesto CONSTRUTIVO** (colocar/conectar o nó), reusando a porta do Adapter (`trial-clone → validate → push_undo → mark_dirty → request_selection` + toast). Gesto DESTRUTIVO (apagar o integrador) **não** re-insere — só atualiza badges —, para o app nunca brigar com o artista. Tudo é **1 Ctrl+Z**; o undo é a escape hatch (sem toggle "auto-fix").
+
+## Consequências
+
+- **Contrato de nós congelado INTACTO** (`NodeOp=2`/`OpResolver=1`/`NodeManifest=8`): o gate `architecture_contract_surface` conta declarações só em `ph2d-nodegraph/src/{node.rs,cook.rs}`; um `BTreeMap` novo no registry não os toca. Provado por grep + `cargo check --workspace` verde. **Zero schema** (a cura produz nós/arestas normais; os diagnósticos são view-state transiente).
+- **A agressividade da auto-cura é a decisão de produto** (§3.5 do plano): recomendado auto-curar SÓ o caso `accel`↔integrador; incluir `inv_mass`↔solver obrigaria o app a escolher UM solver, o que a pesquisa desaconselha.
+- **Waves:** W1 = o canal + o detector (headless, todo gateado — **landou nesta linha**). W2 = a auto-cura no gesto. W3 = os badges (OFERTA/AVISO) + o quick-fix. W4 = smoke + os avisos de requisito/dangling.
+- **Escopo de anotação da W1:** só os acoplamentos `accel` e `inv_mass` (6 forças, integrate, sim.step, spring, collide, pin). O `falloff` (fields + seus consumidores força/deformer) é um pacote coerente para depois — anotar produtores sem consumidores geraria falso-positivo, então a família viaja junta.

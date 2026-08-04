@@ -127,8 +127,8 @@ mod scenes;
 mod fixtures;
 
 pub(crate) use scenes::{
-    announce, bake_scene, donation_scene, holes_scene, remesh_scene, reopen_scene, reversion_scene,
-    scene_objects, smoke_armed, smoke_mesh, turn_scene, wants_canvas,
+    announce, bake_scene, donation_scene, fuse_scene, holes_scene, remesh_scene, reopen_scene,
+    reversion_scene, scene_objects, smoke_armed, smoke_mesh, turn_scene, wants_canvas,
 };
 
 /// O que o arrasto está fazendo.
@@ -168,13 +168,19 @@ use mask::MaskOp;
 #[path = "sculpt3d_objects.rs"]
 mod objects;
 
-pub(crate) use objects::Primitive;
+pub(crate) use objects::{Merge, Primitive};
 
 /// **ONDE as coisas estão** — as portas de espaço. Filho (`#[path]`) pelo motivo
 /// dos outros: o corte é de responsabilidade, e este é o assunto que a lista de
 /// objetos inventou.
 #[path = "sculpt3d_space.rs"]
 mod space;
+
+/// **O QUE O DEVICE TEM** — a tabela de slots e o upload. Filho (`#[path]`) pelo
+/// motivo dos outros; ele saiu da [`donation`] quando o isolamento tornou *quem
+/// mora em cada slot* uma pergunta com resposta não-óbvia.
+#[path = "sculpt3d_slots.rs"]
+mod slots;
 
 /// **O OBJETO MISTO (O2)** — a forma acende um SPRITE da cena, e continua
 /// acendendo depois de a malha sair. Filho (`#[path]`) e irmão da [`donation`]:
@@ -252,6 +258,24 @@ pub(crate) struct Sculpt3dScene {
     /// faria uma entrada de undo velha nomear uma peça nova, que é exatamente o
     /// que o índice já fazia.
     next_id: u32,
+    /// **A peça ISOLADA** — `None` quando a cena inteira está à vista.
+    ///
+    /// ⚠️ **Um id, e não um `hidden: bool` por peça.** Os dois guardam a mesma
+    /// coisa hoje, e só este é incapaz de guardar um estado que ninguém pode
+    /// autorar: com bandeiras existe *duas escondidas e uma à vista sem ninguém
+    /// ter isolado*, e a pergunta *"o artista está isolado?"* passaria a ser
+    /// respondida contando. Aqui a visibilidade é DERIVADA — ver
+    /// [`Sculpt3dScene::visible_pieces`].
+    ///
+    /// ⚠️ **É estado de VISTA, e por isso não entra na história nem no
+    /// documento.** Isolar não muda um vértice; é o mesmo lugar em que o onion
+    /// da timeline mora (`TimelineState.onion`, não serializado). Um Ctrl+Z que
+    /// re-escondesse peças gastaria um passo de undo sem devolver trabalho
+    /// nenhum.
+    isolated: Option<ObjectId>,
+    /// **A TABELA DE SLOTS DO DEVICE** — quem mora em cada índice do
+    /// renderizador. Ver [`slots`], que é onde a lei dela está escrita.
+    slots: Vec<ObjectId>,
     pub(crate) camera: Camera3d,
     renderer: MeshRenderer,
     drag: Option<Drag>,
@@ -327,6 +351,8 @@ impl Sculpt3dScene {
             objects: vec![SceneObject::new(ObjectId(0), mesh, Pose::IDENTITY)],
             active: 0,
             next_id: 1,
+            isolated: None,
+            slots: Vec::new(),
             camera,
             renderer: MeshRenderer::new(device, ph2d_render::GameRt::FORMAT),
             drag: None,

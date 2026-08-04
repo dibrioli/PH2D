@@ -35,10 +35,36 @@ impl Sculpt3dScene {
         self.objects.iter().position(|o| o.id == id)
     }
 
-    /// A caixa de **todos** os objetos, em mundo.
+    /// **Onde está a peça ISOLADA** — `None` quando a cena inteira está à vista.
+    ///
+    /// ⚠️ **Ela resolve o id para um índice a cada pergunta, e é isso que faz o
+    /// isolamento sobreviver a um delete.** A peça isolada pode morrer (apagar,
+    /// desfazer, fundir), e um índice guardado passaria a nomear OUTRA peça — a
+    /// mesma lição que o [`ObjectId`] existe para dizer, um degrau acima. Quando
+    /// ela não existe mais **não há isolamento**: a cena inteira volta à vista,
+    /// que é a única resposta que não deixa o artista com uma tela preta e
+    /// nenhum gesto capaz de a explicar.
+    pub(super) fn isolated_index(&self) -> Option<usize> {
+        self.isolated.and_then(|id| self.index_of(id))
+    }
+
+    /// **AS PEÇAS À VISTA**, na ordem da lista — a porta única de *quem aparece*.
+    ///
+    /// ⚠️ Ela é perguntada pelo DESENHO, pelo PICK e pela CAIXA, e é por isso que
+    /// é uma porta: as três respondem a *o que está na cena agora*, e uma cópia
+    /// da regra em qualquer uma delas seria a que diverge — um pick que alcança
+    /// o que não se vê é esculpir às cegas, e uma caixa que inclui o invisível
+    /// enquadra a câmera em volta do nada.
+    pub(super) fn visible_pieces(&self) -> impl Iterator<Item = usize> + '_ {
+        let only = self.isolated_index();
+        (0..self.objects.len()).filter(move |&i| only.is_none_or(|k| k == i))
+    }
+
+    /// A caixa dos objetos **À VISTA**, em mundo.
     pub(crate) fn world_bounds(&self) -> ph2d_mesh::Aabb {
         let mut b = ph2d_mesh::Aabb::EMPTY;
-        for o in &self.objects {
+        for i in self.visible_pieces() {
+            let o = &self.objects[i];
             let ob = o.pose.bounds_to_world(o.stack.mesh().bounds());
             if !ob.is_empty() {
                 b.expand(&ob);
@@ -221,8 +247,17 @@ impl Sculpt3dScene {
     /// ele já escolheu*, e roda a cada dab. Usar a primeira aqui faria o pincel
     /// PULAR para outra peça no meio de uma pincelada — que é o defeito acima,
     /// pela outra ponta.
+    ///
+    /// ⚠️ **Ela recusa uma peça ativa ESCONDIDA**, e o caso é alcançável: um
+    /// Ctrl+Z leva o ativo à peça da entrada, que pode não ser a isolada. Sem a
+    /// recusa o artista esculpiria uma peça que ele **não vê** — e o gesto que a
+    /// desfaz é o mesmo que a criou, então nada na tela diria por quê. Não fica
+    /// preso: clicar na peça à vista devolve o ativo a ela.
     pub(super) fn pick_active(&self, x: f32, y: f32) -> Option<Hit> {
         let o = self.obj()?;
+        if self.isolated_index().is_some_and(|k| k != self.active) {
+            return None;
+        }
         o.stack
             .mesh()
             .raycast(&o.pose.ray_to_local(&self.ray_at(x, y)))
@@ -232,7 +267,11 @@ impl Sculpt3dScene {
         let world = self.ray_at(x, y);
         let eye = world.origin();
         let mut best: Option<(usize, Hit, f32)> = None;
-        for (i, o) in self.objects.iter().enumerate() {
+        // ⚠️ **Só o que está À VISTA**: um raio que alcança o escondido faria o
+        // pen-down mudar o ativo para uma peça que o artista não vê, e o traço
+        // seguinte pousaria nela.
+        for i in self.visible_pieces() {
+            let o = &self.objects[i];
             let Some(hit) = o.stack.mesh().raycast(&o.pose.ray_to_local(&world)) else {
                 continue;
             };

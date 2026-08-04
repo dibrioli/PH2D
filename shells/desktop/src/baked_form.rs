@@ -27,6 +27,21 @@
 //! iluminação escrito aqui seria a **segunda resposta** a *como uma normal vira luz*, e as duas
 //! divergiriam no primeiro material que alguém acrescentasse — a falha de duas-portas que este
 //! módulo já recusou no rig (`ph2d-light`, W3).
+//!
+//! ## ⚠️ ABERTO, e NOMEADO por ser compartilhado
+//!
+//! O mapa é chaveado por **bits de entidade**, e o undo global **RESPAWNA** as entidades (bits
+//! novos, mesmo `Name`). Depois de um Ctrl+Z que refaça o mundo, a entrada fica órfã: o sprite
+//! continua apontando para o slot aceso — então **a tela não muda** —, mas mover a lâmpada deixa de
+//! o alcançar e um save seguinte não o encontra.
+//!
+//! ⚠️ **Não foi consertado aqui de propósito, e a razão é que o defeito não é desta wave:** o
+//! `PaintedDoc` do Painter tem exatamente a mesma forma (o `doc_cache` dele também é keyed por bits,
+//! e o `restore_painted_docs` só é chamado pelo LOAD, nunca pelo undo — conferido por grep). Curar
+//! um dos dois e não o outro seria **duas respostas** para *como um documento reencontra o seu
+//! objeto depois de um respawn*, que é precisamente a falha que a identidade estável existe para
+//! remover. A cura é a mesma para os dois — re-key pelos componentes estáveis depois de todo
+//! restore — e é wave própria, do dono dos dois lados.
 
 use ph2d_gpu::GpuContext;
 use ph2d_light::{LightRig, MAX_LIGHTS};

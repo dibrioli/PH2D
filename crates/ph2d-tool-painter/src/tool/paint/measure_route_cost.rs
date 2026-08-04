@@ -494,12 +494,12 @@ fn what_the_banded_batch_buys_when_the_cap_is_on() {
             let dabs = batch(figure, n, r);
             let work = batch_work(&dabs, SIZE, SIZE);
             assert!(
-                wants_bands(&dabs, SIZE, SIZE, 0),
+                wants_bands(batch_work(&dabs, SIZE, SIZE), &dabs, SIZE, SIZE, 0),
                 "com piso 0 o lote de {n} dabs TEM de tomar a banda, senão as duas colunas são a \
                  mesma rota e a razão é 1,00x por construção"
             );
             assert!(
-                !wants_bands(&dabs, SIZE, SIZE, usize::MAX),
+                !wants_bands(batch_work(&dabs, SIZE, SIZE), &dabs, SIZE, SIZE, usize::MAX),
                 "com piso usize::MAX o lote TEM de ficar serial — é a rota de ablação"
             );
 

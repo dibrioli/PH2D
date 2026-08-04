@@ -443,7 +443,7 @@ mod bands;
 
 pub(crate) use bands::parallel_band_stamp_masked;
 use bands::{DabCtx, stamp_band};
-pub use bands::{PARALLEL_MIN_AREA, SPAWN_EQUIV_VISITS, band_count, band_count_with};
+pub use bands::{PARALLEL_MIN_AREA, band_count};
 pub(crate) use bands::{encode, ramp_sample, stamp_rgba};
 pub(crate) use bands::{parallel_band_cached, parallel_band_stamp};
 

@@ -28,9 +28,9 @@ use crate::texture::{ImageMask, TexDabBasis};
 /// com thread mais cara o número real sobe, e o ótimo é **plano** em volta dele (medido: para
 /// 110 224 visitas, `T = 8` custa 263 µs, `T = 16` custa 258 e `T = 24` custa 312 — errar por 2× no
 /// constante custa ~2%).
-pub const SPAWN_EQUIV_VISITS: usize = 808;
+pub(crate) const SPAWN_EQUIV_VISITS: usize = 808;
 
-/// A menor área que pede DUAS bandas — **derivada**, nunca escolhida (é onde [`band_count_with`]
+/// A menor área que pede DUAS bandas — **derivada**, nunca escolhida (é onde o `band_count_with`
 /// deixa de devolver 1).
 ///
 /// ⚠️ **Ela era `1 << 17 = 131 072` e o número estava errado por 40×, com um mecanismo que a
@@ -95,7 +95,7 @@ fn cores() -> usize {
 
 /// [`band_count`] com o número de núcleos **injetado** — a face pura, que é a que um gate consegue
 /// interrogar (a outra pergunta à máquina, e uma máquina não é uma fixture).
-pub fn band_count_with(area: usize, rows: usize, min_area: usize, cores: usize) -> usize {
+pub(crate) fn band_count_with(area: usize, rows: usize, min_area: usize, cores: usize) -> usize {
     if area < min_area || rows <= 1 {
         return 1;
     }

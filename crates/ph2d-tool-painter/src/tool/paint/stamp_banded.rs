@@ -132,14 +132,20 @@ pub(super) fn batch_work(dabs: &[Dab], w: u32, h: u32) -> usize {
 /// ([`ph2d_painter_brush::band_count`]) elas se separam, e um predicado que respondesse só a primeira
 /// deixaria os gates de identidade afirmando *"as duas rotas concordam"* sobre **duas execuções da
 /// rota serial**: verde sobre nada.
-pub(super) fn wants_bands(dabs: &[Dab], w: u32, h: u32, min_area: usize) -> bool {
+///
+/// ⚠️ **Ela recebe o `work` em vez de o computar, e isso é uma porta e não duas.** A versão de
+/// 2026-08-04 ganhou uma irmã `wants_bands_for` para o produto não varrer os dabs três vezes — e a
+/// irmã deixou a `wants_bands` **sem chamador de produção, só de gate**, que é exatamente a "segunda
+/// resposta esperando alguém chamá-la" que este módulo combate. Com o trabalho no argumento há uma
+/// função só, e a régua fica VISÍVEL no sítio de chamada.
+pub(super) fn wants_bands(work: usize, dabs: &[Dab], w: u32, h: u32, min_area: usize) -> bool {
     if dabs.len() < 2 {
         return false;
     }
     let Some(bounds) = batch_bounds(dabs, w, h) else {
         return false;
     };
-    ph2d_painter_brush::band_count(batch_work(dabs, w, h), bounds.h as usize, min_area) >= 2
+    ph2d_painter_brush::band_count(work, bounds.h as usize, min_area) >= 2
 }
 
 /// Carimba o lote **inteiro** de dabs de falloff puro, dividindo as LINHAS entre os núcleos.
@@ -179,10 +185,14 @@ pub(super) fn stamp_plain_dabs_banded_with(
     // dabs e as visitas e mais nada, então o `ns/visita` do log tinha de buscar um numerador noutro
     // lugar — e buscava no RE-STAMP, um evento diferente. Medir onde se conta é o que torna a razão
     // uma razão.
-    let bands = wants_bands(dabs, w, h, min_area);
+    // ⚠️ O TRABALHO é computado UMA vez e desce. Ele era recomputado três vezes por lote (no
+    // `wants_bands`, aqui para o balde, e outra vez para a contagem de bandas) — 700 dabs × 3 é ruído
+    // contra o carimbo, mas é a mesma pergunta feita a três lugares, que é como as três respostas
+    // começam a divergir.
     let work = batch_work(dabs, w, h);
+    let bands = wants_bands(work, dabs, w, h, min_area);
     let t0 = std::time::Instant::now();
-    let out = stamp_plain_dabs_banded_run(buf, w, h, dabs, brush, alpha_locked, mask, bands);
+    let out = stamp_plain_dabs_banded_run(buf, w, h, dabs, brush, alpha_locked, mask, bands, work);
     #[allow(clippy::cast_possible_truncation)]
     diag::note(bands, dabs.len(), work, t0.elapsed().as_micros() as u64);
     out
@@ -241,6 +251,7 @@ fn stamp_plain_dabs_banded_run(
     alpha_locked: bool,
     mask: Option<&mut [u8]>,
     bands: bool,
+    work: usize,
 ) -> Option<DirtyRect> {
     if dabs.len() < 2 {
         return stamp_plain_serial(buf, w, h, dabs, brush, alpha_locked, mask);
@@ -253,7 +264,7 @@ fn stamp_plain_dabs_banded_run(
     // A MESMA porta do kernel (`ph2d_painter_brush::band_count`) — o lote e o dab fazem a mesma
     // pergunta, e a medição de 2026-08-04 provou que ela tem a mesma resposta: os dois break-even
     // caem em ~25 k visitas. O `wants_bands` acima já aplicou o piso; aqui só falta *em quantas*.
-    let threads = ph2d_painter_brush::band_count(batch_work(dabs, w, h), rows, 0);
+    let threads = ph2d_painter_brush::band_count(work, rows, 0);
     if threads < 2 {
         return stamp_plain_serial(buf, w, h, dabs, brush, alpha_locked, mask);
     }

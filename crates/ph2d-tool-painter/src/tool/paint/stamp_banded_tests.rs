@@ -5,7 +5,7 @@
 //! desta wave, chamando o mesmo kernel com os mesmos argumentos. As duas rotas comparadas aqui são,
 //! literalmente, *a de antes* e *a de agora*.
 
-use super::stamp_banded::{BATCH_MIN_AREA, stamp_plain_dabs_banded_with, wants_bands};
+use super::stamp_banded::{BATCH_MIN_AREA, batch_work, stamp_plain_dabs_banded_with, wants_bands};
 use ph2d_painter_brush::{BrushSpec, Dab};
 
 const W: u32 = 512;
@@ -175,21 +175,45 @@ fn a_freehand_sized_batch_stays_serial_and_a_figure_sized_one_does_not() {
     // ⚠️ Pergunta ao PRODUTO (`wants_bands`), não à aritmética do teste: a 1ª versão deste gate
     // recomputava a regra por conta própria e teria ficado verde com o produto decidindo outra coisa.
     assert!(
-        !wants_bands(&arc(2, 3.0), W, H, BATCH_MIN_AREA),
+        !wants_bands(
+            batch_work(&arc(2, 3.0), W, H),
+            &arc(2, 3.0),
+            W,
+            H,
+            BATCH_MIN_AREA
+        ),
         "um lote que não enche duas bandas tem de ficar SERIAL"
     );
     assert!(
-        !wants_bands(&arc(1, 20.0), W, H, BATCH_MIN_AREA),
+        !wants_bands(
+            batch_work(&arc(1, 20.0), W, H),
+            &arc(1, 20.0),
+            W,
+            H,
+            BATCH_MIN_AREA
+        ),
         "um dab só nunca vale uma divisão"
     );
     // ⚠️ E a metade que a medição ACRESCENTOU: o lote de mão livre, que este gate pinava como serial,
     // agora TEM de dividir — sem ela, restaurar o piso antigo passaria aqui em silêncio.
     assert!(
-        wants_bands(&arc(6, 20.0), W, H, BATCH_MIN_AREA),
+        wants_bands(
+            batch_work(&arc(6, 20.0), W, H),
+            &arc(6, 20.0),
+            W,
+            H,
+            BATCH_MIN_AREA
+        ),
         "um lote de mão livre de 6 dabs paga a divisão (medido 1,5-2,0x) e tem de DIVIDIR"
     );
     assert!(
-        wants_bands(&arc(525, 200.0), W, H, BATCH_MIN_AREA),
+        wants_bands(
+            batch_work(&arc(525, 200.0), W, H),
+            &arc(525, 200.0),
+            W,
+            H,
+            BATCH_MIN_AREA
+        ),
         "a figura do report tem de DIVIDIR"
     );
     // E a régua é a soma das pegadas, não a caixa: esta figura tem caixa PEQUENA e trabalho GRANDE.
@@ -206,7 +230,7 @@ fn a_freehand_sized_batch_stays_serial_and_a_figure_sized_one_does_not() {
          ({bbox} vs {BATCH_MIN_AREA})"
     );
     assert!(
-        wants_bands(&tight, W, H, BATCH_MIN_AREA),
+        wants_bands(batch_work(&tight, W, H), &tight, W, H, BATCH_MIN_AREA),
         "uma figura de caixa pequena e muito trabalho tem de DIVIDIR"
     );
 }
@@ -517,7 +541,7 @@ fn the_capped_batch_is_byte_identical_whether_its_rows_are_split_or_not() {
         // `wants_bands` DEVOLVE a decisão real (quantas bandas, não *"passou do piso"*), então esta
         // linha falha alto quando a fixture deixa de conter o fenômeno — foi ela que pegou o `n = 2`.
         assert!(
-            wants_bands(&dabs, W, H, 0),
+            wants_bands(batch_work(&dabs, W, H), &dabs, W, H, 0),
             "n={n}: sem divisão as duas chamadas são o MESMO código e o verde é vácuo"
         );
         let (par_buf, par_mask) = capped_batch(&dabs, 0);

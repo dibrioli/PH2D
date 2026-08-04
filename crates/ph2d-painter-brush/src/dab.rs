@@ -169,6 +169,7 @@ pub fn stamp_dab_textured(
         RampAlphaMode::None,
         None,
         [1.0, 0.0],
+        PARALLEL_MIN_AREA,
     )
 }
 
@@ -207,6 +208,47 @@ pub fn stamp_dab_textured_masked(
         RampAlphaMode::None,
         mask,
         dab_rotation,
+        PARALLEL_MIN_AREA,
+    )
+}
+
+/// [`stamp_dab_textured_masked`] com o **piso de paralelismo explícito** — a rota de ablação do gate.
+///
+/// ⚠️ Com `min_area = usize::MAX` o kernel roda a **banda ÚNICA** que o caminho do cap rodava antes de
+/// 2026-08-04, chamando o MESMO `stamp_band` com os mesmos argumentos. É isso que torna o gate de
+/// identidade uma comparação contra **o produto**, e não contra uma segunda implementação escrita para
+/// o teste (o precedente do `stamp_plain_dabs_banded_with`).
+#[allow(clippy::too_many_arguments)]
+#[must_use]
+#[cfg(test)]
+pub(crate) fn stamp_dab_textured_masked_with(
+    buf: &mut [u8],
+    width: u32,
+    height: u32,
+    center: [f32; 2],
+    spec: &BrushSpec,
+    coverage: f32,
+    preserve_alpha: bool,
+    mask: Option<&mut [u8]>,
+    dab_rotation: [f32; 2],
+    min_area: usize,
+) -> Option<DirtyRect> {
+    stamp_dab_inner(
+        buf,
+        width,
+        height,
+        center,
+        spec,
+        coverage,
+        preserve_alpha,
+        None,
+        None,
+        None,
+        None,
+        RampAlphaMode::None,
+        mask,
+        dab_rotation,
+        min_area,
     )
 }
 
@@ -250,6 +292,7 @@ pub fn stamp_dab_ramped(
         alpha_mode,
         mask,
         dab_rotation,
+        PARALLEL_MIN_AREA,
     )
 }
 
@@ -277,6 +320,11 @@ fn stamp_dab_inner(
     // footprint — falloff + Shape + View-Grain — together, which is what keeps a following tip and the
     // pattern inside it from disagreeing on a curve.
     dab_rotation: [f32; 2],
+    // O piso a partir do qual as linhas do dab se dividem entre os nucleos. Producao passa
+    // [`PARALLEL_MIN_AREA`]; o gate de identidade passa `usize::MAX` para forcar a banda UNICA que
+    // este kernel rodava antes de 2026-08-04 -- e' isso que torna o oraculo dele **o codigo que
+    // shipava**, e nao uma segunda implementacao escrita para o teste.
+    min_area: usize,
 ) -> Option<DirtyRect> {
     // Contract guard (sweep 2026-07-12): was `debug_assert!`, i.e. absent from the build the artist runs.
     if buf.len() < (width as usize) * (height as usize) * 4 {
@@ -353,21 +401,26 @@ fn stamp_dab_inner(
     };
 
     // The per-pixel work is independent, so a LARGE dab (e.g. a big Anchored stamp re-drawn every
-    // pointer move) splits across the cores (see `parallel_band_stamp`). The result is bit-identical
-    // to serial, so the texture stays fully visible during the drag. The Accumulate-cap path reads+
-    // writes the shared per-stroke mask, so it runs SERIALLY (one band over the dab's rows) — small
-    // soft-brush dabs anyway, where the cap is observable.
-    let touched = match mask {
-        Some(mask) => {
-            let region = &mut buf[(y0 as usize) * stride..(y1 as usize) * stride];
-            let mrow = width as usize;
-            let mask_region = &mut mask[(y0 as usize) * mrow..(y1 as usize) * mrow];
-            stamp_band(&ctx, region, Some(mask_region), y0)
-        }
-        None => parallel_band_stamp(buf, y0, y1, x0, x1, stride, |dst, band_y0| {
-            stamp_band(&ctx, dst, None, band_y0)
-        }),
-    };
+    // pointer move) splits across the cores (see `parallel_band_stamp_masked`). The result is
+    // bit-identical to serial, so the texture stays fully visible during the drag.
+    //
+    // ⚠️ **O cap de Accumulate viaja JUNTO desde 2026-08-04.** Ele rodava numa banda só, com o motivo
+    // *"lê+escreve a máscara por-traço compartilhada — dabs pequenos e macios de qualquer jeito, onde
+    // o cap é observável"*. A premissa era verdadeira e DEIXOU de ser: o cap disparava só em
+    // `strength < 1`, e o **AA do filme** do impasto (`film_aa_wanted`) passou a ligá-lo para TODO
+    // pincel de impasto — inclusive os maiores do app, que são justamente os que cruzam o piso.
+    // Medido: com o dab ABAIXO do piso o cap custa 0,99× (grátis); ACIMA dele, 4,15×.
+    let touched = parallel_band_stamp_masked(
+        buf,
+        mask,
+        y0,
+        y1,
+        x0,
+        x1,
+        stride,
+        min_area,
+        |dst, mband, band_y0| stamp_band(&ctx, dst, mband, band_y0),
+    );
 
     if !touched {
         return None;
@@ -384,7 +437,11 @@ mod bands;
 
 use bands::{DabCtx, stamp_band};
 pub(crate) use bands::{PARALLEL_MIN_AREA, parallel_band_cached, parallel_band_stamp};
+pub(crate) use bands::parallel_band_stamp_masked;
 pub(crate) use bands::{encode, ramp_sample, stamp_rgba};
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod band_mask_tests; // a mascara do cap atravessa a divisao por linhas sem mudar um byte

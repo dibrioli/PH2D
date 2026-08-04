@@ -19,6 +19,8 @@ pub(crate) const PARALLEL_MIN_AREA: usize = 1 << 17;
 /// the full-width band slice `dst` whose first row is `band_y0`, returning whether it touched a
 /// pixel. Disjoint bands ⇒ the result is bit-identical to serial regardless of band count (HR-5).
 /// Shared by the per-pixel [`stamp_dab_textured`] and the cached-mask [`crate::stamp::blit_stamp`].
+///
+/// A face **sem máscara** de [`band_split`]; a com máscara é [`parallel_band_stamp_masked`].
 pub(crate) fn parallel_band_stamp<F>(
     buf: &mut [u8],
     y0: i64,
@@ -31,26 +33,99 @@ pub(crate) fn parallel_band_stamp<F>(
 where
     F: Fn(&mut [u8], i64) -> bool + Sync,
 {
+    band_split(buf, None, y0, y1, x0, x1, stride, PARALLEL_MIN_AREA, |dst,
+     _m,
+     by0| {
+        stamp(dst, by0)
+    })
+}
+
+/// [`parallel_band_stamp`] carregando a **máscara por-traço** (o cap de Accumulate) fatiada nas MESMAS
+/// linhas.
+///
+/// # Por que ela existe
+///
+/// Até 2026-08-04 o caminho do cap rodava **numa banda só**, com o motivo escrito no `dab.rs`:
+/// *"reads+writes the shared per-stroke mask, so it runs SERIALLY — small soft-brush dabs anyway, where
+/// the cap is observable"*. ⚠️ **A premissa era verdadeira e deixou de ser:** o cap disparava só em
+/// `strength < 1`, e o **AA do filme do impasto** (`film_aa_wanted`) passou a ligá-lo para TODO pincel
+/// de impasto — inclusive os maiores do app, que são exatamente os que cruzam o piso. Medido: com o dab
+/// **abaixo** do piso o cap custa `0,99×` (grátis), **acima** dele custa `4,15×` — o vão inteiro é o
+/// paralelismo perdido, zero é a aritmética do cap.
+///
+/// # Por que continua bit-idêntico
+///
+/// A máscara é **row-major com `stride / 4` bytes por linha** (o `stamp_band` já a indexa em coordenada
+/// de BANDA), então fatiá-la pelas MESMAS linhas do canvas dá a cada banda texels que só ela toca. O
+/// kernel lê e escreve **o próprio texel** nos dois buffers e não olha vizinho, então um texel qualquer
+/// é visitado pelo mesmo dab, na mesma ordem, com a mesma aritmética — muda quem AVALIA a linha, nunca
+/// o que a linha diz (ADR-0109, o mesmo argumento que o canvas já usava).
+///
+/// ⚠️ **Uma régua, dois buffers:** `stride` decide as duas fatias (`stride` e `stride / 4`), então elas
+/// não podem discordar sobre onde uma banda começa.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn parallel_band_stamp_masked<F>(
+    buf: &mut [u8],
+    mask: Option<&mut [u8]>,
+    y0: i64,
+    y1: i64,
+    x0: i64,
+    x1: i64,
+    stride: usize,
+    min_area: usize,
+    stamp: F,
+) -> bool
+where
+    F: Fn(&mut [u8], Option<&mut [u8]>, i64) -> bool + Sync,
+{
+    band_split(buf, mask, y0, y1, x0, x1, stride, min_area, stamp)
+}
+
+/// A divisão por linhas — **uma** resposta a *"vale dividir, e onde cada banda começa?"*.
+#[allow(clippy::too_many_arguments)]
+fn band_split<F>(
+    buf: &mut [u8],
+    mask: Option<&mut [u8]>,
+    y0: i64,
+    y1: i64,
+    x0: i64,
+    x1: i64,
+    stride: usize,
+    min_area: usize,
+    stamp: F,
+) -> bool
+where
+    F: Fn(&mut [u8], Option<&mut [u8]>, i64) -> bool + Sync,
+{
+    let mrow = stride / 4;
     let region = &mut buf[(y0 as usize) * stride..(y1 as usize) * stride];
+    let mask_region = mask.map(|m| &mut m[(y0 as usize) * mrow..(y1 as usize) * mrow]);
     let rows = (y1 - y0) as usize;
     let area = rows * ((x1 - x0).max(0) as usize);
-    if area < PARALLEL_MIN_AREA || rows <= 1 {
-        return stamp(region, y0);
+    if area < min_area || rows <= 1 {
+        return stamp(region, mask_region, y0);
     }
     let threads = std::thread::available_parallelism()
         .map(|n| n.get())
         .unwrap_or(1)
         .clamp(1, rows);
     let rows_per_band = rows.div_ceil(threads);
+    // As duas fatias saem da MESMA contagem de linhas; um `zip` as manteria alinhadas só enquanto os
+    // dois iteradores tivessem o mesmo comprimento, e é justamente isso que um erro de stride quebra.
+    let mut mask_bands = mask_region.map(|m| m.chunks_mut(rows_per_band * mrow));
+    let bands: Vec<_> = region
+        .chunks_mut(rows_per_band * stride)
+        .enumerate()
+        .map(|(bi, chunk)| {
+            let mchunk = mask_bands.as_mut().and_then(Iterator::next);
+            (chunk, mchunk, y0 + (bi * rows_per_band) as i64)
+        })
+        .collect();
     let stamp = &stamp;
     std::thread::scope(|s| {
-        region
-            .chunks_mut(rows_per_band * stride)
-            .enumerate()
-            .map(|(bi, chunk)| {
-                let band_y0 = y0 + (bi * rows_per_band) as i64;
-                s.spawn(move || stamp(chunk, band_y0))
-            })
+        bands
+            .into_iter()
+            .map(|(chunk, mchunk, band_y0)| s.spawn(move || stamp(chunk, mchunk, band_y0)))
             // Collect first so EVERY band is joined (no short-circuit leaving a thread unjoined).
             .collect::<Vec<_>>()
             .into_iter()

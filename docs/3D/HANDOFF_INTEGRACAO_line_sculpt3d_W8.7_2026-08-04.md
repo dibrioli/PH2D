@@ -1,7 +1,8 @@
 # Handoff de integração — `line/sculpt3d`, **W8.7: os canais no DOCUMENTO**
 
 > **Data:** 2026-08-04 · **Branch:** `line/sculpt3d` · **Base:** `main` de 2026-08-02
-> **Commits:** `5b31e9a1d` · `1bfeb7b7a` · `1584762b2` (+ o commit de docs)
+> **Commits (W8.7):** `5b31e9a1d` · `1bfeb7b7a` · `1584762b2` (+ o commit de docs)
+> ⚠️ **E a §8.bis descreve a W8.8, que fechou DEPOIS deste smoke e ainda não foi julgada.**
 > ✅ **SMOKE OK (2026-08-04)** — o Enio aprovou **todos os passos**, incluindo o (5) (as sombras do
 > objeto reaberto ANDAM) e o (6) (o objeto acende **sem cena 3D nenhuma**), que são os dois que
 > separam a rota A de uma fotografia.
@@ -134,6 +135,60 @@ que separa isto de uma fotografia · opcional, e é a promessa inteira: rode **s
 ⚠️ **A cena `=11` teve o roteiro corrigido:** a última linha dizia *"o bake NÃO sobrevive a fechar o
 app"*. Era verdade ontem e passou a mentir hoje.
 
+## 8.bis. A WAVE SEGUINTE, na mesma branch — **W8.8: FUNDIR e ISOLAR** (⚠️ pendente de smoke)
+
+> **Commits:** `9ac9b56b7` (o motor na malha) · `0f9d5a3a1` (a testemunha do slot) · `8dfc9dafd` (os
+> dois verbos) · `4a75c763c` (a âncora dos gates). **Cena `=13`.**
+
+`Shift+J` funde as peças **À VISTA** numa só; `Shift+I` isola a ativa. **A escolha que decide o
+resto:** a fusão age sobre o que se **VÊ**, não sobre uma seleção — seleção múltipla não existe nesta
+cena, e inventá-la aqui seria um segundo modelo de *"em quem este gesto pega"*; de quebra os dois
+verbos **compõem** (isole, olhe, funda o que sobrou).
+
+⚠️ **UM BUG VIVO, achado LENDO — e é o item que mais importa para quem integra.** A sincronização
+perguntava *"eu já mandei esta malha?"* (`uploaded`, memória da **CENA**) para decidir o que o
+**DEVICE** tem. Apagar a peça 0 de três desloca as sobreviventes para os slots 0 e 1 **com `uploaded
+== true`**, e a guarda antiga (`object_count() <= i`) não pega: os slots **existem**, só descrevem
+outra peça ⇒ a sobrevivente era desenhada com a geometria da peça **MORTA**, na pose dela própria —
+sem erro, sem warning, e **invisível numa cena de primitivas iguais**, que é exatamente a cena que os
+smokes montam. A cura é a **testemunha** (`slots: Vec<ObjectId>`): o slot diz de quem ele é, e a
+sincronização pergunta a ele. Isso mata a classe inteira — o delete que desloca, o isolamento que
+compacta, a fusão que troca N por uma, o undo que recoloca no fim — em vez de **enumerar** os gestos
+que precisam invalidar, que é a lista que nasce incompleta no dia seguinte.
+
+**Onde o código mora:** `ph2d-mesh::merge` (concatenar é operação de **malha**, e ali é gateável sem
+device — o assunto é aritmética de **ÍNDICE**, cujo modo de falha **desenha** em vez de dar erro) ·
+`shells/desktop/src/sculpt3d_slots.rs` (a tabela + o `sync_mesh`, que veio do `sculpt3d_donation.rs`) ·
+os dois verbos em `sculpt3d_objects.rs`.
+
+⚠️ **`plan_slots` é função LIVRE e pura**, o precedente do `place` do import e do `swap_window` do
+desfazer: uma `Sculpt3dScene` não nasce sem `wgpu::Device`, então uma decisão que morasse dentro dela
+só seria alcançável por gate de GPU.
+
+⚠️ **O isolamento é VISTA, nunca história** (`isolated: Option<ObjectId>` — o precedente do onion da
+timeline): ele não move um vértice. Guarda o **ID** e resolve o **índice** a cada pergunta ⇒ peça
+isolada que morreu vira *sem isolamento*, e não uma tela preta.
+
+⚠️ **O refazer da fusão não carrega o resultado** — re-roda a mesma porta (`fuse_visible`), função pura
+da lista (o precedente do `UnfilledHoles`); a metade que o faz funcionar é o **id**, reusado da
+entrada, senão a inversa fica órfã.
+
+**Gates: 19 · mutações: 15, 15 sangram.** ⚠️ **Dois arch-gates existentes ficaram VERMELHOS sobre
+produto CORRETO**, e o integrador deve saber por quê: `braced_block(key, "if code == K::KeyJ")` passou
+a achar o `Shift+J` (as duas famílias de verbo dividem letras **de propósito**), e a primeira cura
+tinha a **mesma doença um nível acima** (`"if shift"` acha o `if shift && … KeyB`). *"O primeiro X"* é
+posição, e posição expira — o helper novo (`branch_containing`) pergunta **do corpo para fora**: dada
+a chamada que só existe uma vez, *que ramo a guarda?*
+
+**Colisão:** **zero** `Cargo.toml`, **zero** dep, **zero** crate nova, **zero** ADR, **zero** id/token,
+`PROJECT_SCHEMA` **intocado** (nada disto é serializado), registro do `ph2d-ecs` **intocado**, contrato
+congelado intacto. O diff inteiro mora em `ph2d-mesh` + `shells/desktop/src/sculpt3d*` + os gates.
+
+**Smoke:** `env PH2D_SCULPT3D_SMOKE=13 cargo run -p ph2d-host-desktop --release`. A cena monta
+**quatro formas DISTINTAS** de propósito (esfera + cubo grande + octaedro + cubo pequeno): num
+quarteto de primitivas iguais o bug do slot é **invisível**, e é ele que o passo (2) do roteiro
+manda apagar-e-olhar.
+
 ## 9. Aberto, com o preço ao lado
 
 - ⚠️ **O mapa é keyed por bits de entidade, e o undo global RESPAWNA.** Depois de um Ctrl+Z que
@@ -142,7 +197,8 @@ app"*. Era verdade ontem e passou a mentir hoje.
   `restore_painted_docs` só é chamado pelo LOAD, nunca pelo undo (conferido por grep). Curar um e não
   o outro seria **duas respostas** para *como um documento reencontra o seu objeto depois de um
   respawn*. Wave própria, do dono dos dois lados.
-- **merge** e **isolate** seguem sendo o que resta da W8.7 original.
+- ⚠️ **Fundir NÃO solda** (a costura é do remesh, `V`) e **recusa com a pilha de multires montada**
+  — achatá-la em silêncio destruiria trabalho autorado; as duas recusas são nomeadas no log.
 - O campo assado **não carrega cor, material nem a máscara** (a W8.6 já nomeava).
 - O `restore` **não valida** `base.len() == w*h*4`: um documento corrompido chega ao passe, que o
   recusa (`check()`), e o objeto fica com o slot vazio — falha alta, sem mensagem dedicada.

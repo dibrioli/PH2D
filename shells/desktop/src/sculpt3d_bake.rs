@@ -106,15 +106,14 @@ pub(super) struct BakedSprite {
 ///   ⚠️ **Ela NÃO restringe a luz ao desenho** (o `max` a atravessa), e afirmar isso seria
 ///   over-claim: onde o sprite é transparente o pixel é aceso e continua transparente, porque o
 ///   passe preserva o alpha da fonte.
-/// - **material NEUTRO** — [`Material::NEUTRAL`], a mesma constante que o Painter usa para *"a
-///   tinta antes de alguém mexer no material"*. Escrever os sete bytes à mão aqui seria a segunda
-///   resposta a *o que é tinta comum*, e ela envelheceria no dia em que o Painter mudasse um
-///   default. ⚠️ Consequência medida do neutro: `shine = 0`, e o realce especular do passe é
-///   `shine × spec × gloss` ⇒ **um objeto assado é FOSCO**. Brilho é propriedade do material da
-///   tinta, e o barro ainda não tem material (`docs/3D/05.1`, W7).
+/// - **o material do BARRO** — [`clay_material`]. ⚠️ **A primeira versão usava
+///   [`Material::NEUTRAL`] e o smoke a reprovou**: o neutro do Painter tem `shine = 0`, o realce do
+///   passe é `shine × spec × gloss`, e o objeto assado saía **sem especular nenhum** enquanto o
+///   barro na tela tem um. Numa esfera lisa o realce é o cue de VOLUME, e sem ele ela lê como
+///   chapada — o *"o vivo parece em perspectiva, o assado parece isométrico"* do report.
 fn neutral_planes(base: &[u8]) -> (Vec<f32>, Vec<u8>, Vec<u8>, Vec<u8>) {
     let n = base.len() / 4;
-    let m = Material::NEUTRAL.to_bytes();
+    let m = clay_material().to_bytes();
     let relief = vec![0.0f32; n];
     let cover: Vec<u8> = base.chunks_exact(4).map(|px| px[3]).collect();
     let mut mat0 = vec![0u8; n * 4];
@@ -124,6 +123,26 @@ fn neutral_planes(base: &[u8]) -> (Vec<f32>, Vec<u8>, Vec<u8>, Vec<u8>) {
         mat1[i * 4..i * 4 + 4].copy_from_slice(&[m[4], m[5], m[6], 0]);
     }
     (relief, cover, mat0, mat1)
+}
+
+/// **O material do BARRO, no vocabulário da tinta** — o que o objeto assado tem de vestir para
+/// acender como a escultura que ele copiou.
+///
+/// ⚠️ **A rugosidade não é convertida, porque já era a mesma.** O barro usa expoente Blinn-Phong
+/// **24** (`ph2d_mesh_render::CLAY_EXPONENT`), e a rugosidade neutra da tinta (`0.5`) produz na LUT
+/// dela exatamente `√(6 × 96) = 24` — os dois caminhos sempre concordaram sobre a LARGURA do
+/// realce. O que a W8.6 tinha jogado fora era só a INTENSIDADE, e ela vem do
+/// [`ph2d_mesh_render::CLAY_SHINE`].
+///
+/// ⚠️ **Duas coisas continuam diferentes de propósito, e nenhuma é a luz:** o barro é tingido de
+/// argila quente (`CLAY`) e o sprite tem a COR que o artista pintou — é o albedo, e o objetivo 2 é
+/// justamente pintar a sua arte e acendê-la pela forma; e o realce do barro é fixo, enquanto o do
+/// sprite pode virar per-pixel quando a escultura ganhar material (`docs/3D/05.1`, W7).
+fn clay_material() -> Material {
+    Material {
+        shine: ph2d_mesh_render::CLAY_SHINE,
+        ..Material::NEUTRAL
+    }
 }
 
 /// As lâmpadas do rig, no vocabulário do passe.
@@ -451,7 +470,7 @@ mod tests {
         }
     }
 
-    /// **A cobertura é o ALPHA, e o material é o NEUTRO do Painter.**
+    /// **A cobertura é o ALPHA, e o material é o do BARRO.**
     ///
     /// ⚠️ A metade da cobertura é a que tem consequência visível, e ela é sobre a **borda da
     /// silhueta**: o shader faz `body = max(cobertura, peso_da_forma)`, então com a cobertura
@@ -469,13 +488,37 @@ mod tests {
             "a cobertura e' o alpha: opaco vence o peso parcial da borda da forma"
         );
 
-        let m = Material::NEUTRAL.to_bytes();
+        let m = clay_material().to_bytes();
         assert_eq!(&mat0[..4], &[m[0], m[1], m[2], m[3]]);
         assert_eq!(&mat1[..4], &[m[4], m[5], m[6], 0]);
-        assert_eq!(
-            m[0], 0,
-            "o neutro do Painter nao tem brilho -- um objeto assado e' FOSCO, e a nota do \
-             `neutral_planes` diz por que"
+    }
+
+    /// **O OBJETO ASSADO ACENDE COMO O BARRO QUE ELE COPIOU.**
+    ///
+    /// ⚠️ Este gate nasceu de um smoke REPROVADO — *"o modelo vivo parece em perspectiva, o assado
+    /// parece isométrico"* —, e a medição que o precedeu é o que o torna honesto: a projeção é
+    /// IDÊNTICA nos dois (`measure_bake_framing`: a esfera sai redonda, 1,000 contra 0,998, e a
+    /// fração vertical do quadro bate em 0,491 contra 0,492). O que faltava era o **realce**, que
+    /// numa esfera lisa é o cue de volume — e sem ele ela lê como chapada.
+    ///
+    /// As duas metades afirmam as duas coisas que têm de concordar, e nenhuma delas é uma cópia da
+    /// outra: a **intensidade** vem do barro, e a **largura** do realce é a mesma nos dois modelos.
+    #[test]
+    fn a_baked_object_wears_the_clays_highlight() {
+        let m = clay_material();
+        assert!(
+            (m.shine - ph2d_mesh_render::CLAY_SHINE).abs() < 1e-6,
+            "a INTENSIDADE do realce e' a do barro, nao o zero do neutro da tinta"
+        );
+        assert!(m.shine > 0.0, "sem realce a esfera assada le' como chapada");
+        // ⚠️ A LARGURA: o expoente que a rugosidade do bake produz na LUT da tinta tem de ser o
+        // mesmo que o shader do barro usa. Sem isto, o assado teria um realce da intensidade certa
+        // e do TAMANHO errado — e a divergência voltaria por outra porta.
+        let exponent = Material::exponent(m.roughness);
+        assert!(
+            (exponent - ph2d_mesh_render::CLAY_EXPONENT).abs() < 1e-3,
+            "a largura do realce diverge: a tinta da' {exponent} e o barro usa {}",
+            ph2d_mesh_render::CLAY_EXPONENT
         );
     }
 

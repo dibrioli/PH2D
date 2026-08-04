@@ -478,8 +478,9 @@ pub(crate) fn announce(mesh: &ph2d_mesh::Mesh) {
              [sculpt3d]    (5) O SEGUNDO TESTE: aperte D ate' voltar ao BARRO e Delete ate' a\n\
              [sculpt3d]        escultura sumir; volte ao D. O sprite tem de continuar aceso E as\n\
              [sculpt3d]        teclas de luz tem de continuar movendo as sombras dele -- sem malha.\n\
-             [sculpt3d]    (6) Um objeto assado e' FOSCO de proposito (o barro ainda nao tem\n\
-             [sculpt3d]        material): procure FORMA, nao brilho especular.\n\
+             [sculpt3d]    (6) O assado tem o REALCE do barro (mesma intensidade, mesma largura --\n\
+             [sculpt3d]        ha' gate). O que continua diferente e' a COR: o barro e' argila\n\
+             [sculpt3d]        quente e o sprite tem a cor que voce pintou. Isso e' albedo, nao luz.\n\
              [sculpt3d]    (7) Assar DE NOVO por outro angulo tem de substituir a luz, nao somar --\n\
              [sculpt3d]        gire, Shift+B, e o sprite nao pode ficar mais escuro a cada bake.\n\
              [sculpt3d]    ⚠️ O bake NAO sobrevive a fechar o app: os canais no arquivo sao a\n\

@@ -483,32 +483,54 @@ impl crate::App {
         let gfx = self.gfx.as_mut().expect("gfx");
         let world = gfx.sim.world_mut();
 
-        // Um chão longo, uma rampa RASA (30°, sobe) e uma ÍNGREME (60°, escorrega).
+        // Um chão longo entre duas paredes, e uma rampa RASA (30°) que se sobe.
+        //
+        // ⚠️ **A GEOMETRIA foi CORRIGIDA na W9, e o defeito era mudo** (medido em
+        // `measure_walk_scene`, na `ph2d-physics-ecs`): as duas rampas antigas
+        // subiam *para longe* do chão, então o personagem passava POR BAIXO
+        // delas, caía da beirada do piso em `x = ±10` e despencava — `y = −162 m`
+        // seis segundos depois, sem ter encostado em rampa nenhuma. O roteiro
+        // mandava *"vá até a rampa"* e não havia como chegar lá.
+        //
+        // O que decide é o **SINAL da rotação**: negativo faz a rampa subir indo
+        // para a ESQUERDA, que é o lado de onde o personagem chega. E a rampa
+        // ÍNGREME saiu daqui para a `=88`, a cena que existe para o par que
+        // cerca o limite (40° × 50°) — 60° já era recusado mesmo com o defeito
+        // do *Max Slope*, então ela nunca foi a fixture que continha o fenômeno.
         slab(
             world,
             "Floor",
             Vec2::new(0.0, -0.5),
-            [10.0, 0.5],
+            [16.0, 0.5],
             0.0,
             [0.35, 0.35, 0.4, 1.0],
         );
-        let ramp30 = 30.0_f32.to_radians();
+        for (name, x) in [("WallL", -16.5), ("WallR", 16.5)] {
+            slab(
+                world,
+                name,
+                Vec2::new(x, 2.0),
+                [0.5, 2.5],
+                0.0,
+                [0.30, 0.30, 0.34, 1.0],
+            );
+        }
         slab(
             world,
             "Ramp30",
-            Vec2::new(-13.0, 1.2),
-            [4.5, 0.5],
-            ramp30,
+            Vec2::new(-7.0, 1.3),
+            [4.0, 0.5],
+            -30.0_f32.to_radians(),
             [0.3, 0.5, 0.35, 1.0],
         );
-        let ramp60 = 60.0_f32.to_radians();
+        // O patamar no alto — subir tem de levar a algum lugar.
         slab(
             world,
-            "Ramp60",
-            Vec2::new(13.0, 2.4),
-            [3.5, 0.5],
-            -ramp60,
-            [0.55, 0.32, 0.3, 1.0],
+            "Plateau",
+            Vec2::new(-13.0, 3.3),
+            [3.5, 0.41],
+            0.0,
+            [0.32, 0.44, 0.36, 1.0],
         );
 
         // A plataforma KINEMATIC, dirigida pela timeline — o vagão.
@@ -534,7 +556,8 @@ impl crate::App {
         author_platform_track(&mut self.timeline.doc, platform);
 
         eprintln!(
-            "[physics-smoke 81] ANDAR (W3). Chao + rampa de 30deg + rampa de 60deg + um vagao.\n\
+            "[physics-smoke 81] ANDAR (W3). Chao entre duas paredes + rampa de 30deg\n\
+             com patamar no alto + um vagao.\n\
              \n\
              ⚠️ Se a linha acima nao aparecer, pare: a cena nao montou.\n\
              \n\
@@ -545,11 +568,11 @@ impl crate::App {
              · SOLTE a tecla: ele freia e PARA -- e depois nao escorrega mais nada.\n\
              · segure a tecla oposta em movimento: virar responde mais rapido que\n\
                arrancar do zero (e' o fator de mudanca de direcao, ate' 2x).\n\
-             · va' para a ESQUERDA, ate' a rampa de 30deg: ele SOBE, e sobe com a\n\
-               mesma velocidade com que andava no plano (a velocidade e' a do\n\
-               PERCURSO, nao a horizontal).\n\
-             · va' para a DIREITA, ate' a rampa de 60deg: ele NAO sobe -- escorrega.\n\
-               Suba 'Max Slope' acima de 60 e ela passa a ser escalavel.\n\
+             · va' para a ESQUERDA, ate' a rampa de 30deg: ele SOBE ate' o patamar,\n\
+               e sobe com a mesma velocidade com que andava no plano (a velocidade\n\
+               e' a do PERCURSO, nao a horizontal).\n\
+             · a rampa INGREME mudou de cena: ela agora e' a =88, com o par que\n\
+               cerca o limite (40deg sobe / 50deg escorrega).\n\
              · suba no VAGAO e SOLTE a tecla: ele viaja junto, parado em relacao\n\
                ao vagao. Ande em cima dele: anda normal, sobre um chao que se move.\n\
                (O vagao faz uma ida-e-volta nos primeiros 4 s; arme o Loop na barra\n\

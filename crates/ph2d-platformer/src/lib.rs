@@ -51,11 +51,13 @@
 pub mod jump;
 pub mod react;
 pub mod ride;
+pub mod slope;
 pub mod walk;
 
 pub use jump::{JumpConfig, JumpState, JumpStep, jump_step};
 pub use react::{Reaction, ReactionConfig};
 pub use ride::{RideConfig, ride_spring, within_reach};
+pub use slope::{Footing, footing, footing_verdict, is_grounded, no_uphill};
 pub use walk::{WalkConfig, walk};
 
 /// Um vetor 2D em MUNDO (metros), na convenção do módulo (Y para cima).
@@ -183,50 +185,6 @@ impl Motor {
     }
 }
 
-/// **A amostra que a lei aceita como CHÃO** — a pergunta feita UMA vez.
-///
-/// Duas metades, e a segunda foi a entrega da W3: *perto o bastante* (a perna
-/// alcança) **e** *rasa o bastante* (o personagem fica em pé nela).
-///
-/// ⚠️ **Uma parede de 80° está ao alcance do raio e não é chão.** Deixá-la
-/// passar faria a mola segurar o personagem colado numa parede vertical, parado
-/// no ar, porque a mola cancela a gravidade enquanto segura. Recusando-a, a
-/// gravidade volta a agir inteira, o collider encosta na rampa e o personagem
-/// **escorrega** — que é o que a Unity (`slopeLimit`) e o Godot
-/// (`floor_max_angle`) fazem, e pela mesma razão.
-///
-/// A recusa é **binária de propósito**: é a resposta de toda a indústria, e uma
-/// transição contínua faria a inclinação em que o personagem para de subir
-/// depender da velocidade com que chegou.
-#[must_use]
-pub fn footing<'a>(
-    cfg: &PlayerConfig,
-    sample: Option<&'a GroundSample>,
-    up: Vec2,
-) -> Option<&'a GroundSample> {
-    let s = sample?;
-    if !within_reach(&cfg.ride, Some(s)) {
-        return None;
-    }
-    // Normal degenerada (raio nascido dentro da geometria): trate como plano —
-    // ver o aviso em `GroundSample::normal`.
-    let n2 = s.normal[0] * s.normal[0] + s.normal[1] * s.normal[1];
-    if n2 < 1.0e-6 {
-        return Some(s);
-    }
-    let cos = s.normal[0] * up[0] + s.normal[1] * up[1];
-    if cos < cfg.walk.max_slope_cos() {
-        return None;
-    }
-    Some(s)
-}
-
-/// Estamos no chão? A pergunta pública, e a mesma que as leis consomem.
-#[must_use]
-pub fn is_grounded(cfg: &PlayerConfig, sample: Option<&GroundSample>, up: Vec2) -> bool {
-    footing(cfg, sample, up).is_some()
-}
-
 /// **A PORTA ÚNICA** — o motor inteiro de um player neste tick.
 ///
 /// Ela existe por uma razão que não é conveniência: [`footing`] é chamada
@@ -253,7 +211,8 @@ pub fn player_motor(
     up: Vec2,
     dt: f32,
 ) -> PlayerStep {
-    let footing = footing(cfg, sample, up);
+    let verdict = footing_verdict(cfg, sample, up);
+    let footing = verdict.ground();
 
     // ⚠️ **O pulo decide PRIMEIRO, e não é ordem arbitrária:** é ele que
     // responde *"a perna pode agir?"*. No instante da decolagem o raio ainda vê
@@ -271,7 +230,16 @@ pub fn player_motor(
     // chão enquanto voa.
     let standing = if jump.spring_armed { footing } else { None };
     let spring = ride_spring(&cfg.ride, standing, body_velocity, gravity, up);
-    let step = walk(&cfg.walk, standing, body_velocity, up, input.drive, dt);
+    // ⚠️ **Só o termo de CAMINHADA passa pelo `no_uphill`, e a escolha é o
+    // desenho.** A mola já está calada numa superfície recusada (é a `standing`
+    // acima) e o PULO é um gesto deliberado do artista — capá-lo faria o
+    // personagem perder o salto por encostar numa ladeira, que é outra feature e
+    // não esta correção. O que a lei recusa é *escalar sem querer*.
+    let step = no_uphill(
+        walk(&cfg.walk, standing, body_velocity, up, input.drive, dt),
+        verdict.steep(),
+        up,
+    );
 
     // ── A 3ª LEI ─────────────────────────────────────────────────────────────
     // Só há em quem empurrar se houver chão. ⚠️ E o que volta é o CONTATO: a
@@ -423,5 +391,185 @@ mod tests {
         assert_eq!(whole.motor, spring.plus(step));
         assert!(whole.motor.accel[0] > 0.0, "anda");
         assert!(whole.motor.accel[1] > 0.0, "e paira ao mesmo tempo");
+    }
+
+    // ── W9: O NÚMERO QUE O ARTISTA ESCREVE ───────────────────────────────────
+
+    /// **O sensor tem TRÊS respostas, e as duas que colapsavam pedem coisas
+    /// opostas da caminhada.**
+    ///
+    /// **Mutação que deve sangrar:** fazer `footing_verdict` devolver
+    /// `Footing::Airborne` no braço da inclinação.
+    #[test]
+    fn the_verdict_separates_the_air_from_a_steep_slope() {
+        let cfg = PlayerConfig::STARTING_POINT; // 45°
+        let steep = at(cfg.ride.float_height, [-0.866_025_4, 0.5]); // 60°
+        let shallow = at(cfg.ride.float_height, [-0.5, 0.866_025_4]); // 30°
+        let far = at(
+            cfg.ride.float_height + cfg.ride.cling_distance + 1.0,
+            [0.0, 1.0],
+        );
+
+        assert_eq!(footing_verdict(&cfg, None, UP), Footing::Airborne);
+        assert_eq!(footing_verdict(&cfg, Some(&far), UP), Footing::Airborne);
+        assert_eq!(
+            footing_verdict(&cfg, Some(&steep), UP),
+            Footing::Steep(&steep),
+            "uma rampa ao alcance e ingreme demais NAO e' o ar: ha' em que se \
+             apoiar, e e' isso que a fazia ser escalada"
+        );
+        assert_eq!(
+            footing_verdict(&cfg, Some(&shallow), UP),
+            Footing::Ground(&shallow)
+        );
+        // As duas VISTAS saem da MESMA classificação — nunca de dois testes.
+        assert!(footing(&cfg, Some(&steep), UP).is_none());
+        assert!(
+            footing_verdict(&cfg, Some(&steep), UP).steep().is_some(),
+            "o que a perna recusa e' o que o empurrao tem de respeitar"
+        );
+    }
+
+    /// **Morro acima some; morro abaixo passa inteiro.**
+    ///
+    /// **Mutação que deve sangrar:** trocar o `> 0.0` do `kill` por `< 0.0` —
+    /// o personagem passaria a não conseguir DESCER a ladeira que não sobe.
+    #[test]
+    fn a_push_uphill_on_a_refused_slope_is_removed_and_downhill_is_not() {
+        // Rampa de 60° subindo para a DIREITA: a normal tomba para a esquerda.
+        let steep = at(0.5, [-0.866_025_4, 0.5]);
+        let uphill = Motor {
+            accel: [40.0, 0.0],
+            boost: [0.0, 0.0],
+        };
+        let downhill = Motor {
+            accel: [-40.0, 0.0],
+            boost: [0.0, 0.0],
+        };
+        assert_eq!(
+            no_uphill(uphill, Some(&steep), UP),
+            Motor::default(),
+            "empurrar contra a ladeira nao carrega ninguem para cima"
+        );
+        assert_eq!(
+            no_uphill(downhill, Some(&steep), UP),
+            downhill,
+            "descer e' movimento legitimo, e a lei nao o toca"
+        );
+        // O canal de BOOST tem a mesma lei — ele escreve velocidade DIRETO, e
+        // deixá-lo passar seria a mesma subida por outra porta.
+        let boosted = Motor {
+            accel: [0.0, 0.0],
+            boost: [1.0, 0.0],
+        };
+        assert_eq!(no_uphill(boosted, Some(&steep), UP), Motor::default());
+    }
+
+    /// **Sem superfície recusada a lei não existe** — bit a bit.
+    ///
+    /// É ela que mantém tudo o que a W3..W8 shipou byte-idêntico: no ar e no
+    /// chão o motor sai pelo mesmo valor que saía.
+    #[test]
+    fn without_a_refused_slope_the_motor_is_untouched() {
+        let m = Motor {
+            accel: [40.0, -3.0],
+            boost: [0.25, 0.0],
+        };
+        assert_eq!(no_uphill(m, None, UP), m);
+    }
+
+    /// ⚠️ **"Morro acima" sai do `up`, não do eixo Y.**
+    ///
+    /// O módulo assume `up = [0,1]` hoje (a ponte tem a const `UP`), mas a lei
+    /// recebe o vetor — e uma lei que lesse o Y literal seria a segunda resposta
+    /// que diverge no dia em que a gravidade lateral chegar ao player.
+    ///
+    /// **Mutação que deve sangrar:** trocar `t[0]*up[0] + t[1]*up[1]` por `t[1]`.
+    #[test]
+    fn the_uphill_direction_comes_from_up_not_from_the_y_axis() {
+        // Mundo girado 90°: o "alto" é +X. Uma rampa cuja normal aponta para
+        // (+x, +y) tem o morro acima em... a tangente `perp_cw(n) = [n.y, -n.x]`.
+        let up: Vec2 = [1.0, 0.0];
+        let n: Vec2 = [0.5, 0.866_025_4];
+        let steep = at(0.5, n);
+        let t = perp_cw(n); // [0.866, -0.5] — `t · up = +0.866` ⇒ este É o morro acima
+        let push_up = Motor {
+            accel: [t[0] * 10.0, t[1] * 10.0],
+            boost: [0.0, 0.0],
+        };
+        let push_down = Motor {
+            accel: [-t[0] * 10.0, -t[1] * 10.0],
+            boost: [0.0, 0.0],
+        };
+        assert_eq!(no_uphill(push_up, Some(&steep), up), Motor::default());
+        assert_eq!(no_uphill(push_down, Some(&steep), up), push_down);
+    }
+
+    /// **Na porta:** a rampa recusada mata a CAMINHADA e deixa o PULO em paz.
+    ///
+    /// ⚠️ É o escopo declarado da lei, e ele é uma decisão: capar o pulo faria o
+    /// personagem perder o salto por encostar numa ladeira.
+    ///
+    /// **Mutação que deve sangrar:** passar o motor SOMADO pelo `no_uphill` em
+    /// vez de só o termo de caminhada.
+    #[test]
+    fn at_the_door_a_steep_slope_kills_the_walk_but_not_the_jump() {
+        let cfg = PlayerConfig::STARTING_POINT;
+        let steep = at(cfg.ride.float_height, [-0.866_025_4, 0.5]); // 60°
+        let pushing = PlayerInput {
+            drive: 1.0,
+            ..PlayerInput::default()
+        };
+        // Sem pulo: o empurrão morro acima não sobrevive.
+        let walking = player_motor(
+            &cfg,
+            Some(&steep),
+            pushing,
+            JumpState::default(),
+            [0.0, 0.0],
+            G,
+            UP,
+            DT,
+        );
+        let idle = player_motor(
+            &cfg,
+            Some(&steep),
+            PlayerInput::default(),
+            JumpState::default(),
+            [0.0, 0.0],
+            G,
+            UP,
+            DT,
+        );
+        assert_eq!(
+            walking.motor, idle.motor,
+            "com a ladeira recusada, empurrar contra ela tem de ser o mesmo que \
+             nao empurrar: {:?} vs {:?}",
+            walking.motor, idle.motor
+        );
+
+        // Com o pulo armado pelo coyote, o salto SAI — a lei não o alcança.
+        let armed = JumpState {
+            coyote: cfg.jump.coyote_time,
+            ..JumpState::default()
+        };
+        let jumping = player_motor(
+            &cfg,
+            Some(&steep),
+            PlayerInput {
+                drive: 1.0,
+                jump: true,
+            },
+            armed,
+            [0.0, 0.0],
+            G,
+            UP,
+            DT,
+        );
+        assert!(
+            jumping.motor.boost[1] > 0.0,
+            "o pulo e' um gesto do artista e nao e' capado pela ladeira: {:?}",
+            jumping.motor
+        );
     }
 }

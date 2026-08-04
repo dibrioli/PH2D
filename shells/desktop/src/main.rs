@@ -258,6 +258,7 @@ mod physics_smoke_lead;
 mod physics_smoke_part;
 mod physics_smoke_player;
 mod physics_smoke_player_forgive;
+mod physics_smoke_player_slope;
 mod physics_smoke_player_tape;
 mod physics_smoke_props;
 mod physics_smoke_pulley;

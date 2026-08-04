@@ -85,4 +85,55 @@ pub fn spawn(sim: &mut SimWorld) {
         PlatformPlayer::default(),
         Transform::from_translation(Vec2::new(GROUND_X - 8.0, 1.5)),
     ));
+
+    // ── A LADEIRA RECUSADA (W9) ──────────────────────────────────────────────
+    //
+    // ⚠️ **Um segundo player, e ele existe para um RAMO.** A lei do `no_uphill`
+    // só corre quando o sensor devolve `Footing::Steep` — uma superfície ao
+    // alcance da perna e íngreme demais —, e nenhuma lane do harness tinha essa
+    // forma: o hash cobria a caminhada, a decolagem e a reação, e o ramo novo
+    // atravessava a fronteira sem ninguém olhar em três OSes.
+    //
+    // A rampa é de **60°** contra o limite de partida (45), e a fita é a MESMA
+    // (`drive = 1` nos primeiros 90 tiques): ele empurra ladeira acima o run
+    // inteiro, que é exatamente a entrada em que o defeito vivia.
+    sim.world_mut().spawn((
+        Name::new("C9 Player Slope"),
+        RigidBody {
+            kind: BodyKind::Static,
+        },
+        Collider {
+            shape: ColliderShape::Cuboid {
+                half_x: 6.0,
+                half_y: 0.1,
+            },
+            ..Collider::default()
+        },
+        Transform {
+            rotation: 60.0_f32.to_radians(),
+            ..Transform::from_translation(Vec2::new(GROUND_X + 24.0, 0.0))
+        },
+    ));
+    sim.world_mut().spawn((
+        Name::new("C9 Player On Slope"),
+        RigidBody {
+            kind: BodyKind::Dynamic,
+        },
+        Collider {
+            shape: ColliderShape::Capsule {
+                half_height: 0.4,
+                radius: 0.3,
+            },
+            ..Collider::default()
+        },
+        LockRotation,
+        // ⚠️ A altura de flutuação tem o PISO GEOMÉTRICO desta cápsula com folga
+        // (`half + radius / cos(45°)` ≈ 0,82): sem ela o personagem nasceria
+        // tangente e a rampa o faria penetrar, medindo outra coisa.
+        PlatformPlayer {
+            float_height: 1.2,
+            ..PlatformPlayer::default()
+        },
+        Transform::from_translation(Vec2::new(GROUND_X + 24.0, 2.0)),
+    ));
 }

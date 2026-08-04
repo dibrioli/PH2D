@@ -171,6 +171,13 @@ fn a_shallow_ramp_is_climbed_at_the_authored_speed() {
 /// em 60°, a superfície deixa de ser chão: a perna se cala, a gravidade age
 /// inteira, o collider encosta e o personagem desce — mesmo com o dedo no
 /// acelerador rampa acima.
+///
+/// ⚠️ **A BARRA foi RE-MEDIDA na W9, e o motivo é que ela estava verde sobre o
+/// bug** (report do Enio, 2026-08-04). O oráculo era `climbed < 0.0` e o número
+/// que ele aceitava era **−0,047 m** — ou seja, *"o personagem fica GRUDADO"*
+/// passava por *"escorrega"*. Com a lei do `no_uphill` a mesma cena mede
+/// **−49,9 m**, então a barra passa a ser uma DESCIDA de verdade: mais de uma
+/// altura de corpo em 3 s.
 #[test]
 fn a_ramp_steeper_than_the_limit_is_slipped_down_not_climbed() {
     let slope = 60.0_f32.to_radians();
@@ -190,8 +197,118 @@ fn a_ramp_steeper_than_the_limit_is_slipped_down_not_climbed() {
     let climbed = y1 - y0;
     eprintln!("W3 RAMPA 60deg (limite 45) | variacao de altura {climbed:+.3} m");
     assert!(
-        climbed < 0.0,
-        "acima do limite o personagem DESCE, nao sobe: {climbed:+.3} m"
+        climbed < -1.0,
+        "acima do limite o personagem ESCORREGA, e escorregar e' descer -- \
+         ficar grudado tambem satisfaz `< 0` e nao e' o produto: {climbed:+.3} m"
+    );
+}
+
+/// **O limite de rampa é o ângulo que o personagem DE FATO sobe** (W9).
+///
+/// # O report, e o número que ele valia
+///
+/// Enio (2026-08-04): *"Max Slope na UI aparece 45, mas o player sobe até
+/// aproximadamente 60 graus."* Medido antes de tocar em código, com o limite em
+/// 45: **44° subia +12,29 m e 46° subia +4,38 m** — o produto honrava um teto
+/// efetivo de ~52°, não o autorado.
+///
+/// A fixture é o par que **cerca** o limite: um grau abaixo e um acima. O gate
+/// anterior media 60°, que já ficava *depois* do teto acidental — a razão exata
+/// de o defeito ter atravessado a wave inteira com a suíte verde.
+///
+/// **Mutação que deve sangrar:** tirar o `no_uphill` do `player_motor`.
+#[test]
+fn the_slope_limit_is_the_angle_the_player_actually_climbs() {
+    let climb = |deg: f32| {
+        let (mut sim, mut bridge, player) = scene(deg.to_radians(), 0.0);
+        for tick in 1..=30 {
+            bridge.dispatch(&mut sim, true, tick);
+        }
+        let (_, y0) = pose(&sim);
+        bridge.set_player_input(
+            player,
+            PlayerInput {
+                drive: 1.0,
+                ..PlayerInput::default()
+            },
+        );
+        for tick in 31..=210 {
+            bridge.dispatch(&mut sim, true, tick);
+        }
+        let (_, y1) = pose(&sim);
+        y1 - y0
+    };
+    // O limite autorado é o do ponto de partida: 45°.
+    let below = climb(44.0);
+    let above = climb(46.0);
+    eprintln!("W9 LIMITE 45deg | rampa 44deg {below:+.3} m | rampa 46deg {above:+.3} m");
+    assert!(
+        below > 1.0,
+        "um grau ABAIXO do limite tem de ser escalavel: {below:+.3} m"
+    );
+    assert!(
+        above < -1.0,
+        "um grau ACIMA do limite tem de escorregar -- era ele que subia +4,38 m: \
+         {above:+.3} m"
+    );
+}
+
+/// ⚠️ **O teto de subida NÃO é função de outro knob** (W9).
+///
+/// A ablação por ENTRADA que diagnosticou o defeito vira o gate que o pina: a
+/// MESMA rampa (50°, acima do limite de 45) com três acelerações aéreas
+/// diferentes tem de dar o MESMO veredito. Antes da lei ela dava três respostas
+/// — `air = 0` escorregava 28,9 m, `air = 5` ficava parado, `air = 20` **subia
+/// 4,0 m** —, e é essa dependência que fazia de *Max Slope* um número que o
+/// produto não honrava ([[feedback_ergonomics_verdict_is_a_design_bug]]).
+///
+/// **Mutação que deve sangrar:** tirar o `no_uphill` do `player_motor`.
+#[test]
+fn the_climbing_ceiling_does_not_move_with_the_air_acceleration() {
+    let climb = |air: f32| {
+        let (mut sim, mut bridge, player) = scene(50.0_f32.to_radians(), 0.0);
+        {
+            let mut e = sim.world_mut().entity_mut(player);
+            let mut p = e.get_mut::<PlatformPlayer>().unwrap();
+            p.air_acceleration = air;
+        }
+        for tick in 1..=30 {
+            bridge.dispatch(&mut sim, true, tick);
+        }
+        let (_, y0) = pose(&sim);
+        bridge.set_player_input(
+            player,
+            PlayerInput {
+                drive: 1.0,
+                ..PlayerInput::default()
+            },
+        );
+        for tick in 31..=210 {
+            bridge.dispatch(&mut sim, true, tick);
+        }
+        let (_, y1) = pose(&sim);
+        y1 - y0
+    };
+    let slow = climb(0.0);
+    let mid = climb(5.0);
+    let fast = climb(20.0);
+    eprintln!(
+        "W9 RAMPA 50deg (limite 45) | air=0 {slow:+.3} | air=5 {mid:+.3} | air=20 {fast:+.3}"
+    );
+    for (label, d) in [("0", slow), ("5", mid), ("20", fast)] {
+        assert!(
+            d < -1.0,
+            "com `air_acceleration = {label}` a rampa acima do limite tem de \
+             escorregar do mesmo jeito: {d:+.3} m"
+        );
+    }
+    // E não só o veredito: a DESCIDA é praticamente a mesma, porque o que o
+    // controle aéreo ainda governa (o empurrão morro ABAIXO) é de segunda ordem.
+    let spread = (slow - fast).abs();
+    assert!(
+        spread < 1.0,
+        "o teto de subida nao pode ser funcao da aceleracao aerea: as tres \
+         descidas diferem em {spread:.3} m"
     );
 }
 

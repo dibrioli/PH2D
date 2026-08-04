@@ -167,6 +167,7 @@ impl crate::App {
             "85" => self.physics_smoke_reaction(),
             "86" => self.physics_smoke_tape(),
             "87" => self.physics_smoke_forgive(),
+            "88" => self.physics_smoke_slope(),
             _ => self.physics_smoke_drop(),
         }
 

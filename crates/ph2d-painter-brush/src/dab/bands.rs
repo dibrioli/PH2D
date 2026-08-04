@@ -33,11 +33,17 @@ pub(crate) fn parallel_band_stamp<F>(
 where
     F: Fn(&mut [u8], i64) -> bool + Sync,
 {
-    band_split(buf, None, y0, y1, x0, x1, stride, PARALLEL_MIN_AREA, |dst,
-     _m,
-     by0| {
-        stamp(dst, by0)
-    })
+    band_split(
+        buf,
+        None,
+        y0,
+        y1,
+        x0,
+        x1,
+        stride,
+        PARALLEL_MIN_AREA,
+        |dst, _m, by0| stamp(dst, by0),
+    )
 }
 
 /// [`parallel_band_stamp`] carregando a **máscara por-traço** (o cap de Accumulate) fatiada nas MESMAS

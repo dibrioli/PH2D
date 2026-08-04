@@ -207,6 +207,40 @@ pub(super) fn for_scene(mesh: &ph2d_mesh::Mesh) {
              [sculpt3d]        Painter continua movendo as sombras dele -- sem cena 3D nenhuma."
         );
     }
+    if crate::sculpt3d::fuse_scene() {
+        // ⚠️ **A cena DECLARA quantas peças montou**, e o número é o oráculo dos
+        // dois verbos: fundir e isolar mudam a CONTAGEM, e o log de cada um diz
+        // a nova. Sem a linha de abertura o artista não teria contra o que
+        // comparar.
+        eprintln!(
+            "[sculpt3d] =13 A FUSAO e o ISOLAMENTO: QUATRO pecas de formas diferentes --\n\
+             [sculpt3d]    a esfera (centro), um cubo grande (esquerda), um octaedro (direita)\n\
+             [sculpt3d]    e um cubo pequeno (em cima). Se as quatro nao aparecerem, PARE.\n\
+             [sculpt3d]    (1) Shift+I ISOLA a peca que voce clicou por ultimo: as outras tres\n\
+             [sculpt3d]        SOMEM. Clique numa peca antes, para escolher qual fica.\n\
+             [sculpt3d]        Esculpa: o pincel so' alcanca o que esta' a' vista.\n\
+             [sculpt3d]        Shift+I de novo devolve a cena inteira -- e as tres que voltam tem\n\
+             [sculpt3d]        de ser AS MESMAS FORMAS de antes, cada uma no seu lugar.\n\
+             [sculpt3d]    (2) O TESTE DO SLOT (um bug que esta wave achou e curou): clique no\n\
+             [sculpt3d]        cubo GRANDE e aperte Delete. As tres que sobram tem de continuar\n\
+             [sculpt3d]        sendo ELAS MESMAS -- esfera, octaedro, cubo pequeno. Se alguma\n\
+             [sculpt3d]        aparecer com a forma da que voce apagou, o device ficou com a\n\
+             [sculpt3d]        geometria da peca morta. Ctrl+Z traz o cubo de volta.\n\
+             [sculpt3d]    (3) Shift+J FUNDE tudo o que esta' a' vista numa peca so'. A imagem\n\
+             [sculpt3d]        quase nao muda -- e' isso mesmo: as pecas ficam onde estavam. O\n\
+             [sculpt3d]        log diz quantas entraram e o tamanho do que saiu.\n\
+             [sculpt3d]        Agora esculpa ATRAVESSANDO duas delas: e' UMA malha, entao o\n\
+             [sculpt3d]        pincel nao 'troca de peca' no meio do traco.\n\
+             [sculpt3d]    (4) Elas NAO ficam soldadas (fundir nao e' soldar). Aperte V\n\
+             [sculpt3d]        (reconstruir): agora sim elas viram uma casca so'.\n\
+             [sculpt3d]    (5) Ctrl+Z desfaz a fusao INTEIRA num passo -- as quatro voltam, com\n\
+             [sculpt3d]        as poses e as formas delas. Ctrl+Shift+Z funde de novo.\n\
+             [sculpt3d]    (6) Com uma peca ISOLADA, Shift+J tem de RECUSAR e dizer por que:\n\
+             [sculpt3d]        fundir age no que se ve, e o que se ve e' uma peca so'.\n\
+             [sculpt3d]    (7) Aperte K (subdividir) numa peca e tente Shift+J: ele recusa com a\n\
+             [sculpt3d]        pilha montada, e o log diz o conserto (J reverte)."
+        );
+    }
     if crate::sculpt3d::donation_scene() {
         eprintln!(
             "[sculpt3d] =2 A DOACAO: ha uma TELA BRANCA embaixo, e a tecla D alterna\n\

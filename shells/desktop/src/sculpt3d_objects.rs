@@ -15,6 +15,26 @@ use ph2d_mesh::{Mesh, Pose, shapes};
 
 use super::{Multires, Sculpt3dScene, StrokeUndo};
 
+/// O que o gesto de FUNDIR fez — ou por que ele não fez.
+///
+/// ⚠️ **Um enum e não `Option`, porque há DUAS recusas e elas pedem conselhos
+/// opostos:** *não há o que fundir* manda o artista pôr mais peças na mesa,
+/// *a pilha está montada* manda revertê-la primeiro. Colapsá-las num `None`
+/// obrigaria o log a escolher uma frase e a estar errado em metade das vezes —
+/// que é como um botão passa a parecer quebrado.
+pub(crate) enum Merge {
+    /// Fundiu: quantas peças entraram, e o tamanho do que saiu.
+    Done {
+        pieces: usize,
+        verts: usize,
+        faces: usize,
+    },
+    /// Menos de duas peças À VISTA: não há o que fundir.
+    Nothing,
+    /// Alguma peça tem a pilha de níveis montada.
+    Stack,
+}
+
 /// A identidade **DURÁVEL** de um objeto.
 ///
 /// ⚠️ **Um ÍNDICE não serve para a fila de undo**, e o mecanismo é conhecido:
@@ -233,6 +253,122 @@ impl Sculpt3dScene {
     /// máscara e a pose. Limpar a fila em vez disso (o que a W8.1 anotou como
     /// saída) trocaria um trabalho perdido por outro: o artista recuperaria a
     /// peça e perderia a história de todas as outras.
+    /// **FUNDE as peças À VISTA numa só.** O passo que falta entre blocar com
+    /// primitivas e esculpir uma forma.
+    ///
+    /// ⚠️ **Ela funde o que se VÊ, e é isso que a torna previsível.** Não há
+    /// seleção múltipla neste módulo — o "ativo" é *a última peça que você
+    /// tocou* —, então *fundir as selecionadas* nomearia um conjunto que o
+    /// artista não montou. O conjunto que ele montou é o que está na tela, e com
+    /// uma peça isolada a resposta honesta é [`Merge::Nothing`]: ele vê uma
+    /// peça, e uma peça não se funde com nada.
+    ///
+    /// ⚠️ **A recusa com a pilha montada é a MESMA do remesh e do tapar
+    /// buraco**, pelo mesmo mecanismo: todo nível acima da base é `subdivide`
+    /// dela, e a fusão troca a base por outra malha — o detalhe de cima passaria
+    /// a descrever uma geometria que não existe mais. Achatar a pilha em
+    /// silêncio seria destruir trabalho autorado sem dizer.
+    ///
+    /// ⚠️ **Ela não SOLDA nada** (ver [`ph2d_mesh::merge`]): duas superfícies que
+    /// se tocam continuam duas dentro da mesma malha. Quem as transforma numa
+    /// casca é o remesh (`V`), e é exatamente isto que o torna possível — ele
+    /// opera numa malha.
+    pub(super) fn merge_visible(&mut self) -> Merge {
+        let idx: Vec<usize> = self.visible_pieces().collect();
+        if idx.len() < 2 {
+            return Merge::Nothing;
+        }
+        if idx
+            .iter()
+            .any(|&i| self.objects[i].stack.level_count() != 1)
+        {
+            return Merge::Stack;
+        }
+        let id = self.mint_id();
+        let Some(gone) = self.fuse_visible(id) else {
+            return Merge::Nothing;
+        };
+        let pieces = gone.len();
+        self.record_for(id, StrokeUndo::Merged(gone));
+        let (verts, faces) = (self.mesh().vert_count(), self.mesh().face_count());
+        Merge::Done {
+            pieces,
+            verts,
+            faces,
+        }
+    }
+
+    /// **FUNDE O QUE ESTÁ À VISTA, com a identidade `id`** — a porta ÚNICA das
+    /// duas rotas: o gesto do artista e o REFAZER.
+    ///
+    /// ⚠️ **Ela existe porque as duas fazem a mesma pergunta**, e uma segunda
+    /// cópia dela divergiria no caso que importa: se o refazer fundisse *todas
+    /// as peças* enquanto o gesto funde *as visíveis*, um Ctrl+Shift+Z sobre uma
+    /// cena isolada produziria uma peça que o gesto original nunca produziria.
+    ///
+    /// ⚠️ **E o `id` é PARÂMETRO por causa do refazer:** re-fundir tem de
+    /// reconstruir a peça com o MESMO [`super::ObjectId`], senão a entrada que a
+    /// desfaz nomeia uma peça que não existe e o Ctrl+Z seguinte não acha o que
+    /// remover.
+    pub(super) fn fuse_visible(&mut self, id: super::ObjectId) -> Option<Vec<SceneObject>> {
+        let idx: Vec<usize> = self.visible_pieces().collect();
+        self.fuse(&idx, id)
+    }
+
+    /// **A FUSÃO propriamente dita** — troca as peças `idx` por uma só, com a
+    /// identidade `id`, e devolve as que saíram.
+    fn fuse(&mut self, idx: &[usize], id: super::ObjectId) -> Option<Vec<SceneObject>> {
+        let parts: Vec<(&Mesh, Pose)> = idx
+            .iter()
+            .map(|&i| (self.objects[i].stack.mesh(), self.objects[i].pose))
+            .collect();
+        let mesh = ph2d_mesh::merge(&parts).ok()?;
+
+        // ⚠️ **De trás para frente**, e não é estilo: remover o índice 0 desloca
+        // todos os outros, então uma varredura crescente apagaria a peça errada
+        // a partir da segunda remoção. É a mesma lei que a tira do Flip pagou no
+        // arrasto de seleção — *a ORDEM de emissão é o que garante que cada
+        // remoção pousa onde o chamador pensou*.
+        let mut gone = Vec::with_capacity(idx.len());
+        for &i in idx.iter().rev() {
+            gone.push(self.objects.remove(i));
+        }
+        gone.reverse();
+
+        // ⚠️ **A peça nasce em [`Pose::IDENTITY`]**: a pose de cada fonte já
+        // está assada nos vértices, e uma pose herdada de alguma delas moveria a
+        // fusão inteira no instante em que ela aparece.
+        self.objects
+            .push(SceneObject::new(id, mesh, Pose::IDENTITY));
+        self.active = self.objects.len() - 1;
+        self.mesh_rebuilt();
+        Some(gone)
+    }
+
+    /// **ISOLA a peça ativa — ou devolve a cena inteira à vista.** Devolve o
+    /// estado NOVO (`true` = isolada).
+    ///
+    /// ⚠️ **É um toggle e não um modo com saída própria**, porque o gesto tem um
+    /// inverso óbvio e um só: a mesma tecla. Um "sair do isolamento" separado
+    /// seria uma segunda porta para o mesmo fato, e a que o artista não acha
+    /// quando a cena some.
+    ///
+    /// ⚠️ **Nada aqui entra na história.** Isolar não move um vértice — ver o
+    /// campo `isolated`.
+    pub(super) fn toggle_isolate(&mut self) -> bool {
+        if self.isolated_index().is_some() {
+            self.isolated = None;
+            return false;
+        }
+        // Sem peça ativa não há o que isolar, e isolar "nada" apagaria a cena da
+        // tela sem nada para devolver.
+        let Some(id) = self.obj().map(|o| o.id) else {
+            return false;
+        };
+        self.isolated = Some(id);
+        true
+    }
+
     pub(super) fn delete_active(&mut self) -> bool {
         let Some(object) = self.obj().map(|o| o.id) else {
             return false;

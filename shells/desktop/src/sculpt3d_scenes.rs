@@ -13,12 +13,24 @@
 
 use super::fixtures::{hooked_sphere, punctured_sphere, ridged_sphere};
 
-/// A cena está armada? (`PH2D_SCULPT3D_SMOKE` em `1`..`12`.)
+/// A cena está armada? (`PH2D_SCULPT3D_SMOKE` em `1`..`13`.)
 pub(crate) fn smoke_armed() -> bool {
     matches!(
         std::env::var("PH2D_SCULPT3D_SMOKE").ok().as_deref(),
-        Some("1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | "10" | "11" | "12")
+        Some("1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | "10" | "11" | "12" | "13")
     )
+}
+
+/// `=13` — a cena da **FUSÃO e do ISOLAMENTO**: quatro peças de formas
+/// DIFERENTES.
+///
+/// ⚠️ **As formas têm de ser distinguíveis, e isso é o oráculo de três coisas de
+/// uma vez.** A fusão não muda a silhueta da cena (as peças ficam onde estavam),
+/// o isolamento tira peças da tela, e o slot do device pode passar a descrever
+/// **outra** peça — com quatro esferas iguais os três acertos e os três erros
+/// desenham a mesma imagem.
+pub(crate) fn fuse_scene() -> bool {
+    std::env::var("PH2D_SCULPT3D_SMOKE").ok().as_deref() == Some("13")
 }
 
 /// `=9` — a cena do **IMPORT**: um arquivo para o artista soltar na janela.
@@ -177,6 +189,27 @@ pub(crate) fn scene_objects() -> Vec<(ph2d_mesh::Mesh, ph2d_mesh::Pose)> {
             (
                 ph2d_mesh::shapes::octahedron(1.0),
                 ph2d_mesh::Pose::new([2.4, -0.5, 0.0], 0.7),
+            ),
+        ];
+    }
+    if fuse_scene() {
+        // ⚠️ **TRÊS formas diferentes ao lado da esfera que a cena abre**, e a
+        // razão é o gate do olho: o defeito que esta wave curou desenhava uma
+        // peça com a geometria de OUTRA, e um quarteto de esferas iguais o
+        // esconde por completo. Um cubo, um octaedro e um cubo pequeno são
+        // distinguíveis a qualquer distância e em qualquer ângulo.
+        return vec![
+            (
+                ph2d_mesh::shapes::cube(1.0),
+                ph2d_mesh::Pose::new([-2.8, 0.0, 0.0], 1.2),
+            ),
+            (
+                ph2d_mesh::shapes::octahedron(1.0),
+                ph2d_mesh::Pose::new([2.6, 0.2, 0.0], 0.9),
+            ),
+            (
+                ph2d_mesh::shapes::cube(1.0),
+                ph2d_mesh::Pose::new([0.2, 2.4, 0.0], 0.5),
             ),
         ];
     }

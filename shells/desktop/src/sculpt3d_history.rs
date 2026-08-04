@@ -133,6 +133,27 @@ pub(super) enum StrokeUndo {
     /// que uma entrada pode carregar, e sem ele todo elemento das duas filas
     /// mediria isso.
     RemovedObject(Box<SceneObject>),
+    /// **A cena foi FUNDIDA numa peça só** — aplicá-la é devolver as peças que
+    /// entraram, e a fundida sai.
+    ///
+    /// ⚠️ Ela carrega as FONTES, e não pode ser de outro jeito: a fusão as
+    /// consumiu, e nada no resultado permite reconstruí-las (as posições foram
+    /// assadas em mundo, as pilhas foram descartadas, os ids morreram). É o
+    /// mesmo raciocínio do [`Self::RemovedObject`], N vezes.
+    Merged(Vec<SceneObject>),
+    /// **A fusão foi desfeita** — aplicá-la é fundir de novo.
+    ///
+    /// ⚠️ **Ela não carrega o resultado**, e o precedente é o
+    /// [`Self::UnfilledHoles`]: fundir é função PURA da lista de peças, e o
+    /// desfazer devolveu essa lista **ao bit** (as peças foram movidas de volta,
+    /// não recomputadas) ⇒ re-fundir dá exatamente a mesma malha. Guardá-la
+    /// seria a maior alocação do módulo por um valor que já é derivável.
+    ///
+    /// ⚠️ E a peça re-fundida nasce com o [`ObjectId`] que a ENTRADA nomeia —
+    /// não com um id novo. Sem isso, a inversa que volta para a fila do desfazer
+    /// nomearia uma peça que nunca existiu, e o Ctrl+Z seguinte não acharia o
+    /// que remover.
+    Unmerged,
     /// **O preenchimento foi desfeito** — aplicá-la é tapar de novo.
     UnfilledHoles,
     /// **A reconstrução foi desfeita** — aplicá-la é refazê-la.

@@ -8,7 +8,7 @@
 //! ⚠️ A porta é a mesma de sempre: sem cena armada ela devolve `false` no primeiro `if`, e o
 //! teclado do app segue para o `store` como se este módulo não existisse.
 
-use super::{LIGHT_STEP_DEG, MaskOp, Primitive, RADIUS_STEP, Verb};
+use super::{LIGHT_STEP_DEG, MaskOp, Merge, Primitive, RADIUS_STEP, Verb};
 use crate::app_state::App;
 
 impl App {
@@ -115,6 +115,53 @@ impl App {
                 );
                 return true;
             }
+            // **FUNDIR.** ⚠️ No `Shift+J` porque *juntar* é o verbo, e porque o
+            // `Shift` é onde os verbos da LISTA moram neste teclado (o `J` sozinho
+            // é des-subdividir, que age numa peça). O log traz o número dos TRÊS
+            // desfechos: a fusão não muda a silhueta da cena — as peças ficam
+            // onde estavam —, então sem a contagem o artista vê a mesma imagem e
+            // não tem como saber se a tecla fez alguma coisa.
+            if code == K::KeyJ {
+                match scene.merge_visible() {
+                    Merge::Done {
+                        pieces,
+                        verts,
+                        faces,
+                    } => eprintln!(
+                        "[sculpt3d] FUNDIDAS {pieces} pecas numa so' -- {verts} vertices / {faces} faces \
+                         (elas nao ficam SOLDADAS: use V para reconstruir a casca) -- Ctrl+Z as separa"
+                    ),
+                    Merge::Nothing => eprintln!(
+                        "[sculpt3d] nao ha' o que fundir: e' preciso mais de UMA peca a' vista \
+                         (Shift+I devolve a cena inteira)"
+                    ),
+                    Merge::Stack => eprintln!(
+                        "[sculpt3d] nao' funde com a pilha montada: a fusao troca a BASE, e todo nivel \
+                         acima e' subdivisao dela -- reverta os niveis antes"
+                    ),
+                }
+                return true;
+            }
+            // **ISOLAR.** ⚠️ A resposta visual é a cena SUMIR menos uma peça — é
+            // o *local view* do Blender, e é por isso que o log diz o que voltou
+            // ou o que ficou: uma tela que perde quatro objetos sem uma linha
+            // explicando é indistinguível de um crash de render.
+            if code == K::KeyI {
+                let on = scene.toggle_isolate();
+                if on {
+                    eprintln!(
+                        "[sculpt3d] ISOLADA: as outras {} pecas sairam da vista (Shift+I devolve) \
+                         -- o pincel nao alcanca o que nao se ve",
+                        scene.objects.len().saturating_sub(1)
+                    );
+                } else {
+                    eprintln!(
+                        "[sculpt3d] a cena inteira voltou: {} pecas a' vista",
+                        scene.objects.len()
+                    );
+                }
+                return true;
+            }
         }
         if code == K::Delete {
             // ⚠️ A recusa é REPORTADA. Um Delete que não faz nada e não diz nada
@@ -125,7 +172,14 @@ impl App {
                     scene.objects.len()
                 );
             } else {
-                eprintln!("[sculpt3d] a ULTIMA peca nao e apagavel: a cena ficaria vazia");
+                // ⚠️ **Esta linha MENTIA.** Ela dizia *"a ULTIMA peca nao e
+                // apagavel: a cena ficaria vazia"*, que era verdade até o Enio
+                // derrubar a cerca no smoke (*"não consigo deletar todos os
+                // objetos"*) — a última passou a ser apagável, e a única recusa
+                // que sobrou é a cena **já** vazia. Uma mensagem que descreve a
+                // regra anterior é pior que nenhuma: ela ensina ao artista um
+                // limite que o produto não tem.
+                eprintln!("[sculpt3d] a cena ja' esta' VAZIA: nao ha' peca a apagar");
             }
             return true;
         }

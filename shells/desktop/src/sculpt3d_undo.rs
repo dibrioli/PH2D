@@ -83,7 +83,10 @@ impl Sculpt3dScene {
     fn apply_entry(&mut self, object: ObjectId, entry: StrokeUndo) -> StrokeUndo {
         let list_verb = matches!(
             entry,
-            StrokeUndo::AddedObject | StrokeUndo::RemovedObject(_)
+            StrokeUndo::AddedObject
+                | StrokeUndo::RemovedObject(_)
+                | StrokeUndo::Merged(_)
+                | StrokeUndo::Unmerged
         );
         if !list_verb && self.obj().is_none() {
             return entry;
@@ -115,7 +118,10 @@ impl Sculpt3dScene {
             // "nível certo" na peça que fica, porque a que importa é a que vai
             // nascer ou morrer. Um braço que caísse no `_` aqui selecionaria um
             // nível na peça ERRADA.
-            StrokeUndo::AddedObject | StrokeUndo::RemovedObject(_) => {}
+            StrokeUndo::AddedObject
+            | StrokeUndo::RemovedObject(_)
+            | StrokeUndo::Merged(_)
+            | StrokeUndo::Unmerged => {}
             // ⚠️ Uma troca de nível é aplicada DE ONDE ELA POUSOU — descer se
             // desfaz do nível de baixo, subir do de cima. E com todas as trocas
             // registradas este `select` nunca tem o que fazer: a ordem LIFO já
@@ -262,6 +268,37 @@ impl Sculpt3dScene {
                 self.active = self.objects.len() - 1;
                 self.mesh_rebuilt();
                 StrokeUndo::AddedObject
+            }
+            // A fusão e o desfazer dela. ⚠️ Desfazer TIRA a peça fundida (pelo id
+            // que a entrada nomeia, nunca pelo ativo — o artista pode ter
+            // clicado noutra) e devolve as fontes ao FIM da lista, na ordem em
+            // que entraram: nada na cena depende da posição, e é o que o
+            // `RemovedObject` já faz um degrau abaixo.
+            StrokeUndo::Merged(sources) => {
+                if let Some(i) = self.index_of(object) {
+                    self.objects.remove(i);
+                }
+                self.objects.extend(sources);
+                self.active = self.objects.len().saturating_sub(1);
+                self.stroke = SculptStroke::default();
+                self.mesh_rebuilt();
+                StrokeUndo::Unmerged
+            }
+            // Refazer é FUNDIR de novo, com o id que a entrada nomeia — ver o
+            // doc do `Unmerged`. ⚠️ E ele passa pela porta do GESTO
+            // (`fuse_visible`), nunca por uma cópia da pergunta: a fila é LIFO,
+            // então neste ponto a cena é exatamente a que o `Merged` acabou de
+            // restaurar, e as duas rotas têm de fundir o mesmo conjunto.
+            StrokeUndo::Unmerged => {
+                match self.fuse_visible(object) {
+                    Some(gone) => {
+                        self.stroke = SculptStroke::default();
+                        StrokeUndo::Merged(gone)
+                    }
+                    // Só alcançável se não houvesse o que fundir: a inversa
+                    // honesta é *nada foi feito*.
+                    None => StrokeUndo::Unmerged,
+                }
             }
             StrokeUndo::UnfilledHoles => {
                 let report = ph2d_mesh::fill_holes(self.piece_mut().stack.mesh_mut());

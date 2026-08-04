@@ -1209,6 +1209,10 @@ pub(crate) struct App {
     /// sujeito do arrasto não é uma moldura. Mora no `App` e não no `GizmoDragState` porque este é
     /// `Copy`, e um instantâneo de geometria não é.
     pub(crate) frame_resize_start: Option<crate::vec_frame_resize::FrameResizeStart>,
+    /// As CÓPIAS fotografadas no arrasto de rotação/escala em curso — onde cada uma estava, e onde
+    /// o mestre dela estava, para que a âncora que o gizmo segura no mestre apareça segura na
+    /// cópia (`vec_instance_follow`). `None` entre gestos e quando nada obedece ao que se arrasta.
+    pub(crate) instance_follow: Option<crate::vec_instance_follow::InstanceFollow>,
     /// Fase 0f: canvas rubber-band box select. `Some` while the user
     /// is left-dragging on empty canvas (no sprite hit, no gizmo
     /// handle hit). Anchored at the Down point in screen coords —

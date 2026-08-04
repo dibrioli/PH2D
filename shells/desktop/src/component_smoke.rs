@@ -21,7 +21,7 @@
 //!   então tem de ficar exactamente onde nasceu em todos os passos. Uma diferença que apareça
 //!   nele também não é do componente.
 
-use ph2d_ecs::{ChildOf, Entity};
+use ph2d_ecs::Entity;
 use ph2d_vec_scene::{Paint, Rgba8, VecPath, rectangle};
 
 /// A caixa do botão-mestre: `(x0, y0, x1, y1)` em unidades de mundo.
@@ -91,9 +91,15 @@ fn adopt(app: &mut crate::App) {
     else {
         return;
     };
-    if let Ok(mut e) = gfx.sim.world_mut().get_entity_mut(Entity::from_bits(lb)) {
-        e.insert(ChildOf(Entity::from_bits(bb)));
-    }
+    // ⚠️ Pela PORTA, e o `ChildOf` cru que estava aqui era um defeito MEDIDO desta cena: quando o
+    // `arm` corre, o `settle_origins` já pôs cada forma-raiz a carregar a própria translação, e
+    // prender uma à outra as SOMAVA — a etiqueta saltava o centro da caixa (3,2 × 1,6 unidades num
+    // botão de 3,6 × 1,2) e aterrava fora dela. Ver `vec_transform::reparent_keeping_world`.
+    crate::vec_transform::reparent_keeping_world(
+        &mut gfx.sim,
+        Entity::from_bits(lb),
+        Entity::from_bits(bb),
+    );
 }
 
 /// A mensagem — com os números MEDIDOS da própria cena, nunca de memória.

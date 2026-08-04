@@ -236,5 +236,12 @@ pub(crate) fn route(app: &mut crate::App, f: u32, level: u32) -> bool {
         crate::gizmo_anchor_smoke::frame(app, f);
         return true;
     }
+    // A cena do MESTRE REDIMENSIONADO (=55) — irmã `component_resize_smoke`. Ao contrário da `=53`,
+    // ela nasce com o componente JÁ armado e duas cópias vivas: o que este smoke prova não é o
+    // gesto de criar, é o que acontece às cópias quando a alça do mestre anda.
+    if level == 55 {
+        crate::component_resize_smoke::frame(app, f);
+        return true;
+    }
     false
 }

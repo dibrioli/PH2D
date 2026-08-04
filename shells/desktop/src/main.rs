@@ -72,6 +72,7 @@ mod chrome_hit;
 mod command_palette_input;
 /// **Contour** (pesquisa `20_*` #9) — o cozimento vivo do `VecContour`: N anéis concêntricos
 /// com rampa de cor, irmão do `offset_live` de que é a generalização.
+mod component_resize_smoke;
 mod component_smoke;
 /// O gesto que cria um conector (Down numa forma, Up noutra).
 mod connector_gesture;
@@ -352,6 +353,8 @@ mod vec_glyph;
 mod vec_glyph_build;
 /// A porta única de "onde está o caminho-guia, e como se percorre por arco?" (texto E pattern).
 mod vec_guide;
+/// A CÓPIA segue a âncora do mestre — o corolário da âncora viva, do lado do componente.
+mod vec_instance_follow;
 mod vec_layout_edit;
 mod vec_overlay;
 mod vec_overlay_diag;
@@ -579,6 +582,7 @@ impl App {
             // the first frame's measurement
             pivot_content_center: None,
             frame_resize_start: None,
+            instance_follow: None,
             rubber_band: None,
             pending_single_replace: None,
             group_drag_starts: Vec::new(),

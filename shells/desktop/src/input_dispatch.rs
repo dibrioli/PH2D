@@ -5448,6 +5448,8 @@ impl App {
                     // limpeza do `advance_gizmo_drag` só corre num `CursorMoved`, e soltar e voltar
                     // a pegar não passa necessariamente por um.
                     self.frame_resize_start = None;
+                    // E o das cópias, pela mesma razão e no mesmo instante.
+                    self.instance_follow = None;
                     // Onda 2 polish: release the global drag-start view
                     // so snapshots::publish reverts to the live-union
                     // computation for the next frame.

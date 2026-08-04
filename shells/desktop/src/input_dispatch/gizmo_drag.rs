@@ -45,6 +45,8 @@ impl App {
             self.pivot_content_center = None;
             // O mesmo para o instantâneo da moldura: ele descreve um gesto que acabou.
             self.frame_resize_start = None;
+            // E para o das CÓPIAS, pela mesma razão.
+            self.instance_follow = None;
             return;
         };
         let ctrl = self.modifiers.control_key() || self.modifiers.super_key();
@@ -85,6 +87,29 @@ impl App {
                 .is_some_and(|s| s.is_for(drag.entity_bits))
         {
             self.frame_resize_start = self.begin_frame_resize(drag.entity_bits);
+        }
+        // **As CÓPIAS fotografam-se na primeira movida** — a mesma disciplina, pela mesma razão
+        // (`vec_instance_follow`, onde está a equação e a prova de que ela não é derivável).
+        //
+        // ⚠️ **Rotação E escala, nunca a translação.** *Mover* o mestre não pode mover as cópias —
+        // é a lei que o `place_delta` existe para honrar. Escalar por uma quina, sim: a alça paga a
+        // âncora compensando a translação do mestre, e é essa compensação que a cópia tem de
+        // reproduzir. Uma rotação de pivô local não move translação nenhuma, então o seguimento é
+        // um no-op ali; incluí-la é o que impede o gizmo de ter um gesto vivo e outro morto sob a
+        // MESMA regra — a incoerência que a âncora viva acabou de curar do outro lado.
+        let follows = matches!(
+            drag.kind,
+            ph2d_editor::GizmoDragKind::Rotate
+                | ph2d_editor::GizmoDragKind::ScaleCorner { .. }
+                | ph2d_editor::GizmoDragKind::ScaleEdge { .. }
+        );
+        if follows
+            && !self
+                .instance_follow
+                .as_ref()
+                .is_some_and(|s| s.is_for(drag.entity_bits))
+        {
+            self.instance_follow = self.begin_instance_follow(drag.entity_bits);
         }
         let vec_scale_ids = if is_scale_drag {
             self.dragged_vec_path_ids(drag.entity_bits)
@@ -675,6 +700,19 @@ impl App {
                         }
                     }
                 }
+            }
+            // **As cópias seguem, DEPOIS de o mestre ter sido escrito.**
+            //
+            // ⚠️ A ordem é load-bearing: o seguimento lê a translação de mundo do mestre AGORA e a
+            // compara com o instantâneo do pen-down, então corrê-lo antes das escritas mediria o
+            // delta do frame anterior — a cópia ficaria um `CursorMoved` atrás do dedo.
+            //
+            // ⚠️ E fica FORA dos ramos de propósito: quem decide se há algo a seguir é o
+            // instantâneo (que só nasce sob rotação/escala e só quando alguma cópia obedece ao que
+            // se arrasta), nunca uma segunda enumeração dos ramos que escrevem pose. Um ramo novo
+            // — a moldura foi o último — nasce coberto em vez de esquecido.
+            if let Some(follow) = self.instance_follow.as_ref() {
+                crate::vec_instance_follow::apply(&mut gfx.sim, follow);
             }
         }
         // ⚠️ **No joint-anchor tail here any more (W-J2).** A Translate on a

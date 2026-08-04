@@ -52,7 +52,7 @@ fn play(simulate: bool) -> (f32, u64) {
 
     for _ in 0..FRAMES {
         playhead.advance();
-        dispatch(&mut bridge, &mut sim, &playhead, DT, &mut doc, simulate);
+        dispatch(&mut bridge, &mut sim, &playhead, DT, &mut doc, simulate, 0.0);
     }
     (height(&sim, ball), bridge.steps_taken())
 }
@@ -104,11 +104,11 @@ fn arming_mid_take_resumes_it_does_not_replay_what_was_skipped() {
 
     for _ in 0..FRAMES {
         playhead.advance();
-        dispatch(&mut bridge, &mut sim, &playhead, DT, &mut doc, false);
+        dispatch(&mut bridge, &mut sim, &playhead, DT, &mut doc, false, 0.0);
     }
     // The artist ticks the checkbox. One more frame goes by.
     playhead.advance();
-    dispatch(&mut bridge, &mut sim, &playhead, DT, &mut doc, true);
+    dispatch(&mut bridge, &mut sim, &playhead, DT, &mut doc, true, 0.0);
 
     assert_eq!(
         bridge.steps_taken(),

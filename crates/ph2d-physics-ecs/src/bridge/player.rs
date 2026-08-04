@@ -1,4 +1,4 @@
-//! **A ponte do player de plataforma** (W2) — amostra o mundo, chama a lei,
+//! **A ponte do player de plataforma** (W2/W3) — amostra o mundo, chama a lei,
 //! aplica o motor.
 //!
 //! Três metades, e nenhuma sabe da outra: o **cast** é do wrapper
@@ -26,15 +26,56 @@
 //! têm de ser a mesma consulta*. Por isso o [`CastHit`] inteiro é carregado
 //! adiante — corpo, ponto e normal —, e não só a distância. Quando a W6 chegar,
 //! a reação nasce **deste mesmo hit**, não de uma segunda pergunta.
+//!
+//! [`CastHit`]: ph2d_physics::CastHit
 
+use bevy_ecs::entity::Entity;
 use ph2d_ecs::SimWorld;
-use ph2d_platformer::{GroundSample, ride_spring};
+use ph2d_platformer::{GroundSample, PlayerInput, player_motor};
 
 use crate::components::{BodyKind, PlatformPlayer};
 
 use super::PhysicsBridge;
 
+/// A direção "para cima" que este módulo assume.
+///
+/// ⚠️ Um número, um lugar. Ele governa o eixo da mola, o eixo de caminhada no ar
+/// e o limite de rampa, e as três respostas **têm** de concordar: se o eixo da
+/// mola e o do limite discordassem, existiria uma inclinação em que o
+/// personagem é segurado por uma e recusado pela outra.
+///
+/// Gravidade lateral segue possível na cena (o mundo aceita qualquer vetor) e o
+/// player não a acompanha — é a limitação honesta desta wave, e a cura, se um
+/// dia for pedida, é derivar o `up` da gravidade **numa porta só**, esta.
+const UP: [f32; 2] = [0.0, 1.0];
+
 impl PhysicsBridge {
+    /// **A entrada deste player.** Chamada pela shell a cada frame.
+    ///
+    /// Escrever `drive = 0` é uma instrução (*"pare"*), não a ausência de uma —
+    /// e é por isso que a tabela guarda a entrada em vez de a consumir: um
+    /// dispatch que deve vários ticks aplica a MESMA entrada a todos eles, que é
+    /// o que um jogador segurando uma tecla quer dizer.
+    pub fn set_player_input(&mut self, entity: Entity, input: PlayerInput) {
+        self.player_input.insert(entity, input);
+    }
+
+    /// O que este player está recebendo agora (`default` = parado).
+    #[must_use]
+    pub fn player_input(&self, entity: Entity) -> PlayerInput {
+        self.player_input.get(&entity).copied().unwrap_or_default()
+    }
+
+    /// Esquece toda entrada de player.
+    ///
+    /// Chamada por quem derruba o mundo derivado (`rebuild`): os bits de
+    /// entidade são reciclados ali, então uma entrada guardada passaria a
+    /// dirigir **outro** objeto — a mesma armadilha que fez as âncoras de joint
+    /// viajarem por NOME em vez de por bits.
+    pub fn clear_player_input(&mut self) {
+        self.player_input.clear();
+    }
+
     /// **Um tick de todos os players.** Chamado no laço de ticks devidos, antes
     /// do `step` (ver o aviso do módulo).
     ///
@@ -43,6 +84,7 @@ impl PhysicsBridge {
     pub(super) fn drive_players(&mut self, sim: &SimWorld) {
         let world = sim.world();
         let gravity = self.world.gravity();
+        let dt = self.world.dt();
         // A ordem é a do `BTreeMap` de corpos — determinística cross-OS, a lei
         // do módulo. Coletar antes de aplicar porque o cast toma `&self` e o
         // motor toma `&mut self`.
@@ -63,11 +105,11 @@ impl PhysicsBridge {
                 continue;
             };
 
-            let ride = cfg.ride();
+            let cfg = cfg.config();
             // O alcance do sensor é o que a lei considera "no chão", e nem um
             // milímetro além: perguntar mais longe faria o cast achar coisas que
             // a lei descartaria, ao preço de descer mais no BVH.
-            let reach = ride.float_height + ride.cling_distance;
+            let reach = cfg.ride.float_height + cfg.ride.cling_distance;
             let hit = self
                 .world
                 .cast_ray(origin, [0.0, -1.0], reach, Some(b.handle), b.rest.layer);
@@ -84,7 +126,8 @@ impl PhysicsBridge {
                     .unwrap_or([0.0, 0.0]),
             });
 
-            let motor = ride_spring(&ride, sample.as_ref(), vel, gravity, [0.0, 1.0]);
+            let input = self.player_input.get(&entity).copied().unwrap_or_default();
+            let motor = player_motor(&cfg, sample.as_ref(), input, vel, gravity, UP, dt);
             if motor.accel != [0.0, 0.0] || motor.boost != [0.0, 0.0] {
                 motors.push((b.handle, motor.accel, motor.boost));
             }

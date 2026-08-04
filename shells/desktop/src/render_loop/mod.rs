@@ -1763,6 +1763,8 @@ impl crate::App {
             self.fixed_step.fixed_dt(),
             &mut self.timeline.doc,
             simulate_physics,
+            // O dedo do jogador, observado no `key_input` (`crate::player_input`).
+            self.player_keys.drive(),
         );
         // O flash do estouro envelhece uma vez por frame, aqui: ao lado do
         // dispatch da física, que é a fase em que o tempo do mundo anda. Um canal

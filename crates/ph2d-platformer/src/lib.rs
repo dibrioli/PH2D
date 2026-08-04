@@ -1,10 +1,11 @@
 #![forbid(unsafe_code)]
 //! **A LEI de um player de plataforma** — pura, sem rapier, sem ECS, sem shell.
 //!
-//! Dado *(config, o que o sensor viu, a velocidade do corpo, a gravidade)*, esta
-//! crate responde **o que fazer com o corpo neste tick**. Quem traduz isso em
-//! chamadas de solver é a ponte (`ph2d-physics-ecs::bridge::player`); quem
-//! desenha e autora é a shell. Ver [`docs/Physics/06_plano_player_plataforma.md`].
+//! Dado *(config, o que o sensor viu, a velocidade do corpo, a gravidade, a
+//! entrada, dt)*, esta crate responde **o que fazer com o corpo neste tick**.
+//! Quem traduz isso em chamadas de solver é a ponte
+//! (`ph2d-physics-ecs::bridge::player`); quem desenha e autora é a shell. Ver
+//! [`docs/Physics/06_plano_player_plataforma.md`].
 //!
 //! # Por que uma CÁPSULA FLUTUANTE
 //!
@@ -36,11 +37,36 @@
 //! `rel_v · damping` da velocidade de uma vez, então `damping = 1.0` amortece
 //! por completo em UM tick. Acima de `1.0` ele começa a inverter a velocidade
 //! em vez de matá-la, e em `2.0` a inversão é total — o limite de estabilidade
-//! está medido em [`tests::the_damping_ceiling_is_where_the_boost_inverts`], e é
-//! por isso que [`RideConfig::spring_damping`] é validado contra ele.
+//! está medido em `ride::tests::the_damping_ceiling_is_where_the_boost_inverts`,
+//! e é por isso que [`RideConfig::spring_damping`] é validado contra ele.
+//!
+//! # A composição
+//!
+//! Cada lei é uma função pura e independente ([`ride_spring`], [`walk`]), e
+//! [`player_motor`] é a **porta única** que as soma e — mais importante —
+//! responde **UMA vez** a pergunta *"isto aqui é chão?"* ([`footing`]). Duas
+//! respostas para essa pergunta seriam a mola segurando o personagem numa parede
+//! que a caminhada considera intransponível.
+
+pub mod ride;
+pub mod walk;
+
+pub use ride::{RideConfig, ride_spring, within_reach};
+pub use walk::{WalkConfig, walk};
 
 /// Um vetor 2D em MUNDO (metros), na convenção do módulo (Y para cima).
 pub type Vec2 = [f32; 2];
+
+/// A perpendicular no sentido horário: com `up = [0, 1]` devolve `[1, 0]`.
+///
+/// É a porta única do *"para que lado é a direita?"* — do `up` sai o eixo
+/// horizontal, e da normal do chão sai a tangente da rampa, com a MESMA função:
+/// numa rampa que sobe para a direita a normal tomba para a esquerda, e a
+/// tangente sai apontando para cima e para a direita, que é para onde se anda.
+#[must_use]
+pub fn perp_cw(v: Vec2) -> Vec2 {
+    [v[1], -v[0]]
+}
 
 /// **O que o sensor de chão viu.** `None` no chamador significa *"nada ao
 /// alcance"*, e a lei lê isso como estar no ar.
@@ -49,6 +75,12 @@ pub struct GroundSample {
     /// Distância do ponto de origem do raio até a superfície.
     pub distance: f32,
     /// A normal da superfície.
+    ///
+    /// ⚠️ Pode vir **degenerada** (`[0, 0]`) quando o raio nasce DENTRO da
+    /// geometria — é o contrato do `cast_ray` do wrapper, que reporta a
+    /// penetração em vez de a esconder. A [`footing`] a trata como chão plano:
+    /// não sabemos a orientação, e a suposição menos daninha é a que deixa a
+    /// mola empurrar o personagem para fora.
     pub normal: Vec2,
     /// **A velocidade do CHÃO no ponto de contato.**
     ///
@@ -58,47 +90,34 @@ pub struct GroundSample {
     pub ground_velocity: Vec2,
 }
 
-/// Os ganhos da perna.
+/// A config inteira de um player — as duas metades que a [`footing`] precisa
+/// consultar juntas.
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub struct RideConfig {
-    /// A que altura o personagem paira, medida do ponto de origem do raio.
-    pub float_height: f32,
-    /// Quanto ACIMA da altura de repouso a mola ainda age.
-    ///
-    /// Dentro desta faixa a mola puxa o personagem de volta — inclusive para
-    /// BAIXO. Fora dela ele está no ar, e a mola se cala: é esta distância que
-    /// separa *"subi um degrau"* de *"pulei"*.
-    pub cling_distance: f32,
-    /// Rigidez, em aceleração-por-metro (não é N/m: a força sai na ponte).
-    pub spring_strength: f32,
-    /// Amortecimento, em **fração da velocidade relativa removida por tick**.
-    ///
-    /// ⚠️ `1.0` mata a velocidade relativa por completo num tick; acima disso
-    /// ela é invertida. Ver o aviso no topo do módulo e o gate do teto.
-    pub spring_damping: f32,
+pub struct PlayerConfig {
+    /// A perna.
+    pub ride: RideConfig,
+    /// A caminhada.
+    pub walk: WalkConfig,
 }
 
-impl RideConfig {
-    /// ⚠️ **O teto do amortecimento, MEDIDO** ([`tests::the_damping_ceiling_is_where_the_boost_inverts`]).
-    ///
-    /// Em `1.0` o boost remove exatamente a velocidade relativa. Em `2.0` ele a
-    /// inverte inteira (`v → −v`), que é uma colisão perfeitamente elástica com
-    /// um chão imaginário — o personagem pipoca. O teto que shipa é o ponto
-    /// onde a mola ainda **converge**, e o `clamp` da porta o honra.
-    pub const MAX_DAMPING: f32 = 1.0;
-
-    /// Um perfil de partida — ⚠️ **NÃO são defaults de produto.**
-    ///
-    /// Os números que shipam saem da varredura da wave (o molde das tabelas do
-    /// `GRAB_STIFFNESS`), e enquanto ela não existe estes são explicitamente um
-    /// ponto de partida: `400` é a rigidez que o `bevy-tnua` usa, e o
-    /// amortecimento está em metade do teto medido.
+impl PlayerConfig {
+    /// O ponto de partida das duas metades — ⚠️ **não são defaults de produto**.
     pub const STARTING_POINT: Self = Self {
-        float_height: 0.5,
-        cling_distance: 0.25,
-        spring_strength: 400.0,
-        spring_damping: 0.5,
+        ride: RideConfig::STARTING_POINT,
+        walk: WalkConfig::STARTING_POINT,
     };
+}
+
+/// **A entrada do jogador neste tick.**
+///
+/// ⚠️ Não é config e não é componente: é o que o dedo do jogador estava fazendo.
+/// Hoje a ponte a guarda como estado transiente (set-and-hold); a partir da W7
+/// ela vem de uma **fita por tick**, o que torna o player uma função de
+/// `(tick, fita)` e devolve o scrub bit-exato que o resto do módulo tem.
+#[derive(Copy, Clone, Debug, Default, PartialEq)]
+pub struct PlayerInput {
+    /// O eixo de caminhada em `[-1, 1]`. Positivo é a direita.
+    pub drive: f32,
 }
 
 /// **O que fazer com o corpo neste tick.** Ver a distinção accel/boost no topo.
@@ -110,68 +129,92 @@ pub struct Motor {
     pub boost: Vec2,
 }
 
-/// Estamos no chão? A resposta que o resto da lei consome.
-#[must_use]
-pub fn is_grounded(cfg: &RideConfig, sample: Option<&GroundSample>) -> bool {
-    match sample {
-        Some(s) => s.distance <= cfg.float_height + cfg.cling_distance,
-        None => false,
+impl Motor {
+    /// Soma dois termos do motor.
+    ///
+    /// As leis são independentes e **aditivas** por desenho: é isso que permite
+    /// gatear a mola sem a caminhada e vice-versa, e o que fará o pulo (W4)
+    /// entrar sem reabrir nenhuma das duas.
+    #[must_use]
+    pub fn plus(self, other: Self) -> Self {
+        Self {
+            accel: [
+                self.accel[0] + other.accel[0],
+                self.accel[1] + other.accel[1],
+            ],
+            boost: [
+                self.boost[0] + other.boost[0],
+                self.boost[1] + other.boost[1],
+            ],
+        }
     }
 }
 
-/// **A MOLA.** O termo que faz o personagem pairar.
+/// **A amostra que a lei aceita como CHÃO** — a pergunta feita UMA vez.
 ///
-/// - `sample`: o que o sensor viu (`None` = ar).
-/// - `body_velocity`: a velocidade do corpo, em mundo.
-/// - `gravity`: a gravidade do mundo (m/s²), que a mola **compensa** enquanto
-///   segura o personagem — sem isso ela teria de vencer o peso com o próprio
-///   erro, e o personagem pairaria mais baixo do que a `float_height` pede,
-///   por uma quantidade que depende da gravidade.
-/// - `up`: a direção "para cima" (normalmente `[0, 1]`).
+/// Duas metades, e a segunda foi a entrega da W3: *perto o bastante* (a perna
+/// alcança) **e** *rasa o bastante* (o personagem fica em pé nela).
 ///
-/// No ar devolve [`Motor::default`] — zerado. A gravidade extra de queda é do
-/// pulo (W4), não da perna: são duas perguntas, e misturá-las faria a perna
-/// mudar a altura do salto.
+/// ⚠️ **Uma parede de 80° está ao alcance do raio e não é chão.** Deixá-la
+/// passar faria a mola segurar o personagem colado numa parede vertical, parado
+/// no ar, porque a mola cancela a gravidade enquanto segura. Recusando-a, a
+/// gravidade volta a agir inteira, o collider encosta na rampa e o personagem
+/// **escorrega** — que é o que a Unity (`slopeLimit`) e o Godot
+/// (`floor_max_angle`) fazem, e pela mesma razão.
+///
+/// A recusa é **binária de propósito**: é a resposta de toda a indústria, e uma
+/// transição contínua faria a inclinação em que o personagem para de subir
+/// depender da velocidade com que chegou.
 #[must_use]
-pub fn ride_spring(
-    cfg: &RideConfig,
+pub fn footing<'a>(
+    cfg: &PlayerConfig,
+    sample: Option<&'a GroundSample>,
+    up: Vec2,
+) -> Option<&'a GroundSample> {
+    let s = sample?;
+    if !within_reach(&cfg.ride, Some(s)) {
+        return None;
+    }
+    // Normal degenerada (raio nascido dentro da geometria): trate como plano —
+    // ver o aviso em `GroundSample::normal`.
+    let n2 = s.normal[0] * s.normal[0] + s.normal[1] * s.normal[1];
+    if n2 < 1.0e-6 {
+        return Some(s);
+    }
+    let cos = s.normal[0] * up[0] + s.normal[1] * up[1];
+    if cos < cfg.walk.max_slope_cos() {
+        return None;
+    }
+    Some(s)
+}
+
+/// Estamos no chão? A pergunta pública, e a mesma que as leis consomem.
+#[must_use]
+pub fn is_grounded(cfg: &PlayerConfig, sample: Option<&GroundSample>, up: Vec2) -> bool {
+    footing(cfg, sample, up).is_some()
+}
+
+/// **A PORTA ÚNICA** — o motor inteiro de um player neste tick.
+///
+/// Ela existe por uma razão que não é conveniência: [`footing`] é chamada
+/// **uma** vez e o resultado é entregue às duas leis. Se cada uma perguntasse
+/// por conta, uma rampa de 46° com `max_slope = 45` teria a mola a segurar o
+/// personagem e a caminhada a considerá-lo no ar — o estado impossível que
+/// nenhum gate de lei isolada consegue ver.
+#[must_use]
+pub fn player_motor(
+    cfg: &PlayerConfig,
     sample: Option<&GroundSample>,
+    input: PlayerInput,
     body_velocity: Vec2,
     gravity: Vec2,
     up: Vec2,
+    dt: f32,
 ) -> Motor {
-    let Some(s) = sample else {
-        return Motor::default();
-    };
-    if !is_grounded(cfg, Some(s)) {
-        return Motor::default();
-    }
-
-    // Positivo = está BAIXO demais e a mola empurra para cima; negativo = está
-    // alto demais dentro do `cling_distance` e ela puxa para baixo.
-    let offset = cfg.float_height - s.distance;
-
-    // ⚠️ Tudo RELATIVO ao chão: sobre uma plataforma que sobe, a velocidade do
-    // corpo já contém a dela, e amortecer contra o referencial do mundo faria a
-    // mola lutar contra a plataforma em vez de contra a oscilação.
-    let rel = [
-        body_velocity[0] - s.ground_velocity[0],
-        body_velocity[1] - s.ground_velocity[1],
-    ];
-    let rel_along_up = rel[0] * up[0] + rel[1] * up[1];
-
-    let damping = cfg.spring_damping.clamp(0.0, RideConfig::MAX_DAMPING);
-    let spring = offset * cfg.spring_strength;
-
-    Motor {
-        // A mola + o cancelamento da gravidade.
-        accel: [up[0] * spring - gravity[0], up[1] * spring - gravity[1]],
-        // O amortecimento é BOOST — ver o aviso do topo.
-        boost: [
-            -up[0] * rel_along_up * damping,
-            -up[1] * rel_along_up * damping,
-        ],
-    }
+    let footing = footing(cfg, sample, up);
+    let spring = ride_spring(&cfg.ride, footing, body_velocity, gravity, up);
+    let step = walk(&cfg.walk, footing, body_velocity, up, input.drive, dt);
+    spring.plus(step)
 }
 
 #[cfg(test)]
@@ -180,117 +223,96 @@ mod tests {
 
     const UP: Vec2 = [0.0, 1.0];
     const G: Vec2 = [0.0, -9.81];
+    const DT: f32 = 1.0 / 60.0;
 
-    fn flat(distance: f32) -> GroundSample {
+    fn at(distance: f32, normal: Vec2) -> GroundSample {
         GroundSample {
             distance,
-            normal: [0.0, 1.0],
+            normal,
             ground_velocity: [0.0, 0.0],
         }
     }
 
-    /// Sem chão ao alcance, a perna se cala — e é o que o pulo (W4) precisa para
-    /// existir.
+    /// Uma rampa RASA é chão; uma parede não é. O limite é o autorado.
     #[test]
-    fn no_ground_means_no_motor() {
-        let cfg = RideConfig::STARTING_POINT;
-        assert_eq!(ride_spring(&cfg, None, [0.0, 0.0], G, UP), Motor::default());
-        // Além do alcance também é ar, mesmo com o sensor tendo achado algo.
-        let far = flat(cfg.float_height + cfg.cling_distance + 0.01);
+    fn a_wall_is_not_ground() {
+        let cfg = PlayerConfig::STARTING_POINT; // 45°
+        let shallow = at(0.5, [-0.5, 0.866_025_4]); // 30°
+        let steep = at(0.5, [-0.866_025_4, 0.5]); // 60°
+        assert!(is_grounded(&cfg, Some(&shallow), UP), "30° e' chao");
+        assert!(!is_grounded(&cfg, Some(&steep), UP), "60° nao e' chao");
+        assert!(!is_grounded(&cfg, None, UP));
+    }
+
+    /// ⚠️ **A recusa da rampa alcança a MOLA, não só a caminhada.**
+    ///
+    /// É o gate da porta única: com a `footing` respondendo só à caminhada, a
+    /// mola seguraria o personagem colado a uma parede — parado no ar, porque
+    /// ela cancela a gravidade enquanto segura.
+    #[test]
+    fn the_spring_lets_go_of_a_wall() {
+        let cfg = PlayerConfig::STARTING_POINT;
+        let steep = at(cfg.ride.float_height, [-0.866_025_4, 0.5]); // 60°
+        let m = player_motor(
+            &cfg,
+            Some(&steep),
+            PlayerInput::default(),
+            [0.0, 0.0],
+            G,
+            UP,
+            DT,
+        );
         assert_eq!(
-            ride_spring(&cfg, Some(&far), [0.0, 0.0], G, UP),
-            Motor::default()
+            m,
+            Motor::default(),
+            "numa parede o motor inteiro se cala, e a gravidade age: {m:?}"
         );
     }
 
-    /// **Na altura exata, a mola só segura o peso** — nada de empurrão extra.
-    ///
-    /// É este o gate que prova a compensação da gravidade: sem ela a aceleração
-    /// aqui seria zero, o personagem cairia, e só pararia onde o erro da mola
-    /// igualasse o peso — mais baixo que a `float_height` pedida, por uma
-    /// quantidade que depende da gravidade do mundo.
+    /// A mesma rampa vira chão quando o artista sobe o limite — o número é dele.
     #[test]
-    fn at_rest_height_the_spring_only_carries_the_weight() {
-        let cfg = RideConfig::STARTING_POINT;
-        let m = ride_spring(&cfg, Some(&flat(cfg.float_height)), [0.0, 0.0], G, UP);
+    fn raising_the_limit_makes_the_ramp_walkable() {
+        let mut cfg = PlayerConfig::STARTING_POINT;
+        let steep = at(cfg.ride.float_height, [-0.866_025_4, 0.5]); // 60°
+        assert!(!is_grounded(&cfg, Some(&steep), UP));
+        cfg.walk.max_slope_deg = 70.0;
+        assert!(is_grounded(&cfg, Some(&steep), UP));
+    }
+
+    /// Normal degenerada (raio nascido dentro da geometria) conta como chão
+    /// plano — a suposição que deixa a mola empurrar o personagem para fora.
+    #[test]
+    fn a_degenerate_normal_counts_as_flat() {
+        let cfg = PlayerConfig::STARTING_POINT;
+        let inside = at(0.0, [0.0, 0.0]);
+        assert!(is_grounded(&cfg, Some(&inside), UP));
+        let m = player_motor(
+            &cfg,
+            Some(&inside),
+            PlayerInput::default(),
+            [0.0, 0.0],
+            G,
+            UP,
+            DT,
+        );
         assert!(
-            (m.accel[1] - 9.81).abs() < 1.0e-4,
-            "a aceleracao tem de cancelar a gravidade exatamente: {:?}",
+            m.accel[1] > 0.0,
+            "a mola tem de empurrar para FORA: {:?}",
             m.accel
         );
-        assert_eq!(m.boost, [0.0, 0.0], "parado, nada a amortecer");
     }
 
-    /// Baixo demais empurra para CIMA; alto demais (dentro do cling) puxa para
-    /// BAIXO. A segunda metade é o que impede o personagem de subir escada
-    /// flutuando.
+    /// A porta única SOMA as duas leis, sem uma comer a outra.
     #[test]
-    fn the_spring_pushes_both_ways() {
-        let cfg = RideConfig::STARTING_POINT;
-        let low = ride_spring(&cfg, Some(&flat(cfg.float_height - 0.1)), [0.0, 0.0], G, UP);
-        let high = ride_spring(&cfg, Some(&flat(cfg.float_height + 0.1)), [0.0, 0.0], G, UP);
-        assert!(low.accel[1] > 9.81, "baixo demais: empurra alem do peso");
-        assert!(high.accel[1] < 9.81, "alto demais: alivia e deixa descer");
-    }
-
-    /// ⚠️ **O TETO DO AMORTECIMENTO, medido em vez de citado.**
-    ///
-    /// O boost remove `rel_v · d`. Em `d = 1` a velocidade relativa vai a zero;
-    /// em `d = 2` ela seria invertida inteira. O `clamp` da porta segura em
-    /// [`RideConfig::MAX_DAMPING`], então pedir 2.0 **não** inverte.
-    #[test]
-    fn the_damping_ceiling_is_where_the_boost_inverts() {
-        let mut cfg = RideConfig::STARTING_POINT;
-        let v = [0.0, -3.0]; // caindo a 3 m/s
-
-        cfg.spring_damping = 1.0;
-        let m = ride_spring(&cfg, Some(&flat(cfg.float_height)), v, G, UP);
-        assert!(
-            (v[1] + m.boost[1]).abs() < 1.0e-4,
-            "em d=1 a velocidade relativa vai a ZERO: v={} boost={}",
-            v[1],
-            m.boost[1]
-        );
-
-        // Pedir o dobro do teto não pode inverter a velocidade: o clamp segura.
-        cfg.spring_damping = 2.0;
-        let m2 = ride_spring(&cfg, Some(&flat(cfg.float_height)), v, G, UP);
-        let after = v[1] + m2.boost[1];
-        assert!(
-            after.abs() < 1.0e-4,
-            "acima do teto o clamp segura em d=1 (nao inverte): sobrou {after}"
-        );
-    }
-
-    /// ⚠️ **A mola mede tudo RELATIVO ao chão** — a metade que faz a plataforma
-    /// móvel funcionar sem uma linha de código de plataforma.
-    ///
-    /// Um personagem parado SOBRE uma plataforma que sobe a 2 m/s sobe a 2 m/s
-    /// também. Se a mola amortecesse contra o mundo, ela leria isso como
-    /// oscilação e lutaria contra a plataforma — o personagem afundaria nela.
-    #[test]
-    fn the_spring_damps_against_the_ground_not_the_world() {
-        let cfg = RideConfig::STARTING_POINT;
-        let rising = GroundSample {
-            distance: cfg.float_height,
-            normal: [0.0, 1.0],
-            ground_velocity: [0.0, 2.0],
-        };
-        // O corpo já viaja com a plataforma: velocidade relativa ZERO.
-        let m = ride_spring(&cfg, Some(&rising), [0.0, 2.0], G, UP);
-        assert_eq!(
-            m.boost,
-            [0.0, 0.0],
-            "viajando junto com o chao nao ha' o que amortecer"
-        );
-
-        // E um corpo parado no MUNDO está descendo em relação à plataforma ⇒ a
-        // mola o acelera para cima para acompanhá-la.
-        let m2 = ride_spring(&cfg, Some(&rising), [0.0, 0.0], G, UP);
-        assert!(
-            m2.boost[1] > 0.0,
-            "parado no mundo, ele esta' AFUNDANDO na plataforma: {:?}",
-            m2.boost
-        );
+    fn the_door_sums_both_laws() {
+        let cfg = PlayerConfig::STARTING_POINT;
+        let ground = at(cfg.ride.float_height, [0.0, 1.0]);
+        let input = PlayerInput { drive: 1.0 };
+        let whole = player_motor(&cfg, Some(&ground), input, [0.0, 0.0], G, UP, DT);
+        let spring = ride_spring(&cfg.ride, Some(&ground), [0.0, 0.0], G, UP);
+        let step = walk(&cfg.walk, Some(&ground), [0.0, 0.0], UP, 1.0, DT);
+        assert_eq!(whole, spring.plus(step));
+        assert!(whole.accel[0] > 0.0, "anda");
+        assert!(whole.accel[1] > 0.0, "e paira ao mesmo tempo");
     }
 }

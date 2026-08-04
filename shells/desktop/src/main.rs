@@ -256,6 +256,7 @@ mod physics_smoke_joint_rig;
 mod physics_smoke_joint_slider;
 mod physics_smoke_lead;
 mod physics_smoke_part;
+mod physics_smoke_player;
 mod physics_smoke_props;
 mod physics_smoke_pulley;
 mod physics_smoke_pulley_break;
@@ -276,6 +277,7 @@ mod physics_smoke_wheel;
 mod physics_smoke_world_pin;
 mod physics_smoke_zones;
 mod picker_smoke;
+mod player_input;
 /// **A largura VIVA** — o cozimento do `VecStrokeProfile` (ADR-0148), irmão do `offset_live`.
 mod profile_live;
 /// A cena de smoke da **largura viva** (`PH2D_BUILD_SMOKE=41`) — irmã de `build_smoke`, teto de LOC.
@@ -672,6 +674,7 @@ impl App {
             flip_edit_gesture: None,
             flip_trace_drag: None,
             flip_peek: None,
+            player_keys: crate::player_input::PlayerKeys::default(),
             flip_pose_drag: None,
             flip_selection_drag: None,
             field_gizmo_drag: None,
@@ -892,6 +895,10 @@ impl ApplicationHandler for App {
             WindowEvent::ScaleFactorChanged { scale_factor, .. } => {
                 self.on_scale_factor_changed(scale_factor)
             }
+            // Perder o foco SOLTA as teclas de caminhada: o `Up` de uma tecla
+            // presa nunca chega quando a janela vai embora, e sem isto o player
+            // anda sozinho até alguém tocá-la de novo (W3).
+            WindowEvent::Focused(false) => self.player_keys.release_all(),
             WindowEvent::ModifiersChanged(mods) => self.on_modifiers_changed(mods),
             WindowEvent::Ime(winit::event::Ime::Commit(text)) => self.on_ime_commit(text),
             WindowEvent::CursorMoved { position, .. } => self.on_cursor_moved(position),

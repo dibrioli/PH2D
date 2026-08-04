@@ -16,7 +16,7 @@
 //! torna reproduzível num scrub.
 
 use bevy_ecs::component::Component;
-use ph2d_platformer::RideConfig;
+use ph2d_platformer::{PlayerConfig, RideConfig, WalkConfig};
 use serde::{Deserialize, Serialize};
 
 /// **Este corpo é um player de plataforma.**
@@ -48,21 +48,43 @@ pub struct PlatformPlayer {
     /// ⚠️ Tem TETO medido ([`RideConfig::MAX_DAMPING`]) — acima dele o boost
     /// inverte a velocidade em vez de matá-la, e o personagem pipoca.
     pub spring_damping: f32,
+
+    /// Velocidade de cruzeiro, m/s — **relativa ao chão** (W3).
+    pub speed: f32,
+    /// Aceleração no chão, m/s².
+    pub acceleration: f32,
+    /// Aceleração no ar — o controle aéreo. `0` conserva o arco do salto.
+    pub air_acceleration: f32,
+    /// A inclinação máxima em que o personagem fica de pé, em GRAUS.
+    ///
+    /// ⚠️ Graus na fronteira, cosseno no motor — a mesma política do ângulo de
+    /// joint (graus na UI, radianos no componente): o artista autora o número
+    /// que ele entende, e a conversão acontece **uma vez**, na porta única
+    /// [`WalkConfig::max_slope_cos`].
+    pub max_slope_deg: f32,
 }
 
 impl PlatformPlayer {
     /// A config da lei que este componente descreve.
     ///
-    /// Existe para que a ponte **não** remonte o `RideConfig` campo a campo:
+    /// Existe para que a ponte **não** remonte o `PlayerConfig` campo a campo:
     /// duas cópias da mesma tradução divergem no dia em que um campo novo entra
     /// só numa delas.
     #[must_use]
-    pub fn ride(&self) -> RideConfig {
-        RideConfig {
-            float_height: self.float_height,
-            cling_distance: self.cling_distance,
-            spring_strength: self.spring_strength,
-            spring_damping: self.spring_damping,
+    pub fn config(&self) -> PlayerConfig {
+        PlayerConfig {
+            ride: RideConfig {
+                float_height: self.float_height,
+                cling_distance: self.cling_distance,
+                spring_strength: self.spring_strength,
+                spring_damping: self.spring_damping,
+            },
+            walk: WalkConfig {
+                speed: self.speed,
+                acceleration: self.acceleration,
+                air_acceleration: self.air_acceleration,
+                max_slope_deg: self.max_slope_deg,
+            },
         }
     }
 }
@@ -71,12 +93,16 @@ impl Default for PlatformPlayer {
     /// ⚠️ **Ponto de partida, não default de produto** — os números que shipam
     /// saem da varredura da wave, com a tabela ao lado (CLAUDE.md §0).
     fn default() -> Self {
-        let r = RideConfig::STARTING_POINT;
+        let c = PlayerConfig::STARTING_POINT;
         Self {
-            float_height: r.float_height,
-            cling_distance: r.cling_distance,
-            spring_strength: r.spring_strength,
-            spring_damping: r.spring_damping,
+            float_height: c.ride.float_height,
+            cling_distance: c.ride.cling_distance,
+            spring_strength: c.ride.spring_strength,
+            spring_damping: c.ride.spring_damping,
+            speed: c.walk.speed,
+            acceleration: c.walk.acceleration,
+            air_acceleration: c.walk.air_acceleration,
+            max_slope_deg: c.walk.max_slope_deg,
         }
     }
 }

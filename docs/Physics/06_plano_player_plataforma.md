@@ -71,7 +71,12 @@ O buraco que a pesquisa achou: não temos `cast_ray` nem `cast_shape`. Sem isto 
   respeita as **camadas de colisão** (`world/layers.rs`) — um player não pisa no que ele
   atravessa.
 
-**Smoke `=80`:** três raios contra chão plano / rampa / vão, imprimindo distância e normal.
+⛔ **Smoke `=80` CORTADO (2026-08-03, no fechamento da W3).** A cena prometida —
+*"três raios contra chão plano / rampa / vão, imprimindo distância e normal"* — é um TESTE,
+não um smoke: o `world::cast` já tem sete gates, com os dois lados do BVH medidos, e uma cena
+que imprime números pede ao Enio para conferir exatamente o que uma máquina confere melhor.
+**Uma cena de smoke existe para julgar o que só o olho julga.** As cenas seguintes sobem um
+número cada (a mola vira `=80`, andar vira `=81`).
 
 ### W2 — A MOLA (o personagem PAIRA)
 
@@ -88,7 +93,15 @@ O buraco que a pesquisa achou: não temos `cast_ray` nem `cast_shape`. Sem isto 
 chão ESTÁTICO oscilar com amplitude > 2% da `float_height` em regime, após a 2ª rodada de
 ganhos, a cápsula flutuante é o desenho errado para o nosso solver e o plano volta à mesa.*
 
-**Smoke `=81`:** o personagem paira; empurre-o com a MÃO e ele volta à altura.
+**Smoke `=80`:** o personagem paira; empurre-o com a MÃO e ele volta à altura.
+
+⚠️ **E a W2 deixou UM número errado que só a W3 achou:** o `float_height` do ponto de partida
+(`0,5`) deixa a cápsula canônica (`half_height 0,3`, `radius 0,2`) **TANGENTE** ao chão — ela
+não paira. Flutuar de verdade é geometria, medida em
+[`RideConfig::min_float_height`](../../crates/ph2d-platformer/src/ride.rs):
+`float_height > half_height + radius / cos(max_slope)`. O plano ficou cego a isso porque a
+W2 só tinha chão PLANO, onde tangente ainda funciona. A cura de produto — semear a altura a
+partir do collider, como o collider já nasce da caixa do sprite — é item da W5.
 
 ### W3 — ANDAR
 
@@ -103,8 +116,19 @@ ganhos, a cápsula flutuante é o desenho errado para o nosso solver e o plano v
   de velocidade dele entra como boost. Andar sobre uma plataforma kinematic (que já temos) é
   andar.
 
-**Smoke `=82`:** anda, freia, sobe rampa de 30°, escorrega na de 60°, e cavalga a plataforma
+**Smoke `=81`:** anda, freia, sobe rampa de 30°, escorrega na de 60°, e cavalga a plataforma
 kinematic dirigida pela timeline.
+
+⚠️ **A W3 acrescentou o que o plano não previu: a cena precisa de CONTROLE.** A caminhada é
+uma resposta a um dedo, e nada num log a mostra, então o fio do teclado
+(`shells/desktop/src/player_input.rs` → `physics_bridge::hand_input_to_players`) entrou
+junto. Ele **observa sem consumir** — a seta já tem dono (o nudge de nó do Vector) — e a
+política é pura, porque um `winit::KeyEvent` não pode ser construído num teste.
+
+⚠️ **E o fator de mudança de direção NÃO é o `1.5 − 0.5·cos` do tnua**, por medição e não por
+gosto: num eixo 1-D aquele cosseno só assume ±1, então a fórmula vira um DEGRAU de 1× para 2×
+no cruzamento do zero. O nosso é `1 + |Δv| / (2·speed)` saturado em 2 — mesmos extremos
+(2× num 180°, 1× no alvo), contínuo no meio.
 
 ### W4 — PULAR
 
@@ -123,6 +147,13 @@ diferentes conforme a velocidade inicial e a posição na mola).
 **Smoke `=83`:** pulo cheio × pulo curto (soltar cedo), com as duas alturas MEDIDAS impressas.
 
 ### W5 — A §14 DO INSPECTOR (autoria)
+
+⚠️ **ANTECIPADA para depois da W3** (2026-08-03), e quem mandou foi um gate: o
+`every_physics_component_is_authorable` reprovou no fechamento da W3 com
+*"componentes de física que NENHUM caminho da UI escreve: `PlatformPlayer`"* — ele estava
+vermelho desde a W2, e está **certo**: um componente registrado sem UI funciona em toda cena
+de smoke (que constrói com código) e é inalcançável no produto. O plano já dizia que esta
+wave entra *"aqui, e não no fim"*; o gate apenas disse quão cedo. A W4 (pular) vem depois.
 
 Entra aqui, e não no fim: a partir dela tudo é autorável e o Enio smoka com a mão.
 

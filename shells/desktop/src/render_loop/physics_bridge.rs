@@ -11,8 +11,8 @@
 //! body's readback `Transform` renders the same frame it was computed.
 
 use ph2d_core::Playhead;
-use ph2d_ecs::SimWorld;
-use ph2d_physics_ecs::PhysicsBridge;
+use ph2d_ecs::{Entity, SimWorld};
+use ph2d_physics_ecs::{PhysicsBridge, PlatformPlayer, PlayerInput};
 
 /// The fixed tick the playhead currently sits on — `round(time / dt)`, the
 /// same mapping Motion uses (`motion_tick`), so physics and motion step on
@@ -37,8 +37,10 @@ pub(crate) fn dispatch(
     fixed_dt: f64,
     doc: &mut ph2d_timeline::TimelineDoc,
     simulate: bool,
+    drive: f32,
 ) {
     let target = physics_tick(playhead, fixed_dt);
+    hand_input_to_players(bridge, sim, drive);
     if !simulate {
         bridge.hold(sim, target);
         return;
@@ -51,6 +53,26 @@ pub(crate) fn dispatch(
     // that bug (see `bake_and_scrub_agree_with_play`).
     let mut scene = super::physics_bake::TimelineScene { doc, fixed_dt };
     bridge.dispatch_with_scene(sim, playhead.is_playing(), target, &mut scene);
+}
+
+/// **Entrega o dedo do jogador a todo player da cena** (W3).
+///
+/// ⚠️ **Todo player recebe o MESMO `drive`, e isso é honesto hoje:** há um
+/// teclado, logo um dedo. Quando houver um segundo jogador (ou um agente), o que
+/// muda é a FONTE — a fita por-player da W7 —, não este laço nem a lei.
+///
+/// ⚠️ E ele roda **antes** do `hold`, não só do `dispatch`: com a simulação
+/// desarmada o mundo é segurado e ninguém anda, mas a entrada continua a ser
+/// registrada, então armar o Physics retoma do que o dedo está fazendo em vez de
+/// engolir a primeira tecla.
+fn hand_input_to_players(bridge: &mut PhysicsBridge, sim: &mut SimWorld, drive: f32) {
+    let Some(mut q) = sim.world().try_query::<(Entity, &PlatformPlayer)>() else {
+        return;
+    };
+    let input = PlayerInput { drive };
+    for (entity, _) in q.iter(sim.world()) {
+        bridge.set_player_input(entity, input);
+    }
 }
 
 /// **What to say when a joint gives way** (W-J7) — one line per break, ready for

@@ -347,6 +347,21 @@ pub struct PhysicsBridge {
     /// TRUE over an empty baseline, so the first stepped tick does report what it finds
     /// — the Unity reading, argued in `accumulate_contact_events`.
     contacts_continuous: bool,
+    /// **O que o dedo do jogador está fazendo**, por player (W3).
+    ///
+    /// ⚠️ Fica AQUI e não no componente por lei do módulo: entrada não é config,
+    /// e um campo que muda por tick dentro de um componente faria o
+    /// `canonicalize` do undo ver cada frame como um passo (o mesmo motivo pelo
+    /// qual velocidade e sono nunca entraram no `RigidBody`).
+    ///
+    /// ⚠️ **Set-and-hold, e é uma escolha de ESCOPO, não o desenho final:** a
+    /// shell escreve a cada frame, e a ponte lê. A W7 troca a FONTE por uma fita
+    /// por tick — o player volta a ser função de `(tick, fita)` e o scrub volta a
+    /// ser bit-exato —, sem que a lei precise mudar uma linha. Até lá, um scrub
+    /// para trás replaya com a entrada de HOJE, e essa é a dívida nomeada.
+    ///
+    /// `BTreeMap` pelo motivo determinístico que o `bodies` documenta.
+    player_input: BTreeMap<Entity, ph2d_platformer::PlayerInput>,
 }
 
 impl Default for PhysicsBridge {
@@ -410,6 +425,7 @@ impl PhysicsBridge {
             pulley_peaks: BTreeMap::new(),
             flashes: Vec::new(),
             contacts_continuous: true,
+            player_input: BTreeMap::new(),
         }
     }
 
@@ -429,6 +445,9 @@ impl PhysicsBridge {
         self.joint_query = None;
         self.wheel_query = None;
         self.ring.clear(); // cached states belong to the document being left
+        // Entity bits are recycled here, so a held input would start driving
+        // SOMEONE ELSE — the same trap that made joint anchors travel by NAME.
+        self.clear_player_input();
     }
 
     /// The per-frame entry point (mirrors `motion_bridge::dispatch`).

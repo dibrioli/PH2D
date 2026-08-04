@@ -7165,6 +7165,9 @@ version = "0.0.0"
 [[package]]
 name = "ph2d-platformer"
 version = "0.0.0"
+dependencies = [
+ "libm",
+]
 
 [[package]]
 name = "ph2d-render"

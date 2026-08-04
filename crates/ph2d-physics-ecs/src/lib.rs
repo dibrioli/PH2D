@@ -74,6 +74,12 @@ pub use parts::{auto_mass_with_parts, count_parts, governing_kind, is_part, owne
 pub use ph2d_physics::world::pulley::{StopLeg, stop_at_point, stop_mark};
 pub use ph2d_physics::world::rope_route;
 pub use ph2d_physics::{IkOptions, JointLoad};
+/// A entrada de um player, re-exportada da lei pura.
+///
+/// ⚠️ Re-exportada em vez de re-declarada: quem escreve a entrada (a shell) e
+/// quem a consome (a lei) têm de falar do MESMO tipo — um espelho na ponte
+/// seria a segunda porta que diverge no dia em que o pulo (W4) entra num lado só.
+pub use ph2d_platformer::PlayerInput;
 pub use rig::{RIG_LIMIT_DEG, rig_edges, rig_limits, subtree_parts};
 pub use scale::scaled_shape;
 pub use seam::{ColliderPose, seam_between, seam_point};

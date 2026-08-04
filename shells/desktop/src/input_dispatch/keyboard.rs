@@ -119,6 +119,16 @@ impl App {
         // playhead; soltar volta. A política é pura (`flip_peek::key_transition`):
         // press só arma com a tool Flip ativa; release SEMPRE desarma (trocar de tool
         // com a tecla presa não pode deixar o peek preso).
+        // ⚠️ **O dedo do jogador OBSERVA, nunca consome** (W3). A seta já tem
+        // dono (o nudge de nó do Vector), e roubá-la aqui faria esta wave
+        // regredir uma ferramenta que ninguém pediu para mexer — o evento segue
+        // o caminho de sempre, e o que muda é um par de bools que ninguém lê
+        // numa cena sem player. A política é pura (`crate::player_input`),
+        // porque um `winit::KeyEvent` não pode ser construído num teste.
+        if let PhysicalKey::Code(code) = physical_key {
+            self.player_keys.key(code, state == ElementState::Pressed);
+        }
+
         if let PhysicalKey::Code(code) = physical_key {
             let (next, consumed) = crate::flip_peek::key_transition(
                 self.flip_peek,

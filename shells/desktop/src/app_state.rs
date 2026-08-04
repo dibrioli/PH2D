@@ -864,6 +864,12 @@ pub(crate) struct App {
     /// O PEEK do Shift & Trace (fatia 2): a folha que F1/F2/F3 estão segurando —
     /// `None` fora do aperto. Press arma (só com a tool Flip), release desarma sempre.
     pub(crate) flip_peek: Option<crate::flip_peek::PeekDir>,
+    /// **As teclas de caminhada seguradas** (W3) — o dedo do jogador.
+    ///
+    /// Estado de JANELA, não do documento: ele nasce vazio a cada execução e
+    /// nada o serializa. A ponte de física o lê a cada frame e o entrega a todo
+    /// player da cena (`render_loop::physics_bridge`).
+    pub(crate) player_keys: crate::player_input::PlayerKeys,
     /// ADR-0114 W7.5: o arrasto do gizmo de POSE em curso (modo Edit, quadro
     /// instanciado) — rotate/scale escrevendo a pose da chave, nunca o `Transform`.
     /// `None` fora de um arrasto. Ver `flip_pose_gizmo`.

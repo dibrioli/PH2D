@@ -10,7 +10,7 @@ authors.workspace = true
 [lib]
 
 [dependencies]
-# ⚠️ NENHUMA. E a ausência é o desenho, não economia.
+# ⚠️ UMA, e ela é a regra de determinismo do módulo — não uma conveniência.
 #
 # Esta crate é a LEI de um controlador de plataforma: dado (config, estado,
 # entrada, o que o sensor viu, a velocidade do corpo, a gravidade, dt), qual é a
@@ -22,6 +22,11 @@ authors.workspace = true
 # é a `ph2d-guides` e a `ph2d-stroke-width`: uma folha por fato, com os
 # consumidores dependendo dela e nunca ela deles.
 #
-# Sem `libm` porque não há transcendental aqui: a mola é `+ - * /`, e `sqrt` (se
-# vier) é especificado exatamente pelo IEEE-754. Se um dia entrar um `sin`/`atan2`,
-# ele entra por `libm` — a regra de determinismo do módulo (1 ulp é bug cross-OS).
+# `libm` entra na W3 pelo ÚNICO transcendental da lei: o limite de rampa é
+# autorado em GRAUS e comparado como cosseno (`WalkConfig::max_slope_cos`). O
+# número entra no `physics_ecs_c9` pela W7, e a lei do módulo é que 1 ulp de
+# diferença entre dois sistemas operacionais é um bug — o `cos` do `std` não é
+# pinado cross-OS, o do `libm` é. Mesmo pin de `ph2d-ecs`/`ph2d-physics`.
+#
+# O resto continua `+ - * /` e `sqrt`, que o IEEE-754 especifica exatamente.
+libm = { version = "=0.2.16", default-features = false }

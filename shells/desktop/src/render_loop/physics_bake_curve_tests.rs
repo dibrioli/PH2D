@@ -267,6 +267,7 @@ fn a_baked_take_plays_with_the_simulation_disarmed() {
             DT,
             &mut timeline.doc,
             false,
+            0.0,
         );
         let after = sim.world().get::<Transform>(ball).unwrap().translation.y;
 

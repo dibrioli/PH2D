@@ -257,6 +257,7 @@ mod physics_smoke_joint_slider;
 mod physics_smoke_lead;
 mod physics_smoke_part;
 mod physics_smoke_player;
+mod physics_smoke_player_tape;
 mod physics_smoke_props;
 mod physics_smoke_pulley;
 mod physics_smoke_pulley_break;
@@ -675,6 +676,7 @@ impl App {
             flip_trace_drag: None,
             flip_peek: None,
             player_keys: crate::player_input::PlayerKeys::default(),
+            player_tape: ph2d_physics_ecs::InputTape::new(),
             flip_pose_drag: None,
             flip_selection_drag: None,
             field_gizmo_drag: None,

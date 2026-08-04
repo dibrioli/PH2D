@@ -36,6 +36,7 @@
 //! ```
 
 mod joints;
+mod player;
 mod rigs;
 mod zones;
 
@@ -616,11 +617,17 @@ fn main() {
     // As oito lanes da familia das ZONAS -- irmao proprio pelo cap de 700 LOC.
     zones::spawn(&mut sim);
 
+    // A lane do PLAYER DE PLATAFORMA (W7) -- irmao proprio, e a unica cujo
+    // estado depende de um fluxo de ENTRADA por tique. Ver `player.rs`.
+    player::spawn(&mut sim);
+
     let mut bridge = PhysicsBridge::new();
+    // A FITA roteirizada do player (W7) -- funcao pura do tique, ver `player.rs`.
+    let mut tape = player::tape(STEPS);
     // Drive it exactly as the shell does on play: one tick forward per
     // frame, sequential.
     for tick in 1..=STEPS {
-        bridge.dispatch(&mut sim, true, tick);
+        bridge.dispatch_with_tape(&mut sim, true, tick, &mut tape);
     }
 
     let hash = bridge.deterministic_hash(&sim);

@@ -32,6 +32,7 @@ impl PhysicsBridge {
         sim: &mut SimWorld,
         target: u64,
         scene: &mut dyn SceneAtTick,
+        tape: &mut dyn super::PlayerInputAtTick,
     ) {
         // ⚠️ **Um salto de relógio SOLTA a mão** (W-Grab, regra 2 de
         // `bridge::grab`): o cutucão é um gesto sobre a corrida que acabou de
@@ -63,7 +64,13 @@ impl PhysicsBridge {
         self.discard_joint_peaks();
         let anchor = self.ring.seed(&mut self.world, target);
         let (from, replayed) = match anchor {
-            Some(tick) => (tick, target - tick),
+            Some(tick) => {
+                // ⚠️ E a memória do CONTROLADOR do mesmo tique — sem ela o
+                // seed devolveria o mundo do tique T com o estado de pulo de
+                // agora (ver `bridge::tape`).
+                self.seed_jump_states(tick);
+                (tick, target - tick)
+            }
             None => {
                 self.rebuild_from_rest();
                 (0, target)
@@ -83,6 +90,9 @@ impl PhysicsBridge {
             // bridge rests on: the world is a function of the tick, given the
             // authored rest state AND the authored curves — both reproducible.
             scene.put(sim, from + i + 1);
+            // E o DEDO daquele tick (W7) — sem isto o replay corria com a
+            // entrada de AGORA aplicada a um tick do passado.
+            self.take_taped_input(sim, tape, from + i + 1);
             // ⚠️ **O `force` na PRIMEIRA volta é o que torna um scrub igual a um
             // play**, e é o único lugar do produto que precisa dele: um seed do
             // ring devolve ao solver os parâmetros do CHECKPOINT, enquanto o memo
@@ -91,6 +101,11 @@ impl PhysicsBridge {
             // e o replay correria com os números de outro tick.
             self.drive_joint_params(sim, i == 0);
             self.drive_kinematic(sim, 1.0);
+            // ⚠️ **E os PLAYERS — a correção de bug desta wave.** Este laço
+            // dirigia as poses da cena e deixava o personagem sem perna e sem
+            // caminhada: ele CAÍA pelos ticks replayados, e a trajetória de um
+            // scrub discordava da de um play sobre o mesmo tick.
+            self.drive_players(sim);
             self.world.step();
             self.steps_taken += 1;
         }
@@ -127,6 +142,25 @@ impl PhysicsBridge {
     /// missed.)
     pub(super) fn rebuild_from_rest(&mut self) {
         self.ring.clear();
+        self.clear_jump_ring();
+        // ⚠️ **E o estado de pulo VIVO junto, não só o ring** — reconstruir do
+        // repouso É o tique 0, e no tique 0 ninguém pulou.
+        //
+        // ⚠️ **MEDIDO INERTE HOJE, e fica documentado em vez de gateado:** com o
+        // vivo em pleno salto (tique 50), o ring frio e o scrub voltando aos
+        // tiques 10/20/30, a pose sai **idêntica ao dígito com e sem esta linha**
+        // (dy = 0,000000 nos três). O mecanismo é o `jump_step`: `airborne` é
+        // RE-DERIVADO da amostra de chão, então o primeiro tique em que o pé
+        // toca já corrige o estado sozinho.
+        //
+        // ⚠️ **A inércia MORRE na W8**, e é por isso que a linha nasce agora: um
+        // coyote timer e um jump buffer são CONTADORES que andam por tique e
+        // **não** se auto-corrigem — carregados do meio de um salto para um
+        // replay do tique 0, eles dariam um pulo de graça depois de um scrub,
+        // sem sintoma nenhum além de um pulo que ninguém pediu. É o mesmo
+        // argumento que o `drive_players` já escreve sobre o push incondicional
+        // do estado.
+        self.player_jump.clear();
         // ⚠️ **As POLIAS saem do mundo velho ANTES de ele morrer** (W-Weston), e isso
         // é uma correção de bug, não arrumação. A tabela de polias vive DENTRO do
         // `PhysicsWorld`, então `PhysicsWorld::new()` a apagava — e o laço de replay

@@ -60,6 +60,7 @@ fn play(simulate: bool) -> (f32, u64) {
             &mut doc,
             simulate,
             ph2d_physics_ecs::PlayerInput::default(),
+            &mut ph2d_physics_ecs::InputTape::new(),
         );
     }
     (height(&sim, ball), bridge.steps_taken())
@@ -120,6 +121,7 @@ fn arming_mid_take_resumes_it_does_not_replay_what_was_skipped() {
             &mut doc,
             false,
             ph2d_physics_ecs::PlayerInput::default(),
+            &mut ph2d_physics_ecs::InputTape::new(),
         );
     }
     // The artist ticks the checkbox. One more frame goes by.
@@ -132,6 +134,7 @@ fn arming_mid_take_resumes_it_does_not_replay_what_was_skipped() {
         &mut doc,
         true,
         ph2d_physics_ecs::PlayerInput::default(),
+        &mut ph2d_physics_ecs::InputTape::new(),
     );
 
     assert_eq!(

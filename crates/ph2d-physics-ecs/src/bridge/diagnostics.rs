@@ -53,6 +53,24 @@ impl PhysicsBridge {
     /// asserts this is stable across steady-state frames (HR-3, capacity
     /// stability rather than a flaky global allocation counter).
     #[doc(hidden)]
+    /// **Esquece os checkpoints** — a porta que deixa um gate exercitar o
+    /// caminho de FALLBACK do scrub.
+    ///
+    /// O ring é um CACHE, e o W1.5 declara a propriedade que isto existe para
+    /// provar: *"apague o ring e o produto ainda scrubba, só mais devagar"* —
+    /// o miss cai no `rebuild_from_rest`, que é o caminho que já shipava antes
+    /// do cache existir. Sem esta porta um gate só alcança a rota QUENTE, e a
+    /// rota fria — a que roda quando a janela do ring não cobre o alvo, que é o
+    /// caso comum num projeto longo — nunca é medida.
+    ///
+    /// ⚠️ **Os DOIS rings**, e é isso que a torna uma porta em vez de duas: o do
+    /// solver e o dos estados de pulo descrevem o MESMO instante, então esquecer
+    /// um e guardar o outro semearia um mundo com a memória de outro tique.
+    pub fn forget_checkpoints(&mut self) {
+        self.ring.clear();
+        self.clear_jump_ring();
+    }
+
     pub fn scratch_capacity(&self) -> usize {
         // Every per-frame buffer, summed — a gate that watches one of them
         // reports "no growth" while another doubles beside it. `chain` is the

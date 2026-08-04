@@ -1769,6 +1769,7 @@ impl crate::App {
             // O dedo do jogador, observado no `key_input` (`crate::player_input`)
             // e entregue INTEIRO por uma porta só.
             self.player_keys.input(),
+            &mut self.player_tape,
         );
         // O flash do estouro envelhece uma vez por frame, aqui: ao lado do
         // dispatch da física, que é a fase em que o tempo do mundo anda. Um canal

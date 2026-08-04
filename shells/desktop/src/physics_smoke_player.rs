@@ -34,7 +34,7 @@ mod reaction_tests;
 const FLOAT: f32 = 0.9;
 
 /// O personagem: cápsula dinâmica, rotação travada (D4), com a config do plano.
-fn spawn_player(world: &mut bevy_ecs::world::World, at: Vec2) -> Entity {
+pub(crate) fn spawn_player(world: &mut bevy_ecs::world::World, at: Vec2) -> Entity {
     world
         .spawn((
             Name::new("Player"),
@@ -60,7 +60,7 @@ fn spawn_player(world: &mut bevy_ecs::world::World, at: Vec2) -> Entity {
 }
 
 /// Um bloco estático, opcionalmente inclinado.
-fn slab(
+pub(crate) fn slab(
     world: &mut bevy_ecs::world::World,
     name: &str,
     at: Vec2,
@@ -452,8 +452,7 @@ pub(crate) fn build_reaction_scene(world: &mut bevy_ecs::world::World) {
 }
 
 /// A mensagem da cena 85 — uma const para a sonda poder afirmar sobre ela.
-pub(crate) const REACTION_SMOKE_MESSAGE: &str = concat!(
-    "[physics-smoke 85] A REACAO (W6). Duas jangadas iguais penduradas em molas,\n\
+pub(crate) const REACTION_SMOKE_MESSAGE: &str = "[physics-smoke 85] A REACAO (W6). Duas jangadas iguais penduradas em molas,\n\
              cada uma com um personagem. So' a da ESQUERDA tem 'Weight on Ground'.\n\
              \n\
              ⚠️ Se a linha acima nao aparecer, pare: a cena nao montou.\n\
@@ -472,8 +471,7 @@ pub(crate) const REACTION_SMOKE_MESSAGE: &str = concat!(
              · selecione o Hero0 e baixe 'Weight on Ground' para 0: ele vira o\n\
                fantasma da direita, ao vivo.\n\
              · suba 'Push on Ground' para 1 e ande: a jangada escorrega para TRAS\n\
-               como um tapete. E' atrito honesto, e e' por isso que nasce em zero."
-);
+               como um tapete. E' atrito honesto, e e' por isso que nasce em zero.";
 
 impl crate::App {
     /// **Cena 81 (W3).** ANDAR — a cena que se dirige.

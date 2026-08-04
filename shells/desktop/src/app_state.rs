@@ -870,6 +870,16 @@ pub(crate) struct App {
     /// nada o serializa. A ponte de física o lê a cada frame e o entrega a todo
     /// player da cena (`render_loop::physics_bridge`).
     pub(crate) player_keys: crate::player_input::PlayerKeys,
+    /// **A FITA do dedo** (W7) — o que o jogador fez em cada tique.
+    ///
+    /// Estado de JANELA como as teclas, e pelo mesmo motivo: nada a serializa.
+    /// ⚠️ **Ela não existe para gravar uma performance** — existe para que o
+    /// laço de replay de um scrub dirija o personagem com a entrada DAQUELE
+    /// tique. Sem ela, arrastar a régua para trás refaz a corrida com o dedo de
+    /// agora, e a trajetória de um scrub discorda da de um play sobre o mesmo
+    /// instante. Persistir a fita (um replay que sobrevive a fechar o app) é
+    /// wave posterior, e está escrito aqui para não virar promessa esquecida.
+    pub(crate) player_tape: ph2d_physics_ecs::InputTape,
     /// ADR-0114 W7.5: o arrasto do gizmo de POSE em curso (modo Edit, quadro
     /// instanciado) — rotate/scale escrevendo a pose da chave, nunca o `Transform`.
     /// `None` fora de um arrasto. Ver `flip_pose_gizmo`.

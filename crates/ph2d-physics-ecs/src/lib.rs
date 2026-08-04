@@ -46,7 +46,9 @@ pub use bridge::rope::pulley_rig;
 // de `ph2d-physics`** — a mesma contenção que mantém o rapier confinado — e o
 // desenho tem de rodar a MESMA rota que o solver roda.
 pub use bridge::views::JointView;
-pub use bridge::{FrozenScene, PhysicsBridge, SceneAtTick};
+pub use bridge::{
+    FrozenScene, HeldInput, InputTape, PhysicsBridge, PlayerInputAtTick, SceneAtTick,
+};
 pub use components::{
     AreaBuoyancy, AreaDrag, AreaEffector, AreaFalloff, AreaForceWorldAxes, AreaFormDrag,
     AreaTorque, BodyKind, Ccd, Collider, ColliderShape, CombineRule, DampMode, DampingOverride,

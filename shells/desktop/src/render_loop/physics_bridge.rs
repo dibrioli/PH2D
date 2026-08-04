@@ -12,7 +12,7 @@
 
 use ph2d_core::Playhead;
 use ph2d_ecs::{Entity, SimWorld};
-use ph2d_physics_ecs::{PhysicsBridge, PlatformPlayer};
+use ph2d_physics_ecs::{InputTape, PhysicsBridge, PlatformPlayer};
 
 /// The fixed tick the playhead currently sits on — `round(time / dt)`, the
 /// same mapping Motion uses (`motion_tick`), so physics and motion step on
@@ -30,6 +30,12 @@ fn physics_tick(playhead: &Playhead, fixed_dt: f64) -> u64 {
 /// (`TimelineFlags::simulate_physics`, off by default). Disarmed, the world is
 /// HELD rather than skipped — see [`PhysicsBridge::hold`], which explains why
 /// those are different things.
+// ⚠️ **Oito argumentos, e o 8º é a FITA** (W7). Agrupá-los custaria um tipo com
+// um chamador só; o precedente desta linha é o `body_desc` do W-LockRot, que
+// levou o mesmo `allow` pela mesma razão. Os pares que agrupariam bem — o
+// relógio `(playhead, fixed_dt)` e o dedo `(input, tape)` — são dois, então o
+// agrupamento honesto tiraria 2 e ainda deixaria 6.
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn dispatch(
     bridge: &mut PhysicsBridge,
     sim: &mut SimWorld,
@@ -38,9 +44,22 @@ pub(crate) fn dispatch(
     doc: &mut ph2d_timeline::TimelineDoc,
     simulate: bool,
     input: ph2d_physics_ecs::PlayerInput,
+    tape: &mut InputTape,
 ) {
     let target = physics_tick(playhead, fixed_dt);
     hand_input_to_players(bridge, sim, input);
+    // ⚠️ **Gravar SÓ andando para a frente** (W7). Um scrub para trás pede um
+    // tique que a fita já descreve, e regravá-lo com o dedo de AGORA reescreveria
+    // a corrida que o artista está justamente tentando rever — o replay passaria
+    // a reproduzir uma corrida que ninguém deu.
+    //
+    // ⚠️ E a gravação é no tique ALVO, não num por tique devido: um dispatch que
+    // deve vários ticks aplica a MESMA entrada a todos (é o que segurar uma tecla
+    // quer dizer), e o `record` preenche o vão com a última entrada exatamente
+    // por isso.
+    if target > bridge.last_stepped() {
+        tape.record(target, input);
+    }
     if !simulate {
         bridge.hold(sim, target);
         return;
@@ -52,7 +71,10 @@ pub(crate) fn dispatch(
     // the same instant. Passing `FrozenScene` here would compile and would be
     // that bug (see `bake_and_scrub_agree_with_play`).
     let mut scene = super::physics_bake::TimelineScene { doc, fixed_dt };
-    bridge.dispatch_with_scene(sim, playhead.is_playing(), target, &mut scene);
+    // ⚠️ **A FITA entra aqui, e é ela que torna o replay reproduzível** (W7): o
+    // laço de replay do rewind dirige os players com a entrada do TIQUE que ele
+    // está refazendo, não com o dedo de agora.
+    bridge.dispatch_with_scene_and_tape(sim, playhead.is_playing(), target, &mut scene, tape);
 }
 
 /// **Entrega o dedo do jogador a todo player da cena** (W3).

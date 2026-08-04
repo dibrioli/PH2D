@@ -268,6 +268,7 @@ fn a_baked_take_plays_with_the_simulation_disarmed() {
             &mut timeline.doc,
             false,
             ph2d_physics_ecs::PlayerInput::default(),
+            &mut ph2d_physics_ecs::InputTape::new(),
         );
         let after = sim.world().get::<Transform>(ball).unwrap().translation.y;
 

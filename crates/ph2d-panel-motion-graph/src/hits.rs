@@ -203,6 +203,29 @@ pub(crate) fn push_preview_toggle_hit(
     }
 }
 
+/// Push the ⚠ inert-warning badge's hit rect (ADR-0155) — the corner pip on a node
+/// the diagnoser flagged inert. **Registered AFTER the card body** (last wins) so a
+/// click on the badge asks for the fix instead of selecting the card. Only an inert
+/// node has one ([`geom::inert_badge_rect`] returns `None` otherwise), so a healthy
+/// card never grows a dead control.
+pub(crate) fn push_inert_badge_hit(
+    hits: &mut Vec<(NodeId, GraphHitKind, Rect)>,
+    n: &GraphNodeView,
+    view: &View,
+    canvas: Rect,
+) {
+    let Some(rect) = geom::inert_badge_rect(n, view) else {
+        return;
+    };
+    if let Some(r) = clip_rect(rect, canvas) {
+        hits.push((
+            inert_badge_hit_id(n.id),
+            GraphHitKind::InertBadge { node: n.id as u64 },
+            r,
+        ));
+    }
+}
+
 /// Push a node's input + output socket hit rects (square, fixed screen size),
 /// clipped to the canvas.
 pub(crate) fn push_socket_hits(
@@ -283,6 +306,9 @@ fn node_hit_id(node: u32) -> NodeId {
 fn preview_toggle_hit_id(node: u32) -> NodeId {
     fnv_id(&format!("motion_graph/preview_toggle/{node}"))
 }
+fn inert_badge_hit_id(node: u32) -> NodeId {
+    fnv_id(&format!("motion_graph/inert_badge/{node}"))
+}
 fn sock_in_id(node: u32, port: usize) -> NodeId {
     fnv_id(&format!("motion_graph/sock_in/{node}/{port}"))
 }
@@ -336,6 +362,7 @@ mod tests {
             is_sink: false,
             preview: None,
             bypassed: false,
+            inert: false,
             thumbnail: None,
         }
     }
@@ -491,6 +518,28 @@ mod tests {
             none.is_empty(),
             "a card with no positional output has no toggle to click"
         );
+    }
+
+    /// **The ⚠ inert badge is a hit only over an inert node** (ADR-0155): an inert card
+    /// registers one `InertBadge` rect (so the click reaches the dispatch); a healthy card
+    /// registers none (no dead control — the [`push_preview_toggle_hit`] discipline).
+    /// FALSIFIED by offering the hit unconditionally.
+    #[test]
+    fn the_inert_badge_is_a_hit_only_over_an_inert_node() {
+        let view = View::new(CANVAS, ViewState::default());
+        let mut inert = node(1, 10.0, 10.0);
+        inert.inert = true;
+        let mut hits = Vec::new();
+        push_inert_badge_hit(&mut hits, &inert, &view, CANVAS);
+        assert_eq!(hits.len(), 1, "an inert node exposes the badge");
+        assert!(
+            matches!(hits[0].1, GraphHitKind::InertBadge { node } if node == 1),
+            "and it carries this node's id"
+        );
+
+        let mut none = Vec::new();
+        push_inert_badge_hit(&mut none, &node(2, 10.0, 10.0), &view, CANVAS);
+        assert!(none.is_empty(), "a healthy node has no badge to click");
     }
 
     #[test]

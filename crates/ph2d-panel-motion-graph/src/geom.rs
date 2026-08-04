@@ -186,6 +186,30 @@ pub(crate) fn preview_frame_rect(n: &GraphNodeView, view: &View, pos: PreviewPos
 /// header — or `None` when the node has no preview (nothing to reposition). **The one door the
 /// paint (draw) and the hits (register) both read**, so the clickable square is exactly the
 /// drawn one.
+/// Side (logical px) of the ⚠ inert-warning badge, and how far it pokes past the
+/// card's top-left corner. Bigger than the preview toggle — it is an alarm, not a
+/// control — and on the OPPOSITE corner, so the two never share a pixel.
+pub(crate) const INERT_BADGE_W: f32 = 16.0; // LITERAL-PX-OK: inert-warning badge side
+
+/// The screen rect of a node's inert-warning badge, or `None` when the node is not
+/// inert — so a healthy card never grows a dead control (the [`preview_toggle_rect`]
+/// discipline). Centred on the top-left corner, half poking out, half over the header
+/// corner (before the title's left inset), the classic alert-pip placement.
+pub(crate) fn inert_badge_rect(n: &GraphNodeView, view: &View) -> Option<Rect> {
+    if !n.inert {
+        return None;
+    }
+    let gx = n.x - INERT_BADGE_W * 0.5;
+    let gy = n.y - INERT_BADGE_W * 0.5;
+    let (sx, sy) = view.pt(gx, gy);
+    Some(Rect::new(
+        sx,
+        sy,
+        INERT_BADGE_W * view.zoom,
+        INERT_BADGE_W * view.zoom,
+    ))
+}
+
 pub(crate) fn preview_toggle_rect(n: &GraphNodeView, view: &View) -> Option<Rect> {
     // Same stable slot as the frame (doc 86 B1): the position toggle belongs to a preview-CAPABLE
     // node, so it never blinks out on an empty tick — the frame it repositions is always there.

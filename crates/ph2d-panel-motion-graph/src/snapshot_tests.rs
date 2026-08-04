@@ -3,6 +3,10 @@
 //! `Graph`, `NodeRegistry`, `snapshot_from`).
 
 use super::*;
+// `Graph`/`NodeRegistry` are the builder's inputs; they moved to `snapshot_build` with
+// `snapshot_from`, so this test module (which drives it) imports them directly now.
+use ph2d_node_registry::NodeRegistry;
+use ph2d_nodegraph::graph::Graph;
 use ph2d_nodegraph::port::Dim;
 
 /// A single scalar is a value ○; every multi-component dim is a column ◇. The match enumerates ALL

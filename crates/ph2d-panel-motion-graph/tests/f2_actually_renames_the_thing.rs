@@ -67,6 +67,7 @@ fn card(id: u32, name: &str, kind: NodeViewKind, x: f32) -> GraphNodeView {
         is_sink: false,
         preview: None,
         bypassed: false,
+        inert: false,
         thumbnail: None,
     }
 }

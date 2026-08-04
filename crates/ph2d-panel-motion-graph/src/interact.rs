@@ -21,9 +21,7 @@ use crate::snapshot::{GraphIntent, GraphViewSnapshot, push_intent};
 // `super::Menu` — this file no longer builds one itself (that moved to `interact_drop`).
 use crate::state::{Interaction, Menu, MotionGraphPanelState};
 use ph2d_editor_core::ids;
-use ph2d_editor_core::interaction::{
-    GesturePhase, GraphGesture, GraphHitKind, GraphKey, GraphZoom,
-};
+use ph2d_editor_core::interaction::{GesturePhase, GraphGesture, GraphHitKind, GraphKey};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::zones::Rect;
 use ph2d_host::PointerButton;
@@ -50,6 +48,10 @@ mod key;
 // `dedup_double_dispatch` lives with the other keyboard-verb logic in `key` (it dedups the
 // graph KEYS the store double-delivers); it is re-exported here for the drain loop below.
 use key::{apply_key, dedup_double_dispatch, select_on_press, select_wire_on_press};
+
+#[path = "interact_zoom.rs"]
+mod zoom;
+use zoom::apply_zoom;
 
 /// Drain this frame's graph input and fold it into `state` (+ push doc intents).
 /// Called before drawing so the render reflects the latest gestures. `snap` is
@@ -109,23 +111,6 @@ pub(crate) fn process(
 /// with the original wire intact — and the answer is the truth to paint, whatever it is.
 fn settle_pending_detach(state: &mut MotionGraphPanelState) {
     state.pending_detach = None;
-}
-
-// Wheel-zoom tuning (canvas-interaction constants, not chrome tokens).
-const ZOOM_WHEEL_DIV: f32 = 240.0; // LITERAL-PX-OK: wheel-notch → zoom-factor sensitivity divisor
-const ZOOM_MIN: f32 = 0.2; // LITERAL-PX-OK: min graph zoom
-const ZOOM_MAX: f32 = 2.5; // LITERAL-PX-OK: max graph zoom
-
-/// Anchored zoom: keep the cursor's graph point fixed while scaling.
-fn apply_zoom(state: &mut MotionGraphPanelState, rect: Rect, z: GraphZoom) {
-    let old = state.view.zoom;
-    let factor = (z.delta / ZOOM_WHEEL_DIV).exp();
-    let new = (old * factor).clamp(ZOOM_MIN, ZOOM_MAX); // CLAMP-OK: const bounds, min<max, non-NaN
-    let f = new / old;
-    // screen = base + pan + graph*zoom ⇒ hold `anchor` ⇒ pan' = (anchor-base)(1-f) + pan*f.
-    state.view.pan_x = (z.anchor_x - rect.x) * (1.0 - f) + state.view.pan_x * f;
-    state.view.pan_y = (z.anchor_y - rect.y) * (1.0 - f) + state.view.pan_y * f;
-    state.view.zoom = new;
 }
 
 fn apply_gesture(
@@ -253,6 +238,13 @@ fn apply_gesture(
         // The header preview toggle (doc 86): a Click moves the stamp above↔below — panel-local view state, not a doc edit (so no `GraphIntent`, no undo step).
         GraphHitKind::PreviewToggle { node } if g.phase == GesturePhase::Click => {
             state.toggle_preview_position(node as u32)
+        }
+        // The ⚠ inert badge (ADR-0155): a Click ASKS the shell to fix this node — the panel only
+        // knows it is flagged (it has the snapshot, not the graph). The shell fixes it (an
+        // integrator forgotten) or explains it (a choice only the artist can make); either way it
+        // leads somewhere, so the badge is never a dead control.
+        GraphHitKind::InertBadge { node } if g.phase == GesturePhase::Click => {
+            crate::snapshot::push_intent(GraphIntent::FixInert { node: node as u32 });
         }
         _ => {}
     }

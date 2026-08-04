@@ -245,6 +245,9 @@ pub(super) fn stamp(
     tapped: Option<&BTreeMap<NodeId, Stream>>,
     snap: &mut ph2d_panel_motion_graph::GraphViewSnapshot,
 ) {
+    // The inert-producer set (ADR-0155) — the nodes that get a ⚠ badge. One pure pass over
+    // the graph, owned, so the per-node loop below just does a lookup (like `is_sink`).
+    let inert = super::heal::inert_reaching_output(motion);
     for node in &mut snap.nodes {
         let id = NodeId(node.id);
         let cooked = motion.pump.cook.peek(id);
@@ -267,6 +270,10 @@ pub(super) fn stamp(
         // counts got interesting.
         node.count = exact;
         node.is_sink = motion.sinks.contains(&id);
+        // Semantically inert AND reaching a sink (ADR-0155): the card grows a ⚠ badge. A
+        // folded card carries its own id; `fold` runs after `stamp`, so a member folded away
+        // loses its flag — badge visible only at the level the node lives on, which is honest.
+        node.inert = inert.contains(&node.id);
         node.preview = match (cooked, sampled) {
             (Some(o), _) => preview_of(o),
             (None, Some(s)) => preview_points(s),

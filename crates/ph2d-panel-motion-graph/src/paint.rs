@@ -25,12 +25,18 @@ mod paint_menu;
 use paint_menu::draw_menu;
 #[path = "paint_breadcrumb.rs"]
 mod paint_breadcrumb;
+#[path = "paint_inert_badge.rs"]
+mod paint_inert_badge;
 #[path = "paint_stamp.rs"]
 mod paint_stamp;
 #[path = "paint_wire.rs"]
 mod paint_wire;
 #[path = "paint_wires.rs"]
 mod paint_wires;
+use paint_inert_badge::draw_inert_badge;
+#[path = "paint_grid.rs"]
+mod paint_grid;
+use paint_grid::draw_grid;
 use paint_stamp::{draw_preview, draw_preview_toggle};
 pub(crate) use paint_wire::{
     WireEmphasis, detached_edge, draw_wire, draw_wire_ghost, draws_wire_ghost, wire_endpoints,
@@ -40,8 +46,8 @@ use paint_wires::{WirePass, draw_wires};
 
 use crate::geom::{self, View, card_h, socket_center};
 use crate::hits::{
-    bg_hit_id, push_backdrop_hits, push_card_hit, push_preview_toggle_hit, push_socket_hits,
-    register_hits,
+    bg_hit_id, push_backdrop_hits, push_card_hit, push_inert_badge_hit, push_preview_toggle_hit,
+    push_socket_hits, register_hits,
 };
 use crate::snapshot::{
     GraphNodeView, GraphViewSnapshot, PortView, SocketGlyph, current_snapshot, socket_glyph,
@@ -81,7 +87,6 @@ const PREVIEW_INSET: f32 = 4.0; // LITERAL-PX-OK: margin between the stamp's poi
 const PREVIEW_DOT_R: f32 = 1.3; // LITERAL-PX-OK: postage-stamp point radius
 const PREVIEW_DOT_MIN: f32 = 0.6; // LITERAL-PX-OK: point radius floor, so a zoomed-out dot survives
 const PREVIEW_MIN_H: f32 = 18.0; // LITERAL-PX-OK: below this the stamp is sub-pixel mush; draw the empty window
-const GRID_STEP: f32 = 32.0; // LITERAL-PX-OK: background grid spacing
 const STACK_OFFSET: f32 = 3.0; // LITERAL-PX-OK: per-step offset of a collapsed card's stack
 const WIRE_W_DELAYED: f32 = 1.6; // LITERAL-PX-OK: hover-ghost stroke width revealing a pre pair
 const WIRE_W_HOVER: f32 = 4.0; // LITERAL-PX-OK: hovered wire stroke width (targeted for alt-click)
@@ -216,13 +221,16 @@ pub(crate) fn paint(state: &mut MotionGraphPanelState, ctx: &mut PaintCtx) {
         // — those are readings about the graph, and a ghost is a reading about the
         // BOUNDARY.
         let dim = n.kind == crate::snapshot::NodeViewKind::Ghost || veiled(n.id);
+        // `draw_card` also draws this node's ⚠ inert badge (ADR-0155) on its corner.
         let body = draw_card(ctx, state, n, &view, theme, dim);
         push_card_hit(&mut hits, n, body, rect);
     }
-    // Sockets + the header toggle last, so both beat the card body under them (doc 86).
+    // Sockets + the header toggle + the inert badge last, so all three beat the card body
+    // under them (doc 86; ADR-0155).
     for n in &on_screen {
         push_socket_hits(&mut hits, n, &view, rect);
         push_preview_toggle_hit(&mut hits, n, &view, rect);
+        push_inert_badge_hit(&mut hits, n, &view, rect);
     }
     // Overlays above the cards, still clipped: the in-progress wire ghost (it
     // tracks a CAPTURED pointer, which routinely leaves the panel) and the
@@ -340,21 +348,6 @@ pub(crate) fn fit(
         pan_x: (rect.w - bw * zoom) * 0.5 - min_x * zoom,
         pan_y: (rect.h - bh * zoom) * 0.5 - min_y * zoom,
         zoom,
-    }
-}
-
-fn draw_grid(ctx: &mut PaintCtx, rect: Rect, theme: Theme) {
-    let grid = resolve(ColorToken::GraphGrid, theme);
-    let step = GRID_STEP;
-    let mut x = rect.x;
-    while x < rect.x + rect.w {
-        stroke_polyline(ctx.scene, &[(x, rect.y), (x, rect.y + rect.h)], 1.0, grid);
-        x += step;
-    }
-    let mut y = rect.y;
-    while y < rect.y + rect.h {
-        stroke_polyline(ctx.scene, &[(rect.x, y), (rect.x + rect.w, y)], 1.0, grid);
-        y += step;
     }
 }
 
@@ -480,6 +473,10 @@ fn draw_card(
             resolve(ColorToken::Text2, theme),
         );
     }
+    // The ⚠ inert badge sits ON TOP of the card corner (ADR-0155); a healthy node has
+    // `n.inert` false, so it draws nothing. A ghost is never inert (`veiled` is its whole
+    // message), so it grows no badge either.
+    draw_inert_badge(ctx, n, view, theme);
     body
 }
 

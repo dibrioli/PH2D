@@ -362,3 +362,126 @@ fn the_reorder_is_one_undo_step() {
     );
     assert!(!has_edge(&m, force, 0, integ, 1), "the reorder is undone");
 }
+
+// ── W3: the ⚠ badge — the inert set the panel paints, and the click the shell honours ──
+
+/// **The badge set is the completed-but-dead setups, and NOT the mid-builds** (ADR-0155).
+/// An inert force whose chain reaches the output is in `inert_reaching_output` (it grows a
+/// ⚠); the SAME kind of force wired only toward a `motion.tint` (no output yet) is NOT — it
+/// is unfinished, not wrong. This is the `reaches_output` filter the badge shares with the
+/// auto-heal. FALSIFIED by dropping the filter (the mid-build force would be flagged) or by
+/// a detector that ignores `accel` (nothing flagged at all).
+#[test]
+fn the_badge_set_is_the_completed_inert_setups_not_the_mid_builds() {
+    // Completed wrong setup: grid -> force -> output, no integrator.
+    let (mut m, _grid, force, out) = wind_setup();
+    wire(&mut m, force, 0, out, 0);
+    assert!(
+        inert_reaching_output(&m).contains(&force.0),
+        "an inert force that reaches the output gets a badge"
+    );
+
+    // Mid-build: grid -> force -> tint (a consumer, but not the render output).
+    let mut b = MotionState::new();
+    b.doc = MotionDoc::new();
+    let g = add(&mut b, "motion.grid");
+    let f = add(&mut b, "force.wind");
+    let tint = add(&mut b, "motion.tint");
+    wire(&mut b, g, 0, f, 0);
+    wire(&mut b, f, 0, tint, 0);
+    assert!(
+        inert_reaching_output(&b).is_empty(),
+        "a force reaching no output is unfinished, not badged"
+    );
+}
+
+/// **Clicking a FIXABLE badge heals the node — with no constructive gesture in the batch —
+/// and the points then move** (ADR-0155). This is the path a destructive gesture leaves
+/// open: the artist deleted the integrator, `heal_setup` (rightly) did not fight them, and
+/// the badge is how they ask for it back. Here the inert setup is built directly (NO gesture
+/// runs the batch heal) and `heal_one` is called: it inserts the integrator, wires the
+/// canonical restructure, cooking moves the points, and it is one undo step. FALSIFIED by
+/// `heal_one` skipping `Fix::Insert` (no integrator; the points stay put).
+#[test]
+fn clicking_a_fixable_badge_heals_the_node_and_the_points_move() {
+    let (mut m, _grid, force, out) = wind_setup();
+    wire(&mut m, force, 0, out, 0); // inert, and NO gesture ran the batch heal
+    assert!(integrate_ids(&m).is_empty());
+
+    heal_one(&mut m, &mut ToastQueue::default(), force);
+
+    let integ = *integrate_ids(&m)
+        .first()
+        .expect("the click inserted an integrator");
+    assert!(
+        has_edge(&m, force, 0, integ, 1),
+        "the force feeds integrate.forces"
+    );
+    assert!(has_edge(&m, integ, 0, out, 0), "integrate feeds the output");
+    assert!(
+        !has_edge(&m, force, 0, out, 0),
+        "the inert direct edge is gone"
+    );
+
+    let p0 = positions(&mut m, out, 0, 0.0);
+    assert!(!p0.is_empty(), "the grid produced points");
+    let mut p = p0.clone();
+    for t in 1..=12u64 {
+        p = positions(&mut m, out, t, t as f64 / 60.0);
+    }
+    let moved = p0
+        .iter()
+        .zip(&p)
+        .any(|(a, b)| (a[0] - b[0]).abs() + (a[1] - b[1]).abs() > 1e-4);
+    assert!(moved, "the click's heal MOVES the points");
+
+    let back = m
+        .history
+        .undo(&m.doc)
+        .expect("the click's heal is an undo step");
+    m.doc = back;
+    assert!(
+        integrate_ids(&m).is_empty(),
+        "undo removes the inserted integrator"
+    );
+}
+
+/// **Clicking an ADVISORY badge changes nothing — it explains, never guesses** (ADR-0155).
+/// A `motion.pin_constraint` with no solver downstream is inert (`Fix::Offer`); there is no
+/// canonical fix, so `heal_one` leaves the graph byte-for-byte and pushes no undo step (the
+/// ADR law: never guess a creative choice — WHICH solver a pin wants is the artist's call).
+/// FALSIFIED by `heal_one` applying a fix to the Offer case (a node/edge would appear, or an
+/// undo step would exist).
+#[test]
+fn clicking_an_advisory_badge_changes_nothing() {
+    let mut m = MotionState::new();
+    m.doc = MotionDoc::new();
+    let grid = add(&mut m, "motion.grid");
+    let pin = add(&mut m, "motion.pin_constraint");
+    let out = add(&mut m, "motion.output");
+    wire(&mut m, grid, 0, pin, 0);
+    wire(&mut m, pin, 0, out, 0);
+    // The pin IS badged (inert, reaches output) but has no canonical fix.
+    assert!(
+        inert_reaching_output(&m).contains(&pin.0),
+        "the pin is badged"
+    );
+    let before = m.doc.graph.clone();
+
+    heal_one(&mut m, &mut ToastQueue::default(), pin);
+
+    assert_eq!(
+        m.doc.graph.nodes().len(),
+        before.nodes().len(),
+        "an advisory click inserts nothing"
+    );
+    assert_eq!(
+        m.doc.graph.edges().len(),
+        before.edges().len(),
+        "and rewires nothing"
+    );
+    assert!(
+        m.history.undo(&m.doc).is_none(),
+        "and pushes no undo step (it only explains)"
+    );
+}

@@ -21,7 +21,7 @@
 
 use super::{MotionState, reconcile};
 use ph2d_editor::{Toast, ToastQueue};
-use ph2d_motion_diagnose::{diagnose, Fix};
+use ph2d_motion_diagnose::{Deficit, Diagnostic, Fix, diagnose};
 use ph2d_nodegraph::graph::{Edge, Graph, NodeId, Pos};
 use ph2d_nodegraph::node::NodeTypeId;
 use ph2d_panel_motion_graph::GraphIntent;
@@ -98,15 +98,14 @@ pub(super) fn heal_setup(motion: &mut MotionState, toasts: &mut ToastQueue) -> u
     let mut plans: Vec<HealPlan> = Vec::new();
     let mut heads: BTreeSet<u32> = BTreeSet::new();
     for d in diagnose(&motion.doc.graph, &motion.registry) {
-        // Insert (no integrator anywhere) and Reorder (a force spliced downstream of
-        // one) are the two force-in-the-wrong-place cases with a canonical cure. Offer
-        // (a pin needing SOME solver) is a W3 badge, never auto-applied.
-        if !matches!(d.fix, Fix::Insert(_) | Fix::Reorder) {
-            continue;
-        }
         if !reaches_output(&motion.doc.graph, d.node) {
             continue; // a dangling mid-build force (no sink) is not a completed setup
         }
+        // `plan_heal` is the ONE door on "is there a canonical cure?": it returns `Some`
+        // only for `Fix::Insert` and the reuse case of `Fix::Reorder` (an integrator already
+        // feeds the head), `None` for everything else (a pin's `Offer`, an indirect `Reorder`
+        // with a transform between the integrator and the force — those are W3-advisory badges).
+        // No `matches!(d.fix, ...)` pre-filter: it would be a redundant policy layer.
         if let Some(plan) = plan_heal(&motion.doc.graph, &motion.registry, d.node, d.fix)
             && heads.insert(plan.head.0)
         {
@@ -146,9 +145,91 @@ pub(super) fn heal_setup(motion: &mut MotionState, toasts: &mut ToastQueue) -> u
     inserted.len()
 }
 
-/// Plan the restructure for the chain containing `force`. `None` when the chain is
-/// dangling (head has no source, or the last force has no single consumer) — those
-/// are other diagnostics, not an insert.
+/// The node ids that get a ⚠ inert badge (ADR-0155): every producer the diagnoser found
+/// dead whose output nonetheless REACHES a sink — a completed-but-inert setup, the thing the
+/// artist cannot see is wrong. A mid-build force that reaches no output yet is unfinished, not
+/// wrong, so it gets no badge — the same [`reaches_output`] filter the auto-heal uses to wait
+/// for the wiring to finish. Computed fresh from the current graph, so it is always what the
+/// wiring now says (the panel paints from this, via the snapshot).
+pub(super) fn inert_reaching_output(motion: &MotionState) -> BTreeSet<u32> {
+    diagnose(&motion.doc.graph, &motion.registry)
+        .into_iter()
+        .filter(|d| reaches_output(&motion.doc.graph, d.node))
+        .map(|d| d.node.0)
+        .collect()
+}
+
+/// Apply the fix under a ⚠ badge the artist clicked (ADR-0155). A CANONICAL fix — the
+/// integrator a chain forgot ([`Fix::Insert`]) or the one already feeding the chain head
+/// ([`Fix::Reorder`], the reuse case) — is applied, one undo step, with a toast + selection.
+/// ⚠️ This fires even after a DESTRUCTIVE gesture (unlike [`heal_setup`], which never re-inserts
+/// on its own): the click IS the request, so re-adding an integrator the artist just deleted
+/// honours them instead of fighting them. A case with NO canonical fix (a pin that needs *some*
+/// solver, a force with a transform between it and the integrator) is EXPLAINED + selected —
+/// never guessed, the ADR-0155 law.
+pub(super) fn heal_one(motion: &mut MotionState, toasts: &mut ToastQueue, node: NodeId) {
+    // Re-diagnose: the badge was painted from LAST frame's graph, so a stale click on a
+    // node that already healed itself (or is no longer inert) is a clean no-op.
+    let Some(d) = diagnose(&motion.doc.graph, &motion.registry)
+        .into_iter()
+        .find(|d| d.node == node)
+    else {
+        return;
+    };
+    // `plan_heal` is the ONE door on "does this fix have a canonical cure?" — it returns
+    // `Some` only for `Fix::Insert` and the reuse case of `Fix::Reorder` (an integrator
+    // already feeds the head); everything else (a pin's `Offer`, an indirect `Reorder`)
+    // returns `None`. A second `matches!(d.fix, ...)` guard here would be a redundant policy
+    // layer that no single mutation could flip (plan_heal always catches what it would).
+    if reaches_output(&motion.doc.graph, node)
+        && let Some(plan) = plan_heal(&motion.doc.graph, &motion.registry, node, d.fix)
+    {
+        let mut trial = motion.doc.graph.clone();
+        if let Some(integ) = apply_heal(&mut trial, &plan)
+            && trial.validate(&motion.registry).is_ok()
+        {
+            let pre = motion.doc.clone();
+            motion.doc.graph = trial;
+            // `reconcile` plumbs `integrate.out ⟿pre⟿ chain_head.in0` — the loop the artist
+            // never draws — exactly as `heal_setup` does.
+            reconcile(motion, &pre.graph);
+            motion.history.push_undo(pre);
+            motion.pump.mark_dirty();
+            ph2d_panel_motion_graph::request_graph_selection(vec![integ.0]);
+            toasts.push(Toast::info(
+                "Wired the force through Integrate so it moves the points (undo to revert)",
+            ));
+            return;
+        }
+    }
+    // No canonical fix: point the artist at the node and say what it needs. Guessing a
+    // solver / a reorder here is exactly what the ADR forbids.
+    ph2d_panel_motion_graph::request_graph_selection(vec![node.0]);
+    toasts.push(Toast::info(explain(&d)));
+}
+
+/// The English advisory for an inert producer with no canonical fix (app UI, HR-15).
+fn explain(d: &Diagnostic) -> &'static str {
+    match (d.deficit, d.fix) {
+        // A force downstream of an integrator, with a NON-integrator between them: reusing that
+        // integrator would double-integrate a moving base, so the artist must place the fix.
+        (Deficit::InertProducer("accel"), Fix::Reorder) => {
+            "Wire this force upstream of the integrator so it drives the motion"
+        }
+        // A pin_constraint's inv_mass with no solver: WHICH solver is a creative choice.
+        (Deficit::InertProducer("inv_mass"), _) => {
+            "This constraint needs a solver (Integrate / Sim Step / Spring / Collide) downstream to have any effect"
+        }
+        _ => "This node produces data nothing downstream consumes, so it does nothing",
+    }
+}
+
+/// Plan the restructure for the chain containing `force`. **The ONE authority on "can this
+/// fix be auto-applied?"** — both [`heal_one`] (a badge click) and [`heal_setup`] (the
+/// post-gesture sweep) ask it, and neither pre-filters `d.fix`, because a `Some` here already
+/// means the fix is `Insert` or a reusable `Reorder`. `None` for: a fix with no `HealKind`
+/// (`Offer`, an indirect `Reorder`), a dangling chain (head has no source, or the last force
+/// has no single consumer) — those are advisory badges the artist resolves, not auto-heals.
 fn plan_heal(
     g: &Graph,
     reg: &ph2d_node_registry::NodeRegistry,

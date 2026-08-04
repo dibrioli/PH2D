@@ -287,6 +287,14 @@ pub(super) fn apply_graph_intents(
                 motion.probe = node.and_then(|v| subgraph::probe_target(motion, v));
                 motion.probe_ring.clear();
             }
+            // The ⚠ inert badge was clicked (ADR-0155): the shell has the graph, so it
+            // decides — fix a forgotten integrator (one undo step, even after a destructive
+            // gesture, because the click IS the ask), or explain a choice only the artist can
+            // make. `FixInert` is neither constructive nor destructive, so it never triggers
+            // the batch `heal_setup` at the tail — the scoped `heal_one` is the whole action.
+            GraphIntent::FixInert { node } => {
+                super::heal::heal_one(motion, toasts, ph2d_nodegraph::graph::NodeId(node));
+            }
             // Split chrome (E9) — UI-only (no cook / undo). `with_t` clamps the
             // fraction; orientation flips preserve it.
             GraphIntent::SetSplit { t } => {

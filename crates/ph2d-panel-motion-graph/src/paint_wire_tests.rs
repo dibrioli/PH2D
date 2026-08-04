@@ -232,6 +232,7 @@ fn the_ghost_end_snaps_to_the_target_socket() {
             is_sink: false,
             preview: None,
             bypassed: false,
+            inert: false,
             thumbnail: None,
         }],
         edges: vec![],

@@ -29,6 +29,7 @@ fn node_with_inputs(id: u32, x: f32, n_in: usize) -> GraphNodeView {
         is_sink: false,
         preview: None,
         bypassed: false,
+        inert: false,
         thumbnail: None,
     }
 }

@@ -14,12 +14,21 @@
 //! DEPOIS do integrador, onde o accel dela nunca é consumido. O app **REUSA** o
 //! integrador que já está ali (não insere um segundo): a força vira o ramo de forças,
 //! e os pontos passam a DERIVAR. Um Ctrl+Z reverte só o reorder.
+//!
+//! **`=3` (O BADGE + QUICK-FIX, ADR-0155 W3):** dois setups inertes montados SEM gesto
+//! construtivo — nada auto-corrige sozinho. Cada nó ganha o pip ⚠: `grid -> force.wind
+//! -> output` (a força escreve `accel` que nada consome) e `grid -> pin -> output` (a
+//! restrição precisa de ALGUM solver). O artista **CLICA** cada badge: o da força tem
+//! cura canônica → o app AUTO-INSERE `motion.integrate` e os pontos derivam; o do pin
+//! **não** tem → o app só EXPLICA + seleciona (a lei do ADR-0155 de nunca adivinhar
+//! uma escolha criativa). A cena imprime quantos badges o diagnoser marcou.
 
 use ph2d_nodegraph::graph::{Edge, Pos};
 use ph2d_panel_motion_graph::GraphIntent;
 
 /// O modo: `0` off, `1` inserir (força na cadeia horizontal), `2` reorder (força
-/// spliceada depois de um integrador que já existe).
+/// spliceada depois de um integrador que já existe), `3` badge + quick-fix (dois
+/// setups inertes SEM gesto; o artista clica o pip ⚠ para consertar/explicar).
 fn mode() -> u32 {
     static M: std::sync::OnceLock<u32> = std::sync::OnceLock::new();
     *M.get_or_init(|| {
@@ -184,6 +193,93 @@ impl crate::App {
                      integrador que ja' esta' ali (NAO inserir um segundo): a forca vira o \
                      ramo de forcas e os pontos DERIVAM para +X. Confira que existe UM SO' \
                      motion.integrate. Um Ctrl+Z reverte so' o reorder."
+                );
+            }
+            // =3, frame 3: monta DOIS setups inertes SEM gesto construtivo (nenhum
+            // auto-heal dispara). Setup A: grid -> force.wind -> output (a forca escreve
+            // accel que nada consome). Setup B: grid -> pin -> output (a restricao precisa
+            // de ALGUM solver). Ambos os nos ganham o pip ⚠ (inert + alcancam a saida). O
+            // artista CLICA cada badge: o da forca AUTO-conserta (insere motion.integrate);
+            // o do pin so' EXPLICA + seleciona (a lei do ADR-0155 de nunca adivinhar).
+            (3, 3) => {
+                let gfx = self.gfx.as_mut().expect("gfx");
+                let (out_f, out_p) = {
+                    let g = &mut gfx.motion.doc.graph;
+                    // Setup A: a forca sem integrador (badge fixavel).
+                    let grid_f = g.add_node("motion.grid");
+                    let force = g.add_node("force.wind");
+                    let out_f = g.add_node("motion.output");
+                    g.set_pos(
+                        grid_f,
+                        Pos {
+                            x: -220.0,
+                            y: -300.0,
+                        },
+                    );
+                    g.set_pos(force, Pos { x: 40.0, y: -300.0 });
+                    g.set_pos(
+                        out_f,
+                        Pos {
+                            x: 300.0,
+                            y: -300.0,
+                        },
+                    );
+                    g.connect(Edge {
+                        from: (grid_f, 0),
+                        to: (force, 0),
+                        delayed: false,
+                    })
+                    .expect("grid -> force");
+                    g.connect(Edge {
+                        from: (force, 0),
+                        to: (out_f, 0),
+                        delayed: false,
+                    })
+                    .expect("force -> output");
+                    g.set_param(force, "strength", 8.0);
+                    g.set_param(force, "angle", -90.0);
+                    // Setup B: o pin sem solver (badge advisory — sem cura canonica).
+                    let grid_p = g.add_node("motion.grid");
+                    let pin = g.add_node("motion.pin_constraint");
+                    let out_p = g.add_node("motion.output");
+                    g.set_pos(
+                        grid_p,
+                        Pos {
+                            x: -220.0,
+                            y: -60.0,
+                        },
+                    );
+                    g.set_pos(pin, Pos { x: 40.0, y: -60.0 });
+                    g.set_pos(out_p, Pos { x: 300.0, y: -60.0 });
+                    g.connect(Edge {
+                        from: (grid_p, 0),
+                        to: (pin, 0),
+                        delayed: false,
+                    })
+                    .expect("grid -> pin");
+                    g.connect(Edge {
+                        from: (pin, 0),
+                        to: (out_p, 0),
+                        delayed: false,
+                    })
+                    .expect("pin -> output");
+                    (out_f, out_p)
+                };
+                gfx.motion.sinks.push(out_f);
+                gfx.motion.sinks.push(out_p);
+                let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+                let badges =
+                    ph2d_motion_diagnose::diagnose(&gfx.motion.doc.graph, &gfx.motion.registry)
+                        .len();
+                eprintln!(
+                    "[autofix smoke =3] montei DOIS setups inertes SEM gesto construtivo: \
+                     {badges} produtor(es) inerte(s) marcado(s) (esperado 2 — a force.wind e o \
+                     pin, ambos alcancam a saida). SE NAO FOR 2, PARE. Cada um deve pintar um \
+                     pip ⚠ no canto do card. CLIQUE o badge da force.wind: o app AUTO-INSERE \
+                     motion.integrate e os pontos DERIVAM para baixo (undo reverte so' o \
+                     conserto). CLIQUE o badge do pin: o app so' EXPLICA (toast) e SELECIONA o \
+                     pin — NADA muda no grafo (nao ha' cura canonica; a lei do ADR-0155 de \
+                     nunca adivinhar uma escolha criativa)."
                 );
             }
             _ => {}

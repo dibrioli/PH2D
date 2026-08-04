@@ -137,6 +137,11 @@ pub enum GraphHitKind {
     BackdropResize { id: u64 },
     /// A node's preview/bypass toggle.
     PreviewToggle { node: u64 },
+    /// A node's **inert-warning badge** (ADR-0155): the ⚠ pip on a node whose output
+    /// the diagnoser found semantically dead (a force writing `accel` no integrator
+    /// consumes). A click asks the shell to fix it, or to explain when there is no
+    /// canonical fix — never the panel's call, it has only the snapshot.
+    InertBadge { node: u64 },
     /// The viewport⟂graph split divider (drag re-splits).
     SplitDivider,
     /// A graph chrome control (a toolbar chip) — click activates it. `id` is the

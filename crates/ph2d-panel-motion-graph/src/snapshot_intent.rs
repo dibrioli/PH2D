@@ -265,6 +265,14 @@ pub enum GraphIntent {
     /// [`Self::DuplicateSelection`] it replays the clip, so it can paste MANY times
     /// from one copy and works after the originals are gone or across levels.
     Paste,
+    /// **Fix the inert node under its ⚠ badge** (ADR-0155). The panel only knows the node
+    /// is flagged (`GraphNodeView::inert`); it forwards the click and the SHELL decides,
+    /// because only the shell has the graph + registry to tell a canonical fix (an integrator
+    /// the artist forgot — applied, one undo step, even after a destructive gesture, because
+    /// the click IS the request) from a creative choice (a constraint that needs *a* solver, a
+    /// force a transform sits below — explained + selected, never guessed). Inert when the node
+    /// healed itself since the badge was painted (a stale click) — the shell no-ops.
+    FixInert { node: u32 },
 }
 
 /// The intent a **palette pick** produces, given the wire context the gesture opened the palette

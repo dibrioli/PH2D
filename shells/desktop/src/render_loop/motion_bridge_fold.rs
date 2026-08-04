@@ -442,6 +442,10 @@ fn card_view(
         // group is NOT muting each member (enter it and mute nodes for that) — this reads the
         // group flag, not the members', so a group with a few muted members still draws normally.
         bypassed: motion.doc.subgraph_bypassed(sid),
+        // A collapsed card carries a SYNTHETIC id (`view_id(sid)`), never a graph node id, so
+        // it is never in the inert set — an inert force folded inside is a badge the artist
+        // sees by ENTERING the group, not on the closed card (ADR-0155).
+        inert: false,
         thumbnail: None,
     }
 }

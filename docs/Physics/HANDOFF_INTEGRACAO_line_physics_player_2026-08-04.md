@@ -3,9 +3,14 @@
 > **A linha está FECHADA e PARADA.** Ela não integra e não pusha — DIRETRIZ §1.5.9,
 > CLAUDE.md §0.7. Este documento é o que um agente integrador precisa para fundir.
 >
-> **12 commits**, de `aff4516c2` (o handoff de troca) a `4277be065` (W8).
+> **16 commits**, de `aff4516c2` (o handoff de troca) ao fechamento da **W9**.
 > ⚠️ O `main` local desta worktree está **atrasado**; conte a jornada a partir de
 > `aff4516c2`, não de `main..HEAD` (que arrasta a jornada já integrada de 03/08).
+>
+> ⚠️ **A W9 é a wave do SMOKE do Enio (2026-08-04)** — ela nasceu depois de a linha
+> já ter fechado uma vez, e cada item do report dele é uma metade dela: a tecla do
+> roteiro, o `Max Slope` que não era o ângulo que o personagem subia, as rampas que
+> ninguém alcançava a pé, os cinco cards e as dicas de hover.
 
 ---
 
@@ -68,6 +73,7 @@ velocidade). A W6 mediu o preço de confundi-los — ver §4.
 | **W6** | **A REAÇÃO** — a 3ª lei: a jangada afunda e INCLINA | `=85` |
 | **W7** | **A FITA** — a entrada vira função do TIQUE, e o replay de um scrub passa a dirigir o player | `=86` |
 | **W8** | **O PERDÃO** — coyote time e jump buffer | `=87` |
+| **W9** | **O NÚMERO QUE O ARTISTA ESCREVE** — a tecla do roteiro, o `Max Slope` que passa a ser o ângulo que ele de fato sobe, as rampas que passam a ser alcançáveis, os cinco cards e as dicas de hover | `=81` `=88` |
 
 ⚠️ **A ordem dos commits não é a das waves** (a W5 vem antes da W4): foi a ordem em que a
 autoria ficou alcançável, porque afinar o pulo sem UI é afinar no escuro.
@@ -136,11 +142,11 @@ existe para adiantar.
 |---|---|---|
 | `PROJECT_SCHEMA` | **INTOCADO** | A jornada não abre `project.rs` (`git diff aff4516c2..HEAD` vazio ali). ⚠️ Esta linha fica **FORA da disputa de número** desta janela. |
 | Registro do `ph2d-physics-ecs` | **27 → 28** | Um componente novo: `PlatformPlayer`. |
-| `physics_ecs_c9` | **101 → 103 corpos**, `8c7ba624…` → **`21628fe5…`** | debug ≡ release, conferido. A W7 acrescenta a lane do player; a **W8 não move o hash** (ver §7). |
+| `physics_ecs_c9` | **101 → 105 corpos**, `8c7ba624…` → **`78dbb7a6…`** | debug ≡ release, conferido. A W7 acrescenta a lane do player; a **W8 não move o hash** (ver §7); a **W9 acrescenta a lane da LADEIRA RECUSADA** e move o hash — e a lane é *load-bearing*, provado por mutação: tirar o `no_uphill` dá `44f2af9e…`. |
 | Gizmo ids | **nenhum novo** | O último segue **973**, próximo livre **974**. |
 | ADR | **nenhum** | Tudo sob o **ADR-0131**. |
 | Contrato congelado | **4/4 verde** | Rodado, não auto-relatado. |
-| `Cargo.toml` | **2** | A crate nova + a aresta de path na ponte. |
+| `Cargo.toml` | **2** | A crate nova + a aresta de path na ponte. **A W9 não toca nenhum.** |
 | Dep externa nova | **NENHUMA** | O `Cargo.lock` ganha só `ph2d-platformer`. |
 
 **Crate nova: `ph2d-platformer`** — folha, **uma** dependência (`libm`, o pin do repo), sem
@@ -156,7 +162,11 @@ env PH2D_PHYSICS_SMOKE=<n> cargo run -p ph2d-host-desktop --release
 ```
 
 `=80` a perna · `=81` a caminhada · `=82` a autoria · `=83` o pulo · `=85` a reação ·
-`=86` a fita · `=87` o perdão.
+`=86` a fita · `=87` o perdão · **`=88` a ladeira**.
+
+⚠️ **A tecla de PULO é a SETA PARA CIMA (ou `Z`), nunca o Espaço** — ele é o Play/Pause
+do transporte. Três roteiros diziam o contrário e mandavam, ao pé da letra, PAUSAR a
+cena no instante que ela existe para medir.
 
 ⚠️ **Todo smoke começa marcando `Physics` na barra de transporte** — ele nasce
 DESMARCADO de propósito (W4b), e uma cena parada lê como *"a física quebrou"*.
@@ -168,6 +178,59 @@ dirige"* de *"meu dedo dirige"*), e a `=87` só se você **zerar os dois knobs**
 
 ---
 
+### 4.5 `Max Slope` não era o ângulo que o personagem subia — e o teto era função de OUTRO knob (W9)
+
+Report do Enio: *"Max Slope na UI aparece 45, mas o player sobe até aproximadamente 60
+graus."* Medido **antes** de tocar em código, com o limite em 45: **44° subia +12,29 m e 46°
+subia +4,38 m** — o produto honrava um teto efetivo de ~52°.
+
+⚠️ **A perna estava certa**, e o controle prova: rampa 55°, limite 54 ⇒ `+0,17 m`, limite 56
+⇒ `+13,25 m`. Quem escalava era o **modo-ar** — recusada a superfície, a caminhada troca o
+eixo da rampa pela HORIZONTAL, e um empurrão horizontal contra uma rampa é redirecionado
+morro acima pelo contato. A ablação por ENTRADA fecha a atribuição:
+
+| rampa | `air = 20` (o default) | `air = 5` | `air = 0` |
+|---|---|---|---|
+| 46° | **+4,375 m** | +0,041 m | −20,826 m |
+| 50° | **+4,010 m** | +0,004 m | −28,873 m |
+| 52° | **+3,367 m** | −0,027 m | −33,369 m |
+
+**O teto era função da aceleração aérea**, e é isso que faz disto bug de DESIGN em vez de
+afinação ([[feedback_ergonomics_verdict_is_a_design_bug]]): mexer num knob movia, em
+silêncio, o limite escrito noutro.
+
+**A cura é uma TERCEIRA resposta do sensor.** *"Não é chão"* colapsava dois estados que
+pedem coisas OPOSTAS da caminhada — **no ar** (não há em que se apoiar) e **encostado numa
+ladeira recusada** (há, e é por isso que empurrar contra ela escala). `Footing::{Airborne,
+Steep, Ground}` no módulo novo `ph2d-platformer::slope`, e o termo de CAMINHADA passa por
+`no_uphill`: morro acima some, morro abaixo passa inteiro.
+
+⚠️ **Só a caminhada, e é decisão declarada:** a mola já está calada numa superfície recusada
+e o **PULO é gesto deliberado do artista** — capá-lo faria o personagem perder o salto por
+encostar numa ladeira, que é outra feature e não esta correção.
+
+**Depois:** 44° `+12,29 m`, 46° `−20,83 m`, e a tabela de ablação fica **PLANA** — os três
+`air` dão o mesmo número. *A mesma tabela que diagnosticou a doença é a que mostra a cura.*
+
+⚠️ **E o gate antigo estava VERDE sobre o bug, por FIXTURE:** ele media **60°**, que já
+ficava depois do teto acidental, e a barra era `climbed < 0.0` — que o número real,
+**−0,047 m**, satisfazia. *"O personagem fica GRUDADO"* passava por *"escorrega"*. A barra
+foi RE-MEDIDA (−1,0 m) e a fixture nova é o par que **cerca** o limite.
+
+### 4.6 As rampas da cena `=81` eram inalcançáveis a pé — o roteiro pedia o que não dava (W9)
+
+Antes de escrever *"ande até a rampa"* é preciso saber se dá para chegar lá andando. A sonda
+`measure_walk_scene` reconstrói a geometria daquela cena e caminha: as duas rampas subiam
+*para longe* do chão, o personagem passava **POR BAIXO** delas, caía da beirada do piso em
+`x = ±10` e despencava — **`y = −162 m`** seis segundos depois, sem ter tocado rampa nenhuma.
+
+O que decide é o **SINAL da rotação**. Corrigida (chão entre duas paredes, rampa que sobe
+para o lado de onde ele chega, patamar no alto: sobe de `y = 0,9` a `y = 4,5`), e a rampa
+íngreme mudou-se para a cena nova **`=88`**, que é o par que cerca o limite — **40° sobe /
+50° escorrega**. A `=81` nunca foi a fixture que continha o fenômeno.
+
+---
+
 ## 7. Aberto, com o preço ao lado — **nada disto é dívida escondida**
 
 1. **⚠️ A cobertura do C9 para os dois relógios do perdão é um vão NOMEADO.** O roteiro da
@@ -175,6 +238,9 @@ dirige"* de *"meu dedo dirige"*), e a `=87` só se você **zerar os dois knobs**
    hash intocado**. Os contadores são `x - dt` com clamp — aritmética sem transcendental e
    sem chamada de plataforma —, e quem os cobre são os gates de unidade. Fechá-lo custa
    reescrever o roteiro para correr para fora de uma beirada, e **move o hash**.
+   ⚠️ **A W9 fechou o vão IRMÃO, não este:** a lane da *ladeira recusada* cobre o ramo
+   `Footing::Steep` + `no_uphill` (provado por mutação — tirar o `no_uphill` move o hash),
+   e o perdão segue descoberto pelo mesmo motivo de sempre: o roteiro não contém o gesto.
 2. **Corner correction (D8)** — o item do plano §W8 que **não** foi construído. Ele é o
    único da wave que o estado da arte **não tem em Dynamic** (varrido: tnua, wanderlust e
    avian não o têm; a literatura só o resolve em kinematic com
@@ -191,7 +257,15 @@ dirige"* de *"meu dedo dirige"*), e a `=87` só se você **zerar os dois knobs**
    `TimelineFlags::performing`); um replay que sobrevive a fechar o app é wave posterior.
 6. **A gravidade lateral não alcança o player.** O `UP` da ponte é uma constante, numa
    porta só; derivá-lo da gravidade é uma linha, no lugar já nomeado.
-7. **⚠️ `rebuild_from_rest` limpar o estado VIVO de pulo é MEDIDO INERTE hoje**
+7. **⚠️ Não achei nenhum `%` na UI.** O report dizia *"Max Slope aparece **45%**"*; o box
+   mostra `45` e o rótulo diz `Max Slope (deg)` — varri o crate do Inspector e o widget de
+   número, e não há sufixo de porcentagem em lugar nenhum. O que estava errado era o
+   **COMPORTAMENTO** (§4.5), e a dica de hover agora diz *"in DEGREES"* em maiúsculas
+   justamente porque a unidade foi lida errada uma vez.
+8. **A §14 não tem colapso POR CARD, de propósito.** O estado de colapso é da SEÇÃO; cinco
+   cards colapsáveis seriam cinco lugares onde um controle some sem que a seção diga por
+   quê. Se o smoke pedir, o custo é um id de estado por card.
+9. **⚠️ `rebuild_from_rest` limpar o estado VIVO de pulo é MEDIDO INERTE hoje**
    (dy = 0,000000), porque `jump_step` re-deriva `airborne` da amostra de chão. A linha
    fica porque a inércia **morre** com qualquer contador futuro que não se auto-corrija —
    e os dois da W8 são exatamente isso.
@@ -201,9 +275,15 @@ dirige"* de *"meu dedo dirige"*), e a `=87` só se você **zerar os dois knobs**
 ## 8. O que a integração deve rodar
 
 - `cargo test -p ph2d-platformer -p ph2d-physics-ecs -p ph2d-panel-inspector -p ph2d-editor-core -p ph2d-host-desktop` — **em release E em debug** (esta linha tem precedente: um gate de wall-clock que só reprovava em debug, e o `ph2d-flip-colorize` que só panicava lá).
-- `cargo run -p ph2d-physics-ecs --bin physics_ecs_c9 --release` **e sem `--release`** — os dois têm de imprimir `21628fe5…` com 103 corpos.
+- `cargo run -p ph2d-physics-ecs --bin physics_ecs_c9 --release` **e sem `--release`** — os dois têm de imprimir `78dbb7a6…` com **105 corpos**.
 - Os gates de LOC das **duas** casas (`architecture_workspace_file_loc_cap` na `editor-core` **e** `file_loc_caps` na shell — o segundo não é coberto pelo primeiro, e esta linha já foi mordida por isso).
 - Clippy `--all-targets` **incluindo a shell**: um fechamento por `cargo test -p` por crate **não** o alcança, e esta jornada fechou um vermelho-latente da W6 exatamente assim.
 
-**Estado no fechamento:** 0 falhas nas cinco crates, **2080 verdes na shell**, clippy **0
-warnings**, LOC verde nas duas casas, `typos` limpo, contrato congelado 4/4.
+**Estado no fechamento (após a W9):** 0 falhas nas cinco crates (**235 suítes verdes**),
+clippy **0 warnings no WORKSPACE inteiro**, LOC verde nas duas casas, `typos` limpo,
+contrato congelado **4/4 + 3/3**, `PROJECT_SCHEMA` **intocado**, registro do
+`ph2d-physics-ecs` **28** (a W9 não acrescenta componente).
+
+⚠️ **LOC:** a W9 empurrou `ph2d-platformer/src/lib.rs` a 744 > 700 e o corte foi por
+ASSUNTO — o módulo irmão **`slope.rs`** (*o que o sensor viu, DEPOIS da lei*), que é
+exatamente o assunto que a wave fez crescer. `lib.rs` volta a 574.

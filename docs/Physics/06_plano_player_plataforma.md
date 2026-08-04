@@ -236,6 +236,70 @@ comparar.
 **Smoke `=87`:** pula raspando a quina e **passa**; e o controle com `corner_reach = 0`, onde
 bate e cai — para o olho ver que a assistência está agindo.
 
+### W9 — O NÚMERO QUE O ARTISTA ESCREVE (2026-08-04, do smoke do Enio)
+
+> **⚠️ Wave FORA do mapa original — ela nasceu de um smoke, e cada item dele é uma
+> linha aqui.** O report foi: *"o smoke do terminal erra: pular é com a seta e não
+> com espaço"* · *"Max Slope na UI aparece 45, mas o player sobe até
+> aproximadamente 60 graus"* · *"não entendo vários parâmetros então não sei
+> julgar"* · *"esse tanto de parâmetros juntos não fica bem; organize-os em cards
+> com um título"* · *"precisamos de dicas no mouse hover"*.
+
+**(A) A TECLA.** Três roteiros mandavam apertar **Espaço** para pular, e o
+`PlayerKeys` recusa o Espaço **de propósito** (ele é o Play/Pause do transporte).
+⚠️ O custo não era ler errado: quem seguia a instrução **PAUSAVA a simulação** no
+instante que a cena existe para medir. O gate ata o TEXTO ao KEYMAP, e não proíbe
+uma palavra — se o Espaço um dia virar tecla de pulo, a primeira asserção cai
+antes e diz que a segunda tem de ser revista.
+
+**(B) `Max Slope` passa a ser o ângulo que o personagem DE FATO sobe.** Medido
+antes de tocar em código: com o limite em **45**, ele subia **50° a +4,0 m em
+3 s**; o teto efetivo era ~52°.
+
+⚠️ **A perna estava certa** — o controle prova que o número move a fronteira dela
+(rampa 55°: limite 54 ⇒ `+0,17 m`, limite 56 ⇒ `+13,25 m`). Quem escalava era o
+**modo-ar**: recusada a superfície, a caminhada troca o eixo da rampa pela
+HORIZONTAL, e um empurrão horizontal contra uma rampa é redirecionado morro acima
+pelo contato. A ablação por ENTRADA fecha a atribuição:
+
+| rampa | `air = 20` (default) | `air = 5` | `air = 0` |
+|---|---|---|---|
+| 46° | **+4,375 m** | +0,041 m | −20,826 m |
+| 50° | **+4,010 m** | +0,004 m | −28,873 m |
+| 52° | **+3,367 m** | −0,027 m | −33,369 m |
+
+⚠️ **O teto era função de OUTRO knob**, que é a assinatura de bug de DESIGN e não
+de afinação ([[feedback_ergonomics_verdict_is_a_design_bug]]): mexer na aceleração
+aérea movia, em silêncio, a inclinação máxima.
+
+**A cura é uma TERCEIRA resposta do sensor.** *"Não é chão"* colapsava dois
+estados que pedem coisas opostas — **no ar** (não há em que se apoiar) e
+**encostado numa ladeira recusada** (há, e é por isso que empurrar a escala).
+`Footing::{Airborne, Steep, Ground}` (`ph2d-platformer::slope`), e o termo de
+CAMINHADA passa por `no_uphill`: morro acima some, morro abaixo passa inteiro.
+⚠️ **Só a caminhada** — a mola já está calada e o PULO é gesto deliberado do
+artista; capá-lo faria o personagem perder o salto por encostar numa ladeira.
+
+**Depois:** 44° sobe `+12,29 m`, 46° escorrega `−20,83 m`, e a tabela de ablação
+fica **PLANA** (os três `air` dão o mesmo número) — a mesma tabela que
+diagnosticou a doença é a que mostra a cura.
+
+**(B') E as rampas da cena `=81` eram INALCANÇÁVEIS a pé** (medido em
+`measure_walk_scene`): as duas subiam *para longe* do chão, o personagem passava
+POR BAIXO delas, caía da beirada em `x = ±10` e despencava — **`y = −162 m`** seis
+segundos depois, sem ter tocado rampa nenhuma. O roteiro mandava *"vá até a
+rampa"* e não havia como chegar lá. O que decide é o **SINAL da rotação**.
+Corrigida (chão entre duas paredes, rampa que sobe para o lado de onde ele chega,
+patamar no alto), e a rampa íngreme mudou-se para a **`=88`**, a cena do par que
+cerca o limite (**40° sobe / 50° escorrega**) — 60° já era recusado mesmo com o
+defeito, então a `=81` nunca foi a fixture que continha o fenômeno.
+
+**(C) e (D) A §14 vira CINCO CARDS titulados, e todo controle ganha DICA.** Os
+títulos são os cinco módulos da lei (**LEG · WALK · JUMP · FORGIVENESS ·
+REACTION**), não arrumação de gosto: a primeira metade da resposta a *"o que este
+número faz?"* é *a que pergunta ele pertence*. **UMA tabela, TRÊS consumidores** —
+o pintor, o `populate` (que registra as dicas) e a varredura de seam.
+
 ---
 
 ## §4 — O que NÃO entra (nomeado, não esquecido)

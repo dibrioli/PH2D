@@ -254,6 +254,43 @@ impl Mesh {
         Ok(())
     }
 
+    /// **Todo quad vira dois triângulos.** Devolve quantas faces nasceram.
+    ///
+    /// ⚠️ **É o preço de entrar em topologia dinâmica, e não é escolha nossa:**
+    /// o `MeshDynamic` do SculptGL é *"triangles only"* na primeira linha, e o
+    /// dyntopo do Blender triangula ao ser ligado pelo mesmo motivo — partir
+    /// uma aresta de um quad não produz dois quads, produz um triângulo e um
+    /// pentágono, e a partir daí a lei do split precisaria de um caso por
+    /// forma de face.
+    ///
+    /// ⚠️ **Ela não mexe em vértice nenhum** — nem posição, nem cor, nem
+    /// máscara —, então uma malha já triangulada sai **byte-idêntica** e chamar
+    /// duas vezes custa uma varredura e nada mais. É isso que a torna segura de
+    /// pôr num arm que o artista pode apertar sem querer.
+    ///
+    /// A diagonal é `[0,2]` (o corte `v0-v1-v2` + `v0-v2-v3`), a MESMA que o
+    /// [`Face::tris`] usa para desenhar — um quad que se vê partido de um jeito
+    /// e se torna partido de outro muda a silhueta no instante do arm.
+    pub fn triangulate(&mut self) -> usize {
+        if self.faces.iter().all(Face::is_tri) {
+            return 0;
+        }
+        let mut out = Vec::with_capacity(self.faces.len() * 2);
+        for f in &self.faces {
+            let v = f.verts();
+            if f.is_tri() {
+                out.push(*f);
+            } else {
+                out.push(Face::tri(v[0], v[1], v[2]));
+                out.push(Face::tri(v[0], v[2], v[3]));
+            }
+        }
+        let added = out.len() - self.faces.len();
+        self.faces = out;
+        self.rebuild();
+        added
+    }
+
     /// Devolve o plano tirado por [`Self::take_masks`].
     ///
     /// ⚠️ **Recusa em silêncio um plano do tamanho errado** — não: ele PANICA,

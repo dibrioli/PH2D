@@ -45,6 +45,9 @@ bytemuck = { version = "1", features = ["extern_crate_alloc"] }
 ph2d-nodegraph = { path = "../../crates/ph2d-nodegraph" }
 ph2d-node-registry = { path = "../../crates/ph2d-node-registry" }
 ph2d-eval-motion = { path = "../../crates/ph2d-eval-motion" }
+# ADR-0155: the setup diagnoser — the shell runs `diagnose` after a constructive
+# gesture and heals an inert force chain through the integrator it forgot.
+ph2d-motion-diagnose = { path = "../../crates/ph2d-motion-diagnose" }
 # ADR-0154: `source.shape` — the shell builds each shape's `VecPath` from the
 # node's params (`ShapeParams::read`) under its content key (`shape_key`) and
 # publishes it into the cook, then draws it live (GPU vector, not a baked tile).

@@ -90,6 +90,12 @@ mod library;
 #[path = "motion_bridge_adapt.rs"]
 mod adapt;
 
+// ADR-0155 W2 — the setup auto-heal. Sibling of `adapt` (heal-on-gesture, not
+// heal-on-refusal): `apply_graph_intents` runs it after a constructive batch.
+#[cfg(feature = "panel-motion-graph")]
+#[path = "motion_bridge_heal.rs"]
+mod heal;
+
 #[cfg(feature = "panel-motion-graph")]
 #[path = "motion_bridge_fold.rs"]
 mod fold;

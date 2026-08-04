@@ -36,7 +36,13 @@ pub(super) fn apply_graph_intents(
 ) {
     use ph2d_nodegraph::graph::{NodeId, Pos};
     use ph2d_panel_motion_graph::GraphIntent;
-    for intent in ph2d_panel_motion_graph::drain_intents() {
+    // ADR-0155 W2 — the heal fires only after a batch that COMPLETES a setup (adds a
+    // node/wire) and removes nothing, so deleting the integrator to rewire is never
+    // fought. Classified before the loop consumes the intents.
+    let intents = ph2d_panel_motion_graph::drain_intents();
+    let heal_ok = intents.iter().any(super::heal::is_constructive)
+        && !intents.iter().any(super::heal::is_destructive);
+    for intent in intents {
         match intent {
             GraphIntent::BeginDrag => motion.history.begin(&motion.doc),
             // A drag can carry cards and nodes together (they are both just cards on
@@ -374,6 +380,11 @@ pub(super) fn apply_graph_intents(
                 }
             }
         }
+    }
+    // ADR-0155 W2 — after a constructive gesture, wire any inert force chain that
+    // reaches a sink through the integrator it forgot (its own undo step, toasted).
+    if heal_ok {
+        super::heal::heal_setup(motion, toasts);
     }
 }
 

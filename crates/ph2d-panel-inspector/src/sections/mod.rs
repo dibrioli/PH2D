@@ -56,7 +56,9 @@ mod physics_rows;
 /// que testa encolhe junto com ela.
 pub(crate) mod player;
 mod render_source;
-mod rows;
+/// ⚠️ `pub(crate)` só para a régua do card (`card_pitch`), que o `lib.rs`
+/// re-exporta para o gate de GEOMETRIA da §14.
+pub(crate) mod rows;
 mod sampling;
 mod sprite_sheet;
 mod transform;

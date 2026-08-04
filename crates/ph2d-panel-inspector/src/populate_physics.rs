@@ -217,6 +217,20 @@ pub(super) fn populate_player(store: &mut WidgetStore) {
             ids::INSP_PLAYER_FIT,
         ],
     );
+    // ⚠️ **As DICAS saem da MESMA tabela que o pintor lê** (W9, Enio: *"precisamos
+    // de dicas no mouse hover"*). O `set_tooltip` é a infra que o app já tem — o
+    // hover publica o `hot_id`, e o passe de tooltip do `hero` procura o texto
+    // dele —, então uma seção que não registra nada é uma seção sem dica, em
+    // silêncio. Registrar aqui, num laço sobre a tabela, é o que faz um controle
+    // novo nascer explicado.
+    for (_, _, rows) in crate::sections::player::PLAYER_CARDS {
+        for (_, id, tip) in rows {
+            store.set_tooltip(*id, *tip);
+        }
+    }
+    for (id, tip) in crate::sections::player::PLAYER_BUTTON_TIPS {
+        store.set_tooltip(id, tip);
+    }
     for (id, value, min, max, step) in [
         // Metros. O piso NÃO é zero por acaso: uma perna de comprimento zero é
         // um personagem que não paira, e o piso geométrico real é maior ainda

@@ -41,17 +41,54 @@ pub use sections::rig_button_label;
 /// INTEIRA. Sem ele o gate iteraria a própria lista que testa — o oráculo
 /// auto-referente que a `line/Painter` já pagou: encolher o array encolhe a
 /// varredura, e a mutação passa.
-pub const PLAYER_ROW_COUNT: usize = crate::sections::player::PLAYER_ROWS.len();
+pub const PLAYER_ROW_COUNT: usize = crate::sections::player::player_row_count();
 
 /// Os RÓTULOS que a §14 pinta, na ordem da tabela.
 ///
 /// ⚠️ Existe para a cena de smoke poder afirmar que o roteiro dela nomeia um
 /// controle que o painel de fato desenha — um roteiro que cita um nome que a UI
 /// não usa faz o artista procurar o que não existe.
-pub fn player_row_labels() -> Vec<&'static str> {
-    crate::sections::player::PLAYER_ROWS
+/// **Todo id que a §14 pinta e que precisa de dica** — os dezenove números e os
+/// três botões, na ordem da tabela.
+///
+/// ⚠️ Exportado pelo mesmo motivo do [`PLAYER_ROW_COUNT`]: sem ele a varredura
+/// de dicas iteraria a própria lista que testa. Aqui a lista vem da tabela do
+/// pintor, e a contagem é conferida contra ela.
+pub fn player_control_ids() -> Vec<ph2d_a11y::NodeId> {
+    crate::sections::player::PLAYER_CARDS
         .iter()
-        .map(|(label, _)| *label)
+        .flat_map(|(_, _, rows)| rows.iter().map(|(_, id, _)| *id))
+        .chain(
+            crate::sections::player::PLAYER_BUTTON_TIPS
+                .iter()
+                .map(|(id, _)| *id),
+        )
+        .collect()
+}
+
+/// O passo de um card da §14 ao próximo — a régua que o pintor TEM de usar.
+///
+/// ⚠️ Exportada para o gate de geometria: ele compara onde as rows de fato
+/// caíram contra este passo. Sem ela o gate só poderia afirmar *"as rows estão
+/// em ordem"*, que continua verdade quando o pintor avança pela soma das rows e
+/// as MOLDURAS passam a se sobrepor.
+pub fn player_card_pitch(n_rows: usize) -> f32 {
+    crate::sections::rows::card_pitch(n_rows)
+}
+
+/// Os cards da §14 e os ids das rows de cada um — o que a varredura de
+/// GEOMETRIA precisa para afirmar que a moldura contém o que emoldura.
+pub fn player_card_spans() -> Vec<(&'static str, Vec<ph2d_a11y::NodeId>)> {
+    crate::sections::player::PLAYER_CARDS
+        .iter()
+        .map(|(title, _, rows)| (*title, rows.iter().map(|(_, id, _)| *id).collect()))
+        .collect()
+}
+
+pub fn player_row_labels() -> Vec<&'static str> {
+    crate::sections::player::PLAYER_CARDS
+        .iter()
+        .flat_map(|(_, _, rows)| rows.iter().map(|(label, _, _)| *label))
         .collect()
 }
 

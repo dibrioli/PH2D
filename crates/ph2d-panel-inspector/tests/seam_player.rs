@@ -174,7 +174,7 @@ fn every_number_raises_its_own_edit() {
     // exatamente o arm esquecido que ela existe para pegar.
     assert_eq!(
         ph2d_panel_inspector::PLAYER_ROW_COUNT,
-        18,
+        19,
         "a tabela de rows cresceu; acrescente o numero novo a esta varredura"
     );
     for (id, v, edit) in [
@@ -383,6 +383,119 @@ fn the_rows_show_what_was_authored_not_the_seed() {
         assert!(
             (g - w).abs() < 1.0e-4,
             "a row mostra {g} onde o documento diz {w} — ela e' WRITE-ONLY: {got:?}"
+        );
+    }
+}
+
+// ── W9: OS CARDS E AS DICAS ──────────────────────────────────────────────────
+
+/// **Todo controle da §14 tem uma DICA de hover** (W9).
+///
+/// Enio, 2026-08-04: *"não entendo vários parâmetros, então não sei julgar"* /
+/// *"precisamos de dicas no mouse hover"*.
+///
+/// ⚠️ A infra já existia (`WidgetStore::set_tooltip` + o passe de hover do
+/// `hero`), então o modo de falha não é *"não funciona"*: é **não registrar
+/// nada** e ficar exatamente igual a antes, em silêncio. O gate varre a tabela
+/// e exige texto para cada id — número **e** botão.
+///
+/// **Mutação que deve sangrar:** apagar o laço de `set_tooltip` do
+/// `populate_player`.
+#[test]
+fn every_player_control_carries_a_hover_hint() {
+    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut state = InspectorState::default();
+    set_current_inspector_player(Some(player()));
+    let _ = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+
+    let mut checked = 0;
+    for id in ph2d_panel_inspector::player_control_ids() {
+        let tip = host
+            .store()
+            .tooltip_for(id)
+            .unwrap_or_else(|| panic!("o controle {id:?} da §14 nao tem dica de hover"));
+        assert!(
+            tip.len() > 12,
+            "a dica de {id:?} e' curta demais para ensinar alguma coisa: {tip:?}"
+        );
+        checked += 1;
+    }
+    set_current_inspector_player(None);
+    assert_eq!(
+        checked,
+        ph2d_panel_inspector::PLAYER_ROW_COUNT + 3,
+        "a varredura tem de cobrir os dezenove numeros E os tres botoes"
+    );
+}
+
+/// **Os cinco cards são PINTADOS, e as rows caem dentro deles** (W9).
+///
+/// ⚠️ O oráculo é a GEOMETRIA, não a existência de um id: um card é moldura, e
+/// uma moldura que não contém o que emoldura é pior que nenhuma. O gate afirma
+/// que cada row de um card está entre a primeira e a última row daquele card, e
+/// que os cards não se cruzam — que é a forma de *"as caixas vazaram para fora
+/// da caixa"* aparecer sem screenshot.
+///
+/// **Mutação que deve sangrar:** o pintor voltar a somar as rows em vez de usar
+/// o `next_y` da moldura (as caixas passam a vazar do card).
+#[test]
+fn the_five_cards_hold_their_own_rows_and_do_not_overlap() {
+    let rects = painted(player());
+    let mut spans: Vec<(f32, f32)> = Vec::new();
+    for (title, rows) in ph2d_panel_inspector::player_card_spans() {
+        let ys: Vec<f32> = rows
+            .iter()
+            .map(|id| {
+                rects
+                    .iter()
+                    .find(|(n, _)| n == id)
+                    .map(|(_, r)| r.y)
+                    .unwrap_or_else(|| panic!("o card {title} nao pintou {id:?}"))
+            })
+            .collect();
+        let lo = ys.iter().cloned().fold(f32::INFINITY, f32::min);
+        let hi = ys.iter().cloned().fold(f32::NEG_INFINITY, f32::max);
+        assert!(
+            hi > lo,
+            "o card {title} empilhou as rows no mesmo y — a régua da moldura e a \
+             das rows discordam"
+        );
+        spans.push((lo, hi));
+    }
+    for w in spans.windows(2) {
+        assert!(
+            w[0].1 < w[1].0,
+            "dois cards se sobrepoem: {:?} e {:?}",
+            w[0],
+            w[1]
+        );
+    }
+
+    // ⚠️ **E o passo entre cards é o da MOLDURA, não a soma das rows.**
+    //
+    // As duas réguas diferem por uma respiração, e a de baixo continua deixando
+    // as rows em ordem — então a asserção de sobreposição acima passa com o
+    // pintor errado. O que denuncia é comparar onde a primeira row de cada card
+    // caiu contra `player_card_pitch`, que é a altura que a moldura de fato
+    // desenhou.
+    let cards = ph2d_panel_inspector::player_card_spans();
+    let first_y: Vec<f32> = cards
+        .iter()
+        .map(|(_, rows)| {
+            rects
+                .iter()
+                .find(|(n, _)| *n == rows[0])
+                .map(|(_, r)| r.y)
+                .expect("a primeira row do card")
+        })
+        .collect();
+    for i in 0..cards.len() - 1 {
+        let step = first_y[i + 1] - first_y[i];
+        let want = ph2d_panel_inspector::player_card_pitch(cards[i].1.len());
+        assert!(
+            (step - want).abs() < 0.51,
+            "o card '{}' avancou {step:.2} px e a moldura dele mede {want:.2} px —              o pintor esta' somando as rows em vez de usar a altura do card, e as              molduras se sobrepoem",
+            cards[i].0
         );
     }
 }

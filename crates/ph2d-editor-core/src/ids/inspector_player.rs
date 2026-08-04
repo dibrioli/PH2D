@@ -93,8 +93,35 @@ pub const INSP_PLAYER_PEAK_SPEED: NodeId = hash_node_id("insp_player_peak_speed"
 /// Multiplicador na QUEDA — acima de 1 desce mais rápido do que sobe.
 pub const INSP_PLAYER_FALL_G: NodeId = hash_node_id("insp_player_fall_g");
 /// Multiplicador enquanto sobe com o botão SOLTO — a altura variável.
-/// **Coyote Time** (W8) — segundos de perdão depois de sair do chão.
-pub const INSP_PLAYER_COYOTE: ph2d_a11y::NodeId = hash_node_id("insp.player.coyote");
-/// **Jump Buffer** (W8) — segundos que um aperto cedo demais sobrevive.
-pub const INSP_PLAYER_BUFFER: ph2d_a11y::NodeId = hash_node_id("insp.player.buffer");
+///
+/// ⚠️ Este doc-comment estava **órfão** desde a W8: os dois ids do perdão foram
+/// inseridos entre ele e a const que ele descreve, então ele passou a documentar
+/// o *Coyote Time* (que não é multiplicador nenhum) e o `CUT_G` ficou sem doc.
+/// Corrigido na W9 — *um comentário que descreve outra coisa é pior que
+/// comentário nenhum*.
 pub const INSP_PLAYER_CUT_G: NodeId = hash_node_id("insp_player_cut_g");
+
+/// **Coyote Time** (W8) — segundos de perdão depois de sair do chão.
+pub const INSP_PLAYER_COYOTE: NodeId = hash_node_id("insp.player.coyote");
+/// **Jump Buffer** (W8) — segundos que um aperto cedo demais sobrevive.
+pub const INSP_PLAYER_BUFFER: NodeId = hash_node_id("insp.player.buffer");
+
+/// **Os CARDS da §14** (W9) — os títulos que agrupam os dezenove números.
+///
+/// ⚠️ **Só moldura, nenhum estado.** Eles não são colapsáveis e não guardam
+/// nada: o estado de colapso é da SEÇÃO (`INSP_LIVE_PLAYER_SECTION`), e dar a
+/// cada card o seu seria oferecer cinco lugares onde um controle pode
+/// desaparecer sem que a seção diga por quê. O id existe porque `Card` pede um —
+/// e porque um dia a a11y vai querer nomear o grupo.
+///
+/// ⚠️ **Por que agrupar:** dezenove caixas numéricas em fila são uma lista que
+/// não se lê (Enio, 2026-08-04: *"esse tanto de parâmetros juntos não fica bem"*).
+/// Os cinco títulos são as cinco perguntas que a lei de fato responde — a perna,
+/// a caminhada, o pulo, o perdão e o que volta ao chão —, e cada uma é um módulo
+/// do `ph2d-platformer`. O agrupamento não é decoração: é o desenho do motor
+/// dito na tela.
+pub const INSP_PLAYER_CARD_LEG: NodeId = hash_node_id("insp_player_card_leg");
+pub const INSP_PLAYER_CARD_WALK: NodeId = hash_node_id("insp_player_card_walk");
+pub const INSP_PLAYER_CARD_JUMP: NodeId = hash_node_id("insp_player_card_jump");
+pub const INSP_PLAYER_CARD_FORGIVE: NodeId = hash_node_id("insp_player_card_forgive");
+pub const INSP_PLAYER_CARD_REACT: NodeId = hash_node_id("insp_player_card_react");

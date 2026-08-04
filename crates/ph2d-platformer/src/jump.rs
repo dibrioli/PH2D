@@ -129,6 +129,18 @@ pub struct JumpStep {
     /// **A perna pode agir?** Falso enquanto o pulo sobe — ver o aviso do
     /// módulo.
     pub spring_armed: bool,
+    /// ⚠️ **Este motor é um EMPURRÃO no chão** — verdadeiro só no tick da
+    /// decolagem.
+    ///
+    /// A reação da 3ª lei ([`crate::react`]) precisa distinguir o empurrão da
+    /// decolagem (contato: pular de uma jangada a afunda) da **gravidade de
+    /// FASE** do arco (ficção aplicada ao personagem no ar, que devolvida ao
+    /// chão seria ele empurrar uma plataforma que não está tocando).
+    ///
+    /// ⚠️ Hoje os dois são distinguíveis pelo acidente de um usar `boost` e o
+    /// outro `accel` — e é exatamente por ser acidente, e não contrato, que este
+    /// campo existe.
+    pub takeoff: bool,
 }
 
 /// **PULAR.** Ver a lei no topo do módulo.
@@ -172,6 +184,7 @@ pub fn jump_step(
             },
             state: next,
             spring_armed: false,
+            takeoff: true,
         };
     }
 
@@ -199,6 +212,7 @@ pub fn jump_step(
             motor: Motor::default(),
             state: next,
             spring_armed,
+            takeoff: false,
         };
     }
 
@@ -230,6 +244,7 @@ pub fn jump_step(
         },
         state: next,
         spring_armed,
+        takeoff: false,
     }
 }
 

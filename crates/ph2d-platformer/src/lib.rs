@@ -49,10 +49,12 @@
 //! que a caminhada considera intransponível.
 
 pub mod jump;
+pub mod react;
 pub mod ride;
 pub mod walk;
 
 pub use jump::{JumpConfig, JumpState, JumpStep, jump_step};
+pub use react::{Reaction, ReactionConfig};
 pub use ride::{RideConfig, ride_spring, within_reach};
 pub use walk::{WalkConfig, walk};
 
@@ -92,7 +94,7 @@ pub struct GroundSample {
     pub ground_velocity: Vec2,
 }
 
-/// A config inteira de um player — as duas metades que a [`footing`] precisa
+/// A config inteira de um player — as metades que a [`footing`] precisa
 /// consultar juntas.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct PlayerConfig {
@@ -102,15 +104,34 @@ pub struct PlayerConfig {
     pub walk: WalkConfig,
     /// O pulo.
     pub jump: JumpConfig,
+    /// O que volta para o chão (a 3ª lei).
+    pub react: ReactionConfig,
 }
 
 impl PlayerConfig {
-    /// O ponto de partida das duas metades — ⚠️ **não são defaults de produto**.
+    /// O ponto de partida — ⚠️ **não são defaults de produto**.
     pub const STARTING_POINT: Self = Self {
         ride: RideConfig::STARTING_POINT,
         walk: WalkConfig::STARTING_POINT,
         jump: JumpConfig::STARTING_POINT,
+        react: ReactionConfig::STARTING_POINT,
     };
+}
+
+/// **O que a porta única decidiu neste tick** — as três respostas.
+///
+/// ⚠️ Uma struct e não uma tupla porque a lista **cresce**: a W7 traz a fita e a
+/// W8 os contadores de tolerância, e cada um deles seria mais um elemento sem
+/// nome num `(_, _, _, _)` que todo chamador desempacota na ordem certa por
+/// disciplina.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct PlayerStep {
+    /// O que fazer com o corpo do personagem.
+    pub motor: Motor,
+    /// O estado de pulo a guardar para o próximo tick.
+    pub state: JumpState,
+    /// **O que devolver ao chão** — `None` quando não há chão em que empurrar.
+    pub reaction: Option<Reaction>,
 }
 
 /// **A entrada do jogador neste tick.**
@@ -231,7 +252,7 @@ pub fn player_motor(
     gravity: Vec2,
     up: Vec2,
     dt: f32,
-) -> (Motor, JumpState) {
+) -> PlayerStep {
     let footing = footing(cfg, sample, up);
 
     // ⚠️ **O pulo decide PRIMEIRO, e não é ordem arbitrária:** é ele que
@@ -249,7 +270,28 @@ pub fn player_motor(
     let standing = if jump.spring_armed { footing } else { None };
     let spring = ride_spring(&cfg.ride, standing, body_velocity, gravity, up);
     let step = walk(&cfg.walk, standing, body_velocity, up, input.drive, dt);
-    (spring.plus(step).plus(jump.motor), jump.state)
+
+    // ── A 3ª LEI ─────────────────────────────────────────────────────────────
+    // Só há em quem empurrar se houver chão. ⚠️ E o que volta é o CONTATO: a
+    // mola (o peso) e o empurrão da decolagem, nunca a gravidade de fase — ver
+    // o `react`.
+    let reaction = footing.map(|_| {
+        // ⚠️ Os canais entram SEPARADOS: a mola é força contínua, a decolagem é
+        // um impulso de um tick só, e a diferença decide se o `boost` volta —
+        // ver o aviso do `react`.
+        let impulse = if jump.takeoff {
+            jump.motor
+        } else {
+            Motor::default()
+        };
+        react::reaction(&cfg.react, spring, impulse, step)
+    });
+
+    PlayerStep {
+        motor: spring.plus(step).plus(jump.motor),
+        state: jump.state,
+        reaction,
+    }
 }
 
 #[cfg(test)]
@@ -338,7 +380,7 @@ mod tests {
         let cfg = PlayerConfig::STARTING_POINT;
         let inside = at(0.0, [0.0, 0.0]);
         assert!(is_grounded(&cfg, Some(&inside), UP));
-        let (m, _) = player_motor(
+        let m = player_motor(
             &cfg,
             Some(&inside),
             PlayerInput::default(),
@@ -349,9 +391,9 @@ mod tests {
             DT,
         );
         assert!(
-            m.accel[1] > 0.0,
+            m.motor.accel[1] > 0.0,
             "a mola tem de empurrar para FORA: {:?}",
-            m.accel
+            m.motor.accel
         );
     }
 
@@ -364,7 +406,7 @@ mod tests {
             drive: 1.0,
             ..PlayerInput::default()
         };
-        let (whole, _) = player_motor(
+        let whole = player_motor(
             &cfg,
             Some(&ground),
             input,
@@ -376,8 +418,8 @@ mod tests {
         );
         let spring = ride_spring(&cfg.ride, Some(&ground), [0.0, 0.0], G, UP);
         let step = walk(&cfg.walk, Some(&ground), [0.0, 0.0], UP, 1.0, DT);
-        assert_eq!(whole, spring.plus(step));
-        assert!(whole.accel[0] > 0.0, "anda");
-        assert!(whole.accel[1] > 0.0, "e paira ao mesmo tempo");
+        assert_eq!(whole.motor, spring.plus(step));
+        assert!(whole.motor.accel[0] > 0.0, "anda");
+        assert!(whole.motor.accel[1] > 0.0, "e paira ao mesmo tempo");
     }
 }

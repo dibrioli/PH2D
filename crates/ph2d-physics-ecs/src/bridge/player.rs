@@ -49,6 +49,19 @@ use super::PhysicsBridge;
 /// dia for pedida, é derivar o `up` da gravidade **numa porta só**, esta.
 const UP: [f32; 2] = [0.0, 1.0];
 
+/// **Um empurrão devido ao chão** (W6) — colhido no laço e aplicado depois.
+///
+/// Uma struct e não uma tupla de cinco: os dois primeiros campos são handles do
+/// MESMO tipo, e trocá-los daria um mundo em que o chão empurra o personagem
+/// com a massa dele — compila, roda, e está errado.
+struct GroundPush {
+    ground: rapier2d_handle::Handle,
+    player: rapier2d_handle::Handle,
+    accel: [f32; 2],
+    boost: [f32; 2],
+    at: [f32; 2],
+}
+
 impl PhysicsBridge {
     /// **A entrada deste player.** Chamada pela shell a cada frame.
     ///
@@ -97,6 +110,9 @@ impl PhysicsBridge {
         // O estado de pulo que este tick produz, colhido junto com os motores e
         // gravado depois — o cast toma `&self` e a tabela `&mut self`.
         let mut states: Vec<(Entity, JumpState)> = Vec::new();
+        // A reação da 3ª lei, colhida junto pelo mesmo motivo — o cast toma
+        // `&self` e aplicar toma `&mut self`.
+        let mut reactions: Vec<GroundPush> = Vec::new();
         for (&entity, b) in self.bodies.iter() {
             // Dynamic-only, e é FÍSICA: um impulso não move massa infinita.
             if b.kind != BodyKind::Dynamic {
@@ -122,7 +138,7 @@ impl PhysicsBridge {
                 .world
                 .cast_ray(origin, [0.0, -1.0], reach, Some(b.handle), b.rest.layer);
 
-            let sample = hit.map(|h| GroundSample {
+            let sample = hit.as_ref().map(|h| GroundSample {
                 distance: h.distance,
                 normal: h.normal,
                 // ⚠️ A velocidade do PONTO, não a do centro: uma plataforma que
@@ -136,11 +152,30 @@ impl PhysicsBridge {
 
             let input = self.player_input.get(&entity).copied().unwrap_or_default();
             let was = self.player_jump.get(&entity).copied().unwrap_or_default();
-            let (motor, next) =
-                player_motor(&cfg, sample.as_ref(), input, was, vel, gravity, UP, dt);
-            states.push((entity, next));
+            let step = player_motor(&cfg, sample.as_ref(), input, was, vel, gravity, UP, dt);
+            states.push((entity, step.state));
+            let motor = step.motor;
             if motor.accel != [0.0, 0.0] || motor.boost != [0.0, 0.0] {
                 motors.push((b.handle, motor.accel, motor.boost));
+            }
+
+            // ── A 3ª LEI (W6) ────────────────────────────────────────────────
+            // ⚠️ O hit **inteiro** é carregado até aqui, e é o desenho que o
+            // módulo declara no topo: *quem decide "estou no chão" e quem decide
+            // "em quem eu empurro" têm de ser a MESMA consulta*. Uma segunda
+            // pergunta poderia achar outro corpo — o personagem seria segurado
+            // por uma jangada e afundaria a de trás.
+            if let (Some(r), Some(h)) = (step.reaction, hit.as_ref())
+                && !r.is_zero()
+                && let Some(ground) = h.body
+            {
+                reactions.push(GroundPush {
+                    ground,
+                    player: b.handle,
+                    accel: r.accel,
+                    boost: r.boost,
+                    at: h.point,
+                });
             }
         }
         // ⚠️ O estado é gravado para TODO player, inclusive os cujo motor é zero
@@ -164,6 +199,14 @@ impl PhysicsBridge {
         }
         for (handle, accel, boost) in motors {
             self.world.apply_player_motor(handle, accel, boost);
+        }
+        // ⚠️ **Depois dos motores, e a ordem não importa hoje** — os dois são
+        // impulsos e o solver os soma —, mas as listas são separadas porque
+        // descrevem corpos diferentes: um `retain` futuro que filtre players não
+        // pode levar as reações que eles devem ao chão junto.
+        for r in reactions {
+            self.world
+                .apply_ground_reaction(r.ground, r.player, r.accel, r.boost, r.at);
         }
     }
 }

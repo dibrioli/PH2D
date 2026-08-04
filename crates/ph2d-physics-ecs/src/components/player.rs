@@ -16,7 +16,7 @@
 //! torna reproduzível num scrub.
 
 use bevy_ecs::component::Component;
-use ph2d_platformer::{JumpConfig, PlayerConfig, RideConfig, WalkConfig};
+use ph2d_platformer::{JumpConfig, PlayerConfig, ReactionConfig, RideConfig, WalkConfig};
 use serde::{Deserialize, Serialize};
 
 /// **Este corpo é um player de plataforma.**
@@ -78,6 +78,19 @@ pub struct PlatformPlayer {
     pub fall_gravity: f32,
     /// Multiplicador enquanto sobe com o botão SOLTO — a altura variável.
     pub cut_gravity: f32,
+
+    /// **Quanto do PESO volta para o chão** (W6). `1` transmite inteiro.
+    ///
+    /// ⚠️ Em `0` o personagem é um FANTASMA: ele paira sobre uma jangada sem a
+    /// afundar e uma balança não o pesa. O default é `1` porque a física é essa;
+    /// o número existe para desligar, não para ligar.
+    pub reaction_support: f32,
+    /// **Quanto da CAMINHADA volta para o chão** (W6). Nasce em `0`.
+    ///
+    /// ⚠️ O default oposto ao irmão é de PRODUTO, não de física: com ele em `1`
+    /// a plataforma escorrega para trás como um tapete quando o personagem anda
+    /// em cima dela — atrito honesto e péssimo de jogar.
+    pub reaction_movement: f32,
 }
 
 impl PlatformPlayer {
@@ -110,6 +123,10 @@ impl PlatformPlayer {
                 fall_gravity: self.fall_gravity,
                 cut_gravity: self.cut_gravity,
             },
+            react: ReactionConfig {
+                support: self.reaction_support,
+                movement: self.reaction_movement,
+            },
         }
     }
 }
@@ -135,6 +152,8 @@ impl Default for PlatformPlayer {
             peak_speed: c.jump.peak_speed,
             fall_gravity: c.jump.fall_gravity,
             cut_gravity: c.jump.cut_gravity,
+            reaction_support: c.react.support,
+            reaction_movement: c.react.movement,
         }
     }
 }

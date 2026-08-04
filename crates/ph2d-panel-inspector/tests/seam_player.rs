@@ -55,6 +55,8 @@ fn player() -> InspectorPlayerInfo {
         peak_speed: 1.5,
         fall_gravity: 2.0,
         cut_gravity: 4.0,
+        reaction_support: 1.0,
+        reaction_movement: 0.0,
     }
 }
 
@@ -170,7 +172,7 @@ fn every_number_raises_its_own_edit() {
     // exatamente o arm esquecido que ela existe para pegar.
     assert_eq!(
         ph2d_panel_inspector::PLAYER_ROW_COUNT,
-        14,
+        16,
         "a tabela de rows cresceu; acrescente o numero novo a esta varredura"
     );
     for (id, v, edit) in [
@@ -239,6 +241,16 @@ fn every_number_raises_its_own_edit() {
             ids::INSP_PLAYER_FALL_G,
             2.5,
             PlayerFieldEdit::FallGravity(2.5),
+        ),
+        (
+            ids::INSP_PLAYER_REACT_SUPPORT,
+            0.6,
+            PlayerFieldEdit::ReactionSupport(0.6),
+        ),
+        (
+            ids::INSP_PLAYER_REACT_MOVEMENT,
+            0.35,
+            PlayerFieldEdit::ReactionMovement(0.35),
         ),
         (
             ids::INSP_PLAYER_CUT_G,
@@ -313,6 +325,8 @@ fn the_rows_show_what_was_authored_not_the_seed() {
         peak_speed: 2.75,
         fall_gravity: 2.25,
         cut_gravity: 5.5,
+        reaction_support: 0.4,
+        reaction_movement: 0.65,
         ..player()
     };
     let mut host = MockPanelHost::with_panel::<InspectorPanel>();

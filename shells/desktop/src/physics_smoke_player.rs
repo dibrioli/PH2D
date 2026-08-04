@@ -17,12 +17,18 @@
 
 use ph2d_anim::{AnimValue, Interp, RationalTime};
 use ph2d_core::Vec2;
+use ph2d_ecs::stable_name_id;
 use ph2d_ecs::{Entity, Name, Transform};
 use ph2d_physics_ecs::{
-    BodyKind, Collider, ColliderShape, LockRotation, PlatformPlayer, RigidBody,
+    BodyKind, Collider, ColliderShape, JointKind, LockRotation, PhysicsJoint, PlatformPlayer,
+    RigidBody,
 };
 use ph2d_render::{Sprite, WHITE_TILE_KEY};
 use ph2d_timeline::{PropKind, TimelineDoc};
+
+#[cfg(test)]
+#[path = "physics_smoke_reaction_tests.rs"]
+mod reaction_tests;
 
 /// A altura de flutuação destas cenas — ver o aviso do módulo.
 const FLOAT: f32 = 0.9;
@@ -311,6 +317,165 @@ impl crate::App {
         );
     }
 
+    /// **Cena 85 (W6).** A REAÇÃO — o personagem deixa de ser um fantasma.
+    ///
+    /// ⚠️ **A cena tem um CONTROLE, e ele é metade da entrega:** duas jangadas
+    /// idênticas, e só a da esquerda tem `Weight on Ground`. Sem o par, *"ela
+    /// afundou"* é uma frase sobre um número que o olho não tem com o que
+    /// comparar — e foi exatamente assim que o fantasma sobreviveu a três waves
+    /// de smoke.
+    pub(crate) fn physics_smoke_reaction(&mut self) {
+        let gfx = self.gfx.as_mut().expect("gfx");
+        build_reaction_scene(gfx.sim.world_mut());
+        eprintln!("{REACTION_SMOKE_MESSAGE}");
+    }
+}
+
+/// A cena 85, sem a `App` — é o que deixa a sonda a medir **a cena que shipa**
+/// em vez de uma cópia dela.
+pub(crate) fn build_reaction_scene(world: &mut bevy_ecs::world::World) {
+    slab(
+        world,
+        "Floor",
+        Vec2::new(0.0, -3.0),
+        [24.0, 0.5],
+        0.0,
+        [0.35, 0.35, 0.4, 1.0],
+    );
+
+    // Duas jangadas iguais, penduradas por molas iguais: só o escalar difere.
+    for (i, (name, support, at_x, tint)) in [
+        ("RaftLive", 1.0_f32, -8.0_f32, [0.3, 0.5, 0.35, 1.0]),
+        ("RaftGhost", 0.0, 4.0, [0.5, 0.35, 0.35, 1.0]),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let raft = world
+            .spawn((
+                Name::new(name.to_string()),
+                Transform::from_translation(Vec2::new(at_x, 0.0)),
+                Sprite::atlas(WHITE_TILE_KEY, [6.0, 0.5], tint),
+                RigidBody {
+                    kind: BodyKind::Dynamic,
+                },
+                Collider {
+                    shape: ColliderShape::Cuboid {
+                        half_x: 3.0,
+                        half_y: 0.25,
+                    },
+                    ..Collider::default()
+                },
+            ))
+            .id();
+        let _ = raft;
+        // ⚠️ **Duas molas por jangada, e não uma** — uma no centro seguraria
+        // a altura e deixaria a jangada girar livre em torno dela, e a
+        // metade INCLINAR da cena viraria um pião. Duas, nas pontas, dão
+        // altura E nivelamento: afundar de um lado é o que o torque faz.
+        for (side, dx) in [("L", -2.4_f32), ("R", 2.4)] {
+            let hook = format!("Hook{i}{side}");
+            world.spawn((
+                Name::new(hook.clone()),
+                Transform::from_translation(Vec2::new(at_x + dx, 4.0)),
+                Sprite::atlas(WHITE_TILE_KEY, [0.3, 0.3], [0.5, 0.5, 0.55, 1.0]),
+                RigidBody {
+                    kind: BodyKind::Static,
+                },
+                Collider {
+                    shape: ColliderShape::Cuboid {
+                        half_x: 0.15,
+                        half_y: 0.15,
+                    },
+                    ..Collider::default()
+                },
+            ));
+            world.spawn((
+                Name::new(format!("Rope{i}{side}")),
+                Transform::from_translation(Vec2::new(at_x + dx, 4.0)),
+                PhysicsJoint {
+                    body_a: stable_name_id(&hook),
+                    body_b: stable_name_id(name),
+                    kind: JointKind::Spring,
+                    rest_length: 4.0,
+                    // ⚠️ **A rigidez saiu da CONTA, não do gosto:** o
+                    // afundamento é `m·g / (2k)`, e com o personagem de
+                    // 20 kg desta cena `k = 165` dá ~0,6 m — grande o
+                    // bastante para o olho, pequeno o bastante para a
+                    // jangada não bater no chão.
+                    stiffness: 165.0,
+                    damping: 15.0,
+                    // ⚠️ **As âncoras são AUTORADAS**, e sem isso a cena
+                    // não funciona: numa mola o lado B ancora no CENTRO do
+                    // corpo (a política do W3), então duas molas "nas
+                    // pontas" seriam duas molas no MESMO ponto — sem
+                    // nenhuma resistência a torque, que é metade do que
+                    // esta cena existe para mostrar.
+                    anchored: true,
+                    local_a: [0.0, 0.0],
+                    local_b: [dx, 0.0],
+                    ..PhysicsJoint::default()
+                },
+            ));
+        }
+
+        world.spawn((
+            Name::new(format!("Hero{i}")),
+            // ⚠️ No CENTRO: assim a jangada afunda NIVELADA, e inclinar é o que o
+            // artista faz andando — se ele já nascesse na borda, a cena
+            // chegaria torta e o roteiro perderia a metade do torque.
+            Transform::from_translation(Vec2::new(at_x, 1.2)),
+            Sprite::atlas(WHITE_TILE_KEY, [0.4, 1.0], [0.25, 0.85, 1.0, 1.0]),
+            RigidBody {
+                kind: BodyKind::Dynamic,
+            },
+            Collider {
+                shape: ColliderShape::Capsule {
+                    half_height: 0.3,
+                    radius: 0.2,
+                },
+                ..Collider::default()
+            },
+            LockRotation,
+            // ⚠️ 20 kg, e o número é da CENA e não do personagem: o
+            // afundamento é proporcional à massa, e com os ~0,37 kg que a
+            // cápsula pesa por densidade ele seria de 3 cm — verdadeiro e
+            // invisível, que é o pior resultado possível para um smoke.
+            ph2d_physics_ecs::MassOverride(20.0),
+            PlatformPlayer {
+                float_height: FLOAT,
+                reaction_support: support,
+                ..PlatformPlayer::default()
+            },
+        ));
+    }
+}
+
+/// A mensagem da cena 85 — uma const para a sonda poder afirmar sobre ela.
+pub(crate) const REACTION_SMOKE_MESSAGE: &str = concat!(
+    "[physics-smoke 85] A REACAO (W6). Duas jangadas iguais penduradas em molas,\n\
+             cada uma com um personagem. So' a da ESQUERDA tem 'Weight on Ground'.\n\
+             \n\
+             ⚠️ Se a linha acima nao aparecer, pare: a cena nao montou.\n\
+             \n\
+             CONTROLE: setas <- / -> andam OS DOIS ao mesmo tempo (a entrada e' do\n\
+             teclado e chega a todo player). E' de proposito: o par anda junto e a\n\
+             comparacao fica lado a lado.\n\
+             \n\
+             Julgue, de olho:\n\
+             · a jangada da ESQUERDA AFUNDA sob o personagem; a da direita nao se\n\
+               mexe. O da direita e' um fantasma que a balanca nao pesa.\n\
+             · ande ate' a BORDA da jangada esquerda: ela INCLINA para o lado dele.\n\
+               No meio ela fica nivelada -- o braco e' zero, logo o torque tambem.\n\
+             · PULE na jangada esquerda: ela e' empurrada para BAIXO no instante da\n\
+               decolagem, e volta enquanto voce esta' no ar.\n\
+             · selecione o Hero0 e baixe 'Weight on Ground' para 0: ele vira o\n\
+               fantasma da direita, ao vivo.\n\
+             · suba 'Push on Ground' para 1 e ande: a jangada escorrega para TRAS\n\
+               como um tapete. E' atrito honesto, e e' por isso que nasce em zero."
+);
+
+impl crate::App {
     /// **Cena 81 (W3).** ANDAR — a cena que se dirige.
     ///
     /// ⚠️ É a primeira cena desta jornada com **controle**: as setas ←/→ (ou

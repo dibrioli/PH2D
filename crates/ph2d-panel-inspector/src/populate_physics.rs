@@ -251,6 +251,12 @@ pub(super) fn populate_player(store: &mut WidgetStore) {
         (ids::INSP_PLAYER_PEAK_SPEED, 1.5, 0.0, 1000.0, 0.1), // LITERAL-PX-OK: m/s
         (ids::INSP_PLAYER_FALL_G, 2.0, 0.0, 20.0, 0.1),    // LITERAL-PX-OK: gravity multiple
         (ids::INSP_PLAYER_CUT_G, 4.0, 0.0, 20.0, 0.1),     // LITERAL-PX-OK: gravity multiple
+        // A REAÇÃO (W6), em FRAÇÃO da força que o personagem faz. ⚠️ O piso é 0
+        // (nada volta) e o teto é 1 (volta inteira) porque **acima de 1 o
+        // personagem devolveria mais do que recebeu** — inventar energia, e o
+        // único teto desta seção que é de RECURSO e não de gosto.
+        (ids::INSP_PLAYER_REACT_SUPPORT, 1.0, 0.0, 1.0, 0.05), // LITERAL-PX-OK: fraction
+        (ids::INSP_PLAYER_REACT_MOVEMENT, 0.0, 0.0, 1.0, 0.05), // LITERAL-PX-OK: fraction
     ] {
         store.register(
             id,

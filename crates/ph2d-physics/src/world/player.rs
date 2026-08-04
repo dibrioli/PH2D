@@ -95,6 +95,72 @@ impl PhysicsWorld {
             body.set_linvel(Vector2::new(v.x + boost[0], v.y + boost[1]), true);
         }
     }
+
+    /// **A REAÇÃO da 3ª lei** (W6): devolver ao CHÃO o que a perna do player lhe
+    /// tirou, **no ponto onde o raio o encontrou**.
+    ///
+    /// `accel`/`boost` chegam nas unidades do player (o que a lei devolveu,
+    /// negado e escalado) e são convertidos com a massa **DELE** — é o `m·a` do
+    /// lado de quem empurra. O que o chão faz com isso é do solver: uma jangada
+    /// leve afunda, um continente não se move, e nenhum dos dois precisa de
+    /// código.
+    ///
+    /// ⚠️ **`apply_impulse_at_point`, nunca `apply_impulse`** — é o ponto que
+    /// produz o TORQUE (`r × F`), e o torque é a jangada **INCLINAR** quando o
+    /// personagem anda para a borda. Aplicado no centro de massa, ela afundaria
+    /// paralela a si mesma e a gangorra seria um elevador.
+    ///
+    /// ⚠️ **A massa é lida do PLAYER e o impulso vai no CHÃO**, então os dois
+    /// handles são pedidos e nenhum dos dois pode ser inferido do outro. Um
+    /// corpo morto de qualquer lado é no-op silencioso: o chamador é um laço
+    /// por-entidade.
+    ///
+    /// ⚠️ **Estático e kinematic absorvem sem se mexer**, e é correto — massa
+    /// infinita é o que "o chão do mundo" significa. Não há caso especial aqui.
+    pub fn apply_ground_reaction(
+        &mut self,
+        ground: RigidBodyHandle,
+        player: RigidBodyHandle,
+        accel: [f32; 2],
+        boost: [f32; 2],
+        at: [f32; 2],
+    ) {
+        let dt = self.dt();
+        let Some(mass) = self
+            .bodies
+            .get(player)
+            .map(rapier2d::dynamics::RigidBody::mass)
+        else {
+            return;
+        };
+        if !mass.is_finite() || mass <= 0.0 {
+            return;
+        }
+        let Some(body) = self.bodies.get_mut(ground) else {
+            return;
+        };
+        // A soma dos dois canais: a aceleração vira `a·m·dt` (o mesmo caminho do
+        // motor) e o boost já É uma mudança de velocidade, logo `Δv·m`.
+        let jx = accel[0] * mass * dt + boost[0] * mass;
+        let jy = accel[1] * mass * dt + boost[1] * mass;
+        if jx == 0.0 && jy == 0.0 {
+            return;
+        }
+        // ⚠️ **O `true` final É o despertar**, e ele é load-bearing: uma jangada
+        // parada DORME, um corpo dormindo não é integrado, e sem isto ela só
+        // afundaria quando alguma outra coisa esbarrasse nela — a assinatura de
+        // *"a física parou de funcionar"* que o `move_grab` já mediu.
+        //
+        // ⚠️ Eu tinha escrito um `body.wake_up(true)` explícito ao lado, e ele
+        // era **redundante**: medido, a mutação que o remove não move um
+        // milímetro, e só remover o `true` daqui é que deixa a jangada dormindo.
+        // Duas portas para *"acorde"* é uma a mais.
+        body.apply_impulse_at_point(
+            Vector2::new(jx, jy),
+            rapier2d::na::Point2::new(at[0], at[1]),
+            true,
+        );
+    }
 }
 
 #[cfg(test)]

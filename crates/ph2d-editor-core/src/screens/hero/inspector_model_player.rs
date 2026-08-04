@@ -58,6 +58,10 @@ pub struct InspectorPlayerInfo {
     pub fall_gravity: f32,
     /// Multiplicador enquanto sobe com o botão solto — a altura variável.
     pub cut_gravity: f32,
+    /// Quanto do peso volta ao chao (W6).
+    pub reaction_support: f32,
+    /// Quanto da caminhada volta ao chao (W6).
+    pub reaction_movement: f32,
 }
 
 /// Uma edição na §14 — o vocabulário que o painel emite e a shell honra.
@@ -96,4 +100,8 @@ pub enum PlayerFieldEdit {
     FallGravity(f32),
     /// Multiplicador enquanto sobe com o botão solto — a altura variável.
     CutGravity(f32),
+    /// Quanto do peso volta ao chao (W6).
+    ReactionSupport(f32),
+    /// Quanto da caminhada volta ao chao (W6).
+    ReactionMovement(f32),
 }

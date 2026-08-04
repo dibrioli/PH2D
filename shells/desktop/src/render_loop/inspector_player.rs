@@ -73,6 +73,8 @@ pub(crate) fn build_player_info(sim: &SimWorld, entity_bits: u64) -> Option<Insp
         peak_speed: p.peak_speed,
         fall_gravity: p.fall_gravity,
         cut_gravity: p.cut_gravity,
+        reaction_support: p.reaction_support,
+        reaction_movement: p.reaction_movement,
     })
 }
 
@@ -160,5 +162,7 @@ pub(crate) fn apply_player_edit(sim: &mut SimWorld, entity_bits: u64, edit: Play
         PlayerFieldEdit::PeakSpeed(v) => p.peak_speed = v.max(0.0),
         PlayerFieldEdit::FallGravity(v) => p.fall_gravity = v.max(0.0),
         PlayerFieldEdit::CutGravity(v) => p.cut_gravity = v.max(0.0),
+        PlayerFieldEdit::ReactionSupport(v) => p.reaction_support = v.max(0.0),
+        PlayerFieldEdit::ReactionMovement(v) => p.reaction_movement = v.max(0.0),
     }
 }

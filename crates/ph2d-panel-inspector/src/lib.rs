@@ -43,6 +43,18 @@ pub use sections::rig_button_label;
 /// varredura, e a mutação passa.
 pub const PLAYER_ROW_COUNT: usize = crate::sections::player::PLAYER_ROWS.len();
 
+/// Os RÓTULOS que a §14 pinta, na ordem da tabela.
+///
+/// ⚠️ Existe para a cena de smoke poder afirmar que o roteiro dela nomeia um
+/// controle que o painel de fato desenha — um roteiro que cita um nome que a UI
+/// não usa faz o artista procurar o que não existe.
+pub fn player_row_labels() -> Vec<&'static str> {
+    crate::sections::player::PLAYER_ROWS
+        .iter()
+        .map(|(label, _)| *label)
+        .collect()
+}
+
 pub use state::{
     InspectorState, last_inspector_content_h, last_inspector_visible_h, set_current_display_unit,
     set_current_inspector_blend, set_current_inspector_joint, set_current_inspector_name,

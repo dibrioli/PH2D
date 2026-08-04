@@ -3,7 +3,7 @@
 //! # O oráculo, e o que ele prova (e o que NÃO prova)
 //!
 //! O Vello publica os próprios contadores de camada (`Encoding::n_clips` / `n_open_clips` /
-//! `n_paths`), e é deles que estes gates leem — não da escrituração do `OpenFrames`, que é a
+//! `n_paths`), e é deles que estes gates leem — não da escrituração do `OpenParents`, que é a
 //! função sob teste. É o mesmo oráculo que os gates de geometria viva deste crate já usam.
 //!
 //! ⚠️ **Que os pixels fora da moldura desapareçam é o `push_clip` do Vello**, a MESMA camada que
@@ -23,7 +23,7 @@
 
 use super::*;
 use crate::{FxImages, dispatch};
-use ph2d_vec_scene::{Paint, Rgba8, VecClipSpan, VecVertex, VecXforms};
+use ph2d_vec_scene::{Paint, Rgba8, VecParentSpan, VecVertex, VecXforms};
 use ph2d_vector::Point;
 
 /// Um quadrado preenchido de lado `s`, na origem.
@@ -86,8 +86,8 @@ fn a_scene_without_frames_encodes_no_layer() {
 fn the_frame_opens_one_layer_closes_it_and_draws_its_background_once() {
     let (scene, frame, kids) = framed_scene();
     let view = VecViewState {
-        clips: vec![VecClipSpan {
-            frame,
+        parent_spans: vec![VecParentSpan {
+            parent: frame,
             first: kids[0],
             clip: true,
         }],
@@ -114,8 +114,8 @@ fn the_frame_opens_one_layer_closes_it_and_draws_its_background_once() {
 fn a_frame_that_does_not_clip_is_still_the_backdrop() {
     let (scene, frame, kids) = framed_scene();
     let view = VecViewState {
-        clips: vec![VecClipSpan {
-            frame,
+        parent_spans: vec![VecParentSpan {
+            parent: frame,
             first: kids[0],
             clip: false,
         }],
@@ -138,8 +138,8 @@ fn a_hidden_first_child_still_pairs_the_layer() {
     let (scene, frame, kids) = framed_scene();
     let view = VecViewState {
         hidden: vec![kids[0]],
-        clips: vec![VecClipSpan {
-            frame,
+        parent_spans: vec![VecParentSpan {
+            parent: frame,
             first: kids[0],
             clip: true,
         }],
@@ -157,8 +157,8 @@ fn a_hidden_frame_draws_no_background_but_still_pairs() {
     let (scene, frame, kids) = framed_scene();
     let view = VecViewState {
         hidden: vec![frame, kids[0], kids[1]],
-        clips: vec![VecClipSpan {
-            frame,
+        parent_spans: vec![VecParentSpan {
+            parent: frame,
             first: kids[0],
             clip: true,
         }],
@@ -179,14 +179,14 @@ fn nested_frames_pair_lifo() {
     let inner = square(&mut scene, 2.0);
     let outer = square(&mut scene, 4.0);
     let view = VecViewState {
-        clips: vec![
-            VecClipSpan {
-                frame: outer,
+        parent_spans: vec![
+            VecParentSpan {
+                parent: outer,
                 first: leaf,
                 clip: true,
             },
-            VecClipSpan {
-                frame: inner,
+            VecParentSpan {
+                parent: inner,
                 first: leaf,
                 clip: true,
             },
@@ -203,16 +203,16 @@ fn nested_frames_pair_lifo() {
 /// desenha na MESMA cena, e uma camada aberta recortaria tudo o que vier depois.
 ///
 /// ⚠️ **A 1ª fixture disto não continha o fenômeno e a mutação SOBREVIVEU:** ela usava uma moldura
-/// que não está na cena (`frame: 9999`), e aí o `resolve` recusa e a camada **nunca abre** — não
+/// que não está na cena (`parent: 9999`), e aí o `resolve` recusa e a camada **nunca abre** — não
 /// havia o que fechar. O caso mal-formado que de fato deixa camada pendurada é o do intervalo
 /// INVERTIDO: abre num path que vem DEPOIS da moldura, então a vez dela já passou.
 #[test]
 fn a_malformed_span_never_leaves_a_layer_open() {
     let (scene, frame, kids) = framed_scene();
     let view = VecViewState {
-        clips: vec![VecClipSpan {
+        parent_spans: vec![VecParentSpan {
             // Invertido: a "moldura" é a primeira da pilha e o intervalo abre na última.
-            frame: kids[0],
+            parent: kids[0],
             first: frame,
             clip: true,
         }],

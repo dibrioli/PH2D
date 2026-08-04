@@ -424,6 +424,21 @@ impl App {
             return;
         }
 
+        // **Esc desiste de um PICK modal armado** (o conta-gotas de caminho-guia, e o *Swap Main*
+        // do componente). Enio, 2026-08-04: *"Esc não desativa Swap Main checado"* — e estava
+        // certo: o abortar existia só no botão DIREITO, e um smoke meu afirmava o contrário.
+        //
+        // ⚠️ Vem entre os Escapes de gesto modal, e pela mesma razão do irmão de cima: com um pick
+        // armado o Esc é inequivocamente sobre ele. Consome só quando há o que desistir, senão o
+        // Esc pararia de dar blur em widget.
+        if state == ElementState::Pressed
+            && !repeat
+            && matches!(physical_key, PhysicalKey::Code(KeyCode::Escape))
+            && self.vec_path_pick.take().is_some()
+        {
+            return;
+        }
+
         // Shape Builder: Escape DESMARCA o que foi pintado, sem tocar na arte. Vem antes do
         // Escape do Pen porque um modo exclui o outro, e este consome só quando há
         // algo pintado para desmarcar (senão o Escape cai no blur de widget, como sempre).

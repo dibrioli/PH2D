@@ -4771,13 +4771,16 @@ impl crate::App {
                     self.vec_history.commit_if_changed(vec_scene);
                 }
             }
-            if let Some(order) = pending_vec_reorder {
-                crate::input_dispatch::apply_vec_reorder(
-                    vec_scene,
-                    &mut self.vec_history,
-                    &self.vec_pen,
-                    order,
-                );
+            // **Os botões Arrange escrevem na ÁRVORE** (Enio, 2026-08-04). Eles chamavam o
+            // `VecScene::reorder_path`, que mexe na ordem do VETOR da cena — e essa é reescrita a
+            // cada frame pela projeção da árvore (ADR-0110), então os quatro estavam MORTOS:
+            // acendiam, mexiam, e o frame seguinte desfazia. O undo é o GLOBAL por diff (a árvore
+            // é `ProjectState`), e não a fila do vetor: `vec_history` guarda a CENA, que aqui não
+            // é onde a verdade está.
+            if let Some(order) = pending_vec_reorder
+                && let Some(sel) = self.vec_pen.selected()
+            {
+                crate::vec_entities::zorder::reorder(sim, &self.vec_entities, sel, order);
             }
             if pending_vec_duplicate {
                 // Offset the clone by a fixed SCREEN distance (px → world) so it's
@@ -6081,7 +6084,7 @@ impl crate::App {
             // MESMO snapshot que acabou de ditar a pilha de z — derivá-lo de outra fonte seria uma
             // segunda resposta a *"em que ordem estas formas estão?"*.
             if let Some(live) = hero_live.as_ref() {
-                vec_view.clips = crate::vec_frame_spans::clip_spans(sim, &live.z_snapshot);
+                vec_view.parent_spans = crate::vec_frame_spans::parent_spans(sim, &live.z_snapshot);
             }
             // **OS TOKENS** (plano UI/UX W4): a tinta que cada binding produz no modo VIGENTE.
             // Resolvido aqui, no passe de DESENHO, e não dentro do `view_state` — aquela porta é
@@ -6431,6 +6434,12 @@ impl crate::App {
                     });
                 let (rows, beyond) = pieces.unwrap_or_default();
                 ph2d_panel_vector::state::set_instance_pieces(rows, beyond);
+                // **O Z-INDEX da seleção** (Enio, 2026-08-04) — o lugar dela na pilha dos IRMÃOS.
+                // Publicado pela MESMA porta que os botões Arrange movem, para o número que o
+                // artista lê ser o lugar que o botão muda.
+                ph2d_panel_vector::state::set_z_index(sel.first().and_then(|id| {
+                    crate::vec_entities::zorder::z_index(sim, &self.vec_entities, *id)
+                }));
                 // **Resize Box** (plano UI/UX W3b): honrar e so' depois publicar, a mesma ordem
                 // dos irmaos acima — publicar antes deixaria a caixa a mostrar o estado ANTERIOR
                 // por um frame, e o artista veria o clique "nao pegar".
@@ -6519,7 +6528,9 @@ impl crate::App {
             // hit-test monta o `VecViewState` dele do zero a cada evento de ponteiro, e aquela
             // porta só sabe o que a ÁRVORE diz (escondido, travado) — sem isto ele decide como se
             // nenhuma moldura existisse e nenhuma forma tivesse sido colocada.
-            self.vec_view_derived.clips.clone_from(&vec_view.clips);
+            self.vec_view_derived
+                .parent_spans
+                .clone_from(&vec_view.parent_spans);
             self.vec_view_derived.poses.clone_from(&vec_view.poses);
             // **O ALINHAMENTO roda por ÚLTIMO, e TRANSFORMA o mapa em vez de o estender.**
             // Os cinco acima são mutuamente exclusivos (um componente cada, um por vez no
@@ -7465,7 +7476,7 @@ impl crate::App {
             // selected sprite and keys only what left its curve. Placed after the
             // apply pass too, so an undo/paste/scrub — which the apply writes back
             // to the world — reads world == curve and keys nothing.
-            // The pass authors on the clock the APPLY drove this frame: the clip
+            // The pass authors on the clock the APPLY drove this parent: the clip
             // playhead in Keys, the CONTAINER playhead inside one, the timeline's on
             // Arrange — the same three-way pick `timeline_bridge::run` made above, from
             // the same stamped facts (`keys_mode` / `container_open`, which the pass
@@ -7909,7 +7920,7 @@ impl crate::App {
 
         // Frame-phase profiler (PH2D_FLUID_PROFILE): the `[fluid]` line proves the
         // fluid drive is ~2 ms, so a 6-fps stall lives elsewhere. This splits the
-        // frame: total vs CPU-encode (raw) → the gap is the present/GPU acquire
+        // parent: total vs CPU-encode (raw) → the gap is the present/GPU acquire
         // stall; plus the painter dispatch (CPU preview produce + upload).
         if frame_prof_on() {
             let n = FRAME_PROF_N.with(|c| {

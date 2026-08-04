@@ -250,5 +250,11 @@ pub(crate) fn route(app: &mut crate::App, f: u32, level: u32) -> bool {
         crate::component_pieces_smoke::frame(app, f);
         return true;
     }
+    // A cena da ORDEM DE Z (=57) — irmã `zorder_smoke`. Duas perguntas de olho: o FILHO aparece
+    // (a lei do Godot) e os botões de z-order fazem alguma coisa (eles escreviam na porta errada).
+    if level == 57 {
+        crate::zorder_smoke::frame(app, f);
+        return true;
+    }
     false
 }

@@ -381,6 +381,7 @@ mod width_handles;
 /// A cena de smoke do **Width Tool** (`PH2D_BUILD_SMOKE=42`) — irmã de `build_smoke`, teto de LOC.
 mod width_tool_smoke;
 mod winit_host;
+mod zorder_smoke;
 
 pub(crate) use app_state::{
     App, AppGfx, HeroLive, ImageEditSnapshot, ImageEditTransaction, is_image_edit_tool,

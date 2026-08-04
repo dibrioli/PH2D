@@ -13,8 +13,8 @@ use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
 use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::widget::panel_chrome::{SECTION_LABEL_TO_CONTROL_PX, paint_segmented_button};
 use ph2d_editor_core::widget::{
-    Button, ButtonKind, ButtonState, ColorSwatch, SectionHeader, SwatchSize, paint_button,
-    paint_color_swatch, paint_section_header,
+    ButtonKind, ButtonState, ColorSwatch, SectionHeader, SwatchSize, paint_color_swatch,
+    paint_section_header,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
@@ -531,63 +531,5 @@ impl BodyCtx<'_> {
             y = self.row2(w, gap, [(a.0, a.1), (b.0, b.1)], y);
         }
         self.compound_row(y)
-    }
-
-    /// Seção **ARRANGE** — Duplicate + z-order (2×2) + Flip + Rotate. Age sobre o path
-    /// selecionado (comandos de documento pelo dreno da shell).
-    pub(crate) fn arrange_section(&mut self, y: f32) -> f32 {
-        let (mut y, collapsed) = self.section_header(
-            ids::VECTOR_SECTION_ARRANGE,
-            tr("panel.vector.section.arrange"),
-            y,
-        );
-        if collapsed {
-            return y;
-        }
-        y = self.action_button(ids::VECTOR_ARRANGE_DUPLICATE, "Duplicate", y);
-        // Z-order: 2×2 grid — To Back | To Front · Backward | Forward.
-        let zorder = [
-            (ids::VECTOR_ARRANGE_TO_BACK, "To Back"),
-            (ids::VECTOR_ARRANGE_TO_FRONT, "To Front"),
-            (ids::VECTOR_ARRANGE_BACKWARD, "Backward"),
-            (ids::VECTOR_ARRANGE_FORWARD, "Forward"),
-        ];
-        let z_cols = 2usize;
-        let z_gap = Spacing::Sm.px();
-        let z_w = ((self.inner_w - z_gap * (z_cols as f32 - 1.0)) / z_cols as f32).max(1.0);
-        let z_top = y;
-        for (i, (id, label)) in zorder.iter().enumerate() {
-            let rx = self.inner_x + (i % z_cols) as f32 * (z_w + z_gap);
-            let ry = z_top + (i / z_cols) as f32 * (self.row_h + z_gap);
-            let rect = Rect::new(rx, ry, z_w, self.row_h);
-            let bstate = self.store.button_state(*id).unwrap_or(ButtonState::Normal);
-            let btn = Button::new(*id, *label)
-                .kind(ButtonKind::Default)
-                .state(bstate);
-            paint_button(&btn, rect, self.scene, self.text_system, self.theme);
-            self.hit_index.register(*id, rect);
-        }
-        let z_rows = zorder.len().div_ceil(z_cols) as f32;
-        y = z_top + z_rows * self.row_h + (z_rows - 1.0) * z_gap + self.row_gap;
-
-        // Flip (mirror) + Rotate (90°) — each a 2-col row of action buttons.
-        y = self.row2(
-            z_w,
-            z_gap,
-            [
-                (ids::VECTOR_ARRANGE_FLIP_H, "Flip H"),
-                (ids::VECTOR_ARRANGE_FLIP_V, "Flip V"),
-            ],
-            y,
-        );
-        self.row2(
-            z_w,
-            z_gap,
-            [
-                (ids::VECTOR_ARRANGE_ROTATE_CW, "Rotate CW"),
-                (ids::VECTOR_ARRANGE_ROTATE_CCW, "Rotate CCW"),
-            ],
-            y,
-        )
     }
 }

@@ -1,7 +1,12 @@
-//! Subsection painters for the Vector Style panel: the Smooth / Sharpen /
-//! Simplify / Subdivide reshape buttons, the Fill-type + Fill-rule selectors and
-//! the Make/Release Compound row. Split from `paint_sections` to keep that file
-//! under the 600-LOC panel cap; it's an `impl BodyCtx` block over there.
+//! Subsection painters for the Vector Style panel: **a seção ARRANGE** (o Z-index, os quatro
+//! botões de z-order, Flip e Rotate), os botões de reshape (Smooth / Sharpen / Simplify /
+//! Subdivide), os seletores de Fill-type + Fill-rule e a linha Make/Release Compound. Split from
+//! `paint_sections` to keep that file under the 600-LOC panel cap; it's an `impl BodyCtx` block
+//! over there.
+//!
+//! ⚠️ A `arrange_section` mudou-se para cá quando o READOUT do Z-index (Enio, 2026-08-04) levou o
+//! `paint_sections` a 602 — e o corte é por ASSUNTO, não por tamanho: este arquivo já se chamava
+//! `paint_arrange`, e a seção que lhe dá o nome vivia noutro sítio.
 
 use crate::paint_sections::BodyCtx;
 use crate::state::{FillKind, PathFillRule};
@@ -19,6 +24,73 @@ use ph2d_tokens::{ColorToken, Spacing, TypeToken};
 const FULL_TURN_DEG: f64 = 360.0; // LITERAL-PX-OK: degrees in a full turn (math constant)
 
 impl BodyCtx<'_> {
+    /// Seção **ARRANGE** — Duplicate + z-order (2×2) + Flip + Rotate. Age sobre o path
+    /// selecionado (comandos de documento pelo dreno da shell).
+    pub(crate) fn arrange_section(&mut self, y: f32) -> f32 {
+        let (mut y, collapsed) = self.section_header(
+            ids::VECTOR_SECTION_ARRANGE,
+            tr("panel.vector.section.arrange"),
+            y,
+        );
+        if collapsed {
+            return y;
+        }
+        y = self.action_button(ids::VECTOR_ARRANGE_DUPLICATE, "Duplicate", y);
+        // **O Z-INDEX** (Enio, 2026-08-04) — o lugar da forma na pilha dos IRMÃOS dela, com maior
+        // = mais à frente (a convenção do Godot). ⚠️ É um READOUT e não um campo: o número é
+        // DERIVADO da árvore (ADR-0110), e um campo que o escrevesse seria uma segunda maneira de
+        // pedir o que os quatro botões abaixo já pedem — com a obrigação de re-derivar o mesmo
+        // clamp. O que ele existe para responder é *"onde eu estou, e quantos há?"*, que sem ele
+        // se descobre carregando num botão e vendo se alguma coisa mudou.
+        if let Some((z, n)) = state::z_index() {
+            y = self.label_line(&format!("{} {z} / {n}", tr("panel.vector.arrange.z")), y);
+        }
+        // Z-order: 2×2 grid — To Back | To Front · Backward | Forward.
+        let zorder = [
+            (ids::VECTOR_ARRANGE_TO_BACK, "To Back"),
+            (ids::VECTOR_ARRANGE_TO_FRONT, "To Front"),
+            (ids::VECTOR_ARRANGE_BACKWARD, "Backward"),
+            (ids::VECTOR_ARRANGE_FORWARD, "Forward"),
+        ];
+        let z_cols = 2usize;
+        let z_gap = Spacing::Sm.px();
+        let z_w = ((self.inner_w - z_gap * (z_cols as f32 - 1.0)) / z_cols as f32).max(1.0);
+        let z_top = y;
+        for (i, (id, label)) in zorder.iter().enumerate() {
+            let rx = self.inner_x + (i % z_cols) as f32 * (z_w + z_gap);
+            let ry = z_top + (i / z_cols) as f32 * (self.row_h + z_gap);
+            let rect = Rect::new(rx, ry, z_w, self.row_h);
+            let bstate = self.store.button_state(*id).unwrap_or(ButtonState::Normal);
+            let btn = Button::new(*id, *label)
+                .kind(ButtonKind::Default)
+                .state(bstate);
+            paint_button(&btn, rect, self.scene, self.text_system, self.theme);
+            self.hit_index.register(*id, rect);
+        }
+        let z_rows = zorder.len().div_ceil(z_cols) as f32;
+        y = z_top + z_rows * self.row_h + (z_rows - 1.0) * z_gap + self.row_gap;
+
+        // Flip (mirror) + Rotate (90°) — each a 2-col row of action buttons.
+        y = self.row2(
+            z_w,
+            z_gap,
+            [
+                (ids::VECTOR_ARRANGE_FLIP_H, "Flip H"),
+                (ids::VECTOR_ARRANGE_FLIP_V, "Flip V"),
+            ],
+            y,
+        );
+        self.row2(
+            z_w,
+            z_gap,
+            [
+                (ids::VECTOR_ARRANGE_ROTATE_CW, "Rotate CW"),
+                (ids::VECTOR_ARRANGE_ROTATE_CCW, "Rotate CCW"),
+            ],
+            y,
+        )
+    }
+
     /// A labelled segmented button row (sibling of `segmented3`).
     ///
     /// ⚠️ **Ela REFLUI**: uma fileira que não cabe quebra em linhas, em vez de espremer os

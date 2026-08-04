@@ -165,14 +165,14 @@ pub fn dispatch(
     target: &mut VectorScene,
 ) {
     // As MOLDURAS abertas (`frame_clip`). Vazio no caminho comum, e então tudo abaixo é o desenho
-    // de sempre — `open_at` e `close_if_frame` não fazem nada sem `view.clips`.
-    let mut frames = frame_clip::OpenFrames::default();
+    // de sempre — `open_at` e `close_if_parent` não fazem nada sem `view.parent_spans`.
+    let mut frames = frame_clip::OpenParents::default();
     for path in scene.paths() {
         // ⚠️ ANTES do filtro de escondido: push e pop de camada têm de se emparelhar mesmo quando
         // o conteúdo não desenha (ver `frame_clip`).
         frames.open_at(path.id, scene, view, xforms, live, camera, target);
         // A vez da moldura é a de FECHAR — o desenho dela já saiu, como fundo, na abertura.
-        if frames.close_if_frame(path.id, target) {
+        if frames.close_if_parent(path.id, target) {
             continue;
         }
         if view.is_hidden(path.id) {

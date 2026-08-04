@@ -180,7 +180,7 @@ pub(crate) fn view_state_for_pick(
     derived: &VecViewState,
 ) -> VecViewState {
     let mut v = view_state(sim, map);
-    v.clips.clone_from(&derived.clips);
+    v.parent_spans.clone_from(&derived.parent_spans);
     v.poses.clone_from(&derived.poses);
     v
 }

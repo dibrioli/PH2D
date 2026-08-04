@@ -203,8 +203,8 @@ fn a_click_inside_a_frame_lands_on_the_child_not_the_frame() {
     map.insert(kid, ke.to_bits());
 
     let vs = VecViewState {
-        clips: vec![ph2d_vec_scene::VecClipSpan {
-            frame,
+        parent_spans: vec![ph2d_vec_scene::VecParentSpan {
+            parent: frame,
             first: kid,
             clip: false, // uma moldura de LAYOUT: e' fundo, nao recorta
         }],

@@ -203,15 +203,17 @@ pub(crate) fn pick_all_at_world(
 /// descendente de `a`, **mais o próprio `b`**, logo a contagem de `a` é estritamente maior. A
 /// ordenação é ESTÁVEL, então dois irmãos sem parentesco mantêm a ordem de z que já tinham.
 ///
-/// ⚠️ **Só quem o renderer antecipou é demovido.** Uma forma qualquer com uma forma filha NÃO é
-/// antecipada — ela desenha na frente —, e demovê-la aqui faria o apontar discordar do desenho
-/// pelo outro lado, que é exactamente o defeito que esta função existe para fechar.
+/// ⚠️ **Só quem o renderer antecipou é demovido, e a lista é a MESMA que ele consome.** Desde que
+/// o filho passou a desenhar sobre o pai (a lei de Godot), *todo* pai com descendente vetorial é
+/// antecipado — e por perguntar à lista, e não a um predicado próprio, o apontar acompanhou a
+/// mudança do desenho **sem uma linha aqui**. Um segundo predicado (*"tem filhos?"*) responderia
+/// hoje o mesmo e divergiria no dia em que a antecipação ganhasse uma condição.
 fn demote_hoisted_frames(
     sim: &SimWorld,
     view_state: &VecViewState,
     hits: &mut [(u64, ph2d_vec_scene::VecPathId)],
 ) {
-    let hoisted = |id| view_state.clips.iter().any(|c| c.frame == id);
+    let hoisted = |id| view_state.parent_spans.iter().any(|c| c.parent == id);
     let depth_below = |me: u64, id| {
         if !hoisted(id) {
             return 0usize;

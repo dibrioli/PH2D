@@ -274,6 +274,9 @@ pub fn tr(key: &str) -> &'static str {
         "panel.vector.section.expand" => "Expand",
         "panel.vector.section.align" => "Align",
         "panel.vector.section.arrange" => "Arrange",
+        // **O Z-INDEX** — o lugar da forma na pilha dos IRMÃOS, maior = mais à frente
+        // (a convenção do Godot/Unity). Readout: o numero e' derivado da arvore.
+        "panel.vector.arrange.z" => "Z",
         "panel.vector.section.path" => "Path",
         "panel.vector.section.text" => "Text",
         "panel.vector.section.font" => "Font",

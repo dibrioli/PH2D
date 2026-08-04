@@ -2,7 +2,7 @@
 //! precisa saber sobre contêineres.
 //!
 //! A moldura é um retângulo vivo que ganhou `ph2d_ecs::VecFrame` (o componente mora no ECS; aqui só
-//! chega o resultado, como `VecClipSpan` dentro do `VecViewState`). Ela faz DUAS coisas com a pilha
+//! chega o resultado, como `VecParentSpan` dentro do `VecViewState`). Ela faz DUAS coisas com a pilha
 //! de z, e as duas acontecem no mesmo lugar:
 //!
 //! 1. **O preenchimento dela é o FUNDO.** O DFS lista o pai antes dos filhos e a pilha de z é o
@@ -29,13 +29,13 @@ use crate::{LiveGeometry, build::build_fill_bezpath, fill_rule, path_to_screen};
 /// o que permite ao [`crate::dispatch`] responder *"a vez deste path é a de fechar?"* sem procurar
 /// nada.
 #[derive(Default)]
-pub(crate) struct OpenFrames {
+pub(crate) struct OpenParents {
     /// A moldura aberta e **se ela empurrou camada** — uma que só serve de fundo não empurrou, e
     /// dar-lhe um `pop_layer` fecharia a camada de outra pessoa.
     stack: Vec<(VecPathId, bool)>,
 }
 
-impl OpenFrames {
+impl OpenParents {
     /// Abre toda moldura cujo intervalo começa em `id`: desenha o fundo dela (se ela não estiver
     /// escondida) e empurra a camada de clip.
     ///
@@ -56,11 +56,11 @@ impl OpenFrames {
         camera: Affine,
         target: &mut VectorScene,
     ) {
-        for span in view.clips_opening_at(id) {
-            let Some((path, xf)) = resolve(scene, xforms, live, span.frame, camera) else {
+        for span in view.spans_opening_at(id) {
+            let Some((path, xf)) = resolve(scene, xforms, live, span.parent, camera) else {
                 continue;
             };
-            if !view.is_hidden(span.frame) {
+            if !view.is_hidden(span.parent) {
                 crate::draw_path(path, xf, target);
             }
             // ⚠️ **Desenhar na abertura é incondicional; recortar não.** As duas metades vinham
@@ -73,7 +73,7 @@ impl OpenFrames {
                 // pelo furo, e sob `NonZero` o furo ainda tomaria tinta.
                 target.push_clip_with_rule(&bp, fill_rule(path));
             }
-            self.stack.push((span.frame, span.clip));
+            self.stack.push((span.parent, span.clip));
         }
     }
 
@@ -84,7 +84,7 @@ impl OpenFrames {
     /// também já foi desenhada, e desenhá-la outra vez aqui a poria por cima do conteúdo — que é
     /// exactamente o defeito que o intervalo dela existe para curar. O `pop_layer` é que anda com
     /// o `clip`.
-    pub(crate) fn close_if_frame(&mut self, id: VecPathId, target: &mut VectorScene) -> bool {
+    pub(crate) fn close_if_parent(&mut self, id: VecPathId, target: &mut VectorScene) -> bool {
         if self.stack.last().is_some_and(|(f, _)| *f == id) {
             if let Some((_, clipped)) = self.stack.pop()
                 && clipped

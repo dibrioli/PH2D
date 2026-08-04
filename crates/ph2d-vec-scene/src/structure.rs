@@ -13,7 +13,7 @@
 
 use crate::{VecPath, VecPathId, VecScene};
 
-/// O que a árvore do editor diz sobre os paths neste frame: quais estão
+/// O que a árvore do editor diz sobre os paths neste parent: quais estão
 /// escondidos e quais estão travados (já com a herança dos ancestrais resolvida).
 ///
 /// O documento não sabe disso — é a shell que projeta o ECS aqui, uma vez por
@@ -31,7 +31,7 @@ pub struct VecViewState {
     /// descendente mais ao fundo é o mesmo para as duas), e a camada de clip é uma pilha: abrir a
     /// de dentro primeiro fecharia na ordem errada. Quem produz esta lista caminha a árvore de
     /// cima para baixo, e é isso que torna o emparelhamento LIFO correto por construção.
-    pub clips: Vec<VecClipSpan>,
+    pub parent_spans: Vec<VecParentSpan>,
     /// **A tinta que os TOKENS produzem neste modo** (`ph2d_ecs::VecBindings` resolvido contra o
     /// tema vigente). Vazio = nada bindado, e o desenho é **byte-idêntico** ao mundo pré-token.
     ///
@@ -76,9 +76,9 @@ pub struct VecViewState {
 ///    que ela precisa de tratamento: o preenchimento dela é o **fundo** do card, e tem de ser
 ///    desenhado ao ABRIR o intervalo, não ao chegar a vez dela.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct VecClipSpan {
+pub struct VecParentSpan {
     /// A moldura: a silhueta que recorta, e o preenchimento que faz de fundo.
-    pub frame: VecPathId,
+    pub parent: VecPathId,
     /// O descendente mais ao FUNDO — onde o intervalo abre.
     pub first: VecPathId,
     /// A moldura **RECORTA** o conteúdo, ou só lhe serve de fundo?
@@ -135,8 +135,8 @@ impl VecViewState {
     }
 
     /// As molduras cujo intervalo ABRE neste path, na ordem de fora para dentro.
-    pub fn clips_opening_at(&self, id: VecPathId) -> impl Iterator<Item = &VecClipSpan> {
-        self.clips.iter().filter(move |c| c.first == id)
+    pub fn spans_opening_at(&self, id: VecPathId) -> impl Iterator<Item = &VecParentSpan> {
+        self.parent_spans.iter().filter(move |c| c.first == id)
     }
 }
 

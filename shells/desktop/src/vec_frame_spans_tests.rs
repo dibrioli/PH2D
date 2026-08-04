@@ -9,16 +9,16 @@ use ph2d_ecs::scene::{HierarchyWalkState, build_hierarchy_snapshot};
 use ph2d_ecs::{ChildOf, Transform, VecPathRef};
 
 /// Os intervalos E a pilha de z do mesmo mundo, pelas duas portas do produto.
-fn spans_and_z(sim: &mut SimWorld) -> (Vec<VecClipSpan>, Vec<u64>) {
+fn spans_and_z(sim: &mut SimWorld) -> (Vec<VecParentSpan>, Vec<u64>) {
     let mut state = HierarchyWalkState::new(sim.world_mut());
     let mut scratch = Vec::new();
     let mut snap = HierarchySnapshot::default();
     build_hierarchy_snapshot(sim.world(), &mut state, &mut scratch, &mut snap);
     let z = crate::vec_entities::z_order(&snap);
-    (clip_spans(sim, &snap), z)
+    (parent_spans(sim, &snap), z)
 }
 
-fn spans_of(sim: &mut SimWorld) -> Vec<VecClipSpan> {
+fn spans_of(sim: &mut SimWorld) -> Vec<VecParentSpan> {
     spans_and_z(sim).0
 }
 
@@ -50,7 +50,7 @@ fn the_span_opens_at_the_descendant_that_draws_first() {
     let (mut sim, frame, kids, _) = scene(3, true);
     let (spans, z) = spans_and_z(&mut sim);
     assert_eq!(spans.len(), 1, "uma moldura que recorta, um intervalo");
-    assert_eq!(spans[0].frame, frame);
+    assert_eq!(spans[0].parent, frame);
 
     let bottom = *z
         .iter()
@@ -127,12 +127,80 @@ fn nested_frames_come_outermost_first() {
 
     let spans = spans_of(&mut sim);
     assert_eq!(spans.len(), 2);
-    assert_eq!(spans[0].frame, 10, "a de FORA primeiro");
-    assert_eq!(spans[1].frame, 20);
+    assert_eq!(spans[0].parent, 10, "a de FORA primeiro");
+    assert_eq!(spans[1].parent, 20);
     // As duas abrem no MESMO path (o neto é o único descendente vetorial de ambas) — é exatamente
     // o caso em que a ordem decide se o LIFO fecha certo.
     assert_eq!(spans[0].first, 30);
     assert_eq!(spans[1].first, 30);
+}
+
+/// Uma cena SEM moldura nenhuma: o retângulo `100` com um filho vetorial, e um vizinho raiz.
+fn plain_parent() -> (SimWorld, u64, u64) {
+    let mut sim = SimWorld::new();
+    let w = sim.world_mut();
+    w.spawn((Transform::default(), VecPathRef(900)));
+    let parent = w.spawn((Transform::default(), VecPathRef(100))).id();
+    w.spawn((Transform::default(), VecPathRef(200), ChildOf(parent)));
+    (sim, 100, 200)
+}
+
+/// **A LEI: o filho desenha SOBRE o pai** — e o pai não precisa de ser uma moldura.
+///
+/// ⚠️ Este gate nasceu de um relato do Enio (2026-08-04) e da constatação de que **nada o
+/// pinava**: a suíte inteira ficou verde quando a antecipação deixou de ser gateada em `VecFrame`,
+/// porque toda fixture de intervalo tinha uma moldura. O defeito viveu no vão entre duas
+/// asserções, cada uma certa sozinha.
+///
+/// A mutação que o mata é voltar a exigir `VecFrame` para haver intervalo: aí uma forma com uma
+/// forma filha pinta por cima dela, e o artista vê a filha desaparecer.
+#[test]
+fn a_plain_parent_is_a_backdrop_too_so_the_child_draws_over_it() {
+    let (mut sim, parent, kid) = plain_parent();
+    let (spans, z) = spans_and_z(&mut sim);
+    assert_eq!(
+        spans.len(),
+        1,
+        "um pai comum com um filho vetorial tem de ter intervalo: sem ele o desenho dele nao e' \
+         antecipado e ele cobre o proprio filho"
+    );
+    assert_eq!(spans[0].parent, parent);
+    assert_eq!(spans[0].first, kid, "o intervalo abre no filho");
+    // E a pilha continua a listar o pai por ÚLTIMO — a lei mora na ANTECIPAÇÃO, não na ordem:
+    // pôr o contêiner no fundo da própria sub-árvore desemparelharia o push/pop do recorte.
+    let (pk, pp) = (
+        z.iter().position(|id| *id == kid),
+        z.iter().position(|id| *id == parent),
+    );
+    assert!(pk < pp, "a pilha deixou de pôr o pai por ultimo");
+}
+
+/// **Só uma MOLDURA recorta** — a metade que continua a ser pergunta de `VecFrame`.
+///
+/// ⚠️ Sem ela, generalizar a antecipação passaria a recortar em toda forma que tem filhos, e o
+/// sintoma seria arte a sumir na borda de qualquer pai.
+#[test]
+fn a_plain_parent_backdrops_but_does_not_clip() {
+    let (mut sim, _, _) = plain_parent();
+    let spans = spans_of(&mut sim);
+    assert!(
+        !spans[0].clip,
+        "um pai comum passou a RECORTAR: o `clip` deixou de ser pergunta de moldura"
+    );
+    // O controle: uma moldura que recorta continua a recortar.
+    let (mut sim, _, _, _) = scene(1, true);
+    assert!(spans_of(&mut sim)[0].clip, "a moldura deixou de recortar");
+}
+
+/// **Uma folha não tem intervalo** — nem uma raiz sem filhos, nem um filho.
+///
+/// ⚠️ É a metade da AUSÊNCIA: sem ela, *"todo path tem intervalo"* passaria neste arquivo, e cada
+/// forma da cena abriria e fecharia em cima de si mesma.
+#[test]
+fn a_leaf_gets_no_span() {
+    let (mut sim, _, _) = plain_parent();
+    let spans = spans_of(&mut sim);
+    assert_eq!(spans.len(), 1, "so' o PAI tem intervalo: {spans:?}");
 }
 
 /// Um vizinho fora da moldura não entra no intervalo. Sem isto o recorte comeria a cena inteira.

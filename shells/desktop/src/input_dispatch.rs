@@ -342,24 +342,6 @@ pub(crate) fn apply_vec_duplicate(
     eprintln!("[ph2d-vec] duplicate: {} path(s)", new_ids.len());
 }
 
-/// Restack the SELECTED path (panel Arrange z-order buttons), recording ONE undo
-/// step iff the position changed. Free fn (mirror of [`apply_vec_boolean`]).
-pub(crate) fn apply_vec_reorder(
-    scene: &mut ph2d_vec_scene::VecScene,
-    history: &mut ph2d_vec_edit::History,
-    pen: &ph2d_vec_edit::PenTool,
-    order: ph2d_vec_scene::ZOrder,
-) {
-    let Some(sel) = pen.selected() else {
-        eprintln!("[ph2d-vec] arrange: nenhum path selecionado");
-        return;
-    };
-    let pre = scene.clone();
-    if scene.reorder_path(sel, order) {
-        history.push_undo(pre);
-    }
-}
-
 /// Map a Vector-panel Arrange z-order button `NodeId` to its [`ph2d_vec_scene::ZOrder`]
 /// (`None` for any other id, incl. Duplicate). Pure — unit-tested; called from
 /// the render_loop drain.

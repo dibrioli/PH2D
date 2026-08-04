@@ -130,7 +130,8 @@ fn announce(app: &mut crate::App) {
     eprintln!("     um componente (selecione-a e **Create Component**). A copia passa a desenhar");
     eprintln!("     a pilula; as outras continuam botoes. ⚠️ Os overrides que ela tinha caem, e o");
     eprintln!("     terminal diz quantos: as pecas do mestre antigo nao existem no novo.");
-    eprintln!("  6. **Esc** durante o Swap desiste, e clicar no vazio tambem.");
+    eprintln!("  6. **Esc** durante o Swap desiste — e o botao volta a dizer 'Swap Main'. O");
+    eprintln!("     botao DIREITO e um clique no vazio tambem desistem.");
     eprintln!("  7. ⚠️ **O CONTROLE**: o quadrado CINZA nunca virou nada e tem de estar");
     eprintln!("     exactamente onde nasceu, em todos os passos.");
 }

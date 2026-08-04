@@ -741,6 +741,39 @@ editar o mestre re-veste as 12; um override de texto sobrevive.
 
 ---
 
+### Z-ORDER — o filho desenha SOBRE o pai, e os botões Arrange voltam a viver ✅ **(2026-08-04)**
+
+> Enio: *"o filho é desenhado por trás do pai e fica sobreposto e não visível … em game engines
+> como Godot os filhos são renderizados acima dos pais"*, e *"faça os botões da seção serem capazes
+> de modificar o Z index"*.
+>
+> - **A LEI.** A pilha de z é o DFS invertido, então ela põe o pai NA FRENTE dos filhos. A cura já
+>   existia — o renderer ANTECIPA o desenho do pai para a abertura do intervalo dele — mas estava
+>   gateada em `VecFrame`. ⚠️ A premissa de então (*"invisível para um grupo, fatal para uma
+>   moldura"*) estava **errada**: um pai comum tem geometria como qualquer caminho, e cobria os
+>   filhos exactamente do mesmo jeito. Hoje **todo pai com descendente vetorial** tem intervalo; o
+>   `clip` continua a ser pergunta de moldura.
+> - ⚠️ **A lei NÃO se impõe no `z_order`.** Pôr o contêiner no fundo da própria sub-árvore foi
+>   tentado e reprovado: é ele o ÚLTIMO membro dela que emparelha o `push_clip` da abertura com o
+>   `pop_layer` da vez dele. O que se antecipa é o DESENHO, não o lugar na pilha.
+> - **O APONTAR seguiu sem uma linha.** O `demote_hoisted_frames` do pick pergunta à MESMA lista, e
+>   não a um predicado próprio — então o clique passou a preferir o filho no mesmo commit em que o
+>   desenho passou. Um segundo predicado responderia hoje o mesmo e divergiria amanhã.
+> - **O Z-INDEX** é o lugar da forma na pilha dos IRMÃOS, **maior = mais à frente** (Godot/Unity), e
+>   é **DERIVADO** da árvore: um `z_index` guardado seria a segunda resposta a *"quem está na
+>   frente?"* e divergiria no primeiro reparent. Readout `Z n / N` na Arrange.
+> - **Os quatro botões estavam MORTOS**, e o cabeçalho do `vec_zorder` já dizia porquê: eles
+>   chamavam `VecScene::reorder_path`, que mexe na ordem do VETOR da cena — reescrita a cada frame
+>   pela projeção. Acendiam, mexiam, e o frame seguinte desfazia. Hoje escrevem na ÁRVORE:
+>   `RootOrder` para raízes, a sequência do `Children` para filhos (⚠️ *"escreva no `RootOrder`"*
+>   estava certo pela metade — um filho não tem `RootOrder`).
+> - **Renomes de honestidade:** `VecClipSpan` → `VecParentSpan` (campo `frame` → `parent`),
+>   `VecViewState.clips` → `parent_spans`, `clip_spans` → `parent_spans`. O tipo deixou de nomear a
+>   metade OPCIONAL do que faz.
+> - **Zero schema, zero ADR, zero dep.** Smoke **`=57`**.
+
+---
+
 ### W6 — O VÍNCULO COM O WIDGET (a metade funcional)
 
 **O quê.** O degrau que transforma *"desenho de UI"* em *"UI"*. Ver §2 para o porquê da forma.
@@ -1003,6 +1036,7 @@ escreveu**:
 | **W3** ✅ | âncoras | +1 (**47**) | — | — | — | `=52` |
 | **W5a** ✅ | mestre + instância + override esparso | +2 (**50**) | — | — | — | `=53` |
 | **W5b** ✅ | a lista de PEÇAS (a porta do override) · Update Main · Swap | — | — | — | — | `=56` |
+| **Z-order** ✅ | o filho desenha SOBRE o pai (a lei do Godot) + o Z-index na Arrange | — | — | — | — | `=57` |
 | **W5c** | variants/props (o `VecInstance.props` que ficou de fora) | — | ⚠️ **bump** | — | sim (prefab) | — |
 | **W6** | vínculo com o widget | +1 (50) | — | — | sim (§2) | `=54` |
 | **W7** | estados + Smart Animate | — | `DOC_VERSION` | — | sim (HSM) | `=55` |

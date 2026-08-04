@@ -63,6 +63,37 @@ fn the_picked_colour_is_read_back_onto_the_piece() {
     );
 }
 
+/// **O Esc DESISTE de um pick armado.**
+///
+/// ⚠️ Enio, 2026-08-04: *"Esc não desativa Swap Main checado"* — e estava certo. O abortar existia
+/// só no botão DIREITO, e o roteiro do smoke `=56` que eu escrevi **afirmava o contrário**: um
+/// gesto modal cuja única saída é uma tecla que o roteiro não nomeia é um gesto de que o artista
+/// não sabe sair. O gate mora aqui porque a cadeia de Escapes é uma ORDEM dentro do laço de
+/// teclado, e nenhum teste de unidade a alcança.
+#[test]
+fn escape_gives_up_an_armed_pick() {
+    let s = src("input_dispatch/keyboard.rs");
+    let at = s
+        .find("self.vec_path_pick.take().is_some()")
+        .expect("o Esc deixou de desistir de um pick armado — o artista fica preso no conta-gotas");
+    // ⚠️ Ele TEM de consumir: um Esc que desarma e deixa passar daria blur num widget que o
+    // artista não estava a editar, no mesmo toque.
+    assert!(
+        s[at..at + 120].contains("return;"),
+        "o Esc desarma o pick e deixa o evento seguir"
+    );
+    // E vem ANTES do Escape do Pen: com um pick armado o Esc é sobre ele, não sobre um caminho.
+    //
+    // ⚠️ A âncora do Pen é o `finish()`, e não o `is_drawing()`: o segundo aparece TAMBÉM numa
+    // guarda muito acima (um atalho que só corre sem caneta em curso), e ancorar nele fez este
+    // gate reprovar código correto na primeira corrida — o `at < pen` comparava com o sítio
+    // errado. Um anchor tem de ser único no que ele nomeia.
+    let pen = s
+        .find("self.vec_pen.finish();")
+        .expect("o Escape do Pen mudou de forma — reancore este gate");
+    assert!(at < pen, "o Esc do pick tem de preceder o do Pen");
+}
+
 /// **O Swap ARMA o pick modal, e o clique seguinte é dele.**
 ///
 /// ⚠️ Sem o arm o botão é um clique que não faz nada; e sem a variante entrar no `PathPick` o

@@ -3,14 +3,14 @@
 //!
 //! # Por que este arquivo existe
 //!
-//! Os intervalos das molduras (`VecClipSpan`) e as poses do auto layout são resultado do passe de
+//! Os intervalos dos PAIS (`VecParentSpan`) e as poses do auto layout são resultado do passe de
 //! LAYOUT, que roda no desenho. O hit-test monta o `VecViewState` dele **do zero** a cada evento
 //! de ponteiro, e a porta que ele usava (`vec_entities::view_state`) só sabe o que a ÁRVORE diz —
 //! escondido e travado. As duas listas chegavam VAZIAS, e o gesto decidia como se nenhuma moldura
 //! existisse e nenhuma forma tivesse sido colocada.
 //!
-//! ⚠️ **Isto já aconteceu, e passou despercebido por um commit inteiro.** A demoção da moldura no
-//! pick (para o clique pegar o filho) lê `view_state.clips`; os gates dela montam o `clips` À MÃO
+//! ⚠️ **Isto já aconteceu, e passou despercebido por um commit inteiro.** A demoção do PAI no
+//! pick (para o clique pegar o filho) lê `view_state.parent_spans`; os gates dela montam a lista À MÃO
 //! e ficaram verdes, enquanto no produto a lista era vazia e a cura era **inerte**. Um gate de
 //! unidade é cego à fiação da shell — este é o par dele.
 
@@ -83,12 +83,20 @@ fn walk(dir: &str) -> Vec<String> {
 #[test]
 fn the_draw_pass_publishes_the_facts_it_derived() {
     let src = read("src/render_loop/mod.rs");
+    // ⚠️ **Sem espaço em branco dos dois lados**, e a razão é que este gate já expirou uma vez por
+    // isso: o campo mudou de nome (`clips` → `parent_spans`, a wave em que TODO pai passou a ser
+    // fundo do próprio conteúdo), o `rustfmt` quebrou a linha no ponto, e a agulha deixou de casar
+    // com código correto. O que se afirma é *"esta linha existe"*, não *"ela cabe numa linha"*.
+    let flat: String = src.chars().filter(|c| !c.is_whitespace()).collect();
     for (what, needle) in [
-        ("os intervalos das molduras", "self.vec_view_derived.clips"),
+        (
+            "os intervalos dos PAIS",
+            "self.vec_view_derived.parent_spans",
+        ),
         ("as poses do auto layout", "self.vec_view_derived.poses"),
     ] {
         assert!(
-            src.contains(needle),
+            flat.contains(needle),
             "o passe de desenho nao publica {what} — quem aponta nunca os vera'"
         );
     }

@@ -89,3 +89,23 @@ pub fn set_component_state(state: Option<ComponentState>) {
 pub(crate) fn component_state() -> Option<ComponentState> {
     COMPONENT.with(Cell::get)
 }
+
+thread_local! {
+    /// **O Z-INDEX da seleção** — `(z, quantos irmãos)`, com maior = mais à FRENTE.
+    ///
+    /// ⚠️ Mora aqui, no arquivo dos componentes, e não num state próprio: é a mesma classe de
+    /// facto (algo que só a shell sabe, projetado do ECS por frame) e um arquivo por escalar seria
+    /// o oposto do corte por assunto que este painel segue. `None` = seleção sem resposta (nada
+    /// selecionado, ou mais de uma forma).
+    static Z_INDEX: Cell<Option<(u32, u32)>> = const { Cell::new(None) };
+}
+
+/// Publica o Z-index da seleção (shell → painel).
+pub fn set_z_index(z: Option<(u32, u32)>) {
+    Z_INDEX.with(|c| c.set(z));
+}
+
+/// O Z-index da seleção — `None` = não há resposta única.
+pub(crate) fn z_index() -> Option<(u32, u32)> {
+    Z_INDEX.with(Cell::get)
+}

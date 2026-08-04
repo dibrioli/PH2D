@@ -205,6 +205,12 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    // CPU-only: this node reads `falloff` only at eval runtime (no GPU kernel), so the
+    // diagnoser cannot derive the role from a `ColumnBinding` — declare it (ADR-0155).
+    reg.register_couplings(
+        MANIFEST.id,
+        &[ph2d_node_registry::Coupling::Consumes("falloff")],
+    );
     Ok(())
 }
 

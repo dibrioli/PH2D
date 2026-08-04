@@ -93,6 +93,9 @@ enum HealKind {
 /// integrators were inserted (0 = nothing to do). The caller gates this on a
 /// constructive-only batch.
 pub(super) fn heal_setup(motion: &mut MotionState, toasts: &mut ToastQueue) -> usize {
+    if !motion.node_help_enabled {
+        return 0; // node help off (ADR-0155): the toolbar chip turned the system off
+    }
     // Plan every inert insert-fixable producer that reaches a sink, on the original
     // graph, deduped by chain head (many inert forces in one chain heal once).
     let mut plans: Vec<HealPlan> = Vec::new();
@@ -152,6 +155,9 @@ pub(super) fn heal_setup(motion: &mut MotionState, toasts: &mut ToastQueue) -> u
 /// for the wiring to finish. Computed fresh from the current graph, so it is always what the
 /// wiring now says (the panel paints from this, via the snapshot).
 pub(super) fn inert_reaching_output(motion: &MotionState) -> BTreeSet<u32> {
+    if !motion.node_help_enabled {
+        return BTreeSet::new(); // node help off (ADR-0155): no ⚠ badges
+    }
     diagnose(&motion.doc.graph, &motion.registry)
         .into_iter()
         .filter(|d| reaches_output(&motion.doc.graph, d.node))
@@ -168,6 +174,9 @@ pub(super) fn inert_reaching_output(motion: &MotionState) -> BTreeSet<u32> {
 /// solver, a force with a transform between it and the integrator) is EXPLAINED + selected —
 /// never guessed, the ADR-0155 law.
 pub(super) fn heal_one(motion: &mut MotionState, toasts: &mut ToastQueue, node: NodeId) {
+    if !motion.node_help_enabled {
+        return; // node help off (ADR-0155): a stale badge click is a clean no-op
+    }
     // Re-diagnose: the badge was painted from LAST frame's graph, so a stale click on a
     // node that already healed itself (or is no longer inert) is a clean no-op.
     let Some(d) = diagnose(&motion.doc.graph, &motion.registry)
@@ -219,6 +228,10 @@ fn explain(d: &Diagnostic) -> &'static str {
         // A pin_constraint's inv_mass with no solver: WHICH solver is a creative choice.
         (Deficit::InertProducer("inv_mass"), _) => {
             "This constraint needs a solver (Integrate / Sim Step / Spring / Collide) downstream to have any effect"
+        }
+        // A field's falloff read by no force/deformer: WHICH modulator is a creative choice.
+        (Deficit::InertProducer("falloff"), _) => {
+            "This field shapes a falloff that no force or deformer downstream reads — add one after it"
         }
         _ => "This node produces data nothing downstream consumes, so it does nothing",
     }

@@ -48,6 +48,11 @@ pub(crate) const CHROME_GROUP: u16 = 6;
 /// chain becomes one horizontal line). A momentary action, like Fit: it never reads
 /// active, it just tidies on press.
 pub(crate) const CHROME_ARRANGE: u16 = 7;
+/// **Node help on/off** (ADR-0155) — the chip that turns the whole setup diagnoser
+/// off (auto-heal + ⚠ inert badges + advisories). It reads ACTIVE while help is on,
+/// so the artist can see the system IS running; the shell owns the flag, so this chip
+/// emits `SetNodeHelp(!node_help())` rather than flipping a local bool.
+pub(crate) const CHROME_NODE_HELP: u16 = 8;
 /// **Breadcrumb crumbs start here** — crumb `i` is `CHROME_CRUMB_BASE + i`. They ride
 /// the same `Chrome` hit kind as the toolbar chips (an ordinal the panel alone
 /// interprets), so navigation costs the foundational interaction vocabulary NOTHING:
@@ -76,6 +81,48 @@ pub(crate) struct ChromeState {
     /// What the Group chip would do if pressed right now — it draws the icon of the
     /// verb it will actually perform (doc 57).
     pub group_verb: crate::interact::GroupVerb,
+    /// Whether the node-help system is on (ADR-0155) — the Help chip wears the Accent
+    /// ring while it is, the same active-ring language as the armed modes.
+    pub node_help: bool,
+}
+
+/// The toolbar's chip descriptors — `(ordinal, icon, active)` — as a PURE list, so the
+/// paint loop pushes a hit for each and a gate can assert the set is complete (every chip
+/// offered, wearing its live state) without building a `PaintCtx`. `vertical` picks the
+/// active orientation chip; `state` carries the armed modes and the node-help flag.
+pub(crate) fn chip_specs(state: ChromeState, vertical: bool) -> [(u16, IconId, bool); 9] {
+    let ChromeState {
+        knife_armed,
+        probe_armed,
+        group_verb,
+        node_help,
+    } = state;
+    [
+        (CHROME_SPLIT_H, IconId::SplitHorizontal, !vertical),
+        (CHROME_SPLIT_V, IconId::SplitVertical, vertical),
+        (CHROME_FIT, IconId::FitView, false),
+        (CHROME_BACKDROP, IconId::Backdrop, false),
+        (CHROME_KNIFE, IconId::Knife, knife_armed),
+        (CHROME_PROBE, IconId::Probe, probe_armed),
+        // Group / Ungroup (doc 57) — ONE chip, and it wears the icon of the verb it
+        // will actually perform: a card selected and it becomes Ungroup. A chip that
+        // looks the same whether or not it can act (and whichever way it will act) is
+        // a chip that lies once per press.
+        (
+            CHROME_GROUP,
+            match group_verb {
+                GroupVerb::Ungroup => IconId::Ungroup,
+                _ => IconId::Group,
+            },
+            group_verb != GroupVerb::Inert,
+        ),
+        // Auto-arrange (the layered flow). Never active — it is a momentary tidy, not
+        // a mode; the Hierarchy glyph reads as "lay this out as a tree".
+        (CHROME_ARRANGE, IconId::Hierarchy, false),
+        // Node help (ADR-0155): the whole setup diagnoser on/off. Active ring while ON,
+        // so a graph that has stopped offering to fix things says so on its face.
+        (CHROME_NODE_HELP, IconId::Help, node_help),
+    ]
 }
 
 pub(crate) fn draw_split_chrome(
@@ -86,11 +133,6 @@ pub(crate) fn draw_split_chrome(
     hits: &mut Vec<(NodeId, GraphHitKind, Rect)>,
     state: ChromeState,
 ) {
-    let ChromeState {
-        knife_armed,
-        probe_armed,
-        group_verb,
-    } = state;
     let vertical = rect.x > center.x + 0.5;
     // Divider line + a forgiving grab band straddling the boundary edge.
     let (line, band) = if vertical {
@@ -128,29 +170,7 @@ pub(crate) fn draw_split_chrome(
     // bottom edge is the graph's only permanently free corner: the top carries the
     // split divider band, and the right is where a panned graph tends to spill.
     // The orientation chip matching the current split reads as active (Accent ring).
-    let chips = [
-        (CHROME_SPLIT_H, IconId::SplitHorizontal, !vertical),
-        (CHROME_SPLIT_V, IconId::SplitVertical, vertical),
-        (CHROME_FIT, IconId::FitView, false),
-        (CHROME_BACKDROP, IconId::Backdrop, false),
-        (CHROME_KNIFE, IconId::Knife, knife_armed),
-        (CHROME_PROBE, IconId::Probe, probe_armed),
-        // Group / Ungroup (doc 57) — ONE chip, and it wears the icon of the verb it
-        // will actually perform: a card selected and it becomes Ungroup. A chip that
-        // looks the same whether or not it can act (and whichever way it will act) is
-        // a chip that lies once per press.
-        (
-            CHROME_GROUP,
-            match group_verb {
-                GroupVerb::Ungroup => IconId::Ungroup,
-                _ => IconId::Group,
-            },
-            group_verb != GroupVerb::Inert,
-        ),
-        // Auto-arrange (the layered flow). Never active — it is a momentary tidy, not
-        // a mode; the Hierarchy glyph reads as "lay this out as a tree".
-        (CHROME_ARRANGE, IconId::Hierarchy, false),
-    ];
+    let chips = chip_specs(state, vertical);
     let row_y = rect.y + rect.h - TOOLBAR_INSET - CHIP_SIZE;
     for (i, (id, icon, active)) in chips.into_iter().enumerate() {
         let cx = rect.x + TOOLBAR_INSET + i as f32 * (CHIP_SIZE + CHIP_GAP);
@@ -181,5 +201,41 @@ pub(crate) fn draw_split_chrome(
             CHIP_ICON_STROKE,
         );
         hits.push((chrome_hit_id(id), GraphHitKind::Chrome { id }, chip));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn state(node_help: bool) -> ChromeState {
+        ChromeState {
+            knife_armed: false,
+            probe_armed: false,
+            group_verb: GroupVerb::Inert,
+            node_help,
+        }
+    }
+
+    /// **The Node Help chip is offered and wears the live state** (ADR-0155). It is in the
+    /// toolbar's chip list, so the paint loop pushes its hit — it is reachable by a pointer,
+    /// not dead under the mouse — and its active ring follows `node_help`. FALSIFIED by
+    /// dropping the chip from [`chip_specs`] (no hit → dead under the mouse) or by a fixed
+    /// `active` (the ring would lie about whether the system is running).
+    #[test]
+    fn the_node_help_chip_is_offered_and_wears_the_live_state() {
+        let on = chip_specs(state(true), false);
+        assert!(
+            on.iter().any(|&(id, icon, active)| id == CHROME_NODE_HELP
+                && icon == IconId::Help
+                && active),
+            "help chip present + active when the system is on"
+        );
+        let off = chip_specs(state(false), false);
+        assert!(
+            off.iter()
+                .any(|&(id, _, active)| id == CHROME_NODE_HELP && !active),
+            "help chip present + inactive when off"
+        );
     }
 }

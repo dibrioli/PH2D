@@ -290,6 +290,8 @@ pub(crate) fn paint(state: &mut MotionGraphPanelState, ctx: &mut PaintCtx) {
             knife_armed: state.knife_armed,
             probe_armed: state.probe_armed,
             group_verb: crate::interact::group_verb(state),
+            // ADR-0155: the shell owns the flag; the chip reads the published value.
+            node_help: crate::snapshot::node_help(),
         },
     );
     // The breadcrumb (doc 57), top-left: where you are, and every way back out. Drawn

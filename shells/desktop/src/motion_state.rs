@@ -173,6 +173,13 @@ pub(crate) struct MotionState {
     /// looks it up to draw the shape live. Kept across frames — a static shape
     /// builds once.
     pub(crate) shape_store: crate::render_loop::motion_shape_gen::VecPathStore,
+    /// **The node-help system on/off** (ADR-0155, Enio 2026-08-04). The ONE flag the
+    /// setup diagnoser rides: the auto-heal, the ⚠ inert badges and the advisories all
+    /// read it (`motion_bridge_heal`), so turning it off makes the graph stop offering to
+    /// fix anything — the artist's freedom, and the release valve for the `falloff`
+    /// family where a missed CPU-only consumer would otherwise show a stray advisory.
+    /// ON by default; a session preference (not serialized — runtime UX, like `gpu_live`).
+    pub(crate) node_help_enabled: bool,
 }
 
 /// **What opened the Add-Node palette** — the spawn point plus the wire context of the gesture, so the
@@ -427,6 +434,8 @@ impl MotionState {
             flip_object_bake: crate::motion_flip_bake::FlipObjectBake::default(),
             // ADR-0154: empty until the publish pass interns a `source.shape`.
             shape_store: crate::render_loop::motion_shape_gen::VecPathStore::default(),
+            // ADR-0155: the node-help system is ON by default; the toolbar chip toggles it.
+            node_help_enabled: true,
         }
     }
 

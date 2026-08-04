@@ -28,7 +28,9 @@ use ph2d_panel_motion_graph::GraphIntent;
 
 /// O modo: `0` off, `1` inserir (força na cadeia horizontal), `2` reorder (força
 /// spliceada depois de um integrador que já existe), `3` badge + quick-fix (dois
-/// setups inertes SEM gesto; o artista clica o pip ⚠ para consertar/explicar).
+/// setups inertes SEM gesto; o artista clica o pip ⚠ para consertar/explicar), `4`
+/// aviso da família `falloff` (um `field.box` que nada lê — derivado, SEM anotação)
+/// + o toggle "Node Help" que liga/desliga o sistema inteiro.
 fn mode() -> u32 {
     static M: std::sync::OnceLock<u32> = std::sync::OnceLock::new();
     *M.get_or_init(|| {
@@ -280,6 +282,75 @@ impl crate::App {
                      conserto). CLIQUE o badge do pin: o app so' EXPLICA (toast) e SELECIONA o \
                      pin — NADA muda no grafo (nao ha' cura canonica; a lei do ADR-0155 de \
                      nunca adivinhar uma escolha criativa)."
+                );
+            }
+            // =4, frame 3: a capacidade NOVA — o AVISO da familia `falloff` + o TOGGLE.
+            // Monta `grid -> field.box -> output`: o campo MOLDA um `falloff` que NENHUMA
+            // forca/deformer le, entao ele NAO faz nada (a mesma classe de erro do
+            // ADR-0155, agora coberta para o `falloff` — e o field.box NAO tem Coupling
+            // anotado: o aviso vem PURAMENTE da binding de GPU que ele ja' declara, a
+            // DERIVACAO que e' o coracao desta wave). O field.box ganha o pip ⚠; clicar
+            // EXPLICA (um campo precisa de ALGUMA forca/deformer — nao ha' cura canonica)
+            // + seleciona, nunca adivinha (Offer). Depois o chip "Node Help" desliga o
+            // sistema inteiro (o badge some) e liga de volta — a liberdade do artista.
+            (4, 3) => {
+                let gfx = self.gfx.as_mut().expect("gfx");
+                let out = {
+                    let g = &mut gfx.motion.doc.graph;
+                    let grid = g.add_node("motion.grid");
+                    let field = g.add_node("field.box");
+                    let out = g.add_node("motion.output");
+                    g.set_pos(
+                        grid,
+                        Pos {
+                            x: -220.0,
+                            y: -200.0,
+                        },
+                    );
+                    g.set_pos(field, Pos { x: 40.0, y: -200.0 });
+                    g.set_pos(
+                        out,
+                        Pos {
+                            x: 300.0,
+                            y: -200.0,
+                        },
+                    );
+                    g.connect(Edge {
+                        from: (grid, 0),
+                        to: (field, 0),
+                        delayed: false,
+                    })
+                    .expect("grid -> field");
+                    g.connect(Edge {
+                        from: (field, 0),
+                        to: (out, 0),
+                        delayed: false,
+                    })
+                    .expect("field -> output");
+                    out
+                };
+                gfx.motion.sinks.push(out);
+                let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+                let falloff =
+                    ph2d_motion_diagnose::diagnose(&gfx.motion.doc.graph, &gfx.motion.registry)
+                        .iter()
+                        .filter(|d| {
+                            d.deficit == ph2d_motion_diagnose::Deficit::InertProducer("falloff")
+                        })
+                        .count();
+                eprintln!(
+                    "[autofix smoke =4] montei `grid -> field.box -> output`: {falloff} campo(s) \
+                     de falloff inerte(s) marcado(s) (esperado 1 — o field.box molda um falloff \
+                     que nada le). SE NAO FOR 1, PARE. ⚠ O field.box NAO tem Coupling anotado: o \
+                     aviso vem PURAMENTE da binding de GPU que ele ja' declara (a DERIVACAO, o \
+                     coracao da wave — 29 dos 35 nos de falloff sao cobertos assim, com ZERO \
+                     anotacao). CLIQUE o badge do field.box: o app so' EXPLICA (toast: precisa de \
+                     uma forca/deformer) e SELECIONA — NADA muda no grafo (Offer, sem cura \
+                     canonica; a lei do ADR-0155 de nunca adivinhar). Depois CLIQUE o chip 'Node \
+                     Help' (o icone de ajuda, ULTIMO da barra do grafo, no canto inferior \
+                     esquerdo): o badge SOME (o sistema inteiro desliga — a liberdade do \
+                     artista). Clique de novo: ele VOLTA. Para curar de verdade, ligue uma \
+                     force.wind DEPOIS do field.box — o badge some (a forca le o falloff)."
                 );
             }
             _ => {}

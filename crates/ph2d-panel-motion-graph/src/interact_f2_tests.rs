@@ -517,3 +517,37 @@ fn shift_makes_the_band_additive() {
     );
     let _ = drain_intents();
 }
+
+/// **Clicking the Node Help chip requests the flip of what the shell published** (ADR-0155).
+/// The shell owns `node_help_enabled`, so the panel does not flip a local bool — it emits the
+/// ABSOLUTE value against the one the shell last published (`!node_help()`), and the shell's
+/// drain sets the flag. FALSIFIED by an interact arm that ignores `CHROME_NODE_HELP` (no
+/// intent) or emits a fixed value (the toggle would only ever go one way).
+#[test]
+fn clicking_the_node_help_chip_requests_the_flip() {
+    for published in [true, false] {
+        let _ = drain_intents();
+        crate::snapshot::set_node_help(published);
+        let snap = two_node_snapshot();
+        let mut st = MotionGraphPanelState::default();
+        apply_gesture(
+            &mut st,
+            gesture(
+                GraphHitKind::Chrome {
+                    id: crate::paint_chrome::CHROME_NODE_HELP,
+                },
+                GesturePhase::Click,
+                0.0,
+                0.0,
+            ),
+            RECT,
+            CENTER,
+            &snap,
+        );
+        assert_eq!(
+            drain_intents(),
+            vec![GraphIntent::SetNodeHelp(!published)],
+            "the chip requests the flip of what the shell published"
+        );
+    }
+}

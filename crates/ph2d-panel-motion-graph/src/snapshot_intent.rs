@@ -107,6 +107,13 @@ pub enum GraphIntent {
     /// Toggle transport play/pause (Space) so time-driven behaviours animate.
     /// The shell owns the transport; UI-only w.r.t. the doc (no undo step).
     TogglePlay,
+    /// **Turn the node-help system on/off** (ADR-0155, the toolbar's Help chip). The
+    /// shell owns the flag (`MotionState::node_help_enabled`) — the diagnoser, the ⚠
+    /// inert badges and the auto-heal all read it — so the panel does not toggle a
+    /// local bool; it emits the ABSOLUTE value it wants (`!node_help()`), the shell
+    /// flips its flag, and the next frame's `set_node_help` reflects it. UI-only (no
+    /// undo step, not serialized — a session preference).
+    SetNodeHelp(bool),
     /// Add a group backdrop covering the given graph-space rect (the toolbar's
     /// Backdrop chip). The panel computes the rect — wrapping the selection when
     /// there is one, a default block at the view centre otherwise — and the shell

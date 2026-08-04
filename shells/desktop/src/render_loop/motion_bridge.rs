@@ -300,6 +300,10 @@ pub(super) fn dispatch(
         let probe = motion_active
             .then(|| edit::sample_probe(motion, cook_time, tapped.as_ref()))
             .flatten();
+        // Publish the node-help flag (ADR-0155) so the toolbar chip draws its live state
+        // and the toggle it emits flips against the right value. A shell→panel scalar, off
+        // the snapshot (editor UX state, like the selection), set every frame.
+        ph2d_panel_motion_graph::set_node_help(motion.node_help_enabled);
         ph2d_panel_motion_graph::set_current_motion_graph(motion_active.then(|| {
             let mut snap =
                 ph2d_panel_motion_graph::snapshot_from(&motion.doc.graph, &motion.registry);

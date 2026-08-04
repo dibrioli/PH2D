@@ -318,6 +318,26 @@ thread_local! {
     static SELECTION: RefCell<Vec<u32>> = const { RefCell::new(Vec::new()) };
     static BACKDROP_SELECTION: RefCell<Option<u32>> = const { RefCell::new(None) };
     static SELECTION_REQUEST: RefCell<Option<Vec<u32>>> = const { RefCell::new(None) };
+    /// **The node-help system on/off** (ADR-0155): a shell→panel scalar the toolbar
+    /// chip reads to draw its state and to flip. It lives HERE, not on
+    /// [`GraphViewSnapshot`], because it is editor UX state (like the selection), not
+    /// resolved graph geometry — and the shell owns it (the diagnoser rides it). ON
+    /// until the shell says otherwise, so a paint before the first frame shows help on.
+    static NODE_HELP: RefCell<bool> = const { RefCell::new(true) };
+}
+
+/// Publish whether the node-help system is on (shell bridge → panel, ADR-0155). Set
+/// every frame from `MotionState::node_help_enabled` so the toolbar chip draws the
+/// live state; the panel reads it with [`node_help`] to draw the chip and to compute
+/// the toggle it requests.
+pub fn set_node_help(on: bool) {
+    NODE_HELP.with(|c| *c.borrow_mut() = on);
+}
+
+/// Read whether the node-help system is on (panel). Drives the chip's active ring and
+/// the `SetNodeHelp(!node_help())` it emits — non-destructive, like the selection read.
+pub fn node_help() -> bool {
+    NODE_HELP.with(|c| *c.borrow())
 }
 
 /// Publish the current node selection (panel `paint` → shell bridge, M1.P1). The

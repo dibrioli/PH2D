@@ -210,6 +210,12 @@ fn apply_gesture(
             // Auto-arrange: a document edit (positions), so it crosses as an intent —
             // the shell owns the doc and the undo bracket.
             crate::paint_chrome::CHROME_ARRANGE => push_intent(GraphIntent::ArrangeLayout),
+            // Node help on/off (ADR-0155): the shell owns the flag, so the panel does not
+            // flip a local bool — it emits the ABSOLUTE value it wants against the one the
+            // shell last published (`!node_help()`), and the next frame reflects it.
+            crate::paint_chrome::CHROME_NODE_HELP => {
+                push_intent(GraphIntent::SetNodeHelp(!crate::snapshot::node_help()))
+            }
             // The breadcrumb (doc 57): crumb `i` rides the ordinal `CHROME_CRUMB_BASE + i`.
             id if id >= crate::paint_chrome::CHROME_CRUMB_BASE => {
                 subgraph_gesture::go_to_crumb(

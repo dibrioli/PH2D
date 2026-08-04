@@ -2,7 +2,7 @@
 //! (`register_all_nodes`) so the couplings under test are the ones the app ships,
 //! not a fixture's private copy.
 
-use ph2d_motion_diagnose::{canonical_consumer, diagnose, Deficit, Fix};
+use ph2d_motion_diagnose::{Deficit, Fix, canonical_consumer, diagnose};
 use ph2d_node_registry::{Coupling, NodeRegistry};
 use ph2d_nodegraph::graph::{Edge, Graph, NodeId};
 use ph2d_nodegraph::node::NodeTypeId;
@@ -93,12 +93,20 @@ fn a_force_downstream_of_the_integrator_is_a_reorder_not_a_second_insert() {
     let mut g = Graph::new();
     let ids = chain(
         &mut g,
-        &["motion.grid", "motion.integrate", "force.wind", "motion.output"],
+        &[
+            "motion.grid",
+            "motion.integrate",
+            "force.wind",
+            "motion.output",
+        ],
     );
 
     let ds = diagnose(&g, &reg);
     assert_eq!(ds.len(), 1, "only the misplaced force");
-    assert_eq!(ds[0].node, ids[2], "the force.wind, downstream of integrate");
+    assert_eq!(
+        ds[0].node, ids[2],
+        "the force.wind, downstream of integrate"
+    );
     assert_eq!(ds[0].deficit, Deficit::InertProducer("accel"));
     assert_eq!(
         ds[0].fix,
@@ -142,7 +150,11 @@ fn a_pin_with_no_solver_is_an_offer_not_a_guess() {
     assert_eq!(ds.len(), 1);
     assert_eq!(ds[0].node, ids[1], "the pin");
     assert_eq!(ds[0].deficit, Deficit::InertProducer("inv_mass"));
-    assert_eq!(ds[0].fix, Fix::Offer, "no canonical solver -> offer, don't guess");
+    assert_eq!(
+        ds[0].fix,
+        Fix::Offer,
+        "no canonical solver -> offer, don't guess"
+    );
     assert_eq!(canonical_consumer("inv_mass", false), None);
 }
 
@@ -168,7 +180,8 @@ fn every_producer_and_consumer_declares_its_coupling() {
             .couplings(NodeTypeId::of(name))
             .unwrap_or_else(|| panic!("{name} has no couplings"));
         assert!(
-            cs.iter().any(|c| matches!(c, Coupling::Produces(x) if *x == col)),
+            cs.iter()
+                .any(|c| matches!(c, Coupling::Produces(x) if *x == col)),
             "{name} must Produce {col}"
         );
     }
@@ -186,8 +199,142 @@ fn every_producer_and_consumer_declares_its_coupling() {
             .couplings(NodeTypeId::of(name))
             .unwrap_or_else(|| panic!("{name} has no couplings"));
         assert!(
-            cs.iter().any(|c| matches!(c, Coupling::Consumes(x) if *x == col)),
+            cs.iter()
+                .any(|c| matches!(c, Coupling::Consumes(x) if *x == col)),
             "{name} must Consume {col}"
         );
     }
+}
+
+/// **A field wired to nothing is an inert `falloff` OFFER — derived, with ZERO
+/// annotation on the field.** `field.box` declares a `falloff` `Write` binding for
+/// the GPU cook; the diagnoser reads that same declaration, so the whole falloff
+/// family is covered without a hand-written `Coupling`. The cure is an offer (a
+/// field needs *some* force/deformer — there is no canonical one to insert).
+/// FALSIFIED by a `diagnose` that only reads the `Coupling` side-channel (field.box
+/// has none → no diagnostic) — i.e. by dropping the derived GPU-binding half.
+#[test]
+fn a_field_wired_to_nothing_is_an_inert_falloff_offer() {
+    let reg = registry();
+    let mut g = Graph::new();
+    let ids = chain(&mut g, &["motion.grid", "field.box", "motion.output"]);
+
+    let ds = diagnose(&g, &reg);
+    assert_eq!(ds.len(), 1, "exactly the field is inert");
+    assert_eq!(ds[0].node, ids[1], "the field.box node");
+    assert_eq!(ds[0].deficit, Deficit::InertProducer("falloff"));
+    assert_eq!(
+        ds[0].fix,
+        Fix::Offer,
+        "a field needs *a* force/deformer — no canonical inserter, so offer"
+    );
+}
+
+/// **A field READ by a force is healthy — the derived consume half.** `field.box`
+/// writes `falloff`; `force.wind` declares a `falloff` `Read` binding, so the
+/// diagnoser sees the field as consumed and leaves it alone. The force is still
+/// separately inert (its `accel` has no integrator), which is the ONLY diagnostic:
+/// the field is healthy purely because the force reads its falloff, with no
+/// annotation on either node. FALSIFIED by a diagnoser that cannot see the force's
+/// derived `falloff` consume (the field would be wrongly flagged).
+#[test]
+fn a_field_read_by_a_force_is_a_healthy_falloff() {
+    let reg = registry();
+    let mut g = Graph::new();
+    let ids = chain(
+        &mut g,
+        &["motion.grid", "field.box", "force.wind", "motion.output"],
+    );
+
+    let ds = diagnose(&g, &reg);
+    // The field is NOT among the inert — its falloff is read by the force.
+    assert!(
+        !ds.iter().any(|d| d.node == ids[1]),
+        "field.box is healthy: force.wind reads its falloff"
+    );
+    // The only diagnostic is the force's own accel (no integrator) — the control.
+    assert_eq!(ds.len(), 1, "only the force's accel is inert");
+    assert_eq!(ds[0].node, ids[2], "the force.wind node");
+    assert_eq!(ds[0].deficit, Deficit::InertProducer("accel"));
+}
+
+/// **Two forces with no integrator are BOTH inert — the re-producer rule.** A force
+/// declares `accel` as `ReadWrite`: it reads the running sum AND re-writes it. That
+/// makes it a producer, NOT a consumer, so the second force does not "save" the
+/// first — the pair is dead without an integrator. This is the load-bearing
+/// subtlety of the derived rule. FALSIFIED by treating any `reads()` as a consume
+/// (the second force would then rescue the first: one diagnostic, not two).
+#[test]
+fn two_forces_with_no_integrator_are_both_inert() {
+    let reg = registry();
+    let mut g = Graph::new();
+    let ids = chain(
+        &mut g,
+        &["motion.grid", "force.wind", "force.wind", "motion.output"],
+    );
+
+    let ds = diagnose(&g, &reg);
+    assert_eq!(
+        ds.len(),
+        2,
+        "a force reading+rewriting accel is not a consumer"
+    );
+    let inert: std::collections::BTreeSet<NodeId> = ds.iter().map(|d| d.node).collect();
+    assert!(
+        inert.contains(&ids[1]) && inert.contains(&ids[2]),
+        "both forces"
+    );
+    assert!(
+        ds.iter()
+            .all(|d| d.deficit == Deficit::InertProducer("accel")),
+        "both are inert accel"
+    );
+}
+
+/// **A CPU-only falloff consumer makes the field healthy — the 6-crate annotation.**
+/// `fx.drop_shadow` reads `falloff` only at eval runtime (no GPU kernel), so its role
+/// cannot be derived; this wave declares it with a `Coupling::Consumes("falloff")`.
+/// With that, `field.box → fx.drop_shadow` is a healthy pair. FALSIFIED by dropping
+/// the annotation added to `ph2d-node-fx-drop-shadow` (the field is flagged inert).
+#[test]
+fn a_cpu_only_falloff_consumer_makes_the_field_healthy() {
+    let reg = registry();
+    let mut g = Graph::new();
+    let ids = chain(
+        &mut g,
+        &[
+            "motion.grid",
+            "field.box",
+            "fx.drop_shadow",
+            "motion.output",
+        ],
+    );
+
+    let ds = diagnose(&g, &reg);
+    assert!(
+        !ds.iter().any(|d| d.node == ids[1]),
+        "field.box is healthy: fx.drop_shadow (CPU-only) declares it consumes falloff"
+    );
+    assert!(
+        ds.is_empty(),
+        "nothing inert: the field is read, drop_shadow adds no transient"
+    );
+}
+
+/// **A LOWERED column wired to the output is never inert — the transient filter.**
+/// `motion.move` writes `P` (the position), which the render lowering consumes, so
+/// wiring it straight to the output is the normal case, not a defect. The diagnoser
+/// only subjects [transient columns] to the analysis, so `P` is never flagged.
+/// FALSIFIED by removing the transient filter (or adding `P` to it): `move → output`
+/// would then be reported inert, the false positive this guard exists to prevent.
+#[test]
+fn a_lowered_column_wired_to_output_is_never_inert() {
+    let reg = registry();
+    let mut g = Graph::new();
+    chain(&mut g, &["motion.grid", "motion.move", "motion.output"]);
+
+    assert!(
+        diagnose(&g, &reg).is_empty(),
+        "P is lowered to instances, so a node writing P to the output is not inert"
+    );
 }

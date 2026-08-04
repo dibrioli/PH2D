@@ -315,6 +315,11 @@ pub(super) fn apply_graph_intents(
             GraphIntent::TogglePlay => {
                 playhead.toggle_play();
             }
+            // The node-help toggle (ADR-0155): the shell owns the flag; the panel sent
+            // the absolute value it wants. UI-only — no undo step, no re-cook.
+            GraphIntent::SetNodeHelp(on) => {
+                motion.node_help_enabled = on;
+            }
             // Backdrops (F2) — document state, so undoable, but UI-only, so NONE
             // of these re-cooks (`mark_dirty` is deliberately absent: a cook
             // cannot depend on decoration). Details in `motion_bridge_backdrops`.

@@ -133,7 +133,8 @@ de a wave ter integrado faz a próxima LLM desconfiar de um verde legítimo.
 | [[HANDOFF_INTEGRACAO_line_sculpt3d_W1_2026-07-30]] | **W1, a MALHA** — malha residente, octree, normais, o passe wgpu, o kernel de pincel; a tabela K1/K2 | ✅ **no `main`** |
 | [[HANDOFF_INTEGRACAO_line_sculpt3d_W2_2026-07-31]] | **W2, o BARRO** — o pick, a lei do traço, os verbos, máscara, simetria, octree e upload incrementais, undo e o gesto | ✅ **no `main`** |
 | [[HANDOFF_INTEGRACAO_line_sculpt3d_W3_2026-07-31]] | **W3, a DOAÇÃO** — a malha doa a normal e a tinta chapada sai acesa pela forma | ✅ **no `main`** |
-| [[HANDOFF_INTEGRACAO_line_sculpt3d_W4-W8_2026-08-02]] | **W4..W8.2** — o traço honesto · a malha que puxa · a resolução · o remesh · **a cena é uma LISTA** | 🟡 **fechada, smokada, aguarda ordem de integração** |
+| [[HANDOFF_INTEGRACAO_line_sculpt3d_W4-W8_2026-08-02]] | **W4..W8.2** — o traço honesto · a malha que puxa · a resolução · o remesh · **a cena é uma LISTA** | ✅ **no `main`** |
+| [[HANDOFF_INTEGRACAO_line_sculpt3d_W8.7_2026-08-04]] | **W8.3..W8.7** — o documento · import · export · **o OBJETO MISTO** · ★ **os canais no DOCUMENTO** (a rota A) | 🟡 **fechada, smoke OK 2026-08-04, aguarda ordem de integração** |
 
 ## Documentos irmãos fora do cofre
 

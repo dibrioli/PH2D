@@ -2,8 +2,12 @@
 
 > **Data:** 2026-08-04 · **Branch:** `line/sculpt3d` · **Base:** `main` de 2026-08-02
 > **Commits:** `5b31e9a1d` · `1bfeb7b7a` · `1584762b2` (+ o commit de docs)
-> ⚠️ **PENDENTE DE SMOKE.** Integrar não é aprovar.
-> Cobre **só a W8.7**; as waves W1..W8.6 já integraram (ver `..._W4-W8_2026-08-02.md`).
+> ✅ **SMOKE OK (2026-08-04)** — o Enio aprovou **todos os passos**, incluindo o (5) (as sombras do
+> objeto reaberto ANDAM) e o (6) (o objeto acende **sem cena 3D nenhuma**), que são os dois que
+> separam a rota A de uma fotografia.
+> Cobre **só a W8.7**. ⚠️ **As W8.3..W8.6 estão nesta MESMA branch e ainda não integraram** — elas
+> fecharam em 2026-08-03 e o smoke de hoje aprovou as cinco de uma vez; o `..._W4-W8_2026-08-02.md`
+> descreve o que já está no `main` (W1..W8.2).
 
 ## 1. A wave, numa frase
 

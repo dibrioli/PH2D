@@ -6,6 +6,8 @@
 
 pub mod blast;
 pub mod buoyancy;
+/// Consultas de cena (raio/forma) — a perna da cápsula flutuante (docs dele).
+pub mod cast;
 pub mod checkpoint;
 pub mod collider_build;
 pub mod contacts;

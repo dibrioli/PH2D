@@ -1,8 +1,11 @@
-# Handoff de integração — `line/Painter`, o CARIMBO (2026-08-03)
+# Handoff de integração — `line/Painter`, o CARIMBO (2026-08-03 · 2026-08-04)
 
-> **13 commits.** ⚠️ **PENDENTE DE SMOKE** — nada aqui foi aprovado na tela. A jornada tem duas
+> **29 commits.** ⚠️ **PENDENTE DE SMOKE** — nada aqui foi aprovado na tela. A jornada tem três
 > metades: o depósito de pigmento fica **10-13× mais rápido na CPU** e depois passa a rodar **no
-> dispositivo** quando vale; e o Enter do Wet Paint ganhou o gate da metade que ninguém tinha pinado.
+> dispositivo** quando vale; o Enter do Wet Paint ganhou o gate da metade que ninguém tinha pinado; e
+> em **04/08** as duas exclusões que sobravam caíram — o **cap de Accumulate** entrou na rota em banda
+> e a **contagem de bandas passou a sair do trabalho**, o que tirou do serial todo dab de raio 64-181
+> (o pincel comum). Detalhe nas §8 e §9.
 
 ## 1. O que o report do Enio era, e o que ele não era
 
@@ -175,8 +178,134 @@ Escolha **Wet Paint** no dropdown, desenhe uma elipse e aperte **Enter** — o e
 - O piso **4,0** é ajustado de duas retas medidas **nesta máquina** (RTX, PCIe): ele é uma razão, o
   que o torna mais portável que um absoluto, mas o joelho de outra placa pode diferir. O eixo está
   escrito; o número é reconferível pela sonda.
-- A rota do device serve o **pincel de falloff puro**. Shape, Grain, imagem, o cap de Accumulate, os
-  23 blends e o Smooth Edges seguem na CPU — cada um é uma pergunta própria e entra quando for
-  medida, não por simetria.
+- A rota do **DEVICE** serve o **pincel de falloff puro**. Shape, Grain, imagem, o cap de Accumulate,
+  os 23 blends e o Smooth Edges seguem na CPU — cada um é uma pergunta própria e entra quando for
+  medida, não por simetria. ⚠️ **A frase acima é sobre o DEVICE e passou a ser fácil de ler errado
+  em 04/08:** o cap de Accumulate **tem** rota rápida hoje, a em BANDA na CPU (§8); o que ele ainda
+  não tem é o WGSL, porque o kernel do device não transcreve a lei do cap.
 - O `prewarm` **não semeia** os planos da luz (limitação nomeada de antes desta jornada, doc 28
   §4.8.2), e o custo dela é decisão de produto.
+
+---
+
+## 8. 2026-08-04 — o cap de Accumulate entra no lote em banda
+
+O `stamp_plain_dabs_banded` excluía o cap com uma razão escrita no próprio módulo: *"estado
+compartilhado (a máscara canvas-shaped)"*.
+
+⚠️ **Compartilhado entre DABS, não entre LINHAS.** A máscara é lida e escrita **por-texel**, no índice
+do próprio pixel; bandas são linhas **disjuntas**, então nenhuma banda lê um byte que outra escreve —
+exatamente o invariante do ADR-0109 que o `buf` já satisfazia. Uma fatia paralela (`stride` para a
+tinta, `stride / 4` para a máscara) e a rota vale para os dois.
+
+⚠️ **E o alcance é maior que o impasto:** `stroke_cover_wanted` dispara em **`strength < 1`**, ajuste
+comum de pincel digital. Com um shape editor o lote são centenas de dabs pequenos, nenhum perto do
+piso do kernel — e ele rodava num núcleo de trinta e dois.
+
+Três peças:
+
+- **O predicado PARTIU.** O `plain` respondia duas perguntas — *a banda consegue carregar isto?* ×
+  *o WGSL transcreve todas as leis?* — e o veto do device tirava a CPU junto.
+- **`stamp_dab_textured_masked_with` deixou de ser `#[cfg(test)]`.** O lote pede `usize::MAX` ao
+  kernel porque **o paralelismo é do lote OU do dab, nunca dos dois**; aninhar é alcançável e tem
+  número (a 4096² com r = 512 uma banda recebe `128 × 1024`, que **é** o `PARALLEL_MIN_AREA` antigo).
+- O `serial` virou `fn`: um `&dyn Fn` não segura um `&mut [u8]`.
+
+**3 gates, 3 mutações, 3 sangram, cada uma no seu** — e o par identidade/oráculo não é redundante:
+dobrar o passo da fatia sangra só a identidade (as escritas seguem dentro da pegada), perder o `y_top`
+sangra os dois.
+
+⚠️ **Três defeitos de fixture meus, os três achados MEDINDO:** `arc(2, 40)` não sobrepõe · a premissa
+afirmava o piso do *produto* onde a fixture força `min_area = 0` · e o teto da máscara é **76**
+(`coverage × strength`), não 128 — e um dab sozinho já o alcança, então contar texels saturados não
+distinguia sobreposição de dab único. A premissa honesta é o **efeito**: com o cap a tinta sai
+diferente de sem ele.
+
+## 9. 2026-08-04 — a contagem de bandas sai do TRABALHO (o piso era o knob errado)
+
+Medindo o que a §8 comprou, a sonda `measure_route_cost::what_the_banded_batch_buys_when_the_cap_is_on`
+mostrou o lote pagando **2,0× a 3,8× ABAIXO do piso** — e a leitura natural (*"o piso do LOTE está
+alto, desacople-o do kernel"*) foi **invertida pela metade (C)**, que mediu o piso do **kernel** pela
+primeira vez: ele nasceu escolhido e tem **o mesmo break-even** (~25 k visitas contra 131 072).
+
+⇒ O doc do `BATCH_MIN_AREA` está **CERTO** (*"a pergunta não muda por quem a faz"*). Quem estava
+errado é **o número**, e para os dois. Desacoplar teria consertado metade do defeito e enterrado a
+outra sob uma justificativa que parecia boa.
+
+**O mecanismo:** `available_parallelism()` devolve o mesmo número para um dab de 7 k visitas e para um
+de 500 k, então o pequeno pagava **32 spawns** por 3 µs de trabalho cada — e a única defesa era um
+piso que o mandava INTEIRO para a rota serial. *Um cliff é o que se constrói quando o knob certo não
+existe.*
+
+**A porta única `ph2d_painter_brush::band_count(area, rows, min_area)`:** o ótimo de
+`T·c_spawn + area·c_visita/T` é **`T* = √(area / SPAWN_EQUIV_VISITS)`**, com o `808` saindo da razão
+MEDIDA entre 10,5 µs de spawn e 13 ns de visita. ⚠️ **O modelo foi conferido contra o produto antes de
+virar código:** para 110 224 visitas em 32 threads ele prevê **381 µs** e a sonda mediu **382**. O
+piso passou a ser **derivado** (`SPAWN_EQUIV_VISITS * 4`, onde a raiz alcança 2).
+
+**SEIS cópias da mesma regra viraram uma** — `band_split`, `parallel_band_cached`, três sítios do
+`accumulate_batch` (um deles **sem piso nenhum**), o `stamp_banded` do lote e o `stamp_color_dynamic`,
+que **re-declarava a constante como literal privado de um bloco**.
+
+Medido pela porta do produto, `serial ÷ banda`:
+
+| | antes | agora |
+|---|---|---|
+| KERNEL, raio 64 (17 k px) | **serial** | 1,80-1,91× |
+| KERNEL, raio 90 (33 k px) | 1,33× | 2,82-2,95× |
+| KERNEL, raio 128 (67 k px) | 2,64× | 4,39-4,74× |
+| KERNEL, raio 181 (133 k px) | 4,29× | 6,55× |
+| LOTE, 2 dabs (14 k) | 0,58× | 1,42-1,55× |
+| LOTE, 8 dabs (55 k) | 2,01× | 3,02-3,08× |
+| LOTE, 16 dabs (110 k) | 3,77× | 4,25-4,38× |
+
+Raio 20 / 2 dabs dá **1 banda, 1,00×** — corretamente serial. **Nenhuma linha da tabela piorou**, e o
+ponto de operação do editor de figura (1,69 M visitas/lote) já saturava os núcleos: a wave não o move,
+ela move tudo o que está **abaixo** dele.
+
+⚠️ **E ZERO byte se move:** bandas são linhas disjuntas e cada uma percorre todos os dabs na mesma
+ordem, então o resultado é bit-idêntico ao serial **para qualquer contagem de bandas** (HR-5) — a
+invariante que o doc do `band_split` já declarava.
+
+**Três gates pinavam o piso antigo e foram RE-DERIVADOS contra a medição, não afrouxados.** O que o
+piso protege não é o traço à mão livre (medido, ele **paga** 1,5-2×) e sim o lote que não enche duas
+bandas. Os dois controles agora **DECLARAM de que lado da cerca estão**, que é o que os fez falhar
+alto em vez de seguirem verdes medindo o outro lado. **5 gates novos, 5 mutações, 5 sangram.**
+
+⚠️ **E a sonda pegou uma regressão de 10× que EU introduzi e que nenhum gate de identidade podia ver:**
+pus o `available_parallelism()` — um **syscall** — na frente do early-out, e o lote o chama **uma vez
+por dab POR BANDA** (128 × 32 = 4096 chamadas). A rota em banda foi de **0,99 para 9,79 ms** com a
+MESMA contagem de bandas. Curado por `OnceLock` + a recusa antes de perguntar à máquina, com
+**arch-gate sobre a fonte** (a única forma de o próximo `cores()` escrito à mão nascer vermelho em vez
+de custar outro smoke).
+
+### O que a integração precisa saber (adendo à §5)
+
+- **Zero schema, zero contrato congelado, zero ADR, nenhuma dep nova, nenhum `Cargo.toml` tocado**
+  nestas duas waves.
+- **API pública nova em `ph2d-painter-brush`:** `band_count` e `PARALLEL_MIN_AREA` (este **mudou de
+  valor**: `131 072 → 3 232`, e passou a ser derivado). `stamp_dab_textured_masked_with` deixou de ser
+  `#[cfg(test)]`. `SPAWN_EQUIV_VISITS` e `band_count_with` são `pub(crate)` — não atravessam a crate.
+- ⚠️ **`ph2d_tool_painter::…::wants_bands` mudou de assinatura** (recebe o `work`): ela é
+  `pub(super)`, não sai da crate.
+- **Dívida de typos drenada:** um subjuntivo pt-BR de *depositar*, num doc-comment do
+  `wetpaint_commit` (commit `18c9b1f47` desta mesma linha), colidia com o inglês *deposit* — reescrito
+  para *"volte a depositar"*, porque o critério do `.typos.toml` é *allowlistar só quando isso NÃO
+  pode esconder um typo real*, e este repo diz "deposit" o tempo todo. ⚠️ O gate de typos **não roda
+  no fechamento por crate**, só no `ship.sh` — e ⚠️ a primeira versão desta linha **repetia a palavra
+  literal** e reprovava o gate que ela documenta.
+
+### Aberto, com o número ao lado
+
+- **O `SPAWN_EQUIV_VISITS = 808` é desta máquina** (32 núcleos, `std::thread`). Ele é uma **razão**
+  entre dois custos, o que o torna mais portável que um absoluto, e o ótimo é **plano** em volta dele
+  (errar por 2× custa ~2%) — mas o número é reconferível pela sonda em outro hardware.
+- ⚠️ **A evidência do 10,5 µs foi consumida pela própria cura:** o piso chato de 0,33-0,39 ms que toda
+  linha pequena mostrava era `32 × 10,5 µs`, e ele não existe mais nas tabelas de hoje. Quem quiser
+  re-derivar o número tem de **ablacionar a contagem**, não reler a tabela.
+- **Quatro sítios ainda chamam `available_parallelism()` fora da porta** — `stamp_color_cache`,
+  `compositor::compose`, `selection_overlay` e `warp/transform_float`. Eles são por-OPERAÇÃO (um
+  composite, um warp), não por-dab-por-banda, então o syscall ali é ruído; mas eles têm **o mesmo
+  cliff de contagem constante** que esta wave curou, e nenhum foi medido.
+- **A rota do DEVICE segue exigindo `!accumulate_cap`** — o kernel WGSL não transcreve a lei do cap.
+  É a decisão que sobra do §7, e agora ela custa menos, porque a CPU deixou de ser a rota lenta.

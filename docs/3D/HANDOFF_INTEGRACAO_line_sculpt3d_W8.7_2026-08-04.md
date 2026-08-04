@@ -191,7 +191,7 @@ manda apagar-e-olhar.
 
 ## 8.ter. E A TERCEIRA, também na mesma branch — **W9.1: A TOPOLOGIA DINÂMICA** (⚠️ pendente de smoke)
 
-> **Commits:** `<mesh>` (o motor na malha) · `<tool>` (o editor). **Cena `=14`.**
+> **Commits:** `53f2acfe0` (o motor na malha) · `d7c8df2c8` (o editor). **Cena `=14`.**
 
 `P` liga, `U` cicla o detalhe, e o traço passa a **adensar onde o pincel toca** em vez de ficar preso
 à resolução com que o modelo nasceu.

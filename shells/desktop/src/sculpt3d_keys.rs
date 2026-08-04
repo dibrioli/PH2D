@@ -304,6 +304,36 @@ impl App {
         // ⚠️ **Descer e subir NÃO é uma edição** — ver `change_level`. O log diz o
         // nível porque a malha de baixo se PARECE com a de cima alisada: sem o
         // número, o artista não sabe em qual está.
+        // **A TOPOLOGIA DINÂMICA.** ⚠️ No `P` porque as letras da coisa estão
+        // todas tomadas (`D` mostra o sprite, `T` torce) e o `P` é o vizinho
+        // livre do cacho de topologia (`K` subdivide, `J` reverte, `V` remalha,
+        // `O` fecha buraco). O log diz as DUAS consequências de ligar — o modo
+        // e a triangulação —, porque triangular MUDA a malha e uma mudança
+        // calada é a que o artista descobre no save.
+        if code == K::KeyP {
+            let (on, tris) = scene.toggle_dyntopo();
+            if !on {
+                eprintln!("[sculpt3d] topologia dinamica DESLIGADA");
+            } else if scene.level_count() > 1 {
+                eprintln!(
+                    "[sculpt3d] topologia dinamica ARMADA -- mas a pilha de multires esta' montada                      e ela RECUSA: refinar a base deixaria cada nivel descrevendo outra malha                      (reverta com J)"
+                );
+            } else {
+                let d = scene.detail_label();
+                eprintln!(
+                    "[sculpt3d] topologia dinamica LIGADA (detalhe {d}, U cicla) --                      {tris} faces trianguladas; o traco passa a adensar onde o pincel toca,                      e o Ctrl+Z dele devolve a malha inteira"
+                );
+            }
+            return true;
+        }
+        // O DETALHE — três degraus com nome. Ver `DETAIL_STEPS`.
+        if code == K::KeyU {
+            let d = scene.cycle_detail();
+            eprintln!(
+                "[sculpt3d] detalhe: {d} -- a aresta alvo e' uma fracao do PINCEL,                  entao pincel pequeno detalha fino"
+            );
+            return true;
+        }
         if code == K::Comma || code == K::Period {
             let up = code == K::Period;
             if scene.change_level(up) {

@@ -219,6 +219,35 @@ pub struct SculptStroke {
 }
 
 impl SculptStroke {
+    /// **A malha CRESCEU no meio do traço** — acomoda os vértices novos sem
+    /// tocar no que já foi congelado.
+    ///
+    /// ⚠️ **É o que deixa a topologia dinâmica conviver com a lei do traço.** O
+    /// caminho óbvio seria chamar [`Self::begin`] de novo depois de refinar, e
+    /// ele está ERRADO pelo motivo que esta casa já pagou quatro vezes no
+    /// relevo do Painter: re-começar joga fora o `pre`, e o dab seguinte passa a
+    /// medir a partir do resultado do anterior — o traço vira um PRODUTO sobre
+    /// a lista de dabs, e a força passa a depender de quantas vezes o refino
+    /// disparou.
+    ///
+    /// Ela só é correta porque o refino **APENDA**: um vértice que já existia
+    /// mantém o índice, então `slot`, `stamp`, `touched` e `base_pos` seguem
+    /// descrevendo exatamente os mesmos vértices. Um refino que reordenasse
+    /// índices tornaria isto silenciosamente errado — e é por isso que a frase
+    /// está aqui, e não só no motor.
+    ///
+    /// O vértice novo entra como *nunca visto* (`slot = u32::MAX`, `stamp = 0`):
+    /// o `pre` dele será a posição em que ele NASCEU, capturada no primeiro dab
+    /// que o tocar, que é a única resposta que existe para *"onde ele estava
+    /// antes?"*.
+    pub fn grow_to(&mut self, verts: usize) {
+        if verts <= self.slot.len() {
+            return;
+        }
+        self.slot.resize(verts, u32::MAX);
+        self.stamp.resize(verts, 0);
+    }
+
     /// Congela o `pre`: começa um traço novo sobre `mesh`.
     ///
     /// Não copia a malha — a captura é **preguiçosa, por vértice tocado**. Um
@@ -372,6 +401,12 @@ impl SculptStroke {
     /// peça sob o cursor — tocar um cubo de 8 vértices e depois uma esfera de
     /// 6050 panicava. A lei mora no chamador (*um traço pertence a uma peça*), e
     /// isto é o que a nomeia quando alguém a quebrar de novo.
+    ///
+    /// ⚠️ **A lei é *a malha para a qual o traço está DIMENSIONADO*, e não *a
+    /// malha em que ele começou*** — a diferença nasceu com a topologia
+    /// dinâmica: o refino faz a malha crescer NO MEIO do traço, e o
+    /// [`Self::grow_to`] re-dimensiona sem jogar fora o `pre`. A igualdade que
+    /// este `assert` exige continua exata; o que mudou é quem a mantém.
     pub fn dab(&mut self, mesh: &mut Mesh, brush: &Brush, dab: &Dab, sym: Symmetry) -> usize {
         assert_eq!(
             self.slot.len(),
@@ -658,3 +693,7 @@ mod target;
 #[cfg(test)]
 #[path = "stroke_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "stroke_growth_tests.rs"]
+mod growth_tests;

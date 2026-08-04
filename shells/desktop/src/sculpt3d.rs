@@ -127,8 +127,9 @@ mod scenes;
 mod fixtures;
 
 pub(crate) use scenes::{
-    announce, bake_scene, donation_scene, fuse_scene, holes_scene, remesh_scene, reopen_scene,
-    reversion_scene, scene_objects, smoke_armed, smoke_mesh, turn_scene, wants_canvas,
+    announce, bake_scene, donation_scene, dyntopo_scene, fuse_scene, holes_scene, remesh_scene,
+    reopen_scene, reversion_scene, scene_objects, smoke_armed, smoke_mesh, turn_scene,
+    wants_canvas,
 };
 
 /// O que o arrasto está fazendo.
@@ -179,6 +180,8 @@ mod space;
 /// **O QUE O DEVICE TEM** — a tabela de slots e o upload. Filho (`#[path]`) pelo
 /// motivo dos outros; ele saiu da [`donation`] quando o isolamento tornou *quem
 /// mora em cada slot* uma pergunta com resposta não-óbvia.
+#[path = "sculpt3d_dyntopo.rs"]
+mod dyntopo;
 #[path = "sculpt3d_slots.rs"]
 mod slots;
 
@@ -273,6 +276,21 @@ pub(crate) struct Sculpt3dScene {
     /// re-escondesse peças gastaria um passo de undo sem devolver trabalho
     /// nenhum.
     isolated: Option<ObjectId>,
+    /// **O ARM da topologia dinâmica** — ver [`dyntopo`], que é onde as três
+    /// consequências de ligar estão escritas.
+    ///
+    /// ⚠️ **Da CENA e não da peça**, como o `symmetry` ao lado: é um modo de
+    /// TRABALHO, e um interruptor que mudasse de posição ao trocar de peça é o
+    /// que faz o artista desenhar o traço errado para descobrir onde ele está.
+    dyntopo: dyntopo::Dyntopo,
+    /// A malha da peça ativa **como ela estava no pen-down**, e só quando a
+    /// topologia dinâmica está armada.
+    ///
+    /// ⚠️ **É o preço declarado do modo:** um traço que muda a contagem de
+    /// vértices não tem janela por-índice para desfazer, então o desfazer dele é
+    /// a malha inteira (a entrada `Remeshed`, que já é uma troca simétrica).
+    /// Vazio fora do gesto — ele não é um cache, é a metade de trás de UM passo.
+    dyn_before: Option<Box<ph2d_mesh::Mesh>>,
     /// **A TABELA DE SLOTS DO DEVICE** — quem mora em cada índice do
     /// renderizador. Ver [`slots`], que é onde a lei dela está escrita.
     slots: Vec<ObjectId>,
@@ -352,6 +370,8 @@ impl Sculpt3dScene {
             active: 0,
             next_id: 1,
             isolated: None,
+            dyntopo: dyntopo::Dyntopo::default(),
+            dyn_before: None,
             slots: Vec::new(),
             camera,
             renderer: MeshRenderer::new(device, ph2d_render::GameRt::FORMAT),
@@ -444,6 +464,11 @@ impl Sculpt3dScene {
             );
         }
         let brush = self.armed_brush(hit.point);
+        // ⚠️ **REFINA E DEPOIS CARIMBA** — ver `refine_for_dab`. E a malha que a
+        // linha seguinte recebe pode ter mais vértices que a do `pick_active`
+        // acima: é por isso que ela é pedida de novo, por índice, em vez de
+        // segurada numa referência desde o topo.
+        self.refine_for_dab(hit.point, brush.radius);
         let eye = self.dir_to_local(ray.dir());
         self.stroke.dab(
             self.objects[self.active].stack.mesh_mut(),

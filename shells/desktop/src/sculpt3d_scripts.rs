@@ -241,6 +241,40 @@ pub(super) fn for_scene(mesh: &ph2d_mesh::Mesh) {
              [sculpt3d]        pilha montada, e o log diz o conserto (J reverte)."
         );
     }
+    if crate::sculpt3d::dyntopo_scene() {
+        // ⚠️ **A cena imprime a contagem de partida**, e ela é o oráculo: o
+        // modo existe para MUDAR esse número onde o pincel toca, e sem o valor
+        // de antes o artista não tem contra o que comparar.
+        eprintln!(
+            "[sculpt3d] =14 A TOPOLOGIA DINAMICA: uma esfera GROSSA (as facetas tem de
+             [sculpt3d]    ser visiveis a olho nu -- se ela vier lisa, PARE: e' a cena errada).
+             [sculpt3d]    (1) O CONTROLE, primeiro: esculpa um dedo AGORA, com o modo
+             [sculpt3d]        desligado. A forma sai FACETADA -- a malha nao tem triangulos
+             [sculpt3d]        para descrever o que voce pediu. E' esse o problema.
+             [sculpt3d]        Ctrl+Z desfaz.
+             [sculpt3d]    (2) Aperte P. O log diz LIGADA e quantas faces a triangulacao
+             [sculpt3d]        criou (a esfera nasce em quads, e o modo e' de triangulos).
+             [sculpt3d]        A silhueta NAO pode mudar: triangular nao move um vertice.
+             [sculpt3d]    (3) Esculpa o mesmo dedo. Agora a malha ADENSA onde o pincel passa,
+             [sculpt3d]        e so' ali -- o resto da esfera continua grosso. Olhe a borda do
+             [sculpt3d]        traco: ela tem de ser LISA. Um buraco fino, uma faceta preta ou
+             [sculpt3d]        uma quina que pisca na luz e' rachadura, e e' reprovacao.
+             [sculpt3d]    (4) A LEI DO TRACO, e este passo e' o que separa a wave de um port
+             [sculpt3d]        ingenuo: passe DEVAGAR e depois RAPIDO sobre o mesmo caminho, com
+             [sculpt3d]        a mesma forca. As duas passadas tem de deixar o MESMO relevo. Se
+             [sculpt3d]        a lenta afundar mais, o traco voltou a compor.
+             [sculpt3d]    (5) U cicla o detalhe (grosso / medio / fino) e o alvo e' uma FRACAO
+             [sculpt3d]        DO PINCEL: no fino, um pincel pequeno ([ diminui) faz detalhe
+             [sculpt3d]        muito mais fino que o mesmo fino num pincel grande.
+             [sculpt3d]    (6) Ctrl+Z desfaz o traco INTEIRO num passo -- a malha volta a ser a
+             [sculpt3d]        grossa, com a contagem de antes. Ctrl+Shift+Z refaz.
+             [sculpt3d]    (7) P de novo DESLIGA: o traco seguinte volta a facetar (a malha
+             [sculpt3d]        adensada FICA -- desligar nao desfaz).
+             [sculpt3d]    (8) A RECUSA: Ctrl+Z ate' voltar ao inicio, aperte K (subdividir) e
+             [sculpt3d]        depois P. O log tem de dizer que RECUSA com a pilha montada, e
+             [sculpt3d]        dizer o conserto (J reverte)."
+        );
+    }
     if crate::sculpt3d::donation_scene() {
         eprintln!(
             "[sculpt3d] =2 A DOACAO: ha uma TELA BRANCA embaixo, e a tecla D alterna\n\

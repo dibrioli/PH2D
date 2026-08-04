@@ -364,8 +364,34 @@ impl Sculpt3dScene {
         true
     }
 
+    /// **A malha de ANTES do traço**, quando a topologia dinâmica está armada.
+    ///
+    /// ⚠️ Chamada no pen-down e só ali: um traço que refina não tem janela
+    /// por-índice para desfazer, e a foto tem de ser tirada antes do primeiro
+    /// dab. Ver o `dyn_before`.
+    pub(super) fn open_dyntopo_stroke(&mut self) {
+        self.dyn_before = self
+            .dyntopo
+            .armed
+            .then(|| Box::new(self.mesh().clone()))
+            .filter(|_| self.level_count() == 1);
+    }
+
     /// Fecha o traço e guarda o desfazer.
     pub(super) fn close_stroke(&mut self) {
+        // ⚠️ **O traço que MUDOU A TOPOLOGIA desfaz pela malha inteira**, e a
+        // pergunta não é *"o dyntopo estava armado?"* e sim *"a contagem de
+        // vértices mudou?"*: armado e sem nada a refinar (a malha já tem a
+        // densidade pedida ali) o traço é um traço comum, e gastar uma cópia de
+        // documento nele seria pagar pelo modo em vez de pelo que ele fez.
+        if let Some(before) = self
+            .dyn_before
+            .take()
+            .filter(|b| b.vert_count() != self.mesh().vert_count())
+        {
+            self.record(StrokeUndo::Remeshed(before));
+            return;
+        }
         if self.stroke.touched().is_empty() {
             return;
         }

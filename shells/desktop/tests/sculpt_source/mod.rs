@@ -56,6 +56,21 @@ pub fn function_body(src: &str, name: &str) -> String {
     panic!("`fn {name}` não fecha");
 }
 
+/// A fonte **sem espaço em branco** — para uma asserção sobreviver ao `rustfmt`.
+///
+/// ⚠️ **Um arch-gate que casa um literal de várias palavras aposta na
+/// FORMATAÇÃO, e essa aposta se perde.** Aconteceu nesta linha: um `if` de duas
+/// condições virou um `.filter(…)` por causa de um lint, o `rustfmt` o quebrou
+/// em quatro linhas, e o gate que procurava `self.dyn_before.take()` passou a
+/// não achar nada — sobre produto correto. A `line/Painter` tem a cicatriz
+/// gêmea (*"o `rustfmt` reflowou a correção para FORA da linha"*).
+///
+/// Comprimir os dois lados torna a asserção sobre o que o código DIZ, e não
+/// sobre onde o formatador escolheu quebrar.
+pub fn squeezed(src: &str) -> String {
+    src.chars().filter(|c| !c.is_whitespace()).collect()
+}
+
 /// O **ramo** (guarda + bloco) que CONTÉM `needle`.
 ///
 /// ⚠️ **Nasceu de um gate que reprovou produto correto, e a lição é sobre a

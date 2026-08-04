@@ -33,6 +33,11 @@ pub(crate) fn fuse_scene() -> bool {
     std::env::var("PH2D_SCULPT3D_SMOKE").ok().as_deref() == Some("13")
 }
 
+/// `=14` — a cena da **TOPOLOGIA DINÂMICA**.
+pub(crate) fn dyntopo_scene() -> bool {
+    std::env::var("PH2D_SCULPT3D_SMOKE").ok().as_deref() == Some("14")
+}
+
 /// `=9` — a cena do **IMPORT**: um arquivo para o artista soltar na janela.
 pub(crate) fn import_scene() -> bool {
     std::env::var("PH2D_SCULPT3D_SMOKE").ok().as_deref() == Some("9")
@@ -286,6 +291,15 @@ pub(crate) fn smoke_mesh() -> ph2d_mesh::Mesh {
     }
     if holes_scene() {
         return punctured_sphere();
+    }
+    if dyntopo_scene() {
+        // ⚠️ **GROSSA de propósito, e é a metade do smoke que o número prova.**
+        // A esfera de 96×144 que o resto do módulo abre já tem arestas menores
+        // que o alvo de qualquer pincel razoável — ligar a topologia dinâmica
+        // sobre ela não partiria nada, e a cena ficaria verde mostrando NADA.
+        // Com 10×14 as facetas são visíveis a olho nu, e é contra elas que o
+        // detalhe nascendo se vê.
+        return ph2d_mesh::shapes::uv_sphere(10, 14, 1.0);
     }
     if reversion_scene() {
         // ⚠️ **Ela é DUAS vezes subdividida de propósito**: um modelo denso que

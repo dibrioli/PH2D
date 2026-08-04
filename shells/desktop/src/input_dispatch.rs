@@ -4858,8 +4858,6 @@ impl App {
                                 rotation: pw.rotation,
                                 scale: [pw.scale.x, pw.scale.y],
                             };
-                            let use_center_anchor =
-                                self.modifiers.control_key() || self.modifiers.super_key();
                             // ⚠️ **As DUAS metades.** O `.1` sozinho descartava o
                             // `anchor` — *onde a caixa está em relação ao pivô* — e
                             // `anchor_pivot_world` então fixava um ponto deslocado de
@@ -4891,12 +4889,22 @@ impl App {
                                 // fix: child de pai rotacionado tinha
                                 // pivot calculado como root).
                                 let world_snap = ph2d_editor::compose_snapshot(parent_world, snap);
+                                // ⚠️ **O CANTO oposto, sempre — mesmo com Ctrl premido agora.**
+                                //
+                                // A âncora deste gizmo é VIVA (`ph2d_editor::live_anchor`, chamada
+                                // a cada movimento): o Ctrl deste frame é que decide se o ponto
+                                // fixo é o canto ou o centro. O centro é derivável da pose de
+                                // partida a qualquer momento; o CANTO não é derivável de nada
+                                // depois do pen-down, porque só aqui se sabe QUAL alça foi pega.
+                                // Guardar o centro aqui tornaria soltar o Ctrl no meio do arrasto
+                                // uma operação sem volta — e o modificador deixaria de ser vivo
+                                // justamente na direção em que o artista o larga.
                                 ph2d_editor::anchor_pivot_world(
                                     gkind,
                                     sprite_anchor_intrinsic,
                                     sprite_half_intrinsic,
                                     world_snap,
-                                    use_center_anchor,
+                                    false,
                                 )
                             };
                             // Onda 2 polish: capture the global view at
@@ -4921,7 +4929,9 @@ impl App {
                                 pivot_world: pivot,
                                 start_cursor_world: start_world,
                                 sprite_half_intrinsic,
-                                anchor_is_center: use_center_anchor,
+                                // O modificador VIVO o reescreve a cada movimento; nascer em
+                                // `false` deixa a pose de partida intacta até o 1º `CursorMoved`.
+                                anchor_is_center: false,
                                 target: effective_target,
                                 parent_world,
                                 turns: 0,

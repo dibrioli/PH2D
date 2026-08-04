@@ -383,10 +383,9 @@ fn constrain_left_survives_the_click_and_the_handle() {
     // 2. A alça arrasta a borda ESQUERDA: o pivô é a borda direita (x = 100), e a moldura
     //    cresce 50 para a esquerda.
     let xf = VecXforms::default();
-    let st =
-        crate::vec_frame_resize::begin(&scene, &xf, frame.to_bits(), frame_id, [100.0, 20.0], None)
-            .expect("armou o redimensionamento");
-    crate::vec_frame_resize::apply(&mut sim, &mut scene, &st, 1.5, 1.0);
+    let st = crate::vec_frame_resize::begin(&scene, &xf, frame.to_bits(), frame_id, None)
+        .expect("armou o redimensionamento");
+    crate::vec_frame_resize::apply(&mut sim, &mut scene, &st, [100.0, 20.0], 1.5, 1.0);
     let (flo, _fhi) = scene.path_curve_bbox(frame_id).expect("a moldura");
     assert!(
         approx(flo[0], -50.0),

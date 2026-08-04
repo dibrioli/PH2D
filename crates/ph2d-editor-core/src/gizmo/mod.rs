@@ -47,6 +47,6 @@ pub use paint::{
 };
 pub use point::{PointGizmoView, PointHandle, PointHandleKind, paint_point_gizmo, point_handle_id};
 pub use transform::{
-    anchor_pivot_world, compose_snapshot, compute_gizmo_transform, move_pivot_transform,
-    pivot_snap_candidates, world_delta_to_local, world_translation_to_local,
+    anchor_pivot_world, compose_snapshot, compute_gizmo_transform, live_anchor,
+    move_pivot_transform, pivot_snap_candidates, world_delta_to_local, world_translation_to_local,
 };

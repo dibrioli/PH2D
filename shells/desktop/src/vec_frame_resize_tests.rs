@@ -114,16 +114,16 @@ fn the_corner_the_gizmo_pinned_is_the_corner_that_stays() {
     let (mut sim, mut scene, _map, ids) = frame_and_kid();
     let x = VecXforms::default();
     // Pivô no canto mínimo (arrastando a alça oposta): o mínimo não se move.
-    let s = begin(&scene, &x, 1, ids[0], [0.0, 0.0], None).expect("armou");
-    apply(&mut sim, &mut scene, &s, 2.0, 1.0);
+    let s = begin(&scene, &x, 1, ids[0], None).expect("armou");
+    apply(&mut sim, &mut scene, &s, [0.0, 0.0], 2.0, 1.0);
     let (lo, hi) = box_of(&scene, ids[0]);
     assert!((lo[0] - 0.0).abs() < 1e-9, "o minimo andou: {lo:?}");
     assert!((hi[0] - 200.0).abs() < 1e-6, "o maximo nao seguiu: {hi:?}");
 
     // Pivô no canto MÁXIMO: agora é ele que fica, e o mínimo é que anda.
     let (_sim2, mut scene2, _m2, ids2) = frame_and_kid();
-    let s2 = begin(&scene2, &x, 1, ids2[0], [100.0, 40.0], None).expect("armou");
-    apply(&mut sim, &mut scene2, &s2, 2.0, 1.0);
+    let s2 = begin(&scene2, &x, 1, ids2[0], None).expect("armou");
+    apply(&mut sim, &mut scene2, &s2, [100.0, 40.0], 2.0, 1.0);
     let (lo2, hi2) = box_of(&scene2, ids2[0]);
     assert!((hi2[0] - 100.0).abs() < 1e-9, "o maximo andou: {hi2:?}");
     assert!(
@@ -140,8 +140,8 @@ fn the_corner_the_gizmo_pinned_is_the_corner_that_stays() {
 fn a_centre_pivot_needs_no_special_case() {
     let (mut sim, mut scene, _map, ids) = frame_and_kid();
     let x = VecXforms::default();
-    let s = begin(&scene, &x, 1, ids[0], [50.0, 20.0], None).expect("armou");
-    apply(&mut sim, &mut scene, &s, 2.0, 1.0);
+    let s = begin(&scene, &x, 1, ids[0], None).expect("armou");
+    apply(&mut sim, &mut scene, &s, [50.0, 20.0], 2.0, 1.0);
     let (lo, hi) = box_of(&scene, ids[0]);
     assert!(
         (lo[0] + 50.0).abs() < 1e-6,
@@ -163,15 +163,15 @@ fn a_centre_pivot_needs_no_special_case() {
 fn ten_moves_to_double_it_double_it_once() {
     let (mut sim, mut one, _m, ids) = frame_and_kid();
     let x = VecXforms::default();
-    let s = begin(&one, &x, 1, ids[0], [0.0, 0.0], None).expect("armou");
-    apply(&mut sim, &mut one, &s, 2.0, 2.0);
+    let s = begin(&one, &x, 1, ids[0], None).expect("armou");
+    apply(&mut sim, &mut one, &s, [0.0, 0.0], 2.0, 2.0);
 
     let (_sim2, mut many, _m2, ids2) = frame_and_kid();
-    let s2 = begin(&many, &x, 1, ids2[0], [0.0, 0.0], None).expect("armou");
+    let s2 = begin(&many, &x, 1, ids2[0], None).expect("armou");
     // O gizmo entrega uma razão absoluta por CursorMoved; o caminho até 2× não pode contar.
     for k in 1..=10 {
         let f = 1.0 + f64::from(k) / 10.0;
-        apply(&mut sim, &mut many, &s2, f, f);
+        apply(&mut sim, &mut many, &s2, [0.0, 0.0], f, f);
     }
     assert_eq!(
         box_of(&one, ids[0]),
@@ -191,9 +191,9 @@ fn dragging_back_to_where_it_started_restores_the_geometry_exactly() {
         .find(|p| p.id == ids[0])
         .expect("a moldura")
         .clone();
-    let s = begin(&scene, &x, 1, ids[0], [0.0, 0.0], None).expect("armou");
-    apply(&mut sim, &mut scene, &s, 3.7, 0.4);
-    apply(&mut sim, &mut scene, &s, 1.0, 1.0);
+    let s = begin(&scene, &x, 1, ids[0], None).expect("armou");
+    apply(&mut sim, &mut scene, &s, [0.0, 0.0], 3.7, 0.4);
+    apply(&mut sim, &mut scene, &s, [0.0, 0.0], 1.0, 1.0);
     assert_eq!(
         scene.paths().iter().find(|p| p.id == ids[0]),
         Some(&pristine),
@@ -209,8 +209,8 @@ fn resizing_the_frame_does_not_touch_the_child_geometry() {
     let (mut sim, mut scene, _map, ids) = frame_and_kid();
     let x = VecXforms::default();
     let before = box_of(&scene, ids[1]);
-    let s = begin(&scene, &x, 1, ids[0], [0.0, 0.0], None).expect("armou");
-    apply(&mut sim, &mut scene, &s, 2.5, 0.5);
+    let s = begin(&scene, &x, 1, ids[0], None).expect("armou");
+    apply(&mut sim, &mut scene, &s, [0.0, 0.0], 2.5, 0.5);
     assert_eq!(box_of(&scene, ids[1]), before, "o filho esticou");
 }
 
@@ -225,8 +225,8 @@ fn resizing_the_frame_does_not_touch_the_child_geometry() {
 fn a_frame_does_not_flip_through_itself() {
     let (mut sim, mut scene, _map, ids) = frame_and_kid();
     let x = VecXforms::default();
-    let s = begin(&scene, &x, 1, ids[0], [0.0, 0.0], None).expect("armou");
-    apply(&mut sim, &mut scene, &s, -2.0, 1.0);
+    let s = begin(&scene, &x, 1, ids[0], None).expect("armou");
+    apply(&mut sim, &mut scene, &s, [0.0, 0.0], -2.0, 1.0);
     let (lo, hi) = box_of(&scene, ids[0]);
     assert!(
         lo[0].abs() < 1e-9,
@@ -241,7 +241,7 @@ fn a_frame_does_not_flip_through_itself() {
 fn a_snapshot_belongs_to_the_drag_that_took_it() {
     let (_sim, scene, _map, ids) = frame_and_kid();
     let x = VecXforms::default();
-    let s = begin(&scene, &x, 7, ids[0], [0.0, 0.0], None).expect("armou");
+    let s = begin(&scene, &x, 7, ids[0], None).expect("armou");
     assert!(s.is_for(7));
     assert!(!s.is_for(8));
 }
@@ -285,8 +285,8 @@ fn the_border_the_gizmo_pinned_does_not_walk_across_drags() {
         let pivot = ph2d_editor::anchor_pivot_world(kind, anchor, half, snap, false);
         let xf = crate::vec_transform::build(&sim, &map);
         lefts.push(scene.path_world_curve_bbox(&xf, id).expect("mundo").0[0]);
-        let st = begin(&scene, &xf, 1, id, pivot, None).expect("armou");
-        apply(&mut sim, &mut scene, &st, 0.5, 1.0);
+        let st = begin(&scene, &xf, 1, id, None).expect("armou");
+        apply(&mut sim, &mut scene, &st, pivot, 0.5, 1.0);
     }
     let xf = crate::vec_transform::build(&sim, &map);
     lefts.push(scene.path_world_curve_bbox(&xf, id).expect("mundo").0[0]);
@@ -314,8 +314,8 @@ fn the_pinned_point_survives_a_rotated_frame() {
     // Y antes de girar é o que põe o fenómeno dentro da fixture.
     {
         let xf0 = crate::vec_transform::build(&sim, &map);
-        let st = begin(&scene, &xf0, 1, id, [200.0, 80.0], None).expect("armou");
-        apply(&mut sim, &mut scene, &st, 1.0, 0.5);
+        let st = begin(&scene, &xf0, 1, id, None).expect("armou");
+        apply(&mut sim, &mut scene, &st, [200.0, 80.0], 1.0, 0.5);
     }
     if let Some(mut t) = sim.world_mut().get_mut::<ph2d_ecs::Transform>(e) {
         t.rotation = 0.7;
@@ -416,16 +416,8 @@ fn resizing_a_live_shape_keeps_its_recipe_in_step() {
 
     // A alça encolhe a moldura a metade, pinada na borda esquerda.
     let xf = VecXforms::default();
-    let st = begin(
-        &scene,
-        &xf,
-        e.to_bits(),
-        id,
-        [-50.0, 0.0],
-        Some([100.0, 40.0]),
-    )
-    .expect("armou");
-    apply(&mut sim, &mut scene, &st, 0.5, 1.0);
+    let st = begin(&scene, &xf, e.to_bits(), id, Some([100.0, 40.0])).expect("armou");
+    apply(&mut sim, &mut scene, &st, [-50.0, 0.0], 0.5, 1.0);
     assert!(
         (width(&scene) - 50.0).abs() < 1e-9,
         "a fixture nao encolheu"
@@ -494,5 +486,60 @@ fn the_panels_width_field_keeps_the_recipe_in_step_too() {
         (hi[0] - lo[0] - 50.0).abs() < 1e-9,
         "o re-cook ressuscitou a caixa antiga pelo caminho do painel: {}",
         hi[0] - lo[0]
+    );
+}
+
+/// **A âncora da moldura é do FRAME, não do gesto** — o MESMO instantâneo, dois pivôs, dois
+/// pontos fixos.
+///
+/// ⚠️ É isto que faz o Ctrl chegar a uma MOLDURA. A caixa dela não é escalada pelo `Transform`
+/// (uma moldura redimensiona, não escala — corolário do W3), então a âncora viva do gizmo não a
+/// alcançaria sozinha: ela tem de entrar por aqui. E re-fotografar o instantâneo quando a tecla
+/// muda não serve — capturaria a geometria **já redimensionada**, que é precisamente o que o
+/// guard `is_for` existe para impedir. Daí a separação: a CONVERSÃO congela, o ponto fixo não.
+#[test]
+fn the_frames_anchor_is_a_fact_of_the_frame_not_of_the_gesture() {
+    let (mut sim, mut scene, map, id) = live_frame();
+    let xf = crate::vec_transform::build(&sim, &map);
+    let (lo, hi) = scene.path_world_curve_bbox(&xf, id).expect("mundo");
+    let centre = [
+        ((lo[0] + hi[0]) * 0.5) as f32,
+        ((lo[1] + hi[1]) * 0.5) as f32,
+    ];
+    let left = [lo[0] as f32, lo[1] as f32];
+    // UM instantâneo, tirado uma vez — como o produto faz.
+    let st = begin(&scene, &xf, 1, id, None).expect("armou");
+
+    // Sem tecla: a borda ESQUERDA (o pivô) fica onde está.
+    apply(&mut sim, &mut scene, &st, left, 0.5, 1.0);
+    let xf1 = crate::vec_transform::build(&sim, &map);
+    let (l1, h1) = scene.path_world_curve_bbox(&xf1, id).expect("mundo");
+    assert!(
+        (l1[0] - lo[0]).abs() < 1e-6,
+        "ancorado na borda, a esquerda tem de ficar em {}, veio {}",
+        lo[0],
+        l1[0]
+    );
+
+    // Com tecla, MESMO instantâneo: o CENTRO fica onde está, e a esquerda anda.
+    apply(&mut sim, &mut scene, &st, centre, 0.5, 1.0);
+    let xf2 = crate::vec_transform::build(&sim, &map);
+    let (l2, h2) = scene.path_world_curve_bbox(&xf2, id).expect("mundo");
+    let c2 = (l2[0] + h2[0]) * 0.5;
+    assert!(
+        (c2 - f64::from(centre[0])).abs() < 1e-6,
+        "ancorado no centro, o centro tem de ficar em {}, veio {c2}",
+        centre[0]
+    );
+    assert!(
+        (l2[0] - l1[0]).abs() > 1e-3,
+        "os dois pivôs deram o mesmo desenho — a âncora não chegou à moldura"
+    );
+    // A LARGURA é a mesma nos dois: a âncora escolhe ONDE, a razão escolhe QUANTO.
+    assert!(
+        ((h2[0] - l2[0]) - (h1[0] - l1[0])).abs() < 1e-6,
+        "a âncora mudou a largura: {} contra {}",
+        h2[0] - l2[0],
+        h1[0] - l1[0]
     );
 }

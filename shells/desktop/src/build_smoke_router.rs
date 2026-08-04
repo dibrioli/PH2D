@@ -229,5 +229,12 @@ pub(crate) fn route(app: &mut crate::App, f: u32, level: u32) -> bool {
         crate::component_smoke::frame(app, f);
         return true;
     }
+    // A cena da ÂNCORA DE ESCALA (=54) — irmã `gizmo_anchor_smoke`. Mesma disciplina: dá o
+    // material (a forma, os dois pinos que a medem, a moldura e o controle) e **não arma
+    // modificador nenhum** — quem carrega no Ctrl, no meio do arrasto, é o artista.
+    if level == 54 {
+        crate::gizmo_anchor_smoke::frame(app, f);
+        return true;
+    }
     false
 }

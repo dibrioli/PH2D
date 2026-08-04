@@ -61,8 +61,18 @@ pub(crate) struct FrameResizeStart {
     id: VecPathId,
     /// A geometria da moldura no instante do pen-down.
     path: VecPath,
-    /// O ponto FIXO do gesto, em coordenadas LOCAIS da moldura.
-    anchor: [f64; 2],
+    /// A caixa de MUNDO da geometria de partida — o canto mínimo.
+    ///
+    /// ⚠️ Ela e o [`Self::to_local`] são a **conversão** mundo→local congelada no pen-down; o
+    /// ponto FIXO sai dela por [`Self::anchor_for`], a cada movimento. A separação é o que torna
+    /// a âncora VIVA: o Ctrl deste frame move o pivô, e re-fotografar a geometria para o
+    /// acompanhar capturaria a moldura **já escalada** — que é exactamente o que o guard
+    /// `is_for` existe para impedir.
+    world_lo: [f64; 2],
+    /// A caixa LOCAL da geometria de partida — o canto mínimo.
+    local_lo: [f64; 2],
+    /// Quantas unidades locais mede uma unidade de mundo, por eixo.
+    to_local: [f64; 2],
     /// A caixa AUTORADA da receita no pen-down (`VecShape::Param { w, h }`), se a forma for
     /// VIVA. `None` para um path cru — que não tem receita a manter em passo.
     ///
@@ -77,6 +87,23 @@ impl FrameResizeStart {
     #[must_use]
     pub(crate) fn is_for(&self, entity_bits: u64) -> bool {
         self.entity_bits == entity_bits
+    }
+
+    /// **O ponto FIXO deste frame**, em coordenadas locais da moldura, dado o pivô VIVO do gizmo.
+    ///
+    /// ⚠️ Derivado do pivô, e não escolhido por análise de qual alça foi pega. Uma tabela
+    /// `canto arrastado → canto fixo` seria uma segunda resposta à pergunta que o gizmo já
+    /// responde (`anchor_pivot_world` ∘ `live_anchor`), e divergiria no primeiro caso que ela não
+    /// enumerasse — que é precisamente o CTRL, que ancora no CENTRO. Aqui o centro cai de graça,
+    /// e cai **ao vivo**: soltar o Ctrl no meio do arrasto devolve o canto no mesmo frame.
+    #[must_use]
+    pub(crate) fn anchor_for(&self, pivot_world: [f32; 2]) -> [f64; 2] {
+        let mut anchor = [0.0_f64; 2];
+        for i in 0..2 {
+            anchor[i] = self.local_lo[i]
+                + (f64::from(pivot_world[i]) - self.world_lo[i]) * self.to_local[i];
+        }
+        anchor
     }
 }
 
@@ -108,12 +135,9 @@ fn ratio(world: f64, local: f64) -> f64 {
     }
 }
 
-/// **Arma o gesto**: fotografa a geometria e traduz o pivô de mundo para o local.
+/// **Arma o gesto**: fotografa a geometria e a conversão mundo→local que dela deriva.
 ///
-/// ⚠️ O ponto fixo é DERIVADO do pivô, e não escolhido por análise de qual alça foi pegada. Uma
-/// tabela `canto arrastado → canto fixo` seria uma segunda resposta à pergunta que o gizmo já
-/// respondeu no pen-down (`anchor_pivot_world`), e divergiria no primeiro caso que ela não
-/// enumerasse — que é precisamente o CTRL, que ancora no CENTRO. Aqui o centro cai fora de graça.
+/// ⚠️ **Não recebe pivô.** O ponto fixo é do FRAME, não do gesto — ver [`FrameResizeStart::anchor_for`].
 ///
 /// ⚠️ A conversão é exata enquanto o mapa local→mundo for alinhado aos eixos, e aproximada sob
 /// ROTAÇÃO — a mesma aproximação declarada que a caixa do gizmo e o passe de âncoras carregam.
@@ -123,22 +147,22 @@ pub(crate) fn begin(
     xforms: &ph2d_vec_scene::VecXforms,
     entity_bits: u64,
     id: VecPathId,
-    pivot_world: [f32; 2],
     recipe: Option<[f64; 2]>,
 ) -> Option<FrameResizeStart> {
     let path = scene.paths().iter().find(|p| p.id == id)?.clone();
     let (llo, lhi) = scene.path_curve_bbox(id)?;
     let (wlo, whi) = scene.path_world_curve_bbox(xforms, id)?;
-    let mut anchor = [0.0_f64; 2];
-    for i in 0..2 {
-        let to_local = ratio(lhi[i] - llo[i], whi[i] - wlo[i]);
-        anchor[i] = llo[i] + (f64::from(pivot_world[i]) - wlo[i]) * to_local;
-    }
+    let to_local = [
+        ratio(lhi[0] - llo[0], whi[0] - wlo[0]),
+        ratio(lhi[1] - llo[1], whi[1] - wlo[1]),
+    ];
     Some(FrameResizeStart {
         entity_bits,
         id,
         path,
-        anchor,
+        world_lo: wlo,
+        local_lo: llo,
+        to_local,
         recipe,
     })
 }
@@ -152,6 +176,7 @@ pub(crate) fn apply(
     sim: &mut SimWorld,
     scene: &mut VecScene,
     start: &FrameResizeStart,
+    pivot_world: [f32; 2],
     sx: f64,
     sy: f64,
 ) -> bool {
@@ -161,7 +186,7 @@ pub(crate) fn apply(
     *p = start.path.clone();
     let (sx, sy) = (clamp_ratio(sx), clamp_ratio(sy));
     if (sx - 1.0).abs() > 1e-9 || (sy - 1.0).abs() > 1e-9 {
-        scene.scale_path(start.id, sx, sy, start.anchor);
+        scene.scale_path(start.id, sx, sy, start.anchor_for(pivot_world));
     }
     // ⚠️ **A RECEITA anda junto, e é por isso que `sim` está aqui.** A geometria de uma forma
     // viva é DERIVADA do `w`/`h` guardado; escrever só os `verts` deixa a receita a descrever a
@@ -190,11 +215,7 @@ impl crate::App {
     /// A cola de shell mora aqui, e não no `advance_gizmo_drag`: o resto deste módulo é puro e
     /// dirigível headless, e é isso que faz os gates medirem o produto em vez de uma cópia dele.
     #[must_use]
-    pub(crate) fn begin_frame_resize(
-        &self,
-        entity_bits: u64,
-        pivot_world: [f32; 2],
-    ) -> Option<FrameResizeStart> {
+    pub(crate) fn begin_frame_resize(&self, entity_bits: u64) -> Option<FrameResizeStart> {
         let gfx = self.gfx.as_ref()?;
         let entity = Entity::from_bits(entity_bits);
         let id = resizable_frame(&gfx.sim, entity)?;
@@ -203,7 +224,7 @@ impl crate::App {
             Some(ph2d_ecs::VecShape::Param { w, h, .. }) => Some([*w, *h]),
             _ => None,
         };
-        begin(&gfx.vec_scene, &xf, entity_bits, id, pivot_world, recipe)
+        begin(&gfx.vec_scene, &xf, entity_bits, id, recipe)
     }
 }
 

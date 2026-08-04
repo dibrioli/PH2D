@@ -3,7 +3,7 @@
 //! Extracted from monolithic `gizmo.rs` in Wave 6+7 Phase 1.B.
 
 use super::camera::{GizmoCamera, GizmoModifiers, GizmoSnap};
-use super::drag::{GizmoDragKind, GizmoDragState, TransformSnapshot};
+use super::drag::{GizmoDragKind, GizmoDragState, GizmoTarget, TransformSnapshot};
 
 /// Given the in-progress drag + the live camera state, compute the
 /// new Transform the host should write into SimWorld this frame.
@@ -402,6 +402,58 @@ pub fn pivot_snap_candidates(
         p(0.0, -hy), // B
         p(-hx, 0.0), // L
     ]
+}
+
+/// **A âncora VIVA de um arrasto de escala — porta única.**
+///
+/// Devolve uma cópia de `drag` com o pivô e o `anchor_is_center` que o modificador **deste frame**
+/// pede. Chamada a cada movimento, antes de [`compute_gizmo_transform`].
+///
+/// # Porque isto existe
+///
+/// Todo o resto deste gizmo já responde ao teclado **ao vivo** — o `Shift` trava a proporção e
+/// encaixa a rotação a cada frame, lido de `GizmoModifiers`. A âncora era a exceção: ela era
+/// decidida no pen-down e **congelada**, então carregar em Ctrl no meio do arrasto não fazia nada.
+/// Photoshop, Illustrator e Figma trocam a âncora ao vivo, e um gizmo em que um modificador é vivo
+/// e o outro não é o tipo de incoerência que o artista descobre pelo dedo.
+///
+/// ⚠️ O resultado é o mesmo que o gesto teria dado se tivesse COMEÇADO com a tecla: tudo é
+/// derivado do `start_transform`, nunca do estado corrente. É isso que impede a razão de escala de
+/// se multiplicar quando a tecla é premida e largada várias vezes no mesmo arrasto — e é a razão
+/// de **não** haver aqui um gate de "premir e largar N vezes não acumula": derivando sempre do
+/// estado autorado ele seria verde por construção. Quem prova a propriedade é o arch-gate da
+/// shell (*a saída é local, nunca escrita por cima do arrasto*).
+///
+/// ⚠️ **O resultado é DERIVADO — não o guarde por cima do estado do arrasto.** O `pivot_world`
+/// guardado é o CANTO, e ele é a única coisa aqui que não se pode re-derivar depois do pen-down
+/// (só ali se sabe qual alça foi pega). Escrever o centro por cima dele apaga o canto no primeiro
+/// frame com a tecla premida, e soltá-la deixa de devolver o que quer que seja: o modificador
+/// passa a ser vivo só na ida. Chamar esta função sobre a própria saída é a mesma falha.
+///
+/// ⚠️ **`Translate`, `Rotate` e `MovePivot` passam intactos** — não têm âncora oposta natural, e é
+/// o que o [`anchor_pivot_world`] já dizia.
+///
+/// ⚠️ **`GizmoTarget::Global` troca a REGRA e não o PONTO.** O pivô de uma seleção múltipla é o
+/// centro da caixa do GRUPO — escolhido pelo chamador e **não derivável de uma pose só** —, então
+/// ali a tecla decide apenas se a pose de cada membro é re-ancorada nele (*escala a partir do
+/// centro do grupo*) ou fica onde está (*cada um escala no seu lugar*). O ponto não se move.
+#[must_use]
+pub fn live_anchor(drag: GizmoDragState, ctrl: bool) -> GizmoDragState {
+    if !matches!(
+        drag.kind,
+        GizmoDragKind::ScaleCorner { .. } | GizmoDragKind::ScaleEdge { .. }
+    ) {
+        return drag;
+    }
+    let mut out = drag;
+    out.anchor_is_center = ctrl;
+    if ctrl && !matches!(drag.target, GizmoTarget::Global) {
+        // O centro é a translação de mundo da pose de PARTIDA — a mesma resposta que o
+        // `anchor_pivot_world` dá com `use_center_anchor`, sem precisar do anchor intrínseco.
+        let world = compose_snapshot(drag.parent_world, drag.start_transform);
+        out.pivot_world = world.translation;
+    }
+    out
 }
 
 /// Compute the world-space pivot for a Scale drag (Corner / Edge).

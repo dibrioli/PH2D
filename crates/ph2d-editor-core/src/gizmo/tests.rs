@@ -1194,3 +1194,163 @@ fn a_non_rotate_drag_never_counts_turns() {
     sweep(&mut drag, &c, 0.0, std::f32::consts::TAU * 2.0);
     assert_eq!(drag.turns, 0, "only a Rotate sweeps revolutions");
 }
+
+// ---------------------------------------------------------------------------
+// A ÂNCORA VIVA — o Ctrl deste FRAME decide o ponto fixo, como o Shift já fazia.
+// ---------------------------------------------------------------------------
+
+/// Um arrasto de canto sobre uma pose deslocada e ESCALADA — o pivô guardado é o canto SW.
+fn live_drag() -> GizmoDragState {
+    GizmoDragState {
+        kind: GizmoDragKind::ScaleCorner {
+            dx_sign: 1.0,
+            dy_sign: 1.0,
+        },
+        entity_bits: 1,
+        start_screen: (0.0, 0.0),
+        cursor_screen: (0.0, 0.0),
+        start_transform: TransformSnapshot {
+            translation: [10.0, 5.0],
+            rotation: 0.0,
+            scale: [2.0, 3.0],
+        },
+        // canto SW = centro − half⊙scale = (10−2, 5−3)
+        pivot_world: [8.0, 2.0],
+        start_cursor_world: [12.0, 8.0],
+        sprite_half_intrinsic: [1.0, 1.0],
+        anchor_is_center: false,
+        target: super::GizmoTarget::PrimaryIndividual,
+        parent_world: TransformSnapshot::IDENTITY,
+        turns: 0,
+    }
+}
+
+/// **Com Ctrl o ponto fixo é o CENTRO; sem ele, o canto oposto.** A pergunta é feita por FRAME.
+#[test]
+fn the_anchor_follows_this_frames_modifier() {
+    let held = super::live_anchor(live_drag(), true);
+    assert!(
+        held.anchor_is_center,
+        "Ctrl premido tem de ancorar no centro"
+    );
+    assert!(
+        (held.pivot_world[0] - 10.0).abs() < 1e-6 && (held.pivot_world[1] - 5.0).abs() < 1e-6,
+        "o centro é a translação de mundo da pose de partida, veio {:?}",
+        held.pivot_world
+    );
+    let free = super::live_anchor(live_drag(), false);
+    assert!(!free.anchor_is_center);
+    assert_eq!(
+        free.pivot_world,
+        [8.0, 2.0],
+        "sem Ctrl o pivô tem de ser o canto que o pen-down guardou"
+    );
+}
+
+/// **Soltar devolve o CANTO** — e é a metade que o pen-down torna possível.
+///
+/// ⚠️ O canto é a única coisa aqui que não se re-deriva: só o pen-down sabe qual alça foi pega.
+/// Por isso a derivação parte SEMPRE do estado autorado (é o que o produto faz — a saída é local,
+/// nunca escrita por cima do arrasto), e é isso que este gate mede: premir e largar em qualquer
+/// ordem devolve o canto exacto.
+#[test]
+fn releasing_the_key_gives_the_corner_back() {
+    let d = live_drag();
+    for keys in [
+        vec![true, false],
+        vec![false, true, false],
+        vec![true, true, false, true, false],
+    ] {
+        // Como no produto: cada frame deriva do MESMO estado autorado.
+        let mut last = d;
+        for k in keys {
+            last = super::live_anchor(d, k);
+        }
+        assert_eq!(
+            last.pivot_world, d.pivot_world,
+            "acabar sem a tecla tem de devolver o canto exacto"
+        );
+        assert!(!last.anchor_is_center);
+    }
+}
+
+/// **Translate, Rotate e MovePivot passam INTACTOS** — não têm âncora oposta natural.
+#[test]
+fn only_a_scale_has_an_anchor_to_switch() {
+    for kind in [
+        GizmoDragKind::Translate,
+        GizmoDragKind::Rotate,
+        GizmoDragKind::MovePivot,
+    ] {
+        let mut d = live_drag();
+        d.kind = kind;
+        let out = super::live_anchor(d, true);
+        assert_eq!(out.pivot_world, d.pivot_world, "{kind:?} moveu o pivô");
+        assert_eq!(out.anchor_is_center, d.anchor_is_center, "{kind:?}");
+    }
+}
+
+/// **Numa seleção múltipla a tecla troca a REGRA, não o PONTO.**
+///
+/// O pivô de um `Global` é o centro da caixa do GRUPO — escolhido pelo chamador e não derivável
+/// de uma pose só. Mover o pivô aqui ancoraria o gesto no centro de UM membro.
+#[test]
+fn a_global_drag_keeps_its_group_pivot() {
+    let mut d = live_drag();
+    d.target = super::GizmoTarget::Global;
+    d.pivot_world = [100.0, 100.0]; // o centro da caixa do grupo, longe desta pose
+    let held = super::live_anchor(d, true);
+    assert_eq!(
+        held.pivot_world,
+        [100.0, 100.0],
+        "o pivô do grupo não é derivável de um membro"
+    );
+    assert!(held.anchor_is_center, "mas a REGRA é viva");
+    assert!(!super::live_anchor(d, false).anchor_is_center);
+}
+
+/// **A consequência na POSE**: o mesmo gesto, com e sem a tecla, dá resultados que diferem
+/// exactamente na translação — e o canto oposto fica pinado no caso sem tecla.
+#[test]
+fn the_switched_anchor_reaches_the_transform() {
+    let c = cam();
+    let mut d = live_drag();
+    d.cursor_screen = cursor_for_world(&c, [16.0, 11.0]);
+    let free = compute_gizmo_transform(
+        &super::live_anchor(d, false),
+        &c,
+        GizmoModifiers::default(),
+        GizmoSnap::default(),
+        None,
+    );
+    let held = compute_gizmo_transform(
+        &super::live_anchor(d, true),
+        &c,
+        GizmoModifiers::default(),
+        GizmoSnap::default(),
+        None,
+    );
+    // ⚠️ **A razão DEPENDE da âncora, e isso é geometria, não defeito**: ela é
+    // `(cursor − pivô) / (partida − pivô)`, e ancorar no centro divide o braço de alavanca ao
+    // meio. É o que Photoshop e Figma fazem — a alça continua debaixo do cursor nos dois modos.
+    assert!(
+        (free.scale[0] - held.scale[0]).abs() > 0.5,
+        "a âncora tem de mudar a razão: livre={:?} preso={:?}",
+        free.scale,
+        held.scale
+    );
+    assert!(
+        (held.translation[0] - 10.0).abs() < 1e-4 && (held.translation[1] - 5.0).abs() < 1e-4,
+        "ancorado no centro a pose não anda, veio {:?}",
+        held.translation
+    );
+    // Sem tecla, o canto SW tem de continuar em (8, 2).
+    let sw = [
+        free.translation[0] - free.scale[0],
+        free.translation[1] - free.scale[1],
+    ];
+    assert!(
+        (sw[0] - 8.0).abs() < 1e-3 && (sw[1] - 2.0).abs() < 1e-3,
+        "o canto oposto saiu do lugar: {sw:?}"
+    );
+}

@@ -84,7 +84,7 @@ impl App {
                 .as_ref()
                 .is_some_and(|s| s.is_for(drag.entity_bits))
         {
-            self.frame_resize_start = self.begin_frame_resize(drag.entity_bits, drag.pivot_world);
+            self.frame_resize_start = self.begin_frame_resize(drag.entity_bits);
         }
         let vec_scale_ids = if is_scale_drag {
             self.dragged_vec_path_ids(drag.entity_bits)
@@ -115,6 +115,21 @@ impl App {
             };
             drag.advance_cursor((self.last_pointer.0, self.last_pointer.1), &cam);
             hero.gizmo.drag = Some(drag);
+            // **A âncora deste FRAME** — Ctrl/Cmd ancora no centro, sem ele no canto oposto.
+            //
+            // ⚠️ O `Shift` já era vivo (ele viaja no `GizmoModifiers`, reconstruído a cada
+            // movimento logo abaixo) e a âncora não era: ela era decidida no pen-down e congelada.
+            // Um gizmo em que um modificador é vivo e o outro não é a incoerência que o artista
+            // descobre pelo dedo — e todo app do ramo (Photoshop, Illustrator, Figma) troca a
+            // âncora ao vivo. A porta é ÚNICA porque o `frame_resize` abaixo pergunta o mesmo
+            // pivô: duas respostas fariam a caixa da moldura ancorar num ponto e o gizmo noutro.
+            //
+            // ⚠️ **A derivação é LOCAL, e a ordem destas duas linhas é load-bearing.** O que fica
+            // no `hero.gizmo.drag` é o estado AUTORADO — o canto que só o pen-down sabe qual é.
+            // Guardar o derivado por cima dele apagaria o canto no primeiro frame com a tecla
+            // premida, e soltá-la deixaria de devolver coisa nenhuma: o modificador seria vivo
+            // só na ida.
+            let drag = ph2d_editor::live_anchor(drag, ctrl);
             if matches!(drag.kind, ph2d_editor::GizmoDragKind::MovePivot) {
                 // TOOL_PIVOT: relocate the pivot to the cursor while the
                 // sprite's quad stays world-fixed (compensating anchor).
@@ -591,7 +606,14 @@ impl App {
                     } else {
                         1.0
                     };
-                    crate::vec_frame_resize::apply(&mut gfx.sim, &mut gfx.vec_scene, start, fx, fy);
+                    crate::vec_frame_resize::apply(
+                        &mut gfx.sim,
+                        &mut gfx.vec_scene,
+                        start,
+                        drag.pivot_world,
+                        fx,
+                        fy,
+                    );
                 } else if matches!(drag.kind, ph2d_editor::GizmoDragKind::Translate)
                     && crate::layout_reorder::flow_parent(&gfx.sim, entity).is_some()
                 {

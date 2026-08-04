@@ -26,11 +26,12 @@
 use ph2d_nodegraph::graph::{Edge, Pos};
 use ph2d_panel_motion_graph::GraphIntent;
 
-/// O modo: `0` off, `1` inserir (força na cadeia horizontal), `2` reorder (força
-/// spliceada depois de um integrador que já existe), `3` badge + quick-fix (dois
-/// setups inertes SEM gesto; o artista clica o pip ⚠ para consertar/explicar), `4`
-/// aviso da família `falloff` (um `field.box` que nada lê — derivado, SEM anotação)
-/// + o toggle "Node Help" que liga/desliga o sistema inteiro.
+/// O modo (`0` off): `1` inserir (força na cadeia horizontal); `2` reorder (força
+/// spliceada depois de um integrador que já existe); `3` badge + quick-fix (dois setups
+/// inertes SEM gesto, o artista clica o pip para consertar/explicar); `4` aviso da
+/// família `falloff` + o toggle "Node Help" que liga/desliga o sistema inteiro; `5` aviso
+/// de requisito-a-montante (um deformer/força SEM fonte de pontos). Os avisos `4` e `5`
+/// vêm por DERIVAÇÃO, sem anotação no nó.
 fn mode() -> u32 {
     static M: std::sync::OnceLock<u32> = std::sync::OnceLock::new();
     *M.get_or_init(|| {
@@ -351,6 +352,56 @@ impl crate::App {
                      esquerdo): o badge SOME (o sistema inteiro desliga — a liberdade do \
                      artista). Clique de novo: ele VOLTA. Para curar de verdade, ligue uma \
                      force.wind DEPOIS do field.box — o badge some (a forca le o falloff)."
+                );
+            }
+            // =5, frame 3: o AVISO de requisito-a-montante (2a) — um `motion.bend`
+            // ligado ao output com NADA alimentando-o. O deformer LÊ `P` (para dobrar
+            // pontos) mas não tem stream nenhum — é silenciosamente um no-op (a mesma
+            // classe de erro do ADR-0155, agora no eixo do que o nó PRECISA a montante).
+            // ⚠ O aviso vem PURAMENTE da binding de GPU que o bend já declara (a mesma
+            // DERIVAÇÃO da wave — ZERO anotação no nó). O bend ganha o pip ⚠; clicar
+            // EXPLICA (precisa de uma fonte de pontos — grid/emitter) + seleciona, nunca
+            // adivinha (Offer). Ligar uma `motion.grid` na entrada dele CURA (some o badge).
+            (5, 3) => {
+                let gfx = self.gfx.as_mut().expect("gfx");
+                let (bend, out) = {
+                    let g = &mut gfx.motion.doc.graph;
+                    let bend = g.add_node("motion.bend");
+                    let out = g.add_node("motion.output");
+                    g.set_pos(bend, Pos { x: 0.0, y: -200.0 });
+                    g.set_pos(
+                        out,
+                        Pos {
+                            x: 300.0,
+                            y: -200.0,
+                        },
+                    );
+                    g.connect(Edge {
+                        from: (bend, 0),
+                        to: (out, 0),
+                        delayed: false,
+                    })
+                    .expect("bend -> output");
+                    (bend, out)
+                };
+                gfx.motion.sinks.push(out);
+                let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+                ph2d_panel_motion_graph::request_graph_selection(vec![bend.0]);
+                let needy =
+                    ph2d_motion_diagnose::diagnose(&gfx.motion.doc.graph, &gfx.motion.registry)
+                        .iter()
+                        .filter(|d| d.deficit == ph2d_motion_diagnose::Deficit::MissingSource("P"))
+                        .count();
+                eprintln!(
+                    "[autofix smoke =5] montei `motion.bend -> output` com NADA alimentando o \
+                     bend: {needy} no(s) sem fonte de pontos marcado(s) (esperado 1 — o bend le \
+                     P mas nao tem stream para dobrar). SE NAO FOR 1, PARE. ⚠ O bend NAO tem \
+                     Coupling anotado: o aviso vem PURAMENTE da binding de GPU que ele ja' \
+                     declara (a mesma DERIVACAO da wave, ZERO anotacao). CLIQUE o badge do bend: \
+                     o app so' EXPLICA (toast: precisa de uma fonte de pontos — Grid/Emitter) e \
+                     SELECIONA — NADA muda no grafo (Offer, sem cura canonica; a lei do ADR-0155 \
+                     de nunca adivinhar). Para curar de verdade, ligue uma `motion.grid` na \
+                     entrada do bend — o badge some (o bend passa a ter pontos)."
                 );
             }
             _ => {}

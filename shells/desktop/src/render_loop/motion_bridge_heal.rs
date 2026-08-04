@@ -233,6 +233,14 @@ fn explain(d: &Diagnostic) -> &'static str {
         (Deficit::InertProducer("falloff"), _) => {
             "This field shapes a falloff that no force or deformer downstream reads — add one after it"
         }
+        // A deformer/force with nothing wired into it: it reads P but has no stream — the
+        // ROOT cause. WHICH source (grid / emitter / object) is a creative choice.
+        (Deficit::MissingSource("P"), _) => {
+            "This node has no points to work on — wire a source (Grid / Emitter) into it"
+        }
+        (Deficit::MissingSource(_), _) => {
+            "This node has nothing wired into it, so it has no data to work on"
+        }
         _ => "This node produces data nothing downstream consumes, so it does nothing",
     }
 }

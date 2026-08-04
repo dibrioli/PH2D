@@ -338,3 +338,100 @@ fn a_lowered_column_wired_to_output_is_never_inert() {
         "P is lowered to instances, so a node writing P to the output is not inert"
     );
 }
+
+// ── The required-upstream family (2a): a P-reader with nothing wired in has no points ──
+
+/// **A deformer with nothing wired to it needs points — DERIVED, zero annotation.**
+/// `motion.bend` reads `P` (a `ReadWrite` binding for the GPU cook); with no input edge
+/// it has no stream to bend, so it is silently a no-op. The diagnoser reports it a
+/// `MissingSource("P")` OFFER (WHICH source — grid / emitter / object — is the artist's
+/// choice, never guessed), purely from the same binding the cook reads. FALSIFIED by a
+/// `reads_column` that ignores the GPU binding (nothing detected) or a `has_input` that is
+/// always true (a fed reader is never source-less, so this could never fire).
+#[test]
+fn a_deformer_with_nothing_wired_needs_points() {
+    let reg = registry();
+    let mut g = Graph::new();
+    let bend = g.add_node("motion.bend");
+    let out = g.add_node("motion.output");
+    g.connect(Edge {
+        from: (bend, 0),
+        to: (out, 0),
+        delayed: false,
+    })
+    .expect("bend -> output");
+
+    let ds = diagnose(&g, &reg);
+    assert_eq!(ds.len(), 1, "exactly the floating deformer");
+    assert_eq!(ds[0].node, bend, "the motion.bend node");
+    assert_eq!(ds[0].deficit, Deficit::MissingSource("P"));
+    assert_eq!(
+        ds[0].fix,
+        Fix::Offer,
+        "WHICH source is a creative choice — offer, don't guess"
+    );
+}
+
+/// **A deformer FED by a source needs nothing — the negative control.** `grid → bend →
+/// output`: `motion.bend` has an input, so it is not source-less; it reads+writes `P`
+/// (lowered, consumed by the output), so the graph is clean. FALSIFIED by a `has_input`
+/// that is always false (the fed bend would be wrongly flagged source-less).
+#[test]
+fn a_deformer_fed_by_a_source_is_clean() {
+    let reg = registry();
+    let mut g = Graph::new();
+    chain(&mut g, &["motion.grid", "motion.bend", "motion.output"]);
+    assert!(
+        diagnose(&g, &reg).is_empty(),
+        "a fed deformer that writes lowered P is healthy"
+    );
+}
+
+/// **A floating force needs POINTS, not an integrator — the root cause wins.** A
+/// `force.attractor` with nothing wired reads `P` (source-less) AND produces `accel` (no
+/// integrator) — two defects, but "no points" is the ROOT (a force with no stream produces
+/// no accel either). The diagnoser reports ONLY the `MissingSource("P")`, so the artist is
+/// pointed at the real problem. FALSIFIED by dropping the `continue` after a
+/// `MissingSource` (the misleading `accel` diagnostic would ride along — two, not one).
+#[test]
+fn a_floating_force_needs_points_not_an_integrator() {
+    let reg = registry();
+    let mut g = Graph::new();
+    let force = g.add_node("force.attractor");
+    let out = g.add_node("motion.output");
+    g.connect(Edge {
+        from: (force, 0),
+        to: (out, 0),
+        delayed: false,
+    })
+    .expect("force -> output");
+
+    let ds = diagnose(&g, &reg);
+    assert_eq!(
+        ds.len(),
+        1,
+        "only the root cause — no points, not the accel"
+    );
+    assert_eq!(ds[0].node, force, "the force.attractor node");
+    assert_eq!(
+        ds[0].deficit,
+        Deficit::MissingSource("P"),
+        "the floating force needs points, not an integrator"
+    );
+}
+
+/// **A source is never told it needs points — the negative control for `reads()`.**
+/// `motion.grid` WRITES `P` (`ColumnAccess::Write`, which does not `reads()`), so a bare
+/// `grid → output` is never a `MissingSource` — grid IS the source. FALSIFIED by a
+/// `reads_column` that treats a `Write` as a read (grid, with nothing feeding it, would
+/// be wrongly told it needs points).
+#[test]
+fn a_source_is_never_told_it_needs_points() {
+    let reg = registry();
+    let mut g = Graph::new();
+    chain(&mut g, &["motion.grid", "motion.output"]);
+    assert!(
+        diagnose(&g, &reg).is_empty(),
+        "grid writes P without reading it — it IS the source, not a needer of one"
+    );
+}

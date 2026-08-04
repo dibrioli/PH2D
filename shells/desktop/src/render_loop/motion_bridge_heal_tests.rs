@@ -486,6 +486,44 @@ fn clicking_an_advisory_badge_changes_nothing() {
     );
 }
 
+/// **A source-less deformer badges, and clicking it only explains** (ADR-0155, the
+/// required-upstream family / 2a). `motion.bend` wired to the output with NOTHING feeding
+/// it reads `P` but has no stream — it is inert and reaches the output, so it badges; and
+/// a `MissingSource` is a `Fix::Offer` (WHICH source is the artist's call), so `heal_one`
+/// leaves the graph byte-for-byte and pushes no undo step. FALSIFIED by the badge not
+/// appearing (the source-less reader is not detected) or by `heal_one` mutating the graph
+/// for a `MissingSource` (it would guess a source, which the ADR forbids).
+#[test]
+fn a_source_less_deformer_badges_and_only_explains() {
+    let mut m = MotionState::new();
+    m.doc = MotionDoc::new();
+    let bend = add(&mut m, "motion.bend");
+    let out = add(&mut m, "motion.output");
+    wire(&mut m, bend, 0, out, 0); // bend reaches the output, but nothing feeds it
+    assert!(
+        inert_reaching_output(&m).contains(&bend.0),
+        "a source-less deformer that reaches the output badges"
+    );
+    let before = m.doc.graph.clone();
+
+    heal_one(&mut m, &mut ToastQueue::default(), bend);
+
+    assert_eq!(
+        m.doc.graph.nodes().len(),
+        before.nodes().len(),
+        "an advisory click on a source-less node inserts nothing"
+    );
+    assert_eq!(
+        m.doc.graph.edges().len(),
+        before.edges().len(),
+        "and rewires nothing"
+    );
+    assert!(
+        m.history.undo(&m.doc).is_none(),
+        "and pushes no undo step (it only explains — WHICH source is the artist's call)"
+    );
+}
+
 // --- The Node Help toggle (ADR-0155, Enio 2026-08-04): the artist's on/off for the whole
 // system — auto-heal + ⚠ badges + advisories. One flag (`MotionState::node_help_enabled`),
 // three entry points, one gate each — a layered defence needs a per-layer gate

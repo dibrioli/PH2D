@@ -30,10 +30,22 @@
 //! forces with no integrator inert — the second force reads `accel` but re-writes
 //! it, so it does not "save" the first.
 //!
-//! Only [`TRANSIENT_COLUMNS`] are subject to the analysis: the columns NOT lowered
-//! to instances, whose producers are inert without a graph-internal consumer.
+//! Only [`TRANSIENT_COLUMNS`] are subject to the producer analysis: the columns NOT
+//! lowered to instances, whose producers are inert without a graph-internal consumer.
 //! `P`/`size`/`rot`/`tint` are consumed by the output, so wiring them to it is
 //! never inert.
+//!
+//! The mirror analysis is [`REQUIRED_UPSTREAM`]: a column a node READS to do its job
+//! (`P` — a deformer/force with no points is a silent no-op). A reader of one with
+//! NOTHING wired into it is source-less, reported a [`Deficit::MissingSource`] OFFER —
+//! WHICH source (grid / emitter / object) is a creative choice, never guessed. A source
+//! is a pure `Write` binding, which does not [`reads`](ColumnAccess::reads); a
+//! re-producer (a deformer's `ReadWrite` on `P`) READS it, so it needs one upstream —
+//! the same re-producer rule the produces/consumes analysis rests on, on the
+//! required-upstream axis. The test is "no incoming edge at all", not a port index or a
+//! backward source-search: a P-reader with nothing wired is unambiguously source-less
+//! (zero false positives), and a reader that IS fed is left alone — the safe,
+//! under-warning direction the "Node Help" toggle backstops.
 //!
 //! For every producer of a transient column, [`diagnose`] walks forward
 //! (non-`delayed`) edges: if some reachable node consumes the column, the producer
@@ -61,6 +73,17 @@ use std::collections::BTreeSet;
 /// forces/deformers, never dropped, never lowered, so it is named directly.
 const TRANSIENT_COLUMNS: &[&str] = &["accel", "falloff", "inv_mass"];
 
+/// The columns a node READS to have anything to act on — the mirror of
+/// [`TRANSIENT_COLUMNS`]. `P` is the position: a deformer/force with nothing feeding it
+/// has no stream, so it is a silent no-op. A reader of one of these with NO incoming edge
+/// is reported a [`Deficit::MissingSource`] (an OFFER — WHICH source is a creative choice).
+///
+/// Disjoint from [`TRANSIENT_COLUMNS`] by construction (a column is either a
+/// producer-inert transient or a read-required stream, never both; a gate pins it): the
+/// two analyses do not touch the same column. `vel` (for `force.drag`/`force.buoyancy`,
+/// which only exists after an integrator runs) is a later low-priority member.
+const REQUIRED_UPSTREAM: &[&str] = &["P"];
+
 /// One diagnosed defect: a node whose placement makes its output inert.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Diagnostic {
@@ -79,6 +102,11 @@ pub enum Deficit {
     /// downstream (via forward, non-`delayed` edges) consumes it — so it does
     /// nothing.
     InertProducer(&'static str),
+    /// This node READS the named [required-upstream](REQUIRED_UPSTREAM) column (a
+    /// deformer/force needs `P` to work on) but has NOTHING wired into it — so it has no
+    /// stream to act on and is silently a no-op. Always a [`Fix::Offer`]: WHICH source
+    /// (grid / emitter / object) is a creative choice.
+    MissingSource(&'static str),
 }
 
 /// The suggested cure, carrying how confidently the editor may apply it.
@@ -108,6 +136,17 @@ pub fn diagnose(graph: &Graph, reg: &NodeRegistry) -> Vec<Diagnostic> {
     let mut out = Vec::new();
     for inst in graph.nodes() {
         let ty = NodeTypeId::of(&inst.type_name);
+        // A node that READS a required-upstream column with nothing wired into it has no
+        // stream to act on — the ROOT cause, and it subsumes any inert output it might
+        // otherwise produce (no input → no live output), so it is reported alone.
+        if let Some(col) = missing_upstream(graph, reg, inst.id, ty) {
+            out.push(Diagnostic {
+                node: inst.id,
+                deficit: Deficit::MissingSource(col),
+                fix: Fix::Offer,
+            });
+            continue;
+        }
         for &col in TRANSIENT_COLUMNS {
             if !produces(reg, ty, col) {
                 continue;
@@ -165,6 +204,40 @@ fn consumes(reg: &NodeRegistry, ty: NodeTypeId, col: &str) -> bool {
     coupling_consumes(reg, ty, col) || gpu_binding(reg, ty, col, |a| a.reads() && !is_producer(a))
 }
 
+/// The first [`REQUIRED_UPSTREAM`] column `ty` READS while `node` has nothing wired into
+/// it — a deformer/force floating with no points to work on. `None` if the node is fed
+/// (any incoming edge) or reads no required column. Returns the column so [`diagnose`]
+/// can name it in the [`Deficit::MissingSource`].
+fn missing_upstream(
+    graph: &Graph,
+    reg: &NodeRegistry,
+    node: NodeId,
+    ty: NodeTypeId,
+) -> Option<&'static str> {
+    if has_input(graph, node) {
+        return None; // fed: not source-less (the safe, under-warning direction)
+    }
+    REQUIRED_UPSTREAM
+        .iter()
+        .copied()
+        .find(|&col| reads_column(reg, ty, col))
+}
+
+/// Does `ty` READ `col` on its input — a deformer/force that needs the column present to
+/// do anything? Derived from a `reads()` GPU binding, or a `Coupling::Requires` (the
+/// declared half, for a CPU-only reader with no GPU kernel — the symmetric twin of
+/// [`coupling_produces`]). A pure `Write` (a source) does NOT `reads()`, so a generator is
+/// never judged to need a column upstream.
+fn reads_column(reg: &NodeRegistry, ty: NodeTypeId, col: &str) -> bool {
+    coupling_requires(reg, ty, col) || gpu_binding(reg, ty, col, ColumnAccess::reads)
+}
+
+/// Does any non-`delayed` edge feed `node` (on any port)? A node with none is a floating
+/// head — nothing upstream to bring it a stream.
+fn has_input(graph: &Graph, node: NodeId) -> bool {
+    graph.edges().iter().any(|e| !e.delayed && e.to.0 == node)
+}
+
 /// Any access that can WRITE the column to the node's output. `ReadWriteExisting`
 /// writes only when the input carries the column, but it is still a producer of it
 /// (never a pure-read consumer) — the distinction between conditional and
@@ -204,6 +277,17 @@ fn coupling_consumes(reg: &NodeRegistry, ty: NodeTypeId, col: &str) -> bool {
     reg.couplings(ty).is_some_and(|cs| {
         cs.iter()
             .any(|c| matches!(c, Coupling::Consumes(x) if *x == col))
+    })
+}
+
+/// The declared half of "reads": a `Coupling::Requires(col)`. The GPU-resident
+/// deformers/forces all declare a `reads()` binding, so no node needs this TODAY; it is
+/// the door for a future CPU-only P-requirer, and it is what gives the `Coupling::Requires`
+/// variant a consumer.
+fn coupling_requires(reg: &NodeRegistry, ty: NodeTypeId, col: &str) -> bool {
+    reg.couplings(ty).is_some_and(|cs| {
+        cs.iter()
+            .any(|c| matches!(c, Coupling::Requires(x) if *x == col))
     })
 }
 
@@ -302,5 +386,30 @@ mod tests {
             TRANSIENT_COLUMNS.contains(&"falloff"),
             "falloff is the modulation weight the diagnoser must reason about"
         );
+    }
+
+    /// **The required-upstream set is disjoint from the transient set, and every column
+    /// in it is really READ by some registered node.** The two analyses are mirror
+    /// images — a producer-inert transient vs a read-required stream — and a column in
+    /// both would have them fight over the same node. The second half pins that
+    /// `REQUIRED_UPSTREAM` names a real read column (not a typo `"P"` nothing reads),
+    /// which is what makes [`missing_upstream`] able to fire at all. FALSIFIED by adding
+    /// a transient column to `REQUIRED_UPSTREAM`, or by naming a column no node reads.
+    #[test]
+    fn the_required_set_is_disjoint_and_really_read() {
+        for &c in REQUIRED_UPSTREAM {
+            assert!(
+                !TRANSIENT_COLUMNS.contains(&c),
+                "`{c}` is both required-upstream and transient — the two analyses would fight"
+            );
+        }
+        let mut reg = NodeRegistry::new();
+        ph2d_node_registry_init::register_all_nodes(&mut reg).expect("register all nodes");
+        for &col in REQUIRED_UPSTREAM {
+            assert!(
+                reg.manifests().any(|m| reads_column(&reg, m.id, col)),
+                "no registered node reads `{col}` — REQUIRED_UPSTREAM names a column nothing needs"
+            );
+        }
     }
 }

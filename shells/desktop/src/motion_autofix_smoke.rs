@@ -406,25 +406,46 @@ impl crate::App {
                 );
             }
             // =6, frame 3: o aviso de PORTA obrigatória (2b) — um `motion.duplicator` com
-            // a entrada `shape` ligada mas a `points` VAZIA. O duplicator carimba uma forma
-            // em cada ponto; sem `points` nao ha' onde por as copias — silenciosamente um
-            // no-op. ⚠ Diferente do 4/5 (derivados), este vem por DECLARACAO opt-in: o no'
-            // declara `["shape","points"]` obrigatorias (required-vs-opcional e' semantico —
-            // o `forces` do integrate e' OPCIONAL, os do duplicator nao). O duplicator ganha
-            // o pip ⚠; clicar EXPLICA (precisa de um stream na porta 'points') + seleciona,
-            // nunca adivinha (Offer). Ligar uma fonte em `points` CURA.
+            // a entrada `shape` ligada numa forma DE VERDADE (o no' "Shape",
+            // `source.shape`, uma estrela) mas a `points` VAZIA. ⚠ A `shape` diz O QUE
+            // carimbar, a `points` diz ONDE: com um grid na `shape` a demo mentia (grid
+            // sao PONTOS, nao forma), entao aqui a `shape` recebe a forma e o grid fica
+            // SOLTO para o artista ligar em `points`. Sem `points` o duplicator PASSA a
+            // forma adiante — uma estrela nitida na origem RENDERIZA (nao ha' "nao
+            // renderiza": o duplicator aceita a Shape) — e pinta o ⚠, porque nao ha' onde
+            // multiplicar. Diferente do 4/5 (derivados), este vem por DECLARACAO opt-in: o
+            // no' declara `["shape","points"]` obrigatorias (required-vs-opcional e'
+            // semantico — o `forces` do integrate e' OPCIONAL, os do duplicator nao). O
+            // duplicator ganha o pip ⚠; clicar EXPLICA (precisa de um stream na porta
+            // 'points') + seleciona, nunca adivinha (Offer). Ligar o grid em `points` CURA
+            // (a estrela vira 16 copias, o ⚠ some).
             (6, 3) => {
                 let gfx = self.gfx.as_mut().expect("gfx");
                 let (dup, out) = {
                     let g = &mut gfx.motion.doc.graph;
+                    // A porta `shape` recebe uma forma DE VERDADE (o no' "Shape",
+                    // `source.shape`) — nao um grid. O grid entra na cena mas fica SOLTO,
+                    // pronto para o artista ligar em `points`.
+                    let shape = g.add_node("source.shape");
                     let grid = g.add_node("motion.grid");
                     let dup = g.add_node("motion.duplicator");
                     let out = g.add_node("motion.output");
+                    g.set_param(shape, "kind", 5.0); // Star
+                    g.set_param(shape, "size", 0.4);
+                    g.set_param(grid, "rows", 4.0);
+                    g.set_param(grid, "cols", 4.0);
+                    g.set_pos(
+                        shape,
+                        Pos {
+                            x: -220.0,
+                            y: -200.0,
+                        },
+                    );
                     g.set_pos(
                         grid,
                         Pos {
                             x: -220.0,
-                            y: -200.0,
+                            y: -40.0,
                         },
                     );
                     g.set_pos(dup, Pos { x: 40.0, y: -200.0 });
@@ -436,18 +457,20 @@ impl crate::App {
                         },
                     );
                     g.connect(Edge {
-                        from: (grid, 0),
-                        to: (dup, 0), // shape ligada
+                        from: (shape, 0),
+                        to: (dup, 0), // Shape -> duplicator.shape (porta 0)
                         delayed: false,
                     })
-                    .expect("grid -> dup.shape");
+                    .expect("shape -> dup.shape");
                     g.connect(Edge {
                         from: (dup, 0),
                         to: (out, 0),
                         delayed: false,
                     })
                     .expect("dup -> output");
-                    // points (porta 1) deixada VAZIA.
+                    // `points` (porta 1) deixada VAZIA — o grid fica solto para o artista
+                    // ligar e ver a estrela virar 16 copias.
+                    let _ = grid;
                     (dup, out)
                 };
                 gfx.motion.sinks.push(out);
@@ -461,15 +484,19 @@ impl crate::App {
                         })
                         .count();
                 eprintln!(
-                    "[autofix smoke =6] montei `grid -> duplicator(shape) -> output` com a porta \
-                     `points` VAZIA: {missing} porta(s) obrigatoria(s) faltando marcada(s) \
-                     (esperado 1 — o duplicator nao tem onde por as copias). SE NAO FOR 1, PARE. \
-                     ⚠ Diferente dos avisos 4/5 (derivados), este vem por DECLARACAO opt-in: o \
-                     duplicator declara [shape, points] obrigatorias, porque required-vs-opcional \
-                     e' SEMANTICO (o `forces` do integrate e' opcional). CLIQUE o badge do \
-                     duplicator: o app so' EXPLICA (toast: precisa de um stream na porta 'points') \
-                     e SELECIONA — NADA muda no grafo (Offer, sem cura canonica; a lei do ADR-0155 \
-                     de nunca adivinhar). Ligue uma fonte na porta `points` e o badge some."
+                    "[autofix smoke =6] montei `Shape (source.shape, estrela) -> duplicator.shape \
+                     -> output` com a porta `points` VAZIA (o grid fica SOLTO ao lado): \
+                     {missing} porta(s) obrigatoria(s) faltando marcada(s) (esperado 1 — falta \
+                     `points`). SE NAO FOR 1, PARE. ⚠ A ESTRELA RENDERIZA (passthrough: sem \
+                     `points` o duplicator PASSA a forma adiante) — nao ha' 'nao renderiza', o \
+                     duplicator ACEITA a Shape; falta e' ONDE multiplicar. Diferente dos avisos \
+                     4/5 (derivados), este vem por DECLARACAO opt-in: o duplicator declara \
+                     [shape, points] obrigatorias, porque required-vs-opcional e' SEMANTICO (o \
+                     `forces` do integrate e' opcional). CLIQUE o badge do duplicator: o app so' \
+                     EXPLICA (toast: precisa de um stream na porta 'points') e SELECIONA — NADA \
+                     muda no grafo (Offer, sem cura canonica; a lei do ADR-0155 de nunca \
+                     adivinhar). Ligue o grid (solto) na porta `points`: a estrela vira 16 copias \
+                     e o badge some."
                 );
             }
             _ => {}

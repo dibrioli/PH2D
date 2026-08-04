@@ -774,13 +774,56 @@ editar o mestre re-veste as 12; um override de texto sobrevive.
 >   **CONTÍGUA** na pilha final. Duas propriedades caem daí: um estranho que o Z pousou no meio
 >   **nunca** é recortado por um card que não é dele, e a lista fica **laminar** de graça. O preço é
 >   o que a frase promete — *o filho que o Z tirou da corrida deixa de ser recortado*.
-> - **Os botões Arrange:** regra ÚNICA e **MEDIDA**, não enumerada — *tenta a ÁRVORE; se a forma não
->   se mexeu na pilha, escreve o Z*. ⚠️ O que *"entregou"* significa depende do verbo (o **To Front**
->   pede a FRENTE, não um passo), e colapsar os dois deixava a forma parada no meio.
 > - **Renomes de honestidade:** `VecParentSpan` → `VecClipSpan` (campo `parent` → `frame`, `first` →
 >   `last`), `VecViewState.parent_spans` → `clips`, `parent_spans` → `clip_spans`. O tipo voltou a
 >   nomear o que faz.
 > - **17 gates, 12 mutações, 12 sangram. Zero schema, zero ADR, zero dep.** Smoke **`=57`**.
+
+#### A terceira rodada: **o Z é a ÚNICA porta, e o campo estava MUDO** ✅ **(2026-08-04)**
+
+> Enio: *"Z-index não funcionou e os botões de Arrange não foram convertidos para funcionar com
+> Z-index. A partir de agora o objeto não deve ser movido na hierarquia, apenas o Z muda e o Z
+> determina na frente de quem ele é mostrado. A ordem na hierarquia só define a ordem se o Z for
+> igual."*
+>
+> **(A) O campo estava PINTADO, REGISTADO, VIVO SOB O MOUSE — e MUDO.** O `ValueChanged` do commit
+> caía no catch-all do `apply_event` do painel e **nunca virava `SetValue`**, então a shell nunca
+> escrevia o `ZIndexOverride`: o artista clicava, ganhava foco, digitava, via o número mudar, e
+> nada acontecia. ⚠️ **O gate que eu tinha media o CLIQUE (o foco), não o COMMIT** — é a metade
+> errada da mesma costura, e é por isso que a wave anterior fechou verde sobre um campo morto. O
+> gate novo (`the_typed_z_reaches_the_bus`) afirma o **valor** que chega ao barramento, porque
+> encaminhar o id com o número de outro campo é o mesmo defeito com outra roupa.
+>
+> **(B) Os quatro botões escrevem o Z e MAIS NADA.** A metade de árvore
+> (`siblings`/`sibling_move`/`write_sibling_order`) **morreu**: ela dava aos botões duas maneiras
+> de mudar a mesma pilha, e a que o artista não pediu era a destrutiva — pressionar *Forward*
+> re-arrumava a Hierarquia dele por baixo. O oráculo desta wave é **a lista da Hierarquia**, que
+> tem de sair de todo gesto **intacta**.
+>
+> - **Os quatro verbos são UMA regra com uma REFERÊNCIA diferente** (Forward → o vizinho da frente
+>   · To Front → o da frente de tudo · Backward → o vizinho de trás · To Back → o do fundo): *"que
+>   número me põe do outro lado daquela forma?"*. Um `match` com aritmética por verbo teria quatro
+>   sítios onde o sinal pode estar trocado.
+> - **O passo é o MENOR que entrega** — empatar já basta quando a árvore me favorece (o desempate é
+>   dela). É isso que impede o Z de inflar um número por clique e o que faz do *Backward* o inverso
+>   **exacto** do *Forward*.
+> - ⚠️ **Um DESCENDENTE é incruzável, e o botão RECUSA.** O Z é cascata: subir o meu número sobe o
+>   dos meus filhos pelo mesmo tanto, e a distância não muda. A primeira versão mirava no vizinho
+>   sem perguntar de quem ele era, e o *To Front* de um pai escrevia `z = 1`, devolvia `true` e
+>   **não movia um pixel** — um Ctrl+Z gasto por nada. ⚠️ E a assimetria é real: o **filho PODE** ir
+>   para trás do pai (Z próprio negativo); a cascata só corre num sentido.
+> - ⚠️ **O limite que é ARITMÉTICA, não desleixo, e fica MEDIDO:** com três formas empatadas em
+>   `z = 0` não existe inteiro que ponha a do fundo *entre* as outras duas — `0` deixa-a atrás das
+>   duas e `1` põe-na à frente das duas, então o *Forward* passa **dois** lugares. As duas saídas
+>   foram recusadas pela própria lei (renumerar os vizinhos é escrever no número de um objeto que o
+>   artista não selecionou; mexer na árvore é o que ele proibiu).
+> - ⚠️ **DOIS gates meus reprovaram código CORRETO** antes de eu ler a cascata, e as duas correções
+>   ficaram como gates: o pai que não cruza o filho, e o filho que cruza o pai. **E uma fixture
+>   nasceu cega** — com tudo empatado em 0, *passar o vizinho* e *ir para a frente* dão o mesmo
+>   número, então a mutação "To Front vira um passo só" ficava VERDE no gate que **afirma** que
+>   cada verbo entrega, e só sangrava num gate sobre o readout.
+> - **9 mutações, 9 sangram. Zero schema, zero ADR, zero dep, zero id novo.** Smoke **`=57`**,
+>   passos 5 e 6.
 
 ---
 

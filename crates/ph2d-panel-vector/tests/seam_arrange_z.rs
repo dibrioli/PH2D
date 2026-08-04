@@ -7,6 +7,9 @@
 //! o que interessa: que o retângulo pintado responde a um ponteiro. Um campo pintado, registrado e
 //! **morto sob o mouse** é a falha que este arquivo existe para pegar.
 
+use ph2d_editor_core::action_bus::EditorAction;
+use ph2d_editor_core::interaction::WidgetEvent;
+use ph2d_editor_core::tool::PanelEvent;
 use ph2d_editor_core::zones::Rect;
 use ph2d_panel_vector::state::VectorPanelState;
 use ph2d_panel_vector::{VectorPanel, ids, state};
@@ -80,6 +83,48 @@ fn the_z_field_answers_a_pointer() {
     assert!(
         !evs.is_empty(),
         "clicar no campo Z nao produziu evento nenhum — ele esta' morto sob o mouse"
+    );
+    state::set_z_index(None);
+}
+
+/// **O NÚMERO DIGITADO CHEGA AO BARRAMENTO.** ⚠️ É este que faltava, e a ausência dele foi o bug
+/// que o Enio reportou (*"Z-index não funcionou"*).
+///
+/// O gate acima prova que o campo **aceita o ponteiro** — ganha foco, aceita teclas, mostra o
+/// número a mudar. Ele não prova nada sobre o commit, e era exactamente aí que o produto estava
+/// partido: o `ValueChanged` do campo caía no catch-all do `apply_event` e **nunca virava
+/// `SetValue`**, então a shell nunca escrevia o `ZIndexOverride`. Um campo que aceita teclas e não
+/// fala com ninguém parece vivo — é a forma mais cara de um controlo nascer morto.
+///
+/// ⚠️ **O oráculo é o valor**, não a presença do evento: encaminhar o id com um número de outro
+/// campo é o mesmo defeito com outra roupa.
+#[test]
+fn the_typed_z_reaches_the_bus() {
+    state::set_z_index(Some(0.0));
+    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut st = VectorPanelState;
+    // O que o teclado deixa no store antes de o dispatch emitir o `ValueChanged`.
+    host.set_number_value(ids::VECTOR_ARRANGE_Z, 5.0);
+    host.apply_panel_event::<VectorPanel>(
+        &mut st,
+        WidgetEvent::ValueChanged(ids::VECTOR_ARRANGE_Z),
+    );
+    let sent: Vec<f64> = host
+        .drained_actions()
+        .into_iter()
+        .filter_map(|a| match a {
+            EditorAction::ToolPanelEvent(PanelEvent::SetValue(id, v))
+                if id == ids::VECTOR_ARRANGE_Z =>
+            {
+                Some(v)
+            }
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        sent,
+        vec![5.0],
+        "digitar no campo Z nao chegou ao barramento: o artista escreve um numero e nada acontece"
     );
     state::set_z_index(None);
 }

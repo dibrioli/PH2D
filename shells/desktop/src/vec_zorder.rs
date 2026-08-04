@@ -4,14 +4,22 @@
 //! assunto: a ponte doc↔árvore é quem sabe **onde cada forma está na pilha**, porque a pilha é uma
 //! **projeção da árvore** (ADR-0110) e não uma propriedade do documento.
 //!
-//! É a regra que este arquivo inteiro serve: **quem quiser mandar no z escreve na ÁRVORE.** A
-//! ordem do vetor da cena é reescrita a cada frame pela projeção — mexer nela é falar com a porta
-//! errada, e o frame seguinte desfaz.
+//! É a regra que este arquivo inteiro serve: **quem quiser mandar no z escreve no ESTADO
+//! AUTORADO** — nunca na ordem do vetor da cena, que a projeção reescreve a cada frame.
 //!
-//! ⚠️ *"A árvore"* são **dois** lugares, e um deles não é o `RootOrder`: a ordem das RAÍZES mora
-//! nele, a dos FILHOS mora na sequência do `Children`. Uma nota anterior deste cabeçalho dizia só
-//! *"escreva no `RootOrder`"* e estava certa pela metade — um filho não tem `RootOrder`, e
-//! escrever um nele não move nada.
+//! # A LEI (Enio, 2026-08-04, segunda rodada)
+//!
+//! > *"O objeto não deve ser movido na hierarquia, apenas o Z muda, e o Z determina na frente de
+//! > quem ele é mostrado. A ordem na hierarquia só define a ordem se o Z for igual."*
+//!
+//! Logo a pilha tem **duas chaves** — `(Z efetivo, índice do DFS)` — e só a **primeira** é
+//! autorável por esta porta. Os quatro botões Arrange **escrevem o Z e mais nada**: a árvore é
+//! do artista, e só a Hierarquia a move.
+//!
+//! ⚠️ **A versão anterior mexia na árvore** (`RootOrder` das raízes, sequência do `Children` dos
+//! filhos) e caía no Z como plano B. Isso dava aos botões **duas** maneiras de mudar a mesma
+//! pilha, e a que o artista não pediu era a destrutiva: pressionar *Forward* re-arrumava a
+//! Hierarquia dele por baixo. `siblings`/`sibling_move`/`write_sibling_order` morreram com ela.
 
 use super::VecEntityMap;
 use ph2d_ecs::scene::{HierarchySnapshot, HierarchyWalkState, build_hierarchy_snapshot};
@@ -23,11 +31,15 @@ use ph2d_vec_scene::VecPathId;
 ///
 /// # Por que isto existe
 ///
-/// A ordem de z é a projeção da ÁRVORE (ADR-0110): quem quiser mandar no z tem de escrever no
-/// `RootOrder`, não na ordem do vetor da cena — essa é reescrita a cada frame pela projeção.
-/// (É a mesma armadilha do "duas portas para a mesma pergunta": `VecScene::reorder_path` mexe na
-/// porta ERRADA e o frame seguinte desfaz. Os botões Arrange chamavam-na — e por isso estavam
-/// MORTOS até 2026-08-04; hoje passam pelo [`reorder`].)
+/// A ordem de z é a projeção da ÁRVORE (ADR-0110) filtrada pelo Z: quem quiser mandar nela tem de
+/// escrever no estado autorado, não na ordem do vetor da cena — essa é reescrita a cada frame pela
+/// projeção. (É a mesma armadilha do "duas portas para a mesma pergunta": `VecScene::reorder_path`
+/// mexe na porta ERRADA e o frame seguinte desfaz. Os botões Arrange chamavam-na — e por isso
+/// estavam MORTOS até 2026-08-04; hoje passam pelo [`reorder`], que escreve o Z.)
+///
+/// ⚠️ **Esta função é a exceção que escreve `RootOrder`, e continua certa:** ela não move uma
+/// forma que o artista pôs, ela **coloca** um grupo recém-criado — o Blend precisa que os passos
+/// nasçam entre as fontes, e nascer é escolher um lugar na árvore, não mudar de lugar nela.
 ///
 /// O Blend precisa disto: os passos que ele cria só ganham entidade no `sync` do frame seguinte,
 /// e ele quer a sequência inteira (fontes inclusas) empilhada na ordem certa.
@@ -70,32 +82,6 @@ pub(crate) fn restack(sim: &mut SimWorld, map: &VecEntityMap, run: &[VecPathId])
             em.insert(RootOrder(u32::try_from(i).unwrap_or(u32::MAX)));
         }
     }
-}
-
-/// **Os IRMÃOS de `e` na ordem em que a Hierarquia os lista** — e desde a lei de Godot
-/// (2026-08-04) o **último** é o da FRENTE.
-///
-/// Uma raiz tem por irmãos as outras raízes (ordenadas por `RootOrder`, com os bits a desempatar —
-/// o mesmo critério do `build_hierarchy_snapshot`, e é **por ser o mesmo** que o número que o
-/// painel mostra é o lugar em que a forma de facto está). Um filho tem os irmãos do `Children` do
-/// pai, na ordem de inserção.
-fn siblings(sim: &mut SimWorld, e: Entity) -> Vec<Entity> {
-    if let Some(c) = sim.world().get::<ChildOf>(e) {
-        return sim
-            .world()
-            .get::<bevy_ecs::hierarchy::Children>(c.parent())
-            .map(|k| k.iter().copied().collect())
-            .unwrap_or_default();
-    }
-    let mut q = sim
-        .world_mut()
-        .query_filtered::<(Entity, Option<&RootOrder>), Without<ChildOf>>();
-    let mut roots: Vec<(Entity, u32)> = q
-        .iter(sim.world())
-        .map(|(e, r)| (e, r.map_or(u32::MAX, |r| r.0)))
-        .collect();
-    roots.sort_by_key(|(e, o)| (*o, e.to_bits()));
-    roots.into_iter().map(|(e, _)| e).collect()
 }
 
 /// **O Z-INDEX AUTORADO desta forma** — o número que o artista escreve, `None` se ela não tem um.
@@ -141,38 +127,69 @@ pub(crate) fn set_authored_z(
     true
 }
 
-/// **A pilha que o artista VÊ**, fundo → topo — a mesma que o desenho consome.
+/// **A pilha que o artista VÊ, com as duas chaves à vista** — fundo → topo.
 ///
 /// Reconstruir o snapshot aqui é caro por frame e irrelevante num gesto: os botões Arrange são
 /// user-paced. O que não seria irrelevante é derivá-la por outra via — os botões passariam a mover
 /// a forma numa pilha que não é a desenhada.
-fn final_stack(sim: &mut SimWorld) -> Vec<VecPathId> {
+fn final_view(sim: &mut SimWorld) -> (HierarchySnapshot, Vec<StackRow>) {
     let mut state = HierarchyWalkState::new(sim.world_mut());
     let mut scratch = Vec::new();
     let mut snap = HierarchySnapshot::default();
     build_hierarchy_snapshot(sim.world(), &mut state, &mut scratch, &mut snap);
-    z_order(sim.world(), &snap)
+    let rows = keyed_stack(sim.world(), &snap);
+    (snap, rows)
 }
 
-/// **Move `id` um lugar na pilha que se VÊ.** `true` = alguma coisa mudou.
+/// **Quantos caminhos vetoriais a sub-árvore de `id` contém, além dele próprio.**
 ///
-/// # A regra é UMA, e ela é MEDIDA em vez de enumerada
+/// ⚠️ Existe porque **um descendente é incruzável**: o Z é uma CASCATA (Godot), então subir o meu
+/// número sobe o dos meus filhos pelo mesmo tanto e a distância entre nós não muda. Mirar num
+/// deles seria um botão que escreve um número, devolve `true`, e não move um pixel — um passo de
+/// undo gasto por nada.
 ///
-/// > **Tenta a ÁRVORE; se a forma não se mexeu na pilha, escreve o Z.**
+/// A sub-árvore é contígua no DFS e a filtragem por `vec_path` preserva a contiguidade, então os
+/// descendentes de `id` são exactamente os `k` índices seguintes ao dele.
+fn descendant_count(snap: &HierarchySnapshot, id: VecPathId) -> u32 {
+    let mut it = snap.entries.iter();
+    let Some(depth) = it.find(|e| e.vec_path == Some(id)).map(|e| e.depth) else {
+        return 0;
+    };
+    u32::try_from(
+        it.take_while(|e| e.depth > depth)
+            .filter(|e| e.vec_path.is_some())
+            .count(),
+    )
+    .unwrap_or(u32::MAX)
+}
+
+/// **Move `id` na pilha que se VÊ, escrevendo o Z — e SÓ o Z.** `true` = o número mudou.
 ///
-/// A pilha tem duas chaves — o Z efetivo manda, a árvore desempata — e um `match` que decidisse
-/// *"este caso quer árvore, aquele quer Z"* teria de enumerar tie/não-tie, irmão/não-irmão,
-/// raiz/filho. Em vez disso o gesto **faz** o movimento de árvore e **olha** o resultado na mesma
-/// pilha que o renderer desenha; se ela não andou, quem manda é o Z e é ele que se escreve.
+/// # Os quatro verbos são UMA regra com uma REFERÊNCIA diferente
 ///
-/// ⚠️ **O movimento de árvore que não pegou FICA.** Ele não é lixo: a forma passou de facto para a
-/// frente dos irmãos, e é isso que o artista quer no dia em que o Z voltar a empatar. Desfazê-lo
-/// custaria uma segunda escrita para não deixar rasto de nada.
+/// A pilha é totalmente ordenada por `(Z efetivo, índice do DFS)` e o DFS é intocável (a árvore é
+/// do artista), então mover-se resume-se a *"que número me põe do outro lado daquela forma?"* — e
+/// os verbos só discordam sobre **qual** forma é essa:
 ///
-/// ⚠️ **"Um lugar" só existe entre IRMÃOS.** Duas formas podem ser vizinhas na pilha e viver em
-/// pais diferentes; movê-la "um lugar" ali seria reparentar. Por isso o passo de Z é *estritamente
-/// além do balde do vizinho* (`+1`), e não uma tentativa de empatar com ele — empatar devolveria a
-/// decisão ao desempate de árvore, que é justamente quem não conseguiu.
+/// | verbo | referência |
+/// |---|---|
+/// | Forward | o vizinho imediatamente à frente |
+/// | To Front | o da FRENTE de tudo |
+/// | Backward | o vizinho imediatamente atrás |
+/// | To Back | o do FUNDO de tudo |
+///
+/// Um `match` que desse a cada verbo a sua própria aritmética teria quatro sítios onde o sinal
+/// pode estar trocado; aqui o sinal é escrito uma vez.
+///
+/// ⚠️ **O passo é o MENOR que entrega:** empatar já basta quando a árvore me favorece (o desempate
+/// é dela), senão é preciso um degrau. Empatar de propósito não é fraqueza — é o que impede o Z de
+/// inflar um número por clique e o que faz do *Backward* o inverso exacto do *Forward*.
+///
+/// ⚠️ **E há um limite que é ARITMÉTICA, não desleixo:** com três formas empatadas em `z = 0` não
+/// existe inteiro que ponha a do fundo entre as outras duas — `0` deixa-a atrás das duas e `1`
+/// põe-na à frente das duas. Nesse regime o *Forward* passa mais de um lugar. A alternativa seria
+/// renumerar os vizinhos (mexer no número de um objeto que o artista não selecionou) ou mexer na
+/// árvore, que é precisamente o que esta lei proíbe.
 pub(crate) fn reorder(
     sim: &mut SimWorld,
     map: &VecEntityMap,
@@ -180,128 +197,51 @@ pub(crate) fn reorder(
     order: ph2d_vec_scene::ZOrder,
 ) -> bool {
     use ph2d_vec_scene::ZOrder;
+    let (snap, rows) = final_view(sim);
+    let Some(i) = rows.iter().position(|r| r.id == id) else {
+        return false;
+    };
+    let me = rows[i];
+    // Os meus DESCENDENTES saem da lista de candidatos: eles viajam comigo pela cascata, logo
+    // nenhum número os cruza (ver `descendant_count`).
+    let kin = descendant_count(&snap, id);
+    let mine = |r: &StackRow| r.dfs > me.dfs && r.dfs <= me.dfs + kin;
+    let ahead = || rows[i + 1..].iter().filter(|r| !mine(r));
+    let behind = || rows[..i].iter().filter(|r| !mine(r));
+    let goal = match order {
+        ZOrder::Raise => ahead().next(),
+        ZOrder::ToFront => ahead().next_back(),
+        ZOrder::Lower => behind().next_back(),
+        ZOrder::ToBack => behind().next(),
+    };
+    // Não há ninguém cruzável na direção pedida. ⚠️ A recusa é o que impede um passo de undo
+    // vazio: o undo global regista por DIFF, e o artista gastaria um Ctrl+Z sem ver nada
+    // acontecer. Ela subsume o "já está no extremo" — e cobre também o caso em que tudo o que
+    // está à frente é a minha própria sub-árvore.
+    let Some(goal) = goal.copied() else {
+        return false;
+    };
     let forward = matches!(order, ZOrder::ToFront | ZOrder::Raise);
-    let before = final_stack(sim).iter().position(|x| *x == id);
-    // Já está no extremo que o botão pede: a recusa é aqui, e vale para as DUAS metades.
-    if let Some(i) = before {
-        let n = final_stack(sim).len();
-        if (forward && i + 1 >= n) || (!forward && i == 0) {
-            return false;
+    let target = if forward {
+        if me.dfs > goal.dfs {
+            goal.z
+        } else {
+            goal.z.saturating_add(1)
         }
-    }
-    let tree = sibling_move(sim, map, id, order);
-    let stack = final_stack(sim);
-    let after = stack.iter().position(|x| *x == id);
-    // ⚠️ **O que "entregou" significa depende do VERBO**, e colapsar os dois foi um defeito real:
-    // com um `a > b` para todos, o *To Front* dava-se por satisfeito ao andar UM lugar e a forma
-    // parava no meio da pilha — o botão diz *frente*, não *um passo*.
-    if let (Some(b), Some(a)) = (before, after) {
-        let done = match order {
-            ZOrder::ToFront => a + 1 == stack.len(),
-            ZOrder::ToBack => a == 0,
-            ZOrder::Raise => a > b,
-            ZOrder::Lower => a < b,
-        };
-        if done {
-            return true;
-        }
-    }
-    bump_z(sim, map, id, order) || tree
-}
-
-/// A metade de ÁRVORE: reordena `id` entre os irmãos dele. `true` = a árvore mudou.
-fn sibling_move(
-    sim: &mut SimWorld,
-    map: &VecEntityMap,
-    id: VecPathId,
-    order: ph2d_vec_scene::ZOrder,
-) -> bool {
-    use ph2d_vec_scene::ZOrder;
-    let Some(&bits) = map.get(&id) else {
-        return false;
+    } else if me.dfs < goal.dfs {
+        goal.z
+    } else {
+        goal.z.saturating_sub(1)
     };
-    let e = Entity::from_bits(bits);
-    let mut sibs = siblings(sim, e);
-    let Some(i) = sibs.iter().position(|x| *x == e) else {
-        return false;
-    };
-    if sibs.len() < 2 {
-        return false; // filho único: não há pilha em que andar
-    }
-    // A lista é FUNDO → frente, então "à frente" é para o ÍNDICE MAIOR.
-    let to = match order {
-        ZOrder::ToFront => sibs.len() - 1,
-        ZOrder::Raise => (i + 1).min(sibs.len() - 1),
-        ZOrder::Lower => i.saturating_sub(1),
-        ZOrder::ToBack => 0,
-    };
-    if to == i {
-        return false;
-    }
-    let moved = sibs.remove(i);
-    sibs.insert(to, moved);
-    write_sibling_order(sim, e, &sibs);
-    true
-}
-
-/// A metade do **Z**: leva `id` estritamente além do balde do vizinho na direção pedida.
-fn bump_z(
-    sim: &mut SimWorld,
-    map: &VecEntityMap,
-    id: VecPathId,
-    order: ph2d_vec_scene::ZOrder,
-) -> bool {
-    use ph2d_vec_scene::ZOrder;
-    let stack = final_stack(sim);
-    let Some(i) = stack.iter().position(|x| *x == id) else {
-        return false;
-    };
-    let eff = |sim: &SimWorld, p: VecPathId| -> i32 {
-        map.get(&p).map_or(0, |&b| {
-            ph2d_ecs::effective_z_index(sim.world(), Entity::from_bits(b))
-        })
-    };
-    let mine = eff(sim, id);
-    let target = match order {
-        ZOrder::Raise => match stack.get(i + 1) {
-            Some(&n) => eff(sim, n) + 1,
-            None => return false,
-        },
-        ZOrder::Lower => match i.checked_sub(1).and_then(|k| stack.get(k)) {
-            Some(&n) => eff(sim, n) - 1,
-            None => return false,
-        },
-        ZOrder::ToFront => stack.iter().map(|p| eff(sim, *p)).max().unwrap_or(mine) + 1,
-        ZOrder::ToBack => stack.iter().map(|p| eff(sim, *p)).min().unwrap_or(mine) - 1,
-    };
-    let delta = target - mine;
-    if delta == 0 {
-        return false;
-    }
     // O componente guarda o AUTORADO; somar o delta a ele soma o mesmo delta ao efetivo (a
     // cascata dos pais é um termo comum).
     let own = authored_z(sim, map, id).unwrap_or(0);
-    set_authored_z(sim, map, id, own.saturating_add(delta))
-}
-
-/// Grava a ordem `sibs` (FUNDO → frente) de volta na árvore.
-///
-/// ⚠️ **Duas escritas diferentes para dois lugares diferentes**, e não é acidente: a ordem das
-/// RAÍZES mora no `RootOrder` (é o que o snapshot ordena) e a dos FILHOS mora na sequência do
-/// `Children` — que o `ph2d_ecs::reinsert_children_in_order` reescreve. ⚠️ **Ela é a porta única
-/// dessa segunda metade**, partilhada com o drop da Hierarquia e com o arrasto dentro de um fluxo;
-/// a primeira versão desta função reimplementou o truque do re-inserir `ChildOf` à mão, que é
-/// exactamente o detalhe de motor que a porta existe para esconder.
-fn write_sibling_order(sim: &mut SimWorld, e: Entity, sibs: &[Entity]) {
-    if let Some(parent) = sim.world().get::<ChildOf>(e).map(ChildOf::parent) {
-        ph2d_ecs::reinsert_children_in_order(sim.world_mut(), parent, sibs);
-        return;
-    }
-    for (i, &root) in sibs.iter().enumerate() {
-        if let Ok(mut em) = sim.world_mut().get_entity_mut(root) {
-            em.insert(RootOrder(u32::try_from(i).unwrap_or(u32::MAX)));
-        }
-    }
+    set_authored_z(
+        sim,
+        map,
+        id,
+        own.saturating_add(target.saturating_sub(me.z)),
+    )
 }
 
 /// Os gates do ponto fixo (o conserto do "undo só faz uma etapa") — módulo irmão,
@@ -358,19 +298,41 @@ mod arrange_tests;
 /// seria uma segunda porta para a mesma pergunta, e duas portas divergem.
 #[must_use]
 pub(crate) fn z_order(world: &bevy_ecs::world::World, snap: &HierarchySnapshot) -> Vec<VecPathId> {
-    let mut keyed: Vec<(i32, VecPathId)> = snap
+    keyed_stack(world, snap).into_iter().map(|r| r.id).collect()
+}
+
+/// Uma linha da pilha: **as duas chaves e o caminho**.
+///
+/// O `dfs` é a posição da forma na varredura da Hierarquia — 0 é a primeira linha da lista. Ele é
+/// **intocável por esta porta**: quem o move é o artista, arrastando na Hierarquia.
+#[derive(Copy, Clone)]
+struct StackRow {
+    z: i32,
+    dfs: u32,
+    id: VecPathId,
+}
+
+/// **A pilha com as duas chaves à vista**, fundo → topo.
+///
+/// ⚠️ É a **porta única** da pergunta *"quem está na frente de quem?"*: a projeção do frame
+/// consome-a (via [`z_order`]) e os botões Arrange raciocinam sobre ela. Uma segunda derivação
+/// faria os botões moverem a forma numa pilha que não é a desenhada — e o artista clicaria em
+/// *Forward* para ver a forma passar outra coisa que não a que está à frente dela.
+///
+/// A ordenação é pelo **par** (e não por `sort_by_key` estável sobre o Z): o resultado é o mesmo,
+/// mas a chave que os botões usam para calcular passa a estar escrita onde a ordem é decidida.
+fn keyed_stack(world: &bevy_ecs::world::World, snap: &HierarchySnapshot) -> Vec<StackRow> {
+    let mut keyed: Vec<StackRow> = snap
         .entries
         .iter()
-        .filter_map(|e| {
-            e.vec_path.map(|p| {
-                (
-                    ph2d_ecs::effective_z_index(world, Entity::from_bits(e.entity)),
-                    p,
-                )
-            })
+        .filter_map(|e| e.vec_path.map(|p| (e.entity, p)))
+        .enumerate()
+        .map(|(dfs, (bits, id))| StackRow {
+            z: ph2d_ecs::effective_z_index(world, Entity::from_bits(bits)),
+            dfs: u32::try_from(dfs).unwrap_or(u32::MAX),
+            id,
         })
         .collect();
-    // ESTÁVEL: o empate mantém a ordem do DFS, que é o desempate que a lei manda usar.
-    keyed.sort_by_key(|(z, _)| *z);
-    keyed.into_iter().map(|(_, p)| p).collect()
+    keyed.sort_by_key(|r| (r.z, r.dfs));
+    keyed
 }

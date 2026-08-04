@@ -203,11 +203,19 @@ pub(crate) fn apply_event(
         // Os nove campos do AUTO LAYOUT seguem exactamente a mesma rota, e pela mesma razão: o
         // valor mora no COMPONENTE, então quem o escreve é a shell. A lista é a que o `populate`
         // regista — um campo novo entra numa lista só.
+        //
+        // ⚠️ **O Z-INDEX entrou aqui em 2026-08-04, e a ausência dele foi um bug de PRODUTO:**
+        // ele era pintado, registado no `populate` e vivo sob o mouse — o artista clicava, ganhava
+        // foco, digitava e via o número mudar —, mas o `ValueChanged` do commit caía no catch-all
+        // e **nunca virava `SetValue`**. Enio: *"Z-index não funcionou"*. Um campo que aceita
+        // teclas e não fala com ninguém é a forma mais cara de um controlo nascer morto, porque
+        // parece vivo. O gate que existia media o CLIQUE (o foco); o que faltava mede o COMMIT.
         WidgetEvent::ValueChanged(id)
             if id == ids::VECTOR_TRANSFORM_X
                 || id == ids::VECTOR_TRANSFORM_Y
                 || id == ids::VECTOR_TRANSFORM_W
                 || id == ids::VECTOR_TRANSFORM_H
+                || id == ids::VECTOR_ARRANGE_Z
                 || crate::populate::layout::LAYOUT_FIELDS.contains(&id) =>
         {
             let val = host.store().number_value(id).unwrap_or(0.0);

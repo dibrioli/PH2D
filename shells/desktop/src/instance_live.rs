@@ -19,16 +19,13 @@
 //! documento. Uma moldura (W0) com filhos vira um componente com peças sem uma linha a mais — que
 //! é exatamente o que um botão é (uma caixa e um rótulo).
 //!
-//! # O afim: `pose da instância ∘ pose do mestre⁻¹`
+//! # O afim: a cópia herda a FORMA do mestre, não o LUGAR dele
 //!
-//! Cada peça entra em MUNDO (assada com a pose dela) e é levada para a pose da instância pelo
-//! **delta** entre as duas raízes. É isso que preserva a disposição interna: as peças mantêm as
-//! posições RELATIVAS que o artista deu ao mestre, e o conjunto pousa onde a cópia está.
-//!
-//! ⚠️ Uma pose de mestre **degenerada** (escala zero) não tem inversa, e aí a instância é
-//! **recusada** em vez de desenhada em cima da origem — a mesma política do `contains_path`
-//! (forma colapsada ⇒ `None`), e o mesmo motivo: um desenho que aparece no lugar errado é pior
-//! que um desenho que não aparece.
+//! Cada peça entra em MUNDO (assada com a pose dela) e é levada para a pose da instância por um
+//! **delta** que remove apenas a TRANSLAÇÃO do mestre ([`place_delta`], onde está o porquê e o
+//! defeito que isso corrigiu). É isso que preserva a disposição interna — as peças mantêm as
+//! posições RELATIVAS que o artista deu ao mestre — **e** faz uma edição na raiz do mestre
+//! (redimensionar, girar) alcançar as cópias, que é a promessa da wave.
 //!
 //! # O mestre que SUMIU não some em silêncio
 //!
@@ -59,6 +56,9 @@ pub(crate) struct InstanceLive {
     /// Os ids das instâncias cujo mestre não resolve neste frame — o que o painel publica como
     /// *"main missing"*. Ordenado (é uma varredura da cena, que já é ordenada por z).
     orphans: Vec<VecPathId>,
+    /// Por instância, as peças do mestre que produziram cada item de [`Self::live`], **na mesma
+    /// ordem**. É o que permite ao *Detach* saber QUAL peça é a raiz sem depender da ordem de z.
+    pieces: std::collections::BTreeMap<VecPathId, Vec<VecPathId>>,
 }
 
 impl InstanceLive {
@@ -72,6 +72,11 @@ impl InstanceLive {
         &self.orphans
     }
 
+    /// As peças do mestre por trás do que esta instância desenhou, na MESMA ordem.
+    pub(crate) fn pieces_of(&self, at: VecPathId) -> Option<&[VecPathId]> {
+        self.pieces.get(&at).map(Vec::as_slice)
+    }
+
     /// Re-coza todas as instâncias. Chamado uma vez por frame, DEPOIS do `sync` (senão uma forma
     /// recém-criada ainda não teria entidade e o componente dela não seria encontrado).
     pub(crate) fn recook(
@@ -83,6 +88,7 @@ impl InstanceLive {
     ) {
         self.live.clear();
         self.orphans.clear();
+        self.pieces.clear();
         // A varredura é sobre a CENA (ordem de z) e não sobre o mundo ECS: é ela que dá a ordem
         // estável de que o `orphans` depende, e é a mesma que o `dispatch` percorre.
         for path in scene.paths() {
@@ -94,8 +100,9 @@ impl InstanceLive {
                 continue;
             };
             match cook_one(scene, sim, map, xforms, path.id, &inst) {
-                Some(items) => {
+                Some((items, pieces)) => {
                     self.live.insert(path.id, items);
+                    self.pieces.insert(path.id, pieces);
                 }
                 None => self.orphans.push(path.id),
             }
@@ -119,7 +126,7 @@ pub(crate) fn cook_one(
     xforms: &VecXforms,
     at: VecPathId,
     inst: &VecInstance,
-) -> Option<Vec<VecPath>> {
+) -> Option<(Vec<VecPath>, Vec<VecPathId>)> {
     let main_id: VecPathId = inst.main;
     // Uma instância de si mesma é um laço; a recusa é aqui, e não numa guarda de profundidade,
     // porque o desenho dela não tem resposta finita nenhuma.
@@ -132,20 +139,13 @@ pub(crate) fn cook_one(
     // deixou de ser um componente"*, e uma cópia que o ignorasse estaria a honrar uma decisão que
     // ele revogou.
     sim.world().get::<ph2d_ecs::VecComponentMain>(main_e)?;
-    // ⚠️ **A ORDEM é a lei:** primeiro TIRA do espaço do mestre, depois PÕE no da instância.
-    // Escrito ao contrário o desenho sai no produto trocado — errado em todo mestre fora da
-    // origem, e certo em toda fixture cujo mestre esteja nela. `inverse` recusa o degenerado.
-    let delta = xform_of(xforms, main_id)
-        .inverse()?
-        .then(&xform_of(xforms, at));
+    let delta = place_delta(xforms, main_id, at);
 
     let mut out = Vec::new();
-    for piece in subtree_paths(scene, sim, map, main_e) {
-        // `Hidden`: a peça não aparece nesta instância. Sair FORA do laço de geometria (e não
-        // desenhar transparente) é o que faz o override custar zero no desenho.
-        if inst.get(piece, HIDDEN_KIND) == Some(OverrideSlot::Hidden) {
-            continue;
-        }
+    // ⚠️ As duas listas saem da MESMA travessia: um segundo `visible_pieces` daria a mesma
+    // resposta hoje e seria a porta por onde elas passariam a divergir amanhã.
+    let mut kept = Vec::new();
+    for piece in visible_pieces(scene, sim, map, main_e, inst) {
         let Some(src) = scene.paths().iter().find(|p| p.id == piece) else {
             continue;
         };
@@ -161,8 +161,56 @@ pub(crate) fn cook_one(
             }));
         }
         out.push(world);
+        kept.push(piece);
     }
-    Some(out)
+    Some((out, kept))
+}
+
+/// **O afim que leva a arte do mestre para a instância: TIRA o LUGAR dele, mantém a FORMA.**
+///
+/// # Isto foi um defeito reportado, e a diferença entre as duas versões é o que a wave promete
+///
+/// A v1 compunha `pose_da_cópia ∘ pose_do_mestre⁻¹`, que cancela a pose do mestre **inteira** — e
+/// como cada peça é assada com a própria pose de MUNDO (que já contém a do mestre), o resultado é
+/// que **nenhuma edição na RAIZ do mestre alcançava as cópias**. Medido: escalar o mestre 3× deixa
+/// as duas peças de uma instância byte a byte onde estavam. Era o relato do Enio — *"redimensionei
+/// o mestre e só os filhos mudaram"*: uma edição num FILHO mexe no local dele e propaga; uma na
+/// raiz mexe na pose dela e evaporava aqui.
+///
+/// A pergunta certa é *o que, na pose do mestre, é CONTEÚDO?* — e a resposta é: a parte linear
+/// (escala, rotação, cisalhamento) descreve a FORMA que o componente tem; a translação descreve
+/// **onde ele está na tela**, que é justamente o que a cópia não deve herdar (senão toda instância
+/// nasceria em cima do mestre). Então só a translação é removida.
+///
+/// É o modelo do Figma — redimensionar o *main component* redimensiona as instâncias, movê-lo não
+/// as move — e é ele que faz a promessa da wave ser verdadeira para a raiz e não só para os filhos.
+///
+/// ⚠️ E some com o `inverse()`: um mestre degenerado (escala 0) deixa de ser reportado como
+/// **órfão**, o que é mais honesto — ele existe, apenas não desenha nada.
+fn place_delta(xforms: &VecXforms, main_id: VecPathId, at: VecPathId) -> ph2d_vec_scene::Xform {
+    let m = xform_of(xforms, main_id).0;
+    let un_place = ph2d_vec_scene::Xform([1.0, 0.0, 0.0, 1.0, -m[4], -m[5]]);
+    un_place.then(&xform_of(xforms, at))
+}
+
+/// **As peças que ESTA instância mostra**, na ordem de z do documento — porta única.
+///
+/// ⚠️ Perguntada por quem DESENHA ([`cook_one`]) e por quem MATERIALIZA (o *Detach*). Uma segunda
+/// lista faria o destacar produzir uma árvore que não corresponde ao que estava na tela, e o
+/// sintoma seria geometria a mais ou a menos **sem erro nenhum**.
+pub(crate) fn visible_pieces(
+    scene: &VecScene,
+    sim: &SimWorld,
+    map: &VecEntityMap,
+    main_e: Entity,
+    inst: &VecInstance,
+) -> Vec<VecPathId> {
+    subtree_paths(scene, sim, map, main_e)
+        .into_iter()
+        // `Hidden`: a peça não aparece nesta instância. Sair FORA do laço de geometria (e não
+        // desenhar transparente) é o que faz o override custar zero no desenho.
+        .filter(|p| inst.get(*p, HIDDEN_KIND) != Some(OverrideSlot::Hidden))
+        .collect()
 }
 
 /// Os caminhos do mestre — a raiz e a sub-árvore ECS dela, **na ordem de z do documento**.

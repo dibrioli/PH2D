@@ -121,11 +121,16 @@ fn announce(app: &mut crate::App) {
     eprintln!("  4. ⚠️ **A PROVA DA WAVE**: selecione a ETIQUETA branca DENTRO do mestre (clique");
     eprintln!("     nela) e, na secao **Fill**, mude a cor. As TRES copias mudam junto, no mesmo");
     eprintln!("     instante. Ninguem chamou um 'atualizar' — a copia e' derivada por frame.");
-    eprintln!("  5. Estique o MESTRE pelo gizmo. As tres copias esticam com ele.");
+    eprintln!("  5. ⚠️ **A OUTRA METADE DA PROVA**: estique o MESTRE pelo gizmo. As tres copias");
+    eprintln!("     esticam junto — a FORMA do mestre propaga. Agora ARRASTE o mestre para outro");
+    eprintln!("     canto: as copias **nao se mexem** — o LUGAR dele nao propaga. Se as copias");
+    eprintln!("     seguirem o arrasto, a separacao entre forma e lugar quebrou.");
     eprintln!("  6. Selecione UMA copia. Aparecem **Detach Instance** (e, se ela tivesse");
     eprintln!("     overrides, **Reset Overrides**). Carregue em **Detach**: ela deixa de seguir");
-    eprintln!("     o mestre e vira arte de duas pecas, no lugar exacto onde estava. ⚠️ Mude o");
-    eprintln!("     mestre outra vez — as OUTRAS duas seguem, e a destacada nao.");
+    eprintln!("     o mestre e vira arte de duas pecas. ⚠️ Ela tem de ficar **EXACTAMENTE onde");
+    eprintln!("     estava** (um Detach que move a arte e' um Detach que voce tem de desfazer), e");
+    eprintln!("     na Hierarquia a CAIXA continua a ser o pai da ETIQUETA — nao o contrario.");
+    eprintln!("     Mude o mestre outra vez — as OUTRAS duas seguem, e a destacada nao.");
     eprintln!(
         "  7. Selecione o MESTRE e apague-o (Delete). ⚠️ As copias **nao desaparecem**: cada"
     );

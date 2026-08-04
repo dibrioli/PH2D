@@ -167,38 +167,164 @@ fn place_refuses_a_plain_shape() {
     assert!(place_instance(&sim, &mut scene, &map, &[id]).is_none());
 }
 
-/// **Detach materializa TODAS as peças** — e as parenteia sob a que ficou.
+/// Um mestre de DUAS peças (a caixa e o rótulo dentro dela) e uma instância deslocada.
 ///
-/// ⚠️ O gate nasceu contra a v1, que escrevia só a primeira: com um componente de duas peças ela
-/// deixava metade da arte para trás **sem erro nenhum**, que é o modo de falha que este ficheiro
-/// existe para impedir.
-#[test]
-fn detach_materialises_every_piece_and_keeps_them_together() {
-    let (mut sim, mut scene, mut map, id) = one_shape();
-    let e = Entity::from_bits(map[&id]);
-    sim.world_mut().entity_mut(e).insert(VecInstance::new(7));
-    let drawn = vec![
-        rectangle([0.0, 0.0], [4.0, 4.0]),
-        rectangle([5.0, 5.0], [9.0, 9.0]),
-    ];
-    let (root, extra) =
-        detach(&mut sim, &mut scene, &map, &[id], Some(&drawn)).expect("Detach recusou");
-    assert_eq!(root, id, "a raiz mantém o id (e com ele o z e a seleção)");
-    assert_eq!(extra.len(), 1, "a 2ª peça tem de virar caminho");
+/// `child_first` põe o rótulo ANTES da caixa na ordem da CENA. ⚠️ Isso não é uma cena artificial:
+/// a ordem da cena é a ordem de z, e z é autorável — o artista pode trazer o rótulo para a frente.
+/// Foi exactamente aí que o Detach trocou pai e filho.
+fn master_child_instance(
+    child_first: bool,
+) -> (
+    SimWorld,
+    VecScene,
+    VecEntityMap,
+    VecPathId,
+    VecPathId,
+    VecPathId,
+) {
+    let mut sim = SimWorld::default();
+    let mut scene = VecScene::new();
+    let mut map = VecEntityMap::new();
+    let (main_id, child_id) = if child_first {
+        let c = scene.push_path(rectangle([2.0, 2.0], [8.0, 8.0]));
+        let m = scene.push_path(rectangle([0.0, 0.0], [20.0, 10.0]));
+        (m, c)
+    } else {
+        let m = scene.push_path(rectangle([0.0, 0.0], [20.0, 10.0]));
+        let c = scene.push_path(rectangle([2.0, 2.0], [8.0, 8.0]));
+        (m, c)
+    };
+    let inst_id = scene.push_path(rectangle([0.0, 0.0], [20.0, 10.0]));
     crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
-    assert!(arm_detached(&mut sim, &map, root, &extra));
-    let child = Entity::from_bits(map[&extra[0]]);
-    assert_eq!(
-        sim.world()
-            .get::<ph2d_ecs::ChildOf>(child)
-            .map(|c| c.parent()),
-        Some(Entity::from_bits(map[&root])),
-        "a peça ficou solta na raiz: o Detach desfez o agrupamento"
-    );
-    assert!(
-        sim.world().get::<VecInstance>(e).is_none(),
-        "o vínculo tinha de sair"
-    );
+    let main_e = Entity::from_bits(map[&main_id]);
+    sim.world_mut().entity_mut(main_e).insert(VecComponentMain);
+    sim.world_mut()
+        .entity_mut(Entity::from_bits(map[&child_id]))
+        .insert(ph2d_ecs::ChildOf(main_e));
+    // ⚠️ A instância NÃO está na origem — é a pose dela que a v1 aplicava duas vezes.
+    let mut t = ph2d_ecs::Transform::default();
+    t.translation.x = 100.0;
+    sim.world_mut()
+        .entity_mut(Entity::from_bits(map[&inst_id]))
+        .insert((t, VecInstance::new(main_id)));
+    (sim, scene, map, main_id, child_id, inst_id)
+}
+
+/// O que o PRODUTOR desenha para `at`, e as peças por trás — o par que o Detach consome.
+fn cooked(
+    sim: &SimWorld,
+    scene: &VecScene,
+    map: &VecEntityMap,
+    at: VecPathId,
+) -> (Vec<ph2d_vec_scene::VecPath>, Vec<VecPathId>) {
+    let xf = crate::vec_transform::build(sim, map);
+    let mut live = crate::instance_live::InstanceLive::default();
+    live.recook(scene, sim, map, &xf);
+    (
+        live.live().get(&at).expect("a instância desenha").clone(),
+        live.pieces_of(at).expect("as peças").to_vec(),
+    )
+}
+
+/// A caixa de mundo de um caminho do documento (geometria ∘ pose da entidade).
+fn world_box(sim: &SimWorld, scene: &VecScene, map: &VecEntityMap, id: VecPathId) -> [f64; 2] {
+    let xf = crate::vec_transform::build(sim, map);
+    let (lo, _) = scene.path_curve_bbox(id).expect("bbox");
+    ph2d_vec_scene::xform_of(&xf, id).apply(lo)
+}
+
+/// **A arte destacada fica ONDE ESTAVA.**
+///
+/// ⚠️ Gate red-first, e o número é do produto: a v1 gravava a geometria de MUNDO num caminho cuja
+/// entidade ainda carrega a pose da instância, então a pose entrava **duas vezes** — uma peça
+/// desenhada em `x = 100` aterrava em `x = 200`. Um Detach que move a arte é um Detach que o
+/// artista tem de desfazer.
+#[test]
+fn detach_leaves_the_art_where_it_was_drawn() {
+    let (mut sim, mut scene, mut map, _main, _child, inst) = master_child_instance(false);
+    let (drawn, pieces) = cooked(&sim, &scene, &map, inst);
+    let before: Vec<[f64; 2]> = drawn
+        .iter()
+        .map(|p| {
+            let mut lo = [f64::MAX; 2];
+            for v in p.verts_all() {
+                for (slot, c) in lo.iter_mut().zip(v.anchor) {
+                    *slot = slot.min(c);
+                }
+            }
+            lo
+        })
+        .collect();
+    let plan = detach(
+        &mut sim,
+        &mut scene,
+        &map,
+        &[inst],
+        Some(&drawn),
+        Some(&pieces),
+    )
+    .expect("Detach recusou");
+    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    assert!(arm_detached(&mut sim, &map, &plan));
+    let after: Vec<[f64; 2]> = std::iter::once(inst)
+        .chain(plan.extra.iter().copied())
+        .map(|id| world_box(&sim, &scene, &map, id))
+        .collect();
+    for (b, a) in before.iter().zip(after.iter()) {
+        assert!(
+            (b[0] - a[0]).abs() < 1e-6 && (b[1] - a[1]).abs() < 1e-6,
+            "a arte saltou: desenhada em {b:?}, destacada em {a:?}"
+        );
+    }
+}
+
+/// **A raiz do destacado é a raiz do MESTRE, não a primeira peça desenhada.**
+///
+/// ⚠️ Red-first com o rótulo À FRENTE da caixa: a v1 tomava `items.first()`, que é ordem de **z**,
+/// e o resultado era o relato do Enio — *"quem era pai virou filho, quem era filho virou pai"*.
+#[test]
+fn detach_roots_the_masters_root_even_when_the_child_is_in_front() {
+    for child_first in [false, true] {
+        let (mut sim, mut scene, mut map, main, child, inst) = master_child_instance(child_first);
+        let (drawn, pieces) = cooked(&sim, &scene, &map, inst);
+        assert_eq!(pieces.len(), 2, "o mestre tem duas peças");
+        let plan = detach(
+            &mut sim,
+            &mut scene,
+            &map,
+            &[inst],
+            Some(&drawn),
+            Some(&pieces),
+        )
+        .expect("Detach recusou");
+        crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+        assert!(arm_detached(&mut sim, &map, &plan));
+        // A caixa do mestre mede 20 de largura, o rótulo 6: é isso que os distingue sem depender
+        // de qualquer id.
+        let w = |id: VecPathId| {
+            let (lo, hi) = scene.path_curve_bbox(id).expect("bbox");
+            hi[0] - lo[0]
+        };
+        assert!(
+            (w(inst) - w(main)).abs() < 1e-6,
+            "child_first={child_first}: a raiz ficou com a peça errada (largura {}, esperada {})",
+            w(inst),
+            w(main)
+        );
+        assert_eq!(plan.extra.len(), 1);
+        assert!((w(plan.extra[0]) - w(child)).abs() < 1e-6);
+        assert_eq!(
+            plan.parents,
+            vec![(plan.extra[0], inst)],
+            "child_first={child_first}: o parentesco não espelhou a árvore do mestre"
+        );
+        let ce = Entity::from_bits(map[&plan.extra[0]]);
+        assert_eq!(
+            sim.world().get::<ph2d_ecs::ChildOf>(ce).map(|c| c.parent()),
+            Some(Entity::from_bits(map[&inst])),
+            "a peça ficou solta na raiz: o Detach desfez o agrupamento"
+        );
+    }
 }
 
 /// **Reset num instância LIMPA não mexe no mundo** — o `post_frame_undo` regista por diff, e um
@@ -262,4 +388,61 @@ fn the_missing_readout_comes_from_the_producers_answer() {
     sim.world_mut().entity_mut(e).insert(VecInstance::new(id));
     let s = selected_component(&sim, &map, &[id], &[id]).expect("instância");
     assert!(s.main_missing, "o painel ignorou a recusa do produtor");
+}
+
+/// **O suporte cobre o que a cópia DESENHA** — é ele a caixa do gizmo e o alvo do clique.
+///
+/// ⚠️ Red-first, e falha por dois motivos independentes: a v1 media só o caminho-RAIZ (um rótulo
+/// que transborda ficava de fora) e media-o em LOCAL, cega à pose do mestre — com a forma do
+/// mestre a propagar, um mestre escalado 2× dá uma cópia do dobro do tamanho dentro de uma caixa
+/// do tamanho antigo. Uma caixa de gizmo que não é a arte é uma alça que agarra o vazio.
+#[test]
+fn the_support_covers_what_the_copy_draws() {
+    let mut sim = SimWorld::default();
+    let mut scene = VecScene::new();
+    let mut map = VecEntityMap::new();
+    let main_id = scene.push_path(rectangle([0.0, 0.0], [20.0, 10.0]));
+    // ⚠️ O filho TRANSBORDA a caixa do pai: é isso que separa "medi a raiz" de "medi o conteúdo".
+    let child_id = scene.push_path(rectangle([-6.0, -3.0], [24.0, 14.0]));
+    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    let main_e = Entity::from_bits(map[&main_id]);
+    let mut mt = ph2d_ecs::Transform::default();
+    mt.translation.x = 40.0;
+    mt.scale.x = 2.0;
+    mt.scale.y = 2.0;
+    sim.world_mut()
+        .entity_mut(main_e)
+        .insert((mt, VecComponentMain));
+    sim.world_mut()
+        .entity_mut(Entity::from_bits(map[&child_id]))
+        .insert(ph2d_ecs::ChildOf(main_e));
+
+    let inst = place_instance(&sim, &mut scene, &map, &[main_id]).expect("Place");
+    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    assert!(arm_instance(&mut sim, &map, inst, main_id, [7.0, -5.0]));
+
+    let (drawn, _) = cooked(&sim, &scene, &map, inst);
+    let (mut dlo, mut dhi) = ([f64::MAX; 2], [f64::MIN; 2]);
+    for p in &drawn {
+        for v in p.verts_all() {
+            for ((lo, hi), c) in dlo.iter_mut().zip(dhi.iter_mut()).zip(v.anchor) {
+                *lo = lo.min(c);
+                *hi = hi.max(c);
+            }
+        }
+    }
+    let xf = crate::vec_transform::build(&sim, &map);
+    let (slo, shi) = scene.path_curve_bbox(inst).expect("suporte");
+    let x = ph2d_vec_scene::xform_of(&xf, inst);
+    let (wlo, whi) = (x.apply(slo), x.apply(shi));
+    for a in 0..2 {
+        assert!(
+            (wlo[a] - dlo[a]).abs() < 1e-6 && (whi[a] - dhi[a]).abs() < 1e-6,
+            "eixo {a}: o suporte cobre {:?}..{:?} e a arte ocupa {:?}..{:?}",
+            wlo[a],
+            whi[a],
+            dlo[a],
+            dhi[a]
+        );
+    }
 }

@@ -33,10 +33,14 @@ fn the_place_step_comes_from_the_camera_not_from_a_constant() {
     let Some(at) = s.find("if let Some((new_id, main)) = arm_instance_of") else {
         panic!("o sítio que arma a instância mudou de forma — reancore este gate");
     };
+    // ⚠️ A janela acaba na PRÓPRIA chamada que ela julga, e não numa linha vizinha: a 1ª versão
+    // ancorava no bloco do Detach logo abaixo, e a wave seguinte — que mexeu no Detach e não no
+    // Place — derrubou este gate sobre código correto. Um gate ancorado no que ele NÃO julga é um
+    // proxy que expira.
     let block = &s[at..];
     let end = block
-        .find("if let Some((root, pieces)) = arm_detached_under")
-        .expect("o bloco do Place deixou de ser seguido pelo do Detach");
+        .find("crate::vec_component_edit::arm_instance(")
+        .expect("o bloco do Place deixou de armar a instância");
     let block = &block[..end];
     assert!(
         block.contains("screen_offset_world") && block.contains("PASTE_OFFSET_PX"),

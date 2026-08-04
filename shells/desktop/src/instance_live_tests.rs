@@ -103,10 +103,20 @@ fn editing_the_main_moves_every_instance() {
         let live = cook(&sim, &scene, &map);
         insts.iter().map(|i| drawn(live.live(), *i)).collect()
     };
+    // ⚠️ O oráculo é a largura que o MESTRE mostra, nunca um literal: a v1 deste gate cravava a
+    // largura LOCAL dele (20) e ficava verde só porque a pose do mestre era cancelada. Um literal
+    // aqui codifica o modelo em vez de o medir.
+    let master_w = |sim: &SimWorld, scene: &VecScene| {
+        let xf = crate::vec_transform::build(sim, &map);
+        let (lo, hi) = scene.path_curve_bbox(main_id).expect("bbox do mestre");
+        let x = ph2d_vec_scene::xform_of(&xf, main_id);
+        x.apply(hi)[0] - x.apply(lo)[0]
+    };
+    let w0 = master_w(&sim, &scene);
     for (k, b) in before.iter().enumerate() {
         assert!(
-            approx(b.1[0] - b.0[0], 20.0),
-            "instância {k} nasce com a largura do mestre: {b:?}"
+            approx(b.1[0] - b.0[0], w0),
+            "instância {k} nasce com a largura do mestre ({w0:.1}): {b:?}"
         );
     }
     // O mestre engorda para 50 de largura — uma edição de DOCUMENTO, sem tocar nas instâncias.
@@ -116,12 +126,14 @@ fn editing_the_main_moves_every_instance() {
         p
     };
     let _ = &mut sim;
+    let w1 = master_w(&sim, &scene);
+    assert!(w1 > w0, "a fixture não engordou o mestre");
     let live = cook(&sim, &scene, &map);
     for (k, id) in insts.iter().enumerate() {
         let (lo, hi) = drawn(live.live(), *id);
         assert!(
-            approx(hi[0] - lo[0], 50.0),
-            "instância {k} não seguiu o mestre: {:?}",
+            approx(hi[0] - lo[0], w1),
+            "instância {k} não seguiu o mestre (esperado {w1:.1}): {:?}",
             (lo, hi)
         );
     }
@@ -270,4 +282,108 @@ fn a_thousand_instances_cost_their_overrides_and_not_a_thousand_trees() {
     // prototipal poupa mil vezes.
     assert!(bare <= 16, "instância limpa custa {bare} bytes");
     assert!(one - bare <= 16, "um override custa {} bytes", one - bare);
+}
+
+/// **Redimensionar o mestre redimensiona as cópias — e MOVÊ-LO não as move.**
+///
+/// ⚠️ O gate da promessa da wave, e ele nasceu VERMELHO: a v1 cancelava a pose do mestre INTEIRA,
+/// então escalar o mestre 3× deixava as duas peças de uma instância byte a byte onde estavam. O
+/// relato do Enio (*"só os filhos redimensionaram"*) é essa assimetria vista da cadeira do artista
+/// — uma edição num FILHO mexe no local dele e propaga; uma na RAIZ mexe na pose dela e evaporava.
+///
+/// ⚠️ **As duas metades são obrigatórias.** Sem a do MOVER, a cura óbvia (parar de cancelar a pose)
+/// passa — e toda cópia nasceria em cima do mestre. É a metade que separa *forma* de *lugar*.
+#[test]
+fn resizing_the_master_resizes_the_copies_but_moving_it_does_not_move_them() {
+    let (mut sim, scene, map, main_id, _piece, insts) = master_and_instances(1);
+    let (lo0, hi0) = drawn(cook(&sim, &scene, &map).live(), insts[0]);
+    let main_e = Entity::from_bits(map[&main_id]);
+
+    if let Some(mut t) = sim.world_mut().get_mut::<Transform>(main_e) {
+        t.scale.x *= 3.0;
+        t.scale.y *= 3.0;
+    }
+    let (lo1, hi1) = drawn(cook(&sim, &scene, &map).live(), insts[0]);
+    for a in 0..2 {
+        let (w0, w1) = (hi0[a] - lo0[a], hi1[a] - lo1[a]);
+        assert!(
+            (w1 - w0 * 3.0).abs() < 1e-6,
+            "eixo {a}: o mestre triplicou e a cópia foi de {w0:.3} para {w1:.3}"
+        );
+    }
+
+    // O CONTROLE: mover o mestre não pode arrastar a cópia atrás dele.
+    let centre_before = [(lo1[0] + hi1[0]) * 0.5, (lo1[1] + hi1[1]) * 0.5];
+    if let Some(mut t) = sim.world_mut().get_mut::<Transform>(main_e) {
+        t.translation.x += 250.0;
+        t.translation.y -= 90.0;
+    }
+    let (lo2, hi2) = drawn(cook(&sim, &scene, &map).live(), insts[0]);
+    let centre_after = [(lo2[0] + hi2[0]) * 0.5, (lo2[1] + hi2[1]) * 0.5];
+    for a in 0..2 {
+        assert!(
+            (centre_after[a] - centre_before[a]).abs() < 1e-6,
+            "eixo {a}: mover o mestre arrastou a cópia de {:.3} para {:.3}",
+            centre_before[a],
+            centre_after[a]
+        );
+    }
+}
+
+/// **Uma instância DENTRO de um mestre desenha o suporte dela, não a arte** — o limite do nesting.
+///
+/// ⚠️ Não é um defeito silencioso a corrigir de passagem: `cook_one` **não desce** a um segundo nível, e fazê-lo
+/// é onde moram as perguntas que o ADR-0128 pagou caro (profundidade, ciclos, e a ordem
+/// em que os deltas compõem). O gate existe para o limite ficar MEDIDO em vez de descoberto — e
+/// para quem o levantar ter de o levantar de propósito.
+#[test]
+fn an_instance_nested_in_a_master_draws_its_support_not_its_art() {
+    let (mut sim, mut scene, mut map, main_id, _piece, _insts) = master_and_instances(0);
+    // Um segundo mestre, e uma instância DELE pendurada dentro do primeiro.
+    let other = scene.push_path(rectangle([0.0, 0.0], [4.0, 4.0]));
+    let nested = scene.push_path(rectangle([0.0, 0.0], [1.0, 1.0]));
+    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    sim.world_mut()
+        .entity_mut(Entity::from_bits(map[&other]))
+        .insert(VecComponentMain);
+    sim.world_mut()
+        .entity_mut(Entity::from_bits(map[&nested]))
+        .insert((
+            VecInstance::new(other),
+            ph2d_ecs::ChildOf(Entity::from_bits(map[&main_id])),
+        ));
+    let outer = scene.push_path(rectangle([0.0, 0.0], [20.0, 10.0]));
+    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    sim.world_mut()
+        .entity_mut(Entity::from_bits(map[&outer]))
+        .insert(VecInstance::new(main_id));
+
+    let live = cook(&sim, &scene, &map);
+    let items = live
+        .live()
+        .get(&outer)
+        .expect("a instância externa desenha");
+    // Três peças: a raiz do mestre, o filho, e a instância aninhada — esta última pelo SUPORTE
+    // (1×1), não pelos 4×4 do mestre dela.
+    let widths: Vec<f64> = items
+        .iter()
+        .map(|p| {
+            let (mut lo, mut hi) = (f64::MAX, f64::MIN);
+            for v in p.verts_all() {
+                lo = lo.min(v.anchor[0]);
+                hi = hi.max(v.anchor[0]);
+            }
+            hi - lo
+        })
+        .collect();
+    // A pose do mestre tem escala 2 em x, então o suporte 1×1 aparece com largura 2.
+    assert!(
+        widths.iter().any(|w| (w - 2.0).abs() < 1e-6),
+        "a instância aninhada deixou de desenhar o suporte dela: {widths:?}"
+    );
+    assert!(
+        !widths.iter().any(|w| (w - 8.0).abs() < 1e-6),
+        "a instância aninhada passou a desenhar a arte do mestre dela — o nesting mudou de \
+         comportamento e este gate é o sítio onde isso se decide: {widths:?}"
+    );
 }

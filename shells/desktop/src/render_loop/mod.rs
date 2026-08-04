@@ -4432,10 +4432,7 @@ impl crate::App {
                 ph2d_vec_scene::VecPathId,
                 ph2d_vec_scene::VecPathId,
             )> = None;
-            let mut arm_detached_under: Option<(
-                ph2d_vec_scene::VecPathId,
-                Vec<ph2d_vec_scene::VecPathId>,
-            )> = None;
+            let mut arm_detached_under: Option<crate::vec_component_edit::Detached> = None;
             if let Some(verb) = pending_component {
                 let sel: Vec<ph2d_vec_scene::VecPathId> = self.vec_pen.selected_paths().to_vec();
                 match verb {
@@ -4462,15 +4459,23 @@ impl crate::App {
                             .first()
                             .and_then(|id| self.instance_live.live().get(id))
                             .cloned();
-                        if let Some((root, extra)) = crate::vec_component_edit::detach(
+                        // ⚠️ E as PEÇAS que a produziram, na mesma ordem: é por identidade que o
+                        // Detach sabe qual delas é a raiz do mestre. Deduzi-la da ordem de z
+                        // trocava pai e filho quando o filho estava à frente.
+                        let pieces = sel
+                            .first()
+                            .and_then(|id| self.instance_live.pieces_of(*id))
+                            .map(<[u64]>::to_vec);
+                        if let Some(plan) = crate::vec_component_edit::detach(
                             sim,
                             vec_scene,
                             &self.vec_entities,
                             &sel,
                             drawn.as_deref(),
-                        ) && !extra.is_empty()
+                            pieces.as_deref(),
+                        ) && !plan.parents.is_empty()
                         {
-                            arm_detached_under = Some((root, extra));
+                            arm_detached_under = Some(plan);
                         }
                     }
                     crate::vec_component_edit::ComponentEdit::Reset => {
@@ -5579,8 +5584,8 @@ impl crate::App {
                     crate::vec_component_edit::cascade_offset([sx as f32, sy as f32], already),
                 );
             }
-            if let Some((root, pieces)) = arm_detached_under {
-                crate::vec_component_edit::arm_detached(sim, &self.vec_entities, root, &pieces);
+            if let Some(plan) = arm_detached_under {
+                crate::vec_component_edit::arm_detached(sim, &self.vec_entities, &plan);
             }
             // ADR-0114: idem para os objetos Flip (objeto novo ⇒ entidade; entidade
             // apagada ⇒ objeto). No W0 é no-op (nenhuma tool cria objetos ainda); a

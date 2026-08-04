@@ -8,11 +8,18 @@
 //!
 //! No frame 90 o artista **apaga o integrador** (gesto destrutivo): os pontos
 //! CONGELAM e o app **NÃO** re-insere — apagar para religar à mão nunca é combatido.
+//!
+//! **`=2` (REORDER):** um sim que JÁ FUNCIONA (`grid -> integrate -> output`) e o
+//! artista solta uma `force.wind` SOBRE o fio de saída (um Splice) — a força cai
+//! DEPOIS do integrador, onde o accel dela nunca é consumido. O app **REUSA** o
+//! integrador que já está ali (não insere um segundo): a força vira o ramo de forças,
+//! e os pontos passam a DERIVAR. Um Ctrl+Z reverte só o reorder.
 
 use ph2d_nodegraph::graph::{Edge, Pos};
 use ph2d_panel_motion_graph::GraphIntent;
 
-/// O modo: `0` off, `1` ligado.
+/// O modo: `0` off, `1` inserir (força na cadeia horizontal), `2` reorder (força
+/// spliceada depois de um integrador que já existe).
 fn mode() -> u32 {
     static M: std::sync::OnceLock<u32> = std::sync::OnceLock::new();
     *M.get_or_init(|| {
@@ -34,20 +41,32 @@ impl crate::App {
             return;
         }
         let f = FRAME.fetch_add(1, Ordering::Relaxed);
-        match f {
-            // Frame 3: monta grid -> force.wind + output SOLTO, abre a tool Motion, e
-            // empurra o gesto ERRADO (Connect force -> output, sem integrador). O
+        match (mode(), f) {
+            // =1, frame 3: monta grid -> force.wind + output SOLTO, abre a tool Motion,
+            // e empurra o gesto ERRADO (Connect force -> output, sem integrador). O
             // bridge drena o intent, conecta e auto-conserta no mesmo frame.
-            3 => {
+            (1, 3) => {
                 let gfx = self.gfx.as_mut().expect("gfx");
                 let (grid, force, out) = {
                     let g = &mut gfx.motion.doc.graph;
                     let grid = g.add_node("motion.grid");
                     let force = g.add_node("force.wind");
                     let out = g.add_node("motion.output");
-                    g.set_pos(grid, Pos { x: -220.0, y: -260.0 });
+                    g.set_pos(
+                        grid,
+                        Pos {
+                            x: -220.0,
+                            y: -260.0,
+                        },
+                    );
                     g.set_pos(force, Pos { x: 0.0, y: -260.0 });
-                    g.set_pos(out, Pos { x: 260.0, y: -260.0 });
+                    g.set_pos(
+                        out,
+                        Pos {
+                            x: 260.0,
+                            y: -260.0,
+                        },
+                    );
                     g.connect(Edge {
                         from: (grid, 0),
                         to: (force, 0),
@@ -80,8 +99,8 @@ impl crate::App {
                      frame 90 o integrador e' apagado."
                 );
             }
-            // Frame 90: apaga o integrador — gesto destrutivo, o app NAO re-insere.
-            90 => {
+            // =1, frame 90: apaga o integrador — gesto destrutivo, o app NAO re-insere.
+            (1, 90) => {
                 let gfx = self.gfx.as_mut().expect("gfx");
                 let integ = gfx
                     .motion
@@ -106,6 +125,66 @@ impl crate::App {
                          auto-heal nao rodou. Pare e investigue."
                     );
                 }
+            }
+            // =2, frame 3: um sim que JA FUNCIONA (grid -> integrate -> output) e o
+            // artista solta uma force.wind SOBRE o fio de saida (SpliceNode). A forca cai
+            // DEPOIS do integrador, onde o accel dela nunca e' consumido. O app REUSA
+            // esse integrador (nao insere um segundo) e a forca vira o ramo de forcas ->
+            // os pontos DERIVAM (+X, com o strength 3 default do wind).
+            (2, 3) => {
+                let gfx = self.gfx.as_mut().expect("gfx");
+                let out = {
+                    let g = &mut gfx.motion.doc.graph;
+                    let grid = g.add_node("motion.grid");
+                    let integ = g.add_node("motion.integrate");
+                    let out = g.add_node("motion.output");
+                    g.set_pos(
+                        grid,
+                        Pos {
+                            x: -260.0,
+                            y: -260.0,
+                        },
+                    );
+                    g.set_pos(integ, Pos { x: 0.0, y: -260.0 });
+                    g.set_pos(
+                        out,
+                        Pos {
+                            x: 260.0,
+                            y: -260.0,
+                        },
+                    );
+                    g.connect(Edge {
+                        from: (grid, 0),
+                        to: (integ, 0), // grid -> integrate.rest
+                        delayed: false,
+                    })
+                    .expect("grid -> integrate.rest");
+                    g.connect(Edge {
+                        from: (integ, 0),
+                        to: (out, 0), // integrate -> output (o sim que ja' roda)
+                        delayed: false,
+                    })
+                    .expect("integrate -> output");
+                    out
+                };
+                gfx.motion.sinks.push(out);
+                let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+                // O GESTO: soltar a forca SOBRE o fio integrate -> output.
+                ph2d_panel_motion_graph::push_intent(GraphIntent::SpliceNode {
+                    to_node: out.0,
+                    to_port: 0,
+                    to_type: "force.wind",
+                    x: 130.0,
+                    y: -260.0,
+                });
+                eprintln!(
+                    "[autofix smoke =2] sim que JA FUNCIONA (grid -> integrate -> output); \
+                     solto uma force.wind SOBRE o fio de saida. A forca cai DEPOIS do \
+                     integrador (o accel dela nunca e' consumido ali). O app deve REUSAR o \
+                     integrador que ja' esta' ali (NAO inserir um segundo): a forca vira o \
+                     ramo de forcas e os pontos DERIVAM para +X. Confira que existe UM SO' \
+                     motion.integrate. Um Ctrl+Z reverte so' o reorder."
+                );
             }
             _ => {}
         }

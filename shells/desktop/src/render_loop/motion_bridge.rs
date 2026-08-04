@@ -469,120 +469,15 @@ pub(super) fn reconcile(motion: &mut MotionState, before: &ph2d_nodegraph::graph
     subgraph::adopt_new(motion, before);
 }
 
-/// Apply a `Connect` intent: validate against the shell-owned document (the
-/// shell is the authority) and commit iff the new edge is legal.
-///
-/// A wire that would close a **cycle** has exactly ONE legal meaning in this
-/// substrate: 1-tick feedback (the Lustre `pre`, ADR-0032) — so it is retried
-/// as a delayed edge instead of refused, with an informative toast. This is
-/// the EXPERT path (arbitrary feedback); the bread-and-butter force loop is
-/// never hand-wired — `plumbing` derives it from the `forces` port
-/// (docs/Motion Nodes/03).
+#[path = "motion_bridge_remove.rs"]
+mod remove;
+// Re-exported so `motion_bridge::…` call sites (`dispatch`, `intents`, the tests) are
+// unchanged; a private `use` is visible to this module AND its descendants — exactly the
+// reach the callers need — and `output_nodes` is called here, the intent handlers by the
+// `intents` child.
+use remove::output_nodes;
 #[cfg(feature = "panel-motion-graph")]
-/// Apply a `Disconnect` intent. An engine-managed `pre` (the plumbing badge) is not
-/// hand-deletable — it would re-derive on the next reconcile anyway — so the gesture steers
-/// the user to the edit that DOES change topology. Everything else disconnects, the plumbing
-/// re-heals (a chain pulled off a `forces` port gets its host's self-loop back; a chain split
-/// mid-way moves the state entry to the new dangling head),.
-fn apply_disconnect(motion: &mut MotionState, toasts: &mut ToastQueue, to_node: u32, to_port: u16) {
-    use ph2d_nodegraph::graph::NodeId;
-    if plumbing::is_managed_pre(
-        &motion.doc.graph,
-        &motion.registry,
-        NodeId(to_node),
-        to_port,
-    ) {
-        toasts.push(ph2d_editor::Toast::info(
-            "State wiring is automatic - disconnect the chain from the forces port instead",
-        ));
-        return;
-    }
-    let pre = motion.doc.clone();
-    if subgraph::unplug(motion, NodeId(to_node), to_port) {
-        reconcile(motion, &pre.graph);
-        motion.history.push_undo(pre);
-        motion.pump.mark_dirty();
-    }
-}
-
-/// Apply a `DeleteSelection` intent. A mid-chain node is **healed out**
-/// (delete-and-reconnect, Blender Ctrl+X): its port-0 source is bridged to its
-/// port-0 targets, so the chain gets shorter, not severed — a deleted force keeps
-/// the branch's head and its managed state entry (`plumbing` re-derives the rest).
-/// When there is nothing to bridge (an end node, or a heal that would not validate)
-/// it falls back to plain removal. The sinks are re-resolved from the Output nodes
-/// each frame (before the cook), so deleting one cleanly stops its scene — no manual
-/// sink bookkeeping here.
-#[cfg(feature = "panel-motion-graph")]
-fn apply_delete_selection(motion: &mut MotionState, nodes: Vec<u32>, toasts: &mut ToastQueue) {
-    let pre = motion.doc.clone();
-    let mut changed = false;
-    // **A GHOST is not deletable from here** (doc 57): it is a node from outside this
-    // level, drawn because a wire reaches it. You can grab it and tidy it (a node has
-    // ONE position), but deleting it would reach into a canvas the artist is not on —
-    // and a node vanishing from a room you cannot see is the definition of a surprise.
-    let (dead, foreign): (Vec<u32>, Vec<u32>) = nodes.into_iter().partition(|id| {
-        subgraph::subgraph_of(*id).is_some()
-            || !matches!(
-                ph2d_motion_doc::subgraph::holder_at(
-                    &motion.doc.subgraphs,
-                    &motion.doc.members,
-                    ph2d_nodegraph::graph::NodeId(*id),
-                    motion.level,
-                ),
-                ph2d_motion_doc::Holder::Outside
-            )
-    });
-    if !foreign.is_empty() {
-        toasts.push(ph2d_editor::Toast::info(
-            "That node lives outside this group - leave the group to delete it",
-        ));
-    }
-    for id in dead {
-        match subgraph::target(id) {
-            // A collapsed card IS its contents (Nuke: "the original nodes are
-            // replaced with the Group node"), so deleting it deletes them — every
-            // member, at every depth, and the decoration that lived in there.
-            subgraph::Target::Card(sid) => changed |= subgraph::delete_deep(motion, sid),
-            subgraph::Target::Node(nid) => {
-                // Delete-and-reconnect (Blender Ctrl+X): a node removed from the middle of a
-                // chain leaves the chain HEALED, not severed. `heal_deleted_node` removes it on
-                // success; otherwise fall back to the plain removal. Processing `dead` in order
-                // and re-reading the live graph each time composes — deleting two adjacent nodes
-                // heals the whole span (grid -> a -> b -> out becomes grid -> out).
-                let removed =
-                    rewire::heal_deleted_node(motion, nid) || motion.doc.graph.remove_node(nid);
-                if removed {
-                    motion.doc.forget_nodes(&[nid]);
-                    changed = true;
-                }
-            }
-        }
-    }
-    if changed {
-        reconcile(motion, &pre.graph);
-        motion.history.push_undo(pre);
-        motion.pump.mark_dirty();
-    }
-}
-
-/// The graph's render sinks: **every** `motion.output` node, in node-id order
-/// (deterministic). Each lowers onto the same instance buffer, so a document can
-/// hold several independent scenes — the default one holds a grid rig and a
-/// particle fountain. Empty (nothing renders) until a chain is wired into an
-/// Output node.
-fn output_nodes(graph: &ph2d_nodegraph::graph::Graph) -> Vec<ph2d_nodegraph::graph::NodeId> {
-    // `"motion.output"` is the node's canonical type name (as authored in the
-    // default graph); the shell addresses node types by name, like the tool id.
-    let mut ids: Vec<_> = graph
-        .nodes()
-        .iter()
-        .filter(|inst| inst.type_name == "motion.output")
-        .map(|inst| inst.id)
-        .collect();
-    ids.sort();
-    ids
-}
+use remove::{apply_delete_selection, apply_disconnect};
 
 /// **Publish the drawn shapes into the cook** (doc 65) — called by the render loop right before the
 /// Motion bridge, because that is where the vector document, the world and the entity map are all

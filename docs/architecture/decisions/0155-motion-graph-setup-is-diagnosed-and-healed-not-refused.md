@@ -16,7 +16,7 @@
 
 **Uma função pura DIAGNOSTICA o grafo** — `ph2d-motion-diagnose::diagnose(graph, reg) -> Vec<Diagnostic>` (crate leaf nova). Para cada produtor, BFS pelas arestas para frente (não-`delayed`): se algum nó alcançado consome a coluna, saudável; senão **inerte**, com um `Fix` que diz a agressividade da cura:
 - **`Insert(node)` — AUTO-CURA:** a peça faltante é tubulação inequívoca (`accel` → `motion.integrate`, ou `sim.step` num grafo de partículas). É o caso do Enio.
-- **`Reorder` — OFERTA:** um integrador existe mas fora do caminho do produtor (força a jusante do integrador). A cura é reordenar, **nunca inserir um segundo** (um integrador aplica).
+- **`Reorder`:** um integrador existe mas fora do caminho do produtor (força a jusante do integrador). A cura é reordenar, **nunca inserir um segundo** (um integrador aplica). Quando o integrador alimenta a cabeça da cadeia **DIRETAMENTE** (`grid → integrate → force`), o W2b **AUTO-CURA reusando-o** — o que É "nunca um segundo" —, por decisão do Enio (é a mesma "força no lugar errado" que o W2 já reencaminha). Com um nó entre eles, fica **OFERTA** (reusar duplicaria a integração — o `rest` seria uma base já transformada).
 - **`Offer` — OFERTA/AVISO:** consumidor faltante é escolha criativa sem inserção canônica (`inv_mass` precisa de *um* solver; `falloff` de *uma* força/deformer). Nunca adivinha.
 
 Esta função é a **PORTA ÚNICA**: a auto-cura (W2), os badges (W3) e os gates leem DELA, então não podem divergir.
@@ -27,5 +27,5 @@ Esta função é a **PORTA ÚNICA**: a auto-cura (W2), os badges (W3) e os gates
 
 - **Contrato de nós congelado INTACTO** (`NodeOp=2`/`OpResolver=1`/`NodeManifest=8`): o gate `architecture_contract_surface` conta declarações só em `ph2d-nodegraph/src/{node.rs,cook.rs}`; um `BTreeMap` novo no registry não os toca. Provado por grep + `cargo check --workspace` verde. **Zero schema** (a cura produz nós/arestas normais; os diagnósticos são view-state transiente).
 - **A agressividade da auto-cura é a decisão de produto** (§3.5 do plano): recomendado auto-curar SÓ o caso `accel`↔integrador; incluir `inv_mass`↔solver obrigaria o app a escolher UM solver, o que a pesquisa desaconselha.
-- **Waves:** W1 = o canal + o detector (headless, todo gateado — **landou nesta linha**). W2 = a auto-cura no gesto. W3 = os badges (OFERTA/AVISO) + o quick-fix. W4 = smoke + os avisos de requisito/dangling.
+- **Waves:** W1 = o canal + o detector (headless, todo gateado — **landou**). W2 = a auto-cura no gesto (Insert — **landou**). W2b = a auto-cura do Reorder direto (reusa o integrador — **landou**). W3 = os badges (OFERTA/AVISO) + o quick-fix (pin · falloff-a-montante · 1b indireto · dupla integração). W4 = smoke + os avisos de requisito/dangling.
 - **Escopo de anotação da W1:** só os acoplamentos `accel` e `inv_mass` (6 forças, integrate, sim.step, spring, collide, pin). O `falloff` (fields + seus consumidores força/deformer) é um pacote coerente para depois — anotar produtores sem consumidores geraria falso-positivo, então a família viaja junta.

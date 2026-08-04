@@ -207,6 +207,21 @@ comparar.
 
 ### W8 — FORGIVENESS (o que faz ser *preciso*)
 
+> **⚠️ ESTADO (2026-08-04): a wave shipou METADE, e a metade é nomeada.**
+> **Coyote time e jump buffer LANDARAM** (commit `4277be065`, smoke `=87`, 6 gates,
+> 6 mutações). **Corner correction e lift momentum NÃO foram construídos** — o
+> desenho abaixo continua válido e é o que a próxima sessão executa; nada dele
+> foi refutado, só não foi feito. Ver o handoff de integração de 04/08 §7.
+>
+> Duas decisões que a construção tomou e que este plano não previa:
+> - **O POUSO passou a correr ANTES da DECOLAGEM** na `jump_step`. É o que faz um
+>   aperto guardado disparar NO tique em que o pé toca; com a ordem antiga ele
+>   saía 16 ms depois, exatamente no gesto que o buffer existe para adiantar.
+> - **Os dois relógios são CONSUMIDOS pela decolagem** — o coyote porque perdoar
+>   um erro de tempo não é dar uma segunda chance, o buffer porque um aperto que
+>   sobrevive à própria decolagem re-dispara no tique seguinte.
+
+
 - **Coyote time** e **jump buffer** — em segundos (D10), medidos.
 - **Corner correction (D8)** — ⚠️ **inventada aqui, porque o estado da arte não a tem em
   Dynamic** (varrido: tnua, wanderlust e avian não têm; a literatura só a resolve em

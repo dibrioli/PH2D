@@ -499,3 +499,133 @@ fn is_the_silhouette_chain_the_aa_cost() {
         );
     }
 }
+
+/// **Qual ROTA o lote toma — e quanto a rota custa.**
+///
+/// O log do artista (2026-08-04) traz, em toda janela de impasto, `stamps ... 8,18 ms cada` ao lado de
+/// `deposito DEVICE: 0 lotes` **e** `deposito CPU: 0 em BANDA + 0 serial(is)`. Os dois contadores em
+/// zero não significam *"o depósito foi barato"*: significam que o lote **não passou pela porta que os
+/// conta** — o carimbo mais caro do app é o único estruturalmente excluído das duas rotas rápidas.
+///
+/// ## A cadeia, e ela é mecânica
+///
+/// `impasto_smooth_edges` (ligado por padrão) + `deposits_height()` ⇒ `film_aa_wanted` ⇒
+/// [`super::PainterTool::stroke_cover_wanted`] ⇒ `accumulate_cap` ⇒ e o `accumulate_cap` está **dentro
+/// do predicado `plain`**, que é a porta da rota em BANDA (`thread::scope`, uma faixa de linhas por
+/// núcleo) e do DISPOSITIVO. Um pincel de impasto cai, por construção, no laço `for d in dabs` de uma
+/// thread só.
+///
+/// ⚠️ **E a exclusão é EFEITO COLATERAL de uma correção, não uma decisão sobre velocidade.** O cap
+/// existe porque um texel de aro fracionário tem de parar na fração de área dele (BUGS #16, medido
+/// 0,64 → 0,94); ninguém escolheu com isso tirar o impasto do paralelo — a cláusula entrou no `plain`
+/// porque `stamp_plain_dabs_banded` não recebe a máscara, que é limitação de **assinatura**.
+///
+/// ## O par de CONTROLE é a espinha desta tabela
+///
+/// As linhas 1 e 2 são o MESMO pincel digital, o MESMO caminho, a MESMA lista de dabs, e diferem em
+/// **`strength 1,00` contra `0,99`** — um número que não muda o trabalho por texel e que **vira o
+/// `stroke_cover_wanted`**, logo a rota. A razão entre elas é o preço de perder a banda, isolado de
+/// tudo o mais. As linhas 3 e 4 dão a magnitude do lado do impasto, pela outra porta de produto
+/// (`Smooth Edges`) — ⚠️ e essa **muda a arte** (105.660 bytes, pior delta 62, medido pelo irmão
+/// `does_the_film_aa_change_a_pixel`), então ela mede *quanto a rota vale*, nunca *uma economia grátis*.
+///
+/// A rota é OBSERVADA no contador do produto, não deduzida: `banda/serial` saem do
+/// [`super::stamp_banded::diag`], então uma linha que eu tenha classificado errado se denuncia — e é
+/// ele que mostra que os lotes desta fixture têm **menos de 2 dabs**, logo ficam seriais mesmo no
+/// ramo `plain` (`dabs.len() < 2`). ⚠️ **O que esta tabela mede, portanto, não é paralelismo: é o
+/// KERNEL.** O ganho de banda que o log do artista mostra (`107 em BANDA`) vem POR CIMA disto.
+///
+/// ## Medido na RTX, 2026-08-04 (re-meça antes de citar)
+///
+/// | linha | 1024² | 4096² | x-tela | rota |
+/// |---|---|---|---|---|
+/// | 1 digital, strength 1,00 (cap OFF) | **9,8** | **14,7** | 1,49 | `plain` |
+/// | 2 digital, strength 0,99 (cap ON) | **42,2** | **48,1** | 1,14 | genérica |
+/// | 3 impasto, Smooth Edges ON (cap ON) | 91,5 | **124,5** | 1,36 | genérica |
+/// | 4 impasto, Smooth Edges OFF (cap OFF) | 51,6 | **77,2** | 1,50 | `plain` |
+///
+/// **O par de controle diz 4,3× a 1024² e 3,3× a 4096²**, e o `x-tela` **refuta a explicação rival**:
+/// se o vão fosse a máscara canvas-shaped do cap ele escalaria com a tela, e a linha 2 é justamente a
+/// de MENOR `x-tela`. Nada aqui é canvas-bound ⇒ o vão é o kernel — o laço por LINHA do lote contra o
+/// laço por DAB, sobre a mesma lista.
+///
+/// **No impasto o mesmo interruptor vale 124,5 → 77,2 ms (1,61×, 47 ms num traço).** ⚠️ Esse número é
+/// **teto**, não a parte da rota: `Smooth Edges` também tira o TRABALHO do AA do filme (54% do traço,
+/// medido pelo irmão [`the_height_walk_layers`]). Separar as duas metades por subtração seria
+/// inferência de segunda ordem — a armadilha que o doc 28 §5.44 documenta —, então fica NOMEADO: o
+/// que esta tabela estabelece é que **existe uma metade de ROTA, e que ela não muda um pixel**.
+///
+/// Rodar: `cargo test -p ph2d-tool-painter --release which_route -- --ignored --nocapture --test-threads=1`
+#[test]
+#[ignore = "measurement, not a gate — run explicitly with --test-threads=1"]
+fn which_route_does_a_batch_take_and_what_does_the_route_cost() {
+    const RADIUS: f32 = 100.0;
+    const DIST: f32 = 700.0;
+    const MOVES: u32 = 20;
+    /// ⚠️ **A mesma GEOMETRIA em duas telas.** Um kernel é limitado pela PEGADA, logo plano no
+    /// tamanho do canvas; a máscara do cap é canvas-shaped, logo escala com ele. A coluna `x-tela`
+    /// separa as duas explicações rivais sem precisar de um cronômetro confiável.
+    const SIDES: [u32; 2] = [1024, 4096];
+
+    fn stroke(t: &mut PainterTool, y: f32) -> f64 {
+        let x0 = RADIUS + 20.0;
+        ms(&mut || {
+            t.on_canvas_pointer(cp([x0, y], PointerPhase::Down));
+            for i in 1..=MOVES {
+                let x = x0 + DIST / f64::from(MOVES) as f32 * f64::from(i) as f32;
+                t.on_canvas_pointer(cp([x, y], PointerPhase::Move));
+            }
+            t.on_canvas_pointer(cp([x0 + DIST, y], PointerPhase::Up));
+        })
+    }
+
+    println!(
+        "\nraio {RADIUS:.0}, traco de {DIST:.0} px, MESMA geometria nas duas telas — mediana de 3\n"
+    );
+    println!(
+        "{:<40} {:>10} {:>10} {:>8} {:>8} {:>8}",
+        "linha", "1024² ms", "4096² ms", "x-tela", "banda", "serial"
+    );
+    for (name, impasto, strength, smooth_edges) in [
+        ("1 digital, strength 1.00 (cap OFF)", false, 1.0f32, true),
+        ("2 digital, strength 0.99 (cap ON)", false, 0.99, true),
+        ("3 impasto, Smooth Edges ON (cap ON)", true, 1.0, true),
+        ("4 impasto, Smooth Edges OFF (cap OFF)", true, 1.0, false),
+    ] {
+        let mut cols = [0.0f64; 2];
+        let mut diag = super::stamp_banded::diag::DepositDiag::default();
+        for (ci, side) in SIDES.iter().copied().enumerate() {
+            let mut runs = Vec::new();
+            for _ in 0..3u32 {
+                let mut t = PainterTool::default();
+                t.set_source(vec![255u8; (side * side * 4) as usize], side, side);
+                if impasto {
+                    t.toggle_brush_impasto();
+                }
+                t.set_brush_size_px(RADIUS * 2.0);
+                t.paint.brush.strength = strength;
+                t.paint.brush.impasto_smooth_edges = smooth_edges;
+                for slot in &mut t.paint.brush_by_mode {
+                    slot.strength = strength;
+                    slot.impasto_smooth_edges = smooth_edges;
+                }
+                let _ = super::stamp_banded::diag::take(); // a janela descreve ESTE traço
+                runs.push(stroke(&mut t, 400.0));
+                diag = super::stamp_banded::diag::take();
+            }
+            runs.sort_by(|a, b| a.partial_cmp(b).expect("finite"));
+            cols[ci] = runs[1];
+        }
+        println!(
+            "{name:<40} {:>10.1} {:>10.1} {:>8.2} {:>8} {:>8}",
+            cols[0],
+            cols[1],
+            cols[1] / cols[0].max(1e-9),
+            diag.banded,
+            diag.serial,
+        );
+    }
+    println!(
+        "\nx-tela ~1 = limitado pela PEGADA (kernel) · x-tela grande = canvas-shaped (a mascara do cap)\n"
+    );
+}

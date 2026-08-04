@@ -28,6 +28,8 @@ mod measure_undo_cost; // o que VOLTAR na história custa, e em qual metade (doc
 mod measure_watercolor_cost; // de que é feito um MOVE de aquarela (doc 28 §7); irmão do impasto_cost
 #[path = "measure_watercolor_pour.rs"]
 mod measure_watercolor_pour; // o que o pour cobra e o que a rota do quadro muda (doc 28 §5.72)
+#[path = "measure_watercolor_stamp.rs"]
+mod measure_watercolor_stamp; // o carimbo é função da PEGADA ou do estado do CANVAS? (doc 32 §5)
 #[path = "measure_wetpaint_cost.rs"]
 mod measure_wetpaint_cost; // de que é feito um MOVE de Wet Paint (doc 28 §7, frente V)
 #[path = "measure_window_premise.rs"]

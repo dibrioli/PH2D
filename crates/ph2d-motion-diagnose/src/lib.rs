@@ -47,6 +47,12 @@
 //! (zero false positives), and a reader that IS fed is left alone — the safe,
 //! under-warning direction the "Node Help" toggle backstops.
 //!
+//! The per-PORT twin is [`Deficit::MissingInput`]: a node declares an input port REQUIRED
+//! (`NodeRegistry::required_inputs`, e.g. `motion.duplicator`'s `shape`/`points`) and that
+//! port has no edge. This one is DECLARED, not derived — required-vs-optional is semantic
+//! (an integrator's `forces` port is optional: no forces is a valid static integration),
+//! so it cannot be read off a binding — the port-level twin of a `Coupling::Requires`.
+//!
 //! For every producer of a transient column, [`diagnose`] walks forward
 //! (non-`delayed`) edges: if some reachable node consumes the column, the producer
 //! is healthy; if not, it is **inert**, and the [`Fix`] says whether the cure is to
@@ -107,6 +113,11 @@ pub enum Deficit {
     /// stream to act on and is silently a no-op. Always a [`Fix::Offer`]: WHICH source
     /// (grid / emitter / object) is a creative choice.
     MissingSource(&'static str),
+    /// This node declares the named input port REQUIRED (`NodeRegistry::required_inputs`,
+    /// e.g. `motion.duplicator`'s `shape`/`points`) but that port has no edge — with
+    /// nothing to copy, or nowhere to put it, the node is a silent no-op. Always a
+    /// [`Fix::Offer`]: WHAT to wire into it is the artist's choice. Carries the PORT NAME.
+    MissingInput(&'static str),
 }
 
 /// The suggested cure, carrying how confidently the editor may apply it.
@@ -143,6 +154,17 @@ pub fn diagnose(graph: &Graph, reg: &NodeRegistry) -> Vec<Diagnostic> {
             out.push(Diagnostic {
                 node: inst.id,
                 deficit: Deficit::MissingSource(col),
+                fix: Fix::Offer,
+            });
+            continue;
+        }
+        // A declared-required input port with no edge (`duplicator` missing `shape`/
+        // `points`): nothing to work with. The root cause too — a node missing a required
+        // input produces nothing — so it is reported alone.
+        if let Some(port) = missing_input(graph, reg, inst.id, ty) {
+            out.push(Diagnostic {
+                node: inst.id,
+                deficit: Deficit::MissingInput(port),
                 fix: Fix::Offer,
             });
             continue;
@@ -236,6 +258,37 @@ fn reads_column(reg: &NodeRegistry, ty: NodeTypeId, col: &str) -> bool {
 /// head — nothing upstream to bring it a stream.
 fn has_input(graph: &Graph, node: NodeId) -> bool {
     graph.edges().iter().any(|e| !e.delayed && e.to.0 == node)
+}
+
+/// The first declared-required input PORT of `ty` (`NodeRegistry::required_inputs`) that
+/// has no incoming non-`delayed` edge — a `motion.duplicator` missing `shape` or `points`.
+/// Returns the port NAME so [`diagnose`] can name it. Unlike [`missing_upstream`] (a
+/// column read with no stream at all), this is a per-PORT structural requirement the node
+/// declares, because required-vs-optional is semantic (an integrator's `forces` is
+/// optional) and not derivable.
+fn missing_input(
+    graph: &Graph,
+    reg: &NodeRegistry,
+    node: NodeId,
+    ty: NodeTypeId,
+) -> Option<&'static str> {
+    let required = reg.required_inputs(ty)?;
+    let manifest = reg.manifests().find(|m| m.id == ty)?;
+    required.iter().copied().find(|&name| {
+        // Resolve the port name to its index (a stale name the manifest lacks is skipped,
+        // never a crash), then check that port has no edge.
+        manifest
+            .inputs
+            .iter()
+            .position(|p| p.name == name)
+            .is_some_and(|idx| {
+                let idx = idx as u16;
+                !graph
+                    .edges()
+                    .iter()
+                    .any(|e| !e.delayed && e.to == (node, idx))
+            })
+    })
 }
 
 /// Any access that can WRITE the column to the node's output. `ReadWriteExisting`

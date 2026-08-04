@@ -218,30 +218,36 @@ pub(super) fn heal_one(motion: &mut MotionState, toasts: &mut ToastQueue, node: 
 }
 
 /// The English advisory for an inert producer with no canonical fix (app UI, HR-15).
-fn explain(d: &Diagnostic) -> &'static str {
+/// Returns `String` because [`Deficit::MissingInput`] names the PORT it needs in the text.
+fn explain(d: &Diagnostic) -> String {
     match (d.deficit, d.fix) {
         // A force downstream of an integrator, with a NON-integrator between them: reusing that
         // integrator would double-integrate a moving base, so the artist must place the fix.
         (Deficit::InertProducer("accel"), Fix::Reorder) => {
-            "Wire this force upstream of the integrator so it drives the motion"
+            "Wire this force upstream of the integrator so it drives the motion".into()
         }
         // A pin_constraint's inv_mass with no solver: WHICH solver is a creative choice.
         (Deficit::InertProducer("inv_mass"), _) => {
-            "This constraint needs a solver (Integrate / Sim Step / Spring / Collide) downstream to have any effect"
+            "This constraint needs a solver (Integrate / Sim Step / Spring / Collide) downstream to have any effect".into()
         }
         // A field's falloff read by no force/deformer: WHICH modulator is a creative choice.
         (Deficit::InertProducer("falloff"), _) => {
-            "This field shapes a falloff that no force or deformer downstream reads — add one after it"
+            "This field shapes a falloff that no force or deformer downstream reads — add one after it".into()
         }
         // A deformer/force with nothing wired into it: it reads P but has no stream — the
         // ROOT cause. WHICH source (grid / emitter / object) is a creative choice.
         (Deficit::MissingSource("P"), _) => {
-            "This node has no points to work on — wire a source (Grid / Emitter) into it"
+            "This node has no points to work on — wire a source (Grid / Emitter) into it".into()
         }
         (Deficit::MissingSource(_), _) => {
-            "This node has nothing wired into it, so it has no data to work on"
+            "This node has nothing wired into it, so it has no data to work on".into()
         }
-        _ => "This node produces data nothing downstream consumes, so it does nothing",
+        // A required input port (a duplicator's shape/points) with nothing wired in: WHAT to
+        // wire is the artist's choice, so it is named and offered, never guessed.
+        (Deficit::MissingInput(port), _) => {
+            format!("This node needs a stream wired into its '{port}' input")
+        }
+        _ => "This node produces data nothing downstream consumes, so it does nothing".into(),
     }
 }
 

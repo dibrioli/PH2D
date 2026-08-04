@@ -30,8 +30,9 @@ use ph2d_panel_motion_graph::GraphIntent;
 /// spliceada depois de um integrador que já existe); `3` badge + quick-fix (dois setups
 /// inertes SEM gesto, o artista clica o pip para consertar/explicar); `4` aviso da
 /// família `falloff` + o toggle "Node Help" que liga/desliga o sistema inteiro; `5` aviso
-/// de requisito-a-montante (um deformer/força SEM fonte de pontos). Os avisos `4` e `5`
-/// vêm por DERIVAÇÃO, sem anotação no nó.
+/// de requisito-a-montante (um deformer/força SEM fonte de pontos); `6` aviso de porta
+/// obrigatória (um `motion.duplicator` sem a entrada `points`). Os avisos `4` e `5` vêm
+/// por DERIVAÇÃO; o `6` por DECLARAÇÃO opt-in (required-vs-opcional é semântico).
 fn mode() -> u32 {
     static M: std::sync::OnceLock<u32> = std::sync::OnceLock::new();
     *M.get_or_init(|| {
@@ -402,6 +403,73 @@ impl crate::App {
                      SELECIONA — NADA muda no grafo (Offer, sem cura canonica; a lei do ADR-0155 \
                      de nunca adivinhar). Para curar de verdade, ligue uma `motion.grid` na \
                      entrada do bend — o badge some (o bend passa a ter pontos)."
+                );
+            }
+            // =6, frame 3: o aviso de PORTA obrigatória (2b) — um `motion.duplicator` com
+            // a entrada `shape` ligada mas a `points` VAZIA. O duplicator carimba uma forma
+            // em cada ponto; sem `points` nao ha' onde por as copias — silenciosamente um
+            // no-op. ⚠ Diferente do 4/5 (derivados), este vem por DECLARACAO opt-in: o no'
+            // declara `["shape","points"]` obrigatorias (required-vs-opcional e' semantico —
+            // o `forces` do integrate e' OPCIONAL, os do duplicator nao). O duplicator ganha
+            // o pip ⚠; clicar EXPLICA (precisa de um stream na porta 'points') + seleciona,
+            // nunca adivinha (Offer). Ligar uma fonte em `points` CURA.
+            (6, 3) => {
+                let gfx = self.gfx.as_mut().expect("gfx");
+                let (dup, out) = {
+                    let g = &mut gfx.motion.doc.graph;
+                    let grid = g.add_node("motion.grid");
+                    let dup = g.add_node("motion.duplicator");
+                    let out = g.add_node("motion.output");
+                    g.set_pos(
+                        grid,
+                        Pos {
+                            x: -220.0,
+                            y: -200.0,
+                        },
+                    );
+                    g.set_pos(dup, Pos { x: 40.0, y: -200.0 });
+                    g.set_pos(
+                        out,
+                        Pos {
+                            x: 300.0,
+                            y: -200.0,
+                        },
+                    );
+                    g.connect(Edge {
+                        from: (grid, 0),
+                        to: (dup, 0), // shape ligada
+                        delayed: false,
+                    })
+                    .expect("grid -> dup.shape");
+                    g.connect(Edge {
+                        from: (dup, 0),
+                        to: (out, 0),
+                        delayed: false,
+                    })
+                    .expect("dup -> output");
+                    // points (porta 1) deixada VAZIA.
+                    (dup, out)
+                };
+                gfx.motion.sinks.push(out);
+                let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+                ph2d_panel_motion_graph::request_graph_selection(vec![dup.0]);
+                let missing =
+                    ph2d_motion_diagnose::diagnose(&gfx.motion.doc.graph, &gfx.motion.registry)
+                        .iter()
+                        .filter(|d| {
+                            matches!(d.deficit, ph2d_motion_diagnose::Deficit::MissingInput(_))
+                        })
+                        .count();
+                eprintln!(
+                    "[autofix smoke =6] montei `grid -> duplicator(shape) -> output` com a porta \
+                     `points` VAZIA: {missing} porta(s) obrigatoria(s) faltando marcada(s) \
+                     (esperado 1 — o duplicator nao tem onde por as copias). SE NAO FOR 1, PARE. \
+                     ⚠ Diferente dos avisos 4/5 (derivados), este vem por DECLARACAO opt-in: o \
+                     duplicator declara [shape, points] obrigatorias, porque required-vs-opcional \
+                     e' SEMANTICO (o `forces` do integrate e' opcional). CLIQUE o badge do \
+                     duplicator: o app so' EXPLICA (toast: precisa de um stream na porta 'points') \
+                     e SELECIONA — NADA muda no grafo (Offer, sem cura canonica; a lei do ADR-0155 \
+                     de nunca adivinhar). Ligue uma fonte na porta `points` e o badge some."
                 );
             }
             _ => {}

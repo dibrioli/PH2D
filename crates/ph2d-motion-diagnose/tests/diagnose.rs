@@ -435,3 +435,73 @@ fn a_source_is_never_told_it_needs_points() {
         "grid writes P without reading it — it IS the source, not a needer of one"
     );
 }
+
+// ── The required-PORT family (2b): a declared-required input with no edge ──
+
+/// **A `motion.duplicator` missing one of its two required inputs is flagged, naming the
+/// PORT.** The duplicator declares `["shape", "points"]` required (`register_required_inputs`);
+/// wire `shape` but not `points` and it has nowhere to put the copies — a silent no-op. The
+/// diagnoser reports `MissingInput("points")`, an OFFER (WHAT to wire is the artist's choice).
+/// FALSIFIED by dropping the duplicator's `register_required_inputs` (nothing declared →
+/// nothing flagged) or by inverting the edge check (a fed port would be called missing).
+#[test]
+fn a_duplicator_missing_points_names_the_port() {
+    let reg = registry();
+    let mut g = Graph::new();
+    let grid = g.add_node("motion.grid");
+    let dup = g.add_node("motion.duplicator");
+    let out = g.add_node("motion.output");
+    g.connect(Edge {
+        from: (grid, 0),
+        to: (dup, 0), // shape (port 0) fed
+        delayed: false,
+    })
+    .expect("grid -> dup.shape");
+    g.connect(Edge {
+        from: (dup, 0),
+        to: (out, 0),
+        delayed: false,
+    })
+    .expect("dup -> output");
+    // points (port 1) left unwired.
+
+    let ds = diagnose(&g, &reg);
+    assert_eq!(ds.len(), 1, "exactly the duplicator, missing an input");
+    assert_eq!(ds[0].node, dup, "the duplicator node");
+    assert_eq!(ds[0].deficit, Deficit::MissingInput("points"));
+    assert_eq!(ds[0].fix, Fix::Offer, "WHAT to wire is a creative choice");
+    // And the annotation is really present (the duplicator declares its required inputs):
+    assert_eq!(
+        reg.required_inputs(NodeTypeId::of("motion.duplicator")),
+        Some(&["shape", "points"][..]),
+        "the duplicator declares both inputs required"
+    );
+}
+
+/// **A `motion.duplicator` with BOTH inputs wired is clean — the negative control.**
+/// Feeding `shape` and `points` leaves no required port empty, so it is not flagged.
+/// FALSIFIED by an edge check that is always "unfed" (a fully-wired duplicator would be
+/// wrongly told an input is missing).
+#[test]
+fn a_duplicator_with_both_inputs_is_clean() {
+    let reg = registry();
+    let mut g = Graph::new();
+    let shape = g.add_node("motion.grid");
+    let points = g.add_node("motion.grid");
+    let dup = g.add_node("motion.duplicator");
+    let out = g.add_node("motion.output");
+    for (a, b, bp) in [(shape, dup, 0u16), (points, dup, 1u16), (dup, out, 0u16)] {
+        g.connect(Edge {
+            from: (a, 0),
+            to: (b, bp),
+            delayed: false,
+        })
+        .expect("connect");
+    }
+    assert!(
+        !diagnose(&g, &reg)
+            .iter()
+            .any(|d| d.node == dup && matches!(d.deficit, Deficit::MissingInput(_))),
+        "both required inputs are wired — not missing"
+    );
+}

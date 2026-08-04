@@ -222,6 +222,11 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    // Both inputs are REQUIRED (ADR-0155): with no `shape` there is nothing to copy, with
+    // no `points` there is nowhere to put it — either empty and the node is a silent no-op.
+    // A PORT requirement, not a column one, so it is declared (unlike `motion.integrate`,
+    // whose `forces` port is optional — a static integration).
+    reg.register_required_inputs(MANIFEST.id, &["shape", "points"]);
     Ok(())
 }
 

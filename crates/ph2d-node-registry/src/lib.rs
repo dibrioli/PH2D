@@ -86,6 +86,15 @@ pub struct NodeRegistry {
     /// the graph reading this to find a producer whose output is inert (a
     /// `force.*` with no `motion.integrate` downstream).
     couplings: BTreeMap<NodeTypeId, &'static [Coupling]>,
+    /// ADR-0155 — per-type REQUIRED input ports, by name. A node whose job needs a
+    /// stream on a specific input declares it here (`motion.duplicator` → `["shape",
+    /// "points"]`), and the setup diagnoser flags it when that port has no edge. This is
+    /// a PORT requirement, not a column one (a `Coupling` names a column), and it is not
+    /// derivable: `motion.integrate`'s `forces` port is OPTIONAL (no forces = a static
+    /// integration) while `duplicator`'s `points` is required — the distinction is
+    /// semantic, so it is declared. Opt-in and default-empty: a node with no entry has no
+    /// required input, which every un-annotated node already means.
+    required_inputs: BTreeMap<NodeTypeId, &'static [&'static str]>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -172,6 +181,19 @@ impl NodeRegistry {
     /// (produces / consumes / requires / generates nothing).
     pub fn couplings(&self, id: NodeTypeId) -> Option<&'static [Coupling]> {
         self.couplings.get(&id).copied()
+    }
+
+    /// Register a node type's REQUIRED input ports by name (ADR-0155). Additive; last
+    /// write wins. A node whose job needs a stream on a specific input (`duplicator` →
+    /// `["shape", "points"]`) declares it, and the setup diagnoser flags a required port
+    /// with no edge — the port-level twin of a `Coupling::Requires` (which is column-level).
+    pub fn register_required_inputs(&mut self, id: NodeTypeId, ports: &'static [&'static str]) {
+        self.required_inputs.insert(id, ports);
+    }
+
+    /// The required input port names for `id`, if any. Absent ⇒ no input is required.
+    pub fn required_inputs(&self, id: NodeTypeId) -> Option<&'static [&'static str]> {
+        self.required_inputs.get(&id).copied()
     }
 
     /// Register the params whose typed entry reaches past their slider

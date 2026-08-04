@@ -309,3 +309,102 @@ de custar outro smoke).
   cliff de contagem constante** que esta wave curou, e nenhum foi medido.
 - **A rota do DEVICE segue exigindo `!accumulate_cap`** — o kernel WGSL não transcreve a lei do cap.
   É a decisão que sobra do §7, e agora ela custa menos, porque a CPU deixou de ser a rota lenta.
+
+---
+
+## 10. 2026-08-04 — O FECHO DA LINHA (o que a integração recebe)
+
+**31 commits · 41 arquivos · +6.316 / −77.** Árvore limpa, gate de fechamento verde, **pendente de
+smoke** — integrar não é aprovar, e o roteiro do smoke é o [doc 34](Painter/34_plano_smokes_e_cerca.md).
+
+### 10.1 O inventário — sete waves, uma pergunta
+
+A jornada inteira responde *"o que um carimbo de pigmento custa, e quem paga?"*.
+
+| # | wave | commits | o que mudou |
+|---|---|---|---|
+| 1 | **A medição** do MOVE nos quatro meios | `4f490b808` | a linha de base — de onde tudo saiu |
+| 2 | **O depósito divide o LOTE**, não o dab | `c17049d8b` | **10-13×** no traço vivo (CPU em banda) |
+| 3 | **O diagnóstico** | `8fb963ead` `98185fd24` `3baa546e2` `63aebbb9e` `d7d831896` | o log diz a ROTA; o `ns/visita` divide o próprio tempo pelo próprio trabalho |
+| 4 | **O carimbo no DEVICE** (doc 33) | `abca121bd` … `85e47f6dc` `e44680099` | **crate nova** `ph2d-paint-gpu`; a fronteira custa 2,76 ms contra 18,30 da CPU |
+| 5 | **O Wet Paint** | `dd129009e` `cd98815b6` `18c9b1f47` `09217f768` `46beda82e` | o Apply & Keep re-arma o LOTE; a pausa da autoria virou REAL |
+| 6 | **O cap de Accumulate** entra no lote em banda | `e995c09ba` `27597b23f` | a premissa era sobre DABS, nunca sobre LINHAS |
+| 7 | **A contagem de bandas sai do TRABALHO** | `4bd96a7da` `f6cb5e745` `7723fe19a` `c3324ae11` `6c74ba4e4` | o piso era o knob errado; **seis cópias da regra viraram uma** |
+
+### 10.2 A tabela de colisão — esta linha está FORA de toda disputa de número
+
+Conferido por `git diff`, não por auto-relato:
+
+| eixo | estado |
+|---|---|
+| **`PROJECT_SCHEMA`** | ⚠️ **`shells/desktop/src/project.rs` NÃO É TOCADO.** Fica em **50**, e a linha não entra na disputa. |
+| **ADR** | **nenhum ADR novo.** |
+| **Contrato congelado (§6)** | **intacto** — `architecture_tool_contract_surface` **4/4** e `architecture_contract_surface` **3/3** verdes, rodados. |
+| **Registro do `ph2d-ecs`** | **não tocado** (nenhum componente novo). |
+| **`Cargo.toml` RAIZ** | **não tocado** — a membership é por **glob**, então a crate nova entra sem edição central. |
+| **Deps EXTERNAS** | **nenhuma.** O `Cargo.lock` ganha uma linha só: `name = "ph2d-paint-gpu"`, a aresta interna. |
+| **Ids / tokens / consts de UI** | nenhum novo. |
+
+**A crate nova é `ph2d-paint-gpu`** (`wgpu` + `bytemuck` + `ph2d-gpu`, todos já no workspace).
+⚠️ **Ela NÃO depende de `ph2d-painter-brush` em `[dependencies]`, e isso é o desenho**: sem acesso ao
+`falloff_weight` ela não **consegue** ter uma opinião sobre a lei do dab — a CPU manda a TABELA e o
+device só amostra. O pincel e o tool entram em **`[dev-dependencies]`** (o gate de paridade precisa da
+função REAL como oráculo, e a sonda precisa da porta do artista) ⇒ **machete-safe**, o padrão que a
+`ph2d-flip-render` já usa pelo mesmo motivo.
+
+### 10.3 Os arquivos fora do painter — o risco de merge, nomeado
+
+Quatro, todos na shell:
+
+| arquivo | delta | risco |
+|---|---|---|
+| `shells/desktop/src/render_loop/mod.rs` | **+74 / −4** | ⚠️ **o único quente** — é o arquivo que toda linha toca. O acréscimo é a **linha `deposito:` do `[frame]`** e o flush do carimbo; sem sobreposição semântica com timeline/física/vetor, mas o conflito **textual** é provável. |
+| `shells/desktop/src/render_loop/painter_bridge.rs` | edição | só painter |
+| `shells/desktop/src/render_loop/painter_stamp_device.rs` | **novo** | zero risco (add) |
+| `shells/desktop/tests/the_shell_installs_the_stamp_bridge_at_the_document_bind.rs` | **novo** | zero risco (add) |
+| `shells/desktop/Cargo.toml` | **+3** | uma aresta, no bloco de deps internas |
+
+⚠️ **Os gates de `shells/desktop/tests/` só correm na varredura impactada** — um fechamento por
+`cargo test -p` por crate **não os alcança**, que é a causa estrutural já documentada por `physics`,
+`Vector` e `motion-value`. **A árvore combinada tem de rodar a suíte da shell inteira.**
+
+### 10.4 O gate de fechamento (medido, não afirmado)
+
+| suíte | release | debug |
+|---|---:|---:|
+| `ph2d-host-desktop` | **2040 / 0** | — |
+| `ph2d-painter-brush` | **288** | **288** |
+| `ph2d-tool-painter` | **989** | **987** |
+
+Mais: `file_loc_caps` (shell) **2/2** · `architecture_workspace_file_loc_cap` **2/2** · clippy limpo no
+workspace · **typos 0** · `cargo check --all-targets` limpo.
+
+⚠️ **Rode a suíte do Painter em DEBUG também.** A linha tem precedente registrado (o
+`ph2d-flip-colorize` panicava só em debug, e a nota sobreviveu ao fato por três integrações), e o
+`ship.sh` roda com `--cargo-profile ci-test`.
+
+### 10.5 A superfície pública que mudou
+
+- **`ph2d-painter-brush`:** `band_count` e `PARALLEL_MIN_AREA` passam a ser públicos, e o segundo
+  **mudou de valor** (`131 072 → 3 232`) e de natureza — ele agora é **derivado**
+  (`SPAWN_EQUIV_VISITS * 4`), não escolhido. `stamp_dab_textured_masked_with` deixou de ser
+  `#[cfg(test)]`. `SPAWN_EQUIV_VISITS` e `band_count_with` são `pub(crate)` de propósito.
+- **`ph2d-tool-painter`:** `wants_bands` mudou de assinatura (recebe o `work`); é `pub(super)`, não
+  sai da crate.
+- ⚠️ **`BATCH_MIN_AREA` deixou de ser um número** e passou a **delegar** ao piso do kernel: os dois
+  pisos têm o mesmo break-even **medido**, e mantê-los separados foi tentado e descartado — teria
+  consertado metade do defeito e enterrado a outra sob uma justificativa que parecia boa.
+
+### 10.6 O que continua amanhã
+
+O [doc 34](Painter/34_plano_smokes_e_cerca.md) tem o plano inteiro, em duas partes e nesta ordem:
+
+1. **A bateria de smokes** — **UMA corrida, quatro meios** (a tela abre em Digital e o dropdown troca
+   o meio), porque quatro janelas na mesma corrida se comparam **dentro dela**. Cada uma das oito
+   linhas do `[frame]` ganha o que ela **decide**, e a tabela de decisão mapeia *leitura → frente*.
+2. **A cerca** — a única mudança de arquitetura que a medição sustenta: **162 dos 164 campos de
+   `PaintState` são `pub(super)`** e 93 arquivos são irmãos planos por convenção de NOME, o que torna
+   `pub(in …)` inexprimível. O módulo está a **~70%** de uma boa decomposição e parou onde o
+   compilador começaria a ajudar. Piloto: o **impasto**, que traz o próprio critério de parada.
+   ⚠️ **A refatoração abrangente foi REJEITADA com número** (2.400 sítios de acesso direto ao estado
+   sobre 60 mil linhas, contra um ganho que a medição diz não existir).

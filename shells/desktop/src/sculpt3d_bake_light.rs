@@ -507,3 +507,9 @@ fn the_two_lights_agree_where_the_form_turns_away() {
         "a diferenca nao e' plana na distancia: borda {edge:.4} contra {deep:.4} -- isso SERIA um aro"
     );
 }
+
+/// **O que a forma custa GUARDADA** — módulo filho, para `use super::*` alcançar o harness
+/// (o `gpu`, o `stage`, o `readback`, o `SIDE`). O corte é por assunto: aqui a pergunta não é *as duas
+/// luzes concordam?* e sim *a luz sobrevive à viagem por 8 bits?*.
+#[path = "sculpt3d_bake_form_bytes.rs"]
+mod form_bytes;

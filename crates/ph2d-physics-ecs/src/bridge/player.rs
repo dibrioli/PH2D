@@ -31,7 +31,7 @@
 
 use bevy_ecs::entity::Entity;
 use ph2d_ecs::SimWorld;
-use ph2d_platformer::{GroundSample, PlayerInput, player_motor};
+use ph2d_platformer::{GroundSample, JumpState, PlayerInput, player_motor};
 
 use crate::components::{BodyKind, PlatformPlayer};
 
@@ -74,6 +74,11 @@ impl PhysicsBridge {
     /// viajarem por NOME em vez de por bits.
     pub fn clear_player_input(&mut self) {
         self.player_input.clear();
+        // ⚠️ E o estado de PULO junto, pelo mesmo motivo e mais um: além dos bits
+        // reciclados, um `airborne` sobrevivente calaria a perna de um corpo que
+        // nunca pulou — o personagem cairia através do mundo sem nada na tela a
+        // dizer por quê.
+        self.player_jump.clear();
     }
 
     /// **Um tick de todos os players.** Chamado no laço de ticks devidos, antes
@@ -89,6 +94,9 @@ impl PhysicsBridge {
         // do módulo. Coletar antes de aplicar porque o cast toma `&self` e o
         // motor toma `&mut self`.
         let mut motors: Vec<(rapier2d_handle::Handle, [f32; 2], [f32; 2])> = Vec::new();
+        // O estado de pulo que este tick produz, colhido junto com os motores e
+        // gravado depois — o cast toma `&self` e a tabela `&mut self`.
+        let mut states: Vec<(Entity, JumpState)> = Vec::new();
         for (&entity, b) in self.bodies.iter() {
             // Dynamic-only, e é FÍSICA: um impulso não move massa infinita.
             if b.kind != BodyKind::Dynamic {
@@ -127,10 +135,32 @@ impl PhysicsBridge {
             });
 
             let input = self.player_input.get(&entity).copied().unwrap_or_default();
-            let motor = player_motor(&cfg, sample.as_ref(), input, vel, gravity, UP, dt);
+            let was = self.player_jump.get(&entity).copied().unwrap_or_default();
+            let (motor, next) =
+                player_motor(&cfg, sample.as_ref(), input, was, vel, gravity, UP, dt);
+            states.push((entity, next));
             if motor.accel != [0.0, 0.0] || motor.boost != [0.0, 0.0] {
                 motors.push((b.handle, motor.accel, motor.boost));
             }
+        }
+        // ⚠️ O estado é gravado para TODO player, inclusive os cujo motor é zero
+        // — e isto é **defesa em camadas, não load-bearing HOJE**, medido: pôr o
+        // push dentro do guard de motor **sobrevive à suíte inteira**.
+        //
+        // O porquê é uma coincidência da lei atual, não um desenho: todo campo do
+        // `JumpState` menos o `airborne` é função pura da entrada DESTE tick
+        // (`was_held = held`, `cut` re-derivado de `!held`), e o `airborne` só
+        // vira em ticks que necessariamente carregam motor (a decolagem tem o
+        // boost; o pouso re-arma a perna). Com os defaults, a SUBIDA tem motor
+        // exatamente zero (`takeoff_gravity = 1.0` ⇒ `extra = 0`) e mesmo assim
+        // nada se perde.
+        //
+        // ⚠️ A coincidência MORRE na W8: coyote timer e jump buffer são contadores
+        // que andam por tick, e um deles congelado durante a subida é um bug **sem
+        // sintoma** — o pulo continua saindo, só a tolerância deixa de existir. É
+        // por isso que a linha nasce agora, e não quando alguém a perseguir.
+        for (entity, next) in states {
+            self.player_jump.insert(entity, next);
         }
         for (handle, accel, boost) in motors {
             self.world.apply_player_motor(handle, accel, boost);

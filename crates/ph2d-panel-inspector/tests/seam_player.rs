@@ -48,6 +48,13 @@ fn player() -> InspectorPlayerInfo {
         acceleration: 60.0,
         air_acceleration: 20.0,
         max_slope_deg: 45.0,
+        jump_height: 2.0,
+        takeoff_gravity: 1.0,
+        takeoff_speed: 0.0,
+        peak_gravity: 0.5,
+        peak_speed: 1.5,
+        fall_gravity: 2.0,
+        cut_gravity: 4.0,
     }
 }
 
@@ -158,6 +165,14 @@ fn the_empty_face_offers_nothing_else() {
 /// falhar, e uma que esqueça a lista não existe (o pintor itera a mesma).
 #[test]
 fn every_number_raises_its_own_edit() {
+    // ⚠️ A lista TEM de cobrir a tabela inteira, e é isso que a asserção abaixo
+    // afirma: um número novo que chegue ao painel e não a esta varredura seria
+    // exatamente o arm esquecido que ela existe para pegar.
+    assert_eq!(
+        ph2d_panel_inspector::PLAYER_ROW_COUNT,
+        14,
+        "a tabela de rows cresceu; acrescente o numero novo a esta varredura"
+    );
     for (id, v, edit) in [
         (
             ids::INSP_PLAYER_FLOAT,
@@ -194,6 +209,41 @@ fn every_number_raises_its_own_edit() {
             ids::INSP_PLAYER_MAX_SLOPE,
             55.0,
             PlayerFieldEdit::MaxSlopeDeg(55.0),
+        ),
+        (
+            ids::INSP_PLAYER_JUMP_HEIGHT,
+            3.5,
+            PlayerFieldEdit::JumpHeight(3.5),
+        ),
+        (
+            ids::INSP_PLAYER_TAKEOFF_G,
+            1.4,
+            PlayerFieldEdit::TakeoffGravity(1.4),
+        ),
+        (
+            ids::INSP_PLAYER_TAKEOFF_SPEED,
+            2.5,
+            PlayerFieldEdit::TakeoffSpeed(2.5),
+        ),
+        (
+            ids::INSP_PLAYER_PEAK_G,
+            0.3,
+            PlayerFieldEdit::PeakGravity(0.3),
+        ),
+        (
+            ids::INSP_PLAYER_PEAK_SPEED,
+            2.0,
+            PlayerFieldEdit::PeakSpeed(2.0),
+        ),
+        (
+            ids::INSP_PLAYER_FALL_G,
+            2.5,
+            PlayerFieldEdit::FallGravity(2.5),
+        ),
+        (
+            ids::INSP_PLAYER_CUT_G,
+            5.0,
+            PlayerFieldEdit::CutGravity(5.0),
         ),
     ] {
         expect(&commit(player(), id, v), edit, &format!("{id:?}"));
@@ -256,6 +306,13 @@ fn the_rows_show_what_was_authored_not_the_seed() {
         acceleration: 44.0,
         air_acceleration: 12.0,
         max_slope_deg: 61.0,
+        jump_height: 3.75,
+        takeoff_gravity: 1.6,
+        takeoff_speed: 2.25,
+        peak_gravity: 0.35,
+        peak_speed: 2.75,
+        fall_gravity: 2.25,
+        cut_gravity: 5.5,
         ..player()
     };
     let mut host = MockPanelHost::with_panel::<InspectorPanel>();
@@ -280,13 +337,22 @@ fn the_rows_show_what_was_authored_not_the_seed() {
         ids::INSP_PLAYER_ACCEL,
         ids::INSP_PLAYER_AIR_ACCEL,
         ids::INSP_PLAYER_MAX_SLOPE,
+        ids::INSP_PLAYER_JUMP_HEIGHT,
+        ids::INSP_PLAYER_TAKEOFF_G,
+        ids::INSP_PLAYER_TAKEOFF_SPEED,
+        ids::INSP_PLAYER_PEAK_G,
+        ids::INSP_PLAYER_PEAK_SPEED,
+        ids::INSP_PLAYER_FALL_G,
+        ids::INSP_PLAYER_CUT_G,
     ]
     .iter()
     .map(|&id| host.store().number_value(id).unwrap_or(f64::NAN))
     .collect();
     set_current_inspector_player(None);
     set_current_inspector_name(None);
-    let want = [1.11, 0.33, 321.0, 0.77, 7.5, 44.0, 12.0, 61.0];
+    let want = [
+        1.11, 0.33, 321.0, 0.77, 7.5, 44.0, 12.0, 61.0, 3.75, 1.6, 2.25, 0.35, 2.75, 2.25, 5.5,
+    ];
     for (g, w) in got.iter().zip(want) {
         assert!(
             (g - w).abs() < 1.0e-4,

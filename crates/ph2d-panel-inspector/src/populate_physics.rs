@@ -238,6 +238,19 @@ pub(super) fn populate_player(store: &mut WidgetStore) {
         // Graus. O teto é 90 porque acima disso a superfície aponta para BAIXO
         // e a pergunta deixa de ter sentido — recurso, não conveniência.
         (ids::INSP_PLAYER_MAX_SLOPE, 45.0, 0.0, 90.0, 1.0), // LITERAL-PX-OK: degrees
+        // O PULO (W4). A altura em METROS, que é o que o artista pensa; os seis
+        // multiplicadores em fração de gravidade, onde `1.0` é a do mundo.
+        (ids::INSP_PLAYER_JUMP_HEIGHT, 2.0, 0.0, 1000.0, 0.1), // LITERAL-PX-OK: metres
+        // ⚠️ Os multiplicadores NÃO têm teto de recurso: o piso é 0 (gravidade
+        // nenhuma naquela fase) e o topo é onde o desenho deixa de ser um pulo,
+        // que é decisão de LOOK e não um limite físico. 20 é folga de sobra
+        // sobre os defaults de 0,5..4 e é declarado como tal.
+        (ids::INSP_PLAYER_TAKEOFF_G, 1.0, 0.0, 20.0, 0.1), // LITERAL-PX-OK: gravity multiple
+        (ids::INSP_PLAYER_TAKEOFF_SPEED, 0.0, 0.0, 1000.0, 0.1), // LITERAL-PX-OK: m/s
+        (ids::INSP_PLAYER_PEAK_G, 0.5, 0.0, 20.0, 0.1),    // LITERAL-PX-OK: gravity multiple
+        (ids::INSP_PLAYER_PEAK_SPEED, 1.5, 0.0, 1000.0, 0.1), // LITERAL-PX-OK: m/s
+        (ids::INSP_PLAYER_FALL_G, 2.0, 0.0, 20.0, 0.1),    // LITERAL-PX-OK: gravity multiple
+        (ids::INSP_PLAYER_CUT_G, 4.0, 0.0, 20.0, 0.1),     // LITERAL-PX-OK: gravity multiple
     ] {
         store.register(
             id,

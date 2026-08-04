@@ -23,7 +23,7 @@ use ph2d_editor_core::screens::hero::InspectorPlayerInfo;
 /// Os quatro números da PERNA e os quatro da CAMINHADA, na ordem em que a lei
 /// os usa. Tabela e não oito chamadas soltas: o pintor e o gate de seam iteram
 /// a MESMA lista, então uma row nova nasce pintada e varrida.
-pub(crate) const PLAYER_ROWS: [(&str, ph2d_a11y::NodeId); 7] = [
+pub(crate) const PLAYER_ROWS: [(&str, ph2d_a11y::NodeId); 14] = [
     ("Cling Distance (m)", ids::INSP_PLAYER_CLING),
     ("Leg Stiffness", ids::INSP_PLAYER_STIFFNESS),
     ("Leg Damping", ids::INSP_PLAYER_DAMPING),
@@ -31,6 +31,15 @@ pub(crate) const PLAYER_ROWS: [(&str, ph2d_a11y::NodeId); 7] = [
     ("Acceleration", ids::INSP_PLAYER_ACCEL),
     ("Air Acceleration", ids::INSP_PLAYER_AIR_ACCEL),
     ("Max Slope (deg)", ids::INSP_PLAYER_MAX_SLOPE),
+    // O PULO (W4). ⚠️ O primeiro é o único que o artista pensa — os seis
+    // multiplicadores são o TATO, e o `1.0` de cada um é gravidade do mundo.
+    ("Jump Height (m)", ids::INSP_PLAYER_JUMP_HEIGHT),
+    ("Takeoff Gravity", ids::INSP_PLAYER_TAKEOFF_G),
+    ("Takeoff Above (m/s)", ids::INSP_PLAYER_TAKEOFF_SPEED),
+    ("Peak Gravity", ids::INSP_PLAYER_PEAK_G),
+    ("Peak Window (m/s)", ids::INSP_PLAYER_PEAK_SPEED),
+    ("Fall Gravity", ids::INSP_PLAYER_FALL_G),
+    ("Cut Gravity", ids::INSP_PLAYER_CUT_G),
 ];
 
 #[allow(clippy::too_many_arguments)]

@@ -4,11 +4,9 @@
 //! aceleração). Estes fazem a outra pergunta, a que só a simulação responde:
 //! *o personagem de fato chega à velocidade pedida, para no lugar, sobe a rampa
 //! rasa, escorrega na íngreme e cavalga a plataforma?*
-//!
-//! ⚠️ **`LockRotation` faz parte de toda fixture porque faz parte do DESENHO**
-//! (D4 do plano): em 2D trava-se a rotação de um personagem, como Unity e Godot
-//! fazem. Sem ele a cápsula tomba e a perna vira um pêndulo — e o que estes
-//! gates medem deixa de ser a caminhada.
+
+#[path = "platform_scene.rs"]
+mod scene_fixture;
 
 use ph2d_core::Vec2;
 use ph2d_ecs::{Name, SimWorld, Transform};
@@ -16,78 +14,7 @@ use ph2d_physics_ecs::{
     BodyKind, Collider, ColliderShape, LockRotation, PhysicsBridge, PlatformPlayer, PlayerInput,
     RigidBody,
 };
-
-/// ⚠️ **0,9 e não o `0,5` do ponto de partida, e o motivo é GEOMETRIA.**
-///
-/// O sensor mede na vertical, mas quem encosta na rampa é a cápsula ao longo da
-/// normal dela: flutuar de verdade exige
-/// `float_height > half_height + radius / cos(max_slope)`
-/// ([`ph2d_platformer::RideConfig::min_float_height`], com a tabela). Para a
-/// cápsula destes gates (`0,3` / `0,2`) o mínimo já é `0,5` **no plano** — ou
-/// seja, o ponto de partida a deixa TANGENTE, e qualquer inclinação a faz
-/// penetrar. Com `0,9` ela paira até 70,5°, que cobre as duas rampas daqui.
-const FLOAT_HEIGHT: f32 = 0.9;
-
-/// Um chão (estático, opcionalmente inclinado) e um player em cima dele.
-///
-/// `slope_rad` gira o chão; o player nasce um pouco acima do ponto de contato
-/// para a mola o pegar no primeiro tick.
-fn scene(slope_rad: f32, start_x: f32) -> (SimWorld, PhysicsBridge, ph2d_ecs::Entity) {
-    let mut sim = SimWorld::new();
-    sim.world_mut().spawn((
-        Name::new("Floor"),
-        RigidBody {
-            kind: BodyKind::Static,
-        },
-        Collider {
-            shape: ColliderShape::Cuboid {
-                half_x: 40.0,
-                half_y: 0.5,
-            },
-            ..Collider::default()
-        },
-        Transform {
-            rotation: slope_rad,
-            ..Transform::from_translation(Vec2::new(0.0, 0.0))
-        },
-    ));
-    // O topo do chão sob `start_x`, quando ele está inclinado, sobe com o x.
-    let top = 0.5 / slope_rad.cos() + start_x * slope_rad.tan();
-    let player = sim
-        .world_mut()
-        .spawn((
-            Name::new("Player"),
-            RigidBody {
-                kind: BodyKind::Dynamic,
-            },
-            Collider {
-                shape: ColliderShape::Capsule {
-                    half_height: 0.3,
-                    radius: 0.2,
-                },
-                ..Collider::default()
-            },
-            LockRotation,
-            PlatformPlayer {
-                float_height: FLOAT_HEIGHT,
-                ..PlatformPlayer::default()
-            },
-            Transform::from_translation(Vec2::new(start_x, top + FLOAT_HEIGHT)),
-        ))
-        .id();
-    (sim, PhysicsBridge::new(), player)
-}
-
-fn pose(sim: &SimWorld) -> (f32, f32) {
-    let mut found = None;
-    let mut q = sim.world().try_query::<(&Name, &Transform)>().unwrap();
-    for (n, t) in q.iter(sim.world()) {
-        if n.as_str() == "Player" {
-            found = Some((t.translation.x, t.translation.y));
-        }
-    }
-    found.expect("o player tem de existir")
-}
+use scene_fixture::{FLOAT_HEIGHT, pose, scene};
 
 /// **O gate da wave.** Ele anda na velocidade autorada, para, e FICA parado.
 ///
@@ -108,7 +35,13 @@ fn pose(sim: &SimWorld) -> (f32, f32) {
 #[test]
 fn the_player_walks_at_the_authored_speed_and_then_stays_put() {
     let (mut sim, mut bridge, player) = scene(0.0, 0.0);
-    bridge.set_player_input(player, PlayerInput { drive: 1.0 });
+    bridge.set_player_input(
+        player,
+        PlayerInput {
+            drive: 1.0,
+            ..PlayerInput::default()
+        },
+    );
 
     let mut tick = 0_u64;
     // 2 s andando.
@@ -189,7 +122,13 @@ fn without_input_the_player_does_not_walk() {
 fn a_shallow_ramp_is_climbed_at_the_authored_speed() {
     let slope = 30.0_f32.to_radians();
     let (mut sim, mut bridge, player) = scene(slope, 0.0);
-    bridge.set_player_input(player, PlayerInput { drive: 1.0 });
+    bridge.set_player_input(
+        player,
+        PlayerInput {
+            drive: 1.0,
+            ..PlayerInput::default()
+        },
+    );
     let (x0, y0) = pose(&sim);
     // 1 s para acelerar, e depois um tick medido em regime.
     for tick in 1..=60 {
@@ -236,7 +175,13 @@ fn a_shallow_ramp_is_climbed_at_the_authored_speed() {
 fn a_ramp_steeper_than_the_limit_is_slipped_down_not_climbed() {
     let slope = 60.0_f32.to_radians();
     let (mut sim, mut bridge, player) = scene(slope, 0.0);
-    bridge.set_player_input(player, PlayerInput { drive: 1.0 });
+    bridge.set_player_input(
+        player,
+        PlayerInput {
+            drive: 1.0,
+            ..PlayerInput::default()
+        },
+    );
     let (_, y0) = pose(&sim);
     for tick in 1..=180 {
         bridge.dispatch(&mut sim, true, tick);
@@ -264,7 +209,13 @@ fn raising_the_limit_makes_the_steep_ramp_climbable() {
         let mut p = e.get_mut::<PlatformPlayer>().unwrap();
         p.max_slope_deg = 70.0;
     }
-    bridge.set_player_input(player, PlayerInput { drive: 1.0 });
+    bridge.set_player_input(
+        player,
+        PlayerInput {
+            drive: 1.0,
+            ..PlayerInput::default()
+        },
+    );
     let (_, y0) = pose(&sim);
     for tick in 1..=180 {
         bridge.dispatch(&mut sim, true, tick);
@@ -386,7 +337,13 @@ fn input_on_a_body_without_the_component_does_nothing() {
         ))
         .id();
     let mut bridge = PhysicsBridge::new();
-    bridge.set_player_input(crate_e, PlayerInput { drive: 1.0 });
+    bridge.set_player_input(
+        crate_e,
+        PlayerInput {
+            drive: 1.0,
+            ..PlayerInput::default()
+        },
+    );
     for tick in 1..=180 {
         bridge.dispatch(&mut sim, true, tick);
     }

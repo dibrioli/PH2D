@@ -51,7 +51,10 @@ mod physics_join_rows;
 /// corpo (uma PEÇA de um corpo composto).
 mod physics_part;
 mod physics_rows;
-mod player;
+/// ⚠️ `pub(crate)` só para o `PLAYER_ROW_COUNT` do `lib.rs` — o gate de seam
+/// afirma que cobre a tabela INTEIRA, e um oráculo que itera a própria lista
+/// que testa encolhe junto com ela.
+pub(crate) mod player;
 mod render_source;
 mod rows;
 mod sampling;

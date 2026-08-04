@@ -66,3 +66,25 @@ pub const INSP_PLAYER_AIR_ACCEL: NodeId = hash_node_id("insp_player_air_accel");
 ///
 /// Graus na fronteira, cosseno no motor — a convenção do ângulo de joint.
 pub const INSP_PLAYER_MAX_SLOPE: NodeId = hash_node_id("insp_player_max_slope");
+
+/// **O PULO** (W4) — sete números, e o único que o artista pensa é o primeiro.
+///
+/// ⚠️ Ids por HASH DE STRING, como os irmãos acima — um literal numérico neste
+/// arquivo seria a segunda convenção do mesmo bloco.
+///
+/// A altura de um pulo COMPLETO, metros acima da decolagem, com gravidade
+/// neutra.
+pub const INSP_PLAYER_JUMP_HEIGHT: NodeId = hash_node_id("insp_player_jump_height");
+/// Multiplicador de gravidade na SAÍDA, acima de [`INSP_PLAYER_TAKEOFF_SPEED`].
+pub const INSP_PLAYER_TAKEOFF_G: NodeId = hash_node_id("insp_player_takeoff_g");
+/// A velocidade acima da qual a gravidade de saída age, m/s.
+pub const INSP_PLAYER_TAKEOFF_SPEED: NodeId = hash_node_id("insp_player_takeoff_speed");
+/// Multiplicador perto do ÁPICE — ⚠️ **abaixo de 1 ALONGA** (a decisão do
+/// módulo: o *forgiveness* do Celeste), acima de 1 encurta.
+pub const INSP_PLAYER_PEAK_G: NodeId = hash_node_id("insp_player_peak_g");
+/// A janela do ápice, m/s.
+pub const INSP_PLAYER_PEAK_SPEED: NodeId = hash_node_id("insp_player_peak_speed");
+/// Multiplicador na QUEDA — acima de 1 desce mais rápido do que sobe.
+pub const INSP_PLAYER_FALL_G: NodeId = hash_node_id("insp_player_fall_g");
+/// Multiplicador enquanto sobe com o botão SOLTO — a altura variável.
+pub const INSP_PLAYER_CUT_G: NodeId = hash_node_id("insp_player_cut_g");

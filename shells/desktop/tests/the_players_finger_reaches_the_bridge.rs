@@ -34,16 +34,21 @@ fn the_walk_keys_are_observed_without_being_consumed() {
     );
 }
 
-/// **(2) O `drive` chega ao dispatch da física.**
+/// **(2) O dedo INTEIRO chega ao dispatch da física.**
 ///
-/// Sem esta linha o `PlayerKeys` seria estado que ninguém lê: os cinco gates
-/// dele continuariam verdes e o personagem ficaria parado.
+/// Sem esta linha o `PlayerKeys` seria estado que ninguém lê: os gates dele
+/// continuariam verdes e o personagem ficaria parado.
+///
+/// ⚠️ A âncora é a **porta única** (`input()`), não `drive()` — e a diferença não
+/// é cosmética: com dois getters, um dispatch que entrega só metade do dedo é
+/// um build que compila, e o pulo seria a metade esquecida.
 #[test]
-fn the_drive_is_handed_to_the_physics_dispatch() {
+fn the_whole_finger_is_handed_to_the_physics_dispatch() {
     let src = read("src/render_loop/mod.rs");
     assert!(
-        src.contains("self.player_keys.drive()"),
-        "o `render_loop` tem de entregar o drive ao `physics_bridge::dispatch`"
+        src.contains("self.player_keys.input()"),
+        "o `render_loop` tem de entregar a entrada INTEIRA (a porta unica \
+         `PlayerKeys::input`) ao `physics_bridge::dispatch`"
     );
 }
 
@@ -57,12 +62,24 @@ fn the_drive_is_handed_to_the_physics_dispatch() {
 ///
 /// A afirmação é POSICIONAL sobre duas âncoras que descrevem o que o código faz
 /// (a entrega e o early-out), nunca uma distância em bytes.
+///
+/// ⚠️ **E a âncora é a CHAMADA, não a lista de argumentos** — a versão original
+/// pinava `hand_input_to_players(bridge, sim, drive);` inteiro e nasceu VERMELHA
+/// na W4, quando o argumento virou `input`: o fio estava intacto e o gate
+/// reprovava um rename. *Uma lista de argumentos é um proxy que expira*, e o que
+/// este gate afirma é ORDEM.
+///
+/// ⚠️ Procurar só o NOME também não serve: ele casa com a **definição** do `fn`,
+/// e no dia em que ela subisse para cima do `dispatch` o gate compararia a
+/// posição errada e ficaria verde sobre o fio invertido.
 #[test]
 fn the_input_is_handed_over_before_the_hold_early_out() {
     let src = read("src/render_loop/physics_bridge.rs");
     let hand = src
-        .find("hand_input_to_players(bridge, sim, drive);")
-        .expect("o dispatch tem de entregar a entrada aos players");
+        .match_indices("hand_input_to_players(")
+        .find(|(at, _)| !src[..*at].ends_with("fn "))
+        .map(|(at, _)| at)
+        .expect("o dispatch tem de CHAMAR a entrega da entrada aos players");
     let hold = src
         .find("if !simulate {")
         .expect("o dispatch tem de ter o early-out do hold");

@@ -181,6 +181,13 @@ pub(crate) fn sync_player_fields(host: &mut dyn PanelHostInternal) {
         (ids::INSP_PLAYER_ACCEL, info.acceleration),
         (ids::INSP_PLAYER_AIR_ACCEL, info.air_acceleration),
         (ids::INSP_PLAYER_MAX_SLOPE, info.max_slope_deg),
+        (ids::INSP_PLAYER_JUMP_HEIGHT, info.jump_height),
+        (ids::INSP_PLAYER_TAKEOFF_G, info.takeoff_gravity),
+        (ids::INSP_PLAYER_TAKEOFF_SPEED, info.takeoff_speed),
+        (ids::INSP_PLAYER_PEAK_G, info.peak_gravity),
+        (ids::INSP_PLAYER_PEAK_SPEED, info.peak_speed),
+        (ids::INSP_PLAYER_FALL_G, info.fall_gravity),
+        (ids::INSP_PLAYER_CUT_G, info.cut_gravity),
     ] {
         host.store_mut().set_number_value(id, f64::from(v));
     }

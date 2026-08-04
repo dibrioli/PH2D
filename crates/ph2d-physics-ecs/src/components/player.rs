@@ -16,7 +16,7 @@
 //! torna reproduzível num scrub.
 
 use bevy_ecs::component::Component;
-use ph2d_platformer::{PlayerConfig, RideConfig, WalkConfig};
+use ph2d_platformer::{JumpConfig, PlayerConfig, RideConfig, WalkConfig};
 use serde::{Deserialize, Serialize};
 
 /// **Este corpo é um player de plataforma.**
@@ -62,6 +62,22 @@ pub struct PlatformPlayer {
     /// que ele entende, e a conversão acontece **uma vez**, na porta única
     /// [`WalkConfig::max_slope_cos`].
     pub max_slope_deg: f32,
+
+    /// A altura de um pulo COMPLETO, metros — **com gravidade neutra** (W4).
+    pub jump_height: f32,
+    /// Multiplicador de gravidade na saída, acima de [`Self::takeoff_speed`].
+    pub takeoff_gravity: f32,
+    /// A velocidade acima da qual a gravidade de saída age, m/s.
+    pub takeoff_speed: f32,
+    /// Multiplicador perto do ápice — ⚠️ **abaixo de 1 ALONGA** (a decisão do
+    /// módulo: o *forgiveness* do Celeste, não o *snappiness* do tnua).
+    pub peak_gravity: f32,
+    /// A janela do ápice, m/s.
+    pub peak_speed: f32,
+    /// Multiplicador na queda — acima de 1 desce mais rápido do que sobe.
+    pub fall_gravity: f32,
+    /// Multiplicador enquanto sobe com o botão SOLTO — a altura variável.
+    pub cut_gravity: f32,
 }
 
 impl PlatformPlayer {
@@ -85,6 +101,15 @@ impl PlatformPlayer {
                 air_acceleration: self.air_acceleration,
                 max_slope_deg: self.max_slope_deg,
             },
+            jump: JumpConfig {
+                jump_height: self.jump_height,
+                takeoff_gravity: self.takeoff_gravity,
+                takeoff_speed: self.takeoff_speed,
+                peak_gravity: self.peak_gravity,
+                peak_speed: self.peak_speed,
+                fall_gravity: self.fall_gravity,
+                cut_gravity: self.cut_gravity,
+            },
         }
     }
 }
@@ -103,6 +128,13 @@ impl Default for PlatformPlayer {
             acceleration: c.walk.acceleration,
             air_acceleration: c.walk.air_acceleration,
             max_slope_deg: c.walk.max_slope_deg,
+            jump_height: c.jump.jump_height,
+            takeoff_gravity: c.jump.takeoff_gravity,
+            takeoff_speed: c.jump.takeoff_speed,
+            peak_gravity: c.jump.peak_gravity,
+            peak_speed: c.jump.peak_speed,
+            fall_gravity: c.jump.fall_gravity,
+            cut_gravity: c.jump.cut_gravity,
         }
     }
 }

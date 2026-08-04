@@ -35,6 +35,14 @@ mod sync_physics;
 pub use sections::bake_label;
 pub use sections::paste_label;
 pub use sections::rig_button_label;
+/// **Quantas rows numéricas a §14 Platform Player pinta.**
+///
+/// ⚠️ Exportado para que a varredura de seam possa afirmar que cobre a tabela
+/// INTEIRA. Sem ele o gate iteraria a própria lista que testa — o oráculo
+/// auto-referente que a `line/Painter` já pagou: encolher o array encolhe a
+/// varredura, e a mutação passa.
+pub const PLAYER_ROW_COUNT: usize = crate::sections::player::PLAYER_ROWS.len();
+
 pub use state::{
     InspectorState, last_inspector_content_h, last_inspector_visible_h, set_current_display_unit,
     set_current_inspector_blend, set_current_inspector_joint, set_current_inspector_name,

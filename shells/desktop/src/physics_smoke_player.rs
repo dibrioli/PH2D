@@ -213,6 +213,104 @@ impl crate::App {
         );
     }
 
+    /// **Cena 83 (W4).** PULAR — a cena que mede a própria promessa.
+    ///
+    /// ⚠️ **As duas saliências são a régua, e as alturas saíram da sonda**
+    /// (`measure_the_jump`, em `ph2d-physics-ecs`): com o `Jump Height` de
+    /// fábrica (2,0) o personagem alcança um topo em **2,10 m**, então a de
+    /// **1,6** é confortável e a de **2,8** é inalcançável — até o artista subir o
+    /// knob para 3,0, que compra **3,12**. É isso que torna o número da §14 uma
+    /// coisa que se vê, em vez de um campo que se acredita.
+    pub(crate) fn physics_smoke_jump(&mut self) {
+        let gfx = self.gfx.as_mut().expect("gfx");
+        let world = gfx.sim.world_mut();
+
+        // O chão, com um VÃO no meio (x de 3 a 6) — atravessá-lo é a pergunta do
+        // controle aéreo, e cair nele é a resposta honesta de quem soltou cedo.
+        slab(
+            world,
+            "FloorLeft",
+            Vec2::new(-4.0, -0.5),
+            [7.0, 0.5],
+            0.0,
+            [0.35, 0.35, 0.4, 1.0],
+        );
+        slab(
+            world,
+            "FloorRight",
+            Vec2::new(11.0, -0.5),
+            [5.0, 0.5],
+            0.0,
+            [0.35, 0.35, 0.4, 1.0],
+        );
+        // A saliência BAIXA (topo 1,6): alcançável de fábrica.
+        slab(
+            world,
+            "LedgeLow",
+            Vec2::new(-8.0, 1.35),
+            [1.6, 0.25],
+            0.0,
+            [0.3, 0.5, 0.35, 1.0],
+        );
+        // A saliência ALTA (topo 2,8): fora de alcance ate' o knob subir.
+        slab(
+            world,
+            "LedgeHigh",
+            Vec2::new(-8.0, 2.55),
+            [1.6, 0.25],
+            0.0,
+            [0.55, 0.32, 0.3, 1.0],
+        );
+
+        // O vagão outra vez — pular DELE tem de levar a velocidade dele junto.
+        let platform = world
+            .spawn((
+                Name::new("Wagon"),
+                Transform::from_translation(Vec2::new(6.0, 1.6)),
+                Sprite::atlas(WHITE_TILE_KEY, [4.0, 0.5], [0.6, 0.55, 0.25, 1.0]),
+                RigidBody {
+                    kind: BodyKind::Kinematic,
+                },
+                Collider {
+                    shape: ColliderShape::Cuboid {
+                        half_x: 2.0,
+                        half_y: 0.25,
+                    },
+                    ..Collider::default()
+                },
+            ))
+            .id();
+
+        spawn_player(world, Vec2::new(-2.0, 2.0));
+        author_platform_track(&mut self.timeline.doc, platform);
+
+        eprintln!(
+            "[physics-smoke 83] PULAR (W4). Chao com um VAO, duas saliencias (topo 1.6 e\n\
+             2.8), e o vagao.\n\
+             \n\
+             ⚠️ Se a linha acima nao aparecer, pare: a cena nao montou.\n\
+             \n\
+             CONTROLE: setas <- / -> (ou A / D) andam. SETA PARA CIMA (ou Z) pula.\n\
+             O 'Jump Height' autorado e' 2.0 m.\n\
+             \n\
+             Julgue, de olho:\n\
+             · pule parado: ele sobe cerca de 2 m e volta. A DESCIDA e' visivelmente\n\
+               mais rapida que a subida -- e' o que faz um pulo parecer um pulo.\n\
+             · TOQUE a tecla e solte na hora: o pulo sai BAIXO. Segure ate' o topo:\n\
+               sai CHEIO. E' o mesmo botao, e a altura obedece ao dedo.\n\
+             · SEGURE a tecla apertada e espere: ele pula UMA vez, cai, e NAO pula\n\
+               de novo sozinho. Ele so' pula quando a tecla e' apertada de novo.\n\
+             · no ar, aperte de novo: nada acontece. Nao ha' pulo duplo.\n\
+             · va' para a ESQUERDA ate' as saliencias: a de BAIXO (verde) voce\n\
+               alcanca; a de CIMA (vermelha) nao. Suba 'Jump Height' para 3.0 na\n\
+               secao Platform Player e a vermelha passa a ser alcancavel.\n\
+             · corra para a DIREITA e pule o VAO: com impulso voce atravessa.\n\
+             · suba no VAGAO e pule enquanto ele anda: voce sobe JUNTO com ele, e\n\
+               cai de volta em cima -- o pulo e' relativo ao chao que se move.\n\
+               (O vagao faz uma ida-e-volta nos primeiros 4 s; arme o Loop.)"
+        );
+    }
+
     /// **Cena 81 (W3).** ANDAR — a cena que se dirige.
     ///
     /// ⚠️ É a primeira cena desta jornada com **controle**: as setas ←/→ (ou

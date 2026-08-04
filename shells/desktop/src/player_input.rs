@@ -26,11 +26,12 @@
 
 use winit::keyboard::KeyCode;
 
-/// As teclas de caminhada que estão SEGURADAS agora.
+/// As teclas que estão SEGURADAS agora.
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
 pub(crate) struct PlayerKeys {
     left: bool,
     right: bool,
+    jump: bool,
 }
 
 impl PlayerKeys {
@@ -42,7 +43,31 @@ impl PlayerKeys {
         f32::from(u8::from(self.right)) - f32::from(u8::from(self.left))
     }
 
-    /// Registra um press/release. Devolve `true` se a tecla é de caminhada —
+    /// **O botão de pulo está pressionado agora.**
+    ///
+    /// ⚠️ Isto é o ESTADO, não a borda — a lei do pulo deriva a borda sozinha
+    /// ([`ph2d_physics_ecs::JumpState`]), e por bom motivo: quem a derivasse
+    /// aqui precisaria de uma segunda memória do mesmo fato, e as duas
+    /// divergiriam no primeiro dispatch que deve mais de um tick.
+    pub(crate) fn jump(self) -> bool {
+        self.jump
+    }
+
+    /// **O dedo do jogador, inteiro.**
+    ///
+    /// ⚠️ Porta ÚNICA de propósito: entregar `drive` e `jump` por caminhos
+    /// separados convidaria um deles a ser esquecido num sítio de despacho, e o
+    /// modo de falha disso é **metade do controle morta em silêncio** — a
+    /// família que esta linha já pagou nos knobs de zona. Um botão novo entra
+    /// aqui e chega a todo mundo.
+    pub(crate) fn input(self) -> ph2d_physics_ecs::PlayerInput {
+        ph2d_physics_ecs::PlayerInput {
+            drive: self.drive(),
+            jump: self.jump(),
+        }
+    }
+
+    /// Registra um press/release. Devolve `true` se a tecla é do player —
     /// informativo, **nunca** consumo (ver o aviso do módulo).
     pub(crate) fn key(&mut self, code: KeyCode, pressed: bool) -> bool {
         match code {
@@ -52,6 +77,15 @@ impl PlayerKeys {
             }
             KeyCode::ArrowRight | KeyCode::KeyD => {
                 self.right = pressed;
+                true
+            }
+            // ⚠️ **Seta para CIMA e `Z`, e o Espaço NÃO** — ele é o Play/Pause do
+            // transporte, e um platformer cujo botão de pulo também pausa a cena
+            // é uma tecla com dois donos. `W` também não: ela abre o painel de
+            // MUNDO da física. As duas escolhas são por CONFLITO medido, não por
+            // gosto — as outras teclas do repo foram varridas antes.
+            KeyCode::ArrowUp | KeyCode::KeyZ => {
+                self.jump = pressed;
                 true
             }
             _ => false,
@@ -117,12 +151,42 @@ mod tests {
         assert_eq!(k.drive(), 0.0);
     }
 
-    /// Teclas que não são de caminhada não são reclamadas.
+    /// Teclas que não são do player não são reclamadas.
+    ///
+    /// ⚠️ **O ESPAÇO está nesta lista de propósito** — ele é o Play/Pause do
+    /// transporte, e o gate é o que impede alguém de o adotar como botão de
+    /// pulo por parecer natural.
     #[test]
     fn other_keys_are_not_claimed() {
         let mut k = PlayerKeys::default();
         assert!(!k.key(KeyCode::Space, true));
-        assert!(!k.key(KeyCode::ArrowUp, true));
+        assert!(!k.key(KeyCode::KeyW, true), "W abre o painel de MUNDO");
         assert_eq!(k.drive(), 0.0);
+        assert!(!k.jump());
+    }
+
+    /// **O pulo é um botão SEGURADO**, e as duas teclas são a mesma coisa.
+    ///
+    /// Segurar é o que a altura variável lê (soltar durante a subida corta o
+    /// pulo), então guardar só a borda aqui perderia a metade que importa.
+    #[test]
+    fn the_jump_button_is_held_and_released() {
+        let mut k = PlayerKeys::default();
+        assert!(!k.jump());
+        assert!(k.key(KeyCode::ArrowUp, true));
+        assert!(k.jump());
+        k.key(KeyCode::ArrowUp, false);
+        assert!(!k.jump());
+        assert!(k.key(KeyCode::KeyZ, true));
+        assert!(k.jump(), "Z e a seta para cima sao o MESMO botao");
+    }
+
+    /// E perder o foco solta o pulo junto com as setas.
+    #[test]
+    fn losing_focus_releases_the_jump_button_too() {
+        let mut k = PlayerKeys::default();
+        k.key(KeyCode::KeyZ, true);
+        k.release_all();
+        assert!(!k.jump());
     }
 }

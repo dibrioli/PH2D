@@ -48,9 +48,11 @@
 //! respostas para essa pergunta seriam a mola segurando o personagem numa parede
 //! que a caminhada considera intransponível.
 
+pub mod jump;
 pub mod ride;
 pub mod walk;
 
+pub use jump::{JumpConfig, JumpState, JumpStep, jump_step};
 pub use ride::{RideConfig, ride_spring, within_reach};
 pub use walk::{WalkConfig, walk};
 
@@ -98,6 +100,8 @@ pub struct PlayerConfig {
     pub ride: RideConfig,
     /// A caminhada.
     pub walk: WalkConfig,
+    /// O pulo.
+    pub jump: JumpConfig,
 }
 
 impl PlayerConfig {
@@ -105,6 +109,7 @@ impl PlayerConfig {
     pub const STARTING_POINT: Self = Self {
         ride: RideConfig::STARTING_POINT,
         walk: WalkConfig::STARTING_POINT,
+        jump: JumpConfig::STARTING_POINT,
     };
 }
 
@@ -118,6 +123,13 @@ impl PlayerConfig {
 pub struct PlayerInput {
     /// O eixo de caminhada em `[-1, 1]`. Positivo é a direita.
     pub drive: f32,
+    /// O botão de pulo está PRESSIONADO agora.
+    ///
+    /// ⚠️ O estado, não a borda. A borda é derivada pela lei
+    /// ([`JumpState::was_held`]), e tem de ser: quem a derivasse do lado de fora
+    /// precisaria de uma segunda memória do mesmo fato, e as duas divergiriam no
+    /// primeiro tick em que um dispatch devesse mais de um passo.
+    pub jump: bool,
 }
 
 /// **O que fazer com o corpo neste tick.** Ver a distinção accel/boost no topo.
@@ -201,20 +213,43 @@ pub fn is_grounded(cfg: &PlayerConfig, sample: Option<&GroundSample>, up: Vec2) 
 /// por conta, uma rampa de 46° com `max_slope = 45` teria a mola a segurar o
 /// personagem e a caminhada a considerá-lo no ar — o estado impossível que
 /// nenhum gate de lei isolada consegue ver.
+///
+/// ⚠️ **Oito argumentos, e o `allow` é deliberado** — o precedente é o
+/// `body_desc` desta mesma linha. A alternativa é empacotar *o quadro físico
+/// deste tick* (`body_velocity`/`gravity`/`up`/`dt`) num tipo, e ela é a certa
+/// **quando a lista crescer de novo**: a W7 traz a fita de entrada e a W8 os
+/// contadores de tolerância, e o dia em que um deles entrar aqui é o dia de
+/// trocar a assinatura uma vez em vez de duas.
 #[must_use]
+#[allow(clippy::too_many_arguments)]
 pub fn player_motor(
     cfg: &PlayerConfig,
     sample: Option<&GroundSample>,
     input: PlayerInput,
+    state: JumpState,
     body_velocity: Vec2,
     gravity: Vec2,
     up: Vec2,
     dt: f32,
-) -> Motor {
+) -> (Motor, JumpState) {
     let footing = footing(cfg, sample, up);
-    let spring = ride_spring(&cfg.ride, footing, body_velocity, gravity, up);
-    let step = walk(&cfg.walk, footing, body_velocity, up, input.drive, dt);
-    spring.plus(step)
+
+    // ⚠️ **O pulo decide PRIMEIRO, e não é ordem arbitrária:** é ele que
+    // responde *"a perna pode agir?"*. No instante da decolagem o raio ainda vê
+    // o chão, então uma mola viva puxaria de volta o que o boost acabou de dar
+    // (o aviso do `jump`).
+    let ground_v = footing.map_or([0.0, 0.0], |s| s.ground_velocity);
+    let rel_up =
+        (body_velocity[0] - ground_v[0]) * up[0] + (body_velocity[1] - ground_v[1]) * up[1];
+    let jump = jump_step(&cfg.jump, state, footing, rel_up, input.jump, gravity, up);
+
+    // A perna e a caminhada veem o MESMO chão, e é o que o pulo lhes deixou ver:
+    // duas respostas para *"estou no chão?"* seriam um personagem que anda no
+    // chão enquanto voa.
+    let standing = if jump.spring_armed { footing } else { None };
+    let spring = ride_spring(&cfg.ride, standing, body_velocity, gravity, up);
+    let step = walk(&cfg.walk, standing, body_velocity, up, input.drive, dt);
+    (spring.plus(step).plus(jump.motor), jump.state)
 }
 
 #[cfg(test)]
@@ -253,19 +288,36 @@ mod tests {
     fn the_spring_lets_go_of_a_wall() {
         let cfg = PlayerConfig::STARTING_POINT;
         let steep = at(cfg.ride.float_height, [-0.866_025_4, 0.5]); // 60°
-        let m = player_motor(
+        let at_wall = player_motor(
             &cfg,
             Some(&steep),
             PlayerInput::default(),
+            JumpState::default(),
+            [0.0, 0.0],
+            G,
+            UP,
+            DT,
+        );
+        // ⚠️ **O oráculo é a INDISTINGUIBILIDADE, não um zero.** A primeira
+        // versão deste gate afirmava `Motor::default()` — ele QUERIA dizer *"a
+        // mola se cala"* e DIZIA *"o motor inteiro é zero"*, e as duas frases só
+        // coincidiam enquanto não havia pulo. Com a W4 o termo de gravidade por
+        // fase existe no ar (e num |v| ≈ 0 ele é o do ápice), então o zero
+        // passou a ser falso sobre um produto correto. O que a lei afirma é que
+        // estar ao lado de uma parede íngreme é o MESMO que estar no ar.
+        let in_the_air = player_motor(
+            &cfg,
+            None,
+            PlayerInput::default(),
+            JumpState::default(),
             [0.0, 0.0],
             G,
             UP,
             DT,
         );
         assert_eq!(
-            m,
-            Motor::default(),
-            "numa parede o motor inteiro se cala, e a gravidade age: {m:?}"
+            at_wall, in_the_air,
+            "numa parede o motor tem de ser o do AR, termo a termo: {at_wall:?}"
         );
     }
 
@@ -286,10 +338,11 @@ mod tests {
         let cfg = PlayerConfig::STARTING_POINT;
         let inside = at(0.0, [0.0, 0.0]);
         assert!(is_grounded(&cfg, Some(&inside), UP));
-        let m = player_motor(
+        let (m, _) = player_motor(
             &cfg,
             Some(&inside),
             PlayerInput::default(),
+            JumpState::default(),
             [0.0, 0.0],
             G,
             UP,
@@ -307,8 +360,20 @@ mod tests {
     fn the_door_sums_both_laws() {
         let cfg = PlayerConfig::STARTING_POINT;
         let ground = at(cfg.ride.float_height, [0.0, 1.0]);
-        let input = PlayerInput { drive: 1.0 };
-        let whole = player_motor(&cfg, Some(&ground), input, [0.0, 0.0], G, UP, DT);
+        let input = PlayerInput {
+            drive: 1.0,
+            ..PlayerInput::default()
+        };
+        let (whole, _) = player_motor(
+            &cfg,
+            Some(&ground),
+            input,
+            JumpState::default(),
+            [0.0, 0.0],
+            G,
+            UP,
+            DT,
+        );
         let spring = ride_spring(&cfg.ride, Some(&ground), [0.0, 0.0], G, UP);
         let step = walk(&cfg.walk, Some(&ground), [0.0, 0.0], UP, 1.0, DT);
         assert_eq!(whole, spring.plus(step));

@@ -163,6 +163,7 @@ impl crate::App {
             "80" => self.physics_smoke_float(),
             "81" => self.physics_smoke_walk(),
             "82" => self.physics_smoke_author_player(),
+            "83" => self.physics_smoke_jump(),
             _ => self.physics_smoke_drop(),
         }
 

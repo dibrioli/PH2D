@@ -43,6 +43,21 @@ pub struct InspectorPlayerInfo {
     pub acceleration: f32,
     pub air_acceleration: f32,
     pub max_slope_deg: f32,
+
+    /// A altura de um pulo COMPLETO, metros — com gravidade neutra (W4).
+    pub jump_height: f32,
+    /// Multiplicador de gravidade na saída, acima de [`Self::takeoff_speed`].
+    pub takeoff_gravity: f32,
+    /// A velocidade acima da qual a gravidade de saída age, m/s.
+    pub takeoff_speed: f32,
+    /// Multiplicador perto do ápice — ⚠️ abaixo de 1 ALONGA.
+    pub peak_gravity: f32,
+    /// A janela do ápice, m/s.
+    pub peak_speed: f32,
+    /// Multiplicador na queda.
+    pub fall_gravity: f32,
+    /// Multiplicador enquanto sobe com o botão solto — a altura variável.
+    pub cut_gravity: f32,
 }
 
 /// Uma edição na §14 — o vocabulário que o painel emite e a shell honra.
@@ -66,4 +81,19 @@ pub enum PlayerFieldEdit {
     Acceleration(f32),
     AirAcceleration(f32),
     MaxSlopeDeg(f32),
+
+    /// A altura de um pulo COMPLETO, metros (W4).
+    JumpHeight(f32),
+    /// Multiplicador de gravidade na saída.
+    TakeoffGravity(f32),
+    /// A velocidade acima da qual a gravidade de saída age.
+    TakeoffSpeed(f32),
+    /// Multiplicador perto do ápice — abaixo de 1 ALONGA.
+    PeakGravity(f32),
+    /// A janela do ápice.
+    PeakSpeed(f32),
+    /// Multiplicador na queda.
+    FallGravity(f32),
+    /// Multiplicador enquanto sobe com o botão solto — a altura variável.
+    CutGravity(f32),
 }

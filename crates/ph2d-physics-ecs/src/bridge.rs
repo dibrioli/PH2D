@@ -362,6 +362,12 @@ pub struct PhysicsBridge {
     ///
     /// `BTreeMap` pelo motivo determinístico que o `bodies` documenta.
     player_input: BTreeMap<Entity, ph2d_platformer::PlayerInput>,
+    /// **O estado VIVO do pulo**, por player (W4) — a fase e a borda do botão.
+    ///
+    /// ⚠️ Aqui e não no componente pela lei do módulo: um campo que muda por
+    /// tick faria o `canonicalize` do undo ver cada frame como um passo. A W7 o
+    /// torna DERIVADO da fita, e aí ele deixa de ser guardado.
+    player_jump: BTreeMap<Entity, ph2d_platformer::JumpState>,
 }
 
 impl Default for PhysicsBridge {
@@ -426,6 +432,7 @@ impl PhysicsBridge {
             flashes: Vec::new(),
             contacts_continuous: true,
             player_input: BTreeMap::new(),
+            player_jump: BTreeMap::new(),
         }
     }
 

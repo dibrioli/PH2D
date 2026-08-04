@@ -8,8 +8,7 @@
 use ph2d_ecs::{Entity, SimWorld};
 use ph2d_editor::{InspectorPlayerInfo, PlayerFieldEdit};
 use ph2d_physics_ecs::{
-    BodyKind, Collider, ColliderShape, PlatformPlayer, PlayerConfig, RideConfig, RigidBody,
-    WalkConfig,
+    BodyKind, Collider, ColliderShape, PlatformPlayer, RideConfig, RigidBody, WalkConfig,
 };
 
 /// A altura de flutuação MÍNIMA que a forma deste corpo exige, se ela tiver uma.
@@ -67,6 +66,13 @@ pub(crate) fn build_player_info(sim: &SimWorld, entity_bits: u64) -> Option<Insp
         acceleration: p.acceleration,
         air_acceleration: p.air_acceleration,
         max_slope_deg: p.max_slope_deg,
+        jump_height: p.jump_height,
+        takeoff_gravity: p.takeoff_gravity,
+        takeoff_speed: p.takeoff_speed,
+        peak_gravity: p.peak_gravity,
+        peak_speed: p.peak_speed,
+        fall_gravity: p.fall_gravity,
+        cut_gravity: p.cut_gravity,
     })
 }
 
@@ -91,17 +97,13 @@ pub(crate) fn apply_player_edit(sim: &mut SimWorld, entity_bits: u64, edit: Play
 
     match edit {
         PlayerFieldEdit::Add => {
-            let c = PlayerConfig::STARTING_POINT;
-            let mut p = PlatformPlayer {
-                float_height: c.ride.float_height,
-                cling_distance: c.ride.cling_distance,
-                spring_strength: c.ride.spring_strength,
-                spring_damping: c.ride.spring_damping,
-                speed: c.walk.speed,
-                acceleration: c.walk.acceleration,
-                air_acceleration: c.walk.air_acceleration,
-                max_slope_deg: c.walk.max_slope_deg,
-            };
+            // ⚠️ **`default()`, nunca campo a campo.** A 1ª versão montava o
+            // componente aqui a partir do `PlayerConfig::STARTING_POINT` — uma
+            // SEGUNDA porta para a tradução que o `Default` já faz —, e ela
+            // apodreceu na primeira wave que acrescentou campos (a W4, o pulo):
+            // o compilador pegou, mas se o `PlatformPlayer` tivesse `..default()`
+            // no meio o componente novo teria nascido com sete zeros.
+            let mut p = PlatformPlayer::default();
             // ⚠️ **Ele nasce PAIRANDO, não tangente.** O ponto de partida do
             // modelo é `0,5`, e a cápsula canônica precisa de mais que isso só
             // para sair do chão — um personagem novo que não flutua é a primeira
@@ -147,5 +149,16 @@ pub(crate) fn apply_player_edit(sim: &mut SimWorld, entity_bits: u64, edit: Play
         PlayerFieldEdit::Acceleration(v) => p.acceleration = v.max(0.0),
         PlayerFieldEdit::AirAcceleration(v) => p.air_acceleration = v.max(0.0),
         PlayerFieldEdit::MaxSlopeDeg(v) => p.max_slope_deg = v.clamp(0.0, 90.0),
+        PlayerFieldEdit::JumpHeight(v) => p.jump_height = v.max(0.0),
+        // ⚠️ Os multiplicadores só têm PISO. Um teto aqui seria um número que
+        // eu escolheria sem medir nada — o topo é onde o desenho deixa de ser
+        // um pulo, e isso é decisão de LOOK; o range do slider já é a resposta
+        // de UX (CLAUDE.md §0: um limite legítimo diz de que RECURSO ele é).
+        PlayerFieldEdit::TakeoffGravity(v) => p.takeoff_gravity = v.max(0.0),
+        PlayerFieldEdit::TakeoffSpeed(v) => p.takeoff_speed = v.max(0.0),
+        PlayerFieldEdit::PeakGravity(v) => p.peak_gravity = v.max(0.0),
+        PlayerFieldEdit::PeakSpeed(v) => p.peak_speed = v.max(0.0),
+        PlayerFieldEdit::FallGravity(v) => p.fall_gravity = v.max(0.0),
+        PlayerFieldEdit::CutGravity(v) => p.cut_gravity = v.max(0.0),
     }
 }

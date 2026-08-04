@@ -51,8 +51,9 @@ pub use components::{
     AreaBuoyancy, AreaDrag, AreaEffector, AreaFalloff, AreaForceWorldAxes, AreaFormDrag,
     AreaTorque, BodyKind, Ccd, Collider, ColliderShape, CombineRule, DampMode, DampingOverride,
     Dominance, GravityScale, InitialVelocity, LockPositionX, LockPositionY, LockRotation,
-    MassOverride, MaterialCombine, OneWayPlatform, PulleyWheel, RigidBody, RopeStops, SignalOnHit,
-    SignalOnLeave, WestonAxle, WrapSide, reseat_mounted_axle, reseat_wheel_geometry, rope_joint_of,
+    MassOverride, MaterialCombine, OneWayPlatform, PlatformPlayer, PulleyWheel, RigidBody,
+    RopeStops, SignalOnHit, SignalOnLeave, WestonAxle, WrapSide, reseat_mounted_axle,
+    reseat_wheel_geometry, rope_joint_of,
 };
 pub use interaction::{
     HoldMode, InteractionSettings, InteractionTool, MAX_ATTRACT_FORCE, MAX_BLAST_IMPULSE,
@@ -129,6 +130,7 @@ pub fn register_physics_components(reg: &mut ComponentRegistry) {
     reg.register::<WestonAxle>("ph2d::physics::WestonAxle");
     reg.register::<RopeStops>("ph2d::physics::RopeStops");
     reg.register::<JointWorldAnchor>("ph2d::physics::JointWorldAnchor");
+    reg.register::<PlatformPlayer>("ph2d::physics::PlatformPlayer");
 }
 
 #[cfg(test)]
@@ -142,7 +144,7 @@ mod tests {
     fn registers_every_physics_component() {
         let mut reg = ComponentRegistry::new();
         register_physics_components(&mut reg);
-        assert_eq!(reg.len(), 27);
+        assert_eq!(reg.len(), 28);
         assert!(reg.get_by_name("ph2d::physics::RigidBody").is_some());
         assert!(reg.get_by_name("ph2d::physics::Collider").is_some());
         assert!(reg.get_by_name("ph2d::physics::PhysicsJoint").is_some());

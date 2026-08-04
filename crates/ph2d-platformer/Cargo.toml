@@ -1,0 +1,27 @@
+[package]
+name = "ph2d-platformer"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+# ⚠️ NENHUMA. E a ausência é o desenho, não economia.
+#
+# Esta crate é a LEI de um controlador de plataforma: dado (config, estado,
+# entrada, o que o sensor viu, a velocidade do corpo, a gravidade, dt), qual é a
+# aceleração, o boost e a reação no chão. Ela não conhece o rapier, não conhece o
+# ECS e não conhece a shell — quem traduz é a ponte (`ph2d-physics-ecs`).
+#
+# É isso que torna o coyote gateável sem GPU, a fita de entrada testável sem
+# janela, e a lei debugável sem simular nada. O precedente desta linha e do repo
+# é a `ph2d-guides` e a `ph2d-stroke-width`: uma folha por fato, com os
+# consumidores dependendo dela e nunca ela deles.
+#
+# Sem `libm` porque não há transcendental aqui: a mola é `+ - * /`, e `sqrt` (se
+# vier) é especificado exatamente pelo IEEE-754. Se um dia entrar um `sin`/`atan2`,
+# ele entra por `libm` — a regra de determinismo do módulo (1 ulp é bug cross-OS).

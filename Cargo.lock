@@ -7153,12 +7153,17 @@ dependencies = [
  "ph2d-core",
  "ph2d-ecs",
  "ph2d-physics",
+ "ph2d-platformer",
  "postcard",
  "serde",
 ]
 
 [[package]]
 name = "ph2d-physics-soft"
+version = "0.0.0"
+
+[[package]]
+name = "ph2d-platformer"
 version = "0.0.0"
 
 [[package]]

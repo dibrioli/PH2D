@@ -34,6 +34,7 @@ mod kinematic;
 /// LOC, cortado por responsabilidade (docs dele).
 /// A metade PEÇA do reconcile — os colliders extra de um corpo composto.
 pub mod parts;
+mod player;
 mod readback;
 mod rewind;
 pub mod rope;
@@ -540,6 +541,11 @@ impl PhysicsBridge {
                     // aplicado a todos os ticks devidos.
                     self.drive_joint_params(sim, false);
                     self.drive_kinematic(sim, f);
+                    // E os PLAYERS (W2): o sensor pergunta ao BVH que o step
+                    // ANTERIOR deixou e a mola escreve o motor deste tick. Por
+                    // TICK, como tudo aqui — uma perna que agisse por FRAME
+                    // seguraria o personagem mais alto em máquina rápida.
+                    self.drive_players(sim);
                     self.world.step();
                     self.steps_taken += 1;
                     // Diff this tick's touching union against the standing set — the

@@ -31,6 +31,8 @@ pub mod layers;
 pub mod oneway;
 /// Os colliders EXTRA de um corpo composto (docs dele).
 pub mod parts;
+/// Aplicar o motor de um player ao corpo (docs dele).
+pub mod player;
 pub mod pulley;
 pub mod queries;
 pub mod rope_load;

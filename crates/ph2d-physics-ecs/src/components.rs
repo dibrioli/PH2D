@@ -240,6 +240,8 @@ impl SimComponent for Collider {}
 /// friends keep working: this is a LOC split, not a new address for the types.
 mod area;
 mod overrides;
+/// O componente do player de plataforma (docs dele).
+mod player;
 mod rope;
 mod signal;
 
@@ -250,6 +252,7 @@ pub use overrides::{
     Ccd, CombineRule, DampMode, DampingOverride, Dominance, GravityScale, InitialVelocity,
     LockPositionX, LockPositionY, LockRotation, MassOverride, MaterialCombine, OneWayPlatform,
 };
+pub use player::PlatformPlayer;
 pub use rope::{
     PulleyWheel, RopeStops, WestonAxle, WrapSide, reseat_mounted_axle, reseat_wheel_geometry,
     rope_joint_of,

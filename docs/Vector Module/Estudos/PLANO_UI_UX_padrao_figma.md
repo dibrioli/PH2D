@@ -741,6 +741,74 @@ editar o mestre re-veste as 12; um override de texto sobrevive.
 
 ---
 
+### W5c — OS VARIANTS ✅ **CONSTRUÍDA (2026-08-04)** — e o BUMP que ela ia custar não existe
+
+> A W5b fechou nomeando o que faltava: *"segue de fora só os **variants** (`VecInstance.props`),
+> que são a **W5c** e custam um bump (apender campo ao componente é postcard posicional)"*.
+> ⚠️ **Custavam um bump no desenho que o plano tinha; o desenho mudou e o preço sumiu** —
+> `PROJECT_SCHEMA` **intocado**, registro do `ph2d-ecs` **intocado**, **nenhum ADR**, zero dep.
+
+**A espinha, e é uma frase:** ⚠️ **um conjunto de variants é DERIVADO — são os mestres IRMÃOS**,
+os caminhos marcados `VecComponentMain` que pendem do mesmo pai. É literalmente o que um *component
+set* do Figma é (uma moldura com componentes dentro), e é o que o artista já sabe autorar com os
+gestos que existem: desenhar as versões, *Create Component* em cada uma, agrupá-las. Um marcador
+`VecVariantSet` no pai seria uma **segunda** resposta a *"isto é um conjunto?"*, e divergiria no dia
+em que alguém agrupasse dois mestres sem o pôr.
+
+⚠️ **Corolário que decide a ausência da row:** um mestre-RAIZ não tem irmãos ⇒ nenhuma fileira. Sem
+exigir o pai, *"os irmãos"* seria *todos os mestres do documento* — e cada componente do projeto
+viraria variant de todos os outros. **E um variant é um IRMÃO, nunca um FILHO:** um componente
+aninhado é uma PEÇA, não uma versão (gate próprio, e a fixture dele precisou de um mestre-raiz **com
+dois mestres dentro** — a primeira era verde por vácuo, porque uma folha solta não tem `Children` e
+as duas leis davam a mesma lista vazia).
+
+**A porta de escrita já existia.** `VecInstance.main` é o mestre de que a cópia deriva, então
+escolher outro variant é **religá-la a um irmão** — ou seja, é o *Swap Main* da W5b, restrito aos
+irmãos e oferecido como chips em vez de conta-gotas. Zero schema, e o **descarte dos overrides que o
+mestre novo não conhece** (a regra que a W5b mediu) vem junto por não haver segunda escrita
+(arch-gate: o braço não pode conter `.main =`).
+
+**Os EIXOS saem do NOME** — `Size=Small, State=Idle`, a convenção do Figma. Quando **todos** os
+irmãos declaram as MESMAS propriedades, a seção mostra uma fileira por propriedade; senão, **uma**
+fileira `Variant` com os nomes crus. ⚠️ A tabela de propriedades **não é guardada em lado nenhum**:
+ela é lida dos nomes, que já viajam no `Name` da Hierarquia e que o artista já renomeia ali.
+⚠️ E a exigência é de **IGUALDADE de conjunto de chaves, não interseção** — com `{Size}` num irmão e
+`{Size, State}` noutro, uma interseção esconderia um eixo sem nada a dizer porquê.
+
+⚠️ **Um valor que não leva a lado nenhum não é OFERECIDO.** Numa matriz com buracos
+(`Size=Large, State=Hover` que ninguém desenhou) o chip existiria, seria clicável e não faria nada —
+o botão-morto que este repo persegue. A lista de cada eixo é *o que se alcança a partir da combinação
+vigente*, e por isso é sempre honesta.
+
+**UI.** Uma fileira **segmentada** por eixo (chips e não dropdown: um eixo tem tipicamente dois a
+quatro valores, e mostrá-los todos deixa o artista *ver* o catálogo em vez de o abrir; a fileira
+quebra em linhas sozinha). Ela vem **ANTES** da lista de peças — *que versão é esta?* precede *e o
+que nela difere?*, e a ordem é funcional: trocar o variant reescreve a lista de peças.
+`MAX_VARIANT_AXES = 4` × `MAX_VARIANT_VALUES = 8` é **teto de TABELA DE IDS** (o `populate` regista
+o intervalo, o roteador varre o mesmo) e o excedente é **escrito**, nunca truncado em silêncio.
+
+**Gates:** 11 no kernel + 4 de seam + 3 arch + 6 de fixture da cena. **11 mutações, 10 sangram**
+(a 11ª é **inválida**: `it.next()?` e o guard `v.is_empty()` são a mesma defesa, então trocar um pelo
+outro é no-op semântico). ⚠️ **Duas sobreviveram e as duas eram FIXTURE minha:** a lei do pai (acima)
+e o chip aceso — medido só do PRIMEIRO variant, `selected = 0` está certo por acidente em todo eixo.
+⚠️ **E uma sobrevivente nomeou a quarta condição da política de UI:** com o roteador cego ao id do
+chip, ele é pintado, vive sob o mouse, o Click atravessa o barramento **e não vira nada** — os doze
+gates de projeção e os quatro de seam ficavam todos verdes (`a_variant_chip_id_becomes_a_verb`).
+
+**Smoke** (**`=58`**): uma moldura com as quatro versões (`Size` muda a GEOMETRIA, `State` muda a
+COR — cada eixo com uma consequência que o olho separa) + um mestre **SOLITÁRIO** (a metade da
+ausência) + um controle. Medido pela sonda `measure_the_smoke_rows`: de `Small/Idle` o painel mostra
+`Size: [Small] Large | State: [Idle] Hover`, as quatro combinações são alcançáveis **em um clique
+cada**, e o solitário dá **0 fileiras**.
+
+**Aberto, e é o resto dos *properties* do Figma:** o **boolean property** já tem porta (a lista de
+PEÇAS da W5b esconde qualquer peça — construir um checkbox nomeado seria a segunda resposta a
+*"esconder uma peça"*) · o **instance-swap property** exige nesting (uma instância DENTRO de um
+mestre), que segue nomeado em aberto · e o **text property** não tem consumidor (o override tem
+vocabulário fechado: `Fill` e `Hidden`).
+
+---
+
 ### Z-ORDER — a lei das GAME ENGINES: o filho desenha SOBRE o pai, e o Z é GLOBAL ✅ **(2026-08-04)**
 
 > Enio, em duas rodadas: *"o filho é desenhado por trás do pai … em game engines como Godot os
@@ -1090,7 +1158,7 @@ escreveu**:
 | **W5a** ✅ | mestre + instância + override esparso | +2 (**50**) | — | — | — | `=53` |
 | **W5b** ✅ | a lista de PEÇAS (a porta do override) · Update Main · Swap | — | — | — | — | `=56` |
 | **Z-order** ✅ | a lei das game engines: DFS = ordem de desenho + o **Z global** na Arrange | — | — | — | — | `=57` |
-| **W5c** | variants/props (o `VecInstance.props` que ficou de fora) | — | ⚠️ **bump** | — | sim (prefab) | — |
+| **W5c** ✅ | variants (a instância escolhe QUAL versão) | — | **—** | — | **—** | `=58` |
 | **W6** | vínculo com o widget | +1 (50) | — | — | sim (§2) | `=54` |
 | **W7** | estados + Smart Animate | — | `DOC_VERSION` | — | sim (HSM) | `=55` |
 | **W8** | runtime + codegen | — | seção | — | sim (fronteira) | `=56` |

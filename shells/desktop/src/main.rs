@@ -326,6 +326,8 @@ mod value_time_smoke;
 mod value_unary_smoke;
 mod value_wave_smoke;
 mod value_wrap_smoke;
+/// A cena de smoke dos **VARIANTS** (`PH2D_BUILD_SMOKE=58`) — irmã de `component_pieces_smoke`.
+mod variant_smoke;
 mod vec_anchor_edit;
 mod vec_bindings;
 mod vec_blend;
@@ -375,6 +377,9 @@ mod vec_text_object;
 mod vec_text_reopen;
 mod vec_text_ride;
 mod vec_transform;
+/// **OS VARIANTS** (plano UI/UX W5c) — que versão do componente uma instância é. Um conjunto de
+/// variants é DERIVADO (os mestres irmãos), e os eixos saem dos NOMES: zero componente novo.
+mod vec_variants;
 mod warp_smoke;
 mod wetpaint_smoke;
 mod width_handles;

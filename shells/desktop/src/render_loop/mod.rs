@@ -4547,6 +4547,42 @@ impl crate::App {
                             self.vec_path_pick = Some(crate::vec_pick::PathPick::InstanceMain(at));
                         }
                     }
+                    // ── OS VARIANTS (W5c) ────────────────────────────────────────
+                    // ⚠️ **Pela porta do Swap**, e não por uma segunda escrita de `main`: o
+                    // descarte dos overrides que o mestre novo não conhece é a regra que a W5b
+                    // mediu, e uma segunda religação a ignoraria em silêncio — a cópia ficaria a
+                    // guardar diferenças que nada desenha.
+                    crate::vec_component_edit::ComponentEdit::Variant(axis, value) => {
+                        if let Some(&bits) = sel.first().and_then(|id| self.vec_entities.get(id))
+                            && let Some(inst) = sim
+                                .world()
+                                .get::<ph2d_ecs::VecInstance>(ph2d_ecs::Entity::from_bits(bits))
+                                .cloned()
+                            && let Some(target) = crate::vec_variants::target_of(
+                                sim,
+                                &self.vec_entities,
+                                inst.main,
+                                axis,
+                                value,
+                            )
+                        {
+                            let dropped = crate::vec_component_pieces::swap_main(
+                                sim,
+                                vec_scene,
+                                &self.vec_entities,
+                                ph2d_ecs::Entity::from_bits(bits),
+                                target,
+                            );
+                            if let Some((true, n)) = dropped
+                                && n > 0
+                            {
+                                eprintln!(
+                                    "[ph2d-vec] variant: {n} diferenca(s) descartada(s) — as \
+                                     pecas delas nao existem na versao escolhida"
+                                );
+                            }
+                        }
+                    }
                 }
             }
             if let Some(cmd) = pending_vec_expand {
@@ -6455,6 +6491,33 @@ impl crate::App {
                     });
                 let (rows, beyond) = pieces.unwrap_or_default();
                 ph2d_panel_vector::state::set_instance_pieces(rows, beyond);
+                // **OS VARIANTS da instância selecionada** (W5c) — que versão do componente ela
+                // é. As fileiras saem da MESMA travessia que resolve um clique num chip
+                // (`rows_and_targets`): duas travessias dariam ordens que poderiam divergir, e o
+                // sintoma seria o chip `Large` a escolher `Medium`, sem erro nenhum.
+                let variants = sel
+                    .first()
+                    .and_then(|id| self.vec_entities.get(id))
+                    .and_then(|&bits| {
+                        let e = ph2d_ecs::Entity::from_bits(bits);
+                        let main = sim.world().get::<ph2d_ecs::VecInstance>(e)?.main;
+                        let (rows, _) =
+                            crate::vec_variants::rows_and_targets(sim, &self.vec_entities, main);
+                        Some(rows)
+                    })
+                    .unwrap_or_default();
+                ph2d_panel_vector::state::set_variant_rows(
+                    variants
+                        .axes
+                        .into_iter()
+                        .map(|a| ph2d_panel_vector::state::VariantRow {
+                            name: a.name,
+                            values: a.values,
+                            selected: a.selected,
+                        })
+                        .collect(),
+                    variants.beyond,
+                );
                 // **O Z-INDEX da seleção** (Enio, 2026-08-04) — o número GLOBAL que sobrepõe a
                 // ordem da hierarquia. Publicado pela MESMA porta que o campo escreve e que os
                 // botões Arrange movem, para o número que o artista lê ser o que ele edita.

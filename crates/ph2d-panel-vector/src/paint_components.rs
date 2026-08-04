@@ -52,6 +52,11 @@ impl BodyCtx<'_> {
             if c.main_missing {
                 y = self.label_line(tr("panel.vector.component.missing"), y);
             }
+            // ⚠️ **Os variants vêm ANTES das peças**, e a ordem é a da pergunta: *que versão é
+            // esta?* precede *e o que nela difere?*. Escolher o variant troca o mestre, e trocar o
+            // mestre reescreve a lista de peças — pô-la em cima faria o artista autorar
+            // diferenças numa lista que o clique seguinte substitui.
+            y = self.variant_rows(y);
             y = self.instance_pieces(y);
             // **Swap** — o conta-gotas. O rótulo DIZ o que o próximo clique faz enquanto está
             // armado: um pick modal que não se anuncia é indistinguível de um clique perdido.
@@ -83,6 +88,54 @@ impl BodyCtx<'_> {
                     y,
                 );
             }
+        }
+        y
+    }
+
+    /// **Os eixos de VARIANT** — que versão do componente esta cópia é (plano UI/UX W5c).
+    ///
+    /// Uma fileira segmentada por propriedade, com todos os valores à vista. ⚠️ **Chips e não um
+    /// dropdown**, porque um eixo de variant tem tipicamente dois a quatro valores: mostrá-los
+    /// todos deixa o artista *ver* o catálogo em vez de o abrir, e a fileira quebra em linhas
+    /// sozinha quando não cabem.
+    ///
+    /// ⚠️ **A seção não pinta nada quando o mestre não tem irmãos.** Um conjunto de variants É os
+    /// mestres irmãos; sem irmãos não há escolha, e uma fileira com um chip só é uma escolha que
+    /// não escolhe.
+    fn variant_rows(&mut self, mut y: f32) -> f32 {
+        let rows = state::variant_rows();
+        if rows.is_empty() {
+            return y;
+        }
+        for (axis, row) in rows.iter().enumerate() {
+            let opts: Vec<(ph2d_a11y::NodeId, &str, bool)> = row
+                .values
+                .iter()
+                .enumerate()
+                .map(|(v, label)| {
+                    (
+                        ids::vector_variant_option_id(axis, v),
+                        label.as_str(),
+                        v == row.selected,
+                    )
+                })
+                .collect();
+            // Nome vazio = o modo de nomes crus, e aí o rótulo é a palavra do produto.
+            let label = if row.name.is_empty() {
+                tr("panel.vector.component.variant")
+            } else {
+                &row.name
+            };
+            y = self.segmented(label, &opts, y);
+        }
+        // ⚠️ O excedente é ESCRITO — a mesma lei da lista de peças. Um teto silencioso lê-se como
+        // *"o conjunto só tem estas versões"*, e o artista procuraria a que falta onde ela não está.
+        let beyond = state::variant_rows_beyond();
+        if beyond > 0 {
+            y = self.label_line(
+                &format!("{beyond} {}", tr("panel.vector.component.variants_beyond")),
+                y,
+            );
         }
         y
     }

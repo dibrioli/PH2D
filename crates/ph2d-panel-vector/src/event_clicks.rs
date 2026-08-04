@@ -229,6 +229,11 @@ pub(super) fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         // barramento. A swatch de cor NÃO entra: ela é alvo de picker, e o `register_picker_swatch`
         // é quem trata o clique dela (o precedente da swatch de Fill).
         || (0..ids::MAX_INSTANCE_PIECES).any(|r| ids::vector_instance_piece_show_id(r) == id)
+        // **Os chips de VARIANT** (W5c) — escolher uma versão RELIGA a instância a um mestre
+        // irmão, e o vínculo mora no ECS: o clique é da shell, pela porta do *Swap Main*.
+        || (0..ids::MAX_VARIANT_AXES).any(|a| {
+            (0..ids::MAX_VARIANT_VALUES).any(|v| ids::vector_variant_option_id(a, v) == id)
+        })
         || id == ids::VECTOR_BOOL_MINUS_BACK
         || id == ids::VECTOR_BOOL_TRIM
         || id == ids::VECTOR_BOOL_CROP

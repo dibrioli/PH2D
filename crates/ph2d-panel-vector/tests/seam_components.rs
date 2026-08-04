@@ -275,6 +275,123 @@ fn only_the_published_pieces_get_a_row() {
     clear();
 }
 
+// ── OS VARIANTS (W5c) ────────────────────────────────────────────────────────────────────
+
+/// Publica um eixo de `n` valores, com o `sel`-ésimo vigente.
+fn variants(n: usize, sel: usize, beyond: usize) {
+    state::set_variant_rows(
+        vec![state::VariantRow {
+            name: "Size".into(),
+            values: (0..n).map(|i| format!("V{i}")).collect(),
+            selected: sel,
+        }],
+        beyond,
+    );
+}
+
+/// **Cada chip de variant está VIVO sob o mouse e chega ao barramento.**
+///
+/// ⚠️ O gesto é real (Down+Up sobre o retângulo pintado). Um `WidgetEvent::Click` sintético prova
+/// a allowlist e **pula a focabilidade no store** — a lacuna que já deixou as 36 células da física
+/// e os dez chips do impasto pintados e mortos sob o ponteiro.
+#[test]
+fn every_variant_chip_is_alive_and_reaches_the_bus() {
+    clear();
+    variants(3, 1, 0);
+    let st = ComponentState {
+        is_instance: true,
+        ..ComponentState::default()
+    };
+    for v in 0..3 {
+        click_reaches_bus(
+            st,
+            ids::vector_variant_option_id(0, v),
+            "um chip de variant",
+        );
+    }
+    clear();
+    state::set_variant_rows(Vec::new(), 0);
+}
+
+/// **Sem irmãos, sem fileira** — a metade da AUSÊNCIA.
+///
+/// ⚠️ Sem ela o gate acima ficaria verde sobre um painel que pinta o TETO inteiro de chips: quatro
+/// eixos de oito valores que não correspondem a versão nenhuma.
+#[test]
+fn an_instance_without_variants_paints_no_chips() {
+    clear();
+    state::set_variant_rows(Vec::new(), 0);
+    state::set_component_state(Some(ComponentState {
+        is_instance: true,
+        ..ComponentState::default()
+    }));
+    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut st = VectorPanelState;
+    for axis in 0..ids::MAX_VARIANT_AXES {
+        for value in 0..ids::MAX_VARIANT_VALUES {
+            assert!(
+                host.painted_rect::<VectorPanel>(
+                    &mut st,
+                    VIEWPORT,
+                    ids::vector_variant_option_id(axis, value)
+                )
+                .is_none(),
+                "o chip ({axis},{value}) foi pintado sem variants publicados"
+            );
+        }
+    }
+    clear();
+}
+
+/// **Só os valores publicados ganham chip** — o teto regista, o corpo pinta a contagem VIVA.
+#[test]
+fn only_the_published_values_get_a_chip() {
+    clear();
+    variants(2, 0, 0);
+    let st = ComponentState {
+        is_instance: true,
+        ..ComponentState::default()
+    };
+    assert!(rect_under(st, ids::vector_variant_option_id(0, 1)).is_some());
+    assert!(
+        rect_under(st, ids::vector_variant_option_id(0, 2)).is_none(),
+        "um chip foi pintado para uma versao que nao existe"
+    );
+    assert!(
+        rect_under(st, ids::vector_variant_option_id(1, 0)).is_none(),
+        "um segundo eixo foi pintado com um so' publicado"
+    );
+    clear();
+    state::set_variant_rows(Vec::new(), 0);
+}
+
+/// **As fileiras de variant vêm ANTES da lista de peças.**
+///
+/// ⚠️ A ordem é a da pergunta — *que versão é esta?* precede *e o que nela difere?* —, e ela é
+/// funcional: escolher um variant troca o mestre, e trocar o mestre reescreve a lista de peças.
+/// Com a lista em cima, o artista autoraria diferenças numa lista que o clique seguinte substitui.
+#[test]
+fn the_variant_rows_come_before_the_piece_list() {
+    clear();
+    variants(2, 0, 0);
+    pieces(2, 0);
+    let st = ComponentState {
+        is_instance: true,
+        ..ComponentState::default()
+    };
+    let chip = rect_under(st, ids::vector_variant_option_id(0, 0)).expect("chip nao pintado");
+    let piece =
+        rect_under(st, ids::vector_instance_piece_show_id(0)).expect("linha de peca nao pintada");
+    assert!(
+        chip.y < piece.y,
+        "as pecas ficaram acima dos variants ({} contra {})",
+        chip.y,
+        piece.y
+    );
+    clear();
+    state::set_variant_rows(Vec::new(), 0);
+}
+
 /// **Sem estado publicado a seção não existe.**
 #[test]
 fn the_section_is_not_painted_without_a_selection() {

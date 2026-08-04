@@ -41,6 +41,11 @@ pub(crate) enum ComponentEdit {
     Swap,
     /// O interruptor de visibilidade da PEÇA `row` desta instância (W5b).
     PieceVisible(usize),
+    /// **O chip `value` do eixo `axis`** — esta instância passa a ser outro VARIANT (W5c).
+    ///
+    /// ⚠️ Ele não é um verbo novo do modelo: religar a instância a um mestre irmão é o *Swap
+    /// Main* da W5b, restrito aos irmãos e escolhido por nome em vez de por conta-gotas.
+    Variant(usize, usize),
 }
 
 /// Este id é um verbo de componente? Porta única do roteador.
@@ -61,8 +66,18 @@ pub(crate) fn component_edit_for_id(id: ph2d_editor::NodeId) -> Option<Component
         _ if id == ph2d_editor::ids::VECTOR_COMPONENT_SWAP => Some(ComponentEdit::Swap),
         _ => (0..ph2d_editor::ids::MAX_INSTANCE_PIECES)
             .find(|&r| ph2d_editor::ids::vector_instance_piece_show_id(r) == id)
-            .map(ComponentEdit::PieceVisible),
+            .map(ComponentEdit::PieceVisible)
+            .or_else(|| variant_edit_for_id(id)),
     }
+}
+
+/// O chip de variant que este id endereça — a varredura da tabela `AXES × VALUES` (W5c).
+fn variant_edit_for_id(id: ph2d_editor::NodeId) -> Option<ComponentEdit> {
+    (0..ph2d_editor::ids::MAX_VARIANT_AXES).find_map(|a| {
+        (0..ph2d_editor::ids::MAX_VARIANT_VALUES)
+            .find(|&v| ph2d_editor::ids::vector_variant_option_id(a, v) == id)
+            .map(|v| ComponentEdit::Variant(a, v))
+    })
 }
 
 /// A forma selecionada (uma só) e a entidade dela.

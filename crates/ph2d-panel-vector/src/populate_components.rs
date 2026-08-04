@@ -47,4 +47,17 @@ pub(super) fn component_controls(store: &mut WidgetStore) {
         // widget e **nunca abrir o picker** — a cor ficaria ineditável com todos os gates verdes.
         store.register_picker_swatch(ids::vector_instance_piece_colour_id(row));
     }
+    // **Os chips de VARIANT** (W5c). O teto é registado SEMPRE, pela mesma razão das peças: o
+    // `populate` corre antes do corpo, e registar a contagem viva faria um chip novo nascer morto
+    // sob o mouse até ao frame seguinte.
+    for axis in 0..ids::MAX_VARIANT_AXES {
+        for value in 0..ids::MAX_VARIANT_VALUES {
+            store.register(
+                ids::vector_variant_option_id(axis, value),
+                InteractiveState::Button {
+                    state: ButtonState::Normal,
+                },
+            );
+        }
+    }
 }

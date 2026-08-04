@@ -256,5 +256,12 @@ pub(crate) fn route(app: &mut crate::App, f: u32, level: u32) -> bool {
         crate::zorder_smoke::frame(app, f);
         return true;
     }
+    // A cena dos VARIANTS (=58) — irmã `variant_smoke`. Como a `=53` e a `=56`, ela **não arma
+    // componente nenhum**: aqui é o gesto de marcar os quatro irmãos como mestres que FAZ deles um
+    // conjunto de versões, então armá-lo escondia a metade mais importante do desenho.
+    if level == 58 {
+        crate::variant_smoke::frame(app, f);
+        return true;
+    }
     false
 }

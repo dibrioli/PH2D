@@ -219,6 +219,12 @@ pub fn tr(key: &str) -> &'static str {
         // diferente"* só se descobre carregando em Reset e vendo o que muda.
         "panel.vector.component.piece_colour_own" => "Colour (own)",
         "panel.vector.component.pieces_beyond" => "more pieces (edit them in the main)",
+        // **OS VARIANTS** (W5c) — que versão do componente esta cópia é.
+        // ⚠️ Este rótulo só é usado no modo de NOMES CRUS: quando os mestres irmãos declaram
+        // propriedades no nome (`Size=Small`), o rótulo de cada fileira é a propriedade, que é
+        // palavra do ARTISTA e nunca passa por aqui.
+        "panel.vector.component.variant" => "Variant",
+        "panel.vector.component.variants_beyond" => "more variant options (use Swap Main)",
         "panel.vector.component.update_main" => "Update Main",
         "panel.vector.component.swap" => "Swap Main",
         "panel.vector.component.swap_armed" => "Click a component to swap",

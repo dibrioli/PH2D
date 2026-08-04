@@ -74,6 +74,31 @@ pub fn vector_instance_piece_show_id(row: usize) -> NodeId {
     fnv_node_id_runtime(&format!("vector.instance.piece.show.{row}"))
 }
 
+/// Quantos EIXOS de variant a seção endereça (plano UI/UX W5c).
+///
+/// ⚠️ **Teto de TABELA DE IDS, e ele diz de que recurso é** — o mesmo que o
+/// [`MAX_INSTANCE_PIECES`]: o `populate` regista `AXES × VALUES` chips num laço e o roteador varre
+/// o mesmo intervalo. Não é teto do catálogo: um conjunto pode ter as versões que quiser, e as que
+/// passam daqui continuam a existir, a desenhar, e a ser alcançáveis pelo **Swap Main** — que é um
+/// conta-gotas e não tem lista nenhuma.
+///
+/// ⚠️ E o excedente **é escrito** no painel, nunca truncado em silêncio.
+pub const MAX_VARIANT_AXES: usize = 4;
+
+/// Quantos VALORES por eixo a seção endereça (plano UI/UX W5c).
+pub const MAX_VARIANT_VALUES: usize = 8;
+
+/// O chip do valor `value` do eixo `axis` da instância selecionada.
+///
+/// ⚠️ **Um chip por VALOR, e não um dropdown**, porque um eixo de variant tem tipicamente dois a
+/// quatro valores — e a fileira segmentada mostra-os todos ao mesmo tempo, que é o que deixa o
+/// artista ver o catálogo em vez de o abrir. É o widget que este painel já usa para *"qual
+/// destes?"* com poucos candidatos, e ele quebra em linhas sozinho quando não cabem.
+#[must_use]
+pub fn vector_variant_option_id(axis: usize, value: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("vector.variant.{axis}.{value}"))
+}
+
 /// A swatch de cor da peça `row` **nesta instância** (`OverrideSlot::Fill`).
 ///
 /// ⚠️ Ela é alvo de PICKER (`register_picker_swatch`), como a swatch de Fill da forma: o clique

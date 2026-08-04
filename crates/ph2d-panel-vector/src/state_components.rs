@@ -31,6 +31,24 @@ pub struct InstancePiece {
     pub overridden: bool,
 }
 
+/// **Um eixo de VARIANT e o que ele oferece** (plano UI/UX W5c).
+///
+/// ⚠️ Os eixos são **derivados dos NOMES** dos mestres irmãos (`Size=Small, State=Idle`, a
+/// convenção do Figma) e não existem em lado nenhum como dado — guardá-los seria um segundo lugar
+/// onde o mesmo facto envelhece, e o artista já os renomeia na Hierarquia.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct VariantRow {
+    /// O nome da propriedade (`Size`). **Vazio** = o modo de nomes crus, e o rótulo é i18n.
+    pub name: String,
+    /// Os valores ALCANÇÁVEIS a partir da combinação vigente.
+    ///
+    /// ⚠️ Alcançáveis, e não todos: um valor que não corresponde a nenhum irmão seria um chip
+    /// clicável que não faz nada — o botão-morto que este painel persegue.
+    pub values: Vec<String>,
+    /// Qual deles é o vigente.
+    pub selected: usize,
+}
+
 /// O que a seleção É, do ponto de vista dos componentes.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct ComponentState {
@@ -61,6 +79,26 @@ thread_local! {
     /// ⚠️ Publicado, e não derivado do `len` da lista: quem trunca é a shell, e um número que o
     /// painel recalculasse seria a segunda resposta a *"quantas ficaram de fora?"*.
     static PIECES_BEYOND: Cell<usize> = const { Cell::new(0) };
+    /// Os eixos de variant do mestre desta instância — vazio quando ele não tem irmãos.
+    static VARIANTS: RefCell<Vec<VariantRow>> = const { RefCell::new(Vec::new()) };
+    /// Quantas opções de variant a tabela de ids NÃO endereça.
+    static VARIANTS_BEYOND: Cell<usize> = const { Cell::new(0) };
+}
+
+/// Publica os eixos de variant (shell → painel) e quantas opções ficaram além do teto.
+pub fn set_variant_rows(rows: Vec<VariantRow>, beyond: usize) {
+    VARIANTS.with(|v| *v.borrow_mut() = rows);
+    VARIANTS_BEYOND.with(|b| b.set(beyond));
+}
+
+/// Os eixos publicados, para o corpo do painel.
+pub(crate) fn variant_rows() -> Vec<VariantRow> {
+    VARIANTS.with(|v| v.borrow().clone())
+}
+
+/// Quantas opções de variant ficaram fora da tabela de ids.
+pub(crate) fn variant_rows_beyond() -> usize {
+    VARIANTS_BEYOND.with(Cell::get)
 }
 
 /// Publica as peças do mestre (shell → painel) e quantas ficaram além do teto.

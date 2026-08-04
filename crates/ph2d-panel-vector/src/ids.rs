@@ -29,11 +29,13 @@ pub use ph2d_editor_core::ids::{
     vector_fx_card_id, vector_fx_down_id, vector_fx_hide_id, vector_fx_param_id,
     vector_fx_param_num_id, vector_fx_remove_id, vector_fx_toggle_id, vector_fx_up_id,
 };
-/// **OS COMPONENTES** (plano UI/UX W5): a seção, os verbos, e as linhas de PEÇA da W5b.
+/// **OS COMPONENTES** (plano UI/UX W5): a seção, os verbos, as linhas de PEÇA da W5b e os chips de
+/// VARIANT da W5c.
 pub use ph2d_editor_core::ids::{
-    MAX_INSTANCE_PIECES, VECTOR_COMPONENT_CREATE, VECTOR_COMPONENT_DETACH, VECTOR_COMPONENT_PLACE,
-    VECTOR_COMPONENT_RESET, VECTOR_COMPONENT_SWAP, VECTOR_COMPONENT_UPDATE_MAIN,
-    VECTOR_SECTION_COMPONENT, vector_instance_piece_colour_id, vector_instance_piece_show_id,
+    MAX_INSTANCE_PIECES, MAX_VARIANT_AXES, MAX_VARIANT_VALUES, VECTOR_COMPONENT_CREATE,
+    VECTOR_COMPONENT_DETACH, VECTOR_COMPONENT_PLACE, VECTOR_COMPONENT_RESET, VECTOR_COMPONENT_SWAP,
+    VECTOR_COMPONENT_UPDATE_MAIN, VECTOR_SECTION_COMPONENT, vector_instance_piece_colour_id,
+    vector_instance_piece_show_id, vector_variant_option_id,
 };
 pub use ph2d_editor_core::ids::{
     MAX_SHAPE_FIELD_SLOTS, vector_shape_choice_id, vector_shape_field_id, vector_shape_group_id,

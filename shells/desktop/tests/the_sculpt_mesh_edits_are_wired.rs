@@ -573,13 +573,14 @@ fn the_holes_scene_says_how_big_the_hole_it_built_is() {
         punctured.contains(".filter(") && punctured.contains("faces()"),
         "o furo é feito ARRANCANDO faces, não desenhando uma beira"
     );
-    // ⚠️ A declaração mora no `announce`, ao lado da fixture — e este gate já
-    // apontou para o `sculpt3d_smoke`, onde ela morava antes de o arquivo do
-    // gesto bater o teto de LOC. A PROPRIEDADE não mudou (*a cena `=4` imprime
-    // quantas beiras abriu*); o endereço mudou, e um gate ancorado em endereço
-    // expira. Este agora pergunta à porta que DECLARA.
-    let announce = function_body(&src, "announce");
-    let arm = braced_block(&announce, "if crate::sculpt3d::holes_scene()");
+    // ⚠️ **Ele pergunta ao CLUSTER, e não a uma função — porque já expirou DUAS vezes.**
+    // A declaração morava no `sculpt3d_smoke`, mudou para o `announce` quando aquele arquivo
+    // bateu o teto de LOC, e mudou de novo para o `scripts::for_scene` quando o teto pegou o
+    // arquivo das CENAS. Nas duas o produto estava certo e o gate ficou vermelho apontando para
+    // um endereço. A propriedade nunca mudou — *a cena `=4` imprime quantas beiras ela abriu* —,
+    // e ela não depende de em que função a linha mora. O `sculpt_src` já junta o cluster inteiro,
+    // então o bloco é achado onde quer que ele esteja, e o próximo split não derruba nada.
+    let arm = braced_block(&src, "if crate::sculpt3d::holes_scene()");
     assert!(
         arm.contains("valence(") && arm.contains("arestas de BEIRA"),
         "e a cena imprime quantas arestas de beira ela abriu"

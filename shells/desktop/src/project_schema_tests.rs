@@ -179,7 +179,13 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // que torna um build sem a feature um **passa-adiante** em vez de um triturador.
         // ⚠️ O 52 é PROVISÓRIO pela mesma razão do 49/50/51 acima: ele se CONTA contra o
         // `main` do dia da integração.
-        (52, 13, 14),
+        // PROJECT 52→53: o `ProjectFile` ganhou `baked_forms` (ADR-0150 W8.7 — os canais que
+        // uma malha doou a um sprite: `base`, `form` e o RIG). Campo apendado ao ARQUIVO, e
+        // postcard é posicional ⇒ o leitor v52 chega ao fim dos bytes. ⚠️ `FLIP`/`VEC_SCENE`
+        // não se movem: os canais são campo de sprite, e nem sequer entraram no blob `sculpt`
+        // — o parser dele é `cfg(feature = "sculpt3d")`, e um objeto assado tem de ser legível
+        // SEM o módulo 3D no build (é o que a *rota A* do `docs/3D/02.2` promete).
+        (53, 13, 14),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

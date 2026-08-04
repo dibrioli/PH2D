@@ -397,3 +397,48 @@ mod tests {
         );
     }
 }
+
+/// **O QUE UM OBJETO ASSADO CUSTA NO ARQUIVO** — a sonda que decidiu a representação.
+///
+/// ```text
+/// cargo test -p ph2d-host-desktop --release --bins baked_form::probe -- --ignored --nocapture
+/// ```
+#[cfg(test)]
+mod probe {
+    use super::*;
+
+    /// Imprime o tamanho de um documento nos tamanhos que o produto usa.
+    ///
+    /// ⚠️ Ela mede o **postcard do documento inteiro**, e não a aritmética dos planos: é o número
+    /// que o artista vê no `[proj] salvo:`, e o que separa os dois é tudo o que a serialização
+    /// acrescenta. Uma sonda que somasse `w × h × 4` estaria medindo a minha conta, não o arquivo.
+    #[test]
+    #[ignore = "sonda: mede, nao afirma"]
+    fn measure_what_a_baked_object_costs_on_disk() {
+        println!("lado | base f32 (MiB) | base RGBA8 | forma RGBA8 | doc postcard (MiB)");
+        for side in [512u32, 1024, 2048] {
+            let n = (side * side) as usize;
+            let form: Vec<f32> = (0..n * 4).map(|i| ((i % 255) as f32) / 255.0).collect();
+            let base = vec![200u8; n * 4];
+            let mib = |b: usize| b as f64 / (1024.0 * 1024.0);
+            // O que teria custado guardar a forma como `f32`, que é como ela vive na memória.
+            let as_f32 = form.len() * 4;
+            let doc_bytes = postcard::to_allocvec(&(
+                7u32,
+                side,
+                side,
+                &base,
+                form_to_rgba8(&form),
+                LightRig::default(),
+            ))
+            .expect("serializa");
+            println!(
+                "{side:>4} | {:>14.2} | {:>10.2} | {:>11.2} | {:>18.2}",
+                mib(as_f32),
+                mib(base.len()),
+                mib(form.len()),
+                mib(doc_bytes.len())
+            );
+        }
+    }
+}

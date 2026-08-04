@@ -190,10 +190,7 @@ pub(crate) fn drain(
 /// ⚠️ **Ele não ACENDE nada** — só re-autora. Quem acende é a
 /// [`crate::baked_form::relight_stale`], que vê o carimbo divergir e faz o trabalho; separar as duas
 /// é o que deixa a acendida fora da feature.
-pub(crate) fn follow_live_rig(
-    forms: &mut BTreeMap<u64, BakedForm>,
-    rig: &ph2d_light::LightRig,
-) {
+pub(crate) fn follow_live_rig(forms: &mut BTreeMap<u64, BakedForm>, rig: &ph2d_light::LightRig) {
     for b in forms.values_mut() {
         b.rig = *rig;
     }

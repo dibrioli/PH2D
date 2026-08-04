@@ -127,7 +127,7 @@ mod scenes;
 mod fixtures;
 
 pub(crate) use scenes::{
-    announce, bake_scene, donation_scene, holes_scene, remesh_scene, reversion_scene,
+    announce, bake_scene, donation_scene, holes_scene, remesh_scene, reopen_scene, reversion_scene,
     scene_objects, smoke_armed, smoke_mesh, turn_scene, wants_canvas,
 };
 

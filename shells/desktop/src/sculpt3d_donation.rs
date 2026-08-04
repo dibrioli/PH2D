@@ -76,7 +76,7 @@ pub(crate) fn spawn_canvas_if_enabled(
         atlas_asset_map,
     ) {
         Ok((label, bits)) => {
-            if super::bake_scene() {
+            if super::bake_scene() || super::reopen_scene() {
                 eprintln!(
                     "[sculpt3d] sprite '{label}' ({CANVAS_EDGE}x{CANVAS_EDGE}) na mesa — ele e' o \
                      OBJETO que a forma vai acender"

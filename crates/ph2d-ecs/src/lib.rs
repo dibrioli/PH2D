@@ -40,11 +40,11 @@
 //! preserving the ability to swap or version-bump bevy_ecs without
 //! cascading import churn.
 
+pub mod baked_form;
 pub mod blend;
 pub mod flip_object_ref;
 pub mod masking;
 pub mod name;
-pub mod baked_form;
 pub mod painted_doc;
 pub mod present;
 pub mod root_order;
@@ -65,11 +65,11 @@ pub mod vec_shape;
 pub mod visibility;
 pub mod visibility_layer;
 
+pub use baked_form::BakedForm;
 pub use blend::BlendMode;
 pub use flip_object_ref::FlipObjectRef;
 pub use masking::{ClipChildren, ClipMode, Mask2D, MaskInteraction, MaskMode};
 pub use name::{Name, stable_name_id};
-pub use baked_form::BakedForm;
 pub use painted_doc::PaintedDoc;
 pub use present::{PresentComponent, PresentWorld};
 pub use root_order::{RootOrder, assign_missing_root_order};

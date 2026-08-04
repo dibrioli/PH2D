@@ -45,6 +45,9 @@ mod app_state;
 mod atlas_loader;
 mod attribute_demo_smoke;
 mod audio;
+/// **O OBJETO ASSADO** (`docs/3D/02.2`, rota A) — os canais que uma malha doou a um sprite e a luz
+/// que os le'. ⚠️ Deliberadamente FORA da feature `sculpt3d`: um objeto assado sobrevive ao modulo.
+mod baked_form;
 /// Blend Objects vivos (ADR-0128): o objeto único que interpola 2..=5 formas e as segue
 /// (re-cook por frame). Espelha `connector_live`.
 mod blend_live;
@@ -61,9 +64,6 @@ mod bool_live;
 /// A cena de smoke da booleana viva (`PH2D_BUILD_SMOKE=48`) — irmã de `build_smoke`, teto de LOC.
 mod bool_smoke;
 mod buffer_smoke;
-/// **O OBJETO ASSADO** (`docs/3D/02.2`, rota A) — os canais que uma malha doou a um sprite e a luz
-/// que os le'. ⚠️ Deliberadamente FORA da feature `sculpt3d`: um objeto assado sobrevive ao modulo.
-mod baked_form;
 mod build_smoke;
 mod build_smoke_corner_tools;
 mod build_smoke_drive;

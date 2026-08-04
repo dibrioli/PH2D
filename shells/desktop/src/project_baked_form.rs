@@ -182,6 +182,48 @@ fn reattach_texture(sprite: &mut Sprite, texture_id: u32) {
 mod tests {
     use super::*;
 
+    /// **O DOCUMENTO ATRAVESSA O DISCO INTEIRO** — os canais e, sobretudo, o RIG.
+    ///
+    /// ⚠️ O rig é o único campo aqui que não é pixel, e é o mais fácil de perder em silêncio: um
+    /// documento que gravasse só os dois planos continuaria carregando um objeto perfeito, com a luz
+    /// errada. Este gate existe porque a consequência de errá-lo não parece um bug — parece uma
+    /// escolha estética que ninguém fez.
+    #[test]
+    fn a_baked_document_survives_the_disk_with_the_rig_it_was_baked_with() {
+        let mut authored = LightRig::default();
+        authored.current_mut().angle_deg = 77;
+        authored.current_mut().intensity = 0.42;
+        authored.lights[1].on = true; // uma segunda lâmpada, para o array inteiro viajar
+
+        let doc = BakedFormDocument {
+            id: 3,
+            width: 2,
+            height: 1,
+            base: vec![10, 20, 30, 255, 40, 50, 60, 128],
+            form: crate::baked_form::form_to_rgba8(&[0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.5]),
+            rig: authored,
+        };
+        let bytes = postcard::to_allocvec(&doc).expect("serializa");
+        let back: BakedFormDocument = postcard::from_bytes(&bytes).expect("desserializa");
+
+        assert_eq!(
+            back.id, 3,
+            "a identidade e' o que reata o documento ao sprite"
+        );
+        assert_eq!((back.width, back.height), (2, 1));
+        assert_eq!(back.base, doc.base, "os pixels ANTES da luz");
+        assert_eq!(back.form, doc.form, "o G-buffer");
+        assert_eq!(
+            back.rig, authored,
+            "o RIG tem de voltar inteiro -- sem ele o objeto reabre com outra luz, em silencio"
+        );
+        assert_ne!(
+            back.rig,
+            LightRig::default(),
+            "premissa: o rig autorado NAO e' o default, senao o gate nao distingue os dois"
+        );
+    }
+
     /// **REABRIR NÃO REDIMENSIONA O OBJETO** — e o alfa volta DIREITO, como o bake o escreve.
     ///
     /// ⚠️ A segunda metade não é cópia do gêmeo pintado: lá o composite sobe premultiplicado, aqui

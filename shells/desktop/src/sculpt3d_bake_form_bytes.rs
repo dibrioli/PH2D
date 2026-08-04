@@ -87,7 +87,11 @@ fn measure_the_form_quantised_to_eight_bits() {
     ];
     println!("\n=== A FORMA GUARDADA COMO IMAGEM (RGB8 + peso no alpha) ===");
     println!("  albedo | texels dentro |  bytes diferentes |  pior delta | delta medio");
-    for (name, rgb) in [("barro", clay), ("branco", [255u8; 3]), ("meio", [128u8; 3])] {
+    for (name, rgb) in [
+        ("barro", clay),
+        ("branco", [255u8; 3]),
+        ("meio", [128u8; 3]),
+    ] {
         let a = bake_with(&gpu, &resolved, &form, rgb);
         let b = bake_with(&gpu, &resolved, &quantised, rgb);
         let (mut inside, mut differing, mut worst, mut sum) = (0u64, 0u64, 0u8, 0u64);
@@ -119,7 +123,5 @@ fn measure_the_form_quantised_to_eight_bits() {
         (px * 4) as f64 / (1024.0 * 1024.0),
         (px * 4) as f64 / (1024.0 * 1024.0)
     );
-    println!(
-        "  (a 1024x1024 isso e' 16,00 / 4,00 / 4,00 MiB -- o documento de UM objeto assado)"
-    );
+    println!("  (a 1024x1024 isso e' 16,00 / 4,00 / 4,00 MiB -- o documento de UM objeto assado)");
 }

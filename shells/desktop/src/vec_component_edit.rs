@@ -101,8 +101,57 @@ pub(crate) fn create_main(sim: &mut SimWorld, map: &VecEntityMap, selected: &[Ve
     true
 }
 
-/// O deslocamento da cópia nova, em unidades de mundo — a mesma folga do Duplicate do Arrange.
-const PLACE_OFFSET: f32 = 24.0;
+/// **Quantas instâncias VIVAS deste mestre já existem** — o degrau da cascata.
+///
+/// A varredura é sobre a CENA e não sobre o mundo ECS, pelo mesmo motivo do produtor: é a cena que
+/// dá a ordem estável, e é ela que o `sync` mantém de acordo com as entidades.
+#[must_use]
+pub(crate) fn instance_count(
+    sim: &SimWorld,
+    scene: &VecScene,
+    map: &VecEntityMap,
+    main: VecPathId,
+) -> usize {
+    scene
+        .paths()
+        .iter()
+        .filter_map(|p| map.get(&p.id))
+        .filter(|&&bits| {
+            sim.world()
+                .get::<VecInstance>(Entity::from_bits(bits))
+                .is_some_and(|i| i.main == main)
+        })
+        .count()
+}
+
+/// **Onde a cópia nasce**: `already + 1` degraus de tela a partir do mestre.
+///
+/// # Duas coisas estavam erradas aqui, e a segunda escondia-se atrás da primeira
+///
+/// O `step` chega em MUNDO, mas nasce de um número em **pixels de TELA**
+/// ([`crate::input_dispatch::PASTE_OFFSET_PX`], convertido por
+/// [`crate::input_dispatch::screen_offset_world`]). A v1 tinha um `PLACE_OFFSET: f32 = 24.0` em
+/// unidades de MUNDO com um doc-comment a afirmar que era *"a mesma folga do Duplicate"* — e não
+/// era: a folga do Duplicate são 12 px de tela. Medido na cena `=53`, a ~29 px por unidade, a
+/// cópia nascia a **~700 px do mestre — 58× um paste, e sete larguras do próprio botão**. É a
+/// classe das unidades misturadas: o número parecia pixels e foi consumido como mundo.
+///
+/// E a cascata: a v1 era `const`, então os três cliques do roteiro punham as três cópias **no
+/// mesmo sítio**. O Ctrl+D não sofre disto porque **seleciona a cópia** (a duplicação seguinte
+/// parte dela); o *Place* mantém o MESTRE selecionado — senão o botão deixaria de ser *Place* no
+/// clique seguinte —, então o degrau tem de vir de outro lado: de quantas cópias já existem.
+///
+/// ⚠️ **Sem teto, de propósito.** Um teto faria a cópia N+1 voltar a pousar em cima de uma
+/// anterior, que é exactamente o defeito que esta função existe para remover; e o que limita a
+/// cascata é o gesto — uma cópia por clique. Uma cópia arrastada para longe deixa o degrau dela
+/// vago (a seguinte nasce um degrau adiante do que precisava): fica **um vão adjacente ao mestre**,
+/// sempre visível, e é o preço de contar em vez de procurar sítio livre — procurar exigiria um
+/// raio de *"este sítio está ocupado?"*, um número que nada mede.
+#[must_use]
+pub(crate) fn cascade_offset(step: [f32; 2], already: usize) -> [f32; 2] {
+    let n = already.saturating_add(1) as f32;
+    [step[0] * n, step[1] * n]
+}
 
 /// **Põe uma instância** do mestre selecionado. Devolve o caminho novo.
 pub(crate) fn place_instance(
@@ -143,12 +192,6 @@ pub(crate) fn arm_instance(
     t.translation.y += place_offset[1];
     em.insert((t, VecInstance::new(main)));
     true
-}
-
-/// O deslocamento com que uma cópia nasce (para o chamador não repetir o número).
-#[must_use]
-pub(crate) const fn place_offset() -> [f32; 2] {
-    [PLACE_OFFSET, -PLACE_OFFSET]
 }
 
 /// **Detach**: o que está na tela vira geometria da instância, e o vínculo sai.

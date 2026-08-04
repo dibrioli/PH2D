@@ -5557,12 +5557,26 @@ impl crate::App {
             // entidade — é agora que o vínculo pousa. Mesmo sítio, e pela mesma razão, em que o
             // `make_committed_shape_live` faz uma forma recém-desenhada nascer viva.
             if let Some((new_id, main)) = arm_instance_of {
+                // ⚠️ O degrau vem da CÂMARA, pela mesma porta do paste e do Ctrl+D — é isso que o
+                // faz ler igual em qualquer zoom. A v1 tinha um número próprio em unidades de
+                // mundo e punha a cópia a ~700 px do mestre (ver `cascade_offset`).
+                let (sx, sy) = crate::input_dispatch::screen_offset_world(
+                    camera,
+                    surface.size(),
+                    crate::input_dispatch::PASTE_OFFSET_PX,
+                );
+                let already = crate::vec_component_edit::instance_count(
+                    sim,
+                    vec_scene,
+                    &self.vec_entities,
+                    main,
+                );
                 crate::vec_component_edit::arm_instance(
                     sim,
                     &self.vec_entities,
                     new_id,
                     main,
-                    crate::vec_component_edit::place_offset(),
+                    crate::vec_component_edit::cascade_offset([sx as f32, sy as f32], already),
                 );
             }
             if let Some((root, pieces)) = arm_detached_under {

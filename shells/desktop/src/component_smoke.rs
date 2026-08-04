@@ -112,8 +112,11 @@ fn announce(app: &mut crate::App) {
     eprintln!("  1. Clique na caixa AZUL do botao. Na secao **Component** ha' UM botao:");
     eprintln!("     **Create Component**. Carregue nele. ⚠️ Nada se move — um mestre continua a");
     eprintln!("     ser a arte onde ela esta'.");
-    eprintln!("  2. O botao mudou para **Place Instance**. Carregue nele TRES vezes. Nascem tres");
-    eprintln!("     copias, cada uma um pouco a' direita e abaixo da anterior.");
+    eprintln!("  2. O botao mudou para **Place Instance**. Carregue nele TRES vezes. ⚠️ As tres");
+    eprintln!("     copias nascem COLADAS ao mestre -- um degrau de paste (12 px de TELA) cada,");
+    eprintln!("     em cascata, como um Ctrl+V repetido. Elas NAO podem nascer longe (o artista");
+    eprintln!("     nao saberia que existem) nem UMA EM CIMA DA OUTRA. De zoom: a folga entre");
+    eprintln!("     elas tem de continuar do mesmo tamanho na TELA.");
     eprintln!("  3. Arraste cada copia para onde quiser (o gizmo move-as normalmente).");
     eprintln!("  4. ⚠️ **A PROVA DA WAVE**: selecione a ETIQUETA branca DENTRO do mestre (clique");
     eprintln!("     nela) e, na secao **Fill**, mude a cor. As TRES copias mudam junto, no mesmo");

@@ -34,13 +34,121 @@ fn create_then_place_gives_a_copy_that_draws_the_main() {
         &map,
         new_id,
         main_id,
-        place_offset()
+        cascade_offset([3.0, -3.0], 0)
     ));
     let xf = crate::vec_transform::build(&sim, &map);
     let mut live = crate::instance_live::InstanceLive::default();
     live.recook(&scene, &sim, &map, &xf);
     let items = live.live().get(&new_id).expect("a cópia desenha o mestre");
     assert_eq!(items.len(), 1, "um mestre de uma peça desenha uma");
+}
+
+/// Coloca `n` cópias do mestre pela MESMA sequência do frame do produto, com o degrau `step`.
+fn place_n(
+    sim: &mut SimWorld,
+    scene: &mut VecScene,
+    map: &mut VecEntityMap,
+    main: VecPathId,
+    step: [f32; 2],
+    n: usize,
+) -> Vec<VecPathId> {
+    let mut out = Vec::new();
+    for _ in 0..n {
+        let Some(id) = place_instance(sim, scene, map, &[main]) else {
+            break;
+        };
+        crate::vec_entities::sync(sim, scene, map);
+        let already = instance_count(sim, scene, map, main);
+        arm_instance(sim, map, id, main, cascade_offset(step, already));
+        out.push(id);
+    }
+    out
+}
+
+/// A pose de um caminho, lida do ECS.
+fn pose_of(sim: &SimWorld, map: &VecEntityMap, id: VecPathId) -> [f32; 2] {
+    let e = Entity::from_bits(map[&id]);
+    sim.world()
+        .get::<ph2d_ecs::Transform>(e)
+        .map_or([0.0, 0.0], |t| [t.translation.x, t.translation.y])
+}
+
+/// **Três cliques dão três sítios** — e nenhum deles longe do mestre.
+///
+/// ⚠️ O gate nasceu VERMELHO contra a v1, e nas DUAS metades: ela tinha um degrau `const`, então
+/// as três cópias pousavam **no mesmo ponto** (o relato *"uma em cima da outra"*), e esse ponto
+/// era 24 unidades de MUNDO — a ~700 px na cena `=53`, o relato *"nem saberia que existiam"*.
+#[test]
+fn three_places_cascade_and_none_of_them_wanders_off() {
+    let (mut sim, mut scene, mut map, main_id) = one_shape();
+    assert!(create_main(&mut sim, &map, &[main_id]));
+    let step = [3.0_f32, -3.0];
+    let ids = place_n(&mut sim, &mut scene, &mut map, main_id, step, 3);
+    assert_eq!(ids.len(), 3, "o Place recusou uma das cópias");
+
+    let base = pose_of(&sim, &map, main_id);
+    for (i, id) in ids.iter().enumerate() {
+        let p = pose_of(&sim, &map, *id);
+        let want = [
+            base[0] + step[0] * (i + 1) as f32,
+            base[1] + step[1] * (i + 1) as f32,
+        ];
+        assert!(
+            (p[0] - want[0]).abs() < 1e-4 && (p[1] - want[1]).abs() < 1e-4,
+            "a cópia {i} nasceu em {p:?}, e o degrau {} manda {want:?}",
+            i + 1
+        );
+    }
+    // A metade da PILHA, dita sem a aritmética acima: duas cópias nunca coincidem.
+    for a in 0..ids.len() {
+        for b in (a + 1)..ids.len() {
+            let (pa, pb) = (pose_of(&sim, &map, ids[a]), pose_of(&sim, &map, ids[b]));
+            assert!(
+                (pa[0] - pb[0]).abs() > 1e-4 || (pa[1] - pb[1]).abs() > 1e-4,
+                "as cópias {a} e {b} pousaram no mesmo sítio ({pa:?})"
+            );
+        }
+    }
+}
+
+/// **A cascata conta só as cópias DESTE mestre.**
+///
+/// ⚠️ Sem isto, colocar uma cópia de um botão empurraria a próxima cópia de um ícone — a folga
+/// passaria a depender do que mais existe no documento, e o artista não teria como a prever.
+#[test]
+fn the_cascade_counts_only_copies_of_this_main() {
+    let (mut sim, mut scene, mut map, main_id) = one_shape();
+    assert!(create_main(&mut sim, &map, &[main_id]));
+    // Um segundo mestre, com duas cópias já colocadas.
+    let other = scene.push_path(rectangle([40.0, 0.0], [50.0, 6.0]));
+    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    assert!(create_main(&mut sim, &map, &[other]));
+    place_n(&mut sim, &mut scene, &mut map, other, [1.0, -1.0], 2);
+
+    assert_eq!(
+        instance_count(&sim, &scene, &map, main_id),
+        0,
+        "as cópias do OUTRO mestre entraram na conta deste"
+    );
+    let step = [3.0_f32, -3.0];
+    let base = pose_of(&sim, &map, main_id);
+    let ids = place_n(&mut sim, &mut scene, &mut map, main_id, step, 1);
+    let p = pose_of(&sim, &map, ids[0]);
+    assert!(
+        (p[0] - (base[0] + step[0])).abs() < 1e-4,
+        "a 1ª cópia deste mestre nasceu no degrau {:.1}, e não no 1º",
+        (p[0] - base[0]) / step[0]
+    );
+}
+
+/// **O degrau é um MÚLTIPLO, e o primeiro nunca é zero** — uma cópia sob o mestre é uma cópia que
+/// o artista não vê, e é o outro modo de falha do mesmo botão.
+#[test]
+fn the_first_copy_is_one_step_away_and_the_nth_is_n_steps() {
+    let step = [2.0_f32, -5.0];
+    assert_eq!(cascade_offset(step, 0), step);
+    assert_eq!(cascade_offset(step, 1), [4.0, -10.0]);
+    assert_eq!(cascade_offset(step, 4), [10.0, -25.0]);
 }
 
 /// **Uma instância não vira mestre** — o que ela mostra é derivado.

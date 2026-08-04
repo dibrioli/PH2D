@@ -57,7 +57,12 @@ pub(crate) mod protect_brush;
 
 /// Deslocamento diagonal de um paste/duplicate, em pixels de tela (o zoom converte
 /// para world) — a cópia não nasce exatamente sob o original.
-const PASTE_OFFSET_PX: f64 = 12.0;
+///
+/// ⚠️ **Em pixels de TELA, e é isso que o torna a resposta certa a *"onde nasce uma cópia?"***:
+/// ele lê o mesmo em qualquer zoom. O `Place` de instância (plano UI/UX W5) nasceu com um número
+/// próprio em unidades de MUNDO, e a conta que isso deu está escrita no
+/// [`crate::vec_component_edit::cascade_offset`].
+pub(crate) const PASTE_OFFSET_PX: f64 = 12.0;
 
 /// O raio de acerto de uma alça de canvas, em **pixels de tela**. O MESMO número que as
 /// ferramentas de quina usam para agarrar um vértice — uma alça é uma alça, e dois raios
@@ -288,6 +293,24 @@ pub(crate) fn vec_vertex_kind_for_id(
     } else {
         None
     }
+}
+
+/// **Quanto vale, em MUNDO, um deslocamento de `px` pixels de tela** — a porta única.
+///
+/// ⚠️ Porta única e não conveniência: quem coloca uma cópia (paste · Ctrl+D · o **Place** de
+/// instância) faz a MESMA pergunta, e uma segunda resposta é uma folga que muda de tamanho
+/// conforme o botão. Ela já divergiu uma vez — ver [`crate::vec_component_edit::cascade_offset`].
+///
+/// O sinal de `y` vem do afim da câmara, nunca de um palpite: em tela `+y` desce, e é a conversão
+/// que sabe se isso é `+` ou `−` no mundo.
+pub(crate) fn screen_offset_world(
+    camera: &ph2d_render::Camera2d,
+    win: ph2d_host::WindowSize,
+    px: f64,
+) -> (f64, f64) {
+    let base = camera.screen_to_world((0.0, 0.0), win);
+    let moved = camera.screen_to_world((px as f32, px as f32), win);
+    (f64::from(moved[0] - base[0]), f64::from(moved[1] - base[1]))
 }
 
 /// Duplicate the SELECTED path (panel "Duplicate" button), offsetting the clone
@@ -1610,10 +1633,7 @@ impl App {
         let Some(gfx) = self.gfx.as_ref() else {
             return (0.0, 0.0);
         };
-        let win = gfx.surface.size();
-        let base = gfx.camera.screen_to_world((0.0, 0.0), win);
-        let moved = gfx.camera.screen_to_world((px as f32, px as f32), win);
-        ((moved[0] - base[0]) as f64, (moved[1] - base[1]) as f64)
+        screen_offset_world(&gfx.camera, gfx.surface.size(), px)
     }
 
     /// True when a text / number / combobox widget holds keyboard focus — Vector

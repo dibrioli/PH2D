@@ -463,8 +463,15 @@ impl PainterTool {
         // RYB, sem Smooth Edges —, cada uma uma lei que o kernel não transcreve
         // ([`super::stamp_device::eligible`]). Sem ponte instalada, ou fora do predicado, `None`: o
         // lote segue para a rota em banda da CPU e nada muda.
-        let plain = !textured && !shape_active && !accumulate_cap && image.is_none();
-        let device = (plain
+        // ⚠️ **DUAS perguntas, e colapsá-las custava o lote inteiro.** A rota em BANDA quer saber se
+        // este pincel tem estado que uma banda não pode carregar (Shape/Grain: o stream de RNG é
+        // sequencial); o DEVICE quer saber, além disso, se o WGSL transcreve todas as leis — e a lei do
+        // cap de Accumulate ele **não** transcreve. Enquanto as duas moraram num `plain` só, o cap
+        // — que dispara em `strength < 1` e em TODO pincel de impasto pelo AA do filme — tirava o
+        // lote da CPU paralela junto com o device, e um re-stamp de forma rodava num núcleo.
+        let banded_ok = !textured && !shape_active && image.is_none();
+        let device = (banded_ok
+            && !accumulate_cap
             && self.device_stamp.is_some()
             && super::stamp_device::eligible(brush)
             && super::stamp_device::wants_device(dabs, w, h))
@@ -489,7 +496,7 @@ impl PainterTool {
         // DEFAULT (*"a bare falloff brush stays on the per-pixel path"*), e é onde o re-stamp de uma
         // forma gasta os 30-119 ms medidos em 2026-08-03. Abaixo do piso, ou com qualquer um dos três
         // presentes, a porta cai no laço `for d in dabs` de sempre — byte-idêntico.
-        if plain {
+        if banded_ok {
             // O device primeiro; ele devolve `None` quando declina (sem região, ou a ponte falhou),
             // e aí o MESMO lote cai na rota em banda — o modo de falha é lento, nunca errado.
             let mut touched = None;
@@ -522,6 +529,7 @@ impl PainterTool {
                     dabs,
                     brush,
                     alpha_locked,
+                    mask.as_deref_mut(),
                 );
             }
             // O stream de RNG é consumido pelas BASES de textura, que este pincel não tem — mas o

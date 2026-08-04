@@ -88,7 +88,7 @@ pub use clone_grain::clone_blit_grain;
 pub use curve_fit::{CurveFit, auto_handles, fit_curve, flatten_bezier};
 pub use dab::{
     DirtyRect, ShapeInput, stamp_dab, stamp_dab_ramped, stamp_dab_textured,
-    stamp_dab_textured_masked,
+    stamp_dab_textured_masked, stamp_dab_textured_masked_with,
 };
 pub use dynamics::Dynamics;
 pub use falloff::{Falloff, MAX_FALLOFF};

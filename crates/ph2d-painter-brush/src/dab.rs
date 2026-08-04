@@ -212,16 +212,22 @@ pub fn stamp_dab_textured_masked(
     )
 }
 
-/// [`stamp_dab_textured_masked`] com o **piso de paralelismo explícito** — a rota de ablação do gate.
+/// [`stamp_dab_textured_masked`] com o **piso de paralelismo explícito** — a porta que NOMEIA o piso.
 ///
 /// ⚠️ Com `min_area = usize::MAX` o kernel roda a **banda ÚNICA** que o caminho do cap rodava antes de
 /// 2026-08-04, chamando o MESMO `stamp_band` com os mesmos argumentos. É isso que torna o gate de
 /// identidade uma comparação contra **o produto**, e não contra uma segunda implementação escrita para
 /// o teste (o precedente do `stamp_plain_dabs_banded_with`).
+///
+/// ⚠️ **Ela nasceu `#[cfg(test)]` e deixou de ser, e a diferença é ter CHAMADOR:** um `pub` sem chamador
+/// é uma segunda resposta esperando alguém chamá-la (a lei do `warp_axis`/`serial_side`), mas a rota em
+/// banda do LOTE tem um motivo de produto para pedir `usize::MAX` — **o paralelismo é do lote OU do dab,
+/// nunca dos dois**. Aninhar é alcançável e não é hipótese: a 4096² com o pincel máximo (r = 512) uma
+/// banda recebe `128 linhas × 1024 px = 131 072`, que **é exatamente** o [`PARALLEL_MIN_AREA`] ⇒ o
+/// kernel dividiria de novo, dentro de cada uma das trinta e duas bandas.
 #[allow(clippy::too_many_arguments)]
 #[must_use]
-#[cfg(test)]
-pub(crate) fn stamp_dab_textured_masked_with(
+pub fn stamp_dab_textured_masked_with(
     buf: &mut [u8],
     width: u32,
     height: u32,
@@ -435,9 +441,9 @@ fn stamp_dab_inner(
 
 mod bands;
 
+pub(crate) use bands::parallel_band_stamp_masked;
 use bands::{DabCtx, stamp_band};
 pub(crate) use bands::{PARALLEL_MIN_AREA, parallel_band_cached, parallel_band_stamp};
-pub(crate) use bands::parallel_band_stamp_masked;
 pub(crate) use bands::{encode, ramp_sample, stamp_rgba};
 
 #[cfg(test)]

@@ -18,10 +18,10 @@
 use std::collections::BTreeMap;
 
 use ph2d_eval_motion::VectorInstance;
-use ph2d_node_motion_shape::{shape_key, ShapeKind, ShapeParams, MANIFEST};
+use ph2d_node_motion_shape::{MANIFEST, ShapeKind, ShapeParams, shape_key};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_vec_scene::{
-    ellipse, gear, heart, regular_polygon_rounded, rounded_rect, star_rounded, VecPath,
+    VecPath, ellipse, gear, heart, regular_polygon_rounded, rounded_rect, star_rounded,
 };
 use ph2d_vector::{Affine, VectorScene};
 

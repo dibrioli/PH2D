@@ -6,9 +6,9 @@
 //! drives BOTH sides for real (publish + a live cook) so the two keys are computed
 //! independently and shown to agree.
 
-use super::{build_shape_path, encode, read_params, VecPathStore};
+use super::{VecPathStore, build_shape_path, encode, read_params};
 use crate::motion_state::MotionState;
-use ph2d_node_motion_shape::{shape_key, ShapeKind, ShapeParams};
+use ph2d_node_motion_shape::{ShapeKind, ShapeParams, shape_key};
 use ph2d_nodegraph::attr::{Column, Stream};
 
 /// **The single door.** The shell interns a shape and publishes it under
@@ -33,7 +33,11 @@ fn publish_then_cook_the_node_reads_its_own_shape() {
         .cook(&state.doc.graph, &state.registry, n, 0.0)
         .expect("cook");
     let stream = out[0].as_stream();
-    assert_eq!(stream.count(), 1, "the node read the shell's published shape");
+    assert_eq!(
+        stream.count(),
+        1,
+        "the node read the shell's published shape"
+    );
     let Some(Column::Scalar(ids)) = stream.get("geometry_id") else {
         panic!("geometry_id column");
     };
@@ -61,7 +65,10 @@ fn a_mismatched_key_decouples_the_node_from_the_shape() {
         ..read_params(g.node_param_overrides(n))
     });
     let mut cook = ph2d_nodegraph::cook::Cook::new();
-    cook.set_external(wrong, Stream::new(1).with("geometry_id", Column::Scalar(vec![7.0])));
+    cook.set_external(
+        wrong,
+        Stream::new(1).with("geometry_id", Column::Scalar(vec![7.0])),
+    );
     let out = cook.cook(&g, &state.registry, n, 0.0).expect("cook");
     assert_eq!(
         out[0].as_stream().count(),
@@ -113,7 +120,10 @@ fn every_kind_builds_distinct_geometry() {
 fn an_unpublished_handle_is_none_and_encodes_without_panic() {
     let store = VecPathStore::default();
     assert!(store.get(0).is_none(), "handle 0 is 'no geometry'");
-    assert!(store.get(99).is_none(), "an unpublished handle resolves to None");
+    assert!(
+        store.get(99).is_none(),
+        "an unpublished handle resolves to None"
+    );
 
     let inst = ph2d_eval_motion::VectorInstance {
         geometry_id: 99,
@@ -156,11 +166,22 @@ fn the_params_panel_shows_only_the_shapes_kind_params() {
         circle.contains(&"kind") && circle.contains(&"size"),
         "a circle shows Shape + Size"
     );
-    for p in ["aspect", "sides", "corner", "star_depth", "cleft", "tooth_depth", "hole"] {
+    for p in [
+        "aspect",
+        "sides",
+        "corner",
+        "star_depth",
+        "cleft",
+        "tooth_depth",
+        "hole",
+    ] {
         assert!(!circle.contains(&p), "a circle hides {p}");
     }
 
-    motion.doc.graph.set_param(n, "kind", ShapeKind::Gear as u32 as f32);
+    motion
+        .doc
+        .graph
+        .set_param(n, "kind", ShapeKind::Gear as u32 as f32);
     let gear = names(&motion);
     for p in ["kind", "size", "sides", "tooth_depth", "hole"] {
         assert!(gear.contains(&p), "a gear shows {p}");
@@ -215,7 +236,11 @@ fn a_shape_stamped_on_a_grid_lowers_to_sixteen_vectors() {
         .expect("cook");
     let mut vecs = Vec::new();
     lower_to_vector_instances_onto(cooked[0].as_stream(), &mut vecs);
-    assert_eq!(vecs.len(), 16, "a Star on a 4x4 grid = 16 crisp vector copies");
+    assert_eq!(
+        vecs.len(),
+        16,
+        "a Star on a 4x4 grid = 16 crisp vector copies"
+    );
 
     let handle = vecs[0].geometry_id;
     assert!(handle >= 1, "a live geometry handle");

@@ -260,7 +260,10 @@ impl NodeOp for MotionCollide {
 pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register(Box::new(MotionCollide))?;
     // ADR-0155: the push-apart weights by `inv_mass` — another solver a pin can feed.
-    reg.register_couplings(MANIFEST.id, &[ph2d_node_registry::Coupling::Consumes("inv_mass")]);
+    reg.register_couplings(
+        MANIFEST.id,
+        &[ph2d_node_registry::Coupling::Consumes("inv_mass")],
+    );
     // GPU/M5 (ADR-0140 Fase 5): the push-apart on the device via the spatial grid,
     // swept `iterations` times. Only expressible because the reference became
     // averaged Jacobi — an in-place Gauss-Seidel sweep is sequential by definition.

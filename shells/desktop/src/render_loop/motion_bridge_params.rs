@@ -306,9 +306,10 @@ pub(crate) fn build_params_snapshot(
     // is not one of its `values` is HIDDEN (filtered off both loops below), so a
     // `source.shape` shows only the controls its current `kind` uses.
     let shown = |param: &str| -> bool {
-        !gates.into_iter().flatten().any(|g| {
-            g.param == param && !g.values.contains(&(value_of(g.when).round() as i32))
-        })
+        !gates
+            .into_iter()
+            .flatten()
+            .any(|g| g.param == param && !g.values.contains(&(value_of(g.when).round() as i32)))
     };
 
     // Channels folded into a colour swatch (or into a `Channels` picker's `mode`) —

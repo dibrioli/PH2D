@@ -28,8 +28,20 @@ fn build_shape_graph(graph: &mut Graph, kind: f32) -> (NodeId, NodeId) {
     // Layout acima do grafo da neve (que ocupa a faixa 0..).
     graph.set_pos(src, Pos { x: 0.0, y: -260.0 });
     graph.set_pos(grid, Pos { x: 0.0, y: -140.0 });
-    graph.set_pos(dup, Pos { x: 210.0, y: -200.0 });
-    graph.set_pos(out, Pos { x: 420.0, y: -200.0 });
+    graph.set_pos(
+        dup,
+        Pos {
+            x: 210.0,
+            y: -200.0,
+        },
+    );
+    graph.set_pos(
+        out,
+        Pos {
+            x: 420.0,
+            y: -200.0,
+        },
+    );
     {
         let mut wire = |a: NodeId, ap: u16, b: NodeId, bp: u16| {
             graph

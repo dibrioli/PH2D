@@ -582,6 +582,9 @@ mod tests {
         map.insert(2, dead.to_bits());
         let present = select_present(sim.world(), &map);
         assert!(present.contains_key(&1), "the live drawing is tiled");
-        assert!(!present.contains_key(&2), "the despawned drawing is skipped");
+        assert!(
+            !present.contains_key(&2),
+            "the despawned drawing is skipped"
+        );
     }
 }

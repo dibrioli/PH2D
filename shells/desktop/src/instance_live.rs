@@ -21,12 +21,11 @@
 //!
 //! # O afim: a cópia herda a FORMA do mestre, não o LUGAR dele
 //!
-//! Cada peça entra em MUNDO (assada com a pose dela) e é levada para a cópia por um **delta** que
-//! leva a QUINA da caixa de conteúdo do mestre à quina do SUPORTE da cópia, mantendo a parte
-//! linear da pose da instância ([`place_delta`], onde estão os dois defeitos que isso corrigiu).
-//! É isso que preserva a disposição interna — as peças mantêm as posições RELATIVAS que o artista
-//! deu ao mestre —, faz uma edição na RAIZ do mestre alcançar as cópias, e as faz crescer para o
-//! mesmo lado que ele.
+//! Cada peça entra em MUNDO (assada com a pose dela) e é levada para a pose da instância por um
+//! **delta** que remove apenas a TRANSLAÇÃO do mestre ([`place_delta`], onde está o porquê e o
+//! defeito que isso corrigiu). É isso que preserva a disposição interna — as peças mantêm as
+//! posições RELATIVAS que o artista deu ao mestre — **e** faz uma edição na raiz do mestre
+//! (redimensionar, girar) alcançar as cópias, que é a promessa da wave.
 //!
 //! # O mestre que SUMIU não some em silêncio
 //!
@@ -140,12 +139,7 @@ pub(crate) fn cook_one(
     // deixou de ser um componente"*, e uma cópia que o ignorasse estaria a honrar uma decisão que
     // ele revogou.
     sim.world().get::<ph2d_ecs::VecComponentMain>(main_e)?;
-    // As duas âncoras: a quina da caixa do mestre e a do SUPORTE desta cópia, ambas em mundo.
-    let content_min = content_box_world(scene, sim, map, xforms, main_e, inst).map(|(lo, _)| lo);
-    let support_min = scene
-        .path_curve_bbox(at)
-        .map(|(lo, _)| xform_of(xforms, at).apply(lo));
-    let delta = place_delta(xforms, main_id, at, content_min, support_min);
+    let delta = place_delta(xforms, main_id, at);
 
     let mut out = Vec::new();
     // ⚠️ As duas listas saem da MESMA travessia: um segundo `visible_pieces` daria a mesma
@@ -172,44 +166,6 @@ pub(crate) fn cook_one(
     Some((out, kept))
 }
 
-/// **A caixa que o CONTEÚDO do mestre ocupa, em MUNDO.** Porta única.
-///
-/// Perguntada por quem DESENHA ([`place_delta`]) e por quem semeia o suporte de uma cópia
-/// (`vec_component_edit::main_content_box`). Duas medições da mesma caixa é como a arte e a caixa
-/// do gizmo passam a discordar sobre o tamanho de um componente.
-///
-/// ⚠️ Sob rotação é uma sobre-aproximação (as quinas do bbox local giram e o resultado é
-/// re-alinhado aos eixos) — a mesma limitação honesta que a caixa do gizmo já carrega.
-pub(crate) fn content_box_world(
-    scene: &VecScene,
-    sim: &SimWorld,
-    map: &VecEntityMap,
-    xforms: &VecXforms,
-    main_e: Entity,
-    inst: &VecInstance,
-) -> Option<([f64; 2], [f64; 2])> {
-    let (mut lo, mut hi) = ([f64::MAX; 2], [f64::MIN; 2]);
-    for piece in visible_pieces(scene, sim, map, main_e, inst) {
-        let Some((plo, phi)) = scene.path_curve_bbox(piece) else {
-            continue;
-        };
-        let w = xform_of(xforms, piece);
-        for corner in [
-            [plo[0], plo[1]],
-            [phi[0], plo[1]],
-            [plo[0], phi[1]],
-            [phi[0], phi[1]],
-        ] {
-            let p = w.apply(corner);
-            for (a, c) in p.into_iter().enumerate() {
-                lo[a] = lo[a].min(c);
-                hi[a] = hi[a].max(c);
-            }
-        }
-    }
-    (lo[0] <= hi[0]).then_some((lo, hi))
-}
-
 /// **O afim que leva a arte do mestre para a instância: TIRA o LUGAR dele, mantém a FORMA.**
 ///
 /// # Isto foi um defeito reportado, e a diferença entre as duas versões é o que a wave promete
@@ -231,44 +187,10 @@ pub(crate) fn content_box_world(
 ///
 /// ⚠️ E some com o `inverse()`: um mestre degenerado (escala 0) deixa de ser reportado como
 /// **órfão**, o que é mais honesto — ele existe, apenas não desenha nada.
-///
-/// # O ponto de ANCORAGEM: a QUINA da caixa, não o pivô
-///
-/// ⚠️ Segundo relato do Enio, e ele é sobre a mesma linha: *"no mestre, escalar pela borda direita
-/// deixa a esquerda fixa; nas instâncias as duas bordas se movem"*. A alça do gizmo ancora a borda
-/// OPOSTA e paga isso **compensando a translação** da entidade (`gizmo::anchor_pivot_world`) — e a
-/// translação é justamente o que uma cópia não pode herdar. Ancorar no pivô devolve a compensação
-/// ao lixo e o crescimento sai simétrico.
-///
-/// A cura é ancorar em **geometria dos dois lados**: a quina MÍNIMA da caixa de conteúdo do mestre
-/// vai à quina mínima do SUPORTE da cópia, em mundo. As duas são invariantes sob o `settle_origins`
-/// (que move pivôs *sem mover a forma*), e é isso que torna a escolha estável — ancorar no pivô da
-/// cópia faria a arte saltar meia caixa no primeiro *settle*.
-///
-/// Com isso o mestre e a cópia crescem para o MESMO lado, e mover o mestre continua a não mover
-/// ninguém (a quina anda com ele e é subtraída).
-///
-/// ⚠️ **Limite herdado do Figma, e é honesto:** arrastar a borda ESQUERDA do mestre fixa a direita
-/// DELE e a esquerda da cópia — o crescimento fica espelhado. Um anexo que acertasse os dois lados
-/// teria de saber que alça o gesto usou, e isso é estado do gesto, não do documento.
-fn place_delta(
-    xforms: &VecXforms,
-    main_id: VecPathId,
-    at: VecPathId,
-    content_min: Option<[f64; 2]>,
-    support_min: Option<[f64; 2]>,
-) -> ph2d_vec_scene::Xform {
-    let i = xform_of(xforms, at);
-    let (Some(c), Some(s)) = (content_min, support_min) else {
-        // Sem caixa (mestre sem geometria) sobra a regra de placement pura.
-        let m = xform_of(xforms, main_id).0;
-        return ph2d_vec_scene::Xform([1.0, 0.0, 0.0, 1.0, -m[4], -m[5]]).then(&i);
-    };
-    let l = i.0;
-    let linear = ph2d_vec_scene::Xform([l[0], l[1], l[2], l[3], 0.0, 0.0]);
-    ph2d_vec_scene::Xform([1.0, 0.0, 0.0, 1.0, -c[0], -c[1]])
-        .then(&linear)
-        .then(&ph2d_vec_scene::Xform([1.0, 0.0, 0.0, 1.0, s[0], s[1]]))
+fn place_delta(xforms: &VecXforms, main_id: VecPathId, at: VecPathId) -> ph2d_vec_scene::Xform {
+    let m = xform_of(xforms, main_id).0;
+    let un_place = ph2d_vec_scene::Xform([1.0, 0.0, 0.0, 1.0, -m[4], -m[5]]);
+    un_place.then(&xform_of(xforms, at))
 }
 
 /// **As peças que ESTA instância mostra**, na ordem de z do documento — porta única.

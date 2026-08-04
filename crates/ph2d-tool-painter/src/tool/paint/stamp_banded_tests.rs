@@ -333,3 +333,76 @@ fn the_paint_media_survives_every_live_shape_method() {
         );
     }
 }
+
+/// **A razão do log divide o próprio tempo pelo próprio trabalho.**
+///
+/// ⚠️ O `ns/visita` do `[frame]` nasceu dividindo os µs das quatro fases do **RE-STAMP** pelas visitas
+/// do **DEPÓSITO** — dois eventos diferentes. Numa sessão de mão livre o re-stamp não roda, então o
+/// numerador é zero por construção e o log de 2026-08-04 imprimiu `0.0 ns/visita` **ao lado de 99 M
+/// visitas**: um zero que se lê como *"o carimbo é de graça"*, exatamente a falha que o
+/// [`crate::wet_diag`] documenta — um instrumento mudo TRANQUILIZA.
+///
+/// A fixture é a que continha o fenômeno: mão livre (`Space`, o método de fábrica), que carimba muito
+/// e **não re-carimba nada**. É por isso que ela pede `deliveries == 0` — sem essa metade, um
+/// numerador emprestado do re-stamp passaria despercebido.
+#[test]
+fn the_deposit_ratio_divides_its_own_time_by_its_own_work() {
+    let mut t = crate::tool::PainterTool::default();
+    t.set_source(vec![255u8; 1024 * 1024 * 4], 1024, 1024);
+    t.set_brush_size_px(80.0);
+
+    let _ = super::stamp_banded::diag::take(); // zera o que esta thread trouxe
+    t.on_canvas_pointer(cpx([120.0, 500.0], PointerPhase::Down));
+    for x in 1..=8u8 {
+        let px = 120.0 + f32::from(x) * 100.0;
+        t.on_canvas_pointer(cpx([px, 500.0], PointerPhase::Move));
+    }
+    let d = super::stamp_banded::diag::take();
+
+    // O CONTROLE não passa pelo instrumento sob teste: quem prova que a fixture pintou é o CANVAS.
+    assert!(
+        t.canvas_rgba.iter().any(|&b| b != 255),
+        "a fixture não pintou um pixel — ela não contém o fenômeno"
+    );
+    assert_eq!(
+        d.deliveries, 0,
+        "a fixture tem de ser mão livre PURA: com re-stamp no meio, um numerador emprestado dele \
+         ficaria indistinguível do numerador próprio"
+    );
+    assert!(
+        d.visits > 0,
+        "o depósito não contou trabalho nenhum: {} dabs, {} visitas",
+        d.dabs,
+        d.visits
+    );
+    assert!(
+        d.cpu_us > 0,
+        "o depósito da CPU contou {} visitas e ZERO tempo — a razão do log volta a ser 0.0 \
+         ns/visita sobre trabalho real",
+        d.visits
+    );
+}
+
+/// **O que o DISPOSITIVO carimba entra na conta.** — a outra metade do mesmo defeito.
+///
+/// Quando o device aceita o lote, `stamp_plain_dabs_banded` nem é chamado, então até 2026-08-04 os
+/// `dabs` e as `visitas` do log descreviam **só a metade que ficou na CPU** — com a linha dizendo
+/// `775 dabs` para um traço que carimbou mais. O contador é exercitado direto porque a ROTA precisa de
+/// um dispositivo real (`#[ignore]`, na suíte de GPU): o que este gate prova é que o balde existe e
+/// soma, não que a rota disparou.
+#[test]
+fn what_the_device_stamps_is_counted_too() {
+    let _ = super::stamp_banded::diag::take();
+    super::stamp_banded::diag::note_device(7, 4096, 250);
+    super::stamp_banded::diag::note_device(3, 1024, 50);
+    let d = super::stamp_banded::diag::take();
+    assert_eq!(
+        (d.device, d.dev_dabs, d.dev_visits, d.dev_us),
+        (2, 10, 5120, 300)
+    );
+    assert_eq!(
+        (d.dabs, d.visits, d.cpu_us),
+        (0, 0, 0),
+        "o balde do device vazou para o da CPU — as duas razões deixam de ser comparáveis"
+    );
+}

@@ -8249,12 +8249,24 @@ impl crate::App {
                 #[allow(clippy::cast_precision_loss)]
                 let band_mvis = dep.visits as f64 / 1.0e6;
                 #[allow(clippy::cast_precision_loss)]
-                let band_ns = if dep.visits > 0 {
-                    (dep.restore_us + dep.relief_us + dep.save_us + dep.stamp_us) as f64 * 1000.0
-                        / dep.visits as f64
-                } else {
-                    0.0
+                let dev_mvis = dep.dev_visits as f64 / 1.0e6;
+                // ⚠️ **A razão tem de ter as DUAS metades do MESMO evento.** Até 2026-08-04 o
+                // numerador vinha das quatro fases do RE-STAMP e o denominador das visitas do
+                // DEPÓSITO — populações diferentes —, então numa sessão de mão livre ele imprimia
+                // `0.0 ns/visita` ao lado de 99 M visitas, e o zero lia-se como *"o carimbo é de
+                // graça"*. Cada rota agora divide o próprio tempo pelo próprio trabalho, e é essa
+                // razão que responde se o dispositivo vale a pena NESTE pincel.
+                #[allow(clippy::cast_precision_loss)]
+                let ns_per = |us: u64, visits: u64| {
+                    if visits > 0 {
+                        us as f64 * 1000.0 / visits as f64
+                    } else {
+                        0.0
+                    }
                 };
+                let dev_ns = ns_per(dep.dev_us, dep.dev_visits);
+                let band_ns = ns_per(dep.cpu_us, dep.visits);
+                let dev_dabs = dep.dev_dabs;
                 // As quatro fases, POR ENTREGA — cada uma tem cura diferente.
                 #[allow(clippy::cast_precision_loss)]
                 let per_delivery = |us: u64| {
@@ -8332,9 +8344,10 @@ impl crate::App {
                      [frame]   tool-tick: media {tick_avg:.2}ms pico {tick_max:.2}ms em {tick_n}/120 frames \
                      | stamps: media {stamp_avg:.2}ms pico {stamp_max:.2}ms em {stamp_n}/120 \
                      ({stamp_ev} entregas, {stamp_per:.2}ms cada)\n\
-                     [frame]   deposito: {band_dev} no DEVICE, {band_par} em BANDA, \
-                     {band_ser} serial(is), {band_dabs} dabs, {band_mvis:.2} M visitas \
-                     ({band_ns:.1} ns/visita)\n\
+                     [frame]   deposito DEVICE: {band_dev} lotes, {dev_dabs} dabs, \
+                     {dev_mvis:.2} M visitas ({dev_ns:.1} ns/visita)\n\
+                     [frame]   deposito CPU: {band_par} em BANDA + {band_ser} serial(is), \
+                     {band_dabs} dabs, {band_mvis:.2} M visitas ({band_ns:.1} ns/visita)\n\
                      [frame]   re-stamp por entrega: restore {rs_restore:.2}ms | relevo \
                      {rs_relief:.2}ms | save {rs_save:.2}ms | CARIMBO {rs_stamp:.2}ms \
                      (x{} entregas)\n\

@@ -493,12 +493,27 @@ impl PainterTool {
             // O device primeiro; ele devolve `None` quando declina (sem região, ou a ponte falhou),
             // e aí o MESMO lote cai na rota em banda — o modo de falha é lento, nunca errado.
             let mut touched = None;
+            let mut dev_us = 0u64;
             if let Some((dev, lut, bridge)) = device.as_ref() {
+                let t0 = std::time::Instant::now();
                 touched =
                     super::stamp_device::stamp(bridge, buf, w, h, dev, lut, dabs, alpha_locked);
+                #[allow(clippy::cast_possible_truncation)]
+                {
+                    dev_us = t0.elapsed().as_micros() as u64;
+                }
             }
             let on_device = touched.is_some();
-            super::stamp_banded::diag::note_device(on_device);
+            if on_device {
+                // ⚠️ O trabalho do device conta AQUI porque o `stamp_plain_dabs_banded` — que é quem
+                // conta — nem chega a ser chamado quando ele aceita. Uma recusa não anota nada: os µs
+                // gastos tentando são pagos pela rota da CPU, que os cronometra dentro dela.
+                super::stamp_banded::diag::note_device(
+                    dabs.len(),
+                    super::stamp_banded::batch_work(dabs, w, h),
+                    dev_us,
+                );
+            }
             if !on_device {
                 touched = super::stamp_banded::stamp_plain_dabs_banded(
                     buf,

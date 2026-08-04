@@ -173,13 +173,36 @@ pub(super) fn stamp_plain_dabs_banded_with(
         }
         touched
     };
+    // ⚠️ **O balde é fechado DEPOIS do trabalho, não antes.** Ele era carimbado aqui em cima com os
+    // dabs e as visitas e mais nada, então o `ns/visita` do log tinha de buscar um numerador noutro
+    // lugar — e buscava no RE-STAMP, um evento diferente. Medir onde se conta é o que torna a razão
+    // uma razão.
+    let bands = wants_bands(dabs, w, h, min_area);
+    let work = batch_work(dabs, w, h);
+    let t0 = std::time::Instant::now();
+    let out = stamp_plain_dabs_banded_run(buf, w, h, dabs, brush, alpha_locked, bands, &serial);
+    #[allow(clippy::cast_possible_truncation)]
+    diag::note(bands, dabs.len(), work, t0.elapsed().as_micros() as u64);
+    out
+}
+
+/// A execução, separada da contagem — o `?` e os recuos dela ficam intactos.
+#[allow(clippy::too_many_arguments)]
+fn stamp_plain_dabs_banded_run(
+    buf: &mut [u8],
+    w: u32,
+    h: u32,
+    dabs: &[Dab],
+    brush: &BrushSpec,
+    alpha_locked: bool,
+    bands: bool,
+    serial: &dyn Fn(&mut [u8]) -> Option<DirtyRect>,
+) -> Option<DirtyRect> {
     if dabs.len() < 2 {
         return serial(buf);
     }
     let bounds = batch_bounds(dabs, w, h)?;
     let rows = bounds.h as usize;
-    let bands = wants_bands(dabs, w, h, min_area);
-    diag::note(bands, dabs.len(), batch_work(dabs, w, h));
     if !bands {
         return serial(buf);
     }
@@ -290,8 +313,12 @@ pub mod diag {
         static SERIAL: Cell<u32> = const { Cell::new(0) };
         static DABS: Cell<u32> = const { Cell::new(0) };
         static VISITS: Cell<u64> = const { Cell::new(0) };
+        static CPU_US: Cell<u64> = const { Cell::new(0) };
         static DELIVERIES: Cell<u32> = const { Cell::new(0) };
         static DEVICE: Cell<u32> = const { Cell::new(0) };
+        static DEV_DABS: Cell<u32> = const { Cell::new(0) };
+        static DEV_VISITS: Cell<u64> = const { Cell::new(0) };
+        static DEV_US: Cell<u64> = const { Cell::new(0) };
         static RESTORE_US: Cell<u64> = const { Cell::new(0) };
         static RELIEF_US: Cell<u64> = const { Cell::new(0) };
         static SAVE_US: Cell<u64> = const { Cell::new(0) };
@@ -301,13 +328,24 @@ pub mod diag {
     /// **O lote foi para o DISPOSITIVO?** — o instrumento que a wave da GPU exige pela mesma razão
     /// que o `banded`/`serial` existe: sem ele, *"não melhorou"* admite duas leituras opostas (a
     /// rota não é tomada · é tomada e o tempo está noutro lugar), e as curas são opostas.
-    pub(in crate::tool::paint) fn note_device(on_device: bool) {
-        if on_device {
-            DEVICE.with(|c| c.set(c.get().saturating_add(1)));
-        }
+    /// ⚠️ **O trabalho do device é contado AQUI, e por isso a linha descreve o TRAÇO.** Quando ele
+    /// aceita o lote, o `stamp_plain_dabs_banded` nem é chamado — então até 2026-08-04 os `dabs` e as
+    /// `visitas` do log eram os da **metade que ficou na CPU**, com o log dizendo `775 dabs` para um
+    /// traço que carimbou mais. Um contador que descreve um subconjunto sem dizer qual é um número
+    /// que se lê como o todo.
+    pub(in crate::tool::paint) fn note_device(dabs: usize, work: usize, us: u64) {
+        DEVICE.with(|c| c.set(c.get().saturating_add(1)));
+        DEV_DABS.with(|c| {
+            c.set(
+                c.get()
+                    .saturating_add(u32::try_from(dabs).unwrap_or(u32::MAX)),
+            )
+        });
+        DEV_VISITS.with(|c| c.set(c.get().saturating_add(work as u64)));
+        DEV_US.with(|c| c.set(c.get().saturating_add(us)));
     }
 
-    pub(super) fn note(banded: bool, dabs: usize, work: usize) {
+    pub(super) fn note(banded: bool, dabs: usize, work: usize, us: u64) {
         let bucket = if banded { &BANDED } else { &SERIAL };
         bucket.with(|c| c.set(c.get().saturating_add(1)));
         DABS.with(|c| {
@@ -317,6 +355,7 @@ pub mod diag {
             )
         });
         VISITS.with(|c| c.set(c.get().saturating_add(work as u64)));
+        CPU_US.with(|c| c.set(c.get().saturating_add(us)));
     }
 
     /// As QUATRO fases de um quadro de re-stamp, em µs.
@@ -349,10 +388,18 @@ pub mod diag {
         pub device: u32,
         /// Lotes que ficaram seriais (pequenos demais para dividir).
         pub serial: u32,
-        /// Dabs somados sobre os lotes.
+        /// Dabs somados sobre os lotes que ficaram na **CPU** (banda + serial).
         pub dabs: u32,
-        /// **Visitas de texel** — a soma das pegadas. É o TRABALHO, e não assume raio nenhum.
+        /// **Visitas de texel** da CPU — a soma das pegadas. É o TRABALHO, e não assume raio nenhum.
         pub visits: u64,
+        /// µs gastos carimbando na CPU. ⚠️ Numerador e denominador do `ns/visita` da CPU vêm do
+        /// **mesmo** evento — a razão anterior dividia os µs do RE-STAMP pelas visitas do DEPÓSITO,
+        /// duas populações diferentes, e por isso imprimia `0.0` em toda sessão de mão livre.
+        pub cpu_us: u64,
+        /// O mesmo trio, para os lotes que o DISPOSITIVO aceitou.
+        pub dev_dabs: u32,
+        pub dev_visits: u64,
+        pub dev_us: u64,
         /// Quadros de re-stamp (entregas que passaram pelo `stamp_drag_preview`).
         pub deliveries: u32,
         /// µs somados em cada fase de um quadro de re-stamp.
@@ -370,6 +417,10 @@ pub mod diag {
             device: DEVICE.with(Cell::take),
             dabs: DABS.with(Cell::take),
             visits: VISITS.with(Cell::take),
+            cpu_us: CPU_US.with(Cell::take),
+            dev_dabs: DEV_DABS.with(Cell::take),
+            dev_visits: DEV_VISITS.with(Cell::take),
+            dev_us: DEV_US.with(Cell::take),
             deliveries: DELIVERIES.with(Cell::take),
             restore_us: RESTORE_US.with(Cell::take),
             relief_us: RELIEF_US.with(Cell::take),

@@ -136,4 +136,76 @@ pub fn spawn(sim: &mut SimWorld) {
         },
         Transform::from_translation(Vec2::new(GROUND_X + 24.0, 2.0)),
     ));
+
+    // ── A QUINA (W10) ────────────────────────────────────────────────────────
+    //
+    // ⚠️ **Um terceiro player, e ele existe por um RAMO que muda a POSE.** A
+    // correção de quina é a primeira coisa desta lei que escreve *translação* em
+    // vez de força ou velocidade (`PhysicsWorld::nudge_body`), e sem uma beirada
+    // no harness ela nunca dispara: numa cena sem teto o perfil sai todo livre,
+    // a lei devolve `None`, e os 67 raios por tique de subida atravessam a
+    // fronteira sem que ninguém compare os três sistemas operacionais.
+    //
+    // ⚠️ **`speed = 0` é o que torna a geometria previsível.** A fita é
+    // COMPARTILHADA (`drive = 1` nos 90 primeiros tiques), então este player
+    // andaria para longe da beirada antes de pular; com a velocidade de cruzeiro
+    // em zero ele fica onde nasceu, e a sobreposição de 8 cm que a cena descreve
+    // é a que a lei de fato vê.
+    const CORNER_X: f32 = GROUND_X + 48.0;
+    sim.world_mut().spawn((
+        Name::new("C9 Corner Ground"),
+        RigidBody {
+            kind: BodyKind::Static,
+        },
+        Collider {
+            shape: ColliderShape::Cuboid {
+                half_x: 6.0,
+                half_y: 0.1,
+            },
+            ..Collider::default()
+        },
+        Transform::from_translation(Vec2::new(CORNER_X, 0.0)),
+    ));
+    sim.world_mut().spawn((
+        Name::new("C9 Corner Ledge"),
+        RigidBody {
+            kind: BodyKind::Static,
+        },
+        Collider {
+            shape: ColliderShape::Cuboid {
+                half_x: 3.0,
+                half_y: 0.5,
+            },
+            // A borda ESQUERDA 8 cm dentro da cabeça (meia-largura 0,3): um
+            // encosto raso, dentro do `corner_reach` de partida (0,12).
+            ..Collider::default()
+        },
+        // ⚠️ A face de baixo em **2,9**, e a altura foi VARRIDA em vez de
+        // calculada: a fita segura o pulo por 8 tiques e o `cut_gravity` corta o
+        // resto, então o arco não é o da altura autorada. Com a beirada em 3,3 o
+        // personagem NÃO a alcançava e a lane ficava inerte — o hash saía
+        // idêntico com a assistência ligada e desligada, que é a forma de uma
+        // lane de determinismo não cobrir o ramo que ela diz cobrir.
+        Transform::from_translation(Vec2::new(CORNER_X + 0.22 + 3.0, 2.9 + 0.5)),
+    ));
+    sim.world_mut().spawn((
+        Name::new("C9 Corner Player"),
+        RigidBody {
+            kind: BodyKind::Dynamic,
+        },
+        Collider {
+            shape: ColliderShape::Capsule {
+                half_height: 0.4,
+                radius: 0.3,
+            },
+            ..Collider::default()
+        },
+        LockRotation,
+        PlatformPlayer {
+            float_height: 1.2,
+            speed: 0.0,
+            ..PlatformPlayer::default()
+        },
+        Transform::from_translation(Vec2::new(CORNER_X, 1.3)),
+    ));
 }

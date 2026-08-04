@@ -237,7 +237,14 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// aquele já guarde as malhas: o parser dele é `#[cfg(feature = "sculpt3d")]`, e um objeto
 /// assado tem de ser legível **sem o módulo 3D no build** — é isso que a rota A promete.
 /// ⚠️ Este 53 é PROVISÓRIO pelo mesmo motivo que o 52 era.
-const PROJECT_SCHEMA: u32 = 54;
+/// v55 (physics, W10 — as duas assistências que faltavam): o `PlatformPlayer`
+/// ganhou **`corner_reach`** e **`lift_momentum`**, os dois campos que o W8 tinha
+/// nomeado e não construído. Dois campos apendados ao componente, mesmo
+/// raciocínio posicional — e o mesmo motivo de estarem NELE e não num componente
+/// próprio: são knobs da mesma lei que os outros dezenove, e o custo de um
+/// componente novo por knob é uma lista que ninguém lê.
+/// ⚠️ A linha escreveu **52**; o valor CONTADO contra o `main` da integração é 55.
+const PROJECT_SCHEMA: u32 = 55;
 
 /// O conteúdo de um arquivo de projeto.
 #[derive(serde::Serialize, serde::Deserialize)]

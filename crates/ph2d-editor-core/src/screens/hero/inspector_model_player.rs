@@ -62,6 +62,10 @@ pub struct InspectorPlayerInfo {
     pub coyote_time: f32,
     /// **Jump Buffer** (W8), segundos.
     pub jump_buffer: f32,
+    /// **Corner Reach** (W10) — em METROS, ao contrário dos dois acima.
+    pub corner_reach: f32,
+    /// **Lift Momentum** (W10) — segundos.
+    pub lift_momentum: f32,
     /// Quanto do peso volta ao chao (W6).
     pub reaction_support: f32,
     /// Quanto da caminhada volta ao chao (W6).
@@ -108,6 +112,10 @@ pub enum PlayerFieldEdit {
     CoyoteTime(f32),
     /// A janela de buffer, em segundos (W8).
     JumpBuffer(f32),
+    /// **Corner Reach** (W10) — metros de escape lateral sob uma beirada.
+    CornerReach(f32),
+    /// **Lift Momentum** (W10) — segundos de memória do referencial do chão.
+    LiftMomentum(f32),
     /// Quanto do peso volta ao chao (W6).
     ReactionSupport(f32),
     /// Quanto da caminhada volta ao chao (W6).

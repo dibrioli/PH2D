@@ -272,6 +272,13 @@ pub(super) fn populate_player(store: &mut WidgetStore) {
         // perfil de partida a queda é de 4,9 cm.
         (ids::INSP_PLAYER_COYOTE, 0.1, 0.0, 0.5, 0.01), // LITERAL-PX-OK: seconds
         (ids::INSP_PLAYER_BUFFER, 0.1, 0.0, 0.5, 0.01), // LITERAL-PX-OK: seconds
+        // ⚠️ METROS, e o teto sai da MEDIÇÃO: acima de ~⅓ da largura do corpo a
+        // assistência começa a salvar pulos que visivelmente bateram (a cápsula
+        // das cenas tem 0,4 m). 0,3 é folga generosa para um corpo maior.
+        (ids::INSP_PLAYER_CORNER, 0.12, 0.0, 0.3, 0.01), // LITERAL-PX-OK: metres
+        // ⚠️ Segundos, e o teto cobre o pulo mais longo da config de partida
+        // (1,45 s no ar, medido) com folga para um `jump_height` maior.
+        (ids::INSP_PLAYER_LIFT, 1.5, 0.0, 4.0, 0.05), // LITERAL-PX-OK: seconds
         // A REAÇÃO (W6), em FRAÇÃO da força que o personagem faz. ⚠️ O piso é 0
         // (nada volta) e o teto é 1 (volta inteira) porque **acima de 1 o
         // personagem devolveria mais do que recebeu** — inventar energia, e o

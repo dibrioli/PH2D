@@ -31,7 +31,10 @@
 
 use bevy_ecs::entity::Entity;
 use ph2d_ecs::SimWorld;
-use ph2d_platformer::{GroundSample, JumpState, PlayerInput, player_motor};
+use ph2d_platformer::{
+    CORNER_LOOKAHEAD, CORNER_SAMPLES, CeilingProbe, GroundSample, JumpState, PlayerConfig,
+    PlayerInput, corner_offsets, corner_probe_wanted, footing, player_motor, relative_rise,
+};
 
 use crate::components::{BodyKind, PlatformPlayer};
 
@@ -113,6 +116,9 @@ impl PhysicsBridge {
         // A reação da 3ª lei, colhida junto pelo mesmo motivo — o cast toma
         // `&self` e aplicar toma `&mut self`.
         let mut reactions: Vec<GroundPush> = Vec::new();
+        // Os deslocamentos de quina (W10), pelo mesmo motivo — e vazios em todo
+        // tique em que ninguém está subindo contra uma beirada, que é quase todos.
+        let mut nudges: Vec<(rapier2d_handle::Handle, [f32; 2])> = Vec::new();
         for (&entity, b) in self.bodies.iter() {
             // Dynamic-only, e é FÍSICA: um impulso não move massa infinita.
             if b.kind != BodyKind::Dynamic {
@@ -150,10 +156,37 @@ impl PhysicsBridge {
                     .unwrap_or([0.0, 0.0]),
             });
 
+            // ── O SENSOR DE TETO (W10) ───────────────────────────────────────
+            // ⚠️ A pergunta *"vale a pena castar?"* é a MESMA que a lei faz para
+            // decidir se age (`corner_probe_wanted`), e as duas grandezas que
+            // ela toma saem das portas da lei — nunca de uma re-derivação aqui.
+            // Sem sensor a lei devolve deslocamento zero, então o custo dos
+            // raios só existe onde a assistência pode agir.
+            let stand = footing(&cfg, sample.as_ref(), UP);
+            let rel_up = relative_rise(stand, vel, UP);
+            let ceiling = if corner_probe_wanted(&cfg.jump, stand.is_some(), rel_up) {
+                probe_ceiling(&self.world, b.handle, b.rest.layer, &cfg, rel_up, dt)
+            } else {
+                None
+            };
+
             let input = self.player_input.get(&entity).copied().unwrap_or_default();
             let was = self.player_jump.get(&entity).copied().unwrap_or_default();
-            let step = player_motor(&cfg, sample.as_ref(), input, was, vel, gravity, UP, dt);
+            let step = player_motor(
+                &cfg,
+                sample.as_ref(),
+                ceiling.as_ref(),
+                input,
+                was,
+                vel,
+                gravity,
+                UP,
+                dt,
+            );
             states.push((entity, step.state));
+            if step.nudge != [0.0, 0.0] {
+                nudges.push((b.handle, step.nudge));
+            }
             let motor = step.motor;
             if motor.accel != [0.0, 0.0] || motor.boost != [0.0, 0.0] {
                 motors.push((b.handle, motor.accel, motor.boost));
@@ -197,6 +230,14 @@ impl PhysicsBridge {
         for (entity, next) in states {
             self.player_jump.insert(entity, next);
         }
+        // ⚠️ **O deslocamento vai ANTES dos motores, e a ordem é a lei da wave:**
+        // ele corrige ONDE o corpo está, e o motor age a partir dali. Depois, o
+        // impulso deste tique teria sido calculado numa posição que o corpo já
+        // não ocupa — pequeno hoje, e o tipo de discordância que ninguém acha
+        // quando um passe futuro passar a ler a pose entre os dois.
+        for (handle, delta) in nudges {
+            self.world.nudge_body(handle, delta);
+        }
         for (handle, accel, boost) in motors {
             self.world.apply_player_motor(handle, accel, boost);
         }
@@ -209,6 +250,75 @@ impl PhysicsBridge {
                 .apply_ground_reaction(r.ground, r.player, r.accel, r.boost, r.at);
         }
     }
+}
+
+/// **O perfil do teto acima da cabeça** (W10) — a metade do sensor que este
+/// módulo possui, e nada de política.
+///
+/// Os raios nascem no TOPO da caixa do corpo e medem `rel_up · dt ·
+/// [`CORNER_LOOKAHEAD`]` — a distância que a cabeça sobe no PRÓXIMO tique. É
+/// isso, e só isso, que torna a assistência preditiva: o que o perfil descreve é
+/// um contato que ainda não aconteceu.
+///
+/// ⚠️ **A grade de deslocamentos vem da lei** ([`corner_offsets`]), nunca de uma
+/// aritmética local. Duas cópias deslocariam o perfil de meia célula em relação
+/// ao corpo, e o sintoma seria um personagem empurrado para dentro da quina de
+/// que ele fugia.
+///
+/// ⚠️ **A folga lateral é medida do CENTRO e descontada a meia-largura**, porque
+/// o raio nasce no centro (a origem tem de estar dentro do corpo para o
+/// `exclude_body` fazer sentido) e o que a lei quer saber é quanto há de espaço
+/// **além** da borda. Saturada no próprio alcance: para esta decisão, *livre até
+/// onde eu poderia querer ir* e *livre até o infinito* são a mesma coisa.
+fn probe_ceiling(
+    world: &ph2d_physics::PhysicsWorld,
+    handle: rapier2d_handle::Handle,
+    layer: u8,
+    cfg: &PlayerConfig,
+    rel_up: f32,
+    dt: f32,
+) -> Option<CeilingProbe> {
+    let sweep = rel_up * dt * CORNER_LOOKAHEAD;
+    if !sweep.is_finite() || sweep <= 0.0 {
+        return None;
+    }
+    let (mins, maxs) = world.body_aabb(handle)?;
+    let half_width = (maxs[0] - mins[0]) * 0.5;
+    if !half_width.is_finite() || half_width <= 0.0 {
+        return None;
+    }
+    let cx = (maxs[0] + mins[0]) * 0.5;
+    let top = maxs[1];
+    let mid = (maxs[1] + mins[1]) * 0.5;
+    let reach = cfg.jump.corner_reach;
+
+    let mut blocked = [false; CORNER_SAMPLES];
+    for (slot, off) in blocked
+        .iter_mut()
+        .zip(corner_offsets(half_width, reach).iter())
+    {
+        *slot = world
+            .cast_ray([cx + off, top], [0.0, 1.0], sweep, Some(handle), layer)
+            .is_some();
+    }
+
+    let free = |dir: f32| {
+        world
+            .cast_ray(
+                [cx, mid],
+                [dir, 0.0],
+                half_width + reach,
+                Some(handle),
+                layer,
+            )
+            .map_or(reach, |h| (h.distance - half_width).clamp(0.0, reach))
+    };
+
+    Some(CeilingProbe {
+        half_width,
+        blocked,
+        side_clear: [free(-1.0), free(1.0)],
+    })
 }
 
 /// O handle do rapier, nomeado sem importar o rapier aqui — esta crate declara-se

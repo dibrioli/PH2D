@@ -93,16 +93,22 @@ impl WalkConfig {
 /// - `footing`: o chão que a lei ACEITA (o resultado de [`crate::footing`]),
 ///   `None` no ar.
 /// - `drive`: a entrada do jogador em `[-1, 1]` ao longo do eixo de caminhada.
+/// - `carried`: o referencial em que medir a velocidade **no ar** (W10) — a
+///   memória do chão que se deixou ([`crate::carried_frame`]). ⚠️ `[0, 0]` é o
+///   comportamento de antes daquela wave AO BIT, e é o que uma cena de chão
+///   estático produz sozinha.
 /// - `dt`: o passo do relógio — **o mesmo** que a ponte usa para transformar
 ///   aceleração em impulso (`a · m · dt`). Se os dois divergirem, o limiar
 ///   força↔boost passa a descrever um tick que não existe.
 #[must_use]
+#[allow(clippy::too_many_arguments)]
 pub fn walk(
     cfg: &WalkConfig,
     footing: Option<&GroundSample>,
     body_velocity: Vec2,
     up: Vec2,
     drive: f32,
+    carried: Vec2,
     dt: f32,
 ) -> Motor {
     if !dt.is_finite() || dt <= 0.0 {
@@ -116,9 +122,12 @@ pub fn walk(
 
     // O eixo, o referencial e o orçamento mudam com o regime — e é a ÚNICA
     // ramificação da lei.
+    // ⚠️ No ar o referencial é o `carried` (W10), e ele é `[0, 0]` sempre que a
+    // memória fechou — então esta linha é byte-idêntica ao que ela era enquanto
+    // não houver plataforma móvel na cena.
     let (axis, ground_v, accel) = match footing {
         Some(s) => (perp_cw(s.normal), s.ground_velocity, cfg.acceleration),
-        None => (perp_cw(up), [0.0, 0.0], cfg.air_acceleration),
+        None => (perp_cw(up), carried, cfg.air_acceleration),
     };
     if accel <= 0.0 || !accel.is_finite() {
         return Motor::default();
@@ -176,7 +185,7 @@ mod tests {
     #[test]
     fn a_standing_body_is_pushed_along_the_ground() {
         let cfg = WalkConfig::STARTING_POINT;
-        let m = walk(&cfg, Some(&flat()), [0.0, 0.0], UP, 1.0, DT);
+        let m = walk(&cfg, Some(&flat()), [0.0, 0.0], UP, 1.0, [0.0, 0.0], DT);
         assert!(m.accel[0] > 0.0, "empurra para a direita: {:?}", m.accel);
         assert_eq!(m.accel[1], 0.0, "chao plano: nada na vertical");
         assert_eq!(m.boost, [0.0, 0.0], "longe do alvo, e' FORCA");
@@ -187,12 +196,28 @@ mod tests {
     #[test]
     fn cruising_speed_is_reached_and_not_passed() {
         let cfg = WalkConfig::STARTING_POINT;
-        let at = walk(&cfg, Some(&flat()), [cfg.speed, 0.0], UP, 1.0, DT);
+        let at = walk(
+            &cfg,
+            Some(&flat()),
+            [cfg.speed, 0.0],
+            UP,
+            1.0,
+            [0.0, 0.0],
+            DT,
+        );
         assert_eq!(at.accel, [0.0, 0.0], "no alvo nao ha' o que empurrar");
         assert_eq!(at.boost, [0.0, 0.0]);
 
         // Uma fração abaixo: a sobra cabe num tick ⇒ escreve o exato.
-        let near = walk(&cfg, Some(&flat()), [cfg.speed - 0.1, 0.0], UP, 1.0, DT);
+        let near = walk(
+            &cfg,
+            Some(&flat()),
+            [cfg.speed - 0.1, 0.0],
+            UP,
+            1.0,
+            [0.0, 0.0],
+            DT,
+        );
         assert_eq!(near.accel, [0.0, 0.0], "perto do alvo e' BOOST, nao forca");
         assert!(
             (near.boost[0] - 0.1).abs() < 1.0e-5,
@@ -214,7 +239,7 @@ mod tests {
         );
 
         // Empurrão DENTRO da janela: some neste tick (o personagem se escora).
-        let small = walk(&cfg, Some(&flat()), [0.5, 0.0], UP, 0.0, DT);
+        let small = walk(&cfg, Some(&flat()), [0.5, 0.0], UP, 0.0, [0.0, 0.0], DT);
         assert!(
             (small.boost[0] + 0.5).abs() < 1.0e-5,
             "cancela o empurrao pequeno: {:?}",
@@ -224,7 +249,7 @@ mod tests {
         // Empurrão MAIOR: nada de boost — ele é freado no orçamento, e o que
         // sobra continua movendo o personagem. É isto que faz um caixote pesado
         // ganhar de um personagem que anda.
-        let big = walk(&cfg, Some(&flat()), [5.0, 0.0], UP, 0.0, DT);
+        let big = walk(&cfg, Some(&flat()), [5.0, 0.0], UP, 0.0, [0.0, 0.0], DT);
         assert_eq!(big.boost, [0.0, 0.0], "acima da janela nao se escreve nada");
         assert!(big.accel[0] < 0.0, "freia, mas nao apaga: {:?}", big.accel);
         let removed = big.accel[0].abs() * DT;
@@ -241,8 +266,16 @@ mod tests {
     #[test]
     fn reversing_gets_twice_the_acceleration_of_starting() {
         let cfg = WalkConfig::STARTING_POINT;
-        let from_rest = walk(&cfg, Some(&flat()), [0.0, 0.0], UP, 1.0, DT);
-        let reversing = walk(&cfg, Some(&flat()), [-cfg.speed, 0.0], UP, 1.0, DT);
+        let from_rest = walk(&cfg, Some(&flat()), [0.0, 0.0], UP, 1.0, [0.0, 0.0], DT);
+        let reversing = walk(
+            &cfg,
+            Some(&flat()),
+            [-cfg.speed, 0.0],
+            UP,
+            1.0,
+            [0.0, 0.0],
+            DT,
+        );
 
         assert!(
             (from_rest.accel[0] - cfg.acceleration * 1.5).abs() < 1.0e-3,
@@ -277,7 +310,7 @@ mod tests {
             normal: [-s, c],
             ground_velocity: [0.0, 0.0],
         };
-        let m = walk(&cfg, Some(&ramp), [0.0, 0.0], UP, 1.0, DT);
+        let m = walk(&cfg, Some(&ramp), [0.0, 0.0], UP, 1.0, [0.0, 0.0], DT);
         assert!(m.accel[0] > 0.0, "vai para a direita: {:?}", m.accel);
         assert!(
             m.accel[1] > 0.0,
@@ -303,12 +336,20 @@ mod tests {
             ground_velocity: [4.0, 0.0],
         };
         // Viajando com o vagão, sem input: nada a fazer.
-        let riding = walk(&cfg, Some(&wagon), [4.0, 0.0], UP, 0.0, DT);
+        let riding = walk(&cfg, Some(&wagon), [4.0, 0.0], UP, 0.0, [0.0, 0.0], DT);
         assert_eq!(riding.accel, [0.0, 0.0]);
         assert_eq!(riding.boost, [0.0, 0.0]);
 
         // Andando para a frente EM CIMA dele: o alvo é `4 + speed`, não `speed`.
-        let walking = walk(&cfg, Some(&wagon), [4.0 + cfg.speed, 0.0], UP, 1.0, DT);
+        let walking = walk(
+            &cfg,
+            Some(&wagon),
+            [4.0 + cfg.speed, 0.0],
+            UP,
+            1.0,
+            [0.0, 0.0],
+            DT,
+        );
         assert_eq!(
             walking.accel,
             [0.0, 0.0],
@@ -321,14 +362,14 @@ mod tests {
     fn air_control_uses_its_own_budget_and_the_horizontal_axis() {
         let mut cfg = WalkConfig::STARTING_POINT;
         cfg.air_acceleration = 20.0;
-        let m = walk(&cfg, None, [0.0, -8.0], UP, 1.0, DT);
+        let m = walk(&cfg, None, [0.0, -8.0], UP, 1.0, [0.0, 0.0], DT);
         assert!(m.accel[0] > 0.0, "controle aereo empurra: {:?}", m.accel);
         assert_eq!(
             m.accel[1], 0.0,
             "e NUNCA na vertical — o arco do pulo e' do pulo"
         );
         // O orçamento do ar é menor que o do chão, na mesma situação.
-        let ground = walk(&cfg, Some(&flat()), [0.0, 0.0], UP, 1.0, DT);
+        let ground = walk(&cfg, Some(&flat()), [0.0, 0.0], UP, 1.0, [0.0, 0.0], DT);
         assert!(
             m.accel[0] < ground.accel[0],
             "ar {} tem de ser menor que chao {}",
@@ -343,8 +384,57 @@ mod tests {
     fn zero_air_acceleration_conserves_the_arc() {
         let mut cfg = WalkConfig::STARTING_POINT;
         cfg.air_acceleration = 0.0;
-        let m = walk(&cfg, None, [3.0, -8.0], UP, 0.0, DT);
+        let m = walk(&cfg, None, [3.0, -8.0], UP, 0.0, [0.0, 0.0], DT);
         assert_eq!(m, Motor::default(), "sem orcamento, sem motor: {m:?}");
+    }
+
+    /// ⚠️ **O referencial carregado (W10) só existe NO AR** — no chão quem manda
+    /// é o chão de verdade, e um `carried` que vazasse para lá faria o
+    /// personagem andar contra a plataforma em que está de pé.
+    ///
+    /// **Mutação que deve sangrar:** usar `carried` também no braço `Some(s)`.
+    #[test]
+    fn the_carried_frame_is_the_airs_and_never_the_grounds() {
+        let cfg = WalkConfig::STARTING_POINT;
+        // No chão, com uma memória absurda: ela não pode ser consultada.
+        let on_ground = walk(&cfg, Some(&flat()), [0.0, 0.0], UP, 0.0, [9.0, 0.0], DT);
+        let control = walk(&cfg, Some(&flat()), [0.0, 0.0], UP, 0.0, [0.0, 0.0], DT);
+        assert_eq!(
+            on_ground, control,
+            "de pe' o referencial e' o do chao, e mais nada: {on_ground:?}"
+        );
+    }
+
+    /// **Sair de um vagão a 4 m/s não apaga os 4 m/s** (W10).
+    ///
+    /// Sem a memória, o controle aéreo mede no MUNDO e passa a frear a
+    /// velocidade que a plataforma deu — o gate compara os dois referenciais na
+    /// mesma situação, e o oráculo é o SINAL da aceleração.
+    #[test]
+    fn the_air_control_measures_in_the_frame_it_left() {
+        let mut cfg = WalkConfig::STARTING_POINT;
+        cfg.air_acceleration = 20.0;
+        // Voando a 4 m/s, sem input, tendo saído de um vagão que ia a 4 m/s.
+        let forgetful = walk(&cfg, None, [4.0, 2.0], UP, 0.0, [0.0, 0.0], DT);
+        assert!(
+            forgetful.accel[0] < 0.0 || forgetful.boost[0] < 0.0,
+            "sem memoria, o ar FREIA a velocidade do vagao: {forgetful:?}"
+        );
+
+        let carried = walk(&cfg, None, [4.0, 2.0], UP, 0.0, [4.0, 0.0], DT);
+        assert_eq!(
+            carried,
+            Motor::default(),
+            "com a memoria, viajar com o vagao e' estar parado: {carried:?}"
+        );
+
+        // E o alvo com input soma ao referencial, como no chão.
+        let driving = walk(&cfg, None, [4.0 + cfg.speed, 0.0], UP, 1.0, [4.0, 0.0], DT);
+        assert_eq!(
+            driving,
+            Motor::default(),
+            "o alvo e' `vagao + speed`, nao `speed`: {driving:?}"
+        );
     }
 
     /// O limite de rampa em graus vira cosseno pela porta única — e os dois

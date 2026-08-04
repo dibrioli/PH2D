@@ -433,3 +433,132 @@ fn zero_windows_are_the_law_of_before_this_wave() {
         "sem buffer, um aperto no ar morre com o tique em que foi feito"
     );
 }
+
+// ── W10: A MEMÓRIA DO CHÃO QUE SE DEIXOU ─────────────────────────────────────
+
+/// Um vagão a 4 m/s sob os pés.
+fn wagon() -> GroundSample {
+    GroundSample {
+        ground_velocity: [4.0, 0.0],
+        ..ground()
+    }
+}
+
+/// **A memória enche no chão e escorre no ar** — o irmão exato do coyote, e por
+/// isso o gate mede as duas metades.
+///
+/// **Mutação que deve sangrar:** não drenar `lift_time` no ramo do ar.
+#[test]
+fn the_lift_memory_fills_on_the_ground_and_drains_in_the_air() {
+    let cfg = JumpConfig::STARTING_POINT;
+    let on = jump_step(
+        &cfg,
+        JumpState::default(),
+        Some(&wagon()),
+        0.0,
+        false,
+        G,
+        UP,
+        DT,
+    );
+    assert_eq!(on.state.lift, [4.0, 0.0], "no chao ela guarda o VAGAO");
+    assert!(
+        (on.state.lift_time - cfg.lift_momentum).abs() < 1.0e-6,
+        "e a janela nasce cheia: {}",
+        on.state.lift_time
+    );
+
+    // No ar ela escorre, e o VALOR lembrado não se apaga com ela.
+    let air = jump_step(&cfg, on.state, None, -1.0, false, G, UP, DT);
+    assert_eq!(air.state.lift, [4.0, 0.0], "o que se lembra nao muda no ar");
+    assert!(
+        (air.state.lift_time - (cfg.lift_momentum - DT)).abs() < 1.0e-6,
+        "a janela escorre por dt: {}",
+        air.state.lift_time
+    );
+}
+
+/// **O referencial SEGURA o valor cheio e depois SOLTA** — a lei que a medição
+/// escolheu contra o desvanecimento (ver [`JumpConfig::lift_momentum`]).
+///
+/// **Mutação que deve sangrar:** devolver `lift · (lift_time / lift_momentum)`,
+/// que é a primeira versão desta lei.
+#[test]
+fn the_carried_frame_holds_full_and_then_releases() {
+    let cfg = JumpConfig::STARTING_POINT;
+    let mut st = jump_step(
+        &cfg,
+        JumpState::default(),
+        Some(&wagon()),
+        0.0,
+        false,
+        G,
+        UP,
+        DT,
+    )
+    .state;
+
+    // Meio da janela: ainda CHEIO — é isso que "preserva" quer dizer.
+    for _ in 0..40 {
+        st = jump_step(&cfg, st, None, -1.0, false, G, UP, DT).state;
+        assert_eq!(
+            carried_frame(&cfg, &st),
+            [4.0, 0.0],
+            "dentro da janela o referencial e' o do vagao, INTEIRO (restam {})",
+            st.lift_time
+        );
+    }
+
+    // Passada a janela: o referencial volta a ser o do mundo.
+    for _ in 0..100 {
+        st = jump_step(&cfg, st, None, -1.0, false, G, UP, DT).state;
+    }
+    assert_eq!(st.lift_time, 0.0, "a janela fechou");
+    assert_eq!(
+        carried_frame(&cfg, &st),
+        [0.0, 0.0],
+        "e o referencial volta a ser o do mundo"
+    );
+}
+
+/// **`lift_momentum = 0` é inerte, e o chão PARADO também** — as duas metades
+/// que tornam o default ligado honesto.
+#[test]
+fn a_still_ground_and_a_zero_window_both_carry_nothing() {
+    let mut off = JumpConfig::STARTING_POINT;
+    off.lift_momentum = 0.0;
+    let s = jump_step(
+        &off,
+        JumpState::default(),
+        Some(&wagon()),
+        0.0,
+        false,
+        G,
+        UP,
+        DT,
+    )
+    .state;
+    assert_eq!(
+        carried_frame(&off, &s),
+        [0.0, 0.0],
+        "janela zero nao carrega nada, nem de um vagao"
+    );
+
+    let cfg = JumpConfig::STARTING_POINT;
+    let still = jump_step(
+        &cfg,
+        JumpState::default(),
+        Some(&ground()),
+        0.0,
+        false,
+        G,
+        UP,
+        DT,
+    )
+    .state;
+    assert_eq!(
+        carried_frame(&cfg, &still),
+        [0.0, 0.0],
+        "e um chao parado lembra [0, 0] — o default ligado e' inerte ali"
+    );
+}

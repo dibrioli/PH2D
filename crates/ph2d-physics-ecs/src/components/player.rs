@@ -83,6 +83,19 @@ pub struct PlatformPlayer {
     pub coyote_time: f32,
     /// **JUMP BUFFER** (W8) — segundos que um aperto cedo demais sobrevive.
     pub jump_buffer: f32,
+    /// **CORNER CORRECTION** (W10) — metros de deslocamento lateral que a
+    /// assistência pode dar para o personagem passar por baixo de uma beirada.
+    ///
+    /// ⚠️ Uma DISTÂNCIA, não um tempo: os dois irmãos acima perdoam erros de
+    /// *quando*, este perdoa um erro de *onde*. `0` desliga — e desliga também o
+    /// sensor, então não custa um raio sequer.
+    pub corner_reach: f32,
+    /// **LIFT MOMENTUM** (W10) — segundos em que o controle aéreo continua
+    /// medindo no referencial do chão que se deixou.
+    ///
+    /// ⚠️ Sem ele, sair de uma plataforma móvel faz o controle aéreo FREAR a
+    /// velocidade que ela deu. Em chão estático é inerte (a memória é `[0, 0]`).
+    pub lift_momentum: f32,
 
     /// **Quanto do PESO volta para o chão** (W6). `1` transmite inteiro.
     ///
@@ -129,6 +142,8 @@ impl PlatformPlayer {
                 cut_gravity: self.cut_gravity,
                 coyote_time: self.coyote_time,
                 jump_buffer: self.jump_buffer,
+                corner_reach: self.corner_reach,
+                lift_momentum: self.lift_momentum,
             },
             react: ReactionConfig {
                 support: self.reaction_support,
@@ -161,6 +176,8 @@ impl Default for PlatformPlayer {
             cut_gravity: c.jump.cut_gravity,
             coyote_time: c.jump.coyote_time,
             jump_buffer: c.jump.jump_buffer,
+            corner_reach: c.jump.corner_reach,
+            lift_momentum: c.jump.lift_momentum,
             reaction_support: c.react.support,
             reaction_movement: c.react.movement,
         }

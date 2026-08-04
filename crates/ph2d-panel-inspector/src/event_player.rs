@@ -46,6 +46,8 @@ pub(crate) fn apply_player_event(host: &mut dyn PanelHostInternal, ev: WidgetEve
                 ids::INSP_PLAYER_CUT_G => Some(PlayerFieldEdit::CutGravity(v)),
                 ids::INSP_PLAYER_COYOTE => Some(PlayerFieldEdit::CoyoteTime(v)),
                 ids::INSP_PLAYER_BUFFER => Some(PlayerFieldEdit::JumpBuffer(v)),
+                ids::INSP_PLAYER_CORNER => Some(PlayerFieldEdit::CornerReach(v)),
+                ids::INSP_PLAYER_LIFT => Some(PlayerFieldEdit::LiftMomentum(v)),
                 ids::INSP_PLAYER_REACT_SUPPORT => Some(PlayerFieldEdit::ReactionSupport(v)),
                 ids::INSP_PLAYER_REACT_MOVEMENT => Some(PlayerFieldEdit::ReactionMovement(v)),
                 // Graus na row, cosseno no motor — a conversão acontece UMA vez,

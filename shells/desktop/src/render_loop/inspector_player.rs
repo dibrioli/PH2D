@@ -75,6 +75,8 @@ pub(crate) fn build_player_info(sim: &SimWorld, entity_bits: u64) -> Option<Insp
         cut_gravity: p.cut_gravity,
         coyote_time: p.coyote_time,
         jump_buffer: p.jump_buffer,
+        corner_reach: p.corner_reach,
+        lift_momentum: p.lift_momentum,
         reaction_support: p.reaction_support,
         reaction_movement: p.reaction_movement,
     })
@@ -166,6 +168,8 @@ pub(crate) fn apply_player_edit(sim: &mut SimWorld, entity_bits: u64, edit: Play
         PlayerFieldEdit::CutGravity(v) => p.cut_gravity = v.max(0.0),
         PlayerFieldEdit::CoyoteTime(v) => p.coyote_time = v.max(0.0),
         PlayerFieldEdit::JumpBuffer(v) => p.jump_buffer = v.max(0.0),
+        PlayerFieldEdit::CornerReach(v) => p.corner_reach = v.max(0.0),
+        PlayerFieldEdit::LiftMomentum(v) => p.lift_momentum = v.max(0.0),
         PlayerFieldEdit::ReactionSupport(v) => p.reaction_support = v.max(0.0),
         PlayerFieldEdit::ReactionMovement(v) => p.reaction_movement = v.max(0.0),
     }

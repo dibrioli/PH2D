@@ -168,3 +168,27 @@ fn a_box_reports_no_known_floor() {
     let info = build_player_info(&sim, bits).unwrap();
     assert!(!info.min_float_known);
 }
+
+/// ⚠️ **As duas assistências da W10 chegam ao COMPONENTE, e o clamp é o do
+/// barramento** — a quarta condição para a wave nova.
+///
+/// O seam prova que o número levanta a edição; este prova que a edição pousa no
+/// personagem, e que um valor negativo (que o chip aceita digitar) vira zero em
+/// vez de um alcance ao contrário.
+#[test]
+fn the_two_w10_assists_land_on_the_component_and_are_clamped() {
+    let (mut sim, bits) = body(BodyKind::Dynamic, CAPSULE);
+    apply_player_edit(&mut sim, bits, PlayerFieldEdit::Add);
+
+    apply_player_edit(&mut sim, bits, PlayerFieldEdit::CornerReach(0.2));
+    apply_player_edit(&mut sim, bits, PlayerFieldEdit::LiftMomentum(0.8));
+    let info = build_player_info(&sim, bits).unwrap();
+    assert!((info.corner_reach - 0.2).abs() < 1.0e-6, "{info:?}");
+    assert!((info.lift_momentum - 0.8).abs() < 1.0e-6, "{info:?}");
+
+    // Negativo não é uma direção nem uma janela: vira o desligado.
+    apply_player_edit(&mut sim, bits, PlayerFieldEdit::CornerReach(-1.0));
+    apply_player_edit(&mut sim, bits, PlayerFieldEdit::LiftMomentum(-1.0));
+    let clamped = build_player_info(&sim, bits).unwrap();
+    assert_eq!((clamped.corner_reach, clamped.lift_momentum), (0.0, 0.0));
+}

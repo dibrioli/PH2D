@@ -193,7 +193,13 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // e os dois degraus do 3D entraram no meio ⇒ o valor CONTADO é 54, e ele não estava
         // em nenhum dos dois lados do conflito
         // ([[feedback_numbers_that_sum_across_lines_count_dont_pick]]).
-        (54, 13, 14),
+        // PROJECT 54→55: `PlatformPlayer` ganhou `corner_reach` e
+        // `lift_momentum` (W10 — a correção de quina e a memória do referencial
+        // da plataforma). Dois campos apendados ao componente, e o postcard é
+        // posicional ⇒ um save v54 lido por v55 chega ao fim dos bytes neles.
+        // ⚠️ A linha escreveu 52; o valor CONTADO é 55 — ela trouxe DOIS degraus
+        // (o `custom` do W-JointCustom e este), e o handoff dela contou UM só.
+        (55, 13, 14),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

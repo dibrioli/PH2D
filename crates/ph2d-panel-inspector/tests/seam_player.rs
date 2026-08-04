@@ -57,6 +57,8 @@ fn player() -> InspectorPlayerInfo {
         cut_gravity: 4.0,
         coyote_time: 0.1,
         jump_buffer: 0.1,
+        corner_reach: 0.12,
+        lift_momentum: 1.5,
         reaction_support: 1.0,
         reaction_movement: 0.0,
     }
@@ -163,7 +165,7 @@ fn the_empty_face_offers_nothing_else() {
     }
 }
 
-/// **Todos os oito números levantam a própria edição** — a varredura.
+/// **Todos os números levantam a própria edição** — a varredura.
 ///
 /// Uma tabela e não oito testes: uma row nova que esqueça o arm faz esta lista
 /// falhar, e uma que esqueça a lista não existe (o pintor itera a mesma).
@@ -174,7 +176,7 @@ fn every_number_raises_its_own_edit() {
     // exatamente o arm esquecido que ela existe para pegar.
     assert_eq!(
         ph2d_panel_inspector::PLAYER_ROW_COUNT,
-        19,
+        21,
         "a tabela de rows cresceu; acrescente o numero novo a esta varredura"
     );
     for (id, v, edit) in [
@@ -218,6 +220,16 @@ fn every_number_raises_its_own_edit() {
             ids::INSP_PLAYER_BUFFER,
             0.15,
             PlayerFieldEdit::JumpBuffer(0.15),
+        ),
+        (
+            ids::INSP_PLAYER_CORNER,
+            0.18,
+            PlayerFieldEdit::CornerReach(0.18),
+        ),
+        (
+            ids::INSP_PLAYER_LIFT,
+            0.9,
+            PlayerFieldEdit::LiftMomentum(0.9),
         ),
         (
             ids::INSP_PLAYER_MAX_SLOPE,

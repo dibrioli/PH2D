@@ -86,6 +86,42 @@ pub struct JumpConfig {
     /// O erro simétrico do coyote: um apertou tarde, o outro cedo. `0.0`
     /// desliga.
     pub jump_buffer: f32,
+
+    /// **CORNER CORRECTION** (W10) — quantos METROS de lado o personagem pode ser
+    /// deslocado para passar raspando por baixo de uma beirada.
+    ///
+    /// ⚠️ É uma DISTÂNCIA, não um tempo, e é o que separa esta assistência das
+    /// duas de cima: coyote e buffer perdoam erros de *quando*, esta perdoa um
+    /// erro de *onde*. `0.0` desliga — e desliga também o sensor
+    /// ([`crate::corner_probe_wanted`]), então não custa um raio sequer.
+    pub corner_reach: f32,
+
+    /// **LIFT MOMENTUM** (W10) — por quantos segundos, depois de sair do chão, o
+    /// controle aéreo continua medindo a velocidade no referencial do chão que
+    /// se DEIXOU.
+    ///
+    /// ⚠️ **Sem ele, sair de uma plataforma móvel APAGA a velocidade dela.** A
+    /// caminhada mira `drive × speed` **relativo ao chão** ([`crate::walk`]), e
+    /// no ar o chão vale zero — então no tique em que o pé sai de um vagão a
+    /// 5 m/s o alvo salta para o referencial do MUNDO e o controle aéreo começa
+    /// a frear os 5 m/s que a física dera de graça. O corpo mantém a velocidade
+    /// (isso é o solver), mas a assistência trabalha contra ela.
+    ///
+    /// ⚠️ **A memória SEGURA o valor cheio e depois solta — ela NÃO desvanece, e
+    /// a primeira versão desvanecia.** A medição derrubou o desvanecimento: com
+    /// ele, um pulo de um vagão a 4 m/s avançava **1,03 m** contra os 2,67 m do
+    /// voo balístico, porque o alvo caía continuamente e o controle aéreo freava
+    /// o tempo todo — a assistência entregava *metade* do que o nome promete.
+    /// Segurando, o mesmo pulo avança **2,67 m**, ou seja 100%.
+    ///
+    /// O degrau no fim da janela não é um solavanco: o que muda ali é o ALVO, e
+    /// o controle aéreo é uma aceleração limitada — a velocidade converge, não
+    /// salta.
+    ///
+    /// `0.0` é o comportamento de antes desta wave, AO BIT. E em chão ESTÁTICO a
+    /// memória é `[0, 0]`, então o default ligado não move nada até existir uma
+    /// plataforma que se mova.
+    pub lift_momentum: f32,
 }
 
 impl JumpConfig {
@@ -111,6 +147,48 @@ impl JumpConfig {
         // ela lê como *"eu ainda estava na borda"* em vez de *"pulei do ar"*.
         coyote_time: 0.1,
         jump_buffer: 0.1,
+        // ⚠️ **0,12 m, e a tabela é do `measure_corner`** (2026-08-04, cápsula
+        // da fixture: 0,4 m de largura, beirada 1,7 m acima da cabeça). A coluna
+        // que decide é o PICO do pulo — a assistência é boa quando ele volta ao
+        // que seria sem obstáculo nenhum (0,833 m):
+        //
+        // | encosto | pico SEM | pico COM | desvio lateral |
+        // |---|---|---|---|
+        // | 0,04 m | 0,784 | **0,833** | −0,052 |
+        // | 0,08 m | 0,741 | **0,833** | −0,090 |
+        // | 0,10 m | 0,727 | **0,833** | −0,112 |
+        // | 0,12 m | 0,716 | 0,716 | 0,000 |
+        // | 0,20 m (cabeça inteira) | 0,702 | 0,702 | 0,000 |
+        //
+        // ⚠️ **O que ele salva é `corner_reach − passo/2`**, não o alcance
+        // cheio: uma amostra do perfil fala por uma célula, e meia célula é o que
+        // a lei não pode afirmar (ver [`crate::CORNER_SAMPLES`]). Aqui isso é
+        // 0,115 m, e a tabela concorda — 0,10 passa, 0,12 não.
+        //
+        // ⚠️ **E a linha que importa é a última:** com a cabeça inteira tapada o
+        // pico é IDÊNTICO com e sem a assistência. Um teto continua um teto.
+        corner_reach: 0.12,
+        // ⚠️ **1,5 s é MEDIDO contra o pulo, não estimado:** um pulo default de
+        // altura cheia fica **1,45 s no ar** (pico 2,101 m,
+        // `measure_how_long_a_default_jump_lasts`), então a janela cobre o pulo
+        // mais longo que a config de partida produz — e nada além dele.
+        //
+        // A tabela que a escolheu (vagão a 4 m/s, voo de 0,67 s,
+        // `measure_what_the_window_delivers`):
+        //
+        // | janela | avanço | fração do balístico |
+        // |---|---|---|
+        // | 0,00 s | 0,291 m | 11% |
+        // | 0,25 s | 1,358 m | 51% |
+        // | 0,50 s | 2,291 m | 86% |
+        // | **0,75 s** | **2,667 m** | **100%** |
+        //
+        // ⚠️ **A linha de cima é o defeito que esta wave conserta:** sem memória
+        // o personagem chega a 11% do que a física lhe deu — o controle aéreo
+        // come o resto. E a janela acabar em vez de durar para sempre é o que
+        // impede uma queda de dez segundos de guardar a velocidade de um
+        // elevador que ficou lá em cima.
+        lift_momentum: 1.5,
     };
 }
 
@@ -156,6 +234,20 @@ pub struct JumpState {
     /// ⚠️ Zerar na decolagem não é higiene: sem isso um aperto só dispararia o
     /// pulo e, no tique seguinte ainda em contato, dispararia de novo.
     pub buffer: f32,
+
+    /// **A velocidade do chão que se deixou** (W10) — o referencial que o
+    /// controle aéreo continua usando por [`JumpConfig::lift_momentum`].
+    ///
+    /// ⚠️ **NÃO é consumida pela decolagem**, ao contrário dos dois relógios
+    /// acima, e a assimetria é o ponto: coyote e buffer perdoam um erro do
+    /// jogador e gastar-se é o que os impede de virar segunda chance; esta é um
+    /// **fato sobre o mundo** (*"eu vinha de um vagão a 5 m/s"*) e continua
+    /// verdadeiro depois do pulo — aliás é no pulo que ela mais importa.
+    pub lift: Vec2,
+
+    /// **Segundos de memória restantes** (W10) — enche com o pé no chão, escorre
+    /// no ar, e o quociente por `lift_momentum` é o desvanecimento.
+    pub lift_time: f32,
 }
 
 /// O que a lei do pulo decidiu neste tick.
@@ -219,12 +311,25 @@ pub fn jump_step(
     // ⚠️ E os dois escorrem por `dt` de RELÓGIO, nunca por contagem de tiques:
     // uma tolerância medida em quadros muda de tamanho quando o `fixed_dt` muda,
     // e "0,1 s" é uma frase sobre o dedo do jogador, não sobre a taxa da sim.
-    if footing.is_some() && !state.airborne {
+    let grounded = footing.is_some() && !state.airborne;
+    if grounded {
         // No chão o coyote está CHEIO — ele é o que sobra depois de sair, não um
         // tempo acumulado por ficar parado.
         next.coyote = cfg.coyote_time.max(0.0);
     } else {
         next.coyote = (state.coyote - dt).max(0.0);
+    }
+
+    // ── A MEMÓRIA DO CHÃO QUE SE DEIXOU (W10) ────────────────────────────────
+    // ⚠️ Ela é RE-CARIMBADA a cada tique no chão, e não só na saída: a saída não
+    // é um evento que esta lei observa (o sensor simplesmente para de achar
+    // chão), e guardar "a última velocidade vista" é a forma de saber o que ele
+    // valia no instante em que ainda havia chão.
+    if grounded {
+        next.lift = footing.map_or([0.0, 0.0], |s| s.ground_velocity);
+        next.lift_time = cfg.lift_momentum.max(0.0);
+    } else {
+        next.lift_time = (state.lift_time - dt).max(0.0);
     }
     next.buffer = if pressed {
         cfg.jump_buffer.max(0.0)
@@ -336,6 +441,26 @@ pub fn jump_step(
         spring_armed,
         takeoff: false,
     }
+}
+
+/// **O referencial em que o controle aéreo mede a velocidade** (W10) — a memória
+/// do chão que se deixou, já desvanecida.
+///
+/// Devolve `[0, 0]` quando a janela está fechada, quando ela é zero (a
+/// assistência desligada) ou quando o chão de onde se saiu estava parado — e é
+/// esse último caso que torna o default ligado **inerte** em toda cena de chão
+/// estático, byte a byte.
+///
+/// ⚠️ **Lê o estado DEPOIS do tique**, o que [`jump_step`] devolveu: a memória
+/// escorre e é usada no mesmo tique, exatamente como o coyote enche e é
+/// consultado no mesmo. Ler o estado de ENTRADA daria ao ar um tique de memória
+/// a mais do que a janela autorada — pequeno, invisível, e errado.
+#[must_use]
+pub fn carried_frame(cfg: &JumpConfig, state: &JumpState) -> Vec2 {
+    if !cfg.lift_momentum.is_finite() || cfg.lift_momentum <= 0.0 || state.lift_time <= 0.0 {
+        return [0.0, 0.0];
+    }
+    state.lift
 }
 
 /// Os gates desta lei — irmão por `#[path]` (o `mod tests` continua FILHO, então

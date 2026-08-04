@@ -106,6 +106,18 @@ pub const INSP_PLAYER_COYOTE: NodeId = hash_node_id("insp.player.coyote");
 /// **Jump Buffer** (W8) — segundos que um aperto cedo demais sobrevive.
 pub const INSP_PLAYER_BUFFER: NodeId = hash_node_id("insp.player.buffer");
 
+/// **Corner Reach** (W10) — METROS de deslocamento lateral que a assistência de
+/// quina pode dar.
+///
+/// ⚠️ Mora no card do PERDÃO ao lado dos dois de cima, e a família é a mesma
+/// (*o jogo perdoa um erro do jogador*) — mas a grandeza não: os dois primeiros
+/// perdoam erros de **quando**, este perdoa um erro de **onde**. Daí a unidade
+/// no rótulo.
+pub const INSP_PLAYER_CORNER: NodeId = hash_node_id("insp.player.corner");
+/// **Lift Momentum** (W10) — segundos em que o controle aéreo continua medindo
+/// no referencial da plataforma que se deixou.
+pub const INSP_PLAYER_LIFT: NodeId = hash_node_id("insp.player.lift");
+
 /// **Os CARDS da §14** (W9) — os títulos que agrupam os dezenove números.
 ///
 /// ⚠️ **Só moldura, nenhum estado.** Eles não são colapsáveis e não guardam

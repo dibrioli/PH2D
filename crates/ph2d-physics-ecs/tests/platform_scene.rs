@@ -11,6 +11,14 @@
 //! (D4 do plano): em 2D trava-se a rotação de um personagem, como Unity e Godot
 //! fazem. Sem ele a cápsula tomba e a perna vira um pêndulo — e o que estes
 //! gates medem deixa de ser a caminhada.
+//!
+//! ⚠️ **O `allow(dead_code)` é do formato, não do descuido:** cada arquivo em
+//! `tests/` é um crate PRÓPRIO, e cada um usa o subconjunto desta fixture de que
+//! precisa — o `platform_lift`, por exemplo, monta o vagão dele e só reusa a
+//! `pose` e a altura de flutuação. Sem o `allow`, o preço de compartilhar a
+//! fixture seria um aviso por consumidor que não usa tudo, e a saída natural
+//! dele é a segunda cópia que este arquivo existe para não ter.
+#![allow(dead_code)]
 
 use ph2d_core::Vec2;
 use ph2d_ecs::{Name, SimWorld, Transform};

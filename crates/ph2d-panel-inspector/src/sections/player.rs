@@ -116,10 +116,17 @@ const JUMP_ROWS: [PlayerRow; 7] = [
     ),
 ];
 
-/// **O PERDÃO** (W8) — ⚠️ os dois são o MESMO erro visto dos dois lados: um
-/// apertou tarde, o outro cedo. `0` desliga cada um, e com os dois em zero a lei
+/// **O PERDÃO** (W8 + W10) — ⚠️ os dois primeiros são o MESMO erro visto dos
+/// dois lados (um apertou tarde, o outro cedo); os dois da W10 perdoam coisas
+/// diferentes, e o card os junta porque a **família** é a mesma: *o jogo faz o
+/// que o jogador quis dizer*. `0` desliga cada um, e com os quatro em zero a lei
 /// é a que o W4 shipou, ao bit.
-const FORGIVE_ROWS: [PlayerRow; 2] = [
+///
+/// ⚠️ **A unidade está no RÓTULO porque as quatro não são a mesma grandeza:**
+/// três são segundos e o *Corner Reach* é METROS. Sem `(m)` ali, um artista que
+/// leu as três de cima escreve `0.1` esperando um décimo de segundo e recebe dez
+/// centímetros.
+const FORGIVE_ROWS: [PlayerRow; 4] = [
     (
         "Coyote Time (s)",
         ids::INSP_PLAYER_COYOTE,
@@ -129,6 +136,16 @@ const FORGIVE_ROWS: [PlayerRow; 2] = [
         "Jump Buffer (s)",
         ids::INSP_PLAYER_BUFFER,
         "A press this early still fires on landing.",
+    ),
+    (
+        "Corner Reach (m)",
+        ids::INSP_PLAYER_CORNER,
+        "Slide sideways up to this to clear a ledge you clipped. In METRES.",
+    ),
+    (
+        "Lift Momentum (s)",
+        ids::INSP_PLAYER_LIFT,
+        "Keep a moving platform's speed for this long after leaving it.",
     ),
 ];
 

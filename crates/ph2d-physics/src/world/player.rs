@@ -44,6 +44,35 @@ impl PhysicsWorld {
         [self.gravity.x, self.gravity.y]
     }
 
+    /// **Deslocar um corpo sem tocar na velocidade dele** (W10) — a correção de
+    /// quina, e o único lugar deste módulo que escreve POSIÇÃO.
+    ///
+    /// ⚠️ **Não é `set_body_pose`**, e a diferença é o bug inteiro: aquela porta
+    /// **zera a velocidade** (ela existe para assentar um corpo na pose autorada,
+    /// onde zerar é o certo). Usá-la aqui pararia o pulo no ar no exato tique em
+    /// que a assistência tenta salvá-lo — a correção mataria o que ela corrige.
+    ///
+    /// ⚠️ E **acorda o corpo**, pela mesma razão que o motor: um corpo adormecido
+    /// não é integrado, e mover a translação dele sem acordar deixa o BVH e o
+    /// desenho a discordar até alguém encostar nele.
+    ///
+    /// No-op para deslocamento nulo ou não-finito — recusar cedo é mais barato
+    /// que descobrir depois, e um `NaN` numa translação envenena a pose do corpo
+    /// e o `physics_ecs_c9` junto.
+    pub fn nudge_body(&mut self, handle: RigidBodyHandle, delta: [f32; 2]) {
+        if !delta[0].is_finite() || !delta[1].is_finite() {
+            return;
+        }
+        if delta[0] == 0.0 && delta[1] == 0.0 {
+            return;
+        }
+        let Some(rb) = self.bodies.get_mut(handle) else {
+            return;
+        };
+        let next = rb.translation() + Vector2::new(delta[0], delta[1]);
+        rb.set_translation(next, true);
+    }
+
     /// A velocidade linear de um corpo, em mundo. `None` se o handle morreu.
     #[must_use]
     pub fn body_velocity(&self, handle: RigidBodyHandle) -> Option<[f32; 2]> {

@@ -48,13 +48,18 @@
 //! respostas para essa pergunta seriam a mola segurando o personagem numa parede
 //! que a caminhada considera intransponível.
 
+pub mod corner;
 pub mod jump;
 pub mod react;
 pub mod ride;
 pub mod slope;
 pub mod walk;
 
-pub use jump::{JumpConfig, JumpState, JumpStep, jump_step};
+pub use corner::{
+    CORNER_LOOKAHEAD, CORNER_SAMPLES, CORNER_SEARCH_STEPS, CeilingProbe, corner_escape,
+    corner_nudge, corner_offsets, corner_probe_wanted,
+};
+pub use jump::{JumpConfig, JumpState, JumpStep, carried_frame, jump_step};
 pub use react::{Reaction, ReactionConfig};
 pub use ride::{RideConfig, ride_spring, within_reach};
 pub use slope::{Footing, footing, footing_verdict, is_grounded, no_uphill};
@@ -134,6 +139,15 @@ pub struct PlayerStep {
     pub state: JumpState,
     /// **O que devolver ao chão** — `None` quando não há chão em que empurrar.
     pub reaction: Option<Reaction>,
+    /// **Um DESLOCAMENTO em metros** (W10) — a correção de quina, e a única
+    /// saída desta lei que não é força nem velocidade.
+    ///
+    /// ⚠️ A ponte o aplica escrevendo a translação do corpo, **sem tocar a
+    /// velocidade**. O porquê de não ser um `boost` está no topo de
+    /// [`crate::corner`]: um impulso lateral daria o mesmo deslocamento neste
+    /// tique e deixaria o personagem derivando de lado depois, porque ninguém o
+    /// remove — a assistência viraria um empurrão.
+    pub nudge: Vec2,
 }
 
 /// **A entrada do jogador neste tick.**
@@ -185,6 +199,21 @@ impl Motor {
     }
 }
 
+/// **A velocidade de SUBIDA relativa ao chão** — o número em que quase toda esta
+/// lei ramifica (o pouso, as fases da gravidade, a porta do sensor de teto).
+///
+/// ⚠️ **Porta única, e a W10 é quem a exigiu:** a ponte precisa da MESMA grandeza
+/// para decidir se casta os raios da quina ([`corner_probe_wanted`]), e a
+/// tentação era ela ler `velocidade · up` direto — igual **enquanto** o probe só
+/// existir no ar, onde a velocidade do chão é zero. Uma premissa verdadeira por
+/// acidente de escopo é exatamente a que envelhece: bastaria um dia oferecer a
+/// assistência de pé numa plataforma que sobe.
+#[must_use]
+pub fn relative_rise(footing: Option<&GroundSample>, body_velocity: Vec2, up: Vec2) -> f32 {
+    let g = footing.map_or([0.0, 0.0], |s| s.ground_velocity);
+    (body_velocity[0] - g[0]) * up[0] + (body_velocity[1] - g[1]) * up[1]
+}
+
 /// **A PORTA ÚNICA** — o motor inteiro de um player neste tick.
 ///
 /// Ela existe por uma razão que não é conveniência: [`footing`] é chamada
@@ -193,17 +222,22 @@ impl Motor {
 /// personagem e a caminhada a considerá-lo no ar — o estado impossível que
 /// nenhum gate de lei isolada consegue ver.
 ///
-/// ⚠️ **Oito argumentos, e o `allow` é deliberado** — o precedente é o
-/// `body_desc` desta mesma linha. A alternativa é empacotar *o quadro físico
-/// deste tick* (`body_velocity`/`gravity`/`up`/`dt`) num tipo, e ela é a certa
-/// **quando a lista crescer de novo**: a W7 traz a fita de entrada e a W8 os
-/// contadores de tolerância, e o dia em que um deles entrar aqui é o dia de
-/// trocar a assinatura uma vez em vez de duas.
+/// ⚠️ **Nove argumentos, e o `allow` é deliberado** — o precedente é o
+/// `body_desc` desta mesma linha.
+///
+/// ⚠️ **A nota antiga prometia empacotar o quadro físico "quando a lista crescer
+/// de novo", e a W10 a corrigiu em vez de a cumprir:** o argumento que entrou
+/// (`ceiling`) **não é** parte do quadro físico — é um **segundo SENSOR**, irmão
+/// do `sample`, e empacotá-lo com `gravity`/`dt` juntaria coisas que mudam por
+/// motivos diferentes. O pacote certo, no dia em que valer a pena, é *os
+/// sentidos* (`ground` + `ceiling`), não *o quadro*; hoje seriam duas linhas de
+/// cerimônia para dois campos.
 #[must_use]
 #[allow(clippy::too_many_arguments)]
 pub fn player_motor(
     cfg: &PlayerConfig,
     sample: Option<&GroundSample>,
+    ceiling: Option<&CeilingProbe>,
     input: PlayerInput,
     state: JumpState,
     body_velocity: Vec2,
@@ -218,9 +252,7 @@ pub fn player_motor(
     // responde *"a perna pode agir?"*. No instante da decolagem o raio ainda vê
     // o chão, então uma mola viva puxaria de volta o que o boost acabou de dar
     // (o aviso do `jump`).
-    let ground_v = footing.map_or([0.0, 0.0], |s| s.ground_velocity);
-    let rel_up =
-        (body_velocity[0] - ground_v[0]) * up[0] + (body_velocity[1] - ground_v[1]) * up[1];
+    let rel_up = relative_rise(footing, body_velocity, up);
     let jump = jump_step(
         &cfg.jump, state, footing, rel_up, input.jump, gravity, up, dt,
     );
@@ -235,8 +267,20 @@ pub fn player_motor(
     // acima) e o PULO é um gesto deliberado do artista — capá-lo faria o
     // personagem perder o salto por encostar numa ladeira, que é outra feature e
     // não esta correção. O que a lei recusa é *escalar sem querer*.
+    // ⚠️ **O referencial do ar é a memória do chão que se deixou** (W10), e ela
+    // é lida do estado que ESTE tique produziu — a mesma ordem do coyote, que
+    // enche e é consultado no mesmo tique.
+    let carried = jump::carried_frame(&cfg.jump, &jump.state);
     let step = no_uphill(
-        walk(&cfg.walk, standing, body_velocity, up, input.drive, dt),
+        walk(
+            &cfg.walk,
+            standing,
+            body_velocity,
+            up,
+            input.drive,
+            carried,
+            dt,
+        ),
         verdict.steep(),
         up,
     );
@@ -257,10 +301,22 @@ pub fn player_motor(
         react::reaction(&cfg.react, spring, impulse, step)
     });
 
+    // ── A QUINA (W10) ────────────────────────────────────────────────────────
+    // ⚠️ A porta é a MESMA que a ponte consulta para decidir se casta os raios
+    // (`corner_probe_wanted`), então a assistência não pode existir num lado e
+    // não no outro. Sem sensor não há correção — e um sensor entregue fora da
+    // hora ainda assim não age.
+    let nudge = if corner::corner_probe_wanted(&cfg.jump, footing.is_some(), rel_up) {
+        corner::corner_nudge(ceiling, &cfg.jump, up)
+    } else {
+        [0.0, 0.0]
+    };
+
     PlayerStep {
         motor: spring.plus(step).plus(jump.motor),
         state: jump.state,
         reaction,
+        nudge,
     }
 }
 
@@ -303,6 +359,7 @@ mod tests {
         let at_wall = player_motor(
             &cfg,
             Some(&steep),
+            None,
             PlayerInput::default(),
             JumpState::default(),
             [0.0, 0.0],
@@ -319,6 +376,7 @@ mod tests {
         // estar ao lado de uma parede íngreme é o MESMO que estar no ar.
         let in_the_air = player_motor(
             &cfg,
+            None,
             None,
             PlayerInput::default(),
             JumpState::default(),
@@ -353,6 +411,7 @@ mod tests {
         let m = player_motor(
             &cfg,
             Some(&inside),
+            None,
             PlayerInput::default(),
             JumpState::default(),
             [0.0, 0.0],
@@ -379,6 +438,7 @@ mod tests {
         let whole = player_motor(
             &cfg,
             Some(&ground),
+            None,
             input,
             JumpState::default(),
             [0.0, 0.0],
@@ -387,7 +447,15 @@ mod tests {
             DT,
         );
         let spring = ride_spring(&cfg.ride, Some(&ground), [0.0, 0.0], G, UP);
-        let step = walk(&cfg.walk, Some(&ground), [0.0, 0.0], UP, 1.0, DT);
+        let step = walk(
+            &cfg.walk,
+            Some(&ground),
+            [0.0, 0.0],
+            UP,
+            1.0,
+            [0.0, 0.0],
+            DT,
+        );
         assert_eq!(whole.motor, spring.plus(step));
         assert!(whole.motor.accel[0] > 0.0, "anda");
         assert!(whole.motor.accel[1] > 0.0, "e paira ao mesmo tempo");
@@ -524,6 +592,7 @@ mod tests {
         let walking = player_motor(
             &cfg,
             Some(&steep),
+            None,
             pushing,
             JumpState::default(),
             [0.0, 0.0],
@@ -534,6 +603,7 @@ mod tests {
         let idle = player_motor(
             &cfg,
             Some(&steep),
+            None,
             PlayerInput::default(),
             JumpState::default(),
             [0.0, 0.0],
@@ -556,6 +626,7 @@ mod tests {
         let jumping = player_motor(
             &cfg,
             Some(&steep),
+            None,
             PlayerInput {
                 drive: 1.0,
                 jump: true,

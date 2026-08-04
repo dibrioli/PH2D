@@ -207,11 +207,14 @@ comparar.
 
 ### W8 — FORGIVENESS (o que faz ser *preciso*)
 
-> **⚠️ ESTADO (2026-08-04): a wave shipou METADE, e a metade é nomeada.**
+> **⚠️ ESTADO (2026-08-04): a wave FECHOU — a segunda metade é a W10.**
 > **Coyote time e jump buffer LANDARAM** (commit `4277be065`, smoke `=87`, 6 gates,
-> 6 mutações). **Corner correction e lift momentum NÃO foram construídos** — o
-> desenho abaixo continua válido e é o que a próxima sessão executa; nada dele
-> foi refutado, só não foi feito. Ver o handoff de integração de 04/08 §7.
+> 6 mutações). **Corner correction e lift momentum landaram na W10** (cenas `=89`
+> e `=90`), e o desenho abaixo sobreviveu à construção com **uma correção medida**:
+> a correção de quina é um **DESLOCAMENTO de posição**, não o *"boost lateral"*
+> que esta linha dizia — um impulso dá o mesmo deslocamento no tique e deixa o
+> personagem derivando de lado a metros por segundo depois, porque ninguém o
+> remove (medido: **5,05 m** de desvio contra os 0,11 do deslocamento).
 >
 > Duas decisões que a construção tomou e que este plano não previa:
 > - **O POUSO passou a correr ANTES da DECOLAGEM** na `jump_step`. É o que faz um
@@ -233,8 +236,71 @@ comparar.
   > devolvê-la — **inventar energia**, e brigar com o solver que acabou de resolver.
 - **Lift momentum**: sair de uma plataforma preserva a velocidade dela por uma janela.
 
-**Smoke `=87`:** pula raspando a quina e **passa**; e o controle com `corner_reach = 0`, onde
-bate e cai — para o olho ver que a assistência está agindo.
+**Smoke `=87`:** os dois relógios do perdão (coyote e buffer).
+
+### W10 — A QUINA E O VAGÃO (2026-08-04)
+
+As duas metades que o W8 nomeou e não construiu. **Nada do desenho dele foi
+refutado**; três números que ele não tinha vieram da medição, e uma frase dele
+estava errada.
+
+**(A) CORNER CORRECTION.** Preditiva, como o W8 exigia: subindo, o sensor mede o
+teto que a cabeça alcançaria no PRÓXIMO tique, e se um deslocamento lateral
+pequeno o livra, o personagem é movido **antes** do contato. Nada é devolvido
+porque nada foi tirado.
+
+⚠️ **O W8 dizia "boost lateral" e a medição derrubou:** um impulso de `escape/dt`
+dá o deslocamento certo neste tique e **sobrevive**, porque ninguém o remove — o
+personagem sai voando de lado (**5,05 m** contra os 0,11 do deslocamento, com o
+controle aéreo desligado). Correção de quina é assistência de **POSIÇÃO**, e é
+por isso que `PlayerStep::nudge` não é um `Motor`.
+
+⚠️ **O sensor é um PERFIL de 65 raios, e a resolução foi MEDIDA.** O primeiro
+corte usava 25 e o passo saía 2,7 cm num corpo de 40 cm: **um encosto de 10 cm
+não era salvo com o alcance em 12 cm**, porque a meia célula que uma amostra não
+pode afirmar mais o arredondamento comiam os 2 cm de folga. Com 65 o passo cai
+para 1,0 cm. **O custo não foi o que decidiu, porque ele não existe:** o sensor
+inteiro mede **+0,0004 ms por tique de subida** (~8 ns por raio), e só nos tiques
+em que o personagem sobe.
+
+| encosto | pico SEM | pico COM | desvio lateral |
+|---|---|---|---|
+| 0,04 m | 0,784 | **0,833** | −0,052 |
+| 0,10 m | 0,727 | **0,833** | −0,112 |
+| 0,12 m | 0,716 | 0,716 | 0,000 |
+| 0,20 m (cabeça inteira) | 0,702 | 0,702 | 0,000 |
+
+**A última linha é a que separa a assistência de um teletransporte:** com a
+cabeça inteira tapada o pico é IDÊNTICO com e sem ela.
+
+**(B) LIFT MOMENTUM.** ⚠️ **A doença não era do solver:** o corpo sempre manteve
+a velocidade da plataforma. Quem a apagava era a **assistência** — a caminhada
+mira `drive × speed` *relativo ao chão*, e no ar o chão valia zero, então o
+controle aéreo passava a frear o que a física dera. Medido: um pulo de um vagão a
+4 m/s avançava **11% do voo balístico**.
+
+⚠️ **E o desvanecimento foi construído e REPROVADO pela medição.** A primeira
+versão desvanecia a memória linearmente na janela — mais suave, e entregava
+**metade**: o alvo caía continuamente e o controle aéreo freava o tempo todo
+(1,03 m contra os 2,67 do balístico). A lei que ficou **SEGURA** o valor cheio e
+solta no fim da janela; o degrau não é solavanco porque o que muda ali é o ALVO,
+e o controle aéreo é uma aceleração limitada.
+
+| janela | avanço no voo | fração do balístico |
+|---|---|---|
+| 0,00 s | 0,291 m | **11%** |
+| 0,25 s | 1,358 m | 51% |
+| 0,50 s | 2,291 m | 86% |
+| **0,75 s** | **2,667 m** | **100%** |
+
+**O default é 1,5 s**, e ele é função do PULO: um pulo default de altura cheia
+fica **1,45 s no ar** (medido). Em chão estático a memória é `[0, 0]` — o default
+ligado é inerte até existir uma plataforma que se mova.
+
+**Smoke `=89` (A CHAMINÉ):** um vão de 0,60 m sobre um corpo de 0,40 — a janela
+em que o pulo passa sai de **±0,10 m para ±0,22 m**. **Smoke `=90` (O VAGÃO):**
+pular parado numa plataforma que anda e pousar EM CIMA dela; com a janela em 0 o
+vagão sai debaixo do personagem.
 
 ### W9 — O NÚMERO QUE O ARTISTA ESCREVE (2026-08-04, do smoke do Enio)
 

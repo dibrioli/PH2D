@@ -71,8 +71,31 @@ pub const MIN_ELEV_DEG: u16 = 5;
 /// byte-identidade sobrevive. // CLAMP-OK
 pub const AMBIENT: f32 = 0.35;
 
+/// **O REALCE do barro** — quanto do especular entra na superfície de argila.
+///
+/// ⚠️ **Ele mora AQUI e não na crate do renderizador de malha, e a razão não é organização:** um
+/// objeto assado (`docs/3D/02.2`, rota A) tem de **re-acender ao ser reaberto**, e a promessa
+/// inteira daquela rota é que isso acontece **sem o módulo 3D no build**. Enquanto este número
+/// morasse na `ph2d-mesh-render` — que cai com a feature `sculpt3d` — a re-acendida seria
+/// alcançável só onde a escultura existe, ou seja em lugar nenhum depois de o artista fechar o
+/// módulo. É o mesmo movimento que a W3 fez com o rig (`impasto_rig.rs` virou re-export desta
+/// crate) e pela mesma razão: **o que dois consumidores têm de responder igual mora onde os dois
+/// alcançam**. A `ph2d-mesh-render` re-exporta, então nenhum caminho de chamada mudou.
+///
+/// Sem ele o objeto assado sai **sem realce nenhum** enquanto o barro na tela tem um — foi o que o
+/// smoke da W8.6 reportou (*"o modelo vivo parece em perspectiva, o assado parece isométrico"*), e
+/// a medição mostrou que a projeção é idêntica nos dois: o que faltava era o especular, que é o cue
+/// de volume de uma esfera lisa. // CLAMP-OK
+pub const CLAY_SHINE: f32 = 0.35;
+
+/// **O expoente Blinn-Phong do barro**, e a razão de o objeto assado não precisar de conversão
+/// nenhuma: 24 é a média geométrica de 6 e 96, que é **exatamente** o que a rugosidade neutra da
+/// tinta (`0.5`) produz na LUT dela. Os dois caminhos já concordavam sobre a LARGURA do realce; só
+/// discordavam sobre a INTENSIDADE. // CLAMP-OK
+pub const CLAY_EXPONENT: f32 = 24.0;
+
 /// Uma lâmpada, como o artista a autora.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Light {
     /// Acesa. A 0 é a principal e começa ligada; 1..3 começam **apagadas**, então uma tela nova é
     /// byte-idêntica ao build de uma lâmpada só.
@@ -117,7 +140,7 @@ impl Default for Light {
 }
 
 /// O rig inteiro, como o documento o guarda.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct LightRig {
     pub lights: [Light; MAX_LIGHTS],
     /// Qual lâmpada o card está editando (`0..MAX_LIGHTS`). É estado de EDIÇÃO, não de aparência — não

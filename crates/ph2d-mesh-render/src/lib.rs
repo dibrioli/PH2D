@@ -38,25 +38,18 @@ pub use camera::Camera3d;
 pub use lighting::{LampRaw, RigRaw};
 pub use pipeline::{MeshRenderer, camera_uniform_bytes, view_proj_from_bytes};
 
-/// **O REALCE do barro** — quanto do especular entra na superfície de argila.
+/// **O material do barro** — o realce e a largura dele.
 ///
-/// ⚠️ **Ele é PÚBLICO porque tem um segundo consumidor**, e o segundo chegou com o objeto misto
-/// (`docs/3D/02.2`): assar a forma num sprite acende os pixels pela lei da TINTA, e sem este número
-/// o objeto assado sai **sem realce nenhum** enquanto o barro na tela tem um. Foi exatamente o que
-/// o smoke da W8.6 reportou — *"o modelo vivo parece em perspectiva, o assado parece isométrico"* —
-/// e a medição mostrou que a projeção é idêntica (a esfera sai redonda nos dois, e a fração
-/// vertical do quadro bate em 0,491 contra 0,492): o que faltava era o especular, que é o cue de
-/// volume de uma esfera lisa.
+/// ⚠️ **Eles MUDARAM DE CASA na W8.7 e isto é um re-export**, para nenhum caminho de chamada mudar.
+/// A razão da mudança é a promessa da rota A (`docs/3D/02.2`): um objeto assado **re-acende ao ser
+/// reaberto, sem o módulo 3D no build**, e esta crate cai com a feature `sculpt3d`. Enquanto os
+/// dois números morassem aqui, a re-acendida seria alcançável só onde a escultura existe — ou seja
+/// em lugar nenhum depois de o artista fechar o módulo. Hoje eles moram na [`ph2d_light`], que é a
+/// única peça NÃO-removível (`docs/3D/02.3`); é o mesmo movimento que a W3 fez com o rig.
 ///
 /// ⚠️ **A frase *"o barro ainda não tem material"* — que este arquivo e o bake diziam — estava
 /// ERRADA.** Ele não tem material POR PIXEL; material fixo ele tem, e são estes dois números.
-pub const CLAY_SHINE: f32 = 0.35;
-
-/// **O expoente Blinn-Phong do barro**, e a razão de o objeto misto não precisar de conversão
-/// nenhuma: 24 é a média geométrica de 6 e 96, que é **exatamente** o que a rugosidade neutra da
-/// tinta (`0.5`) produz na LUT dela. Os dois caminhos já concordavam sobre a LARGURA do realce; só
-/// discordavam sobre a INTENSIDADE.
-pub const CLAY_EXPONENT: f32 = 24.0;
+pub use ph2d_light::{CLAY_EXPONENT, CLAY_SHINE};
 
 #[cfg(test)]
 mod clay_tests {

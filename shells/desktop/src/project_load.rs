@@ -171,6 +171,14 @@ impl crate::App {
         // Depois do mundo: os sprites já existem (com bits novos), e é pelo `PaintedDoc` que cada um
         // reencontra o documento que era dele.
         self.restore_painted_docs(file.painted);
+        // **OS CANAIS ASSADOS** (`docs/3D/02.2`, rota A) — mesma dança, mesmo motivo: o
+        // `texture_id` do save morreu com o processo que o criou, e é pelo `BakedForm` que cada
+        // sprite reencontra os canais que eram dele.
+        //
+        // ⚠️ Ele NÃO acende: o slot nasce vazio e quem o acende é o passe de re-acendida no
+        // primeiro frame, que é a MESMA porta que a lâmpada usa. Acender aqui seria a segunda
+        // resposta a *como um objeto assado vira pixels*.
+        self.restore_baked_forms(file.baked_forms);
         // O grafo de Motion. Um erro de parse NÃO aborta o load: a cena, a geometria e os
         // pixels já entraram, e recusar tudo por causa do grafo perderia o resto do
         // trabalho. O grafo em memória permanece, e o motivo vai pro log.

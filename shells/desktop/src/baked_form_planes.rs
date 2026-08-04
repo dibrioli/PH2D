@@ -1,12 +1,23 @@
 //! **O que um SPRITE empresta ao passe da tinta.**
 //!
-//! Módulo FILHO do [`super`]: lá mora o que o artista PEDE (assar, re-acender, o carimbo do rig),
-//! aqui o que o passe EXIGE. A fronteira é a frase que o doc do pai já carrega — *o preço de reusar
-//! o `ImpastoLightPass` é que ele fala o vocabulário da TINTA (relevo, cobertura, material), e um
-//! sprite não tem nenhum dos três*.
+//! Módulo FILHO do [`super`]: lá mora o que um objeto assado É (os canais, o carimbo do rig, a
+//! acendida), aqui o que o passe EXIGE. A fronteira é a frase que o doc do pai já carrega — *o preço
+//! de reusar o `ImpastoLightPass` é que ele fala o vocabulário da TINTA (relevo, cobertura,
+//! material), e um sprite não tem nenhum dos três*.
 //!
 //! ⚠️ **Cada um dos três é fabricado por um motivo MEDIDO, não por conveniência** — ver
-//! [`neutral_planes`], e a medição que corrigiu um deles em [`super::light`].
+//! [`neutral_planes`], e a medição que corrigiu um deles em
+//! `crate::sculpt3d::bake::light::measure_the_two_lights_over_the_same_form`.
+//!
+//! ⚠️ **`pub(crate)` e não `pub(super)`, e a razão é a medição:** o harness que compara *as duas
+//! luzes sobre a mesma forma* (`sculpt3d::bake::light_measure`) precisa da montagem REAL do pedido —
+//! uma entrada construída à mão lá continuaria passando depois de a do produto ficar torta. Ele vive
+//! do outro lado da feature (renderiza uma malha de verdade), então a visibilidade tem de alcançar
+//! os dois.
+//!
+//! ⚠️ **Ele NÃO está atrás da feature `sculpt3d`, e isso é a promessa da rota A** (`docs/3D/02.2`):
+//! um objeto assado re-acende ao ser reaberto **sem o módulo 3D no build**. Enquanto este arquivo
+//! morasse dentro da feature, a re-acendida seria alcançável só onde a escultura existe.
 
 use ph2d_gpu::GpuContext;
 use ph2d_painter_brush::material::{Material, ROUGH_LEVELS, SPEC_LUT, SpecLut};
@@ -35,7 +46,7 @@ use ph2d_render::{ImpastoLamp, ImpastoLightInput};
 ///   passe é `shine × spec × gloss`, e o objeto assado saía **sem especular nenhum** enquanto o
 ///   barro na tela tem um. Numa esfera lisa o realce é o cue de VOLUME, e sem ele ela lê como
 ///   chapada — o *"o vivo parece em perspectiva, o assado parece isométrico"* do report.
-pub(super) fn neutral_planes(base: &[u8]) -> (Vec<f32>, Vec<u8>, Vec<u8>, Vec<u8>) {
+pub(crate) fn neutral_planes(base: &[u8]) -> (Vec<f32>, Vec<u8>, Vec<u8>, Vec<u8>) {
     let n = base.len() / 4;
     let m = clay_material().to_bytes();
     let relief = vec![0.0f32; n];
@@ -53,18 +64,18 @@ pub(super) fn neutral_planes(base: &[u8]) -> (Vec<f32>, Vec<u8>, Vec<u8>, Vec<u8
 /// acender como a escultura que ele copiou.
 ///
 /// ⚠️ **A rugosidade não é convertida, porque já era a mesma.** O barro usa expoente Blinn-Phong
-/// **24** (`ph2d_mesh_render::CLAY_EXPONENT`), e a rugosidade neutra da tinta (`0.5`) produz na LUT
+/// **24** (`ph2d_light::CLAY_EXPONENT`), e a rugosidade neutra da tinta (`0.5`) produz na LUT
 /// dela exatamente `√(6 × 96) = 24` — os dois caminhos sempre concordaram sobre a LARGURA do
 /// realce. O que a W8.6 tinha jogado fora era só a INTENSIDADE, e ela vem do
-/// [`ph2d_mesh_render::CLAY_SHINE`].
+/// [`ph2d_light::CLAY_SHINE`].
 ///
 /// ⚠️ **Duas coisas continuam diferentes de propósito, e nenhuma é a luz:** o barro é tingido de
 /// argila quente (`CLAY`) e o sprite tem a COR que o artista pintou — é o albedo, e o objetivo 2 é
 /// justamente pintar a sua arte e acendê-la pela forma; e o realce do barro é fixo, enquanto o do
 /// sprite pode virar per-pixel quando a escultura ganhar material (`docs/3D/05.1`, W7).
-pub(super) fn clay_material() -> Material {
+pub(crate) fn clay_material() -> Material {
     Material {
-        shine: ph2d_mesh_render::CLAY_SHINE,
+        shine: ph2d_light::CLAY_SHINE,
         ..Material::NEUTRAL
     }
 }
@@ -74,7 +85,7 @@ pub(super) fn clay_material() -> Material {
 /// ⚠️ **Uma tradução de nomes, e não de LEI**: os três vetores já vêm resolvidos do
 /// [`ph2d_light`], que é o dono do rig desde a W3. Recomputar `half` ou pesar `tint` aqui seria a
 /// segunda resposta a *para onde esta lâmpada aponta*.
-pub(super) fn resolved_lamps(rig: &ph2d_light::ResolvedRig) -> Vec<ImpastoLamp> {
+pub(crate) fn resolved_lamps(rig: &ph2d_light::ResolvedRig) -> Vec<ImpastoLamp> {
     rig.lamps()
         .iter()
         .map(|l| ImpastoLamp {
@@ -86,12 +97,12 @@ pub(super) fn resolved_lamps(rig: &ph2d_light::ResolvedRig) -> Vec<ImpastoLamp> 
 }
 
 /// Os planos que um bake empresta ao passe, vivos enquanto a entrada existe.
-pub(super) struct BakePlanes {
-    pub(super) relief: Vec<f32>,
-    pub(super) cover: Vec<u8>,
-    pub(super) mat0: Vec<u8>,
-    pub(super) mat1: Vec<u8>,
-    pub(super) lamps: Vec<ImpastoLamp>,
+pub(crate) struct BakePlanes {
+    pub(crate) relief: Vec<f32>,
+    pub(crate) cover: Vec<u8>,
+    pub(crate) mat0: Vec<u8>,
+    pub(crate) mat1: Vec<u8>,
+    pub(crate) lamps: Vec<ImpastoLamp>,
 }
 
 /// **A ENTRADA do passe, montada num lugar só.**
@@ -100,7 +111,7 @@ pub(super) struct BakePlanes {
 /// montasse a sua própria `ImpastoLightInput` seria a segunda resposta a *que forma tem um pedido
 /// de luz*, e ela continuaria passando depois de a primeira ficar mal-formada — e o sintoma de um
 /// pedido recusado é o bake **não fazer nada, em silêncio**.
-pub(super) fn build_input<'a>(
+pub(crate) fn build_input<'a>(
     size: (u32, u32),
     planes: &'a BakePlanes,
     form: &'a [f32],
@@ -126,7 +137,7 @@ pub(super) fn build_input<'a>(
 }
 
 /// Sobe `pixels` como uma textura `rgba8unorm` — a fonte que o passe acende.
-pub(super) fn upload_rgba(gpu: &GpuContext, size: (u32, u32), pixels: &[u8]) -> wgpu::Texture {
+pub(crate) fn upload_rgba(gpu: &GpuContext, size: (u32, u32), pixels: &[u8]) -> wgpu::Texture {
     let (w, h) = size;
     let tex = gpu.device.create_texture(&wgpu::TextureDescriptor {
         label: Some("sculpt3d bake src"),
@@ -206,7 +217,7 @@ mod tests {
     fn a_baked_object_wears_the_clays_highlight() {
         let m = clay_material();
         assert!(
-            (m.shine - ph2d_mesh_render::CLAY_SHINE).abs() < 1e-6,
+            (m.shine - ph2d_light::CLAY_SHINE).abs() < 1e-6,
             "a INTENSIDADE do realce e' a do barro, nao o zero do neutro da tinta"
         );
         assert!(m.shine > 0.0, "sem realce a esfera assada le' como chapada");
@@ -215,9 +226,9 @@ mod tests {
         // e do TAMANHO errado — e a divergência voltaria por outra porta.
         let exponent = Material::exponent(m.roughness);
         assert!(
-            (exponent - ph2d_mesh_render::CLAY_EXPONENT).abs() < 1e-3,
+            (exponent - ph2d_light::CLAY_EXPONENT).abs() < 1e-3,
             "a largura do realce diverge: a tinta da' {exponent} e o barro usa {}",
-            ph2d_mesh_render::CLAY_EXPONENT
+            ph2d_light::CLAY_EXPONENT
         );
     }
 

@@ -21,5 +21,14 @@ impl crate::App {
         self.fx_live.forget();
         // Não é memo, é uma decisão de sessão: qual lado do offset foi espelhado por último.
         self.vec_offset_mirrored = None;
+        // **OS OBJETOS ASSADOS do documento anterior** (`docs/3D/02.2`). O mapa é chaveado por bits
+        // de entidade, e o `apply_project` despawna tudo: as entradas que sobrassem descreveriam
+        // objetos de outro projeto, e o passe de re-acendida ficaria acendendo, todo frame e para
+        // sempre, slots de textura que ninguém mostra. O `restore_baked_forms` repovoa o mapa logo
+        // depois, com os bits novos. ⚠️ O `baked_light` NÃO é limpo: ele é o passe (um pipeline),
+        // não estado do documento — recriá-lo por load seria pagar uma compilação por Ctrl+O.
+        if let Some(gfx) = self.gfx.as_mut() {
+            gfx.baked_forms.clear();
+        }
     }
 }

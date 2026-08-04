@@ -143,6 +143,19 @@ pub(crate) struct AppGfx {
     /// `crate::sculpt3d` devolve `false` e o frame 2D fica intocado.
     #[cfg(feature = "sculpt3d")]
     pub(crate) sculpt3d: Option<crate::sculpt3d::Sculpt3dScene>,
+    /// **OS SPRITES QUE UMA FORMA ACENDE** (`docs/3D/02.2`, rota A), por bits de entidade.
+    ///
+    /// ⚠️ **Ele mora aqui, e NÃO dentro da cena 3D, porque um objeto assado sobrevive à escultura —
+    /// e ao módulo.** Enquanto o mapa morasse na `Sculpt3dScene`, apagar a peça levaria os canais
+    /// junto, e um binário sem a feature não teria onde pôr o que o arquivo trouxe. A promessa da
+    /// rota A é exatamente essa: *a malha some do build, o objeto continua reluminável.*
+    ///
+    /// ⚠️ **NÃO é `cfg`-gated**, e é isso que torna a promessa verificável em vez de prosa.
+    pub(crate) baked_forms: std::collections::BTreeMap<u64, crate::baked_form::BakedForm>,
+    /// O passe que ACENDE um objeto assado — o MESMO que acende a tinta do Painter, criado na
+    /// primeira acendida. Ver o topo do [`crate::baked_form`]: um kernel de luz próprio seria a
+    /// segunda resposta a *como uma normal vira luz*.
+    pub(crate) baked_light: Option<ph2d_render::ImpastoLightPass>,
     /// ADR-0114 W1 T1.7: as passagens de espaço-de-cor (resolve 16F→sRGB8 e blit
     /// sRGB8→16F) que ligam o rasterizador ao `LayerCompositor` do Painter. Criado
     /// 1× (device + formato do game_rt). O compositor em si é o `flip_composite`.
@@ -214,6 +227,10 @@ pub(crate) struct AppGfx {
     /// arquivo — e, como a componente viaja no `WorldSnapshot`, ao undo também. Monotônico; o load o
     /// avança para além dos ids do projeto (mesmo contrato de `next_import_cell`).
     pub(crate) next_painted_doc: u32,
+    /// Próximo `ph2d_ecs::BakedForm(u32)` livre — a identidade ESTÁVEL dos canais assados de uma
+    /// malha. Mesmo contrato do `next_painted_doc`: monotônico, e o load o avança para além dos ids
+    /// do projeto, senão um bake novo nesta sessão sobrescreveria o documento de um objeto carregado.
+    pub(crate) next_baked_form: u32,
     /// M14.7 polish: atlas-key → AssetId map kept in sync with each
     /// import. Drives the regrow callback so doubling the atlas
     /// texture preserves every previously-imported sprite. BTreeMap

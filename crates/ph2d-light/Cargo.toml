@@ -20,3 +20,9 @@ authors.workspace = true
 # O rotor está lá por acidente de nascimento, não por ser do pincel — mas movê-lo
 # é churn na crate mais quente do repo, e é decisão do dono dela.
 ph2d-painter-brush = { path = "../ph2d-painter-brush" }
+
+# ⚠️ O rig e' DOCUMENTO — o doc do `LightRig` sempre disse *"o rig inteiro, como o documento o
+# guarda"*, e a W8.7 deu a ele o primeiro documento de verdade (os canais de um objeto assado,
+# `docs/3D/02.2`). Como ele vira bytes e' pergunta do DONO: uma lista de campos re-escrita a mao no
+# shell seria a segunda representacao do mesmo rig, e as duas divergiriam na primeira lampada nova.
+serde = { version = "1", features = ["derive"] }

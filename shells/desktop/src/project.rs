@@ -228,9 +228,16 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// `TimelineDoc`, e é ele que deixa o módulo evoluir muitas waves sem tocar este número
 /// de novo (docs/3D/02.3 previu exatamente isto). O bump é obrigatório porque o postcard
 /// é POSICIONAL: um campo novo no fim faz o leitor velho chegar ao fim dos bytes.
-/// ⚠️ O número se CONTA contra o `main` do dia, não se escolhe — este 52 é
+/// ⚠️ O número se CONTA contra o `main` do dia, não se escolhe — este 52 era
 /// PROVISÓRIO até a integração ([[feedback_numbers_that_sum_across_lines_count_dont_pick]]).
-const PROJECT_SCHEMA: u32 = 52;
+/// v53 (3D, W8.7 — os canais assados): campo de ARQUIVO novo, `baked_forms`, com o `base`, a
+/// `form` e o RIG de cada objeto que uma malha acendeu (`docs/3D/02.2`, rota A). Bump
+/// obrigatório pela mesma razão de sempre — postcard é POSICIONAL, e um campo novo no fim faz o
+/// leitor velho chegar ao fim dos bytes. ⚠️ Ele NÃO entrou no blob `sculpt` acima, embora
+/// aquele já guarde as malhas: o parser dele é `#[cfg(feature = "sculpt3d")]`, e um objeto
+/// assado tem de ser legível **sem o módulo 3D no build** — é isso que a rota A promete.
+/// ⚠️ Este 53 é PROVISÓRIO pelo mesmo motivo que o 52 era.
+const PROJECT_SCHEMA: u32 = 53;
 
 /// O conteúdo de um arquivo de projeto.
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -299,6 +306,17 @@ struct ProjectFile {
     /// mesmo número de schema), e um binário sem escultura **carrega os bytes adiante**
     /// em vez de os triturar. Ele carrega a própria versão lá dentro.
     sculpt: Vec<u8>,
+    /// **OS CANAIS ASSADOS** (ADR-0150 W8.7) — por objeto: os pixels antes da luz, o G-buffer que
+    /// uma malha doou, e o rig com que aquilo foi aceso. Ver [`crate::project_baked_form`].
+    ///
+    /// ⚠️ **Campo de SPRITE, e não parte do blob `sculpt` acima**, embora aquele já guarde as
+    /// malhas. O parser da escultura é `#[cfg(feature = "sculpt3d")]`; guardar os canais lá os
+    /// tornaria legíveis só com o módulo 3D no build — o oposto exato do que a *rota A* promete
+    /// (`docs/3D/02.2`: a malha some do build, o objeto continua reluminável). Ele fica ao lado do
+    /// `painted`, que resolve o mesmo problema para o outro produtor de `SpriteSource::Individual`.
+    ///
+    /// Vazio quando nada foi assado.
+    baked_forms: Vec<crate::project_baked_form::BakedFormDocument>,
 }
 
 /// Uma imagem de sprite embutida no projeto: os pixels RGBA + a célula de atlas que
@@ -382,6 +400,7 @@ impl crate::App {
                 .unwrap_or_default(),
             tokens: crate::project_tokens::collect(),
             sculpt: self.sculpt_bytes_for_save(),
+            baked_forms: self.collect_baked_forms(),
         };
         let bytes = match postcard::to_allocvec(&(PROJECT_SCHEMA, &file)) {
             Ok(b) => b,

@@ -56,6 +56,7 @@ fn write_project_full(path: &std::path::Path, schema: u32, timeline: Vec<u8>, sc
         physics: Default::default(),
         tokens: Vec::new(),
         sculpt,
+        baked_forms: Vec::new(),
     };
     let bytes = postcard::to_allocvec(&(schema, &file)).expect("serializa");
     std::fs::write(path, bytes).expect("grava o arquivo de projeto");
@@ -336,6 +337,7 @@ fn project_file_round_trips_through_postcard() {
         physics: Default::default(),
         tokens: Vec::new(),
         sculpt: Vec::new(),
+        baked_forms: Vec::new(),
     };
     let bytes = postcard::to_allocvec(&(PROJECT_SCHEMA, &file)).unwrap();
     let (ver, back): (u32, ProjectFile) = postcard::from_bytes(&bytes).unwrap();
@@ -397,6 +399,7 @@ fn the_world_settings_survive_the_project_file() {
         physics: authored,
         tokens: Vec::new(),
         sculpt: Vec::new(),
+        baked_forms: Vec::new(),
     };
     let bytes = postcard::to_allocvec(&(PROJECT_SCHEMA, &file)).expect("serializa");
     std::fs::write(&path, bytes).expect("grava");

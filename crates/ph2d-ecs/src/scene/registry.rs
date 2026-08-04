@@ -256,6 +256,11 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // da entidade são id de alocação e morrem no restore —, e a pintura voltaria como um
     // bake achatado, sem camadas e sem espessura.
     reg.register::<crate::PaintedDoc>("ph2d::ecs::PaintedDoc");
+    // ADR-0150 (W8.7): a identidade ESTÁVEL dos canais assados de uma malha (`base` + `form`).
+    // Mesmo mecanismo do `PaintedDoc` e mesma consequência de esquecê-la — mas com um agravante
+    // próprio: os canais existem justamente para o objeto sobreviver ao módulo 3D sair do build, e
+    // sem esta identidade eles não sobreviveriam nem ao arquivo ser reaberto com ele DENTRO.
+    reg.register::<crate::BakedForm>("ph2d::ecs::BakedForm");
     // ADR-0114: idem para um objeto Flip (animação quadro-a-quadro). Sem ela o
     // save perderia o vínculo objeto↔entidade e o load duplicaria os objetos Flip.
     reg.register::<crate::FlipObjectRef>("ph2d::ecs::FlipObjectRef");
@@ -425,7 +430,7 @@ mod tests {
         // `VecConnector`, e as duas linhas, sozinhas, diziam 27 — por motivos diferentes. A
         // árvore combinada tem 28. Escolher "um dos lados" aqui é o erro que deixa o
         // workspace vermelho com dois merges verdes.
-        assert_eq!(reg.len(), 51);
+        assert_eq!(reg.len(), 52);
         assert!(reg.get_by_name("ph2d::ecs::VecAnchors").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecResizeBox").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecWidget").is_some());
@@ -443,6 +448,7 @@ mod tests {
         assert!(reg.get_by_name("ph2d::ecs::RootOrder").is_some());
         assert!(reg.get_by_name("ph2d::ecs::Locked").is_some());
         assert!(reg.get_by_name("ph2d::ecs::PaintedDoc").is_some());
+        assert!(reg.get_by_name("ph2d::ecs::BakedForm").is_some());
         assert!(reg.get_by_name("ph2d::ecs::GroupedChildren").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecPathRef").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecConnector").is_some());

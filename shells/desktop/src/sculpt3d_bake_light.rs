@@ -28,13 +28,13 @@
 //! da esfera vira `(255,255,255)` com gradiente ZERO. Não é a luz — é o albedo não ter alcance para
 //! a luz caber.
 //!
-//! ⚠️ **E a medição derrubou uma afirmação MINHA**: o doc do [`super::neutral_planes`] dizia que a
+//! ⚠️ **E a medição derrubou uma afirmação MINHA**: o doc do [`crate::baked_form::planes::neutral_planes`] dizia que a
 //! cobertura importa *"na borda da silhueta, onde o peso é parcial (o antialiasing do G-buffer)"*.
 //! Medido, texels com `0 < w < 1`: **ZERO**. O G-buffer é `sample_count: 1` e o `fs_gbuffer` escreve
 //! `w = 1.0` — o peso é **binário**, e não há antialiasing nenhum. O doc foi corrigido.
 //!
 //! ```text
-//! cargo test -p ph2d-host-desktop --release --bins sculpt3d::bake::light -- --ignored --nocapture
+//! cargo test -p ph2d-host-desktop --release --bins sculpt3d::bake::light_measure -- --ignored --nocapture
 //! ```
 
 use ph2d_gpu::GpuContext;
@@ -43,7 +43,9 @@ use ph2d_mesh_render::{Camera3d, MeshRenderer};
 use ph2d_painter_brush::material::SpecLut;
 use ph2d_render::ImpastoLightPass;
 
-use super::planes::{BakePlanes, build_input, neutral_planes, resolved_lamps, upload_rgba};
+use crate::baked_form::planes::{
+    BakePlanes, build_input, neutral_planes, resolved_lamps, upload_rgba,
+};
 
 /// O barro do `mesh.wgsl`. ⚠️ Cópia — se o `CLAY` de lá mudar, esta medição descreve outra coisa. Os
 /// dois números do barro que TÊM gate são `CLAY_SHINE`/`CLAY_EXPONENT`.
@@ -455,9 +457,9 @@ fn measure_the_two_lights_over_the_same_form() {
 ///
 /// | mutação | média do aro | veredito |
 /// |---|---|---|
-/// | [`super::planes::resolved_lamps`] larga a `dir` | **0,3002** | sangra (30× a barra) |
-/// | [`super::planes::build_input`] manda `form: None` | **0,3514** | sangra |
-/// | [`super::planes::clay_material`] volta ao `Material::NEUTRAL` | 0,0020 | **VERDE, e está certo** |
+/// | [`crate::baked_form::planes::resolved_lamps`] larga a `dir` | **0,3002** | sangra (30× a barra) |
+/// | [`crate::baked_form::planes::build_input`] manda `form: None` | **0,3514** | sangra |
+/// | [`crate::baked_form::planes::clay_material`] volta ao `Material::NEUTRAL` | 0,0020 | **VERDE, e está certo** |
 ///
 /// ⚠️ **A terceira é o desenho, não um buraco**: o realce vive no MIOLO (no aro o `ndh` rasante dá
 /// especular ≈ 0), então tirá-lo não move o aro um milésimo. Quem sangra por ela é o irmão

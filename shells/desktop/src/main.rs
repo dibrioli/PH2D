@@ -61,6 +61,9 @@ mod bool_live;
 /// A cena de smoke da booleana viva (`PH2D_BUILD_SMOKE=48`) — irmã de `build_smoke`, teto de LOC.
 mod bool_smoke;
 mod buffer_smoke;
+/// **O OBJETO ASSADO** (`docs/3D/02.2`, rota A) — os canais que uma malha doou a um sprite e a luz
+/// que os le'. ⚠️ Deliberadamente FORA da feature `sculpt3d`: um objeto assado sobrevive ao modulo.
+mod baked_form;
 mod build_smoke;
 mod build_smoke_corner_tools;
 mod build_smoke_drive;
@@ -274,6 +277,8 @@ mod profile_live;
 /// A cena de smoke da **largura viva** (`PH2D_BUILD_SMOKE=41`) — irmã de `build_smoke`, teto de LOC.
 mod profile_smoke;
 mod project;
+/// **Os canais assados dentro do arquivo** (ADR-0150 W8.7) — gemeo do `project_painter`.
+mod project_baked_form;
 mod project_painter;
 /// **A tabela de COR autorada viaja no arquivo** (plano UI/UX W6) — irmão de `project`
 /// pelo teto de LOC, cortado por assunto.

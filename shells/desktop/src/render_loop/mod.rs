@@ -869,6 +869,11 @@ impl crate::App {
             // objeto misto (`docs/3D/02.2`), que precisa do mundo e do renderizador ao lado dela.
             #[cfg(feature = "sculpt3d")]
             sculpt3d,
+            // Os objetos que uma forma acende. NAO sao `cfg`-gated: a re-acendida deles roda sem o
+            // modulo 3D no build, que e' a promessa da rota A (`docs/3D/02.2`).
+            baked_forms,
+            baked_light,
+            next_baked_form,
             surface,
             renderer,
             sim,
@@ -1038,6 +1043,9 @@ impl crate::App {
                 .and_then(|h| h.gizmo.iter_selected().next());
             if let Some(line) = crate::sculpt3d::bake::drain(
                 scene,
+                baked_forms,
+                baked_light,
+                next_baked_form,
                 surface.gpu(),
                 want,
                 selected,
@@ -1049,7 +1057,14 @@ impl crate::App {
                 eprintln!("{line}");
                 toasts.push(Toast::success(line));
             }
+            // Enquanto a cena existe, a luz dela AUTORA os objetos que ela assou.
+            crate::sculpt3d::bake::follow_live_rig(baked_forms, scene.rig());
         }
+        // **A RE-ACENDIDA, e ela NÃO está atrás da feature.** É esta linha que torna a promessa da
+        // rota A (`docs/3D/02.2`) verificável em vez de prosa: um objeto assado que voltou de um
+        // arquivo acende **sem o módulo 3D no build**. Quase sempre não faz nada — com o rig parado
+        // custa um carimbo por objeto, sem tocar a GPU, e num projeto sem nada assado o mapa é vazio.
+        crate::baked_form::relight_stale(baked_forms, surface.gpu(), renderer, baked_light);
 
         // Mask smoke (`PH2D_MASK_SMOKE=1`): the same dance for the mask coverage law (doc 25 §13.9).
         // Nothing but the canvas is staged — the artist picks the rail chip, so the scene shows the

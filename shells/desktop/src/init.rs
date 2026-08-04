@@ -410,6 +410,10 @@ pub(crate) fn build_initial_state(
         // ADR-0150 W1/M2: cena 3D nasce VAZIA — o smoke a arma no 1o frame.
         #[cfg(feature = "sculpt3d")]
         sculpt3d: None,
+        // Os objetos que uma forma acende (`docs/3D/02.2`). Nascem vazios e NÃO são `cfg`-gated: um
+        // projeto salvo pode trazer objetos assados para um binário sem o módulo 3D.
+        baked_forms: std::collections::BTreeMap::new(),
+        baked_light: None,
         surface,
         renderer,
         sim,
@@ -466,6 +470,7 @@ pub(crate) fn build_initial_state(
         hero_live,
         next_import_cell: ph2d_render::FIRST_IMPORT_KEY,
         next_painted_doc: 1, // 0 fica livre como "nenhum"
+        next_baked_form: 1, // idem: 0 fica livre como "nenhum"
         atlas_asset_map: BTreeMap::new(),
         component_registry: {
             let mut reg = ComponentRegistry::new();

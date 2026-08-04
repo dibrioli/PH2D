@@ -302,19 +302,17 @@ pub(crate) struct Sculpt3dScene {
     role: FormRole,
     /// O carimbo da última doação entregue — `None` enquanto nada foi doado.
     donated: Option<FormStamp>,
-    /// **OS SPRITES QUE A FORMA ACENDE** (`docs/3D/02.2`), por bits de entidade.
+}
+
+impl Sculpt3dScene {
+    /// **O rig que esta cena tem na mão.** A luz é dela enquanto ela existe.
     ///
-    /// ⚠️ **Não é serializado, e a ausência é NOMEADA:** um bake sobrevive à peça
-    /// e à sessão de escultura, mas não a fechar o app — o `base` e a `form` são
-    /// dois planos do tamanho do sprite, e onde eles moram no documento é a
-    /// pergunta da *rota A completa* (canais no sprite, `02.2` §Rota A), não
-    /// desta fatia. Guardá-los num `ProjectFile` agora seria escolher a resposta
-    /// pelo lado errado: pelo que é fácil de escrever, não pelo que o runtime lê.
-    bakes: std::collections::BTreeMap<u64, bake::BakedSprite>,
-    /// O passe que ACENDE — o MESMO que acende a tinta do Painter, criado no
-    /// primeiro bake. Ver o topo do [`bake`]: um kernel de luz próprio aqui seria
-    /// a segunda resposta a *como uma normal vira luz*.
-    light: Option<ph2d_render::ImpastoLightPass>,
+    /// ⚠️ Ele é lido pelo bake para AUTORAR o rig do objeto assado — ver
+    /// [`bake::follow_live_rig`]. O objeto guarda uma CÓPIA porque ele sobrevive
+    /// à cena; enquanto os dois existem, quem manda é esta.
+    pub(crate) fn rig(&self) -> &LightRig {
+        &self.rig
+    }
 }
 
 impl Sculpt3dScene {
@@ -353,8 +351,6 @@ impl Sculpt3dScene {
             edits: 0,
             role: FormRole::Clay,
             donated: None,
-            bakes: std::collections::BTreeMap::new(),
-            light: None,
         }
     }
 

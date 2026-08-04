@@ -276,35 +276,59 @@ fn does_the_cap_cost_arithmetic_or_parallelism() {
 /// **2,05 ns/visita** — e o escopo ao lado, sem o qual o número é inatribuível: um quadro de re-stamp
 /// é `restore 3,31 · relevo 0,00 · save 6,41 · CARIMBO 39,36 ms` ⇒ **o carimbo é 80% do quadro**.
 ///
-/// **(B) o A/B, `serial ÷ banda`** (raio 40, onde o kernel NÃO divide sozinho):
+/// **(B) o A/B, `serial ÷ banda`** (raio 40, onde o kernel NÃO divide sozinho). ⚠️ A coluna *"antes"*
+/// é o mundo de 32 threads com piso 131 072; a *"agora"* é a contagem derivada do trabalho
+/// ([`ph2d_painter_brush::band_count`], commit seguinte a este):
 ///
-/// | dabs | visitas | vs piso | ganho (traço) | ganho (figura) | ganho (figura, cap off) |
+/// | dabs | visitas | bandas | antes (traço) | agora (traço) | agora (cap off) |
 /// |---|---|---|---|---|---|
-/// | 2 | 13 778 | abaixo | 0,58× | 0,58× | 0,52× |
-/// | 4 | 27 556 | abaixo | **1,10×** | **1,02×** | 0,93× |
-/// | 8 | 55 112 | abaixo | 2,01× | 2,18× | 2,18× |
-/// | 16 | 110 224 | abaixo | 3,77× | 3,09× | 3,52× |
-/// | 32 | 220 448 | ACIMA | 6,22× | 6,28× | 6,57× |
-/// | 128 | 874 322 | ACIMA | 11,29× | 10,79× | 10,78× |
-/// | 512 | 3 612 420 | ACIMA | 11,50× | 10,20× | 11,06× |
+/// | 2 | 13 778 | 4 | 0,58× | **1,42×** | 1,54× |
+/// | 4 | 27 556 | 5 | 1,10× | **2,04×** | 1,98× |
+/// | 8 | 55 112 | 8 | 2,01× | **3,08×** | 2,65× |
+/// | 16 | 110 224 | 11 | 3,77× | **4,27×** | 3,62× |
+/// | 32 | 220 448 | 16 | 6,22× | 5,72× | 5,47× |
+/// | 128 | 874 322 | 32 | 11,29× | 10,07× | 9,56× |
+/// | 512 | 3 612 420 | 32 | 10,20× | 9,04× | 8,65× |
 ///
 /// A coluna `cap off` é o **CONTROLE**: ela acompanha a com cap linha a linha ⇒ a máscara não é o que
 /// faz a rota pagar. E com raio **200** — onde a pegada de UM dab (400² = 160 000) cruza o piso do
-/// kernel e a rota serial já é ela própria paralela — a banda **ainda** ganha `1,64× → 4,80×`: ela
-/// paga **um** spawn onde a serial paga `n`.
+/// kernel e a rota serial já é ela própria paralela — a banda **ainda** ganha: ela paga **um** spawn
+/// onde a serial paga `n`.
 ///
-/// No ponto de operação do produto (1,69 M visitas/lote) a tabela diz **~10×**.
+/// ⚠️ **As linhas de 32 dabs para cima parecem PIORES e não são** — a razão caiu porque a coluna
+/// SERIAL ficou mais rápida entre as duas corridas (2,85 → 2,33 ms a 32 dabs, sem uma linha de código
+/// mudar nela: é a máquina). O que se compara entre corridas é a coluna **BANDA**, que é a que mudou,
+/// e ali **toda** linha melhorou: `0,341 → 0,117` · `0,357 → 0,155` · `0,372 → 0,197` · `0,382 →
+/// 0,273` · `0,469 → 0,408` · `0,996 → 0,912` ms. *Uma razão entre corridas carrega a máquina junto;
+/// só a razão DENTRO de uma corrida é limpa.*
+///
+/// No ponto de operação do produto (1,69 M visitas/lote) a tabela diz **~10×**, e ele já saturava os
+/// núcleos antes — a wave da contagem derivada não o move, ela move tudo o que está ABAIXO dele.
 ///
 /// ## ⚠️ E a metade (C) inverteu a conclusão que eu ia escrever
 ///
 /// A (B) mostra o lote pagando **2,0× a 3,8× ABAIXO do piso**, e a leitura natural é *"o piso do LOTE
 /// está alto; desacople-o do kernel"*. A (C) mede o piso do **kernel** — que nunca tinha sido medido,
-/// ele nasceu escolhido — e ele tem **o mesmo break-even**: um dab de pegada 33 489 já paga `1,33×`
-/// e um de 67 081 paga `2,64×`, os dois abaixo de 131 072.
+/// ele nasceu escolhido — e ele tem **o mesmo break-even**: um dab de pegada 33 489 já pagava `1,33×`
+/// e um de 67 081 pagava `2,64×`, os dois abaixo de 131 072.
 ///
 /// ⇒ O doc-comment do [`BATCH_MIN_AREA`] está **CERTO** (*"é o mesmo número, e isso é deliberado: a
 /// pergunta não muda por quem a faz"*). Quem está errado é **o número**, e para os dois. Desacoplar
 /// teria consertado metade do defeito e enterrado a outra debaixo de uma justificativa.
+///
+/// **(C) com a contagem derivada** — e é aqui que a wave entrega o maior número, porque um dab de
+/// raio 64-181 é o pincel comum e ele rodava **serial**:
+///
+/// | raio | pegada | bandas | antes | agora |
+/// |---|---|---|---|---|
+/// | 20 | 1 849 | 1 | — | **1,00×** (corretamente serial) |
+/// | 40 | 6 889 | 2 | 0,31× | 1,01× |
+/// | 64 | 17 161 | 4 | serial | **1,91×** |
+/// | 90 | 33 489 | 6 | 1,33× | **2,95×** |
+/// | 128 | 67 081 | 9 | 2,64× | **4,74×** |
+/// | 181 | 133 225 | 12 | 4,29× | **6,55×** |
+/// | 256 | 265 225 | 18 | 7,65× | **9,37×** |
+/// | 362 | 528 529 | 25 | 11,14× | **11,92×** |
 ///
 /// Rodar: `cargo test -p ph2d-tool-painter --release what_the_banded_batch -- --ignored --nocapture --test-threads=1`
 #[test]

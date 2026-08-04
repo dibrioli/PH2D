@@ -14,8 +14,14 @@ use crate::texture::{ImageMask, TexDabBasis};
 ///
 /// Medido na RTX em 2026-08-04, máquina calma, pela sonda
 /// `measure_route_cost::what_the_banded_batch_buys_when_the_cap_is_on`: abrir uma banda custa
-/// **~10,5 µs** (o piso de 0,33-0,39 ms que TODA linha pequena das tabelas (B) e (C) mostra, sobre
-/// 32 threads) e uma visita de texel custa **~13 ns** na rota serial ⇒ `10,5 µs / 13 ns ≈ 808`.
+/// **~10,5 µs** e uma visita de texel custa **~13 ns** na rota serial ⇒ `10,5 µs / 13 ns ≈ 808`.
+///
+/// ⚠️ **O 10,5 µs saiu do estado ANTES desta correção, e a correção o apagou da tabela** — o piso
+/// chato de 0,33-0,39 ms que TODA linha pequena mostrava era `32 × 10,5 µs`, o custo de abrir 32
+/// threads para um trabalho de 3 µs cada. Depois que a contagem passou a sair do trabalho aquele
+/// piso não existe mais (as mesmas linhas medem 0,10-0,20 ms), então *quem quiser re-derivar o
+/// número tem de ablacionar a contagem, não reler a tabela de hoje*: a evidência foi consumida pela
+/// própria cura.
 ///
 /// ⚠️ **É uma RAZÃO entre dois custos, não um teto.** É disso que ela é feita, e é por isso que ela
 /// sobrevive a uma máquina diferente: numa com menos núcleos o `cores` cai e o `clamp` resolve; numa
@@ -30,14 +36,15 @@ pub const SPAWN_EQUIV_VISITS: usize = 808;
 /// ⚠️ **Ela era `1 << 17 = 131 072` e o número estava errado por 40×, com um mecanismo que a
 /// medição nomeou.** O texto antigo dizia *"abaixo dela a rota serial vence (abrir thread não vale
 /// ~1 ms de trabalho)"* — a frase certa sobre a coisa errada: o que não se pagava não era a DIVISÃO,
-/// era abrir **32 threads** para um trabalho que rende 3 µs por thread. Medido, um dab de pegada
-/// 33 489 já paga `1,33×` e um de 67 081 paga `2,64×` — os dois **abaixo** do piso antigo, os dois
-/// mandados para a rota serial.
+/// era abrir **32 threads** para um trabalho que rende 3 µs por thread.
 ///
-/// ⚠️ E o `1 << 17` não era arbitrário: ele é **exatamente** `SPAWN_EQUIV_VISITS × 4 × 32²/4`… ou,
-/// sem aritmética forçada, ele é a área em que as 32 threads desta máquina recebem ~4 k visitas cada.
-/// O número foi escolhido para UM ponto de operação (todos os núcleos, este hardware) e aplicado como
-/// se fosse uma propriedade do trabalho.
+/// Medido **com o piso antigo e as 32 threads**, um dab de pegada 33 489 já pagava `1,33×` e um de
+/// 67 081 pagava `2,64×` — os dois **abaixo** daquele piso, os dois mandados para a rota serial. Com
+/// a contagem derivada os mesmos dois pagam **`2,95×` e `4,74×`**.
+///
+/// ⚠️ E o `1 << 17` não era arbitrário: `131 072 = 32 × 4096`, ou seja **a área em que as 32 threads
+/// desta máquina recebem 4 k visitas cada**. O número foi escolhido para UM ponto de operação (todos
+/// os núcleos, este hardware) e aplicado como se fosse uma propriedade do trabalho.
 pub const PARALLEL_MIN_AREA: usize = SPAWN_EQUIV_VISITS * 4;
 
 /// **Em quantas BANDAS dividir um trabalho de `area` visitas sobre `rows` linhas** — a porta ÚNICA,

@@ -354,6 +354,14 @@ pub fn tr(key: &str) -> &'static str {
         "panel.wet_tuning.knob.visualGrain" => "Visual grain",
         "panel.wet_tuning.knob.emboss" => "Emboss",
         "panel.wet_tuning.knob.paperVisibility" => "Paper visibility",
+        // **O painel de TOKENS** (plano UI/UX W6) — a tabela de cor do design system, autorável.
+        // ⚠️ Os NOMES dos tokens (`bg-0`, `accent`, …) NÃO passam por aqui: eles são as chaves do
+        // `tokens.json`, o endereço que o artista digita no picker de binding e que o arquivo
+        // guarda — traduzi-los partiria o endereço.
+        "panel.tokens.title" => "Tokens",
+        "panel.tokens.authored" => "authored",
+        "panel.tokens.reset" => "Reset",
+        "panel.tokens.reset_all" => "Reset This Mode",
         "panel.physics.title" => "Physics",
         "panel.physics.section.world" => "World",
         "panel.physics.section.solver" => "Solver",

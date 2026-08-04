@@ -1,0 +1,28 @@
+[package]
+name = "ph2d-panel-tokens"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+ph2d-a11y = { path = "../ph2d-a11y" }
+# A tabela: `ColorToken::ALL`, `resolve`, e a camada de override que este painel
+# autora. ⚠️ O painel NUNCA guarda uma cópia de um valor de token — ele lê a
+# porta e escreve a porta.
+ph2d-tokens = { path = "../ph2d-tokens" }
+# HR-15: toda string de painel novo passa por `tr()`.
+ph2d-i18n = { path = "../ph2d-i18n" }
+
+[dev-dependencies]
+# `architecture_interactive_crate_has_behavioral_test`: um painel com `event.rs`
+# tem de trazer um teste que dirige um WidgetEvent REAL.
+ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }
+# O gesto REAL do seam (Down+Up) precisa do tipo de evento de ponteiro. Um
+# `WidgetEvent::Click` sintético prova a allowlist e PULA a focabilidade no store.
+ph2d-host = { path = "../ph2d-host" }

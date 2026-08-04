@@ -430,6 +430,11 @@ pub fn paint_hero_screen(
         // bridge; `paint()` no-ops when hidden. WITHOUT this entry the panel
         // is registered, visible, and NEVER painted.
         ids::WET_TUNING_PANEL,
+        // Tokens world panel (plano UI/UX W6, docked `ph2d-panel-tokens`): a
+        // tabela de cor do design system, mesma categoria do painel de física.
+        // `paint()` no-ops when hidden — sem esta entrada ele fica registado,
+        // visível, e NUNCA pintado.
+        ids::TOKENS_PANEL,
         ids::INSP_BLENDER_PICKER,
         ids::GAL_PANEL,
         ids::AUDIO_MIXER_PANEL,

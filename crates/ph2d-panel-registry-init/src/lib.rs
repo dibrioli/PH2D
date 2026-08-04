@@ -78,6 +78,8 @@ pub fn build_typed_registry() -> ph2d_editor_core::panel::PanelRegistry {
     reg.push(ErasedPanel::new::<ph2d_panel_physics::PhysicsPanel>());
     #[cfg(feature = "panel-timeline")]
     reg.push(ErasedPanel::new::<ph2d_panel_timeline::TimelinePanel>());
+    #[cfg(feature = "panel-tokens")]
+    reg.push(ErasedPanel::new::<ph2d_panel_tokens::TokensPanel>());
     #[cfg(feature = "panel-upscale")]
     reg.push(ErasedPanel::new::<ph2d_panel_upscale::UpscalePanel>());
     #[cfg(feature = "panel-vector")]
@@ -146,6 +148,10 @@ mod tests {
             n += 1;
         }
         #[cfg(feature = "panel-physics")]
+        {
+            n += 1;
+        }
+        #[cfg(feature = "panel-tokens")]
         {
             n += 1;
         }

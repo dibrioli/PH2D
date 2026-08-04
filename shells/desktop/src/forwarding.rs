@@ -343,7 +343,7 @@ pub fn cursor_over_hero_panel(gfx: Option<&AppGfx>, x: f32, y: f32) -> bool {
     use ph2d_editor::screens::hero::ids::{
         AUDIO_EDITOR_PANEL, AUDIO_MIXER_PANEL, BGR_PANEL, CEQ_PANEL, EQS_PANEL, FLIP_PANEL,
         FLIP_STRIP_PANEL, GAL_PANEL, HIER_PANEL, INSP_PANEL, PAD_PANEL, PAINTER_LAYERS_PANEL,
-        PHYSICS_PANEL, UPS_PANEL, VECTOR_PANEL, WET_TUNING_PANEL,
+        PHYSICS_PANEL, TOKENS_PANEL, UPS_PANEL, VECTOR_PANEL, WET_TUNING_PANEL,
     };
     let inside = |panel_id| {
         hero.store
@@ -401,6 +401,10 @@ pub fn cursor_over_hero_panel(gfx: Option<&AppGfx>, x: f32, y: f32) -> bool {
         // must intercept the wheel, or wheeling over it zooms the camera
         // underneath in silence.
         || inside(PHYSICS_PANEL)
+        // O painel de TOKENS (plano UI/UX W6): ~80 linhas transbordam o dock em qualquer
+        // resolução, então ele publica um thumb — e sem esta linha rolar a lista de cores
+        // daria ZOOM na câmera por baixo, em silêncio.
+        || inside(TOKENS_PANEL)
         || inside(WET_TUNING_PANEL)
         || inside(ph2d_editor::ids::TIMELINE_PANEL)
 }

@@ -275,6 +275,9 @@ mod profile_live;
 mod profile_smoke;
 mod project;
 mod project_painter;
+/// **A tabela de COR autorada viaja no arquivo** (plano UI/UX W6) — irmão de `project`
+/// pelo teto de LOC, cortado por assunto.
+mod project_tokens;
 mod render_loop;
 #[cfg(feature = "sculpt3d")]
 mod sculpt3d;
@@ -304,6 +307,8 @@ mod timescale_smoke;
 /// **AS MOLDURAS** (plano UI/UX W0): que intervalo da pilha de z cada `VecFrame` recorta. A
 /// metade que a shell possui — o renderer sabe desenhar, a shell sabe a ÁRVORE.
 mod token_smoke;
+/// A cena de smoke dos **TOKENS** (`PH2D_BUILD_SMOKE=59`) — o painel que re-veste o app.
+mod tokens_smoke;
 mod transport;
 /// A cena de smoke do Twist (o remoinho + o Falloff a modulá-lo) — irmão de `build_smoke`.
 mod twist_smoke;

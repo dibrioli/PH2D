@@ -162,7 +162,13 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // justamente o que IMPEDE a leitura; o `#[serde(default)]` serve a formatos
         // auto-descritivos, e quem protege o arquivo é este número.
         // ⚠️ O 50 é PROVISÓRIO pela mesma razão do 49 acima.
-        (50, 13, 14),
+        // PROJECT 50→51: o `ProjectFile` ganhou `tokens` — a tabela de COR autorada pelo artista
+        // (plano UI/UX W6, degrau 1). Campo APENDADO ao arquivo, e postcard é posicional ⇒ um
+        // save v50 chega ao fim dos bytes onde o campo novo começa. ⚠️ `FLIP` e `VEC_SCENE` NÃO
+        // se movem: a tabela é do ARQUIVO, não da cena — ela vive fora do `ProjectState` pelo
+        // mesmo motivo que `physics`/`motion`/`timeline` (um Ctrl+Z do canvas não rebobina a
+        // cara do editor). O 51 é PROVISÓRIO pela mesma razão dos dois acima.
+        (51, 13, 14),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

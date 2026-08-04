@@ -42,6 +42,9 @@ mod physics;
 mod rail;
 mod rail_painter;
 mod timeline;
+/// **Os ids do painel de TOKENS** (plano UI/UX W6) — a tabela de cor do design system,
+/// autorável pelo artista. Categoria MUNDO, como o de física.
+mod tokens;
 mod topbar;
 mod vector;
 /// Os ids do **AUTO LAYOUT** (plano UI/UX W2, ADR-0153) — irmão de `vector_frame` pelo mesmo teto.
@@ -98,6 +101,7 @@ pub use physics::*;
 pub use rail::*;
 pub use rail_painter::*;
 pub use timeline::*;
+pub use tokens::*;
 pub use topbar::*;
 pub use vector::*;
 pub use vector_anchors::*;

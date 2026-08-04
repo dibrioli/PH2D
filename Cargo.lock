@@ -5411,6 +5411,7 @@ dependencies = [
  "ph2d-panel-physics",
  "ph2d-panel-registry-init",
  "ph2d-panel-timeline",
+ "ph2d-panel-tokens",
  "ph2d-panel-upscale",
  "ph2d-panel-vector",
  "ph2d-panel-wet-tuning",
@@ -7032,6 +7033,7 @@ dependencies = [
  "ph2d-panel-physics",
  "ph2d-panel-sync",
  "ph2d-panel-timeline",
+ "ph2d-panel-tokens",
  "ph2d-panel-upscale",
  "ph2d-panel-vector",
  "ph2d-panel-wet-tuning",
@@ -7056,6 +7058,18 @@ dependencies = [
  "ph2d-tokens",
  "ph2d-ui-testkit",
  "ph2d-vector",
+]
+
+[[package]]
+name = "ph2d-panel-tokens"
+version = "0.0.0"
+dependencies = [
+ "ph2d-a11y",
+ "ph2d-editor-core",
+ "ph2d-host",
+ "ph2d-i18n",
+ "ph2d-tokens",
+ "ph2d-ui-testkit",
 ]
 
 [[package]]

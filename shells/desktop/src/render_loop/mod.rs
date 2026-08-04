@@ -184,6 +184,9 @@ pub(crate) mod record_fit;
 pub(crate) mod timeline_bridge;
 pub(crate) mod timeline_onion;
 mod timeline_presets;
+/// **A ponte do painel de TOKENS** (plano UI/UX W6) — o read-back do picker e os intents de
+/// Reset. A shell é o único escritor da camada de override de cor.
+pub(crate) mod tokens_bridge;
 #[cfg(test)]
 mod wet_brush_look_probe; // render-and-look do pincel GRANDE do wet paint
 /// Render-and-look da razão da grade do fluido (diagnóstica, `#[ignore]`d).
@@ -5320,6 +5323,13 @@ impl crate::App {
                 self.show_colliders,
                 &mut self.interaction,
             );
+            // O painel de TOKENS (plano UI/UX W6), na MESMA fase e pela mesma razão: um painel de
+            // MUNDO, cuja visibilidade é do artista. ⚠️ Ele tem de correr DEPOIS do dispatch de
+            // eventos (o intent de Reset é enfileirado ali) e ANTES do paint (senão o frame
+            // pintaria a cor de antes do clique e o picker piscaria de volta).
+            if tokens_bridge::dispatch(hero) {
+                self.title_dirty = true;
+            }
             // O ARRASTO da tira (mover a chave / esticar o hold): o painel enfileirou o
             // pedido no pen-up do frame anterior; aqui ele vira documento — ANTES do
             // publish, senão o snapshot deste frame descreveria a tira de antes do gesto e

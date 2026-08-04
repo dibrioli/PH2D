@@ -158,8 +158,26 @@ impl App {
                 }));
                 self.title_dirty = true;
             }
+            // Toggle do painel de TOKENS (plano UI/UX W6) — a tabela de cor do design system.
+            // Irmão do `W` da física e do `L` da timeline: um painel de MUNDO não é tool-gated,
+            // então sem abridor próprio é feature que ninguém alcança.
+            //
+            // ⚠️ **A `T` era um scaffold de debug** (`"Toast key (T) pressed"`), órfão como o
+            // `KeyB` que a timeline aposentou no W4.T5 — varrido no repo inteiro antes de ser
+            // tomado, e nada dependia dele. `T` de Tokens.
             KeyCode::KeyT => {
-                gfx.toasts.push(Toast::info("Toast key (T) pressed"));
+                let shown = if let Some(hero) = gfx.hero_screen.as_mut() {
+                    let v = !hero.is_panel_visible("tokens");
+                    hero.panel_visibility.insert("tokens", v);
+                    v
+                } else {
+                    false
+                };
+                gfx.toasts.push(Toast::info(if shown {
+                    "Tokens shown (T)"
+                } else {
+                    "Tokens hidden (T)"
+                }));
                 self.title_dirty = true;
             }
             // Toggle the bottom-docked general timeline panel (W2.E0). Transport

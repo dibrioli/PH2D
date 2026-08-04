@@ -142,6 +142,8 @@ pub(super) fn scrollbar_panel_for_id(id: NodeId) -> Option<NodeId> {
         Some(ids::PHYSICS_PANEL)
     } else if id == crate::widget::WET_TUNING_SCROLLBAR_ID {
         Some(ids::WET_TUNING_PANEL)
+    } else if id == crate::widget::TOKENS_SCROLLBAR_ID {
+        Some(ids::TOKENS_PANEL)
     } else {
         None
     }

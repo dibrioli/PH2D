@@ -502,7 +502,15 @@ impl ColorToken {
     /// `docs/design/tokens.json`. Wave 2 PR 11.1: values flow from
     /// canonical tokens.json → `build.rs` → `crate::generated` → here.
     /// Sync manual eliminado.
+    ///
+    /// ⚠️ **A partir da W6 ela pergunta PRIMEIRO à camada de override**
+    /// ([`crate::overrides`]) — é isto que faz um valor editado no painel de Tokens re-vestir o
+    /// app inteiro, porque esta função é a porta única dos 44 widgets. Sem override nenhum a
+    /// pergunta custa **uma leitura de bool** e o resultado é byte-idêntico ao de sempre.
     pub fn resolve(self, theme: Theme) -> Color {
+        if let Some(c) = crate::overrides::color_override(theme, self) {
+            return c;
+        }
         let table: &[(&str, crate::generated::OklchRaw)] = match theme {
             Theme::Forge => crate::generated::COLORS_FORGE,
             Theme::Workshop => crate::generated::COLORS_WORKSHOP,

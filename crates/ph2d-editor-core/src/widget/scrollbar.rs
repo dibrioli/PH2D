@@ -196,6 +196,11 @@ pub const PHYSICS_SCROLLBAR_ID: NodeId = NodeId(836);
 /// column. Next free id is `838`; re-read the collision note above before
 /// taking it.
 pub const WET_TUNING_SCROLLBAR_ID: NodeId = NodeId(837);
+/// Tokens docked-panel scrollbar (plano UI/UX W6) — a tabela de cor tem ~80
+/// linhas e transborda a altura do dock em qualquer resolução. Thumb próprio
+/// pelo mesmo motivo dos irmãos acima. Next free id is `839`; re-read the
+/// collision note above before taking it.
+pub const TOKENS_SCROLLBAR_ID: NodeId = NodeId(838);
 
 #[cfg(test)]
 mod tests {

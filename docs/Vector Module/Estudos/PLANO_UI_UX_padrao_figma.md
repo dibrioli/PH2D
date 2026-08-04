@@ -895,6 +895,77 @@ vocabulário fechado: `Fill` e `Hidden`).
 
 ---
 
+### W6.1 — A TABELA DE COR VIRA AUTORÁVEL ✅ **CONSTRUÍDA (2026-08-04)** — o degrau 1 do §2
+
+> O §2 decide que *o desenho é a PELE, o widget é o COMPORTAMENTO, e o token é a PONTE*. Este é o
+> primeiro degrau, e o entregável dele é literal: **o artista muda a cara do app inteiro, ao vivo,
+> e a mudança sobrevive ao arquivo.**
+
+**A porta já existia, e é essa a razão de a wave ser barata.** `ColorToken::resolve(theme)` é o
+funil por onde os **44 widgets** passam — a camada de override entra ali e mais nada precisa mudar.
+⚠️ **Vazio ⇒ BYTE-IDÊNTICO** (gate que varre a tabela inteira nos quatro modos), e o
+`design_token_sync` continua a medir a tabela **gerada**, porque é ela que o override cobre e nunca
+substitui.
+
+⚠️ **É estado global mutável lido por uma função de aparência pura, e isto está escrito no
+`overrides.rs`.** O padrão é o que o repo já usa entre shell e folha; `thread_local` **não é por
+performance**: cada teste corre na própria thread, então um gate que arma um override não pode
+envenenar o vizinho. A consequência honesta — *quem PINTA tem de ser quem PUBLICOU* — está nomeada
+lá em vez de descoberta num screenshot.
+
+**MEDIDO** (`measure_override_layer`, min de 3 varreduras): `resolve` custa **~52-55 ns** com a
+camada vazia; **1,02×** com um override e **1,09×** com vinte. ⚠️ A 1ª versão da sonda media UMA
+varredura e as razões saíam entre **0,97× e 1,45×** — uma delas *abaixo de 1*, impossível como custo
+real. O número absoluto era estável e só as razões eram ruído: **o sinal é menor que o ruído da
+própria medida**, e é isso que o resultado diz.
+
+⚠️ **A FRONTEIRA é estrutural, não escolha:** só a COR é autorável. `Spacing::px()` / `Radius` /
+`StrokeToken` / `Motion` são **`const fn`** lidos em **14 sítios `const`** do app; torná-los de
+runtime quebraria o contexto const e removeria a garantia de compile-time. É o resto da W4b, e agora
+tem o mecanismo escrito ao lado.
+
+**O painel** (`ph2d-panel-tokens`, categoria MUNDO, tecla **`T`**): uma linha por token de
+`ColorToken::ALL` — swatch (alvo de PICKER) + a chave + um *Reset* **só na linha autorada** + *Reset
+This Mode* **só com o que resetar**. ⚠️ **Ele não guarda cópia de token nenhum** (a lista é a tabela,
+o valor sai da porta, o modo vem do host): um snapshot por frame seria uma segunda cópia da tabela
+de cor, num painel cuja razão de existir é ser a autoridade sobre ela. ⚠️ E **um escritor só** — o
+painel emite intents, a shell escreve (ela já é obrigada a fazê-lo no read-back do picker).
+
+⚠️ **A `T` era um scaffold de debug** (`"Toast key (T) pressed"`), órfão como o `KeyB` que a timeline
+aposentou no W4.T5 — varrido no repo antes de ser tomado.
+
+**Persistência:** `ProjectFile.tokens` (**`PROJECT_SCHEMA` 50→51**, campo apendado, postcard
+posicional). ⚠️ **FORA do `ProjectState`**, o precedente das settings de física: um Ctrl+Z do canvas
+não rebobina a cara do editor. O preço honesto — *editar um token não entra na fila do Ctrl+Z* —
+tem o *Reset* como resposta. ⚠️ E viaja a **CHAVE**, nunca o índice do variant: guardar o índice
+amarraria todo projeto salvo à ORDEM da lista.
+
+**Gates: 8 (camada) + 7 (seam) + 4 (ponte) + 4 (persistência) + 4 (arch) — 12 mutações, 12
+sangram.** ⚠️ **Duas sobreviveram à 1ª rodada e as duas viviam na PONTE, que não tinha gate**
+(*Reset This Mode* podia apagar os quatro modos; o read-back podia escrever a cada frame). A cura
+não foi um arch-gate: `HeroScreen::new` é **construtor puro** e o estado do picker é semeável, então
+a ponte virou dirigível headless — *"isto exige janela"* era a resposta preguiçosa, e a janela não
+era exigida.
+
+⚠️ **Dois gates MEUS nasceram vermelhos sobre produto correto:** um media o ramo FECHADO chamando o
+`painted_rect`, que **força o painel visível** (o helper certo é o `paint_hidden`, que a auditoria
+de 2026-07-29 criou para este ramo); e o outro ancorava no literal `"Toast key (T) pressed"` — que o
+doc-comment desta mesma wave **cita**. *Um oráculo que casa com a documentação de si mesmo não está
+a olhar para o produto* (a lição do `[frame]` do Flip, §5.48).
+
+**Smoke** (**`=59`**): a cena **não monta geometria de assunto** — o sujeito é o próprio editor. Ela
+abre o painel, põe três formas de CONTROLE (a arte não é chrome) e **imprime quantos tokens o painel
+vai listar**; se for zero, PARE.
+
+**Aberto, e é o resto da W4b:** os **aliases** (`{color.brand.500}`) ⚠️ **não** foram construídos
+como variante do modelo, e a razão é uma lei deste repo: um variante sem porta que o produza é o
+`OverrideSlot` da W5a outra vez ([[feedback_a_capability_without_a_door_passes_every_gate]]) — eles
+nascem com o seu gesto ou não nascem · math · detecção de ciclo (que os aliases exigem) · DTCG · os
+tokens de ESCALA (a fronteira `const fn` acima) · e um readout de CONTRASTE (o `tokens.json` valida
+WCAG 2.2 AA nos gates, e um valor autorado pode quebrá-lo sem nada dizer).
+
+---
+
 ### W6 — O VÍNCULO COM O WIDGET (a metade funcional)
 
 **O quê.** O degrau que transforma *"desenho de UI"* em *"UI"*. Ver §2 para o porquê da forma.
@@ -1159,7 +1230,8 @@ escreveu**:
 | **W5b** ✅ | a lista de PEÇAS (a porta do override) · Update Main · Swap | — | — | — | — | `=56` |
 | **Z-order** ✅ | a lei das game engines: DFS = ordem de desenho + o **Z global** na Arrange | — | — | — | — | `=57` |
 | **W5c** ✅ | variants (a instância escolhe QUAL versão) | — | **—** | — | **—** | `=58` |
-| **W6** | vínculo com o widget | +1 (50) | — | — | sim (§2) | `=54` |
+| **W6.1** ✅ | a tabela de COR vira AUTORÁVEL (o degrau 1 do §2) | — | ⚠️ **bump** | — | **—** | `=59` |
+| **W6.2/3** | pele por-widget (`VecWidget`) + layout | +1 | — | — | sim (§2) | — |
 | **W7** | estados + Smart Animate | — | `DOC_VERSION` | — | sim (HSM) | `=55` |
 | **W8** | runtime + codegen | — | seção | — | sim (fronteira) | `=56` |
 | **W9** | DTCG / SVG / export | — | — | — | — | — |

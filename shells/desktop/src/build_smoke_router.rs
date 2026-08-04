@@ -263,5 +263,12 @@ pub(crate) fn route(app: &mut crate::App, f: u32, level: u32) -> bool {
         crate::variant_smoke::frame(app, f);
         return true;
     }
+    // A cena dos TOKENS (=59) — irmã `tokens_smoke`. ⚠️ Ela não monta geometria de assunto
+    // nenhum: o sujeito do smoke é o PRÓPRIO EDITOR (o painel re-veste a janela ao vivo), e as
+    // formas que ela põe são o CONTROLE de que a arte não é chrome.
+    if level == 59 {
+        crate::tokens_smoke::frame(app, f);
+        return true;
+    }
     false
 }

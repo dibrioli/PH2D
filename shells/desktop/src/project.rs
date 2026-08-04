@@ -220,9 +220,12 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// postcard não sinaliza ausência, então um save antigo lido pelo novo chega ao fim dos bytes
 /// no campo novo e o novo lido pelo antigo traz um byte a mais. O número transforma os dois num
 /// erro de VERSÃO em vez de num postcard a falhar longe da causa.
-/// ⚠️ O número se CONTA contra o `main` do dia, não se escolhe — este 50 é
+/// v51 (plano UI/UX W6): o arquivo carrega a **tabela de COR autorada** (`tokens`), campo
+/// apendado ao `ProjectFile`. Postcard é posicional ⇒ o bump é obrigatório nos dois sentidos,
+/// pelo mesmo motivo do v50 logo acima.
+/// ⚠️ O número se CONTA contra o `main` do dia, não se escolhe — este 51 é
 /// PROVISÓRIO até a integração ([[feedback_numbers_that_sum_across_lines_count_dont_pick]]).
-const PROJECT_SCHEMA: u32 = 50;
+const PROJECT_SCHEMA: u32 = 51;
 
 /// O conteúdo de um arquivo de projeto.
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -267,6 +270,17 @@ struct ProjectFile {
     /// O mundo rapier em si **não** viaja (D2: ele é derivado); o que viaja é o
     /// que o artista autorou.
     physics: ph2d_physics_ecs::PhysicsSettings,
+    /// **A tabela de COR autorada pelo artista** (plano UI/UX W6, degrau 1).
+    ///
+    /// ⚠️ **Esparsa e FORA do `ProjectState`**, pelas duas razões de sempre: só o que difere da
+    /// fábrica viaja (um projeto que nunca abriu o painel guarda um vetor vazio), e um Ctrl+Z do
+    /// canvas não deve rebobinar a cara do editor — o mesmo motivo que mantém `physics`,
+    /// `motion` e `timeline` aqui fora.
+    ///
+    /// ⚠️ O que viaja é o par `(modo, chave-do-token)` e a cor. A **CHAVE**, nunca o índice do
+    /// variant: guardar o índice amarraria todo projeto salvo à ORDEM da lista, e acrescentar um
+    /// token no meio da tabela re-pintaria o app com as cores trocadas. É a mesma lei do `W4a`.
+    tokens: Vec<crate::project_tokens::SavedToken>,
 }
 
 /// Uma imagem de sprite embutida no projeto: os pixels RGBA + a célula de atlas que
@@ -332,6 +346,7 @@ impl crate::App {
                 .as_ref()
                 .map(|g| g.physics.settings())
                 .unwrap_or_default(),
+            tokens: crate::project_tokens::collect(),
         };
         let bytes = match postcard::to_allocvec(&(PROJECT_SCHEMA, &file)) {
             Ok(b) => b,
@@ -448,6 +463,9 @@ impl crate::App {
             // ANTERIOR — em silêncio.
             gfx.physics.set_settings(file.physics);
         }
+        // **A TABELA DE COR do documento anterior morre aqui, e a do arquivo entra** (W6) —
+        // detalhe e razão no irmão `project_tokens`.
+        crate::project_tokens::install(&file.tokens);
         // **A TIMELINE do documento anterior morre aqui** — a do arquivo entra no fim (W4.T6/B5).
         //
         // Não é higiene: as bindings do documento anterior nomeiam entidades que o

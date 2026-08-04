@@ -27,6 +27,9 @@ ph2d-physics-ecs = { path = "../../crates/ph2d-physics-ecs" }
 # The world-settings panel (ADR-0131 D8 / W2b). The shell drains its intents
 # in `render_loop::physics_panel_bridge`.
 ph2d-panel-physics = { path = "../../crates/ph2d-panel-physics" }
+# O painel de TOKENS (plano UI/UX W6): a shell drena os intents dele e faz o
+# read-back do picker, entao a dep e' direta e nao-opcional, como a de fisica.
+ph2d-panel-tokens = { path = "../../crates/ph2d-panel-tokens" }
 ph2d-panel-wet-tuning = { path = "../../crates/ph2d-panel-wet-tuning" }
 ph2d-render = { path = "../../crates/ph2d-render" }
 # Wave 11 color-space migration (ADR-0042 §6 #2): typed color wrappers
@@ -366,6 +369,7 @@ default = [
     "panel-timeline",
     "panel-physics",
     "panel-wet-tuning",
+    "panel-tokens",
 ]
 # `lite` = explicit "no panels" — host boots with chrome only
 # (TopBar + LeftRail + BottomHUD + canvas). Useful for distribution
@@ -422,6 +426,12 @@ panel-timeline       = ["ph2d-panel-registry-init/panel-timeline"]
 # made the panel unreachable in the first smoke — every unit gate green, and
 # `W` toggling the visibility of a panel that was not in the registry.
 panel-physics        = ["ph2d-panel-registry-init/panel-physics"]
+# Painel de TOKENS (plano UI/UX W6). `ph2d-panel-tokens` e' dep direta nao-opcional
+# (`render_loop::tokens_bridge` drena os intents e faz o read-back do picker); esta
+# linha liga a feature do registry-init que compila o painel PARA DENTRO do
+# registro. ⚠️ Vale o mesmo aviso do physics acima: sem ela o `T` alternaria a
+# visibilidade de um painel que nao esta' no registro, com todos os gates verdes.
+panel-tokens         = ["ph2d-panel-registry-init/panel-tokens"]
 # Wet Tuning side panel (doc 22). `ph2d-panel-wet-tuning` is a non-optional
 # direct dep (the painter bridge publishes its brush snapshot and mirrors the
 # Tuning checkbox into its visibility); this line flips the registry-init

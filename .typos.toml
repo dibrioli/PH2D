@@ -68,6 +68,18 @@ instale = "instale"  # pt-BR imperativo ("instale este plano", donated_form.rs) 
 artistas = "artistas"          # pt-BR ("metade dos artistas fazer exatamente...")
 inventario = "inventario"      # pt-BR ("um inventario com buracos")
 cenario = "cenario"            # pt-BR (diagrama da polia: "[cenario]")
+# pt-BR das jornadas do modulo 3D (`line/sculpt3d`, W4..W8.6). Mesmo criterio da
+# leva de 2026-07-31 acima -- *allowlistar isto pode esconder um typo real?*:
+# aqui a resposta e' NAO em todas, porque sao substantivos e um imperativo do
+# portugues, e nao versoes mal escritas de uma palavra inglesa que este repo use.
+# ⚠️ Drenadas no FECHAMENTO da linha, e nao no ship: o gate de typos nao roda no
+# `cargo test -p`, entao a divida de uma jornada inteira chegaria junta ao
+# integrador -- que e' exatamente o que a nota acima descreve tendo acontecido.
+programa = "programa"          # pt-BR ("outro programa", "um programa de fora")
+programas = "programas"        # pt-BR ("tres programas adiante")
+receptores = "receptores"      # pt-BR ("os receptores do gesto")
+aspectos = "aspectos"          # pt-BR ("os dois aspectos da projecao")
+assuma = "assuma"              # pt-BR imperativo ("assuma o formato"), irmao do `instale` acima
 mediam = "mediam"              # pt-BR, 5x ("todos mediam o MIOLO") -- imperfeito de "medir"
 suspenso = "suspenso"          # pt-BR, 6x (o carro com suspensao, nas cenas de roda)
 tese = "tese"                  # pt-BR ("a tese, em uma linha")

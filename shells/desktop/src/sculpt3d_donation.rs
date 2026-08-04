@@ -57,7 +57,9 @@ pub(crate) fn spawn_canvas_if_enabled(
     pixels_per_meter: f32,
     atlas_asset_map: &mut std::collections::BTreeMap<u32, AssetId>,
 ) -> Option<u64> {
-    if !super::donation_scene() {
+    // Duas cenas querem a mesma tela branca, e a pergunta é feita UMA vez — ver
+    // `scenes::wants_canvas`.
+    if !super::wants_canvas() {
         return None;
     }
     match crate::image_import::spawn_blank_canvas(
@@ -74,10 +76,17 @@ pub(crate) fn spawn_canvas_if_enabled(
         atlas_asset_map,
     ) {
         Ok((label, bits)) => {
-            eprintln!(
-                "[sculpt3d] tela '{label}' ({CANVAS_EDGE}x{CANVAS_EDGE}) pronta — \
-                 esculpa, aperte D ate ler LUZ, pegue o Painter e pinte"
-            );
+            if super::bake_scene() {
+                eprintln!(
+                    "[sculpt3d] sprite '{label}' ({CANVAS_EDGE}x{CANVAS_EDGE}) na mesa — ele e' o \
+                     OBJETO que a forma vai acender"
+                );
+            } else {
+                eprintln!(
+                    "[sculpt3d] tela '{label}' ({CANVAS_EDGE}x{CANVAS_EDGE}) pronta — \
+                     esculpa, aperte D ate ler LUZ, pegue o Painter e pinte"
+                );
+            }
             Some(bits)
         }
         Err(e) => {
@@ -277,6 +286,25 @@ impl Sculpt3dScene {
             .form_plane(device, queue, &self.camera, size)?;
         self.donated = Some(stamp);
         Some(Arc::new(plane))
+    }
+
+    /// **A forma, INCONDICIONALMENTE** — o G-buffer no tamanho pedido, sem carimbo.
+    ///
+    /// ⚠️ Mora aqui, ao lado do [`Self::rasterise_form`], porque as duas rotas têm de passar pela
+    /// MESMA `form_plane`: a doação (que serve a tela do Painter) e o bake (que serve um sprite da
+    /// cena) descrevem a mesma escultura, e uma segunda chamada com outra câmera ou outro `sync`
+    /// daria dois G-buffers da mesma malha que discordam.
+    ///
+    /// E ela **não** carimba: o bake é um gesto explícito, então *"nada mudou"* não é uma resposta
+    /// que ele aceite — o artista apertou a tecla, e o que ele espera é a forma de agora.
+    pub(super) fn form_plane_for(
+        &mut self,
+        gpu: &ph2d_gpu::GpuContext,
+        size: (u32, u32),
+    ) -> Option<Vec<f32>> {
+        self.sync_mesh(&gpu.device, &gpu.queue);
+        self.renderer
+            .form_plane(&gpu.device, &gpu.queue, &self.camera, size)
     }
 
     /// O interruptor avança uma posição. Devolve o rótulo do estado novo.

@@ -865,9 +865,10 @@ impl crate::App {
         let AppGfx {
             // As guias do documento: lidas para desenhar e para alimentar o snap.
             guides: doc_guides,
-            // A cena 3D é consumida no `present`, não neste bloco.
+            // A cena 3D é DESENHADA no `present`; aqui ela é lida por um assunto só — o bake do
+            // objeto misto (`docs/3D/02.2`), que precisa do mundo e do renderizador ao lado dela.
             #[cfg(feature = "sculpt3d")]
-                sculpt3d: _,
+            sculpt3d,
             surface,
             renderer,
             sim,
@@ -1019,6 +1020,34 @@ impl crate::App {
                 toasts.push(Toast::success(
                     "Sculpt3d: esculpa, aperte D ate ler LUZ, e pinte".to_string(),
                 ));
+            }
+        }
+
+        // **O OBJETO MISTO** (`docs/3D/02.2`): assa a forma no sprite selecionado, e re-acende os
+        // que já foram assados quando a lâmpada anda. Ele mora AQUI, e não ao lado da doação, por
+        // uma razão só: é o único ponto do frame em que a cena 3D, o mundo, o renderizador e o
+        // mapa de atlas estão os quatro em escopo.
+        //
+        // ⚠️ Quase sempre não faz nada — sem cena armada sai no primeiro `if`, e com o rig parado
+        // ele custa um carimbo por sprite assado, sem tocar a GPU.
+        #[cfg(feature = "sculpt3d")]
+        if let Some(scene) = sculpt3d.as_mut() {
+            let want = std::mem::replace(&mut self.sculpt3d_bake_request, false);
+            let selected = hero_screen
+                .as_ref()
+                .and_then(|h| h.gizmo.iter_selected().next());
+            if let Some(line) = crate::sculpt3d::bake::drain(
+                scene,
+                surface.gpu(),
+                want,
+                selected,
+                sim,
+                renderer,
+                asset_db,
+                atlas_asset_map,
+            ) {
+                eprintln!("{line}");
+                toasts.push(Toast::success(line));
             }
         }
 

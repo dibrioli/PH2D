@@ -480,6 +480,13 @@ pub(crate) struct App {
     /// Latch da tela de `PH2D_SCULPT3D_SMOKE=2` — a cena da DOAÇÃO. ⚠️ Sem `cfg`: um campo `bool`
     /// não é um símbolo do módulo 3D, e gateá-lo obrigaria a gatear o `mem::replace` no laço.
     pub(crate) sculpt3d_canvas_done: bool,
+    /// **O gesto de ASSAR pediu** (`docs/3D/02.2`) — armado pela tecla, drenado pelo laço.
+    ///
+    /// ⚠️ **Um pedido, e não a ação:** a tecla chega com a cena emprestada e o bake precisa do
+    /// `sim`, do renderizador, do `AssetDb` e do mapa de atlas — todos vivos só dentro do laço de
+    /// frame. É o mesmo desenho do `sculpt3d_canvas_done` ao lado, e sem `cfg` pela mesma razão:
+    /// um `bool` não é símbolo do módulo 3D.
+    pub(crate) sculpt3d_bake_request: bool,
     /// **O documento de escultura como veio do arquivo.** ⚠️ **Sem `cfg`, e é
     /// deliberado:** ele é `Vec<u8>` opaco, não um símbolo do módulo, e é isso
     /// que faz um binário construído SEM a escultura ser um **passa-adiante** em

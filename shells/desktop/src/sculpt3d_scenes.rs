@@ -13,11 +13,11 @@
 
 use super::fixtures::{hooked_sphere, punctured_sphere, ridged_sphere};
 
-/// A cena está armada? (`PH2D_SCULPT3D_SMOKE` em `1`..`10`.)
+/// A cena está armada? (`PH2D_SCULPT3D_SMOKE` em `1`..`11`.)
 pub(crate) fn smoke_armed() -> bool {
     matches!(
         std::env::var("PH2D_SCULPT3D_SMOKE").ok().as_deref(),
-        Some("1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | "10")
+        Some("1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | "10" | "11")
     )
 }
 
@@ -242,7 +242,10 @@ pub(crate) fn smoke_mesh() -> ph2d_mesh::Mesh {
     // ⚠️ A `=10` abre com as CRISTAS pelo mesmo motivo da `=8`: uma esfera lisa
     // que volta de um arquivo é indistinguível de uma recém-nascida, e o que
     // este smoke pergunta é *a FORMA atravessou?*.
-    if turn_scene() || document_scene() || export_scene() {
+    // ⚠️ A `=11` abre com as CRISTAS porque o que ela julga é a LUZ: sobre uma esfera lisa a
+    // iluminação de uma normal quase constante lê como um degradê chapado, e o artista não teria
+    // como separar *o objeto ficou aceso pela forma* de *alguém escureceu o sprite*.
+    if turn_scene() || document_scene() || export_scene() || bake_scene() {
         return ridged_sphere();
     }
     if remesh_scene() {
@@ -272,6 +275,24 @@ pub(crate) fn smoke_mesh() -> ph2d_mesh::Mesh {
 /// atrás dele sem nada explicando por quê.
 pub(crate) fn donation_scene() -> bool {
     std::env::var("PH2D_SCULPT3D_SMOKE").ok().as_deref() == Some("2")
+}
+
+/// `=11` — a cena do **OBJETO MISTO** (`docs/3D/02.2`): a esfera com cristas E um sprite para
+/// acender.
+///
+/// ⚠️ Cena própria, e não um passo da `=2`, pela mesma razão que separou a `=2` da `=1`: a doação
+/// pergunta *a forma acende a TINTA que eu estou pintando?* e esta pergunta *o OBJETO fica aceso
+/// depois que a malha sai?*. A segunda tem um passo que a primeira não tem — apagar a escultura — e
+/// misturá-las faria o artista destruir a cena da doação para julgar esta.
+pub(crate) fn bake_scene() -> bool {
+    std::env::var("PH2D_SCULPT3D_SMOKE").ok().as_deref() == Some("11")
+}
+
+/// **Esta cena quer uma TELA na mesa?** A pergunta é feita UMA vez, e as duas cenas que respondem
+/// sim ([`donation_scene`] e [`bake_scene`]) precisam da mesma superfície branca pelo mesmo motivo:
+/// a luz da forma é o que se vê, e sobre branco não há cor competindo.
+pub(crate) fn wants_canvas() -> bool {
+    donation_scene() || bake_scene()
 }
 
 /// **A cena DECLARA o que montou** — o banner e as instruções de cada uma.
@@ -433,6 +454,36 @@ pub(crate) fn announce(mesh: &ph2d_mesh::Mesh) {
              [sculpt3d]    Agora ',' desce ate' a base grossa: mova UM vertice la' e suba com '.'\n\
              [sculpt3d]    -- a forma grande andou e a pele fina continua onde estava.\n\
              [sculpt3d]    Ctrl+Z desfaz cada J; Ctrl+Shift+Z refaz."
+        );
+    }
+    if bake_scene() {
+        // ⚠️ **Os passos (4) e (5) são a wave**, e nenhum dos dois é sobre o momento do bake: o que
+        // separa isto de um carimbo é o objeto continuar RESPONDENDO à luz depois, e continuar
+        // aceso depois de a escultura sair. Um roteiro que parasse no (3) deixaria o artista
+        // aprovar um efeito que qualquer filtro de imagem entrega.
+        eprintln!(
+            "[sculpt3d] =11 O OBJETO MISTO: ha' um SPRITE branco na mesa (ja' SELECIONADO), e a\n\
+             [sculpt3d]    forma da esfera vai acender ELE.\n\
+             [sculpt3d]    (1) A esfera chega com CRISTAS -- e' delas que a luz toma a forma.\n\
+             [sculpt3d]        Gire (botao direito) ate' a vista que voce quer assar: o bake usa a\n\
+             [sculpt3d]        camera do ESCULTOR, entao o que voce ve' e' o que ele grava.\n\
+             [sculpt3d]    (2) Shift+B ASSA. O log diz o tamanho.\n\
+             [sculpt3d]    (3) Aperte D UMA vez: o barro sai da tela e o SPRITE aparece. Ele tem de\n\
+             [sculpt3d]        estar com o RELEVO DA ESFERA desenhado em luz e sombra. Se ele so'\n\
+             [sculpt3d]        escureceu por igual, reprove.\n\
+             [sculpt3d]        (com o barro na tela o sprite fica ATRAS dele -- por isso o D.)\n\
+             [sculpt3d]    (4) O TESTE DA WAVE: Q/E giram a lampada, R/F a sobem. O sprite tem de\n\
+             [sculpt3d]        RE-ACENDER a cada toque -- as sombras ANDAM. Se ele ficar congelado,\n\
+             [sculpt3d]        isto e' um carimbo e nao um objeto, e a wave falhou.\n\
+             [sculpt3d]    (5) O SEGUNDO TESTE: aperte D ate' voltar ao BARRO e Delete ate' a\n\
+             [sculpt3d]        escultura sumir; volte ao D. O sprite tem de continuar aceso E as\n\
+             [sculpt3d]        teclas de luz tem de continuar movendo as sombras dele -- sem malha.\n\
+             [sculpt3d]    (6) Um objeto assado e' FOSCO de proposito (o barro ainda nao tem\n\
+             [sculpt3d]        material): procure FORMA, nao brilho especular.\n\
+             [sculpt3d]    (7) Assar DE NOVO por outro angulo tem de substituir a luz, nao somar --\n\
+             [sculpt3d]        gire, Shift+B, e o sprite nao pode ficar mais escuro a cada bake.\n\
+             [sculpt3d]    ⚠️ O bake NAO sobrevive a fechar o app: os canais no arquivo sao a\n\
+             [sculpt3d]        proxima fatia, e a ausencia esta' nomeada no `sculpt3d.rs`."
         );
     }
     if crate::sculpt3d::donation_scene() {

@@ -58,6 +58,7 @@ pub(crate) fn sync_inspector_from_snapshots(
         crate::sync_physics::sync_physics_fields(host);
         crate::sync_physics::sync_joint_fields(host);
         crate::sync_physics::sync_wheel_fields(host);
+        crate::sync_physics::sync_player_fields(host);
         if let Some(info) = transform {
             host.store_mut().set_number_value(
                 ids::INSP_TRANSFORM_POS_X,

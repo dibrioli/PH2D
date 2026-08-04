@@ -46,6 +46,7 @@ mod chrome;
 mod gallery;
 mod inspector;
 mod inspector_joint;
+mod inspector_player;
 mod menus;
 mod menus_timeline;
 
@@ -53,5 +54,6 @@ pub use chrome::*;
 pub use gallery::*;
 pub use inspector::*;
 pub use inspector_joint::*;
+pub use inspector_player::*;
 pub use menus::*;
 pub use menus_timeline::*;

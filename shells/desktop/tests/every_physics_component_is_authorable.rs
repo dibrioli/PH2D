@@ -24,7 +24,7 @@ use std::fs;
 /// rows de ZONA (*o que esta ÁREA faz a outros corpos*) do resto (*o que ESTE corpo é*),
 /// e o gate nasceu VERMELHO nomeando os seis componentes de área — o corte moveu os
 /// escritores para fora da lista. Foi a falha ALTA que a lista existe para produzir.
-const WRITERS: [&str; 7] = [
+const WRITERS: [&str; 8] = [
     "src/render_loop/inspector_physics_apply.rs",
     "src/render_loop/inspector_physics_area.rs",
     "src/render_loop/inspector_physics_markers.rs",
@@ -42,6 +42,13 @@ const WRITERS: [&str; 7] = [
     // + registro), que mora aqui. Um braço de string dentro do enum de campos
     // numéricos seria um segundo formato de edição vivendo dentro do primeiro.
     "src/render_loop/inspector_commits.rs",
+    // ⚠️ **O oitavo chegou pela porta que este gate existe para vigiar** (W5): o
+    // `PlatformPlayer` foi registrado na W2 e a §14 só nasceu três waves depois,
+    // então o gate ficou VERMELHO nesse intervalo inteiro e foi ele quem
+    // ANTECIPOU a wave de autoria. É a falha alta funcionando: o componente
+    // rodava em toda cena de smoke (que constrói com código) e era inalcançável
+    // no produto.
+    "src/render_loop/inspector_player.rs",
 ];
 
 #[test]

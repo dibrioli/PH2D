@@ -197,6 +197,63 @@ pub(super) fn populate_wheel(store: &mut WidgetStore) {
     }
 }
 
+/// §14 Platform Player (W5) — os três botões e os oito números.
+///
+/// ⚠️ **Registrado sem condição**, como o Weston ao lado e pelo mesmo motivo: o
+/// `populate` roda uma vez no boot e não sabe que entidade está selecionada, e
+/// um id não-registrado é o widget PINTADO e morto sob o mouse que o
+/// `architecture_panel_wiring_parity` existe para pegar.
+///
+/// ⚠️ **Os defaults são o `PlayerConfig::STARTING_POINT`** — o mesmo ponto de
+/// partida que o componente usa. Um segundo conjunto aqui seria a segunda
+/// resposta a *"com que números um player nasce?"*, e ela divergiria no dia em
+/// que a varredura da wave movesse um deles.
+pub(super) fn populate_player(store: &mut WidgetStore) {
+    register_button_ids(
+        store,
+        &[
+            ids::INSP_PLAYER_ADD,
+            ids::INSP_PLAYER_REMOVE,
+            ids::INSP_PLAYER_FIT,
+        ],
+    );
+    for (id, value, min, max, step) in [
+        // Metros. O piso NÃO é zero por acaso: uma perna de comprimento zero é
+        // um personagem que não paira, e o piso geométrico real é maior ainda
+        // (o botão Fit to Collider o diz).
+        (ids::INSP_PLAYER_FLOAT, 0.5, 0.01, 100.0, 0.01), // LITERAL-PX-OK: meters
+        (ids::INSP_PLAYER_CLING, 0.25, 0.0, 100.0, 0.01), // LITERAL-PX-OK: meters
+        // Aceleração-por-metro. Sem teto medido: o que aperta a rigidez é a
+        // estabilidade do passo, e o amortecimento é quem a governa.
+        (ids::INSP_PLAYER_STIFFNESS, 400.0, 0.0, 100_000.0, 1.0), // LITERAL-PX-OK: accel per metre
+        // ⚠️ TETO MEDIDO em 1.0 (`RideConfig::MAX_DAMPING`): acima dele o boost
+        // INVERTE a velocidade em vez de matá-la, e o personagem pipoca. É o
+        // único teto desta seção que descreve um limite de estabilidade em vez
+        // de conveniência de stepper.
+        (ids::INSP_PLAYER_DAMPING, 0.5, 0.0, 1.0, 0.05), // LITERAL-PX-OK: fraction per tick
+        // m/s, relativa ao chão.
+        (ids::INSP_PLAYER_SPEED, 6.0, 0.0, 1000.0, 0.1), // LITERAL-PX-OK: m/s
+        (ids::INSP_PLAYER_ACCEL, 60.0, 0.0, 10_000.0, 1.0), // LITERAL-PX-OK: m/s^2
+        (ids::INSP_PLAYER_AIR_ACCEL, 20.0, 0.0, 10_000.0, 1.0), // LITERAL-PX-OK: m/s^2
+        // Graus. O teto é 90 porque acima disso a superfície aponta para BAIXO
+        // e a pergunta deixa de ter sentido — recurso, não conveniência.
+        (ids::INSP_PLAYER_MAX_SLOPE, 45.0, 0.0, 90.0, 1.0), // LITERAL-PX-OK: degrees
+    ] {
+        store.register(
+            id,
+            InteractiveState::NumberInput {
+                state: TextInputState::Normal,
+                value,
+                buffer: format_number(value),
+                caret: 0,
+                last_committed: value,
+                selection_anchor: None,
+            },
+        );
+        store.set_number_range(id, min, max, step);
+    }
+}
+
 pub(super) fn populate_physics(store: &mut WidgetStore) {
     register_button_ids(store, &ids::INSP_PHYS_KIND);
     register_button_ids(store, &ids::INSP_PHYS_SHAPE);

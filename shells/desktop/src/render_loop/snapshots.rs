@@ -847,6 +847,13 @@ pub(super) fn publish(
             wheel_rope_pick == Some(b),
         )
     });
+    // §14 Platform Player (W5) — a quarta da família. Ao contrário da §12/§13,
+    // ela TEM face vazia: `Some` para todo corpo Dynamic, com ou sem o
+    // componente, porque o botão dela é o que faz o comportamento existir.
+    let inspector_player = hero
+        .gizmo
+        .selection
+        .and_then(|b| super::inspector_player::build_player_info(sim, b));
     let inspector_visibility_section = hero.gizmo.selection.and_then(|b| {
         super::inspector_visibility::build_visibility_section_info(
             sim.world(),
@@ -868,6 +875,7 @@ pub(super) fn publish(
         ph2d_panel_inspector::set_current_inspector_physics(inspector_physics);
         ph2d_panel_inspector::set_current_inspector_joint(inspector_joint);
         ph2d_panel_inspector::set_current_inspector_wheel(inspector_wheel);
+        ph2d_panel_inspector::set_current_inspector_player(inspector_player);
         ph2d_panel_inspector::set_current_inspector_visibility_section(
             inspector_visibility_section,
         );

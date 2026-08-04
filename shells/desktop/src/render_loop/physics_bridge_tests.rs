@@ -52,7 +52,15 @@ fn play(simulate: bool) -> (f32, u64) {
 
     for _ in 0..FRAMES {
         playhead.advance();
-        dispatch(&mut bridge, &mut sim, &playhead, DT, &mut doc, simulate, 0.0);
+        dispatch(
+            &mut bridge,
+            &mut sim,
+            &playhead,
+            DT,
+            &mut doc,
+            simulate,
+            0.0,
+        );
     }
     (height(&sim, ball), bridge.steps_taken())
 }

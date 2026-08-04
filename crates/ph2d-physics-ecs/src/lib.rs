@@ -80,6 +80,12 @@ pub use ph2d_physics::{IkOptions, JointLoad};
 /// quem a consome (a lei) têm de falar do MESMO tipo — um espelho na ponte
 /// seria a segunda porta que diverge no dia em que o pulo (W4) entra num lado só.
 pub use ph2d_platformer::PlayerInput;
+/// A config da lei, re-exportada pela MESMA razão do `rope_route` e do
+/// `ShapeDesc`: a shell **não depende da `ph2d-platformer`** (a contenção que
+/// mantém o rapier e a lei confinados), e o Inspector precisa do ponto de
+/// partida e do piso geométrico da altura de flutuação. Uma segunda cópia deles
+/// na shell seria a segunda resposta a *"com que números um player nasce?"*.
+pub use ph2d_platformer::{PlayerConfig, RideConfig, WalkConfig};
 pub use rig::{RIG_LIMIT_DEG, rig_edges, rig_limits, subtree_parts};
 pub use scale::scaled_shape;
 pub use seam::{ColliderPose, seam_between, seam_point};

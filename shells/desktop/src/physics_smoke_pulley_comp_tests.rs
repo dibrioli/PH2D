@@ -306,10 +306,17 @@ fn the_scene_that_asks_for_handles_starts_paused() {
     let src = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/src/physics_smoke.rs"))
         .expect("physics_smoke.rs");
     let start = src.find("const PAUSED_SCENES").expect("a lista sumiu");
-    let list = &src[start..start + 400];
-    let end = list.find("];").expect("a lista não fecha");
+    // ⚠️ **A janela vai até o `];`, nunca até um número de BYTES.** A primeira
+    // versão deste gate lia `&src[start..start + 400]` e ele EXPIROU no dia em
+    // que a lista ganhou um comentário de três linhas (W5): o fechamento saiu da
+    // janela e o gate passou a falhar com *"a lista não fecha"* sobre uma lista
+    // perfeitamente fechada, e sobre uma cena 63 que continuava lá. Uma
+    // distância em bytes é um proxy do que se quer afirmar, e proxies expiram
+    // ([[feedback_a_gate_anchored_on_a_byte_distance_is_a_proxy_that_expires]]).
+    let rest = &src[start..];
+    let end = rest.find("];").expect("a lista não fecha");
     assert!(
-        list[..end].contains("\"63\""),
+        rest[..end].contains("\"63\""),
         "a cena 63 manda AGARRAR alças, e alça de roldana é rest-only: nascendo \
          tocando ela não publica nenhuma"
     );

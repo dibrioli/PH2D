@@ -87,6 +87,9 @@ mod inspector_ordering;
 /// sem `RigidBody`) — a volta que a W-Compound não deu.
 #[cfg(test)]
 mod inspector_part_tests;
+pub(crate) mod inspector_player;
+#[cfg(test)]
+mod inspector_player_tests;
 // ⚠️ `pub(crate)`: a porta `apply_physics_edit` é a ÚNICA regra de "como uma
 // entidade vira corpo" (o collider sai da CAIXA DO SPRITE), e o gerador de rig
 // (`crate::joint_rig`, W-Rig) a chama de fora — uma segunda regra lá faria um rig
@@ -2326,6 +2329,10 @@ impl crate::App {
             // and these two are applied in one short block below.
             let mut joint_edits: Vec<(u64, ph2d_editor::JointFieldEdit)> = Vec::new();
             let mut wheel_edits: Vec<(u64, ph2d_editor::WheelFieldEdit)> = Vec::new();
+            // §14 Platform Player (W5). Sem fan-out, e pela razão da §12/§13: a
+            // seção descreve UM personagem, o selecionado — espalhar um `Add`
+            // pela seleção criaria N players num clique que pediu um.
+            let mut player_edits: Vec<(u64, ph2d_editor::PlayerFieldEdit)> = Vec::new();
             // The pair to join, at most one per frame — it is a click, not a
             // per-entity edit.
             let mut bake_request: Option<Vec<u64>> = None;
@@ -3224,6 +3231,9 @@ impl crate::App {
                     }
                     // §13 Pulley Wheel. Sem fan-out, e pela razão da §12: a
                     // seção descreve UMA roldana, a que está selecionada.
+                    EditorAction::InspectorPlayerEdit { entity_bits, edit } => {
+                        player_edits.push((entity_bits, edit));
+                    }
                     EditorAction::InspectorWheelEdit { entity_bits, edit } => {
                         // W3: o eyedropper ARMA aqui (onde `self` é mutável), como
                         // o do joint e pela mesma razão — o pick é estado da
@@ -7488,6 +7498,12 @@ impl crate::App {
                         )));
                     }
                 }
+            }
+            // §14 Platform Player (W5). Toda edição escreve o componente no
+            // lugar (ou o anexa/remove), então não há fila de comandos de
+            // entidade a drenar: o undo global por-diff captura o passo.
+            for &(bits, edit) in &player_edits {
+                inspector_player::apply_player_edit(sim, bits, edit);
             }
             // §13 Pulley Wheel (W-Pulley W1). Toda edição é de COMPONENTE — não
             // há aqui o par estrutural da §12 (criar/apagar uma roldana é criar

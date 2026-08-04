@@ -20,7 +20,7 @@ use crate::state::{
 use crate::sync::sync_inspector_from_snapshots;
 use crate::{InspectorPanel, sections};
 use ph2d_editor_core::ids;
-use ph2d_editor_core::interaction::{HitIndex, NoteData, WidgetStore};
+use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
 use ph2d_editor_core::paint::{paint_text, rect_to_vello, resolve};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::screens::{HeroLayout, HeroSelection};
@@ -196,7 +196,8 @@ fn paint_inspector(
     let ordering_info = current_inspector_ordering();
     let sampling_info = current_inspector_sampling();
     let blend_info = current_inspector_blend();
-    let (physics_info, joint_info, wheel_info) = crate::paint_frame::physics_family_infos();
+    let (physics_info, joint_info, wheel_info, player_info) =
+        crate::paint_frame::physics_family_infos();
     let name_present = current_inspector_name_is_some();
     let any_section = any_live_section([
         transform_info.is_some(),
@@ -208,24 +209,12 @@ fn paint_inspector(
         physics_info.is_some(),
         joint_info.is_some(),
         wheel_info.is_some(),
+        player_info.is_some(),
         name_present,
     ]);
     let mut y = body_top_y + Spacing::Xs.px();
 
-    let all_notes = store.notes_for_panel(ids::INSP_PANEL).to_vec();
-    // One slot per live section; §11/§12/§13 (physics) made it twelve. Sized
-    // wrong, a note anchored to the last section silently falls into
-    // `trailing_notes` instead of where its author put it.
-    let mut notes_per_section: [Vec<(usize, NoteData)>; 12] = Default::default();
-    let mut trailing_notes: Vec<(usize, NoteData)> = Vec::new();
-    for (idx, note) in all_notes.into_iter().enumerate() {
-        match note.before_section {
-            Some(i) if (i as usize) < notes_per_section.len() => {
-                notes_per_section[i as usize].push((idx, note));
-            }
-            _ => trailing_notes.push((idx, note)),
-        }
-    }
+    let (notes_per_section, trailing_notes) = crate::paint_frame::split_notes(store);
     // Section macro: paints the section, then the outline (if any),
     // then notes anchored to THIS section (at the END, before the
     // separator the caller adds next). UI canon post-2026-05-24:
@@ -429,6 +418,7 @@ fn paint_inspector(
         physics_info.as_ref(),
         joint_info.as_ref(),
         wheel_info.as_ref(),
+        player_info.as_ref(),
         &notes_per_section,
     );
     if any_section {

@@ -51,6 +51,7 @@ mod physics_join_rows;
 /// corpo (uma PEÇA de um corpo composto).
 mod physics_part;
 mod physics_rows;
+mod player;
 mod render_source;
 mod rows;
 mod sampling;
@@ -68,6 +69,7 @@ pub(crate) use ordering::paint_ordering_section;
 pub use physics::bake_label;
 pub(crate) use physics::paint_physics_section;
 pub use physics_join_rows::rig_button_label;
+pub(crate) use player::paint_player_section;
 pub(crate) use render_source::paint_render_source_section;
 pub(crate) use sampling::paint_sampling_section;
 pub(crate) use sprite_sheet::paint_sprite_sheet_section;

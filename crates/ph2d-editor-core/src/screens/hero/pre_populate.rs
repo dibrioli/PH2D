@@ -554,6 +554,8 @@ fn populate_hierarchy_chrome(store: &mut WidgetStore) {
         ids::INSP_LIVE_JOINT_SECTION,
         // §13 Pulley Wheel (W-Pulley W1) — a irmã das duas acima.
         ids::INSP_LIVE_WHEEL_SECTION,
+        // §14 Platform Player (W5) — a quarta da família.
+        ids::INSP_LIVE_PLAYER_SECTION,
         // Widget Gallery showcase sections.
         ids::INSP_SECTION_INPUTS,
         ids::INSP_SECTION_SLIDER,

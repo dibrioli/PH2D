@@ -13,8 +13,9 @@
 
 use ph2d_editor_core::screens::hero::{
     InspectorBlendInfo, InspectorJointInfo, InspectorNameInfo, InspectorOrderingInfo,
-    InspectorPhysicsInfo, InspectorSamplingInfo, InspectorSpriteInfo, InspectorTransformInfo,
-    InspectorVisibilityInfo, InspectorVisibilitySectionInfo, InspectorWheelInfo,
+    InspectorPhysicsInfo, InspectorPlayerInfo, InspectorSamplingInfo, InspectorSpriteInfo,
+    InspectorTransformInfo, InspectorVisibilityInfo, InspectorVisibilitySectionInfo,
+    InspectorWheelInfo,
 };
 
 /// Inspector panel retained state. Held inside `ErasedPanel<InspectorPanel>`
@@ -73,6 +74,11 @@ thread_local! {
     /// acima: carrega o NOME da corda.
     pub(crate) static CURRENT_INSPECTOR_WHEEL: std::cell::RefCell<Option<InspectorWheelInfo>> =
         const { std::cell::RefCell::new(None) };
+
+    /// §14 Platform Player (W5). `Cell` e não `RefCell`: o info é `Copy` — ele
+    /// carrega só números, nunca um nome.
+    pub(crate) static CURRENT_INSPECTOR_PLAYER: std::cell::Cell<Option<InspectorPlayerInfo>> =
+        const { std::cell::Cell::new(None) };
 
     /// W3 §7: live ordering/sorting snapshot for the Ordering section.
     pub(crate) static CURRENT_INSPECTOR_ORDERING:
@@ -193,6 +199,14 @@ pub fn set_current_inspector_wheel(info: Option<InspectorWheelInfo>) {
 
 pub(crate) fn current_inspector_wheel() -> Option<InspectorWheelInfo> {
     CURRENT_INSPECTOR_WHEEL.with(|c| c.borrow().clone())
+}
+
+pub fn set_current_inspector_player(info: Option<InspectorPlayerInfo>) {
+    CURRENT_INSPECTOR_PLAYER.with(|c| c.set(info));
+}
+
+pub(crate) fn current_inspector_player() -> Option<InspectorPlayerInfo> {
+    CURRENT_INSPECTOR_PLAYER.with(std::cell::Cell::get)
 }
 
 pub fn set_current_inspector_physics(info: Option<InspectorPhysicsInfo>) {

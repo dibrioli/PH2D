@@ -164,6 +164,28 @@ pub(crate) fn sync_wheel_fields(host: &mut dyn PanelHostInternal) {
         .set_number_value(ids::INSP_WHEEL_BREAK_FORCE, f64::from(info.break_force));
 }
 
+/// §14 Platform Player — o mesmo espelho, e pela mesma razão: sem ele as oito
+/// rows nasceriam WRITE-ONLY (digitar funciona, re-selecionar mostra o seed em
+/// vez do que foi autorado). É a falha que a família de zonas shipou uma vez e
+/// que o gate estrutural desta seção pega no minuto em que ela nasce.
+pub(crate) fn sync_player_fields(host: &mut dyn PanelHostInternal) {
+    let Some(info) = state::current_inspector_player() else {
+        return;
+    };
+    for (id, v) in [
+        (ids::INSP_PLAYER_FLOAT, info.float_height),
+        (ids::INSP_PLAYER_CLING, info.cling_distance),
+        (ids::INSP_PLAYER_STIFFNESS, info.spring_strength),
+        (ids::INSP_PLAYER_DAMPING, info.spring_damping),
+        (ids::INSP_PLAYER_SPEED, info.speed),
+        (ids::INSP_PLAYER_ACCEL, info.acceleration),
+        (ids::INSP_PLAYER_AIR_ACCEL, info.air_acceleration),
+        (ids::INSP_PLAYER_MAX_SLOPE, info.max_slope_deg),
+    ] {
+        host.store_mut().set_number_value(id, f64::from(v));
+    }
+}
+
 /// **O `Rope Length` de uma POLIA é DERIVADO, então a row tem de acompanhar.**
 ///
 /// Enio (2026-07-29): *"diferente das outras joints que mostram o tamanho real da

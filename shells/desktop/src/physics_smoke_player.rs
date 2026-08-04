@@ -141,6 +141,78 @@ impl crate::App {
         );
     }
 
+    /// **Cena 82 (W5).** A AUTORIA — nenhum player na cena, e você faz um.
+    ///
+    /// A irmã da cena 3 do W2a, um degrau acima: lá o gesto que faltava era
+    /// *"tornar um sprite físico"*, aqui é *"tornar um corpo um personagem"*. Um
+    /// componente sem este gesto roda em toda cena de smoke — que constrói com
+    /// código — e é **inalcançável no produto**.
+    pub(crate) fn physics_smoke_author_player(&mut self) {
+        let gfx = self.gfx.as_mut().expect("gfx");
+        let world = gfx.sim.world_mut();
+        slab(
+            world,
+            "Floor",
+            Vec2::new(0.0, -0.5),
+            [14.0, 0.5],
+            0.0,
+            [0.35, 0.35, 0.4, 1.0],
+        );
+        slab(
+            world,
+            "Ramp",
+            Vec2::new(-8.0, 1.0),
+            [3.5, 0.5],
+            35.0_f32.to_radians(),
+            [0.3, 0.5, 0.35, 1.0],
+        );
+        // Um corpo Dynamic com CÁPSULA e sem comportamento — o estado exato em
+        // que a face vazia da §14 é a única coisa que a seção oferece.
+        world.spawn((
+            Name::new("Hero"),
+            Transform::from_translation(Vec2::new(0.0, 2.0)),
+            Sprite::atlas(WHITE_TILE_KEY, [0.4, 1.0], [0.25, 0.85, 1.0, 1.0]),
+            RigidBody {
+                kind: BodyKind::Dynamic,
+            },
+            Collider {
+                shape: ColliderShape::Capsule {
+                    half_height: 0.3,
+                    radius: 0.2,
+                },
+                ..Collider::default()
+            },
+            LockRotation,
+        ));
+        // E um sprite PELADO, para a outra metade do gesto: Add Physics Body
+        // (§11) e só depois Make Platform Player (§14).
+        world.spawn((
+            Name::new("Prop"),
+            Transform::from_translation(Vec2::new(3.0, 2.0)),
+            Sprite::atlas(WHITE_TILE_KEY, [0.9, 0.9], [0.9, 0.7, 0.3, 1.0]),
+        ));
+
+        eprintln!(
+            "[physics-smoke 82] A AUTORIA (W5). Um chao, uma rampa de 35deg, um corpo\n\
+             Dynamic SEM comportamento (Hero) e um sprite pelado (Prop).\n\
+             \n\
+             ⚠️ Se a linha acima nao aparecer, pare: a cena nao montou.\n\
+             \n\
+             Julgue, de olho:\n\
+             · selecione Hero: a secao 'Platform Player' aparece com UM botao.\n\
+             · clique 'Make Platform Player': o personagem passa a PAIRAR, e as\n\
+               setas <- / -> passam a anda-lo. Ele nasce acima do chao, nao encostado.\n\
+             · re-selecione: as caixas mostram o que foi autorado, nao o seed.\n\
+             · baixe 'Float Height' para 0.2: o botao passa a dizer o MINIMO que a\n\
+               forma exige. Clique nele e o personagem volta a pairar.\n\
+             · suba 'Max Slope' acima de 35: a rampa passa a ser escalavel.\n\
+             · selecione Prop: a secao NAO aparece (ele nao tem corpo). Use a §11\n\
+               'Add Physics Body' primeiro; ai' a §14 nasce.\n\
+             · 'Remove Platform Player' devolve o corpo -- e a secao continua la',\n\
+               com o botao, para voce refaze-lo."
+        );
+    }
+
     /// **Cena 81 (W3).** ANDAR — a cena que se dirige.
     ///
     /// ⚠️ É a primeira cena desta jornada com **controle**: as setas ←/→ (ou

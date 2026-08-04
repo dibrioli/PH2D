@@ -30,6 +30,12 @@ extend-ignore-identifiers-re = [
     # (`ph2d-painter-brush::diffusion`), paired with `pc` (pigment-centre). A
     # deliberate short identifier, not a typo of `on`. Anchored (2026-06-08).
     "^pn$",
+    # `toi` — *time of impact*, o nome do parâmetro na API do rapier/parry
+    # (`max_toi`, `cast_ray(&ray, max_toi, solid)`). O `typos` o lê querendo
+    # `to`/`toy`. Citar a API com o nome errado seria pior que o falso positivo.
+    # Ancorada (2026-08-03, W1 do player de plataforma).
+    "^toi$",
+    "^max_toi$",
     # `inh` — the IN-handle of a Hobby-spline vertex (`ph2d-vec-edit::hobby`),
     # paired with `out`. A deliberate short identifier, not a typo of `in`.
     # Anchored (2026-07-31).

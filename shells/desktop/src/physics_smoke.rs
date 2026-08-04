@@ -40,6 +40,10 @@ const PAUSED_SCENES: &[&str] = &[
     "3", "7", "14", "15", "16", "17", "21", "22", "23", "24", "37", "38", "39", "40", "41", "43",
     "44", "45", "46", "47", "51", "54", "58", "63", "64", "65", "66", "67", "68", "69", "70", "71",
     "72", "73", "74", "75",
+    // ⚠️ A cena 82 (W5) nasce PAUSADA pela razão da 3: ela espera o artista
+    // fazer alguma coisa, e um corpo que já caiu meio metro é um corpo cujo
+    // gesto de autoria começa no lugar errado.
+    "82",
 ];
 
 /// Static floor, centered at `y = -1` (top at `y = -0.8`). The sprite quad
@@ -158,6 +162,7 @@ impl crate::App {
             "79" => self.physics_smoke_joint_custom(),
             "80" => self.physics_smoke_float(),
             "81" => self.physics_smoke_walk(),
+            "82" => self.physics_smoke_author_player(),
             _ => self.physics_smoke_drop(),
         }
 

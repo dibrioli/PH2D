@@ -74,6 +74,9 @@ pub(crate) fn paint_physics_sections(
     physics: Option<&ph2d_editor_core::screens::hero::InspectorPhysicsInfo>,
     joint: Option<&ph2d_editor_core::screens::hero::InspectorJointInfo>,
     wheel: Option<&ph2d_editor_core::screens::hero::InspectorWheelInfo>,
+    // §14 Platform Player (W5) — a quarta da família, e a única cujo assunto é
+    // COMPORTAMENTO em vez de corpo.
+    player: Option<&ph2d_editor_core::screens::hero::InspectorPlayerInfo>,
     // Os slots de nota da PANELA inteira: a família indexa os seus (9, 10, 11)
     // aqui dentro, em vez de o orquestrador passar um por seção. É o mesmo
     // corte que trouxe a pintura para cá — quem é dono das três seções é dono
@@ -203,6 +206,46 @@ pub(crate) fn paint_physics_sections(
             slot(11),
         );
     }
+    // §14 Platform Player — para todo corpo Dynamic, COM ou SEM o componente:
+    // a face vazia é o botão que faz o comportamento existir, e sem ela ele
+    // seria alcançável só onde já existe (a lição da §11 do W2a).
+    if let Some(pl) = player {
+        y = crate::paint::paint_section_separator_at(scene, theme, inner_x, inner_w, y);
+        let y_before = y;
+        begin_section(
+            section_tops_y,
+            hit_index,
+            inner_x,
+            inner_w,
+            body_top_y,
+            y_before,
+            ids::INSP_LIVE_PLAYER_SECTION,
+            header_h,
+        );
+        let new_y = crate::sections::paint_player_section(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            inner_x,
+            inner_w,
+            y,
+            pl,
+        );
+        y = finish_section(
+            scene,
+            text_system,
+            hit_index,
+            store,
+            inner_x,
+            inner_w,
+            ids::INSP_LIVE_PLAYER_SECTION,
+            y_before,
+            new_y,
+            slot(12),
+        );
+    }
     y
 }
 
@@ -263,8 +306,39 @@ pub(crate) fn finish_section(
 /// section has to be remembered here — a fact that is easier to keep true
 /// when it has a name and a signature that changes when you forget.
 #[allow(clippy::too_many_arguments, clippy::fn_params_excessive_bools)]
-pub(crate) fn any_live_section(flags: [bool; 10]) -> bool {
+pub(crate) fn any_live_section(flags: [bool; 11]) -> bool {
     flags.iter().any(|&b| b)
+}
+
+/// **As notas, distribuídas por seção.**
+///
+/// Mora aqui pelo mesmo argumento que trouxe a pintura da família de física: o
+/// orquestrador de seções está num cap de LOC com CATRACA cujo texto diz, sobre
+/// si mesmo, *"está na linha: a próxima seção divide de novo"* — e a §14 foi
+/// ela. Um bloco autocontido que não olha para seção nenhuma é o corte honesto.
+///
+/// ⚠️ **O tamanho do array é uma slot por seção viva.** Dimensionado errado, uma
+/// nota ancorada na ÚLTIMA seção cai em silêncio no `trailing` em vez de onde o
+/// autor a pôs — e o silêncio é o problema, não o deslocamento.
+pub(crate) type SectionNotes = ([Vec<(usize, NoteData)>; 13], Vec<(usize, NoteData)>);
+
+pub(crate) fn split_notes(store: &WidgetStore) -> SectionNotes {
+    let mut per_section: [Vec<(usize, NoteData)>; 13] = Default::default();
+    let mut trailing: Vec<(usize, NoteData)> = Vec::new();
+    for (idx, note) in store
+        .notes_for_panel(ids::INSP_PANEL)
+        .to_vec()
+        .into_iter()
+        .enumerate()
+    {
+        match note.before_section {
+            Some(i) if (i as usize) < per_section.len() => {
+                per_section[i as usize].push((idx, note));
+            }
+            _ => trailing.push((idx, note)),
+        }
+    }
+    (per_section, trailing)
 }
 
 /// Os três snapshots da FAMÍLIA de física, buscados de uma vez.
@@ -277,6 +351,7 @@ pub(crate) type PhysicsFamilyInfos = (
     Option<ph2d_editor_core::screens::hero::InspectorPhysicsInfo>,
     Option<ph2d_editor_core::screens::hero::InspectorJointInfo>,
     Option<ph2d_editor_core::screens::hero::InspectorWheelInfo>,
+    Option<ph2d_editor_core::screens::hero::InspectorPlayerInfo>,
 );
 
 pub(crate) fn physics_family_infos() -> PhysicsFamilyInfos {
@@ -284,6 +359,7 @@ pub(crate) fn physics_family_infos() -> PhysicsFamilyInfos {
         crate::state::current_inspector_physics(),
         crate::state::current_inspector_joint(),
         crate::state::current_inspector_wheel(),
+        crate::state::current_inspector_player(),
     )
 }
 

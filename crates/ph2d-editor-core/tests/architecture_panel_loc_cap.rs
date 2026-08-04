@@ -111,8 +111,8 @@ const FN_OVERAGE_OK: &[(&str, &str, usize, &str)] = &[
     (
         "ph2d-panel-inspector/src/paint.rs",
         "paint_inspector",
-        424,
-        "§0-§12 section orchestrator; ratcheted 431->424 when §11 Physics Body forced the honest split (section frame + phase B moved to paint_frame.rs). §12 Physics Joint (W3) added ~22 LOC and paid for them by moving the whole physics FAMILY out too — `paint_frame::paint_physics_sections` — landing back on exactly 424. It is at the line: the next section splits again.",
+        414,
+        "§0-§14 section orchestrator; ratcheted 431->424 when §11 Physics Body forced the honest split (section frame + phase B moved to paint_frame.rs). §12 Physics Joint (W3) added ~22 LOC and paid for them by moving the whole physics FAMILY out too — `paint_frame::paint_physics_sections` — landing back on exactly 424. ⚠️ Then §14 Platform Player (W5) pushed it to 427 and this entry did EXACTLY what its own last sentence promised — *the next section splits again*: the note distribution (a self-contained block that looks at no section at all) moved out to `paint_frame::split_notes`, landing at 414. Allowances shrink; they never grow.",
     ),
     (
         "ph2d-panel-inspector/src/sections/render_source.rs",

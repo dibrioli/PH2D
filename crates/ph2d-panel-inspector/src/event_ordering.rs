@@ -148,6 +148,12 @@ pub(crate) fn apply_ordering_event(host: &mut dyn PanelHostInternal, ev: WidgetE
     if crate::event_wheel::apply_wheel_event(host, ev) {
         return true;
     }
+    // §14 Platform Player — depois da §11, porque ela é a seção IRMÃ e as duas
+    // descrevem a mesma entidade: um id só pertence a uma delas, e a ordem só
+    // decide quem responde primeiro a um id que nenhuma tem.
+    if crate::event_player::apply_player_event(host, ev) {
+        return true;
+    }
     if crate::event_physics::apply_physics_event(host, ev) {
         return true;
     }

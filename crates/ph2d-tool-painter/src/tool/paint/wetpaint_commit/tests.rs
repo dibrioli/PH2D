@@ -179,7 +179,7 @@ fn the_one_shot_deposit_matches_the_live_feed() {
 /// Mutation that bleeds it: dropping the stash-clear from the peel door.
 ///
 /// ⚠️ **UMA exceção, e ela é deliberada:** o **Apply & Keep** em wet re-arma o lote SEM esboço, para
-/// que o aperto seguinte deposite de novo **com a água correndo** (um esboço vivo a congelaria — lei
+/// que o aperto seguinte volte a depositar **com a água correndo** (um esboço vivo a congelaria — lei
 /// D). O lote só sobrevive enquanto um editor de forma está ABERTO, e o Esc continua limpando-o — que
 /// é a propriedade que de fato protege contra um despejo órfão, e é ela que este gate afirma no caso.
 #[test]

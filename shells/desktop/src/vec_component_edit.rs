@@ -199,36 +199,13 @@ fn main_content_box(
         sim, main_e,
     ))
     .0;
-    let un_place = ph2d_vec_scene::Xform([1.0, 0.0, 0.0, 1.0, -m[4], -m[5]]);
-    let (mut lo, mut hi) = ([f64::MAX; 2], [f64::MIN; 2]);
-    // A MESMA porta que decide o que a instância desenha — uma segunda travessia daria um suporte
-    // que descreve um conjunto de peças diferente do que aparece.
+    // A MESMA porta que o produtor usa para medir o conteúdo — duas medições da mesma caixa é como
+    // a arte e a caixa do gizmo passam a discordar sobre o tamanho de um componente.
+    let xf = crate::vec_transform::build(sim, map);
     let probe = VecInstance::new(main_id);
-    for piece in crate::instance_live::visible_pieces(scene, sim, map, main_e, &probe) {
-        let Some((plo, phi)) = scene.path_curve_bbox(piece) else {
-            continue;
-        };
-        let Some(&bits) = map.get(&piece) else {
-            continue;
-        };
-        let w = crate::vec_transform::xform_of_transform(crate::vec_transform::world_transform(
-            sim,
-            Entity::from_bits(bits),
-        ));
-        for corner in [
-            [plo[0], plo[1]],
-            [phi[0], plo[1]],
-            [plo[0], phi[1]],
-            [phi[0], phi[1]],
-        ] {
-            let p = un_place.apply(w.apply(corner));
-            for a in 0..2 {
-                lo[a] = lo[a].min(p[a]);
-                hi[a] = hi[a].max(p[a]);
-            }
-        }
-    }
-    (lo[0] <= hi[0]).then_some((lo, hi))
+    let (lo, hi) = crate::instance_live::content_box_world(scene, sim, map, &xf, main_e, &probe)?;
+    // O suporte vive no LOCAL da cópia: a caixa de mundo menos o lugar do mestre.
+    Some(([lo[0] - m[4], lo[1] - m[5]], [hi[0] - m[4], hi[1] - m[5]]))
 }
 
 /// Pendura o vínculo numa instância recém-criada (chamado depois do `sync`).

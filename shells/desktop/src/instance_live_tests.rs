@@ -387,3 +387,68 @@ fn an_instance_nested_in_a_master_draws_its_support_not_its_art() {
          comportamento e este gate é o sítio onde isso se decide: {widths:?}"
     );
 }
+
+/// **A cópia cresce para o MESMO lado que o mestre.**
+///
+/// ⚠️ Red-first, e a fixture tem de conter o gesto REAL: a alça do gizmo ancora a borda OPOSTA e
+/// paga isso **compensando a translação** da entidade. Uma fixture que só multiplica a escala não
+/// reproduz nada — foi por isso que o gate anterior ficou verde sobre este defeito.
+///
+/// ⚠️ E o pivô tem de estar DENTRO da forma (o `settle_origins` põe-no no centro): com a geometria
+/// local a começar em zero o pivô É a borda esquerda, não há compensação nenhuma a descartar, e a
+/// v1 passaria.
+#[test]
+fn the_copy_grows_towards_the_same_side_as_the_master() {
+    let mut sim = SimWorld::default();
+    let mut scene = VecScene::new();
+    let mut map = VecEntityMap::new();
+    // Geometria CENTRADA no pivô, como o `settle_origins` a deixa.
+    let main_id = scene.push_path(rectangle([-10.0, -5.0], [10.0, 5.0]));
+    let inst_id = scene.push_path(rectangle([-10.0, -5.0], [10.0, 5.0]));
+    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    let main_e = Entity::from_bits(map[&main_id]);
+    let mut mt = Transform::default();
+    mt.translation.x = 40.0;
+    mt.scale.x = 2.0;
+    sim.world_mut()
+        .entity_mut(main_e)
+        .insert((mt, VecComponentMain));
+    let mut it = Transform::default();
+    it.translation.x = 200.0;
+    sim.world_mut()
+        .entity_mut(Entity::from_bits(map[&inst_id]))
+        .insert((it, VecInstance::new(main_id)));
+
+    let master_left = |sim: &SimWorld| {
+        let xf = crate::vec_transform::build(sim, &map);
+        ph2d_vec_scene::xform_of(&xf, main_id).apply([-10.0, 0.0])[0]
+    };
+    let l0 = master_left(&sim);
+    let (clo0, chi0) = drawn(cook(&sim, &scene, &map).live(), inst_id);
+
+    // O GESTO: arrastar a borda direita. A alça escala e desloca a pose para a borda ESQUERDA
+    // ficar onde está — `gizmo::anchor_pivot_world` com o pivô na borda oposta.
+    if let Some(mut t) = sim.world_mut().get_mut::<Transform>(main_e) {
+        t.scale.x = 3.0;
+        t.translation.x = (l0 - (-10.0 * 3.0)) as f32;
+    }
+    assert!(
+        (master_left(&sim) - l0).abs() < 1e-4,
+        "a fixture não reproduz o gesto: a borda esquerda do MESTRE moveu-se"
+    );
+
+    let (clo1, chi1) = drawn(cook(&sim, &scene, &map).live(), inst_id);
+    assert!(
+        chi1[0] - clo1[0] > (chi0[0] - clo0[0]) * 1.4,
+        "a cópia não cresceu: {:.2} → {:.2}",
+        chi0[0] - clo0[0],
+        chi1[0] - clo1[0]
+    );
+    assert!(
+        (clo1[0] - clo0[0]).abs() < 1e-6,
+        "a borda esquerda da cópia moveu-se de {:.3} para {:.3} — o mestre cresceu para a direita \
+         e a cópia cresceu para os dois lados",
+        clo0[0],
+        clo1[0]
+    );
+}

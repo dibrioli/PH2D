@@ -23,7 +23,7 @@ use ph2d_editor_core::screens::hero::InspectorPlayerInfo;
 /// Os números da PERNA, da CAMINHADA, do PULO e da REAÇÃO, na ordem em que a lei
 /// os usa. Tabela e não N chamadas soltas: o pintor e o gate de seam iteram a
 /// MESMA lista, então uma row nova nasce pintada e varrida.
-pub(crate) const PLAYER_ROWS: [(&str, ph2d_a11y::NodeId); 16] = [
+pub(crate) const PLAYER_ROWS: [(&str, ph2d_a11y::NodeId); 18] = [
     ("Cling Distance (m)", ids::INSP_PLAYER_CLING),
     ("Leg Stiffness", ids::INSP_PLAYER_STIFFNESS),
     ("Leg Damping", ids::INSP_PLAYER_DAMPING),
@@ -40,6 +40,11 @@ pub(crate) const PLAYER_ROWS: [(&str, ph2d_a11y::NodeId); 16] = [
     ("Peak Window (m/s)", ids::INSP_PLAYER_PEAK_SPEED),
     ("Fall Gravity", ids::INSP_PLAYER_FALL_G),
     ("Cut Gravity", ids::INSP_PLAYER_CUT_G),
+    // O PERDÃO (W8) — ⚠️ os dois são o MESMO erro visto dos dois lados: um
+    // apertou tarde, o outro cedo. `0` desliga cada um, e com os dois em zero a
+    // lei é a que o W4 shipou, ao bit.
+    ("Coyote Time (s)", ids::INSP_PLAYER_COYOTE),
+    ("Jump Buffer (s)", ids::INSP_PLAYER_BUFFER),
     // A REAÇÃO (W6) — ⚠️ os defaults são OPOSTOS de propósito: o peso volta
     // inteiro (é a física) e o tapete nasce desligado (é de produto).
     ("Weight on Ground", ids::INSP_PLAYER_REACT_SUPPORT),

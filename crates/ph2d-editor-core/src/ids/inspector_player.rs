@@ -93,4 +93,8 @@ pub const INSP_PLAYER_PEAK_SPEED: NodeId = hash_node_id("insp_player_peak_speed"
 /// Multiplicador na QUEDA — acima de 1 desce mais rápido do que sobe.
 pub const INSP_PLAYER_FALL_G: NodeId = hash_node_id("insp_player_fall_g");
 /// Multiplicador enquanto sobe com o botão SOLTO — a altura variável.
+/// **Coyote Time** (W8) — segundos de perdão depois de sair do chão.
+pub const INSP_PLAYER_COYOTE: ph2d_a11y::NodeId = hash_node_id("insp.player.coyote");
+/// **Jump Buffer** (W8) — segundos que um aperto cedo demais sobrevive.
+pub const INSP_PLAYER_BUFFER: ph2d_a11y::NodeId = hash_node_id("insp.player.buffer");
 pub const INSP_PLAYER_CUT_G: NodeId = hash_node_id("insp_player_cut_g");

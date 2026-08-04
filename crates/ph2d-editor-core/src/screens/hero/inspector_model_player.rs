@@ -58,6 +58,10 @@ pub struct InspectorPlayerInfo {
     pub fall_gravity: f32,
     /// Multiplicador enquanto sobe com o botão solto — a altura variável.
     pub cut_gravity: f32,
+    /// **Coyote Time** (W8), segundos.
+    pub coyote_time: f32,
+    /// **Jump Buffer** (W8), segundos.
+    pub jump_buffer: f32,
     /// Quanto do peso volta ao chao (W6).
     pub reaction_support: f32,
     /// Quanto da caminhada volta ao chao (W6).
@@ -100,6 +104,10 @@ pub enum PlayerFieldEdit {
     FallGravity(f32),
     /// Multiplicador enquanto sobe com o botão solto — a altura variável.
     CutGravity(f32),
+    /// A janela de coyote, em segundos (W8).
+    CoyoteTime(f32),
+    /// A janela de buffer, em segundos (W8).
+    JumpBuffer(f32),
     /// Quanto do peso volta ao chao (W6).
     ReactionSupport(f32),
     /// Quanto da caminhada volta ao chao (W6).

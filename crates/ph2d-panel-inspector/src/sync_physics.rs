@@ -188,6 +188,8 @@ pub(crate) fn sync_player_fields(host: &mut dyn PanelHostInternal) {
         (ids::INSP_PLAYER_PEAK_SPEED, info.peak_speed),
         (ids::INSP_PLAYER_FALL_G, info.fall_gravity),
         (ids::INSP_PLAYER_CUT_G, info.cut_gravity),
+        (ids::INSP_PLAYER_COYOTE, info.coyote_time),
+        (ids::INSP_PLAYER_BUFFER, info.jump_buffer),
         (ids::INSP_PLAYER_REACT_SUPPORT, info.reaction_support),
         (ids::INSP_PLAYER_REACT_MOVEMENT, info.reaction_movement),
     ] {

@@ -251,6 +251,13 @@ pub(super) fn populate_player(store: &mut WidgetStore) {
         (ids::INSP_PLAYER_PEAK_SPEED, 1.5, 0.0, 1000.0, 0.1), // LITERAL-PX-OK: m/s
         (ids::INSP_PLAYER_FALL_G, 2.0, 0.0, 20.0, 0.1),    // LITERAL-PX-OK: gravity multiple
         (ids::INSP_PLAYER_CUT_G, 4.0, 0.0, 20.0, 0.1),     // LITERAL-PX-OK: gravity multiple
+        // ⚠️ **O TETO de 0,5 s é MEDIDO, e o recurso dele é a QUEDA:** a 0,5 s
+        // o personagem já desceu `½·g·t² = 1,23 m` — mais de uma altura de
+        // corpo (a cápsula tem 0,9 m) —, e a janela deixa de ler como *"eu
+        // ainda estava na borda"* para ler como *"pulei do ar"*. A 0,1 s do
+        // perfil de partida a queda é de 4,9 cm.
+        (ids::INSP_PLAYER_COYOTE, 0.1, 0.0, 0.5, 0.01), // LITERAL-PX-OK: seconds
+        (ids::INSP_PLAYER_BUFFER, 0.1, 0.0, 0.5, 0.01), // LITERAL-PX-OK: seconds
         // A REAÇÃO (W6), em FRAÇÃO da força que o personagem faz. ⚠️ O piso é 0
         // (nada volta) e o teto é 1 (volta inteira) porque **acima de 1 o
         // personagem devolveria mais do que recebeu** — inventar energia, e o

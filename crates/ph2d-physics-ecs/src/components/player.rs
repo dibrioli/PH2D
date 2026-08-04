@@ -79,6 +79,11 @@ pub struct PlatformPlayer {
     /// Multiplicador enquanto sobe com o botão SOLTO — a altura variável.
     pub cut_gravity: f32,
 
+    /// **COYOTE TIME** (W8) — segundos de perdão depois de sair do chão.
+    pub coyote_time: f32,
+    /// **JUMP BUFFER** (W8) — segundos que um aperto cedo demais sobrevive.
+    pub jump_buffer: f32,
+
     /// **Quanto do PESO volta para o chão** (W6). `1` transmite inteiro.
     ///
     /// ⚠️ Em `0` o personagem é um FANTASMA: ele paira sobre uma jangada sem a
@@ -122,6 +127,8 @@ impl PlatformPlayer {
                 peak_speed: self.peak_speed,
                 fall_gravity: self.fall_gravity,
                 cut_gravity: self.cut_gravity,
+                coyote_time: self.coyote_time,
+                jump_buffer: self.jump_buffer,
             },
             react: ReactionConfig {
                 support: self.reaction_support,
@@ -152,6 +159,8 @@ impl Default for PlatformPlayer {
             peak_speed: c.jump.peak_speed,
             fall_gravity: c.jump.fall_gravity,
             cut_gravity: c.jump.cut_gravity,
+            coyote_time: c.jump.coyote_time,
+            jump_buffer: c.jump.jump_buffer,
             reaction_support: c.react.support,
             reaction_movement: c.react.movement,
         }

@@ -71,6 +71,21 @@ pub struct JumpConfig {
     /// É o que faz um toque curto dar um pulo curto. `1.0` desliga a altura
     /// variável (todo pulo vai à altura cheia).
     pub cut_gravity: f32,
+
+    /// **COYOTE TIME** (W8) — por quantos segundos depois de sair do chão o pulo
+    /// ainda sai.
+    ///
+    /// ⚠️ **É perdão para um erro de TEMPO, não uma segunda chance:** ele é
+    /// CONSUMIDO pela decolagem e só volta a encher com o pé no chão, então nada
+    /// aqui dá um pulo duplo. `0.0` desliga.
+    pub coyote_time: f32,
+
+    /// **JUMP BUFFER** (W8) — por quantos segundos um aperto *cedo demais*
+    /// sobrevive, esperando o pé tocar o chão.
+    ///
+    /// O erro simétrico do coyote: um apertou tarde, o outro cedo. `0.0`
+    /// desliga.
+    pub jump_buffer: f32,
 }
 
 impl JumpConfig {
@@ -89,6 +104,13 @@ impl JumpConfig {
         peak_speed: 1.5,
         fall_gravity: 2.0,
         cut_gravity: 4.0,
+        // ⚠️ **0,1 s é a janela do Celeste** (5-6 quadros a 60 Hz), e o número
+        // que a torna julgável é a DISTÂNCIA: a 5 m/s de caminhada são **0,5 m
+        // além da beirada**, e a queda dentro dela é `½·g·t² = 4,9 cm` — menos
+        // que um passo, e um vigésimo da altura do personagem. É por isso que
+        // ela lê como *"eu ainda estava na borda"* em vez de *"pulei do ar"*.
+        coyote_time: 0.1,
+        jump_buffer: 0.1,
     };
 }
 
@@ -117,6 +139,23 @@ pub struct JumpState {
     ///
     /// Sem ela, segurar a tecla no chão re-pularia a cada tick.
     pub was_held: bool,
+
+    /// **Segundos de coyote restantes** (W8) — enche com o pé no chão, escorre
+    /// no ar, e a decolagem o ZERA.
+    ///
+    /// ⚠️ **É um CONTADOR, e é ele que torna o push incondicional do estado
+    /// load-bearing** (ver o aviso em `bridge/player.rs`): todo campo acima é
+    /// função pura da entrada deste tick, então perdê-los num tick sem motor não
+    /// custava nada. Um contador congelado é uma tolerância que deixa de
+    /// existir, **sem sintoma** — o pulo continua saindo.
+    pub coyote: f32,
+
+    /// **Segundos de aperto guardado** (W8) — enche na BORDA do botão, escorre
+    /// sempre, e a decolagem o ZERA.
+    ///
+    /// ⚠️ Zerar na decolagem não é higiene: sem isso um aperto só dispararia o
+    /// pulo e, no tique seguinte ainda em contato, dispararia de novo.
+    pub buffer: f32,
 }
 
 /// O que a lei do pulo decidiu neste tick.
@@ -150,6 +189,11 @@ pub struct JumpStep {
 ///   pular de um elevador que sobe levar a velocidade dele junto.
 /// - `held`: o botão de pulo está pressionado AGORA.
 #[must_use]
+// ⚠️ **Oito argumentos, e o 8º é o `dt`** (W8) — os dois relógios do perdão
+// escorrem em segundos, nunca em contagem de tiques. Agrupar `(footing, rel_up,
+// held)` num "o que o mundo diz" seria inventar um tipo com um chamador só; o
+// precedente é o `body_desc` do W-LockRot, que levou o mesmo `allow`.
+#[allow(clippy::too_many_arguments)]
 pub fn jump_step(
     cfg: &JumpConfig,
     state: JumpState,
@@ -158,6 +202,7 @@ pub fn jump_step(
     held: bool,
     gravity: Vec2,
     up: Vec2,
+    dt: f32,
 ) -> JumpStep {
     let pressed = held && !state.was_held;
     let mut next = JumpState {
@@ -165,13 +210,67 @@ pub fn jump_step(
         ..state
     };
 
+    // ── OS DOIS RELÓGIOS DO PERDÃO (W8) ──────────────────────────────────────
+    // ⚠️ Eles correm ANTES da decolagem, e a ordem é a lei: um aperto feito
+    // NESTE tique tem de poder disparar NESTE tique. Enchendo depois, um aperto
+    // com o pé no chão só sairia no tique seguinte — a assistência atrasaria o
+    // que ela existe para adiantar.
+    //
+    // ⚠️ E os dois escorrem por `dt` de RELÓGIO, nunca por contagem de tiques:
+    // uma tolerância medida em quadros muda de tamanho quando o `fixed_dt` muda,
+    // e "0,1 s" é uma frase sobre o dedo do jogador, não sobre a taxa da sim.
+    if footing.is_some() && !state.airborne {
+        // No chão o coyote está CHEIO — ele é o que sobra depois de sair, não um
+        // tempo acumulado por ficar parado.
+        next.coyote = cfg.coyote_time.max(0.0);
+    } else {
+        next.coyote = (state.coyote - dt).max(0.0);
+    }
+    next.buffer = if pressed {
+        cfg.jump_buffer.max(0.0)
+    } else {
+        (state.buffer - dt).max(0.0)
+    };
+
+    // ── POUSO ────────────────────────────────────────────────────────────────
+    // ⚠️ **ANTES da decolagem, e a ordem é o JUMP BUFFER** (W8): um aperto
+    // guardado tem de disparar NO tique em que o pé toca. Com a decolagem
+    // primeiro, ela lê o `airborne` que ainda não caiu, recusa, e o pulo sai um
+    // tique depois — 16 ms de atraso exatamente no gesto que o buffer existe
+    // para adiantar. Ordenado assim, o mesmo tique pousa e decola.
+    //
+    // ⚠️ E isto **não** faz o pouso disparar no tique da decolagem: ali
+    // `state.airborne` é falso na entrada, e é ele (não o `next`) que este ramo
+    // pergunta.
+    // O pulo acaba quando ele está DESCENDO e o sensor acha chão. As duas
+    // metades importam: só "achou chão" pousaria no tick da decolagem (o raio
+    // ainda vê o chão), e só "descendo" nunca pousaria.
+    if state.airborne && rel_up <= 0.0 && footing.is_some() {
+        next.airborne = false;
+        next.cut = false;
+    }
+
     // ── DECOLAGEM ────────────────────────────────────────────────────────────
-    // Só do chão, e só na BORDA: segurar a tecla não re-pula.
-    if footing.is_some() && !state.airborne && pressed {
+    // ⚠️ **As duas metades são agora RELÓGIOS, e a borda vive DENTRO deles.**
+    // "Estou no chão" virou *"estou no chão ou saí dele há pouco"* (coyote) e
+    // "apertei agora" virou *"apertei agora ou há pouco"* (buffer) — e o `>= 0`
+    // do buffer é o que mantém `jump_buffer = 0` sendo o comportamento de antes
+    // desta wave AO BIT: com a janela em zero, `next.buffer > 0.0` é falso e só
+    // o aperto DESTE tique passa.
+    let can_reach_ground = footing.is_some() || next.coyote > 0.0;
+    let wants_to_jump = pressed || next.buffer > 0.0;
+    if can_reach_ground && !next.airborne && wants_to_jump {
         let g = (gravity[0] * gravity[0] + gravity[1] * gravity[1]).sqrt();
         let v0 = (2.0 * g * cfg.jump_height.max(0.0)).sqrt();
         next.airborne = true;
         next.cut = false;
+        // ⚠️ **Os dois são CONSUMIDOS**, e por razões diferentes: o coyote
+        // porque perdoar um erro de tempo não é dar uma segunda chance (sem
+        // isto, sair da borda e pular deixaria a janela viva no ar), e o buffer
+        // porque um aperto guardado que sobrevive à própria decolagem re-dispara
+        // no tique seguinte, enquanto o pé ainda toca.
+        next.coyote = 0.0;
+        next.buffer = 0.0;
         // ⚠️ O boost leva a velocidade AO valor, não SOMA a ele: pular já
         // subindo (numa plataforma que sobe, ou logo depois de um degrau) tem de
         // dar a mesma altura que pular parado — que é a frase inteira do
@@ -186,15 +285,6 @@ pub fn jump_step(
             spring_armed: false,
             takeoff: true,
         };
-    }
-
-    // ── POUSO ────────────────────────────────────────────────────────────────
-    // O pulo acaba quando ele está DESCENDO e o sensor acha chão. As duas
-    // metades importam: só "achou chão" pousaria no tick da decolagem (o raio
-    // ainda vê o chão), e só "descendo" nunca pousaria.
-    if state.airborne && rel_up <= 0.0 && footing.is_some() {
-        next.airborne = false;
-        next.cut = false;
     }
 
     // ── O CORTE ──────────────────────────────────────────────────────────────
@@ -248,270 +338,8 @@ pub fn jump_step(
     }
 }
 
+/// Os gates desta lei — irmão por `#[path]` (o `mod tests` continua FILHO, então
+/// `use super::*` alcança os privados) pelo cap de 700 LOC.
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    const UP: Vec2 = [0.0, 1.0];
-    const G: Vec2 = [0.0, -9.81];
-
-    fn ground() -> GroundSample {
-        GroundSample {
-            distance: 0.9,
-            normal: [0.0, 1.0],
-            ground_velocity: [0.0, 0.0],
-        }
-    }
-
-    /// **A altura vira velocidade UMA vez, pela fórmula.**
-    ///
-    /// `v₀ = √(2·g·h)`: com `h = 2` e `g = 9,81` são 6,264 m/s.
-    #[test]
-    fn the_takeoff_speed_comes_from_the_authored_height() {
-        let cfg = JumpConfig::STARTING_POINT;
-        let s = jump_step(
-            &cfg,
-            JumpState::default(),
-            Some(&ground()),
-            0.0,
-            true,
-            G,
-            UP,
-        );
-        let expected = (2.0 * 9.81 * 2.0_f32).sqrt();
-        assert!(
-            (s.motor.boost[1] - expected).abs() < 1.0e-3,
-            "o boost tem de ser v0 = sqrt(2gh) = {expected:.4}: {:?}",
-            s.motor.boost
-        );
-        assert!(s.state.airborne, "decolou");
-        assert!(!s.spring_armed, "e a perna CALA");
-    }
-
-    /// ⚠️ **Pular já subindo dá a MESMA altura** — o boost leva AO valor, não
-    /// soma a ele.
-    ///
-    /// É a frase inteira do *"parametrizado por altura"*: sem isto, pular de uma
-    /// plataforma que sobe daria um pulo mais alto do que o autorado, e o número
-    /// na row deixaria de descrever o que acontece.
-    #[test]
-    fn jumping_while_already_rising_reaches_the_same_height() {
-        let cfg = JumpConfig::STARTING_POINT;
-        let v0 = (2.0 * 9.81 * 2.0_f32).sqrt();
-        for start in [0.0_f32, 2.0, -1.0] {
-            let s = jump_step(
-                &cfg,
-                JumpState::default(),
-                Some(&ground()),
-                start,
-                true,
-                G,
-                UP,
-            );
-            let after = start + s.motor.boost[1];
-            assert!(
-                (after - v0).abs() < 1.0e-3,
-                "partindo de {start}: a velocidade final tem de ser {v0:.4}, deu {after:.4}"
-            );
-        }
-    }
-
-    /// ⚠️ **Segurar a tecla NÃO re-pula** — a decolagem é na BORDA.
-    ///
-    /// Sem isto, um dedo apoiado no botão daria um impulso por tick e o
-    /// personagem subiria para sempre.
-    #[test]
-    fn holding_the_button_does_not_re_jump() {
-        let cfg = JumpConfig::STARTING_POINT;
-        let first = jump_step(
-            &cfg,
-            JumpState::default(),
-            Some(&ground()),
-            0.0,
-            true,
-            G,
-            UP,
-        );
-        assert!(first.motor.boost[1] > 0.0);
-        // O tick seguinte, ainda com a tecla presa e ainda vendo o chão.
-        let second = jump_step(&cfg, first.state, Some(&ground()), 3.0, true, G, UP);
-        assert_eq!(second.motor.boost, [0.0, 0.0], "nada de segundo impulso");
-    }
-
-    /// **Nem pular no AR** — o pulo duplo é uma feature, não um acidente.
-    #[test]
-    fn a_second_press_in_mid_air_does_nothing() {
-        let cfg = JumpConfig::STARTING_POINT;
-        let flying = JumpState {
-            airborne: true,
-            cut: false,
-            was_held: false,
-        };
-        let s = jump_step(&cfg, flying, None, 3.0, true, G, UP);
-        assert_eq!(s.motor.boost, [0.0, 0.0]);
-    }
-
-    /// **Soltar durante a subida ARMA o corte, e ele não desarma.**
-    ///
-    /// Segurar de novo no ar não devolve a altura — senão ela seria função de
-    /// quantas vezes o jogador tamborilou o dedo.
-    #[test]
-    fn releasing_arms_the_cut_and_re_holding_does_not_undo_it() {
-        let cfg = JumpConfig::STARTING_POINT;
-        let flying = JumpState {
-            airborne: true,
-            cut: false,
-            was_held: true,
-        };
-        let released = jump_step(&cfg, flying, None, 4.0, false, G, UP);
-        assert!(released.state.cut, "soltar arma o corte");
-        assert!(
-            (released.motor.accel[1] - G[1] * (cfg.cut_gravity - 1.0)).abs() < 1.0e-4,
-            "e o corte pesa: {:?}",
-            released.motor.accel
-        );
-
-        let re_held = jump_step(&cfg, released.state, None, 3.0, true, G, UP);
-        assert!(re_held.state.cut, "segurar de novo NAO desfaz o corte");
-    }
-
-    /// **As quatro fases dão quatro gravidades**, e a do ápice é a única ABAIXO
-    /// de 1 — a decisão do módulo.
-    #[test]
-    fn each_phase_gets_its_own_gravity() {
-        let cfg = JumpConfig::STARTING_POINT;
-        let flying = JumpState {
-            airborne: true,
-            cut: false,
-            was_held: true,
-        };
-        let scale = |rel: f32, st: JumpState, held: bool| {
-            let s = jump_step(&cfg, st, None, rel, held, G, UP);
-            s.motor.accel[1] / G[1] + 1.0
-        };
-        let rising = scale(5.0, flying, true);
-        let peak = scale(0.0, flying, true);
-        let falling = scale(-5.0, flying, true);
-        let cut = scale(
-            5.0,
-            JumpState {
-                cut: true,
-                ..flying
-            },
-            true,
-        );
-        assert!(
-            (rising - 1.0).abs() < 1.0e-4,
-            "subindo (takeoff inerte): {rising}"
-        );
-        assert!((peak - cfg.peak_gravity).abs() < 1.0e-4, "apice: {peak}");
-        assert!(
-            (falling - cfg.fall_gravity).abs() < 1.0e-4,
-            "queda: {falling}"
-        );
-        assert!((cut - cfg.cut_gravity).abs() < 1.0e-4, "corte: {cut}");
-        assert!(
-            peak < 1.0,
-            "⚠️ o apice ALONGA (Celeste), nao encurta (tnua): {peak}"
-        );
-    }
-
-    /// ⚠️ **Multiplicadores em `1.0` são gravidade extra ZERO** — o mundo sem
-    /// pulo, byte a byte. É o que torna cada knob uma escolha e não um imposto.
-    #[test]
-    fn neutral_multipliers_add_exactly_nothing() {
-        let cfg = JumpConfig {
-            takeoff_gravity: 1.0,
-            peak_gravity: 1.0,
-            fall_gravity: 1.0,
-            cut_gravity: 1.0,
-            ..JumpConfig::STARTING_POINT
-        };
-        let flying = JumpState {
-            airborne: true,
-            cut: true,
-            was_held: false,
-        };
-        for rel in [-9.0_f32, -1.0, 0.0, 1.0, 9.0] {
-            let s = jump_step(&cfg, flying, None, rel, false, G, UP);
-            assert_eq!(s.motor.accel, [0.0, 0.0], "a {rel} m/s");
-        }
-    }
-
-    /// **O pouso pede as DUAS metades** — descendo E com chão ao alcance.
-    ///
-    /// Só "achou chão" pousaria no tick da decolagem (o raio ainda vê o chão) e
-    /// a mola puxaria de volta o pulo inteiro; só "descendo" nunca pousaria.
-    #[test]
-    fn landing_needs_both_halves() {
-        let cfg = JumpConfig::STARTING_POINT;
-        let flying = JumpState {
-            airborne: true,
-            cut: false,
-            was_held: false,
-        };
-        // Subindo COM chão ao alcance (o tick logo após a decolagem): não pousa.
-        let rising = jump_step(&cfg, flying, Some(&ground()), 5.0, false, G, UP);
-        assert!(rising.state.airborne, "ainda subindo, nao pousou");
-        assert!(!rising.spring_armed, "e a perna segue CALADA");
-
-        // Descendo SEM chão: também não.
-        let falling = jump_step(&cfg, flying, None, -5.0, false, G, UP);
-        assert!(falling.state.airborne);
-
-        // Descendo COM chão: pousou, e a perna volta.
-        let landed = jump_step(&cfg, flying, Some(&ground()), -5.0, false, G, UP);
-        assert!(!landed.state.airborne, "pousou");
-        assert!(landed.spring_armed, "e a perna volta a agir");
-    }
-
-    /// ⚠️ **O pouso limpa o CORTE também, e ele é alcançável.**
-    ///
-    /// O corte é lido num sítio só — subindo acima do `peak_speed` — e no chão a
-    /// perna arma primeiro, então um corte esquecido parece inofensivo. Não é: se
-    /// o personagem **sai do chão SUBINDO sem pular** (andar para fora da borda de
-    /// uma plataforma kinematic que ASCENDE, que este produto já tem desde o W4),
-    /// não há decolagem para zerá-lo — e a subida ganha `cut_gravity` (4×) onde
-    /// devia ganhar `takeoff_gravity` (1×), puxando o personagem para baixo por um
-    /// corte de um pulo que acabou.
-    ///
-    /// ⚠️ Este gate nasceu de uma mutação que **sobreviveu à suíte inteira** (a de
-    /// comportamento inclusive): tirar o `next.cut = false` do pouso não move um
-    /// milímetro em nenhuma cena que só pula e cai.
-    #[test]
-    fn landing_clears_the_cut_so_the_next_rise_is_not_punished() {
-        let cfg = JumpConfig::STARTING_POINT;
-        let cut_in_flight = JumpState {
-            airborne: true,
-            cut: true,
-            was_held: false,
-        };
-
-        // Pousa com o corte armado.
-        let landed = jump_step(&cfg, cut_in_flight, Some(&ground()), -5.0, false, G, UP);
-        assert!(!landed.state.airborne, "pousou");
-        assert!(!landed.state.cut, "e o corte MORREU com o pouso");
-
-        // Agora sai do chão SUBINDO sem pular (a plataforma o levou).
-        let rising = jump_step(&cfg, landed.state, None, 5.0, false, G, UP);
-        let scale = rising.motor.accel[1] / G[1] + 1.0;
-        assert!(
-            (scale - cfg.takeoff_gravity).abs() < 1.0e-4,
-            "subir sem pular usa a gravidade de SAIDA, nao a do corte: {scale}"
-        );
-    }
-
-    /// Sem pulo nenhum, andar para fora de uma borda ainda ganha a gravidade de
-    /// QUEDA — ela é sobre cair, não sobre pular.
-    #[test]
-    fn walking_off_a_ledge_still_falls_faster() {
-        let cfg = JumpConfig::STARTING_POINT;
-        let s = jump_step(&cfg, JumpState::default(), None, -5.0, false, G, UP);
-        assert!(!s.state.airborne, "ele nao pulou");
-        assert!(
-            (s.motor.accel[1] - G[1] * (cfg.fall_gravity - 1.0)).abs() < 1.0e-4,
-            "mas cai com a gravidade de queda: {:?}",
-            s.motor.accel
-        );
-    }
-}
+#[path = "jump_tests.rs"]
+mod tests;

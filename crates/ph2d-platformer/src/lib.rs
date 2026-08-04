@@ -262,7 +262,9 @@ pub fn player_motor(
     let ground_v = footing.map_or([0.0, 0.0], |s| s.ground_velocity);
     let rel_up =
         (body_velocity[0] - ground_v[0]) * up[0] + (body_velocity[1] - ground_v[1]) * up[1];
-    let jump = jump_step(&cfg.jump, state, footing, rel_up, input.jump, gravity, up);
+    let jump = jump_step(
+        &cfg.jump, state, footing, rel_up, input.jump, gravity, up, dt,
+    );
 
     // A perna e a caminhada veem o MESMO chão, e é o que o pulo lhes deixou ver:
     // duas respostas para *"estou no chão?"* seriam um personagem que anda no

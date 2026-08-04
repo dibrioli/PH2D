@@ -56,6 +56,63 @@ pub fn function_body(src: &str, name: &str) -> String {
     panic!("`fn {name}` não fecha");
 }
 
+/// O **ramo** (guarda + bloco) que CONTÉM `needle`.
+///
+/// ⚠️ **Nasceu de um gate que reprovou produto correto, e a lição é sobre a
+/// direção da pergunta.** O `sculpt3d_key` tem duas famílias de verbo — com
+/// `shift` os da LISTA (fundir, isolar), sem ele os da PEÇA (subdividir,
+/// reverter) — e elas dividem letras de propósito: `J` reverte um nível e
+/// `Shift+J` funde a cena. No dia em que a segunda nasceu,
+/// `braced_block(key, "if code == K::KeyJ")` passou a achar a da outra família,
+/// e o gate do reverter leu um bloco que não é o dele.
+///
+/// ⚠️ **A primeira tentativa de cura tinha a MESMA doença um nível acima:**
+/// remover o ramo do `shift` por `braced_block(key, "if shift")` acha
+/// `if shift && !ctrl && code == K::KeyB` — *"o primeiro `if shift`"* é posição,
+/// e posição expira exatamente como a anterior.
+///
+/// A pergunta certa se faz **do corpo para fora**: dada a chamada que só existe
+/// uma vez (`scene.reverse_level()`), *que ramo a guarda?*. Um verbo novo pode
+/// nascer em qualquer lugar do roteador sem roubar esta âncora, porque ela não
+/// é um lugar — é a linha que o gate está julgando.
+pub fn branch_containing(src: &str, needle: &str) -> String {
+    let at = src
+        .find(needle)
+        .unwrap_or_else(|| panic!("não achei `{needle}`"));
+    // Para TRÁS até a `{` que abre o bloco onde a linha mora, contando as chaves
+    // internas que já fecharam (um `match` antes dela não é o bloco dela).
+    let mut depth = 0i32;
+    let mut open = None;
+    for (i, c) in src[..at].char_indices().rev() {
+        match c {
+            '}' => depth += 1,
+            '{' if depth == 0 => {
+                open = Some(i);
+                break;
+            }
+            '{' => depth -= 1,
+            _ => {}
+        }
+    }
+    let open = open.unwrap_or_else(|| panic!("`{needle}` não está dentro de bloco nenhum"));
+    // A guarda mora na MESMA linha da `{` — e é ela que o gate quer ler.
+    let guard = src[..open].rfind('\n').map_or(0, |n| n + 1);
+    let mut depth = 0i32;
+    for (i, c) in src[open..].char_indices() {
+        match c {
+            '{' => depth += 1,
+            '}' => {
+                depth -= 1;
+                if depth == 0 {
+                    return src[guard..open + i + 1].to_string();
+                }
+            }
+            _ => {}
+        }
+    }
+    panic!("o ramo de `{needle}` não fecha");
+}
+
 /// O bloco `{...}` que começa logo depois de `anchor`, balanceado.
 ///
 /// ⚠️ Existe para afirmar **em que bloco** uma linha mora — que é uma pergunta

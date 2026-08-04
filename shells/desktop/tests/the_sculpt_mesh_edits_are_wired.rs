@@ -410,24 +410,23 @@ fn walking_the_levels_is_recorded_because_descending_writes() {
 /// ela tem de gravar (o irmão acima já cobre isso) e tem de DIZER o que fez: o
 /// artista não vê nada mudar, por construção, e um gesto sem resposta na tela
 /// nem no log é indistinguível de um gesto quebrado.
+///
+/// ⚠️ **A pergunta é feita do CORPO para fora** (`branch_containing`), e a razão
+/// é que a forma anterior reprovou produto correto no dia em que o `Shift+J`
+/// (fundir) nasceu: as duas famílias de verbo dividem a letra de propósito, e a
+/// âncora `if code == K::KeyJ` passou a achar a da outra família.
 #[test]
 fn reversing_is_offered_on_its_own_key_and_it_says_what_it_did() {
-    let src = sculpt_src();
-    let key = function_body(&src, "sculpt3d_key");
+    let branch = sculpt_source::branch_containing(&sculpt_src(), "scene.reverse_level()");
     assert!(
-        key.contains("K::KeyJ"),
+        branch.contains("K::KeyJ"),
         "des-subdividir tem tecla própria, vizinha do K que subdivide"
-    );
-    let block = braced_block(&key, "if code == K::KeyJ");
-    assert!(
-        block.contains("scene.reverse_level()"),
-        "e ela sai pela porta que grava"
     );
     // As DUAS metades: o que aconteceu e o que NÃO aconteceu. Sem a segunda, uma
     // malha que não é subdivisão devolveria silêncio — que é como o artista
     // conclui que a tecla não existe.
     assert!(
-        block.contains("revertida:") && block.contains("nao' reverte"),
+        branch.contains("revertida:") && branch.contains("nao' reverte"),
         "o log fala nos dois desfechos"
     );
 }
@@ -698,22 +697,36 @@ fn undoing_returns_to_the_object_the_edit_was_made_on() {
     );
 }
 
-/// **O `sync_mesh` percorre TODOS os objetos.**
+/// **O `sync_mesh` percorre TODAS as peças à VISTA, não só a ativa.**
 ///
 /// ⚠️ Um `sync` que olhasse só o ativo deixaria toda peça que a mão não está
 /// trabalhando **sem geometria no device** — a cena mostraria menos objetos do
 /// que tem, e nenhum gate de CPU veria isso (a malha está lá, correta, na RAM).
+///
+/// ⚠️ **A afirmação MUDOU com o isolamento, e é a metade sobre a qual ele fala
+/// que decide.** Antes o laço era literalmente `0..self.objects.len()`, e o gate
+/// citava esse texto; hoje a lista é a das VISÍVEIS (a `k`-ésima delas mora no
+/// slot `k`), o que é uma resposta diferente à mesma pergunta. Citar a forma do
+/// laço teria feito o gate reprovar produto correto — ele afirma agora *quem é
+/// perguntado* (o plano, que só conhece as visíveis) e *que a pose vai junto*.
 #[test]
 fn every_object_reaches_the_device_not_only_the_active_one() {
     let src = sculpt_src();
+
+    let plan = function_body(&src, "slot_plan(&self");
+    assert!(
+        plan.contains(".visible_pieces()"),
+        "o plano tem uma linha por peça À VISTA — nunca só a ativa"
+    );
+
     let sync = function_body(&src, "sync_mesh(&mut self, device");
     assert!(
-        sync.contains("for i in 0..self.objects.len()"),
-        "o upload é por OBJETO, não só do ativo"
+        sync.contains("self.slot_plan()") && sync.contains("for (k, line) in plan"),
+        "e o sync percorre esse plano inteiro"
     );
     assert!(
-        sync.contains("self.renderer.set_pose(i, self.objects[i].pose)"),
-        "e a pose de cada um vai junto — sem ela todos desenhariam na origem"
+        sync.contains("set_pose(k, self.objects[i].pose)"),
+        "a pose de cada uma vai junto — sem ela todas desenhariam na origem"
     );
 }
 

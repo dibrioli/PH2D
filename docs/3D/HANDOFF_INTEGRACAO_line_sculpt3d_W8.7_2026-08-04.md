@@ -137,7 +137,7 @@ app"*. Era verdade ontem e passou a mentir hoje.
 
 ## 8.bis. A WAVE SEGUINTE, na mesma branch — **W8.8: FUNDIR e ISOLAR** (⚠️ pendente de smoke)
 
-> **Commits:** `9ac9b56b7` (o motor na malha) · `0f9d5a3a1` (a testemunha do slot) · `8dfc9dafd` (os
+> **Commits:** `c40a5ad33` (o motor na malha) · `aee5cf411` (a testemunha do slot) · `8dfc9dafd` (os
 > dois verbos) · `4a75c763c` (a âncora dos gates). **Cena `=13`.**
 
 `Shift+J` funde as peças **À VISTA** numa só; `Shift+I` isola a ativa. **A escolha que decide o

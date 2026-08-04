@@ -9,10 +9,93 @@ use crate::ramp_alpha::RampAlphaMode;
 use crate::spec::BrushSpec;
 use crate::texture::{ImageMask, TexDabBasis};
 
-/// Footprint area (pixels) at or above which a dab/blit splits across cores. Below it, the serial
-/// path wins (thread spawn isn't worth ~1 ms of work). ~128k px ≈ a radius-200 dab — small brush
-/// dabs (Space) stay serial; large Anchored stamps parallelise.
-pub(crate) const PARALLEL_MIN_AREA: usize = 1 << 17;
+/// **Quantas visitas de texel uma thread precisa RECEBER para se pagar** — a razão medida entre o
+/// custo de ABRIR uma thread e o custo de VISITAR um texel.
+///
+/// Medido na RTX em 2026-08-04, máquina calma, pela sonda
+/// `measure_route_cost::what_the_banded_batch_buys_when_the_cap_is_on`: abrir uma banda custa
+/// **~10,5 µs** (o piso de 0,33-0,39 ms que TODA linha pequena das tabelas (B) e (C) mostra, sobre
+/// 32 threads) e uma visita de texel custa **~13 ns** na rota serial ⇒ `10,5 µs / 13 ns ≈ 808`.
+///
+/// ⚠️ **É uma RAZÃO entre dois custos, não um teto.** É disso que ela é feita, e é por isso que ela
+/// sobrevive a uma máquina diferente: numa com menos núcleos o `cores` cai e o `clamp` resolve; numa
+/// com thread mais cara o número real sobe, e o ótimo é **plano** em volta dele (medido: para
+/// 110 224 visitas, `T = 8` custa 263 µs, `T = 16` custa 258 e `T = 24` custa 312 — errar por 2× no
+/// constante custa ~2%).
+pub const SPAWN_EQUIV_VISITS: usize = 808;
+
+/// A menor área que pede DUAS bandas — **derivada**, nunca escolhida (é onde [`band_count_with`]
+/// deixa de devolver 1).
+///
+/// ⚠️ **Ela era `1 << 17 = 131 072` e o número estava errado por 40×, com um mecanismo que a
+/// medição nomeou.** O texto antigo dizia *"abaixo dela a rota serial vence (abrir thread não vale
+/// ~1 ms de trabalho)"* — a frase certa sobre a coisa errada: o que não se pagava não era a DIVISÃO,
+/// era abrir **32 threads** para um trabalho que rende 3 µs por thread. Medido, um dab de pegada
+/// 33 489 já paga `1,33×` e um de 67 081 paga `2,64×` — os dois **abaixo** do piso antigo, os dois
+/// mandados para a rota serial.
+///
+/// ⚠️ E o `1 << 17` não era arbitrário: ele é **exatamente** `SPAWN_EQUIV_VISITS × 4 × 32²/4`… ou,
+/// sem aritmética forçada, ele é a área em que as 32 threads desta máquina recebem ~4 k visitas cada.
+/// O número foi escolhido para UM ponto de operação (todos os núcleos, este hardware) e aplicado como
+/// se fosse uma propriedade do trabalho.
+pub const PARALLEL_MIN_AREA: usize = SPAWN_EQUIV_VISITS * 4;
+
+/// **Em quantas BANDAS dividir um trabalho de `area` visitas sobre `rows` linhas** — a porta ÚNICA,
+/// e `1` significa *serial*.
+///
+/// # O ótimo é uma RAIZ, não uma divisão, e é isso que o `1 << 17` não sabia
+///
+/// Dividir custa `T · c_spawn` e rende `area · c_visita / T`, então o tempo é
+/// `T·c_spawn + area·c_visita/T` — mínimo em **`T* = √(area / SPAWN_EQUIV_VISITS)`**. O modelo foi
+/// conferido contra o produto antes de virar código: para 110 224 visitas em 32 threads ele prevê
+/// **381 µs** e a sonda mediu **382**.
+///
+/// ⚠️ **O que estava quebrado era o `T` ser CONSTANTE.** `available_parallelism()` devolve o mesmo
+/// número para um dab de 7 k visitas e para um de 500 k, então o pequeno pagava 32 spawns por 3 µs de
+/// trabalho cada — e a única defesa era um piso que o mandava inteiro para a rota serial. *Um cliff é
+/// o que se constrói quando o knob certo não existe.*
+///
+/// ⚠️ **Isto NÃO move um byte, e é a espinha da wave inteira:** bandas são linhas disjuntas e cada uma
+/// percorre todos os dabs na mesma ordem, então o resultado é bit-idêntico ao serial **para qualquer
+/// contagem de bandas** (HR-5, a invariante que o doc do [`band_split`] já declarava). Mudar o número
+/// de bandas é mudar quem AVALIA a linha, nunca o que ela diz.
+pub fn band_count(area: usize, rows: usize, min_area: usize) -> usize {
+    // ⚠️ **A recusa vem ANTES de perguntar à máquina, e o preço disso está medido.** A primeira versão
+    // desta função consultava o `available_parallelism()` no topo, e a sonda mediu a rota em banda de
+    // um lote de 128 dabs indo de **0,99 para 9,79 ms** — 10× — com a MESMA contagem de bandas: o
+    // `band_split` roda uma vez por dab POR BANDA (128 × 32 = 4096 chamadas), e ali um syscall por
+    // chamada é o custo inteiro. *Nenhum gate de identidade podia ver isso; quem viu foi o relógio.*
+    if area < min_area || rows <= 1 {
+        return 1;
+    }
+    band_count_with(area, rows, min_area, cores())
+}
+
+/// Quantos núcleos esta máquina tem — perguntado **uma vez por processo**.
+///
+/// ⚠️ `std::thread::available_parallelism()` é um **syscall** (`sched_getaffinity` no Linux), e este
+/// caminho é o mais quente do depósito: um dab por banda, por lote. A resposta não muda enquanto o
+/// processo vive, então guardá-la não é cache — é parar de fazer a mesma pergunta ao kernel do SO
+/// milhares de vezes por quadro. Isto **já** era custo antes desta wave, para todo dab acima do piso.
+fn cores() -> usize {
+    static CORES: std::sync::OnceLock<usize> = std::sync::OnceLock::new();
+    *CORES.get_or_init(|| {
+        std::thread::available_parallelism()
+            .map(std::num::NonZero::get)
+            .unwrap_or(1)
+    })
+}
+
+/// [`band_count`] com o número de núcleos **injetado** — a face pura, que é a que um gate consegue
+/// interrogar (a outra pergunta à máquina, e uma máquina não é uma fixture).
+pub fn band_count_with(area: usize, rows: usize, min_area: usize, cores: usize) -> usize {
+    if area < min_area || rows <= 1 {
+        return 1;
+    }
+    (area / SPAWN_EQUIV_VISITS)
+        .isqrt()
+        .clamp(1, cores.max(1).min(rows))
+}
 
 /// Run `stamp` over the dab's row span `[y0, y1)` — serial for small footprints, split into disjoint
 /// row bands across the cores for large ones (≥ [`PARALLEL_MIN_AREA`]). `stamp(dst, band_y0)` writes
@@ -108,13 +191,10 @@ where
     let mask_region = mask.map(|m| &mut m[(y0 as usize) * mrow..(y1 as usize) * mrow]);
     let rows = (y1 - y0) as usize;
     let area = rows * ((x1 - x0).max(0) as usize);
-    if area < min_area || rows <= 1 {
+    let threads = band_count(area, rows, min_area);
+    if threads <= 1 {
         return stamp(region, mask_region, y0);
     }
-    let threads = std::thread::available_parallelism()
-        .map(|n| n.get())
-        .unwrap_or(1)
-        .clamp(1, rows);
     let rows_per_band = rows.div_ceil(threads);
     // As duas fatias saem da MESMA contagem de linhas; um `zip` as manteria alinhadas só enquanto os
     // dois iteradores tivessem o mesmo comprimento, e é justamente isso que um erro de stride quebra.
@@ -164,13 +244,12 @@ where
     let ready = &mut ready[(y0 as usize) * mstride..(y1 as usize) * mstride];
     let rows = (y1 - y0) as usize;
     let area = rows * ((x1 - x0).max(0) as usize);
-    if area < PARALLEL_MIN_AREA || rows <= 1 {
+    // A MESMA porta do [`band_split`]: *"vale dividir, e em quantas?"* é uma pergunta só, e uma
+    // segunda cópia da regra é como este arquivo passou a ter dois pisos escritos à mão.
+    let threads = band_count(area, rows, PARALLEL_MIN_AREA);
+    if threads <= 1 {
         return stamp(canvas, tex, ready, y0);
     }
-    let threads = std::thread::available_parallelism()
-        .map(|n| n.get())
-        .unwrap_or(1)
-        .clamp(1, rows);
     let rpb = rows.div_ceil(threads);
     let stamp = &stamp;
     std::thread::scope(|s| {

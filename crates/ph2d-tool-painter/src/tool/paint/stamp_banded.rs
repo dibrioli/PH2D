@@ -57,20 +57,29 @@ use ph2d_painter_brush::{
     stamp_dab_textured_masked_with,
 };
 
-/// Área da união abaixo da qual o lote não vale uma divisão — o irmão do `PARALLEL_MIN_AREA` do kernel,
-/// um nível acima.
+/// Trabalho abaixo do qual o lote não vale uma divisão — **literalmente** o
+/// [`ph2d_painter_brush::PARALLEL_MIN_AREA`] do kernel, um nível acima.
 ///
 /// ⚠️ **É o mesmo número, e isso é deliberado:** a pergunta *"vale abrir threads para esta quantidade de
 /// trabalho?"* não muda por quem a faz, e dois pisos diferentes seriam duas respostas para ela. O que
 /// muda é **sobre o que** ela é feita — lá, um dab; aqui, o lote.
-pub(super) const BATCH_MIN_AREA: usize = 1 << 17;
+///
+/// ⚠️ **E a frase acima foi MEDIDA em 2026-08-04, depois de eu quase a revogar.** A tabela (B) da
+/// `measure_route_cost::what_the_banded_batch_buys_when_the_cap_is_on` mostra o LOTE pagando 2,0× a
+/// 3,8× abaixo do piso antigo, e a leitura natural era *"desacople: o lote amortiza um spawn sobre `n`
+/// dabs"*. A metade (C) mediu o piso do KERNEL — que nunca tinha sido medido — e ele tem **o mesmo
+/// break-even** (~25 k visitas). Os dois pisos estavam errados pelo mesmo fator, pelo mesmo mecanismo,
+/// e desacoplar teria consertado um e enterrado o outro sob uma justificativa que parecia boa.
+///
+/// Por isso ele deixou de ser um literal e passou a **ser** a constante do kernel: um número, um dono.
+pub(super) const BATCH_MIN_AREA: usize = ph2d_painter_brush::PARALLEL_MIN_AREA;
 
 /// A união dos retângulos de escrita declarados do lote — `None` se nenhum dab escreve.
 ///
 /// ⚠️ Usa [`dab_write_bounds`], o **superconjunto declarado** que o journal já consome, e não a janela
 /// exata do kernel. Para a rejeição por banda a direção segura é o superconjunto: rejeitar de menos
 /// custa uma chamada que não desenha nada; rejeitar de mais **some com tinta em silêncio**.
-fn batch_bounds(dabs: &[Dab], w: u32, h: u32) -> Option<DirtyRect> {
+pub(super) fn batch_bounds(dabs: &[Dab], w: u32, h: u32) -> Option<DirtyRect> {
     dabs.iter()
         .filter_map(|d| dab_write_bounds(d.center, d.radius_px, w, h))
         .fold(None, |acc: Option<DirtyRect>, r| {
@@ -117,6 +126,12 @@ pub(super) fn batch_work(dabs: &[Dab], w: u32, h: u32) -> usize {
         .sum()
 }
 
+/// ⚠️ **Ela DEVOLVE a decisão real, não um proxy dela** — e a diferença virou load-bearing em
+/// 2026-08-04. Enquanto a contagem de bandas era `available_parallelism()`, *"o trabalho passa do
+/// piso"* e *"o lote de fato se divide"* eram a mesma frase. Com a contagem derivada do TRABALHO
+/// ([`ph2d_painter_brush::band_count`]) elas se separam, e um predicado que respondesse só a primeira
+/// deixaria os gates de identidade afirmando *"as duas rotas concordam"* sobre **duas execuções da
+/// rota serial**: verde sobre nada.
 pub(super) fn wants_bands(dabs: &[Dab], w: u32, h: u32, min_area: usize) -> bool {
     if dabs.len() < 2 {
         return false;
@@ -124,10 +139,7 @@ pub(super) fn wants_bands(dabs: &[Dab], w: u32, h: u32, min_area: usize) -> bool
     let Some(bounds) = batch_bounds(dabs, w, h) else {
         return false;
     };
-    if (bounds.h as usize) <= 1 {
-        return false;
-    }
-    batch_work(dabs, w, h) >= min_area
+    ph2d_painter_brush::band_count(batch_work(dabs, w, h), bounds.h as usize, min_area) >= 2
 }
 
 /// Carimba o lote **inteiro** de dabs de falloff puro, dividindo as LINHAS entre os núcleos.
@@ -238,10 +250,10 @@ fn stamp_plain_dabs_banded_run(
     if !bands {
         return stamp_plain_serial(buf, w, h, dabs, brush, alpha_locked, mask);
     }
-    let threads = std::thread::available_parallelism()
-        .map(|n| n.get())
-        .unwrap_or(1)
-        .clamp(1, rows);
+    // A MESMA porta do kernel (`ph2d_painter_brush::band_count`) — o lote e o dab fazem a mesma
+    // pergunta, e a medição de 2026-08-04 provou que ela tem a mesma resposta: os dois break-even
+    // caem em ~25 k visitas. O `wants_bands` acima já aplicou o piso; aqui só falta *em quantas*.
+    let threads = ph2d_painter_brush::band_count(batch_work(dabs, w, h), rows, 0);
     if threads < 2 {
         return stamp_plain_serial(buf, w, h, dabs, brush, alpha_locked, mask);
     }

@@ -312,7 +312,7 @@ fn does_the_cap_cost_arithmetic_or_parallelism() {
 #[allow(clippy::cast_precision_loss, clippy::too_many_lines)]
 fn what_the_banded_batch_buys_when_the_cap_is_on() {
     use super::stamp_banded::{
-        BATCH_MIN_AREA, batch_work, diag, stamp_plain_dabs_banded_with, wants_bands,
+        BATCH_MIN_AREA, batch_bounds, batch_work, diag, stamp_plain_dabs_banded_with, wants_bands,
     };
     use ph2d_painter_brush::{BrushSpec, Dab, StrokeMethod};
     use std::time::Instant;
@@ -450,8 +450,8 @@ fn what_the_banded_batch_buys_when_the_cap_is_on() {
          piso do lote = {BATCH_MIN_AREA} visitas · piso do KERNEL = 131072 (pegada de UM dab)\n"
     );
     println!(
-        "{:>5} {:>7} {:>5} {:>11} {:>8} {:>6} {:>11} {:>11} {:>8}",
-        "raio", "forma", "dabs", "visitas", "vs piso", "cap", "serial ms", "banda ms", "ganho"
+        "{:>5} {:>7} {:>5} {:>11} {:>7} {:>6} {:>11} {:>11} {:>8}",
+        "raio", "forma", "dabs", "visitas", "bandas", "cap", "serial ms", "banda ms", "ganho"
     );
     // ⚠️ A lista de `n` é POR FAIXA porque o lote tem de caber na tela: com raio 200 o passo é 40 px,
     // e 128 dabs em fila medem 5120 px num canvas de 2048 — o `dab_write_bounds` clampa, as
@@ -493,13 +493,17 @@ fn what_the_banded_batch_buys_when_the_cap_is_on() {
                 }
             }
             let (b, s) = (median(&mut band), median(&mut ser));
-            let over = if work >= BATCH_MIN_AREA {
-                "ACIMA"
-            } else {
-                "abaixo"
-            };
+            // ⚠️ **A contagem de BANDAS é publicada, não assumida.** Desde que ela passou a sair do
+            // TRABALHO, "o piso deixou passar" e "o lote de fato se dividiu" são frases diferentes —
+            // e uma tabela que imprimisse só a primeira mostraria `1,00x` sem dizer que as duas
+            // colunas rodaram a mesma rota.
+            let nb = ph2d_painter_brush::band_count(
+                work,
+                batch_bounds(&dabs, SIZE, SIZE).map_or(0, |b| b.h as usize),
+                BATCH_MIN_AREA,
+            );
             println!(
-                "{r:>5.0} {:>7} {n:>5} {work:>11} {over:>8} {:>6} {s:>11.3} {b:>11.3} {:>7.2}x",
+                "{r:>5.0} {:>7} {n:>5} {work:>11} {nb:>7} {:>6} {s:>11.3} {b:>11.3} {:>7.2}x",
                 if figure { "figura" } else { "traco" },
                 if capped { "ON" } else { "off" },
                 s / b.max(1e-9),
@@ -519,9 +523,9 @@ fn what_the_banded_batch_buys_when_the_cap_is_on() {
     println!("(C) O PISO DO KERNEL — UM dab, a mesma ablação, mediana de {SAMPLES}\n");
     println!(
         "{:>5} {:>11} {:>8} {:>11} {:>11} {:>8}",
-        "raio", "pegada", "vs piso", "serial ms", "banda ms", "ganho"
+        "raio", "pegada", "bandas", "serial ms", "banda ms", "ganho"
     );
-    for r in [40.0f32, 90.0, 128.0, 181.0, 256.0, 362.0] {
+    for r in [20.0f32, 40.0, 64.0, 90.0, 128.0, 181.0, 256.0, 362.0] {
         let one = vec![dab_at(
             [SIZE as f32 * 0.5, SIZE as f32 * 0.5],
             [1.0, 0.0],
@@ -556,9 +560,13 @@ fn what_the_banded_batch_buys_when_the_cap_is_on() {
             }
         }
         let (p, s) = (median(&mut par), median(&mut ser));
-        let over = if work >= (1 << 17) { "ACIMA" } else { "abaixo" };
+        let nb = ph2d_painter_brush::band_count(
+            work,
+            (r * 2.0) as usize + 2,
+            ph2d_painter_brush::PARALLEL_MIN_AREA,
+        );
         println!(
-            "{r:>5.0} {work:>11} {over:>8} {s:>11.3} {p:>11.3} {:>7.2}x",
+            "{r:>5.0} {work:>11} {nb:>8} {s:>11.3} {p:>11.3} {:>7.2}x",
             s / p.max(1e-9),
         );
     }

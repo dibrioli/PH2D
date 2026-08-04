@@ -156,32 +156,57 @@ fn the_banded_batch_is_identical_under_alpha_lock_too() {
     );
 }
 
-/// **O piso protege o traço à mão livre**, que é a razão de o piso existir.
+/// **O piso protege o lote que não enche duas bandas** — e a frase que estava aqui antes era outra.
 ///
-/// Um move de mão livre emite poucos dabs; dividi-los entre 32 núcleos perde. O piso é medido sobre a
-/// SOMA DAS PEGADAS (o trabalho real), não sobre a caixa da união — os dabs de um traço se sobrepõem
-/// fortemente, e a caixa mentiria para baixo.
+/// ⚠️ **Este gate dizia *"o piso protege o traço à mão livre, que é a razão de o piso existir"*, e a
+/// medição de 2026-08-04 derrubou a premissa.** Ela nunca tinha sido medida: um lote de mão livre de 6
+/// dabs (≈10 k visitas) **paga** a divisão, `1,5× a 2×` pela tabela (B) da
+/// `measure_route_cost::what_the_banded_batch_buys_when_the_cap_is_on`. O que perdia não era o lote
+/// pequeno — era abrir **32 threads** para ele, e isso deixou de acontecer quando a contagem de bandas
+/// passou a sair do TRABALHO ([`ph2d_painter_brush::band_count`]).
+///
+/// O que o piso protege, medido, é o lote que não enche **duas** bandas: abaixo de
+/// `SPAWN_EQUIV_VISITS × 4` a divisão é `1,00×` (raio 20 da tabela (C)) e não há o que colher.
+///
+/// A régua segue sendo a SOMA DAS PEGADAS (o trabalho real), não a caixa da união — os dabs de um traço
+/// se sobrepõem fortemente, e a caixa mentiria para baixo.
 #[test]
 fn a_freehand_sized_batch_stays_serial_and_a_figure_sized_one_does_not() {
     // ⚠️ Pergunta ao PRODUTO (`wants_bands`), não à aritmética do teste: a 1ª versão deste gate
     // recomputava a regra por conta própria e teria ficado verde com o produto decidindo outra coisa.
     assert!(
-        !wants_bands(&arc(6, 20.0), W, H, BATCH_MIN_AREA),
-        "um lote de mão livre tem de ficar SERIAL"
+        !wants_bands(&arc(2, 3.0), W, H, BATCH_MIN_AREA),
+        "um lote que não enche duas bandas tem de ficar SERIAL"
     );
     assert!(
         !wants_bands(&arc(1, 20.0), W, H, BATCH_MIN_AREA),
         "um dab só nunca vale uma divisão"
+    );
+    // ⚠️ E a metade que a medição ACRESCENTOU: o lote de mão livre, que este gate pinava como serial,
+    // agora TEM de dividir — sem ela, restaurar o piso antigo passaria aqui em silêncio.
+    assert!(
+        wants_bands(&arc(6, 20.0), W, H, BATCH_MIN_AREA),
+        "um lote de mão livre de 6 dabs paga a divisão (medido 1,5-2,0x) e tem de DIVIDIR"
     );
     assert!(
         wants_bands(&arc(525, 200.0), W, H, BATCH_MIN_AREA),
         "a figura do report tem de DIVIDIR"
     );
     // E a régua é a soma das pegadas, não a caixa: esta figura tem caixa PEQUENA e trabalho GRANDE.
-    let tight = arc(400, 30.0);
-    let bbox = 62usize * 62 * 4; // ordem da caixa desta figura — muito abaixo do piso
+    // ⚠️ **A caixa é MEDIDA pela porta do produto, não escrita como literal.** A versão anterior
+    // cravava `62 × 62 × 4` como *"a ordem da caixa desta figura"*, e quando o piso desceu de 131 072
+    // para 3 232 o literal passou a ficar ACIMA dele — a asserção virou falsa sem que a propriedade
+    // que ela afirma tivesse mudado. Perguntar ao `batch_bounds` mantém as duas metades honestas.
+    let tight = arc(400, 14.0);
+    let bbox = super::stamp_banded::batch_bounds(&tight, W, H)
+        .map_or(0, |b| (b.w as usize) * (b.h as usize));
     assert!(
-        bbox < BATCH_MIN_AREA && wants_bands(&tight, W, H, BATCH_MIN_AREA),
+        bbox < BATCH_MIN_AREA,
+        "a fixture precisa de caixa ABAIXO do piso para separar as duas réguas \
+         ({bbox} vs {BATCH_MIN_AREA})"
+    );
+    assert!(
+        wants_bands(&tight, W, H, BATCH_MIN_AREA),
         "uma figura de caixa pequena e muito trabalho tem de DIVIDIR"
     );
 }
@@ -295,14 +320,28 @@ fn the_artists_default_brush_takes_the_banded_road_on_a_live_figure() {
     t.set_brush_size_px(3.0);
     t.paint.brush.stroke_method = StrokeMethod::Ellipse;
     let _ = super::stamp_banded::diag::take();
+    // ⚠️ **A elipse encolheu em 2026-08-04, e o gate mandou.** Com o piso medido (3 232 visitas) a
+    // figura de 40 × 20 px passou a PAGAR a divisão — o controle tem de descer até um lote que
+    // genuinamente não enche duas bandas, senão ele afirma o lado errado da cerca.
     t.on_canvas_pointer(cpx([100.0, 118.0], PointerPhase::Down));
-    t.on_canvas_pointer(cpx([140.0, 138.0], PointerPhase::Move));
+    t.on_canvas_pointer(cpx([102.0, 119.0], PointerPhase::Move));
     let d = super::stamp_banded::diag::take();
     let (banded, serial, dabs) = (d.banded, d.serial, d.dabs);
     assert!(dabs > 0, "o controle não carimbou nada");
+    // ⚠️ **O controle DECLARA a premissa que assume**, e é isso que o faz falhar alto quando alguém
+    // move o piso em vez de continuar verde medindo o outro lado da cerca: a versão anterior tinha
+    // 4 290 visitas contra um piso que desceu para 3 232. *Um controle de piso que não afirma de que
+    // lado do piso ele está não é um controle.*
+    assert!(
+        (d.visits as usize) < BATCH_MIN_AREA,
+        "o controle TEM de ficar abaixo do piso ({} visitas vs {BATCH_MIN_AREA})",
+        d.visits
+    );
     assert_eq!(
         banded, 0,
-        "uma figura pequena não paga o custo de dividir: {banded} em banda x {serial} serial(is)"
+        "uma figura pequena não paga o custo de dividir: {banded} em banda x {serial} serial(is), \
+         {dabs} dabs / {} visitas contra o piso de {BATCH_MIN_AREA}",
+        d.visits
     );
 }
 /// **O modo de pintura SOBREVIVE a um stroke vivo?** — o report do Enio de 2026-08-03
@@ -466,13 +505,17 @@ fn capped_batch(dabs: &[Dab], min_area: usize) -> (Vec<u8>, Vec<u8>) {
 /// passar sem deixar marca.
 #[test]
 fn the_capped_batch_is_byte_identical_whether_its_rows_are_split_or_not() {
-    for n in [2usize, 17, 200] {
+    // ⚠️ **O `n = 2` virou `6`, e quem mandou foi a asserção de vácuo logo abaixo.** Enquanto a
+    // contagem de bandas era `available_parallelism()`, `min_area = 0` bastava para forçar a divisão;
+    // desde que ela sai do TRABALHO, um lote de 2 dabs de raio 12 (1 458 visitas) pede **uma** banda —
+    // e as duas chamadas viravam a mesma rota. Seis dabs no MESMO anel de raio 40 continuam **sem se
+    // tocar** (o espaçamento é 42 px contra 24 de diâmetro), então o controle *"a rota dividida não
+    // depende de haver sobreposição"* sobrevive intacto; o que muda é que agora ele de fato divide.
+    for n in [6usize, 17, 200] {
         let dabs = arc(n, 40.0);
-        // ⚠️ **A premissa é que as duas rotas DIFIRAM, e ela se afirma sobre o piso que a fixture
-        // passa — não sobre o do produto.** Com `min_area = 0` o lote divide sempre que houver dois
-        // dabs e mais de uma linha; exigir `BATCH_MIN_AREA` aqui reprovaria uma fixture correta
-        // (medido: `n = 17` são 13 273 visitas contra um piso de 131 072), e a divisão é o que este
-        // gate compara, não a decisão de dividir — essa já tem gate próprio.
+        // ⚠️ **A premissa é que as duas rotas DIFIRAM, e ela se afirma pela porta do produto.** O
+        // `wants_bands` DEVOLVE a decisão real (quantas bandas, não *"passou do piso"*), então esta
+        // linha falha alto quando a fixture deixa de conter o fenômeno — foi ela que pegou o `n = 2`.
         assert!(
             wants_bands(&dabs, W, H, 0),
             "n={n}: sem divisão as duas chamadas são o MESMO código e o verde é vácuo"
@@ -493,10 +536,10 @@ fn the_capped_batch_is_byte_identical_whether_its_rows_are_split_or_not() {
         // no centro, então contar texels saturados não distingue sobreposição de dab único. O que
         // distingue é o efeito: **com o cap a tinta tem de sair diferente de sem ele**.
         //
-        // ⚠️ `n = 2` fica de fora: dois dabs num arco de raio 40 ficam a 80 px e, com raio 12, não se
+        // ⚠️ `n = 6` fica de fora: seis dabs num arco de raio 40 ficam a 42 px e, com raio 12, não se
         // tocam — ali o cap é honestamente inerte, e ele é o controle de que a rota dividida não
         // depende de haver sobreposição para estar certa.
-        if n > 2 {
+        if n > 6 {
             let mut plain_buf = canvas();
             let _ = stamp_plain_dabs_banded_with(
                 &mut plain_buf,

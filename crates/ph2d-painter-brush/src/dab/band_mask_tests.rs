@@ -116,9 +116,15 @@ fn the_capped_dab_is_byte_identical_whether_its_rows_are_split_or_not() {
 fn a_dab_below_the_floor_still_runs_as_one_band() {
     // O controle: abaixo do piso a divisão não acontece, e é por isso que o cap era grátis lá. Ele
     // existe para que o gate acima não possa ser lido como *"a divisão nunca acontece"*.
+    //
+    // ⚠️ **O raio caiu de 60 para 20 em 2026-08-04, e o gate mandou.** O piso foi MEDIDO e desceu de
+    // 131 072 para `SPAWN_EQUIV_VISITS * 4`, então a pegada de 120² deixou de estar abaixo dele — e
+    // este teste **falhou alto**, na própria linha que declara a premissa, em vez de continuar verde
+    // medindo o outro lado da cerca. *Um controle que afirma o que assume é o que sobrevive a alguém
+    // mover a cerca.*
     const W: u32 = 300;
     const H: u32 = 300;
-    const R: f32 = 60.0;
+    const R: f32 = 20.0;
     let bbox = (R * 2.0) as usize * (R * 2.0) as usize;
     assert!(
         bbox < PARALLEL_MIN_AREA,

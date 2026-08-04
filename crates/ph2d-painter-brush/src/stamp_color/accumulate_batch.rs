@@ -112,12 +112,11 @@ pub fn accumulate_color_stamps_fused_batch(
         .map(|b| ((b.x1 - b.x0) * (b.y1 - b.y0)) as usize)
         .sum();
     let rows = gy1 - gy0;
-    let threads = std::thread::available_parallelism()
-        .map(std::num::NonZero::get)
-        .unwrap_or(1)
-        .clamp(1, rows.max(1));
+    // A porta ÚNICA (`crate::dab::band_count`): *"vale dividir, e em quantas?"* — uma pergunta, uma
+    // resposta. Este sítio guardava a sua própria cópia da regra, com o mesmo cliff.
+    let threads = crate::dab::band_count(area, rows, crate::dab::PARALLEL_MIN_AREA);
     // Small batches: the per-dab serial kernel (identical bytes by construction).
-    if area < crate::dab::PARALLEL_MIN_AREA || threads == 1 || rows <= 1 {
+    if threads <= 1 {
         let mut union: Option<DirtyRect> = None;
         for b in &boxes {
             let d = &dabs[b.di];
@@ -317,7 +316,9 @@ pub fn accumulate_shape_layers_rgba_batch(
         .iter()
         .map(|b| ((b.x1 - b.x0) * (b.y1 - b.y0)) as usize)
         .sum();
-    if area < crate::dab::PARALLEL_MIN_AREA {
+    let gy0b = boxes.iter().map(|b| b.y0).min().expect("non-empty") as usize;
+    let gy1b = boxes.iter().map(|b| b.y1).max().expect("non-empty") as usize;
+    if crate::dab::band_count(area, gy1b - gy0b, crate::dab::PARALLEL_MIN_AREA) <= 1 {
         let mut union: Option<DirtyRect> = None;
         for b in &boxes {
             let d = &dabs[b.di];
@@ -347,10 +348,7 @@ pub fn accumulate_shape_layers_rgba_batch(
     let gy0 = boxes.iter().map(|b| b.y0).min().expect("non-empty") as usize;
     let gy1 = boxes.iter().map(|b| b.y1).max().expect("non-empty") as usize;
     let rows = gy1 - gy0;
-    let threads = std::thread::available_parallelism()
-        .map(std::num::NonZero::get)
-        .unwrap_or(1)
-        .clamp(1, rows.max(1));
+    let threads = crate::dab::band_count(area, rows, crate::dab::PARALLEL_MIN_AREA);
     let wus = width as usize;
     let rpb = rows.div_ceil(threads);
     let nbands = rows.div_ceil(rpb);
@@ -566,10 +564,13 @@ pub fn accumulate_color_stamps_rgba_batch(
     let gy0 = boxes.iter().map(|b| b.y0).min().expect("non-empty") as usize;
     let gy1 = boxes.iter().map(|b| b.y1).max().expect("non-empty") as usize;
     let rows = gy1 - gy0;
-    let threads = std::thread::available_parallelism()
-        .map(std::num::NonZero::get)
-        .unwrap_or(1)
-        .clamp(1, rows.max(1));
+    // ⚠️ Este sítio NUNCA teve piso — ele dividia sempre, e por isso pagava 32 spawns para um lote de
+    // um dab pequeno. A porta única lhe dá o piso e a contagem de uma vez.
+    let area: usize = boxes
+        .iter()
+        .map(|b| ((b.x1 - b.x0) * (b.y1 - b.y0)) as usize)
+        .sum();
+    let threads = crate::dab::band_count(area, rows, crate::dab::PARALLEL_MIN_AREA);
     let wus = width as usize;
     let rpb = rows.div_ceil(threads);
     let nbands = rows.div_ceil(rpb);

@@ -443,11 +443,18 @@ mod bands;
 
 pub(crate) use bands::parallel_band_stamp_masked;
 use bands::{DabCtx, stamp_band};
-pub(crate) use bands::{PARALLEL_MIN_AREA, parallel_band_cached, parallel_band_stamp};
+pub use bands::{PARALLEL_MIN_AREA, SPAWN_EQUIV_VISITS, band_count, band_count_with};
 pub(crate) use bands::{encode, ramp_sample, stamp_rgba};
+pub(crate) use bands::{parallel_band_cached, parallel_band_stamp};
 
 #[cfg(test)]
 mod tests;
 
+// ⚠️ Os comentarios ficam ACIMA do `mod`, nunca ao lado: o rustfmt REORDENA estas linhas e leva o
+// comentario trailing junto com a linha errada — a cicatriz que a `line/motion-value` ja' pagou.
+// A porta unica da divisao: o piso e' derivado, a contagem sai do TRABALHO.
 #[cfg(test)]
-mod band_mask_tests; // a mascara do cap atravessa a divisao por linhas sem mudar um byte
+mod band_count_tests;
+// A mascara do cap atravessa a divisao por linhas sem mudar um byte.
+#[cfg(test)]
+mod band_mask_tests;

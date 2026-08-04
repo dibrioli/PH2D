@@ -341,14 +341,16 @@ impl PainterTool {
                 }
             };
             let rows = bb.h as usize;
-            /// Below this bbox area (px) the serial sweep beats spawning scoped threads.
-            const PARALLEL_MIN_AREA: usize = 1 << 17;
-            let threads = std::thread::available_parallelism()
-                .map(std::num::NonZero::get)
-                .unwrap_or(1)
-                .clamp(1, rows.max(1));
+            // ⚠️ Aqui morava uma RE-DECLARAÇÃO do piso (`const PARALLEL_MIN_AREA: usize = 1 << 17;`,
+            // um literal privado a um bloco): a mesma regra escrita pela sexta vez, e a única cópia
+            // que nem o nome do dono carregava. A porta única responde as duas metades de uma vez.
+            let threads = ph2d_painter_brush::band_count(
+                rows * bb.w as usize,
+                rows,
+                ph2d_painter_brush::PARALLEL_MIN_AREA,
+            );
             let (by0, by1) = (bb.y as usize, (bb.y + bb.h) as usize);
-            if (rows * bb.w as usize) < PARALLEL_MIN_AREA || threads == 1 || rows <= 1 {
+            if threads <= 1 {
                 let mut covfull: Vec<&mut [u8]> = cov
                     .iter_mut()
                     .map(|m| &mut m[by0 * wus * 4..by1 * wus * 4])

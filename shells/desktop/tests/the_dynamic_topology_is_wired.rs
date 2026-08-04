@@ -154,3 +154,67 @@ fn the_edge_target_is_derived_once_from_the_brush_radius() {
         "e há UMA chamada no cluster: uma segunda seria a segunda resposta"
     );
 }
+
+/// **TODA CENA QUE EXISTE ARMA O MÓDULO.**
+///
+/// ⚠️ **Este gate nasceu de um canvas em BRANCO no smoke.** A `=14` tinha
+/// predicado próprio, malha própria e roteiro próprio — e o `smoke_armed` era
+/// uma ENUMERAÇÃO de `"1"…"13"`, então o módulo nunca armava. Cada peça estava
+/// certa e o app abria preto, que é a forma mais cara de errar: nada aponta para
+/// a lista que ficou para trás.
+///
+/// O gate lê os níveis que os PREDICADOS declaram (`Some("<n>")` no arquivo das
+/// cenas) e exige que o `smoke_armed` responda `true` a cada um — sem tabela
+/// própria, porque uma tabela aqui seria a segunda lista a apodrecer.
+#[test]
+fn every_scene_level_that_exists_arms_the_module() {
+    let src = sculpt_source::source("sculpt3d_scenes.rs");
+    let levels: Vec<u32> = src
+        .match_indices("Some(\"")
+        .filter_map(|(at, _)| {
+            let rest = &src[at + 6..];
+            let end = rest.find('"')?;
+            rest[..end].parse::<u32>().ok()
+        })
+        .collect();
+    assert!(
+        levels.len() >= 10,
+        "o scanner tem de achar as cenas; achou {levels:?}"
+    );
+    for n in levels {
+        // SAFETY-free: o teste roda numa thread só e a var é lida logo abaixo.
+        unsafe { std::env::set_var("PH2D_SCULPT3D_SMOKE", n.to_string()) };
+        assert!(
+            ph2d_host_desktop_smoke_armed(),
+            "a cena =`{n}` existe e o módulo NÃO arma nela — o canvas abre em branco"
+        );
+    }
+    unsafe { std::env::remove_var("PH2D_SCULPT3D_SMOKE") };
+}
+
+/// A cópia da pergunta que o produto faz. ⚠️ Ela é uma CÓPIA porque
+/// `smoke_armed` é `pub(crate)` e um teste de integração não a alcança — e é
+/// por isso que o gate irmão abaixo afirma que as duas dizem a mesma coisa.
+fn ph2d_host_desktop_smoke_armed() -> bool {
+    std::env::var("PH2D_SCULPT3D_SMOKE")
+        .ok()
+        .and_then(|v| v.trim().parse::<u32>().ok())
+        .is_some_and(|n| n >= 1)
+}
+
+/// **E a cópia acima não pode divergir do produto.**
+///
+/// ⚠️ Sem esta metade o gate anterior mede a si mesmo: ele ficaria verde com o
+/// produto de volta na enumeração, porque a cópia responderia `true` sozinha.
+#[test]
+fn the_arming_question_is_a_parse_and_not_a_list() {
+    let body = squeezed(&function_body(&sculpt_src(), "smoke_armed"));
+    assert!(
+        body.contains("parse::<u32>()"),
+        "armar é PERGUNTAR se o artista pediu uma cena"
+    );
+    assert!(
+        !body.contains(r#"Some("1"|"#),
+        "e nunca uma lista de níveis: ela apodrece no dia em que a cena N+1 nascer"
+    );
+}

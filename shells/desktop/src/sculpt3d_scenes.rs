@@ -13,12 +13,24 @@
 
 use super::fixtures::{hooked_sphere, punctured_sphere, ridged_sphere};
 
-/// A cena está armada? (`PH2D_SCULPT3D_SMOKE` em `1`..`13`.)
+/// A cena está armada? — **qualquer nível ≥ 1**.
+///
+/// ⚠️ **Aqui havia uma ENUMERAÇÃO (`"1" | "2" | … | "13"`), e ela apodreceu no
+/// dia previsível:** a cena `=14` nasceu com predicado próprio, script próprio e
+/// malha própria, e o app abriu com **o canvas em branco** — o módulo inteiro
+/// nunca armou, porque ninguém acrescentou o `"14"` a esta lista. Nenhum gate
+/// via: cada peça da cena existia e estava certa.
+///
+/// A pergunta certa não é *"este número está na lista?"* e sim *"o artista pediu
+/// uma cena?"*. Um nível que não existe passa a abrir a esfera padrão — uma
+/// degradação visível e honesta, contra uma tela preta que se lê como crash. E a
+/// lista de cenas pode crescer para sempre sem ninguém ter de lembrar deste
+/// arquivo.
 pub(crate) fn smoke_armed() -> bool {
-    matches!(
-        std::env::var("PH2D_SCULPT3D_SMOKE").ok().as_deref(),
-        Some("1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | "10" | "11" | "12" | "13")
-    )
+    std::env::var("PH2D_SCULPT3D_SMOKE")
+        .ok()
+        .and_then(|v| v.trim().parse::<u32>().ok())
+        .is_some_and(|n| n >= 1)
 }
 
 /// `=13` — a cena da **FUSÃO e do ISOLAMENTO**: quatro peças de formas

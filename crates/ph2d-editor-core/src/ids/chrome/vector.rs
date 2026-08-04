@@ -340,6 +340,10 @@ pub const VECTOR_VERT_SEL_SAME: NodeId = hash_node_id("vector.vert.sel.same");
 // the path with a small offset; the four z-order buttons restack it (render
 // order = paths-vec order, index 0 = back).
 pub const VECTOR_ARRANGE_DUPLICATE: NodeId = hash_node_id("vector.arrange.duplicate");
+/// **O Z-INDEX GLOBAL da forma** (Enio, 2026-08-04) — o número que SOBREPÕE a ordem da
+/// hierarquia: só quando dois objetos empatam nele é que a árvore decide quem fica na frente.
+/// Maior = mais à frente (a convenção do `CanvasItem.z_index` do Godot).
+pub const VECTOR_ARRANGE_Z: NodeId = hash_node_id("vector.arrange.z");
 pub const VECTOR_ARRANGE_TO_BACK: NodeId = hash_node_id("vector.arrange.to_back");
 pub const VECTOR_ARRANGE_BACKWARD: NodeId = hash_node_id("vector.arrange.backward");
 pub const VECTOR_ARRANGE_FORWARD: NodeId = hash_node_id("vector.arrange.forward");

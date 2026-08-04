@@ -168,29 +168,29 @@ fn a_closed_shape_keeps_the_tight_border_slop() {
 /// **DENTRO DE UMA MOLDURA, O CLIQUE PEGA O FILHO** (Enio 2026-08-02: *"quando dentro do Frame
 /// não consigo selecionar as formas"*).
 ///
-/// A moldura é o ÚLTIMO membro da própria sub-árvore na pilha de z — é o que emparelha o push e
-/// o pop da camada de recorte —, logo a mais À FRENTE. O renderer sabe disso e antecipa o
-/// desenho dela; o apontar não sabia, e o retângulo dela ganhava todo clique dos filhos. Duas
-/// respostas para *"onde nesta pilha está esta moldura?"*: desenhada no fundo, apontada na
-/// frente.
+/// ⚠️ **Isto já foi um remendo, e a projeção o apagou (2026-08-04).** A pilha era o DFS
+/// invertido, o que punha o contêiner por ÚLTIMO na sub-árvore dele — logo à FRENTE —, o renderer
+/// **antecipava** o desenho dele e o apontar tinha de o **demover**: duas respostas para *"onde
+/// nesta pilha está esta moldura?"*, desenhada no fundo e apontada na frente.
 ///
-/// ⚠️ **A premissa da fixture é o intervalo** (`clips`): é ele que diz *quem foi antecipado*, e
-/// é dele que a demoção lê. Uma moldura sem intervalo não é demovida, e é isso que impede o
-/// apontar de discordar do desenho pelo outro lado.
+/// Hoje a pilha é o DFS **na ordem**, o pai é o PRIMEIRO membro da sub-árvore, e esta varredura —
+/// que corre do topo para o fundo — encontra o filho primeiro **pela mesma regra que o desenha por
+/// cima**. Não há segunda resposta a manter em dia.
 ///
-/// Nasceu VERMELHO com a moldura em primeiro.
+/// ⚠️ **A premissa da fixture é a ORDEM da cena**, e ela inverteu junto: o produto projeta o pai
+/// primeiro, então é assim que a fixture o empurra. Montá-la ao contrário deixaria o filho na
+/// frente por acidente e o gate ficaria verde sem conter o fenómeno.
 #[test]
 fn a_click_inside_a_frame_lands_on_the_child_not_the_frame() {
     let mut sim = SimWorld::default();
     let mut scene = VecScene::new();
     let mut map = VecEntityMap::new();
 
-    // ⚠️ **O FILHO entra na cena PRIMEIRO, e isso é a premissa.** A pilha de z que o produto
-    // projeta (`vec_zorder::z_order`) põe o contêiner por ÚLTIMO na sub-árvore dele — logo à
-    // FRENTE —, e é dessa posição que vem o defeito. Empurrar a moldura primeiro deixaria o
-    // filho na frente por acidente da fixture, e o gate ficaria verde sem conter o fenómeno.
-    let kid = scene.push_path(rectangle([2.0, 2.0], [4.0, 4.0]));
+    // ⚠️ **A MOLDURA entra na cena PRIMEIRO, e isso é a premissa.** É a ordem que a projeção do
+    // produto (`vec_zorder::z_order`) escreve: o pai desenha antes dos filhos. Montar ao
+    // contrário poria o filho na frente por acidente da fixture.
     let frame = scene.push_path(rectangle([0.0, 0.0], [10.0, 10.0]));
+    let kid = scene.push_path(rectangle([2.0, 2.0], [4.0, 4.0]));
     let fe = sim
         .world_mut()
         .spawn((Transform::IDENTITY, VecPathRef(frame)))
@@ -203,11 +203,7 @@ fn a_click_inside_a_frame_lands_on_the_child_not_the_frame() {
     map.insert(kid, ke.to_bits());
 
     let vs = VecViewState {
-        parent_spans: vec![ph2d_vec_scene::VecParentSpan {
-            parent: frame,
-            first: kid,
-            clip: false, // uma moldura de LAYOUT: e' fundo, nao recorta
-        }],
+        clips: vec![ph2d_vec_scene::VecClipSpan { frame, last: kid }],
         ..Default::default()
     };
     // Um ponto que os DOIS contêm — o interior do filho está dentro da moldura por construção.

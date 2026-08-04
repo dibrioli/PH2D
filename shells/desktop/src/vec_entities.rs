@@ -11,9 +11,7 @@
 //! Entidade apagada pela Hierarquia ⇒ path removido do documento. Tudo em
 //! [`sync`], uma vez por frame, antes de qualquer leitura.
 
-use ph2d_ecs::{
-    ChildOf, Entity, Name, RootOrder, SimWorld, Transform, VecPathRef, Visibility, Without,
-};
+use ph2d_ecs::{ChildOf, Entity, Name, RootOrder, SimWorld, Transform, VecPathRef, Visibility};
 use ph2d_vec_scene::{VecPathId, VecScene, VecViewState};
 use std::collections::BTreeMap;
 
@@ -60,19 +58,17 @@ pub(crate) fn sync(sim: &mut SimWorld, scene: &mut VecScene, map: &mut VecEntity
         map.remove(&id);
     }
 
-    // 3. Paths novos ganham entidade — **na FRENTE**, que é onde o artista acabou de desenhar.
+    // 3. Paths novos ganham entidade — **no FIM da lista**, que desde a lei de Godot
+    //    (2026-08-04) é a FRENTE, e é onde o artista acabou de desenhar.
     //
-    //    E "na frente" é o RootOrder mais BAIXO, não o mais alto. A Hierarquia lista as raízes
-    //    em ordem CRESCENTE de `RootOrder` e a primeira linha é a da FRENTE (convenção
-    //    Illustrator/Figma); a pilha de z é a projeção invertida dessa lista. Logo:
+    //    Enio: *"quando se cria um objeto novo ele vai para o último abaixo na hierarquia, mas
+    //    aqui no nosso ele aparece no topo"*. Não é uma segunda decisão: é a MESMA — enquanto a
+    //    primeira linha era a da frente, nascer na frente obrigava a abrir espaço no começo e a
+    //    empurrar toda raiz um lugar para baixo; com a lista a correr fundo → topo, nascer na
+    //    frente é simplesmente **apender**.
     //
-    //        RootOrder BAIXO  → primeira linha  → FRENTE
-    //        RootOrder ALTO   → última linha    → FUNDO
-    //
-    //    A versão anterior dava ao path novo o maior `RootOrder` ("entra no fim da lista"), e o
-    //    comentário dela dizia "em cima" — mas o fim da lista é o FUNDO. Toda forma recém-criada
-    //    nascia ATRÁS das que já estavam lá: o Enio viu isso no Blend (a 1ª forma gerada saiu
-    //    debaixo do círculo que a originou), e vale igual para uma forma desenhada à mão.
+    //        RootOrder BAIXO  → primeira linha  → FUNDO
+    //        RootOrder ALTO   → última linha    → FRENTE
     let missing: Vec<VecPathId> = scene
         .paths()
         .iter()
@@ -82,24 +78,9 @@ pub(crate) fn sync(sim: &mut SimWorld, scene: &mut VecScene, map: &mut VecEntity
     if missing.is_empty() {
         return;
     }
-    // Abre espaço na frente de todo mundo — `missing.len()` lugares. É O(raízes), e uma cena de
-    // editor tem dezenas: o preço de manter a ordem EXPLÍCITA (sem empate, sem `to_bits`).
-    let shift = u32::try_from(missing.len()).unwrap_or(u32::MAX);
-    let roots: Vec<(Entity, u32)> = {
-        let mut q = sim
-            .world_mut()
-            .query_filtered::<(Entity, &RootOrder), Without<ChildOf>>();
-        q.iter(sim.world())
-            .filter(|(_, r)| r.0 != u32::MAX)
-            .map(|(e, r)| (e, r.0))
-            .collect()
-    };
-    for (e, order) in roots {
-        if let Ok(mut em) = sim.world_mut().get_entity_mut(e) {
-            em.insert(RootOrder(order.saturating_add(shift)));
-        }
-    }
-    // O último da lista é o mais recente ⇒ ele fica com o menor número ⇒ mais à frente.
+    // ⚠️ O `next_root_order` é a porta única de *"qual é o próximo lugar livre?"* — a mesma que o
+    // Flip e o envelope usam. Sem o shift, o custo deixou de ser O(raízes) por forma nova.
+    let base = next_root_order(sim);
     for (k, id) in missing.iter().enumerate() {
         // **O nome passa pela porta do nome ÚNICO** (`name_unique::unique_name`), a mesma que o
         // import e o rename usam. `initial_name` é único entre PATHS (o id é), mas não no MUNDO:
@@ -110,9 +91,7 @@ pub(crate) fn sync(sim: &mut SimWorld, scene: &mut VecScene, map: &mut VecEntity
         // nome** (`wire_id` = hash do `Name`), então dois homônimos fazem duas tracks colarem no
         // MESMO objeto — e a outra fica sem dono, em silêncio. O nome é identidade agora.
         let name = crate::name_unique::unique_name(sim, &initial_name(*id));
-        let order = shift
-            .saturating_sub(u32::try_from(k).unwrap_or(0))
-            .saturating_sub(1);
+        let order = base.saturating_add(u32::try_from(k).unwrap_or(0));
         let e = sim.world_mut().spawn((
             Transform::default(),
             Name::new(name),
@@ -180,7 +159,7 @@ pub(crate) fn view_state_for_pick(
     derived: &VecViewState,
 ) -> VecViewState {
     let mut v = view_state(sim, map);
-    v.parent_spans.clone_from(&derived.parent_spans);
+    v.clips.clone_from(&derived.clips);
     v.poses.clone_from(&derived.poses);
     v
 }

@@ -97,15 +97,15 @@ thread_local! {
     /// facto (algo que só a shell sabe, projetado do ECS por frame) e um arquivo por escalar seria
     /// o oposto do corte por assunto que este painel segue. `None` = seleção sem resposta (nada
     /// selecionado, ou mais de uma forma).
-    static Z_INDEX: Cell<Option<(u32, u32)>> = const { Cell::new(None) };
+    static Z_INDEX: Cell<Option<f32>> = const { Cell::new(None) };
 }
 
-/// Publica o Z-index da seleção (shell → painel).
-pub fn set_z_index(z: Option<(u32, u32)>) {
+/// Publica o Z-index AUTORADO da seleção (shell → painel).
+pub fn set_z_index(z: Option<f32>) {
     Z_INDEX.with(|c| c.set(z));
 }
 
-/// O Z-index da seleção — `None` = não há resposta única.
-pub(crate) fn z_index() -> Option<(u32, u32)> {
+/// O Z-index autorado da seleção — `None` = não há resposta única.
+pub(crate) fn z_index() -> Option<f32> {
     Z_INDEX.with(Cell::get)
 }

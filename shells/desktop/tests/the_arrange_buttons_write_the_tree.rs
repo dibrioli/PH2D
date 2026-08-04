@@ -52,18 +52,47 @@ fn the_scene_order_door_is_gone_from_the_shell() {
     );
 }
 
-/// **O número que o painel mostra sai da MESMA porta que o botão move.**
+/// **O número que o painel MOSTRA e o que ele ESCREVE são a mesma porta.**
 ///
-/// ⚠️ Sem isto o readout pode ficar certo por acidente hoje e virar decoração amanhã — duas
-/// travessias da árvore respondem o mesmo até o critério de desempate mudar num lado só.
+/// ⚠️ São duas travessias da mesma fiação e é fácil ligá-las a lugares diferentes — o campo lê o
+/// autorado e o commit escreve noutro sítio. Aí ele mostra um número e edita outro, e nada falha.
 #[test]
-fn the_published_z_index_comes_from_the_same_module_as_the_move() {
+fn the_published_z_index_comes_from_the_same_module_as_the_write() {
     let s = src("render_loop/mod.rs");
     let at = s
         .find("ph2d_panel_vector::state::set_z_index(")
-        .expect("a shell deixou de publicar o Z-index: a linha some do painel em silêncio");
+        .expect("a shell deixou de publicar o Z-index: o campo some do painel em silêncio");
     assert!(
-        s[at..at + 400].contains("zorder::z_index("),
-        "o Z-index publicado nao vem da porta que os botoes movem"
+        s[at..at + 400].contains("zorder::authored_z("),
+        "o Z publicado nao vem da porta que o campo escreve"
+    );
+    assert!(
+        s.contains("zorder::set_authored_z("),
+        "o commit do campo Z nao chega a' porta de escrita — o artista digita e nada acontece"
+    );
+}
+
+/// **O botão pode escrever o Z**, que é o que o Enio pediu (*"faça os botões da seção serem
+/// capazes de modificar o Z index"*).
+///
+/// ⚠️ O gate de unidade prova a regra (*tenta a árvore; se a pilha não se mexeu, escreve o Z*);
+/// este prova que a fiação do clique chega àquela porta, e não a uma que só sabe mexer na árvore.
+#[test]
+fn the_arrange_click_can_reach_the_z() {
+    let s = src("vec_zorder.rs");
+    let at = s
+        .find("pub(crate) fn reorder(")
+        .expect("a porta dos botoes mudou de nome — reancore este gate");
+    // ⚠️ **A janela acaba na função SEGUINTE.** Sem o limite, `s[at..]` alcança a *definição* do
+    // `bump_z` lá em baixo — e o gate ficava verde com a CHAMADA removida, que é exactamente o
+    // defeito. (Medido: a mutação que tira a chamada sobrevivia.)
+    let end = at
+        + s[at..]
+            .find("\nfn sibling_move(")
+            .expect("o vizinho que fecha a janela mudou de nome");
+    assert!(
+        s[at..end].contains("bump_z("),
+        "o `reorder` deixou de poder escrever o Z: com um Z alheio a' frente, o To Front vira um \
+         clique que nao faz nada"
     );
 }

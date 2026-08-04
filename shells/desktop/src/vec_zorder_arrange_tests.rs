@@ -1,16 +1,17 @@
-//! Gates do **Z-INDEX** e dos botões Arrange (Enio, 2026-08-04).
+//! Gates do **Z-INDEX GLOBAL** e dos botões Arrange (Enio, 2026-08-04).
 //!
-//! ⚠️ O keystone é o primeiro: os quatro botões estavam **MORTOS** — escreviam na ordem do vetor
-//! da cena, que a projeção da árvore reescreve a cada frame. Eles acendiam, mexiam, e o frame
-//! seguinte desfazia. Nenhum gate via, porque o que existia media a CENA (onde a escrita de facto
-//! pousava) e não a ÁRVORE (que é quem decide o desenho).
+//! ⚠️ **A lei mudou duas vezes, e a segunda é a que este arquivo mede.** Primeiro os quatro botões
+//! estavam MORTOS (escreviam na ordem do vetor da cena, que a projeção reescreve a cada frame) e
+//! passaram a escrever na ÁRVORE. Depois o Enio pediu o modelo do Godot — *"a ordem só conta se o
+//! Z dos objetos for igual; o Z index deve ser global e sobrepõe a ordem na hierarquia"* — e a
+//! pilha ganhou **duas chaves**: o Z efetivo manda, o DFS desempata.
 //!
 //! A fixture monta a árvore e lê a pilha pelas portas do PRODUTO — o que se prova é uma RELAÇÃO
 //! entre o gesto e a pilha, e uma lista escrita à mão afirmaria a relação em vez de a medir.
 
 use super::*;
 use ph2d_ecs::scene::{HierarchyWalkState, build_hierarchy_snapshot};
-use ph2d_ecs::{ChildOf, Transform, VecPathRef};
+use ph2d_ecs::{ChildOf, Transform, VecPathRef, ZIndexOverride};
 use ph2d_vec_scene::ZOrder;
 
 /// A pilha de z (FUNDO → topo) pela porta do produto.
@@ -19,10 +20,11 @@ fn stack(sim: &mut SimWorld) -> Vec<VecPathId> {
     let mut scratch = Vec::new();
     let mut snap = HierarchySnapshot::default();
     build_hierarchy_snapshot(sim.world(), &mut state, &mut scratch, &mut snap);
-    z_order(&snap)
+    z_order(sim.world(), &snap)
 }
 
-/// Três RAÍZES (`10`, `20`, `30`), com `10` à frente. O mapa path→entidade vem junto.
+/// Três RAÍZES (`10`, `20`, `30`) na ordem da Hierarquia — e desde a lei de Godot **`30` é a da
+/// FRENTE**, porque a última linha da lista é a que desenha por cima.
 fn three_roots() -> (SimWorld, VecEntityMap) {
     let mut sim = SimWorld::new();
     let mut map = VecEntityMap::new();
@@ -59,6 +61,12 @@ fn parent_with_kids() -> (SimWorld, VecEntityMap) {
     (sim, map)
 }
 
+/// A entidade de um caminho, para semear um Z à mão.
+fn set_z(sim: &mut SimWorld, map: &VecEntityMap, id: VecPathId, z: i32) {
+    let e = Entity::from_bits(*map.get(&id).unwrap());
+    sim.world_mut().entity_mut(e).insert(ZIndexOverride(z));
+}
+
 /// **O KEYSTONE: o botão move a forma na PILHA.**
 ///
 /// ⚠️ A mutação que o mata é voltar a escrever no `VecScene::reorder_path`: a cena muda, este gate
@@ -67,13 +75,13 @@ fn parent_with_kids() -> (SimWorld, VecEntityMap) {
 fn to_front_puts_the_shape_on_top_of_its_siblings() {
     let (mut sim, map) = three_roots();
     let before = stack(&mut sim);
-    assert_eq!(*before.last().unwrap(), 10, "10 nasce na frente");
+    assert_eq!(*before.last().unwrap(), 30, "30 nasce na frente");
 
-    assert!(reorder(&mut sim, &map, 30, ZOrder::ToFront));
+    assert!(reorder(&mut sim, &map, 10, ZOrder::ToFront));
     let after = stack(&mut sim);
     assert_eq!(
         *after.last().unwrap(),
-        30,
+        10,
         "o To Front nao poe a forma na frente: {after:?}"
     );
     assert_eq!(after.len(), before.len(), "alguem sumiu da pilha");
@@ -83,25 +91,25 @@ fn to_front_puts_the_shape_on_top_of_its_siblings() {
 #[test]
 fn raise_and_lower_move_exactly_one_place() {
     let (mut sim, map) = three_roots();
-    // `20` está no meio: subir põe-no na frente de `10`.
+    // `20` está no meio: subir põe-no na frente de `30`.
     assert!(reorder(&mut sim, &map, 20, ZOrder::Raise));
-    assert_eq!(stack(&mut sim), vec![30, 10, 20], "Raise andou errado");
+    assert_eq!(stack(&mut sim), vec![10, 30, 20], "Raise andou errado");
     // E descer devolve-o ao meio.
     assert!(reorder(&mut sim, &map, 20, ZOrder::Lower));
-    assert_eq!(stack(&mut sim), vec![30, 20, 10], "Lower nao e' o inverso");
+    assert_eq!(stack(&mut sim), vec![10, 20, 30], "Lower nao e' o inverso");
 }
 
-/// **Quem já está no topo não se mexe** — e o gesto devolve `false`.
+/// **Quem já está no extremo não se mexe** — e o gesto devolve `false`.
 ///
 /// ⚠️ O `false` não é higiene: o undo global regista por DIFF, e um passo que não muda nada seria
 /// um Ctrl+Z que o artista gasta sem ver nada acontecer.
 #[test]
 fn a_move_that_changes_nothing_is_refused() {
     let (mut sim, map) = three_roots();
-    assert!(!reorder(&mut sim, &map, 10, ZOrder::ToFront));
-    assert!(!reorder(&mut sim, &map, 10, ZOrder::Raise));
-    assert!(!reorder(&mut sim, &map, 30, ZOrder::ToBack));
-    assert!(!reorder(&mut sim, &map, 30, ZOrder::Lower));
+    assert!(!reorder(&mut sim, &map, 30, ZOrder::ToFront));
+    assert!(!reorder(&mut sim, &map, 30, ZOrder::Raise));
+    assert!(!reorder(&mut sim, &map, 10, ZOrder::ToBack));
+    assert!(!reorder(&mut sim, &map, 10, ZOrder::Lower));
 }
 
 /// **Um FILHO reordena entre os IRMÃOS dele** — e o pai não sai do lugar.
@@ -112,22 +120,18 @@ fn a_move_that_changes_nothing_is_refused() {
 fn a_child_reorders_among_its_siblings_without_moving_the_parent() {
     let (mut sim, map) = parent_with_kids();
     let before = stack(&mut sim);
-    assert_eq!(*before.last().unwrap(), 100, "o pai e' o ultimo da pilha");
+    assert_eq!(before[0], 100, "o pai e' o PRIMEIRO da pilha");
 
-    assert!(reorder(&mut sim, &map, 202, ZOrder::ToFront));
+    assert!(reorder(&mut sim, &map, 200, ZOrder::ToFront));
     let after = stack(&mut sim);
-    assert_eq!(
-        *after.last().unwrap(),
-        100,
-        "reordenar um filho mexeu no PAI: {after:?}"
-    );
-    // Entre os filhos, `202` passou a ser o da frente (o mais perto do fim, antes do pai).
-    let kids: Vec<VecPathId> = after.iter().copied().filter(|id| *id != 100).collect();
-    assert_eq!(*kids.last().unwrap(), 202, "o filho nao subiu: {after:?}");
-    assert_eq!(kids.len(), 3, "um filho sumiu");
+    assert_eq!(after[0], 100, "reordenar um filho mexeu no PAI: {after:?}");
+    // Entre os filhos, `200` passou a ser o da frente (o último da pilha).
+    assert_eq!(*after.last().unwrap(), 200, "o filho nao subiu: {after:?}");
+    assert_eq!(after.len(), 4, "um filho sumiu");
 }
 
-/// **Um filho ÚNICO não tem pilha em que andar.**
+/// **Um filho ÚNICO não tem pilha de irmãos em que andar** — e como também não há mais ninguém no
+/// documento à frente dele, o gesto é recusado inteiro.
 #[test]
 fn an_only_child_has_nowhere_to_go() {
     let mut sim = SimWorld::new();
@@ -145,53 +149,115 @@ fn an_only_child_has_nowhere_to_go() {
     assert!(!reorder(&mut sim, &map, 200, ZOrder::ToFront));
 }
 
-/// **O Z-INDEX é o lugar na pilha dos irmãos, e MAIOR é a FRENTE** (a convenção do Godot).
+/// **O Z é GLOBAL e SOBREPÕE a árvore** — a lei que o Enio pediu, medida na pilha do produto.
 ///
-/// ⚠️ Sem a segunda metade (`n`), o número seria incomparável: *"Z 2"* não diz se a forma está no
-/// topo ou no meio, e o artista teria de contar as irmãs na Hierarquia para saber.
+/// ⚠️ A mutação que o mata é a `z_order` deixar de ordenar por `effective_z_index`: aí a forma do
+/// FUNDO da hierarquia continua no fundo por mais alto que o número seja.
 #[test]
-fn the_z_index_counts_from_the_back_and_names_the_total() {
+fn the_z_index_is_global_and_overrides_the_hierarchy_order() {
     let (mut sim, map) = three_roots();
+    // `10` é a de trás por hierarquia. Um Z alto passa-a à frente de TUDO.
+    set_z(&mut sim, &map, 10, 5);
     assert_eq!(
-        z_index(&mut sim, &map, 10),
-        Some((2, 3)),
-        "10 esta' na frente"
-    );
-    assert_eq!(z_index(&mut sim, &map, 20), Some((1, 3)));
-    assert_eq!(
-        z_index(&mut sim, &map, 30),
-        Some((0, 3)),
-        "30 esta' no fundo"
+        stack(&mut sim),
+        vec![20, 30, 10],
+        "o Z nao sobrepos a ordem da hierarquia"
     );
 }
 
-/// **O número que o painel mostra é o lugar que o botão move** — as duas portas concordam.
+/// **A ordem da hierarquia só conta quando o Z EMPATA** — a outra metade da mesma frase.
 ///
-/// ⚠️ É o gate que impede o readout de virar decoração: uma `z_index` com a própria travessia
-/// responderia hoje o mesmo e divergiria no dia em que o critério de desempate mudasse num lado só.
+/// ⚠️ Sem ela, um `sort` instável (ou por outra chave) passaria despercebido: com todos os Z
+/// iguais a pilha tem de ser exatamente o DFS.
+#[test]
+fn the_tree_order_decides_only_among_equal_z() {
+    let (mut sim, map) = three_roots();
+    for id in [10u64, 20, 30] {
+        set_z(&mut sim, &map, id, 7); // o MESMO Z para todos
+    }
+    assert_eq!(
+        stack(&mut sim),
+        vec![10, 20, 30],
+        "com o Z empatado a pilha tem de ser a ordem da Hierarquia"
+    );
+}
+
+/// **Um FILHO com Z alto passa à frente do vizinho do PAI** — o que a versão por-irmãos deste
+/// módulo não conseguia exprimir, e é literalmente o que *"global"* significa.
+#[test]
+fn a_child_with_a_high_z_beats_its_parents_neighbour() {
+    let (mut sim, map) = parent_with_kids();
+    // Um vizinho raiz que nasce DEPOIS do pai, logo à frente de toda a sub-árvore dele.
+    let e = sim
+        .world_mut()
+        .spawn((Transform::default(), VecPathRef(900), RootOrder(9)))
+        .id();
+    let mut map = map;
+    map.insert(900, e.to_bits());
+    assert_eq!(*stack(&mut sim).last().unwrap(), 900);
+
+    set_z(&mut sim, &map, 201, 3);
+    assert_eq!(
+        *stack(&mut sim).last().unwrap(),
+        201,
+        "o filho com Z alto nao passou o vizinho do pai"
+    );
+}
+
+/// **Quando a ÁRVORE não consegue entregar, o botão escreve o Z** — a regra única do `reorder`,
+/// medida pelo RESULTADO e não por um `match` de casos.
+///
+/// ⚠️ A mutação que o mata é tirar o `bump_z`: o To Front vira um movimento de irmãos que não
+/// muda nada na pilha, e o artista carrega no botão sem ver nada acontecer.
+#[test]
+fn the_button_writes_the_z_when_the_tree_cannot_deliver() {
+    let (mut sim, map) = three_roots();
+    set_z(&mut sim, &map, 30, 9); // `30` está travada na frente pelo Z
+    assert_eq!(*stack(&mut sim).last().unwrap(), 30);
+
+    assert!(reorder(&mut sim, &map, 10, ZOrder::ToFront));
+    assert_eq!(
+        *stack(&mut sim).last().unwrap(),
+        10,
+        "o To Front desistiu porque a arvore sozinha nao chegava la'"
+    );
+    assert!(
+        authored_z(&sim, &map, 10).unwrap() > 9,
+        "o Z nao foi escrito: {:?}",
+        authored_z(&sim, &map, 10)
+    );
+}
+
+/// **O campo escreve o número, e o ZERO destaca o componente** — a política de todo override deste
+/// repo: um arquivo não guarda o neutro.
+#[test]
+fn writing_zero_detaches_the_override() {
+    let (mut sim, map) = three_roots();
+    assert_eq!(authored_z(&sim, &map, 10), Some(0), "nasce neutro");
+    assert!(set_authored_z(&mut sim, &map, 10, 4));
+    assert_eq!(authored_z(&sim, &map, 10), Some(4));
+
+    let e = Entity::from_bits(*map.get(&10).unwrap());
+    assert!(sim.world().get::<ZIndexOverride>(e).is_some());
+    assert!(set_authored_z(&mut sim, &map, 10, 0));
+    assert!(
+        sim.world().get::<ZIndexOverride>(e).is_none(),
+        "o zero deixou o componente pendurado no arquivo"
+    );
+    // E re-escrever o mesmo valor é recusado — um passo de undo vazio é ruído.
+    assert!(!set_authored_z(&mut sim, &map, 10, 0));
+}
+
+/// **O número que o painel mostra é o que o botão move** — as duas portas concordam.
 #[test]
 fn the_readout_follows_the_button() {
     let (mut sim, map) = three_roots();
-    assert_eq!(z_index(&mut sim, &map, 30), Some((0, 3)));
-    reorder(&mut sim, &map, 30, ZOrder::Raise);
+    set_z(&mut sim, &map, 30, 9);
+    assert_eq!(authored_z(&sim, &map, 10), Some(0));
+    reorder(&mut sim, &map, 10, ZOrder::ToFront);
     assert_eq!(
-        z_index(&mut sim, &map, 30),
-        Some((1, 3)),
+        authored_z(&sim, &map, 10),
+        Some(10),
         "o readout nao acompanhou o botao"
     );
-    reorder(&mut sim, &map, 30, ZOrder::ToFront);
-    assert_eq!(z_index(&mut sim, &map, 30), Some((2, 3)));
-}
-
-/// **O Z-index de um filho conta os IRMÃOS, não o documento.**
-#[test]
-fn the_z_index_of_a_child_is_among_its_siblings() {
-    let (mut sim, map) = parent_with_kids();
-    assert_eq!(
-        z_index(&mut sim, &map, 200),
-        Some((2, 3)),
-        "o filho da frente e' o 200, entre TRES irmaos"
-    );
-    // O pai é raiz única: um de um.
-    assert_eq!(z_index(&mut sim, &map, 100), Some((0, 1)));
 }

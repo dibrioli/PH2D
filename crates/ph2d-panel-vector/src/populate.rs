@@ -425,6 +425,21 @@ fn populate_shape(store: &mut WidgetStore) {
 fn populate_arrange(store: &mut WidgetStore) {
     // Arrange: Duplicate + z-order restack + Flip buttons (act on the selected path).
     button(store, ids::VECTOR_ARRANGE_DUPLICATE);
+    // **O Z-INDEX global.** ⚠️ **Sem `set_number_range`**, e é a decisão dos campos do Transform
+    // pelo mesmo motivo: o teto real é o do `ZIndexOverride::Z_MAX`, aplicado na PORTA de escrita
+    // da shell (onde a regra é do documento), e um clamp no widget seria a segunda resposta —
+    // divergindo no dia em que o componente mudasse de faixa.
+    store.register(
+        ids::VECTOR_ARRANGE_Z,
+        InteractiveState::NumberInput {
+            state: TextInputState::Normal,
+            value: 0.0,
+            buffer: String::from("0"),
+            caret: 0,
+            last_committed: 0.0,
+            selection_anchor: None,
+        },
+    );
     button(store, ids::VECTOR_ARRANGE_TO_BACK);
     button(store, ids::VECTOR_ARRANGE_BACKWARD);
     button(store, ids::VECTOR_ARRANGE_FORWARD);

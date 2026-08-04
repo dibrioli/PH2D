@@ -3,7 +3,7 @@
 //! # O oráculo, e o que ele prova (e o que NÃO prova)
 //!
 //! O Vello publica os próprios contadores de camada (`Encoding::n_clips` / `n_open_clips` /
-//! `n_paths`), e é deles que estes gates leem — não da escrituração do `OpenParents`, que é a
+//! `n_paths`), e é deles que estes gates leem — não da escrituração do `OpenClips`, que é a
 //! função sob teste. É o mesmo oráculo que os gates de geometria viva deste crate já usam.
 //!
 //! ⚠️ **Que os pixels fora da moldura desapareçam é o `push_clip` do Vello**, a MESMA camada que
@@ -23,7 +23,7 @@
 
 use super::*;
 use crate::{FxImages, dispatch};
-use ph2d_vec_scene::{Paint, Rgba8, VecParentSpan, VecVertex, VecXforms};
+use ph2d_vec_scene::{Paint, Rgba8, VecClipSpan, VecVertex, VecXforms};
 use ph2d_vector::Point;
 
 /// Um quadrado preenchido de lado `s`, na origem.
@@ -38,15 +38,19 @@ fn square(scene: &mut VecScene, s: f64) -> VecPathId {
     })
 }
 
-/// A cena da moldura, **na ordem da pilha de z que a árvore dita**: os filhos ao fundo, a moldura
-/// por cima (o DFS lista o pai antes, e a pilha é o inverso — ver `vec_zorder::z_order`).
+/// A cena da moldura, **na ordem da pilha de z que a árvore dita**: a moldura ao FUNDO e os filhos
+/// por cima (o DFS lista o pai antes, e desde a lei de Godot a pilha é o DFS **na ordem** — ver
+/// `vec_zorder::z_order`).
+///
+/// ⚠️ Esta fixture já esteve ao contrário, e a inversão é a wave inteira: enquanto o pai era o
+/// último da sub-árvore, o renderer tinha de ANTECIPAR o desenho dele.
 ///
 /// Devolve `(scene, frame_id, [kid_a, kid_b])`.
 fn framed_scene() -> (VecScene, VecPathId, [VecPathId; 2]) {
     let mut scene = VecScene::new();
+    let frame = square(&mut scene, 4.0);
     let a = square(&mut scene, 1.0);
     let b = square(&mut scene, 1.0);
-    let frame = square(&mut scene, 4.0);
     (scene, frame, [a, b])
 }
 
@@ -80,16 +84,15 @@ fn a_scene_without_frames_encodes_no_layer() {
 /// A moldura abre UMA camada, fecha-a, e desenha o próprio fundo UMA vez.
 ///
 /// `n_paths` é o que distingue *desenhada uma vez* de *duas*: três formas + os DOIS caminhos que
-/// uma camada custa (a silhueta que recorta, e o fantasma do `end_clip`) = 5. Se a moldura fosse
-/// desenhada na abertura **e** na vez dela, sairiam 6.
+/// uma camada custa (a silhueta que recorta, e o fantasma do `end_clip`) = 5. Se o laço desenhasse
+/// a moldura e ainda a antecipasse, sairiam 6.
 #[test]
 fn the_frame_opens_one_layer_closes_it_and_draws_its_background_once() {
     let (scene, frame, kids) = framed_scene();
     let view = VecViewState {
-        parent_spans: vec![VecParentSpan {
-            parent: frame,
-            first: kids[0],
-            clip: true,
+        clips: vec![VecClipSpan {
+            frame,
+            last: kids[1],
         }],
         ..Default::default()
     };
@@ -99,49 +102,35 @@ fn the_frame_opens_one_layer_closes_it_and_draws_its_background_once() {
     assert_eq!(paths, 5, "3 formas + os 2 caminhos de uma camada");
 }
 
-/// **UMA MOLDURA SEM RECORTE AINDA É O FUNDO** (Enio 2026-08-02: *"os filhos estão ficando atrás
-/// do pai, logo não podem ser vistos a menos que reduza a opacidade"*).
+/// **SEM INTERVALO, ZERO CAMADAS — e o fundo continua a sair uma vez.**
 ///
-/// A pilha de z é o DFS invertido, então um pai desenha na FRENTE dos filhos; o intervalo existe
-/// para antecipar o desenho dele. Enquanto só molduras que RECORTAM tinham intervalo, uma moldura
-/// de LAYOUT (recorte desligado) não tinha — e pintava por cima do próprio conteúdo.
+/// ⚠️ Este gate já afirmou o CONTRÁRIO (*"uma moldura sem recorte ainda tem intervalo"*), porque o
+/// intervalo era *onde o desenho do pai é antecipado* e por isso todo pai precisava de um. Com a
+/// projeção invertida (a lei de Godot) o pai desenha primeiro porque **é** o primeiro: quem não
+/// recorta não precisa de intervalo nenhum, e um `push`/`pop` ali seria uma camada que não recorta.
 ///
-/// ⚠️ O oráculo separa as duas metades por CONTAGEM, e é isso que o torna capaz de falhar nos
-/// dois sentidos: **zero camadas** (ela não recorta) e **3 caminhos** (as três formas, cada uma
-/// uma vez). Nasceu VERMELHO — sem intervalo a moldura desenhava na vez dela, por cima; e uma
-/// cura que empurrasse camada mesmo assim daria 2 clips.
+/// O oráculo separa as duas metades por CONTAGEM: **zero camadas** e **3 caminhos** (as três
+/// formas, cada uma uma vez). Uma antecipação que voltasse daria 4.
 #[test]
-fn a_frame_that_does_not_clip_is_still_the_backdrop() {
-    let (scene, frame, kids) = framed_scene();
-    let view = VecViewState {
-        parent_spans: vec![VecParentSpan {
-            parent: frame,
-            first: kids[0],
-            clip: false,
-        }],
-        ..Default::default()
-    };
-    let (clips, open, paths) = encode(&scene, &view);
-    assert_eq!(
-        clips, 0,
-        "ela nao recorta — nenhuma camada devia ser empurrada"
-    );
+fn no_span_means_no_layer_and_the_backdrop_still_draws_once() {
+    let (scene, _, _) = framed_scene();
+    let (clips, open, paths) = encode(&scene, &VecViewState::default());
+    assert_eq!(clips, 0, "sem intervalo nenhuma camada e' empurrada");
     assert_eq!(open, 0, "e nenhuma ficou pendurada");
     assert_eq!(paths, 3, "as tres formas, cada uma UMA vez");
 }
 
-/// ⚠️ **O gate que decide a ordem dentro do laço.** A abertura corre ANTES do filtro de escondido:
-/// se ela dependesse de o primeiro descendente desenhar, um filho escondido deixaria a camada por
-/// abrir — e o `pop` da moldura fecharia a camada de outra pessoa.
+/// ⚠️ **O gate que decide a ordem dentro do laço.** O fechamento corre FORA do filtro de
+/// escondido: se ele dependesse de o último descendente desenhar, um filho escondido deixaria a
+/// camada aberta — e ela recortaria o resto do frame, que é chrome que esta crate nem desenha.
 #[test]
-fn a_hidden_first_child_still_pairs_the_layer() {
+fn a_hidden_last_child_still_closes_the_layer() {
     let (scene, frame, kids) = framed_scene();
     let view = VecViewState {
-        hidden: vec![kids[0]],
-        parent_spans: vec![VecParentSpan {
-            parent: frame,
-            first: kids[0],
-            clip: true,
+        hidden: vec![kids[1]],
+        clips: vec![VecClipSpan {
+            frame,
+            last: kids[1],
         }],
         ..Default::default()
     };
@@ -157,10 +146,9 @@ fn a_hidden_frame_draws_no_background_but_still_pairs() {
     let (scene, frame, kids) = framed_scene();
     let view = VecViewState {
         hidden: vec![frame, kids[0], kids[1]],
-        parent_spans: vec![VecParentSpan {
-            parent: frame,
-            first: kids[0],
-            clip: true,
+        clips: vec![VecClipSpan {
+            frame,
+            last: kids[1],
         }],
         ..Default::default()
     };
@@ -170,25 +158,23 @@ fn a_hidden_frame_draws_no_background_but_still_pairs() {
     assert_eq!(paths, 2, "nada desenhado: só os 2 caminhos da camada");
 }
 
-/// Molduras aninhadas fecham em LIFO. As duas abrem no mesmo path (o descendente mais ao fundo é
+/// Molduras aninhadas fecham em LIFO. As duas fecham no mesmo path (o descendente mais à frente é
 /// comum), e é a ORDEM da lista — de fora para dentro — que faz o par certo.
 #[test]
 fn nested_frames_pair_lifo() {
     let mut scene = VecScene::new();
-    let leaf = square(&mut scene, 1.0);
-    let inner = square(&mut scene, 2.0);
     let outer = square(&mut scene, 4.0);
+    let inner = square(&mut scene, 2.0);
+    let leaf = square(&mut scene, 1.0);
     let view = VecViewState {
-        parent_spans: vec![
-            VecParentSpan {
-                parent: outer,
-                first: leaf,
-                clip: true,
+        clips: vec![
+            VecClipSpan {
+                frame: outer,
+                last: leaf,
             },
-            VecParentSpan {
-                parent: inner,
-                first: leaf,
-                clip: true,
+            VecClipSpan {
+                frame: inner,
+                last: leaf,
             },
         ],
         ..Default::default()
@@ -203,18 +189,17 @@ fn nested_frames_pair_lifo() {
 /// desenha na MESMA cena, e uma camada aberta recortaria tudo o que vier depois.
 ///
 /// ⚠️ **A 1ª fixture disto não continha o fenômeno e a mutação SOBREVIVEU:** ela usava uma moldura
-/// que não está na cena (`parent: 9999`), e aí o `resolve` recusa e a camada **nunca abre** — não
+/// que não está na cena (`frame: 9999`), e aí o `resolve` recusa e a camada **nunca abre** — não
 /// havia o que fechar. O caso mal-formado que de fato deixa camada pendurada é o do intervalo
-/// INVERTIDO: abre num path que vem DEPOIS da moldura, então a vez dela já passou.
+/// INVERTIDO: abre num path que vem DEPOIS do fim declarado, então a vez de fechar já passou.
 #[test]
 fn a_malformed_span_never_leaves_a_layer_open() {
     let (scene, frame, kids) = framed_scene();
     let view = VecViewState {
-        parent_spans: vec![VecParentSpan {
-            // Invertido: a "moldura" é a primeira da pilha e o intervalo abre na última.
-            parent: kids[0],
-            first: frame,
-            clip: true,
+        clips: vec![VecClipSpan {
+            // Invertido: a "moldura" é a ÚLTIMA da pilha e o fim declarado é a primeira.
+            frame: kids[1],
+            last: frame,
         }],
         ..Default::default()
     };

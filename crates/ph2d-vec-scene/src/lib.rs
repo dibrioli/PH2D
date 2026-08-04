@@ -44,7 +44,7 @@ mod recook;
 mod paint_bind;
 pub use paint_bind::BoundPaint;
 mod structure;
-pub use structure::{VecClip, VecParentSpan, VecViewState};
+pub use structure::{VecClip, VecClipSpan, VecViewState};
 
 /// ADR-0111: a geometria do path é LOCAL. O afim que a leva ao mundo vem da
 /// entidade (`Transform` ∘ cadeia de pais) e é publicado pela shell a cada frame.

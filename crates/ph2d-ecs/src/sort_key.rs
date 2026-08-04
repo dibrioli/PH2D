@@ -330,6 +330,24 @@ fn group_root(world: &World, e: Entity, cache: &mut EntityHashMap<Entity>) -> En
     result
 }
 
+/// **O Z EFETIVO de uma entidade** — a porta única de *"quem está na frente?"*.
+///
+/// # Por que ela é pública
+///
+/// O `ZIndexOverride` era lido só pela pipeline de sprites. Desde 2026-08-04 a **pilha de z do
+/// vetor** o honra também (Enio: *"o Z index deve ser global e sobrepõe a ordem na hierarquia"*),
+/// e as duas leituras têm de ser a MESMA — um sprite e uma forma vetorial com o mesmo número
+/// respondendo ordens diferentes é a definição de duas portas.
+///
+/// ⚠️ **Sem memo, de propósito.** O consumidor do vetor pergunta uma vez por forma, num gesto do
+/// artista; a cadeia de pais de um documento de editor tem unidades de profundidade. O caminho
+/// quente (a pipeline de sprites) continua a usar a versão memoizada.
+#[must_use]
+pub fn effective_z_index(world: &World, entity: Entity) -> i32 {
+    let mut cache = EntityHashMap::default();
+    i32::try_from(effective_z(world, entity, &mut cache)).unwrap_or(0)
+}
+
 /// Effective cascaded Z for `entity` (spec §5.2 passo 4 + §5.9). With
 /// `ZAsRelative(true)` (default) the effective Z adds the parent's
 /// effective Z, saturating into the gateable range. Cascade stops at a

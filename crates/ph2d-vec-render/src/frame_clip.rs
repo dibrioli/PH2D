@@ -2,23 +2,26 @@
 //! precisa saber sobre contêineres.
 //!
 //! A moldura é um retângulo vivo que ganhou `ph2d_ecs::VecFrame` (o componente mora no ECS; aqui só
-//! chega o resultado, como `VecParentSpan` dentro do `VecViewState`). Ela faz DUAS coisas com a pilha
-//! de z, e as duas acontecem no mesmo lugar:
+//! chega o resultado, como `VecClipSpan` dentro do `VecViewState`).
 //!
-//! 1. **O preenchimento dela é o FUNDO.** O DFS lista o pai antes dos filhos e a pilha de z é o
-//!    inverso disso ⇒ um pai desenha na FRENTE dos filhos. Invisível para um grupo (sem
-//!    geometria), fatal para uma moldura: ela cobriria o próprio conteúdo. Então o desenho dela é
-//!    antecipado para a ABERTURA do intervalo — que é literalmente o que "fundo do card" quer
-//!    dizer, e o que o Figma faz.
-//! 2. **A silhueta dela recorta** o que vem depois, até a vez dela chegar.
+//! # O que este módulo DEIXOU de fazer, e por quê
+//!
+//! Ele tinha duas metades: *desenhar o preenchimento da moldura como FUNDO* e *recortar o que vem
+//! depois*. A primeira existia porque a pilha de z era o DFS **invertido**, o que punha todo pai na
+//! FRENTE dos filhos — então o desenho da moldura era **antecipado** para a abertura do intervalo.
+//!
+//! ⚠️ Desde 2026-08-04 a pilha é o DFS **na ordem** (a lei de Godot: o filho desenha sobre o pai),
+//! logo a moldura já é o primeiro membro da própria sub-árvore e o preenchimento dela **é** o fundo
+//! do card sem ninguém fazer nada. A antecipação sumiu; o `clip: bool` do intervalo sumiu com ela
+//! (quem não recorta não precisa de intervalo nenhum). Sobra o recorte, que é o que o nome diz.
 //!
 //! # Push e pop se emparelham SEMPRE
 //!
-//! ⚠️ A abertura corre **antes** do filtro de escondido, e o fechamento **antes** de qualquer
-//! outra decisão sobre a moldura. Se a abertura fosse condicionada a *"o primeiro descendente
-//! desenha"*, um filho escondido deixaria a camada por abrir e o `pop_layer` da moldura fecharia
-//! uma camada que não é dela — o Vello desmontaria o recorte de outra pessoa, e o sintoma seria
-//! arte alheia sumindo. Uma camada vazia custa um push e um pop; um desemparelhamento custa a cena.
+//! ⚠️ A abertura corre **fora** do filtro de escondido, e o fechamento também. Se a abertura fosse
+//! condicionada a *"a moldura desenha"*, uma moldura escondida deixaria a camada por abrir e o
+//! `pop_layer` do fim do intervalo fecharia uma camada que não é dela — o Vello desmontaria o
+//! recorte de outra pessoa, e o sintoma seria arte alheia sumindo. Uma camada vazia custa um push e
+//! um pop; um desemparelhamento custa a cena.
 
 use ph2d_vec_scene::{VecPath, VecPathId, VecScene, VecViewState, VecXforms};
 use ph2d_vector::{Affine, VectorScene};
@@ -29,24 +32,26 @@ use crate::{LiveGeometry, build::build_fill_bezpath, fill_rule, path_to_screen};
 /// o que permite ao [`crate::dispatch`] responder *"a vez deste path é a de fechar?"* sem procurar
 /// nada.
 #[derive(Default)]
-pub(crate) struct OpenParents {
-    /// A moldura aberta e **se ela empurrou camada** — uma que só serve de fundo não empurrou, e
-    /// dar-lhe um `pop_layer` fecharia a camada de outra pessoa.
-    stack: Vec<(VecPathId, bool)>,
+pub(crate) struct OpenClips {
+    stack: Vec<VecPathId>,
 }
 
-impl OpenParents {
-    /// Abre toda moldura cujo intervalo começa em `id`: desenha o fundo dela (se ela não estiver
-    /// escondida) e empurra a camada de clip.
+impl OpenClips {
+    /// Abre toda moldura cujo intervalo começa em `id` — ou seja, se `id` **é** uma moldura que
+    /// recorta, empurra a camada dela.
+    ///
+    /// ⚠️ **Chamado DEPOIS do desenho de `id`**: o preenchimento da moldura é o fundo do card e
+    /// não pode ser recortado pela própria silhueta (uma borda com anti-aliasing recortada por si
+    /// mesma perde metade da tinta da borda).
     ///
     /// `resolve` entrega a geometria da moldura **como o dispatch a desenharia** — a derivada viva
     /// se houver, senão a fonte com a pose. Uma segunda resolução aqui recortaria num lugar e
     /// pintaria noutro.
-    // Sete argumentos porque a abertura precisa das MESMAS entradas que o desenho de um
-    // caminho — resolver a geometria da moldura por outra via seria recortar num lugar e pintar
+    // Oito argumentos porque a abertura precisa das MESMAS entradas que o desenho de um caminho
+    // pede — resolver a geometria da moldura por outra via seria recortar num lugar e pintar
     // noutro (é o ponto do `resolve`).
     #[allow(clippy::too_many_arguments)]
-    pub(crate) fn open_at(
+    pub(crate) fn open_after(
         &mut self,
         id: VecPathId,
         scene: &VecScene,
@@ -56,55 +61,46 @@ impl OpenParents {
         camera: Affine,
         target: &mut VectorScene,
     ) {
-        for span in view.spans_opening_at(id) {
-            let Some((path, xf)) = resolve(scene, xforms, live, span.parent, camera) else {
+        for span in view.clips_opening_at(id) {
+            let Some((path, xf)) = resolve(scene, xforms, live, span.frame, camera) else {
                 continue;
             };
-            if !view.is_hidden(span.parent) {
-                crate::draw_path(path, xf, target);
-            }
-            // ⚠️ **Desenhar na abertura é incondicional; recortar não.** As duas metades vinham
-            // juntas porque só molduras com recorte tinham intervalo — e era isso que fazia uma
-            // moldura de LAYOUT (recorte desligado) pintar por cima do conteúdo dela.
-            if span.clip {
-                let mut bp = build_fill_bezpath(path);
-                bp.apply_affine(xf);
-                // A regra é a da PRÓPRIA moldura: um retângulo com furo (um card vazado) recorta
-                // pelo furo, e sob `NonZero` o furo ainda tomaria tinta.
-                target.push_clip_with_rule(&bp, fill_rule(path));
-            }
-            self.stack.push((span.parent, span.clip));
+            let mut bp = build_fill_bezpath(path);
+            bp.apply_affine(xf);
+            // A regra é a da PRÓPRIA moldura: um retângulo com furo (um card vazado) recorta
+            // pelo furo, e sob `NonZero` o furo ainda tomaria tinta.
+            target.push_clip_with_rule(&bp, fill_rule(path));
+            self.stack.push(span.frame);
         }
     }
 
-    /// Se `id` é a moldura aberta mais interna, fecha o intervalo dela e devolve `true` — e o
-    /// chamador **não a desenha**, porque ela já foi desenhada na abertura.
+    /// Fecha toda moldura cujo intervalo acaba em `id`, de dentro para fora.
     ///
-    /// ⚠️ **O `true` é sobre o DESENHO, não sobre a camada**: uma moldura que só serve de fundo
-    /// também já foi desenhada, e desenhá-la outra vez aqui a poria por cima do conteúdo — que é
-    /// exactamente o defeito que o intervalo dela existe para curar. O `pop_layer` é que anda com
-    /// o `clip`.
-    pub(crate) fn close_if_parent(&mut self, id: VecPathId, target: &mut VectorScene) -> bool {
-        if self.stack.last().is_some_and(|(f, _)| *f == id) {
-            if let Some((_, clipped)) = self.stack.pop()
-                && clipped
-            {
-                target.pop_layer();
+    /// ⚠️ **Chamado DEPOIS do desenho de `id`**: o `last` é o último path que o recorte alcança,
+    /// e ele próprio é recortado.
+    pub(crate) fn close_after(
+        &mut self,
+        id: VecPathId,
+        view: &VecViewState,
+        target: &mut VectorScene,
+    ) {
+        for span in view.clips_closing_at(id) {
+            // Só fecha se for de facto o topo da pilha — um intervalo mal-formado (que não
+            // aninha) não pode arrastar consigo a camada de outra pessoa.
+            if self.stack.last() != Some(&span.frame) {
+                continue;
             }
-            return true;
+            self.stack.pop();
+            target.pop_layer();
         }
-        false
     }
 
-    /// Fecha o que sobrou. ⚠️ Não pode acontecer com uma lista bem-formada (a moldura é o último
-    /// membro da própria sub-árvore, logo toda camada aberta fecha dentro do laço) — existe porque
-    /// a lista vem de fora, e uma cena com uma camada pendurada envenena **o resto do frame**, que
-    /// é chrome que esta crate nem desenha.
+    /// Fecha o que sobrou. ⚠️ Não pode acontecer com uma lista bem-formada — existe porque a lista
+    /// vem de fora, e uma cena com uma camada pendurada envenena **o resto do frame**, que é
+    /// chrome que esta crate nem desenha.
     pub(crate) fn close_all(&mut self, target: &mut VectorScene) {
-        for (_, clipped) in self.stack.drain(..) {
-            if clipped {
-                target.pop_layer();
-            }
+        for _ in self.stack.drain(..) {
+            target.pop_layer();
         }
     }
 }

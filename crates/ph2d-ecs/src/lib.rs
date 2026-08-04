@@ -76,7 +76,7 @@ pub use sampling::{
     resolve_texture_repeat,
 };
 pub use sim::{SimComponent, SimWorld};
-pub use sort_key::{SortInput, SortKey, compute_sort_ranks};
+pub use sort_key::{SortInput, SortKey, compute_sort_ranks, effective_z_index};
 pub use sorting::{
     LayerId, OrderInLayer, ShowBehindParent, SortPoint, SortingGroup, SortingLayer, SortingLayers,
     TopLevel, YSort, ZAsRelative, ZIndexOverride,

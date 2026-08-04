@@ -2096,6 +2096,9 @@ impl crate::App {
             // um bool basta para dizer *"houve clique"*.
             let mut pending_resize_box = false;
             let mut pending_layout_field: Option<(crate::vec_layout_edit::LayoutField, f64)> = None;
+            // **O Z-INDEX global** (Enio, 2026-08-04): o numero que sobrepoe a ordem da
+            // hierarquia. Campo numerico, entao a rota e' a mesma do Transform.
+            let mut pending_vec_z: Option<f64> = None;
             // **O TOKEN escolhido no picker** (plano UI/UX W4): a propriedade + o token, ou
             // `None` no token = SOLTAR (a propriedade volta ao literal do documento).
             let mut pending_token_bind: Option<(ph2d_ecs::BoundProp, Option<&'static str>)> = None;
@@ -2580,6 +2583,8 @@ impl crate::App {
                                 crate::input_dispatch::vec_transform_field_for_id(*id)
                             {
                                 pending_vec_transform = Some((field, *v));
+                            } else if *id == ph2d_editor::ids::VECTOR_ARRANGE_Z {
+                                pending_vec_z = Some(*v);
                             } else if let Some(f) = crate::vec_layout_edit::layout_field_for_id(*id)
                             {
                                 // Vao, recuo, Grow e Shrink — mesma rota dos campos do Transform:
@@ -6076,15 +6081,18 @@ impl crate::App {
                     &mut live.z_walk_scratch,
                     &mut live.z_snapshot,
                 );
-                let order = crate::vec_entities::z_order(&live.z_snapshot);
+                let order = crate::vec_entities::z_order(sim.world(), &live.z_snapshot);
                 vec_scene.reorder_to(&order);
             }
             let mut vec_view = crate::vec_entities::view_state(sim, &self.vec_entities);
             // **As MOLDURAS** (plano UI/UX W0): que intervalo da pilha cada uma recorta. Sai do
             // MESMO snapshot que acabou de ditar a pilha de z — derivá-lo de outra fonte seria uma
-            // segunda resposta a *"em que ordem estas formas estão?"*.
+            // segunda resposta a *"em que ordem estas formas estão?"* — e da pilha FINAL, porque o
+            // Z global pode ter tirado um descendente de dentro do intervalo.
             if let Some(live) = hero_live.as_ref() {
-                vec_view.parent_spans = crate::vec_frame_spans::parent_spans(sim, &live.z_snapshot);
+                let order: Vec<ph2d_vec_scene::VecPathId> =
+                    vec_scene.paths().iter().map(|p| p.id).collect();
+                vec_view.clips = crate::vec_frame_spans::clip_spans(sim, &live.z_snapshot, &order);
             }
             // **OS TOKENS** (plano UI/UX W4): a tinta que cada binding produz no modo VIGENTE.
             // Resolvido aqui, no passe de DESENHO, e não dentro do `view_state` — aquela porta é
@@ -6382,6 +6390,19 @@ impl crate::App {
                 if let Some((f, v)) = pending_layout_field {
                     crate::vec_layout_edit::apply_layout_field(sim, &self.vec_entities, &sel, f, v);
                 }
+                // **O Z-INDEX**, honrado ANTES de publicar (a ordem dos vizinhos): publicar
+                // primeiro deixaria o campo a mostrar o valor ANTERIOR por um quadro.
+                if let Some(v) = pending_vec_z
+                    && let Some(id) = sel.first()
+                {
+                    crate::vec_entities::zorder::set_authored_z(
+                        sim,
+                        &self.vec_entities,
+                        *id,
+                        // O clamp e' o do COMPONENTE, e mora na porta que escreve — nao no widget.
+                        v.round().clamp(f64::from(i32::MIN), f64::from(i32::MAX)) as i32,
+                    );
+                }
                 // AS ÂNCORAS (plano UI/UX W3): aplicar, e só depois publicar — publicar antes
                 // deixaria o chip a mostrar a regra ANTERIOR por um frame, e o artista veria a
                 // escolha "não pegar" (a mesma ordem que os tokens abaixo).
@@ -6434,12 +6455,16 @@ impl crate::App {
                     });
                 let (rows, beyond) = pieces.unwrap_or_default();
                 ph2d_panel_vector::state::set_instance_pieces(rows, beyond);
-                // **O Z-INDEX da seleção** (Enio, 2026-08-04) — o lugar dela na pilha dos IRMÃOS.
-                // Publicado pela MESMA porta que os botões Arrange movem, para o número que o
-                // artista lê ser o lugar que o botão muda.
-                ph2d_panel_vector::state::set_z_index(sel.first().and_then(|id| {
-                    crate::vec_entities::zorder::z_index(sim, &self.vec_entities, *id)
-                }));
+                // **O Z-INDEX da seleção** (Enio, 2026-08-04) — o número GLOBAL que sobrepõe a
+                // ordem da hierarquia. Publicado pela MESMA porta que o campo escreve e que os
+                // botões Arrange movem, para o número que o artista lê ser o que ele edita.
+                ph2d_panel_vector::state::set_z_index(
+                    sel.first()
+                        .and_then(|id| {
+                            crate::vec_entities::zorder::authored_z(sim, &self.vec_entities, *id)
+                        })
+                        .map(|z| z as f32),
+                );
                 // **Resize Box** (plano UI/UX W3b): honrar e so' depois publicar, a mesma ordem
                 // dos irmaos acima — publicar antes deixaria a caixa a mostrar o estado ANTERIOR
                 // por um frame, e o artista veria o clique "nao pegar".
@@ -6528,9 +6553,7 @@ impl crate::App {
             // hit-test monta o `VecViewState` dele do zero a cada evento de ponteiro, e aquela
             // porta só sabe o que a ÁRVORE diz (escondido, travado) — sem isto ele decide como se
             // nenhuma moldura existisse e nenhuma forma tivesse sido colocada.
-            self.vec_view_derived
-                .parent_spans
-                .clone_from(&vec_view.parent_spans);
+            self.vec_view_derived.clips.clone_from(&vec_view.clips);
             self.vec_view_derived.poses.clone_from(&vec_view.poses);
             // **O ALINHAMENTO roda por ÚLTIMO, e TRANSFORMA o mapa em vez de o estender.**
             // Os cinco acima são mutuamente exclusivos (um componente cada, um por vez no

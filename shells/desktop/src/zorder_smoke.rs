@@ -118,20 +118,23 @@ fn announce(app: &mut crate::App) {
         "     azul. Ele e' FILHO do azul — e em Godot (e no Figma, e no Illustrator) o filho"
     );
     eprintln!("     desenha SOBRE o pai. Se ele sumiu, a lei quebrou.");
-    eprintln!("     Confira na Hierarquia: o amarelo esta' indentado sob o azul.");
-    eprintln!("  2. Arraste o azul pelo canvas: o amarelo vai junto (ele e' filho) e continua por");
-    eprintln!("     cima. Mude a cor do azul: o amarelo NAO some.");
-    eprintln!("  3. ⚠️ **A PROVA DOS BOTOES**: clique no retangulo VERMELHO (o de tras dos tres");
-    eprintln!("     da direita). A secao **Arrange** mostra agora uma linha **Z 0 / 3**.");
-    eprintln!("     Carregue em **Forward**: o vermelho sobe UM lugar (Z 1 / 3) e passa a tapar o");
-    eprintln!("     verde. Carregue em **To Front**: ele vai para Z 2 / 3, na frente de todos.");
-    eprintln!("     ⚠️ O numero e o desenho tem de andar JUNTOS — se o Z muda e a arte nao, ou o");
-    eprintln!("     contrario, sao duas respostas para a mesma pergunta.");
-    eprintln!("  4. **To Back** devolve-o ao fundo (Z 0 / 3). Ctrl+Z desfaz cada passo.");
-    eprintln!("  5. Selecione o AMARELO (o filho). O Z dele conta os IRMAOS: **Z 0 / 1** — ele e'");
-    eprintln!("     filho unico, e os botoes nao tem para onde o mover. Isso e' correto: um filho");
-    eprintln!("     nao passa a frente do vizinho do pai; ele vive DENTRO do pai.");
-    eprintln!("  6. ⚠️ **O CONTROLE**: o quadrado CINZA nunca virou nada e tem de estar");
+    eprintln!("  2. ⚠️ **A HIERARQUIA VIROU**: o amarelo aparece ABAIXO do azul na lista, e mais");
+    eprintln!("     abaixo = mais A' FRENTE (a convencao das game engines). Confira nos tres");
+    eprintln!("     irmaos da direita: o que esta' por CIMA no canvas e' o ULTIMO da lista.");
+    eprintln!("  3. **Desenhe uma forma nova** (Pen, ou a ferramenta de retangulo) por cima dos");
+    eprintln!("     tres irmaos. Ela tem de nascer no FIM da Hierarquia e POR CIMA do desenho.");
+    eprintln!("  4. ⚠️ **A PROVA DA INSTANCIA** (o report que abriu esta wave): selecione o AZUL,");
+    eprintln!("     **Create Component**, depois **Place Instance**. Na copia o amarelo tem de");
+    eprintln!("     estar POR CIMA tambem — era exactamente aqui que ele ia para tras do pai.");
+    eprintln!("  5. ⚠️ **O Z INDEX**: clique no retangulo VERMELHO (o de tras dos tres da");
+    eprintln!("     direita). A secao **Arrange** mostra um campo **Z** com 0. Escreva **5**:");
+    eprintln!("     ele salta para a frente dos outros dois SEM mudar de lugar na Hierarquia.");
+    eprintln!("     ⚠️ E' isso que 'global' significa: o Z manda, e a ordem da lista so' conta");
+    eprintln!("     entre objetos que EMPATAM nele. Volte o campo a 0 e ele regressa ao fundo.");
+    eprintln!("  6. **Forward / To Front / To Back** movem o vermelho na pilha que se VE — se a");
+    eprintln!("     arvore sozinha nao consegue (porque outro objeto tem Z maior), o botao");
+    eprintln!("     escreve o Z, e o numero no campo muda junto. Ctrl+Z desfaz cada passo.");
+    eprintln!("  7. ⚠️ **O CONTROLE**: o quadrado CINZA nunca virou nada e tem de estar");
     eprintln!("     exactamente onde nasceu, em todos os passos.");
 }
 

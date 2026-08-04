@@ -27,11 +27,10 @@ pub struct VecViewState {
     /// intervalo que cada uma ocupa na pilha de z. Vazio = nenhuma moldura recorta, e o desenho é
     /// **byte-idêntico** ao mundo pré-moldura.
     ///
-    /// ⚠️ **A ordem é de FORA para DENTRO.** Duas molduras aninhadas podem abrir no MESMO path (o
-    /// descendente mais ao fundo é o mesmo para as duas), e a camada de clip é uma pilha: abrir a
-    /// de dentro primeiro fecharia na ordem errada. Quem produz esta lista caminha a árvore de
-    /// cima para baixo, e é isso que torna o emparelhamento LIFO correto por construção.
-    pub parent_spans: Vec<VecParentSpan>,
+    /// ⚠️ **A ordem é de FORA para DENTRO**, e a lista é **laminar** (bem-aninhada) por
+    /// construção de quem a produz: a camada de clip é uma pilha, e dois intervalos que se
+    /// cruzassem fariam um `pop_layer` fechar a camada de outra pessoa.
+    pub clips: Vec<VecClipSpan>,
     /// **A tinta que os TOKENS produzem neste modo** (`ph2d_ecs::VecBindings` resolvido contra o
     /// tema vigente). Vazio = nada bindado, e o desenho é **byte-idêntico** ao mundo pré-token.
     ///
@@ -61,36 +60,26 @@ pub struct VecViewState {
     pub poses: Vec<(VecPathId, crate::Xform)>,
 }
 
-/// **Uma moldura que recorta**, dita em termos da pilha de z: *do `first` (inclusive) até o
-/// `frame` (exclusive), o desenho é recortado à silhueta do `frame`*.
+/// **Uma moldura que recorta**, dita em termos da pilha de z: *do `frame` (exclusive) até o `last`
+/// (inclusive), o desenho é recortado à silhueta do `frame`*.
 ///
-/// Duas coisas fazem este par de ids bastar, e as duas são fatos do repo e não escolhas:
+/// ⚠️ **A moldura é o PRIMEIRO membro da própria sub-árvore**, desde que a pilha de z passou a ser
+/// o DFS **na ordem** (a lei de Godot — o filho desenha sobre o pai, `vec_zorder::z_order`). O
+/// preenchimento dela é o fundo do card porque ela desenha primeiro, e não porque alguém antecipa
+/// o desenho dela: a versão anterior deste tipo carregava um `clip: bool` justamente porque TODO
+/// pai precisava de um intervalo só para ser antecipado. Hoje o intervalo é sobre **recortar**, e
+/// mais nada — quem não recorta não tem intervalo.
 ///
-/// 1. **A sub-árvore é CONTÍGUA em z.** A pilha é a projeção DFS da árvore
-///    (`vec_zorder::z_order`), e o passe de recorte de SPRITE já se apoia nisso literalmente
-///    (*"a clip group's runs are contiguous — subtree contiguity in z"*). Logo o intervalo entre
-///    o descendente mais ao fundo e a moldura é exatamente a sub-árvore dela.
-/// 2. **A moldura vem por ÚLTIMO na própria sub-árvore.** O DFS lista o pai ANTES dos filhos e a
-///    pilha de z é o inverso disso ⇒ um pai desenha na FRENTE dos filhos. Para um grupo isso é
-///    invisível (grupo não tem geometria); a moldura é o primeiro pai COM geometria, e é por isso
-///    que ela precisa de tratamento: o preenchimento dela é o **fundo** do card, e tem de ser
-///    desenhado ao ABRIR o intervalo, não ao chegar a vez dela.
+/// ⚠️ **O `last` sai da pilha FINAL, não do DFS.** O Z é global e sobrepõe a árvore, então um
+/// descendente com Z alto pode sair de dentro do intervalo — e sai *mesmo*: ele deixa de ser
+/// recortado. É o significado literal de *"o Z sobrepõe a ordem na hierarquia"*, e resolver o
+/// intervalo contra o DFS o descreveria onde a forma já não está.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct VecParentSpan {
+pub struct VecClipSpan {
     /// A moldura: a silhueta que recorta, e o preenchimento que faz de fundo.
-    pub parent: VecPathId,
-    /// O descendente mais ao FUNDO — onde o intervalo abre.
-    pub first: VecPathId,
-    /// A moldura **RECORTA** o conteúdo, ou só lhe serve de fundo?
-    ///
-    /// ⚠️ Toda moldura com conteúdo tem intervalo, e é isso que faz o preenchimento dela ser
-    /// antecipado para a abertura — *o fundo do card*. Antes, o intervalo só existia quando ela
-    /// recortava, e uma moldura de LAYOUT com recorte desligado desenhava por cima do próprio
-    /// conteúdo (Enio, 2026-08-02: *"os filhos estão ficando atrás do pai, logo não podem ser
-    /// vistos a menos que reduza a opacidade"*).
-    ///
-    /// Recortar é a metade OPCIONAL; ser fundo não é.
-    pub clip: bool,
+    pub frame: VecPathId,
+    /// O último path que o recorte alcança — onde o intervalo FECHA.
+    pub last: VecPathId,
 }
 
 impl VecViewState {
@@ -134,9 +123,17 @@ impl VecViewState {
         !self.hidden.contains(&id) && !self.locked.contains(&id)
     }
 
-    /// As molduras cujo intervalo ABRE neste path, na ordem de fora para dentro.
-    pub fn spans_opening_at(&self, id: VecPathId) -> impl Iterator<Item = &VecParentSpan> {
-        self.parent_spans.iter().filter(move |c| c.first == id)
+    /// As molduras cujo intervalo ABRE neste path — ou seja, as que **são** este path.
+    pub fn clips_opening_at(&self, id: VecPathId) -> impl Iterator<Item = &VecClipSpan> {
+        self.clips.iter().filter(move |c| c.frame == id)
+    }
+
+    /// As molduras cujo intervalo FECHA neste path, **de dentro para fora**.
+    ///
+    /// ⚠️ A inversão é o que emparelha o LIFO: a lista vem de fora para dentro, e a camada mais
+    /// interna tem de fechar primeiro.
+    pub fn clips_closing_at(&self, id: VecPathId) -> impl Iterator<Item = &VecClipSpan> {
+        self.clips.iter().rev().filter(move |c| c.last == id)
     }
 }
 

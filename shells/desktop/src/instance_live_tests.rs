@@ -148,6 +148,38 @@ fn the_masters_subtree_is_what_the_instance_draws() {
     assert_eq!(items.len(), 2, "a raiz e a peça: {}", items.len());
 }
 
+/// **A CÓPIA empilha como o MESTRE: a peça-filha desenha SOBRE a raiz** (Enio, 2026-08-04: *"ao
+/// criar a instância, os filhos que no mestre aparecem na frente dos pais vão para trás dos
+/// pais"*).
+///
+/// ⚠️ **A instância não tem como herdar um remendo de renderer.** Enquanto a lei *"o filho desenha
+/// sobre o pai"* era imposta pela ANTECIPAÇÃO do desenho no `ph2d_vec_render::dispatch`, ela valia
+/// para a cena e não para a cópia: `cook_one` produz uma LISTA que o dispatch desenha em bloco, no
+/// z da instância, e nada ali sabia demover a raiz. Invertida a projeção, a ordem certa chega aqui
+/// **pela mesma varredura** — `subtree_paths` percorre `scene.paths()`, que é a pilha.
+///
+/// O oráculo é a ORDEM da lista desenhada, não a `subtree_paths`: é a lista que o renderer
+/// consome, e uma segunda travessia entre as duas é exactamente onde a ordem se perderia.
+#[test]
+fn the_copy_stacks_like_the_master_so_the_child_piece_draws_last() {
+    let (sim, scene, map, main, piece, insts) = master_and_instances(1);
+    // A premissa: na CENA o mestre vem antes da peça-filha (a pilha põe o pai ao fundo).
+    let order: Vec<VecPathId> = scene.paths().iter().map(|p| p.id).collect();
+    let (pm, pp) = (
+        order.iter().position(|i| *i == main).unwrap(),
+        order.iter().position(|i| *i == piece).unwrap(),
+    );
+    assert!(pm < pp, "a fixture nao contem o fenomeno: {order:?}");
+
+    let live = cook(&sim, &scene, &map);
+    let pieces = live.pieces_of(insts[0]).expect("a copia desenha");
+    assert_eq!(
+        pieces,
+        [main, piece],
+        "a copia desenhou a raiz DEPOIS da peca — ela cobre o proprio conteudo"
+    );
+}
+
 /// **A instância pousa na POSE dela** — o conteúdo do mestre viaja, a disposição interna fica.
 #[test]
 fn the_content_lands_on_the_instances_pose() {

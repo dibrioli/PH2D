@@ -80,7 +80,7 @@ impl Frame {
             &mut self.scratch,
             &mut self.snap,
         );
-        let order = z_order(&self.snap);
+        let order = z_order(sim.world(), &self.snap);
         scene.reorder_to(&order);
     }
 
@@ -127,7 +127,7 @@ fn a_shape_born_this_frame_is_already_in_the_z_projection() {
     let ids = three_fresh_shapes(&mut scene);
     frame.run(&mut sim, &mut scene, &mut map);
 
-    let order = z_order(&frame.snap);
+    let order = z_order(sim.world(), &frame.snap);
     assert_eq!(
         order.len(),
         scene.paths().len(),
@@ -139,16 +139,17 @@ fn a_shape_born_this_frame_is_already_in_the_z_projection() {
     }
 }
 
-/// **A forma NOVA nasce na FRENTE** — e a pilha de z é a árvore lida ao contrário.
+/// **A forma NOVA nasce na FRENTE** — e desde a lei de Godot (2026-08-04) isso é o FIM da lista.
 ///
-/// A Hierarquia lista a primeira linha à FRENTE (convenção Illustrator/Figma), então a pilha de z
-/// (fundo → topo) é a lista invertida. E o `sync` dá ao path novo o **menor** `RootOrder`, que é a
-/// primeira linha: **desenhar uma forma em cima de outra a põe por cima**.
+/// A Hierarquia lista a ÚLTIMA linha à frente (a convenção das game engines, que o Enio pediu:
+/// *"em Godot os objetos mais abaixo na hierarquia aparecem na frente"*), e a pilha de z é a lista
+/// **na ordem**. O `sync` dá ao path novo o **maior** `RootOrder`, que é a última linha:
+/// **desenhar uma forma em cima de outra a põe por cima**, e ela entra no fim da lista — que é o
+/// outro pedido do mesmo report (*"um objeto novo vai para o último abaixo na hierarquia"*).
 ///
-/// A versão anterior fazia o contrário (o path novo levava o MAIOR número = a última linha = o
-/// fundo) — e o comentário dela dizia "em cima". O Enio viu o preço no Blend: a 1ª forma gerada
-/// saiu **debaixo** do círculo que a originou. Um gate que consagra o código em vez da aparência
-/// não pega o bug: **carimba**.
+/// ⚠️ **As duas metades deste gate já estiveram invertidas, e é por isso que ele afirma AS DUAS.**
+/// O que importa não é o número: é que *a mais nova aparece por cima* — e uma delas sozinha fica
+/// verde sob a convenção errada.
 #[test]
 fn a_new_shape_is_born_in_front() {
     let mut sim = SimWorld::default();
@@ -159,7 +160,7 @@ fn a_new_shape_is_born_in_front() {
     let [a, b, c] = three_fresh_shapes(&mut scene);
     frame.run(&mut sim, &mut scene, &mut map);
 
-    // A árvore lista a mais NOVA primeiro (primeira linha = frente).
+    // A árvore lista a mais NOVA por último (última linha = frente).
     let tree: Vec<VecPathId> = frame
         .snap
         .entries
@@ -168,13 +169,52 @@ fn a_new_shape_is_born_in_front() {
         .collect();
     assert_eq!(
         tree,
-        vec![c, b, a],
-        "a Hierarquia lista a mais nova na 1ª linha"
+        vec![a, b, c],
+        "a Hierarquia lista a mais nova na ULTIMA linha"
     );
     assert_eq!(
         z(&scene),
         vec![a, b, c],
         "a pilha de z (do fundo ao topo) poe a mais nova por CIMA"
+    );
+}
+
+/// **A forma nova entra no FIM de uma cena que já tem gente** — a metade que o gate acima não
+/// alcança, e é ela que mede o pedido do Enio (*"um objeto novo vai para o último abaixo na
+/// hierarquia"*).
+///
+/// ⚠️ **A mutação *"nascer no começo"* SOBREVIVEU ao gate irmão**, e a razão é fixture: lá as três
+/// formas nascem num mundo VAZIO, onde *o próximo lugar livre* e *o lugar zero* são o mesmo número.
+/// O fenômeno só existe quando já há raízes — então a fixture tem de ter DUAS levas.
+#[test]
+fn a_shape_born_into_a_populated_scene_lands_at_the_end() {
+    let mut sim = SimWorld::default();
+    let mut scene = VecScene::new();
+    let mut map = VecEntityMap::new();
+    let mut frame = Frame::new(&mut sim);
+
+    let [a, b, c] = three_fresh_shapes(&mut scene);
+    frame.run(&mut sim, &mut scene, &mut map);
+
+    // A 2ª leva: uma forma desenhada DEPOIS, num documento que já tem três.
+    let d = scene.push_path(rectangle([6.0, 0.0], [7.0, 1.0]));
+    frame.run(&mut sim, &mut scene, &mut map);
+
+    let tree: Vec<VecPathId> = frame
+        .snap
+        .entries
+        .iter()
+        .filter_map(|e| e.vec_path)
+        .collect();
+    assert_eq!(
+        tree,
+        vec![a, b, c, d],
+        "a forma nova nao entrou no FIM da Hierarquia"
+    );
+    assert_eq!(
+        *z(&scene).last().unwrap(),
+        d,
+        "e o fim da lista tem de ser a FRENTE do desenho"
     );
 }
 

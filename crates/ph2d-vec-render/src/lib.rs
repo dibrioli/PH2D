@@ -165,40 +165,42 @@ pub fn dispatch(
     target: &mut VectorScene,
 ) {
     // As MOLDURAS abertas (`frame_clip`). Vazio no caminho comum, e então tudo abaixo é o desenho
-    // de sempre — `open_at` e `close_if_parent` não fazem nada sem `view.parent_spans`.
-    let mut frames = frame_clip::OpenParents::default();
+    // de sempre — `open_after` e `close_after` não fazem nada sem `view.clips`.
+    let mut frames = frame_clip::OpenClips::default();
     for path in scene.paths() {
-        // ⚠️ ANTES do filtro de escondido: push e pop de camada têm de se emparelhar mesmo quando
-        // o conteúdo não desenha (ver `frame_clip`).
-        frames.open_at(path.id, scene, view, xforms, live, camera, target);
-        // A vez da moldura é a de FECHAR — o desenho dela já saiu, como fundo, na abertura.
-        if frames.close_if_parent(path.id, target) {
-            continue;
-        }
-        if view.is_hidden(path.id) {
-            continue;
-        }
-        // O FX da forma, se houver, TOMA o lugar do desenho: a pilha já compôs tudo o que se vê
-        // desta forma (halo incluído) numa imagem só, no z dela.
-        if let Some(img) = fx.get(&path.id) {
-            draw_fx_image(img, target);
-        } else {
-            // A TINTA que os tokens dão a esta forma neste modo, perguntada UMA vez — e ela vale
-            // também para a geometria DERIVADA dela: as cópias de offset/pattern/espelho têm id
-            // próprio, então procurá-las na tabela não acharia nada e o token pararia na borda do
-            // primeiro efeito (a forma re-vestiria e as cópias ficariam com a cor velha).
-            let bound = view.bound_paint(path.id);
-            // A derivada já está em MUNDO (a shell assou a pose dentro dela), então ela sobe pela
-            // CÂMERA e não pelo afim do path — aplicar a pose duas vezes foi bug real desta linha.
-            if let Some(items) = live.get(&path.id) {
-                for item in items {
-                    draw_path(&item.painted(bound), camera, target);
-                }
+        // ⚠️ **A ordem dentro do laço é a LEI**: desenha, depois abre, depois fecha. A moldura é o
+        // PRIMEIRO membro da própria sub-árvore (a pilha de z é o DFS na ordem — o filho desenha
+        // sobre o pai), então o preenchimento dela é o fundo do card **por sair primeiro**; abrir
+        // antes de desenhar recortaria a moldura pela própria silhueta.
+        if !view.is_hidden(path.id) {
+            // O FX da forma, se houver, TOMA o lugar do desenho: a pilha já compôs tudo o que se
+            // vê desta forma (halo incluído) numa imagem só, no z dela.
+            if let Some(img) = fx.get(&path.id) {
+                draw_fx_image(img, target);
             } else {
-                let transform = path_to_screen(xforms, path.id, camera);
-                draw_path(&path.painted(bound), transform, target);
+                // A TINTA que os tokens dão a esta forma neste modo, perguntada UMA vez — e ela
+                // vale também para a geometria DERIVADA dela: as cópias de offset/pattern/espelho
+                // têm id próprio, então procurá-las na tabela não acharia nada e o token pararia
+                // na borda do primeiro efeito (a forma re-vestiria e as cópias ficariam com a cor
+                // velha).
+                let bound = view.bound_paint(path.id);
+                // A derivada já está em MUNDO (a shell assou a pose dentro dela), então ela sobe
+                // pela CÂMERA e não pelo afim do path — aplicar a pose duas vezes foi bug real
+                // desta linha.
+                if let Some(items) = live.get(&path.id) {
+                    for item in items {
+                        draw_path(&item.painted(bound), camera, target);
+                    }
+                } else {
+                    let transform = path_to_screen(xforms, path.id, camera);
+                    draw_path(&path.painted(bound), transform, target);
+                }
             }
         }
+        // ⚠️ FORA do filtro de escondido: push e pop de camada têm de se emparelhar mesmo quando
+        // a moldura não desenha (ver `frame_clip`).
+        frames.open_after(path.id, scene, view, xforms, live, camera, target);
+        frames.close_after(path.id, view, target);
     }
     frames.close_all(target);
 }

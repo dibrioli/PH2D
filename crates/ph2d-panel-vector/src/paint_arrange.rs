@@ -36,14 +36,15 @@ impl BodyCtx<'_> {
             return y;
         }
         y = self.action_button(ids::VECTOR_ARRANGE_DUPLICATE, "Duplicate", y);
-        // **O Z-INDEX** (Enio, 2026-08-04) — o lugar da forma na pilha dos IRMÃOS dela, com maior
-        // = mais à frente (a convenção do Godot). ⚠️ É um READOUT e não um campo: o número é
-        // DERIVADO da árvore (ADR-0110), e um campo que o escrevesse seria uma segunda maneira de
-        // pedir o que os quatro botões abaixo já pedem — com a obrigação de re-derivar o mesmo
-        // clamp. O que ele existe para responder é *"onde eu estou, e quantos há?"*, que sem ele
-        // se descobre carregando num botão e vendo se alguma coisa mudou.
-        if let Some((z, n)) = state::z_index() {
-            y = self.label_line(&format!("{} {z} / {n}", tr("panel.vector.arrange.z")), y);
+        // **O Z-INDEX GLOBAL** (Enio, 2026-08-04: *"o Z index deve ser global e sobrepõe a ordem
+        // na hierarquia"*) — maior = mais à frente, a convenção do `CanvasItem.z_index` do Godot.
+        // A ordem da Hierarquia só decide entre objetos que EMPATAM neste número.
+        //
+        // ⚠️ Ele vem ANTES dos quatro botões de propósito: é o número que manda, e eles movem a
+        // forma *dentro* do que ele permite. Só é oferecido com uma forma selecionada — um campo
+        // sem resposta única seria um controlo que escreve num objeto que o artista não nomeou.
+        if state::z_index().is_some() {
+            y = self.lone_number_row(tr("panel.vector.arrange.z"), ids::VECTOR_ARRANGE_Z, y);
         }
         // Z-order: 2×2 grid — To Back | To Front · Backward | Forward.
         let zorder = [

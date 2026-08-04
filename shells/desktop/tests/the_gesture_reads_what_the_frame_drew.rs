@@ -3,16 +3,17 @@
 //!
 //! # Por que este arquivo existe
 //!
-//! Os intervalos dos PAIS (`VecParentSpan`) e as poses do auto layout são resultado do passe de
+//! Os intervalos de RECORTE (`VecClipSpan`) e as poses do auto layout são resultado do passe de
 //! LAYOUT, que roda no desenho. O hit-test monta o `VecViewState` dele **do zero** a cada evento
 //! de ponteiro, e a porta que ele usava (`vec_entities::view_state`) só sabe o que a ÁRVORE diz —
 //! escondido e travado. As duas listas chegavam VAZIAS, e o gesto decidia como se nenhuma moldura
 //! existisse e nenhuma forma tivesse sido colocada.
 //!
 //! ⚠️ **Isto já aconteceu, e passou despercebido por um commit inteiro.** A demoção do PAI no
-//! pick (para o clique pegar o filho) lê `view_state.parent_spans`; os gates dela montam a lista À MÃO
+//! pick (para o clique pegar o filho) lia `view_state.clips`; os gates dela montavam a lista À MÃO
 //! e ficaram verdes, enquanto no produto a lista era vazia e a cura era **inerte**. Um gate de
-//! unidade é cego à fiação da shell — este é o par dele.
+//! unidade é cego à fiação da shell — este é o par dele. (A demoção morreu em 2026-08-04, quando a
+//! projeção passou a pôr o pai por baixo; o recorte continua a atravessar esta mesma fronteira.)
 
 use std::fs;
 
@@ -84,15 +85,13 @@ fn walk(dir: &str) -> Vec<String> {
 fn the_draw_pass_publishes_the_facts_it_derived() {
     let src = read("src/render_loop/mod.rs");
     // ⚠️ **Sem espaço em branco dos dois lados**, e a razão é que este gate já expirou uma vez por
-    // isso: o campo mudou de nome (`clips` → `parent_spans`, a wave em que TODO pai passou a ser
-    // fundo do próprio conteúdo), o `rustfmt` quebrou a linha no ponto, e a agulha deixou de casar
-    // com código correto. O que se afirma é *"esta linha existe"*, não *"ela cabe numa linha"*.
+    // isso: o campo mudou de nome (duas vezes — `clips` → `parent_spans` → `clips`, ao sabor de o
+    // intervalo ser sobre antecipação ou sobre recorte), o `rustfmt` quebrou a linha no ponto, e a
+    // agulha deixou de casar com código correto. O que se afirma é *"esta linha existe"*, não
+    // *"ela cabe numa linha"*.
     let flat: String = src.chars().filter(|c| !c.is_whitespace()).collect();
     for (what, needle) in [
-        (
-            "os intervalos dos PAIS",
-            "self.vec_view_derived.parent_spans",
-        ),
+        ("os intervalos de RECORTE", "self.vec_view_derived.clips"),
         ("as poses do auto layout", "self.vec_view_derived.poses"),
     ] {
         assert!(

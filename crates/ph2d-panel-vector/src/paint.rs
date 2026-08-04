@@ -152,6 +152,13 @@ fn seed_and_publish(
             state::set_rot_last(0.0);
         }
     }
+    // **O Z-INDEX**, semeado pela mesma regra e pelo mesmo motivo: nunca sobre o campo em FOCO,
+    // senão a tecla que o artista acabou de premir é apagada pelo valor que a shell publicou.
+    if let Some(z) = state::z_index()
+        && store.focus_id() != Some(ids::VECTOR_ARRANGE_Z)
+    {
+        store.set_number_value(ids::VECTOR_ARRANGE_Z, f64::from(z));
+    }
     // **Os campos do AUTO LAYOUT** (plano UI/UX W2) — semeados do que a shell publicou, e nunca
     // sobre o campo em FOCO: o `NumberInput` é dono do próprio buffer enquanto o artista digita, e
     // reescrevê-lo apagaria a tecla que ele acabou de premir (é a mesma regra dos campos do

@@ -741,36 +741,46 @@ editar o mestre re-veste as 12; um override de texto sobrevive.
 
 ---
 
-### Z-ORDER — o filho desenha SOBRE o pai, e os botões Arrange voltam a viver ✅ **(2026-08-04)**
+### Z-ORDER — a lei das GAME ENGINES: o filho desenha SOBRE o pai, e o Z é GLOBAL ✅ **(2026-08-04)**
 
-> Enio: *"o filho é desenhado por trás do pai e fica sobreposto e não visível … em game engines
-> como Godot os filhos são renderizados acima dos pais"*, e *"faça os botões da seção serem capazes
-> de modificar o Z index"*.
+> Enio, em duas rodadas: *"o filho é desenhado por trás do pai … em game engines como Godot os
+> filhos são renderizados acima dos pais"* · *"na hierarquia os objetos mais abaixo aparecem atrás,
+> como nas camadas de um app de imagem. Mas veja as game engines! Em Godot é ao contrário"* · *"ao
+> criar a instância, os filhos que no mestre aparecem na frente dos pais vão para trás dos pais"* ·
+> *"quando se cria um objeto novo ele vai para o último abaixo na hierarquia, mas aqui ele aparece
+> no topo"* · *"a ordem só conta se o Z dos objetos for igual. O Z index deve ser global e sobrepõe
+> a ordem na hierarquia"*.
 >
-> - **A LEI.** A pilha de z é o DFS invertido, então ela põe o pai NA FRENTE dos filhos. A cura já
->   existia — o renderer ANTECIPA o desenho do pai para a abertura do intervalo dele — mas estava
->   gateada em `VecFrame`. ⚠️ A premissa de então (*"invisível para um grupo, fatal para uma
->   moldura"*) estava **errada**: um pai comum tem geometria como qualquer caminho, e cobria os
->   filhos exactamente do mesmo jeito. Hoje **todo pai com descendente vetorial** tem intervalo; o
->   `clip` continua a ser pergunta de moldura.
-> - ⚠️ **A lei NÃO se impõe no `z_order`.** Pôr o contêiner no fundo da própria sub-árvore foi
->   tentado e reprovado: é ele o ÚLTIMO membro dela que emparelha o `push_clip` da abertura com o
->   `pop_layer` da vez dele. O que se antecipa é o DESENHO, não o lugar na pilha.
-> - **O APONTAR seguiu sem uma linha.** O `demote_hoisted_frames` do pick pergunta à MESMA lista, e
->   não a um predicado próprio — então o clique passou a preferir o filho no mesmo commit em que o
->   desenho passou. Um segundo predicado responderia hoje o mesmo e divergiria amanhã.
-> - **O Z-INDEX** é o lugar da forma na pilha dos IRMÃOS, **maior = mais à frente** (Godot/Unity), e
->   é **DERIVADO** da árvore: um `z_index` guardado seria a segunda resposta a *"quem está na
->   frente?"* e divergiria no primeiro reparent. Readout `Z n / N` na Arrange.
-> - **Os quatro botões estavam MORTOS**, e o cabeçalho do `vec_zorder` já dizia porquê: eles
->   chamavam `VecScene::reorder_path`, que mexe na ordem do VETOR da cena — reescrita a cada frame
->   pela projeção. Acendiam, mexiam, e o frame seguinte desfazia. Hoje escrevem na ÁRVORE:
->   `RootOrder` para raízes, a sequência do `Children` para filhos (⚠️ *"escreva no `RootOrder`"*
->   estava certo pela metade — um filho não tem `RootOrder`).
-> - **Renomes de honestidade:** `VecClipSpan` → `VecParentSpan` (campo `frame` → `parent`),
->   `VecViewState.clips` → `parent_spans`, `clip_spans` → `parent_spans`. O tipo deixou de nomear a
->   metade OPCIONAL do que faz.
-> - **Zero schema, zero ADR, zero dep.** Smoke **`=57`**.
+> **As cinco queixas são UMA, e a cura é uma linha na projeção.**
+>
+> - **A LEI: a ordem do DFS *É* a ordem de desenho.** `vec_zorder::z_order` deixou de inverter. O
+>   pai passa a ser o PRIMEIRO membro da própria sub-árvore ⇒ o filho desenha sobre ele **em toda
+>   rota**, mais abaixo na Hierarquia = mais à frente, e o objeto novo entra no FIM da lista (que é
+>   a frente) — o `sync` apenda em vez de abrir espaço no começo.
+> - ⚠️ **A versão anterior impunha a lei por DOIS remendos**, e o terceiro consumidor não os
+>   conhecia: o renderer **antecipava** o desenho de todo pai, o apontar **demovia** cada
+>   antecipado, e a **INSTÂNCIA** — que percorre a cena e não tem renderer por trás — cobria os
+>   próprios filhos. Invertida a projeção, os dois remendos MORRERAM (`demote_hoisted_frames` e a
+>   antecipação) e a instância ficou certa **sem uma linha de código dela**.
+> - **O Z-INDEX é o `ph2d_ecs::ZIndexOverride`**, o MESMO componente dos sprites — um componente
+>   próprio seria a segunda resposta a *"quem está na frente?"*, e como um caminho pode ser filho de
+>   um sprite (ADR-0110) as duas conviveriam na MESMA árvore. `effective_z_index` virou a porta
+>   pública dessa pergunta. **Zero schema** (o componente já é registado e serializado).
+> - **A pilha tem DUAS chaves:** o Z efetivo (cascata de Godot) ordena, o DFS **desempata** — o
+>   `sort_by_key` é estável, então um documento sem um único `ZIndexOverride` produz a MESMA lista
+>   que o DFS cru. Campo **Z** no topo da Arrange, `0` **destaca** o componente.
+> - ⚠️ **O RECORTE mudou de forma junto.** `VecClipSpan { frame, last }` volta a ser só sobre
+>   recortar (o `clip: bool` sumiu com a antecipação), e o intervalo vai até onde a sub-árvore é
+>   **CONTÍGUA** na pilha final. Duas propriedades caem daí: um estranho que o Z pousou no meio
+>   **nunca** é recortado por um card que não é dele, e a lista fica **laminar** de graça. O preço é
+>   o que a frase promete — *o filho que o Z tirou da corrida deixa de ser recortado*.
+> - **Os botões Arrange:** regra ÚNICA e **MEDIDA**, não enumerada — *tenta a ÁRVORE; se a forma não
+>   se mexeu na pilha, escreve o Z*. ⚠️ O que *"entregou"* significa depende do verbo (o **To Front**
+>   pede a FRENTE, não um passo), e colapsar os dois deixava a forma parada no meio.
+> - **Renomes de honestidade:** `VecParentSpan` → `VecClipSpan` (campo `parent` → `frame`, `first` →
+>   `last`), `VecViewState.parent_spans` → `clips`, `parent_spans` → `clip_spans`. O tipo voltou a
+>   nomear o que faz.
+> - **17 gates, 12 mutações, 12 sangram. Zero schema, zero ADR, zero dep.** Smoke **`=57`**.
 
 ---
 
@@ -1036,7 +1046,7 @@ escreveu**:
 | **W3** ✅ | âncoras | +1 (**47**) | — | — | — | `=52` |
 | **W5a** ✅ | mestre + instância + override esparso | +2 (**50**) | — | — | — | `=53` |
 | **W5b** ✅ | a lista de PEÇAS (a porta do override) · Update Main · Swap | — | — | — | — | `=56` |
-| **Z-order** ✅ | o filho desenha SOBRE o pai (a lei do Godot) + o Z-index na Arrange | — | — | — | — | `=57` |
+| **Z-order** ✅ | a lei das game engines: DFS = ordem de desenho + o **Z global** na Arrange | — | — | — | — | `=57` |
 | **W5c** | variants/props (o `VecInstance.props` que ficou de fora) | — | ⚠️ **bump** | — | sim (prefab) | — |
 | **W6** | vínculo com o widget | +1 (50) | — | — | sim (§2) | `=54` |
 | **W7** | estados + Smart Animate | — | `DOC_VERSION` | — | sim (HSM) | `=55` |

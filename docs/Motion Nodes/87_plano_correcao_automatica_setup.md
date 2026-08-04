@@ -162,8 +162,18 @@ fn canonical_consumer(col: &str, particle_ctx: bool) -> Option<&'static str> {
 Só `accel` tem consumidor canônico inequívoco ⇒ só a família 1a/6a AUTO-CURA. Tudo mais vira OFERTA/AVISO por design. Uma porta.
 
 ### 3.4 — "Aplicar o conserto ao documento" → **A porta do Adapter** (reusada, não uma segunda)
-O conserto é aplicado exatamente pelo padrão do `try_insert_adapter` / `splice_into_wire`:
-`trial = graph.clone()` → `add_node`/`disconnect`/`connect` → `trial.validate(&reg)` → commit atômico → `push_undo(pre)` → `mark_dirty` → `request_graph_selection([novo])` → toast. **Reusa a porta existente** (`motion_bridge_rewire.rs::splice_into_wire` para o insert-antes-do-sink), não escreve uma segunda.
+O conserto é aplicado pelo padrão do `try_insert_adapter`:
+`trial = graph.clone()` → `add_node`/`disconnect`/`connect` → `trial.validate(&reg)` → commit atômico → `push_undo(pre)` → **`reconcile(motion, &pre.graph)`** → `mark_dirty` → `request_graph_selection` → toast.
+
+> ⚠️ **ACHADO (2026-08-03, ao ler `motion_bridge_plumbing.rs`): a cura de `accel` NÃO é um splice — é um RESTRUTURA.** A porta `forces` do `motion.integrate` (input 1) é a **de FEEDBACK** que o `reconcile` plumba (`out --pre--> chain_head.in0`), e o input 0 é `rest` (as posições base). Uma força **NÃO pode viver na cadeia horizontal `grid → force → output`** — a montagem correta é:
+> - `grid.out → integrate.rest(0)` — as posições base (a força **deixa** de ser alimentada pela grid);
+> - `last_force.out → integrate.forces(1)` — a saída da cadeia de forças;
+> - `integrate.out(0) → output` — no lugar da aresta antiga;
+> - o `reconcile` plumba `integrate.out --pre--> chain_head.in0` (a força lê o estado do tick anterior).
+>
+> Ou seja, curar **reencaminha a aresta `grid → force` do artista** (a grid passa a alimentar o integrador, não a força). Isso é **mais invasivo que "inserir um nó"** — é a única montagem que de fato move os pontos, mas mexe em arestas que o artista desenhou. **Consequência de produto (decisão do Enio, §9):** talvez o `accel` deva ser **OFERTA** (badge de um clique) em vez de AUTO-CURA silenciosa, já que reroteia o grafo autorado. A alternativa "insira integrate entre a força e o sink" foi **descartada por medição do plumbing**: produziria um grafo que valida mas **não cozinha movimento** (o integrador leria `rest` da própria cadeia móvel em vez das posições base) — exatamente a falha silenciosa que esta feature combate.
+
+O restrutura vai numa porta única nova `motion_bridge_heal.rs::heal_setup` (irmã do `motion_bridge_adapt.rs`), gateada por *newly-inert delta* + *batch construtivo*, com um gate que **COZINHA o grafo curado e verifica que P se move** (não só que um nó apareceu).
 
 ### 3.5 — "QUANDO o conserto dispara?" (a decisão de produto)
 **Gatilho = o gesto que COLOCA o nó** (mirror do Adapter, que dispara no drop de fio):

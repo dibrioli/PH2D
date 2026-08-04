@@ -478,9 +478,14 @@ pub(crate) fn announce(mesh: &ph2d_mesh::Mesh) {
              [sculpt3d]    (5) O SEGUNDO TESTE: aperte D ate' voltar ao BARRO e Delete ate' a\n\
              [sculpt3d]        escultura sumir; volte ao D. O sprite tem de continuar aceso E as\n\
              [sculpt3d]        teclas de luz tem de continuar movendo as sombras dele -- sem malha.\n\
-             [sculpt3d]    (6) O assado tem o REALCE do barro (mesma intensidade, mesma largura --\n\
-             [sculpt3d]        ha' gate). O que continua diferente e' a COR: o barro e' argila\n\
-             [sculpt3d]        quente e o sprite tem a cor que voce pintou. Isso e' albedo, nao luz.\n\
+             [sculpt3d]    (6) O assado NAO vai bater com o barro, e a diferenca esta' MEDIDA:\n\
+             [sculpt3d]        a LEI da luz e' a mesma -- com o mesmo albedo dos dois lados as duas\n\
+             [sculpt3d]        concordam a 0,0020 no ARO (e ha' gate). O que difere e' o ALBEDO:\n\
+             [sculpt3d]        o passe leva a luz ate' 1,65x, e um sprite e' unorm8 -- entao sobre\n\
+             [sculpt3d]        BRANCO 43,6% da esfera satura em (255,255,255) e a forma SOME ali.\n\
+             [sculpt3d]        O barro vivo nunca satura porque e' HDR e a cor dele e' 0,74.\n\
+             [sculpt3d]        Sobre arte de meio-tom (128) o estouro e' ZERO -- e' o albedo que\n\
+             [sculpt3d]        decide quanto da forma sobrevive, nao a lampada.\n\
              [sculpt3d]    (7) Assar DE NOVO por outro angulo tem de substituir a luz, nao somar --\n\
              [sculpt3d]        gire, Shift+B, e o sprite nao pode ficar mais escuro a cada bake.\n\
              [sculpt3d]    ⚠️ O bake NAO sobrevive a fechar o app: os canais no arquivo sao a\n\

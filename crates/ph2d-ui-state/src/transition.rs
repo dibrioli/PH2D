@@ -153,6 +153,10 @@ impl Transition {
                         fill: ph2d_vec_blend::mix_paint(from.fill.as_ref(), to.fill.as_ref(), t),
                         stroke: ph2d_vec_blend::mix_stroke(from.stroke, to.stroke, t),
                         geometry: None,
+                        // A LARGURA VIVA pela porta da crate que a define — e o `None` é o
+                        // perfil uniforme, então um lado sem perfil é um lado com o perfil que
+                        // não faz nada. Não há caso especial a escrever.
+                        width: mix_width(from.width.as_ref(), to.width.as_ref(), t),
                     };
                     // ⚠️ E a forma que sai do `Plan` recebe a tinta da POSE, não a que o `Plan`
                     // interpolou por conta: se o objeto sai auto-consistente daqui, ninguém a
@@ -227,4 +231,24 @@ fn same_shape(a: &ph2d_vec_scene::VecPath, b: &ph2d_vec_scene::VecPath) -> bool 
         && a.subpaths == b.subpaths
         && a.fill_rule == b.fill_rule
         && a.effects == b.effects
+}
+
+/// **Dois perfis de largura, e o que está entre eles** — a fronteira entre o `Option` da pose e
+/// a mistura da [`ph2d_stroke_width::WidthStops`].
+///
+/// ⚠️ **Ausente é UNIFORME, e é isso que dispensa os casos especiais:** um estado sem perfil e
+/// um com perfil misturam-se como *uniforme → perfil*, que é exatamente o que o artista vê. E o
+/// resultado uniforme volta a `None`, senão o documento acumularia relações que não desenham
+/// nada — a mesma lei que a shell aplica ao componente.
+fn mix_width(
+    a: Option<&ph2d_stroke_width::WidthStops>,
+    b: Option<&ph2d_stroke_width::WidthStops>,
+    t: f64,
+) -> Option<ph2d_stroke_width::WidthStops> {
+    if a.is_none() && b.is_none() {
+        return None;
+    }
+    let empty = ph2d_stroke_width::WidthStops::default();
+    let m = a.unwrap_or(&empty).mix(b.unwrap_or(&empty), t);
+    (!m.is_uniform()).then_some(m)
 }

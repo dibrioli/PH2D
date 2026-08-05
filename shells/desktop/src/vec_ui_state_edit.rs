@@ -21,7 +21,7 @@
 //! porque nada aqui o escreve, mas ele **não anima** entre dois estados. Nomeado em vez de
 //! descoberto.
 
-use ph2d_ecs::{Entity, SimWorld, Transform};
+use ph2d_ecs::{Entity, SimWorld, Transform, VecStrokeProfile};
 use ph2d_ui_state::{ObjectPose, StateRole, StateSets, UiState};
 use ph2d_vec_scene::{VecPathId, VecScene};
 
@@ -94,12 +94,17 @@ fn members(
 #[must_use]
 fn capture(sim: &SimWorld, scene: &VecScene, map: &VecEntityMap, id: VecPathId) -> ObjectPose {
     let mut pose = ObjectPose::new(id);
-    if let Some(e) = entity_of(map, id)
-        && let Some(t) = sim.world().get::<Transform>(e)
-    {
-        pose.translation = [f64::from(t.translation.x), f64::from(t.translation.y)];
-        pose.rotation = f64::from(t.rotation);
-        pose.scale = [f64::from(t.scale.x), f64::from(t.scale.y)];
+    if let Some(e) = entity_of(map, id) {
+        if let Some(t) = sim.world().get::<Transform>(e) {
+            pose.translation = [f64::from(t.translation.x), f64::from(t.translation.y)];
+            pose.rotation = f64::from(t.rotation);
+            pose.scale = [f64::from(t.scale.x), f64::from(t.scale.y)];
+        }
+        // A LARGURA VIVA: o único canal de forma que mora num componente, e não no `VecPath`.
+        pose.width = sim
+            .world()
+            .get::<VecStrokeProfile>(e)
+            .map(|w| w.stops.clone());
     }
     if let Some(p) = scene.paths().iter().find(|p| p.id == id) {
         pose.fill.clone_from(&p.fill);
@@ -142,16 +147,30 @@ pub(crate) fn install(
     map: &VecEntityMap,
     pose: &ObjectPose,
 ) {
-    if let Some(e) = entity_of(map, pose.id)
-        && let Some(mut t) = sim.world_mut().get_mut::<Transform>(e)
-    {
-        #[allow(clippy::cast_possible_truncation)]
-        {
-            t.translation.x = pose.translation[0] as f32;
-            t.translation.y = pose.translation[1] as f32;
-            t.rotation = pose.rotation as f32;
-            t.scale.x = pose.scale[0] as f32;
-            t.scale.y = pose.scale[1] as f32;
+    if let Some(e) = entity_of(map, pose.id) {
+        if let Some(mut t) = sim.world_mut().get_mut::<Transform>(e) {
+            #[allow(clippy::cast_possible_truncation)]
+            {
+                t.translation.x = pose.translation[0] as f32;
+                t.translation.y = pose.translation[1] as f32;
+                t.rotation = pose.rotation as f32;
+                t.scale.x = pose.scale[0] as f32;
+                t.scale.y = pose.scale[1] as f32;
+            }
+        }
+        // ⚠️ **Uniforme é a AUSÊNCIA do componente**, não um componente com paradas neutras — a
+        // mesma lei que o Width Tool aplica (`VecOffset` com `d = 0`, e os outros seis irmãos).
+        // Escrever um perfil inerte faria o documento acumular uma relação que não desenha nada,
+        // e o `is_uniform` do painel passaria a ver um perfil onde o artista não autorou nenhum.
+        match &pose.width {
+            Some(stops) => {
+                sim.world_mut().entity_mut(e).insert(VecStrokeProfile {
+                    stops: stops.clone(),
+                });
+            }
+            None => {
+                sim.world_mut().entity_mut(e).remove::<VecStrokeProfile>();
+            }
         }
     }
     if let Some(p) = scene.paths_mut().iter_mut().find(|p| p.id == pose.id) {

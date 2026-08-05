@@ -355,3 +355,65 @@ fn the_preset_keys_are_distinct_and_named() {
         );
     }
 }
+
+/// **As pontas da mistura são EXATAS nos pares que a autoria produz.**
+///
+/// ⚠️ O oráculo é `at` amostrado denso, não a lista de paradas: duas listas diferentes podem
+/// desenhar o mesmo perfil (a união acrescenta paradas onde a curva já passava), e comparar
+/// listas reprovaria uma resposta certa. O que o traço mostra é `at`.
+///
+/// ⚠️ E os dois pares NÃO são decoração: *um lado uniforme* é o par que a UI de facto produz (um
+/// estado tem perfil, o outro não) e *joelhos coincidentes* é o par de dois presets iguais
+/// afinados. O par patológico — joelhos diferentes — desvia **0,1778**, está medido na sonda
+/// `measure_width_mix` e nomeado no doc de [`WidthStops::mix`].
+#[test]
+fn the_ends_of_a_width_mix_are_exact_where_exactness_is_reachable() {
+    let uniform = WidthStops::default();
+    let bulge = WidthProfile {
+        start: 0.2,
+        mid: 1.8,
+        end: 0.2,
+        position: 0.5,
+    }
+    .to_stops();
+    let taper = WidthProfile {
+        start: 1.5,
+        mid: 0.9,
+        end: 0.1,
+        position: 0.5,
+    }
+    .to_stops();
+
+    let worst = |a: &WidthStops, b: &WidthStops, t: f64, want: &WidthStops| {
+        let m = a.mix(b, t);
+        (0..=200)
+            .map(|i| {
+                let p = f64::from(i) / 200.0;
+                (m.at(p) - want.at(p)).abs()
+            })
+            .fold(0.0_f64, f64::max)
+    };
+
+    for (name, a, b) in [
+        ("um lado uniforme", &uniform, &bulge),
+        ("joelhos coincidentes", &taper, &bulge),
+    ] {
+        assert!(
+            worst(a, b, 0.0, a) < 1e-12,
+            "{name}: t=0 nao devolveu o perfil de partida ({})",
+            worst(a, b, 0.0, a)
+        );
+        assert!(
+            worst(a, b, 1.0, b) < 1e-12,
+            "{name}: t=1 nao devolveu o perfil de chegada ({})",
+            worst(a, b, 1.0, b)
+        );
+    }
+
+    // E o meio é de facto o MEIO — nem um nem outro.
+    let mid = taper.mix(&bulge, 0.5);
+    assert!(
+        (mid.at(0.5) - (taper.at(0.5) + bulge.at(0.5)) / 2.0).abs() < 1e-12,
+        "o meio nao e a media dos dois no joelho"
+    );
+}

@@ -1,6 +1,7 @@
 //! **A POSE** — tudo o que um objeto pode ter de diferente entre dois estados, e nada mais.
 
 use crate::role::StateRole;
+use ph2d_stroke_width::WidthStops;
 use ph2d_vec_scene::{Paint, StrokeSpec, VecPath, VecPathId};
 use serde::{Deserialize, Serialize};
 
@@ -12,9 +13,10 @@ use serde::{Deserialize, Serialize};
 /// matriz para alguém lerpar por engano.
 ///
 /// ⚠️ **A TINTA é campo de primeira classe, e não vive dentro da geometria.** Foi a autoria que
-/// expôs isto: um botão que só muda de cor no hover tem a MESMA forma nos dois estados, então
-/// `geometry` é `None` — e uma tinta que morasse lá dentro não teria por onde viajar. São dois
-/// fatos independentes sobre um objeto, e um estado precisa de poder autorar um sem o outro.
+/// expôs isto: um botão que só muda de cor no hover tem a MESMA forma nos dois estados, e uma
+/// tinta que morasse lá dentro **não teria por onde viajar** — o par de formas idênticas nem
+/// entra no casamento. São dois fatos independentes sobre um objeto, e um estado precisa de
+/// poder autorar um sem o outro.
 ///
 /// ⚠️ **A geometria é a FONTE autorada, e a autoria grava-a sempre.** Ela chegou a ser opcional
 /// *"porque a forma raramente muda"* — e o preço dessa frase foi que uma edição de nó, um Fillet
@@ -46,6 +48,13 @@ pub struct ObjectPose {
     pub stroke: Option<StrokeSpec>,
     /// A forma, quando este estado a autora. `None` ⇒ a cena manda, e nenhum `Plan` é construído.
     pub geometry: Option<VecPath>,
+    /// **O perfil de largura viva** (ADR-0148), quando o traço tem um. `None` = largura uniforme.
+    ///
+    /// ⚠️ **É o único canal de forma que não mora no `VecPath`** — ele é um componente ECS —, e
+    /// é por isso que tem campo próprio aqui em vez de viajar dentro da `geometry`. Sem ele o
+    /// Width Tool seria a única ferramenta de desenho cuja edição não animaria entre dois
+    /// estados, e a ausência não teria nome nenhum.
+    pub width: Option<WidthStops>,
 }
 
 impl ObjectPose {
@@ -61,6 +70,7 @@ impl ObjectPose {
             fill: None,
             stroke: None,
             geometry: None,
+            width: None,
         }
     }
 

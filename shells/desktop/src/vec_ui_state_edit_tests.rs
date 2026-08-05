@@ -593,3 +593,87 @@ fn two_states_that_differ_only_in_the_effect_stack_morph() {
         "a pilha de efeitos mudou a forma desenhada e ninguem a casou"
     );
 }
+
+/// **O Width Tool também anima — o perfil é pose, e ele viaja.**
+///
+/// ⚠️ Ele é o único canal de forma que **não** mora no `VecPath`: é um componente ECS
+/// (ADR-0148). Sem campo próprio na pose ele seria a única das ferramentas de desenho cuja
+/// edição não animaria, e a ausência não teria nome nenhum — o traço trocaria de perfil de uma
+/// vez no fim do Show, ou não trocaria de todo.
+///
+/// ⚠️ E a metade que este gate protege duas vezes: **uniforme é a AUSÊNCIA do componente**. Um
+/// perfil inerte guardado no documento é uma relação que não desenha nada, e o painel passaria
+/// a ver um perfil onde o artista não autorou nenhum.
+#[test]
+fn the_live_width_profile_is_pose_and_it_travels() {
+    use ph2d_ecs::VecStrokeProfile;
+    use ph2d_vec_scene::{WidthProfile, WidthStops};
+
+    let (mut sim, mut scene, map, host, _child) = scene_with_host_and_child();
+    let mut states = StateSets::default();
+    let he = ph2d_ecs::Entity::from_bits(map[&host]);
+
+    apply(
+        &mut sim,
+        &mut scene,
+        &map,
+        &[host],
+        &mut states,
+        UiStateEdit::Record(StateRole::Default),
+    );
+    let bulge = WidthProfile {
+        start: 0.2,
+        mid: 1.8,
+        end: 0.2,
+        position: 0.5,
+    }
+    .to_stops();
+    sim.world_mut().entity_mut(he).insert(VecStrokeProfile {
+        stops: bulge.clone(),
+    });
+    apply(
+        &mut sim,
+        &mut scene,
+        &map,
+        &[host],
+        &mut states,
+        UiStateEdit::Record(StateRole::Hover),
+    );
+
+    let a = states
+        .role(host, StateRole::Default)
+        .unwrap()
+        .objects
+        .clone();
+    let b = states.role(host, StateRole::Hover).unwrap().objects.clone();
+    assert!(
+        a.iter().find(|p| p.id == host).unwrap().width.is_none()
+            && b.iter().find(|p| p.id == host).unwrap().width.as_ref() == Some(&bulge),
+        "a autoria nao leu o perfil do componente"
+    );
+
+    // No MEIO do caminho o traço está entre o uniforme e o bojo — nem um nem outro.
+    let mid = ph2d_ui_state::Transition::new(&a, &b).at(0.5);
+    for p in &mid {
+        install(&mut sim, &mut scene, &map, p);
+    }
+    let live = sim
+        .world()
+        .get::<VecStrokeProfile>(he)
+        .map(|w| w.stops.at(0.5))
+        .expect("o perfil do meio nao chegou ao mundo");
+    assert!(
+        live > 1.05 && live < 1.75,
+        "o pico do meio do caminho nao esta entre 1.0 (uniforme) e 1.8 (o bojo): {live}"
+    );
+
+    // E a volta ao Default REMOVE o componente, em vez de guardar um perfil inerte.
+    for p in &a {
+        install(&mut sim, &mut scene, &map, p);
+    }
+    assert!(
+        sim.world().get::<VecStrokeProfile>(he).is_none(),
+        "o traco voltou ao uniforme e o componente ficou no documento"
+    );
+    let _ = WidthStops::default();
+}

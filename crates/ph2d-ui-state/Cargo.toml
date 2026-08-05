@@ -25,6 +25,11 @@ authors.workspace = true
 ph2d-anim = { path = "../ph2d-anim" }
 ph2d-vec-scene = { path = "../ph2d-vec-scene" }
 ph2d-vec-blend = { path = "../ph2d-vec-blend" }
+# A LARGURA VIVA (ADR-0148). O perfil é o único canal de forma que NÃO vive no `VecPath` — ele é
+# um componente ECS —, então a pose tem de o carregar por si; sem isso o Width Tool seria a única
+# das ferramentas de desenho cuja edição não animaria. A casa do tipo é esta folha, e é dela que
+# vem a mistura (`WidthStops::mix`): quem define `at` é quem pode garantir as pontas.
+ph2d-stroke-width = { path = "../ph2d-stroke-width" }
 serde = { version = "1", features = ["derive"] }
 
 [dev-dependencies]

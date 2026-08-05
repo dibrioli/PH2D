@@ -142,6 +142,53 @@ impl WidthStops {
     pub fn peak(&self) -> f64 {
         self.stops.iter().fold(1.0, |m, s| m.max(s.mult))
     }
+
+    /// **Dois perfis, e o que está entre eles.** `t = 0` devolve este; `t = 1`, o outro.
+    ///
+    /// ⚠️ **A amostragem é na UNIÃO das posições dos dois**, que é a mesma lei que o Blend segue
+    /// para casar duas formas (`ph2d-vec-blend` §1): reamostrar numa grade uniforme moveria os
+    /// joelhos de quem tem joelho — o ponto mais grosso do traço andaria — enquanto a união os
+    /// preserva **nos dois**. As pontas entram sempre, senão um perfil que começa a meio caminho
+    /// deixaria a mistura sem valor onde ele é constante por clamp.
+    ///
+    /// ⚠️ **A casa é esta crate porque `at` é daqui**, e é `at` que decide se a mistura é exata:
+    /// entre duas paradas o perfil é um `smoothstep`, então uma parada NOVA no meio de um vão
+    /// re-parte esse `smoothstep` em dois. Medido (`measure_width_mix`): **0,0000 de
+    /// multiplicador** nos dois pares que a autoria de facto produz — um lado uniforme (um
+    /// estado tem perfil, o outro não) e joelhos coincidentes — e **0,1778** no par patológico
+    /// de dois presets com joelhos diferentes.
+    ///
+    /// ⛔ **Sub-dividir os vãos da união foi MEDIDO e REJEITADO — não refaça.** Com quatro
+    /// partes por vão o par patológico cai para 0,0264, e os dois pares exatos **sobem de
+    /// 0,0000 para 0,0667**: uma lista sub-dividida já não é o perfil autorado, é uma
+    /// reamostragem dele. O trade é melhorar o caso que não acontece estragando os que
+    /// acontecem.
+    #[must_use]
+    pub fn mix(&self, other: &Self, t: f64) -> Self {
+        if self.stops.is_empty() && other.stops.is_empty() {
+            return Self::default();
+        }
+        let mut pos: Vec<f64> = self
+            .stops
+            .iter()
+            .chain(other.stops.iter())
+            .map(|s| s.pos)
+            .chain([0.0, 1.0])
+            .collect();
+        pos.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+        pos.dedup_by(|a, b| (*a - *b).abs() <= MIN_WIDTH_FACTOR);
+        Self::new(
+            pos.into_iter()
+                .map(|p| {
+                    let (u, v) = (self.at(p), other.at(p));
+                    WidthStop {
+                        pos: p,
+                        mult: u + (v - u) * t,
+                    }
+                })
+                .collect(),
+        )
+    }
 }
 
 /// O perfil como PRESET — os quatro números que o artista arrasta.

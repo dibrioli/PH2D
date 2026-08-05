@@ -9,6 +9,7 @@
 //! entrada, e o gatilho certo já existe do outro lado da fronteira — [`Machine::go_to`] é a porta.
 
 use crate::pose::{ObjectPose, UiState};
+use crate::role::StateRole;
 use crate::transition::Transition;
 use ph2d_anim::Easing;
 
@@ -64,10 +65,36 @@ impl Machine {
         self.flight.is_some()
     }
 
-    /// O nome de um estado, para o painel.
+    /// O papel de um estado.
     #[must_use]
-    pub fn name(&self, i: usize) -> Option<&str> {
-        self.states.get(i).map(|s| s.name.as_str())
+    pub fn role(&self, i: usize) -> Option<StateRole> {
+        self.states.get(i).map(|s| s.role)
+    }
+
+    /// **O índice do papel `role`**, se este hospedeiro o autora.
+    ///
+    /// ⚠️ É a porta única do gatilho: quem sabe que o rato entrou é a shell, e quem sabe que
+    /// estado isso É são os papéis — mas a MÁQUINA continua a andar por índice, e é essa
+    /// separação que a mantém sem opinião sobre o que um mouse é.
+    #[must_use]
+    pub fn index_of(&self, role: StateRole) -> Option<usize> {
+        self.states.iter().position(|s| s.role == role)
+    }
+
+    /// **Vai para o papel `role`, ou para o [`StateRole::Default`] se ele não existe.**
+    ///
+    /// ⚠️ O recuo para o Default é o que torna a lista de papéis **opcional**: um botão que só
+    /// autora Hover continua a responder ao aperto — voltando ao repouso — em vez de ficar preso
+    /// no hover porque ninguém gravou o Pressed. Sem ele, autorar um papel a mais seria um
+    /// requisito escondido de autorar todos.
+    pub fn go_to_role(&mut self, role: StateRole, duration: f64, easing: Easing) {
+        let Some(i) = self
+            .index_of(role)
+            .or_else(|| self.index_of(StateRole::Default))
+        else {
+            return;
+        };
+        self.go_to(i, duration, easing);
     }
 
     #[must_use]
@@ -99,11 +126,7 @@ impl Machine {
         if self.flight.is_none() && target == self.current {
             return;
         }
-        let from = UiState {
-            name: String::new(),
-            objects: self.live.clone(),
-        };
-        let tr = Transition::new(&from, &self.states[target]);
+        let tr = Transition::new(&self.live, &self.states[target].objects);
         // Duração não-positiva (ou nada a mover) é uma troca INSTANTÂNEA — e ela também passa pela
         // chegada exata abaixo, em vez de por um caminho próprio que pudesse divergir dela.
         self.flight = Some(Flight {

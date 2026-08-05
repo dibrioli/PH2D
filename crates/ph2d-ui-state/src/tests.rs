@@ -20,8 +20,8 @@ fn posed(id: u64) -> ObjectPose {
 /// animação. É o gate que o plano pede nominalmente, e a fragilidade do Figma (que casa por nome)
 /// é a razão de ele existir.
 #[test]
-fn matching_survives_renaming_and_reordering() {
-    let mut a = UiState::new("idle");
+fn matching_is_by_id_not_by_role_or_order() {
+    let mut a = UiState::new(StateRole::Default);
     a.objects = vec![
         ObjectPose {
             translation: [0.0, 0.0],
@@ -34,7 +34,7 @@ fn matching_survives_renaming_and_reordering() {
     ];
 
     // O MESMO destino, escrito de duas maneiras: ordem trocada e nome diferente.
-    let mut b1 = UiState::new("hover");
+    let mut b1 = UiState::new(StateRole::Hover);
     b1.objects = vec![
         ObjectPose {
             translation: [1.0, 0.0],
@@ -45,11 +45,11 @@ fn matching_survives_renaming_and_reordering() {
             ..posed(9)
         },
     ];
-    let mut b2 = UiState::new("PRESSED");
+    let mut b2 = UiState::new(StateRole::Pressed);
     b2.objects = vec![b1.objects[1].clone(), b1.objects[0].clone()];
 
-    let mid1 = Transition::new(&a, &b1).at(0.5);
-    let mid2 = Transition::new(&a, &b2).at(0.5);
+    let mid1 = Transition::new(&a.objects, &b1.objects).at(0.5);
+    let mid2 = Transition::new(&a.objects, &b2.objects).at(0.5);
 
     let find = |v: &[ObjectPose], id: u64| v.iter().find(|p| p.id == id).unwrap().translation;
     assert_eq!(find(&mid1, 7), [0.5, 0.0]);
@@ -68,18 +68,18 @@ fn matching_survives_renaming_and_reordering() {
 /// ponta do caminho, e o artista veria um objeto a deslizar de um lugar que ele nunca autorou.
 #[test]
 fn the_unpaired_fade_without_moving() {
-    let mut a = UiState::new("idle");
+    let mut a = UiState::new(StateRole::Default);
     a.objects = vec![ObjectPose {
         translation: [3.0, 4.0],
         ..posed(1)
     }];
-    let mut b = UiState::new("open");
+    let mut b = UiState::new(StateRole::Hover);
     b.objects = vec![ObjectPose {
         translation: [-2.0, 8.0],
         ..posed(2)
     }];
 
-    let tr = Transition::new(&a, &b);
+    let tr = Transition::new(&a.objects, &b.objects);
     let mid = tr.at(0.5);
     let leaving = mid.iter().find(|p| p.id == 1).expect("o que sai");
     let entering = mid.iter().find(|p| p.id == 2).expect("o que entra");
@@ -102,9 +102,9 @@ fn the_unpaired_fade_without_moving() {
 /// **IDÊNTICO não anima — e não custa.**
 #[test]
 fn an_object_that_does_not_change_is_not_in_the_transition() {
-    let mut a = UiState::new("idle");
+    let mut a = UiState::new(StateRole::Default);
     a.objects = vec![posed(1), posed(2)];
-    let mut b = UiState::new("hover");
+    let mut b = UiState::new(StateRole::Hover);
     b.objects = vec![
         posed(1),
         ObjectPose {
@@ -113,7 +113,7 @@ fn an_object_that_does_not_change_is_not_in_the_transition() {
         },
     ];
 
-    let tr = Transition::new(&a, &b);
+    let tr = Transition::new(&a.objects, &b.objects);
     assert_eq!(tr.len(), 1, "um objeto inalterado entrou na transicao");
     assert_eq!(tr.at(0.5)[0].id, 2);
 }
@@ -123,17 +123,19 @@ fn an_object_that_does_not_change_is_not_in_the_transition() {
 fn rotation_takes_the_short_way_around() {
     let deg = |d: f64| d.to_radians();
     let mid = |from: f64, to: f64| {
-        let mut a = UiState::new("a");
+        let mut a = UiState::new(StateRole::Default);
         a.objects = vec![ObjectPose {
             rotation: deg(from),
             ..posed(1)
         }];
-        let mut b = UiState::new("b");
+        let mut b = UiState::new(StateRole::Hover);
         b.objects = vec![ObjectPose {
             rotation: deg(to),
             ..posed(1)
         }];
-        Transition::new(&a, &b).at(0.5)[0].rotation.to_degrees()
+        Transition::new(&a.objects, &b.objects).at(0.5)[0]
+            .rotation
+            .to_degrees()
     };
 
     // A METADE de meia volta: um lerp de MATRIZ daria uma forma encolhida, e um lerp ingénuo de
@@ -156,18 +158,18 @@ fn the_shape_goes_through_the_one_blend_engine() {
     let mut b_geom = ellipse([1.0, 0.5], 1.0, 0.5);
     b_geom.id = 1;
 
-    let mut a = UiState::new("a");
+    let mut a = UiState::new(StateRole::Default);
     a.objects = vec![ObjectPose {
         geometry: Some(a_geom.clone()),
         ..posed(1)
     }];
-    let mut b = UiState::new("b");
+    let mut b = UiState::new(StateRole::Hover);
     b.objects = vec![ObjectPose {
         geometry: Some(b_geom.clone()),
         ..posed(1)
     }];
 
-    let tr = Transition::new(&a, &b);
+    let tr = Transition::new(&a.objects, &b.objects);
     assert_eq!(tr.plans_built(), 1, "a forma nao foi casada pelo Blend");
     let got = tr.at(0.5)[0].geometry.clone().expect("forma");
     let want = ph2d_vec_blend::morph(&a_geom, &b_geom, 0.5).expect("morph");
@@ -184,18 +186,18 @@ fn the_shape_goes_through_the_one_blend_engine() {
 /// formas iguais, contra 0,0001 ms de um passo. Vinte objetos = **12,79 ms**, 77% de um quadro.
 #[test]
 fn a_colour_only_change_builds_no_plan() {
-    let mut a = UiState::new("idle");
+    let mut a = UiState::new(StateRole::Default);
     a.objects = vec![ObjectPose {
         fill: Some(Paint::Solid(Rgba8::new(30, 90, 200, 255))),
         ..posed(1)
     }];
-    let mut b = UiState::new("hover");
+    let mut b = UiState::new(StateRole::Hover);
     b.objects = vec![ObjectPose {
         fill: Some(Paint::Solid(Rgba8::new(230, 200, 40, 255))),
         ..posed(1)
     }];
 
-    let tr = Transition::new(&a, &b);
+    let tr = Transition::new(&a.objects, &b.objects);
     assert_eq!(
         tr.plans_built(),
         0,
@@ -218,18 +220,21 @@ fn a_colour_only_change_builds_no_plan() {
 fn the_colour_path_is_perceptual_not_muddy() {
     let blue = Rgba8::new(0, 40, 220, 255);
     let yellow = Rgba8::new(240, 220, 0, 255);
-    let mut a = UiState::new("a");
+    let mut a = UiState::new(StateRole::Default);
     a.objects = vec![ObjectPose {
         fill: Some(Paint::Solid(blue)),
         ..posed(1)
     }];
-    let mut b = UiState::new("b");
+    let mut b = UiState::new(StateRole::Hover);
     b.objects = vec![ObjectPose {
         fill: Some(Paint::Solid(yellow)),
         ..posed(1)
     }];
 
-    let Some(Paint::Solid(mid)) = Transition::new(&a, &b).at(0.5)[0].fill.clone() else {
+    let Some(Paint::Solid(mid)) = Transition::new(&a.objects, &b.objects).at(0.5)[0]
+        .fill
+        .clone()
+    else {
         panic!("sem tinta no meio")
     };
 
@@ -251,14 +256,14 @@ fn the_colour_path_is_perceptual_not_muddy() {
 /// **`t` fora de `[0, 1]` encosta na ponta e para** — um ease com overshoot não quebra a pose.
 #[test]
 fn overshoot_clamps_instead_of_breaking() {
-    let mut a = UiState::new("a");
+    let mut a = UiState::new(StateRole::Default);
     a.objects = vec![posed(1)];
-    let mut b = UiState::new("b");
+    let mut b = UiState::new(StateRole::Hover);
     b.objects = vec![ObjectPose {
         translation: [10.0, 0.0],
         ..posed(1)
     }];
-    let tr = Transition::new(&a, &b);
+    let tr = Transition::new(&a.objects, &b.objects);
     assert_eq!(tr.at(1.4)[0].translation, [10.0, 0.0]);
     assert_eq!(tr.at(-0.3)[0].translation, [0.0, 0.0]);
 }
@@ -276,20 +281,20 @@ fn the_morphed_shape_wears_the_poses_own_paint() {
     b_geom.id = 1;
     b_geom.fill = Some(Paint::Solid(Rgba8::new(0, 255, 0, 255)));
 
-    let mut a = UiState::new("a");
+    let mut a = UiState::new(StateRole::Default);
     a.objects = vec![ObjectPose {
         geometry: Some(a_geom),
         fill: Some(Paint::Solid(Rgba8::new(10, 10, 10, 255))),
         ..posed(1)
     }];
-    let mut b = UiState::new("b");
+    let mut b = UiState::new(StateRole::Hover);
     b.objects = vec![ObjectPose {
         geometry: Some(b_geom),
         fill: Some(Paint::Solid(Rgba8::new(240, 240, 240, 255))),
         ..posed(1)
     }];
 
-    let mid = Transition::new(&a, &b).at(0.5).remove(0);
+    let mid = Transition::new(&a.objects, &b.objects).at(0.5).remove(0);
     assert_eq!(
         mid.geometry.as_ref().and_then(|g| g.fill.clone()),
         mid.fill,
@@ -302,18 +307,63 @@ fn the_morphed_shape_wears_the_poses_own_paint() {
 // A TABELA que viaja no documento
 // ─────────────────────────────────────────────────────────────────────────────────────────────
 
-/// **Update State preserva o NOME.** O artista está a corrigir a pose, não a re-baptizar.
+/// **Gravar duas vezes o mesmo papel SUBSTITUI — não acrescenta.**
+///
+/// ⚠️ É o *Update State* do artista, e é aqui que se vê porque o papel é a chave: com um nome
+/// livre, "gravar hover outra vez" produziria dois estados chamados hover e a máquina escolheria
+/// um deles por posição — o defeito que ninguém consegue diagnosticar olhando para a tela.
 #[test]
-fn updating_a_state_keeps_the_name_the_artist_gave_it() {
+fn recording_the_same_role_twice_replaces_it() {
     let mut sets = StateSets::default();
-    let i = sets.push(7, UiState::new("hover"));
+    sets.set(7, UiState::new(StateRole::Hover));
 
-    let mut fresh = UiState::new("sem nome");
+    let mut fresh = UiState::new(StateRole::Hover);
     fresh.objects = vec![posed(1)];
-    assert!(sets.replace_pose(7, i, fresh));
+    sets.set(7, fresh);
 
-    assert_eq!(sets.get(7)[i].name, "hover", "o Update State roubou o nome");
-    assert_eq!(sets.get(7)[i].objects.len(), 1, "a pose nao foi gravada");
+    assert_eq!(
+        sets.get(7).len(),
+        1,
+        "gravar de novo criou um segundo hover"
+    );
+    assert_eq!(
+        sets.role(7, StateRole::Hover).map(|s| s.objects.len()),
+        Some(1),
+        "a pose nova nao foi gravada"
+    );
+}
+
+/// **A lista fica ordenada por PAPEL, não pela ordem em que o artista gravou.**
+///
+/// ⚠️ A ordem de gravação é acidente — quem grava Pressed antes de Hover não está a pedir que a
+/// lista mude de forma. Uma lista que se reordenasse debaixo do dedo é a mesma falha que o
+/// `RootOrder` curou na hierarquia.
+#[test]
+fn the_list_is_ordered_by_role_not_by_when_it_was_recorded() {
+    let mut sets = StateSets::default();
+    for r in [StateRole::Disabled, StateRole::Hover, StateRole::Default] {
+        sets.set(7, UiState::new(r));
+    }
+    let order: Vec<StateRole> = sets.get(7).iter().map(|s| s.role).collect();
+    assert_eq!(
+        order,
+        vec![StateRole::Default, StateRole::Hover, StateRole::Disabled]
+    );
+}
+
+/// **O TEMPO afinado sobrevive a apagar o último estado.**
+///
+/// ⚠️ Um hospedeiro sem estados sai da tabela — mas só se ele não carregar mais nenhuma decisão
+/// do artista. Despejar a duração que ele afinou junto com a última pose seria perder trabalho em
+/// silêncio, e é a diferença entre *vazio* e *de fábrica*.
+#[test]
+fn clearing_the_last_state_keeps_a_tuned_duration() {
+    let mut sets = StateSets::default();
+    sets.set(7, UiState::new(StateRole::Hover));
+    sets.set_duration(7, 0.42);
+    assert!(sets.clear(7, StateRole::Hover));
+    assert!(!sets.is_empty(), "a duracao afinada foi despejada junto");
+    assert!((sets.timing(7).0 - 0.42).abs() < 1e-9);
 }
 
 /// **Um hospedeiro sem estado nenhum SAI da tabela.**
@@ -323,11 +373,11 @@ fn updating_a_state_keeps_the_name_the_artist_gave_it() {
 #[test]
 fn a_host_with_no_states_left_leaves_the_table() {
     let mut sets = StateSets::default();
-    sets.push(7, UiState::new("idle"));
-    sets.push(7, UiState::new("hover"));
-    assert!(sets.remove(7, 1));
+    sets.set(7, UiState::new(StateRole::Default));
+    sets.set(7, UiState::new(StateRole::Hover));
+    assert!(sets.clear(7, StateRole::Hover));
     assert!(!sets.is_empty(), "a tabela esvaziou cedo demais");
-    assert!(sets.remove(7, 0));
+    assert!(sets.clear(7, StateRole::Default));
     assert!(sets.is_empty(), "um hospedeiro vazio ficou na tabela");
     assert_eq!(sets.hosts().count(), 0);
 }
@@ -336,8 +386,8 @@ fn a_host_with_no_states_left_leaves_the_table() {
 #[test]
 fn deleting_the_shape_forgets_its_states() {
     let mut sets = StateSets::default();
-    sets.push(7, UiState::new("idle"));
-    sets.push(9, UiState::new("idle"));
+    sets.set(7, UiState::new(StateRole::Default));
+    sets.set(9, UiState::new(StateRole::Default));
     sets.retain_hosts(|id| id == 9);
     assert_eq!(
         sets.get(7).len(),
@@ -357,11 +407,11 @@ fn deleting_the_shape_forgets_its_states() {
 fn the_table_survives_the_wire_in_a_deterministic_order() {
     let mut a = StateSets::default();
     for host in [30_u64, 7, 19] {
-        a.push(host, UiState::new(format!("s{host}")));
+        a.set(host, UiState::new(StateRole::Default));
     }
     let mut b = StateSets::default();
     for host in [19_u64, 30, 7] {
-        b.push(host, UiState::new(format!("s{host}")));
+        b.set(host, UiState::new(StateRole::Default));
     }
     let (wa, wb) = (
         postcard::to_allocvec(&a).expect("wire a"),

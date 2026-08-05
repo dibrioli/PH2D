@@ -22,6 +22,18 @@
 //! pela porta OKLab da mesma crate. Um segundo motor divergiria daquele, e a divergência só
 //! apareceria numa screenshot.
 //!
+//! # O estado tem um PAPEL, não um nome — e é isso que dispensa a tabela de gatilhos
+//!
+//! Um estado é *Default / Hover / Pressed / Disabled* ([`StateRole`]). Com um nome livre alguém
+//! teria de autorar **uma segunda tabela** — *"quando o rato entra, vá para o estado chamado
+//! assim"* — e mantê-la em dia com a lista; com o papel, o gatilho é **derivado**, e a shell
+//! chama [`Machine::go_to_role`] com o que aconteceu.
+//!
+//! ⚠️ **A lista de papéis é OPCIONAL:** um papel que ninguém gravou recua para o `Default`, então
+//! autorar só o Hover não deixa o botão preso ao ser apertado. O que isto deliberadamente **não**
+//! é: um grafo de estados com transições autoradas (a *state machine* do Rive) — aquilo tem
+//! condições, entradas nomeadas e um editor próprio.
+//!
 //! # A lei do casamento: por ID, nunca por nome
 //!
 //! Dois estados são duas listas de objetos, e a pergunta *"quem é quem"* tem uma resposta só: o
@@ -54,12 +66,14 @@
 
 mod machine;
 mod pose;
+mod role;
 mod sets;
 mod transition;
 
 pub use machine::Machine;
 pub use pose::{ObjectPose, UiState};
-pub use sets::StateSets;
+pub use role::StateRole;
+pub use sets::{DEFAULT_DURATION_S, DEFAULT_EASING, HostStates, MAX_DURATION_S, StateSets};
 pub use transition::Transition;
 
 #[cfg(test)]

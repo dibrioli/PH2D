@@ -1,5 +1,6 @@
 //! **A POSE** — tudo o que um objeto pode ter de diferente entre dois estados, e nada mais.
 
+use crate::role::StateRole;
 use ph2d_vec_scene::{Paint, StrokeSpec, VecPath, VecPathId};
 use serde::{Deserialize, Serialize};
 
@@ -64,22 +65,23 @@ impl ObjectPose {
     }
 }
 
-/// Um ESTADO: o nome que o artista lhe deu, e a pose de cada objeto que ele autora.
+/// Um ESTADO: o papel que ele desempenha, e a pose de cada objeto que ele autora.
 ///
-/// ⚠️ **O nome é rótulo, nunca chave.** Ele existe para o artista escolher *"hover"* num menu; o
-/// casamento entre estados é sempre pelo [`ObjectPose::id`]. Um estado renomeado continua a casar
-/// com o mesmo objeto, e é isso que o gate de rename prova.
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+/// ⚠️ **O papel é a CHAVE do estado; o id é a chave do OBJETO.** São duas perguntas diferentes e
+/// cada uma tem uma resposta só — *que estado é este?* responde-se com o
+/// [`StateRole`], *quem é quem entre dois estados?* com o [`ObjectPose::id`]. Nenhuma das duas é
+/// um nome livre, e é isso que faz uma animação sobreviver a renomear e a reordenar.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct UiState {
-    pub name: String,
+    pub role: StateRole,
     pub objects: Vec<ObjectPose>,
 }
 
 impl UiState {
     #[must_use]
-    pub fn new(name: impl Into<String>) -> Self {
+    pub fn new(role: StateRole) -> Self {
         Self {
-            name: name.into(),
+            role,
             objects: Vec::new(),
         }
     }

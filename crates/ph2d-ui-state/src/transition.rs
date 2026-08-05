@@ -1,6 +1,6 @@
 //! **A TRANSIÇÃO** — o casamento pago uma vez, e o passo pago por frame.
 
-use crate::pose::{ObjectPose, UiState};
+use crate::pose::ObjectPose;
 use ph2d_vec_blend::Plan;
 
 /// Meia volta, em radianos — a fronteira do arco mais curto.
@@ -40,18 +40,23 @@ pub struct Transition {
 }
 
 impl Transition {
-    /// Casa os dois estados **por id** e prepara o que for preciso para andar.
+    /// Casa as duas poses **por id** e prepara o que for preciso para andar.
     ///
-    /// ⚠️ Objetos **idênticos nos dois estados não entram** na transição. Não é otimização: é a
+    /// ⚠️ **Ela recebe LISTAS de pose e não [`UiState`](crate::UiState)s**, e a assinatura é
+    /// parte do desenho: o lado de onde se PARTE é quase sempre a pose VIVA da cena — um estado a
+    /// meio caminho de outro —, que não tem papel nenhum. Pedir um `UiState` obrigaria a
+    /// inventar-lhe um, e o papel inventado seria uma mentira que alguém a jusante leria.
+    ///
+    /// ⚠️ Objetos **idênticos nos dois lados não entram** na transição. Não é otimização: é a
     /// afirmação de que *não animar* e *animar de x para x* são coisas diferentes — a segunda
     /// custaria um `Plan` e produziria trabalho por frame para não mover nada.
     #[must_use]
-    pub fn new(from: &UiState, to: &UiState) -> Self {
+    pub fn new(from: &[ObjectPose], to: &[ObjectPose]) -> Self {
         let mut steps = Vec::new();
         let mut plans_built = 0;
 
-        for a in &from.objects {
-            match to.pose(a.id) {
+        for a in from {
+            match to.iter().find(|b| b.id == a.id) {
                 Some(b) if a.is_same_as(b) => {}
                 Some(b) => {
                     // O `Plan` é construído **só** quando as geometrias de facto diferem. Formas
@@ -75,8 +80,8 @@ impl Transition {
                 None => steps.push(Step::Leaving(a.clone())),
             }
         }
-        for b in &to.objects {
-            if from.pose(b.id).is_none() {
+        for b in to {
+            if !from.iter().any(|a| a.id == b.id) {
                 steps.push(Step::Entering(b.clone()));
             }
         }

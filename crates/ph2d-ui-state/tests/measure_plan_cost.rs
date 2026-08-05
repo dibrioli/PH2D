@@ -6,7 +6,7 @@
 //! ⚠️ `--release` não é preferência: o `Plan` é uma busca de fase 256×256, e em debug o número
 //! mede o PERFIL do build e não o produto.
 
-use ph2d_ui_state::{ObjectPose, Transition, UiState};
+use ph2d_ui_state::{ObjectPose, StateRole, Transition, UiState};
 use ph2d_vec_scene::{Paint, Rgba8, VecPath, ellipse, rectangle};
 use std::time::Instant;
 
@@ -20,8 +20,8 @@ fn timed(label: &str, n: u32, mut f: impl FnMut()) -> f64 {
     ms
 }
 
-fn state(name: &str, geom: VecPath) -> UiState {
-    let mut s = UiState::new(name);
+fn state(role: StateRole, geom: VecPath) -> UiState {
+    let mut s = UiState::new(role);
     s.objects = vec![ObjectPose {
         geometry: Some(geom),
         ..ObjectPose::new(1)
@@ -40,24 +40,24 @@ fn measure_what_a_transition_costs() {
     let mut other_shape = ellipse([1.0, 0.5], 1.0, 0.5);
     other_shape.id = 1;
 
-    let a = state("idle", a_geom);
-    let same = state("hover", colour_only);
-    let diff = state("open", other_shape);
+    let a = state(StateRole::Default, a_geom);
+    let same = state(StateRole::Hover, colour_only);
+    let diff = state(StateRole::Pressed, other_shape);
 
     let n_colour = timed("Transition::new (so' COR)", 200, || {
-        std::hint::black_box(Transition::new(&a, &same));
+        std::hint::black_box(Transition::new(&a.objects, &same.objects));
     });
     let n_shape = timed("Transition::new (a FORMA muda)", 200, || {
-        std::hint::black_box(Transition::new(&a, &diff));
+        std::hint::black_box(Transition::new(&a.objects, &diff.objects));
     });
-    let tr = Transition::new(&a, &diff);
+    let tr = Transition::new(&a.objects, &diff.objects);
     let at = timed("Transition::at (um passo)", 2000, || {
         std::hint::black_box(tr.at(0.5));
     });
 
     println!(
         "\nplans construidos:  so'-cor {}  |  forma {}",
-        Transition::new(&a, &same).plans_built(),
+        Transition::new(&a.objects, &same.objects).plans_built(),
         tr.plans_built()
     );
     println!(

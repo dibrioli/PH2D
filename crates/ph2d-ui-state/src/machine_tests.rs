@@ -1,6 +1,6 @@
 //! Gates da **máquina de estados** (plano UI/UX W7).
 
-use crate::{Machine, ObjectPose, UiState};
+use crate::{Machine, ObjectPose, StateRole, UiState};
 use ph2d_anim::{Easing, EasingFamily, EasingMode};
 
 fn linear() -> Easing {
@@ -9,15 +9,19 @@ fn linear() -> Easing {
 
 /// idle em x=0, hover em x=10 — um objeto, um eixo, para o número ser legível.
 fn machine() -> Machine {
-    let at = |name: &str, x: f64| {
-        let mut s = UiState::new(name);
+    let at = |role: StateRole, x: f64| {
+        let mut s = UiState::new(role);
         s.objects = vec![ObjectPose {
             translation: [x, 0.0],
             ..ObjectPose::new(1)
         }];
         s
     };
-    Machine::new(vec![at("idle", 0.0), at("hover", 10.0)]).expect("maquina")
+    Machine::new(vec![
+        at(StateRole::Default, 0.0),
+        at(StateRole::Hover, 10.0),
+    ])
+    .expect("maquina")
 }
 
 fn x(m: &Machine) -> f64 {
@@ -117,16 +121,20 @@ fn an_interrupted_transition_resumes_from_where_it_is() {
 /// diferir para a pergunta sequer existir.
 #[test]
 fn two_transitions_in_one_frame_do_not_stack() {
-    let at = |name: &str, x: f64| {
-        let mut s = UiState::new(name);
+    let at = |role: StateRole, x: f64| {
+        let mut s = UiState::new(role);
         s.objects = vec![ObjectPose {
             translation: [x, 0.0],
             ..ObjectPose::new(1)
         }];
         s
     };
-    let mut m =
-        Machine::new(vec![at("idle", 0.0), at("hover", 10.0), at("press", 20.0)]).expect("maquina");
+    let mut m = Machine::new(vec![
+        at(StateRole::Default, 0.0),
+        at(StateRole::Hover, 10.0),
+        at(StateRole::Pressed, 20.0),
+    ])
+    .expect("maquina");
 
     m.go_to(1, 1.0, linear());
     m.go_to(2, 1.0, linear());
@@ -152,9 +160,9 @@ fn two_transitions_in_one_frame_do_not_stack() {
 /// faz algo a mais: **remover quem saiu**.
 #[test]
 fn a_zero_duration_lands_exactly_and_by_the_same_door() {
-    let mut open = UiState::new("open");
+    let mut open = UiState::new(StateRole::Default);
     open.objects = vec![ObjectPose::new(1), ObjectPose::new(2)];
-    let mut closed = UiState::new("closed");
+    let mut closed = UiState::new(StateRole::Hover);
     closed.objects = vec![ObjectPose {
         translation: [4.0, 0.0],
         ..ObjectPose::new(1)
@@ -217,9 +225,9 @@ fn going_where_you_already_are_is_a_no_op() {
 /// **Quem SAI é removido na chegada** — no fim, quem saiu não está lá.
 #[test]
 fn what_leaves_is_gone_when_the_transition_lands() {
-    let mut a = UiState::new("open");
+    let mut a = UiState::new(StateRole::Default);
     a.objects = vec![ObjectPose::new(1), ObjectPose::new(2)];
-    let mut b = UiState::new("closed");
+    let mut b = UiState::new(StateRole::Hover);
     b.objects = vec![ObjectPose::new(1)];
     let mut m = Machine::new(vec![a, b]).expect("maquina");
 
@@ -239,4 +247,72 @@ fn what_leaves_is_gone_when_the_transition_lands() {
         "quem saiu continuou na cena depois de chegar"
     );
     assert_eq!(m.pose()[0].id, 1);
+}
+
+/// **Um papel que ninguém gravou recua para o Default.**
+///
+/// ⚠️ É o que torna a lista de papéis OPCIONAL. Sem o recuo, um botão que autora só o Hover
+/// ficaria **preso no hover** ao ser apertado — e autorar um papel a mais passaria a ser um
+/// requisito escondido de autorar todos.
+#[test]
+fn a_role_nobody_recorded_falls_back_to_the_default() {
+    let at = |role: StateRole, x: f64| {
+        let mut s = UiState::new(role);
+        s.objects = vec![ObjectPose {
+            translation: [x, 0.0],
+            ..ObjectPose::new(1)
+        }];
+        s
+    };
+    // Só Default e Hover: o Pressed nunca foi gravado.
+    let mut m = Machine::new(vec![
+        at(StateRole::Default, 0.0),
+        at(StateRole::Hover, 10.0),
+    ])
+    .expect("maquina");
+
+    m.go_to_role(StateRole::Hover, 0.0, linear());
+    assert_eq!(x(&m), 10.0);
+
+    m.go_to_role(StateRole::Pressed, 0.0, linear());
+    assert_eq!(
+        x(&m),
+        0.0,
+        "apertar um botao sem estado de Pressed devia voltar ao repouso, nao ficar preso"
+    );
+    assert_eq!(m.current(), 0);
+}
+
+/// **E se nem o Default existe, `go_to_role` não faz nada** — em vez de escolher um estado ao
+/// acaso, que é como uma cena inteira salta ao primeiro hover.
+///
+/// ⚠️ **A fixture não tem Default DE PROPÓSITO, e tem DOIS estados.** A lista é ordenada por
+/// papel, então *"o Default"* e *"o primeiro da lista"* coincidem sempre que o Default existe —
+/// uma coincidência que deixaria um recuo escrito como `states[0]` verde em toda a suíte. Só uma
+/// lista SEM Default separa as duas respostas.
+#[test]
+fn without_a_default_a_role_request_is_a_no_op() {
+    let at = |role: StateRole, x: f64| {
+        let mut s = UiState::new(role);
+        s.objects = vec![ObjectPose {
+            translation: [x, 0.0],
+            ..ObjectPose::new(1)
+        }];
+        s
+    };
+    let mut m = Machine::new(vec![
+        at(StateRole::Hover, 10.0),
+        at(StateRole::Pressed, 20.0),
+    ])
+    .expect("maquina");
+    m.go_to(1, 0.0, linear());
+    assert_eq!(x(&m), 20.0);
+
+    m.go_to_role(StateRole::Disabled, 0.0, linear());
+    assert_eq!(
+        x(&m),
+        20.0,
+        "um recuo para `states[0]` levou a cena para um estado que ninguem pediu"
+    );
+    assert!(!m.is_animating());
 }

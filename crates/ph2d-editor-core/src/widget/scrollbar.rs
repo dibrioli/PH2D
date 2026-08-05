@@ -207,6 +207,12 @@ pub const TOKENS_SCROLLBAR_ID: NodeId = NodeId(838);
 /// for the same reason as the siblings above. Next free id is `840`;
 /// re-read the collision note above before taking it.
 pub const AUTHORED_SCROLLBAR_ID: NodeId = NodeId(839);
+/// Painel da cena 3D (ADR-0150 W12) — seis seções, das quais a de FERRAMENTA
+/// sozinha é uma faixa de dezesseis chips que reflui em várias linhas: ele
+/// transborda o dock em qualquer resolução. Thumb próprio pelo mesmo motivo dos
+/// irmãos acima. Next free id is `841`; re-read the collision note above before
+/// taking it.
+pub const SCULPT3D_SCROLLBAR_ID: NodeId = NodeId(840);
 
 #[cfg(test)]
 mod tests {
@@ -247,6 +253,7 @@ mod tests {
             ("WET_TUNING", WET_TUNING_SCROLLBAR_ID),
             ("TOKENS", TOKENS_SCROLLBAR_ID),
             ("AUTHORED", AUTHORED_SCROLLBAR_ID),
+            ("SCULPT3D", SCULPT3D_SCROLLBAR_ID),
             ("DROPDOWN", crate::widget::DROPDOWN_SCROLLBAR_ID),
         ];
         for (i, (na, a)) in ids.iter().enumerate() {

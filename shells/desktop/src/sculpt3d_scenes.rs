@@ -418,7 +418,14 @@ pub(crate) fn announce(mesh: &ph2d_mesh::Mesh) {
          [sculpt3d] S = INFLAR/ENCOLHER (local scale): segure e arraste na HORIZONTAL\n\
          [sculpt3d]     os dois voltam ao lugar quando voce varre de volta -- o gesto e' o TOTAL, nao a soma\n\
          [sculpt3d] A LUZ e o rig do artista (o mesmo que acende a tinta): Q/E giram a lampada, R/F a sobem\n\
-         [sculpt3d] o espelho nasce DESLIGADO; PH2D_SCULPT3D_DIAG=1 mede se o pincel cai sob o cursor",
+         [sculpt3d] o espelho nasce DESLIGADO; PH2D_SCULPT3D_DIAG=1 mede se o pincel cai sob o cursor\n\
+         [sculpt3d] --- O PAINEL (W12) ---\n\
+         [sculpt3d] ele abre com a cena, e a CRASE (`) o fecha e o reabre\n\
+         [sculpt3d] TOOL (os 16 verbos) · BRUSH (raio, forca, falloff, mascara) · SYMMETRY\n\
+         [sculpt3d] TOPOLOGY (dyntopo, detalhe, niveis, remesh, tapar) · SHADING · SCENE\n\
+         [sculpt3d] a CAVIDADE e' o slider da secao SHADING: 0 e' o barro liso, 1 o teto\n\
+         [sculpt3d] o ANEL do cursor e' desenhado NO PONTO DE ACERTO -- se ele nao estiver\n\
+         [sculpt3d]     debaixo do mouse sobre o barro, o pick esta' errado e da' para VER",
         mesh.vert_count(),
         mesh.face_count(),
         mesh.triangle_count()

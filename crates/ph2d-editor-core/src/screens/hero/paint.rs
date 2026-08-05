@@ -439,6 +439,10 @@ pub fn paint_hero_screen(
         // no-opa quando escondido — sem esta entrada ele fica registado, visível, e NUNCA
         // pintado (nada quebra, nada avisa).
         ids::AUTHORED_PANEL,
+        // O painel da cena 3D (ADR-0150 W12): mesma categoria dos dois acima.
+        // O `paint()` dele sai no primeiro `if` sem cena viva — sem esta entrada
+        // ele fica registrado, visível, e NUNCA pintado.
+        ids::SCULPT3D_PANEL,
         ids::INSP_BLENDER_PICKER,
         ids::GAL_PANEL,
         ids::AUDIO_MIXER_PANEL,

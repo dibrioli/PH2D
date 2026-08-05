@@ -362,7 +362,7 @@ pub fn cursor_over_hero_panel(gfx: Option<&AppGfx>, x: f32, y: f32) -> bool {
     use ph2d_editor::screens::hero::ids::{
         AUDIO_EDITOR_PANEL, AUDIO_MIXER_PANEL, AUTHORED_PANEL, BGR_PANEL, CEQ_PANEL, EQS_PANEL,
         FLIP_PANEL, FLIP_STRIP_PANEL, GAL_PANEL, HIER_PANEL, INSP_PANEL, PAD_PANEL,
-        PAINTER_LAYERS_PANEL, PHYSICS_PANEL, TOKENS_PANEL, UPS_PANEL, VECTOR_PANEL,
+        PAINTER_LAYERS_PANEL, PHYSICS_PANEL, SCULPT3D_PANEL, TOKENS_PANEL, UPS_PANEL, VECTOR_PANEL,
         WET_TUNING_PANEL,
     };
     let inside = |panel_id| {
@@ -429,6 +429,12 @@ pub fn cursor_over_hero_panel(gfx: Option<&AppGfx>, x: f32, y: f32) -> bool {
         // entao ela transborda o dock em qualquer altura e ele publica um thumb — sem esta linha,
         // rolar as rows daria ZOOM na camera por baixo, em silencio.
         || inside(AUTHORED_PANEL)
+        // O painel da cena 3D (ADR-0150 W12). Ele publica um thumb — seis seções
+        // transbordam o dock em qualquer resolução —, e sem esta linha rolar a
+        // lista de ferramentas daria DOLLY na câmera 3D por baixo, em silêncio:
+        // a roda sobre a cena é o zoom dela, e a barreira de painel é a única
+        // coisa que separa as duas.
+        || inside(SCULPT3D_PANEL)
         || inside(WET_TUNING_PANEL)
         || inside(ph2d_editor::ids::TIMELINE_PANEL)
 }

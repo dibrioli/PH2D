@@ -44,6 +44,9 @@ mod painter_wetpaint;
 mod physics;
 mod rail;
 mod rail_painter;
+/// **Os ids do painel da cena 3D** (ADR-0150, W12) — a ferramenta, o pincel, o espelho,
+/// a topologia e o sombreamento. Categoria MUNDO, como o de física.
+mod sculpt3d;
 mod timeline;
 /// **Os ids do painel de TOKENS** (plano UI/UX W6) — a tabela de cor do design system,
 /// autorável pelo artista. Categoria MUNDO, como o de física.
@@ -108,6 +111,7 @@ pub use painter_wetpaint::*;
 pub use physics::*;
 pub use rail::*;
 pub use rail_painter::*;
+pub use sculpt3d::*;
 pub use timeline::*;
 pub use tokens::*;
 pub use topbar::*;

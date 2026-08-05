@@ -642,6 +642,11 @@ fn canonical_panel_id(id: &str) -> Option<&'static str> {
         "widget_gallery" => Some("widget_gallery"),
         "grid_snap" => Some("grid_snap"),
         PANEL_TIMELINE => Some(PANEL_TIMELINE),
+        // O painel da cena 3D (ADR-0150 W12). A ponte do shell o abre no frame
+        // em que a escultura nasce, então a chave é escrita a cada sessão de
+        // smoke — vazá-la pelo `Box::leak` seria uma alocação por processo, o
+        // que é barato e mesmo assim errado quando o nome é conhecido.
+        "sculpt3d" => Some("sculpt3d"),
         _ => None,
     }
 }

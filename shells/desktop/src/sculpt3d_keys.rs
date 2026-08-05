@@ -36,6 +36,33 @@ impl App {
             self.sculpt3d_bake_request = true;
             return true;
         }
+        // **O PAINEL** (W12) — alternar a UI da cena 3D.
+        //
+        // ⚠️ **No acento grave, e a escolha é por ELIMINAÇÃO, não por gosto:**
+        // com uma cena armada este teclado consome quase toda letra (os dez
+        // dígitos são verbos, `G`/`H`/`T`/`S`/`A` são verbos, `C`/`I`/`B`/`N` são
+        // máscara, `K`/`J`/`V`/`O`/`P`/`U` são topologia, `X`/`Y`/`Z` o espelho,
+        // `Q`/`E`/`R`/`F` a luz, `D` a doação), e o que sobra livre no app inteiro
+        // é a crase — que é também onde consoles e sidebars costumam morar.
+        //
+        // ⚠️ E ela vive AQUI e não no teclado global: sem cena 3D não há painel a
+        // alternar, e uma tecla global seria um atalho morto em todo documento
+        // 2D. Antes do empréstimo da cena pelo motivo do `Shift+B` acima —
+        // escrever no `self` com ela emprestada não compila.
+        if code == K::Backquote && !ctrl && !shift {
+            if self.sculpt3d_scene_mut().is_none() {
+                return false;
+            }
+            if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+                let on = hero.is_panel_visible("sculpt3d");
+                hero.panel_visibility.insert("sculpt3d", !on);
+                eprintln!(
+                    "[sculpt3d] painel: {}",
+                    if on { "FECHADO" } else { "ABERTO" }
+                );
+            }
+            return true;
+        }
         let Some(scene) = self.sculpt3d_scene_mut() else {
             return false;
         };

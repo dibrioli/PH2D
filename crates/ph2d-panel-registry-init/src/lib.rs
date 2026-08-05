@@ -78,6 +78,8 @@ pub fn build_typed_registry() -> ph2d_editor_core::panel::PanelRegistry {
     >());
     #[cfg(feature = "panel-physics")]
     reg.push(ErasedPanel::new::<ph2d_panel_physics::PhysicsPanel>());
+    #[cfg(feature = "panel-sculpt3d")]
+    reg.push(ErasedPanel::new::<ph2d_panel_sculpt3d::Sculpt3dPanel>());
     #[cfg(feature = "panel-timeline")]
     reg.push(ErasedPanel::new::<ph2d_panel_timeline::TimelinePanel>());
     #[cfg(feature = "panel-tokens")]
@@ -161,10 +163,14 @@ mod tests {
         {
             n += 1;
         }
-        #[cfg(feature = "panel-wet-tuning")]
+        #[cfg(feature = "panel-sculpt3d")]
         {
             n += 1;
         }
+        #[cfg(feature = "panel-wet-tuning")]
+    {
+        n += 1;
+    }
         #[cfg(feature = "panel-timeline")]
         {
             n += 1;

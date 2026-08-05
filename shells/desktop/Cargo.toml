@@ -34,6 +34,7 @@ ph2d-panel-physics = { path = "../../crates/ph2d-panel-physics" }
 # read-back do picker, entao a dep e' direta e nao-opcional, como a de fisica.
 ph2d-panel-tokens = { path = "../../crates/ph2d-panel-tokens" }
 ph2d-panel-authored = { path = "../../crates/ph2d-panel-authored" }
+ph2d-panel-sculpt3d = { path = "../../crates/ph2d-panel-sculpt3d" }
 ph2d-panel-wet-tuning = { path = "../../crates/ph2d-panel-wet-tuning" }
 ph2d-render = { path = "../../crates/ph2d-render" }
 # Wave 11 color-space migration (ADR-0042 §6 #2): typed color wrappers
@@ -395,6 +396,7 @@ default = [
     "panel-wet-tuning",
     "panel-tokens",
     "panel-authored",
+    "panel-sculpt3d",
 ]
 # `lite` = explicit "no panels" — host boots with chrome only
 # (TopBar + LeftRail + BottomHUD + canvas). Useful for distribution
@@ -464,6 +466,18 @@ panel-tokens         = ["ph2d-panel-registry-init/panel-tokens"]
 # physics acima: sem ela o interruptor alternaria a visibilidade de um painel
 # que nao esta' no registro, com todos os gates verdes.
 panel-authored       = ["ph2d-panel-registry-init/panel-authored"]
+# Painel da cena 3D (ADR-0150 W12). `ph2d-panel-sculpt3d` e' dep direta
+# nao-opcional (`render_loop::sculpt3d_panel_bridge` publica o retrato e drena os
+# intents); esta linha liga a feature do registry-init que o compila PARA DENTRO
+# do registro. ⚠️ Vale o mesmo aviso do physics acima — sem ela o painel nasce
+# invisivel com TODOS os gates verdes, que foi como o de fisica reprovou no
+# primeiro smoke.
+#
+# ⚠️ E ela NAO e' a feature `sculpt3d`: aquela liga o MODULO (a cena, o gesto, o
+# passe), esta liga o PAINEL no registro. O painel compila sem o modulo — ele
+# fala `ph2d-sculpt3d`, que e' a crate do pincel, nao a cena do shell — e e' isso
+# que o mantem fora do caminho do `cfg` que atravessa o shell.
+panel-sculpt3d       = ["ph2d-panel-registry-init/panel-sculpt3d"]
 # Wet Tuning side panel (doc 22). `ph2d-panel-wet-tuning` is a non-optional
 # direct dep (the painter bridge publishes its brush snapshot and mirrors the
 # Tuning checkbox into its visibility); this line flips the registry-init

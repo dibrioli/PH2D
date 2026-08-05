@@ -1,0 +1,30 @@
+[package]
+name = "ph2d-panel-sculpt3d"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+ph2d-a11y = { path = "../ph2d-a11y" }
+ph2d-tokens = { path = "../ph2d-tokens" }
+# HR-15: toda string nova de painel passa pelo `tr()`.
+ph2d-i18n = { path = "../ph2d-i18n" }
+# `Brush`, `Verb`, `Falloff`, `Symmetry` — o vocabulário do ESCULTOR. O painel
+# pinta o pincel autorado e emite um pincel novo inteiro como intent; ele não
+# guarda uma segunda cópia de nenhum destes números, e os NOMES dos chips saem
+# de `Verb::label()`/`Falloff::label()`, nunca de uma tabela paralela.
+ph2d-sculpt3d = { path = "../ph2d-sculpt3d" }
+# O PISO da elevação da lâmpada (`MIN_ELEV_DEG`) — a faixa do slider é a do
+# resolvedor de luz, não um número escolhido no painel.
+ph2d-light = { path = "../ph2d-light" }
+
+[dev-dependencies]
+# `architecture_interactive_crate_has_behavioral_test`: um painel com `event.rs`
+# tem de dirigir um `WidgetEvent` REAL e afirmar o efeito observável.
+ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }

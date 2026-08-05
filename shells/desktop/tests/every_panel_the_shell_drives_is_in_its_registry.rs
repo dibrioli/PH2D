@@ -46,6 +46,17 @@ const SHELL_DRIVEN_PANELS: &[(&str, &str)] = &[
     // O painel AUTORADO (plano UI/UX W8b.2): o chip *Show as Panel* da seção Frame escreve a
     // visibilidade dele, que é exactamente a forma de falha que este gate existe para pegar.
     ("authored", "panel-authored"),
+    // ⚠️ **Estes dois faltavam, e a lacuna é a doença que este arquivo
+    // descreve, um nível acima.** O gate protege contra uma lista esquecida
+    // (`[features] default`) com OUTRA lista escrita à mão — então ele só cobre
+    // o painel de que alguém lembrou. Medido: com `panel-sculpt3d` fora do
+    // `default` do shell este gate ficava VERDE, que é exatamente o estado em
+    // que o painel de física reprovou o primeiro smoke.
+    //
+    // O `tokens` tem ponte desde o plano UI/UX W6 (`render_loop::tokens_bridge`)
+    // e nunca entrou aqui; ele entra junto porque a falha é a mesma.
+    ("tokens", "panel-tokens"),
+    ("sculpt3d", "panel-sculpt3d"),
 ];
 
 /// Which of the above this build actually enabled.
@@ -60,6 +71,8 @@ fn enabled(feature: &str) -> bool {
         "panel-flip" => cfg!(feature = "panel-flip"),
         "panel-tokens" => cfg!(feature = "panel-tokens"),
         "panel-authored" => cfg!(feature = "panel-authored"),
+        "panel-tokens" => cfg!(feature = "panel-tokens"),
+        "panel-sculpt3d" => cfg!(feature = "panel-sculpt3d"),
         other => panic!("unknown feature in SHELL_DRIVEN_PANELS: {other}"),
     }
 }

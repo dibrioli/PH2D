@@ -187,11 +187,15 @@ pub(crate) mod physics_panel_bridge;
 #[cfg(test)]
 mod push_look_probe;
 pub(crate) mod record_fit;
+/// **A ponte do painel de TOKENS** (plano UI/UX W6) — o read-back do picker e os intents de
+/// Reset. A shell é o único escritor da camada de override de cor.
+/// O painel da cena 3D (ADR-0150 W12) — irmão do `physics_panel_bridge` e do
+/// `tokens_bridge`: um painel de MUNDO, publicado e drenado na mesma fase.
+#[cfg(feature = "sculpt3d")]
+pub(crate) mod sculpt3d_panel_bridge;
 pub(crate) mod timeline_bridge;
 pub(crate) mod timeline_onion;
 mod timeline_presets;
-/// **A ponte do painel de TOKENS** (plano UI/UX W6) — o read-back do picker e os intents de
-/// Reset. A shell é o único escritor da camada de override de cor.
 pub(crate) mod tokens_bridge;
 pub(crate) mod tokens_bridge_dtcg;
 #[cfg(test)]
@@ -5738,6 +5742,12 @@ impl crate::App {
             if tokens_bridge::dispatch(hero, toasts) {
                 self.title_dirty = true;
             }
+            // O painel da cena 3D (ADR-0150 W12), na MESMA fase e pela mesma
+            // razão dos dois acima: depois do dispatch de eventos (os intents
+            // são enfileirados ali) e ANTES do paint (senão o frame pintaria o
+            // estado de antes do clique e o chip piscaria de volta).
+            #[cfg(feature = "sculpt3d")]
+            sculpt3d_panel_bridge::dispatch(hero, sculpt3d.as_mut());
             // O ARRASTO da tira (mover a chave / esticar o hold): o painel enfileirou o
             // pedido no pen-up do frame anterior; aqui ele vira documento — ANTES do
             // publish, senão o snapshot deste frame descreveria a tira de antes do gesto e
@@ -5879,6 +5889,40 @@ impl crate::App {
                 // chamada, que é exatamente o tempo de vida que o rótulo precisa.
                 paint_ctx.text,
             );
+            // **O ANEL DO PINCEL 3D** (ADR-0150 W12). Ele é desenhado no PONTO DE
+            // ACERTO reprojetado, então ele é ao mesmo tempo a mira e o
+            // instrumento: se ele não estiver debaixo do mouse sobre o barro, a
+            // fiação do pick está errada e dá para VER — que é a única coisa que
+            // as sondas headless não alcançam.
+            //
+            // ⚠️ Sob painel ele não é desenhado: o ponteiro ali não é da cena (o
+            // `pointer_down` já recusa pela MESMA porta), e uma mira sobre o
+            // chrome prometeria um gesto que o clique não faz.
+            #[cfg(feature = "sculpt3d")]
+            if let Some(scene) = sculpt3d.as_ref() {
+                let (px, py) = self.last_pointer;
+                let over_panel = hero
+                    .store
+                    .panel_rect(ph2d_editor::screens::hero::ids::SCULPT3D_PANEL)
+                    .is_some_and(|r| r.contains(px, py));
+                if !over_panel && let Some(mark) = scene.cursor_mark(px, py) {
+                    use ph2d_vector::{Affine, Brush, Color, Stroke};
+                    let rgba = if mark.on_surface {
+                        crate::sculpt3d::ON_SURFACE_RGBA
+                    } else {
+                        crate::sculpt3d::OFF_SURFACE_RGBA
+                    };
+                    vector_scene.inner_mut().stroke(
+                        // ⚠️ `Affine::IDENTITY`: no Vello o transform do `stroke`
+                        // MULTIPLICA a largura — o caminho já está em pixels.
+                        &Stroke::new(1.5), // LITERAL-PX-OK: chrome de overlay, espessura de tela
+                        Affine::IDENTITY,
+                        &Brush::Solid(Color::new(rgba)),
+                        None,
+                        &mark.path,
+                    );
+                }
+            }
             // A TRAJETÓRIA do objeto selecionado (ADR-0141): um binding Position guarda
             // uma curva, e sem desenhá-la o artista vê o objeto aparecer noutro lugar a
             // cada frame sem ter onde pegar o caminho. Os PONTOS são um por quadro, e o

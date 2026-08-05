@@ -5414,6 +5414,7 @@ dependencies = [
  "ph2d-panel-painter-layers",
  "ph2d-panel-physics",
  "ph2d-panel-registry-init",
+ "ph2d-panel-sculpt3d",
  "ph2d-panel-timeline",
  "ph2d-panel-tokens",
  "ph2d-panel-upscale",
@@ -7085,6 +7086,7 @@ dependencies = [
  "ph2d-panel-padding",
  "ph2d-panel-painter-layers",
  "ph2d-panel-physics",
+ "ph2d-panel-sculpt3d",
  "ph2d-panel-sync",
  "ph2d-panel-timeline",
  "ph2d-panel-tokens",
@@ -7092,6 +7094,19 @@ dependencies = [
  "ph2d-panel-vector",
  "ph2d-panel-wet-tuning",
  "ph2d-panel-widget-gallery",
+]
+
+[[package]]
+name = "ph2d-panel-sculpt3d"
+version = "0.0.0"
+dependencies = [
+ "ph2d-a11y",
+ "ph2d-editor-core",
+ "ph2d-i18n",
+ "ph2d-light",
+ "ph2d-sculpt3d",
+ "ph2d-tokens",
+ "ph2d-ui-testkit",
 ]
 
 [[package]]

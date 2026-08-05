@@ -787,16 +787,35 @@ fn a_stroke_belongs_to_the_piece_it_started_on() {
         "mirar vem ANTES de começar — depois já é a malha errada"
     );
 
-    // ⚠️ **A pergunta certa é quem consulta a LISTA, não quantos escrevem no
-    // ativo.** A contagem de `self.active =` era o proxy da primeira versão e
-    // expirou na wave seguinte: os verbos da lista (acrescentar, duplicar,
-    // apagar) escrevem nele por definição, e todos fora de um traço. O que a lei
-    // proíbe é **repicar a lista no meio de um gesto**, e isso se afirma no
-    // `pick`: ele tem UM chamador, o `aim`.
+    // ⚠️ **A pergunta certa é quem consulta a lista E PODE AGIR sobre ela.**
+    //
+    // Esta asserção já expirou DUAS vezes, sempre por contar em vez de afirmar:
+    // a v1 contava `self.active =` (e os verbos da lista — acrescentar,
+    // duplicar, apagar — escrevem nele por definição), e a v2 contava
+    // `self.pick(x, y)` == 1, que a W12 derrubou ao dar um CURSOR à cena. O anel
+    // do pincel pica para saber onde desenhar e **não pode** trocar de peça: ele
+    // é `&self`, e isso é garantido pelo compilador, não por texto.
+    //
+    // A lei fica: **o `aim` é o único que MOVE o ativo a partir de um pick**, e
+    // todo outro consumidor é somente-leitura.
+    let aim = function_body(&src, "aim(&mut self");
+    assert!(
+        aim.contains("self.pick(x, y)") && aim.contains("self.active ="),
+        "o `aim` é quem escolhe a peça a partir de um pick — se ele não faz mais \
+         isso, quem faz?"
+    );
+    let mark = function_body(&src, "cursor_mark(&self");
+    assert!(
+        mark.contains("self.pick(x, y)") && !mark.contains("self.active"),
+        "o cursor pica para DESENHAR e não pode mexer no ativo — `&self` já o \
+         proíbe, e esta linha é o que impede alguém de torná-lo `&mut self`"
+    );
     assert_eq!(
         src.matches("self.pick(x, y)").count(),
-        1,
-        "só o `aim` consulta a lista — quem repica no meio do gesto troca de peça"
+        2,
+        "apareceu um TERCEIRO consumidor da lista: se ele for `&mut self`, ele \
+         pode trocar de peça no meio de um gesto — nomeie-o aqui e prove que é \
+         somente-leitura"
     );
     for gesture in ["sculpt_at(&mut self", "take_hold(&mut self"] {
         let body = function_body(&src, gesture);

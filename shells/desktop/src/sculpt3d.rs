@@ -33,6 +33,19 @@ mod input;
 #[path = "sculpt3d_keys.rs"]
 mod keys;
 
+/// **O CURSOR** — onde a mão está mirando, na tela (W12). Irmão dos três abaixo,
+/// e o mais estreito: *onde o gesto vai pousar*, e nada além.
+#[path = "sculpt3d_cursor.rs"]
+mod cursor;
+
+pub(crate) use cursor::{OFF_SURFACE_RGBA, ON_SURFACE_RGBA};
+
+/// **O PAINEL** — o retrato que ele pinta e o gesto que ele devolve (W12).
+/// Terceiro irmão do [`input`] e do [`keys`]: o mesmo corte, com um vocabulário
+/// próprio (o gesto chega como DADO, um frame depois, pela fila de intents).
+#[path = "sculpt3d_panel.rs"]
+mod panel;
+
 /// **O que a cena LEMBRA** — a pilha de níveis e a fila de desfazer. Filho
 /// (`#[path]`) para alcançar os campos privados; o corte é *o que a cena É e o
 /// que a mão faz* (aqui) contra *o que ela guarda para poder voltar* (lá).

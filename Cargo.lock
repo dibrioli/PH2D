@@ -7581,6 +7581,7 @@ name = "ph2d-ui-state"
 version = "0.0.0"
 dependencies = [
  "ph2d-anim",
+ "ph2d-stroke-width",
  "ph2d-vec-blend",
  "ph2d-vec-scene",
  "postcard",

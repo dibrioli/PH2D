@@ -52,7 +52,7 @@
 //!
 //! ⚠️ **E o que uma pose NÃO pode fazer é CRIAR um objeto.** Uma faca (o Cut) destrói o
 //! `VecPathId` e põe peças novas no lugar; um estado gravado antes dela não ressuscita o que ela
-//! consumiu — o membro desvanece. Repor uma pose e criar um objeto são coisas diferentes, e a
+//! consumiu — o membro desvanece. Restaurar uma pose e criar um objeto são coisas diferentes, e a
 //! segunda é outra feature.
 //!
 //! # A lei do casamento: por ID, nunca por nome

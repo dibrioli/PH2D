@@ -109,10 +109,16 @@ armadilha.
 
 ---
 
-## §7 — Estado de smoke
+## §7 — Estado de smoke: **APROVADO**
 
-**Nada aqui foi smokado.** A W11b é a resposta ao veredito parcial do Enio de
-04/08, e o gesto que a julga é o mesmo:
+> **Enio, 2026-08-05:** *"Quase perfeito na rampa! Sobe muitíssimo devagar, quase
+> imperceptível. **Jangadas Smoke OK.**"*
+
+As duas metades confirmadas no produto: a deriva quase fechou e **o peso voltou**
+— a jangada era exactamente a cena que media a segunda coluna da tabela do §4, e
+ela passou.
+
+O gesto que as julga, para quem repetir:
 
 ```
 env PH2D_PHYSICS_SMOKE=81 cargo run -p ph2d-host-desktop --release   # a rampa de 30°

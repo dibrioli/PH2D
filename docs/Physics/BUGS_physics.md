@@ -873,13 +873,53 @@ escolhido era custar metade do peso do personagem. Hoje custa 9%. O default fica
 em 0,50 porque o teto também zera o quique do pouso, e um pouso sem quique é
 outra sensação — **quem decide isso é o smoke, não a medição**.
 
-### ⚠️ E o que sobra, com o mecanismo nomeado
+### ⚠️ E o que sobra, com o mecanismo em FORMA FECHADA
 
-`0,0331 m em 10 s` no default, exactamente linear em `(1 − d)` e zero no teto. É
-o mesmo mecanismo um degrau abaixo: o termo da MOLA continua agrupado no topo do
-tique, de propósito — fatiá-lo é a tentativa (3) acima, que foi medida e
-rejeitada. Fechá-lo pede uma mola **semi-implícita** (re-amostrar o raio por
-sub-passo), que é outra wave e cobra um raio por sub-passo.
+**Veredito do Enio no smoke (2026-08-05):** *"Quase perfeito na rampa! Sobe
+muitíssimo devagar, quase imperceptível. Jangadas Smoke OK."* — as duas metades
+confirmadas no produto: a deriva quase fechou e **o peso voltou** (a jangada era
+a cena que a media).
+
+O que sobra é `0,0331 m em 10 s` no default, e a sonda o pôs em forma fechada.
+Medido no referencial da rampa, assentado: o deslocamento **NORMAL é exactamente
+zero** e o **tangencial é constante** — o personagem desliza pela superfície sem
+subir nem afundar nela.
+
+⚠️ **E há uma razão estrutural para ele não se auto-corrigir:** um raio VERTICAL
+sobre um plano inclinado mede a mesma distância em qualquer ponto da rampa, e a
+mola empurra ao longo do `up`. ⇒ **o sistema não tem rigidez TANGENTE nenhuma**.
+Nada restaura a posição ao longo da ladeira; qualquer impulso tangente vira
+deriva permanente, e a única coisa que a remove é o freio da caminhada — que é um
+controlador de VELOCIDADE e não vê deslocamento.
+
+A aritmética fecha ao quarto decimal:
+
+```text
+  ds/tique = a_t · dt²        com  a_t = D + k·(up·t)
+  D  =  g·sen θ · (n−1)/(2n²)  =  4,905 · 3/32  =  0,4598   (medido: 0,4595)
+```
+
+⇒ o que sobra é **meio sub-passo de descasamento entre o impulso fatiado e a
+gravidade do `rapier`**, e o termo tangente da própria mola é quem o cancela — é
+por isso que o resíduo é exactamente linear em `(1 − d)` e **zero no teto**.
+
+⛔ **Duas tentativas de fechar os 9% que sobram, medidas e REJEITADAS:**
+
+1. **Fatiar também o termo da CAMINHADA** — **zero mudança**, tabela idêntica ao
+   dígito. O freio calcula `−8,7e−8` no repouso: não há o que fatiar.
+2. **Pagar a fatia DEPOIS do `physics_pipeline.step`** em vez de antes — **pior**:
+   deriva `0,0383 → 0,0639` e o erro de repouso **inverte o sinal** (+1,150 →
+   −1,915 mm, o personagem passa a pairar ABAIXO do pedido). ⚠️ E a inversão é o
+   achado: o instante que zeraria as duas está **dentro** do pipeline do
+   `rapier`, entre as duas portas que temos. Um fator afinado entre elas seria um
+   número mágico dependente das entranhas de uma dep — exactamente o que este
+   repo recusa.
+
+⇒ **O ponto de parada é aqui**, e ele tem uma saída exacta para quem a quiser: o
+**Spring Damping no teto** zera a deriva por completo e hoje custa **9% do peso
+em vez de 47%** — a troca que a wave tornou pagável. Fechá-la sem knob pediria
+uma mola **semi-implícita** (re-amostrar o raio por sub-passo), que é outra wave
+e cobra um raio por sub-passo.
 
 **c9:** `b3dbe792…` → **`2278035e…`**, 108 corpos, debug ≡ release. Ele **tem** de
 se mover: a altura de repouso do player mudou em toda cena que tenha um.

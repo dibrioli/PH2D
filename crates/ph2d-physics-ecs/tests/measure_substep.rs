@@ -302,3 +302,45 @@ fn measure_the_flat_control_across_substep_counts() {
         println!("{n:>9}  {:>12.6}", idle_travel(0.0, 10, 0.5, n));
     }
 }
+
+/// **O QUE SOBRA, no referencial da rampa** — a sonda que decide se o resíduo da
+/// W11b fecha barato.
+///
+/// Ele é exactamente linear em `(1 − d)` e zero no teto, então é alguma coisa
+/// que o amortecedor — que age na NORMAL — remove por completo. Duas explicações
+/// óbvias já foram descartadas **pelo sinal**: a mola, no repouso, tem offset
+/// NEGATIVO (o personagem paira acima do pedido) e o seu termo tangente aponta
+/// rampa ABAIXO; e o freio da caminhada calcula `−8,7e−8`, que é nada.
+///
+/// Esta imprime o estado assentado no referencial `{tangente, normal}`, que é
+/// onde as duas leis vivem.
+#[test]
+#[ignore = "sonda"]
+fn measure_what_is_left_in_the_ramp_frame() {
+    let n: [f32; 2] = [-0.5, 0.866_025_4];
+    let t = [n[1], -n[0]]; // perp_cw
+    for &d in &[0.0_f32, 0.25, 0.5, 1.0] {
+        let (mut sim, mut bridge) = rig(30.0, d, 4);
+        for tick in 1..=SETTLE_SECS * 60 {
+            bridge.dispatch(&mut sim, true, tick);
+        }
+        println!("\n=== d = {d:.2} — dez tiques assentados, no referencial da rampa ===");
+        println!(
+            "{:>5}  {:>12}  {:>12}",
+            "tique", "ds (tang.)", "dn (normal)"
+        );
+        let mut prev = pose(&sim);
+        let (mut sum_s, mut sum_n) = (0.0_f32, 0.0_f32);
+        for tick in SETTLE_SECS * 60 + 1..=SETTLE_SECS * 60 + 10 {
+            bridge.dispatch(&mut sim, true, tick);
+            let p = pose(&sim);
+            let (dx, dy) = (p.0 - prev.0, p.1 - prev.1);
+            let (ds, dn) = (dx * t[0] + dy * t[1], dx * n[0] + dy * n[1]);
+            println!("{tick:>5}  {ds:>12.8}  {dn:>12.8}");
+            sum_s += ds;
+            sum_n += dn;
+            prev = p;
+        }
+        println!("  soma: tangente {sum_s:.7}  normal {sum_n:.7}");
+    }
+}

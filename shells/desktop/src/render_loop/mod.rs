@@ -113,6 +113,9 @@ mod inspector_visibility;
 /// MEASUREMENT scaffold: onde as fases PANEL e CHROME do `painter_bridge::dispatch` gastam um frame.
 #[cfg(test)]
 mod measure_bridge_phases;
+/// O que a FITA de entrada grava hoje — a sonda que abre a wave de persistência.
+#[cfg(test)]
+mod measure_player_tape;
 pub(crate) mod motion_bridge;
 /// A trajetória do objeto selecionado no canvas (ADR-0141, Fatia 3).
 pub(crate) mod motion_path_overlay;
@@ -1993,6 +1996,11 @@ impl crate::App {
                 } else {
                     0
                 },
+                // W17: quantos tiques de corrida gravada o documento carrega — e
+                // é o zero que tira o *Clear Recorded Run* da tela, pelo mesmo
+                // desenho do Paste acima.
+                self.player_tape.len(),
+                self.fixed_step.fixed_dt(),
                 // W-Pulley W3: o eyedropper de montagem da §13, pelo mesmo motivo.
                 self.wheel_body_pick,
                 self.wheel_rope_pick,
@@ -3364,10 +3372,26 @@ impl crate::App {
                             _ => joint_edits.push((entity_bits, edit)),
                         }
                     }
-                    // §13 Pulley Wheel. Sem fan-out, e pela razão da §12: a
-                    // seção descreve UMA roldana, a que está selecionada.
+                    // §14 Platform Player. Sem fan-out, e pela razão da §12: a
+                    // seção descreve UM personagem, o que está selecionado.
                     EditorAction::InspectorPlayerEdit { entity_bits, edit } => {
-                        player_edits.push((entity_bits, edit));
+                        // ⚠️ **O `ClearRun` é o único verbo da §14 que não é uma
+                        // escrita de componente** (W17): a fita de entrada mora na
+                        // shell, então ele é honrado AQUI, onde o `self` é
+                        // mutável — o lugar e a razão exatos do `Join` da §11 e do
+                        // eyedropper da §12.
+                        //
+                        // ⚠️ E interceptar não é higiene: descartar é idempotente,
+                        // então espalhá-lo pela seleção não corromperia nada HOJE.
+                        // É precisamente essa forma que apodrece — o Ctrl+V do
+                        // editor de nós colava duas vezes porque um dispatch
+                        // duplicado "nunca tinha importado enquanto todos os
+                        // verbos eram idempotentes".
+                        if matches!(edit, ph2d_editor::PlayerFieldEdit::ClearRun) {
+                            self.player_tape.clear();
+                        } else {
+                            player_edits.push((entity_bits, edit));
+                        }
                     }
                     EditorAction::InspectorWheelEdit { entity_bits, edit } => {
                         // W3: o eyedropper ARMA aqui (onde `self` é mutável), como

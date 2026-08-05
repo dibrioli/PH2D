@@ -180,6 +180,11 @@ impl crate::App {
         // primeiro frame, que é a MESMA porta que a lâmpada usa. Acender aqui seria a segunda
         // resposta a *como um objeto assado vira pixels*.
         self.restore_baked_forms(file.baked_forms);
+        // **A CORRIDA GRAVADA** (W17). Instalada, nunca fundida: um load é uma
+        // troca de documento, e uma fita costurada com a da sessão anterior
+        // descreveria uma corrida que ninguém deu — o irmão exato do que o
+        // `project_forget` faz com o relógio, a fila de undo e a timeline.
+        self.player_tape = ph2d_physics_ecs::InputTape::from_wire(&file.player_tape);
         // O grafo de Motion. Um erro de parse NÃO aborta o load: a cena, a geometria e os
         // pixels já entraram, e recusar tudo por causa do grafo perderia o resto do
         // trabalho. O grafo em memória permanece, e o motivo vai pro log.

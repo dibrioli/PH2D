@@ -58,6 +58,7 @@ fn write_project_full(path: &std::path::Path, schema: u32, timeline: Vec<u8>, sc
         tokens: Vec::new(),
         sculpt,
         baked_forms: Vec::new(),
+        player_tape: ph2d_physics_ecs::TapeWire::default(),
     };
     let bytes = postcard::to_allocvec(&(schema, &file)).expect("serializa");
     std::fs::write(path, bytes).expect("grava o arquivo de projeto");
@@ -385,6 +386,7 @@ fn project_file_round_trips_through_postcard() {
         tokens: Vec::new(),
         sculpt: Vec::new(),
         baked_forms: Vec::new(),
+        player_tape: ph2d_physics_ecs::TapeWire::default(),
     };
     let bytes = postcard::to_allocvec(&(PROJECT_SCHEMA, &file)).unwrap();
     let (ver, back): (u32, ProjectFile) = postcard::from_bytes(&bytes).unwrap();
@@ -447,6 +449,7 @@ fn the_world_settings_survive_the_project_file() {
         tokens: Vec::new(),
         sculpt: Vec::new(),
         baked_forms: Vec::new(),
+        player_tape: ph2d_physics_ecs::TapeWire::default(),
     };
     let bytes = postcard::to_allocvec(&(PROJECT_SCHEMA, &file)).expect("serializa");
     std::fs::write(&path, bytes).expect("grava");
@@ -562,3 +565,10 @@ fn an_unreadable_animation_refuses_the_whole_file_and_leaves_the_session_alone()
 /// segundo escritor de arquivo de projeto, e ele divergiria no próximo bump.
 #[path = "project_sculpt_tests.rs"]
 mod sculpt;
+
+/// **O que um load faz com a CORRIDA GRAVADA** (W17) — filho (`#[path]`) pelo
+/// teto de LOC do HR-18, e FILHO pela razão exata do `sculpt` acima: as fixtures
+/// desta suíte (`headless_app`, `write_project`, `tmp_path`, `empty_state`) são
+/// as portas dele.
+#[path = "project_tape_tests.rs"]
+mod tape;

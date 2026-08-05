@@ -341,7 +341,13 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// **`crouch_speed`**. Dois campos apendados, e o motivo do bump é o de sempre —
 /// postcard é posicional. ⚠️ Note o que este degrau **não** traz: nenhuma forma de
 /// collider muda, porque agachar aqui é uma perna mais CURTA e não um corpo menor.
-const PROJECT_SCHEMA: u32 = 66;
+
+/// v67 (physics, W17 — A CORRIDA SOBREVIVE AO ARQUIVO): campo de ARQUIVO novo,
+/// `player_tape`, com o que o dedo do jogador fez tique a tique. ⚠️ Ele fecha o
+/// último item aberto do §4 do plano 06, e é o **bake da W16** que o torna útil:
+/// a fita é a entrada que o bake replaya, então reabrir um projeto e apertar Bake
+/// devolve a corrida de ontem. Medido: 60 s de corrida pesam **28,1 kB**.
+const PROJECT_SCHEMA: u32 = 67;
 
 /// O conteúdo de um arquivo de projeto.
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -421,6 +427,23 @@ struct ProjectFile {
     ///
     /// Vazio quando nada foi assado.
     baked_forms: Vec<crate::project_baked_form::BakedFormDocument>,
+    /// **A CORRIDA GRAVADA** (ADR-0131 W17) — o que o dedo do jogador fez, tique
+    /// a tique, na forma de arquivo da fita (`ph2d_physics_ecs::TapeWire`).
+    ///
+    /// ⚠️ **Ela é AUTORIA, e é o bake da W16 que o prova:** a fita é a entrada que
+    /// o bake replaya para escrever as curvas, então perdê-la ao fechar o app é
+    /// perder a corrida que o artista jogou — reabrir e apertar Bake devolvê-la é
+    /// a razão inteira deste campo.
+    ///
+    /// ⚠️ **Fora do `ProjectState`**, pelo mesmo motivo de `motion`/`timeline`/
+    /// `physics`: aquele é a unidade do undo GLOBAL, e um Ctrl+Z do canvas não
+    /// deve rebobinar a gravação.
+    ///
+    /// Vazia num projeto onde ninguém correu — e ⚠️ **é a correção da W17 que
+    /// torna essa frase verdadeira**: antes dela a fita gravava todo tique que o
+    /// relógio andasse, então TODO projeto do app carregaria uma corrida de
+    /// ninguém. Ver `render_loop::physics_bridge::dispatch`.
+    player_tape: ph2d_physics_ecs::TapeWire,
 }
 
 /// Uma imagem de sprite embutida no projeto: os pixels RGBA + a célula de atlas que
@@ -505,6 +528,9 @@ impl crate::App {
             tokens: crate::project_tokens::collect(),
             sculpt: self.sculpt_bytes_for_save(),
             baked_forms: self.collect_baked_forms(),
+            // A corrida que o artista jogou (W17). O `to_wire` é a única tradução
+            // — o `PlayerInput` da crate da LEI não conhece serde de propósito.
+            player_tape: self.player_tape.to_wire(),
         };
         let bytes = match postcard::to_allocvec(&(PROJECT_SCHEMA, &file)) {
             Ok(b) => b,

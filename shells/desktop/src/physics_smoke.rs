@@ -44,6 +44,10 @@ const PAUSED_SCENES: &[&str] = &[
     // fazer alguma coisa, e um corpo que já caiu meio metro é um corpo cujo
     // gesto de autoria começa no lugar errado.
     "82",
+    // ⚠️ A cena 96 (W17) nasce PAUSADA pela razão exata da 95: ela pede uma
+    // corrida JOGADA, e com o relógio já a andar o começo da fita descreveria
+    // segundos em que ninguém tinha o teclado.
+    "96",
     // ⚠️ A cena 95 (W16) nasce PAUSADA pela razão da 7, e mais uma: ela pede ao
     // artista que JOGUE uma corrida, e é essa corrida que vai ser assada. Com o
     // relógio já a andar, o começo da fita descreve segundos em que ninguém
@@ -181,6 +185,7 @@ impl crate::App {
             "93" => self.physics_smoke_dash(),
             "94" => self.physics_smoke_crouch(),
             "95" => self.physics_smoke_bake_run(),
+            "96" => self.physics_smoke_recorded_run(),
             _ => self.physics_smoke_drop(),
         }
 

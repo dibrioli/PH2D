@@ -122,6 +122,14 @@ pub(super) fn publish(
     // de transferência está vazia, e é isso que tira o botão da tela. Resolvido
     // pelo chamador, que é dono da área de transferência E da seleção.
     joint_paste_targets: usize,
+    // W17: quantos tiques de CORRIDA GRAVADA o documento carrega — `0` quando
+    // ninguém correu, e é isso que tira o botão *Clear Recorded Run* da tela. A
+    // fita é do shell (`App.player_tape`), como a área de transferência acima; o
+    // passo fixo que a converte em segundos é o `fixed_dt` do parâmetro seguinte.
+    player_tape_ticks: usize,
+    // O passo fixo do relógio, para o número acima virar SEGUNDOS pela mesma
+    // régua com que os tiques foram gravados.
+    fixed_dt: f64,
     // W-Pulley W3: a §13 tem a mesma máquina, uma família adiante — o eyedropper
     // de montagem da ROLDANA armado, para que ele pinte pressed enquanto espera o
     // clique no corpo. Dono: `App.wheel_body_pick`.
@@ -850,10 +858,14 @@ pub(super) fn publish(
     // §14 Platform Player (W5) — a quarta da família. Ao contrário da §12/§13,
     // ela TEM face vazia: `Some` para todo corpo Dynamic, com ou sem o
     // componente, porque o botão dela é o que faz o comportamento existir.
+    // ⚠️ **A corrida gravada entra por FORA do mundo** (W17): ela é um fato do
+    // documento, não desta entidade, e é o único número da §14 que não sai do
+    // componente. Segundos, medidos com o MESMO passo fixo que gravou os tiques.
+    let recorded_run_seconds = (player_tape_ticks as f64 * fixed_dt) as f32;
     let inspector_player = hero
         .gizmo
         .selection
-        .and_then(|b| super::inspector_player::build_player_info(sim, b));
+        .and_then(|b| super::inspector_player::build_player_info(sim, b, recorded_run_seconds));
     let inspector_visibility_section = hero.gizmo.selection.and_then(|b| {
         super::inspector_visibility::build_visibility_section_info(
             sim.world(),

@@ -266,6 +266,7 @@ mod physics_smoke_player_crouch;
 mod physics_smoke_player_dash;
 mod physics_smoke_player_drop;
 mod physics_smoke_player_forgive;
+mod physics_smoke_player_run;
 mod physics_smoke_player_slope;
 mod physics_smoke_player_tape;
 mod physics_smoke_player_wall;

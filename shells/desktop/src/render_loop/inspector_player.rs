@@ -42,7 +42,15 @@ fn min_float_for(shape: ColliderShape, max_slope_deg: f32) -> Option<f32> {
 /// para o resto por FÍSICA: a mola é um impulso, e um impulso não move massa
 /// infinita, então oferecer o botão num Static seria oferecer um gesto que a
 /// ponte recusa em silêncio.
-pub(crate) fn build_player_info(sim: &SimWorld, entity_bits: u64) -> Option<InspectorPlayerInfo> {
+///
+/// ⚠️ **`recorded_run_seconds` entra por ARGUMENTO, e é o único campo que não sai
+/// do componente** (W17): a fita é um fato do DOCUMENTO, e o construtor do info
+/// só recebe o mundo. Derivá-la aqui de alguma outra coisa seria inventá-la.
+pub(crate) fn build_player_info(
+    sim: &SimWorld,
+    entity_bits: u64,
+    recorded_run_seconds: f32,
+) -> Option<InspectorPlayerInfo> {
     let entity = Entity::from_bits(entity_bits);
     let body = sim.world().get::<RigidBody>(entity)?;
     if body.kind != BodyKind::Dynamic {
@@ -89,6 +97,7 @@ pub(crate) fn build_player_info(sim: &SimWorld, entity_bits: u64) -> Option<Insp
         crouch_speed: p.crouch_speed,
         reaction_support: p.reaction_support,
         reaction_movement: p.reaction_movement,
+        recorded_run_seconds,
     })
 }
 
@@ -145,7 +154,13 @@ pub(crate) fn apply_player_edit(sim: &mut SimWorld, entity_bits: u64, edit: Play
     match edit {
         // Tratados acima; repetidos aqui só para o `match` ser exaustivo sem um
         // `_` que engoliria um variant novo em silêncio.
-        PlayerFieldEdit::Add | PlayerFieldEdit::Remove => {}
+        //
+        // ⚠️ **O `ClearRun` NÃO é tratado acima — ele nunca chega aqui** (W17): a
+        // fita não é um componente, então o laço de ações o intercepta antes do
+        // fan-out por entidade, como faz com o `Join` da §11. Ele está nomeado
+        // neste braço em vez de num `_` justamente para o dia em que alguém mover
+        // a interceptação: o braço fica INERTE e visível, e não engole o verbo.
+        PlayerFieldEdit::Add | PlayerFieldEdit::Remove | PlayerFieldEdit::ClearRun => {}
         PlayerFieldEdit::FitFloatHeight => {
             if let Some(fit) = fitted_float(shape, p.max_slope_deg) {
                 p.float_height = fit;

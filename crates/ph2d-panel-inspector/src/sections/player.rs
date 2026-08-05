@@ -281,9 +281,9 @@ pub(crate) const fn player_row_count() -> usize {
     n
 }
 
-/// As dicas dos três BOTÕES da seção — a mesma lei das rows, num lugar onde não
+/// As dicas dos quatro BOTÕES da seção — a mesma lei das rows, num lugar onde não
 /// cabe uma tupla de row.
-pub(crate) const PLAYER_BUTTON_TIPS: [(ph2d_a11y::NodeId, &str); 3] = [
+pub(crate) const PLAYER_BUTTON_TIPS: [(ph2d_a11y::NodeId, &str); 4] = [
     (
         ids::INSP_PLAYER_ADD,
         "Turn this body into a walking, jumping character.",
@@ -295,6 +295,10 @@ pub(crate) const PLAYER_BUTTON_TIPS: [(ph2d_a11y::NodeId, &str); 3] = [
     (
         ids::INSP_PLAYER_REMOVE,
         "Give the behaviour back: it becomes a plain body again.",
+    ),
+    (
+        ids::INSP_PLAYER_CLEAR_RUN,
+        "Throw away the recorded run. Playing with Physics on records a new one.",
     ),
 ];
 
@@ -399,6 +403,28 @@ pub(crate) fn paint_player_section(
             );
         paint_button(&btn, rect, scene, text_system, theme);
         hit_index.register(ids::INSP_PLAYER_FIT, rect);
+        yy += h + Spacing::Sm.px();
+    }
+
+    // **A CORRIDA GRAVADA** (W17) — o mesmo desenho do botão acima: *o aviso mora
+    // no rótulo do próprio controle*, então o número de segundos viaja no texto e
+    // não num readout ao lado.
+    //
+    // ⚠️ **A AUSÊNCIA dele é o outro readout.** Sem corrida não há o que
+    // descartar, e um botão pintado sobre nada seria um controle que não faz nada
+    // — a lei do knob morto que esta seção honra em toda row opt-in.
+    if info.recorded_run_seconds > 0.0 {
+        let label = format!("Clear Recorded Run ({:.1} s)", info.recorded_run_seconds);
+        let rect = Rect::new(x, yy, w, h);
+        let btn = Button::new(ids::INSP_PLAYER_CLEAR_RUN, &label)
+            .kind(ButtonKind::Default)
+            .state(
+                store
+                    .button_state(ids::INSP_PLAYER_CLEAR_RUN)
+                    .unwrap_or(ButtonState::Normal),
+            );
+        paint_button(&btn, rect, scene, text_system, theme);
+        hit_index.register(ids::INSP_PLAYER_CLEAR_RUN, rect);
         yy += h + Spacing::Sm.px();
     }
 

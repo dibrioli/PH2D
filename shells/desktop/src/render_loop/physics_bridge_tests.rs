@@ -9,7 +9,10 @@
 
 use ph2d_core::{Playhead, Vec2};
 use ph2d_ecs::{Entity, SimWorld, Transform};
-use ph2d_physics_ecs::{BodyKind, Collider, ColliderShape, PhysicsBridge, RigidBody};
+use ph2d_physics_ecs::{
+    BodyKind, Collider, ColliderShape, InputTape, PhysicsBridge, PlatformPlayer, PlayerInput,
+    RigidBody,
+};
 use ph2d_timeline::TimelineDoc;
 
 use super::physics_bridge::dispatch;
@@ -156,5 +159,103 @@ fn the_simulation_is_disarmed_by_default() {
     assert!(
         !ph2d_timeline::TimelineFlags::default().simulate_physics,
         "a fresh document must open with Play driving the animation only"
+    );
+}
+
+/// A mesma cena, com um personagem — a única em que um tique descreve uma
+/// corrida.
+fn scene_with_player() -> SimWorld {
+    let (mut sim, _) = falling_scene();
+    sim.world_mut().spawn((
+        RigidBody {
+            kind: BodyKind::Dynamic,
+        },
+        Collider {
+            shape: ColliderShape::Capsule {
+                half_height: 0.4,
+                radius: 0.3,
+            },
+            ..Collider::default()
+        },
+        PlatformPlayer::default(),
+        Transform::from_translation(Vec2::new(0.0, 1.0)),
+    ));
+    sim
+}
+
+/// Quantos tiques a fita grava em `FRAMES` frames, com o toggle e a cena dados.
+fn taped(sim: &mut SimWorld, simulate: bool) -> usize {
+    let mut bridge = PhysicsBridge::new();
+    let mut doc = TimelineDoc::new();
+    let mut playhead = Playhead::new(DT);
+    let mut tape = InputTape::new();
+    playhead.play();
+    let walking = PlayerInput {
+        drive: 1.0,
+        ..PlayerInput::default()
+    };
+    for _ in 0..FRAMES {
+        playhead.advance();
+        dispatch(
+            &mut bridge,
+            sim,
+            &playhead,
+            DT,
+            &mut doc,
+            simulate,
+            walking,
+            &mut tape,
+        );
+    }
+    tape.len()
+}
+
+/// **A fita grava uma CORRIDA, não o relógio andando** (W17) — a correção que
+/// tornou a persistência possível.
+///
+/// ⚠️ **As quatro células juntas, e não a que a wave conserta sozinha.** Medido
+/// pela porta do produto ANTES de qualquer linha (`measure_player_tape`), em 120
+/// frames a fita gravava **120 tiques nas quatro** — sem player, e com o Physics
+/// desarmado. Só depois de a fita viver num arquivo isso vira defeito, e vira
+/// dois:
+///
+/// * **sem player**, todo projeto do app carregaria uma corrida de ninguém;
+/// * **desarmado** — que é o DEFAULT do toggle —, abrir um projeto e assistir à
+///   timeline apagaria a corrida gravada, em silêncio. Um artefato destruído
+///   pelo ato de olhar para ele.
+///
+/// ⚠️ **A célula ARMADA é o controle**, e sem ela um `record` deletado passaria:
+/// as três recusas sozinhas são satisfeitas por uma fita que nunca grava nada.
+///
+/// ⚠️ **Mutações medidas:** tirar o `simulate &&` grava 120 na célula
+/// `com player, OFF`; tirar o `players > 0` grava 120 nas duas de cima; tirar o
+/// `record` inteiro zera a célula de controle.
+#[test]
+fn the_tape_records_a_run_not_the_clock() {
+    let (mut alone, _) = falling_scene();
+    let no_player_armed = taped(&mut alone, true);
+    let (mut alone2, _) = falling_scene();
+    let no_player_held = taped(&mut alone2, false);
+    let mut with = scene_with_player();
+    let player_armed = taped(&mut with, true);
+    let mut with2 = scene_with_player();
+    let player_held = taped(&mut with2, false);
+
+    assert_eq!(
+        player_armed, FRAMES as usize,
+        "o CONTROLE nao gravou: uma cena com player e a simulacao armada E' uma corrida"
+    );
+    assert_eq!(
+        no_player_armed, 0,
+        "a fita gravou o dedo numa cena SEM personagem: {no_player_armed} tiques de ninguem"
+    );
+    assert_eq!(
+        no_player_held, 0,
+        "idem, com a simulacao desarmada: {no_player_held} tiques"
+    );
+    assert_eq!(
+        player_held, 0,
+        "a fita gravou {player_held} tiques que o solver nunca rodou -- e o Physics OFF e' o \
+         DEFAULT, entao assistir a um projeto salvo apagaria a corrida dele"
     );
 }

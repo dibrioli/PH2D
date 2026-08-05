@@ -78,6 +78,11 @@ fn player() -> InspectorPlayerInfo {
         lift_momentum: 1.5,
         reaction_support: 1.0,
         reaction_movement: 0.0,
+        // ⚠️ **Premissa declarada: NINGUÉM correu neste documento.** O botão de
+        // descartar a corrida só existe quando existe corrida, então a fixture
+        // base é a que NÃO o oferece — e é ela que dá sentido à metade de
+        // ausência do gate `the_clear_run_button…`.
+        recorded_run_seconds: 0.0,
     }
 }
 
@@ -502,8 +507,15 @@ fn every_player_control_carries_a_hover_hint() {
     set_current_inspector_player(None);
     assert_eq!(
         checked,
-        ph2d_panel_inspector::PLAYER_ROW_COUNT + 3,
-        "a varredura tem de cobrir os dezenove numeros E os tres botoes"
+        ph2d_panel_inspector::PLAYER_ROW_COUNT + 4,
+        // ⚠️ **Os botões são um LITERAL de propósito, e as rows não.** O
+        // `PLAYER_ROW_COUNT` é contado da mesma tabela que o pintor itera, então
+        // ele viaja junto; os botões o pintor escreve à mão, um a um (é o que o
+        // `architecture_panel_wiring_parity` consegue enxergar), e derivar este
+        // número da tabela de DICAS o tornaria um oráculo auto-referente —
+        // encolher a tabela encolheria a lista percorrida E a expectativa, e o
+        // botão sem dica passaria.
+        "a varredura tem de cobrir todos os numeros E os QUATRO botoes"
     );
 }
 
@@ -577,4 +589,34 @@ fn every_card_holds_its_own_rows_and_they_do_not_overlap() {
             cards[i].0
         );
     }
+}
+
+/// **O botão de descartar a corrida existe SE, e SOMENTE SE, existe corrida**
+/// (W17) — e clicá-lo chega ao barramento.
+///
+/// ⚠️ **As duas metades juntas, e a de AUSÊNCIA é a que carrega o desenho:** a
+/// fita é a única coisa da §14 cujo readout é a própria existência do controle.
+/// Sem corrida não há o que descartar, e um botão pintado sobre nada seria o
+/// controle-morto que esta seção varre a cada wave.
+///
+/// ⚠️ E o número vai no RÓTULO, não num readout ao lado — o precedente do
+/// `Fit to Collider (needs > 0.50 m)`, pintado dez linhas acima dele: *o aviso
+/// mora no rótulo do próprio controle que o resolve*.
+#[test]
+fn the_clear_run_button_appears_only_when_a_run_exists() {
+    let rects = painted(player());
+    assert!(
+        !rects.iter().any(|(n, _)| *n == ids::INSP_PLAYER_CLEAR_RUN),
+        "sem corrida gravada, o botao de descartar foi pintado sobre nada"
+    );
+
+    let with_run = InspectorPlayerInfo {
+        recorded_run_seconds: 1.5,
+        ..player()
+    };
+    expect(
+        &click_real(with_run, ids::INSP_PLAYER_CLEAR_RUN),
+        PlayerFieldEdit::ClearRun,
+        "Clear Recorded Run",
+    );
 }

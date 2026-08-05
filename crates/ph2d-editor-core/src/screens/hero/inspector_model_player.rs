@@ -90,6 +90,17 @@ pub struct InspectorPlayerInfo {
     pub reaction_support: f32,
     /// Quanto da caminhada volta ao chao (W6).
     pub reaction_movement: f32,
+
+    /// **Quantos segundos de CORRIDA GRAVADA o documento carrega** (W17).
+    ///
+    /// ⚠️ **Zero é a resposta *"ninguém correu"*, e é ela que apaga o botão** —
+    /// a ausência do controle é o outro readout. Ver
+    /// [`crate::ids::INSP_PLAYER_CLEAR_RUN`].
+    ///
+    /// ⚠️ **É um fato do DOCUMENTO, não desta entidade**, e por isso não sai do
+    /// `PlatformPlayer` como os vinte e quatro acima: a fita é uma só. Quem o
+    /// preenche é a shell, que é quem a tem.
+    pub recorded_run_seconds: f32,
 }
 
 /// Uma edição na §14 — o vocabulário que o painel emite e a shell honra.
@@ -103,6 +114,13 @@ pub enum PlayerFieldEdit {
     /// Semeia a `float_height` a partir da forma do collider (o botão
     /// **Fit to Collider**).
     FitFloatHeight,
+    /// **Descarta a corrida gravada** (W17) — a fita de entrada do jogador.
+    ///
+    /// ⚠️ **O único verbo desta lista que NÃO é uma escrita de componente**, e
+    /// por isso ele não passa pelo `apply_player_edit`: a fita mora na shell. Ele
+    /// é interceptado no laço de ações, onde o `self` é mutável — o lugar e a
+    /// razão exatos do `Join` da §11 e do eyedropper da §12.
+    ClearRun,
 
     FloatHeight(f32),
     ClingDistance(f32),

@@ -50,7 +50,7 @@ pub use bridge::rope::pulley_rig;
 // desenho tem de rodar a MESMA rota que o solver roda.
 pub use bridge::views::JointView;
 pub use bridge::{
-    FrozenScene, HeldInput, InputTape, PhysicsBridge, PlayerInputAtTick, SceneAtTick,
+    FrozenScene, HeldInput, InputTape, PhysicsBridge, PlayerInputAtTick, SceneAtTick, TapeWire,
 };
 pub use components::{
     AreaBuoyancy, AreaDrag, AreaEffector, AreaFalloff, AreaForceWorldAxes, AreaFormDrag,

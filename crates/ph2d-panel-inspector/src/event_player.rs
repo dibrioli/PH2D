@@ -27,6 +27,9 @@ pub(crate) fn apply_player_event(host: &mut dyn PanelHostInternal, ev: WidgetEve
         WidgetEvent::Click(id) if id == ids::INSP_PLAYER_FIT => {
             Some(PlayerFieldEdit::FitFloatHeight)
         }
+        WidgetEvent::Click(id) if id == ids::INSP_PLAYER_CLEAR_RUN => {
+            Some(PlayerFieldEdit::ClearRun)
+        }
         WidgetEvent::ValueChanged(id) => {
             let v = host.store().number_value(id).unwrap_or(0.0) as f32;
             match id {

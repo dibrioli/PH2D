@@ -49,7 +49,7 @@ pub use kinematic::{FrozenScene, SceneAtTick};
 
 mod dispatch;
 mod tape;
-pub use tape::{HeldInput, InputTape, PlayerInputAtTick};
+pub use tape::{HeldInput, InputTape, PlayerInputAtTick, TapeWire};
 
 use std::collections::BTreeMap;
 

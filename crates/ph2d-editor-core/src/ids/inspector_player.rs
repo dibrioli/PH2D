@@ -30,6 +30,19 @@ pub const INSP_LIVE_PLAYER_COLOR: NodeId = hash_node_id("insp_live_player_color"
 pub const INSP_PLAYER_ADD: NodeId = hash_node_id("insp_player_add");
 /// O gesto oposto — devolve o corpo a um corpo comum.
 pub const INSP_PLAYER_REMOVE: NodeId = hash_node_id("insp_player_remove");
+/// **Descartar a CORRIDA GRAVADA** (W17) — a fita de entrada do jogador.
+///
+/// ⚠️ **Ele é a metade visível inteira da persistência, e a AUSÊNCIA dele é o
+/// outro readout:** o botão só é oferecido quando existe corrida, e o rótulo
+/// carrega quantos segundos ela tem. É o precedente do `Fit to Collider (needs >
+/// 0.50 m)`, escrito uma seção acima — *o aviso mora no rótulo do próprio
+/// controle que o resolve*; um readout separado seria uma segunda superfície
+/// dizendo o mesmo fato.
+///
+/// ⚠️ E ele é GLOBAL numa seção por-entidade, porque a fita é uma só — o mesmo
+/// desenho do `hand_input_to_players`, que entrega UM dedo a todos os players.
+/// Quando houver um segundo dedo, os dois se movem juntos.
+pub const INSP_PLAYER_CLEAR_RUN: NodeId = hash_node_id("insp_player_clear_run");
 
 /// **A altura a que o personagem PAIRA**, metros, medida do centro do corpo.
 pub const INSP_PLAYER_FLOAT: NodeId = hash_node_id("insp_player_float");

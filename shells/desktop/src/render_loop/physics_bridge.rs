@@ -47,7 +47,7 @@ pub(crate) fn dispatch(
     tape: &mut InputTape,
 ) {
     let target = physics_tick(playhead, fixed_dt);
-    hand_input_to_players(bridge, sim, input);
+    let players = hand_input_to_players(bridge, sim, input);
     // ⚠️ **Gravar SÓ andando para a frente** (W7). Um scrub para trás pede um
     // tique que a fita já descreve, e regravá-lo com o dedo de AGORA reescreveria
     // a corrida que o artista está justamente tentando rever — o replay passaria
@@ -57,7 +57,22 @@ pub(crate) fn dispatch(
     // deve vários ticks aplica a MESMA entrada a todos (é o que segurar uma tecla
     // quer dizer), e o `record` preenche o vão com a última entrada exatamente
     // por isso.
-    if target > bridge.last_stepped() {
+    //
+    // ⚠️ **E as outras duas condições são a CORREÇÃO da W17** — a que tornou a
+    // fita persistível. Medido pela porta do produto antes de qualquer linha
+    // (`measure_player_tape`), em 120 frames ela gravava **120 tiques nas QUATRO
+    // células**: sem player na cena, e com o Physics DESARMADO. Isso não é uma
+    // corrida, é o relógio andando — e as duas consequências só aparecem quando
+    // a fita passa a viver num arquivo:
+    //
+    // * **sem player**, todo projeto do app carregaria uma fita de ninguém;
+    // * **desarmado** — que é o DEFAULT do toggle Physics —, abrir um projeto e
+    //   assistir à timeline apagaria a corrida gravada, do tique em diante, em
+    //   silêncio. Um artefato destruído pelo ato de olhar para ele.
+    //
+    // Uma entrada gravada num tique que o solver não rodou descreve um instante
+    // que não aconteceu, e o replay a reproduziria como se tivesse acontecido.
+    if simulate && players > 0 && target > bridge.last_stepped() {
         tape.record(target, input);
     }
     if !simulate {
@@ -85,19 +100,28 @@ pub(crate) fn dispatch(
 ///
 /// ⚠️ E ele roda **antes** do `hold`, não só do `dispatch`: com a simulação
 /// desarmada o mundo é segurado e ninguém anda, mas a entrada continua a ser
-/// registrada, então armar o Physics retoma do que o dedo está fazendo em vez de
-/// engolir a primeira tecla.
+/// ENTREGUE, então armar o Physics retoma do que o dedo está fazendo em vez de
+/// engolir a primeira tecla. (⚠️ Entregar não é GRAVAR: a fita é gatilhada
+/// separadamente no chamador, e a diferença é a correção da W17.)
+///
+/// Devolve **quantos players a cena tem** — a pergunta que o chamador precisa
+/// para decidir se este tique descreve uma corrida, respondida pela consulta que
+/// ele já faz. Perguntá-la de novo lá em cima seria uma segunda varredura do
+/// mundo para o mesmo fato.
 fn hand_input_to_players(
     bridge: &mut PhysicsBridge,
     sim: &mut SimWorld,
     input: ph2d_physics_ecs::PlayerInput,
-) {
+) -> usize {
     let Some(mut q) = sim.world().try_query::<(Entity, &PlatformPlayer)>() else {
-        return;
+        return 0;
     };
+    let mut n = 0;
     for (entity, _) in q.iter(sim.world()) {
         bridge.set_player_input(entity, input);
+        n += 1;
     }
+    n
 }
 
 /// **What to say when a joint gives way** (W-J7) — one line per break, ready for

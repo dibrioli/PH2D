@@ -287,10 +287,15 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // `crouch_speed` (W15 — O AGACHAR). Dois campos apendados; e note o que
         // ESTE degrau nao traz — nenhuma forma de collider muda, porque agachar
         // aqui e' uma perna mais CURTA e nao um corpo menor.
+        // PROJECT 58→59: campo de ARQUIVO novo, `player_tape` (W17 — a CORRIDA
+        // sobrevive ao arquivo). Nao e' um campo de componente: e' a gravacao do
+        // dedo do jogador, tique a tique, que o bake da W16 replaya. Fora do
+        // `ProjectState` pelo motivo de `motion`/`timeline`/`physics` — aquele e'
+        // a unidade do undo GLOBAL.
         // ⚠️ **PROVISÓRIO:** o valor se CONTA contra o `main` do dia da
         // integração — três linhas já colidiram neste número por o terem
         // escolhido, e a última vez o certo não estava em nenhum dos dois lados.
-        (66, 13, 14),
+        (67, 13, 14),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

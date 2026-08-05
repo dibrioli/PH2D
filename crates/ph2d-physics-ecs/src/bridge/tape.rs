@@ -31,11 +31,19 @@
 //! naquele checkpoint — é chaveado por `Entity`, que é do ECS e não do solver —,
 //! então a ponte guarda o dela em paralelo, **nos mesmos tiques âncora**.
 //!
-//! # ⚠️ Runtime-only, e nomeado
+//! # A fita VIAJA no arquivo (W17)
 //!
-//! A fita **não é serializada** — a classe do `TimelineFlags::performing`.
-//! Persistí-la (um replay que sobrevive a fechar o app) é wave posterior, e está
-//! escrita aqui para não virar promessa esquecida.
+//! Até a W16 ela era runtime-only e esta nota prometia a wave. Ela chegou: a
+//! fita tem uma [`TapeWire`] e o `ProjectFile` a carrega, então uma corrida
+//! gravada sobrevive a fechar o app — e, com o bake da W16 a lendo, reabrir um
+//! projeto e apertar Bake devolve a corrida de ontem.
+//!
+//! ⚠️ **A wave que persistiu teve de CORRIGIR o que era gravado primeiro.**
+//! Medido pela porta do produto (`measure_player_tape`), em 120 frames a fita
+//! gravava **120 tiques nas QUATRO células** — sem player na cena, e com a
+//! simulação desarmada. Ela gravava o *relógio andando*, não uma corrida; a
+//! condição que a torna uma corrida vive no chamador
+//! (`render_loop::physics_bridge::dispatch`) e está escrita lá.
 
 use std::collections::BTreeMap;
 
@@ -146,6 +154,80 @@ impl PlayerInputAtTick for InputTape {
             return None;
         }
         self.frames.get((tick - self.first) as usize).copied()
+    }
+}
+
+/// **A forma de ARQUIVO de uma fita** (W17).
+///
+/// ⚠️ **Ela existe para o `PlayerInput` NÃO aprender serde.** A
+/// `ph2d-platformer` é a crate da lei pura — sem rapier, sem ECS, sem formato de
+/// arquivo —, e ensinar-lhe a serializar seria a primeira aresta na direção
+/// errada. A tradução mora aqui, na crate-ponte, que já é o lugar onde o
+/// `RigidBody` e o `Collider` viram bytes.
+///
+/// ⚠️ **Os botões viajam num BITMASK, e não como quatro `bool`s**, por uma razão
+/// que esta linha já pagou duas vezes: o `PlayerInput` ganhou o `down` na W12 e o
+/// `dash` na W14. Num `u8` o quinto botão é um BIT novo no mesmo byte — o layout
+/// do arquivo não se move, um leitor velho ignora o bit e um leitor novo lê
+/// `false` num arquivo velho. Com quatro `bool`s, o quinto seria um byte novo por
+/// tique, ou seja um bump de schema por botão.
+#[derive(Clone, Debug, Default, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct TapeWire {
+    /// O tique da primeira entrada.
+    pub first: u64,
+    /// Um par por tique: o eixo de caminhada, e os botões no bitmask.
+    pub frames: Vec<(f32, u8)>,
+}
+
+/// O bit do botão de PULO no bitmask do [`TapeWire`].
+const BIT_JUMP: u8 = 1 << 0;
+/// O bit do botão de BAIXO.
+const BIT_DOWN: u8 = 1 << 1;
+/// O bit do botão de ARRANQUE.
+const BIT_DASH: u8 = 1 << 2;
+
+impl InputTape {
+    /// A fita na forma que vai para o arquivo.
+    #[must_use]
+    pub fn to_wire(&self) -> TapeWire {
+        TapeWire {
+            first: self.first,
+            frames: self
+                .frames
+                .iter()
+                .map(|i| {
+                    let mut bits = 0u8;
+                    if i.jump {
+                        bits |= BIT_JUMP;
+                    }
+                    if i.down {
+                        bits |= BIT_DOWN;
+                    }
+                    if i.dash {
+                        bits |= BIT_DASH;
+                    }
+                    (i.drive, bits)
+                })
+                .collect(),
+        }
+    }
+
+    /// A fita que um arquivo descreve.
+    #[must_use]
+    pub fn from_wire(w: &TapeWire) -> Self {
+        Self {
+            first: w.first,
+            frames: w
+                .frames
+                .iter()
+                .map(|&(drive, bits)| PlayerInput {
+                    drive,
+                    jump: bits & BIT_JUMP != 0,
+                    down: bits & BIT_DOWN != 0,
+                    dash: bits & BIT_DASH != 0,
+                })
+                .collect(),
+        }
     }
 }
 

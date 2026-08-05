@@ -333,7 +333,10 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// `line/Vector` (v56..v62) e a `line/sculpt3d` (v63) pousaram antes na mesma janela.
 /// O número se CONTA, nunca se escolhe; três linhas já colidiram nele por o terem
 /// escolhido ([[feedback_numbers_that_sum_across_lines_count_dont_pick]]).
-const PROJECT_SCHEMA: u32 = 64;
+/// v65 (physics, W14 — O ARRANQUE): o `PlatformPlayer` ganhou **`dash_speed`**,
+/// **`dash_time`** e **`dash_cooldown`**. Três campos apendados ao componente, pelo
+/// mesmo raciocínio posicional de todos os degraus acima.
+const PROJECT_SCHEMA: u32 = 65;
 
 /// O conteúdo de um arquivo de projeto.
 #[derive(serde::Serialize, serde::Deserialize)]

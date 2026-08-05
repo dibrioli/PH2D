@@ -371,13 +371,20 @@ pub struct PhysicsBridge {
     /// Ver `bridge::tape`: um seed do ring devolve o mundo do tique T e este
     /// mapa devolve a memória do controlador do MESMO tique. Sem ele a resposta
     /// para um tick dependeria de o cache ter o âncora.
-    jump_ring: tape::JumpRing,
-    /// **O estado VIVO do pulo**, por player (W4) — a fase e a borda do botão.
+    state_ring: tape::PlayerStateRing,
+    /// **O estado VIVO do controlador**, por player (W4/W14) — a fase do pulo, a
+    /// borda dos botões e o arranque.
+    ///
+    /// ⚠️ **Um mapa, não um por assunto**, e a razão é o ring da fita: este
+    /// valor é o que o `record_player_states` guarda por tique âncora, então um
+    /// segundo mapa teria de ser acrescentado àquele ring à mão — e esquecê-lo é
+    /// um scrub que devolve o mundo de um tique e a memória do controlador de
+    /// outro, sem erro e sem aviso (ver [`ph2d_platformer::PlayerState`]).
     ///
     /// ⚠️ Aqui e não no componente pela lei do módulo: um campo que muda por
     /// tick faria o `canonicalize` do undo ver cada frame como um passo. A W7 o
     /// torna DERIVADO da fita, e aí ele deixa de ser guardado.
-    player_jump: BTreeMap<Entity, ph2d_platformer::JumpState>,
+    player_state: BTreeMap<Entity, ph2d_platformer::PlayerState>,
     /// **A plataforma que cada player está ATRAVESSANDO agora** (W12).
     ///
     /// ⚠️ **Uma forma, não um relógio, e não "todas as one-way":** a descida
@@ -453,8 +460,8 @@ impl PhysicsBridge {
             flashes: Vec::new(),
             contacts_continuous: true,
             player_input: BTreeMap::new(),
-            jump_ring: BTreeMap::new(),
-            player_jump: BTreeMap::new(),
+            state_ring: BTreeMap::new(),
+            player_state: BTreeMap::new(),
             player_drop: BTreeMap::new(),
         }
     }

@@ -104,6 +104,7 @@ fn measure_the_wall_jump_lockout() {
                 drive: 1.0,
                 jump: true,
                 down: false,
+                dash: false,
             },
         );
         let (mut peak, mut far) = (y0, x0);

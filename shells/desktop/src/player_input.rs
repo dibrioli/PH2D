@@ -33,6 +33,7 @@ pub(crate) struct PlayerKeys {
     right: bool,
     jump: bool,
     down: bool,
+    dash: bool,
 }
 
 impl PlayerKeys {
@@ -62,6 +63,14 @@ impl PlayerKeys {
         self.down
     }
 
+    /// **O botão de ARRANQUE está pressionado agora** (W14).
+    ///
+    /// Estado, como os outros dois, e pela mesma razão: quem o lê é uma lei que
+    /// já deriva sozinha a borda de que precisa.
+    pub(crate) fn dash(self) -> bool {
+        self.dash
+    }
+
     /// **O dedo do jogador, inteiro.**
     ///
     /// ⚠️ Porta ÚNICA de propósito: entregar `drive` e `jump` por caminhos
@@ -74,6 +83,7 @@ impl PlayerKeys {
             drive: self.drive(),
             jump: self.jump(),
             down: self.down(),
+            dash: self.dash(),
         }
     }
 
@@ -105,6 +115,23 @@ impl PlayerKeys {
             // caminho.
             KeyCode::ArrowDown | KeyCode::KeyS => {
                 self.down = pressed;
+                true
+            }
+            // ⚠️ **`Q`, e uma tecla só** (W14) — a escolha é por CONFLITO
+            // medido, como as três de cima. As candidatas naturais ao lado do
+            // `Z` estão todas tomadas (`X` é o Cut e o Exclude do pathfinder,
+            // `C` o Copy, `V` o Paste), e um MODIFICADOR seria pior do que uma
+            // tecla ocupada: `Shift` qualifica meia dúzia de handlers deste app,
+            // e um botão de jogo que também qualifica outros é um botão com
+            // dois donos. `Q` está livre — varridos `Q E R F G H J K N M` e os
+            // dois `Shift`, e ela é a única do cluster da mão esquerda
+            // (`A`/`S`/`D`/`Z`) com contagem zero.
+            //
+            // ⚠️ E **não** há um par de seta: a seta que faria sentido é o
+            // `Shift` da direita, e a razão acima vale igual. Um botão com uma
+            // ligação só é honesto; dois donos não.
+            KeyCode::KeyQ => {
+                self.dash = pressed;
                 true
             }
             _ => false,
@@ -227,10 +254,23 @@ mod tests {
         k.key(KeyCode::ArrowRight, true);
         k.key(KeyCode::KeyZ, true);
         k.key(KeyCode::KeyS, true);
+        k.key(KeyCode::KeyQ, true);
         let input = k.input();
         assert_eq!(input.drive, 1.0);
         assert!(input.jump);
         assert!(input.down, "o baixo tem de atravessar a porta unica");
+        assert!(input.dash, "e o arranque tambem");
+    }
+
+    /// **O ARRANQUE é um botão como os outros** (W14).
+    #[test]
+    fn the_dash_button_is_held_and_released() {
+        let mut k = PlayerKeys::default();
+        assert!(!k.dash());
+        assert!(k.key(KeyCode::KeyQ, true));
+        assert!(k.dash());
+        k.key(KeyCode::KeyQ, false);
+        assert!(!k.dash());
     }
 
     /// E perder o foco solta o pulo junto com as setas.

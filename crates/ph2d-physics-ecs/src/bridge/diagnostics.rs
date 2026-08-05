@@ -68,7 +68,7 @@ impl PhysicsBridge {
     /// um e guardar o outro semearia um mundo com a memória de outro tique.
     pub fn forget_checkpoints(&mut self) {
         self.ring.clear();
-        self.clear_jump_ring();
+        self.clear_state_ring();
     }
 
     pub fn scratch_capacity(&self) -> usize {

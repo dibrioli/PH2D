@@ -280,10 +280,13 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // escorregar por uma e pular dela). Quatro campos apendados ao
         // componente, e o postcard é posicional ⇒ um save v63 lido por v64 chega
         // ao fim dos bytes no primeiro deles.
+        // PROJECT 56→57: `PlatformPlayer` ganhou `dash_speed`, `dash_time` e
+        // `dash_cooldown` (W14 — O ARRANQUE). Três campos apendados, mesmo
+        // raciocínio posicional.
         // ⚠️ **PROVISÓRIO:** o valor se CONTA contra o `main` do dia da
         // integração — três linhas já colidiram neste número por o terem
         // escolhido, e a última vez o certo não estava em nenhum dos dois lados.
-        (64, 13, 14),
+        (65, 13, 14),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

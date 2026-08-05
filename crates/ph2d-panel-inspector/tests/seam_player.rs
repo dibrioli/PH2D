@@ -67,6 +67,9 @@ fn player() -> InspectorPlayerInfo {
         wall_jump_push: 6.0,
         wall_jump_lockout: 0.2,
         wall_reach: 0.08,
+        dash_speed: 0.0,
+        dash_time: 0.15,
+        dash_cooldown: 0.2,
         lift_momentum: 1.5,
         reaction_support: 1.0,
         reaction_movement: 0.0,
@@ -185,7 +188,7 @@ fn every_number_raises_its_own_edit() {
     // exatamente o arm esquecido que ela existe para pegar.
     assert_eq!(
         ph2d_panel_inspector::PLAYER_ROW_COUNT,
-        26,
+        29,
         "a tabela de rows cresceu; acrescente o numero novo a esta varredura"
     );
     for (id, v, edit) in [
@@ -264,6 +267,21 @@ fn every_number_raises_its_own_edit() {
             ids::INSP_PLAYER_WALL_REACH,
             0.15,
             PlayerFieldEdit::WallReach(0.15),
+        ),
+        (
+            ids::INSP_PLAYER_DASH_SPEED,
+            18.0,
+            PlayerFieldEdit::DashSpeed(18.0),
+        ),
+        (
+            ids::INSP_PLAYER_DASH_TIME,
+            0.18,
+            PlayerFieldEdit::DashTime(0.18),
+        ),
+        (
+            ids::INSP_PLAYER_DASH_COOL,
+            0.25,
+            PlayerFieldEdit::DashCooldown(0.25),
         ),
         (
             ids::INSP_PLAYER_MAX_SLOPE,

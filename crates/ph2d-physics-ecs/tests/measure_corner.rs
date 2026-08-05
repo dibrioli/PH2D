@@ -85,6 +85,7 @@ fn jump_and_watch(
             drive: 0.0,
             jump: true,
             down: false,
+            dash: false,
         },
     );
     let mut peak = y0;
@@ -152,6 +153,7 @@ fn measure_what_the_probe_costs() {
                 drive: 0.0,
                 jump: true,
                 down: false,
+                dash: false,
             },
         );
         let t = Instant::now();

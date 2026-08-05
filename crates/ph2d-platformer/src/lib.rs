@@ -49,6 +49,7 @@
 //! que a caminhada considera intransponível.
 
 pub mod corner;
+pub mod dash;
 pub mod jump;
 pub mod react;
 pub mod ride;
@@ -60,6 +61,7 @@ pub use corner::{
     CORNER_LOOKAHEAD, CORNER_SAMPLES, CORNER_SEARCH_STEPS, CeilingProbe, corner_escape,
     corner_nudge, corner_offsets, corner_probe_wanted,
 };
+pub use dash::{DashConfig, DashState, DashStep, dash_burst, dash_step};
 pub use jump::{JumpConfig, JumpState, JumpStep, carried_frame, jump_step};
 pub use react::{Reaction, ReactionConfig};
 pub use ride::{RideConfig, damping_axis, ride_spring, within_reach};
@@ -131,6 +133,8 @@ pub struct PlayerConfig {
     pub react: ReactionConfig,
     /// As paredes (W13) — ⚠️ nasce DESLIGADA, ver [`WallConfig::STARTING_POINT`].
     pub wall: WallConfig,
+    /// O arranque (W14) — ⚠️ nasce DESLIGADO, ver [`DashConfig::STARTING_POINT`].
+    pub dash: DashConfig,
 }
 
 impl PlayerConfig {
@@ -141,7 +145,32 @@ impl PlayerConfig {
         jump: JumpConfig::STARTING_POINT,
         react: ReactionConfig::STARTING_POINT,
         wall: WallConfig::STARTING_POINT,
+        dash: DashConfig::STARTING_POINT,
     };
+}
+
+/// **O estado que a LEI carrega entre tiques** — tudo o que o tick anterior
+/// deixou, num tipo só.
+///
+/// # ⚠️ Por que UM tipo, e não um mapa por assunto na ponte
+///
+/// Este é o valor que a **fita** (W7) guarda no ring de tiques âncora, e é isso
+/// que decide a forma: um estado de player que vivesse num segundo mapa da ponte
+/// teria de ser acrescentado àquele ring **à mão**, e esquecê-lo é um scrub que
+/// devolve o mundo de um tique e a memória do controlador de outro — sem erro,
+/// sem aviso, e visível só como *"o arranque some quando arrasto a régua"*.
+/// Estando aqui, um assunto novo entra no ring de graça.
+///
+/// ⚠️ **E o [`JumpState`] mantém o nome**: ele é o estado que [`jump_step`] toma
+/// e devolve, e continua a ser só isso. Empurrar o arranque para dentro dele
+/// daria a `jump_step` um campo que ela nunca toca — um nome que mente por
+/// conveniência de armazenamento.
+#[derive(Copy, Clone, Debug, Default, PartialEq)]
+pub struct PlayerState {
+    /// O pulo, o corte, os dois relógios do perdão e a memória do chão.
+    pub jump: JumpState,
+    /// O arranque (W14) — o relógio, a carga, a direção e o lado que ele olha.
+    pub dash: DashState,
 }
 
 /// **O que a porta única decidiu neste tick** — as três respostas.
@@ -154,8 +183,8 @@ impl PlayerConfig {
 pub struct PlayerStep {
     /// O que fazer com o corpo do personagem.
     pub motor: Motor,
-    /// O estado de pulo a guardar para o próximo tick.
-    pub state: JumpState,
+    /// O estado a guardar para o próximo tick — ver [`PlayerState`].
+    pub state: PlayerState,
     /// **O que devolver ao chão** — `None` quando não há chão em que empurrar.
     pub reaction: Option<Reaction>,
     /// **Um DESLOCAMENTO em metros** (W10) — a correção de quina, e a única
@@ -251,6 +280,13 @@ pub struct PlayerInput {
     /// significado certo. É o idioma de Celeste, Hollow Knight, Ori e Dead
     /// Cells.
     pub down: bool,
+    /// **O botão de ARRANQUE está pressionado agora** (W14).
+    ///
+    /// ⚠️ O estado, não a borda — a lei a deriva sozinha
+    /// ([`DashState::was_held`]), pela razão exata do pulo: uma segunda memória
+    /// do mesmo fato do lado de fora divergiria no primeiro dispatch que deve
+    /// mais de um tique.
+    pub dash: bool,
 }
 
 /// **O que fazer com o corpo neste tick.** Ver a distinção accel/boost no topo.
@@ -324,7 +360,7 @@ pub fn player_motor(
     ceiling: Option<&CeilingProbe>,
     wall: Option<&WallSample>,
     input: PlayerInput,
-    state: JumpState,
+    state: PlayerState,
     body_velocity: Vec2,
     gravity: Vec2,
     up: Vec2,
@@ -348,7 +384,7 @@ pub fn player_motor(
     let clinging = wall::cling(cfg, wall, input.drive, rel_up, up);
     let jump = jump_step(
         &cfg.jump,
-        state,
+        state.jump,
         footing,
         rel_up,
         input.jump,
@@ -359,10 +395,40 @@ pub fn player_motor(
         dt,
     );
 
+    // ── O ARRANQUE (W14) ─────────────────────────────────────────────────────
+    // ⚠️ **A pergunta *"o pé está no chão?"* é a MESMA que o pulo faz**, pela
+    // MESMA porta ([`JumpState::on_ground`]) e sobre o estado de ENTRADA — que é
+    // o que o `jump_step` também consulta. Duas cópias do predicado dariam um
+    // tique em que o pulo recarrega o coyote e o arranque não recarrega a carga.
+    let grounded = state.jump.on_ground(footing);
+    // ⚠️ **Um pulo de QUALQUER tipo cancela o arranque**, e a pergunta é a
+    // TRANSIÇÃO para o ar — não o `jump.takeoff`, que é só a decolagem do chão e
+    // deixaria de fora precisamente o pulo de parede, o gesto que mais se
+    // encadeia com um arranque.
+    let jumped = !state.jump.airborne && jump.state.airborne;
+    let dash = dash::dash_step(
+        &cfg.dash,
+        state.dash,
+        grounded,
+        input.drive,
+        input.dash,
+        jumped,
+        dt,
+    );
+    let dashing = dash.active;
+
     // A perna e a caminhada veem o MESMO chão, e é o que o pulo lhes deixou ver:
     // duas respostas para *"estou no chão?"* seriam um personagem que anda no
     // chão enquanto voa.
-    let standing = if jump.spring_armed { footing } else { None };
+    //
+    // ⚠️ **E o arranque cala a perna junto** (W14): enquanto ele dura, o
+    // personagem é uma velocidade — a mola disputaria o eixo vertical com o
+    // boost e os dois escreveriam o mesmo número. Ver o topo de [`crate::dash`].
+    let standing = if jump.spring_armed && !dashing {
+        footing
+    } else {
+        None
+    };
     let spring = ride_spring(&cfg.ride, standing, body_velocity, gravity, up);
     // ⚠️ **Só o termo de CAMINHADA passa pelo `no_uphill`, e a escolha é o
     // desenho.** A mola já está calada numa superfície recusada (é a `standing`
@@ -380,7 +446,11 @@ pub fn player_motor(
     //
     // ⚠️ **CALAR, e não zerar o `drive`:** com o alvo em zero a caminhada
     // FREARIA o empurrão — o mesmo defeito com outra roupa.
-    let step = if jump.state.wall_lock > 0.0 {
+    //
+    // ⚠️ **E o arranque cala a caminhada pela mesma razão que o silêncio do pulo
+    // de parede a cala** (W14): com o controle aéreo vivo o jogador curvaria o
+    // traço, e o desenho deixaria de ser função só do botão.
+    let step = if jump.state.wall_lock > 0.0 || dashing {
         Motor::default()
     } else {
         no_uphill(
@@ -429,21 +499,53 @@ pub fn player_motor(
     // o pé no chão a mola já governa o eixo vertical, e um segundo termo a
     // escrever velocidade ali seria dois donos do mesmo número. A `standing` é a
     // mesma resposta que a mola consumiu.
-    let slide = if standing.is_none() {
+    let slide = if standing.is_none() && !dashing {
         wall::wall_slide(&cfg.wall, clinging.is_some(), rel_up, up)
     } else {
         Motor::default()
     };
 
+    // ⚠️ **O arranque SUBSTITUI o termo do pulo, em vez de somar a ele:** o que
+    // o `jump.motor` carrega fora da decolagem é a **gravidade de FASE**
+    // (`(escala − 1)·g`), e somá-la a um tique que cancela a gravidade daria
+    // `−g + (escala−1)·g` — um arranque que sobe ou cai conforme a fase em que o
+    // personagem estava quando o botão foi apertado. E no tique em que um pulo
+    // sai, `dashing` já é falso (o arranque foi cancelado), então o boost da
+    // decolagem nunca é perdido.
+    let (jump_motor, burst) = if dashing {
+        (
+            Motor::default(),
+            dash::dash_burst(
+                &cfg.dash,
+                dash.state.dir,
+                carried,
+                body_velocity,
+                up,
+                gravity,
+            ),
+        )
+    } else {
+        (jump.motor, Motor::default())
+    };
+
     PlayerStep {
-        motor: spring.plus(step).plus(jump.motor).plus(slide),
-        state: jump.state,
+        motor: spring.plus(step).plus(jump_motor).plus(slide).plus(burst),
+        state: PlayerState {
+            jump: jump.state,
+            dash: dash.state,
+        },
         reaction,
         nudge,
         // ⚠️ A pergunta é *"a MOLA agiu?"*, e ela é a `standing` — não a
         // `footing`: no tique da decolagem o raio ainda vê o chão e a mola já
         // está calada. Ver [`PlayerStep::gravity_hold`].
-        gravity_hold: if standing.is_some() {
+        //
+        // ⚠️ **E o ARRANQUE é o segundo dono deste canal** (W14): ele também
+        // cancela a gravidade, e o cancelamento tem de ser integrado como ela,
+        // por sub-passo. Os dois nunca coincidem — a `standing` é `None` sempre
+        // que `dashing`, pela linha que cala a perna acima —, então isto continua
+        // a ser **um** `−g`, e não dois.
+        gravity_hold: if standing.is_some() || dashing {
             [-gravity[0], -gravity[1]]
         } else {
             [0.0, 0.0]

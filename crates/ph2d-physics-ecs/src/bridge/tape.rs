@@ -16,10 +16,10 @@
 //! Com a fita, `drive_players` entra nos DOIS laços e o controlador volta a ser
 //! reproduzível: o scrub replaya, e o ring de checkpoints continua servindo.
 //!
-//! # ⚠️ E o ESTADO DE PULO viaja com o checkpoint
+//! # ⚠️ E o ESTADO DO CONTROLADOR viaja com o checkpoint
 //!
-//! O `JumpState` é estado **cross-frame da ponte** — `airborne`, o corte, a
-//! borda do botão. Um seed do ring devolve o mundo do tique T e deixaria esse
+//! O `PlayerState` é estado **cross-frame da ponte** — `airborne`, o corte, a
+//! borda dos botões, e o arranque (W14). Um seed do ring devolve o mundo do tique T e deixaria esse
 //! estado com o valor de AGORA: um personagem no meio de um pulo em T seria
 //! tratado como estando no chão, a perna dispararia no ar, e a resposta para um
 //! tick dependeria de o cache ter o âncora ou não — que é exatamente o modo de
@@ -41,7 +41,7 @@ use std::collections::BTreeMap;
 
 use bevy_ecs::entity::Entity;
 use ph2d_ecs::SimWorld;
-use ph2d_platformer::{JumpState, PlayerInput};
+use ph2d_platformer::{PlayerInput, PlayerState};
 
 use crate::components::PlatformPlayer;
 
@@ -156,15 +156,15 @@ impl PhysicsBridge {
     /// e o estado que o acompanha descrevem o mesmo instante, e gravá-los em
     /// momentos diferentes é como o seed devolveria um mundo com a memória de
     /// outro tick.
-    pub(super) fn record_jump_states(&mut self, tick: u64) {
-        self.jump_ring.insert(tick, self.player_jump.clone());
+    pub(super) fn record_player_states(&mut self, tick: u64) {
+        self.state_ring.insert(tick, self.player_state.clone());
         // A janela do ring é limitada; a nossa segue a dele pela borda de baixo
         // para não crescer sem teto num run longo.
-        while self.jump_ring.len() > JUMP_RING_CAP {
-            let Some(&oldest) = self.jump_ring.keys().next() else {
+        while self.state_ring.len() > STATE_RING_CAP {
+            let Some(&oldest) = self.state_ring.keys().next() else {
                 break;
             };
-            self.jump_ring.remove(&oldest);
+            self.state_ring.remove(&oldest);
         }
     }
 
@@ -172,15 +172,15 @@ impl PhysicsBridge {
     ///
     /// ⚠️ `None` (o âncora não está na janela) deixa o estado como está, e é o
     /// certo: quem chama nesse caso é um `rebuild_from_rest`, que já o limpou.
-    pub(super) fn seed_jump_states(&mut self, tick: u64) {
-        if let Some(states) = self.jump_ring.get(&tick) {
-            self.player_jump = states.clone();
+    pub(super) fn seed_player_states(&mut self, tick: u64) {
+        if let Some(states) = self.state_ring.get(&tick) {
+            self.player_state = states.clone();
         }
     }
 
     /// Esquece os estados guardados — irmão do `ring.clear()`.
-    pub(super) fn clear_jump_ring(&mut self) {
-        self.jump_ring.clear();
+    pub(super) fn clear_state_ring(&mut self) {
+        self.state_ring.clear();
     }
 }
 
@@ -188,13 +188,13 @@ impl PhysicsBridge {
 ///
 /// ⚠️ Um teto em CONTAGEM e não em bytes, ao contrário do ring do rapier — e a
 /// diferença é o tamanho da coisa guardada: um checkpoint do solver pesa ~1 kB
-/// POR CORPO (daí o teto em bytes do ADR-0117), e um `JumpState` são **três
-/// bools**. 256 âncoras de 100 players são 76 kB, ou seja abaixo do
+/// POR CORPO (daí o teto em bytes do ADR-0117), e um `PlayerState` são umas
+/// poucas dezenas de bytes. 256 âncoras de 100 players são 76 kB, ou seja abaixo do
 /// arredondamento do orçamento do ring que ele acompanha.
-const JUMP_RING_CAP: usize = 256;
+const STATE_RING_CAP: usize = 256;
 
 /// O tipo da tabela — um mapa por tique âncora, cada um com um estado por player.
-pub(super) type JumpRing = BTreeMap<u64, BTreeMap<Entity, JumpState>>;
+pub(super) type PlayerStateRing = BTreeMap<u64, BTreeMap<Entity, PlayerState>>;
 
 impl PhysicsBridge {
     /// Pergunta à fita o que o dedo fez NESTE tick e instala a resposta.

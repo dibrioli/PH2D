@@ -24,6 +24,7 @@ fn scripted(ticks: u64) -> InputTape {
                 drive: if t < 90 { 1.0 } else { 0.0 },
                 jump: (40..48).contains(&t),
                 down: false,
+                dash: false,
             },
         );
     }
@@ -44,7 +45,7 @@ fn scripted(ticks: u64) -> InputTape {
 ///
 /// As DUAS rotas do `rewind_to` são exercitadas, e não por simetria: com o ring
 /// quente ele **semeia** de um tique âncora e replaya poucos passos (é aí que o
-/// `seed_jump_states` importa); com o ring vazio ele **reconstrói do repouso** e
+/// `seed_player_states` importa); com o ring vazio ele **reconstrói do repouso** e
 /// replaya o run inteiro.
 #[test]
 fn scrubbing_back_to_the_middle_replays_the_player() {
@@ -108,6 +109,7 @@ fn without_a_tape_the_world_is_byte_identical() {
                     drive: 1.0,
                     jump: false,
                     down: false,
+                    dash: false,
                 },
             );
             if with_tape {
@@ -147,6 +149,7 @@ fn the_tape_overrides_what_the_caller_is_holding() {
             drive: 1.0,
             jump: false,
             down: false,
+            dash: false,
         },
     );
     // ...e a fita diz "para a ESQUERDA".
@@ -158,6 +161,7 @@ fn the_tape_overrides_what_the_caller_is_holding() {
                 drive: -1.0,
                 jump: false,
                 down: false,
+                dash: false,
             },
         );
     }
@@ -182,6 +186,7 @@ fn a_tape_answers_only_for_the_ticks_it_holds() {
             drive: 0.5,
             jump: true,
             down: false,
+            dash: false,
         },
     );
     assert_eq!(
@@ -194,7 +199,8 @@ fn a_tape_answers_only_for_the_ticks_it_holds() {
         Some(PlayerInput {
             drive: 0.5,
             jump: true,
-            down: false
+            down: false,
+            dash: false
         })
     );
     assert_eq!(tape.input(11), None, "e depois do fim tambem nao");
@@ -207,6 +213,7 @@ fn a_tape_answers_only_for_the_ticks_it_holds() {
             drive: -1.0,
             jump: false,
             down: false,
+            dash: false,
         },
     );
     assert_eq!(
@@ -223,6 +230,7 @@ fn a_tape_answers_only_for_the_ticks_it_holds() {
             drive: -0.25,
             jump: false,
             down: false,
+            dash: false,
         },
     );
     assert_eq!(tape.input(10).map(|i| i.drive), Some(-0.25));

@@ -17,7 +17,7 @@
 
 use bevy_ecs::component::Component;
 use ph2d_platformer::{
-    JumpConfig, PlayerConfig, ReactionConfig, RideConfig, WalkConfig, WallConfig,
+    DashConfig, JumpConfig, PlayerConfig, ReactionConfig, RideConfig, WalkConfig, WallConfig,
 };
 use serde::{Deserialize, Serialize};
 
@@ -145,6 +145,26 @@ pub struct PlatformPlayer {
     /// controle aéreo puxa-o de volta para ela. Ver
     /// [`ph2d_platformer::WallConfig::jump_lockout`].
     pub wall_jump_lockout: f32,
+
+    /// **DASH** (W14) — a velocidade do arranque, m/s. `0` desliga.
+    ///
+    /// ⚠️ **Nasce DESLIGADO**, como as paredes e pela mesma razão: um arranque é
+    /// uma CAPACIDADE do personagem, não uma correção de física, e ligá-lo por
+    /// default mudaria o comportamento de todo player já autorado.
+    pub dash_speed: f32,
+    /// **Quanto tempo o arranque dura**, segundos.
+    ///
+    /// ⚠️ É a companheira da velocidade e é o par que decide a **DISTÂNCIA** —
+    /// que é o número que o artista de facto julga (*"atravessa aquele
+    /// buraco?"*). Ver a tabela do `measure_dash`.
+    pub dash_time: f32,
+    /// **Quanto tempo depois do FIM até poder arrancar de novo**, segundos.
+    ///
+    /// ⚠️ Ela **não** é o que impede voar — quem faz isso é a carga, reposta
+    /// pelo pé no chão ([`ph2d_platformer::DashState::charged`]). Esta existe
+    /// para não se encadearem arranques no chão mais depressa do que a animação
+    /// consegue mostrar.
+    pub dash_cooldown: f32,
 }
 
 impl PlatformPlayer {
@@ -188,6 +208,11 @@ impl PlatformPlayer {
                 reach: self.wall_reach,
                 jump_lockout: self.wall_jump_lockout,
             },
+            dash: DashConfig {
+                speed: self.dash_speed,
+                time: self.dash_time,
+                cooldown: self.dash_cooldown,
+            },
             react: ReactionConfig {
                 support: self.reaction_support,
                 movement: self.reaction_movement,
@@ -228,6 +253,9 @@ impl Default for PlatformPlayer {
             wall_jump_push: c.wall.jump_push,
             wall_reach: c.wall.reach,
             wall_jump_lockout: c.wall.jump_lockout,
+            dash_speed: c.dash.speed,
+            dash_time: c.dash.time,
+            dash_cooldown: c.dash.cooldown,
         }
     }
 }

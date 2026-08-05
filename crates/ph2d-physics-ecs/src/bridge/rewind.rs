@@ -68,7 +68,7 @@ impl PhysicsBridge {
                 // ⚠️ E a memória do CONTROLADOR do mesmo tique — sem ela o
                 // seed devolveria o mundo do tique T com o estado de pulo de
                 // agora (ver `bridge::tape`).
-                self.seed_jump_states(tick);
+                self.seed_player_states(tick);
                 (tick, target - tick)
             }
             None => {
@@ -142,7 +142,7 @@ impl PhysicsBridge {
     /// missed.)
     pub(super) fn rebuild_from_rest(&mut self) {
         self.ring.clear();
-        self.clear_jump_ring();
+        self.clear_state_ring();
         // ⚠️ **E o estado de pulo VIVO junto, não só o ring** — reconstruir do
         // repouso É o tique 0, e no tique 0 ninguém pulou.
         //
@@ -160,7 +160,7 @@ impl PhysicsBridge {
         // sem sintoma nenhum além de um pulo que ninguém pediu. É o mesmo
         // argumento que o `drive_players` já escreve sobre o push incondicional
         // do estado.
-        self.player_jump.clear();
+        self.player_state.clear();
         // ⚠️ **As POLIAS saem do mundo velho ANTES de ele morrer** (W-Weston), e isso
         // é uma correção de bug, não arrumação. A tabela de polias vive DENTRO do
         // `PhysicsWorld`, então `PhysicsWorld::new()` a apagava — e o laço de replay

@@ -164,15 +164,6 @@ const REACT_ROWS: [PlayerRow; 2] = [
     ),
 ];
 
-/// **A TABELA da §14** — cinco cards, e os dezenove números dentro deles.
-///
-/// ⚠️ **UMA tabela, TRÊS consumidores** (o molde do `SECTIONS` do painel de
-/// física): o **pintor** desenha, o **`populate`** registra a dica de hover de
-/// cada id, e a **varredura de seam** clica tudo. Uma row nova nasce pintada,
-/// com dica e varrida, ou não nasce.
-///
-/// ⚠️ **Os cinco títulos são os cinco módulos da lei** (`ride` · `walk` · `jump`
-/// · o perdão · `react`), não uma arrumação de gosto: quando o artista pergunta
 /// **AS PAREDES** (W13) — ⚠️ card PRÓPRIO, e não uma extensão do de PULO: o
 /// escorregamento não é um pulo, e o que agrupa estes cinco números é a
 /// superfície, não o gesto. As duas primeiras rows nascem em ZERO porque a
@@ -205,17 +196,52 @@ const WALL_ROWS: [PlayerRow; 5] = [
     ),
 ];
 
-/// *"o que este número faz?"*, a primeira metade da resposta é *"a que pergunta
-/// ele pertence"*, e ela passou a estar escrita na tela (Enio, 2026-08-04:
-/// *"esse tanto de parâmetros juntos não fica bem; organize-os em cards com um
-/// título que facilite o entendimento"*).
-pub(crate) const PLAYER_CARDS: [(&str, ph2d_a11y::NodeId, &[PlayerRow]); 6] = [
+/// **O ARRANQUE** (W14) — ⚠️ card próprio pela mesma razão do das paredes, e a
+/// primeira row nasce em ZERO porque a capacidade é opt-in.
+///
+/// ⚠️ **Três números, e o que impede voar NÃO é nenhum deles:** a carga (um
+/// arranque por tempo-de-voo, reposta pelo pé no chão) é lei, não knob — expô-la
+/// seria oferecer ao artista a escolha de fazer o personagem voar, que não é uma
+/// escolha, é um bug com um slider.
+const DASH_ROWS: [PlayerRow; 3] = [
+    (
+        "Dash Speed (m/s)",
+        ids::INSP_PLAYER_DASH_SPEED,
+        "How fast the dash carries him. 0 = off.",
+    ),
+    (
+        "Dash Time (s)",
+        ids::INSP_PLAYER_DASH_TIME,
+        "How long it lasts. Speed x Time is the DISTANCE it covers.",
+    ),
+    (
+        "Dash Cooldown (s)",
+        ids::INSP_PLAYER_DASH_COOL,
+        "Recovery after it ENDS, before he can dash again.",
+    ),
+];
+
+/// **A TABELA da §14** — sete cards, e os vinte e dois números dentro deles.
+///
+/// ⚠️ **UMA tabela, TRÊS consumidores** (o molde do `SECTIONS` do painel de
+/// física): o **pintor** desenha, o **`populate`** registra a dica de hover de
+/// cada id, e a **varredura de seam** clica tudo. Uma row nova nasce pintada,
+/// com dica e varrida, ou não nasce.
+///
+/// ⚠️ **Os títulos são os módulos da lei** (`ride` · `walk` · `jump` · o perdão
+/// · `react` · `wall` · `dash`), não uma arrumação de gosto: quando o artista
+/// pergunta *"o que este número faz?"*, a primeira metade da resposta é *"a que
+/// pergunta ele pertence"*, e ela passou a estar escrita na tela (Enio,
+/// 2026-08-04: *"esse tanto de parâmetros juntos não fica bem; organize-os em
+/// cards com um título que facilite o entendimento"*).
+pub(crate) const PLAYER_CARDS: [(&str, ph2d_a11y::NodeId, &[PlayerRow]); 7] = [
     ("LEG", ids::INSP_PLAYER_CARD_LEG, &LEG_ROWS),
     ("WALK", ids::INSP_PLAYER_CARD_WALK, &WALK_ROWS),
     ("JUMP", ids::INSP_PLAYER_CARD_JUMP, &JUMP_ROWS),
     ("FORGIVENESS", ids::INSP_PLAYER_CARD_FORGIVE, &FORGIVE_ROWS),
     ("REACTION", ids::INSP_PLAYER_CARD_REACT, &REACT_ROWS),
     ("WALLS", ids::INSP_PLAYER_CARD_WALL, &WALL_ROWS),
+    ("DASH", ids::INSP_PLAYER_CARD_DASH, &DASH_ROWS),
 ];
 
 /// Quantas rows numéricas a seção pinta — **contadas da tabela**, nunca escritas

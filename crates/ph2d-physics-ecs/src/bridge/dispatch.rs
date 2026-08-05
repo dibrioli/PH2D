@@ -199,7 +199,7 @@ impl PhysicsBridge {
                         self.ring.record(tick, self.world.checkpoint());
                         // E a memória do controlador do MESMO tique — ver
                         // `bridge::tape`.
-                        self.record_jump_states(tick);
+                        self.record_player_states(tick);
                     }
                 }
                 self.readback(sim);

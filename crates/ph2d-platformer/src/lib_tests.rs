@@ -42,7 +42,7 @@ fn the_leg_declares_which_half_of_its_push_cancels_gravity() {
         None,
         None,
         PlayerInput::default(),
-        JumpState::default(),
+        PlayerState::default(),
         [0.0, 0.0],
         G,
         UP,
@@ -80,7 +80,7 @@ fn nothing_is_held_in_the_air() {
         None,
         None,
         PlayerInput::default(),
-        JumpState::default(),
+        PlayerState::default(),
         [0.0, 0.0],
         G,
         UP,
@@ -104,7 +104,7 @@ fn nothing_is_held_in_the_air() {
             jump: true,
             ..PlayerInput::default()
         },
-        JumpState::default(),
+        PlayerState::default(),
         [0.0, 0.0],
         G,
         UP,
@@ -143,7 +143,7 @@ fn the_spring_lets_go_of_a_wall() {
         None,
         None,
         PlayerInput::default(),
-        JumpState::default(),
+        PlayerState::default(),
         [0.0, 0.0],
         G,
         UP,
@@ -162,7 +162,7 @@ fn the_spring_lets_go_of_a_wall() {
         None,
         None,
         PlayerInput::default(),
-        JumpState::default(),
+        PlayerState::default(),
         [0.0, 0.0],
         G,
         UP,
@@ -197,7 +197,7 @@ fn a_degenerate_normal_counts_as_flat() {
         None,
         None,
         PlayerInput::default(),
-        JumpState::default(),
+        PlayerState::default(),
         [0.0, 0.0],
         G,
         UP,
@@ -225,7 +225,7 @@ fn the_door_sums_both_laws() {
         None,
         None,
         input,
-        JumpState::default(),
+        PlayerState::default(),
         [0.0, 0.0],
         G,
         UP,
@@ -380,7 +380,7 @@ fn at_the_door_a_steep_slope_kills_the_walk_but_not_the_jump() {
         None,
         None,
         pushing,
-        JumpState::default(),
+        PlayerState::default(),
         [0.0, 0.0],
         G,
         UP,
@@ -392,7 +392,7 @@ fn at_the_door_a_steep_slope_kills_the_walk_but_not_the_jump() {
         None,
         None,
         PlayerInput::default(),
-        JumpState::default(),
+        PlayerState::default(),
         [0.0, 0.0],
         G,
         UP,
@@ -418,9 +418,12 @@ fn at_the_door_a_steep_slope_kills_the_walk_but_not_the_jump() {
         PlayerInput {
             drive: 1.0,
             jump: true,
-            down: false,
+            ..PlayerInput::default()
         },
-        armed,
+        PlayerState {
+            jump: armed,
+            ..PlayerState::default()
+        },
         [0.0, 0.0],
         G,
         UP,
@@ -432,3 +435,11 @@ fn at_the_door_a_steep_slope_kills_the_walk_but_not_the_jump() {
         jumping.motor
     );
 }
+
+/// Os gates do ARRANQUE na porta única — irmão por `#[path]` pelo teto de 700
+/// LOC, e o corte é o MESMO do par `jump_tests`/`jump_forgive_tests`: o pai fica
+/// com *o que a porta É* (a composição, o canal da gravidade, a ladeira), e o
+/// filho com *o que o arranque faz a ela* (calar a perna, calar a caminhada, e
+/// ceder a um pulo).
+#[path = "lib_dash_tests.rs"]
+mod dash;

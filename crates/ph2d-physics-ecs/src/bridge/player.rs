@@ -32,8 +32,8 @@
 use bevy_ecs::entity::Entity;
 use ph2d_ecs::SimWorld;
 use ph2d_platformer::{
-    CORNER_LOOKAHEAD, CORNER_SAMPLES, CeilingProbe, GroundSample, JumpState, PlayerConfig,
-    PlayerInput, WallSample, corner_offsets, corner_probe_wanted, footing, player_motor,
+    CORNER_LOOKAHEAD, CORNER_SAMPLES, CeilingProbe, GroundSample, PlayerConfig, PlayerInput,
+    PlayerState, WallSample, corner_offsets, corner_probe_wanted, footing, player_motor,
     relative_rise, wall_probe_wanted,
 };
 
@@ -95,7 +95,7 @@ impl PhysicsBridge {
         // reciclados, um `airborne` sobrevivente calaria a perna de um corpo que
         // nunca pulou — o personagem cairia através do mundo sem nada na tela a
         // dizer por quê.
-        self.player_jump.clear();
+        self.player_state.clear();
         // ⚠️ E a DESCIDA (W12), pela razão mais forte das três: ela guarda um
         // `ColliderHandle`, e handles são reciclados junto com os corpos — uma
         // descida sobrevivente apontaria para uma forma que hoje é outra coisa,
@@ -175,7 +175,7 @@ impl PhysicsBridge {
         let mut motors: Vec<(rapier2d_handle::Handle, [f32; 2], [f32; 2])> = Vec::new();
         // O estado de pulo que este tick produz, colhido junto com os motores e
         // gravado depois — o cast toma `&self` e a tabela `&mut self`.
-        let mut states: Vec<(Entity, JumpState)> = Vec::new();
+        let mut states: Vec<(Entity, PlayerState)> = Vec::new();
         // A reação da 3ª lei, colhida junto pelo mesmo motivo — o cast toma
         // `&self` e aplicar toma `&mut self`.
         let mut reactions: Vec<GroundPush> = Vec::new();
@@ -270,7 +270,7 @@ impl PhysicsBridge {
             } else {
                 None
             };
-            let was = self.player_jump.get(&entity).copied().unwrap_or_default();
+            let was = self.player_state.get(&entity).copied().unwrap_or_default();
             let step = player_motor(
                 &cfg,
                 sample.as_ref(),
@@ -337,7 +337,7 @@ impl PhysicsBridge {
         // push dentro do guard de motor **sobrevive à suíte inteira**.
         //
         // O porquê é uma coincidência da lei atual, não um desenho: todo campo do
-        // `JumpState` menos o `airborne` é função pura da entrada DESTE tick
+        // `PlayerState.jump` menos o `airborne` é função pura da entrada DESTE tick
         // (`was_held = held`, `cut` re-derivado de `!held`), e o `airborne` só
         // vira em ticks que necessariamente carregam motor (a decolagem tem o
         // boost; o pouso re-arma a perna). Com os defaults, a SUBIDA tem motor
@@ -349,7 +349,7 @@ impl PhysicsBridge {
         // sintoma** — o pulo continua saindo, só a tolerância deixa de existir. É
         // por isso que a linha nasce agora, e não quando alguém a perseguir.
         for (entity, next) in states {
-            self.player_jump.insert(entity, next);
+            self.player_state.insert(entity, next);
         }
         // ⚠️ **ANTES do `step` deste tique**, que é o que torna a descida
         // observável já na resolução de contatos que vem a seguir — armá-la

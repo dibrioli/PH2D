@@ -128,6 +128,7 @@ fn a_wall_jump_goes_up_and_away() {
             drive: 1.0,
             jump: true,
             down: false,
+            dash: false,
         },
     );
     let (mut peak, mut far) = (y0, x0);
@@ -173,6 +174,7 @@ fn without_the_capability_the_same_press_does_nothing() {
             drive: 1.0,
             jump: true,
             down: false,
+            dash: false,
         },
         3,
         t,

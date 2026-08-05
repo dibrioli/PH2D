@@ -286,6 +286,9 @@ pub(super) fn populate_player(store: &mut WidgetStore) {
         (ids::INSP_PLAYER_WALL_PUSH, 6.0, 0.0, 16.0, 0.25),  // LITERAL-PX-OK: m/s
         (ids::INSP_PLAYER_WALL_LOCK, 0.2, 0.0, 0.6, 0.02),   // LITERAL-PX-OK: seconds
         (ids::INSP_PLAYER_WALL_REACH, 0.08, 0.0, 0.4, 0.01), // LITERAL-PX-OK: metres
+        (ids::INSP_PLAYER_DASH_SPEED, 0.0, 0.0, 40.0, 0.5),  // LITERAL-PX-OK: m/s
+        (ids::INSP_PLAYER_DASH_TIME, 0.15, 0.0, 1.0, 0.01),  // LITERAL-PX-OK: seconds
+        (ids::INSP_PLAYER_DASH_COOL, 0.2, 0.0, 2.0, 0.02),   // LITERAL-PX-OK: seconds
         // A REAÇÃO (W6), em FRAÇÃO da força que o personagem faz. ⚠️ O piso é 0
         // (nada volta) e o teto é 1 (volta inteira) porque **acima de 1 o
         // personagem devolveria mais do que recebeu** — inventar energia, e o

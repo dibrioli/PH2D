@@ -144,9 +144,22 @@ pub const INSP_PLAYER_WALL_REACH: NodeId = hash_node_id("insp.player.wall.reach"
 /// a caminhada, o pulo, o perdão e o que volta ao chão —, e cada uma é um módulo
 /// do `ph2d-platformer`. O agrupamento não é decoração: é o desenho do motor
 /// dito na tela.
+/// **O ARRANQUE** (W14) — a velocidade, a duração e a recuperação.
+///
+/// ⚠️ Os dois primeiros são o par que decide a **DISTÂNCIA**, que é o número
+/// que o artista de facto julga; o terceiro é o espaçamento entre dois
+/// arranques no chão. O que impede voar **não está aqui** — é a carga, reposta
+/// pelo pé no chão, e ela não é um knob de propósito.
+pub const INSP_PLAYER_DASH_SPEED: NodeId = hash_node_id("insp.player.dash.speed");
+/// Quanto tempo o arranque dura, segundos.
+pub const INSP_PLAYER_DASH_TIME: NodeId = hash_node_id("insp.player.dash.time");
+/// Quanto tempo depois do FIM até poder de novo, segundos.
+pub const INSP_PLAYER_DASH_COOL: NodeId = hash_node_id("insp.player.dash.cool");
+
 pub const INSP_PLAYER_CARD_LEG: NodeId = hash_node_id("insp_player_card_leg");
 pub const INSP_PLAYER_CARD_WALK: NodeId = hash_node_id("insp_player_card_walk");
 pub const INSP_PLAYER_CARD_JUMP: NodeId = hash_node_id("insp_player_card_jump");
 pub const INSP_PLAYER_CARD_FORGIVE: NodeId = hash_node_id("insp_player_card_forgive");
 pub const INSP_PLAYER_CARD_REACT: NodeId = hash_node_id("insp_player_card_react");
 pub const INSP_PLAYER_CARD_WALL: NodeId = hash_node_id("insp_player_card_wall");
+pub const INSP_PLAYER_CARD_DASH: NodeId = hash_node_id("insp_player_card_dash");

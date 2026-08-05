@@ -51,6 +51,11 @@ pub fn tape(ticks: u64) -> InputTape {
                 // harness ganhasse nada — ele mede DETERMINISMO, não cobertura.
                 // O gate da descida é comportamental e mora ao lado.
                 down: false,
+                // ⚠️ **Nem o arranque** (W14), pela razão exacta da linha acima
+                // — e aqui ela vira uma PROVA: o `physics_ecs_c9` sai
+                // byte-idêntico ao da wave anterior, que é o que torna
+                // verificável a promessa de que a capacidade é opt-in.
+                dash: false,
             },
         );
     }

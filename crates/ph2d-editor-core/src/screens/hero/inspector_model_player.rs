@@ -76,6 +76,12 @@ pub struct InspectorPlayerInfo {
     pub wall_jump_lockout: f32,
     /// **Wall Reach** (W13) — metros além da própria largura.
     pub wall_reach: f32,
+    /// **Dash Speed** (W14) — m/s. `0` desliga a capacidade.
+    pub dash_speed: f32,
+    /// **Dash Time** (W14) — segundos.
+    pub dash_time: f32,
+    /// **Dash Cooldown** (W14) — segundos depois do FIM.
+    pub dash_cooldown: f32,
     /// Quanto do peso volta ao chao (W6).
     pub reaction_support: f32,
     /// Quanto da caminhada volta ao chao (W6).
@@ -132,6 +138,10 @@ pub enum PlayerFieldEdit {
     WallJumpPush(f32),
     WallJumpLockout(f32),
     WallReach(f32),
+    /// O ARRANQUE (W14).
+    DashSpeed(f32),
+    DashTime(f32),
+    DashCooldown(f32),
     /// Quanto do peso volta ao chao (W6).
     ReactionSupport(f32),
     /// Quanto da caminhada volta ao chao (W6).

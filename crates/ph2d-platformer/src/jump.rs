@@ -259,6 +259,25 @@ pub struct JumpState {
     pub wall_lock: f32,
 }
 
+impl JumpState {
+    /// **O pé está no chão?** — a porta única da pergunta.
+    ///
+    /// ⚠️ Ela existe porque tem **dois** consumidores: esta lei (para encher o
+    /// coyote e a memória do chão) e o ARRANQUE (para repor a carga, W14). Duas
+    /// cópias do predicado dariam um tique em que o pulo recarrega e o arranque
+    /// não — e o sintoma seria *"às vezes só posso arrancar uma vez"*, que
+    /// ninguém liga a um `&&` escrito duas vezes.
+    ///
+    /// ⚠️ **As duas metades importam**: o sensor achar chão não basta, porque no
+    /// tique da decolagem o raio ainda o vê (o personagem não saiu do
+    /// `cling_distance`) — é o [`Self::airborne`] que separa *"estou de pé"* de
+    /// *"acabei de sair daqui"*.
+    #[must_use]
+    pub fn on_ground(&self, footing: Option<&GroundSample>) -> bool {
+        footing.is_some() && !self.airborne
+    }
+}
+
 /// O que a lei do pulo decidiu neste tick.
 pub struct JumpStep {
     /// O termo do motor: o impulso da decolagem (boost) e a gravidade extra
@@ -333,7 +352,7 @@ pub fn jump_step(
     // ⚠️ E os dois escorrem por `dt` de RELÓGIO, nunca por contagem de tiques:
     // uma tolerância medida em quadros muda de tamanho quando o `fixed_dt` muda,
     // e "0,1 s" é uma frase sobre o dedo do jogador, não sobre a taxa da sim.
-    let grounded = footing.is_some() && !state.airborne;
+    let grounded = state.on_ground(footing);
     if grounded {
         // No chão o coyote está CHEIO — ele é o que sobra depois de sair, não um
         // tempo acumulado por ficar parado.

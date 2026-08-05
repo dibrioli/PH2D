@@ -584,6 +584,7 @@ fn measure_how_fast_the_player_climbs() {
                     drive: 1.0,
                     jump: false,
                     down: false,
+                    dash: false,
                 },
             );
         }

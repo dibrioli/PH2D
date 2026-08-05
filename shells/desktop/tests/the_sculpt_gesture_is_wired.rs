@@ -493,14 +493,26 @@ fn the_cavity_has_a_key_and_the_number_reaches_the_device() {
         "o log tem de dizer o NUMERO: este canal nao muda a silhueta, entao sem ele o \
          artista aperta, ve quase a mesma imagem e conclui que a tecla morreu"
     );
-    // E o número autorado chega ao passe. ⚠️ `self.cavity` e não um literal: um
-    // `0.0` cravado deixaria os gates de GPU verdes (eles chamam a porta direto)
-    // com a tecla inerte no produto — a forma exata do defeito que a `line/anim`
-    // mediu no overlay da trajetória.
+    // E o número autorado chega ao passe. ⚠️ Um literal cravado deixaria os gates
+    // de GPU verdes (eles chamam a porta direto) com a tecla inerte no produto —
+    // a forma exata do defeito que a `line/anim` mediu no overlay da trajetória.
+    //
+    // ⚠️ **São DUAS metades, e a primeira versão deste gate só tinha uma.** Ele
+    // afirmava que o corpo do `render` continha `self.cavity,` — um ENDEREÇO, e
+    // ele expirou no dia em que as opções de vista viraram uma porta só
+    // (`shade()`): o gate ficou vermelho sobre produto correto. A propriedade é
+    // *o número autorado chega ao passe*, e ela se parte em duas afirmações que
+    // falham por motivos diferentes — o `render` entrega a porta, e a porta lê o
+    // campo. Um `shade()` que cravasse `cavity: 0.0` passaria pela primeira.
     let render = function_body(&src, "render");
     assert!(
-        render.contains("self.cavity,"),
-        "o `render` tem de receber a cavidade AUTORADA, nao um literal"
+        render.contains("self.shade()"),
+        "o `render` tem de receber a porta unica das opcoes de vista"
+    );
+    let shade = function_body(&src, "shade");
+    assert!(
+        shade.contains("cavity: self.cavity"),
+        "a porta de vista tem de LER a cavidade autorada, nao cravar um literal"
     );
 }
 

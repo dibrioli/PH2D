@@ -764,3 +764,131 @@ decisão) + `ph2d-physics-ecs/tests/platform_idle.rs` (o produto: com o amortece
 teto o personagem fica parado em 10°/20°/30°/40° e por um minuto · o resíduo do
 default é medido dos dois lados · o plano é o controle · a perna segura a altura).
 **4 mutações, 4 sangram** — o eixo de volta ao `up` sangra a lei **e** o produto.
+
+---
+
+## Bug #7b — E a subida que sobrou era o impulso da perna a cair todo no topo do tique
+
+**A segunda metade do #7**, aberta pelo veredito do Enio no smoke de 04/08 (*"no
+setup como está o player sobe sozinho bem devagar; mas faremos os ajustes
+amanhã"*). O eixo do amortecedor tinha cortado a deriva ao meio e deixado
+**0,1644 m em 10 s a 30°** com o default que shipa — visível, e nomeado.
+
+### ⚠️ A cura que este doc prescrevia estava certa no MECANISMO e errada no REMÉDIO
+
+A §7 escreveu, e continua verdade: *a perna cancela a gravidade com um impulso no
+topo do tique, e o `rapier` integra a gravidade ao longo dele*. O que ela não fez
+foi perguntar **quem é "ao longo"** — e a resposta estava a três linhas de
+distância, no `world/step.rs`: um tique é um laço de `substeps` sub-passos, e
+`drag`, `effector`, `blast` e as polias são **todos** aplicados dentro dele, com
+o comentário que diz por quê (*"per SUBSTEP, not per tick: a force applied once
+per tick would be wrong by the substep count"*). O motor do player era o único
+aplicado uma vez, antes do laço.
+
+⇒ O remédio prescrito (*"a perna SUBSTITUI a gravidade"*, com uma escrita
+por-tique de `gravity_scale`) atacava o sintoma por fora. O remédio verdadeiro é
+uma linha de integração: **o que cancela a gravidade é integrado como ela.**
+
+### As três medições que decidiram, e as duas hipóteses que morreram
+
+**(1) O discriminador de sub-passos** (`measure_substep.rs`). Se a causa fosse só
+o descasamento de integração, a deriva teria de **sumir com `substeps = 1`** (aí
+o impulso e a gravidade caem na mesma integração). Medido:
+
+| substeps | d = 0,00 | d = 0,50 | d = 1,00 |
+|---|---|---|---|
+| 1 | 0,3065 | 0,1533 | 0,0000 |
+| 2 | 0,3576 | 0,1788 | 0,0000 |
+| **4** (o produto) | 0,3832 | **0,1916** | 0,0000 |
+| 8 | 0,3960 | 0,1980 | 0,0000 |
+
+⚠️ **Não zerou** — logo a hipótese ingénua está REFUTADA. Mas a tabela ajusta
+`deriva = A·(1 − 1/(4n))·(1 − d)` com `A = 0,409`, e **`A` é exactamente
+`a·t · dt²/2` por tique**: o limite `n → ∞` não é zero, e o que sobra ali é o
+impulso da perna a ser pago de uma vez em vez de espalhado. A gravidade era
+metade da história; a outra metade é o próprio bloco.
+
+**(2) A componente horizontal veio dos PIXELS, não de um raciocínio.** A `d = 0`
+todas as forças são verticais (a mola é no `up`, a gravidade também) e o freio da
+caminhada mede `−8,7e−8`: não há ator horizontal. E mesmo assim o personagem
+anda **exactamente ao longo da rampa** — `dy/dx = 0,5774 = tan 30°` a quatro
+casas, com deslocamento por tique **constante**. É a assinatura de *a velocidade
+dentro do tique não é a velocidade amostrada na fronteira dele*: o freio é um
+controlador de velocidade, o que sobra é deslocamento, e ele é cego a isso.
+
+**(3) ⛔ Fatiar o motor INTEIRO foi construído, medido e REJEITADO.** Ele corta a
+deriva 4× — e faz um `spring_damping = 0` **LARGAR o personagem** (erro de
+repouso 0,030 → **1430 mm**). O porquê é livro-texto: uma mola integrada por
+força amostrada na posição do início do tique é **explícita**, e uma mola
+explícita sem amortecimento ganha energia; o agrupamento no topo era um
+amortecimento numérico acidental que a escondia. O piso medido não é sequer um
+número — ele **anda com a rigidez**, que é autorável:
+
+| `spring_strength` | piso de `spring_damping` |
+|---|---|
+| 100 | 0,01 |
+| 400 (o default) | 0,04 |
+| 1600 | 0,14 |
+| 3200 | 0,25 |
+
+⇒ um knob cujo valor mínimo é função de outro knob, que é a forma que este repo
+chama de bug de design ([[feedback_ergonomics_verdict_is_a_design_bug]]). **Não
+refaça.**
+
+### A correção
+
+**Fatiar SÓ o que cancela a gravidade**, e deixar a mola no ordenamento agrupado
+que a mantém estável. A lei DECLARA qual metade é qual
+(`PlayerStep::gravity_hold`), a ponte separa as duas, e o wrapper paga uma por
+sub-passo (`PhysicsWorld::queue_player_hold`) e a outra no topo
+(`apply_player_motor`).
+
+⚠️ **A lei declara em vez de a ponte deduzir**, e a diferença é um tique: no
+instante da decolagem o raio ainda vê o chão e a mola já está calada. Uma ponte
+que subtraísse `− gravity` sempre que houvesse amostra de chão adivinharia — e
+adivinharia errado exactamente ali.
+
+⚠️ **A reação da 3ª lei NÃO é tocada.** A força que o pé faz no chão é um facto
+físico (`m·(up·k − g)`) e não muda com o modo como o impulso é distribuído dentro
+do tique: o `react` continua a ler o `Motor` inteiro, e é por isso que esta wave
+não move um único gate daquele módulo.
+
+### O resultado, nas duas colunas que a §7 disse não poder pagar juntas
+
+| `spring_damping` | deriva (30°, 10 s) | erro de repouso | peso transmitido |
+|---|---|---|---|
+| 0,25 | 0,2476 → **0,0498** | 2,874 → **0,574 mm** | 88% → **98%** |
+| **0,50** (o que shipa) | 0,1644 → **0,0331** | 5,748 → **1,150 mm** | 77% → **95%** |
+| 0,75 | 0,0819 → **0,0165** | 8,622 → **1,723 mm** | 65% → **93%** |
+| 1,00 (o teto) | **0,0000** | 11,496 → **2,297 mm** | 53% → **91%** |
+
+**Cinco vezes menos deriva em TODO valor do knob**, e o peso de volta. ⚠️ E o
+**quique do pouso não se moveu** (196 → 199 mm a 0,25; 20 → 24 a 0,50): a
+correção é de integração, não de lei, e é essa coluna que o prova — o que o
+artista aprovou no smoke da W6/W9 continua igual.
+
+⚠️ **O que isto muda de PRODUTO não é o default, é o preço do teto.** O
+`spring_damping = 1,0` sempre deu deriva exactamente zero; o que o impedia de ser
+escolhido era custar metade do peso do personagem. Hoje custa 9%. O default fica
+em 0,50 porque o teto também zera o quique do pouso, e um pouso sem quique é
+outra sensação — **quem decide isso é o smoke, não a medição**.
+
+### ⚠️ E o que sobra, com o mecanismo nomeado
+
+`0,0331 m em 10 s` no default, exactamente linear em `(1 − d)` e zero no teto. É
+o mesmo mecanismo um degrau abaixo: o termo da MOLA continua agrupado no topo do
+tique, de propósito — fatiá-lo é a tentativa (3) acima, que foi medida e
+rejeitada. Fechá-lo pede uma mola **semi-implícita** (re-amostrar o raio por
+sub-passo), que é outra wave e cobra um raio por sub-passo.
+
+**c9:** `b3dbe792…` → **`2278035e…`**, 108 corpos, debug ≡ release. Ele **tem** de
+se mover: a altura de repouso do player mudou em toda cena que tenha um.
+
+**Gates:** `ph2d-platformer` (a lei declara o canal · e ele é zero no ar E no
+tique da decolagem) + `ph2d-physics::world::player` (o canal fatiado entrega o
+MESMO impulso total · a fila é drenada · zero não entra nela) +
+`ph2d-physics-ecs/tests/platform_idle.rs` (o resíduo do default, pinado dos dois
+lados · o teto custa um décimo do peso e não metade). **A mutação — agrupar o
+`gravity_hold` de volta no motor — sangra os dois gates de produto com os números
+pré-wave exactos (0,1916 m e 11,496 mm) e deixa os outros quatro verdes**, que é
+o par certo: eles medem coisas que a wave não mudou.

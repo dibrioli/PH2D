@@ -9,7 +9,7 @@
 //! mira cinemática · arrasto · zonas · atração · POLIAS · o pipeline do rapier ·
 //! os dois livros-razão (contatos e joints) que só existem ENTRE os sub-passos.
 
-use super::{PhysicsWorld, blast, contacts, drag, effector, joint_break, oneway, pulley};
+use super::{PhysicsWorld, blast, contacts, drag, effector, joint_break, oneway, player, pulley};
 
 impl PhysicsWorld {
     /// Advance one fixed step. Always uses
@@ -47,6 +47,17 @@ impl PhysicsWorld {
                     b.set_next_kinematic_position(Self::kinematic_slice(&start, &target, f));
                 }
             }
+            // A perna do player (W11), pela MESMA razão que o `drag` logo abaixo
+            // e com uma consequência que a wave mediu: a lei devolve uma
+            // ACELERAÇÃO, e uma aceleração é uma força — integrá-la de um jeito
+            // enquanto a gravidade que ela cancela é integrada de outro deixa a
+            // velocidade certa e o DESLOCAMENTO errado. Vazio em toda cena sem
+            // player.
+            player::apply_queued(
+                &mut self.bodies,
+                &self.player_accels,
+                self.integration_parameters.dt,
+            );
             // Per SUBSTEP, not per tick: a force applied once per tick would be
             // wrong by the substep count.
             drag::apply(
@@ -148,6 +159,9 @@ impl PhysicsWorld {
         // the next tick refills it without allocating (the zero-alloc gate on
         // the hot path measures exactly that).
         self.kinematic_targets.clear();
+        // A perna já foi paga, sub-passo a sub-passo. Mesma razão do `clear`
+        // acima para a capacidade ficar.
+        self.player_accels.clear();
         self.step_count += 1;
     }
 }

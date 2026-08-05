@@ -119,6 +119,9 @@ impl PhysicsBridge {
         // Os deslocamentos de quina (W10), pelo mesmo motivo — e vazios em todo
         // tique em que ninguém está subindo contra uma beirada, que é quase todos.
         let mut nudges: Vec<(rapier2d_handle::Handle, [f32; 2])> = Vec::new();
+        // O canal que cancela a gravidade (W11), colhido pelo mesmo motivo que os
+        // outros e entregue por uma porta própria — ver `PlayerStep::gravity_hold`.
+        let mut holds: Vec<(rapier2d_handle::Handle, [f32; 2])> = Vec::new();
         for (&entity, b) in self.bodies.iter() {
             // Dynamic-only, e é FÍSICA: um impulso não move massa infinita.
             if b.kind != BodyKind::Dynamic {
@@ -188,8 +191,19 @@ impl PhysicsBridge {
                 nudges.push((b.handle, step.nudge));
             }
             let motor = step.motor;
-            if motor.accel != [0.0, 0.0] || motor.boost != [0.0, 0.0] {
-                motors.push((b.handle, motor.accel, motor.boost));
+            // ⚠️ **O motor sai por DUAS portas, e a lei é quem as separa** (W11):
+            // o que CANCELA a gravidade é integrado como ela (por sub-passo), o
+            // resto continua a ser um impulso no topo do tique. O porquê de cada
+            // metade está em [`PlayerStep::gravity_hold`]; aqui só se honra a
+            // declaração — subtrair `− gravity` por conta própria seria a ponte
+            // a adivinhar se a mola agiu.
+            let hold = step.gravity_hold;
+            let lumped = [motor.accel[0] - hold[0], motor.accel[1] - hold[1]];
+            if lumped != [0.0, 0.0] || motor.boost != [0.0, 0.0] {
+                motors.push((b.handle, lumped, motor.boost));
+            }
+            if hold != [0.0, 0.0] {
+                holds.push((b.handle, hold));
             }
 
             // ── A 3ª LEI (W6) ────────────────────────────────────────────────
@@ -240,6 +254,15 @@ impl PhysicsBridge {
         }
         for (handle, accel, boost) in motors {
             self.world.apply_player_motor(handle, accel, boost);
+        }
+        // ⚠️ Lista separada dos motores pelo mesmo motivo que as reações: elas
+        // descrevem **quando** o impulso é pago, não só a quem. E o corpo segue
+        // a ser ACORDADO — quem o faz é o `wake_up` do `apply_impulse` lá dentro,
+        // não o `apply_player_motor`; um player em repouso perfeito pode ter o
+        // motor agrupado exactamente zero e mesmo assim ser segurado por este
+        // canal, e sem o despertar ele deixaria de ser integrado.
+        for (handle, hold) in holds {
+            self.world.queue_player_hold(handle, hold);
         }
         // ⚠️ **Depois dos motores, e a ordem não importa hoje** — os dois são
         // impulsos e o solver os soma —, mas as listas são separadas porque

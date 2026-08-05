@@ -100,6 +100,19 @@ pub struct PhysicsWorld {
     /// kinematic bodies, which is what keeps `step` byte-identical to the one
     /// that shipped before this existed.
     kinematic_targets: Vec<(RigidBodyHandle, Isometry2<f32>, Isometry2<f32>)>,
+    /// **A aceleração que a perna de um player pede neste tique**, em m/s² —
+    /// consumida por SUB-PASSO dentro de [`PhysicsWorld::step`].
+    ///
+    /// ⚠️ **É um `Vec` pelo mesmo motivo que `kinematic_targets` é**, e é
+    /// consumido no MESMO laço pelo mesmo motivo que o `drag`: uma força
+    /// aplicada uma vez por tique é integrada de um jeito e a gravidade de
+    /// outro, e a diferença **não aparece na velocidade** (o impulso total é o
+    /// mesmo) — só no DESLOCAMENTO. Ver o aviso de
+    /// [`PhysicsWorld::queue_player_accel`].
+    ///
+    /// Vazio em todo mundo sem player, que é o que mantém o `step` byte-idêntico
+    /// para o resto do módulo.
+    player_accels: Vec<(RigidBodyHandle, [f32; 2])>,
     /// The registered **force zones** (W-Area): a sensor body and what it does to
     /// whatever overlaps it — a force in newtons, a drag that resists, or both.
     /// Derived from `BodyDesc` at spawn through the single door
@@ -306,6 +319,7 @@ impl PhysicsWorld {
             layer_matrix: LayerMatrix::all(),
             air_drag: 0.0,
             kinematic_targets: Vec::new(),
+            player_accels: Vec::new(),
             effectors: Vec::new(),
             pulleys: Vec::new(),
             pulley_wheels: Vec::new(),

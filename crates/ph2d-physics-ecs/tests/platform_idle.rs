@@ -157,16 +157,69 @@ fn the_stillness_holds_for_a_minute_not_just_for_ten_seconds() {
 ///
 /// Com o `spring_damping` default a lei remove metade da componente e o resto
 /// vira viagem. O gate pina o número dos dois lados: o teto **superior** é o que
-/// o eixo corrigido comprou (era 0,33 m com o amortecedor no `up`), e o
-/// **inferior** impede que ele passe por vácuo no dia em que alguém subir o
-/// default sem ler a coluna do peso — nesse dia é este gate que pergunta se a
-/// troca foi deliberada.
+/// as duas correções compraram, e o **inferior** impede que ele passe por vácuo
+/// no dia em que alguém subir o default sem ler a coluna do peso — nesse dia é
+/// este gate que pergunta se a troca foi deliberada.
+///
+/// ## A escada, e cada degrau tem um dono
+///
+/// | quando | resíduo | o que mudou |
+/// |---|---|---|
+/// | antes da W11 | 0,3295 m | o amortecedor no `up`: **nenhum** valor do knob o removia |
+/// | eixo na NORMAL | 0,1644 m | `super::damping_axis` |
+/// | **hoje** | **0,0383 m** | o cancelamento da gravidade passa a ser INTEGRADO como ela |
+///
+/// ⚠️ **O bar de baixo NÃO é folga sobrando** — ele nasceu vermelho quando a
+/// segunda correção entrou (0,0383 contra o mínimo de 0,05 de então), que é
+/// exactamente o gate a fazer o que foi escrito para fazer: um número que
+/// melhora sem ninguém ter decidido melhorá-lo é tão suspeito quanto um que
+/// piora.
 #[test]
 fn the_shipped_default_leaves_a_measured_residue() {
     let d = idle_travel(30.0, 10, RideConfig::STARTING_POINT.spring_damping);
     assert!(
-        (0.05..0.25).contains(&d),
+        (0.02..0.06).contains(&d),
         "o residuo do default mudou de ordem: {d:.4} m em 10 s a 30°"
+    );
+}
+
+/// ⚠️ **E o TETO continua a zerá-lo — agora por um preço que se pode pagar.**
+///
+/// O gate irmão do de cima, e a razão de ele existir separado: o que mudou na
+/// W11 não foi só o resíduo, foi **quanto custa removê-lo**. O amortecimento no
+/// teto sempre deu deriva exactamente zero; o que o impedia de ser o default era
+/// a coluna do PESO, e ela mudou de casa.
+///
+/// | `spring_damping` | erro de repouso | peso transmitido |
+/// |---|---|---|
+/// | 0,50 (o que shipa) | 5,75 → **1,15 mm** | 77% → **95%** |
+/// | 1,00 (o teto) | 11,50 → **2,30 mm** | 53% → **91%** |
+///
+/// O peso é `(9,81 − k·erro)/9,81` com `k = spring_strength`: a perna paira
+/// ACIMA do pedido, o offset fica negativo, e o que a mola deixa de empurrar é o
+/// que o chão deixa de sentir. Cortar o erro por cinco corta a perda por cinco.
+///
+/// **Mutação que deve sangrar:** agrupar o `gravity_hold` de volta no motor.
+#[test]
+fn the_ceiling_now_costs_a_tenth_of_the_weight_not_a_half() {
+    let (mut sim, mut bridge) = rig(0.0, MAX_DAMPING);
+    for t in 1..=600 {
+        bridge.dispatch(&mut sim, true, t);
+    }
+    // A folga que a perna de facto segura, no plano, contra a pedida.
+    let held = pose(&sim).1 - 0.5;
+    let err = held - FLOAT;
+    assert!(
+        (0.0005..0.005).contains(&err),
+        "o erro de repouso no teto mudou de ordem: {:.3} mm",
+        err * 1000.0
+    );
+    // E o peso que sobra para o chão, pela mesma aritmética que a tabela usa.
+    let weight = (9.81 - RideConfig::STARTING_POINT.spring_strength * err) / 9.81;
+    assert!(
+        weight > 0.85,
+        "no teto o personagem tem de pesar quase tudo: {:.0}%",
+        weight * 100.0
     );
 }
 

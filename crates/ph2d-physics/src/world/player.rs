@@ -28,10 +28,36 @@
 //! que é a assinatura exata de *"os controles pararam de funcionar"* (a mesma
 //! lição, medida, do `move_grab`).
 
-use rapier2d::dynamics::RigidBodyHandle;
+use rapier2d::dynamics::{RigidBodyHandle, RigidBodySet};
 use rapier2d::na::Vector2;
 
 use super::PhysicsWorld;
+
+/// **Pagar as acelerações de player enfileiradas**, uma fatia por sub-passo.
+///
+/// `sub_dt` é o passo do INTEGRADOR ([`PhysicsWorld::substep_dt`]), não o do
+/// tique: chamado uma vez por sub-passo, o impulso total ao fim do tique é
+/// exatamente `a·m·dt` — o mesmo de antes desta wave. **O que muda é onde ele
+/// cai dentro do tique**, e é só isso que o defeito era.
+pub(super) fn apply_queued(
+    bodies: &mut RigidBodySet,
+    queued: &[(RigidBodyHandle, [f32; 2])],
+    sub_dt: f32,
+) {
+    for &(handle, accel) in queued {
+        let Some(body) = bodies.get_mut(handle) else {
+            continue;
+        };
+        let mass = body.mass();
+        if !mass.is_finite() || mass <= 0.0 {
+            continue;
+        }
+        body.apply_impulse(
+            Vector2::new(accel[0] * mass * sub_dt, accel[1] * mass * sub_dt),
+            true,
+        );
+    }
+}
 
 impl PhysicsWorld {
     /// A gravidade do mundo, em m/s².
@@ -123,6 +149,35 @@ impl PhysicsWorld {
             let v = *body.linvel();
             body.set_linvel(Vector2::new(v.x + boost[0], v.y + boost[1]), true);
         }
+    }
+
+    /// **Enfileirar o cancelamento da gravidade da perna** (W11), para ser pago
+    /// **por SUB-PASSO** dentro do [`PhysicsWorld::step`].
+    ///
+    /// ⚠️ **É a MESMA aceleração de sempre, entregue noutro instante** — o
+    /// impulso total ao fim do tique é `a·m·dt`, byte a byte o de antes. O que
+    /// muda é que ela deixa de ser um bloco no topo do tique e passa a ser
+    /// integrada como a gravidade que ela cancela; o porquê, com o número, está
+    /// em [`ph2d_platformer::PlayerStep::gravity_hold`].
+    ///
+    /// ⚠️ **Não confundir com o [`Self::apply_player_motor`]:** aquele é o
+    /// caminho de tudo o que NÃO cancela gravidade (a mola, a caminhada, o
+    /// pulo), e ele fica agrupado de propósito — é o ordenamento
+    /// semi-implícito, e foi ele que manteve a mola estável quando a wave mediu
+    /// o piso do amortecimento (`measure_substep.rs`: fatiar a mola também faz
+    /// um `spring_damping = 0` LARGAR o personagem).
+    pub fn queue_player_hold(&mut self, handle: RigidBodyHandle, accel: [f32; 2]) {
+        if accel != [0.0, 0.0] {
+            self.player_accels.push((handle, accel));
+        }
+    }
+
+    /// Quantos cancelamentos de gravidade este tique tem enfileirados — o
+    /// oráculo do gate de que a fila é DRENADA (uma fila que crescesse por tique
+    /// seria um vazamento com todos os outros números certos).
+    #[must_use]
+    pub fn queued_player_holds(&self) -> usize {
+        self.player_accels.len()
     }
 
     /// **A REAÇÃO da 3ª lei** (W6): devolver ao CHÃO o que a perna do player lhe
@@ -232,6 +287,65 @@ mod tests {
             (v[0] - 3.0).abs() < 1.0e-6 && (v[1] + 2.0).abs() < 1.0e-6,
             "{v:?}"
         );
+    }
+
+    /// ⚠️ **O canal fatiado entrega o MESMO impulso total que o agrupado** — é
+    /// esta linha que faz da W11 uma reescrita de integração e não uma mudança
+    /// de lei.
+    ///
+    /// Sem gravidade e sem contato, a velocidade ao fim de um tique é o impulso
+    /// total dividido pela massa, e ela não sabe por quantas fatias ele veio. O
+    /// que a fatia muda é o DESLOCAMENTO — a metade que este gate NÃO afirma, e
+    /// que o `measure_substep.rs` mede no produto.
+    #[test]
+    fn the_sliced_channel_delivers_the_same_total_impulse() {
+        let mut lumped = PhysicsWorld::new();
+        lumped.set_gravity(0.0, 0.0);
+        let (a, _) = lumped.add_dynamic_circle(0.0, 0.0, 0.5, 3.0);
+        lumped.apply_player_motor(a, [0.0, 9.81], [0.0, 0.0]);
+        lumped.step();
+
+        let mut sliced = PhysicsWorld::new();
+        sliced.set_gravity(0.0, 0.0);
+        let (b, _) = sliced.add_dynamic_circle(0.0, 0.0, 0.5, 3.0);
+        sliced.queue_player_hold(b, [0.0, 9.81]);
+        sliced.step();
+
+        let va = lumped.body_velocity(a).unwrap();
+        let vb = sliced.body_velocity(b).unwrap();
+        assert!(
+            (va[1] - vb[1]).abs() < 1.0e-5,
+            "o impulso total tem de ser o mesmo: agrupado {} fatiado {}",
+            va[1],
+            vb[1]
+        );
+        assert!(va[1] > 0.0, "e ele tem de mover: {}", va[1]);
+    }
+
+    /// ⚠️ **A fila é DRENADA**, e um vazamento aqui seria invisível em tudo o
+    /// resto: ela cresceria um item por tique por player e o personagem passaria
+    /// a ser segurado N vezes.
+    #[test]
+    fn the_hold_queue_is_spent_by_the_tick_that_reads_it() {
+        let mut w = PhysicsWorld::new();
+        let (b, _) = w.add_dynamic_circle(0.0, 0.0, 0.5, 1.0);
+        w.queue_player_hold(b, [0.0, 9.81]);
+        assert_eq!(w.queued_player_holds(), 1, "a fixture precisa de um item");
+        w.step();
+        assert_eq!(w.queued_player_holds(), 0, "o tique paga e limpa");
+        // E dois tiques sem enfileirar nada não deixam resíduo.
+        w.step();
+        assert_eq!(w.queued_player_holds(), 0);
+    }
+
+    /// ⚠️ **Zero não entra na fila** — um item nulo custaria uma volta do laço
+    /// de sub-passos por tique e por player, para não fazer nada.
+    #[test]
+    fn a_zero_hold_is_not_queued_at_all() {
+        let mut w = PhysicsWorld::new();
+        let (b, _) = w.add_dynamic_circle(0.0, 0.0, 0.5, 1.0);
+        w.queue_player_hold(b, [0.0, 0.0]);
+        assert_eq!(w.queued_player_holds(), 0);
     }
 
     /// ⚠️ Um corpo ADORMECIDO volta a ser integrado — sem isto um player parado

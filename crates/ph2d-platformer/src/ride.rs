@@ -51,27 +51,41 @@ impl RideConfig {
     ///
     /// | `spring_damping` | deriva parado (30°, 10 s) | quique ao pousar | peso transmitido |
     /// |---|---|---|---|
-    /// | 0,25 | 0,2476 m | **196 mm** | 88% |
-    /// | **0,50** (o que shipa) | 0,1644 m | 20 mm | **77%** |
-    /// | 0,75 | 0,0819 m | 0 mm | 65% |
-    /// | 1,00 | **0,0000 m** | 0 mm | **53%** |
+    /// | 0,25 | 0,0498 m | **199 mm** | 98% |
+    /// | **0,50** (o que shipa) | **0,0331 m** | 24 mm | **95%** |
+    /// | 0,75 | 0,0165 m | 0 mm | 93% |
+    /// | 1,00 | **0,0000 m** | 0 mm | **91%** |
     ///
-    /// ⚠️ **E é por isso que o default NÃO subiu para o teto**, embora ele zere
-    /// a deriva: a última coluna. A perna segura o personagem em parte com um
-    /// **boost**, e um boost não é força — o [`crate::react`] não o devolve ao
-    /// chão (uma cerca MEDIDA daquele módulo: devolvê-lo fazia a jangada
-    /// disparar). Quanto mais o knob amortece, mais do peso é segurado por
-    /// escrita de velocidade e menos chega ao chão: no teto o personagem pesa
-    /// **metade** do que devia, e a jangada da cena `=85` afunda 17 cm em vez de
-    /// 27.
+    /// ⚠️ **A tabela é a SEGUNDA, e a primeira fica registada porque a diferença
+    /// entre as duas É a wave** ([`ph2d_platformer::PlayerStep::gravity_hold`]):
+    /// o cancelamento da gravidade passou a ser **integrado como a gravidade**,
+    /// em vez de agrupado no topo do tique. Antes disso a mesma tabela dizia
+    /// `0,2476 / 0,1644 / 0,0819 / 0,0000` de deriva e `88 / 77 / 65 / **53**` %
+    /// de peso — **cinco vezes mais deriva em todo valor do knob**, e o teto a
+    /// custar quase metade do personagem.
+    ///
+    /// ⚠️ **O quique do pouso não se moveu** (196 → 199, 20 → 24 mm): a correção
+    /// é de integração, não de lei, e é essa coluna que o prova — o que o artista
+    /// aprovou no smoke da W6/W9 continua igual.
+    ///
+    /// ## Por que o peso é a coluna que decide, e como ela se calcula
+    ///
+    /// A perna paira **ACIMA** do pedido por um erro que cresce com o
+    /// amortecimento, então o offset fica negativo e a mola empurra menos que o
+    /// peso; o que ela deixa de empurrar é o que o chão deixa de sentir
+    /// (`peso = (9,81 − k·erro)/9,81`, com `k` = [`Self::spring_strength`]). O
+    /// erro no teto caiu de **11,50 para 2,30 mm**, e é só isso que muda a última
+    /// coluna de 53% para 91%.
     ///
     /// ⚠️ **Subir a RIGIDEZ não recupera o peso** (medido, `k` de 400 a 6400): o
     /// erro de repouso cai `∝ 1/k` mas o produto `k · erro` — a força que falta —
-    /// fica **constante em 4,60 m/s²**. Não há knob que pague as duas coisas.
+    /// fica **constante**. Não há knob que pague as duas coisas; o que as pagou
+    /// foi corrigir onde o impulso cai dentro do tique.
     ///
-    /// A cura que compra as duas está nomeada no plano (a perna **substitui** a
-    /// gravidade em vez de a cancelar); enquanto ela não existe, o número certo
-    /// é uma decisão do artista e o knob agora a oferece de verdade.
+    /// ⚠️ **O default fica em 0,50 e isso é uma decisão de FEEL, não de número:**
+    /// o teto zera a deriva por 4 pontos de peso a mais, e passa a ser uma
+    /// escolha barata — mas ele também zera o quique do pouso, e um pouso sem
+    /// quique é outra sensação. Quem decide é o smoke.
     pub const STARTING_POINT: Self = Self {
         float_height: 0.5,
         cling_distance: 0.25,

@@ -368,12 +368,61 @@ o pintor, o `populate` (que registra as dicas) e a varredura de seam.
 
 ---
 
+### W12 — DESCER DA PLATAFORMA (2026-08-05, cena `=91`)
+
+A plataforma jump-through existe desde a W-OneWay e ali ela é julgada por
+**baixo**: a caixa sobe através dela e pousa em cima. Faltava a outra metade do
+idioma — **sair dela por baixo de propósito**.
+
+**O gesto é `down + jump`**, e não `down` sozinho: um jogador que segura baixo
+enquanto anda não pode cair da plataforma sem ter pedido, e o dia em que existir
+um agachar o botão já estará lá com o significado certo. É o idioma de Celeste,
+Hollow Knight, Ori e Dead Cells.
+
+⚠️ **A lei diz COMEÇAR; a ponte diz quando ACABA** — a mesma divisão do sensor de
+quina da W10. Decidir que o gesto aconteceu é uma pergunta sobre a ENTRADA e
+sobre o tipo do chão (e por isso `GroundSample` ganhou `one_way`: o sensor reporta
+*que tipo de chão* achou); decidir que o corpo já passou é uma pergunta sobre duas
+caixas envolventes, e a lei pura não tem nenhuma.
+
+⚠️ **O fim da descida NÃO é um relógio.** *"Eu já passei?"* tem resposta exata — a
+caixa do personagem está inteiramente abaixo da caixa da plataforma. Um
+temporizador seria um palpite sobre ela, e erraria exatamente onde dói
+(plataforma grossa, queda lenta, gravidade baixa), re-solidificando com o
+personagem ainda dentro dela e cuspindo-o para fora. O §0 pede medição antes de
+todo teto; aqui não é preciso medir porque não é preciso teto.
+
+⚠️ **E a descida mira UMA plataforma, não "todas as one-way"** — é isso que faz
+duas plataformas empilhadas se comportarem como o artista espera (desce da de
+cima, **pousa** na de baixo). O alvo é `ColliderHandle` e não corpo: a W-Compound
+deu a um corpo várias formas, e um cenário pode ser UM corpo estático com dez
+plataformas.
+
+⚠️ **O sensor tem de excluir a plataforma, e não só o solver.** Quem segura o
+personagem no ar não é o solver, é a MOLA — e ela age porque o raio achou chão.
+Sem a exclusão (`cast_ray_skipping`, com o `cast_ray` a delegar) o personagem
+pairaria sobre exactamente aquilo que pediu para atravessar.
+
+⚠️ **O bit viaja no corpo que CAI** (`DROP_THROUGH_BIT`, o segundo consumidor que
+o doc do `ONE_WAY_BIT` previa), escrito em **todos** os colliders do corpo — só no
+primeiro daria a um personagem composto um pé que atravessa e um tronco que não.
+E é **por tique**, nunca no `BodyDesc`: a descida deriva da fita, então um rewind
+a re-deriva.
+
+**Caso degenerado nomeado:** um vão entre duas plataformas MENOR que o personagem
+deixa a descida armada para sempre. Essa cena já está quebrada sem descida nenhuma
+— e é por isso que ela não ganhou um relógio de segurança.
+
+**7 mutações, 7 sangram.** `c9` byte-idêntico (a fita do harness não segura o
+baixo, de propósito). `PROJECT_SCHEMA` intocado, registro intocado, nenhum ADR.
+
 ## §4 — O que NÃO entra (nomeado, não esquecido)
 
 - **Wall slide / wall jump / dash / agachar** — cada um é uma wave própria; o tnua os tem
   como *actions* separadas e a nossa lei suporta o mesmo formato. Fora do 1º corte.
-- **Descer de plataforma one-way** — o mecanismo existe (`world/oneway.rs`); a *feature* é o
-  gesto, e é uma wave curta depois da W8.
+- ~~**Descer de plataforma one-way**~~ — **FEITA: a W12** (2026-08-05, cena `=91`). Era a
+  única linha desta lista com data marcada, e a previsão sobreviveu à construção: o
+  mecanismo estava todo lá, a wave é o gesto.
 - **Bake de um player** — ⚠️ a W-BakeJoint já mediu a contradição (um `Kinematic` do bake
   não é movido por joint). Com a fita, assar passa a fazer sentido; sem ela, não. Fica para
   depois da W7, **com a contradição escrita**.

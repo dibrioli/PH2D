@@ -246,6 +246,54 @@ sobre o mesmo caminho têm de deixar o mesmo relevo.
 - O `restore` **não valida** `base.len() == w*h*4`: um documento corrompido chega ao passe, que o
   recusa (`check()`), e o objeto fica com o slot vazio — falha alta, sem mensagem dedicada.
 
+## 9.bis — W9.1, a 2ª rodada: **a agulha era LASCA de triângulo** (`dc245cd98`)
+
+O smoke reprovou o aspecto (*"funciona mas o aspecto da escultura depois o P fica horrível"*), e a
+causa **não era a que eu consertei primeiro**.
+
+⚠️ **Nenhuma métrica de POSIÇÃO via o defeito.** Pelo desvio de vértice (distância à média dos
+vizinhos, por aresta local) o produto media 0,7131 e a correção da herança do `pre` — que está
+certa — deixava **0,7158**. Igual. Só medindo **ÂNGULO** o defeito apareceu:
+
+| cena | pior ângulo mínimo | abaixo de 10° |
+|---|---|---|
+| controle (sem refino) | 21,21° | 0,0% |
+| produto reprovado | **1,53°** | **15,0%** |
+
+Uma lasca não desloca vértice nenhum — ela dá uma normal por-vértice que não aponta para lado
+nenhum, e a **luz** desenha isso como espinho.
+
+**Mecanismo:** partir UMA aresta de um triângulo o divide em dois com metade do ângulo daquele
+canto (o corte *verde*). Como a esfera do dab **anda**, cada dab escolhia outra aresta da mesma
+face: 30 → 15 → 7 → 3,5 → 1,7. Três peças, todas **ablacionadas**:
+
+| peça | pior ângulo | abaixo de 10° |
+|---|---|---|
+| escolha por FACE (era por aresta) | 0,59° | 48,0% |
+| + fecho de aresta mais longa (LEPP de Rivara) | 2,43° | 1,5% |
+| + **flip de aresta** (`dyntopo_flip.rs`) | **16,85°** | **0,0%** |
+
+⛔ **MEDIDO E REJEITADO, não refaça:** promover a vizinha a 1→4 também dá qualidade perfeita
+(20,47°) e **cascateia pela malha inteira** — 57 → **846** vértices no hemisfério que o artista
+nunca tocou, o oposto exato da promessa deste modo. *Qualidade é global; a pegada não pode ser.*
+
+⚠️ **O alcance passou a ultrapassar o pincel**, e o gate diz o número medido em vez de uma barra
+escolhida: **1,66× · 1,31× · 1,38× · 0,93×** o raio em quatro densidades de esfera — ele **encolhe**
+quando a malha já é fina.
+
+**E a segunda metade fica:** um vértice nascido no meio do traço herda o `pre` dos **pais**
+(`Birth`, obrigatório em `refine_in_sphere`). ⚠️ **A minha fixture não continha o fenômeno duas
+vezes** — ela não triangulava (o produto triangula ao armar, então o refino devolvia `NotTriangles`
+e a sonda media duas cenas idênticas) e usava `Draw`, que estica as arestas em poucos por cento.
+São **quatro gestos**, cada um vendo um erro que os outros não veem: **puxar** (a agulha, 0,053 ×
+0,720) · **varrer** (a cratera do `accum` em zero, 0,108 × 0,446) · **afinar o detalhe com `U`** ·
+**sob máscara** (0,108 × **0,867**).
+
+⚠️ A primeira barra que escrevi foi 0,45 e a cratera media 0,446: **teria passado por um triz**.
+
+11 gates novos; **9 mutações, 8 sangram** (a que não sangra está documentada com o mecanismo).
+Sonda: `cargo test -p ph2d-sculpt3d --test measure_dyntopo_spikes --release -- --ignored --nocapture`.
+
 ## 10. Ordem de integração
 
 Toca `ph2d-ecs` (registro), `ph2d-light` (constantes + `serde`), `ph2d-mesh-render` (re-export),

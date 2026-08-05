@@ -106,6 +106,26 @@ pub(crate) fn apply_event(
             state::push_intent(Sculpt3dIntent::SetUi(ui));
             true
         }
+        // **A LUZ** — a opção `0` é o rig do artista e as seguintes são os
+        // matcaps, o mesmo deslocamento que o pintor usa. `checked_sub` e não
+        // `- 1`: a opção zero não é o material `-1`, é a AUSÊNCIA de matcap.
+        WidgetEvent::Click(id) if index_of(&ids::SCULPT3D_MATCAP, id).is_some() => {
+            seam_reset_button(host, id);
+            let i = index_of(&ids::SCULPT3D_MATCAP, id).expect("guard casou");
+            let mut ui = snapshot.ui;
+            ui.matcap = i
+                .checked_sub(1)
+                .map(|k| u8::try_from(k).unwrap_or(u8::MAX));
+            state::push_intent(Sculpt3dIntent::SetUi(ui));
+            true
+        }
+        WidgetEvent::Click(id) if id == ids::SCULPT3D_WIREFRAME => {
+            seam_reset_button(host, id);
+            let mut ui = snapshot.ui;
+            ui.wireframe = !ui.wireframe;
+            state::push_intent(Sculpt3dIntent::SetUi(ui));
+            true
+        }
         WidgetEvent::Click(id) if index_of(&ids::SCULPT3D_DETAIL, id).is_some() => {
             seam_reset_button(host, id);
             let i = index_of(&ids::SCULPT3D_DETAIL, id).expect("guard casou");

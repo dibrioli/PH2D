@@ -60,6 +60,13 @@ struct Object {
 // segundo de trava por toque.
 struct Shade {
     cavity: f32,
+    // **QUAL MATCAP acende o barro** — `0` é o RIG DO ARTISTA (o caminho da W3,
+    // byte-idêntico), `n` é o material `n − 1` da tabela abaixo.
+    //
+    // ⚠️ Um `u32` no uniform e não uma permutação de pipeline: trocar de material
+    // é um clique, e recompilar um pipeline por clique é meia-tela de trava. É a
+    // mesma decisão que a cavidade já tomou, pelo motivo vizinho.
+    matcap: u32,
 };
 
 @group(0) @binding(0) var<uniform> cam: Camera;
@@ -119,6 +126,131 @@ const MASK_TINT: vec3<f32> = vec3<f32>(0.30, 0.42, 0.58);
 // pergunta que o artista faz olhando uma máscara é *"cobri a dobra inteira?"* —
 // que é sobre a forma, não sobre a máscara.
 const MASK_STRENGTH: f32 = 0.75;
+
+// ============================ O MATCAP ============================
+//
+// **O que um matcap É:** sombreamento que é função APENAS da normal em espaço de
+// vista. A luz viaja com a câmera, então orbitar não muda a leitura da forma — é
+// por isso que todo app de escultura o oferece, e é a razão de ele NÃO ser
+// substituível pelo rig: o rig é do DOCUMENTO (a mesma lâmpada acende a tinta ao
+// lado), o matcap é do OLHO.
+//
+// ⚠️ **ANALÍTICO, e não uma textura.** A forma canônica é uma imagem de esfera
+// amostrada por `n.xy * 0.5 + 0.5`, e ela seria o caminho certo se houvesse
+// matcaps AUTORADOS para carregar. Não há: seriam assets novos, com licença, num
+// repo que não os tem. Uma textura sintetizada na CPU seria a MESMA função
+// avaliada uma vez por texel e depois interpolada — mais bindings, mais VRAM,
+// mais uma resolução a escolher, e uma SEGUNDA cópia da fórmula (a de assar e a
+// de ler). Avaliada aqui ela é exata por pixel, custa cinco produtos escalares e
+// não tem resolução. O dia em que um matcap de imagem chegar, ele entra como uma
+// FONTE a mais — não como a correção desta.
+//
+// ⚠️ O espaço é o do rig (`canvas_normal`): `y` cresce para BAIXO, como na tela.
+// É por isso que a luz principal aponta para `-y` — "em cima, à esquerda" tem de
+// querer dizer a mesma coisa nos dois modos, senão trocar de material vira o
+// modelo de cabeça para baixo.
+struct Mat {
+    base: vec3<f32>,
+    key_dir: vec3<f32>,
+    key: vec3<f32>,
+    fill_dir: vec3<f32>,
+    fill: vec3<f32>,
+    rim: vec3<f32>,
+    rim_pow: f32,
+    spec_pow: f32,
+    spec: f32,
+};
+
+// A principal vem de cima-à-esquerda-frente e o preenchimento do lado oposto,
+// mais fraco e frio: é o estúdio de duas luzes que toda foto de escultura usa, e
+// o que separa "há forma" de "há forma e eu consigo ler a virada dela".
+const KEY_DIR: vec3<f32> = vec3<f32>(-0.40, -0.55, 0.73);
+const FILL_DIR: vec3<f32> = vec3<f32>(0.50, 0.35, 0.79);
+
+fn material(id: u32) -> Mat {
+    var m: Mat;
+    m.key_dir = KEY_DIR;
+    m.fill_dir = FILL_DIR;
+    switch id {
+        // **BARRO** — o mesmo cinza quente do rig, para a troca de modo mostrar
+        // a diferença de LUZ e não a de cor.
+        case 0u: {
+            m.base = vec3<f32>(0.74, 0.70, 0.66);
+            m.key = vec3<f32>(1.00, 0.98, 0.94);
+            m.fill = vec3<f32>(0.30, 0.34, 0.42);
+            m.rim = vec3<f32>(0.10, 0.11, 0.13);
+            m.rim_pow = 3.0; m.spec_pow = 24.0; m.spec = 0.14;
+        }
+        // **PÉROLA** — claro e macio: o material que menos esconde a forma, e o
+        // que o escultor usa para julgar silhueta.
+        case 1u: {
+            m.base = vec3<f32>(0.88, 0.87, 0.90);
+            m.key = vec3<f32>(1.00, 1.00, 1.00);
+            m.fill = vec3<f32>(0.42, 0.46, 0.58);
+            m.rim = vec3<f32>(0.28, 0.30, 0.36);
+            m.rim_pow = 3.0; m.spec_pow = 48.0; m.spec = 0.40;
+        }
+        // **PELE** — a translucidez lida na borda: o `rim` quente é o que a luz
+        // atravessando a orelha faz, e é o teste de uma cabeça.
+        case 2u: {
+            m.base = vec3<f32>(0.90, 0.71, 0.62);
+            m.key = vec3<f32>(1.00, 0.95, 0.88);
+            m.fill = vec3<f32>(0.40, 0.24, 0.22);
+            m.rim = vec3<f32>(0.72, 0.26, 0.20);
+            m.rim_pow = 2.2; m.spec_pow = 20.0; m.spec = 0.12;
+        }
+        // **JADE** — verde translúcido, borda acesa: o material que mais mostra
+        // curvatura fina, porque o `rim` responde ao que vira de perfil.
+        case 3u: {
+            m.base = vec3<f32>(0.32, 0.58, 0.45);
+            m.key = vec3<f32>(0.92, 1.00, 0.95);
+            m.fill = vec3<f32>(0.12, 0.28, 0.24);
+            m.rim = vec3<f32>(0.42, 0.86, 0.66);
+            m.rim_pow = 2.0; m.spec_pow = 64.0; m.spec = 0.55;
+        }
+        // **METAL** — base escura e realce apertado: é o que revela ONDULAÇÃO,
+        // porque um realce estreito varre a superfície e denuncia toda barriga.
+        case 4u: {
+            m.base = vec3<f32>(0.24, 0.26, 0.30);
+            m.key = vec3<f32>(1.00, 1.00, 1.00);
+            m.fill = vec3<f32>(0.16, 0.20, 0.30);
+            m.rim = vec3<f32>(0.55, 0.60, 0.72);
+            m.rim_pow = 4.0; m.spec_pow = 128.0; m.spec = 1.30;
+        }
+        // **CERA VERMELHA** — o barro de escultor clássico; contraste alto e cor
+        // saturada, para ver o volume geral de longe.
+        default: {
+            m.base = vec3<f32>(0.70, 0.20, 0.16);
+            m.key = vec3<f32>(1.00, 0.90, 0.85);
+            m.fill = vec3<f32>(0.30, 0.09, 0.09);
+            m.rim = vec3<f32>(0.85, 0.38, 0.26);
+            m.rim_pow = 2.2; m.spec_pow = 32.0; m.spec = 0.26;
+        }
+    }
+    return m;
+}
+
+// O material aceso, em linear e podendo passar de 1 — o alvo é HDR e o tonemap
+// do shell vem depois, exatamente como no caminho do rig.
+fn matcap_shade(n: vec3<f32>, id: u32) -> vec3<f32> {
+    let m = material(id);
+    // ⚠️ **`abs` e não `max(.., 0)` no preenchimento.** O preenchimento existe
+    // para a face virada para longe da principal não cair no preto; clampá-lo
+    // deixaria uma calota inteira no piso e a forma sumiria ali — que é o
+    // defeito que o piso AMBIENTE resolve no caminho do rig, por outra via.
+    let kd = max(dot(n, normalize(m.key_dir)), 0.0);
+    let fd = max(dot(n, normalize(m.fill_dir)), 0.0);
+    // A borda: quanto a superfície vira de perfil. `n.z` é o cosseno com o olho,
+    // então `1 − n.z` é zero de frente e um na silhueta.
+    let rim = pow(clamp(1.0 - n.z, 0.0, 1.0), m.rim_pow);
+    // O realce das DUAS lâmpadas, cada um pelo próprio meio-vetor com o olho
+    // (`+z`), que é a construção Blinn-Phong que o barro do rig já usa.
+    let hk = normalize(normalize(m.key_dir) + vec3<f32>(0.0, 0.0, 1.0));
+    let hf = normalize(normalize(m.fill_dir) + vec3<f32>(0.0, 0.0, 1.0));
+    let sp = pow(max(dot(n, hk), 0.0), m.spec_pow)
+        + 0.35 * pow(max(dot(n, hf), 0.0), m.spec_pow);
+    return m.base * (m.key * kd + m.fill * fd) + m.rim * rim + m.spec * sp;
+}
 
 struct VsOut {
     @builtin(position) clip: vec4<f32>,
@@ -217,9 +349,49 @@ fn fs_gbuffer(in: VsOut) -> @location(0) vec4<f32> {
     return vec4<f32>(canvas_normal(in.n_view), 1.0);
 }
 
+// **O WIREFRAME** — o passe de LINHAS sobre a forma já acesa.
+//
+// ⚠️ Cor fixa e nenhuma iluminação, de propósito: a malha é um instrumento de
+// LEITURA DE TOPOLOGIA (*onde o remesh pôs os anéis? o refino chegou aqui?*), e
+// acender as linhas com o mesmo modelo do barro as faria sumir exatamente onde a
+// superfície é escura — que é onde a densidade importa mais.
+//
+// Escura e semitransparente: uma malha densa em branco vira uma chapa e apaga a
+// forma que ela deveria anotar.
+const WIRE_RGBA: vec4<f32> = vec4<f32>(0.05, 0.06, 0.08, 0.55);
+
+@fragment
+fn fs_wire() -> @location(0) vec4<f32> {
+    return WIRE_RGBA;
+}
+
 @fragment
 fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     let nc = canvas_normal(in.n_view);
+
+    // **A CAVIDADE** vale nos DOIS modos, e é por isso que ela subiu para cá: ela
+    // não é iluminação, é leitura de FORMA — o canal que desenha a fresta. Deixá-la
+    // no caminho do rig faria o artista perder a curvatura justamente ao trocar
+    // para o material que ele escolheu para ler melhor.
+    let cav = 1.0 - shade.cavity * clamp(in.curv * CAVITY_GAIN, -1.0, 1.0);
+
+    // **O MATCAP** — a luz do OLHO, e não a do documento. Ele vem ANTES da recusa
+    // por rig apagado: ele não usa o rig, então apagar as lâmpadas do card não
+    // pode apagá-lo.
+    if (shade.matcap > 0u) {
+        let id = shade.matcap - 1u;
+        let lit = matcap_shade(nc, id);
+        // ⚠️ **O MESMO modelo relativo do caminho do rig**, e não uma segunda
+        // regra: a resposta dividida pela de uma superfície PLANA sob a mesma
+        // luz. Lá o divisor é `flat_d`; aqui é o próprio material avaliado na
+        // normal frontal, que é o que "plano" quer dizer neste espaço. É esta
+        // razão que deixa a máscara tingir com a MESMA lei nos dois modos.
+        let flat = max(matcap_shade(vec3<f32>(0.0, 0.0, 1.0), id), vec3<f32>(FLAT_FLOOR));
+        let ratio = lit / flat;
+        var cm = lit * cav;
+        cm = mix(cm, MASK_TINT * ratio * cav, clamp(in.mask, 0.0, 1.0) * MASK_STRENGTH);
+        return vec4<f32>(cm, 1.0);
+    }
 
     // Sem lâmpada acesa não há razão a computar: o barro cru é a leitura honesta
     // de "o artista apagou tudo" para uma superfície opaca.
@@ -249,7 +421,8 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     let ratio = clamp(diffuse / flat_c, vec3<f32>(0.0), vec3<f32>(2.0));
     let m = vec3<f32>(AMBIENT) + (1.0 - AMBIENT) * ratio;
 
-    // **A CAVIDADE** — o canal que faz a escultura ser LIDA (`docs/3D/05.1` §4).
+    // **A CAVIDADE** — o canal que faz a escultura ser LIDA (`docs/3D/05.1` §4) —
+    // é resolvida no topo da função, porque ela vale nos dois modos.
     //
     // Uma linha, simétrica, um knob: `k > 0` é fresta e escurece, `k < 0` é
     // crista e clareia. Escurecer o côncavo (sujeira, sombra de fresta) e clarear
@@ -265,7 +438,6 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     // ⚠️ **E ela é aplicada ANTES da máscara**, que tinge por cima: a máscara é
     // chrome de autoria e não uma propriedade da tinta — a mesma razão pela qual
     // ela não entra no G-buffer.
-    let cav = 1.0 - shade.cavity * clamp(in.curv * CAVITY_GAIN, -1.0, 1.0);
 
     // Soma, não `screen`: o destino é HDR e quem faz o roll-off é o tonemap.
     var c = CLAY * m * cav + CLAY_SHINE * spec;

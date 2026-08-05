@@ -327,6 +327,16 @@ pub(crate) struct Sculpt3dScene {
     drag: Option<Drag>,
     last: (f32, f32),
     viewport: (u32, u32),
+    /// **Com que luz o barro é mostrado** — `None` é o RIG DO ARTISTA, `Some(i)`
+    /// é o matcap `i`. Ver [`ph2d_mesh_render::Shade::matcap`].
+    ///
+    /// ⚠️ Estado de VISTA, não do documento: ele não é salvo, pelo mesmo motivo
+    /// que o onion da timeline não é. Escolher com que luz olhar não muda a
+    /// escultura, e um projeto que reabrisse em metal diria que alguém mexeu
+    /// nela.
+    matcap: Option<u8>,
+    /// A malha desenhada por cima da forma. Vista, como o [`Self::matcap`].
+    wireframe: bool,
 
     brush: Brush,
     /// O raio autorado, em **pixels de tela** — ver [`DEFAULT_RADIUS_PX`]. O raio
@@ -417,6 +427,8 @@ impl Sculpt3dScene {
             drag: None,
             last: (0.0, 0.0),
             viewport: (1, 1),
+            matcap: None,
+            wireframe: false,
             brush: Brush::default(),
             radius_px: DEFAULT_RADIUS_PX,
             stroke_anchor: [0.0, 0.0],
@@ -469,9 +481,23 @@ impl Sculpt3dScene {
             color,
             &self.camera,
             resolved.as_ref(),
-            self.cavity,
+            self.shade(),
             size,
         );
+    }
+
+    /// **COMO O BARRO É MOSTRADO** — a porta única das opções de vista.
+    ///
+    /// ⚠️ Ela existe porque as três viajam juntas para o device E para o painel,
+    /// e montá-las no sítio de chamada faria a `render` e o `panel_snapshot`
+    /// darem duas respostas a *"como está a vista"* — o par que diverge no dia
+    /// em que a quarta opção chegar por um dos dois.
+    pub(crate) fn shade(&self) -> ph2d_mesh_render::Shade {
+        ph2d_mesh_render::Shade {
+            cavity: self.cavity,
+            matcap: self.matcap,
+            wireframe: self.wireframe,
+        }
     }
 
     /// **A CAVIDADE, um passo adiante** — devolve a quantidade nova.

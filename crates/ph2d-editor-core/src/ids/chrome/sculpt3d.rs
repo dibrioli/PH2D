@@ -119,6 +119,25 @@ pub const SCULPT3D_CLOSE_HOLES: NodeId = hash_node_id("sculpt3d.close_holes");
 pub const SCULPT3D_CAVITY: NodeId = hash_node_id("sculpt3d.cavity");
 /// Chip ligado a [`SCULPT3D_CAVITY`].
 pub const SCULPT3D_CAVITY_NUM: NodeId = hash_node_id("sculpt3d.cavity_num");
+
+/// **COM QUE LUZ o barro é mostrado** — a primeira opção é o RIG DO ARTISTA e as
+/// outras são os matcaps de [`ph2d_mesh_render::MATCAPS`].
+///
+/// ⚠️ O tamanho é `MATCAPS.len() + 1`, e o `+ 1` é o rig — que **não** é um
+/// matcap. A igualdade das duas contagens é gateada: um chip a mais pinta uma
+/// opção que o shader não tem, um a menos deixa um material inalcançável.
+pub const SCULPT3D_MATCAP: [NodeId; 7] = [
+    hash_node_id("sculpt3d.matcap.rig"),
+    hash_node_id("sculpt3d.matcap.0"),
+    hash_node_id("sculpt3d.matcap.1"),
+    hash_node_id("sculpt3d.matcap.2"),
+    hash_node_id("sculpt3d.matcap.3"),
+    hash_node_id("sculpt3d.matcap.4"),
+    hash_node_id("sculpt3d.matcap.5"),
+];
+
+/// A malha de arestas desenhada por cima da forma.
+pub const SCULPT3D_WIREFRAME: NodeId = hash_node_id("sculpt3d.wireframe");
 /// Azimute da lâmpada selecionada, em graus.
 pub const SCULPT3D_LIGHT_AZ: NodeId = hash_node_id("sculpt3d.light_az");
 /// Chip ligado a [`SCULPT3D_LIGHT_AZ`].

@@ -55,6 +55,14 @@ pub struct Sculpt3dUi {
     pub light_az_deg: f32,
     /// Elevação da lâmpada selecionada, em graus.
     pub light_elev_deg: f32,
+    /// **COM QUE LUZ** — `None` é o rig do artista, `Some(i)` é o matcap `i`.
+    ///
+    /// ⚠️ Ele mora no estado AUTORADO e não nos fatos porque o artista o escolhe;
+    /// mas ele **não é do documento** (o shell não o salva) — escolher com que
+    /// luz olhar não muda a escultura.
+    pub matcap: Option<u8>,
+    /// A malha de arestas por cima da forma.
+    pub wireframe: bool,
     /// Qual degrau de detalhe a topologia dinâmica usa (índice em `DETAIL_STEPS`).
     pub detail: u8,
 }
@@ -68,6 +76,8 @@ impl Default for Sculpt3dUi {
             cavity: 0.0,
             light_az_deg: 0.0,
             light_elev_deg: 45.0, // LITERAL-PX-OK: graus de elevacao, nao metrica de design
+            matcap: None,
+            wireframe: false,
             detail: 1,
         }
     }
@@ -91,6 +101,18 @@ pub struct Sculpt3dSnapshot {
     /// Quantos vértices a malha viva tem. Zero é digno de ver: é a diferença
     /// entre *"o pincel não funciona"* e *"esta peça está vazia"*.
     pub verts: usize,
+    /// **OS NOMES DOS MATERIAIS de matcap**, na ordem em que o renderizador os
+    /// numera.
+    ///
+    /// ⚠️ **Eles chegam no retrato em vez de o painel os importar**, e a razão é
+    /// uma aresta de dependência: quem os conhece é a `ph2d-mesh-render`, que
+    /// carrega o `wgpu` inteiro. Um painel que a importasse passaria a compilar
+    /// um backend gráfico para escrever seis palavras — e o `ph2d-panel-*` deste
+    /// repo não fala com device nenhum. É o mesmo caminho de `dyntopo` e
+    /// `level`: fatos que o painel MOSTRA e não possui.
+    ///
+    /// Vazio ⇒ só a opção do rig é pintada.
+    pub matcaps: &'static [&'static str],
 }
 
 /// Um gesto do artista, para o shell aplicar.

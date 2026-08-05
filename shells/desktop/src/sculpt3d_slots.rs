@@ -155,6 +155,16 @@ impl Sculpt3dScene {
                     self.objects[i].dirty.clear();
                 }
             }
+            // ⚠️ **As ARESTAS, só com a malha armada.** A lista custa até 24 B por
+            // vértice e a maioria esculpe sem ela; construí-la junto com a malha
+            // faria todo artista pagar pela vista de um. A porta é idempotente,
+            // então chamá-la por frame é um `is_some()` — e é ELA que reconstrói
+            // depois de um remesh, porque o `upload_at` acima derruba a lista
+            // exatamente quando a topologia pode ter mudado.
+            if self.wireframe {
+                self.renderer
+                    .upload_wire_at(device, k, self.objects[i].stack.mesh());
+            }
             // A testemunha é escrita ao lado da escrita que ela testemunha: uma
             // linha adiante, na mesma função. Duas funções para as duas metades
             // seriam duas verdades sobre o que o device tem.

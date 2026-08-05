@@ -106,6 +106,17 @@ fn always(_: &Sculpt3dUi) -> bool {
     true
 }
 
+/// **Só com a luz do DOCUMENTO em uso.**
+///
+/// ⚠️ Um matcap é sombreamento função apenas da normal de VISTA: ele não lê o
+/// rig, por definição. Deixar as duas pistas de lâmpada pintadas sob um matcap
+/// seriam **dois controles que não fazem nada** — e não um pouco: o artista
+/// arrastaria o ângulo da luz olhando uma escultura que não se move, que é a
+/// forma mais cara de descobrir o que um modo significa.
+fn under_the_rig(u: &Sculpt3dUi) -> bool {
+    u.matcap.is_none()
+}
+
 /// O pincel: o que se ajusta antes de encostar no barro.
 static BRUSH: &[Row] = &[
     Row {
@@ -186,7 +197,7 @@ static SHADING: &[Row] = &[
         decimals: 0,
         get: |u| u.light_az_deg,
         set: |u, v| u.light_az_deg = v,
-        show: always,
+        show: under_the_rig,
     },
     Row {
         label: "panel.sculpt3d.light_elev",
@@ -201,7 +212,7 @@ static SHADING: &[Row] = &[
         decimals: 0,
         get: |u| u.light_elev_deg,
         set: |u, v| u.light_elev_deg = v,
-        show: always,
+        show: under_the_rig,
     },
 ];
 

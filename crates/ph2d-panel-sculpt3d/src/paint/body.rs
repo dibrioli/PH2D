@@ -11,16 +11,15 @@
 //! fundo ele pode estar.
 
 use ph2d_editor_core::ids;
-use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::panel::PaintCtx;
-use ph2d_editor_core::widget::{
-    Button, ButtonKind, ButtonState, SectionHeader, SegmentedAdaptive, SegmentedOption,
-    paint_button, paint_section_header, paint_segmented_adaptive,
-};
-use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_sculpt3d::{Falloff, Verb};
-use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, TypeToken};
+use ph2d_tokens::{ROW_H_PX, Spacing};
+
+/// **OS WIDGETS** — ver [`widgets`].
+#[path = "widgets.rs"]
+mod widgets;
+use widgets::{command, header, labelled_seg, readout, row_of_two, seg, toggle};
 
 use crate::rows;
 use crate::state::Sculpt3dSnapshot;
@@ -65,7 +64,7 @@ pub(super) fn paint_sections(
     y = knob_section(ctx, snap, &rows::SECTIONS[0], x, w, y, paint_brush_tail);
     y = paint_symmetry(ctx, snap, x, w, y);
     y = paint_topology(ctx, snap, x, w, y);
-    y = knob_section(ctx, snap, &rows::SECTIONS[1], x, w, y, |_, _, _, _, y| y);
+    y = knob_section(ctx, snap, &rows::SECTIONS[1], x, w, y, paint_shading_tail);
     paint_scene(ctx, snap, x, w, y)
 }
 
@@ -186,6 +185,55 @@ fn paint_symmetry(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y
         toggle(ctx, id, tr(key), on, bx, third, y);
     }
     y + ROW_H_PX + Spacing::Md.px()
+}
+
+/// **COM QUE LUZ, e COM OU SEM A MALHA** — a cauda da seção de sombreamento.
+///
+/// ⚠️ Os dois são opções de VISTA e por isso ficam juntos, abaixo dos knobs: um
+/// muda a lâmpada, o outro acrescenta uma anotação por cima. Nenhum deles toca a
+/// escultura, e é isso que os separa de tudo que está acima na coluna.
+fn paint_shading_tail(
+    ctx: &mut PaintCtx,
+    snap: &Sculpt3dSnapshot,
+    x: f32,
+    w: f32,
+    y: f32,
+) -> f32 {
+    // A primeira opção é o RIG e as seguintes são os materiais, então o índice
+    // selecionado é `matcap + 1` — o mesmo deslocamento que o `ShadeRaw` faz
+    // para o device. ⚠️ Ele é escrito aqui e lido no `event` pela mesma
+    // aritmética; as duas metades vivem uma ao lado da outra de propósito.
+    // ⚠️ **A lista de chips é a MENOR das duas** — os nomes que o host publicou e
+    // os ids que existem. Um material sem id seria pintado sobre o chip do
+    // vizinho; um id sem material seria um chip anônimo que despacha. Cortar
+    // pelo mínimo faz das duas listas uma só, e o gate do shell é quem exige
+    // que elas tenham o mesmo tamanho de verdade.
+    let n = snap.matcaps.len().min(ids::SCULPT3D_MATCAP.len() - 1);
+    let mut labels: Vec<&str> = vec![tr("panel.sculpt3d.matcap.rig")];
+    labels.extend(&snap.matcaps[..n]);
+    let options = &ids::SCULPT3D_MATCAP[..=n];
+    let selected = snap.ui.matcap.map_or(0, |i| usize::from(i) + 1);
+    let mut y = labelled_seg(
+        ctx,
+        tr("panel.sculpt3d.matcap"),
+        ids::SCULPT3D_SEC_SHADING,
+        options,
+        &labels,
+        selected.min(n),
+        x,
+        w,
+        y,
+    );
+    y = toggle(
+        ctx,
+        ids::SCULPT3D_WIREFRAME,
+        tr("panel.sculpt3d.wireframe"),
+        snap.ui.wireframe,
+        x,
+        w,
+        y,
+    );
+    y
 }
 
 /// **A TOPOLOGIA** — a resolução do barro.
@@ -362,196 +410,4 @@ fn knob_section(
     }
     y = tail(ctx, snap, x, w, y);
     y + Spacing::Md.px()
-}
-
-/// Um cabeçalho dobrável. Devolve `(está_aberto, y_depois)`.
-fn header(
-    ctx: &mut PaintCtx,
-    id: ph2d_a11y::NodeId,
-    title: &str,
-    x: f32,
-    w: f32,
-    y: f32,
-) -> (bool, f32) {
-    let theme = ctx.host.theme();
-    let h = TypeToken::Md.px() + Spacing::Md.px(); // LITERAL-PX-OK: altura da faixa de cabeçalho
-    let collapsed = ctx.host.store().is_collapsed(id);
-    let rect = Rect::new(x, y, w, h);
-    let head = SectionHeader::new(id, title).collapsible(!collapsed);
-    let scene = &mut *ctx.scene;
-    let text_system = &mut *ctx.text_system;
-    let (_, hit_index) = ctx.host.store_and_hit_index_mut();
-    paint_section_header(&head, rect, scene, text_system, theme);
-    hit_index.register(id, rect);
-    (!collapsed, y + h + Spacing::Sm.px())
-}
-
-/// Um grupo segmentado sem rótulo (a lista de ferramentas).
-#[allow(clippy::too_many_arguments)]
-fn seg(
-    ctx: &mut PaintCtx,
-    group: ph2d_a11y::NodeId,
-    options: &[ph2d_a11y::NodeId],
-    labels: &[&str],
-    selected: usize,
-    x: f32,
-    w: f32,
-    y: f32,
-) -> f32 {
-    let theme = ctx.host.theme();
-    let widget = SegmentedAdaptive::new(
-        group,
-        "",
-        options
-            .iter()
-            .zip(labels)
-            .map(|(&id, &l)| SegmentedOption::new(id, l))
-            .collect(),
-    )
-    .selected(selected);
-    let scene = &mut *ctx.scene;
-    let text_system = &mut *ctx.text_system;
-    let (store, hit_index) = ctx.host.store_and_hit_index_mut();
-    let h = paint_segmented_adaptive(
-        &widget,
-        Rect::new(x, y, w, ROW_H_PX),
-        scene,
-        text_system,
-        theme,
-        store,
-        hit_index,
-    );
-    y + h
-}
-
-/// Um grupo segmentado com rótulo em cima.
-#[allow(clippy::too_many_arguments)]
-fn labelled_seg(
-    ctx: &mut PaintCtx,
-    label: &str,
-    group: ph2d_a11y::NodeId,
-    options: &[ph2d_a11y::NodeId],
-    labels: &[&str],
-    selected: usize,
-    x: f32,
-    w: f32,
-    y: f32,
-) -> f32 {
-    let theme = ctx.host.theme();
-    let font = TypeToken::Sm.px();
-    // `Md` e não `Xs`: o texto é pintado CENTRADO nesta faixa, então o respiro
-    // que sobra abaixo dele é metade da folga — com `Xs` o rótulo encosta nos
-    // chips e o olho lê a palavra como parte do primeiro botão (o número saiu do
-    // smoke do painel de física).
-    let label_h = font + Spacing::Md.px();
-    paint_text(
-        ctx.text_system,
-        ctx.scene,
-        label,
-        x,
-        y + (label_h - font) * 0.5,
-        font,
-        w,
-        resolve(ColorToken::Text2, theme),
-    );
-    seg(ctx, group, options, labels, selected, x, w, y + label_h) + Spacing::Sm.px()
-}
-
-/// Dois botões lado a lado.
-fn row_of_two(
-    ctx: &mut PaintCtx,
-    left: (ph2d_a11y::NodeId, &str),
-    right: (ph2d_a11y::NodeId, &str),
-    x: f32,
-    w: f32,
-    y: f32,
-) -> f32 {
-    let gap = Spacing::Sm.px();
-    let half = (w - gap) * 0.5;
-    command(ctx, left.0, left.1, x, half, y);
-    command(ctx, right.0, right.1, x + half + gap, half, y)
-}
-
-/// Um `Button` usado como toggle.
-///
-/// **Não é um `Checkbox`**: `Checkbox` emite `Toggled`, que o `event.rs` deste
-/// painel não encaminha, então ele nasceria registrado e morto no clique — o
-/// mesmo aviso que o `ph2d-panel-painter-layers` carrega pelo mesmo motivo.
-fn toggle(
-    ctx: &mut PaintCtx,
-    id: ph2d_a11y::NodeId,
-    label: &str,
-    on: bool,
-    x: f32,
-    w: f32,
-    y: f32,
-) -> f32 {
-    let theme = ctx.host.theme();
-    let rect = Rect::new(x, y, w, ROW_H_PX);
-    let state = if on {
-        ButtonState::Pressed
-    } else {
-        ctx.host
-            .store()
-            .button_state(id)
-            .unwrap_or(ButtonState::Normal)
-    };
-    let kind = if on {
-        ButtonKind::Accent
-    } else {
-        ButtonKind::Default
-    };
-    let scene = &mut *ctx.scene;
-    let text_system = &mut *ctx.text_system;
-    let (_, hit_index) = ctx.host.store_and_hit_index_mut();
-    paint_button(
-        &Button::new(id, label).kind(kind).state(state),
-        rect,
-        scene,
-        text_system,
-        theme,
-    );
-    hit_index.register(id, rect);
-    y + ROW_H_PX
-}
-
-/// Um botão de ação.
-fn command(ctx: &mut PaintCtx, id: ph2d_a11y::NodeId, label: &str, x: f32, w: f32, y: f32) -> f32 {
-    let theme = ctx.host.theme();
-    let rect = Rect::new(x, y, w, ROW_H_PX);
-    let state = ctx
-        .host
-        .store()
-        .button_state(id)
-        .unwrap_or(ButtonState::Normal);
-    let scene = &mut *ctx.scene;
-    let text_system = &mut *ctx.text_system;
-    let (_, hit_index) = ctx.host.store_and_hit_index_mut();
-    paint_button(
-        &Button::new(id, label).state(state),
-        rect,
-        scene,
-        text_system,
-        theme,
-    );
-    hit_index.register(id, rect);
-    y + ROW_H_PX
-}
-
-/// Uma linha de texto. Hit-indexada por ninguém de propósito — é um FATO, não um
-/// controle, e uma affordance que ele não pode honrar seria pior que texto puro.
-fn readout(ctx: &mut PaintCtx, text: &str, x: f32, w: f32, y: f32) -> f32 {
-    let theme = ctx.host.theme();
-    let font = TypeToken::Sm.px();
-    paint_text(
-        ctx.text_system,
-        ctx.scene,
-        text,
-        x,
-        y + (ROW_H_PX - font) * 0.5,
-        font,
-        w,
-        resolve(ColorToken::Text2, theme),
-    );
-    y + ROW_H_PX
 }

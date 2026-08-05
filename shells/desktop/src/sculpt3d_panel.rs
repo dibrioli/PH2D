@@ -35,6 +35,8 @@ impl Sculpt3dScene {
                 // `[`/`]` imprime, para os dois não discordarem.
                 radius_px: self.radius_px(),
                 symmetry: self.symmetry,
+                matcap: self.matcap,
+                wireframe: self.wireframe,
                 cavity: self.cavity,
                 light_az_deg: f32::from(light.angle_deg),
                 light_elev_deg: f32::from(light.elev_deg),
@@ -45,6 +47,7 @@ impl Sculpt3dScene {
             level_count: self.level_count(),
             pieces: self.objects.len(),
             isolated: self.isolated.is_some(),
+            matcaps: ph2d_mesh_render::MATCAPS.as_slice(),
             verts: self.mesh().vert_count(),
         }
     }
@@ -59,6 +62,8 @@ impl Sculpt3dScene {
         // mais voltaria quando ela crescesse.
         self.radius_px = ui.radius_px;
         self.symmetry = ui.symmetry;
+        self.matcap = ui.matcap;
+        self.wireframe = ui.wireframe;
         self.cavity = ui.cavity;
         let l = self.rig.current_mut();
         // Graus INTEIROS é a unidade em que o rig é autorado — o `f32` existe só

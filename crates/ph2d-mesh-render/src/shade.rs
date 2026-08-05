@@ -61,24 +61,74 @@ pub const DEFAULT_CAVITY: f32 = 0.0;
 /// interessa.
 pub const CAVITY_GAIN: f32 = 4.0;
 
+/// **OS MATERIAIS DO MATCAP**, na ordem em que o shader os numera.
+///
+/// ⚠️ **Os NÚMEROS ficam no WGSL e os NOMES aqui, e não há uma terceira cópia.**
+/// Um material de matcap é um punhado de cores e expoentes que ninguém do lado
+/// da CPU lê: o shader é o único consumidor, então duplicá-los aqui seria uma
+/// segunda resposta a *"como a pérola é"* — a que fica velha na primeira
+/// afinação. O que a CPU precisa saber é **quantos há** e **como se chamam**,
+/// que é o que o painel pinta; a igualdade das duas contagens é gateada.
+pub const MATCAPS: [&str; 6] = ["Clay", "Pearl", "Skin", "Jade", "Metal", "Wax"];
+
+/// **COMO O BARRO É MOSTRADO** — as opções de vista, num tipo só.
+///
+/// ⚠️ Um struct e não três argumentos soltos no [`crate::MeshRenderer::render`]:
+/// ele já carrega nove, e cada opção de vista nova o empurraria mais. E o corte
+/// é honesto — *quanto de cavidade*, *com que luz* e *com ou sem a malha* são as
+/// três respostas à mesma pergunta, e elas viajam juntas do painel ao device.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Shade {
+    /// Quanto a curvatura escurece a fresta e clareia a crista.
+    pub cavity: f32,
+    /// **Com que luz** — `None` é o RIG DO ARTISTA (a luz do documento, a mesma
+    /// que acende a tinta ao lado); `Some(i)` é o matcap `i` de [`MATCAPS`], a
+    /// luz do OLHO.
+    ///
+    /// ⚠️ `Option` e não um índice com `0` reservado: *"nenhum matcap"* não é um
+    /// matcap, e um sentinela obrigaria todo leitor a saber disso. A conversão
+    /// para o sentinela do uniform acontece **uma vez**, no [`ShadeRaw::pack`].
+    pub matcap: Option<u8>,
+    /// A malha desenhada por cima da forma.
+    ///
+    /// ⚠️ Ele viaja aqui e **não entra no [`ShadeRaw`]**: é um segundo PASSE, não
+    /// um termo do sombreamento. Uma flag no uniform o faria parecer uma opção do
+    /// fragment, e o dia em que alguém a lesse lá dentro o wireframe passaria a
+    /// pintar as FACES.
+    pub wireframe: bool,
+}
+
+impl Default for Shade {
+    fn default() -> Self {
+        Self {
+            cavity: DEFAULT_CAVITY,
+            matcap: None,
+            wireframe: false,
+        }
+    }
+}
+
 /// As opções, como o fragment shader as lê.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Pod, Zeroable)]
 pub struct ShadeRaw {
     /// Quanto da cavidade entra. `0` = o barro liso da W3, **ao byte**.
     pub cavity: f32,
+    /// **Qual matcap** — `0` é o rig do artista, `n` é o material `n − 1`.
+    ///
+    /// ⚠️ O sentinela existe SÓ aqui, na fronteira do device: um uniform não tem
+    /// `Option`, e a alternativa (um segundo `u32` dizendo *"tem matcap?"*) seria
+    /// dois campos que precisam concordar.
+    pub matcap: u32,
     /// ⚠️ Declarado e não implícito: um `f32` solto num uniform alinha em 16 B de
-    /// qualquer jeito, e os três `f32` que sobram são exatamente onde SSS, AO e
-    /// IBL vão pousar sem mexer no layout.
-    pub _pad: [f32; 3],
+    /// qualquer jeito, e os dois que sobram são exatamente onde SSS e AO vão
+    /// pousar sem mexer no layout.
+    pub _pad: [f32; 2],
 }
 
 impl Default for ShadeRaw {
     fn default() -> Self {
-        Self {
-            cavity: DEFAULT_CAVITY,
-            _pad: [0.0; 3],
-        }
+        Self::pack(Shade::default())
     }
 }
 
@@ -86,17 +136,28 @@ impl ShadeRaw {
     /// Bytes do uniform. Constante, para o buffer nascer com o tamanho certo.
     pub const SIZE: usize = std::mem::size_of::<Self>();
 
-    /// Empacota a quantidade que o artista escolheu, **clampada na porta**.
+    /// Empacota o que o artista escolheu, **clampado na porta**.
     ///
     /// ⚠️ O clamp mora aqui e não no chamador porque o device não tem opinião: um
     /// `cavity` de 3 faria `1 − 3k` ficar negativo numa fresta funda e o barro
     /// sairia com a cor invertida. Clampar no shader seria a segunda cópia da
     /// mesma regra, e ela divergiria no dia em que o painel chegasse.
+    ///
+    /// ⚠️ **E o índice do matcap é clampado pelo MESMO motivo:** um `Some(9)` numa
+    /// tabela de seis cairia no `default` do `switch` do shader — que é um
+    /// material legítimo — e o artista veria a cera vermelha ao pedir algo que
+    /// não existe, sem nada dizendo que o pedido era inválido.
     #[must_use]
-    pub fn pack(cavity: f32) -> Self {
+    pub fn pack(shade: Shade) -> Self {
+        let n = u8::try_from(MATCAPS.len()).unwrap_or(u8::MAX);
         Self {
-            cavity: cavity.clamp(0.0, 1.0),
-            _pad: [0.0; 3],
+            cavity: shade.cavity.clamp(0.0, 1.0),
+            matcap: shade.matcap.map_or(0, |i| u32::from(i.min(n - 1)) + 1),
+            _pad: [0.0; 2],
         }
     }
 }
+
+#[cfg(test)]
+#[path = "shade_tests.rs"]
+mod tests;

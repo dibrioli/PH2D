@@ -489,6 +489,12 @@ pub fn tr(key: &str) -> &'static str {
         // "Cavity" e não "Curvature": é o nome que Blender, ZBrush e Substance
         // dão ao MESMO canal, e o artista o procura por ele.
         "panel.sculpt3d.cavity" => "Cavity",
+        "panel.sculpt3d.matcap" => "Material",
+        // ⚠️ "Rig" e não "None": a primeira opção NÃO é a ausência de luz, é a
+        // luz do DOCUMENTO — a mesma lâmpada que acende a tinta ao lado. Chamá-la
+        // de "None" faria o artista ler o modo default como "sem sombreamento".
+        "panel.sculpt3d.matcap.rig" => "Rig",
+        "panel.sculpt3d.wireframe" => "Wireframe",
         "panel.sculpt3d.light_az" => "Light Angle",
         "panel.sculpt3d.light_elev" => "Light Height",
         "panel.sculpt3d.add" => "Add",

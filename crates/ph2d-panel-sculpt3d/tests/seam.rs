@@ -42,6 +42,11 @@ fn arrange(ui: Sculpt3dUi) -> (MockPanelHost, Sculpt3dPanelState) {
         level_count: 1,
         pieces: 1,
         isolated: false,
+        // ⚠️ A fixture publica os SEIS nomes do renderizador, e não uma lista
+        // curta: a varredura de costura tem de encontrar TODO chip que o produto
+        // pinta, e um retrato com dois materiais deixaria quatro ids fora do
+        // sweep — vivos na tela e nunca clicados aqui.
+        matcaps: &["Clay", "Pearl", "Skin", "Jade", "Metal", "Wax"],
         verts: 6050,
     }));
     let _ = drain_intents();
@@ -516,4 +521,83 @@ fn a_conditional_row_is_absent_with_the_wrong_tool() {
             .any(|(pid, _)| *pid == ids::SCULPT3D_PLANE_OFFSET),
         "o Clay é um verbo de PLANO e o Plane Offset não foi pintado"
     );
+}
+
+/// **Cada chip de material arma o SEU material — e o primeiro arma o rig.**
+///
+/// ⚠️ O oráculo por-chip, e não *"saiu um intent"*: a lista tem um deslocamento
+/// (a opção `0` é o rig, que **não** é um matcap), e um `- 1` mal posto ligaria
+/// todo chip ao material anterior. Um gate que só olhasse o primeiro e o último
+/// ficaria verde sobre isso.
+#[test]
+fn every_matcap_chip_arms_its_own_material() {
+    for (i, &id) in ids::SCULPT3D_MATCAP.iter().enumerate() {
+        let base = Sculpt3dUi::default();
+        let (mut host, mut state) = arrange(base);
+        let outcome = host.apply_panel_event::<Sculpt3dPanel>(&mut state, WidgetEvent::Click(id));
+        assert_eq!(outcome, EventOutcome::Consumed, "o chip {i} não despacha");
+        let Sculpt3dIntent::SetUi(got) = only_intent("matcap") else {
+            panic!("o chip {i} enfileirou o tipo errado de intent");
+        };
+        let want = match i {
+            0 => None,
+            k => Some(u8::try_from(k - 1).expect("cabe")),
+        };
+        assert_eq!(got.matcap, want, "o chip {i} armou {:?}", got.matcap);
+        assert_eq!(
+            got,
+            Sculpt3dUi { matcap: want, ..base },
+            "o chip {i} mexeu num campo que não é dele"
+        );
+    }
+}
+
+/// **O wireframe alterna, e não toca em mais nada.**
+#[test]
+fn the_wireframe_toggle_flips_only_the_view() {
+    for before in [false, true] {
+        let base = Sculpt3dUi {
+            wireframe: before,
+            ..Sculpt3dUi::default()
+        };
+        let (mut host, mut state) = arrange(base);
+        host.apply_panel_event::<Sculpt3dPanel>(&mut state, WidgetEvent::Click(ids::SCULPT3D_WIREFRAME));
+        let Sculpt3dIntent::SetUi(got) = only_intent("wireframe") else {
+            panic!("o wireframe enfileirou o tipo errado de intent");
+        };
+        assert_eq!(
+            got,
+            Sculpt3dUi {
+                wireframe: !before,
+                ..base
+            },
+            "o wireframe não alternou, ou levou um vizinho junto"
+        );
+    }
+}
+
+/// **As duas pistas de LÂMPADA somem sob um matcap** — e estão lá sob o rig.
+///
+/// ⚠️ Um matcap é sombreamento função apenas da normal de vista: ele não lê o
+/// rig, por definição. As duas metades são um gate só de propósito — a de
+/// presença sozinha ficaria verde com o `show` cravado em `true`, e a de
+/// ausência sozinha ficaria verde com ele cravado em `false`.
+#[test]
+fn the_lamp_rows_are_absent_under_a_matcap_and_present_under_the_rig() {
+    let lamps = [ids::SCULPT3D_LIGHT_AZ, ids::SCULPT3D_LIGHT_ELEV];
+    for (matcap, want) in [(None, true), (Some(0), false), (Some(3), false)] {
+        let (mut host, mut state) = arrange(Sculpt3dUi {
+            matcap,
+            ..Sculpt3dUi::default()
+        });
+        let painted = host.paint::<Sculpt3dPanel>(&mut state, VIEWPORT);
+        for id in lamps {
+            assert_eq!(
+                painted.iter().any(|(pid, _)| *pid == id),
+                want,
+                "com matcap {matcap:?} a pista de lâmpada devia {}",
+                if want { "estar lá" } else { "sumir" }
+            );
+        }
+    }
 }

@@ -138,7 +138,10 @@ fn render_using_rig_cavity(
         &view,
         camera,
         resolved.as_ref(),
-        cavity,
+        ph2d_mesh_render::Shade {
+            cavity,
+            ..ph2d_mesh_render::Shade::default()
+        },
         (W, H),
     );
 

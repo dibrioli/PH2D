@@ -170,12 +170,33 @@ impl MeshRenderer {
             attributes: attrs,
         };
 
-        // Os dois pipelines diferem em DOIS campos — a entrada do fragment e o
-        // formato do alvo — e em nada mais. Uma segunda cópia do descritor seria
-        // uma segunda resposta a "como esta malha é rasterizada": o dia em que
-        // alguém trocasse o `cull_mode` num e não no outro, o G-buffer passaria a
-        // descrever uma silhueta que a tela não mostra.
-        let make = |label: &str, entry: &str, format: wgpu::TextureFormat| {
+        // **O QUE VARIA entre os pipelines** — e só isto.
+        //
+        // ⚠️ Um struct de variação e não três descritores: o que os pipelines têm
+        // em COMUM é o que precisa de proteção (o layout, os quatro buffers de
+        // vértice, `cull_mode: None`, o formato do depth), e uma segunda cópia do
+        // descritor seria uma segunda resposta a *"como esta malha é
+        // rasterizada"* — o dia em que alguém trocasse o culling num e não no
+        // outro, o G-buffer passaria a descrever uma silhueta que a tela não
+        // mostra. Os campos abaixo são exatamente os que os três **têm** de
+        // decidir por conta.
+        struct Variant<'a> {
+            label: &'a str,
+            entry: &'a str,
+            format: wgpu::TextureFormat,
+            topology: wgpu::PrimitiveTopology,
+            blend: Option<wgpu::BlendState>,
+            bias: wgpu::DepthBiasState,
+        }
+        let make = |v: Variant<'_>| {
+            let Variant {
+                label,
+                entry,
+                format,
+                topology,
+                blend,
+                bias,
+            } = v;
             device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
                 label: Some(label),
                 layout: Some(&layout),
@@ -196,14 +217,16 @@ impl MeshRenderer {
                     compilation_options: wgpu::PipelineCompilationOptions::default(),
                     targets: &[Some(wgpu::ColorTargetState {
                         format,
-                        // Opaco: a escultura é sólida, e um blend aqui só serviria
-                        // para esconder um erro de profundidade atrás de uma mistura.
-                        blend: None,
+                        // Opaco nos passes de FORMA: a escultura é sólida, e um
+                        // blend ali só serviria para esconder um erro de
+                        // profundidade atrás de uma mistura. O passe de ARESTAS é
+                        // o oposto — ele anota a forma sem a apagar.
+                        blend,
                         write_mask: wgpu::ColorWrites::ALL,
                     })],
                 }),
                 primitive: wgpu::PrimitiveState {
-                    topology: wgpu::PrimitiveTopology::TriangleList,
+                    topology,
                     strip_index_format: None,
                     front_face: wgpu::FrontFace::Ccw,
                     // ⚠️ **Sem culling, de propósito.** Uma escultura em progresso é
@@ -218,12 +241,16 @@ impl MeshRenderer {
                 },
                 depth_stencil: Some(wgpu::DepthStencilState {
                     format: Self::DEPTH_FORMAT,
+                    // ⚠️ **As arestas ESCREVEM profundidade como as faces.** Não
+                    // escrever deixaria a malha do outro lado da peça atravessar
+                    // a superfície da frente, e o wireframe viraria um emaranhado
+                    // que não diz de que lado está o quê.
                     depth_write_enabled: true,
                     // `Less` com limpeza em 1.0: profundidade 3D comum. (O Flip usa
                     // `Greater` porque a ordem dele é 2D por-traço, outra pergunta.)
                     depth_compare: wgpu::CompareFunction::Less,
                     stencil: wgpu::StencilState::default(),
-                    bias: wgpu::DepthBiasState::default(),
+                    bias,
                 }),
                 multisample: wgpu::MultisampleState {
                     count: 1,
@@ -234,12 +261,54 @@ impl MeshRenderer {
                 cache: None,
             })
         };
-        let pipeline = make("ph2d-mesh pipeline", "fs_main", target_format);
-        let gbuffer_pipeline = make("ph2d-mesh gbuffer", "fs_gbuffer", Self::GBUFFER_FORMAT);
+        const SOLID: wgpu::DepthBiasState = wgpu::DepthBiasState {
+            constant: 0,
+            slope_scale: 0.0,
+            clamp: 0.0,
+        };
+        // ⚠️ **O viés NEGATIVO é o que faz a aresta ganhar da face.** Uma linha
+        // desenhada sobre o triângulo que a contém é COPLANAR com ele, e uma
+        // comparação de profundidade entre dois números que a rasterização
+        // computou por caminhos diferentes é uma moeda: o resultado é o
+        // z-fighting clássico, a malha piscando em faixas. Puxar a linha para
+        // perto do olho (`Less` com profundidade 0 = perto ⇒ viés negativo) a
+        // tira do empate. O termo de INCLINAÇÃO é o que cobre a face quase de
+        // perfil, onde a profundidade varia muito dentro de um pixel e um viés
+        // constante não alcança.
+        const WIRE: wgpu::DepthBiasState = wgpu::DepthBiasState {
+            constant: -4,
+            slope_scale: -1.0,
+            clamp: 0.0,
+        };
+        let pipeline = make(Variant {
+            label: "ph2d-mesh pipeline",
+            entry: "fs_main",
+            format: target_format,
+            topology: wgpu::PrimitiveTopology::TriangleList,
+            blend: None,
+            bias: SOLID,
+        });
+        let gbuffer_pipeline = make(Variant {
+            label: "ph2d-mesh gbuffer",
+            entry: "fs_gbuffer",
+            format: Self::GBUFFER_FORMAT,
+            topology: wgpu::PrimitiveTopology::TriangleList,
+            blend: None,
+            bias: SOLID,
+        });
+        let wire_pipeline = make(Variant {
+            label: "ph2d-mesh wire",
+            entry: "fs_wire",
+            format: target_format,
+            topology: wgpu::PrimitiveTopology::LineList,
+            blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+            bias: WIRE,
+        });
 
         Self {
             pipeline,
             gbuffer_pipeline,
+            wire_pipeline,
             uniform,
             rig_uniform,
             shade_uniform,
@@ -250,6 +319,7 @@ impl MeshRenderer {
             slots: Vec::new(),
             poses: Vec::new(),
             scratch_indices: Vec::new(),
+            scratch_indices_flat: Vec::new(),
             scratch_moved: Vec::new(),
             scratch_runs: Vec::new(),
             scratch_masks: Vec::new(),

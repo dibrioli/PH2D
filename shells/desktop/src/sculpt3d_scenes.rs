@@ -424,6 +424,12 @@ pub(crate) fn announce(mesh: &ph2d_mesh::Mesh) {
          [sculpt3d] TOOL (os 16 verbos) · BRUSH (raio, forca, falloff, mascara) · SYMMETRY\n\
          [sculpt3d] TOPOLOGY (dyntopo, detalhe, niveis, remesh, tapar) · SHADING · SCENE\n\
          [sculpt3d] a CAVIDADE e' o slider da secao SHADING: 0 e' o barro liso, 1 o teto\n\
+         [sculpt3d] MATERIAL (SHADING): 'Rig' e' a luz do DOCUMENTO; os outros seis sao MATCAPS --\n\
+         [sculpt3d]     luz do OLHO, que nao gira com o modelo. Sob um matcap as duas pistas de\n\
+         [sculpt3d]     lampada SOMEM, porque ele nao le o rig -- e isso e' o certo, nao um bug\n\
+         [sculpt3d] WIREFRAME (SHADING): a malha por cima da forma -- e' o que mostra onde o remesh\n\
+         [sculpt3d]     pos os aneis e ate' onde o refino chegou; ela some e volta sem custo com\n\
+         [sculpt3d]     a caixa desmarcada (a lista de arestas so' existe com ela armada)\n\
          [sculpt3d] o ANEL do cursor e' desenhado NO PONTO DE ACERTO -- se ele nao estiver\n\
          [sculpt3d]     debaixo do mouse sobre o barro, o pick esta' errado e da' para VER",
         mesh.vert_count(),

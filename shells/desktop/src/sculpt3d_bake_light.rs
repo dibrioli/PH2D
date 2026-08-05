@@ -211,11 +211,12 @@ fn render_live(
         &view,
         camera,
         Some(rig),
-        // ⚠️ **Cavidade ZERO, e é a premissa da medição.** Esta sonda compara a
-        // luz da malha com a do passe de tinta, e a cavidade é um termo que só a
-        // primeira tem — ligá-la aqui faria a comparação medir a diferença entre
-        // dois modelos em vez da diferença entre duas implementações do mesmo.
-        0.0,
+        // ⚠️ **A vista PADRÃO, e é a premissa da medição.** Esta sonda compara a
+        // luz da malha com a do passe de tinta; a cavidade é um termo que só a
+        // primeira tem e o matcap é outra luz inteira — qualquer um dos dois
+        // ligado aqui faria a comparação medir a diferença entre dois MODELOS em
+        // vez da diferença entre duas implementações do mesmo.
+        ph2d_mesh_render::Shade::default(),
         size,
     );
     gpu.queue.submit([enc.finish()]);

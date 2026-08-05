@@ -58,6 +58,19 @@ struct MeshGpu {
     index_count: u32,
     vert_capacity: usize,
     index_capacity: usize,
+    /// **AS ARESTAS**, para o passe de wireframe — construídas SOB DEMANDA.
+    ///
+    /// ⚠️ `None` até o artista armar a malha, e derrubada por todo
+    /// [`MeshRenderer::upload_at`] (que é o caminho por onde a topologia muda).
+    /// Ela custa até 24 B por vértice — 24 MB num milhão — e a maioria esculpe
+    /// com ela desligada: construí-la junto com a malha faria todo artista pagar
+    /// pela vista de um.
+    ///
+    /// ⚠️ E ela **compartilha os buffers de posição e normal** com o passe de
+    /// faces: só os ÍNDICES são outros. É isso que faz o upload incremental de
+    /// um dab servir os dois passes sem saber que o segundo existe.
+    wire: Option<wgpu::Buffer>,
+    wire_count: u32,
 }
 
 /// **UM OBJETO no device** — a geometria e a pose que a põe no mundo.
@@ -74,6 +87,23 @@ struct Slot {
     bind: wgpu::BindGroup,
 }
 
+/// **O QUE este passe desenha** — a forma ou a malha de arestas dela.
+///
+/// ⚠️ Um enum e não um `bool`, e não é cerimônia: os dois passes leem os MESMOS
+/// buffers de vértice e diferem só no índice, então um `wire: bool` no meio do
+/// laço leria como *"desenhe de outro jeito"* quando o que ele decide é **qual
+/// geometria**. E é um parâmetro do `draw_all` e não um segundo laço porque
+/// aquele laço é a única resposta a *"o que este renderizador desenha"* — uma
+/// cópia dele passaria a descrever uma cena diferente no dia em que a lista
+/// ganhasse uma regra.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum Draw {
+    /// Os triângulos da forma.
+    Faces,
+    /// As arestas, por cima dela.
+    Wire,
+}
+
 /// **COMO o passe é montado** — ver [`build`].
 #[path = "pipeline_build.rs"]
 mod build;
@@ -82,6 +112,9 @@ mod build;
 pub struct MeshRenderer {
     pipeline: wgpu::RenderPipeline,
     gbuffer_pipeline: wgpu::RenderPipeline,
+    /// O passe de ARESTAS — `LineList`, com viés de profundidade. Ver
+    /// [`crate::wire`] para por que ele não é `PolygonMode::Line`.
+    wire_pipeline: wgpu::RenderPipeline,
     uniform: wgpu::Buffer,
     rig_uniform: wgpu::Buffer,
     /// As opções de sombreamento do barro — ver [`crate::shade`].
@@ -103,6 +136,9 @@ pub struct MeshRenderer {
     /// malha subir), e sobra é ignorada.
     poses: Vec<Pose>,
     scratch_indices: Vec<[u32; 3]>,
+    /// O rascunho da lista de ARESTAS (`crate::wire_indices`) — plano, e irmão
+    /// do `scratch_indices` (que é por-triângulo). Reusado entre rebuilds.
+    scratch_indices_flat: Vec<u32>,
     scratch_moved: Vec<u32>,
     scratch_runs: Vec<(u32, u32)>,
     /// Zeros para uma malha que ninguém mascarou — ver [`masks_of`].
@@ -200,6 +236,14 @@ impl MeshRenderer {
             queue.write_buffer(&g.curvatures, 0, bytemuck::cast_slice(mesh.curvatures()));
             queue.write_buffer(&g.indices, 0, bytemuck::cast_slice(&self.scratch_indices));
             g.index_count = index_count;
+            // ⚠️ **A topologia pode ter mudado, então as arestas morrem aqui.**
+            // Esta rota é a do buffer que CABE — e caber é sobre tamanho, não
+            // sobre as faces serem as mesmas: um remesh que devolva a mesma
+            // contagem reusa os buffers e reescreve os índices. Uma lista de
+            // arestas sobrevivente descreveria a malha anterior, e o wireframe
+            // desenharia um grafo que a superfície não tem.
+            g.wire = None;
+            g.wire_count = 0;
             return;
         }
 
@@ -226,6 +270,8 @@ impl MeshRenderer {
             index_count,
             vert_capacity: verts,
             index_capacity: idx,
+            wire: None,
+            wire_count: 0,
         };
         if let Some(slot) = self.slots.get_mut(index) {
             // O bind group e o buffer de pose sobrevivem: só a geometria mudou.
@@ -336,6 +382,37 @@ impl MeshRenderer {
         true
     }
 
+    /// **Garante a lista de arestas do objeto `index`** — o buffer que o passe
+    /// de wireframe desenha. No-op se ela já existe.
+    ///
+    /// ⚠️ **Porta SEPARADA do [`Self::upload_at`], e a razão é quem tem o quê.**
+    /// A lista sai da adjacência da `Mesh`, que o device não guarda; e ela custa
+    /// até 24 B por vértice, que ninguém deve pagar com o wireframe desligado.
+    /// Então quem chama é a cena, no frame em que o artista arma a malha — e o
+    /// custo aparece uma vez, ali, em vez de em todo `upload_at` de todo dab que
+    /// muda topologia.
+    ///
+    /// Devolve `false` quando não há slot (a cena ainda não subiu o objeto).
+    pub fn upload_wire_at(&mut self, device: &wgpu::Device, index: usize, mesh: &Mesh) -> bool {
+        let Some(slot) = self.slots.get(index) else {
+            return false;
+        };
+        if slot.gpu.wire.is_some() {
+            return true;
+        }
+        crate::wire_indices(mesh, &mut self.scratch_indices_flat);
+        let count = u32::try_from(self.scratch_indices_flat.len()).unwrap_or(u32::MAX);
+        let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("ph2d-mesh wire"),
+            contents: bytemuck::cast_slice(&self.scratch_indices_flat),
+            usage: wgpu::BufferUsages::INDEX,
+        });
+        let g = &mut self.slots.get_mut(index).expect("conferido acima").gpu;
+        g.wire = Some(buffer);
+        g.wire_count = count;
+        true
+    }
+
     /// Quantos vértices o último [`Self::upload_region`] de fato copiou — a
     /// grandeza que separa "subi a pegada" de "subi a malha", e que um gate
     /// consegue ler sem device.
@@ -357,11 +434,22 @@ impl MeshRenderer {
     /// uma segunda cópia do laço seria a segunda resposta a *"o que este
     /// renderizador desenha"* — e o dia em que a lista ganhasse um objeto num
     /// dos dois, o G-buffer descreveria uma silhueta que a tela não mostra.
-    fn draw_all(&self, queue: &wgpu::Queue, pass: &mut wgpu::RenderPass<'_>) {
+    fn draw_all(&self, queue: &wgpu::Queue, pass: &mut wgpu::RenderPass<'_>, what: Draw) {
         for (i, slot) in self.slots.iter().enumerate() {
             if slot.gpu.index_count == 0 {
                 continue;
             }
+            // O passe de arestas pula quem ainda não a tem: a lista é construída
+            // sob demanda, e um objeto que entrou na cena depois de o wireframe
+            // ser armado a ganha no frame seguinte. Desenhar nada é a resposta
+            // certa para *"ainda não sei quais são as arestas"*.
+            let (indices, count) = match what {
+                Draw::Faces => (&slot.gpu.indices, slot.gpu.index_count),
+                Draw::Wire => match (&slot.gpu.wire, slot.gpu.wire_count) {
+                    (Some(b), n) if n > 0 => (b, n),
+                    _ => continue,
+                },
+            };
             let pose = self.poses.get(i).copied().unwrap_or(Pose::IDENTITY);
             queue.write_buffer(
                 &slot.model,
@@ -375,8 +463,8 @@ impl MeshRenderer {
             pass.set_vertex_buffer(1, slot.gpu.normals.slice(..));
             pass.set_vertex_buffer(2, slot.gpu.masks.slice(..));
             pass.set_vertex_buffer(3, slot.gpu.curvatures.slice(..));
-            pass.set_index_buffer(slot.gpu.indices.slice(..), wgpu::IndexFormat::Uint32);
-            pass.draw_indexed(0..slot.gpu.index_count, 0, 0..1);
+            pass.set_index_buffer(indices.slice(..), wgpu::IndexFormat::Uint32);
+            pass.draw_indexed(0..count, 0, 0..1);
         }
     }
 
@@ -427,7 +515,7 @@ impl MeshRenderer {
         color_view: &wgpu::TextureView,
         camera: &Camera3d,
         rig: Option<&ph2d_light::ResolvedRig>,
-        cavity: f32,
+        shade: crate::Shade,
         size: (u32, u32),
     ) {
         if !self.has_mesh() || size.0 == 0 || size.1 == 0 {
@@ -448,7 +536,7 @@ impl MeshRenderer {
         queue.write_buffer(
             &self.shade_uniform,
             0,
-            bytemuck::bytes_of(&ShadeRaw::pack(cavity)),
+            bytemuck::bytes_of(&ShadeRaw::pack(shade)),
         );
 
         let depth = self.depth.as_ref().expect("ensure_depth acabou de rodar");
@@ -477,7 +565,16 @@ impl MeshRenderer {
         });
         pass.set_pipeline(&self.pipeline);
         pass.set_bind_group(0, &self.bind, &[]);
-        self.draw_all(queue, &mut pass);
+        self.draw_all(queue, &mut pass, Draw::Faces);
+        // **AS ARESTAS, no MESMO passe de render.** Um segundo `begin_render_pass`
+        // teria de recarregar cor e profundidade, e a profundidade que as linhas
+        // precisam consultar é *a que este passe acabou de escrever* — carregá-la
+        // de volta é trabalho de banda por nada. Trocar o pipeline no meio é a
+        // operação que existe exatamente para isto.
+        if shade.wireframe {
+            pass.set_pipeline(&self.wire_pipeline);
+            self.draw_all(queue, &mut pass, Draw::Wire);
+        }
     }
 
     /// **A DOAÇÃO, do lado de quem doa** — rasteriza a malha num G-buffer de normais.
@@ -545,7 +642,7 @@ impl MeshRenderer {
         });
         pass.set_pipeline(&self.gbuffer_pipeline);
         pass.set_bind_group(0, &self.bind, &[]);
-        self.draw_all(queue, &mut pass);
+        self.draw_all(queue, &mut pass, Draw::Faces);
     }
 }
 

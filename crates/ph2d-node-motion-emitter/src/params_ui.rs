@@ -7,7 +7,55 @@
 //! re-typed ([[feedback_two_doors_to_the_same_question_diverge]]).
 
 use super::MAX_ALIVE;
-use ph2d_node_registry::{ParamHardMax, ParamUiHint, ParamWidget};
+use ph2d_node_registry::{
+    ParamHardMax, ParamHardMin, ParamUiHint, ParamUnit, ParamUnitDecl, ParamWidget,
+};
+
+/// **What each of this node's numbers IS** (doc 88, Wave A) — never how it is
+/// shown. The panel resolves the face; a node that could pin `px` or `m` would be
+/// overriding the artist's `ProjectSettings::display_unit`.
+///
+/// The three `Length`s are not a guess, they are traced to the columns this node
+/// emits: `x`/`y` become the `P` column, which `lower_to_instances` reads into
+/// `RenderInstance::world_pos` (world metres), and `size` becomes the `size`
+/// column, which lands in `RenderInstance::size` — documented as *local meters*.
+///
+/// ⚠️ **`speed` is deliberately absent.** It is metres per SECOND, and this
+/// vocabulary has no velocity: `Length` would be a lie about the denominator, and
+/// a unit that is wrong is worse than a unit that is missing — the artist can
+/// still read a bare number, but `12 px` on a rate would teach them the wrong
+/// thing. It gets a unit when a `Velocity` is declared, not before.
+pub(crate) static PARAM_UNITS: &[ParamUnitDecl] = &[
+    ParamUnitDecl {
+        param: "x",
+        unit: ParamUnit::Length,
+    },
+    ParamUnitDecl {
+        param: "y",
+        unit: ParamUnit::Length,
+    },
+    ParamUnitDecl {
+        param: "size",
+        unit: ParamUnit::Length,
+    },
+    ParamUnitDecl {
+        param: "life",
+        unit: ParamUnit::Seconds,
+    },
+];
+
+/// The typed FLOOR — the twin of [`PARAM_HARD_MAX`], and the half that did not
+/// exist before doc 88.
+///
+/// `life`'s slider starts at `0.1 s` because that is where a *fountain* lives,
+/// and it is the wrong scale for the other thing this node does: a muzzle flash
+/// or a spark is **tens of milliseconds**. The drag range stays where the common
+/// case is and the box reaches the uncommon one — Blender's soft/hard split,
+/// which the ceiling already had and the floor did not.
+pub(crate) static PARAM_HARD_MIN: &[ParamHardMin] = &[ParamHardMin {
+    param: "life",
+    min: 0.001,
+}];
 
 /// Params whose typed entry reaches past their slider (Blender's hard limits).
 ///

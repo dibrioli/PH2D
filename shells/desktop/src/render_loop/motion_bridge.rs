@@ -177,6 +177,12 @@ mod subgraph_tests;
 #[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
 #[path = "motion_bridge_tests.rs"]
 mod tests;
+/// The display FACE of a row (doc 88) — a sibling of `range_tests` because it is
+/// the same subject seen from the other side: that one pins the SCALE a value is
+/// read against, this one pins the UNIT it is read in.
+#[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
+#[path = "motion_bridge_unit_tests.rs"]
+mod unit_tests;
 
 /// Per-frame Motion-tool plumbing. Safe to call every frame; a no-op when the
 /// Motion tool is inactive (beyond flipping panel visibility / the split off).
@@ -360,7 +366,7 @@ pub(super) fn dispatch(
     // dispatch so this file stays under the shell LOC cap. Needs BOTH panels:
     // the selection comes from the graph, the rows go to params. ──────────────
     #[cfg(all(feature = "panel-motion-graph", feature = "panel-motion-params"))]
-    params::publish(motion, &mut hero.store, motion_active);
+    params::publish(motion, &mut hero.store, motion_active, hero.project);
 
     if !motion_active {
         return;

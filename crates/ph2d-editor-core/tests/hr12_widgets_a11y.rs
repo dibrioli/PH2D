@@ -304,6 +304,20 @@ const PANEL_A11Y_DELEGATE_OK: &[(&str, &str)] = &[
         "ph2d-panel-motion-graph/src/paint_stamp.rs",
         "the card's postage stamp — pure drawing inside the CARD, whose AccessKit node is hits.rs's",
     ),
+    // The ⚠ inert badge's DRAW (ADR-0155) — split from `paint.rs` for the panel caps, the
+    // same cut as `paint_stamp.rs` above and with the same a11y story: the pip is CLICKABLE
+    // (it asks for the quick-fix), and the node that makes it reachable is registered by
+    // `hits::push_inert_badge_hit`, which owns the `ph2d_a11y::NodeId`. Wiring a11y here
+    // too would register the badge TWICE under two ids — the drawing must not have an
+    // opinion about identity that the hit path already answers.
+    (
+        "ph2d-panel-motion-graph/src/paint_inert_badge.rs",
+        "the inert-warning pip — pure drawing; its AccessKit node is push_inert_badge_hit's",
+    ),
+    (
+        "ph2d-panel-motion-graph/src/paint_grid.rs",
+        "the canvas backdrop lattice — decoration with no semantics: nothing hit-tests it",
+    ),
     // Painter Brush appearance sections (6–11) — a thin ORCHESTRATOR split from
     // `paint_brush.rs` for the 200-LOC/fn + 600-LOC/file caps. It owns no widget:
     // every row it paints is a call into a section module (`paint_shape`,

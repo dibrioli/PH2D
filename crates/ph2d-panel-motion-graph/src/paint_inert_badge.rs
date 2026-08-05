@@ -14,6 +14,7 @@ const INERT_MARK_W: f32 = 0.16; // LITERAL-PX-OK: exclamation bar width as a fra
 const INERT_MARK_TOP: f32 = 0.52; // LITERAL-PX-OK: bar top above centre (fraction of radius)
 const INERT_MARK_BAR_H: f32 = 0.6; // LITERAL-PX-OK: bar height (fraction of radius)
 const INERT_MARK_DOT_Y: f32 = 0.5; // LITERAL-PX-OK: dot centre below centre (fraction of radius)
+const INERT_MARK_DOT_R: f32 = 0.55; // LITERAL-PX-OK: dot radius as a fraction of the bar width
 
 /// Draw the ⚠ inert-warning badge (ADR-0155) on a node the diagnoser found semantically
 /// dead: a `Danger` disc with a `Text1` exclamation, on the card's top-left corner. `None`
@@ -38,5 +39,11 @@ pub(super) fn draw_inert_badge(ctx: &mut PaintCtx, n: &GraphNodeView, view: &Vie
         r * INERT_MARK_BAR_H,
     );
     fill_rounded_rect(ctx.scene, bar, bw * 0.5, mark);
-    fill_circle(ctx.scene, cx, cy + r * INERT_MARK_DOT_Y, bw * 0.55, mark);
+    fill_circle(
+        ctx.scene,
+        cx,
+        cy + r * INERT_MARK_DOT_Y,
+        bw * INERT_MARK_DOT_R,
+        mark,
+    );
 }

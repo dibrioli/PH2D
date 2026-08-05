@@ -216,6 +216,7 @@ pub(super) fn populate_player(store: &mut WidgetStore) {
             ids::INSP_PLAYER_REMOVE,
             ids::INSP_PLAYER_FIT,
             ids::INSP_PLAYER_CLEAR_RUN,
+            ids::INSP_PLAYER_FIT_CROUCH,
         ],
     );
     // ⚠️ **As DICAS saem da MESMA tabela que o pintor lê** (W9, Enio: *"precisamos

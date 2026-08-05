@@ -192,3 +192,71 @@ fn the_two_w10_assists_land_on_the_component_and_are_clamped() {
     let clamped = build_player_info(&sim, bits, 0.0).unwrap();
     assert_eq!((clamped.corner_reach, clamped.lift_momentum), (0.0, 0.0));
 }
+
+/// **O `Fit Crouch` semeia a altura agachada pelo MESMO piso da perna de pé**
+/// (W18).
+///
+/// ⚠️ **A mesma função, e é o desenho inteiro:** o piso é da FORMA e da rampa, não
+/// de qual perna está em uso. Uma segunda fórmula para a de baixo divergiria no
+/// dia em que a caixa ganhasse a dela.
+///
+/// ⚠️ **A PERNA DE PÉ é deliberadamente ALTA na fixture, e é isso que dá dentes
+/// ao gate.** A primeira versão fazia `FitFloatHeight` antes, então a perna já
+/// estava no valor ajustado — e *"semear do piso"* e *"copiar a perna de pé"*
+/// davam **o mesmo número**: a mutação `p.crouch_height = p.float_height`
+/// **sobreviveu**, sobre um gate escrito exatamente para a pegar. Com a perna em
+/// `1,50` as duas respostas ficam a um metro de distância.
+///
+/// ⚠️ **Mutações medidas:** `p.float_height` no lugar do `fitted_float` dá `1,500`
+/// contra os `0,600` do piso; e um `fitted_float` sem o `min` deixa o agachar
+/// passar da perna (gate irmão).
+#[test]
+fn fitting_the_crouch_seeds_it_from_the_floor_not_from_the_standing_leg() {
+    let (mut sim, bits) = body(BodyKind::Dynamic, CAPSULE);
+    apply_player_edit(&mut sim, bits, PlayerFieldEdit::Add);
+    // Uma perna de pé BEM acima do que o piso pede — a premissa que separa as
+    // duas respostas possíveis.
+    apply_player_edit(&mut sim, bits, PlayerFieldEdit::FloatHeight(1.50));
+    apply_player_edit(&mut sim, bits, PlayerFieldEdit::CrouchHeight(0.10));
+
+    apply_player_edit(&mut sim, bits, PlayerFieldEdit::FitCrouchHeight);
+    let info = build_player_info(&sim, bits, 0.0).unwrap();
+
+    assert!(
+        info.crouch_height > info.min_float_height,
+        "o Fit deixou o agachar ABAIXO do piso ({:.3} <= {:.3}): e' exatamente o \
+         estado que ele existe para consertar",
+        info.crouch_height,
+        info.min_float_height
+    );
+    assert!(
+        info.crouch_height < info.float_height * 0.5,
+        "o Fit copiou a PERNA DE PE ({:.3} contra {:.3}) em vez de derivar o piso -- \
+         um agachar que nao agacha",
+        info.crouch_height,
+        info.float_height
+    );
+}
+
+/// **E o `Fit Crouch` nunca passa da perna de pé** — a metade que só morde numa
+/// cápsula cujo piso já está acima da altura autorada.
+///
+/// ⚠️ Sem o `min`, um corpo gordo (piso alto) com uma perna curta receberia um
+/// agachar mais alto do que estar em pé, e o `crouch_step` passaria a LEVANTAR o
+/// personagem quando ele segurasse BAIXO.
+#[test]
+fn a_fitted_crouch_never_rises_above_the_standing_leg() {
+    let (mut sim, bits) = body(BodyKind::Dynamic, CAPSULE);
+    apply_player_edit(&mut sim, bits, PlayerFieldEdit::Add);
+    // Uma perna deliberadamente MAIS CURTA que o piso da forma.
+    apply_player_edit(&mut sim, bits, PlayerFieldEdit::FloatHeight(0.20));
+    apply_player_edit(&mut sim, bits, PlayerFieldEdit::CrouchHeight(0.10));
+    apply_player_edit(&mut sim, bits, PlayerFieldEdit::FitCrouchHeight);
+    let info = build_player_info(&sim, bits, 0.0).unwrap();
+    assert!(
+        info.crouch_height <= info.float_height,
+        "o agachar ({:.3}) passou da perna de pe ({:.3})",
+        info.crouch_height,
+        info.float_height
+    );
+}

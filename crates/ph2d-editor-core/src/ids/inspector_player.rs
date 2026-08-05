@@ -30,6 +30,22 @@ pub const INSP_LIVE_PLAYER_COLOR: NodeId = hash_node_id("insp_live_player_color"
 pub const INSP_PLAYER_ADD: NodeId = hash_node_id("insp_player_add");
 /// O gesto oposto — devolve o corpo a um corpo comum.
 pub const INSP_PLAYER_REMOVE: NodeId = hash_node_id("insp_player_remove");
+/// **Fit Crouch to Collider** (W18) — o espelho exato do [`INSP_PLAYER_FIT`], uma
+/// perna mais curta abaixo.
+///
+/// ⚠️ **O defeito que ele resolve foi MEDIDO e não é o que a nota da W15 dizia.**
+/// Ela previa *"o corpo enterrado"*; o corpo **não enterra — ele SATURA**. O
+/// solver segura a cápsula tangente com 1 mm de folga (o
+/// `normalized_allowed_linear_error`), a pose fica **perfeitamente estável**, e o
+/// que acontece de verdade é o slider ficar **MORTO**: numa rampa de 45° (piso
+/// `0,583`) autorar `0,50` dá folga `0,059` e autorar `0,30` dá `0,058` — duzentos
+/// milímetros de curso, **um milímetro** de resposta, e nada na tela a dizer por
+/// quê.
+///
+/// ⚠️ **Oferecido só com o agachar ARMADO** (`crouch_height > 0`): em zero a
+/// capacidade está desligada e não há defeito nenhum, e um botão que a ligasse
+/// pelas costas conflataria dois gestos.
+pub const INSP_PLAYER_FIT_CROUCH: NodeId = hash_node_id("insp_player_fit_crouch");
 /// **Descartar a CORRIDA GRAVADA** (W17) — a fita de entrada do jogador.
 ///
 /// ⚠️ **Ele é a metade visível inteira da persistência, e a AUSÊNCIA dele é o

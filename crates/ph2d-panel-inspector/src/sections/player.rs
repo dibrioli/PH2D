@@ -281,9 +281,9 @@ pub(crate) const fn player_row_count() -> usize {
     n
 }
 
-/// As dicas dos quatro BOTÕES da seção — a mesma lei das rows, num lugar onde não
+/// As dicas dos cinco BOTÕES da seção — a mesma lei das rows, num lugar onde não
 /// cabe uma tupla de row.
-pub(crate) const PLAYER_BUTTON_TIPS: [(ph2d_a11y::NodeId, &str); 4] = [
+pub(crate) const PLAYER_BUTTON_TIPS: [(ph2d_a11y::NodeId, &str); 5] = [
     (
         ids::INSP_PLAYER_ADD,
         "Turn this body into a walking, jumping character.",
@@ -299,6 +299,10 @@ pub(crate) const PLAYER_BUTTON_TIPS: [(ph2d_a11y::NodeId, &str); 4] = [
     (
         ids::INSP_PLAYER_CLEAR_RUN,
         "Throw away the recorded run. Playing with Physics on records a new one.",
+    ),
+    (
+        ids::INSP_PLAYER_FIT_CROUCH,
+        "Set Crouch Height to the lowest this body can really float at.",
     ),
 ];
 
@@ -403,6 +407,42 @@ pub(crate) fn paint_player_section(
             );
         paint_button(&btn, rect, scene, text_system, theme);
         hit_index.register(ids::INSP_PLAYER_FIT, rect);
+        yy += h + Spacing::Sm.px();
+    }
+
+    // **O MESMO piso, uma perna abaixo** (W18) — o espelho exato do botão acima,
+    // e ele existe porque o card do AGACHAR não tinha controle nenhum que
+    // resolvesse o número.
+    //
+    // ⚠️ **O defeito é medido e não é o que a nota da W15 previa.** Ela dizia *"o
+    // corpo enterrado"*; ele **não enterra, ele SATURA** — o solver o segura
+    // tangente com 1 mm de folga, a pose fica perfeitamente estável, e o que
+    // acontece é o slider ficar **MORTO**: numa rampa de 45° (piso `0,583`)
+    // autorar `0,50` dá folga `0,059` e autorar `0,30` dá `0,058`. Duzentos
+    // milímetros de curso, um milímetro de resposta, e nada na tela.
+    //
+    // ⚠️ **Só com o agachar ARMADO:** em zero a capacidade está desligada e não há
+    // defeito nenhum — e um botão que a ligasse pelas costas conflataria *dar um
+    // agachar* com *consertar o que ele mede*.
+    if info.min_float_known && info.crouch_height > 0.0 {
+        let label = if info.crouch_height <= info.min_float_height {
+            format!(
+                "Fit Crouch to Collider (needs > {:.2} m)",
+                info.min_float_height
+            )
+        } else {
+            "Fit Crouch to Collider".to_string()
+        };
+        let rect = Rect::new(x, yy, w, h);
+        let btn = Button::new(ids::INSP_PLAYER_FIT_CROUCH, &label)
+            .kind(ButtonKind::Default)
+            .state(
+                store
+                    .button_state(ids::INSP_PLAYER_FIT_CROUCH)
+                    .unwrap_or(ButtonState::Normal),
+            );
+        paint_button(&btn, rect, scene, text_system, theme);
+        hit_index.register(ids::INSP_PLAYER_FIT_CROUCH, rect);
         yy += h + Spacing::Sm.px();
     }
 

@@ -507,7 +507,7 @@ fn every_player_control_carries_a_hover_hint() {
     set_current_inspector_player(None);
     assert_eq!(
         checked,
-        ph2d_panel_inspector::PLAYER_ROW_COUNT + 4,
+        ph2d_panel_inspector::PLAYER_ROW_COUNT + 5,
         // ⚠️ **Os botões são um LITERAL de propósito, e as rows não.** O
         // `PLAYER_ROW_COUNT` é contado da mesma tabela que o pintor itera, então
         // ele viaja junto; os botões o pintor escreve à mão, um a um (é o que o
@@ -515,7 +515,7 @@ fn every_player_control_carries_a_hover_hint() {
         // número da tabela de DICAS o tornaria um oráculo auto-referente —
         // encolher a tabela encolheria a lista percorrida E a expectativa, e o
         // botão sem dica passaria.
-        "a varredura tem de cobrir todos os numeros E os QUATRO botoes"
+        "a varredura tem de cobrir todos os numeros E os CINCO botoes"
     );
 }
 
@@ -618,5 +618,80 @@ fn the_clear_run_button_appears_only_when_a_run_exists() {
         &click_real(with_run, ids::INSP_PLAYER_CLEAR_RUN),
         PlayerFieldEdit::ClearRun,
         "Clear Recorded Run",
+    );
+}
+
+/// **O `Fit Crouch` existe SÓ com o agachar armado, e o piso vai no ROTULO**
+/// (W18).
+///
+/// ⚠️ **Três estados, e o do meio é o que a wave entrega:** desligado (`0`) não há
+/// botão — não há defeito a consertar e um botão que ligasse a capacidade pelas
+/// costas conflataria dois gestos; ARMADO E ABAIXO do piso é onde o defeito vive
+/// (o slider está morto, e nada na tela diz por quê); armado e acima, o botão
+/// segue lá com o rótulo curto, como o `Fit to Collider` da perna de pé.
+///
+/// ⚠️ O gate **não lê o texto** (o painel não o publica) — ele afirma as
+/// presenças, que é a metade que decide se o artista tem por onde descobrir o
+/// número.
+#[test]
+fn the_crouch_fit_button_appears_only_when_the_crouch_is_armed() {
+    // Desligado: nenhum botão.
+    let off = InspectorPlayerInfo {
+        crouch_height: 0.0,
+        ..player()
+    };
+    assert!(
+        !painted(off)
+            .iter()
+            .any(|(n, _)| *n == ids::INSP_PLAYER_FIT_CROUCH),
+        "o agachar esta' DESLIGADO e o botao de ajuste foi pintado sobre nada"
+    );
+
+    // Armado e abaixo do piso — o estado que a wave existe para nomear.
+    let buried = InspectorPlayerInfo {
+        crouch_height: 0.30,
+        min_float_height: 0.58,
+        min_float_known: true,
+        ..player()
+    };
+    expect(
+        &click_real(buried, ids::INSP_PLAYER_FIT_CROUCH),
+        PlayerFieldEdit::FitCrouchHeight,
+        "Fit Crouch to Collider",
+    );
+
+    // Armado e acima: o botão fica, com o rótulo curto.
+    let fine = InspectorPlayerInfo {
+        crouch_height: 0.80,
+        min_float_height: 0.58,
+        min_float_known: true,
+        ..player()
+    };
+    assert!(
+        painted(fine)
+            .iter()
+            .any(|(n, _)| *n == ids::INSP_PLAYER_FIT_CROUCH),
+        "com o agachar acima do piso o ajuste sumiu -- ele continua sendo o gesto \
+         que responde *quao fundo este corpo consegue agachar*"
+    );
+}
+
+/// **E uma forma sem piso computável não ganha o ajuste** — o irmão exato do
+/// `a_shape_without_a_known_floor_gets_no_fit_button`.
+///
+/// Uma CAIXA tem outra fórmula (`half_y + half_x·tan θ`), e oferecer um ajuste
+/// que não sabe para onde ajustar é pior que não o oferecer.
+#[test]
+fn a_shape_without_a_known_floor_gets_no_crouch_fit_either() {
+    let boxed = InspectorPlayerInfo {
+        crouch_height: 0.30,
+        min_float_known: false,
+        ..player()
+    };
+    assert!(
+        !painted(boxed)
+            .iter()
+            .any(|(n, _)| *n == ids::INSP_PLAYER_FIT_CROUCH),
+        "uma caixa recebeu um ajuste de agachar que nao sabe para onde ajustar"
     );
 }

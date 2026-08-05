@@ -114,6 +114,10 @@ pub enum PlayerFieldEdit {
     /// Semeia a `float_height` a partir da forma do collider (o botão
     /// **Fit to Collider**).
     FitFloatHeight,
+    /// Semeia a `crouch_height` pelo MESMO piso, uma perna abaixo (o botão
+    /// **Fit Crouch to Collider**, W18) — *o agachar mais fundo que este corpo
+    /// consegue de fato fazer*.
+    FitCrouchHeight,
     /// **Descarta a corrida gravada** (W17) — a fita de entrada do jogador.
     ///
     /// ⚠️ **O único verbo desta lista que NÃO é uma escrita de componente**, e

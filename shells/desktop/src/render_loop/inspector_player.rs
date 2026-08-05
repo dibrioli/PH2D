@@ -166,6 +166,20 @@ pub(crate) fn apply_player_edit(sim: &mut SimWorld, entity_bits: u64, edit: Play
                 p.float_height = fit;
             }
         }
+        // ⚠️ **A MESMA função, e é o desenho inteiro** (W18): o piso é da FORMA e
+        // da rampa, não de qual perna está em uso — as duas alturas de flutuação
+        // são a mesma grandeza, e uma segunda fórmula para a de baixo divergiria
+        // no dia em que a caixa ganhasse a dela.
+        //
+        // ⚠️ E ele **não pode passar da altura de pé**: um agachar mais alto que
+        // estar em pé não é um agachar. Só morde numa cápsula cujo piso já esteja
+        // acima da perna autorada — e nesse caso o número honesto é a própria
+        // perna, porque o corpo não desce mesmo.
+        PlayerFieldEdit::FitCrouchHeight => {
+            if let Some(fit) = fitted_float(shape, p.max_slope_deg) {
+                p.crouch_height = fit.min(p.float_height);
+            }
+        }
         PlayerFieldEdit::FloatHeight(v) => p.float_height = v.max(0.0),
         PlayerFieldEdit::ClingDistance(v) => p.cling_distance = v.max(0.0),
         PlayerFieldEdit::SpringStrength(v) => p.spring_strength = v.max(0.0),

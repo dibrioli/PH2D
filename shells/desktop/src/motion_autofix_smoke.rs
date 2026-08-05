@@ -15,6 +15,15 @@
 //! integrador que já está ali (não insere um segundo): a força vira o ramo de forças,
 //! e os pontos passam a DERIVAR. Um Ctrl+Z reverte só o reorder.
 //!
+//! **`=7` (A FORMA APROPRIADA):** a cena que o artista montou — `The Shape (estrela) ->
+//! duplicator.shape` + `Boids -> duplicator.points` (com o `pre` self-loop) + `duplicator
+//! -> oscillator -> output`. O Boids é uma FONTE COM ESTADO: lê o próprio `P` do frame
+//! anterior pelo self-loop e semeia a nuvem sozinho, então NÃO precisa de fonte a
+//! montante. Antes desta correção o diagnoser o marcava com um `MissingSource("P")` FALSO
+//! (ele lê `P` mas não tem aresta não-delayed entrando); agora `seeds_own_state` (o
+//! self-loop delayed, sinal que um deformer nunca carrega) o isenta. 48 estrelas nítidas
+//! voando em bando e ondulando, com ZERO badge.
+//!
 //! **`=3` (O BADGE + QUICK-FIX, ADR-0155 W3):** dois setups inertes montados SEM gesto
 //! construtivo — nada auto-corrige sozinho. Cada nó ganha o pip ⚠: `grid -> force.wind
 //! -> output` (a força escreve `accel` que nada consome) e `grid -> pin -> output` (a
@@ -32,7 +41,9 @@ use ph2d_panel_motion_graph::GraphIntent;
 /// família `falloff` + o toggle "Node Help" que liga/desliga o sistema inteiro; `5` aviso
 /// de requisito-a-montante (um deformer/força SEM fonte de pontos); `6` aviso de porta
 /// obrigatória (um `motion.duplicator` sem a entrada `points`). Os avisos `4` e `5` vêm
-/// por DERIVAÇÃO; o `6` por DECLARAÇÃO opt-in (required-vs-opcional é semântico).
+/// por DERIVAÇÃO; o `6` por DECLARAÇÃO opt-in (required-vs-opcional é semântico). `7` é a
+/// FORMA APROPRIADA: a cena Shape × Boids → Oscillator → Output, agora SEM o ⚠ falso na
+/// fonte-com-estado (a isenção `seeds_own_state`).
 fn mode() -> u32 {
     static M: std::sync::OnceLock<u32> = std::sync::OnceLock::new();
     *M.get_or_init(|| {
@@ -499,7 +510,10 @@ impl crate::App {
                      e o badge some."
                 );
             }
-            _ => {}
+            // =7 (A FORMA APROPRIADA): a cena da foto (Shape × Boids -> Oscillator ->
+            // Output) sem o ⚠ falso na fonte-com-estado. O corpo mora no irmão
+            // motion_autofix_smoke_appropriate.rs (teto de 600 LOC do shell).
+            _ => self.motion_autofix_smoke_appropriate(mode(), f),
         }
     }
 }

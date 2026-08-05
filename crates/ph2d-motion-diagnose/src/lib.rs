@@ -38,14 +38,21 @@
 //! The mirror analysis is [`REQUIRED_UPSTREAM`]: a column a node READS to do its job
 //! (`P` — a deformer/force with no points is a silent no-op). A reader of one with
 //! NOTHING wired into it is source-less, reported a [`Deficit::MissingSource`] OFFER —
-//! WHICH source (grid / emitter / object) is a creative choice, never guessed. A source
-//! is a pure `Write` binding, which does not [`reads`](ColumnAccess::reads); a
-//! re-producer (a deformer's `ReadWrite` on `P`) READS it, so it needs one upstream —
-//! the same re-producer rule the produces/consumes analysis rests on, on the
-//! required-upstream axis. The test is "no incoming edge at all", not a port index or a
-//! backward source-search: a P-reader with nothing wired is unambiguously source-less
-//! (zero false positives), and a reader that IS fed is left alone — the safe,
-//! under-warning direction the "Node Help" toggle backstops.
+//! WHICH source (grid / emitter / object) is a creative choice, never guessed. TWO kinds
+//! of node are NOT source-less. A pure `Write` generator (grid / emitter) does not
+//! [`reads`](ColumnAccess::reads), so it is never judged to need a column upstream. A
+//! STATEFUL source — a simulation (`boids` / `verlet_rope` / `soft_body` / `spring` /
+//! `integrate`) — DOES `reads()` `P` (a `ReadWrite` binding), but the `P` it reads is its
+//! OWN previous frame, arriving through the `pre` self-loop, and it MINTS the initial
+//! cloud itself (its `seed` on tick 0); it is exempt via [`seeds_own_state`] — a DELAYED
+//! self-loop, the derivable signal a deformer never carries. A re-producer that genuinely
+//! needs an upstream stream (a deformer's `ReadWrite` on `P`, read from its DATA port with
+//! no self-loop) READS it and is left to warn — the same re-producer rule the
+//! produces/consumes analysis rests on, on the required-upstream axis. The test is "no
+//! non-delayed incoming edge AND no `pre` self-loop", not a port index or a backward
+//! source-search: a P-reader with neither is unambiguously source-less, and a reader that
+//! IS fed (or self-seeds) is left alone — the safe, under-warning direction the
+//! "Node Help" toggle backstops.
 //!
 //! The per-PORT twin is [`Deficit::MissingInput`]: a node declares an input port REQUIRED
 //! (`NodeRegistry::required_inputs`, e.g. `motion.duplicator`'s `shape`/`points`) and that
@@ -239,10 +246,32 @@ fn missing_upstream(
     if has_input(graph, node) {
         return None; // fed: not source-less (the safe, under-warning direction)
     }
+    if seeds_own_state(graph, node) {
+        // A stateful source (boids/verlet/soft-body/spring/integrate) reads its OWN
+        // previous `P` through the `pre` self-loop and mints the initial cloud itself —
+        // not source-less, even though it `reads()` `P`. The self-loop is the derivable
+        // signal a deformer (which genuinely needs an upstream stream) never carries.
+        return None;
+    }
     REQUIRED_UPSTREAM
         .iter()
         .copied()
         .find(|&col| reads_column(reg, ty, col))
+}
+
+/// Does `node` seed its OWN state — feed one of its own input ports from its own output
+/// via a DELAYED edge (the `pre` self-loop of a stateful simulation source:
+/// `motion.integrate` / `spring` / `boids` / `verlet_rope` / `soft_body`)? Such a node
+/// READS `P` (a `ReadWrite` binding on the feedback port), but the `P` it reads is its OWN
+/// previous frame and it mints the initial cloud itself, so it is NOT source-less. A
+/// deformer carries no self-loop — only a stateful sim node does — so this is the signal
+/// that separates a self-seeding source from a P-reader that genuinely needs an upstream
+/// stream.
+fn seeds_own_state(graph: &Graph, node: NodeId) -> bool {
+    graph
+        .edges()
+        .iter()
+        .any(|e| e.delayed && e.from.0 == node && e.to.0 == node)
 }
 
 /// Does `ty` READ `col` on its input — a deformer/force that needs the column present to
@@ -464,5 +493,99 @@ mod tests {
                 "no registered node reads `{col}` — REQUIRED_UPSTREAM names a column nothing needs"
             );
         }
+    }
+
+    /// **A stateful source that seeds its own state is NOT source-less** — the false
+    /// positive the diagnoser shipped on the flock. `motion.boids` READS `P` (a
+    /// `ReadWrite` binding on its `state` port), but the `P` it reads is its OWN previous
+    /// frame, arriving through the `pre` self-loop (`out --pre--> state`) the editor
+    /// auto-plumbs, and it MINTS the initial cloud itself. It has no non-delayed input by
+    /// design (the flock has no upstream source), so the naive "reads `P` + no incoming
+    /// edge = source-less" rule would flag a graph that WORKS. [`seeds_own_state`] (the
+    /// delayed self-loop, a signal a deformer never carries) exempts it. FALSIFIED two
+    /// ways: removing the exemption makes the wired boids get a spurious
+    /// [`Deficit::MissingSource`]; an over-broad exemption that always fires stops the
+    /// positive control (a bare boids, no self-loop) from being flagged.
+    #[test]
+    fn a_stateful_source_that_seeds_its_own_state_is_not_source_less() {
+        use ph2d_nodegraph::graph::Edge;
+        let mut reg = NodeRegistry::new();
+        ph2d_node_registry_init::register_all_nodes(&mut reg).expect("register all nodes");
+
+        // The boids WITH its `pre` self-loop (exactly what the editor builds): the flock
+        // seeds and reads its own state, so it is NOT source-less — zero diagnostics.
+        let mut g = Graph::new();
+        let boids = g.add_node("motion.boids");
+        g.connect(Edge {
+            from: (boids, 0),
+            to: (boids, 2),
+            delayed: true,
+        })
+        .expect("boids pre self-loop");
+        let out = g.add_node("motion.output");
+        g.connect(Edge {
+            from: (boids, 0),
+            to: (out, 0),
+            delayed: false,
+        })
+        .expect("boids -> output");
+        let diags = diagnose(&g, &reg);
+        assert!(
+            diags.is_empty(),
+            "a self-seeding simulation source must not be flagged source-less: {diags:?}"
+        );
+
+        // Positive control: the SAME node WITHOUT its self-loop IS source-less — the
+        // exemption is gated on the `pre` self-loop, not on the node type (an over-broad
+        // exemption that always fired would silence this too).
+        let mut bare = Graph::new();
+        let b = bare.add_node("motion.boids");
+        let o = bare.add_node("motion.output");
+        bare.connect(Edge {
+            from: (b, 0),
+            to: (o, 0),
+            delayed: false,
+        })
+        .expect("boids -> output");
+        let d2 = diagnose(&bare, &reg);
+        assert!(
+            d2.iter().any(|d| d.deficit == Deficit::MissingSource("P")),
+            "a P-reader with no self-loop and no input is genuinely source-less: {d2:?}"
+        );
+    }
+
+    /// **The appropriate flock-stamp graph is clean** — the exact scene of the fix
+    /// (`PH2D_AUTOFIX_SMOKE=7`): `source.shape (Star) -> duplicator.shape`, `boids ->
+    /// duplicator.points` (with its `pre` self-loop), `duplicator -> oscillator ->
+    /// output`. Headless proof (the smoke needs a window) that NO node warns — the
+    /// stateful `boids` is exempt, and `source.shape` / `duplicator` / `oscillator`
+    /// carry no spurious deficit either. FALSIFIED by the same `seeds_own_state`
+    /// mutation (the boids gets a spurious `MissingSource`), so the scene the artist
+    /// runs stays pinned green.
+    #[test]
+    fn the_appropriate_flock_stamp_graph_is_clean() {
+        use ph2d_nodegraph::graph::Edge;
+        let mut reg = NodeRegistry::new();
+        ph2d_node_registry_init::register_all_nodes(&mut reg).expect("register all nodes");
+        let mut g = Graph::new();
+        let shape = g.add_node("source.shape");
+        let boids = g.add_node("motion.boids");
+        let dup = g.add_node("motion.duplicator");
+        let osc = g.add_node("motion.oscillator");
+        let out = g.add_node("motion.output");
+        for (from, to, delayed) in [
+            ((boids, 0), (boids, 2), true), // the `pre` self-loop
+            ((shape, 0), (dup, 0), false),  // shape -> duplicator.shape
+            ((boids, 0), (dup, 1), false),  // boids -> duplicator.points
+            ((dup, 0), (osc, 0), false),
+            ((osc, 0), (out, 0), false),
+        ] {
+            g.connect(Edge { from, to, delayed }).expect("connect");
+        }
+        let diags = diagnose(&g, &reg);
+        assert!(
+            diags.is_empty(),
+            "the appropriate flock-stamp graph must warn nowhere: {diags:?}"
+        );
     }
 }

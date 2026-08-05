@@ -207,6 +207,7 @@ mod mask_smoke;
 mod morph_fade_smoke;
 mod morph_live;
 mod motion_autofix_smoke;
+mod motion_autofix_smoke_appropriate;
 mod motion_delay_smoke;
 mod motion_flip_bake;
 mod motion_fx_smoke;

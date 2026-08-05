@@ -36,9 +36,22 @@ use ph2d_ecs::{
     ChildOf, Children, Entity, FlipObjectRef, GroupedChildren, Name, SimWorld, Transform,
     VecPathRef, With,
 };
+use ph2d_eval_motion::VectorInstance;
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::Cook;
 use ph2d_render::{RenderInstance, Sprite, SpriteSource, TextureAtlas};
+
+// The LOD partition (the 160k freeze fix) lives in a sibling FILHO via `#[path]`
+// so this parent stays under the shell LOC cap; the re-export keeps
+// `objects::apply_object_lod` / `objects::LOD_COUNT` resolving unchanged.
+#[path = "motion_bridge_objects_lod.rs"]
+mod lod;
+pub(crate) use lod::{LOD_COUNT, apply_object_lod};
+// The faithful VectorInstance→tile conversion is exercised only by the gate
+// `the_lod_tile_lands_exactly_where_the_crisp_vector_would` (the partition uses it
+// internally); re-exported for the tests' `use super::*` alone.
+#[cfg(test)]
+pub(crate) use lod::vector_instance_as_tile;
 
 use crate::motion_flip_bake::FlipTile;
 use crate::motion_object_bake::ObjectVector;
@@ -461,12 +474,14 @@ pub(crate) fn bake_objects(
     xforms: &ph2d_vec_scene::VecXforms,
     live: &ph2d_vec_render::LiveGeometry,
     gpu: &ph2d_gpu::GpuContext,
+    renderer: &mut ph2d_render::SpriteRenderer,
     surface_format: wgpu::TextureFormat,
     sim: &SimWorld,
 ) {
     // `object_bake` and `shape_store` are disjoint fields of `MotionState`: the store
     // the vector `encode` reads is where the live geometry is parked (→ `geometry_id`),
-    // so there is ONE store for `source.shape` AND `source.object` vectors.
+    // so there is ONE store for `source.shape` AND `source.object` vectors. `renderer`
+    // is where the LOD tile is uploaded (→ `texture_id`), refcounted.
     let MotionState {
         object_bake,
         shape_store,
@@ -479,6 +494,7 @@ pub(crate) fn bake_objects(
         xforms,
         live,
         gpu,
+        renderer,
         surface_format,
         sim,
     );

@@ -166,31 +166,39 @@ pub(crate) fn publish(motion: &mut MotionState) {
 /// instance's `geometry_id` names a stored `VecPath`; its world pose (`P`, `basis`,
 /// `size`) composes with the world→screen `cam` into the draw transform, and its
 /// `tint` paints it — so one stored path serves N differently-tinted copies.
+///
+/// ⚠️ **N instances of ONE geometry pay ONE tessellation, not N** — the 160k-star
+/// freeze (report 2026-08-05). This is a thin adapter over the crate's batch door
+/// [`ph2d_vec_render::draw_shared_instances`], which caches the tessellated
+/// `BezPath` per `geometry_id` for the frame (gated by build-count there). The
+/// shell only maps `VectorInstance → (handle, transform, tint)` and hands the store
+/// as the resolver.
 pub(crate) fn encode(
     insts: &[VectorInstance],
     store: &VecPathStore,
     cam: Affine,
     scene: &mut VectorScene,
 ) {
-    for inst in insts {
-        let Some(path) = store.get(inst.geometry_id) else {
-            continue; // a handle with no stored geometry (a forward cook) draws nothing
-        };
-        let [b0, b1, b2, b3] = inst.basis;
-        let [sx, sy] = inst.size;
-        let [px, py] = inst.world_pos;
-        // world pose = translate(P) · R(basis) · scale(size); kurbo Affine coeffs
-        // [a,b,c,d,e,f] = matrix [[a,c,e],[b,d,f]] ⇒ linear = R·S, translation = P.
-        let pose = Affine::new([
-            f64::from(b0 * sx),
-            f64::from(b1 * sx),
-            f64::from(b2 * sy),
-            f64::from(b3 * sy),
-            f64::from(px),
-            f64::from(py),
-        ]);
-        ph2d_vec_render::draw_shape_instance(path, cam * pose, inst.tint, scene);
-    }
+    ph2d_vec_render::draw_shared_instances(
+        insts.iter().map(|inst| {
+            let [b0, b1, b2, b3] = inst.basis;
+            let [sx, sy] = inst.size;
+            let [px, py] = inst.world_pos;
+            // world pose = translate(P) · R(basis) · scale(size); kurbo Affine coeffs
+            // [a,b,c,d,e,f] = matrix [[a,c,e],[b,d,f]] ⇒ linear = R·S, translation = P.
+            let pose = Affine::new([
+                f64::from(b0 * sx),
+                f64::from(b1 * sx),
+                f64::from(b2 * sy),
+                f64::from(b3 * sy),
+                f64::from(px),
+                f64::from(py),
+            ]);
+            (inst.geometry_id, cam * pose, inst.tint)
+        }),
+        |handle| store.get(handle),
+        scene,
+    );
 }
 
 #[cfg(test)]

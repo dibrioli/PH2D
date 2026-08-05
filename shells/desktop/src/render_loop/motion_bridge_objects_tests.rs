@@ -186,9 +186,10 @@ fn an_unnamed_group_child_resolves_by_its_drawing_id() {
         .id();
 
     // Bakes seeded under those drawing ids, as a real (id-keyed) bake does: the
-    // vector carries a LIVE handle (geometry_id 70), the Flip a baked texture_id 90.
+    // vector carries a LIVE handle (geometry_id 70) AND a LOD tile (texture_id 700 —
+    // used only above the count threshold, post-cook), the Flip a baked texture_id 90.
     let mut vbake = crate::motion_object_bake::ObjectBake::default();
-    vbake.seed_for_test(7, 70, [2.0, 1.0]);
+    vbake.seed_for_test(7, 70, 700, [2.0, 1.0]);
     let mut fbake = crate::motion_flip_bake::FlipObjectBake::default();
     fbake.seed_for_test(9, 90, [3.0, 4.0]);
 
@@ -273,4 +274,152 @@ fn the_named_group_predicate_matches_the_group_walk() {
         up, down,
         "the up-walk == the down-walk subtree (single door)"
     );
+}
+
+// ── LOD (the freeze fix, ADR-0154 follow-up): a live vector stamped past the count
+// knee renders as a GPU-instanced tile instead of a crisp per-instance vector ──────
+
+/// A `VectorInstance` at `(x,0)`, identity pose, white, for geometry `gid`.
+#[cfg(test)]
+fn lod_vi(gid: u32, x: f32) -> VectorInstance {
+    VectorInstance {
+        geometry_id: gid,
+        world_pos: [x, 0.0],
+        size: [1.0, 1.0],
+        basis: [1.0, 0.0, 0.0, 1.0],
+        tint: [1.0, 1.0, 1.0, 1.0],
+    }
+}
+
+/// **The freeze-killer, per-geometry.** A geometry stamped MORE than the threshold
+/// (with a baked tile) is moved to `instances` as GPU-instanced tile quads; a
+/// geometry at/below stays crisp in `vector_instances`. RED-first: with no LOD the
+/// high-count geometry stays a crisp vector (the 160k freeze). Two geometries in one
+/// buffer prove the decision is PER-GEOMETRY, not per-buffer.
+#[test]
+fn a_high_count_geometry_becomes_tiles_a_low_count_one_stays_crisp() {
+    let mut bake = crate::motion_object_bake::ObjectBake::default();
+    bake.seed_for_test(1, 5, 500, [1.0, 1.0]); // gid 5 → tile 500
+    bake.seed_for_test(2, 6, 600, [1.0, 1.0]); // gid 6 → tile 600
+    // gid 5 stamped 6×, gid 6 stamped 2×; threshold 3.
+    let mut vectors = vec![
+        lod_vi(5, 0.0),
+        lod_vi(6, 1.0),
+        lod_vi(5, 2.0),
+        lod_vi(5, 3.0),
+        lod_vi(5, 4.0),
+        lod_vi(5, 5.0),
+        lod_vi(5, 6.0),
+        lod_vi(6, 7.0),
+    ];
+    let mut instances: Vec<RenderInstance> = Vec::new();
+    apply_object_lod(&mut instances, &mut vectors, &bake, 3);
+    assert_eq!(instances.len(), 6, "gid 5 (6 > 3) became GPU tiles");
+    assert!(
+        instances.iter().all(|i| i.texture_id == 500),
+        "the tiles sample gid 5's baked LOD texture"
+    );
+    assert_eq!(vectors.len(), 2, "only the low-count geometry stays crisp");
+    assert!(
+        vectors.iter().all(|v| v.geometry_id == 6),
+        "gid 6 (2 <= 3) stayed a crisp vector"
+    );
+}
+
+/// **The swap is FAITHFUL** — a tile lands EXACTLY where the crisp vector would. The
+/// LOD keeps `world_pos`/`size`/`basis` (rotation) / `tint` and only adds the tile
+/// texture + the individual-texture unit UV; every other field is the identity value
+/// `lower_to_instances_onto`'s `make` uses, so a converted tile is indistinguishable
+/// from a membrane-lowered one.
+#[test]
+fn the_lod_tile_lands_exactly_where_the_crisp_vector_would() {
+    let vi = VectorInstance {
+        geometry_id: 9,
+        world_pos: [3.5, -2.0],
+        size: [2.0, 0.5],
+        basis: [0.0, 1.0, -1.0, 0.0], // a 90° rotation — carried, not dropped
+        tint: [0.2, 0.4, 0.6, 0.8],
+    };
+    let tile = vector_instance_as_tile(&vi, 42);
+    assert_eq!(tile.world_pos, vi.world_pos, "same position");
+    assert_eq!(tile.size, vi.size, "same size");
+    assert_eq!(tile.basis, vi.basis, "same rotation basis");
+    assert_eq!(tile.tint, vi.tint, "same tint");
+    assert_eq!(tile.texture_id, 42, "sampling the object's LOD tile");
+    assert_eq!(
+        tile.atlas_uv,
+        [0.0, 0.0, 1.0, 1.0],
+        "the whole individual texture"
+    );
+    assert_eq!(tile.opacity, 1.0, "identity default (no opacity authoring)");
+    assert_eq!(tile.premultiplied, 0.0, "straight alpha (not pre-bake)");
+    assert_eq!(tile.clip_group, RenderInstance::CLIP_GROUP_NONE);
+}
+
+/// **Correctness before speed:** below the threshold, OR when no tile was baked, every
+/// instance stays crisp — the LOD never blanks a shape it cannot tile. The empty-bake
+/// arm is the guard that a swap-without-a-texture can never happen.
+#[test]
+fn below_threshold_or_without_a_tile_everything_stays_crisp() {
+    // (a) below threshold: 2 instances, threshold 3 → untouched.
+    let mut bake = crate::motion_object_bake::ObjectBake::default();
+    bake.seed_for_test(1, 5, 500, [1.0, 1.0]);
+    let mut vectors = vec![lod_vi(5, 0.0), lod_vi(5, 1.0)];
+    let mut instances: Vec<RenderInstance> = Vec::new();
+    apply_object_lod(&mut instances, &mut vectors, &bake, 3);
+    assert!(
+        instances.is_empty() && vectors.len() == 2,
+        "2 <= 3 stays crisp"
+    );
+    // (b) over the threshold but NO tile baked → must NOT blank; stays crisp.
+    let empty = crate::motion_object_bake::ObjectBake::default();
+    let mut vectors = vec![lod_vi(5, 0.0), lod_vi(5, 1.0), lod_vi(5, 2.0), lod_vi(5, 3.0)];
+    let mut instances: Vec<RenderInstance> = Vec::new();
+    apply_object_lod(&mut instances, &mut vectors, &empty, 3);
+    assert!(
+        instances.is_empty() && vectors.len() == 4,
+        "no tile ⇒ correctness before speed, all crisp"
+    );
+}
+
+/// The LOD's tile lookup: a seeded geometry resolves to its baked `texture_id`, and an
+/// unknown geometry to `None` — the wire the partition reads.
+#[test]
+fn tile_texture_for_gid_finds_the_baked_tile() {
+    let mut bake = crate::motion_object_bake::ObjectBake::default();
+    bake.seed_for_test(1, 5, 500, [1.0, 1.0]);
+    assert_eq!(bake.tile_texture_for_gid(5), Some(500));
+    assert_eq!(bake.tile_texture_for_gid(99), None, "an unbaked geometry");
+}
+
+/// **Sonda: o CUSTO da PARTIÇÃO do LOD** (report 2026-08-05) — o passo de CPU entre o cook e o
+/// desenho, agora que o render está resolvido (crisp cacheado abaixo do joelho, tile instanciado
+/// acima). `apply_object_lod` conta por `geometry_id` (BTreeMap), resolve a tile e MOVE as
+/// instâncias acima do joelho para `instances` como quads. É O(N); esta sonda mede se ele é um
+/// segundo freeze escondido (160k) ou custo insignificante — decide se há próxima alavanca.
+/// `cargo test -p ph2d-host-desktop --release the_lod_partition_cost -- --ignored --nocapture`
+#[test]
+#[ignore = "sonda manual de escala; rode em --release --nocapture"]
+fn the_lod_partition_cost_at_scale() {
+    use std::time::Instant;
+    let mut bake = crate::motion_object_bake::ObjectBake::default();
+    bake.seed_for_test(1, 5, 500, [1.0, 1.0]); // gid 5 → tile 500 (acima do joelho ⇒ tiles)
+    println!("\n=== PARTICAO DO LOD: apply_object_lod (ms/frame CPU) ===");
+    for &n in &[10_000usize, 40_000, 160_000] {
+        let iters = if n >= 100_000 { 10 } else { 40 };
+        // O caso do freeze: N instâncias de UMA geometria, todas acima do joelho ⇒ viram tiles.
+        let base: Vec<VectorInstance> = (0..n)
+            .map(|i| lod_vi(5, (i % 400) as f32 * 1.3))
+            .collect();
+        let t = Instant::now();
+        for _ in 0..iters {
+            let mut vectors = base.clone();
+            let mut instances: Vec<RenderInstance> = Vec::with_capacity(n);
+            apply_object_lod(&mut instances, &mut vectors, &bake, 3);
+            std::hint::black_box(&instances);
+        }
+        let ms = t.elapsed().as_secs_f64() * 1000.0 / iters as f64;
+        // O `.clone()` da entrada faz parte do laço; a partição pura é menor. Mede o teto.
+        println!("N={n:>7}  particao(+clone da entrada)={ms:>7.3} ms/frame");
+    }
 }

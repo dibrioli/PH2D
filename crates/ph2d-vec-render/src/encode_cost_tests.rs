@@ -192,6 +192,69 @@ fn an_open_subpath_forces_two_builds_but_still_one_cook() {
     );
 }
 
+/// **Um LOTE de N instâncias da MESMA geometria tessela UMA vez, não N** (ADR-0154 — o cache das
+/// 160k estrelas). É a propriedade de PERF de [`crate::draw_shared_instances`], e o oráculo é o
+/// CONTADOR de construções — exato, sem relógio: dois handles distintos, N instâncias cada, e o
+/// total de construções tem de ser **2** (uma por geometria), constante em N.
+///
+/// ⚠️ Mutação que tem de sangrar: re-tesselar por instância (o cache não disparar) ⇒ `2*N`
+/// construções. É o congelamento das 160k estrelas transformado num número.
+#[test]
+fn a_shared_batch_tessellates_each_geometry_once_not_per_instance() {
+    use ph2d_vec_scene::{Paint, Rgba8, StrokeSpec};
+    // Um vetor-documento fechado fill+stroke (o traço reusa o preenchimento ⇒ 1 construção) e um
+    // primitivo só-fill (1 construção). São DUAS geometrias, N instâncias de cada.
+    let star = {
+        let mut p = ph2d_vec_scene::star([0.0, 0.0], 0.5, 0.5, 5, 0.45);
+        p.fill = Some(Paint::solid(Rgba8::new(255, 170, 40, 255)));
+        p.stroke = Some(StrokeSpec::new(Rgba8::new(60, 40, 10, 255), 0.02));
+        p
+    };
+    let disc = ph2d_vec_scene::ellipse([0.0, 0.0], 0.4, 0.4);
+    let n = 50usize;
+    let items: Vec<(u32, Affine, [f32; 4])> = (0..n)
+        .flat_map(|i| {
+            [
+                (1u32, Affine::translate((i as f64, 0.0)), [1.0; 4]),
+                (2u32, Affine::translate((i as f64, 2.0)), [0.5; 4]),
+            ]
+        })
+        .collect();
+    let mut target = VectorScene::new();
+    let _ = counters::take(); // zera o que a montagem tenha contado
+    dispatch_batch(&star, &disc, &items, &mut target);
+    let (builds, cooks) = counters::take();
+    assert_eq!(
+        builds, 2,
+        "o lote tesselou por INSTANCIA ({}) em vez de por geometria (2) — o cache nao disparou",
+        2 * n
+    );
+    // O star coze via `path_tess` (com contador); o primitivo coze cru (sem contador) ⇒ 1.
+    assert_eq!(
+        cooks, 1,
+        "o cozimento tem de disparar UMA vez (o star), o primitivo coze sem contador"
+    );
+}
+
+/// Roteia o lote por [`crate::draw_shared_instances`] resolvendo handle 1 => star, 2 => disc. Um
+/// helper porque a closure de resolução é usada uma vez e o gate acima quer ficar legível.
+fn dispatch_batch(
+    star: &ph2d_vec_scene::VecPath,
+    disc: &ph2d_vec_scene::VecPath,
+    items: &[(u32, Affine, [f32; 4])],
+    target: &mut VectorScene,
+) {
+    crate::draw_shared_instances(
+        items.iter().copied(),
+        |h| match h {
+            1 => Some(star),
+            2 => Some(disc),
+            _ => None,
+        },
+        target,
+    );
+}
+
 /// Sonda: os três números que os gates acima comparam.
 /// `cargo test -p ph2d-vec-render --release measure_encode_by_style -- --ignored --nocapture`
 #[test]

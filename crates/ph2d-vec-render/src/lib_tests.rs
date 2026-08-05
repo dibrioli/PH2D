@@ -311,6 +311,116 @@ fn encode_cost_by_n() {
     }
 }
 
+/// **Sonda de escala do VETOR VIVO — o congelamento das 160k estrelas** (report do Enio,
+/// 2026-08-05). N *instâncias da MESMA geometria* (um `source.object` vetor carimbado por
+/// dois duplicators) desenham hoje uma a uma: cada `draw_shape_instance` re-tessela a
+/// silhueta (`build_contours`) e emite um `fill` Vello próprio. O store cacheia a
+/// GEOMETRIA (um intern), mas não a TESSELAÇÃO. Esta sonda mede quanto a tesselação
+/// redundante custa e qual é o PISO depois de a cachear (o custo irredutível de N `fill`s
+/// no Scene). Decide o remédio: se cachear a tesselação já baixa 160k para um frame, é a
+/// cura barata; se o piso de N fills ainda for freeze, é LOD (tile instanciado no extremo).
+/// `cargo test -p ph2d-vec-render --release -- --ignored --nocapture the_live_vector_scale`
+#[test]
+#[ignore = "sonda manual de escala; rode em --release --nocapture"]
+fn the_live_vector_scale_of_shared_instances() {
+    use ph2d_vec_scene::{Paint, Rgba8, StrokeSpec};
+    use std::time::Instant;
+
+    // A MESMA estrela do smoke (`=5`): fill laranja + contorno marrom ⇒ rota `draw_path`.
+    let star_full = {
+        let mut p = ph2d_vec_scene::star([0.0, 0.0], 0.5, 0.5, 5, 0.45);
+        p.fill = Some(Paint::solid(Rgba8::new(255, 170, 40, 255)));
+        p.stroke = Some(StrokeSpec::new(Rgba8::new(60, 40, 10, 255), 0.02));
+        p
+    };
+    // A mesma estrela SÓ preenchida — para a comparação current×cached ser limpa (sem o
+    // stroke_plan por instância a confundir o piso do fill).
+    let star_fill = {
+        let mut p = star_full.clone();
+        p.stroke = None;
+        p
+    };
+    // Uma pose distinta por instância (uma grade), para o Scene não deduplicar.
+    let pose = |i: usize| {
+        let side = 400usize;
+        let (x, y) = ((i % side) as f64 * 1.3, (i / side) as f64 * 1.3);
+        Affine::translate((x, y))
+    };
+    let tint = [1.0, 0.665, 0.157, 1.0];
+
+    println!("\n=== VETOR VIVO: N instâncias da MESMA geometria (ms/frame CPU) ===");
+    for &n in &[1_000usize, 10_000, 40_000, 160_000] {
+        let iters = if n >= 100_000 { 5 } else { 20 };
+
+        // (A) ATUAL: draw_shape_instance por instância (re-tessela + fill + stroke).
+        let mut warm = VectorScene::new();
+        warm.reset();
+        for i in 0..n {
+            draw_shape_instance(&star_full, pose(i), tint, &mut warm);
+        }
+        let t = Instant::now();
+        for _ in 0..iters {
+            warm.reset();
+            for i in 0..n {
+                draw_shape_instance(&star_full, pose(i), tint, &mut warm);
+            }
+        }
+        let cur_full = t.elapsed().as_secs_f64() * 1000.0 / iters as f64;
+
+        // (B) CACHED: a silhueta é tesselada UMA vez; por instância só o fill Vello.
+        let cooked = star_fill.cooked();
+        let fill_bp = build_contours(&cooked, Some(true));
+        let brush = Brush::Solid(Color::new(tint));
+        let rule = fill_rule(&star_fill);
+        let t = Instant::now();
+        for _ in 0..iters {
+            warm.reset();
+            let fill_bp = build_contours(&star_fill.cooked(), Some(true)); // UMA vez/frame
+            for i in 0..n {
+                warm.inner_mut().fill(rule, pose(i), &brush, None, &fill_bp);
+            }
+        }
+        let cached = t.elapsed().as_secs_f64() * 1000.0 / iters as f64;
+
+        // (C) só a tesselação redundante (o que a cache mataria): N × build_contours.
+        let t = Instant::now();
+        for _ in 0..iters {
+            for _ in 0..n {
+                let _ = build_contours(&star_fill.cooked(), Some(true));
+            }
+        }
+        let tess = t.elapsed().as_secs_f64() * 1000.0 / iters as f64;
+        let _ = &fill_bp;
+
+        // (D) A PORTA DO PRODUTO: `draw_shared_instances` com a estrela COMPLETA (fill+stroke).
+        // É o número honesto que decide o joelho do LOD — o custo crisp cacheado do que o artista
+        // de fato pinta (o `=5`/`=6`), não só o fill isolado de (B).
+        let items: Vec<(u32, Affine, [f32; 4])> =
+            (0..n).map(|i| (1u32, pose(i), tint)).collect();
+        let mut door = VectorScene::new();
+        door.reset();
+        draw_shared_instances(items.iter().copied(), |_| Some(&star_full), &mut door);
+        let t = Instant::now();
+        for _ in 0..iters {
+            door.reset();
+            draw_shared_instances(items.iter().copied(), |_| Some(&star_full), &mut door);
+        }
+        let shared = t.elapsed().as_secs_f64() * 1000.0 / iters as f64;
+
+        println!(
+            "N={:>6}  ATUAL(fill+stroke)={:>8.2}  PORTA(shared fill+stroke)={:>8.2}  \
+             CACHED(fill 1×)={:>8.2}  tess-redundante={:>8.2} ms/frame  \
+             ganho-porta(full)={:>5.1}x",
+            n,
+            cur_full,
+            shared,
+            cached,
+            tess,
+            if shared > 0.0 { cur_full / shared } else { 0.0 }
+        );
+    }
+}
+
 /// **O `dispatch` HONRA a tinta dos tokens** (plano UI/UX §4/W4).
 ///
 /// ⚠️ Este gate existe porque uma mutação real sobreviveu a todos os outros: os gates de unidade
@@ -428,5 +538,71 @@ fn the_widget_skin_replaces_the_drawing() {
         dressed.inner().encoding().n_paths,
         three,
         "a pele nao SUBSTITUIU o desenho (nem apareceu, nem tomou o lugar dele)"
+    );
+}
+
+/// **O LOTE desenha EXATAMENTE o que N chamadas únicas desenham** (ADR-0154 — o cache das 160k
+/// estrelas). `draw_shared_instances` tessela cada geometria uma vez e reusa; este gate prova que
+/// o reuso não corrompe o desenho.
+///
+/// ⚠️ **As instâncias são INTERCALADAS por handle** (estrela, disco, estrela, disco): um cache que
+/// devolvesse a tesselação do handle ERRADO para uma instância divergiria a geometria aqui — e um
+/// handle 0 (sem geometria) tem de ser PULADO, como o `store.get` do produto. O oráculo é o encode
+/// byte-a-byte (`path_data` = a geometria; `draw_data` = a tinta), não uma contagem de paths, que
+/// não veria uma troca de silhueta de mesma contagem de segmentos.
+#[test]
+fn a_shared_batch_draws_exactly_what_n_single_draws_do() {
+    use ph2d_vec_scene::{Paint, Rgba8, StrokeSpec};
+    // Um vetor-documento (fill+stroke, tinta autorada) e um primitivo (sem paint, o `tint` pinta).
+    let star = {
+        let mut p = ph2d_vec_scene::star([0.0, 0.0], 0.5, 0.5, 5, 0.45);
+        p.fill = Some(Paint::solid(Rgba8::new(255, 170, 40, 255)));
+        p.stroke = Some(StrokeSpec::new(Rgba8::new(60, 40, 10, 255), 0.02));
+        p
+    };
+    let disc = ph2d_vec_scene::ellipse([0.0, 0.0], 0.4, 0.6);
+    let items: Vec<(u32, Affine, [f32; 4])> = vec![
+        (1, Affine::translate((0.0, 0.0)), [1.0, 0.5, 0.1, 1.0]),
+        (2, Affine::translate((3.0, 0.0)), [0.1, 0.5, 1.0, 1.0]),
+        (1, Affine::translate((6.0, 1.0)), [0.3, 0.9, 0.2, 1.0]),
+        (2, Affine::translate((9.0, 2.0)), [0.9, 0.2, 0.6, 1.0]),
+        (0, Affine::IDENTITY, [1.0; 4]), // handle 0 sem geometria => PULADO
+    ];
+
+    let mut batch = VectorScene::new();
+    draw_shared_instances(
+        items.iter().copied(),
+        |h| match h {
+            1 => Some(&star),
+            2 => Some(&disc),
+            _ => None,
+        },
+        &mut batch,
+    );
+
+    let mut singles = VectorScene::new();
+    for &(h, t, tint) in &items {
+        let p = match h {
+            1 => Some(&star),
+            2 => Some(&disc),
+            _ => None,
+        };
+        if let Some(p) = p {
+            draw_shape_instance(p, t, tint, &mut singles);
+        }
+    }
+
+    let (a, b) = (batch.inner().encoding(), singles.inner().encoding());
+    assert_eq!(
+        a.n_paths, b.n_paths,
+        "o lote e as N chamadas unicas tem de encodar o mesmo numero de paths"
+    );
+    assert_eq!(
+        a.path_data, b.path_data,
+        "a GEOMETRIA divergiu — o cache devolveu a tesselacao do handle errado"
+    );
+    assert_eq!(
+        a.draw_data, b.draw_data,
+        "a TINTA divergiu entre o lote e as chamadas unicas"
     );
 }

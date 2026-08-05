@@ -66,6 +66,13 @@ pub(super) use objects::{bake_flip_objects, bake_objects, publish_objects};
 // `objects::group_externals` descends, and the object-bake gate pins that they agree.
 pub(crate) use objects::entity_is_in_a_named_group;
 
+/// The LOD count knee (the const lives in the private `objects` module) — for the
+/// `=6` smoke diagnostic, so the printed threshold and the one the partition uses are
+/// the same number.
+pub(crate) fn objects_lod_count() -> usize {
+    objects::LOD_COUNT
+}
+
 #[cfg(feature = "panel-motion-graph")]
 #[path = "motion_bridge_edit.rs"]
 mod edit;
@@ -403,6 +410,20 @@ pub(super) fn dispatch(
             &scopes,
         );
     }
+
+    // LOD — the freeze fix (ADR-0154 follow-up). The cook just filled
+    // `vector_instances` with one crisp `VectorInstance` per stamped live vector; a
+    // grid of 160k is a per-frame freeze (~one Vello fill each). This moves any
+    // geometry stamped past the knee onto `instances` as a GPU-instanced tile (which
+    // scaled to millions), leaving the below-threshold shapes crisp. It runs ONLY on
+    // the CPU pump: a live-vector graph always recuses the GPU path above (it has no
+    // `geometry_id` route), so the branch that returns early never carries vectors.
+    objects::apply_object_lod(
+        &mut motion.pump.instances,
+        &mut motion.pump.vector_instances,
+        &motion.object_bake,
+        objects::LOD_COUNT,
+    );
 }
 
 /// The fixed tick the playhead is standing on — the Motion cook's clock, DERIVED

@@ -323,22 +323,29 @@ pub fn draw_path_isolated(
     }
 }
 
-/// Desenha UM path já posicionado — o `transform` leva a geometria dele à tela. Fill primeiro,
-/// stroke por cima; pontas por último.
+/// **A geometria TESSELADA de um path** — os `BezPath`s que o [`draw_path`] constrói de `cooked()`
+/// (o preenchimento e, quando difere, o traço), extraídos para que quem desenha a MESMA geometria
+/// N vezes (N instâncias de um objeto/forma de Motion) a construa UMA vez e reuse, em vez de
+/// re-tesselar por instância (o congelamento das 160k estrelas, ADR-0154). Opaca de propósito: só
+/// [`tessellate_shape_instance`] a produz e [`draw_shape_instance_tessellated`] a consome.
+pub(crate) struct PathTess {
+    /// Os contornos FECHADOS (o preenchimento). `None` quando o path não tem `fill`.
+    fill_bp: Option<BezPath>,
+    /// O `stroke_own`: TODOS os contornos, presente **só quando o desenho do traço DIFERE do
+    /// preenchimento** (há contorno aberto, ou não há fill). `None` ⇒ o traço reusa `fill_bp`.
+    stroke_bp: Option<BezPath>,
+}
+
+/// Constrói a [`PathTess`] de um path: coze UMA vez e tessela o(s) `BezPath`(s) que o desenho
+/// precisa. É a metade CARA do [`draw_path`] — a única que roda `cooked()` + `build_contours` —, e
+/// separá-la é o que deixa um lote de instâncias da mesma geometria pagá-la uma vez ([`PathTess`]).
 ///
-/// É o corpo de um item de [`dispatch`], **extraído de propósito**: os passos VIRTUAIS de um
-/// Blend Object (ADR-0128, [`draw_blend_overlay`]) não estão na cena, mas são arte de verdade — e
-/// desenhá-los por uma segunda porta faria a transição divergir do que a MESMA forma pareceria
-/// como path real ([[feedback_two_doors_to_the_same_question_diverge]]). Os dois passam por AQUI.
-///
-/// Ao contrário dos overlays (gizmos, véu do Build), aqui a espessura do traço **escala com o
-/// mundo** — é o contorno de uma forma, como o de um sprite ampliado, não uma borda de px.
-pub(crate) fn draw_path(path: &VecPath, transform: Affine, target: &mut VectorScene) {
-    // ⚠️ **UM cozimento por forma, e nada é construído para quem não vai desenhar.** A versão
-    // anterior fazia `build_bezpath` INCONDICIONALMENTE e depois `build_fill_bezpath`: numa forma
-    // só-preenchida (a arte comum, e a cena inteira do spike de escala) o primeiro era construído
-    // e **jogado fora**, e numa forma preenchida-e-traçada sem contorno aberto os dois eram o
-    // MESMO desenho. Medido no `encode_cost_by_n`: 10k formas custavam 1,323 ms/frame de re-encode.
+/// ⚠️ **UM cozimento por forma, e nada é construído para quem não vai desenhar.** A versão
+/// anterior fazia `build_bezpath` INCONDICIONALMENTE e depois `build_fill_bezpath`: numa forma
+/// só-preenchida (a arte comum, e a cena inteira do spike de escala) o primeiro era construído
+/// e **jogado fora**, e numa forma preenchida-e-traçada sem contorno aberto os dois eram o
+/// MESMO desenho. Medido no `encode_cost_by_n`: 10k formas custavam 1,323 ms/frame de re-encode.
+pub(crate) fn path_tess(path: &VecPath) -> PathTess {
     let cooked = path.cooked();
     #[cfg(test)]
     encode_cost_tests::count_cook();
@@ -355,10 +362,42 @@ pub(crate) fn draw_path(path: &VecPath, transform: Affine, target: &mut VectorSc
     // O traço leva TODOS os contornos. Sem contorno aberto ele é **o mesmo desenho** do
     // preenchimento ⇒ os dois compartilham uma construção só; com contorno aberto são dois
     // desenhos diferentes e as duas construções são trabalho honesto.
-    let stroke_own = (path.stroke.is_some() && (open || fill_bp.is_none()))
+    let stroke_bp = (path.stroke.is_some() && (open || fill_bp.is_none()))
         .then(|| build_contours(&cooked, None));
+    PathTess { fill_bp, stroke_bp }
+}
+
+/// Desenha UM path já posicionado — o `transform` leva a geometria dele à tela. Fill primeiro,
+/// stroke por cima; pontas por último.
+///
+/// É o corpo de um item de [`dispatch`], **extraído de propósito**: os passos VIRTUAIS de um
+/// Blend Object (ADR-0128, [`draw_blend_overlay`]) não estão na cena, mas são arte de verdade — e
+/// desenhá-los por uma segunda porta faria a transição divergir do que a MESMA forma pareceria
+/// como path real ([[feedback_two_doors_to_the_same_question_diverge]]). Os dois passam por AQUI.
+///
+/// Tessela sua própria geometria ([`path_tess`]) e delega a [`draw_path_with`] — byte-idêntico ao
+/// desenho de antes: 1 cozimento + as construções de sempre por chamada.
+pub(crate) fn draw_path(path: &VecPath, transform: Affine, target: &mut VectorScene) {
+    let tess = path_tess(path);
+    draw_path_with(path, &tess, transform, target);
+}
+
+/// Desenha um path a partir da geometria JÁ TESSELADA (`tess`) — a metade barata do [`draw_path`],
+/// que só emite os comandos Vello (`fill`/`stroke`) e não constrói nada. É por AQUI que um lote de
+/// instâncias da mesma geometria desenha, cada uma com o próprio `transform`, sem re-tesselar.
+///
+/// Ao contrário dos overlays (gizmos, véu do Build), aqui a espessura do traço **escala com o
+/// mundo** — é o contorno de uma forma, como o de um sprite ampliado, não uma borda de px.
+pub(crate) fn draw_path_with(
+    path: &VecPath,
+    tess: &PathTess,
+    transform: Affine,
+    target: &mut VectorScene,
+) {
+    let fill_bp = tess.fill_bp.as_ref();
+    let stroke_own = tess.stroke_bp.as_ref();
     if let Some(fill) = &path.fill {
-        let fp = fill_bp.as_ref().expect("fill => fill_bp construido");
+        let fp = fill_bp.expect("fill => fill_bp construido");
         if let Paint::MultiPoint { points } = fill {
             // ⚠️ `path`, não `cooked`: o `fill_multipoint` mede a caixa dos pontos de controle da
             // forma AUTORADA (`control_point_bounds`). Passar o cozido moveria o gradiente de toda
@@ -378,25 +417,31 @@ pub(crate) fn draw_path(path: &VecPath, transform: Affine, target: &mut VectorSc
     }
     if let Some(s) = path.stroke {
         let bp = stroke_own
-            .as_ref()
-            .or(fill_bp.as_ref())
+            .or(fill_bp)
             .expect("stroke => um dos dois desenhos existe");
         // O QUE um traço desenha é decidido em `ph2d_vec_scene::stroke_plan` — a porta
         // única, que o Outline Stroke também consome. Aqui só se PINTA o que ela lista.
         let brush = Brush::Solid(color(s.color));
         for piece in ph2d_vec_scene::stroke_plan(path, &s) {
             match piece {
-                StrokePiece::Line { path: line } => {
-                    // Emprestado = a peça É o path, e `bp` já o descreve. É o caso de 99%
-                    // dos traços, e o motivo de o plano devolver `Cow`.
-                    let line_bp = match line {
-                        Cow::Borrowed(_) => bp.clone(),
-                        Cow::Owned(p) => build_bezpath(&p),
-                    };
-                    target
-                        .inner_mut()
-                        .stroke(&kurbo_stroke(&s), transform, &brush, None, &line_bp);
-                }
+                StrokePiece::Line { path: line } => match line {
+                    // Emprestado = a peça É o path, e `bp` já o descreve (o caso de 99% dos
+                    // traços, e o motivo de o plano devolver `Cow`). ⚠️ Passa por REFERÊNCIA:
+                    // clonar o `BezPath` por instância era um custo por-instância que o cache de
+                    // tesselação não remove — e a 160k estrelas era metade do que sobrava (byte-
+                    // idêntico: um clone e o original encodam os mesmos bytes no Vello).
+                    Cow::Borrowed(_) => {
+                        target
+                            .inner_mut()
+                            .stroke(&kurbo_stroke(&s), transform, &brush, None, bp);
+                    }
+                    Cow::Owned(p) => {
+                        let line_bp = build_bezpath(&p);
+                        target
+                            .inner_mut()
+                            .stroke(&kurbo_stroke(&s), transform, &brush, None, &line_bp);
+                    }
+                },
                 StrokePiece::Symbol { path: geo } => {
                     target.inner_mut().stroke(
                         &Stroke::new(s.width),
@@ -420,41 +465,11 @@ pub(crate) fn draw_path(path: &VecPath, transform: Affine, target: &mut VectorSc
     }
 }
 
-/// **Desenha UMA forma de instância de Motion** (ADR-0154) — a porta pública que o
-/// passe vetorial de Motion usa. O `VecPath` é geometria **PURA** (a cor não mora
-/// nele: instâncias iguais compartilham a MESMA geometria content-cached no
-/// `VecPathStore`), então o preenchimento usa o `tint` da instância, não o `fill`
-/// do path. Espelha o ramo de FILL do [`draw_path`] (a mesma `build_contours` +
-/// `fill_rule`) e omite o traço — uma forma de Motion é uma silhueta preenchida.
-/// `transform` já leva a geometria LOCAL à tela (o basis da instância ∘ câmera).
-/// A `fill_rule` vem do path, então um anel (`EvenOdd`) desenha o furo.
-pub fn draw_shape_instance(
-    path: &VecPath,
-    transform: Affine,
-    tint: [f32; 4],
-    target: &mut VectorScene,
-) {
-    // Two kinds of live vector ride this one door. A `source.shape` PRIMITIVE
-    // (ADR-0154) carries no authored paint (`fill`/`stroke` both `None`, e.g.
-    // `ellipse` is `..VecPath::default()`) — it IS the instance tint, so it fills
-    // with `tint` exactly as before (byte-identical for every source.shape). A
-    // `source.object` DOCUMENT vector carries its own fill/stroke/caps (an orange
-    // star with a border), so it draws through the SAME [`draw_path`] the bake and
-    // the canvas use — honouring its authored paint, not the (WHITE) object tint.
-    // ⚠️ A live document vector is therefore NOT re-tinted downstream (its colours
-    // are the drawing's); the baked tile was tintable — the named trade of going
-    // live. Threading `tint` through `draw_path`'s fill/stroke is the follow-up.
-    if path.fill.is_some() || path.stroke.is_some() {
-        draw_path(path, transform, target);
-    } else {
-        let cooked = path.cooked();
-        let fill_bp = build_contours(&cooked, Some(true));
-        let brush = Brush::Solid(Color::new(tint));
-        target
-            .inner_mut()
-            .fill(fill_rule(path), transform, &brush, None, &fill_bp);
-    }
-}
+/// **A camada de INSTÂNCIA de Motion** — módulo irmão pelo teto de 700 LOC. O corte é por assunto:
+/// aqui o motor de path (acima); ali o desenho de UMA instância de Motion e o LOTE que compartilha
+/// geometria, tesselando cada handle uma vez (o congelamento das 160k estrelas, ADR-0154).
+mod instance;
+pub use instance::{draw_shape_instance, draw_shared_instances};
 
 /// **O overlay de EDIÇÃO** (as âncoras, os handles) — módulo irmão pelo teto de 700 LOC. O corte
 /// é por assunto: aqui o desenho da ARTE, ali o dos controles que a editam.

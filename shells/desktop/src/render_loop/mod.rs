@@ -7242,6 +7242,7 @@ impl crate::App {
                 &vec_xf,
                 &vec_live,
                 surface.gpu(),
+                renderer,
                 surface.format(),
                 sim,
             );

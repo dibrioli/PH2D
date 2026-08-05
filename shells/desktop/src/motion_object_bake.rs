@@ -2,13 +2,16 @@
 //! `source.object` for a vector shape.
 //!
 //! A sprite already IS a tile (its atlas cell); `motion_bridge_objects` publishes
-//! it directly. A vector is a curve — to be *stamped* by the `motion.duplicator`
-//! it must become a quad, so it is **rasterized once into an offscreen texture**
-//! and that texture's id rides the stream like any sprite's. This is the
-//! bake-to-tile of doc 86 §2, and the machinery is the FX raster stack's
-//! (`fx_live`) verbatim: `draw_path_isolated → VelloPass → an individual
-//! texture`, the difference being the DESTINATION (the sprite renderer's
-//! `IndividualTextureStore`, not the Vello atlas).
+//! it directly. A vector is a curve, and a stamped vector has **two render forms**:
+//! it rides `geometry_id` and is drawn CRISP by the vector pass at any zoom
+//! (ADR-0154, Part 1) — the default — **and** it is rasterized once into an
+//! individual texture (`texture_id`, the LOD tile), the GPU-instanced fallback the
+//! shell swaps in above a count threshold (a live-vector grid of 160k stars is a
+//! per-frame freeze; the instanced tile scaled to millions before Part 1 removed
+//! it). The rasterize half is the FX raster stack's (`fx_live`) machinery verbatim:
+//! `draw_path_isolated → VelloPass → an individual texture`, the difference being
+//! the DESTINATION (the sprite renderer's `IndividualTextureStore`, not the Vello
+//! atlas). One offscreen readback feeds BOTH the tile and the card thumbnail.
 //!
 //! ## Three decisions
 //!
@@ -36,7 +39,7 @@ use std::collections::BTreeMap;
 
 use ph2d_ecs::{Entity, Name, SimWorld};
 use ph2d_gpu::GpuContext;
-use ph2d_render::VelloPass;
+use ph2d_render::{SpriteRenderer, VelloPass};
 use ph2d_vec_render::LiveGeometry;
 use ph2d_vec_scene::{VecPath, VecPathId, VecScene, VecXforms, xform_of};
 use ph2d_vector::{Affine, VectorScene};
@@ -58,9 +61,14 @@ pub(crate) const MAX_TILE_SIDE: u32 = 2048;
 /// What a `source.object` VECTOR is on the render side: its LIVE `geometry_id`
 /// (a [`VecPathStore`] handle the membrane emits, drawn crisp by the vector pass —
 /// ADR-0154's route, reused for objects so a stamped vector stays sharp at ANY
-/// zoom instead of the fixed-DPI raster it used to bake) + the drawing's WORLD size
-/// (so the sink stamps it at its natural size) + a small raster THUMBNAIL for the
-/// node-card preview (the canvas is live; only the preview stays a raster).
+/// zoom instead of the fixed-DPI raster it used to bake) + a full-res tile
+/// `texture_id` for the **LOD path** (the drawing rasterized into an individual
+/// texture, the pre-Part-1 machinery restored: above a count threshold the crisp
+/// live-vector render becomes a freeze — 160k Vello fills/frame — so the shell
+/// swaps those instances for this GPU-instanced tile, which scaled to millions
+/// before; crispness is kept where it shows, at low counts) + the drawing's WORLD
+/// size (so the sink stamps it at its natural size) + a small raster THUMBNAIL for
+/// the node-card preview.
 struct Baked {
     /// The artist's name for this shape, if any. **Metadata, not the cache key** —
     /// the cache is keyed by [`VecPathId`] (undo/rename-stable), so a rename refreshes
@@ -69,6 +77,10 @@ struct Baked {
     name: Option<String>,
     key: BakeKey,
     geometry_id: u32,
+    /// The LOD tile: an [`IndividualTextureStore`](ph2d_render) handle for the same
+    /// drawing rasterized once at [`BAKE_DPI`]. Refcounted — every store insert pairs
+    /// with a `release` (evict / re-bake), so a tile never leaks VRAM.
+    texture_id: u32,
     size: [f32; 2],
     /// A mini-render for the source node's card preview (doc 86 A5), downsampled
     /// once on a content change ⇒ cached like everything else here.
@@ -88,7 +100,10 @@ struct BakeKey {
 }
 
 /// One named vector's LIVE handle, read by the membrane: the `geometry_id` the
-/// appearance stream carries + the drawing's world size.
+/// appearance stream carries + the drawing's world size. (The LOD tile is a separate
+/// axis — the membrane always publishes `geometry_id`; the post-cook LOD partition
+/// resolves the tile by `geometry_id` via [`ObjectBake::tile_texture_for_gid`], so it
+/// does not ride the appearance stream.)
 pub(crate) struct ObjectVector {
     pub geometry_id: u32,
     pub size: [f32; 2],
@@ -136,10 +151,28 @@ impl ObjectBake {
         })
     }
 
+    /// The LOD tile `texture_id` for a live `geometry_id`, or `None` if that geometry
+    /// isn't stored. The LOD partition (`motion_bridge_objects::apply_object_lod`) reads
+    /// this: a `VectorInstance` carries a `geometry_id`, and above the count threshold it
+    /// is swapped for a GPU-instanced tile quad sampling this texture. O(cache) — a
+    /// handful of named shapes, so a linear scan by `geometry_id` is free.
+    pub(crate) fn tile_texture_for_gid(&self, geometry_id: u32) -> Option<u32> {
+        self.cache
+            .values()
+            .find(|b| b.geometry_id == geometry_id)
+            .map(|b| b.texture_id)
+    }
+
     /// Seed a fake handle under `id` — for headless membrane gates that drive
-    /// `resolve_leaf` without a GPU render.
+    /// `resolve_leaf` / `apply_object_lod` without a GPU render.
     #[cfg(test)]
-    pub(crate) fn seed_for_test(&mut self, id: VecPathId, geometry_id: u32, size: [f32; 2]) {
+    pub(crate) fn seed_for_test(
+        &mut self,
+        id: VecPathId,
+        geometry_id: u32,
+        texture_id: u32,
+        size: [f32; 2],
+    ) {
         self.cache.insert(
             id,
             Baked {
@@ -150,6 +183,7 @@ impl ObjectBake {
                     dpi_q: 0,
                 },
                 geometry_id,
+                texture_id,
                 size,
                 thumb: ph2d_panel_motion_graph::PreviewThumb {
                     rgba: std::sync::Arc::new(Vec::new()),
@@ -175,11 +209,12 @@ impl ObjectBake {
     }
 
     /// Re-store every named vector whose drawing changed; drop any name that vanished.
-    /// Runs at the fx phase, where every handle (the vector `store`, `gpu`, the vector
-    /// scene + transforms + live geometry) is in hand. Cached by content ⇒ a static
-    /// scene stores once. ⚠️ No texture to release — a `geometry_id` is a slot in the
-    /// `store`, which has no eviction (the named, session-bounded trade); a dropped
-    /// handle just stops being emitted, so no instance references it.
+    /// Runs at the fx phase, where every handle (the vector `store`, `gpu`, `renderer`,
+    /// the vector scene + transforms + live geometry) is in hand. Cached by content ⇒ a
+    /// static scene bakes once. ⚠️ A `geometry_id` slot in the `store` has no eviction
+    /// (the named, session-bounded trade); the LOD **`texture_id` DOES** — every store
+    /// insert pairs with a `release` on evict / re-bake, mirroring [`crate::motion_flip_bake`],
+    /// so a tile never leaks VRAM.
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn bake(
         &mut self,
@@ -189,6 +224,7 @@ impl ObjectBake {
         xforms: &VecXforms,
         live: &LiveGeometry,
         gpu: &GpuContext,
+        renderer: &mut SpriteRenderer,
         surface_format: wgpu::TextureFormat,
         sim: &SimWorld,
     ) {
@@ -200,7 +236,8 @@ impl ObjectBake {
         let present = select_present(world, map);
 
         // Drop the ids that vanished (deleted, or an unnamed shape no group references
-        // any more). The store slot goes dead but is not reclaimed (no eviction).
+        // any more). The store slot goes dead but is not reclaimed (no eviction); the
+        // LOD tile IS released so it never leaks VRAM.
         let gone: Vec<VecPathId> = self
             .cache
             .keys()
@@ -208,7 +245,9 @@ impl ObjectBake {
             .copied()
             .collect();
         for id in gone {
-            self.cache.remove(&id);
+            if let Some(b) = self.cache.remove(&id) {
+                renderer.individual_mut().release(b.texture_id);
+            }
         }
 
         // Store the new + changed. A cache hit is a `VecPath`/xform equality — no
@@ -231,10 +270,11 @@ impl ObjectBake {
                 }
                 continue;
             }
-            // Changed or new: store the live geometry (→ `geometry_id`) + render the
-            // preview thumbnail. The previous store slot (if any) goes dead.
-            self.cache.remove(&id);
-            if let Some((geometry_id, size, thumb)) = bake_one(
+            // Changed or new: store the live geometry (→ `geometry_id`), upload the LOD
+            // tile (→ `texture_id`) and render the preview thumbnail. Release the previous
+            // tile AFTER the new bake (the store slot goes dead either way).
+            let old = self.cache.remove(&id).map(|b| b.texture_id);
+            let baked = bake_one(
                 &mut self.scratch,
                 store,
                 scene,
@@ -242,15 +282,21 @@ impl ObjectBake {
                 live,
                 id,
                 gpu,
+                renderer,
                 surface_format,
                 path,
-            ) {
+            );
+            if let Some(t) = old {
+                renderer.individual_mut().release(t);
+            }
+            if let Some((geometry_id, texture_id, size, thumb)) = baked {
                 self.cache.insert(
                     id,
                     Baked {
                         name,
                         key,
                         geometry_id,
+                        texture_id,
                         size,
                         thumb,
                     },
@@ -302,12 +348,16 @@ fn bake_camera() -> Affine {
     Affine::scale_non_uniform(BAKE_DPI, -BAKE_DPI)
 }
 
-/// Store ONE path as a live vector (→ `geometry_id`) and render its preview
-/// thumbnail; returns `(geometry_id, world size, thumb)`, or `None` if the shape
-/// has no drawable bounds or a GPU step failed (skipped, not guessed). The
-/// orientation-critical render+readback is [`bake_rgba`] (the thumbnail); the live
-/// geometry is parked in the `store` the vector [`encode`](crate::render_loop::motion_shape_gen::encode)
-/// reads. No full-size individual texture — the canvas draws the vector live.
+/// Store ONE path as a live vector (→ `geometry_id`), upload its full-res tile
+/// (→ `texture_id`) and render its preview thumbnail; returns
+/// `(geometry_id, texture_id, world size, thumb)`, or `None` if the shape has no
+/// drawable bounds or a GPU step failed (skipped, not guessed). The
+/// orientation-critical render+readback is [`bake_rgba`]; the live geometry is parked
+/// in the `store` the vector [`encode`](crate::render_loop::motion_shape_gen::encode)
+/// reads (crisp path), and the SAME readback bytes are uploaded to the sprite
+/// renderer's `IndividualTextureStore` (the LOD tile — the GPU-instanced fallback).
+/// ⚠️ ONE readback feeds BOTH the thumbnail and the tile; the full-res `rgba` was
+/// discarded after Part-1's thumbnail-only bake and is now the tile.
 #[allow(clippy::too_many_arguments)]
 fn bake_one(
     scratch: &mut Option<VelloPass>,
@@ -317,17 +367,21 @@ fn bake_one(
     live: &LiveGeometry,
     id: VecPathId,
     gpu: &GpuContext,
+    renderer: &mut SpriteRenderer,
     surface_format: wgpu::TextureFormat,
     path: &VecPath,
-) -> Option<(u32, [f32; 2], ph2d_panel_motion_graph::PreviewThumb)> {
+) -> Option<(u32, u32, [f32; 2], ph2d_panel_motion_graph::PreviewThumb)> {
     let (rgba, wpx, hpx, size) = bake_rgba(scratch, scene, xforms, live, id, gpu, surface_format)?;
     // The card thumbnail (doc 86 A5) — one downsample per content change, cached.
     let thumb = thumbnail(&rgba, wpx, hpx);
+    // The LOD tile: the full-res straight-RGBA readback uploaded to an individual
+    // texture. Refcounted (the caller releases the old one on re-bake / evict).
+    let texture_id = renderer.acquire_individual(wpx, hpx, &rgba).ok()?;
     // Park the authored geometry in the store the vector encode reads; the handle
     // is the `geometry_id` the membrane emits, drawn crisp (and honouring its own
     // fill/stroke) by `draw_shape_instance`.
     let geometry_id = store.push(path.clone());
-    Some((geometry_id, size, thumb))
+    Some((geometry_id, texture_id, size, thumb))
 }
 
 /// Render ONE path into the fixed-DPI tile and read its tightly-packed straight

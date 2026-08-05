@@ -285,9 +285,24 @@ fn select_present(
     present
 }
 
+/// The fixed bake "camera": world units → tile pixels, carrying the **Y-flip**
+/// that maps world-Y-up to the sprite renderer's top-down texture row order. NOT
+/// the live camera (so the tile is zoom-independent), but the SAME
+/// `scale_non_uniform(k, -k)` that [`ph2d_render::Camera2d::world_to_screen_affine`]
+/// and the Flip bake ([`crate::motion_flip_bake`], which deliberately reuses the
+/// frame camera *"so the tile's orientation match"*) apply: Vello renders Y-DOWN
+/// and the sprite renderer displays texture row 0 at screen-TOP, so without the
+/// `-BAKE_DPI` the baked star points DOWN (the smoke report: *"a estrela no grid
+/// fica de cabeça para baixo"*). Named so the upright-tile gate can pin the flip.
+fn bake_camera() -> Affine {
+    Affine::scale_non_uniform(BAKE_DPI, -BAKE_DPI)
+}
+
 /// Bake ONE path into a fresh individual texture; returns `(texture_id, world
-/// size)`, or `None` if the shape has no drawable bounds or a GPU step failed
-/// (skipped, not guessed — the same shape a not-yet-resolvable sprite takes).
+/// size, thumb)`, or `None` if the shape has no drawable bounds or a GPU step
+/// failed (skipped, not guessed — the same shape a not-yet-resolvable sprite
+/// takes). The orientation-critical render+readback is [`bake_rgba`]; this half
+/// uploads the bytes and downsamples the card thumbnail.
 #[allow(clippy::too_many_arguments)]
 fn bake_one(
     scratch: &mut Option<VelloPass>,
@@ -299,14 +314,39 @@ fn bake_one(
     surface_format: wgpu::TextureFormat,
     renderer: &mut SpriteRenderer,
 ) -> Option<(u32, [f32; 2], ph2d_panel_motion_graph::PreviewThumb)> {
-    // A fixed-DPI "camera": world units → tile pixels. NOT the live camera, so
-    // the tile is zoom-independent. Bounds honour the stroke half-width + miter.
-    let camera = Affine::scale(BAKE_DPI);
+    let (rgba, wpx, hpx, size) = bake_rgba(scratch, scene, xforms, live, id, gpu, surface_format)?;
+    // The card thumbnail (doc 86 A5) comes from these SAME bytes before they are
+    // dropped — one downsample per content change, cached with the tile.
+    let thumb = thumbnail(&rgba, wpx, hpx);
+    // Upload as an individual texture — the SAME raw bytes the FX GPU→GPU copy
+    // would move, so the colour behaviour matches; no Sprite is mutated.
+    let texture_id = renderer.acquire_individual(wpx, hpx, &rgba).ok()?;
+    Some((texture_id, size, thumb))
+}
+
+/// Render ONE path into the fixed-DPI tile and read its tightly-packed straight
+/// RGBA8 back — the orientation-critical half of [`bake_one`], extracted so the
+/// upright-tile gate drives the REAL bake pipeline (ONE door), never a
+/// reimplementation. Returns `(rgba, wpx, hpx, world_size)`. Touches no sprite
+/// renderer (no upload). The readback is slow, but it runs only on a content
+/// change (cached by the caller), so steady state pays nothing.
+#[allow(clippy::too_many_arguments)]
+fn bake_rgba(
+    scratch: &mut Option<VelloPass>,
+    scene: &VecScene,
+    xforms: &VecXforms,
+    live: &LiveGeometry,
+    id: VecPathId,
+    gpu: &GpuContext,
+    surface_format: wgpu::TextureFormat,
+) -> Option<(Vec<u8>, u32, u32, [f32; 2])> {
+    let camera = bake_camera();
     let (x0, y0, x1, y1) = ph2d_vec_render::path_screen_bounds(scene, xforms, live, id, camera)?;
     let wpx = ((x1 - x0).ceil() as u32).clamp(1, MAX_TILE_SIDE);
     let hpx = ((y1 - y0).ceil() as u32).clamp(1, MAX_TILE_SIDE);
 
-    // Encode the one path, translated so its bbox lands at the tile origin.
+    // Encode the one path, translated so its bbox min corner (the top-left under
+    // the Y-flipped camera) lands at the tile origin (0,0) = row 0 = screen-top.
     let mut scratch_scene = VectorScene::new();
     ph2d_vec_render::draw_path_isolated(
         scene,
@@ -319,30 +359,24 @@ fn bake_one(
     );
 
     // Render offscreen (a dedicated scratch pass, reused + resized across bakes)
-    // and read the tightly-packed straight RGBA8 back. The readback is slow, but
-    // it runs only on a content change (cached), so steady state pays nothing.
+    // and read the tightly-packed straight RGBA8 back.
     let pass = match scratch.as_mut() {
         Some(p) => p,
         None => scratch.insert(VelloPass::new(gpu, surface_format, (wpx, hpx)).ok()?),
     };
-    let rgba = pass
+    let mut rgba = pass
         .render_and_readback(gpu, scratch_scene.inner(), (wpx, hpx))
         .ok()?;
     let want = (wpx * hpx * 4) as usize;
     if rgba.len() < want {
         return None;
     }
-    // The card thumbnail (doc 86 A5) comes from these SAME bytes before they are
-    // dropped — one downsample per content change, cached with the tile.
-    let thumb = thumbnail(&rgba[..want], wpx, hpx);
-    // Upload as an individual texture — the SAME raw bytes the FX GPU→GPU copy
-    // would move, so the colour behaviour matches; no Sprite is mutated.
-    let texture_id = renderer.acquire_individual(wpx, hpx, &rgba[..want]).ok()?;
+    rgba.truncate(want);
     let size = [
         (x1 - x0) as f32 / BAKE_DPI as f32,
         (y1 - y0) as f32 / BAKE_DPI as f32,
     ];
-    Some((texture_id, size, thumb))
+    Some((rgba, wpx, hpx, size))
 }
 
 /// A small tile side (px) for a card thumbnail — big enough to read the shape,
@@ -407,184 +441,5 @@ pub(crate) fn thumbnail(rgba: &[u8], w: u32, h: u32) -> ph2d_panel_motion_graph:
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn star() -> VecPath {
-        let mut p = ph2d_vec_scene::star([0.0, 0.0], 0.5, 0.5, 5, 0.45);
-        p.fill = Some(ph2d_vec_scene::Paint::solid(ph2d_vec_scene::Rgba8::new(
-            255, 170, 40, 255,
-        )));
-        p
-    }
-
-    #[test]
-    fn moving_the_shape_does_not_rebake_but_rotating_and_editing_do() {
-        // The design decision the cache stands on (doc 86 §2): the tile is the
-        // shape's DRAWING at a fixed DPI, bbox-normalized. So a MOVE (translation
-        // only) must be a cache hit — the local `VecPath` and the LINEAR part of
-        // the transform are unchanged; only the translation moved, and the tile
-        // does not carry it. A ROTATE (linear changes) or an EDIT (path changes)
-        // re-bakes. A key that folded translation in would re-bake on every drag.
-        let base = BakeKey {
-            path: star(),
-            linear: [1.0, 0.0, 0.0, 1.0],
-            dpi_q: 256,
-        };
-        // A move never touches the local path or the linear coeffs.
-        let moved = BakeKey {
-            path: star(),
-            linear: [1.0, 0.0, 0.0, 1.0],
-            dpi_q: 256,
-        };
-        assert_eq!(base, moved, "a move is a cache hit — no re-bake");
-        // A rotate changes the linear part.
-        let rotated = BakeKey {
-            path: star(),
-            linear: [0.0, 1.0, -1.0, 0.0],
-            dpi_q: 256,
-        };
-        assert_ne!(base, rotated, "a rotate re-bakes");
-        // An edit changes the authored path.
-        let edited = BakeKey {
-            path: ph2d_vec_scene::star([0.0, 0.0], 0.5, 0.5, 6, 0.45),
-            linear: [1.0, 0.0, 0.0, 1.0],
-            dpi_q: 256,
-        };
-        assert_ne!(base, edited, "editing the shape re-bakes");
-    }
-
-    /// **The A5 thumbnail is bounded and keeps aspect** (doc 86 A5). A wide opaque tile
-    /// downsamples so its LONG side is `THUMB_MAX`, the 3:1 aspect survives, the bytes are
-    /// tightly packed, and an opaque colour comes out unchanged. FALSIFIED by an unbounded
-    /// or stretched thumbnail.
-    #[test]
-    fn the_thumbnail_is_bounded_and_keeps_aspect() {
-        let (w, h) = (600u32, 200u32);
-        let rgba = vec![255u8; (w * h * 4) as usize]; // opaque white
-        let t = thumbnail(&rgba, w, h);
-        assert_eq!(t.w.max(t.h), THUMB_MAX, "long side capped at THUMB_MAX");
-        assert!(
-            (t.w as f32 / t.h as f32 - 3.0).abs() < 0.05,
-            "the 3:1 aspect is preserved"
-        );
-        assert_eq!(
-            t.rgba.len(),
-            (t.w * t.h * 4) as usize,
-            "tightly packed RGBA8"
-        );
-        assert!(
-            t.rgba.chunks(4).all(|p| p == [255, 255, 255, 255]),
-            "an opaque solid colour survives the downsample"
-        );
-    }
-
-    /// **A tile under the cap is never upscaled** (doc 86 A5) — the thumbnail of a small
-    /// shape is the tile itself, not a blurry blow-up. FALSIFIED by scaling toward THUMB_MAX.
-    #[test]
-    fn a_small_tile_is_never_upscaled() {
-        let (w, h) = (10u32, 8u32);
-        let rgba = vec![128u8; (w * h * 4) as usize];
-        let t = thumbnail(&rgba, w, h);
-        assert_eq!(
-            (t.w, t.h),
-            (w, h),
-            "under the cap the thumbnail is the tile"
-        );
-    }
-
-    /// **The downsample does not bleed a dark halo into a transparent edge** (doc 86 A5).
-    /// A row of alternating opaque-RED / fully-transparent pixels merges pairwise: the
-    /// PREMULTIPLIED average keeps the surviving colour pure red (`Σc·a/Σa = 255`); a naive
-    /// STRAIGHT average would pull it toward black (`(255+0)/2 = 127`), the premul trap the
-    /// overlay lesson names. FALSIFIED by averaging straight RGBA.
-    #[test]
-    fn the_downsample_does_not_bleed_a_halo_into_a_transparent_edge() {
-        let (w, h) = (THUMB_MAX * 2, 1u32); // 2:1 downsample merges pixel pairs
-        let mut rgba = vec![0u8; (w * h * 4) as usize];
-        for x in (0..w).step_by(2) {
-            let i = (x * 4) as usize;
-            rgba[i..i + 4].copy_from_slice(&[255, 0, 0, 255]); // opaque red; odd stays transparent
-        }
-        let t = thumbnail(&rgba, w, h);
-        assert_eq!(t.w, THUMB_MAX, "downsampled 2:1");
-        for p in t.rgba.chunks(4) {
-            assert_eq!(
-                &p[0..3],
-                &[255, 0, 0],
-                "colour stays pure red — a straight average would darken it to 127"
-            );
-            assert!(
-                (p[3] as i32 - 127).abs() <= 1,
-                "alpha is the coverage average of the merged pair"
-            );
-        }
-    }
-
-    #[test]
-    fn select_present_bakes_named_and_group_children_but_not_loose_art() {
-        // doc 86 §9.6: the bake tiles a vector drawing iff it is NAMED (the picker path)
-        // OR sits inside a named group (so the group stamp has its child's tile) — and
-        // NOTHING else, so unnamed canvas art never wastes a tile (§0 VRAM). The three
-        // rows are the whole decision table; two mutations each break a distinct row.
-        use ph2d_ecs::{ChildOf, GroupedChildren};
-        let mut sim = SimWorld::new();
-        let named = sim.world_mut().spawn((Name::new("Named"),)).id();
-        let group = sim
-            .world_mut()
-            .spawn((Name::new("Group"), GroupedChildren))
-            .id();
-        let child = sim.world_mut().spawn((ChildOf(group),)).id(); // UNNAMED group child
-        let loose = sim.world_mut().spawn(()).id(); // unnamed, no group
-
-        // The map is VecPathId -> entity bits (the same thing `sync` builds).
-        let mut map = VecEntityMap::new();
-        map.insert(10, named.to_bits());
-        map.insert(20, child.to_bits());
-        map.insert(30, loose.to_bits());
-
-        let present = select_present(sim.world(), &map);
-
-        assert_eq!(
-            present.get(&10),
-            Some(&Some("Named".to_string())),
-            "a named drawing is tiled, carrying its name"
-        );
-        // ⚠️ Mutation `if name.is_none()` (drop the group check) SKIPS this — the exact
-        // doc-86 item-3 bug (an unnamed group child gets no tile).
-        assert_eq!(
-            present.get(&20),
-            Some(&None),
-            "an UNNAMED group child is tiled by its id, with no name"
-        );
-        // ⚠️ Mutation dropping the `continue` (bake-all) makes this present — a wasted tile.
-        assert!(
-            !present.contains_key(&30),
-            "unnamed canvas art no group references is NOT tiled"
-        );
-    }
-
-    #[test]
-    fn select_present_skips_stale_bits() {
-        // A map value whose entity was despawned must not be baked — its tile is evicted,
-        // not resurrected. ⚠️ This pins the END-TO-END invariant, not the `get_entity`
-        // guard specifically: a despawned entity also has no `Name`, so it falls into the
-        // unnamed-AND-no-group skip even without the guard — dropping the guard does NOT
-        // falsify this. The guard is robustness (it mirrors `vec_entities::sync`'s own
-        // `get_entity(..).is_err()`); it earns its keep the day a Name-independent tiling
-        // path appears, which is exactly what this gate would then catch.
-        let mut sim = SimWorld::new();
-        let live = sim.world_mut().spawn((Name::new("Live"),)).id();
-        let dead = sim.world_mut().spawn((Name::new("Dead"),)).id();
-        sim.world_mut().despawn(dead);
-        let mut map = VecEntityMap::new();
-        map.insert(1, live.to_bits());
-        map.insert(2, dead.to_bits());
-        let present = select_present(sim.world(), &map);
-        assert!(present.contains_key(&1), "the live drawing is tiled");
-        assert!(
-            !present.contains_key(&2),
-            "the despawned drawing is skipped"
-        );
-    }
-}
+#[path = "motion_object_bake_tests.rs"]
+mod tests;

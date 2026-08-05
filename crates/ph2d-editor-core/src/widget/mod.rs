@@ -109,9 +109,9 @@ pub use rect2_editor::{
     paint_rect2_editor_with_state, paint_rect2_handles,
 };
 pub use scrollbar::{
-    AUDIO_EDITOR_SCROLLBAR_ID, AUDIO_MIXER_SCROLLBAR_ID, BG_REMOVAL_SCROLLBAR_ID,
-    COLOR_EQUALIZATION_SCROLLBAR_ID, EQUALIZE_SIZES_SCROLLBAR_ID, FLIP_SCROLLBAR_ID,
-    GALLERY_SCROLLBAR_ID, GRID_SETTINGS_SCROLLBAR_ID, HIERARCHY_SCROLLBAR_ID,
+    AUDIO_EDITOR_SCROLLBAR_ID, AUDIO_MIXER_SCROLLBAR_ID, AUTHORED_SCROLLBAR_ID,
+    BG_REMOVAL_SCROLLBAR_ID, COLOR_EQUALIZATION_SCROLLBAR_ID, EQUALIZE_SIZES_SCROLLBAR_ID,
+    FLIP_SCROLLBAR_ID, GALLERY_SCROLLBAR_ID, GRID_SETTINGS_SCROLLBAR_ID, HIERARCHY_SCROLLBAR_ID,
     INSPECTOR_SCROLLBAR_ID, PADDING_SCROLLBAR_ID, PAINTER_BRUSH_STUDIO_SCROLLBAR_ID,
     PAINTER_LAYERS_SCROLLBAR_ID, PHYSICS_SCROLLBAR_ID, SCROLLBAR_W, TOKENS_SCROLLBAR_ID,
     UPSCALE_SCROLLBAR_ID, VECTOR_SCROLLBAR_ID, WET_TUNING_SCROLLBAR_ID,
@@ -122,7 +122,7 @@ pub use section_header::{SectionHeader, color_circle_hit_rect, paint_section_hea
 pub use segmented_adaptive::{
     SegmentedAdaptive, SegmentedOption, measure_segmented_adaptive, paint_segmented_adaptive,
 };
-pub use skin::{WidgetKind, paint_widget_skin};
+pub use skin::{WidgetKind, paint_widget_skin, paint_widget_skin_with};
 pub use slider::{Slider, SliderOrientation, SliderState, paint_slider, paint_slider_track};
 pub use slider_with_chip::{
     DEFAULT_CHIP_W, DEFAULT_LABEL_W, paint_number_chip, paint_slider_with_chip,

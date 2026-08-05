@@ -435,6 +435,10 @@ pub fn paint_hero_screen(
         // `paint()` no-ops when hidden — sem esta entrada ele fica registado,
         // visível, e NUNCA pintado.
         ids::TOKENS_PANEL,
+        // O painel AUTORADO (plano UI/UX W8b.2): o painel que o artista desenhou. `paint()`
+        // no-opa quando escondido — sem esta entrada ele fica registado, visível, e NUNCA
+        // pintado (nada quebra, nada avisa).
+        ids::AUTHORED_PANEL,
         ids::INSP_BLENDER_PICKER,
         ids::GAL_PANEL,
         ids::AUDIO_MIXER_PANEL,

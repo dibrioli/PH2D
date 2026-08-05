@@ -428,3 +428,69 @@ fn the_frame_still_caps_the_box() {
         "uma caixa de 1000 px numa moldura de 6 nao foi limitada pela moldura"
     );
 }
+
+/// **O ESTADO VIVO chega à pintura** (plano UI/UX W8b.2) — o mesmo tipo, dois valores, duas cenas.
+///
+/// ⚠️ Este é o gate da porta VIVA, e ele nasceu de uma mutação que sobreviveu: passar `None` em
+/// vez do estado do store deixava **todos** os gates do painel autorado verdes — cada slider
+/// pintaria a meio para sempre enquanto o `WidgetStore` carrega o valor real, e o único lugar
+/// onde isso aparece é uma screenshot. A afirmação é sobre a CENA, e não sobre um argumento: uma
+/// pele que aceitasse o estado e o ignorasse cai aqui do mesmo jeito.
+#[test]
+fn the_live_state_reaches_the_paint() {
+    let mut ts = text();
+    let mut low = ph2d_vector::VectorScene::new();
+    let mut high = ph2d_vector::VectorScene::new();
+    for (scene, value) in [(&mut low, 0.0_f32), (&mut high, 1.0_f32)] {
+        let live = crate::interaction::InteractiveState::Slider {
+            state: crate::widget::SliderState::Normal,
+            value,
+            orientation: crate::widget::SliderOrientation::Horizontal,
+        };
+        paint_widget_skin_with(
+            WidgetKind::Slider,
+            "Opacity",
+            NodeId(7),
+            Some(&live),
+            rect(),
+            scene,
+            &mut ts,
+            Theme::Forge,
+        );
+    }
+    assert_ne!(
+        print(&low),
+        print(&high),
+        "o valor do store nao chega a' pintura — a pele viva desenha a previa estatica"
+    );
+}
+
+/// **E a PRÉVIA é esta função sem estado**, ao byte.
+///
+/// ⚠️ A metade oposta, e ela é o que impede um segundo `match`: se `paint_widget_skin` deixasse de
+/// delegar, as duas respostas a *"que aparência tem um Slider?"* divergiriam no único lugar onde
+/// ninguém lê número — uma screenshot.
+#[test]
+fn the_preview_is_this_function_without_state() {
+    let mut ts = text();
+    for kind in WidgetKind::ALL {
+        let mut a = ph2d_vector::VectorScene::new();
+        paint_widget_skin(kind, "Save", rect(), &mut a, &mut ts, Theme::Forge);
+        let mut b = ph2d_vector::VectorScene::new();
+        paint_widget_skin_with(
+            kind,
+            "Save",
+            PREVIEW_ID,
+            None,
+            rect(),
+            &mut b,
+            &mut ts,
+            Theme::Forge,
+        );
+        assert_eq!(
+            print(&a),
+            print(&b),
+            "{kind:?}: a previa deixou de ser esta funcao sem estado"
+        );
+    }
+}

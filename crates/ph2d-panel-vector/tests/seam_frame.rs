@@ -90,6 +90,47 @@ fn the_frame_controls_are_reachable_and_reach_the_bus() {
     state::set_frame_clip(None);
 }
 
+/// **O interruptor do painel AUTORADO** (plano UI/UX W8b.2) — os dois chips vivos sob o mouse e
+/// chegando ao bus.
+///
+/// ⚠️ Ele é o único caminho do artista até o painel que ele desenhou: morto sob o rato, a W8b.2
+/// inteira fica inalcançável, exactamente como o painel de física do W2b — que tinha todos os
+/// gates de unidade verdes.
+#[test]
+fn the_show_as_panel_switch_is_reachable_and_reaches_the_bus() {
+    state::set_frame_clip(Some(true));
+    click_reaches_bus(ids::VECTOR_FRAME_PANEL_OFF, "o chip Show as Panel=Off");
+    click_reaches_bus(ids::VECTOR_FRAME_PANEL_ON, "o chip Show as Panel=On");
+    state::set_frame_clip(None);
+}
+
+/// **E o chip MOSTRA a visibilidade real** — aceso quando o painel está aberto.
+///
+/// ⚠️ A metade que impede a falha de duas-portas: o X do painel autorado escreve o MESMO fato, e
+/// um chip que guardasse cópia própria ficaria aceso sobre um painel fechado.
+#[test]
+fn the_switch_shows_whether_the_panel_is_open() {
+    state::set_frame_clip(Some(true));
+    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut panel_state = VectorPanelState;
+    for open in [false, true] {
+        state::set_frame_panel_open(open);
+        let lit = if open {
+            ids::VECTOR_FRAME_PANEL_ON
+        } else {
+            ids::VECTOR_FRAME_PANEL_OFF
+        };
+        assert!(
+            host.painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, lit)
+                .is_some(),
+            "com o painel {}, o chip correspondente nao foi pintado",
+            if open { "aberto" } else { "fechado" }
+        );
+    }
+    state::set_frame_panel_open(false);
+    state::set_frame_clip(None);
+}
+
 /// **Sem moldura na seleção a seção não existe** — e é isto que a impede de ser seis controles
 /// mortos em toda seleção que não é contêiner.
 #[test]
@@ -97,9 +138,14 @@ fn the_frame_section_is_absent_without_a_frame() {
     state::set_frame_clip(None);
     let mut host = MockPanelHost::with_panel::<VectorPanel>();
     let mut panel_state = VectorPanelState;
-    for id in [ids::VECTOR_FRAME_CLIP_OFF, ids::VECTOR_FRAME_CLIP_ON]
-        .into_iter()
-        .chain(DEVICE_PRESETS.iter().map(|p| p.id))
+    for id in [
+        ids::VECTOR_FRAME_CLIP_OFF,
+        ids::VECTOR_FRAME_CLIP_ON,
+        ids::VECTOR_FRAME_PANEL_OFF,
+        ids::VECTOR_FRAME_PANEL_ON,
+    ]
+    .into_iter()
+    .chain(DEVICE_PRESETS.iter().map(|p| p.id))
     {
         assert!(
             host.painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, id)

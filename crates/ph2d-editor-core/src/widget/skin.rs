@@ -39,6 +39,7 @@
 //! escalona depois desta. Um widget que respondesse ao mouse aqui seria comportamento no canvas —
 //! exactamente o que o §2 recusou.
 
+use crate::interaction::InteractiveState;
 use crate::widget::{
     Button, Card, Checkbox, Divider, ListItem, ProgressBar, SectionHeader, Slider, Spinner, Tag,
     TextInput, Toggle, paint_button, paint_card, paint_checkbox, paint_divider, paint_list_item,
@@ -245,66 +246,131 @@ pub fn paint_widget_skin(
     text_system: &mut TextSystem,
     theme: Theme,
 ) {
+    paint_widget_skin_with(
+        kind,
+        label,
+        PREVIEW_ID,
+        None,
+        rect,
+        scene,
+        text_system,
+        theme,
+    );
+}
+
+/// **A MESMA porta, com o que o widget É agora** — a pele viva (plano UI/UX W8b.2).
+///
+/// `live` é a fatia do [`WidgetStore`](crate::interaction::WidgetStore) daquele id: o valor de um
+/// slider, o on/off de um toggle, o texto de um campo, e o *hot/active* que o ponteiro escreve.
+///
+/// ⚠️ **Um painel gerado e a prévia do canvas percorrem ESTA função, e é isso que os impede de
+/// divergir.** Um segundo `match` sobre os doze tipos seria a segunda resposta a *"que aparência
+/// tem um Slider?"*, e a divergência entre as duas só apareceria numa screenshot — o modo de falha
+/// mais caro que este repo conhece. A prévia é literalmente **esta função sem estado**: `None` cai
+/// nos valores de prévia, que é o que uma pele de canvas tem para mostrar.
+///
+/// ⚠️ **Estado que não casa com o tipo cai no valor de prévia, e nunca entra em pânico.** É
+/// alcançável (um `populate` que declare o tipo errado), e o produto certo é desenhar o widget com
+/// a aparência neutra — uma tela que explode por causa de um registro trocado troca um controle
+/// errado por nenhum app.
+#[allow(clippy::too_many_arguments)]
+pub fn paint_widget_skin_with(
+    kind: WidgetKind,
+    label: &str,
+    id: NodeId,
+    live: Option<&InteractiveState>,
+    rect: Rect,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+) {
+    let _ = id;
     match kind {
-        WidgetKind::Button => paint_button(
-            &Button::new(PREVIEW_ID, label),
-            rect,
-            scene,
-            text_system,
-            theme,
-        ),
-        WidgetKind::Toggle => paint_toggle(&Toggle::new(PREVIEW_ID, label), rect, scene, theme),
+        WidgetKind::Button => {
+            let mut b = Button::new(id, label);
+            if let Some(InteractiveState::Button { state }) = live {
+                b.state = *state;
+            }
+            paint_button(&b, rect, scene, text_system, theme);
+        }
+        WidgetKind::Toggle => {
+            let mut t = Toggle::new(id, label);
+            if let Some(InteractiveState::Toggle { state, on }) = live {
+                t.state = *state;
+                t.on = *on;
+            }
+            paint_toggle(&t, rect, scene, theme);
+        }
         WidgetKind::Checkbox => {
-            let mut c = Checkbox::new(PREVIEW_ID, label);
+            let mut c = Checkbox::new(id, label);
             c.box_px = Some(skin_checkbox_box_px(rect));
+            if let Some(InteractiveState::Checkbox { state, value }) = live {
+                c.state = *state;
+                c.value = *value;
+            }
             paint_checkbox(&c, rect, scene, text_system, theme);
         }
         WidgetKind::Slider => {
-            let mut s = Slider::new(PREVIEW_ID, label);
+            let mut s = Slider::new(id, label);
             s.value = PREVIEW_VALUE;
             s.track_px = Some(skin_slider_track_px(rect));
+            if let Some(InteractiveState::Slider { state, value, .. }) = live {
+                s.state = *state;
+                // ⚠️ Pela porta do widget, nunca pelo campo: `set_value` é quem limita a `0..=1`,
+                // e escrever o campo cru pintaria uma barra fora da trilha.
+                s.set_value(*value);
+            }
             paint_slider(&s, rect, scene, theme);
         }
         WidgetKind::ProgressBar => {
-            let mut b = ProgressBar::new(PREVIEW_ID, label);
+            let mut b = ProgressBar::new(id, label);
             // ⚠️ `Indeterminate` (o default) pinta uma lasca fixa cuja POSIÇÃO a shell anima — na
             // prévia estática ela leria como uma barra quebrada. A prévia é determinada.
             b.mode = crate::widget::ProgressMode::Determinate(PREVIEW_VALUE);
             paint_progress_bar(&b, rect, scene, text_system, theme);
         }
-        WidgetKind::Tag => paint_tag(
-            &Tag::new(PREVIEW_ID, label),
-            rect,
-            scene,
-            text_system,
-            theme,
-        ),
+        WidgetKind::Tag => {
+            let mut t = Tag::new(id, label);
+            if let Some(InteractiveState::Tag { state }) = live {
+                t.state = *state;
+            }
+            paint_tag(&t, rect, scene, text_system, theme);
+        }
         WidgetKind::TextInput => {
-            let mut i = TextInput::new(PREVIEW_ID, label);
+            let mut i = TextInput::new(id, label);
             i.value = label.to_string();
+            if let Some(InteractiveState::TextInput {
+                state, text, caret, ..
+            }) = live
+            {
+                i.state = *state;
+                i.value = text.clone();
+                i.caret_byte = *caret;
+            }
             paint_text_input(&i, rect, scene, text_system, theme);
         }
         WidgetKind::Card => {
-            let mut c = Card::new(PREVIEW_ID);
+            let mut c = Card::new(id);
             c.title = Some(label.to_string());
             paint_card(&c, rect, scene, text_system, theme);
         }
         WidgetKind::SectionHeader => paint_section_header(
-            &SectionHeader::new(PREVIEW_ID, label),
+            &SectionHeader::new(id, label),
             rect,
             scene,
             text_system,
             theme,
         ),
-        WidgetKind::ListItem => paint_list_item(
-            &ListItem::new(PREVIEW_ID, label),
-            rect,
-            scene,
-            text_system,
-            theme,
-        ),
-        WidgetKind::Spinner => paint_spinner(&Spinner::new(PREVIEW_ID, label), rect, scene, theme),
-        WidgetKind::Divider => paint_divider(&Divider::new(PREVIEW_ID), rect, scene, theme),
+        WidgetKind::ListItem => {
+            let mut l = ListItem::new(id, label);
+            if let Some(InteractiveState::ListItem { state, selected }) = live {
+                l.state = *state;
+                l.selected = *selected;
+            }
+            paint_list_item(&l, rect, scene, text_system, theme);
+        }
+        WidgetKind::Spinner => paint_spinner(&Spinner::new(id, label), rect, scene, theme),
+        WidgetKind::Divider => paint_divider(&Divider::new(id), rect, scene, theme),
     }
 }
 

@@ -26,3 +26,23 @@ pub fn set_frame_clip(clip: Option<bool>) {
 pub(crate) fn frame_clip() -> Option<bool> {
     FRAME_CLIP.with(Cell::get)
 }
+
+thread_local! {
+    static FRAME_PANEL_OPEN: Cell<bool> = const { Cell::new(false) };
+}
+
+/// Publica se o painel AUTORADO está aberto (shell → painel).
+///
+/// ⚠️ **É a visibilidade REAL do painel**, lida do `HeroScreen` a cada frame — não uma cópia que o
+/// painel guarde. O X do painel autorado e este chip escrevem o MESMO fato, então fechar por um e
+/// olhar o outro nunca pode discordar; um bool próprio aqui seria a segunda resposta que fica
+/// acesa depois de o artista fechar o painel.
+pub fn set_frame_panel_open(open: bool) {
+    FRAME_PANEL_OPEN.with(|c| c.set(open));
+}
+
+/// O painel autorado está aberto?
+#[must_use]
+pub(crate) fn frame_panel_open() -> bool {
+    FRAME_PANEL_OPEN.with(Cell::get)
+}

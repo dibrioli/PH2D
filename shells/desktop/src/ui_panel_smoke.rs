@@ -15,6 +15,14 @@
 //!
 //! ⚠️ **E a cena imprime o número que a torna válida:** quantas rows o plano tem. Se não forem
 //! quatro, PARE — o resto não diz nada.
+//!
+//! # A W8b.2 abre o painel, e a cena diz a verdade sobre ele
+//!
+//! ⚠️ **O painel na tela mostra a tabela COMMITADA, não a que o log acabou de imprimir.** É o que
+//! codegen é: o app escreve o código, alguém o commita, o `cargo` o compila. Esconder isso faria o
+//! artista renomear um filho, ver o log mudar, olhar o painel intacto e concluir que ele está
+//! quebrado — então o roteiro diz na cara, e o gate de staleness é quem garante que os dois estão
+//! sincronizados no `main`.
 
 use ph2d_editor::widget::WidgetKind;
 use ph2d_vec_scene::{Paint, Rgba8, VecPath, VecPathId, rectangle};
@@ -46,6 +54,7 @@ pub(crate) fn frame(app: &mut crate::App, f: u32) {
         3 => build(app),
         5 => name_and_parent(app),
         7 => announce(app),
+        9 => open_the_panel(app),
         _ => {}
     }
 }
@@ -115,6 +124,18 @@ fn name_and_parent(app: &mut crate::App) {
     }
 }
 
+/// Abre o painel autorado, do mesmo jeito que o interruptor da seção Frame o abre.
+///
+/// ⚠️ Escreve a MESMA chave que o chip escreve (`visibility_key`), e não um literal: se a moldura
+/// for renomeada, o painel muda de identidade e um literal aqui abriria um painel que não existe —
+/// em silêncio, que é a cicatriz do painel de física do W2b.
+fn open_the_panel(app: &mut crate::App) {
+    if let Some(hero) = app.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+        hero.panel_visibility
+            .insert(ph2d_panel_authored::visibility_key(), true);
+    }
+}
+
 fn announce(app: &mut crate::App) {
     let ids = path_ids(app);
     let Some(gfx) = app.gfx.as_ref() else { return };
@@ -156,9 +177,23 @@ fn announce(app: &mut crate::App) {
     eprintln!("     decisao — e' ela que o auto layout flui.");
     eprintln!("  5. Tire o `VecWidget` de um filho (secao Widget -> nenhum): ele sai do codigo e");
     eprintln!("     volta a ser desenho.");
-    eprintln!(" 6. ⚠️ **O QUE AINDA NAO ESTA' AQUI, e e' a fatia seguinte:** este codigo nao e'");
-    eprintln!("     compilado nem registrado — ele e' o ARTEFATO. Faze-lo virar um painel vivo");
-    eprintln!("     (a crate, o registro, o runtime das rows) e' o W8b.2.");
+    eprintln!("  6. ⚠️ **O PAINEL ESTA' NA TELA** (W8b.2), docado a' ESQUERDA do inspector. Cada");
+    eprintln!("     row dele e' uma linha do bloco de codigo acima, compilada. Arraste o slider,");
+    eprintln!("     aperte o toggle, clique o botao: eles RESPONDEM — o comportamento e' o dos");
+    eprintln!("     widgets do catalogo, nao um interpretador do canvas.");
+    eprintln!("  7. ⚠️ **O 'Backdrop' nao esta' no painel** — o CONTROLE, outra vez: quem so'");
+    eprintln!("     desenha nao vira row, e quem nao RESPONDE (o cabecalho de secao) nao acende");
+    eprintln!("     sob o rato. Um controle que acende e nao faz nada e' pior que um que falta.");
+    eprintln!("  8. Feche pelo X do painel e reabra pelo chip **Show as Panel** da secao Frame");
+    eprintln!("     (selecione a moldura 'Color'): os dois escrevem o MESMO fato, entao o chip");
+    eprintln!("     apaga sozinho quando voce fecha pelo X.");
+    eprintln!("  9. ⚠️ **O QUE O PAINEL MOSTRA E' A TABELA COMMITADA, nao a do log.** Renomeie um");
+    eprintln!("     filho e re-rode: o CODIGO acima muda, o painel NAO — ate' alguem colar o");
+    eprintln!("     codigo em crates/ph2d-panel-authored/src/generated/panel.rs e recompilar.");
+    eprintln!("     E' o que codegen e'; esconder isso faria o painel parecer quebrado.");
+    eprintln!(" 10. ⚠️ **O QUE AINDA NAO ESTA' AQUI:** a row nao MEXE em nada — ela emite");
+    eprintln!("     (chave, valor) e quem escuta e' a W4b/W8a (ligar a row a um token / ao");
+    eprintln!("     runtime). Um slider que se arrasta e se move ja' e' a entrega desta fatia.");
 }
 
 #[cfg(test)]

@@ -195,6 +195,11 @@ pub fn tr(key: &str) -> &'static str {
         "panel.vector.transform.resize_box" => "Resize Box",
         "panel.vector.frame.clip.off" => "Off",
         "panel.vector.frame.clip.on" => "On",
+        // O interruptor do painel autorado (plano UI/UX W8b.2) — a moldura descreve um painel, e
+        // este chip o mostra ao lado, docado.
+        "panel.vector.frame.panel" => "Show as Panel",
+        "panel.vector.frame.panel.off" => "Off",
+        "panel.vector.frame.panel.on" => "On",
         // **AS ÂNCORAS** (plano UI/UX W3) — a regra do filho que NÃO está num fluxo.
         // ⚠️ A vertical é nomeada pelo que se VÊ ("Top"/"Bottom"), e não pelo sinal: o documento é
         // Y-up, então "Top" é a âncora 1. A tradução mora numa tabela só, na shell.

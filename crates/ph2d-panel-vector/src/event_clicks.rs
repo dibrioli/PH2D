@@ -42,6 +42,8 @@ fn is_frame_widget(id: ph2d_a11y::NodeId) -> bool {
     id == ids::VECTOR_MODE_FRAME
         || id == ids::VECTOR_FRAME_CLIP_OFF
         || id == ids::VECTOR_FRAME_CLIP_ON
+        || id == ids::VECTOR_FRAME_PANEL_OFF
+        || id == ids::VECTOR_FRAME_PANEL_ON
         || ph2d_tool_vector::frames::device_preset(id).is_some()
 }
 

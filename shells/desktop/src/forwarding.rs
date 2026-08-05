@@ -341,9 +341,10 @@ pub fn cursor_over_hero_panel(gfx: Option<&AppGfx>, x: f32, y: f32) -> bool {
         return false;
     };
     use ph2d_editor::screens::hero::ids::{
-        AUDIO_EDITOR_PANEL, AUDIO_MIXER_PANEL, BGR_PANEL, CEQ_PANEL, EQS_PANEL, FLIP_PANEL,
-        FLIP_STRIP_PANEL, GAL_PANEL, HIER_PANEL, INSP_PANEL, PAD_PANEL, PAINTER_LAYERS_PANEL,
-        PHYSICS_PANEL, TOKENS_PANEL, UPS_PANEL, VECTOR_PANEL, WET_TUNING_PANEL,
+        AUDIO_EDITOR_PANEL, AUDIO_MIXER_PANEL, AUTHORED_PANEL, BGR_PANEL, CEQ_PANEL, EQS_PANEL,
+        FLIP_PANEL, FLIP_STRIP_PANEL, GAL_PANEL, HIER_PANEL, INSP_PANEL, PAD_PANEL,
+        PAINTER_LAYERS_PANEL, PHYSICS_PANEL, TOKENS_PANEL, UPS_PANEL, VECTOR_PANEL,
+        WET_TUNING_PANEL,
     };
     let inside = |panel_id| {
         hero.store
@@ -405,6 +406,10 @@ pub fn cursor_over_hero_panel(gfx: Option<&AppGfx>, x: f32, y: f32) -> bool {
         // resolução, então ele publica um thumb — e sem esta linha rolar a lista de cores
         // daria ZOOM na câmera por baixo, em silêncio.
         || inside(TOKENS_PANEL)
+        // O painel AUTORADO (plano UI/UX W8b.2): a lista de rows e' o que o artista desenhou,
+        // entao ela transborda o dock em qualquer altura e ele publica um thumb — sem esta linha,
+        // rolar as rows daria ZOOM na camera por baixo, em silencio.
+        || inside(AUTHORED_PANEL)
         || inside(WET_TUNING_PANEL)
         || inside(ph2d_editor::ids::TIMELINE_PANEL)
 }

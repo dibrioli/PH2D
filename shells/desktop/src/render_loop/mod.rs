@@ -2529,6 +2529,19 @@ impl crate::App {
                                 ph2d_panel_vector::state::set_bool_live_on(
                                     *id == ph2d_editor::ids::VECTOR_BOOL_LIVE_ON,
                                 );
+                            } else if *id == ph2d_editor::ids::VECTOR_FRAME_PANEL_OFF
+                                || *id == ph2d_editor::ids::VECTOR_FRAME_PANEL_ON
+                            {
+                                // **O painel AUTORADO** (plano UI/UX W8b.2). ⚠️ Aplicado AQUI, e
+                                // nao por um `pending_*` como os vizinhos: os vizinhos escrevem no
+                                // COMPONENTE (mundo), e este escreve a visibilidade do painel, que
+                                // e' um fato do `HeroScreen` — que esta' em maos exactamente aqui.
+                                // Um pending o adiaria para um escopo que teria de re-emprestar o
+                                // hero para dizer a mesma coisa.
+                                hero.panel_visibility.insert(
+                                    ph2d_panel_authored::visibility_key(),
+                                    *id == ph2d_editor::ids::VECTOR_FRAME_PANEL_ON,
+                                );
                             } else if *id == ph2d_editor::ids::VECTOR_FRAME_CLIP_OFF
                                 || *id == ph2d_editor::ids::VECTOR_FRAME_CLIP_ON
                             {
@@ -6596,6 +6609,12 @@ impl crate::App {
                 }
                 ph2d_panel_vector::state::set_frame_clip(
                     crate::vec_frame_edit::selected_frame_clip(sim, &self.vec_entities, &sel),
+                );
+                // ⚠️ O chip *Show as Panel* le' a visibilidade REAL do painel autorado, e nao uma
+                // copia: o X do painel escreve o MESMO mapa, entao fechar por la' apaga o chip
+                // sozinho. Um bool proprio aqui seria a segunda resposta que fica acesa.
+                ph2d_panel_vector::state::set_frame_panel_open(
+                    hero.is_panel_visible(ph2d_panel_authored::visibility_key()),
                 );
                 // **O AUTO LAYOUT** (plano UI/UX W2) — honra o clique ANTES de publicar, pela
                 // mesma razao do recorte acima: publicar primeiro deixaria o chip a piscar de

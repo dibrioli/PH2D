@@ -33,6 +33,7 @@ ph2d-panel-physics = { path = "../../crates/ph2d-panel-physics" }
 # O painel de TOKENS (plano UI/UX W6): a shell drena os intents dele e faz o
 # read-back do picker, entao a dep e' direta e nao-opcional, como a de fisica.
 ph2d-panel-tokens = { path = "../../crates/ph2d-panel-tokens" }
+ph2d-panel-authored = { path = "../../crates/ph2d-panel-authored" }
 ph2d-panel-wet-tuning = { path = "../../crates/ph2d-panel-wet-tuning" }
 ph2d-render = { path = "../../crates/ph2d-render" }
 # Wave 11 color-space migration (ADR-0042 §6 #2): typed color wrappers
@@ -385,6 +386,7 @@ default = [
     "panel-physics",
     "panel-wet-tuning",
     "panel-tokens",
+    "panel-authored",
 ]
 # `lite` = explicit "no panels" — host boots with chrome only
 # (TopBar + LeftRail + BottomHUD + canvas). Useful for distribution
@@ -447,6 +449,13 @@ panel-physics        = ["ph2d-panel-registry-init/panel-physics"]
 # registro. ⚠️ Vale o mesmo aviso do physics acima: sem ela o `T` alternaria a
 # visibilidade de um painel que nao esta' no registro, com todos os gates verdes.
 panel-tokens         = ["ph2d-panel-registry-init/panel-tokens"]
+# O painel AUTORADO (plano UI/UX W8b.2) — o painel que o artista desenhou.
+# `ph2d-panel-authored` e' dep direta nao-opcional (a ponte drena os intents e o
+# `AuthoredPanel::ID` e' a chave de visibilidade); esta linha liga a feature do
+# registry-init que o compila PARA DENTRO do registro. ⚠️ Vale o mesmo aviso do
+# physics acima: sem ela o interruptor alternaria a visibilidade de um painel
+# que nao esta' no registro, com todos os gates verdes.
+panel-authored       = ["ph2d-panel-registry-init/panel-authored"]
 # Wet Tuning side panel (doc 22). `ph2d-panel-wet-tuning` is a non-optional
 # direct dep (the painter bridge publishes its brush snapshot and mirrors the
 # Tuning checkbox into its visibility); this line flips the registry-init

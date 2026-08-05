@@ -201,6 +201,12 @@ pub const WET_TUNING_SCROLLBAR_ID: NodeId = NodeId(837);
 /// pelo mesmo motivo dos irmãos acima. Next free id is `839`; re-read the
 /// collision note above before taking it.
 pub const TOKENS_SCROLLBAR_ID: NodeId = NodeId(838);
+/// Authored docked-panel scrollbar (plano UI/UX W8b.2) — the panel the
+/// artist DREW, so its row count is whatever they drew: it can overflow
+/// the dock at any height and there is no table to bound it. Own thumb id
+/// for the same reason as the siblings above. Next free id is `840`;
+/// re-read the collision note above before taking it.
+pub const AUTHORED_SCROLLBAR_ID: NodeId = NodeId(839);
 
 #[cfg(test)]
 mod tests {
@@ -212,6 +218,13 @@ mod tests {
     /// routing: dispatch special-cases `DROPDOWN_SCROLLBAR_ID`, so any thumb
     /// aliased onto it becomes un-draggable (the Vector panel bug, 2026-07-07).
     /// Assert pairwise uniqueness here so a new panel's id can't re-collide.
+    ///
+    /// ⚠️ **This list is an ENUMERATION, and it ROTTED** (found 2026-08-05, plano UI/UX W8b.2):
+    /// the last two panels to take an id — Wet Tuning (837) and Tokens (838) — were never added,
+    /// so for two waves the gate that exists to stop a collision was blind to the very ids most
+    /// likely to collide. A hand-written list guards the entries somebody remembered to list.
+    /// [`every_scrollbar_id_is_in_the_uniqueness_list`] is the fix: it reads THIS FILE and makes
+    /// the omission itself a failure, so the next id cannot be born unguarded.
     #[test]
     fn scrollbar_and_dropdown_thumb_ids_are_unique() {
         let ids = [
@@ -231,12 +244,48 @@ mod tests {
             ("AUDIO_EDITOR", AUDIO_EDITOR_SCROLLBAR_ID),
             ("FLIP", FLIP_SCROLLBAR_ID),
             ("PHYSICS", PHYSICS_SCROLLBAR_ID),
+            ("WET_TUNING", WET_TUNING_SCROLLBAR_ID),
+            ("TOKENS", TOKENS_SCROLLBAR_ID),
+            ("AUTHORED", AUTHORED_SCROLLBAR_ID),
             ("DROPDOWN", crate::widget::DROPDOWN_SCROLLBAR_ID),
         ];
         for (i, (na, a)) in ids.iter().enumerate() {
             for (nb, b) in &ids[i + 1..] {
                 assert_ne!(a, b, "scrollbar id collision: {na} == {nb} ({a:?})");
             }
+        }
+    }
+
+    /// **Toda const `*_SCROLLBAR_ID` deste arquivo está na lista de unicidade acima.**
+    ///
+    /// ⚠️ Ele lê o PRÓPRIO fonte porque a pergunta não é sobre valores — é sobre a lista estar
+    /// COMPLETA, e nenhum teste que só compara os ids que a lista contém consegue fazê-la: um id
+    /// omitido é invisível para ele. É o mesmo padrão dos arch-gates da shell, aqui aplicado ao
+    /// arquivo que declara as consts.
+    #[test]
+    fn every_scrollbar_id_is_in_the_uniqueness_list() {
+        let src = include_str!("scrollbar.rs");
+        let declared: Vec<&str> = src
+            .lines()
+            .filter_map(|l| l.trim().strip_prefix("pub const "))
+            .filter_map(|l| l.split(':').next())
+            .filter(|n| n.ends_with("_SCROLLBAR_ID"))
+            .collect();
+        // Controle positivo: uma varredura vazia tornaria este gate verde por vácuo.
+        assert!(
+            declared.len() >= 10,
+            "a varredura nao achou as consts — o gate estaria verde por vacuo"
+        );
+        let list = src
+            .split("fn scrollbar_and_dropdown_thumb_ids_are_unique()")
+            .nth(1)
+            .expect("a lista de unicidade existe");
+        let list = list.split("];").next().expect("a lista fecha");
+        for name in declared {
+            assert!(
+                list.contains(name),
+                "`{name}` nao esta na lista de unicidade — um id novo nasceu sem guarda"
+            );
         }
     }
 

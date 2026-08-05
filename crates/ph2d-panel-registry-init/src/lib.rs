@@ -42,6 +42,8 @@ pub fn build_typed_registry() -> ph2d_editor_core::panel::PanelRegistry {
     reg.push(ErasedPanel::new::<ph2d_panel_audio_editor::AudioEditorPanel>());
     #[cfg(feature = "panel-audio-mixer")]
     reg.push(ErasedPanel::new::<ph2d_panel_audio_mixer::AudioMixerPanel>());
+    #[cfg(feature = "panel-authored")]
+    reg.push(ErasedPanel::new::<ph2d_panel_authored::AuthoredPanel>());
     #[cfg(feature = "panel-bgremoval")]
     reg.push(ErasedPanel::new::<ph2d_panel_bgremoval::BgRemovalPanel>());
     #[cfg(feature = "panel-color-equalization")]
@@ -152,6 +154,10 @@ mod tests {
             n += 1;
         }
         #[cfg(feature = "panel-tokens")]
+        {
+            n += 1;
+        }
+        #[cfg(feature = "panel-authored")]
         {
             n += 1;
         }

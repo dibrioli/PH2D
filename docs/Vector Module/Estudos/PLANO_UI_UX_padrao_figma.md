@@ -1049,10 +1049,51 @@ para a mesma coisa e a divergência só aparece numa screenshot.
 > alças, gate de visibilidade — copiaria umas cem linhas **idênticas em todo painel** para dentro
 > do gerado, e um dia em que ele mudasse, todo painel gerado ficaria para trás.
 >
-> **FALTA (a W8b.2):** este código é o **ARTEFATO** — ele não é compilado como painel nem
-> registrado. Fazê-lo virar um painel vivo pede a crate, os cinco sítios de fiação de painel, e um
-> **runtime de rows** que consuma a tabela (`paint`/`populate`/`apply_event`). E a fronteira que o
-> §2 protege continua a ser a aceitação: *o comportamento é do `ph2d-editor-core`, sempre*.
+🔨 **E a W8b.2 CONSTRUIU a segunda metade (2026-08-05)** — mesma cena `=62`.
+
+> ✅ **O código gerado é COMPILADO e vira um painel vivo.** Crate nova `ph2d-panel-authored`, os
+> cinco sítios de fiação de painel, e um **runtime de rows** que percorre a tabela emitida —
+> `paint` · `populate` · `event` · a varredura de seam, **uma lista, quatro consumidores**, a lei
+> do `SECTIONS` do painel de física. É ela que torna **estrutural** (e não disciplinar) o
+> requisito mais duro da W8b: uma row não pode ser pintada-e-não-registada, porque as duas metades
+> leem a mesma lista.
+>
+> ⚠️ **NÃO há um segundo `match` sobre os doze tipos.** A `paint_widget_skin` do degrau 2 ganhou a
+> irmã **`paint_widget_skin_with(kind, label, id, live, …)`** e a antiga passou a **delegar** com
+> `live = None` — a prévia do canvas é literalmente esta função sem estado. Um despacho próprio no
+> painel seria a segunda resposta a *"que aparência tem um Slider?"*, e a divergência só apareceria
+> numa screenshot; há gate de BYTES pinando a delegação.
+>
+> ⚠️ **O valor de uma row mora no `WidgetStore`, em lugar nenhum mais** — o `AuthoredPanelState` é
+> **vazio**. O store é quem o ponteiro escreve, e uma cópia no painel faria o arrasto mover uma e o
+> `paint` ler a outra: o controle não se mexeria sob o dedo. O `WidgetEvent` do repo já diz isto
+> (*"value-bearing variants carry only the `NodeId` — the caller re-reads from the store"*).
+>
+> ⚠️ **Só quem RESPONDE vira widget interativo** — a lei do §4 um degrau abaixo. Um `Divider`, um
+> `SectionHeader`, um `Spinner` desenham e não têm o que dizer sobre um clique; registá-los faria o
+> clique acendê-los e não fazer nada. A pergunta é feita **uma vez** (`Row::is_control`) pelos três
+> consumidores, e as duas metades têm gates independentes (registo · retângulo de hit).
+>
+> ⚠️ **O TÍTULO é do artista; o ID é da plumbing.** Derivar o `Panel::ID` do desenho foi construído
+> e **desfeito**: ele é a chave do mapa de visibilidade e o literal que toda lista de painéis do
+> shell carrega, então derivá-lo deixaria entrada órfã no mapa a cada rename, tornaria aquelas
+> listas impossíveis de escrever, e o app passaria a pensar *"é outro painel"* quando o artista só
+> trocou um rótulo. Quem o pergunta usa a porta `visibility_key()` — **nunca** um literal.
+>
+> **O abridor é o chip `Show as Panel`** da seção **Frame**, docado ao LADO do inspector (a doca do
+> Wet Tuning): se ele tomasse a mesma vaga, abrir cobriria o abridor. ⚠️ O X do painel e o chip
+> escrevem o **MESMO** fato, então fechar por um apaga o outro — um bool próprio no painel seria a
+> segunda resposta que fica acesa sobre um painel fechado.
+>
+> ⚠️ **DUAS enumerações apodrecidas foram encontradas e curadas de carona:** a lista de unicidade
+> dos ids de scrollbar não tinha as **duas** últimas entradas (Wet Tuning 837, Tokens 838) — o gate
+> que existe para impedir uma colisão era cego aos ids mais propensos a colidir; ela ganhou um
+> irmão que **lê o próprio fonte** e faz da omissão uma falha. E o `SHELL_DRIVEN_PANELS` não tinha
+> o painel de **tokens**, cuja tecla `T` alterna a visibilidade.
+>
+> **FALTA:** a row **não MEXE em nada** — ela emite `(chave, valor)` pela fila de intents, e quem
+> escuta é a W4b/W8a. A fronteira está **nomeada na cena de smoke**, não escondida; e um slider que
+> se arrasta e se move já é a entrega desta fatia.
 
 **Schema.** +1 componente (**49 → 50**). **Gates:** o desenho e o widget pintam **os mesmos bytes**
 (readback) · um `kind` desconhecido degrada para o desenho, nunca para um painel vazio · trocar um
@@ -1384,7 +1425,7 @@ escreveu**:
 | **W6.3** | layout: a árvore autorada vira `Panel` | — | — | — | sim (§2) | — |
 | **W7** 🔨 | estados + Smart Animate (**autoria**; runtime não) | — | ⚠️ `PROJECT_SCHEMA`, **não** `DOC_VERSION` | — | **nenhum** | `=61` |
 | **W8b.1** ✅ | o codegen: a árvore descreve um painel e o app escreve o código dele | — | — | — | — | `=62` |
-| **W8b.2** | o gerado vira painel VIVO (crate, registro, runtime das rows) | — | — | — | sim (fronteira) | — |
+| **W8b.2** ✅ | o gerado vira painel VIVO (crate, registro, runtime das rows) | — | — | — | **nenhum** | `=62` |
 | **W8a** | o runtime (para os jogos) | — | seção | — | sim (fronteira) | — |
 | **W9** | DTCG / SVG / export | — | — | — | — | — |
 

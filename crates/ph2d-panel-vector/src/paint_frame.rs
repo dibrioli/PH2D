@@ -54,6 +54,29 @@ impl BodyCtx<'_> {
             ],
             y,
         );
+        // **O painel AUTORADO** (plano UI/UX W8b.2) — *que painel esta moldura descreve?*
+        //
+        // ⚠️ Oferecido para TODA moldura, inclusive a que ainda não tem um filho vestido: uma
+        // moldura vazia descreve um painel vazio, e o gerador o emite (a lei da *face vazia* que a
+        // seção de física e a de estados já seguem). Recusar aqui faria a feature ser descoberta
+        // só por quem já a conhece.
+        let panel_open = state::frame_panel_open();
+        y = self.segmented(
+            tr("panel.vector.frame.panel"),
+            &[
+                (
+                    ids::VECTOR_FRAME_PANEL_OFF,
+                    tr("panel.vector.frame.panel.off"),
+                    !panel_open,
+                ),
+                (
+                    ids::VECTOR_FRAME_PANEL_ON,
+                    tr("panel.vector.frame.panel.on"),
+                    panel_open,
+                ),
+            ],
+            y,
+        );
         // ⚠️ A fileira é construída a partir da TABELA (`DEVICE_PRESETS`), não de uma lista
         // paralela: um aparelho novo entra lá e ganha o botão de graça, e o clique já resolve
         // pela mesma tabela. Duas listas divergiriam num botão que pinta e não faz nada.

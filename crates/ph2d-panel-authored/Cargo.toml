@@ -1,0 +1,30 @@
+[package]
+name = "ph2d-panel-authored"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+ph2d-a11y = { path = "../ph2d-a11y" }
+# A régua do painel (ROW_H_PX, Spacing) e o tema — nenhum literal de px nasce aqui (HR-15).
+ph2d-tokens = { path = "../ph2d-tokens" }
+
+# ⚠️ **Sem `ph2d-i18n`, e a ausência é a decisão.** Toda string que este painel mostra — o título
+# e o rótulo de cada row — é o `Name` que o ARTISTA digitou; ela viaja no documento como o nome de
+# uma camada. Passá-la por `tr()` procuraria uma chave que não existe e devolveria a própria
+# string, dando a impressão de que o painel é traduzível quando ele é *autorado*. HR-15 governa
+# strings que o PROGRAMA escreve; aqui não há nenhuma.
+
+[dev-dependencies]
+# `architecture_interactive_crate_has_behavioral_test`: um painel com `event.rs` tem de trazer um
+# teste que dirige um WidgetEvent REAL.
+ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }
+# O gesto REAL do seam (Down+Up) precisa do tipo de evento de ponteiro. Um `WidgetEvent::Click`
+# sintético prova a allowlist e PULA a checagem de focabilidade no store.
+ph2d-host = { path = "../ph2d-host" }

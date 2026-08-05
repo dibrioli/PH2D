@@ -5400,6 +5400,7 @@ dependencies = [
  "ph2d-painter-effects",
  "ph2d-panel-audio-editor",
  "ph2d-panel-audio-mixer",
+ "ph2d-panel-authored",
  "ph2d-panel-bgremoval",
  "ph2d-panel-color-equalization",
  "ph2d-panel-equalize-sizes",
@@ -6874,6 +6875,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-panel-authored"
+version = "0.0.0"
+dependencies = [
+ "ph2d-a11y",
+ "ph2d-editor-core",
+ "ph2d-host",
+ "ph2d-tokens",
+ "ph2d-ui-testkit",
+]
+
+[[package]]
 name = "ph2d-panel-bgremoval"
 version = "0.0.0"
 dependencies = [
@@ -7057,6 +7069,7 @@ dependencies = [
  "ph2d-editor-core",
  "ph2d-panel-audio-editor",
  "ph2d-panel-audio-mixer",
+ "ph2d-panel-authored",
  "ph2d-panel-bgremoval",
  "ph2d-panel-color-equalization",
  "ph2d-panel-equalize-sizes",

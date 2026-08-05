@@ -16,6 +16,9 @@
 // parent `ids` module.
 use super::{NodeId, hash_node_id};
 
+/// **Os ids do painel AUTORADO** (plano UI/UX W8b.2) — o painel que o artista desenhou,
+/// vivo. As rows nao existem em tempo de escrita: os ids delas sao derivados da CHAVE.
+mod authored;
 mod bgremoval;
 mod flip;
 mod image_tools;
@@ -77,6 +80,7 @@ mod vector_widget;
 mod vector_width;
 mod wet_tuning;
 
+pub use authored::*;
 pub use bgremoval::*;
 pub use flip::*;
 pub use image_tools::*;

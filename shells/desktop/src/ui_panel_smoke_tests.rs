@@ -60,8 +60,11 @@ fn the_scene_keeps_a_child_that_is_only_drawing() {
 /// **O plano que a cena descreve é o que o golden diz** — o gate de staleness.
 ///
 /// ⚠️ Ele é o que discharge o risco nomeado no §10.4 do plano (*"codegen que o CI recusa"*): o
-/// arquivo commitado é **compilado** pelo módulo `ui_panel_generated`, então um gerador que
-/// emitisse Rust inválido não chega ao `main` — o build do teste cai antes.
+/// arquivo commitado é **compilado pela crate do painel** (`ph2d_panel_authored::generated`),
+/// então um gerador que emitisse Rust inválido não chega ao `main` — o build cai antes. Na W8b.1
+/// ele era compilado num módulo `cfg(test)` da shell, cujas consts ninguém lia; agora é a lista
+/// que o runtime de rows percorre, e a mesma prova ficou mais forte: um formato que o runtime não
+/// consegue percorrer também deixa de compilar.
 ///
 /// ⚠️ E ele compara **bytes**, não propriedades: o determinismo do emissor é o que torna isto
 /// possível, e sem a comparação exata um gerador poderia mudar de formato sem ninguém notar.
@@ -69,12 +72,15 @@ fn the_scene_keeps_a_child_that_is_only_drawing() {
 fn the_generated_panel_is_not_stale() {
     let (sim, frame) = world_from_authored();
     let got = ph2d_ui_codegen::emit(&crate::ui_panel_spec::of(&sim, frame));
-    let want = include_str!("generated/ui_panel_demo.rs");
+    // ⚠️ Do lugar onde o produto o COMPILA. Uma cópia na shell seria um segundo golden, e o gate
+    // ficaria verde comparando o gerador consigo mesmo enquanto o painel pinta outra coisa.
+    let want = include_str!("../../../crates/ph2d-panel-authored/src/generated/panel.rs");
     assert_eq!(
         got, want,
         "o gerador mudou e o arquivo commitado ficou para tras.\n\
          Refaca-o com: `cargo test -p ph2d-host-desktop --bins print_the_generated_panel -- \
-         --ignored --nocapture` e cole a saida em src/generated/ui_panel_demo.rs"
+         --ignored --nocapture` e cole a saida em \
+         crates/ph2d-panel-authored/src/generated/panel.rs"
     );
 }
 
@@ -86,7 +92,7 @@ fn the_generated_panel_is_not_stale() {
 /// rows trocadas passaria no primeiro se o golden fosse regenerado junto — e cai neste.
 #[test]
 fn the_compiled_golden_carries_the_same_panel() {
-    use crate::ui_panel_generated::{PANEL_ID, PANEL_TITLE, ROWS};
+    use ph2d_panel_authored::generated::{PANEL_ID, PANEL_TITLE, ROWS};
 
     let (sim, frame) = world_from_authored();
     let spec = crate::ui_panel_spec::of(&sim, frame);

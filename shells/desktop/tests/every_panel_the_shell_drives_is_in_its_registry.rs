@@ -39,6 +39,13 @@ const SHELL_DRIVEN_PANELS: &[(&str, &str)] = &[
     ("hierarchy", "panel-hierarchy"),
     ("vector", "panel-vector"),
     ("flip", "panel-flip"),
+    // A tabela de COR do design system (plano UI/UX W6): a tecla `T` alterna a visibilidade e o
+    // `tokens_bridge` drena os intents. ⚠️ Ela FALTAVA nesta lista — a enumeração que este
+    // arquivo descreve como frágil já tinha apodrecido uma vez.
+    ("tokens", "panel-tokens"),
+    // O painel AUTORADO (plano UI/UX W8b.2): o chip *Show as Panel* da seção Frame escreve a
+    // visibilidade dele, que é exactamente a forma de falha que este gate existe para pegar.
+    ("authored", "panel-authored"),
 ];
 
 /// Which of the above this build actually enabled.
@@ -51,6 +58,8 @@ fn enabled(feature: &str) -> bool {
         "panel-hierarchy" => cfg!(feature = "panel-hierarchy"),
         "panel-vector" => cfg!(feature = "panel-vector"),
         "panel-flip" => cfg!(feature = "panel-flip"),
+        "panel-tokens" => cfg!(feature = "panel-tokens"),
+        "panel-authored" => cfg!(feature = "panel-authored"),
         other => panic!("unknown feature in SHELL_DRIVEN_PANELS: {other}"),
     }
 }

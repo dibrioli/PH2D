@@ -15,7 +15,12 @@ pub(super) fn frame_controls(store: &mut WidgetStore) {
     // Os presets saem da MESMA tabela que os pinta e que resolve o clique — um aparelho novo
     // nasce registado, pintado e vivo, sem passar por três listas.
     let presets = DEVICE_PRESETS.iter().map(|p| p.id);
-    for id in presets.chain([ids::VECTOR_FRAME_CLIP_OFF, ids::VECTOR_FRAME_CLIP_ON]) {
+    for id in presets.chain([
+        ids::VECTOR_FRAME_CLIP_OFF,
+        ids::VECTOR_FRAME_CLIP_ON,
+        ids::VECTOR_FRAME_PANEL_OFF,
+        ids::VECTOR_FRAME_PANEL_ON,
+    ]) {
         store.register(
             id,
             InteractiveState::Button {

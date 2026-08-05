@@ -51,6 +51,15 @@ struct Node {
     /// A caixa do que ESTÁ aqui (union das faces, ou dos filhos). É contra ela
     /// que a consulta testa — ver o doc do módulo.
     loose: Aabb,
+    /// A caixa de PARTIÇÃO — a região do espaço que este nó reparte entre os
+    /// oito filhos, e que não depende da geometria que caiu aqui.
+    ///
+    /// ⚠️ **Ela é o que torna uma folha capaz de se dividir DEPOIS do build.**
+    /// A caixa frouxa não serve: ela encolhe até a geometria e sobrepõe as
+    /// irmãs, então cortá-la ao meio não particiona o espaço. Sem este campo uma
+    /// folha que recebe faces novas só pode engordar, e uma folha gorda faz toda
+    /// consulta naquela região devolver centenas de candidatas.
+    split: Aabb,
     /// Índice do primeiro dos 8 filhos, ou `NO_CHILD` numa folha.
     first_child: u32,
     /// Faixa em `face_indices` (folha).
@@ -73,6 +82,10 @@ pub struct Octree {
     /// outro nó, e recomputar a caixa do nó errado é perder geometria em
     /// silêncio. Custa 4 B por face, e a sonda de memória o reporta.
     face_leaf: Vec<u32>,
+    /// Entradas de `face_indices` que nenhuma folha usa mais — o rastro das
+    /// faixas realocadas por [`Octree::insert_alongside`], irmão do
+    /// [`crate::adjacency::Csr::dead`] e recolhido pela mesma lei de fração.
+    dead: u32,
 }
 
 impl Octree {
@@ -91,14 +104,124 @@ impl Octree {
         tree.face_leaf = vec![0; faces.len()];
         tree.nodes.push(Node {
             loose: Aabb::EMPTY,
+            split,
             first_child: NO_CHILD,
             start: 0,
             len: faces.len() as u32,
             parent: NO_CHILD,
             depth: 0,
         });
-        tree.subdivide(0, split, 0, positions, faces, &centers);
+        // Os centros são pré-computados aqui porque o build os lê `O(n log n)`
+        // vezes; a inserção incremental passa a closure que os deriva na hora,
+        // porque ela toca uma folha e pré-computar seria `O(malha)`.
+        tree.subdivide(0, split, 0, positions, faces, &|fi: u32| {
+            centers[fi as usize]
+        });
         tree
+    }
+
+    /// **ABSORVE FACES NOVAS** — cada uma na folha da face que a gerou.
+    ///
+    /// `births` é `(face nova, face de onde ela saiu)`. As faces novas são as do
+    /// FIM do vetor de faces (o corte só APENDA), então nenhum índice antigo se
+    /// move e o `face_leaf` cresce por append.
+    ///
+    /// ⚠️ **A folha da mãe é a resposta certa, e não uma aproximação:** as filhas
+    /// de uma face partida vivem dentro da extensão dela, que já estava nesta
+    /// folha. O deslocamento do ponto médio ao longo da normal pode empurrar uma
+    /// filha um pouco para fora — e é por isso que quem chama **tem de** rodar um
+    /// [`Self::refit`] com as faces novas logo depois: é ele que devolve a caixa
+    /// frouxa exata, subindo até a raiz.
+    ///
+    /// ⚠️ **A faixa da folha se muda para o FIM de `face_indices`**, o mesmo
+    /// idioma do CSR editável e pela mesma razão: as faixas são contíguas e sem
+    /// folga, então crescer uma no lugar deslocaria todas as seguintes. Copiar
+    /// uma centena de índices é mais barato que reservar folga por folha para
+    /// sempre.
+    ///
+    /// ⚠️ **E ela agrupa por folha antes de mover:** um dab parte várias faces da
+    /// MESMA folha, e realocar uma vez por face seria `O(len²)` exatamente onde o
+    /// trabalho se concentra.
+    pub fn insert_alongside(
+        &mut self,
+        positions: &[[f32; 3]],
+        faces: &[Face],
+        births: &[(u32, u32)],
+    ) {
+        if self.nodes.is_empty() || births.is_empty() {
+            return;
+        }
+        self.face_leaf.resize(faces.len(), NO_CHILD);
+
+        let mut by_leaf: Vec<(u32, u32)> = births
+            .iter()
+            .map(|&(new, parent)| (self.face_leaf[parent as usize], new))
+            .collect();
+        by_leaf.sort_unstable();
+
+        let mut fattened: Vec<u32> = Vec::new();
+        let mut i = 0;
+        while i < by_leaf.len() {
+            let leaf = by_leaf[i].0;
+            let mut j = i;
+            while j < by_leaf.len() && by_leaf[j].0 == leaf {
+                j += 1;
+            }
+            let node = self.nodes[leaf as usize];
+            let (s, n) = (node.start as usize, node.len as usize);
+            let dest = u32::try_from(self.face_indices.len()).unwrap_or(u32::MAX);
+            self.face_indices.reserve(n + (j - i));
+            for k in 0..n {
+                self.face_indices.push(self.face_indices[s + k]);
+            }
+            for &(_, new) in &by_leaf[i..j] {
+                self.face_indices.push(new);
+                self.face_leaf[new as usize] = leaf;
+            }
+            let len = n + (j - i);
+            self.nodes[leaf as usize].start = dest;
+            self.nodes[leaf as usize].len = u32::try_from(len).unwrap_or(u32::MAX);
+            self.dead = self.dead.saturating_add(u32::try_from(n).unwrap_or(0));
+            if len > MAX_FACES_PER_LEAF && u32::from(node.depth) < MAX_DEPTH {
+                fattened.push(leaf);
+            }
+            i = j;
+        }
+
+        // A folha que passou do teto se divide — senão ela só engorda, e uma
+        // folha gorda faz TODA consulta naquela região devolver centenas de
+        // candidatas. É aqui que a `split` guardada se paga.
+        for leaf in fattened {
+            let split = self.nodes[leaf as usize].split;
+            let depth = u32::from(self.nodes[leaf as usize].depth);
+            self.subdivide(leaf as usize, split, depth, positions, faces, &|fi: u32| {
+                face_center(positions, faces[fi as usize])
+            });
+        }
+        self.compact_if_needed();
+    }
+
+    /// Recolhe o rastro das faixas realocadas quando ele passa da metade.
+    ///
+    /// ⚠️ **Só os índices se movem; a árvore não.** `face_leaf` é face → NÓ e
+    /// sobrevive intacto; o que é reescrito é o `start` de cada folha. Um nó
+    /// interno não tem faixa própria, então ele é pulado — e é isso que mantém
+    /// as faixas das folhas contíguas e disjuntas depois da compactação.
+    fn compact_if_needed(&mut self) {
+        if usize::try_from(self.dead).unwrap_or(0) * 2 <= self.face_indices.len() {
+            return;
+        }
+        let mut packed = Vec::with_capacity(self.face_indices.len() - self.dead as usize);
+        for ni in 0..self.nodes.len() {
+            if self.nodes[ni].first_child != NO_CHILD {
+                continue;
+            }
+            let (s, n) = (self.nodes[ni].start as usize, self.nodes[ni].len as usize);
+            self.nodes[ni].start = u32::try_from(packed.len()).unwrap_or(u32::MAX);
+            packed.extend_from_slice(&self.face_indices[s..s + n]);
+        }
+        self.face_indices = packed;
+        self.dead = 0;
     }
 
     /// Quantos nós — o que a sonda de memória multiplica.
@@ -125,6 +248,45 @@ impl Octree {
     #[must_use]
     pub fn bounds(&self) -> Aabb {
         self.nodes.first().map_or(Aabb::EMPTY, |n| n.loose)
+    }
+
+    /// As faixas `(início, fim)` de cada folha em `face_indices`, e o tamanho
+    /// dele — o que um gate precisa para afirmar que elas continuam **disjuntas**
+    /// depois de realocadas.
+    ///
+    /// ⚠️ Existe porque `Node` é privado e o invariante é estrutural: um gate que
+    /// só olhasse a RESPOSTA da consulta ficaria verde com duas folhas
+    /// sobrepostas (as duas devolvem faces reais), e o sintoma só apareceria
+    /// numa face contada duas vezes muito depois.
+    #[cfg(test)]
+    #[must_use]
+    pub(crate) fn leaf_spans_for_gate(&self) -> (Vec<(usize, usize)>, usize) {
+        let spans = self
+            .nodes
+            .iter()
+            .filter(|n| n.first_child == NO_CHILD && n.len > 0)
+            .map(|n| (n.start as usize, (n.start + n.len) as usize))
+            .collect();
+        (spans, self.face_indices.len())
+    }
+
+    /// Quantas faces a folha mais cheia carrega, e a média — a régua de quão
+    /// degradada a árvore ficou depois de absorver faces novas.
+    #[must_use]
+    pub fn leaf_occupancy(&self) -> (usize, f64) {
+        let leaves: Vec<usize> = self
+            .nodes
+            .iter()
+            .filter(|n| n.first_child == NO_CHILD)
+            .map(|n| n.len as usize)
+            .collect();
+        let max = leaves.iter().copied().max().unwrap_or(0);
+        let mean = if leaves.is_empty() {
+            0.0
+        } else {
+            leaves.iter().sum::<usize>() as f64 / leaves.len() as f64
+        };
+        (max, mean)
     }
 
     /// As faces cujo bloco alcança a esfera. **Conservador**: devolve todas as
@@ -279,10 +441,11 @@ impl Octree {
         depth: u32,
         positions: &[[f32; 3]],
         faces: &[Face],
-        centers: &[[f32; 3]],
+        center: &impl Fn(u32) -> [f32; 3],
     ) {
         let start = self.nodes[node].start as usize;
         let len = self.nodes[node].len as usize;
+        self.nodes[node].split = split;
 
         if len <= MAX_FACES_PER_LEAF || depth >= MAX_DEPTH || split.is_empty() {
             let mut loose = Aabb::EMPTY;
@@ -302,10 +465,10 @@ impl Octree {
 
         // Três partições binárias encadeadas dão os 8 octantes como faixas
         // contíguas — sem oito vetores temporários.
-        let mx = partition(range, centers, 0, mid[0]);
+        let mx = partition(range, center, 0, mid[0]);
         let (lo, hi) = range.split_at_mut(mx);
-        let my_lo = partition(lo, centers, 1, mid[1]);
-        let my_hi = partition(hi, centers, 1, mid[1]);
+        let my_lo = partition(lo, center, 1, mid[1]);
+        let my_hi = partition(hi, center, 1, mid[1]);
 
         let mut bounds = [0usize; 9];
         bounds[0] = 0;
@@ -315,7 +478,7 @@ impl Octree {
         bounds[8] = len;
         for q in 0..4 {
             let (a, b) = (bounds[q * 2], bounds[q * 2 + 2]);
-            let z = partition(&mut range[a..b], centers, 2, mid[2]);
+            let z = partition(&mut range[a..b], center, 2, mid[2]);
             bounds[q * 2 + 1] = a + z;
         }
 
@@ -325,6 +488,7 @@ impl Octree {
             let (a, b) = (bounds[k], bounds[k + 1]);
             self.nodes.push(Node {
                 loose: Aabb::EMPTY,
+                split: Aabb::EMPTY,
                 first_child: NO_CHILD,
                 start: (start + a) as u32,
                 len: (b - a) as u32,
@@ -340,7 +504,7 @@ impl Octree {
             // com essa ordem ou as faces caem em nós cuja caixa não as contém.
             let child_split = octant_box(split, mid, k >= 4, (k / 2) % 2 == 1, k % 2 == 1);
             let ci = first_child as usize + k;
-            self.subdivide(ci, child_split, depth + 1, positions, faces, centers);
+            self.subdivide(ci, child_split, depth + 1, positions, faces, center);
             loose.expand(&self.nodes[ci].loose);
         }
         self.nodes[node].loose = loose;
@@ -349,10 +513,10 @@ impl Octree {
 
 /// Reordena `range` para que os centros com `coord[axis] <= mid` fiquem à
 /// esquerda; devolve o tamanho da parte esquerda.
-fn partition(range: &mut [u32], centers: &[[f32; 3]], axis: usize, mid: f32) -> usize {
+fn partition(range: &mut [u32], center: &impl Fn(u32) -> [f32; 3], axis: usize, mid: f32) -> usize {
     let mut i = 0;
     for j in 0..range.len() {
-        if centers[range[j] as usize][axis] <= mid {
+        if center(range[j])[axis] <= mid {
             range.swap(i, j);
             i += 1;
         }

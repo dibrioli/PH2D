@@ -80,6 +80,17 @@ impl Csr {
         self.values.len()
     }
 
+    /// **Acrescenta `n` linhas VAZIAS** — os vértices que uma mudança de
+    /// topologia criou.
+    ///
+    /// ⚠️ Uma linha vazia é `(start = 0, len = 0)`, e isso é seguro por
+    /// construção: [`Csr::neighbours`] devolve `values[0..0]`, que é vazio seja
+    /// qual for o conteúdo do vetor. Não há sentinela a manter em dia.
+    fn grow_rows(&mut self, rows: usize) {
+        self.starts.resize(rows, 0);
+        self.lens.resize(rows, 0);
+    }
+
     /// **Acrescenta `v` à linha `i`, mantendo-a crescente.** No-op se já estiver
     /// lá — um vizinho repetido não é um anel, é um bug a jusante.
     fn insert_sorted(&mut self, i: usize, v: u32) {
@@ -88,6 +99,16 @@ impl Csr {
             return;
         };
         let (s, n) = (self.starts[i] as usize, self.lens[i] as usize);
+        // ⚠️ **A linha que já está no FIM cresce no lugar**, e este caso não é
+        // raro: uma face nova tem índice maior que todas, então ela entra no fim
+        // da linha — e a segunda face nova do mesmo vértice encontra a linha já
+        // mudada para cá pela primeira. Sem isto, dar seis faces novas a um
+        // vértice custaria seis realocações da linha inteira.
+        if at == n && s + n == self.values.len() {
+            self.values.push(v);
+            self.lens[i] = u32::try_from(n + 1).unwrap_or(u32::MAX);
+            return;
+        }
         // A linha se muda para o fim: o CSR canônico não tem folga por linha, e
         // inventar folga custaria um terceiro vetor de capacidades por vértice.
         // Copiar meia dúzia de índices é mais barato que 4 B/vértice para sempre.
@@ -230,6 +251,35 @@ impl Adjacency {
     /// partir de meia dúzia de faces é mais barato que essa contabilidade, e não
     /// tem como sair de sincronia.
     pub fn relink(&mut self, edits: &[(u32, Face, Face)], after: &[Face]) -> Vec<u32> {
+        self.splice(edits, &[], after, self.vert_faces.len())
+    }
+
+    /// **A TOPOLOGIA MUDOU** — faces trocaram de vértices, faces nasceram,
+    /// vértices nasceram. Devolve os vértices afetados, em ordem crescente.
+    ///
+    /// É a generalização do [`Self::relink`] que um CORTE precisa: ele edita as
+    /// faces que partiu, **apenda** as filhas e **apenda** os pontos médios.
+    ///
+    /// ⚠️ **`added` são índices de faces que ainda não estavam nos anéis** — não
+    /// confundir com o lado "novo" de um `edit`, que é uma face que já existia e
+    /// trocou de cantos. Passar uma face nova como edit faria o `remove` procurar
+    /// um índice que nunca esteve na linha (no-op silencioso) e o resultado
+    /// pareceria certo até alguém contar os vizinhos.
+    ///
+    /// ⚠️ **Os vértices novos entram ANTES das faces**, porque uma face nova pode
+    /// citar um deles — e inserir numa linha que não existe é um `panic` de
+    /// índice, não um erro tratável.
+    pub fn splice(
+        &mut self,
+        edits: &[(u32, Face, Face)],
+        added: &[u32],
+        after: &[Face],
+        vert_count: usize,
+    ) -> Vec<u32> {
+        if vert_count > self.vert_faces.len() {
+            self.vert_faces.grow_rows(vert_count);
+            self.vert_verts.grow_rows(vert_count);
+        }
         let mut affected: Vec<u32> = Vec::new();
         for &(i, old, new) in edits {
             for &v in old.verts() {
@@ -242,6 +292,12 @@ impl Adjacency {
                 if !old.verts().contains(&v) {
                     self.vert_faces.insert_sorted(v as usize, i);
                 }
+                affected.push(v);
+            }
+        }
+        for &i in added {
+            for &v in after[i as usize].verts() {
+                self.vert_faces.insert_sorted(v as usize, i);
                 affected.push(v);
             }
         }

@@ -26,6 +26,12 @@ use crate::normals;
 use crate::octree::{Octree, RefitScratch};
 
 /// A malha de triângulos/quads residente na CPU.
+/// As portas que mudam a topologia — ver o módulo.
+#[path = "mesh_splice.rs"]
+mod splice;
+
+pub use splice::VertexAppend;
+
 #[derive(Clone, Debug, Default)]
 pub struct Mesh {
     positions: Vec<[f32; 3]>,
@@ -480,44 +486,6 @@ impl Mesh {
         }
     }
 
-    /// **REESCREVE A LIGAÇÃO DE FACES EXISTENTES** — sem criar, apagar nem mover
-    /// vértice nenhum.
-    ///
-    /// É a edição que uma troca de diagonal faz (`dyntopo_flip`), e ela existe
-    /// para que essa troca **deixe de custar uma malha nova**. O caminho antigo
-    /// era `Mesh::from_parts` + [`Self::rebuild`]: validar toda face, refazer os
-    /// dois anéis, o octree e todas as normais — `O(malha)` medido em **10,4 ms
-    /// a 98k**, para mudar duas faces.
-    ///
-    /// ⚠️ **A ORDEM dos três passos é o contrato**, e trocá-la não falha: dá a
-    /// resposta errada em silêncio. O anel de faces é remendado contra as faces
-    /// ANTIGAS (é delas que o índice sai); as faces são escritas; e só então o
-    /// anel de vértices é re-derivado contra as NOVAS. Um passe de região que
-    /// rodasse antes leria a adjacência velha e refrescaria a normal de quem
-    /// deixou de ser vizinho.
-    ///
-    /// ⚠️ **O octree fica com a partição de antes, e isso é correto** — a face
-    /// mudou de forma, não de dono. É a mesma situação que o
-    /// [`crate::Octree::refit`] documenta para a geometria que se move, e é o
-    /// `face_leaf` que a torna exata.
-    pub fn relink_faces(&mut self, changes: &[(u32, Face)], scratch: &mut RegionScratch) {
-        if changes.is_empty() {
-            scratch.forget();
-            return;
-        }
-        // ⚠️ Só o que MUDA é copiado. Guardar a lista inteira de faces para ter
-        // o "antes" seria `O(malha)` dentro da porta que existe para não ser.
-        let edits: Vec<(u32, Face, Face)> = changes
-            .iter()
-            .map(|&(i, new)| (i, self.faces[i as usize], new))
-            .collect();
-        for &(i, _, new) in &edits {
-            self.faces[i as usize] = new;
-        }
-        let affected = self.adjacency.relink(&edits, &self.faces);
-        self.refresh_region(&affected, scratch);
-    }
-
     /// O buffer de índices que a GPU consome (quads triangulados).
     pub fn triangle_indices(&self, out: &mut Vec<[u32; 3]>) {
         out.clear();
@@ -584,13 +552,15 @@ impl RegionScratch {
         self.verts.clear();
     }
 
+    /// ⚠️ **`resize` e não `vec![]`, e a diferença aparece na topologia dinâmica:**
+    /// a malha muda de tamanho a cada dab, e re-alocar dois vetores do tamanho
+    /// dela por dab é `O(malha)` entrando pela porta dos fundos justamente na
+    /// wave que existe para tirá-lo. Crescer preserva a capacidade e zera só a
+    /// cauda — e as entradas antigas já são `false`, porque o passe limpa o que
+    /// sujou antes de sair.
     fn reset(&mut self, faces: usize, verts: usize) {
-        if self.face_seen.len() != faces {
-            self.face_seen = vec![false; faces];
-        }
-        if self.vert_seen.len() != verts {
-            self.vert_seen = vec![false; verts];
-        }
+        self.face_seen.resize(faces, false);
+        self.vert_seen.resize(verts, false);
     }
 
     /// Bytes que este scratch segura.

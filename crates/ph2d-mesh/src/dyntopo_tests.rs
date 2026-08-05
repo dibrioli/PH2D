@@ -689,3 +689,7 @@ fn has_pair(m: &Mesh, pair: [[u32; 3]; 2]) -> bool {
 fn scratch() -> RegionScratch {
     RegionScratch::default()
 }
+
+/// Os gates da EDIÇÃO incremental — ver o módulo.
+#[path = "dyntopo_splice_tests.rs"]
+mod splice;

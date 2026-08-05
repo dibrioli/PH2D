@@ -287,6 +287,101 @@ fn measure_what_the_first_dab_is_made_of() {
     }
 }
 
+/// **QUE FRAÇÃO DA MALHA UM DAB TOCA, e quanto ele custa por isso.**
+///
+/// ⚠️ **A sonda irmã mede `radius = 0.25` numa esfera unitária — um pincel que
+/// cobre um QUINTO do modelo**, e a nota do W1 já nomeava esse regime como o
+/// extremo (*"o K1 só dispara com um pincel que cobre 19% da malha inteira"*).
+/// Uma estrutura incremental ganha quando a região é 1% e perde quando é 20%,
+/// então **é esta tabela — e não aquela — que decide se a região merece um
+/// caminho próprio**.
+///
+/// A coluna `tocadas` sai do produto (a lista que o corte entrega ao flip); a
+/// `ms` é o dab inteiro pela porta do artista.
+#[test]
+#[ignore = "sonda: mede, não afirma"]
+fn measure_what_a_dab_costs_by_brush_size() {
+    println!("\n  O DAB POR TAMANHO DE PINCEL — a 98k vertices");
+    println!("   raio   faces depois   novos verts    1o dab ms   em regime ms   1 rebuild ms");
+    let centre = [0.0, 1.0, 0.0];
+    for radius in [0.05f32, 0.10, 0.15, 0.25] {
+        let mut m = shapes::uv_sphere(256, 384, 1.0);
+        m.triangulate();
+        m.rebuild();
+        let target = 0.6 * mean_edge(&m);
+        let mut births = Vec::new();
+        let mut scr = scratch();
+        let f0 = m.face_count();
+        let v0 = m.vert_count();
+        let first = ms(|| {
+            refine_in_sphere(&mut m, centre, radius, target, &mut births, &mut scr);
+        });
+        let steady = ms_median(5, || {
+            refine_in_sphere(&mut m, centre, radius, target, &mut births, &mut scr);
+        });
+        // ⚠️ **A ROTA ANTIGA, medida na MESMA corrida.** O `splice_topology`
+        // substituiu exatamente um `rebuild` da malha de saída, e comparar contra
+        // um número de outra corrida numa máquina compartilhada é como se atribui
+        // ao código o que era a carga (o preço já pago em `28_otimizacoes §5.46`).
+        let mut probe = m.clone();
+        let rebuild = ms_median(3, || probe.rebuild());
+        println!(
+            "  {radius:5.2} {:14} {:13} {first:12.3} {steady:14.3} {rebuild:12.3}   (faces +{:.0}%)",
+            m.face_count(),
+            m.vert_count() - v0,
+            (m.face_count() - f0) as f64 / f0 as f64 * 100.0,
+        );
+    }
+    println!(
+        "\n  A coluna `rebuild` e' o que o `splice_topology` substituiu: a malha de\n  \
+         SAIDA reconstruida do zero, medida costas-com-costas com o dab."
+    );
+}
+
+/// **A ÁRVORE DEGRADA COM O USO?** — a pergunta que a inserção incremental abre.
+///
+/// Uma folha que só ENGORDA faz toda consulta naquela região devolver centenas
+/// de candidatas, e o custo reaparece na `faces_in_sphere` e no `refit` sem
+/// ninguém ligar ao índice. A cura construída é a **subdivisão local** (a folha
+/// que passa do teto se reparte, usando a caixa de partição guardada); esta
+/// sonda é quem diz se ela é necessária e se ela basta.
+#[test]
+#[ignore = "sonda: mede, não afirma"]
+fn measure_whether_the_octree_degrades_along_a_stroke() {
+    println!("\n  O OCTREE AO LONGO DE UM TRACO — 12 dabs cruzando a esfera");
+    println!("   dab   faces      nos   folha mais cheia   media   consulta us");
+    let mut m = shapes::uv_sphere(128, 192, 1.0);
+    m.triangulate();
+    m.rebuild();
+    let radius = 0.15f32;
+    // ⚠️ O alvo acompanha a MALHA, e sem isso a sonda não contém o fenômeno: a
+    // esfera de 24k já tem arestas menores que o `edge_target(0.15, 0.5)`, então
+    // os doze dabs saíam por `Enough` e a tabela media uma árvore que ninguém
+    // tocou (48768 faces, do primeiro ao último).
+    let target = 0.6 * mean_edge(&m);
+    let mut births = Vec::new();
+    let mut scr = scratch();
+    let mut hits = Vec::new();
+    for k in 0..12 {
+        let t = f64::from(k) / 11.0;
+        let centre = [
+            (t * 1.2 - 0.6) as f32,
+            (1.0 - (t * 1.2 - 0.6).powi(2)).sqrt() as f32,
+            0.0,
+        ];
+        refine_in_sphere(&mut m, centre, radius, target, &mut births, &mut scr);
+        let (max, mean) = m.octree().leaf_occupancy();
+        let q = ms_median(9, || {
+            m.octree().faces_in_sphere(centre, radius, &mut hits);
+        }) * 1e3;
+        println!(
+            "  {k:4} {:7} {:8} {max:18} {mean:7.1} {q:13.1}",
+            m.face_count(),
+            m.octree().node_count(),
+        );
+    }
+}
+
 /// O comprimento médio de aresta da malha — a régua que faz a sonda do dab
 /// refinar de verdade em toda densidade.
 fn mean_edge(m: &ph2d_mesh::Mesh) -> f32 {

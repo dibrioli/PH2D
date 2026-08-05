@@ -49,7 +49,7 @@
 //! existe para fazer. O gatilho é um número medido, não um palpite.
 
 use crate::face::Face;
-use crate::mesh::{Mesh, RegionScratch};
+use crate::mesh::{Mesh, RegionScratch, VertexAppend};
 
 /// **DE ONDE UM VÉRTICE NOVO VEIO** — o par cuja aresta foi partida para criá-lo.
 ///
@@ -153,7 +153,15 @@ pub fn refine_in_sphere(
     // passe porque o emit reordena os índices (ver `one_pass`).
     let mut touched: Vec<u32> = Vec::new();
     while passes < MAX_PASSES {
-        if !one_pass(mesh, center, radius, edge_max, births, &mut touched) {
+        if !one_pass(
+            mesh,
+            center,
+            radius,
+            edge_max,
+            births,
+            &mut touched,
+            scratch,
+        ) {
             break;
         }
         passes += 1;
@@ -218,6 +226,7 @@ fn one_pass(
     edge_max: f32,
     births: &mut Vec<Birth>,
     touched: &mut Vec<u32>,
+    region: &mut RegionScratch,
 ) -> bool {
     let r2 = radius * radius;
     let emax2 = edge_max * edge_max;
@@ -385,10 +394,6 @@ fn one_pass(
         return false;
     }
 
-    let mut positions = mesh.positions().to_vec();
-    let normals = mesh.normals().to_vec();
-    let mut colors = mesh.colors().map(<[[f32; 3]]>::to_vec);
-    let mut masks = mesh.masks().map(<[f32]>::to_vec);
     let mut ends: Vec<(u32, u32)> = vec![(0, 0); edges.len()];
 
     // Para saber os EXTREMOS de cada aresta marcada sem um segundo grafo: as
@@ -408,25 +413,21 @@ fn one_pass(
         }
     }
 
+    // Os vértices novos são APENDADOS: o primeiro leva o índice que a malha tem
+    // agora, e a porta os instala nessa mesma ordem. ⚠️ Os pais de um ponto médio
+    // são sempre vértices da malha de ENTRADA (uma aresta dela), então ler
+    // `mesh.positions()` aqui é ler o mesmo estado que a versão anterior lia do
+    // clone que ela fazia — sem o clone.
+    let mut born_pos: Vec<[f32; 3]> = Vec::with_capacity(marked.len());
+    let mut born_parents: Vec<(u32, u32)> = Vec::with_capacity(marked.len());
+    let first_vert = u32::try_from(mesh.vert_count()).unwrap_or(u32::MAX);
     for &e in &marked {
         let (a, b) = ends[e as usize];
-        let new = u32::try_from(positions.len()).unwrap_or(u32::MAX);
+        let new = first_vert + u32::try_from(born_pos.len()).unwrap_or(0);
         split_at[e as usize] = new;
         births.push(Birth { vert: new, a, b });
-        let m = midpoint(&positions, &normals, a, b);
-        positions.push(m);
-        if let Some(c) = colors.as_mut() {
-            let (ca, cb) = (c[a as usize], c[b as usize]);
-            c.push([
-                (ca[0] + cb[0]) * 0.5,
-                (ca[1] + cb[1]) * 0.5,
-                (ca[2] + cb[2]) * 0.5,
-            ]);
-        }
-        if let Some(m) = masks.as_mut() {
-            let v = (m[a as usize] + m[b as usize]) * 0.5;
-            m.push(v);
-        }
+        born_pos.push(midpoint(mesh.positions(), mesh.normals(), a, b));
+        born_parents.push((a, b));
     }
 
     // ⚠️ **Toda face é examinada, não só as do dab — e a razão que eu escrevi
@@ -445,18 +446,17 @@ fn one_pass(
     // raciocínio. Ela é `O(faces)` e o `rebuild` logo abaixo é `O(faces)` e ~20×
     // mais caro; quando ele sair (a estrutura mutável), esta varredura sai com
     // ele. ⚠️ Mutação registrada e NÃO sangrando, de propósito.
-    // ⚠️ **A REGIÃO TEM DE ATRAVESSAR OS PASSES, e por isso ela é re-expressa
-    // aqui em vez de acumulada.** O emit renumera tudo — uma face de entrada
-    // vira de uma a quatro de saída —, então um índice que o passe anterior
-    // guardou passa a apontar para outra face. O que sobrevive é a MARCA, lida
-    // antes e reescrita depois.
-    let mut was_touched = vec![false; mesh.face_count()];
-    for &f in touched.iter() {
-        was_touched[f as usize] = true;
-    }
-    touched.clear();
-
-    let mut faces = Vec::with_capacity(mesh.face_count() + marked.len() * 2);
+    //
+    // ⚠️ **A face que não muda não é sequer reescrita, e é isso que deixa a
+    // REGIÃO atravessar os passes sem remapeamento.** O emit escreve a primeira
+    // filha no SLOT da mãe e apenda as outras, então um índice de face guardado
+    // pelo passe anterior continua apontando para a mesma face — a `touched`
+    // apenas ACUMULA. A versão que montava um vetor de faces novo renumerava
+    // tudo, e por isso precisava reexpressar a marca a cada passe.
+    let mut edits: Vec<(u32, Face)> = Vec::new();
+    let mut added: Vec<(Face, u32)> = Vec::new();
+    let mut out: Vec<Face> = Vec::new();
+    let first_face = u32::try_from(mesh.face_count()).unwrap_or(u32::MAX);
     for (fi, face) in mesh.faces().iter().enumerate() {
         let v = face.verts();
         let mid = |k: usize| -> Option<u32> {
@@ -464,40 +464,31 @@ fn one_pass(
             let m = split_at[e as usize];
             (m != u32::MAX).then_some(m)
         };
-        let start = faces.len();
-        emit_triangle(&mut faces, [v[0], v[1], v[2]], [mid(0), mid(1), mid(2)]);
-        // Mais de uma saída ⇒ esta face foi partida. É `start + 1` e não `start`
-        // porque toda face de entrada produz pelo menos uma de saída.
-        if faces.len() > start + 1 || was_touched[fi] {
-            touched.extend((start..faces.len()).map(|i| u32::try_from(i).unwrap_or(u32::MAX)));
+        let m = [mid(0), mid(1), mid(2)];
+        if m.iter().all(Option::is_none) {
+            continue;
+        }
+        out.clear();
+        emit_triangle(&mut out, [v[0], v[1], v[2]], m);
+        let f = u32::try_from(fi).unwrap_or(u32::MAX);
+        touched.push(f);
+        edits.push((f, out[0]));
+        for &child in &out[1..] {
+            touched.push(first_face + u32::try_from(added.len()).unwrap_or(0));
+            added.push((child, f));
         }
     }
 
-    swap_topology(mesh, positions, faces, colors, masks);
+    mesh.splice_topology(
+        &VertexAppend {
+            positions: &born_pos,
+            parents: &born_parents,
+        },
+        &edits,
+        &added,
+        region,
+    );
     true
-}
-
-/// **Troca a topologia da malha preservando os canais por-vértice.**
-///
-/// Porta única do corte e do [`flip`](super::dyntopo_flip): os dois reescrevem
-/// faces e nenhum dos dois pode perder cor ou máscara pelo caminho. Duas cópias
-/// desta função divergiriam no dia em que entrasse o quinto canal, e o modo de
-/// falha é uma máscara que some sem ninguém ver.
-pub(crate) fn swap_topology(
-    mesh: &mut Mesh,
-    positions: Vec<[f32; 3]>,
-    faces: Vec<Face>,
-    colors: Option<Vec<[f32; 3]>>,
-    masks: Option<Vec<f32>>,
-) {
-    let mut out = Mesh::from_parts(positions, faces).expect("o refino não inventa índice");
-    if let Some(c) = colors {
-        out.colors_mut().copy_from_slice(&c);
-    }
-    if let Some(m) = masks {
-        out.put_masks(m);
-    }
-    *mesh = out;
 }
 
 /// O vértice do meio, **deslocado ao longo da normal média**.

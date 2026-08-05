@@ -23,6 +23,40 @@ fn src(name: &str) -> String {
         .unwrap_or_else(|e| panic!("{name}: {e}"))
 }
 
+/// **O arquivo de projeto inteiro, como FAMÍLIA** — todo `src/project*.rs` que não é suíte.
+///
+/// ⚠️ **Um arch-gate ancorado num NOME de arquivo é um proxy que expira**, e este expirou: a
+/// metade do LOAD morava em `project.rs` quando o gate nasceu, e a `line/sculpt3d` a moveu para
+/// o irmão `project_load.rs` (um split de LOC — o corpo do `project_load_from` não cabia mais).
+/// O produto seguiu certo e só o endereço envelheceu; a linha da tabela de cor continua a ser
+/// executada, uma linha acima da da timeline. É a MESMA cicatriz que a `line/Vector` já pagou
+/// duas vezes em 23/07 (a janela de 400 bytes e a distância de 1200), com a mesma cura: **afirme
+/// a propriedade, nunca o endereço.**
+///
+/// ⚠️ **A varredura exclui `*_tests.rs` de propósito:** uma fixture que citasse a chamada faria o
+/// gate ficar VERDE sem o produto a fazer nada — verde por documentação de si mesmo, a armadilha
+/// que o gate do `[frame]` do Flip pagou. Conferido ao escrever: hoje a agulha aparece só em
+/// `project.rs` (o save) e `project_load.rs` (o load), em nenhuma suíte.
+fn project_family() -> String {
+    let dir = format!("{}/src", env!("CARGO_MANIFEST_DIR"));
+    let mut all = String::new();
+    let mut seen = 0usize;
+    for e in fs::read_dir(&dir).expect("src/") {
+        let p = e.expect("entry").path();
+        let Some(n) = p.file_name().and_then(|n| n.to_str()) else {
+            continue;
+        };
+        if n.starts_with("project") && n.ends_with(".rs") && !n.ends_with("_tests.rs") {
+            all.push_str(&fs::read_to_string(&p).expect("le o arquivo"));
+            seen += 1;
+        }
+    }
+    // Controle positivo: uma varredura que não achou nada estaria VERDE por vácuo em todo
+    // `assert!(contains)` que a consome.
+    assert!(seen >= 2, "a familia project*.rs encolheu para {seen} arquivo(s) — a varredura esta' a olhar para o lugar errado");
+    all
+}
+
 /// **O painel está na lista `default` DA SHELL** — a metade que o W2b pagou com um smoke.
 #[test]
 fn the_shell_compiles_the_tokens_panel_into_its_registry() {
@@ -86,7 +120,7 @@ fn the_frame_loop_runs_the_tokens_bridge() {
 /// load deixaria o artista a re-vestir o app e a perder tudo ao fechar — um knob que ESQUECE.
 #[test]
 fn the_authored_table_travels_in_the_file_both_ways() {
-    let s = src("project.rs");
+    let s = project_family();
     assert!(
         s.contains("tokens: crate::project_tokens::collect()"),
         "o save não grava a tabela autorada"

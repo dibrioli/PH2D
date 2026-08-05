@@ -1,6 +1,6 @@
 # HANDOFF DE INTEGRAÇÃO — `line/Vector`, os ESTADOS DE UI (W7)
 
-**Data:** 2026-08-05 · **Branch:** `line/Vector` · **Tip:** `4b21dbc82` · **14 commits**
+**Data:** 2026-08-05 · **Branch:** `line/Vector` · **Tip:** `c74c2e434` · **17 commits**
 **Estado:** FECHADA. Todos os smokes **aprovados pelo Enio**. Aguardando ordem explícita de integração.
 
 > ⚠️ Esta linha **não integrou e não pushou**. O `main` de referência é `a4018d203` (05/08 07:05),
@@ -65,6 +65,9 @@ preenchia o campo**. *Uma capacidade sem PORTA passa em todos os gates*, porque 
 ## 2. Os commits
 
 ```
+c74c2e434 fix(vector): o `Cargo.lock` da aresta que faltou, e o ultimo "Repor"
+6f144bd03 docs(vector): "repor" -> "restaurar", a decisao que o repo ja tinha tomado
+168dc712e docs(vector): o handoff de integracao da W7 -- os estados de UI
 4b21dbc82 refactor(vector): o perfil chega ao mundo pela porta do Width Tool (W7)
 176af5e00 feat(vector): a cena de smoke ganha o SHAPE, e o Cut fica nomeado (W7)
 45708fb54 feat(vector): a LARGURA VIVA entra no estado -- o Width Tool anima (W7)
@@ -84,7 +87,7 @@ f8f8970c7 fix(vector): a pele PREENCHE a moldura -- uma frase, doze tipos (BUGS 
 Os três primeiros (de baixo) são a cauda da W6.2 — os bugs #25/#26 do painel de peles, já
 smokados. O resto é a W7.
 
-**66 arquivos, +5738 / −79.**
+**67 arquivos, +6000 / −82.**
 
 ---
 

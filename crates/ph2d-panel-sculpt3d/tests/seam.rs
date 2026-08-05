@@ -601,3 +601,49 @@ fn the_lamp_rows_are_absent_under_a_matcap_and_present_under_the_rig() {
         }
     }
 }
+
+/// **O ACCUMULATE é oferecido — e SÓ — onde ele faz alguma coisa.**
+///
+/// ⚠️ As duas metades num gate só, e a seleção é pelo GRIP e não por
+/// `accumulates()`: filtrar pela função sob teste esvaziaria o laço no dia em
+/// que ela mentisse, e o gate passaria sobre nada. Quem tem âncora carrega o
+/// gesto TOTAL desde o pen-down — um interruptor de somar ali seria um controle
+/// que aparece e não muda um vértice.
+#[test]
+fn the_accumulate_switch_is_offered_only_where_it_does_something() {
+    for verb in Verb::ALL {
+        let mut ui = Sculpt3dUi::default();
+        ui.brush.verb = verb;
+        let (mut host, mut state) = arrange(ui);
+        let painted = host.paint::<Sculpt3dPanel>(&mut state, VIEWPORT);
+        let stamps = matches!(verb.grip(), ph2d_sculpt3d::Grip::Stamp);
+        assert_eq!(
+            painted
+                .iter()
+                .any(|(pid, _)| *pid == ids::SCULPT3D_ACCUMULATE),
+            stamps,
+            "com {verb:?} o interruptor devia {}",
+            if stamps { "estar lá" } else { "sumir" }
+        );
+    }
+}
+
+/// **E ele alterna o campo do PINCEL, não um estado paralelo.**
+#[test]
+fn the_accumulate_switch_flips_the_brush_field() {
+    for before in [false, true] {
+        let mut ui = Sculpt3dUi::default();
+        ui.brush.accumulate = before;
+        let (mut host, mut state) = arrange(ui);
+        host.apply_panel_event::<Sculpt3dPanel>(
+            &mut state,
+            WidgetEvent::Click(ids::SCULPT3D_ACCUMULATE),
+        );
+        let Sculpt3dIntent::SetUi(got) = only_intent("accumulate") else {
+            panic!("o accumulate enfileirou o tipo errado de intent");
+        };
+        let mut want = ui;
+        want.brush.accumulate = !before;
+        assert_eq!(got, want, "o accumulate não alternou, ou levou um vizinho");
+    }
+}

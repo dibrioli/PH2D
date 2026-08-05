@@ -260,6 +260,23 @@ impl Verb {
         Self::LocalScale,
     ];
 
+    /// **Este verbo pode ACUMULAR?** — a porta única do `accumulate`.
+    ///
+    /// Só a família do CARIMBO. Os outros três grips carregam o gesto TOTAL
+    /// desde o pen-down (o puxão, o ângulo varrido, a fração de escala) e
+    /// carimbam `accum = 1` ou congelam a pegada: somar um total N vezes seria
+    /// multiplicar o gesto pelo número de eventos de ponteiro, que é exatamente
+    /// a dependência de taxa de amostragem que a lei do traço existe para não
+    /// ter.
+    ///
+    /// ⚠️ Porta e não um `matches!` no sítio de uso: o painel pergunta para
+    /// OFERECER o interruptor e o aplicador pergunta para HONRAR o clique, e
+    /// duas cópias divergiriam num controle que aparece e não faz nada.
+    #[must_use]
+    pub fn accumulates(self) -> bool {
+        matches!(self.grip(), Grip::Stamp)
+    }
+
     /// Este verbo escreve na MÁSCARA em vez da posição?
     ///
     /// Porta única: o aplicador pergunta para saber onde escrever, e a UI
@@ -433,6 +450,18 @@ pub const REACH_FRACTION: f32 = 0.2;
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Brush {
     pub verb: Verb,
+    /// **ACUMULAR na mesma pincelada** — o `BRUSH_ACCUMULATE` do Blender, e o
+    /// irmão exato do campo de mesmo nome do pincel 2D.
+    ///
+    /// Desarmado (o default) a lei é o ENVELOPE: cruzar o próprio traço não
+    /// intensifica nada, e uma pincelada deposita no máximo a força do pincel.
+    /// Armado ela é uma **integral de linha** — ver [`crate::ACCUM_PER_DAB`] —, e
+    /// passar duas vezes soma duas vezes.
+    ///
+    /// ⚠️ **Só os verbos de CARIMBO o leem** ([`Verb::accumulates`]): quem tem
+    /// âncora carrega o gesto TOTAL desde o pen-down, e somar totais seria somar
+    /// a mesma coisa N vezes.
+    pub accumulate: bool,
     pub falloff: Falloff,
     /// Raio de influência, em unidades de MUNDO.
     pub radius: f32,
@@ -452,6 +481,7 @@ impl Default for Brush {
     fn default() -> Self {
         Self {
             verb: Verb::Draw,
+            accumulate: false,
             falloff: Falloff::Smooth,
             radius: 0.25,
             strength: 0.5,

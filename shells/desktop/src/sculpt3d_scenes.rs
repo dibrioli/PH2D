@@ -427,6 +427,13 @@ pub(crate) fn announce(mesh: &ph2d_mesh::Mesh) {
          [sculpt3d] MATERIAL (SHADING): 'Rig' e' a luz do DOCUMENTO; os outros seis sao MATCAPS --\n\
          [sculpt3d]     luz do OLHO, que nao gira com o modelo. Sob um matcap as duas pistas de\n\
          [sculpt3d]     lampada SOMEM, porque ele nao le o rig -- e isso e' o certo, nao um bug\n\
+         [sculpt3d] ACCUMULATE (BRUSH): desarmado, cruzar o proprio traco NAO intensifica --\n\
+         [sculpt3d]     e' a lei do envelope, e uma pincelada deposita no maximo a forca do\n\
+         [sculpt3d]     pincel. Armado, passar duas vezes soma duas vezes. Ele so' aparece nos\n\
+         [sculpt3d]     verbos de CARIMBO: quem tem ancora (G/H/T/S) carrega o gesto TOTAL\n\
+         [sculpt3d]     desde o pen-down, e somar totais nao significa nada\n\
+         [sculpt3d]     ATENCAO: a PRIMEIRA passada acumulada e' mais FRACA (a lei entrega a\n\
+         [sculpt3d]     media do falloff, nao o pico); e' da segunda em diante que ela paga\n\
          [sculpt3d] WIREFRAME (SHADING): a malha por cima da forma -- e' o que mostra onde o remesh\n\
          [sculpt3d]     pos os aneis e ate' onde o refino chegou; ela some e volta sem custo com\n\
          [sculpt3d]     a caixa desmarcada (a lista de arestas so' existe com ela armada)\n\

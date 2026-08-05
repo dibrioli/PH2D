@@ -123,6 +123,24 @@ fn paint_brush_tail(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32,
         w,
         y,
     );
+    // **ACUMULAR**, e só onde ele faz alguma coisa. ⚠️ A pergunta é feita à
+    // PORTA do motor (`Verb::accumulates`) e não a uma lista de nomes aqui: o
+    // aplicador pergunta à mesma para honrar o clique, e duas cópias divergiriam
+    // num interruptor que aparece e não muda nada — quem tem âncora carrega o
+    // gesto TOTAL desde o pen-down, e somar totais não significa nada.
+    let y = if snap.ui.brush.verb.accumulates() {
+        toggle(
+            ctx,
+            ids::SCULPT3D_ACCUMULATE,
+            tr("panel.sculpt3d.accumulate"),
+            snap.ui.brush.accumulate,
+            x,
+            w,
+            y,
+        ) + Spacing::Sm.px()
+    } else {
+        y
+    };
     // As quatro operações de máscara moram AQUI, ao lado do verbo que a pinta —
     // um artista que acabou de pintar máscara procura o que fazer com ela onde
     // ele a pintou, não numa seção própria três rolagens abaixo.

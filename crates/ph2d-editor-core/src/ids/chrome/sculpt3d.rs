@@ -136,6 +136,9 @@ pub const SCULPT3D_MATCAP: [NodeId; 7] = [
     hash_node_id("sculpt3d.matcap.5"),
 ];
 
+/// **ACUMULAR na mesma pincelada** — o `BRUSH_ACCUMULATE` do Blender.
+pub const SCULPT3D_ACCUMULATE: NodeId = hash_node_id("sculpt3d.accumulate");
+
 /// A malha de arestas desenhada por cima da forma.
 pub const SCULPT3D_WIREFRAME: NodeId = hash_node_id("sculpt3d.wireframe");
 /// Azimute da lâmpada selecionada, em graus.

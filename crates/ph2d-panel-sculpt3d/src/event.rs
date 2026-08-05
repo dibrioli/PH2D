@@ -119,6 +119,20 @@ pub(crate) fn apply_event(
             state::push_intent(Sculpt3dIntent::SetUi(ui));
             true
         }
+        // ⚠️ **Recusa fora dos verbos de carimbo.** O pintor já não o oferece
+        // ali, mas o roteador é a outra metade: um clique sintético (ou um id
+        // que sobreviveu a uma troca de verbo no mesmo frame) armaria um flag
+        // que nenhum dab lê, e o painel voltaria a mostrá-lo marcado no próximo
+        // verbo que o oferece — um estado que o artista não pediu.
+        WidgetEvent::Click(id)
+            if id == ids::SCULPT3D_ACCUMULATE && snapshot.ui.brush.verb.accumulates() =>
+        {
+            seam_reset_button(host, id);
+            let mut ui = snapshot.ui;
+            ui.brush.accumulate = !ui.brush.accumulate;
+            state::push_intent(Sculpt3dIntent::SetUi(ui));
+            true
+        }
         WidgetEvent::Click(id) if id == ids::SCULPT3D_WIREFRAME => {
             seam_reset_button(host, id);
             let mut ui = snapshot.ui;

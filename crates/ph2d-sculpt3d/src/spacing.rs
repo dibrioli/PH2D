@@ -38,6 +38,31 @@
 /// vê como "traço contínuo" é a sobreposição, não a distância absoluta.
 pub const MIN_SPACING_FRACTION: f32 = 0.15;
 
+/// **QUANTO UM DAB SOMA ao envelope com o Accumulate armado** — a normalização
+/// que torna a soma um fato do CAMINHO.
+///
+/// ⚠️ **Ela mora aqui, ao lado do espaçamento, porque É o espaçamento.** Com o
+/// Accumulate a lei deixa de ser um envelope (`max`) e passa a ser uma SOMA
+/// sobre a lista de dabs — e uma soma crua é exatamente a doença que este módulo
+/// existe para não ter: ela depende de quantos dabs o motor emitiu, e um pincel
+/// que ficasse 2× mais forte porque alguém afinou o espaçamento é um bug que
+/// ninguém consegue nomear. A cura é a mesma que a `line/Painter` formulou no
+/// doc 20: **uma INTEGRAL DE LINHA** (`∫ perfil · ds`), não `Σ perfil`.
+///
+/// Aqui ela é barata porque o passo já é geométrico: `Δs = MIN_SPACING_FRACTION
+/// · r`, então `Δs / (2r)` — a fração do DIÂMETRO que um dab percorre — é a
+/// constante `MIN_SPACING_FRACTION / 2`, independente do tamanho do pincel. Uma
+/// passada reta pelo centro soma `∫ falloff ds / 2r`, que é a média do falloff
+/// sobre a corda; a segunda passada soma outra vez, e é isso que o Accumulate
+/// significa.
+///
+/// ⚠️ **Consequência MEDIDA, não estimada** (ver o gate
+/// `the_first_accumulated_pass_is_weaker_than_the_envelope`): a primeira passada
+/// fica mais FRACA que a do envelope, porque o envelope entrega o pico do
+/// falloff e a integral entrega a média dele. É o preço honesto de a lei ser uma
+/// soma — e é a partir da segunda passada que ela paga.
+pub const ACCUM_PER_DAB: f32 = MIN_SPACING_FRACTION / 2.0;
+
 /// A distância mínima entre dois dabs de um pincel de raio `radius`.
 #[must_use]
 pub fn min_spacing(radius: f32) -> f32 {

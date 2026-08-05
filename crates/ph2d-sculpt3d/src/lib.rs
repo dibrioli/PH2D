@@ -40,5 +40,5 @@ mod spacing;
 mod stroke;
 
 pub use brush::{Amount, Brush, Falloff, Grip, REACH_FRACTION, Symmetry, Verb};
-pub use spacing::{MIN_SPACING_FRACTION, Walk, min_spacing, walk};
+pub use spacing::{ACCUM_PER_DAB, MIN_SPACING_FRACTION, Walk, min_spacing, walk};
 pub use stroke::{Dab, SculptStroke};

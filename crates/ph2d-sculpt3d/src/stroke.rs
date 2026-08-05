@@ -468,7 +468,23 @@ impl SculptStroke {
             if w <= 0.0 {
                 continue;
             }
-            if early_out && w <= self.accum[s] {
+            // **A LEI, e o interruptor que a troca.** Desarmado, o envelope: um
+            // dab que não supera o que já está lá é descartado — mesmo
+            // resultado, e sem mandar a pegada inteira ao refit do octree e ao
+            // upload por nada. Armado, a SOMA — e ela é normalizada pelo passo
+            // do espaçamento (`ACCUM_PER_DAB`), senão o efeito passaria a
+            // depender de quantos dabs o motor emitiu.
+            //
+            // ⚠️ **Quem responde *"este verbo acumula?"* é a PORTA, e não a
+            // tabela de grips ao lado.** As duas dizem a mesma coisa hoje — a
+            // família do carimbo —, e é exatamente por isso que uma delas tem de
+            // ser a resposta: escrito `early_out && brush.accumulate`, o
+            // predicado público vira uma segunda cópia que o motor não consulta,
+            // e uma mutação que o inverte não sangra (medido: ela sobreviveu aos
+            // 90 gates). O `early_out` continua sendo o que ele é — o descarte
+            // do envelope —, e a pergunta sobre o interruptor é feita ao verbo.
+            let piling = brush.accumulate && brush.verb.accumulates();
+            if early_out && !piling && w <= self.accum[s] {
                 continue;
             }
             // ⚠️ **Quem carrega o peso no ALVO carimba `accum = 1`**, e é isso
@@ -478,7 +494,18 @@ impl SculptStroke {
             // parar"* divergem no dia em que uma delas ganhar um caso especial.
             // O `base` continua guardado e intocado, que é o que mantém o undo
             // trivial nas três leis.
-            self.accum[s] = if unit_accum { 1.0 } else { w };
+            self.accum[s] = if unit_accum {
+                1.0
+            } else if piling {
+                // ⚠️ **Sem TETO, e é decisão.** `lerp(base, target, accum)` com
+                // `accum > 1` passa do alvo — que é precisamente o que o
+                // Accumulate significa: o Blender não capa, e capar faria a
+                // segunda passada ser um no-op silencioso, que é a forma de "o
+                // pincel parou de funcionar". Quem limita é a mão do artista.
+                self.accum[s] + w * crate::ACCUM_PER_DAB
+            } else {
+                w
+            };
             self.target[s] = self.compute_target(mesh, brush, dab, &plane, reach, shape, w, v, s);
             self.moved.push(v);
         }
@@ -584,3 +611,7 @@ mod growth_tests;
 #[cfg(test)]
 #[path = "stroke_window_tests.rs"]
 mod window_tests;
+
+#[cfg(test)]
+#[path = "stroke_accum_tests.rs"]
+mod accum_tests;

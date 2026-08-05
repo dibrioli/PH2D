@@ -173,6 +173,7 @@ impl crate::App {
             "91" => self.physics_smoke_pass_through(),
             "92" => self.physics_smoke_well(),
             "93" => self.physics_smoke_dash(),
+            "94" => self.physics_smoke_crouch(),
             _ => self.physics_smoke_drop(),
         }
 

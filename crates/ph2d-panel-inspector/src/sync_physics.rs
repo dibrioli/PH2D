@@ -200,6 +200,8 @@ pub(crate) fn sync_player_fields(host: &mut dyn PanelHostInternal) {
         (ids::INSP_PLAYER_DASH_SPEED, info.dash_speed),
         (ids::INSP_PLAYER_DASH_TIME, info.dash_time),
         (ids::INSP_PLAYER_DASH_COOL, info.dash_cooldown),
+        (ids::INSP_PLAYER_CROUCH_HEIGHT, info.crouch_height),
+        (ids::INSP_PLAYER_CROUCH_SPEED, info.crouch_speed),
         (ids::INSP_PLAYER_REACT_SUPPORT, info.reaction_support),
         (ids::INSP_PLAYER_REACT_MOVEMENT, info.reaction_movement),
     ] {

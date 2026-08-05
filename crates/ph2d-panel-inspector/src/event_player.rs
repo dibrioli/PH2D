@@ -56,6 +56,8 @@ pub(crate) fn apply_player_event(host: &mut dyn PanelHostInternal, ev: WidgetEve
                 ids::INSP_PLAYER_DASH_SPEED => Some(PlayerFieldEdit::DashSpeed(v)),
                 ids::INSP_PLAYER_DASH_TIME => Some(PlayerFieldEdit::DashTime(v)),
                 ids::INSP_PLAYER_DASH_COOL => Some(PlayerFieldEdit::DashCooldown(v)),
+                ids::INSP_PLAYER_CROUCH_HEIGHT => Some(PlayerFieldEdit::CrouchHeight(v)),
+                ids::INSP_PLAYER_CROUCH_SPEED => Some(PlayerFieldEdit::CrouchSpeed(v)),
                 ids::INSP_PLAYER_REACT_SUPPORT => Some(PlayerFieldEdit::ReactionSupport(v)),
                 ids::INSP_PLAYER_REACT_MOVEMENT => Some(PlayerFieldEdit::ReactionMovement(v)),
                 // Graus na row, cosseno no motor — a conversão acontece UMA vez,

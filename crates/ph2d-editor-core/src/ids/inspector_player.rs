@@ -156,6 +156,15 @@ pub const INSP_PLAYER_DASH_TIME: NodeId = hash_node_id("insp.player.dash.time");
 /// Quanto tempo depois do FIM até poder de novo, segundos.
 pub const INSP_PLAYER_DASH_COOL: NodeId = hash_node_id("insp.player.dash.cool");
 
+/// **O AGACHAR** (W15) — a altura agachado e a velocidade agachado.
+///
+/// ⚠️ Dois números com significados DIFERENTES para o zero: zero na altura
+/// desliga a capacidade; zero na velocidade é um agachar em que não se anda,
+/// que é uma escolha legítima. Ver [`INSP_PLAYER_CROUCH_SPEED`].
+pub const INSP_PLAYER_CROUCH_HEIGHT: NodeId = hash_node_id("insp.player.crouch.height");
+/// A velocidade de cruzeiro agachado, m/s. ⚠️ Zero aqui NÃO desliga nada.
+pub const INSP_PLAYER_CROUCH_SPEED: NodeId = hash_node_id("insp.player.crouch.speed");
+
 pub const INSP_PLAYER_CARD_LEG: NodeId = hash_node_id("insp_player_card_leg");
 pub const INSP_PLAYER_CARD_WALK: NodeId = hash_node_id("insp_player_card_walk");
 pub const INSP_PLAYER_CARD_JUMP: NodeId = hash_node_id("insp_player_card_jump");
@@ -163,3 +172,4 @@ pub const INSP_PLAYER_CARD_FORGIVE: NodeId = hash_node_id("insp_player_card_forg
 pub const INSP_PLAYER_CARD_REACT: NodeId = hash_node_id("insp_player_card_react");
 pub const INSP_PLAYER_CARD_WALL: NodeId = hash_node_id("insp_player_card_wall");
 pub const INSP_PLAYER_CARD_DASH: NodeId = hash_node_id("insp_player_card_dash");
+pub const INSP_PLAYER_CARD_CROUCH: NodeId = hash_node_id("insp_player_card_crouch");

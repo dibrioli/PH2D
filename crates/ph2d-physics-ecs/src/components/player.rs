@@ -17,7 +17,8 @@
 
 use bevy_ecs::component::Component;
 use ph2d_platformer::{
-    DashConfig, JumpConfig, PlayerConfig, ReactionConfig, RideConfig, WalkConfig, WallConfig,
+    CrouchConfig, DashConfig, JumpConfig, PlayerConfig, ReactionConfig, RideConfig, WalkConfig,
+    WallConfig,
 };
 use serde::{Deserialize, Serialize};
 
@@ -165,6 +166,25 @@ pub struct PlatformPlayer {
     /// para não se encadearem arranques no chão mais depressa do que a animação
     /// consegue mostrar.
     pub dash_cooldown: f32,
+
+    /// **AGACHAR** (W15) — a altura de flutuação enquanto agachado, m. `0`
+    /// desliga.
+    ///
+    /// ⚠️ **O agachar é uma perna mais CURTA, não um corpo menor** — o collider
+    /// nunca é reescrito, e é por isso que esta wave não pergunta quantas formas
+    /// o corpo tem (a premissa que a W-Compound derrubou). Ver o topo de
+    /// [`ph2d_platformer::crouch`].
+    ///
+    /// ⚠️ **Nasce DESLIGADO**, como o arranque e as paredes, e um valor que não
+    /// seja MENOR que a [`Self::float_height`] também conta como desligado: um
+    /// "agachar" que sobe não é um agachar.
+    pub crouch_height: f32,
+    /// **A velocidade de cruzeiro agachado**, m/s.
+    ///
+    /// ⚠️ **Zero aqui é LEGÍTIMO** e significa *agachar sem andar* — quem quer a
+    /// capacidade desligada põe zero na [`Self::crouch_height`]. São dois
+    /// números com dois significados, de propósito.
+    pub crouch_speed: f32,
 }
 
 impl PlatformPlayer {
@@ -213,6 +233,10 @@ impl PlatformPlayer {
                 time: self.dash_time,
                 cooldown: self.dash_cooldown,
             },
+            crouch: CrouchConfig {
+                height: self.crouch_height,
+                speed: self.crouch_speed,
+            },
             react: ReactionConfig {
                 support: self.reaction_support,
                 movement: self.reaction_movement,
@@ -256,6 +280,8 @@ impl Default for PlatformPlayer {
             dash_speed: c.dash.speed,
             dash_time: c.dash.time,
             dash_cooldown: c.dash.cooldown,
+            crouch_height: c.crouch.height,
+            crouch_speed: c.crouch.speed,
         }
     }
 }

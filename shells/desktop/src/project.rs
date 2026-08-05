@@ -336,7 +336,12 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// v65 (physics, W14 — O ARRANQUE): o `PlatformPlayer` ganhou **`dash_speed`**,
 /// **`dash_time`** e **`dash_cooldown`**. Três campos apendados ao componente, pelo
 /// mesmo raciocínio posicional de todos os degraus acima.
-const PROJECT_SCHEMA: u32 = 65;
+
+/// v66 (physics, W15 — O AGACHAR): o `PlatformPlayer` ganhou **`crouch_height`** e
+/// **`crouch_speed`**. Dois campos apendados, e o motivo do bump é o de sempre —
+/// postcard é posicional. ⚠️ Note o que este degrau **não** traz: nenhuma forma de
+/// collider muda, porque agachar aqui é uma perna mais CURTA e não um corpo menor.
+const PROJECT_SCHEMA: u32 = 66;
 
 /// O conteúdo de um arquivo de projeto.
 #[derive(serde::Serialize, serde::Deserialize)]

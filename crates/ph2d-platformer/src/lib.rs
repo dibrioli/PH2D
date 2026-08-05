@@ -49,6 +49,7 @@
 //! que a caminhada considera intransponível.
 
 pub mod corner;
+pub mod crouch;
 pub mod dash;
 pub mod jump;
 pub mod react;
@@ -60,6 +61,10 @@ pub mod wall;
 pub use corner::{
     CORNER_LOOKAHEAD, CORNER_SAMPLES, CORNER_SEARCH_STEPS, CeilingProbe, corner_escape,
     corner_nudge, corner_offsets, corner_probe_wanted,
+};
+pub use crouch::{
+    CrouchConfig, CrouchState, HEADROOM_SAMPLES, Headroom, crouch_step, effective_crouched,
+    headroom_offsets, headroom_probe_wanted, ride_for, walk_for,
 };
 pub use dash::{DashConfig, DashState, DashStep, dash_burst, dash_step};
 pub use jump::{JumpConfig, JumpState, JumpStep, carried_frame, jump_step};
@@ -135,6 +140,8 @@ pub struct PlayerConfig {
     pub wall: WallConfig,
     /// O arranque (W14) — ⚠️ nasce DESLIGADO, ver [`DashConfig::STARTING_POINT`].
     pub dash: DashConfig,
+    /// O agachar (W15) — ⚠️ nasce DESLIGADO, ver [`CrouchConfig::STARTING_POINT`].
+    pub crouch: CrouchConfig,
 }
 
 impl PlayerConfig {
@@ -146,6 +153,7 @@ impl PlayerConfig {
         react: ReactionConfig::STARTING_POINT,
         wall: WallConfig::STARTING_POINT,
         dash: DashConfig::STARTING_POINT,
+        crouch: CrouchConfig::STARTING_POINT,
     };
 }
 
@@ -171,6 +179,9 @@ pub struct PlayerState {
     pub jump: JumpState,
     /// O arranque (W14) — o relógio, a carga, a direção e o lado que ele olha.
     pub dash: DashState,
+    /// O agachar (W15) — um bit, e ele existe porque levantar-se pode ser
+    /// RECUSADO (ver o topo de [`crate::crouch`]).
+    pub crouch: CrouchState,
 }
 
 /// **O que a porta única decidiu neste tick** — as três respostas.
@@ -359,6 +370,7 @@ pub fn player_motor(
     sample: Option<&GroundSample>,
     ceiling: Option<&CeilingProbe>,
     wall: Option<&WallSample>,
+    headroom: Option<&Headroom>,
     input: PlayerInput,
     state: PlayerState,
     body_velocity: Vec2,
@@ -416,6 +428,30 @@ pub fn player_motor(
         dt,
     );
     let dashing = dash.active;
+
+    // ── O AGACHAR (W15) ──────────────────────────────────────────────────────
+    // ⚠️ **O `grounded` é o MESMO que o arranque consumiu**, pela mesma porta —
+    // e o botão é o MESMO `down` da W12: esta wave não acrescenta entrada
+    // nenhuma, e o gesto é de graça porque o dedo já estava no lugar certo.
+    let crouch = crouch::crouch_step(
+        &cfg.crouch,
+        &cfg.ride,
+        state.crouch,
+        grounded,
+        input.down,
+        headroom,
+    );
+    // ⚠️ **A config EFECTIVA, e a partir daqui é ELA que manda.** A perna encurta
+    // e a caminhada abranda; tudo o resto é a config autorada, ao bit.
+    //
+    // ⚠️ **E o que o sensor alcança NÃO se move** — a faixa de agarre cresce pelo
+    // que a perna encurtou, então `float_height + cling_distance` fica
+    // invariante. É isso que deixa a `footing_verdict` acima (calculada com a
+    // config AUTORADA, antes de o agachar ser conhecido) responder o mesmo que
+    // responderia agora, e é isso que deixa a ponte castar sem saber que esta
+    // wave existe. O invariante está gateado nos dois lados — ver o topo de
+    // [`crate::crouch`].
+    let cfg = crouch::effective_crouched(cfg, crouch.crouched);
 
     // A perna e a caminhada veem o MESMO chão, e é o que o pulo lhes deixou ver:
     // duas respostas para *"estou no chão?"* seriam um personagem que anda no
@@ -533,6 +569,7 @@ pub fn player_motor(
         state: PlayerState {
             jump: jump.state,
             dash: dash.state,
+            crouch,
         },
         reaction,
         nudge,

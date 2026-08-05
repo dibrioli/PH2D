@@ -41,6 +41,7 @@ fn the_leg_declares_which_half_of_its_push_cancels_gravity() {
         Some(&ground),
         None,
         None,
+        None,
         PlayerInput::default(),
         PlayerState::default(),
         [0.0, 0.0],
@@ -79,6 +80,7 @@ fn nothing_is_held_in_the_air() {
         None,
         None,
         None,
+        None,
         PlayerInput::default(),
         PlayerState::default(),
         [0.0, 0.0],
@@ -98,6 +100,7 @@ fn nothing_is_held_in_the_air() {
     let takeoff = player_motor(
         &cfg,
         Some(&ground),
+        None,
         None,
         None,
         PlayerInput {
@@ -142,6 +145,7 @@ fn the_spring_lets_go_of_a_wall() {
         Some(&steep),
         None,
         None,
+        None,
         PlayerInput::default(),
         PlayerState::default(),
         [0.0, 0.0],
@@ -158,6 +162,7 @@ fn the_spring_lets_go_of_a_wall() {
     // estar ao lado de uma parede íngreme é o MESMO que estar no ar.
     let in_the_air = player_motor(
         &cfg,
+        None,
         None,
         None,
         None,
@@ -196,6 +201,7 @@ fn a_degenerate_normal_counts_as_flat() {
         Some(&inside),
         None,
         None,
+        None,
         PlayerInput::default(),
         PlayerState::default(),
         [0.0, 0.0],
@@ -222,6 +228,7 @@ fn the_door_sums_both_laws() {
     let whole = player_motor(
         &cfg,
         Some(&ground),
+        None,
         None,
         None,
         input,
@@ -379,6 +386,7 @@ fn at_the_door_a_steep_slope_kills_the_walk_but_not_the_jump() {
         Some(&steep),
         None,
         None,
+        None,
         pushing,
         PlayerState::default(),
         [0.0, 0.0],
@@ -389,6 +397,7 @@ fn at_the_door_a_steep_slope_kills_the_walk_but_not_the_jump() {
     let idle = player_motor(
         &cfg,
         Some(&steep),
+        None,
         None,
         None,
         PlayerInput::default(),
@@ -413,6 +422,7 @@ fn at_the_door_a_steep_slope_kills_the_walk_but_not_the_jump() {
     let jumping = player_motor(
         &cfg,
         Some(&steep),
+        None,
         None,
         None,
         PlayerInput {
@@ -443,3 +453,10 @@ fn at_the_door_a_steep_slope_kills_the_walk_but_not_the_jump() {
 /// ceder a um pulo).
 #[path = "lib_dash_tests.rs"]
 mod dash;
+
+/// Os gates do AGACHAR na porta única — o mesmo corte, e o mesmo motivo, do
+/// irmão do arranque logo acima: aqui vive *o que o agachar faz à porta* (a
+/// perna que encurta, a caminhada que abranda, e o invariante que deixa a ponte
+/// não saber de nada disto).
+#[path = "lib_crouch_tests.rs"]
+mod crouch;

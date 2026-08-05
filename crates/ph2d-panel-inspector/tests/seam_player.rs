@@ -70,6 +70,11 @@ fn player() -> InspectorPlayerInfo {
         dash_speed: 0.0,
         dash_time: 0.15,
         dash_cooldown: 0.2,
+        // ⚠️ **O AGACHAR (W15) LIGADO na fixture, pela razão exacta das paredes
+        // acima:** ele nasce DESLIGADO no produto, e uma fixture que herdasse o
+        // zero varreria rows cujo valor nunca muda.
+        crouch_height: 0.55,
+        crouch_speed: 2.0,
         lift_momentum: 1.5,
         reaction_support: 1.0,
         reaction_movement: 0.0,
@@ -188,7 +193,7 @@ fn every_number_raises_its_own_edit() {
     // exatamente o arm esquecido que ela existe para pegar.
     assert_eq!(
         ph2d_panel_inspector::PLAYER_ROW_COUNT,
-        29,
+        31,
         "a tabela de rows cresceu; acrescente o numero novo a esta varredura"
     );
     for (id, v, edit) in [
@@ -282,6 +287,16 @@ fn every_number_raises_its_own_edit() {
             ids::INSP_PLAYER_DASH_COOL,
             0.25,
             PlayerFieldEdit::DashCooldown(0.25),
+        ),
+        (
+            ids::INSP_PLAYER_CROUCH_HEIGHT,
+            0.6,
+            PlayerFieldEdit::CrouchHeight(0.6),
+        ),
+        (
+            ids::INSP_PLAYER_CROUCH_SPEED,
+            2.5,
+            PlayerFieldEdit::CrouchSpeed(2.5),
         ),
         (
             ids::INSP_PLAYER_MAX_SLOPE,

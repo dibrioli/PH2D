@@ -283,10 +283,14 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // PROJECT 56→57: `PlatformPlayer` ganhou `dash_speed`, `dash_time` e
         // `dash_cooldown` (W14 — O ARRANQUE). Três campos apendados, mesmo
         // raciocínio posicional.
+        // PROJECT 57→58: `PlatformPlayer` ganhou `crouch_height` e
+        // `crouch_speed` (W15 — O AGACHAR). Dois campos apendados; e note o que
+        // ESTE degrau nao traz — nenhuma forma de collider muda, porque agachar
+        // aqui e' uma perna mais CURTA e nao um corpo menor.
         // ⚠️ **PROVISÓRIO:** o valor se CONTA contra o `main` do dia da
         // integração — três linhas já colidiram neste número por o terem
         // escolhido, e a última vez o certo não estava em nenhum dos dois lados.
-        (65, 13, 14),
+        (66, 13, 14),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

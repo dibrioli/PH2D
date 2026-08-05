@@ -221,7 +221,31 @@ const DASH_ROWS: [PlayerRow; 3] = [
     ),
 ];
 
-/// **A TABELA da §14** — sete cards, e os vinte e dois números dentro deles.
+/// **O AGACHAR** (W15) — ⚠️ card próprio, e a primeira row nasce em ZERO porque
+/// a capacidade é opt-in.
+///
+/// ⚠️ **Dois números, e o zero significa coisas DIFERENTES em cada um** — a
+/// altura desliga a capacidade, a velocidade não. É por isso que o hover de cada
+/// um diz o que o SEU zero faz: quem lê "0 = off" numa row e o supõe na outra
+/// autoraria um agachar que não existe julgando ter feito um agachar parado.
+///
+/// ⚠️ **E o que NÃO está aqui:** nenhuma dimensão de collider. Agachar é uma
+/// perna mais CURTA, e a forma do corpo não é reescrita — ver o topo de
+/// `ph2d_platformer::crouch`.
+const CROUCH_ROWS: [PlayerRow; 2] = [
+    (
+        "Crouch Height (m)",
+        ids::INSP_PLAYER_CROUCH_HEIGHT,
+        "How low he floats while holding DOWN. 0 = off.",
+    ),
+    (
+        "Crouch Speed (m/s)",
+        ids::INSP_PLAYER_CROUCH_SPEED,
+        "How fast he walks while crouched. 0 means duck in place.",
+    ),
+];
+
+/// **A TABELA da §14** — oito cards, e os vinte e quatro números dentro deles.
 ///
 /// ⚠️ **UMA tabela, TRÊS consumidores** (o molde do `SECTIONS` do painel de
 /// física): o **pintor** desenha, o **`populate`** registra a dica de hover de
@@ -229,12 +253,12 @@ const DASH_ROWS: [PlayerRow; 3] = [
 /// com dica e varrida, ou não nasce.
 ///
 /// ⚠️ **Os títulos são os módulos da lei** (`ride` · `walk` · `jump` · o perdão
-/// · `react` · `wall` · `dash`), não uma arrumação de gosto: quando o artista
+/// · `react` · `wall` · `dash` · `crouch`), não uma arrumação de gosto: quando o artista
 /// pergunta *"o que este número faz?"*, a primeira metade da resposta é *"a que
 /// pergunta ele pertence"*, e ela passou a estar escrita na tela (Enio,
 /// 2026-08-04: *"esse tanto de parâmetros juntos não fica bem; organize-os em
 /// cards com um título que facilite o entendimento"*).
-pub(crate) const PLAYER_CARDS: [(&str, ph2d_a11y::NodeId, &[PlayerRow]); 7] = [
+pub(crate) const PLAYER_CARDS: [(&str, ph2d_a11y::NodeId, &[PlayerRow]); 8] = [
     ("LEG", ids::INSP_PLAYER_CARD_LEG, &LEG_ROWS),
     ("WALK", ids::INSP_PLAYER_CARD_WALK, &WALK_ROWS),
     ("JUMP", ids::INSP_PLAYER_CARD_JUMP, &JUMP_ROWS),
@@ -242,6 +266,7 @@ pub(crate) const PLAYER_CARDS: [(&str, ph2d_a11y::NodeId, &[PlayerRow]); 7] = [
     ("REACTION", ids::INSP_PLAYER_CARD_REACT, &REACT_ROWS),
     ("WALLS", ids::INSP_PLAYER_CARD_WALL, &WALL_ROWS),
     ("DASH", ids::INSP_PLAYER_CARD_DASH, &DASH_ROWS),
+    ("CROUCH", ids::INSP_PLAYER_CARD_CROUCH, &CROUCH_ROWS),
 ];
 
 /// Quantas rows numéricas a seção pinta — **contadas da tabela**, nunca escritas

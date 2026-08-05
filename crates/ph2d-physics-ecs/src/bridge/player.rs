@@ -32,9 +32,10 @@
 use bevy_ecs::entity::Entity;
 use ph2d_ecs::SimWorld;
 use ph2d_platformer::{
-    CORNER_LOOKAHEAD, CORNER_SAMPLES, CeilingProbe, GroundSample, PlayerConfig, PlayerInput,
-    PlayerState, WallSample, corner_offsets, corner_probe_wanted, footing, player_motor,
-    relative_rise, wall_probe_wanted,
+    CORNER_LOOKAHEAD, CORNER_SAMPLES, CeilingProbe, GroundSample, HEADROOM_SAMPLES, Headroom,
+    PlayerConfig, PlayerInput, PlayerState, WallSample, corner_offsets, corner_probe_wanted,
+    footing, headroom_offsets, headroom_probe_wanted, player_motor, relative_rise,
+    wall_probe_wanted,
 };
 
 use crate::components::{BodyKind, PlatformPlayer};
@@ -271,11 +272,26 @@ impl PhysicsBridge {
                 None
             };
             let was = self.player_state.get(&entity).copied().unwrap_or_default();
+
+            // ── O SENSOR DE TETO DO AGACHAR (W15) ────────────────────────────
+            // ⚠️ A pergunta *"vale a pena castar?"* é a MESMA que a lei faz para
+            // decidir se lê (`headroom_probe_wanted`), o molde exacto dos dois
+            // sensores acima. Ela é falsa em quase todo tique — só quem ESTÁ
+            // agachado e SOLTOU o botão tem alguma coisa a perguntar —, então o
+            // custo dos raios existe apenas no instante do gesto de levantar.
+            let headroom = if headroom_probe_wanted(&cfg.crouch, &cfg.ride, was.crouch, input.down)
+            {
+                probe_headroom(&self.world, b.handle, b.rest.layer, &cfg)
+            } else {
+                None
+            };
+
             let step = player_motor(
                 &cfg,
                 sample.as_ref(),
                 ceiling.as_ref(),
                 wall.as_ref(),
+                headroom.as_ref(),
                 input,
                 was,
                 vel,
@@ -457,6 +473,58 @@ fn probe_ceiling(
         blocked,
         side_clear: [free(-1.0), free(1.0)],
     })
+}
+
+/// **O que há sobre a cabeça** (W15) — os raios que decidem se ele pode
+/// levantar-se de um agachar.
+///
+/// Eles nascem no TOPO da caixa do corpo e medem exactamente
+/// [`ph2d_platformer::CrouchConfig::rise`] — *quanto o corpo SOBE ao
+/// levantar-se*. Nem um milímetro além: perguntar mais longe recusaria o gesto
+/// por causa de um teto que o personagem, de pé, não alcança.
+///
+/// ⚠️ **A grade vem da lei** ([`headroom_offsets`]), nunca de uma aritmética
+/// local — a mesma regra do sensor de quina, e pelo mesmo motivo: duas
+/// aritméticas deslocariam as amostras em relação ao corpo.
+///
+/// ⚠️ **A caixa envolvente é CONSERVADORA, e a direcção do erro é a certa** (ver
+/// o doc de [`headroom_offsets`]): um teto que toque só a quina da caixa recusa
+/// o levantar. Ficar agachado onde caberia é um incómodo; levantar-se para
+/// dentro da pedra é o solver a resolver uma penetração que ninguém autorou.
+///
+/// ⚠️ **O QUE NÃO ESTÁ GATEADO, e porquê:** a GRADE tem gate na lei
+/// (`the_headroom_grid_spans_the_body`) e o `blocked` tem gate no produto — mas
+/// a metade *"o laço percorre os TRÊS deslocamentos"* só é observável sob um
+/// teto **PARCIAL**, que cubra uma borda do corpo e não o centro. Uma fixture
+/// dessas teria de calibrar a aresta da laje contra a posição MEDIDA de um
+/// personagem a andar, dentro de uma janela de 0,2 m — um gate que falharia por
+/// deriva de fixture em vez de por defeito. Fica NOMEADO: trocar o laço por um
+/// raio central sobrevive à suíte.
+fn probe_headroom(
+    world: &ph2d_physics::PhysicsWorld,
+    handle: rapier2d_handle::Handle,
+    layer: u8,
+    cfg: &PlayerConfig,
+) -> Option<Headroom> {
+    let rise = cfg.crouch.rise(&cfg.ride);
+    if !rise.is_finite() || rise <= 0.0 {
+        return None;
+    }
+    let (mins, maxs) = world.body_aabb(handle)?;
+    let half_width = (maxs[0] - mins[0]) * 0.5;
+    if !half_width.is_finite() || half_width <= 0.0 {
+        return None;
+    }
+    let cx = (maxs[0] + mins[0]) * 0.5;
+    let top = maxs[1];
+
+    let mut blocked = [false; HEADROOM_SAMPLES];
+    for (slot, off) in blocked.iter_mut().zip(headroom_offsets(half_width).iter()) {
+        *slot = world
+            .cast_ray([cx + off, top], [0.0, 1.0], rise, Some(handle), layer)
+            .is_some();
+    }
+    Some(Headroom { blocked })
 }
 
 /// **A parede ao lado** (W13) — a metade do sensor que este módulo possui, e

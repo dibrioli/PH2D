@@ -85,6 +85,8 @@ pub(crate) fn build_player_info(sim: &SimWorld, entity_bits: u64) -> Option<Insp
         dash_speed: p.dash_speed,
         dash_time: p.dash_time,
         dash_cooldown: p.dash_cooldown,
+        crouch_height: p.crouch_height,
+        crouch_speed: p.crouch_speed,
         reaction_support: p.reaction_support,
         reaction_movement: p.reaction_movement,
     })
@@ -188,6 +190,8 @@ pub(crate) fn apply_player_edit(sim: &mut SimWorld, entity_bits: u64, edit: Play
         PlayerFieldEdit::DashSpeed(v) => p.dash_speed = v.max(0.0),
         PlayerFieldEdit::DashTime(v) => p.dash_time = v.max(0.0),
         PlayerFieldEdit::DashCooldown(v) => p.dash_cooldown = v.max(0.0),
+        PlayerFieldEdit::CrouchHeight(v) => p.crouch_height = v.max(0.0),
+        PlayerFieldEdit::CrouchSpeed(v) => p.crouch_speed = v.max(0.0),
         PlayerFieldEdit::ReactionSupport(v) => p.reaction_support = v.max(0.0),
         PlayerFieldEdit::ReactionMovement(v) => p.reaction_movement = v.max(0.0),
     }

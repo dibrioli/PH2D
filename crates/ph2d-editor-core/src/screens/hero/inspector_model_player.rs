@@ -82,6 +82,10 @@ pub struct InspectorPlayerInfo {
     pub dash_time: f32,
     /// **Dash Cooldown** (W14) — segundos depois do FIM.
     pub dash_cooldown: f32,
+    /// **Crouch Height** (W15) — a altura de flutuação agachado, m. `0` desliga.
+    pub crouch_height: f32,
+    /// **Crouch Speed** (W15) — m/s agachado. ⚠️ `0` aqui NÃO desliga nada.
+    pub crouch_speed: f32,
     /// Quanto do peso volta ao chao (W6).
     pub reaction_support: f32,
     /// Quanto da caminhada volta ao chao (W6).
@@ -142,6 +146,9 @@ pub enum PlayerFieldEdit {
     DashSpeed(f32),
     DashTime(f32),
     DashCooldown(f32),
+    /// O AGACHAR (W15).
+    CrouchHeight(f32),
+    CrouchSpeed(f32),
     /// Quanto do peso volta ao chao (W6).
     ReactionSupport(f32),
     /// Quanto da caminhada volta ao chao (W6).

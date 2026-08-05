@@ -53,7 +53,10 @@ fn project_family() -> String {
     }
     // Controle positivo: uma varredura que não achou nada estaria VERDE por vácuo em todo
     // `assert!(contains)` que a consome.
-    assert!(seen >= 2, "a familia project*.rs encolheu para {seen} arquivo(s) — a varredura esta' a olhar para o lugar errado");
+    assert!(
+        seen >= 2,
+        "a familia project*.rs encolheu para {seen} arquivo(s) — a varredura esta' a olhar para o lugar errado"
+    );
     all
 }
 

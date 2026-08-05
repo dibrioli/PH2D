@@ -25,11 +25,12 @@ Nada integrado, nada pushado.
 | `33dfc5cbc` | a W13 no plano e no mapa |
 | `0ae18e65f` | este handoff |
 | `05edd9c73` | **W14** — O ARRANQUE |
-| (o commit seguinte) | a W14 no plano, no mapa e neste handoff |
+| `d10f1a556` | a W14 no plano e no mapa |
+| **(esta wave)** | **W15** — O AGACHAR, e a W15 no plano, no mapa e neste handoff |
 
-**Smoke:** W11b/W11c **APROVADAS** (*"Smoke OK"*, 2026-08-05) e **W12 e W13
-APROVADAS** na mesma data (*"Smoke OK. SIGA"*). **A W14 é a única pendente** —
-integrar não é aprovar.
+**Smoke:** W11b/W11c **APROVADAS** (*"Smoke OK"*, 2026-08-05), **W12 e W13
+APROVADAS** na mesma data (*"Smoke OK. SIGA"*) e **a W14 APROVADA** logo a seguir
+(*"Smoke OK. Siga"*). **A W15 é a única pendente** — integrar não é aprovar.
 
 ---
 
@@ -37,7 +38,7 @@ integrar não é aprovar.
 
 | número | veredito |
 |---|---|
-| **`PROJECT_SCHEMA`** | ⚠️ **55 → 57** (W13 e W14, um degrau cada) — ver §3 |
+| **`PROJECT_SCHEMA`** | ⚠️ **55 → 58** (W13, W14 e W15, um degrau cada) — ver §3 |
 | `FLIP_SCHEMA` · `VEC_SCENE` | intocados (13 · 14) |
 | registro `ph2d-physics-ecs` | **INTOCADO** (28) — nenhum componente novo |
 | registro `ph2d-ecs` (as 3 casas) | **INTOCADO** |
@@ -49,17 +50,22 @@ integrar não é aprovar.
 | suítes | **debug e release**, mais a shell — verdes, zero falhas |
 
 ⚠️ **O `c9` moveu-se UMA vez na jornada inteira, e foi na W11b/W11c** (a altura de
-repouso do player mudou). **A W12, a W13 e a W14 são byte-neutras** — a descida
-e o arranque exigem botões que a fita do harness não segura, e as paredes e o
-arranque nascem **desligados**. Isso não é sorte: é a prova executável de que as
-três capacidades novas são opt-in.
+repouso do player mudou). **A W12, a W13, a W14 e a W15 são byte-neutras** — a
+descida, o arranque e o agachar exigem botões que a fita do harness não segura, e
+as paredes, o arranque e o agachar nascem **desligados**. Isso não é sorte: é a
+prova executável de que as quatro capacidades novas são opt-in.
 
 ---
 
 ## §3 — ⚠️ O bump, e por que ele é PROVISÓRIO
 
+**W15:** o `PlatformPlayer` ganhou **dois** campos (`crouch_height`,
+`crouch_speed`) — mesmo raciocínio posicional. A linha escreve **58**. ⚠️ E vale
+notar o que este degrau **não** traz: nenhuma dimensão de collider muda, porque
+agachar aqui é uma perna mais CURTA e não um corpo menor.
+
 **W14:** o `PlatformPlayer` ganhou **três** campos (`dash_speed`, `dash_time`,
-`dash_cooldown`) — mesmo raciocínio posicional. A linha escreve **57**.
+`dash_cooldown`) — mesmo raciocínio posicional.
 
 **W13:** o `PlatformPlayer` ganhou **cinco** campos (`wall_slide_speed`,
 `wall_jump_height`, `wall_jump_push`, `wall_jump_lockout`, `wall_reach`).
@@ -68,7 +74,7 @@ chega ao fim dos bytes no primeiro campo novo. O número é o que transforma iss
 num erro de **VERSÃO** em vez de num postcard a falhar longe da causa.
 
 ⚠️ **O valor se CONTA contra o `main` do dia da integração, nunca se escolhe.**
-Esta linha escreve **57**; se outra linha da janela bumpar, o certo pode não estar
+Esta linha escreve **58**; se outra linha da janela bumpar, o certo pode não estar
 em nenhum dos dois lados do conflito — foi o que aconteceu três vezes com a
 `line/FLIP` (30 · 32/33/34 · 47) e uma com o próprio handoff desta linha, que
 contou UM degrau onde havia DOIS.
@@ -76,7 +82,7 @@ contou UM degrau onde havia DOIS.
 ⚠️ **E o `project.rs` pode não conflitar mesmo assim:** se as duas linhas
 escreverem o mesmo literal, o git funde limpo e o bump da segunda **evapora com a
 suíte verde**. Quem denuncia é o conflito do `project_schema_tests.rs` ao lado, e
-a tripla que ele pina — **`(57, 13, 14)`** aqui.
+a tripla que ele pina — **`(58, 13, 14)`** aqui.
 
 ---
 
@@ -205,6 +211,73 @@ qualifica meia dúzia de handlers deste app, e um botão de jogo que também
 qualifica outros é um botão com dois donos.
 
 
+## §5c — W15: o agachar (cena `=94`)
+
+**O que ele é:** segurar BAIXO baixa o personagem e o deixa passar por onde não
+cabe de pé. Soltar debaixo de um teto **não** o levanta.
+
+⚠️ **A previsão do plano 06 §4 estava ERRADA, e a construção corrigiu-a.** Ela
+mantinha o agachar de fora dizendo que ele *"exige **encolher o collider**"* e que
+por isso tropeçava na premissa que a W-Compound derrubou (*"um corpo tem
+exactamente um collider"*). **Não exige.** O personagem é uma cápsula
+**FLUTUANTE** (D1): a silhueta dele acima do chão vale `float_height +
+meia-altura do collider`, e baixar a perna baixa a silhueta INTEIRA pelo mesmo
+delta, com a forma intocada — medido, **topo `1,602 → 1,102`** para uma perna que
+encurtou **`0,500`**. É a D1 a apagar mais um caso especial, o mesmo que ela já
+fizera a degrau, rampa e plataforma móvel, e é também o que o `bevy-tnua` faz.
+
+⚠️ **A faixa de agarre CRESCE pelo que a perna encurtou, e isso não é ajuste.** A
+soma `float_height + cling_distance` é **exactamente** o que o `within_reach`
+compara; se ela encolhesse, a **PONTE** — que casta e julga com a config
+AUTORADA — veria chão onde a lei já não vê. Crescendo-a pelo `drop`, a soma fica
+**INVARIANTE**, e o problema de ordenar *"quem decide primeiro"* nunca chega a
+existir: é a representação a apagar o caso especial. Gateado nos dois lados.
+
+⚠️ **O estado NÃO é função pura do botão** — levantar-se é **RECUSADO** sob um
+teto, e é por isso que existe um `CrouchState`, a viajar no `PlayerState` (o
+mesmo ring da fita que o pulo e o arranque já usam).
+
+⚠️ **Zero significa coisas DIFERENTES nos dois números:** na altura desliga a
+capacidade; na velocidade é um agachar em que não se anda, que é uma escolha. Os
+dois hovers dizem qual é o seu zero.
+
+⚠️ **A wave não acrescenta ENTRADA nenhuma** — o botão de BAIXO existe desde a
+W12, com o significado certo, e é isso que torna o gesto barato.
+
+**Medido (2026-08-05):**
+
+| pergunta | número |
+|---|---|
+| a silhueta baixa | `1,602 → 1,102` (autorado `0,500`) |
+| ele passa sob um teto que o para de pé | de pé **x = 4,80** · agachado **x = 9,97** |
+| o CONTROLE (teto alto) | de pé **x = 29,77** |
+| a caminhada agachado | **3,973 m** contra **11,765** em 120 tiques (razão **0,338**) |
+
+⚠️ **UM LIMITE MEDIDO E NOMEADO — o PISO GEOMÉTRICO.** A altura agachada não pode
+descer abaixo de `half_height + radius` (**0,50** na cápsula das fixtures): abaixo
+disso a cápsula enterra no chão e quem resolve é o solver (medido: pedir `0,30`
+devolve `0,500`, um erro de `+0,200`). **A lei pura não pode clampá-lo** — ela não
+conhece formas, de propósito —, então o piso vive onde a geometria vive: no rig,
+no componente e no aviso da cena.
+
+**8 mutações, 8 sangram.** ⚠️ **Uma sobreviveu, e a causa foi de FIXTURE — a
+mesma classe que já custara uma rodada à W14:** o gate de scrub media a pose **no
+instante do alvo**, onde ela vem do `restore` do rapier e está certa em qualquer
+caso; o que a memória do controlador estraga é o que vem **A SEGUIR**. *Um gate de
+scrub que não CONTINUA não testa o ring, testa o restore.* Corrigido, a mutação
+diverge **`0,602 → 0,850`** na vertical (o topo encostado na laje) e **2,1 m** na
+horizontal.
+
+⚠️ **O que NÃO está gateado, e está NOMEADO:** a grade de três raios do sensor de
+teto tem gate na lei, e o `blocked` tem gate no produto — mas *"o laço percorre os
+TRÊS deslocamentos"* só é observável sob um teto **PARCIAL**, e uma fixture dessas
+teria de calibrar a aresta da laje contra a posição MEDIDA de um personagem a
+andar, dentro de uma janela de 0,2 m. Seria um gate que falha por deriva de
+fixture em vez de por defeito. Trocar o laço por um raio central **sobrevive à
+suíte**.
+
+---
+
 ## §6 — Ordem
 
 1. `git rebase main` (ou merge). Os arquivos compartilhados são o `project.rs`
@@ -231,6 +304,7 @@ env PH2D_PHYSICS_SMOKE=85 cargo run -p ph2d-host-desktop --release   # a jangada
 env PH2D_PHYSICS_SMOKE=91 cargo run -p ph2d-host-desktop --release   # A ESCADA DE PRANCHAS (W12)
 env PH2D_PHYSICS_SMOKE=92 cargo run -p ph2d-host-desktop --release   # O POÇO (W13)
 env PH2D_PHYSICS_SMOKE=93 cargo run -p ph2d-host-desktop --release   # O ABISMO (W14)
+env PH2D_PHYSICS_SMOKE=94 cargo run -p ph2d-host-desktop --release   # O CORREDOR BAIXO (W15)
 ```
 
 ⚠️ **Cada cena imprime o que montou.** Se a linha `[physics-smoke NN]` não
@@ -243,6 +317,11 @@ aparecer, pare: a cena não montou e o resto do smoke não diz nada.
 - **`=93`** — o abismo tem **11 m de propósito**, e o **passo 3 é o controle**:
   um pulo sozinho **não** o atravessa. Se atravessar, o vão está curto e o resto
   do roteiro não diz nada.
+- **`=94`** — as alturas são **aritmética da cápsula, medida**: topo de pé
+  **1,402**, agachado **1,052**, o túnel baixo em **1,20** e o alto — o
+  **CONTROLE** — em **1,60**. O passo 6 é ele: se o segundo túnel também o
+  parasse, a cena estaria a medir a laje e não o agachar. E o **passo 4** é a
+  estrela: soltar o botão LÁ DENTRO **não** o levanta.
 
 ---
 
@@ -256,6 +335,11 @@ aparecer, pare: a cena não montou e o resto do smoke não diz nada.
   que alcance só os pés não é vista (a mesma limitação honesta da folga lateral da
   W10). E não há *wall grab*: ficar **parado** numa parede é outra mecânica, com
   botão próprio, e não se alcança escrevendo `0` no `Wall Slide`.
-- **Do plano 06 §4, o que sobra:** *dash* · *agachar* · **bake de um player**
-  (desbloqueado desde a W7 — *"com a fita, assar passa a fazer sentido"*) ·
-  persistir a fita · player Kinematic.
+- **W15:** o **piso geométrico** da altura agachada não é clampado pela lei (ela
+  não conhece formas) nem avisado na UI — quem escrever `0,20` numa cápsula de
+  `0,50` vê o corpo enterrado, sem nada a dizer por quê. A cura natural é a mesma
+  do `min_float_height` que a §14 já mostra para a perna de pé: **um readout, não
+  um clamp**. Nomeado, não construído.
+- **Do plano 06 §4, o que sobra:** **bake de um player** (desbloqueado desde a
+  W7 — *"com a fita, assar passa a fazer sentido"*) · persistir a fita · player
+  Kinematic.

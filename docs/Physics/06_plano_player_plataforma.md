@@ -471,14 +471,23 @@ W10) · não há *wall grab* (ficar parado é outra mecânica, com botão própr
   custa**: o arranque não é um termo a somar ao motor, é um regime em que a
   perna, a caminhada e a gravidade **calam-se** — três silêncios que são uma
   frase só (*durante o arranque o personagem é uma velocidade*).
-- **Agachar** — segue fora, e agora com o preço nomeado: o gesto é barato (o
-  botão de BAIXO já existe desde a W12, com o significado certo), e o que ele
-  exige é **encolher o collider**, que é a primeira coisa desta linha a reescrever
-  a forma de um corpo por tique. ⚠️ Isso tropeça na premissa que a W-Compound já
-  derrubou uma vez — *"um corpo tem exactamente um collider"* — e a resposta para
-  um corpo composto (encolher qual? por quanto? e as posições relativas?) é
-  decisão de desenho, não mecânica. Wave própria, com a pergunta escrita na
-  frente.
+- ~~**Agachar**~~ — **FEITO: a W15** (2026-08-05, cena `=94`). ⚠️ **E a previsão
+  desta linha estava ERRADA na metade que a mantinha fora.** Ela dizia que o
+  gesto *"exige **encolher o collider**, que é a primeira coisa desta linha a
+  reescrever a forma de um corpo por tique"*, e que por isso tropeçava na
+  premissa que a W-Compound derrubou (*"um corpo tem exactamente um collider"*).
+  **Não exige nada disso.** O personagem é uma cápsula FLUTUANTE (D1): a silhueta
+  dele acima do chão vale `float_height + meia-altura do collider`, e baixar a
+  perna baixa a silhueta inteira **pelo mesmo delta**, com a forma intocada —
+  medido, `topo 1,602 → 1,102` para uma perna que encurtou `0,500`. É a D1 a
+  apagar mais um caso especial, o mesmo que ela já fizera a degrau, rampa e
+  plataforma móvel; e é também o que o `bevy-tnua` faz, pela mesma razão. A
+  metade da previsão que sobreviveu é a barata: o botão de BAIXO já existia desde
+  a W12, com o significado certo, então a wave **não acrescenta entrada nenhuma**.
+  ⚠️ O que a construção acrescentou à lista de preços foi outro: a altura
+  agachada tem um **PISO GEOMÉTRICO** (`half_height + radius`, medido em `0,50`
+  nesta cápsula) abaixo do qual o corpo enterra no chão — e a lei pura **não pode
+  clampá-lo**, porque ela não conhece formas, de propósito.
 - ~~**Descer de plataforma one-way**~~ — **FEITA: a W12** (2026-08-05, cena `=91`). Era a
   única linha desta lista com data marcada, e a previsão sobreviveu à construção: o
   mecanismo estava todo lá, a wave é o gesto.

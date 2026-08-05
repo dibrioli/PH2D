@@ -113,6 +113,14 @@ impl Mesh {
         for (&p, &(a, b)) in verts.positions.iter().zip(verts.parents) {
             self.positions.push(p);
             self.normals.push([0.0, 1.0, 0.0]);
+            // ⚠️ **A curvatura entra como PLACEHOLDER, e é o mesmo tratamento da
+            // normal ao lado — porque as duas são DERIVADAS.** Interpolar a dos
+            // pais seria inventar um número que o `refresh_region` do passo 5 vai
+            // sobrescrever de qualquer jeito (o vértice novo está em `affected`
+            // por construção), com a diferença de que a versão inventada estaria
+            // *errada* no meio-tempo: o ponto médio de uma aresta tem a curvatura
+            // do LUGAR onde ele caiu, não a média de quem o gerou.
+            self.curvatures.push(0.0);
             if let Some(c) = self.colors.as_mut() {
                 let (ca, cb) = (c[a as usize], c[b as usize]);
                 c.push([

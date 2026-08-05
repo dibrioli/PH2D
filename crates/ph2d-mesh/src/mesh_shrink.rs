@@ -132,6 +132,27 @@ impl Mesh {
         for &(from, to) in &remap.vert_moves {
             self.positions[to as usize] = self.positions[from as usize];
             self.normals[to as usize] = self.normals[from as usize];
+            // **A curvatura viaja com as duas de cima**, e ⚠️ **ela é
+            // REDUNDANTE hoje — a medição me corrigiu, não o contrário.** Eu
+            // escrevi aqui que o vértice do fim do vetor *"quase nunca está em
+            // `affected`, então ninguém vai recomputá-lo"*. É falso: o
+            // `Adjacency::shrink_verts` faz `mark[to] = true`
+            // **incondicionalmente** para todo destino, logo todo vértice que
+            // muda de casa entra em `affected` e o `refresh_region` do fim o
+            // recomputa. A mutação que apaga esta linha **sobrevive**.
+            //
+            // ⚠️ E o CONTROLE fecha o argumento: a mesma mutação na linha das
+            // NORMAIS, uma acima, que shipa desde a W9.3 com um oráculo de bit ao
+            // lado, **também sobrevive** — as 243 do crate ficam verdes. As duas
+            // são defesa em camada, não a camada que segura.
+            //
+            // Elas ficam porque a lista de planos por-vértice tem de ser
+            // UNIFORME: o `mark[to]` parece redundante para quem lê o laço de
+            // faces logo acima dele, e é exatamente o tipo de linha que uma
+            // otimização futura apaga — momento em que os dois planos ficariam
+            // velhos juntos, e os dois gates de bit sangrariam juntos. É a camada
+            // que existe para o dia em que a de baixo sair.
+            self.curvatures[to as usize] = self.curvatures[from as usize];
             if let Some(c) = self.colors.as_mut() {
                 c[to as usize] = c[from as usize];
             }
@@ -141,6 +162,7 @@ impl Mesh {
         }
         self.positions.truncate(remap.verts);
         self.normals.truncate(remap.verts);
+        self.curvatures.truncate(remap.verts);
         if let Some(c) = self.colors.as_mut() {
             c.truncate(remap.verts);
         }

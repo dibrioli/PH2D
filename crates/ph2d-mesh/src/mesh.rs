@@ -41,6 +41,16 @@ pub use splice::VertexAppend;
 pub struct Mesh {
     positions: Vec<[f32; 3]>,
     normals: Vec<[f32; 3]>,
+    /// **A curvatura por vértice** (`crate::curvature`) — DERIVADA, como a
+    /// normal, e não autorada, como a máscara.
+    ///
+    /// ⚠️ É essa classificação que decide o resto: ela não é preguiçosa (todo
+    /// vértice tem uma no instante em que tem normal), não entra no undo por
+    /// conta própria (o que o undo guarda é posição, e ela sai de posição), e
+    /// não é serializada (`persist` reconstrói pelo `rebuild`). O que ela **tem**
+    /// de fazer é viajar na compactação, junto das normais — ver
+    /// [`Self::shrink_topology`].
+    curvatures: Vec<f32>,
     colors: Option<Vec<[f32; 3]>>,
     masks: Option<Vec<f32>>,
     faces: Vec<Face>,
@@ -78,6 +88,7 @@ impl Mesh {
         }
         let mut mesh = Self {
             normals: vec![[0.0, 1.0, 0.0]; positions.len()],
+            curvatures: vec![0.0; positions.len()],
             positions,
             faces,
             ..Self::default()
@@ -100,6 +111,13 @@ impl Mesh {
             &self.adjacency.vert_faces,
             &mut self.normals,
             None,
+        );
+        // ⚠️ DEPOIS das normais, sempre — ela as lê.
+        crate::curvature::recompute_curvature(
+            &self.positions,
+            &self.normals,
+            &self.adjacency.vert_verts,
+            &mut self.curvatures,
         );
         self.octree = Octree::build(&self.positions, &self.faces);
         self.bounds = Aabb::from_points(&self.positions);
@@ -130,6 +148,13 @@ impl Mesh {
     #[must_use]
     pub fn normals(&self) -> &[[f32; 3]] {
         &self.normals
+    }
+
+    /// **A curvatura por vértice**, adimensional e com sinal: `> 0` côncavo,
+    /// `< 0` convexo. Ver [`crate::curvature`] para a lei e a escala.
+    #[must_use]
+    pub fn curvatures(&self) -> &[f32] {
+        &self.curvatures
     }
 
     #[must_use]
@@ -470,6 +495,28 @@ impl Mesh {
         for (&v, n) in scratch.verts.iter().zip(&scratch.tmp) {
             self.normals[v as usize] = *n;
         }
+        // **A CURVATURA, e a MESMA lista serve — isto é um fato sobre o alcance,
+        // não uma economia.** A curvatura de `u` é função de `p(u)`, `n(u)` e das
+        // posições do anel de `u`. Um vértice FORA de `scratch.verts` não tem
+        // nenhum dos três mexido: ele não se moveu; nenhuma face dele toca um
+        // movido (senão ele estaria na lista, que é justamente como ela é
+        // construída), então a normal dele não mudou; e todo vizinho dele divide
+        // uma face com ele, logo também não se moveu.
+        //
+        // ⚠️ **Vem DEPOIS do laço acima, e a ordem carrega peso:** ela lê
+        // `self.normals`, e rodar antes daria a curvatura do vértice novo medida
+        // contra a normal de antes de ele dobrar — o sinal sai invertido
+        // exatamente na crista que o pincel acabou de levantar.
+        crate::curvature::curvature_of(
+            &self.positions,
+            &self.normals,
+            &self.adjacency.vert_verts,
+            &scratch.verts,
+            &mut scratch.tmp_k,
+        );
+        for (&v, k) in scratch.verts.iter().zip(&scratch.tmp_k) {
+            self.curvatures[v as usize] = *k;
+        }
         // As MESMAS faces que moveram as normais movem as caixas. Duas listas
         // divergiriam no dia em que uma delas ganhasse um filtro.
         self.octree.refit(
@@ -532,6 +579,10 @@ pub struct RegionScratch {
     vert_seen: Vec<bool>,
     /// Saída contígua das portas paralelas, reusada pelas duas metades do passe.
     tmp: Vec<[f32; 3]>,
+    /// A mesma coisa para a CURVATURA, que é escalar. ⚠️ Vetor próprio e não um
+    /// reuso do [`Self::tmp`]: a curvatura roda **depois** das normais e as lê,
+    /// então os dois estão vivos ao mesmo tempo.
+    tmp_k: Vec<f32>,
     refit: RefitScratch,
 }
 

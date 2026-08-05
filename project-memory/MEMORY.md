@@ -66,6 +66,7 @@
 - [CI direto + fmt-skew](feedback_ci_direct_lint_gates_and_fmt_skew.md) — `rustup run <pin> cargo fmt`
 - [Ship committed vs WIP](feedback_ship_committed_vs_worktree_wip.md) — `git worktree --detach HEAD`
 - [LOC cap = split](feedback_loc_cap_split_not_allowlist_and_fmt_reexpands.md) — fmt ANTES de medir
+- [Cap de FN e cap de ARQUIVO são grandezas diferentes](feedback_a_fn_cap_and_a_file_cap_measure_different_things.md) — extrair no mesmo arquivo cura um e estoura o outro; corte para o IRMÃO
 - [CI cold-build drift](project_ci_rustcache_stable_drift_pin.md) — pin `@1.95`
 - [ship.sh ≠ paridade CI](feedback_ship_parity_gaps_ci_only.md) — bindgen/advisory-db escapam
 - [Números que SOMAM: conte](feedback_numbers_that_sum_across_lines_count_dont_pick.md)

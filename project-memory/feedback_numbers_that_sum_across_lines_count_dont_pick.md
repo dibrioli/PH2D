@@ -32,3 +32,17 @@ Na integração das 6 linhas (2026-07-12), três classes de número foram para o
   ([[feedback_loc_cap_split_not_allowlist_and_fmt_reexpands]]) — e rode `fmt` ANTES de medir.
 - No fechamento, `nextest --workspace` (NÃO o impacted): os gates de contagem moram em crates que
   o impacted-set não alcança.
+
+## Emenda (2026-08-04): nem a aritmética do PRÓPRIO handoff se toma pronta
+
+A `line/physics` fechou com um §2 dedicado ao número, e ele estava errado por um degrau:
+*"a linha escreve 52, o `main` diz 53 ⇒ o valor certo é 54"*. Mas a escada dela tem **DOIS**
+degraus (`PhysicsJoint.custom` do W-JointCustom · `corner_reach`+`lift_momentum` do W10), então
+o par contado é **54 e 55**. O handoff fez a subtração certa sobre uma contagem errada dos
+próprios commits.
+
+**A regra fica mais estreita:** o integrador conta os degraus **do diff** (`git show :3:` do
+`project.rs` contra o `:1:`, ou o doc-comment da escada), nunca o número que o handoff anuncia.
+Um handoff que se dá ao trabalho de nomear o número é justamente o que induz a confiança —
+e ele erra pelo mesmo motivo que qualquer linha erra: **ninguém dentro de uma worktree vê a
+soma.**

@@ -34,6 +34,27 @@
 //! é: um grafo de estados com transições autoradas (a *state machine* do Rive) — aquilo tem
 //! condições, entradas nomeadas e um editor próprio.
 //!
+//! # O que uma pose CARREGA — e por que a forma não podia ficar de fora
+//!
+//! Onde o objeto está (T/R/S), com que tinta ele aparece (fill/stroke/opacidade), **que forma ele
+//! tem** e **que perfil de largura** o traço dele carrega. Foi a última linha que faltou por uma
+//! wave inteira, e o preço tem nome: uma edição de nó, um Fillet ou um Chamfer **não animavam** —
+//! o campo `geometry` existia, o motor sabia casá-lo, e nenhum produtor o preenchia. *Uma
+//! capacidade sem PORTA passa em todos os gates*, porque eles leem quem CONSOME o campo.
+//!
+//! ⚠️ **A geometria é a FONTE autorada; quem coze é o Blend, para o caminho** (a costura
+//! fonte≠cozido do ADR-0121). Guardar a cozida assaria o raio de quina e a pilha de efeitos no
+//! documento, e o artista perderia as alças no primeiro Show.
+//!
+//! ⚠️ **A largura viva tem campo PRÓPRIO** porque é o único canal de forma que não mora no
+//! `VecPath` — ela é um componente ECS (ADR-0148). Ausente = uniforme, então um lado sem perfil é
+//! um lado com o perfil que não faz nada, e não há caso especial a escrever.
+//!
+//! ⚠️ **E o que uma pose NÃO pode fazer é CRIAR um objeto.** Uma faca (o Cut) destrói o
+//! `VecPathId` e põe peças novas no lugar; um estado gravado antes dela não ressuscita o que ela
+//! consumiu — o membro desvanece. Repor uma pose e criar um objeto são coisas diferentes, e a
+//! segunda é outra feature.
+//!
 //! # A lei do casamento: por ID, nunca por nome
 //!
 //! Dois estados são duas listas de objetos, e a pergunta *"quem é quem"* tem uma resposta só: o

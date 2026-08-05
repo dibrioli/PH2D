@@ -23,6 +23,7 @@
 
 use ph2d_ecs::{Entity, SimWorld, Transform, VecStrokeProfile};
 use ph2d_ui_state::{ObjectPose, StateRole, StateSets, UiState};
+use ph2d_vec_scene::WidthStops;
 use ph2d_vec_scene::{VecPathId, VecScene};
 
 use crate::vec_entities::VecEntityMap;
@@ -158,20 +159,16 @@ pub(crate) fn install(
                 t.scale.y = pose.scale[1] as f32;
             }
         }
-        // ⚠️ **Uniforme é a AUSÊNCIA do componente**, não um componente com paradas neutras — a
-        // mesma lei que o Width Tool aplica (`VecOffset` com `d = 0`, e os outros seis irmãos).
-        // Escrever um perfil inerte faria o documento acumular uma relação que não desenha nada,
-        // e o `is_uniform` do painel passaria a ver um perfil onde o artista não autorou nenhum.
-        match &pose.width {
-            Some(stops) => {
-                sim.world_mut().entity_mut(e).insert(VecStrokeProfile {
-                    stops: stops.clone(),
-                });
-            }
-            None => {
-                sim.world_mut().entity_mut(e).remove::<VecStrokeProfile>();
-            }
-        }
+        // ⚠️ **Pela porta do Width Tool**, e não por uma escrita própria: `profile_live::arm` já
+        // é quem sabe que *uniforme é a AUSÊNCIA do componente* (a lei do `VecOffset` com
+        // `d = 0`). Uma segunda escrita aqui seria uma segunda resposta a *"como um perfil chega
+        // ao mundo?"*, e as duas divergiriam no dia em que a lei mudasse de um lado só.
+        crate::profile_live::arm(
+            sim,
+            map,
+            &[pose.id],
+            pose.width.as_ref().unwrap_or(&WidthStops::default()),
+        );
     }
     if let Some(p) = scene.paths_mut().iter_mut().find(|p| p.id == pose.id) {
         p.fill.clone_from(&pose.fill);

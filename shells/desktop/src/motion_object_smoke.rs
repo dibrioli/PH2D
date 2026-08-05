@@ -86,6 +86,42 @@ fn build_stamp_graph(graph: &mut Graph, name: &str) -> NodeId {
     out
 }
 
+/// Como [`build_stamp_graph`], mas com um **`motion.oscillator`** (um deformer
+/// GPU por-elemento) entre o duplicator e o output: `source.object → duplicator
+/// ← grid → oscillator → output`. É esse sufixo GPU que torna o grafo **Hybrid**
+/// — o `duplicator` (CPU) vira o boundary, o oscillator roda no device, e o
+/// lowering carrega o `texture_id` do objeto até a word 41 (esta wave). Sem o
+/// oscillator o sufixo é só o `output` passthrough (0 dispatch → rota CPU).
+fn build_stamp_graph_osc(graph: &mut Graph, name: &str) -> NodeId {
+    let out = build_stamp_graph(graph, name);
+    // `out`'s input 0 is the duplicator; splice an oscillator in between.
+    let dup = graph
+        .edges()
+        .iter()
+        .find(|e| e.to == (out, 0))
+        .map(|e| e.from.0)
+        .expect("duplicator → output edge");
+    let osc = graph.add_node("motion.oscillator");
+    graph.set_pos(osc, Pos { x: 315.0, y: -200.0 });
+    graph.set_param(osc, "channel", 1.0); // Y
+    graph.set_param(osc, "amplitude", 0.5);
+    graph.set_param(osc, "frequency", 0.4);
+    graph.set_label(osc, "Wave");
+    // Re-route dup → out into dup → osc → out.
+    graph.disconnect(out, 0);
+    let wire = |g: &mut Graph, a: NodeId, ap: u16, b: NodeId, bp: u16| {
+        g.connect(Edge {
+            from: (a, ap),
+            to: (b, bp),
+            delayed: false,
+        })
+        .expect("connect");
+    };
+    wire(graph, dup, 0, osc, 0);
+    wire(graph, osc, 0, out, 0);
+    out
+}
+
 /// Modo `=1`: um sprite direto (entidade com `Name`, não precisa do `sync`).
 fn spawn_sprite(sim: &mut ph2d_ecs::SimWorld) {
     sim.world_mut().spawn((
@@ -210,7 +246,8 @@ fn find_group(sim: &mut ph2d_ecs::SimWorld, name: &str) -> Option<ph2d_ecs::Enti
 /// O frame corrente do roteiro (o hook não pode acrescentar campo em `App`).
 static FRAME: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
 
-/// O modo: `0` off · `1` sprite (A1) · `2` vetor (A2) · `3` Flip (A3) · `4` grupo (A4).
+/// O modo: `0` off · `1` sprite (A1) · `2` vetor (A2) · `3` Flip (A3) · `4` grupo
+/// (A4) · `5` A WAVE (objeto vetor + oscillator GPU, cozido no device).
 fn mode() -> u32 {
     static M: std::sync::OnceLock<u32> = std::sync::OnceLock::new();
     *M.get_or_init(|| {
@@ -349,6 +386,50 @@ impl crate::App {
                      nome (item 3): ela e tilada porque esta num grupo nomeado e resolvida pelo seu \
                      drawing id, nao pelo nome. SE ela aparecer nas 16 copias, o item 3 passou; se \
                      o centro sair em branco, FALHOU. Renomeie o grupo e as copias somem."
+                );
+            }
+            // =5 — A WAVE: o grafo de objeto agora COZINHA NA GPU. Uma estrela
+            // vetorial (assada numa tile INDIVIDUAL, `texture_id > 0` — o caso dos
+            // quads brancos) carimbada numa grade, e um `motion.oscillator` (um
+            // deformer GPU por-elemento) a ondula. Como a fonte de OBJETO nao
+            // recusa mais (so a de forma VIVA recusa), o lowering carrega o
+            // `texture_id` ate a word 41 e o renderer liga a tile da estrela por
+            // run — no device. A entra a estrela (frame 3), a entidade dela e
+            // nomeada + o grafo montado (frame 6), e o diagnostico e lido depois
+            // que o device cozinhou algumas vezes (frame 40).
+            5 if f == 3 => {
+                let gfx = self.gfx.as_mut().expect("gfx");
+                gfx.vec_scene.push_path(star_shape());
+            }
+            5 if f == 6 => {
+                let map = self.vec_entities.clone();
+                let gfx = self.gfx.as_mut().expect("gfx");
+                if name_vector_entity(&mut gfx.sim, &map) {
+                    let out = build_stamp_graph_osc(&mut gfx.motion.doc.graph, OBJECT);
+                    gfx.motion.sinks.push(out);
+                }
+                let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+            }
+            5 if f == 40 => {
+                let gfx = self.gfx.as_ref().expect("gfx");
+                let m = &gfx.motion;
+                // O device dirigiu o frame? (`gpu_live` = a rota Hybrid rodou.)
+                let live = m.gpu_live;
+                // A particao de textura que o renderer ligou (do boundary, sem
+                // readback). Uma tile individual tem `texture_id > 0`.
+                let runs = m.gpu_cook.texture_runs();
+                let obj_tid = runs.iter().map(|r| r.texture_id).max().unwrap_or(0);
+                eprintln!(
+                    "[motion.obj smoke =5] A ESTRELA vetorial 'Object' (tile INDIVIDUAL, \
+                     texture_id > 0) carimbada numa grade 4x4 e ONDULADA por um oscillator GPU. \
+                     gpu_live={live} texture_runs={runs:?} (obj_texture_id={obj_tid}). \
+                     O QUE OLHAR: as 16 estrelas ondulando no Y — a ARTE da estrela, NAO quads \
+                     brancos. Se gpu_live=true E obj_texture_id>0 E as estrelas aparecem, a wave \
+                     passou (o objeto cozinhou e renderizou NO DEVICE). Se as copias sairem \
+                     BRANCAS, o lowering nao carregou o texture_id — PARE. Se gpu_live=false, o \
+                     grafo recuou para a CPU (a wave nao engatou). Bissecar: PH2D_GPU_COOK=0 \
+                     forca a CPU (deve renderizar igual). Uma `source.shape` (forma VIVA) ou um \
+                     sufixo que muda contagem (kaleidoscope) recusa de proposito."
                 );
             }
             _ => {}

@@ -157,6 +157,26 @@ pub struct RenderInstance {
 
 impl PresentComponent for RenderInstance {}
 
+/// A contiguous run of instances in a **GPU-resident** instance buffer that
+/// share a [`RenderInstance::texture_id`] — the readback-free render partition
+/// for a `source.object` Motion graph (ADR-0126).
+///
+/// The GPU cook writes each instance's real `texture_id` into word 41 (the
+/// object's baked tile / individual handle), but the sprite shader never reads
+/// that word — texture selection is a per-draw CPU bind. So the cook ALSO hands
+/// the renderer this partition, derived from the boundary stream's `texture_id`
+/// column on the CPU (per-element deformers preserve position ⇒ the boundary
+/// order IS the instance order), and the renderer binds the matching texture
+/// per run: **no readback of the device buffer**. `[start, end)` is the instance
+/// range; a lone `{ texture_id: 0, 0, n }` is the shared atlas — the exact draw
+/// a plain (non-object) Motion stream forms, byte-identical to the legacy path.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct GpuTexRun {
+    pub texture_id: u32,
+    pub start: u32,
+    pub end: u32,
+}
+
 impl RenderInstance {
     pub const VERTEX_ATTRIBUTES: &'static [wgpu::VertexAttribute] = &wgpu::vertex_attr_array![
         2 => Float32x2,  // world_pos

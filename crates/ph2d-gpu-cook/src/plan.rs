@@ -79,6 +79,60 @@ impl GpuPlan {
             .iter()
             .any(|s| s.inputs.iter().any(|i| matches!(i, GpuSource::Prev(_))))
     }
+
+    /// `true` when the GPU suffix REORDERS or CHANGES THE COUNT of the principal
+    /// (object) stream — a structural [`StreamOp`](ph2d_nodegraph::gpu::StreamOp)
+    /// (Compact / SourceRows / Concat / Project), an engine
+    /// [`algorithm`](KernelResolver::algorithm) (voronoi reshapes wholesale), or
+    /// a `count_law` (a birth law, `sim.spawn`) — on the path the object flows.
+    /// A per-element node (deformer, force, integrator, oscillator) declares
+    /// none of these and preserves position.
+    ///
+    /// The texture-run partition for a `source.object` graph
+    /// ([`GpuCook::texture_runs`](crate::GpuCook::texture_runs)) reads the
+    /// boundary stream's `texture_id` column and assumes position `i` of the
+    /// boundary is position `i` of the sink — true iff the suffix preserves
+    /// position. When this returns `true`, the object graph must recuse to the
+    /// CPU render (the boundary column no longer aligns with the device
+    /// buffer), which the shell checks with the object-source signal. No node
+    /// name is enumerated: the answer is each node's own declaration.
+    ///
+    /// ⚠️ **Only the PORT-0 lineage** (sink → boundary) is walked — the path the
+    /// object stream takes. A generator on a SIDE port (a `value.lfo` driving a
+    /// deformer's amount) sets its OWN count on its own port; it never reshapes
+    /// the object stream, so scanning every stage would over-recuse the common
+    /// case of an animated object deformer.
+    pub fn suffix_changes_count(&self, kernels: &dyn KernelResolver) -> bool {
+        let Some(sink) = self.stages.last() else {
+            return false;
+        };
+        let stage_of = |node: NodeId| self.stages.iter().find(|s| s.node == node);
+        // Acyclic forward path (a loop must cross a `pre`, which is a Prev stop);
+        // the budget is a guard against a malformed plan, not a real limit.
+        let mut budget = self.stages.len() + 1;
+        let mut cur = Some(sink);
+        while let Some(s) = cur {
+            if kernels.stream_op(s.ty).is_some()
+                || kernels.algorithm(s.ty).is_some()
+                || kernels
+                    .gpu_kernel(s.ty)
+                    .is_some_and(|k| k.count_law.is_some())
+            {
+                return true;
+            }
+            budget = match budget.checked_sub(1) {
+                Some(b) => b,
+                None => return true, // conservative: a cycle can only mis-bind
+            };
+            cur = match s.inputs.first() {
+                // Port 0 threads GPU-side to another stage — keep walking.
+                Some(GpuSource::Stage(node)) => stage_of(*node),
+                // Boundary / Prev / Empty / no input — the object path ends here.
+                _ => None,
+            };
+        }
+        false
+    }
 }
 
 /// The columns a node's output stream provably carries, or `None` when that is

@@ -75,7 +75,7 @@ impl SpriteRenderer {
         window: WindowSize,
         clear_color: wgpu::Color,
         extra: &[RenderInstance],
-        gpu_extra: Option<(&wgpu::Buffer, u32)>,
+        gpu_extra: Option<(&wgpu::Buffer, u32, &[crate::GpuTexRun])>,
         scene_viewport: Option<[f32; 4]>,
     ) {
         // Collect scene instances + the `extra` slice into `scratch` and sort
@@ -134,7 +134,7 @@ impl SpriteRenderer {
         camera: &Camera2d,
         window: WindowSize,
         clear_color: wgpu::Color,
-        gpu_extra: Option<(&wgpu::Buffer, u32)>,
+        gpu_extra: Option<(&wgpu::Buffer, u32, &[crate::GpuTexRun])>,
         scene_viewport: Option<[f32; 4]>,
     ) {
         compute_runs(&self.scratch, &mut self.runs);
@@ -188,15 +188,20 @@ impl SpriteRenderer {
         // other id is an individual texture. A missing entry in either store
         // (id released / not-yet-uploaded before render saw it) yields
         // `None` → the run is skipped (sprite renders nothing this frame).
-        let material_bg = |run: &DrawRun| -> Option<&wgpu::BindGroup> {
-            if run.texture_id == RenderInstance::ATLAS_TEXTURE_ID {
+        // Keyed on `(texture_id, sampling)` — the ONE door both the CPU runs
+        // (below) and the GPU-resident texture runs (`gpu_extra`, further down)
+        // resolve through, so an object drawn by the device buffer binds the
+        // same texture the CPU path would. Two copies would be two answers to
+        // "which texture does this id name?" and diverge on a screenshot.
+        let material_bg = |texture_id: u32, sampling: u32| -> Option<&wgpu::BindGroup> {
+            if texture_id == RenderInstance::ATLAS_TEXTURE_ID {
                 self.atlas_sampler_bgs
-                    .get(&run.sampling)
+                    .get(&sampling)
                     .or(Some(&self.material_bind_group))
-            } else if RenderInstance::is_cooked_texture_id(run.texture_id) {
-                self.cooked.bind_group(run.texture_id)
+            } else if RenderInstance::is_cooked_texture_id(texture_id) {
+                self.cooked.bind_group(texture_id)
             } else {
-                self.individual.bind_group(run.texture_id)
+                self.individual.bind_group(texture_id)
             }
         };
         {
@@ -239,7 +244,9 @@ impl SpriteRenderer {
                     .iter()
                     .filter(|r| r.clip_group == 0 && r.mask_role == 0)
                 {
-                    let Some(bg) = material_bg(run) else { continue };
+                    let Some(bg) = material_bg(run.texture_id, run.sampling) else {
+                        continue;
+                    };
                     if bound_blend != Some(run.blend) {
                         pass.set_pipeline(self.pipeline.blend_pipeline(run.blend));
                         bound_blend = Some(run.blend);
@@ -248,12 +255,19 @@ impl SpriteRenderer {
                     pass.draw(0..4, run.start..run.end);
                 }
             }
-            // GPU-resident extra (ADR-0126): one draw whose instance vertex
-            // buffer IS the compute lowering's output — the readback-free
-            // seam. Shared-atlas material + default blend, the exact run a
-            // CPU-lowered Motion stream forms. Plain path only (mirrors the
-            // `subrect` rule: a clip/mask frame renders scene-only).
-            if let Some((buffer, n)) = gpu_extra
+            // GPU-resident extra (ADR-0126): the instance vertex buffer IS the
+            // compute lowering's output — the readback-free seam. Default blend
+            // (the tag a lowered Motion stream carries); plain path only
+            // (mirrors the `subrect` rule: a clip/mask frame renders scene-only).
+            //
+            // The `runs` partition (from the boundary stream's `texture_id`
+            // column, computed CPU-side by `GpuCook::texture_runs` — never a
+            // device readback) is what lets a `source.object` graph render:
+            // one draw per texture run, binding the object's texture through the
+            // SAME `material_bg` door the scene runs use. An EMPTY partition is
+            // the legacy single atlas draw over `0..n`, byte-identical — the
+            // path every non-object stream takes.
+            if let Some((buffer, n, runs)) = gpu_extra
                 && n > 0
                 && !has_clip
                 && !has_mask
@@ -262,8 +276,21 @@ impl SpriteRenderer {
                 pass.set_vertex_buffer(0, self.quad_buffer.slice(..));
                 pass.set_vertex_buffer(1, buffer.slice(..));
                 pass.set_pipeline(self.pipeline.blend_pipeline(0));
-                pass.set_bind_group(1, &self.material_bind_group, &[]);
-                pass.draw(0..4, 0..n);
+                if runs.is_empty() {
+                    pass.set_bind_group(1, &self.material_bind_group, &[]);
+                    pass.draw(0..4, 0..n);
+                } else {
+                    // Motion instances carry the default sampler (word 43 = 0);
+                    // a missing texture (id released before render saw it) skips
+                    // its run, exactly like a scene run.
+                    for r in runs {
+                        let Some(bg) = material_bg(r.texture_id, 0) else {
+                            continue;
+                        };
+                        pass.set_bind_group(1, bg, &[]);
+                        pass.draw(0..4, r.start..r.end);
+                    }
+                }
             }
         }
         // Clip pass (only if a clip group exists): stencil mark → test the

@@ -70,6 +70,7 @@ pub mod shape;
 pub mod stream;
 mod stream_op;
 pub mod tap;
+mod tex_runs;
 pub mod voronoi;
 
 pub use debug_read::read_instances;
@@ -125,7 +126,7 @@ pub struct GpuCook {
     pool: BufferPool,
     /// Kernel pipelines keyed by `(node type, column-presence signature)`.
     kernel_pipelines: BTreeMap<(u64, u64), CachedPipeline>,
-    /// Lowering pipelines keyed by the 5-column presence signature.
+    /// Lowering pipelines keyed by the 6-column presence signature.
     lower_pipelines: BTreeMap<u64, CachedPipeline>,
     /// Per-stage uniform buffers (index = stage position; last = lowering).
     uniforms: Vec<wgpu::Buffer>,
@@ -219,24 +220,15 @@ pub struct GpuCook {
     /// The engine-algorithm pipelines (ADR-0139), built on first use like the
     /// stream ops — `Option` because `GpuCook` is `Default`.
     voronoi_pipes: Option<voronoi::VoronoiPipes>,
+    /// The texture-run partition of the last cook's instance buffer, so the
+    /// renderer can draw a `source.object` graph by binding the object's texture
+    /// per run — computed CPU-side from the boundary, no readback (see
+    /// [`tex_runs`]). Empty for a non-object graph. Persistent, like
+    /// [`Self::instances`].
+    tex_runs: Vec<ph2d_render::GpuTexRun>,
 }
 
-/// Uniform slot size, pow2-rounded: `count` + `playhead` + one `f32` per param,
-/// then the conditional engine fields (`gather_prev_n`, the generator's window,
-/// the broadcast mask — appended in that order, each after everything that can
-/// precede it, so adding one never moves an existing offset).
-///
-/// 64 held 14 params and nothing else; a node with many params AND a conditional
-/// field would have run off the end, writing a param into the next field's bytes
-/// and reading as plausible garbage. This is a slot, not an allocation per
-/// element — the headroom is free.
-///
-/// **`pub` for the budget gate** (the shell's `motion_gpu_kernel_budgets`): the
-/// packer (`encode_kernel_stage`) writes by offset arithmetic into a slice of
-/// exactly this size, so a registered kernel whose declared layout exceeds it
-/// PANICS at first dispatch in production — the gate refuses it at `cargo test`
-/// instead, over every kernel the registry actually carries.
-pub const UNIFORM_BYTES: u64 = 128;
+pub use encode::UNIFORM_BYTES;
 
 /// Ceiling on a relaxation solver's sweeps (`GridSpec::sweeps_param`). It is the
 /// SAME number the CPU reference clamps to (`motion.collide::MAX_ITERATIONS`),
@@ -630,6 +622,10 @@ impl GpuCook {
             .cloned()
             .unwrap_or_default();
         let count = sink_stream.count;
+        // The texture-run partition, from the CPU boundary — no readback (see
+        // [`tex_runs`]). Empty for a non-object graph.
+        self.tex_runs.clear();
+        tex_runs::texture_runs_from_boundary(boundary_streams, count, &mut self.tex_runs);
         // The instance buffer is the one binding that can outgrow the device's
         // storage-binding limit below the id ceiling (184 B × count; every
         // stream column caps at 16 B × ID_WRAP ≈ 268 MB). Refuse BEFORE the

@@ -95,16 +95,28 @@ pub struct NodeRegistry {
     /// semantic, so it is declared. Opt-in and default-empty: a node with no entry has no
     /// required input, which every un-annotated node already means.
     required_inputs: BTreeMap<NodeTypeId, &'static [&'static str]>,
-    /// ADR-0154/0155 — node types whose output carries a render **appearance id**:
-    /// a `texture_id` (an engine object's tile, `source.object`) or a `geometry_id`
-    /// (a live vector shape, `source.shape`). The GPU-resident cook's lowering is
-    /// sprite-only — it hardcodes `texture_id` to the shared atlas and has no
-    /// `geometry_id` (vector) path — so a document that brings one of these in draws
-    /// as blank atlas quads once a GPU stage runs. The shell reads this to recuse
-    /// such a document to the CPU render (which draws both). Opt-in and default-empty,
-    /// like `required_inputs`: a node with no entry emits no appearance id, which
-    /// every point/value-domain node already means.
-    appearance_sources: std::collections::BTreeSet<NodeTypeId>,
+    /// ADR-0154/0155 — node types whose output carries a live VECTOR shape
+    /// (`geometry_id`, `source.shape`). A live vector is drawn by the vector
+    /// pass, not the instance renderer, and the GPU-resident cook has no
+    /// `geometry_id` path — so a document that brings one in has no device
+    /// render route, and the shell recuses it to the CPU render (which draws
+    /// it). Opt-in and default-empty, like `required_inputs`: a node with no
+    /// entry emits no `geometry_id`, which every point/value-domain node means.
+    ///
+    /// ⚠️ Distinct from [`Self::object_sources`]: an OBJECT source
+    /// (`texture_id`, `source.object`) IS GPU-renderable now (the lowering
+    /// carries the id and the renderer binds the object's texture per run), so
+    /// it is NOT here — it recuses only when its GPU suffix changes count.
+    live_vector_sources: std::collections::BTreeSet<NodeTypeId>,
+    /// ADR-0154 / this wave — node types whose output carries a render OBJECT
+    /// (`texture_id`, `source.object`: a sprite / baked-tile handle). Unlike a
+    /// live vector, an object IS drawn by the GPU-resident cook (the lowering
+    /// writes `texture_id` into the instance and the renderer binds the object's
+    /// texture per run). The shell reads this only to apply the count-changing
+    /// cerca: a GPU suffix that reorders / changes count breaks the texture-run
+    /// partition, so an object graph with such a suffix recuses to the CPU
+    /// render. Opt-in and default-empty, like `live_vector_sources`.
+    object_sources: std::collections::BTreeSet<NodeTypeId>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -206,19 +218,37 @@ impl NodeRegistry {
         self.required_inputs.get(&id).copied()
     }
 
-    /// Register a node type as an **appearance source** (ADR-0154/0155): its output
-    /// carries a `texture_id` (`source.object`) or `geometry_id` (`source.shape`) that
-    /// the GPU-resident cook's sprite-only lowering cannot carry. The shell recuses a
-    /// document containing one to the CPU render. Additive; idempotent.
-    pub fn register_appearance_source(&mut self, id: NodeTypeId) {
-        self.appearance_sources.insert(id);
+    /// Register a node type as a **live vector source** (ADR-0154): its output
+    /// carries a `geometry_id` (`source.shape`) drawn by the vector pass, which
+    /// the GPU-resident cook has no route for. The shell recuses a document
+    /// containing one to the CPU render. Additive; idempotent.
+    pub fn register_live_vector_source(&mut self, id: NodeTypeId) {
+        self.live_vector_sources.insert(id);
     }
 
-    /// Does `id`'s output carry a render appearance id the GPU cook cannot lower?
-    /// Absent ⇒ no (a point/value node), the byte-identical default.
+    /// Does `id`'s output carry a live vector `geometry_id` (`source.shape`)?
+    /// Absent ⇒ no, the byte-identical default. (An OBJECT source is
+    /// [`Self::is_object_source`], NOT here — it is GPU-renderable.)
     #[must_use]
-    pub fn is_appearance_source(&self, id: NodeTypeId) -> bool {
-        self.appearance_sources.contains(&id)
+    pub fn is_live_vector_source(&self, id: NodeTypeId) -> bool {
+        self.live_vector_sources.contains(&id)
+    }
+
+    /// Register a node type as an **object source** (`source.object`): its
+    /// output carries a `texture_id` (a sprite / baked-tile handle) that the
+    /// GPU-resident cook DOES draw. The shell reads this only for the
+    /// count-changing cerca — an object graph whose GPU suffix reorders /
+    /// changes count recuses, because the texture-run partition would mis-bind.
+    /// Additive; idempotent.
+    pub fn register_object_source(&mut self, id: NodeTypeId) {
+        self.object_sources.insert(id);
+    }
+
+    /// Does `id`'s output carry an object `texture_id` (`source.object`)?
+    /// Absent ⇒ no, the byte-identical default.
+    #[must_use]
+    pub fn is_object_source(&self, id: NodeTypeId) -> bool {
+        self.object_sources.contains(&id)
     }
 
     /// Register the params whose typed entry reaches past their slider

@@ -196,10 +196,12 @@ fn every_registered_kernel_validates_across_the_whole_presence_space() {
 }
 
 #[test]
-fn the_lowering_validates_for_all_32_column_subsets() {
-    for mask in 0u8..32 {
+fn the_lowering_validates_for_all_64_column_subsets() {
+    // Six columns now (`texture_id` joined `P`/`size`/`rot`/`tint`/`uv_rect`),
+    // so 64 subsets — bit 5 is the texture_id column.
+    for mask in 0u8..64 {
         let present = std::array::from_fn(|i| mask & (1 << i) != 0);
         let src = ph2d_gpu_cook::lower::lower_module(present);
-        validate(&format!("lowering mask {mask:05b}"), &src);
+        validate(&format!("lowering mask {mask:06b}"), &src);
     }
 }

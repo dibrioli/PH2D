@@ -73,22 +73,38 @@ pub(super) fn gpu_route(
     }
 }
 
-/// Does this document bring in an engine OBJECT or a live vector SHAPE? (ADR-0154/0155)
+/// Does this document bring in a live vector SHAPE (`source.shape`)? (ADR-0154)
 ///
-/// The GPU-resident cook's lowering is **sprite-only**: it hardcodes `texture_id` to
-/// the shared atlas and has no `geometry_id` (vector) path. So a stream carrying a
-/// `source.object`'s `texture_id` or a `source.shape`'s `geometry_id` would draw as
-/// blank atlas quads the moment a GPU stage runs (`source → duplicator → deform → …`
-/// is Hybrid). Recuse the whole document to the CPU render (which draws both) — at
-/// PLAN time, before any cook, so the CPU pump owns the tick from scratch and no
-/// sequential prefix is marched twice. The signal is a registry flag the two source
-/// nodes set (`is_appearance_source`), not a node-name match, so a future appearance
-/// source is caught by declaring the flag, not by editing a list here.
-pub(super) fn graph_has_appearance_source(graph: &Graph, reg: &NodeRegistry) -> bool {
+/// A live vector is drawn by the vector pass (`geometry_id`), which the
+/// GPU-resident cook has NO route for — so a document carrying one draws as
+/// blank atlas quads the moment a GPU stage runs (`source → duplicator → … `
+/// is Hybrid). Recuse it to the CPU render (which draws it) at PLAN time, so the
+/// CPU pump owns the tick from scratch and no sequential prefix is marched
+/// twice. The signal is a registry flag `source.shape` sets
+/// (`is_live_vector_source`), not a node-name match.
+///
+/// ⚠️ An OBJECT source (`source.object`, `texture_id`) is NOT here: the GPU cook
+/// now draws it (the lowering carries the id, the renderer binds the texture per
+/// run). It recuses only when its GPU suffix reorders / changes count — see
+/// [`graph_has_object_source`] + [`ph2d_gpu_cook::GpuPlan::suffix_changes_count`].
+pub(super) fn graph_has_live_vector_source(graph: &Graph, reg: &NodeRegistry) -> bool {
     graph
         .nodes()
         .iter()
-        .any(|n| reg.is_appearance_source(NodeTypeId::of(n.type_name.as_str())))
+        .any(|n| reg.is_live_vector_source(NodeTypeId::of(n.type_name.as_str())))
+}
+
+/// Does this document bring in an engine OBJECT (`source.object`, `texture_id`)?
+/// Read together with [`ph2d_gpu_cook::GpuPlan::suffix_changes_count`] for the
+/// count-changing cerca: an object graph whose GPU suffix reorders / changes
+/// count would mis-bind the texture-run partition (the boundary `texture_id`
+/// column no longer aligns with the device buffer), so it recuses to the CPU
+/// render. The signal is the registry flag `source.object` sets.
+pub(super) fn graph_has_object_source(graph: &Graph, reg: &NodeRegistry) -> bool {
+    graph
+        .nodes()
+        .iter()
+        .any(|n| reg.is_object_source(NodeTypeId::of(n.type_name.as_str())))
 }
 
 /// The GPU-resident cook for this frame (GPU/M5 Fase 1 + F1.2, ADR-0126).
@@ -118,11 +134,13 @@ pub(super) fn cook_gpu(
     if !motion.gpu_enabled || motion.sinks.len() != 1 {
         return GpuOutcome::FellThrough;
     }
-    // A document that brings in an object/shape appearance recuses to the CPU render —
-    // the GPU lowering is sprite-only and would draw it as blank atlas quads once a GPU
-    // stage runs (`source → deform → …` is Hybrid). Checked before planning so the CPU
-    // pump owns the tick from scratch (no double-march of a sequential prefix).
-    if graph_has_appearance_source(&motion.doc.graph, &motion.registry) {
+    // A document that brings in a live vector SHAPE (`source.shape`) recuses to
+    // the CPU render — the GPU cook has no `geometry_id` route and would draw it
+    // as blank atlas quads once a GPU stage runs. Checked before planning so the
+    // CPU pump owns the tick from scratch (no double-march of a sequential
+    // prefix). An OBJECT source (`source.object`) is NOT recused here — the GPU
+    // cook draws it; the count-changing cerca below is its only guard.
+    if graph_has_live_vector_source(&motion.doc.graph, &motion.registry) {
         return GpuOutcome::FellThrough;
     }
     let plan = ph2d_gpu_cook::plan(
@@ -131,6 +149,16 @@ pub(super) fn cook_gpu(
         &motion.registry,
         motion.sinks[0],
     );
+    // The count-changing cerca (this wave): an OBJECT graph whose GPU suffix
+    // reorders / changes count would mis-bind the texture-run partition — the
+    // boundary `texture_id` column aligns with the sink ONLY when the suffix is
+    // per-element. Recuse it to the CPU render (which draws it correctly). A
+    // non-object graph is unaffected: no `texture_id`, no partition to mis-bind.
+    if graph_has_object_source(&motion.doc.graph, &motion.registry)
+        && plan.suffix_changes_count(&motion.registry)
+    {
+        return GpuOutcome::FellThrough;
+    }
     let route = gpu_route(
         motion.gpu_enabled,
         motion.sinks.len(),
@@ -375,17 +403,19 @@ mod tests {
         assert!(!edit_renumbers_emitter(&ty(&motion, grid), "rate"));
     }
 
-    /// **A document that brings in an OBJECT or a SHAPE recuses from the GPU**
-    /// (ADR-0154/0155). The GPU lowering is sprite-only (hardcoded `texture_id`, no
-    /// `geometry_id` path), so `source.object` (its tile) and `source.shape` (its live
-    /// vector) draw as blank atlas quads once a GPU stage runs — the very report the
-    /// artist filed (`Shape → duplicator → rotate` = white rectangles). Pinned through
-    /// a REAL `MotionState` registry so the flag the two source nodes declare is what
-    /// drives it. FALSIFIED by dropping `register_appearance_source` in either source
-    /// crate (that graph stops being detected → the GPU keeps it → rectangles).
+    /// **The recusal catches the live vector but NOT the object** (ADR-0154 /
+    /// this wave). `source.shape` (a live vector, `geometry_id`) has no GPU
+    /// render route, so it recuses; `source.object` (an engine object,
+    /// `texture_id`) is now GPU-renderable, so it does NOT recuse via the
+    /// live-vector door — it is an OBJECT source, guarded only by the
+    /// count-changing cerca. Pinned through a REAL `MotionState` registry so the
+    /// flags the two source nodes declare are what drive it. FALSIFIED by
+    /// `source.object` re-registering the live-vector flag (it would recuse
+    /// again → lose the acceleration) or by dropping the shape's flag (white
+    /// rectangles for a live vector).
     #[test]
-    fn a_document_bringing_in_an_object_or_shape_recuses_from_the_gpu() {
-        let has = |ty: &str| {
+    fn the_recusal_catches_the_live_vector_but_not_the_object() {
+        let build = |ty: &str| {
             let mut m = MotionState::new();
             let src = m.doc.graph.add_node(ty);
             let out = m.doc.graph.add_node("motion.output");
@@ -397,25 +427,45 @@ mod tests {
                     delayed: false,
                 })
                 .expect("connect");
-            graph_has_appearance_source(&m.doc.graph, &m.registry)
+            m
         };
+        let live_vector = |ty: &str| {
+            let m = build(ty);
+            graph_has_live_vector_source(&m.doc.graph, &m.registry)
+        };
+        let object = |ty: &str| {
+            let m = build(ty);
+            graph_has_object_source(&m.doc.graph, &m.registry)
+        };
+
+        // A live vector SHAPE recuses; an OBJECT does NOT (it is GPU-renderable).
         assert!(
-            has("source.object"),
-            "an engine object recuses (texture_id)"
+            live_vector("source.shape"),
+            "a live vector shape recuses (geometry_id, no GPU route)"
         );
         assert!(
-            has("source.shape"),
-            "a live vector shape recuses (geometry_id)"
+            !live_vector("source.object"),
+            "an engine object does NOT recuse via the live-vector door (it is drawn)"
         );
-        // Control: a point/value-domain document has no appearance id → stays on the
-        // GPU. Without this the test could pass by always returning true.
+        // The object IS an object source (for the count-changing cerca); the
+        // shape is not, and neither is a plain point source.
         assert!(
-            !has("motion.grid"),
-            "a plain point source keeps the GPU (no appearance id)"
+            object("source.object"),
+            "an engine object is an object source (texture_id)"
         );
         assert!(
-            !has("motion.rotate"),
-            "a modifier alone keeps the GPU (no appearance id)"
+            !object("source.shape"),
+            "a live vector shape is not an object source"
+        );
+        // Controls: a point/value-domain document is neither. Without these the
+        // test could pass by always returning the same answer.
+        assert!(
+            !live_vector("motion.grid") && !object("motion.grid"),
+            "a plain point source is neither"
+        );
+        assert!(
+            !live_vector("motion.rotate") && !object("motion.rotate"),
+            "a modifier alone is neither"
         );
     }
 

@@ -14,13 +14,28 @@
 use crate::gather::{column_present, gather_key_port, gather_prev_n};
 use crate::grid::{Grid, GridBuffers};
 use crate::plan::resolve_param;
-use crate::{
-    CachedPipeline, GpuColumn, GpuCook, GpuStream, UNIFORM_BYTES, codegen, create_pipeline, stream,
-};
+use crate::{CachedPipeline, GpuColumn, GpuCook, GpuStream, codegen, create_pipeline, stream};
 use ph2d_gpu::GpuContext;
 use ph2d_nodegraph::gpu::{ColumnBinding, GpuKernel, GridSpec, LutSpec, ReduceSpec, SourceWindow};
 use ph2d_nodegraph::graph::{Graph, NodeId};
 use ph2d_nodegraph::node::NodeManifest;
+
+/// Uniform slot size, pow2-rounded: `count` + `playhead` + one `f32` per param,
+/// then the conditional engine fields (`gather_prev_n`, the generator's window,
+/// the broadcast mask — appended in that order, each after everything that can
+/// precede it, so adding one never moves an existing offset).
+///
+/// 64 held 14 params and nothing else; a node with many params AND a conditional
+/// field would have run off the end, writing a param into the next field's bytes
+/// and reading as plausible garbage. This is a slot, not an allocation per
+/// element — the headroom is free.
+///
+/// **`pub` for the budget gate** (the shell's `motion_gpu_kernel_budgets`): the
+/// packer ([`GpuCook::encode_kernel_stage`]) writes by offset arithmetic into a
+/// slice of exactly this size, so a registered kernel whose declared layout
+/// exceeds it PANICS at first dispatch in production — the gate refuses it at
+/// `cargo test` instead, over every kernel the registry actually carries.
+pub const UNIFORM_BYTES: u64 = 128;
 
 impl GpuCook {
     /// Encode one kernel stage: resolve/compile the pipeline for the inputs'

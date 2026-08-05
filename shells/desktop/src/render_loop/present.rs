@@ -145,10 +145,16 @@ impl crate::App {
                 // buffer to draw ALREADY lives on the GPU — bind it directly and
                 // pass an empty CPU slice (the pump never ran; its buffer is
                 // stale). Otherwise the classic CPU slice path, byte-identical.
-                let motion_gpu: Option<(&wgpu::Buffer, u32)> = (motion_active && motion.gpu_live)
-                    .then(|| motion.gpu_cook.instances())
-                    .flatten()
-                    .map(|gi| (gi.buffer(), gi.len()));
+                // The device buffer PLUS its texture-run partition (this wave):
+                // the runs let the renderer draw a `source.object` graph by
+                // binding the object's texture per run — an EMPTY partition (a
+                // non-object stream) is the legacy single atlas draw. Both are
+                // `&self` reads of the same cook; no readback.
+                let motion_gpu: Option<(&wgpu::Buffer, u32, &[ph2d_render::GpuTexRun])> =
+                    (motion_active && motion.gpu_live)
+                        .then(|| motion.gpu_cook.instances())
+                        .flatten()
+                        .map(|gi| (gi.buffer(), gi.len(), motion.gpu_cook.texture_runs()));
                 let motion_slice: &[ph2d_render::RenderInstance] =
                     if motion_active && motion_gpu.is_none() {
                         &motion.pump.instances

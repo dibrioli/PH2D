@@ -91,10 +91,13 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
-    // Its output carries `texture_id` (the engine object's tile). The GPU cook's
-    // lowering is sprite-only and hardcodes `texture_id` to the shared atlas, so a
-    // document bringing an object in recuses to the CPU render (ADR-0154/0155).
-    reg.register_appearance_source(MANIFEST.id);
+    // Its output carries `texture_id` (the engine object's tile). The GPU cook
+    // now DRAWS this — the lowering writes the id into the instance and the
+    // renderer binds the object's texture per run — so it is an OBJECT source,
+    // not a blanket recusal. The shell reads this flag only for the
+    // count-changing cerca: an object graph whose GPU suffix reorders / changes
+    // count recuses (the texture-run partition would mis-bind).
+    reg.register_object_source(MANIFEST.id);
     Ok(())
 }
 

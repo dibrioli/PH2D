@@ -116,7 +116,7 @@ pub use premul::{
 pub use preview_premul::PreviewPremul;
 pub use registry::register_render_components;
 pub use renderer::SpriteRenderer;
-pub use sprite::{QuadVertex, RenderInstance, Sprite, SpriteSource};
+pub use sprite::{GpuTexRun, QuadVertex, RenderInstance, Sprite, SpriteSource};
 // The wrapper enum + the canonical load path (`load_sprite` +
 // `LoadError`, ADR-0070-amendment-2 §4) are re-exported at crate root —
 // `SpriteV3` stays internal migrator machinery (`#[doc(hidden)]` on the

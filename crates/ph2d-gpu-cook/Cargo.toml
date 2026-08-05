@@ -69,6 +69,11 @@ ph2d-node-motion-spherize = { path = "../ph2d-node-motion-spherize" }
 ph2d-node-motion-four-point-warp = { path = "../ph2d-node-motion-four-point-warp" }
 # The count-changing deformer (StreamOp SourceRows) that READS its template.
 ph2d-node-motion-kaleidoscope = { path = "../ph2d-node-motion-kaleidoscope" }
+# An OBJECT source — a CPU-only boundary that carries `texture_id`. The
+# texture-id parity gate feeds it a manual boundary stream (it can't run
+# headless: its eval reads the host texture store) to prove the device lowering
+# writes the real id and the run partition matches. `src/` never uses it.
+ph2d-node-source-object = { path = "../ph2d-node-source-object" }
 # The field.* focus-field family — pure per-instance maps that write the
 # multiplicative `falloff` mask; cooked on both paths by the falloff-column
 # parity gate (a downstream `tint` makes the mask a visible RenderInstance field).

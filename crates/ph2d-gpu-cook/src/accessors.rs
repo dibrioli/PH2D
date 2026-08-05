@@ -20,6 +20,16 @@ impl GpuCook {
         self.instances.as_ref()
     }
 
+    /// The texture-run partition of the last cook's instance buffer — one run
+    /// per contiguous same-`texture_id` slice, for the renderer's per-run
+    /// texture bind ([`ph2d_render::GpuTexRun`]). EMPTY for a non-object graph
+    /// (or an all-atlas one): the renderer then takes the legacy single atlas
+    /// draw, byte-identical. Handed to `render_with_streams` beside
+    /// [`Self::instances`].
+    pub fn texture_runs(&self) -> &[ph2d_render::GpuTexRun] {
+        &self.tex_runs
+    }
+
     /// What the last [`GpuCook::cook`] produced, per staged node — the graph
     /// panel's only window into a GPU-resident frame. See [`shape::CookShape`].
     pub fn shape(&self) -> &shape::CookShape {

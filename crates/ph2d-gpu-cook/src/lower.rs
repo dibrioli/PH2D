@@ -1,10 +1,18 @@
 //! The GPU **lowering** pass — the compute twin of
 //! `ph2d_eval_motion::lower_to_instances_onto`: gathers the stream convention
-//! columns (`P` / `size` / `rot` / `tint` / `uv_rect`, absent → the same
-//! defaults the CPU applies) straight into a buffer laid out as
+//! columns (`P` / `size` / `rot` / `tint` / `uv_rect` / `texture_id`, absent →
+//! the same defaults the CPU applies) straight into a buffer laid out as
 //! [`ph2d_render::RenderInstance`], which the sprite renderer binds as its
 //! instance vertex buffer. This is what makes the path readback-free: the
 //! cook's last write IS the renderer's input.
+//!
+//! `texture_id` (word 41) is the newest reader, and the reason the GPU can now
+//! draw a `source.object` graph: a duplicated sprite carries the object's baked
+//! tile / individual-texture handle in this column, the deformer suffix copies
+//! it position-for-position, and this pass writes it into the instance so the
+//! device buffer is a FAITHFUL `RenderInstance` array (the renderer binds the
+//! matching texture per run — see `renderer_draw`). Absent ⇒ `0` = the shared
+//! atlas, byte-identical to every non-object graph that shipped before it.
 //!
 //! The instance is written word-by-word into an `array<u32>` (with
 //! `bitcast` for the float fields) because the WGSL alignment rules cannot
@@ -18,15 +26,17 @@ use crate::codegen::WORKGROUP_SIZE;
 /// `RenderInstance` is 184 bytes = 46 32-bit words.
 pub const INSTANCE_WORDS: u32 = 46;
 
-/// The five stream columns the lowering reads, in binding order. Presence of
+/// The six stream columns the lowering reads, in binding order. Presence of
 /// each (bit `i` of the pipeline-cache signature) selects between a storage
-/// binding and the default.
-pub const LOWER_COLUMNS: [&str; 5] = ["P", "size", "rot", "tint", "uv_rect"];
+/// binding and the default. `texture_id` is a `Scalar` column like `rot` — it
+/// is read as `f32` and truncated to `u32`, mirroring the CPU lowering's
+/// `scalar_at(tex, i, 0.0) as u32`.
+pub const LOWER_COLUMNS: [&str; 6] = ["P", "size", "rot", "tint", "uv_rect", "texture_id"];
 
 /// Generate the lowering module for a concrete column set. Binding 0 = the
 /// uniforms, binding 1 = the instance output; then one `read` binding per
 /// present column, in [`LOWER_COLUMNS`] order.
-pub fn lower_module(present: [bool; 5]) -> String {
+pub fn lower_module(present: [bool; 6]) -> String {
     let mut src = String::with_capacity(2048);
     src.push_str(
         "struct LowerParams {\n\
@@ -38,7 +48,7 @@ pub fn lower_module(present: [bool; 5]) -> String {
          @group(0) @binding(0) var<uniform> params: LowerParams;\n\
          @group(0) @binding(1) var<storage, read_write> instances: array<u32>;\n",
     );
-    let tys = ["vec2<f32>", "vec2<f32>", "f32", "vec4<f32>", "vec4<f32>"];
+    let tys = ["vec2<f32>", "vec2<f32>", "f32", "vec4<f32>", "vec4<f32>", "f32"];
     let mut slot = 2u32;
     for (i, col) in LOWER_COLUMNS.iter().enumerate() {
         if present[i] {
@@ -58,6 +68,7 @@ pub fn lower_module(present: [bool; 5]) -> String {
         "0.0",                           // rot
         "vec4<f32>(1.0, 1.0, 1.0, 1.0)", // tint
         "params.default_uv",             // uv_rect (caller-supplied)
+        "0.0",                           // texture_id (absent → atlas 0)
     ];
     for (i, col) in LOWER_COLUMNS.iter().enumerate() {
         if present[i] {
@@ -126,9 +137,11 @@ pub fn lower_module(present: [bool; 5]) -> String {
         \x20   wf(base + 38u, 1.0);\n\
         \x20   instances[base + 39u] = 0u;\n\
         \x20   instances[base + 40u] = 0u;\n\
-        \x20   // texture_id · z_order · sampling · clip_group · clip_meta (41-45):\n\
-        \x20   // atlas / z 0 / default sampler / no clip — the CPU lowering's values.\n\
-        \x20   instances[base + 41u] = 0u;\n\
+        \x20   // texture_id (41): the object's tile/individual handle, from the\n\
+        \x20   // stream column (absent → 0 = atlas). `u32(f32)` truncates toward\n\
+        \x20   // zero, exactly like the CPU lowering's `scalar_at(..) as u32`.\n\
+        \x20   // z_order · sampling · clip_group · clip_meta (42-45): the CPU's.\n\
+        \x20   instances[base + 41u] = u32(read_texture_id(i));\n\
         \x20   instances[base + 42u] = 0u;\n\
         \x20   instances[base + 43u] = 0u;\n\
         \x20   instances[base + 44u] = 0u;\n\
@@ -139,7 +152,7 @@ pub fn lower_module(present: [bool; 5]) -> String {
 }
 
 /// Pipeline-cache signature for a lowering column set (bit per column).
-pub fn lower_signature(present: [bool; 5]) -> u64 {
+pub fn lower_signature(present: [bool; 6]) -> u64 {
     present
         .iter()
         .enumerate()
@@ -162,11 +175,37 @@ mod tests {
 
     #[test]
     fn absent_columns_read_the_cpu_defaults() {
-        let src = lower_module([false; 5]);
+        let src = lower_module([false; 6]);
         assert!(src.contains("return vec2<f32>(0.0, 0.0);")); // P
         assert!(src.contains("return params.default_size;"));
         assert!(src.contains("return params.default_uv;"));
         assert!(src.contains("return vec4<f32>(1.0, 1.0, 1.0, 1.0);")); // tint
         assert!(!src.contains("var<storage, read> in_"));
+    }
+
+    /// Word 41 (`texture_id`) is written FROM the column, not hardcoded to the
+    /// atlas. Red-first: this asserts the exact line the atlas-hardcode bug
+    /// (`instances[base + 41u] = 0u;`) never produced — a `source.object`'s
+    /// tile handle only reaches the device if the lowering reads the column.
+    #[test]
+    fn the_lowering_carries_texture_id() {
+        let mut present = [false; 6];
+        present[5] = true; // texture_id present
+        let src = lower_module(present);
+        // The column is bound and read as f32 (like `rot`), truncated to u32.
+        assert!(src.contains("var<storage, read> in_texture_id: array<f32>;"));
+        assert!(src.contains("fn read_texture_id(i: u32) -> f32 { return in_texture_id[i]; }"));
+        assert!(src.contains("instances[base + 41u] = u32(read_texture_id(i));"));
+        // And the old atlas hardcode is gone.
+        assert!(!src.contains("instances[base + 41u] = 0u;"));
+    }
+
+    /// Absent `texture_id` still writes word 41 = 0 (atlas), so every non-object
+    /// graph is byte-identical — the reader falls back to `0.0`, truncating to 0.
+    #[test]
+    fn absent_texture_id_is_the_atlas() {
+        let src = lower_module([false; 6]);
+        assert!(src.contains("fn read_texture_id(i: u32) -> f32 { _ = i; return 0.0; }"));
+        assert!(src.contains("instances[base + 41u] = u32(read_texture_id(i));"));
     }
 }

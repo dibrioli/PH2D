@@ -22,5 +22,5 @@ mod vertex;
 mod tests;
 
 pub use component::{Sprite, SpriteSource};
-pub use instance::RenderInstance;
+pub use instance::{GpuTexRun, RenderInstance};
 pub use vertex::QuadVertex;

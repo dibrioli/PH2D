@@ -262,10 +262,11 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
     reg.register_param_gates(MANIFEST.id, PARAM_GATES);
-    // Its output carries `geometry_id` (a live vector shape). The GPU cook's lowering
-    // is sprite-only and has no vector path, so a document bringing a shape in recuses
-    // to the CPU render (ADR-0154/0155).
-    reg.register_appearance_source(MANIFEST.id);
+    // Its output carries `geometry_id` (a live vector shape) drawn by the vector
+    // pass. The GPU-resident cook has no `geometry_id` route, so a document
+    // bringing a shape in recuses to the CPU render (ADR-0154/0155). Unlike an
+    // OBJECT source (`texture_id`), this has no device render path at all.
+    reg.register_live_vector_source(MANIFEST.id);
     Ok(())
 }
 

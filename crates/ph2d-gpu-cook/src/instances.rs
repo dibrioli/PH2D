@@ -54,7 +54,7 @@ impl GpuCook {
             return;
         }
 
-        let present: [bool; 5] = std::array::from_fn(|i| {
+        let present: [bool; 6] = std::array::from_fn(|i| {
             stream
                 .cols
                 .get(lower::LOWER_COLUMNS[i])
@@ -175,8 +175,8 @@ impl GpuCook {
 fn expected_lower_dim(i: usize) -> ph2d_nodegraph::port::Dim {
     use ph2d_nodegraph::port::Dim;
     match i {
-        0 | 1 => Dim::Vec2, // P, size
-        2 => Dim::Scalar,   // rot
-        _ => Dim::Vec4,     // tint, uv_rect
+        0 | 1 => Dim::Vec2,  // P, size
+        2 | 5 => Dim::Scalar, // rot, texture_id
+        _ => Dim::Vec4,      // tint, uv_rect
     }
 }

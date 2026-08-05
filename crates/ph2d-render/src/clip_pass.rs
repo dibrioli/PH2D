@@ -40,7 +40,7 @@ pub(crate) fn encode_clip_groups<'a>(
     quad_buf: &wgpu::Buffer,
     instance_buf: &wgpu::Buffer,
     runs: &[DrawRun],
-    resolve_material: impl Fn(&DrawRun) -> Option<&'a wgpu::BindGroup>,
+    resolve_material: impl Fn(u32, u32) -> Option<&'a wgpu::BindGroup>,
 ) {
     let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
         label: Some("ph2d-render clip pass"),
@@ -105,7 +105,7 @@ pub(crate) fn encode_clip_groups<'a>(
         pass.set_pipeline(&pipe.mark_pipeline);
         pass.set_stencil_reference(stencil_ref);
         for run in span.iter().filter(is_mask) {
-            if let Some(bg) = resolve_material(run) {
+            if let Some(bg) = resolve_material(run.texture_id, run.sampling) {
                 pass.set_bind_group(1, bg, &[]);
                 pass.draw(0..4, run.start..run.end);
             }
@@ -118,7 +118,7 @@ pub(crate) fn encode_clip_groups<'a>(
         //    parent is an invisible mould.
         if clip_and_draw {
             for run in span.iter().filter(is_mask) {
-                if let Some(bg) = resolve_material(run) {
+                if let Some(bg) = resolve_material(run.texture_id, run.sampling) {
                     pass.set_bind_group(1, bg, &[]);
                     pass.draw(0..4, run.start..run.end);
                 }
@@ -126,7 +126,7 @@ pub(crate) fn encode_clip_groups<'a>(
         }
         // 3. Members — clipped to the silhouette.
         for run in span.iter().filter(is_member) {
-            if let Some(bg) = resolve_material(run) {
+            if let Some(bg) = resolve_material(run.texture_id, run.sampling) {
                 pass.set_bind_group(1, bg, &[]);
                 pass.draw(0..4, run.start..run.end);
             }
@@ -151,7 +151,7 @@ pub(crate) fn encode_mask_pass<'a>(
     quad_buf: &wgpu::Buffer,
     instance_buf: &wgpu::Buffer,
     runs: &[DrawRun],
-    resolve_material: impl Fn(&DrawRun) -> Option<&'a wgpu::BindGroup>,
+    resolve_material: impl Fn(u32, u32) -> Option<&'a wgpu::BindGroup>,
 ) {
     let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
         label: Some("ph2d-render mask pass"),
@@ -183,7 +183,7 @@ pub(crate) fn encode_mask_pass<'a>(
     const REF: u32 = 1;
     let draw = |pass: &mut wgpu::RenderPass, role: u8| {
         for run in runs.iter().filter(|r| r.mask_role == role) {
-            if let Some(bg) = resolve_material(run) {
+            if let Some(bg) = resolve_material(run.texture_id, run.sampling) {
                 pass.set_bind_group(1, bg, &[]);
                 pass.draw(0..4, run.start..run.end);
             }

@@ -5298,6 +5298,7 @@ dependencies = [
  "ph2d-node-sim-spawn",
  "ph2d-node-sim-step",
  "ph2d-node-sim-zone",
+ "ph2d-node-source-object",
  "ph2d-node-value-attribute",
  "ph2d-node-value-gain",
  "ph2d-node-value-instance-field",

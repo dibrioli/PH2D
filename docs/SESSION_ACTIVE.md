@@ -19,7 +19,34 @@ N Implementadores; os Implementadores **leem antes de cada burst** e não escrev
 
 ---
 
-## Integração — jornada FECHADA (7 linhas), pushada, **CI VERDE**
+## Integração — jornada FECHADA (5 linhas), 2026-08-04
+
+**Cinco linhas integraram**, na ordem **MEDIDA** (custo = commits que tocam arquivos quentes
+compartilhados; a mais cara primeiro, porque a primeira é fast-forward puro e não paga nada):
+**`line/Vector`** (64) → **`line/sculpt3d`** (25) → **`line/physics`** (30) → **`line/motion-value`**
+(13) → **`line/Painter`** (8). ⚠️ **Uma inversão deliberada:** o 3D entrou antes da física apesar
+dos 25 contra 30, porque a física ainda estava com trabalho não-commitado na worktree — e o vão de
+1,2× é ruído contra os 5-8× que separam a cauda.
+
+**Os números, CONTADOS:** `PROJECT_SCHEMA` **50 → 55** (cinco degraus: 51 tokens · 52 sculpt ·
+53 baked_forms · 54 joint custom · 55 player) · tripla `(55, 13, 14)` · registro `ph2d-ecs`
+**46 → 52** e os **DOIS** espelhos **47 → 53** · `ph2d-physics-ecs` **26 → 28** · ADR máx **0155**
+(0154/0155 ficaram como escolhidos — ninguém mais criou ADR) · contrato congelado **intocado**.
+
+⚠️ **A física trouxe DOIS degraus de schema e o handoff dela contou UM** (previa 54; o par certo
+era 54+55). *Nem a aritmética escrita pela própria linha se toma pronta.*
+
+⚠️ **Quatro defeitos que só a árvore combinada viu**, todos com o produto CERTO e o gate expirado
+ou latente: o arch-gate de tokens lendo `project.rs` depois de a `sculpt3d` ter partido o arquivo
+(a linha do `project_tokens::install` **fundiu limpa para o lado errado do corte**) · e três gates
+de `ph2d-editor-core/tests/` que a varredura impactada nunca alcança (`paint` em 201/200 · dois
+arquivos fora do allowlist de a11y · um literal sem marcador).
+
+**Estado:** `main` local à frente do `origin`; ship + push pendentes de ordem.
+
+---
+
+## Histórico anterior — jornada FECHADA (7 linhas), pushada, **CI VERDE**E**
 
 **Sete linhas integraram** (2026-08-01), na ordem **MEDIDA**: **`line/Vector`** (10 commits —
 o corte, o pathfinder, a reivindicação 2-D) → **`line/physics`** (7 — o rig sai da hierarquia,

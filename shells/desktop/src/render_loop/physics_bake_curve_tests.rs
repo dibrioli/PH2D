@@ -204,6 +204,7 @@ fn a_bake_lands_on_the_clock_of_its_entity_not_the_playhead() {
         BAKE_SECONDS,
         DT,
         BakeChannels::All,
+        &mut ph2d_physics_ecs::InputTape::new(),
         &queue,
         &reg,
     );
@@ -369,6 +370,7 @@ fn bouncing_ball(secs: f64) -> (Vec<(f64, f32)>, TimelineState, SimWorld, Entity
         secs,
         DT,
         BakeChannels::All,
+        &mut ph2d_physics_ecs::InputTape::new(),
         &queue,
         &reg,
     );
@@ -483,6 +485,7 @@ fn baked_over(start: f64, end: f64) -> (TimelineState, SimWorld, Entity) {
         end,
         DT,
         BakeChannels::All,
+        &mut ph2d_physics_ecs::InputTape::new(),
         &queue,
         &reg,
     );

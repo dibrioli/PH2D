@@ -116,6 +116,7 @@ pub(super) fn baked() -> (TimelineState, SimWorld, Entity, BakeOutcome) {
         BAKE_SECONDS,
         DT,
         BakeChannels::All,
+        &mut ph2d_physics_ecs::InputTape::new(),
         &queue,
         &reg,
     );
@@ -208,6 +209,7 @@ fn a_whole_bake_is_a_single_undo_step() {
         BAKE_SECONDS,
         DT,
         BakeChannels::All,
+        &mut ph2d_physics_ecs::InputTape::new(),
         &queue,
         &reg,
     );
@@ -361,6 +363,7 @@ fn baking_a_body_that_never_moves_writes_nothing() {
         BAKE_SECONDS,
         DT,
         BakeChannels::All,
+        &mut ph2d_physics_ecs::InputTape::new(),
         &queue,
         &reg,
     );
@@ -462,6 +465,7 @@ fn baked_with(channels: BakeChannels) -> (TimelineState, Entity) {
         BAKE_SECONDS,
         DT,
         channels,
+        &mut ph2d_physics_ecs::InputTape::new(),
         &queue,
         &reg,
     );

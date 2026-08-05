@@ -22,7 +22,7 @@
 
 use ph2d_ecs::{Entity, SimWorld, Transform};
 
-use crate::{FrozenScene, PhysicsBridge, SceneAtTick};
+use crate::{FrozenScene, HeldInput, PhysicsBridge, PlayerInput, PlayerInputAtTick, SceneAtTick};
 
 /// The channels a rigid body's pose actually has. Physics' own vocabulary, not
 /// the timeline's: a body has a position and a heading, and knows nothing about
@@ -173,6 +173,85 @@ pub fn bake_trajectories_with_scene(
     fixed_dt: f64,
     scene: &mut dyn SceneAtTick,
 ) -> Vec<BakedTrajectory> {
+    bake_trajectories_with_scene_and_tape(
+        bridge,
+        sim,
+        entities,
+        ticks,
+        fixed_dt,
+        scene,
+        &mut HeldInput,
+    )
+}
+
+/// **A fita, e FORA dela o dedo PARADO** — o adaptador que um bake usa (W16).
+///
+/// # ⚠️ O mesmo `None` significa coisas DIFERENTES nos dois caminhos
+///
+/// [`PlayerInputAtTick::input`] devolve `None` para *"use a segurada"*, e isso é
+/// **correcto ao vivo**: passado o fim da gravação o artista ainda está a jogar,
+/// então o dedo dele É a verdade. Num **bake** não há dedo — a corrida acabou, e
+/// o que existe fora do que foi gravado é *o artista não estava a fazer nada*.
+///
+/// Sem este adaptador a cauda de um bake mais longo que a gravação é dirigida
+/// por um dedo que ninguém pôs lá — e ⚠️ **por QUAL dedo depende de a fita estar
+/// vazia, o que dá dois defeitos diferentes**:
+///
+/// - **fita vazia** ⇒ o `take_taped_input` nunca dispara e a entrada RETIDA
+///   manda o bake inteiro: medido, com a ESQUERDA segurada o bake grava
+///   `x = −8,765` para uma corrida que foi a `+8,765`.
+/// - **fita curta** ⇒ ela sobrescreveu a retida no primeiro tique e **não a
+///   restaura** ao calar (o `take_taped_input` sai cedo, ver o doc dele), então
+///   a cauda **repete o ÚLTIMO tique gravado, para sempre**: medido, uma
+///   gravação que acaba em `x = 2,765` deixa o bake terminar em **`8,765`**,
+///   seis metros que ninguém jogou.
+///
+/// ⚠️ **A segunda metade foi uma previsão MINHA que a medição derrubou** — eu
+/// escrevi um gate afirmando que a cauda *"segue o dedo"*, e ele não sangrou.
+/// Com o adaptador ela desacelera e **para**: `2,765 → 2,935`, os 17 cm de
+/// inércia que a caminhada leva a extinguir.
+///
+/// ⚠️ E ele cobre as DUAS pontas: um tique **anterior** ao início da gravação
+/// também devolve parado, pela mesma razão — antes de a fita começar, ninguém
+/// estava a dirigir nada.
+pub struct RecordedRun<'a>(pub &'a mut dyn PlayerInputAtTick);
+
+impl PlayerInputAtTick for RecordedRun<'_> {
+    fn input(&mut self, tick: u64) -> Option<PlayerInput> {
+        Some(self.0.input(tick).unwrap_or_default())
+    }
+}
+
+/// [`bake_trajectories_with_scene`], e mais a **FITA** de entrada do jogador
+/// (W16). ⚠️ **Há UMA implementação e as outras delegam**, o molde exacto da
+/// família do `dispatch`: duas não podem divergir se só existe uma.
+///
+/// # ⚠️ Um bake que não replaya a FITA assa outra corrida
+///
+/// É a frase do topo deste módulo — *"um bake que não avança a cena simula uma
+/// cena DIFERENTE"* — dita ao outro eixo, e ela era verdade aqui pelo mesmo
+/// mecanismo: sem fita, os players são dirigidos pelo `player_input` RETIDO, ou
+/// seja **pelo que o artista está a segurar no instante do clique**.
+///
+/// **Medido (2026-08-05, 90 tiques):** a corrida gravada leva o personagem a
+/// `x = 8,765`; o bake **sem fita e com o dedo parado** grava X **CONSTANTE**
+/// (amplitude `0,000`), então nenhuma track horizontal é escrita e o artista
+/// recebe uma curva só de Y para um objecto que andou quase nove metros. E o
+/// modo de falha **pior** é o outro: com o dedo a segurar ESQUERDA, o mesmo bake
+/// grava `x = −8,765` — *o espelho exacto da corrida*. Não é *"nada acontece"*,
+/// é *"grava o que quer que você esteja a segurar"*, e às vezes isso parece
+/// certo.
+pub fn bake_trajectories_with_scene_and_tape(
+    bridge: &mut PhysicsBridge,
+    sim: &mut SimWorld,
+    entities: &[Entity],
+    ticks: u64,
+    fixed_dt: f64,
+    scene: &mut dyn SceneAtTick,
+    tape: &mut dyn PlayerInputAtTick,
+) -> Vec<BakedTrajectory> {
+    // ⚠️ Fora do que foi gravado, o dedo está PARADO — ver [`RecordedRun`].
+    let tape = &mut RecordedRun(tape);
     let resume_at = bridge.last_stepped();
 
     let mut targets: Vec<Entity> = entities.to_vec();
@@ -191,14 +270,14 @@ pub fn bake_trajectories_with_scene(
     // Tick 0 is the rest state, and it is a SAMPLE, not a warm-up: it is where
     // the artist placed the object, and the first key of the baked curve.
     scene.put(sim, 0);
-    bridge.dispatch_with_scene(sim, false, 0, scene);
+    bridge.dispatch_with_scene_and_tape(sim, false, 0, scene, tape);
     record(sim, &mut out, 0.0);
 
     for tick in 1..=ticks {
         // One dispatch per tick, and that is not a style choice: asking for the
         // last tick directly would step the world all the way there and read
         // back ONCE, giving a trajectory that is a single pose.
-        bridge.dispatch_with_scene(sim, true, tick, scene);
+        bridge.dispatch_with_scene_and_tape(sim, true, tick, scene, tape);
         record(sim, &mut out, tick as f64 * fixed_dt);
     }
 
@@ -206,7 +285,7 @@ pub fn bake_trajectories_with_scene(
     // the exact state the artist was looking at — the property `scrub.rs`
     // already gates, borrowed rather than re-proved.
     scene.put(sim, resume_at);
-    bridge.dispatch_with_scene(sim, false, resume_at, scene);
+    bridge.dispatch_with_scene_and_tape(sim, false, resume_at, scene, tape);
     out
 }
 

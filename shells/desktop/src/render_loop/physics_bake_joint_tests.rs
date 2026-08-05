@@ -95,6 +95,7 @@ fn baking_one_link_of_a_chain_bakes_the_whole_rig() {
         BAKE_SECONDS,
         DT,
         BakeChannels::All,
+        &mut ph2d_physics_ecs::InputTape::new(),
         &queue,
         &reg,
     );

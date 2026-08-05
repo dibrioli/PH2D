@@ -28,7 +28,10 @@ mod scale;
 mod seam;
 pub mod settings;
 
-pub use bake::{BakedTrajectory, PoseChannel, bake_trajectories, bake_trajectories_with_scene};
+pub use bake::{
+    BakedTrajectory, PoseChannel, RecordedRun, bake_trajectories, bake_trajectories_with_scene,
+    bake_trajectories_with_scene_and_tape,
+};
 pub use bridge::anchors::JointSide;
 pub use bridge::contacts::{
     BodyContact, CONTACT_FLASH_TICKS, ContactEvent, ContactFlash, ContactPhase,

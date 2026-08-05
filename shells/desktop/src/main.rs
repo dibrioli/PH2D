@@ -260,6 +260,7 @@ mod physics_smoke_joint_slider;
 mod physics_smoke_lead;
 mod physics_smoke_part;
 mod physics_smoke_player;
+mod physics_smoke_player_bake;
 mod physics_smoke_player_carry;
 mod physics_smoke_player_crouch;
 mod physics_smoke_player_dash;

@@ -44,6 +44,12 @@ const PAUSED_SCENES: &[&str] = &[
     // fazer alguma coisa, e um corpo que já caiu meio metro é um corpo cujo
     // gesto de autoria começa no lugar errado.
     "82",
+    // ⚠️ A cena 95 (W16) nasce PAUSADA pela razão da 7, e mais uma: ela pede ao
+    // artista que JOGUE uma corrida, e é essa corrida que vai ser assada. Com o
+    // relógio já a andar, o começo da fita descreve segundos em que ninguém
+    // tinha o teclado — o bake gravaria um personagem parado antes de gravar o
+    // que o artista fez.
+    "95",
 ];
 
 /// Static floor, centered at `y = -1` (top at `y = -0.8`). The sprite quad
@@ -174,6 +180,7 @@ impl crate::App {
             "92" => self.physics_smoke_well(),
             "93" => self.physics_smoke_dash(),
             "94" => self.physics_smoke_crouch(),
+            "95" => self.physics_smoke_bake_run(),
             _ => self.physics_smoke_drop(),
         }
 

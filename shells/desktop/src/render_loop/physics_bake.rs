@@ -75,7 +75,8 @@ use ph2d_anim::{AnimValue, Interp, RationalTime};
 use ph2d_ecs::scene::{ComponentRegistry, EditorCommandQueue};
 use ph2d_ecs::{Entity, SimWorld};
 use ph2d_physics_ecs::{
-    PhysicsBridge, PoseChannel, SceneAtTick, bake_trajectories_with_scene, jointed_group,
+    InputTape, PhysicsBridge, PoseChannel, SceneAtTick, bake_trajectories_with_scene_and_tape,
+    jointed_group,
 };
 use ph2d_timeline::{PropKind, TimelineState};
 
@@ -300,6 +301,7 @@ pub(crate) fn bake_selection(
     end: f64,
     fixed_dt: f64,
     channels: BakeChannels,
+    tape: &mut InputTape,
     queue: &EditorCommandQueue,
     registry: &ComponentRegistry,
 ) -> BakeOutcome {
@@ -319,12 +321,22 @@ pub(crate) fn bake_selection(
     // body the timeline drives — which is every body baked before this one —
     // stands still through the whole simulation, and the curve written here
     // describes a scene that does not exist.
+    //
+    // ⚠️ **E ele replaya a FITA, pela MESMA razão** (W16): sem ela um player é
+    // dirigido pelo `player_input` RETIDO, ou seja pelo dedo do instante do
+    // clique. Medido: uma corrida gravada que leva o personagem a `x = 8,765`
+    // era assada como X **CONSTANTE** com o dedo parado (nenhuma track
+    // horizontal para quem andou nove metros) e como `x = −8,765` — o espelho
+    // exacto — com a ESQUERDA segurada. As duas frases são uma só: *um bake que
+    // não reproduz a entrada assa uma corrida diferente*.
     let trajectories = {
         let mut scene = TimelineScene {
             doc: &mut timeline.doc,
             fixed_dt,
         };
-        bake_trajectories_with_scene(physics, sim, entities, ticks, fixed_dt, &mut scene)
+        bake_trajectories_with_scene_and_tape(
+            physics, sim, entities, ticks, fixed_dt, &mut scene, tape,
+        )
     };
 
     // Collect first, write second: a bake that opened an undo bracket and then

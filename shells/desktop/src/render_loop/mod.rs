@@ -8068,6 +8068,7 @@ impl crate::App {
                     end,
                     self.fixed_step.fixed_dt(),
                     self.bake_channels,
+                    &mut self.player_tape,
                     editor_queue,
                     component_registry,
                 );

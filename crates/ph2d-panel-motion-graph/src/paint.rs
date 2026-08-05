@@ -36,7 +36,10 @@ mod paint_wires;
 use paint_inert_badge::draw_inert_badge;
 #[path = "paint_grid.rs"]
 mod paint_grid;
+#[path = "paint_overlays.rs"]
+mod paint_overlays;
 use paint_grid::draw_grid;
+use paint_overlays::draw_canvas_overlays;
 use paint_stamp::{draw_preview, draw_preview_toggle};
 pub(crate) use paint_wire::{
     WireEmphasis, detached_edge, draw_wire, draw_wire_ghost, draws_wire_ghost, wire_endpoints,
@@ -52,7 +55,7 @@ use crate::hits::{
 use crate::snapshot::{
     GraphNodeView, GraphViewSnapshot, PortView, SocketGlyph, current_snapshot, socket_glyph,
 };
-use crate::state::{Interaction, MotionGraphPanelState, ViewState};
+use crate::state::{MotionGraphPanelState, ViewState};
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::GraphHitKind;
 use ph2d_editor_core::paint::{
@@ -110,7 +113,16 @@ const MENU_ROW_TEXT_Y: f32 = 3.0; // LITERAL-PX-OK: row label y-inset
 const MENU_ROW_SIZE: f32 = 13.0; // LITERAL-PX-OK: row label font size
 const MENU_ROW_TEXT_INSET_R: f32 = 20.0; // LITERAL-PX-OK: row label right inset
 
-/// que uma delas ganhasse um caso especial.
+/// **O frame do editor de grafo**, na ordem em que ele é montado: dobra os gestos deste frame
+/// no estado, publica a seleção, e então desenha — fundo e grade, backdrops, fios, cards,
+/// sockets — registrando os hits do menos prioritário ao mais (o último vence). Os overlays
+/// transientes saem por [`draw_canvas_overlays`], ainda dentro do clip; o chrome do split e o
+/// breadcrumb ficam FORA dele, porque a linha do divisor monta na borda do próprio painel.
+///
+/// ⚠️ Este doc-comment estava ÓRFÃO (uma linha solta, `que uma delas ganhasse um caso
+/// especial.`, cauda de uma frase cuja cabeça alguma edição comeu). Um fragmento não diz
+/// nada sobre o que a função faz, e é pior que comentário nenhum na porta de entrada do
+/// painel — reescrito, não apagado.
 pub(crate) fn paint(state: &mut MotionGraphPanelState, ctx: &mut PaintCtx) {
     let rect = ctx.layout.motion_graph;
     let theme = ctx.host.theme();
@@ -270,64 +282,6 @@ pub(crate) fn paint(state: &mut MotionGraphPanelState, ctx: &mut PaintCtx) {
     // the hit registration — it is a widget, not a graph hit, and it registers itself with the
     // panel's widget index like the menu's search field does.
     crate::rename::paint(state, ctx, rect, &snap, &view);
-}
-
-/// **The transient overlays, INSIDE the canvas clip** — split from `paint` for the 200-LOC/fn
-/// cap. Everything here is drawn over the cards and under the split chrome, and every one of
-/// them is a *gesture in flight* or a HUD: the in-progress wire ghost (it tracks a CAPTURED
-/// pointer, which routinely leaves the panel), the probe readout, the knife stroke, the rubber
-/// band, and the add-menu (already clamped on-canvas).
-///
-/// It registers no hits, by design: the menu's rows are hit-tested against the full-canvas
-/// `Background` shield that `paint` pushes AFTER this call, and the other four are pure
-/// feedback about a gesture the interaction layer already owns.
-fn draw_canvas_overlays(
-    ctx: &mut PaintCtx,
-    state: &MotionGraphPanelState,
-    snap: &crate::snapshot::GraphViewSnapshot,
-    view: &View,
-    theme: Theme,
-    rect: Rect,
-) {
-    if draws_wire_ghost(&state.interaction) {
-        draw_wire_ghost(ctx, snap, state, view, theme);
-    }
-    // The probe readout, over the cards (it is a HUD, not part of the graph).
-    if let Some(p) = &snap.probe
-        && let Some(n) = snap.nodes.iter().find(|n| n.id == p.node)
-    {
-        crate::probe::draw(ctx, p, n, view, theme);
-    }
-    // The knife stroke — Danger, because it is one: what it crosses gets cut.
-    if let Interaction::Knife { anchor, cur } = state.interaction {
-        stroke_polyline(
-            ctx.scene,
-            &[anchor, cur],
-            KNIFE_W,
-            resolve(ColorToken::Danger, theme),
-        );
-    }
-    // The rubber band (left-drag on empty canvas). Translucent fill — it is drawn
-    // OVER the very cards it is selecting, and an opaque one would hide them.
-    if let Interaction::BoxSelect { anchor, cur, .. } = state.interaction {
-        let band = geom::band_rect(anchor, cur);
-        fill_rounded_rect(
-            ctx.scene,
-            band,
-            0.0,
-            resolve(ColorToken::GraphMarquee, theme),
-        );
-        stroke_rounded_rect(
-            ctx.scene,
-            band,
-            0.0,
-            BAND_W,
-            resolve(ColorToken::Accent, theme),
-        );
-    }
-    if let Some(menu) = &state.menu {
-        draw_menu(ctx, menu, snap, rect, theme);
-    }
 }
 
 /// Scale + center a bounding box into `rect`. `selection = Some(ids)` frames only

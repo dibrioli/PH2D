@@ -314,6 +314,16 @@ const PANEL_A11Y_DELEGATE_OK: &[(&str, &str)] = &[
         "ph2d-panel-motion-graph/src/paint_inert_badge.rs",
         "the inert-warning pip — pure drawing; its AccessKit node is push_inert_badge_hit's",
     ),
+    // The transient canvas overlays (wire ghost / probe / knife / marquee / add-menu) — split
+    // from `paint.rs` for the 200-LOC/fn + 600-LOC/file caps, the same cut as the four siblings
+    // above. It registers nothing because none of the five HAS an identity to register: four
+    // are feedback about a gesture the interaction layer already owns, and the menu's rows are
+    // hit-tested against the full-canvas `Background` shield that `paint` pushes after this
+    // call (the pre-existing M1.E7 gap that `paint_menu.rs` above already names).
+    (
+        "ph2d-panel-motion-graph/src/paint_overlays.rs",
+        "transient gesture feedback + the add-menu draw — registers no ids anywhere",
+    ),
     (
         "ph2d-panel-motion-graph/src/paint_grid.rs",
         "the canvas backdrop lattice — decoration with no semantics: nothing hit-tests it",

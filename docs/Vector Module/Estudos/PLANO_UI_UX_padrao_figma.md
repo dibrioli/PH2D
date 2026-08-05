@@ -1035,7 +1035,7 @@ mudar `radius.md` move os dois.
 
 ---
 
-### W7 — A INTERAÇÃO: máquina de estados + Smart Animate 🔨 **NÚCLEO + HSM CONSTRUÍDOS (2026-08-05)**
+### W7 — A INTERAÇÃO: máquina de estados + Smart Animate 🔨 **A METADE DE AUTORIA CONSTRUÍDA (2026-08-05)** — a de RUNTIME não
 
 > ✅ **A crate `ph2d-ui-state` existe e o Smart Animate é uma função pura.** O censo confirmou as
 > quatro peças que este parágrafo prometia (`Plan::new`/`at`, `VecMorph.t`, `OklabColor::lerp`,
@@ -1059,9 +1059,16 @@ mudar `radius.md` move os dois.
 > (0 → 360°) é o mesmo ângulo, logo ela **não gira** — girar N voltas é percurso, e percurso é
 > keyframe, não estado.
 >
-> ✅ **A HSM existe** (`Machine`): `go_to` + `advance(dt)` + `pose()`. Ela **não conta o tempo** (o
-> `dt` vem do `Playhead`) e **não sabe o que é um mouse** — *o que aconteceu* é do shell, *que pose
-> a cena tem* é dela; uma tabela de gatilhos aqui teria de inventar um modelo de entrada.
+> ✅ **A máquina existe** (`Machine`): `go_to` + `advance(dt)` + `pose()`. Ela **não conta o tempo**
+> (o `dt` vem do `Playhead`) e **não sabe o que é um mouse** — *o que aconteceu* é do shell, *que
+> pose a cena tem* é dela; uma tabela de gatilhos aqui teria de inventar um modelo de entrada.
+>
+> ⚠️ **E ela é PLANA, não hierárquica — este plano chamou-a de HSM e a construção não entregou
+> uma.** O que shipou é `Vec<UiState>` + um índice: não há sub-estado, não há aninhamento, não há
+> transição entre máquinas. Ela é o que a W7 precisava (*um botão tem quatro poses*), e o nome
+> errado é caro do jeito que só um doc consegue ser — a próxima LLM assumiria uma capacidade que
+> não existe e desenharia em cima dela. **Um menu que abre com sub-estados é a hierarquia**, e ela
+> continua por construir.
 >
 > ⚠️ **Três leis que o plano não tinha escrito, e que decidem se aquilo parece produto:**
 > **(a)** uma transição parte da pose **VIVA**, nunca da autorada — sair do hover a meio volta *de
@@ -1081,9 +1088,38 @@ mudar `radius.md` move os dois.
 > zero movia um objeto só, onde um ramo próprio produz exactamente o mesmo resultado que a porta
 > certa — as duas portas só divergem onde a `arrive` faz algo a mais: **remover quem saiu**.
 >
-> **Falta** (as fatias seguintes): a autoria (gravar/listar estados), o vínculo com o mouse, a
-> cena de smoke — e a medição das **molas** (*se a curva `Elastic` bastar, o solver não se
-> constrói*).
+> ✅ **A AUTORIA fechou** (2026-08-05): a seção **States** com os quatro papéis, **Rec / Show /
+> Clear** por papel, o slider de duração e o readout do papel vivo. O estado tem um **PAPEL**
+> (`Default/Hover/Pressed/Disabled`), não um nome livre — com um nome, o gatilho exigiria uma
+> **segunda tabela** a manter em dia com a lista; com o papel ele é **derivado**.
+>
+> ✅ **A FORMA entra no estado** (2026-08-05, 2ª rodada de smoke): modo Node, **Fillet**, **Chamfer**,
+> a pilha de LPE e o **Width Tool** animam. ⚠️ O defeito que o smoke expôs é o mais caro deste
+> plano até agora e vale como lei: `ObjectPose::geometry` **existia**, a `Transition` sabia casá-la,
+> o `install` sabia escrevê-la — e **nenhum produtor preenchia o campo**. *Uma capacidade sem PORTA
+> passa em todos os gates*, porque eles leem quem CONSOME.
+>
+> ⛔ **A MOLA foi MEDIDA e o solver NÃO se constrói** (a M6 do §9, fechada). A forma já está no
+> catálogo (`Elastic Out`: pico 1,373 / assenta 0,631 / 4 travessias, contra 1,309 / 0,600 / 3 de
+> um oscilador massa-mola macio), e a pergunta de verdade — a **interrupção** — o default passa:
+> revertendo a 30% do caminho, a volta arranca a **1,34×** a velocidade com que a ida chegava.
+> ⚠️ Os dois regimes onde ela morde (`InOut` **0,00×**, `Elastic` **7,02×**) são **inalcançáveis
+> hoje** porque o seletor de curva não existe — **o dia em que ele nascer, esta medição volta à
+> mesa**. Sonda: `measure_spring`.
+>
+> **FALTA, e o que falta não é polimento:**
+>
+> - ⛔ **O mouse não dirige nada** — e a ausência é **decisão**, não esquecimento. Um hover que
+>   animasse enquanto o artista trabalha tornaria o editor inutilizável (o Figma põe a interação num
+>   **modo de apresentação** separado), e há um segundo motivo que é nosso: o undo deste editor é
+>   por **DIFF do mundo**, então uma pose escrita por hover viraria passo de undo a cada passagem do
+>   rato. **Ligar o mouse exige um modo de preview com história própria.**
+> - ⛔ **O input de runtime → token → arte** (a ponte do Vol. 3 §4 que o smoke desta wave pedia) é a
+>   **W8a**, não esta.
+> - ⛔ **A hierarquia** (um menu que abre, um card que expande com sub-estados) — ver acima.
+> - ⛔ **O seletor de CURVA**: 11 famílias × 3 modos = **33 combinações**, e o `ph2d-anim` **não dá
+>   nome a nenhuma**; um dropdown hoje pintaria identificadores em inglês crus (HR-15). *O catálogo
+>   precisa de nomes antes do knob* — e é esse knob que re-abre a medição da mola.
 
 **O quê.** Um botão tem *idle/hover/press/disabled*; um menu abre; um card expande. Estados +
 transições + o tween **automático** entre eles (Vol. 2 §5 e Vol. 3 §1).
@@ -1318,9 +1354,17 @@ escreveu**:
 | **W6.1** ✅ | a tabela de COR vira AUTORÁVEL (o degrau 1 do §2) | — | ⚠️ **bump** | — | **—** | `=59` |
 | **W6.2** ✅ | pele por-widget (`VecWidget`): a forma veste um controle do catálogo | +1 | — | — | — | `=60` |
 | **W6.3** | layout: a árvore autorada vira `Panel` | — | — | — | sim (§2) | — |
-| **W7** | estados + Smart Animate | — | `DOC_VERSION` | — | sim (HSM) | `=55` |
+| **W7** 🔨 | estados + Smart Animate (**autoria**; runtime não) | — | ⚠️ `PROJECT_SCHEMA`, **não** `DOC_VERSION` | — | **nenhum** | `=61` |
 | **W8** | runtime + codegen | — | seção | — | sim (fronteira) | `=56` |
 | **W9** | DTCG / SVG / export | — | — | — | — | — |
+
+⚠️ **A linha da W7 traz TRÊS previsões que a construção refutou, e elas são o padrão desta
+tabela:** o schema seria `DOC_VERSION` e foi **`PROJECT_SCHEMA`** (a tabela de estados viaja no
+`ProjectState`, que é a unidade do undo — não num blob que carrega a própria versão); o ADR era
+dado como certo (*"sim (HSM)"*) e **nenhum foi escrito** (nada do §6 é tocado, nenhuma dep externa
+entra, e as decisões vivem no doc da crate — a linha fica **fora** da disputa de número); e a cena
+prevista era `=55`, mas o número livre no roteador era o **`=61`**. *Uma tabela de previsões é útil
+enquanto a construção puder contradizê-la por escrito.*
 
 ⚠️ **Os números de CENA desta tabela são previsões, e uma delas já colidiu.** O W2 e o W4a
 previam os dois `=50`; o auto layout chegou primeiro e a cena dos TOKENS ficou **inalcançável em

@@ -221,3 +221,124 @@ Play/Pause do transporte, e as duas cenas o dizem.
   algum ponto de operação, o número é dele.
 - **As duas assistências não têm entrada no `BUGS_physics.md`** — nenhuma delas
   nasceu de um bug cuja causa enganava.
+
+---
+
+# W11 — O REPOUSO (2026-08-04, `fc711de0a`)
+
+Wave de **correção**, aberta pelo smoke da W10. Um commit, e ele é pequeno de
+propósito: 2 arquivos de produto (um deles uma linha de re-export), 2 de teste,
+2 de doc.
+
+## §9 — O que a wave é
+
+Relato do Enio: *"de tempos em tempos enquanto está parado o player dá pulinhos
+involuntários"* e *"nas rampas, se parado, a depender do Float Height ele pode
+subir a rampa sozinho bem devagar"*.
+
+**O segundo reproduziu e está corrigido; o primeiro NÃO reproduziu** — em cinco
+configurações de repouso (plano estático · vagão dinâmico a 3 m/s · vagão
+kinematic · `float_height` abaixo do mínimo geométrico · dispatch devendo
+0/1/2 tiques) a folga fica constante ao sexto decimal e nenhum tique move mais
+de 2 mm. Está escrito assim no [`BUGS_physics.md`](BUGS_physics.md) §7, com a
+sonda que a próxima hipótese deve usar.
+
+## §10 — A causa, e por que ela não estava onde eu procurei
+
+⚠️ **A ablação pela GRAVIDADE é o que fecha:** a deriva é **linear em `g`** e vale
+**zero** num mundo sem gravidade. A perna cancela a gravidade com um **impulso no
+topo do tique** e o `rapier` a integra **ao longo** dele — sobra meio tique de
+velocidade para cima, com componente **tangente** numa rampa. O freio da
+caminhada não a vê porque é um controlador de VELOCIDADE amostrado no fim do
+tique (medido: `v` perpendicular à tangente ao 4º decimal, freio a calcular
+`−8,7e−8`), e ninguém removia o que sobrava porque o **eixo do amortecedor era o
+`up`** — verdade **só no plano**, onde a normal É o `up`.
+
+⚠️ **Quatro hipóteses minhas foram refutadas por medição e estão registradas** —
+a "oscilação" (era a própria subida, medida por uma métrica que mede a rampa), o
+erro de repouso da mola, a rigidez, e a de-polarização de meio tique (construída
+e **revertida por PIORAR** a deriva). Elas estão no §7 do BUGS para ninguém as
+reconstruir.
+
+## §11 — Superfície e números
+
+- **Público novo:** `ph2d_platformer::damping_axis` (1 função pura).
+- ⚠️ **`PROJECT_SCHEMA` INTOCADO** · registro do `ph2d-physics-ecs` **intocado** ·
+  gizmo ids **nenhum** (próximo livre segue **974**) · **nenhum ADR** · **zero
+  `Cargo.toml`** · contrato congelado intacto.
+- ⚠️ **`physics_ecs_c9` = `b3dbe792…`, 108 corpos, debug ≡ release — o MESMO do
+  W10.** Não é sorte: a lane do player é em chão plano, onde `n == up` exato, e o
+  hash é o oráculo mais forte disponível para a byte-identidade que a wave alega.
+
+**Deriva a 30°, 10 s, `float_height = 0,9`:** 0,3295 → **0,1644 m** com o default;
+**0,0000** com o amortecimento no teto.
+
+## §12 — ⚠️ A DECISÃO que fica com o Enio, com as quatro colunas
+
+O `spring_damping` no **teto zera a deriva** — e custa peso:
+
+| `spring_damping` | deriva parado | quique ao pousar | peso transmitido |
+|---|---|---|---|
+| 0,25 | 0,2476 m | **196 mm** | 88% |
+| **0,50** (o que shipa) | 0,1644 m | 20 mm | **77%** |
+| 0,75 | 0,0819 m | 0 mm | 65% |
+| 1,00 | **0,0000 m** | 0 mm | **53%** |
+
+A perna segura o personagem em parte com um **boost**, e boost não é força: o
+`react` não o devolve ao chão (cerca **medida** daquele módulo — devolvê-lo fazia
+a jangada disparar). ⚠️ **Subir a rigidez não recupera** (`k · erro` constante em
+4,60 m/s², medido de 400 a 6400).
+
+**Eu NÃO mudei o default**, e a razão é a lei do repo: um número cujo único valor
+correto é o teto de outro knob é bug de design, não default. O que a wave entrega
+é que **o knob passou a governar isto de verdade** — com o eixo no `up`, nenhum
+valor dele removia a deriva (1,0 dava 0,3276 contra 0,3295 do controle).
+
+## §13 — Gates e mutações
+
+- **Lei** (`ph2d-platformer::ride::tests`, 4 novos): byte-identidade do eixo no
+  plano · **andar ao longo da rampa não acorda o amortecedor** (o gate da
+  correção) · o teto zera a aproximação num tique · o default é uma decisão.
+- **Produto** (`ph2d-physics-ecs/tests/platform_idle.rs`, 5): com o amortecedor
+  no teto o personagem fica parado em 10°/20°/30°/40° **e por um minuto** · o
+  resíduo do default é pinado **dos dois lados** · o plano é o controle · a perna
+  segura a altura.
+- **Sonda** (`measure_idle.rs`, `--ignored`): as sete medições da wave.
+- **4 mutações, 4 sangram.** O eixo de volta ao `up` sangra a lei **e** o produto.
+- ⚠️ **Um gate meu nasceu a sangrar pelo motivo errado** e foi corrigido: o
+  `sliding_along_the_ramp…` herdava o `spring_damping` do `STARTING_POINT`, então
+  mexer no default o derrubava — ele julga o EIXO, e agora fixa o amortecimento.
+- ⚠️ **E a fixture do gate de produto nasceu a medir o ASSENTAMENTO** (0,0115 m
+  de "viagem" no chão plano, que é a perna a acomodar-se). O defeito é um regime
+  permanente; a medição começa depois de 2 s.
+
+## §14 — Aberto, com o preço
+
+- **A cura que compra as duas colunas: a perna SUBSTITUI a gravidade em vez de a
+  cancelar.** Sem impulso de cancelamento não há assimetria a retificar (a deriva
+  vai a zero em qualquer amortecimento) e a perna deixa de segurar o personagem
+  por boost (o peso volta inteiro). ⚠️ **É uma wave, não um fix:** toca o output
+  da lei (a gravidade que o corpo deve sentir neste tique), uma escrita por-tique
+  de `gravity_scale` no wrapper, o `rewind`, o hash do c9 e a semântica do
+  `react` do W6 — que é smokada e aprovada. A medição inteira dela já está feita.
+- **O "pulinho" segue sem repro.** Se o smoke o mostrar, a sonda `measure_idle`
+  já traz o instrumento (folga por tique, saltos por tique, partição por chão).
+- **`float_height` abaixo do mínimo geométrico** (0,5 nesta cápsula) faz a
+  cápsula ENCOSTAR e o solver de contato assume: ali ela escorrega para BAIXO
+  (−0,0745 m a 30°). É pré-existente, é o que o `min_float_height` já documenta,
+  e é provavelmente o *"a depender do Float Height"* do relato.
+
+## §15 — Smoke
+
+**Não há cena nova.** O que a wave corrige é visível nas cenas que já existem:
+
+```
+env PH2D_PHYSICS_SMOKE=81 cargo run -p ph2d-host-desktop --release   # a rampa de 30°
+env PH2D_PHYSICS_SMOKE=88 cargo run -p ph2d-host-desktop --release   # o par 40°/50°
+```
+
+⚠️ **O gesto é NÃO FAZER NADA:** marque **Physics** no transporte, dê Play, leve o
+personagem até a rampa e **solte as teclas**. Ele tem de ficar onde está. O
+controle é o painel: **Spring Damping** em `1,0` deixa-o cravado, e é lá que a
+tabela do §12 vira uma escolha sua — a jangada da cena `=85` afunda menos com ele
+no teto.

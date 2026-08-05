@@ -1000,6 +1000,17 @@ ao vivo, e o gate de parser independente prova que o número que o widget usa é
 > ⚠️ A lista de tipos é **doze**, e a fronteira é ESTRUTURAL: um widget cuja aparência é função de
 > *(retângulo, rótulo, estado)* é vestível hoje; um cuja aparência é função de uma **LISTA** (Tabs,
 > TreeView, RadioGroup, Dropdown) precisa de filhos autorados — e isso é o degrau 3.
+>
+> ⚠️ **O smoke APROVOU** (*"Muito bom!"*, 2026-08-04) **e expôs uma premissa que este parágrafo não
+> tinha**: dois dos doze tipos **não preenchem a moldura** — o `Checkbox` ancora o quadrado num
+> TOKEN (`CHECKBOX_BOX_PX.min(rect.h)`) e o `Slider` clampa a pista em 8 px. **A lei está certa
+> dentro de um painel** (é ela que faz todo checkbox do app ter o mesmo tamanho); o que mudou é que
+> **esta wave é o primeiro chamador que dá ao pintor uma moldura arbitrária** — até aqui quem a dava
+> era o layout, no tamanho natural do widget. A bifurcação (escalar o fragmento × declarar o tamanho
+> intrínseco × dar canal de tamanho aos 44 pintores) é decisão de PRODUTO e está em
+> [`BUGS_vector.md` #26](../BUGS_vector.md) com o preço de cada saída. Seja qual for, a resposta é
+> **por-tipo e mora numa porta só** — e ela responde uma pergunta nova: *a moldura de uma pele é uma
+> **CAIXA** (o widget preenche) ou um **SLOT** (o widget assenta no tamanho natural)?*
 
 
 ```rust

@@ -1319,6 +1319,97 @@ diagonal; a rampa do feather tem de sair lisa e sem contorno visível nenhum. O 
 
 ---
 
+## Bug #25 — Renomear na Hierarquia dispara os atalhos do Vector (2026-08-04) — **ABERTO**
+
+### Sintoma
+
+Reportado pelo Enio no smoke da W6.2: *"ao tentar renomear objetos na Hierarchy, há conflitos com
+atalhos do módulo vector."* Digitar um nome que contenha as letras dos atalhos de ferramenta troca a
+ferramenta debaixo do artista enquanto ele escreve.
+
+### Causa (medida, não suposta)
+
+**A guarda existe, está CERTA, e é aplicada por ENUMERAÇÃO.**
+
+`input_dispatch.rs:1623 vector_text_field_focused()` pergunta ao **store** quem tem o foco e responde
+`true` para `TextInput | NumberInput | Combobox` — ou seja, é **global**, não é do painel do Vector.
+E o campo de rename da Hierarquia É um `InteractiveState::TextInput` do mesmo store
+(`ph2d-panel-hierarchy/src/populate.rs:28`), então a guarda **responderia certo se fosse perguntada**.
+
+O `keyboard.rs` tem **oito** blocos que abrem com `self.vector_tool_active()` (linhas 138, 204, 245,
+274, 335, 448, 460 e o bloco do acorde) e **três** deles consultam a guarda (189, 307, 342). Os
+outros comem a tecla. É a lei que este repo já pagou várias vezes: *uma condição que enumera os seus
+leitores apodrece* — o 9º bloco nasce sem ela, exactamente como os cinco de hoje nasceram.
+
+### Cura proposta (porta única, não mais um `&&`)
+
+`vector_tool_active()` responde *"a ferramenta está em mãos?"*, que é outra pergunta. O que os blocos
+de **tecla** querem é *"as teclas do Vector estão vivas?"* — um predicado próprio
+(`vector_keys_live() = vector_tool_active() && !vector_text_field_focused()`), com os blocos de
+tecla a passarem por ele e um arch-gate a recusar `vector_tool_active()` cru num braço de `KeyCode`.
+⚠️ Os três sítios que hoje perguntam a guarda **à parte** têm de passar pela porta também, senão
+ficam duas respostas para a mesma pergunta.
+
+⚠️ **E o alcance tem de ser medido antes:** o Motion tem o bloco espelho (`keyboard.rs:379`), e a
+mesma doença pode viver lá. Um só predicado por módulo, não um global — as ferramentas não
+partilham o conceito de *"o meu campo de texto"*.
+
+---
+
+## Bug #26 — O Checkbox não redimensiona e o Slider tem altura fixa (2026-08-04) — **ABERTO**
+
+### Sintoma
+
+Reportado pelo Enio no smoke da W6.2: *"alguns componentes como o Checkbox eu não consigo
+redimensionar como os outros. O checkbox sempre fica pequeno. O Slider tem sempre altura fixa. Os
+demais parecem corretos."*
+
+### Causa (medida — é UM mecanismo, não dois bugs)
+
+**O pintor ancora o seu tamanho num TOKEN, não na moldura.** Os dois casos são a mesma linha escrita
+de duas maneiras:
+
+```rust
+// widget/checkbox.rs:104
+let box_size = CHECKBOX_BOX_PX.min(rect.h);   // ← o token é o TETO; a moldura só encolhe
+
+// widget/slider.rs:163
+let h = (rect.h * 0.25).clamp(2.0, 8.0);      // ← 25% da altura, com CLAMP em 8 px
+```
+
+O checkbox nunca passa do token; o slider para de crescer acima de **32 px** de moldura (`32 × 0,25 =
+8`). Os outros dez tipos preenchem a moldura e por isso *"parecem corretos"*.
+
+⚠️ **E isto não é um defeito do pintor.** Dentro de um painel a lei está certa — todo checkbox do app
+tem o mesmo tamanho, e é isso que faz um formulário ler como formulário; o pintor nunca teve de
+responder *"e se me derem uma moldura dez vezes maior?"* porque quem lhe dá a moldura é o layout, no
+tamanho natural do widget. **A W6.2 é o primeiro chamador que a dá arbitrária**, e foi ela que
+expôs a premissa.
+
+### A bifurcação é de PRODUTO, e as três saídas têm preços diferentes
+
+1. **A pele ESCALA o fragmento** até à moldura (um `Affine` na cena anexada). Barato e uniforme —
+   ⚠️ **e mata o que a W6.2 existe para garantir**: um token É um número em px, e escalar faz o raio
+   de 16 px do artista deixar de ser 16 px. É a falha que a W6.1 foi construída para impedir.
+2. **O tipo declara o seu tamanho INTRÍNSECO e a moldura ENCAIXA nele** (o widget assenta no tamanho
+   natural, alinhado dentro da caixa, e o gizmo mostra a verdade). Honesto, e diz ao artista o que o
+   app faz — ⚠️ mas contraria a expectativa de uma ferramenta de desenho, onde tudo se redimensiona.
+3. **O pintor ganha um canal de tamanho** — 44 assinaturas, exactamente o que a medição da W6.2
+   rejeitou por ser uma segunda porta para a aparência.
+
+**Recomendação:** (2) para o checkbox (o quadrado é genuinamente um token do design system) e (1)
+**não** — mas a escolha é do Enio, e ela decide se a moldura de uma pele é uma **CAIXA** (o widget
+preenche) ou um **SLOT** (o widget assenta). ⚠️ Seja qual for, a resposta é **por-tipo e mora numa
+porta só** (`WidgetKind::intrinsic_size()`), nunca num `match` espalhado pelos chamadores.
+
+### O que NÃO fazer
+
+⛔ Não "consertar" o `CHECKBOX_BOX_PX` nem o clamp do slider. Eles governam **todos os painéis do
+app**; mexer neles para agradar ao canvas re-dimensiona a interface inteira — a definição de mover o
+número do consumidor errado.
+
+---
+
 ## Padrões que se repetem (leia antes de caçar o próximo)
 
 1. **O sintoma quase nunca é a causa.** "Cone de cabeça para baixo" era uma convenção de

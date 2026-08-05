@@ -6545,10 +6545,7 @@ impl crate::App {
                 // feature alcançável apenas onde ela já foi usada.
                 let skin = crate::vec_widget_edit::publish(sim, &self.vec_entities, &sel);
                 let skin_beyond = skin.as_ref().map_or(0, |(_, b)| *b);
-                ph2d_panel_vector::state::set_widget_skin_state(
-                    skin.map(|(s, _)| s),
-                    skin_beyond,
-                );
+                ph2d_panel_vector::state::set_widget_skin_state(skin.map(|(s, _)| s), skin_beyond);
                 // **O Z-INDEX da seleção** (Enio, 2026-08-04) — o número GLOBAL que sobrepõe a
                 // ordem da hierarquia. Publicado pela MESMA porta que o campo escreve e que os
                 // botões Arrange movem, para o número que o artista lê ser o que ele edita.

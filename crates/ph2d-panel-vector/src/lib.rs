@@ -80,7 +80,6 @@ mod paint_arrange;
 /// O catálogo de formas (categoria em dropdown + grade de thumbnails cozidos).
 mod paint_catalog;
 mod paint_components;
-mod paint_widget;
 /// A seção do CONECTOR (Route / Jetty / Spread) — snapshot + seed + paint + evento.
 mod paint_connector;
 /// A seção FRAME — o contêiner (plano UI/UX W0), irmã de `paint_pencil`.
@@ -96,6 +95,7 @@ mod paint_sections;
 /// A seção SYMMETRY — a simetria de desenho (plano 25 W6.3), irmã de `paint_pencil`.
 pub(crate) mod paint_symmetry;
 mod paint_tokens;
+mod paint_widget;
 pub use paint_tokens::selected_row as selected_token_row;
 mod paint_transform;
 pub mod populate;

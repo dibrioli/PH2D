@@ -27,28 +27,37 @@ use ph2d_vec_scene::{Paint, Rgba8, VecPath, VecPathId, ellipse, rectangle};
 ///
 /// ⚠️ O CONTROLE é o último e fica **longe** dos outros dois de propósito: numa foto, um objeto
 /// que não se mexe ao lado de um que se mexe só é legível se ninguém duvidar de qual é qual.
-const ART: [([f64; 4], &str); 4] = [
-    ([-4.6, 0.2, -1.8, 1.6], "Play"),
-    ([-4.2, 0.6, -3.6, 1.2], "Dot"),
-    ([-1.0, 0.2, 1.8, 1.6], "Card"),
-    ([3.0, 0.2, 5.0, 1.6], "Plain"),
+const ART: [([f64; 4], &str); 5] = [
+    ([-6.4, 0.2, -3.6, 1.6], "Play"),
+    ([-6.0, 0.6, -5.4, 1.2], "Dot"),
+    ([-2.8, 0.2, 0.0, 1.6], "Card"),
+    ([1.0, 0.2, 3.8, 1.6], "Shape"),
+    ([5.4, 0.2, 7.4, 1.6], "Plain"),
 ];
 
 /// Índices no `ART`.
 const PLAY: usize = 0;
 const DOT: usize = 1;
 const CARD: usize = 2;
+const SHAPE: usize = 3;
 
 /// As cores de repouso e as de hover, na ordem do `ART`.
 ///
 /// ⚠️ O salto de cor é GRANDE de propósito: a interpolação é perceptual (OKLab, pela porta única
 /// do Blend), e a diferença entre um caminho perceptual e um lerp de sRGB só aparece quando o
 /// caminho é longo — num salto curto os dois passam pelo mesmo lugar e a cena não diria nada.
-const REST: [[u8; 3]; 4] = [[58, 66, 92], [120, 132, 170], [96, 60, 64], [72, 96, 76]];
-const HOVER: [[u8; 3]; 4] = [
+const REST: [[u8; 3]; 5] = [
+    [58, 66, 92],
+    [120, 132, 170],
+    [96, 60, 64],
+    [64, 88, 80],
+    [72, 96, 76],
+];
+const HOVER: [[u8; 3]; 5] = [
     [88, 150, 232],
     [236, 244, 255],
     [232, 176, 96],
+    [96, 196, 168],
     [72, 96, 76],
 ];
 
@@ -79,6 +88,14 @@ fn build(app: &mut crate::App) {
         };
         let c = REST[i];
         p.fill = Some(Paint::Solid(Rgba8::new(c[0], c[1], c[2], 255)));
+        // ⚠️ O Shape nasce COM traço: um perfil de largura modula a largura do traço, e sem
+        // traço nenhum o Width Tool não teria o que animar — a fixture não conteria o fenômeno.
+        if i == SHAPE {
+            p.stroke = Some(ph2d_vec_scene::StrokeSpec::new(
+                Rgba8::new(240, 244, 250, 255),
+                0.14,
+            ));
+        }
         gfx.vec_scene.push_path(p);
     }
 }
@@ -146,8 +163,9 @@ fn record(app: &mut crate::App, host: usize, role: StateRole) {
 }
 
 fn record_default(app: &mut crate::App) {
-    record(app, PLAY, StateRole::Default);
-    record(app, CARD, StateRole::Default);
+    for h in [PLAY, CARD, SHAPE] {
+        record(app, h, StateRole::Default);
+    }
 }
 
 /// Põe a cena na pose de HOVER — exactamente o que o artista faria com a mão.
@@ -172,8 +190,30 @@ fn pose_hover(app: &mut crate::App) {
     {
         t.translation.x += 0.9;
     }
-    // As três tintas de hover (o CONTROLE mantém a dele: `HOVER[3] == REST[3]`).
-    for i in [PLAY, DOT, CARD] {
+    // **O SHAPE muda de FORMA**, e pelas três ferramentas que o report nomeia: um nó puxado
+    // (modo Node), as quinas arredondadas (Fillet) e um perfil de largura (Width Tool).
+    if let Some(p) = gfx.vec_scene.path_mut(ids[SHAPE]) {
+        p.verts[1].anchor[1] += 1.4;
+        for v in &mut p.verts {
+            v.corner_radius = 0.35;
+        }
+    }
+    if let Some(e) = ents[SHAPE] {
+        gfx.sim
+            .world_mut()
+            .entity_mut(e)
+            .insert(ph2d_ecs::VecStrokeProfile {
+                stops: ph2d_vec_scene::WidthProfile {
+                    start: 0.2,
+                    mid: 2.4,
+                    end: 0.2,
+                    position: 0.5,
+                }
+                .to_stops(),
+            });
+    }
+    // As tintas de hover (o CONTROLE mantém a dele: `HOVER[4] == REST[4]`).
+    for i in [PLAY, DOT, CARD, SHAPE] {
         if let Some(p) = gfx.vec_scene.path_mut(ids[i]) {
             let c = HOVER[i];
             p.fill = Some(Paint::Solid(Rgba8::new(c[0], c[1], c[2], 255)));
@@ -182,8 +222,9 @@ fn pose_hover(app: &mut crate::App) {
 }
 
 fn record_hover(app: &mut crate::App) {
-    record(app, PLAY, StateRole::Hover);
-    record(app, CARD, StateRole::Hover);
+    for h in [PLAY, CARD, SHAPE] {
+        record(app, h, StateRole::Hover);
+    }
 }
 
 /// Devolve a cena ao repouso — a pose que o artista vê ao abrir.
@@ -195,7 +236,7 @@ fn back_to_rest(app: &mut crate::App) {
     if ids.len() < ART.len() {
         return;
     }
-    for host in [PLAY, CARD] {
+    for host in [PLAY, CARD, SHAPE] {
         let Some(gfx) = app.gfx.as_mut() else { return };
         crate::render_loop::ui_state_bridge::request(
             &mut gfx.ui_machines,
@@ -215,7 +256,7 @@ fn announce(app: &mut crate::App) {
         eprintln!("[ui-states] ⚠️ a cena nao montou — PARE");
         return;
     }
-    let poses: usize = [PLAY, CARD]
+    let poses: usize = [PLAY, CARD, SHAPE]
         .iter()
         .map(|&h| gfx.ui_states.get(ids[h]).len())
         .sum();
@@ -228,12 +269,28 @@ fn announce(app: &mut crate::App) {
         (Some(a), Some(b)) => Transition::new(&a.objects, &b.objects).plans_built(),
         _ => usize::MAX,
     };
+    // ⚠️ E o do SHAPE tem de dizer **1**: se a forma mudou e ninguem a casou, o Show vai
+    // TROCAR a forma no fim em vez de a fazer viajar — que era o defeito reportado.
+    let shape_plans = match (
+        gfx.ui_states.role(ids[SHAPE], StateRole::Default),
+        gfx.ui_states.role(ids[SHAPE], StateRole::Hover),
+    ) {
+        (Some(a), Some(b)) => Transition::new(&a.objects, &b.objects).plans_built(),
+        _ => usize::MAX,
+    };
     eprintln!(
-        "[ui-states] {poses} poses gravadas (Play e Card, Default+Hover), e a transicao do Card \
-         custou {plans} Plan(s) de forma."
+        "[ui-states] {poses} poses gravadas (Play, Card e Shape, Default+Hover); a transicao do \
+         Card custou {plans} Plan(s) e a do Shape {shape_plans}."
     );
-    if poses < 4 {
-        eprintln!("[ui-states] ⚠️ **PARE**: eram para ser 4 poses. A autoria nao correu.");
+    if shape_plans != 1 {
+        eprintln!(
+            "[ui-states] ⚠️ **PARE**: a transicao do Shape tinha de custar 1 Plan. A forma nao \
+             foi gravada, e o Show vai troca-la em vez de a animar."
+        );
+        return;
+    }
+    if poses < 6 {
+        eprintln!("[ui-states] ⚠️ **PARE**: eram para ser 6 poses. A autoria nao correu.");
         return;
     }
     eprintln!("[ui-states] o roteiro:");
@@ -265,7 +322,14 @@ fn announce(app: &mut crate::App) {
         " 10. Pose o Plain como quiser e aperte **Rec** no Hover: a partir dai' ele responde"
     );
     eprintln!("     como os outros. **Clear** o esquece, e a linha volta a oferecer so' o Rec.");
-    eprintln!(" 11. ⚠️ **O QUE NAO ESTA' AQUI, e e' decisao:** passar o rato por cima nao anima");
+    eprintln!(" 11. ⚠️ **O SHAPE E' A WAVE NOVA**: selecione-o e aperte **Show** no Hover. A");
+    eprintln!("     forma MORFA — o no' sobe, as quinas ARREDONDAM e o traco engrossa no meio —,");
+    eprintln!("     e as tres coisas sao as ferramentas do report: modo Node, Fillet e Width.");
+    eprintln!(" 12. ⚠️ **E o que ele NAO perde**: volte ao Default e entre no modo **Node**. As");
+    eprintln!("     alcas de quina continuam la', com o raio que voce autorou. A transicao passa");
+    eprintln!("     geometria COZIDA pelo documento e a chegada devolve a FONTE — se as alcas");
+    eprintln!("     sumissem, o Show teria assado o seu desenho.");
+    eprintln!(" 13. ⚠️ **O QUE NAO ESTA' AQUI, e e' decisao:** passar o rato por cima nao anima");
     eprintln!("     nada. Um hover que animasse enquanto voce trabalha tornaria o editor");
     eprintln!("     inutilizavel — a interacao pede um modo de apresentacao, que e' outra wave.");
 }
@@ -287,11 +351,31 @@ mod tests {
             REST[last], HOVER[last],
             "a forma de CONTROLE ganhou uma cor de hover — ela deixou de ser controle"
         );
-        for i in [PLAY, DOT, CARD] {
+        for i in [PLAY, DOT, CARD, SHAPE] {
             assert_ne!(
                 REST[i], HOVER[i],
                 "o objeto {i} nao muda de cor entre os dois estados — a cena nao mostraria a \
                  travessia perceptual"
+            );
+        }
+    }
+
+    /// **As cinco formas não se sobrepõem** — e o Shape precisa de espaço para CRESCER.
+    ///
+    /// ⚠️ A premissa que se apaga em silêncio: o hover do Shape puxa um nó **para cima** e
+    /// arredonda as quinas, então uma caixa colada na do vizinho faria a prova da wave parecer
+    /// uma colisão. O gate mede a folga horizontal entre caixas irmãs.
+    #[test]
+    fn the_shapes_do_not_touch_each_other() {
+        for w in ART.windows(2) {
+            let (a, b) = (w[0].0, w[1].0);
+            // O ponto vive DENTRO do Play — o par que ele forma é o único isento.
+            if b[0] > a[0] && b[2] < a[2] {
+                continue;
+            }
+            assert!(
+                b[0] > a[2] || b[2] < a[0],
+                "as caixas {a:?} e {b:?} se tocam: a cena leria como colisao"
             );
         }
     }

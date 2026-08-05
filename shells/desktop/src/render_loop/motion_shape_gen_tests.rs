@@ -253,3 +253,54 @@ fn a_shape_stamped_on_a_grid_lowers_to_sixteen_vectors() {
         "the store holds the stamped shape's VecPath"
     );
 }
+
+/// **A live DOCUMENT vector renders its AUTHORED colours** (Part 1, Vetor Vivo). A
+/// `source.object` vector is stored and drawn by the SAME `encode`/`draw_shape_instance`
+/// as a `source.shape`, but it carries its own fill (an orange star) — so the live
+/// render must honour that fill, NOT the (WHITE) instance tint. Stores an orange star,
+/// encodes one instance, renders it, and reads back the centre texel: it is ORANGE
+/// (`r > g > b`, low blue), not white. RED-FIRST: the pre-fix `draw_shape_instance`
+/// filled with `Color::new(tint)` (white) ⇒ the centre reads near-white ⇒ this fails.
+/// Needs a GPU adapter (RTX); `#[ignore]`, run with `-- --ignored`.
+#[test]
+#[ignore = "needs a GPU adapter (RTX); run with --ignored"]
+fn a_live_document_vector_renders_its_authored_fill_not_the_tint() {
+    let Ok(gpu) = ph2d_gpu::GpuContext::new(ph2d_gpu::GpuContext::default_instance(), None) else {
+        eprintln!("no GPU adapter; skipping a_live_document_vector_renders_its_authored_fill");
+        return;
+    };
+    // An orange-filled star — a DOCUMENT vector's own paint (source.object), not a
+    // paint-less source.shape primitive.
+    let mut star = ph2d_vec_scene::star([0.0, 0.0], 0.5, 0.5, 5, 0.45);
+    star.fill = Some(ph2d_vec_scene::Paint::solid(ph2d_vec_scene::Rgba8::new(
+        255, 170, 40, 255,
+    )));
+    let mut store = VecPathStore::default();
+    let handle = store.push(star);
+    let inst = ph2d_eval_motion::VectorInstance {
+        geometry_id: handle,
+        world_pos: [0.0, 0.0],
+        size: [1.0, 1.0],
+        basis: [1.0, 0.0, 0.0, 1.0], // identity rotation
+        tint: [1.0, 1.0, 1.0, 1.0],  // WHITE — the object tint must NOT paint the star
+    };
+    // Fit the unit-radius star into a 64² tile: world [-0.5, 0.5] → device [7, 57].
+    let (w, h) = (64u32, 64u32);
+    let cam = ph2d_vector::Affine::translate((32.0, 32.0)) * ph2d_vector::Affine::scale(50.0);
+    let mut scene = ph2d_vector::VectorScene::new();
+    encode(&[inst], &store, cam, &mut scene);
+
+    let mut pass =
+        ph2d_render::VelloPass::new(&gpu, wgpu::TextureFormat::Rgba8UnormSrgb, (w, h)).unwrap();
+    let rgba = pass
+        .render_and_readback(&gpu, scene.inner(), (w, h))
+        .expect("render");
+    // The centre of a filled star is inside it ⇒ the authored orange.
+    let c = ((h / 2 * w + w / 2) * 4) as usize;
+    let (r, g, b) = (rgba[c] as i32, rgba[c + 1] as i32, rgba[c + 2] as i32);
+    assert!(
+        r > g + 30 && g > b && b < 150,
+        "the star's centre is the AUTHORED orange (r>g>b, low blue); got ({r},{g},{b}) — \
+         near-white means draw_shape_instance filled with the tint, ignoring the fill"
+    );
+}

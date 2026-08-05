@@ -96,6 +96,7 @@ fn the_group_stream_lowers_to_one_instance_per_child() {
         tint: [1.0, 1.0, 1.0, 1.0],
         uv: [0.0, 0.0, 1.0, 1.0],
         tid,
+        gid: 0, // raster leaves (this test); the live-vector column is exercised below
     };
     let leaves = vec![
         leaf([-1.0, 0.0], [0.5, 0.5], 3),
@@ -108,6 +109,60 @@ fn the_group_stream_lowers_to_one_instance_per_child() {
     assert_eq!(inst[1].world_pos, [1.0, 0.5]);
     assert_eq!(inst[1].texture_id, 9);
     assert_eq!(inst[1].size, [0.7, 0.7], "each child keeps its own size");
+}
+
+#[test]
+fn a_live_vector_object_lowers_to_a_vector_instance_not_a_quad() {
+    // Part 1 (Vetor Vivo): a `source.object` that names a VECTOR emits `geometry_id`,
+    // and the render sink lowers it to a crisp VECTOR instance (drawn by the vector
+    // pass), NOT a textured atlas quad. The two-doors gate for the live path — the
+    // publish side (`appearance_vector`) and the read side cannot diverge. A DUMMY
+    // geometry_id 5 (not the sentinel 0). RED-FIRST: emitting `texture_id` (the old
+    // baked-tile behaviour) lowers to a RenderInstance here and NOTHING to the vector
+    // lowering — the mutation that reverts the membrane to a raster tile.
+    let obj = appearance_vector([2.0, 3.0], [1.0, 1.0, 1.0, 1.0], 5);
+    let mut vecs = Vec::new();
+    ph2d_eval_motion::lower_to_vector_instances_onto(&obj, &mut vecs);
+    assert_eq!(vecs.len(), 1, "one live-vector instance");
+    assert_eq!(vecs[0].geometry_id, 5, "carrying the live handle");
+    assert_eq!(vecs[0].size, [2.0, 3.0]);
+    // ...and the SPRITE lowering SKIPS it (geometry_id > 0.5) — no blank atlas quad.
+    let quads = ph2d_eval_motion::lower_to_instances(&obj);
+    assert!(
+        quads.is_empty(),
+        "a live vector is not ALSO stamped as an atlas quad"
+    );
+}
+
+#[test]
+fn a_mixed_media_group_draws_each_child_once() {
+    // A composed group (Raster + Vector, doc 86 §2 A4 — Enio's mixed-media groups)
+    // publishes BOTH columns: a sprite row (`tid > 0`, `gid = 0`) and a vector row
+    // (`tid = 0`, `gid > 0`). The lowering's `geometry_id > 0.5` split routes each to
+    // exactly ONE pass — the sprite to a quad, the vector to a live path — so each
+    // child draws once (never a blank quad, never a double-draw). RED-FIRST if a leaf
+    // set both ids, or if `group_stream` dropped the `geometry_id` column.
+    let leaf = |p: [f32; 2], tid: u32, gid: u32| LeafInstance {
+        p,
+        rot_deg: 0.0,
+        size: [0.6, 0.6],
+        tint: [1.0, 1.0, 1.0, 1.0],
+        uv: [0.0, 0.0, 1.0, 1.0],
+        tid,
+        gid,
+    };
+    let stream = group_stream(&[leaf([-1.0, 0.0], 3, 0), leaf([1.0, 0.0], 0, 5)]);
+    // Only the sprite row lowers to a quad.
+    let quads = ph2d_eval_motion::lower_to_instances(&stream);
+    assert_eq!(quads.len(), 1, "only the sprite lowers to a quad");
+    assert_eq!(quads[0].texture_id, 3);
+    assert_eq!(quads[0].world_pos, [-1.0, 0.0]);
+    // Only the vector row lowers to a live path.
+    let mut vecs = Vec::new();
+    ph2d_eval_motion::lower_to_vector_instances_onto(&stream, &mut vecs);
+    assert_eq!(vecs.len(), 1, "only the vector lowers to a live path");
+    assert_eq!(vecs[0].geometry_id, 5);
+    assert_eq!(vecs[0].world_pos, [1.0, 0.0]);
 }
 
 #[test]
@@ -130,20 +185,28 @@ fn an_unnamed_group_child_resolves_by_its_drawing_id() {
         .spawn((FlipObjectRef(9), ChildOf(group)))
         .id();
 
-    // Bakes seeded with tiles under those drawing ids, as a real (id-keyed) bake does.
+    // Bakes seeded under those drawing ids, as a real (id-keyed) bake does: the
+    // vector carries a LIVE handle (geometry_id 70), the Flip a baked texture_id 90.
     let mut vbake = crate::motion_object_bake::ObjectBake::default();
     vbake.seed_for_test(7, 70, [2.0, 1.0]);
     let mut fbake = crate::motion_flip_bake::FlipObjectBake::default();
     fbake.seed_for_test(9, 90, [3.0, 4.0]);
 
     let world = sim.world();
+    // ⚠️ A VECTOR child resolves to `geometry_id` (live), a FLIP child to `texture_id`
+    // (baked) — the media split that lets a mixed group draw each part once.
     let rv = resolve_drawing_leaf(world, v, &Transform::IDENTITY, &vbake, &fbake)
         .expect("the unnamed vector child resolves by its drawing id");
-    assert_eq!(rv.tid, 70, "the vector child's tile is looked up by id 7");
-    assert_eq!(rv.size, [2.0, 1.0], "carrying its baked tile's world size");
+    assert_eq!(
+        rv.gid, 70,
+        "the vector child's LIVE handle is looked up by id 7"
+    );
+    assert_eq!(rv.tid, 0, "a live vector carries no texture_id");
+    assert_eq!(rv.size, [2.0, 1.0], "carrying its drawing's world size");
     let rf = resolve_drawing_leaf(world, f, &Transform::IDENTITY, &vbake, &fbake)
         .expect("the unnamed Flip child resolves by its drawing id");
     assert_eq!(rf.tid, 90, "the Flip child's tile is looked up by id 9");
+    assert_eq!(rf.gid, 0, "a baked Flip carries no geometry_id");
 }
 
 #[test]

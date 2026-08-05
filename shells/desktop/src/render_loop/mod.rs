@@ -7243,7 +7243,6 @@ impl crate::App {
                 &vec_live,
                 surface.gpu(),
                 surface.format(),
-                renderer,
                 sim,
             );
             // doc 86 §2 (A3): bake the named FLIP objects to tiles, alongside the

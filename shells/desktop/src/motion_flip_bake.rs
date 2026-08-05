@@ -60,7 +60,7 @@ use crate::flip_transform::{art_to_world, build as build_flip_models};
 // ⚠️ The tile resolution + cap are SHARED with the vector bake — one number for
 // "how crisp a stamped tile is" (a Flip tile and a vector tile of the same world
 // size have the same inner resolution). A second const would drift.
-use crate::motion_object_bake::{BAKE_DPI, BakedTile, MAX_TILE_SIDE};
+use crate::motion_object_bake::{BAKE_DPI, MAX_TILE_SIDE};
 // ⚠️ Reused from the frame pass, NOT re-derived: the camera convention (Y direction +
 // the world-unit thickness ruler, an Enio decision) has exactly one home.
 use crate::render_loop::flip_pass::camera::{camera_raw, fold_model};
@@ -73,51 +73,51 @@ use crate::render_loop::flip_pass::new_engine_armed;
 const SCRATCH_HDR: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
 
 /// What a baked Flip object is on the render side: the individual `texture_id` + the
-/// tile's WORLD size (so the sink stamps it at the object's natural size), keyed by a
-/// content hash of the resolved frame.
+/// tile's WORLD size (natural stamp size), keyed by a content hash of the resolved frame.
 struct FlipBaked {
     /// The artist's name, if any. **Metadata, not the cache key** — the cache is keyed by
-    /// [`FlipObjectId`] (undo/rename-stable), so a rename refreshes it and an unnamed group
-    /// child (`None`) still gets a tile. `tiles()` (the individual publish) yields only named.
+    /// [`FlipObjectId`] (undo/rename-stable); an unnamed group child (`None`) still gets a tile.
     name: Option<String>,
     key: u64,
     texture_id: u32,
     size: [f32; 2],
-    /// A mini-render of the composed tile for the source node's card preview (doc 86
-    /// A5), downsampled once at bake ⇒ cached like the tile.
+    /// A mini-render of the composed tile for the node-card preview (doc 86 A5), cached.
     thumb: ph2d_panel_motion_graph::PreviewThumb,
 }
 
+/// One named Flip object's tile: baked `texture_id` + world size (a Flip stays a
+/// RASTER tile — no live vector path, unlike a `source.object` vector, ADR-0154).
+pub(crate) struct FlipTile {
+    pub texture_id: u32,
+    pub size: [f32; 2],
+}
+
 /// The Flip bake cache + its scratch renderers (own `FlipRenderer`/`FlipCompose`/
-/// `LayerCompositor`, never the frame pass's). `Default` is empty (nothing allocated
-/// until the first named Flip object is baked); the scratch trio defaults to `None`.
+/// `LayerCompositor`, never the frame pass's). `Default` is empty until the first bake.
 #[derive(Default)]
 pub(crate) struct FlipObjectBake {
     render: Option<FlipRenderer>,
     compose: Option<FlipCompose>,
     compositor: Option<LayerCompositor>,
-    /// The zeroed pixels the compositor's `LayerPixelProvider` reports for every key,
-    /// version 0 — the injected slices are what's really composed (the same dummy the
-    /// frame-pass `FlipComposite` keeps; never uploaded because version 0 matches).
+    /// The zeroed pixels the compositor's `LayerPixelProvider` reports for every key
+    /// (version 0 — the injected slices are what's really composed; never uploaded).
     dummy: Vec<u8>,
     /// Keyed by the object's own [`FlipObjectId`] (undo/rename-stable), NOT its name —
-    /// so an unnamed group child gets a tile and a rename doesn't evict it. Mirrors
-    /// `motion_object_bake`.
+    /// so an unnamed group child gets a tile and a rename doesn't evict it.
     cache: BTreeMap<FlipObjectId, FlipBaked>,
 }
 
 impl FlipObjectBake {
     /// The `name -> tile` map the membrane publishes individually (the picker path).
-    /// Read-only — the bake ran at the fx phase (the SAME `BakedTile` a vector bake
-    /// yields, so the membrane treats the two media identically). Only NAMED entries
-    /// are yielded: an unnamed group child has a tile (for the group stamp) but nothing
-    /// to type into a node.
-    pub(crate) fn tiles(&self) -> impl Iterator<Item = (&str, BakedTile)> {
+    /// Read-only — the bake ran at the fx phase. Only NAMED entries are yielded: an
+    /// unnamed group child has a tile (for the group stamp) but nothing to type into a
+    /// node.
+    pub(crate) fn tiles(&self) -> impl Iterator<Item = (&str, FlipTile)> {
         self.cache.values().filter_map(|b| {
             b.name.as_deref().map(|n| {
                 (
                     n,
-                    BakedTile {
+                    FlipTile {
                         texture_id: b.texture_id,
                         size: b.size,
                     },
@@ -130,8 +130,8 @@ impl FlipObjectBake {
     /// `FlipObjectRef` carries), or `None` if it isn't baked (doc 86 §2 A4). A group
     /// child that is a Flip object resolves its appearance here — by its drawing id, so
     /// an unnamed child still resolves.
-    pub(crate) fn tile_for_id(&self, id: u64) -> Option<BakedTile> {
-        self.cache.get(&FlipObjectId(id)).map(|b| BakedTile {
+    pub(crate) fn tile_for_id(&self, id: u64) -> Option<FlipTile> {
+        self.cache.get(&FlipObjectId(id)).map(|b| FlipTile {
             texture_id: b.texture_id,
             size: b.size,
         })

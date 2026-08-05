@@ -434,12 +434,26 @@ pub fn draw_shape_instance(
     tint: [f32; 4],
     target: &mut VectorScene,
 ) {
-    let cooked = path.cooked();
-    let fill_bp = build_contours(&cooked, Some(true));
-    let brush = Brush::Solid(Color::new(tint));
-    target
-        .inner_mut()
-        .fill(fill_rule(path), transform, &brush, None, &fill_bp);
+    // Two kinds of live vector ride this one door. A `source.shape` PRIMITIVE
+    // (ADR-0154) carries no authored paint (`fill`/`stroke` both `None`, e.g.
+    // `ellipse` is `..VecPath::default()`) — it IS the instance tint, so it fills
+    // with `tint` exactly as before (byte-identical for every source.shape). A
+    // `source.object` DOCUMENT vector carries its own fill/stroke/caps (an orange
+    // star with a border), so it draws through the SAME [`draw_path`] the bake and
+    // the canvas use — honouring its authored paint, not the (WHITE) object tint.
+    // ⚠️ A live document vector is therefore NOT re-tinted downstream (its colours
+    // are the drawing's); the baked tile was tintable — the named trade of going
+    // live. Threading `tint` through `draw_path`'s fill/stroke is the follow-up.
+    if path.fill.is_some() || path.stroke.is_some() {
+        draw_path(path, transform, target);
+    } else {
+        let cooked = path.cooked();
+        let fill_bp = build_contours(&cooked, Some(true));
+        let brush = Brush::Solid(Color::new(tint));
+        target
+            .inner_mut()
+            .fill(fill_rule(path), transform, &brush, None, &fill_bp);
+    }
 }
 
 /// **O overlay de EDIÇÃO** (as âncoras, os handles) — módulo irmão pelo teto de 700 LOC. O corte

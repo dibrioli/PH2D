@@ -107,6 +107,22 @@ pub(super) fn graph_has_object_source(graph: &Graph, reg: &NodeRegistry) -> bool
         .any(|n| reg.is_object_source(NodeTypeId::of(n.type_name.as_str())))
 }
 
+/// Does the cook's external table carry a LIVE VECTOR (`geometry_id > 0`)? — the
+/// CONTENT-aware half of the object recusal (ADR-0154 reused for objects).
+///
+/// Whether a `source.object` resolves to a vector depends on what the artist NAMED
+/// (a sprite → `texture_id`, a vector → `geometry_id`), which the node-type registry
+/// cannot see. The membrane publishes the externals BEFORE the cook runs (post-drain,
+/// pre-cook), so this per-frame scan answers the real question and lets a pure-sprite
+/// object graph stay on the GPU stamp while a vector-bearing one recuses. Cheap: a
+/// handful of externals, one scalar-column probe each.
+fn cook_publishes_live_geometry(cook: &ph2d_nodegraph::cook::Cook) -> bool {
+    use ph2d_nodegraph::attr::Column;
+    cook.externals().values().any(|e| {
+        matches!(e.value.get("geometry_id"), Some(Column::Scalar(v)) if v.iter().any(|&g| g > 0.5))
+    })
+}
+
 /// The GPU-resident cook for this frame (GPU/M5 Fase 1 + F1.2, ADR-0126).
 ///
 /// Unless `PH2D_GPU_COOK=0`, a single-sink, unscoped document cooks on the GPU:
@@ -141,6 +157,17 @@ pub(super) fn cook_gpu(
     // prefix). An OBJECT source (`source.object`) is NOT recused here — the GPU
     // cook draws it; the count-changing cerca below is its only guard.
     if graph_has_live_vector_source(&motion.doc.graph, &motion.registry) {
+        return GpuOutcome::FellThrough;
+    }
+    // A `source.object` that resolves to a live VECTOR publishes a `geometry_id`
+    // external (ADR-0154 reused for objects, so a stamped vector stays crisp). The
+    // GPU cook has no `geometry_id` route — it would draw a blank atlas quad — so
+    // recuse to the CPU render, which draws it. CONTENT-aware, with the externals in
+    // hand: a pure-sprite object graph publishes only `texture_id` and stays on the
+    // GPU stamp (this wave's point). A node-type flag would recuse EVERY object graph.
+    if graph_has_object_source(&motion.doc.graph, &motion.registry)
+        && cook_publishes_live_geometry(&motion.pump.cook)
+    {
         return GpuOutcome::FellThrough;
     }
     let plan = ph2d_gpu_cook::plan(
@@ -338,200 +365,5 @@ pub(super) fn edit_renumbers_emitter(type_name: &str, param: &str) -> bool {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::motion_state::MotionState;
-
-    // A stand-in boundary node id (the routing never dereferences it).
-    fn node() -> NodeId {
-        NodeId(7)
-    }
-
-    #[test]
-    fn only_the_emitters_renumbering_params_invalidate_the_gpu_sim() {
-        // ADR-0130 D7. `rate` alone moves the id↔particle map (`birth(k) = k/rate`)
-        // → restart; everything else keeps the running sim; and NO other node type
-        // restarts. The mutation that drops the `motion.emitter` guard makes a
-        // grid's or a force's "rate" restart too — the last loop below catches it.
-        assert!(
-            edit_renumbers_emitter("motion.emitter", "rate"),
-            "rate re-numbers: `birth(k) = k/rate`"
-        );
-        // `life`/`max` are the ones this gate got WRONG at first. They move the
-        // window's left edge, never `birth(k)` — survivors keep their rows, and
-        // ids the window newly reveals are seeded by the per-element bounds check.
-        // Listed by NAME, not folded into the loop below, because their absence
-        // here is a decision and not an omission (the GPU gate
-        // `shrinking_the_life_of_a_live_emitter_leaves_the_survivors_untouched`
-        // is what proves the decision is safe).
-        for p in ["life", "max"] {
-            assert!(
-                !edit_renumbers_emitter("motion.emitter", p),
-                "{p} resizes the window; it does not re-number"
-            );
-        }
-        for p in ["speed", "angle", "spread", "seed", "x", "y", "size"] {
-            assert!(
-                !edit_renumbers_emitter("motion.emitter", p),
-                "{p} keeps the sim (the gather still pairs id-for-id)"
-            );
-        }
-        for ty in [
-            "motion.grid",
-            "force.wind",
-            "motion.integrate",
-            "motion.spring",
-        ] {
-            assert!(
-                !edit_renumbers_emitter(ty, "rate"),
-                "{ty} is not the emitter"
-            );
-        }
-    }
-
-    #[test]
-    fn a_real_emitter_nodes_type_name_drives_the_policy() {
-        // The seam reads `inst.type_name`; pin that a REAL emitter node resolves to
-        // exactly the string the policy matches (and a grid does not), so the wire
-        // from the param edit to the forget can never miss by a renamed type.
-        let mut motion = MotionState::new();
-        let em = motion.doc.graph.add_node("motion.emitter");
-        let grid = motion.doc.graph.add_node("motion.grid");
-        let ty = |m: &MotionState, n| m.doc.graph.node(n).expect("added").type_name.clone();
-        assert!(edit_renumbers_emitter(&ty(&motion, em), "rate"));
-        assert!(!edit_renumbers_emitter(&ty(&motion, em), "speed"));
-        assert!(!edit_renumbers_emitter(&ty(&motion, grid), "rate"));
-    }
-
-    /// **The recusal catches the live vector but NOT the object** (ADR-0154 /
-    /// this wave). `source.shape` (a live vector, `geometry_id`) has no GPU
-    /// render route, so it recuses; `source.object` (an engine object,
-    /// `texture_id`) is now GPU-renderable, so it does NOT recuse via the
-    /// live-vector door — it is an OBJECT source, guarded only by the
-    /// count-changing cerca. Pinned through a REAL `MotionState` registry so the
-    /// flags the two source nodes declare are what drive it. FALSIFIED by
-    /// `source.object` re-registering the live-vector flag (it would recuse
-    /// again → lose the acceleration) or by dropping the shape's flag (white
-    /// rectangles for a live vector).
-    #[test]
-    fn the_recusal_catches_the_live_vector_but_not_the_object() {
-        let build = |ty: &str| {
-            let mut m = MotionState::new();
-            let src = m.doc.graph.add_node(ty);
-            let out = m.doc.graph.add_node("motion.output");
-            m.doc
-                .graph
-                .connect(ph2d_nodegraph::graph::Edge {
-                    from: (src, 0),
-                    to: (out, 0),
-                    delayed: false,
-                })
-                .expect("connect");
-            m
-        };
-        let live_vector = |ty: &str| {
-            let m = build(ty);
-            graph_has_live_vector_source(&m.doc.graph, &m.registry)
-        };
-        let object = |ty: &str| {
-            let m = build(ty);
-            graph_has_object_source(&m.doc.graph, &m.registry)
-        };
-
-        // A live vector SHAPE recuses; an OBJECT does NOT (it is GPU-renderable).
-        assert!(
-            live_vector("source.shape"),
-            "a live vector shape recuses (geometry_id, no GPU route)"
-        );
-        assert!(
-            !live_vector("source.object"),
-            "an engine object does NOT recuse via the live-vector door (it is drawn)"
-        );
-        // The object IS an object source (for the count-changing cerca); the
-        // shape is not, and neither is a plain point source.
-        assert!(
-            object("source.object"),
-            "an engine object is an object source (texture_id)"
-        );
-        assert!(
-            !object("source.shape"),
-            "a live vector shape is not an object source"
-        );
-        // Controls: a point/value-domain document is neither. Without these the
-        // test could pass by always returning the same answer.
-        assert!(
-            !live_vector("motion.grid") && !object("motion.grid"),
-            "a plain point source is neither"
-        );
-        assert!(
-            !live_vector("motion.rotate") && !object("motion.rotate"),
-            "a modifier alone is neither"
-        );
-    }
-
-    #[test]
-    fn disabled_or_multi_sink_or_scoped_is_always_cpu() {
-        // Every gate is independent: flip one and the GPU is refused even when a
-        // fully-claimed plan is on offer.
-        assert_eq!(gpu_route(false, 1, true, &[], 3), GpuRoute::Cpu);
-        assert_eq!(gpu_route(true, 2, true, &[], 3), GpuRoute::Cpu);
-        assert_eq!(gpu_route(true, 0, true, &[], 3), GpuRoute::Cpu);
-        assert_eq!(gpu_route(true, 1, false, &[], 3), GpuRoute::Cpu);
-    }
-
-    /// **Two seams take the GPU now** — the assertion that flipped when the pump
-    /// went plural, and the reason it was pinned before it could.
-    ///
-    /// A multi-input kernel (`motion.look_at`) leaves a plan with two CPU
-    /// boundaries and real GPU work behind them (measured in `ph2d-gpu-cook`'s
-    /// `boundary_arity`, item (d)). This used to assert `Cpu`: the pump took ONE
-    /// boundary, so the route forfeited the GPU for the whole frame — never
-    /// wrong, and never fast either.
-    ///
-    /// It was written as a gate rather than left implicit because
-    /// `_ => GpuRoute::Cpu` is a catch-all: it swallowed the two-seam case the
-    /// day it became reachable **without a single gate changing colour**. Being
-    /// pinned is what made the change visible when it came.
-    #[test]
-    fn two_seams_take_the_hybrid_route() {
-        // Two DISTINCT nodes — `node()` is a single stand-in id, and reusing it
-        // would model one node consumed on two ports (the duplicate entry the
-        // pump dedupes), which is a different shape.
-        let (a, b) = (NodeId(7), NodeId(8));
-        assert_eq!(
-            gpu_route(true, 1, true, &[(a, 0), (b, 0)], 3),
-            GpuRoute::Hybrid
-        );
-        // Still no compute win, still the CPU — the dispatching-stage rule is
-        // independent of how many seams there are.
-        assert_eq!(
-            gpu_route(true, 1, true, &[(a, 0), (b, 0)], 0),
-            GpuRoute::Cpu
-        );
-    }
-
-    #[test]
-    fn fully_claimed_plan_runs_fully_on_the_gpu() {
-        assert_eq!(gpu_route(true, 1, true, &[], 3), GpuRoute::FullyGpu);
-    }
-
-    #[test]
-    fn a_boundary_with_gpu_work_is_hybrid() {
-        assert_eq!(
-            gpu_route(true, 1, true, &[(node(), 0)], 2),
-            GpuRoute::Hybrid
-        );
-        // One dispatching stage is enough.
-        assert_eq!(
-            gpu_route(true, 1, true, &[(node(), 0)], 1),
-            GpuRoute::Hybrid
-        );
-    }
-
-    #[test]
-    fn a_boundary_with_no_dispatching_suffix_recuses_to_cpu() {
-        // A lone pass-through `output` above the boundary is no compute win —
-        // uploading the sink stream just to lower it — so it stays on the CPU.
-        assert_eq!(gpu_route(true, 1, true, &[(node(), 0)], 0), GpuRoute::Cpu);
-    }
-}
+#[path = "motion_bridge_gpu_tests.rs"]
+mod tests;

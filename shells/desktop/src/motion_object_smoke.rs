@@ -102,7 +102,13 @@ fn build_stamp_graph_osc(graph: &mut Graph, name: &str) -> NodeId {
         .map(|e| e.from.0)
         .expect("duplicator → output edge");
     let osc = graph.add_node("motion.oscillator");
-    graph.set_pos(osc, Pos { x: 315.0, y: -200.0 });
+    graph.set_pos(
+        osc,
+        Pos {
+            x: 315.0,
+            y: -200.0,
+        },
+    );
     graph.set_param(osc, "channel", 1.0); // Y
     graph.set_param(osc, "amplitude", 0.5);
     graph.set_param(osc, "frequency", 0.4);
@@ -388,15 +394,15 @@ impl crate::App {
                      o centro sair em branco, FALHOU. Renomeie o grupo e as copias somem."
                 );
             }
-            // =5 — A WAVE: o grafo de objeto agora COZINHA NA GPU. Uma estrela
-            // vetorial (assada numa tile INDIVIDUAL, `texture_id > 0` — o caso dos
-            // quads brancos) carimbada numa grade, e um `motion.oscillator` (um
-            // deformer GPU por-elemento) a ondula. Como a fonte de OBJETO nao
-            // recusa mais (so a de forma VIVA recusa), o lowering carrega o
-            // `texture_id` ate a word 41 e o renderer liga a tile da estrela por
-            // run — no device. A entra a estrela (frame 3), a entidade dela e
-            // nomeada + o grafo montado (frame 6), e o diagnostico e lido depois
-            // que o device cozinhou algumas vezes (frame 40).
+            // =5 — VETOR VIVO (decisao do Enio): um `source.object` de VETOR nao
+            // assa mais uma tile raster — ele emite `geometry_id` e o vector pass o
+            // desenha CRISP em qualquer zoom (ADR-0154 reusado para objetos). Uma
+            // estrela vetorial carimbada numa grade 4x4 + um `motion.oscillator` que
+            // a ondula. ⚠️ Um grafo com vetor vivo RECUSA para a CPU (a GPU nao tem
+            // rota `geometry_id`), entao `gpu_live` deve ser FALSE — o stamp de GPU
+            // sobrevive para objetos de SPRITE PURO (=1). A entra a estrela (frame
+            // 3), a entidade e nomeada + o grafo montado (frame 6), e o diagnostico
+            // e lido depois que o pump cozinhou algumas vezes (frame 40).
             5 if f == 3 => {
                 let gfx = self.gfx.as_mut().expect("gfx");
                 gfx.vec_scene.push_path(star_shape());
@@ -413,23 +419,29 @@ impl crate::App {
             5 if f == 40 => {
                 let gfx = self.gfx.as_ref().expect("gfx");
                 let m = &gfx.motion;
-                // O device dirigiu o frame? (`gpu_live` = a rota Hybrid rodou.)
+                // Um grafo com vetor vivo RECUSA para a CPU (a GPU nao tem rota
+                // `geometry_id`) — `gpu_live` deve ser FALSE. O pump lowerou as N
+                // copias como VectorInstances (crisp), cada uma com o handle da
+                // estrela no `geometry_id`.
                 let live = m.gpu_live;
-                // A particao de textura que o renderer ligou (do boundary, sem
-                // readback). Uma tile individual tem `texture_id > 0`.
-                let runs = m.gpu_cook.texture_runs();
-                let obj_tid = runs.iter().map(|r| r.texture_id).max().unwrap_or(0);
+                let vecs = m.pump.vector_instances.len();
+                let gid = m
+                    .pump
+                    .vector_instances
+                    .first()
+                    .map(|v| v.geometry_id)
+                    .unwrap_or(0);
                 eprintln!(
-                    "[motion.obj smoke =5] A ESTRELA vetorial 'Object' (tile INDIVIDUAL, \
-                     texture_id > 0) carimbada numa grade 4x4 e ONDULADA por um oscillator GPU. \
-                     gpu_live={live} texture_runs={runs:?} (obj_texture_id={obj_tid}). \
-                     O QUE OLHAR: as 16 estrelas ondulando no Y — a ARTE da estrela, NAO quads \
-                     brancos. Se gpu_live=true E obj_texture_id>0 E as estrelas aparecem, a wave \
-                     passou (o objeto cozinhou e renderizou NO DEVICE). Se as copias sairem \
-                     BRANCAS, o lowering nao carregou o texture_id — PARE. Se gpu_live=false, o \
-                     grafo recuou para a CPU (a wave nao engatou). Bissecar: PH2D_GPU_COOK=0 \
-                     forca a CPU (deve renderizar igual). Uma `source.shape` (forma VIVA) ou um \
-                     sufixo que muda contagem (kaleidoscope) recusa de proposito."
+                    "[motion.obj smoke =5] A ESTRELA vetorial 'Object' agora e VETOR VIVO \
+                     (`geometry_id`, NAO uma tile raster) carimbada numa grade 4x4 e ONDULADA por \
+                     um oscillator. gpu_live={live} vector_instances={vecs} geometry_id={gid}. \
+                     O QUE OLHAR: as 16 estrelas ondulando no Y, NITIDAS em QUALQUER zoom (o ponto \
+                     da wave — de perto E de longe, sem a suavizada da tile raster de antes), com \
+                     o preenchimento laranja E o contorno marrom (a arte AUTORADA, nao branca). Se \
+                     vector_instances=16 E geometry_id>0 E as estrelas aparecem crisp e coloridas, \
+                     passou. gpu_live DEVE ser false: um grafo com vetor vivo recusa para a CPU de \
+                     proposito — o stamp de GPU sobrevive para objetos de SPRITE PURO (=1). Se as \
+                     copias sairem BRANCAS/sem cor, o draw_shape_instance ignorou o fill — PARE."
                 );
             }
             _ => {}

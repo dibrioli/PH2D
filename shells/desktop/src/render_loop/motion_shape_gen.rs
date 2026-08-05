@@ -59,6 +59,20 @@ impl VecPathStore {
         self.handle_of.insert(key.to_owned(), h);
         h
     }
+
+    /// Store a `VecPath` with NO content key, returning a fresh handle (`>= 1`).
+    /// The keyed [`intern`](Self::intern) dedups by descriptor for `source.shape`
+    /// primitives; a `source.object` DOCUMENT vector has no descriptor string, and
+    /// its own content-cache ([`crate::motion_object_bake::ObjectBake`], keyed by
+    /// `VecPathId` + content) already decides WHEN to re-store, so this just parks
+    /// the current geometry and hands back the handle the membrane emits as
+    /// `geometry_id`. One entry per content CHANGE (a static object stores once);
+    /// the growth is the store's named, session-bounded trade (like an animated
+    /// shape slider re-interning each value).
+    pub(crate) fn push(&mut self, path: VecPath) -> u32 {
+        self.by_handle.push(path);
+        self.by_handle.len() as u32 // index + 1
+    }
 }
 
 /// The manifest default for a param NAME — the fallback the node's `ctx.param`

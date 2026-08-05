@@ -40,7 +40,8 @@ use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::Cook;
 use ph2d_render::{RenderInstance, Sprite, SpriteSource, TextureAtlas};
 
-use crate::motion_object_bake::BakedTile;
+use crate::motion_flip_bake::FlipTile;
+use crate::motion_object_bake::ObjectVector;
 use crate::motion_state::MotionState;
 
 /// The appearance tile for one sprite: one instance at the origin carrying
@@ -92,6 +93,21 @@ fn appearance_tile(size: [f32; 2], tint: [f32; 4], uv_rect: [f32; 4], texture_id
         .with("texture_id", Column::Scalar(vec![texture_id as f32]))
 }
 
+/// The one-instance appearance stream for a LIVE VECTOR (a `source.object` that
+/// names a vector, ADR-0154 reused for objects): `(P, size, tint, geometry_id)` —
+/// no `uv_rect`/`texture_id`, because a live vector is drawn crisp by the vector
+/// pass, not sampled as an atlas quad. The lowering routes a `geometry_id > 0` row
+/// there automatically (its `> 0.5` split), and the sprite lowering SKIPS it, so a
+/// mixed group stream draws each part once. The tint is WHITE — the drawing's own
+/// fill/stroke carry its colours ([`ph2d_vec_render::draw_shape_instance`]).
+fn appearance_vector(size: [f32; 2], tint: [f32; 4], geometry_id: u32) -> Stream {
+    Stream::new(1)
+        .with("P", Column::Vec2(vec![[0.0, 0.0]]))
+        .with("size", Column::Vec2(vec![size]))
+        .with("tint", Column::Vec4(vec![tint]))
+        .with("geometry_id", Column::Scalar(vec![geometry_id as f32]))
+}
+
 /// Publish every **named sprite** into the cook (doc 86 §2).
 ///
 /// ⚠️ **Appends — does NOT clear.** `motion_bridge_shapes::publish` clears the
@@ -124,19 +140,16 @@ pub(super) fn publish(
         }
     }
 
-    // Vectors come as BAKED tiles (doc 86 §2 A2): the fx phase rasterized each
-    // named shape once into an individual texture; here the tile's `texture_id`
-    // rides the same appearance stream a sprite's does. The shape's colours are
-    // baked in, so the stream tint is WHITE (the tile is not re-tinted).
-    for (name, tile) in bakes.tiles() {
+    // Vectors come as LIVE geometry (ADR-0154, reused for objects): the fx phase
+    // parked each named shape in the vector store; here its `geometry_id` rides the
+    // appearance stream and the vector pass draws it CRISP at any zoom (no more
+    // fixed-DPI raster tile). The drawing carries its own colours, so the tint is
+    // WHITE. ⚠️ A graph with a live vector recuses to the CPU cook — the GPU has no
+    // `geometry_id` route (`motion_bridge_gpu::cook_publishes_live_geometry`).
+    for (name, obj) in bakes.objects() {
         cook.set_external(
             name.to_string(),
-            appearance_tile(
-                tile.size,
-                [1.0, 1.0, 1.0, 1.0],
-                [0.0, 0.0, 1.0, 1.0],
-                tile.texture_id,
-            ),
+            appearance_vector(obj.size, [1.0, 1.0, 1.0, 1.0], obj.geometry_id),
         );
     }
 
@@ -219,8 +232,12 @@ fn group_externals(
 }
 
 /// One resolved leaf of a group: an instance carrying its appearance + its pose
-/// relative to the group. The columns are exactly the ones `lower_to_instances`
-/// reads (`P`, `size`, `rot` in DEGREES, `tint`, `uv_rect`, `texture_id`).
+/// relative to the group. The columns are exactly the ones the lowering reads
+/// (`P`, `size`, `rot` in DEGREES, `tint`, `uv_rect`, `texture_id`, `geometry_id`).
+/// ⚠️ A leaf is EITHER a raster quad (`tid > 0`, sprite/Flip) OR a live vector
+/// (`gid > 0`, `source.object` of a vector) — never both; the lowering's
+/// `geometry_id > 0.5` split routes each row to exactly one pass, so a group of
+/// mixed media draws each child once.
 struct LeafInstance {
     p: [f32; 2],
     rot_deg: f32,
@@ -228,6 +245,7 @@ struct LeafInstance {
     tint: [f32; 4],
     uv: [f32; 4],
     tid: u32,
+    gid: u32,
 }
 
 /// Walk the group subtree depth-first, accumulating each entity's transform
@@ -315,6 +333,7 @@ fn resolve_leaf(
             tint: spr.collapsed_tint(),
             uv,
             tid,
+            gid: 0, // a sprite is a raster quad, not a live vector
         });
     }
     resolve_drawing_leaf(world, entity, acc, bakes, flip_bakes)
@@ -331,19 +350,39 @@ fn resolve_drawing_leaf(
     bakes: &crate::motion_object_bake::ObjectBake,
     flip_bakes: &crate::motion_flip_bake::FlipObjectBake,
 ) -> Option<LeafInstance> {
-    let tile = if let Some(r) = world.get::<VecPathRef>(entity) {
-        bakes.tile_for_id(r.0)?
+    if let Some(r) = world.get::<VecPathRef>(entity) {
+        // A vector child stamps LIVE (`geometry_id`) — crisp at any zoom.
+        Some(leaf_from_object(acc, bakes.vector_for_id(r.0)?))
     } else if let Some(r) = world.get::<FlipObjectRef>(entity) {
-        flip_bakes.tile_for_id(r.0)?
+        // A Flip child stamps as its baked tile (`texture_id`) — no live path.
+        Some(leaf_from_flip(acc, flip_bakes.tile_for_id(r.0)?))
     } else {
-        return None; // a group container or an entity with no drawable appearance
-    };
-    Some(leaf_from_tile(acc, tile))
+        None // a group container or an entity with no drawable appearance
+    }
 }
 
-/// A baked-tile leaf (vector/flip): the tile carries the child's own orientation
-/// (⚠️ its world bake — v1 limit), so `rot` is 0 and only position + scale apply.
-fn leaf_from_tile(acc: &Transform, tile: BakedTile) -> LeafInstance {
+/// A live-vector leaf (`source.object` of a vector): the drawing rides `geometry_id`
+/// (⚠️ baked at its world orientation — v1 limit), so `rot` is 0 and only position +
+/// scale apply; `tid` is 0 so the sprite lowering skips it.
+fn leaf_from_object(acc: &Transform, obj: ObjectVector) -> LeafInstance {
+    LeafInstance {
+        p: [acc.translation.x, acc.translation.y],
+        rot_deg: 0.0,
+        size: [
+            obj.size[0] * acc.scale.x.abs(),
+            obj.size[1] * acc.scale.y.abs(),
+        ],
+        tint: [1.0, 1.0, 1.0, 1.0],
+        uv: [0.0, 0.0, 1.0, 1.0], // unused for a geometry_id row
+        tid: 0,
+        gid: obj.geometry_id,
+    }
+}
+
+/// A baked-tile Flip leaf: the tile carries the child's own orientation (⚠️ its
+/// world bake — v1 limit), so `rot` is 0 and only position + scale apply; `gid` is
+/// 0 so the vector lowering skips it.
+fn leaf_from_flip(acc: &Transform, tile: FlipTile) -> LeafInstance {
     LeafInstance {
         p: [acc.translation.x, acc.translation.y],
         rot_deg: 0.0,
@@ -354,6 +393,7 @@ fn leaf_from_tile(acc: &Transform, tile: BakedTile) -> LeafInstance {
         tint: [1.0, 1.0, 1.0, 1.0],
         uv: [0.0, 0.0, 1.0, 1.0],
         tid: tile.texture_id,
+        gid: 0,
     }
 }
 
@@ -381,6 +421,13 @@ fn group_stream(leaves: &[LeafInstance]) -> Stream {
         .with(
             "texture_id",
             Column::Scalar(leaves.iter().map(|l| l.tid as f32).collect()),
+        )
+        // The live-vector column: `> 0` for a vector child, `0` for a sprite/Flip.
+        // The lowering's `geometry_id > 0.5` split routes each row to exactly one
+        // pass, so a mixed group draws each child once (never a blank atlas quad).
+        .with(
+            "geometry_id",
+            Column::Scalar(leaves.iter().map(|l| l.gid as f32).collect()),
         )
 }
 
@@ -415,12 +462,26 @@ pub(crate) fn bake_objects(
     live: &ph2d_vec_render::LiveGeometry,
     gpu: &ph2d_gpu::GpuContext,
     surface_format: wgpu::TextureFormat,
-    renderer: &mut ph2d_render::SpriteRenderer,
     sim: &SimWorld,
 ) {
-    motion
-        .object_bake
-        .bake(scene, map, xforms, live, gpu, surface_format, renderer, sim);
+    // `object_bake` and `shape_store` are disjoint fields of `MotionState`: the store
+    // the vector `encode` reads is where the live geometry is parked (→ `geometry_id`),
+    // so there is ONE store for `source.shape` AND `source.object` vectors.
+    let MotionState {
+        object_bake,
+        shape_store,
+        ..
+    } = motion;
+    object_bake.bake(
+        shape_store,
+        scene,
+        map,
+        xforms,
+        live,
+        gpu,
+        surface_format,
+        sim,
+    );
 }
 
 /// **Bake the named Flip objects to tiles** (doc 86 §2 A3) — sibling of `bake_objects`,

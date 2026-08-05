@@ -506,7 +506,20 @@ W10) · não há *wall grab* (ficar parado é outra mecânica, com botão própr
   dirige massa infinita, então **depois do bake o personagem para de responder ao
   teclado** — e o roteiro da cena manda o artista tentar, para ele encontrar isso
   de propósito em vez de reportar como bug.
-- **Persistir a fita** (W7).
+- ~~**Persistir a fita** (W7)~~ — **FEITO: a W17** (2026-08-05, cena `=96`). ⚠️ **E a
+  previsão desta linha era uma linha só porque ela supunha que persistir fosse um campo
+  de arquivo.** Não era: a fita gravava **todo tique que o relógio andasse** — medido
+  pela porta do produto antes de qualquer linha, **120 de 120 nas quatro células**, sem
+  player na cena e com o Physics desarmado. Isso não é uma corrida, é o relógio andando,
+  e as duas consequências **só existem depois de a fita viver num arquivo**: todo projeto
+  do app carregaria uma corrida de ninguém, e — porque o toggle Physics nasce
+  **DESMARCADO** — abrir um projeto e *assistir* à timeline apagaria a corrida gravada,
+  em silêncio. **Um artefato destruído pelo ato de olhar para ele.** Persistir exigiu
+  corrigir *o que era gravado* primeiro; a tabela hoje é **0 / 0 / 120 / 0**. ⚠️ O que
+  torna a wave útil é o **bake da W16**: a fita é a entrada que ele replaya, então
+  reabrir um projeto e apertar Bake devolve a corrida de ontem — *o bake é o caminho
+  "torne durável", a fita persistida é o caminho "mantenha editável"*. **60 s pesam
+  28,1 kB**, então não há teto: o que decide o tamanho é quanto o artista jogou.
 - **Player Kinematic** — o Enio disse que virá um dia. Este plano não o proíbe: a lei pura
   da `ph2d-platformer` é agnóstica de como o motor é aplicado, e é exatamente onde um
   segundo consumidor entraria.

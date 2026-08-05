@@ -28,12 +28,15 @@ Nada integrado, nada pushado.
 | `d10f1a556` | a W14 no plano e no mapa |
 | `73471284a` | **W15** — O AGACHAR |
 | `695ca8c25` | a W15 no plano e no mapa |
-| **(esta wave)** | **W16** — ASSAR UM PLAYER, e a W16 no plano, no mapa e neste handoff |
+| `de73fc6d6` | **W16** — ASSAR UM PLAYER: o bake replaya a CORRIDA, não o dedo |
+| `971d2fdc9` | a W16 no plano e no mapa |
+| **(esta wave)** | **W17** — A CORRIDA SOBREVIVE AO ARQUIVO, e a W17 no plano, no mapa e neste handoff |
 
 **Smoke:** W11b/W11c **APROVADAS** (*"Smoke OK"*, 2026-08-05), **W12 e W13
 APROVADAS** na mesma data (*"Smoke OK. SIGA"*) e **a W14 APROVADA** logo a seguir
-(*"Smoke OK. Siga"*) e **a W15 APROVADA** a seguir (*"Smoke OK. SIga"*). **A W16 é a
-única pendente** — integrar não é aprovar.
+(*"Smoke OK. Siga"*), **a W15 APROVADA** a seguir (*"Smoke OK. SIga"*) e **a W16
+APROVADA** logo depois (*"Smoke OK. SIga"*). **A W17 é a única pendente** —
+integrar não é aprovar.
 
 ---
 
@@ -41,7 +44,7 @@ APROVADAS** na mesma data (*"Smoke OK. SIGA"*) e **a W14 APROVADA** logo a segui
 
 | número | veredito |
 |---|---|
-| **`PROJECT_SCHEMA`** | ⚠️ **55 → 58** (W13, W14 e W15, um degrau cada; **a W16 não bumpa**) — ver §3 |
+| **`PROJECT_SCHEMA`** | ⚠️ **55 → 59** (W13, W14, W15 e **W17**, um degrau cada; **a W16 não bumpa**) — ver §3 |
 | `FLIP_SCHEMA` · `VEC_SCENE` | intocados (13 · 14) |
 | registro `ph2d-physics-ecs` | **INTOCADO** (28) — nenhum componente novo |
 | registro `ph2d-ecs` (as 3 casas) | **INTOCADO** |
@@ -53,15 +56,25 @@ APROVADAS** na mesma data (*"Smoke OK. SIGA"*) e **a W14 APROVADA** logo a segui
 | suítes | **debug e release**, mais a shell — verdes, zero falhas |
 
 ⚠️ **O `c9` moveu-se UMA vez na jornada inteira, e foi na W11b/W11c** (a altura de
-repouso do player mudou). **A W12, a W13, a W14, a W15 e a W16 são byte-neutras** —
-a descida, o arranque e o agachar exigem botões que a fita do harness não segura;
-as paredes, o arranque e o agachar nascem **desligados**; e a W16 não toca o
-caminho do `dispatch`, só o do bake. Isso não é sorte: é a prova executável de que
-as capacidades novas são opt-in.
+repouso do player mudou). **A W12, a W13, a W14, a W15, a W16 e a W17 são
+byte-neutras** — a descida, o arranque e o agachar exigem botões que a fita do
+harness não segura; as paredes, o arranque e o agachar nascem **desligados**; a
+W16 não toca o caminho do `dispatch`, só o do bake; e a W17 muda **quando** a fita
+grava, o que o `c9` (que não a lê) não pode ver. Isso não é sorte: é a prova
+executável de que as capacidades novas são opt-in.
+
+⚠️ **E é justamente por isso que a W17 tem gates PRÓPRIOS de gravação:** um `c9`
+byte-idêntico prova que a simulação não mudou e diz **zero** sobre a fita.
 
 ---
 
 ## §3 — ⚠️ O bump, e por que ele é PROVISÓRIO
+
+**W17:** ⚠️ o degrau que **não** é um campo de componente — é um campo de
+**ARQUIVO**, `player_tape`, com o que o dedo do jogador fez tique a tique. Fora do
+`ProjectState` pelo motivo de `motion`/`timeline`/`physics`: aquele é a unidade do
+undo GLOBAL, e um Ctrl+Z do canvas não deve rebobinar uma gravação. A linha
+escreve **59**.
 
 **W15:** o `PlatformPlayer` ganhou **dois** campos (`crouch_height`,
 `crouch_speed`) — mesmo raciocínio posicional. A linha escreve **58**. ⚠️ E vale
@@ -86,7 +99,7 @@ contou UM degrau onde havia DOIS.
 ⚠️ **E o `project.rs` pode não conflitar mesmo assim:** se as duas linhas
 escreverem o mesmo literal, o git funde limpo e o bump da segunda **evapora com a
 suíte verde**. Quem denuncia é o conflito do `project_schema_tests.rs` ao lado, e
-a tripla que ele pina — **`(58, 13, 14)`** aqui.
+a tripla que ele pina — **`(59, 13, 14)`** aqui.
 
 ---
 
@@ -346,6 +359,108 @@ implementação, as outras delegam**, o molde exacto da família do `dispatch`.
 
 ---
 
+## §5e — W17: a corrida sobrevive ao arquivo (cena `=96`)
+
+**O último item aberto do §4 do plano 06** (*"Persistir a fita (W7)"*) — e ele não
+era um campo de arquivo.
+
+### A correção, medida antes de qualquer linha
+
+`measure_player_tape` (sonda, `#[ignore]`), 120 frames pela porta do produto:
+
+| célula | antes | depois |
+|---|---|---|
+| sem player, Physics ARMADO | **120** | **0** |
+| sem player, Physics OFF | **120** | **0** |
+| **com player, Physics ARMADO** | **120** | **120** |
+| com player, Physics OFF | **120** | **0** |
+
+A fita gravava **o relógio andando**, não uma corrida. ⚠️ **As duas consequências
+só existem depois de ela viver num arquivo:** todo projeto do app carregaria uma
+corrida de ninguém, e — porque o toggle Physics nasce **DESMARCADO** — abrir um
+projeto e *assistir* à timeline apagaria a corrida gravada, do tique em diante,
+**em silêncio**. Um artefato destruído pelo ato de olhar para ele.
+
+A condição nova (`simulate && players > 0`) mora no chamador, e a contagem sai da
+consulta que o `hand_input_to_players` **já faz** — perguntá-la de novo seria uma
+segunda varredura do mundo para o mesmo fato. ⚠️ **Entregar não é gravar:** a
+entrada continua a ser ENTREGUE com a simulação desarmada (é o que faz armar o
+Physics retomar do que o dedo está a fazer), e é só a GRAVAÇÃO que passou a
+exigir que o tique tenha acontecido.
+
+### A persistência
+
+`ph2d_physics_ecs::TapeWire` + `InputTape::to_wire`/`from_wire`, e o
+`ProjectFile.player_tape`. **`PROJECT_SCHEMA` 58 → 59.**
+
+⚠️ **A tradução mora na crate-PONTE para o `PlayerInput` não aprender serde** — a
+`ph2d-platformer` é a crate da lei pura (sem rapier, sem ECS, sem formato de
+arquivo), e ensinar-lhe a serializar seria a primeira aresta na direção errada.
+
+⚠️ **Os botões viajam num BITMASK, e não como quatro `bool`s**, por uma razão que
+esta linha já pagou duas vezes: o `PlayerInput` ganhou o `down` na W12 e o `dash`
+na W14. Num `u8` o quinto botão é um **bit novo no mesmo byte** — o layout do
+arquivo não se move, um leitor velho ignora o bit e um leitor novo lê `false` num
+arquivo velho. Com quatro `bool`s, o quinto seria **um byte novo por tique**, ou
+seja um bump de schema por botão.
+
+**Peso medido:** 1 s = 0,5 kB · 10 s = 4,7 kB · **60 s = 28,1 kB** ⇒ nenhum teto:
+o que decide o tamanho é quanto o artista jogou.
+
+⚠️ **O load INSTALA, nunca funde** — uma fita costurada com a da sessão anterior
+descreveria uma corrida que ninguém deu; é o irmão exato do que o `project_forget`
+faz com o relógio, a fila de undo e a timeline.
+
+### A metade visível: um botão, e a ausência dele
+
+**`Clear Recorded Run (N.N s)`** na §14, oferecido **só quando existe corrida**.
+⚠️ **A ausência dele é o outro readout** — sem corrida não há o que descartar, e o
+número vai no **RÓTULO do próprio controle que o resolve**: o precedente do
+`Fit to Collider (needs > 0.50 m)`, pintado dez linhas acima dele. Um readout
+separado seria uma segunda superfície dizendo o mesmo fato.
+
+⚠️ **É o único verbo da §14 que não é escrita de componente** (a fita mora na
+shell), então é **interceptado no laço de ações**, onde `self` é mutável — o lugar
+e a razão exatos do `Join` da §11. E interceptar **não é higiene**: descartar é
+idempotente, então espalhá-lo pela seleção não corromperia nada HOJE. É
+precisamente essa forma que apodrece — o Ctrl+V do editor de nós colava duas vezes
+porque um dispatch duplicado *"nunca tinha importado enquanto todos os verbos eram
+idempotentes"*.
+
+⚠️ **A fita é GLOBAL numa seção por-entidade**, e isso é honesto hoje pelo mesmo
+desenho do `hand_input_to_players`: há um teclado, logo um dedo. Quando houver um
+segundo, os dois se movem juntos.
+
+### Gates e mutações
+
+**9 mutações, 9 sangram.** As três que valem ler:
+
+- **M7** — o braço do `ClearRun` vazio: **todos** os gates de seam e de
+  comportamento ficam VERDES, o botão fica pintado e clicável, e nada acontece.
+  É por isso que o arch-gate existe (o laço de ações exige janela).
+- **M4** — o `from_wire` perde o `first`: a fita volta do mesmo TAMANHO
+  descrevendo a corrida noutro instante. É por isso que o gate compara **tique a
+  tique**, e num intervalo que começa ANTES e acaba DEPOIS do gravado.
+- **M6** — o save grava `TapeWire::default()`: compila, passa os dois gates de
+  load (que constroem o arquivo à mão) e **perde toda corrida que alguém jogar**.
+
+⚠️ E os dois gates de load **não são um o inverso do outro**: o de esquecimento
+passaria com um load que FUNDISSE as fitas (a nova cobriria a velha tique a
+tique, por ser mais longa). Ele é o que separa *instalar* de *fundir*.
+
+**LOC:** o `project_tests.rs` bateu 650 ⇒ os gates da fita saíram para o **FILHO**
+`project_tape_tests.rs` (as fixtures do pai — `headless_app`, `write_project`,
+`tmp_path` — são as portas dele; copiá-las seria um segundo escritor de arquivo de
+projeto).
+
+**Superfície pública nova:** `TapeWire` + `InputTape::{to_wire, from_wire}` ·
+`PlayerFieldEdit::ClearRun` · `InspectorPlayerInfo.recorded_run_seconds` ·
+`ids::INSP_PLAYER_CLEAR_RUN`. `c9` **byte-idêntico**, zero `Cargo.toml`, nenhum
+ADR.
+
+
+---
+
 ## §6 — Ordem
 
 1. `git rebase main` (ou merge). Os arquivos compartilhados são o `project.rs`
@@ -374,6 +489,7 @@ env PH2D_PHYSICS_SMOKE=92 cargo run -p ph2d-host-desktop --release   # O POÇO (
 env PH2D_PHYSICS_SMOKE=93 cargo run -p ph2d-host-desktop --release   # O ABISMO (W14)
 env PH2D_PHYSICS_SMOKE=94 cargo run -p ph2d-host-desktop --release   # O CORREDOR BAIXO (W15)
 env PH2D_PHYSICS_SMOKE=95 cargo run -p ph2d-host-desktop --release   # A CORRIDA VIRA ANIMACAO (W16)
+env PH2D_PHYSICS_SMOKE=96 cargo run -p ph2d-host-desktop --release   # A CORRIDA SOBREVIVE AO ARQUIVO (W17)
 ```
 
 ⚠️ **Cada cena imprime o que montou.** Se a linha `[physics-smoke NN]` não
@@ -395,6 +511,10 @@ aparecer, pare: a cena não montou e o resto do smoke não diz nada.
   veredito (o personagem refaz o que você fez, com a física DESARMADA) e o
   **passo 6 é a contradição**, deliberada: depois do bake ele não responde ao
   teclado, porque virou animação.
+- **`=96`** — ⚠️ **o passo 5 manda FECHAR o app**, e não é cerimônia: um Ctrl+S
+  seguido de Ctrl+O na mesma sessão devolve a fita que a sessão já tinha, então
+  não prova nada sobre *sobreviver a fechar o app*. E o **passo 1 é o controle**:
+  antes de correr, o botão `Clear Recorded Run` **não pode existir**.
 
 ---
 
@@ -413,8 +533,17 @@ aparecer, pare: a cena não montou e o resto do smoke não diz nada.
   `0,50` vê o corpo enterrado, sem nada a dizer por quê. A cura natural é a mesma
   do `min_float_height` que a §14 já mostra para a perna de pé: **um readout, não
   um clamp**. Nomeado, não construído.
-- **W16:** a fita **não é persistida** — uma corrida gravada morre com a sessão,
-  e o que sobrevive a um save é o que foi ASSADO. É o item seguinte do §4, e ele
-  fica mais nítido depois desta wave: o bake é o caminho *"torne durável"*, e
-  persistir a fita é o caminho *"mantenha editável"*.
-- **Do plano 06 §4, o que sobra:** persistir a fita · player Kinematic.
+- ~~**W16:** a fita não é persistida~~ — **FECHADO pela W17.**
+- **W17:** a fita é **uma só**, e o botão de descartá-la mora numa seção
+  por-entidade. É honesto hoje (há um teclado, logo um dedo — o mesmo desenho do
+  `hand_input_to_players`) e deixa de ser no dia em que houver um segundo jogador:
+  aí a fita passa a ser **por-player**, e os dois se movem juntos. Nada aqui o
+  impede; o que falta é o segundo dedo.
+- **W17:** descartar a corrida **não passa pelo undo** — não há Ctrl+Z para
+  ele. A fita não é `ProjectState` (de propósito: um Ctrl+Z do canvas não deve
+  rebobinar uma gravação), então o único jeito de recuperar uma corrida
+  descartada é reabrir o arquivo. O botão não pede confirmação.
+- **Do plano 06 §4, o que sobra:** **player Kinematic** — e ele é o item que o
+  Enio disse que virá um dia. Este plano não o proíbe: a lei pura da
+  `ph2d-platformer` é agnóstica de como o motor é aplicado, e é exatamente onde
+  um segundo consumidor entraria.

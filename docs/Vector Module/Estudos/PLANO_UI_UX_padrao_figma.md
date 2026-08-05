@@ -1024,7 +1024,35 @@ canvas nunca implementa *drag*, *foco* ou *teclado*. E ⚠️ **o que o canvas m
 widget pinta**: a prévia no canvas chama o **pintor real** do widget, senão temos duas aparências
 para a mesma coisa e a divergência só aparece numa screenshot.
 
-**Degrau 3 — o layout vira `Panel`.** É a W8b.
+**Degrau 3 — o layout vira `Panel`.** É a W8b. 🔨 **A W8b.1 CONSTRUIU a primeira metade
+(2026-08-05)** — cena `=62`.
+
+> ✅ **A árvore autorada descreve um painel, e o app escreve o código dele.** `ui_panel_spec::of`
+> responde *que painel esta moldura descreve* (porta única) e o `ph2d-ui-codegen` escreve a tabela
+> de rows. **Só quem VESTE vira row** — um filho sem `VecWidget` continua a ser desenho, e um
+> gerador que transformasse todo filho em linha daria um painel com uma row que não faz nada.
+>
+> ⚠️ **A contenção que decide a wave: o gerador NÃO depende do `ph2d-editor-core`.** Sem alcance ao
+> catálogo ele **não CONSEGUE** ter opinião sobre o que um `Slider` é — o identificador chega
+> pronto no `RowSpec`, resolvido por `WidgetKind::ident`, que nasce ao lado do `code` (onde a
+> lista tem dono). Uma tabela `código → nome` do lado do gerador seria a segunda resposta a *"quais
+> são os tipos vestíveis?"*, e ela driftaria **em silêncio** — um número desconhecido não falha,
+> ele só não casa. **Arch-gate sobre o `Cargo.toml` E sobre o fonte** (uma tabela dessas não
+> precisa da dep para existir).
+>
+> ⚠️ **O risco §10.4 (*"codegen que o CI recusa"*) está DESCARREGADO**: o golden é commitado **e
+> COMPILADO**, então Rust inválido não chega ao `main` — o build do teste cai antes. Os dois gates
+> sobre ele **não são redundantes**: um compara BYTES (staleness), o outro lê as consts *depois de
+> o compilador as aceitar* (conteúdo).
+>
+> ⚠️ **O gerado é o que VARIA entre dois painéis, e nada mais.** Emitir o chrome — moldura, título,
+> alças, gate de visibilidade — copiaria umas cem linhas **idênticas em todo painel** para dentro
+> do gerado, e um dia em que ele mudasse, todo painel gerado ficaria para trás.
+>
+> **FALTA (a W8b.2):** este código é o **ARTEFATO** — ele não é compilado como painel nem
+> registrado. Fazê-lo virar um painel vivo pede a crate, os cinco sítios de fiação de painel, e um
+> **runtime de rows** que consuma a tabela (`paint`/`populate`/`apply_event`). E a fronteira que o
+> §2 protege continua a ser a aceitação: *o comportamento é do `ph2d-editor-core`, sempre*.
 
 **Schema.** +1 componente (**49 → 50**). **Gates:** o desenho e o widget pintam **os mesmos bytes**
 (readback) · um `kind` desconhecido degrada para o desenho, nunca para um painel vazio · trocar um
@@ -1355,7 +1383,9 @@ escreveu**:
 | **W6.2** ✅ | pele por-widget (`VecWidget`): a forma veste um controle do catálogo | +1 | — | — | — | `=60` |
 | **W6.3** | layout: a árvore autorada vira `Panel` | — | — | — | sim (§2) | — |
 | **W7** 🔨 | estados + Smart Animate (**autoria**; runtime não) | — | ⚠️ `PROJECT_SCHEMA`, **não** `DOC_VERSION` | — | **nenhum** | `=61` |
-| **W8** | runtime + codegen | — | seção | — | sim (fronteira) | `=56` |
+| **W8b.1** ✅ | o codegen: a árvore descreve um painel e o app escreve o código dele | — | — | — | — | `=62` |
+| **W8b.2** | o gerado vira painel VIVO (crate, registro, runtime das rows) | — | — | — | sim (fronteira) | — |
+| **W8a** | o runtime (para os jogos) | — | seção | — | sim (fronteira) | — |
 | **W9** | DTCG / SVG / export | — | — | — | — | — |
 
 ⚠️ **A linha da W7 traz TRÊS previsões que a construção refutou, e elas são o padrão desta

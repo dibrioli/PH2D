@@ -237,6 +237,11 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// aquele já guarde as malhas: o parser dele é `#[cfg(feature = "sculpt3d")]`, e um objeto
 /// assado tem de ser legível **sem o módulo 3D no build** — é isso que a rota A promete.
 /// ⚠️ Este 53 é PROVISÓRIO pelo mesmo motivo que o 52 era.
+/// v54 (physics, W-JointCustom — o joint que o artista descreve por EIXO): o
+/// `PhysicsJoint` ganhou **`custom`**, a configuração por grau de liberdade
+/// (*Free / Limited / Locked*, o modelo do Unreal) que expõe o `GenericJoint` do
+/// rapier. Campo apendado ao componente, mesmo raciocínio posicional dos
+/// v32/v33/v34: um save v53 lido por v54 chega ao fim dos bytes no campo novo.
 /// v55 (physics, W10 — as duas assistências que faltavam): o `PlatformPlayer`
 /// ganhou **`corner_reach`** e **`lift_momentum`**, os dois campos que o W8 tinha
 /// nomeado e não construído. Dois campos apendados ao componente, mesmo

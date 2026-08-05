@@ -1,6 +1,13 @@
 # HANDOFF — `line/physics` → `main` (2026-08-05) · **W11b, o ajuste diferido**
 
-**A linha está FECHADA e PARADA.** 5 commits, 13 arquivos.
+> ⚠️ **SUPERSEDIDO por [`HANDOFF_INTEGRACAO_line_physics_MESTRE_2026-08-05.md`](HANDOFF_INTEGRACAO_line_physics_MESTRE_2026-08-05.md)**
+> — a jornada continuou com a **W12** (descer da plataforma) e a **W13** (as
+> paredes), e o título deste arquivo deixou de descrever o que a linha entrega.
+> O MESTRE é quem tem a lista de commits, os números que se contam e a ordem de
+> integração; **o detalhe de mecanismo da W11b/W11c continua aqui** e não foi
+> copiado para lá.
+
+**A W11b/W11c estão FECHADAS e SMOKADAS** (Enio, 2026-08-05: *"Smoke OK"*).
 Nada integrado, nada pushado.
 
 > Este handoff é pequeno de propósito: a jornada de 04/08 já integrou, e o que

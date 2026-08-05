@@ -132,7 +132,9 @@ impl Sculpt3dScene {
         // no caminho quente.
         let mut births = std::mem::take(&mut self.dyn_births);
         let mesh = self.objects[self.active].stack.mesh_mut();
-        let out = refine_in_sphere(mesh, centre, radius, target, &mut births);
+        let mut region = std::mem::take(&mut self.dyn_region);
+        let out = refine_in_sphere(mesh, centre, radius, target, &mut births, &mut region);
+        self.dyn_region = region;
         let done = matches!(out, Refine::Done { .. });
         if done {
             // O traço em voo sobrevive: os índices antigos não se moveram, e cada

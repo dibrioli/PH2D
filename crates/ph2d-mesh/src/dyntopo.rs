@@ -49,7 +49,7 @@
 //! existe para fazer. O gatilho é um número medido, não um palpite.
 
 use crate::face::Face;
-use crate::mesh::Mesh;
+use crate::mesh::{Mesh, RegionScratch};
 
 /// **DE ONDE UM VÉRTICE NOVO VEIO** — o par cuja aresta foi partida para criá-lo.
 ///
@@ -137,6 +137,7 @@ pub fn refine_in_sphere(
     radius: f32,
     edge_max: f32,
     births: &mut Vec<Birth>,
+    scratch: &mut RegionScratch,
 ) -> Refine {
     births.clear();
     if !mesh.faces().iter().all(Face::is_tri) {
@@ -178,7 +179,7 @@ pub fn refine_in_sphere(
     // artista a deixou, e varrê-la inteira era pagar `O(malha)` para descobrir
     // isso — medido, 33,2 de 66,1 ms num dab a 98k, metade num round que acha
     // ZERO.
-    crate::dyntopo_flip::relax(mesh, &touched);
+    crate::dyntopo_flip::relax(mesh, &touched, scratch);
     Refine::Done {
         verts_added: mesh.vert_count() - v0,
         faces_added: mesh.face_count() - f0,
@@ -497,14 +498,6 @@ pub(crate) fn swap_topology(
         out.put_masks(m);
     }
     *mesh = out;
-}
-
-/// A mesma troca quando só a LIGAÇÃO muda — os vértices ficam onde estão.
-pub(crate) fn rebuild_with_faces(mesh: &mut Mesh, faces: Vec<Face>) {
-    let positions = mesh.positions().to_vec();
-    let colors = mesh.colors().map(<[[f32; 3]]>::to_vec);
-    let masks = mesh.masks().map(<[f32]>::to_vec);
-    swap_topology(mesh, positions, faces, colors, masks);
 }
 
 /// O vértice do meio, **deslocado ao longo da normal média**.

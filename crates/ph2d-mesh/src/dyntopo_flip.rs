@@ -72,9 +72,8 @@
 //! carrega. `id_of` era, literalmente, uma varredura do anel de `c` atrás de `d`.
 
 use crate::adjacency::Adjacency;
-use crate::dyntopo::rebuild_with_faces;
 use crate::face::Face;
-use crate::mesh::Mesh;
+use crate::mesh::{Mesh, RegionScratch};
 
 /// Quantas rodadas de flip um refino pode gastar.
 ///
@@ -101,14 +100,14 @@ const MIN_GAIN: f32 = 1e-4;
 /// ⚠️ **Os índices de FACE também sobrevivem a uma rodada** — ela reescreve dois
 /// slots do vetor e o devolve com o mesmo comprimento —, e é isso que deixa as
 /// faces flipadas serem as sementes da rodada seguinte sem remapeamento.
-pub(crate) fn relax(mesh: &mut Mesh, seeds: &[u32]) -> usize {
+pub(crate) fn relax(mesh: &mut Mesh, seeds: &[u32], scratch: &mut RegionScratch) -> usize {
     let mut total = 0;
     let mut work: Vec<u32> = seeds.to_vec();
     for _ in 0..MAX_ROUNDS {
         if work.is_empty() {
             break;
         }
-        let (n, next) = one_round(mesh, &work);
+        let (n, next) = one_round(mesh, &work, scratch);
         total += n;
         if n == 0 {
             break;
@@ -119,7 +118,7 @@ pub(crate) fn relax(mesh: &mut Mesh, seeds: &[u32]) -> usize {
 }
 
 /// Uma rodada. Devolve quantas trocas aconteceram e as faces que mudaram.
-fn one_round(mesh: &mut Mesh, seeds: &[u32]) -> (usize, Vec<u32>) {
+fn one_round(mesh: &mut Mesh, seeds: &[u32], scratch: &mut RegionScratch) -> (usize, Vec<u32>) {
     let mut changes: Vec<(usize, Face)> = Vec::new();
     let mut next: Vec<u32> = Vec::new();
     {
@@ -181,14 +180,16 @@ fn one_round(mesh: &mut Mesh, seeds: &[u32]) -> (usize, Vec<u32>) {
         return (0, Vec::new());
     }
     let flips = changes.len() / 2;
-    // ⚠️ A cópia do vetor de faces só acontece quando há o que escrever — uma
-    // rodada que não acha nada é o desfecho comum, e ela não pode pagar
-    // `O(malha)` para dizê-lo.
-    let mut faces = mesh.faces().to_vec();
-    for (i, f) in changes {
-        faces[i] = f;
-    }
-    rebuild_with_faces(mesh, faces);
+    // ⚠️ **Uma troca de diagonal é uma EDIÇÃO, não uma malha nova.** O caminho
+    // antigo montava a lista inteira de faces e chamava um `Mesh::rebuild` —
+    // `O(malha)` medido em **10,4 ms a 98k** para reescrever duas faces. Aqui a
+    // malha recebe as duas e refresca a região; nenhum vértice é criado nem
+    // movido, então a partição do octree e a contagem não mudam.
+    let edits: Vec<(u32, Face)> = changes
+        .into_iter()
+        .map(|(i, f)| (u32::try_from(i).unwrap_or(u32::MAX), f))
+        .collect();
+    mesh.relink_faces(&edits, scratch);
     (flips, next)
 }
 

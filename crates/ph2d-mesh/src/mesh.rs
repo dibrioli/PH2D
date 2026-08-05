@@ -480,6 +480,44 @@ impl Mesh {
         }
     }
 
+    /// **REESCREVE A LIGAÇÃO DE FACES EXISTENTES** — sem criar, apagar nem mover
+    /// vértice nenhum.
+    ///
+    /// É a edição que uma troca de diagonal faz (`dyntopo_flip`), e ela existe
+    /// para que essa troca **deixe de custar uma malha nova**. O caminho antigo
+    /// era `Mesh::from_parts` + [`Self::rebuild`]: validar toda face, refazer os
+    /// dois anéis, o octree e todas as normais — `O(malha)` medido em **10,4 ms
+    /// a 98k**, para mudar duas faces.
+    ///
+    /// ⚠️ **A ORDEM dos três passos é o contrato**, e trocá-la não falha: dá a
+    /// resposta errada em silêncio. O anel de faces é remendado contra as faces
+    /// ANTIGAS (é delas que o índice sai); as faces são escritas; e só então o
+    /// anel de vértices é re-derivado contra as NOVAS. Um passe de região que
+    /// rodasse antes leria a adjacência velha e refrescaria a normal de quem
+    /// deixou de ser vizinho.
+    ///
+    /// ⚠️ **O octree fica com a partição de antes, e isso é correto** — a face
+    /// mudou de forma, não de dono. É a mesma situação que o
+    /// [`crate::Octree::refit`] documenta para a geometria que se move, e é o
+    /// `face_leaf` que a torna exata.
+    pub fn relink_faces(&mut self, changes: &[(u32, Face)], scratch: &mut RegionScratch) {
+        if changes.is_empty() {
+            scratch.forget();
+            return;
+        }
+        // ⚠️ Só o que MUDA é copiado. Guardar a lista inteira de faces para ter
+        // o "antes" seria `O(malha)` dentro da porta que existe para não ser.
+        let edits: Vec<(u32, Face, Face)> = changes
+            .iter()
+            .map(|&(i, new)| (i, self.faces[i as usize], new))
+            .collect();
+        for &(i, _, new) in &edits {
+            self.faces[i as usize] = new;
+        }
+        let affected = self.adjacency.relink(&edits, &self.faces);
+        self.refresh_region(&affected, scratch);
+    }
+
     /// O buffer de índices que a GPU consome (quads triangulados).
     pub fn triangle_indices(&self, out: &mut Vec<[u32; 3]>) {
         out.clear();

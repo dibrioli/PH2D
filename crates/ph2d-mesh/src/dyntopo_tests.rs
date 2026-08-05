@@ -29,7 +29,14 @@ fn the_refined_mesh_has_no_cracks() {
     assert_eq!(cracks(&m), 0, "o controle: a esfera nasce fechada");
 
     let target = edge_target(0.6, 1.0);
-    let r = refine_in_sphere(&mut m, [0.0, 0.0, 1.0], 0.6, target, &mut Vec::new());
+    let r = refine_in_sphere(
+        &mut m,
+        [0.0, 0.0, 1.0],
+        0.6,
+        target,
+        &mut Vec::new(),
+        &mut scratch(),
+    );
     assert!(
         matches!(r, Refine::Done { .. }),
         "algo tem de ser partido: {r:?}"
@@ -128,6 +135,7 @@ fn the_refinement_stays_inside_the_brush() {
         radius,
         edge_target(radius, 1.0),
         &mut Vec::new(),
+        &mut scratch(),
     );
 
     // ⚠️ O oráculo é a POSIÇÃO dos vértices novos, não a contagem: contar
@@ -166,6 +174,7 @@ fn refining_twice_is_deterministic() {
             0.7,
             edge_target(0.7, 0.8),
             &mut Vec::new(),
+            &mut scratch(),
         );
         m
     };
@@ -203,7 +212,14 @@ fn refining_shortens_the_edges_it_was_asked_about() {
     let long_before = long_edges_near(&m, centre, radius, target);
     assert!(long_before > 0, "a fixture TEM de conter o fenômeno");
 
-    refine_in_sphere(&mut m, centre, radius, target, &mut Vec::new());
+    refine_in_sphere(
+        &mut m,
+        centre,
+        radius,
+        target,
+        &mut Vec::new(),
+        &mut scratch(),
+    );
     let long_after = long_edges_near(&m, centre, radius, target);
     assert!(
         long_after < long_before,
@@ -251,7 +267,14 @@ fn a_quad_mesh_is_refused_instead_of_mangled() {
         m.faces().iter().any(|f| !f.is_tri()),
         "o controle: há quads"
     );
-    let r = refine_in_sphere(&mut m, [0.0, 0.0, 1.0], 0.6, 0.05, &mut Vec::new());
+    let r = refine_in_sphere(
+        &mut m,
+        [0.0, 0.0, 1.0],
+        0.6,
+        0.05,
+        &mut Vec::new(),
+        &mut scratch(),
+    );
     assert_eq!(r, Refine::NotTriangles);
     assert_eq!(m.face_count(), 8 * 12, "e a malha não foi tocada");
 }
@@ -288,6 +311,7 @@ fn the_new_vertices_carry_colour_and_mask() {
         0.6,
         edge_target(0.6, 1.0),
         &mut Vec::new(),
+        &mut scratch(),
     );
     assert!(m.vert_count() > before);
 
@@ -312,17 +336,38 @@ fn an_empty_dab_changes_nothing() {
     let before = (m.vert_count(), m.face_count());
     // Longe da malha.
     assert_eq!(
-        refine_in_sphere(&mut m, [10.0, 10.0, 10.0], 0.5, 0.01, &mut Vec::new()),
+        refine_in_sphere(
+            &mut m,
+            [10.0, 10.0, 10.0],
+            0.5,
+            0.01,
+            &mut Vec::new(),
+            &mut scratch()
+        ),
         Refine::Enough
     );
     // Alvo maior que qualquer aresta.
     assert_eq!(
-        refine_in_sphere(&mut m, [0.0, 0.0, 1.0], 0.5, 100.0, &mut Vec::new()),
+        refine_in_sphere(
+            &mut m,
+            [0.0, 0.0, 1.0],
+            0.5,
+            100.0,
+            &mut Vec::new(),
+            &mut scratch()
+        ),
         Refine::Enough
     );
     // Alvo degenerado: recusa em vez de pedir infinitos vértices.
     assert_eq!(
-        refine_in_sphere(&mut m, [0.0, 0.0, 1.0], 0.5, 0.0, &mut Vec::new()),
+        refine_in_sphere(
+            &mut m,
+            [0.0, 0.0, 1.0],
+            0.5,
+            0.0,
+            &mut Vec::new(),
+            &mut scratch()
+        ),
         Refine::Enough
     );
     assert_eq!((m.vert_count(), m.face_count()), before);
@@ -340,6 +385,7 @@ fn the_midpoint_follows_the_curve_instead_of_flattening_it() {
         0.8,
         edge_target(0.8, 1.0),
         &mut Vec::new(),
+        &mut scratch(),
     );
 
     let radii: Vec<f32> = m.positions()[before..]
@@ -385,7 +431,14 @@ fn a_moving_dab_does_not_shred_the_triangles() {
         let t = f64::from(k) / 23.0;
         let x = (-0.6 + 1.2 * t) as f32;
         let y = (1.0 - x * x).max(0.0).sqrt();
-        refine_in_sphere(&mut m, [x, y, 0.0], radius, target, &mut births);
+        refine_in_sphere(
+            &mut m,
+            [x, y, 0.0],
+            radius,
+            target,
+            &mut births,
+            &mut scratch(),
+        );
     }
 
     let after = worst_min_angle(&m);
@@ -436,7 +489,14 @@ fn every_new_vertex_declares_where_it_came_from_in_order() {
     let before = m.vert_count();
     let mut births = Vec::new();
     let r = 0.5f32;
-    refine_in_sphere(&mut m, [0.0, 0.0, 1.0], r, edge_target(r, 1.0), &mut births);
+    refine_in_sphere(
+        &mut m,
+        [0.0, 0.0, 1.0],
+        r,
+        edge_target(r, 1.0),
+        &mut births,
+        &mut scratch(),
+    );
 
     assert_eq!(
         births.len(),
@@ -464,11 +524,25 @@ fn a_refusal_leaves_no_stale_parentage_behind() {
     let mut m = tri_sphere(10, 14);
     let mut births = Vec::new();
     let r = 0.5f32;
-    refine_in_sphere(&mut m, [0.0, 0.0, 1.0], r, edge_target(r, 1.0), &mut births);
+    refine_in_sphere(
+        &mut m,
+        [0.0, 0.0, 1.0],
+        r,
+        edge_target(r, 1.0),
+        &mut births,
+        &mut scratch(),
+    );
     assert!(!births.is_empty(), "a fixture TEM de conter o fenômeno");
 
     // Longe de tudo: nada a partir.
-    refine_in_sphere(&mut m, [10.0, 10.0, 10.0], 0.1, 0.05, &mut births);
+    refine_in_sphere(
+        &mut m,
+        [10.0, 10.0, 10.0],
+        0.1,
+        0.05,
+        &mut births,
+        &mut scratch(),
+    );
     assert!(births.is_empty(), "o buffer é do refino, não do chamador");
 }
 
@@ -495,14 +569,14 @@ fn the_flip_asks_only_about_the_faces_the_cut_touched() {
         "o controle: a fixture tem de conter o estrago"
     );
 
-    crate::dyntopo_flip::relax(&mut m, &[]);
+    crate::dyntopo_flip::relax(&mut m, &[], &mut scratch());
     assert!(
         has_pair(&m, pair),
         "o flip varreu a malha atrás de trabalho que ninguém pediu"
     );
 
     let seed = face_of(&m, pair[0]).expect("a face estragada está na malha");
-    crate::dyntopo_flip::relax(&mut m, &[seed]);
+    crate::dyntopo_flip::relax(&mut m, &[seed], &mut scratch());
     assert!(
         !has_pair(&m, pair),
         "o operador tem de QUERER reparar isto — sem esta metade, a de cima é vazia"
@@ -608,4 +682,10 @@ fn face_of(m: &Mesh, key: [u32; 3]) -> Option<u32> {
 
 fn has_pair(m: &Mesh, pair: [[u32; 3]; 2]) -> bool {
     pair.iter().all(|k| face_of(m, *k).is_some())
+}
+
+/// Um scratch de região por chamada — os gates não medem alocação, e um
+/// buffer partilhado entre eles esconderia um passe que o esqueceu de limpar.
+fn scratch() -> RegionScratch {
+    RegionScratch::default()
 }

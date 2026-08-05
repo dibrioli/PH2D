@@ -161,12 +161,12 @@ fn measure_what_a_dab_pays_for_refinement_today() {
         let target = 0.6 * mean_edge(&m);
         let mut births = Vec::new();
         let first = ms(|| {
-            refine_in_sphere(&mut m, centre, radius, target, &mut births);
+            refine_in_sphere(&mut m, centre, radius, target, &mut births, &mut scratch());
         });
         // Agora a região já está na densidade pedida: é o que um traço paga a
         // cada evento depois do primeiro.
         let steady = ms_median(5, || {
-            refine_in_sphere(&mut m, centre, radius, target, &mut births);
+            refine_in_sphere(&mut m, centre, radius, target, &mut births, &mut scratch());
         });
         let verdict = if first <= 8.0 { "sim" } else { "NAO" };
         println!("  {v:9}   {first:9.3}   {steady:12.3}   {verdict}");
@@ -208,7 +208,7 @@ fn measure_what_the_steady_floor_is_made_of() {
         // Uma passada leva a região à densidade pedida. Sem ela a sonda mediria
         // o PRIMEIRO dab, que é o outro regime — e é assim que uma fixture
         // deixa de conter o fenômeno.
-        refine_in_sphere(&mut m, centre, radius, target, &mut births);
+        refine_in_sphere(&mut m, centre, radius, target, &mut births, &mut scratch());
         let (v, f) = (m.vert_count(), m.face_count());
         let ne = m.edges().len();
 
@@ -223,7 +223,7 @@ fn measure_what_the_steady_floor_is_made_of() {
             m.octree().faces_in_sphere(centre, radius, &mut hits);
         });
         let total = ms_median(5, || {
-            refine_in_sphere(&mut m, centre, radius, target, &mut births);
+            refine_in_sphere(&mut m, centre, radius, target, &mut births, &mut scratch());
         });
         let select = (total - is_tri - oct).max(0.0);
         println!(
@@ -271,7 +271,7 @@ fn measure_what_the_first_dab_is_made_of() {
         let mut passes = 0usize;
         let first = ms(|| {
             if let ph2d_mesh::Refine::Done { passes: p, .. } =
-                refine_in_sphere(&mut m, centre, radius, target, &mut births)
+                refine_in_sphere(&mut m, centre, radius, target, &mut births, &mut scratch())
             {
                 passes = p;
             }
@@ -302,4 +302,8 @@ fn mean_edge(m: &ph2d_mesh::Mesh) -> f32 {
         }
     }
     sum / (tris.len() * 3).max(1) as f32
+}
+
+fn scratch() -> ph2d_mesh::RegionScratch {
+    ph2d_mesh::RegionScratch::default()
 }

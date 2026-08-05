@@ -57,14 +57,14 @@ fn the_refusal_does_not_build_the_edge_graph() {
     // Leva a região à densidade pedida. ⚠️ **Sem isto a fixture não contém o
     // fenômeno** — ela mediria o PRIMEIRO dab, que é o outro regime e que de
     // fato constrói o grafo, porque de fato tem o que partir.
-    let first = refine_in_sphere(&mut m, centre, radius, target, &mut births);
+    let first = refine_in_sphere(&mut m, centre, radius, target, &mut births, &mut scratch());
     assert!(
         matches!(first, Refine::Done { .. }),
         "o controle: a fixture tem de ter algo a refinar, e nao teve ({first:?})"
     );
 
     let before = dhat::HeapStats::get().total_bytes;
-    let r = refine_in_sphere(&mut m, centre, radius, target, &mut births);
+    let r = refine_in_sphere(&mut m, centre, radius, target, &mut births, &mut scratch());
     let refusal = dhat::HeapStats::get().total_bytes - before;
     assert!(
         matches!(r, Refine::Enough),
@@ -97,4 +97,11 @@ fn mean_edge(m: &Mesh) -> f32 {
         }
     }
     sum / (tris.len() * 3).max(1) as f32
+}
+
+/// ⚠️ Um scratch NOVO por chamada, de propósito: ele nasce vazio, então o
+/// caminho da negativa — que nunca chega ao passe de região — não aloca por
+/// causa dele, e o oráculo deste gate continua medindo o que ele diz medir.
+fn scratch() -> ph2d_mesh::RegionScratch {
+    ph2d_mesh::RegionScratch::default()
 }

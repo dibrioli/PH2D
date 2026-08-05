@@ -39,7 +39,14 @@ fn growing_the_stroke_keeps_the_frozen_base() {
 
     let target = ph2d_mesh::edge_target(0.5, 1.0);
     let mut births = Vec::new();
-    let r = ph2d_mesh::refine_in_sphere(&mut mesh, [0.0, 0.0, 1.0], 0.5, target, &mut births);
+    let r = ph2d_mesh::refine_in_sphere(
+        &mut mesh,
+        [0.0, 0.0, 1.0],
+        0.5,
+        target,
+        &mut births,
+        &mut scratch(),
+    );
     assert!(
         matches!(r, ph2d_mesh::Refine::Done { .. }),
         "a fixture TEM de refinar: {r:?}"
@@ -239,7 +246,14 @@ fn worst_birth_offset(gesture: Gesture) -> f32 {
             0.7
         };
         let target = ph2d_mesh::edge_target(brush.radius, detail);
-        ph2d_mesh::refine_in_sphere(&mut mesh, centre, brush.radius, target, &mut births);
+        ph2d_mesh::refine_in_sphere(
+            &mut mesh,
+            centre,
+            brush.radius,
+            target,
+            &mut births,
+            &mut scratch(),
+        );
         let born = births.clone();
         stroke.grow_with(&mesh, &births);
         let eye = [-centre[0], -centre[1], -centre[2]];
@@ -281,4 +295,8 @@ fn worst_birth_offset(gesture: Gesture) -> f32 {
         "a fixture TEM de conter o fenômeno: {checked}"
     );
     worst
+}
+
+fn scratch() -> ph2d_mesh::RegionScratch {
+    ph2d_mesh::RegionScratch::default()
 }

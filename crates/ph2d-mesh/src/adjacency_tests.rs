@@ -3,37 +3,114 @@
 use super::*;
 use crate::shapes;
 
-/// O invariante estrutural do CSR: `offsets` é uma soma de prefixo que termina
-/// no tamanho de `values`. Se ela mentir, `neighbours` lê a faixa de outro
-/// vértice — silenciosamente, com índices válidos.
-fn assert_is_prefix_sum(c: &Csr, items: usize) {
-    assert_eq!(
-        c.offsets.len(),
-        items + 1,
-        "offsets tem de ter n+1 entradas"
-    );
-    assert_eq!(c.offsets[0], 0);
+/// O invariante estrutural de um CSR **recém-construído**: as linhas ladrilham
+/// `values` na ordem, sem folga e sem buraco. Se ele mentir, `neighbours` lê a
+/// faixa de outro vértice — silenciosamente, com índices válidos.
+///
+/// ⚠️ **Ele vale no BUILD e deixa de valer depois de uma edição**, e é essa a
+/// diferença que faz uma mudança de topologia caber num dab: uma linha que
+/// cresce se muda para o fim, deixando um rastro. O que continua valendo sempre
+/// é o gate irmão — *toda linha está dentro de `values` e nenhuma se sobrepõe a
+/// outra* —, e é ele que protege a leitura.
+fn assert_is_packed(c: &Csr, items: usize) {
+    assert_eq!(c.starts.len(), items, "uma entrada de começo por item");
+    assert_eq!(c.lens.len(), items, "e uma de comprimento");
+    assert_eq!(c.dead, 0, "um CSR recém-construído não tem rastro");
+    let mut at = 0u32;
     for i in 0..items {
-        assert!(
-            c.offsets[i + 1] >= c.offsets[i],
-            "offsets recuou em {i}: {} -> {}",
-            c.offsets[i],
-            c.offsets[i + 1]
-        );
+        assert_eq!(c.starts[i], at, "a linha {i} não continua a anterior");
+        at += c.lens[i];
     }
     assert_eq!(
-        c.offsets[items] as usize,
+        at as usize,
         c.values.len(),
         "a última fronteira tem de ser o fim de values"
     );
 }
 
 #[test]
-fn the_csr_offsets_are_a_prefix_sum() {
+fn the_freshly_built_csr_is_packed() {
     let mesh = shapes::uv_sphere(8, 12, 1.0);
     let adj = mesh.adjacency();
-    assert_is_prefix_sum(&adj.vert_faces, mesh.vert_count());
-    assert_is_prefix_sum(&adj.vert_verts, mesh.vert_count());
+    assert_is_packed(&adj.vert_faces, mesh.vert_count());
+    assert_is_packed(&adj.vert_verts, mesh.vert_count());
+}
+
+/// **O invariante que sobrevive à edição:** toda linha cabe em `values` e
+/// nenhuma pisa na outra. É ele que torna a leitura segura depois de a
+/// representação deixar de ser uma soma de prefixos.
+fn assert_rows_are_disjoint(c: &Csr, items: usize) {
+    let mut spans: Vec<(u32, u32)> = (0..items)
+        .map(|i| (c.starts[i], c.starts[i] + c.lens[i]))
+        .filter(|(s, e)| s != e)
+        .collect();
+    for &(_, e) in &spans {
+        assert!(e as usize <= c.values.len(), "uma linha sai de values");
+    }
+    spans.sort_unstable();
+    for w in spans.windows(2) {
+        assert!(
+            w[0].1 <= w[1].0,
+            "duas linhas se sobrepõem: {:?} e {:?}",
+            w[0],
+            w[1]
+        );
+    }
+}
+
+#[test]
+fn an_edited_ring_is_exactly_what_a_rebuild_would_have_produced() {
+    let mut mesh = shapes::uv_sphere(8, 12, 1.0);
+    mesh.triangulate();
+    // Uma troca de diagonal num par vizinho qualquer — o que o flip faz.
+    let (i0, i1) = (0usize, {
+        let f0 = mesh.faces()[0].verts().to_vec();
+        let adj = mesh.adjacency();
+        *adj.vert_faces
+            .neighbours(f0[0] as usize)
+            .iter()
+            .find(|&&j| j != 0 && mesh.faces()[j as usize].verts().contains(&f0[1]))
+            .expect("a esfera tem vizinhas")
+    } as usize);
+    let (t0, t1) = (
+        mesh.faces()[i0].verts().to_vec(),
+        mesh.faces()[i1].verts().to_vec(),
+    );
+    let k = (0..3)
+        .find(|&k| !t1.contains(&t0[k]))
+        .expect("um canto de fora");
+    let c = t0[k];
+    let (a, b) = (t0[(k + 1) % 3], t0[(k + 2) % 3]);
+    let d = *t1
+        .iter()
+        .find(|v| **v != a && **v != b)
+        .expect("o quarto canto");
+
+    let mut scratch = crate::RegionScratch::default();
+    mesh.relink_faces(
+        &[
+            (i0 as u32, Face::tri(a, d, c)),
+            (i1 as u32, Face::tri(d, b, c)),
+        ],
+        &mut scratch,
+    );
+
+    let rebuilt = Adjacency::build(mesh.vert_count(), mesh.faces());
+    let edited = mesh.adjacency();
+    for v in 0..mesh.vert_count() {
+        assert_eq!(
+            edited.vert_faces.neighbours(v),
+            rebuilt.vert_faces.neighbours(v),
+            "o anel de faces de {v} divergiu do que um rebuild daria"
+        );
+        assert_eq!(
+            edited.vert_verts.neighbours(v),
+            rebuilt.vert_verts.neighbours(v),
+            "o anel de vértices de {v} divergiu do que um rebuild daria"
+        );
+    }
+    assert_rows_are_disjoint(&edited.vert_faces, mesh.vert_count());
+    assert_rows_are_disjoint(&edited.vert_verts, mesh.vert_count());
 }
 
 #[test]

@@ -120,7 +120,14 @@ fn stroke_across(refine: bool) -> Mesh {
         let eye = [-center[0], -center[1], -center[2]];
         if refine {
             let target = edge_target(brush.radius, 0.5);
-            let _ = refine_in_sphere(&mut mesh, center, brush.radius, target, &mut births);
+            let _ = refine_in_sphere(
+                &mut mesh,
+                center,
+                brush.radius,
+                target,
+                &mut births,
+                &mut scratch(),
+            );
             stroke.grow_with(&mesh, &births);
         }
         stroke.dab(
@@ -144,7 +151,14 @@ fn measure_how_far_the_propagation_reaches() {
         let before = mesh.vert_count();
         let (centre, radius) = ([0.0, 1.0, 0.0], 0.35f32);
         let target = edge_target(radius, 0.7);
-        let _ = refine_in_sphere(&mut mesh, centre, radius, target, &mut Vec::new());
+        let _ = refine_in_sphere(
+            &mut mesh,
+            centre,
+            radius,
+            target,
+            &mut Vec::new(),
+            &mut scratch(),
+        );
         let far = mesh.positions()[before..]
             .iter()
             .map(|p| {
@@ -187,7 +201,14 @@ fn stroke_press() -> Mesh {
         let pressure = 0.05 + 0.95 * (k as f32 / (DABS - 1) as f32);
         let center = [0.0, 1.0, 0.0];
         let target = edge_target(brush.radius, 0.7);
-        let _ = refine_in_sphere(&mut mesh, center, brush.radius, target, &mut births);
+        let _ = refine_in_sphere(
+            &mut mesh,
+            center,
+            brush.radius,
+            target,
+            &mut births,
+            &mut scratch(),
+        );
         stroke.grow_with(&mesh, &births);
         let mut d = Dab::at(center, brush.radius, [0.0, -1.0, 0.0]);
         d.pressure = pressure;
@@ -273,7 +294,14 @@ fn measure_what_the_refinement_alone_does_to_a_clean_sphere() {
     after.triangulate();
     after.rebuild();
     let target = edge_target(0.30, 0.5);
-    let out = refine_in_sphere(&mut after, [0.0, 1.0, 0.0], 0.30, target, &mut Vec::new());
+    let out = refine_in_sphere(
+        &mut after,
+        [0.0, 1.0, 0.0],
+        0.30,
+        target,
+        &mut Vec::new(),
+        &mut scratch(),
+    );
 
     let (aw, ap, am) = umbrella(&after);
     // Quanto o refino afastou a superfície da esfera unitária?
@@ -309,4 +337,8 @@ fn measure_what_the_refinement_alone_does_to_a_clean_sphere() {
         "  angulo minimo  depois pior {aw2:.2}  p1 {ap2:.2}  <10 graus {:.1}%",
         ab2 * 100.0
     );
+}
+
+fn scratch() -> ph2d_mesh::RegionScratch {
+    ph2d_mesh::RegionScratch::default()
 }

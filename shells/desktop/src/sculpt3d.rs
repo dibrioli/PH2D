@@ -297,6 +297,11 @@ pub(crate) struct Sculpt3dScene {
     /// ⚠️ Mora aqui e não no [`dyntopo::Dyntopo`] porque aquele é o estado que o
     /// ARTISTA autora (o interruptor e o detalhe) e é `Copy`; isto é rascunho.
     dyn_births: Vec<ph2d_mesh::Birth>,
+    /// **Os buffers do passe de região que o refino roda** — mesma razão do
+    /// `dyn_births` acima: eles são do tamanho da MALHA e nascer por dab os
+    /// tornaria uma alocação por movimento do mouse, que é o que o
+    /// [`ph2d_mesh::RegionScratch`] existe para evitar.
+    dyn_region: ph2d_mesh::RegionScratch,
     /// **A TABELA DE SLOTS DO DEVICE** — quem mora em cada índice do
     /// renderizador. Ver [`slots`], que é onde a lei dela está escrita.
     slots: Vec<ObjectId>,
@@ -379,6 +384,7 @@ impl Sculpt3dScene {
             dyntopo: dyntopo::Dyntopo::default(),
             dyn_before: None,
             dyn_births: Vec::new(),
+            dyn_region: ph2d_mesh::RegionScratch::default(),
             slots: Vec::new(),
             camera,
             renderer: MeshRenderer::new(device, ph2d_render::GameRt::FORMAT),

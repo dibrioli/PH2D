@@ -16,9 +16,19 @@ use serde::{Deserialize, Serialize};
 /// `geometry` é `None` — e uma tinta que morasse lá dentro não teria por onde viajar. São dois
 /// fatos independentes sobre um objeto, e um estado precisa de poder autorar um sem o outro.
 ///
-/// ⚠️ **A geometria é opcional, e o `None` é o caso comum.** É isso que lhe poupa **0,64 ms por
-/// objeto** (ver o doc da crate). `None` significa *este objeto não muda de forma neste estado* —
-/// a forma vem da cena.
+/// ⚠️ **A geometria é a FONTE autorada, e a autoria grava-a sempre.** Ela chegou a ser opcional
+/// *"porque a forma raramente muda"* — e o preço dessa frase foi que uma edição de nó, um Fillet
+/// ou um Chamfer **não animavam**: o campo existia, o motor sabia casá-lo, e ninguém o
+/// preenchia. `None` sobrou para o caso honesto de não haver forma nenhuma a que se agarrar (o
+/// objeto sumiu do documento).
+///
+/// ⚠️ **E o que poupa os 0,64 ms por objeto (ver o doc da crate) é a IGUALDADE, não a ausência:**
+/// duas formas idênticas não constroem `Plan` nenhum. O par só-de-cor continua a custar zero.
+///
+/// ⚠️ **Fonte, nunca cozido.** É a fonte que o modo Node edita e é ela que a chegada devolve ao
+/// documento; guardar a cozida assaria o raio de quina e a pilha de efeitos, e o artista
+/// perderia as alças no primeiro Show. Quem coze é o Blend, para o CAMINHO — a costura
+/// fonte≠cozido do ADR-0121, no nível do estado.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct ObjectPose {
     /// **A identidade, e a única chave de casamento.** Nunca o nome, nunca o índice.

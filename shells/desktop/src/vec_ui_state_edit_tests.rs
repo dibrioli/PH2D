@@ -303,3 +303,293 @@ fn the_duration_ruler_is_one_number() {
          documento noutro"
     );
 }
+
+/// A maior distância do centro do retângulo a um vértice — a assinatura de APARÊNCIA de uma
+/// quina: afiada ela é o ponto mais longe; arredondada, a quina foi recuada.
+fn corner_reach(g: &ph2d_vec_scene::VecPath) -> f64 {
+    g.verts
+        .iter()
+        .map(|v| v.anchor[0].hypot(v.anchor[1]))
+        .fold(0.0_f64, f64::max)
+}
+
+/// **REPRO (Enio, 2026-08-05): mudar a FORMA entre dois estados não animava.**
+///
+/// *"A animação não funciona para mudanças nos nós da shape, nem para mudanças feitas com as
+/// tools Fillet, Chamfer, Width e Cut."*
+///
+/// ⚠️ E a causa é a que um gate nunca vê sozinho: o [`ObjectPose::geometry`] **existia**, a
+/// [`ph2d_ui_state::Transition`] **sabia** construir o `Plan`, o `install` **sabia** escrever os
+/// verts — e **ninguém preenchia o campo**. Uma capacidade sem PORTA passa em todos os gates:
+/// eles leem quem CONSOME o campo, e o defeito estava em quem o ESCREVE.
+#[test]
+fn a_node_edit_between_two_states_morphs() {
+    let (mut sim, mut scene, map, host, _child) = scene_with_host_and_child();
+    let mut states = StateSets::default();
+
+    let rec = |sim: &mut SimWorld, scene: &mut VecScene, states: &mut StateSets, role| {
+        apply(sim, scene, &map, &[host], states, UiStateEdit::Record(role));
+    };
+
+    rec(&mut sim, &mut scene, &mut states, StateRole::Default);
+    // O artista puxa um nó no modo Node.
+    scene
+        .paths_mut()
+        .iter_mut()
+        .find(|p| p.id == host)
+        .unwrap()
+        .verts[1]
+        .anchor = [6.0, 0.0];
+    rec(&mut sim, &mut scene, &mut states, StateRole::Hover);
+
+    let a = states.role(host, StateRole::Default).unwrap();
+    let b = states.role(host, StateRole::Hover).unwrap();
+    let tr = ph2d_ui_state::Transition::new(&a.objects, &b.objects);
+    assert_eq!(
+        tr.plans_built(),
+        1,
+        "a mudanca de forma nao produziu casamento nenhum: o estado nao gravou a geometria"
+    );
+
+    let mid = tr.at(0.5);
+    let g = mid
+        .iter()
+        .find(|p| p.id == host)
+        .and_then(|p| p.geometry.as_ref())
+        .expect("a pose do meio tem de carregar a forma interpolada");
+    let far = g.verts.iter().map(|v| v.anchor[0]).fold(0.0_f64, f64::max);
+    assert!(
+        far > 2.5 && far < 5.5,
+        "o meio do caminho nao esta ENTRE as duas formas (2.0 e 6.0): {far}"
+    );
+}
+
+/// **O Fillet e o Chamfer também morfam — porque o casamento é feito na geometria COZIDA.**
+///
+/// ⚠️ Este gate é o que decide *fonte ou cozido* (ADR-0121). O raio de quina vive **dentro do
+/// vértice**, então casar as FONTES daria dois quadrados de vértices idênticos — nenhum `Plan`,
+/// e a quina apareceria de uma vez só no fim. O artista vê o COZIDO, e é ele que tem de viajar.
+#[test]
+fn a_fillet_between_two_states_rounds_along_the_way() {
+    let (mut sim, mut scene, map, host, _child) = scene_with_host_and_child();
+    let mut states = StateSets::default();
+
+    // Um quadrado centrado, para a distância ao centro medir a quina.
+    *scene.paths_mut().iter_mut().find(|p| p.id == host).unwrap() = ph2d_vec_scene::VecPath {
+        id: host,
+        ..ph2d_vec_scene::rectangle([-1.0, -1.0], [1.0, 1.0])
+    };
+    apply(
+        &mut sim,
+        &mut scene,
+        &map,
+        &[host],
+        &mut states,
+        UiStateEdit::Record(StateRole::Default),
+    );
+
+    // O Fillet: mesma curva autorada, raio novo em cada quina.
+    for v in &mut scene
+        .paths_mut()
+        .iter_mut()
+        .find(|p| p.id == host)
+        .unwrap()
+        .verts
+    {
+        v.corner_radius = 0.6;
+    }
+    apply(
+        &mut sim,
+        &mut scene,
+        &map,
+        &[host],
+        &mut states,
+        UiStateEdit::Record(StateRole::Hover),
+    );
+
+    let a = states.role(host, StateRole::Default).unwrap();
+    let b = states.role(host, StateRole::Hover).unwrap();
+    let tr = ph2d_ui_state::Transition::new(&a.objects, &b.objects);
+    assert_eq!(
+        tr.plans_built(),
+        1,
+        "o Fillet nao produziu casamento: os dois lados foram comparados na FONTE, onde eles \
+         sao o mesmo quadrado"
+    );
+
+    let sharp = corner_reach(
+        a.objects
+            .iter()
+            .find(|p| p.id == host)
+            .unwrap()
+            .geometry
+            .as_ref()
+            .unwrap(),
+    );
+    let mid = tr.at(0.5);
+    let round = corner_reach(
+        mid.iter()
+            .find(|p| p.id == host)
+            .and_then(|p| p.geometry.as_ref())
+            .expect("forma no meio"),
+    );
+    assert!(
+        round < sharp - 1e-6,
+        "a quina do meio do caminho nao recuou nada: {round} contra {sharp} da afiada"
+    );
+}
+
+/// **A geometria AUTORADA sobrevive ao Show — as alças de quina e a pilha de efeitos voltam.**
+///
+/// ⚠️ Este é o gate de PERDA DE TRABALHO, e ele existe porque a transição passa pelo documento:
+/// a pose do meio do caminho é geometria já **cozida** (o raio realizado, os efeitos aplicados),
+/// e escrevê-la sem a devolver deixaria o artista sem as alças que ele acabou de arrastar. A
+/// chegada instala a pose AUTORADA, e é ela que faz a passagem ser transitória.
+///
+/// ⚠️ E a metade do MEIO é a que impede a dobra: a pilha tem de chegar ao documento **VAZIA**
+/// enquanto a forma está cozida, senão o render a aplica outra vez sobre uma geometria que já a
+/// tem.
+#[test]
+fn a_show_gives_the_authored_shape_back_stack_and_all() {
+    use ph2d_vec_scene::effect::{FxEntry, PathEffect};
+    use ph2d_vec_scene::fx_trim::TrimSpec;
+
+    let (mut sim, mut scene, map, host, _child) = scene_with_host_and_child();
+    let mut states = StateSets::default();
+
+    let authored = {
+        let p = scene.paths_mut().iter_mut().find(|p| p.id == host).unwrap();
+        for v in &mut p.verts {
+            v.corner_radius = 0.25;
+        }
+        p.effects
+            .push(FxEntry::new(PathEffect::Trim(TrimSpec::default())));
+        p.clone()
+    };
+    apply(
+        &mut sim,
+        &mut scene,
+        &map,
+        &[host],
+        &mut states,
+        UiStateEdit::Record(StateRole::Default),
+    );
+    scene
+        .paths_mut()
+        .iter_mut()
+        .find(|p| p.id == host)
+        .unwrap()
+        .verts[1]
+        .anchor = [7.0, 0.0];
+    apply(
+        &mut sim,
+        &mut scene,
+        &map,
+        &[host],
+        &mut states,
+        UiStateEdit::Record(StateRole::Hover),
+    );
+
+    let a = states
+        .role(host, StateRole::Default)
+        .unwrap()
+        .objects
+        .clone();
+    let b = states.role(host, StateRole::Hover).unwrap().objects.clone();
+    let tr = ph2d_ui_state::Transition::new(&b, &a);
+
+    // O MEIO: cozida, e a pilha tem de sair do documento enquanto ela lá está.
+    for p in tr.at(0.5) {
+        install(&mut sim, &mut scene, &map, &p);
+    }
+    let mid = scene.paths().iter().find(|p| p.id == host).unwrap();
+    assert!(
+        mid.effects.is_empty(),
+        "a forma do meio ja esta cozida e a pilha ficou no documento: o render vai aplica-la \
+         DUAS vezes"
+    );
+
+    // A CHEGADA: a pose autorada, ao bit.
+    for p in &a {
+        install(&mut sim, &mut scene, &map, p);
+    }
+    let back = scene.paths().iter().find(|p| p.id == host).unwrap();
+    assert_eq!(
+        back.effects, authored.effects,
+        "a pilha de efeitos nao voltou depois do Show"
+    );
+    assert!(
+        back.verts
+            .iter()
+            .all(|v| (v.corner_radius - 0.25).abs() < 1e-12),
+        "os raios de quina foram ASSADOS pela transicao: as alcas do artista sumiram"
+    );
+}
+
+/// **Dois estados que diferem SÓ na pilha de efeitos também morfam.**
+///
+/// ⚠️ Este gate existe por causa de uma mutação que sobreviveu: `same_shape` comparando apenas
+/// `verts`+`closed` passava em tudo o resto, porque um Fillet mexe nos verts (o raio mora dentro
+/// do vértice) e uma edição de nó também. **O único par que separa os dois testes é aquele em
+/// que a fonte é idêntica e só a pilha muda** — e ali a forma desenhada difere sem que um único
+/// vértice se mexa.
+#[test]
+fn two_states_that_differ_only_in_the_effect_stack_morph() {
+    use ph2d_vec_scene::effect::{FxEntry, PathEffect};
+    use ph2d_vec_scene::fx_warp::BloatSpec;
+
+    let (mut sim, mut scene, map, host, _child) = scene_with_host_and_child();
+    let mut states = StateSets::default();
+
+    apply(
+        &mut sim,
+        &mut scene,
+        &map,
+        &[host],
+        &mut states,
+        UiStateEdit::Record(StateRole::Default),
+    );
+    scene
+        .paths_mut()
+        .iter_mut()
+        .find(|p| p.id == host)
+        .unwrap()
+        .effects
+        .push(FxEntry::new(PathEffect::Bloat(BloatSpec::default())));
+    apply(
+        &mut sim,
+        &mut scene,
+        &map,
+        &[host],
+        &mut states,
+        UiStateEdit::Record(StateRole::Hover),
+    );
+
+    let a = states.role(host, StateRole::Default).unwrap();
+    let b = states.role(host, StateRole::Hover).unwrap();
+    assert_eq!(
+        a.objects
+            .iter()
+            .find(|p| p.id == host)
+            .unwrap()
+            .geometry
+            .as_ref()
+            .unwrap()
+            .verts,
+        b.objects
+            .iter()
+            .find(|p| p.id == host)
+            .unwrap()
+            .geometry
+            .as_ref()
+            .unwrap()
+            .verts,
+        "a fixture nao contem o fenomeno: os verts tinham de ser IDENTICOS nos dois estados"
+    );
+    let tr = ph2d_ui_state::Transition::new(&a.objects, &b.objects);
+    assert_eq!(
+        tr.plans_built(),
+        1,
+        "a pilha de efeitos mudou a forma desenhada e ninguem a casou"
+    );
+}

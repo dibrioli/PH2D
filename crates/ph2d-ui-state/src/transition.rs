@@ -62,7 +62,19 @@ impl Transition {
                     // O `Plan` é construído **só** quando as geometrias de facto diferem. Formas
                     // iguais (ou ausentes) atravessam sem pagar a busca de fase.
                     let shape = match (&a.geometry, &b.geometry) {
-                        (Some(ga), Some(gb)) if ga.verts != gb.verts || ga.closed != gb.closed => {
+                        (Some(ga), Some(gb)) if !same_shape(ga, gb) => {
+                            // ⚠️ **O casamento acontece na geometria COZIDA, e quem coze é o
+                            // Blend** (`compound::rings` chama `cooked()`): é isso que faz um
+                            // Fillet, um Chamfer ou um efeito da pilha VIAJAREM em vez de
+                            // aparecerem de uma vez no fim — um raio de quina mora *dentro* do
+                            // vértice, e duas fontes com o mesmo desenho de nós são idênticas.
+                            //
+                            // ⚠️ **E o cozimento NÃO é repetido aqui**, embora a tentação seja
+                            // grande: um `cooked()` deste lado seria uma segunda resposta a
+                            // *"a interpolação de forma vê a fonte ou o cozido?"*, e a mutação
+                            // que a removeu não sangrou — porque ela não decidia nada. A
+                            // decisão tem um dono (ADR-0121, a costura fonte≠cozido), e é lá
+                            // que ela se muda.
                             let p = Plan::new(ga, gb).map(Box::new);
                             if p.is_some() {
                                 plans_built += 1;
@@ -145,12 +157,21 @@ impl Transition {
                     // ⚠️ E a forma que sai do `Plan` recebe a tinta da POSE, não a que o `Plan`
                     // interpolou por conta: se o objeto sai auto-consistente daqui, ninguém a
                     // jusante tem de decidir qual das duas vale.
-                    p.geometry = shape.as_ref().map(|plan| {
-                        let mut g = plan.at(t);
-                        g.fill.clone_from(&p.fill);
-                        g.stroke = p.stroke;
-                        g
-                    });
+                    //
+                    // ⚠️ **Sem `Plan`, a forma é a de PARTIDA** — uma regra, dois casos. Formas
+                    // iguais: `from` e `to` dão o mesmo desenho, e a escolha não é observável.
+                    // Par degenerado (o `Plan` recusou): a forma **fica onde está** até a chegada
+                    // a trocar, que é o que quem SAI e quem ENTRA já fazem — inventar um caminho
+                    // que o motor não sabe traçar seria um salto no primeiro quadro.
+                    p.geometry = match shape.as_ref() {
+                        Some(plan) => {
+                            let mut g = plan.at(t);
+                            g.fill.clone_from(&p.fill);
+                            g.stroke = p.stroke;
+                            Some(g)
+                        }
+                        None => from.geometry.clone(),
+                    };
                     p
                 }
                 // Quem SAI fica onde estava e desvanece; quem ENTRA já está no lugar de destino e
@@ -191,4 +212,19 @@ fn lerp_angle(a: f64, b: f64, t: f64) -> f64 {
         d -= FULL_TURN;
     }
     a + d * t
+}
+
+/// **Estas duas geometrias desenham a mesma coisa?**
+///
+/// ⚠️ Ela compara **tudo o que o `install` escreve**, e a coincidência é a lei: se um campo
+/// entrasse aqui sem entrar lá, um estado escreveria metade da forma; se entrasse lá sem entrar
+/// aqui, duas formas diferentes passariam por iguais e a transição nunca as casaria. `id`, `fill`
+/// e `stroke` ficam de fora porque **não são forma** — a identidade e a tinta são campos da POSE,
+/// e cada fato tem uma casa só.
+fn same_shape(a: &ph2d_vec_scene::VecPath, b: &ph2d_vec_scene::VecPath) -> bool {
+    a.verts == b.verts
+        && a.closed == b.closed
+        && a.subpaths == b.subpaths
+        && a.fill_rule == b.fill_rule
+        && a.effects == b.effects
 }

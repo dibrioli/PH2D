@@ -391,7 +391,10 @@ fn an_aborted_flight_does_not_deafen_the_next_show() {
 
     // O ABORTO REAL: o artista re-grava enquanto a transição corre (a tabela muda debaixo da
     // máquina). O voo morre, a pose viva fica onde estava, e `current` ainda diz `Default`.
-    m.retarget(vec![at(StateRole::Default, 0.0), at(StateRole::Hover, 20.0)]);
+    m.retarget(vec![
+        at(StateRole::Default, 0.0),
+        at(StateRole::Hover, 20.0),
+    ]);
     assert!(!m.is_animating(), "a fixture nao abortou o voo");
     assert_eq!(m.current(), 0, "a fixture nao reproduz o estado do repro");
 
@@ -428,7 +431,11 @@ fn showing_the_pose_the_scene_already_wears_is_free_and_still_lands() {
         .expect("maquina");
     m.go_to(1, 1.0, linear());
     assert!(!m.is_animating(), "animou de x para x");
-    assert_eq!(m.current(), 1, "a maquina nao assumiu o papel que o artista pediu");
+    assert_eq!(
+        m.current(),
+        1,
+        "a maquina nao assumiu o papel que o artista pediu"
+    );
 }
 
 /// **Re-alinhar à MESMA tabela não é uma mudança, e não pode matar um voo.**

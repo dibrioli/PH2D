@@ -104,15 +104,38 @@ fn capture(sim: &SimWorld, scene: &VecScene, map: &VecEntityMap, id: VecPathId) 
     if let Some(p) = scene.paths().iter().find(|p| p.id == id) {
         pose.fill.clone_from(&p.fill);
         pose.stroke = p.stroke;
+        // **A FORMA, sempre.** Um estado que não a gravasse não teria como animar uma edição de
+        // nó, um Fillet ou um Chamfer — e o campo existia, com o motor pronto do outro lado,
+        // esperando um produtor que nunca chegou.
+        //
+        // ⚠️ **A fonte AUTORADA, não a cozida.** É ela que o modo Node edita e é ela que o
+        // `install` devolve na chegada; gravar a cozida assaria o raio de quina e a pilha de
+        // efeitos no documento, e o artista perderia as alças no primeiro Show. Quem coze é a
+        // [`ph2d_ui_state::Transition`], para o CAMINHO — a costura fonte≠cozido do ADR-0121,
+        // no nível do estado.
+        //
+        // ⚠️ **E a tinta sai daqui.** Ela é campo de primeira classe da pose; deixá-la também
+        // dentro da geometria daria dois lugares para o mesmo fato dentro do mesmo arquivo.
+        let mut g = p.clone();
+        g.fill = None;
+        g.stroke = None;
+        pose.geometry = Some(g);
     }
     pose
 }
 
 /// **Escreve uma pose de volta** no mundo e no documento.
 ///
-/// ⚠️ Ela escreve o que a pose AUTORA e mais nada: `geometry` é `None` no caso comum (a forma não
-/// muda de forma entre estados), e sobrescrever a geometria com o que a cena já tem seria trabalho
-/// que só pode divergir.
+/// ⚠️ **A forma escreve TUDO o que a forma é** — verts, fechamento, contornos, regra de
+/// preenchimento e a pilha de efeitos. Escrever metade deixaria a outra metade a descrever a
+/// forma anterior: a pilha do estado antigo re-aplicada sobre a geometria do novo é uma dobra
+/// que ninguém autorou.
+///
+/// ⚠️ **E é por isso que a pose do MEIO chega aqui já cozida e com a pilha VAZIA**
+/// ([`ph2d_ui_state::Transition`]): a geometria intermédia já tem o raio e os efeitos
+/// realizados, então re-cozinhá-la seria aplicá-los duas vezes. Na CHEGADA volta a autorada, com
+/// as alças de quina e a pilha intactas — a passagem pelo documento é transitória e cura-se
+/// sozinha, e é o preço de o Show ter de deixar a cena *editável no estado que mostra*.
 pub(crate) fn install(
     sim: &mut SimWorld,
     scene: &mut VecScene,
@@ -137,6 +160,9 @@ pub(crate) fn install(
         if let Some(g) = &pose.geometry {
             p.verts.clone_from(&g.verts);
             p.closed = g.closed;
+            p.subpaths.clone_from(&g.subpaths);
+            p.fill_rule = g.fill_rule;
+            p.effects.clone_from(&g.effects);
         }
     }
 }

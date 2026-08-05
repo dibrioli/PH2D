@@ -184,16 +184,23 @@ fn the_shape_goes_through_the_one_blend_engine() {
 /// ⚠️ Ele CONTA em vez de cronometrar, que é o que o torna imune à carga da máquina. O relógio
 /// está na sonda `measure_what_a_plan_costs` da `ph2d-vec-blend`: 0,64 ms por par mesmo com as
 /// formas iguais, contra 0,0001 ms de um passo. Vinte objetos = **12,79 ms**, 77% de um quadro.
+///
+/// ⚠️ **E os dois lados carregam a MESMA forma, de propósito.** O `None` deixou de ser o caso
+/// comum quando a autoria passou a gravar sempre a geometria (senão um Fillet não teria como
+/// viajar), então uma fixture sem forma nenhuma testaria um par que o produto já não produz —
+/// e o zero sairia por vácuo. Quem poupa os 12,79 ms hoje é a IGUALDADE, não a ausência.
 #[test]
 fn a_colour_only_change_builds_no_plan() {
     let mut a = UiState::new(StateRole::Default);
     a.objects = vec![ObjectPose {
         fill: Some(Paint::Solid(Rgba8::new(30, 90, 200, 255))),
+        geometry: Some(rect(1)),
         ..posed(1)
     }];
     let mut b = UiState::new(StateRole::Hover);
     b.objects = vec![ObjectPose {
         fill: Some(Paint::Solid(Rgba8::new(230, 200, 40, 255))),
+        geometry: Some(rect(1)),
         ..posed(1)
     }];
 
@@ -424,4 +431,46 @@ fn the_table_survives_the_wire_in_a_deterministic_order() {
     let back: StateSets = postcard::from_bytes(&wa).expect("volta");
     assert_eq!(back, a);
     assert_eq!(back.hosts().collect::<Vec<_>>(), vec![7, 19, 30]);
+}
+
+/// **A pose VIVA carrega a forma em que está** — senão a transição seguinte parte do nada.
+///
+/// ⚠️ O caminho é o do produto: o artista mostra um estado, e do meio dele pede outro. Se o
+/// passo intermédio devolvesse `geometry: None` sempre que não houvesse `Plan` (formas iguais),
+/// a transição seguinte veria um lado **sem forma**, não casaria nada, e a forma **saltaria**
+/// para o destino no primeiro quadro em vez de viajar.
+#[test]
+fn the_live_pose_carries_the_shape_it_is_standing_on() {
+    let square = rect(1);
+    let mut round = ellipse([1.0, 0.5], 1.0, 0.5);
+    round.id = 1;
+
+    // 1ª transição: SÓ a cor muda (formas iguais ⇒ nenhum `Plan`).
+    let a = vec![ObjectPose {
+        fill: Some(Paint::Solid(Rgba8::new(30, 90, 200, 255))),
+        geometry: Some(square.clone()),
+        ..posed(1)
+    }];
+    let b = vec![ObjectPose {
+        fill: Some(Paint::Solid(Rgba8::new(230, 200, 40, 255))),
+        geometry: Some(square.clone()),
+        ..posed(1)
+    }];
+    let live = Transition::new(&a, &b).at(0.5);
+    assert!(
+        live[0].geometry.is_some(),
+        "a pose do meio esqueceu a forma em que a cena esta"
+    );
+
+    // 2ª transição, partindo do meio da primeira: a forma tem de VIAJAR.
+    let c = vec![ObjectPose {
+        geometry: Some(round),
+        ..posed(1)
+    }];
+    let tr = Transition::new(&live, &c);
+    assert_eq!(
+        tr.plans_built(),
+        1,
+        "a transicao encadeada nao casou forma nenhuma: a forma vai SALTAR"
+    );
 }

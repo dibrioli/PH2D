@@ -66,8 +66,16 @@ fn the_refinement_is_off_by_default_and_the_guard_is_the_first_question() {
 fn refining_grows_the_stroke_instead_of_restarting_it() {
     let body = function_body(&sculpt_src(), "refine_for_dab");
     assert!(
-        body.contains("self.stroke.grow_to("),
+        body.contains("self.stroke.grow_with("),
         "o traço é RE-DIMENSIONADO, que é o que preserva o `pre`"
+    );
+    // ⚠️ **E a PARENTELA atravessa junto.** Crescer sem ela deixaria cada
+    // vértice novo entrar como nunca-visto, capturando como `pre` uma posição
+    // que já contém o deslocamento deste traço — o dab soma outra vez e sai uma
+    // agulha da altura do gesto (medido: 0,720 da aresta contra 0,053).
+    assert!(
+        body.contains("&mut births") && body.contains("&births"),
+        "os nascimentos que o refino declara são os mesmos que o traço herda"
     );
     assert!(
         !body.contains("self.stroke.begin("),

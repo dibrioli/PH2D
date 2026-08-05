@@ -291,6 +291,12 @@ pub(crate) struct Sculpt3dScene {
     /// a malha inteira (a entrada `Remeshed`, que já é uma troca simétrica).
     /// Vazio fora do gesto — ele não é um cache, é a metade de trás de UM passo.
     dyn_before: Option<Box<ph2d_mesh::Mesh>>,
+    /// **De onde veio cada vértice que o último refino criou** — reusado entre
+    /// dabs, e por isso um campo em vez de um `Vec` local.
+    ///
+    /// ⚠️ Mora aqui e não no [`dyntopo::Dyntopo`] porque aquele é o estado que o
+    /// ARTISTA autora (o interruptor e o detalhe) e é `Copy`; isto é rascunho.
+    dyn_births: Vec<ph2d_mesh::Birth>,
     /// **A TABELA DE SLOTS DO DEVICE** — quem mora em cada índice do
     /// renderizador. Ver [`slots`], que é onde a lei dela está escrita.
     slots: Vec<ObjectId>,
@@ -372,6 +378,7 @@ impl Sculpt3dScene {
             isolated: None,
             dyntopo: dyntopo::Dyntopo::default(),
             dyn_before: None,
+            dyn_births: Vec::new(),
             slots: Vec::new(),
             camera,
             renderer: MeshRenderer::new(device, ph2d_render::GameRt::FORMAT),

@@ -51,6 +51,27 @@
 use crate::face::Face;
 use crate::mesh::Mesh;
 
+/// **DE ONDE UM VÉRTICE NOVO VEIO** — o par cuja aresta foi partida para criá-lo.
+///
+/// ⚠️ **A parentela não é diagnóstico: ela é o que torna o refino compatível com
+/// um traço em voo.** Um vértice que nasce no meio de um gesto herda a posição
+/// média dos pais *como eles estão AGORA*, ou seja **já deslocados** pelo traço;
+/// quem só recebesse a contagem nova o trataria como nunca-visto e o deslocaria
+/// outra vez, contando o mesmo deslocamento duas vezes. Medido: o desvio de
+/// guarda-chuva do p99 vai de 0,31 (o traço sem refino) para 0,61 — a superfície
+/// de AGULHAS que o smoke de 2026-08-04 reprovou.
+///
+/// Quem sabe *onde ele estava antes* é o par: o ponto médio dos `pre` deles.
+/// Ver `SculptStroke::grow_with`.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub struct Birth {
+    /// O índice do vértice novo.
+    pub vert: u32,
+    /// Os dois extremos da aresta partida.
+    pub a: u32,
+    pub b: u32,
+}
+
 /// O que o refino fez, ou por que não fez nada.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Refine {
@@ -99,7 +120,25 @@ const MAX_PASSES: usize = 3;
 /// `edge_max` sai do [`edge_target`] — ele é passado em vez de derivado aqui
 /// porque quem conhece o `detail` é o dono do pincel, e derivá-lo duas vezes é
 /// como o log e a geometria passam a discordar.
-pub fn refine_in_sphere(mesh: &mut Mesh, center: [f32; 3], radius: f32, edge_max: f32) -> Refine {
+///
+/// ⚠️ **`births` é LIMPO e preenchido com um [`Birth`] por vértice novo, na
+/// ordem em que eles nascem.** A ordem é load-bearing: um passe pode partir uma
+/// aresta cujo extremo é um vértice do passe ANTERIOR, então quem consome a
+/// lista tem de a percorrer para a frente para que o pai já esteja resolvido.
+///
+/// ⚠️ **É parâmetro obrigatório, e não um `Option` nem uma porta irmã.** A lição
+/// é do `with_arc_len` do Painter 2D: um canal opcional chegava em 2 de 7 rotas e
+/// a feature simplesmente não acontecia nas outras cinco, em silêncio. Aqui o
+/// preço de esquecer não é um efeito ausente — é a superfície de agulhas do
+/// [`Birth`].
+pub fn refine_in_sphere(
+    mesh: &mut Mesh,
+    center: [f32; 3],
+    radius: f32,
+    edge_max: f32,
+    births: &mut Vec<Birth>,
+) -> Refine {
+    births.clear();
     if !mesh.faces().iter().all(Face::is_tri) {
         return Refine::NotTriangles;
     }
@@ -109,14 +148,26 @@ pub fn refine_in_sphere(mesh: &mut Mesh, center: [f32; 3], radius: f32, edge_max
     let (v0, f0) = (mesh.vert_count(), mesh.face_count());
     let mut passes = 0;
     while passes < MAX_PASSES {
-        if !one_pass(mesh, center, radius, edge_max) {
+        if !one_pass(mesh, center, radius, edge_max, births) {
             break;
         }
         passes += 1;
     }
+    debug_assert_eq!(
+        births.len(),
+        mesh.vert_count() - v0,
+        "todo vértice novo tem de declarar de onde veio"
+    );
     if passes == 0 {
         return Refine::Enough;
     }
+    // ⚠️ **A SEGUNDA METADE DO REFINO, e sem ela a primeira apodrece a malha.**
+    // O corte não consegue manter a forma dos triângulos — a vizinha de uma face
+    // escolhida tem de aprender o vértice novo, e isso a parte pela metade do
+    // ângulo. O flip devolve a qualidade sem criar nem mover vértice, então ele
+    // roda DEPOIS de todos os passes e não fala com o traço em voo. Os números
+    // que o justificam estão no cabeçalho do [`crate::dyntopo_flip`].
+    crate::dyntopo_flip::relax(mesh);
     Refine::Done {
         verts_added: mesh.vert_count() - v0,
         faces_added: mesh.face_count() - f0,
@@ -124,8 +175,37 @@ pub fn refine_in_sphere(mesh: &mut Mesh, center: [f32; 3], radius: f32, edge_max
     }
 }
 
+/// A aresta mais longa de uma face: `(comprimento², id)`.
+fn longest_edge(
+    edges: &crate::edges::Edges,
+    fi: usize,
+    v: &[u32],
+    positions: &[[f32; 3]],
+) -> Option<(f32, u32)> {
+    let mut best: Option<(f32, u32)> = None;
+    for k in 0..v.len() {
+        let e = edges.face_edge(fi, k)?;
+        let (pa, pb) = (
+            positions[v[k] as usize],
+            positions[v[(k + 1) % v.len()] as usize],
+        );
+        let d = [pb[0] - pa[0], pb[1] - pa[1], pb[2] - pa[2]];
+        let l2 = d[0] * d[0] + d[1] * d[1] + d[2] * d[2];
+        if best.is_none_or(|(b, _)| l2 > b) {
+            best = Some((l2, e));
+        }
+    }
+    best
+}
+
 /// Um passe. `true` se alguma coisa foi partida.
-fn one_pass(mesh: &mut Mesh, center: [f32; 3], radius: f32, edge_max: f32) -> bool {
+fn one_pass(
+    mesh: &mut Mesh,
+    center: [f32; 3],
+    radius: f32,
+    edge_max: f32,
+    births: &mut Vec<Birth>,
+) -> bool {
     let r2 = radius * radius;
     let emax2 = edge_max * edge_max;
 
@@ -152,53 +232,122 @@ fn one_pass(mesh: &mut Mesh, center: [f32; 3], radius: f32, edge_max: f32) -> bo
     let positions = mesh.positions();
     let mut marked: Vec<u32> = Vec::new();
 
+    // ⚠️ **A ESCOLHA É POR FACE, E ELA É A WAVE INTEIRA.**
+    //
+    // A primeira versão escolhia por ARESTA — toda aresta longa cujo meio caísse
+    // na esfera. O efeito é que uma face que ATRAVESSA a fronteira do pincel tem
+    // uma ou duas arestas escolhidas e a terceira não, e o padrão a corta em
+    // "verde": dois triângulos, cada um com METADE do ângulo daquele canto. Como
+    // a esfera do dab ANDA, o dab seguinte escolhe outra aresta da mesma face e
+    // corta de novo. Medido num traço de 24 dabs: o pior ângulo mínimo cai de
+    // **21,21° para 1,53°** e **15% da malha** fica abaixo de 10°.
+    //
+    // ⚠️ **Uma lasca não desloca vértice nenhum** — o desvio de posição era
+    // literalmente o mesmo com e sem o conserto do `pre` (0,7131 contra 0,7158),
+    // e foi só medindo ÂNGULO que o defeito apareceu. É a superfície de agulhas
+    // do smoke de 2026-08-04: a normal por-vértice de um triângulo fino não
+    // aponta para lado nenhum, e a luz desenha isso como um espinho.
+    //
+    // Por FACE, a face é atômica: ou as TRÊS arestas dela entram (o corte 1→4,
+    // cujas quatro filhas são **semelhantes à mãe** — ângulos preservados
+    // exatamente, para sempre) ou nenhuma. O corte verde deixa de ser produzido
+    // pela ESCOLHA e passa a existir só no ANEL de vizinhas que a costura
+    // obriga, que é uma vez por face e não uma por dab.
+    //
+    // ⚠️ **E o fecho tem de PARAR aí.** Promover as vizinhas a vermelho também
+    // (para lhes dar a mesma garantia) foi construído e MEDIDO: ele cascateia
+    // pela malha inteira — 57 → **846** vértices no hemisfério que o pincel
+    // nunca tocou, ou seja o oposto exato da promessa deste modo. O anel verde é
+    // o preço, e ele é local.
+    //
+    // ⚠️ **O CENTROIDE tem de estar na esfera** (era o MEIO de cada aresta, pelo
+    // mesmo motivo, um nível abaixo): uma face enorme que só encosta na esfera
+    // com uma ponta nasceria refinada onde o artista não passou.
     for &f in &hits {
         let fi = f as usize;
         let Some(face) = mesh.faces().get(fi) else {
             continue;
         };
         let v = face.verts();
-        for k in 0..v.len() {
-            let Some(e) = edges.face_edge(fi, k) else {
-                continue;
-            };
-            if pending[e as usize] {
-                continue;
+        let inv = 1.0 / v.len() as f32;
+        let mut c = [0.0f32; 3];
+        for &i in v {
+            let p = positions[i as usize];
+            for (acc, q) in c.iter_mut().zip(p) {
+                *acc += q * inv;
             }
-            let (a, b) = (v[k], v[(k + 1) % v.len()]);
-            let (pa, pb) = (positions[a as usize], positions[b as usize]);
+        }
+        let dc = [c[0] - center[0], c[1] - center[1], c[2] - center[2]];
+        if dc[0] * dc[0] + dc[1] * dc[1] + dc[2] * dc[2] > r2 {
+            continue;
+        }
+        // Escolhida a face, entram TODAS as arestas dela que passam do alvo.
+        //
+        // ⚠️ **Marcar só a mais longa foi construído e MEDIDO — ele converge
+        // devagar demais.** Uma bissecção corta uma aresta por face por passe, e
+        // o `MAX_PASSES` é um teto de QUADRO; com três passes a região do dab
+        // ficava com **132 arestas acima do alvo onde antes havia 18**, ou seja
+        // o refino deixava de refinar. Quem carrega o teorema de Rivara aqui é o
+        // FECHO logo abaixo, não a escolha.
+        let mut any = false;
+        for k in 0..v.len() {
+            let (pa, pb) = (
+                positions[v[k] as usize],
+                positions[v[(k + 1) % v.len()] as usize],
+            );
             let d = [pb[0] - pa[0], pb[1] - pa[1], pb[2] - pa[2]];
             if d[0] * d[0] + d[1] * d[1] + d[2] * d[2] <= emax2 {
                 continue;
             }
-            // ⚠️ **O MEIO tem de estar na esfera, não um dos extremos.** É o
-            // que mantém o refino dentro da pegada: uma aresta enorme que só
-            // encosta na esfera com uma ponta partiria para fora do dab, e o
-            // artista veria detalhe nascer onde ele não passou.
-            let m = [
-                (pa[0] + pb[0]) * 0.5,
-                (pa[1] + pb[1]) * 0.5,
-                (pa[2] + pb[2]) * 0.5,
-            ];
-            let dm = [m[0] - center[0], m[1] - center[1], m[2] - center[2]];
-            if dm[0] * dm[0] + dm[1] * dm[1] + dm[2] * dm[2] > r2 {
+            let Some(e) = edges.face_edge(fi, k) else {
                 continue;
+            };
+            any = true;
+            if !pending[e as usize] {
+                pending[e as usize] = true;
+                marked.push(e);
             }
-            pending[e as usize] = true;
-            marked.push(e);
         }
+        let _ = any;
     }
     if marked.is_empty() {
         return false;
     }
 
-    // ⚠️ **Aqui havia um `sort` + `dedup`, e o doc dizia que eles eram o que
-    // torna o refino determinístico. A mutação provou a frase FALSA:** tirá-los
-    // deixa os dez gates verdes, porque quem garante que uma aresta entra na
-    // lista UMA vez é o `pending`, e quem garante a ordem é a travessia do
-    // octree, que é determinística. Ordenar era trabalho que nenhum gate podia
-    // ver — e uma linha justificada por um efeito que ela não tem é pior do que
-    // linha nenhuma, porque a próxima pessoa a defende.
+    // ⚠️ **A PROPAGAÇÃO (a *LEPP* de Rivara), e ela é obrigatória.** Marcar uma
+    // aresta obriga a vizinha que a divide a partir também — e se aquela aresta
+    // não for a MAIS LONGA da vizinha, partir por ela a afinaria. Então a
+    // vizinha marca a dela, o que pode obrigar a vizinha SEGUINTE, e assim por
+    // diante: é a cadeia de aresta-mais-longa.
+    //
+    // ⚠️ **Ela TERMINA** porque a cadeia percorre arestas estritamente mais
+    // longas, e uma malha finita tem uma maior. E **é ela que faz o refino
+    // alcançar um pouco além do pincel** — o preço, medido no gate, de ter
+    // qualidade sem refinar o modelo inteiro.
+    let mut changed = true;
+    while changed {
+        changed = false;
+        for (fi, face) in mesh.faces().iter().enumerate() {
+            let v = face.verts();
+            let touched = (0..v.len())
+                .filter_map(|k| edges.face_edge(fi, k))
+                .any(|e| pending[e as usize]);
+            if !touched {
+                continue;
+            }
+            let Some((_, e)) = longest_edge(&edges, fi, v, positions) else {
+                continue;
+            };
+            if !pending[e as usize] {
+                pending[e as usize] = true;
+                marked.push(e);
+                changed = true;
+            }
+        }
+    }
+    if marked.is_empty() {
+        return false;
+    }
 
     let mut positions = mesh.positions().to_vec();
     let normals = mesh.normals().to_vec();
@@ -207,12 +356,14 @@ fn one_pass(mesh: &mut Mesh, center: [f32; 3], radius: f32, edge_max: f32) -> bo
     let mut ends: Vec<(u32, u32)> = vec![(0, 0); edges.len()];
 
     // Para saber os EXTREMOS de cada aresta marcada sem um segundo grafo: as
-    // faces já os dão, e a face que contém a aresta é a que a marcou.
-    for &f in &hits {
-        let fi = f as usize;
-        let Some(face) = mesh.faces().get(fi) else {
-            continue;
-        };
+    // faces já os dão.
+    //
+    // ⚠️ **Sobre TODAS as faces, e não só as do octree.** O fecho de aresta mais
+    // longa marca fora da esfera, então uma varredura restrita às candidatas
+    // deixaria `ends` em `(0, 0)` para essas — e o vértice novo nasceria no meio
+    // do segmento do vértice 0 consigo mesmo, ou seja **em cima do vértice 0**.
+    // Um defeito calado: a malha continua fechada e a forma colapsa num ponto.
+    for (fi, face) in mesh.faces().iter().enumerate() {
         let v = face.verts();
         for k in 0..v.len() {
             if let Some(e) = edges.face_edge(fi, k).filter(|&e| pending[e as usize]) {
@@ -225,6 +376,7 @@ fn one_pass(mesh: &mut Mesh, center: [f32; 3], radius: f32, edge_max: f32) -> bo
         let (a, b) = ends[e as usize];
         let new = u32::try_from(positions.len()).unwrap_or(u32::MAX);
         split_at[e as usize] = new;
+        births.push(Birth { vert: new, a, b });
         let m = midpoint(&positions, &normals, a, b);
         positions.push(m);
         if let Some(c) = colors.as_mut() {
@@ -268,6 +420,23 @@ fn one_pass(mesh: &mut Mesh, center: [f32; 3], radius: f32, edge_max: f32) -> bo
         emit_triangle(&mut faces, [v[0], v[1], v[2]], [mid(0), mid(1), mid(2)]);
     }
 
+    swap_topology(mesh, positions, faces, colors, masks);
+    true
+}
+
+/// **Troca a topologia da malha preservando os canais por-vértice.**
+///
+/// Porta única do corte e do [`flip`](super::dyntopo_flip): os dois reescrevem
+/// faces e nenhum dos dois pode perder cor ou máscara pelo caminho. Duas cópias
+/// desta função divergiriam no dia em que entrasse o quinto canal, e o modo de
+/// falha é uma máscara que some sem ninguém ver.
+pub(crate) fn swap_topology(
+    mesh: &mut Mesh,
+    positions: Vec<[f32; 3]>,
+    faces: Vec<Face>,
+    colors: Option<Vec<[f32; 3]>>,
+    masks: Option<Vec<f32>>,
+) {
     let mut out = Mesh::from_parts(positions, faces).expect("o refino não inventa índice");
     if let Some(c) = colors {
         out.colors_mut().copy_from_slice(&c);
@@ -276,7 +445,14 @@ fn one_pass(mesh: &mut Mesh, center: [f32; 3], radius: f32, edge_max: f32) -> bo
         out.put_masks(m);
     }
     *mesh = out;
-    true
+}
+
+/// A mesma troca quando só a LIGAÇÃO muda — os vértices ficam onde estão.
+pub(crate) fn rebuild_with_faces(mesh: &mut Mesh, faces: Vec<Face>) {
+    let positions = mesh.positions().to_vec();
+    let colors = mesh.colors().map(<[[f32; 3]]>::to_vec);
+    let masks = mesh.masks().map(<[f32]>::to_vec);
+    swap_topology(mesh, positions, faces, colors, masks);
 }
 
 /// O vértice do meio, **deslocado ao longo da normal média**.

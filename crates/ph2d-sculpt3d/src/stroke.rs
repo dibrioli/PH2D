@@ -219,35 +219,6 @@ pub struct SculptStroke {
 }
 
 impl SculptStroke {
-    /// **A malha CRESCEU no meio do traço** — acomoda os vértices novos sem
-    /// tocar no que já foi congelado.
-    ///
-    /// ⚠️ **É o que deixa a topologia dinâmica conviver com a lei do traço.** O
-    /// caminho óbvio seria chamar [`Self::begin`] de novo depois de refinar, e
-    /// ele está ERRADO pelo motivo que esta casa já pagou quatro vezes no
-    /// relevo do Painter: re-começar joga fora o `pre`, e o dab seguinte passa a
-    /// medir a partir do resultado do anterior — o traço vira um PRODUTO sobre
-    /// a lista de dabs, e a força passa a depender de quantas vezes o refino
-    /// disparou.
-    ///
-    /// Ela só é correta porque o refino **APENDA**: um vértice que já existia
-    /// mantém o índice, então `slot`, `stamp`, `touched` e `base_pos` seguem
-    /// descrevendo exatamente os mesmos vértices. Um refino que reordenasse
-    /// índices tornaria isto silenciosamente errado — e é por isso que a frase
-    /// está aqui, e não só no motor.
-    ///
-    /// O vértice novo entra como *nunca visto* (`slot = u32::MAX`, `stamp = 0`):
-    /// o `pre` dele será a posição em que ele NASCEU, capturada no primeiro dab
-    /// que o tocar, que é a única resposta que existe para *"onde ele estava
-    /// antes?"*.
-    pub fn grow_to(&mut self, verts: usize) {
-        if verts <= self.slot.len() {
-            return;
-        }
-        self.slot.resize(verts, u32::MAX);
-        self.stamp.resize(verts, 0);
-    }
-
     /// Congela o `pre`: começa um traço novo sobre `mesh`.
     ///
     /// Não copia a malha — a captura é **preguiçosa, por vértice tocado**. Um
@@ -683,6 +654,14 @@ impl SculptStroke {
         }
     }
 }
+
+/// **A MALHA CRESCEU DEBAIXO DO TRAÇO** — o refino e a lei do `pre`.
+///
+/// Filho para alcançar os planos congelados; o corte é o mesmo do
+/// `stroke_growth_tests.rs`: aqui mora *o que acontece quando a topologia muda
+/// no meio de um gesto*, no pai *o que um dab faz*.
+#[path = "stroke_growth.rs"]
+mod growth;
 
 /// **O ALVO de cada verbo**, e o plano que quatro deles ajustam. Filho para
 /// alcançar o `pre` congelado; o corte é *a LEI do traço* (aqui) contra *para

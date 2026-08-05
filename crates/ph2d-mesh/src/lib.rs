@@ -38,6 +38,7 @@
 mod aabb;
 mod adjacency;
 mod dyntopo;
+mod dyntopo_flip;
 mod edges;
 mod export;
 mod face;
@@ -59,7 +60,7 @@ mod tri_geom;
 
 pub use aabb::Aabb;
 pub use adjacency::{Adjacency, Csr};
-pub use dyntopo::{Refine, edge_target, refine_in_sphere};
+pub use dyntopo::{Birth, Refine, edge_target, refine_in_sphere};
 pub use edges::Edges;
 pub use export::{ExportPiece, MeshFormat, triangle_count, write_obj, write_ply, write_stl};
 pub use face::{Face, TRI};

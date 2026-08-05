@@ -125,16 +125,28 @@ impl Sculpt3dScene {
         let target = edge_target(radius, self.dyntopo.detail);
         // A peça ativa — a MESMA que o `sculpt_at` acabou de escolher pelo
         // `pick_active`, e é por isso que o índice basta aqui.
+        //
+        // ⚠️ O buffer de nascimentos é SCRATCH da cena, não estado do modo: o
+        // `Dyntopo` guarda o que o artista autorou (o interruptor e o detalhe) e
+        // segue `Copy`. Reusá-lo entre dabs é o que mantém o refino sem alocação
+        // no caminho quente.
+        let mut births = std::mem::take(&mut self.dyn_births);
         let mesh = self.objects[self.active].stack.mesh_mut();
-        let out = refine_in_sphere(mesh, centre, radius, target);
-        let Refine::Done { .. } = out else {
+        let out = refine_in_sphere(mesh, centre, radius, target, &mut births);
+        let done = matches!(out, Refine::Done { .. });
+        if done {
+            // O traço em voo sobrevive: os índices antigos não se moveram, e cada
+            // vértice novo HERDA o `pre` do par que o gerou. Ver
+            // `SculptStroke::grow_with` — chamar `begin` aqui jogaria fora o
+            // `pre`, e tratar o novo como nunca-visto conta o deslocamento do
+            // traço duas vezes (a agulha).
+            let mesh = self.objects[self.active].stack.mesh();
+            self.stroke.grow_with(mesh, &births);
+        }
+        self.dyn_births = births;
+        if !done {
             return false;
-        };
-        // O traço em voo sobrevive: os índices antigos não se moveram, e os
-        // novos entram como nunca-vistos. Ver `SculptStroke::grow_to` — chamar
-        // `begin` aqui seria jogar fora o `pre` e fazer o traço compor.
-        let n = self.objects[self.active].stack.mesh().vert_count();
-        self.stroke.grow_to(n);
+        }
         // A malha tem faces novas: o upload incremental não as descreve.
         self.mesh_rebuilt();
         true

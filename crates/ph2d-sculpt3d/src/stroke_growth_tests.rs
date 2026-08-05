@@ -38,22 +38,31 @@ fn growing_the_stroke_keeps_the_frozen_base() {
     let n_before = mesh.vert_count();
 
     let target = ph2d_mesh::edge_target(0.5, 1.0);
-    let r = ph2d_mesh::refine_in_sphere(&mut mesh, [0.0, 0.0, 1.0], 0.5, target);
+    let mut births = Vec::new();
+    let r = ph2d_mesh::refine_in_sphere(&mut mesh, [0.0, 0.0, 1.0], 0.5, target, &mut births);
     assert!(
         matches!(r, ph2d_mesh::Refine::Done { .. }),
         "a fixture TEM de refinar: {r:?}"
     );
-    stroke.grow_to(mesh.vert_count());
+    stroke.grow_with(&mesh, &births);
 
+    // ⚠️ **A janela CRESCE, e o que tem de sobreviver é o PREFIXO.** Os
+    // vértices nascidos no refino entram nela — eles fazem parte deste traço e
+    // vão ser movidos por ele —, mas nenhum dos que já lá estavam pode mudar de
+    // posição na lista nem de `pre`. Um `begin` aqui zeraria os dois.
+    assert!(
+        stroke.touched().len() > touched.len(),
+        "os nascidos entram na janela"
+    );
     assert_eq!(
-        stroke.touched(),
+        &stroke.touched()[..touched.len()],
         &touched[..],
         "a janela do traço sobrevive"
     );
     assert_eq!(
-        stroke.base_positions(),
+        &stroke.base_positions()[..base.len()],
         &base[..],
-        "e o `pre` de cada vértice tocado é o MESMO — um `begin` aqui zeraria os dois"
+        "e o `pre` de cada vértice já tocado é o MESMO"
     );
 
     // O dab seguinte continua medindo do `pre`: os vértices JÁ TOCADOS não se
@@ -75,9 +84,9 @@ fn growing_the_stroke_keeps_the_frozen_base() {
     );
 }
 
-/// `grow_to` nunca ENCOLHE — e o gate existe porque encolher seria a forma
-/// silenciosa de perder a janela: os índices altos sumiriam do `slot` e o dab
-/// seguinte os trataria como nunca-vistos, capturando um `pre` que é o
+/// `grow_with` sem nascimentos é NO-OP — e o gate existe porque encolher seria
+/// a forma silenciosa de perder a janela: os índices altos sumiriam do `slot` e
+/// o dab seguinte os trataria como nunca-vistos, capturando um `pre` que é o
 /// resultado do dab anterior.
 ///
 /// ⚠️ **A primeira versão deste gate media `capacity_bytes`, e a mutação passou
@@ -86,11 +95,11 @@ fn growing_the_stroke_keeps_the_frozen_base() {
 /// o dab seguinte, que compara `slot.len()` com a contagem de vértices e panica
 /// quando elas discordam.
 #[test]
-fn growing_to_a_smaller_count_is_a_noop() {
+fn growing_with_nothing_new_is_a_noop() {
     let mut mesh = ph2d_mesh::shapes::uv_sphere(8, 12, 1.0);
     let mut stroke = SculptStroke::default();
     stroke.begin(&mesh);
-    stroke.grow_to(3);
+    stroke.grow_with(&mesh, &[]);
     let moved = stroke.dab(
         &mut mesh,
         &Brush::default(),
@@ -98,4 +107,178 @@ fn growing_to_a_smaller_count_is_a_noop() {
         Symmetry::default(),
     );
     assert!(moved > 0, "o traço continua dimensionado para ESTA malha");
+}
+
+/// **UM VÉRTICE NASCIDO NO MEIO DO TRAÇO FICA ENTRE OS PAIS DELE.**
+///
+/// Ele nasce no ponto médio de dois pais **que este mesmo traço já mexeu**, e há
+/// duas maneiras de errar o `pre` dele, uma para cada lado:
+///
+/// - tratá-lo como **nunca-visto** captura a posição já deslocada como `pre`, e
+///   o dab soma o deslocamento outra vez — uma AGULHA da altura do traço;
+/// - herdar `accum = 0` faz o primeiro dab FRACO que o alcance escrevê-lo quase
+///   no `pre` enquanto os vizinhos ficam levantados — uma CRATERA.
+///
+/// ⚠️ **O oráculo é a POSIÇÃO RELATIVA AOS PAIS**, e é isso que o torna imune ao
+/// verbo e ao falloff: seja qual for o alvo, um vértice no meio de uma aresta
+/// tem de acabar entre os dois extremos dela. Medir a altura absoluta exigiria
+/// conhecer a lei do `Draw`, e o gate seria um espelho dela.
+///
+/// ⚠️ **São DOIS gestos, e cada um vê um dos erros — sozinho, nenhum vê os dois.**
+/// PUXANDO (um Move), a superfície viaja a distância do gesto, as arestas
+/// esticam de verdade e o refino nasce entre pais já levantados: é ali que a
+/// agulha aparece. VARRENDO com um Draw, o vértice nasce perto da BORDA da
+/// pegada, onde o peso deste dab é quase zero e o dos anteriores não era: é ali
+/// que a cratera aparece.
+///
+/// ⚠️ **A primeira versão deste gate apertava com um `Draw` de pressão
+/// crescente, e as duas mutações passaram por ela.** O `Draw` desloca uma
+/// fração do raio, então as arestas esticam poucos por cento e o refino **nunca
+/// re-dispara** — todos os nascimentos aconteciam no primeiro dab, sobre pais
+/// que ainda não se tinham movido. A fixture media 0,044 da aresta com e sem a
+/// herança: ela não continha o fenômeno.
+#[test]
+fn a_vertex_born_mid_stroke_lands_between_its_parents() {
+    let press = worst_birth_offset(Gesture::Pull);
+    let sweep = worst_birth_offset(Gesture::Sweep);
+    let finer = worst_birth_offset(Gesture::Finer);
+    let masked = worst_birth_offset(Gesture::Masked);
+    // ⚠️ **As barras são MEDIDAS, e a folga de cada lado também.** Certo:
+    // **0,053** puxando e **0,108** varrendo — o que sobra é a curvatura que o
+    // refino preserva de propósito. Errado: **0,720** (sem a herança do `pre`,
+    // a agulha) e **0,446** (com `accum` herdado em zero, a cratera).
+    //
+    // ⚠️ A primeira barra que escrevi foi 0,45, e a cratera media 0,446: ela
+    // teria passado por um triz. Uma barra escolhida antes de ver os dois lados
+    // da mutação é um palpite com casas decimais.
+    assert!(
+        press < 0.25,
+        "puxando, o pior vértice novo saiu a {press:.3} da aresta"
+    );
+    assert!(
+        sweep < 0.25,
+        "varrendo, o pior vértice novo saiu a {sweep:.3} da aresta"
+    );
+    assert!(
+        finer < 0.25,
+        "afinando o detalhe, o pior vértice novo saiu a {finer:.3} da aresta"
+    );
+    assert!(
+        masked < 0.25,
+        "sob máscara, o pior vértice novo saiu a {masked:.3} da aresta"
+    );
+}
+
+/// Os três gestos que fazem um vértice nascer no meio de um traço. Cada um vê um
+/// erro que os outros não veem — ver o gate.
+#[derive(Clone, Copy)]
+enum Gesture {
+    /// Um Move que ARRASTA: as arestas esticam de verdade e o refino re-dispara
+    /// sobre pais já levantados.
+    Pull,
+    /// Um Draw que ANDA: o vértice nasce na borda da pegada, onde o peso deste
+    /// dab é quase zero e o dos anteriores não era.
+    Sweep,
+    /// A região está MASCARADA. Um vértice que nasce ali e herda máscara ZERO
+    /// recebe peso cheio enquanto os vizinhos dele estão congelados: ele sobe
+    /// sozinho, que é a mesma agulha por um terceiro caminho.
+    Masked,
+    /// O artista APERTA `U` no meio do traço. É a única rota que faz o refino
+    /// re-disparar sem que a geometria estique, e por isso é a que exercita um
+    /// verbo cujo alvo lê a NORMAL congelada (o Inflate) sobre território que o
+    /// traço já deformou.
+    Finer,
+}
+
+/// Roda um gesto e devolve o pior deslocamento de um vértice recém-nascido em
+/// relação ao meio dos pais dele, em frações do comprimento da aresta.
+fn worst_birth_offset(gesture: Gesture) -> f32 {
+    let sweep = matches!(gesture, Gesture::Sweep);
+    let mut mesh = ph2d_mesh::shapes::uv_sphere(10, 14, 1.0);
+    mesh.triangulate();
+    mesh.rebuild();
+    let brush = Brush {
+        verb: match gesture {
+            Gesture::Pull => Verb::Move,
+            Gesture::Sweep => Verb::Draw,
+            Gesture::Finer => Verb::Inflate,
+            Gesture::Masked => Verb::Draw,
+        },
+        radius: 0.35,
+        strength: 1.0,
+        ..Brush::default()
+    };
+    if matches!(gesture, Gesture::Masked) {
+        // A máscara é do DOCUMENTO, pintada antes deste traço — é o estado em
+        // que o artista deixa a peça quando protege uma região.
+        for m in mesh.masks_mut() {
+            *m = 1.0;
+        }
+    }
+    let mut stroke = SculptStroke::default();
+    let mut births = Vec::new();
+    stroke.begin(&mesh);
+
+    let mut worst = 0.0f32;
+    let mut checked = 0;
+    const DABS: u8 = 12;
+    for k in 0..DABS {
+        let t = f32::from(k) / f32::from(DABS - 1);
+        let centre = if sweep {
+            let x = -0.5 + t;
+            [x, (1.0 - x * x).max(0.0).sqrt(), 0.0]
+        } else {
+            [0.0, 1.0, 0.0]
+        };
+        // ⚠️ No `Finer` o alvo APERTA na metade do gesto — é o `U` do artista, e
+        // é o que faz o refino nascer sobre território já deformado sem que a
+        // geometria precise esticar.
+        let detail = if matches!(gesture, Gesture::Finer | Gesture::Masked) && t > 0.5 {
+            0.95
+        } else {
+            0.7
+        };
+        let target = ph2d_mesh::edge_target(brush.radius, detail);
+        ph2d_mesh::refine_in_sphere(&mut mesh, centre, brush.radius, target, &mut births);
+        let born = births.clone();
+        stroke.grow_with(&mesh, &births);
+        let eye = [-centre[0], -centre[1], -centre[2]];
+        let d = if !matches!(gesture, Gesture::Pull) {
+            Dab::at(centre, brush.radius, eye)
+        } else {
+            // ⚠️ **PUXAR, e não carimbar.** O `Draw` desloca uma fração do raio,
+            // o que estica as arestas em poucos por cento — o refino nunca
+            // re-dispara e a fixture não conteria o fenômeno (medido: o pior
+            // deslocamento fica em 0,044 da aresta com e sem a herança). Um
+            // Grab arrasta a superfície pela distância do gesto, então a malha
+            // estica de verdade e o refino nasce entre pais já levantados, que
+            // é exatamente onde tratar o novo como nunca-visto conta o
+            // deslocamento duas vezes.
+            Dab::pulling(centre, brush.radius, eye, [0.0, 0.9 * t, 0.0])
+        };
+        stroke.dab(&mut mesh, &brush, &d, Symmetry::default());
+
+        for b in &born {
+            let p = mesh.positions();
+            let (pa, pb, pm) = (p[b.a as usize], p[b.b as usize], p[b.vert as usize]);
+            let mid = [
+                (pa[0] + pb[0]) * 0.5,
+                (pa[1] + pb[1]) * 0.5,
+                (pa[2] + pb[2]) * 0.5,
+            ];
+            let off = [pm[0] - mid[0], pm[1] - mid[1], pm[2] - mid[2]];
+            let e = [pb[0] - pa[0], pb[1] - pa[1], pb[2] - pa[2]];
+            let len = (e[0] * e[0] + e[1] * e[1] + e[2] * e[2]).sqrt();
+            if len > 1e-6 {
+                worst =
+                    worst.max((off[0] * off[0] + off[1] * off[1] + off[2] * off[2]).sqrt() / len);
+                checked += 1;
+            }
+        }
+    }
+    assert!(
+        checked > 20,
+        "a fixture TEM de conter o fenômeno: {checked}"
+    );
+    worst
 }

@@ -29,7 +29,7 @@ fn the_refined_mesh_has_no_cracks() {
     assert_eq!(cracks(&m), 0, "o controle: a esfera nasce fechada");
 
     let target = edge_target(0.6, 1.0);
-    let r = refine_in_sphere(&mut m, [0.0, 0.0, 1.0], 0.6, target);
+    let r = refine_in_sphere(&mut m, [0.0, 0.0, 1.0], 0.6, target, &mut Vec::new());
     assert!(
         matches!(r, Refine::Done { .. }),
         "algo tem de ser partido: {r:?}"
@@ -122,15 +122,34 @@ fn the_refinement_stays_inside_the_brush() {
     // O dab no polo NORTE não pode adensar o polo sul.
     let centre = [0.0, 0.0, 1.0];
     let radius = 0.5f32;
-    refine_in_sphere(&mut m, centre, radius, edge_target(radius, 1.0));
+    refine_in_sphere(
+        &mut m,
+        centre,
+        radius,
+        edge_target(radius, 1.0),
+        &mut Vec::new(),
+    );
 
     // ⚠️ O oráculo é a POSIÇÃO dos vértices novos, não a contagem: contar
     // provaria que cresceu, e o que está em julgamento é ONDE.
+    //
+    // ⚠️ **A barra é 2× o raio e não o raio, e o motivo é o FECHO de aresta mais
+    // longa** (a *LEPP* de Rivara, `dyntopo.rs`): marcar uma aresta obriga a
+    // vizinha a partir pela MAIS LONGA dela, o que pode obrigar a seguinte — é
+    // essa cadeia que compra a qualidade do triângulo, e ela não para exatamente
+    // no pincel. Medido sobre quatro densidades de esfera (sonda
+    // `measure_how_far_the_propagation_reaches`): **1,66× · 1,31× · 1,38× ·
+    // 0,93×** — ela ENCOLHE quando a malha já é fina, porque a cadeia é curta
+    // quando as arestas já são pequenas.
+    //
+    // O que a barra protege continua sendo a promessa do modo: um dab no polo
+    // NORTE não pode adensar o polo sul, que numa esfera unitária está a 4× este
+    // raio.
     let far = m.positions()[before..]
         .iter()
         .filter(|p| {
             let d = [p[0] - centre[0], p[1] - centre[1], p[2] - centre[2]];
-            (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt() > radius * 1.35
+            (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt() > radius * 2.0
         })
         .count();
     assert_eq!(far, 0, "nenhum vértice novo nasceu longe do pincel");
@@ -141,7 +160,13 @@ fn the_refinement_stays_inside_the_brush() {
 fn refining_twice_is_deterministic() {
     let run = || {
         let mut m = tri_sphere(10, 14);
-        refine_in_sphere(&mut m, [0.3, 0.2, 0.9], 0.7, edge_target(0.7, 0.8));
+        refine_in_sphere(
+            &mut m,
+            [0.3, 0.2, 0.9],
+            0.7,
+            edge_target(0.7, 0.8),
+            &mut Vec::new(),
+        );
         m
     };
     let (a, b) = (run(), run());
@@ -178,7 +203,7 @@ fn refining_shortens_the_edges_it_was_asked_about() {
     let long_before = long_edges_near(&m, centre, radius, target);
     assert!(long_before > 0, "a fixture TEM de conter o fenômeno");
 
-    refine_in_sphere(&mut m, centre, radius, target);
+    refine_in_sphere(&mut m, centre, radius, target, &mut Vec::new());
     let long_after = long_edges_near(&m, centre, radius, target);
     assert!(
         long_after < long_before,
@@ -226,7 +251,7 @@ fn a_quad_mesh_is_refused_instead_of_mangled() {
         m.faces().iter().any(|f| !f.is_tri()),
         "o controle: há quads"
     );
-    let r = refine_in_sphere(&mut m, [0.0, 0.0, 1.0], 0.6, 0.05);
+    let r = refine_in_sphere(&mut m, [0.0, 0.0, 1.0], 0.6, 0.05, &mut Vec::new());
     assert_eq!(r, Refine::NotTriangles);
     assert_eq!(m.face_count(), 8 * 12, "e a malha não foi tocada");
 }
@@ -257,7 +282,13 @@ fn the_new_vertices_carry_colour_and_mask() {
         };
     }
     let before = m.vert_count();
-    refine_in_sphere(&mut m, [0.0, 0.0, 1.0], 0.6, edge_target(0.6, 1.0));
+    refine_in_sphere(
+        &mut m,
+        [0.0, 0.0, 1.0],
+        0.6,
+        edge_target(0.6, 1.0),
+        &mut Vec::new(),
+    );
     assert!(m.vert_count() > before);
 
     let masks = m.masks().expect("o plano sobrevive ao refino");
@@ -281,17 +312,17 @@ fn an_empty_dab_changes_nothing() {
     let before = (m.vert_count(), m.face_count());
     // Longe da malha.
     assert_eq!(
-        refine_in_sphere(&mut m, [10.0, 10.0, 10.0], 0.5, 0.01),
+        refine_in_sphere(&mut m, [10.0, 10.0, 10.0], 0.5, 0.01, &mut Vec::new()),
         Refine::Enough
     );
     // Alvo maior que qualquer aresta.
     assert_eq!(
-        refine_in_sphere(&mut m, [0.0, 0.0, 1.0], 0.5, 100.0),
+        refine_in_sphere(&mut m, [0.0, 0.0, 1.0], 0.5, 100.0, &mut Vec::new()),
         Refine::Enough
     );
     // Alvo degenerado: recusa em vez de pedir infinitos vértices.
     assert_eq!(
-        refine_in_sphere(&mut m, [0.0, 0.0, 1.0], 0.5, 0.0),
+        refine_in_sphere(&mut m, [0.0, 0.0, 1.0], 0.5, 0.0, &mut Vec::new()),
         Refine::Enough
     );
     assert_eq!((m.vert_count(), m.face_count()), before);
@@ -303,7 +334,13 @@ fn the_midpoint_follows_the_curve_instead_of_flattening_it() {
     // deslocamento pela normal o traz de volta para perto da superfície.
     let mut m = tri_sphere(8, 12);
     let before = m.vert_count();
-    refine_in_sphere(&mut m, [0.0, 0.0, 1.0], 0.8, edge_target(0.8, 1.0));
+    refine_in_sphere(
+        &mut m,
+        [0.0, 0.0, 1.0],
+        0.8,
+        edge_target(0.8, 1.0),
+        &mut Vec::new(),
+    );
 
     let radii: Vec<f32> = m.positions()[before..]
         .iter()
@@ -315,4 +352,122 @@ fn the_midpoint_follows_the_curve_instead_of_flattening_it() {
         worst > 0.985,
         "o pior vértice novo ficou a {worst} do centro — o refino está achatando a esfera"
     );
+}
+
+/// ⚠️ **O GATE DESTA WAVE.** Um refino que só PARTE não consegue manter a forma
+/// dos triângulos: a vizinha de uma face escolhida tem de aprender o vértice
+/// novo, e isso a corta pela metade do ângulo. Com a esfera do dab a ANDAR, o
+/// mesmo anel é cortado outra vez a cada passo — o pior ângulo mínimo desabava
+/// de **21,21° para 0,59°** e **48% da malha** ficava abaixo de 10°.
+///
+/// ⚠️ **E nenhuma métrica de POSIÇÃO via isso.** Uma lasca não desloca vértice
+/// nenhum; o desvio de guarda-chuva media o MESMO com e sem o conserto do `pre`
+/// (0,7131 contra 0,7158). O que a luz desenha como agulha é a normal
+/// por-vértice de um triângulo fino, que não aponta para lado nenhum. Foi o
+/// smoke de 2026-08-04 que o viu, e é o ÂNGULO que o mede.
+///
+/// As duas peças que o seguram estão as duas neste caminho, e cada uma tem o
+/// seu número na ablação: o FECHO de aresta mais longa (0,59° → 2,43°) e o
+/// FLIP (2,43° → 16,85°).
+#[test]
+fn a_moving_dab_does_not_shred_the_triangles() {
+    let mut m = tri_sphere(10, 14);
+    let before = worst_min_angle(&m);
+    assert!(
+        before > 20.0,
+        "a fixture começa com triângulos sãos: {before}"
+    );
+
+    let radius = 0.30f32;
+    let target = edge_target(radius, 0.5);
+    let mut births = Vec::new();
+    for k in 0..24 {
+        let t = f64::from(k) / 23.0;
+        let x = (-0.6 + 1.2 * t) as f32;
+        let y = (1.0 - x * x).max(0.0).sqrt();
+        refine_in_sphere(&mut m, [x, y, 0.0], radius, target, &mut births);
+    }
+
+    let after = worst_min_angle(&m);
+    // A barra é MEDIDA (15,55° no dia em que isto foi escrito) e diz o que
+    // importa: o refino não pode devolver um triângulo pior do que a malha que
+    // ele recebeu deixaria alguém desenhar. Dez graus é onde a lasca começa a
+    // ser visível na luz.
+    assert!(
+        after > 10.0,
+        "o refino de um traço inteiro não pode picar a malha: {before} -> {after}"
+    );
+    assert!(m.vert_count() > 128, "e alguma coisa foi de fato refinada");
+}
+
+/// O menor ângulo de triângulo da malha inteira, em GRAUS.
+fn worst_min_angle(m: &Mesh) -> f32 {
+    let pos = m.positions();
+    let mut tris = Vec::new();
+    m.triangle_indices(&mut tris);
+    let mut worst = 180.0f32;
+    for t in &tris {
+        for k in 0..3 {
+            let (o, u, v) = (
+                pos[t[k] as usize],
+                pos[t[(k + 1) % 3] as usize],
+                pos[t[(k + 2) % 3] as usize],
+            );
+            let a = [u[0] - o[0], u[1] - o[1], u[2] - o[2]];
+            let b = [v[0] - o[0], v[1] - o[1], v[2] - o[2]];
+            let la = (a[0] * a[0] + a[1] * a[1] + a[2] * a[2]).sqrt();
+            let lb = (b[0] * b[0] + b[1] * b[1] + b[2] * b[2]).sqrt();
+            if la < 1e-12 || lb < 1e-12 {
+                return 0.0;
+            }
+            let c = ((a[0] * b[0] + a[1] * b[1] + a[2] * b[2]) / (la * lb)).clamp(-1.0, 1.0);
+            worst = worst.min(c.acos().to_degrees());
+        }
+    }
+    worst
+}
+
+/// A parentela é COMPLETA e vem em ORDEM — as duas metades de que o consumidor
+/// depende. Sem a contagem, um vértice fica sem `pre` derivável; sem a ordem, um
+/// filho do passe 2 perguntaria a um pai que ainda não foi resolvido.
+#[test]
+fn every_new_vertex_declares_where_it_came_from_in_order() {
+    let mut m = tri_sphere(10, 14);
+    let before = m.vert_count();
+    let mut births = Vec::new();
+    let r = 0.5f32;
+    refine_in_sphere(&mut m, [0.0, 0.0, 1.0], r, edge_target(r, 1.0), &mut births);
+
+    assert_eq!(
+        births.len(),
+        m.vert_count() - before,
+        "um nascimento por vértice novo"
+    );
+    for (i, b) in births.iter().enumerate() {
+        assert_eq!(
+            b.vert as usize,
+            before + i,
+            "os índices novos saem em sequência"
+        );
+        // ⚠️ Um pai SEMPRE precede o filho — é isto que torna a travessia para a
+        // frente suficiente, e é o que um passe 2 quebraria se nascesse antes.
+        assert!(b.a < b.vert && b.b < b.vert, "o pai precede o filho");
+        assert_ne!(b.a, b.b, "uma aresta tem dois extremos distintos");
+    }
+}
+
+/// O buffer é LIMPO por quem escreve. Uma chamada que não parte nada não pode
+/// deixar o chamador a olhar para os nascimentos da anterior — ele semearia
+/// vértices que já foram semeados, com pais que já se moveram.
+#[test]
+fn a_refusal_leaves_no_stale_parentage_behind() {
+    let mut m = tri_sphere(10, 14);
+    let mut births = Vec::new();
+    let r = 0.5f32;
+    refine_in_sphere(&mut m, [0.0, 0.0, 1.0], r, edge_target(r, 1.0), &mut births);
+    assert!(!births.is_empty(), "a fixture TEM de conter o fenômeno");
+
+    // Longe de tudo: nada a partir.
+    refine_in_sphere(&mut m, [10.0, 10.0, 10.0], 0.1, 0.05, &mut births);
+    assert!(births.is_empty(), "o buffer é do refino, não do chamador");
 }

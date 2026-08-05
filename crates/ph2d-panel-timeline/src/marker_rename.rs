@@ -5,7 +5,7 @@
 //! SIGNAL (Set Signal), one field, two modes. It mirrors the hierarchy
 //! row rename (the uncoupled template): the field text lives in the `WidgetStore`
 //! like every other text field, so the global focus routing feeds it characters
-//! and — because a focused `TextInput` trips the shell's `vector_text_field_focused`
+//! and — because a focused `TextInput` trips the shell's `text_entry_focused`
 //! gate — the timeline's own M / Delete / Ctrl+S/O shortcuts auto-suppress while
 //! typing, with no extra gating.
 //!

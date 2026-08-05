@@ -24,21 +24,40 @@ fn keyboard_src() -> String {
     .expect("keyboard.rs legível")
 }
 
-/// A janela de guarda que PRECEDE uma chamada — o `if … {` acima dela.
-fn guard_before<'a>(src: &'a str, needle: &str, window: usize) -> &'a str {
+/// A guarda do `if` que ENVOLVE uma chamada: da linha do `if` mais próximo acima dela até
+/// a própria chamada.
+///
+/// ⚠️ **Era uma janela de BYTES (`&src[at - 900..at]`), e ela EXPIROU** — um comentário
+/// acrescentado acima do bloco empurrou a guarda para fora da janela e o gate reprovou
+/// código correto, dizendo *"âncora perdida"* (BUGS_vector #25; a mesma cicatriz que esta
+/// linha já pagou duas vezes em 23/07). Distância em bytes é PROXY de aninhamento; o `if`
+/// que abre a linha é a coisa em si, e ele não se move quando a prosa cresce.
+fn guard_before<'a>(src: &'a str, needle: &str) -> &'a str {
     let at = src
         .find(needle)
         .unwrap_or_else(|| panic!("`{needle}` existe em keyboard.rs"));
-    &src[at.saturating_sub(window)..at]
+    let mut start = None;
+    let mut off = 0usize;
+    for line in src[..at].split_inclusive('\n') {
+        if line.trim_start().starts_with("if ") {
+            start = Some(off);
+        }
+        off += line.len();
+    }
+    let start = start.unwrap_or_else(|| panic!("nenhum `if` abre uma linha acima de `{needle}`"));
+    &src[start..at]
 }
 
 /// O bloco de clipboard do VETOR (Ctrl+C/X/V/D/G) cede quando o mouse está na timeline.
 #[test]
 fn the_vector_clipboard_block_yields_when_the_cursor_is_over_the_timeline() {
     let src = keyboard_src();
-    let guard = guard_before(&src, "self.vec_copy()", 900);
+    let guard = guard_before(&src, "self.vec_copy()");
     assert!(
-        guard.contains("self.vector_tool_active()"),
+        // ⚠️ A âncora era `vector_tool_active()` até o BUGS #25: os blocos de TECLA
+        // passaram a perguntar `vector_keys_live()` (a ferramenta em mãos **E** nenhum
+        // campo de texto com o foco). O bloco é o mesmo; a pergunta é que ficou completa.
+        guard.contains("self.vector_keys_live()"),
         "âncora perdida: o bloco de clipboard do vetor não é mais o que precede `vec_copy`"
     );
     assert!(
@@ -53,7 +72,7 @@ fn the_vector_clipboard_block_yields_when_the_cursor_is_over_the_timeline() {
 #[test]
 fn the_vector_delete_yields_when_the_cursor_is_over_the_timeline() {
     let src = keyboard_src();
-    let guard = guard_before(&src, "self.vec_delete_selected_vertex_or_path()", 220);
+    let guard = guard_before(&src, "self.vec_delete_selected_vertex_or_path()");
     assert!(
         guard.contains("!self.cursor_over_timeline()"),
         "o Delete do VETOR não cede à timeline: apagar um keyframe com o mouse na timeline \

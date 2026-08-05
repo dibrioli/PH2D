@@ -145,7 +145,7 @@ impl App {
         // Texto vetorial: enquanto uma sessão de digitação está ativa (modo Text +
         // clicou no canvas), as teclas vão pro TEXTO — antes dos atalhos de forma e
         // do forward pros widgets. Ctrl/Super passam (Ctrl+Z etc. seguem globais).
-        if self.vector_tool_active()
+        if self.vector_keys_live()
             && self.vec_text_editing()
             && state == ElementState::Pressed
             && !self.modifiers.control_key()
@@ -196,7 +196,7 @@ impl App {
             // Um campo de texto FOCADO (o rename de camada, §4.C) fica com Backspace/Delete
             // para editar o texto — senão apagar uma letra do nome apagaria os traços
             // selecionados. Mesma guarda que os atalhos de tecla-única já usam.
-            && !self.vector_text_field_focused()
+            && !self.text_entry_focused()
             && matches!(
                 physical_key,
                 PhysicalKey::Code(KeyCode::Delete | KeyCode::Backspace)
@@ -211,7 +211,7 @@ impl App {
         // fechadas; Delete/Backspace apaga o path
         // selecionado. Modo de teste dedicado (a pill/menu real entra no cutover,
         // Fase R). Só sem modificadores, pra não colidir com atalhos.
-        if self.vector_tool_active()
+        if self.vector_keys_live()
             && state == ElementState::Pressed
             && !repeat
             && self.modifiers.is_empty()
@@ -252,7 +252,7 @@ impl App {
         //
         // ⚠️ Só no modo **Node**: noutro modo não há nó selecionado a que estas teclas se refiram,
         // e o `Tab` do app tem outros donos.
-        if self.vector_tool_active()
+        if self.vector_keys_live()
             && self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Node
             && state == ElementState::Pressed
             && let PhysicalKey::Code(code) = physical_key
@@ -281,7 +281,7 @@ impl App {
         // Allows Shift (coarse 10px, unlike the boolean block above); blocked by
         // Ctrl/Alt/Super and while drawing. Auto-repeat keeps moving but a held
         // arrow coalesces into ONE undo step (records only on the first press).
-        if self.vector_tool_active()
+        if self.vector_keys_live()
             && state == ElementState::Pressed
             && !self.vec_pen.is_drawing()
             && !self.modifiers.control_key()
@@ -329,28 +329,33 @@ impl App {
         // atalho seguia a FERRAMENTA (vetor ativo ⇒ sempre formas), e copiar keyframes com
         // o mouse na timeline copiava o desenho (Enio, 2026-07-19). Mesma regra que o
         // `cursor_over_timeline` já aplica ao pan/zoom do meio.
-        if self.vector_tool_active()
+        if self.vector_keys_live()
             && !self.cursor_over_timeline()
             && state == ElementState::Pressed
             && !repeat
             && (self.modifiers.control_key() || self.modifiers.super_key())
             && let PhysicalKey::Code(code) = physical_key
         {
-            let text_focused = self.vector_text_field_focused();
             // ADR-0110+: undo/redo saíram DAQUI para a fila GLOBAL (`handle_editor_key`
             // → `undo_request`), que cobre geometria E transform numa fila só. O bloco
             // vetorial mantém só os atalhos que são dele (save/copy/paste/dup/group).
+            //
+            // ⚠️ **O `if !text_focused` de C/X/V MORREU aqui, e a remoção é o ponto**
+            // (BUGS #25): a guarda subiu para o `vector_keys_live()` do topo do bloco,
+            // então ela cobre os CINCO atalhos em vez de três — Ctrl+D duplicava a forma
+            // e Ctrl+G a agrupava com o rename da Hierarquia aberto, porque a composição
+            // à mão foi escrita quando só C/X/V pareciam disputar com um campo de texto.
             let handled = match code {
-                KeyCode::KeyC if !text_focused => {
+                KeyCode::KeyC => {
                     self.vec_copy();
                     true
                 }
-                KeyCode::KeyX if !text_focused => {
+                KeyCode::KeyX => {
                     self.vec_cut();
                     true
                 }
                 // Ctrl+Shift+V cola NO LUGAR (sem o deslocamento diagonal).
-                KeyCode::KeyV if !text_focused => {
+                KeyCode::KeyV => {
                     self.vec_paste(self.modifiers.shift_key());
                     true
                 }
@@ -374,7 +379,7 @@ impl App {
         // Motion tool is active. Returns early when handled so the same KeyZ does
         // NOT fall through to the painter / image-edit undo in `handle_editor_key`
         // (mirror of the Vector block above).
-        if self.motion_tool_active()
+        if self.motion_keys_live()
             && state == ElementState::Pressed
             && !repeat
             && (self.modifiers.control_key() || self.modifiers.super_key())
@@ -442,7 +447,7 @@ impl App {
         if state == ElementState::Pressed
             && !repeat
             && matches!(physical_key, PhysicalKey::Code(KeyCode::Escape))
-            && self.vector_tool_active()
+            && self.vector_keys_live()
             && self.build_cancel()
         {
             return;
@@ -454,7 +459,7 @@ impl App {
         if state == ElementState::Pressed
             && !repeat
             && matches!(physical_key, PhysicalKey::Code(KeyCode::Escape))
-            && self.vector_tool_active()
+            && self.vector_keys_live()
             && self.vec_pen.is_drawing()
         {
             self.vec_pen.finish();

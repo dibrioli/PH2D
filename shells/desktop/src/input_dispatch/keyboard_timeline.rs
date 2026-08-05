@@ -60,7 +60,7 @@ impl App {
             && !self.modifiers.control_key()
             && !self.modifiers.super_key()
             && !self.timeline.selection.is_empty()
-            && !self.vector_text_field_focused()
+            && !self.text_entry_focused()
             && matches!(
                 physical_key,
                 PhysicalKey::Code(KeyCode::Delete | KeyCode::Backspace)
@@ -87,7 +87,7 @@ impl App {
             && !self.modifiers.control_key()
             && !self.modifiers.super_key()
             && !self.modifiers.alt_key()
-            && !self.vector_text_field_focused()
+            && !self.text_entry_focused()
             && matches!(physical_key, PhysicalKey::Code(KeyCode::KeyM))
         {
             let label = format!("M{}", self.timeline.doc.markers().len() + 1);
@@ -108,7 +108,7 @@ impl App {
             && state == ElementState::Pressed
             && !repeat
             && (self.modifiers.control_key() || self.modifiers.super_key())
-            && !self.vector_text_field_focused()
+            && !self.text_entry_focused()
             && let PhysicalKey::Code(code) = physical_key
         {
             use ph2d_timeline::TimelineIntent as I;

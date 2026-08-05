@@ -36,7 +36,7 @@ impl App {
         if state == ElementState::Pressed
             && !repeat
             && (self.modifiers.control_key() || self.modifiers.super_key())
-            && !self.vector_text_field_focused()
+            && !self.text_entry_focused()
             && let PhysicalKey::Code(code) = physical_key
         {
             match code {

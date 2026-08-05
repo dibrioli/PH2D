@@ -1319,7 +1319,7 @@ diagonal; a rampa do feather tem de sair lisa e sem contorno visível nenhum. O 
 
 ---
 
-## Bug #25 — Renomear na Hierarquia dispara os atalhos do Vector (2026-08-04) — **ABERTO**
+## Bug #25 — Renomear na Hierarquia dispara os atalhos do Vector (2026-08-04) — **FECHADO (2026-08-05)**
 
 ### Sintoma
 

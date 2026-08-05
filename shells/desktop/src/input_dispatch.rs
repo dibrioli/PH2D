@@ -1621,9 +1621,19 @@ impl App {
         screen_offset_world(&gfx.camera, gfx.surface.size(), px)
     }
 
-    /// True when a text / number / combobox widget holds keyboard focus — Vector
-    /// Ctrl+C/X/V must defer to the OS text clipboard instead of the path one.
-    fn vector_text_field_focused(&self) -> bool {
+    /// **Um campo de entrada de TEXTO tem o foco do teclado?**
+    ///
+    /// Pergunta ao STORE, não ao painel: qualquer `TextInput` / `NumberInput` /
+    /// `Combobox` conta, venha ele do rename da Hierarquia, de um chip numérico do
+    /// Inspector ou de um campo do painel do vetor. ⚠️ O nome antigo era
+    /// `text_entry_focused`, e ele **mentia desde o dia em que o bloco do
+    /// Flip passou a chamá-lo** — isto nunca foi uma pergunta do Vector.
+    ///
+    /// Quem quer *"as minhas teclas estão vivas?"* pergunta a
+    /// [`Self::vector_keys_live`] / [`Self::motion_keys_live`], não a esta —
+    /// compor `tool_active && !text_entry_focused` em cada braço é a enumeração
+    /// que o BUGS #25 documenta apodrecendo.
+    fn text_entry_focused(&self) -> bool {
         let Some(h) = self.gfx.as_ref().and_then(|g| g.hero_screen.as_ref()) else {
             return false;
         };
@@ -1807,6 +1817,34 @@ impl App {
                 .active()
                 .is_some_and(|t| t.id() == ph2d_editor::ToolId::new("motion"))
         })
+    }
+
+    /// **As teclas do Vector estão vivas?** (BUGS #25)
+    ///
+    /// ⚠️ **Não é a mesma pergunta que [`Self::vector_tool_active`]**, e é essa
+    /// distinção que o bug era: *ter a ferramenta em mãos* governa o PONTEIRO
+    /// (clicar o canvas com um campo focado é justamente como se sai dele), mas
+    /// uma TECLA pertence a quem tem o foco do teclado. Digitar `Update` no rename
+    /// da Hierarquia disparava Union · Difference · modo Texto, e `Backspace`
+    /// apagava um vértice em vez de uma letra.
+    ///
+    /// ⚠️ **A guarda sempre existiu e sempre esteve certa** — o que apodreceu foi
+    /// o modo de aplicá-la: ela era composta **à mão** em três dos oito blocos de
+    /// tecla, e os outros cinco nasceram sem. *Uma condição que enumera os seus
+    /// leitores apodrece*; por isso ela é uma PORTA, e o arch-gate
+    /// `the_vector_key_blocks_ask_whether_the_keys_are_live` recusa
+    /// `vector_tool_active()` cru na família `keyboard*.rs`.
+    pub(crate) fn vector_keys_live(&self) -> bool {
+        self.vector_tool_active() && !self.text_entry_focused()
+    }
+
+    /// O espelho do Motion — mesma lei, mesmo motivo (o acorde Ctrl+Z do grafo
+    /// roubava o undo de um campo de texto focado). Duas portas e não uma porque
+    /// *qual ferramenta está em mãos* é a metade que difere; a metade do foco é a
+    /// MESMA função, então não há duas respostas para *"há texto sob o cursor de
+    /// teclado?"*.
+    pub(crate) fn motion_keys_live(&self) -> bool {
+        self.motion_tool_active() && !self.text_entry_focused()
     }
 
     /// Motion Nodes M1 Phase 1b-3: undo the last graph edit (Ctrl/Cmd+Z). The
@@ -3605,7 +3643,7 @@ impl App {
             if mapped_button == ph2d_host::PointerButton::Primary
                 && kind == PointerKind::Down
                 && on_canvas
-                && self.vector_text_field_focused()
+                && self.text_entry_focused()
             {
                 let _ = forward_to_hero(self.gfx.as_mut(), evt);
             }

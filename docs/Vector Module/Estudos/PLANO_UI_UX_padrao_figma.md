@@ -1137,6 +1137,20 @@ para a mesma coisa e a divergência só aparece numa screenshot.
 > e `VEC_SCENE_SCHEMA` **14** intocados — um componente novo cunha blob-key própria), **zero
 > `Cargo.toml`**, **zero ADR**, contrato congelado intacto.
 >
+> ✅ **E o painel ganhou um PILL** (pergunta do Enio, 2026-08-05: *"já temos um Pill para abrir
+> esse painel?"* — não tínhamos). Terceiro irmão do PHYS e do TOK, e a queixa é literalmente a
+> mesma que ele fez sobre aqueles dois: o único abridor era o chip **Show as Panel**, que exige a
+> ferramenta Vector em mãos **e** a moldura selecionada — fechar pelo X e perder a seleção deixava
+> o artista sem caminho de volta que não fosse re-encontrar a própria moldura na Hierarquia.
+> ⚠️ **O rótulo é `UI`, e não o título do painel:** o título é do ARTISTA e vive em código
+> GERADO, enquanto a lista de clusters do topbar é `const` — um pill chamado *"Color"* mentiria no
+> instante em que ele renomeasse a moldura. ⚠️ E os **três** abridores escrevem UM fato: o
+> `authored_toggle` LÊ a visibilidade em vez de guardar um bool próprio, senão o pill diria
+> *fechado* sobre um painel que o chip abriu. ⚠️ **A chave é um literal na camada do chrome de
+> propósito** (a `ph2d-editor-core` não pode depender de `ph2d-panel-authored` — os painéis
+> dependem dela, nunca o contrário), e quem impede o literal de divergir do `Panel::ID` é um gate
+> na **SHELL**, que alcança os dois lados e dirige o pill até a porta do painel.
+>
 > **FALTA, e é a fronteira honesta:** o valor de um controle vive no `WidgetStore`, que é de
 > runtime ⇒ **ele não é salvo**. Reabrir devolve os controles ao default e a arte ao que o artista
 > autorou. Guardar a POSIÇÃO de um controle é a W4b/W8a — o fio existe, a memória dele não.
@@ -1472,7 +1486,7 @@ escreveu**:
 | **W7** 🔨 | estados + Smart Animate (**autoria**; runtime não) | — | ⚠️ `PROJECT_SCHEMA`, **não** `DOC_VERSION` | — | **nenhum** | `=61` |
 | **W8b.1** ✅ | o codegen: a árvore descreve um painel e o app escreve o código dele | — | — | — | — | `=62` |
 | **W8b.2** ✅ | o gerado vira painel VIVO (crate, registro, runtime das rows) | — | — | — | **nenhum** | `=62` |
-| **W8b.3** ✅ | a row MEXE na arte (o vínculo row → forma, derivado do tipo) | +1 (**53**) | — | — | **nenhum** | `=62` |
+| **W8b.3** ✅ | a row MEXE na arte (o vínculo row → forma, derivado do tipo) + o pill **UI** | +1 (**53**) | — | — | **nenhum** | `=62` |
 | **W8a** | o runtime (para os jogos) | — | seção | — | sim (fronteira) | — |
 | **W9** | DTCG / SVG / export | — | — | — | — | — |
 

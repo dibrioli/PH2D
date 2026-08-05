@@ -83,3 +83,31 @@ fn the_visibility_key_is_never_spelled_out() {
          senao ela fica para tras no dia em que o `Panel::ID` mudar, em silencio"
     );
 }
+
+/// **O pill UI e o chip escrevem o MESMO fato** (W8b.3).
+///
+/// ⚠️ O handler do pill mora na `ph2d-editor-core`, que **não pode** depender de
+/// `ph2d-panel-authored` (os painéis dependem dela, nunca o contrário) — então a chave lá é um
+/// literal, obrigatoriamente. Este gate é o que impede o literal de divergir do `Panel::ID`: ele
+/// dirige o pill pela porta REAL do chrome e pergunta ao painel qual é a chave dele. Sem ele, um
+/// rename do `Panel::ID` deixaria o pill a alternar a visibilidade de um painel que não existe —
+/// em silêncio, que é a cicatriz do painel de física do W2b.
+#[test]
+fn the_ui_pill_writes_the_key_the_panel_answers() {
+    use ph2d_editor::interaction::WidgetEvent;
+    use ph2d_editor::screens::hero::{HeroScreen, chrome, ids};
+
+    let mut hero = HeroScreen::new(ph2d_editor::NodeId(1));
+    let key = ph2d_panel_authored::visibility_key();
+    assert!(!hero.is_panel_visible(key), "nasce fechado");
+
+    assert!(
+        chrome::dispatch_all(&mut hero, WidgetEvent::Click(ids::TOPBAR_AUTHORED)),
+        "o clique no pill tem de ser consumido"
+    );
+    assert!(
+        hero.is_panel_visible(key),
+        "o pill escreveu uma chave que NAO e' a do painel — o literal do chrome divergiu do \
+         `Panel::ID`, e o pill alterna a visibilidade de um painel que nao existe"
+    );
+}

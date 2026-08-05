@@ -225,9 +225,11 @@ fn announce(app: &mut crate::App) {
     eprintln!("  7. ⚠️ **O 'Backdrop' nao esta' no painel** — o CONTROLE, outra vez: quem so'");
     eprintln!("     desenha nao vira row, e quem nao RESPONDE (o cabecalho de secao) nao acende");
     eprintln!("     sob o rato. Um controle que acende e nao faz nada e' pior que um que falta.");
-    eprintln!("  8. Feche pelo X do painel e reabra pelo chip **Show as Panel** da secao Frame");
-    eprintln!("     (selecione a moldura 'Color'): os dois escrevem o MESMO fato, entao o chip");
-    eprintln!("     apaga sozinho quando voce fecha pelo X.");
+    eprintln!("  8. Feche pelo X do painel e reabra pelo pill **UI** no topbar (ao lado do TOK).");
+    eprintln!("     Ha' TRES abridores — o X, o pill, e o chip **Show as Panel** da secao Frame");
+    eprintln!("     (com a moldura 'Color' selecionada) — e os tres escrevem o MESMO fato: feche");
+    eprintln!("     por um e os outros dois apagam sozinhos. ⚠️ O pill e' o unico que nao exige");
+    eprintln!("     a ferramenta Vector em maos nem a moldura selecionada.");
     eprintln!("  9. ⚠️ **O QUE O PAINEL MOSTRA E' A TABELA COMMITADA, nao a do log.** Renomeie um");
     eprintln!("     filho e re-rode: o CODIGO acima muda, o painel NAO — ate' alguem colar o");
     eprintln!("     codigo em crates/ph2d-panel-authored/src/generated/panel.rs e recompilar.");

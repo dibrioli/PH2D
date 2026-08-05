@@ -52,6 +52,7 @@ pub(super) fn cascade_anchor(hero: &HeroScreen, row_id: NodeId) -> (f32, f32) {
 // from a scan of `chrome/*.rs`. Do NOT edit between markers by hand —
 // staleness gate catches drift.
 // <ph2d-chrome-sync:begin>
+mod authored_toggle;
 mod command_palette;
 mod curve_point_handle;
 mod falloff_handle;
@@ -129,6 +130,7 @@ pub fn dispatch_all(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         || rail_panels::apply(hero, event)
         || physics_toggle::apply(hero, event)
         || tokens_toggle::apply(hero, event)
+        || authored_toggle::apply(hero, event)
         || io_menu::apply(hero, event)
         || settings_ppm::apply(hero, event)
         || settings_unit::apply(hero, event)

@@ -63,6 +63,14 @@ pub fn topbar_clusters() -> Vec<(ph2d_a11y::NodeId, TopBarCluster)> {
             ids::TOPBAR_TOKENS,
             TopBarCluster::single("TOK", IconId::Palette),
         ),
+        // A UI AUTORADA (W8b.3) — abre o painel que o artista desenhou. Ao lado dos dois de MUNDO
+        // porque o problema é o mesmo: sem pill, o único abridor exige a ferramenta Vector em mãos
+        // e a moldura selecionada. ⚠️ O rótulo nomeia a ESPÉCIE e não o título do painel, que é do
+        // artista e vive em código gerado — ver `chrome::authored_toggle`.
+        (
+            ids::TOPBAR_AUTHORED,
+            TopBarCluster::single("UI", IconId::Inspector),
+        ),
         // Audio Mixer — toggles the floating mixer panel (Master strip:
         // fader + live meter + mute). Left group, next to Image Tools.
         (

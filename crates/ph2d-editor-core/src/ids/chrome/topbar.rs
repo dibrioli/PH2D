@@ -88,3 +88,9 @@ pub const TOPBAR_PHYSICS: NodeId = hash_node_id("topbar_physics");
 /// para quem já sabe o atalho — a queixa que o Enio fez sobre o painel de física em 2026-07-27, e
 /// que ele fez outra vez sobre este em 2026-08-04. É a MESMA visibilidade que a tecla `T` escreve.
 pub const TOPBAR_TOKENS: NodeId = hash_node_id("topbar_tokens");
+
+/// O pill **UI** — abre o painel que o ARTISTA desenhou (plano UI/UX W8b.3).
+///
+/// ⚠️ Terceiro irmão do PHYS e do TOK, e pela mesma queixa: o único abridor era o chip *Show as
+/// Panel*, que exige a ferramenta Vector **e** a moldura selecionada.
+pub const TOPBAR_AUTHORED: NodeId = hash_node_id("topbar_authored");

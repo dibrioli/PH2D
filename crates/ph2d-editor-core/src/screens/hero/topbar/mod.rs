@@ -41,6 +41,7 @@ pub fn populate(store: &mut WidgetStore) {
         ids::TOPBAR_FLIP,
         ids::TOPBAR_PHYSICS,
         ids::TOPBAR_TOKENS,
+        ids::TOPBAR_AUTHORED,
         ids::TOPBAR_WIDGET_GALLERY,
         ids::TOPBAR_GRID_SETTINGS,
         ids::TOPBAR_SETTINGS,
@@ -113,6 +114,7 @@ pub fn populate(store: &mut WidgetStore) {
         ),
         (ids::TOPBAR_PHYSICS, "Physics \u{00b7} W"),
         (ids::TOPBAR_TOKENS, "Tokens \u{00b7} T"),
+        (ids::TOPBAR_AUTHORED, "Authored UI"),
         (ids::TOPBAR_GRID_SETTINGS, "Grid Settings"),
         (
             ids::IMAGE_ACTION_TRIM,

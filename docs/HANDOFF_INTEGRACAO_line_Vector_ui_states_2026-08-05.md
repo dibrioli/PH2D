@@ -207,7 +207,7 @@ A faca **destrói o id** (`scene.remove_path` + peças novas), e um estado guard
 - **Um estado gravado ANTES do corte não ressuscita o que a faca consumiu.** O membro sai do
   documento e a transição o faz **desvanecer**.
 
-⚠️ **A fronteira tem nome:** *um estado sabe repor uma POSE, nunca CRIAR um objeto.* Ressuscitar
+⚠️ **A fronteira tem nome:** *um estado sabe restaurar uma POSE, nunca CRIAR um objeto.* Ressuscitar
 exigiria que ele fosse dono do conjunto de objetos (criar path, entidade, hierarquia e um id novo —
 que o estado já não referencia), e isso é **outra feature**, não um campo a mais.
 

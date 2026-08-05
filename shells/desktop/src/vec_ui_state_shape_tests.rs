@@ -391,7 +391,7 @@ fn the_live_width_profile_is_pose_and_it_travels() {
 /// - **Um estado gravado ANTES do corte não ressuscita o que a faca consumiu.** O membro sai do
 ///   documento, e a transição fá-lo desvanecer (`Leaving`) em vez de o trazer de volta.
 ///
-/// ⚠️ **A fronteira tem nome:** um estado sabe repor uma POSE, não CRIAR um objeto. Ressuscitar
+/// ⚠️ **A fronteira tem nome:** um estado sabe restaurar uma POSE, não CRIAR um objeto. Ressuscitar
 /// exigiria que ele fosse dono do conjunto de objetos (criar path, entidade, hierarquia e um id
 /// novo — que o estado já não referencia), e isso é outra feature, não um campo a mais.
 #[test]

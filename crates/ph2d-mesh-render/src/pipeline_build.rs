@@ -9,6 +9,7 @@
 
 use super::{CameraRaw, MESH_WGSL, MeshRenderer};
 use crate::lighting::RigRaw;
+use crate::shade::ShadeRaw;
 
 impl MeshRenderer {
     #[must_use]
@@ -41,6 +42,26 @@ impl MeshRenderer {
                     },
                     count: None,
                 },
+                // **AS OPÇÕES DE SOMBREAMENTO** (hoje: a cavidade). Terceira
+                // entrada do grupo 0 e não um campo apendado ao rig, apesar de o
+                // `RigRaw` ter padding sobrando: uma cavidade não é uma lâmpada, e
+                // aquele struct é o espelho do `Lamp` do passe de luz da tinta —
+                // enfiar um knob de barro nele faria a próxima wave que sincronizar
+                // os dois herdar um campo que o outro lado não tem.
+                //
+                // A FREQUÊNCIA é a que justifica o grupo: câmera, rig e opções são
+                // todos da CENA (uma escrita por frame). O `Object` é o grupo 1
+                // porque ele é por-desenho.
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
             ],
         });
 
@@ -58,6 +79,13 @@ impl MeshRenderer {
             mapped_at_creation: false,
         });
 
+        let shade_uniform = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("ph2d-mesh shade"),
+            size: ShadeRaw::SIZE as u64,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
         let bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("ph2d-mesh bind"),
             layout: &bgl,
@@ -69,6 +97,10 @@ impl MeshRenderer {
                 wgpu::BindGroupEntry {
                     binding: 1,
                     resource: rig_uniform.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: shade_uniform.as_entire_binding(),
                 },
             ],
         });
@@ -110,11 +142,20 @@ impl MeshRenderer {
         }
         const POS: [wgpu::VertexAttribute; 1] = vec3_attr(0);
         const NRM: [wgpu::VertexAttribute; 1] = vec3_attr(1);
-        const MASK: [wgpu::VertexAttribute; 1] = [wgpu::VertexAttribute {
-            format: wgpu::VertexFormat::Float32,
-            offset: 0,
-            shader_location: 2,
-        }];
+        const fn f32_attr(location: u32) -> [wgpu::VertexAttribute; 1] {
+            [wgpu::VertexAttribute {
+                format: wgpu::VertexFormat::Float32,
+                offset: 0,
+                shader_location: location,
+            }]
+        }
+        const MASK: [wgpu::VertexAttribute; 1] = f32_attr(2);
+        /// A CURVATURA por vértice (`ph2d_mesh::curvature`) — buffer próprio, e
+        /// não um segundo canal empacotado com a máscara, porque as duas mudam em
+        /// momentos diferentes: a máscara quando o artista a pinta, a curvatura
+        /// em TODO dab. Juntá-las faria um upload incremental de forma reenviar
+        /// a autoria que ninguém tocou.
+        const CURV: [wgpu::VertexAttribute; 1] = f32_attr(3);
         // Irmão do `vec3_buffer`, e uma CLOSURE pela mesma razão que ele: o
         // `make` abaixo é chamado duas vezes (a cena e o G-buffer), e um valor
         // capturado por move faria dele um `FnOnce`.
@@ -142,7 +183,12 @@ impl MeshRenderer {
                     module: &shader,
                     entry_point: Some("vs_main"),
                     compilation_options: wgpu::PipelineCompilationOptions::default(),
-                    buffers: &[vec3_buffer(&POS), vec3_buffer(&NRM), f32_buffer(&MASK)],
+                    buffers: &[
+                        vec3_buffer(&POS),
+                        vec3_buffer(&NRM),
+                        f32_buffer(&MASK),
+                        f32_buffer(&CURV),
+                    ],
                 },
                 fragment: Some(wgpu::FragmentState {
                     module: &shader,
@@ -196,6 +242,7 @@ impl MeshRenderer {
             gbuffer_pipeline,
             uniform,
             rig_uniform,
+            shade_uniform,
             bind,
             obj_bgl,
             depth: None,

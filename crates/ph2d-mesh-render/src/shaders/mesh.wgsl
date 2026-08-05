@@ -54,8 +54,17 @@ struct Object {
     model: mat4x4<f32>,
 };
 
+// **AS OPÇÕES DE SOMBREAMENTO** (`crate::shade`). Uniform e não `const` de
+// permutação porque é uma QUANTIDADE que o artista arrasta, não uma capacidade
+// que muda o corpo do shader: recompilar um pipeline por passo de slider é meio
+// segundo de trava por toque.
+struct Shade {
+    cavity: f32,
+};
+
 @group(0) @binding(0) var<uniform> cam: Camera;
 @group(0) @binding(1) var<uniform> rig: Rig;
+@group(0) @binding(2) var<uniform> shade: Shade;
 @group(1) @binding(0) var<uniform> obj: Object;
 
 // O piso AMBIENTE: o que uma face totalmente virada para longe da luz ainda
@@ -72,6 +81,18 @@ const FLAT_FLOOR: f32 = 1.0e-4;
 
 // O barro de estúdio: claro e dessaturado, para a FORMA aparecer.
 const CLAY: vec3<f32> = vec3<f32>(0.74, 0.70, 0.66);
+
+// **O GANHO DA CAVIDADE** — o que leva a curvatura crua à faixa que o olho usa.
+//
+// ⚠️ É `ph2d_mesh_render::CAVITY_GAIN`, e a igualdade é gateada pelo MESMO teste
+// que já pina o material do barro (`the_clays_material_is_the_same_number...`):
+// duas cópias dariam uma cavidade no vivo diferente da do objeto assado.
+//
+// A curvatura é adimensional e pequena: MEDIDO, o fundo liso de uma esfera fica
+// em |k| ~ 0,02-0,05 e um vinco chega a 0,7. E o fundo ENCOLHE com a tesselação
+// enquanto o vinco não — é isso que deixa um ganho constante servir malhas de
+// densidades diferentes. 4,0 satura em 0,25, entre os dois p99 medidos.
+const CAVITY_GAIN: f32 = 4.0;
 
 // O expoente Blinn-Phong do barro. ⚠️ É UM NÚMERO, não um modelo de material: a
 // tinta deriva o dela da rugosidade por-pixel por uma LUT baked, e o barro ainda
@@ -103,6 +124,7 @@ struct VsOut {
     @builtin(position) clip: vec4<f32>,
     @location(0) n_view: vec3<f32>,
     @location(1) mask: f32,
+    @location(2) curv: f32,
 };
 
 @vertex
@@ -110,10 +132,19 @@ fn vs_main(
     @location(0) pos: vec3<f32>,
     @location(1) normal: vec3<f32>,
     @location(2) mask: f32,
+    @location(3) curv: f32,
 ) -> VsOut {
     var out: VsOut;
     out.clip = cam.view_proj * obj.model * vec4<f32>(pos, 1.0);
     out.mask = mask;
+    // ⚠️ **A curvatura NÃO cruza `obj.model`, e a normal cruza.** Ela é
+    // adimensional por construção (a divisão pelo raio médio do anel, em
+    // `ph2d_mesh::curvature`), então a escala da `Pose` já se cancelou na CPU —
+    // e a rotação, quando ela chegar, não move um escalar. Aplicar a matriz aqui
+    // seria a mesma classe de erro do ângulo cru sobre altura no impasto: uma
+    // grandeza que não tem direção passando por uma transformação que só sabe
+    // falar de direção.
+    out.curv = curv;
     // `w = 0` ⇒ direção, não ponto: a translação da vista **e a do objeto** não
     // entram. A matriz de vista é ortonormal (sai de uma `look_at`) e a do
     // objeto é uma SIMILARIDADE (`Pose` é translação + escala UNIFORME), então
@@ -218,13 +249,35 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     let ratio = clamp(diffuse / flat_c, vec3<f32>(0.0), vec3<f32>(2.0));
     let m = vec3<f32>(AMBIENT) + (1.0 - AMBIENT) * ratio;
 
+    // **A CAVIDADE** — o canal que faz a escultura ser LIDA (`docs/3D/05.1` §4).
+    //
+    // Uma linha, simétrica, um knob: `k > 0` é fresta e escurece, `k < 0` é
+    // crista e clareia. Escurecer o côncavo (sujeira, sombra de fresta) e clarear
+    // o convexo (desgaste, brilho de aresta) são as DUAS METADES da mesma
+    // multiplicação, porque a curvatura é *um* número com sinal.
+    //
+    // ⚠️ **Ela multiplica o DIFUSO e não o realce**, e isso é óptica e não
+    // arrumação: uma fresta oclui a luz de AMBIENTE que chegaria por todas as
+    // direções, e não o caminho especular de uma lâmpada específica — que ou
+    // alcança aquele ponto ou não, e o `N·H` já responde isso. Multiplicar o
+    // realce junto faria uma quina viva perder o brilho que ela é a única a ter.
+    //
+    // ⚠️ **E ela é aplicada ANTES da máscara**, que tinge por cima: a máscara é
+    // chrome de autoria e não uma propriedade da tinta — a mesma razão pela qual
+    // ela não entra no G-buffer.
+    let cav = 1.0 - shade.cavity * clamp(in.curv * CAVITY_GAIN, -1.0, 1.0);
+
     // Soma, não `screen`: o destino é HDR e quem faz o roll-off é o tonemap.
-    var c = CLAY * m + CLAY_SHINE * spec;
+    var c = CLAY * m * cav + CLAY_SHINE * spec;
 
     // A máscara entra DEPOIS da luz, sobre a cor já acesa: ela tinge o que se vê
     // em vez de mudar como a superfície responde à lâmpada. Tingir antes faria a
     // região protegida acender diferente — e a máscara passaria a ser um
     // material, que é a metade que o G-buffer recusa logo acima.
-    c = mix(c, MASK_TINT * m, clamp(in.mask, 0.0, 1.0) * MASK_STRENGTH);
+    // ⚠️ O tinto leva o MESMO `cav`: sem ele a região protegida perderia a
+    // leitura de forma que o resto da peça tem, e o artista veria a máscara
+    // *achatar* o relevo que ela deveria só cobrir — que é exatamente o que o
+    // `MASK_STRENGTH` de 0,75 existe para não fazer.
+    c = mix(c, MASK_TINT * m * cav, clamp(in.mask, 0.0, 1.0) * MASK_STRENGTH);
     return vec4<f32>(c, 1.0);
 }

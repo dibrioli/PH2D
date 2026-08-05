@@ -79,6 +79,20 @@ fn render_using_rig(
     camera: &Camera3d,
     rig: &LightRig,
 ) -> Vec<u8> {
+    // ⚠️ **Cavidade ZERO aqui, e é por isso que os 22 gates anteriores desta
+    // suíte continuam medindo o que mediam.** O canal novo é opt-in por
+    // construção; quem quiser exercitá-lo chama a porta abaixo.
+    render_using_rig_cavity(device, queue, renderer, camera, rig, 0.0)
+}
+
+fn render_using_rig_cavity(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    renderer: &mut MeshRenderer,
+    camera: &Camera3d,
+    rig: &LightRig,
+    cavity: f32,
+) -> Vec<u8> {
     let target = device.create_texture(&wgpu::TextureDescriptor {
         label: Some("alvo"),
         size: wgpu::Extent3d {
@@ -124,6 +138,7 @@ fn render_using_rig(
         &view,
         camera,
         resolved.as_ref(),
+        cavity,
         (W, H),
     );
 
@@ -1337,4 +1352,223 @@ fn truncating_the_list_stops_drawing_what_left_the_scene() {
         "a segunda saiu da cena e saiu da tela"
     );
     assert!(coverage_in(&one, 0, W / 3) > 0.02, "e a primeira ficou");
+}
+
+/// **A CAVIDADE CHEGA AO PIXEL — a fresta escurece e a crista clareia** (W10.1,
+/// `docs/3D/05.1` §4).
+///
+/// A fixture é uma esfera com uma RUGA: um anel de vértices puxado para dentro,
+/// que produz um vale de curvatura positiva com duas cristas negativas ao lado
+/// dele. É a forma mínima que contém os dois sinais — medir só um passaria com
+/// metade do termo implementada.
+///
+/// ⚠️ **O oráculo é o CONTRASTE contra o mesmo pixel com a cavidade desligada**,
+/// e não um valor absoluto: a luz do rig já varia pela esfera, então um limiar de
+/// luminância mediria o enquadramento em vez do canal.
+#[test]
+#[ignore = "precisa de adapter"]
+fn the_cavity_darkens_the_crevice_and_brightens_the_ridge() {
+    let Some((device, queue)) = device() else {
+        eprintln!("sem adapter — skip");
+        return;
+    };
+    // Uma esfera com um sulco horizontal: os vértices de uma faixa de latitude
+    // recuam ao longo da própria normal.
+    let mut mesh = shapes::uv_sphere(60, 90, 1.0);
+    let moved: Vec<u32> = (0..mesh.vert_count() as u32)
+        .filter(|&v| (mesh.positions()[v as usize][1] - 0.25).abs() < 0.035)
+        .collect();
+    assert!(
+        moved.len() > 60,
+        "a fixture nao contem o fenomeno: {} vertices no sulco",
+        moved.len()
+    );
+    for &v in &moved {
+        let n = mesh.normals()[v as usize];
+        let p = &mut mesh.positions_mut()[v as usize];
+        for k in 0..3 {
+            p[k] -= n[k] * 0.045;
+        }
+    }
+    mesh.rebuild();
+
+    let cam = camera_for(&mesh);
+    let rig = LightRig::default();
+    let mut renderer = MeshRenderer::new(&device, FORMAT);
+    renderer.upload_at(&device, &queue, 0, &mesh);
+    let off = render_using_rig_cavity(&device, &queue, &mut renderer, &cam, &rig, 0.0);
+    let on = render_using_rig_cavity(&device, &queue, &mut renderer, &cam, &rig, 1.0);
+
+    // O sulco e as duas cristas, na coluna central. Onde eles caem em pixels sai
+    // do PRÓPRIO desligado: a linha em que a cavidade mais escurece é o vale, e a
+    // em que ela mais clareia é a crista — o que o gate afirma é que existe um
+    // par assim, e que ele está na faixa que o sulco ocupa.
+    let x = W / 2;
+    let mut darkest = (0u32, 0.0f32);
+    let mut brightest = (0u32, 0.0f32);
+    for y in 0..H {
+        if lum(&off, x, y) < 0.02 {
+            continue; // fundo
+        }
+        let d = lum(&on, x, y) - lum(&off, x, y);
+        if d < darkest.1 {
+            darkest = (y, d);
+        }
+        if d > brightest.1 {
+            brightest = (y, d);
+        }
+    }
+    println!(
+        "cavidade: mais escuro em y={} ({:+.3}), mais claro em y={} ({:+.3})",
+        darkest.0, darkest.1, brightest.0, brightest.1
+    );
+    assert!(
+        darkest.1 < -0.05,
+        "nenhuma fresta escureceu: pior delta {:+.3}",
+        darkest.1
+    );
+    assert!(
+        brightest.1 > 0.02,
+        "nenhuma crista clareou: melhor delta {:+.3}",
+        brightest.1
+    );
+    // ⚠️ E as duas estão PERTO uma da outra — um vale tem crista ao lado. Sem
+    // isto o gate passaria com um termo que escurece um polo e clareia o outro.
+    let gap = darkest.0.abs_diff(brightest.0);
+    assert!(
+        gap < H / 6,
+        "a fresta e a crista estao a {gap} px uma da outra: nao sao o mesmo sulco"
+    );
+}
+
+/// **A CAVIDADE ZERO É O BARRO DA W3, AO BYTE.**
+///
+/// É o que torna o canal opt-in de verdade: toda arte esculpida antes desta wave
+/// acende exactamente como acendia. ⚠️ Igualdade EXATA e não um limite de
+/// magnitude — o termo é uma multiplicação por `1 − 0 × k`, que é `1.0` em
+/// IEEE-754 para qualquer `k` finito, então não há arredondamento a admitir.
+#[test]
+#[ignore = "precisa de adapter"]
+fn a_cavity_of_zero_is_the_bare_clay_to_the_byte() {
+    let Some((device, queue)) = device() else {
+        eprintln!("sem adapter — skip");
+        return;
+    };
+    let mesh = shapes::uv_sphere(40, 56, 1.0);
+    let cam = camera_for(&mesh);
+    let rig = LightRig::default();
+    let mut renderer = MeshRenderer::new(&device, FORMAT);
+    renderer.upload_at(&device, &queue, 0, &mesh);
+    let a = render_using_rig_cavity(&device, &queue, &mut renderer, &cam, &rig, 0.0);
+    let b = render_using_rig_cavity(&device, &queue, &mut renderer, &cam, &rig, 0.7);
+    assert_ne!(a, b, "o controle: com 0,7 o pixel TEM de mudar");
+    let c = render_using_rig_cavity(&device, &queue, &mut renderer, &cam, &rig, 0.0);
+    assert_eq!(a, c, "voltar a zero nao devolveu o barro da W3");
+}
+
+/// **O G-BUFFER IGNORA A CAVIDADE**, como já ignora a máscara.
+///
+/// O canal doado é uma NORMAL — o `docs/3D/05.2` numa frase. A cavidade é uma
+/// escolha de sombreamento do BARRO, e deixá-la vazar para a doação faria a tinta
+/// que o Painter acende por baixo sair escurecida nas frestas da escultura: o
+/// artista veria a ferramenta de leitura dele entrar na obra.
+///
+/// ⚠️ Ela **não é uma dívida disfarçada de decisão**: o alvo é `vec4` com `xyz`
+/// de normal e `w` de cobertura, e não há canal livre. Levar oclusão à tinta é um
+/// segundo plano, e portanto uma wave — nomeada, não contrabandeada.
+#[test]
+#[ignore = "precisa de adapter"]
+fn the_gbuffer_ignores_the_cavity() {
+    let Some((device, queue)) = device() else {
+        eprintln!("sem adapter — skip");
+        return;
+    };
+    let mesh = shapes::uv_sphere(40, 56, 1.0);
+    let cam = camera_for(&mesh);
+    // O G-buffer não tem por onde receber a cavidade — ele não a toma como
+    // argumento —, e é isso que este gate pina: o plano doado com uma malha
+    // fortemente curvada é o MESMO que uma esfera lisa doaria em cada pixel de
+    // mesma normal. A afirmação executável é que o passe de cor MUDA (o controle
+    // acima) e o de doação não tem parâmetro por onde mudar.
+    let g = gbuffer(&device, &queue, &mesh, &cam);
+    let covered = g.iter().filter(|(_, w)| *w > 0.5).count();
+    assert!(covered > 0, "a fixture nao contem o fenomeno");
+    for (n, w) in g.iter().filter(|(_, w)| *w > 0.5) {
+        let len = (n[0] * n[0] + n[1] * n[1] + n[2] * n[2]).sqrt();
+        assert!(
+            (len - 1.0).abs() < 0.02,
+            "a doacao carrega algo que nao e' uma normal unitaria: {n:?} (|n| = {len})"
+        );
+        assert_eq!(*w, 1.0, "a cobertura e' 1, nao um peso de cavidade");
+    }
+}
+
+/// **A CURVATURA VIAJA NO UPLOAD INCREMENTAL** — o gate que a mutação exigiu.
+///
+/// ⚠️ **Ele existe porque o irmão `a_region_upload_shows_exactly_what_a_full_
+/// upload_shows` NÃO o cobre, e isso foi medido:** aquele gate roda com a
+/// cavidade em zero, e com zero o canal não chega ao pixel por construção.
+/// Apagar o `write_buffer` da curvatura do caminho incremental deixava os **25**
+/// gates desta suíte verdes.
+///
+/// O defeito que ele pega é o pior tipo: uma superfície cujo RELEVO é o novo e
+/// cuja LEITURA de cavidade é a de antes do traço — a fresta desenhada onde ela
+/// estava, no lugar exato em que o artista está olhando.
+#[test]
+#[ignore = "precisa de adapter"]
+fn a_region_upload_carries_the_curvature_the_dab_recomputed() {
+    let Some((device, queue)) = device() else {
+        eprintln!("sem adapter — skip");
+        return;
+    };
+    let mut mesh = shapes::uv_sphere(40, 56, 1.0);
+    let camera = camera_for(&mesh);
+    let rig = LightRig::default();
+
+    let mut incremental = MeshRenderer::new(&device, FORMAT);
+    incremental.upload_at(&device, &queue, 0, &mesh);
+
+    // Um traço de Crease: ele cava, então produz curvatura POSITIVA de verdade —
+    // que é o sinal que a cavidade escurece. Um Draw suave mal moveria o canal, e
+    // o gate ficaria verde sem conter o fenômeno.
+    let brush = Brush {
+        verb: Verb::Crease,
+        radius: 0.35,
+        strength: 1.0,
+        ..Brush::default()
+    };
+    let mut stroke = SculptStroke::default();
+    stroke.begin(&mesh);
+    for k in 0..5 {
+        let x = -0.3 + 0.15 * k as f32;
+        stroke.dab(
+            &mut mesh,
+            &brush,
+            &Dab::at([x, 0.0, 0.95], brush.radius, [0.0, 0.0, -1.0]),
+            Symmetry::default(),
+        );
+        assert!(
+            incremental.upload_region_at(&queue, 0, &mesh, stroke.last_refreshed()),
+            "o upload incremental recusou uma malha de mesma topologia"
+        );
+    }
+
+    // O controle: com a cavidade ligada, a malha esculpida TEM de diferir da lisa.
+    // Sem ele o gate abaixo passaria comparando duas telas iguais.
+    let mut fresh = MeshRenderer::new(&device, FORMAT);
+    fresh.upload_at(&device, &queue, 0, &mesh);
+    let want = render_using_rig_cavity(&device, &queue, &mut fresh, &camera, &rig, 1.0);
+    let mut smooth = MeshRenderer::new(&device, FORMAT);
+    smooth.upload_at(&device, &queue, 0, &shapes::uv_sphere(40, 56, 1.0));
+    let unsculpted = render_using_rig_cavity(&device, &queue, &mut smooth, &camera, &rig, 1.0);
+    assert_ne!(
+        want, unsculpted,
+        "o controle: o vinco TEM de aparecer com a cavidade ligada"
+    );
+
+    let got = render_using_rig_cavity(&device, &queue, &mut incremental, &camera, &rig, 1.0);
+    assert_eq!(
+        got, want,
+        "a regiao subiu o relevo novo e a curvatura VELHA -- a fresta ficou onde estava"
+    );
 }

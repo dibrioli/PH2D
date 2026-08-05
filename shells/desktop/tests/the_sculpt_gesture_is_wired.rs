@@ -471,3 +471,55 @@ fn every_verb_is_reachable_from_the_keyboard() {
         );
     }
 }
+
+/// **A CAVIDADE TEM UMA TECLA, E ELA CHEGA AO DISPOSITIVO** (W10.1).
+///
+/// Duas metades, e nenhuma implica a outra: um `cycle_cavity` que ninguém chama
+/// é uma capacidade sem porta, e uma porta que não alcança o `render` é um
+/// número autorado que o pixel nunca vê. ⚠️ **O segundo é o que nenhum teste de
+/// unidade pega** — o `render` exige device e janela —, e é por isso que ele é
+/// arch-gate sobre a fonte.
+#[test]
+fn the_cavity_has_a_key_and_the_number_reaches_the_device() {
+    let src = sculpt_src();
+    let key = function_body(&src, "sculpt3d_key");
+    let block = braced_block(&key, "code == K::KeyC");
+    assert!(
+        block.contains("scene.cycle_cavity()"),
+        "o Shift+C tem de chamar a porta unica da cavidade"
+    );
+    assert!(
+        block.contains("DESLIGADA") && block.contains("cavidade: {amount"),
+        "o log tem de dizer o NUMERO: este canal nao muda a silhueta, entao sem ele o \
+         artista aperta, ve quase a mesma imagem e conclui que a tecla morreu"
+    );
+    // E o número autorado chega ao passe. ⚠️ `self.cavity` e não um literal: um
+    // `0.0` cravado deixaria os gates de GPU verdes (eles chamam a porta direto)
+    // com a tecla inerte no produto — a forma exata do defeito que a `line/anim`
+    // mediu no overlay da trajetória.
+    let render = function_body(&src, "render");
+    assert!(
+        render.contains("self.cavity,"),
+        "o `render` tem de receber a cavidade AUTORADA, nao um literal"
+    );
+}
+
+/// **A CAVIDADE NASCE DESLIGADA.**
+///
+/// ⚠️ Um canal de sombreamento que se arma sozinho muda a arte de todo mundo que
+/// já esculpiu — e o gate NÃO menciona o passo do ciclo, de propósito: um
+/// default só é testado por um teste que não o nomeia. Ele lê o valor com que a
+/// cena nasce e afirma que ele é o neutro do `ph2d-mesh-render`.
+#[test]
+fn the_cavity_is_born_off() {
+    let src = sculpt_src();
+    assert!(
+        src.contains("cavity: ph2d_mesh_render::DEFAULT_CAVITY,"),
+        "a cena tem de nascer no neutro da crate de render, e nao num literal proprio"
+    );
+    assert_eq!(
+        ph2d_mesh_render::DEFAULT_CAVITY,
+        0.0,
+        "o neutro E' zero: com ele o barro e' o da W3, ao byte"
+    );
+}

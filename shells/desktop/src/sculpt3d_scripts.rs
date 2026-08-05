@@ -36,6 +36,49 @@ pub(super) fn for_scene(mesh: &ph2d_mesh::Mesh) {
              [sculpt3d]    Depois de tapada, K subdivide e o modelo fica solido de verdade."
         );
     }
+    if crate::sculpt3d::cavity_scene() {
+        // ⚠️ **A cena MEDE a escada antes de falar dela.** Um roteiro que
+        // dissesse *"há sete sulcos de profundidades diferentes"* sem contar os
+        // números seria a cena mentindo — o defeito que o smoke do Colorize
+        // pagou —, e aqui o número é a CURVATURA, que é literalmente a grandeza
+        // que o canal desenha.
+        //
+        // Cada sulco mora numa faixa de latitude própria, e o número é o máximo
+        // dentro dela. Imprimir a ESCADA e não só um total é o que torna o
+        // roteiro conferível pelo artista.
+        let mut ladder = String::new();
+        for k in 0..7usize {
+            let v = -0.45 + 0.15 * k as f32;
+            let mut mx = 0.0f32;
+            for w in 0..mesh.vert_count() {
+                let q = mesh.positions()[w];
+                if (q[1] - v).abs() < 0.04 && q[2] > 0.3 {
+                    mx = mx.max(mesh.curvatures()[w]);
+                }
+            }
+            ladder.push_str(&format!(" {mx:.3}"));
+        }
+        eprintln!(
+            "[sculpt3d] =15 CAVIDADE: sete sulcos PARALELOS, do mais FUNDO (embaixo) ao mais raso.\n\
+             [sculpt3d]    curvatura de cada um, de baixo para cima:{ladder}\n\
+             [sculpt3d]    -- se o primeiro nao passar de ~0,15, PARE: a escada nao foi cavada e\n\
+             [sculpt3d]    o resto do smoke nao diz nada.\n\
+             [sculpt3d]    Olhe a esfera COMO ELA ABRE: os sulcos fundos se veem, e os rasos\n\
+             [sculpt3d]    quase nao. Essa e' a referencia -- e' o que a luz sozinha mostra.\n\
+             [sculpt3d]    Aperte Shift+C: a cavidade vai a 0,35. Os sulcos rasos APARECEM, e o\n\
+             [sculpt3d]    log diz o numero. Aperte de novo (0,70) e de novo (1,00); o quarto\n\
+             [sculpt3d]    toque volta a ZERO, e a imagem tem de voltar EXATAMENTE a que abriu.\n\
+             [sculpt3d]    O que julgar: a fresta ESCURECE e a crista ao lado dela CLAREIA. Se so'\n\
+             [sculpt3d]    escurecer, metade do termo nao esta' chegando.\n\
+             [sculpt3d]    Depois esculpa com a cavidade LIGADA (0 = Crease, 3 = Smooth): o canal\n\
+             [sculpt3d]    acompanha o traco AO VIVO -- a fresta nova nasce escura sob o pincel, e\n\
+             [sculpt3d]    o Smooth a apaga.\n\
+             [sculpt3d]    E gire com o botao direito: a cavidade e' da FORMA, entao ela NAO nada\n\
+             [sculpt3d]    com a camera -- ela fica onde o barro esta'.\n\
+             [sculpt3d]    Q/E/R/F movem a luz: a sombra dos sulcos muda e a cavidade nao. Sao\n\
+             [sculpt3d]    dois canais, e e' por isso que ela le forma onde a luz nao chega."
+        );
+    }
     if crate::sculpt3d::turn_scene() {
         // ⚠️ **A cena DECLARA que trouxe cristas.** Numa esfera LISA um
         // Twist em torno do eixo da vista é quase invisível — ela é

@@ -146,6 +146,27 @@ impl App {
             // o *local view* do Blender, e é por isso que o log diz o que voltou
             // ou o que ficou: uma tela que perde quatro objetos sem uma linha
             // explicando é indistinguível de um crash de render.
+            // **A CAVIDADE** — o canal que faz a escultura ser LIDA
+            // (`docs/3D/05.1` §4, W10.1).
+            //
+            // ⚠️ **`Shift+C` e não `C`, e a única coisa que isto tira é um alias
+            // acidental:** `C` sozinho limpa a máscara, e como o bloco do `shift`
+            // cai adiante quando nada casa, hoje `Shift+C` também limpa. Nenhum
+            // atalho DOCUMENTADO se move — e o mnemônico do artista é **C**avity,
+            // que é o único que ele vai tentar antes de procurar.
+            if code == K::KeyC {
+                let amount = scene.cycle_cavity();
+                if amount == 0.0 {
+                    eprintln!(
+                        "[sculpt3d] cavidade: DESLIGADA -- o barro liso da W3, ao byte                          (Shift+C liga)"
+                    );
+                } else {
+                    eprintln!(
+                        "[sculpt3d] cavidade: {amount:.2} -- a fresta ESCURECE e a crista CLAREIA                          (Shift+C avanca; volta a zero depois de 1.00)"
+                    );
+                }
+                return true;
+            }
             if code == K::KeyI {
                 let on = scene.toggle_isolate();
                 if on {

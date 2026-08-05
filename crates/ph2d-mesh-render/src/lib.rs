@@ -32,11 +32,13 @@ mod camera;
 mod form;
 mod lighting;
 mod pipeline;
+mod shade;
 pub mod upload;
 
 pub use camera::Camera3d;
 pub use lighting::{LampRaw, RigRaw};
 pub use pipeline::{MeshRenderer, camera_uniform_bytes, view_proj_from_bytes};
+pub use shade::{CAVITY_GAIN, DEFAULT_CAVITY, ShadeRaw};
 
 /// **O material do barro** — o realce e a largura dele.
 ///
@@ -65,6 +67,10 @@ mod clay_tests {
         for (name, value) in [
             ("CLAY_SHINE", super::CLAY_SHINE),
             ("CLAY_EXPONENT", super::CLAY_EXPONENT),
+            // ⚠️ O ganho da cavidade entra na MESMA lista, e não num gate irmão:
+            // a pergunta é uma só — *este número existe duas vezes?* — e uma
+            // segunda função a faria de novo com outro parser.
+            ("CAVITY_GAIN", super::CAVITY_GAIN),
         ] {
             let needle = format!("const {name}: f32 = ");
             let at = src

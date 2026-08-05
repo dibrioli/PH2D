@@ -11,7 +11,7 @@
 //! segunda resposta a *"como uma crista é feita"*, e ela divergiria da primeira
 //! no dia em que o depósito mudasse.
 
-use super::fixtures::{hooked_sphere, punctured_sphere, ridged_sphere};
+use super::fixtures::{hooked_sphere, punctured_sphere, ridged_sphere, wrinkled_sphere};
 
 /// A cena está armada? — **qualquer nível ≥ 1**.
 ///
@@ -273,6 +273,11 @@ pub(crate) fn reversion_scene() -> bool {
     std::env::var("PH2D_SCULPT3D_SMOKE").ok().as_deref() == Some("3")
 }
 
+/// `=15` — a cena da **CAVIDADE**: uma esfera com rugas EM ESCADA.
+pub(crate) fn cavity_scene() -> bool {
+    std::env::var("PH2D_SCULPT3D_SMOKE").ok().as_deref() == Some("15")
+}
+
 /// `=4` — a cena de **FECHAR BURACO**: uma esfera com um pedaço arrancado.
 pub(crate) fn holes_scene() -> bool {
     std::env::var("PH2D_SCULPT3D_SMOKE").ok().as_deref() == Some("4")
@@ -295,6 +300,14 @@ pub(crate) fn smoke_mesh() -> ph2d_mesh::Mesh {
     // ⚠️ A `=11` abre com as CRISTAS porque o que ela julga é a LUZ: sobre uma esfera lisa a
     // iluminação de uma normal quase constante lê como um degradê chapado, e o artista não teria
     // como separar *o objeto ficou aceso pela forma* de *alguém escureceu o sprite*.
+    // ⚠️ A `=15` abre com as RUGAS EM ESCADA, e a escada é o oráculo: a cavidade
+    // entrega *ver o que a luz sozinha não mostra*, então a cena tem de conter
+    // sulcos que a luz já mostra e sulcos que ela quase não mostra. Com uma
+    // profundidade só, ligar o canal daria *uma imagem diferente* — e diferente
+    // não é a pergunta.
+    if cavity_scene() {
+        return wrinkled_sphere();
+    }
     if turn_scene() || document_scene() || export_scene() || bake_scene() || reopen_scene() {
         return ridged_sphere();
     }

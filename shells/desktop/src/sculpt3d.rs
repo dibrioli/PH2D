@@ -127,9 +127,9 @@ mod scenes;
 mod fixtures;
 
 pub(crate) use scenes::{
-    announce, bake_scene, donation_scene, dyntopo_scene, fuse_scene, holes_scene, remesh_scene,
-    reopen_scene, reversion_scene, scene_objects, smoke_armed, smoke_mesh, turn_scene,
-    wants_canvas,
+    announce, bake_scene, cavity_scene, donation_scene, dyntopo_scene, fuse_scene, holes_scene,
+    remesh_scene, reopen_scene, reversion_scene, scene_objects, smoke_armed, smoke_mesh,
+    turn_scene, wants_canvas,
 };
 
 /// O que o arrasto está fazendo.
@@ -342,6 +342,14 @@ pub(crate) struct Sculpt3dScene {
     /// um dono só, e o que falta unificar é o dado. Um segundo rig permanente
     /// aqui seria exatamente o que `docs/3D/05.2` proíbe.
     rig: LightRig,
+    /// **A CAVIDADE** — quanto a curvatura escurece a fresta e clareia a crista
+    /// (`ph2d_mesh_render::shade`, `docs/3D/05.1` §4).
+    ///
+    /// ⚠️ Nasce em [`ph2d_mesh_render::DEFAULT_CAVITY`], que é **zero**, e o
+    /// motivo é o mesmo do `FormRole::Clay` logo abaixo: o barro liso é o que a
+    /// W3 entregou e o Enio aprovou, e um canal de sombreamento que se arma
+    /// sozinho muda a arte de todo mundo que já esculpiu. O `Shift+C` o liga.
+    cavity: f32,
     stroke: SculptStroke,
     undo: Vec<Entry>,
     /// **O futuro guardado** — o que um Ctrl+Z tirou e um Ctrl+Shift+Z devolve.
@@ -409,6 +417,7 @@ impl Sculpt3dScene {
             // por acidente é pior que um default menos ambicioso; o `X` liga.
             symmetry: Symmetry::default(),
             rig: LightRig::default(),
+            cavity: ph2d_mesh_render::DEFAULT_CAVITY,
             stroke: SculptStroke::default(),
             undo: Vec::new(),
             redo: Vec::new(),
@@ -447,8 +456,33 @@ impl Sculpt3dScene {
             color,
             &self.camera,
             resolved.as_ref(),
+            self.cavity,
             size,
         );
+    }
+
+    /// **A CAVIDADE, um passo adiante** — devolve a quantidade nova.
+    ///
+    /// Ciclo e não par de teclas, o idioma do [`Self::cycle_role`] ao lado: é um
+    /// canal de LEITURA, e o artista o escolhe uma vez e volta a esculpir. Os
+    /// quatro degraus dão desligado, sutil, forte e o teto.
+    ///
+    /// ⚠️ **Um número e não dois.** O `docs/3D/05.1` §4 fala em *Cavity* e *Edge
+    /// Wear*, e os dois são a UI de um MATERIAL — sujeira acumulada na fresta e
+    /// tinta gasta na quina são histórias físicas diferentes, com quantidades
+    /// diferentes. Para LER FORMA, que é o que esta wave entrega, a curvatura é
+    /// *um* número com sinal e escurecer/clarear são as duas metades da mesma
+    /// multiplicação. Inventar o segundo agora seria um knob que nenhum gesto
+    /// alcança; se o smoke disser que os dois lados querem quantidades
+    /// diferentes, é ele que parte este número em dois.
+    pub(crate) fn cycle_cavity(&mut self) -> f32 {
+        const STEPS: [f32; 4] = [0.0, 0.35, 0.70, 1.0];
+        let at = STEPS
+            .iter()
+            .position(|s| (s - self.cavity).abs() < 1e-4)
+            .unwrap_or(0);
+        self.cavity = STEPS[(at + 1) % STEPS.len()];
+        self.cavity
     }
 
     /// O raio do cursor, pela câmera desta cena.

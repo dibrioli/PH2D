@@ -14,6 +14,7 @@ use wgpu::util::DeviceExt as _;
 
 use crate::camera::Camera3d;
 use crate::lighting::RigRaw;
+use crate::shade::ShadeRaw;
 use crate::upload;
 
 /// O fonte do shader, exposto para o gate poder afirmar o que ele DECLARA sem
@@ -48,6 +49,11 @@ struct MeshGpu {
     /// ninguém escreve e ninguém lê** — 12 B/vértice contra 4, e dois controles
     /// mortos. O material chega com o Paint (W7/W9), e o canal é aditivo.
     masks: wgpu::Buffer,
+    /// A CURVATURA por vértice — o canal que faz a forma ser LIDA
+    /// (`ph2d_mesh::curvature`). ⚠️ **Ela é DERIVADA**, então ao contrário da
+    /// máscara não há `Option` a resolver: toda malha tem uma, sempre, e o
+    /// buffer sobe direto do slice que já existe.
+    curvatures: wgpu::Buffer,
     indices: wgpu::Buffer,
     index_count: u32,
     vert_capacity: usize,
@@ -78,6 +84,8 @@ pub struct MeshRenderer {
     gbuffer_pipeline: wgpu::RenderPipeline,
     uniform: wgpu::Buffer,
     rig_uniform: wgpu::Buffer,
+    /// As opções de sombreamento do barro — ver [`crate::shade`].
+    shade_uniform: wgpu::Buffer,
     bind: wgpu::BindGroup,
     /// O layout do grupo 1 — guardado porque um `Slot` novo nasce a cada objeto
     /// que a cena ganha, e cada um precisa do seu bind group.
@@ -189,6 +197,7 @@ impl MeshRenderer {
                 0,
                 bytemuck::cast_slice(masks_of(mesh, &mut self.scratch_masks)),
             );
+            queue.write_buffer(&g.curvatures, 0, bytemuck::cast_slice(mesh.curvatures()));
             queue.write_buffer(&g.indices, 0, bytemuck::cast_slice(&self.scratch_indices));
             g.index_count = index_count;
             return;
@@ -208,6 +217,7 @@ impl MeshRenderer {
                 "ph2d-mesh mask",
                 bytemuck::cast_slice(masks_of(mesh, &mut self.scratch_masks)),
             ),
+            curvatures: vb("ph2d-mesh curv", bytemuck::cast_slice(mesh.curvatures())),
             indices: device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("ph2d-mesh idx"),
                 contents: bytemuck::cast_slice(&self.scratch_indices),
@@ -310,6 +320,18 @@ impl MeshRenderer {
             // qual canal é este dab) seria o chamador conhecendo a regra que o
             // `last_gpu_dirty` existe para responder.
             queue.write_buffer(&g.masks, a as u64 * 4, bytemuck::cast_slice(&masks[a..b]));
+            // **E a CURVATURA também**, pela mesma janela e pelo mesmo motivo.
+            // ⚠️ Aqui ela é ainda mais obrigatória que a máscara: a lista que
+            // chega é o `refreshed()` do `RegionScratch`, que é exatamente o
+            // conjunto cuja curvatura foi recomputada. Deixá-la de fora daria uma
+            // superfície cujo RELEVO é novo e cuja LEITURA de cavidade é a de
+            // antes do traço — a fresta desenhada onde ela estava, no lugar exato
+            // em que o artista está olhando.
+            queue.write_buffer(
+                &g.curvatures,
+                a as u64 * 4,
+                bytemuck::cast_slice(&mesh.curvatures()[a..b]),
+            );
         }
         true
     }
@@ -352,6 +374,7 @@ impl MeshRenderer {
             pass.set_vertex_buffer(0, slot.gpu.positions.slice(..));
             pass.set_vertex_buffer(1, slot.gpu.normals.slice(..));
             pass.set_vertex_buffer(2, slot.gpu.masks.slice(..));
+            pass.set_vertex_buffer(3, slot.gpu.curvatures.slice(..));
             pass.set_index_buffer(slot.gpu.indices.slice(..), wgpu::IndexFormat::Uint32);
             pass.draw_indexed(0..slot.gpu.index_count, 0, 0..1);
         }
@@ -386,10 +409,14 @@ impl MeshRenderer {
     /// `rig` são as lâmpadas do ARTISTA, resolvidas ([`ph2d_light::resolve`]) — as mesmas que acendem
     /// a tinta. `None` é o artista com todas as luzes apagadas, e o shader devolve o barro cru.
     ///
-    /// ⚠️ Ele é passado por frame, não guardado: o rig é do DOCUMENTO, e uma cópia aqui seria uma
-    /// segunda verdade sobre onde a luz está — a que fica velha no frame seguinte ao card mudar.
-    // Oito argumentos, e nenhum deles é agrupável sem inventar um tipo que existiria só para o
-    // clippy: quatro são as alças do device (que o chamador possui) e quatro são o frame. O precedente
+    /// `cavity` é **quanto a curvatura escurece a fresta e clareia a crista**
+    /// (`crate::shade`). `0` devolve o barro liso da W3, ao byte.
+    ///
+    /// ⚠️ Os dois são passados por frame, não guardados: o rig e a cavidade são do DOCUMENTO, e uma
+    /// cópia aqui seria uma segunda verdade sobre como a cena é acesa — a que fica velha no frame
+    /// seguinte ao card mudar.
+    // Nove argumentos, e nenhum deles é agrupável sem inventar um tipo que existiria só para o
+    // clippy: quatro são as alças do device (que o chamador possui) e cinco são o frame. O precedente
     // é o `body_desc` da `line/physics`.
     #[allow(clippy::too_many_arguments)]
     pub fn render(
@@ -400,6 +427,7 @@ impl MeshRenderer {
         color_view: &wgpu::TextureView,
         camera: &Camera3d,
         rig: Option<&ph2d_light::ResolvedRig>,
+        cavity: f32,
         size: (u32, u32),
     ) {
         if !self.has_mesh() || size.0 == 0 || size.1 == 0 {
@@ -417,6 +445,11 @@ impl MeshRenderer {
             }),
         );
         queue.write_buffer(&self.rig_uniform, 0, bytemuck::bytes_of(&RigRaw::pack(rig)));
+        queue.write_buffer(
+            &self.shade_uniform,
+            0,
+            bytemuck::bytes_of(&ShadeRaw::pack(cavity)),
+        );
 
         let depth = self.depth.as_ref().expect("ensure_depth acabou de rodar");
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {

@@ -211,6 +211,11 @@ fn render_live(
         &view,
         camera,
         Some(rig),
+        // ⚠️ **Cavidade ZERO, e é a premissa da medição.** Esta sonda compara a
+        // luz da malha com a do passe de tinta, e a cavidade é um termo que só a
+        // primeira tem — ligá-la aqui faria a comparação medir a diferença entre
+        // dois modelos em vez da diferença entre duas implementações do mesmo.
+        0.0,
         size,
     );
     gpu.queue.submit([enc.finish()]);

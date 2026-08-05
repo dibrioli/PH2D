@@ -135,3 +135,56 @@ pub(super) fn punctured_sphere() -> ph2d_mesh::Mesh {
     ph2d_mesh::Mesh::from_parts(sphere.positions().to_vec(), keep)
         .expect("arrancar face não inventa índice")
 }
+
+/// **A esfera de RUGAS EM ESCADA** — a fixture da cavidade (`=15`).
+///
+/// Sete sulcos paralelos de profundidades DECRESCENTES, cavados com o verbo do
+/// produto (`Crease`). ⚠️ **A escada é o oráculo inteiro, e uma esfera com um
+/// vinco só não serviria:** o que a cavidade entrega é *ver o que a luz sozinha
+/// não mostra*, então a cena precisa conter sulcos que a luz JÁ mostra (para o
+/// artista ter referência) e sulcos que ela quase não mostra (que é onde o canal
+/// se paga). Com uma profundidade só, ligar o canal produz *uma imagem
+/// diferente* — e diferente não é a pergunta.
+///
+/// ⚠️ **Cavados e não escritos à mão nos vértices**, a lei deste arquivo: um
+/// sulco fabricado seria uma segunda resposta a *o que um Crease deixa*, e o que
+/// o smoke julga é a leitura da forma que o PRODUTO produz.
+#[must_use]
+pub(super) fn wrinkled_sphere() -> ph2d_mesh::Mesh {
+    let mut mesh = ph2d_mesh::shapes::uv_sphere(96, 144, 1.0);
+    let mut stroke = SculptStroke::default();
+    const STEPS: usize = 40;
+    // ⚠️ **As sete forças saem da MEDIÇÃO, e a primeira escada que escrevi era
+    // errada:** com `1,0 … 0,09` os três sulcos de baixo saíam com curvatura
+    // 0,026 · 0,008 · 0,0005 — invisíveis mesmo com a cavidade no teto, ou seja
+    // três degraus que não ensinam nada. Estas produzem **0,227 → 0,052**, que é
+    // a faixa entre *satura o canal* (o ganho de 4,0 satura em 0,25) e *aparece
+    // só quando ele está ligado*.
+    for (k, strength) in [1.0f32, 0.82, 0.68, 0.56, 0.47, 0.39, 0.32]
+        .into_iter()
+        .enumerate()
+    {
+        let brush = Brush {
+            verb: Verb::Crease,
+            radius: 0.10,
+            strength,
+            ..Brush::default()
+        };
+        // Sulcos paralelos ao longo de meridianos vizinhos, no hemisfério que
+        // olha para a câmera.
+        let v = -0.45 + 0.15 * k as f32;
+        stroke.begin(&mesh);
+        for i in 0..=STEPS {
+            let u = -0.5 + 1.0 * i as f32 / STEPS as f32;
+            let r2 = (u * u + v * v).min(0.98);
+            let c = [u, v, (1.0 - r2).max(1e-3).sqrt()];
+            stroke.dab(
+                &mut mesh,
+                &brush,
+                &Dab::at(c, brush.radius, [-c[0], -c[1], -c[2]]),
+                Symmetry::default(),
+            );
+        }
+    }
+    mesh
+}

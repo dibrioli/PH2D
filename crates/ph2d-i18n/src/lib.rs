@@ -228,6 +228,30 @@ pub fn tr(key: &str) -> &'static str {
         "panel.vector.component.update_main" => "Update Main",
         "panel.vector.component.swap" => "Swap Main",
         "panel.vector.component.swap_armed" => "Click a component to swap",
+        // **A PELE POR-WIDGET** (plano UI/UX W6.2) — a forma veste um widget do catálogo, e o
+        // pintor REAL desenha no lugar dela.
+        // ⚠️ Os nomes dos tipos são os do catálogo (`ph2d_editor_core::widget`) e passam por aqui
+        // como qualquer outro rótulo: eles aparecem na tela, e a lei do repo não abre exceção para
+        // substantivo próprio de design system.
+        "panel.vector.section.widget" => "Widget Skin",
+        "panel.vector.widget.wear" => "Wear a Widget",
+        "panel.vector.widget.remove" => "Back to Drawing",
+        // ⚠️ O rótulo do widget é o NOME da entidade (a Hierarquia), nunca um campo próprio — esta
+        // linha é o que torna essa lei visível ao artista em vez de descoberta por acidente.
+        "panel.vector.widget.label_is_name" => "Label follows the object name",
+        "panel.vector.widget.unknown" => "Unknown widget — drawn as a shape",
+        "panel.vector.widget.kind.button" => "Button",
+        "panel.vector.widget.kind.toggle" => "Toggle",
+        "panel.vector.widget.kind.checkbox" => "Checkbox",
+        "panel.vector.widget.kind.slider" => "Slider",
+        "panel.vector.widget.kind.progress" => "Progress",
+        "panel.vector.widget.kind.tag" => "Tag",
+        "panel.vector.widget.kind.text_input" => "Text Input",
+        "panel.vector.widget.kind.card" => "Card",
+        "panel.vector.widget.kind.section" => "Section",
+        "panel.vector.widget.kind.list_item" => "List Item",
+        "panel.vector.widget.kind.spinner" => "Spinner",
+        "panel.vector.widget.kind.divider" => "Divider",
         // **O AUTO LAYOUT** (plano UI/UX W2, ADR-0153) — a moldura que empilha os filhos.
         // ⚠️ Os rótulos de direção incluem o "Off" porque *"esta moldura flui?"* e *"em que
         // direção?"* são a MESMA pergunta (o `display` do CSS) — ver `VECTOR_LAYOUT_DIR_OFF`.

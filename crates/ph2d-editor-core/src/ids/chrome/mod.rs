@@ -72,6 +72,7 @@ mod vector_symmetry;
 /// Os ids da seção **Text on Path** — irmão de `vector` pelo teto de 700 LOC.
 mod vector_textpath;
 mod vector_tokens;
+mod vector_widget;
 mod vector_width;
 mod wet_tuning;
 
@@ -119,5 +120,6 @@ pub use vector_snap::*;
 pub use vector_symmetry::*;
 pub use vector_textpath::*;
 pub use vector_tokens::*;
+pub use vector_widget::*;
 pub use vector_width::*;
 pub use wet_tuning::*;

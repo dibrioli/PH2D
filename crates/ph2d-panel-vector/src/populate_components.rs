@@ -60,4 +60,26 @@ pub(super) fn component_controls(store: &mut WidgetStore) {
             );
         }
     }
+    // **A PELE por-widget** (W6.2): os dois verbos e os chips de tipo. Mesmo teto-sempre-registado
+    // pela mesma razão — e aqui o esquecimento seria mais caro, porque a seção INTEIRA fica muda.
+    for &id in WIDGET_BUTTONS {
+        store.register(
+            id,
+            InteractiveState::Button {
+                state: ButtonState::Normal,
+            },
+        );
+    }
+    for i in 0..ids::MAX_WIDGET_KINDS {
+        store.register(
+            ids::vector_widget_kind_id(i),
+            InteractiveState::Button {
+                state: ButtonState::Normal,
+            },
+        );
+    }
 }
+
+/// Os dois verbos da seção WIDGET SKIN — a mesma lista que o `paint_widget` desenha.
+pub(crate) const WIDGET_BUTTONS: &[ph2d_a11y::NodeId] =
+    &[ids::VECTOR_WIDGET_WEAR, ids::VECTOR_WIDGET_REMOVE];

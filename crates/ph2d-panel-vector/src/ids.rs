@@ -37,6 +37,11 @@ pub use ph2d_editor_core::ids::{
     VECTOR_COMPONENT_UPDATE_MAIN, VECTOR_SECTION_COMPONENT, vector_instance_piece_colour_id,
     vector_instance_piece_show_id, vector_variant_option_id,
 };
+/// **A PELE POR-WIDGET** (plano UI/UX W6.2): a seção, os dois verbos e os chips de tipo.
+pub use ph2d_editor_core::ids::{
+    MAX_WIDGET_KINDS, VECTOR_SECTION_WIDGET, VECTOR_WIDGET_REMOVE, VECTOR_WIDGET_WEAR,
+    vector_widget_kind_id,
+};
 pub use ph2d_editor_core::ids::{
     MAX_SHAPE_FIELD_SLOTS, vector_shape_choice_id, vector_shape_field_id, vector_shape_group_id,
     vector_shape_id,

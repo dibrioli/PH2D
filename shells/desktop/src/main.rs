@@ -382,6 +382,8 @@ mod vec_text_object;
 mod vec_text_reopen;
 mod vec_text_ride;
 mod vec_transform;
+/// **OS VERBOS DA PELE** (plano UI/UX W6.2) — vestir, trocar de tipo, despir.
+mod vec_widget_edit;
 /// **OS VARIANTS** (plano UI/UX W5c) — que versão do componente uma instância é. Um conjunto de
 /// variants é DERIVADO (os mestres irmãos), e os eixos saem dos NOMES: zero componente novo.
 mod vec_variants;
@@ -390,6 +392,11 @@ mod wetpaint_smoke;
 mod width_handles;
 /// A cena de smoke do **Width Tool** (`PH2D_BUILD_SMOKE=42`) — irmã de `build_smoke`, teto de LOC.
 mod width_tool_smoke;
+/// A cena de smoke da **PELE POR-WIDGET** (`PH2D_BUILD_SMOKE=60`) — irmã de `build_smoke`.
+mod widget_skin_smoke;
+/// **A PELE por-widget** (plano UI/UX W6.2) — uma forma marcada é pintada pelo pintor REAL do
+/// catálogo, no z dela. A ponte mora aqui porque só a shell alcança as duas metades.
+mod widget_live;
 mod winit_host;
 mod zorder_smoke;
 

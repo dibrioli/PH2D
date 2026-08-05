@@ -92,6 +92,12 @@ mod layout_state;
 pub use layout_state::{LayoutFlow, LayoutItem, set_layout_flow, set_layout_item};
 pub(crate) use layout_state::{layout_flow, layout_item, layout_pad_each, set_layout_pad_each};
 
+/// **A PELE da seleção** (plano UI/UX W6.2) — que widget do catálogo esta forma veste.
+#[path = "state_widget.rs"]
+mod widget_state;
+pub use widget_state::{WidgetSkinState, set_widget_skin_state};
+pub(crate) use widget_state::{widget_kinds_beyond, widget_skin_state};
+
 /// **OS TOKENS da seleção** (plano UI/UX W4) — que propriedade dela segue um token, e qual.
 #[path = "state_tokens.rs"]
 mod token_state;

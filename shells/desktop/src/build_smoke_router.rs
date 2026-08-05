@@ -270,5 +270,11 @@ pub(crate) fn route(app: &mut crate::App, f: u32, level: u32) -> bool {
         crate::tokens_smoke::frame(app, f);
         return true;
     }
+    // A cena da PELE POR-WIDGET (=60) — irmã `widget_skin_smoke`. Quatro formas vestidas + uma
+    // NUA, que é o controle: marcar uma forma é a única coisa que a transforma.
+    if level == 60 {
+        crate::widget_skin_smoke::frame(app, f);
+        return true;
+    }
     false
 }

@@ -1,0 +1,51 @@
+//! **A PELE da seleção** — a projeção que o painel lê (plano UI/UX W6.2).
+//!
+//! Irmão do [`crate::state_components`], com a mesma divisão de donos: a verdade mora no ECS
+//! (`ph2d_ecs::VecWidget`) e isto é o que a shell publica por frame. O painel não alcança o mundo
+//! — se alcançasse, a resposta que decide QUE chip pintar divergiria da que HONRA o clique.
+
+use std::cell::{Cell, RefCell};
+
+/// O que a seleção É, do ponto de vista da pele.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct WidgetSkinState {
+    /// Os nomes dos tipos do catálogo, na ordem em que os chips os oferecem.
+    ///
+    /// ⚠️ **Publicados pela shell, não constantes do painel** — o catálogo mora na
+    /// `ph2d-editor-core::widget`, e uma segunda lista aqui envelheceria no dia em que um tipo
+    /// novo nascesse: os chips diriam uma coisa e o clique faria outra.
+    pub kinds: Vec<String>,
+    /// Qual o vigente — `None` = a forma ainda **não** veste (oferece *Wear a Widget*).
+    pub selected: Option<usize>,
+    /// A forma veste um tipo que este build **não conhece** (o readout de compatibilidade).
+    ///
+    /// ⚠️ Sem esta linha, um documento do futuro abriria mostrando a arte crua e nada diria por
+    /// quê — e o artista concluiria que a pele dele se perdeu.
+    pub unknown: bool,
+}
+
+thread_local! {
+    static SKIN: RefCell<Option<WidgetSkinState>> = const { RefCell::new(None) };
+    /// Quantos tipos do catálogo a tabela de ids NÃO endereça.
+    ///
+    /// ⚠️ Publicado, e não derivado do `len` da lista: quem trunca é a shell, e um número que o
+    /// painel recalculasse seria a segunda resposta a *"quantos ficaram de fora?"*.
+    static KINDS_BEYOND: Cell<usize> = const { Cell::new(0) };
+}
+
+/// Publica o estado da seleção (shell → painel). `None` = não oferecer a seção.
+pub fn set_widget_skin_state(state: Option<WidgetSkinState>, beyond: usize) {
+    SKIN.with(|s| *s.borrow_mut() = state);
+    KINDS_BEYOND.with(|b| b.set(beyond));
+}
+
+/// O estado da seleção — `None` = não oferecer a seção.
+#[must_use]
+pub(crate) fn widget_skin_state() -> Option<WidgetSkinState> {
+    SKIN.with(|s| s.borrow().clone())
+}
+
+/// Quantos tipos ficaram fora da tabela de ids.
+pub(crate) fn widget_kinds_beyond() -> usize {
+    KINDS_BEYOND.with(Cell::get)
+}

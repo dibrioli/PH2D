@@ -59,7 +59,16 @@ fn encode_ms(scene: &VecScene) -> f64 {
     for i in 0..=ITERS {
         target.reset();
         let t = std::time::Instant::now();
-        dispatch(scene, &view, &xf, &live, &fx, Affine::IDENTITY, &mut target);
+        dispatch(
+            scene,
+            &view,
+            &xf,
+            &live,
+            &fx,
+            &crate::WidgetSkins::new(),
+            Affine::IDENTITY,
+            &mut target,
+        );
         // A 1ª rodada paga o *first touch* dos buffers do target — ela não é o produto em regime.
         if i > 0 {
             samples.push(t.elapsed().as_secs_f64() * 1000.0);
@@ -122,6 +131,7 @@ fn draws_of(fill: bool, stroke: bool, open_subpath: bool) -> (u32, u32) {
         &VecXforms::new(),
         &LiveGeometry::new(),
         &FxImages::new(),
+        &crate::WidgetSkins::new(),
         Affine::IDENTITY,
         &mut target,
     );

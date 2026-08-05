@@ -289,6 +289,10 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // forma combinada simplesmente não existiria mais: ela é desenho derivado, e o que tem de
     // sobreviver é a RELAÇÃO.
     reg.register::<crate::VecBoolGroup>("ph2d::ecs::VecBoolGroup");
+    // A PELE: que widget do catálogo esta forma veste (plano UI/UX W6.2). Mesma razão de todos
+    // os irmãos — sem o registro, reabrir o projeto devolveria a forma como DESENHO cru, e o
+    // artista teria de re-vestir cada controle da tela que acabou de compor.
+    reg.register::<crate::VecWidget>("ph2d::ecs::VecWidget");
     // A MOLDURA: que esta entidade CONTÉM, e se ela esconde o transbordo. Sem o registro, um
     // Ctrl+Z (ou reabrir o projeto) devolveria a moldura como um retângulo comum — a arte
     // continuaria toda lá, e o recorte simplesmente teria evaporado. É o modo de falha mais
@@ -408,7 +412,8 @@ mod tests {
         // + 1 tabela de bindings de token (VecBindings, plano UI/UX W4)
         // + 2 auto layout (VecLayout no pai + VecLayoutItem no filho, plano UI/UX W2)
         // + 1 âncoras (VecAnchors, plano UI/UX W3)
-        // + 1 resize-box (VecResizeBox, plano UI/UX W3b).
+        // + 1 resize-box (VecResizeBox, plano UI/UX W3b)
+        // + 1 pele por-widget (VecWidget, plano UI/UX W6.2).
         //
         // **Este número existe para doer.** Um componente que não passa por aqui é
         // DESCARTADO em silêncio pelo snapshot — o undo e o save o perdem, e o bug só
@@ -420,9 +425,10 @@ mod tests {
         // `VecConnector`, e as duas linhas, sozinhas, diziam 27 — por motivos diferentes. A
         // árvore combinada tem 28. Escolher "um dos lados" aqui é o erro que deixa o
         // workspace vermelho com dois merges verdes.
-        assert_eq!(reg.len(), 50);
+        assert_eq!(reg.len(), 51);
         assert!(reg.get_by_name("ph2d::ecs::VecAnchors").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecResizeBox").is_some());
+        assert!(reg.get_by_name("ph2d::ecs::VecWidget").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecBindings").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecLayout").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecLayoutItem").is_some());

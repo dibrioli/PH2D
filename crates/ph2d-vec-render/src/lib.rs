@@ -137,6 +137,19 @@ pub struct FxImage {
 /// **byte-idêntico** ao mundo pré-FX (o caminho comum não paga nada).
 pub type FxImages = std::collections::BTreeMap<VecPathId, FxImage>;
 
+/// As PELES de widget deste frame, por forma (plano UI/UX W6.2). Vazio = nenhuma forma veste um
+/// widget, e o desenho é o de sempre — **byte-idêntico** ao mundo pré-pele.
+///
+/// ⚠️ **O fragmento é OPACO de propósito.** Esta crate não sabe o que é um botão e não pode saber:
+/// o catálogo mora na `ph2d-editor-core`, que é UI, e a seta dela para cá seria a errada. O shell
+/// — que alcança as duas — pinta o widget pelo **pintor REAL** numa cena de rascunho e a entrega
+/// pronta; aqui ela só é anexada no **z da forma**, exactamente como uma [`FxImage`].
+///
+/// ⚠️ E ela **substitui** o desenho, não o acompanha: uma forma que veste um widget é a MOLDURA
+/// dele (onde e que tamanho), não uma silhueta a desenhar por baixo — pintar as duas mostraria o
+/// retângulo do artista sangrando pelas bordas do controle.
+pub type WidgetSkins = std::collections::BTreeMap<VecPathId, ph2d_vector::VectorScene>;
+
 /// Desenha toda a `scene` no `target` (o `VectorScene` do frame) sob `camera`
 /// (o world→screen). Fill primeiro, stroke por cima.
 ///
@@ -155,12 +168,22 @@ pub type FxImages = std::collections::BTreeMap<VecPathId, FxImage>;
 /// baixo DENTRO do op — ver `ph2d_render::fx_stack`), então não há um "atrás" que o compositor
 /// precise conhecer. As imagens já vêm em coordenadas de tela — o `dispatch` só as encoda, sem
 /// tocar GPU. Vazio = sem FX (o caminho comum é byte-idêntico ao mundo pré-FX).
+///
+/// `skins` ([`WidgetSkins`]) injeta a PELE de widget de uma forma **no z dela**, também
+/// SUBSTITUINDO o desenho vetorial — ver o tipo para o porquê de o fragmento ser opaco.
+///
+/// ⚠️ Oito argumentos, e agrupá-los num struct seria pior: cada um é uma FONTE independente com
+/// dono próprio na shell (a cena, a árvore, as poses, a geometria derivada, as imagens de FX, as
+/// peles, a câmera) e um struct-de-argumentos convidaria alguém a guardá-lo entre frames — que é
+/// exactamente como um deles ficaria velho sem que nada dissesse.
+#[allow(clippy::too_many_arguments)]
 pub fn dispatch(
     scene: &VecScene,
     view: &VecViewState,
     xforms: &VecXforms,
     live: &LiveGeometry,
     fx: &FxImages,
+    skins: &WidgetSkins,
     camera: Affine,
     target: &mut VectorScene,
 ) {
@@ -177,6 +200,12 @@ pub fn dispatch(
             // vê desta forma (halo incluído) numa imagem só, no z dela.
             if let Some(img) = fx.get(&path.id) {
                 draw_fx_image(img, target);
+            } else if let Some(skin) = skins.get(&path.id) {
+                // ⚠️ A pele já foi pintada em coordenadas de TELA (o shell cruzou a câmera para
+                // achar o retângulo da forma), então ela entra SEM transform — o mesmo contrato
+                // da `FxImage` ao lado, e pela mesma razão: quem sabe onde a forma está na tela é
+                // quem tem a câmera, e ele já respondeu.
+                target.inner_mut().append(skin.inner(), None);
             } else {
                 // A TINTA que os tokens dão a esta forma neste modo, perguntada UMA vez — e ela
                 // vale também para a geometria DERIVADA dela: as cópias de offset/pattern/espelho

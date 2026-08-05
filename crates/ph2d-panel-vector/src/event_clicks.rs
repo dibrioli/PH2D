@@ -217,23 +217,7 @@ pub(super) fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         || id == ids::VECTOR_BOOL_LIVE_OFF
         || id == ids::VECTOR_BOOL_LIVE_ON
         || id == ids::VECTOR_BOOL_APPLY
-        // Os quatro verbos de COMPONENTE (plano UI/UX W5): mestre e instância moram no ECS, então
-        // o clique é da SHELL — o painel só mostra que verbos fazem sentido.
-        || id == ids::VECTOR_COMPONENT_CREATE
-        || id == ids::VECTOR_COMPONENT_PLACE
-        || id == ids::VECTOR_COMPONENT_DETACH
-        || id == ids::VECTOR_COMPONENT_RESET
-        || id == ids::VECTOR_COMPONENT_UPDATE_MAIN
-        || id == ids::VECTOR_COMPONENT_SWAP
-        // **Os interruptores de PEÇA** (W5b) — o override mora no ECS, então o clique atravessa o
-        // barramento. A swatch de cor NÃO entra: ela é alvo de picker, e o `register_picker_swatch`
-        // é quem trata o clique dela (o precedente da swatch de Fill).
-        || (0..ids::MAX_INSTANCE_PIECES).any(|r| ids::vector_instance_piece_show_id(r) == id)
-        // **Os chips de VARIANT** (W5c) — escolher uma versão RELIGA a instância a um mestre
-        // irmão, e o vínculo mora no ECS: o clique é da shell, pela porta do *Swap Main*.
-        || (0..ids::MAX_VARIANT_AXES).any(|a| {
-            (0..ids::MAX_VARIANT_VALUES).any(|v| ids::vector_variant_option_id(a, v) == id)
-        })
+        || is_prefab_click(id)
         || id == ids::VECTOR_BOOL_MINUS_BACK
         || id == ids::VECTOR_BOOL_TRIM
         || id == ids::VECTOR_BOOL_CROP
@@ -299,4 +283,35 @@ pub(super) fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         // — porque o estado é DERIVADO das duas pontas: quem o resolve é a tool, que as
         // possui. Fora daqui o botão pintaria e estaria MORTO.
         || id == ids::VECTOR_MARKER_BOTH
+}
+
+/// **A família do PREFAB e da PELE** — os verbos de componente (W5), os interruptores de peça e os
+/// chips de variant (W5b/W5c), e os dois verbos + chips da pele por-widget (W6.2).
+///
+/// ⚠️ Extraída do [`forwards_plain_click`] quando ele cruzou o teto de 200 LOC, e o corte é por
+/// ASSUNTO: tudo aqui é *"esta forma é um componente / veste um widget?"*, e tudo aqui mora no
+/// ECS — por isso o clique atravessa o barramento em vez de morrer no painel.
+fn is_prefab_click(id: ph2d_a11y::NodeId) -> bool {
+    // Os quatro verbos de COMPONENTE (plano UI/UX W5): mestre e instância moram no ECS, então
+    // o clique é da SHELL — o painel só mostra que verbos fazem sentido.
+    id == ids::VECTOR_COMPONENT_CREATE
+    || id == ids::VECTOR_COMPONENT_PLACE
+    || id == ids::VECTOR_COMPONENT_DETACH
+    || id == ids::VECTOR_COMPONENT_RESET
+    || id == ids::VECTOR_COMPONENT_UPDATE_MAIN
+    || id == ids::VECTOR_COMPONENT_SWAP
+    // **Os interruptores de PEÇA** (W5b) — o override mora no ECS, então o clique atravessa o
+    // barramento. A swatch de cor NÃO entra: ela é alvo de picker, e o `register_picker_swatch`
+    // é quem trata o clique dela (o precedente da swatch de Fill).
+    || (0..ids::MAX_INSTANCE_PIECES).any(|r| ids::vector_instance_piece_show_id(r) == id)
+    // **Os chips de VARIANT** (W5c) — escolher uma versão RELIGA a instância a um mestre
+    // irmão, e o vínculo mora no ECS: o clique é da shell, pela porta do *Swap Main*.
+    || (0..ids::MAX_VARIANT_AXES).any(|a| {
+        (0..ids::MAX_VARIANT_VALUES).any(|v| ids::vector_variant_option_id(a, v) == id)
+    })
+    // **A PELE por-widget** (W6.2) — o componente mora no ECS, então os dois verbos e os chips
+    // de tipo atravessam o barramento; o painel só mostra o que faz sentido agora.
+    || id == ids::VECTOR_WIDGET_WEAR
+    || id == ids::VECTOR_WIDGET_REMOVE
+    || (0..ids::MAX_WIDGET_KINDS).any(|i| ids::vector_widget_kind_id(i) == id)
 }

@@ -65,4 +65,6 @@ pub const VECTOR_SECTIONS: &[NodeId] = &[
     super::vector_anchors::VECTOR_SECTION_ANCHORS,
     // OS COMPONENTES (plano UI/UX W5): o mestre e a instância.
     super::vector_components::VECTOR_SECTION_COMPONENT,
+    // A PELE POR-WIDGET (plano UI/UX W6.2): que controle do catálogo a forma veste.
+    super::vector_widget::VECTOR_SECTION_WIDGET,
 ];

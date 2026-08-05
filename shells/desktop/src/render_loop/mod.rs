@@ -2086,6 +2086,7 @@ impl crate::App {
             let mut pending_vec_expand: Option<crate::vec_expand::Expand> = None;
             // OS COMPONENTES (plano UI/UX W5): o verbo pedido neste frame.
             let mut pending_component: Option<crate::vec_component_edit::ComponentEdit> = None;
+            let mut pending_widget_edit: Option<crate::vec_widget_edit::WidgetEdit> = None;
             // **A BOOLEANA VIVA** (plano UI/UX W1): o Apply consolida o que o produtor cozinhou
             // NESTE frame, então ele não pode correr aqui — corre logo depois do `recook`, onde o
             // plano existe. Aqui só se anota o clique.
@@ -2456,6 +2457,12 @@ impl crate::App {
                                 // ECS, entao o clique e' da shell — o painel so' mostra que
                                 // verbos fazem sentido.
                                 pending_component = Some(e);
+                            } else if let Some(e) = crate::vec_widget_edit::widget_edit_for_id(*id)
+                            {
+                                // A PELE por-widget (plano UI/UX W6.2): o componente mora no ECS,
+                                // entao o clique e' da shell — o painel so' mostra que tipo esta'
+                                // aceso e que verbo faz sentido.
+                                pending_widget_edit = Some(e);
                             } else if let Some(e) = crate::vec_anchor_edit::anchor_edit_for_id(*id)
                             {
                                 // AS ÂNCORAS (plano UI/UX W3): o par de âncoras mora no
@@ -4460,6 +4467,10 @@ impl crate::App {
                 ph2d_vec_scene::VecPathId,
                 ph2d_vec_scene::VecPathId,
             )> = None;
+            if let Some(verb) = pending_widget_edit {
+                let sel: Vec<ph2d_vec_scene::VecPathId> = self.vec_pen.selected_paths().to_vec();
+                crate::vec_widget_edit::apply(sim, &self.vec_entities, &sel, verb);
+            }
             let mut arm_detached_under: Option<crate::vec_component_edit::Detached> = None;
             if let Some(verb) = pending_component {
                 let sel: Vec<ph2d_vec_scene::VecPathId> = self.vec_pen.selected_paths().to_vec();
@@ -6528,6 +6539,16 @@ impl crate::App {
                         .collect(),
                     variants.beyond,
                 );
+                // **A PELE por-widget** (plano UI/UX W6.2) — que controle do catálogo esta forma
+                // veste. Publicada pela MESMA porta que o clique honra, e para qualquer forma
+                // única (vestida ou não): uma seção que só existisse onde já há pele tornaria a
+                // feature alcançável apenas onde ela já foi usada.
+                let skin = crate::vec_widget_edit::publish(sim, &self.vec_entities, &sel);
+                let skin_beyond = skin.as_ref().map_or(0, |(_, b)| *b);
+                ph2d_panel_vector::state::set_widget_skin_state(
+                    skin.map(|(s, _)| s),
+                    skin_beyond,
+                );
                 // **O Z-INDEX da seleção** (Enio, 2026-08-04) — o número GLOBAL que sobrepõe a
                 // ordem da hierarquia. Publicado pela MESMA porta que o campo escreve e que os
                 // botões Arrange movem, para o número que o artista lê ser o que ele edita.
@@ -6685,12 +6706,26 @@ impl crate::App {
                 sim,
             );
             let vec_fx = self.fx_live.images();
+            // As PELES de widget deste frame (plano UI/UX W6.2). Cozidas AQUI, depois do `sync`
+            // (senão uma forma recém-marcada ainda não tem entidade) e com a câmera na mão —
+            // quem sabe onde a forma está na tela é quem tem a projeção.
+            let vec_skins = crate::widget_live::build(
+                vec_scene,
+                sim,
+                &self.vec_entities,
+                &vec_xf,
+                &vec_live,
+                cam_affine,
+                paint_ctx.text,
+                hero.theme,
+            );
             ph2d_vec_render::dispatch(
                 vec_scene,
                 &vec_view,
                 &vec_xf,
                 &vec_live,
                 vec_fx,
+                &vec_skins,
                 cam_affine,
                 vector_scene,
             );

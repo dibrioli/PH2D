@@ -63,6 +63,7 @@ fn encode(scene: &VecScene, view: &VecViewState) -> (u32, u32, u32) {
         &VecXforms::default(),
         &LiveGeometry::new(),
         &FxImages::new(),
+        &crate::WidgetSkins::new(),
         Affine::IDENTITY,
         &mut target,
     );

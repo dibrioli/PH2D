@@ -43,6 +43,7 @@ mod scrollbar;
 mod section_header;
 mod segmented_adaptive;
 pub mod showcase;
+mod skin;
 mod slider;
 mod slider_with_chip;
 mod spinner;
@@ -121,6 +122,7 @@ pub use section_header::{SectionHeader, color_circle_hit_rect, paint_section_hea
 pub use segmented_adaptive::{
     SegmentedAdaptive, SegmentedOption, measure_segmented_adaptive, paint_segmented_adaptive,
 };
+pub use skin::{WidgetKind, paint_widget_skin};
 pub use slider::{Slider, SliderOrientation, SliderState, paint_slider, paint_slider_track};
 pub use slider_with_chip::{
     DEFAULT_CHIP_W, DEFAULT_LABEL_W, paint_number_chip, paint_slider_with_chip,

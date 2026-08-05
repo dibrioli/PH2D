@@ -25,6 +25,10 @@ use std::path::{Path, PathBuf};
 /// Each entry: (file slug under `widget/`, one-line reason).
 const WIDGET_OPT_OUT: &[(&str, &str)] = &[
     (
+        "skin",
+        "not a widget: it is the DISPATCHER that paints the catalogue's widgets on the vector canvas (plano UI/UX W6.2) — a showcase section for it would show the widgets it forwards to, which the gallery already shows",
+    ),
+    (
         "command_palette",
         "chrome-internal: full-screen modal opened by a key (A), no idle visual — same reason as modal/context_menu",
     ),

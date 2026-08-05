@@ -46,6 +46,7 @@ fn the_live_geometry_draws_instead_of_the_source() {
         &xf,
         &LiveGeometry::new(),
         &FxImages::new(),
+        &WidgetSkins::new(),
         Affine::IDENTITY,
         &mut a,
     );
@@ -64,6 +65,7 @@ fn the_live_geometry_draws_instead_of_the_source() {
         &xf,
         &live,
         &FxImages::new(),
+        &WidgetSkins::new(),
         Affine::IDENTITY,
         &mut b,
     );
@@ -89,6 +91,7 @@ fn an_empty_live_entry_draws_nothing() {
         &VecXforms::default(),
         &live,
         &FxImages::new(),
+        &WidgetSkins::new(),
         Affine::IDENTITY,
         &mut s,
     );
@@ -110,6 +113,7 @@ fn a_replace_filter_draws_the_image_in_place_of_the_shape() {
         &xf,
         &LiveGeometry::new(),
         &FxImages::new(),
+        &WidgetSkins::new(),
         Affine::IDENTITY,
         &mut plain,
     );
@@ -125,6 +129,7 @@ fn a_replace_filter_draws_the_image_in_place_of_the_shape() {
         &xf,
         &LiveGeometry::new(),
         &fx,
+        &WidgetSkins::new(),
         Affine::IDENTITY,
         &mut s,
     );
@@ -148,6 +153,7 @@ fn a_shape_without_a_filter_draws_itself() {
         &xf,
         &LiveGeometry::new(),
         &FxImages::new(),
+        &WidgetSkins::new(),
         Affine::IDENTITY,
         &mut plain,
     );
@@ -163,6 +169,7 @@ fn a_shape_without_a_filter_draws_itself() {
         &xf,
         &LiveGeometry::new(),
         &fx,
+        &WidgetSkins::new(),
         Affine::IDENTITY,
         &mut s,
     );
@@ -275,6 +282,7 @@ fn encode_cost_by_n() {
             &xf,
             &LiveGeometry::new(),
             &FxImages::new(),
+            &WidgetSkins::new(),
             affine,
             &mut target,
         ); // warm
@@ -288,6 +296,7 @@ fn encode_cost_by_n() {
                 &xf,
                 &LiveGeometry::new(),
                 &FxImages::new(),
+                &WidgetSkins::new(),
                 affine,
                 &mut target,
             );
@@ -325,6 +334,7 @@ fn the_dispatch_draws_the_token_colour_not_the_literal() {
             &VecXforms::default(),
             &LiveGeometry::new(),
             &FxImages::new(),
+            &WidgetSkins::new(),
             Affine::IDENTITY,
             &mut t,
         );
@@ -361,5 +371,60 @@ fn the_dispatch_draws_the_token_colour_not_the_literal() {
     assert_eq!(
         bound, target,
         "a forma bindada tem de encodar exatamente como a forma cujo literal ja' e' a cor do token"
+    );
+}
+
+/// **A PELE de widget SUBSTITUI o desenho** (plano UI/UX W6.2) — no z da forma, como o FX raster.
+///
+/// ⚠️ Sem este gate, tirar a injeção do `dispatch` deixaria a `widget_live` a cozinhar um mapa
+/// que ninguém desenha: os seis gates da ponte ficam VERDES (eles perguntam ao mapa) e o produto
+/// mostra o retângulo cru. É o buraco que separa *"a pele foi pintada"* de *"a pele aparece"*.
+#[test]
+fn the_widget_skin_replaces_the_drawing() {
+    let (scene, id) = one_square();
+    let (view, xf) = (VecViewState::default(), VecXforms::default());
+
+    let mut plain = VectorScene::new();
+    dispatch(
+        &scene,
+        &view,
+        &xf,
+        &LiveGeometry::new(),
+        &FxImages::new(),
+        &WidgetSkins::new(),
+        Affine::IDENTITY,
+        &mut plain,
+    );
+    let bare = plain.inner().encoding().n_paths;
+    assert!(bare > 0, "a forma nua desenha");
+
+    // Uma pele com TRÊS caminhos: se o dispatch acrescentasse em vez de trocar, sairiam 3 + o
+    // desenho; se a ignorasse, sairia só o desenho.
+    let mut skin = VectorScene::new();
+    for _ in 0..3 {
+        skin.fill_rect(
+            ph2d_vector::Rect::new(0.0, 0.0, 4.0, 4.0),
+            ph2d_vector::Color::from_rgba8(1, 2, 3, 255),
+        );
+    }
+    let three = skin.inner().encoding().n_paths;
+    let mut skins = WidgetSkins::new();
+    skins.insert(id, skin);
+
+    let mut dressed = VectorScene::new();
+    dispatch(
+        &scene,
+        &view,
+        &xf,
+        &LiveGeometry::new(),
+        &FxImages::new(),
+        &skins,
+        Affine::IDENTITY,
+        &mut dressed,
+    );
+    assert_eq!(
+        dressed.inner().encoding().n_paths,
+        three,
+        "a pele nao SUBSTITUIU o desenho (nem apareceu, nem tomou o lugar dele)"
     );
 }

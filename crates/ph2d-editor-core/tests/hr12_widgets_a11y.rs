@@ -34,6 +34,10 @@ const A11Y_OPT_OUT: &[(&str, &str)] = &[
     // Unit tests for `command_palette` (moved into the widget folder so the mod-sync scan stops
     // seeing them as a widget of their own) — no user-facing widget.
     ("command_palette/tests.rs", "test module; parent owns a11y"),
+    // Unit tests for `skin` (na pasta pelo MESMO motivo do `command_palette`: um `*_tests.rs`
+    // solto vira um "widget" para o gerador de `mod`) — o pai delega ao pintor real do catálogo,
+    // que é quem tem a11y.
+    ("skin/tests.rs", "test module; parent owns a11y"),
     // Unit tests for `tool_rail` (split out for the widget LOC cap) — no user-facing widget; the
     // parent `tool_rail.rs` owns the a11y wiring (build_a11y / build_entry_a11y).
     ("tool_rail/tests.rs", "test module; parent owns a11y"),

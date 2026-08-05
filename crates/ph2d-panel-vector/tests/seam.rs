@@ -626,7 +626,9 @@ fn every_section_header_is_registered_as_collapsible() {
         // aparecem juntas: a shell só publica a regra para um filho cujo pai não empilha.
         // +1 (plano UI/UX W5): COMPONENT — o prefab. Some inteira sem exactamente uma forma
         // selecionada, e cada verbo dela aparece só onde faz sentido.
-        33,
+        // +1 (plano UI/UX W6.2): WIDGET — a pele por-widget. Oferecida para QUALQUER forma única,
+        // vestida ou não: a face vazia é a que torna a feature alcançável.
+        34,
         "a lista de secoes mudou — confira que o paint pinta um header para cada uma"
     );
     for &id in ids::VECTOR_SECTIONS {

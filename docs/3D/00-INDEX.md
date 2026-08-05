@@ -40,6 +40,7 @@ MUDANÇA: 2026-07-30 — o MVP em TypeScript foi CANCELADO (ver 02.4)
 | implementar um pincel | [[04.1-Pinceis]] |
 | implementar primitivas / blocagem | [[04.2-Primitivas-e-blocagem]] |
 | implementar remesh / topologia | [[04.3-Topologia]] |
+| mexer na UI da cena 3D | [[04.4-O-painel]] |
 | implementar o shader | [[05.1-Shader-de-runtime]] |
 | ligar o 3D ao 2D | [[05.2-Doacao-de-sombreamento-para-2D]] |
 | planejar/priorizar | [[06.1-Waves-riscos-e-alvos]] |
@@ -103,6 +104,8 @@ MUDANÇA: 2026-07-30 — o MVP em TypeScript foi CANCELADO (ver 02.4)
   completo (incluindo o superelipsóide, o curinga do "qualquer bloco") e o Skeleton tipo ZSphere.*
 - **[[04.3-Topologia]]** · `ferramenta` `topologia` `remesh` — *Voxel remesh, topologia dinâmica,
   multiresolução, decimação e booleanas: qual algoritmo, quando roda, quanto custa.*
+- **[[04.4-O-painel]]** · `ferramenta` `ui` `painel` — *A UI da cena (W12): as seis seções, a tabela
+  única de knobs, o anel do cursor que é também o instrumento do pick, e o que segue no teclado.*
 
 ### 05 — Shading
 

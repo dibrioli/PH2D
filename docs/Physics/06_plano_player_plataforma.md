@@ -466,8 +466,19 @@ W10) · não há *wall grab* (ficar parado é outra mecânica, com botão própr
   previsão desta linha estava errada num ponto que importa: eles **não são duas waves**,
   são uma. As duas metades partilham a pergunta *estou agarrado?*, e separá-las daria
   duas respostas para *o que conta como parede*.
-- **Dash / agachar** — cada um é uma wave própria; o tnua os tem como *actions*
-  separadas e a nossa lei suporta o mesmo formato. Fora do 1º corte.
+- ~~**Dash**~~ — **FEITO: a W14** (2026-08-05, cena `=93`). ⚠️ E a previsão desta
+  linha estava certa no formato (uma *action* separada) e **calada sobre o que
+  custa**: o arranque não é um termo a somar ao motor, é um regime em que a
+  perna, a caminhada e a gravidade **calam-se** — três silêncios que são uma
+  frase só (*durante o arranque o personagem é uma velocidade*).
+- **Agachar** — segue fora, e agora com o preço nomeado: o gesto é barato (o
+  botão de BAIXO já existe desde a W12, com o significado certo), e o que ele
+  exige é **encolher o collider**, que é a primeira coisa desta linha a reescrever
+  a forma de um corpo por tique. ⚠️ Isso tropeça na premissa que a W-Compound já
+  derrubou uma vez — *"um corpo tem exactamente um collider"* — e a resposta para
+  um corpo composto (encolher qual? por quanto? e as posições relativas?) é
+  decisão de desenho, não mecânica. Wave própria, com a pergunta escrita na
+  frente.
 - ~~**Descer de plataforma one-way**~~ — **FEITA: a W12** (2026-08-05, cena `=91`). Era a
   única linha desta lista com data marcada, e a previsão sobreviveu à construção: o
   mecanismo estava todo lá, a wave é o gesto.

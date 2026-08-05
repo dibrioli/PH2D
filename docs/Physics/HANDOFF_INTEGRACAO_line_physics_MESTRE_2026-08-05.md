@@ -1,6 +1,6 @@
 # HANDOFF MESTRE — `line/physics` → `main` (2026-08-05)
 
-**A linha está FECHADA e PARADA.** 9 commits, 3 waves de produto.
+**A linha está FECHADA e PARADA.** 12 commits, 4 waves de produto.
 Nada integrado, nada pushado.
 
 > Este handoff **supersede** o [`HANDOFF_INTEGRACAO_line_physics_W11b_2026-08-05.md`](HANDOFF_INTEGRACAO_line_physics_W11b_2026-08-05.md),
@@ -23,9 +23,13 @@ Nada integrado, nada pushado.
 | `eebac6d1e` | a W12 no plano e no mapa |
 | `14c95c974` | **W13** — AS PAREDES |
 | `33dfc5cbc` | a W13 no plano e no mapa |
+| `0ae18e65f` | este handoff |
+| `05edd9c73` | **W14** — O ARRANQUE |
+| (o commit seguinte) | a W14 no plano, no mapa e neste handoff |
 
-**Smoke:** W11b/W11c **APROVADAS** pelo Enio (*"Smoke OK"*, 2026-08-05).
-**W12 e W13 pendentes** — integrar não é aprovar.
+**Smoke:** W11b/W11c **APROVADAS** (*"Smoke OK"*, 2026-08-05) e **W12 e W13
+APROVADAS** na mesma data (*"Smoke OK. SIGA"*). **A W14 é a única pendente** —
+integrar não é aprovar.
 
 ---
 
@@ -33,7 +37,7 @@ Nada integrado, nada pushado.
 
 | número | veredito |
 |---|---|
-| **`PROJECT_SCHEMA`** | ⚠️ **55 → 56** (W13) — ver §3 |
+| **`PROJECT_SCHEMA`** | ⚠️ **55 → 57** (W13 e W14, um degrau cada) — ver §3 |
 | `FLIP_SCHEMA` · `VEC_SCENE` | intocados (13 · 14) |
 | registro `ph2d-physics-ecs` | **INTOCADO** (28) — nenhum componente novo |
 | registro `ph2d-ecs` (as 3 casas) | **INTOCADO** |
@@ -42,15 +46,20 @@ Nada integrado, nada pushado.
 | contrato congelado | **4/4 verde**, rodado |
 | `Cargo.toml` | **zero** — nenhuma dep, nenhuma crate |
 | **`physics_ecs_c9`** | **`74d4ea5d…`, 108 corpos, debug ≡ release** |
+| suítes | **debug e release**, mais a shell — verdes, zero falhas |
 
 ⚠️ **O `c9` moveu-se UMA vez na jornada inteira, e foi na W11b/W11c** (a altura de
-repouso do player mudou). **A W12 e a W13 são byte-neutras** — a descida exige um
-botão que a fita do harness não segura, e as paredes nascem **desligadas**. Isso
-não é sorte: é a prova executável de que as duas capacidades novas são opt-in.
+repouso do player mudou). **A W12, a W13 e a W14 são byte-neutras** — a descida
+e o arranque exigem botões que a fita do harness não segura, e as paredes e o
+arranque nascem **desligados**. Isso não é sorte: é a prova executável de que as
+três capacidades novas são opt-in.
 
 ---
 
 ## §3 — ⚠️ O bump, e por que ele é PROVISÓRIO
+
+**W14:** o `PlatformPlayer` ganhou **três** campos (`dash_speed`, `dash_time`,
+`dash_cooldown`) — mesmo raciocínio posicional. A linha escreve **57**.
 
 **W13:** o `PlatformPlayer` ganhou **cinco** campos (`wall_slide_speed`,
 `wall_jump_height`, `wall_jump_push`, `wall_jump_lockout`, `wall_reach`).
@@ -59,7 +68,7 @@ chega ao fim dos bytes no primeiro campo novo. O número é o que transforma iss
 num erro de **VERSÃO** em vez de num postcard a falhar longe da causa.
 
 ⚠️ **O valor se CONTA contra o `main` do dia da integração, nunca se escolhe.**
-Esta linha escreve **56**; se outra linha da janela bumpar, o certo pode não estar
+Esta linha escreve **57**; se outra linha da janela bumpar, o certo pode não estar
 em nenhum dos dois lados do conflito — foi o que aconteceu três vezes com a
 `line/FLIP` (30 · 32/33/34 · 47) e uma com o próprio handoff desta linha, que
 contou UM degrau onde havia DOIS.
@@ -67,7 +76,7 @@ contou UM degrau onde havia DOIS.
 ⚠️ **E o `project.rs` pode não conflitar mesmo assim:** se as duas linhas
 escreverem o mesmo literal, o git funde limpo e o bump da segunda **evapora com a
 suíte verde**. Quem denuncia é o conflito do `project_schema_tests.rs` ao lado, e
-a tripla que ele pina — **`(56, 13, 14)`** aqui.
+a tripla que ele pina — **`(57, 13, 14)`** aqui.
 
 ---
 
@@ -144,6 +153,58 @@ unidade). **Nasce DESLIGADA** — card **WALLS** próprio na §14, cinco rows.
 
 ---
 
+---
+
+## §5b — W14: o arranque (cena `=93`)
+
+Um botão (**`Q`**) e o personagem dispara em linha reta na direção para onde
+olha — a última das duas *actions* que o §4 do plano 06 deixava fora.
+
+⚠️ **O que ele custa não é um termo a somar, é um REGIME:** enquanto dura, a
+**perna cala**, a **caminhada cala** e a **gravidade é cancelada**. As três são
+uma frase só — *durante o arranque o personagem é uma velocidade* —, e é isso
+que faz o desenho ser uma reta em vez de um arco que depende de onde ele
+começou.
+
+⚠️ **A velocidade é DEFINIDA, nunca somada** (a lição da W13). Medido, o
+percurso é o autorado **ao milímetro**:
+
+| `dash_speed` | percorrido | autorado | a andar, nos mesmos 9 tiques |
+|---|---|---|---|
+| 8 | 1,200 m | 1,200 | 0,900 m |
+| 12 | 1,800 m | 1,800 | 0,900 m |
+| **18** | **2,700 m** | **2,700** | 0,900 m |
+| 26 | 3,900 m | 3,900 | 0,900 m |
+
+⚠️ **O que impede voar é a CARGA, não a recuperação** — um arranque por
+tempo-de-voo, reposto pelo pé no chão. Um relógio sozinho deixaria esperar e
+arrancar de novo, para sempre; e é por isso que a carga **é lei e não knob**:
+expô-la seria oferecer ao artista um bug com um slider.
+
+⚠️ **`JumpState` + `DashState` viram `PlayerState`**, um tipo só — e a razão não
+é estética. É ele que a **fita** guarda no ring de tiques âncora, então um estado
+de player num segundo mapa da ponte teria de ser acrescentado ali **à mão**, e
+esquecê-lo é um scrub que devolve o mundo de um tique e a memória do controlador
+de outro. `JumpState` **mantém o nome**: ele é o que `jump_step` toma e devolve.
+
+**10 mutações, 10 sangram.** ⚠️ **E DUAS fixtures minhas nasceram VERDES sobre
+nada, as duas pela mesma doença** — o oráculo media uma coisa que não era o
+botão:
+
+1. A recusa do 2º arranque media o **deslocamento cru**, e depois de um arranque
+   o corpo continua a 18 m/s: **1,981 m de pura inércia** liam-se como *"o
+   segundo saiu"*. O oráculo certo é a DIFERENÇA contra um controle.
+2. A mutação do ring era invisível porque o estado que ela largava era, **por
+   acidente da cena, igual ao que mantinha** (a âncora caía antes do arranque; e
+   depois, a corrida não ia longe o bastante para o personagem POUSAR, então
+   *"agora"* também dizia *carga gasta*). Corrigida, ela diverge **0,80 m**.
+
+⚠️ **Tecla `Q`, por CONFLITO medido:** `X`/`C`/`V` são o clipboard e o
+pathfinder, e um **modificador** seria pior do que uma tecla ocupada — `Shift`
+qualifica meia dúzia de handlers deste app, e um botão de jogo que também
+qualifica outros é um botão com dois donos.
+
+
 ## §6 — Ordem
 
 1. `git rebase main` (ou merge). Os arquivos compartilhados são o `project.rs`
@@ -169,6 +230,7 @@ env PH2D_PHYSICS_SMOKE=88 cargo run -p ph2d-host-desktop --release   # o par 40�
 env PH2D_PHYSICS_SMOKE=85 cargo run -p ph2d-host-desktop --release   # a jangada (o PESO)
 env PH2D_PHYSICS_SMOKE=91 cargo run -p ph2d-host-desktop --release   # A ESCADA DE PRANCHAS (W12)
 env PH2D_PHYSICS_SMOKE=92 cargo run -p ph2d-host-desktop --release   # O POÇO (W13)
+env PH2D_PHYSICS_SMOKE=93 cargo run -p ph2d-host-desktop --release   # O ABISMO (W14)
 ```
 
 ⚠️ **Cada cena imprime o que montou.** Se a linha `[physics-smoke NN]` não
@@ -178,6 +240,9 @@ aparecer, pare: a cena não montou e o resto do smoke não diz nada.
   vez, a retirada da descida quebrou.
 - **`=92`** — o vão é **2,4 m de propósito**, mais largo do que um pulo de parede
   atravessa sozinho (1,74 m medidos): subir exige soltar a direção a meio do voo.
+- **`=93`** — o abismo tem **11 m de propósito**, e o **passo 3 é o controle**:
+  um pulo sozinho **não** o atravessa. Se atravessar, o vão está curto e o resto
+  do roteiro não diz nada.
 
 ---
 

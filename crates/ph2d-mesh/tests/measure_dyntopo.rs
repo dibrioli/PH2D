@@ -21,7 +21,7 @@
 //! cargo test -p ph2d-mesh --release --test measure_dyntopo -- --ignored --nocapture
 //! ```
 
-use ph2d_mesh::{Adjacency, Octree, QueryScratch, shapes};
+use ph2d_mesh::{Adjacency, Octree, QueryScratch, edge_target, refine_in_sphere, shapes};
 use std::time::Instant;
 
 fn ms(f: impl FnOnce()) -> f64 {
@@ -122,4 +122,70 @@ fn measure_where_the_rebuild_leaves_the_budget() {
         let verdict = if t <= 8.0 { "sim" } else { "NAO" };
         println!("  {v:9} {f:9}    {t:10.3}   {verdict}");
     }
+}
+
+/// **O QUE UM DAB DE FATO PAGA HOJE** — o `refine_in_sphere` inteiro, não o
+/// `rebuild` sozinho.
+///
+/// ⚠️ **Esta sonda existe porque a 2ª rodada da W9.1 MOVEU o número que decide a
+/// W9.2** (`CLAUDE.md` §0: *quem move o número que tornava algo inalcançável tem
+/// de reconferir a nota*). O refino deixou de ser um passe de corte: ele é agora
+/// até três passes de corte **mais** até três rodadas de flip, e **cada uma
+/// termina numa troca de topologia** — ou seja, o custo por dab é um múltiplo do
+/// `rebuild`, não um `rebuild`.
+///
+/// As duas colunas separam os dois regimes que o artista de fato encontra:
+///
+/// - **1º dab** — a malha ainda está grossa ali, então o corte roda até o teto
+///   de passes. É o pior caso, e ele acontece uma vez por região.
+/// - **em regime** — a região já tem a densidade pedida, o corte não acha nada e
+///   o refino sai por `Enough`. É o que domina um traço.
+#[test]
+#[ignore = "sonda: mede, não afirma"]
+fn measure_what_a_dab_pays_for_refinement_today() {
+    println!("\n  O DAB INTEIRO — `refine_in_sphere`, corte + flip, não só o `rebuild`");
+    println!("   vértices    1o dab ms   em regime ms   cabe em 8 ms?");
+    let radius = 0.25f32;
+    let centre = [0.0, 1.0, 0.0];
+    for (rings, segs) in [(16, 24), (32, 48), (64, 96), (128, 192), (256, 384)] {
+        let mut m = shapes::uv_sphere(rings, segs, 1.0);
+        m.triangulate();
+        m.rebuild();
+        let v = m.vert_count();
+        // ⚠️ **O alvo acompanha a MALHA, e sem isso a sonda não contém o
+        // fenômeno:** com um alvo fixo, uma esfera fina já está abaixo dele e o
+        // refino sai por `Enough` — a coluna do "1º dab" MEDIA MENOS na malha
+        // grande (0,140 ms a 6k contra 1,034 a 1,5k), que é o oposto do que a
+        // W9.2 precisa saber. Aqui ele é uma fração da aresta local, então o
+        // refino de fato ACONTECE em toda linha.
+        let target = 0.6 * mean_edge(&m);
+        let mut births = Vec::new();
+        let first = ms(|| {
+            refine_in_sphere(&mut m, centre, radius, target, &mut births);
+        });
+        // Agora a região já está na densidade pedida: é o que um traço paga a
+        // cada evento depois do primeiro.
+        let steady = ms_median(5, || {
+            refine_in_sphere(&mut m, centre, radius, target, &mut births);
+        });
+        let verdict = if first <= 8.0 { "sim" } else { "NAO" };
+        println!("  {v:9}   {first:9.3}   {steady:12.3}   {verdict}");
+    }
+}
+
+/// O comprimento médio de aresta da malha — a régua que faz a sonda do dab
+/// refinar de verdade em toda densidade.
+fn mean_edge(m: &ph2d_mesh::Mesh) -> f32 {
+    let pos = m.positions();
+    let mut tris = Vec::new();
+    m.triangle_indices(&mut tris);
+    let mut sum = 0.0f32;
+    for t in &tris {
+        for k in 0..3 {
+            let (a, b) = (pos[t[k] as usize], pos[t[(k + 1) % 3] as usize]);
+            let d = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+            sum += (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt();
+        }
+    }
+    sum / (tris.len() * 3).max(1) as f32
 }

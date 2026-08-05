@@ -61,7 +61,7 @@ pub use corner::{
 };
 pub use jump::{JumpConfig, JumpState, JumpStep, carried_frame, jump_step};
 pub use react::{Reaction, ReactionConfig};
-pub use ride::{RideConfig, ride_spring, within_reach};
+pub use ride::{RideConfig, damping_axis, ride_spring, within_reach};
 pub use slope::{Footing, footing, footing_verdict, is_grounded, no_uphill};
 pub use walk::{WalkConfig, walk};
 

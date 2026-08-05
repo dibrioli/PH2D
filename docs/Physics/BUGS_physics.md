@@ -654,3 +654,108 @@ dois tocam componentes disjuntos. Era verdade até a emenda passar a medir o
 `Collider` — que ainda estava na FILA. O sintoma não seria um erro: seria a emenda
 caindo em silêncio no fallback do ponto médio. Medido: o pescoço nascendo em 3,35 de
 novo. O flush entre as duas metades é load-bearing e agora mora dentro do gerador.
+
+---
+
+## Bug #7 — O personagem parado SUBIA a rampa sozinho, e o freio da caminhada não tinha o que ver
+
+Relato do Enio no smoke da W10 (2026-08-04): *"nas rampas, se parado, a depender do
+Float Height ele pode subir a rampa sozinho bem devagar"*. Medido antes de uma linha
+de código: numa rampa de 30° ele subia a **3,3 cm/s, para sempre** — regime
+permanente, não transiente (varrido em janelas de 2 s por 30 s: a taxa não muda).
+
+### O que NÃO era, e cada refutação custou uma medição
+
+- ⛔ **Não era oscilação.** A primeira sonda reportou "amplitude" de 3,8 cm e eu quase
+  escrevi *ciclo-limite*: a métrica era `ymax − ymin` numa janela, e numa rampa isso
+  **mede a própria subida**. Tique a tique a velocidade é **constante** e a folga
+  perpendicular não varia um dígito. *Uma amplitude medida sobre uma rampa mede a
+  rampa.*
+- ⛔ **Não era o erro de repouso da mola.** A perna paira 5,75 mm acima do pedido
+  (linear no amortecimento), e a de-polarização de meio tique que o corrige para
+  0,38 mm **piorou** a deriva (0,164 → 0,343). Construída, medida, revertida.
+- ⛔ **Não era a rigidez.** `k` de 40 a 6400: a deriva não se move.
+- ⛔ **Não era o pouso, nem a plataforma móvel, nem o relógio irregular.** Cinco
+  configurações de repouso medidas (plano estático · vagão dinâmico a 3 m/s · vagão
+  kinematic · `float_height` abaixo do mínimo geométrico · dispatch devendo 0/1/2
+  tiques): **nenhuma** produz movimento. O plano fica parado ao sexto decimal.
+
+### O que era
+
+**A ablação pela gravidade fecha a conta**: a deriva é **linear em `g`** e vale
+**exatamente zero** num mundo sem gravidade (−9,81 → 0,164 · −4,00 → 0,067 ·
+−1,00 → 0,017 · 0,00 → **−0,000**).
+
+A perna cancela a gravidade com um **impulso no topo do tique**, e o `rapier` integra
+a gravidade **ao longo** dele. Os dois somam zero em velocidade e **não** em
+deslocamento: sobra meio tique de velocidade para cima, que numa rampa tem componente
+**tangente**. O freio da caminhada removeria isso — mas ele é um controlador de
+VELOCIDADE amostrado no fim do tique, e ali a sobra já foi devolvida. Medido no
+estado assentado: `v = (0,0332, −0,0575)`, **perpendicular à tangente ao quarto
+decimal**, com o freio a calcular um empurrão de `−8,7e−8`. Ele não está falhando:
+não há nada que ele consiga ver.
+
+E o que sobra ninguém remove, porque o **eixo do amortecedor da perna era o `up`**.
+Numa rampa `{tangente, up}` não é ortogonal: a componente ao longo da NORMAL tem
+projeção zero na tangente (a caminhada é cega) e a parte vertical dela é o que a mola
+precisa para segurar a altura (o amortecedor não pode removê-la sem largar o
+personagem). **Modo marginal**, e o personagem desliza nele para sempre.
+
+### A correção
+
+`ph2d_platformer::damping_axis` — o amortecedor passa a agir ao longo da **NORMAL do
+chão**, com recuo para `up` numa normal degenerada. A premissa antiga não era errada
+quando nasceu: **no plano a normal É o `up`**, e o plano era a única fixture. Com a
+normal, `{tangente, normal}` é ortonormal e as duas leis cobrem o plano inteiro.
+
+⚠️ **No plano é byte-idêntico e não por aproximação:** a normal de uma face horizontal
+é `[0, 1]` exata, `sqrt(1.0)` é `1.0`, e dividir por um é a identidade. O
+`physics_ecs_c9` saiu **`b3dbe792…`, o mesmo do W10** — a lane do player é em chão
+plano, e é o oráculo mais forte disponível para essa afirmação.
+
+**Deriva a 30°, 10 s, `float_height = 0,9`:**
+
+| `spring_damping` | eixo no `up` (antes) | eixo na NORMAL (agora) |
+|---|---|---|
+| 0,25 | 0,33 m | 0,2476 m |
+| **0,50** (o que shipa) | **0,3295 m** | **0,1644 m** |
+| 0,75 | 0,33 m | 0,0819 m |
+| 1,00 | **0,3276 m** | **0,0000 m** |
+
+⚠️ **A coluna da esquerda é o achado:** com o eixo no `up`, **nenhum** valor do knob
+removia a deriva. O eixo é o que transforma `spring_damping` num controle que de fato
+governa isto.
+
+### ⚠️ O que sobra, e por que o default NÃO subiu para o teto
+
+No teto a deriva é zero — e o personagem passa a pesar **53%** do que devia. A perna
+segura-o em parte com um **boost**, e um boost não é força: o `react` não o devolve
+ao chão, por uma cerca **medida** daquele módulo (devolvê-lo fazia a jangada disparar
+para −0,946 m e derivar sozinha). Quanto mais o knob amortece, mais do peso é
+segurado por escrita de velocidade e menos chega ao chão — a jangada da cena `=85`
+afunda 17 cm em vez de 27.
+
+⚠️ **E subir a RIGIDEZ não recupera o peso** (medido, `k` de 400 a 6400): o erro de
+repouso cai `∝ 1/k` mas o produto `k · erro` — a força que falta — fica **constante
+em 4,60 m/s²**. Não há knob que pague as duas coisas.
+
+⇒ O default fica em `0,5` com o resíduo medido, o knob passa a oferecer a troca de
+verdade, e a cura que compra as duas está nomeada no plano (**a perna SUBSTITUI a
+gravidade em vez de a cancelar**: sem impulso de cancelamento não há assimetria a
+retificar, e o `react` devolve o peso explicitamente em vez de o ler da mola).
+
+### ⚠️ E o "pulinho" do mesmo relato NÃO reproduziu
+
+O relato irmão — *"de tempos em tempos enquanto está parado o player dá pulinhos
+involuntários"* — foi procurado nas cinco configurações listadas acima e em nenhuma
+há salto: a folga fica constante ao sexto decimal e nenhum tique move mais de 2 mm.
+A única motilidade de repouso que o produto tem é a subida de rampa deste bug. Se ele
+sobreviver ao próximo smoke, a sonda `measure_idle` é onde a próxima hipótese entra —
+e ela já traz o instrumento (folga por tique, saltos por tique, partição por chão).
+
+**Gates:** `ph2d-platformer::ride::tests` (o eixo: byte-identidade no plano · andar ao
+longo da rampa não acorda o amortecedor · o teto zera a aproximação · o default é uma
+decisão) + `ph2d-physics-ecs/tests/platform_idle.rs` (o produto: com o amortecedor no
+teto o personagem fica parado em 10°/20°/30°/40° e por um minuto · o resíduo do
+default é medido dos dois lados · o plano é o controle · a perna segura a altura).
+**4 mutações, 4 sangram** — o eixo de volta ao `up` sangra a lei **e** o produto.

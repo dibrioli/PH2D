@@ -41,6 +41,37 @@ impl RideConfig {
     /// `GRAB_STIFFNESS`), e enquanto ela não existe estes são explicitamente um
     /// ponto de partida: `400` é a rigidez que o `bevy-tnua` usa, e o
     /// amortecimento está em metade do teto medido.
+    ///
+    /// # ⚠️ O que a varredura de 2026-08-04 mediu sobre `spring_damping`
+    ///
+    /// Ela existe porque o eixo do amortecedor foi corrigido
+    /// ([`super::damping_axis`]) — **antes dele, nenhum valor do knob removia a
+    /// deriva de rampa** (medido: `1,0` dava 0,3276 contra 0,3295 do controle,
+    /// ou seja nada). Com o eixo certo o knob passa a governá-la:
+    ///
+    /// | `spring_damping` | deriva parado (30°, 10 s) | quique ao pousar | peso transmitido |
+    /// |---|---|---|---|
+    /// | 0,25 | 0,2476 m | **196 mm** | 88% |
+    /// | **0,50** (o que shipa) | 0,1644 m | 20 mm | **77%** |
+    /// | 0,75 | 0,0819 m | 0 mm | 65% |
+    /// | 1,00 | **0,0000 m** | 0 mm | **53%** |
+    ///
+    /// ⚠️ **E é por isso que o default NÃO subiu para o teto**, embora ele zere
+    /// a deriva: a última coluna. A perna segura o personagem em parte com um
+    /// **boost**, e um boost não é força — o [`crate::react`] não o devolve ao
+    /// chão (uma cerca MEDIDA daquele módulo: devolvê-lo fazia a jangada
+    /// disparar). Quanto mais o knob amortece, mais do peso é segurado por
+    /// escrita de velocidade e menos chega ao chão: no teto o personagem pesa
+    /// **metade** do que devia, e a jangada da cena `=85` afunda 17 cm em vez de
+    /// 27.
+    ///
+    /// ⚠️ **Subir a RIGIDEZ não recupera o peso** (medido, `k` de 400 a 6400): o
+    /// erro de repouso cai `∝ 1/k` mas o produto `k · erro` — a força que falta —
+    /// fica **constante em 4,60 m/s²**. Não há knob que pague as duas coisas.
+    ///
+    /// A cura que compra as duas está nomeada no plano (a perna **substitui** a
+    /// gravidade em vez de a cancelar); enquanto ela não existe, o número certo
+    /// é uma decisão do artista e o knob agora a oferece de verdade.
     pub const STARTING_POINT: Self = Self {
         float_height: 0.5,
         cling_distance: 0.25,
@@ -90,6 +121,47 @@ impl RideConfig {
         }
         half_height + radius / max_slope_cos
     }
+}
+
+/// **O EIXO do amortecedor: a NORMAL do chão**, com o `up` como recuo.
+///
+/// # ⚠️ Por que não é o `up`, e por que a premissa envelheceu
+///
+/// A perna segura uma folga **perpendicular à superfície**; o que ela precisa
+/// amortecer é a taxa com que o corpo se APROXIMA dessa superfície, e essa taxa
+/// mede-se ao longo da normal. Amortecer o `up` é correto **no plano, onde a
+/// normal É o `up`** — e era essa a única fixture quando a lei nasceu.
+///
+/// Numa rampa as duas deixam de coincidir, e o preço é um **modo marginal**: a
+/// caminhada remove só a componente ao longo da TANGENTE e o amortecedor só a
+/// componente VERTICAL. Uma velocidade ao longo da normal tem projeção **zero**
+/// na tangente (a caminhada é cega a ela) e a parte vertical dela é exatamente
+/// o que a mola precisa para segurar a altura (o amortecedor não pode removê-la
+/// sem largar o personagem). Ninguém a remove, e o personagem **desliza rampa
+/// acima para sempre** — medido, 30°, parado: `v = (0,0332, −0,0575)`, que é
+/// perpendicular à tangente **ao quarto decimal**, com o freio da caminhada a
+/// calcular um empurrão de `−8,7e−8` porque não há nada que ele consiga ver.
+///
+/// Com a normal, `{tangente, normal}` é uma base **ORTONORMAL**: as duas leis
+/// juntas cobrem o plano inteiro e não sobra direção em que uma velocidade se
+/// esconda.
+///
+/// ⚠️ **No plano isto é byte-idêntico** e não por aproximação: a normal de uma
+/// face horizontal é `[0, 1]` exata, `sqrt(1.0)` é `1.0` exato, e a divisão por
+/// um é a identidade — o eixo devolvido É o `up`, bit a bit.
+///
+/// ⚠️ **Normal degenerada recua para o `up`**, a mesma política que a
+/// [`crate::footing`] já toma (*"não sabemos a orientação; a suposição menos
+/// daninha é chão plano"*). Um raio nascido dentro da geometria reporta `[0,0]`,
+/// e normalizar isso daria `NaN` no eixo de um amortecedor.
+#[must_use]
+pub fn damping_axis(normal: Vec2, up: Vec2) -> Vec2 {
+    let len2 = normal[0] * normal[0] + normal[1] * normal[1];
+    if !len2.is_finite() || len2 <= 0.0 {
+        return up;
+    }
+    let len = len2.sqrt();
+    [normal[0] / len, normal[1] / len]
 }
 
 /// A metade DISTÂNCIA da pergunta *"estou no chão?"* — o sensor achou algo ao
@@ -143,22 +215,33 @@ pub fn ride_spring(
     // ⚠️ Tudo RELATIVO ao chão: sobre uma plataforma que sobe, a velocidade do
     // corpo já contém a dela, e amortecer contra o referencial do mundo faria a
     // mola lutar contra a plataforma em vez de contra a oscilação.
+    //
     let rel = [
         body_velocity[0] - s.ground_velocity[0],
         body_velocity[1] - s.ground_velocity[1],
     ];
-    let rel_along_up = rel[0] * up[0] + rel[1] * up[1];
+    // ⚠️ **O eixo do amortecedor é a NORMAL, o da mola é o `up`, e são perguntas
+    // DIFERENTES** — ver [`damping_axis`] para o eixo e o aviso abaixo para o
+    // porquê de a mola ficar onde está.
+    let axis = damping_axis(s.normal, up);
+    let rel_along_axis = rel[0] * axis[0] + rel[1] * axis[1];
 
     let damping = cfg.spring_damping.clamp(0.0, RideConfig::MAX_DAMPING);
     let spring = offset * cfg.spring_strength;
 
     Motor {
-        // A mola + o cancelamento da gravidade.
+        // ⚠️ **A MOLA fica no `up`, e isso é decisão, não esquecimento.** Ela
+        // responde *"a que altura eu pairo?"*, e a altura é medida por um raio
+        // VERTICAL — a pergunta é vertical porque o sensor é. E o `− gravity`
+        // é o que faz uma rampa CAMINHÁVEL não escorregar: empurrar ao longo da
+        // normal cancelaria só a componente normal do peso e o personagem
+        // escorregaria por toda ladeira, que é o oposto do que o `max_slope_deg`
+        // significa (o `slopeLimit` da Unity, o `floor_max_angle` do Godot).
         accel: [up[0] * spring - gravity[0], up[1] * spring - gravity[1]],
         // O amortecimento é BOOST — ver o aviso do `lib.rs`.
         boost: [
-            -up[0] * rel_along_up * damping,
-            -up[1] * rel_along_up * damping,
+            -axis[0] * rel_along_axis * damping,
+            -axis[1] * rel_along_axis * damping,
         ],
     }
 }
@@ -309,5 +392,115 @@ mod tests {
             "parado no mundo, ele esta' AFUNDANDO na plataforma: {:?}",
             m2.boost
         );
+    }
+
+    // ── O EIXO DO AMORTECEDOR ────────────────────────────────────────────────
+
+    /// **No plano o eixo É o `up`, bit a bit** — é esta linha que mantém tudo o
+    /// que a W2..W10 mediu em chão plano byte-idêntico.
+    #[test]
+    fn on_the_flat_the_damping_axis_is_up_to_the_bit() {
+        assert_eq!(damping_axis([0.0, 1.0], UP), UP);
+        // E o recuo da normal degenerada é o mesmo `up` — a política que a
+        // `footing` já toma para um raio nascido dentro da geometria.
+        assert_eq!(damping_axis([0.0, 0.0], UP), UP);
+        // Fora do plano ele NORMALIZA (uma normal que chegue longa não pode
+        // escalar o amortecimento).
+        let a = damping_axis([0.0, 4.0], UP);
+        assert!((a[1] - 1.0).abs() < 1.0e-6, "normalizado: {a:?}");
+    }
+
+    /// ⚠️ **O GATE DA CORREÇÃO: andar ao longo da rampa NÃO é aproximar-se dela.**
+    ///
+    /// Um corpo cuja velocidade é puramente TANGENTE não está nem subindo nem
+    /// afundando na superfície, então a perna não tem o que amortecer. Com o
+    /// eixo no `up` ela amortecia `v · sen θ` — e é essa componente, invisível
+    /// para o freio da caminhada, que virava a subida involuntária.
+    ///
+    /// **Mutação que deve sangrar:** trocar `axis` de volta por `up`.
+    #[test]
+    fn sliding_along_the_ramp_is_not_approaching_it() {
+        // ⚠️ O amortecimento é FIXADO aqui, e não herdado do `STARTING_POINT`:
+        // este gate julga o EIXO, e a metade de controle abaixo mede um número
+        // que o default escala. Herdá-lo faria ele sangrar quando alguém mexesse
+        // no default — verdade por acidente, e o gate deixaria de poder falhar
+        // pelo motivo que alega.
+        let cfg = RideConfig {
+            spring_damping: 1.0,
+            ..RideConfig::STARTING_POINT
+        };
+        // Rampa de 30° que sobe para a direita; a tangente é `perp_cw(n)`.
+        let n: Vec2 = [-0.5, 0.866_025_4];
+        let t = crate::perp_cw(n);
+        let s = GroundSample {
+            distance: cfg.float_height,
+            normal: n,
+            ground_velocity: [0.0, 0.0],
+        };
+        let along = [t[0] * 2.0, t[1] * 2.0];
+        let m = ride_spring(&cfg, Some(&s), along, G, UP);
+        assert!(
+            m.boost[0].abs() < 1.0e-6 && m.boost[1].abs() < 1.0e-6,
+            "andar ao longo da rampa nao pode acordar o amortecedor: {:?}",
+            m.boost
+        );
+
+        // E a metade oposta: aproximar-se da superfície (ao longo da NORMAL)
+        // acorda-o inteiro — senão o gate acima passaria com o amortecedor
+        // deletado.
+        let into = [-n[0] * 2.0, -n[1] * 2.0];
+        let m2 = ride_spring(&cfg, Some(&s), into, G, UP);
+        let push = m2.boost[0] * n[0] + m2.boost[1] * n[1];
+        assert!(
+            push > 1.9,
+            "afundar na rampa TEM de ser amortecido (d = {}): {:?}",
+            cfg.spring_damping,
+            m2.boost
+        );
+    }
+
+    /// **O amortecedor devolve exatamente o que o knob promete** — e no teto ele
+    /// zera a aproximação num tique, que é o que faz a deriva de rampa ser zero.
+    ///
+    /// **Mutação que deve sangrar:** clampar o amortecimento abaixo de 1.
+    #[test]
+    fn at_the_ceiling_the_leg_kills_the_whole_approach_in_one_tick() {
+        let mut cfg = RideConfig::STARTING_POINT;
+        let n: Vec2 = [-0.5, 0.866_025_4];
+        let s = GroundSample {
+            distance: cfg.float_height,
+            normal: n,
+            ground_velocity: [0.0, 0.0],
+        };
+        let into = [-n[0] * 3.0, -n[1] * 3.0];
+        cfg.spring_damping = RideConfig::MAX_DAMPING;
+        let m = ride_spring(&cfg, Some(&s), into, G, UP);
+        let left = (into[0] + m.boost[0]) * n[0] + (into[1] + m.boost[1]) * n[1];
+        assert!(
+            left.abs() < 1.0e-4,
+            "no teto sobra ZERO de aproximacao: {left}"
+        );
+        // E metade do knob deixa metade — a linearidade que a tabela do
+        // `STARTING_POINT` mede no produto.
+        cfg.spring_damping = 0.5;
+        let half = ride_spring(&cfg, Some(&s), into, G, UP);
+        let left_half = (into[0] + half.boost[0]) * n[0] + (into[1] + half.boost[1]) * n[1];
+        assert!(
+            (left_half + 1.5).abs() < 1.0e-4,
+            "metade do knob deixa metade da aproximacao: {left_half}"
+        );
+    }
+
+    /// **O amortecimento que shipa é uma DECISÃO, não uma sobra** — e o gate
+    /// existe porque as duas direções em que alguém o moveria são armadilhas.
+    ///
+    /// Subi-lo ao teto zera a deriva de rampa (a tabela do `STARTING_POINT`) e
+    /// **corta o peso do personagem pela metade**, porque a perna passa a
+    /// segurá-lo com um boost e boost não volta ao chão (`crate::react`). Baixá-lo
+    /// devolve o quique de 196 mm ao pouso. Nenhuma das duas é uma mudança que
+    /// se faz sem olhar as quatro colunas.
+    #[test]
+    fn the_shipped_damping_is_a_decision_not_a_leftover() {
+        assert_eq!(RideConfig::STARTING_POINT.spring_damping, 0.5);
     }
 }

@@ -51,6 +51,28 @@
 //! | não | sim | **entra** (fade-in, já no lugar de destino) |
 //! | idêntico | idêntico | **não anima** — e não custa nada |
 //!
+//! # ⛔ A MOLA foi MEDIDA e o solver NÃO se justifica — não o reconstrua
+//!
+//! O plano deixou em aberto *"se a curva `Elastic` bastar, o solver não se constrói"*. Medido
+//! (`tests/measure_spring.rs`), em duas frentes:
+//!
+//! **A FORMA já está no catálogo.** `Elastic Out` mede pico **1,373** / assenta em **0,631** /
+//! **4** travessias do alvo, contra **1,309 / 0,600 / 3** de um oscilador massa-mola-amortecedor
+//! macio (`ω=12, ζ=0,35`) — a mesma animação. `Back Out` (1,100 / 1 travessia) cobre o *overshoot*
+//! único que a maioria das molas de UI de facto usa.
+//!
+//! **A INTERRUPÇÃO é a pergunta de verdade, e o default passa.** O que uma mola dá e uma curva
+//! não dá é *continuidade de velocidade*: revertendo a 30% do caminho, a volta arranca a
+//! **1,34×** a velocidade com que a ida chegava sob o [`DEFAULT_EASING`] — o olho não separa isso
+//! de 1,00×. Os dois regimes onde ela morde são `InOut` (**0,00×**: a cena PARA e recomeça, o
+//! *stutter* que faz alguém pedir um solver) e `Elastic` (**7,02×**: estalo).
+//!
+//! ⚠️ **E os dois são INALCANÇÁVEIS hoje**, porque o seletor de curva não existe — a mesma
+//! decisão, por outro lado: o catálogo não dá nome às 33 combinações, então o knob não nasceu. O
+//! dia em que ele nascer, **esta medição volta à mesa** (§0: quem move o número reconfere a
+//! nota). O gate `the_default_curve_reverses_without_stopping_dead` pina a banda, com o `InOut`
+//! como controle.
+//!
 //! # A correspondência é do PAR, nunca do `t` — e o número é grande
 //!
 //! `ph2d_vec_blend::Plan::new` custa **0,64 ms mesmo quando as duas formas são IGUAIS** (a busca

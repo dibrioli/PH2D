@@ -330,6 +330,8 @@ mod tokens_smoke;
 mod transport;
 /// A cena de smoke do Twist (o remoinho + o Falloff a modulá-lo) — irmão de `build_smoke`.
 mod twist_smoke;
+/// A cena de smoke da **PELE POR-WIDGET** (`PH2D_BUILD_SMOKE=60`) — irmã de `build_smoke`.
+mod ui_states_smoke;
 mod undo;
 mod undo_route;
 mod value_curve_smoke;
@@ -411,7 +413,6 @@ mod wetpaint_smoke;
 /// **A PELE por-widget** (plano UI/UX W6.2) — uma forma marcada é pintada pelo pintor REAL do
 /// catálogo, no z dela. A ponte mora aqui porque só a shell alcança as duas metades.
 mod widget_live;
-/// A cena de smoke da **PELE POR-WIDGET** (`PH2D_BUILD_SMOKE=60`) — irmã de `build_smoke`.
 mod widget_skin_smoke;
 mod width_handles;
 /// A cena de smoke do **Width Tool** (`PH2D_BUILD_SMOKE=42`) — irmã de `build_smoke`, teto de LOC.

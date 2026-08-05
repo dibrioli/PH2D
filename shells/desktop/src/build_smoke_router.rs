@@ -276,5 +276,12 @@ pub(crate) fn route(app: &mut crate::App, f: u32, level: u32) -> bool {
         crate::widget_skin_smoke::frame(app, f);
         return true;
     }
+    // A cena dos ESTADOS de UI (=61) — irmã `ui_states_smoke`. Três hospedeiros: um que muda
+    // pose+escala+cor com um FILHO a acompanhar, um que muda SÓ a cor (e cujo custo em `Plan` a
+    // cena imprime), e um SEM estado nenhum, que é o controle.
+    if level == 61 {
+        crate::ui_states_smoke::frame(app, f);
+        return true;
+    }
     false
 }

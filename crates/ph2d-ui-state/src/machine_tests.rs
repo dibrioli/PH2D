@@ -316,3 +316,53 @@ fn without_a_default_a_role_request_is_a_no_op() {
     );
     assert!(!m.is_animating());
 }
+
+/// **A INTERRUPÇÃO do default não tem parada, e é por isso que não há solver de mola.**
+///
+/// ⚠️ O que uma mola dá e uma curva não dá é **continuidade de velocidade**. Medido (a sonda
+/// `measure_spring`): revertendo a 30% do caminho, a volta arranca a **1,34×** a velocidade com
+/// que a ida chegava sob o `Cubic Out` que shipa — o olho não separa isso de 1,00× —, enquanto o
+/// `InOut` arranca a **0,00×** (a cena PARA e recomeça, o *stutter* que faz alguém pedir um
+/// solver) e o `Elastic` a **7,02×** (estalo).
+///
+/// ⚠️ **E a FORMA de mola já está no catálogo:** `Elastic Out` mede pico 1,373 / assenta 0,631 /
+/// 4 travessias contra 1,309 / 0,600 / 3 de uma mola macia — a mesma animação. O solver não se
+/// justifica; o que ele compraria é exactamente o regime que este gate proíbe.
+///
+/// ⚠️ **Quem mover o default reconfere a nota** (§0): escolher `InOut` aqui torna a parada
+/// alcançável, e o item da mola volta à mesa.
+#[test]
+fn the_default_curve_reverses_without_stopping_dead() {
+    const AT: f64 = 0.30;
+    const H: f64 = 1e-4;
+    let y = |e: Easing, u: f64| e.eval(u);
+
+    let d = crate::DEFAULT_EASING;
+    let incoming = (y(d, AT + H) - y(d, AT - H)) / (2.0 * H);
+    let outgoing = (y(d, H) - y(d, 0.0)) / H * y(d, AT);
+    let ratio = outgoing.abs() / incoming.abs();
+    assert!(
+        ratio > 0.5,
+        "o default reverte a {ratio:.2}x — a cena PARA no meio do gesto e recomeça, que e' o \
+         stutter para o qual uma mola de verdade existe"
+    );
+    assert!(
+        ratio < 2.5,
+        "o default reverte a {ratio:.2}x — a volta ESTALA, arrancando muito mais rapido do que a \
+         ida chegava"
+    );
+
+    // ⚠️ **O CONTROLE:** a família que de facto para tem de medir a parada, senão o gate acima
+    // seria verde por a razão ser insensível ao que ela julga.
+    let inout = Easing {
+        family: EasingFamily::Cubic,
+        mode: EasingMode::InOut,
+    };
+    let stop = ((y(inout, H) - y(inout, 0.0)) / H * y(inout, AT)).abs()
+        / ((y(inout, AT + H) - y(inout, AT - H)) / (2.0 * H)).abs();
+    assert!(
+        stop < 0.1,
+        "o `InOut` deixou de parar ({stop:.2}x) — o controle deste gate dissolveu-se e a razao \
+         acima passou a nao poder falhar"
+    );
+}

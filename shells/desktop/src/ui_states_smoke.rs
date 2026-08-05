@@ -1,0 +1,312 @@
+//! **A cena dos ESTADOS de UI** — `PH2D_BUILD_SMOKE=61` (plano UI/UX W7).
+//!
+//! # A pergunta desta cena é de olho, e ela é sobre O MEIO
+//!
+//! *Eu autorei DUAS pontas e o motor descobriu o caminho entre elas — a forma não salta, ela
+//! anda; e o que eu não autorei não se mexe.*
+//!
+//! A cena monta três hospedeiros, cada um a responder uma pergunta diferente:
+//!
+//! 1. **Play** — um retângulo com um ponto dentro. Entre Default e Hover mudam **posição, escala
+//!    e cor ao mesmo tempo**, e o filho anda **junto** com o pai. É a prova de que um estado é da
+//!    SUB-ÁRVORE, não de uma forma.
+//! 2. **Card** — só a **COR** muda. ⚠️ É o caso que o custo do motor decide: geometrias idênticas
+//!    **não constroem `Plan`**, e o número aparece no anúncio. Vinte objetos numa troca só-de-cor
+//!    pagariam 12,79 ms — 77% de um quadro de 60 fps — para não mover um vértice.
+//! 3. **Plain** — o **CONTROLE**: nenhum estado gravado. A seção continua a ser oferecida (a face
+//!    VAZIA é a que torna a feature alcançável), e nada nele se mexe.
+//!
+//! ⚠️ **E ela imprime os números que a tornam válida:** quantas poses gravou e quantos `Plan`s a
+//! transição do Card custou. Se as poses forem zero, PARE — a autoria não correu, e o resto do
+//! roteiro não diz nada.
+
+use ph2d_ui_state::{StateRole, Transition};
+use ph2d_vec_scene::{Paint, Rgba8, VecPath, VecPathId, ellipse, rectangle};
+
+/// Os retângulos: `(caixa, nome, é hospedeiro?)`.
+///
+/// ⚠️ O CONTROLE é o último e fica **longe** dos outros dois de propósito: numa foto, um objeto
+/// que não se mexe ao lado de um que se mexe só é legível se ninguém duvidar de qual é qual.
+const ART: [([f64; 4], &str); 4] = [
+    ([-4.6, 0.2, -1.8, 1.6], "Play"),
+    ([-4.2, 0.6, -3.6, 1.2], "Dot"),
+    ([-1.0, 0.2, 1.8, 1.6], "Card"),
+    ([3.0, 0.2, 5.0, 1.6], "Plain"),
+];
+
+/// Índices no `ART`.
+const PLAY: usize = 0;
+const DOT: usize = 1;
+const CARD: usize = 2;
+
+/// As cores de repouso e as de hover, na ordem do `ART`.
+///
+/// ⚠️ O salto de cor é GRANDE de propósito: a interpolação é perceptual (OKLab, pela porta única
+/// do Blend), e a diferença entre um caminho perceptual e um lerp de sRGB só aparece quando o
+/// caminho é longo — num salto curto os dois passam pelo mesmo lugar e a cena não diria nada.
+const REST: [[u8; 3]; 4] = [[58, 66, 92], [120, 132, 170], [96, 60, 64], [72, 96, 76]];
+const HOVER: [[u8; 3]; 4] = [
+    [88, 150, 232],
+    [236, 244, 255],
+    [232, 176, 96],
+    [72, 96, 76],
+];
+
+pub(crate) fn frame(app: &mut crate::App, f: u32) {
+    match f {
+        3 => build(app),
+        5 => name_them(app),
+        7 => record_default(app),
+        9 => pose_hover(app),
+        11 => record_hover(app),
+        13 => back_to_rest(app),
+        15 => announce(app),
+        _ => {}
+    }
+}
+
+fn build(app: &mut crate::App) {
+    let Some(gfx) = app.gfx.as_mut() else {
+        return;
+    };
+    for (i, (r, _)) in ART.iter().enumerate() {
+        // O ponto é redondo — um retângulo dentro de outro leria como moldura, e o que a cena
+        // precisa de mostrar é uma coisa a ANDAR dentro de outra.
+        let mut p: VecPath = if i == DOT {
+            ellipse([(r[0] + r[2]) * 0.5, (r[1] + r[3]) * 0.5], 0.3, 0.3)
+        } else {
+            rectangle([r[0], r[1]], [r[2], r[3]])
+        };
+        let c = REST[i];
+        p.fill = Some(Paint::Solid(Rgba8::new(c[0], c[1], c[2], 255)));
+        gfx.vec_scene.push_path(p);
+    }
+}
+
+fn path_ids(app: &crate::App) -> Vec<VecPathId> {
+    app.gfx
+        .as_ref()
+        .map(|g| g.vec_scene.paths().iter().map(|p| p.id).collect())
+        .unwrap_or_default()
+}
+
+fn entity(app: &crate::App, id: VecPathId) -> Option<ph2d_ecs::Entity> {
+    app.vec_entities
+        .get(&id)
+        .map(|&bits| ph2d_ecs::Entity::from_bits(bits))
+}
+
+/// Dá o NOME a cada forma e pendura o ponto no Play.
+///
+/// ⚠️ Num frame POSTERIOR ao `build`, e é obrigatório: a entidade de uma forma nasce no
+/// `vec_entities::sync`, que corre no frame do desenho. Nomear antes seria escrever num objeto que
+/// ainda não existe — a mesma ordem que o `widget_skin_smoke` já documenta.
+fn name_them(app: &mut crate::App) {
+    let ids = path_ids(app);
+    if ids.len() < ART.len() {
+        return;
+    }
+    let ents: Vec<_> = ids.iter().map(|&id| entity(app, id)).collect();
+    let Some(gfx) = app.gfx.as_mut() else {
+        return;
+    };
+    for (i, (_, name)) in ART.iter().enumerate() {
+        let Some(e) = ents[i] else { continue };
+        let Ok(mut ent) = gfx.sim.world_mut().get_entity_mut(e) else {
+            continue;
+        };
+        ent.insert(ph2d_ecs::Name::new(*name));
+    }
+    // O ponto é FILHO do Play: é isso que faz um estado do Play carregar os dois.
+    if let (Some(play), Some(dot)) = (ents[PLAY], ents[DOT]) {
+        crate::vec_transform::reparent_keeping_world(&mut gfx.sim, dot, play);
+    }
+}
+
+/// Grava a pose de repouso dos dois hospedeiros.
+fn record(app: &mut crate::App, host: usize, role: StateRole) {
+    let ids = path_ids(app);
+    if ids.len() < ART.len() {
+        return;
+    }
+    let map = &app.vec_entities;
+    let Some(gfx) = app.gfx.as_mut() else {
+        return;
+    };
+    // ⚠️ Pela porta do PRODUTO (`vec_ui_state_edit::apply`), e não escrevendo a tabela à mão: uma
+    // cena que semeia estado por baixo pula exactamente a costura que ela existe para provar.
+    crate::vec_ui_state_edit::apply(
+        &mut gfx.sim,
+        &mut gfx.vec_scene,
+        map,
+        &[ids[host]],
+        &mut gfx.ui_states,
+        crate::vec_ui_state_edit::UiStateEdit::Record(role),
+    );
+}
+
+fn record_default(app: &mut crate::App) {
+    record(app, PLAY, StateRole::Default);
+    record(app, CARD, StateRole::Default);
+}
+
+/// Põe a cena na pose de HOVER — exactamente o que o artista faria com a mão.
+fn pose_hover(app: &mut crate::App) {
+    let ids = path_ids(app);
+    if ids.len() < ART.len() {
+        return;
+    }
+    let ents: Vec<_> = ids.iter().map(|&id| entity(app, id)).collect();
+    let Some(gfx) = app.gfx.as_mut() else {
+        return;
+    };
+    // O Play cresce; o ponto anda para a direita DENTRO dele.
+    if let Some(e) = ents[PLAY]
+        && let Some(mut t) = gfx.sim.world_mut().get_mut::<ph2d_ecs::Transform>(e)
+    {
+        t.scale.x = 1.12;
+        t.scale.y = 1.12;
+    }
+    if let Some(e) = ents[DOT]
+        && let Some(mut t) = gfx.sim.world_mut().get_mut::<ph2d_ecs::Transform>(e)
+    {
+        t.translation.x += 0.9;
+    }
+    // As três tintas de hover (o CONTROLE mantém a dele: `HOVER[3] == REST[3]`).
+    for i in [PLAY, DOT, CARD] {
+        if let Some(p) = gfx.vec_scene.path_mut(ids[i]) {
+            let c = HOVER[i];
+            p.fill = Some(Paint::Solid(Rgba8::new(c[0], c[1], c[2], 255)));
+        }
+    }
+}
+
+fn record_hover(app: &mut crate::App) {
+    record(app, PLAY, StateRole::Hover);
+    record(app, CARD, StateRole::Hover);
+}
+
+/// Devolve a cena ao repouso — a pose que o artista vê ao abrir.
+///
+/// ⚠️ Pelo **Show**, e não desfazendo as escritas à mão: é a porta do produto, e usá-la aqui é o
+/// que faz a cena provar que ela funciona antes de o artista tocar em nada.
+fn back_to_rest(app: &mut crate::App) {
+    let ids = path_ids(app);
+    if ids.len() < ART.len() {
+        return;
+    }
+    for host in [PLAY, CARD] {
+        let Some(gfx) = app.gfx.as_mut() else { return };
+        crate::render_loop::ui_state_bridge::request(
+            &mut gfx.ui_machines,
+            &gfx.ui_states,
+            ids[host],
+            StateRole::Default,
+        );
+    }
+}
+
+fn announce(app: &mut crate::App) {
+    let ids = path_ids(app);
+    let Some(gfx) = app.gfx.as_ref() else {
+        return;
+    };
+    if ids.len() < ART.len() {
+        eprintln!("[ui-states] ⚠️ a cena nao montou — PARE");
+        return;
+    }
+    let poses: usize = [PLAY, CARD]
+        .iter()
+        .map(|&h| gfx.ui_states.get(ids[h]).len())
+        .sum();
+    // ⚠️ O custo do PAR, medido aqui e não afirmado: um par só-de-cor tem de dizer ZERO. É esse
+    // zero que vale 12,79 ms numa cena de vinte objetos.
+    let plans = match (
+        gfx.ui_states.role(ids[CARD], StateRole::Default),
+        gfx.ui_states.role(ids[CARD], StateRole::Hover),
+    ) {
+        (Some(a), Some(b)) => Transition::new(&a.objects, &b.objects).plans_built(),
+        _ => usize::MAX,
+    };
+    eprintln!(
+        "[ui-states] {poses} poses gravadas (Play e Card, Default+Hover), e a transicao do Card \
+         custou {plans} Plan(s) de forma."
+    );
+    if poses < 4 {
+        eprintln!("[ui-states] ⚠️ **PARE**: eram para ser 4 poses. A autoria nao correu.");
+        return;
+    }
+    eprintln!("[ui-states] o roteiro:");
+    eprintln!("  1. Selecione o **Play** -> secao **States**. Default e Hover ja' tem pose (Show");
+    eprintln!("     e Clear aparecem neles); Pressed e Disabled so' oferecem **Rec**.");
+    eprintln!("  2. ⚠️ **A PROVA DA WAVE**: aperte **Show** no Hover. A forma NAO salta — ela");
+    eprintln!("     anda: cresce, o ponto desliza para a direita e a cor atravessa. Voce autorou");
+    eprintln!("     duas pontas e o motor descobriu o meio.");
+    eprintln!("  3. ⚠️ **O ESTADO E' DA SUB-ARVORE**: o ponto anda JUNTO com o pai, e ninguem o");
+    eprintln!("     gravou separadamente. Um estado que so' guardasse o hospedeiro deixaria de");
+    eprintln!("     fora justamente o que se move num hover.");
+    eprintln!("  4. **Show** no Default devolve. Interrompa no meio (Show/Show/Show depressa): a");
+    eprintln!("     forma inverte **de onde esta'**, nunca da ponta — a maquina parte da pose");
+    eprintln!("     VIVA.");
+    eprintln!("  5. ⚠️ **A CHEGADA E' EXATA**: va' e volte dez vezes. O botao termina onde voce o");
+    eprintln!("     desenhou, ao bit. Sem isso a cena DERIVA e ninguem ve' de onde.");
+    eprintln!("  6. **Duration**: arraste para ~1 s e repita o Show. A mesma animacao, mais");
+    eprintln!("     lenta. Em 0 ela e' instantanea — e passa pela MESMA porta de chegada.");
+    eprintln!("  7. ⚠️ **UM Ctrl+Z desfaz um Show**, nao nove. A transicao inteira e' um passo:");
+    eprintln!("     o undo espera a maquina chegar, e so' entao ve' um estado do mundo.");
+    eprintln!(
+        "  8. **O CARD** so' muda de COR, e a transicao dele custa **0 Plan** (linha acima)."
+    );
+    eprintln!("     A cor atravessa pelo caminho perceptual, sem passar pelo cinza.");
+    eprintln!("  9. ⚠️ **O CONTROLE**: selecione o **Plain**. A secao States EXISTE e esta' vazia");
+    eprintln!("     — os quatro papeis so' oferecem Rec. E' a face vazia que torna a feature");
+    eprintln!("     alcancavel; sem ela, gravar so' seria possivel onde ja' se gravou.");
+    eprintln!(
+        " 10. Pose o Plain como quiser e aperte **Rec** no Hover: a partir dai' ele responde"
+    );
+    eprintln!("     como os outros. **Clear** o esquece, e a linha volta a oferecer so' o Rec.");
+    eprintln!(" 11. ⚠️ **O QUE NAO ESTA' AQUI, e e' decisao:** passar o rato por cima nao anima");
+    eprintln!("     nada. Um hover que animasse enquanto voce trabalha tornaria o editor");
+    eprintln!("     inutilizavel — a interacao pede um modo de apresentacao, que e' outra wave.");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// **O CONTROLE é mesmo um controle.**
+    ///
+    /// ⚠️ A quarta forma existe para não se mexer, e a única coisa que garante isso é as duas
+    /// tintas dela serem a MESMA. Alguém que "clareie as cores de hover" da lista apaga o
+    /// controle em silêncio — a cena continua bonita e deixa de provar que gravar um estado é a
+    /// única coisa que faz uma forma responder.
+    #[test]
+    fn the_control_shape_has_no_hover_of_its_own() {
+        let last = ART.len() - 1;
+        assert_eq!(
+            REST[last], HOVER[last],
+            "a forma de CONTROLE ganhou uma cor de hover — ela deixou de ser controle"
+        );
+        for i in [PLAY, DOT, CARD] {
+            assert_ne!(
+                REST[i], HOVER[i],
+                "o objeto {i} nao muda de cor entre os dois estados — a cena nao mostraria a \
+                 travessia perceptual"
+            );
+        }
+    }
+
+    /// **O ponto é FILHO do Play**, e é isso que a cena prova sobre a sub-árvore.
+    ///
+    /// ⚠️ O gate é sobre a GEOMETRIA da fixture: o ponto tem de caber DENTRO do retângulo do Play,
+    /// senão a foto mostra duas coisas lado a lado e a frase *"o filho anda junto"* fica sem
+    /// sujeito visível.
+    #[test]
+    fn the_dot_sits_inside_the_play_button() {
+        let (p, d) = (ART[PLAY].0, ART[DOT].0);
+        assert!(
+            d[0] > p[0] && d[2] < p[2] && d[1] > p[1] && d[3] < p[3],
+            "o ponto saiu de dentro do Play: {d:?} contra {p:?}"
+        );
+    }
+}

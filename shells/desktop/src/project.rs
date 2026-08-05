@@ -323,7 +323,17 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// ⚠️ **A linha escreveu 56; o valor CONTADO contra o `main` da integração é 63** — a
 /// `line/Vector` trouxe os SETE degraus v56..v62 na mesma janela, e o número se CONTA,
 /// não se escolhe ([[feedback_numbers_that_sum_across_lines_count_dont_pick]]).
-const PROJECT_SCHEMA: u32 = 63;
+/// v64 (physics, W13 — AS PAREDES): o `PlatformPlayer` ganhou **`wall_slide_speed`**,
+/// **`wall_jump_height`**, **`wall_jump_push`** e **`wall_reach`** — a capacidade de
+/// escorregar por uma parede e pular dela. Quatro campos apendados ao componente,
+/// mesmo raciocínio posicional dos v32/v33/v34/v54/v55: um save v63 lido por v64
+/// chega ao fim dos bytes no primeiro campo novo, e é o número que transforma isso
+/// num erro de VERSÃO em vez de num postcard a falhar longe da causa.
+/// ⚠️ **A linha escreveu 56; o valor CONTADO contra o `main` da integração é 64** — a
+/// `line/Vector` (v56..v62) e a `line/sculpt3d` (v63) pousaram antes na mesma janela.
+/// O número se CONTA, nunca se escolhe; três linhas já colidiram nele por o terem
+/// escolhido ([[feedback_numbers_that_sum_across_lines_count_dont_pick]]).
+const PROJECT_SCHEMA: u32 = 64;
 
 /// O conteúdo de um arquivo de projeto.
 #[derive(serde::Serialize, serde::Deserialize)]

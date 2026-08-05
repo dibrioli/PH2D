@@ -33,7 +33,8 @@ use bevy_ecs::entity::Entity;
 use ph2d_ecs::SimWorld;
 use ph2d_platformer::{
     CORNER_LOOKAHEAD, CORNER_SAMPLES, CeilingProbe, GroundSample, JumpState, PlayerConfig,
-    PlayerInput, corner_offsets, corner_probe_wanted, footing, player_motor, relative_rise,
+    PlayerInput, WallSample, corner_offsets, corner_probe_wanted, footing, player_motor,
+    relative_rise, wall_probe_wanted,
 };
 
 use crate::components::{BodyKind, PlatformPlayer};
@@ -258,11 +259,23 @@ impl PhysicsBridge {
             };
 
             let input = self.player_input.get(&entity).copied().unwrap_or_default();
+
+            // ── O SENSOR LATERAL (W13) ───────────────────────────────────────
+            // ⚠️ A pergunta *"vale a pena castar?"* é a MESMA que a lei faz para
+            // decidir se pode agir (`wall_probe_wanted`), pelo molde exato do
+            // sensor de quina. Com a capacidade desligada — que é como todo
+            // player já autorado nasce — nenhum raio é lançado.
+            let wall = if wall_probe_wanted(&cfg.wall, stand.is_some(), input.drive) {
+                probe_wall(&self.world, b.handle, b.rest.layer, &cfg, input.drive)
+            } else {
+                None
+            };
             let was = self.player_jump.get(&entity).copied().unwrap_or_default();
             let step = player_motor(
                 &cfg,
                 sample.as_ref(),
                 ceiling.as_ref(),
+                wall.as_ref(),
                 input,
                 was,
                 vel,
@@ -443,6 +456,50 @@ fn probe_ceiling(
         half_width,
         blocked,
         side_clear: [free(-1.0), free(1.0)],
+    })
+}
+
+/// **A parede ao lado** (W13) — a metade do sensor que este módulo possui, e
+/// nada de política.
+///
+/// Um raio, na direção em que o jogador empurra, do CENTRO do corpo até meia
+/// largura mais o alcance autorado.
+///
+/// ⚠️ **Do centro, e o alcance desconta a meia-largura**, pela mesma razão do
+/// sensor de quina: a origem tem de estar DENTRO do corpo para o `exclude_body`
+/// significar alguma coisa, e o que a lei quer saber é quanto há de parede
+/// **além** da borda.
+///
+/// ⚠️ **A altura é o MEIO do corpo, e é uma escolha com preço nomeado:** uma
+/// beirada que só alcance os pés (ou só os ombros) não é vista. Um segundo par
+/// de raios curaria isso, e a caixa envolvente responde hoje sem discussão — é
+/// a mesma limitação honesta que a folga lateral da W10 carrega, e pela mesma
+/// razão.
+///
+/// ⚠️ **Este módulo NÃO decide se aquilo é parede.** Ele reporta a normal; quem
+/// classifica é a lei, pela régua que a perna já usa (`ph2d_platformer::cling`).
+/// Uma segunda régua aqui seria o `wall_min_angle` que o `wall.rs` existe para
+/// não ter.
+fn probe_wall(
+    world: &ph2d_physics::PhysicsWorld,
+    handle: rapier2d_handle::Handle,
+    layer: u8,
+    cfg: &PlayerConfig,
+    drive: f32,
+) -> Option<WallSample> {
+    let side = if drive > 0.0 { 1.0 } else { -1.0 };
+    let (mins, maxs) = world.body_aabb(handle)?;
+    let half_width = (maxs[0] - mins[0]) * 0.5;
+    if !half_width.is_finite() || half_width <= 0.0 {
+        return None;
+    }
+    let cx = (maxs[0] + mins[0]) * 0.5;
+    let mid = (maxs[1] + mins[1]) * 0.5;
+    let reach = half_width + cfg.wall.reach.max(0.0);
+    let hit = world.cast_ray([cx, mid], [side, 0.0], reach, Some(handle), layer)?;
+    Some(WallSample {
+        side,
+        normal: hit.normal,
     })
 }
 

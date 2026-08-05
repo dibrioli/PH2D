@@ -173,16 +173,49 @@ const REACT_ROWS: [PlayerRow; 2] = [
 ///
 /// ⚠️ **Os cinco títulos são os cinco módulos da lei** (`ride` · `walk` · `jump`
 /// · o perdão · `react`), não uma arrumação de gosto: quando o artista pergunta
+/// **AS PAREDES** (W13) — ⚠️ card PRÓPRIO, e não uma extensão do de PULO: o
+/// escorregamento não é um pulo, e o que agrupa estes cinco números é a
+/// superfície, não o gesto. As duas primeiras rows nascem em ZERO porque a
+/// capacidade é opt-in (ver `WallConfig::STARTING_POINT`).
+const WALL_ROWS: [PlayerRow; 5] = [
+    (
+        "Wall Slide (m/s)",
+        ids::INSP_PLAYER_WALL_SLIDE,
+        "Slide DOWN a wall at this speed while pushing into it. 0 = off.",
+    ),
+    (
+        "Wall Jump (m)",
+        ids::INSP_PLAYER_WALL_JUMP,
+        "How high a jump off a wall goes. 0 = off.",
+    ),
+    (
+        "Wall Push (m/s)",
+        ids::INSP_PLAYER_WALL_PUSH,
+        "How hard a wall jump throws you AWAY from the wall.",
+    ),
+    (
+        "Wall Lockout (s)",
+        ids::INSP_PLAYER_WALL_LOCK,
+        "Air control stays quiet this long after a wall jump.",
+    ),
+    (
+        "Wall Reach (m)",
+        ids::INSP_PLAYER_WALL_REACH,
+        "How far past your own width the wall sensor looks.",
+    ),
+];
+
 /// *"o que este número faz?"*, a primeira metade da resposta é *"a que pergunta
 /// ele pertence"*, e ela passou a estar escrita na tela (Enio, 2026-08-04:
 /// *"esse tanto de parâmetros juntos não fica bem; organize-os em cards com um
 /// título que facilite o entendimento"*).
-pub(crate) const PLAYER_CARDS: [(&str, ph2d_a11y::NodeId, &[PlayerRow]); 5] = [
+pub(crate) const PLAYER_CARDS: [(&str, ph2d_a11y::NodeId, &[PlayerRow]); 6] = [
     ("LEG", ids::INSP_PLAYER_CARD_LEG, &LEG_ROWS),
     ("WALK", ids::INSP_PLAYER_CARD_WALK, &WALK_ROWS),
     ("JUMP", ids::INSP_PLAYER_CARD_JUMP, &JUMP_ROWS),
     ("FORGIVENESS", ids::INSP_PLAYER_CARD_FORGIVE, &FORGIVE_ROWS),
     ("REACTION", ids::INSP_PLAYER_CARD_REACT, &REACT_ROWS),
+    ("WALLS", ids::INSP_PLAYER_CARD_WALL, &WALL_ROWS),
 ];
 
 /// Quantas rows numéricas a seção pinta — **contadas da tabela**, nunca escritas

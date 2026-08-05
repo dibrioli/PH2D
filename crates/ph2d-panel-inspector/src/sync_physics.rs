@@ -192,6 +192,11 @@ pub(crate) fn sync_player_fields(host: &mut dyn PanelHostInternal) {
         (ids::INSP_PLAYER_BUFFER, info.jump_buffer),
         (ids::INSP_PLAYER_CORNER, info.corner_reach),
         (ids::INSP_PLAYER_LIFT, info.lift_momentum),
+        (ids::INSP_PLAYER_WALL_SLIDE, info.wall_slide_speed),
+        (ids::INSP_PLAYER_WALL_JUMP, info.wall_jump_height),
+        (ids::INSP_PLAYER_WALL_PUSH, info.wall_jump_push),
+        (ids::INSP_PLAYER_WALL_LOCK, info.wall_jump_lockout),
+        (ids::INSP_PLAYER_WALL_REACH, info.wall_reach),
         (ids::INSP_PLAYER_REACT_SUPPORT, info.reaction_support),
         (ids::INSP_PLAYER_REACT_MOVEMENT, info.reaction_movement),
     ] {

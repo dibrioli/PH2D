@@ -118,6 +118,18 @@ pub const INSP_PLAYER_CORNER: NodeId = hash_node_id("insp.player.corner");
 /// no referencial da plataforma que se deixou.
 pub const INSP_PLAYER_LIFT: NodeId = hash_node_id("insp.player.lift");
 
+/// AS PAREDES (W13) — o card próprio, ver `sections::player`.
+/// **Wall Slide (m/s)** (W13).
+pub const INSP_PLAYER_WALL_SLIDE: NodeId = hash_node_id("insp.player.wall.slide");
+/// **Wall Jump (m)** (W13).
+pub const INSP_PLAYER_WALL_JUMP: NodeId = hash_node_id("insp.player.wall.jump");
+/// **Wall Push (m/s)** (W13).
+pub const INSP_PLAYER_WALL_PUSH: NodeId = hash_node_id("insp.player.wall.push");
+/// **Wall Lockout (s)** (W13).
+pub const INSP_PLAYER_WALL_LOCK: NodeId = hash_node_id("insp.player.wall.lock");
+/// **Wall Reach (m)** (W13).
+pub const INSP_PLAYER_WALL_REACH: NodeId = hash_node_id("insp.player.wall.reach");
+
 /// **Os CARDS da §14** (W9) — os títulos que agrupam os dezenove números.
 ///
 /// ⚠️ **Só moldura, nenhum estado.** Eles não são colapsáveis e não guardam
@@ -137,3 +149,4 @@ pub const INSP_PLAYER_CARD_WALK: NodeId = hash_node_id("insp_player_card_walk");
 pub const INSP_PLAYER_CARD_JUMP: NodeId = hash_node_id("insp_player_card_jump");
 pub const INSP_PLAYER_CARD_FORGIVE: NodeId = hash_node_id("insp_player_card_forgive");
 pub const INSP_PLAYER_CARD_REACT: NodeId = hash_node_id("insp_player_card_react");
+pub const INSP_PLAYER_CARD_WALL: NodeId = hash_node_id("insp_player_card_wall");

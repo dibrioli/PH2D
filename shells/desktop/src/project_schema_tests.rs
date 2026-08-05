@@ -275,7 +275,15 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // ⚠️ **A linha escreveu 56; o valor CONTADO é 63** — a `line/Vector` trouxe os SETE
         // degraus v56..v62 na mesma janela de integração, e o número se CONTA, não se escolhe
         // ([[feedback_numbers_that_sum_across_lines_count_dont_pick]]).
-        (63, 13, 14),
+        // PROJECT 63→64: `PlatformPlayer` ganhou `wall_slide_speed`,
+        // `wall_jump_height`, `wall_jump_push` e `wall_reach` (W13 — AS PAREDES:
+        // escorregar por uma e pular dela). Quatro campos apendados ao
+        // componente, e o postcard é posicional ⇒ um save v63 lido por v64 chega
+        // ao fim dos bytes no primeiro deles.
+        // ⚠️ **PROVISÓRIO:** o valor se CONTA contra o `main` do dia da
+        // integração — três linhas já colidiram neste número por o terem
+        // escolhido, e a última vez o certo não estava em nenhum dos dois lados.
+        (64, 13, 14),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

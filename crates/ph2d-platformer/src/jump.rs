@@ -248,6 +248,15 @@ pub struct JumpState {
     /// **Segundos de memória restantes** (W10) — enche com o pé no chão, escorre
     /// no ar, e o quociente por `lift_momentum` é o desvanecimento.
     pub lift_time: f32,
+
+    /// **Segundos de silêncio do controle aéreo** (W13) — enche num pulo de
+    /// PAREDE, escorre no ar, e o pé no chão o ZERA.
+    ///
+    /// ⚠️ **Zerar ao pousar não é higiene:** um jogador que acabou de aterrar
+    /// espera dirigir, e uma janela sobrevivente lhe tiraria o controle no chão
+    /// por um motivo que aconteceu no ar. É a mesma razão pela qual o coyote
+    /// enche no chão em vez de acumular.
+    pub wall_lock: f32,
 }
 
 /// O que a lei do pulo decidiu neste tick.
@@ -289,8 +298,10 @@ pub struct JumpStep {
 /// - `held`: o botão de pulo está pressionado AGORA.
 /// - `down`: o botão de BAIXO está pressionado agora — é ele que decide se o
 ///   aperto vira pulo ou **descida** (W12).
+/// - `wall`: o que a parede OFERECE a este aperto (W13), `None` quando não há
+///   parede agarrada. Ver [`crate::wall_launch`].
 #[must_use]
-// ⚠️ **Nove argumentos, e o 9º é o `dt`** (W8/W12) — os dois relógios do perdão
+// ⚠️ **Dez argumentos, e o último é o `dt`** (W8/W12/W13) — os dois relógios do perdão
 // escorrem em segundos, nunca em contagem de tiques. Agrupar `(footing, rel_up,
 // held)` num "o que o mundo diz" seria inventar um tipo com um chamador só; o
 // precedente é o `body_desc` do W-LockRot, que levou o mesmo `allow`.
@@ -302,6 +313,7 @@ pub fn jump_step(
     rel_up: f32,
     held: bool,
     down: bool,
+    wall: Option<crate::WallLaunch>,
     gravity: Vec2,
     up: Vec2,
     dt: f32,
@@ -345,6 +357,13 @@ pub fn jump_step(
         cfg.jump_buffer.max(0.0)
     } else {
         (state.buffer - dt).max(0.0)
+    };
+    // ⚠️ O silêncio do controle aéreo (W13) escorre como os outros dois, e o pé
+    // no chão o ZERA — ver [`JumpState::wall_lock`].
+    next.wall_lock = if grounded {
+        0.0
+    } else {
+        (state.wall_lock - dt).max(0.0)
     };
 
     // ── POUSO ────────────────────────────────────────────────────────────────
@@ -429,6 +448,57 @@ pub fn jump_step(
             state: next,
             spring_armed: false,
             takeoff: true,
+            drop_through: false,
+        };
+    }
+
+    // ── O PULO DE PAREDE (W13) ───────────────────────────────────────────────
+    // ⚠️ **DEPOIS da decolagem do chão, e a precedência é deliberada:** com o pé
+    // no chão o aperto é um pulo normal, mesmo encostado a uma parede. O chão é
+    // o apoio mais forte, e disputar isso daria um pulo cuja altura depende de
+    // haver ou não uma parede por perto.
+    //
+    // ⚠️ **E ele NÃO pergunta pelo `airborne`**, ao contrário de tudo o que está
+    // acima: a razão de existir de um pulo de parede é sair de um voo que já
+    // está a acontecer. Pedir *"não estar no ar"* aqui tornaria a feature
+    // inalcançável — e é exactamente o guard que faria o gate ficar verde
+    // enquanto o produto não pula parede nenhuma.
+    if let Some(w) = wall
+        && wants_to_jump
+    {
+        let g = (gravity[0] * gravity[0] + gravity[1] * gravity[1]).sqrt();
+        let v0 = (2.0 * g * w.height.max(0.0)).sqrt();
+        next.airborne = true;
+        next.cut = false;
+        // Os dois relógios são consumidos pela MESMA razão da decolagem do chão:
+        // um aperto guardado que sobrevive ao próprio pulo re-dispara no tique
+        // seguinte, e o personagem ainda está encostado.
+        next.coyote = 0.0;
+        next.buffer = 0.0;
+        // ⚠️ **E o controle aéreo fica calado**, senão o jogador — que ainda
+        // segura a direção da parede — é puxado de volta para ela e o resto do
+        // voo é gasto a raspar. Medido: 0,44 m de afastamento e 76% da altura
+        // autorada. Ver [`crate::WallConfig::jump_lockout`].
+        next.wall_lock = w.lockout.max(0.0);
+        // ⚠️ **A vertical vai AO valor e a horizontal é SOMADA**, e a assimetria
+        // é um fato sobre a cena, não descuido: agarrado, a velocidade vertical
+        // é a do escorregamento (que este pulo tem de apagar) e a horizontal é
+        // ~zero, porque a parede a está a segurar. Somar ali é o mesmo que
+        // atribuir, e não exige a esta lei um argumento novo com a velocidade
+        // horizontal — que ela não tem e para mais nada precisaria.
+        let rise = v0 - rel_up;
+        return JumpStep {
+            motor: Motor {
+                accel: [0.0, 0.0],
+                boost: [up[0] * rise + w.away[0], up[1] * rise + w.away[1]],
+            },
+            state: next,
+            spring_armed: false,
+            // ⚠️ **`takeoff: false`, e é FÍSICA:** a 3ª lei devolve ao CHÃO o que
+            // o pé nele empurrou, e este pé não empurrou chão nenhum — ele
+            // empurrou uma parede. Marcá-lo aqui faria o personagem afundar uma
+            // jangada com um pulo dado numa parede do outro lado da cena.
+            takeoff: false,
             drop_through: false,
         };
     }

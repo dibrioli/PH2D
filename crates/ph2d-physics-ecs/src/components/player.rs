@@ -16,7 +16,9 @@
 //! torna reproduzível num scrub.
 
 use bevy_ecs::component::Component;
-use ph2d_platformer::{JumpConfig, PlayerConfig, ReactionConfig, RideConfig, WalkConfig};
+use ph2d_platformer::{
+    JumpConfig, PlayerConfig, ReactionConfig, RideConfig, WalkConfig, WallConfig,
+};
 use serde::{Deserialize, Serialize};
 
 /// **Este corpo é um player de plataforma.**
@@ -109,6 +111,40 @@ pub struct PlatformPlayer {
     /// a plataforma escorrega para trás como um tapete quando o personagem anda
     /// em cima dela — atrito honesto e péssimo de jogar.
     pub reaction_movement: f32,
+
+    /// **WALL SLIDE** (W13) — a velocidade com que se desce uma parede agarrada,
+    /// m/s. `0` desliga.
+    ///
+    /// ⚠️ **A velocidade, não um teto:** com o atrito default o personagem
+    /// pressionado contra uma parede **não cai**, e um teto nunca dispararia —
+    /// a medição está em [`ph2d_platformer::wall_slide`].
+    ///
+    /// ⚠️ **Nasce DESLIGADO**, ao contrário de quase tudo aqui: parede é uma
+    /// CAPACIDADE do personagem, não uma correção de física. Um platformer sem
+    /// paredes é um gênero inteiro, e ligá-la por default mudaria o
+    /// comportamento de todo player já autorado.
+    pub wall_slide_speed: f32,
+    /// **WALL JUMP** (W13) — a altura de um pulo de parede, metros. `0` desliga.
+    pub wall_jump_height: f32,
+    /// **O empurrão para LONGE da parede**, m/s, no instante do pulo.
+    ///
+    /// ⚠️ Uma velocidade e não uma altura: o que ela decide é *quão longe da
+    /// parede ele chega*, e a métrica que o artista julga é a distância entre
+    /// duas paredes que dá para subir em ziguezague.
+    pub wall_jump_push: f32,
+    /// **Quanto ALÉM da própria largura o sensor lateral procura**, metros.
+    ///
+    /// ⚠️ Não é zero de propósito — ver [`ph2d_platformer::WallConfig::reach`]:
+    /// um alcance de exactamente meia-largura faria o agarrar-se piscar.
+    pub wall_reach: f32,
+    /// **Por quantos segundos o controle aéreo fica calado depois de um pulo de
+    /// parede**, s. `0` desliga.
+    ///
+    /// ⚠️ Sem ele o pulo de parede entrega **76% da altura autorada e 0,44 m de
+    /// afastamento**, medido — o jogador ainda segura a direção da parede e o
+    /// controle aéreo puxa-o de volta para ela. Ver
+    /// [`ph2d_platformer::WallConfig::jump_lockout`].
+    pub wall_jump_lockout: f32,
 }
 
 impl PlatformPlayer {
@@ -145,6 +181,13 @@ impl PlatformPlayer {
                 corner_reach: self.corner_reach,
                 lift_momentum: self.lift_momentum,
             },
+            wall: WallConfig {
+                slide_speed: self.wall_slide_speed,
+                jump_height: self.wall_jump_height,
+                jump_push: self.wall_jump_push,
+                reach: self.wall_reach,
+                jump_lockout: self.wall_jump_lockout,
+            },
             react: ReactionConfig {
                 support: self.reaction_support,
                 movement: self.reaction_movement,
@@ -180,6 +223,11 @@ impl Default for PlatformPlayer {
             lift_momentum: c.jump.lift_momentum,
             reaction_support: c.react.support,
             reaction_movement: c.react.movement,
+            wall_slide_speed: c.wall.slide_speed,
+            wall_jump_height: c.wall.jump_height,
+            wall_jump_push: c.wall.jump_push,
+            wall_reach: c.wall.reach,
+            wall_jump_lockout: c.wall.jump_lockout,
         }
     }
 }

@@ -66,6 +66,16 @@ pub struct InspectorPlayerInfo {
     pub corner_reach: f32,
     /// **Lift Momentum** (W10) — segundos.
     pub lift_momentum: f32,
+    /// **Wall Slide** (W13) — m/s. `0` desliga a capacidade.
+    pub wall_slide_speed: f32,
+    /// **Wall Jump** (W13) — metros. `0` desliga.
+    pub wall_jump_height: f32,
+    /// **Wall Push** (W13) — m/s para LONGE da parede.
+    pub wall_jump_push: f32,
+    /// **Wall Lockout** (W13) — segundos de silêncio do controle aéreo.
+    pub wall_jump_lockout: f32,
+    /// **Wall Reach** (W13) — metros além da própria largura.
+    pub wall_reach: f32,
     /// Quanto do peso volta ao chao (W6).
     pub reaction_support: f32,
     /// Quanto da caminhada volta ao chao (W6).
@@ -116,6 +126,12 @@ pub enum PlayerFieldEdit {
     CornerReach(f32),
     /// **Lift Momentum** (W10) — segundos de memória do referencial do chão.
     LiftMomentum(f32),
+    /// AS PAREDES (W13).
+    WallSlideSpeed(f32),
+    WallJumpHeight(f32),
+    WallJumpPush(f32),
+    WallJumpLockout(f32),
+    WallReach(f32),
     /// Quanto do peso volta ao chao (W6).
     ReactionSupport(f32),
     /// Quanto da caminhada volta ao chao (W6).

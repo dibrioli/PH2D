@@ -40,6 +40,7 @@ fn the_leg_declares_which_half_of_its_push_cancels_gravity() {
         &cfg,
         Some(&ground),
         None,
+        None,
         PlayerInput::default(),
         JumpState::default(),
         [0.0, 0.0],
@@ -77,6 +78,7 @@ fn nothing_is_held_in_the_air() {
         &cfg,
         None,
         None,
+        None,
         PlayerInput::default(),
         JumpState::default(),
         [0.0, 0.0],
@@ -96,6 +98,7 @@ fn nothing_is_held_in_the_air() {
     let takeoff = player_motor(
         &cfg,
         Some(&ground),
+        None,
         None,
         PlayerInput {
             jump: true,
@@ -138,6 +141,7 @@ fn the_spring_lets_go_of_a_wall() {
         &cfg,
         Some(&steep),
         None,
+        None,
         PlayerInput::default(),
         JumpState::default(),
         [0.0, 0.0],
@@ -154,6 +158,7 @@ fn the_spring_lets_go_of_a_wall() {
     // estar ao lado de uma parede íngreme é o MESMO que estar no ar.
     let in_the_air = player_motor(
         &cfg,
+        None,
         None,
         None,
         PlayerInput::default(),
@@ -190,6 +195,7 @@ fn a_degenerate_normal_counts_as_flat() {
         &cfg,
         Some(&inside),
         None,
+        None,
         PlayerInput::default(),
         JumpState::default(),
         [0.0, 0.0],
@@ -216,6 +222,7 @@ fn the_door_sums_both_laws() {
     let whole = player_motor(
         &cfg,
         Some(&ground),
+        None,
         None,
         input,
         JumpState::default(),
@@ -371,6 +378,7 @@ fn at_the_door_a_steep_slope_kills_the_walk_but_not_the_jump() {
         &cfg,
         Some(&steep),
         None,
+        None,
         pushing,
         JumpState::default(),
         [0.0, 0.0],
@@ -381,6 +389,7 @@ fn at_the_door_a_steep_slope_kills_the_walk_but_not_the_jump() {
     let idle = player_motor(
         &cfg,
         Some(&steep),
+        None,
         None,
         PlayerInput::default(),
         JumpState::default(),
@@ -404,6 +413,7 @@ fn at_the_door_a_steep_slope_kills_the_walk_but_not_the_jump() {
     let jumping = player_motor(
         &cfg,
         Some(&steep),
+        None,
         None,
         PlayerInput {
             drive: 1.0,

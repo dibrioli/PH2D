@@ -265,6 +265,7 @@ mod physics_smoke_player_drop;
 mod physics_smoke_player_forgive;
 mod physics_smoke_player_slope;
 mod physics_smoke_player_tape;
+mod physics_smoke_player_wall;
 mod physics_smoke_props;
 mod physics_smoke_pulley;
 mod physics_smoke_pulley_break;

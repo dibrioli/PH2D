@@ -77,6 +77,11 @@ pub(crate) fn build_player_info(sim: &SimWorld, entity_bits: u64) -> Option<Insp
         jump_buffer: p.jump_buffer,
         corner_reach: p.corner_reach,
         lift_momentum: p.lift_momentum,
+        wall_slide_speed: p.wall_slide_speed,
+        wall_jump_height: p.wall_jump_height,
+        wall_jump_push: p.wall_jump_push,
+        wall_jump_lockout: p.wall_jump_lockout,
+        wall_reach: p.wall_reach,
         reaction_support: p.reaction_support,
         reaction_movement: p.reaction_movement,
     })
@@ -170,6 +175,13 @@ pub(crate) fn apply_player_edit(sim: &mut SimWorld, entity_bits: u64, edit: Play
         PlayerFieldEdit::JumpBuffer(v) => p.jump_buffer = v.max(0.0),
         PlayerFieldEdit::CornerReach(v) => p.corner_reach = v.max(0.0),
         PlayerFieldEdit::LiftMomentum(v) => p.lift_momentum = v.max(0.0),
+        // AS PAREDES (W13) — todos não-negativos: cada um é uma distância, uma
+        // velocidade ou um tempo, e nenhum tem sentido negativo.
+        PlayerFieldEdit::WallSlideSpeed(v) => p.wall_slide_speed = v.max(0.0),
+        PlayerFieldEdit::WallJumpHeight(v) => p.wall_jump_height = v.max(0.0),
+        PlayerFieldEdit::WallJumpPush(v) => p.wall_jump_push = v.max(0.0),
+        PlayerFieldEdit::WallJumpLockout(v) => p.wall_jump_lockout = v.max(0.0),
+        PlayerFieldEdit::WallReach(v) => p.wall_reach = v.max(0.0),
         PlayerFieldEdit::ReactionSupport(v) => p.reaction_support = v.max(0.0),
         PlayerFieldEdit::ReactionMovement(v) => p.reaction_movement = v.max(0.0),
     }

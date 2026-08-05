@@ -58,6 +58,15 @@ fn player() -> InspectorPlayerInfo {
         coyote_time: 0.1,
         jump_buffer: 0.1,
         corner_reach: 0.12,
+        // ⚠️ **AS PAREDES (W13) LIGADAS na fixture, e é declaração de premissa:**
+        // a capacidade nasce DESLIGADA no produto, e uma fixture que herdasse o
+        // zero varreria rows cujo valor nunca muda — verde sobre um controle que
+        // ninguém provou vivo.
+        wall_slide_speed: 3.0,
+        wall_jump_height: 2.0,
+        wall_jump_push: 6.0,
+        wall_jump_lockout: 0.2,
+        wall_reach: 0.08,
         lift_momentum: 1.5,
         reaction_support: 1.0,
         reaction_movement: 0.0,
@@ -176,7 +185,7 @@ fn every_number_raises_its_own_edit() {
     // exatamente o arm esquecido que ela existe para pegar.
     assert_eq!(
         ph2d_panel_inspector::PLAYER_ROW_COUNT,
-        21,
+        26,
         "a tabela de rows cresceu; acrescente o numero novo a esta varredura"
     );
     for (id, v, edit) in [
@@ -230,6 +239,31 @@ fn every_number_raises_its_own_edit() {
             ids::INSP_PLAYER_LIFT,
             0.9,
             PlayerFieldEdit::LiftMomentum(0.9),
+        ),
+        (
+            ids::INSP_PLAYER_WALL_SLIDE,
+            4.5,
+            PlayerFieldEdit::WallSlideSpeed(4.5),
+        ),
+        (
+            ids::INSP_PLAYER_WALL_JUMP,
+            2.5,
+            PlayerFieldEdit::WallJumpHeight(2.5),
+        ),
+        (
+            ids::INSP_PLAYER_WALL_PUSH,
+            7.5,
+            PlayerFieldEdit::WallJumpPush(7.5),
+        ),
+        (
+            ids::INSP_PLAYER_WALL_LOCK,
+            0.3,
+            PlayerFieldEdit::WallJumpLockout(0.3),
+        ),
+        (
+            ids::INSP_PLAYER_WALL_REACH,
+            0.15,
+            PlayerFieldEdit::WallReach(0.15),
         ),
         (
             ids::INSP_PLAYER_MAX_SLOPE,
@@ -451,7 +485,7 @@ fn every_player_control_carries_a_hover_hint() {
 /// **Mutação que deve sangrar:** o pintor voltar a somar as rows em vez de usar
 /// o `next_y` da moldura (as caixas passam a vazar do card).
 #[test]
-fn the_five_cards_hold_their_own_rows_and_do_not_overlap() {
+fn every_card_holds_its_own_rows_and_they_do_not_overlap() {
     let rects = painted(player());
     let mut spans: Vec<(f32, f32)> = Vec::new();
     for (title, rows) in ph2d_panel_inspector::player_card_spans() {

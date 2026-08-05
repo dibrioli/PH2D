@@ -54,6 +54,7 @@ pub mod react;
 pub mod ride;
 pub mod slope;
 pub mod walk;
+pub mod wall;
 
 pub use corner::{
     CORNER_LOOKAHEAD, CORNER_SAMPLES, CORNER_SEARCH_STEPS, CeilingProbe, corner_escape,
@@ -64,6 +65,9 @@ pub use react::{Reaction, ReactionConfig};
 pub use ride::{RideConfig, damping_axis, ride_spring, within_reach};
 pub use slope::{Footing, footing, footing_verdict, is_grounded, no_uphill};
 pub use walk::{WalkConfig, walk};
+pub use wall::{
+    WallConfig, WallLaunch, WallSample, cling, wall_launch, wall_probe_wanted, wall_slide,
+};
 
 /// Um vetor 2D em MUNDO (metros), na convenção do módulo (Y para cima).
 pub type Vec2 = [f32; 2];
@@ -125,6 +129,8 @@ pub struct PlayerConfig {
     pub jump: JumpConfig,
     /// O que volta para o chão (a 3ª lei).
     pub react: ReactionConfig,
+    /// As paredes (W13) — ⚠️ nasce DESLIGADA, ver [`WallConfig::STARTING_POINT`].
+    pub wall: WallConfig,
 }
 
 impl PlayerConfig {
@@ -134,6 +140,7 @@ impl PlayerConfig {
         walk: WalkConfig::STARTING_POINT,
         jump: JumpConfig::STARTING_POINT,
         react: ReactionConfig::STARTING_POINT,
+        wall: WallConfig::STARTING_POINT,
     };
 }
 
@@ -315,6 +322,7 @@ pub fn player_motor(
     cfg: &PlayerConfig,
     sample: Option<&GroundSample>,
     ceiling: Option<&CeilingProbe>,
+    wall: Option<&WallSample>,
     input: PlayerInput,
     state: JumpState,
     body_velocity: Vec2,
@@ -330,8 +338,25 @@ pub fn player_motor(
     // o chão, então uma mola viva puxaria de volta o que o boost acabou de dar
     // (o aviso do `jump`).
     let rel_up = relative_rise(footing, body_velocity, up);
+
+    // ── A PAREDE (W13) ───────────────────────────────────────────────────────
+    // ⚠️ **A pergunta *"estou agarrado?"* é feita UMA vez**, e as duas metades
+    // da wave são vistas dela — o freio da queda e o que a parede oferece ao
+    // pulo. Duas perguntas dariam um tique em que o personagem escorrega numa
+    // superfície de que ele não consegue pular, e a diferença seria invisível
+    // até alguém mexer num dos dois testes.
+    let clinging = wall::cling(cfg, wall, input.drive, rel_up, up);
     let jump = jump_step(
-        &cfg.jump, state, footing, rel_up, input.jump, input.down, gravity, up, dt,
+        &cfg.jump,
+        state,
+        footing,
+        rel_up,
+        input.jump,
+        input.down,
+        wall::wall_launch(&cfg.wall, clinging),
+        gravity,
+        up,
+        dt,
     );
 
     // A perna e a caminhada veem o MESMO chão, e é o que o pulo lhes deixou ver:
@@ -348,19 +373,30 @@ pub fn player_motor(
     // é lida do estado que ESTE tique produziu — a mesma ordem do coyote, que
     // enche e é consultado no mesmo tique.
     let carried = jump::carried_frame(&cfg.jump, &jump.state);
-    let step = no_uphill(
-        walk(
-            &cfg.walk,
-            standing,
-            body_velocity,
+    // ⚠️ **O SILÊNCIO do controle aéreo depois de um pulo de parede** (W13) — e
+    // ele é lido do estado que ESTE tique produziu, a mesma ordem do coyote:
+    // o silêncio tem de valer já no tique da decolagem, senão o primeiro tique
+    // de controle aéreo desfaz o empurrão que o pulo acabou de dar.
+    //
+    // ⚠️ **CALAR, e não zerar o `drive`:** com o alvo em zero a caminhada
+    // FREARIA o empurrão — o mesmo defeito com outra roupa.
+    let step = if jump.state.wall_lock > 0.0 {
+        Motor::default()
+    } else {
+        no_uphill(
+            walk(
+                &cfg.walk,
+                standing,
+                body_velocity,
+                up,
+                input.drive,
+                carried,
+                dt,
+            ),
+            verdict.steep(),
             up,
-            input.drive,
-            carried,
-            dt,
-        ),
-        verdict.steep(),
-        up,
-    );
+        )
+    };
 
     // ── A 3ª LEI ─────────────────────────────────────────────────────────────
     // Só há em quem empurrar se houver chão. ⚠️ E o que volta é o CONTATO: a
@@ -389,8 +425,18 @@ pub fn player_motor(
         [0.0, 0.0]
     };
 
+    // ⚠️ **O freio da parede só vale com a perna CALADA**, e não é higiene: com
+    // o pé no chão a mola já governa o eixo vertical, e um segundo termo a
+    // escrever velocidade ali seria dois donos do mesmo número. A `standing` é a
+    // mesma resposta que a mola consumiu.
+    let slide = if standing.is_none() {
+        wall::wall_slide(&cfg.wall, clinging.is_some(), rel_up, up)
+    } else {
+        Motor::default()
+    };
+
     PlayerStep {
-        motor: spring.plus(step).plus(jump.motor),
+        motor: spring.plus(step).plus(jump.motor).plus(slide),
         state: jump.state,
         reaction,
         nudge,

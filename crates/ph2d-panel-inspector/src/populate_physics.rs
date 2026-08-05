@@ -279,6 +279,13 @@ pub(super) fn populate_player(store: &mut WidgetStore) {
         // ⚠️ Segundos, e o teto cobre o pulo mais longo da config de partida
         // (1,45 s no ar, medido) com folga para um `jump_height` maior.
         (ids::INSP_PLAYER_LIFT, 1.5, 0.0, 4.0, 0.05), // LITERAL-PX-OK: seconds
+        // AS PAREDES (W13) — ⚠️ as duas primeiras nascem em ZERO: a capacidade
+        // e' opt-in, e ligá-la por default mudaria todo player já autorado.
+        (ids::INSP_PLAYER_WALL_SLIDE, 0.0, 0.0, 12.0, 0.25), // LITERAL-PX-OK: m/s
+        (ids::INSP_PLAYER_WALL_JUMP, 0.0, 0.0, 6.0, 0.1),    // LITERAL-PX-OK: metres
+        (ids::INSP_PLAYER_WALL_PUSH, 6.0, 0.0, 16.0, 0.25),  // LITERAL-PX-OK: m/s
+        (ids::INSP_PLAYER_WALL_LOCK, 0.2, 0.0, 0.6, 0.02),   // LITERAL-PX-OK: seconds
+        (ids::INSP_PLAYER_WALL_REACH, 0.08, 0.0, 0.4, 0.01), // LITERAL-PX-OK: metres
         // A REAÇÃO (W6), em FRAÇÃO da força que o personagem faz. ⚠️ O piso é 0
         // (nada volta) e o teto é 1 (volta inteira) porque **acima de 1 o
         // personagem devolveria mais do que recebeu** — inventar energia, e o

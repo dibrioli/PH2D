@@ -113,10 +113,16 @@ impl Machine {
     /// já não são as autoradas, então continuar seria animar para um destino que o documento não
     /// tem mais. A cena fica onde está e o próximo pedido parte dali.
     ///
+    /// ⚠️ **Mas re-alinhar à MESMA tabela não é uma mudança**, e a igualdade é o que separa as
+    /// duas coisas. A ponte chama isto a cada pedido, então um aborto incondicional destruía a
+    /// transição em curso a cada clique em Show — antes sequer de examinar se alguma coisa tinha
+    /// mudado. *Abortar é a resposta a uma tabela nova; a uma tabela igual é trabalho destruído
+    /// por nada.*
+    ///
     /// Lista vazia: a máquina fica como estava (uma máquina sem estados não tem pose para mostrar
     /// — quem a remove é o chamador, que sabe se o hospedeiro ainda existe).
     pub fn retarget(&mut self, states: Vec<UiState>) {
-        if states.is_empty() {
+        if states.is_empty() || states == self.states {
             return;
         }
         self.states = states;
@@ -140,12 +146,24 @@ impl Machine {
     /// como nada avançou entre elas a pose viva é a mesma — o resultado é uma transição só, para o
     /// último alvo pedido. Uma fila faria a UI perseguir gestos que o artista já abandonou.
     ///
-    /// Alvo inválido, ou o alvo em que já se está e parado: **no-op**.
+    /// ⚠️ **O atalho pergunta pela POSE, nunca pelo RÓTULO.** Pedir o estado que a cena já mostra
+    /// continua a não animar — mas *"a cena mostra este estado"* é um fato sobre a pose VIVA, e
+    /// `target == current` era só um proxy dele. O proxy **expira no instante em que um voo é
+    /// abortado**: `current` continua a nomear o estado de onde se saiu enquanto a pose viva está
+    /// a meio caminho do outro, e o Show daquele papel era **recusado** — a cena ficava parada e
+    /// só voltava a andar quando o artista pedia o OUTRO papel (reportado, 2026-08-05). Pela pose,
+    /// a pergunta não pode envelhecer.
+    ///
+    /// ⚠️ E o atalho **assume o papel** em vez de o descartar: sem isso, dois estados com a mesma
+    /// pose deixariam o readout do painel a acender o nome de onde a máquina saiu.
+    ///
+    /// Alvo inválido: **no-op**.
     pub fn go_to(&mut self, target: usize, duration: f64, easing: Easing) {
         if target >= self.states.len() {
             return;
         }
-        if self.flight.is_none() && target == self.current {
+        if self.flight.is_none() && self.live == self.states[target].objects {
+            self.current = target;
             return;
         }
         let tr = Transition::new(&self.live, &self.states[target].objects);

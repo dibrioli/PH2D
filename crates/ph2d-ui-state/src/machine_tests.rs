@@ -8,20 +8,21 @@ fn linear() -> Easing {
 }
 
 /// idle em x=0, hover em x=10 — um objeto, um eixo, para o número ser legível.
+fn at(role: StateRole, x: f64) -> UiState {
+    let mut s = UiState::new(role);
+    s.objects = vec![ObjectPose {
+        translation: [x, 0.0],
+        ..ObjectPose::new(1)
+    }];
+    s
+}
+
+fn states() -> Vec<UiState> {
+    vec![at(StateRole::Default, 0.0), at(StateRole::Hover, 10.0)]
+}
+
 fn machine() -> Machine {
-    let at = |role: StateRole, x: f64| {
-        let mut s = UiState::new(role);
-        s.objects = vec![ObjectPose {
-            translation: [x, 0.0],
-            ..ObjectPose::new(1)
-        }];
-        s
-    };
-    Machine::new(vec![
-        at(StateRole::Default, 0.0),
-        at(StateRole::Hover, 10.0),
-    ])
-    .expect("maquina")
+    Machine::new(states()).expect("maquina")
 }
 
 fn x(m: &Machine) -> f64 {
@@ -365,4 +366,89 @@ fn the_default_curve_reverses_without_stopping_dead() {
         "o `InOut` deixou de parar ({stop:.2}x) — o controle deste gate dissolveu-se e a razao \
          acima passou a nao poder falhar"
     );
+}
+
+/// **REPRO (Enio, 2026-08-05): o Show que não fazia nada.**
+///
+/// *"Se a animação de hover foi interrompida pelo usuário e o usuário aperta Show Default, a
+/// animação não acontece até que o usuário aperte Show hover para finalizar a animação hover."*
+///
+/// ⚠️ A causa não estava no pedido, estava na PERGUNTA. O guard de [`Machine::go_to`] comparava o
+/// **rótulo** (`target == current`) — um proxy para *"a cena já mostra este estado"* —, e o proxy
+/// **expira no instante em que um voo é abortado**: `current` continua a nomear o estado de onde
+/// se saiu enquanto a pose viva está a meio caminho do outro. O guard passa a perguntar pela
+/// POSE, que é a coisa de que ele sempre falou.
+#[test]
+fn an_aborted_flight_does_not_deafen_the_next_show() {
+    let mut m = machine();
+    m.go_to(1, 1.0, linear());
+    m.advance(0.3);
+    let mid = x(&m);
+    assert!(
+        mid > 0.1 && mid < 9.9,
+        "a fixture nao contem o fenomeno: nada foi interrompido a meio ({mid})"
+    );
+
+    // O ABORTO REAL: o artista re-grava enquanto a transição corre (a tabela muda debaixo da
+    // máquina). O voo morre, a pose viva fica onde estava, e `current` ainda diz `Default`.
+    m.retarget(vec![at(StateRole::Default, 0.0), at(StateRole::Hover, 20.0)]);
+    assert!(!m.is_animating(), "a fixture nao abortou o voo");
+    assert_eq!(m.current(), 0, "a fixture nao reproduz o estado do repro");
+
+    // E agora o pedido que não fazia nada.
+    m.go_to(0, 1.0, linear());
+    m.advance(1.0);
+    assert!(
+        x(&m).abs() < 1e-9,
+        "o Show do papel em que a maquina DIZ estar foi recusado, e a cena ficou parada a meio \
+         caminho do outro: x = {}",
+        x(&m)
+    );
+}
+
+/// **Pedir o estado que a cena JÁ mostra continua a não animar — e passa a registá-lo.**
+///
+/// ⚠️ É a outra metade do gate acima, e sem ela a cura seria *"anime sempre"*: um Show do papel
+/// vivo tem de continuar barato (nenhuma transição, nenhum `Plan`). O que muda é que a máquina
+/// **assume** o papel — senão o readout do painel acenderia o nome de onde ela saiu.
+#[test]
+fn showing_the_pose_the_scene_already_wears_is_free_and_still_lands() {
+    let mut m = machine();
+    m.go_to(1, 1.0, linear());
+    m.advance(1.0);
+    assert_eq!(m.current(), 1);
+
+    m.go_to(1, 1.0, linear());
+    assert!(!m.is_animating(), "animou para a pose em que ja estava");
+    assert_eq!(m.current(), 1, "perdeu o papel vivo");
+
+    // E um papel cuja pose é IDÊNTICA à viva também não anima — mas a máquina passa a nomeá-lo,
+    // que é o que o painel lê.
+    let mut m = Machine::new(vec![at(StateRole::Default, 0.0), at(StateRole::Hover, 0.0)])
+        .expect("maquina");
+    m.go_to(1, 1.0, linear());
+    assert!(!m.is_animating(), "animou de x para x");
+    assert_eq!(m.current(), 1, "a maquina nao assumiu o papel que o artista pediu");
+}
+
+/// **Re-alinhar à MESMA tabela não é uma mudança, e não pode matar um voo.**
+///
+/// ⚠️ A ponte re-alinha a cada pedido (o artista re-grava, e sem isso o Show seguinte animaria
+/// para a pose antiga). Mas `retarget` abortava **incondicionalmente**, então cada clique em Show
+/// destruía a transição em curso antes sequer de a examinar — o aborto que o gate acima
+/// reproduz. Abortar é a resposta certa quando a tabela MUDOU; quando ela é a mesma, é trabalho
+/// destruído por nada.
+#[test]
+fn re_aligning_to_an_unchanged_table_keeps_the_flight_alive() {
+    let mut m = machine();
+    m.go_to(1, 1.0, linear());
+    m.advance(0.3);
+
+    m.retarget(states());
+    assert!(
+        m.is_animating(),
+        "re-alinhar a uma tabela IDENTICA abortou a transicao em curso"
+    );
+    m.advance(1.0);
+    assert!((x(&m) - 10.0).abs() < 1e-9, "o voo nao chegou: {}", x(&m));
 }

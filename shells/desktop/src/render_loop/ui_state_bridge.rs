@@ -128,3 +128,64 @@ pub(crate) fn live_role(machines: &UiMachines, host: Option<VecPathId>) -> Optio
     let role = m.role(i)?;
     StateRole::ALL.iter().position(|&r| r == role)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ph2d_anim::{Easing, EasingFamily, EasingMode};
+    use ph2d_ui_state::{ObjectPose, UiState};
+
+    fn table(host: VecPathId) -> StateSets {
+        let mut s = StateSets::default();
+        for (role, x) in [(StateRole::Default, 0.0), (StateRole::Hover, 10.0)] {
+            let mut st = UiState::new(role);
+            st.objects = vec![ObjectPose {
+                translation: [x, 0.0],
+                ..ObjectPose::new(host)
+            }];
+            s.set(host, st);
+        }
+        s.set_easing(host, Easing::new(EasingFamily::Linear, EasingMode::InOut));
+        s
+    }
+
+    fn x(machines: &UiMachines, host: VecPathId) -> f64 {
+        machines[&host].pose()[0].translation[0]
+    }
+
+    /// **REPRO DO PRODUTO (Enio, 2026-08-05): apertar Show e nada acontecer.**
+    ///
+    /// A sequência é a que o artista faz — Show Hover, interromper a meio com Show Default — e a
+    /// resposta tem de ser *a cena volta ao Default*, não *a cena fica parada até você pedir o
+    /// Hover outra vez*.
+    ///
+    /// ⚠️ Este gate mora na PONTE de propósito: o defeito só existia na composição
+    /// `retarget` + `go_to`, e nenhum dos dois sozinho o mostrava — a ponte é o único sítio onde
+    /// os dois são chamados na ordem em que o produto os chama.
+    #[test]
+    fn interrupting_a_show_with_another_show_moves_the_scene() {
+        let host: VecPathId = 1;
+        let states = table(host);
+        let mut machines = UiMachines::new();
+
+        request(&mut machines, &states, host, StateRole::Hover);
+        machines.get_mut(&host).unwrap().advance(0.05);
+        let mid = x(&machines, host);
+        assert!(
+            mid > 0.1 && mid < 9.9,
+            "a fixture nao interrompeu nada a meio: {mid}"
+        );
+
+        request(&mut machines, &states, host, StateRole::Default);
+        assert!(
+            machines[&host].is_animating(),
+            "o Show Default nao produziu transicao nenhuma: a cena ficou parada em x = {mid}"
+        );
+        machines.get_mut(&host).unwrap().advance(1.0);
+        assert!(
+            x(&machines, host).abs() < 1e-9,
+            "a cena nao voltou ao Default: x = {}",
+            x(&machines, host)
+        );
+    }
+}

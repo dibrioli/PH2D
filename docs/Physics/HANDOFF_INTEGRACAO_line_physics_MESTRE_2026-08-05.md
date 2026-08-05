@@ -30,13 +30,15 @@ Nada integrado, nada pushado.
 | `695ca8c25` | a W15 no plano e no mapa |
 | `de73fc6d6` | **W16** — ASSAR UM PLAYER: o bake replaya a CORRIDA, não o dedo |
 | `971d2fdc9` | a W16 no plano e no mapa |
-| **(esta wave)** | **W17** — A CORRIDA SOBREVIVE AO ARQUIVO, e a W17 no plano, no mapa e neste handoff |
+| `33e76d43c` | **W17** — A CORRIDA SOBREVIVE AO ARQUIVO |
+| `555c27393` | a W17 no plano, no mapa e neste handoff |
+| **(esta wave)** | **W18** — o piso do agachar é dito em voz alta |
 
 **Smoke:** W11b/W11c **APROVADAS** (*"Smoke OK"*, 2026-08-05), **W12 e W13
 APROVADAS** na mesma data (*"Smoke OK. SIGA"*) e **a W14 APROVADA** logo a seguir
 (*"Smoke OK. Siga"*), **a W15 APROVADA** a seguir (*"Smoke OK. SIga"*) e **a W16
-APROVADA** logo depois (*"Smoke OK. SIga"*). **A W17 é a única pendente** —
-integrar não é aprovar.
+APROVADA** logo depois (*"Smoke OK. SIga"*) e **a W17 APROVADA** a seguir
+(*"smoke OK. Siga"*). **A W18 é a única pendente** — integrar não é aprovar.
 
 ---
 
@@ -44,7 +46,7 @@ integrar não é aprovar.
 
 | número | veredito |
 |---|---|
-| **`PROJECT_SCHEMA`** | ⚠️ **55 → 59** (W13, W14, W15 e **W17**, um degrau cada; **a W16 não bumpa**) — ver §3 |
+| **`PROJECT_SCHEMA`** | ⚠️ **55 → 59** (W13, W14, W15 e W17, um degrau cada; **a W16 e a W18 não bumpam**) — ver §3 |
 | `FLIP_SCHEMA` · `VEC_SCENE` | intocados (13 · 14) |
 | registro `ph2d-physics-ecs` | **INTOCADO** (28) — nenhum componente novo |
 | registro `ph2d-ecs` (as 3 casas) | **INTOCADO** |
@@ -461,6 +463,71 @@ ADR.
 
 ---
 
+## §5f — W18: o piso do agachar é dito em voz alta (sem cena própria)
+
+**O item aberto do handoff da W15** — e ⚠️ **a medição refutou a premissa da
+nota**, que é o que vale ler aqui.
+
+### O que a nota dizia, e o que o produto faz
+
+A nota previa *"quem escrever `0,20` numa cápsula de `0,50` vê o corpo
+enterrado"*. Medido (`measure_crouch_floor`, sonda `#[ignore]`): o corpo **não
+enterra — ele SATURA**. O solver segura a cápsula tangente com **1 mm** de folga
+na altura mais extrema (o `normalized_allowed_linear_error`, o mesmo 1,3 mm que a
+W2a já mediu e declarou *"não é o que ninguém viu"*), e a pose é **perfeitamente
+estável**: `0,0000 m` de variação ao longo de um segundo. **Nem tremor, nem
+afundamento, nem nada na tela.**
+
+**O defeito verdadeiro é pior de encontrar: abaixo do piso o slider é MORTO.**
+Medido na rampa, onde o piso é `half_height + radius / cos θ`:
+
+| rampa | piso | autorado `0,50` | autorado `0,30` |
+|---|---|---|---|
+| 0° | 0,500 | folga 0,002 | 0,000 |
+| 30° | 0,531 | **0,027** | **0,027** |
+| 45° | 0,583 | **0,059** | **0,058** |
+
+Duzentos milímetros de curso de slider, **um milímetro** de resposta — e a 45° já
+é assim a partir de `0,50`, que num plano parece perfeitamente bom. É o modo de
+falha exato de um botão que MENTE.
+
+### A cura: o espelho do que a perna de pé já tem
+
+**`Fit Crouch to Collider (needs > 0.58 m)`** no fim da §14, ao lado do
+`Fit to Collider`. O piso vai no **rótulo do próprio controle que o resolve** — a
+lei que esta seção já escreve.
+
+⚠️ **A MESMA função (`fitted_float`), e é o desenho inteiro:** o piso é da FORMA e
+da rampa, **não** de qual perna está em uso. Uma segunda fórmula para a de baixo
+divergiria no dia em que a caixa ganhasse a dela.
+
+⚠️ **E ele nunca passa da perna de pé** (`fit.min(p.float_height)`): um agachar
+mais alto que estar em pé não é um agachar — sem o `min`, o `crouch_step`
+passaria a **levantar** o personagem quando ele segurasse BAIXO.
+
+⚠️ **Oferecido só com o agachar ARMADO** (`crouch_height > 0`): em zero a
+capacidade está desligada e não há defeito nenhum, e um botão que a ligasse pelas
+costas conflataria *dar um agachar* com *consertar o que ele mede*. E uma **CAIXA
+não o ganha** (outra fórmula) — o irmão exato do gate da perna de pé.
+
+### A mutação que sobreviveu, e o defeito era da fixture
+
+**4 mutações, 4 sangram** — mas a **M3** (`p.crouch_height = p.float_height`, o
+Fit copiando a perna em vez de derivar o piso) **passou na primeira rodada**. A
+fixture fazia `FitFloatHeight` **antes**, então a perna já estava no valor
+ajustado e *"semear do piso"* e *"copiar a perna"* davam **o mesmo número**. Com a
+perna posta em `1,50` as duas respostas ficam a um metro de distância, e a mesma
+mutação sangra com **`1,500` contra `0,600`**.
+
+**Sem cena de smoke própria, de propósito:** o defeito é **invisível na tela** (foi
+essa a medição), então uma cena que o *mostrasse* teria de mostrar o painel, e o
+que se julga é o rótulo do botão — a `=94` (o corredor baixo) já monta o agachar,
+e o passo é abrir a §14 e ler o número. **Nenhum bump** (`PROJECT_SCHEMA` fica
+**59**), `c9` byte-idêntico, zero `Cargo.toml`, nenhum ADR.
+
+
+---
+
 ## §6 — Ordem
 
 1. `git rebase main` (ou merge). Os arquivos compartilhados são o `project.rs`
@@ -528,11 +595,9 @@ aparecer, pare: a cena não montou e o resto do smoke não diz nada.
   que alcance só os pés não é vista (a mesma limitação honesta da folga lateral da
   W10). E não há *wall grab*: ficar **parado** numa parede é outra mecânica, com
   botão próprio, e não se alcança escrevendo `0` no `Wall Slide`.
-- **W15:** o **piso geométrico** da altura agachada não é clampado pela lei (ela
-  não conhece formas) nem avisado na UI — quem escrever `0,20` numa cápsula de
-  `0,50` vê o corpo enterrado, sem nada a dizer por quê. A cura natural é a mesma
-  do `min_float_height` que a §14 já mostra para a perna de pé: **um readout, não
-  um clamp**. Nomeado, não construído.
+- ~~**W15:** o piso geométrico da altura agachada~~ — **FECHADO pela W18**, e
+  ⚠️ **a medição refutou a premissa desta nota**: o corpo **não enterra, ele
+  SATURA**. Ver a §5f.
 - ~~**W16:** a fita não é persistida~~ — **FECHADO pela W17.**
 - **W17:** a fita é **uma só**, e o botão de descartá-la mora numa seção
   por-entidade. É honesto hoje (há um teclado, logo um dedo — o mesmo desenho do

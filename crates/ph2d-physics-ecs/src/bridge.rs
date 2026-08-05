@@ -378,6 +378,17 @@ pub struct PhysicsBridge {
     /// tick faria o `canonicalize` do undo ver cada frame como um passo. A W7 o
     /// torna DERIVADO da fita, e aí ele deixa de ser guardado.
     player_jump: BTreeMap<Entity, ph2d_platformer::JumpState>,
+    /// **A plataforma que cada player está ATRAVESSANDO agora** (W12).
+    ///
+    /// ⚠️ **Uma forma, não um relógio, e não "todas as one-way":** a descida
+    /// mira a plataforma em que o personagem estava, e só ela — é isso que faz
+    /// duas plataformas empilhadas se comportarem como o artista espera (ele
+    /// desce da de cima e **pousa** na de baixo, em vez de atravessar as duas).
+    ///
+    /// ⚠️ E é `ColliderHandle`, não corpo: a W-Compound deu a um corpo várias
+    /// formas, então um cenário pode ser UM corpo estático com dez plataformas.
+    /// Guardar o corpo faria descer de uma delas dissolver as outras nove.
+    player_drop: BTreeMap<Entity, ph2d_physics::ColliderHandle>,
 }
 
 impl Default for PhysicsBridge {
@@ -444,6 +455,7 @@ impl PhysicsBridge {
             player_input: BTreeMap::new(),
             jump_ring: BTreeMap::new(),
             player_jump: BTreeMap::new(),
+            player_drop: BTreeMap::new(),
         }
     }
 

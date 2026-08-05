@@ -23,6 +23,7 @@ fn scripted(ticks: u64) -> InputTape {
             PlayerInput {
                 drive: if t < 90 { 1.0 } else { 0.0 },
                 jump: (40..48).contains(&t),
+                down: false,
             },
         );
     }
@@ -106,6 +107,7 @@ fn without_a_tape_the_world_is_byte_identical() {
                 PlayerInput {
                     drive: 1.0,
                     jump: false,
+                    down: false,
                 },
             );
             if with_tape {
@@ -144,6 +146,7 @@ fn the_tape_overrides_what_the_caller_is_holding() {
         PlayerInput {
             drive: 1.0,
             jump: false,
+            down: false,
         },
     );
     // ...e a fita diz "para a ESQUERDA".
@@ -154,6 +157,7 @@ fn the_tape_overrides_what_the_caller_is_holding() {
             PlayerInput {
                 drive: -1.0,
                 jump: false,
+                down: false,
             },
         );
     }
@@ -177,6 +181,7 @@ fn a_tape_answers_only_for_the_ticks_it_holds() {
         PlayerInput {
             drive: 0.5,
             jump: true,
+            down: false,
         },
     );
     assert_eq!(
@@ -188,7 +193,8 @@ fn a_tape_answers_only_for_the_ticks_it_holds() {
         tape.input(10),
         Some(PlayerInput {
             drive: 0.5,
-            jump: true
+            jump: true,
+            down: false
         })
     );
     assert_eq!(tape.input(11), None, "e depois do fim tambem nao");
@@ -200,6 +206,7 @@ fn a_tape_answers_only_for_the_ticks_it_holds() {
         PlayerInput {
             drive: -1.0,
             jump: false,
+            down: false,
         },
     );
     assert_eq!(
@@ -215,6 +222,7 @@ fn a_tape_answers_only_for_the_ticks_it_holds() {
         PlayerInput {
             drive: -0.25,
             jump: false,
+            down: false,
         },
     );
     assert_eq!(tape.input(10).map(|i| i.drive), Some(-0.25));

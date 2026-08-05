@@ -272,6 +272,13 @@ pub struct JumpStep {
     /// outro `accel` — e é exatamente por ser acidente, e não contrato, que este
     /// campo existe.
     pub takeoff: bool,
+    /// **O aperto virou uma DESCIDA** (W12) — ver [`crate::PlayerStep::drop_through`].
+    ///
+    /// ⚠️ Verdadeiro **em vez de** [`Self::takeoff`], nunca junto: os dois são o
+    /// que o mesmo botão fez neste tique, e um tique em que ambos fossem
+    /// verdadeiros seria um personagem que pula e atravessa o chão ao mesmo
+    /// tempo.
+    pub drop_through: bool,
 }
 
 /// **PULAR.** Ver a lei no topo do módulo.
@@ -280,8 +287,10 @@ pub struct JumpStep {
 /// - `rel_up`: a velocidade de subida **relativa ao chão** — é ela que faz
 ///   pular de um elevador que sobe levar a velocidade dele junto.
 /// - `held`: o botão de pulo está pressionado AGORA.
+/// - `down`: o botão de BAIXO está pressionado agora — é ele que decide se o
+///   aperto vira pulo ou **descida** (W12).
 #[must_use]
-// ⚠️ **Oito argumentos, e o 8º é o `dt`** (W8) — os dois relógios do perdão
+// ⚠️ **Nove argumentos, e o 9º é o `dt`** (W8/W12) — os dois relógios do perdão
 // escorrem em segundos, nunca em contagem de tiques. Agrupar `(footing, rel_up,
 // held)` num "o que o mundo diz" seria inventar um tipo com um chamador só; o
 // precedente é o `body_desc` do W-LockRot, que levou o mesmo `allow`.
@@ -292,6 +301,7 @@ pub fn jump_step(
     footing: Option<&GroundSample>,
     rel_up: f32,
     held: bool,
+    down: bool,
     gravity: Vec2,
     up: Vec2,
     dt: f32,
@@ -364,6 +374,36 @@ pub fn jump_step(
     // o aperto DESTE tique passa.
     let can_reach_ground = footing.is_some() || next.coyote > 0.0;
     let wants_to_jump = pressed || next.buffer > 0.0;
+
+    // ── DESCER ATRAVÉS DA PLATAFORMA (W12) ───────────────────────────────────
+    // ⚠️ **ANTES da decolagem, e a ordem É o gesto:** com o baixo segurado em
+    // cima de uma plataforma jump-through, o MESMO aperto que pularia passa a
+    // descer. Depois da decolagem, o pulo já teria saído e a descida chegaria a
+    // um personagem no ar.
+    //
+    // ⚠️ **Pergunta ao `footing` VIVO, nunca ao coyote:** descer exige estar EM
+    // CIMA da coisa que se atravessa. O coyote perdoa um erro de TEMPO ao sair
+    // de uma borda; herdá-lo aqui deixaria o personagem cair através de uma
+    // plataforma de que ele já saiu — perdão para um erro que ninguém cometeu.
+    if !next.airborne && wants_to_jump && down && footing.is_some_and(|s| s.one_way) {
+        // ⚠️ O aperto é CONSUMIDO, pela mesma razão da decolagem: um buffer que
+        // sobrevive à própria descida re-dispara no tique seguinte — e ali o
+        // personagem já está DENTRO da plataforma, onde o mesmo aperto viraria
+        // um pulo que o empurra de volta para cima.
+        next.buffer = 0.0;
+        return JumpStep {
+            motor: Motor::default(),
+            state: next,
+            // ⚠️ **A perna cala NESTE tique, e é o que faz a descida começar
+            // agora:** o raio ainda vê a plataforma (a ponte só a exclui do
+            // sensor a partir do próximo), então uma mola viva seguraria o
+            // personagem em cima do que ele acabou de pedir para atravessar.
+            spring_armed: false,
+            takeoff: false,
+            drop_through: true,
+        };
+    }
+
     if can_reach_ground && !next.airborne && wants_to_jump {
         let g = (gravity[0] * gravity[0] + gravity[1] * gravity[1]).sqrt();
         let v0 = (2.0 * g * cfg.jump_height.max(0.0)).sqrt();
@@ -389,6 +429,7 @@ pub fn jump_step(
             state: next,
             spring_armed: false,
             takeoff: true,
+            drop_through: false,
         };
     }
 
@@ -408,6 +449,7 @@ pub fn jump_step(
             state: next,
             spring_armed,
             takeoff: false,
+            drop_through: false,
         };
     }
 
@@ -440,6 +482,7 @@ pub fn jump_step(
         state: next,
         spring_armed,
         takeoff: false,
+        drop_through: false,
     }
 }
 

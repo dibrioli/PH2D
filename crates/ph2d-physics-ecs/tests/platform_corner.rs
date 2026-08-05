@@ -112,6 +112,7 @@ fn jump(r: &mut Rig) -> (f32, f32, f32) {
         PlayerInput {
             drive: 0.0,
             jump: true,
+            down: false,
         },
     );
     let (mut peak, mut mid) = (y0, x0);

@@ -178,6 +178,7 @@ mod tests {
             distance: 0.5,
             normal: [0.0, 1.0],
             ground_velocity: [0.0, 0.0],
+            one_way: false,
         }
     }
 
@@ -309,6 +310,7 @@ mod tests {
             distance: 0.5,
             normal: [-s, c],
             ground_velocity: [0.0, 0.0],
+            one_way: false,
         };
         let m = walk(&cfg, Some(&ramp), [0.0, 0.0], UP, 1.0, [0.0, 0.0], DT);
         assert!(m.accel[0] > 0.0, "vai para a direita: {:?}", m.accel);
@@ -334,6 +336,7 @@ mod tests {
             distance: 0.5,
             normal: [0.0, 1.0],
             ground_velocity: [4.0, 0.0],
+            one_way: false,
         };
         // Viajando com o vagão, sem input: nada a fazer.
         let riding = walk(&cfg, Some(&wagon), [4.0, 0.0], UP, 0.0, [0.0, 0.0], DT);

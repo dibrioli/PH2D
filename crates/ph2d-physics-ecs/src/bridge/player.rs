@@ -95,6 +95,64 @@ impl PhysicsBridge {
         // nunca pulou — o personagem cairia através do mundo sem nada na tela a
         // dizer por quê.
         self.player_jump.clear();
+        // ⚠️ E a DESCIDA (W12), pela razão mais forte das três: ela guarda um
+        // `ColliderHandle`, e handles são reciclados junto com os corpos — uma
+        // descida sobrevivente apontaria para uma forma que hoje é outra coisa,
+        // e o sintoma seria uma plataforma qualquer que deixa de ser sólida sem
+        // ninguém ter pedido.
+        self.player_drop.clear();
+    }
+
+    /// **As descidas que já cumpriram o seu papel** (W12) — rodada no topo de
+    /// cada tique de player, antes de o sensor perguntar qualquer coisa.
+    ///
+    /// # ⚠️ O fim de uma descida é GEOMETRIA, não um relógio
+    ///
+    /// A pergunta é *"eu já passei?"*, e ela tem resposta exata: a caixa do
+    /// personagem está inteiramente abaixo da caixa da plataforma. Um
+    /// temporizador seria um palpite sobre essa resposta, e erraria exatamente
+    /// onde dói — plataforma grossa, queda lenta, gravidade baixa —,
+    /// re-solidificando com o personagem ainda dentro dela e cuspindo-o para
+    /// fora (CLAUDE.md §0: nenhum teto sem medição, e aqui não é preciso medir
+    /// porque não é preciso teto).
+    ///
+    /// ⚠️ **O caso degenerado, nomeado em vez de escondido:** um vão entre duas
+    /// plataformas MENOR que o personagem deixa a descida armada para sempre —
+    /// ele nunca fica inteiramente abaixo da de cima. Essa cena já está quebrada
+    /// sem descida nenhuma (o personagem não cabe ali), e é por isso que ela não
+    /// ganhou um relógio de segurança: o relógio consertaria o caso impossível
+    /// e estragaria o normal.
+    fn retire_drops(&mut self) {
+        // O caso comum é ninguém a descer, e ele não lê um byte.
+        if self.player_drop.is_empty() {
+            return;
+        }
+        let mut done: Vec<Entity> = Vec::new();
+        for (&entity, &platform) in &self.player_drop {
+            let cleared = match self.bodies.get(&entity) {
+                // O corpo morreu: não há descida a manter.
+                None => true,
+                Some(b) => match (
+                    self.world.collider_aabb(platform),
+                    self.world.body_aabb(b.handle),
+                ) {
+                    (Some((plat_mins, _)), Some((_, body_maxs))) => body_maxs[1] <= plat_mins[1],
+                    // A plataforma (ou o corpo) deixou de existir — o mesmo
+                    // veredito, pela mesma razão.
+                    _ => true,
+                },
+            };
+            if cleared {
+                done.push(entity);
+            }
+        }
+        for entity in done {
+            self.player_drop.remove(&entity);
+            if let Some(b) = self.bodies.get(&entity) {
+                let handle = b.handle;
+                self.world.set_body_drop_through(handle, false);
+            }
+        }
     }
 
     /// **Um tick de todos os players.** Chamado no laço de ticks devidos, antes
@@ -103,6 +161,10 @@ impl PhysicsBridge {
     /// No-op numa cena sem player — e é o que mantém esta wave byte-neutra para
     /// todo o resto do módulo.
     pub(super) fn drive_players(&mut self, sim: &SimWorld) {
+        // ⚠️ **PRIMEIRO, e a ordem é a lei:** uma descida cumprida tem de deixar
+        // de valer ANTES de o sensor perguntar, senão o raio deste tique ainda
+        // ignoraria uma plataforma que já é sólida outra vez.
+        self.retire_drops();
         let world = sim.world();
         let gravity = self.world.gravity();
         let dt = self.world.dt();
@@ -122,6 +184,13 @@ impl PhysicsBridge {
         // O canal que cancela a gravidade (W11), colhido pelo mesmo motivo que os
         // outros e entregue por uma porta própria — ver `PlayerStep::gravity_hold`.
         let mut holds: Vec<(rapier2d_handle::Handle, [f32; 2])> = Vec::new();
+        // As descidas ARMADAS neste tique (W12), colhidas pelo mesmo motivo que
+        // as outras listas — e vazias em todo tique em que ninguém pediu.
+        let mut drops: Vec<(
+            Entity,
+            rapier2d_handle::Handle,
+            ph2d_physics::ColliderHandle,
+        )> = Vec::new();
         for (&entity, b) in self.bodies.iter() {
             // Dynamic-only, e é FÍSICA: um impulso não move massa infinita.
             if b.kind != BodyKind::Dynamic {
@@ -143,13 +212,28 @@ impl PhysicsBridge {
             // milímetro além: perguntar mais longe faria o cast achar coisas que
             // a lei descartaria, ao preço de descer mais no BVH.
             let reach = cfg.ride.float_height + cfg.ride.cling_distance;
-            let hit = self
-                .world
-                .cast_ray(origin, [0.0, -1.0], reach, Some(b.handle), b.rest.layer);
+            // ⚠️ **A plataforma que está a ser atravessada sai do SENSOR** (W12),
+            // e não só do solver: quem segura o personagem no ar é a MOLA, e ela
+            // age porque o raio achou chão. Sem esta exclusão o solver deixaria
+            // passar e a perna seguraria em cima — o personagem pairaria sobre
+            // exactamente aquilo que pediu para atravessar.
+            let passing = self.player_drop.get(&entity).copied();
+            let hit = self.world.cast_ray_skipping(
+                origin,
+                [0.0, -1.0],
+                reach,
+                Some(b.handle),
+                passing,
+                b.rest.layer,
+            );
 
             let sample = hit.as_ref().map(|h| GroundSample {
                 distance: h.distance,
                 normal: h.normal,
+                // ⚠️ **Que TIPO de chão é este?** — o único que sabe é quem
+                // consultou, e a lei precisa da resposta para decidir o que o
+                // botão de pulo significa neste tique.
+                one_way: self.world.collider_is_one_way(h.collider),
                 // ⚠️ A velocidade do PONTO, não a do centro: uma plataforma que
                 // gira leva a borda mesmo com o centro parado
                 // (`PhysicsWorld::point_velocity`).
@@ -187,6 +271,16 @@ impl PhysicsBridge {
                 dt,
             );
             states.push((entity, step.state));
+            // ⚠️ **A plataforma é a que o SENSOR viu, e é a mesma consulta que a
+            // lei julgou** — o `hit` de que saiu o `one_way` que a fez dizer sim.
+            // Uma segunda pergunta ("qual one-way está por perto?") poderia achar
+            // outra forma, e o personagem atravessaria uma plataforma que não é a
+            // que estava debaixo dos pés dele.
+            if step.drop_through
+                && let Some(h) = hit.as_ref()
+            {
+                drops.push((entity, b.handle, h.collider));
+            }
             if step.nudge != [0.0, 0.0] {
                 nudges.push((b.handle, step.nudge));
             }
@@ -243,6 +337,14 @@ impl PhysicsBridge {
         // por isso que a linha nasce agora, e não quando alguém a perseguir.
         for (entity, next) in states {
             self.player_jump.insert(entity, next);
+        }
+        // ⚠️ **ANTES do `step` deste tique**, que é o que torna a descida
+        // observável já na resolução de contatos que vem a seguir — armá-la
+        // depois daria um tique em que a plataforma ainda é sólida e o
+        // personagem seria empurrado de volta para cima antes de começar a cair.
+        for (entity, handle, platform) in drops {
+            self.player_drop.insert(entity, platform);
+            self.world.set_body_drop_through(handle, true);
         }
         // ⚠️ **O deslocamento vai ANTES dos motores, e a ordem é a lei da wave:**
         // ele corrige ONDE o corpo está, e o motor age a partir dali. Depois, o

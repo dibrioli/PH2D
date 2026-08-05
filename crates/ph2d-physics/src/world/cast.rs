@@ -110,6 +110,34 @@ impl PhysicsWorld {
         exclude_body: Option<RigidBodyHandle>,
         layer: u8,
     ) -> Option<CastHit> {
+        self.cast_ray_skipping(origin, dir, max_dist, exclude_body, None, layer)
+    }
+
+    /// **O mesmo raio, ignorando UMA forma** (W12) — a rota que o sensor de chão
+    /// usa enquanto o personagem atravessa uma plataforma jump-through.
+    ///
+    /// # ⚠️ Por que o sensor precisa disto, e não só o solver
+    ///
+    /// A descida é resolvida no `oneway`, que limpa os contatos — mas quem
+    /// segura o personagem no ar não é o solver, é a **MOLA**, e ela age porque
+    /// o raio achou chão. Sem esta porta, o solver deixaria passar e a perna
+    /// seguraria em cima: o personagem ficaria pairando sobre exatamente aquilo
+    /// que pediu para atravessar, e nada na tela diria por quê.
+    ///
+    /// ⚠️ **Uma porta, duas faces:** [`Self::cast_ray`] delega para cá com
+    /// `None`, então não existe uma segunda implementação de *"lançar um raio"*
+    /// para divergir desta — o precedente é o `denoise_ml` do módulo de áudio,
+    /// que delega com callback vazio pelo mesmo motivo.
+    #[must_use]
+    pub fn cast_ray_skipping(
+        &self,
+        origin: [f32; 2],
+        dir: [f32; 2],
+        max_dist: f32,
+        exclude_body: Option<RigidBodyHandle>,
+        exclude_collider: Option<ColliderHandle>,
+        layer: u8,
+    ) -> Option<CastHit> {
         let d = Vector2::new(dir[0], dir[1]);
         let n = d.norm();
         if !n.is_finite() || n <= f32::EPSILON || !max_dist.is_finite() || max_dist < 0.0 {
@@ -122,6 +150,7 @@ impl PhysicsWorld {
         let filter = QueryFilter {
             groups: Some(groups_for(layer as usize, self.layer_matrix)),
             exclude_rigid_body: exclude_body,
+            exclude_collider,
             ..QueryFilter::default()
         };
         let pipeline: QueryPipeline<'_> =

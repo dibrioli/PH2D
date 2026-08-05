@@ -32,6 +32,7 @@ pub(crate) struct PlayerKeys {
     left: bool,
     right: bool,
     jump: bool,
+    down: bool,
 }
 
 impl PlayerKeys {
@@ -53,6 +54,14 @@ impl PlayerKeys {
         self.jump
     }
 
+    /// **O botão de BAIXO está pressionado agora** (W12).
+    ///
+    /// Estado, como o pulo, e pela mesma razão: quem o lê é uma lei que já
+    /// deriva sozinha as bordas de que precisa.
+    pub(crate) fn down(self) -> bool {
+        self.down
+    }
+
     /// **O dedo do jogador, inteiro.**
     ///
     /// ⚠️ Porta ÚNICA de propósito: entregar `drive` e `jump` por caminhos
@@ -64,6 +73,7 @@ impl PlayerKeys {
         ph2d_physics_ecs::PlayerInput {
             drive: self.drive(),
             jump: self.jump(),
+            down: self.down(),
         }
     }
 
@@ -86,6 +96,15 @@ impl PlayerKeys {
             // gosto — as outras teclas do repo foram varridas antes.
             KeyCode::ArrowUp | KeyCode::KeyZ => {
                 self.jump = pressed;
+                true
+            }
+            // ⚠️ **Seta para BAIXO e `S`** (W12) — o `S` fecha o par com o `A` e
+            // o `D` das setas laterais, e está livre **medido**: o único `KeyS`
+            // do repo é o Ctrl+S de salvar projeto, que corre dentro do braço
+            // guardado por modificador. Um botão de player nunca vê aquele
+            // caminho.
+            KeyCode::ArrowDown | KeyCode::KeyS => {
+                self.down = pressed;
                 true
             }
             _ => false,
@@ -179,6 +198,39 @@ mod tests {
         assert!(!k.jump());
         assert!(k.key(KeyCode::KeyZ, true));
         assert!(k.jump(), "Z e a seta para cima sao o MESMO botao");
+    }
+
+    /// **O BAIXO é um botão como os outros** (W12), e as duas teclas são a
+    /// mesma coisa.
+    #[test]
+    fn the_down_button_is_held_and_released() {
+        let mut k = PlayerKeys::default();
+        assert!(!k.down());
+        assert!(k.key(KeyCode::ArrowDown, true));
+        assert!(k.down());
+        k.key(KeyCode::ArrowDown, false);
+        assert!(!k.down());
+        assert!(k.key(KeyCode::KeyS, true));
+        assert!(k.down(), "S e a seta para baixo sao o MESMO botao");
+    }
+
+    /// ⚠️ **O botão novo chega pela PORTA ÚNICA**, e é este gate que o prova.
+    ///
+    /// O doc do `input()` promete que *"um botão novo entra aqui e chega a todo
+    /// mundo"*; sem esta asserção a promessa é prosa, e o modo de falha de a
+    /// quebrar é **metade do controle morta em silêncio** — o `down` guardado,
+    /// legível por `down()`, e nunca despachado. **Mutação medida:** trocar o
+    /// campo por `false` no `input()` sangra aqui e em mais nenhum lugar.
+    #[test]
+    fn the_single_door_carries_every_button() {
+        let mut k = PlayerKeys::default();
+        k.key(KeyCode::ArrowRight, true);
+        k.key(KeyCode::KeyZ, true);
+        k.key(KeyCode::KeyS, true);
+        let input = k.input();
+        assert_eq!(input.drive, 1.0);
+        assert!(input.jump);
+        assert!(input.down, "o baixo tem de atravessar a porta unica");
     }
 
     /// E perder o foco solta o pulo junto com as setas.

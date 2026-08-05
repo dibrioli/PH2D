@@ -114,6 +114,7 @@ fn ride_and_jump(r: &mut Rig) -> f32 {
         PlayerInput {
             drive: 0.0,
             jump: true,
+            down: false,
         },
     );
     for k in 0..40 {
@@ -224,6 +225,7 @@ fn measure_how_long_a_default_jump_lasts() {
         PlayerInput {
             drive: 0.0,
             jump: true,
+            down: false,
         },
     );
     let mut airborne = 0;

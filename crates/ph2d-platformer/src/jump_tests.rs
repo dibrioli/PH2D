@@ -11,6 +11,7 @@ fn ground() -> GroundSample {
         distance: 0.9,
         normal: [0.0, 1.0],
         ground_velocity: [0.0, 0.0],
+        one_way: false,
     }
 }
 
@@ -26,6 +27,7 @@ fn the_takeoff_speed_comes_from_the_authored_height() {
         Some(&ground()),
         0.0,
         true,
+        false,
         G,
         UP,
         DT,
@@ -57,6 +59,7 @@ fn jumping_while_already_rising_reaches_the_same_height() {
             Some(&ground()),
             start,
             true,
+            false,
             G,
             UP,
             DT,
@@ -82,13 +85,24 @@ fn holding_the_button_does_not_re_jump() {
         Some(&ground()),
         0.0,
         true,
+        false,
         G,
         UP,
         DT,
     );
     assert!(first.motor.boost[1] > 0.0);
     // O tick seguinte, ainda com a tecla presa e ainda vendo o chão.
-    let second = jump_step(&cfg, first.state, Some(&ground()), 3.0, true, G, UP, DT);
+    let second = jump_step(
+        &cfg,
+        first.state,
+        Some(&ground()),
+        3.0,
+        true,
+        false,
+        G,
+        UP,
+        DT,
+    );
     assert_eq!(second.motor.boost, [0.0, 0.0], "nada de segundo impulso");
 }
 
@@ -102,7 +116,7 @@ fn a_second_press_in_mid_air_does_nothing() {
         was_held: false,
         ..JumpState::default()
     };
-    let s = jump_step(&cfg, flying, None, 3.0, true, G, UP, DT);
+    let s = jump_step(&cfg, flying, None, 3.0, true, false, G, UP, DT);
     assert_eq!(s.motor.boost, [0.0, 0.0]);
 }
 
@@ -119,7 +133,7 @@ fn releasing_arms_the_cut_and_re_holding_does_not_undo_it() {
         was_held: true,
         ..JumpState::default()
     };
-    let released = jump_step(&cfg, flying, None, 4.0, false, G, UP, DT);
+    let released = jump_step(&cfg, flying, None, 4.0, false, false, G, UP, DT);
     assert!(released.state.cut, "soltar arma o corte");
     assert!(
         (released.motor.accel[1] - G[1] * (cfg.cut_gravity - 1.0)).abs() < 1.0e-4,
@@ -127,7 +141,7 @@ fn releasing_arms_the_cut_and_re_holding_does_not_undo_it() {
         released.motor.accel
     );
 
-    let re_held = jump_step(&cfg, released.state, None, 3.0, true, G, UP, DT);
+    let re_held = jump_step(&cfg, released.state, None, 3.0, true, false, G, UP, DT);
     assert!(re_held.state.cut, "segurar de novo NAO desfaz o corte");
 }
 
@@ -143,7 +157,7 @@ fn each_phase_gets_its_own_gravity() {
         ..JumpState::default()
     };
     let scale = |rel: f32, st: JumpState, held: bool| {
-        let s = jump_step(&cfg, st, None, rel, held, G, UP, DT);
+        let s = jump_step(&cfg, st, None, rel, held, false, G, UP, DT);
         s.motor.accel[1] / G[1] + 1.0
     };
     let rising = scale(5.0, flying, true);
@@ -191,7 +205,7 @@ fn neutral_multipliers_add_exactly_nothing() {
         ..JumpState::default()
     };
     for rel in [-9.0_f32, -1.0, 0.0, 1.0, 9.0] {
-        let s = jump_step(&cfg, flying, None, rel, false, G, UP, DT);
+        let s = jump_step(&cfg, flying, None, rel, false, false, G, UP, DT);
         assert_eq!(s.motor.accel, [0.0, 0.0], "a {rel} m/s");
     }
 }
@@ -210,16 +224,16 @@ fn landing_needs_both_halves() {
         ..JumpState::default()
     };
     // Subindo COM chão ao alcance (o tick logo após a decolagem): não pousa.
-    let rising = jump_step(&cfg, flying, Some(&ground()), 5.0, false, G, UP, DT);
+    let rising = jump_step(&cfg, flying, Some(&ground()), 5.0, false, false, G, UP, DT);
     assert!(rising.state.airborne, "ainda subindo, nao pousou");
     assert!(!rising.spring_armed, "e a perna segue CALADA");
 
     // Descendo SEM chão: também não.
-    let falling = jump_step(&cfg, flying, None, -5.0, false, G, UP, DT);
+    let falling = jump_step(&cfg, flying, None, -5.0, false, false, G, UP, DT);
     assert!(falling.state.airborne);
 
     // Descendo COM chão: pousou, e a perna volta.
-    let landed = jump_step(&cfg, flying, Some(&ground()), -5.0, false, G, UP, DT);
+    let landed = jump_step(&cfg, flying, Some(&ground()), -5.0, false, false, G, UP, DT);
     assert!(!landed.state.airborne, "pousou");
     assert!(landed.spring_armed, "e a perna volta a agir");
 }
@@ -248,12 +262,22 @@ fn landing_clears_the_cut_so_the_next_rise_is_not_punished() {
     };
 
     // Pousa com o corte armado.
-    let landed = jump_step(&cfg, cut_in_flight, Some(&ground()), -5.0, false, G, UP, DT);
+    let landed = jump_step(
+        &cfg,
+        cut_in_flight,
+        Some(&ground()),
+        -5.0,
+        false,
+        false,
+        G,
+        UP,
+        DT,
+    );
     assert!(!landed.state.airborne, "pousou");
     assert!(!landed.state.cut, "e o corte MORREU com o pouso");
 
     // Agora sai do chão SUBINDO sem pular (a plataforma o levou).
-    let rising = jump_step(&cfg, landed.state, None, 5.0, false, G, UP, DT);
+    let rising = jump_step(&cfg, landed.state, None, 5.0, false, false, G, UP, DT);
     let scale = rising.motor.accel[1] / G[1] + 1.0;
     assert!(
         (scale - cfg.takeoff_gravity).abs() < 1.0e-4,
@@ -266,7 +290,17 @@ fn landing_clears_the_cut_so_the_next_rise_is_not_punished() {
 #[test]
 fn walking_off_a_ledge_still_falls_faster() {
     let cfg = JumpConfig::STARTING_POINT;
-    let s = jump_step(&cfg, JumpState::default(), None, -5.0, false, G, UP, DT);
+    let s = jump_step(
+        &cfg,
+        JumpState::default(),
+        None,
+        -5.0,
+        false,
+        false,
+        G,
+        UP,
+        DT,
+    );
     assert!(!s.state.airborne, "ele nao pulou");
     assert!(
         (s.motor.accel[1] - G[1] * (cfg.fall_gravity - 1.0)).abs() < 1.0e-4,
@@ -284,6 +318,7 @@ fn standing(cfg: &JumpConfig) -> JumpState {
         JumpState::default(),
         Some(&ground()),
         0.0,
+        false,
         false,
         G,
         UP,
@@ -315,9 +350,9 @@ fn walking_off_a_ledge_still_jumps_inside_the_window_and_not_after() {
         let mut st = standing(&cfg);
         // Anda para fora: sem chão, sem apertar, caindo.
         for _ in 0..ticks {
-            st = jump_step(&cfg, st, None, -0.5, false, G, UP, DT).state;
+            st = jump_step(&cfg, st, None, -0.5, false, false, G, UP, DT).state;
         }
-        let s = jump_step(&cfg, st, None, -0.5, true, G, UP, DT);
+        let s = jump_step(&cfg, st, None, -0.5, true, false, G, UP, DT);
         assert_eq!(
             s.takeoff,
             want,
@@ -333,13 +368,13 @@ fn walking_off_a_ledge_still_jumps_inside_the_window_and_not_after() {
 fn the_coyote_window_is_spent_by_the_jump_it_forgives() {
     let cfg = JumpConfig::STARTING_POINT;
     let mut st = standing(&cfg);
-    st = jump_step(&cfg, st, None, -0.5, false, G, UP, DT).state;
-    let first = jump_step(&cfg, st, None, -0.5, true, G, UP, DT);
+    st = jump_step(&cfg, st, None, -0.5, false, false, G, UP, DT).state;
+    let first = jump_step(&cfg, st, None, -0.5, true, false, G, UP, DT);
     assert!(first.takeoff, "o pulo de coyote tem de sair");
     assert_eq!(first.state.coyote, 0.0, "e a janela tem de ser GASTA");
     // Solta e aperta de novo, ainda no ar, dentro do que SERIA a janela.
-    let released = jump_step(&cfg, first.state, None, 3.0, false, G, UP, DT);
-    let again = jump_step(&cfg, released.state, None, 3.0, true, G, UP, DT);
+    let released = jump_step(&cfg, first.state, None, 3.0, false, false, G, UP, DT);
+    let again = jump_step(&cfg, released.state, None, 3.0, true, false, G, UP, DT);
     assert!(!again.takeoff, "nao pode haver um segundo pulo no ar");
 }
 
@@ -357,14 +392,14 @@ fn pressing_early_jumps_on_the_very_tick_the_foot_lands() {
         ..JumpState::default()
     };
     // O aperto acontece no ar, 3 tiques antes de tocar.
-    let mut st = jump_step(&cfg, flying, None, -4.0, true, G, UP, DT).state;
+    let mut st = jump_step(&cfg, flying, None, -4.0, true, false, G, UP, DT).state;
     assert!(st.buffer > 0.0, "o aperto tem de ser GUARDADO");
     for _ in 0..2 {
-        st = jump_step(&cfg, st, None, -4.0, true, G, UP, DT).state;
+        st = jump_step(&cfg, st, None, -4.0, true, false, G, UP, DT).state;
     }
     // O pé toca — segurando ainda, que é o gesto real (ninguém solta a
     // tecla no ar de propósito).
-    let land = jump_step(&cfg, st, Some(&ground()), -4.0, true, G, UP, DT);
+    let land = jump_step(&cfg, st, Some(&ground()), -4.0, true, false, G, UP, DT);
     assert!(
         land.takeoff,
         "o aperto guardado tem de disparar NO tique do pouso"
@@ -375,12 +410,12 @@ fn pressing_early_jumps_on_the_very_tick_the_foot_lands() {
     // que nunca escorre passa no gate — o aperto chega ao pouso porque a
     // fixture pousava dentro da janela de qualquer jeito. Um perdão sem fim
     // é um pulo agendado para sempre.
-    let mut far = jump_step(&cfg, flying, None, -4.0, true, G, UP, DT).state;
+    let mut far = jump_step(&cfg, flying, None, -4.0, true, false, G, UP, DT).state;
     let past = (cfg.jump_buffer / DT).ceil() as i32 + 2;
     for _ in 0..past {
-        far = jump_step(&cfg, far, None, -4.0, true, G, UP, DT).state;
+        far = jump_step(&cfg, far, None, -4.0, true, false, G, UP, DT).state;
     }
-    let late = jump_step(&cfg, far, Some(&ground()), -4.0, true, G, UP, DT);
+    let late = jump_step(&cfg, far, Some(&ground()), -4.0, true, false, G, UP, DT);
     assert!(
         !late.takeoff,
         "um aperto de {:.3} s atras nao pode sobreviver a janela de {:.3} s",
@@ -395,11 +430,21 @@ fn pressing_early_jumps_on_the_very_tick_the_foot_lands() {
 fn one_press_is_one_jump() {
     let cfg = JumpConfig::STARTING_POINT;
     let st = standing(&cfg);
-    let first = jump_step(&cfg, st, Some(&ground()), 0.0, true, G, UP, DT);
+    let first = jump_step(&cfg, st, Some(&ground()), 0.0, true, false, G, UP, DT);
     assert!(first.takeoff);
     // O tique seguinte: ainda segurando, o raio ainda vê o chão (a decolagem
     // não teleporta ninguém).
-    let second = jump_step(&cfg, first.state, Some(&ground()), 3.0, true, G, UP, DT);
+    let second = jump_step(
+        &cfg,
+        first.state,
+        Some(&ground()),
+        3.0,
+        true,
+        false,
+        G,
+        UP,
+        DT,
+    );
     assert!(!second.takeoff, "um aperto nao pode dar dois pulos");
 }
 
@@ -416,9 +461,9 @@ fn zero_windows_are_the_law_of_before_this_wave() {
     };
     // Fora da borda: nao pula.
     let mut st = standing(&cfg);
-    st = jump_step(&cfg, st, None, -0.5, false, G, UP, DT).state;
+    st = jump_step(&cfg, st, None, -0.5, false, false, G, UP, DT).state;
     assert!(
-        !jump_step(&cfg, st, None, -0.5, true, G, UP, DT).takeoff,
+        !jump_step(&cfg, st, None, -0.5, true, false, G, UP, DT).takeoff,
         "sem coyote, sair da borda tira o pulo no tique seguinte"
     );
     // Apertar no ar nao sobrevive ate' o pouso.
@@ -426,8 +471,8 @@ fn zero_windows_are_the_law_of_before_this_wave() {
         airborne: true,
         ..JumpState::default()
     };
-    let pressed = jump_step(&cfg, flying, None, -4.0, true, G, UP, DT).state;
-    let land = jump_step(&cfg, pressed, Some(&ground()), -4.0, true, G, UP, DT);
+    let pressed = jump_step(&cfg, flying, None, -4.0, true, false, G, UP, DT).state;
+    let land = jump_step(&cfg, pressed, Some(&ground()), -4.0, true, false, G, UP, DT);
     assert!(
         !land.takeoff,
         "sem buffer, um aperto no ar morre com o tique em que foi feito"
@@ -457,6 +502,7 @@ fn the_lift_memory_fills_on_the_ground_and_drains_in_the_air() {
         Some(&wagon()),
         0.0,
         false,
+        false,
         G,
         UP,
         DT,
@@ -469,7 +515,7 @@ fn the_lift_memory_fills_on_the_ground_and_drains_in_the_air() {
     );
 
     // No ar ela escorre, e o VALOR lembrado não se apaga com ela.
-    let air = jump_step(&cfg, on.state, None, -1.0, false, G, UP, DT);
+    let air = jump_step(&cfg, on.state, None, -1.0, false, false, G, UP, DT);
     assert_eq!(air.state.lift, [4.0, 0.0], "o que se lembra nao muda no ar");
     assert!(
         (air.state.lift_time - (cfg.lift_momentum - DT)).abs() < 1.0e-6,
@@ -492,6 +538,7 @@ fn the_carried_frame_holds_full_and_then_releases() {
         Some(&wagon()),
         0.0,
         false,
+        false,
         G,
         UP,
         DT,
@@ -500,7 +547,7 @@ fn the_carried_frame_holds_full_and_then_releases() {
 
     // Meio da janela: ainda CHEIO — é isso que "preserva" quer dizer.
     for _ in 0..40 {
-        st = jump_step(&cfg, st, None, -1.0, false, G, UP, DT).state;
+        st = jump_step(&cfg, st, None, -1.0, false, false, G, UP, DT).state;
         assert_eq!(
             carried_frame(&cfg, &st),
             [4.0, 0.0],
@@ -511,7 +558,7 @@ fn the_carried_frame_holds_full_and_then_releases() {
 
     // Passada a janela: o referencial volta a ser o do mundo.
     for _ in 0..100 {
-        st = jump_step(&cfg, st, None, -1.0, false, G, UP, DT).state;
+        st = jump_step(&cfg, st, None, -1.0, false, false, G, UP, DT).state;
     }
     assert_eq!(st.lift_time, 0.0, "a janela fechou");
     assert_eq!(
@@ -533,6 +580,7 @@ fn a_still_ground_and_a_zero_window_both_carry_nothing() {
         Some(&wagon()),
         0.0,
         false,
+        false,
         G,
         UP,
         DT,
@@ -550,6 +598,7 @@ fn a_still_ground_and_a_zero_window_both_carry_nothing() {
         JumpState::default(),
         Some(&ground()),
         0.0,
+        false,
         false,
         G,
         UP,

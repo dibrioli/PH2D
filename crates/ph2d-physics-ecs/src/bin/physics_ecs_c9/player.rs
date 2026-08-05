@@ -45,6 +45,12 @@ pub fn tape(ticks: u64) -> InputTape {
             PlayerInput {
                 drive: if k < 90 { 1.0 } else { 0.0 },
                 jump: (40..48).contains(&k),
+                // ⚠️ **A fita não segura o baixo, e é deliberado** (W12): a
+                // descida através de uma plataforma jump-through é uma
+                // capacidade nova, e pô-la aqui moveria o hash sem que este
+                // harness ganhasse nada — ele mede DETERMINISMO, não cobertura.
+                // O gate da descida é comportamental e mora ao lado.
+                down: false,
             },
         );
     }

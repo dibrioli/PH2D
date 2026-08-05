@@ -99,6 +99,18 @@ pub struct GroundSample {
     /// medido *relativo ao chão*, então andar sobre um vagão é andar, e o vagão
     /// acelerando não derruba ninguém. Um chão estático manda `[0, 0]`.
     pub ground_velocity: Vec2,
+    /// **Este chão é uma plataforma jump-through?** (W12)
+    ///
+    /// ⚠️ **É o SENSOR quem responde, e é por isso que o campo mora aqui:** a
+    /// lei precisa saber *que tipo de chão* achou para decidir o que o botão de
+    /// pulo significa neste tique (pular, ou DESCER através dele), e a única
+    /// coisa que sabe se um collider é one-way é quem o consultou. Derivá-lo
+    /// noutro lugar seria uma segunda resposta para um fato que a amostra já
+    /// carrega.
+    ///
+    /// Chão comum manda `false`, e é isso que mantém a wave inteira inerte em
+    /// toda cena que nunca autorou uma plataforma jump-through.
+    pub one_way: bool,
 }
 
 /// A config inteira de um player — as metades que a [`footing`] precisa
@@ -184,6 +196,22 @@ pub struct PlayerStep {
     /// Zero no ar, e zero é a resposta certa: quem não está a ser segurado não
     /// tem peso a cancelar.
     pub gravity_hold: Vec2,
+    /// **COMEÇA a atravessar a plataforma jump-through de baixo dos pés** (W12)
+    /// — verdadeiro no tique do gesto, e só nele.
+    ///
+    /// # ⚠️ A lei diz COMEÇAR; quem diz QUANDO ACABA é a ponte
+    ///
+    /// É a mesma divisão do sensor de quina (a lei pergunta *"vale a pena
+    /// castar?"*, a ponte casta): decidir que o gesto aconteceu é uma pergunta
+    /// sobre a ENTRADA e sobre o tipo do chão, e as duas estão aqui; decidir
+    /// que o corpo já **passou** é uma pergunta sobre duas caixas envolventes,
+    /// e a lei pura não tem nenhuma.
+    ///
+    /// Colapsar as duas num contador de segundos aqui dentro seria escolher um
+    /// número onde existe uma resposta exata — e o número erraria exatamente
+    /// onde a plataforma fosse grossa ou a queda lenta, re-solidificando com o
+    /// personagem dentro dela.
+    pub drop_through: bool,
 }
 
 /// **A entrada do jogador neste tick.**
@@ -203,6 +231,19 @@ pub struct PlayerInput {
     /// precisaria de uma segunda memória do mesmo fato, e as duas divergiriam no
     /// primeiro tick em que um dispatch devesse mais de um passo.
     pub jump: bool,
+    /// **O botão de BAIXO está pressionado agora** (W12).
+    ///
+    /// ⚠️ Ele não anda para lugar nenhum sozinho — hoje serve a uma pergunta
+    /// só: *o que o botão de pulo significa em cima de uma plataforma
+    /// jump-through?* Segurado, o pulo vira **descida**
+    /// ([`PlayerStep::drop_through`]).
+    ///
+    /// ⚠️ **É `down + jump`, e não `down` sozinho, de propósito:** um jogador
+    /// que segura baixo enquanto anda não pode cair da plataforma sem ter
+    /// pedido, e o dia em que existir um AGACHAR o botão já estará lá com o
+    /// significado certo. É o idioma de Celeste, Hollow Knight, Ori e Dead
+    /// Cells.
+    pub down: bool,
 }
 
 /// **O que fazer com o corpo neste tick.** Ver a distinção accel/boost no topo.
@@ -290,7 +331,7 @@ pub fn player_motor(
     // (o aviso do `jump`).
     let rel_up = relative_rise(footing, body_velocity, up);
     let jump = jump_step(
-        &cfg.jump, state, footing, rel_up, input.jump, gravity, up, dt,
+        &cfg.jump, state, footing, rel_up, input.jump, input.down, gravity, up, dt,
     );
 
     // A perna e a caminhada veem o MESMO chão, e é o que o pulo lhes deixou ver:
@@ -361,6 +402,7 @@ pub fn player_motor(
         } else {
             [0.0, 0.0]
         },
+        drop_through: jump.drop_through,
     }
 }
 

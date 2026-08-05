@@ -18,6 +18,7 @@ fn at(distance: f32, normal: Vec2) -> GroundSample {
         distance,
         normal,
         ground_velocity: [0.0, 0.0],
+        one_way: false,
     }
 }
 
@@ -407,6 +408,7 @@ fn at_the_door_a_steep_slope_kills_the_walk_but_not_the_jump() {
         PlayerInput {
             drive: 1.0,
             jump: true,
+            down: false,
         },
         armed,
         [0.0, 0.0],

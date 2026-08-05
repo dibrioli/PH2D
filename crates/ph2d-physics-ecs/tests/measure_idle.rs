@@ -583,6 +583,7 @@ fn measure_how_fast_the_player_climbs() {
                 ph2d_platformer::PlayerInput {
                     drive: 1.0,
                     jump: false,
+                    down: false,
                 },
             );
         }

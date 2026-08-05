@@ -170,6 +170,7 @@ impl crate::App {
             "88" => self.physics_smoke_slope(),
             "89" => self.physics_smoke_chimney(),
             "90" => self.physics_smoke_wagon(),
+            "91" => self.physics_smoke_pass_through(),
             _ => self.physics_smoke_drop(),
         }
 

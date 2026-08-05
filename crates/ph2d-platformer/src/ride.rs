@@ -294,6 +294,7 @@ mod tests {
             distance,
             normal: [0.0, 1.0],
             ground_velocity: [0.0, 0.0],
+            one_way: false,
         }
     }
 
@@ -411,6 +412,7 @@ mod tests {
             distance: cfg.float_height,
             normal: [0.0, 1.0],
             ground_velocity: [0.0, 2.0],
+            one_way: false,
         };
         // O corpo já viaja com a plataforma: velocidade relativa ZERO.
         let m = ride_spring(&cfg, Some(&rising), [0.0, 2.0], G, UP);
@@ -472,6 +474,7 @@ mod tests {
             distance: cfg.float_height,
             normal: n,
             ground_velocity: [0.0, 0.0],
+            one_way: false,
         };
         let along = [t[0] * 2.0, t[1] * 2.0];
         let m = ride_spring(&cfg, Some(&s), along, G, UP);
@@ -507,6 +510,7 @@ mod tests {
             distance: cfg.float_height,
             normal: n,
             ground_velocity: [0.0, 0.0],
+            one_way: false,
         };
         let into = [-n[0] * 3.0, -n[1] * 3.0];
         cfg.spring_damping = RideConfig::MAX_DAMPING;

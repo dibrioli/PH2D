@@ -984,7 +984,23 @@ WCAG 2.2 AA nos gates, e um valor autorado pode quebrá-lo sem nada dizer).
 que o chrome já consome. **Entregável:** o artista muda a cara do app inteiro do canvas, com preview
 ao vivo, e o gate de parser independente prova que o número que o widget usa é o que ele escreveu.
 
-**Degrau 2 — a pele por-widget.**
+**Degrau 2 — a pele por-widget.** ✅ **CONSTRUÍDA (2026-08-04)** — cena `=60`.
+
+> ⚠️ **Uma correção ao que este parágrafo dizia, medida na construção:** os pintores do catálogo
+> **não aceitam** cantos/sombra/gradiente — a assinatura deles é `(dados, rect, scene, text,
+> theme)` e toda cor e todo raio saem do `ph2d_tokens`. Dar-lhes um canal de estilo por-widget
+> seriam 44 assinaturas novas **e** uma segunda porta para a aparência, no dia seguinte ao da W6.1
+> ter feito a tabela de cor autorável. ⇒ **o desenho responde ONDE e O QUÊ; os tokens respondem
+> COMO**, e o mapeamento por-tipo fica NÃO construído até um tipo precisar de algo que o token não
+> exprime.
+>
+> ⚠️ E o componente tem **um campo só**: o `key` do esboço abaixo não existe — o rótulo é o `Name`
+> da entidade, a mesma lei que a W5c usou para os eixos de variant.
+>
+> ⚠️ A lista de tipos é **doze**, e a fronteira é ESTRUTURAL: um widget cuja aparência é função de
+> *(retângulo, rótulo, estado)* é vestível hoje; um cuja aparência é função de uma **LISTA** (Tabs,
+> TreeView, RadioGroup, Dropdown) precisa de filhos autorados — e isso é o degrau 3.
+
 
 ```rust
 #[derive(Component, Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -1241,7 +1257,8 @@ escreveu**:
 | **Z-order** ✅ | a lei das game engines: DFS = ordem de desenho + o **Z global** na Arrange | — | — | — | — | `=57` |
 | **W5c** ✅ | variants (a instância escolhe QUAL versão) | — | **—** | — | **—** | `=58` |
 | **W6.1** ✅ | a tabela de COR vira AUTORÁVEL (o degrau 1 do §2) | — | ⚠️ **bump** | — | **—** | `=59` |
-| **W6.2/3** | pele por-widget (`VecWidget`) + layout | +1 | — | — | sim (§2) | — |
+| **W6.2** ✅ | pele por-widget (`VecWidget`): a forma veste um controle do catálogo | +1 | — | — | — | `=60` |
+| **W6.3** | layout: a árvore autorada vira `Panel` | — | — | — | sim (§2) | — |
 | **W7** | estados + Smart Animate | — | `DOC_VERSION` | — | sim (HSM) | `=55` |
 | **W8** | runtime + codegen | — | seção | — | sim (fronteira) | `=56` |
 | **W9** | DTCG / SVG / export | — | — | — | — | — |

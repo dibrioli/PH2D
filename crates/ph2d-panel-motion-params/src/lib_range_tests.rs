@@ -28,6 +28,7 @@ fn soft_hard_row(value: f64) -> ParamsSnapshot {
             step: 1.0,
             integer: false,
             driven: false,
+            display: RowDisplay::default(),
         })],
     }
 }
@@ -49,6 +50,7 @@ fn soft_hard_floor_row(value: f64) -> ParamsSnapshot {
             step: 0.01,
             integer: false,
             driven: false,
+            display: RowDisplay::default(),
         })],
     }
 }

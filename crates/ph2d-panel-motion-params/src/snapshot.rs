@@ -183,6 +183,73 @@ pub struct EnumRow {
     pub labels: &'static [&'static str],
 }
 
+/// **The display FACE of a scalar row's numbers** (doc 88, Wave A) — the one
+/// place a stored quantity becomes the number the artist reads, and the receipt
+/// for getting back.
+///
+/// ⚠️ **Every numeric field of [`ScalarRow`] is ALREADY in this face.** The
+/// bridge converts the WHOLE tuple in one call ([`ScalarRow::in_display`]),
+/// because converting some fields and not others is exactly how a range stops
+/// containing its value — the *lying widget* the params bridge's `contain()`
+/// exists to prevent, arriving through the other door: `normalized_track` clamps
+/// to the track end, the panel paints the clamped number, and the first touch
+/// writes it back.
+///
+/// The store stays in the quantity's own unit (metres for a length) and only this
+/// boundary converts, because the cook must not depend on a project setting — see
+/// `ph2d_node_registry::unit`.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct RowDisplay {
+    /// `display = stored × scale`. Exactly `1.0` unless the param is a world
+    /// LENGTH and the project shows pixels; every other quantity is stored in the
+    /// unit it is shown in.
+    pub scale: f64,
+    /// Shown after the number (`""` when the quantity has no suffix). `'static`
+    /// because every face is one of a fixed few — no per-frame allocation.
+    pub suffix: &'static str,
+}
+
+impl Default for RowDisplay {
+    /// Unitless and unscaled — what every param means until a node declares one,
+    /// so nothing moves by default.
+    fn default() -> Self {
+        Self {
+            scale: 1.0,
+            suffix: "",
+        }
+    }
+}
+
+impl RowDisplay {
+    /// A face with a checked scale.
+    ///
+    /// A non-finite or non-positive scale falls back to the neutral `1.0`: it
+    /// would otherwise reach `to_stored` as a division that sends the artist's
+    /// number to `inf`/`NaN` **and writes it into the document**. Refusing here
+    /// means the boundary can never be the thing that poisons a param.
+    #[must_use]
+    pub fn new(scale: f64, suffix: &'static str) -> Self {
+        Self {
+            scale: if scale.is_finite() && scale > 0.0 {
+                scale
+            } else {
+                1.0
+            },
+            suffix,
+        }
+    }
+
+    /// **The one door back** — the number the DOCUMENT stores, for a number the
+    /// artist typed or dragged.
+    ///
+    /// Every emit site in `events.rs` goes through it, so a row's value cannot
+    /// reach `Graph::set_param` still wearing the artist's face.
+    #[must_use]
+    pub fn to_stored(self, displayed: f64) -> f64 {
+        displayed / self.scale
+    }
+}
+
 /// A slider + numeric-chip row for one scalar `ParamSpec`.
 #[derive(Clone, Debug, PartialEq)]
 pub struct ScalarRow {
@@ -217,6 +284,54 @@ pub struct ScalarRow {
     /// that lies once per drag — and dimming it would not help, because a dimmed widget
     /// still dispatches ([[feedback_disabled_button_still_dispatches]]).
     pub driven: bool,
+    /// The face every number above is already wearing, and the way back to the
+    /// document. [`RowDisplay::default`] (unitless, unscaled) for a param that
+    /// declared no unit — which is every param until a node opts in.
+    pub display: RowDisplay,
+}
+
+impl ScalarRow {
+    /// **Re-express the WHOLE numeric tuple in a display face** — the one door
+    /// from stored to shown.
+    ///
+    /// Taking `self` and returning it is what makes the bridge write
+    /// `ScalarRow { … }.in_display(face)` as a single expression covering both
+    /// arms of its `match`, so there is one conversion site and not one per arm.
+    ///
+    /// ⚠️ `step` converts too. A step of `0.01 m` is a step of `1 px`; leaving it
+    /// behind would make the chip's stepper walk a hundredth of a pixel.
+    #[must_use]
+    pub fn in_display(mut self, display: RowDisplay) -> Self {
+        let s = display.scale;
+        self.value *= s;
+        self.min *= s;
+        self.hard_min *= s;
+        self.max *= s;
+        self.hard_max *= s;
+        self.step *= s;
+        self.display = display;
+        self
+    }
+}
+
+/// **How a scalar row's number READS** — the one formatter for a row's value.
+///
+/// Both painters call it (the chip's `display_override` and the driven row's
+/// accent text), because the same quantity must not wear two faces: a Gap that
+/// says `100 px` unwired and `100` with a wire plugged in reads as the value
+/// having changed when only its author did.
+///
+/// Wraps the app-wide [`format_number`](ph2d_editor_core::widget::format_number)
+/// rather than formatting itself — a second number formatter is a second way to
+/// round.
+#[must_use]
+pub fn scalar_text(row: &ScalarRow, value: f64) -> String {
+    let n = ph2d_editor_core::widget::format_number(value);
+    if row.display.suffix.is_empty() {
+        n
+    } else {
+        format!("{n} {}", row.display.suffix)
+    }
 }
 
 /// A colour-swatch row driving four **linear-straight** RGBA channel params

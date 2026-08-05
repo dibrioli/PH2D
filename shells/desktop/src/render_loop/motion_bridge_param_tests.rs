@@ -11,6 +11,9 @@
 use super::color::{apply_color_to_node, channel_values, linear_rgba_to_srgb8};
 use super::params::{apply_channel_presets, build_params_snapshot, param_value};
 use crate::motion_state::MotionState;
+// The display face a row is built in. `default()` is what the APP ships
+// (Pixels, 100 px/m), so a fixture reads the same numbers the artist does.
+use ph2d_editor::ProjectSettings;
 
 /// The reported-bug + colour-authoring seam, end to end and headless: a
 /// selected `motion.tint` node resolves to a named Mode selector + colour
@@ -25,7 +28,8 @@ fn selected_tint_node_yields_mode_and_colour_swatch_rows() {
     let tint = motion.doc.graph.add_node("motion.tint");
     ph2d_panel_motion_graph::set_graph_selection(vec![tint.0]);
 
-    let snap = build_params_snapshot(&motion).expect("tint node is resolvable");
+    let snap = build_params_snapshot(&motion, ProjectSettings::default())
+        .expect("tint node is resolvable");
     // A named Mode enum (Solid/Gradient), never a number slider.
     assert!(
         snap.rows
@@ -67,7 +71,8 @@ fn selected_expression_node_yields_a_formula_text_row() {
     motion.doc.graph.set_text_param(ex, "expr", "sin(t) * a");
     ph2d_panel_motion_graph::set_graph_selection(vec![ex.0]);
 
-    let snap = build_params_snapshot(&motion).expect("expression node is resolvable");
+    let snap = build_params_snapshot(&motion, ProjectSettings::default())
+        .expect("expression node is resolvable");
     match &snap.rows[0] {
         ParamRow::Text(t) => {
             assert_eq!(t.name, "expr");
@@ -105,7 +110,8 @@ fn selected_field_remap_yields_an_interactive_curve_row() {
         .set_text_param(rm, "curve", "c1 0:0:L 0.5:1:S 1:0:L");
     ph2d_panel_motion_graph::set_graph_selection(vec![rm.0]);
 
-    let snap = build_params_snapshot(&motion).expect("field.remap node is resolvable");
+    let snap = build_params_snapshot(&motion, ProjectSettings::default())
+        .expect("field.remap node is resolvable");
     match &snap.rows[0] {
         ParamRow::Curve(c) => {
             assert_eq!(c.name, "curve");
@@ -200,7 +206,8 @@ fn stagger_params_are_named_enums_and_a_checkbox() {
     let st = motion.doc.graph.add_node("motion.stagger");
     ph2d_panel_motion_graph::set_graph_selection(vec![st.0]);
 
-    let snap = build_params_snapshot(&motion).expect("stagger resolvable");
+    let snap =
+        build_params_snapshot(&motion, ProjectSettings::default()).expect("stagger resolvable");
     let channel = snap
         .rows
         .iter()
@@ -318,7 +325,7 @@ fn every_row_range_contains_its_value_for_every_node_and_param() {
             }
             ph2d_panel_motion_graph::set_graph_selection(vec![node.0]);
 
-            let snap = build_params_snapshot(&motion)
+            let snap = build_params_snapshot(&motion, ProjectSettings::default())
                 .unwrap_or_else(|| panic!("{ty} must resolve a snapshot"));
             for row in &snap.rows {
                 let (name, value, min, max) = match row {
@@ -376,7 +383,7 @@ fn rotation_channel_widens_the_magnitude_range_to_contain_its_preset() {
     let mut motion = MotionState::new();
 
     let scalar = |motion: &MotionState, name: &str| {
-        build_params_snapshot(motion)
+        build_params_snapshot(motion, ProjectSettings::default())
             .expect("resolvable")
             .rows
             .into_iter()
@@ -453,7 +460,7 @@ fn angle_params_resolve_to_degree_rows() {
     let mut motion = MotionState::new();
 
     let angle_row = |motion: &MotionState, who: &str| {
-        build_params_snapshot(motion)
+        build_params_snapshot(motion, ProjectSettings::default())
             .expect("node resolvable")
             .rows
             .into_iter()
@@ -501,7 +508,8 @@ fn seed_param_resolves_to_a_seed_row_not_a_slider() {
     let wig = motion.doc.graph.add_node("motion.wiggle");
     ph2d_panel_motion_graph::set_graph_selection(vec![wig.0]);
 
-    let snap = build_params_snapshot(&motion).expect("wiggle resolvable");
+    let snap =
+        build_params_snapshot(&motion, ProjectSettings::default()).expect("wiggle resolvable");
     let seed = snap
         .rows
         .iter()
@@ -539,7 +547,8 @@ fn a_selected_backdrop_yields_its_title_and_colour_rows() {
     super::backdrops::set_color(&mut motion, id, 4);
     ph2d_panel_motion_graph::set_graph_backdrop_selection(Some(id));
 
-    let snap = build_params_snapshot(&motion).expect("the backdrop is the subject");
+    let snap = build_params_snapshot(&motion, ProjectSettings::default())
+        .expect("the backdrop is the subject");
     assert_eq!(snap.node, id);
     match &snap.rows[0] {
         ParamRow::Text(t) => {
@@ -570,7 +579,8 @@ fn a_selected_node_still_wins_the_params_panel() {
     ph2d_panel_motion_graph::set_graph_backdrop_selection(None);
     ph2d_panel_motion_graph::set_graph_selection(vec![grid.0]);
 
-    let snap = build_params_snapshot(&motion).expect("the node is the subject");
+    let snap = build_params_snapshot(&motion, ProjectSettings::default())
+        .expect("the node is the subject");
     assert_eq!(snap.node, grid.0);
     assert_eq!(snap.title, "Grid");
 

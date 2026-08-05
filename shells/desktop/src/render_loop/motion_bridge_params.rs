@@ -10,6 +10,11 @@
 
 use super::color::{color_groups, linear_rgba_to_srgb8};
 use crate::motion_state::MotionState;
+/// The unit vocabulary (what a param's number IS) and the panel's display face
+/// (how it reads). Module scope because `display_face` — the single conversion
+/// point — sits beside `contain`, not inside the builder.
+use ph2d_node_registry::ParamUnit;
+use ph2d_panel_motion_params::RowDisplay;
 
 /// The peek/stream-reading helpers (the live number a wire drives, the live columns
 /// the Custom picker offers) — a child so `motion_bridge.rs` stays under the cap.
@@ -22,6 +27,7 @@ mod params_channel;
 /// Re-exported under its old path so the params tests (a sibling module) and this
 /// module keep naming the presets `params::apply_channel_presets` after the split.
 pub(super) use params_channel::apply_channel_presets;
+use params_channel::channel_unit;
 
 /// The **write-back** half — this frame's edits applied to the node, and the one
 /// reader of a param's current value (a sibling child, shell LOC cap). The seam is
@@ -44,6 +50,7 @@ pub(super) fn publish(
     motion: &mut MotionState,
     store: &mut ph2d_editor::interaction::WidgetStore,
     motion_active: bool,
+    project: ph2d_editor::ProjectSettings,
 ) {
     if !motion_active {
         ph2d_panel_motion_params::set_current_params(None);
@@ -52,7 +59,7 @@ pub(super) fn publish(
     // Apply this frame's edits (colour picks + scalar sliders) BEFORE rebuilding, so the
     // panel reflects them; then seed each colour swatch's picker from the fresh snapshot.
     apply_param_edits(motion, store);
-    let snap = build_params_snapshot(motion);
+    let snap = build_params_snapshot(motion, project);
     if let Some(s) = &snap {
         super::color::seed_color_swatches(store, s);
     }
@@ -100,6 +107,44 @@ fn channel_range_override(type_name: &str, param: &str, channel: i32) -> Option<
     }
 }
 
+/// **The display face for one param** (doc 88, Wave A) — the single place a
+/// declared [`ParamUnit`] becomes the number the artist reads.
+///
+/// [`ParamUnit::Length`] is the only unit that CONVERTS, and it converts through
+/// the project's setting, never a constant of its own: the same
+/// `pixels_per_meter` the sprite importer and the gizmo readouts use. Everything
+/// else is stored in the unit it is shown in, so it gets a suffix and a scale of
+/// exactly `1.0` — the neutral face, byte-identical to before this wave.
+///
+/// [`ParamUnit::FromChannel`] is resolved first, by asking the channel the node
+/// currently drives; a node with no `channel` param cannot answer, and an
+/// unanswerable unit is [`ParamUnit::None`] rather than a guess.
+fn display_face(
+    unit: ParamUnit,
+    channel: Option<i32>,
+    project: ph2d_editor::ProjectSettings,
+) -> RowDisplay {
+    let unit = match unit {
+        ParamUnit::FromChannel => channel.map(channel_unit).unwrap_or_default(),
+        other => other,
+    };
+    if let Some(fixed) = unit.fixed_suffix() {
+        return RowDisplay::new(1.0, fixed);
+    }
+    if !unit.converts() {
+        return RowDisplay::default();
+    }
+    // A world LENGTH: stored in metres, shown in the project's unit.
+    RowDisplay::new(
+        f64::from(
+            project
+                .display_unit
+                .from_meters(1.0, project.pixels_per_meter),
+        ),
+        project.display_unit.suffix(),
+    )
+}
+
 /// The single selected Motion node's `NodeId.0`, or `None` unless exactly one
 /// node is selected (params edit a single node; multi-select is a later step).
 pub(crate) fn selected_motion_node() -> Option<u32> {
@@ -116,6 +161,7 @@ pub(crate) fn selected_motion_node() -> Option<u32> {
 /// node is selected and resolvable.
 pub(crate) fn build_params_snapshot(
     motion: &MotionState,
+    project: ph2d_editor::ProjectSettings,
 ) -> Option<ph2d_panel_motion_params::ParamsSnapshot> {
     use ph2d_node_registry::ParamWidget;
     use ph2d_nodegraph::cook::OpResolver;
@@ -378,83 +424,108 @@ pub(crate) fn build_params_snapshot(
         let driven = params_stream::driven_value(motion, nid, spec.name);
         let value = f64::from(driven.unwrap_or_else(|| value_of(spec.name)));
         let driven = driven.is_some();
-        rows.push(ParamRow::Scalar(match hint {
-            Some(h) => {
-                // A behaviour's magnitude range depends on the channel it drives
-                // (degrees on Rotation vs world units on X/Y) — the static hint
-                // can only describe one, so widen it for ergonomics …
-                let (min, max, step) = channel
-                    .and_then(|ch| channel_range_override(&inst.type_name, spec.name, ch))
-                    .unwrap_or((h.min, h.max, h.step));
-                // … then widen it again, unconditionally, so it CONTAINS the doc
-                // value. That is the correctness half: no clamp, no lie, no
-                // destroy-on-touch, whatever put the value there.
-                let (min, max) = contain(min, max, value_of(spec.name));
-                // The typed ceiling, when the node declared one wider than the
-                // drag range. `max` is the floor of it: a hard limit that sat
-                // BELOW the slider would silently un-type values the slider can
-                // still reach.
-                let hard_max = motion
-                    .registry
-                    .param_hard_max(type_id, spec.name)
-                    .unwrap_or(max)
-                    .max(max);
-                // The typed FLOOR, mirrored: a hard minimum that sat ABOVE the
-                // slider would silently un-type values the slider can still reach,
-                // so `min` is its ceiling exactly as `max` is the ceiling's floor.
-                let hard_min = motion
-                    .registry
-                    .param_hard_min(type_id, spec.name)
-                    .unwrap_or(min)
-                    .min(min);
-                ScalarRow {
-                    name: spec.name,
-                    label: h.label.to_string(),
-                    value,
-                    min: f64::from(min),
-                    hard_min: f64::from(hard_min),
-                    max: f64::from(max),
-                    hard_max: f64::from(hard_max),
-                    step: f64::from(step),
-                    integer: h.widget.is_integer(),
-                    driven,
+        // The row's face, resolved ONCE and applied to the whole tuple below.
+        //
+        // The widget answers the unit question first (`unit_of`), so an `Angle` /
+        // `Seed` / `Enum` can never be told to scale by `pixels_per_meter` even
+        // if a table entry says otherwise. A param with no hint at all still gets
+        // to declare a unit — the hint's absence is a missing RANGE, not a
+        // missing quantity.
+        let face = display_face(
+            ph2d_node_registry::unit_of(
+                hint.map_or(ParamWidget::Slider, |h| h.widget),
+                motion.registry.param_unit_declared(type_id, spec.name),
+            ),
+            channel,
+            project,
+        );
+        // ⚠️ ONE `.in_display` for BOTH arms of the match — the conversion site is
+        // the push, not the construction, so a third arm cannot be added without
+        // one.
+        rows.push(ParamRow::Scalar(
+            (match hint {
+                Some(h) => {
+                    // A behaviour's magnitude range depends on the channel it drives
+                    // (degrees on Rotation vs world units on X/Y) — the static hint
+                    // can only describe one, so widen it for ergonomics …
+                    let (min, max, step) = channel
+                        .and_then(|ch| channel_range_override(&inst.type_name, spec.name, ch))
+                        .unwrap_or((h.min, h.max, h.step));
+                    // … then widen it again, unconditionally, so it CONTAINS the doc
+                    // value. That is the correctness half: no clamp, no lie, no
+                    // destroy-on-touch, whatever put the value there.
+                    let (min, max) = contain(min, max, value_of(spec.name));
+                    // The typed ceiling, when the node declared one wider than the
+                    // drag range. `max` is the floor of it: a hard limit that sat
+                    // BELOW the slider would silently un-type values the slider can
+                    // still reach.
+                    let hard_max = motion
+                        .registry
+                        .param_hard_max(type_id, spec.name)
+                        .unwrap_or(max)
+                        .max(max);
+                    // The typed FLOOR, mirrored: a hard minimum that sat ABOVE the
+                    // slider would silently un-type values the slider can still reach,
+                    // so `min` is its ceiling exactly as `max` is the ceiling's floor.
+                    let hard_min = motion
+                        .registry
+                        .param_hard_min(type_id, spec.name)
+                        .unwrap_or(min)
+                        .min(min);
+                    ScalarRow {
+                        name: spec.name,
+                        label: h.label.to_string(),
+                        value,
+                        min: f64::from(min),
+                        hard_min: f64::from(hard_min),
+                        max: f64::from(max),
+                        hard_max: f64::from(hard_max),
+                        step: f64::from(step),
+                        integer: h.widget.is_integer(),
+                        driven,
+                        // Neutral here on purpose: the face is applied to BOTH arms
+                        // at the push below, so neither arm can carry a different one.
+                        display: RowDisplay::default(),
+                    }
                 }
-            }
-            // No hint → a neutral range around the param's manifest DEFAULT.
-            //
-            // **A range must never be a function of the value it ranges over.** A slider's
-            // range is the SCALE the value is measured against, and a scale that grows with
-            // what it measures is a positive feedback loop. This branch used to read
-            // `max = value * 4`, whose fixed point sits at a quarter of the track: drag above
-            // it and the value multiplied every frame — to billions in about a second — and
-            // drag below it and it collapsed to zero. Neither is a drag; both are a runaway.
-            // (Enio, smoke 2026-07-12: *"sliders chegam a bilhões e não arrastam linearmente"*.)
-            //
-            // The DEFAULT is a manifest constant, so the scale holds still while the knob
-            // moves across it. `contain` may still widen the range to hold an out-of-range doc
-            // value, which is idempotent — widening for a value the range already holds is a
-            // no-op, so a drag inside the range never moves it.
-            //
-            // Every registered param is hinted (`every_scalar_row_comes_from_a_declared_hint`
-            // is the gate), so this branch is the backstop for a node type that forgets one —
-            // and a backstop must be INERT, not armed.
-            None => {
-                let neutral = (spec.default.abs() * 4.0).max(10.0);
-                let (min, max) = contain(0.0, neutral, value_of(spec.name));
-                ScalarRow {
-                    name: spec.name,
-                    label: spec.name.to_string(),
-                    value,
-                    min: f64::from(min),
-                    hard_min: f64::from(min),
-                    max: f64::from(max),
-                    hard_max: f64::from(max),
-                    step: 0.1,
-                    integer: false,
-                    driven,
+                // No hint → a neutral range around the param's manifest DEFAULT.
+                //
+                // **A range must never be a function of the value it ranges over.** A slider's
+                // range is the SCALE the value is measured against, and a scale that grows with
+                // what it measures is a positive feedback loop. This branch used to read
+                // `max = value * 4`, whose fixed point sits at a quarter of the track: drag above
+                // it and the value multiplied every frame — to billions in about a second — and
+                // drag below it and it collapsed to zero. Neither is a drag; both are a runaway.
+                // (Enio, smoke 2026-07-12: *"sliders chegam a bilhões e não arrastam linearmente"*.)
+                //
+                // The DEFAULT is a manifest constant, so the scale holds still while the knob
+                // moves across it. `contain` may still widen the range to hold an out-of-range doc
+                // value, which is idempotent — widening for a value the range already holds is a
+                // no-op, so a drag inside the range never moves it.
+                //
+                // Every registered param is hinted (`every_scalar_row_comes_from_a_declared_hint`
+                // is the gate), so this branch is the backstop for a node type that forgets one —
+                // and a backstop must be INERT, not armed.
+                None => {
+                    let neutral = (spec.default.abs() * 4.0).max(10.0);
+                    let (min, max) = contain(0.0, neutral, value_of(spec.name));
+                    ScalarRow {
+                        name: spec.name,
+                        label: spec.name.to_string(),
+                        value,
+                        min: f64::from(min),
+                        hard_min: f64::from(min),
+                        max: f64::from(max),
+                        hard_max: f64::from(max),
+                        step: 0.1,
+                        integer: false,
+                        driven,
+                        display: RowDisplay::default(),
+                    }
                 }
-            }
-        }));
+            })
+            .in_display(face),
+        ));
     }
     Some(ParamsSnapshot {
         node: only,

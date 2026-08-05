@@ -10,6 +10,7 @@
 
 use super::params::build_params_snapshot;
 use crate::motion_state::MotionState;
+use ph2d_editor::ProjectSettings;
 
 /// Every node type in the registry, with its params — the sweep the older guards
 /// missed by filtering on `motion.`, which is precisely why the `sim.*` nodes shipped
@@ -39,14 +40,26 @@ fn a_drag_inside_the_range_never_moves_the_range() {
     use ph2d_panel_motion_params::ParamRow;
     let mut motion = MotionState::new();
 
-    let range_of = |motion: &MotionState, param: &str| -> Option<(f64, f64)> {
-        build_params_snapshot(motion)?
+    // The range AND the face it is expressed in. ⚠️ The face is not decoration
+    // here: a row's numbers are what the ARTIST reads, and `set_param` writes what
+    // the DOCUMENT stores. Feeding a displayed number straight back would put
+    // pixels into a metres param — the very defect the display boundary exists to
+    // prevent — and this gate would then report the resulting widened range as a
+    // feedback loop in the product. (It did, the first time this wave ran: the
+    // gate caught its own fixture skipping the conversion, which is the gate
+    // working.) Angle/Seed rows never convert, so they carry the neutral face.
+    let range_of = |motion: &MotionState,
+                    param: &str|
+     -> Option<(f64, f64, ph2d_panel_motion_params::RowDisplay)> {
+        build_params_snapshot(motion, ProjectSettings::default())?
             .rows
             .into_iter()
             .find_map(|r| match r {
-                ParamRow::Scalar(s) if s.name == param => Some((s.min, s.max)),
-                ParamRow::Angle(a) if a.name == param => Some((a.min_deg, a.max_deg)),
-                ParamRow::Seed(s) if s.name == param => Some((s.min, s.max)),
+                ParamRow::Scalar(s) if s.name == param => Some((s.min, s.max, s.display)),
+                ParamRow::Angle(a) if a.name == param => {
+                    Some((a.min_deg, a.max_deg, Default::default()))
+                }
+                ParamRow::Seed(s) if s.name == param => Some((s.min, s.max, Default::default())),
                 _ => None,
             })
     };
@@ -58,13 +71,13 @@ fn a_drag_inside_the_range_never_moves_the_range() {
             let Some(before) = range_of(&motion, param) else {
                 continue; // not a continuous row (colour / toggle / enum / text)
             };
-            let (min, max) = before;
+            let (min, max, face) = before;
             // Every place the knob can land, including the ends.
             for track in [0.0f64, 0.1, 0.25, 0.5, 0.75, 0.9, 1.0] {
-                motion
-                    .doc
-                    .graph
-                    .set_param(node, param, (min + track * (max - min)) as f32);
+                // What the panel would emit: land the affine in the DISPLAY face,
+                // then undo it — exactly the one door `events.rs` uses.
+                let stored = face.to_stored(min + track * (max - min));
+                motion.doc.graph.set_param(node, param, stored as f32);
                 let after = range_of(&motion, param).expect("the row survives its own edit");
                 assert_eq!(
                     after, before,
@@ -95,7 +108,7 @@ fn every_scalar_row_comes_from_a_declared_hint() {
         let tid = motion.doc.graph.node(node).unwrap().type_id();
         let hints = motion.registry.param_ui(tid);
         ph2d_panel_motion_graph::set_graph_selection(vec![node.0]);
-        let Some(snap) = build_params_snapshot(&motion) else {
+        let Some(snap) = build_params_snapshot(&motion, ProjectSettings::default()) else {
             continue;
         };
         for row in &snap.rows {

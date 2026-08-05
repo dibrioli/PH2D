@@ -6,6 +6,32 @@
 
 use super::*;
 
+/// **The one door from a scalar row back to the document** — round in the face
+/// the artist sees, then convert to what the document stores.
+///
+/// Both emit sites of [`on_value_changed`] (the typed chip and the slider's
+/// affine) go through it, so a number cannot reach `Graph::set_param` still
+/// wearing the artist's face. Two sites doing this by hand is one site away from
+/// a `gap_x` written in pixels into a param the cook reads as metres.
+///
+/// ⚠️ The rounding happens in DISPLAY space, because that is the face the chip
+/// snaps in. It never actually mixes with a conversion — `unit_of` refuses a
+/// converting unit on a whole-number widget precisely because scaling does not
+/// commute with rounding — but the order is written down so the pair cannot
+/// drift apart later.
+fn scalar_intent(snap: &ParamsSnapshot, row: &ScalarRow, displayed: f64) -> MotionParamIntent {
+    let shown = if row.integer {
+        displayed.round()
+    } else {
+        displayed
+    };
+    MotionParamIntent::SetParam {
+        node: snap.node,
+        param: row.name,
+        value: row.display.to_stored(shown),
+    }
+}
+
 /// A slider drag / chip commit → emit the scalar row value. A chip fires its own
 /// ValueChanged mirrored from the slider, so it is swallowed to avoid a double
 /// notify. Only Scalar rows own a pooled slider (Color reports via the picker).
@@ -40,11 +66,7 @@ pub(crate) fn on_value_changed(
             if row.driven || (typed >= row.min && typed <= row.max) {
                 return EventOutcome::Consumed;
             }
-            push_param_intent(MotionParamIntent::SetParam {
-                node: snap.node,
-                param: row.name,
-                value: if row.integer { typed.round() } else { typed },
-            });
+            push_param_intent(scalar_intent(snap, row, typed));
             return EventOutcome::Consumed;
         }
         // The standalone number box of an Angle / Seed row. An Angle param IS
@@ -75,11 +97,13 @@ pub(crate) fn on_value_changed(
                 return EventOutcome::Ignored;
             }
             let track = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.5);
-            push_param_intent(MotionParamIntent::SetParam {
-                node: snap.node,
-                param: row.name,
-                value: row_value(track, row.min, row.max, row.integer),
-            });
+            // `row.min` / `row.max` are the DISPLAY face, so the affine lands in
+            // it too and `scalar_intent` is the only thing that converts.
+            push_param_intent(scalar_intent(
+                snap,
+                row,
+                row_value(track, row.min, row.max, row.integer),
+            ));
             return EventOutcome::Consumed;
         }
     }

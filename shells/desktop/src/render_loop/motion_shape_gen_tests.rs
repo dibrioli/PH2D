@@ -8,6 +8,7 @@
 
 use super::{VecPathStore, build_shape_path, encode, read_params};
 use crate::motion_state::MotionState;
+use ph2d_editor::ProjectSettings;
 use ph2d_node_motion_shape::{ShapeKind, ShapeParams, shape_key};
 use ph2d_nodegraph::attr::{Column, Stream};
 
@@ -146,16 +147,19 @@ fn an_unpublished_handle_is_none_and_encodes_without_panic() {
 fn the_params_panel_shows_only_the_shapes_kind_params() {
     use ph2d_panel_motion_params::ParamRow;
     let names = |motion: &MotionState| -> Vec<&'static str> {
-        crate::render_loop::motion_bridge::params::build_params_snapshot(motion)
-            .expect("shape node resolvable")
-            .rows
-            .iter()
-            .filter_map(|r| match r {
-                ParamRow::Enum(e) => Some(e.name),
-                ParamRow::Scalar(s) => Some(s.name),
-                _ => None,
-            })
-            .collect()
+        crate::render_loop::motion_bridge::params::build_params_snapshot(
+            motion,
+            ProjectSettings::default(),
+        )
+        .expect("shape node resolvable")
+        .rows
+        .iter()
+        .filter_map(|r| match r {
+            ParamRow::Enum(e) => Some(e.name),
+            ParamRow::Scalar(s) => Some(s.name),
+            _ => None,
+        })
+        .collect()
     };
     let mut motion = MotionState::new();
     let n = motion.doc.graph.add_node("source.shape"); // default kind = Circle

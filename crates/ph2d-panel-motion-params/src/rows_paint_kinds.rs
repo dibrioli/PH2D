@@ -4,6 +4,7 @@
 //! is `rows_paint`'s import scope; the row structs come from the crate root.
 
 use super::*;
+use crate::snapshot::scalar_text;
 use crate::{ChannelsRow, ColorRow, EnumRow, ScalarRow, SourceRow, ToggleRow};
 
 /// **A row DIRIGIDA (doc 58) — o único caso que não é um widget.** O fio decide o número,
@@ -43,8 +44,10 @@ pub(super) fn paint_driven_row(
         text_system,
         scene,
         // The SAME formatter the chip uses — a second one would show the same
-        // number with two faces.
-        &ph2d_editor_core::widget::format_number(display),
+        // number with two faces. Since doc 88 that includes the UNIT: a Gap that
+        // read `100 px` unwired and `100` with a wire plugged in would look like
+        // the value changed when only its author did.
+        &scalar_text(row, display),
         inner_x + DEFAULT_LABEL_W,
         mid,
         label_font,
@@ -79,12 +82,19 @@ pub(super) fn paint_scalar_row(
         .map(|(_, v)| v)
         .unwrap_or(normalized_track(row.value, row.min, span));
     let display = row_value(track, row.min, row.max, row.integer);
+    // The unit face, when the param has one. `None` for a unitless row keeps the
+    // chip on its own formatter — byte-identical to before doc 88.
+    //
+    // The override loses to a focused buffer inside `paint_number_chip`, which is
+    // what keeps the suffix from fighting the caret: the artist types `250` and
+    // sees `250`; unfocused it reads `250 px`.
+    let suffixed = (!row.display.suffix.is_empty()).then(|| scalar_text(row, display));
     let used = paint_slider_with_chip_layout_adaptive(
         Rect::new(inner_x, y, inner_w, ROW_H_PX),
         &row.label,
         track,
         display,
-        None,
+        suffixed.as_deref(),
         slider_id,
         chip_id,
         DEFAULT_LABEL_W,

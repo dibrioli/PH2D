@@ -5,6 +5,7 @@
 //! `channel_range_override`) stays with `build_params_snapshot`, its only caller.
 
 use crate::motion_state::MotionState;
+use ph2d_node_registry::ParamUnit;
 
 /// Reset a behaviour node's magnitude params to a sensible default for the newly
 /// selected channel (#10 consistency). Switching what a stagger/oscillator drives
@@ -49,6 +50,28 @@ pub(in crate::render_loop::motion_bridge) fn apply_channel_presets(
 /// The `channel` enum's Rotation option (see the behaviours' `channel` hint:
 /// `0` X, `1` Y, `2` Rotation, `3` Size).
 pub(super) const CHANNEL_ROTATION: i32 = 2;
+
+/// **What a magnitude MEANS on the channel it drives** (doc 88) — the resolution
+/// of [`ParamUnit::FromChannel`], living next to the ranges and presets that
+/// already answer the same question for their own halves.
+///
+/// This is the whole reason the `FromChannel` variant exists: a stagger's `min`
+/// is metres on Position, DEGREES on Rotation and a bare scale factor on Size,
+/// and a boundary that converted all three by `pixels_per_meter` would turn the
+/// `±90` preset into `±9000`. The three answers were already written down here
+/// twice (once as a range, once as a preset); this is the third face of the one
+/// fact, deliberately in the same file so they cannot drift.
+///
+/// An unknown index falls back to [`ParamUnit::None`] — a visible gap is worth
+/// more than a wrong scale.
+pub(super) fn channel_unit(channel: i32) -> ParamUnit {
+    match channel {
+        0 | 1 => ParamUnit::Length,           // Position X / Y: world metres
+        CHANNEL_ROTATION => ParamUnit::Angle, // the `rot` column: degrees
+        3 => ParamUnit::Ratio,                // Size: a scale delta, dimensionless
+        _ => ParamUnit::None,
+    }
+}
 
 /// Stagger `(min, max)` ramp endpoints per channel. The Rotation channel writes
 /// the `rot` stream column, whose unit is **degrees** (the app's authored-angle

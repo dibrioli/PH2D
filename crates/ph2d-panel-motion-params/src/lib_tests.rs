@@ -37,6 +37,7 @@ fn params_and_intent_channels_round_trip() {
             step: 1.0,
             integer: true,
             driven: false,
+            display: RowDisplay::default(),
         })],
     }));
     let got = current_params().expect("published");

@@ -41,6 +41,13 @@ mod tests_gradient;
 #[path = "lib_range_tests.rs"]
 mod tests_range;
 
+/// The **display face** gates (doc 88) — the sibling of `tests_range` on the
+/// other axis: that one pins how far the box reaches, this one pins what the
+/// document hears when a number comes back from it.
+#[cfg(test)]
+#[path = "lib_unit_tests.rs"]
+mod tests_unit;
+
 use events::{on_click, on_text_commit, on_toggled, on_value_changed};
 use number_rows::{
     ANGLE_DECIMALS, SEED_DECIMALS, mirror_number, next_seed, number_is_typing, number_value,
@@ -48,8 +55,8 @@ use number_rows::{
 };
 pub use snapshot::{
     AngleRow, ChannelsRow, ColorRow, CurveRow, EnumRow, GradientRow, MotionParamIntent, ParamRow,
-    ParamsSnapshot, ScalarRow, SeedRow, SourceRow, TextRow, ToggleRow, drain_param_intents,
-    param_grad_swatch_id, param_swatch_id, set_current_params,
+    ParamsSnapshot, RowDisplay, ScalarRow, SeedRow, SourceRow, TextRow, ToggleRow,
+    drain_param_intents, param_grad_swatch_id, param_swatch_id, scalar_text, set_current_params,
 };
 use snapshot::{
     CHANNELS_EXTRA_BASE, MAX_ENUM_OPTIONS, MAX_PARAM_ROWS, current_params, param_checkbox_id,

@@ -1418,6 +1418,37 @@ pele faz é o que os outros dez já faziam: a moldura cresce, os tokens de detal
 corpo da letra) ficam em px. Um widget grande é um widget grande, não uma foto ampliada de um
 pequeno.
 
+### 2ª RODADA (2026-08-05) — a 1ª parou a meio caminho
+
+Enio, com foto: *"por que o gizmo não se ajusta perfeitamente na vertical para Slider e Checkbox?
+Acho que seria interessante se ajustar para fins de Snap perfeito e também manter o padrão dos
+outros Widgets."*
+
+⚠️ **A foto media exactamente a lei da 1ª rodada.** Ela fez a tinta CRESCER com a moldura, mas
+parou nas proporções do painel — e as duas metades batem ao décimo:
+
+| | previsto pela lei | medido na foto |
+|---|---:|---:|
+| caixa do checkbox | **64,3%** da moldura | ~94/140 = 0,67 |
+| trilha do slider | **25,0%** | ~33/135 = 0,24 |
+
+O que sobrava era o **padding de uma LINHA** — e no canvas não há linha. A consequência não é
+estética: **o gizmo abraça o RETÂNGULO**, então a folga vertical é vista a cada gesto e o **snap
+encaixa a moldura enquanto o artista vê a tinta noutro lugar**.
+
+⇒ **A PELE PREENCHE A MOLDURA. Uma frase, doze tipos** — `box_px = h.min(w)`, `track_px = h`. A lei
+ficou mais SIMPLES que a da 1ª rodada, não mais complexa: os dois tipos deixaram de ser exceção.
+
+⚠️ **O `min` da LARGURA é uma consequência nova, e ele mora na PELE:** a caixa é quadrada, então
+pedir a altura numa moldura alta e estreita a faria derramar **para fora do gizmo** — o oposto
+exacto do que a rodada pede. O pintor continua a limitar só pela altura (a lei que todo painel usa,
+e que uma linha estreita nunca exercita); alargá-la seria mover o número do consumidor errado outra
+vez.
+
+⚠️ **O token não deixa de significar — ele muda de papel:** era *uma fração da linha*, passa a ser
+o **tamanho natural do objeto**. Uma moldura da altura do token pinta exactamente a tinta que o app
+pinta numa linha; o que mudou foi o que a moldura MEDE (o widget, não a linha que o hospeda).
+
 ### O canal, e por que ele não é uma segunda porta para a aparência
 
 `Checkbox::box_px: Option<f32>` e `Slider::track_px: Option<f32>`, **`None` = a lei de todo painel,
@@ -1427,9 +1458,10 @@ um consumidor só: `paint_widget_skin`, a porta que já toma as decisões por-ti
 uma trilha abaixo de `TRACK_MIN_PX` é invisível seja quem for o chamador, e a moldura continua a
 limitar a caixa — ela nunca transborda o que a contém.
 
-### Gates (10 mutações, 10 sangram)
+### Gates (13 mutações, 13 sangram)
 
-`at_the_natural_row_height_the_skin_is_the_panel_to_the_byte` (a identidade que mantém o token) ·
+`the_skin_asks_for_the_whole_frame` (a lei da 2ª rodada, byte-a-byte contra o pintor a quem se pede
+a moldura inteira — pedir 64%, 25% ou 2× fica vermelho) · `a_square_box_never_spills_out_of_a_narrow_frame` ·
 `the_checkbox_box_grows_with_the_frame` / `the_slider_track_grows_with_the_frame` (o repro — oráculo
 de TINTA numa **moldura FIXA**, porque com molduras diferentes toda cena difere de qualquer maneira)
 · `without_an_override_the_box_is_the_token` / `without_an_override_the_track_is_the_panel_law` (a
@@ -1440,6 +1472,9 @@ rota do painel, escrita por extenso) · `an_override_escapes_the_ceiling_but_nev
 glifo do rótulo, que é **relativo à run** e media `0` nas duas molduras; e o gate do `.min` tentava
 disparar pela pele, cuja razão é `18/28 ≈ 0,64` — sempre menor que 1, logo **ela nunca morde o
 teto**, e o gate seria verde por vácuo. Ele passou a medir o PINTOR, que é quem tem o guard.
+
+⚠️ **E a mutação que reinstala a 1ª rodada derruba TRÊS gates** — é o que impede alguém de "voltar
+ao meio caminho" achando que o padding da linha era desenho.
 
 ### O que NÃO fazer
 

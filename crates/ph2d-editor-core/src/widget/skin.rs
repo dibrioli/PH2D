@@ -68,37 +68,44 @@ const PREVIEW_VALUE: f32 = 0.5;
 /// do painel nativo no store que a shell possui.
 const PREVIEW_ID: NodeId = NodeId(0);
 
-/// **A moldura é uma CAIXA: a pele PREENCHE o que o artista desenhou** (BUGS_vector #26).
+/// **A PELE PREENCHE A MOLDURA — uma frase, doze tipos** (BUGS_vector #26).
 ///
-/// Dez dos doze tipos já faziam isso. Os outros dois carregavam um TETO — `CHECKBOX_BOX_PX.min(h)`
-/// e `(h·0,25).clamp(2, 8)` — e o teto é a **política de LINHA de um painel**, não uma propriedade
-/// do widget: ali toda linha tem a mesma altura, todo checkbox tem o mesmo tamanho, e é isso que
-/// faz um formulário ler como formulário. O canvas não herda essa política.
+/// Dez dos doze já faziam isso. Os outros dois desenhavam o widget **centrado dentro** dela — a
+/// caixa do checkbox a 64,3% da altura, a trilha do slider a 25% —, e o resto era o *padding* de
+/// uma LINHA de painel. Numa linha isso está certo: ali toda linha tem a mesma altura, todo
+/// checkbox tem o mesmo tamanho, e é isso que faz um formulário ler como formulário.
 ///
-/// ⚠️ **E o preço do teto foi MEDIDO, não deduzido:** a pele é pintada em px de **TELA** (o
-/// `frame_of` da shell projeta a forma pela câmera), então com o teto o checkbox media **18 px em
-/// TODA moldura de 28 a 192** — *dar zoom crescia o retângulo e não crescia o widget*. Era esse o
-/// *"o checkbox sempre fica pequeno"* do report, e a mesma frase explica o *"o Slider tem sempre
-/// altura fixa"* (a trilha pinava em 8 px a partir de 32 de moldura).
+/// ⚠️ **No canvas não há linha, e é isso que o torna um defeito visível:** o gizmo abraça o
+/// RETÂNGULO, então uma pele que ocupa 25% dele deixa uma folga vertical que o artista vê a cada
+/// gesto — e que faz o **snap encaixar no lugar errado**, porque o que encaixa é a moldura e o
+/// que se vê é a tinta. Enio, 2026-08-05: *"por que o gizmo não se ajusta perfeitamente na
+/// vertical … seria interessante se ajustar para fins de snap perfeito e também manter o padrão
+/// dos outros widgets"*.
 ///
-/// ⚠️ **A razão é formada como `h / ROW_H_PX`, nunca como `CHECKBOX_BOX_PX / ROW_H_PX`, e a ordem
-/// é load-bearing:** `h / h` é `1.0` EXATO em IEEE-754, então na altura natural de uma linha a
-/// pele é byte-idêntica ao painel **por construção**. Com os valores de hoje (18 e 28) a forma
-/// ingénua também acerta — por acidente aritmético, medido —, e é a construção que sobrevive ao
-/// próximo valor de token.
+/// ⚠️ **A primeira correção parou a meio caminho** e a foto do report media exactamente a lei
+/// dela: 64,3% e 25,0% previstos, `~67%` e `~24%` medidos na tela. Ela curou *o widget não cresce
+/// com a moldura*; esta cura *o widget não é a moldura*. O padding de linha não é do canvas.
 ///
-/// ⛔ **O que isto NÃO é:** não mexe em `CHECKBOX_BOX_PX` nem no teto do painel. Eles governam
-/// TODOS os painéis do app, e movê-los para agradar ao canvas re-dimensionaria a interface inteira
-/// — mover o número do consumidor errado. `None` continua a ser a lei de todo painel, ao bit.
+/// ⛔ **O que isto continua NÃO sendo:** não mexe em `CHECKBOX_BOX_PX` nem no teto do painel. Eles
+/// governam TODOS os painéis do app, e movê-los para agradar ao canvas re-dimensionaria a
+/// interface inteira — mover o número do consumidor errado. `None` continua a ser a lei de todo
+/// painel, **ao bit**, e a mutação que a remove derruba três gates.
+///
+/// ⚠️ **O token não deixa de significar: ele passa a ser o TAMANHO NATURAL do objeto.** Uma
+/// moldura da altura do token pinta exactamente a tinta que o app pinta numa linha — o que muda é
+/// que a moldura passou a medir o *widget* em vez da *linha que o hospeda*.
 fn skin_checkbox_box_px(rect: Rect) -> f32 {
-    ph2d_tokens::CHECKBOX_BOX_PX * (rect.h / ph2d_tokens::ROW_H_PX)
+    // A caixa é QUADRADA, então preencher a altura só é possível enquanto ela couber na largura.
+    // ⚠️ O `min` da largura mora AQUI e não no pintor: o pintor limita pela altura (a lei que todo
+    // painel usa e que uma linha estreita nunca exercita), e alargá-la mudaria a rota do painel
+    // para agradar ao canvas — exactamente o que a nota acima recusa.
+    rect.h.min(rect.w)
 }
 
-/// A espessura da trilha do slider numa moldura de canvas: os MESMOS 25% do painel, **sem o teto
-/// de linha**. Irmã de [`skin_checkbox_box_px`], e igualmente byte-idêntica ao painel em qualquer
-/// moldura que o teto não morde (até 32 px) — o piso de legibilidade continua sendo do pintor.
+/// A espessura da trilha do slider numa moldura de canvas: a moldura inteira. Irmã de
+/// [`skin_checkbox_box_px`] e a mesma frase — o que sobrava era o padding da linha.
 fn skin_slider_track_px(rect: Rect) -> f32 {
-    rect.h * 0.25 // LITERAL-PX-OK: the panel's own 25% geometry ratio, minus the row ceiling
+    rect.h
 }
 
 /// **Que widget do catálogo esta forma veste.**

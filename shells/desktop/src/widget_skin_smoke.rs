@@ -11,8 +11,10 @@
 //! transforma.
 //!
 //! ⚠️ O **Checkbox** entrou com uma moldura deliberadamente ALTA (BUGS_vector #26): ele e o
-//! Slider eram os dois únicos tipos que não preenchiam a moldura, e como a pele é pintada em px
-//! de TELA isso significava que **dar zoom crescia o retângulo e não crescia o widget**.
+//! Slider eram os dois únicos tipos que não preenchiam a moldura, e o preço tinha duas metades —
+//! dar zoom crescia o retângulo e não crescia o widget, e o **gizmo não abraçava a tinta**, então
+//! o snap encaixava a moldura enquanto o artista via o desenho noutro lugar. Numa foto lado a
+//! lado com os outros quatro, a folga vertical é a coisa mais visível da cena.
 //!
 //! ⚠️ **E ela imprime o número que a torna válida:** quantos tipos o catálogo oferece. Se for
 //! zero, PARE — o catálogo não chegou, e o resto do roteiro não diz nada.
@@ -127,17 +129,20 @@ fn announce(app: &mut crate::App) {
     eprintln!("  5. **Back to Drawing** devolve o retangulo — com a cor original intacta.");
     eprintln!("  6. ⚠️ **O TEMA**: aperte **M** para ciclar o tema. Os quatro controles do canvas");
     eprintln!("     mudam junto com os paineis — e' a ponte token->widget atravessando o canvas.");
-    eprintln!("  7. Mova e escale uma forma vestida: o controle SEGUE a moldura — inclusive o");
-    eprintln!("     CHECKBOX e o SLIDER, que eram os dois unicos que nao seguiam (BUGS #26).");
-    eprintln!("     ⚠️ Compare a caixa do 'Grid' (moldura alta) com a de um checkbox do");
-    eprintln!("     Inspector: a moldura e' uma CAIXA, e a pele a preenche.");
-    eprintln!("  8. ⚠️ **O QUE NAO ESCALA, e e' decisao:** o RAIO DE CANTO, a espessura da borda");
+    eprintln!("  7. ⚠️ **A PROVA DO #26**: selecione o 'Grid' e o 'Opacity'. O GIZMO ABRACA A");
+    eprintln!("     TINTA na vertical — sem folga. Eram os dois unicos tipos que desenhavam o");
+    eprintln!("     widget CENTRADO dentro da moldura (a caixa a 64%, a trilha a 25%), e o que");
+    eprintln!("     sobrava era o padding de uma LINHA de painel. No canvas nao ha linha.");
+    eprintln!("  8. Escale os dois pela alca do meio: a tinta acompanha a moldura passo a passo,");
+    eprintln!("     e o SNAP encaixa onde o gizmo mostra — antes ele encaixava a moldura e o");
+    eprintln!("     artista via a tinta noutro lugar.");
+    eprintln!("  9. ⚠️ **O QUE NAO ESCALA, e e' decisao:** o RAIO DE CANTO, a espessura da borda");
     eprintln!("     e o corpo da letra continuam em px — eles sao TOKENS, e um token nao se mede");
     eprintln!("     em fracoes de moldura. Um widget grande e' um widget grande, nao uma foto");
     eprintln!("     ampliada de um pequeno.");
-    eprintln!("  9. **O CONTROLE do #26**: reduza o 'Grid' ate' a altura de uma linha de painel.");
-    eprintln!("     Ali a caixa tem de medir EXACTAMENTE o que mede no Inspector — e' o token a");
-    eprintln!("     continuar a ser o token.");
+    eprintln!("  10. **O CONTROLE**: os checkboxes do Inspector NAO se mexeram. A lei do painel");
+    eprintln!("      e' a mesma de sempre, ao bit — o que mudou foi so' o que a moldura MEDE:");
+    eprintln!("      o widget, e nao a linha que o hospeda.");
 }
 
 #[cfg(test)]

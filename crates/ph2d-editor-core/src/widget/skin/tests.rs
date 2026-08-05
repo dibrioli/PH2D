@@ -233,62 +233,87 @@ fn row_h() -> f32 {
     ph2d_tokens::ROW_H_PX
 }
 
-/// **O TOKEN CONTINUA A SER O TOKEN.** Na altura natural de uma linha, a pele do canvas emite
-/// exactamente o que o painel emite — nos dois tipos que a wave #26 destetou.
+/// **A PELE PREENCHE A MOLDURA** — a lei da 2ª rodada do #26, afirmada onde ela é decidida.
 ///
-/// ⚠️ **Este é o gate que torna a lei nova honesta.** Sem ele, "a pele preenche a moldura" seria
-/// indistinguível de "a pele inventou o próprio tamanho": o artista veria um checkbox que o app
-/// não sabe desenhar. Ele é também o que recusa a cura fácil — escalar o fragmento por um
-/// `Affine` —, porque escalar move a caixa E o raio de canto, e o raio é um token que não se
-/// mede em frações de moldura.
+/// ⚠️ O oráculo é **byte-a-byte contra o pintor a quem se pede a moldura inteira**: se a pele
+/// pedir 64% (a 1ª rodada), 25% (o mundo antes dela) ou 2×, este gate fica vermelho. É a forma
+/// mais estreita de dizer *"o gizmo abraça a tinta"* sem decodificar a geometria da cena.
 ///
-/// ⚠️ A identidade é EXACTA por construção, não por sorte: a razão é `h / ROW_H_PX`, e `h / h` é
-/// `1.0` ao bit em IEEE-754.
+/// ⚠️ E ele é o irmão de `the_skin_paints_exactly_what_the_native_painter_paints`, que faz a
+/// mesma afirmação para os dez tipos que nunca precisaram do canal: **os doze passam a ter uma
+/// lei só**.
 #[test]
-fn at_the_natural_row_height_the_skin_is_the_panel_to_the_byte() {
-    let r = Rect::new(10.0, 20.0, 160.0, row_h());
+fn the_skin_asks_for_the_whole_frame() {
+    let tall = Rect::new(10.0, 20.0, 400.0, 140.0);
     let mut ts = text();
 
-    let mut a = ph2d_vector::VectorScene::new();
-    paint_checkbox(
-        &Checkbox::new(NodeId(0), "Snap"),
-        r,
-        &mut a,
-        &mut ts,
-        Theme::Forge,
-    );
-    let mut b = ph2d_vector::VectorScene::new();
+    let mut want = ph2d_vector::VectorScene::new();
+    let mut c = Checkbox::new(NodeId(0), "Grid");
+    c.box_px = Some(tall.h.min(tall.w));
+    paint_checkbox(&c, tall, &mut want, &mut ts, Theme::Forge);
+    let mut got = ph2d_vector::VectorScene::new();
     paint_widget_skin(
         WidgetKind::Checkbox,
-        "Snap",
-        r,
-        &mut b,
+        "Grid",
+        tall,
+        &mut got,
         &mut ts,
         Theme::Forge,
     );
     assert_eq!(
-        print(&a),
-        print(&b),
-        "na altura natural a pele do Checkbox divergiu do painel — o token deixou de ser o token"
+        print(&want),
+        print(&got),
+        "a pele do Checkbox nao pediu a moldura inteira — sobra folga vertical, e o gizmo deixa \
+         de abracar a tinta"
     );
 
-    let mut s = Slider::new(NodeId(0), "Opacity");
-    s.value = PREVIEW_VALUE;
-    let mut a = ph2d_vector::VectorScene::new();
-    paint_slider(&s, r, &mut a, Theme::Forge);
-    let mut b = ph2d_vector::VectorScene::new();
+    let mut want = ph2d_vector::VectorScene::new();
+    let mut sl = Slider::new(NodeId(0), "Opacity");
+    sl.value = PREVIEW_VALUE;
+    sl.track_px = Some(tall.h);
+    paint_slider(&sl, tall, &mut want, Theme::Forge);
+    let mut got = ph2d_vector::VectorScene::new();
     paint_widget_skin(
         WidgetKind::Slider,
         "Opacity",
-        r,
-        &mut b,
+        tall,
+        &mut got,
         &mut ts,
         Theme::Forge,
     );
     assert_eq!(
-        print(&a),
-        print(&b),
-        "na altura natural a pele do Slider divergiu do painel"
+        print(&want),
+        print(&got),
+        "a pele do Slider nao pediu a moldura inteira"
+    );
+
+    // **O TOKEN passou a ser o tamanho NATURAL do objeto**: uma moldura da altura dele pinta
+    // exactamente a tinta que o app pinta numa linha de painel.
+    let natural = Rect::new(0.0, 0.0, 400.0, ph2d_tokens::CHECKBOX_BOX_PX);
+    assert_eq!(
+        skin_checkbox_box_px(natural),
+        ph2d_tokens::CHECKBOX_BOX_PX,
+        "uma moldura da altura do token deixou de pintar a caixa do token"
+    );
+}
+
+/// **Uma caixa QUADRADA não transborda uma moldura estreita.**
+///
+/// ⚠️ Este gate nasceu de uma consequência da lei nova que a lei antiga não tinha: com a caixa
+/// capada em 18 px ela quase nunca era mais larga que a moldura; pedindo a ALTURA, uma moldura
+/// alta e estreita a faria derramar para fora do gizmo — o oposto exacto do que a 2ª rodada
+/// pede.
+#[test]
+fn a_square_box_never_spills_out_of_a_narrow_frame() {
+    let narrow = Rect::new(0.0, 0.0, 40.0, 300.0);
+    assert_eq!(
+        skin_checkbox_box_px(narrow),
+        narrow.w,
+        "a caixa pediu mais do que a moldura tem de largura"
+    );
+    assert!(
+        narrow.w < narrow.h,
+        "a fixture nao contem o fenomeno: a moldura nao e' mais estreita que alta"
     );
 }
 
@@ -333,15 +358,8 @@ fn the_checkbox_box_grows_with_the_frame() {
          a politica de linha do painel, e dar zoom nao cresce o widget"
     );
 
-    // …e o crescimento é a razão da moldura, não um degrau arbitrário.
-    assert_eq!(
-        skin_checkbox_box_px(Rect::new(0.0, 0.0, 400.0, row_h())),
-        ph2d_tokens::CHECKBOX_BOX_PX
-    );
-    assert_eq!(
-        skin_checkbox_box_px(tall),
-        ph2d_tokens::CHECKBOX_BOX_PX * 4.0
-    );
+    // …e o que ela pede é a moldura, não uma fração dela.
+    assert_eq!(skin_checkbox_box_px(tall), tall.h);
 }
 
 /// **O irmão do slider.** *"O Slider tem sempre altura fixa"* — a trilha pinava no teto de linha
@@ -375,7 +393,7 @@ fn the_slider_track_grows_with_the_frame() {
         print(&grown),
         "a trilha da pele saiu identica a' do teto de linha — o canvas herdou a politica do painel"
     );
-    assert_eq!(skin_slider_track_px(tall), tall.h * 0.25);
+    assert_eq!(skin_slider_track_px(tall), tall.h);
 }
 
 /// **A moldura continua a ser o TETO** — uma caixa nunca transborda o que a contém.

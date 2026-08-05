@@ -36,6 +36,7 @@ fn capture(sim: &mut SimWorld, vec: &VecScene, reg: &ComponentRegistry) -> Proje
         vec,
         &FlipDoc::new(),
         &ph2d_guides::GuideSet::default(),
+        &ph2d_ui_state::StateSets::default(),
         reg,
         &mut prop,
         &mut wl,
@@ -119,6 +120,7 @@ fn push_undo_then_undo_redo_alternate() {
         vec: vec1,
         flip: FlipDoc::new(),
         guides: ph2d_guides::GuideSet::default(),
+        ui_states: ph2d_ui_state::StateSets::default(),
     };
     stack.push_undo(s0.clone());
     assert!(stack.can_undo() && !stack.can_redo());
@@ -193,6 +195,7 @@ fn flip_survives_capture_restore_and_rebuilds_bridge() {
             &vec,
             &flip,
             &ph2d_guides::GuideSet::default(),
+            &ph2d_ui_state::StateSets::default(),
             &reg,
             &mut prop,
             &mut wl,
@@ -216,6 +219,7 @@ fn flip_survives_capture_restore_and_rebuilds_bridge() {
         &vec,
         &rflip,
         &ph2d_guides::GuideSet::default(),
+        &ph2d_ui_state::StateSets::default(),
         &reg,
         &mut prop,
         &mut wl,
@@ -225,6 +229,7 @@ fn flip_survives_capture_restore_and_rebuilds_bridge() {
         &vec,
         &rflip,
         &ph2d_guides::GuideSet::default(),
+        &ph2d_ui_state::StateSets::default(),
         &reg,
         &mut prop,
         &mut wl,

@@ -199,7 +199,13 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // posicional ⇒ um save v54 lido por v55 chega ao fim dos bytes neles.
         // ⚠️ A linha escreveu 52; o valor CONTADO é 55 — ela trouxe DOIS degraus
         // (o `custom` do W-JointCustom e este), e o handoff dela contou UM só.
-        (55, 13, 14),
+        // PROJECT 55→56: o `ProjectState` ganhou `ui_states`, a tabela de estados de UI
+        // (plano UI/UX W7). Campo apendado ao estado que viaja DENTRO do `ProjectFile` — o
+        // mesmo raciocínio posicional do `guides` (v49), e o mesmo motivo de morar ali: o
+        // `ProjectState` é a unidade do UNDO, e gravar um estado tem de desfazer.
+        // ⚠️ Nenhum gate VÊ um campo apendado — nenhuma constante se move —, então este
+        // degrau existe porque foi escrito à mão. Quem apende, bumpa, no MESMO commit.
+        (56, 13, 14),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

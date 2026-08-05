@@ -54,10 +54,12 @@
 
 mod machine;
 mod pose;
+mod sets;
 mod transition;
 
 pub use machine::Machine;
 pub use pose::{ObjectPose, UiState};
+pub use sets::StateSets;
 pub use transition::Transition;
 
 #[cfg(test)]

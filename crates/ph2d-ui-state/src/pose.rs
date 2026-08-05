@@ -1,6 +1,6 @@
 //! **A POSE** — tudo o que um objeto pode ter de diferente entre dois estados, e nada mais.
 
-use ph2d_vec_scene::{VecPath, VecPathId};
+use ph2d_vec_scene::{Paint, StrokeSpec, VecPath, VecPathId};
 use serde::{Deserialize, Serialize};
 
 /// Onde um objeto está, como ele se parece, e que forma ele tem — num estado.
@@ -10,10 +10,14 @@ use serde::{Deserialize, Serialize};
 /// escala negativa vira cisalhamento. Aqui a representação **apaga o caso especial** — não existe
 /// matriz para alguém lerpar por engano.
 ///
-/// ⚠️ **A geometria é opcional, e o `None` é o caso comum.** Um botão que muda de cor no hover tem
-/// a mesma forma nos dois estados, e é isso que lhe poupa **0,64 ms por objeto** (ver o doc da
-/// crate). `None` significa *este objeto não guarda forma própria neste estado* — a forma vem da
-/// cena.
+/// ⚠️ **A TINTA é campo de primeira classe, e não vive dentro da geometria.** Foi a autoria que
+/// expôs isto: um botão que só muda de cor no hover tem a MESMA forma nos dois estados, então
+/// `geometry` é `None` — e uma tinta que morasse lá dentro não teria por onde viajar. São dois
+/// fatos independentes sobre um objeto, e um estado precisa de poder autorar um sem o outro.
+///
+/// ⚠️ **A geometria é opcional, e o `None` é o caso comum.** É isso que lhe poupa **0,64 ms por
+/// objeto** (ver o doc da crate). `None` significa *este objeto não muda de forma neste estado* —
+/// a forma vem da cena.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct ObjectPose {
     /// **A identidade, e a única chave de casamento.** Nunca o nome, nunca o índice.
@@ -24,6 +28,11 @@ pub struct ObjectPose {
     pub scale: [f64; 2],
     /// `0` = invisível, `1` = opaco. É o canal que carrega o fade de quem entra e de quem sai.
     pub opacity: f32,
+    /// O preenchimento neste estado. `None` = sem preenchimento (não *"herda"*: um estado que
+    /// autora um objeto autora a tinta dele).
+    pub fill: Option<Paint>,
+    /// O traço neste estado.
+    pub stroke: Option<StrokeSpec>,
     /// A forma, quando este estado a autora. `None` ⇒ a cena manda, e nenhum `Plan` é construído.
     pub geometry: Option<VecPath>,
 }
@@ -38,6 +47,8 @@ impl ObjectPose {
             rotation: 0.0,
             scale: [1.0, 1.0],
             opacity: 1.0,
+            fill: None,
+            stroke: None,
             geometry: None,
         }
     }

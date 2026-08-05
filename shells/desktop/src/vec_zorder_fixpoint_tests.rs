@@ -91,6 +91,7 @@ impl Frame {
             scene,
             &FlipDoc::new(),
             &ph2d_guides::GuideSet::default(),
+            &ph2d_ui_state::StateSets::default(),
             &self.reg,
             &mut self.prop,
             &mut self.worklist,

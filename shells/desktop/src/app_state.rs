@@ -130,6 +130,14 @@ pub(crate) struct AppGfx {
     /// Não são entidades ECS de propósito — uma guia herdaria Hierarquia, gizmo, marquee e
     /// z-order, e cada um deles seria um comportamento a SUPRIMIR.
     pub(crate) guides: ph2d_guides::GuideSet,
+    /// Os **ESTADOS de UI** (plano UI/UX W7) — idle/hover/press por objeto, e a pose que a cena
+    /// tem entre dois deles.
+    ///
+    /// Aqui ao lado das guias e pela mesma razão: viajam no [`crate::undo::ProjectState`], então
+    /// gravar um estado desfaz e salva de graça. ⚠️ E a chave é o `VecPathId` do hospedeiro,
+    /// nunca a entidade — bits de entidade são id de ALOCAÇÃO e o undo respawna tudo com bits
+    /// novos, o que perderia a tabela no primeiro Ctrl+Z.
+    pub(crate) ui_states: ph2d_ui_state::StateSets,
     /// ADR-0114: cena Flip (animação quadro-a-quadro). Documento puro
     /// (`ph2d-flip`); cada objeto vira uma entidade na Hierarquia via
     /// `FlipObjectRef`, ponte mantida por `flip_entities::sync`. Mirror do

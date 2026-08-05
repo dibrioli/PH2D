@@ -26,3 +26,8 @@ ph2d-anim = { path = "../ph2d-anim" }
 ph2d-vec-scene = { path = "../ph2d-vec-scene" }
 ph2d-vec-blend = { path = "../ph2d-vec-blend" }
 serde = { version = "1", features = ["derive"] }
+
+[dev-dependencies]
+# Só o gate de round-trip + o de ORDEM DETERMINISTA: o wire real e escrito pela shell (o
+# `ProjectFile`), e estes testes conferem que o TIPO atravessa o mesmo formato que ela usa.
+postcard = { version = "1", features = ["alloc"] }

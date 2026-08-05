@@ -1,6 +1,7 @@
 //! Gates do **Smart Animate** (plano UI/UX W7).
 
 use super::*;
+use crate::StateSets;
 use ph2d_vec_scene::{Paint, Rgba8, VecPath, ellipse, rectangle};
 
 fn rect(id: u64) -> VecPath {
@@ -183,19 +184,14 @@ fn the_shape_goes_through_the_one_blend_engine() {
 /// formas iguais, contra 0,0001 ms de um passo. Vinte objetos = **12,79 ms**, 77% de um quadro.
 #[test]
 fn a_colour_only_change_builds_no_plan() {
-    let mut ga = rect(1);
-    ga.fill = Some(Paint::Solid(Rgba8::new(30, 90, 200, 255)));
-    let mut gb = ga.clone();
-    gb.fill = Some(Paint::Solid(Rgba8::new(230, 200, 40, 255)));
-
     let mut a = UiState::new("idle");
     a.objects = vec![ObjectPose {
-        geometry: Some(ga),
+        fill: Some(Paint::Solid(Rgba8::new(30, 90, 200, 255))),
         ..posed(1)
     }];
     let mut b = UiState::new("hover");
     b.objects = vec![ObjectPose {
-        geometry: Some(gb),
+        fill: Some(Paint::Solid(Rgba8::new(230, 200, 40, 255))),
         ..posed(1)
     }];
 
@@ -207,8 +203,7 @@ fn a_colour_only_change_builds_no_plan() {
     );
 
     // …e a cor ANDA mesmo assim, pela porta OKLab do Blend.
-    let mid = tr.at(0.5)[0].geometry.clone().expect("forma");
-    let Some(Paint::Solid(c)) = mid.fill else {
+    let Some(Paint::Solid(c)) = tr.at(0.5)[0].fill.clone() else {
         panic!("a tinta do meio nao e' solida")
     };
     assert_ne!(c, Rgba8::new(30, 90, 200, 255), "a cor nao saiu da origem");
@@ -223,27 +218,18 @@ fn a_colour_only_change_builds_no_plan() {
 fn the_colour_path_is_perceptual_not_muddy() {
     let blue = Rgba8::new(0, 40, 220, 255);
     let yellow = Rgba8::new(240, 220, 0, 255);
-    let mut ga = rect(1);
-    ga.fill = Some(Paint::Solid(blue));
-    let mut gb = ga.clone();
-    gb.fill = Some(Paint::Solid(yellow));
-
     let mut a = UiState::new("a");
     a.objects = vec![ObjectPose {
-        geometry: Some(ga),
+        fill: Some(Paint::Solid(blue)),
         ..posed(1)
     }];
     let mut b = UiState::new("b");
     b.objects = vec![ObjectPose {
-        geometry: Some(gb),
+        fill: Some(Paint::Solid(yellow)),
         ..posed(1)
     }];
 
-    let Some(Paint::Solid(mid)) = Transition::new(&a, &b).at(0.5)[0]
-        .geometry
-        .as_ref()
-        .and_then(|g| g.fill.clone())
-    else {
+    let Some(Paint::Solid(mid)) = Transition::new(&a, &b).at(0.5)[0].fill.clone() else {
         panic!("sem tinta no meio")
     };
 
@@ -275,4 +261,117 @@ fn overshoot_clamps_instead_of_breaking() {
     let tr = Transition::new(&a, &b);
     assert_eq!(tr.at(1.4)[0].translation, [10.0, 0.0]);
     assert_eq!(tr.at(-0.3)[0].translation, [0.0, 0.0]);
+}
+
+/// **A forma que sai do `Plan` usa a tinta da POSE, não a que o `Plan` interpolou por conta.**
+///
+/// ⚠️ São dois números para a mesma pergunta, e quem está a jusante não pode ter de escolher. A
+/// tinta é sempre a da pose (uma porta), e a geometria sai daqui **auto-consistente** com ela.
+#[test]
+fn the_morphed_shape_wears_the_poses_own_paint() {
+    let mut a_geom = rect(1);
+    // Uma tinta DELIBERADAMENTE diferente da da pose: se o `Plan` mandasse, ela apareceria.
+    a_geom.fill = Some(Paint::Solid(Rgba8::new(255, 0, 0, 255)));
+    let mut b_geom = ellipse([1.0, 0.5], 1.0, 0.5);
+    b_geom.id = 1;
+    b_geom.fill = Some(Paint::Solid(Rgba8::new(0, 255, 0, 255)));
+
+    let mut a = UiState::new("a");
+    a.objects = vec![ObjectPose {
+        geometry: Some(a_geom),
+        fill: Some(Paint::Solid(Rgba8::new(10, 10, 10, 255))),
+        ..posed(1)
+    }];
+    let mut b = UiState::new("b");
+    b.objects = vec![ObjectPose {
+        geometry: Some(b_geom),
+        fill: Some(Paint::Solid(Rgba8::new(240, 240, 240, 255))),
+        ..posed(1)
+    }];
+
+    let mid = Transition::new(&a, &b).at(0.5).remove(0);
+    assert_eq!(
+        mid.geometry.as_ref().and_then(|g| g.fill.clone()),
+        mid.fill,
+        "a forma morfada saiu com uma tinta diferente da da pose — duas respostas para a mesma \
+         pergunta"
+    );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// A TABELA que viaja no documento
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+
+/// **Update State preserva o NOME.** O artista está a corrigir a pose, não a re-baptizar.
+#[test]
+fn updating_a_state_keeps_the_name_the_artist_gave_it() {
+    let mut sets = StateSets::default();
+    let i = sets.push(7, UiState::new("hover"));
+
+    let mut fresh = UiState::new("sem nome");
+    fresh.objects = vec![posed(1)];
+    assert!(sets.replace_pose(7, i, fresh));
+
+    assert_eq!(sets.get(7)[i].name, "hover", "o Update State roubou o nome");
+    assert_eq!(sets.get(7)[i].objects.len(), 1, "a pose nao foi gravada");
+}
+
+/// **Um hospedeiro sem estado nenhum SAI da tabela.**
+///
+/// ⚠️ Sem isto o documento carregaria entradas vazias para sempre, e o `is_empty` mentiria — o
+/// save levaria uma tabela que descreve nada.
+#[test]
+fn a_host_with_no_states_left_leaves_the_table() {
+    let mut sets = StateSets::default();
+    sets.push(7, UiState::new("idle"));
+    sets.push(7, UiState::new("hover"));
+    assert!(sets.remove(7, 1));
+    assert!(!sets.is_empty(), "a tabela esvaziou cedo demais");
+    assert!(sets.remove(7, 0));
+    assert!(sets.is_empty(), "um hospedeiro vazio ficou na tabela");
+    assert_eq!(sets.hosts().count(), 0);
+}
+
+/// **Apagar a forma esquece os estados dela.**
+#[test]
+fn deleting_the_shape_forgets_its_states() {
+    let mut sets = StateSets::default();
+    sets.push(7, UiState::new("idle"));
+    sets.push(9, UiState::new("idle"));
+    sets.retain_hosts(|id| id == 9);
+    assert_eq!(
+        sets.get(7).len(),
+        0,
+        "os estados de uma forma apagada sobreviveram"
+    );
+    assert_eq!(sets.get(9).len(), 1);
+}
+
+/// **A tabela atravessa o postcard, e a ordem é DETERMINISTA.**
+///
+/// ⚠️ A segunda metade é a que importa e não é decorativa: um `HashMap` faria dois saves do mesmo
+/// documento diferirem em bytes, e — pior — faria o **diff do undo** registrar um passo espúrio
+/// sobre um estado que ninguém tocou. É o mesmo mecanismo que o `canonicalize` do `WorldSnapshot`
+/// existe para matar.
+#[test]
+fn the_table_survives_the_wire_in_a_deterministic_order() {
+    let mut a = StateSets::default();
+    for host in [30_u64, 7, 19] {
+        a.push(host, UiState::new(format!("s{host}")));
+    }
+    let mut b = StateSets::default();
+    for host in [19_u64, 30, 7] {
+        b.push(host, UiState::new(format!("s{host}")));
+    }
+    let (wa, wb) = (
+        postcard::to_allocvec(&a).expect("wire a"),
+        postcard::to_allocvec(&b).expect("wire b"),
+    );
+    assert_eq!(
+        wa, wb,
+        "a mesma tabela escrita noutra ordem deu bytes diferentes"
+    );
+    let back: StateSets = postcard::from_bytes(&wa).expect("volta");
+    assert_eq!(back, a);
+    assert_eq!(back.hosts().collect::<Vec<_>>(), vec![7, 19, 30]);
 }

@@ -893,6 +893,9 @@ impl crate::App {
         let AppGfx {
             // As guias do documento: lidas para desenhar e para alimentar o snap.
             guides: doc_guides,
+            // Os estados de UI (plano UI/UX W7): quem os lê é a autoria, com `gfx` inteiro na
+            // mão — aqui ele só tem de ser NOMEADO, senão este `let` deixa de ser exaustivo.
+            ui_states: _,
             // A cena 3D é DESENHADA no `present`; aqui ela é lida por um assunto só — o bake do
             // objeto misto (`docs/3D/02.2`), que precisa do mundo e do renderizador ao lado dela.
             #[cfg(feature = "sculpt3d")]

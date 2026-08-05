@@ -5441,6 +5441,7 @@ dependencies = [
  "ph2d-tool-trim-transparency",
  "ph2d-tool-upscale",
  "ph2d-tool-vector",
+ "ph2d-ui-state",
  "ph2d-vec-blend",
  "ph2d-vec-boolean",
  "ph2d-vec-connect",
@@ -7582,6 +7583,7 @@ dependencies = [
  "ph2d-anim",
  "ph2d-vec-blend",
  "ph2d-vec-scene",
+ "postcard",
  "serde",
 ]
 

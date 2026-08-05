@@ -33,6 +33,7 @@ fn empty_state() -> ProjectState {
         vec: VecScene::new(),
         flip: ph2d_flip::FlipDoc::new(),
         guides: ph2d_guides::GuideSet::default(),
+        ui_states: ph2d_ui_state::StateSets::default(),
     }
 }
 
@@ -303,6 +304,45 @@ fn a_loaded_project_brings_its_animation_back_pending_the_name_heal() {
     );
 }
 
+/// **Os ESTADOS de UI viajam no arquivo** (plano UI/UX W7).
+///
+/// ⚠️ Este gate existe porque **nenhum outro consegue ver o bump que ele acompanha**: um campo
+/// APENDADO ao `ProjectState` não move constante nenhuma, então a suíte inteira fica verde com o
+/// arquivo já incompatível — o postcard é posicional e devolveria lixo bem-formado. O que se
+/// afirma aqui é a outra metade: que o dado de facto ATRAVESSA.
+#[test]
+fn the_ui_states_travel_in_the_file() {
+    let mut states = ph2d_ui_state::StateSets::default();
+    let mut hover = ph2d_ui_state::UiState::new("hover");
+    hover.objects = vec![ph2d_ui_state::ObjectPose {
+        translation: [3.0, -1.0],
+        opacity: 0.5,
+        ..ph2d_ui_state::ObjectPose::new(42)
+    }];
+    states.push(42, ph2d_ui_state::UiState::new("idle"));
+    states.push(42, hover);
+
+    let state = ProjectState {
+        world: WorldSnapshot::new(),
+        vec: VecScene::new(),
+        flip: ph2d_flip::FlipDoc::new(),
+        guides: ph2d_guides::GuideSet::default(),
+        ui_states: states.clone(),
+    };
+    let bytes = postcard::to_allocvec(&state).unwrap();
+    let back: ProjectState = postcard::from_bytes(&bytes).unwrap();
+    assert_eq!(
+        back.ui_states, states,
+        "os estados de UI nao sobreviveram ao wire"
+    );
+    assert_eq!(back.ui_states.get(42).len(), 2);
+    assert_eq!(back.ui_states.get(42)[1].name, "hover");
+    assert_eq!(
+        back.ui_states.get(42)[1].objects[0].translation,
+        [3.0, -1.0]
+    );
+}
+
 /// O arquivo de projeto sobrevive ao round-trip postcard: geometria, versão e os
 /// pixels embutidos voltam idênticos.
 #[test]
@@ -318,6 +358,7 @@ fn project_file_round_trips_through_postcard() {
         vec,
         flip,
         guides: ph2d_guides::GuideSet::default(),
+        ui_states: ph2d_ui_state::StateSets::default(),
     };
     // O grafo de Motion viaja como TEXTO canônico — a forma real que o `MotionDoc`
     // serializa (doc 56), não uma string inventada: se o formato mudar, o teste viaja

@@ -316,6 +316,7 @@ fn the_pins_survive_an_undo() {
             &scene,
             &ph2d_flip::FlipDoc::new(),
             &ph2d_guides::GuideSet::default(),
+            &ph2d_ui_state::StateSets::default(),
             &reg,
             &mut prop,
             &mut wl,

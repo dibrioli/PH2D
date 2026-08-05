@@ -46,17 +46,27 @@ pub(crate) struct ProjectState {
     /// vetor e do Flip, e é por isso que o `restore` não as devolve na tupla: quem aplica
     /// simplesmente copia.
     pub(crate) guides: ph2d_guides::GuideSet,
+    /// Os ESTADOS de UI (plano UI/UX W7). Plain data, como as guias — e aqui pelo mesmo motivo
+    /// que elas: **gravar um estado tem de desfazer**. Ele é uma edição do documento, não uma
+    /// preferência de vista.
+    pub(crate) ui_states: ph2d_ui_state::StateSets,
 }
 
 impl ProjectState {
     /// Captura o estado atual. `prop`/`worklist` são scratch reusado (o
     /// `world_to_snapshot` é zero-alloc além do crescimento do próprio snapshot).
+    ///
+    /// ⚠️ Oito argumentos, e eles são **oito fatos independentes do documento** — o mundo, as três
+    /// geometrias, o registro e o scratch. Agrupá-los num struct só para agradar ao lint criaria
+    /// um tipo cuja única razão de existir é a contagem, e todo chamador passaria a montá-lo.
+    #[allow(clippy::too_many_arguments)]
     #[must_use]
     pub(crate) fn capture(
         sim: &SimWorld,
         vec: &VecScene,
         flip: &FlipDoc,
         guides: &ph2d_guides::GuideSet,
+        ui_states: &ph2d_ui_state::StateSets,
         registry: &ComponentRegistry,
         prop: &mut TransformPropagationState,
         worklist: &mut WorklistBuf,
@@ -71,6 +81,7 @@ impl ProjectState {
             vec: vec.clone(),
             flip: flip.clone(),
             guides: guides.clone(),
+            ui_states: ui_states.clone(),
         }
     }
 
@@ -227,6 +238,7 @@ impl crate::App {
             &gfx.vec_scene,
             &gfx.flip,
             &gfx.guides,
+            &gfx.ui_states,
             &gfx.component_registry,
             &mut gfx.prop_state,
             &mut gfx.worklist,
@@ -257,6 +269,7 @@ impl crate::App {
         gfx.vec_scene = vec;
         gfx.flip = flip;
         gfx.guides = state.guides.clone();
+        gfx.ui_states = state.ui_states.clone();
         if let Some(hero) = gfx.hero_screen.as_mut() {
             hero.gizmo.clear_all_selection();
         }

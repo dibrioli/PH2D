@@ -244,7 +244,17 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// próprio: são knobs da mesma lei que os outros dezenove, e o custo de um
 /// componente novo por knob é uma lista que ninguém lê.
 /// ⚠️ A linha escreveu **52**; o valor CONTADO contra o `main` da integração é 55.
-const PROJECT_SCHEMA: u32 = 55;
+/// v56 (plano UI/UX W7 — os ESTADOS de UI): o `ProjectState` ganhou **`ui_states`**, a tabela
+/// de idle/hover/press por hospedeiro. Campo apendado ao `ProjectState`, que viaja DENTRO do
+/// `ProjectFile` — o mesmo raciocínio posicional do `guides` (v49), e o mesmo motivo de estar
+/// ali e não num campo de arquivo próprio: o `ProjectState` é a unidade do UNDO, e **gravar um
+/// estado tem de desfazer**.
+/// ⚠️ **Nenhum gate viu este bump, e é por isso que ele está escrito à mão:** um campo APENDADO
+/// não move constante nenhuma, então a suíte inteira fica verde com o arquivo já incompatível —
+/// o postcard é posicional e devolveria lixo bem-formado. Quem apende, bumpa, no MESMO commit.
+/// ⚠️ E o valor é **PROVISÓRIO**: ele se CONTA contra o `main` do dia da integração, não se
+/// escolhe ([[feedback_numbers_that_sum_across_lines_count_dont_pick]]).
+const PROJECT_SCHEMA: u32 = 56;
 
 /// O conteúdo de um arquivo de projeto.
 #[derive(serde::Serialize, serde::Deserialize)]

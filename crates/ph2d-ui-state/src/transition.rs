@@ -131,14 +131,21 @@ impl Transition {
                             lerp(from.scale[1], to.scale[1], t),
                         ],
                         opacity: lerp_f32(from.opacity, to.opacity, t),
+                        // A TINTA vai SEMPRE pela porta do Blend, com forma ou sem ela — uma
+                        // resposta só para *"como duas tintas interpolam neste app"*.
+                        fill: ph2d_vec_blend::mix_paint(from.fill.as_ref(), to.fill.as_ref(), t),
+                        stroke: ph2d_vec_blend::mix_stroke(from.stroke, to.stroke, t),
                         geometry: None,
                     };
-                    p.geometry = match shape {
-                        // Geometria E tinta pelo MESMO motor: o `Plan::at` já interpola o fill e o
-                        // stroke em OKLab, e pedir a tinta noutro lugar seria a segunda porta.
-                        Some(plan) => Some(plan.at(t)),
-                        None => blend_paint_only(from.geometry.as_ref(), to.geometry.as_ref(), t),
-                    };
+                    // ⚠️ E a forma que sai do `Plan` recebe a tinta da POSE, não a que o `Plan`
+                    // interpolou por conta: se o objeto sai auto-consistente daqui, ninguém a
+                    // jusante tem de decidir qual das duas vale.
+                    p.geometry = shape.as_ref().map(|plan| {
+                        let mut g = plan.at(t);
+                        g.fill.clone_from(&p.fill);
+                        g.stroke = p.stroke;
+                        g
+                    });
                     p
                 }
                 // Quem SAI fica onde estava e desvanece; quem ENTRA já está no lugar de destino e
@@ -155,20 +162,6 @@ impl Transition {
             })
             .collect()
     }
-}
-
-/// Mesma forma nos dois lados: a geometria não se move, mas a TINTA pode. Pela porta do
-/// `ph2d-vec-blend`, nunca por uma mistura local.
-fn blend_paint_only(
-    a: Option<&ph2d_vec_scene::VecPath>,
-    b: Option<&ph2d_vec_scene::VecPath>,
-    t: f64,
-) -> Option<ph2d_vec_scene::VecPath> {
-    let (a, b) = (a?, b?);
-    let mut out = if t < 0.5 { a.clone() } else { b.clone() };
-    out.fill = ph2d_vec_blend::mix_paint(a.fill.as_ref(), b.fill.as_ref(), t);
-    out.stroke = ph2d_vec_blend::mix_stroke(a.stroke, b.stroke, t);
-    Some(out)
 }
 
 #[inline]

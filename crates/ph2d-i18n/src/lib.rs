@@ -264,6 +264,10 @@ pub fn tr(key: &str) -> &'static str {
         // linha é o que torna essa lei visível ao artista em vez de descoberta por acidente.
         "panel.vector.widget.label_is_name" => "Label follows the object name",
         "panel.vector.widget.unknown" => "Unknown widget — drawn as a shape",
+        "panel.vector.widget.drives" => "Drives",
+        "panel.vector.widget.drives_none" => "nothing yet",
+        "panel.vector.widget.bind" => "Bind Shape...",
+        "panel.vector.widget.unbind" => "Unbind",
         "panel.vector.widget.kind.button" => "Button",
         "panel.vector.widget.kind.toggle" => "Toggle",
         "panel.vector.widget.kind.checkbox" => "Checkbox",

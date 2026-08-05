@@ -46,8 +46,8 @@ pub use ph2d_editor_core::ids::{
 };
 /// **A PELE POR-WIDGET** (plano UI/UX W6.2): a seção, os dois verbos e os chips de tipo.
 pub use ph2d_editor_core::ids::{
-    MAX_WIDGET_KINDS, VECTOR_SECTION_WIDGET, VECTOR_WIDGET_REMOVE, VECTOR_WIDGET_WEAR,
-    vector_widget_kind_id,
+    MAX_WIDGET_KINDS, VECTOR_SECTION_WIDGET, VECTOR_WIDGET_BIND, VECTOR_WIDGET_REMOVE,
+    VECTOR_WIDGET_UNBIND, VECTOR_WIDGET_WEAR, vector_widget_kind_id,
 };
 pub use ph2d_editor_core::ids::{
     VECTOR_ALIGN_BOTTOM, VECTOR_ALIGN_CENTRE, VECTOR_ALIGN_HCENTER, VECTOR_ALIGN_INNER,

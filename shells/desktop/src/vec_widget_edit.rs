@@ -20,6 +20,14 @@ pub(crate) enum WidgetEdit {
     Remove,
     /// O chip do tipo `i` em `WidgetKind::ALL`.
     Kind(usize),
+    /// **Bind Shape** — ARMA o conta-gotas; quem resolve é o clique seguinte (W8b.3).
+    ///
+    /// ⚠️ Ele não carrega alvo: a fonte é a forma selecionada AGORA e o alvo é o que o clique
+    /// acertar. É o mesmo gesto de duas mãos do `PathPick`, e por isso reusa aquele modal em vez
+    /// de um segundo — o segundo é o que esquece o Escape.
+    Bind,
+    /// **Unbind** — solta a forma dirigida.
+    Unbind,
 }
 
 /// Este id é um verbo de pele? **Porta única** do roteador.
@@ -32,6 +40,8 @@ pub(crate) fn widget_edit_for_id(id: ph2d_editor::NodeId) -> Option<WidgetEdit> 
     match id {
         _ if id == ph2d_editor::ids::VECTOR_WIDGET_WEAR => Some(WidgetEdit::Wear),
         _ if id == ph2d_editor::ids::VECTOR_WIDGET_REMOVE => Some(WidgetEdit::Remove),
+        _ if id == ph2d_editor::ids::VECTOR_WIDGET_BIND => Some(WidgetEdit::Bind),
+        _ if id == ph2d_editor::ids::VECTOR_WIDGET_UNBIND => Some(WidgetEdit::Unbind),
         _ => (0..ph2d_editor::ids::MAX_WIDGET_KINDS)
             .find(|&i| ph2d_editor::ids::vector_widget_kind_id(i) == id)
             .map(WidgetEdit::Kind),
@@ -63,7 +73,20 @@ pub(crate) fn apply(
             });
         }
         WidgetEdit::Remove => {
-            sim.world_mut().entity_mut(e).remove::<VecWidget>();
+            // ⚠️ Despir leva o VÍNCULO junto: um `VecWidgetBind` sobre uma forma que já não veste
+            // é um fio pendurado em nada — ele viajaria no save, entraria no diff do undo e
+            // ressuscitaria dirigindo no dia em que alguém a vestisse outra vez.
+            sim.world_mut()
+                .entity_mut(e)
+                .remove::<VecWidget>()
+                .remove::<ph2d_ecs::VecWidgetBind>();
+        }
+        // O ARM mora no `render_loop` (é ele que tem o modal na mão); aqui não há o que escrever.
+        WidgetEdit::Bind => {}
+        WidgetEdit::Unbind => {
+            sim.world_mut()
+                .entity_mut(e)
+                .remove::<ph2d_ecs::VecWidgetBind>();
         }
         WidgetEdit::Kind(i) => {
             // ⚠️ Um índice fora do catálogo é um chip que o painel não pintou — ignorar é a
@@ -75,6 +98,48 @@ pub(crate) fn apply(
             }
         }
     }
+}
+
+/// **Prende a row daquele widget a esta forma** (W8b.3). `false` = não deu, e o pick fica armado.
+///
+/// ⚠️ Recusa um alvo que **veste** — dirigir um controle com outro controle é uma cadeia que este
+/// modelo não tem (quem lê o valor é a projeção da CENA, não outra row), e aceitá-la em silêncio
+/// daria um vínculo que não faz nada. Recusar mantém o conta-gotas armado, que é o que diz ao
+/// artista *"este não"* sem nenhuma mensagem.
+pub(crate) fn bind(
+    sim: &mut SimWorld,
+    map: &VecEntityMap,
+    widget: VecPathId,
+    target: VecPathId,
+) -> bool {
+    let Some(&bits) = map.get(&widget) else {
+        return false;
+    };
+    let e = Entity::from_bits(bits);
+    if sim.world().get_entity(e).is_err() {
+        return false;
+    }
+    // Só um widget que DIRIGE aceita alvo — o painel já não oferece o botão nos outros, e esta é
+    // a metade que HONRA a mesma pergunta.
+    let drives = sim
+        .world()
+        .get::<VecWidget>(e)
+        .and_then(|w| WidgetKind::from_code(w.kind))
+        .is_some_and(crate::vec_widget_drive::bindable);
+    if !drives {
+        return false;
+    }
+    let target_wears = map
+        .get(&target)
+        .map(|&b| Entity::from_bits(b))
+        .is_some_and(|t| sim.world().get::<VecWidget>(t).is_some());
+    if target_wears {
+        return false;
+    }
+    sim.world_mut()
+        .entity_mut(e)
+        .insert(ph2d_ecs::VecWidgetBind { target });
+    true
 }
 
 /// O que o painel mostra para a seleção — `None` = não oferecer a seção.
@@ -97,7 +162,23 @@ pub(crate) fn publish(
         .take(cap)
         .map(|k| ph2d_i18n::tr(k.i18n_key()).to_string())
         .collect();
+    // ⚠️ O nome do alvo sai do `Name` da ENTIDADE dele, e um alvo que já não existe mostra
+    // `(none)` em vez de um id cru: o vínculo aponta um `VecPathId`, e uma forma apagada deixa o
+    // fio a apontar para o vazio — dizer isso em palavras é o que evita o artista procurar uma
+    // forma que ele mesmo apagou.
+    let drives = known
+        .filter(|&k| crate::vec_widget_drive::bindable(k))
+        .map(|_| {
+            sim.world()
+                .get::<ph2d_ecs::VecWidgetBind>(e)
+                .and_then(|b| map.get(&(b.target)).copied())
+                .map(Entity::from_bits)
+                .filter(|&t| sim.world().get_entity(t).is_ok())
+                .and_then(|t| sim.world().get::<ph2d_ecs::Name>(t))
+                .map(|n| n.0.to_string())
+        });
     let state = ph2d_panel_vector::state::WidgetSkinState {
+        drives,
         selected: known.and_then(|k| WidgetKind::ALL.iter().position(|&x| x == k)),
         // ⚠️ Vestida COM tipo desconhecido é um terceiro estado, e não *"não vestida"*: a forma
         // desenha como vetor mas o documento carrega uma pele, e o botão que faz sentido é

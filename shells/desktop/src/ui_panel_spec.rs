@@ -38,7 +38,7 @@ fn label_of(sim: &SimWorld, e: Entity) -> Option<String> {
 /// minúsculas, e tudo o que não é alfanumérico vira `_`. Duas rows de mesmo rótulo produzem a
 /// mesma chave — e isso é **correto e nomeado**: elas são o mesmo controle autorado duas vezes, e
 /// o gerador não é quem decide desempatar nomes que o artista repetiu.
-fn key_of(label: &str) -> String {
+pub(crate) fn key_of(label: &str) -> String {
     let mut k: String = label
         .chars()
         .map(|c| {

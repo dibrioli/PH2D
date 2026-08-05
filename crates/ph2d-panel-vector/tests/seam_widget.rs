@@ -48,6 +48,15 @@ fn skin(sel: Option<usize>, unknown: bool) -> WidgetSkinState {
             .collect(),
         selected: sel,
         unknown,
+        drives: None,
+    }
+}
+
+/// A mesma pele, mas de um tipo que DIRIGE — `bound` diz se já está preso a uma forma.
+fn driving(sel: usize, bound: bool) -> WidgetSkinState {
+    WidgetSkinState {
+        drives: Some(bound.then(|| "Star".to_string())),
+        ..skin(Some(sel), false)
     }
 }
 
@@ -159,4 +168,42 @@ fn no_state_no_section() {
             "a seção pintou sem estado publicado"
         );
     }
+}
+
+/// **O conta-gotas do vínculo e o *Unbind* estão VIVOS sob o ponteiro e chegam ao barramento**
+/// (W8b.3).
+///
+/// ⚠️ O gesto é real, e é ele que separa *"o painel pintou um retângulo"* de *"o clique existe"*.
+#[test]
+fn the_bind_verbs_are_alive_and_reach_the_bus() {
+    clear();
+    click_reaches_bus(driving(2, true), ids::VECTOR_WIDGET_BIND, "Bind Shape");
+    clear();
+    click_reaches_bus(driving(2, true), ids::VECTOR_WIDGET_UNBIND, "Unbind");
+    clear();
+}
+
+/// **A linha do vínculo só existe para quem DIRIGE, e o *Unbind* só quando há vínculo.**
+///
+/// ⚠️ As duas metades: oferecer o conta-gotas num `Button` daria um gesto que resolve e não faz
+/// nada; oferecer *Unbind* sem vínculo daria um clique que não muda nada — e o artista aprende a
+/// não confiar na seção com um só desses.
+#[test]
+fn the_bind_row_exists_only_where_it_means_something() {
+    clear();
+    // Um tipo que NÃO dirige: nem o conta-gotas, nem o Unbind.
+    assert!(rect_under(skin(Some(0), false), ids::VECTOR_WIDGET_BIND).is_none());
+    clear();
+    assert!(rect_under(skin(Some(0), false), ids::VECTOR_WIDGET_UNBIND).is_none());
+    clear();
+    // Dirige e não está preso: o conta-gotas sim, o Unbind não.
+    assert!(rect_under(driving(2, false), ids::VECTOR_WIDGET_BIND).is_some());
+    clear();
+    assert!(rect_under(driving(2, false), ids::VECTOR_WIDGET_UNBIND).is_none());
+    clear();
+    // Preso: os dois.
+    assert!(rect_under(driving(2, true), ids::VECTOR_WIDGET_BIND).is_some());
+    clear();
+    assert!(rect_under(driving(2, true), ids::VECTOR_WIDGET_UNBIND).is_some());
+    clear();
 }

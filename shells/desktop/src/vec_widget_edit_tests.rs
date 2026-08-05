@@ -150,3 +150,103 @@ fn a_multi_selection_offers_nothing() {
         "um verbo com dois selecionados escreveu no primeiro"
     );
 }
+
+/// Uma cena com um WIDGET vestido e uma FORMA nua, para os gates do vínculo (W8b.3).
+fn scene_pair(kind: WidgetKind) -> (SimWorld, VecEntityMap, VecPathId, VecPathId) {
+    let mut sim = SimWorld::default();
+    let mut map = VecEntityMap::new();
+    let (w_id, t_id): (VecPathId, VecPathId) = (1, 2);
+    let t = sim
+        .world_mut()
+        .spawn((
+            ph2d_ecs::Transform::IDENTITY,
+            ph2d_ecs::VecPathRef(t_id),
+            ph2d_ecs::Name::new("Star"),
+        ))
+        .id();
+    map.insert(t_id, t.to_bits());
+    let w = sim
+        .world_mut()
+        .spawn((
+            ph2d_ecs::Transform::IDENTITY,
+            ph2d_ecs::VecPathRef(w_id),
+            ph2d_ecs::Name::new("Opacity"),
+            VecWidget { kind: kind.code() },
+        ))
+        .id();
+    map.insert(w_id, w.to_bits());
+    (sim, map, w_id, t_id)
+}
+
+fn bound_target(sim: &SimWorld, map: &VecEntityMap, w_id: VecPathId) -> Option<VecPathId> {
+    let &bits = map.get(&w_id)?;
+    sim.world()
+        .get::<ph2d_ecs::VecWidgetBind>(Entity::from_bits(bits))
+        .map(|b| b.target)
+}
+
+/// **O conta-gotas PRENDE, e o Unbind SOLTA.** O par mínimo do gesto.
+#[test]
+fn the_eyedropper_binds_and_unbind_releases() {
+    let (mut sim, map, w, t) = scene_pair(WidgetKind::Slider);
+    assert!(bind(&mut sim, &map, w, t), "o vinculo tem de pousar");
+    assert_eq!(bound_target(&sim, &map, w), Some(t));
+    apply(&mut sim, &map, &[w], WidgetEdit::Unbind);
+    assert_eq!(bound_target(&sim, &map, w), None);
+}
+
+/// **Um tipo que não DIRIGE recusa o alvo, e o conta-gotas fica armado.**
+///
+/// ⚠️ A metade que HONRA a pergunta que o painel usa para OFERECER. Aceitar em silêncio daria um
+/// vínculo que existe no documento, viaja no save, e não faz nada — pior que a recusa, porque
+/// nada na tela diria por quê.
+#[test]
+fn a_kind_that_cannot_drive_refuses_the_target() {
+    let (mut sim, map, w, t) = scene_pair(WidgetKind::Button);
+    assert!(!bind(&mut sim, &map, w, t));
+    assert_eq!(bound_target(&sim, &map, w), None);
+}
+
+/// **Um alvo que VESTE é recusado** — uma row não dirige outra row.
+#[test]
+fn a_target_that_wears_a_widget_is_refused() {
+    let (mut sim, map, w, t) = scene_pair(WidgetKind::Slider);
+    let &bits = map.get(&t).expect("o alvo esta' no mapa");
+    sim.world_mut()
+        .entity_mut(Entity::from_bits(bits))
+        .insert(VecWidget {
+            kind: WidgetKind::Toggle.code(),
+        });
+    assert!(!bind(&mut sim, &map, w, t));
+    assert_eq!(bound_target(&sim, &map, w), None);
+}
+
+/// **DESPIR leva o vínculo junto.**
+///
+/// ⚠️ Um `VecWidgetBind` sobre uma forma que já não veste é um fio pendurado em nada: ele viajaria
+/// no save e ressuscitaria dirigindo no dia em que alguém a vestisse outra vez — uma forma a
+/// desvanecer por um controle que ninguém lembra de ter prendido.
+#[test]
+fn taking_the_skin_off_takes_the_binding_with_it() {
+    let (mut sim, map, w, t) = scene_pair(WidgetKind::Slider);
+    assert!(bind(&mut sim, &map, w, t));
+    apply(&mut sim, &map, &[w], WidgetEdit::Remove);
+    assert_eq!(bound_target(&sim, &map, w), None);
+}
+
+/// **O painel só oferece a linha do vínculo a quem dirige, e mostra o NOME do alvo.**
+#[test]
+fn the_panel_offers_the_bind_row_only_where_it_drives() {
+    let (mut sim, map, w, t) = scene_pair(WidgetKind::Slider);
+    let (st, _) = publish(&sim, &map, &[w]).expect("a secao e' oferecida");
+    assert_eq!(st.drives, Some(None), "dirige e ainda nao esta' preso");
+
+    assert!(bind(&mut sim, &map, w, t));
+    let (st, _) = publish(&sim, &map, &[w]).expect("a secao e' oferecida");
+    assert_eq!(st.drives, Some(Some("Star".to_string())));
+
+    let (mut sim, map, w, _) = scene_pair(WidgetKind::Button);
+    let (st, _) = publish(&sim, &map, &[w]).expect("a secao e' oferecida");
+    assert_eq!(st.drives, None, "um Button nao produz valor — sem linha");
+    let _ = &mut sim;
+}

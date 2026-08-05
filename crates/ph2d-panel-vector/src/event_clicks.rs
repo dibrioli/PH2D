@@ -315,6 +315,8 @@ fn is_prefab_click(id: ph2d_a11y::NodeId) -> bool {
     // de tipo atravessam o barramento; o painel só mostra o que faz sentido agora.
     || id == ids::VECTOR_WIDGET_WEAR
     || id == ids::VECTOR_WIDGET_REMOVE
+    || id == ids::VECTOR_WIDGET_BIND
+    || id == ids::VECTOR_WIDGET_UNBIND
     || (0..ids::MAX_WIDGET_KINDS).any(|i| ids::vector_widget_kind_id(i) == id)
     // **OS ESTADOS de UI** (W7) — a tabela mora no DOCUMENTO (`ProjectState`), então os três
     // verbos atravessam o barramento; o painel só mostra que verbos fazem sentido agora.

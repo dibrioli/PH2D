@@ -4599,6 +4599,15 @@ impl crate::App {
             if let Some(verb) = pending_widget_edit {
                 let sel: Vec<ph2d_vec_scene::VecPathId> = self.vec_pen.selected_paths().to_vec();
                 crate::vec_widget_edit::apply(sim, &self.vec_entities, &sel, verb);
+                // **Bind Shape** ARMA o conta-gotas (W8b.3) — quem resolve é o clique seguinte
+                // (`vec_path_pick_click`), pela guarda modal que precede o picking/gizmo. É o
+                // mesmo desenho do **Swap Main**, e reusá-lo é o que dá Escape, realce de hover e
+                // desistência-no-vazio sem uma linha a mais.
+                if verb == crate::vec_widget_edit::WidgetEdit::Bind
+                    && let Some(&at) = sel.first()
+                {
+                    self.vec_path_pick = Some(crate::vec_pick::PathPick::WidgetBind(at));
+                }
             }
             // OS ESTADOS de UI (W7). ⚠️ O **Show** não escreve pose aqui: ele DEVOLVE o pedido, e
             // quem o honra é a máquina — uma escrita direta seria a segunda porta para *"pôr a
@@ -6327,6 +6336,12 @@ impl crate::App {
             // Resolvido aqui, no passe de DESENHO, e não dentro do `view_state` — aquela porta é
             // chamada por todo hit-test e gesto, e nenhum deles pergunta de que cor a forma é.
             vec_view.bound = crate::vec_bindings::resolve(sim, &self.vec_entities, hero.theme);
+            // **AS ROWS AUTORADAS** (plano UI/UX W8b.3): o valor VIVO de cada controle que dirige
+            // uma forma. Depois dos tokens, porque a opacidade desvanece o que de fato vai ser
+            // desenhado; e aqui, no passe de desenho, pela MESMA razão que os tokens — nenhum
+            // hit-test pergunta em que ponto um slider está.
+            let drives = crate::vec_widget_drive::resolve(sim, &self.vec_entities, &hero.store);
+            crate::vec_widget_drive::apply(&drives, &mut vec_view);
             // ADR-0111 — cada path tem `Transform`. A geometria dele é LOCAL; este é
             // o afim que a leva ao mundo (a cadeia de pais inclusa).
             let mut vec_xf = crate::vec_transform::build(sim, &self.vec_entities);

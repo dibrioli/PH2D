@@ -351,6 +351,7 @@ fn the_dispatch_draws_the_token_colour_not_the_literal() {
             path: id,
             fill: Some(token),
             stroke: None,
+            alpha: None,
         }],
         ..VecViewState::default()
     };

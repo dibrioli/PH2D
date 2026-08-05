@@ -1095,6 +1095,52 @@ para a mesma coisa e a divergência só aparece numa screenshot.
 > escuta é a W4b/W8a. A fronteira está **nomeada na cena de smoke**, não escondida; e um slider que
 > se arrasta e se move já é a entrega desta fatia.
 
+🔨 **E a W8b.3 fechou esse FALTA (2026-08-05)** — mesma cena `=62`.
+
+> ✅ **A row MEXE na arte.** Componente novo `VecWidgetBind { target }` no ECS (registro **52 →
+> 53**, os dois espelhos **53 → 54**), o conta-gotas **Bind Shape…** na seção Widget Skin, e o
+> valor VIVO da row projetado no que a cena desenha: um **Slider** dá a **opacidade** da forma, um
+> **Toggle** dá o **aparecer**.
+>
+> ⚠️ **O que uma row FAZ é DERIVADO do tipo dela** (`vec_widget_drive::drive_of`), nunca um campo
+> autorado ao lado — um segundo controle teria de ser mantido de acordo com o tipo, e no dia em
+> que discordassem o painel pintaria um slider que apaga a forma. É a lei que a W7 já usou para o
+> PAPEL de um estado em vez de um nome livre.
+>
+> ⚠️ **Quem não produz VALOR não dirige, e o conjunto é MENOR que o dos controles:** um `Button`
+> responde ao ponteiro e produz um **evento** — vinculá-lo exigiria um vocabulário de VERBOS que
+> nenhum consumidor pede, e vocabulário sem consumidor é desenhar no escuro (a lei do
+> `OverrideSlot` da W5a). A linha *Drives* **nem aparece** nele, em vez de aparecer inerte.
+>
+> ⚠️ **VISTA, nunca documento** — o resultado vai para o `VecViewState`, a projeção por-frame, e
+> **nada escreve a cena**. Três consequências e as três são o motivo: arrastar um slider **não
+> vira passo de undo** (o undo é por DIFF do mundo — a lição que o ADR-0153 pagou no auto layout) ·
+> a tinta autorada **sobrevive** (levar a zero e voltar devolve a arte AO BIT) · e o fato tem UM
+> dono. `BoundPaint` ganhou `alpha`, e ela **ESCALA** o alfa existente em vez de o substituir: é o
+> que preserva a ESPÉCIE da tinta — o atalho (trocar o `fill` por uma cor com alfa) achataria todo
+> gradiente em silêncio.
+>
+> ⚠️ **O gesto reusa o `PathPick`** (variante `WidgetBind`), e não um segundo modal: arma, o
+> clique resolve, o Escape desiste, o hover realça — o segundo modal é o que esquece o Escape.
+> **Despir leva o vínculo junto** (um `VecWidgetBind` sobre uma forma que já não veste é um fio
+> pendurado em nada, que viajaria no save e ressuscitaria dirigindo).
+>
+> ⚠️ **DUAS mutações sobreviveram, e as duas acusaram DEFEITO MEU:** (a) o gate da chave usava o
+> rótulo `"Opacity"` — **uma palavra alfanumérica só**, onde `key_of` e um `to_lowercase()` cru
+> dão a MESMA resposta ⇒ ele era verde sobre a segunda porta que existe para proibir (fixture que
+> não contém o fenômeno; o rótulo virou `"Fill Opacity"`); (b) eu afirmara num doc-comment que sem
+> o arredondamento `255 × 255` daria 254 — **é falso**, `255 × 255` é divisível por 255 e a
+> identidade vale nas duas contas. O `+127` é sobre **VIÉS** (truncar erra sempre para baixo), e o
+> gate novo mede onde o erro se vê (`100 × 130/255 = 50,98`).
+>
+> **11 mutações, 11 sangram** (depois das duas correções). **Zero schema** (`PROJECT_SCHEMA` **56**
+> e `VEC_SCENE_SCHEMA` **14** intocados — um componente novo cunha blob-key própria), **zero
+> `Cargo.toml`**, **zero ADR**, contrato congelado intacto.
+>
+> **FALTA, e é a fronteira honesta:** o valor de um controle vive no `WidgetStore`, que é de
+> runtime ⇒ **ele não é salvo**. Reabrir devolve os controles ao default e a arte ao que o artista
+> autorou. Guardar a POSIÇÃO de um controle é a W4b/W8a — o fio existe, a memória dele não.
+
 **Schema.** +1 componente (**49 → 50**). **Gates:** o desenho e o widget pintam **os mesmos bytes**
 (readback) · um `kind` desconhecido degrada para o desenho, nunca para um painel vazio · trocar um
 token muda os dois lados na mesma direção.
@@ -1426,6 +1472,7 @@ escreveu**:
 | **W7** 🔨 | estados + Smart Animate (**autoria**; runtime não) | — | ⚠️ `PROJECT_SCHEMA`, **não** `DOC_VERSION` | — | **nenhum** | `=61` |
 | **W8b.1** ✅ | o codegen: a árvore descreve um painel e o app escreve o código dele | — | — | — | — | `=62` |
 | **W8b.2** ✅ | o gerado vira painel VIVO (crate, registro, runtime das rows) | — | — | — | **nenhum** | `=62` |
+| **W8b.3** ✅ | a row MEXE na arte (o vínculo row → forma, derivado do tipo) | +1 (**53**) | — | — | **nenhum** | `=62` |
 | **W8a** | o runtime (para os jogos) | — | seção | — | sim (fronteira) | — |
 | **W9** | DTCG / SVG / export | — | — | — | — | — |
 

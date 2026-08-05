@@ -16,6 +16,13 @@
 //! ⚠️ **E a cena imprime o número que a torna válida:** quantas rows o plano tem. Se não forem
 //! quatro, PARE — o resto não diz nada.
 //!
+//! # A W8b.3 põe a ARTE do outro lado do fio
+//!
+//! Um retângulo laranja ao lado do painel, **fora** da moldura, com a row *Opacity* já presa a
+//! ele. Arrastar o slider desvanece a arte; prender o *Visible* à mão é o gesto que a fatia
+//! acrescenta. ⚠️ E o `Reset` é o CONTROLE: um `Button` não dirige, e a linha *Drives* nem
+//! aparece nele.
+//!
 //! # A W8b.2 abre o painel, e a cena diz a verdade sobre ele
 //!
 //! ⚠️ **O painel na tela mostra a tabela COMMITADA, não a que o log acabou de imprimir.** É o que
@@ -49,12 +56,21 @@ pub(crate) const AUTHORED: [([f64; 4], &str, Option<WidgetKind>); 6] = [
 /// A moldura é a primeira linha; os filhos são o resto.
 const FRAME: usize = 0;
 
+/// **A ARTE** — a forma que as rows vão DIRIGIR (W8b.3), e ela não é filha da moldura.
+///
+/// ⚠️ Fora da tabela `AUTHORED` de propósito: aquela lista descreve *o painel*, e o gate de
+/// staleness constrói o mundo a partir dela para emitir o código. Uma estrela ali dentro entraria
+/// na conta do painel; aqui ela é o que o painel MEXE — os dois lados do fio, e cada um no seu
+/// lugar.
+const STAR: usize = AUTHORED.len();
+
 pub(crate) fn frame(app: &mut crate::App, f: u32) {
     match f {
         3 => build(app),
         5 => name_and_parent(app),
-        7 => announce(app),
-        9 => open_the_panel(app),
+        7 => bind_the_slider(app),
+        9 => announce(app),
+        11 => open_the_panel(app),
         _ => {}
     }
 }
@@ -75,6 +91,10 @@ fn build(app: &mut crate::App) {
         p.fill = Some(Paint::Solid(Rgba8::new(c[0], c[1], c[2], 255)));
         gfx.vec_scene.push_path(p);
     }
+    // A arte, ao lado do painel: um quadrado grande e quente, para o desvanecer ser óbvio.
+    let mut star: VecPath = rectangle([2.6, -1.0], [5.0, 1.4]);
+    star.fill = Some(Paint::Solid(Rgba8::new(232, 150, 60, 255)));
+    gfx.vec_scene.push_path(star);
 }
 
 fn path_ids(app: &crate::App) -> Vec<VecPathId> {
@@ -122,6 +142,27 @@ fn name_and_parent(app: &mut crate::App) {
             ent.insert(ph2d_ecs::ChildOf(frame_e));
         }
     }
+    // A arte ganha nome e NÃO ganha pai — ela vive na cena, não no painel.
+    if let Some(e) = ents.get(STAR).copied().flatten()
+        && let Ok(mut ent) = gfx.sim.world_mut().get_entity_mut(e)
+    {
+        ent.insert(ph2d_ecs::Name::new("Star"));
+    }
+}
+
+/// Prende a row **Opacity** à estrela — o que o artista faria com o conta-gotas.
+///
+/// ⚠️ Um lado do fio vem pronto e o outro **não**: com os dois prontos o smoke provaria o
+/// resolvedor e não o GESTO, e é o gesto que esta fatia acrescenta. O roteiro manda o artista
+/// prender o Toggle com a mão.
+fn bind_the_slider(app: &mut crate::App) {
+    let ids = path_ids(app);
+    if ids.len() <= STAR {
+        return;
+    }
+    let (slider, star) = (ids[2], ids[STAR]);
+    let Some(gfx) = app.gfx.as_mut() else { return };
+    crate::vec_widget_edit::bind(&mut gfx.sim, &app.vec_entities, slider, star);
 }
 
 /// Abre o painel autorado, do mesmo jeito que o interruptor da seção Frame o abre.
@@ -139,7 +180,7 @@ fn open_the_panel(app: &mut crate::App) {
 fn announce(app: &mut crate::App) {
     let ids = path_ids(app);
     let Some(gfx) = app.gfx.as_ref() else { return };
-    if ids.len() < AUTHORED.len() {
+    if ids.len() <= STAR {
         eprintln!("[ui-panel] ⚠️ a cena nao montou — PARE");
         return;
     }
@@ -191,9 +232,19 @@ fn announce(app: &mut crate::App) {
     eprintln!("     filho e re-rode: o CODIGO acima muda, o painel NAO — ate' alguem colar o");
     eprintln!("     codigo em crates/ph2d-panel-authored/src/generated/panel.rs e recompilar.");
     eprintln!("     E' o que codegen e'; esconder isso faria o painel parecer quebrado.");
-    eprintln!(" 10. ⚠️ **O QUE AINDA NAO ESTA' AQUI:** a row nao MEXE em nada — ela emite");
-    eprintln!("     (chave, valor) e quem escuta e' a W4b/W8a (ligar a row a um token / ao");
-    eprintln!("     runtime). Um slider que se arrasta e se move ja' e' a entrega desta fatia.");
+    eprintln!(" 10. ⚠️ **A ROW MEXE NA ARTE** (W8b.3): arraste o slider **Opacity** e olhe o");
+    eprintln!("     retangulo laranja a' direita — ele DESVANECE. A tinta autorada nao e'");
+    eprintln!("     tocada: leve a zero e volte, e a cor volta exatamente como estava.");
+    eprintln!(" 11. **O GESTO e' seu:** selecione o filho 'Visible' na Hierarquia, na secao");
+    eprintln!("     Widget Skin aperte **Bind Shape...** e clique no retangulo laranja. Agora o");
+    eprintln!("     toggle do painel APAGA e ACENDE a arte. (O slider ja' vinha preso — o");
+    eprintln!("     roteiro traz um lado pronto e deixa o outro para voce fazer.)");
+    eprintln!(" 12. ⚠️ **O CONTROLE:** selecione 'Reset' (um Button) — a linha *Drives* nao");
+    eprintln!("     aparece. Um botao produz um EVENTO, nao um valor; oferecer-lhe o vinculo");
+    eprintln!("     daria um conta-gotas que resolve e nao faz nada.");
+    eprintln!(" 13. ⚠️ **E o vinculo NAO e' salvo com o valor:** feche e reabra e os controles");
+    eprintln!("     voltam ao default (a arte volta ao que voce autorou). Guardar a POSICAO de");
+    eprintln!("     um controle e' a W4b/W8a — o fio existe, a memoria dele nao.");
 }
 
 #[cfg(test)]

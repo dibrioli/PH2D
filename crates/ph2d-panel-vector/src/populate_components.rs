@@ -137,6 +137,14 @@ const STATE_DURATION_DEFAULT_S: f32 = ph2d_tokens::Duration::Fast.secs();
 /// O teto do slider — o MESMO número do modelo (`ph2d_ui_state::MAX_DURATION_S`), com gate.
 const STATE_DURATION_MAX_S: f32 = 2.0;
 
-/// Os dois verbos da seção WIDGET SKIN — a mesma lista que o `paint_widget` desenha.
-pub(crate) const WIDGET_BUTTONS: &[ph2d_a11y::NodeId] =
-    &[ids::VECTOR_WIDGET_WEAR, ids::VECTOR_WIDGET_REMOVE];
+/// Os verbos da seção WIDGET SKIN — a mesma lista que o `paint_widget` desenha.
+///
+/// ⚠️ Registados **todos, sempre**, mesmo os que a seção só pinta em certos estados: o registro é
+/// o que torna um id CLICÁVEL, e registá-lo por estado significaria que o botão nasce morto sob o
+/// rato no frame em que aparece — o defeito exato que as 36 células da matriz de física pagaram.
+pub(crate) const WIDGET_BUTTONS: &[ph2d_a11y::NodeId] = &[
+    ids::VECTOR_WIDGET_WEAR,
+    ids::VECTOR_WIDGET_REMOVE,
+    ids::VECTOR_WIDGET_BIND,
+    ids::VECTOR_WIDGET_UNBIND,
+];

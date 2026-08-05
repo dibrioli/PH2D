@@ -68,10 +68,38 @@ impl BodyCtx<'_> {
             );
         }
         y = self.label_line(tr("panel.vector.widget.label_is_name"), y);
+        y = self.drives_rows(&s, y);
         self.action_button(
             ids::VECTOR_WIDGET_REMOVE,
             tr("panel.vector.widget.remove"),
             y,
         )
+    }
+
+    /// **O que esta row dirige** — o readout + o conta-gotas (W8b.3).
+    ///
+    /// ⚠️ A linha inteira some para um tipo que não dirige, em vez de aparecer apagada: um
+    /// readout *"Drives: nothing"* num `Button` diria que falta escolher a forma, quando o que
+    /// falta é o tipo ter um valor a dar.
+    fn drives_rows(&mut self, s: &state::WidgetSkinState, y: f32) -> f32 {
+        let Some(bound) = s.drives.as_ref() else {
+            return y;
+        };
+        let target = bound
+            .as_deref()
+            .unwrap_or_else(|| tr("panel.vector.widget.drives_none"));
+        let mut y = self.label_line(
+            &format!("{}: {target}", tr("panel.vector.widget.drives")),
+            y,
+        );
+        y = self.action_button(ids::VECTOR_WIDGET_BIND, tr("panel.vector.widget.bind"), y);
+        if bound.is_some() {
+            y = self.action_button(
+                ids::VECTOR_WIDGET_UNBIND,
+                tr("panel.vector.widget.unbind"),
+                y,
+            );
+        }
+        y
     }
 }

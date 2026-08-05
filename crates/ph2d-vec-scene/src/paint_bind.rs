@@ -30,13 +30,24 @@ pub struct BoundPaint {
     pub fill: Option<Rgba8>,
     /// Cor do traço vinda de um token.
     pub stroke: Option<Rgba8>,
+    /// **A opacidade VIVA desta forma neste frame**, `255` = opaca (plano UI/UX W8b.3).
+    ///
+    /// ⚠️ Ela **escala** o alfa que a forma já tem, em vez de o substituir — e é o que preserva a
+    /// ESPÉCIE da tinta: um gradiente continua um gradiente (cada parada desvanece junto), um
+    /// sólido continua sólido. Trocar o `fill` por uma cor com alfa, que seria o atalho, achataria
+    /// todo gradiente no instante em que alguém arrastasse o slider.
+    ///
+    /// ⚠️ E ela é **VISTA, nunca documento**: quem a produz é o valor vivo de um controle, e a
+    /// tinta autorada fica onde o artista a escreveu. É a costura *fonte ≠ o que o mundo consome*
+    /// do ADR-0121, aqui na opacidade — arrastar até zero e voltar devolve exatamente a arte.
+    pub alpha: Option<u8>,
 }
 
 impl BoundPaint {
     /// Nada resolvido ⇒ esta entrada não muda desenho nenhum.
     #[must_use]
     pub fn is_noop(&self) -> bool {
-        self.fill.is_none() && self.stroke.is_none()
+        self.fill.is_none() && self.stroke.is_none() && self.alpha.is_none()
     }
 }
 
@@ -63,7 +74,11 @@ impl VecPath {
         // Um traço bindado numa forma SEM traço não tem o que colorir — e se ele fosse o único
         // binding, clonar aqui seria uma cópia que não muda um pixel.
         let paints_stroke = b.stroke.is_some() && self.stroke.is_some();
-        if b.fill.is_none() && !paints_stroke {
+        // ⚠️ A opacidade entra na conta do early-out: `alpha == Some(255)` é a identidade, e um
+        // clone por forma por frame para não mudar um pixel é o custo que este `Cow` existe para
+        // não pagar — um slider parado no topo tem de sair byte-idêntico à arte.
+        let fades = b.alpha.is_some_and(|a| a < u8::MAX);
+        if b.fill.is_none() && !paints_stroke && !fades {
             return std::borrow::Cow::Borrowed(self);
         }
         let mut out = self.clone();
@@ -73,7 +88,43 @@ impl VecPath {
         if let (Some(c), Some(s)) = (b.stroke, out.stroke.as_mut()) {
             s.color = c;
         }
+        if fades {
+            // O token entra ANTES, então a opacidade desvanece o que de fato vai ser desenhado —
+            // e não o literal que o token acabou de cobrir.
+            fade(&mut out, b.alpha.unwrap_or(u8::MAX));
+        }
         std::borrow::Cow::Owned(out)
+    }
+}
+
+/// Multiplica o alfa de TODA tinta da forma por `a/255` — preenchimento (seja qual for a espécie)
+/// e traço.
+///
+/// ⚠️ **A conta é `(alfa * a + 127) / 255`, não `alfa * a / 255`** — arredondamento ao mais
+/// próximo, e não truncamento. ⚠️ E a razão **não** é a identidade: `255 * 255` é divisível por
+/// 255, então opaco continua opaco nas duas contas (uma primeira versão deste comentário afirmava
+/// o contrário, e a mutação que tirou o `+127` sobreviveu a todos os gates exactamente por isso).
+/// A razão é o VIÉS: truncar erra sempre para BAIXO, e uma cadeia de desvanecimentos escureceria
+/// meio nível de cada vez. O gate mede onde o erro se vê — `100 * 130/255` é 50,98, que arredonda
+/// para 51 e trunca para 50.
+fn fade(p: &mut VecPath, a: u8) {
+    let scale = |c: &mut Rgba8| c.a = ((u32::from(c.a) * u32::from(a) + 127) / 255) as u8;
+    match p.fill.as_mut() {
+        Some(Paint::Solid(c)) => scale(c),
+        Some(Paint::Linear { stops, .. } | Paint::Radial { stops, .. }) => {
+            for s in stops {
+                scale(&mut s.color);
+            }
+        }
+        Some(Paint::MultiPoint { points }) => {
+            for pt in points {
+                scale(&mut pt.color);
+            }
+        }
+        None => {}
+    }
+    if let Some(s) = p.stroke.as_mut() {
+        scale(&mut s.color);
     }
 }
 

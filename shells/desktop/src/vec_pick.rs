@@ -33,6 +33,11 @@ pub(crate) enum PathPick {
     /// par. Um segundo modal duplicaria a guarda do dispatch, o realce e a desistência; e a
     /// segunda cópia é a que esquece o Escape.
     InstanceMain(VecPathId),
+    /// Um WIDGET autorado (W8b.3) à espera da forma que a row dele vai DIRIGIR.
+    ///
+    /// ⚠️ Cabe aqui pela mesma razão do `InstanceMain`: o gesto é o MESMO, e o que muda é só o que
+    /// se faz com o par — aqui, inserir o `VecWidgetBind`.
+    WidgetBind(VecPathId),
 }
 
 impl PathPick {
@@ -40,9 +45,10 @@ impl PathPick {
     /// forma a si mesma não quer dizer nada, e o `link` a recusaria de qualquer modo.
     pub(crate) fn source(self) -> VecPathId {
         match self {
-            PathPick::PatternMotif(id) | PathPick::TextObject(id) | PathPick::InstanceMain(id) => {
-                id
-            }
+            PathPick::PatternMotif(id)
+            | PathPick::TextObject(id)
+            | PathPick::InstanceMain(id)
+            | PathPick::WidgetBind(id) => id,
         }
     }
 }

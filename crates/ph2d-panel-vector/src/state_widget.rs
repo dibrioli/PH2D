@@ -17,6 +17,13 @@ pub struct WidgetSkinState {
     pub kinds: Vec<String>,
     /// Qual o vigente — `None` = a forma ainda **não** veste (oferece *Wear a Widget*).
     pub selected: Option<usize>,
+    /// **O que esta row DIRIGE** (W8b.3) — `None` = este tipo não dirige nada e a linha não é
+    /// pintada; `Some(None)` = pode dirigir e ainda não dirige; `Some(Some(nome))` = a forma.
+    ///
+    /// ⚠️ Três estados e não dois, porque *"não pode"* e *"pode e não está"* pedem UI oposta: o
+    /// primeiro não oferece botão nenhum (um `Button` produz evento, não valor), o segundo oferece
+    /// exatamente o conta-gotas. Colapsá-los daria um *Bind Shape* que resolve e não faz nada.
+    pub drives: Option<Option<String>>,
     /// A forma veste um tipo que este build **não conhece** (o readout de compatibilidade).
     ///
     /// ⚠️ Sem esta linha, um documento do futuro abriria mostrando a arte crua e nada diria por

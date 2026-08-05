@@ -2188,6 +2188,10 @@ impl App {
                     }
                     swapped
                 }),
+            // **O vínculo da row** (W8b.3): a fonte é o WIDGET, o clicado é a forma dirigida.
+            crate::vec_pick::PathPick::WidgetBind(widget) => {
+                crate::vec_widget_edit::bind(&mut gfx.sim, &self.vec_entities, widget, guide)
+            }
         };
         if done {
             self.vec_path_pick = None;

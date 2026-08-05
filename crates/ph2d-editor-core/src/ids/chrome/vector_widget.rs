@@ -19,6 +19,16 @@ pub const VECTOR_WIDGET_WEAR: NodeId = hash_node_id("vector.widget.wear");
 /// **Back to Drawing** — tira a pele e devolve a forma ao vetor. O simétrico exato do acima.
 pub const VECTOR_WIDGET_REMOVE: NodeId = hash_node_id("vector.widget.remove");
 
+/// **Bind Shape** — arma o conta-gotas que prende esta row a uma forma da cena (W8b.3).
+///
+/// ⚠️ Pintado **só para os tipos que dirigem** (`vec_widget_drive::bindable`): um `Button` produz
+/// um evento e não um valor, e oferecer-lhe o vínculo daria um gesto que resolve e não faz nada.
+pub const VECTOR_WIDGET_BIND: NodeId = hash_node_id("vector.widget.bind");
+
+/// **Unbind** — solta a forma. Só existe quando há vínculo: um botão que solta o já-solto é o
+/// clique-que-não-faz-nada que o irmão `WEAR` evita do outro lado.
+pub const VECTOR_WIDGET_UNBIND: NodeId = hash_node_id("vector.widget.unbind");
+
 /// Quantos chips de tipo a seção endereça.
 ///
 /// ⚠️ **Teto de TABELA DE IDS, e ele diz de que recurso é** — o mesmo que o `MAX_VARIANT_VALUES`:

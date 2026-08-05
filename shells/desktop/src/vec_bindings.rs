@@ -53,6 +53,9 @@ pub(crate) fn resolve(sim: &SimWorld, map: &VecEntityMap, theme: Theme) -> Vec<B
             stroke: b
                 .get(BoundProp::StrokeColor)
                 .and_then(|k| token_color(k, theme)),
+            // A opacidade VIVA não vem de token nenhum — quem a produz é uma row autorada, e ela
+            // é fundida nesta mesma entrada pelo `vec_widget_drive::apply` (W8b.3).
+            alpha: None,
         };
         // Uma entrada que não resolveu nada não descreve desenho nenhum — publicá-la faria o
         // renderer perguntar por ela em toda forma da cena sem nunca ter o que responder.

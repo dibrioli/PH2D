@@ -1,0 +1,22 @@
+[package]
+name = "ph2d-ui-codegen"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+# **O CODEGEN DE PAINEL** (plano UI/UX W8b): a árvore autorada descreve um painel, e esta crate
+# escreve o código dele.
+#
+# ⚠️ **Ela NÃO depende do `ph2d-editor-core`, e a contenção é a wave inteira numa linha.** Sem
+# alcance ao catálogo de widgets ela **não CONSEGUE** ter opinião sobre o que um `Slider` é — o
+# nome do tipo chega pronto no [`RowSpec`], resolvido por quem é dono dele
+# (`WidgetKind::ident`). É a mesma contenção estrutural que o `ph2d-paint-gpu` usa contra o
+# `ph2d-painter-brush`: um arch-gate sobre este `Cargo.toml`, e não disciplina.
+#
+# Zero dependência, nem interna nem externa. O que entra é dado simples; o que sai é texto.

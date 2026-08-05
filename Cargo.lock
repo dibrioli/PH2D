@@ -5441,6 +5441,7 @@ dependencies = [
  "ph2d-tool-trim-transparency",
  "ph2d-tool-upscale",
  "ph2d-tool-vector",
+ "ph2d-ui-codegen",
  "ph2d-ui-state",
  "ph2d-vec-blend",
  "ph2d-vec-boolean",
@@ -7575,6 +7576,10 @@ dependencies = [
  "ph2d-vec-scene",
  "ph2d-vector",
 ]
+
+[[package]]
+name = "ph2d-ui-codegen"
+version = "0.0.0"
 
 [[package]]
 name = "ph2d-ui-state"

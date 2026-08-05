@@ -283,5 +283,11 @@ pub(crate) fn route(app: &mut crate::App, f: u32, level: u32) -> bool {
         crate::ui_states_smoke::frame(app, f);
         return true;
     }
+    // A cena do PAINEL GERADO (=62) — irmã `ui_panel_smoke`. Uma moldura com quatro filhos
+    // VESTIDOS e um que é só desenho (o controle), e o código-fonte que ela descreve impresso.
+    if level == 62 {
+        crate::ui_panel_smoke::frame(app, f);
+        return true;
+    }
     false
 }

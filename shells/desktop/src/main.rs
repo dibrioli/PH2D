@@ -330,7 +330,15 @@ mod tokens_smoke;
 mod transport;
 /// A cena de smoke do Twist (o remoinho + o Falloff a modulá-lo) — irmão de `build_smoke`.
 mod twist_smoke;
-/// A cena de smoke da **PELE POR-WIDGET** (`PH2D_BUILD_SMOKE=60`) — irmã de `build_smoke`.
+/// O painel GERADO da cena `=62`, **compilado** — é o compilador que julga o gerador (W8b).
+#[cfg(test)]
+mod ui_panel_generated;
+/// A cena de smoke do **PAINEL GERADO** (`PH2D_BUILD_SMOKE=62`) — irmã de `build_smoke`.
+mod ui_panel_smoke;
+/// **Que painel esta árvore descreve** (plano UI/UX W8b) — a porta única que lê a moldura
+/// autorada e devolve o `PanelSpec` que o gerador escreve.
+mod ui_panel_spec;
+/// A cena de smoke dos **ESTADOS DE UI** (`PH2D_BUILD_SMOKE=61`) — irmã de `build_smoke`.
 mod ui_states_smoke;
 mod undo;
 mod undo_route;

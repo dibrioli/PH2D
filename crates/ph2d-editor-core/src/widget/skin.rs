@@ -180,6 +180,36 @@ impl WidgetKind {
         Self::ALL.into_iter().find(|k| k.code() == code)
     }
 
+    /// **O IDENTIFICADOR do variante, tal como o Rust o escreve** — o que o codegen do W8b põe no
+    /// código gerado (`WidgetKind::Slider`).
+    ///
+    /// ⚠️ **Ela mora aqui porque o dono da lista é quem pode respondê-la.** O gerador
+    /// (`ph2d-ui-codegen`) **não depende** desta crate de propósito: sem alcance ao catálogo ele
+    /// não CONSEGUE ter opinião sobre o que um `Slider` é, e uma tabela `código → nome` do lado
+    /// dele seria uma segunda resposta que driftaria no dia em que um tipo entrasse — em silêncio,
+    /// porque um número desconhecido não falha, ele só não casa.
+    ///
+    /// ⚠️ **É o identificador, NÃO um rótulo:** ele atravessa para dentro de código-fonte, então
+    /// traduzi-lo ou embelezá-lo produziria um arquivo que não compila. O nome que o artista lê é
+    /// o [`Self::i18n_key`].
+    #[must_use]
+    pub const fn ident(self) -> &'static str {
+        match self {
+            WidgetKind::Button => "Button",
+            WidgetKind::Toggle => "Toggle",
+            WidgetKind::Checkbox => "Checkbox",
+            WidgetKind::Slider => "Slider",
+            WidgetKind::ProgressBar => "ProgressBar",
+            WidgetKind::Tag => "Tag",
+            WidgetKind::TextInput => "TextInput",
+            WidgetKind::Card => "Card",
+            WidgetKind::SectionHeader => "SectionHeader",
+            WidgetKind::ListItem => "ListItem",
+            WidgetKind::Spinner => "Spinner",
+            WidgetKind::Divider => "Divider",
+        }
+    }
+
     /// A chave i18n do nome deste tipo, para o painel.
     #[must_use]
     pub const fn i18n_key(self) -> &'static str {

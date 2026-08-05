@@ -248,6 +248,9 @@ ph2d-vec-edit = { path = "../../crates/ph2d-vec-edit" }
 ph2d-guides = { path = "../../crates/ph2d-guides" }
 # Os ESTADOS de UI + o Smart Animate (plano UI/UX W7).
 ph2d-ui-state = { path = "../../crates/ph2d-ui-state" }
+# O CODEGEN DE PAINEL (plano UI/UX W8b): a arvore autorada descreve um painel, e a shell e quem
+# a LE (ela e' a unica que ve o ECS e o documento). O gerador nao ve nenhum dos dois.
+ph2d-ui-codegen = { path = "../../crates/ph2d-ui-codegen" }
 # O motor de AUTO LAYOUT (ADR-0153): a crate-folha que confina o `taffy`. A shell monta a árvore a
 # partir do ECS e consome retângulos — o motor não conhece ECS, documento nem tema.
 ph2d-vec-layout = { path = "../../crates/ph2d-vec-layout" }

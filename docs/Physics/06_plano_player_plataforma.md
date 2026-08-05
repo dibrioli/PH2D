@@ -491,9 +491,21 @@ W10) · não há *wall grab* (ficar parado é outra mecânica, com botão própr
 - ~~**Descer de plataforma one-way**~~ — **FEITA: a W12** (2026-08-05, cena `=91`). Era a
   única linha desta lista com data marcada, e a previsão sobreviveu à construção: o
   mecanismo estava todo lá, a wave é o gesto.
-- **Bake de um player** — ⚠️ a W-BakeJoint já mediu a contradição (um `Kinematic` do bake
-  não é movido por joint). Com a fita, assar passa a fazer sentido; sem ela, não. Fica para
-  depois da W7, **com a contradição escrita**.
+- ~~**Bake de um player**~~ — **FEITO: a W16** (2026-08-05, cena `=95`). ⚠️ **E a
+  previsão desta linha estava certa no que exigia e CALADA sobre o que faltava:**
+  ela dizia *"com a fita, assar passa a fazer sentido"*, e a fita existia desde a
+  W7 — mas o **bake não a lia**. Medido antes de uma linha ser escrita: uma
+  corrida gravada que leva o personagem a `x = 8,765` era assada com o canal X
+  **CONSTANTE** (nenhuma track horizontal para quem andou nove metros) e, com a
+  ESQUERDA segurada, como `x = −8,765` — *o espelho exacto*. O caminho sem fita
+  dirige os players pelo `player_input` **RETIDO**, ou seja pelo dedo do instante
+  do clique. ⚠️ **É a frase do topo do próprio `bake.rs` dita ao outro eixo** —
+  *"um bake que não avança a cena simula uma cena DIFERENTE"* —, e ela era
+  verdade ali há tanto tempo quanto a fita. **A contradição está escrita** (era o
+  que este item pedia): assar vira o corpo `Kinematic`, e a lei do player não
+  dirige massa infinita, então **depois do bake o personagem para de responder ao
+  teclado** — e o roteiro da cena manda o artista tentar, para ele encontrar isso
+  de propósito em vez de reportar como bug.
 - **Persistir a fita** (W7).
 - **Player Kinematic** — o Enio disse que virá um dia. Este plano não o proíbe: a lei pura
   da `ph2d-platformer` é agnóstica de como o motor é aplicado, e é exatamente onde um

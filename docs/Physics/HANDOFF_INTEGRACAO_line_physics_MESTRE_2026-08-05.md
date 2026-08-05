@@ -26,11 +26,14 @@ Nada integrado, nada pushado.
 | `0ae18e65f` | este handoff |
 | `05edd9c73` | **W14** — O ARRANQUE |
 | `d10f1a556` | a W14 no plano e no mapa |
-| **(esta wave)** | **W15** — O AGACHAR, e a W15 no plano, no mapa e neste handoff |
+| `73471284a` | **W15** — O AGACHAR |
+| `695ca8c25` | a W15 no plano e no mapa |
+| **(esta wave)** | **W16** — ASSAR UM PLAYER, e a W16 no plano, no mapa e neste handoff |
 
 **Smoke:** W11b/W11c **APROVADAS** (*"Smoke OK"*, 2026-08-05), **W12 e W13
 APROVADAS** na mesma data (*"Smoke OK. SIGA"*) e **a W14 APROVADA** logo a seguir
-(*"Smoke OK. Siga"*). **A W15 é a única pendente** — integrar não é aprovar.
+(*"Smoke OK. Siga"*) e **a W15 APROVADA** a seguir (*"Smoke OK. SIga"*). **A W16 é a
+única pendente** — integrar não é aprovar.
 
 ---
 
@@ -38,7 +41,7 @@ APROVADAS** na mesma data (*"Smoke OK. SIGA"*) e **a W14 APROVADA** logo a segui
 
 | número | veredito |
 |---|---|
-| **`PROJECT_SCHEMA`** | ⚠️ **55 → 58** (W13, W14 e W15, um degrau cada) — ver §3 |
+| **`PROJECT_SCHEMA`** | ⚠️ **55 → 58** (W13, W14 e W15, um degrau cada; **a W16 não bumpa**) — ver §3 |
 | `FLIP_SCHEMA` · `VEC_SCENE` | intocados (13 · 14) |
 | registro `ph2d-physics-ecs` | **INTOCADO** (28) — nenhum componente novo |
 | registro `ph2d-ecs` (as 3 casas) | **INTOCADO** |
@@ -50,10 +53,11 @@ APROVADAS** na mesma data (*"Smoke OK. SIGA"*) e **a W14 APROVADA** logo a segui
 | suítes | **debug e release**, mais a shell — verdes, zero falhas |
 
 ⚠️ **O `c9` moveu-se UMA vez na jornada inteira, e foi na W11b/W11c** (a altura de
-repouso do player mudou). **A W12, a W13, a W14 e a W15 são byte-neutras** — a
-descida, o arranque e o agachar exigem botões que a fita do harness não segura, e
-as paredes, o arranque e o agachar nascem **desligados**. Isso não é sorte: é a
-prova executável de que as quatro capacidades novas são opt-in.
+repouso do player mudou). **A W12, a W13, a W14, a W15 e a W16 são byte-neutras** —
+a descida, o arranque e o agachar exigem botões que a fita do harness não segura;
+as paredes, o arranque e o agachar nascem **desligados**; e a W16 não toca o
+caminho do `dispatch`, só o do bake. Isso não é sorte: é a prova executável de que
+as capacidades novas são opt-in.
 
 ---
 
@@ -278,6 +282,70 @@ suíte**.
 
 ---
 
+## §5d — W16: assar um player (cena `=95`)
+
+**O que ele é:** o artista joga, aperta Bake, e a corrida que ele acabou de dar
+vira curva na timeline.
+
+⚠️ **O item estava marcado como *desbloqueado desde a W7*, e estava desbloqueado
+e QUEBRADO.** O `bake_trajectories_with_scene` dirige os players pelo
+`player_input` **RETIDO** — o dedo do instante do clique —, e nunca leu a fita.
+É a frase do topo do próprio `bake.rs` dita ao outro eixo: *"um bake que não
+avança a cena simula uma cena DIFERENTE"*.
+
+**Medido antes de uma linha ser escrita** (corrida gravada de 90 tiques):
+
+| o bake | o que ele grava |
+|---|---|
+| a corrida, ao vivo | `x = 8,765` |
+| sem fita, dedo PARADO | X **CONSTANTE** (amplitude `0,000`) |
+| sem fita, dedo na ESQUERDA | **`x = −8,765`** — o espelho exacto |
+| com a fita (o que shipa) | `x = 8,765` |
+
+⚠️ **A primeira linha da tabela é o defeito que não PARECE um defeito:** com o
+canal X constante, nenhuma track horizontal é escrita, e o artista recebe uma
+curva só de Y para um personagem que andou nove metros — lê-se como *"o botão
+não gravou nada"*. E o modo de falha real não é *"nada acontece"*, é **"grava o
+que quer que você esteja a segurar"**, que às vezes parece certo; por isso o gate
+segura o **oposto** da corrida.
+
+⚠️ **O mesmo `None` significa coisas DIFERENTES nos dois caminhos.** A fita
+devolve `None` fora do alcance dela para dizer *"use a segurada"* — correcto **ao
+vivo** (o artista ainda está a jogar) e errado num **bake** (a corrida acabou).
+Daí o adaptador **`RecordedRun`**, que faz a cauda ficar parada, e que cobre as
+duas pontas (antes do início da gravação também).
+
+⚠️ **E a minha previsão sobre essa cauda estava ERRADA — a mutação não sangrou.**
+Eu escrevi um gate afirmando que sem o adaptador ela *"segue o dedo"*; medindo, o
+`take_taped_input` sobrescreve a entrada retida no primeiro tique gravado e **não
+a restaura** ao calar, então ela **repete o ÚLTIMO tique da gravação, para
+sempre** (`2,765 → 8,765`, contra `2,935` com o adaptador). O dedo só manda com a
+fita **vazia** — duas causas, dois números, e a minha previsão cobria a que não
+estava a acontecer. O gate foi reescrito contra a propriedade MEDIDA.
+
+⚠️ **A CONTRADIÇÃO está escrita, e no ROTEIRO** (era o que o item do §4 pedia):
+assar vira o corpo `Kinematic`, e a lei do player não dirige massa infinita —
+então **depois do bake o personagem para de responder ao teclado**. É a mesma
+contradição que a W-BakeJoint mediu do outro lado, e é o que *assar* significa. O
+**passo 6** da cena manda o artista tentar dirigi-lo, para ele a encontrar de
+propósito em vez de a reportar como bug.
+
+⚠️ **A cena nasce PAUSADA** (a lista `PAUSED_SCENES`), pela razão da `=7` e mais
+uma: ela pede uma corrida JOGADA, e com o relógio já a andar o começo da fita
+descreveria segundos em que ninguém tinha o teclado.
+
+**4 mutações, 4 sangram** — a do caminho sem fita derruba os quatro gates de
+comportamento; a do adaptador só o da cauda; a que trava o corpo derruba os
+quatro; e a da FIAÇÃO (`&mut self.player_tape` → uma fita vazia) derruba só o
+arch-gate, porque **nenhum** gate de comportamento alcança o laço de render.
+
+**Nenhum bump** (`PROJECT_SCHEMA` fica **58**), `c9` byte-idêntico, zero
+`Cargo.toml`, nenhum ADR. Superfície pública nova na `ph2d-physics-ecs`:
+`bake_trajectories_with_scene_and_tape` e `RecordedRun` — ⚠️ e **há UMA
+implementação, as outras delegam**, o molde exacto da família do `dispatch`.
+
+---
+
 ## §6 — Ordem
 
 1. `git rebase main` (ou merge). Os arquivos compartilhados são o `project.rs`
@@ -305,6 +373,7 @@ env PH2D_PHYSICS_SMOKE=91 cargo run -p ph2d-host-desktop --release   # A ESCADA 
 env PH2D_PHYSICS_SMOKE=92 cargo run -p ph2d-host-desktop --release   # O POÇO (W13)
 env PH2D_PHYSICS_SMOKE=93 cargo run -p ph2d-host-desktop --release   # O ABISMO (W14)
 env PH2D_PHYSICS_SMOKE=94 cargo run -p ph2d-host-desktop --release   # O CORREDOR BAIXO (W15)
+env PH2D_PHYSICS_SMOKE=95 cargo run -p ph2d-host-desktop --release   # A CORRIDA VIRA ANIMACAO (W16)
 ```
 
 ⚠️ **Cada cena imprime o que montou.** Se a linha `[physics-smoke NN]` não
@@ -322,6 +391,10 @@ aparecer, pare: a cena não montou e o resto do smoke não diz nada.
   **CONTROLE** — em **1,60**. O passo 6 é ele: se o segundo túnel também o
   parasse, a cena estaria a medir a laje e não o agachar. E o **passo 4** é a
   estrela: soltar o botão LÁ DENTRO **não** o levanta.
+- **`=95`** — ela nasce **PAUSADA** e pede uma corrida JOGADA. O **passo 5** é o
+  veredito (o personagem refaz o que você fez, com a física DESARMADA) e o
+  **passo 6 é a contradição**, deliberada: depois do bake ele não responde ao
+  teclado, porque virou animação.
 
 ---
 
@@ -340,6 +413,8 @@ aparecer, pare: a cena não montou e o resto do smoke não diz nada.
   `0,50` vê o corpo enterrado, sem nada a dizer por quê. A cura natural é a mesma
   do `min_float_height` que a §14 já mostra para a perna de pé: **um readout, não
   um clamp**. Nomeado, não construído.
-- **Do plano 06 §4, o que sobra:** **bake de um player** (desbloqueado desde a
-  W7 — *"com a fita, assar passa a fazer sentido"*) · persistir a fita · player
-  Kinematic.
+- **W16:** a fita **não é persistida** — uma corrida gravada morre com a sessão,
+  e o que sobrevive a um save é o que foi ASSADO. É o item seguinte do §4, e ele
+  fica mais nítido depois desta wave: o bake é o caminho *"torne durável"*, e
+  persistir a fita é o caminho *"mantenha editável"*.
+- **Do plano 06 §4, o que sobra:** persistir a fita · player Kinematic.

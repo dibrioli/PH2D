@@ -8,8 +8,10 @@
 //! route and drives the pump / `GpuCook` accordingly.
 
 use crate::motion_state::MotionState;
+use ph2d_node_registry::NodeRegistry;
 use ph2d_nodegraph::cook::TimeScopes;
-use ph2d_nodegraph::graph::NodeId;
+use ph2d_nodegraph::graph::{Graph, NodeId};
+use ph2d_nodegraph::node::NodeTypeId;
 
 /// Whether the GPU produced this frame (the caller skips the CPU pump) or the
 /// frame fell through to it (GPU off / no useful GPU work / a fully-GPU cook that
@@ -71,6 +73,24 @@ pub(super) fn gpu_route(
     }
 }
 
+/// Does this document bring in an engine OBJECT or a live vector SHAPE? (ADR-0154/0155)
+///
+/// The GPU-resident cook's lowering is **sprite-only**: it hardcodes `texture_id` to
+/// the shared atlas and has no `geometry_id` (vector) path. So a stream carrying a
+/// `source.object`'s `texture_id` or a `source.shape`'s `geometry_id` would draw as
+/// blank atlas quads the moment a GPU stage runs (`source → duplicator → deform → …`
+/// is Hybrid). Recuse the whole document to the CPU render (which draws both) — at
+/// PLAN time, before any cook, so the CPU pump owns the tick from scratch and no
+/// sequential prefix is marched twice. The signal is a registry flag the two source
+/// nodes set (`is_appearance_source`), not a node-name match, so a future appearance
+/// source is caught by declaring the flag, not by editing a list here.
+pub(super) fn graph_has_appearance_source(graph: &Graph, reg: &NodeRegistry) -> bool {
+    graph
+        .nodes()
+        .iter()
+        .any(|n| reg.is_appearance_source(NodeTypeId::of(n.type_name.as_str())))
+}
+
 /// The GPU-resident cook for this frame (GPU/M5 Fase 1 + F1.2, ADR-0126).
 ///
 /// Unless `PH2D_GPU_COOK=0`, a single-sink, unscoped document cooks on the GPU:
@@ -96,6 +116,13 @@ pub(super) fn cook_gpu(
     motion.gpu_live = false;
     // Fast-path guard so a GPU-off or multi-sink document never plans.
     if !motion.gpu_enabled || motion.sinks.len() != 1 {
+        return GpuOutcome::FellThrough;
+    }
+    // A document that brings in an object/shape appearance recuses to the CPU render —
+    // the GPU lowering is sprite-only and would draw it as blank atlas quads once a GPU
+    // stage runs (`source → deform → …` is Hybrid). Checked before planning so the CPU
+    // pump owns the tick from scratch (no double-march of a sequential prefix).
+    if graph_has_appearance_source(&motion.doc.graph, &motion.registry) {
         return GpuOutcome::FellThrough;
     }
     let plan = ph2d_gpu_cook::plan(
@@ -346,6 +373,50 @@ mod tests {
         assert!(edit_renumbers_emitter(&ty(&motion, em), "rate"));
         assert!(!edit_renumbers_emitter(&ty(&motion, em), "speed"));
         assert!(!edit_renumbers_emitter(&ty(&motion, grid), "rate"));
+    }
+
+    /// **A document that brings in an OBJECT or a SHAPE recuses from the GPU**
+    /// (ADR-0154/0155). The GPU lowering is sprite-only (hardcoded `texture_id`, no
+    /// `geometry_id` path), so `source.object` (its tile) and `source.shape` (its live
+    /// vector) draw as blank atlas quads once a GPU stage runs — the very report the
+    /// artist filed (`Shape → duplicator → rotate` = white rectangles). Pinned through
+    /// a REAL `MotionState` registry so the flag the two source nodes declare is what
+    /// drives it. FALSIFIED by dropping `register_appearance_source` in either source
+    /// crate (that graph stops being detected → the GPU keeps it → rectangles).
+    #[test]
+    fn a_document_bringing_in_an_object_or_shape_recuses_from_the_gpu() {
+        let has = |ty: &str| {
+            let mut m = MotionState::new();
+            let src = m.doc.graph.add_node(ty);
+            let out = m.doc.graph.add_node("motion.output");
+            m.doc
+                .graph
+                .connect(ph2d_nodegraph::graph::Edge {
+                    from: (src, 0),
+                    to: (out, 0),
+                    delayed: false,
+                })
+                .expect("connect");
+            graph_has_appearance_source(&m.doc.graph, &m.registry)
+        };
+        assert!(
+            has("source.object"),
+            "an engine object recuses (texture_id)"
+        );
+        assert!(
+            has("source.shape"),
+            "a live vector shape recuses (geometry_id)"
+        );
+        // Control: a point/value-domain document has no appearance id → stays on the
+        // GPU. Without this the test could pass by always returning true.
+        assert!(
+            !has("motion.grid"),
+            "a plain point source keeps the GPU (no appearance id)"
+        );
+        assert!(
+            !has("motion.rotate"),
+            "a modifier alone keeps the GPU (no appearance id)"
+        );
     }
 
     #[test]

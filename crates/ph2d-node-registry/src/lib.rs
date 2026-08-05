@@ -95,6 +95,16 @@ pub struct NodeRegistry {
     /// semantic, so it is declared. Opt-in and default-empty: a node with no entry has no
     /// required input, which every un-annotated node already means.
     required_inputs: BTreeMap<NodeTypeId, &'static [&'static str]>,
+    /// ADR-0154/0155 — node types whose output carries a render **appearance id**:
+    /// a `texture_id` (an engine object's tile, `source.object`) or a `geometry_id`
+    /// (a live vector shape, `source.shape`). The GPU-resident cook's lowering is
+    /// sprite-only — it hardcodes `texture_id` to the shared atlas and has no
+    /// `geometry_id` (vector) path — so a document that brings one of these in draws
+    /// as blank atlas quads once a GPU stage runs. The shell reads this to recuse
+    /// such a document to the CPU render (which draws both). Opt-in and default-empty,
+    /// like `required_inputs`: a node with no entry emits no appearance id, which
+    /// every point/value-domain node already means.
+    appearance_sources: std::collections::BTreeSet<NodeTypeId>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -194,6 +204,21 @@ impl NodeRegistry {
     /// The required input port names for `id`, if any. Absent ⇒ no input is required.
     pub fn required_inputs(&self, id: NodeTypeId) -> Option<&'static [&'static str]> {
         self.required_inputs.get(&id).copied()
+    }
+
+    /// Register a node type as an **appearance source** (ADR-0154/0155): its output
+    /// carries a `texture_id` (`source.object`) or `geometry_id` (`source.shape`) that
+    /// the GPU-resident cook's sprite-only lowering cannot carry. The shell recuses a
+    /// document containing one to the CPU render. Additive; idempotent.
+    pub fn register_appearance_source(&mut self, id: NodeTypeId) {
+        self.appearance_sources.insert(id);
+    }
+
+    /// Does `id`'s output carry a render appearance id the GPU cook cannot lower?
+    /// Absent ⇒ no (a point/value node), the byte-identical default.
+    #[must_use]
+    pub fn is_appearance_source(&self, id: NodeTypeId) -> bool {
+        self.appearance_sources.contains(&id)
     }
 
     /// Register the params whose typed entry reaches past their slider

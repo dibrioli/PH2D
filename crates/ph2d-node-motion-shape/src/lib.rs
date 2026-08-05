@@ -262,6 +262,10 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
     reg.register_param_gates(MANIFEST.id, PARAM_GATES);
+    // Its output carries `geometry_id` (a live vector shape). The GPU cook's lowering
+    // is sprite-only and has no vector path, so a document bringing a shape in recuses
+    // to the CPU render (ADR-0154/0155).
+    reg.register_appearance_source(MANIFEST.id);
     Ok(())
 }
 

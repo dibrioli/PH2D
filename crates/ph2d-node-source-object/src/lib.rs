@@ -91,6 +91,10 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    // Its output carries `texture_id` (the engine object's tile). The GPU cook's
+    // lowering is sprite-only and hardcodes `texture_id` to the shared atlas, so a
+    // document bringing an object in recuses to the CPU render (ADR-0154/0155).
+    reg.register_appearance_source(MANIFEST.id);
     Ok(())
 }
 

@@ -11,6 +11,14 @@
 //!
 //! No frame 90 o `kind` vira ENGRENAGEM: as 16 copias RE-CONSTROEM ao vivo — o
 //! `kind` e um param, entao mudar um numero re-coze o no e so o que esta a jusante.
+//!
+//! **`=2` (SHAPE + DEFORMER, o bug do artista):** `source.shape -> duplicator <- grid
+//! -> motion.rotate -> output`. O cook GPU-resident e' ON por default e a lowering dele
+//! e' sprite-only (hardcoda `texture_id`, sem rota `geometry_id`), entao no instante em
+//! que um estagio GPU (o rotate) rodava depois da fonte, as 16 estrelas viravam
+//! RETANGULOS brancos do atlas — e o `motion.rotate`/`grid` moviam os retangulos, nao as
+//! estrelas (ADR-0154/0155). O conserto: um documento com uma fonte de aparencia RECUSA
+//! para o render da CPU (que desenha o vetor). Agora as 16 estrelas giram NITIDAS.
 
 use ph2d_nodegraph::graph::{Edge, Graph, NodeId, Pos};
 
@@ -71,7 +79,66 @@ fn build_shape_graph(graph: &mut Graph, kind: f32) -> (NodeId, NodeId) {
     (src, out)
 }
 
-/// O modo: `0` off, `1` ligado (Star -> Gear ao vivo).
+/// `=2`: o grafo do bug — `source.shape -> duplicator <- grid -> motion.rotate -> output`,
+/// com o rotate girando `angle` graus cada estrela. Devolve `(o no do rotate, o sink)`.
+fn build_rotated_shape_graph(graph: &mut Graph, angle: f32) -> (NodeId, NodeId) {
+    let src = graph.add_node("source.shape");
+    let grid = graph.add_node("motion.grid");
+    let dup = graph.add_node("motion.duplicator");
+    let rot = graph.add_node("motion.rotate");
+    let out = graph.add_node("motion.output");
+    graph.set_pos(src, Pos { x: 0.0, y: -260.0 });
+    graph.set_pos(grid, Pos { x: 0.0, y: -140.0 });
+    graph.set_pos(
+        dup,
+        Pos {
+            x: 210.0,
+            y: -200.0,
+        },
+    );
+    graph.set_pos(
+        rot,
+        Pos {
+            x: 420.0,
+            y: -200.0,
+        },
+    );
+    graph.set_pos(
+        out,
+        Pos {
+            x: 630.0,
+            y: -200.0,
+        },
+    );
+    for (a, ap, b, bp) in [
+        (src, 0u16, dup, 0u16),
+        (grid, 0, dup, 1),
+        (dup, 0, rot, 0),
+        (rot, 0, out, 0),
+    ] {
+        graph
+            .connect(Edge {
+                from: (a, ap),
+                to: (b, bp),
+                delayed: false,
+            })
+            .expect("connect");
+    }
+    graph.set_param(src, "kind", STAR);
+    graph.set_param(src, "size", 0.4);
+    graph.set_param(src, "sides", 6.0);
+    graph.set_param(grid, "rows", 4.0);
+    graph.set_param(grid, "cols", 4.0);
+    graph.set_param(grid, "gap_x", 1.3);
+    graph.set_param(grid, "gap_y", 1.3);
+    graph.set_param(rot, "angle", angle);
+    graph.set_label(src, "The Shape");
+    graph.set_label(rot, "Rotate");
+    ph2d_panel_motion_graph::request_graph_selection(vec![rot.0]);
+    (rot, out)
+}
+
+/// O modo: `0` off, `1` ligado (Star -> Gear ao vivo), `2` o bug (Shape + deformer).
 fn mode() -> u32 {
     static M: std::sync::OnceLock<u32> = std::sync::OnceLock::new();
     *M.get_or_init(|| {
@@ -96,9 +163,9 @@ impl crate::App {
             return;
         }
         let f = FRAME.fetch_add(1, Ordering::Relaxed);
-        match f {
+        match (mode(), f) {
             // Frame 3: monta o grafo, empurra o sink, abre a tool Motion.
-            3 => {
+            (1, 3) => {
                 let gfx = self.gfx.as_mut().expect("gfx");
                 let (src, out) = build_shape_graph(&mut gfx.motion.doc.graph, STAR);
                 gfx.motion.sinks.push(out);
@@ -113,7 +180,7 @@ impl crate::App {
                 );
             }
             // Frame 90: troca o kind para Gear — as 16 copias re-constroem.
-            90 => {
+            (1, 90) => {
                 let src = SHAPE_NODE.load(Ordering::Relaxed);
                 if src != u32::MAX {
                     let gfx = self.gfx.as_mut().expect("gfx");
@@ -123,6 +190,37 @@ impl crate::App {
                          SEM PISCAR. Agora o painel troca para os controles da engrenagem (Teeth, \
                          Tooth Depth, Hole) e ela tem um FURO central de verdade. Mudar um numero \
                          re-coze so o que esta a jusante; cada copia continua nitida em qualquer zoom."
+                    );
+                }
+            }
+            // =2, frame 3: o grafo do BUG — Shape -> dup <- grid -> rotate -> output.
+            (2, 3) => {
+                let gfx = self.gfx.as_mut().expect("gfx");
+                let (rot, out) = build_rotated_shape_graph(&mut gfx.motion.doc.graph, 25.0);
+                gfx.motion.sinks.push(out);
+                SHAPE_NODE.store(rot.0, Ordering::Relaxed);
+                let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+                eprintln!(
+                    "[shape smoke =2] `source.shape (STAR) -> duplicator <- grid -> motion.rotate \
+                     -> output`, GPU cook LIGADO (o default). ANTES: no instante em que o rotate \
+                     (um estagio GPU) rodava depois da fonte, as 16 estrelas viravam RETANGULOS \
+                     brancos do atlas (a lowering GPU e' sprite-only: hardcoda texture_id, sem \
+                     rota geometry_id) — e o rotate/grid moviam os retangulos, nao as estrelas. \
+                     AGORA: o documento tem uma fonte de aparencia -> RECUSA para o render da CPU \
+                     -> 16 ESTRELAS NITIDAS giradas 25 graus, sem um unico retangulo. SE VIR \
+                     RETANGULOS BRANCOS, PARE. No frame 90 o angulo vira 75 e as estrelas GIRAM."
+                );
+            }
+            // =2, frame 90: gira mais — as 16 estrelas nitidas viram para 75 graus.
+            (2, 90) => {
+                let rot = SHAPE_NODE.load(Ordering::Relaxed);
+                if rot != u32::MAX {
+                    let gfx = self.gfx.as_mut().expect("gfx");
+                    gfx.motion.doc.graph.set_param(NodeId(rot), "angle", 75.0);
+                    eprintln!(
+                        "[shape smoke =2] angle -> 75: as 16 estrelas NITIDAS giram (o deformer \
+                         move as ESTRELAS agora, nao retangulos). Continuam vetor crisp em qualquer \
+                         zoom — o render caiu na CPU porque a GPU nao carrega o geometry_id."
                     );
                 }
             }

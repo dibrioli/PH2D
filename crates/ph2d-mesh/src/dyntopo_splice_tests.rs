@@ -11,6 +11,88 @@
 
 use super::*;
 
+/// **A FRENTE FECHA O MESMO CONJUNTO QUE A VARREDURA FECHAVA.**
+///
+/// O fecho de Rivara é um ponto FIXO, e trocar a forma de alcançá-lo não pode
+/// mover o conjunto — só a ordem em que as marcas entram. ⚠️ **E uma frente que
+/// esquecesse de empurrar uma vizinha falharia em SILÊNCIO:** o padrão de corte
+/// fecha a rachadura sobre qualquer subconjunto de arestas partidas, então a
+/// malha continuaria fechada e a única evidência seria um triângulo mais fino do
+/// que precisava — invisível até alguém medir ângulo.
+///
+/// O oráculo é a varredura CONGELADA (`close_lepp_by_sweep`, o código que
+/// shipava), e a fixture semeia as mesmas marcas iniciais nas duas rotas.
+#[test]
+fn the_front_closes_the_same_set_the_sweep_did() {
+    let m = tri_sphere(28, 40);
+    let (faces, adj, pos) = (m.faces(), m.adjacency(), m.positions());
+    let ids = EdgeIds::build(adj);
+
+    // Semente: as arestas longas de um punhado de faces espalhadas. Espalhadas
+    // de propósito — um fecho que arranca de um bloco único é o caso fácil, e o
+    // que separa as duas rotas é a cadeia alcançar longe.
+    let mut seed: Vec<(u32, u32, u32)> = Vec::new();
+    let mut pending_front = vec![false; ids.len()];
+    let mut front: Vec<u32> = Vec::new();
+    for fi in (0..faces.len()).step_by(41) {
+        let v = faces[fi].verts();
+        let Some((_, e, a, b)) = super::longest_edge(&ids, adj, v, pos) else {
+            continue;
+        };
+        if !pending_front[e as usize] {
+            pending_front[e as usize] = true;
+            seed.push((e, a, b));
+            super::faces_of_edge(adj, faces, a, b, &mut front);
+        }
+    }
+    assert!(seed.len() > 20, "o controle: a semente tem de existir");
+    let mut pending_sweep = pending_front.clone();
+
+    let mut marked = seed.clone();
+    super::close_lepp(
+        &ids,
+        adj,
+        faces,
+        pos,
+        &mut pending_front,
+        &mut marked,
+        &mut front,
+    );
+    super::close_lepp_by_sweep(&ids, adj, faces, pos, &mut pending_sweep);
+
+    assert!(
+        marked.len() > seed.len(),
+        "o controle: o fecho tem de ACRESCENTAR marcas ({} de semente)",
+        seed.len()
+    );
+    let a: Vec<usize> = (0..ids.len()).filter(|&e| pending_front[e]).collect();
+    let b: Vec<usize> = (0..ids.len()).filter(|&e| pending_sweep[e]).collect();
+    assert_eq!(
+        a,
+        b,
+        "a frente e a varredura fecharam conjuntos diferentes ({} contra {})",
+        a.len(),
+        b.len()
+    );
+
+    // E a FRENTE tem de conter toda face que toca uma marca — é ela que o emit
+    // itera, então uma face de fora seria uma face que fica com o T-vértice.
+    front.sort_unstable();
+    front.dedup();
+    for (fi, f) in faces.iter().enumerate() {
+        let v = f.verts();
+        let touches = (0..v.len()).any(|k| {
+            ids.id_of(adj, v[k], v[(k + 1) % v.len()])
+                .is_some_and(|e| pending_front[e as usize])
+        });
+        assert_eq!(
+            touches,
+            front.binary_search(&(fi as u32)).is_ok(),
+            "a face {fi} toca uma marca mas nao esta' na frente (ou o contrario)"
+        );
+    }
+}
+
 /// **A FOLHA QUE ENGORDA SE DIVIDE** — a árvore não degrada ao longo de um traço.
 ///
 /// ⚠️ **É o preço escondido da inserção incremental, e ele não levanta erro

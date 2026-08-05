@@ -30,28 +30,27 @@
 use crate::adjacency::Adjacency;
 use crate::face::{Face, TRI};
 
-/// O grafo de arestas de uma malha — ver o cabeçalho.
+/// **SÓ A NUMERAÇÃO** — a metade barata do grafo.
+///
+/// ⚠️ **Ela existe porque as duas metades do [`Edges`] têm preços muito
+/// diferentes e consumidores diferentes.** Medido a 98k
+/// (`measure_what_the_edge_graph_is_made_of`): o prefixo custa **0,184 ms** e o
+/// mapa `(face, canto) → id` custa **1,498 ms** — 89% do total. O refino precisa
+/// do id para MARCAR umas poucas arestas da região, e pagava a malha inteira por
+/// isso; com a numeração sozinha ele pergunta `id_of` sob demanda, `O(valência)`.
+///
+/// A numeração é a MESMA (o [`Edges`] a contém e delega), então nada que guarde
+/// um id entre as duas rotas pode divergir.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct Edges {
+pub struct EdgeIds {
     /// Onde começam as arestas POSSUÍDAS por cada vértice, com o `n + 1` do CSR.
     owned_start: Vec<u32>,
-    /// Por face e por canto, o índice da aresta que sai daquele canto. O slot 3
-    /// de um triângulo é [`TRI`], como no [`Face`] que ele espelha.
-    face_edges: Vec<[u32; 4]>,
-    /// Quantas faces usam cada aresta.
-    valence: Vec<u32>,
 }
 
-impl Edges {
-    /// Constrói o grafo a partir das faces e do anel de vértices.
-    ///
-    /// ⚠️ **A `adjacency` TEM de ser a destas `faces`.** Ela é a fonte da
-    /// numeração, então um par desalinhado não falha — devolve ids que não
-    /// descrevem esta malha, que é a forma silenciosa de errar. Quem chama por
-    /// [`crate::Mesh::edges`] não consegue desalinhar; um chamador direto
-    /// consegue, e é por isso que este parágrafo existe.
+impl EdgeIds {
+    /// Constrói a numeração — um passe sobre os VÉRTICES, e mais nada.
     #[must_use]
-    pub fn build(faces: &[Face], adjacency: &Adjacency) -> Self {
+    pub fn build(adjacency: &Adjacency) -> Self {
         let n = adjacency.vert_verts.len();
         let mut owned_start = Vec::with_capacity(n + 1);
         let mut total = 0u32;
@@ -71,28 +70,7 @@ impl Edges {
             .unwrap_or(u32::MAX);
         }
         owned_start.push(total);
-
-        let mut out = Self {
-            owned_start,
-            face_edges: vec![[TRI; 4]; faces.len()],
-            valence: vec![0; total as usize],
-        };
-        for (f, face) in faces.iter().enumerate() {
-            let verts = face.verts();
-            for k in 0..verts.len() {
-                // A aresta do canto `k` vai daquele vértice ao SEGUINTE no ciclo
-                // da face — a mesma regra para tri e quad, escrita uma vez (a
-                // divergência nº 2 que a `Adjacency` já tomou do original).
-                let a = verts[k];
-                let b = verts[(k + 1) % verts.len()];
-                let Some(e) = out.id_of(adjacency, a, b) else {
-                    continue;
-                };
-                out.face_edges[f][k] = e;
-                out.valence[e as usize] += 1;
-            }
-        }
-        out
+        Self { owned_start }
     }
 
     /// O índice da aresta `{a, b}`, ou `None` se ela não existe no anel.
@@ -114,6 +92,84 @@ impl Edges {
             rank += 1;
         }
         None
+    }
+
+    /// Quantas arestas a malha tem.
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.owned_start.last().copied().unwrap_or(0) as usize
+    }
+
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    /// Bytes segurados — a sonda de memória os soma.
+    #[must_use]
+    pub fn capacity_bytes(&self) -> usize {
+        self.owned_start.capacity() * size_of::<u32>()
+    }
+}
+
+/// O grafo de arestas de uma malha — ver o cabeçalho.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Edges {
+    /// A numeração — a porta única de *qual é o id desta aresta*.
+    ids: EdgeIds,
+    /// Por face e por canto, o índice da aresta que sai daquele canto. O slot 3
+    /// de um triângulo é [`TRI`], como no [`Face`] que ele espelha.
+    face_edges: Vec<[u32; 4]>,
+    /// Quantas faces usam cada aresta.
+    valence: Vec<u32>,
+}
+
+impl Edges {
+    /// Constrói o grafo a partir das faces e do anel de vértices.
+    ///
+    /// ⚠️ **A `adjacency` TEM de ser a destas `faces`.** Ela é a fonte da
+    /// numeração, então um par desalinhado não falha — devolve ids que não
+    /// descrevem esta malha, que é a forma silenciosa de errar. Quem chama por
+    /// [`crate::Mesh::edges`] não consegue desalinhar; um chamador direto
+    /// consegue, e é por isso que este parágrafo existe.
+    #[must_use]
+    pub fn build(faces: &[Face], adjacency: &Adjacency) -> Self {
+        let ids = EdgeIds::build(adjacency);
+        let total = ids.len();
+        let mut out = Self {
+            ids,
+            face_edges: vec![[TRI; 4]; faces.len()],
+            valence: vec![0; total],
+        };
+        for (f, face) in faces.iter().enumerate() {
+            let verts = face.verts();
+            for k in 0..verts.len() {
+                // A aresta do canto `k` vai daquele vértice ao SEGUINTE no ciclo
+                // da face — a mesma regra para tri e quad, escrita uma vez (a
+                // divergência nº 2 que a `Adjacency` já tomou do original).
+                let a = verts[k];
+                let b = verts[(k + 1) % verts.len()];
+                let Some(e) = out.id_of(adjacency, a, b) else {
+                    continue;
+                };
+                out.face_edges[f][k] = e;
+                out.valence[e as usize] += 1;
+            }
+        }
+        out
+    }
+
+    /// A numeração sozinha — ver [`EdgeIds`].
+    #[must_use]
+    pub fn ids(&self) -> &EdgeIds {
+        &self.ids
+    }
+
+    /// O índice da aresta `{a, b}`, ou `None` se ela não existe no anel.
+    /// Delega para a [`EdgeIds`]: uma pergunta, uma resposta.
+    #[must_use]
+    pub fn id_of(&self, adjacency: &Adjacency, a: u32, b: u32) -> Option<u32> {
+        self.ids.id_of(adjacency, a, b)
     }
 
     /// Quantas arestas a malha tem.
@@ -144,7 +200,7 @@ impl Edges {
     /// Bytes segurados — a sonda de memória os soma.
     #[must_use]
     pub fn capacity_bytes(&self) -> usize {
-        self.owned_start.capacity() * size_of::<u32>()
+        self.ids.capacity_bytes()
             + self.face_edges.capacity() * size_of::<[u32; 4]>()
             + self.valence.capacity() * size_of::<u32>()
     }

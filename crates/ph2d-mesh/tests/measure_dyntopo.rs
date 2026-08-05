@@ -302,7 +302,9 @@ fn measure_what_the_first_dab_is_made_of() {
 #[ignore = "sonda: mede, não afirma"]
 fn measure_what_a_dab_costs_by_brush_size() {
     println!("\n  O DAB POR TAMANHO DE PINCEL — a 98k vertices");
-    println!("   raio   faces depois   novos verts    1o dab ms   em regime ms   1 rebuild ms");
+    println!(
+        "   raio   faces depois   novos verts    1o dab ms   em regime ms   1 rebuild ms   dab/rebuild"
+    );
     let centre = [0.0, 1.0, 0.0];
     for radius in [0.05f32, 0.10, 0.15, 0.25] {
         let mut m = shapes::uv_sphere(256, 384, 1.0);
@@ -326,9 +328,10 @@ fn measure_what_a_dab_costs_by_brush_size() {
         let mut probe = m.clone();
         let rebuild = ms_median(3, || probe.rebuild());
         println!(
-            "  {radius:5.2} {:14} {:13} {first:12.3} {steady:14.3} {rebuild:12.3}   (faces +{:.0}%)",
+            "  {radius:5.2} {:14} {:13} {first:12.3} {steady:14.3} {rebuild:12.3} {:11.3}   (faces +{:.0}%)",
             m.face_count(),
             m.vert_count() - v0,
+            first / rebuild.max(1e-9),
             (m.face_count() - f0) as f64 / f0 as f64 * 100.0,
         );
     }
@@ -336,6 +339,58 @@ fn measure_what_a_dab_costs_by_brush_size() {
         "\n  A coluna `rebuild` e' o que o `splice_topology` substituiu: a malha de\n  \
          SAIDA reconstruida do zero, medida costas-com-costas com o dab."
     );
+    println!(
+        "  ⚠️ `dab/rebuild` e' a coluna que se compara ENTRE CORRIDAS. Esta maquina\n     \
+         e' compartilhada, e o mesmo binario ja' mediu 8,5 e 14,1 ms de `rebuild`\n     \
+         so' pela carga -- um numero absoluto de um dia nao se compara com o de\n     \
+         outro. A RAZAO contra um trecho que a wave nao toca e' imune a isso."
+    );
+}
+
+/// **DE QUE METADE O GRAFO DE ARESTAS É FEITO** — a pergunta que decide a W9.2d.
+///
+/// O `Edges::build` tem dois passes: um sobre os VÉRTICES, que soma quantas
+/// arestas cada um possui (o prefixo que torna o id denso), e um sobre as
+/// FACES × cantos, que preenche o mapa `(face, canto) → id`. O corte só precisa
+/// do segundo **para a região** — se o primeiro for barato, ele fica e o segundo
+/// vira sob demanda; se não for, os dois têm de sair.
+#[test]
+#[ignore = "sonda: mede, não afirma"]
+fn measure_what_the_edge_graph_is_made_of() {
+    println!("\n  O GRAFO DE ARESTAS — as duas metades");
+    println!("   vértices      faces   prefixo (O(V))   face_edges (O(F))   TOTAL");
+    for (rings, segs) in [(64, 96), (128, 192), (256, 384)] {
+        let mut m = shapes::uv_sphere(rings, segs, 1.0);
+        m.triangulate();
+        m.rebuild();
+        let adj = m.adjacency();
+        let n = adj.vert_verts.len();
+        // O passe do prefixo, escrito aqui exatamente como o `Edges::build` o faz.
+        let prefix = ms_median(5, || {
+            let mut owned = Vec::with_capacity(n + 1);
+            let mut total = 0u32;
+            for v in 0..n {
+                owned.push(total);
+                total += adj
+                    .vert_verts
+                    .neighbours(v)
+                    .iter()
+                    .filter(|&&w| w as usize > v)
+                    .count() as u32;
+            }
+            owned.push(total);
+            std::hint::black_box(owned);
+        });
+        let total = ms_median(5, || {
+            std::hint::black_box(m.edges());
+        });
+        println!(
+            "  {:9} {:10} {prefix:16.3} {:19.3} {total:7.3}",
+            m.vert_count(),
+            m.face_count(),
+            (total - prefix).max(0.0),
+        );
+    }
 }
 
 /// **A ÁRVORE DEGRADA COM O USO?** — a pergunta que a inserção incremental abre.

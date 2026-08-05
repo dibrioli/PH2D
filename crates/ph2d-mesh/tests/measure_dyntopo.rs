@@ -21,7 +21,7 @@
 //! cargo test -p ph2d-mesh --release --test measure_dyntopo -- --ignored --nocapture
 //! ```
 
-use ph2d_mesh::{Adjacency, Octree, QueryScratch, edge_target, refine_in_sphere, shapes};
+use ph2d_mesh::{Adjacency, Face, Octree, QueryScratch, refine_in_sphere, shapes};
 use std::time::Instant;
 
 fn ms(f: impl FnOnce()) -> f64 {
@@ -170,6 +170,120 @@ fn measure_what_a_dab_pays_for_refinement_today() {
         });
         let verdict = if first <= 8.0 { "sim" } else { "NAO" };
         println!("  {v:9}   {first:9.3}   {steady:12.3}   {verdict}");
+    }
+}
+
+/// **DE QUE É FEITO O PISO DO REGIME** — o que um dab paga só para responder
+/// *"não há o que partir"*.
+///
+/// ⚠️ **Esta é a pergunta que decide a W9.2, e ela não é sobre o primeiro dab.**
+/// Depois que a região alcança a densidade pedida, TODO evento de ponteiro cai
+/// no desfecho `Enough` — e a sonda irmã mediu esse desfecho em **2,19 ms numa
+/// malha de 98k**, um custo que cresce com a MALHA dentro de um gesto que é
+/// limitado pela PEGADA. Um total não diz o que atacar; esta sonda mede as
+/// peças **pelas portas que o produto usa**, e o resto sai por diferença.
+///
+/// Cada coluna é uma coisa que o caminho `Enough` de fato faz antes de poder
+/// dizer não: conferir que tudo é triângulo · consultar o octree · varrer as
+/// faces candidatas medindo as arestas.
+///
+/// ⚠️ **A última coluna é o que ele DEIXOU de fazer**, e ela fica aqui de
+/// propósito: era 86% do piso, e sem o número ao lado ninguém sabe por que a
+/// escolha acontece antes do grafo de arestas em vez de dentro dele.
+#[test]
+#[ignore = "sonda: mede, não afirma"]
+fn measure_what_the_steady_floor_is_made_of() {
+    println!("\n  O PISO DO REGIME — o preco de responder 'nao ha o que partir'");
+    println!(
+        "   vértices     faces   arestas    is_tri    octree   selecao     TOTAL   | edges evitado"
+    );
+    let radius = 0.25f32;
+    let centre = [0.0, 1.0, 0.0];
+    for (rings, segs) in [(32, 48), (64, 96), (128, 192), (256, 384)] {
+        let mut m = shapes::uv_sphere(rings, segs, 1.0);
+        m.triangulate();
+        m.rebuild();
+        let target = 0.6 * mean_edge(&m);
+        let mut births = Vec::new();
+        // Uma passada leva a região à densidade pedida. Sem ela a sonda mediria
+        // o PRIMEIRO dab, que é o outro regime — e é assim que uma fixture
+        // deixa de conter o fenômeno.
+        refine_in_sphere(&mut m, centre, radius, target, &mut births);
+        let (v, f) = (m.vert_count(), m.face_count());
+        let ne = m.edges().len();
+
+        let is_tri = ms_median(5, || {
+            std::hint::black_box(m.faces().iter().all(Face::is_tri));
+        });
+        let edges = ms_median(5, || {
+            std::hint::black_box(m.edges());
+        });
+        let mut hits = Vec::new();
+        let oct = ms_median(5, || {
+            m.octree().faces_in_sphere(centre, radius, &mut hits);
+        });
+        let total = ms_median(5, || {
+            refine_in_sphere(&mut m, centre, radius, target, &mut births);
+        });
+        let select = (total - is_tri - oct).max(0.0);
+        println!(
+            "  {v:9} {f:9} {ne:9} {is_tri:9.3} {oct:9.3} {select:9.3} {total:9.3}   | {edges:9.3}"
+        );
+    }
+    println!(
+        "\n  ⚠️ So' o `is_tri` ainda e' O(MALHA), e ele e' a guarda de contrato que\n     \
+         impede o emit de comer o 4o vertice de um quad — barato, mas nomeado."
+    );
+}
+
+/// **DE QUE É FEITO O PRIMEIRO DAB** — o pico que um artista sente ao tocar
+/// uma região grossa.
+///
+/// A wave anterior o mediu em **67,6 ms a 98k**, oito vezes o orçamento de 8 ms.
+/// Aqui a atribuição é por peça: cada passe de corte e cada rodada de flip
+/// termina numa troca de topologia, e uma troca de topologia é um
+/// [`ph2d_mesh::Mesh::rebuild`] inteiro. A coluna `passes × rebuild` é o **piso**
+/// dessa parte — o que o dab paga só em reconstruir, sem contar o trabalho que
+/// achou o que cortar.
+#[test]
+#[ignore = "sonda: mede, não afirma"]
+fn measure_what_the_first_dab_is_made_of() {
+    println!("\n  O PRIMEIRO DAB — a atribuicao do pico");
+    println!("   vértices   passes   1 rebuild   1 edges   passes x rebuild    1o dab ms   fracao");
+    let radius = 0.25f32;
+    let centre = [0.0, 1.0, 0.0];
+    for (rings, segs) in [(32, 48), (64, 96), (128, 192), (256, 384)] {
+        let mut m = shapes::uv_sphere(rings, segs, 1.0);
+        m.triangulate();
+        m.rebuild();
+        let v = m.vert_count();
+        let target = 0.6 * mean_edge(&m);
+
+        // O preço de UMA reconstrução e de UM grafo de arestas, medidos na
+        // malha de ENTRADA (a que o primeiro passe encontra).
+        let mut probe = m.clone();
+        let rebuild = ms_median(5, || probe.rebuild());
+        let edges = ms_median(5, || {
+            std::hint::black_box(m.edges());
+        });
+
+        let mut births = Vec::new();
+        let mut passes = 0usize;
+        let first = ms(|| {
+            if let ph2d_mesh::Refine::Done { passes: p, .. } =
+                refine_in_sphere(&mut m, centre, radius, target, &mut births)
+            {
+                passes = p;
+            }
+        });
+        // O flip roda ate' 3 rodadas e cada uma que troca alguma coisa tambem
+        // reconstroi — o piso conta so' os passes de CORTE, que sao os que a
+        // porta reporta.
+        let floor = passes as f64 * rebuild;
+        println!(
+            "  {v:9} {passes:8} {rebuild:11.3} {edges:9.3} {floor:18.3} {first:12.3} {:6.0}%",
+            floor / first.max(1e-9) * 100.0
+        );
     }
 }
 

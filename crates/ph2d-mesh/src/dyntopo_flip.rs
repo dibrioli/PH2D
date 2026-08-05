@@ -42,7 +42,36 @@
 //! 3. **A troca DOBRARIA a superfície** — se uma das faces novas aponta para o
 //!    lado oposto do par antigo, o flip é uma dobra e não uma melhoria. Sem esta
 //!    guarda um vinco afiado é "melhorado" para um bico invertido.
+//!
+//! # Ele pergunta pela REGIÃO, e o número que obrigou isso
+//!
+//! A primeira versão varria **toda aresta da malha** por rodada. Medido num dab
+//! a 98k vértices (340k arestas), isso é **33,2 de 66,1 ms — metade do dab** —, e
+//! a segunda rodada gastava 17,3 ms para achar **zero** flips.
+//!
+//! ⚠️ **E o desperdício era de VARREDURA, não de mudança:** medindo por faixa de
+//! distância ao centro do dab, **todas** as faces alteradas caem dentro da esfera
+//! do pincel e **nenhuma** fora (3648 dentro, 0 fora, a 28k). Ou seja, a
+//! varredura global já respondia *"o trabalho é todo local"* — pagando `O(malha)`
+//! para dizê-lo.
+//!
+//! Então o operador recebe as faces que o corte mexeu e olha as arestas DELAS; a
+//! rodada seguinte recebe as faces que a anterior flipou, porque é só ali que a
+//! forma mudou de novo.
+//!
+//! ⚠️ **A ORDEM de visita muda, e com ela o conjunto de flips** — `spent` deixa
+//! uma face entrar numa troca só por rodada, então percorrer por *(face,canto)*
+//! não escolhe exatamente as mesmas trocas que percorrer por id de aresta. O que
+//! é gateado não é a rota e sim a **propriedade**: o pior ângulo mínimo depois de
+//! um traço (`a_moving_dab_does_not_shred_the_triangles`). Um gate de identidade
+//! aqui pinaria uma heurística; este pina o que ela existe para entregar.
+//!
+//! ⚠️ **E ele não constrói mais o [`crate::Edges`]:** as duas perguntas que ele
+//! fazia àquele grafo — *quem é a outra face desta aresta* e *a diagonal nova já
+//! existe?* — são as duas respondidas pela [`crate::Adjacency`], que a malha já
+//! carrega. `id_of` era, literalmente, uma varredura do anel de `c` atrás de `d`.
 
+use crate::adjacency::Adjacency;
 use crate::dyntopo::rebuild_with_faces;
 use crate::face::Face;
 use crate::mesh::Mesh;
@@ -62,92 +91,119 @@ const MAX_ROUNDS: usize = 3;
 /// não há ciclo de duas arestas trocando uma para a outra para sempre.
 const MIN_GAIN: f32 = 1e-4;
 
-/// **Relaxa a malha por troca de diagonal.** Devolve quantas arestas trocaram.
+/// **Relaxa a REGIÃO por troca de diagonal.** Devolve quantas arestas trocaram.
 ///
-/// Não move vértice nenhum e não muda a contagem — só a ligação. É por isso que
-/// ele pode rodar depois do corte sem falar com o traço em voo: os índices dos
-/// vértices ficam exatamente onde estavam, que é a mesma premissa de que o
-/// `SculptStroke::grow_with` depende.
-pub(crate) fn relax(mesh: &mut Mesh) -> usize {
+/// `seeds` são as faces que o corte mexeu. Não move vértice nenhum e não muda a
+/// contagem — só a ligação. É por isso que ele pode rodar depois do corte sem
+/// falar com o traço em voo: os índices dos vértices ficam exatamente onde
+/// estavam, que é a mesma premissa de que o `SculptStroke::grow_with` depende.
+///
+/// ⚠️ **Os índices de FACE também sobrevivem a uma rodada** — ela reescreve dois
+/// slots do vetor e o devolve com o mesmo comprimento —, e é isso que deixa as
+/// faces flipadas serem as sementes da rodada seguinte sem remapeamento.
+pub(crate) fn relax(mesh: &mut Mesh, seeds: &[u32]) -> usize {
     let mut total = 0;
+    let mut work: Vec<u32> = seeds.to_vec();
     for _ in 0..MAX_ROUNDS {
-        let n = one_round(mesh);
+        if work.is_empty() {
+            break;
+        }
+        let (n, next) = one_round(mesh, &work);
         total += n;
         if n == 0 {
             break;
         }
+        work = next;
     }
     total
 }
 
-/// Uma rodada. Devolve quantas trocas aconteceram.
-fn one_round(mesh: &mut Mesh) -> usize {
-    let edges = mesh.edges();
-    let pos = mesh.positions();
-    if !mesh.faces().iter().all(Face::is_tri) {
-        return 0;
-    }
-
-    // Aresta → as (no máximo duas) faces que a dividem. É a adjacência que o
-    // `Edges` não guarda, e construí-la aqui custa uma varredura das faces — a
-    // mesma ordem do resto do passe.
-    let mut side = vec![[u32::MAX; 2]; edges.len()];
-    for (fi, face) in mesh.faces().iter().enumerate() {
-        for k in 0..face.verts().len() {
-            let Some(e) = edges.face_edge(fi, k) else {
+/// Uma rodada. Devolve quantas trocas aconteceram e as faces que mudaram.
+fn one_round(mesh: &mut Mesh, seeds: &[u32]) -> (usize, Vec<u32>) {
+    let mut changes: Vec<(usize, Face)> = Vec::new();
+    let mut next: Vec<u32> = Vec::new();
+    {
+        let src = mesh.faces();
+        let adj = mesh.adjacency();
+        let pos = mesh.positions();
+        // Uma face só pode entrar numa troca por rodada: as duas trocas leriam a
+        // mesma face pela versão ANTIGA e a segunda escreveria por cima da
+        // primeira. ⚠️ E é ele que torna seguro procurar a face vizinha na
+        // adjacência de ENTRADA: uma face já trocada some do anel que a lista
+        // descreve, e o guard a recusa antes de alguém ler o par errado.
+        let mut spent = vec![false; src.len()];
+        for &f in seeds {
+            let i0 = f as usize;
+            if i0 >= src.len() || !src[i0].is_tri() {
                 continue;
-            };
-            let slot = &mut side[e as usize];
-            if slot[0] == u32::MAX {
-                slot[0] = fi as u32;
-            } else if slot[1] == u32::MAX {
-                slot[1] = fi as u32;
+            }
+            for k in 0..3 {
+                if spent[i0] {
+                    break;
+                }
+                let v0 = src[i0].verts();
+                let (ea, eb) = (v0[k], v0[(k + 1) % 3]);
+                let Some(f1) = other_face(adj, src, f, ea, eb) else {
+                    continue;
+                };
+                let i1 = f1 as usize;
+                if spent[i1] || !src[i1].is_tri() {
+                    continue;
+                }
+                let Some((a, b, c, d)) = quad(src, i0, i1) else {
+                    continue;
+                };
+                // A diagonal nova já existe em outro lugar da malha? Ver a
+                // recusa 2 — e a pergunta é o anel de `c`, não um id de aresta.
+                if adj.vert_verts.neighbours(c as usize).contains(&d) {
+                    continue;
+                }
+                let p = |v: u32| pos[v as usize];
+                let old = worst_angle(p(a), p(b), p(c)).min(worst_angle(p(b), p(a), p(d)));
+                let new = worst_angle(p(a), p(d), p(c)).min(worst_angle(p(d), p(b), p(c)));
+                if new <= old + MIN_GAIN {
+                    continue;
+                }
+                if folds(p(a), p(b), p(c), p(d)) {
+                    continue;
+                }
+                changes.push((i0, Face::tri(a, d, c)));
+                changes.push((i1, Face::tri(d, b, c)));
+                spent[i0] = true;
+                spent[i1] = true;
+                next.push(f);
+                next.push(f1);
             }
         }
     }
 
-    let mut faces: Vec<Face> = mesh.faces().to_vec();
-    // Uma face só pode entrar numa troca por rodada: as duas trocas leriam a
-    // mesma face pela versão ANTIGA e a segunda escreveria por cima da primeira.
-    let mut spent = vec![false; faces.len()];
-    let mut flips = 0;
-
-    for &[f0, f1] in &side {
-        if f1 == u32::MAX {
-            continue;
-        }
-        let (i0, i1) = (f0 as usize, f1 as usize);
-        if spent[i0] || spent[i1] {
-            continue;
-        }
-        let Some((a, b, c, d)) = quad(&faces, i0, i1) else {
-            continue;
-        };
-        // A diagonal nova já existe em outro lugar da malha? Ver a recusa 2.
-        if edges.id_of(mesh.adjacency(), c, d).is_some() {
-            continue;
-        }
-        let p = |v: u32| pos[v as usize];
-        let old = worst_angle(p(a), p(b), p(c)).min(worst_angle(p(b), p(a), p(d)));
-        let new = worst_angle(p(a), p(d), p(c)).min(worst_angle(p(d), p(b), p(c)));
-        if new <= old + MIN_GAIN {
-            continue;
-        }
-        if folds(p(a), p(b), p(c), p(d)) {
-            continue;
-        }
-        faces[i0] = Face::tri(a, d, c);
-        faces[i1] = Face::tri(d, b, c);
-        spent[i0] = true;
-        spent[i1] = true;
-        flips += 1;
+    if changes.is_empty() {
+        return (0, Vec::new());
     }
-
-    if flips == 0 {
-        return 0;
+    let flips = changes.len() / 2;
+    // ⚠️ A cópia do vetor de faces só acontece quando há o que escrever — uma
+    // rodada que não acha nada é o desfecho comum, e ela não pode pagar
+    // `O(malha)` para dizê-lo.
+    let mut faces = mesh.faces().to_vec();
+    for (i, f) in changes {
+        faces[i] = f;
     }
     rebuild_with_faces(mesh, faces);
-    flips
+    (flips, next)
+}
+
+/// A outra face que divide a aresta `(a, b)` com `fi` — `None` se for borda.
+///
+/// ⚠️ **Numa aresta não-manifold (três ou mais faces) ela devolve a primeira que
+/// achar**, o que é tão arbitrário quanto os dois primeiros slots que a versão
+/// por tabela guardava. A malha que o refino aceita é de triângulos, e uma
+/// aresta com três faces já é malformada na entrada.
+fn other_face(adj: &Adjacency, faces: &[Face], fi: u32, a: u32, b: u32) -> Option<u32> {
+    adj.vert_faces
+        .neighbours(a as usize)
+        .iter()
+        .copied()
+        .find(|&fj| fj != fi && faces[fj as usize].verts().contains(&b))
 }
 
 /// Os quatro cantos do quadrilátero que duas faces vizinhas formam:

@@ -147,8 +147,12 @@ pub fn refine_in_sphere(
     }
     let (v0, f0) = (mesh.vert_count(), mesh.face_count());
     let mut passes = 0;
+    // As faces que o corte de fato mexeu, em índices da malha que sai do último
+    // passe — é a REGIÃO que o flip tem de reparar, e ela viaja de passe em
+    // passe porque o emit reordena os índices (ver `one_pass`).
+    let mut touched: Vec<u32> = Vec::new();
     while passes < MAX_PASSES {
-        if !one_pass(mesh, center, radius, edge_max, births) {
+        if !one_pass(mesh, center, radius, edge_max, births, &mut touched) {
             break;
         }
         passes += 1;
@@ -167,7 +171,14 @@ pub fn refine_in_sphere(
     // ângulo. O flip devolve a qualidade sem criar nem mover vértice, então ele
     // roda DEPOIS de todos os passes e não fala com o traço em voo. Os números
     // que o justificam estão no cabeçalho do [`crate::dyntopo_flip`].
-    crate::dyntopo_flip::relax(mesh);
+    //
+    // ⚠️ **Ele recebe a REGIÃO, e isso não é otimização: é o escopo honesto.** O
+    // corte só pode ter estragado a forma das faces que ele partiu e das
+    // vizinhas que aprenderam o vértice novo; o resto da malha está como o
+    // artista a deixou, e varrê-la inteira era pagar `O(malha)` para descobrir
+    // isso — medido, 33,2 de 66,1 ms num dab a 98k, metade num round que acha
+    // ZERO.
+    crate::dyntopo_flip::relax(mesh, &touched);
     Refine::Done {
         verts_added: mesh.vert_count() - v0,
         faces_added: mesh.face_count() - f0,
@@ -205,6 +216,7 @@ fn one_pass(
     radius: f32,
     edge_max: f32,
     births: &mut Vec<Birth>,
+    touched: &mut Vec<u32>,
 ) -> bool {
     let r2 = radius * radius;
     let emax2 = edge_max * edge_max;
@@ -217,20 +229,20 @@ fn one_pass(
         return false;
     }
 
-    // ⚠️ **A aresta tem NÚMERO, e é por isso que não há mapa aqui.** O
-    // `Edges` já dá um id canônico por par de vértices, então marcar é escrever
-    // num vetor indexado por ele — determinístico por construção, enquanto a
-    // ordem de iteração de um `HashMap` decidiria em que ordem os vértices
-    // novos nascem e, com ela, os índices da malha inteira.
-    let edges = mesh.edges();
-    // Duas listas e não uma: `pending` diz *esta aresta parte*, `split_at` diz
-    // *o vértice em que ela partiu*. Colapsá-las exigiria um valor sentinela que
-    // também é um índice válido, e o dia em que o vértice 0 for um meio o refino
-    // silenciosamente pula uma face.
-    let mut pending = vec![false; edges.len()];
-    let mut split_at = vec![u32::MAX; edges.len()];
+    // ⚠️ **A ESCOLHA ACONTECE ANTES DO GRAFO DE ARESTAS, e é isso que faz um dab
+    // EM REGIME custar a pegada.** Depois que a região alcança a densidade
+    // pedida, todo evento de ponteiro chega aqui para ouvir *não há o que
+    // partir* — e a resposta não precisa de aresta NUMERADA nenhuma: um
+    // comprimento sai de duas posições, e um centroide sai de três. Construir o
+    // grafo inteiro para então descobrir que a lista está vazia era pagar
+    // `O(malha)` pela negativa: medido, **1,84 de 2,14 ms (86%) do custo de um
+    // dab em regime a 113k**.
+    //
+    // A lista guarda `(face, canto)` porque é isso que a geometria conhece; o
+    // NÚMERO da aresta só é preciso para MARCAR, e marcar só acontece se houver
+    // o que marcar.
     let positions = mesh.positions();
-    let mut marked: Vec<u32> = Vec::new();
+    let mut long: Vec<(u32, u8)> = Vec::new();
 
     // ⚠️ **A ESCOLHA É POR FACE, E ELA É A WAVE INTEIRA.**
     //
@@ -289,7 +301,6 @@ fn one_pass(
         // ficava com **132 arestas acima do alvo onde antes havia 18**, ou seja
         // o refino deixava de refinar. Quem carrega o teorema de Rivara aqui é o
         // FECHO logo abaixo, não a escolha.
-        let mut any = false;
         for k in 0..v.len() {
             let (pa, pb) = (
                 positions[v[k] as usize],
@@ -299,20 +310,44 @@ fn one_pass(
             if d[0] * d[0] + d[1] * d[1] + d[2] * d[2] <= emax2 {
                 continue;
             }
-            let Some(e) = edges.face_edge(fi, k) else {
-                continue;
-            };
-            any = true;
-            if !pending[e as usize] {
-                pending[e as usize] = true;
-                marked.push(e);
-            }
+            long.push((f, u8::try_from(k).unwrap_or(u8::MAX)));
         }
-        let _ = any;
+    }
+    // A negativa sai daqui, e ela é o desfecho NORMAL de um traço.
+    if long.is_empty() {
+        return false;
+    }
+
+    // ⚠️ **A aresta tem NÚMERO, e é por isso que não há mapa aqui.** O
+    // `Edges` já dá um id canônico por par de vértices, então marcar é escrever
+    // num vetor indexado por ele — determinístico por construção, enquanto a
+    // ordem de iteração de um `HashMap` decidiria em que ordem os vértices
+    // novos nascem e, com ela, os índices da malha inteira.
+    let edges = mesh.edges();
+    // Duas listas e não uma: `pending` diz *esta aresta parte*, `split_at` diz
+    // *o vértice em que ela partiu*. Colapsá-las exigiria um valor sentinela que
+    // também é um índice válido, e o dia em que o vértice 0 for um meio o refino
+    // silenciosamente pula uma face.
+    let mut pending = vec![false; edges.len()];
+    let mut split_at = vec![u32::MAX; edges.len()];
+    let mut marked: Vec<u32> = Vec::new();
+    // A ORDEM é a da varredura acima — face por face, canto por canto —, que é
+    // exatamente a que numerava as marcas quando a escolha e a marcação eram o
+    // mesmo laço. Ela decide em que ordem os vértices novos nascem, logo os
+    // índices da malha, logo a `births`.
+    for &(f, k) in &long {
+        let Some(e) = edges.face_edge(f as usize, k as usize) else {
+            continue;
+        };
+        if !pending[e as usize] {
+            pending[e as usize] = true;
+            marked.push(e);
+        }
     }
     if marked.is_empty() {
         return false;
     }
+    let positions = mesh.positions();
 
     // ⚠️ **A PROPAGAÇÃO (a *LEPP* de Rivara), e ela é obrigatória.** Marcar uma
     // aresta obriga a vizinha que a divide a partir também — e se aquela aresta
@@ -409,6 +444,17 @@ fn one_pass(
     // raciocínio. Ela é `O(faces)` e o `rebuild` logo abaixo é `O(faces)` e ~20×
     // mais caro; quando ele sair (a estrutura mutável), esta varredura sai com
     // ele. ⚠️ Mutação registrada e NÃO sangrando, de propósito.
+    // ⚠️ **A REGIÃO TEM DE ATRAVESSAR OS PASSES, e por isso ela é re-expressa
+    // aqui em vez de acumulada.** O emit renumera tudo — uma face de entrada
+    // vira de uma a quatro de saída —, então um índice que o passe anterior
+    // guardou passa a apontar para outra face. O que sobrevive é a MARCA, lida
+    // antes e reescrita depois.
+    let mut was_touched = vec![false; mesh.face_count()];
+    for &f in touched.iter() {
+        was_touched[f as usize] = true;
+    }
+    touched.clear();
+
     let mut faces = Vec::with_capacity(mesh.face_count() + marked.len() * 2);
     for (fi, face) in mesh.faces().iter().enumerate() {
         let v = face.verts();
@@ -417,7 +463,13 @@ fn one_pass(
             let m = split_at[e as usize];
             (m != u32::MAX).then_some(m)
         };
+        let start = faces.len();
         emit_triangle(&mut faces, [v[0], v[1], v[2]], [mid(0), mid(1), mid(2)]);
+        // Mais de uma saída ⇒ esta face foi partida. É `start + 1` e não `start`
+        // porque toda face de entrada produz pelo menos uma de saída.
+        if faces.len() > start + 1 || was_touched[fi] {
+            touched.extend((start..faces.len()).map(|i| u32::try_from(i).unwrap_or(u32::MAX)));
+        }
     }
 
     swap_topology(mesh, positions, faces, colors, masks);

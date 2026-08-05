@@ -132,6 +132,14 @@ impl crate::App {
         // detalhe e razão no irmão `project_tokens`.
         // O número de descartes é DITO pelo próprio `install` (uma voz); aqui ele não é decisão.
         let _ = crate::project_tokens::install(&file.tokens);
+        // **AS SETTINGS do documento anterior morrem aqui, e as do arquivo entram**
+        // (doc 88, D3) — a escala do mundo e a unidade que o artista lê. Como a
+        // tabela de cor acima, instalar é SOBRESCREVER: sem isto, abrir um projeto
+        // de fábrica depois de um afinado em `32 px/m` deixaria o app medindo tudo
+        // pela escala do documento ANTERIOR, e nada na tela diria porquê.
+        if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+            crate::project_settings::install(&mut hero.project, &file.settings);
+        }
         // **A TIMELINE do documento anterior morre aqui** — a do arquivo entra no fim (W4.T6/B5).
         //
         // Não é higiene: as bindings do documento anterior nomeiam entidades que o

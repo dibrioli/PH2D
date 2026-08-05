@@ -27,7 +27,7 @@ fn headless_app() -> crate::App {
 }
 
 /// O estado vazio (o projeto em branco) — serve de passo de undo e de conteúdo de arquivo.
-fn empty_state() -> ProjectState {
+pub(super) fn empty_state() -> ProjectState {
     ProjectState {
         world: WorldSnapshot::new(),
         vec: VecScene::new(),
@@ -56,6 +56,7 @@ fn write_project_full(path: &std::path::Path, schema: u32, timeline: Vec<u8>, sc
         timeline,
         physics: Default::default(),
         tokens: Vec::new(),
+        settings: crate::project_settings::collect(Default::default()),
         sculpt,
         baked_forms: Vec::new(),
         player_tape: ph2d_physics_ecs::TapeWire::default(),
@@ -87,7 +88,7 @@ fn animation_of_hero() -> Vec<u8> {
 
 /// Um caminho temporário por gate (os testes correm em paralelo, no mesmo processo —
 /// um arquivo compartilhado, ou uma env var, seria a corrida que não estamos testando).
-fn tmp_path(name: &str) -> std::path::PathBuf {
+pub(super) fn tmp_path(name: &str) -> std::path::PathBuf {
     std::env::temp_dir().join(format!("ph2d_gate_{name}_{}.postcard", std::process::id()))
 }
 
@@ -384,6 +385,7 @@ fn project_file_round_trips_through_postcard() {
         timeline: animation_of_hero(),
         physics: Default::default(),
         tokens: Vec::new(),
+        settings: crate::project_settings::collect(Default::default()),
         sculpt: Vec::new(),
         baked_forms: Vec::new(),
         player_tape: ph2d_physics_ecs::TapeWire::default(),
@@ -412,93 +414,6 @@ fn project_file_round_trips_through_postcard() {
         back_timeline.doc.bindings().len(),
         1,
         "a animação preservada: uma track, do outro lado do arquivo"
-    );
-}
-
-/// **As settings de MUNDO da física sobrevivem ao arquivo — e chegam ao SOLVER.**
-///
-/// ⚠️ **O que este gate NÃO prova:** que as settings chegaram ao SOLVER. Sem
-/// janela o `gfx` é `None`, então nem o `rebuild()` nem o `set_settings` do load
-/// rodam aqui — um oráculo sobre o bridge seria verde por ausência. Ele prova a
-/// metade que pode: o arquivo carrega os valores autorados e o schema os aceita.
-///
-/// As outras duas metades têm gates próprios, de propósito:
-/// - que `set_settings` sobrevive a um `rebuild` → `ph2d-physics-ecs`
-///   (`the_settings_survive_a_rebuild`);
-/// - que o load chama os dois na ORDEM certa → o arch-gate abaixo.
-#[test]
-fn the_world_settings_survive_the_project_file() {
-    let path = tmp_path("physics_world_settings");
-
-    // Um mundo autorado: gravidade zero (top-down) e arrasto pesado — nada que
-    // um default possa produzir por acidente.
-    let authored = ph2d_physics_ecs::PhysicsSettings {
-        gravity_x: 0.0,
-        gravity_y: 0.0,
-        linear_damping: 3.5,
-        substeps: 7,
-        ..Default::default()
-    };
-    let file = ProjectFile {
-        state: empty_state(),
-        assets: Vec::new(),
-        painted: Vec::new(),
-        motion: String::new(),
-        timeline: Vec::new(),
-        physics: authored,
-        tokens: Vec::new(),
-        sculpt: Vec::new(),
-        baked_forms: Vec::new(),
-        player_tape: ph2d_physics_ecs::TapeWire::default(),
-    };
-    let bytes = postcard::to_allocvec(&(PROJECT_SCHEMA, &file)).expect("serializa");
-    std::fs::write(&path, bytes).expect("grava");
-
-    let mut app = crate::App::new();
-    app.project_load_from(path.to_str().unwrap());
-
-    // `gfx` é `None` sem janela, então o caminho que instala no BRIDGE não roda
-    // aqui; o que este gate pode afirmar sem GPU é que o arquivo entregou os
-    // valores autorados. (O lado do bridge é gateado em `ph2d-physics-ecs`.)
-    let (ver, back): (u32, ProjectFile) =
-        postcard::from_bytes(&std::fs::read(&path).unwrap()).unwrap();
-    assert_eq!(ver, PROJECT_SCHEMA);
-    assert_eq!(
-        back.physics, authored,
-        "as settings de mundo nao sobreviveram ao arquivo"
-    );
-    let _ = app;
-}
-
-/// **O load instala as settings DEPOIS do `rebuild()` — arch-gate sobre o fonte.**
-///
-/// `rebuild()` constrói um `PhysicsWorld` novo, que nasce nos defaults do motor.
-/// Instalar antes dele é escrever num mundo que ele joga fora: a cena carregaria
-/// com a gravidade do documento ANTERIOR, sem erro nenhum.
-///
-/// Isto é uma afirmação sobre a ORDEM de duas chamadas, e nenhum teste de
-/// unidade a alcança — `gfx` é `None` sem janela, então as duas linhas nem
-/// rodam. Mesmo padrão (e mesmo motivo) do
-/// `the_z_projection_reads_the_tree_after_the_sync`: quando o fato é a ordem do
-/// código do produto, o gate lê o código do produto.
-#[test]
-fn the_load_installs_the_world_settings_after_the_rebuild() {
-    // ⚠️ O arquivo mudou quando o load saiu do `project.rs` (teto de LOC do
-    // HR-18) — o gate segue o FATO, que é a ordem de duas chamadas dentro do
-    // load, e não o endereço onde ele morava.
-    let src = include_str!("project_load.rs");
-    let rebuild = src
-        .find("physics.rebuild()")
-        .expect("o load precisa derrubar o mundo derivado do documento anterior");
-    let install = src
-        .find("physics.set_settings(")
-        .expect("o load precisa instalar as settings de mundo do ARQUIVO");
-    assert!(
-        rebuild < install,
-        "`set_settings` aparece ANTES de `rebuild()` em project.rs: o rebuild \
-         constroi um PhysicsWorld novo nos defaults do motor e joga fora o que \
-         acabou de ser instalado — a cena carrega com a gravidade do documento \
-         anterior, em silencio"
     );
 }
 

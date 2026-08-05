@@ -357,7 +357,7 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// desta wave volta com o agarrar em zero, que é o que ela de facto tinha; um
 /// campo novo na tupla teria custado o bump por si só e recusado todo arquivo já
 /// salvo.
-const PROJECT_SCHEMA: u32 = 68;
+const PROJECT_SCHEMA: u32 = 69;
 
 /// O conteúdo de um arquivo de projeto.
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -413,6 +413,19 @@ struct ProjectFile {
     /// variant: guardar o índice amarraria todo projeto salvo à ORDEM da lista, e acrescentar um
     /// token no meio da tabela re-pintaria o app com as cores trocadas. É a mesma lei do `W4a`.
     tokens: Vec<crate::project_tokens::SavedToken>,
+    /// **AS SETTINGS DO PROJETO** (doc 88, D3) — a escala do mundo
+    /// (`pixels_per_meter`), a unidade que o artista LÊ (`display_unit`), os dois
+    /// snaps do gizmo e o modo de filtragem.
+    ///
+    /// Fora do `ProjectState` pelo mesmo motivo de `physics`/`motion`/`timeline`: o
+    /// `ProjectState` é a unidade do undo GLOBAL, e um Ctrl+Z do canvas não deve
+    /// rebobinar a escala do mundo.
+    ///
+    /// ⚠️ Tipo PRÓPRIO do arquivo, e não o `ProjectSettings` de runtime — a mesma
+    /// razão do `tokens` logo acima (a `ph2d-editor-core` não fala serde, e herdar o
+    /// layout de um tipo de runtime torna um refactor interno numa quebra de save).
+    /// Ver [`crate::project_settings`].
+    settings: crate::project_settings::SavedSettings,
     /// **A ESCULTURA** (ADR-0150 W8.3) — a lista de peças, cada uma com a pilha de
     /// níveis e a pose, em postcard. Ver [`crate::sculpt3d`] (`sculpt3d_doc.rs`).
     ///
@@ -536,6 +549,15 @@ impl crate::App {
                 .map(|g| g.physics.settings())
                 .unwrap_or_default(),
             tokens: crate::project_tokens::collect(),
+            // O mesmo formato dos irmãos acima: sem janela não há `HeroScreen`, e
+            // um save headless grava os defaults — que é o estado que ele de fato tem.
+            settings: crate::project_settings::collect(
+                self.gfx
+                    .as_ref()
+                    .and_then(|g| g.hero_screen.as_ref())
+                    .map(|h| h.project)
+                    .unwrap_or_default(),
+            ),
             sculpt: self.sculpt_bytes_for_save(),
             baked_forms: self.collect_baked_forms(),
             // A corrida que o artista jogou (W17). O `to_wire` é a única tradução
@@ -589,6 +611,12 @@ mod assets;
 #[cfg(test)]
 #[path = "project_tests.rs"]
 mod tests;
+
+/// **As settings FORA do `ProjectState` atravessam o arquivo** — irmão de `tests`,
+/// cortado por assunto quando o pai bateu o cap de LOC.
+#[cfg(test)]
+#[path = "project_settings_tests.rs"]
+mod settings_tests;
 
 #[cfg(test)]
 #[path = "project_schema_tests.rs"]

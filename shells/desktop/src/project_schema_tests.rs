@@ -299,7 +299,7 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // ⚠️ **PROVISÓRIO:** o valor se CONTA contra o `main` do dia da
         // integração — três linhas já colidiram neste número por o terem
         // escolhido, e a última vez o certo não estava em nenhum dos dois lados.
-        (68, 13, 14),
+        (69, 13, 14),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

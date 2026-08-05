@@ -25,6 +25,12 @@ pub use ui::{
     ParamWidget, ReadChannel,
 };
 
+/// The param UNIT vocabulary (doc 88, Wave A) — a sibling module rather than more
+/// of `ui.rs`, because it is a new concept and the registry is extended
+/// concurrently by other lines (ADR-0107: foundational is designed for isolation).
+mod unit;
+pub use unit::{ParamHardMin, ParamUnit, ParamUnitDecl, unit_of};
+
 /// A registered set of node operations, keyed by their stable type id.
 /// Deterministic iteration (`BTreeMap`, ADR-0022 / HR-5).
 #[derive(Default)]
@@ -39,6 +45,14 @@ pub struct NodeRegistry {
     /// registration is a single insert; the params panel reads it to build rows.
     param_ui: BTreeMap<NodeTypeId, &'static [ParamUiHint]>,
     param_hard_max: BTreeMap<NodeTypeId, &'static [ParamHardMax]>,
+    /// The floor twin of `param_hard_max` (doc 88, Wave A): how far BELOW the
+    /// slider a typed value may reach. Same shape, same default-empty meaning —
+    /// absent ⇒ the slider's own `min`, which is what every param meant until now.
+    param_hard_min: BTreeMap<NodeTypeId, &'static [ParamHardMin]>,
+    /// Per-type param UNITS (doc 88, Wave A) — *what the number is*, never how it
+    /// is shown. Default-empty: a param with no entry is `ParamUnit::None`. Read
+    /// through [`crate::unit_of`], which asks the widget first.
+    param_units: BTreeMap<NodeTypeId, &'static [ParamUnitDecl]>,
     /// Per-type conditional-visibility gates ([`ParamGate`]) — the params panel
     /// hides a row whose gate's `when` param is not one of the gate's `values`.
     /// Absent ⇒ every param is always shown (the pre-gate behaviour).
@@ -266,6 +280,43 @@ impl NodeRegistry {
             .iter()
             .find(|l| l.param == param)
             .map(|l| l.max)
+    }
+
+    /// Register the params whose typed entry reaches BELOW their slider
+    /// ([`ParamHardMin`]) — the floor twin of [`Self::register_param_hard_max`].
+    /// Additive; last write wins.
+    pub fn register_param_hard_min(&mut self, id: NodeTypeId, limits: &'static [ParamHardMin]) {
+        self.param_hard_min.insert(id, limits);
+    }
+
+    /// The typed-entry floor for `(id, param)`, if one was registered. `None`
+    /// means "the slider's `min`", which is what every param without an entry
+    /// has always meant.
+    pub fn param_hard_min(&self, id: NodeTypeId, param: &str) -> Option<f32> {
+        self.param_hard_min
+            .get(&id)?
+            .iter()
+            .find(|l| l.param == param)
+            .map(|l| l.min)
+    }
+
+    /// Register the units of a node type's params ([`ParamUnitDecl`]). Additive;
+    /// last write wins. Absent ⇒ every param is [`ParamUnit::None`], which is what
+    /// every param already means, so nothing moves by default.
+    pub fn register_param_units(&mut self, id: NodeTypeId, units: &'static [ParamUnitDecl]) {
+        self.param_units.insert(id, units);
+    }
+
+    /// The **declared** unit for `(id, param)` — the raw table read. Callers that
+    /// want the answer the panel uses must go through [`crate::unit_of`], which
+    /// asks the WIDGET first; a widget that already fixes its unit (`Angle`,
+    /// `Seed`, `Enum`) cannot be contradicted by a table entry.
+    pub fn param_unit_declared(&self, id: NodeTypeId, param: &str) -> Option<ParamUnit> {
+        self.param_units
+            .get(&id)?
+            .iter()
+            .find(|d| d.param == param)
+            .map(|d| d.unit)
     }
 
     /// Register a node type's GPU compute kernel (GPU/M5 Fase 1, ADR-0126).

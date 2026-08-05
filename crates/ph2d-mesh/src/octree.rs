@@ -201,6 +201,57 @@ impl Octree {
         self.compact_if_needed();
     }
 
+    /// **ESQUECE FACES E ACOMPANHA A RENUMERAÇÃO** — o inverso exato do
+    /// [`Self::insert_alongside`].
+    ///
+    /// `dead` são as faces que somem (numeração ANTIGA, crescente) e o `remap`
+    /// diz para onde as sobreviventes se mudaram. Ver [`Remap`] para por que a
+    /// lista de mudanças é uma SEQUÊNCIA.
+    ///
+    /// ⚠️ **A caixa frouxa fica GRANDE demais, e isso é o lado seguro.** Ela
+    /// ainda contém a face que saiu, então a consulta devolve candidatas a mais —
+    /// nunca a menos. É a mesma assimetria que o [`Self::refit`] documenta ao
+    /// contrário (*uma caixa pequena demais perde geometria em silêncio*), e o
+    /// refit que o chamador roda logo depois a devolve exata nas folhas tocadas.
+    ///
+    /// ⚠️ **A faixa da folha encolhe pelo FIM**, e é por isso que a ordem dentro
+    /// dela não importa: a entrega da consulta é o conjunto, não a sequência. O
+    /// buraco que sobra é contado no rastro e recolhido pela mesma lei de fração
+    /// do irmão.
+    pub fn shrink_faces(&mut self, dead: &[u32], remap: &crate::Remap) {
+        if self.nodes.is_empty() {
+            return;
+        }
+        for &d in dead {
+            let leaf = self.face_leaf[d as usize];
+            if leaf == NO_CHILD {
+                continue;
+            }
+            let node = self.nodes[leaf as usize];
+            let (s, n) = (node.start as usize, node.len as usize);
+            let Some(at) = self.face_indices[s..s + n].iter().position(|&f| f == d) else {
+                continue;
+            };
+            self.face_indices[s + at] = self.face_indices[s + n - 1];
+            self.nodes[leaf as usize].len = u32::try_from(n - 1).unwrap_or(0);
+            self.dead = self.dead.saturating_add(1);
+        }
+        for &(from, to) in &remap.face_moves {
+            let leaf = self.face_leaf[from as usize];
+            self.face_leaf[to as usize] = leaf;
+            if leaf == NO_CHILD {
+                continue;
+            }
+            let node = self.nodes[leaf as usize];
+            let (s, n) = (node.start as usize, node.len as usize);
+            if let Some(at) = self.face_indices[s..s + n].iter().position(|&f| f == from) {
+                self.face_indices[s + at] = to;
+            }
+        }
+        self.face_leaf.truncate(remap.faces);
+        self.compact_if_needed();
+    }
+
     /// Recolhe o rastro das faixas realocadas quando ele passa da metade.
     ///
     /// ⚠️ **Só os índices se movem; a árvore não.** `face_leaf` é face → NÓ e

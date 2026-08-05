@@ -57,6 +57,22 @@ impl Face {
         &self.0[..self.vert_count()]
     }
 
+    /// **Troca o nome de um vértice** — o passo que uma renumeração faz em cada
+    /// face que cita quem mudou de casa.
+    ///
+    /// ⚠️ **O sentinela [`TRI`] fica de fora**, e não é detalhe: ele mora no
+    /// mesmo array e um `u32::MAX` que virasse índice de vértice transformaria
+    /// um triângulo em quad com um canto que não existe. Percorrer pelo
+    /// [`Self::verts`] é a única forma segura, e é o que esta função faz.
+    pub fn rename_vert(&mut self, from: u32, to: u32) {
+        let n = self.vert_count();
+        for slot in &mut self.0[..n] {
+            if *slot == from {
+                *slot = to;
+            }
+        }
+    }
+
     /// Quantos triângulos esta face vira ao rasterizar (1 ou 2).
     #[must_use]
     pub const fn tri_count(&self) -> usize {

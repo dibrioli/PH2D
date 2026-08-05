@@ -159,6 +159,25 @@ impl Csr {
         self.dead = self.dead.saturating_add(u32::try_from(n).unwrap_or(0));
     }
 
+    /// **Move a linha `from` para o slot `to`** — o passo de uma troca-com-o-
+    /// último. O conteúdo não é copiado: a linha inteira muda de dono trocando
+    /// dois números, e o que a linha `to` guardava vira rastro.
+    fn move_row(&mut self, to: usize, from: usize) {
+        self.dead = self.dead.saturating_add(self.lens[to]);
+        self.starts[to] = self.starts[from];
+        self.lens[to] = self.lens[from];
+    }
+
+    /// **Encolhe para `rows` linhas.** O que sobra vira rastro — as entradas
+    /// continuam no vetor de valores até a próxima compactação.
+    fn truncate_rows(&mut self, rows: usize) {
+        for i in rows..self.starts.len() {
+            self.dead = self.dead.saturating_add(self.lens[i]);
+        }
+        self.starts.truncate(rows);
+        self.lens.truncate(rows);
+    }
+
     /// **Recolhe o rastro quando ele passa da metade.**
     ///
     /// ⚠️ O gatilho é uma FRAÇÃO e não uma contagem: um limiar absoluto compacta
@@ -307,6 +326,144 @@ impl Adjacency {
         let mut ring = Vec::new();
         for &v in &affected {
             ring_of(v as usize, after, &self.vert_faces, &mut ring);
+            self.vert_verts.set_row(v as usize, &ring);
+        }
+        self.vert_faces.compact_if_needed();
+        self.vert_verts.compact_if_needed();
+        affected
+    }
+
+    /// **FACES SUMIRAM E AS QUE SOBRARAM MUDARAM DE CASA** — a primeira das duas
+    /// metades de um colapso.
+    ///
+    /// ⚠️ **A numeração de VÉRTICE não muda aqui, e essa separação é o desenho.**
+    /// Um colapso renumera faces *e* vértices, e as duas renumerações entrelaçadas
+    /// são a forma de errar: cada patch teria de saber em que numeração o vizinho
+    /// já está. Em duas fases sequenciais, cada uma tem um só eixo — esta as
+    /// faces, a [`Self::shrink_verts`] os vértices — e entre elas a estrutura está
+    /// íntegra.
+    ///
+    /// `edits` e `dead` chegam na numeração ANTIGA (`dead` é *índice + como a
+    /// face era*, porque depois de compactada ela não existe para ser lida);
+    /// `after` é a lista de faces **já compactada**.
+    ///
+    /// ⚠️ **A renumeração de face MARCA os vértices dela, e a primeira versão
+    /// disto estava ERRADA.** O doc que aqui esteve dizia que trocar o índice de
+    /// uma face não afeta ninguém *"porque o anel guarda VÉRTICES"* — o CONJUNTO
+    /// de vizinhos de facto não muda, mas a **ORDEM** muda: o anel é derivado
+    /// percorrendo as faces em ordem CRESCENTE de índice, e a primeira aparição
+    /// de cada vizinho decide o lugar dele. Renumerar uma face a move nessa
+    /// ordem. O sintoma é um anel com o conjunto certo na ordem errada, que só o
+    /// oráculo de bit vê — porque a normal de um vértice é a SOMA das normais do
+    /// anel, e somar os mesmos números noutra ordem dá outro `f32`.
+    pub fn shrink_faces(
+        &mut self,
+        edits: &[(u32, Face, Face)],
+        dead: &[(u32, Face)],
+        remap: &crate::Remap,
+        after: &[Face],
+    ) -> Vec<u32> {
+        let mut affected: Vec<u32> = Vec::new();
+        for &(i, old, new) in edits {
+            for &v in old.verts() {
+                if !new.verts().contains(&v) {
+                    self.vert_faces.remove(v as usize, i);
+                }
+                affected.push(v);
+            }
+            for &v in new.verts() {
+                if !old.verts().contains(&v) {
+                    self.vert_faces.insert_sorted(v as usize, i);
+                }
+                affected.push(v);
+            }
+        }
+        for &(f, old) in dead {
+            for &v in old.verts() {
+                self.vert_faces.remove(v as usize, f);
+                affected.push(v);
+            }
+        }
+        // ⚠️ **Os pares LÍQUIDOS, e não a sequência crua.** Um destino pode ser
+        // uma casa de passagem que a lista compactada nem tem — ver
+        // [`crate::Remap::net_face_moves`]. Aqui o que se lê é o CONTEÚDO da face
+        // no destino FINAL, então a casa de passagem daria um índice fora da
+        // lista (e, quando não desse, os vértices de outra face).
+        for (from, to) in remap.net_face_moves(after.len() + dead.len()) {
+            for &v in after[to as usize].verts() {
+                self.vert_faces.remove(v as usize, from);
+                self.vert_faces.insert_sorted(v as usize, to);
+                affected.push(v);
+            }
+        }
+        affected.sort_unstable();
+        affected.dedup();
+        let mut ring = Vec::new();
+        for &v in &affected {
+            ring_of(v as usize, after, &self.vert_faces, &mut ring);
+            self.vert_verts.set_row(v as usize, &ring);
+        }
+        self.vert_faces.compact_if_needed();
+        self.vert_verts.compact_if_needed();
+        affected
+    }
+
+    /// **VÉRTICES SUMIRAM** — a segunda metade, e ela **reescreve as faces**.
+    ///
+    /// ⚠️ **As duas metades ou nenhuma, e é por isso que as faces entram por aqui
+    /// em vez de o chamador as reescrever.** Renomear um vértice é *reescrever
+    /// toda face que o cita* **e** *mudar a linha dele de casa*; separá-las daria
+    /// uma porta que deixa a malha citando um índice que já é de outro vértice —
+    /// e nada falha, porque o índice novo é válido. Quem sabe QUAIS faces citam
+    /// `from` é o anel de faces, que mora aqui.
+    ///
+    /// `mark` chega do tamanho ANTIGO, já marcado com quem a fase das faces
+    /// afetou, e sai truncado e LIMPO. ⚠️ **Ele é carregado pelas trocas** — um
+    /// destino pode mudar de casa outra vez (com os mortos `[8, 3]` numa lista de
+    /// 10, o slot 8 recebe o 9 e depois se muda para o 3), então uma lista de
+    /// índices coletada antes descreveria a malha de duas trocas atrás.
+    ///
+    /// Devolve os afetados na numeração NOVA, prontos para o refresco de região.
+    pub fn shrink_verts(
+        &mut self,
+        faces: &mut [Face],
+        remap: &crate::Remap,
+        mark: &mut [bool],
+    ) -> Vec<u32> {
+        for &(from, to) in &remap.vert_moves {
+            // ⚠️ **A marca sai das FACES e não do anel de vértices**, e a
+            // diferença mordeu: o anel só é re-derivado no fim, então durante o
+            // laço ele ainda pode citar um vizinho que já mudou de casa — marcar
+            // por ele marca o vértice ERRADO, e o sintoma é um anel com o
+            // conjunto certo na ordem errada, que só o oráculo de bit vê. Os
+            // cantos de uma face estão sempre em dia, porque é este laço que os
+            // reescreve.
+            for &fi in self.vert_faces.neighbours(from as usize) {
+                let f = &mut faces[fi as usize];
+                f.rename_vert(from, to);
+                for &w in f.verts() {
+                    mark[w as usize] = true;
+                }
+            }
+            // ⚠️ Incondicional: um vértice sem face nenhuma não é alcançado pelo
+            // laço acima, e o slot dele tem de ficar com um anel vazio em vez do
+            // que o morto guardava.
+            mark[to as usize] = true;
+            self.vert_faces.move_row(to as usize, from as usize);
+            self.vert_verts.move_row(to as usize, from as usize);
+        }
+        self.vert_faces.truncate_rows(remap.verts);
+        self.vert_verts.truncate_rows(remap.verts);
+        let mut affected: Vec<u32> = Vec::new();
+        for (v, m) in mark.iter_mut().enumerate().take(remap.verts) {
+            if *m {
+                *m = false;
+                affected.push(u32::try_from(v).unwrap_or(u32::MAX));
+            }
+        }
+        let mut ring = Vec::new();
+        for &v in &affected {
+            ring_of(v as usize, faces, &self.vert_faces, &mut ring);
             self.vert_verts.set_row(v as usize, &ring);
         }
         self.vert_faces.compact_if_needed();

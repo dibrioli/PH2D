@@ -457,3 +457,113 @@ fn mean_edge(m: &ph2d_mesh::Mesh) -> f32 {
 fn scratch() -> ph2d_mesh::RegionScratch {
     ph2d_mesh::RegionScratch::default()
 }
+
+/// **O PAR REFINO+COLAPSO CONVERGE, OU ELE É UM MOINHO?**
+///
+/// A histerese da referência (`2,05`) protege o caso DOMINANTE: uma aresta
+/// partida ao meio fica 2,5% acima do limiar. Ela **não** protege o resto do
+/// padrão — o corte 1→2 cria uma MEDIANA, e a mediana de um triângulo fino é
+/// curta. A pergunta que decide o número é se o par assenta.
+///
+/// Cada linha é uma razão de histerese; cada coluna, a contagem de vértices
+/// depois de um ciclo (refino, colapso) no MESMO lugar.
+#[test]
+#[ignore = "sonda"]
+fn measure_whether_refine_and_collapse_settle() {
+    println!("\n  contagem de vértices por ciclo (refino+colapso no mesmo ponto)");
+    println!("  {:>6} | {:>44} | assenta?", "razão", "ciclos 1..8");
+    for h in [1.0f32, 1.5, 1.8, 2.0, 2.05, 2.5, 3.0, 4.0] {
+        let mut m = shapes::uv_sphere(12, 18, 1.0);
+        m.triangulate();
+        let (centre, radius) = ([0.0, 0.0, 1.0], 0.6);
+        let emax = ph2d_mesh::edge_target(radius, 1.0);
+        let mut births = Vec::new();
+        let mut remap = ph2d_mesh::Remap::default();
+        let mut counts = Vec::new();
+        for _ in 0..12 {
+            let _ = refine_in_sphere(&mut m, centre, radius, emax, &mut births, &mut scratch());
+            let _ = ph2d_mesh::collapse_in_sphere(
+                &mut m,
+                centre,
+                radius,
+                emax / h,
+                &mut remap,
+                &mut scratch(),
+            );
+            counts.push(m.vert_count());
+        }
+        let tail = &counts[counts.len() - 3..];
+        let settled = tail.iter().all(|&c| c == tail[0]);
+        let line: Vec<String> = counts
+            .iter()
+            .map(std::string::ToString::to_string)
+            .collect();
+        println!(
+            "  {h:>6.2} | {:>44} | {}",
+            line.join(" "),
+            if settled { "sim" } else { "NÃO" }
+        );
+    }
+}
+
+/// **QUANTAS ARESTAS CURTAS UM DAB DE COLAPSO DE FACTO REMOVE**, e em quantas
+/// rodadas — o preço da trava que torna cada rodada um lote independente.
+#[test]
+#[ignore = "sonda"]
+fn measure_how_much_one_collapse_dab_removes() {
+    println!(
+        "\n  {:>6} | {:>8} | {:>8} | {:>7}",
+        "dab", "vértices", "faces", "curtas"
+    );
+    let mut m = shapes::uv_sphere(14, 20, 1.0);
+    m.triangulate();
+    let emin = 1.2 * mean_edge(&m);
+    let (centre, radius) = ([0.0, 0.0, 1.0], 0.9);
+    let mut remap = ph2d_mesh::Remap::default();
+    println!(
+        "  {:>6} | {:>8} | {:>8} | {:>7}",
+        "0",
+        m.vert_count(),
+        m.face_count(),
+        short_edges(&m, centre, radius, emin)
+    );
+    for d in 1..=6 {
+        let _ =
+            ph2d_mesh::collapse_in_sphere(&mut m, centre, radius, emin, &mut remap, &mut scratch());
+        println!(
+            "  {d:>6} | {:>8} | {:>8} | {:>7}",
+            m.vert_count(),
+            m.face_count(),
+            short_edges(&m, centre, radius, emin)
+        );
+    }
+}
+
+fn short_edges(m: &ph2d_mesh::Mesh, c: [f32; 3], r: f32, emin: f32) -> usize {
+    let pos = m.positions();
+    let mut n = 0;
+    for f in m.faces() {
+        let v = f.verts();
+        for k in 0..v.len() {
+            let (a, b) = (v[k], v[(k + 1) % v.len()]);
+            if a > b {
+                continue;
+            }
+            let (pa, pb) = (pos[a as usize], pos[b as usize]);
+            let mid = [
+                (pa[0] + pb[0]) * 0.5,
+                (pa[1] + pb[1]) * 0.5,
+                (pa[2] + pb[2]) * 0.5,
+            ];
+            let d = [mid[0] - c[0], mid[1] - c[1], mid[2] - c[2]];
+            if d[0] * d[0] + d[1] * d[1] + d[2] * d[2] > r * r {
+                continue;
+            }
+            let e = [pb[0] - pa[0], pb[1] - pa[1], pb[2] - pa[2]];
+            if (e[0] * e[0] + e[1] * e[1] + e[2] * e[2]).sqrt() < emin {
+                n += 1;
+            }
+        }
+    }
+    n
+}

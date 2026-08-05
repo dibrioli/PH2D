@@ -30,6 +30,11 @@ use crate::octree::{Octree, RefitScratch};
 #[path = "mesh_splice.rs"]
 mod splice;
 
+/// A porta que ENCOLHE a topologia — ver o módulo.
+#[path = "mesh_shrink.rs"]
+mod shrink;
+
+pub use shrink::VertexMerge;
 pub use splice::VertexAppend;
 
 #[derive(Clone, Debug, Default)]

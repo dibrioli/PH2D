@@ -37,6 +37,7 @@
 
 mod aabb;
 mod adjacency;
+mod collapse;
 mod dyntopo;
 mod dyntopo_flip;
 mod edges;
@@ -53,6 +54,7 @@ mod persist;
 mod ply;
 mod pose;
 mod ray;
+mod remap;
 mod reversion;
 mod stl;
 mod subdivide;
@@ -60,13 +62,16 @@ mod tri_geom;
 
 pub use aabb::Aabb;
 pub use adjacency::{Adjacency, Csr};
+pub use collapse::{Collapse, collapse_in_sphere, collapse_target};
 pub use dyntopo::{Birth, Refine, edge_target, refine_in_sphere};
 pub use edges::Edges;
 pub use export::{ExportPiece, MeshFormat, triangle_count, write_obj, write_ply, write_stl};
 pub use face::{Face, TRI};
 pub use holes::{HoleFill, fill_holes};
 pub use merge::merge;
-pub use mesh::{DEFAULT_COLOR, DEFAULT_MASK, Mesh, MeshError, QueryScratch, RegionScratch};
+pub use mesh::{
+    DEFAULT_COLOR, DEFAULT_MASK, Mesh, MeshError, QueryScratch, RegionScratch, VertexMerge,
+};
 pub use multires::{DetachedLevel, Multires, Reversal, Stamped};
 pub use normals::{
     PAR_MIN, face_normal, face_normals_of, recompute_face_normals, recompute_vertex_normals,
@@ -78,6 +83,7 @@ pub use persist::{DetailData, DocError, MeshData, PoseData, StackData};
 pub use ply::{PlyError, import_ply};
 pub use pose::Pose;
 pub use ray::{Hit, Ray};
+pub use remap::Remap;
 pub use reversion::{Reversed, reverse_subdivision};
 pub use stl::{StlError, import_stl};
 pub use subdivide::{Lerpable, Predicted, predict, subdivide};

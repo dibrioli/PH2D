@@ -211,6 +211,21 @@ pub struct SculptStroke {
     moved: Vec<u32>,
     query: QueryScratch,
     region: RegionScratch,
+    /// A união, **sobre as cópias de espelho de UMA chamada a
+    /// [`SculptStroke::dab`]**, dos vértices escritos e dos vértices cuja normal
+    /// foi recomputada.
+    ///
+    /// ⚠️ **Eles existem porque `moved` e `region` são o rascunho de UMA cópia.**
+    /// O `dab_core` zera a lista antes de a encher, e com o espelho armado ele
+    /// roda de duas a oito vezes — então quem lia o rascunho depois do laço
+    /// recebia a ÚLTIMA cópia e só ela. A malha ficava certa na memória e a
+    /// janela de upload descrevia metade dela: o artista tocava um lado, o outro
+    /// deformava na tela (report do Enio, 2026-08-05). A distinção entre
+    /// *rascunho de uma cópia* e *o que a chamada fez* não era exprimível, e por
+    /// isso não podia ser conferida — agora são campos diferentes com nomes
+    /// diferentes, e os acessores públicos leem estes.
+    call_moved: Vec<u32>,
+    call_refreshed: Vec<u32>,
     /// O último dab pintou MÁSCARA? Decide de qual janela a GPU precisa — ver
     /// [`SculptStroke::last_gpu_dirty`]. Um bool escrito no mesmo `if` que já
     /// separa os dois braços; derivá-lo do `Brush` no chamador seria pedir a ele
@@ -266,10 +281,17 @@ impl SculptStroke {
         &self.base_mask
     }
 
-    /// Os vértices que o ÚLTIMO dab de fato moveu.
+    /// Os vértices que o ÚLTIMO [`Self::dab`] de fato moveu — **todas as cópias
+    /// de espelho dele**, e não a última.
+    ///
+    /// ⚠️ *"O último dab"* é a CHAMADA, e a diferença já custou um smoke: com o
+    /// espelho armado a chamada aplica de duas a oito cópias, e publicar a
+    /// última é publicar o reflexo do que o artista fez. O tamanho desta lista é
+    /// exatamente o número que [`Self::dab`] devolve — se os dois divergirem,
+    /// dois chamadores do mesmo dab discordam sobre ele.
     #[must_use]
     pub fn last_moved(&self) -> &[u32] {
-        &self.moved
+        &self.call_moved
     }
 
     /// Os vértices que o último dab deixou **obsoletos na GPU** — a janela do
@@ -284,7 +306,7 @@ impl SculptStroke {
     /// incremental com o quadro do upload cheio.
     #[must_use]
     pub fn last_refreshed(&self) -> &[u32] {
-        self.region.refreshed()
+        &self.call_refreshed
     }
 
     /// Os vértices que a GPU precisa **RE-LER** depois do último dab, em
@@ -302,9 +324,9 @@ impl SculptStroke {
     #[must_use]
     pub fn last_gpu_dirty(&self) -> &[u32] {
         if self.last_paints_mask {
-            &self.moved
+            &self.call_moved
         } else {
-            self.region.refreshed()
+            &self.call_refreshed
         }
     }
 
@@ -314,7 +336,11 @@ impl SculptStroke {
     pub fn capacity_bytes(&self) -> usize {
         let v3 = size_of::<[f32; 3]>();
         (self.slot.capacity() + self.stamp.capacity()) * size_of::<u32>()
-            + (self.touched.capacity() + self.footprint.capacity() + self.moved.capacity())
+            + (self.touched.capacity()
+                + self.footprint.capacity()
+                + self.moved.capacity()
+                + self.call_moved.capacity()
+                + self.call_refreshed.capacity())
                 * size_of::<u32>()
             + (self.base_pos.capacity() + self.base_nrm.capacity() + self.target.capacity()) * v3
             + (self.base_mask.capacity() + self.accum.capacity()) * size_of::<f32>()
@@ -390,6 +416,13 @@ impl SculptStroke {
         let (signs, n) = sym.signs();
         let handed = matches!(brush.verb.grip(), Grip::Turn(Amount::Angle));
         let mut total = 0;
+        // ⚠️ **Zerados UMA vez, aqui, e não a cada cópia.** É esta linha que faz
+        // as janelas publicadas descreverem a CHAMADA; zerá-las lá dentro é
+        // exatamente o defeito que o report de 2026-08-05 desenhou na tela. E
+        // zerar aqui — antes do laço, incondicionalmente — é também o que impede
+        // um dab que não move nada de herdar a janela do anterior.
+        self.call_moved.clear();
+        self.call_refreshed.clear();
         for s in signs.iter().take(n) {
             let det = s[0] * s[1] * s[2];
             let mirrored = Dab {
@@ -399,7 +432,17 @@ impl SculptStroke {
                 amount: if handed { dab.amount * det } else { dab.amount },
                 ..*dab
             };
-            total += self.dab_core(mesh, brush, &mirrored);
+            // ⚠️ **Só uma cópia que TRABALHOU contribui.** O `dab_core` sai cedo
+            // quando a pegada é vazia, e nesse caminho ele não chega ao
+            // `refresh_region` — a `region` fica com a lista da cópia anterior.
+            // Ler o rascunho sem esta pergunta a contaria duas vezes.
+            let n = self.dab_core(mesh, brush, &mirrored);
+            if n > 0 {
+                self.call_moved.extend_from_slice(&self.moved);
+                self.call_refreshed
+                    .extend_from_slice(self.region.refreshed());
+            }
+            total += n;
         }
         total
     }
@@ -676,3 +719,7 @@ mod tests;
 #[cfg(test)]
 #[path = "stroke_growth_tests.rs"]
 mod growth_tests;
+
+#[cfg(test)]
+#[path = "stroke_window_tests.rs"]
+mod window_tests;

@@ -52,9 +52,23 @@ impl RideConfig {
     /// | `spring_damping` | deriva parado (30°, 10 s) | quique ao pousar | peso transmitido |
     /// |---|---|---|---|
     /// | 0,25 | 0,0498 m | **199 mm** | 98% |
-    /// | **0,50** (o que shipa) | **0,0331 m** | 24 mm | **95%** |
+    /// | 0,50 | 0,0331 m | 24 mm | 95% |
     /// | 0,75 | 0,0165 m | 0 mm | 93% |
-    /// | 1,00 | **0,0000 m** | 0 mm | **91%** |
+    /// | **1,00** (o que shipa) | **0,0000 m** | 0 mm | **91%** |
+    ///
+    /// ⚠️ **E a coluna da deriva é uma LEI, não quatro medições** — a varredura
+    /// por inclinação de 05/08 (`measure_the_drift_against_the_slope`) dá
+    ///
+    /// ```text
+    /// deriva(10 s) = 0,153 · sen θ · (1 − d)   metros
+    /// ```
+    ///
+    /// que reproduz os 24 valores de `20°..45° × d ∈ {0,25 … 1,00}` ao quarto
+    /// decimal. Duas consequências que a tabela sozinha não mostra: a deriva
+    /// **cresce com a rampa** (a 40° ela é 1,29× a de 30°, que foi o que o smoke
+    /// de 05/08 viu como *"um pouco mais rápido"*), e o zero do teto é
+    /// **exacto em toda inclinação** — não um cruzamento calibrado a 30°, que
+    /// era a suspeita que a varredura foi escrita para matar.
     ///
     /// ⚠️ **A tabela é a SEGUNDA, e a primeira fica registada porque a diferença
     /// entre as duas É a wave** ([`ph2d_platformer::PlayerStep::gravity_hold`]):
@@ -82,15 +96,23 @@ impl RideConfig {
     /// fica **constante**. Não há knob que pague as duas coisas; o que as pagou
     /// foi corrigir onde o impulso cai dentro do tique.
     ///
-    /// ⚠️ **O default fica em 0,50 e isso é uma decisão de FEEL, não de número:**
-    /// o teto zera a deriva por 4 pontos de peso a mais, e passa a ser uma
-    /// escolha barata — mas ele também zera o quique do pouso, e um pouso sem
-    /// quique é outra sensação. Quem decide é o smoke.
+    /// ⚠️ **O default é o TETO, e quem o pôs lá foi o smoke de 2026-08-05** —
+    /// depois de a wave `gravity_hold` tornar o teto barato. O Enio reportou a
+    /// subida DUAS vezes (*"quase imperceptível"*, depois *"um pouco mais
+    /// rápido"* numa rampa mais íngreme) e nunca reportou o quique; entre um
+    /// personagem que anda sozinho e um pouso sem 24 mm de quique, o defeito é
+    /// o primeiro e o segundo é estilo — e o knob do painel devolve o quique a
+    /// quem o quiser.
+    ///
+    /// ⚠️ **O que tornou a escolha barata foi a wave, não o gosto:** o teto
+    /// custava **metade do peso** do personagem e hoje custa **4 pontos** (95%
+    /// → 91%); e o quique que ele leva já valia 24 mm, contra os 199 do
+    /// `0,25` — ou seja o quique de verdade vive no fundo do knob, não aqui.
     pub const STARTING_POINT: Self = Self {
         float_height: 0.5,
         cling_distance: 0.25,
         spring_strength: 400.0,
-        spring_damping: 0.5,
+        spring_damping: 1.0,
     };
 
     /// ⚠️ **A `float_height` MÍNIMA de uma cápsula, e ela é GEOMETRIA, não
@@ -506,15 +528,25 @@ mod tests {
     }
 
     /// **O amortecimento que shipa é uma DECISÃO, não uma sobra** — e o gate
-    /// existe porque as duas direções em que alguém o moveria são armadilhas.
+    /// existe porque baixá-lo é uma armadilha com aparência de afinação.
     ///
-    /// Subi-lo ao teto zera a deriva de rampa (a tabela do `STARTING_POINT`) e
-    /// **corta o peso do personagem pela metade**, porque a perna passa a
-    /// segurá-lo com um boost e boost não volta ao chão (`crate::react`). Baixá-lo
-    /// devolve o quique de 196 mm ao pouso. Nenhuma das duas é uma mudança que
-    /// se faz sem olhar as quatro colunas.
+    /// ⚠️ **A decisão MUDOU de lado em 2026-08-05 e o gate mudou com ela.**
+    /// Enquanto o teto custava **metade do peso** do personagem, o default tinha
+    /// de ficar no meio e conviver com a deriva; depois da wave `gravity_hold`
+    /// ele custa **4 pontos** (95% → 91%), e aí a conta inverte: baixá-lo
+    /// devolve uma subida de `0,153 · sen θ · (1 − d)` metros a cada 10 s
+    /// **parado** — um personagem que anda sozinho — em troca de um quique de
+    /// pouso que só existe de verdade no fundo do knob (199 mm a `0,25`, 24 mm
+    /// a `0,50`, **zero já a partir de `0,75`**).
+    ///
+    /// ⇒ Quem mover este número de volta está comprando 24 mm de quique com um
+    /// defeito, e é isso que este gate obriga a ler primeiro.
     #[test]
     fn the_shipped_damping_is_a_decision_not_a_leftover() {
-        assert_eq!(RideConfig::STARTING_POINT.spring_damping, 0.5);
+        assert_eq!(
+            RideConfig::STARTING_POINT.spring_damping,
+            RideConfig::MAX_DAMPING,
+            "o default é o TETO desde 2026-08-05 — leia as quatro colunas antes"
+        );
     }
 }

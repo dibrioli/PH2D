@@ -153,33 +153,45 @@ fn the_stillness_holds_for_a_minute_not_just_for_ten_seconds() {
     assert!(d < 1.0e-3, "um minuto parado numa rampa de 30°: {d:.4} m");
 }
 
-/// **E o que shipa hoje deixa um resíduo NOMEADO, não zero.**
+/// **O que shipa não deixa resíduo NENHUM — e baixar o knob é o que o traz de
+/// volta, por uma lei que este gate pina.**
 ///
-/// Com o `spring_damping` default a lei remove metade da componente e o resto
-/// vira viagem. O gate pina o número dos dois lados: o teto **superior** é o que
-/// as duas correções compraram, e o **inferior** impede que ele passe por vácuo
-/// no dia em que alguém subir o default sem ler a coluna do peso — nesse dia é
-/// este gate que pergunta se a troca foi deliberada.
+/// ⚠️ **Este gate já afirmou o CONTRÁRIO, e a inversão é a história do módulo.**
+/// Enquanto o default era `0,50` ele existia para pinar um resíduo *nomeado*
+/// (0,0383 m em 10 s a 30°), porque o teto — que sempre zerou a deriva — custava
+/// **metade do peso** do personagem e não podia ser o default. A wave
+/// `gravity_hold` mudou a coluna do preço (95% → 91%, quatro pontos), o smoke de
+/// 05/08 reportou a subida pela segunda vez, e a troca inverteu de lado.
 ///
 /// ## A escada, e cada degrau tem um dono
 ///
-/// | quando | resíduo | o que mudou |
+/// | quando | resíduo do default | o que mudou |
 /// |---|---|---|
 /// | antes da W11 | 0,3295 m | o amortecedor no `up`: **nenhum** valor do knob o removia |
 /// | eixo na NORMAL | 0,1644 m | `super::damping_axis` |
-/// | **hoje** | **0,0383 m** | o cancelamento da gravidade passa a ser INTEGRADO como ela |
+/// | W11b | 0,0383 m | o cancelamento da gravidade passa a ser INTEGRADO como ela |
+/// | **hoje** | **0,0000 m** | o default subiu ao teto, que a W11b tornou pagável |
 ///
-/// ⚠️ **O bar de baixo NÃO é folga sobrando** — ele nasceu vermelho quando a
-/// segunda correção entrou (0,0383 contra o mínimo de 0,05 de então), que é
-/// exactamente o gate a fazer o que foi escrito para fazer: um número que
-/// melhora sem ninguém ter decidido melhorá-lo é tão suspeito quanto um que
-/// piora.
+/// ⚠️ **As duas metades são load-bearing e medem coisas diferentes.** A primeira
+/// diz que o default não viaja — e ela sozinha ficaria verde numa lei que
+/// congelasse o personagem, ou no dia em que alguém *"simplificasse"* a deriva
+/// removendo o knob. A segunda mede o knob **abaixado** e exige o resíduo de
+/// volta: é ela que prova que o zero de cima foi **comprado** pelo
+/// amortecimento, e não é vácuo.
 #[test]
-fn the_shipped_default_leaves_a_measured_residue() {
+fn the_shipped_default_leaves_nothing_and_lowering_the_knob_is_what_costs() {
     let d = idle_travel(30.0, 10, RideConfig::STARTING_POINT.spring_damping);
     assert!(
-        (0.02..0.06).contains(&d),
-        "o residuo do default mudou de ordem: {d:.4} m em 10 s a 30°"
+        d < 1.0e-3,
+        "o default tem de ficar PARADO: viajou {d:.4} m em 10 s a 30°"
+    );
+    // E a metade que impede o zero de cima de passar por vácuo: com o knob em
+    // meio curso o resíduo volta, e volta na ordem que a lei
+    // `0,153 · sen θ · (1 − d)` prevê (0,0383 m a 30°, d = 0,5).
+    let half = idle_travel(30.0, 10, 0.5 * RideConfig::MAX_DAMPING);
+    assert!(
+        (0.02..0.06).contains(&half),
+        "com meio amortecimento o residuo mudou de ordem: {half:.4} m"
     );
 }
 
@@ -192,8 +204,8 @@ fn the_shipped_default_leaves_a_measured_residue() {
 ///
 /// | `spring_damping` | erro de repouso | peso transmitido |
 /// |---|---|---|
-/// | 0,50 (o que shipa) | 5,75 → **1,15 mm** | 77% → **95%** |
-/// | 1,00 (o teto) | 11,50 → **2,30 mm** | 53% → **91%** |
+/// | 0,50 | 5,75 → **1,15 mm** | 77% → **95%** |
+/// | **1,00** (o teto, e o que shipa desde 05/08) | 11,50 → **2,30 mm** | 53% → **91%** |
 ///
 /// O peso é `(9,81 − k·erro)/9,81` com `k = spring_strength`: a perna paira
 /// ACIMA do pedido, o offset fica negativo, e o que a mola deixa de empurrar é o
@@ -223,8 +235,8 @@ fn the_ceiling_now_costs_a_tenth_of_the_weight_not_a_half() {
     );
 }
 
-/// **E o CONTROLE: o plano já estava certo, e continua** — com o default que
-/// shipa, não com o teto.
+/// **E o CONTROLE: o plano já estava certo, e continua** — perguntado ao
+/// `STARTING_POINT` e não a um literal, para seguir o default aonde ele for.
 ///
 /// Sem esta metade, *"não viaja"* seria verdade também numa lei que congelasse
 /// o personagem — e o gate não distinguiria a correção de um freio de mão.

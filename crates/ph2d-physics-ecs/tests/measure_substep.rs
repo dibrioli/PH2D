@@ -344,3 +344,47 @@ fn measure_what_is_left_in_the_ramp_frame() {
         println!("  soma: tangente {sum_s:.7}  normal {sum_n:.7}");
     }
 }
+
+/// **A VARREDURA QUE FALTAVA: a deriva contra a INCLINAÇÃO.**
+///
+/// ⚠️ A tabela do handoff foi medida **só a 30°**, e o resíduo tem DOIS termos
+/// que não escalam igual com o ângulo:
+///
+/// - o agrupamento da mola, `D ∝ g·sen θ·(n−1)/(2n²)` — sobe a rampa;
+/// - a queda da mola no repouso, `k·erro·(up·t) ∝ k·erro·sen θ` — desce, e o
+///   `erro` de repouso é função da carga NORMAL, isto é de `cos θ`.
+///
+/// Se o segundo termo carrega um `cos θ` que o primeiro não tem, então **o
+/// cancelamento no teto é função da rampa** e o `0,0000` da tabela é um fato
+/// sobre 30°, não sobre o knob. É exactamente isso que esta sonda decide.
+#[test]
+#[ignore = "sonda"]
+fn measure_the_drift_against_the_slope() {
+    println!("\n=== A DERIVA CONTRA A INCLINACAO (10 s parado, 4 sub-passos) ===");
+    println!(
+        "{:>7}  {:>9}  {:>9}  {:>9}  {:>9}",
+        "rampa", "d=0.25", "d=0.50", "d=0.75", "d=1.00"
+    );
+    for &slope in &[20.0_f32, 30.0, 35.0, 40.0, 45.0, 50.0] {
+        let row: Vec<f32> = [0.25_f32, 0.5, 0.75, 1.0]
+            .iter()
+            .map(|&d| idle_travel(slope, 10, d, 4))
+            .collect();
+        println!(
+            "{:>6.0}°  {:>9.4}  {:>9.4}  {:>9.4}  {:>9.4}",
+            slope, row[0], row[1], row[2], row[3]
+        );
+    }
+    println!(
+        "\nO QUE ELA MEDIU (2026-08-05), e a hipotese acima morreu aqui:\n\
+         · a coluna d=1.00 da' 0.0000 EXACTO de 20deg a 45deg -- o teto e' um\n\
+           piso de verdade, nao um cruzamento calibrado numa rampa so';\n\
+         · e as outras tres colunas colapsam numa lei unica,\n\
+               deriva(10 s) = 0,153 · sen(theta) · (1 - d)   metros,\n\
+           que reproduz os 24 valores ao quarto decimal. Daí a leitura de\n\
+           produto: a deriva CRESCE com a rampa (40deg e' 1,29x a de 30deg),\n\
+           que foi o que o smoke viu como \"um pouco mais rapido\".\n\
+         · 50deg viaja centenas de metros porque ESCORREGA: o limite de rampa\n\
+           autorado e' 45deg, e a cena =88 existe para esse par."
+    );
+}

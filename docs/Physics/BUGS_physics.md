@@ -915,11 +915,12 @@ por isso que o resíduo é exactamente linear em `(1 − d)` e **zero no teto**.
    número mágico dependente das entranhas de uma dep — exactamente o que este
    repo recusa.
 
-⇒ **O ponto de parada é aqui**, e ele tem uma saída exacta para quem a quiser: o
+⇒ **O ponto de parada da INTEGRAÇÃO é aqui**, e ele tinha uma saída exacta: o
 **Spring Damping no teto** zera a deriva por completo e hoje custa **9% do peso
-em vez de 47%** — a troca que a wave tornou pagável. Fechá-la sem knob pediria
-uma mola **semi-implícita** (re-amostrar o raio por sub-passo), que é outra wave
-e cobra um raio por sub-passo.
+em vez de 47%** — a troca que a wave tornou pagável. ⚠️ **Ela foi TOMADA no
+mesmo dia** (o §7c, abaixo). Fechar a deriva *sem* mexer no knob pediria uma mola
+**semi-implícita** (re-amostrar o raio por sub-passo), que é outra wave e cobra
+um raio por sub-passo.
 
 **c9:** `b3dbe792…` → **`2278035e…`**, 108 corpos, debug ≡ release. Ele **tem** de
 se mover: a altura de repouso do player mudou em toda cena que tenha um.
@@ -932,3 +933,88 @@ lados · o teto custa um décimo do peso e não metade). **A mutação — agrup
 `gravity_hold` de volta no motor — sangra os dois gates de produto com os números
 pré-wave exactos (0,1916 m e 11,496 mm) e deixa os outros quatro verdes**, que é
 o par certo: eles medem coisas que a wave não mudou.
+
+---
+
+## Bug #7c — E a subida que restava era uma ESCOLHA de default, não um defeito
+
+**Reportado:** Enio, 2026-08-05, no smoke seguinte ao §7b —
+*"continua subindo um pouco mais rápido que antes, ainda bem discreto"*.
+
+### O que a percepção media, e por que ela estava certa
+
+Duas leituras cabiam na frase, e elas pedem curas opostas: *o mesmo resíduo, e o
+artista o notou melhor* × *o resíduo REGREDIU*. Antes de qualquer hipótese, a
+varredura que faltava (`measure_the_drift_against_the_slope`, 10 s parado, 4
+sub-passos):
+
+```text
+  rampa     d=0.25     d=0.50     d=0.75     d=1.00
+    20      0.0393     0.0262     0.0131     0.0000
+    30      0.0575     0.0383     0.0192     0.0000
+    35      0.0659     0.0439     0.0220     0.0000
+    40      0.0739     0.0493     0.0246     0.0000
+    45      0.0813     0.0542     0.0271     0.0000
+    50   587.0293   587.0293   587.0293   587.0293
+```
+
+Três leituras, e a ordem importa:
+
+1. **A percepção estava certa e é PREVISÍVEL.** A deriva escala com `sen θ`:
+   a 40° ela é **1,29×** a de 30° (0,0493 contra 0,0383 em 10 s). A cena `=88`
+   é o par 40°/50°, então *"um pouco mais rápido"* é exactamente o quanto a
+   rampa é mais íngreme — **não há regressão a procurar**.
+2. **A HIPÓTESE QUE MOTIVOU A VARREDURA MORREU NELA.** Eu suspeitava que o
+   `0,0000` do teto fosse um **cruzamento** calibrado a 30°: o resíduo tem dois
+   termos (`D ∝ g·sen θ` e a queda da mola `∝ k·erro·sen θ`, com o `erro` função
+   da carga NORMAL, isto é de `cos θ`), e se o segundo carregasse um `cos θ` que
+   o primeiro não tem, o cancelamento seria função da rampa. **É zero exacto de
+   20° a 45°** — o teto é um piso de verdade.
+3. **Os 587 m a 50° não são bug:** é o limite de rampa autorado (45°) a
+   funcionar. A cena `=88` documenta *"40° sobe / 50° escorrega"*.
+
+E as outras tres colunas colapsam numa lei unica, que reproduz os 24 valores ao
+quarto decimal:
+
+```text
+  deriva(10 s) = 0,153 · sen θ · (1 − d)   metros
+```
+
+### A decisao, e por que ela inverteu de lado
+
+Enquanto o teto custava **metade do peso** do personagem (§7b, tabela antiga), o
+default tinha de ficar no meio e conviver com a deriva. A wave `gravity_hold`
+mudou a coluna do preço — **95% → 91%, quatro pontos** —, e aí a conta inverte:
+
+| | manter `0,50` | subir para `1,00` |
+|---|---|---|
+| deriva parado (30°, 10 s) | 0,0383 m | **0,0000 m** |
+| quique do pouso | 24 mm | 0 mm |
+| peso transmitido | 95% | **91%** |
+
+⚠️ **O quique de verdade vive no FUNDO do knob, não aqui:** ele vale 199 mm em
+`0,25`, 24 mm em `0,50` e **já é zero em `0,75`**. Trocar 24 mm de quique por um
+personagem que não anda sozinho é o lado certo — e o knob do painel devolve o
+quique a quem o quiser.
+
+⇒ **`RideConfig::STARTING_POINT.spring_damping` = `MAX_DAMPING`.**
+
+### O gate que MUDOU DE LADO com a decisão
+
+O `the_shipped_default_leaves_a_measured_residue` existia para pinar um resíduo
+*nomeado* dos dois lados. Com o default no teto ele não pode continuar a afirmar
+isso — mas **apagar o conhecimento seria pior**, porque o zero de cima passaria a
+poder ser satisfeito por vácuo (uma lei que congelasse o personagem, ou alguém
+que "simplificasse" a deriva removendo o knob).
+
+Ele virou `the_shipped_default_leaves_nothing_and_lowering_the_knob_is_what_costs`,
+com **duas metades que medem coisas diferentes**: o default não viaja **E** com o
+knob em meio curso o resíduo VOLTA na ordem que a lei prevê. É a segunda que
+prova que o zero foi **comprado** pelo amortecimento.
+
+⚠️ **A mutação é reverter o default**, e ela sangra **os dois** — o gate de
+DECISÃO na `ph2d-platformer` (que agora compara contra `MAX_DAMPING`, não contra
+um literal) e o de COMPORTAMENTO na `ph2d-physics-ecs`.
+
+**c9:** `2278035e…` → **`74d4ea5d…`**, 108 corpos, debug ≡ release. Ele **tem**
+de se mover: a altura de repouso do player é função do amortecimento.

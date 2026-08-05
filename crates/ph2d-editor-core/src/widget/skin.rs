@@ -68,6 +68,39 @@ const PREVIEW_VALUE: f32 = 0.5;
 /// do painel nativo no store que a shell possui.
 const PREVIEW_ID: NodeId = NodeId(0);
 
+/// **A moldura é uma CAIXA: a pele PREENCHE o que o artista desenhou** (BUGS_vector #26).
+///
+/// Dez dos doze tipos já faziam isso. Os outros dois carregavam um TETO — `CHECKBOX_BOX_PX.min(h)`
+/// e `(h·0,25).clamp(2, 8)` — e o teto é a **política de LINHA de um painel**, não uma propriedade
+/// do widget: ali toda linha tem a mesma altura, todo checkbox tem o mesmo tamanho, e é isso que
+/// faz um formulário ler como formulário. O canvas não herda essa política.
+///
+/// ⚠️ **E o preço do teto foi MEDIDO, não deduzido:** a pele é pintada em px de **TELA** (o
+/// `frame_of` da shell projeta a forma pela câmera), então com o teto o checkbox media **18 px em
+/// TODA moldura de 28 a 192** — *dar zoom crescia o retângulo e não crescia o widget*. Era esse o
+/// *"o checkbox sempre fica pequeno"* do report, e a mesma frase explica o *"o Slider tem sempre
+/// altura fixa"* (a trilha pinava em 8 px a partir de 32 de moldura).
+///
+/// ⚠️ **A razão é formada como `h / ROW_H_PX`, nunca como `CHECKBOX_BOX_PX / ROW_H_PX`, e a ordem
+/// é load-bearing:** `h / h` é `1.0` EXATO em IEEE-754, então na altura natural de uma linha a
+/// pele é byte-idêntica ao painel **por construção**. Com os valores de hoje (18 e 28) a forma
+/// ingénua também acerta — por acidente aritmético, medido —, e é a construção que sobrevive ao
+/// próximo valor de token.
+///
+/// ⛔ **O que isto NÃO é:** não mexe em `CHECKBOX_BOX_PX` nem no teto do painel. Eles governam
+/// TODOS os painéis do app, e movê-los para agradar ao canvas re-dimensionaria a interface inteira
+/// — mover o número do consumidor errado. `None` continua a ser a lei de todo painel, ao bit.
+fn skin_checkbox_box_px(rect: Rect) -> f32 {
+    ph2d_tokens::CHECKBOX_BOX_PX * (rect.h / ph2d_tokens::ROW_H_PX)
+}
+
+/// A espessura da trilha do slider numa moldura de canvas: os MESMOS 25% do painel, **sem o teto
+/// de linha**. Irmã de [`skin_checkbox_box_px`], e igualmente byte-idêntica ao painel em qualquer
+/// moldura que o teto não morde (até 32 px) — o piso de legibilidade continua sendo do pintor.
+fn skin_slider_track_px(rect: Rect) -> f32 {
+    rect.h * 0.25 // LITERAL-PX-OK: the panel's own 25% geometry ratio, minus the row ceiling
+}
+
 /// **Que widget do catálogo esta forma veste.**
 ///
 /// ⚠️ O código de cada variante é um **literal explícito**, nunca a ordem do enum: o número viaja
@@ -184,16 +217,15 @@ pub fn paint_widget_skin(
             theme,
         ),
         WidgetKind::Toggle => paint_toggle(&Toggle::new(PREVIEW_ID, label), rect, scene, theme),
-        WidgetKind::Checkbox => paint_checkbox(
-            &Checkbox::new(PREVIEW_ID, label),
-            rect,
-            scene,
-            text_system,
-            theme,
-        ),
+        WidgetKind::Checkbox => {
+            let mut c = Checkbox::new(PREVIEW_ID, label);
+            c.box_px = Some(skin_checkbox_box_px(rect));
+            paint_checkbox(&c, rect, scene, text_system, theme);
+        }
         WidgetKind::Slider => {
             let mut s = Slider::new(PREVIEW_ID, label);
             s.value = PREVIEW_VALUE;
+            s.track_px = Some(skin_slider_track_px(rect));
             paint_slider(&s, rect, scene, theme);
         }
         WidgetKind::ProgressBar => {

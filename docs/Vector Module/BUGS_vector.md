@@ -1356,7 +1356,7 @@ partilham o conceito de *"o meu campo de texto"*.
 
 ---
 
-## Bug #26 — O Checkbox não redimensiona e o Slider tem altura fixa (2026-08-04) — **ABERTO**
+## Bug #26 — O Checkbox não redimensiona e o Slider tem altura fixa (2026-08-04) — **FECHADO (2026-08-05)**
 
 ### Sintoma
 
@@ -1386,27 +1386,67 @@ responder *"e se me derem uma moldura dez vezes maior?"* porque quem lhe dá a m
 tamanho natural do widget. **A W6.2 é o primeiro chamador que a dá arbitrária**, e foi ela que
 expôs a premissa.
 
-### A bifurcação é de PRODUTO, e as três saídas têm preços diferentes
+### A bifurcação NÃO era de produto — a medição a dissolveu
 
-1. **A pele ESCALA o fragmento** até à moldura (um `Affine` na cena anexada). Barato e uniforme —
-   ⚠️ **e mata o que a W6.2 existe para garantir**: um token É um número em px, e escalar faz o raio
-   de 16 px do artista deixar de ser 16 px. É a falha que a W6.1 foi construída para impedir.
-2. **O tipo declara o seu tamanho INTRÍNSECO e a moldura ENCAIXA nele** (o widget assenta no tamanho
-   natural, alinhado dentro da caixa, e o gizmo mostra a verdade). Honesto, e diz ao artista o que o
-   app faz — ⚠️ mas contraria a expectativa de uma ferramenta de desenho, onde tudo se redimensiona.
-3. **O pintor ganha um canal de tamanho** — 44 assinaturas, exactamente o que a medição da W6.2
-   rejeitou por ser uma segunda porta para a aparência.
+O registo original oferecia três saídas e deixava a escolha ao Enio. ⚠️ **Uma medição a fechou:** a
+pele é pintada em **px de TELA** (o `frame_of` da shell projeta a forma pela câmera antes de chamar
+o pintor), então com o teto o checkbox mede **18 px em TODA moldura de 28 a 192** — *dar zoom cresce
+o retângulo e não cresce o widget*. Isto não é uma preferência sobre o que redimensionar significa:
+é um controle que não responde à câmera enquanto os outros dez respondem.
 
-**Recomendação:** (2) para o checkbox (o quadrado é genuinamente um token do design system) e (1)
-**não** — mas a escolha é do Enio, e ela decide se a moldura de uma pele é uma **CAIXA** (o widget
-preenche) ou um **SLOT** (o widget assenta). ⚠️ Seja qual for, a resposta é **por-tipo e mora numa
-porta só** (`WidgetKind::intrinsic_size()`), nunca num `match` espalhado pelos chamadores.
+⇒ **A moldura é uma CAIXA, e a pele a PREENCHE.** Dez dos doze tipos já faziam isso; o teto dos
+outros dois é a **política de LINHA de um painel** (ali toda linha tem a mesma altura, e é isso que
+faz um formulário ler como formulário) e o canvas não a herda.
+
+| moldura | caixa ANTES | caixa DEPOIS | trilha ANTES | trilha DEPOIS |
+|---:|---:|---:|---:|---:|
+| 28 (a linha) | 18,00 | **18,00** | 7,00 | **7,00** |
+| 32  | 18,00 | 20,57 | 8,00 | 8,00 |
+| 96  | 18,00 | 61,71 | 8,00 | 24,00 |
+| 192 | 18,00 | 123,43 | 8,00 | 48,00 |
+
+**Na altura natural de uma linha as duas colunas coincidem, e isso é gate** — é o que mantém o token
+honesto: um checkbox de painel continua a medir exactamente o que media.
+
+⚠️ **A razão é formada como `h / ROW_H_PX`, nunca `CHECKBOX_BOX_PX / ROW_H_PX`,** e a ordem é
+load-bearing: `h / h` é `1.0` EXATO em IEEE-754, então a identidade é **por construção**. (Com os
+valores de hoje — 18 e 28 — a forma ingénua também acerta, *por acidente aritmético medido*.)
+
+⛔ **E a saída (1) — escalar o fragmento por um `Affine` — fica REJEITADA com o motivo:** ela move a
+caixa **e** o raio de canto, e um raio é um token que não se mede em frações de moldura. O que a
+pele faz é o que os outros dez já faziam: a moldura cresce, os tokens de detalhe (canto, borda,
+corpo da letra) ficam em px. Um widget grande é um widget grande, não uma foto ampliada de um
+pequeno.
+
+### O canal, e por que ele não é uma segunda porta para a aparência
+
+`Checkbox::box_px: Option<f32>` e `Slider::track_px: Option<f32>`, **`None` = a lei de todo painel,
+ao bit**. Não é estilo, é **TAMANHO** — a coisa que a moldura já comunica para dez dos doze — e tem
+um consumidor só: `paint_widget_skin`, a porta que já toma as decisões por-tipo da prévia (o
+`PREVIEW_VALUE` do slider, o `Determinate` da barra). ⚠️ **O teto é do painel; o piso é do pintor:**
+uma trilha abaixo de `TRACK_MIN_PX` é invisível seja quem for o chamador, e a moldura continua a
+limitar a caixa — ela nunca transborda o que a contém.
+
+### Gates (10 mutações, 10 sangram)
+
+`at_the_natural_row_height_the_skin_is_the_panel_to_the_byte` (a identidade que mantém o token) ·
+`the_checkbox_box_grows_with_the_frame` / `the_slider_track_grows_with_the_frame` (o repro — oráculo
+de TINTA numa **moldura FIXA**, porque com molduras diferentes toda cena difere de qualquer maneira)
+· `without_an_override_the_box_is_the_token` / `without_an_override_the_track_is_the_panel_law` (a
+rota do painel, escrita por extenso) · `an_override_escapes_the_ceiling_but_never_the_floor` ·
+`the_frame_still_caps_the_box` · e os dois da cena.
+
+⚠️ **Dois gates meus nasceram reprovando produto CORRETO:** o primeiro oráculo lia o `x` do primeiro
+glifo do rótulo, que é **relativo à run** e media `0` nas duas molduras; e o gate do `.min` tentava
+disparar pela pele, cuja razão é `18/28 ≈ 0,64` — sempre menor que 1, logo **ela nunca morde o
+teto**, e o gate seria verde por vácuo. Ele passou a medir o PINTOR, que é quem tem o guard.
 
 ### O que NÃO fazer
 
-⛔ Não "consertar" o `CHECKBOX_BOX_PX` nem o clamp do slider. Eles governam **todos os painéis do
+⛔ Não "consertar" o `CHECKBOX_BOX_PX` nem o teto do slider. Eles governam **todos os painéis do
 app**; mexer neles para agradar ao canvas re-dimensiona a interface inteira — a definição de mover o
-número do consumidor errado.
+número do consumidor errado. **A correção não os tocou:** `None` continua a ser a lei deles, e a
+mutação que tira o teto da rota do painel derruba **três** gates.
 
 ---
 

@@ -40,6 +40,16 @@ pub struct Checkbox {
     pub label: String,
     pub state: CheckboxState,
     pub value: CheckboxValue,
+    /// Aresta da caixa, em px. **`None` é o token** ([`CHECKBOX_BOX_PX`]) — a lei que todo
+    /// painel usa e a razão de um formulário ler como formulário: cada checkbox do app tem
+    /// exactamente o mesmo tamanho.
+    ///
+    /// ⚠️ **Isto não é um canal de ESTILO, é o TAMANHO** — a moldura já o comunica para dez dos
+    /// doze widgets do catálogo, e este é um dos dois que a recusavam. Existe um consumidor e
+    /// um só: a pele de canvas ([`crate::widget::paint_widget_skin`]), onde a moldura é o que o
+    /// artista desenhou e não a linha de um painel. Qualquer valor continua limitado pela
+    /// altura da moldura — a caixa nunca transborda o que a contém.
+    pub box_px: Option<f32>,
 }
 
 impl Checkbox {
@@ -49,6 +59,7 @@ impl Checkbox {
             label: label.into(),
             state: CheckboxState::Normal,
             value: CheckboxValue::Unchecked,
+            box_px: None,
         }
     }
 
@@ -101,7 +112,10 @@ pub fn paint_checkbox(
     text_system: &mut TextSystem,
     theme: Theme,
 ) {
-    let box_size = CHECKBOX_BOX_PX.min(rect.h);
+    // A moldura é o TETO em qualquer dos dois casos (a caixa não transborda o que a contém);
+    // o que `box_px` troca é a BASE — o token, ou o que o chamador mediu. `None` reduz à
+    // expressão que shipava, ao bit.
+    let box_size = cb.box_px.unwrap_or(CHECKBOX_BOX_PX).min(rect.h);
     let box_y = rect.y + (rect.h - box_size) * 0.5;
     let box_rect = Rect::new(rect.x, box_y, box_size, box_size);
 
@@ -175,6 +189,35 @@ mod tests {
 
     fn fixture() -> Checkbox {
         Checkbox::new(NodeId(1), "Snap to grid")
+    }
+
+    /// **Sem override, a caixa é o TOKEN** — a lei de todo painel do app, ao bit
+    /// (BUGS_vector #26).
+    ///
+    /// ⚠️ `box_px: None` não é "um default razoável": é o que faz cada checkbox do app ter
+    /// exactamente o mesmo tamanho, e é a razão de um formulário ler como formulário. Este gate
+    /// existe para que mexer nisso exija mexer nele.
+    #[test]
+    fn without_an_override_the_box_is_the_token() {
+        let c = fixture();
+        assert_eq!(c.box_px, None, "o default deixou de ser o token");
+
+        let tall = Rect::new(0.0, 0.0, 200.0, CHROME_CHECKBOX_BOX * 8.0);
+        let mut a = VectorScene::new();
+        let mut ts = TextSystem::without_system_fonts();
+        paint_checkbox(&c, tall, &mut a, &mut ts, Theme::Forge);
+
+        let mut explicit = c.clone();
+        explicit.box_px = Some(CHROME_CHECKBOX_BOX);
+        let mut b = VectorScene::new();
+        paint_checkbox(&explicit, tall, &mut b, &mut ts, Theme::Forge);
+
+        let (ea, eb) = (a.inner().encoding(), b.inner().encoding());
+        assert_eq!(
+            (ea.n_paths, ea.path_data.clone()),
+            (eb.n_paths, eb.path_data.clone()),
+            "pedir o proprio token divergiu de nao pedir nada — o canal nao e' neutro"
+        );
     }
 
     #[test]

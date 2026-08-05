@@ -43,6 +43,15 @@ pub struct Slider {
     /// Optional snap positions in [0, 1]. Painted as small marks on
     /// the track. Empty means no ticks.
     pub ticks: Vec<f32>,
+    /// Espessura da trilha, em px. **`None` é a política de LINHA de um painel** — 25% da
+    /// moldura com TETO em [`TRACK_MAX_PX`], que é o que impede uma linha alta de desenhar uma
+    /// trilha gorda.
+    ///
+    /// ⚠️ **O teto é do PAINEL, o piso é do PINTOR.** Uma trilha abaixo de [`TRACK_MIN_PX`] é
+    /// invisível seja qual for o chamador, então esse limite é honrado nos dois casos; o teto
+    /// não, porque ele descreve uma linha de formulário e não o widget. Irmão exacto do
+    /// [`crate::widget::Checkbox::box_px`], com o mesmo consumidor único.
+    pub track_px: Option<f32>,
 }
 
 impl Slider {
@@ -55,6 +64,7 @@ impl Slider {
             orientation: SliderOrientation::Horizontal,
             accent: false,
             ticks: Vec::new(),
+            track_px: None,
         }
     }
 
@@ -131,7 +141,7 @@ pub fn paint_slider_track(
 /// `Focused` adds a `BorderEmph` outline on the track; `Disabled`
 /// draws a flat `Border` track.
 pub fn paint_slider(slider: &Slider, rect: Rect, scene: &mut VectorScene, theme: Theme) {
-    let track = track_rect(slider.orientation, rect);
+    let track = track_rect(slider, rect);
     let r = Radius::Xs.px();
     if slider.state == SliderState::Disabled {
         fill_rounded_rect(scene, track, r, resolve(ColorToken::Border, theme));
@@ -157,15 +167,32 @@ pub fn paint_slider(slider: &Slider, rect: Rect, scene: &mut VectorScene, theme:
     }
 }
 
-fn track_rect(orientation: SliderOrientation, rect: Rect) -> Rect {
-    match orientation {
+/// Trilha mais fina que isto é invisível — piso de LEGIBILIDADE, honrado por todo chamador.
+pub const TRACK_MIN_PX: f32 = 2.0; // LITERAL-PX-OK: slider track legibility floor
+
+/// O teto da política de LINHA: uma linha alta de painel não desenha uma trilha gorda.
+/// ⚠️ Não vale para quem informa a espessura (`Slider::track_px`) — ver o campo.
+pub const TRACK_MAX_PX: f32 = 8.0; // LITERAL-PX-OK: slider track ceiling inside a panel row
+
+/// A espessura ao longo do eixo CURTO da trilha. `across` é a medida da moldura nesse eixo.
+fn track_thickness(track_px: Option<f32>, across: f32) -> f32 {
+    match track_px {
+        // A política de linha: 25% da moldura, com piso E teto.
+        None => (across * 0.25).clamp(TRACK_MIN_PX, TRACK_MAX_PX), // LITERAL-PX-OK: 25% ratio; CLAMP-OK: both bounds are literal non-NaN consts
+        // Quem informa a espessura já a mediu contra a própria moldura; só o piso sobrevive.
+        Some(px) => px.max(TRACK_MIN_PX),
+    }
+}
+
+fn track_rect(slider: &Slider, rect: Rect) -> Rect {
+    match slider.orientation {
         SliderOrientation::Horizontal => {
-            let h = (rect.h * 0.25).clamp(2.0, 8.0); // LITERAL-PX-OK: slider track sized as 25% of widget height (geometry ratio + clamp)
+            let h = track_thickness(slider.track_px, rect.h);
             let y = rect.y + (rect.h - h) / 2.0;
             Rect::new(rect.x, y, rect.w, h)
         }
         SliderOrientation::Vertical => {
-            let w = (rect.w * 0.25).clamp(2.0, 8.0); // LITERAL-PX-OK: slider track sized as 25% of widget width (geometry ratio + clamp)
+            let w = track_thickness(slider.track_px, rect.w);
             let x = rect.x + (rect.w - w) / 2.0;
             Rect::new(x, rect.y, w, rect.h)
         }
@@ -192,6 +219,47 @@ fn tick_mark_rect(orientation: SliderOrientation, rect: Rect, value: f32) -> Rec
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// **A rota do PAINEL é a lei que shipava, verbatim** (BUGS_vector #26).
+    ///
+    /// ⚠️ `None` não é "um default razoável": é a política de LINHA — 25% com piso E teto — e
+    /// mudá-la re-dimensionaria todo slider do app. O gate a escreve por extenso, para que
+    /// alterá-la exija alterar as duas coisas.
+    #[test]
+    fn without_an_override_the_track_is_the_panel_law() {
+        for across in [0.0, 4.0, 8.0, 28.0, 32.0, 96.0, 400.0] {
+            assert_eq!(
+                track_thickness(None, across),
+                (across * 0.25).clamp(TRACK_MIN_PX, TRACK_MAX_PX), // CLAMP-OK: mirrors the law under test
+                "a politica de linha mudou em across={across}"
+            );
+        }
+    }
+
+    /// **O TETO é do painel; o PISO é do pintor.** Quem informa a espessura escapa ao teto de
+    /// linha — e não escapa ao piso, porque uma trilha abaixo dele é invisível seja quem for o
+    /// chamador.
+    #[test]
+    fn an_override_escapes_the_ceiling_but_never_the_floor() {
+        assert_eq!(track_thickness(Some(40.0), 160.0), 40.0);
+        assert!(
+            track_thickness(None, 160.0) < 40.0,
+            "a fixture nao contem o fenomeno: o teto de linha nao mordeu em across=160"
+        );
+        assert_eq!(track_thickness(Some(0.0), 160.0), TRACK_MIN_PX);
+        assert_eq!(track_thickness(Some(-3.0), 160.0), TRACK_MIN_PX);
+    }
+
+    /// **No ponto de operação do painel os dois caminhos COINCIDEM.** É esta igualdade que faz
+    /// da pele de canvas uma continuação da lei, e não uma segunda lei.
+    #[test]
+    fn at_a_panel_row_the_override_and_the_law_agree() {
+        let row = ph2d_tokens::ROW_H_PX;
+        assert_eq!(
+            track_thickness(Some(row * 0.25), row),
+            track_thickness(None, row)
+        );
+    }
 
     fn fixture() -> Slider {
         Slider::new(NodeId(1), "Opacity")

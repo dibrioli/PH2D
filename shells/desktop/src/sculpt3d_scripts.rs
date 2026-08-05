@@ -266,11 +266,22 @@ pub(super) fn for_scene(mesh: &ph2d_mesh::Mesh) {
              [sculpt3d]    (5) U cicla o detalhe (grosso / medio / fino) e o alvo e' uma FRACAO
              [sculpt3d]        DO PINCEL: no fino, um pincel pequeno ([ diminui) faz detalhe
              [sculpt3d]        muito mais fino que o mesmo fino num pincel grande.
-             [sculpt3d]    (6) Ctrl+Z desfaz o traco INTEIRO num passo -- a malha volta a ser a
+             [sculpt3d]    (6) O CAMINHO DE VOLTA, e ele e' a metade nova: com o detalhe no FINO
+             [sculpt3d]        esculpa ate' a malha adensar bem. Agora aperte U ate' GROSSO (o log
+             [sculpt3d]        diz a contagem) e passe o MESMO pincel por cima. A contagem tem de
+             [sculpt3d]        DESCER -- o alvo cresceu, entao o que era detalhe passou a ser
+             [sculpt3d]        excesso e o traco o retira. Medido a 10 dabs por passada:
+             [sculpt3d]        128 -> 621 vertices no fino, 255 no grosso, 698 de volta ao fino.
+             [sculpt3d]        A SILHUETA tem de sobreviver: o vertice que fica desliza pela
+             [sculpt3d]        superficie, nao afunda nela. Se a esfera murchar, PARE.
+             [sculpt3d]    (7) E o par nao pode MOER: fique parado com o pincel apoiado, no mesmo
+             [sculpt3d]        detalhe, e a contagem tem de ASSENTAR. Se ela subir e descer para
+             [sculpt3d]        sempre, a histerese quebrou.
+             [sculpt3d]    (8) Ctrl+Z desfaz o traco INTEIRO num passo -- a malha volta a ser a
              [sculpt3d]        grossa, com a contagem de antes. Ctrl+Shift+Z refaz.
-             [sculpt3d]    (7) P de novo DESLIGA: o traco seguinte volta a facetar (a malha
+             [sculpt3d]    (9) P de novo DESLIGA: o traco seguinte volta a facetar (a malha
              [sculpt3d]        adensada FICA -- desligar nao desfaz).
-             [sculpt3d]    (8) A RECUSA: Ctrl+Z ate' voltar ao inicio, aperte K (subdividir) e
+             [sculpt3d]   (10) A RECUSA: Ctrl+Z ate' voltar ao inicio, aperte K (subdividir) e
              [sculpt3d]        depois P. O log tem de dizer que RECUSA com a pilha montada, e
              [sculpt3d]        dizer o conserto (J reverte)."
         );

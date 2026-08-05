@@ -186,3 +186,82 @@ impl SculptStroke {
         }
     }
 }
+
+impl SculptStroke {
+    /// **A malha ENCOLHEU no meio do traço** — o colapso apagou vértices, e os
+    /// que sobraram mudaram de índice.
+    ///
+    /// É a irmã exata do [`Self::grow_with`], e ela existe pelo mesmo motivo:
+    /// re-chamar [`Self::begin`] depois de mexer na topologia joga fora o `pre` e
+    /// faz o dab seguinte medir a partir do resultado do anterior. O que muda é
+    /// que aqui **não há nada a herdar** — um vértice que some não deixa
+    /// pergunta em aberto; o que há é uma renumeração a aplicar.
+    ///
+    /// ⚠️ **Sem ela o produto PANICA**, e é a forma boa de falhar: o
+    /// [`Self::dab`] afirma `slot.len() == mesh.vert_count()`, então uma malha
+    /// que encolhe sem avisar o traço bate nesse `assert` em vez de esculpir com
+    /// o `pre` de outro vértice.
+    ///
+    /// # As DUAS compactações, e por que a segunda existe
+    ///
+    /// O traço tem dois eixos: um vetor **por VÉRTICE** (`slot`/`stamp`) e um
+    /// vetor **por SLOT** (`touched` e os cinco planos do `pre`), ligados nos
+    /// dois sentidos — `touched[slot[v]] == v`. Compactar só o primeiro deixaria
+    /// os planos do `pre` a crescer para sempre ao longo de um traço que colapsa;
+    /// compactar só o segundo deixaria `slot` a apontar para o `pre` de outro
+    /// vértice. As duas ou nenhuma.
+    ///
+    /// ⚠️ **`stamp[from] = 0` é load-bearing**: depois de a captura se mudar para
+    /// `to`, o slot dela tem UM dono, e sem apagar a marca de origem a varredura
+    /// da cauda mataria a captura que acabou de sobreviver.
+    pub fn shrink_with(&mut self, remap: &ph2d_mesh::Remap) {
+        if remap.verts == self.slot.len() {
+            return;
+        }
+        let mut dead_slots: Vec<u32> = Vec::new();
+        for &(from, to) in &remap.vert_moves {
+            let (from, to) = (from as usize, to as usize);
+            if self.stamp[to] == self.epoch {
+                dead_slots.push(self.slot[to]);
+            }
+            self.slot[to] = self.slot[from];
+            self.stamp[to] = self.stamp[from];
+            if self.stamp[to] == self.epoch {
+                self.touched[self.slot[to] as usize] = u32::try_from(to).unwrap_or(u32::MAX);
+            }
+            self.stamp[from] = 0;
+        }
+        for v in remap.verts..self.slot.len() {
+            if self.stamp[v] == self.epoch {
+                dead_slots.push(self.slot[v]);
+            }
+        }
+        self.slot.truncate(remap.verts);
+        self.stamp.truncate(remap.verts);
+
+        if dead_slots.is_empty() {
+            return;
+        }
+        dead_slots.sort_unstable();
+        dead_slots.dedup();
+        // ⚠️ A MESMA aritmética que a malha usa, pela porta dela — uma segunda
+        // cópia é como os dois lados passam a discordar sobre quem sobrou.
+        let (moves, keep) = ph2d_mesh::compaction(&dead_slots, self.touched.len());
+        for &(from, to) in &moves {
+            let (from, to) = (from as usize, to as usize);
+            self.touched[to] = self.touched[from];
+            self.base_pos[to] = self.base_pos[from];
+            self.base_nrm[to] = self.base_nrm[from];
+            self.base_mask[to] = self.base_mask[from];
+            self.accum[to] = self.accum[from];
+            self.target[to] = self.target[from];
+            self.slot[self.touched[to] as usize] = u32::try_from(to).unwrap_or(u32::MAX);
+        }
+        self.touched.truncate(keep);
+        self.base_pos.truncate(keep);
+        self.base_nrm.truncate(keep);
+        self.base_mask.truncate(keep);
+        self.accum.truncate(keep);
+        self.target.truncate(keep);
+    }
+}

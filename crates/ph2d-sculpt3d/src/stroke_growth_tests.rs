@@ -300,3 +300,128 @@ fn worst_birth_offset(gesture: Gesture) -> f32 {
 fn scratch() -> ph2d_mesh::RegionScratch {
     ph2d_mesh::RegionScratch::default()
 }
+
+/// **O TRAÇO SOBREVIVE A UM COLAPSO** — o `pre` continua a descrever os mesmos
+/// vértices depois de a malha renumerar.
+///
+/// ⚠️ **O oráculo é a IDENTIDADE, e ela tem de ser rastreada de fora.** Depois de
+/// um colapso o vértice 45 pode ser o que era 255, então comparar `pre` por
+/// índice compararia coisas diferentes com o mesmo nome. A fixture aplica o mesmo
+/// remap a um vetor de identidades e pergunta se o `pre` que o traço guarda para
+/// *o vértice que hoje se chama v* é o do vértice que ele ERA.
+///
+/// ⚠️ **E ele mede as duas pontas da ligação de mão dupla**: `touched[slot[v]]`
+/// tem de voltar a `v`. Compactar um lado só deixa `slot` a apontar para o `pre`
+/// de outro vértice — sem erro, sem aviso, e com a escultura a puxar o barro do
+/// lugar errado.
+#[test]
+fn a_stroke_survives_a_collapse_and_keeps_the_pre_of_each_vertex() {
+    let mut m = ph2d_mesh::shapes::uv_sphere(14, 20, 1.0);
+    m.triangulate();
+    let mut s = SculptStroke::default();
+    s.begin(&m);
+    // Um dab de verdade, para haver captura: sem ele o traço não guarda `pre`
+    // nenhum e o gate ficaria verde sobre uma compactação de lista vazia.
+    let emin = 1.2 * mean_edge(&m);
+    let brush = Brush::default();
+    // ⚠️ **O dab cobre a esfera INTEIRA, e sem isso o gate não continha o
+    // fenômeno.** Os vértices que a compactação MOVE são os do FIM do vetor, e
+    // numa esfera UV eles ficam no polo oposto ao dab — com uma pegada pequena
+    // nenhum deles estava capturado, e a mutação *"não apague a marca de
+    // origem"* não tinha o que corromper.
+    let moved = s.dab(
+        &mut m,
+        &brush,
+        &Dab::at([0.0, 0.0, 1.0], 3.0, [0.0, 0.0, -1.0]),
+        Symmetry::default(),
+    );
+    assert!(moved > 0, "o controle: o dab tem de ter tocado alguém");
+    assert_eq!(
+        s.touched().len(),
+        m.vert_count(),
+        "o controle: a pegada tem de ser a malha inteira"
+    );
+
+    // Onde cada vértice estava, na numeração de ANTES.
+    let pre_before: Vec<[f32; 3]> = (0..m.vert_count())
+        .map(|v| pre_of(&s, &m, v as u32))
+        .collect();
+    let mut ident: Vec<u32> = (0..m.vert_count() as u32).collect();
+
+    let mut remap = ph2d_mesh::Remap::default();
+    let r = ph2d_mesh::collapse_in_sphere(
+        &mut m,
+        [0.0, 0.0, 1.0],
+        0.9,
+        emin,
+        &mut remap,
+        &mut ph2d_mesh::RegionScratch::default(),
+    );
+    assert!(
+        matches!(r, ph2d_mesh::Collapse::Done { .. }),
+        "o controle: a fixture tem de colapsar ({r:?})"
+    );
+    for &(from, to) in &remap.vert_moves {
+        ident[to as usize] = ident[from as usize];
+    }
+    ident.truncate(remap.verts);
+
+    s.shrink_with(&remap);
+
+    assert_eq!(s.touched().len(), s.base_positions().len());
+    // ⚠️ **A ligação de mão dupla é perguntada do lado do VÉRTICE**, e a primeira
+    // versão deste gate a perguntava do lado do slot — o que é um oráculo
+    // CIRCULAR: `pre_of` procura `v` dentro do próprio `touched`, então um
+    // ponteiro de volta obsoleto concorda consigo mesmo. Este módulo é FILHO do
+    // `stroke`, e é por isso que ele alcança `slot`/`stamp` sem uma porta nova.
+    for v in 0..m.vert_count() {
+        if s.stamp[v] != s.epoch {
+            continue;
+        }
+        assert_eq!(
+            s.touched[s.slot[v] as usize] as usize, v,
+            "o ponteiro de volta do vértice {v} aponta para outro"
+        );
+    }
+    for (slot, &v) in s.touched().iter().enumerate() {
+        assert!(
+            (v as usize) < m.vert_count(),
+            "um slot aponta para fora da malha"
+        );
+        assert_eq!(
+            s.base_positions()[slot],
+            pre_before[ident[v as usize] as usize],
+            "o `pre` do vértice que hoje é {v} não é o de quem ele era"
+        );
+    }
+    // E o dab seguinte não pode panicar no `assert` de dimensão.
+    let _ = s.dab(
+        &mut m,
+        &brush,
+        &Dab::at([0.0, 0.0, 1.0], 0.9, [0.0, 0.0, 1.0]),
+        Symmetry::default(),
+    );
+}
+
+/// O `pre` que o traço guarda para `v` — a mesma resposta que os verbos leem.
+fn pre_of(s: &SculptStroke, m: &ph2d_mesh::Mesh, v: u32) -> [f32; 3] {
+    s.touched()
+        .iter()
+        .position(|&t| t == v)
+        .map_or(m.positions()[v as usize], |slot| s.base_positions()[slot])
+}
+
+fn mean_edge(m: &ph2d_mesh::Mesh) -> f32 {
+    let pos = m.positions();
+    let (mut sum, mut n) = (0.0f32, 0usize);
+    for f in m.faces() {
+        let v = f.verts();
+        for k in 0..v.len() {
+            let (a, b) = (pos[v[k] as usize], pos[v[(k + 1) % v.len()] as usize]);
+            let d = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+            sum += (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt();
+            n += 1;
+        }
+    }
+    sum / n.max(1) as f32
+}

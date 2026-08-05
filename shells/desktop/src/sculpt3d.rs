@@ -297,6 +297,10 @@ pub(crate) struct Sculpt3dScene {
     /// ⚠️ Mora aqui e não no [`dyntopo::Dyntopo`] porque aquele é o estado que o
     /// ARTISTA autora (o interruptor e o detalhe) e é `Copy`; isto é rascunho.
     dyn_births: Vec<ph2d_mesh::Birth>,
+    /// A renumeração que o último colapso produziu — o canal irmão do
+    /// `dyn_births`, e scratch pela mesma razão: reusá-lo entre dabs é o que
+    /// mantém a topologia dinâmica sem alocação no caminho quente.
+    dyn_remap: ph2d_mesh::Remap,
     /// **Os buffers do passe de região que o refino roda** — mesma razão do
     /// `dyn_births` acima: eles são do tamanho da MALHA e nascer por dab os
     /// tornaria uma alocação por movimento do mouse, que é o que o
@@ -384,6 +388,7 @@ impl Sculpt3dScene {
             dyntopo: dyntopo::Dyntopo::default(),
             dyn_before: None,
             dyn_births: Vec::new(),
+            dyn_remap: ph2d_mesh::Remap::default(),
             dyn_region: ph2d_mesh::RegionScratch::default(),
             slots: Vec::new(),
             camera,

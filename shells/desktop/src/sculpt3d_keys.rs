@@ -321,7 +321,7 @@ impl App {
             } else {
                 let d = scene.detail_label();
                 eprintln!(
-                    "[sculpt3d] topologia dinamica LIGADA (detalhe {d}, U cicla) --                      {tris} faces trianguladas; o traco passa a adensar onde o pincel toca,                      e o Ctrl+Z dele devolve a malha inteira"
+                    "[sculpt3d] topologia dinamica LIGADA (detalhe {d}, U cicla) --                      {tris} faces trianguladas; o traco passa a ADENSAR onde a aresta e' longa                      demais e AFINAR onde ela e' curta demais, so' onde o pincel toca,                      e o Ctrl+Z dele devolve a malha inteira"
                 );
             }
             return true;
@@ -329,8 +329,14 @@ impl App {
         // O DETALHE — três degraus com nome. Ver `DETAIL_STEPS`.
         if code == K::KeyU {
             let d = scene.cycle_detail();
+            // ⚠️ **A contagem entra aqui porque este é o gesto que a MUDA nos
+            // dois sentidos**: baixar o detalhe e voltar a passar o pincel faz o
+            // colapso retirar o que o refino pôs, e sem o número de antes o
+            // artista não tem contra o que comparar.
             eprintln!(
-                "[sculpt3d] detalhe: {d} -- a aresta alvo e' uma fracao do PINCEL,                  entao pincel pequeno detalha fino"
+                "[sculpt3d] detalhe: {d} -- a aresta alvo e' uma fracao do PINCEL,                  entao pincel pequeno detalha fino ({} vertices / {} faces agora)",
+                scene.mesh().vert_count(),
+                scene.mesh().face_count()
             );
             return true;
         }

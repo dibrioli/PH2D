@@ -12,6 +12,15 @@
 //! padrão desta casa continua sendo `remesh sob comando + multires`
 //! ([`docs/3D/04-Ferramentas/04.3-Topologia.md`]).
 //!
+//! # As DUAS metades, e a segunda chegou depois
+//!
+//! Armado, um dab **refina** onde a aresta é longa demais e **COLAPSA** onde ela
+//! é curta demais. O limiar do colapso é DERIVADO do alvo do refino (ver
+//! [`collapse_target`]) e não é um segundo slider: a relação entre os dois é a
+//! histerese que impede o par de moer, e ela é propriedade do par, não
+//! preferência. É o default do Blender (*Subdivide Collapse*); o SculptGL expõe
+//! os dois e ship o de colapso em ZERO.
+//!
 //! # As três consequências de ligar, e nenhuma é escondida
 //!
 //! 1. **A peça é TRIANGULADA** ([`ph2d_mesh::Mesh::triangulate`]). Não é gosto:
@@ -27,7 +36,9 @@
 //!    motivo pelo qual o remesh recusa, e a recusa é NOMEADA no log em vez de
 //!    achatar a pilha em silêncio.
 
-use ph2d_mesh::{Refine, edge_target, refine_in_sphere};
+use ph2d_mesh::{
+    Collapse, Refine, collapse_in_sphere, collapse_target, edge_target, refine_in_sphere,
+};
 
 use super::Sculpt3dScene;
 
@@ -131,11 +142,35 @@ impl Sculpt3dScene {
         // segue `Copy`. Reusá-lo entre dabs é o que mantém o refino sem alocação
         // no caminho quente.
         let mut births = std::mem::take(&mut self.dyn_births);
+        let mut remap = std::mem::take(&mut self.dyn_remap);
         let mesh = self.objects[self.active].stack.mesh_mut();
         let mut region = std::mem::take(&mut self.dyn_region);
+        // ⚠️ **O COLAPSO PRIMEIRO, e a ordem é a do canal.** As duas metades
+        // falam com o traço em voo por canais diferentes — o colapso por uma
+        // RENUMERAÇÃO, o refino por uma lista de NASCIMENTOS —, e o segundo
+        // afirma que a malha cresceu exactamente o que ele partiu. Refinar antes
+        // faria a renumeração chegar depois e descrever índices que já não são os
+        // que o `grow_with` acabou de instalar.
+        let shrunk = collapse_in_sphere(
+            mesh,
+            centre,
+            radius,
+            collapse_target(target),
+            &mut remap,
+            &mut region,
+        );
         let out = refine_in_sphere(mesh, centre, radius, target, &mut births, &mut region);
         self.dyn_region = region;
+        let cut = matches!(shrunk, Collapse::Done { .. });
         let done = matches!(out, Refine::Done { .. });
+        if cut {
+            // ⚠️ **Antes do `grow_with`, sempre.** Ele afirma que a malha cresceu
+            // exactamente o número de nascimentos que chegaram, e a conta é
+            // contra `slot.len()` — que ainda descreve a malha de antes do
+            // colapso enquanto ninguém aplicar o remap.
+            self.stroke.shrink_with(&remap);
+        }
+        self.dyn_remap = remap;
         if done {
             // O traço em voo sobrevive: os índices antigos não se moveram, e cada
             // vértice novo HERDA o `pre` do par que o gerou. Ver
@@ -146,7 +181,7 @@ impl Sculpt3dScene {
             self.stroke.grow_with(mesh, &births);
         }
         self.dyn_births = births;
-        if !done {
+        if !done && !cut {
             return false;
         }
         // A malha tem faces novas: o upload incremental não as descreve.

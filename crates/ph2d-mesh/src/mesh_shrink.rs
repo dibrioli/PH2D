@@ -116,7 +116,7 @@ impl Mesh {
         self.face_normals.truncate(remap.faces);
         let touched = self
             .adjacency
-            .shrink_faces(&changed, &dead_pairs, &remap, &self.faces);
+            .shrink_faces(&changed, &dead_pairs, &self.faces);
         self.octree.shrink_faces(dead_faces, &remap);
 
         // ── Fase 2: os VÉRTICES. As faces já estão na numeração final. ──

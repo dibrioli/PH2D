@@ -46,9 +46,9 @@ impl Remap {
     #[must_use]
     pub fn plan(dead_faces: &[u32], faces: usize, dead_verts: &[u32], verts: usize) -> Self {
         Self {
-            face_moves: moves(dead_faces, faces),
+            face_moves: compaction(dead_faces, faces).0,
             faces: faces - dead_faces.len(),
-            vert_moves: moves(dead_verts, verts),
+            vert_moves: compaction(dead_verts, verts).0,
             verts: verts - dead_verts.len(),
         }
     }
@@ -73,13 +73,6 @@ impl Remap {
     /// vetores paralelos funciona (eles ainda têm o slot 8 quando a troca
     /// acontece); consultar `final[8]` não.
     ///
-    /// Quem aplica em ordem sobre a lista inteira usa [`Self::face_moves`]; quem
-    /// precisa do par original↔final usa isto.
-    #[must_use]
-    pub fn net_face_moves(&self, old_len: usize) -> Vec<(u32, u32)> {
-        net(&self.face_moves, old_len, self.faces)
-    }
-
     /// Nenhum índice mudou de casa.
     ///
     /// ⚠️ **Não é *"nada morreu"***, e a diferença morde: remover o ÚLTIMO item
@@ -91,26 +84,73 @@ impl Remap {
     }
 }
 
+/// **ONDE CADA SOBREVIVENTE FOI PARAR** — os pares `(original, final)`, sem as
+/// casas intermediárias.
+///
+/// ⚠️ **Existe porque um destino pode virar uma origem, e quem lê o CONTEÚDO da
+/// lista final não pode ver o caminho.** Com os mortos `[3, 8]` numa lista de 10
+/// a sequência é `(9→8), (8→3)`: o slot 8 é uma casa de passagem que a lista
+/// compactada — de tamanho 8 — nem tem. Aplicar a sequência CRUA a vetores
+/// paralelos funciona (eles ainda têm o slot 8 quando a troca acontece);
+/// consultar `final[8]` não.
+///
+/// Quem aplica em ordem sobre a lista inteira usa [`Remap::face_moves`]; quem
+/// precisa do par original↔final usa isto.
+///
+/// ⚠️ **Função LIVRE e não método do [`Remap`], de propósito:** um `Remap`
+/// encadeado por [`Remap::then`] descreve várias rodadas, e cada rodada tem a
+/// sua lista de mortos — um método esconderia que a resposta depende de QUAL
+/// lista, e a armadilha só apareceria com um dab de dois passes.
+#[must_use]
+pub fn net_compaction(dead: &[u32], len: usize) -> Vec<(u32, u32)> {
+    net(dead, len, len - dead.len())
+}
+
 /// Colapsa a sequência de trocas nos pares `(original, final)`.
 ///
-/// O `origin[slot]` responde *"quem estava aqui no começo?"*, e ele custa um
-/// `u32` por item — a mesma ordem que o `pending` do grafo de arestas e o `mark`
-/// da porta que encolhe já pagam por passe.
-fn net(moves: &[(u32, u32)], old_len: usize, new_len: usize) -> Vec<(u32, u32)> {
-    if moves.is_empty() {
+/// ⚠️ **A versão óbvia era `O(MALHA)`, e ela reintroduzia exactamente o que duas
+/// waves tinham tirado do caminho quente:** um `origin[slot]` do tamanho da lista
+/// responde *"quem estava aqui no começo?"* em uma linha, e custa 4 bytes por
+/// FACE por passe — 800 KB a cada colapso numa malha de 200 k faces.
+///
+/// A cadeia é ARITMÉTICA, e é isso que a torna `O(mortos)`. O passo `i` (contado
+/// do fim da lista de mortos) move o item que está em `end_i = len − 1 − i` para
+/// `d_i`; ele volta a se mudar se e só se `d_i` for o `end` de um passo POSTERIOR,
+/// e `end_j = len − 1 − j` dá esse passo direto: `j = len − 1 − d_i`. Percorrendo
+/// os passos de trás para a frente, o destino final de cada um já está resolvido
+/// quando ele pergunta.
+fn net(dead: &[u32], len: usize, new_len: usize) -> Vec<(u32, u32)> {
+    let steps = dead.len();
+    if steps == 0 {
         return Vec::new();
     }
-    let mut origin: Vec<u32> = (0..u32::try_from(old_len).unwrap_or(u32::MAX)).collect();
-    for &(from, to) in moves {
-        origin[to as usize] = origin[from as usize];
+    let mut fin: Vec<u32> = vec![0; steps];
+    for i in (0..steps).rev() {
+        let d = dead[steps - 1 - i];
+        let j = len.wrapping_sub(1).wrapping_sub(d as usize);
+        fin[i] = if j > i && j < steps { fin[j] } else { d };
     }
-    (0..new_len)
-        .filter_map(|slot| {
-            let orig = origin[slot];
-            let slot = u32::try_from(slot).unwrap_or(u32::MAX);
-            (orig != slot).then_some((orig, slot))
+    (0..steps)
+        .filter_map(|i| {
+            let end = u32::try_from(len - 1 - i).unwrap_or(u32::MAX);
+            let d = dead[steps - 1 - i];
+            (d != end && (fin[i] as usize) < new_len).then_some((end, fin[i]))
         })
         .collect()
+}
+
+/// **A SEQUÊNCIA DE TROCAS QUE REMOVE `dead` DE UMA LISTA DE `len` ITENS**, e o
+/// tamanho que sobra.
+///
+/// É a mesma pergunta que o [`Remap::plan`] faz duas vezes, e ela é pública
+/// porque quem guarda vetores PARALELOS à malha — o traço em voo, com um slot
+/// por vértice capturado — compacta os dele pela mesma lei. Uma segunda cópia
+/// dessa aritmética é como os dois lados passam a discordar sobre quem sobrou.
+///
+/// ⚠️ **`dead` TEM de estar ordenado e sem repetição.** Ver [`Remap::plan`].
+#[must_use]
+pub fn compaction(dead: &[u32], len: usize) -> (Vec<(u32, u32)>, usize) {
+    (moves(dead, len), len - dead.len())
 }
 
 /// A sequência de trocas que remove `dead` de uma lista de `len` itens.

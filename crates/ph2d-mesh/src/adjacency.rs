@@ -360,7 +360,6 @@ impl Adjacency {
         &mut self,
         edits: &[(u32, Face, Face)],
         dead: &[(u32, Face)],
-        remap: &crate::Remap,
         after: &[Face],
     ) -> Vec<u32> {
         let mut affected: Vec<u32> = Vec::new();
@@ -389,7 +388,8 @@ impl Adjacency {
         // [`crate::Remap::net_face_moves`]. Aqui o que se lê é o CONTEÚDO da face
         // no destino FINAL, então a casa de passagem daria um índice fora da
         // lista (e, quando não desse, os vértices de outra face).
-        for (from, to) in remap.net_face_moves(after.len() + dead.len()) {
+        let dead_only: Vec<u32> = dead.iter().map(|&(f, _)| f).collect();
+        for (from, to) in crate::net_compaction(&dead_only, after.len() + dead.len()) {
             for &v in after[to as usize].verts() {
                 self.vert_faces.remove(v as usize, from);
                 self.vert_faces.insert_sorted(v as usize, to);

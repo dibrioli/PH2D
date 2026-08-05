@@ -56,6 +56,26 @@
 //!    que nenhuma operação seguinte consegue consertar.
 //! 4. **Um vizinho já foi tocado nesta rodada** — ver [`one_pass`].
 //!
+//! # O que ele custa, e as duas medições que eu quase publiquei erradas
+//!
+//! `measure_what_a_topology_dab_costs_by_brush_size`, contra o K1 de **8 ms**:
+//!
+//! | vértices | raio | 1º colapso | colapso p50 | dab p50 (col+refino) |
+//! |---|---|---|---|---|
+//! | 48 332 | 0,25 | 0,889 ms | 0,296 | **0,328** |
+//! | 101 012 | 0,10 | 1,113 | 0,197 | **0,246** |
+//! | 101 012 | 0,25 | 2,025 | 0,600 | **0,649** |
+//!
+//! ⚠️ **Duas colunas porque há dois regimes**, e ler só uma me deu a conclusão
+//! errada duas vezes. O PRIMEIRO dab numa região que nunca foi colapsada tem
+//! muito a retirar; do segundo em diante ele encontra pouco. Medindo UMA amostra
+//! eu li 2,0 ms, chamei o dab de `O(malha)` e abri uma ablação — que não
+//! atribuiu nada, porque a dispersão entre corridas do MESMO código (1,78 a
+//! 2,12 ms) era maior que o que ela queria medir. Com a mediana de nove o número
+//! reproduz a três decimais entre corridas independentes. *Uma amostra só é o
+//! redutor certo quando toda amostra faz o mesmo trabalho, e aqui a primeira é
+//! estruturalmente diferente.*
+//!
 //! ⚠️ **O SculptGL responde (3) com uma TROCA DE DIAGONAL em vez de recusar.** É
 //! uma reparação a mais, não uma correção: o Blender (`pbvh_bmesh_collapse_edge`)
 //! recusa, e nós já rodamos o [`crate::dyntopo_flip`] no mesmo dab. Duas respostas

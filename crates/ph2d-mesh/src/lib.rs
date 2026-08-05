@@ -83,7 +83,7 @@ pub use persist::{DetailData, DocError, MeshData, PoseData, StackData};
 pub use ply::{PlyError, import_ply};
 pub use pose::Pose;
 pub use ray::{Hit, Ray};
-pub use remap::Remap;
+pub use remap::{Remap, compaction, net_compaction};
 pub use reversion::{Reversed, reverse_subdivision};
 pub use stl::{StlError, import_stl};
 pub use subdivide::{Lerpable, Predicted, predict, subdivide};

@@ -567,3 +567,110 @@ fn short_edges(m: &ph2d_mesh::Mesh, c: [f32; 3], r: f32, emin: f32) -> usize {
     }
     n
 }
+
+/// **O GESTO QUE A CENA DE SMOKE PEDE**, medido antes de a mensagem ser escrita:
+/// adensar no detalhe FINO e depois passar de novo no GROSSO — a contagem tem de
+/// DESCER.
+#[test]
+#[ignore = "sonda"]
+fn measure_the_coarsening_gesture() {
+    let mut m = shapes::uv_sphere(10, 14, 1.0);
+    m.triangulate();
+    let (centre, radius) = ([0.0, 0.0, 1.0], 0.5);
+    let mut births = Vec::new();
+    let mut remap = ph2d_mesh::Remap::default();
+    println!("\n  {:>22} | {:>8} | {:>8}", "passo", "vértices", "faces");
+    println!(
+        "  {:>22} | {:>8} | {:>8}",
+        "esfera grossa",
+        m.vert_count(),
+        m.face_count()
+    );
+    let mut pass = |m: &mut ph2d_mesh::Mesh, detail: f32, label: &str, n: usize| {
+        let emax = ph2d_mesh::edge_target(radius, detail);
+        for _ in 0..n {
+            let _ = ph2d_mesh::collapse_in_sphere(
+                m,
+                centre,
+                radius,
+                ph2d_mesh::collapse_target(emax),
+                &mut remap,
+                &mut scratch(),
+            );
+            let _ = refine_in_sphere(m, centre, radius, emax, &mut births, &mut scratch());
+        }
+        println!(
+            "  {label:>22} | {:>8} | {:>8}",
+            m.vert_count(),
+            m.face_count()
+        );
+    };
+    pass(&mut m, 1.0, "10 dabs no FINO", 10);
+    pass(&mut m, 0.15, "10 dabs no GROSSO", 10);
+    pass(&mut m, 1.0, "e de volta ao FINO", 10);
+}
+
+/// **O QUE UM DAB DE TOPOLOGIA CUSTA, agora com as DUAS metades** — o K1 é 8 ms.
+///
+/// ⚠️ **A régua é o dab do PRODUTO** (colapso + refino, na ordem em que a shell
+/// os chama), e não cada metade isolada: o que decide se o modo cabe no quadro é
+/// a soma, e medi-las separadas é a armadilha que a `line/Painter` documentou
+/// como *"o número que vira decisão de produto tem de sair da porta do produto"*.
+#[test]
+#[ignore = "sonda"]
+fn measure_what_a_topology_dab_costs_by_brush_size() {
+    println!(
+        "\n  {:>6} | {:>7} | {:>9} | {:>9} | {:>9} | {:>9}",
+        "raio", "cresceu", "1º col", "col p50", "refino", "dab p50"
+    );
+    for rings in [80usize, 180, 260] {
+        let mut base = shapes::uv_sphere(rings, rings * 3 / 2, 1.0);
+        base.triangulate();
+        println!("  --- {} vértices ---", base.vert_count());
+        for radius in [0.05f32, 0.10, 0.25] {
+            let mut m = base.clone();
+            let emax = ph2d_mesh::edge_target(radius, 0.5);
+            let centre = [0.0, 0.0, 1.0];
+            let (mut births, mut remap) = (Vec::new(), ph2d_mesh::Remap::default());
+            // Aquece: o primeiro dab refina, os seguintes é que são o regime.
+            for _ in 0..4 {
+                let _ = refine_in_sphere(&mut m, centre, radius, emax, &mut births, &mut scratch());
+            }
+            let v0 = m.vert_count();
+            let mut sc = scratch();
+            // ⚠️ **MEDIANA de nove, e não uma amostra.** A ablação que tentou
+            // atribuir este custo com uma amostra só leu 1,78 contra 2,12 ms
+            // para o MESMO código — a dispersão entre corridas é maior que o que
+            // ela queria medir, e um número que não reproduz não é achado.
+            let (mut cols, mut refs) = (Vec::new(), Vec::new());
+            let mut first = 0.0;
+            for k in 0..9 {
+                let t = ms(|| {
+                    let _ = ph2d_mesh::collapse_in_sphere(
+                        &mut m,
+                        centre,
+                        radius,
+                        ph2d_mesh::collapse_target(emax),
+                        &mut remap,
+                        &mut sc,
+                    );
+                });
+                if k == 0 {
+                    first = t;
+                }
+                cols.push(t);
+                refs.push(ms(|| {
+                    let _ = refine_in_sphere(&mut m, centre, radius, emax, &mut births, &mut sc);
+                }));
+            }
+            cols.sort_by(f64::total_cmp);
+            refs.sort_by(f64::total_cmp);
+            let (t_col, t_ref) = (cols[4], refs[4]);
+            let touched = 100.0 * ((v0 - base.vert_count()) as f64) / (base.vert_count() as f64);
+            println!(
+                "  {radius:>6.2} | {touched:>6.1}% | {first:>7.3}ms | {t_col:>7.3}ms | {t_ref:>7.3}ms | {:>7.3}ms",
+                t_col + t_ref
+            );
+        }
+    }
+}

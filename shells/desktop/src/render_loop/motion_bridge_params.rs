@@ -399,11 +399,20 @@ pub(crate) fn build_params_snapshot(
                     .param_hard_max(type_id, spec.name)
                     .unwrap_or(max)
                     .max(max);
+                // The typed FLOOR, mirrored: a hard minimum that sat ABOVE the
+                // slider would silently un-type values the slider can still reach,
+                // so `min` is its ceiling exactly as `max` is the ceiling's floor.
+                let hard_min = motion
+                    .registry
+                    .param_hard_min(type_id, spec.name)
+                    .unwrap_or(min)
+                    .min(min);
                 ScalarRow {
                     name: spec.name,
                     label: h.label.to_string(),
                     value,
                     min: f64::from(min),
+                    hard_min: f64::from(hard_min),
                     max: f64::from(max),
                     hard_max: f64::from(hard_max),
                     step: f64::from(step),
@@ -437,6 +446,7 @@ pub(crate) fn build_params_snapshot(
                     label: spec.name.to_string(),
                     value,
                     min: f64::from(min),
+                    hard_min: f64::from(min),
                     max: f64::from(max),
                     hard_max: f64::from(max),
                     step: 0.1,

@@ -35,6 +35,12 @@ mod tests;
 #[path = "lib_gradient_tests.rs"]
 mod tests_gradient;
 
+/// The **dual range** gates (soft slider vs hard box) — a sibling of `lib_tests`
+/// split off at the panel LOC cap along the subject line, not by size.
+#[cfg(test)]
+#[path = "lib_range_tests.rs"]
+mod tests_range;
+
 use events::{on_click, on_text_commit, on_toggled, on_value_changed};
 use number_rows::{
     ANGLE_DECIMALS, SEED_DECIMALS, mirror_number, next_seed, number_is_typing, number_value,
@@ -416,12 +422,15 @@ fn seed_rows(store: &mut WidgetStore, rows: &[ParamRow]) {
         // Range (chip typed-value clamp/step) + slider↔chip affine (track 0..1 →
         // value): display = track * span + min. Integer rows snap the chip.
         //
-        // The CHIP gets the HARD ceiling and the slider keeps the soft one: the
+        // The CHIP gets the HARD range and the slider keeps the soft one: the
         // drag range and the legal range are different questions (Blender's soft
-        // vs hard limits). Above `row.max` the affine below saturates the track
-        // at 1.0, so such a value cannot come back through the slider — which is
-        // exactly why `on_value_changed` lets the chip speak for itself up there.
-        store.set_number_range(chip_id, row.min, row.hard_max, row.step);
+        // vs hard limits). Outside `[row.min, row.max]` the affine below saturates
+        // the track at 0.0 / 1.0, so such a value cannot come back through the
+        // slider — which is exactly why `on_value_changed` lets the chip speak for
+        // itself out there. Both ENDS, since doc 88: the ceiling shipped alone and
+        // the floor was pinned to the slider's `min`, so a param whose useful drag
+        // starts at `0.01` could not be typed to `0.001`.
+        store.set_number_range(chip_id, row.hard_min, row.hard_max, row.step);
         if row.integer {
             store.link_slider_number_mapped_integer(
                 slider_id,

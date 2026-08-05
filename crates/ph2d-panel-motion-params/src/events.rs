@@ -20,16 +20,24 @@ pub(crate) fn on_value_changed(
             // it re-fires ValueChanged, and swallowing that is what keeps one
             // gesture from notifying twice.
             //
-            // Above the slider's soft `max` there is nothing to mirror. The track
-            // is 0..1 over the soft span, so it saturates at 1.0 and the slider
-            // would report `max` — turning a typed 4.000.000 into 12.000 without
-            // a word. Up there the box is the only widget that can hold the
-            // value, so it speaks for itself.
+            // OUTSIDE the slider's soft `[min, max]` there is nothing to mirror.
+            // The track is 0..1 over the soft span, so it saturates at either end
+            // and the slider would report the bound — turning a typed 4.000.000
+            // into 12.000, or a typed 0.0001 into 0.01, without a word. Out there
+            // the box is the only widget that can hold the value, so it speaks for
+            // itself.
+            //
+            // ⚠️ BOTH ends, since doc 88. This read `typed <= row.max` — the
+            // ceiling alone — and the asymmetry was invisible because no node had
+            // declared a hard FLOOR for it to swallow. It lives in two places (the
+            // range handed to the box, and this rule about who reports), and
+            // fixing only one leaves the box able to hold a number it may not
+            // report: the artist types it, sees it, and the doc never hears it.
             let ParamRow::Scalar(row) = &snap.rows[slot] else {
                 return EventOutcome::Consumed;
             };
             let typed = number_value(host.store(), id);
-            if row.driven || typed <= row.max {
+            if row.driven || (typed >= row.min && typed <= row.max) {
                 return EventOutcome::Consumed;
             }
             push_param_intent(MotionParamIntent::SetParam {

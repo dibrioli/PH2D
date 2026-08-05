@@ -193,6 +193,13 @@ pub struct ScalarRow {
     /// Current value: the per-instance override if set, else the manifest default.
     pub value: f64,
     pub min: f64,
+    /// The **hard** minimum: how far DOWN a typed value may go. Equals
+    /// [`Self::min`] unless the node registered a `ParamHardMin` — the floor twin
+    /// of [`Self::hard_max`], and the half that did not exist until doc 88: the
+    /// ceiling shipped alone, so the box could never reach *below* the slider's
+    /// start. That asymmetry is what stopped an artist typing `0.001` into a param
+    /// whose useful drag begins at `0.01`.
+    pub hard_min: f64,
     /// The **soft** maximum: how far the slider drags.
     pub max: f64,
     /// The **hard** maximum: how far a TYPED value may go. Equals [`Self::max`]

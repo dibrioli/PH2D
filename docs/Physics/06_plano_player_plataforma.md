@@ -416,10 +416,58 @@ deixa a descida armada para sempre. Essa cena já está quebrada sem descida nen
 **7 mutações, 7 sangram.** `c9` byte-idêntico (a fita do harness não segura o
 baixo, de propósito). `PROJECT_SCHEMA` intocado, registro intocado, nenhum ADR.
 
+### W13 — AS PAREDES (2026-08-05, cena `=92`)
+
+Escorregar por uma parede e pular dela — as duas metades da mesma pergunta
+(`cling`, feita **uma vez**).
+
+⚠️ **Uma parede é o que a PERNA já recusou.** O `footing_verdict` já classifica
+toda superfície em *chão* / *íngreme demais* / *nada*, e uma parede é a do meio.
+Um `wall_min_angle` seria um segundo número a discordar do `Max Slope` autorado.
+
+⚠️ **A LEI QUE EU ESCREVI ESTAVA ERRADA, e a medição a derrubou.** O primeiro
+corte do escorregamento era um TETO (*"não caia mais rápido do que isto"*),
+raciocinado. O knob que ele produz é **INERTE**: medido, um personagem que
+empurra contra uma parede **não cai** — desce 9 cm em um segundo. As duas causas
+são do produto que já shipa: o **atrito** (`DEFAULT_FRICTION = 0,5`) contra a
+normal que o controle aéreo sustenta, e a **gravidade do ÁPICE**
+(`peak_gravity = 0,5`), que corta metade do peso justamente na janela em que o
+colado vive — auto-reforçante. A lei que ficou **DEFINE** a velocidade: quem cai
+depressa é freado até ela, quem está colado é solto até ela.
+
+⚠️ **E o pulo de parede entregava 76% do que promete** — o jogador ainda segura a
+direção da parede, o controle aéreo obedece e puxa-o de volta. É a **mesma
+doença que o `lift_momentum` da W10 nomeou**, e a cura é da mesma família: calar
+o controle aéreo por `wall_jump_lockout` segundos. Tabela no `measure_wall`; o
+`0,2 s` sai de onde a **ALTURA** para de ser perdida (97%) — ⚠️ e **não** de um
+joelho no afastamento, que **não satura**: ele cresce linear, porque com o
+controle calado nada freia a horizontal. Uma frase minha morreu nessa tabela.
+
+⚠️ **O pulo de parede mora dentro do `jump_step`**, onde o aperto já tem dono; a
+parede **oferece** (`WallLaunch`), a lei do pulo **aceita**. E `takeoff: false`,
+porque a 3ª lei devolve ao CHÃO o que o pé nele empurrou — este empurrou uma
+parede.
+
+⚠️ **Nasce DESLIGADA**, ao contrário de todo o resto da §14: parede é uma
+CAPACIDADE, não uma correção de física. É isso que mantém o `c9` byte-idêntico.
+
+**5 mutações, 4 sangram**; a 5ª nomeia uma **defesa em camadas** (o `drive*side`
+do `cling` é inalcançável pela ponte, e quem o mata é o gate de unidade).
+`PROJECT_SCHEMA` **55→56** (5 campos apendados; ⚠️ **provisório**, o valor se
+CONTA). Card **WALLS** próprio na §14.
+
+**Aberto:** o sensor lateral olha só a altura do MEIO do corpo (uma beirada que
+alcance só os pés não é vista — a mesma limitação honesta da folga lateral da
+W10) · não há *wall grab* (ficar parado é outra mecânica, com botão próprio).
+
 ## §4 — O que NÃO entra (nomeado, não esquecido)
 
-- **Wall slide / wall jump / dash / agachar** — cada um é uma wave própria; o tnua os tem
-  como *actions* separadas e a nossa lei suporta o mesmo formato. Fora do 1º corte.
+- ~~**Wall slide / wall jump**~~ — **FEITOS: a W13** (2026-08-05, cena `=92`). ⚠️ E a
+  previsão desta linha estava errada num ponto que importa: eles **não são duas waves**,
+  são uma. As duas metades partilham a pergunta *estou agarrado?*, e separá-las daria
+  duas respostas para *o que conta como parede*.
+- **Dash / agachar** — cada um é uma wave própria; o tnua os tem como *actions*
+  separadas e a nossa lei suporta o mesmo formato. Fora do 1º corte.
 - ~~**Descer de plataforma one-way**~~ — **FEITA: a W12** (2026-08-05, cena `=91`). Era a
   única linha desta lista com data marcada, e a previsão sobreviveu à construção: o
   mecanismo estava todo lá, a wave é o gesto.

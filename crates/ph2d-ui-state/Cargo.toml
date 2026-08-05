@@ -1,0 +1,25 @@
+[package]
+name = "ph2d-ui-state"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+# **O Smart Animate** (plano UI/UX W7): dados dois ESTADOS de uma cena, que pose ela tem no meio.
+#
+# Crate-folha de propósito, e a fronteira é a mesma que o plano exige: aqui NÃO há relógio (o
+# relógio é o `Playhead` — a lição W4.T7 do Motion, onde o `MotionTransport` morreu porque dois
+# relógios divergem), NÃO há ECS e NÃO há UI. O que existe é uma função pura do par de estados.
+#
+# ⚠️ E ela não tem motor PRÓPRIO de forma nem de cor: a geometria interpola pelo `ph2d-vec-blend`
+# (Hungarian + espiral logarítmica, quinas preservadas) e a tinta pela porta OKLab da mesma crate.
+# Um segundo motor divergiria do Blend/Morph que o artista já usa, e a divergência só apareceria
+# numa screenshot.
+ph2d-vec-scene = { path = "../ph2d-vec-scene" }
+ph2d-vec-blend = { path = "../ph2d-vec-blend" }
+serde = { version = "1", features = ["derive"] }

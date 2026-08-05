@@ -1035,7 +1035,33 @@ mudar `radius.md` move os dois.
 
 ---
 
-### W7 — A INTERAÇÃO: máquina de estados + Smart Animate
+### W7 — A INTERAÇÃO: máquina de estados + Smart Animate 🔨 **O NÚCLEO CONSTRUÍDO (2026-08-05)**
+
+> ✅ **A crate `ph2d-ui-state` existe e o Smart Animate é uma função pura.** O censo confirmou as
+> quatro peças que este parágrafo prometia (`Plan::new`/`at`, `VecMorph.t`, `OklabColor::lerp`,
+> `EasingFamily::eval`) e confirmou que **HSM não existia** — ela é o que falta.
+>
+> ⚠️ **Uma medição decidiu a FORMA da API antes de uma linha ser escrita:** `Plan::new` custa
+> **0,64 ms mesmo com as duas geometrias IGUAIS** (a busca de fase roda de qualquer maneira),
+> contra 0,0001 ms de um passo. Um `smart_animate(from, to, t)` que casasse por frame seria
+> inutilizável, e um par só-de-cor que construísse `Plan` custaria **12,79 ms em vinte objetos** —
+> 77% de um quadro — para não mover um vértice. ⇒ `Transition::new` (o casamento, uma vez) +
+> `Transition::at` (o passo), o mesmo idioma do `Plan`; e **geometria idêntica não constrói `Plan`
+> nenhum** (medido depois: transição só-de-cor **0,0001 ms**, 8114× mais barata; 20 objetos =
+> **0,00 ms**). O gate `a_colour_only_change_builds_no_plan` **CONTA** em vez de cronometrar, e a
+> sonda que imprime os números é `measure_what_a_transition_costs`.
+>
+> ⚠️ **`mix_paint`/`mix_stroke` do `ph2d-vec-blend` viraram `pub`** — o consumidor novo precisa
+> interpolar tinta sem pagar um `Plan`, e reimplementá-la seria a segunda resposta a *"como duas
+> tintas interpolam neste app"*.
+>
+> ⚠️ **A rotação vai pelo ARCO MAIS CURTO, e a consequência é nomeada:** uma volta inteira autorada
+> (0 → 360°) é o mesmo ângulo, logo ela **não gira** — girar N voltas é percurso, e percurso é
+> keyframe, não estado.
+>
+> **Falta** (as fatias seguintes): a HSM (`advance(dt)`, transições, *"duas disparadas no mesmo
+> frame não empilham"*), a autoria (gravar/listar estados), o vínculo com o mouse, a cena de smoke
+> — e a medição das **molas** (*se a curva `Elastic` bastar, o solver não se constrói*).
 
 **O quê.** Um botão tem *idle/hover/press/disabled*; um menu abre; um card expande. Estados +
 transições + o tween **automático** entre eles (Vol. 2 §5 e Vol. 3 §1).

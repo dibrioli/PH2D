@@ -397,7 +397,14 @@ const STRAIGHT_EPS: f64 = 1e-9;
 /// **perceptual** — a luminosidade e os eixos oponentes interpolam sem o meio-tom sujo. Preferimos
 /// OKLab (cartesiano) a OKLCH (polar): o polar preserva o matiz mas força escolher o SENTIDO da
 /// volta do matiz, e para um blend o caminho reto do OKLab é o esperado.
-fn mix_paint(a: Option<&Paint>, b: Option<&Paint>, t: f64) -> Option<Paint> {
+/// ⚠️ **`pub` desde a W7:** o Smart Animate tem de interpolar a tinta de um par cujo **par de
+/// geometrias é IDÊNTICO**, e ali um `Plan` é proibido por MEDIÇÃO — ele custa **0,64 ms mesmo
+/// com as duas formas iguais** (a busca de fase roda de qualquer maneira), contra 0,0001 ms de um
+/// passo: vinte objetos numa troca de estado só-de-cor pagariam **12,79 ms**, 77% de um quadro de
+/// 60 fps, sem mover um vértice. Reimplementar a mistura no consumidor seria a segunda resposta a
+/// *"como duas tintas interpolam neste app"*, e a divergência entre elas só apareceria numa
+/// screenshot.
+pub fn mix_paint(a: Option<&Paint>, b: Option<&Paint>, t: f64) -> Option<Paint> {
     match (a, b) {
         (Some(Paint::Solid(ca)), Some(Paint::Solid(cb))) => {
             Some(Paint::solid(mix_oklab(*ca, *cb, t)))
@@ -413,7 +420,8 @@ fn mix_paint(a: Option<&Paint>, b: Option<&Paint>, t: f64) -> Option<Paint> {
 ///
 /// **Um lado só com traço** (o outro sem): a largura some **suave** (fade a 0) em vez de aparecer/
 /// sumir de repente no meio — uma forma traçada que blenda para uma sem traço vê o contorno afinar.
-fn mix_stroke(a: Option<StrokeSpec>, b: Option<StrokeSpec>, t: f64) -> Option<StrokeSpec> {
+/// ⚠️ `pub` pelo mesmo motivo do [`mix_paint`] — ver a nota lá.
+pub fn mix_stroke(a: Option<StrokeSpec>, b: Option<StrokeSpec>, t: f64) -> Option<StrokeSpec> {
     match (a, b) {
         (Some(sa), Some(sb)) => Some(StrokeSpec {
             color: mix_oklab(sa.color, sb.color, t),

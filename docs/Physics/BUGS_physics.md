@@ -739,6 +739,11 @@ afunda 17 cm em vez de 27.
 repouso cai `∝ 1/k` mas o produto `k · erro` — a força que falta — fica **constante
 em 4,60 m/s²**. Não há knob que pague as duas coisas.
 
+⚠️ **Veredito do Enio no smoke (2026-08-04):** *"No setup como está o player sobe
+sozinho bem devagar. Mas faremos os ajustes amanhã."* — o resíduo do default É
+visível no produto, exatamente como a medição diz, e **o ajuste está DIFERIDO por
+ordem dele**, com as quatro colunas e a cura já medidas.
+
 ⇒ O default fica em `0,5` com o resíduo medido, o knob passa a oferecer a troca de
 verdade, e a cura que compra as duas está nomeada no plano (**a perna SUBSTITUI a
 gravidade em vez de a cancelar**: sem impulso de cancelamento não há assimetria a

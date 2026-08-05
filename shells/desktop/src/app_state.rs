@@ -138,6 +138,13 @@ pub(crate) struct AppGfx {
     /// nunca a entidade — bits de entidade são id de ALOCAÇÃO e o undo respawna tudo com bits
     /// novos, o que perderia a tabela no primeiro Ctrl+Z.
     pub(crate) ui_states: ph2d_ui_state::StateSets,
+    /// **As MÁQUINAS vivas** (plano UI/UX W7) — onde a cena está entre duas poses.
+    ///
+    /// ⚠️ Ao lado da tabela e **fora** do [`crate::undo::ProjectState`], porque respondem a
+    /// perguntas diferentes: a tabela diz *onde as poses são* (documento, salva, desfaz), a
+    /// máquina diz *onde a cena está agora* (vista). Salvá-la faria um projeto reabrir a meio
+    /// caminho de uma transição.
+    pub(crate) ui_machines: crate::render_loop::ui_state_bridge::UiMachines,
     /// ADR-0114: cena Flip (animação quadro-a-quadro). Documento puro
     /// (`ph2d-flip`); cada objeto vira uma entidade na Hierarquia via
     /// `FlipObjectRef`, ponte mantida por `flip_entities::sync`. Mirror do
@@ -831,6 +838,13 @@ pub(crate) struct App {
     /// pelo `flip_bridge`. `None` quando a tool está inativa. O `input_dispatch` lê
     /// isto (sem downcast) pra decidir desenhar + assar o traço.
     pub(crate) flip_style: Option<ph2d_tool_flip::FlipStyleSnapshot>,
+    /// **Alguma transição de ESTADO de UI está em voo** (plano UI/UX W7).
+    ///
+    /// ⚠️ Ele existe para o `post_frame_undo`, e a razão é a mesma do `live_busy` do Colorize:
+    /// uma pose em movimento é um estado do mundo DIFERENTE a cada quadro, e sem a supressão uma
+    /// transição de 150 ms viraria nove passos de undo. Quando a máquina chega, a cena está numa
+    /// pose autorada e o diff registra **um** — o preço certo de *"eu mostrei o hover"*.
+    pub(crate) ui_state_live: bool,
     /// ADR-0114 W2: o traço do Flip em curso (amostras mundo+pressão); assado no
     /// `FlipDoc` no pen-up. Vazio quando não há gesto.
     pub(crate) flip_draw: crate::flip_draw::FlipDraw,

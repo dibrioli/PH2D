@@ -66,6 +66,7 @@ mod vector_pencil;
 /// A lista das seções colapsáveis do painel Vector — irmã de `vector` pelo teto de 700 LOC.
 mod vector_sections;
 mod vector_snap;
+mod vector_states;
 /// Os ids da seção **Symmetry** (a simetria de desenho, plano 25 §9 W6.3) — irmão de `vector`
 /// pelo teto de 700 LOC.
 mod vector_symmetry;
@@ -117,6 +118,7 @@ pub use vector_patternpath::*;
 pub use vector_pencil::*;
 pub use vector_sections::*;
 pub use vector_snap::*;
+pub use vector_states::*;
 pub use vector_symmetry::*;
 pub use vector_textpath::*;
 pub use vector_tokens::*;

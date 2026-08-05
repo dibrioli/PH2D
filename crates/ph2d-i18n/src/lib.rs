@@ -237,6 +237,21 @@ pub fn tr(key: &str) -> &'static str {
         // ⚠️ Os nomes dos tipos são os do catálogo (`ph2d_editor_core::widget`) e passam por aqui
         // como qualquer outro rótulo: eles aparecem na tela, e a lei do repo não abre exceção para
         // substantivo próprio de design system.
+        // **OS ESTADOS de UI** (plano UI/UX W7) — os quatro papéis e os três verbos.
+        // ⚠️ Os papéis são NOMES DE PAPEL, não de estado livre: "Hover" descreve o que aconteceu
+        // com o rato, e é isso que torna o gatilho derivável em vez de autorado.
+        "panel.vector.section.states" => "States",
+        "panel.vector.states.role.default" => "Default",
+        "panel.vector.states.role.hover" => "Hover",
+        "panel.vector.states.role.pressed" => "Pressed",
+        "panel.vector.states.role.disabled" => "Disabled",
+        "panel.vector.states.rec" => "Rec",
+        "panel.vector.states.show" => "Show",
+        "panel.vector.states.clear" => "Clear",
+        // O readout da pré-visualização: sem ele uma cena parada num hover parece o repouso, e a
+        // gravação seguinte do Default o sobrescreve com a pose errada.
+        "panel.vector.states.showing" => "Showing",
+        "panel.vector.states.duration" => "Duration",
         "panel.vector.section.widget" => "Widget Skin",
         "panel.vector.widget.wear" => "Wear a Widget",
         "panel.vector.widget.remove" => "Back to Drawing",

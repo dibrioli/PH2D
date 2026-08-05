@@ -628,7 +628,9 @@ fn every_section_header_is_registered_as_collapsible() {
         // selecionada, e cada verbo dela aparece só onde faz sentido.
         // +1 (plano UI/UX W6.2): WIDGET — a pele por-widget. Oferecida para QUALQUER forma única,
         // vestida ou não: a face vazia é a que torna a feature alcançável.
-        34,
+        // +1 (plano UI/UX W7): STATES — as poses da forma e o tween entre elas. Oferecida para
+        // QUALQUER forma única, com estados ou sem, pela mesma razão da WIDGET.
+        35,
         "a lista de secoes mudou — confira que o paint pinta um header para cada uma"
     );
     for &id in ids::VECTOR_SECTIONS {

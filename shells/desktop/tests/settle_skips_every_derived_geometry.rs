@@ -98,6 +98,12 @@ fn every_host_that_writes_world_geometry_is_in_the_list() {
         // não é por componente: é pela lista `drawing`, cobrado pelo gate irmão
         // `the_live_offset_preview_is_a_gesture_to_the_settle`.
         .filter(|n| n != "vec_expand.rs")
+        // ⚠️ **Os módulos de teste irmãos não são hosts.** O detector procura um LITERAL
+        // (`Transform::IDENTITY;`), e uma fixture que monte um mundo com ele é indistinguível de
+        // um produtor de geometria de mundo — mas ela nunca corre no produto, então exigir-lhe um
+        // componente em `DERIVED` seria pedir que um teste declarasse uma regra de renderização.
+        // Excluir aqui não cega o gate: um host de verdade mora em código de produto.
+        .filter(|n| !n.ends_with("_tests.rs"))
         .filter_map(|n| {
             let src = fs::read_to_string(format!("{}/src/{n}", env!("CARGO_MANIFEST_DIR"))).ok()?;
             src.contains(WORLD_GEOMETRY_MARK).then_some((n, src))

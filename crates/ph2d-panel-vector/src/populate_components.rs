@@ -78,7 +78,64 @@ pub(super) fn component_controls(store: &mut WidgetStore) {
             },
         );
     }
+    // **OS ESTADOS de UI** (W7): três verbos por papel. Registados para TODO papel do catálogo e
+    // não só para os que a seleção de agora tem — o `populate` corre uma vez na instalação do
+    // painel, quando não existe seleção nenhuma, então registar "o que faz sentido agora" seria
+    // registar nada.
+    for i in 0..ids::MAX_STATE_ROLES {
+        for id in [
+            ids::vector_state_record_id(i),
+            ids::vector_state_clear_id(i),
+            ids::vector_state_apply_id(i),
+        ] {
+            store.register(
+                id,
+                InteractiveState::Button {
+                    state: ButtonState::Normal,
+                },
+            );
+        }
+    }
+    // A DURAÇÃO: o slider e o chip que o espelha. `link_slider_number_mapped` com escala
+    // `MAX_DURATION_S` é o que faz o trilho `0..1` e o número em SEGUNDOS serem o mesmo valor —
+    // sem ele o artista arrastaria o trilho e leria um número que não é o dele.
+    store.register(
+        ids::VECTOR_STATE_DURATION,
+        ph2d_editor_core::interaction::InteractiveState::Slider {
+            state: ph2d_editor_core::widget::SliderState::Normal,
+            value: STATE_DURATION_DEFAULT_S / STATE_DURATION_MAX_S,
+            orientation: ph2d_editor_core::widget::SliderOrientation::Horizontal,
+        },
+    );
+    store.register(
+        ids::VECTOR_STATE_DURATION_NUM,
+        ph2d_editor_core::interaction::InteractiveState::NumberInput {
+            state: ph2d_editor_core::widget::TextInputState::Normal,
+            value: f64::from(STATE_DURATION_DEFAULT_S),
+            buffer: format!("{STATE_DURATION_DEFAULT_S:.2}"),
+            caret: 0,
+            last_committed: f64::from(STATE_DURATION_DEFAULT_S),
+            selection_anchor: None,
+        },
+    );
+    store.link_slider_number_mapped(
+        ids::VECTOR_STATE_DURATION,
+        ids::VECTOR_STATE_DURATION_NUM,
+        STATE_DURATION_MAX_S,
+        0.0,
+    );
 }
+
+/// O default da duração — **o token do design system**, cujo doc diz literalmente *"button
+/// press, icon swap"*: a pergunta *"quanto tempo leva a reação de um controle neste app?"* já
+/// tinha dono, e um literal aqui seria a segunda resposta a ela.
+///
+/// ⚠️ O modelo (`ph2d_ui_state::DEFAULT_DURATION_S`) carrega o mesmo número porque ele precisa de
+/// responder `timing()` para um hospedeiro que ninguém autorou, e uma crate-folha de dados não
+/// depende do design system. O gate compara os dois.
+const STATE_DURATION_DEFAULT_S: f32 = ph2d_tokens::Duration::Fast.secs();
+/// O teto do slider — o MESMO número do modelo (`ph2d_ui_state::MAX_DURATION_S`), com gate.
+const STATE_DURATION_MAX_S: f32 = 2.0;
 
 /// Os dois verbos da seção WIDGET SKIN — a mesma lista que o `paint_widget` desenha.
 pub(crate) const WIDGET_BUTTONS: &[ph2d_a11y::NodeId] =

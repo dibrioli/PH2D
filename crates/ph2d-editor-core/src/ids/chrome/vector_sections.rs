@@ -67,4 +67,6 @@ pub const VECTOR_SECTIONS: &[NodeId] = &[
     super::vector_components::VECTOR_SECTION_COMPONENT,
     // A PELE POR-WIDGET (plano UI/UX W6.2): que controle do catálogo a forma veste.
     super::vector_widget::VECTOR_SECTION_WIDGET,
+    // OS ESTADOS de UI (plano UI/UX W7): as poses e o tween entre elas.
+    super::vector_states::VECTOR_SECTION_STATES,
 ];

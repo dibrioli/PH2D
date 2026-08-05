@@ -15,6 +15,10 @@ use std::collections::BTreeMap;
 /// uma animação com vida própria. Os 150 ms são o meio da faixa que a indústria converge (o
 /// *Smart Animate* do Figma abre em 300, o blend do Rive em 125, o Material chama 200-300 de
 /// "medium"), e um botão responde mais rápido que um card que abre.
+///
+/// ⚠️ **É o `ph2d_tokens::Duration::Fast`**, cujo doc diz *"button press, icon swap"* — a
+/// pergunta já tinha dono no design system. Ele não é lido daqui porque uma crate-folha de dados
+/// não depende do sistema de tokens; o número é o mesmo, e há gate a compará-los.
 pub const DEFAULT_DURATION_S: f64 = 0.15;
 
 /// O teto que o SLIDER oferece.

@@ -386,10 +386,15 @@ impl crate::App {
         // Trap/Bleed do Colorize roda fora da thread de UI (`09 §7.2`, 304 ms/tique), então
         // soltar o slider registraria um passo com o resultado ANTIGO e a chegada do worker
         // registraria um segundo: dois Ctrl+Z para um arrasto.
-        // ⚠️ **Uma PREVIEW ao vivo tambem conta como gesto em andamento** — e a MESMA
+        // ⚠️ **Uma PREVIEW ao vivo tambem conta como gesto em andamento** — e a MESMA frase, num
+        // trabalho que o produto faz sozinho: uma transição de ESTADO de UI (plano UI/UX W7) põe
+        // a cena numa pose DIFERENTE a cada quadro, então sem a supressão um Show de 150 ms
+        // viraria nove passos de undo. Quando ela chega, a cena está numa pose AUTORADA e o diff
+        // registra um — o preço certo de *"eu mostrei o hover"*.
         if !had_input
             || self.held_button.is_some()
             || self.flip_colorize.live_busy(self.flip_style.as_ref())
+            || self.ui_state_live
         {
             return;
         }

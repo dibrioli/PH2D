@@ -400,10 +400,11 @@ mod vec_text_object;
 mod vec_text_reopen;
 mod vec_text_ride;
 mod vec_transform;
+/// **OS VERBOS DA PELE** (plano UI/UX W6.2) — vestir, trocar de tipo, despir.
+mod vec_ui_state_edit;
 /// **OS VARIANTS** (plano UI/UX W5c) — que versão do componente uma instância é. Um conjunto de
 /// variants é DERIVADO (os mestres irmãos), e os eixos saem dos NOMES: zero componente novo.
 mod vec_variants;
-/// **OS VERBOS DA PELE** (plano UI/UX W6.2) — vestir, trocar de tipo, despir.
 mod vec_widget_edit;
 mod warp_smoke;
 mod wetpaint_smoke;
@@ -666,6 +667,7 @@ impl App {
             // ADR-0114 W2: estado de desenho do Flip (publicado pelo flip_bridge).
             flip_active: false,
             flip_style: None,
+            ui_state_live: false,
             flip_draw: crate::flip_draw::FlipDraw::default(),
             flip_colorize: crate::flip_colorize::FlipColorize::default(),
             flip_gap: crate::flip_gap_live::GapHelpers::default(),

@@ -160,6 +160,9 @@ const FORWARDED_TRACK_SLIDERS: &[ph2d_a11y::NodeId] = &[
     ids::VECTOR_WIDTH,
     ids::VECTOR_PENCIL_FIDELITY,
     ids::VECTOR_PENCIL_STABILIZER,
+    // A DURAÇÃO da transição de estado (W7): o track vai cru e a shell o multiplica pela régua
+    // — a mesma que o painel usa para encher o trilho.
+    ids::VECTOR_STATE_DURATION,
 ];
 
 pub(crate) fn apply_event(

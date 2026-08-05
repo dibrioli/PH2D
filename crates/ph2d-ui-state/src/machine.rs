@@ -102,6 +102,28 @@ impl Machine {
         self.states.len()
     }
 
+    /// **Troca a lista de estados, preservando a pose VIVA.**
+    ///
+    /// ⚠️ Ela existe porque o artista RE-GRAVA: a tabela do documento muda debaixo de uma máquina
+    /// que já está no ar, e reconstruí-la do zero perderia onde a cena está — uma transição
+    /// interrompida SALTARIA para a ponta, que é o defeito que o `go_to` foi desenhado para não
+    /// ter.
+    ///
+    /// ⚠️ **Um voo em curso é ABORTADO**, e é a resposta certa: ele foi planeado contra poses que
+    /// já não são as autoradas, então continuar seria animar para um destino que o documento não
+    /// tem mais. A cena fica onde está e o próximo pedido parte dali.
+    ///
+    /// Lista vazia: a máquina fica como estava (uma máquina sem estados não tem pose para mostrar
+    /// — quem a remove é o chamador, que sabe se o hospedeiro ainda existe).
+    pub fn retarget(&mut self, states: Vec<UiState>) {
+        if states.is_empty() {
+            return;
+        }
+        self.states = states;
+        self.current = self.current.min(self.states.len() - 1);
+        self.flight = None;
+    }
+
     /// **A pose que a cena tem AGORA.** É o que o shell escreve de volta no mundo.
     #[must_use]
     pub fn pose(&self) -> &[ObjectPose] {

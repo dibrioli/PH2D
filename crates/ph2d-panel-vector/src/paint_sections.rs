@@ -50,6 +50,10 @@ pub(crate) struct BodyCtx<'a> {
     pub font: f32,
 }
 
+/// A seção **States** (plano UI/UX W7) — módulo irmão (teto de 600 LOC).
+#[path = "paint_states.rs"]
+mod ui_states;
+
 /// A seção **Blend** — módulo irmão (teto de 600 LOC).
 #[path = "paint_blend.rs"]
 mod blend;
@@ -157,6 +161,7 @@ impl BodyCtx<'_> {
         // primeiro uma forma (pose, moldura, regra) e só depois uma cópia de outra coisa.
         y = self.step(y, |b, y| b.component_section(y));
         y = self.step(y, |b, y| b.widget_skin_section(y));
+        y = self.step(y, |b, y| b.ui_states_section(y));
         y = self.step(y, |b, y| b.shape_params_section(snap, y));
         // Os parâmetros do CONECTOR selecionado — irmã da seção acima (mesma estética,
         // mesmos widgets), logo abaixo dela: as duas respondem "o que é este objeto que

@@ -439,6 +439,7 @@ pub(crate) fn build_initial_state(
         vec_scene,
         guides: ph2d_guides::GuideSet::default(),
         ui_states: ph2d_ui_state::StateSets::default(),
+        ui_machines: Default::default(),
         // ADR-0114: cena Flip + demo ready-to-smoke (a tool do W2 cria objetos
         // interativamente; aqui um objeto animado pra abrir e ver na hora).
         flip: crate::flip_demo::demo_scene(),

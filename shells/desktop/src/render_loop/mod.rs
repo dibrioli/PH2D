@@ -228,6 +228,8 @@ mod upscale_bridge;
 // Rendering of `AppGfx.vec_scene` stays inline below (ph2d_vec_render).
 // pub(crate): `set_mode` é chamado do `vec_text` (o `T` troca o modo pela allowlist
 // de downcast deste bridge).
+/// **A ponte dos ESTADOS de UI** (plano UI/UX W7) — quem faz a cena ANDAR entre duas poses.
+pub(crate) mod ui_state_bridge;
 pub(crate) mod vector_bridge;
 
 use crate::*;
@@ -893,9 +895,11 @@ impl crate::App {
         let AppGfx {
             // As guias do documento: lidas para desenhar e para alimentar o snap.
             guides: doc_guides,
-            // Os estados de UI (plano UI/UX W7): quem os lê é a autoria, com `gfx` inteiro na
-            // mão — aqui ele só tem de ser NOMEADO, senão este `let` deixa de ser exaustivo.
-            ui_states: _,
+            // Os ESTADOS de UI (plano UI/UX W7) e as MÁQUINAS que os mostram. Os dois viajam
+            // juntos por toda a autoria: gravar lê o mundo e escreve a tabela, mostrar lê a
+            // tabela e pede à máquina, e a máquina escreve o mundo de volta.
+            ui_states,
+            ui_machines,
             // A cena 3D é DESENHADA no `present`; aqui ela é lida por um assunto só — o bake do
             // objeto misto (`docs/3D/02.2`), que precisa do mundo e do renderizador ao lado dela.
             #[cfg(feature = "sculpt3d")]
@@ -2170,6 +2174,10 @@ impl crate::App {
             // OS COMPONENTES (plano UI/UX W5): o verbo pedido neste frame.
             let mut pending_component: Option<crate::vec_component_edit::ComponentEdit> = None;
             let mut pending_widget_edit: Option<crate::vec_widget_edit::WidgetEdit> = None;
+            // OS ESTADOS de UI (plano UI/UX W7): a tabela mora no documento, entao o clique e' da
+            // shell — o painel so' mostra que verbos fazem sentido agora.
+            let mut pending_ui_state: Option<crate::vec_ui_state_edit::UiStateEdit> = None;
+            let mut pending_ui_state_duration: Option<f64> = None;
             // **A BOOLEANA VIVA** (plano UI/UX W1): o Apply consolida o que o produtor cozinhou
             // NESTE frame, então ele não pode correr aqui — corre logo depois do `recook`, onde o
             // plano existe. Aqui só se anota o clique.
@@ -2545,6 +2553,11 @@ impl crate::App {
                                 // ECS, entao o clique e' da shell — o painel so' mostra que
                                 // verbos fazem sentido.
                                 pending_component = Some(e);
+                            } else if let Some(e) =
+                                crate::vec_ui_state_edit::ui_state_edit_for_id(*id)
+                            {
+                                // OS ESTADOS de UI (W7): gravar, mostrar e esquecer uma pose.
+                                pending_ui_state = Some(e);
                             } else if let Some(e) = crate::vec_widget_edit::widget_edit_for_id(*id)
                             {
                                 // A PELE por-widget (plano UI/UX W6.2): o componente mora no ECS,
@@ -2681,6 +2694,12 @@ impl crate::App {
                                 crate::input_dispatch::vec_transform_field_for_id(*id)
                             {
                                 pending_vec_transform = Some((field, *v));
+                            } else if *id == ph2d_editor::ids::VECTOR_STATE_DURATION {
+                                // W7: o track `0..1` vira SEGUNDOS pela régua do modelo. A
+                                // conversão mora aqui e não no painel porque o número autorado é
+                                // do documento — o painel só o mostra.
+                                pending_ui_state_duration =
+                                    Some(*v * ph2d_ui_state::MAX_DURATION_S);
                             } else if *id == ph2d_editor::ids::VECTOR_ARRANGE_Z {
                                 pending_vec_z = Some(*v);
                             } else if let Some(f) = crate::vec_layout_edit::layout_field_for_id(*id)
@@ -4568,6 +4587,45 @@ impl crate::App {
                 let sel: Vec<ph2d_vec_scene::VecPathId> = self.vec_pen.selected_paths().to_vec();
                 crate::vec_widget_edit::apply(sim, &self.vec_entities, &sel, verb);
             }
+            // OS ESTADOS de UI (W7). ⚠️ O **Show** não escreve pose aqui: ele DEVOLVE o pedido, e
+            // quem o honra é a máquina — uma escrita direta seria a segunda porta para *"pôr a
+            // cena nesta pose"*, e a diferença entre as duas é o tween que o artista autorou.
+            if let Some(verb) = pending_ui_state {
+                let sel: Vec<ph2d_vec_scene::VecPathId> = self.vec_pen.selected_paths().to_vec();
+                if let Some((host, role)) = crate::vec_ui_state_edit::apply(
+                    sim,
+                    vec_scene,
+                    &self.vec_entities,
+                    &sel,
+                    ui_states,
+                    verb,
+                ) {
+                    crate::render_loop::ui_state_bridge::request(
+                        ui_machines,
+                        ui_states,
+                        host,
+                        role,
+                    );
+                }
+            }
+            if let Some(secs) = pending_ui_state_duration
+                && let [host] = self.vec_pen.selected_paths()
+            {
+                ui_states.set_duration(*host, secs);
+            }
+            // ⚠️ O relógio é o do FRAME — os ticks que o `FixedStep` de facto entregou, e não um
+            // relógio próprio. É a lição W4.T7 do Motion, onde o `MotionTransport` morreu: dois
+            // relógios divergem, e o modo de falha é a UI a andar noutra velocidade que a cena.
+            #[allow(clippy::cast_precision_loss)]
+            let ui_state_dt = report.ticks as f64 * self.fixed_step.fixed_dt();
+            self.ui_state_live = crate::render_loop::ui_state_bridge::dispatch(
+                ui_machines,
+                ui_states,
+                sim,
+                vec_scene,
+                &self.vec_entities,
+                ui_state_dt,
+            );
             let mut arm_detached_under: Option<crate::vec_component_edit::Detached> = None;
             if let Some(verb) = pending_component {
                 let sel: Vec<ph2d_vec_scene::VecPathId> = self.vec_pen.selected_paths().to_vec();
@@ -6647,6 +6705,17 @@ impl crate::App {
                 let skin = crate::vec_widget_edit::publish(sim, &self.vec_entities, &sel);
                 let skin_beyond = skin.as_ref().map_or(0, |(_, b)| *b);
                 ph2d_panel_vector::state::set_widget_skin_state(skin.map(|(s, _)| s), skin_beyond);
+                // **OS ESTADOS de UI** (plano UI/UX W7) — que poses esta forma tem, e qual delas a
+                // cena mostra AGORA. O `live` sai da MESMA máquina que escreve o mundo: um
+                // readout derivado noutro lugar diria um papel e a cena mostraria outro.
+                ph2d_panel_vector::state::set_ui_states_state(crate::vec_ui_state_edit::publish(
+                    &sel,
+                    ui_states,
+                    crate::render_loop::ui_state_bridge::live_role(
+                        ui_machines,
+                        sel.first().copied(),
+                    ),
+                ));
                 // **O Z-INDEX da seleção** (Enio, 2026-08-04) — o número GLOBAL que sobrepõe a
                 // ordem da hierarquia. Publicado pela MESMA porta que o campo escreve e que os
                 // botões Arrange movem, para o número que o artista lê ser o que ele edita.

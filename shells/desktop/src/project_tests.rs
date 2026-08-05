@@ -313,14 +313,17 @@ fn a_loaded_project_brings_its_animation_back_pending_the_name_heal() {
 #[test]
 fn the_ui_states_travel_in_the_file() {
     let mut states = ph2d_ui_state::StateSets::default();
-    let mut hover = ph2d_ui_state::UiState::new("hover");
+    let mut hover = ph2d_ui_state::UiState::new(ph2d_ui_state::StateRole::Hover);
     hover.objects = vec![ph2d_ui_state::ObjectPose {
         translation: [3.0, -1.0],
         opacity: 0.5,
         ..ph2d_ui_state::ObjectPose::new(42)
     }];
-    states.push(42, ph2d_ui_state::UiState::new("idle"));
-    states.push(42, hover);
+    states.set(
+        42,
+        ph2d_ui_state::UiState::new(ph2d_ui_state::StateRole::Default),
+    );
+    states.set(42, hover);
 
     let state = ProjectState {
         world: WorldSnapshot::new(),
@@ -336,7 +339,10 @@ fn the_ui_states_travel_in_the_file() {
         "os estados de UI nao sobreviveram ao wire"
     );
     assert_eq!(back.ui_states.get(42).len(), 2);
-    assert_eq!(back.ui_states.get(42)[1].name, "hover");
+    assert_eq!(
+        back.ui_states.get(42)[1].role,
+        ph2d_ui_state::StateRole::Hover
+    );
     assert_eq!(
         back.ui_states.get(42)[1].objects[0].translation,
         [3.0, -1.0]

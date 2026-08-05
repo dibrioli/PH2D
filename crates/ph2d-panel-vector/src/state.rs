@@ -98,6 +98,13 @@ mod widget_state;
 pub use widget_state::{WidgetSkinState, set_widget_skin_state};
 pub(crate) use widget_state::{widget_kinds_beyond, widget_skin_state};
 
+/// **OS ESTADOS de UI da seleção** (plano UI/UX W7) — que poses ela tem, e quanto tempo o tween
+/// entre elas leva.
+#[path = "state_ui_states.rs"]
+mod ui_states_state;
+pub(crate) use ui_states_state::ui_states_state;
+pub use ui_states_state::{UiStatesState, set_ui_states_state};
+
 /// **OS TOKENS da seleção** (plano UI/UX W4) — que propriedade dela segue um token, e qual.
 #[path = "state_tokens.rs"]
 mod token_state;

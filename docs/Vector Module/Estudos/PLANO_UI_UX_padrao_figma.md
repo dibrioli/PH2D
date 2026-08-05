@@ -1035,7 +1035,7 @@ mudar `radius.md` move os dois.
 
 ---
 
-### W7 — A INTERAÇÃO: máquina de estados + Smart Animate 🔨 **O NÚCLEO CONSTRUÍDO (2026-08-05)**
+### W7 — A INTERAÇÃO: máquina de estados + Smart Animate 🔨 **NÚCLEO + HSM CONSTRUÍDOS (2026-08-05)**
 
 > ✅ **A crate `ph2d-ui-state` existe e o Smart Animate é uma função pura.** O censo confirmou as
 > quatro peças que este parágrafo prometia (`Plan::new`/`at`, `VecMorph.t`, `OklabColor::lerp`,
@@ -1059,9 +1059,31 @@ mudar `radius.md` move os dois.
 > (0 → 360°) é o mesmo ângulo, logo ela **não gira** — girar N voltas é percurso, e percurso é
 > keyframe, não estado.
 >
-> **Falta** (as fatias seguintes): a HSM (`advance(dt)`, transições, *"duas disparadas no mesmo
-> frame não empilham"*), a autoria (gravar/listar estados), o vínculo com o mouse, a cena de smoke
-> — e a medição das **molas** (*se a curva `Elastic` bastar, o solver não se constrói*).
+> ✅ **A HSM existe** (`Machine`): `go_to` + `advance(dt)` + `pose()`. Ela **não conta o tempo** (o
+> `dt` vem do `Playhead`) e **não sabe o que é um mouse** — *o que aconteceu* é do shell, *que pose
+> a cena tem* é dela; uma tabela de gatilhos aqui teria de inventar um modelo de entrada.
+>
+> ⚠️ **Três leis que o plano não tinha escrito, e que decidem se aquilo parece produto:**
+> **(a)** uma transição parte da pose **VIVA**, nunca da autorada — sair do hover a meio volta *de
+> onde está*, e partir do estado autorado faria a cena SALTAR para a ponta antes de voltar (o
+> defeito que qualquer um vê e ninguém sabe nomear); **(b)** a **chegada é EXATA** (a pose vira o
+> estado autorado ao bit, nunca o resultado de um `t = 1` numérico) — sem isso a cena **deriva**, e
+> depois de algumas dezenas de hovers o botão já não está onde o artista o desenhou; **(c)** o
+> **easing deforma o `t`, nunca o relógio** — deformar o `dt` faria duas transições com a mesma
+> duração autorada acabarem em instantes diferentes.
+>
+> ⚠️ E *"duas no mesmo frame não empilham"* é a lei que o plano pedia: a segunda **substitui** a
+> primeira. Uma fila faria a UI perseguir gestos que o artista já abandonou.
+>
+> **16 gates, 13 mutações, 13 sangram** — ⚠️ e **duas** delas sobreviveram à primeira rodada por
+> defeito de FIXTURE meu, não por buraco de produto: o gate do empilhamento pedia `1, 0, 1` com
+> dois estados, onde *"a primeira ganha"* e *"a última ganha"* dão a MESMA resposta; e o da duração
+> zero movia um objeto só, onde um ramo próprio produz exactamente o mesmo resultado que a porta
+> certa — as duas portas só divergem onde a `arrive` faz algo a mais: **remover quem saiu**.
+>
+> **Falta** (as fatias seguintes): a autoria (gravar/listar estados), o vínculo com o mouse, a
+> cena de smoke — e a medição das **molas** (*se a curva `Elastic` bastar, o solver não se
+> constrói*).
 
 **O quê.** Um botão tem *idle/hover/press/disabled*; um menu abre; um card expande. Estados +
 transições + o tween **automático** entre eles (Vol. 2 §5 e Vol. 3 §1).

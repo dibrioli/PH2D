@@ -7,7 +7,8 @@
 //! parecer produto e não uma troca de imagem é o **tween automático entre os estados** — o artista
 //! autora as duas pontas e o motor descobre o meio.
 //!
-//! ⚠️ **Não há relógio aqui.** [`Transition::at`] recebe um `t` e mais nada. O relógio é o
+//! ⚠️ **Não há relógio aqui.** [`Transition::at`] recebe um `t` e a [`Machine`] recebe um `dt`;
+//! nenhuma das duas o conta. O relógio é o
 //! `Playhead`, e a razão está medida noutro módulo deste repo: o `MotionTransport` do Motion
 //! **morreu** na W4.T7 porque dois relógios divergem, e o modo de falha é a UI a andar noutra
 //! velocidade que a cena.
@@ -51,12 +52,18 @@
 
 #![forbid(unsafe_code)]
 
+mod machine;
 mod pose;
 mod transition;
 
+pub use machine::Machine;
 pub use pose::{ObjectPose, UiState};
 pub use transition::Transition;
 
 #[cfg(test)]
 #[path = "tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "machine_tests.rs"]
+mod machine_tests;

@@ -20,6 +20,9 @@ authors.workspace = true
 # (Hungarian + espiral logarítmica, quinas preservadas) e a tinta pela porta OKLab da mesma crate.
 # Um segundo motor divergiria do Blend/Morph que o artista já usa, e a divergência só apareceria
 # numa screenshot.
+# As CURVAS. O easing de uma transição de UI é o mesmo vocabulário que a timeline já usa — um
+# segundo catálogo de curvas faria "ease-out" significar coisas diferentes em dois lugares do app.
+ph2d-anim = { path = "../ph2d-anim" }
 ph2d-vec-scene = { path = "../ph2d-vec-scene" }
 ph2d-vec-blend = { path = "../ph2d-vec-blend" }
 serde = { version = "1", features = ["derive"] }

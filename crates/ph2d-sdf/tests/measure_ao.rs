@@ -1,5 +1,5 @@
-//! **O QUE CUSTA O CAMPO QUE UM BAKE DE AO PRECISA** — a medição que decide o
-//! desenho da wave, feita ANTES de uma linha dela ser escrita.
+//! **O QUE CUSTA UM BAKE DE AO** — o campo, o traço, o orçamento e o paralelismo,
+//! medidos ANTES de a wave ser desenhada.
 //!
 //! ⚠️ A pergunta não é *"quanto custa"* e sim **QUEM PAGA**: se o campo couber no
 //! pen-up de um traço, a oclusão acompanha a escultura e o artista nunca vê um
@@ -43,11 +43,101 @@
 //! triângulos se SOBREPÕEM ⇒ a escrita não é disjunta, a condição que o ADR-0109
 //! exige). Paralelizar isto quer ADR próprio, não uma linha.
 //!
+//! # O TRAÇO, medido depois (RTX / 32 núcleos, 2026-08-06)
+//!
+//! O handoff de continuação §4.1 nomeava isto como *"o que ainda NÃO foi
+//! medido"*, e a resposta muda o retrato: **o traço é a metade GRANDE.**
+//!
+//! | malha | verts | cones | steps | traço ms | ns/vértice |
+//! |---|---|---|---|---|---|
+//! | uv_sphere(96,144)  |  13 682 |  8 | 24 |   8,0 |   585 |
+//! | uv_sphere(96,144)  |  13 682 | 32 | 24 |  31,6 | 2 312 |
+//! | uv_sphere(96,144)  |  13 682 | 32 | 48 |  32,8 | 2 398 |
+//! | uv_sphere(320,480) | 153 122 |  8 | 24 |  74,2 |   485 |
+//! | uv_sphere(320,480) | 153 122 | 32 | 24 | 303,8 | 1 984 |
+//! | uv_sphere(533,800) | 425 602 |  8 | 24 | 192,0 |   451 |
+//! | **uv_sphere(533,800)** | **425 602** | **32** | **24** | **786,1** | **1 847** |
+//! | uv_sphere(533,800) | 425 602 | 32 | 48 | 780,2 | 1 833 |
+//!
+//! **(3) O traço é 2,6× o campo.** Na malha da cena `=16` o campo a `res 128`
+//! custa 301 ms e o traço **786 ms** ⇒ um bake completo é **~1,09 s**. A nota
+//! antiga (*"231-386 ms, não cabe num pen-up"*) contava só a metade barata; o
+//! veredito do BOTÃO não muda, ele fica mais forte.
+//!
+//! **(4) Linear nos dois eixos que importam, e o `ns/vértice` é a prova:** ele
+//! fica em ~1 850 de 13 k a 425 k vértices (a pegada de um vértice não sabe o
+//! tamanho da malha), e sobe 4,1× para 4× os cones.
+//!
+//! # O ORÇAMENTO — onde a resposta PARA de mudar (aro interno de um toro)
+//!
+//! | radius | steps 12 | 24 | 48 | 96 | traço ms |
+//! |---|---|---|---|---|---|
+//! | 0,34 | 0,9511 | 0,9498 | 0,9498 | 0,9498 | 5,7-6,3 |
+//! | 0,50 | 0,9422 | 0,9395 | 0,9395 | 0,9395 | 5,6-5,9 |
+//! | 1,00 | 0,9119 | 0,9091 | 0,9091 | 0,9091 | 5,9 |
+//! | 1,50 | 0,8597 | 0,8569 | 0,8569 | 0,8569 | 6,0-6,1 |
+//! | 2,00 | 0,8411 | 0,8384 | 0,8384 | 0,8384 | 6,1-6,2 |
+//!
+//! **(5) Os passos SATURAM em 24, medido.** De 24 para 96 a resposta não move
+//! **um dígito** em nenhum raio ⇒ `max_steps = 24` está no joelho, e não é um
+//! número escolhido. O teto de passos **não é a restrição que morde**: a marcha
+//! termina por `t > radius`, não por acabar o orçamento.
+//!
+//! **(6) ⚠️ O ALCANCE É DE GRAÇA, e isso contradiz a intuição.** O custo é
+//! **plano** (5,6 a 6,3 ms) enquanto o raio cresce 6× — porque a marcha de
+//! esfera acelera em espaço aberto: um raio maior não compra mais passos, ele
+//! deixa os mesmos passos irem mais longe. ⇒ o default `maior lado ÷ 8` é
+//! tímido **sem economizar nada**, e onde ele deve pousar é decisão de LOOK
+//! (smoke), não de custo.
+//!
+//! # O PARALELISMO — 425 602 vértices, 32 cones, 24 passos
+//!
+//! | threads | ms | speedup | bit-idêntico |
+//! |---|---|---|---|
+//! |  1 | 807,7 |  1,00 | — |
+//! |  2 | 403,5 |  2,00 | sim |
+//! |  4 | 226,5 |  3,57 | sim |
+//! |  8 | 133,4 |  6,06 | sim |
+//! | 16 |  72,5 | 11,14 | sim |
+//! | **32** | **43,7** | **18,49** | **sim** |
+//!
+//! **(7) 18,49×, e byte-idêntico em TODA contagem de threads.** O laço é um
+//! *gather* — cada vértice escreve só o seu, contra um campo imutável, e a soma
+//! sobre cones acontece **dentro** de um vértice (a ordem dela não muda com o
+//! escalonamento). São os três invariantes do ADR-0109, e a identidade não é
+//! argumentada: foi medida em 2, 4, 8, 16 e 32.
+//!
+//! ⚠️ **Isto ainda não autoriza o `rayon` aqui:** a cerca de contenção do
+//! ADR-0109 §2 diz que *qualquer novo uso de rayon/threading, nesta ou em outra
+//! crate, exige novo ADR*. O número existe para esse ADR ser escrito com prova,
+//! não para dispensá-lo.
+//!
+//! **(8) E o ganho MOVE a fronteira:** com o traço em 43,7 ms, o **campo**
+//! (301 ms) passa a ser 87% do bake — e a voxelização é justamente a metade que
+//! não paraleliza sem resolver a sobreposição de escrita. Quem for atrás do
+//! próximo ganho vai ali, não aqui.
+//!
 //! Rodar: `cargo test -p ph2d-sdf --release --test measure_ao -- --ignored --nocapture`
 
-use ph2d_mesh::shapes;
-use ph2d_sdf::VoxelField;
+use ph2d_mesh::{Mesh, shapes};
+use ph2d_sdf::{AoParams, VoxelField, bake_ao};
 use std::time::Instant;
+
+/// O campo pronto, do jeito que um bake o constroi.
+fn field_of(mesh: &Mesh, res: u32) -> VoxelField {
+    let mut f = VoxelField::for_bounds(mesh.bounds(), res);
+    f.voxelize(mesh);
+    f.flood_fill();
+    f
+}
+
+fn ms(t: Instant) -> f64 {
+    t.elapsed().as_secs_f64() * 1000.0
+}
+
+fn mean(xs: &[f32]) -> f32 {
+    xs.iter().sum::<f32>() / xs.len() as f32
+}
 
 #[test]
 #[ignore = "sonda"]
@@ -82,5 +172,151 @@ fn measure_the_field_a_bake_would_need() {
         "\nLeitura: voxelizar escala com TRIANGULOS (11,3x para 31x a malha), o flood com\n\
          CELULAS (21x para 23x as celulas). Um campo FINO e' barato; uma malha densa nao.\n\
          E 231-386 ms na malha de 425k NAO cabe num pen-up ==> o AO assado e' um BOTAO."
+    );
+}
+
+/// **O QUE O CONE TRACING CUSTA** — a metade que a tabela do cabeçalho não
+/// tinha, e a que o handoff de continuação §4.1 manda medir ANTES de desenhar o
+/// resto.
+#[test]
+#[ignore = "sonda"]
+fn measure_the_cone_trace() {
+    println!("\n== O TRACO (cone tracing contra o campo), por vertice ==");
+    println!(
+        "{:>20} {:>9} {:>7} {:>7} {:>12} {:>14}",
+        "malha", "verts", "cones", "steps", "traco ms", "ns/vertice"
+    );
+    for (u, v) in [(96usize, 144usize), (320, 480), (533, 800)] {
+        let mesh = shapes::uv_sphere(u, v, 1.0);
+        let field = field_of(&mesh, 128);
+        let base = AoParams::for_bounds(mesh.bounds());
+        for (cones, steps) in [(8usize, 24usize), (32, 24), (32, 48)] {
+            let p = AoParams {
+                cones,
+                max_steps: steps,
+                ..base
+            };
+            let t = Instant::now();
+            let ao = bake_ao(&field, mesh.positions(), mesh.normals(), p);
+            let el = ms(t);
+            println!(
+                "{:>20} {:>9} {:>7} {:>7} {el:>12.1} {:>14.0}",
+                format!("uv_sphere({u},{v})"),
+                mesh.vert_count(),
+                cones,
+                steps,
+                el * 1e6 / mesh.vert_count() as f64
+            );
+            std::hint::black_box(ao);
+        }
+    }
+    println!(
+        "\nLeitura: o custo por vertice e' CONSTANTE (a pegada de um vertice nao sabe o\n\
+         tamanho da malha), entao o total e' linear em vertices e linear em cones."
+    );
+}
+
+/// **O ORÇAMENTO MUDA A RESPOSTA?** — um teto de passos que corta a marcha antes
+/// do oclusor não fica mais barato: ele fica ERRADO, e de um jeito que parece
+/// uma peça mais clara em vez de um bug.
+#[test]
+#[ignore = "sonda"]
+fn measure_when_the_budget_stops_changing_the_answer() {
+    let mesh = shapes::torus(64, 32, 1.0, 0.5);
+    let field = field_of(&mesh, 128);
+    let base = AoParams::for_bounds(mesh.bounds());
+
+    // O aro interno: o lugar onde a resposta de fato depende de atravessar o furo.
+    let aro: Vec<usize> = (0..mesh.vert_count())
+        .filter(|&i| {
+            let p = mesh.positions()[i];
+            p[2].abs() < 0.12 && (p[0] * p[0] + p[1] * p[1]).sqrt() < 0.62
+        })
+        .collect();
+
+    println!(
+        "\n== O ORCAMENTO, medido no ARO INTERNO de um toro ({} verts) ==",
+        aro.len()
+    );
+    println!(
+        "{:>10} {:>8} {:>14} {:>12}",
+        "radius", "steps", "AO do aro", "traco ms"
+    );
+    for radius in [0.34f32, 0.5, 1.0, 1.5, 2.0] {
+        for steps in [12usize, 24, 48, 96] {
+            let p = AoParams {
+                radius,
+                max_steps: steps,
+                ..base
+            };
+            let t = Instant::now();
+            let ao = bake_ao(&field, mesh.positions(), mesh.normals(), p);
+            let el = ms(t);
+            let no_aro: Vec<f32> = aro.iter().map(|&i| ao[i]).collect();
+            println!(
+                "{radius:>10.2} {steps:>8} {:>14.4} {el:>12.1}",
+                mean(&no_aro)
+            );
+        }
+    }
+    println!(
+        "\nLeitura: onde a coluna do AO PARA de mudar, o orcamento acima disso e' so custo.\n\
+         O default nasce no joelho, nao no maior numero que couber."
+    );
+}
+
+/// **VALE PARALELIZAR?** — o laço é um *gather* (cada vértice escreve só o seu,
+/// contra um campo imutável), então o `rayon` seria byte-idêntico sob o
+/// ADR-0109. A pergunta é se PAGA, e a resposta não pode ser um palpite.
+///
+/// ⚠️ Mede com `std::thread::scope` **na sonda**, de propósito: a crate não
+/// ganha uma dep para responder a uma pergunta que ainda não foi feita.
+#[test]
+#[ignore = "sonda"]
+fn measure_whether_the_trace_is_worth_parallelising() {
+    let mesh = shapes::uv_sphere(533, 800, 1.0);
+    let field = field_of(&mesh, 128);
+    let params = AoParams::for_bounds(mesh.bounds());
+    let (pos, nrm) = (mesh.positions(), mesh.normals());
+
+    let t = Instant::now();
+    let serial = bake_ao(&field, pos, nrm, params);
+    let serial_ms = ms(t);
+
+    println!("\n== PARALELISMO do traco ({} verts) ==", mesh.vert_count());
+    println!(
+        "{:>10} {:>12} {:>10} {:>12}",
+        "threads", "ms", "speedup", "bit-identico"
+    );
+    println!("{:>10} {serial_ms:>12.1} {:>10.2} {:>12}", 1, 1.0, "-");
+
+    for threads in [2usize, 4, 8, 16, 32] {
+        let chunk = pos.len().div_ceil(threads);
+        let t = Instant::now();
+        // ⚠️ Fatia as ENTRADAS e usa a porta publica: a sonda nao precisa de um
+        // interno exposto so para existir, e um `bake_ao` sobre uma fatia e'
+        // exatamente o que um `rayon` faria por baixo.
+        let parts: Vec<Vec<f32>> = std::thread::scope(|s| {
+            let hs: Vec<_> = pos
+                .chunks(chunk)
+                .zip(nrm.chunks(chunk))
+                .map(|(p, n)| {
+                    let field = &field;
+                    s.spawn(move || bake_ao(field, p, n, params))
+                })
+                .collect();
+            hs.into_iter().map(|h| h.join().unwrap()).collect()
+        });
+        let el = ms(t);
+        let out: Vec<f32> = parts.concat();
+        println!(
+            "{threads:>10} {el:>12.1} {:>10.2} {:>12}",
+            serial_ms / el,
+            if out == serial { "sim" } else { "NAO" }
+        );
+    }
+    println!(
+        "\nLeitura: o gather e' byte-identico em qualquer numero de threads (cada vertice\n\
+         escreve so o seu). Se o speedup se paga, o `rayon` entra COM este numero ao lado."
     );
 }

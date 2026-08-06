@@ -34,10 +34,12 @@
 //! custo por resolução está na sonda `measure_remesh`, e é ele que decide se
 //! vale abrir esse eixo.
 
+mod ao;
 mod field;
 mod remesh;
 mod surface_nets;
 
+pub use ao::{AoParams, bake_ao};
 pub use field::{DEFAULT_RESOLUTION, VoxelField};
 pub use remesh::{RemeshReport, remesh, remesh_default};
 pub use surface_nets::surface_nets;

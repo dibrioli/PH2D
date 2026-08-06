@@ -119,6 +119,82 @@ impl VoxelField {
         self.dist.len()
     }
 
+    /// A distância que vale *"longe o bastante para não importar"* — a diagonal
+    /// da própria grade.
+    ///
+    /// Nada **dentro** da caixa pode estar mais longe da superfície do que isso,
+    /// então usá-la no lugar de um infinito não inventa geometria: ela é um
+    /// limite superior de verdade, não um número escolhido.
+    pub fn far(&self) -> f32 {
+        let d = [
+            self.dims[0] as f32,
+            self.dims[1] as f32,
+            self.dims[2] as f32,
+        ];
+        self.step * (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt()
+    }
+
+    /// A distância à superfície em `p`, interpolada trilinearmente.
+    ///
+    /// ⚠️ **O infinito é DOMADO na entrada, e isso não é higiene — é a diferença
+    /// entre um número e um `NaN`.** O campo nasce `INFINITY` onde nenhum
+    /// triângulo alcançou, e o [`Self::flood_fill`] nega isso para `-INFINITY`
+    /// no interior profundo. Interpolar contra um infinito é `0.0 * inf = NaN`
+    /// sempre que um peso cai **exatamente** em zero — ou seja, exatamente sobre
+    /// as amostras da grade, que é onde uma marcha de esfera mais pousa. Cada
+    /// canto atravessa [`Self::far`] antes de entrar na soma, então o **sinal
+    /// sobrevive** (aberto continua muito positivo, interior muito negativo) e a
+    /// aritmética fica finita.
+    ///
+    /// Fora da grade a resposta é [`Self::far`]: a caixa nasce com folga (1,51
+    /// passos por lado), então ter saído dela é ter saído da vizinhança da malha.
+    ///
+    /// `NaN` na entrada — ou no campo, que não deveria acontecer — sai como
+    /// *aberto*. É a direção segura: um consumidor de oclusão que erra para
+    /// aberto deixa de escurecer, e não fabrica uma sombra que a forma não tem.
+    pub fn sample(&self, p: [f32; 3]) -> f32 {
+        let far = self.far();
+        let inv = 1.0 / self.step;
+
+        let mut i0 = [0usize; 3];
+        let mut frac = [0.0f32; 3];
+        for a in 0..3 {
+            let g = (p[a] - self.min[a]) * inv;
+            if !(g >= 0.0 && g <= (self.dims[a] - 1) as f32) {
+                // Inclui o `NaN`: a comparação negada o pega sem um ramo próprio.
+                return far;
+            }
+            // `dims` é `>= 2` por construção ([`Self::for_bounds`]), então o
+            // plano de amostras final sempre tem um vizinho à frente para o
+            // canto `+1` da interpolação.
+            let i = (g.floor() as usize).min(self.dims[a] - 2);
+            i0[a] = i;
+            frac[a] = g - i as f32;
+        }
+
+        let rx = self.dims[0];
+        let rxy = rx * self.dims[1];
+        let base = i0[0] + i0[1] * rx + i0[2] * rxy;
+        let tame = |v: f32| {
+            if v.is_finite() {
+                v
+            } else if v < 0.0 {
+                -far
+            } else {
+                far
+            }
+        };
+        let c = |dx: usize, dy: usize, dz: usize| tame(self.dist[base + dx + dy * rx + dz * rxy]);
+        let lerp = |a: f32, b: f32, t: f32| a + (b - a) * t;
+
+        let (fx, fy, fz) = (frac[0], frac[1], frac[2]);
+        let x00 = lerp(c(0, 0, 0), c(1, 0, 0), fx);
+        let x10 = lerp(c(0, 1, 0), c(1, 1, 0), fx);
+        let x01 = lerp(c(0, 0, 1), c(1, 0, 1), fx);
+        let x11 = lerp(c(0, 1, 1), c(1, 1, 1), fx);
+        lerp(lerp(x00, x10, fy), lerp(x01, x11, fy), fz)
+    }
+
     /// Escreve a distância de `mesh` no campo, e marca as arestas de voxel que a
     /// superfície atravessa.
     ///

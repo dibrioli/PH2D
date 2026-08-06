@@ -5900,6 +5900,10 @@ impl crate::App {
                 &flashes,
                 &waterlines,
                 &triggered,
+                // W20: a descida em curso, do ÚNICO dono do fato (a ponte). Sem
+                // isto uma prancha fantasma é indistinguível de uma sólida, que
+                // é a forma como toda esta classe de defeito ficou silenciosa.
+                physics.any_player_is_dropping(),
                 // W-J7b: o joint selecionado ganha readout mesmo sem teto armado
                 // — é preciso ler a carga ANTES de escolher um número.
                 hero.gizmo

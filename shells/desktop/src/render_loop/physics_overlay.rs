@@ -83,12 +83,28 @@ const SENSOR_IDLE_RGBA: [f32; 4] = [0.95, 0.45, 0.90, 0.55]; // LITERAL-COLOR-OK
 /// jump from idle to this is the whole point of a trigger: you see it fire.
 const SENSOR_ACTIVE_RGBA: [f32; 4] = [1.0, 0.55, 0.98, 1.0]; // LITERAL-COLOR-OK: overlay de collider
 
+/// **Uma plataforma jump-through que o player está a ATRAVESSAR agora** — a
+/// mesma família do par idle/active do sensor: o mesmo assunto, outra
+/// intensidade. Apagada, porque o que ela diz é *"eu não estou aqui para ele"*.
+///
+/// ⚠️ **Sem isto a descida é INVISÍVEL**, e é essa a razão de existir: toda a
+/// classe de defeitos desta feature é *a prancha ficou fantasma e ninguém viu*
+/// (ver `bridge::player::retire_drops`). Um estado que muda a colisão da cena
+/// inteira e não se vê é um estado que o artista descobre por acidente.
+const PASSABLE_RGBA: [f32; 4] = [0.55, 0.62, 0.58, 0.40]; // LITERAL-COLOR-OK: overlay de collider
+
 /// The colour of one collider outline: a sensor is magenta (bright when a body
 /// is inside it), and any solid collider is coloured by its body kind. A sensor
 /// overrides the kind colour on purpose — "is this a trigger?" is the first
 /// thing you need to know about it, ahead of who moves it.
-fn outline_rgba(is_sensor: bool, triggered: bool, kind: BodyKind) -> [f32; 4] {
-    if is_sensor {
+fn outline_rgba(is_sensor: bool, triggered: bool, passable: bool, kind: BodyKind) -> [f32; 4] {
+    if passable {
+        // Antes do sensor de propósito: *"isto não é sólido para ele agora"* é o
+        // fato mais forte que se pode dizer de uma forma, e uma plataforma
+        // one-way nunca é sensor (as duas metades são mutuamente exclusivas —
+        // W-Area).
+        PASSABLE_RGBA
+    } else if is_sensor {
         if triggered {
             SENSOR_ACTIVE_RGBA
         } else {
@@ -133,6 +149,7 @@ pub(crate) fn outlines(
     show_velocity: bool,
     sim: &mut SimWorld,
     triggered: &[ph2d_ecs::Entity],
+    ghost: bool,
     camera: &Camera2d,
     window: WindowSize,
 ) -> Vec<(BezPath, [f32; 4])> {
@@ -144,7 +161,11 @@ pub(crate) fn outlines(
     // dois componentes aqui — como esta query pedia — deixava toda peça de todo
     // corpo composto **invisível**, que é exatamente o que o contorno existe para
     // não deixar acontecer (um collider é invisível e um sprite é um quad).
-    let mut q = sim.world_mut().query::<(ph2d_ecs::Entity, &Collider)>();
+    let mut q = sim.world_mut().query::<(
+        ph2d_ecs::Entity,
+        &Collider,
+        Option<&ph2d_physics_ecs::OneWayPlatform>,
+    )>();
     let world = sim.world();
     // ⚠️ WORLD, never the raw `Transform`. The outline annotates a SPRITE, and
     // the sprite is drawn from the composed chain — so an outline placed at the
@@ -159,7 +180,7 @@ pub(crate) fn outlines(
     // rather than once per body.
     let mut chain = Vec::new();
     let mut out = Vec::new();
-    for (e, col) in q.iter(world) {
+    for (e, col, one_way) in q.iter(world) {
         // De QUEM é esta forma? Dela mesma, se ela for um corpo; senão do corpo
         // ancestral mais próximo (W-Compound — o mesmo walk do `rig_edges`, e um
         // GRUPO no meio fica transparente pelo mesmo motivo).
@@ -195,7 +216,12 @@ pub(crate) fn outlines(
         );
         out.push((
             path,
-            outline_rgba(col.is_sensor, triggered.contains(&e), kind),
+            outline_rgba(
+                col.is_sensor,
+                triggered.contains(&e),
+                ghost && one_way.is_some(),
+                kind,
+            ),
         ));
         // The armed launch, when the bodies are at rest (so `t` is the authored
         // position the arrow springs from). Absent component = no arrow.
@@ -334,6 +360,10 @@ pub(super) fn draw(
     flashes: &[ph2d_physics_ecs::ContactFlash],
     waterlines: &[([f32; 2], [f32; 2])],
     triggered: &[ph2d_ecs::Entity],
+    // W20: algum player está a atravessar uma prancha AGORA? O bit da descida
+    // viaja no CORPO e vale para toda plataforma one-way da cena, então a
+    // resposta é uma só e o contorno de TODAS elas a veste (ver `PASSABLE_RGBA`).
+    ghost: bool,
     // W-J7b: quem está selecionado, para o readout de carga de um joint que
     // ainda NÃO é quebrável — é preciso ler a carga antes de escolher um teto.
     selected_joint: Option<ph2d_ecs::Entity>,
@@ -343,7 +373,7 @@ pub(super) fn draw(
     text_system: &mut ph2d_text::TextSystem,
 ) {
     use ph2d_vector::{Affine, Brush, Color, Stroke};
-    for (path, rgba) in outlines(show, show_velocity, sim, triggered, camera, window) {
+    for (path, rgba) in outlines(show, show_velocity, sim, triggered, ghost, camera, window) {
         vector_scene.inner_mut().stroke(
             &Stroke::new(OUTLINE_PX),
             Affine::IDENTITY,
@@ -519,3 +549,7 @@ mod scene_tests;
 #[cfg(test)]
 #[path = "physics_overlay_annotation_tests.rs"]
 mod annotation_tests;
+
+#[cfg(test)]
+#[path = "physics_overlay_passable_tests.rs"]
+mod passable_tests;

@@ -1,25 +1,30 @@
-//! **UMA ESCADA DE PRANCHAS APERTADA** — o caso degenerado da W12, medido e
-//! **PINADO ONDE ESTÁ**, não corrigido.
+//! **UMA ESCADA DE PRANCHAS APERTADA** — as duas bordas da descida (W12/W20).
 //!
-//! O irmão `platform_drop.rs` mede uma prancha SOLTA com muito espaço embaixo,
-//! e é por isso que ele nunca viu isto: ali a caixa inteira do personagem chega
-//! a ficar abaixo da prancha, então a lei de aposentadoria de hoje
-//! (`body_maxs <= plat_mins`) funciona. Numa escada apertada ela nunca chega.
+//! O irmão `platform_drop.rs` mede uma prancha SOLTA com muito espaço embaixo, e
+//! é por isso que ele nunca viu isto: ali a caixa inteira do personagem chega a
+//! ficar abaixo da prancha. Numa escada apertada ela nunca chega.
 //!
-//! # ⚠️ Estes gates afirmam o MUNDO DE HOJE, defeito incluído
+//! # A lei que estes gates pinam (W20)
 //!
-//! O `retire_drops` isentava este caso com uma frase — *"essa cena já está
-//! quebrada sem descida nenhuma (o personagem não cabe ali)"* — e a metade
-//! entre parênteses **é falsa**: ele cabe, e fica quieto. O primeiro gate
-//! prova isso. O segundo pina o que a lei de hoje FAZ com essa cena, com o
-//! número ao lado.
+//! A descida morre quando **já passei** E **a prancha já parou de me pegar**. As
+//! duas metades são obrigatórias e cada uma cura o defeito da outra — o
+//! mecanismo, com os números, está no aviso de `bridge::player::retire_drops`.
 //!
-//! ⚠️ **O segundo gate fica VERMELHO no dia em que alguém curar a lei**, e isso
-//! é o desenho: a cura é uma decisão de produto (muda QUANDO uma prancha volta
-//! a ser sólida, que é coisa que se sente e não se prova), e quem a fizer tem de
-//! passar por aqui de propósito em vez de descobrir que um gate ficou verde
-//! sozinho. As três leis já construídas e reprovadas estão nomeadas no aviso do
-//! `retire_drops` — leia-o antes de tentar a quarta.
+//! Daí as duas bordas terem destinos diferentes, e é isso que se lê aqui:
+//!
+//! * **a borda de CIMA fechou** — o vão em que a prancha voltava a ser sólida a
+//!   meio da queda e o **arremessava de volta** (prancha 0,15, vãos 1,75–1,85)
+//!   agora desce um degrau;
+//! * **a borda de BAIXO fica, e ganhou uma LEI** — a descida sobrevive
+//!   exactamente onde a caixa de repouso do personagem ainda **sobrepõe** a
+//!   prancha. Ali ela *de facto* o pegaria, então as saídas são *fantasma* ou
+//!   *cuspido*, e fantasma é a menos má.
+//!
+//! ⚠️ **O gate do fantasma fica VERMELHO no dia em que alguém curar a borda de
+//! baixo**, e isso é o desenho: a cura conhecida é a descida por-PLATAFORMA (o
+//! gancho a consultar um conjunto de pares em vez de um bit no `user_data`), que
+//! muda a assinatura do gancho — quem a fizer tem de passar por aqui de
+//! propósito em vez de descobrir que um gate ficou verde sozinho.
 
 use ph2d_core::Vec2;
 use ph2d_ecs::{Name, SimWorld, Transform};
@@ -207,7 +212,7 @@ fn a_short_gap_ladder_is_a_scene_the_character_fits_in() {
     );
 }
 
-/// **A DESCIDA NUNCA SE APOSENTA NUMA ESCADA APERTADA — e este é o número.**
+/// **A DESCIDA NÃO SE APOSENTA ONDE A CAIXA DE REPOUSO SOBREPÕE A PRANCHA.**
 ///
 /// Depois de descer um degrau, um pulo simples **não** volta a pousar na
 /// prancha de cima: ela ficou atravessável para sempre, e com ela todas as
@@ -244,39 +249,35 @@ fn the_drop_never_retires_on_a_short_gap_ladder_and_this_is_its_number() {
     );
 }
 
-/// **A SEGUNDA BORDA: logo acima do limiar ele é ARREMESSADO DE VOLTA — e este
-/// é o número.**
+/// **A BORDA DE CIMA FECHOU: o vão que o ARREMESSAVA agora desce um degrau.**
 ///
-/// A lei de hoje aposenta a descida quando a caixa do personagem está
-/// inteiramente abaixo da prancha, e **isso acontece a meio da queda**. Numa
-/// prancha grossa (meia-espessura 0,15 — a da cena 91) há uma faixa de vãos em
-/// que ela volta a ser sólida com o personagem ainda a atravessá-la, e o
-/// contato atira-o para cima: **ele não desce de todo**.
+/// A lei antiga aposentava a descida assim que a caixa ficava abaixo da prancha,
+/// e **isso acontece a meio da queda**: a prancha voltava a ser sólida e o
+/// contato o atirava para cima com um pico de **0,3267 N·s** entre sub-passos
+/// (`tests/measure_drop_retire.rs`). Numa prancha grossa (meia-espessura 0,15 —
+/// a da cena 91) a faixa medida era **1,75 m a 1,85 m**, e ali ele **não descia
+/// de todo**.
 ///
-/// Medido, a faixa de arremesso é **1,75 m a 1,85 m** (com `1,90+` a funcionar
-/// e `1,70-` a virar fantasma) — ou seja o mecanismo tem uma janela útil e as
-/// **DUAS** bordas dela são defeitos. A cena 91 usa `2,00`, dez centímetros
-/// acima da borda, o que ninguém sabia.
-///
-/// ⚠️ **Este gate afirma o defeito, não a cura** — e ele é o irmão do de cima:
-/// os dois têm de mudar juntos no dia em que a lei mudar.
+/// ⚠️ **Quem fecha esta borda é o LIVRO-RAZÃO do gancho**, não a geometria: a
+/// mutação que remove o `&& !drop_is_catching(..)` do `retire_drops` devolve o
+/// arremesso, com a caixa 0,016 m abaixo da prancha e nenhuma sobreposição — que
+/// é exactamente o regime em que toda lei geométrica tentada aqui morreu.
 #[test]
-fn a_thick_plank_ladder_throws_him_back_and_this_is_its_number() {
+fn a_thick_plank_ladder_no_longer_throws_him_back() {
     const THICK: f32 = 0.15;
     let gap = 1.80_f32;
     let top = rest_over(THICK);
+    let one_rung_down = rest_over(-gap + PLANK_HALF_Y);
 
     let mut r = ladder_of(gap, THICK);
     let t = settle(&mut r, 30, 0);
     press(&mut r, down_jump(), 4, 130, t);
 
-    let (_, after) = pose(&r.sim);
+    let after = pose(&r.sim).1;
     assert!(
-        (after - top).abs() < 0.1,
-        "HOJE o vao 1,80 com prancha grossa ARREMESSA-O de volta ao degrau de cima ({top:.3}); \
-         ele parou em {after:.3} — se isto passou a descer um degrau ({:.3}), a lei foi \
-         CURADA e este gate tem de ser reescrito de proposito (ver o aviso do modulo)",
-        rest_over(-gap + THICK)
+        (after - one_rung_down).abs() < 0.1,
+        "o vao 1,80 com prancha grossa tem de DESCER um degrau ({one_rung_down:.3}); \
+         ele parou em {after:.3} — se isto voltou para {top:.3}, o arremesso voltou"
     );
 }
 
@@ -308,4 +309,57 @@ fn a_wide_gap_ladder_retires_the_drop_as_it_should() {
         "vao largo: a prancha de cima TEM de voltar a ser chao ({:.3}), e ele parou em {climbed:.3}",
         rest_over(UPPER_TOP)
     );
+}
+
+/// **A LEI da borda que ficou: a descida sobrevive EXACTAMENTE onde a caixa de
+/// repouso ainda sobrepõe a prancha.**
+///
+/// Não é uma faixa de números escolhida — é um bicondicional, e ele vale célula
+/// a célula nas duas espessuras varridas. É isto que torna o fantasma que resta
+/// **honesto** em vez de arbitrário: onde ele acontece, a prancha de facto
+/// pegaria o personagem (o cone do gancho devolve `+1,000`, medido), e as duas
+/// saídas possíveis são *fantasma* ou *cuspido*.
+///
+/// ⚠️ **É também o gate que impede a lei de regredir para os DOIS lados:**
+/// aposentar cedo demais reprova nas células que sobrepõem (volta o arremesso),
+/// e aposentar tarde demais reprova nas que não sobrepõem (volta o fantasma
+/// largo).
+#[test]
+fn the_drop_survives_exactly_where_the_resting_box_still_overlaps_the_plank() {
+    for (thick, gap) in [
+        (0.15_f32, 1.50_f32),
+        (0.15, 1.60),
+        (0.15, 1.70),
+        (0.15, 1.75),
+        (0.15, 1.90),
+        (0.10, 1.10),
+        (0.10, 1.20),
+        (0.10, 1.60),
+        (0.10, 1.65),
+        (0.10, 2.00),
+    ] {
+        let mut r = ladder_of(gap, thick);
+        let t = settle(&mut r, 30, 0);
+        press(&mut r, down_jump(), 4, 150, t);
+
+        let rest = pose(&r.sim).1;
+        let expected = rest_over(-gap + thick);
+        assert!(
+            (rest - expected).abs() < 0.1,
+            "premissa: ph {thick:.2} vao {gap:.2} tem de descer UM degrau \
+             ({expected:.3}); parou em {rest:.3}"
+        );
+        // A caixa de repouso sobrepõe a prancha de cima?
+        let overlaps = rest + BODY_HALF > -thick;
+        let ghost = r.bridge.player_is_dropping(r.player);
+        assert_eq!(
+            ghost,
+            overlaps,
+            "ph {thick:.2} vao {gap:.2}: repouso {rest:.3} (topo da caixa \
+             {:.3}, base da prancha {:.3}) — sobrepoe {overlaps}, mas a descida \
+             viva e' {ghost}",
+            rest + BODY_HALF,
+            -thick
+        );
+    }
 }

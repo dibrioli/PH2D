@@ -218,6 +218,11 @@ pub struct PhysicsWorld {
     /// is the hot path with a zero-alloc gate, so the capacity is reached once and
     /// reused (`clear` keeps it). Empty for a scene where nothing touches.
     contact_peaks: std::collections::BTreeMap<contacts::PeakKey, contacts::PeakSample>,
+    /// **O livro-razão da descida** (W20) — preenchido pelo gancho one-way
+    /// durante o `step` e lido no topo do tique seguinte, quando a ponte
+    /// pergunta se a descida ainda está a fazer trabalho. Vazio em toda cena em
+    /// que ninguém está a atravessar nada.
+    drop_ledger: oneway::DropLedger,
     /// Scratch for the per-sub-step fold that fills [`Self::contact_peaks`]: the
     /// tick's actively-touching COLLIDER pairs, sorted, before they are merged into
     /// per-BODY answers (W-CompoundContact).
@@ -334,6 +339,7 @@ impl PhysicsWorld {
             pulley_bias: pulley::PULLEY_BIAS,
             pulley_lag: pulley::PULLEY_CORRECTION_LAG,
             contact_peaks: std::collections::BTreeMap::new(),
+            drop_ledger: oneway::DropLedger::default(),
             contact_scratch: Vec::new(),
             joint_peaks: std::collections::BTreeMap::new(),
             joint_breaks: Vec::new(),
@@ -535,31 +541,6 @@ impl PhysicsWorld {
             b.set_linvel(Vector2::zeros(), wake);
             b.set_angvel(0.0, wake);
         }
-    }
-
-    /// **Um ponto fixo do MUNDO com que um joint possa se prender** (W-JointWorld).
-    ///
-    /// rapier **não tem âncora de mundo**: todo joint é corpo↔corpo, e a resposta
-    /// deste repo já era um corpo `fixed` no ponto — é o que a
-    /// [`Self::grab_body_with`] faz desde a W-Grab para segurar um objeto com o
-    /// mouse. Esta porta dá a esse mesmo corpo um ciclo de vida **autorado** em
-    /// vez de um por-gesto.
-    ///
-    /// ⚠️ **Entra direto na arena, sem `insert_body`** — a mesma razão da âncora
-    /// da mão: o `insert_body` estampa os defaults de mundo (damping, sono), que
-    /// não querem dizer nada para um corpo que **nunca é integrado**, e esta
-    /// âncora não tem entidade, então nada a lê de volta nem a desenha.
-    ///
-    /// Some pela porta de sempre — [`Self::remove_body`] —, que já limpa os
-    /// joints presos a ela. Não há door de remoção própria de propósito: duas
-    /// portas para *"tire este corpo do mundo"* divergem na primeira que alguém
-    /// esquecer de atualizar.
-    pub fn spawn_world_anchor(&mut self, point: [f32; 2]) -> RigidBodyHandle {
-        self.bodies.insert(
-            RigidBodyBuilder::fixed()
-                .translation(Vector2::new(point[0], point[1]))
-                .build(),
-        )
     }
 
     /// **Quantos corpos a ARENA tem** — incluindo os que não têm entidade

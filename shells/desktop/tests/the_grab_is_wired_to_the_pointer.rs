@@ -245,7 +245,17 @@ fn the_overlay_is_handed_the_tool_marks() {
     let i = src
         .find("physics_overlay::draw(")
         .expect("a chamada do overlay existe");
-    let call = &src[i..i + 3000];
+    // ⚠️ **A janela acaba onde a CHAMADA acaba, nunca a 3000 bytes dela.** Um
+    // limite em bytes é um proxy que expira: bastou um comentário novo entre os
+    // argumentos — com um `⚠️`, que ocupa três bytes — para o corte cair no meio
+    // de um caractere e este gate PANICAR em vez de julgar
+    // [[feedback_a_gate_anchored_on_a_byte_distance_is_a_proxy_that_expires]].
+    // O `);` na indentação da chamada é a propriedade: é o fim da lista de
+    // argumentos, que é exatamente o que este gate percorre.
+    let end = src[i..]
+        .find("\n            );")
+        .map_or(src.len(), |k| i + k);
+    let call = &src[i..end];
     assert!(
         call.contains("physics.attract_marks()"),
         "o campo de atração não chega ao overlay"
@@ -262,7 +272,9 @@ fn the_overlay_is_handed_the_tool_marks() {
     let aim = call
         .find("self.interaction.aim_radius()")
         .expect("checked above");
-    let window = &call[aim.saturating_sub(300)..aim];
+    // Tudo o que vem ANTES da mira dentro desta chamada — e não uma janela de
+    // 300 bytes, pelo mesmo motivo do corte acima.
+    let window = &call[..aim];
     assert!(
         window.contains("self.playhead.is_playing()")
             && window.contains("self.timeline.flags.simulate_physics"),

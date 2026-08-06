@@ -92,17 +92,85 @@ fn is_one_way(colliders: &ColliderSet, handle: rapier2d::geometry::ColliderHandl
         .is_some_and(|c| c.user_data & ONE_WAY_BIT != 0)
 }
 
-/// The physics hooks the world steps with. **Stateless** — everything it needs is on
-/// the collider (the `user_data` bit) or in the contact context (the poses), so it
-/// holds no mirror of the scene that could go stale, and it is trivially `Send + Sync`.
+/// `cos(ALLOWED_ANGLE)` — a metade da regra one-way que NÃO é o latch.
+///
+/// ⚠️ Uma constante, e não `cos()`: este número decide **quando uma descida se
+/// aposenta**, e uma aposentadoria diferente é outra simulação — logo ele está no
+/// caminho determinista, onde a §HR-5 barra transcendental de plataforma. Com
+/// `ALLOWED_ANGLE = π/4` o cosseno é exatamente `1/√2`, que a `std` já traz como
+/// literal exato. O gate `the_allowed_cone_constant_is_the_cosine_of_the_angle`
+/// prova que os dois seguem a mesma pergunta.
+pub const ALLOWED_COS: f32 = std::f32::consts::FRAC_1_SQRT_2;
+
+/// **O livro-razão da descida** (W20) — onde o gancho relata que o bit de descida
+/// é o ÚNICO motivo de uma plataforma não estar a pegar este corpo agora.
+///
+/// # ⚠️ Por que a evidência vem do GANCHO e não da geometria
+///
+/// A pergunta *"já posso voltar a ser sólido para ele?"* tem uma resposta exata —
+/// a normal do manifold — e **medi-la por caixas mente**: com a caixa do corpo
+/// 0,016 m ABAIXO da prancha (nenhuma sobreposição, o centro bem abaixo da base
+/// dela) a prancha ainda o expulsou com um pico de **0,3267 N·s**
+/// (`ph2d-physics-ecs/tests/measure_drop_retire.rs`). Toda lei geométrica que já
+/// se tentou aqui morreu nesse número.
+///
+/// # ⚠️ E por que a leitura é SÓ-LEITURA
+///
+/// `update_as_oneway_platform` **trava** (`user_data`) no primeiro contato do par
+/// e nunca mais reavalia. Chamá-lo durante a descida gravaria *permitido* — o
+/// corpo vinha de cima — e a prancha voltaria a pegá-lo no tique seguinte à
+/// aposentadoria. Então o que a descida partilha com a regra one-way é o **CONE**
+/// ([`ALLOWED_COS`]), nunca o latch; e é essa a única diferença entre as duas.
+#[derive(Default)]
+pub struct DropLedger {
+    /// Os colliders em descida cujo bit foi o que impediu a plataforma de agir
+    /// neste tique. Um `Vec` e não um `BTreeSet`: no caso comum ele está vazio, e
+    /// no pior caso tem um elemento por personagem a cair.
+    catching: std::sync::Mutex<Vec<ColliderHandle>>,
+}
+
+impl DropLedger {
+    fn note(&self, c: ColliderHandle) {
+        let mut v = self.lock();
+        if !v.contains(&c) {
+            v.push(c);
+        }
+    }
+
+    fn lock(&self) -> std::sync::MutexGuard<'_, Vec<ColliderHandle>> {
+        // Um `Mutex` envenenado só pode vir de um pânico DENTRO do gancho, e o
+        // conteúdo continua íntegro (um `Vec` de handles) — recusar o mundo
+        // inteiro por causa disso seria trocar um readout por um crash.
+        self.catching.lock().unwrap_or_else(|e| e.into_inner())
+    }
+
+    /// Esquece o tique anterior. Capacidade mantida — o mesmo motivo zero-alloc
+    /// dos outros livros-razão por-tique do `step`.
+    pub(super) fn clear(&self) {
+        self.lock().clear();
+    }
+
+    /// Este collider teve a descida a segurá-lo no último tique?
+    #[must_use]
+    pub(super) fn is_catching(&self, c: ColliderHandle) -> bool {
+        self.lock().contains(&c)
+    }
+}
+
+/// The physics hooks the world steps with. Everything the DECISION needs is on the
+/// collider (the `user_data` bit) or in the contact context (the poses), so it holds
+/// no mirror of the scene that could go stale; the only thing it carries is the
+/// borrowed [`DropLedger`] it REPORTS into.
 ///
 /// A world with no one-way collider never reaches [`Self::modify_solver_contacts`]:
 /// rapier only calls it for pairs where a collider carries
 /// `ActiveHooks::MODIFY_SOLVER_CONTACTS`. That is what makes installing these hooks
 /// byte-identical for every scene authored before one-way platforms existed.
-pub struct OneWayHooks;
+pub struct OneWayHooks<'a> {
+    pub(super) ledger: &'a DropLedger,
+}
 
-impl PhysicsHooks for OneWayHooks {
+impl PhysicsHooks for OneWayHooks<'_> {
     /// Left at rapier's default deliberately: a one-way platform still needs its
     /// contacts COMPUTED (that is how we learn which side the body is on) — it is the
     /// solver contacts that get cleared, one manifold at a time, below.
@@ -140,10 +208,7 @@ impl PhysicsHooks for OneWayHooks {
         } else {
             context.collider1
         };
-        if is_dropping(context.colliders, other) {
-            context.solver_contacts.clear();
-            return;
-        }
+        let dropping = is_dropping(context.colliders, other);
 
         let Some(plat) = context.colliders.get(platform) else {
             return;
@@ -159,6 +224,29 @@ impl PhysicsHooks for OneWayHooks {
         // then points from the body TOWARD the platform). See the module docs.
         let signed = if platform_is_c1 { world_up } else { -world_up };
         let allowed_local_n1 = c1.position().rotation.inverse_transform_vector(&signed);
+
+        // ── A DESCIDA (W12), e o que ela RELATA (W20) ────────────────────────
+        // Se o outro collider do par está a atravessar, a plataforma simplesmente
+        // não está lá para ele: limpar os contatos do solver é exactamente o que
+        // `update_as_oneway_platform` faz quando recusa uma normal, então isto
+        // empresta o mecanismo em vez de inventar um segundo.
+        //
+        // ⚠️ **O manifold segue COMPUTADO** (`filter_contact_pair` fica no default
+        // da rapier acima), que é o que mantém o par observável ao narrow phase —
+        // uma descida que escondesse a sobreposição também a esconderia de quem
+        // pergunta "quem está a tocar em quem".
+        //
+        // ⚠️ E é DAQUI que sai a evidência: se o cone diz que esta plataforma
+        // PEGARIA o corpo, então o bit é a única coisa a impedi-la, e a descida
+        // ainda está a fazer trabalho. Ler o cone sem chamar
+        // `update_as_oneway_platform` é deliberado — ver [`DropLedger`].
+        if dropping {
+            if context.manifold.local_n1.dot(&allowed_local_n1) >= ALLOWED_COS {
+                self.ledger.note(other);
+            }
+            context.solver_contacts.clear();
+            return;
+        }
 
         context.update_as_oneway_platform(&allowed_local_n1, ALLOWED_ANGLE);
     }
@@ -206,6 +294,26 @@ impl super::PhysicsWorld {
             changed = true;
         }
         changed
+    }
+
+    /// **A descida deste corpo ainda está a fazer trabalho?** (W20)
+    ///
+    /// `true` quando, no último `step`, alguma plataforma one-way TERIA pegado
+    /// este corpo e só não pegou porque o bit de descida estava posto. É a
+    /// pergunta que decide quando a descida pode morrer sem ser expulsa — e a
+    /// única que não mente, porque vem da normal do manifold e não de caixas
+    /// (ver [`DropLedger`]).
+    ///
+    /// ⚠️ **Qualquer collider do corpo serve**, e é a lição da W-Compound outra
+    /// vez: o narrow phase entrega ao gancho o par que ele tiver, então um
+    /// personagem composto pode ter o pé a ser pego e o tronco não.
+    #[must_use]
+    pub fn drop_is_catching(&self, handle: RigidBodyHandle) -> bool {
+        self.bodies.get(handle).is_some_and(|rb| {
+            rb.colliders()
+                .iter()
+                .any(|&c| self.drop_ledger.is_catching(c))
+        })
     }
 
     /// Is this collider a one-way (jump-through) platform? (W12)

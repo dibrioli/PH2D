@@ -381,3 +381,135 @@ fn measure_the_ladder_by_thickness_and_rise() {
         );
     }
 }
+
+/// **(6) O QUE o arremessa de volta na faixa de cima — o RAIO ou o SOLVER?**
+///
+/// A W19 mediu a FAIXA (prancha 0,15, vão 1,75-1,85) e nomeou o sintoma; ela
+/// **não** nomeou o mecanismo, e as duas leituras pedem curas OPOSTAS:
+///
+/// * **o RAIO** — a descida se aposenta, o sensor volta a ver a prancha que ele
+///   acabou de deixar, e a mola de flutuação o iça de volta;
+/// * **o SOLVER** — a prancha volta a ser sólida cortando-lhe o peito e o
+///   contato o expulsa.
+///
+/// A sonda imprime a trajetória tique a tique com a descida ao lado, mais o
+/// instante ANALÍTICO em que a lei de hoje se aposenta. Se a subida começa no
+/// tique da aposentadoria e termina exactamente na altura de repouso da prancha
+/// de cima, é a MOLA; se começa antes, ou passa dali, é o contato.
+#[test]
+#[ignore]
+fn measure_what_throws_him_back_in_the_ejection_band() {
+    let thick: f32 = std::env::var("PH2D_TRACE_thick")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(0.15);
+    let gap: f32 = std::env::var("PH2D_TRACE_GAP")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(1.80);
+
+    // A lei de hoje: `body_maxs <= plat_mins`. Com a prancha de cima centrada em
+    // zero, `plat_mins = -thick`, e o topo da caixa e' `y + BODY_HALF`.
+    let retire_y = -thick - BODY_HALF;
+    let rest_upper = thick + FLOAT_HEIGHT;
+    let rest_lower = -gap + PLANK_HALF_Y + FLOAT_HEIGHT;
+
+    let mut r = stack_of(gap, thick);
+    let mut t = settle(&mut r, 30, 0);
+    eprintln!(
+        "vao {gap:.2} prancha {thick:.2} | repouso cima {rest_upper:.3} \
+         baixo {rest_lower:.3} | aposenta em y <= {retire_y:.3}"
+    );
+
+    r.bridge.set_player_input(r.player, down_jump());
+    let mut prev = y_of(&r.sim);
+    let mut turned: Option<(u64, f32)> = None;
+    for k in 0..90 {
+        t += 1;
+        if k == 4 {
+            r.bridge.set_player_input(r.player, PlayerInput::default());
+        }
+        r.bridge.dispatch(&mut r.sim, true, t);
+        let y = y_of(&r.sim);
+        let dropping = r.bridge.player_is_dropping(r.player);
+        if k < 60 {
+            let mut touch = String::new();
+            for c in r.bridge.contacts() {
+                let other = if c.a == r.player { c.b } else { c.a };
+                let mut nm = String::from("?");
+                if let Some(n) = r.sim.world().get::<Name>(other) {
+                    nm = n.as_str().to_string();
+                }
+                touch.push_str(&format!(
+                    " [{nm} pt {:.3} imp {:.4} pico {:.4}]",
+                    c.point[1], c.impulse, c.impact
+                ));
+            }
+            eprintln!(
+                "  t{k:>3} y {y:>8.4}  dy {:>8.4}  drop {}  {}{touch}",
+                y - prev,
+                if dropping { "SIM" } else { "nao" },
+                if y <= retire_y { "<=limiar" } else { "" }
+            );
+        }
+        if turned.is_none() && y > prev + 1e-4 && k > 2 {
+            turned = Some((k, y));
+        }
+        prev = y;
+    }
+    let end = y_of(&r.sim);
+    eprintln!(
+        "FIM y {end:.4} ({}) | subida comecou em {:?}",
+        if (end - rest_upper).abs() < 0.1 {
+            "voltou ao degrau de CIMA"
+        } else if (end - rest_lower).abs() < 0.1 {
+            "desceu um degrau"
+        } else {
+            "outro lugar"
+        },
+        turned
+    );
+}
+
+/// **(7) A célula que sobrou é FANTASMA, ou é o PULO que não sobe?**
+///
+/// A tabela julga por *"ele voltou ao degrau de cima?"*, e duas coisas muito
+/// diferentes reprovam por ali. Esta sonda separa-as: imprime se a descida ainda
+/// está viva em repouso, que é a única pergunta sobre a LEI.
+#[test]
+#[ignore]
+fn measure_whether_the_leftover_cell_is_ghost_or_a_failed_jump() {
+    for (thick, gap) in [
+        (0.15_f32, 1.50_f32),
+        (0.15, 1.55),
+        (0.15, 1.60),
+        (0.15, 1.65),
+        (0.15, 1.70),
+        (0.10, 1.10),
+        (0.10, 1.15),
+        (0.10, 1.20),
+        (0.10, 1.25),
+    ] {
+        let mut r = stack_of(gap, thick);
+        let t = settle(&mut r, 30, 0);
+        let t = press(&mut r, down_jump(), 4, 150, t);
+        let rest = y_of(&r.sim);
+        let live = r.bridge.player_is_dropping(r.player);
+        let contacts = r.bridge.contacts().len();
+        press(&mut r, jump_only(), 6, 150, t);
+        let after = y_of(&r.sim);
+        let rest_lower = -gap + PLANK_HALF_Y + FLOAT_HEIGHT;
+        let rest_upper = thick + FLOAT_HEIGHT;
+        eprintln!(
+            "ph {thick:.2} vao {gap:.2} | desceu {rest:>7.3} (esperado {rest_lower:>7.3}) \
+             | descida VIVA em repouso: {} | contatos {contacts} \
+             | pulou para {after:>7.3} (cima {rest_upper:.3}) | sobrepoe {}",
+            if live { "SIM  <== fantasma" } else { "nao" },
+            if rest + BODY_HALF > -thick {
+                "SIM"
+            } else {
+                "nao"
+            }
+        );
+    }
+}

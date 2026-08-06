@@ -32,6 +32,10 @@ impl PhysicsWorld {
         self.pulley_tension.clear();
         self.pulley_axle.clear();
         self.pulley_breaks.clear();
+        // W20: a mesma forma outra vez — se a descida de alguém ainda está a
+        // impedir uma prancha de o pegar, isso é um fato sobre ESTE tique, e a
+        // ponte o lê no topo do próximo. Capacidade mantida (zero-alloc).
+        self.drop_ledger.clear();
         for sub in 0..self.substeps {
             // Kinematic bodies advance a SLICE of their tick per sub-step, for
             // the same reason the drag below is applied per sub-step: rapier
@@ -115,7 +119,9 @@ impl PhysicsWorld {
             // without a one-way collider: rapier only calls `modify_solver_contacts`
             // for pairs where a collider carries `MODIFY_SOLVER_CONTACTS`, which only
             // a one-way collider sets.
-            let physics_hooks = oneway::OneWayHooks;
+            let physics_hooks = oneway::OneWayHooks {
+                ledger: &self.drop_ledger,
+            };
             let event_handler = ();
             self.physics_pipeline.step(
                 &self.gravity,

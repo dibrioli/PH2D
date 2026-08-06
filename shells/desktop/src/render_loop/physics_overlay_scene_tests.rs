@@ -57,11 +57,11 @@ fn physics_scene() -> ph2d_ecs::SimWorld {
 fn switching_the_overlay_off_produces_nothing_to_draw() {
     let mut sim = physics_scene();
     assert!(
-        outlines(false, false, &mut sim, &[], &camera(), window()).is_empty(),
+        outlines(false, false, &mut sim, &[], false, &camera(), window()).is_empty(),
         "the overlay drew while switched off"
     );
     assert_eq!(
-        outlines(true, false, &mut sim, &[], &camera(), window()).len(),
+        outlines(true, false, &mut sim, &[], false, &camera(), window()).len(),
         2,
         "the overlay drew nothing while switched on"
     );
@@ -103,7 +103,7 @@ fn a_parented_bodys_outline_sits_on_its_sprite_not_its_local_pose() {
         ChildOf(rig),
     ));
 
-    let drawn = outlines(true, false, &mut sim, &[], &camera(), window());
+    let drawn = outlines(true, false, &mut sim, &[], false, &camera(), window());
     assert_eq!(drawn.len(), 1, "expected exactly one outline");
     let pts = points(&drawn[0].0);
     let cx = pts.iter().map(|(x, _)| *x).sum::<f64>() / pts.len() as f64;
@@ -134,15 +134,18 @@ fn a_parented_bodys_outline_sits_on_its_sprite_not_its_local_pose() {
 #[test]
 fn a_sensor_is_magenta_and_brightens_when_triggered() {
     assert_eq!(
-        outline_rgba(true, false, BodyKind::Static),
+        outline_rgba(true, false, false, BodyKind::Static),
         SENSOR_IDLE_RGBA
     );
     assert_eq!(
-        outline_rgba(true, true, BodyKind::Dynamic),
+        outline_rgba(true, true, false, BodyKind::Dynamic),
         SENSOR_ACTIVE_RGBA
     );
     // A solid collider keeps its kind colour and is never magenta.
-    assert_eq!(outline_rgba(false, false, BodyKind::Static), STATIC_RGBA);
+    assert_eq!(
+        outline_rgba(false, false, false, BodyKind::Static),
+        STATIC_RGBA
+    );
     assert_ne!(
         SENSOR_IDLE_RGBA, SENSOR_ACTIVE_RGBA,
         "idle and active sensors must differ — the colour change IS the trigger firing"
@@ -177,11 +180,11 @@ fn a_triggered_sensor_outline_uses_the_active_colour() {
         ))
         .id();
 
-    let idle = outlines(true, false, &mut sim, &[], &camera(), window());
+    let idle = outlines(true, false, &mut sim, &[], false, &camera(), window());
     assert_eq!(idle.len(), 1);
     assert_eq!(idle[0].1, SENSOR_IDLE_RGBA, "an empty sensor is drawn idle");
 
-    let active = outlines(true, false, &mut sim, &[sensor], &camera(), window());
+    let active = outlines(true, false, &mut sim, &[sensor], false, &camera(), window());
     assert_eq!(
         active[0].1, SENSOR_ACTIVE_RGBA,
         "a triggered sensor is drawn active"
@@ -198,7 +201,7 @@ fn a_scene_without_bodies_draws_no_physics_chrome() {
     sim.world_mut()
         .spawn((Transform::from_translation(Vec2::new(1.0, 1.0)),));
     assert!(
-        outlines(true, false, &mut sim, &[], &camera(), window()).is_empty(),
+        outlines(true, false, &mut sim, &[], false, &camera(), window()).is_empty(),
         "physics chrome leaked into a scene with no bodies"
     );
 }
@@ -209,7 +212,7 @@ fn a_scene_without_bodies_draws_no_physics_chrome() {
 #[test]
 fn static_and_dynamic_bodies_are_drawn_in_different_colours() {
     let mut sim = physics_scene();
-    let out = outlines(true, false, &mut sim, &[], &camera(), window());
+    let out = outlines(true, false, &mut sim, &[], false, &camera(), window());
     let colours: Vec<[f32; 4]> = out.iter().map(|(_, c)| *c).collect();
     assert!(colours.contains(&STATIC_RGBA), "no static body was drawn");
     assert!(colours.contains(&DYNAMIC_RGBA), "no dynamic body was drawn");
@@ -298,7 +301,7 @@ fn an_offset_collider_outline_sits_where_the_collider_is() {
                 skew_y: 0.0,
             },
         ));
-        let drawn = outlines(true, false, &mut sim, &[], &camera(), window());
+        let drawn = outlines(true, false, &mut sim, &[], false, &camera(), window());
         assert_eq!(drawn.len(), 1, "expected exactly one outline");
         let pts = points(&drawn[0].0);
         // Bounding-box centre, not the point-MEAN: the ball's outline carries a
@@ -384,7 +387,7 @@ fn a_parented_bodys_outline_grows_with_its_world_scale() {
         ChildOf(rig),
     ));
 
-    let drawn = outlines(true, false, &mut sim, &[], &camera(), window());
+    let drawn = outlines(true, false, &mut sim, &[], false, &camera(), window());
     assert_eq!(drawn.len(), 1, "expected exactly one outline");
     let pts = points(&drawn[0].0);
     let rim = &pts[..super::CIRCLE_SEGS as usize];
@@ -447,7 +450,7 @@ fn a_part_of_a_compound_body_is_drawn_in_the_owners_colour() {
         ChildOf(arm),
     ));
 
-    let out = outlines(true, false, &mut sim, &[], &camera(), window());
+    let out = outlines(true, false, &mut sim, &[], false, &camera(), window());
     assert_eq!(
         out.len(),
         2,
@@ -481,7 +484,7 @@ fn a_collider_with_no_body_above_it_is_not_drawn() {
         Transform::from_translation(Vec2::new(0.0, 2.0)),
     ));
     assert!(
-        outlines(true, false, &mut sim, &[], &camera(), window()).is_empty(),
+        outlines(true, false, &mut sim, &[], false, &camera(), window()).is_empty(),
         "uma forma que o solver ignora ganhou contorno — a marca afirmaria que ela \
          é simulada"
     );
@@ -560,7 +563,15 @@ fn a_sensor_part_lights_up_in_the_overlay() {
         "a ponte não nomeou o pé como sensor disparado: {triggered:?}"
     );
 
-    let drawn = outlines(true, false, &mut sim, &triggered, &camera(), window());
+    let drawn = outlines(
+        true,
+        false,
+        &mut sim,
+        &triggered,
+        false,
+        &camera(),
+        window(),
+    );
     let lit = drawn
         .iter()
         .filter(|(_, rgba)| *rgba == SENSOR_ACTIVE_RGBA)

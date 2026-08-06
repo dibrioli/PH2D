@@ -84,6 +84,25 @@ impl PhysicsBridge {
         self.player_input.get(&entity).copied().unwrap_or_default()
     }
 
+    /// **Este player está ATRAVESSANDO uma plataforma jump-through agora?** (W20)
+    ///
+    /// ⚠️ **O bit viaja no CORPO e vale para TODA plataforma one-way da cena**
+    /// (`oneway::modify_solver_contacts`), então a resposta não é *"aquela
+    /// prancha"* — é *"nenhuma prancha é sólida para ele neste instante"*. É
+    /// exatamente isso que o contorno desenha, e é o que torna VISÍVEL uma
+    /// descida que não se aposenta: hoje ela é silenciosa.
+    #[must_use]
+    pub fn player_is_dropping(&self, entity: Entity) -> bool {
+        self.player_drop.contains_key(&entity)
+    }
+
+    /// **Algum player está atravessando alguma coisa?** — a pergunta que o
+    /// overlay faz uma vez por quadro, em vez de uma por plataforma.
+    #[must_use]
+    pub fn any_player_is_dropping(&self) -> bool {
+        !self.player_drop.is_empty()
+    }
+
     /// Esquece toda entrada de player.
     ///
     /// Chamada por quem derruba o mundo derivado (`rebuild`): os bits de
@@ -105,73 +124,66 @@ impl PhysicsBridge {
         self.player_drop.clear();
     }
 
-    /// **As descidas que já cumpriram o seu papel** (W12) — rodada no topo de
-    /// cada tique de player, antes de o sensor perguntar qualquer coisa.
+    /// **As descidas que já cumpriram o seu papel** (W12/W20) — rodada no topo
+    /// de cada tique de player, antes de o sensor perguntar qualquer coisa.
     ///
-    /// # ⚠️ O fim de uma descida é GEOMETRIA, não um relógio
+    /// # A lei, numa frase
     ///
-    /// A pergunta é *"eu já passei?"*, e ela tem resposta exata: a caixa do
-    /// personagem está inteiramente abaixo da caixa da plataforma. Um
-    /// temporizador seria um palpite sobre essa resposta, e erraria exatamente
-    /// onde dói — plataforma grossa, queda lenta, gravidade baixa —,
-    /// re-solidificando com o personagem ainda dentro dela e cuspindo-o para
-    /// fora (CLAUDE.md §0: nenhum teto sem medição, e aqui não é preciso medir
-    /// porque não é preciso teto).
+    /// A descida morre quando **já passei** (a caixa do personagem está
+    /// inteiramente abaixo da caixa da plataforma) **E a prancha já parou de me
+    /// pegar** (o gancho one-way não relatou nada neste tique).
     ///
-    /// # ⚠️ O caso degenerado é REAL, e a nota que o isentava estava ERRADA
+    /// ⚠️ **As duas metades são obrigatórias, e cada uma cura um defeito que a
+    /// outra tem** — as duas foram medidas
+    /// (`ph2d-physics-ecs/tests/measure_drop_retire.rs`).
     ///
-    /// A frase que esteve aqui dizia: *"um vão entre duas plataformas menor que
-    /// o personagem deixa a descida armada para sempre — essa cena já está
-    /// quebrada sem descida nenhuma (o personagem não cabe ali)"*. A segunda
-    /// metade foi **MEDIDA e é falsa** (`tests/measure_drop_retire.rs`): numa
-    /// cápsula de meia-altura 0,5 flutuando 0,9 sobre pranchas de
-    /// meia-espessura 0,1, todo vão entre **1,15 m e 1,55 m** põe o personagem
-    /// em pé no degrau de baixo, **perfeitamente estável** (0,0000 m de
-    /// variação num segundo), com a cabeça a atravessar o de cima — que é
-    /// literalmente para isso que uma prancha jump-through existe. Ele CABE.
+    /// # ⚠️ Só a geometria EXPULSA o personagem
     ///
-    /// ⚠️ **E o preço não é a prancha de onde ele desceu:** o bit viaja no
-    /// CORPO e o gancho limpa os contatos com **qualquer** plataforma one-way
-    /// (ver `oneway::modify_solver_contacts`), então uma descida que nunca se
-    /// aposenta apaga **todas as pranchas da cena, para sempre** — medido, um
-    /// pulo simples deixa de voltar a pousar na prancha de cima.
+    /// A caixa estar abaixo **não** garante que a prancha não vá agir: com o
+    /// corpo **0,016 m abaixo** da prancha, sem sobreposição nenhuma, a
+    /// re-solidificação o atirou de volta ao degrau de cima com um pico de
+    /// **0,3267 N·s** entre sub-passos — e o `impulse` de fim de tique lia
+    /// `0,0000`, que é a lição da W-ImpactForce outra vez. Faixa medida: prancha
+    /// de meia-espessura 0,15, vãos **1,75 a 1,85**, onde ele **não descia de
+    /// todo** e o botão parecia não fazer nada. É o livro-razão do gancho
+    /// (`PhysicsWorld::drop_is_catching`) que fecha essa borda, porque ele
+    /// pergunta à normal do manifold em vez de a caixas.
     ///
-    /// # ⚠️ E a lei de HOJE tem uma segunda borda, que também é um defeito
+    /// # ⚠️ Só a evidência REGRIDE a descida
     ///
-    /// Ela aposenta a descida quando a caixa fica inteiramente abaixo da
-    /// prancha, e **isso acontece a meio da queda** — a prancha volta a ser
-    /// sólida com o personagem ainda a atravessá-la, e o contato pode atirá-lo
-    /// para cima. Mapeado numa escada de três degraus, um aperto e uma
-    /// tentativa de voltar:
+    /// Quando a prancha fica inteiramente DENTRO da caixa do personagem (prancha
+    /// fina, corpo alto) não existe *lado*, e a normal do manifold **oscila**
+    /// entre tiques — medido, o ponto de contato saltando de `−0,486` para
+    /// `+0,490` em dois tiques. Uma lei só de evidência aposenta no primeiro
+    /// "não" dessa oscilação e a prancha o empurra para cima: com prancha 0,10 e
+    /// vãos 1,10 a 1,25 ele **deixava de descer**. A geometria não oscila, e é
+    /// ela que segura a evidência até a travessia ter de facto acabado.
+    ///
+    /// # ⚠️ O que AINDA fica fantasma, e a lei disso
+    ///
+    /// Medido célula a célula, **a descida sobrevive exactamente onde a caixa de
+    /// repouso do personagem ainda SOBREPÕE a prancha** — nenhuma exceção nas
+    /// duas espessuras varridas:
     ///
     /// | meia-espessura | vão | o que acontece |
     /// |---|---|---|
-    /// | 0,15 | 1,60 – 1,70 | desce, e a prancha fica **fantasma** para sempre |
-    /// | 0,15 | **1,75 – 1,85** | **ARREMESSADO de volta** — não desce de todo |
-    /// | 0,15 | 1,90 + | funciona |
-    /// | 0,10 | 1,50 – 1,60 | fantasma |
+    /// | 0,15 | 1,60 – 1,70 | desce, e a prancha fica **fantasma** |
+    /// | 0,15 | 1,75 + | funciona (era **arremessado** até 1,85) |
+    /// | 0,10 | 1,50 – 1,60 | desce, e a prancha fica **fantasma** |
     /// | 0,10 | 1,65 + | funciona |
     ///
-    /// ⚠️ **O mecanismo tem uma janela útil e as DUAS bordas dela são
-    /// defeitos**, e a cena 91 (`RISE = 2,0`, pranchas de 0,15) vive **dez
-    /// centímetros** acima da borda de arremesso sem que ninguém soubesse.
+    /// Nessa faixa a prancha **de facto o pegaria** (o cone do gancho devolve
+    /// `+1,000`, medido), então as duas saídas são *fantasma* ou *cuspido* — e
+    /// fantasma é a menos má. ⚠️ **O preço continua a ser a cena inteira**: o bit
+    /// viaja no CORPO e o gancho limpa os contatos com **qualquer** plataforma
+    /// one-way, então enquanto essa descida vive nenhuma prancha é sólida para
+    /// ele. **A cura é a descida por-PLATAFORMA** (o gancho consultando um
+    /// conjunto de pares em vez de um bit no `user_data`), o que muda a
+    /// assinatura do gancho e o gesto de armar — wave própria.
     ///
-    /// ⚠️ **A cura NÃO é mexer neste limiar, e isso foi medido a caro.** Três
-    /// leis foram construídas e reprovadas, cada uma trocando um regime por
-    /// outro: o centro do corpo abaixo da base da prancha (a virada do cuspe,
-    /// medida **em repouso** em quatro espessuras) **cospe o personagem a meio
-    /// da queda** — numa prancha de 0,15 ele desce a 5,79 e volta a repousar em
-    /// 7,05, dois degraus ACIMA; exigir que ele tenha pousado dispara no
-    /// instante em que o raio ALCANÇA o degrau, ainda uma altura-de-perna acima
-    /// dele; e *"deixou de descer"* não tem régua — em repouso a mola deixa um
-    /// resíduo descendente de ~1e-7 m/tique, então o sinal é uma moeda ao ar e
-    /// o limiar de sono do mundo é largo demais.
-    ///
-    /// **O momento seguro de re-solidificar uma prancha que o SOBREPÕE não é
-    /// função da pose sozinha**, e uma lei que o afirme é verde num regime e
-    /// vermelha no outro. Fica para uma wave com smoke próprio — quem a abrir
-    /// julga as duas bordas ao mesmo tempo, porque a de cima é a que hoje
-    /// **parece que o botão não faz nada**.
+    /// ⚠️ E a cena 91 deixou de viver dez centímetros acima de um penhasco: com
+    /// `RISE = 2,0` e pranchas de 0,15 a margem passou de 0,10 para **0,25**, e
+    /// a borda que sobrou é a honesta (ali o personagem não cabe).
     fn retire_drops(&mut self) {
         // O caso comum é ninguém a descer, e ele não lê um byte.
         if self.player_drop.is_empty() {
@@ -179,20 +191,23 @@ impl PhysicsBridge {
         }
         let mut done: Vec<Entity> = Vec::new();
         for (&entity, &platform) in &self.player_drop {
-            let cleared = match self.bodies.get(&entity) {
+            let Some(b) = self.bodies.get(&entity) else {
                 // O corpo morreu: não há descida a manter.
-                None => true,
-                Some(b) => match (
-                    self.world.collider_aabb(platform),
-                    self.world.body_aabb(b.handle),
-                ) {
-                    (Some((plat_mins, _)), Some((_, body_maxs))) => body_maxs[1] <= plat_mins[1],
-                    // A plataforma (ou o corpo) deixou de existir — o mesmo
-                    // veredito, pela mesma razão.
-                    _ => true,
-                },
+                done.push(entity);
+                continue;
             };
-            if cleared {
+            // ── A GEOMETRIA: já passei? ──────────────────────────────────────
+            let past = match (
+                self.world.collider_aabb(platform),
+                self.world.body_aabb(b.handle),
+            ) {
+                (Some((plat_mins, _)), Some((_, body_maxs))) => body_maxs[1] <= plat_mins[1],
+                // A plataforma (ou o corpo) deixou de existir — o mesmo
+                // veredito, pela mesma razão.
+                _ => true,
+            };
+            // ── A EVIDÊNCIA: e a prancha já parou de me pegar? ───────────────
+            if past && !self.world.drop_is_catching(b.handle) {
                 done.push(entity);
             }
         }

@@ -171,3 +171,25 @@ fn the_solid_side_follows_the_platforms_own_rotation() {
         );
     }
 }
+
+/// **O cone da descida e o cone da regra one-way são o MESMO número.**
+///
+/// A descida (W20) lê o cone sem chamar `update_as_oneway_platform`, porque ele
+/// **trava** no primeiro contato do par e chamá-lo durante a travessia gravaria
+/// *permitido* — a prancha voltaria a pegar o personagem no tique seguinte à
+/// aposentadoria. O que as duas partilham é o CONE; o que não partilham é o
+/// latch, e é essa a única diferença.
+///
+/// ⚠️ Este gate existe para que ela continue a ser a única: `ALLOWED_COS` é um
+/// literal (o caminho determinista não aceita transcendental de plataforma), e
+/// um literal só continua certo enquanto alguém o confere contra o ângulo.
+#[test]
+fn the_allowed_cone_constant_is_the_cosine_of_the_angle() {
+    let from_angle = ph2d_physics::ALLOWED_ANGLE.cos();
+    let pinned = ph2d_physics::ALLOWED_COS;
+    assert!(
+        (from_angle - pinned).abs() <= f32::EPSILON,
+        "o cone da descida ({pinned}) tem de ser cos({}) = {from_angle}",
+        ph2d_physics::ALLOWED_ANGLE
+    );
+}

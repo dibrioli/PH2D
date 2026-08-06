@@ -547,6 +547,11 @@ e o passo é abrir a §14 e ler o número. **Nenhum bump** (`PROJECT_SCHEMA` fic
 
 ## §7 — Smoke
 
+⚠️ **`PH2D_PHYSICS_SMOKE=97` — AS DUAS BORDAS DA DESCIDA (W20).** Tres escadas
+de pranchas identicas; so o VAO muda (1,80 · 2,00 · 1,60). O meio e o controle;
+a esquerda e o vao que ANTES nao descia; a direita e o limite honesto. E aperte
+`B`: enquanto ele atravessa, toda prancha da cena fica apagada.
+
 ```
 env PH2D_PHYSICS_SMOKE=81 cargo run -p ph2d-host-desktop --release   # rampa 30° (W11c)
 env PH2D_PHYSICS_SMOKE=88 cargo run -p ph2d-host-desktop --release   # o par 40°/50°
@@ -647,6 +652,129 @@ de passar por ali deliberadamente, julgando **as duas bordas ao mesmo tempo**.
 (`74d4ea5d…`, 108 corpos, debug ≡ release) · zero `Cargo.toml` · nenhum ADR.
 
 ---
+
+## §5h — W20: a descida morre quando para de fazer trabalho (cena `=97`)
+
+A W19 mediu duas bordas e reprovou três leis. Esta mede o **mecanismo** e fecha a
+borda de cima — a que na tela se lê como *o botão não faz nada*.
+
+### O mecanismo, por ablação
+
+⚠️ **Não era o raio, era o SOLVER.** A retirada faz duas coisas (o mapa cai, e o
+bit do solver é limpo) e separá-las decide:
+
+| ablação | o que acontece |
+|---|---|
+| nunca aposentar | desce um degrau limpo (`−0,797`) |
+| mapa cai, **bit fica** | desce um degrau limpo (`−0,7973`) |
+| a lei de hoje | **arremessado de volta ao degrau de cima** |
+
+O parceiro do contato é a prancha que ele acabou de deixar, e o pico é de
+**0,3267 N·s entre sub-passos** — com o `impulse` de fim de tique a ler
+`0,0000`, que é a lição da W-ImpactForce outra vez. ⚠️ **E a caixa mente ali:**
+o corpo estava **0,016 m abaixo** da prancha, sem sobreposição nenhuma. É por
+isso que toda lei geométrica tentada aqui morreu.
+
+### A lei, e por que as duas metades
+
+`retire_drops` aposenta quando **já passei** *e* **a prancha já parou de me
+pegar**. A segunda metade vem de um livro-razão novo (`world::oneway::DropLedger`)
+que o gancho preenche durante o `step` e a ponte lê no topo do tique seguinte.
+
+⚠️ **A evidência sozinha REGRIDE.** Quando a prancha fica inteiramente DENTRO da
+caixa do personagem não existe *lado*, e a normal do manifold **oscila** — o
+ponto de contato salta de `−0,486` para `+0,490` em dois tiques. Uma lei só de
+evidência aposenta no primeiro "não" dessa oscilação e a prancha o empurra: com
+pranchas de `0,10` nos vãos `1,10`–`1,25` ele **deixava de descer**. A geometria
+não oscila, e é ela que segura a evidência.
+
+⚠️ **A leitura é SÓ-LEITURA do cone.** `update_as_oneway_platform` **trava**
+(`user_data`) no primeiro contato do par; chamá-lo durante a travessia gravaria
+*permitido* e a prancha o pegaria no tique seguinte à aposentadoria. O que as
+duas partilham é o **cone** (`ALLOWED_COS`, literal exato, gateado contra o
+ângulo); o que não partilham é o **latch**, e essa é a única diferença.
+
+### O resultado, célula a célula
+
+| meia-espessura | vão | antes (W19) | agora |
+|---|---|---|---|
+| 0,15 | 1,60 – 1,70 | fantasma | fantasma |
+| 0,15 | **1,75 – 1,85** | **ARREMESSADO** | **ok** |
+| 0,15 | 1,90 + | ok | ok |
+| 0,10 | 1,50 – 1,60 | fantasma | fantasma |
+| 0,10 | 1,65 + | ok | ok |
+
+**Três células curadas, nenhuma outra movida.** E a cena `=91` deixou de viver
+dez centímetros acima de um penhasco: a margem passou de `0,10` para `0,25`.
+
+⚠️ **O que resta ganhou uma LEI, não uma faixa:** a descida sobrevive
+**exactamente** onde a caixa de repouso ainda SOBREPÕE a prancha — bicondicional,
+sem exceção nas duas espessuras varridas, e gateado. Ali a prancha *de facto* o
+pegaria (o cone devolve `+1,000`, medido), então as saídas eram *fantasma* ou
+*cuspido*.
+
+### A metade visível
+
+⚠️ **Uma prancha fantasma era indistinguível de uma sólida** — e é essa a forma
+como toda esta classe de defeito ficou silenciosa. O contorno de toda plataforma
+one-way passa a apagar-se enquanto alguém a atravessa (`PASSABLE_RGBA`), pela
+mesma família do par idle/active do sensor.
+
+### Gates e mutações
+
+5 gates em `platform_drop_ladder.rs` (incluindo o bicondicional sobre 10
+células), 2 no overlay, 1 no cone. **5 mutações, 4 sangram:**
+
+| mutação | efeito |
+|---|---|
+| sem a metade da evidência | o gate do arremesso e o da lei, VERMELHOS |
+| sem a metade da geometria | quatro gates VERMELHOS |
+| o livro-razão relata SEM o cone | ⚠️ **sobrevive — ver abaixo** |
+| o livro-razão nunca relata | dois gates VERMELHOS |
+| o livro-razão não é limpo por tique | o controle e a lei, VERMELHOS |
+
+⚠️ **A sobrevivente está documentada, não escondida.** Relatar *"existe manifold"*
+em vez de *"a prancha pegaria"* dá a mesma resposta em toda célula varrida,
+porque a vida do manifold e a do cone coincidem nessas geometrias. O cone fica
+porque sem ele a duração da descida passaria a ser um fato sobre a **margem do
+broad phase**, não sobre a física — e um número que ninguém escolheu governando
+um gesto é como esta feature adoeceu da primeira vez.
+
+### Números
+
+`PROJECT_SCHEMA` fica em **59** · registro do `ph2d-physics-ecs` **fica em 28** ·
+gizmo ids **nenhum novo** (próximo livre segue **974**) · `physics_ecs_c9`
+**`74d4ea5d…`, 108 corpos, byte-idêntico** (a saída do solver não se move — só o
+instante em que o bit cai) · **zero `Cargo.toml`** · **nenhum ADR** · contrato
+congelado intacto.
+
+⚠️ **Superfície pública nova:** `ph2d_physics::{ALLOWED_ANGLE, ALLOWED_COS}` ·
+`PhysicsWorld::drop_is_catching` · `PhysicsBridge::{player_is_dropping,
+any_player_is_dropping}` · `physics_overlay::outlines` e `::draw` ganharam um
+parâmetro `ghost`.
+
+⚠️ **LOC:** `world.rs` cruzou 700 com o campo novo ⇒ `spawn_world_anchor` foi
+para o irmão `world/convenience.rs`, que já é a casa dos construtores que se
+pedem por um ponto em vez de por um `BodyDesc`. E `physics_overlay_scene_tests.rs`
+cruzou 600 ⇒ os dois gates da prancha atravessada saíram por ASSUNTO para
+`physics_overlay_passable_tests.rs`.
+
+⚠️ **E um arch-gate alheio foi RE-ANCORADO, não contornado:**
+`the_overlay_is_handed_the_tool_marks` fatiava `render_loop/mod.rs` por
+**distância em bytes** (`&src[i..i + 3000]`), e um comentário novo com um `⚠️`
+— três bytes — pôs o corte no meio de um caractere e o fez **PANICAR** em vez de
+julgar. A janela passou a acabar onde a **chamada** acaba, que é a propriedade
+que ele percorre; mutação re-provada.
+
+### O que segue aberto (a cura conhecida da borda de baixo)
+
+O bit da descida viaja no **CORPO** e vale para **toda** plataforma one-way da
+cena, então enquanto a descida da faixa que sobra vive, **nenhuma** prancha é
+sólida para ele. A cura é a descida **por-PLATAFORMA**: o gancho a consultar um
+conjunto de pares em vez de um bit no `user_data`, e o gesto de armar a passar
+toda plataforma que o corpo SOBREPÕE (não só a de baixo dos pés). Isso muda a
+assinatura do gancho e quer wave própria — e o gate do fantasma fica **vermelho**
+no dia em que ela chegar, de propósito.
 
 ## §8 — Aberto, com o preço ao lado
 

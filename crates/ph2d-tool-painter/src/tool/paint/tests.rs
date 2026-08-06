@@ -20,6 +20,8 @@ mod measure_pendown_cost; // o que COMEÇAR um traço custa (doc 28 §4.5); irm�
 mod measure_route_cost; // quem RODA o deposito, e quanto essa escolha custa (doc 28)
 #[path = "measure_shape_cost.rs"]
 mod measure_shape_cost; // o que um MOVE de SHAPE EDITOR custa — o re-stamp da figura inteira
+#[path = "measure_shape_system.rs"]
+mod measure_shape_system; // …e quanto disso NÃO é o depósito — a máquina de shape sozinha
 #[path = "measure_stroke_extent.rs"]
 mod measure_stroke_extent; // o pen-up é função do que o traço COBRE — a fixture que faltava (§5.65)
 #[path = "measure_stroke_owners.rs"]
@@ -38,6 +40,8 @@ mod measure_wetpaint_cost; // de que é feito um MOVE de Wet Paint (doc 28 §7, 
 mod measure_window_premise;
 #[path = "stamp_banded_tests.rs"]
 mod stamp_banded_tests; // o lote em bandas pinta o que o laco serial pintava (doc 28 §5.78)
+#[path = "stamp_banded_work_tests.rs"]
+mod stamp_banded_work_tests; // ...e as bandas sao cortadas por TRABALHO - o lote ESPARSO
 #[path = "undo_confine_tests.rs"]
 mod undo_confine_tests; // um Ctrl+Z repinta so' o que ele mudou (doc 28 §5.63)
 #[path = "undo_live_base_tests.rs"]

@@ -135,7 +135,7 @@ pub(super) fn publish(
         let Some(name) = entity.get::<Name>().map(|n| n.0.clone()) else {
             continue; // unnamed: there is nothing for the artist to type into the node
         };
-        if name.trim().is_empty() {
+        if name.trim().is_empty() || is_reserved(&name) {
             continue;
         }
         let pts = polyline(scene, xforms, id);
@@ -143,5 +143,69 @@ pub(super) fn publish(
             continue; // not a curve: a single point has no arc to walk
         }
         cook.set_external(name, Stream::new(pts.len()).with("P", Column::Vec2(pts)));
+    }
+}
+
+/// **The `$` namespace belongs to the EDITOR, never to an artist's object.**
+///
+/// Every external is keyed by a name the artist typed, and the editor now publishes
+/// values of its own into the same table (the cursor, and whatever follows it). With
+/// one flat namespace, the day somebody names a sprite `$cursor` their sprite silently
+/// BECOMES the mouse — no error, no warning, and a `motion.look_at` aiming at a thing
+/// that moves when the artist moves the pointer.
+///
+/// So the shell refuses to publish an artist name inside the namespace instead of
+/// hoping the collision never happens. Refusing is visible (the object stops appearing
+/// in the picker); the collision is not.
+pub(super) fn is_reserved(name: &str) -> bool {
+    ph2d_nodegraph::external::is_reserved(name)
+}
+
+/// Publish the **cursor** as an external, so a node can aim at the mouse.
+///
+/// The cursor is not in the graph and cannot be: it is not a document value, it is an
+/// editor input that changes every frame. Publishing it into the table the cook already
+/// reads is what lets `motion.look_at` name it as a target WITHOUT the node learning
+/// what a window or a camera is.
+///
+/// ⚠️ Runs AFTER `publish` (which clears) and after the objects, for the same reason
+/// they run in that order — and it is a one-point stream, so the node's `centroid`
+/// reads it as the point it is.
+pub(super) fn publish_cursor(
+    cook: &mut ph2d_nodegraph::cook::Cook,
+    camera: &ph2d_render::Camera2d,
+    cursor: (f32, f32),
+    window: ph2d_host::WindowSize,
+) {
+    let [x, y] = camera.screen_to_world(cursor, window);
+    cook.set_external(
+        ph2d_nodegraph::external::CURSOR.to_string(),
+        Stream::new(1).with("P", Column::Vec2(vec![[x, y]])),
+    );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// **The editor's namespace is refused to artist names, at the publisher.**
+    ///
+    /// Without this an object called `$cursor` overwrites the mouse — or, depending on
+    /// publish order, the mouse overwrites the object — and a `motion.look_at` aims at
+    /// whichever won. Nothing errors, nothing warns; the artist sees a sprite that
+    /// follows the pointer and has no way to ask why.
+    ///
+    /// The refusal is the SHELL's, not the node's, because the shell is the only side
+    /// that knows a name came from a human.
+    #[test]
+    fn the_shell_refuses_to_publish_an_artist_name_in_the_reserved_namespace() {
+        assert!(is_reserved("$cursor"));
+        assert!(is_reserved(" $anything"));
+        assert!(!is_reserved("Sun"));
+        // And it is the SUBSTRATE's rule, not a second copy: the two answers cannot
+        // drift, because there is only one.
+        for n in ["$cursor", " $x", "Sun", "", "a$b"] {
+            assert_eq!(is_reserved(n), ph2d_nodegraph::external::is_reserved(n));
+        }
     }
 }

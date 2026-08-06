@@ -20,7 +20,7 @@
 
 #![forbid(unsafe_code)]
 
-use ph2d_node_registry::{NodeRegistry, RegistryError};
+use ph2d_node_registry::{NodeRegistry, ParamGate, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream, par_build};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
@@ -70,9 +70,74 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "offset",
             default: 0.0,
         },
+        // WHERE the target comes from: 0 the value inputs, 1 a named object,
+        // 2 the cursor. Default 0 ⇒ every document written before this reads
+        // exactly what it read before.
+        ParamSpec {
+            name: "mode",
+            default: 0.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
+
+/// **Where a `motion.look_at` gets the point it aims at.**
+///
+/// The node could always aim anywhere — the target is a value INPUT, so a pair of
+/// `value.*` nodes drives it. What it could not do is aim at something the artist
+/// can NAME or at the cursor, which is the whole reason the node exists in every
+/// other motion-graphics tool (Enio: the node shipped *"sem alvo por nome/mouse"*).
+/// Wiring two LFOs to make arrows follow the mouse is not a workaround; it is a
+/// thing an artist cannot do at all, because the cursor is not in the graph.
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+pub enum TargetMode {
+    /// The `target_x` / `target_y` value inputs — the original behaviour, and the
+    /// default, so no document moves.
+    Point,
+    /// The centroid of a NAMED object the app published (the `target` text param,
+    /// picked from the live list — the same channel `motion.path` walks).
+    Object,
+    /// The cursor, published by the editor each frame under
+    /// [`ph2d_nodegraph::external::CURSOR`] — the reserved namespace lives beside
+    /// the table, not inside whichever node reads one of its values first.
+    Cursor,
+}
+
+impl TargetMode {
+    /// From the `mode` param. An out-of-range index falls back to `Point` — a
+    /// visible no-op beats aiming somewhere nobody asked for.
+    #[must_use]
+    pub fn of(v: f32) -> Self {
+        match v.round() as i32 {
+            1 => Self::Object,
+            2 => Self::Cursor,
+            _ => Self::Point,
+        }
+    }
+}
+
+/// The mean of an external's `P` column — the point an object "is at".
+///
+/// `None` for an external that is absent or carries no positions, and that is the
+/// honest answer: the node then falls back to its value inputs rather than aiming
+/// at the origin, which would look like a deliberate choice the artist did not make.
+fn centroid(s: &Stream) -> Option<[f32; 2]> {
+    let Some(Column::Vec2(p)) = s.get("P") else {
+        return None;
+    };
+    if p.is_empty() {
+        return None;
+    }
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "a count of published points; the mean is a screen position"
+    )]
+    let n = p.len() as f32;
+    let sum = p
+        .iter()
+        .fold([0.0f32, 0.0], |a, q| [a[0] + q[0], a[1] + q[1]]);
+    Some([sum[0] / n, sum[1] / n])
+}
 
 /// `atan2(y, x)` in radians, transcendental-free (Rajan rational approximation of
 /// `atan` on `[0,1]`, folded across the eight octants). ~0.0015 rad error, only
@@ -170,7 +235,12 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
     params: &["offset"],
     count_law: None,
     variant_by_param: None,
-    applicable: None,
+    // ⚠️ The kernel reads the target from the two value PORTS, and the Object /
+    // Cursor modes resolve theirs from the external table, which the device does
+    // not see. Refusing is the honest answer (the ADR-0155 precedent: a document
+    // the lowering cannot express recuses to the CPU) — the named cost is that a
+    // graph aiming at an object or the cursor loses GPU residency for this node.
+    applicable: Some(|p| TargetMode::of(p("mode")) == TargetMode::Point),
 };
 
 fn scalar_col(s: &Stream, name: &str) -> Vec<f32> {
@@ -199,8 +269,30 @@ impl NodeOp for MotionLookAt {
 
     fn eval(&self, ctx: &mut EvalCtx<'_>) {
         let offset = ctx.param("offset");
-        let tx = scalar_col(ctx.input(1), VALUE_COL);
-        let ty = scalar_col(ctx.input(2), VALUE_COL);
+        let mode = TargetMode::of(ctx.param("mode"));
+        // ⚠️ The named target is read BEFORE `ctx.input(0)`: `external` takes `&mut
+        // self` and `input` hands out a borrow that outlives the call, so resolving
+        // afterwards would not compile. Reading it first also means the aim is the
+        // object's place THIS frame, not a value stashed at spawn.
+        let aim = match mode {
+            TargetMode::Point => None,
+            TargetMode::Object => ctx
+                .text_param("target")
+                .map(str::to_owned)
+                .filter(|n| !n.trim().is_empty())
+                .and_then(|n| centroid(ctx.external(&n))),
+            TargetMode::Cursor => centroid(ctx.external(ph2d_nodegraph::external::CURSOR)),
+        };
+        let (tx, ty) = match aim {
+            // Broadcast: one point for the whole field. A length-1 column is what
+            // `target_at` already treats as "the same target for everybody", so the
+            // three modes meet in ONE aiming loop instead of three.
+            Some([x, y]) => (vec![x], vec![y]),
+            None => (
+                scalar_col(ctx.input(1), VALUE_COL),
+                scalar_col(ctx.input(2), VALUE_COL),
+            ),
+        };
         let input = ctx.input(0);
         let n = input.count();
         let p: Vec<[f32; 2]> = match input.get("P") {
@@ -241,18 +333,53 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_gates(MANIFEST.id, PARAM_GATES);
     Ok(())
 }
 
 use ph2d_node_registry::{ParamUiHint, ParamWidget};
 
-static PARAM_HINTS: &[ParamUiHint] = &[ParamUiHint {
-    param: "offset",
-    label: "Offset",
-    min: -180.0,
-    max: 180.0,
-    step: 1.0,
-    widget: ParamWidget::Slider,
+static PARAM_HINTS: &[ParamUiHint] = &[
+    ParamUiHint {
+        param: "mode",
+        label: "Aim At",
+        min: 0.0,
+        max: 2.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: &["Point", "Object", "Cursor"],
+        },
+    },
+    // The named target. A TEXT param, so it never touches the frozen manifest
+    // (doc 33) — the same channel and the same picker `motion.path` uses.
+    ParamUiHint {
+        param: "target",
+        label: "Object",
+        min: 0.0,
+        max: 0.0,
+        step: 0.0,
+        widget: ParamWidget::Source,
+    },
+    ParamUiHint {
+        param: "offset",
+        label: "Offset",
+        min: -180.0,
+        max: 180.0,
+        step: 1.0,
+        // ⚠️ `Angle`, not `Slider`: this is degrees, and the widget answering the
+        // unit question first is what makes a `deg` suffix impossible to get wrong
+        // (doc 88 — `unit_of` lets no table entry contradict an `Angle`).
+        widget: ParamWidget::Angle,
+    },
+];
+
+/// The picker is offered only where it means something: in `Point` mode the target
+/// is the value inputs and in `Cursor` mode it is the mouse, so an object name there
+/// is a control the cook will never read.
+static PARAM_GATES: &[ParamGate] = &[ParamGate {
+    param: "target",
+    when: "mode",
+    values: &[1],
 }];
 
 #[cfg(test)]
@@ -407,3 +534,7 @@ mod tests {
         assert!(s.get("P").is_some(), "P passes through");
     }
 }
+
+#[cfg(test)]
+#[path = "target_mode_tests.rs"]
+mod target_mode_tests;

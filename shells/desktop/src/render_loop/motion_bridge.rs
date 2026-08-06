@@ -61,6 +61,9 @@ mod objects;
 // The membrane's object-bake wrappers, re-exported so `motion_bridge::publish_objects`
 // / `bake_objects` / `bake_flip_objects` resolve unchanged for the render loop.
 pub(super) use objects::{bake_flip_objects, bake_objects, publish_objects};
+// The cursor half of the same table (): the editor value a
+// document cannot hold. Re-exported beside the object publishes it must follow.
+
 // The named-group membership predicate, re-exported pub(crate) so the object/flip bakes'
 // `select_present` (top-level shell modules) reach it. It is the SAME tree relation
 // `objects::group_externals` descends, and the object-bake gate pins that they agree.
@@ -528,6 +531,23 @@ pub(super) fn publish_shapes(
     xforms: &ph2d_vec_scene::VecXforms,
 ) {
     shapes::publish(&mut motion.pump.cook, sim, scene, map, xforms);
+}
+
+/// Publish the world-space **cursor** into the same external table
+/// ([`ph2d_nodegraph::external::CURSOR`]) — the editor input a document cannot hold,
+/// and what lets `motion.look_at` aim at the mouse.
+///
+/// ⚠️ Runs LAST of the three publishes: `publish_shapes` clears the table and the
+/// objects append to it, so an earlier cursor would be wiped by the shapes of the
+/// same frame. The `$` namespace it lands in is the one the artist-name publishes
+/// refuse (`shapes::is_reserved`), so the two can never collide.
+pub(super) fn publish_cursor(
+    motion: &mut MotionState,
+    camera: &ph2d_render::Camera2d,
+    cursor: (f32, f32),
+    window: ph2d_host::WindowSize,
+) {
+    shapes::publish_cursor(&mut motion.pump.cook, camera, cursor, window);
 }
 
 // The object-bake wiring (`publish_objects`/`bake_objects`/`bake_flip_objects`,

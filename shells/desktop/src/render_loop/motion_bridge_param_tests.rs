@@ -443,3 +443,136 @@ fn a_selected_node_still_wins_the_params_panel() {
 
     ph2d_panel_motion_graph::set_graph_selection(Vec::new());
 }
+
+/// **A palette is authored as COLOURS, and it shrinks with its own count.**
+///
+/// The Enio named this node as one of the two done badly: `motion.color_array` painted
+/// THIRTEEN bare sliders (`C0 R` / `C0 G` / `C0 B` × 4 + the count), whose numbers are
+/// LINEAR RGB — the wire's unit, not a colour anybody can picture. Now each slot is one
+/// swatch that opens the OKLCH picker, exactly as `motion.tint` already did.
+///
+/// The second half is the one a screenshot would not show: a slot BEYOND the count is a
+/// control the cook will never read (`cycle` clamps to `colors`), so it must not be
+/// offered. The gate drives the count down and checks the swatches DISAPPEAR — presence
+/// and absence, because a gate that only counts rows at full width passes with the
+/// gating deleted.
+#[test]
+fn the_palette_is_four_swatches_that_shrink_with_the_colour_count() {
+    use ph2d_panel_motion_params::ParamRow;
+    let mut motion = MotionState::new();
+    let ca = motion.doc.graph.add_node("motion.color_array");
+    ph2d_panel_motion_graph::set_graph_selection(vec![ca.0]);
+
+    let swatches = |motion: &MotionState| -> Vec<[&'static str; 4]> {
+        build_params_snapshot(motion, ProjectSettings::default())
+            .expect("resolvable")
+            .rows
+            .into_iter()
+            .filter_map(|r| match r {
+                ParamRow::Color(c) => Some(c.channels),
+                _ => None,
+            })
+            .collect()
+    };
+    // Full width: four swatches, each naming its own RGBA quad — and NOT one bare
+    // scalar row for any colour channel (that is the defect, stated directly).
+    assert_eq!(
+        swatches(&motion),
+        vec![
+            ["c0_r", "c0_g", "c0_b", "c0_a"],
+            ["c1_r", "c1_g", "c1_b", "c1_a"],
+            ["c2_r", "c2_g", "c2_b", "c2_a"],
+            ["c3_r", "c3_g", "c3_b", "c3_a"],
+        ]
+    );
+    let scalars: Vec<&str> = build_params_snapshot(&motion, ProjectSettings::default())
+        .expect("resolvable")
+        .rows
+        .iter()
+        .filter_map(|r| match r {
+            ParamRow::Scalar(x) => Some(x.name),
+            _ => None,
+        })
+        .collect();
+    assert!(
+        !scalars.iter().any(|n| n.starts_with("c0_")),
+        "a colour channel is still a bare slider: {scalars:?}"
+    );
+
+    // The count is a whole number of slots, so it is a Seed-free INTEGER row.
+    assert!(
+        build_params_snapshot(&motion, ProjectSettings::default())
+            .expect("resolvable")
+            .rows
+            .iter()
+            .any(|r| matches!(r, ParamRow::Scalar(x) if x.name == "colors" && x.integer)),
+        "`colors` counts slots — a fractional palette is not a thing"
+    );
+
+    // Shrink it: the slots the cycle stops reading stop being offered.
+    for (count, want) in [(3.0, 3), (2.0, 2)] {
+        motion.doc.graph.set_param(ca, "colors", count);
+        assert_eq!(
+            swatches(&motion).len(),
+            want,
+            "with colors={count} the panel must offer exactly {want} swatches"
+        );
+    }
+    ph2d_panel_motion_graph::set_graph_selection(Vec::new());
+}
+
+/// **A look-at can be told WHERE to look, and the picker only shows where it means
+/// something.**
+///
+/// The other node the Enio named: `motion.look_at` could aim anywhere and could not
+/// aim at anything the artist can NAME or at the cursor — the two things the node is
+/// for in every other tool. Wiring two `value.*` nodes to follow the mouse is not a
+/// workaround, it is impossible, because the cursor is not in the graph.
+///
+/// The gate is presence AND absence: an object picker offered in Point or Cursor mode
+/// is a control the cook will never read, which is the dead row this codebase keeps one
+/// table per menu to prevent.
+#[test]
+fn the_look_at_picks_its_target_and_offers_the_picker_only_in_object_mode() {
+    use ph2d_panel_motion_params::ParamRow;
+    let mut motion = MotionState::new();
+    let la = motion.doc.graph.add_node("motion.look_at");
+    ph2d_panel_motion_graph::set_graph_selection(vec![la.0]);
+
+    let rows = |motion: &MotionState| {
+        build_params_snapshot(motion, ProjectSettings::default())
+            .expect("resolvable")
+            .rows
+    };
+    // The mode is a NAMED choice, not an index the artist has to decode.
+    let modes = rows(&motion)
+        .into_iter()
+        .find_map(|r| match r {
+            ParamRow::Enum(e) if e.name == "mode" => Some(e.labels),
+            _ => None,
+        })
+        .expect("`Aim At` is a named selector");
+    assert_eq!(modes, ["Point", "Object", "Cursor"]);
+
+    // The offset is DEGREES and says so — an `Angle` row, which no unit table can
+    // contradict (doc 88).
+    assert!(
+        rows(&motion)
+            .iter()
+            .any(|r| matches!(r, ParamRow::Angle(a) if a.name == "offset")),
+        "the offset is an angle, not a bare number"
+    );
+
+    let has_picker = |motion: &MotionState| {
+        rows(motion)
+            .iter()
+            .any(|r| matches!(r, ParamRow::Source(s) if s.param == "target"))
+    };
+    // Default (Point): no object to name.
+    assert!(!has_picker(&motion), "Point aims at the value inputs");
+    motion.doc.graph.set_param(la, "mode", 1.0);
+    assert!(has_picker(&motion), "Object mode offers the name picker");
+    motion.doc.graph.set_param(la, "mode", 2.0);
+    assert!(!has_picker(&motion), "the Cursor is not an object name");
+    ph2d_panel_motion_graph::set_graph_selection(Vec::new());
+}

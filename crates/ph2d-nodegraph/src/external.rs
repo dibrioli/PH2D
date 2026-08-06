@@ -43,6 +43,39 @@
 use crate::attr::{Column, Stream};
 use std::collections::BTreeMap;
 
+/// **The prefix the EDITOR reserves for values of its own.**
+///
+/// Every external is keyed by a name the ARTIST typed — that is the whole design of
+/// this channel. But the editor also has values a graph wants and a document cannot
+/// hold: the cursor, and whatever follows it. They arrive through the same door,
+/// because there is only one door.
+///
+/// With one flat namespace that is a collision waiting for a name: somebody calls a
+/// sprite `$cursor` and their sprite silently BECOMES the mouse — no error, no
+/// warning, just a `motion.look_at` aiming at a thing that moves with the pointer.
+///
+/// So the prefix is declared HERE, beside the table, rather than inside whichever
+/// node happens to read one of these values first. The rule has two halves and both
+/// belong to the publisher: the editor publishes INTO the namespace, and it refuses
+/// to publish an artist's name that is already in it.
+pub const RESERVED_PREFIX: char = '$';
+
+/// Is `name` inside the editor's reserved namespace? ([`RESERVED_PREFIX`])
+///
+/// Leading whitespace is trimmed first, so ` $cursor` cannot slip past a check that
+/// `$cursor` fails — the publishers already trim before rejecting an empty name.
+#[must_use]
+pub fn is_reserved(name: &str) -> bool {
+    name.trim_start().starts_with(RESERVED_PREFIX)
+}
+
+/// The external the editor publishes the **world-space cursor** under.
+///
+/// The cursor is not a document value and cannot become one: it is an editor input
+/// that changes every frame. Naming it here is what lets a node aim at the mouse
+/// without learning what a window or a camera is.
+pub const CURSOR: &str = "$cursor";
+
 /// One published value, and the revision that IS its content.
 #[derive(Clone, Debug, PartialEq)]
 pub struct External {
@@ -109,4 +142,36 @@ pub fn revs_of(all: &All, names: &[String]) -> u64 {
         }
     }
     h
+}
+
+#[cfg(test)]
+mod reserved_tests {
+    use super::*;
+
+    /// The namespace is a PREFIX rule, and the trim is load-bearing: the publishers
+    /// already trim before rejecting an empty name, so a name that survives their trim
+    /// must be judged after the same one — otherwise ` $cursor` publishes where
+    /// `$cursor` is refused, which is the collision with an extra step.
+    #[test]
+    fn the_reserved_namespace_is_a_trimmed_prefix() {
+        assert!(is_reserved("$cursor"));
+        assert!(is_reserved("  $cursor"));
+        assert!(is_reserved("$anything at all"));
+        assert!(!is_reserved("cursor"));
+        assert!(
+            !is_reserved("my $cursor"),
+            "only the FIRST character reserves"
+        );
+        assert!(!is_reserved(""));
+    }
+
+    /// The cursor's own name is inside the namespace it claims. Obvious, and it is the
+    /// half that would rot: rename the constant to something outside the prefix and the
+    /// editor happily publishes it into the artist's namespace, where an object can
+    /// take it over.
+    #[test]
+    fn the_cursor_lives_in_the_namespace_it_claims() {
+        assert!(is_reserved(CURSOR));
+        assert!(CURSOR.starts_with(RESERVED_PREFIX));
+    }
 }

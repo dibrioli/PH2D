@@ -160,6 +160,9 @@ pub(super) fn publish(
     // WHITE. ⚠️ A graph with a live vector recuses to the CPU cook — the GPU has no
     // `geometry_id` route (`motion_bridge_gpu::cook_publishes_live_geometry`).
     for (name, obj) in bakes.objects() {
+        if super::shapes::is_reserved(name) {
+            continue; // the editor's namespace (`motion_bridge_shapes::is_reserved`)
+        }
         cook.set_external(
             name.to_string(),
             appearance_vector(obj.size, [1.0, 1.0, 1.0, 1.0], obj.geometry_id),
@@ -172,6 +175,9 @@ pub(super) fn publish(
     // tell a baked Flip from a baked vector — the `source.object` node stays media-
     // agnostic. Objects publish after curves; the last write on a name clash wins.
     for (name, tile) in flip_bakes.tiles() {
+        if super::shapes::is_reserved(name) {
+            continue;
+        }
         cook.set_external(
             name.to_string(),
             appearance_tile(

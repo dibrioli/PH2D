@@ -5742,6 +5742,13 @@ impl crate::App {
             // external table — AFTER shapes (which clears it), so the cook sees
             // both curves and objects. The atlas resolves each sprite's tile.
             motion_bridge::publish_objects(motion, sim, renderer.atlas());
+            // ...and the CURSOR, last, into the same table (`ph2d_nodegraph::external`).
+            // It is not a document value — it is an editor input that changes every
+            // frame — so publishing it is what lets `motion.look_at` aim at the mouse
+            // without the node learning what a window or a camera is. Last, because
+            // `publish_shapes` CLEARS and the objects append; and in the reserved `$`
+            // namespace, which the artist-name publishes above refuse.
+            motion_bridge::publish_cursor(motion, camera, self.last_cursor, surface.size());
             motion_bridge::dispatch(
                 hero,
                 tools,

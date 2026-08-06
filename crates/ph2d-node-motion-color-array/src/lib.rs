@@ -11,7 +11,7 @@
 //! palette across the set. Transcendental-free (HR-5): a modulo lookup, no maths.
 //! `Effect::Pure`.
 
-use ph2d_node_registry::{NodeRegistry, RegistryError};
+use ph2d_node_registry::{NodeRegistry, ParamGate, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
@@ -102,6 +102,26 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "c3_b",
             default: 0.0,
         },
+        // The per-slot ALPHA. It was a hardcoded `1.0` in the palette until the
+        // swatch arrived, which was a LIMIT, not a decision: the `tint` column is
+        // Vec4, so the alpha already travelled — nobody could author it. Default
+        // 1.0 ⇒ every document written before this is byte-identical.
+        ParamSpec {
+            name: "c0_a",
+            default: 1.0,
+        },
+        ParamSpec {
+            name: "c1_a",
+            default: 1.0,
+        },
+        ParamSpec {
+            name: "c2_a",
+            default: 1.0,
+        },
+        ParamSpec {
+            name: "c3_a",
+            default: 1.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
@@ -134,10 +154,30 @@ impl NodeOp for MotionColorArray {
     fn eval(&self, ctx: &mut EvalCtx<'_>) {
         let colors = (ctx.param("colors").round() as i64).clamp(1, MAX_SLOTS) as usize;
         let palette = [
-            [ctx.param("c0_r"), ctx.param("c0_g"), ctx.param("c0_b"), 1.0],
-            [ctx.param("c1_r"), ctx.param("c1_g"), ctx.param("c1_b"), 1.0],
-            [ctx.param("c2_r"), ctx.param("c2_g"), ctx.param("c2_b"), 1.0],
-            [ctx.param("c3_r"), ctx.param("c3_g"), ctx.param("c3_b"), 1.0],
+            [
+                ctx.param("c0_r"),
+                ctx.param("c0_g"),
+                ctx.param("c0_b"),
+                ctx.param("c0_a"),
+            ],
+            [
+                ctx.param("c1_r"),
+                ctx.param("c1_g"),
+                ctx.param("c1_b"),
+                ctx.param("c1_a"),
+            ],
+            [
+                ctx.param("c2_r"),
+                ctx.param("c2_g"),
+                ctx.param("c2_b"),
+                ctx.param("c2_a"),
+            ],
+            [
+                ctx.param("c3_r"),
+                ctx.param("c3_g"),
+                ctx.param("c3_b"),
+                ctx.param("c3_a"),
+            ],
         ];
         let offset = scalar_first(ctx.input(1), VALUE_COL)
             .map(|v| v.round() as i64)
@@ -169,6 +209,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_gates(MANIFEST.id, PARAM_GATES);
     Ok(())
 }
 
@@ -181,32 +222,60 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         min: 2.0,
         max: 4.0,
         step: 1.0,
-        widget: ParamWidget::Slider,
+        // A whole number of slots. `unit_of` reads `IntSlider` as a Count, so it can
+        // never be told to scale by `pixels_per_meter`.
+        widget: ParamWidget::IntSlider,
     },
-    chan("c0_r", "C0 R"),
-    chan("c0_g", "C0 G"),
-    chan("c0_b", "C0 B"),
-    chan("c1_r", "C1 R"),
-    chan("c1_g", "C1 G"),
-    chan("c1_b", "C1 B"),
-    chan("c2_r", "C2 R"),
-    chan("c2_g", "C2 G"),
-    chan("c2_b", "C2 B"),
-    chan("c3_r", "C3 R"),
-    chan("c3_g", "C3 G"),
-    chan("c3_b", "C3 B"),
+    swatch("c0_r", "Color 1", ["c0_r", "c0_g", "c0_b", "c0_a"]),
+    swatch("c1_r", "Color 2", ["c1_r", "c1_g", "c1_b", "c1_a"]),
+    swatch("c2_r", "Color 3", ["c2_r", "c2_g", "c2_b", "c2_a"]),
+    swatch("c3_r", "Color 4", ["c3_r", "c3_g", "c3_b", "c3_a"]),
 ];
 
-const fn chan(param: &'static str, label: &'static str) -> ParamUiHint {
+/// One palette slot as a **swatch**, the `motion.tint` treatment.
+///
+/// The panel folds the four channels into a single row that opens the OKLCH picker,
+/// so the hint hangs off the RED channel and names the other three — the anchor is
+/// in its own list on purpose (`color_groups` collects the whole quad, and the
+/// builder emits the swatch before it skips the consumed members).
+///
+/// ⚠️ Until this wave these were TWELVE bare `Slider` rows labelled `C0 R` / `C0 G`
+/// / `C0 B` (Enio: *"13 sliders crus, sem swatch"*). The numbers were LINEAR RGB,
+/// which is the wire's unit and not a colour anybody can picture: `0.3` is not a
+/// third of the way to green, and no artist authors a palette by typing a
+/// transfer-function coordinate three times.
+const fn swatch(
+    param: &'static str,
+    label: &'static str,
+    channels: [&'static str; 4],
+) -> ParamUiHint {
     ParamUiHint {
         param,
         label,
         min: 0.0,
         max: 1.0,
         step: 0.01,
-        widget: ParamWidget::Slider,
+        widget: ParamWidget::Color { channels },
     }
 }
+
+/// **The palette shrinks with its own count.** `colors` says how many slots the
+/// cycle uses, so a slot beyond it is a swatch the artist can edit and the cook
+/// will never read — the dead control this codebase keeps one table per menu to
+/// prevent. Gating the ANCHOR is enough: the other three channels are folded into
+/// the swatch and never get a row of their own.
+static PARAM_GATES: &[ParamGate] = &[
+    ParamGate {
+        param: "c2_r",
+        when: "colors",
+        values: &[3, 4],
+    },
+    ParamGate {
+        param: "c3_r",
+        when: "colors",
+        values: &[4],
+    },
+];
 
 #[cfg(test)]
 mod tests {

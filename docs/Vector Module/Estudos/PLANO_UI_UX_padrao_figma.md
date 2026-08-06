@@ -967,10 +967,11 @@ dos 4.
 abre o painel, põe três formas de CONTROLE (a arte não é chrome) e **imprime quantos tokens o painel
 vai listar**; se for zero, PARE.
 
-**Aberto, e é o resto da W4b:** os **aliases** (`{color.brand.500}`) ⚠️ **não** foram construídos
-como variante do modelo, e a razão é uma lei deste repo: um variante sem porta que o produza é o
-`OverrideSlot` da W5a outra vez ([[feedback_a_capability_without_a_door_passes_every_gate]]) — eles
-nascem com o seu gesto ou não nascem · math · detecção de ciclo (que os aliases exigem) · DTCG · os
+**Aberto, e é o resto da W4b:** ~~os **aliases**~~ (**CONSTRUÍDOS — W4b.1, 2026-08-05**: eles
+nasceram COM o gesto, o botão de elo por linha, exactamente como esta nota exigia
+([[feedback_a_capability_without_a_door_passes_every_gate]]); ⚠️ a sintaxe `{color.brand.500}` NÃO
+foi construída e é decisão em aberto — o elo é apontado, não digitado, e um parser de referência
+textual é a porta do **math**, não do alias) · math · detecção de ciclo (que os aliases exigem) · DTCG · os
 tokens de ESCALA (a fronteira `const fn` acima) · e um readout de CONTRASTE (o `tokens.json` valida
 WCAG 2.2 AA nos gates, e um valor autorado pode quebrá-lo sem nada dizer).
 
@@ -1503,7 +1504,8 @@ escreveu**:
 | **W1** ✅ | booleana não-destrutiva, animável | +1 (**42**) | — | — | — | `=48` |
 | **W0** ✅ | a moldura | +1 (**43**) | — | — | — | `=49` |
 | **W4a** ✅ | o binding de token no documento + o modo re-veste | +1 (**44**) | — | — | — | `=51` |
-| **W4b/c** | tabela autorável (aliases/math/DTCG) + animar token | — | `DOC_VERSION`, seção | — | sim (indireção) | — |
+| **W4b.1** ✅ | **o ALIAS** — um token SEGUE outro, com detecção de ciclo na PORTA | `tokens_link_id` | `PROJECT_SCHEMA` 56→57 | — | **nenhum** | `=51` |
+| **W4b.2+/c** | o resto: math · DTCG · tokens de ESCALA (a fronteira `const fn`) · readout de CONTRASTE · animar token | — | `DOC_VERSION`, seção | — | sim (indireção) | — |
 | **W2** ✅ | auto layout | +2 (**46**) | — (W2a fica) | **taffy** | **0153** | `=50` |
 | **W3** ✅ | âncoras | +1 (**47**) | — | — | — | `=52` |
 | **W5a** ✅ | mestre + instância + override esparso | +2 (**50**) | — | — | — | `=53` |

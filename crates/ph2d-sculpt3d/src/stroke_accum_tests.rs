@@ -200,7 +200,10 @@ fn the_switch_is_inert_for_every_verb_that_does_not_stamp() {
 /// supera), e escreve TODOS sob o accumulate — que é precisamente a troca.
 #[test]
 fn the_switch_off_takes_the_envelope_road() {
-    assert!(!Brush::default().accumulate, "o default tem de ser DESARMADO");
+    assert!(
+        !Brush::default().accumulate,
+        "o default tem de ser DESARMADO"
+    );
     for (accumulate, idempotent) in [(false, true), (true, false)] {
         let mut mesh = sphere();
         let mut stroke = SculptStroke::default();

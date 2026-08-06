@@ -169,6 +169,25 @@ static BRUSH: &[Row] = &[
         set: |u, v| u.brush.pinch = v,
         show: |u| u.brush.verb == Verb::Crease,
     },
+    Row {
+        label: "panel.sculpt3d.alpha_scale",
+        slider: ids::SCULPT3D_ALPHA_SCALE,
+        chip: ids::SCULPT3D_ALPHA_SCALE_NUM,
+        // ⚠️ Os dois extremos são do MOTOR, não escolhidos aqui: eles saem da lei
+        // das dez arestas (`ph2d_sculpt3d::DEFAULT_ALPHA_SCALE`), e um literal
+        // nesta tabela seria a segunda cópia deles.
+        min: ph2d_sculpt3d::MIN_ALPHA_SCALE,
+        max: ph2d_sculpt3d::MAX_ALPHA_SCALE,
+        step: 0.01, // LITERAL-PX-OK: passo em unidades de objeto, não métrica de layout
+        decimals: 2,
+        get: |u| u.brush.alpha_scale,
+        set: |u, v| u.brush.alpha_scale = v,
+        // ⚠️ **A row some sem padrão armado**, e não é cosmético: o número é o
+        // tamanho de uma feature que não existe. É o mesmo mecanismo das duas
+        // pistas de lâmpada sob um matcap — uma row condicional é PULADA, nunca
+        // pintada apagada, porque um controle que desenha e não responde mente.
+        show: |u| u.brush.alpha.is_some(),
+    },
 ];
 
 /// Como a forma é LIDA — a cavidade e a lâmpada.

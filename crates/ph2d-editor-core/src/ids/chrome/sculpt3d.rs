@@ -82,6 +82,27 @@ pub const SCULPT3D_PINCH: NodeId = hash_node_id("sculpt3d.pinch");
 /// Chip ligado a [`SCULPT3D_PINCH`].
 pub const SCULPT3D_PINCH_NUM: NodeId = hash_node_id("sculpt3d.pinch_num");
 
+/// **O PADRÃO que decide onde, dentro da pegada, o verbo age** — a primeira
+/// opção é NENHUM e as outras são os padrões de `ph2d_sculpt3d::Alpha::ALL`.
+///
+/// ⚠️ O tamanho é `Alpha::ALL.len() + 1`, e o `+ 1` é o pincel liso — que **não**
+/// é um padrão. É a mesma aritmética do [`SCULPT3D_MATCAP`], e pelo mesmo
+/// motivo: um chip a mais pinta uma opção que o motor não tem, um a menos deixa
+/// um padrão inalcançável. Gateado.
+pub const SCULPT3D_ALPHA: [NodeId; 7] = [
+    hash_node_id("sculpt3d.alpha.none"),
+    hash_node_id("sculpt3d.alpha.0"),
+    hash_node_id("sculpt3d.alpha.1"),
+    hash_node_id("sculpt3d.alpha.2"),
+    hash_node_id("sculpt3d.alpha.3"),
+    hash_node_id("sculpt3d.alpha.4"),
+    hash_node_id("sculpt3d.alpha.5"),
+];
+/// Tamanho de uma feature do alpha, em unidades de objeto.
+pub const SCULPT3D_ALPHA_SCALE: NodeId = hash_node_id("sculpt3d.alpha_scale");
+/// Chip ligado a [`SCULPT3D_ALPHA_SCALE`].
+pub const SCULPT3D_ALPHA_SCALE_NUM: NodeId = hash_node_id("sculpt3d.alpha_scale_num");
+
 // ── O espelho ───────────────────────────────────────────────────────────────
 // TRÊS botões e não um rádio: os eixos são independentes (o ZBrush espelha em
 // dois ao mesmo tempo), e um segmented é *um de N* por construção.

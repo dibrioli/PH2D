@@ -63,6 +63,7 @@ pub fn populate(store: &mut WidgetStore) {
     for group in [
         &ids::SCULPT3D_VERB[..],
         &ids::SCULPT3D_FALLOFF[..],
+        &ids::SCULPT3D_ALPHA[..],
         &ids::SCULPT3D_DETAIL[..],
         &ids::SCULPT3D_ADD[..],
         &ids::SCULPT3D_MASK_OP[..],

@@ -50,7 +50,6 @@ fn mirror(v: [f32; 3], s: &[f32; 3]) -> [f32; 3] {
     [v[0] * s[0], v[1] * s[1], v[2] * s[2]]
 }
 
-
 /// O estado vivo de UM traço de escultura.
 ///
 /// Os dois vetores do tamanho da malha (`slot`/`stamp`) vivem aqui e são
@@ -435,7 +434,24 @@ impl SculptStroke {
             } else {
                 1.0
             };
-            let fall = brush.falloff.weight(dist * inv_r);
+            // ⚠️ **O alpha multiplica o FALLOFF, e é lido na posição CONGELADA.**
+            //
+            // No falloff porque é onde ele pertence: o `shape` logo abaixo — o
+            // que o Crease eleva à quinta — é `curva × máscara`, e no original o
+            // expoente cai sobre `curva × máscara × alpha`. Multiplicar o `w` já
+            // formado deixaria o padrão de fora do expoente, e o verbo afiaria a
+            // máscara sem afiar o padrão.
+            //
+            // Na posição congelada porque é o que faz o padrão sobreviver ao
+            // ENVELOPE. Um vértice cai sob dezenas de dabs (o espaçamento é
+            // `0,15·r`); lido na posição VIVA, cada dab veria um valor diferente
+            // — o próprio traço move a superfície — e o `max` tomaria o maior de
+            // dezenas de amostras, LAVANDO o padrão até a envoltória superior
+            // dele: o pincel ficaria mais forte, não texturizado. Lido no `pre`,
+            // todos os dabs concordam sobre aquele vértice, e o `max` de valores
+            // iguais é o valor. É a mesma frase que a distância já obedece três
+            // parágrafos acima.
+            let fall = brush.falloff.weight(dist * inv_r) * brush.alpha_weight(base);
             // ⚠️ **O `w` fica VERBATIM — mesma ordem, mesmos bits.** A forma
             // "natural" seria derivar um do outro (`w = shape * intensity`), e
             // ela **re-associa** o produto de `(falloff × intensity) × keep`
@@ -615,3 +631,7 @@ mod window_tests;
 #[cfg(test)]
 #[path = "stroke_accum_tests.rs"]
 mod accum_tests;
+
+#[cfg(test)]
+#[path = "stroke_alpha_tests.rs"]
+mod alpha_tests;

@@ -13,7 +13,7 @@
 use ph2d_editor_core::ids;
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_i18n::tr;
-use ph2d_sculpt3d::{Falloff, Verb};
+use ph2d_sculpt3d::{Alpha, Falloff, Verb};
 use ph2d_tokens::{ROW_H_PX, Spacing};
 
 /// **OS WIDGETS** — ver [`widgets`].
@@ -123,6 +123,30 @@ fn paint_brush_tail(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32,
         w,
         y,
     );
+    // **O PADRÃO**, logo abaixo do falloff — os dois moldam o MESMO peso: o
+    // falloff diz como ele cai do centro à borda, o alpha diz onde ele age
+    // dentro disso. A primeira opção é NENHUM, e o deslocamento de um é a mesma
+    // aritmética que o seletor de matcap usa (o `event` a desfaz com
+    // `checked_sub`; as duas metades vivem uma ao lado da outra de propósito).
+    let mut labels: Vec<&str> = vec![tr("panel.sculpt3d.alpha.none")];
+    labels.extend(Alpha::ALL.iter().map(|a| a.label()));
+    let selected = snap
+        .ui
+        .brush
+        .alpha
+        .and_then(|a| Alpha::ALL.iter().position(|&x| x == a))
+        .map_or(0, |i| i + 1);
+    let y = labelled_seg(
+        ctx,
+        tr("panel.sculpt3d.alpha"),
+        ids::SCULPT3D_SEC_BRUSH,
+        &ids::SCULPT3D_ALPHA,
+        &labels,
+        selected,
+        x,
+        w,
+        y,
+    );
     // **ACUMULAR**, e só onde ele faz alguma coisa. ⚠️ A pergunta é feita à
     // PORTA do motor (`Verb::accumulates`) e não a uma lista de nomes aqui: o
     // aplicador pergunta à mesma para honrar o clique, e duas cópias divergiriam
@@ -210,13 +234,7 @@ fn paint_symmetry(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y
 /// ⚠️ Os dois são opções de VISTA e por isso ficam juntos, abaixo dos knobs: um
 /// muda a lâmpada, o outro acrescenta uma anotação por cima. Nenhum deles toca a
 /// escultura, e é isso que os separa de tudo que está acima na coluna.
-fn paint_shading_tail(
-    ctx: &mut PaintCtx,
-    snap: &Sculpt3dSnapshot,
-    x: f32,
-    w: f32,
-    y: f32,
-) -> f32 {
+fn paint_shading_tail(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y: f32) -> f32 {
     // A primeira opção é o RIG e as seguintes são os materiais, então o índice
     // selecionado é `matcap + 1` — o mesmo deslocamento que o `ShadeRaw` faz
     // para o device. ⚠️ Ele é escrito aqui e lido no `event` pela mesma

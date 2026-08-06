@@ -168,7 +168,14 @@ pub(super) fn toggle(
 }
 
 /// Um botão de ação.
-pub(super) fn command(ctx: &mut PaintCtx, id: ph2d_a11y::NodeId, label: &str, x: f32, w: f32, y: f32) -> f32 {
+pub(super) fn command(
+    ctx: &mut PaintCtx,
+    id: ph2d_a11y::NodeId,
+    label: &str,
+    x: f32,
+    w: f32,
+    y: f32,
+) -> f32 {
     let theme = ctx.host.theme();
     let rect = Rect::new(x, y, w, ROW_H_PX);
     let state = ctx

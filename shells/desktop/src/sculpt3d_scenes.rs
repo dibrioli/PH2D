@@ -283,6 +283,12 @@ pub(crate) fn holes_scene() -> bool {
     std::env::var("PH2D_SCULPT3D_SMOKE").ok().as_deref() == Some("4")
 }
 
+/// `=16` — a cena do **ALPHA**: uma esfera DENSA o bastante para o padrão ser
+/// amostrado como padrão.
+pub(crate) fn alpha_scene() -> bool {
+    std::env::var("PH2D_SCULPT3D_SMOKE").ok().as_deref() == Some("16")
+}
+
 /// A malha com que cada cena abre.
 ///
 /// ⚠️ **Porta única, e ela existe para o gate.** A cena `=3` só significa alguma
@@ -307,6 +313,16 @@ pub(crate) fn smoke_mesh() -> ph2d_mesh::Mesh {
     // não é a pergunta.
     if cavity_scene() {
         return wrinkled_sphere();
+    }
+    // ⚠️ **A `=16` abre DENSA, e o número é obrigatório.** Um padrão é uma função
+    // contínua e a malha o amostra nos VÉRTICES: com a célula da ordem da aresta
+    // cada vértice vê um valor independente do vizinho e o que chega ao barro é
+    // chuvisco, não textura. A lei das dez arestas
+    // (`ph2d_sculpt3d::DEFAULT_ALPHA_SCALE`) diz que a feature precisa de ~10
+    // arestas; a esfera 96×144 que o resto do módulo abre daria razão ~7,6 na
+    // escala default, e o smoke ficaria julgando o aliasing em vez do alpha.
+    if alpha_scene() {
+        return ph2d_mesh::shapes::uv_sphere(160, 240, 1.0);
     }
     if turn_scene() || document_scene() || export_scene() || bake_scene() || reopen_scene() {
         return ridged_sphere();
@@ -434,6 +450,14 @@ pub(crate) fn announce(mesh: &ph2d_mesh::Mesh) {
          [sculpt3d]     desde o pen-down, e somar totais nao significa nada\n\
          [sculpt3d]     ATENCAO: a PRIMEIRA passada acumulada e' mais FRACA (a lei entrega a\n\
          [sculpt3d]     media do falloff, nao o pico); e' da segunda em diante que ela paga\n\
+         [sculpt3d] ALPHA (BRUSH, logo abaixo do Falloff): o PADRAO que decide onde, dentro da\n\
+         [sculpt3d]     pegada, o verbo age -- None e' o pincel liso; os seis sao Noise, Pores,\n\
+         [sculpt3d]     Scales, Cracks, Grain e Ridges. Ele esta' colado ao ESPACO, nao ao gesto:\n\
+         [sculpt3d]     passar devagar ou rapido, de ida ou de volta, poe a textura no MESMO lugar\n\
+         [sculpt3d]     ALPHA SCALE so' aparece com um padrao armado, e mede a feature em unidades\n\
+         [sculpt3d]     de OBJETO -- ela precisa de ~10 arestas para ser textura em vez de\n\
+         [sculpt3d]     chuvisco, entao SUBDIVIDA (K) antes de baixar a escala. A cena =16 abre\n\
+         [sculpt3d]     densa de proposito e imprime a razao que ela conseguiu\n\
          [sculpt3d] WIREFRAME (SHADING): a malha por cima da forma -- e' o que mostra onde o remesh\n\
          [sculpt3d]     pos os aneis e ate' onde o refino chegou; ela some e volta sem custo com\n\
          [sculpt3d]     a caixa desmarcada (a lista de arestas so' existe com ela armada)\n\
@@ -449,6 +473,40 @@ pub(crate) fn announce(mesh: &ph2d_mesh::Mesh) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// **A cena `=16` só significa alguma coisa se a malha dela RESOLVER o
+    /// padrão** — e isso é um fato sobre a GEOMETRIA que nenhum arch-gate de
+    /// fonte enxerga.
+    ///
+    /// A lei das dez arestas (`ph2d_sculpt3d::DEFAULT_ALPHA_SCALE`) mede pela
+    /// razão `célula ÷ aresta`: abaixo de ~8 a correlação entre vértices
+    /// vizinhos desmorona e o que chega ao barro é chuvisco por vértice. A
+    /// esfera 96×144 que o resto do módulo abre daria ~7,6 — o smoke julgaria o
+    /// aliasing e chamaria de alpha.
+    #[test]
+    fn the_alpha_scene_opens_dense_enough_to_resolve_the_pattern() {
+        let mesh = ph2d_mesh::shapes::uv_sphere(160, 240, 1.0);
+        let pos = mesh.positions();
+        let ring = mesh.adjacency();
+        let mut lens: Vec<f32> = Vec::new();
+        for v in 0..pos.len() {
+            for &n in ring.vert_verts.neighbours(v) {
+                if n as usize > v {
+                    let (a, b) = (pos[v], pos[n as usize]);
+                    let d = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+                    lens.push(d[2].mul_add(d[2], d[0].mul_add(d[0], d[1] * d[1])).sqrt());
+                }
+            }
+        }
+        lens.sort_by(f32::total_cmp);
+        let edge = lens[lens.len() / 2];
+        let ratio = ph2d_sculpt3d::DEFAULT_ALPHA_SCALE / edge;
+        assert!(
+            ratio >= 8.0,
+            "a malha da cena `=16` tem aresta {edge:.4}, e na escala default a \
+             razão é {ratio:.1} — abaixo de 8 o padrão sai como chuvisco"
+        );
+    }
 
     /// ⚠️ **A cena `=6` só significa alguma coisa se o bico dela estiver
     /// ESTICADO** — e a forma sobrevive ao remesh nos dois casos, então a

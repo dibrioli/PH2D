@@ -21,7 +21,7 @@ use ph2d_panel_sculpt3d::{
     Sculpt3dIntent, Sculpt3dPanel, Sculpt3dPanelState, Sculpt3dSnapshot, Sculpt3dUi, drain_intents,
     ids, rows, set_current_sculpt3d,
 };
-use ph2d_sculpt3d::{Falloff, Verb};
+use ph2d_sculpt3d::{Alpha, Falloff, Verb};
 use ph2d_ui_testkit::MockPanelHost;
 
 /// Um viewport do tamanho do dock. ALTO, porque o painel tem seis seções e um
@@ -433,6 +433,12 @@ fn every_painted_control_is_clickable_where_it_is_drawn() {
     for (i, f) in Falloff::ALL.into_iter().enumerate() {
         want.push((format!("falloff {}", f.label()), ids::SCULPT3D_FALLOFF[i]));
     }
+    // ⚠️ **A opção `0` é o pincel LISO e não um padrão**, então o laço é sobre
+    // `Alpha::ALL` deslocado de um — a mesma aritmética do pintor e do roteador.
+    want.push(("alpha none".to_string(), ids::SCULPT3D_ALPHA[0]));
+    for (i, a) in Alpha::ALL.into_iter().enumerate() {
+        want.push((format!("alpha {}", a.label()), ids::SCULPT3D_ALPHA[i + 1]));
+    }
     for (i, id) in ids::SCULPT3D_MASK_OP.into_iter().enumerate() {
         want.push((format!("mask op {i}"), id));
     }
@@ -471,24 +477,62 @@ fn every_painted_control_is_clickable_where_it_is_drawn() {
     // E cada BOTÃO responde de fato a um ponteiro no PRÓPRIO centro. É esta
     // metade que separa *hit-registrado* de *vivo sob o mouse* — a falha que o
     // gate de dez ferramentas do Impasto pegou nascendo verde.
-    for (name, id) in want.iter().skip(sliders) {
+    //
+    // ⚠️ **Ela NÃO tem lista, e a ausência é a correção.** A versão anterior
+    // enumerava os grupos à mão, e a enumeração já tinha apodrecido: os chips de
+    // matcap, o Accumulate e o Wireframe **nunca foram varridos** — pintados,
+    // hit-registrados, e nenhum gate perguntando se respondiam. Descoberto por
+    // uma mutação que tirou uma fileira inteira do `populate` e deixou **os vinte
+    // gates verdes**. Agora o conjunto é o que o PAINT registrou, então um
+    // controle novo nasce coberto: é impossível esquecer de o acrescentar aqui,
+    // porque não há aqui onde acrescentar.
+    let by_id: std::collections::BTreeMap<_, _> = want
+        .iter()
+        .skip(sliders)
+        .map(|(n, id)| (*id, n.clone()))
+        .collect();
+    // ⚠️ **A exclusão é por GESTO, e a polaridade é o ponto:** o default é *tem
+    // de responder a um clique*, e sai da varredura só o que é dirigido por
+    // ARRASTO — as pistas, os chips numéricos e o puxador do próprio painel
+    // (chrome do host, não deste painel). Exigir um `Click` de qualquer um dos
+    // três seria afirmar um gesto que eles não têm; e como a lista é de EXCEÇÕES,
+    // esquecer um controle novo nela o deixa **coberto**, não fora.
+    let mut dragged: Vec<ph2d_a11y::NodeId> =
+        rows::rows().flat_map(|r| [r.slider, r.chip]).collect();
+    dragged.extend([
+        ph2d_editor_core::ids::INSP_DRAG_HANDLE,
+        ph2d_editor_core::ids::INSP_RESIZE_HANDLE,
+        ph2d_editor_core::ids::INSP_RESIZE_HANDLE_BL,
+        ph2d_editor_core::widget::SCULPT3D_SCROLLBAR_ID,
+    ]);
+    let mut seen: Vec<ph2d_a11y::NodeId> = Vec::new();
+    for &(id, rect) in &painted {
+        if dragged.contains(&id) || seen.contains(&id) {
+            continue;
+        }
+        seen.push(id);
+        let name = by_id
+            .get(&id)
+            .cloned()
+            .unwrap_or_else(|| format!("{id:?} (fora da tabela de presença)"));
+        // O rect que VALE é o último registrado — um controle repintado numa
+        // segunda passada é dono dos próprios pixels pela posição final.
         let rect = painted
             .iter()
             .rev()
-            .find(|(pid, _)| pid == id)
-            .map(|(_, r)| *r)
-            .expect("registrado acima");
+            .find(|(pid, _)| *pid == id)
+            .map_or(rect, |(_, r)| *r);
         let (cx, cy) = (rect.x + rect.w * 0.5, rect.y + rect.h * 0.5);
         assert_eq!(
             host.hit_at(cx, cy),
-            Some(*id),
+            Some(id),
             "`{name}` é pintado mas outra coisa é dona dos pixels no centro dele"
         );
         let events = host.click_at(cx, cy);
         assert!(
             events
                 .iter()
-                .any(|e| matches!(e, WidgetEvent::Click(c) if c == id)),
+                .any(|e| matches!(e, WidgetEvent::Click(c) if *c == id)),
             "clicar `{name}` no centro pintado não produziu Click — ele está no \
              índice de hit mas não é focável no store"
         );
@@ -546,9 +590,76 @@ fn every_matcap_chip_arms_its_own_material() {
         assert_eq!(got.matcap, want, "o chip {i} armou {:?}", got.matcap);
         assert_eq!(
             got,
-            Sculpt3dUi { matcap: want, ..base },
+            Sculpt3dUi {
+                matcap: want,
+                ..base
+            },
             "o chip {i} mexeu num campo que não é dele"
         );
+    }
+}
+
+/// **Cada chip de padrão arma o SEU padrão, e o primeiro arma o pincel LISO.**
+///
+/// ⚠️ **A contagem é afirmada aqui, e não em prosa:** a fileira tem
+/// `Alpha::ALL.len() + 1` ids, e o `+ 1` é o *None* — que **não** é um padrão. Um
+/// chip a mais pinta uma opção que o motor não tem (o `event` a prende no
+/// último, e o artista vê o padrão errado ao pedir um que não existe); um a menos
+/// deixa um padrão **inalcançável**. As duas falhas são silenciosas.
+#[test]
+fn every_alpha_chip_arms_its_own_pattern() {
+    assert_eq!(
+        ids::SCULPT3D_ALPHA.len(),
+        Alpha::ALL.len() + 1,
+        "{} chips para {} padrões + o pincel liso",
+        ids::SCULPT3D_ALPHA.len(),
+        Alpha::ALL.len()
+    );
+    for (i, &id) in ids::SCULPT3D_ALPHA.iter().enumerate() {
+        let base = Sculpt3dUi::default();
+        let (mut host, mut state) = arrange(base);
+        let outcome = host.apply_panel_event::<Sculpt3dPanel>(&mut state, WidgetEvent::Click(id));
+        assert_eq!(outcome, EventOutcome::Consumed, "o chip {i} não despacha");
+        let Sculpt3dIntent::SetUi(got) = only_intent("alpha") else {
+            panic!("o chip {i} enfileirou o tipo errado de intent");
+        };
+        let want = i.checked_sub(1).map(|k| Alpha::ALL[k]);
+        assert_eq!(
+            got.brush.alpha, want,
+            "o chip {i} armou {:?}",
+            got.brush.alpha
+        );
+        let mut expected = base;
+        expected.brush.alpha = want;
+        assert_eq!(got, expected, "o chip {i} mexeu num campo que não é dele");
+    }
+}
+
+/// **A pista de escala do alpha SOME sem padrão armado.**
+///
+/// Ela mede o tamanho de uma feature, e sem padrão não há feature — é a mesma
+/// lei das duas pistas de lâmpada sob um matcap, e a mesma razão: uma row
+/// condicional é **pulada**, nunca pintada apagada, porque um controle que
+/// desenha e não responde mente sobre o que o pincel faz.
+#[test]
+fn the_alpha_scale_row_is_absent_without_a_pattern() {
+    for (alpha, want) in [
+        (None, false),
+        (Some(Alpha::Noise), true),
+        (Some(Alpha::Cracks), true),
+    ] {
+        let mut ui = Sculpt3dUi::default();
+        ui.brush.alpha = alpha;
+        let (mut host, mut state) = arrange(ui);
+        let painted = host.paint::<Sculpt3dPanel>(&mut state, VIEWPORT);
+        for id in [ids::SCULPT3D_ALPHA_SCALE, ids::SCULPT3D_ALPHA_SCALE_NUM] {
+            assert_eq!(
+                painted.iter().any(|(pid, _)| *pid == id),
+                want,
+                "com alpha {alpha:?} a pista de escala devia {}",
+                if want { "estar lá" } else { "sumir" }
+            );
+        }
     }
 }
 
@@ -561,7 +672,10 @@ fn the_wireframe_toggle_flips_only_the_view() {
             ..Sculpt3dUi::default()
         };
         let (mut host, mut state) = arrange(base);
-        host.apply_panel_event::<Sculpt3dPanel>(&mut state, WidgetEvent::Click(ids::SCULPT3D_WIREFRAME));
+        host.apply_panel_event::<Sculpt3dPanel>(
+            &mut state,
+            WidgetEvent::Click(ids::SCULPT3D_WIREFRAME),
+        );
         let Sculpt3dIntent::SetUi(got) = only_intent("wireframe") else {
             panic!("o wireframe enfileirou o tipo errado de intent");
         };

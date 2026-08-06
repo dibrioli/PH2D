@@ -140,9 +140,9 @@ mod scenes;
 mod fixtures;
 
 pub(crate) use scenes::{
-    announce, bake_scene, cavity_scene, donation_scene, dyntopo_scene, fuse_scene, holes_scene,
-    remesh_scene, reopen_scene, reversion_scene, scene_objects, smoke_armed, smoke_mesh,
-    turn_scene, wants_canvas,
+    alpha_scene, announce, bake_scene, cavity_scene, donation_scene, dyntopo_scene, fuse_scene,
+    holes_scene, remesh_scene, reopen_scene, reversion_scene, scene_objects, smoke_armed,
+    smoke_mesh, turn_scene, wants_canvas,
 };
 
 /// O que o arrasto está fazendo.

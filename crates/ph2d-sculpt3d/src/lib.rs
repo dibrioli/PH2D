@@ -34,11 +34,13 @@
 //! estritamente MAIS trabalho por dab (captura + envelope + alvo), então os
 //! números da W1 foram **re-medidos** em vez de herdados.
 
+mod alpha;
 mod brush;
 pub mod mask_ops;
 mod spacing;
 mod stroke;
 
+pub use alpha::{Alpha, DEFAULT_ALPHA_SCALE, MAX_ALPHA_SCALE, MIN_ALPHA_SCALE};
 pub use brush::{Amount, Brush, Falloff, Grip, REACH_FRACTION, Symmetry, Verb};
 pub use spacing::{ACCUM_PER_DAB, MIN_SPACING_FRACTION, Walk, min_spacing, walk};
 pub use stroke::{Dab, SculptStroke};

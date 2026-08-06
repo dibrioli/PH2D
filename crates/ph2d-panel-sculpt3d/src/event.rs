@@ -4,7 +4,7 @@
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::{EventOutcome, Panel, PanelHostInternal, seam_reset_button};
-use ph2d_sculpt3d::{Falloff, Verb};
+use ph2d_sculpt3d::{Alpha, Falloff, Verb};
 
 use crate::rows;
 use crate::state::{self, Sculpt3dIntent};
@@ -106,6 +106,20 @@ pub(crate) fn apply_event(
             state::push_intent(Sculpt3dIntent::SetUi(ui));
             true
         }
+        // **O PADRÃO** — a opção `0` é o pincel LISO e as seguintes são os
+        // padrões, a mesma aritmética do matcap logo abaixo. `checked_sub` e não
+        // `- 1` pelo mesmo motivo: a opção zero não é o padrão `-1`, é a
+        // AUSÊNCIA de padrão.
+        WidgetEvent::Click(id) if index_of(&ids::SCULPT3D_ALPHA, id).is_some() => {
+            seam_reset_button(host, id);
+            let i = index_of(&ids::SCULPT3D_ALPHA, id).expect("guard casou");
+            let mut ui = snapshot.ui;
+            ui.brush.alpha = i
+                .checked_sub(1)
+                .map(|k| Alpha::ALL[k.min(Alpha::ALL.len() - 1)]);
+            state::push_intent(Sculpt3dIntent::SetUi(ui));
+            true
+        }
         // **A LUZ** — a opção `0` é o rig do artista e as seguintes são os
         // matcaps, o mesmo deslocamento que o pintor usa. `checked_sub` e não
         // `- 1`: a opção zero não é o material `-1`, é a AUSÊNCIA de matcap.
@@ -113,9 +127,7 @@ pub(crate) fn apply_event(
             seam_reset_button(host, id);
             let i = index_of(&ids::SCULPT3D_MATCAP, id).expect("guard casou");
             let mut ui = snapshot.ui;
-            ui.matcap = i
-                .checked_sub(1)
-                .map(|k| u8::try_from(k).unwrap_or(u8::MAX));
+            ui.matcap = i.checked_sub(1).map(|k| u8::try_from(k).unwrap_or(u8::MAX));
             state::push_intent(Sculpt3dIntent::SetUi(ui));
             true
         }

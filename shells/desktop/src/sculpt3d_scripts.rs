@@ -79,6 +79,54 @@ pub(super) fn for_scene(mesh: &ph2d_mesh::Mesh) {
              [sculpt3d]    dois canais, e e' por isso que ela le forma onde a luz nao chega."
         );
     }
+    if crate::sculpt3d::alpha_scene() {
+        // ⚠️ **A cena MEDE a razão antes de falar dela.** Um padrão é uma função
+        // contínua e a malha o amostra nos VÉRTICES: se a célula tiver a ordem
+        // da aresta, cada vértice vê um valor independente do vizinho e o que
+        // chega ao barro é chuvisco. O número que decide é `célula ÷ aresta`, e
+        // ele é da MALHA que esta cena de fato abriu — não de uma que eu
+        // esperava que ela abrisse.
+        let pos = mesh.positions();
+        let ring = mesh.adjacency();
+        let mut lens: Vec<f32> = Vec::new();
+        for v in 0..pos.len() {
+            for &n in ring.vert_verts.neighbours(v) {
+                if n as usize > v {
+                    let (a, b) = (pos[v], pos[n as usize]);
+                    let d = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+                    lens.push(d[2].mul_add(d[2], d[0].mul_add(d[0], d[1] * d[1])).sqrt());
+                }
+            }
+        }
+        lens.sort_by(f32::total_cmp);
+        let edge = lens[lens.len() / 2];
+        let ratio = ph2d_sculpt3d::DEFAULT_ALPHA_SCALE / edge;
+        eprintln!(
+            "[sculpt3d] =16 ALPHA: aresta mediana {edge:.4}, escala default \
+             {:.2} -> razao {ratio:.1} celulas por aresta\n\
+             [sculpt3d]    -- se a razao nao passar de ~8, PARE: o padrao esta' mais fino que a\n\
+             [sculpt3d]    malha e o que voce veria seria chuvisco por vertice, nao textura.\n\
+             [sculpt3d]    O ALPHA e' a fileira nova na secao BRUSH do painel, logo abaixo do\n\
+             [sculpt3d]    Falloff: None (o pincel liso) e seis padroes.\n\
+             [sculpt3d]    Escolha 'Pores' e desenhe com o Draw (1) numa faixa larga: em vez de\n\
+             [sculpt3d]    um monte liso tem de sair PELE -- pontos, nao uma rampa.\n\
+             [sculpt3d]    Passe pelos seis: Noise (rocha) · Pores (pele) · Scales (reptil) ·\n\
+             [sculpt3d]    Cracks (terra seca) · Grain (chatter fino) · Ridges (ruga, casca).\n\
+             [sculpt3d]    ALPHA SCALE aparece SO' com um padrao armado (sem padrao ele mediria\n\
+             [sculpt3d]    uma feature que nao existe) -- arraste e a feature muda de TAMANHO,\n\
+             [sculpt3d]    nao de desenho.\n\
+             [sculpt3d]    O QUE JULGAR, e e' a wave inteira: o padrao esta' colado ao ESPACO,\n\
+             [sculpt3d]    nao ao gesto. Passe DEVAGAR e depois RAPIDO pelo mesmo lugar -- tem de\n\
+             [sculpt3d]    sair igual. Passe de VOLTA pelo caminho -- os poros caem nos MESMOS\n\
+             [sculpt3d]    lugares. Se eles se mexerem com a mao, o padrao esta' preso ao dab.\n\
+             [sculpt3d]    ATENCAO ao Cracks e ao Pores: eles cobrem ~14% da superficie de\n\
+             [sculpt3d]    proposito (uma trinca e' uma LINHA), entao o pincel parece mais fraco\n\
+             [sculpt3d]    -- suba a Forca. O Ridges cobre ~70% e quase nao enfraquece.\n\
+             [sculpt3d]    E pegue o Crease (0) com um padrao: o vinco AFIA o padrao (ele entra\n\
+             [sculpt3d]    na quinta potencia), entao o mesmo alpha sai muito mais recortado.",
+            ph2d_sculpt3d::DEFAULT_ALPHA_SCALE
+        );
+    }
     if crate::sculpt3d::turn_scene() {
         // ⚠️ **A cena DECLARA que trouxe cristas.** Numa esfera LISA um
         // Twist em torno do eixo da vista é quase invisível — ela é

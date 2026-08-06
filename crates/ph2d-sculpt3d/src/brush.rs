@@ -4,6 +4,8 @@
 //! resto: **o `Dab` é onde e com que força a mão apertou; o `Brush` é que
 //! ferramenta está na mão.** Um traço é uma lista de dabs contra UM brush.
 
+use crate::Alpha;
+
 /// A curva de peso do pincel, do centro (`t = 0`) à borda (`t = 1`).
 ///
 /// A MESMA família que o Painter 2D já expõe, e de propósito: um artista que
@@ -463,6 +465,14 @@ pub struct Brush {
     /// a mesma coisa N vezes.
     pub accumulate: bool,
     pub falloff: Falloff,
+    /// **O PADRÃO que decide onde, dentro da pegada, o verbo age** — ver
+    /// [`crate::Alpha`]. `None` é o pincel liso, e ele é **byte-idêntico** ao
+    /// mundo pré-alpha (a porta devolve `1.0` exato, e `x * 1.0 == x` no
+    /// IEEE-754).
+    pub alpha: Option<Alpha>,
+    /// O tamanho de uma feature do alpha, em unidades de OBJETO — ver
+    /// [`crate::DEFAULT_ALPHA_SCALE`].
+    pub alpha_scale: f32,
     /// Raio de influência, em unidades de MUNDO.
     pub radius: f32,
     /// Intensidade em `[0, 1]` — o que multiplica o falloff para virar o peso.
@@ -483,6 +493,8 @@ impl Default for Brush {
             verb: Verb::Draw,
             accumulate: false,
             falloff: Falloff::Smooth,
+            alpha: None,
+            alpha_scale: crate::DEFAULT_ALPHA_SCALE,
             radius: 0.25,
             strength: 0.5,
             invert: false,
@@ -505,6 +517,26 @@ impl Brush {
     /// consome `reach` sem ter oposto é o dia em que ele deixa de ser inerte, sem
     /// ninguém precisar lembrar. Defesa em camadas documentada em vez de gateada,
     /// pelo precedente do ADR-0145.
+    /// **O peso do alpha no ponto `p`** (posição em espaço de OBJETO), ou `1.0`
+    /// se não há alpha armado.
+    ///
+    /// **Porta única** — o motor multiplica o falloff por isto, e é a mesma
+    /// função que o gate e a sonda perguntam. Um segundo sítio que resolvesse
+    /// `Option` + escala por conta própria divergiria no dia em que a escala
+    /// ganhasse um clamp diferente.
+    ///
+    /// ⚠️ **`None` devolve `1.0` EXATO, e é isso que dá a byte-identidade** —
+    /// `x * 1.0` é `x` ao bit no IEEE-754, então o pincel liso continua a
+    /// produzir a aritmética que ele produzia antes desta wave, sem um `if` no
+    /// laço quente para provar.
+    #[must_use]
+    pub fn alpha_weight(&self, p: [f32; 3]) -> f32 {
+        match self.alpha {
+            Some(a) => a.weight_at(p, self.alpha_scale),
+            None => 1.0,
+        }
+    }
+
     #[must_use]
     pub fn reach(&self, radius: f32) -> f32 {
         let s = if self.invert && self.verb.honours_invert() {

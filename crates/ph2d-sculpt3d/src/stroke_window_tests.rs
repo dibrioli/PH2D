@@ -76,7 +76,10 @@ fn the_gpu_window_covers_both_sides_of_a_mirrored_dab() {
         &dab_on_the_plus_x_side(),
         Symmetry::MIRROR_X,
     );
-    assert!(moved > 0, "o dab não moveu nada — a fixture não contém o caso");
+    assert!(
+        moved > 0,
+        "o dab não moveu nada — a fixture não contém o caso"
+    );
 
     let (right, left) = sides(&mesh, stroke.last_gpu_dirty());
     assert!(
@@ -152,7 +155,12 @@ fn a_dab_that_moves_nothing_publishes_nothing() {
     let mut stroke = SculptStroke::default();
     stroke.begin(&mesh);
     let brush = drawing_brush();
-    stroke.dab(&mut mesh, &brush, &dab_on_the_plus_x_side(), Symmetry::MIRROR_X);
+    stroke.dab(
+        &mut mesh,
+        &brush,
+        &dab_on_the_plus_x_side(),
+        Symmetry::MIRROR_X,
+    );
     assert!(!stroke.last_moved().is_empty(), "o 1º dab não moveu nada");
 
     // Longe do barro: a consulta não acha vértice nenhum, nas DUAS cópias.

@@ -325,3 +325,83 @@ fn closing_the_panel_gives_the_gesture_up() {
     assert_eq!(st.armed(), None, "o elo sobreviveu ao painel fechar");
     clear_color_overrides();
 }
+
+// ───────────────────────── o readout de CONTRASTE (W4b.2) ─────────────────────────
+
+fn put(theme: Theme, token: ColorToken, colour: Color) {
+    set_color_override(theme, token, Some(TokenValue::Literal(colour)))
+        .expect("um literal nunca fecha um laco de alias");
+}
+
+/// O topo da PRIMEIRA linha da lista — a régua que mede quanto o cabeçalho gastou.
+fn first_row_top() -> f32 {
+    rect_of(ids::tokens_swatch_id(0))
+        .expect("a linha 0 e' pintada sempre")
+        .y
+}
+
+/// **O readout ocupa espaço SÓ quando há um par quebrado** — as duas metades num gate.
+///
+/// ⚠️ **O controle também tem um token autorado**, e é o que torna este gate honesto: autorar
+/// qualquer coisa faz nascer o *Reset This Mode*, que empurra a lista para baixo por conta
+/// própria. Sem essa premissa o gate mediria o botão e passaria com o readout inteiro deletado.
+///
+/// ⚠️ Não há id a consultar — o bloco **não é interativo de propósito** —, então o oráculo é o
+/// DESLOCAMENTO que ele causa na lista. Mutação: apagar a saída antecipada (`failing.is_empty()`)
+/// faz o CONTROLE deslocar também; não chamar a `paint_contrast` faz o experimento parar de
+/// deslocar.
+#[test]
+fn the_contrast_readout_takes_room_only_when_a_pair_is_broken() {
+    clear_color_overrides();
+    let theme = Theme::default();
+
+    // CONTROLE: um token autorado que NÃO quebra par nenhum (`danger` não está em `CONTRAST_PAIRS`).
+    put(theme, ColorToken::Danger, Color::from_hex(0x00FF00));
+    let quiet = first_row_top();
+
+    // EXPERIMENTO: texto com a cor exacta do fundo — razão 1,0:1, ilegível.
+    put(theme, ColorToken::Text1, ColorToken::Bg1.resolve(theme));
+    let loud = first_row_top();
+
+    assert!(
+        loud > quiet + ph2d_tokens::ROW_H_PX,
+        "a lista nao desceu ({quiet} -> {loud}): o readout de contraste nao foi pintado"
+    );
+
+    clear_color_overrides();
+    put(theme, ColorToken::Danger, Color::from_hex(0x00FF00));
+    assert!(
+        (first_row_top() - quiet).abs() < f32::EPSILON,
+        "o readout ficou a ocupar espaco sobre uma tabela conforme"
+    );
+    clear_color_overrides();
+}
+
+/// **A LINHA marca o token que participa de um par falhado, pela porta COMPARTILHADA.**
+///
+/// ⚠️ **Arch-gate sobre o fonte, e o motivo é medido:** a marca é um glifo — sem id, sem rect, sem
+/// clique (registá-la seria um alvo que não faz nada). Mutar o desenho deixaria a workspace
+/// INTEIRA verde, exactamente como o anel do pincel do Painter, que ganhou arch-gate próprio pelo
+/// mesmo motivo.
+///
+/// A propriedade afirmada é *a linha PERGUNTA à porta que o resumo usa* — uma segunda derivação
+/// aqui é como o topo diria "dois pares" com uma linha só marcada.
+#[test]
+fn the_row_marks_a_flagged_token_through_the_shared_door() {
+    let src = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/src/paint.rs"))
+        .expect("src/paint.rs");
+    // Controle positivo: uma varredura que não achou a função estaria verde por vácuo em
+    // qualquer `assert!(contains)` abaixo.
+    assert!(
+        src.contains("fn paint_token_row"),
+        "o scanner nao achou a funcao da linha — ele esta' a olhar para o arquivo errado"
+    );
+    assert!(
+        src.contains("token_is_in_a_failing_pair(theme, token)"),
+        "a linha nao pergunta a porta compartilhada — ela derivaria o aviso por conta propria"
+    );
+    assert!(
+        src.contains("IconId::Warning"),
+        "a linha nao pinta a marca de aviso"
+    );
+}

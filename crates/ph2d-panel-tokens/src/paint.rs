@@ -6,7 +6,7 @@
 
 use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::ids;
-use ph2d_editor_core::paint::{paint_text, rect_to_vello, resolve};
+use ph2d_editor_core::paint::{paint_icon, paint_text, paint_text_block, rect_to_vello, resolve};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEAD_PAD, PANEL_HEADER_CLOSE_RESERVE, PANEL_HEADER_H_DEFAULT, PANEL_TITLE_BASELINE,
@@ -21,8 +21,9 @@ use ph2d_editor_core::widget::{
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
+use ph2d_tokens::contrast::{failing_pairs, token_is_in_a_failing_pair};
 use ph2d_tokens::overrides::{TokenValue, color_override, overridden_count};
-use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, StrokeToken, Theme, TypeToken};
 
 use crate::TokensPanel;
 use crate::state::{TokensPanelState, set_last_content_h, set_last_visible_h};
@@ -31,6 +32,9 @@ use crate::state::{TokensPanelState, set_last_content_h, set_last_visible_h};
 const RESET_W: f32 = 48.0; // LITERAL-PX-OK: panel grid metric (per-row reset button width)
 /// Lado do botão de ELO — quadrado, como todo botão de ícone compacto do app.
 const LINK_W: f32 = 20.0; // LITERAL-PX-OK: panel grid metric (compact icon button side)
+/// Lado da marca de AVISO da linha. Menor que o botão de elo de propósito: ela é um **glifo**,
+/// não um alvo — não há gesto para lhe dar, então não carrega a caixa de toque de um botão.
+const MARK_W: f32 = 16.0; // LITERAL-PX-OK: panel grid metric (warning glyph side)
 
 pub(crate) fn paint(state: &mut TokensPanelState, ctx: &mut PaintCtx) {
     if !ctx.host.panel_visible(TokensPanel::ID) {
@@ -121,6 +125,8 @@ fn paint_body(
     );
     y += ROW_H_PX + Spacing::Xs.px();
 
+    y = paint_contrast(ctx, theme, x, w, y);
+
     // ⚠️ Só com o que resetar. Um *Reset All* sobre um modo de fábrica é um clique que não faz
     // nada, e o artista não tem como o saber antes de o dar.
     if n > 0 {
@@ -147,7 +153,75 @@ fn paint_body(
     y
 }
 
-/// `[swatch]  chave-do-token  [→ alvo]        [elo] [Reset]`
+/// **O READOUT DE CONTRASTE** — os pares que um valor AUTORADO deixou abaixo da WCAG, neste modo.
+///
+/// # Por que ele existe, se o `tokens.json` já é validado nos gates
+///
+/// Porque a checagem de compilação é **estruturalmente cega ao que o artista escreve**: um teste
+/// de unidade corre com a camada de override VAZIA, então ele afirma sempre a tabela de FÁBRICA.
+/// O gate `contrast_tests::the_compile_time_check_cannot_see_an_authored_break` **mede esse
+/// alcance** em vez de o afirmar — se ele um dia falhar, este readout tornou-se redundante.
+///
+/// # ⚠️ Nada aqui é interativo, e isso é decisão
+///
+/// O bloco NOMEIA o par, a razão medida, a barra e o critério. Consertar é escolher outra cor,
+/// que é exactamente o gesto que a linha logo abaixo já oferece — um botão *"corrigir"* teria de
+/// INVENTAR uma cor, e a que ele inventasse seria a resposta de uma máquina a uma pergunta de
+/// design. (A 3ª condição de UI do plano — *o clique chega ao barramento* — é **N/A aqui**, e
+/// dizê-lo é mais honesto do que fabricar um botão para a satisfazer.)
+///
+/// ⚠️ **Só aparece com algo a reportar** — o precedente do *Reset This Mode*: um cabeçalho
+/// permanente dizendo *"0 problemas"* é uma linha que o artista aprende a não ler, e no dia em que
+/// ela tiver conteúdo ele já não olha para lá.
+fn paint_contrast(ctx: &mut PaintCtx, theme: Theme, x: f32, w: f32, mut y: f32) -> f32 {
+    let failing = failing_pairs(theme);
+    if failing.is_empty() {
+        return y;
+    }
+    // ⚠️ `Warn`, nunca `Danger`: o app **continua correcto** — o que quebrou foi uma promessa de
+    // legibilidade sobre uma escolha que o artista pode desfazer num clique.
+    let warn = resolve(ColorToken::Warn, theme);
+    // ⚠️ `paint_text_block` (que PINTA e devolve a altura gasta), nunca um avanço fixo: estas
+    // linhas têm comprimento variável e quebram, e estimar a altura é como a dica de duas linhas
+    // do painel de física escreveu por cima da linha seguinte.
+    y += paint_text_block(
+        ctx.text_system,
+        ctx.scene,
+        tr("panel.tokens.contrast.title"),
+        x,
+        y,
+        TypeToken::Sm.px(),
+        w,
+        warn,
+    );
+    let on = tr("panel.tokens.contrast.on");
+    for pair in &failing {
+        // ⚠️ O CRITÉRIO viaja no texto e **não** passa pela i18n: `WCAG 2.2 AA 1.4.3` é o endereço
+        // de uma norma, não uma frase — traduzi-lo tornaria improcurável exactamente a coisa que o
+        // artista leva para a especificação.
+        let line = format!(
+            "{} {on} {} - {:.1}:1, need {:.1} ({})",
+            pair.fg.key(),
+            pair.bg.key(),
+            pair.ratio(theme),
+            pair.min_ratio,
+            pair.criterion,
+        );
+        y += paint_text_block(
+            ctx.text_system,
+            ctx.scene,
+            &line,
+            x,
+            y,
+            TypeToken::Xs.px(),
+            w,
+            warn,
+        );
+    }
+    y + Spacing::Sm.px()
+}
+
+/// `[swatch]  chave-do-token  [→ alvo]      [⚠] [elo] [Reset]`
 fn paint_token_row(
     ctx: &mut PaintCtx,
     theme: Theme,
@@ -180,8 +254,19 @@ fn paint_token_row(
         .hit_index_mut()
         .register(ids::tokens_swatch_id(row), swatch_rect);
 
+    // ⚠️ Os DOIS lados de um par falhado são marcados, e é o que a `involves` já decide: escurecer
+    // o FUNDO quebra a legibilidade do TEXTO, e marcar só o texto mandaria o artista consertar o
+    // token que ele não mexeu.
+    let flagged = token_is_in_a_failing_pair(theme, token);
+    let mark_tail = if flagged {
+        MARK_W + Spacing::Xxs.px()
+    } else {
+        0.0
+    };
     let label_x = x + swatch_w + Spacing::Sm.px();
-    let tail = if authored { RESET_W } else { 0.0 } + LINK_W + Spacing::Xs.px();
+    // ⚠️ A marca reserva a PRÓPRIA coluna em vez de flutuar sobre o rótulo: o elo e o Reset ficam
+    // onde estavam (colunas estáveis entre linhas) e quem cede largura é o texto, que já é curto.
+    let tail = if authored { RESET_W } else { 0.0 } + LINK_W + mark_tail + Spacing::Xs.px();
     let label_w = (w - swatch_w - Spacing::Sm.px() - tail).max(1.0);
     // A cor do rótulo DIZ se a linha está autorada — sem isso, "este está diferente da fábrica"
     // só se descobre carregando em Reset e vendo o que muda.
@@ -212,6 +297,24 @@ fn paint_token_row(
     // botão em linhas não-autoradas tornaria o gesto alcançável só onde ele já foi feito.
     let link_x = x + w - LINK_W - if authored { RESET_W } else { 0.0 };
     paint_link_button(ctx, theme, row, link_x, y, armed);
+
+    if flagged {
+        // A marca vive NA linha porque o resumo do topo sai de vista assim que o artista rola —
+        // e a lista tem uma linha por token do design system.
+        let rect = Rect::new(
+            link_x - MARK_W - Spacing::Xxs.px(),
+            y + (ROW_H_PX - MARK_W) * 0.5,
+            MARK_W,
+            MARK_W,
+        );
+        paint_icon(
+            ctx.scene,
+            IconId::Warning,
+            rect,
+            resolve(ColorToken::Warn, theme),
+            StrokeToken::Default.px(),
+        );
+    }
 
     if authored {
         command(

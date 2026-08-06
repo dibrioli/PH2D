@@ -49,6 +49,7 @@ pub mod layer;
 pub mod motion;
 /// **A camada de OVERRIDE de cor** (plano UI/UX W6) — o que o artista autora sobre a tabela
 /// gerada. Vazia, `ColorToken::resolve` é byte-idêntico ao de sempre.
+pub mod contrast;
 pub mod overrides;
 pub mod radius;
 pub mod spacing;

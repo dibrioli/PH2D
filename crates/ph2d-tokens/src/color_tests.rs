@@ -117,79 +117,16 @@ fn workshop_retints_the_accent_derived_timeline_slots() {
     }
 }
 
-/// **WCAG 2.2 AA gate** — text-on-bg1 contrast ≥ 4.5:1 across the 4 themes.
-#[test]
-fn text1_on_bg1_meets_aa_in_all_themes() {
-    for theme in [
-        Theme::Forge,
-        Theme::Workshop,
-        Theme::Sunstone,
-        Theme::Blueprint,
-    ] {
-        let bg = ColorToken::Bg1.resolve(theme);
-        let fg = ColorToken::Text1.resolve(theme);
-        let ratio = bg.contrast_ratio(&fg);
-        assert!(
-            ratio >= 4.5,
-            "{theme:?}: text-1 on bg-1 = {ratio:.2}:1, need ≥ 4.5"
-        );
-    }
-}
-
-#[test]
-fn text2_on_bg1_meets_aa_in_all_themes() {
-    for theme in [
-        Theme::Forge,
-        Theme::Workshop,
-        Theme::Sunstone,
-        Theme::Blueprint,
-    ] {
-        let bg = ColorToken::Bg1.resolve(theme);
-        let fg = ColorToken::Text2.resolve(theme);
-        let ratio = bg.contrast_ratio(&fg);
-        assert!(
-            ratio >= 4.5,
-            "{theme:?}: text-2 on bg-1 = {ratio:.2}:1, need ≥ 4.5"
-        );
-    }
-}
-
-/// WCAG SC 1.4.11 — non-text UI components (focus rings, borders).
-#[test]
-fn border_emph_meets_ui_aa_in_all_themes() {
-    for theme in [
-        Theme::Forge,
-        Theme::Workshop,
-        Theme::Sunstone,
-        Theme::Blueprint,
-    ] {
-        let bg = ColorToken::Bg1.resolve(theme);
-        let fg = ColorToken::BorderEmph.resolve(theme);
-        let ratio = bg.contrast_ratio(&fg);
-        assert!(
-            ratio >= 3.0,
-            "{theme:?}: border-emph on bg-1 = {ratio:.2}:1, need ≥ 3.0"
-        );
-    }
-}
-
-#[test]
-fn accent_meets_ui_aa_in_all_themes() {
-    for theme in [
-        Theme::Forge,
-        Theme::Workshop,
-        Theme::Sunstone,
-        Theme::Blueprint,
-    ] {
-        let bg = ColorToken::Bg1.resolve(theme);
-        let fg = ColorToken::Accent.resolve(theme);
-        let ratio = bg.contrast_ratio(&fg);
-        assert!(
-            ratio >= 3.0,
-            "{theme:?}: accent on bg-1 = {ratio:.2}:1, need ≥ 3.0"
-        );
-    }
-}
+/// ⚠️ **Os quatro gates de WCAG que viviam aqui MUDARAM-SE** para `contrast.rs` (plano UI/UX
+/// W4b), e a mudança não é arrumação: eles eram **quatro cópias do mesmo laço**, cada uma com o
+/// par e a barra escritos à mão, e o quinto par teria de ser escrito uma quinta vez. Agora a lei é
+/// uma LISTA (`CONTRAST_PAIRS`) com dois consumidores — este gate e o readout do painel —, e um
+/// par novo nasce gateado *e* visível sem ninguém tocar na UI.
+///
+/// ⚠️ E o achado que a mudança expôs: **um teste de unidade corre com a camada de override vazia**,
+/// então ele afirma sempre a tabela de FÁBRICA. A cor que o artista autora move o valor efetivo em
+/// runtime, onde nenhum teste está a olhar — é por isso que existe um readout, e há um gate lá que
+/// pina exactamente esta cegueira (`the_compile_time_check_cannot_see_an_authored_break`).
 
 #[test]
 fn color_value_constants_match_extremes() {

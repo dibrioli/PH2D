@@ -414,6 +414,12 @@ pub fn tr(key: &str) -> &'static str {
         "panel.tokens.authored" => "authored",
         "panel.tokens.reset" => "Reset",
         "panel.tokens.reset_all" => "Reset This Mode",
+        // O readout de CONTRASTE (plano UI/UX W4b). ⚠️ O nome do CRITÉRIO ("WCAG 2.2 AA 1.4.3")
+        // não passa por aqui: ele é o endereço de uma norma, e traduzi-lo tornaria a coisa que o
+        // artista precisa de PROCURAR impossível de procurar — a mesma lei que mantém as chaves
+        // dos tokens fora desta tabela.
+        "panel.tokens.contrast.title" => "Contrast below WCAG",
+        "panel.tokens.contrast.on" => "on",
         "panel.physics.title" => "Physics",
         "panel.physics.section.world" => "World",
         "panel.physics.section.solver" => "Solver",

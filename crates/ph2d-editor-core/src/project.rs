@@ -124,16 +124,20 @@ pub struct ProjectSettings {
     /// rotate. `0.0` disables the snap.
     pub snap_rotate_deg: f32,
     /// User-visible unit for length / position readouts. Sim storage
-    /// is always meters; this flips the FORMAT in Inspector / Grid
-    /// Settings / Gizmo readouts between "m" and "px". Default
-    /// `Meters` matches Godot / Bevy convention.
+    /// is always meters; this flips the FORMAT in the Inspector, the Grid
+    /// Settings, the gizmo readouts and — since doc 88 — every `Length`
+    /// param row of the Motion panel, between "m" and "px".
+    ///
+    /// Default **`Pixels`**: the app ends up all in pixels (Enio), and the
+    /// artist's ruler is the one the app answers in. The store stays metric
+    /// either way, which is what keeps the cook's fingerprint out of this
+    /// setting's reach.
     pub display_unit: DisplayUnit,
     /// App-wide image sampling mode (Config → "Image filter"). The
     /// editor stores it so the Settings submenu can show the active
     /// pick with a checkmark; the SHELL is the source of truth for the
     /// GPU sampler state and drives it via `EditorAction::SetImageFilter`
-    /// then `SpriteRenderer::set_filter_mode`. Default `PixelArt` — PH2D
-    /// is a pixel-art-first editor.
+    /// then `SpriteRenderer::set_filter_mode`. Default **`Smooth`**.
     pub image_filter: ImageFilterMode,
 }
 

@@ -226,6 +226,36 @@ pub(crate) fn on_click(id: NodeId, snap: &ParamsSnapshot) -> EventOutcome {
                     }
                 }
             }
+            ParamRow::Palette(row) => {
+                // `+` appends a colour, `−` drops the LAST. Both re-serialize the whole
+                // list into the text param — the same channel the swatch pick writes, so
+                // there is one answer to *what is this palette*.
+                //
+                // ⚠️ **No cap on `+`, and that is the wave** (Enio: *"tire os limites"*).
+                // `−` stops at one: an empty palette would leave the node with nothing to
+                // cycle, and the strip with nothing to click back from.
+                let mut colors = ph2d_color::parse_palette(&row.value)
+                    .filter(|p| !p.is_empty())
+                    .unwrap_or_else(|| ph2d_color::DEFAULT_PALETTE_FALLBACK.to_vec());
+                let add = id == crate::snapshot::param_pal_add_id(slot);
+                let rem = id == crate::snapshot::param_pal_remove_id(slot);
+                if add {
+                    // The new colour copies the last one — an artist adds a swatch to
+                    // then EDIT it, and a copy is visible where a black hole is a gap.
+                    let last = *colors.last().unwrap_or(&[1.0, 1.0, 1.0, 1.0]);
+                    colors.push(last);
+                } else if rem && colors.len() > 1 {
+                    colors.pop();
+                }
+                if add || rem {
+                    push_param_intent(MotionParamIntent::SetTextParam {
+                        node: snap.node,
+                        param: row.name,
+                        value: ph2d_color::serialize_palette(&colors),
+                    });
+                    return EventOutcome::Consumed;
+                }
+            }
             _ => {}
         }
     }

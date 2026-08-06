@@ -5,7 +5,7 @@
 //! `normalized_track`/`row_value` mappers are in scope.
 
 use super::curve_row::{self, CurveWidgets};
-use super::gradient_row::{self, GradientWidgets};
+use super::gradient_row::{self, ColourRowWidgets};
 use super::{
     CHANNELS_EXTRA_BASE, MAX_ENUM_OPTIONS, MAX_PARAM_ROWS, ParamRow, normalized_track,
     paint_angle_row, paint_seed_row, paint_text_row, param_checkbox_id, param_chip_id,
@@ -46,10 +46,10 @@ pub(crate) fn paint_rows(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
-) -> (CurveWidgets, GradientWidgets) {
+) -> (CurveWidgets, ColourRowWidgets) {
     let mut y = body_top;
     let mut curve_widgets = CurveWidgets::new();
-    let mut gradient_widgets = GradientWidgets::new();
+    let mut gradient_widgets = ColourRowWidgets::new();
     for (i, row) in rows.iter().enumerate().take(MAX_PARAM_ROWS) {
         match row {
             // A DRIVEN param (doc 58): the wire decides the number, so there is no widget —
@@ -219,6 +219,24 @@ pub(crate) fn paint_rows(
                     text_system,
                     theme,
                     &mut curve_widgets,
+                );
+                y += used + row_gap;
+            }
+            ParamRow::Palette(row) => {
+                // The wrapping swatch strip. It returns the height it USED, because a
+                // palette's row height is a function of how many colours there are.
+                let used = crate::palette_row::paint_palette_row(
+                    row,
+                    i,
+                    inner_x,
+                    inner_w,
+                    y,
+                    label_font,
+                    hit_index,
+                    scene,
+                    text_system,
+                    theme,
+                    &mut gradient_widgets,
                 );
                 y += used + row_gap;
             }

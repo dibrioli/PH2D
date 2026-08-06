@@ -59,7 +59,7 @@ pub use linear::LinearRgba;
 pub use oklab::OklabColor;
 pub use oklch::OklchColor;
 pub use palette::{PaletteData, PaletteError, PaletteFormat};
-pub use palette_text::{parse_palette, serialize_palette};
+pub use palette_text::{DEFAULT_PALETTE_FALLBACK, parse_palette, serialize_palette};
 pub use pigment_space::PigmentLinearSrgb;
 pub use premultiplied::Premultiplied;
 pub use srgb::SrgbRgba;

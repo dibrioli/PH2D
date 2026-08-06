@@ -30,6 +30,19 @@
 //! REPRESENTATION wearing the clothes of a decision. A `Vec` costs 16 bytes a colour and
 //! the cycle reads `len()`, so nothing downstream has an opinion about how many there are.
 
+/// The palette a node with nothing authored paints with — red / green / blue / yellow.
+///
+/// ⚠️ **It lives HERE so the node and the panel read the SAME list.** A swatch strip that
+/// fell back to a different default than the cook would describe colours nobody paints,
+/// which is the two-doors failure this codebase keeps naming. It is a DEFAULT, never a
+/// cap: the length lives in the string.
+pub const DEFAULT_PALETTE_FALLBACK: &[[f32; 4]] = &[
+    [1.0, 0.0, 0.0, 1.0],
+    [0.0, 1.0, 0.0, 1.0],
+    [0.0, 0.0, 1.0, 1.0],
+    [1.0, 1.0, 0.0, 1.0],
+];
+
 /// The version tag every palette string starts with.
 const TAG: &str = "p1";
 

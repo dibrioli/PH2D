@@ -315,6 +315,23 @@ pub(crate) fn build_params_snapshot(
         // A Gradient editor (doc 85) — a `ColorRamp` in a text param (`serialize_gradient`),
         // the colour sibling of the Curve. The panel draws the bar + draggable stops from the
         // string; a stop's COLOUR is read back through the OKLCH picker below.
+        if h.widget == ParamWidget::Palette {
+            let value = motion
+                .doc
+                .graph
+                .node_text_param_overrides(nid)
+                .and_then(|m| m.get(h.param))
+                .cloned()
+                .unwrap_or_default();
+            rows.push(ParamRow::Palette(
+                ph2d_panel_motion_params::PaletteRow {
+                    name: h.param,
+                    label: h.label.to_string(),
+                    value,
+                },
+            ));
+            continue;
+        }
         if h.widget == ParamWidget::Gradient {
             let value = motion
                 .doc

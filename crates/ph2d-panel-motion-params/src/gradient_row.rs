@@ -74,9 +74,13 @@ fn stop_srgb(stop: &RampStop) -> [u8; 4] {
     ]
 }
 
+/// One COLOUR row's store-registration data — the Gradient editor and the Palette strip
+/// both fill it, because the palette needs an exact SUBSET (swatches + buttons, no
+/// markers: a palette has no positions to drag).
+///
 /// One Gradient row's store-registration data (the caller's Phase B/C mutable-store pass
 /// applies these — swatches become picker swatches, markers become `CurvePoint` handles).
-pub(crate) struct GradientWidgets {
+pub(crate) struct ColourRowWidgets {
     /// `(marker id, parent, index, canvas)` — registered as `CurvePoint` (position drag).
     pub markers: Vec<(NodeId, NodeId, u8, Rect)>,
     /// `(swatch id, srgb)` — registered as a picker swatch + seeded with the colour.
@@ -85,7 +89,7 @@ pub(crate) struct GradientWidgets {
     pub buttons: Vec<NodeId>,
 }
 
-impl GradientWidgets {
+impl ColourRowWidgets {
     pub(crate) fn new() -> Self {
         Self {
             markers: Vec::new(),
@@ -133,7 +137,7 @@ pub(crate) fn paint_gradient_row(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
-    out: &mut GradientWidgets,
+    out: &mut ColourRowWidgets,
 ) -> f32 {
     let gap = Spacing::Xs.px();
     let ramp = working(&row.value);

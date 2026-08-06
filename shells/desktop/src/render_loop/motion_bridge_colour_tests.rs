@@ -117,79 +117,97 @@ fn opening_the_picker_does_not_quantize_an_unmoved_colour() {
     assert_ne!(channel_values(&motion, tint, ["r", "g", "b", "a"]), before);
 }
 
-/// **A palette is authored as COLOURS, and it shrinks with its own count.**
+/// **A paleta é UMA row, e o contador morreu com o cap.**
 ///
-/// The Enio named this node as one of the two done badly: `motion.color_array` painted
-/// THIRTEEN bare sliders (`C0 R` / `C0 G` / `C0 B` × 4 + the count), whose numbers are
-/// LINEAR RGB — the wire's unit, not a colour anybody can picture. Now each slot is one
-/// swatch that opens the OKLCH picker, exactly as `motion.tint` already did.
+/// O nó pintava doze sliders de canal, depois quatro swatches gateadas por um slider
+/// `colors` — e esse slider existia só para encolher uma lista FIXA de quatro. Com a
+/// paleta virando uma lista de verdade, *quantas cores há* é `len()`, e um número ao lado
+/// dela seria uma segunda resposta à mesma pergunta.
 ///
-/// The second half is the one a screenshot would not show: a slot BEYOND the count is a
-/// control the cook will never read (`cycle` clamps to `colors`), so it must not be
-/// offered. The gate drives the count down and checks the swatches DISAPPEAR — presence
-/// and absence, because a gate that only counts rows at full width passes with the
-/// gating deleted.
+/// FALSIFICADO se voltasse a haver params `f32` de cor (as doze rows cruas que o Enio
+/// nomeou) ou um contador ao lado da faixa.
 #[test]
-fn the_palette_is_four_swatches_that_shrink_with_the_colour_count() {
+fn the_palette_is_one_row_with_no_count_beside_it() {
     use ph2d_panel_motion_params::ParamRow;
     let mut motion = MotionState::new();
     let ca = motion.doc.graph.add_node("motion.color_array");
     ph2d_panel_motion_graph::set_graph_selection(vec![ca.0]);
-
-    let swatches = |motion: &MotionState| -> Vec<[&'static str; 4]> {
-        build_params_snapshot(motion, ProjectSettings::default())
-            .expect("resolvable")
-            .rows
-            .into_iter()
-            .filter_map(|r| match r {
-                ParamRow::Color(c) => Some(c.channels),
-                _ => None,
-            })
-            .collect()
-    };
-    // Full width: four swatches, each naming its own RGBA quad — and NOT one bare
-    // scalar row for any colour channel (that is the defect, stated directly).
-    assert_eq!(
-        swatches(&motion),
-        vec![
-            ["c0_r", "c0_g", "c0_b", "c0_a"],
-            ["c1_r", "c1_g", "c1_b", "c1_a"],
-            ["c2_r", "c2_g", "c2_b", "c2_a"],
-            ["c3_r", "c3_g", "c3_b", "c3_a"],
-        ]
-    );
-    let scalars: Vec<&str> = build_params_snapshot(&motion, ProjectSettings::default())
+    let rows = build_params_snapshot(&motion, ProjectSettings::default())
         .expect("resolvable")
-        .rows
+        .rows;
+    let palettes = rows
         .iter()
-        .filter_map(|r| match r {
-            ParamRow::Scalar(x) => Some(x.name),
-            _ => None,
-        })
-        .collect();
+        .filter(|r| matches!(r, ParamRow::Palette(_)))
+        .count();
+    assert_eq!(palettes, 1, "exactly one Palette row: {rows:?}");
     assert!(
-        !scalars.iter().any(|n| n.starts_with("c0_")),
-        "a colour channel is still a bare slider: {scalars:?}"
+        !rows.iter().any(|r| matches!(r, ParamRow::Scalar(_))),
+        "no scalar row survives — neither a raw channel nor a `colors` counter: {rows:?}"
     );
-
-    // The count is a whole number of slots, so it is a Seed-free INTEGER row.
-    assert!(
-        build_params_snapshot(&motion, ProjectSettings::default())
-            .expect("resolvable")
-            .rows
-            .iter()
-            .any(|r| matches!(r, ParamRow::Scalar(x) if x.name == "colors" && x.integer)),
-        "`colors` counts slots — a fractional palette is not a thing"
-    );
-
-    // Shrink it: the slots the cycle stops reading stop being offered.
-    for (count, want) in [(3.0, 3), (2.0, 2)] {
-        motion.doc.graph.set_param(ca, "colors", count);
-        assert_eq!(
-            swatches(&motion).len(),
-            want,
-            "with colors={count} the panel must offer exactly {want} swatches"
-        );
-    }
     ph2d_panel_motion_graph::set_graph_selection(Vec::new());
+}
+
+/// **A PALETA NÃO TEM LIMITE, e isto é a prova de ponta a ponta.**
+///
+/// O Enio: *"color array poderia ter quantas cores o usuário quisesse. Tire os limites."*
+/// O cap de quatro era quantos `ParamSpec` alguém escreveu — um limite da REPRESENTAÇÃO —,
+/// então a cura não é um número maior: é a paleta virar uma LISTA (o text param), cujo
+/// comprimento o `cycle` lê com `len()`.
+///
+/// O oráculo é o **COOK**: uma paleta de doze cores tem de pintar doze tints distintos
+/// antes de repetir. Um gate que só lesse a string ficaria verde com o nó ainda ciclando
+/// quatro.
+#[test]
+fn a_palette_of_any_length_cycles_through_all_of_it() {
+    use ph2d_nodegraph::attr::{Column, Stream};
+    use ph2d_nodegraph::cook::Cook;
+    use ph2d_nodegraph::graph::{Edge, Graph};
+
+    let mut reg = ph2d_node_registry::NodeRegistry::new();
+    ph2d_node_registry_init::register_all_nodes(&mut reg).expect("registry");
+    let mut g = Graph::new();
+    let src = g.add_node("motion.grid");
+    let ca = g.add_node("motion.color_array");
+    g.connect(Edge {
+        from: (src, 0),
+        to: (ca, 0),
+        delayed: false,
+    })
+    .expect("edge");
+
+    // DOZE cores — três vezes o cap que esta wave removeu.
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "twelve fixture indices, exact in f32"
+    )]
+    let twelve: Vec<[f32; 4]> = (0..12).map(|i| [i as f32 / 12.0, 0.0, 0.0, 1.0]).collect();
+    g.set_text_param(ca, "palette", ph2d_color::serialize_palette(&twelve));
+    g.set_param(src, "cols", 6.0);
+    g.set_param(src, "rows", 4.0);
+
+    let mut cook = Cook::new();
+    let set = cook.cook(&g, &reg, ca, 0.0).expect("cooks");
+    let stream: &Stream = &set.iter().next().expect("stream").as_stream().clone();
+    let Some(Column::Vec4(tint)) = stream.get("tint") else {
+        panic!("no tint column")
+    };
+    assert!(
+        tint.len() >= 12,
+        "need at least twelve rows: {}",
+        tint.len()
+    );
+    let distinct: std::collections::BTreeSet<u32> =
+        tint.iter().take(12).map(|c| c[0].to_bits()).collect();
+    assert_eq!(
+        distinct.len(),
+        12,
+        "the first twelve rows must take twelve DIFFERENT colours; got {} — the cycle is \
+         still capped at the old slot count",
+        distinct.len()
+    );
+    // …e a décima terceira repete a primeira: é um ciclo, não uma lista que acaba.
+    assert!(
+        (tint[12][0] - tint[0][0]).abs() < 1e-6,
+        "the thirteenth row wraps to the first"
+    );
 }

@@ -17,6 +17,7 @@
 mod curve_row;
 mod events;
 mod gradient_row;
+mod palette_row;
 mod number_rows;
 mod rows_paint;
 mod shaper_dispatch;
@@ -54,9 +55,9 @@ use number_rows::{
     paint_angle_row, paint_seed_row,
 };
 pub use snapshot::{
-    AngleRow, ChannelsRow, ColorRow, CurveRow, EnumRow, GradientRow, MotionParamIntent, ParamRow,
+    AngleRow, ChannelsRow, ColorRow, CurveRow, EnumRow, GradientRow, MotionParamIntent, PaletteRow, ParamRow,
     ParamsSnapshot, RowDisplay, ScalarRow, SeedRow, SourceRow, TextRow, ToggleRow,
-    drain_param_intents, param_grad_swatch_id, param_swatch_id, scalar_text, set_current_params,
+    drain_param_intents, param_grad_swatch_id, param_pal_swatch_id, param_swatch_id, scalar_text, set_current_params,
 };
 use snapshot::{
     CHANNELS_EXTRA_BASE, MAX_ENUM_OPTIONS, MAX_PARAM_ROWS, current_params, param_checkbox_id,

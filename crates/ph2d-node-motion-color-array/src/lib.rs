@@ -11,11 +11,11 @@
 //! palette across the set. Transcendental-free (HR-5): a modulo lookup, no maths.
 //! `Effect::Pure`.
 
-use ph2d_node_registry::{NodeRegistry, ParamGate, RegistryError};
+use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
-use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
+use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
@@ -23,8 +23,13 @@ const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::F
 const VALUE: PortType = PortType::new(Domain::Instances, Dim::Scalar, Clock::Frame);
 const VALUE_COL: &str = "v";
 
-/// The most palette slots (matches the four colour params).
-const MAX_SLOTS: i64 = 4;
+/// The palette an untouched node paints with — red / green / blue / yellow, the four
+/// the fixed params used to default to, so a graph that never authored a palette looks
+/// exactly like it did before this wave.
+///
+/// ⚠️ **This is a DEFAULT, not a cap.** There is no maximum: the length lives in the
+/// text param, and `cycle` reads `palette.len()`.
+pub use ph2d_color::DEFAULT_PALETTE_FALLBACK as DEFAULT_PALETTE;
 
 /// The static contract of this node type (ADR-0031).
 pub const MANIFEST: NodeManifest = NodeManifest {
@@ -47,82 +52,16 @@ pub const MANIFEST: NodeManifest = NodeManifest {
     }],
     effect: Effect::Pure,
     clock: Clock::Frame,
-    params: &[
-        // Active palette slots (2..4).
-        ParamSpec {
-            name: "colors",
-            default: 4.0,
-        },
-        // Four colour slots (linear RGB). Default: red / green / blue / yellow.
-        ParamSpec {
-            name: "c0_r",
-            default: 1.0,
-        },
-        ParamSpec {
-            name: "c0_g",
-            default: 0.0,
-        },
-        ParamSpec {
-            name: "c0_b",
-            default: 0.0,
-        },
-        ParamSpec {
-            name: "c1_r",
-            default: 0.0,
-        },
-        ParamSpec {
-            name: "c1_g",
-            default: 1.0,
-        },
-        ParamSpec {
-            name: "c1_b",
-            default: 0.0,
-        },
-        ParamSpec {
-            name: "c2_r",
-            default: 0.0,
-        },
-        ParamSpec {
-            name: "c2_g",
-            default: 0.3,
-        },
-        ParamSpec {
-            name: "c2_b",
-            default: 1.0,
-        },
-        ParamSpec {
-            name: "c3_r",
-            default: 1.0,
-        },
-        ParamSpec {
-            name: "c3_g",
-            default: 0.85,
-        },
-        ParamSpec {
-            name: "c3_b",
-            default: 0.0,
-        },
-        // The per-slot ALPHA. It was a hardcoded `1.0` in the palette until the
-        // swatch arrived, which was a LIMIT, not a decision: the `tint` column is
-        // Vec4, so the alpha already travelled — nobody could author it. Default
-        // 1.0 ⇒ every document written before this is byte-identical.
-        ParamSpec {
-            name: "c0_a",
-            default: 1.0,
-        },
-        ParamSpec {
-            name: "c1_a",
-            default: 1.0,
-        },
-        ParamSpec {
-            name: "c2_a",
-            default: 1.0,
-        },
-        ParamSpec {
-            name: "c3_a",
-            default: 1.0,
-        },
-    ],
+    // ⚠️ **NO f32 params, and that IS the wave** (Enio: *"color array poderia ter
+    // quantas cores o usuário quisesse, tire os limites"*). The palette used to be four
+    // colours because four is how many `ParamSpec`s were written down, and the `colors`
+    // count existed to shrink that fixed list. Both were limits of the REPRESENTATION.
+    //
+    // The palette now travels as the text param `palette` (`ph2d_color::palette_text`),
+    // the canonical channel for a param that is not one f32 — the same road
+    // `motion.color_ramp` took for its gradient, and for the same reason: a
+    // variable-length list of colours cannot be a fixed set of `f32` params.
+    params: &[],
     lowerings: &[LoweringKind::Cpu],
 };
 
@@ -152,33 +91,16 @@ impl NodeOp for MotionColorArray {
     }
 
     fn eval(&self, ctx: &mut EvalCtx<'_>) {
-        let colors = (ctx.param("colors").round() as i64).clamp(1, MAX_SLOTS) as usize;
-        let palette = [
-            [
-                ctx.param("c0_r"),
-                ctx.param("c0_g"),
-                ctx.param("c0_b"),
-                ctx.param("c0_a"),
-            ],
-            [
-                ctx.param("c1_r"),
-                ctx.param("c1_g"),
-                ctx.param("c1_b"),
-                ctx.param("c1_a"),
-            ],
-            [
-                ctx.param("c2_r"),
-                ctx.param("c2_g"),
-                ctx.param("c2_b"),
-                ctx.param("c2_a"),
-            ],
-            [
-                ctx.param("c3_r"),
-                ctx.param("c3_g"),
-                ctx.param("c3_b"),
-                ctx.param("c3_a"),
-            ],
-        ];
+        // The authored palette, or the factory one when the artist has not touched it.
+        // A malformed string falls back too — `parse_palette` refuses rather than
+        // silently shortening, so the visible default beats a palette missing its tail.
+        let palette: Vec<[f32; 4]> = ctx
+            .text_param("palette")
+            .and_then(ph2d_color::parse_palette)
+            .filter(|p| !p.is_empty())
+            .unwrap_or_else(|| DEFAULT_PALETTE.to_vec());
+        let colors = palette.len();
+        let _ = &palette;
         let offset = scalar_first(ctx.input(1), VALUE_COL)
             .map(|v| v.round() as i64)
             .unwrap_or(0);
@@ -209,73 +131,22 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
-    reg.register_param_gates(MANIFEST.id, PARAM_GATES);
     Ok(())
 }
 
 use ph2d_node_registry::{ParamUiHint, ParamWidget};
 
-static PARAM_HINTS: &[ParamUiHint] = &[
-    ParamUiHint {
-        param: "colors",
-        label: "Colors",
-        min: 2.0,
-        max: 4.0,
-        step: 1.0,
-        // A whole number of slots. `unit_of` reads `IntSlider` as a Count, so it can
-        // never be told to scale by `pixels_per_meter`.
-        widget: ParamWidget::IntSlider,
-    },
-    swatch("c0_r", "Color 1", ["c0_r", "c0_g", "c0_b", "c0_a"]),
-    swatch("c1_r", "Color 2", ["c1_r", "c1_g", "c1_b", "c1_a"]),
-    swatch("c2_r", "Color 3", ["c2_r", "c2_g", "c2_b", "c2_a"]),
-    swatch("c3_r", "Color 4", ["c3_r", "c3_g", "c3_b", "c3_a"]),
-];
-
-/// One palette slot as a **swatch**, the `motion.tint` treatment.
-///
-/// The panel folds the four channels into a single row that opens the OKLCH picker,
-/// so the hint hangs off the RED channel and names the other three — the anchor is
-/// in its own list on purpose (`color_groups` collects the whole quad, and the
-/// builder emits the swatch before it skips the consumed members).
-///
-/// ⚠️ Until this wave these were TWELVE bare `Slider` rows labelled `C0 R` / `C0 G`
-/// / `C0 B` (Enio: *"13 sliders crus, sem swatch"*). The numbers were LINEAR RGB,
-/// which is the wire's unit and not a colour anybody can picture: `0.3` is not a
-/// third of the way to green, and no artist authors a palette by typing a
-/// transfer-function coordinate three times.
-const fn swatch(
-    param: &'static str,
-    label: &'static str,
-    channels: [&'static str; 4],
-) -> ParamUiHint {
-    ParamUiHint {
-        param,
-        label,
-        min: 0.0,
-        max: 1.0,
-        step: 0.01,
-        widget: ParamWidget::Color { channels },
-    }
-}
-
-/// **The palette shrinks with its own count.** `colors` says how many slots the
-/// cycle uses, so a slot beyond it is a swatch the artist can edit and the cook
-/// will never read — the dead control this codebase keeps one table per menu to
-/// prevent. Gating the ANCHOR is enough: the other three channels are folded into
-/// the swatch and never get a row of their own.
-static PARAM_GATES: &[ParamGate] = &[
-    ParamGate {
-        param: "c2_r",
-        when: "colors",
-        values: &[3, 4],
-    },
-    ParamGate {
-        param: "c3_r",
-        when: "colors",
-        values: &[4],
-    },
-];
+/// ONE row: the palette itself. The count is `palette.len()`, the colours are the
+/// colours — there is nothing else to say, and no `colors` slider to disagree with the
+/// list it was capping.
+static PARAM_HINTS: &[ParamUiHint] = &[ParamUiHint {
+    param: "palette",
+    label: "Palette",
+    min: 0.0,
+    max: 0.0,
+    step: 0.0,
+    widget: ParamWidget::Palette,
+}];
 
 #[cfg(test)]
 mod tests {
@@ -311,7 +182,7 @@ mod tests {
 
     /// `colors` bounds the active slots: with 2 active, only slots 0 and 1 appear.
     #[test]
-    fn colors_bounds_the_active_slots() {
+    fn the_palette_length_is_the_cycle_length() {
         let c = cycle(6, &PAL, 2, 0);
         for col in &c {
             assert!(
@@ -370,7 +241,13 @@ mod tests {
         let mut g = Graph::new();
         let src = g.add_node("motion.color_array.test.src");
         let ca = g.add_node("motion.color_array");
-        g.set_param(ca, "colors", 2.0);
+        // A TWO-colour palette: the count is the list's length, not a slider that caps
+        // a longer fixed list — so authoring "two colours" is authoring two colours.
+        g.set_text_param(
+            ca,
+            "palette",
+            ph2d_color::serialize_palette(&[[1.0, 0.0, 0.0, 1.0], [0.0, 1.0, 0.0, 1.0]]),
+        );
         g.connect(Edge {
             from: (src, 0),
             to: (ca, 0),

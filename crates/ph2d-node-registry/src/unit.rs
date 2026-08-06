@@ -142,7 +142,8 @@ pub fn unit_of(widget: ParamWidget, declared: Option<ParamUnit>) -> ParamUnit {
         | ParamWidget::Source
         | ParamWidget::Text
         | ParamWidget::Curve
-        | ParamWidget::Gradient => ParamUnit::None,
+        | ParamWidget::Gradient
+        | ParamWidget::Palette => ParamUnit::None,
         ParamWidget::Slider => declared.unwrap_or_default(),
     }
 }

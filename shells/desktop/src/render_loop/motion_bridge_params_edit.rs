@@ -44,11 +44,15 @@ pub(super) fn apply_param_edits(
     let grad_params = type_id
         .map(|tid| color::gradient_params(&motion.registry, tid))
         .unwrap_or_default();
+    // The palette text params — each colour's swatch feeds the SAME OKLCH picker.
+    let pal_params = type_id
+        .map(|tid| color::palette_params(&motion.registry, tid))
+        .unwrap_or_default();
 
     // A colour-swatch OR gradient-stop pick is an editing session (like a slider drag): its
     // live writes coalesce into ONE undo step, opened here + committed on close. Detected
     // BEFORE the bracket; the read-back writes go INSIDE it.
-    let session = color::picker_session(motion, sel, &groups, &grad_params, store);
+    let session = color::picker_session(motion, sel, &groups, &grad_params, &pal_params, store);
     let editing = any_param_editing(store) || session;
     let was = PARAM_EDITING.swap(editing, Ordering::Relaxed);
     if editing && !was {
@@ -58,7 +62,7 @@ pub(super) fn apply_param_edits(
     // Colour + gradient-stop read-back: feed the live pick into the params/string it targets
     // (sRGB→linear), re-cooking only on an actual change (the picker stays open across idle
     // frames). One door in `color.rs` (the sRGB↔linear boundary).
-    color::apply_picker_readback(motion, sel, &groups, &grad_params, store);
+    color::apply_picker_readback(motion, sel, &groups, &grad_params, &pal_params, store);
 
     // Scalar slider / chip + enum edits.
     let intents = ph2d_panel_motion_params::drain_param_intents();

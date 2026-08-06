@@ -154,6 +154,15 @@ pub enum ParamWidget {
     /// Reusable by every multi-stop-gradient param (`motion.color_ramp` Custom,
     /// and later any colour-over-value node). `min/max/step` are inert.
     Gradient,
+    /// An ordered COLOUR PALETTE, carried as a text param
+    /// (`ph2d_color::palette_text`), painted as a wrapping strip of swatches with
+    /// `+`/`−`. Each swatch opens the OKLCH picker, exactly like [`Self::Color`].
+    ///
+    /// ⚠️ **Distinct from [`Self::Gradient`] because a palette is a LIST, not samples of
+    /// a curve** — it has no positions and no interpolation, and offering either would
+    /// put controls on screen that change nothing. The strip WRAPS, so the row has no
+    /// length limit of its own: the artist adds colours until they stop wanting more.
+    Palette,
 }
 
 impl ParamWidget {

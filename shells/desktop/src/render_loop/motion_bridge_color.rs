@@ -109,6 +109,7 @@ pub(super) fn picker_session(
     sel: Option<ph2d_nodegraph::graph::NodeId>,
     groups: &[[&'static str; 4]],
     grad_params: &[&'static str],
+    pal_params: &[&'static str],
     store: &ph2d_editor::interaction::WidgetStore,
 ) -> bool {
     use ph2d_panel_motion_params::param_swatch_id;
@@ -120,7 +121,12 @@ pub(super) fn picker_session(
             .iter()
             .any(|p| gradient_picker_stop(motion, nid, p, store).is_some())
     });
-    color || grad
+    let pal = sel.is_some_and(|nid| {
+        pal_params
+            .iter()
+            .any(|p| palette_picker_index(motion, nid, p, store).is_some())
+    });
+    color || grad || pal
 }
 
 /// Feed the live OKLCH pick into the node it targets — a colour group's 4 channel params
@@ -132,6 +138,7 @@ pub(super) fn apply_picker_readback(
     sel: Option<ph2d_nodegraph::graph::NodeId>,
     groups: &[[&'static str; 4]],
     grad_params: &[&'static str],
+    pal_params: &[&'static str],
     store: &ph2d_editor::interaction::WidgetStore,
 ) {
     use ph2d_panel_motion_params::param_swatch_id;
@@ -151,6 +158,13 @@ pub(super) fn apply_picker_readback(
             apply_gradient_stop_pick(motion, nid, p, stop, value.rgba);
         }
     }
+    for p in pal_params {
+        if let Some(i) = palette_picker_index(motion, nid, p, store)
+            && let Some((value, _, _, _)) = pick()
+        {
+            apply_palette_pick(motion, nid, p, i, value.rgba);
+        }
+    }
 }
 
 /// The text params of a node type edited by a [`ParamWidget::Gradient`] (doc 85) — the
@@ -166,6 +180,85 @@ pub(super) fn gradient_params(
         .flatten()
         .filter_map(|h| (h.widget == ParamWidget::Gradient).then_some(h.param))
         .collect()
+}
+
+/// The text params edited by a [`ParamWidget::Palette`] — the palette string keys whose
+/// per-colour swatches the picker read-back writes into. Sibling of [`gradient_params`],
+/// asked separately because the two write DIFFERENT strings (a ramp has positions and an
+/// interp; a palette is a list) and a shared list would need a second lookup to tell them
+/// apart at the write.
+pub(super) fn palette_params(
+    registry: &ph2d_node_registry::NodeRegistry,
+    type_id: ph2d_nodegraph::node::NodeTypeId,
+) -> Vec<&'static str> {
+    use ph2d_node_registry::ParamWidget;
+    registry
+        .param_ui(type_id)
+        .into_iter()
+        .flatten()
+        .filter_map(|h| (h.widget == ParamWidget::Palette).then_some(h.param))
+        .collect()
+}
+
+/// The palette a node paints with — the authored string, else the factory list. ⚠️ **The
+/// SAME fallback the node and the panel use**: a read-back that started from a different
+/// list would rewrite colours the artist never saw.
+fn current_palette(
+    motion: &MotionState,
+    nid: ph2d_nodegraph::graph::NodeId,
+    param: &str,
+) -> Vec<[f32; 4]> {
+    motion
+        .doc
+        .graph
+        .node_text_param_overrides(nid)
+        .and_then(|m| m.get(param))
+        .and_then(|v| ph2d_color::parse_palette(v))
+        .filter(|p| !p.is_empty())
+        .unwrap_or_else(|| ph2d_color::DEFAULT_PALETTE_FALLBACK.to_vec())
+}
+
+/// If the open picker targets a colour swatch of this node's `param` palette, its index.
+/// The id is [`ph2d_panel_motion_params::param_pal_swatch_id`] — the SAME the panel
+/// registers, so the two agree without sharing row order.
+pub(super) fn palette_picker_index(
+    motion: &MotionState,
+    nid: ph2d_nodegraph::graph::NodeId,
+    param: &str,
+    store: &ph2d_editor::interaction::WidgetStore,
+) -> Option<usize> {
+    let target = store.picker_target()?;
+    let n = current_palette(motion, nid, param).len();
+    (0..n).find(|&i| ph2d_panel_motion_params::param_pal_swatch_id(param, i) == target)
+}
+
+/// Write the live pick into the `i`-th colour and re-serialize the whole list — the same
+/// channel `+`/`−` writes, so the palette has one representation.
+pub(super) fn apply_palette_pick(
+    motion: &mut MotionState,
+    nid: ph2d_nodegraph::graph::NodeId,
+    param: &str,
+    i: usize,
+    srgb: [u8; 4],
+) {
+    let mut colors = current_palette(motion, nid, param);
+    let Some(slot) = colors.get_mut(i) else { return };
+    // ⚠️ Compare in sRGB8 — the space the pick lives in — so merely OPENING the picker on
+    // a colour that is not an exact 8-bit round-trip does not quantize the palette. The
+    // same guard `apply_gradient_stop_pick` and `apply_color_to_node` document.
+    if srgb == linear_rgba_to_srgb8(*slot) {
+        return;
+    }
+    // ⚠️ **Alpha is PRESERVED, not overwritten.** The palette carries per-colour alpha
+    // (`p1` has four components) and the OKLCH picker is opaque, so taking its byte would
+    // silently make every colour the artist touches fully opaque.
+    let a = slot[3];
+    *slot = srgb8_to_linear_rgba(srgb);
+    slot[3] = a;
+    motion
+        .doc
+        .graph
+        .set_text_param(nid, param, ph2d_color::serialize_palette(&colors));
 }
 
 /// If the OKLCH picker open right now targets a stop swatch of this node's `param` gradient,

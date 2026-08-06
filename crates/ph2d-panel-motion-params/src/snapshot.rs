@@ -30,6 +30,7 @@ pub enum ParamRow {
     Text(TextRow),
     Curve(CurveRow),
     Gradient(GradientRow),
+    Palette(PaletteRow),
     Channels(ChannelsRow),
     Source(SourceRow),
 }
@@ -110,6 +111,24 @@ pub struct CurveRow {
 /// so a position/add/remove edit rides [`MotionParamIntent::SetTextParam`]; a colour edit
 /// rides the shell's picker read-back (mirror of [`ColorRow`]). The artist never sees the
 /// string — only the bar and the stops.
+/// An ordered COLOUR PALETTE — a wrapping strip of OKLCH swatches with `+`/`−`, carried
+/// in a text param (`ph2d_color::palette_text`). Like [`GradientRow`] the value is a
+/// `String`, so add/remove rides [`MotionParamIntent::SetTextParam`] and a colour edit
+/// rides the shell's picker read-back.
+///
+/// ⚠️ **No length field, and none is missing:** the count IS `parse_palette(value).len()`.
+/// A separate number would be a second answer to *how many colours are there*, and the
+/// one this wave removed.
+#[derive(Clone, Debug, PartialEq)]
+pub struct PaletteRow {
+    /// The text-param key — echoed in the intent + the per-swatch ids.
+    pub name: &'static str,
+    /// English label (from the `ParamUiHint`).
+    pub label: String,
+    /// The serialized palette (empty → the node's factory colours).
+    pub value: String,
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct GradientRow {
     /// The text-param key (`Graph::set_text_param`) — echoed in the intent + the
@@ -521,6 +540,27 @@ pub(crate) fn param_grad_stop_id(slot: usize, stop: usize) -> NodeId {
 /// `pub` for the bridge, exactly like [`param_swatch_id`].
 pub fn param_grad_swatch_id(name: &str, stop: usize) -> NodeId {
     fnv_id(&format!("motion_param/grad_swatch/{name}/{stop}"))
+}
+
+/// Stable widget id for a Palette row's `i`-th colour swatch, keyed by the text-param
+/// **name** + index (NOT positional), so the shell bridge computes the same id to seed the
+/// swatch and read the OKLCH pick back. `pub` for the bridge, exactly like
+/// [`param_grad_swatch_id`].
+///
+/// ⚠️ **Derived from a string, so there is no pool and no cap** — the 200th swatch has an
+/// id as readily as the 2nd, which is what lets the row have no length limit.
+pub fn param_pal_swatch_id(name: &str, i: usize) -> NodeId {
+    fnv_id(&format!("motion_param/pal_swatch/{name}/{i}"))
+}
+
+/// The `slot`-th Palette row's **add-colour** button.
+pub(crate) fn param_pal_add_id(slot: usize) -> NodeId {
+    fnv_id(&format!("motion_param/pal/{slot}/add"))
+}
+
+/// The `slot`-th Palette row's **remove-colour** button (drops the LAST colour).
+pub(crate) fn param_pal_remove_id(slot: usize) -> NodeId {
+    fnv_id(&format!("motion_param/pal/{slot}/remove"))
 }
 
 /// The `slot`-th Gradient row's **add-stop** button.

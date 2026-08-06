@@ -42,7 +42,9 @@
 //! HR-5: the wave is the corrected parabolic sine (sibling `trig.rs`), the normal is a
 //! `sqrt` — no transcendentals.
 
-use ph2d_node_registry::{NodeRegistry, ParamUiHint, ParamWidget, RegistryError};
+use ph2d_node_registry::{
+    NodeRegistry, ParamUiHint, ParamUnit, ParamUnitDecl, ParamWidget, RegistryError,
+};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
 use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
@@ -301,6 +303,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     Ok(())
 }
 
@@ -361,6 +364,34 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 5.0,
         step: 0.05,
         widget: ParamWidget::Slider,
+    },
+];
+
+/// **What each of this node's numbers IS** (doc 88, Wave A) — never how it is
+/// shown. A `Length` is stored in world METRES and the panel resolves the face
+/// the artist reads (`px` or `m`) from `ProjectSettings::display_unit`; a node
+/// that could pin one would be overriding a setting it does not own.
+///
+/// Only params whose value is a world COORDINATE or a world DISTANCE are declared
+/// here. A weight, a fraction, a rate and a count are left bare on purpose: a unit
+/// that is wrong is worse than a unit that is missing, because the artist can read
+/// a bare number but a mislabelled one teaches them something false.
+static PARAM_UNITS: &[ParamUnitDecl] = &[
+    ParamUnitDecl {
+        param: "level",
+        unit: ParamUnit::Length,
+    },
+    ParamUnitDecl {
+        param: "depth",
+        unit: ParamUnit::Length,
+    },
+    ParamUnitDecl {
+        param: "wave_amplitude",
+        unit: ParamUnit::Length,
+    },
+    ParamUnitDecl {
+        param: "wave_length",
+        unit: ParamUnit::Length,
     },
 ];
 

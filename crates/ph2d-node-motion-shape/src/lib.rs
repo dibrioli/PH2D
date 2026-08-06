@@ -26,7 +26,9 @@
 //! content-revision rides in the cook fingerprint, so editing a slider re-cooks
 //! this node and only what is downstream of it.
 
-use ph2d_node_registry::{NodeRegistry, ParamGate, ParamUiHint, ParamWidget, RegistryError};
+use ph2d_node_registry::{
+    NodeRegistry, ParamGate, ParamUiHint, ParamUnit, ParamUnitDecl, ParamWidget, RegistryError,
+};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
@@ -261,6 +263,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     reg.register_param_gates(MANIFEST.id, PARAM_GATES);
     // Its output carries `geometry_id` (a live vector shape) drawn by the vector
     // pass. The GPU-resident cook has no `geometry_id` route, so a document
@@ -350,6 +353,20 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         widget: ParamWidget::Slider,
     },
 ];
+
+/// **What each of this node's numbers IS** (doc 88, Wave A) — never how it is
+/// shown. A `Length` is stored in world METRES and the panel resolves the face
+/// the artist reads (`px` or `m`) from `ProjectSettings::display_unit`; a node
+/// that could pin one would be overriding a setting it does not own.
+///
+/// Only params whose value is a world COORDINATE or a world DISTANCE are declared
+/// here. A weight, a fraction, a rate and a count are left bare on purpose: a unit
+/// that is wrong is worse than a unit that is missing, because the artist can read
+/// a bare number but a mislabelled one teaches them something false.
+static PARAM_UNITS: &[ParamUnitDecl] = &[ParamUnitDecl {
+    param: "size",
+    unit: ParamUnit::Length,
+}];
 
 /// **Per-kind visibility** — a param appears only when `kind` is one of the listed
 /// values (the enum indices from [`ShapeKind`]). `kind` and `size` have no gate

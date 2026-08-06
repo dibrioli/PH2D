@@ -145,7 +145,7 @@ fn the_object_recusal_is_content_aware_a_live_vector_recuses_but_a_sprite_stays(
     let mut m = MotionState::new();
     assert!(
         !cook_publishes_live_geometry(&m.pump.cook),
-        "no externals ⇒ nothing live"
+        "no externals -> nothing live"
     );
     m.pump.cook.set_external(
         "Sprite",

@@ -22,7 +22,7 @@
 //! masked (the multiplicative `falloff` column blends warped vs original per element).
 //! `Effect::Pure`.
 
-use ph2d_node_registry::{NodeRegistry, RegistryError};
+use ph2d_node_registry::{NodeRegistry, ParamUnit, ParamUnitDecl, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
@@ -432,6 +432,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     // GPU/M5: the kernel and the FOUR whole-stream reductions it reads (the
     // bounding box). Side metadata on the registry (ADR-0126) — the frozen node
     // contract is untouched.
@@ -452,6 +453,50 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     hint("br_dy", "BR Y"),
     hint("bl_dx", "BL X"),
     hint("bl_dy", "BL Y"),
+];
+
+/// **What each of this node's numbers IS** (doc 88, Wave A) — never how it is
+/// shown. A `Length` is stored in world METRES and the panel resolves the face
+/// the artist reads (`px` or `m`) from `ProjectSettings::display_unit`; a node
+/// that could pin one would be overriding a setting it does not own.
+///
+/// Only params whose value is a world COORDINATE or a world DISTANCE are declared
+/// here. A weight, a fraction, a rate and a count are left bare on purpose: a unit
+/// that is wrong is worse than a unit that is missing, because the artist can read
+/// a bare number but a mislabelled one teaches them something false.
+static PARAM_UNITS: &[ParamUnitDecl] = &[
+    ParamUnitDecl {
+        param: "tl_dx",
+        unit: ParamUnit::Length,
+    },
+    ParamUnitDecl {
+        param: "tl_dy",
+        unit: ParamUnit::Length,
+    },
+    ParamUnitDecl {
+        param: "tr_dx",
+        unit: ParamUnit::Length,
+    },
+    ParamUnitDecl {
+        param: "tr_dy",
+        unit: ParamUnit::Length,
+    },
+    ParamUnitDecl {
+        param: "br_dx",
+        unit: ParamUnit::Length,
+    },
+    ParamUnitDecl {
+        param: "br_dy",
+        unit: ParamUnit::Length,
+    },
+    ParamUnitDecl {
+        param: "bl_dx",
+        unit: ParamUnit::Length,
+    },
+    ParamUnitDecl {
+        param: "bl_dy",
+        unit: ParamUnit::Length,
+    },
 ];
 
 const fn hint(param: &'static str, label: &'static str) -> ParamUiHint {

@@ -14,7 +14,7 @@
 //! `center_x` (0), `center_y` (0), `radius` (5), `invert` (0/1 — flips the mask to
 //! `1 − f`). The defaults reproduce the classic smoothstep circle.
 
-use ph2d_node_registry::{NodeRegistry, RegistryError};
+use ph2d_node_registry::{NodeRegistry, ParamUnit, ParamUnitDecl, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
@@ -249,6 +249,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     // GPU/M5 Fase 2 (ADR-0126): the WGSL lowering, registered on the side.
     reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     Ok(())
@@ -310,6 +311,30 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 1.0,
         step: 1.0,
         widget: ParamWidget::Toggle,
+    },
+];
+
+/// **What each of this node's numbers IS** (doc 88, Wave A) — never how it is
+/// shown. A `Length` is stored in world METRES and the panel resolves the face
+/// the artist reads (`px` or `m`) from `ProjectSettings::display_unit`; a node
+/// that could pin one would be overriding a setting it does not own.
+///
+/// Only params whose value is a world COORDINATE or a world DISTANCE are declared
+/// here. A weight, a fraction, a rate and a count are left bare on purpose: a unit
+/// that is wrong is worse than a unit that is missing, because the artist can read
+/// a bare number but a mislabelled one teaches them something false.
+static PARAM_UNITS: &[ParamUnitDecl] = &[
+    ParamUnitDecl {
+        param: "center_x",
+        unit: ParamUnit::Length,
+    },
+    ParamUnitDecl {
+        param: "center_y",
+        unit: ParamUnit::Length,
+    },
+    ParamUnitDecl {
+        param: "radius",
+        unit: ParamUnit::Length,
     },
 ];
 

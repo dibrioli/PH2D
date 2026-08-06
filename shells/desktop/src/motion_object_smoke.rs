@@ -100,7 +100,7 @@ fn build_stamp_graph_osc(graph: &mut Graph, name: &str) -> NodeId {
         .iter()
         .find(|e| e.to == (out, 0))
         .map(|e| e.from.0)
-        .expect("duplicator → output edge");
+        .expect("duplicator -> output edge");
     let osc = graph.add_node("motion.oscillator");
     graph.set_pos(
         osc,
@@ -141,10 +141,34 @@ fn build_stamp_graph_2dup(graph: &mut Graph, name: &str) -> NodeId {
     let out = graph.add_node("motion.output");
     graph.set_pos(src, Pos { x: 0.0, y: -320.0 });
     graph.set_pos(grid1, Pos { x: 0.0, y: -200.0 });
-    graph.set_pos(dup1, Pos { x: 200.0, y: -260.0 });
-    graph.set_pos(grid2, Pos { x: 200.0, y: -140.0 });
-    graph.set_pos(dup2, Pos { x: 400.0, y: -200.0 });
-    graph.set_pos(out, Pos { x: 600.0, y: -200.0 });
+    graph.set_pos(
+        dup1,
+        Pos {
+            x: 200.0,
+            y: -260.0,
+        },
+    );
+    graph.set_pos(
+        grid2,
+        Pos {
+            x: 200.0,
+            y: -140.0,
+        },
+    );
+    graph.set_pos(
+        dup2,
+        Pos {
+            x: 400.0,
+            y: -200.0,
+        },
+    );
+    graph.set_pos(
+        out,
+        Pos {
+            x: 600.0,
+            y: -200.0,
+        },
+    );
     let wire = |g: &mut Graph, a: NodeId, ap: u16, b: NodeId, bp: u16| {
         g.connect(Edge {
             from: (a, ap),

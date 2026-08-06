@@ -21,7 +21,7 @@
 //!
 //! `delta_i = (min + ease(raw_i)·(max−min)) · falloff_i`, added to the channel.
 
-use ph2d_node_registry::{NodeRegistry, RegistryError};
+use ph2d_node_registry::{NodeRegistry, ParamUnit, ParamUnitDecl, RegistryError};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
@@ -138,6 +138,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     Ok(())
 }
 
@@ -203,6 +204,22 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 1.0,
         step: 1.0,
         widget: ParamWidget::Toggle,
+    },
+];
+
+/// **What each of this node's numbers IS** (doc 88, Wave A). This node's magnitude
+/// is `FromChannel`: it means metres on Position, DEGREES on Rotation and a bare
+/// scale factor on Size, so the panel resolves the unit per-channel. Declaring a
+/// fixed `Length` here would scale degrees by `pixels_per_meter` — the failure
+/// that turns a `±90` preset into a `±9000`.
+static PARAM_UNITS: &[ParamUnitDecl] = &[
+    ParamUnitDecl {
+        param: "min",
+        unit: ParamUnit::FromChannel,
+    },
+    ParamUnitDecl {
+        param: "max",
+        unit: ParamUnit::FromChannel,
     },
 ];
 

@@ -18,7 +18,7 @@
 //!
 //! `delta_i = value_noise(t·frequency, i + seed) · amplitude · falloff_i`.
 
-use ph2d_node_registry::{NodeRegistry, RegistryError};
+use ph2d_node_registry::{NodeRegistry, ParamUnit, ParamUnitDecl, RegistryError};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
 use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
@@ -340,6 +340,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     // GPU/M5 Fase 2 (ADR-0126): the WGSL lowering, registered on the side.
     reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     Ok(())
@@ -384,6 +385,16 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         widget: ParamWidget::Seed,
     },
 ];
+
+/// **What each of this node's numbers IS** (doc 88, Wave A). This node's magnitude
+/// is `FromChannel`: it means metres on Position, DEGREES on Rotation and a bare
+/// scale factor on Size, so the panel resolves the unit per-channel. Declaring a
+/// fixed `Length` here would scale degrees by `pixels_per_meter` — the failure
+/// that turns a `±90` preset into a `±9000`.
+static PARAM_UNITS: &[ParamUnitDecl] = &[ParamUnitDecl {
+    param: "amplitude",
+    unit: ParamUnit::FromChannel,
+}];
 
 #[cfg(test)]
 mod tests {

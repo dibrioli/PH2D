@@ -199,6 +199,84 @@ fn a_velocity_is_left_unitless_rather_than_mislabelled_a_length() {
     assert_eq!(row.display.scale, 1.0);
 }
 
+/// **A declared unit names a param that EXISTS, and reaches a widget that can wear it.**
+///
+/// `ParamUnitDecl` is keyed by a `&'static str`, so a typo is not a compile error — it is
+/// a declaration that matches nothing, is never consulted, and leaves the row bare while
+/// the node's source reads as if the unit had been declared. That is the quietest possible
+/// failure for this whole wave, and it is the one a sweep across forty crates produces.
+///
+/// The second half is the same fact from the other side: `unit_of` lets the WIDGET answer
+/// first, so a declaration on an `Angle`, a `Seed`, a `Toggle`, an `Enum` or any non-numeric
+/// widget is **overridden by construction**. It would be inert too — and, worse, it would
+/// read as an intent that the panel silently refuses. A unit belongs on a plain `Slider`.
+#[test]
+fn every_declared_unit_names_a_real_param_on_a_widget_that_can_wear_it() {
+    use ph2d_node_registry::{ParamUnit, ParamWidget, unit_of};
+    use ph2d_nodegraph::cook::OpResolver;
+    let mut motion = MotionState::new();
+    let mut bad: Vec<String> = Vec::new();
+    let mut declared = 0usize;
+
+    let types: Vec<&'static str> = motion.registry.manifests().map(|m| m.name).collect();
+    for ty in types {
+        let node = motion.doc.graph.add_node(ty);
+        let tid = motion.doc.graph.node(node).unwrap().type_id();
+        let manifest = motion.registry.resolve(tid).unwrap().manifest();
+        let hints = motion.registry.param_ui(tid);
+        for spec in manifest.params {
+            let Some(u) = motion.registry.param_unit_declared(tid, spec.name) else {
+                continue;
+            };
+            declared += 1;
+            let widget = hints
+                .and_then(|hs| hs.iter().find(|h| h.param == spec.name))
+                .map_or(ParamWidget::Slider, |h| h.widget);
+            if unit_of(widget, Some(u)) != u {
+                bad.push(format!(
+                    "{ty}.{}: declared {u:?} but the {widget:?} widget answers \
+                     {:?} — the declaration is inert",
+                    spec.name,
+                    unit_of(widget, Some(u))
+                ));
+            }
+        }
+        // The other direction: a declaration whose `param` matches no `ParamSpec` at all.
+        // `param_unit_declared` can only be asked about names the manifest HAS, so the
+        // orphan is invisible from there — it has to be counted against the table.
+        let names: Vec<&str> = manifest.params.iter().map(|p| p.name).collect();
+        let live = names
+            .iter()
+            .filter(|n| motion.registry.param_unit_declared(tid, n).is_some())
+            .count();
+        let total = motion.registry.param_units(tid).map_or(0, <[_]>::len);
+        if live != total {
+            bad.push(format!(
+                "{ty}: {total} units declared but only {live} name a real param — \
+                 the rest are typos that match nothing (params are {names:?})"
+            ));
+        }
+    }
+    assert!(
+        declared > 0,
+        "positive control: no node declares a unit at all, so this gate proved nothing"
+    );
+    assert!(bad.is_empty(), "{}", bad.join("\n"));
+    // A cheap floor on the sweep itself: the emitter alone declares four, so a number
+    // this size can only come from the per-node opt-in having actually happened.
+    assert!(
+        declared > 50,
+        "only {declared} params carry a unit — the sweep across the node crates is gone"
+    );
+    let grid = motion.doc.graph.add_node("motion.grid");
+    let grid_id = motion.doc.graph.node(grid).unwrap().type_id();
+    assert_eq!(
+        motion.registry.param_unit_declared(grid_id, "gap_x"),
+        Some(ParamUnit::Length),
+        "a world distance on a layout node is the case this wave exists for"
+    );
+}
+
 /// **No param of a channel-driven node may be declared a fixed `Length`.**
 ///
 /// A behaviour's magnitude means metres on Position, DEGREES on Rotation and a

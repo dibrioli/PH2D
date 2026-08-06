@@ -145,6 +145,9 @@ mod backdrop_tests;
 #[path = "motion_bridge_bypass_tests.rs"]
 mod bypass_tests;
 #[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
+#[path = "motion_bridge_channel_tests.rs"]
+mod channel_tests;
+#[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
 #[path = "motion_bridge_connect_tests.rs"]
 mod connect_tests;
 #[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]

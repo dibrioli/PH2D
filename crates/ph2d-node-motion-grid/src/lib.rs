@@ -15,7 +15,7 @@
 //! the `rows × cols` product is capped at [`RECOMMENDED_MAX_ELEMENTS`], so no
 //! param value can overflow the allocation.
 
-use ph2d_node_registry::{NodeRegistry, RegistryError};
+use ph2d_node_registry::{NodeRegistry, ParamUnit, ParamUnitDecl, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream, par_build};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
@@ -199,6 +199,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     );
     // M1.P1 — param rows: whole-number row/column counts, continuous per-axis gap.
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     // GPU/M5 Fase 1 (ADR-0126): the WGSL lowering, registered on the side.
     reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     Ok(())
@@ -239,6 +240,26 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 10.0,
         step: 0.1,
         widget: ParamWidget::Slider,
+    },
+];
+
+/// **What each of this node's numbers IS** (doc 88, Wave A) — never how it is
+/// shown. A `Length` is stored in world METRES and the panel resolves the face
+/// the artist reads (`px` or `m`) from `ProjectSettings::display_unit`; a node
+/// that could pin one would be overriding a setting it does not own.
+///
+/// Only params whose value is a world COORDINATE or a world DISTANCE are declared
+/// here. A weight, a fraction, a rate and a count are left bare on purpose: a unit
+/// that is wrong is worse than a unit that is missing, because the artist can read
+/// a bare number but a mislabelled one teaches them something false.
+static PARAM_UNITS: &[ParamUnitDecl] = &[
+    ParamUnitDecl {
+        param: "gap_x",
+        unit: ParamUnit::Length,
+    },
+    ParamUnitDecl {
+        param: "gap_y",
+        unit: ParamUnit::Length,
     },
 ];
 

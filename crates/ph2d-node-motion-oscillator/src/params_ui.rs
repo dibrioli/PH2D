@@ -1,0 +1,90 @@
+//! The node's **param UI metadata** — labels, ranges, widgets, units. Split from
+//! `lib.rs` at the HR-18 LOC cap, on the seam the emitter already uses
+//! (`ph2d-node-motion-emitter/src/params_ui.rs`): none of this is behaviour, so the
+//! node computes exactly the same result whatever a slider looks like.
+
+use ph2d_node_registry::{ParamUiHint, ParamUnit, ParamUnitDecl, ParamWidget};
+
+/// Param UI hints (M1.P1). `channel` / `wave` are **named** selectors (segmented
+/// buttons) — never number sliders. The enum option index IS the param value
+/// (channel 0..3; wave 0..4 = Sine/Tri/Square/Saw/Spike — "Sine" is the
+/// user-facing name for the transcendental-free parabolic approximation,
+/// "Spike" a narrow unipolar pulse at the cycle start).
+pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
+    ParamUiHint {
+        param: "channel",
+        label: "Channel",
+        min: 0.0,
+        max: 3.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: &["X", "Y", "Rotation", "Size"],
+        },
+    },
+    ParamUiHint {
+        param: "wave",
+        label: "Wave",
+        min: 0.0,
+        max: 4.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: &["Sine", "Tri", "Square", "Saw", "Spike"],
+        },
+    },
+    ParamUiHint {
+        param: "amplitude",
+        label: "Amplitude",
+        min: 0.0,
+        max: 10.0,
+        step: 0.05,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "frequency",
+        label: "Frequency",
+        min: 0.0,
+        max: 8.0,
+        step: 0.05,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "phase_stagger",
+        label: "Stagger",
+        min: 0.0,
+        max: 2.0,
+        step: 0.02,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "offset",
+        label: "Offset",
+        min: -10.0,
+        max: 10.0,
+        step: 0.05,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "phase",
+        label: "Phase",
+        min: 0.0,
+        max: 1.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
+];
+
+/// **What each of this node's numbers IS** (doc 88, Wave A). This node's magnitude
+/// is `FromChannel`: it means metres on Position, DEGREES on Rotation and a bare
+/// scale factor on Size, so the panel resolves the unit per-channel. Declaring a
+/// fixed `Length` here would scale degrees by `pixels_per_meter` — the failure
+/// that turns a `±90` preset into a `±9000`.
+pub(crate) static PARAM_UNITS: &[ParamUnitDecl] = &[
+    ParamUnitDecl {
+        param: "amplitude",
+        unit: ParamUnit::FromChannel,
+    },
+    ParamUnitDecl {
+        param: "offset",
+        unit: ParamUnit::FromChannel,
+    },
+];

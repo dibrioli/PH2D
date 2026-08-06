@@ -373,12 +373,17 @@ fn below_threshold_or_without_a_tile_everything_stays_crisp() {
     );
     // (b) over the threshold but NO tile baked → must NOT blank; stays crisp.
     let empty = crate::motion_object_bake::ObjectBake::default();
-    let mut vectors = vec![lod_vi(5, 0.0), lod_vi(5, 1.0), lod_vi(5, 2.0), lod_vi(5, 3.0)];
+    let mut vectors = vec![
+        lod_vi(5, 0.0),
+        lod_vi(5, 1.0),
+        lod_vi(5, 2.0),
+        lod_vi(5, 3.0),
+    ];
     let mut instances: Vec<RenderInstance> = Vec::new();
     apply_object_lod(&mut instances, &mut vectors, &empty, 3);
     assert!(
         instances.is_empty() && vectors.len() == 4,
-        "no tile ⇒ correctness before speed, all crisp"
+        "no tile -> correctness before speed, all crisp"
     );
 }
 
@@ -408,9 +413,7 @@ fn the_lod_partition_cost_at_scale() {
     for &n in &[10_000usize, 40_000, 160_000] {
         let iters = if n >= 100_000 { 10 } else { 40 };
         // O caso do freeze: N instâncias de UMA geometria, todas acima do joelho ⇒ viram tiles.
-        let base: Vec<VectorInstance> = (0..n)
-            .map(|i| lod_vi(5, (i % 400) as f32 * 1.3))
-            .collect();
+        let base: Vec<VectorInstance> = (0..n).map(|i| lod_vi(5, (i % 400) as f32 * 1.3)).collect();
         let t = Instant::now();
         for _ in 0..iters {
             let mut vectors = base.clone();

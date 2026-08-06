@@ -50,6 +50,8 @@ use ph2d_nodegraph::effect::Effect;
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
+mod params_ui;
+use params_ui::{PARAM_HINTS, PARAM_UNITS};
 mod shape;
 use shape::{rest_shape, shape_goals};
 
@@ -321,79 +323,9 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     Ok(())
 }
-
-use ph2d_node_registry::{ParamUiHint, ParamWidget};
-
-static PARAM_HINTS: &[ParamUiHint] = &[
-    ParamUiHint {
-        param: "rows",
-        label: "Rows",
-        min: 2.0,
-        max: 512.0,
-        step: 1.0,
-        widget: ParamWidget::Slider,
-    },
-    ParamUiHint {
-        param: "cols",
-        label: "Cols",
-        min: 2.0,
-        max: 512.0,
-        step: 1.0,
-        widget: ParamWidget::Slider,
-    },
-    ParamUiHint {
-        param: "spacing",
-        label: "Spacing",
-        min: 0.1,
-        max: 4.0,
-        step: 0.05,
-        widget: ParamWidget::Slider,
-    },
-    ParamUiHint {
-        param: "gravity",
-        label: "Gravity",
-        min: 0.0,
-        max: 40.0,
-        step: 0.1,
-        widget: ParamWidget::Slider,
-    },
-    ParamUiHint {
-        param: "stiffness",
-        label: "Stiffness",
-        min: 0.0,
-        max: 1.0,
-        step: 0.01,
-        widget: ParamWidget::Slider,
-    },
-    ParamUiHint {
-        param: "stretch",
-        label: "Stretch",
-        min: 0.0,
-        max: 1.0,
-        step: 0.01,
-        widget: ParamWidget::Slider,
-    },
-    ParamUiHint {
-        param: "damping",
-        label: "Damping",
-        min: 0.0,
-        max: 0.5,
-        step: 0.01,
-        widget: ParamWidget::Slider,
-    },
-    ParamUiHint {
-        param: "pin",
-        label: "Pin Top",
-        min: 0.0,
-        max: 1.0,
-        step: 1.0,
-        widget: ParamWidget::Enum {
-            labels: &["Free", "Pinned"],
-        },
-    },
-];
 
 #[cfg(test)]
 mod tests {

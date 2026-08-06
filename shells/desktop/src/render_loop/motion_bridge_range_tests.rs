@@ -135,6 +135,71 @@ fn every_scalar_row_comes_from_a_declared_hint() {
     );
 }
 
+/// **Every `ParamSpec` in the registry has a hint — the census, not the sample.**
+///
+/// The sibling above walks the ROWS the panel produced, which is the right question for
+/// "is anything painted with a guessed range?" and blind to two whole populations: a param
+/// hidden by a `ParamGate` right now, and a param folded into a colour swatch. The first is
+/// a real gap (the gate's `when` value decides whether it paints, so a hintless gated param
+/// is one artist click from the fallback); the second is a legitimate exemption, because a
+/// swatch's three non-anchor channels are *described by* the anchor's `Color` hint.
+///
+/// This is what makes the no-hint branch of `build_params_snapshot` **unreachable** rather
+/// than merely unvisited: with the census green, the only way to land there is to register
+/// a node type and forget `register_param_ui` — which is exactly what it reports.
+#[test]
+fn every_param_spec_carries_a_hint_or_is_folded_into_a_swatch() {
+    use ph2d_node_registry::ParamWidget;
+    use ph2d_nodegraph::cook::OpResolver;
+    let mut motion = MotionState::new();
+    let mut missing: Vec<String> = Vec::new();
+    let mut counted = 0usize;
+
+    for (ty, _) in every_type_and_its_params(&motion) {
+        let node = motion.doc.graph.add_node(ty);
+        let tid = motion.doc.graph.node(node).unwrap().type_id();
+        let manifest = motion.registry.resolve(tid).unwrap().manifest();
+        let hints = motion.registry.param_ui(tid);
+        // The channels a `Color` anchor speaks for, plus the `mode` a `Channels` picker
+        // folds in — the two ways a param legitimately reaches the panel without a hint
+        // of its own. Both are read from the LIVE hints, so a node that stops folding one
+        // starts owing a hint for it on the same commit.
+        let mut folded: Vec<&'static str> = Vec::new();
+        for h in hints.into_iter().flatten() {
+            match h.widget {
+                ParamWidget::Color { channels } => folded.extend_from_slice(&channels),
+                ParamWidget::Channels { mode_param, .. } => folded.push(mode_param),
+                _ => {}
+            }
+        }
+        for spec in manifest.params {
+            counted += 1;
+            if folded.contains(&spec.name) {
+                continue;
+            }
+            if hints
+                .and_then(|hs| hs.iter().find(|h| h.param == spec.name))
+                .is_none()
+            {
+                missing.push(format!("{ty}.{}", spec.name));
+            }
+        }
+    }
+    assert!(
+        counted > 0,
+        "positive control: the registry offered no params at all, so this census \
+         proved nothing"
+    );
+    assert!(
+        missing.is_empty(),
+        "{} of {counted} params have no `ParamUiHint` — they reach the panel through the \
+         hintless FALLBACK, whose range is a guess and whose unit can never be declared \
+         (a `ParamUnit` is only consulted for a widget, and the fallback has none):\n{}",
+        missing.len(),
+        missing.join("\n")
+    );
+}
+
 /// A param's default must be inside the range the panel paints it in. Otherwise the very
 /// first frame widens the range to hold it (`contain`), and the widened bound then shrinks
 /// back as the artist drags the value down — a range that chases its value, which is the

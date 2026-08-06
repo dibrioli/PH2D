@@ -32,6 +32,8 @@ use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
+mod params_ui;
+use params_ui::{PARAM_HINTS, PARAM_UNITS};
 mod channel;
 use channel::{apply_channel_delta, falloff_at};
 use ph2d_nodegraph::attr::par_build;
@@ -434,80 +436,11 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     // GPU/M5 Fase 1 (ADR-0126): the WGSL lowering, registered on the side.
     reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     Ok(())
 }
-
-use ph2d_node_registry::{ParamUiHint, ParamWidget};
-
-/// Param UI hints (M1.P1). `channel` / `wave` are **named** selectors (segmented
-/// buttons) — never number sliders. The enum option index IS the param value
-/// (channel 0..3; wave 0..4 = Sine/Tri/Square/Saw/Spike — "Sine" is the
-/// user-facing name for the transcendental-free parabolic approximation,
-/// "Spike" a narrow unipolar pulse at the cycle start).
-static PARAM_HINTS: &[ParamUiHint] = &[
-    ParamUiHint {
-        param: "channel",
-        label: "Channel",
-        min: 0.0,
-        max: 3.0,
-        step: 1.0,
-        widget: ParamWidget::Enum {
-            labels: &["X", "Y", "Rotation", "Size"],
-        },
-    },
-    ParamUiHint {
-        param: "wave",
-        label: "Wave",
-        min: 0.0,
-        max: 4.0,
-        step: 1.0,
-        widget: ParamWidget::Enum {
-            labels: &["Sine", "Tri", "Square", "Saw", "Spike"],
-        },
-    },
-    ParamUiHint {
-        param: "amplitude",
-        label: "Amplitude",
-        min: 0.0,
-        max: 10.0,
-        step: 0.05,
-        widget: ParamWidget::Slider,
-    },
-    ParamUiHint {
-        param: "frequency",
-        label: "Frequency",
-        min: 0.0,
-        max: 8.0,
-        step: 0.05,
-        widget: ParamWidget::Slider,
-    },
-    ParamUiHint {
-        param: "phase_stagger",
-        label: "Stagger",
-        min: 0.0,
-        max: 2.0,
-        step: 0.02,
-        widget: ParamWidget::Slider,
-    },
-    ParamUiHint {
-        param: "offset",
-        label: "Offset",
-        min: -10.0,
-        max: 10.0,
-        step: 0.05,
-        widget: ParamWidget::Slider,
-    },
-    ParamUiHint {
-        param: "phase",
-        label: "Phase",
-        min: 0.0,
-        max: 1.0,
-        step: 0.01,
-        widget: ParamWidget::Slider,
-    },
-];
 
 #[cfg(test)]
 mod tests {

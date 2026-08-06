@@ -29,7 +29,9 @@
 //! transcendentals — the dart's direction is rejection-sampled from the unit disc rather
 //! than drawn from an angle, which is *why* there is no `sin`/`cos` here.
 
-use ph2d_node_registry::{NodeRegistry, ParamUiHint, ParamWidget, RegistryError};
+use ph2d_node_registry::{
+    NodeRegistry, ParamUiHint, ParamUnit, ParamUnitDecl, ParamWidget, RegistryError,
+};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
@@ -107,6 +109,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     Ok(())
 }
 
@@ -143,6 +146,30 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 999.0,
         step: 1.0,
         widget: ParamWidget::IntSlider,
+    },
+];
+
+/// **What each of this node's numbers IS** (doc 88, Wave A) — never how it is
+/// shown. A `Length` is stored in world METRES and the panel resolves the face
+/// the artist reads (`px` or `m`) from `ProjectSettings::display_unit`; a node
+/// that could pin one would be overriding a setting it does not own.
+///
+/// Only params whose value is a world COORDINATE or a world DISTANCE are declared
+/// here. A weight, a fraction, a rate and a count are left bare on purpose: a unit
+/// that is wrong is worse than a unit that is missing, because the artist can read
+/// a bare number but a mislabelled one teaches them something false.
+static PARAM_UNITS: &[ParamUnitDecl] = &[
+    ParamUnitDecl {
+        param: "radius",
+        unit: ParamUnit::Length,
+    },
+    ParamUnitDecl {
+        param: "width",
+        unit: ParamUnit::Length,
+    },
+    ParamUnitDecl {
+        param: "height",
+        unit: ParamUnit::Length,
     },
 ];
 

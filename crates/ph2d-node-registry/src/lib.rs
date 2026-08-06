@@ -319,6 +319,19 @@ impl NodeRegistry {
             .map(|d| d.unit)
     }
 
+    /// The whole declared table for a node type, for the census that asks whether a
+    /// declaration names a param that EXISTS.
+    ///
+    /// [`Self::param_unit_declared`] cannot answer that: it is keyed BY name, so a
+    /// declaration whose `param` matches no `ParamSpec` is invisible from there — it
+    /// simply never matches, the row stays bare, and the node's source reads as if the
+    /// unit had been declared. Counting the table against the manifest is the only way
+    /// to see the orphan, so the table has to be readable.
+    #[must_use]
+    pub fn param_units(&self, id: NodeTypeId) -> Option<&'static [ParamUnitDecl]> {
+        self.param_units.get(&id).copied()
+    }
+
     /// Register a node type's GPU compute kernel (GPU/M5 Fase 1, ADR-0126).
     /// Additive to [`Self::register`], exactly like [`Self::register_ui`]; last
     /// write wins. The kernel is pure `'static` data (`ph2d_nodegraph::gpu`) —

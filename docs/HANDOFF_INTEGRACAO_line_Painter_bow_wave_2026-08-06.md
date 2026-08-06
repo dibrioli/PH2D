@@ -283,7 +283,7 @@ interage com o relevo, o sculpt e o Wet Paint.
 ### §10.8 O SMOKE desta metade
 
 ```
-\
+cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Painter && \
 env PH2D_PAINT_PERF=1 cargo run -p ph2d-host-desktop --release
 ```
 

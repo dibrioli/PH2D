@@ -27,6 +27,12 @@ início de cada jornada (DIRETRIZ §1.5.2.3).
 
 ## §1 — O ESTADO, MEDIDO (não afirmado)
 
+> ⚠️ **Esta tabela é do momento em que a folha foi escrita.** A jornada de 2026-08-06
+> continuou nela: o HEAD é **`11f9bd6e2`**, são **26** commits à frente do `main`, e a
+> W10.3 (o AO assado) entrou — ver §4.1. `PROJECT_SCHEMA` **segue 55 e intocado**; a
+> única mudança de dependência é o `rayon` na `ph2d-sdf` sob o ADR-0156 (⚠️ número
+> **provisório**), e o `Cargo.lock` ganhou **uma aresta, nenhum pacote**.
+
 | | |
 |---|---|
 | HEAD | `f3ad37809` |
@@ -172,9 +178,25 @@ como se diz).
 (11,3× para 31× a malha; só **1,52×** para **23×** as células) e o flood fill por
 **CÉLULA** (quase linear). ⇒ **um campo FINO é barato; uma malha densa é cara.**
 
-⚠️ **O que ainda NÃO foi medido:** o cone tracing em si. Meça-o **antes** de
-desenhar o resto — a sonda já existe e o padrão da casa é *o número sai da porta do
-PRODUTO*.
+~~⚠️ **O que ainda NÃO foi medido:** o cone tracing em si.~~ → **MEDIDO em 2026-08-06,
+e o kernel entrou** (`ph2d-sdf::bake_ao`, commits `1df230aeb` + `11f9bd6e2`). Detalhe
+na **W10.3** do [`06.1`](06-Plano/06.1-Waves-riscos-e-alvos.md); o resumo que muda
+decisão:
+
+- **o traço é a metade GRANDE**: 786 ms seriais contra 301 ms do campo (2,6×) ⇒ o bake
+  completo era **~1,09 s**, não os 231-386 ms que a tabela acima contava;
+- **os passos saturam em 24** (24→96 não move um dígito) e **o alcance é DE GRAÇA**
+  (custo plano enquanto o raio cresce 6×) ⇒ o default `maior lado ÷ 8` é tímido sem
+  economizar nada, e onde ele pousa é **decisão de LOOK, para o smoke**;
+- **o traço paralelizou** ([ADR-0156](../architecture/decisions/0156-sculpt3d-ao-trace-is-a-per-vertex-gather-rayon-exception.md),
+  ⚠️ número **provisório**): 19,44×, byte-idêntico, **zero divergentes** ⇒ bake em
+  **~338 ms**;
+- ⚠️ **a fronteira mudou de lugar:** o **campo** é agora **89%** do bake, e a
+  voxelização não paraleliza sem resolver a sobreposição de escrita.
+
+**O que segue aberto nesta frente** (é o resto da wave): o **canal no `Mesh`** (6º plano
+por-vértice + as quatro portas do §3.5 desta folha) · o **BOTÃO** com a obsolescência
+**DITA** · o **shader** que o consome.
 
 ### 4.2 — A cavidade **não alcança a DOAÇÃO**
 

@@ -585,12 +585,80 @@ aparecer, pare: a cena não montou e o resto do smoke não diz nada.
 
 ---
 
+## §5g — W19: a escada de pranchas tem uma janela útil, e as duas bordas são defeitos (sem cena própria)
+
+⚠️ **Esta wave não muda o produto.** `retire_drops` está byte-idêntico ao
+`main`; o que ela entrega é a MEDIÇÃO, quatro gates que pinam o mundo de hoje,
+e duas notas corrigidas onde elas estavam.
+
+**A premissa que caiu.** O `retire_drops` isentava o caso degenerado com
+*"um vão menor que o personagem deixa a descida armada para sempre — essa cena
+já está quebrada sem descida nenhuma (o personagem não cabe ali)"*. A metade
+entre parênteses é **falsa**: entre **1,15 m e 1,55 m** de vão ele fica em pé no
+degrau de baixo, **perfeitamente estável** (0,0000 m em 60 tiques), com a cabeça
+a atravessar o de cima — o idioma de uma jump-through. E o preço não é a prancha
+de onde ele desceu: o bit viaja no **CORPO** e o gancho limpa os contatos com
+**qualquer** plataforma one-way, então uma descida eterna apaga **todas as
+pranchas da cena, para sempre**.
+
+**A segunda borda, que é da lei que JÁ SHIPA.** A aposentadoria de hoje dispara
+**a meio da queda** — a prancha volta a ser sólida com o personagem ainda a
+atravessá-la, e o contato atira-o para cima:
+
+| meia-espessura | vão | o que acontece |
+|---|---|---|
+| 0,15 | 1,60 – 1,70 | desce, e as pranchas ficam **fantasma** para sempre |
+| 0,15 | **1,75 – 1,85** | **arremessado de volta** — o botão parece não fazer nada |
+| 0,15 | 1,90 + | funciona |
+| 0,10 | 1,50 – 1,60 | fantasma |
+| 0,10 | 1,65 + | funciona |
+
+⚠️ **A cena `=91` usa `RISE = 2,0` com pranchas de 0,15 — dez centímetros acima
+da borda de arremesso.** O header dela justificava esse número por *"0,3 m de
+margem"* da lei, sem saber que apertar 15 cm o quebra. Corrigido lá, com a
+tabela e um **não aperte o `RISE`**.
+
+⛔ **Três leis construídas e REPROVADAS**, cada uma trocando um regime por outro:
+
+1. **Centro do corpo abaixo da base da prancha.** A virada do cuspe foi medida e
+   é limpa — segue a base em quatro espessuras (0,05/0,10/0,20/0,30 ⇒
+   −0,05/−0,10/−0,20/−0,30). ⚠️ **Mas é medida EM REPOUSO**, e aplicá-la a uma
+   QUEDA custou o retrato: numa prancha de 0,15 ele desce a 5,79 e volta a
+   repousar em **7,05, dois degraus ACIMA**.
+2. **Exigir que ele tenha POUSADO.** Dispara no instante em que o raio ALCANÇA o
+   degrau, ainda uma altura-de-perna acima dele e a cair depressa.
+3. **"Deixou de descer".** Não tem régua: em repouso a mola deixa **1e-7 m/tique**
+   descendente (33 de 40 tiques), então o sinal é moeda ao ar — e o
+   `sleep_linear_threshold` do mundo, que seria a régua autorada, é largo demais
+   e devolve o arremesso.
+
+**O momento seguro de re-solidificar uma prancha que o SOBREPÕE não é função da
+pose sozinha**, e uma lei que o afirme é verde num regime e vermelha no outro.
+
+**O que shipa:** `crates/ph2d-physics-ecs/tests/measure_drop_retire.rs` (5 sondas
+`#[ignore]`, incluindo o mapa da janela) e `platform_drop_ladder.rs` (4 gates).
+⚠️ **Dois dos gates afirmam o DEFEITO, não a cura** — o precedente do
+`the_documented_hardening_is_still_there_and_this_is_its_number` do Painter — e
+ficam **vermelhos no dia em que a lei mudar**, de propósito: a cura muda QUANDO
+uma prancha volta a ser sólida, que se sente e não se prova, e quem a fizer tem
+de passar por ali deliberadamente, julgando **as duas bordas ao mesmo tempo**.
+
+**Zero mudança de produto** · `PROJECT_SCHEMA` fica **59** · `c9` byte-idêntico
+(`74d4ea5d…`, 108 corpos, debug ≡ release) · zero `Cargo.toml` · nenhum ADR.
+
+---
+
 ## §8 — Aberto, com o preço ao lado
 
 - **W11c:** o pouso perdeu os 24 mm de quique que o `Spring Damping` em meio curso
   dava. O slider devolve-o; a troca está nomeada no handoff da W11b §5.
-- **W12:** um vão entre plataformas **menor que o personagem** deixa a descida
-  armada para sempre. A cena já está quebrada sem descida nenhuma.
+- **W12:** ⚠️ **MEDIDO pela W19, e é maior do que esta nota dizia.** A escada de
+  pranchas tem uma **janela útil** e as DUAS bordas dela são defeitos — abaixo,
+  as pranchas ficam fantasma para sempre; logo acima, o personagem é
+  **arremessado de volta**. A metade *"a cena já está quebrada"* é falsa: ele
+  cabe e fica quieto. Três curas construídas e reprovadas. Ver a §5g e o aviso
+  de `bridge::player::retire_drops`; a cura é decisão de produto e pede smoke
+  próprio.
 - **W13:** o sensor lateral olha só a altura do **MEIO** do corpo — uma beirada
   que alcance só os pés não é vista (a mesma limitação honesta da folga lateral da
   W10). E não há *wall grab*: ficar **parado** numa parede é outra mecânica, com

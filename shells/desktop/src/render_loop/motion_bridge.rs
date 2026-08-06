@@ -545,9 +545,10 @@ pub(super) fn publish_cursor(
     motion: &mut MotionState,
     camera: &ph2d_render::Camera2d,
     cursor: (f32, f32),
+    split: CenterSplit,
     window: ph2d_host::WindowSize,
 ) {
-    shapes::publish_cursor(&mut motion.pump.cook, camera, cursor, window);
+    shapes::publish_cursor(&mut motion.pump.cook, camera, cursor, split, window);
 }
 
 // The object-bake wiring (`publish_objects`/`bake_objects`/`bake_flip_objects`,

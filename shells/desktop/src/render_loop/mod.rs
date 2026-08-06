@@ -5748,7 +5748,13 @@ impl crate::App {
             // without the node learning what a window or a camera is. Last, because
             // `publish_shapes` CLEARS and the objects append; and in the reserved `$`
             // namespace, which the artist-name publishes above refuse.
-            motion_bridge::publish_cursor(motion, camera, self.last_cursor, surface.size());
+            motion_bridge::publish_cursor(
+                motion,
+                camera,
+                self.last_cursor,
+                hero.view.center_split,
+                surface.size(),
+            );
             motion_bridge::dispatch(
                 hero,
                 tools,

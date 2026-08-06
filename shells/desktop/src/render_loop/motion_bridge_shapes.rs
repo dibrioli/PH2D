@@ -175,9 +175,20 @@ pub(super) fn publish_cursor(
     cook: &mut ph2d_nodegraph::cook::Cook,
     camera: &ph2d_render::Camera2d,
     cursor: (f32, f32),
+    split: ph2d_editor::screens::layout::CenterSplit,
     window: ph2d_host::WindowSize,
 ) {
-    let [x, y] = camera.screen_to_world(cursor, window);
+    // ⚠️ The SCENE window, never the raw one — `scene_camera_window` is the porta única
+    // (`field_gizmo`), and its doc names this exact failure: with the Motion tool active
+    // the scene renders into the top-left sub-rectangle of the split, so a cursor mapped
+    // through the FULL window lands shifted and shrunk. That is the chronic Motion drift
+    // of 2026-07-25, and the aim reads as "the node does not follow the mouse" rather
+    // than as a projection error, because nothing on screen shows the wrong number.
+    //
+    // The sub-rectangle is anchored at `(0,0)`, so only the DIMS change: the cursor pixel
+    // needs no offset, and off the split this is byte-identical to the window.
+    let scene = crate::field_gizmo::scene_camera_window(split, window);
+    let [x, y] = camera.screen_to_world(cursor, scene);
     cook.set_external(
         ph2d_nodegraph::external::CURSOR.to_string(),
         Stream::new(1).with("P", Column::Vec2(vec![[x, y]])),
@@ -207,5 +218,74 @@ mod tests {
         for n in ["$cursor", " $x", "Sun", "", "a$b"] {
             assert_eq!(is_reserved(n), ph2d_nodegraph::external::is_reserved(n));
         }
+    }
+
+    /// **The cursor is mapped through the SCENE, not the window.**
+    ///
+    /// Enio, on the first smoke of the Cursor mode: *"parece não olhar para o mouse"*.
+    /// It was not the node — it was this publish projecting through the FULL window
+    /// while the Motion tool renders the scene into the top-left sub-rectangle of the
+    /// split. A world point then lands in two places, which is the chronic Motion drift
+    /// of 2026-07-25, and `field_gizmo::scene_camera_window` exists BECAUSE of it, with
+    /// a doc-comment that says every world↔screen mapping of the scene chrome has to go
+    /// through it. This publish did not, and the aim reads as a broken node rather than
+    /// as a projection error, because nothing on screen shows the wrong number.
+    ///
+    /// The gate is a RATIO, not a coordinate: under a half-height split the scene camera
+    /// sees half the height, so the same pixel maps to a world `y` twice as far from
+    /// centre. Asserting the mapping MOVED (and by how much) is the property; asserting
+    /// a literal world point would pin the camera's own arithmetic instead.
+    #[test]
+    fn the_cursor_is_mapped_through_the_scene_viewport_not_the_window() {
+        use ph2d_editor::screens::layout::CenterSplit;
+        use ph2d_host::WindowSize;
+
+        let win = WindowSize::new(800, 600);
+        let camera = ph2d_render::Camera2d::default();
+        // A pixel ABOVE centre, so the split's height change is visible in `y`.
+        let cursor = (400.0, 150.0);
+
+        let world_of = |split: CenterSplit| -> [f32; 2] {
+            let mut cook = ph2d_nodegraph::cook::Cook::new();
+            publish_cursor(&mut cook, &camera, cursor, split, win);
+            match cook.externals()[ph2d_nodegraph::external::CURSOR]
+                .value
+                .get("P")
+            {
+                Some(Column::Vec2(v)) => v[0],
+                other => panic!("the cursor must publish a point: {other:?}"),
+            }
+        };
+
+        let full = world_of(CenterSplit::None);
+        let half = world_of(CenterSplit::Horizontal { t: 0.5 });
+        // Off the split: byte-identical to the plain window mapping — the control, and
+        // the half that proves the door is not silently rescaling everybody.
+        assert_eq!(full, camera.screen_to_world(cursor, win));
+        // Under the split the SAME pixel means a different world point, and the numbers
+        // are measured rather than reasoned: y=150 is a quarter down an 800×600 window
+        // (world +2.5, above centre) and the exact CENTRE of the 800×300 the scene gets
+        // (world 0). ⚠️ Halving the height moves the viewport's centre, it does not just
+        // scale — the first version of this gate asserted "twice as far" and was wrong
+        // about the product, not the other way round.
+        assert!(
+            (full[1] - 2.5).abs() < 1e-4,
+            "the full window puts this pixel above centre: {full:?}"
+        );
+        assert!(
+            half[1].abs() < 1e-4,
+            "the scene viewport puts the same pixel AT its centre: {half:?}"
+        );
+        assert!(
+            (half[0] - full[0]).abs() < 1e-4,
+            "a horizontal split does not change the width: {full:?} -> {half:?}"
+        );
+        // And it is the DOOR's answer, not a second derivation of it: the defect was
+        // projecting through `win` here, which makes these two equal.
+        assert_ne!(
+            half,
+            camera.screen_to_world(cursor, win),
+            "mapping through the full window is the drift this gate exists for"
+        );
     }
 }

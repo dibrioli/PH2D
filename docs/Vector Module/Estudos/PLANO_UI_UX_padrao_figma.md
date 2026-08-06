@@ -985,6 +985,48 @@ interativo, de propósito** — a 3ª condição de UI (*o clique chega ao barra
 dizê-lo é mais honesto que fabricar um botão: um *"corrigir"* teria de INVENTAR uma cor) · math ·
 DTCG · os tokens de ESCALA (a fronteira `const fn` acima).
 
+### W4c — A PAREDE `const fn` NÃO É DE PERFORMANCE (medido 2026-08-06)
+
+O plano tratava *"os tokens de escala"* e *"math (`{spacing.md} * 2`)"* como bloqueados pela
+fronteira `const fn`, e a leitura implícita era **custo de runtime**: tornar `Spacing::px()`
+autorável significaria trocar 15 sítios `const` por lookup no caminho quente.
+
+⚠️ **A medição inverte isso.** `ColorToken::resolve` — que TODO widget chama para TODA cor, em
+TODO frame — já paga, por chamada:
+
+1. um lookup **thread-local** na camada de override (`resolved_override`), e
+2. **`lookup_color`: uma varredura LINEAR comparando STRINGS** sobre a tabela do tema.
+
+E o app entrega 60 fps assim. Um lookup numérico para `Spacing` é **estritamente mais barato**
+que o que já shipa. ⇒ **A parede nunca foi de performance. Ela é de CONTEXTO DE COMPILAÇÃO:**
+`const PAD_Y: f32 = Spacing::Sm.px();` não pode chamar uma fn não-const, e são 15 sítios assim.
+
+**A arquitetura do padrão-ouro é a que este plano já enuncia** (§ (b), Vol. 2 §4): *a tabela
+achatada por modo é a forma de RUNTIME; o grafo de autoria vive no editor*. Logo:
+
+- **`px()` continua `const fn`** e continua a valer a **FÁBRICA** — os 15 `const` seguem legais e
+  o build de jogo que nunca autora nada fica **byte-idêntico**;
+- nasce o acessor **VIVO** (a irmã que consulta o override), e os 15 `const` **items** viram
+  leitura no ponto de uso — ⚠️ é aí que está o trabalho real, e é mecânico, não arriscado;
+- o grafo (alias · math · ciclo · DTCG) **resolve PARA** a tabela plana. O jogo carrega o plano.
+
+⚠️ **O gate que torna a reforma segura já existe: `design_token_sync`** — os 4 temas e as ~350
+folhas têm de resolver byte-idênticos. Ele é o oráculo de que a camada nova é inerte enquanto
+ninguém autora.
+
+**Ordem das waves** (cada uma fecha com UI e smoke próprios, a lei desta linha):
+
+1. **A camada numérica** — o override de `Spacing` no molde exato do de cor (o par `(modo, token)`,
+   a porta única de escrita, a detecção de ciclo que a W4b.1 já tem).
+2. **Os 15 sítios** — `const` item → leitura viva, um a um, com o `design_token_sync` a cada passo.
+3. **MATH** — `TokenValue::Expr`, e aí `{spacing.md} * 2` é o que o plano pediu desde o início.
+4. **Escala** — cai de graça no (1)+(2): escala É um token numérico.
+5. **DTCG** — o import/export do grafo, agora que o grafo existe (W9).
+
+⚠️ **Não comece pelo (3).** Math sem a camada (1) é um parser sem onde guardar a resposta, e math
+sobre COR seria um terceiro `TokenValue` a resolver a mesma pergunta por outro caminho — a segunda
+porta que esta linha passou a jornada inteira a colapsar.
+
 ---
 
 ### W6 — O VÍNCULO COM O WIDGET (a metade funcional)

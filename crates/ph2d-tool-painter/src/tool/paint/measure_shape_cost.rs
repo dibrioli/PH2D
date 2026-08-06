@@ -276,43 +276,65 @@ fn the_per_layer_colour_costs_this_much_today() {
 /// traço · restaura o sculpt · SALVA a pegada nova · carimba a figura inteira. Esta sonda mede o
 /// conjunto e depois o mesmo gesto com o relevo desligado, que é a única metade ablacionável pela
 /// porta do artista.
+///
+/// ⚠️ **O RAIO é varrido, e isso é a fixture contendo o fenômeno.** O log de smoke de 2026-08-05
+/// opera em tela **4096**, pincel de raio **~185** (`345,24 M visitas ÷ 3219 dabs = 107 k visitas por
+/// dab`) e **~169 dabs por entrega** — a versão anterior desta sonda cravava `r=24`, **sessenta vezes
+/// menos área por dab**, e por isso não podia falar sobre o número que o artista sentiu. O `r=24` fica
+/// na varredura para a tabela antiga seguir conferível.
+///
+/// ⚠️ **A pergunta que ela responde é de ATRIBUIÇÃO, não de velocidade.** No mesmo log, o depósito
+/// de pigmento reconcilia com o carimbo em **Digital (102-105 %)** e em **Wet Paint (100-114 %)**, e
+/// em **Impasto fecha só 5,7 %** (`CARIMBO 320,84 ms/entrega` contra `18,2 ms` de depósito). Ablacionar
+/// o MEIO sobre a MESMA figura e o MESMO pincel é o que diz se os 94 % restantes são o relevo.
 #[test]
 #[ignore = "measurement, not a gate — run explicitly"]
 fn what_a_shape_move_is_made_of() {
-    println!("[shape] ablação por ENTRADA — Ellipse r=400, pincel r=24");
+    println!("[shape] ablação por ENTRADA — Ellipse r=400, varrendo o pincel");
+    println!("        ponto do log de 05/08: tela 4096, pincel r~185, ~169 dabs/entrega");
     println!(
-        "{:>6}  {:>10} {:>10} {:>10}",
-        "tela", "Digital", "Impasto", "razão"
+        "{:>6} {:>7}  {:>10} {:>10} {:>10}  {:>8} {:>8}",
+        "tela", "pincel", "Digital", "Impasto", "Aquarela", "imp/dig", "aqu/dig"
     );
     for side in [1024u32, 2048, 4096] {
-        let mut out = Vec::new();
-        for media in [PaintMedia::Digital, PaintMedia::Impasto] {
-            let mut t = tool(side, media, 24.0);
-            t.paint.brush.stroke_method = StrokeMethod::Ellipse;
-            #[allow(clippy::cast_precision_loss)]
-            let cx = (side / 2) as f32;
-            t.on_canvas_pointer(cp([cx, cx], PointerPhase::Down));
-            let mut samples = Vec::new();
-            for k in 0..8 {
-                let d = 400.0 + if k % 2 == 0 { 2.0 } else { -2.0 };
-                let e = cp([cx + d, cx], PointerPhase::Move);
-                let dt = ms(&mut || {
-                    t.on_canvas_pointer(e);
-                });
-                if k > 0 {
-                    samples.push(dt);
+        for radius in [24.0f32, 96.0, 185.0] {
+            let mut out = Vec::new();
+            for media in [
+                PaintMedia::Digital,
+                PaintMedia::Impasto,
+                PaintMedia::Watercolor,
+            ] {
+                let mut t = tool(side, media, radius);
+                t.paint.brush.stroke_method = StrokeMethod::Ellipse;
+                #[allow(clippy::cast_precision_loss)]
+                let cx = (side / 2) as f32;
+                t.on_canvas_pointer(cp([cx, cx], PointerPhase::Down));
+                let mut samples = Vec::new();
+                for k in 0..8 {
+                    let d = 400.0 + if k % 2 == 0 { 2.0 } else { -2.0 };
+                    let e = cp([cx + d, cx], PointerPhase::Move);
+                    let dt = ms(&mut || {
+                        t.on_canvas_pointer(e);
+                    });
+                    if k > 0 {
+                        samples.push(dt);
+                    }
                 }
+                t.on_canvas_pointer(cp([cx + 400.0, cx], PointerPhase::Up));
+                out.push(median(&mut samples));
             }
-            t.on_canvas_pointer(cp([cx + 400.0, cx], PointerPhase::Up));
-            out.push(median(&mut samples));
+            let dig = out[0].max(1e-9);
+            println!(
+                "{:>6} {:>7.0}  {:>10.3} {:>10.3} {:>10.3}  {:>7.2}x {:>7.2}x",
+                side,
+                radius,
+                out[0],
+                out[1],
+                out[2],
+                out[1] / dig,
+                out[2] / dig
+            );
         }
-        println!(
-            "{:>6}  {:>10.3} {:>10.3} {:>9.2}x",
-            side,
-            out[0],
-            out[1],
-            out[1] / out[0].max(1e-9)
-        );
     }
 }
 

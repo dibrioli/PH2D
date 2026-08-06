@@ -16,6 +16,10 @@ use crate::undo::ShapeEditState;
 /// no visible raster staircase (Enio 2026-07-04 wants a "perfect" Add/Remove appearance). Transcendental-free.
 const SS: usize = 3;
 
+/// O wire de [`StrokeOp::Add`] — a Operation que CONTRIBUI região, e por isso a única que define a
+/// janela do composite.
+const ADD_WIRE: u8 = 1;
+
 /// Build an editing [`CurveState`](crate::undo::CurveState) from a fitted [`CurveModel`] — installs the
 /// boolean-composite result as one editable Curve.
 fn curve_state_from_model(model: curve_model::CurveModel, seed: u64) -> crate::undo::CurveState {
@@ -217,6 +221,118 @@ impl PainterTool {
         if w == 0 || h == 0 {
             return Vec::new();
         }
+        // ⚠️ **A JANELA é a das formas, não a do canvas** — medido em 2026-08-06, e a diferença é de
+        // duas ordens de grandeza. Este composite roda a CADA move de ponteiro (o `restamp_shapes_preview`
+        // o chama sempre que há uma forma com Operation), e ele alocava e percorria um buffer
+        // supersampleado do **canvas inteiro**: a `SS = 3` isso é 12288² = **151 MB** a 4096², zerado uma
+        // vez para o `crisp`, outra por forma para o `region`, mais duas dentro do traçado — e o
+        // `scanline_fill` percorria as 12288 linhas para desenhar uma figura de 400 px.
+        //
+        // Medido pela porta do artista, com a MESMA figura de 200 px nas três telas (um move, mediana):
+        //
+        // | tela | Overlay | 1 Add |
+        // |------|---------|-------|
+        // | 1024 |  1,30   |  21,7 |
+        // | 2048 |  1,40   |  77,8 |
+        // | 4096 |  1,50   | 284,4 |
+        //
+        // A coluna Overlay é **plana** (a figura não mudou); a de Add cresce **4× por 4× de área**. O
+        // custo era do BUFFER, não do desenho — marcar `Add` numa forma custava 190× um move normal por
+        // uma razão que não tem nada a ver com o que o artista pediu.
+        //
+        // ⚠️ A janela sai das formas que **ADICIONAM**: o resultado de um boolean está contido na união
+        // dos Add, então uma forma de Remove longe dali não pode mudar um texel — incluí-la só faria o
+        // buffer crescer de novo. Sem nenhum Add não há região nenhuma, e a saída é vazia.
+        let mut fills: Vec<(SelectionShape, u8)> = Vec::with_capacity(shapes.len());
+        let mut bb: Option<[f32; 4]> = None;
+        for (st, op) in shapes {
+            let Some(sel) = self.stroke_state_to_fill_shape(st, off) else {
+                continue;
+            };
+            let wire = op.to_wire();
+            if wire == ADD_WIRE
+                && let Some(r) = self.fill_shape_bounds(&sel)
+            {
+                bb = Some(bb.map_or(r, |a| {
+                    [
+                        a[0].min(r[0]),
+                        a[1].min(r[1]),
+                        a[2].max(r[2]),
+                        a[3].max(r[3]),
+                    ]
+                }));
+            }
+            fills.push((sel, wire));
+        }
+        let Some(bb) = bb else {
+            return Vec::new();
+        };
+        let s = SS as f32;
+        // ⚠️ **A janela NÃO precisa de borda de zeros, e isto foi lido no traçador, não suposto.** Eu
+        // escrevi que uma folga era o que mantinha o traçado idêntico — *"uma componente colada na
+        // borda do buffer não é percorrida como uma que tem zeros em volta"* — e armei a mutação que
+        // deveria sangrar. Ela **passou**, nos dez casos do gate, inclusive numa figura no meio do
+        // canvas cuja caixa apertada a encosta na coluna 0 da janela. O motivo está no
+        // `selection_trace::inside`: ele confere os limites e devolve `false` fora do buffer, ou seja
+        // **fora lê como FUNDO** — exatamente o que uma borda de zeros daria. A folga foi removida em
+        // vez de ficar com uma justificativa falsa ao lado.
+        //
+        // O que de fato mantém a identidade é o `clamp` ao canvas: onde a figura sai da tela a janela
+        // recorta no MESMO lugar em que o buffer de tela cheia recortava.
+        let cap = |v: f32, hi: usize| -> usize {
+            #[allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
+            let hi_f = hi as f32;
+            #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+            let out = v.clamp(0.0, hi_f) as usize;
+            out.min(hi)
+        };
+        let (ssw, ssh) = (w * SS, h * SS);
+        let x0 = cap((bb[0] * s).floor(), ssw);
+        let y0 = cap((bb[1] * s).floor(), ssh);
+        let x1 = cap((bb[2] * s).ceil(), ssw);
+        let y1 = cap((bb[3] * s).ceil(), ssh);
+        if x1 <= x0 || y1 <= y0 {
+            return Vec::new();
+        }
+        let (sw, sh) = (x1 - x0, y1 - y0);
+        #[allow(clippy::cast_precision_loss)]
+        let origin = [x0 as f32, y0 as f32];
+        let mut crisp = vec![0u8; sw * sh];
+        // ⚠️ **UM `region` para todas as formas.** Ele era alocado dentro do laço, uma vez por forma —
+        // com a janela do canvas isso eram 151 MB por forma, por move.
+        let mut region = vec![0u8; sw * sh];
+        for (sel, wire) in &fills {
+            region.fill(0);
+            self.rasterize_fill_ss(sel, sw, sh, origin, &mut region);
+            combine_into(&mut crisp, &region, *wire);
+        }
+        super::selection_trace::trace_all_contours(&crisp, sw, sh)
+            .into_iter()
+            .map(|c| {
+                c.iter()
+                    .map(|p| [(p[0] + origin[0]) / s, (p[1] + origin[1]) / s])
+                    .collect()
+            })
+            .collect()
+    }
+
+    /// **A rota da TELA CHEIA, congelada** — o código que este módulo rodava até 2026-08-06, verbatim
+    /// no que importa: o buffer é o canvas supersampleado inteiro e o `origin` é a origem dele.
+    ///
+    /// ⚠️ Ela existe como oráculo e **só como oráculo**. Um `pub(super)` sem `cfg` seria uma segunda
+    /// resposta a *"que contornos este conjunto de formas produz?"*, esperando alguém chamá-la — a
+    /// lição que o `warp_axis` e o `serial_side` já pagaram nesta linha. Com o `cfg` o gate compara a
+    /// janela nova contra **o que shipava**, e não contra uma reimplementação escrita para o teste.
+    #[cfg(test)]
+    pub(super) fn stroke_boolean_contours_whole_canvas(
+        &self,
+        shapes: &[(ShapeEditState, StrokeOp)],
+        off: f32,
+    ) -> Vec<Vec<[f32; 2]>> {
+        let (w, h) = (self.source_size.0 as usize, self.source_size.1 as usize);
+        if w == 0 || h == 0 {
+            return Vec::new();
+        }
         let (sw, sh) = (w * SS, h * SS);
         let mut crisp = vec![0u8; sw * sh];
         let mut any = false;
@@ -224,7 +340,9 @@ impl PainterTool {
             let Some(sel) = self.stroke_state_to_fill_shape(st, off) else {
                 continue;
             };
-            self.rasterize_fill_ss(&sel, sw, sh, &mut crisp, op.to_wire());
+            let mut region = vec![0u8; sw * sh];
+            self.rasterize_fill_ss(&sel, sw, sh, [0.0, 0.0], &mut region);
+            combine_into(&mut crisp, &region, op.to_wire());
             any = true;
         }
         if !any {
@@ -235,6 +353,59 @@ impl PainterTool {
             .into_iter()
             .map(|c| c.iter().map(|p| [p[0] / s, p[1] / s]).collect())
             .collect()
+    }
+
+    /// A caixa de uma forma de preenchimento, em px de imagem — **um SUPERCONJUNTO**, nunca apertada.
+    ///
+    /// ⚠️ Para a Freehand a caixa sai dos pontos **e das alças**, não da espinha achatada: uma Bézier
+    /// vive dentro do casco convexo dos próprios controles, então essa caixa a contém sem que o
+    /// `flatten_spine` precise rodar duas vezes (uma para medir, outra para desenhar). Superconjunto é a
+    /// direção segura: uma caixa grande demais custa alguns texels, uma pequena demais **corta a figura
+    /// em silêncio**.
+    fn fill_shape_bounds(&self, sel: &SelectionShape) -> Option<[f32; 4]> {
+        let hull = |pts: &[[f32; 2]]| -> Option<[f32; 4]> {
+            pts.iter().fold(None, |acc: Option<[f32; 4]>, p| {
+                Some(acc.map_or([p[0], p[1], p[0], p[1]], |a| {
+                    [
+                        a[0].min(p[0]),
+                        a[1].min(p[1]),
+                        a[2].max(p[0]),
+                        a[3].max(p[1]),
+                    ]
+                }))
+            })
+        };
+        match sel {
+            // A caixa exata de uma elipse girada: o extremo de `c + rx·cos t·u + ry·sin t·v` é
+            // `hypot(rx·u, ry·v)` em cada eixo, com `v = perp(u)`.
+            SelectionShape::Ellipse { center, u, rx, ry } => {
+                let hx = ((rx * u[0]).powi(2) + (ry * u[1]).powi(2)).sqrt();
+                let hy = ((rx * u[1]).powi(2) + (ry * u[0]).powi(2)).sqrt();
+                Some([
+                    center[0] - hx,
+                    center[1] - hy,
+                    center[0] + hx,
+                    center[1] + hy,
+                ])
+            }
+            SelectionShape::Polygon {
+                center,
+                u,
+                rx,
+                ry,
+                sides,
+            } => hull(&sel_polygon_vertices(*center, *u, *rx, *ry, *sides)),
+            SelectionShape::Freehand { model, .. } => {
+                let mut pts: Vec<[f32; 2]> = model.points.clone();
+                for h in &model.handles {
+                    pts.push(h[0]);
+                    pts.push(h[1]);
+                }
+                hull(&pts)
+            }
+            // O rasterizador não desenha um Raster aqui, então ele não tem caixa a contribuir.
+            SelectionShape::Raster { .. } => None,
+        }
     }
 
     /// **Merge Curves** (the panel's Merge button): fold EVERY fillable shape the artist sees — active +
@@ -323,27 +494,24 @@ impl PainterTool {
 
     /// Rasterise one fill shape scaled by `SS` into the supersampled `crisp` via `op` (transcendental-free:
     /// exact ellipse inside-test / baked-step polygon / flattened freehand → scanline fill).
+    /// Rasteriza UMA forma na janela local, com `origin` (em texels supersampleados) subtraído.
+    ///
+    /// ⚠️ **A janela é uma TELA VIRTUAL**, o mesmo truque da banda do `stamp_banded`: o rasterizador
+    /// recebe as coordenadas deslocadas e a largura/altura da janela, e o recorte cai do `clamp` que
+    /// ele já faz contra o tamanho da tela. Nenhuma segunda resposta a *"que pixels esta forma cobre?"*.
     fn rasterize_fill_ss(
         &self,
         sel: &SelectionShape,
         sw: usize,
         sh: usize,
-        crisp: &mut [u8],
-        op: u8,
+        origin: [f32; 2],
+        region: &mut [u8],
     ) {
         let s = SS as f32;
-        let mut region = vec![0u8; sw * sh];
+        let at = |p: [f32; 2]| [p[0] * s - origin[0], p[1] * s - origin[1]];
         match sel {
             SelectionShape::Ellipse { center, u, rx, ry } => {
-                rasterize_ellipse(
-                    [center[0] * s, center[1] * s],
-                    *u,
-                    rx * s,
-                    ry * s,
-                    sw,
-                    sh,
-                    &mut region,
-                );
+                rasterize_ellipse(at(*center), *u, rx * s, ry * s, sw, sh, region);
             }
             SelectionShape::Polygon {
                 center,
@@ -354,18 +522,17 @@ impl PainterTool {
             } => {
                 let verts: Vec<[f32; 2]> = sel_polygon_vertices(*center, *u, *rx, *ry, *sides)
                     .iter()
-                    .map(|p| [p[0] * s, p[1] * s])
+                    .map(|p| at(*p))
                     .collect();
-                scanline_fill(&verts, sw, sh, &mut region);
+                scanline_fill(&verts, sw, sh, region);
             }
             SelectionShape::Freehand { model, .. } => {
                 let spine = self.freehand_spine(&model.points, &model.handles);
-                let verts: Vec<[f32; 2]> = spine.iter().map(|p| [p[0] * s, p[1] * s]).collect();
-                scanline_fill(&verts, sw, sh, &mut region);
+                let verts: Vec<[f32; 2]> = spine.iter().map(|p| at(*p)).collect();
+                scanline_fill(&verts, sw, sh, region);
             }
             SelectionShape::Raster { .. } => {}
         }
-        combine_into(crisp, &region, op);
     }
 }
 

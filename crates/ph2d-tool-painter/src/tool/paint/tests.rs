@@ -42,6 +42,8 @@ mod measure_window_premise;
 mod stamp_banded_tests; // o lote em bandas pinta o que o laco serial pintava (doc 28 §5.78)
 #[path = "stamp_banded_work_tests.rs"]
 mod stamp_banded_work_tests; // ...e as bandas sao cortadas por TRABALHO - o lote ESPARSO
+#[path = "stroke_boolean_tests.rs"]
+mod stroke_boolean_tests; // o composite booleano roda na janela das FORMAS, nao na do canvas
 #[path = "undo_confine_tests.rs"]
 mod undo_confine_tests; // um Ctrl+Z repinta so' o que ele mudou (doc 28 §5.63)
 #[path = "undo_live_base_tests.rs"]

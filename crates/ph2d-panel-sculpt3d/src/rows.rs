@@ -59,6 +59,20 @@ pub struct Row {
     /// varre a cada wave. A pergunta é feita à porta do MOTOR
     /// (`Verb::uses_plane`), nunca a uma lista paralela de nomes.
     pub show: fn(&Sculpt3dUi) -> bool,
+    /// **Esta row é pintada pela CAUDA da seção, e não no bloco de knobs.**
+    ///
+    /// ⚠️ Ela existe porque *posição na tela* é uma pergunta que a tabela não
+    /// respondia, e a resposta errada custou um smoke: a pista de `Alpha Scale`
+    /// nasceu no bloco de knobs, ou seja **acima** da fileira de chips que a
+    /// governa e separada dela pelo Falloff — um controle órfão, que aparece do
+    /// nada e não se liga a nada que o artista acabou de tocar.
+    ///
+    /// ⚠️ **A row continua na tabela**, e é isso que importa: `populate`, `event`
+    /// e a varredura de costura seguem a percorrendo, então ela nasce registrada,
+    /// viva e varrida como qualquer outra. O que este campo move é **onde ela é
+    /// desenhada**, e só isso — a alternativa (tirá-la da tabela e pintá-la à
+    /// mão) a tiraria das três listas de uma vez.
+    pub in_tail: bool,
 }
 
 impl Row {
@@ -130,6 +144,7 @@ static BRUSH: &[Row] = &[
         get: |u| u.radius_px,
         set: |u, v| u.radius_px = v,
         show: always,
+        in_tail: false,
     },
     Row {
         label: "panel.sculpt3d.strength",
@@ -142,6 +157,7 @@ static BRUSH: &[Row] = &[
         get: |u| u.brush.strength,
         set: |u, v| u.brush.strength = v,
         show: always,
+        in_tail: false,
     },
     Row {
         label: "panel.sculpt3d.plane_offset",
@@ -156,6 +172,7 @@ static BRUSH: &[Row] = &[
         get: |u| u.brush.plane_offset,
         set: |u, v| u.brush.plane_offset = v,
         show: |u| u.brush.verb.uses_plane(),
+        in_tail: false,
     },
     Row {
         label: "panel.sculpt3d.pinch",
@@ -168,6 +185,7 @@ static BRUSH: &[Row] = &[
         get: |u| u.brush.pinch,
         set: |u, v| u.brush.pinch = v,
         show: |u| u.brush.verb == Verb::Crease,
+        in_tail: false,
     },
     Row {
         label: "panel.sculpt3d.alpha_scale",
@@ -187,6 +205,7 @@ static BRUSH: &[Row] = &[
         // pistas de lâmpada sob um matcap — uma row condicional é PULADA, nunca
         // pintada apagada, porque um controle que desenha e não responde mente.
         show: |u| u.brush.alpha.is_some(),
+        in_tail: true,
     },
 ];
 
@@ -203,6 +222,7 @@ static SHADING: &[Row] = &[
         get: |u| u.cavity,
         set: |u, v| u.cavity = v,
         show: always,
+        in_tail: false,
     },
     Row {
         label: "panel.sculpt3d.light_az",
@@ -217,6 +237,7 @@ static SHADING: &[Row] = &[
         get: |u| u.light_az_deg,
         set: |u, v| u.light_az_deg = v,
         show: under_the_rig,
+        in_tail: false,
     },
     Row {
         label: "panel.sculpt3d.light_elev",
@@ -232,6 +253,7 @@ static SHADING: &[Row] = &[
         get: |u| u.light_elev_deg,
         set: |u, v| u.light_elev_deg = v,
         show: under_the_rig,
+        in_tail: false,
     },
 ];
 

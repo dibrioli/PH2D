@@ -49,6 +49,7 @@ impl Sculpt3dScene {
             isolated: self.isolated.is_some(),
             matcaps: ph2d_mesh_render::MATCAPS.as_slice(),
             verts: self.mesh().vert_count(),
+            alpha_seed: ph2d_sculpt3d::recommended_scale(self.mesh()),
         }
     }
 

@@ -113,6 +113,19 @@ pub struct Sculpt3dSnapshot {
     ///
     /// Vazio ⇒ só a opção do rig é pintada.
     pub matcaps: &'static [&'static str],
+    /// **O tamanho de feature que ESTE modelo comporta** — o seed do
+    /// `Alpha Scale`, de `ph2d_sculpt3d::recommended_scale`.
+    ///
+    /// ⚠️ **Ele chega no retrato porque é um fato do MODELO**, e o painel não tem
+    /// malha — o mesmo caminho de `dyntopo`, `level` e `matcaps`: coisas que o
+    /// painel MOSTRA e não possui. E ele é um fato e não um estado: o painel o
+    /// usa uma vez, no gesto de armar um padrão, e a partir daí quem manda é o
+    /// número autorado.
+    ///
+    /// ⚠️ **Ele existe porque uma escala ABSOLUTA não significa nada sem o
+    /// tamanho do modelo.** A primeira versão desta wave shipou um literal, e o
+    /// smoke o reprovou em uma frase: *"os poros são gigantescos"*.
+    pub alpha_seed: f32,
 }
 
 /// Um gesto do artista, para o shell aplicar.

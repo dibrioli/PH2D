@@ -24,6 +24,9 @@ use ph2d_panel_sculpt3d::{
 use ph2d_sculpt3d::{Alpha, Falloff, Verb};
 use ph2d_ui_testkit::MockPanelHost;
 
+/// A escala que a fixture finge que o modelo comporta.
+const ALPHA_SEED: f32 = 0.0375;
+
 /// Um viewport do tamanho do dock. ALTO, porque o painel tem seis seções e um
 /// paint que ficasse sem espaço não registraria nada e passaria calado.
 const VIEWPORT: Rect = Rect {
@@ -48,6 +51,11 @@ fn arrange(ui: Sculpt3dUi) -> (MockPanelHost, Sculpt3dPanelState) {
         // sweep — vivos na tela e nunca clicados aqui.
         matcaps: &["Clay", "Pearl", "Skin", "Jade", "Metal", "Wax"],
         verts: 6050,
+        // ⚠️ **Um seed DIFERENTE do default de fábrica**, senão o gate do
+        // semeamento ficaria verde sem provar nada: a asserção é *"a escala foi
+        // para a do modelo"*, e com os dois iguais ela não distingue semear de
+        // não fazer coisa nenhuma.
+        alpha_seed: ALPHA_SEED,
     }));
     let _ = drain_intents();
     (
@@ -631,8 +639,38 @@ fn every_alpha_chip_arms_its_own_pattern() {
         );
         let mut expected = base;
         expected.brush.alpha = want;
+        // ⚠️ **Armar um padrão SEMEIA a escala do modelo** — e o chip `None` não,
+        // porque não há padrão cujo tamanho medir. As duas metades no mesmo gate
+        // de propósito: um seed que disparasse sempre poria um número de escala
+        // num pincel liso, e um que nunca disparasse é o defeito que o smoke
+        // reprovou (*"os poros são gigantescos"*).
+        if want.is_some() {
+            expected.brush.alpha_scale = ALPHA_SEED;
+        }
         assert_eq!(got, expected, "o chip {i} mexeu num campo que não é dele");
     }
+}
+
+/// **O seed é um DEFAULT, não uma política: ele não pisa na escolha do artista.**
+///
+/// A mesma lei do `arm_inflate_defaults` do Painter e do default de força por
+/// verbo — e sem esta metade o artista perderia o número dele toda vez que
+/// trocasse de padrão, que é pior que não semear.
+#[test]
+fn seeding_the_alpha_scale_never_overwrites_a_chosen_one() {
+    let mut ui = Sculpt3dUi::default();
+    ui.brush.alpha_scale = 0.123;
+    let (mut host, mut state) = arrange(ui);
+    let _ = host
+        .apply_panel_event::<Sculpt3dPanel>(&mut state, WidgetEvent::Click(ids::SCULPT3D_ALPHA[2]));
+    let Sculpt3dIntent::SetUi(got) = only_intent("alpha") else {
+        panic!("tipo errado de intent");
+    };
+    assert!(
+        (got.brush.alpha_scale - 0.123).abs() < 1e-6,
+        "o seed pisou na escala escolhida: {}",
+        got.brush.alpha_scale
+    );
 }
 
 /// **A pista de escala do alpha SOME sem padrão armado.**

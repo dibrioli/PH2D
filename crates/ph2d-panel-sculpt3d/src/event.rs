@@ -117,6 +117,21 @@ pub(crate) fn apply_event(
             ui.brush.alpha = i
                 .checked_sub(1)
                 .map(|k| Alpha::ALL[k.min(Alpha::ALL.len() - 1)]);
+            // ⚠️ **Armar um padrão SEMEIA a escala do modelo** — e só enquanto o
+            // artista não escolheu a dele. Uma escala é absoluta (um poro tem o
+            // tamanho de um poro), mas *qual número* depende do tamanho e da
+            // densidade da peça, coisas que só o modelo sabe: um literal acerta
+            // uma malha e erra todas as outras, que foi o que o smoke reprovou.
+            //
+            // A mesma lei do `arm_inflate_defaults` do Painter e do default de
+            // força por verbo três braços acima: **arma um default, nunca impõe
+            // política**. O sentinela é a constante de fábrica.
+            if ui.brush.alpha.is_some()
+                && (ui.brush.alpha_scale - ph2d_sculpt3d::DEFAULT_ALPHA_SCALE).abs() < 1e-6
+                && snapshot.alpha_seed > 0.0
+            {
+                ui.brush.alpha_scale = snapshot.alpha_seed;
+            }
             state::push_intent(Sculpt3dIntent::SetUi(ui));
             true
         }

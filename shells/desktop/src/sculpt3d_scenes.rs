@@ -314,15 +314,17 @@ pub(crate) fn smoke_mesh() -> ph2d_mesh::Mesh {
     if cavity_scene() {
         return wrinkled_sphere();
     }
-    // ⚠️ **A `=16` abre DENSA, e o número é obrigatório.** Um padrão é uma função
-    // contínua e a malha o amostra nos VÉRTICES: com a célula da ordem da aresta
-    // cada vértice vê um valor independente do vizinho e o que chega ao barro é
-    // chuvisco, não textura. A lei das dez arestas
-    // (`ph2d_sculpt3d::DEFAULT_ALPHA_SCALE`) diz que a feature precisa de ~10
-    // arestas; a esfera 96×144 que o resto do módulo abre daria razão ~7,6 na
-    // escala default, e o smoke ficaria julgando o aliasing em vez do alpha.
+    // ⚠️ **A `=16` abre DENSA, e a densidade é o que o smoke julga.** O tamanho
+    // de feature que um modelo comporta é a mais grossa de duas restrições
+    // (`ph2d_sculpt3d::recommended_scale`): o LOOK, ~33 features atravessando a
+    // peça, e a lei das dez arestas. Numa malha grossa a segunda vence e o padrão
+    // sai como CRATERA — foi o que o 1º smoke desta wave reprovou, com a esfera
+    // de 38 k. Medido, o LOOK só passa a mandar a partir de ~800 segmentos:
+    // 96×144 recomenda 0,327 (6 features atravessando) · 160×240 dá 0,196 (10) ·
+    // 320×480 dá 0,098 (20) · **533×800 dá 0,061 (33)**, que é textura. Custa
+    // 35 ms para abrir e 0,555 ms por dab — medido, e sob o kill de 8.
     if alpha_scene() {
-        return ph2d_mesh::shapes::uv_sphere(160, 240, 1.0);
+        return ph2d_mesh::shapes::uv_sphere(533, 800, 1.0);
     }
     if turn_scene() || document_scene() || export_scene() || bake_scene() || reopen_scene() {
         return ridged_sphere();
@@ -485,7 +487,7 @@ mod tests {
     /// aliasing e chamaria de alpha.
     #[test]
     fn the_alpha_scene_opens_dense_enough_to_resolve_the_pattern() {
-        let mesh = ph2d_mesh::shapes::uv_sphere(160, 240, 1.0);
+        let mesh = ph2d_mesh::shapes::uv_sphere(533, 800, 1.0);
         let pos = mesh.positions();
         let ring = mesh.adjacency();
         let mut lens: Vec<f32> = Vec::new();

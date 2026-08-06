@@ -100,31 +100,44 @@ pub(super) fn for_scene(mesh: &ph2d_mesh::Mesh) {
         }
         lens.sort_by(f32::total_cmp);
         let edge = lens[lens.len() / 2];
-        let ratio = ph2d_sculpt3d::DEFAULT_ALPHA_SCALE / edge;
+        // ⚠️ **O número que o roteiro imprime é o que o PRODUTO vai semear**, e
+        // não a constante de fábrica: ela virou sentinela quando o 1º smoke desta
+        // wave reprovou o default absoluto (*"os poros são gigantescos"*), e um
+        // roteiro que ainda a citasse estaria descrevendo um build que não existe.
+        let seed = ph2d_sculpt3d::recommended_scale(mesh);
+        let ratio = seed / edge;
+        let across = 2.0 / seed;
         eprintln!(
-            "[sculpt3d] =16 ALPHA: aresta mediana {edge:.4}, escala default \
-             {:.2} -> razao {ratio:.1} celulas por aresta\n\
-             [sculpt3d]    -- se a razao nao passar de ~8, PARE: o padrao esta' mais fino que a\n\
-             [sculpt3d]    malha e o que voce veria seria chuvisco por vertice, nao textura.\n\
-             [sculpt3d]    O ALPHA e' a fileira nova na secao BRUSH do painel, logo abaixo do\n\
-             [sculpt3d]    Falloff: None (o pincel liso) e seis padroes.\n\
+            "[sculpt3d] =16 ALPHA: aresta mediana {edge:.4} · a escala que esta malha comporta\n\
+             [sculpt3d]    e' {seed:.4} ({ratio:.1} arestas por feature, {across:.0} features\n\
+             [sculpt3d]    atravessando o modelo)\n\
+             [sculpt3d]    -- se as features nao passarem de ~20, PARE: o padrao vai sair como\n\
+             [sculpt3d]    CRATERA, nao como textura, e o resto do smoke nao diz nada.\n\
+             [sculpt3d]    O ALPHA e' a fileira nova na secao BRUSH, logo abaixo do Falloff:\n\
+             [sculpt3d]    None (o pincel liso) e seis padroes. A pista ALPHA SCALE aparece\n\
+             [sculpt3d]    LOGO EMBAIXO dela, e SO' com um padrao armado -- sem padrao ela\n\
+             [sculpt3d]    mediria uma feature que nao existe.\n\
              [sculpt3d]    Escolha 'Pores' e desenhe com o Draw (1) numa faixa larga: em vez de\n\
              [sculpt3d]    um monte liso tem de sair PELE -- pontos, nao uma rampa.\n\
              [sculpt3d]    Passe pelos seis: Noise (rocha) · Pores (pele) · Scales (reptil) ·\n\
              [sculpt3d]    Cracks (terra seca) · Grain (chatter fino) · Ridges (ruga, casca).\n\
-             [sculpt3d]    ALPHA SCALE aparece SO' com um padrao armado (sem padrao ele mediria\n\
-             [sculpt3d]    uma feature que nao existe) -- arraste e a feature muda de TAMANHO,\n\
-             [sculpt3d]    nao de desenho.\n\
+             [sculpt3d]    ESCOLHER UM PADRAO SEMEIA A ESCALA que o modelo comporta -- e' por\n\
+             [sculpt3d]    isso que ele ja' abre com tamanho de textura em vez de cratera. Uma\n\
+             [sculpt3d]    escala e' absoluta (um poro tem o tamanho de um poro), mas QUAL numero\n\
+             [sculpt3d]    depende do tamanho e da densidade da peca. Depois de voce arrastar a\n\
+             [sculpt3d]    pista, ela e' SUA: trocar de padrao nao a pisa mais.\n\
              [sculpt3d]    O QUE JULGAR, e e' a wave inteira: o padrao esta' colado ao ESPACO,\n\
              [sculpt3d]    nao ao gesto. Passe DEVAGAR e depois RAPIDO pelo mesmo lugar -- tem de\n\
              [sculpt3d]    sair igual. Passe de VOLTA pelo caminho -- os poros caem nos MESMOS\n\
              [sculpt3d]    lugares. Se eles se mexerem com a mao, o padrao esta' preso ao dab.\n\
+             [sculpt3d]    PARA IR MAIS FINO: subdivida (K) e ARRASTE a pista para a esquerda.\n\
+             [sculpt3d]    Um padrao so' pode ser tao fino quanto a malha o amostra -- e' o mesmo\n\
+             [sculpt3d]    fato que faz um escultor de ZBrush subdividir antes de pegar um alpha.\n\
              [sculpt3d]    ATENCAO ao Cracks e ao Pores: eles cobrem ~14% da superficie de\n\
              [sculpt3d]    proposito (uma trinca e' uma LINHA), entao o pincel parece mais fraco\n\
              [sculpt3d]    -- suba a Forca. O Ridges cobre ~70% e quase nao enfraquece.\n\
              [sculpt3d]    E pegue o Crease (0) com um padrao: o vinco AFIA o padrao (ele entra\n\
-             [sculpt3d]    na quinta potencia), entao o mesmo alpha sai muito mais recortado.",
-            ph2d_sculpt3d::DEFAULT_ALPHA_SCALE
+             [sculpt3d]    na quinta potencia), entao o mesmo alpha sai muito mais recortado."
         );
     }
     if crate::sculpt3d::turn_scene() {

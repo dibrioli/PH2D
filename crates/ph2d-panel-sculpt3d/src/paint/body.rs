@@ -136,7 +136,7 @@ fn paint_brush_tail(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32,
         .alpha
         .and_then(|a| Alpha::ALL.iter().position(|&x| x == a))
         .map_or(0, |i| i + 1);
-    let y = labelled_seg(
+    let mut y = labelled_seg(
         ctx,
         tr("panel.sculpt3d.alpha"),
         ids::SCULPT3D_SEC_BRUSH,
@@ -147,6 +147,14 @@ fn paint_brush_tail(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32,
         w,
         y,
     );
+    // ⚠️ **A pista de escala vem AQUI, colada nos chips que a governam** — e não
+    // no bloco de knobs acima, que é onde ela nasceu e onde o smoke a perdeu:
+    // lá ela aparecia do nada, separada do seletor pela fileira do Falloff, e o
+    // artista lia um número sem saber de que ele era. A row continua na tabela
+    // (ver `Row::in_tail`); o que mudou é onde ela é desenhada.
+    for row in rows::rows().filter(|r| r.in_tail && (r.show)(&snap.ui)) {
+        y = paint_one_row(ctx, snap, row, x, w, y);
+    }
     // **ACUMULAR**, e só onde ele faz alguma coisa. ⚠️ A pergunta é feita à
     // PORTA do motor (`Verb::accumulates`) e não a uma lista de nomes aqui: o
     // aplicador pergunta à mesma para honrar o clique, e duas cópias divergiriam
@@ -420,6 +428,22 @@ fn paint_scene(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y: f
 }
 
 /// Uma seção de knobs da tabela, com um sufixo opcional (o falloff, a máscara).
+/// Uma row, onde quer que ela seja desenhada. **Porta única** — o bloco de knobs
+/// e a cauda a chamam, então uma row de cauda não pode nascer com espaçamento ou
+/// leitura diferentes das irmãs.
+fn paint_one_row(
+    ctx: &mut PaintCtx,
+    snap: &Sculpt3dSnapshot,
+    row: &rows::Row,
+    x: f32,
+    w: f32,
+    y: f32,
+) -> f32 {
+    let value = (row.get)(&snap.ui);
+    let used = super::paint_row(ctx, row, value, x, w, y);
+    y + used + Spacing::Sm.px()
+}
+
 fn knob_section(
     ctx: &mut PaintCtx,
     snap: &Sculpt3dSnapshot,
@@ -437,12 +461,12 @@ fn knob_section(
         // ⚠️ A row condicional é PULADA, não desenhada apagada: um controle
         // apagado que ainda despacha mente, e um que não despacha é a affordance
         // morta que esta casa varre.
-        if !(row.show)(&snap.ui) {
+        // E a row de CAUDA é pulada aqui porque quem a desenha é o `tail`, ao
+        // lado do controle que a governa — ver `Row::in_tail`.
+        if row.in_tail || !(row.show)(&snap.ui) {
             continue;
         }
-        let value = (row.get)(&snap.ui);
-        let used = super::paint_row(ctx, row, value, x, w, y);
-        y += used + Spacing::Sm.px();
+        y = paint_one_row(ctx, snap, row, x, w, y);
     }
     y = tail(ctx, snap, x, w, y);
     y + Spacing::Md.px()

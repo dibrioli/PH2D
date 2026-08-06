@@ -164,3 +164,142 @@ fn measure_alpha_cost() {
         );
     }
 }
+
+/// **QUANTAS FEATURES ATRAVESSAM O MODELO, e que malha as resolve.**
+///
+/// ⚠️ A tabela de resolução responde *"o padrão é amostrado como padrão?"* e
+/// **não** responde *"ele parece uma textura?"*. Um poro de 12% do modelo é
+/// perfeitamente resolvido e lê como uma cratera — foi o que o smoke reprovou.
+/// Aqui as duas colunas ficam lado a lado, e o default sai da interseção.
+#[test]
+#[ignore = "sonda"]
+fn measure_how_many_features_cross_the_model() {
+    println!("\n== FEATURES ATRAVESSANDO UMA ESFERA UNITARIA (diâmetro 2) ==");
+    println!(
+        "{:>7} {:>10} {:>22} {:>10}",
+        "escala", "features", "malha p/ correl>=0,8", "verts"
+    );
+    for scale in [0.25_f32, 0.12, 0.06, 0.03, 0.015] {
+        let across = 2.0 / scale;
+        // A malha mais barata cuja correlação entre vizinhos passa de 0,8.
+        let mut chosen = None;
+        for seg in [96usize, 160, 240, 360, 540, 800, 1200] {
+            let mesh = shapes::uv_sphere(seg * 2 / 3, seg, 1.0);
+            let ring = mesh.adjacency();
+            let (mut a, mut b) = (Vec::new(), Vec::new());
+            for i in 0..mesh.vert_count() {
+                for &n in ring.vert_verts.neighbours(i) {
+                    if n as usize > i {
+                        a.push(Alpha::Pores.weight_at(mesh.positions()[i], scale));
+                        b.push(Alpha::Pores.weight_at(mesh.positions()[n as usize], scale));
+                    }
+                }
+            }
+            if correlation(&a, &b) >= 0.8 {
+                chosen = Some((seg, mesh.vert_count()));
+                break;
+            }
+        }
+        match chosen {
+            Some((seg, verts)) => println!(
+                "{scale:>7.3} {across:>10.0} {:>22} {verts:>10}",
+                format!("uv_sphere({},{seg})", seg * 2 / 3)
+            ),
+            None => println!(
+                "{scale:>7.3} {across:>10.0} {:>22} {:>10}",
+                "> 1200 seg", "-"
+            ),
+        }
+    }
+}
+
+/// **O QUE CUSTA ABRIR uma malha densa o bastante** — a outra metade da decisão.
+#[test]
+#[ignore = "sonda"]
+fn measure_what_a_dense_scene_costs() {
+    use std::time::Instant;
+    println!("\n== CUSTO DE ABRIR (build = adjacência + octree + normais + curvatura) ==");
+    println!(
+        "{:>22} {:>10} {:>12} {:>14}",
+        "malha", "verts", "build ms", "dab r=0,25 ms"
+    );
+    for (u, v) in [(160usize, 240usize), (320, 480), (533, 800), (800, 1200)] {
+        let t = Instant::now();
+        let mut mesh = shapes::uv_sphere(u, v, 1.0);
+        let build = t.elapsed().as_secs_f64() * 1000.0;
+        let verts = mesh.vert_count();
+
+        let brush = ph2d_sculpt3d::Brush {
+            verb: ph2d_sculpt3d::Verb::Draw,
+            radius: 0.25,
+            alpha: Some(Alpha::Pores),
+            ..ph2d_sculpt3d::Brush::default()
+        };
+        let mut stroke = ph2d_sculpt3d::SculptStroke::default();
+        stroke.begin(&mesh);
+        let dab = ph2d_sculpt3d::Dab::at([0.0, 0.0, 1.0], 0.25, [0.0, 0.0, -1.0]);
+        // O primeiro dab paga a captura; medimos o regime.
+        stroke.dab(&mut mesh, &brush, &dab, ph2d_sculpt3d::Symmetry::default());
+        let t = Instant::now();
+        for _ in 0..10 {
+            stroke.dab(&mut mesh, &brush, &dab, ph2d_sculpt3d::Symmetry::default());
+        }
+        let per = t.elapsed().as_secs_f64() * 100.0;
+        println!(
+            "{:>22} {verts:>10} {build:>12.1} {per:>14.3}",
+            format!("uv_sphere({u},{v})")
+        );
+    }
+}
+
+/// **O estimador AMOSTRADO contra a mediana VERDADEIRA** — o viés, medido.
+#[test]
+#[ignore = "sonda"]
+fn measure_the_edge_estimator_bias() {
+    println!("\n== ESTIMADOR DE ARESTA (amostra do 1o vizinho) vs MEDIANA de TODAS ==");
+    println!(
+        "{:>20} {:>10} {:>12} {:>12} {:>8}",
+        "malha", "verts", "mediana", "recomendado", "viés"
+    );
+    for (u, v) in [
+        (24usize, 36usize),
+        (96, 144),
+        (160, 240),
+        (320, 480),
+        (700, 1050),
+    ] {
+        let mesh = shapes::uv_sphere(u, v, 1.0);
+        let truth = median_edge(&mesh);
+        let rec = ph2d_sculpt3d::recommended_scale(&mesh);
+        // O que a recomendacao implica sobre a aresta que ela viu.
+        let implied = rec / 10.0;
+        println!(
+            "{:>20} {:>10} {truth:>12.5} {rec:>12.5} {:>8.2}",
+            format!("uv_sphere({u},{v})"),
+            mesh.vert_count(),
+            implied / truth
+        );
+    }
+}
+
+/// **O custo da recomendação POR FRAME** — ela entrou no retrato do painel, que
+/// é construído a cada quadro.
+#[test]
+#[ignore = "sonda"]
+fn measure_the_recommendation_per_frame() {
+    use std::time::Instant;
+    println!("\n== RECOMENDACAO (o retrato do painel a chama TODO frame) ==");
+    for (u, v) in [(96usize, 144usize), (320, 480), (533, 800)] {
+        let mesh = shapes::uv_sphere(u, v, 1.0);
+        let t = Instant::now();
+        for _ in 0..200 {
+            std::hint::black_box(ph2d_sculpt3d::recommended_scale(&mesh));
+        }
+        println!(
+            "{:>20} {:>9} verts  {:>8.4} ms/frame",
+            format!("uv_sphere({u},{v})"),
+            mesh.vert_count(),
+            t.elapsed().as_secs_f64() * 1000.0 / 200.0
+        );
+    }
+}

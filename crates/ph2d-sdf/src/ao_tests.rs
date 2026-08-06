@@ -257,6 +257,45 @@ fn a_abertura_do_cone_sai_da_contagem() {
 
 // -------------------------------------------------------------- determinismo
 
+/// ⚠️ **O gate do [ADR-0156]:** a rota paralela contra a rota serial
+/// **congelada**, na mesma malha. É isto que torna a byte-identidade uma
+/// AFIRMAÇÃO verificável em vez de um argumento sobre invariantes — e é o que
+/// falha no dia em que alguém puser uma redução entre vértices no laço.
+///
+/// A fixture é grande o bastante para o pool de fato PARTIR o trabalho (uma
+/// malha de duzentos vértices rodaria numa thread só e o gate seria verde por
+/// vácuo), e é um TORO porque o custo por vértice ali é desigual — o vértice da
+/// cavidade marcha mais que o da crista.
+#[test]
+fn o_bake_paralelo_e_byte_identico_ao_serial() {
+    let mesh = shapes::torus(160, 80, 1.0, 0.45);
+    let field = field_of(&mesh, 96);
+    let params = AoParams {
+        radius: 1.0,
+        ..AoParams::for_bounds(mesh.bounds())
+    };
+    assert!(
+        mesh.vert_count() > 10_000,
+        "fixture pequena demais para o pool partir: {} verts",
+        mesh.vert_count()
+    );
+
+    let paralelo = bake_ao(&field, mesh.positions(), mesh.normals(), params);
+    let serial = bake_ao_serial(&field, mesh.positions(), mesh.normals(), params);
+
+    let divergentes = paralelo
+        .iter()
+        .zip(&serial)
+        .filter(|(a, b)| a.to_bits() != b.to_bits())
+        .count();
+    assert_eq!(
+        divergentes,
+        0,
+        "{divergentes} de {} vertices divergem entre a rota paralela e a serial",
+        serial.len()
+    );
+}
+
 /// Duas corridas dão os MESMOS bytes. Sem isto o canal não pode ser assado,
 /// comparado nem gateado — e é a condição que o ADR-0109 cobra de qualquer
 /// coisa que venha a rodar em paralelo depois.
@@ -268,4 +307,40 @@ fn o_bake_e_deterministico() {
     let a = bake_ao(&field, mesh.positions(), mesh.normals(), params);
     let b = bake_ao(&field, mesh.positions(), mesh.normals(), params);
     assert_eq!(a.to_vec(), b.to_vec(), "o bake nao e reproduzivel");
+}
+
+/// **O GANHO do paralelismo**, medido contra a rota serial **congelada** — o
+/// número que o [ADR-0156] cita, re-medível a qualquer momento.
+///
+/// ⚠️ Vive AQUI, e não na sonda de `tests/`, porque a baseline honesta é o
+/// `bake_ao_serial`, que é `cfg(test)` e só existe dentro da crate. Uma sonda
+/// de fora só alcançaria o `bake_ao` — que hoje é a rota paralela — e mediria
+/// ela contra ela mesma.
+#[test]
+#[ignore = "sonda"]
+fn measure_the_parallel_gain() {
+    use std::time::Instant;
+    let mesh = shapes::uv_sphere(533, 800, 1.0);
+    let field = field_of(&mesh, 128);
+    let params = AoParams::for_bounds(mesh.bounds());
+
+    let t = Instant::now();
+    let serial = bake_ao_serial(&field, mesh.positions(), mesh.normals(), params);
+    let ms_serial = t.elapsed().as_secs_f64() * 1000.0;
+
+    let t = Instant::now();
+    let paralelo = bake_ao(&field, mesh.positions(), mesh.normals(), params);
+    let ms_par = t.elapsed().as_secs_f64() * 1000.0;
+
+    let divergentes = paralelo
+        .iter()
+        .zip(&serial)
+        .filter(|(a, b)| a.to_bits() != b.to_bits())
+        .count();
+    println!(
+        "\n== O GANHO ({} verts) ==\nserial {ms_serial:.1} ms  paralelo {ms_par:.1} ms  \
+         speedup {:.2}x  divergentes {divergentes}",
+        mesh.vert_count(),
+        ms_serial / ms_par
+    );
 }

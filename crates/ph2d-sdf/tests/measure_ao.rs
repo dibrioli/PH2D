@@ -107,15 +107,16 @@
 //! escalonamento). São os três invariantes do ADR-0109, e a identidade não é
 //! argumentada: foi medida em 2, 4, 8, 16 e 32.
 //!
-//! ⚠️ **Isto ainda não autoriza o `rayon` aqui:** a cerca de contenção do
-//! ADR-0109 §2 diz que *qualquer novo uso de rayon/threading, nesta ou em outra
-//! crate, exige novo ADR*. O número existe para esse ADR ser escrito com prova,
-//! não para dispensá-lo.
+//! ⚠️ **Este número foi o que ESCREVEU o ADR-0156**, e não o que o dispensou: a
+//! cerca de contenção do ADR-0109 §2 diz que *qualquer novo uso de
+//! rayon/threading, nesta ou em outra crate, exige novo ADR*. O ADR existe, com
+//! a tabela acima dentro dele, e autoriza **`bake_ao` e nada mais**.
 //!
-//! **(8) E o ganho MOVE a fronteira:** com o traço em 43,7 ms, o **campo**
-//! (301 ms) passa a ser 87% do bake — e a voxelização é justamente a metade que
-//! não paraleliza sem resolver a sobreposição de escrita. Quem for atrás do
-//! próximo ganho vai ali, não aqui.
+//! **(8) E o ganho MOVE a fronteira.** Medido pela rota que shipa, o traço cai
+//! para **36,9 ms** a 425 k (87 ns/vértice) ⇒ o bake completo vai de **~1,09 s
+//! para ~338 ms**, e o **campo passa a ser 89% dele**. A voxelização é
+//! justamente a metade que não paraleliza sem resolver a sobreposição de
+//! escrita. **Quem for atrás do próximo ganho vai ali, não aqui.**
 //!
 //! Rodar: `cargo test -p ph2d-sdf --release --test measure_ao -- --ignored --nocapture`
 
@@ -265,58 +266,40 @@ fn measure_when_the_budget_stops_changing_the_answer() {
     );
 }
 
-/// **VALE PARALELIZAR?** — o laço é um *gather* (cada vértice escreve só o seu,
-/// contra um campo imutável), então o `rayon` seria byte-idêntico sob o
-/// ADR-0109. A pergunta é se PAGA, e a resposta não pode ser um palpite.
+/// **O QUE O TRAÇO QUE SHIPA CUSTA** — a rota paralela do ADR-0156.
 ///
-/// ⚠️ Mede com `std::thread::scope` **na sonda**, de propósito: a crate não
-/// ganha uma dep para responder a uma pergunta que ainda não foi feita.
+/// ⚠️ **Esta sonda mudou de pergunta, e o nome antigo teria passado a MENTIR.**
+/// Ela nascia como *"vale paralelizar?"* e cronometrava `bake_ao` como a
+/// baseline SERIAL. Desde o ADR-0156 o `bake_ao` **é** a rota paralela, então a
+/// mesma medição reportaria ~1× de speedup contra ela mesma. A comparação
+/// serial×paralelo mudou-se para junto da rota congelada que a torna possível
+/// (`ao_tests::measure_the_parallel_gain`), e aqui fica o custo do que ships.
 #[test]
 #[ignore = "sonda"]
-fn measure_whether_the_trace_is_worth_parallelising() {
-    let mesh = shapes::uv_sphere(533, 800, 1.0);
-    let field = field_of(&mesh, 128);
-    let params = AoParams::for_bounds(mesh.bounds());
-    let (pos, nrm) = (mesh.positions(), mesh.normals());
-
-    let t = Instant::now();
-    let serial = bake_ao(&field, pos, nrm, params);
-    let serial_ms = ms(t);
-
-    println!("\n== PARALELISMO do traco ({} verts) ==", mesh.vert_count());
+fn measure_the_shipped_trace() {
+    println!("\n== O TRACO QUE SHIPA (paralelo, ADR-0156) ==");
     println!(
-        "{:>10} {:>12} {:>10} {:>12}",
-        "threads", "ms", "speedup", "bit-identico"
+        "{:>20} {:>9} {:>12} {:>14}",
+        "malha", "verts", "traco ms", "ns/vertice"
     );
-    println!("{:>10} {serial_ms:>12.1} {:>10.2} {:>12}", 1, 1.0, "-");
-
-    for threads in [2usize, 4, 8, 16, 32] {
-        let chunk = pos.len().div_ceil(threads);
+    for (u, v) in [(96usize, 144usize), (320, 480), (533, 800)] {
+        let mesh = shapes::uv_sphere(u, v, 1.0);
+        let field = field_of(&mesh, 128);
+        let params = AoParams::for_bounds(mesh.bounds());
         let t = Instant::now();
-        // ⚠️ Fatia as ENTRADAS e usa a porta publica: a sonda nao precisa de um
-        // interno exposto so para existir, e um `bake_ao` sobre uma fatia e'
-        // exatamente o que um `rayon` faria por baixo.
-        let parts: Vec<Vec<f32>> = std::thread::scope(|s| {
-            let hs: Vec<_> = pos
-                .chunks(chunk)
-                .zip(nrm.chunks(chunk))
-                .map(|(p, n)| {
-                    let field = &field;
-                    s.spawn(move || bake_ao(field, p, n, params))
-                })
-                .collect();
-            hs.into_iter().map(|h| h.join().unwrap()).collect()
-        });
+        let ao = bake_ao(&field, mesh.positions(), mesh.normals(), params);
         let el = ms(t);
-        let out: Vec<f32> = parts.concat();
         println!(
-            "{threads:>10} {el:>12.1} {:>10.2} {:>12}",
-            serial_ms / el,
-            if out == serial { "sim" } else { "NAO" }
+            "{:>20} {:>9} {el:>12.1} {:>14.0}",
+            format!("uv_sphere({u},{v})"),
+            mesh.vert_count(),
+            el * 1e6 / mesh.vert_count() as f64
         );
+        std::hint::black_box(ao);
     }
     println!(
-        "\nLeitura: o gather e' byte-identico em qualquer numero de threads (cada vertice\n\
-         escreve so o seu). Se o speedup se paga, o `rayon` entra COM este numero ao lado."
+        "\nLeitura: a referencia serial esta na tabela do cabecalho (807,7 ms a 425k) e\n\
+         e' re-medivel por `ao_tests::measure_the_parallel_gain`, que compara contra a\n\
+         rota congelada. Aqui so' vive o custo do que o artista de fato paga."
     );
 }

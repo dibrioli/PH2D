@@ -7291,6 +7291,7 @@ name = "ph2d-sdf"
 version = "0.0.0"
 dependencies = [
  "ph2d-mesh",
+ "rayon",
 ]
 
 [[package]]

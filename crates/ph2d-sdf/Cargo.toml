@@ -18,10 +18,18 @@ authors.workspace = true
 # ph2d-mesh: a entrada e a saida sao `Mesh`. O campo nao e um formato proprio —
 # ele nasce de uma malha e morre virando outra, e e por isso que esta crate
 # depende da malha em vez de a malha depender dela.
-#
-# NAO ha `rayon` aqui, e a ausencia e deliberada: o flood fill e sequencial por
-# semantica (uma pilha que propaga um rotulo) e as caixas de dois triangulos se
-# SOBREPOEM, entao a escrita do voxelizador nao e disjunta — a condicao que o
-# ADR-0109 exige. Se a medicao pedir, o eixo honesto e a fatia em Z, e ela vem
-# com o numero ao lado.
 ph2d-mesh = { path = "../ph2d-mesh" }
+
+# rayon: EXCECAO ESTREITA, autorizada pelo ADR-0156 e SO para o traco de AO
+# (`ao::bake_ao`). Ele e' um gather por-vertice — cada vertice escreve so o seu,
+# contra um campo IMUTAVEL, e a soma sobre cones e' privada do vertice e de
+# ordem fixa (o precedente do ADR-0147) — entao a saida e' byte-identica ao
+# serial, MEDIDA em 2, 4, 8, 16 e 32 threads (18,49x a 32).
+#
+# ⚠️ A ausencia continua valendo para o RESTO da crate, e o mecanismo e' outro:
+# o flood fill e' sequencial por semantica (uma pilha que propaga um rotulo) e
+# as caixas de dois triangulos do voxelizador se SOBREPOEM, entao a escrita
+# dele nao e' disjunta — a condicao que o ADR-0109 exige. Paralelizar AQUELA
+# metade continua a exigir ADR proprio; o eixo honesto seria a fatia em Z, com
+# a fronteira entre fatias resolvida, e ela vem com o numero ao lado.
+rayon = "1"

@@ -57,6 +57,7 @@
 //! forma*. O número medido está no gate `um_convexo_isolado_enxerga_o_ceu`.
 
 use ph2d_mesh::Aabb;
+use rayon::prelude::*;
 
 use crate::VoxelField;
 
@@ -223,16 +224,53 @@ fn ao_at(
 
 /// Assa o AO de todos os vértices.
 ///
-/// ⚠️ **Serial de propósito, por ora, e o número é quem decide.** A forma deste
-/// laço é a de um **gather**: cada vértice escreve só o seu, contra um campo
-/// **imutável** — as três condições do ADR-0109, as mesmas que já sancionam o
-/// `rayon` das normais e da curvatura na `ph2d-mesh`. Ou seja, ao contrário do
-/// voxelizador (cujas caixas se sobrepõem e por isso a `ph2d-sdf` não tem
-/// `rayon`), aqui paralelizar **seria** byte-idêntico. Fica fora até a sonda
-/// `measure_ao` dizer que se paga: medir primeiro é a regra, e uma dep nova
-/// nesta crate carrega o `Cargo.toml` que hoje explica a ausência.
+/// **Paralelo por [ADR-0156](../../../docs/architecture/decisions/0156-sculpt3d-ao-trace-is-a-per-vertex-gather-rayon-exception.md).**
+/// O laço é um **gather**: cada vértice escreve só o seu, contra um campo
+/// **imutável**, e a soma sobre os cones é **privada do vértice e de ordem
+/// fixa** — então a saída é byte-idêntica ao serial. Isso não é argumentado, é
+/// **medido**: 2, 4, 8, 16 e 32 threads dão os mesmos bytes (18,49× a 32), e o
+/// gate `o_bake_paralelo_e_byte_identico_ao_serial` compara contra a rota
+/// serial congelada.
+///
+/// ⚠️ **A exceção é ESTREITA.** O voxelizador e o flood fill continuam seriais
+/// pelo mecanismo que o `Cargo.toml` desta crate escreve: as caixas de dois
+/// triângulos se sobrepõem ⇒ a escrita não é disjunta. Paralelizar aquela
+/// metade exige ADR próprio.
+///
+/// ⚠️ **Sem piso de pool, e é uma decisão declarada:** o custo por vértice aqui
+/// é ~1 850 ns (contra dezenas nas normais), então o `PAR_MIN` da `ph2d-mesh`
+/// não é a régua certa — e o piso honesto sai de uma varredura, não de um
+/// palpite. Até ela existir, o pior caso é uma malha minúscula pagar o overhead
+/// do pool, que é seguro.
 #[must_use]
 pub fn bake_ao(
+    field: &VoxelField,
+    positions: &[[f32; 3]],
+    normals: &[[f32; 3]],
+    params: AoParams,
+) -> Vec<f32> {
+    let dirs = cone_directions(params.cones);
+    let k = params.cone_k();
+    // O `min` preserva a semântica do `zip` da rota serial: entradas de
+    // comprimentos diferentes produzem o menor dos dois, nunca um pânico.
+    let n = positions.len().min(normals.len());
+    let mut out = vec![0.0f32; n];
+    out.par_iter_mut().enumerate().for_each(|(v, o)| {
+        *o = ao_at(field, &dirs, k, params, positions[v], normals[v]);
+    });
+    out
+}
+
+/// A rota **SERIAL, CONGELADA** — o oráculo do gate de identidade.
+///
+/// ⚠️ É o código que shipava antes do ADR-0156, verbatim. Ele existe para que a
+/// byte-identidade seja uma **comparação**, não um argumento sobre invariantes;
+/// e vive sob `cfg(test)` porque um `pub` sem chamador de produto seria uma
+/// **segunda resposta** esperando quem a chame — a lição que esta casa já pagou
+/// com o `warp_axis` e o `serial_side`.
+#[cfg(test)]
+#[must_use]
+fn bake_ao_serial(
     field: &VoxelField,
     positions: &[[f32; 3]],
     normals: &[[f32; 3]],

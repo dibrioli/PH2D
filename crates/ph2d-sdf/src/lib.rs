@@ -28,11 +28,17 @@
 //!
 //! # Onde este código roda
 //!
-//! Na **CPU**, e serial. O flood fill é sequencial por semântica e as caixas de
-//! dois triângulos se sobrepõem, então a escrita do voxelizador não é disjunta —
-//! a condição que o ADR-0109 exige para paralelizar sem mudar a resposta. O
-//! custo por resolução está na sonda `measure_remesh`, e é ele que decide se
-//! vale abrir esse eixo.
+//! Na **CPU**, e o remesh é **serial**: o flood fill é sequencial por semântica
+//! e as caixas de dois triângulos se sobrepõem, então a escrita do voxelizador
+//! não é disjunta — a condição que o ADR-0109 exige para paralelizar sem mudar
+//! a resposta. O custo por resolução está na sonda `measure_remesh`, e é ele
+//! que decide se vale abrir esse eixo.
+//!
+//! ⚠️ **O traço de AO é a exceção, e é ESTREITA** ([ADR-0156](../../../docs/architecture/decisions/0156-sculpt3d-ao-trace-is-a-per-vertex-gather-rayon-exception.md)):
+//! ele é um *gather* por-vértice contra um campo imutável, com a soma privada e
+//! de ordem fixa, então roda em `rayon` sendo **byte-idêntico ao serial** —
+//! medido em 2, 4, 8, 16 e 32 threads. A autorização é do `bake_ao` e de mais
+//! nada; qualquer outro uso de `rayon` aqui exige ADR próprio.
 
 mod ao;
 mod field;

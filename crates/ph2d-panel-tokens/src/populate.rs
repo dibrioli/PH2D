@@ -28,5 +28,8 @@ pub fn populate(store: &mut WidgetStore) {
         // widget e **nunca abrir o picker** — a cor ficaria ineditável com todos os gates verdes.
         store.register_picker_swatch(ids::tokens_swatch_id(row));
         button(store, ids::tokens_reset_id(row));
+        // O elo: um botao por linha, vivo em TODAS elas (qualquer token pode seguir qualquer
+        // outro). Sem o registro ele seria pintado, hit-registrado e MORTO sob o rato.
+        button(store, ids::tokens_link_id(row));
     }
 }

@@ -48,3 +48,17 @@ pub fn tokens_swatch_id(row: usize) -> NodeId {
 pub fn tokens_reset_id(row: usize) -> NodeId {
     fnv_node_id_runtime(&format!("tokens.reset.{row}"))
 }
+
+/// O **elo** da linha `row` — o gesto de fazer um token SEGUIR outro (plano UI/UX W4b).
+///
+/// ⚠️ **Um id por linha, e o mesmo botão faz as duas pontas do gesto**: clicar arma esta linha,
+/// clicar noutra fecha o elo *desta → aquela*. Dois ids (um "armar", um "escolher") seriam dois
+/// controlos para um gesto de dois toques, e a segunda metade nasceria sem sítio na linha alvo.
+///
+/// É o idioma de conta-gotas que o repo já usa para apontar coisa (o re-pick de corpo de joint, o
+/// `vec_path_pick` do vetor) — aqui o alvo é outra ROW do mesmo painel, então o "clique no alvo"
+/// cai no botão que a row já tem.
+#[must_use]
+pub fn tokens_link_id(row: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("tokens.link.{row}"))
+}

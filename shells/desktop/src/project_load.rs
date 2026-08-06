@@ -130,7 +130,8 @@ impl crate::App {
         }
         // **A TABELA DE COR do documento anterior morre aqui, e a do arquivo entra** (W6) —
         // detalhe e razão no irmão `project_tokens`.
-        crate::project_tokens::install(&file.tokens);
+        // O número de descartes é DITO pelo próprio `install` (uma voz); aqui ele não é decisão.
+        let _ = crate::project_tokens::install(&file.tokens);
         // **A TIMELINE do documento anterior morre aqui** — a do arquivo entra no fim (W4.T6/B5).
         //
         // Não é higiene: as bindings do documento anterior nomeiam entidades que o

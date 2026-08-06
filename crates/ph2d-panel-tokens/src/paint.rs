@@ -4,6 +4,7 @@
 //! `ColorToken::ALL`; um token novo no design system nasce pintado, registado e vivo, e não há
 //! segunda lista para driftar.
 
+use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::ids;
 use ph2d_editor_core::paint::{paint_text, rect_to_vello, resolve};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
@@ -14,13 +15,13 @@ use ph2d_editor_core::widget::panel_chrome::{
     panel_resize_handle_rect_bl,
 };
 use ph2d_editor_core::widget::{
-    Button, ButtonState, ColorSwatch, SwatchSize, TOKENS_SCROLLBAR_ID, paint_button,
-    paint_color_swatch, paint_scrollbar, scrollbar_is_needed, scrollbar_thumb_rect,
-    scrollbar_track_rect,
+    Button, ButtonState, ColorSwatch, IconButtonStyle, IconGlyph, SwatchSize, TOKENS_SCROLLBAR_ID,
+    paint_button, paint_color_swatch, paint_icon_button, paint_scrollbar, scrollbar_is_needed,
+    scrollbar_thumb_rect, scrollbar_track_rect,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
-use ph2d_tokens::overrides::{color_override, overridden_count};
+use ph2d_tokens::overrides::{TokenValue, color_override, overridden_count};
 use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, Theme, TypeToken};
 
 use crate::TokensPanel;
@@ -28,8 +29,10 @@ use crate::state::{TokensPanelState, set_last_content_h, set_last_visible_h};
 
 /// Largura do botão *Reset* de uma linha. Estreito de propósito: ele é a exceção, não a coluna.
 const RESET_W: f32 = 48.0; // LITERAL-PX-OK: panel grid metric (per-row reset button width)
+/// Lado do botão de ELO — quadrado, como todo botão de ícone compacto do app.
+const LINK_W: f32 = 20.0; // LITERAL-PX-OK: panel grid metric (compact icon button side)
 
-pub(crate) fn paint(_state: &mut TokensPanelState, ctx: &mut PaintCtx) {
+pub(crate) fn paint(state: &mut TokensPanelState, ctx: &mut PaintCtx) {
     if !ctx.host.panel_visible(TokensPanel::ID) {
         // Limpeza simétrica do rect: sem ela o `panel_at` continua a devolver TOKENS_PANEL depois
         // de fechado, e a roda do rato roda um painel que não está na tela.
@@ -80,7 +83,7 @@ pub(crate) fn paint(_state: &mut TokensPanelState, ctx: &mut PaintCtx) {
     ctx.scene.push_clip(&rect_to_vello(body_rect));
     let x = rect.x + PANEL_HEAD_PAD;
     let w = (rect.w - PANEL_HEAD_PAD * 2.0).max(0.0);
-    let y_after = paint_body(ctx, theme, x, w, body_top - scroll);
+    let y_after = paint_body(ctx, theme, x, w, body_top - scroll, state.armed);
     let content_h = (y_after + scroll) - body_top + PANEL_HEAD_PAD;
     set_last_content_h(content_h);
     set_last_visible_h(body_h);
@@ -90,7 +93,14 @@ pub(crate) fn paint(_state: &mut TokensPanelState, ctx: &mut PaintCtx) {
 }
 
 /// O readout do modo + o *Reset All* + a lista.
-fn paint_body(ctx: &mut PaintCtx, theme: Theme, x: f32, w: f32, mut y: f32) -> f32 {
+fn paint_body(
+    ctx: &mut PaintCtx,
+    theme: Theme,
+    x: f32,
+    w: f32,
+    mut y: f32,
+    armed: Option<usize>,
+) -> f32 {
     let n = overridden_count(theme);
     let font = TypeToken::Sm.px();
     // ⚠️ O modo VIGENTE é dito, e não inferido: o mesmo token tem quatro valores, e um painel que
@@ -125,22 +135,32 @@ fn paint_body(ctx: &mut PaintCtx, theme: Theme, x: f32, w: f32, mut y: f32) -> f
     }
 
     for (row, &token) in ColorToken::ALL.iter().enumerate() {
-        y = paint_token_row(ctx, theme, row, token, x, w, y);
+        y = paint_token_row(
+            ctx,
+            theme,
+            row,
+            token,
+            Rect::new(x, y, w, ROW_H_PX),
+            armed == Some(row),
+        );
     }
     y
 }
 
-/// `[swatch]  chave-do-token           [Reset]`
+/// `[swatch]  chave-do-token  [→ alvo]        [elo] [Reset]`
 fn paint_token_row(
     ctx: &mut PaintCtx,
     theme: Theme,
     row: usize,
     token: ColorToken,
-    x: f32,
-    w: f32,
-    y: f32,
+    // ⚠️ A CAIXA da linha, e não três escalares soltos: `x`/`w`/`y` viajavam sempre juntos e
+    // sempre na mesma ordem, que é a assinatura de um tipo por nascer.
+    box_: Rect,
+    armed: bool,
 ) -> f32 {
-    let authored = color_override(theme, token).is_some();
+    let (x, w, y) = (box_.x, box_.w, box_.y);
+    let slot = color_override(theme, token);
+    let authored = slot.is_some();
     let swatch_w = SwatchSize::Md.px();
     let font = TypeToken::Sm.px();
 
@@ -161,7 +181,8 @@ fn paint_token_row(
         .register(ids::tokens_swatch_id(row), swatch_rect);
 
     let label_x = x + swatch_w + Spacing::Sm.px();
-    let label_w = (w - swatch_w - Spacing::Sm.px() - if authored { RESET_W } else { 0.0 }).max(1.0);
+    let tail = if authored { RESET_W } else { 0.0 } + LINK_W + Spacing::Xs.px();
+    let label_w = (w - swatch_w - Spacing::Sm.px() - tail).max(1.0);
     // A cor do rótulo DIZ se a linha está autorada — sem isso, "este está diferente da fábrica"
     // só se descobre carregando em Reset e vendo o que muda.
     let label_token = if authored {
@@ -169,16 +190,28 @@ fn paint_token_row(
     } else {
         ColorToken::Text1
     };
+    // ⚠️ Uma linha que SEGUE outra tem de DIZER quem ela segue: a swatch mostra a cor efetiva, e
+    // sem o nome do alvo o artista vê um valor que não obedece ao picker sem nada explicar por quê
+    // — a pior UI possível, e a razão pela qual o plano exige isto por escrito.
+    let label = match slot {
+        Some(TokenValue::Alias(target)) => format!("{}  -  {}", token.key(), target.key()),
+        _ => token.key().to_string(),
+    };
     paint_text(
         ctx.text_system,
         ctx.scene,
-        token.key(),
+        &label,
         label_x,
         y + (ROW_H_PX - font) * 0.5,
         font,
         label_w,
         resolve(label_token, theme),
     );
+
+    // O elo é oferecido em TODA linha — qualquer token pode seguir qualquer outro, e esconder o
+    // botão em linhas não-autoradas tornaria o gesto alcançável só onde ele já foi feito.
+    let link_x = x + w - LINK_W - if authored { RESET_W } else { 0.0 };
+    paint_link_button(ctx, theme, row, link_x, y, armed);
 
     if authored {
         command(
@@ -191,6 +224,29 @@ fn paint_token_row(
         );
     }
     y + ROW_H_PX + Spacing::Xxs.px()
+}
+
+/// O botão de elo da linha — **Pressed enquanto armado**, para o artista ver de onde o gesto saiu.
+fn paint_link_button(ctx: &mut PaintCtx, theme: Theme, row: usize, x: f32, y: f32, armed: bool) {
+    let id = ids::tokens_link_id(row);
+    let rect = Rect::new(x, y + (ROW_H_PX - LINK_W) * 0.5, LINK_W, LINK_W);
+    let state = if armed {
+        ButtonState::Pressed
+    } else {
+        ctx.host
+            .store()
+            .button_state(id)
+            .unwrap_or(ButtonState::Normal)
+    };
+    paint_icon_button(
+        rect,
+        IconGlyph::Builtin(IconId::Link),
+        IconButtonStyle::Compact,
+        state,
+        ctx.scene,
+        theme,
+    );
+    ctx.host.hit_index_mut().register(id, rect);
 }
 
 /// Um botão de ação simples — o mesmo desenho do irmão no painel de física.

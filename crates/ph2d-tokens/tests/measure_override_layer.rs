@@ -10,7 +10,7 @@
 use std::time::Instant;
 
 use ph2d_tokens::color::{Color, ColorToken};
-use ph2d_tokens::overrides::{clear_color_overrides, set_color_override};
+use ph2d_tokens::overrides::{TokenValue, clear_color_overrides, set_color_override};
 use ph2d_tokens::theme::Theme;
 
 const THEMES: [Theme; 4] = [
@@ -71,8 +71,9 @@ fn measure_the_cost_of_the_layer() {
     set_color_override(
         Theme::Forge,
         ColorToken::Accent,
-        Some(Color::from_hex(0x00FF00)),
-    );
+        Some(TokenValue::Literal(Color::from_hex(0x00FF00))),
+    )
+    .expect("um literal nunca fecha um laco");
     let (one, _) = sweep();
 
     // **Vinte**: uma re-vestida de verdade.
@@ -80,8 +81,11 @@ fn measure_the_cost_of_the_layer() {
         set_color_override(
             Theme::Forge,
             token,
-            Some(Color::from_hex(0x0010_0000 * (i as u32 + 1))),
-        );
+            Some(TokenValue::Literal(Color::from_hex(
+                0x0010_0000 * (i as u32 + 1),
+            ))),
+        )
+        .expect("um literal nunca fecha um laco");
     }
     let (twenty, _) = sweep();
     clear_color_overrides();

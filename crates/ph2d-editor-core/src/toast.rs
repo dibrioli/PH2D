@@ -84,10 +84,24 @@ impl Toast {
     }
 }
 
-#[derive(Default)]
 pub struct ToastQueue {
     inner: VecDeque<Toast>,
     cap: usize,
+}
+
+/// ⚠️ **`Default` delega ao `new()`, e o `derive` estava ERRADO.**
+///
+/// `usize::default()` é **0**, então uma fila derivada tinha capacidade zero — e o `push` dela
+/// devolvia `false` e **descartava todo toast em silêncio**. O produto escapou por acidente
+/// (`init.rs` chama `new()`), mas quarenta sítios constroem por `default()`, e o primeiro deles que
+/// passasse a mostrar uma mensagem ao artista teria um sistema de avisos que nunca avisa, **sem um
+/// erro, sem um warning e com todos os gates verdes**.
+///
+/// Uma fila de capacidade zero não tem uso legítimo: ela é um descartador com nome de fila.
+impl Default for ToastQueue {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl ToastQueue {
@@ -201,5 +215,30 @@ mod tests {
         assert_eq!(n.role(), Role::GenericContainer);
         assert_eq!(n.label(), Some("Save failed"));
         assert_eq!(n.live(), Some(Live::Assertive));
+    }
+
+    /// **Uma fila construída por `default()` ACEITA um toast.**
+    ///
+    /// ⚠️ Red-first: com o `#[derive(Default)]` que estava aqui, `cap` nascia **0** e o `push`
+    /// devolvia `false` — uma fila que descarta tudo em silêncio. O oráculo é o `push`, não o
+    /// `cap`: é o `push` que o chamador vê, e um teste sobre o campo interno passaria a mentir no
+    /// dia em que a política de cheio mudar.
+    #[test]
+    fn a_default_queue_accepts_a_toast() {
+        let mut q = ToastQueue::default();
+        assert!(q.push(Toast::info("hello")), "a fila default DESCARTOU");
+        assert_eq!(q.len(), 1);
+
+        // E ela tem a mesma capacidade que a construída à mão — duas portas para "uma fila nova"
+        // que discordassem dariam avisos que aparecem num caminho e somem no outro.
+        let mut d = ToastQueue::default();
+        let mut n = ToastQueue::new();
+        for _ in 0..ToastQueue::DEFAULT_CAP {
+            assert!(n.push(Toast::info("x")));
+            assert!(d.push(Toast::info("x")));
+        }
+        assert_eq!(d.len(), n.len());
+        assert!(!d.push(Toast::info("x")), "a default enche depois da new");
+        assert!(!n.push(Toast::info("x")));
     }
 }

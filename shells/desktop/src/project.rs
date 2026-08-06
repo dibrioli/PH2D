@@ -254,7 +254,13 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// o postcard é posicional e devolveria lixo bem-formado. Quem apende, bumpa, no MESMO commit.
 /// ⚠️ E o valor é **PROVISÓRIO**: ele se CONTA contra o `main` do dia da integração, não se
 /// escolhe ([[feedback_numbers_that_sum_across_lines_count_dont_pick]]).
-const PROJECT_SCHEMA: u32 = 56;
+/// v57 (plano UI/UX W4b — o ALIAS de token): um token autorado passa a valer uma cor **ou** o
+/// nome de outro token, então o `SavedToken` troca o campo `rgba: [u8; 4]` pelo enum
+/// `SavedValue`. ⚠️ Um enum e não um campo `alias` ao lado do `rgba`: os dois seriam mutuamente
+/// exclusivos e nada no formato o diria. Postcard é POSICIONAL e a forma do registro mudou ⇒ o
+/// bump é obrigatório nos dois sentidos, o mesmo raciocínio do v50/v51.
+/// ⚠️ **PROVISÓRIO** pelo mesmo motivo que o v56.
+const PROJECT_SCHEMA: u32 = 57;
 
 /// O conteúdo de um arquivo de projeto.
 #[derive(serde::Serialize, serde::Deserialize)]

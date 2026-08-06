@@ -5531,7 +5531,7 @@ impl crate::App {
             // MUNDO, cuja visibilidade é do artista. ⚠️ Ele tem de correr DEPOIS do dispatch de
             // eventos (o intent de Reset é enfileirado ali) e ANTES do paint (senão o frame
             // pintaria a cor de antes do clique e o picker piscaria de volta).
-            if tokens_bridge::dispatch(hero) {
+            if tokens_bridge::dispatch(hero, toasts) {
                 self.title_dirty = true;
             }
             // O ARRASTO da tira (mover a chave / esticar o hold): o painel enfileirou o

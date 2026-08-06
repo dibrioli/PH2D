@@ -30,6 +30,12 @@ pub enum TokensIntent {
     /// ⚠️ Só o vigente: o artista vê um modo de cada vez, e apagar trabalho que ele não está a
     /// olhar é a forma mais barata de perder uma re-vestida.
     ResetAll,
+    /// **`from` passa a SEGUIR `to`** (plano UI/UX W4b).
+    ///
+    /// ⚠️ O ARMAR não é intent, e a assimetria é deliberada: armar não muda o documento — é o
+    /// painel a lembrar-se de onde o gesto começou —, então ele vive no estado do painel. Só o que
+    /// ESCREVE atravessa a fila, e a shell continua o único escritor da tabela.
+    Link { from: usize, to: usize },
 }
 
 thread_local! {
@@ -80,6 +86,28 @@ pub fn last_visible_h() -> f32 {
     LAST_VISIBLE_H.with(Cell::get)
 }
 
-/// Estado por-painel exigido pelo trait `Panel`. Vazio: ver o § do cabeçalho.
+/// Estado por-painel exigido pelo trait `Panel`.
+///
+/// ⚠️ Quase vazio, e o que sobrou é a metade TRANSIENTE do gesto de elo (§ do cabeçalho): o
+/// documento continua a não ter cópia nenhuma aqui.
 #[derive(Default)]
-pub struct TokensPanelState;
+pub struct TokensPanelState {
+    /// A linha que está à espera de um alvo, se alguma.
+    ///
+    /// ⚠️ Estado de GESTO, não de documento — é por isso que ele não é serializado nem atravessa a
+    /// fila de intents: fechar o painel no meio de um elo simplesmente desiste dele, que é o que
+    /// desistir de um gesto significa.
+    pub(crate) armed: Option<usize>,
+}
+
+impl TokensPanelState {
+    /// Que linha está à espera de um alvo, se alguma.
+    ///
+    /// ⚠️ **Leitura, e é `pub` para o gate de seam** — que vive noutra crate e precisa de ver que
+    /// o primeiro clique ARMOU sem que ele tenha enfileirado uma edição. Escrever continua a ser
+    /// só do `apply_event`: um segundo escritor daria duas respostas a *"onde este gesto começou?"*.
+    #[must_use]
+    pub fn armed(&self) -> Option<usize> {
+        self.armed
+    }
+}

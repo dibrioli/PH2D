@@ -20,15 +20,23 @@
 use ph2d_panel_tokens::TokensIntent;
 use ph2d_tokens::ColorToken;
 use ph2d_tokens::color::Color;
-use ph2d_tokens::overrides::{set_color_override, set_color_overrides};
+use ph2d_tokens::overrides::{TokenValue, color_override, set_color_override, set_color_overrides};
 
 use ph2d_editor::screens::hero::HeroScreen;
+use ph2d_editor::{Toast, ToastQueue};
+
+/// Escreve um LITERAL. ⚠️ O `expect` documenta a propriedade no sítio: um literal TERMINA uma
+/// cadeia de aliases, nunca a alonga, então a porta não tem como o recusar.
+fn put(theme: ph2d_tokens::Theme, token: ColorToken, colour: Option<Color>) {
+    set_color_override(theme, token, colour.map(TokenValue::Literal))
+        .expect("um literal nunca fecha um laco de alias");
+}
 
 /// Roda uma vez por frame, na MESMA fase das outras pontes de painel.
 ///
 /// Devolve `true` se a camada mudou — o chamador usa para marcar o título como sujo, do mesmo modo
 /// que qualquer outra edição de documento.
-pub(crate) fn dispatch(hero: &mut HeroScreen) -> bool {
+pub(crate) fn dispatch(hero: &mut HeroScreen, toasts: &mut ToastQueue) -> bool {
     let theme = hero.theme;
     let mut changed = false;
 
@@ -45,10 +53,15 @@ pub(crate) fn dispatch(hero: &mut HeroScreen) -> bool {
     {
         let [r, g, b, a] = value.rgba;
         let picked = Color { r, g, b, a };
+        let token = ColorToken::ALL[row];
+        // ⚠️ Escolher uma cor numa linha que SEGUE outra QUEBRA o elo, mesmo que a cor coincida —
+        // o artista abriu o picker e escolheu, e isso é a decisão de ter um valor próprio. Sem esta
+        // metade, picar exactamente a cor que o alias já mostrava seria um clique sem efeito.
+        let breaks_a_link = matches!(color_override(theme, token), Some(TokenValue::Alias(_)));
         // ⚠️ Só escreve quando MUDA: o picker publica o valor a cada frame em que está aberto, e
         // escrever sempre marcaria o projeto sujo por olhar para ele.
-        if ColorToken::ALL[row].resolve(theme) != picked {
-            set_color_override(theme, ColorToken::ALL[row], Some(picked));
+        if breaks_a_link || token.resolve(theme) != picked {
+            put(theme, token, Some(picked));
             changed = true;
         }
     }
@@ -58,8 +71,26 @@ pub(crate) fn dispatch(hero: &mut HeroScreen) -> bool {
         match intent {
             TokensIntent::Reset(row) => {
                 if let Some(&token) = ColorToken::ALL.get(row) {
-                    set_color_override(theme, token, None);
+                    put(theme, token, None);
                     changed = true;
+                }
+            }
+            // ⚠️ **A recusa é DITA.** Um laço não tem valor a devolver, então a porta o recusa — e
+            // um gesto que não acontece sem nada na tela é indistinguível de um botão quebrado.
+            // O toast nomeia os dois tokens, que é o que torna o "por quê" acionável.
+            TokensIntent::Link { from, to } => {
+                if let (Some(&a), Some(&b)) = (ColorToken::ALL.get(from), ColorToken::ALL.get(to)) {
+                    match set_color_override(theme, a, Some(TokenValue::Alias(b))) {
+                        Ok(()) => changed = true,
+                        Err(e) => {
+                            toasts.push(Toast::warning(format!(
+                                "Can't make {} follow {}: that closes a loop at {}",
+                                e.token.key(),
+                                e.target.key(),
+                                e.at.key()
+                            )));
+                        }
+                    }
                 }
             }
             // ⚠️ Só o MODO VIGENTE. A lista é filtrada em vez de limpa: apagar os outros três
@@ -69,7 +100,9 @@ pub(crate) fn dispatch(hero: &mut HeroScreen) -> bool {
                     .into_iter()
                     .filter(|e| e.theme != theme)
                     .collect();
-                set_color_overrides(keep);
+                // ⚠️ Filtrar uma tabela ACÍCLICA não pode produzir um laço (remover arestas nunca
+                // fecha um ciclo), então o descarte é zero por aritmética — não por confiança.
+                debug_assert_eq!(set_color_overrides(keep), 0);
                 changed = true;
             }
         }

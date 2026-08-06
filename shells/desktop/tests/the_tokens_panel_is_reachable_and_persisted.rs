@@ -108,12 +108,40 @@ fn the_t_key_toggles_the_tokens_panel() {
 ///
 /// ⚠️ Sem esta chamada o painel pinta, o picker abre, a cor é escolhida — e nada muda. Os sete
 /// gates de seam e os oito da camada ficam VERDES.
+///
+/// ⚠️ **A âncora é a CHAMADA, nunca a lista de argumentos.** A 1ª versão exigia o literal
+/// `tokens_bridge::dispatch(hero)` e **expirou no dia em que a ponte ganhou um 2º parâmetro** — um
+/// gate ancorado na FORMA de uma chamada mede a assinatura de hoje, e a propriedade que ele existe
+/// para afirmar é *"o laço de frame chama a ponte"*. É a mesma cicatriz que os dois arch-gates
+/// desta linha pagaram em 23/07 (janela de bytes · distância entre presses).
 #[test]
 fn the_frame_loop_runs_the_tokens_bridge() {
     let s = src("render_loop/mod.rs");
     assert!(
-        s.contains("tokens_bridge::dispatch(hero)"),
+        s.contains("tokens_bridge::dispatch("),
         "o laço de frame não chama a ponte de tokens"
+    );
+    // E ela recebe **a fila que o frame PINTA**, não uma qualquer: a recusa de um laço de alias é
+    // dita por ela, e uma fila construída ali mesmo seria um descartador — o toast existiria, o
+    // artista não o veria, e todos os gates da camada ficariam verdes.
+    //
+    // ⚠️ Por isso o oráculo tem DUAS metades e a segunda é a que morde: *o argumento é o binding
+    // `toasts` do laço* **e** *nenhuma fila é construída na chamada*. Sem a segunda, um
+    // `&mut ToastQueue::new()` passaria — e ele é exactamente o defeito.
+    let call = s
+        .split("tokens_bridge::dispatch(")
+        .nth(1)
+        .expect("a chamada existe — a asserção acima já o disse");
+    let args = &call[..call.find(')').expect("a chamada fecha o parêntese")];
+    assert!(
+        args.contains("toasts"),
+        "a ponte de tokens não recebe a fila de toasts do frame — a recusa de um laço seria \
+         SILENCIOSA (argumentos: {args:?})"
+    );
+    assert!(
+        !args.contains("ToastQueue"),
+        "a ponte recebe uma fila CONSTRUÍDA na chamada: o toast é empurrado para um descartador \
+         e nunca chega à tela (argumentos: {args:?})"
     );
 }
 

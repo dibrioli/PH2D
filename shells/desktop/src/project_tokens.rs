@@ -16,10 +16,23 @@
 //! re-pintaria o app com as cores trocadas — a mesma lei que a W4a aplicou ao binding.
 
 use ph2d_tokens::color::Color;
-use ph2d_tokens::overrides::{ColorOverride, color_overrides, set_color_overrides};
+use ph2d_tokens::overrides::{ColorOverride, TokenValue, color_overrides, set_color_overrides};
 use ph2d_tokens::{ColorToken, Theme};
 
-/// Um token de cor autorado: **que modo, que token, que cor**.
+/// **O que um token autorado vale, no arquivo** — as duas espécies do [`TokenValue`].
+///
+/// ⚠️ Um ENUM, e não um `rgba` com um `alias: Option<String>` ao lado: os dois campos seriam
+/// mutuamente exclusivos e nada no formato o diria, então um arquivo poderia trazer os dois e o
+/// leitor teria de escolher um vencedor que ninguém especificou. A representação apaga o caso.
+#[derive(serde::Serialize, serde::Deserialize)]
+pub(crate) enum SavedValue {
+    /// Uma cor literal.
+    Literal([u8; 4]),
+    /// **A CHAVE do token seguido** — nunca o índice, a mesma lei do campo `key` abaixo.
+    Alias(String),
+}
+
+/// Um token de cor autorado: **que modo, que token, valendo o quê**.
 ///
 /// ⚠️ Tipo PRÓPRIO do arquivo, e não o [`ColorOverride`] da `ph2d-tokens` — a crate de tokens não
 /// depende de `serde` para o valor de runtime dela, e fazer o formato do arquivo herdar o layout
@@ -30,7 +43,7 @@ pub(crate) struct SavedToken {
     theme: u8,
     /// A chave do token no `tokens.json` (`"accent"`, `"bg-0"`, …).
     key: String,
-    rgba: [u8; 4],
+    value: SavedValue,
 }
 
 /// O modo a partir do byte guardado. **Porta única** da direção inversa do `theme as u8`.
@@ -57,7 +70,10 @@ pub(crate) fn collect() -> Vec<SavedToken> {
         .map(|e| SavedToken {
             theme: e.theme as u8,
             key: e.token.key().to_string(),
-            rgba: [e.colour.r, e.colour.g, e.colour.b, e.colour.a],
+            value: match e.value {
+                TokenValue::Literal(c) => SavedValue::Literal([c.r, c.g, c.b, c.a]),
+                TokenValue::Alias(t) => SavedValue::Alias(t.key().to_string()),
+            },
         })
         .collect()
 }
@@ -72,7 +88,12 @@ pub(crate) fn collect() -> Vec<SavedToken> {
 /// tabela de fábrica é a autoridade sobre quais tokens existem. E o que cai é **DITO** — uma
 /// tabela que encolhe em silêncio lê-se como *"eu nunca autorei isto"*, e o artista procuraria a
 /// cor onde ela não está.
-pub(crate) fn install(saved: &[SavedToken]) {
+///
+/// Devolve **quantas entradas do arquivo não puderam entrar** — o mesmo número que a mensagem diz.
+/// ⚠️ Duas representações do MESMO fato, para dois públicos: a linha de log é para a pessoa que
+/// abriu o projeto, o retorno é para o gate. Sem ele, um descarte que deixasse de ser contado
+/// passaria com a suíte verde, que é precisamente o *encolher em silêncio* que este doc proíbe.
+pub(crate) fn install(saved: &[SavedToken]) -> usize {
     let mut dropped = 0usize;
     let list: Vec<ColorOverride> = saved
         .iter()
@@ -81,25 +102,41 @@ pub(crate) fn install(saved: &[SavedToken]) {
                 dropped += 1;
                 return None;
             };
+            // ⚠️ Um alias cujo ALVO já não existe cai pelo mesmo motivo que o token desconhecido:
+            // a tabela de fábrica é a autoridade sobre quais tokens existem, e um elo pendurado no
+            // vazio não tem valor a devolver.
+            let value = match &t.value {
+                SavedValue::Literal([r, g, b, a]) => TokenValue::Literal(Color {
+                    r: *r,
+                    g: *g,
+                    b: *b,
+                    a: *a,
+                }),
+                SavedValue::Alias(key) => match ColorToken::from_key(key) {
+                    Some(target) => TokenValue::Alias(target),
+                    None => {
+                        dropped += 1;
+                        return None;
+                    }
+                },
+            };
             Some(ColorOverride {
                 theme: theme_from_u8(t.theme),
                 token,
-                colour: Color {
-                    r: t.rgba[0],
-                    g: t.rgba[1],
-                    b: t.rgba[2],
-                    a: t.rgba[3],
-                },
+                value,
             })
         })
         .collect();
-    set_color_overrides(list);
+    // ⚠️ A porta descarta os elos que fechariam um laço e DIZ quantos — um arquivo editado à mão
+    // pode trazer um, e recusar o projeto inteiro por causa dele seria jogar fora a re-vestida.
+    dropped += set_color_overrides(list);
     if dropped > 0 {
         eprintln!(
-            "[proj] {dropped} token(s) de cor do arquivo nao existem mais no design system e \
-             foram descartados"
+            "[proj] {dropped} token(s) de cor do arquivo nao existem mais no design system (ou \
+             fechavam um laco de alias) e foram descartados"
         );
     }
+    dropped
 }
 
 #[cfg(test)]

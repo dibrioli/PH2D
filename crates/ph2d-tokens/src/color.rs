@@ -508,16 +508,22 @@ impl ColorToken {
     /// app inteiro, porque esta função é a porta única dos 44 widgets. Sem override nenhum a
     /// pergunta custa **uma leitura de bool** e o resultado é byte-idêntico ao de sempre.
     pub fn resolve(self, theme: Theme) -> Color {
-        if let Some(c) = crate::overrides::color_override(theme, self) {
-            return c;
-        }
+        // ⚠️ A cadeia de ALIASES é seguida pela camada de override, e o que volta é ou uma cor ou
+        // o token em que ela terminou — cuja FÁBRICA é lida aqui embaixo, pela mesma tabela de
+        // sempre. É isso que faz `border → surface` valer o `surface` **deste modo** sem que a
+        // camada de override precise conhecer a tabela gerada.
+        let key = match crate::overrides::resolved_override(theme, self) {
+            Some(crate::overrides::Authored::Colour(c)) => return c,
+            Some(crate::overrides::Authored::Factory(t)) => t.key(),
+            None => self.key(),
+        };
         let table: &[(&str, crate::generated::OklchRaw)] = match theme {
             Theme::Forge => crate::generated::COLORS_FORGE,
             Theme::Workshop => crate::generated::COLORS_WORKSHOP,
             Theme::Sunstone => crate::generated::COLORS_SUNSTONE,
             Theme::Blueprint => crate::generated::COLORS_BLUEPRINT,
         };
-        lookup_color(table, self.key())
+        lookup_color(table, key)
     }
 }
 

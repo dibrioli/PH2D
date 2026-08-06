@@ -13,7 +13,7 @@ use ph2d_host::{PointerButton, PointerEvent, PointerKind, PointerSource};
 use ph2d_panel_tokens::state::TokensPanelState;
 use ph2d_panel_tokens::{TokensIntent, TokensPanel, drain_intents, ids};
 use ph2d_tokens::color::Color;
-use ph2d_tokens::overrides::{clear_color_overrides, set_color_override};
+use ph2d_tokens::overrides::{TokenValue, clear_color_overrides, set_color_override};
 use ph2d_tokens::{ColorToken, Theme};
 use ph2d_ui_testkit::MockPanelHost;
 
@@ -43,7 +43,7 @@ fn pointer(kind: PointerKind, x: f32, y: f32, t: u128) -> PointerEvent {
 fn host() -> (MockPanelHost, TokensPanelState) {
     let mut h = MockPanelHost::with_panel::<TokensPanel>();
     h.set_panel_visible(TokensPanel::ID, true);
-    (h, TokensPanelState)
+    (h, TokensPanelState::default())
 }
 
 fn rect_of(id: ph2d_a11y::NodeId) -> Option<Rect> {
@@ -111,8 +111,9 @@ fn the_per_row_reset_appears_only_on_an_authored_token() {
     set_color_override(
         Theme::default(),
         ColorToken::ALL[0],
-        Some(Color::from_hex(0x00FF00)),
-    );
+        Some(TokenValue::Literal(Color::from_hex(0x00FF00))),
+    )
+    .unwrap();
     assert!(
         rect_of(ids::tokens_reset_id(0)).is_some(),
         "o Reset nao apareceu sobre um token autorado"
@@ -128,8 +129,9 @@ fn the_reset_all_appears_only_when_the_mode_has_authored_tokens() {
     set_color_override(
         Theme::default(),
         ColorToken::ALL[0],
-        Some(Color::from_hex(0x00FF00)),
-    );
+        Some(TokenValue::Literal(Color::from_hex(0x00FF00))),
+    )
+    .unwrap();
     assert!(rect_of(ids::TOKENS_RESET_ALL).is_some());
     clear_color_overrides();
 }
@@ -146,8 +148,9 @@ fn a_reset_click_names_the_row_it_sits_on() {
         set_color_override(
             Theme::default(),
             ColorToken::ALL[row],
-            Some(Color::from_hex(0x00FF00)),
-        );
+            Some(TokenValue::Literal(Color::from_hex(0x00FF00))),
+        )
+        .unwrap();
     }
     assert_eq!(
         click(ids::tokens_reset_id(3), "o Reset da linha 3"),
@@ -163,8 +166,9 @@ fn the_reset_all_click_reaches_the_bus() {
     set_color_override(
         Theme::default(),
         ColorToken::ALL[0],
-        Some(Color::from_hex(0x00FF00)),
-    );
+        Some(TokenValue::Literal(Color::from_hex(0x00FF00))),
+    )
+    .unwrap();
     assert_eq!(
         click(ids::TOKENS_RESET_ALL, "Reset This Mode"),
         vec![TokensIntent::ResetAll]
@@ -185,7 +189,7 @@ fn the_swatch_shows_the_effective_colour() {
     let factory = token.resolve(theme);
     let mine = Color::from_hex(0x00FF00);
     assert_ne!(factory, mine);
-    set_color_override(theme, token, Some(mine));
+    set_color_override(theme, token, Some(TokenValue::Literal(mine))).unwrap();
     assert_eq!(
         token.resolve(theme),
         mine,
@@ -221,4 +225,103 @@ fn a_closed_panel_drops_its_rect() {
         h.store().panel_rect(ids::TOKENS_PANEL).is_none(),
         "o painel fechado deixou o rect para tras — a roda rolaria um painel que nao esta' na tela"
     );
+}
+
+// ── O ELO (plano UI/UX W4b) ──────────────────────────────────────────────────
+
+/// Dirige um gesto de VÁRIOS cliques no MESMO host — o `click` acima constrói um host por chamada,
+/// e o elo é um gesto de dois toques cujo estado tem de sobreviver entre eles.
+///
+/// ⚠️ É essa a diferença que torna este helper obrigatório: com um host por clique o `armed`
+/// nasceria e morreria dentro de cada um, e o gate ficaria verde afirmando que o gesto "não
+/// enfileira nada" — que é exactamente o que um elo quebrado faz.
+fn click_seq(ids_to_click: &[ph2d_a11y::NodeId]) -> (Vec<TokensIntent>, TokensPanelState) {
+    let _ = drain_intents();
+    let (mut h, mut st) = host();
+    let mut t = SEC;
+    for &id in ids_to_click {
+        let r = h
+            .painted_rect::<TokensPanel>(&mut st, VIEWPORT, id)
+            .expect("o botao tem de ser PINTADO com area clicavel");
+        let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
+        h.dispatch_pointer_event(pointer(PointerKind::Down, cx, cy, t));
+        let evs = h.dispatch_pointer_event(pointer(PointerKind::Up, cx, cy, t + SEC / 100));
+        assert!(
+            evs.iter()
+                .any(|e| matches!(e, WidgetEvent::Click(c) if *c == id)),
+            "o ponteiro nao virou Click — o botao esta' desenhado e MORTO sob o rato"
+        );
+        for ev in evs {
+            h.apply_panel_event::<TokensPanel>(&mut st, ev);
+        }
+        t += SEC;
+    }
+    (drain_intents(), st)
+}
+
+/// **Toda linha oferece o elo, e ele está VIVO sob o rato.**
+///
+/// ⚠️ Oferecido em TODA linha de propósito: qualquer token pode seguir qualquer outro, e escondê-lo
+/// nas linhas de fábrica tornaria o gesto alcançável só onde ele já foi feito.
+#[test]
+fn every_row_offers_a_live_link_button() {
+    clear_color_overrides();
+    for row in [0, ColorToken::ALL.len() / 2, ColorToken::ALL.len() - 1] {
+        assert!(
+            rect_of(ids::tokens_link_id(row)).is_some(),
+            "a linha {row} nao pintou o botao de elo"
+        );
+    }
+    // E a última linha responde de verdade — um teto que só o pintor conhecesse deixaria o fim da
+    // lista desenhado e mudo.
+    let last = ColorToken::ALL.len() - 1;
+    let (intents, st) = click_seq(&[ids::tokens_link_id(last)]);
+    assert!(intents.is_empty(), "armar NAO e' uma edicao de documento");
+    assert_eq!(st.armed(), Some(last), "o clique nao armou a linha");
+    clear_color_overrides();
+}
+
+/// **Dois cliques fazem o elo, e o sentido é `armada → clicada`.**
+///
+/// ⚠️ O sentido é a metade que compila igual invertida e escreve no token errado: o artista arma a
+/// linha que quer MUDAR e depois aponta para onde ela deve olhar.
+#[test]
+fn two_clicks_link_the_armed_row_to_the_clicked_one() {
+    clear_color_overrides();
+    let (intents, st) = click_seq(&[ids::tokens_link_id(2), ids::tokens_link_id(7)]);
+    assert_eq!(
+        intents,
+        vec![TokensIntent::Link { from: 2, to: 7 }],
+        "o elo saiu com o sentido trocado (ou nao saiu)"
+    );
+    assert_eq!(st.armed(), None, "o gesto tinha de terminar desarmado");
+    clear_color_overrides();
+}
+
+/// **Clicar a MESMA linha desiste** — o mesmo botão desfaz o próprio gesto.
+///
+/// ⚠️ E o auto-elo fica inalcançável por aqui de graça, o que **não** dispensa a recusa no modelo:
+/// esta é a UI, e a porta é a lei.
+#[test]
+fn clicking_the_same_row_gives_the_gesture_up() {
+    clear_color_overrides();
+    let (intents, st) = click_seq(&[ids::tokens_link_id(4), ids::tokens_link_id(4)]);
+    assert!(
+        intents.is_empty(),
+        "clicar a propria linha enfileirou um elo — um token nao pode seguir a si mesmo"
+    );
+    assert_eq!(st.armed(), None, "o segundo clique nao desistiu");
+    clear_color_overrides();
+}
+
+/// **Fechar o painel desiste de um elo em curso.**
+///
+/// Um gesto não sobrevive à superfície onde ele estava a ser feito — senão reabrir o painel dias
+/// depois deixaria o próximo clique a fechar um elo que ninguém se lembra de ter começado.
+#[test]
+fn closing_the_panel_gives_the_gesture_up() {
+    clear_color_overrides();
+    let (_, st) = click_seq(&[ids::tokens_link_id(1), ids::TOKENS_CLOSE]);
+    assert_eq!(st.armed(), None, "o elo sobreviveu ao painel fechar");
+    clear_color_overrides();
 }

@@ -205,7 +205,13 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // `ProjectState` é a unidade do UNDO, e gravar um estado tem de desfazer.
         // ⚠️ Nenhum gate VÊ um campo apendado — nenhuma constante se move —, então este
         // degrau existe porque foi escrito à mão. Quem apende, bumpa, no MESMO commit.
-        (56, 13, 14),
+        // PROJECT 56→57: um token de cor autorado passa a valer uma cor **ou o nome de outro
+        // token** (o ALIAS, plano UI/UX W4b), então o `SavedToken` troca o campo `rgba: [u8; 4]`
+        // pelo enum `SavedValue`. A FORMA do registro mudou ⇒ o postcard, que é posicional, leria
+        // um arquivo v56 com o layout errado; o número transforma isso num erro de VERSÃO.
+        // ⚠️ Um enum e não um `rgba` com um `alias` ao lado: os dois seriam mutuamente exclusivos
+        // e nada no formato o diria — a representação apaga o estado que ninguém especificou.
+        (57, 13, 14),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

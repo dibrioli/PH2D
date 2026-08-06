@@ -107,7 +107,18 @@ fn upstream_columns(
 /// graph cooked on the CPU or the GPU — so the picker is never blind on a device frame.
 /// Sorted (the map is a `BTreeMap`), so the chips are stable frame to frame.
 pub(super) fn source_options(motion: &MotionState) -> Vec<String> {
-    motion.pump.cook.externals().keys().cloned().collect()
+    // ⚠️ The picker offers things the ARTIST named. The editor publishes values of its
+    // own into the same table (the cursor, and a `$at:<name>` position beside every
+    // object), and without this filter they would show up as pickable "objects" —
+    // the reserved namespace leaking into the UI it exists to keep out of.
+    motion
+        .pump
+        .cook
+        .externals()
+        .keys()
+        .filter(|k| !ph2d_nodegraph::external::is_reserved(k))
+        .cloned()
+        .collect()
 }
 
 /// The names of the `Scalar` columns of `stream`, owned.

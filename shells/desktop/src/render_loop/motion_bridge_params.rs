@@ -41,6 +41,14 @@ use params_edit::apply_param_edits;
 /// split must not move where callers name it.
 pub(crate) use params_edit::param_value;
 
+/// The picker's option list, for the sibling gate that pins the reserved-namespace
+/// filter.  is private to this module; the gate lives with the other
+/// panel-row gates, which is where a reader looks for "what does the picker offer?".
+#[cfg(test)]
+pub(crate) fn source_options_for_tests(motion: &MotionState) -> Vec<String> {
+    params_stream::source_options(motion)
+}
+
 /// **Publish the params panel this frame** (M1.P1) — the dispatch's one call: apply the
 /// selected node's edits, rebuild its snapshot, seed the colour swatches from it, hand it
 /// to the panel. Needs BOTH motion panels (selection from the graph, rows to params); it

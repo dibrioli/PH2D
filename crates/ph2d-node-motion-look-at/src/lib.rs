@@ -20,7 +20,7 @@
 
 #![forbid(unsafe_code)]
 
-use ph2d_node_registry::{NodeRegistry, ParamGate, RegistryError};
+use ph2d_node_registry::{NodeRegistry, ParamGate, ParamUnit, ParamUnitDecl, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream, par_build};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
@@ -68,6 +68,20 @@ pub const MANIFEST: NodeManifest = NodeManifest {
         // Degrees added to the aim — 0 points AT the target, 180 points away.
         ParamSpec {
             name: "offset",
+            default: 0.0,
+        },
+        // ⚠️ **The point, as NUMBERS.** `Point` mode shipped reading only the value
+        // INPUTS, which meant the one way to aim at a coordinate was to wire two
+        // `value.*` nodes — a mode named after a point, with no point in it (Enio:
+        // *"Point serve para que se não há coordenadas do ponto?"*). A wire still
+        // wins when one is connected, which is the driven-param convention this
+        // panel already paints; these are what the artist types when it is not.
+        ParamSpec {
+            name: "target_x",
+            default: 0.0,
+        },
+        ParamSpec {
+            name: "target_y",
             default: 0.0,
         },
         // WHERE the target comes from: 0 the value inputs, 1 a named object,
@@ -240,7 +254,18 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
     // not see. Refusing is the honest answer (the ADR-0155 precedent: a document
     // the lowering cannot express recuses to the CPU) — the named cost is that a
     // graph aiming at an object or the cursor loses GPU residency for this node.
-    applicable: Some(|p| TargetMode::of(p("mode")) == TargetMode::Point),
+    applicable: Some(|p| {
+        // ...and only while the target is the PORTS. The kernel reads the two value
+        // ports and knows nothing about a typed coordinate, so with a point authored
+        // it would aim at the port identity — the origin — while the CPU aims where
+        // the artist typed. Two producers disagreeing, and the one nobody reads a
+        // number from is the one on screen. The zero default is today's behaviour, so
+        // a graph that drives the target by wire keeps its residency; typing a point
+        // is what costs it, and that is the named trade.
+        TargetMode::of(p("mode")) == TargetMode::Point
+            && p("target_x") == 0.0
+            && p("target_y") == 0.0
+    }),
 };
 
 fn scalar_col(s: &Stream, name: &str) -> Vec<f32> {
@@ -276,22 +301,39 @@ impl NodeOp for MotionLookAt {
         // object's place THIS frame, not a value stashed at spawn.
         let aim = match mode {
             TargetMode::Point => None,
+            // ⚠️ The POSITION channel, never the object's own external: that one is an
+            // APPEARANCE stream whose `P` is `[0, 0]` by design, so reading it aimed
+            // every target at the origin — the exact failure this node's fallback
+            // exists to prevent, arriving through a column with the right name and
+            // another question's answer in it (Enio: *"Look At Object não funciona"*).
             TargetMode::Object => ctx
                 .text_param("target")
                 .map(str::to_owned)
                 .filter(|n| !n.trim().is_empty())
-                .and_then(|n| centroid(ctx.external(&n))),
+                .and_then(|n| centroid(ctx.external(&ph2d_nodegraph::external::position_of(&n)))),
             TargetMode::Cursor => centroid(ctx.external(ph2d_nodegraph::external::CURSOR)),
         };
+        // The authored point, used when no wire drives the target ports. A connected
+        // port wins — the input is the animated answer and the param is the typed one,
+        // and "the wire wins" is the same order the panel shows a driven row in.
+        let (px_, py_) = (ctx.param("target_x"), ctx.param("target_y"));
         let (tx, ty) = match aim {
             // Broadcast: one point for the whole field. A length-1 column is what
             // `target_at` already treats as "the same target for everybody", so the
             // three modes meet in ONE aiming loop instead of three.
             Some([x, y]) => (vec![x], vec![y]),
-            None => (
-                scalar_col(ctx.input(1), VALUE_COL),
-                scalar_col(ctx.input(2), VALUE_COL),
-            ),
+            None => {
+                let (wx, wy) = (
+                    scalar_col(ctx.input(1), VALUE_COL),
+                    scalar_col(ctx.input(2), VALUE_COL),
+                );
+                // Empty ⇒ nothing is wired ⇒ the typed coordinate. Per axis, because
+                // wiring only `y` and typing `x` is a thing an artist does.
+                (
+                    if wx.is_empty() { vec![px_] } else { wx },
+                    if wy.is_empty() { vec![py_] } else { wy },
+                )
+            }
         };
         let input = ctx.input(0);
         let n = input.count();
@@ -334,6 +376,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
     reg.register_param_gates(MANIFEST.id, PARAM_GATES);
+    reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     Ok(())
 }
 
@@ -361,6 +404,22 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         widget: ParamWidget::Source,
     },
     ParamUiHint {
+        param: "target_x",
+        label: "Target X",
+        min: -20.0,
+        max: 20.0,
+        step: 0.05,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "target_y",
+        label: "Target Y",
+        min: -20.0,
+        max: 20.0,
+        step: 0.05,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
         param: "offset",
         label: "Offset",
         min: -180.0,
@@ -376,11 +435,38 @@ static PARAM_HINTS: &[ParamUiHint] = &[
 /// The picker is offered only where it means something: in `Point` mode the target
 /// is the value inputs and in `Cursor` mode it is the mouse, so an object name there
 /// is a control the cook will never read.
-static PARAM_GATES: &[ParamGate] = &[ParamGate {
-    param: "target",
-    when: "mode",
-    values: &[1],
-}];
+static PARAM_GATES: &[ParamGate] = &[
+    ParamGate {
+        param: "target",
+        when: "mode",
+        values: &[1],
+    },
+    // The coordinates belong to the mode that uses them. In Object/Cursor mode the
+    // target comes from elsewhere, so a pair of number rows there would be two knobs
+    // the cook never reads.
+    ParamGate {
+        param: "target_x",
+        when: "mode",
+        values: &[0],
+    },
+    ParamGate {
+        param: "target_y",
+        when: "mode",
+        values: &[0],
+    },
+];
+
+/// They are world coordinates, so the panel reads them in the artist's unit (doc 88).
+static PARAM_UNITS: &[ParamUnitDecl] = &[
+    ParamUnitDecl {
+        param: "target_x",
+        unit: ParamUnit::Length,
+    },
+    ParamUnitDecl {
+        param: "target_y",
+        unit: ParamUnit::Length,
+    },
+];
 
 #[cfg(test)]
 mod tests {

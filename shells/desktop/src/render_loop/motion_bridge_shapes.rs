@@ -142,7 +142,22 @@ pub(super) fn publish(
         if pts.len() < 2 {
             continue; // not a curve: a single point has no arc to walk
         }
-        cook.set_external(name, Stream::new(pts.len()).with("P", Column::Vec2(pts)));
+        // Where it IS, on the same channel a sprite uses — so a node asking for the
+        // position of "X" never has to know whether X is a drawing or an object.
+        let n = pts.len();
+        #[expect(
+            clippy::cast_precision_loss,
+            reason = "a count of polyline points; the mean is a world position"
+        )]
+        let mean = pts
+            .iter()
+            .fold([0.0f32, 0.0], |a, q| [a[0] + q[0], a[1] + q[1]])
+            .map(|v| v / n as f32);
+        cook.set_external(
+            ph2d_nodegraph::external::position_of(&name),
+            Stream::new(1).with("P", Column::Vec2(vec![mean])),
+        );
+        cook.set_external(name, Stream::new(n).with("P", Column::Vec2(pts)));
     }
 }
 

@@ -76,6 +76,24 @@ pub fn is_reserved(name: &str) -> bool {
 /// without learning what a window or a camera is.
 pub const CURSOR: &str = "$cursor";
 
+/// The external the editor publishes a named thing's **world POSITION** under.
+///
+/// ⚠️ **A thing's appearance and a thing's position are different questions, and the
+/// appearance channel answers only the first.** An object is published as a
+/// one-instance APPEARANCE stream whose `P` is `[0, 0]` — deliberately, because it
+/// describes what the object looks like and the graph decides where copies of it go.
+/// Reading that `P` as "where the object is" gives the ORIGIN for every object in the
+/// scene: not a wrong number so much as another question's answer wearing the right
+/// column name, which is the quietest way to be wrong.
+///
+/// So position gets its own channel. One lookup, one meaning — and it covers a drawn
+/// curve too, so a node asking "where is the thing called X" never has to know whether
+/// X is a sprite or a path.
+#[must_use]
+pub fn position_of(name: &str) -> String {
+    format!("{RESERVED_PREFIX}at:{name}")
+}
+
 /// One published value, and the revision that IS its content.
 #[derive(Clone, Debug, PartialEq)]
 pub struct External {

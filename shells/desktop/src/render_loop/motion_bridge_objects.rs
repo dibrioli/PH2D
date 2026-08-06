@@ -142,14 +142,34 @@ pub(super) fn publish(
     // Sprites resolve directly (a sprite already IS a tile). A `(&Sprite, &Name)`
     // query walks exactly the entities that can be a source; `world_mut()` builds
     // the `QueryState` (it caches on the world), the iteration is read-only.
-    let mut q = sim.world_mut().query::<(&Sprite, &Name)>();
+    let mut q = sim
+        .world_mut()
+        .query::<(&Sprite, &Name, Option<&ph2d_ecs::Transform>)>();
     let world = sim.world();
-    for (spr, name) in q.iter(world) {
+    for (spr, name, xf) in q.iter(world) {
         if name.0.trim().is_empty() {
             continue; // unnamed: nothing for the artist to type into the node
         }
+        if super::shapes::is_reserved(&name.0) {
+            continue; // the editor's namespace (`motion_bridge_shapes::is_reserved`)
+        }
         if let Some(tile) = sprite_tile(spr, atlas) {
             cook.set_external(name.0.clone(), tile);
+        }
+        // ⚠️ **And WHERE it is, on its own channel.** The appearance stream above puts
+        // `P` at the origin on purpose — it says what the object looks like, and the
+        // graph decides where copies of it go. A node asking "where is the thing called
+        // X" that read THAT `P` would aim at the origin for every object in the scene,
+        // which is how `motion.look_at`'s Object mode shipped broken: a column with the
+        // right name holding another question's answer.
+        if let Some(t) = xf {
+            cook.set_external(
+                ph2d_nodegraph::external::position_of(&name.0),
+                Stream::new(1).with(
+                    "P",
+                    Column::Vec2(vec![[t.translation[0], t.translation[1]]]),
+                ),
+            );
         }
     }
 

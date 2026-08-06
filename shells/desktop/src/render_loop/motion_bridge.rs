@@ -151,6 +151,9 @@ mod bypass_tests;
 #[path = "motion_bridge_channel_tests.rs"]
 mod channel_tests;
 #[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
+#[path = "motion_bridge_colour_tests.rs"]
+mod colour_tests;
+#[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
 #[path = "motion_bridge_connect_tests.rs"]
 mod connect_tests;
 #[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]

@@ -76,7 +76,30 @@ fn reg() -> NodeRegistry {
             ctx.emit(field());
         }
     }
+    static VAL: NodeManifest = NodeManifest {
+        id: NodeTypeId::of("debug.const_value"),
+        name: "debug.const_value",
+        inputs: &[],
+        outputs: &[PortSpec {
+            name: "out",
+            ty: VALUE,
+        }],
+        effect: Effect::Pure,
+        clock: Clock::Frame,
+        params: &[],
+        lowerings: &[LoweringKind::Cpu],
+    };
+    struct Val;
+    impl NodeOp for Val {
+        fn manifest(&self) -> &'static NodeManifest {
+            &VAL
+        }
+        fn eval(&self, ctx: &mut EvalCtx<'_>) {
+            ctx.emit(Stream::new(1).with(VALUE_COL, Column::Scalar(vec![10.0])));
+        }
+    }
     reg.register(Box::new(Src)).expect("src");
+    reg.register(Box::new(Val)).expect("val");
     register(&mut reg).expect("look_at");
     reg
 }
@@ -109,7 +132,8 @@ fn object_mode_aims_at_the_named_external() {
     let r = reg();
     // A target ABOVE the row: all three must aim upward (+y ⇒ near +90°), which the
     // origin target of `Point` mode could never produce for the outer two.
-    let rot = aim(&r, 1.0, Some("Sun"), &[("Sun", [0.0, 10.0])]);
+    let sun = ph2d_nodegraph::external::position_of("Sun");
+    let rot = aim(&r, 1.0, Some("Sun"), &[(sun.as_str(), [0.0, 10.0])]);
     for (i, a) in rot.iter().enumerate() {
         assert!(
             *a > 45.0 && *a < 135.0,
@@ -181,4 +205,97 @@ fn the_kernel_recuses_from_the_modes_it_cannot_see() {
     );
     assert!(!applicable(&p(1.0)), "Object resolves outside the device");
     assert!(!applicable(&p(2.0)), "Cursor resolves outside the device");
+}
+
+/// **A mode named after a point has a point in it.**
+///
+/// Enio, on the first smoke: *"Point serve para que se não há coordenadas do ponto?"*.
+/// He was right and the answer was nothing: `Point` read only the value INPUTS, so the
+/// one way to aim at a coordinate was to wire two `value.*` nodes. A mode whose whole
+/// subject is a point, with no point in it, is a dead control wearing a name.
+#[test]
+fn point_mode_aims_at_the_coordinate_the_artist_typed() {
+    let r = reg();
+    let mut g = Graph::new();
+    let src = g.add_node("debug.const_field");
+    let la = g.add_node("motion.look_at");
+    g.connect(Edge {
+        from: (src, 0),
+        to: (la, 0),
+        delayed: false,
+    })
+    .expect("edge");
+    // A point ABOVE the row — unreachable by the old behaviour, whose only answer
+    // without a wire was the origin.
+    g.set_param(la, "target_y", 10.0);
+    let mut cook = Cook::new();
+    let set = cook.cook(&g, &r, la, 0.0).expect("cooks");
+    let rot = match set.iter().next().expect("stream").as_stream().get("rot") {
+        Some(Column::Scalar(v)) => v.clone(),
+        other => panic!("no rot: {other:?}"),
+    };
+    for (i, a) in rot.iter().enumerate() {
+        assert!(
+            *a > 45.0 && *a < 135.0,
+            "element {i} must aim up at the typed point, got {a} ({rot:?})"
+        );
+    }
+}
+
+/// **A wire still wins, per axis.** The typed number is what the artist reaches for
+/// when nothing is connected; an animated target is the reason the ports exist. Wiring
+/// only `y` and typing `x` is a thing an artist does, so the choice is per axis and not
+/// per node.
+#[test]
+fn a_connected_port_wins_over_the_typed_coordinate() {
+    let r = reg();
+    let mut g = Graph::new();
+    let src = g.add_node("debug.const_field");
+    let ty = g.add_node("debug.const_value");
+    let la = g.add_node("motion.look_at");
+    for (a, ap, b, bp) in [(src, 0u16, la, 0u16), (ty, 0, la, 2)] {
+        g.connect(Edge {
+            from: (a, ap),
+            to: (b, bp),
+            delayed: false,
+        })
+        .expect("edge");
+    }
+    // Typed DOWN, wired UP: the wire must win on `y`.
+    g.set_param(la, "target_y", -10.0);
+    let mut cook = Cook::new();
+    let set = cook.cook(&g, &r, la, 0.0).expect("cooks");
+    let rot = match set.iter().next().expect("stream").as_stream().get("rot") {
+        Some(Column::Scalar(v)) => v.clone(),
+        other => panic!("no rot: {other:?}"),
+    };
+    assert!(
+        rot.iter().all(|a| *a > 45.0 && *a < 135.0),
+        "the wired +y must win over the typed -y: {rot:?}"
+    );
+}
+
+/// **The kernel recuses once a point is typed** — it reads the ports and cannot see a
+/// param the artist filled in, so leaving it applicable would put the device's aim (the
+/// origin) against the CPU's, and the screen shows the one nobody reads a number from.
+#[test]
+fn the_kernel_also_recuses_once_a_point_is_authored() {
+    let applicable = GPU_KERNEL.applicable.expect("declared");
+    let p = |m: f32, x: f32, y: f32| {
+        move |name: &str| match name {
+            "mode" => m,
+            "target_x" => x,
+            "target_y" => y,
+            _ => 0.0,
+        }
+    };
+    assert!(
+        applicable(&p(0.0, 0.0, 0.0)),
+        "the wire-driven Point graph keeps its residency"
+    );
+    assert!(
+        !applicable(&p(0.0, 3.0, 0.0)),
+        "a typed x is invisible to the device"
+    );
+    assert!(!applicable(&p(0.0, 0.0, -2.0)), "so is a typed y");
 }

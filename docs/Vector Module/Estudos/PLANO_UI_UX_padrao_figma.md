@@ -1512,7 +1512,7 @@ escreveu**:
 | **W5c** ✅ | variants (a instância escolhe QUAL versão) | — | **—** | — | **—** | `=58` |
 | **W6.1** ✅ | a tabela de COR vira AUTORÁVEL (o degrau 1 do §2) | — | ⚠️ **bump** | — | **—** | `=59` |
 | **W6.2** ✅ | pele por-widget (`VecWidget`): a forma veste um controle do catálogo | +1 | — | — | — | `=60` |
-| **W6.3** | layout: a árvore autorada vira `Panel` | — | — | — | sim (§2) | — |
+| **W6.3** ✅ | layout: a árvore autorada vira `Panel` — ⚠️ **é a W8b**, entregue pelas W8b.1+W8b.2 (§ degrau 3) | — | — | — | **nenhum** | `=62` |
 | **W7** 🔨 | estados + Smart Animate (**autoria**; runtime não) | — | ⚠️ `PROJECT_SCHEMA`, **não** `DOC_VERSION` | — | **nenhum** | `=61` |
 | **W8b.1** ✅ | o codegen: a árvore descreve um painel e o app escreve o código dele | — | — | — | — | `=62` |
 | **W8b.2** ✅ | o gerado vira painel VIVO (crate, registro, runtime das rows) | — | — | — | **nenhum** | `=62` |

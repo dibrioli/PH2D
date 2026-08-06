@@ -357,6 +357,43 @@ impl Graph {
         &self.node_text_params
     }
 
+    /// **Devolve um param ao default do manifesto — REMOVENDO o override**, nunca escrevendo o
+    /// default por cima dele. `true` se havia o que remover.
+    ///
+    /// ⚠️ A distinção é o desenho inteiro. O cook resolve *"o override se houver, senão o default
+    /// do manifesto"*, então escrever o default de volta deixa um override que **por acaso** é
+    /// igual a ele: indistinguível na tela hoje, e um número FOSSILIZADO no dia em que o nó mudar
+    /// de default — o documento continuaria pinando o valor antigo, sem ninguém o ter escolhido.
+    /// Remover a chave devolve o param à MESMA porta que o resolve.
+    ///
+    /// Corolário que um gate prende: como o formato textual só serializa overrides, um nó cujo
+    /// último override foi removido volta a ser **byte-idêntico** a um nó que ninguém tocou — daí
+    /// a entrada do nó ser descartada quando esvazia (um mapa vazio não é a mesma coisa que
+    /// ausência para quem itera `node_params()`).
+    pub fn clear_param(&mut self, id: NodeId, name: &str) -> bool {
+        let Some(map) = self.node_params.get_mut(&id) else {
+            return false;
+        };
+        let removed = map.remove(name).is_some();
+        if map.is_empty() {
+            self.node_params.remove(&id);
+        }
+        removed
+    }
+
+    /// O gêmeo de [`Graph::clear_param`] no canal de TEXTO (curva, gradiente, paleta, fórmula,
+    /// nome de fonte). Mesma lei, mesmo corolário de byte-identidade.
+    pub fn clear_text_param(&mut self, id: NodeId, name: &str) -> bool {
+        let Some(map) = self.node_text_params.get_mut(&id) else {
+            return false;
+        };
+        let removed = map.remove(name).is_some();
+        if map.is_empty() {
+            self.node_text_params.remove(&id);
+        }
+        removed
+    }
+
     // ── Bypass: nodes switched off (H) ──────────────────────────────────────
 
     /// Switch a node off (bypass/mute) or back on. A bypassed node's op never runs; the cook

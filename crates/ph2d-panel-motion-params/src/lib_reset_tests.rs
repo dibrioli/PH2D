@@ -1,0 +1,138 @@
+//! **A seta que devolve um param ao default** — as quatro condições de UI para ela.
+//!
+//! Irmão de `lib_tests`, cortado por assunto: aqui só a afordância de reverter. As quatro
+//! perguntas que este arquivo responde, e que uma feature de UI deste repo só fecha com as
+//! quatro: a seta EXISTE · ela é PINTADA e REGISTRADA · o clique CHEGA ao barramento · e a
+//! sequência LEVA a algum lugar (a última mora na shell, no `motion_bridge_reset_tests`).
+
+use super::*;
+use crate::snapshot::param_reset_id;
+
+fn viewport() -> ph2d_editor_core::zones::Rect {
+    ph2d_editor_core::zones::Rect::new(0.0, 0.0, 1920.0, 1080.0)
+}
+
+/// Duas rows escalares — só a primeira com override.
+fn snapshot_with_one_modified() -> ParamsSnapshot {
+    let row = |name: &'static str| {
+        ParamRow::Scalar(ScalarRow {
+            name,
+            label: name.to_string(),
+            value: 3.0,
+            min: 0.0,
+            max: 10.0,
+            hard_min: 0.0,
+            hard_max: 10.0,
+            step: 0.1,
+            integer: false,
+            driven: false,
+            display: RowDisplay::default(),
+        })
+    };
+    ParamsSnapshot {
+        node: 7,
+        title: "Grid".into(),
+        modified: ["rows".to_string()].into_iter().collect(),
+        rows: vec![row("rows"), row("cols")],
+    }
+}
+
+/// **A seta existe só onde há o que reverter — e as duas metades importam.**
+///
+/// Só a presença passaria com uma seta desenhada em toda row (o botão-morto: clicá-lo num
+/// param intocado não faria nada, e a tela deixaria de dizer *o que eu mexi neste nó*). Só a
+/// ausência passaria com nenhuma seta em lugar nenhum.
+#[test]
+fn the_revert_arrow_exists_only_where_there_is_something_to_revert() {
+    set_current_params(Some(snapshot_with_one_modified()));
+    let mut host = ph2d_ui_testkit::MockPanelHost::with_panel::<MotionParamsPanel>();
+    let mut state = MotionParamsPanelState;
+    let painted = host.paint::<MotionParamsPanel>(&mut state, viewport());
+    let has = |id| painted.iter().any(|(w, _)| *w == id);
+    assert!(
+        has(param_reset_id(0)),
+        "a row com override tem de oferecer a seta"
+    );
+    assert!(
+        !has(param_reset_id(1)),
+        "a row intocada NÃO pode oferecer uma seta que não reverteria nada"
+    );
+    set_current_params(None);
+}
+
+/// **E um clique REAL nela chega ao barramento.**
+///
+/// `click_at` — não um `WidgetEvent` sintético — porque o sintético pula exatamente o que
+/// pode estar quebrado: um botão pintado e hit-indexado que o `populate` esqueceu de
+/// registrar fica MORTO sob o mouse, e um evento fabricado nunca descobre isso. É a falha
+/// que este codebase já shipou mais de uma vez.
+#[test]
+fn a_real_click_on_the_revert_arrow_reaches_the_bus() {
+    let _ = drain_param_intents();
+    set_current_params(Some(snapshot_with_one_modified()));
+    let mut host = ph2d_ui_testkit::MockPanelHost::with_panel::<MotionParamsPanel>();
+    let mut state = MotionParamsPanelState;
+    let painted = host.paint::<MotionParamsPanel>(&mut state, viewport());
+    let rect = painted
+        .iter()
+        .find(|(w, _)| *w == param_reset_id(0))
+        .map(|(_, r)| *r)
+        .expect("a seta foi pintada");
+    let events = host.click_at(rect.x + rect.w * 0.5, rect.y + rect.h * 0.5);
+    assert!(
+        !events.is_empty(),
+        "o ponteiro não alcançou a seta — ela está morta sob o mouse"
+    );
+    for ev in events {
+        host.apply_panel_event::<MotionParamsPanel>(&mut state, ev);
+    }
+    assert_eq!(
+        drain_param_intents(),
+        vec![MotionParamIntent::ResetParam {
+            node: 7,
+            param: "rows".into(),
+        }],
+        "o clique tem de pedir a REMOÇÃO do override daquele param, e só dele"
+    );
+    set_current_params(None);
+}
+
+/// **Reverter uma COR desfaz os quatro canais.**
+///
+/// Um swatch dobra RGBA em quatro params, então uma seta que emitisse um só deixaria a cor
+/// meio-revertida — um verde que vira um verde diferente, que é pior que não reverter. Quem
+/// sabe quantos params uma row edita é `ParamRow::params`, uma vez.
+#[test]
+fn reverting_a_colour_undoes_all_four_channels() {
+    let _ = drain_param_intents();
+    set_current_params(Some(ParamsSnapshot {
+        node: 3,
+        title: "Tint".into(),
+        modified: ["c_g".to_string()].into_iter().collect(),
+        rows: vec![ParamRow::Color(ColorRow {
+            label: "Colour".into(),
+            channels: ["c_r", "c_g", "c_b", "c_a"],
+            srgb: [255, 0, 0, 255],
+        })],
+    }));
+    let mut host = ph2d_ui_testkit::MockPanelHost::with_panel::<MotionParamsPanel>();
+    let mut state = MotionParamsPanelState;
+    let painted = host.paint::<MotionParamsPanel>(&mut state, viewport());
+    assert!(
+        painted.iter().any(|(w, _)| *w == param_reset_id(0)),
+        "UM canal com override já torna a cor modificada"
+    );
+    host.apply_panel_event::<MotionParamsPanel>(
+        &mut state,
+        ph2d_editor_core::interaction::WidgetEvent::Click(param_reset_id(0)),
+    );
+    let got: Vec<String> = drain_param_intents()
+        .into_iter()
+        .filter_map(|i| match i {
+            MotionParamIntent::ResetParam { param, .. } => Some(param),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(got, vec!["c_r", "c_g", "c_b", "c_a"], "os QUATRO canais");
+    set_current_params(None);
+}

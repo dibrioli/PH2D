@@ -550,9 +550,20 @@ pub(crate) fn build_params_snapshot(
             .in_display(face),
         ));
     }
+    // Quais params deste nó carregam um override — a resposta vem dos DOIS canais (o `f32` do
+    // manifesto e o de texto), porque a pergunta do artista é "o que eu mexi neste nó?" e ele
+    // não sabe (nem deveria) por qual canal cada param viaja.
+    let mut modified: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
+    if let Some(over) = motion.doc.graph.node_param_overrides(NodeId(only)) {
+        modified.extend(over.keys().cloned());
+    }
+    if let Some(over) = motion.doc.graph.node_text_param_overrides(NodeId(only)) {
+        modified.extend(over.keys().cloned());
+    }
     Some(ParamsSnapshot {
         node: only,
         title,
         rows,
+        modified,
     })
 }

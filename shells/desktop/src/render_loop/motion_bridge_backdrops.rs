@@ -141,6 +141,7 @@ pub(super) fn params_snapshot(
     Some(ParamsSnapshot {
         node: b.id,
         title: "Backdrop".to_string(),
+        modified: Default::default(),
         rows: vec![
             ParamRow::Text(TextRow {
                 name: "title",

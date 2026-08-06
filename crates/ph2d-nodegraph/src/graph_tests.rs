@@ -215,3 +215,59 @@ fn deleting_a_node_takes_its_name_with_it() {
     assert!(g.node_labels().is_empty());
     assert_eq!(g.label(n), None);
 }
+
+/// **Devolver um param ao default REMOVE o override — não escreve o default por cima.**
+///
+/// A diferença é invisível na tela do dia e decide o documento: o cook resolve *"override se
+/// houver, senão o default do manifesto"*, então um override que por acaso vale o default é um
+/// número FOSSILIZADO — no dia em que o nó mudar de default, aquele documento continua pinando
+/// o valor antigo, sem ninguém o ter escolhido. Este gate afirma o mecanismo (a chave sai), e
+/// o irmão abaixo afirma a consequência que se pode ver (o documento volta a ser o mesmo).
+#[test]
+fn clearing_a_param_removes_the_override_instead_of_writing_the_default() {
+    let mut g = Graph::new();
+    let n = g.add_node("motion.grid");
+    g.set_param(n, "rows", 7.0);
+    assert_eq!(
+        g.node_param_overrides(n).and_then(|m| m.get("rows")),
+        Some(&7.0)
+    );
+    assert!(g.clear_param(n, "rows"), "havia o que remover");
+    assert!(
+        g.node_param_overrides(n)
+            .is_none_or(|m| !m.contains_key("rows")),
+        "a CHAVE tem de sair — um override igual ao default fossiliza o número"
+    );
+    assert!(!g.clear_param(n, "rows"), "remover de novo é no-op");
+    assert!(
+        !g.clear_param(n, "nunca_existiu"),
+        "nome desconhecido é no-op"
+    );
+}
+
+/// **E o documento volta a ser byte-idêntico ao de um nó que ninguém tocou.**
+///
+/// O formato textual serializa só overrides, então esta é a consequência observável da regra
+/// acima — e a que um `set_param(default)` NÃO teria: ele deixaria um record no arquivo.
+/// ⚠️ A entrada do nó é descartada quando esvazia, porque um mapa vazio não é a mesma coisa
+/// que ausência para quem itera `node_params()`.
+#[test]
+fn a_cleared_param_leaves_the_document_as_if_untouched() {
+    let mut a = Graph::new();
+    let n = a.add_node("motion.grid");
+    let pristine = crate::format::to_text(&a);
+
+    a.set_param(n, "rows", 7.0);
+    a.set_text_param(n, "ramp", "g1 0:1,0,0");
+    assert_ne!(crate::format::to_text(&a), pristine, "o override aparece");
+
+    assert!(a.clear_param(n, "rows"));
+    assert!(a.clear_text_param(n, "ramp"));
+    assert_eq!(
+        crate::format::to_text(&a),
+        pristine,
+        "removidos os overrides, o documento tem de voltar ao que era"
+    );
+    assert!(a.node_params().is_empty(), "sem mapa vazio sobrando");
+    assert!(a.node_text_params().is_empty());
+}

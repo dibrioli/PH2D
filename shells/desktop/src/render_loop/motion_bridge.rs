@@ -177,6 +177,11 @@ mod range_tests;
 #[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
 #[path = "motion_bridge_rename_tests.rs"]
 mod rename_tests;
+/// O gesto de REVERTER um param ao default — a metade que vive na ponte (o conjunto de
+/// modificados que o painel lê, pelos dois canais).
+#[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
+#[path = "motion_bridge_reset_tests.rs"]
+mod reset_tests;
 /// O censo do TETO de linhas — o terceiro irmão do `range_tests`/`unit_tests`: eles pinam a
 /// escala e a unidade de um valor, este pina que o valor **aparece**.
 #[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]

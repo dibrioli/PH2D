@@ -18,6 +18,7 @@ fn the_gradient_editor_is_reachable_and_wired() {
     set_current_params(Some(ParamsSnapshot {
         node: 7,
         title: "Color Ramp".into(),
+        modified: Default::default(),
         rows: vec![ParamRow::Gradient(GradientRow {
             name: "ramp",
             label: "Gradient".into(),

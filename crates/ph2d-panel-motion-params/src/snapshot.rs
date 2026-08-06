@@ -376,6 +376,18 @@ pub struct ParamsSnapshot {
     /// The node's display name (panel header).
     pub title: String,
     pub rows: Vec<ParamRow>,
+    /// Os params deste nó que carregam um **override** — isto é, que o artista mexeu.
+    ///
+    /// ⚠️ **Um conjunto por NÓ, não um campo por ROW**, e a razão é que a pergunta é do nó:
+    /// *quais params deste nó saíram do default?* Um `modified: bool` em cada uma das doze
+    /// structs de row seriam doze cópias da mesma resposta, e doze sítios de construção a
+    /// manter de acordo — o mesmo motivo por que a unidade e o teto duro moram em tabelas
+    /// paralelas em vez de campos do `ParamUiHint`.
+    ///
+    /// ⚠️ E é PRESENÇA DE CHAVE, nunca `valor != default`: o grafo guarda overrides esparsos,
+    /// então um param digitado de volta ao número do default continua sendo uma escolha do
+    /// artista — e uma comparação de `f32` responderia outra coisa.
+    pub modified: std::collections::BTreeSet<String>,
 }
 
 /// A param edit the panel asks the shell to apply (M1.P1). Tagged with the node
@@ -395,6 +407,15 @@ pub enum MotionParamIntent {
         param: &'static str,
         value: String,
     },
+    /// **Devolve o param ao default do nó** — a ponte chama `Graph::clear_param` E
+    /// `clear_text_param` para o mesmo nome.
+    ///
+    /// ⚠️ Os dois, de propósito: um nome viaja por UM dos canais, nunca pelos dois, e o painel
+    /// não precisa saber por qual. Enumerar "este é de texto, aquele é de f32" no lado da UI é a
+    /// lista que apodrece no dia em que um param muda de canal — e a §5 do CLAUDE.md registra
+    /// exatamente essa migração acontecendo (o gradiente do `color_ramp`, a paleta do
+    /// `color_array`). Limpar o que não existe é um no-op barato.
+    ResetParam { node: u32, param: String },
 }
 
 thread_local! {
@@ -431,6 +452,34 @@ pub(crate) use ids::{
     param_curve_point_id, param_curve_remove_id, param_enum_id, param_grad_add_id,
     param_grad_editor_id, param_grad_interp_id, param_grad_preset_id, param_grad_remove_id,
     param_grad_stop_id, param_number_id, param_pal_add_id, param_pal_remove_id, param_reroll_id,
-    param_slider_id, param_text_id,
+    param_reset_id, param_slider_id, param_text_id,
 };
 pub use ids::{MAX_PARAM_ROWS, param_grad_swatch_id, param_pal_swatch_id, param_swatch_id};
+
+impl ParamRow {
+    /// Os params que ESTA row edita — um só na maioria, quatro numa cor, dois num picker de canal.
+    ///
+    /// ⚠️ Existe porque *"esta row está modificada?"* e *"o que resetar quando clicarem a seta?"*
+    /// são a MESMA pergunta, e uma segunda lista de nomes ao lado do pintor divergiria no dia em
+    /// que uma row passar a dobrar mais um param. O `match` é exaustivo de propósito: uma variante
+    /// nova não compila até dizer que params ela edita.
+    #[must_use]
+    pub fn params(&self) -> Vec<&str> {
+        match self {
+            Self::Scalar(r) => vec![r.name],
+            Self::Toggle(r) => vec![r.name],
+            Self::Enum(r) => vec![r.name],
+            Self::Angle(r) => vec![r.name],
+            Self::Seed(r) => vec![r.name],
+            Self::Text(r) => vec![r.name],
+            Self::Curve(r) => vec![r.name],
+            Self::Gradient(r) => vec![r.name],
+            Self::Palette(r) => vec![r.name],
+            Self::Source(r) => vec![r.param],
+            // Uma cor é QUATRO params (o swatch dobra RGBA), então resetá-la é resetar os quatro.
+            Self::Color(r) => r.channels.to_vec(),
+            // E um picker de canal é dois: a coluna (texto) e o modo (f32) que a acompanha.
+            Self::Channels(r) => vec![r.text_param, r.mode_param],
+        }
+    }
+}

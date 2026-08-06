@@ -136,6 +136,24 @@ pub(super) fn apply_param_edits(
                     motion.doc.graph.set_text_param(nid, param, value);
                     motion.pump.mark_dirty();
                 }
+                // Devolver um param ao default é REMOVER o override, nunca escrever o default
+                // por cima (`Graph::clear_param` explica o porquê: um override que por acaso
+                // vale o default fossiliza o número no dia em que o nó mudar de default).
+                //
+                // Os DOIS canais são limpos com o mesmo nome porque um param viaja por um só
+                // — e qual deles é conhecimento que apodrece se a UI o carregar. Limpar o que
+                // não existe custa uma busca falhada.
+                MotionParamIntent::ResetParam { node, param } => {
+                    let nid = NodeId(node);
+                    if motion.doc.graph.node(nid).is_none() {
+                        continue;
+                    }
+                    let a = motion.doc.graph.clear_param(nid, &param);
+                    let b = motion.doc.graph.clear_text_param(nid, &param);
+                    if a || b {
+                        motion.pump.mark_dirty();
+                    }
+                }
             }
         }
         if discrete {

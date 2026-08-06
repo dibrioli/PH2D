@@ -20,6 +20,7 @@ fn pixel_row(value_px: f64) -> ParamsSnapshot {
     ParamsSnapshot {
         node: 7,
         title: "Emitter".into(),
+        modified: Default::default(),
         rows: vec![ParamRow::Scalar(ScalarRow {
             name: "x",
             label: "Origin X".into(),

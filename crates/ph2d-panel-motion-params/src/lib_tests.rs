@@ -26,6 +26,7 @@ fn params_and_intent_channels_round_trip() {
     set_current_params(Some(ParamsSnapshot {
         node: 7,
         title: "Grid".into(),
+        modified: Default::default(),
         rows: vec![ParamRow::Scalar(ScalarRow {
             name: "rows",
             label: "Rows".into(),
@@ -72,6 +73,7 @@ fn text_row_and_set_text_param_intent_round_trip() {
     set_current_params(Some(ParamsSnapshot {
         node: 3,
         title: "Expression".into(),
+        modified: Default::default(),
         rows: vec![ParamRow::Text(TextRow {
             name: "expr",
             label: "Formula".into(),
@@ -109,6 +111,7 @@ fn color_row_publishes_and_swatch_id_is_anchor_keyed() {
     set_current_params(Some(ParamsSnapshot {
         node: 3,
         title: "Tint".into(),
+        modified: Default::default(),
         rows: vec![ParamRow::Color(ColorRow {
             label: "Color".into(),
             channels: ["r", "g", "b", "a"],
@@ -135,6 +138,7 @@ fn angle_row_publishes_degrees_verbatim() {
     set_current_params(Some(ParamsSnapshot {
         node: 4,
         title: "Orbit".into(),
+        modified: Default::default(),
         rows: vec![ParamRow::Angle(AngleRow {
             name: "angle",
             label: "Angle".into(),
@@ -170,6 +174,7 @@ fn channels_snapshot(selected: usize, custom: &str) -> ParamsSnapshot {
     ParamsSnapshot {
         node: 7,
         title: "Attribute".into(),
+        modified: Default::default(),
         rows: vec![ParamRow::Channels(ChannelsRow {
             label: "Read".into(),
             text_param: "attr",
@@ -268,6 +273,7 @@ fn clicking_a_live_column_chip_writes_that_column_with_scalar_mode() {
     set_current_params(Some(ParamsSnapshot {
         node: 7,
         title: "Attribute".into(),
+        modified: Default::default(),
         rows: vec![ParamRow::Channels(ChannelsRow {
             label: "Read".into(),
             text_param: "attr",
@@ -337,6 +343,7 @@ fn picking_a_source_chip_writes_the_published_name() {
     set_current_params(Some(ParamsSnapshot {
         node: 4,
         title: "Path".into(),
+        modified: Default::default(),
         rows: vec![ParamRow::Source(SourceRow {
             label: "Shape".into(),
             param: "path",
@@ -372,6 +379,7 @@ fn curve_snapshot(value: &str) -> ParamsSnapshot {
     ParamsSnapshot {
         node: 9,
         title: "Remap".into(),
+        modified: Default::default(),
         rows: vec![ParamRow::Curve(CurveRow {
             name: "curve",
             label: "Curve".into(),

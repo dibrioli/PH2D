@@ -141,6 +141,19 @@ pub(crate) fn on_toggled(
 /// Seed row's re-roll advances the seed deterministically ([`next_seed`]).
 pub(crate) fn on_click(id: NodeId, snap: &ParamsSnapshot) -> EventOutcome {
     for slot in 0..snap.rows.len().min(MAX_PARAM_ROWS) {
+        // A seta de reverter vem ANTES do `match` por-tipo, e não é ordem arbitrária: ela
+        // existe em TODA row, então enumerar quais variantes a têm seria a lista que apodrece
+        // quando a décima terceira chegar. Uma cor emite quatro intents (o swatch dobra RGBA)
+        // e um picker de canal dois — `ParamRow::params` é quem sabe, uma vez.
+        if id == crate::snapshot::param_reset_id(slot) {
+            for param in snap.rows[slot].params() {
+                push_param_intent(MotionParamIntent::ResetParam {
+                    node: snap.node,
+                    param: param.to_string(),
+                });
+            }
+            return EventOutcome::Consumed;
+        }
         match &snap.rows[slot] {
             ParamRow::Seed(row) if id == param_reroll_id(slot) => {
                 push_param_intent(MotionParamIntent::SetParam {

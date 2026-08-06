@@ -445,6 +445,7 @@ pub(super) fn params_snapshot(
     Some(ParamsSnapshot {
         node: only,
         title: format!("Group ({} nodes)", inside.len()),
+        modified: Default::default(),
         rows: vec![ParamRow::Text(TextRow {
             name: "title",
             label: "Name".to_string(),

@@ -195,3 +195,10 @@ fn fnv_id(key: &str) -> NodeId {
     }
     NodeId(h)
 }
+
+/// Id do botão de **reverter ao default** da `slot`-ésima row (pooled, posicional como o
+/// slider/chip). Existe só nas rows que carregam override — um botão que sempre aparece e às
+/// vezes não faz nada é o botão-morto que este codebase persegue.
+pub(crate) fn param_reset_id(slot: usize) -> NodeId {
+    fnv_id(&format!("motion_param/reset/{slot}"))
+}

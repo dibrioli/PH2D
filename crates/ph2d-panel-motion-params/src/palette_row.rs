@@ -298,6 +298,7 @@ mod tests {
             let snap = ParamsSnapshot {
                 node: 1,
                 title: "motion.color_array".into(),
+                modified: Default::default(),
                 rows: vec![crate::snapshot::ParamRow::Palette(PaletteRow {
                     name: "palette",
                     label: "Palette".into(),

@@ -26,6 +26,9 @@ use ph2d_vector::VectorScene;
 
 #[path = "rows_paint_editors.rs"]
 mod editors;
+#[path = "rows_paint_reset.rs"]
+mod reset;
+use reset::{RESET_GUTTER_W, paint_reset_button, row_is_modified};
 #[path = "rows_paint_kinds.rs"]
 mod kinds;
 use kinds::{
@@ -57,11 +60,27 @@ pub(crate) fn paint_rows(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
+    modified: &std::collections::BTreeSet<String>,
 ) -> (CurveWidgets, ColourRowWidgets, f32) {
     let mut y = body_top;
+    // Toda row cede a MESMA calha à direita, tenha ou não o que reverter — largura que depende
+    // do estado é rótulo que se mexe quando você toca nele (`rows_paint_reset`).
+    let inner_w = (inner_w - RESET_GUTTER_W).max(0.0);
     let mut curve_widgets = CurveWidgets::new();
     let mut gradient_widgets = ColourRowWidgets::new();
     for (i, row) in rows.iter().enumerate().take(MAX_PARAM_ROWS) {
+        if row_is_modified(row, modified) {
+            paint_reset_button(
+                i,
+                inner_x,
+                inner_w + RESET_GUTTER_W,
+                y,
+                store,
+                hit_index,
+                scene,
+                theme,
+            );
+        }
         match row {
             // A DRIVEN param (doc 58): the wire decides the number, so there is no widget —
             // just the label and the live value. Nothing is registered, so nothing can be
@@ -292,6 +311,7 @@ mod tests {
             &mut scene,
             &mut text,
             Theme::default(),
+            &Default::default(),
         );
         // O corpo começa abaixo do título; a folga que sobra é o que ele custa.
         let head = 64.0; // LITERAL-PX-OK: folga de titulo+padding, generosa de proposito

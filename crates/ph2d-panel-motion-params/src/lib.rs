@@ -42,6 +42,11 @@ mod tests_gradient;
 #[path = "lib_range_tests.rs"]
 mod tests_range;
 
+/// A afordância de **reverter ao default** — as quatro condições de UI dela.
+#[cfg(test)]
+#[path = "lib_reset_tests.rs"]
+mod tests_reset;
+
 /// The **display face** gates (doc 88) — the sibling of `tests_range` on the
 /// other axis: that one pins how far the box reaches, this one pins what the
 /// document hears when a number comes back from it.
@@ -62,8 +67,8 @@ pub use snapshot::{
 };
 use snapshot::{
     CHANNELS_EXTRA_BASE, MAX_ENUM_OPTIONS, current_params, param_checkbox_id, param_chip_id,
-    param_enum_id, param_number_id, param_reroll_id, param_slider_id, param_text_id,
-    push_param_intent,
+    param_enum_id, param_number_id, param_reroll_id, param_reset_id, param_slider_id,
+    param_text_id, push_param_intent,
 };
 use text_rows::{mirror_text, paint_text_row, text_is_typing, text_value};
 
@@ -154,6 +159,7 @@ impl Panel for MotionParamsPanel {
                 scene,
                 text_system,
                 theme,
+                &snap.modified,
             )
         };
 
@@ -260,6 +266,15 @@ impl Panel for MotionParamsPanel {
             store.register(param_number_id(slot), number_input(0.0));
             store.register(
                 param_reroll_id(slot),
+                InteractiveState::Button {
+                    state: ButtonState::Normal,
+                },
+            );
+            // A seta de reverter ao default. Registrada aqui como qualquer botão pooled —
+            // sem isto ela pinta, entra no hit index, e fica MORTA sob o mouse (o dispatch só
+            // roteia clique para widget que o `populate` registrou).
+            store.register(
+                param_reset_id(slot),
                 InteractiveState::Button {
                     state: ButtonState::Normal,
                 },

@@ -24,6 +24,8 @@ use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
+#[path = "rows_paint_editors.rs"]
+mod editors;
 #[path = "rows_paint_kinds.rs"]
 mod kinds;
 use kinds::{
@@ -32,6 +34,15 @@ use kinds::{
 };
 
 /// Paint each param row from `body_top` down, registering hit rects as it goes.
+///
+/// Devolve, além dos widgets que a fase mutável registra, **a ALTURA que de fato usou**.
+///
+/// ⚠️ Ela existe porque o painel **não rola**: um teto de linhas alto o bastante para caber todo
+/// param do registry (`MAX_PARAM_ROWS`, medido pelo censo na shell) só é honesto se essas linhas
+/// couberem na altura do inspector — senão a linha 14 deixa de ser cortada pelo `.take()` e passa
+/// a ser cortada pela borda da tela, que é a MESMA invisibilidade por outra porta. Quem responde
+/// *"quanto isto ocupou?"* é o pintor, uma vez; um segundo cálculo de altura ao lado dele
+/// divergiria no dia em que uma linha composta mudar de tamanho.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_rows(
     rows: &[ParamRow],
@@ -46,7 +57,7 @@ pub(crate) fn paint_rows(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
-) -> (CurveWidgets, ColourRowWidgets) {
+) -> (CurveWidgets, ColourRowWidgets, f32) {
     let mut y = body_top;
     let mut curve_widgets = CurveWidgets::new();
     let mut gradient_widgets = ColourRowWidgets::new();
@@ -203,11 +214,9 @@ pub(crate) fn paint_rows(
                     theme,
                 );
             }
-            ParamRow::Curve(row) => {
-                // The interactive Curve editor — a graph with draggable handles. Its
-                // `CurvePoint`/`Button` store states ride back in `curve_widgets` (this
-                // pass has only an immutable store); the caller registers them (Phase C).
-                let used = curve_row::paint_curve_row(
+            ParamRow::Curve(_) | ParamRow::Palette(_) | ParamRow::Gradient(_) => {
+                // Os editores de várias linhas — cada um devolve a própria altura.
+                let used = editors::paint_editor_row(
                     row,
                     i,
                     inner_x,
@@ -219,48 +228,80 @@ pub(crate) fn paint_rows(
                     text_system,
                     theme,
                     &mut curve_widgets,
-                );
-                y += used + row_gap;
-            }
-            ParamRow::Palette(row) => {
-                // The wrapping swatch strip. It returns the height it USED, because a
-                // palette's row height is a function of how many colours there are.
-                let used = crate::palette_row::paint_palette_row(
-                    row,
-                    i,
-                    inner_x,
-                    inner_w,
-                    y,
-                    label_font,
-                    hit_index,
-                    scene,
-                    text_system,
-                    theme,
                     &mut gradient_widgets,
-                );
-                y += used + row_gap;
-            }
-            ParamRow::Gradient(row) => {
-                // The interactive Gradient editor — a bar with draggable position markers +
-                // per-stop swatches. Its `CurvePoint`/`Button`/picker-swatch store states ride
-                // back in `gradient_widgets` (this pass has only an immutable store); the
-                // caller registers them (Phase B/C), the mirror of the Curve editor.
-                let used = gradient_row::paint_gradient_row(
-                    row,
-                    i,
-                    inner_x,
-                    inner_w,
-                    y,
-                    label_font,
-                    hit_index,
-                    scene,
-                    text_system,
-                    theme,
-                    &mut gradient_widgets,
-                );
+                )
+                .expect("o braço e a porta casam por construção");
                 y += used + row_gap;
             }
         }
     }
-    (curve_widgets, gradient_widgets)
+    (curve_widgets, gradient_widgets, y - body_top)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::snapshot::{RowDisplay, ScalarRow};
+    use ph2d_editor_core::screens::layout::INSPECTOR_MAX_H;
+
+    fn scalar(i: usize) -> ParamRow {
+        ParamRow::Scalar(ScalarRow {
+            name: "p",
+            label: format!("Param {i}"),
+            value: 0.5,
+            min: 0.0,
+            max: 1.0,
+            hard_min: 0.0,
+            hard_max: 1.0,
+            step: 0.01,
+            integer: false,
+            driven: false,
+            display: RowDisplay::default(),
+        })
+    }
+
+    /// **O teto de linhas cabe no dock.**
+    ///
+    /// O irmão deste gate mora na shell (`the_panel_shows_every_param_of_every_node`) e prende o
+    /// teto por BAIXO — nenhum nó do registry pode ter mais linhas que ele. Este o prende por
+    /// CIMA: as linhas que ele permite têm de caber na altura que o inspector tem. Sem os dois,
+    /// "conserte o corte" tem a resposta trivial de subir o teto até a linha 14 passar a ser
+    /// cortada pela borda da tela em vez do `.take()` — a MESMA invisibilidade por outra porta,
+    /// e a que nenhum teste de contagem vê.
+    ///
+    /// A fixture é PESSIMISTA de propósito: `MAX_PARAM_ROWS` linhas escalares, que é mais linhas
+    /// do que qualquer nó real declara. Um dia em que ela deixe de caber é um dia em que o painel
+    /// precisa rolar, e é isso que a falha vai dizer.
+    #[test]
+    fn a_full_panel_of_rows_fits_the_inspector() {
+        let rows: Vec<ParamRow> = (0..MAX_PARAM_ROWS).map(scalar).collect();
+        let mut hit = HitIndex::default();
+        let mut scene = VectorScene::new();
+        let mut text = TextSystem::without_system_fonts();
+        let store = WidgetStore::default();
+        let (_, _, used) = paint_rows(
+            &rows,
+            0.0,
+            ph2d_editor_core::screens::layout::INSPECTOR_W,
+            64.0,
+            Spacing::Sm.px(),
+            0.0,
+            TypeToken::Base.px(),
+            &store,
+            &mut hit,
+            &mut scene,
+            &mut text,
+            Theme::default(),
+        );
+        // O corpo começa abaixo do título; a folga que sobra é o que ele custa.
+        let head = 64.0; // LITERAL-PX-OK: folga de titulo+padding, generosa de proposito
+        assert!(
+            used + head <= INSPECTOR_MAX_H,
+            "{MAX_PARAM_ROWS} linhas ocupam {used} px e o inspector tem {INSPECTOR_MAX_H}: o \
+             teto de linhas passou da altura do dock, entao a ultima linha e cortada pela borda \
+             da tela — o painel precisa ROLAR antes de o teto subir mais"
+        );
+        // E a metade oposta: um painel que nao desenha nada tambem "cabe".
+        assert!(used > 0.0, "as linhas nao ocuparam altura nenhuma");
+    }
 }

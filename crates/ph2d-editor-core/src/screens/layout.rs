@@ -29,6 +29,15 @@ pub fn rail_w() -> f32 {
     crate::widget::tool_rail_width_px()
 }
 pub const INSPECTOR_W: f32 = INSPECTOR_W_PX;
+
+/// Teto de ALTURA do dock do inspector — acima disto ele para de crescer com a janela.
+///
+/// ⚠️ Nomeado (era literal solto no `Rect::new` abaixo) porque um painel docado precisa saber
+/// **quanta altura existe** para decidir se o conteúdo dele cabe: o `motion-params` não rola, e
+/// um teto de linhas que não é conferido contra esta altura só troca o corte do `.take()` pelo
+/// corte da borda da tela. Uma segunda cópia deste número num gate divergiria no dia em que o
+/// dock mudar de tamanho — então há um número, com um dono.
+pub const INSPECTOR_MAX_H: f32 = 880.0; // LITERAL-PX-OK: Inspector max height cap
 pub const HIERARCHY_W: f32 = HIERARCHY_W_PX;
 pub const HUD_H: f32 = HUD_H_PX;
 pub const HUD_BOTTOM_PAD: f32 = HUD_BOTTOM_PAD_PX;
@@ -269,7 +278,12 @@ impl HeroLayout {
                 viewport.x + viewport.w - EDGE_PAD - INSPECTOR_W,
             )
         };
-        let inspector = Rect::new(inspector_x, chrome_top, INSPECTOR_W, chrome_h.min(880.0)); // LITERAL-PX-OK: Inspector max height cap
+        let inspector = Rect::new(
+            inspector_x,
+            chrome_top,
+            INSPECTOR_W,
+            chrome_h.min(INSPECTOR_MAX_H),
+        );
         // Bg Removal panel shares the Inspector's right-dock x/width;
         // it replaces the Inspector visually while the tool is active.
         let bgremoval = inspector;

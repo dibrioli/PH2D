@@ -17,8 +17,8 @@
 mod curve_row;
 mod events;
 mod gradient_row;
-mod palette_row;
 mod number_rows;
+mod palette_row;
 mod rows_paint;
 mod shaper_dispatch;
 mod snapshot;
@@ -55,13 +55,14 @@ use number_rows::{
     paint_angle_row, paint_seed_row,
 };
 pub use snapshot::{
-    AngleRow, ChannelsRow, ColorRow, CurveRow, EnumRow, GradientRow, MotionParamIntent, PaletteRow, ParamRow,
-    ParamsSnapshot, RowDisplay, ScalarRow, SeedRow, SourceRow, TextRow, ToggleRow,
-    drain_param_intents, param_grad_swatch_id, param_pal_swatch_id, param_swatch_id, scalar_text, set_current_params,
+    AngleRow, ChannelsRow, ColorRow, CurveRow, EnumRow, GradientRow, MAX_PARAM_ROWS,
+    MotionParamIntent, PaletteRow, ParamRow, ParamsSnapshot, RowDisplay, ScalarRow, SeedRow,
+    SourceRow, TextRow, ToggleRow, drain_param_intents, param_grad_swatch_id, param_pal_swatch_id,
+    param_swatch_id, scalar_text, set_current_params,
 };
 use snapshot::{
-    CHANNELS_EXTRA_BASE, MAX_ENUM_OPTIONS, MAX_PARAM_ROWS, current_params, param_checkbox_id,
-    param_chip_id, param_enum_id, param_number_id, param_reroll_id, param_slider_id, param_text_id,
+    CHANNELS_EXTRA_BASE, MAX_ENUM_OPTIONS, current_params, param_checkbox_id, param_chip_id,
+    param_enum_id, param_number_id, param_reroll_id, param_slider_id, param_text_id,
     push_param_intent,
 };
 use text_rows::{mirror_text, paint_text_row, text_is_typing, text_value};
@@ -136,7 +137,7 @@ impl Panel for MotionParamsPanel {
         // `paint_rows` draws + registers hit rects (it holds `hit_index`); a Curve row's
         // `CurvePoint`/`Button` STORE states cannot be registered through the immutable
         // store here, so they ride back in `curve_widgets` for Phase C below.
-        let (curve_widgets, gradient_widgets) = {
+        let (curve_widgets, gradient_widgets, _body_h) = {
             let scene = &mut *ctx.scene;
             let text_system = &mut *ctx.text_system;
             let (store, hit_index) = ctx.host.store_and_hit_index_mut();

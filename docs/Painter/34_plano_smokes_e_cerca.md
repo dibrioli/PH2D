@@ -238,3 +238,36 @@ paridade CPU×GPU no impasto. Ela prende **comportamento**, não estrutura — o
 ⇒ **Toda wave da Parte B fecha com a suíte inteira verde em debug E release, e byte-identidade onde
 há fingerprint.** Uma wave que precise mexer num fingerprint **não é uma wave de cerca** — ela mudou
 comportamento, e aí parou de ser refatoração.
+
+---
+
+# ⬛ O QUE A PARTE A DECIDIU (2026-08-06) — e por que este plano ficou obsoleto na metade
+
+O Enio rodou a bateria do §2 e entregou o log. **A máquina estava sã** pelo detector do §1
+(`poca: 10,80 M celulas | 5,2 ns/celula` — um dígito), então o log fala sobre o código.
+
+**As três waves pendentes: VALIDADAS.** A rota em banda dispara em toda parte (`+ 1 serial` uma vez em
+19 lotes), a rota do DISPOSITIVO pega 41/59, 51/52 e 20/20 lotes conforme o meio, e o instrumento —
+que era cego ao carimbo — **fecha a conta**: Digital 102-105 %, Wet Paint 100-114 %.
+
+⚠️ **E a tabela do §4 não escolheu nenhuma das quatro frentes do §5.** Ela fecha em **dois** meios e
+**não fecha** nos dois mais caros: Impasto **5,7 %**, Aquarela **0 %**. O instrumento não está quebrado
+— ele conta o depósito de PIGMENTO, honestamente; o pigmento é que é 5 % do trabalho nesses meios.
+
+**A fronteira é o MEIO**, medida pela porta do produto (`what_a_shape_move_is_made_of` levada ao raio
+185): **Impasto 19×** e **Aquarela 14×** o Digital, sobre a mesma figura e o mesmo pincel, com a razão
+**plana** em raio e em tela (⇒ multiplicador por texel, não sobrecarga por chamada).
+
+Contra as quatro candidatas do §5: o cap do Accumulate vale ~2× sobre os **17 ms** do Digital · o AA do
+filme são **20,89** de **136** · o `painter-dispatch` mediu 0,01-1,08 ms · os quatro sítios não
+aparecem no log. **Nenhuma é a maior.**
+
+**A frente que o log abriu está fechada** por
+[`HANDOFF_INTEGRACAO_line_Painter_bow_wave_2026-08-06.md`](../HANDOFF_INTEGRACAO_line_Painter_bow_wave_2026-08-06.md):
+a caminhada de altura vai de **136,64 → 96,93 ms/traço**, e o §8 daquele handoff carrega o que segue
+aberto, com número.
+
+⚠️ **O §5 deste plano permanece válido como CATÁLOGO** (as quatro frentes seguem existindo, três delas
+ainda não medidas em ganho) e **inválido como PRIORIDADE** — a lista foi escrita antes de o log existir.
+
+⚠️ **O `PH2D_MASK_SMOKE=1` do §2.1 não tem registro de ter rodado** nesta jornada.

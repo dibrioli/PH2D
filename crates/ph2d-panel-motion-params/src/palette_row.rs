@@ -13,19 +13,28 @@
 //! [`paint_palette_row`] returns the height it used instead of a constant.
 //!
 //! The artist never sees the string ([`ph2d_color::palette_text`]).
+//!
+//! ⚠️ **A swatch é DESENHADA aqui e registrada para o picker lá** ([`crate::lib`] Fase B) — as
+//! duas metades são perguntas diferentes (*o que aparece* × *o que o clique faz*), e a primeira
+//! versão desta row tinha só a segunda: hit-rect registrado, `set_widget_color` semeado, e
+//! nenhuma tinta. A faixa saía VAZIA com os dois gates da row verdes, porque eles mediam a
+//! ALTURA devolvida e a aritmética de [`per_line`] — vide `every_colour_paints_a_swatch_in_its_own_colour`.
 
 use crate::snapshot::{PaletteRow, param_pal_add_id, param_pal_remove_id, param_pal_swatch_id};
 use ph2d_color::srgb::linear_to_srgb_byte;
 use ph2d_color::{DEFAULT_PALETTE_FALLBACK, parse_palette};
 use ph2d_editor_core::interaction::HitIndex;
-use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, paint_text_centered, resolve};
+use ph2d_editor_core::paint::{
+    fill_rounded_rect, paint_text, paint_text_centered, resolve, stroke_rounded_rect,
+};
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, Theme, TypeToken};
-use ph2d_vector::VectorScene;
+use ph2d_vector::{Color, VectorScene};
 
 const SWATCH: f32 = 22.0; // LITERAL-PX-OK: one palette swatch, square
 const BTN_W: f32 = 22.0; // LITERAL-PX-OK: +/- button width
+const GRID_W: f32 = 1.0; // LITERAL-PX-OK: swatch border stroke width
 
 /// The colours a row shows: the authored palette, or the node's factory one when the
 /// artist has not authored yet.
@@ -61,7 +70,10 @@ pub(crate) fn per_line(w: f32) -> usize {
 /// The arg list mirrors [`crate::gradient_row::paint_gradient_row`] one-for-one: the two
 /// are called from the same dispatch arm shape, and a different signature here would be a
 /// second convention for the same job.
-#[expect(clippy::too_many_arguments, reason = "mirrors the gradient row's paint door")]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "mirrors the gradient row's paint door"
+)]
 pub(crate) fn paint_palette_row(
     row: &PaletteRow,
     slot: usize,
@@ -130,8 +142,22 @@ pub(crate) fn paint_palette_row(
             SWATCH,
         );
         let id = param_pal_swatch_id(row.name, i);
+        let srgb = swatch_srgb(*c);
+        fill_rounded_rect(
+            scene,
+            r,
+            Radius::Sm.px(),
+            Color::from_rgba8(srgb[0], srgb[1], srgb[2], 255), // LITERAL-COLOR-OK: the palette's own colour is data, not a token (the swatch precedent)
+        );
+        stroke_rounded_rect(
+            scene,
+            r,
+            Radius::Sm.px(),
+            GRID_W,
+            resolve(ColorToken::TextDisabled, theme),
+        );
         hit_index.register(id, r);
-        out.swatches.push((id, swatch_srgb(*c)));
+        out.swatches.push((id, srgb));
     }
     let lines = colors.len().div_ceil(cols);
     #[expect(
@@ -148,15 +174,88 @@ pub(crate) fn paint_palette_row(
 mod tests {
     use super::*;
 
+    /// What painting a palette of `colors` into a `w`-wide row actually produced: the height
+    /// it claimed, **how many paths the scene really encodes**, and the paint bytes.
+    ///
+    /// ⚠️ The last two are the whole point. The row's first two gates measured the returned
+    /// HEIGHT and the arithmetic of [`per_line`] — both green while `paint_palette_row`
+    /// reserved space for the swatches and **drew nothing in it**, which is exactly what the
+    /// artist saw ([[feedback_painted_is_not_populated_paint_gate]]). A number a painter
+    /// returns is not evidence that a painter painted; `Scene::encoding()` is.
+    fn painted(colors: &[[f32; 4]], w: f32) -> (f32, u32, Vec<u32>) {
+        let row = PaletteRow {
+            name: "palette",
+            label: "Palette".into(),
+            value: ph2d_color::serialize_palette(colors),
+        };
+        let mut hit = HitIndex::default();
+        let mut scene = VectorScene::new();
+        let mut text = TextSystem::without_system_fonts();
+        let mut out = crate::gradient_row::ColourRowWidgets::new();
+        let h = paint_palette_row(
+            &row,
+            0,
+            0.0,
+            w,
+            0.0,
+            12.0,
+            &mut hit,
+            &mut scene,
+            &mut text,
+            Theme::default(),
+            &mut out,
+        );
+        let e = scene.inner().encoding();
+        (h, e.n_paths, e.draw_data.clone())
+    }
+
+    fn reds(n: usize) -> Vec<[f32; 4]> {
+        (0..n).map(|_| [1.0, 0.0, 0.0, 1.0]).collect()
+    }
+
+    /// **Cada cor DESENHA uma swatch, e a swatch usa a cor dela.**
+    ///
+    /// Duas metades, porque há dois modos de falha distintos e cada um passa pelo gate do
+    /// outro: *nada é desenhado* (a faixa fica vazia — o defeito que o Enio fotografou) e
+    /// *algo é desenhado com a tinta errada* (uma fileira de caixas cinzas, que conta
+    /// caminhos igualzinho a uma paleta correta).
+    ///
+    /// A 2ª metade compara os bytes de tinta de duas paletas do MESMO comprimento e cores
+    /// diferentes, em vez de conferir um valor codificado: ela não precisa saber como o
+    /// vello empacota um `Color`, e continua valendo se ele mudar.
+    #[test]
+    fn every_colour_paints_a_swatch_in_its_own_colour() {
+        let (_, one, _) = painted(&reds(1), 400.0);
+        let (_, twelve, _) = painted(&reds(12), 400.0);
+        assert!(
+            twelve >= one + 11,
+            "cada cor a mais tem de desenhar ao menos um caminho a mais: {one} -> {twelve}"
+        );
+
+        let a = painted(&reds(4), 400.0).2;
+        let b = painted(
+            &[
+                [0.0, 0.2, 0.9, 1.0],
+                [0.9, 0.4, 0.0, 1.0],
+                [0.1, 0.8, 0.3, 1.0],
+                [0.7, 0.0, 0.6, 1.0],
+            ],
+            400.0,
+        )
+        .2;
+        assert_ne!(
+            a, b,
+            "duas paletas de mesmo comprimento e cores diferentes pintaram os MESMOS bytes \
+             — as swatches não estão usando a cor da paleta"
+        );
+    }
+
     /// **The strip wraps, so the row has no length limit of its own.** A fixed row would
     /// have re-imposed the cap this wave removed the moment a colour ran off the edge.
     #[test]
     fn the_strip_wraps_instead_of_running_off_the_edge() {
         let narrow = per_line(60.0);
-        assert!(
-            (2..20).contains(&narrow),
-            "a narrow row fits few: {narrow}"
-        );
+        assert!((2..20).contains(&narrow), "a narrow row fits few: {narrow}");
         assert!(per_line(600.0) > narrow, "a wide row fits more");
         assert_eq!(per_line(1.0), 1, "narrower than one swatch still draws one");
     }
@@ -166,31 +265,7 @@ mod tests {
     /// "nowhere".
     #[test]
     fn the_row_grows_with_the_palette() {
-        let h = |n: usize| {
-            let pal: Vec<[f32; 4]> = (0..n).map(|_| [1.0, 0.0, 0.0, 1.0]).collect();
-            let row = PaletteRow {
-                name: "palette",
-                label: "Palette".into(),
-                value: ph2d_color::serialize_palette(&pal),
-            };
-            let mut hit = HitIndex::default();
-            let mut scene = VectorScene::new();
-            let mut text = TextSystem::without_system_fonts();
-            let mut out = crate::gradient_row::ColourRowWidgets::new();
-            paint_palette_row(
-                &row,
-                0,
-                0.0,
-                120.0,
-                0.0,
-                12.0,
-                &mut hit,
-                &mut scene,
-                &mut text,
-                Theme::default(),
-                &mut out,
-            )
-        };
+        let h = |n: usize| painted(&reds(n), 120.0).0;
         let (four, forty) = (h(4), h(40));
         assert!(
             forty > four * 3.0,

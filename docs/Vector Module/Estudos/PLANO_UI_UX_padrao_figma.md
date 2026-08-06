@@ -971,9 +971,19 @@ vai listar**; se for zero, PARE.
 nasceram COM o gesto, o botão de elo por linha, exactamente como esta nota exigia
 ([[feedback_a_capability_without_a_door_passes_every_gate]]); ⚠️ a sintaxe `{color.brand.500}` NÃO
 foi construída e é decisão em aberto — o elo é apontado, não digitado, e um parser de referência
-textual é a porta do **math**, não do alias) · math · detecção de ciclo (que os aliases exigem) · DTCG · os
-tokens de ESCALA (a fronteira `const fn` acima) · e um readout de CONTRASTE (o `tokens.json` valida
-WCAG 2.2 AA nos gates, e um valor autorado pode quebrá-lo sem nada dizer).
+textual é a porta do **math**, não do alias) · ~~detecção de ciclo~~ (**na PORTA**, W4b.1: a tabela
+fica acíclica por construção e o caminho de leitura — 44 widgets por frame — não paga defesa) ·
+~~readout de CONTRASTE~~ (**CONSTRUÍDO — W4b.2, 2026-08-05**: a lei virou **DADO**
+(`ph2d_tokens::contrast::CONTRAST_PAIRS`), e as **quatro cópias** do mesmo laço WCAG que viviam em
+`color_tests.rs` colapsaram em **uma lista com dois consumidores** — o gate de compilação e o
+painel. ⚠️ **O keystone não é nenhum dos números:** é
+`the_compile_time_check_cannot_see_an_authored_break`, que **MEDE o alcance** do gate irmão em vez
+de o afirmar — um teste de unidade corre com a camada de override vazia, logo afirma sempre a
+tabela de FÁBRICA, e o valor que o artista escolhe move o efetivo **em runtime**, onde nenhum teste
+está a olhar. Se ele um dia falhar, este readout tornou-se redundante. ⚠️ E **nada no readout é
+interativo, de propósito** — a 3ª condição de UI (*o clique chega ao barramento*) é **N/A**, e
+dizê-lo é mais honesto que fabricar um botão: um *"corrigir"* teria de INVENTAR uma cor) · math ·
+DTCG · os tokens de ESCALA (a fronteira `const fn` acima).
 
 ---
 
@@ -1505,7 +1515,8 @@ escreveu**:
 | **W0** ✅ | a moldura | +1 (**43**) | — | — | — | `=49` |
 | **W4a** ✅ | o binding de token no documento + o modo re-veste | +1 (**44**) | — | — | — | `=51` |
 | **W4b.1** ✅ | **o ALIAS** — um token SEGUE outro, com detecção de ciclo na PORTA | `tokens_link_id` | `PROJECT_SCHEMA` 56→57 | — | **nenhum** | `=51` |
-| **W4b.2+/c** | o resto: math · DTCG · tokens de ESCALA (a fronteira `const fn`) · readout de CONTRASTE · animar token | — | `DOC_VERSION`, seção | — | sim (indireção) | — |
+| **W4b.2** ✅ | o readout de **CONTRASTE** — a lei WCAG vira DADO, e o painel a mede onde a escolha é feita | — | — | — | **nenhum** | `=51` |
+| **W4b.3+/c** | o resto: math · DTCG · tokens de ESCALA (a fronteira `const fn`) · animar token | — | `DOC_VERSION`, seção | — | sim (indireção) | — |
 | **W2** ✅ | auto layout | +2 (**46**) | — (W2a fica) | **taffy** | **0153** | `=50` |
 | **W3** ✅ | âncoras | +1 (**47**) | — | — | — | `=52` |
 | **W5a** ✅ | mestre + instância + override esparso | +2 (**50**) | — | — | — | `=53` |

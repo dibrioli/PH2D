@@ -1,4 +1,9 @@
-//! **A cena dos TOKENS** — `PH2D_BUILD_SMOKE=50` (plano UI/UX §4/W4).
+//! **A cena de PRENDER ao token** — `PH2D_BUILD_SMOKE=51` (plano UI/UX §4/W4).
+//!
+//! ⚠️ **Ela NÃO abre o painel de Tokens** — o sujeito aqui é a ARTE que segue a tabela, e o
+//! painel (autorar a cor, o elo, o contraste) é a cena irmã **`=59`** (`tokens_smoke`). Os dois
+//! nomes de arquivo diferem por uma letra e as duas cenas dizem "TOKENS": se a pergunta é *"o
+//! artista consegue MUDAR a tabela?"*, a cena é a `=59`.
 //!
 //! Módulo irmão do [`crate::build_smoke`] pelo teto de LOC (HR-18), como os `*_smoke` vizinhos.
 //!

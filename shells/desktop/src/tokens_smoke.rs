@@ -93,12 +93,28 @@ fn announce(app: &mut crate::App) {
     eprintln!("     do PAR (modo, token). Volte ao Forge com mais tres **M**.");
     eprintln!("  5. **Reset This Mode** devolve o modo vigente inteiro. ⚠️ SO' o vigente: autore");
     eprintln!("     algo noutro modo antes, e confirme que ele sobrevive.");
-    eprintln!("  6. ⚠️ **ELA SOBREVIVE AO ARQUIVO**: autore duas cores, **Ctrl+S**, feche o app,");
     eprintln!(
-        "     reabra e **Ctrl+O**. As cores voltam. Depois abra um projeto de FABRICA: o app"
+        "  6. ⚠️ **O ELO** (W4b.1): cada linha tem um botao de CORRENTE a' direita. Clique o"
     );
-    eprintln!("     tem de voltar as cores de fabrica (o load ESQUECE o documento anterior).");
-    eprintln!("  7. ⚠️ **O CONTROLE**: as tres formas do canvas nao mudam de cor em passo nenhum.");
+    eprintln!("     da linha que voce quer MUDAR (ela arma) e depois o da linha que ela deve");
+    eprintln!("     SEGUIR — a ordem em que se fala: 'o border segue o accent'. O rotulo passa a");
+    eprintln!("     dizer 'border-emph  -  accent' e a swatch mostra a cor do ALVO.");
+    eprintln!("     Agora autore o **accent** noutra cor: quem o segue muda JUNTO, na hora.");
+    eprintln!("     Clicar a propria linha armada DESARMA (nao existe auto-elo).");
+    eprintln!("  7. ⚠️ **O CONTRASTE** (W4b.2): pegue **text-1** e escolha uma cor quase igual a'");
+    eprintln!("     do fundo. Aparece um bloco de AVISO no topo do painel dizendo qual par");
+    eprintln!("     quebrou, com a razao medida e a que a WCAG exige — e as DUAS linhas do par");
+    eprintln!("     (o texto E o fundo) ganham a marca de aviso.");
+    eprintln!("     ⚠️ Nada disso e' clicavel, de proposito: consertar e' escolher outra cor.");
+    eprintln!("     Devolva o **text-1** com o Reset e o bloco tem de SUMIR inteiro.");
+    eprintln!(
+        "  8. ⚠️ **ELA SOBREVIVE AO ARQUIVO**: autore duas cores E um elo, **Ctrl+S**, feche"
+    );
+    eprintln!(
+        "     o app, reabra e **Ctrl+O**. As cores E o elo voltam. Depois abra um projeto de"
+    );
+    eprintln!("     FABRICA: o app tem de voltar as cores de fabrica (o load ESQUECE o anterior).");
+    eprintln!("  9. ⚠️ **O CONTROLE**: as tres formas do canvas nao mudam de cor em passo nenhum.");
     eprintln!("     Re-vestir o chrome nao toca no documento.");
 }
 
@@ -106,7 +122,10 @@ fn announce(app: &mut crate::App) {
 mod tests {
     use super::*;
 
-    /// **A cena tem o que o passo 7 manda olhar** — três formas de cores distintas.
+    /// **A cena tem o que o passo do CONTROLE manda olhar** — três formas de cores distintas.
+    ///
+    /// ⚠️ Ele não cita o NÚMERO do passo de propósito: o roteiro cresce a cada wave (o controle
+    /// já foi o 7 e é o 9), e um doc que numera o passo mente na primeira linha inserida acima.
     #[test]
     fn the_control_art_exists_and_is_distinguishable() {
         let fills: Vec<_> = paths().iter().map(|p| p.fill.clone()).collect();

@@ -140,11 +140,25 @@ impl PainterTool {
             (p, g, f, r)
         };
         // The displacement's own plane, and the GROUND it bites into — the layer's relief as the stroke
-        // found it. Recorded whenever there IS paint to shove, NOT only when the knob is up: Push has to
-        // be dialable AFTER the stroke like every other knob in the Body card, and it cannot be if the
-        // ingredient was never written down. A first stroke on bare canvas has no ground, so it pays
-        // nothing — the cost falls exactly where the feature is, on paint laid over paint.
-        let ground = (!erasing)
+        // found it. Gated on the KNOB, not merely on there being paint to shove.
+        //
+        // ⚠️ It used to be gated on paint alone, with the reason written here: *"Push has to be
+        // dialable AFTER the stroke, and it cannot be if the ingredient was never written down"*. The
+        // sentence that followed it — *"a first stroke on bare canvas pays nothing, so the cost falls
+        // exactly where the feature is, on paint laid over paint"* — was **MEASURED FALSE**: `ground`
+        // is the LAYER's relief, so a stroke crossing the BARE part of a dirty layer paid the whole
+        // bite too (53,74 ms against 54,79 over paint, at the product's radius —
+        // `measure_impasto_cost::what_the_height_walk_is_made_of`). With `impasto_push` defaulting to
+        // **0.0**, every stroke of a normal brush on any layer that has relief anywhere was paying
+        // ~30% of the height walk for a feature that is OFF.
+        //
+        // ⚠️ **The frame this ships is byte-identical**, and that is not a hope: the re-derivation is
+        // `field[i] = deposit + push * push_plane[i]`, so at `push == 0` every value the bite, the
+        // bank and the wave write is multiplied out. The one thing that changes is the FUTURE: a
+        // stroke laid at Push 0 has no ingredient, so dragging the slider up afterwards no longer
+        // re-derives it. Push became a **before-the-stroke** decision, and that trade is Enio's
+        // (2026-08-06), taken with the number on the table.
+        let ground = (!erasing && brush.effective_impasto_push() > 0.0)
             .then(|| self.heights.get(&active).cloned())
             .flatten();
         let mut push_plane = std::mem::take(&mut self.paint.relief.stroke_push);

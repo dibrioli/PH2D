@@ -20825,20 +20825,20 @@ fn impasto_push_ploughs_a_channel_and_stands_the_paint_up_at_its_edges() {
 }
 
 #[test]
-fn impasto_push_is_a_live_knob_and_never_erodes_the_ground_twice() {
+fn impasto_push_is_live_on_a_stroke_that_was_laid_with_it_armed() {
     // Push is derived from the stroke's FOOTPRINT, not driven along its path — which is what lets it be a
-    // pure function of `(ground, footprint)`. Two things follow, and both are the point:
+    // pure function of `(ground, footprint)`. Three things follow, and all three are the point:
     //
-    //  1. It is LIVE: dial it after the stroke and the ridge grows and shrinks under the artist's hand,
-    //     like every other knob in the Body card (§10.3).
+    //  1. It is LIVE: dial it after the stroke and the ridge grows and shrinks under the artist's hand.
     //  2. It is IDEMPOTENT: re-deriving never eats the ground a second time. A destructive per-dab plough
     //     would, and the SHAPE editors — which re-stamp the whole shape on every pointer move — would
     //     have carved a canyon in a couple of seconds. That is the whole reason for the design.
+    //  3. It is REVERSIBLE: back to 0 gives the ground back bit for bit.
     //
-    // The gesture is the real one: lay a loaded stroke across the slab with the knob OFF, then reach for
-    // the knob. (An earlier fixture laid the stroke with Depth 0 AND Push 0 — so it never touched the
-    // height field at all, the live ingredients still belonged to the SLAB, and the re-derive was quietly
-    // re-deriving the wrong stroke. The gate caught it; the fixture was wrong, not the tool.)
+    // ⚠️ **The PRECONDITION changed on 2026-08-06 and this gate now states it:** the stroke has to have
+    // been laid with the knob ARMED. Laying it at Push 0 records no ingredient, so there is nothing to
+    // re-derive later — see the sibling `a_stroke_laid_with_push_off_has_no_ingredient_to_re_derive`,
+    // which pins the other half deliberately. The capability did not go away; its precondition moved.
     let size = 200u32;
     let (mut t, layer) = slab_canvas(size);
     // Claim 1 is that Push is LIVE on the finished stroke, so the fixture asks for live editing instead
@@ -20847,7 +20847,7 @@ fn impasto_push_is_a_live_knob_and_never_erodes_the_ground_twice() {
     let mut b = t.paint.brush;
     b.radius_px = 12.0;
     b.impasto_depth = 0.5; // a loaded brush, as an artist would hold it
-    b.impasto_push = 0.0; // …with the knob off
+    b.impasto_push = 0.5; // …with the knob ARMED, which is what records the ingredient
     t.paint.brush = b;
     for slot in &mut t.paint.brush_by_mode {
         *slot = b;
@@ -20858,17 +20858,20 @@ fn impasto_push_is_a_live_knob_and_never_erodes_the_ground_twice() {
     }
     t.on_canvas_pointer(cp([80.0, 120.0], PointerPhase::Up));
 
-    let off: Vec<f32> = t.heights.get(&layer).expect("relief").as_ref().clone();
     let rim = |f: &[f32]| f[(80 * size + 80 + 14) as usize];
     let vol = |f: &[f32]| f.iter().sum::<f32>();
+
+    // The knob at rest, on a stroke that DID record its ingredient.
+    t.set_brush_impasto_push(0.0);
+    let zero: Vec<f32> = t.heights.get(&layer).expect("relief").as_ref().clone();
 
     // Reach for the knob — AFTER the stroke.
     t.set_brush_impasto_push(1.0);
     let pushed: Vec<f32> = t.heights.get(&layer).expect("relief").as_ref().clone();
     assert!(
-        rim(&pushed) > rim(&off) * 1.05,
+        rim(&pushed) > rim(&zero) * 1.05,
         "the ridge rises under the artist's hand, on a stroke already laid ({} → {})",
-        rim(&off),
+        rim(&zero),
         rim(&pushed)
     );
 
@@ -20883,16 +20886,61 @@ fn impasto_push_is_a_live_knob_and_never_erodes_the_ground_twice() {
          would have dug a canyon here, and the shape editors re-stamp every pointer move)"
     );
 
-    // …and all the way back down: the field returns EXACTLY to what it was before the knob was touched.
+    // …and all the way back down: the field returns EXACTLY to what it was before the knob was raised.
     t.set_brush_impasto_push(0.0);
     let back: Vec<f32> = t.heights.get(&layer).expect("relief").as_ref().clone();
     assert_eq!(
         back,
-        off,
+        zero,
         "Push 0 gives the ground back bit for bit — it displaces, it does not destroy (volume \
          {} vs {})",
         vol(&back),
-        vol(&off)
+        vol(&zero)
+    );
+}
+
+#[test]
+fn a_stroke_laid_with_push_off_has_no_ingredient_to_re_derive() {
+    // The other half of the trade Enio took on 2026-08-06, pinned so nobody restores the old gate by
+    // accident and quietly puts ~30% back on every stroke.
+    //
+    // **The measurement that bought it:** the bite used to be armed whenever the LAYER had relief, and
+    // `impasto_push` defaults to **0.0** — so every stroke of a normal brush, on any layer with relief
+    // anywhere, paid the whole bow-wave walk for a feature that was off. Measured at the product's
+    // radius (`measure_impasto_cost::what_the_height_walk_is_made_of`, 4096², r=185): the tail cost
+    // **53,74 ms** crossing the BARE part of a dirty layer and **54,79** over its own paint — the same
+    // — against **15,40** on a virgin layer. Gating on the knob takes the height walk from 136,64 to
+    // **96,93 ms**.
+    //
+    // ⚠️ **The frame is byte-identical**, and that is why the trade is only about the FUTURE: the
+    // re-derivation is `field[i] = deposit + push * push_plane[i]`, so at `push == 0` everything the
+    // bite would have written is multiplied out anyway. What the artist loses is reaching for the knob
+    // *afterwards* — Push became a before-the-stroke decision, and it is now the one knob in the Body
+    // card that is not live. That exception is deliberate and has a number next to it.
+    let size = 200u32;
+    let (mut t, layer) = slab_canvas(size);
+    t.paint.impasto_live_edit = true;
+    let mut b = t.paint.brush;
+    b.radius_px = 12.0;
+    b.impasto_depth = 0.5;
+    b.impasto_push = 0.0; // the knob OFF — the default a normal brush ships with
+    t.paint.brush = b;
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = b;
+    }
+    t.on_canvas_pointer(cp([80.0, 40.0], PointerPhase::Down));
+    for y in 1..=6 {
+        t.on_canvas_pointer(cp([80.0, 40.0 + 12.0 * y as f32], PointerPhase::Move));
+    }
+    t.on_canvas_pointer(cp([80.0, 120.0], PointerPhase::Up));
+
+    let off: Vec<f32> = t.heights.get(&layer).expect("relief").as_ref().clone();
+    t.set_brush_impasto_push(1.0);
+    let after: Vec<f32> = t.heights.get(&layer).expect("relief").as_ref().clone();
+    assert_eq!(
+        after, off,
+        "a stroke laid with Push OFF has no ingredient, so raising the knob afterwards re-derives \
+         nothing — the ~30% it would have cost was not spent"
     );
 }
 

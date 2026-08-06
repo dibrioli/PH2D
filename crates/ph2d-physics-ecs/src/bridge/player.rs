@@ -174,12 +174,28 @@ impl PhysicsBridge {
     ///
     /// Nessa faixa a prancha **de facto o pegaria** (o cone do gancho devolve
     /// `+1,000`, medido), então as duas saídas são *fantasma* ou *cuspido* — e
-    /// fantasma é a menos má. ⚠️ **O preço continua a ser a cena inteira**: o bit
-    /// viaja no CORPO e o gancho limpa os contatos com **qualquer** plataforma
-    /// one-way, então enquanto essa descida vive nenhuma prancha é sólida para
-    /// ele. **A cura é a descida por-PLATAFORMA** (o gancho consultando um
-    /// conjunto de pares em vez de um bit no `user_data`), o que muda a
-    /// assinatura do gancho e o gesto de armar — wave própria.
+    /// fantasma é a menos má.
+    ///
+    /// ⛔ **E o ALCANCE disso foi MEDIDO e é MENOR do que esta nota afirmava.**
+    /// A frase que esteve aqui dizia *"o preço continua a ser a cena inteira —
+    /// enquanto essa descida vive, nenhuma prancha é sólida para ele"*, e
+    /// prescrevia a **descida por-PLATAFORMA** como cura. Ela foi construída
+    /// inteira (conjunto de pares no lugar do bit, evidência por par, o gesto a
+    /// levar também as plataformas que o corpo já sobrepõe, o raio a ignorar a
+    /// lista) e **REVERTIDA**: numa cena com a escada apertada e uma prancha
+    /// SOLTA ao lado, a solta **segura o personagem nos DOIS mundos** — pela
+    /// perna, não pelo solver (`measure_whether_a_live_drop_really_dissolves_the_whole_scene`).
+    ///
+    /// O bit global limpa **contatos do solver**; quem segura este personagem é
+    /// a **mola**, e o raio dela só ignora a plataforma da travessia. Então o
+    /// que a descida viva de facto custa é a prancha que ela nomeia, e não a
+    /// cena — e uma cura por-plataforma seria complexidade sem número.
+    ///
+    /// ⚠️ A sonda **falhou o próprio controle duas vezes** antes de decidir (o
+    /// personagem não saía da escada; depois andava 400 tiques e atravessava a
+    /// prancha solta a caminho do outro lado do mundo). *Um A/B em que os dois
+    /// lados dão o mesmo número só vale depois de o controle dar um número
+    /// diferente.*
     ///
     /// ⚠️ E a cena 91 deixou de viver dez centímetros acima de um penhasco: com
     /// `RISE = 2,0` e pranchas de 0,15 a margem passou de 0,10 para **0,25**, e

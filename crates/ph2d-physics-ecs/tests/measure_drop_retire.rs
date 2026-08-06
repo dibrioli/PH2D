@@ -513,3 +513,149 @@ fn measure_whether_the_leftover_cell_is_ghost_or_a_failed_jump() {
         );
     }
 }
+
+/// **(8) A descida global apaga mesmo a CENA INTEIRA, ou só o solver?**
+///
+/// A W20 afirmou que enquanto uma descida vive *"nenhuma prancha é sólida para
+/// ele"*. Isso é verdade do SOLVER — mas quem segura este personagem é a
+/// **perna**, e o raio dela só ignora a plataforma da travessia. Se a mola o
+/// pousa em qualquer outra prancha de qualquer modo, a afirmação é grande
+/// demais e a cura por-plataforma não muda nada que se veja.
+///
+/// A cena: escada apertada em `x = 0` (a descida fica viva) e uma prancha
+/// SOLTA em `x = 6`, mais abaixo. Ele desce, anda para a direita, cai — e a
+/// pergunta é se a prancha solta o segura.
+#[test]
+#[ignore]
+fn measure_whether_a_live_drop_really_dissolves_the_whole_scene() {
+    const THICK: f32 = 0.10;
+    let gap = 1.20_f32;
+    let far_x = 2.0_f32;
+    let far_y = -3.0_f32;
+
+    // ⚠️ Cena PROPRIA: as pranchas do `stack_of` medem 40 de meia-largura, e
+    // sobre um chao infinito ele nao tem de onde sair — a fixture nao conteria
+    // o fenomeno.
+    let mut sim = SimWorld::new();
+    sim.world_mut().spawn((
+        Name::new("Floor"),
+        RigidBody {
+            kind: BodyKind::Static,
+        },
+        Collider {
+            shape: ColliderShape::Cuboid {
+                half_x: 40.0,
+                half_y: 0.5,
+            },
+            ..Collider::default()
+        },
+        Transform::from_translation(Vec2::new(0.0, FLOOR_TOP - 0.5)),
+    ));
+    for (name, y) in [("Upper", 0.0), ("Lower", -gap)] {
+        sim.world_mut().spawn((
+            Name::new(name),
+            RigidBody {
+                kind: BodyKind::Static,
+            },
+            Collider {
+                shape: ColliderShape::Cuboid {
+                    half_x: 2.0,
+                    half_y: THICK,
+                },
+                ..Collider::default()
+            },
+            Transform::from_translation(Vec2::new(0.0, y)),
+            OneWayPlatform,
+        ));
+    }
+    let player = player_on(&mut sim, THICK + FLOAT_HEIGHT);
+    let mut r = Rig {
+        sim,
+        bridge: PhysicsBridge::new(),
+        player,
+    };
+    // A prancha solta, longe da escada e mais abaixo.
+    r.sim.world_mut().spawn((
+        Name::new("Far"),
+        RigidBody {
+            kind: BodyKind::Static,
+        },
+        Collider {
+            shape: ColliderShape::Cuboid {
+                half_x: 4.0,
+                half_y: PLANK_HALF_Y,
+            },
+            ..Collider::default()
+        },
+        Transform::from_translation(Vec2::new(far_x, far_y)),
+        OneWayPlatform,
+    ));
+
+    let t = settle(&mut r, 30, 0);
+    // ⚠️ CONTROLE primeiro, e sem ele a medicao nao diz nada: o mesmo passeio
+    // SEM descida nenhuma. Se a prancha solta nao o segura aqui, ela nao segura
+    // ninguem e a fixture nao contem o fenomeno.
+    let control = if std::env::var("PH2D_DROP_CONTROL").is_ok() {
+        r.bridge.set_player_input(
+            r.player,
+            PlayerInput {
+                drive: 1.0,
+                jump: false,
+                down: false,
+                dash: false,
+            },
+        );
+        // Anda o bastante para sair da escada e cair sobre a prancha solta, e
+        // SOLTA — 400 tiques o levavam para o outro lado do mundo, e medir o
+        // fim media o passeio, nao a queda.
+        let mid = settle(&mut r, 45, t);
+        r.bridge.set_player_input(r.player, PlayerInput::default());
+        let _ = settle(&mut r, 200, mid);
+        Some(y_of(&r.sim))
+    } else {
+        None
+    };
+    if let Some(y) = control {
+        let mut q = r.sim.world().try_query::<(&Name, &Transform)>().unwrap();
+        let mut x = f32::NAN;
+        for (n, t) in q.iter(r.sim.world()) {
+            if n.as_str() == "Player" {
+                x = t.translation.x;
+            }
+        }
+        eprintln!("CONTROLE (sem descida): fim y {y:.3} x {x:.3}");
+        return;
+    }
+    let t = press(&mut r, down_jump(), 4, 120, t);
+    let after_drop = y_of(&r.sim);
+    let live = r.bridge.player_is_dropping(r.player);
+
+    // Anda para a direita ate' cair da escada e chegar a' prancha solta.
+    r.bridge.set_player_input(
+        r.player,
+        PlayerInput {
+            drive: 1.0,
+            jump: false,
+            down: false,
+            dash: false,
+        },
+    );
+    let mid = settle(&mut r, 45, t);
+    r.bridge.set_player_input(r.player, PlayerInput::default());
+    let _ = settle(&mut r, 200, mid);
+    let end = y_of(&r.sim);
+    let rest_far = far_y + PLANK_HALF_Y + FLOAT_HEIGHT;
+    eprintln!(
+        "descida VIVA {live} | desceu {after_drop:.3} | fim {end:.3} \
+         (prancha solta segura em {rest_far:.3}, chao em {:.3})",
+        FLOOR_TOP + FLOAT_HEIGHT
+    );
+    eprintln!(
+        "  => a prancha SOLTA {}",
+        if (end - rest_far).abs() < 0.2 {
+            "SEGUROU  (a afirmacao da W20 era grande demais)"
+        } else {
+            "NAO segurou (a cena inteira dissolve mesmo)"
+        }
+    );
+}

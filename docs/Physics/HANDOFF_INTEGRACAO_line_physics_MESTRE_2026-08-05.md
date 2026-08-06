@@ -766,15 +766,42 @@ cruzou 600 ⇒ os dois gates da prancha atravessada saíram por ASSUNTO para
 julgar. A janela passou a acabar onde a **chamada** acaba, que é a propriedade
 que ele percorre; mutação re-provada.
 
-### O que segue aberto (a cura conhecida da borda de baixo)
+### ⛔ E a cura da borda de baixo foi construída, MEDIDA e REVERTIDA (W21)
 
-O bit da descida viaja no **CORPO** e vale para **toda** plataforma one-way da
-cena, então enquanto a descida da faixa que sobra vive, **nenhuma** prancha é
-sólida para ele. A cura é a descida **por-PLATAFORMA**: o gancho a consultar um
-conjunto de pares em vez de um bit no `user_data`, e o gesto de armar a passar
-toda plataforma que o corpo SOBREPÕE (não só a de baixo dos pés). Isso muda a
-assinatura do gancho e quer wave própria — e o gate do fantasma fica **vermelho**
-no dia em que ela chegar, de propósito.
+Este handoff dizia, uma versão atrás, que o bit da descida viaja no **CORPO** e
+que por isso *"enquanto a descida da faixa que sobra vive, **nenhuma** prancha é
+sólida para ele"* — e prescrevia a descida **por-PLATAFORMA** como cura.
+
+Ela foi construída inteira: conjunto de pares `(corpo, plataforma)` no lugar do
+bit como autoridade do gancho, evidência por par, o gesto de armar a levar também
+as plataformas que o corpo **já sobrepõe** (do grafo de contatos, porque a
+prancha dos pés não aparece lá — a perna o segura acima dela), e o raio do sensor
+a ignorar a lista inteira em vez de um handle.
+
+**E foi revertida, porque a medição não achou diferença nenhuma.** Numa cena com
+a escada apertada e uma prancha **SOLTA** ao lado, mais abaixo:
+
+| mundo | onde ele para |
+|---|---|
+| controle (sem descida) | `−1,998` — a prancha solta o segura |
+| **bit GLOBAL (o que shipa)** | **`−1,998` — ela o segura na mesma** |
+| **por-plataforma** | **`−1,998` — idêntico** |
+
+⚠️ **A afirmação era grande demais, e o mecanismo diz por quê:** o bit global
+limpa **contatos do SOLVER**, e quem segura este personagem é a **MOLA** — o raio
+dela só ignora a plataforma da travessia, então toda outra prancha continua a
+pegá-lo. O custo real de uma descida viva é a prancha que ela nomeia, não a cena.
+
+⚠️ **E a sonda falhou o próprio controle DUAS vezes** antes de decidir: primeiro
+as pranchas da fixture mediam 40 de meia-largura e ele não tinha de onde sair;
+depois ela o deixava andar 400 tiques e ele **atravessava** a prancha solta a
+caminho do outro lado do mundo, então o fim media o passeio e não a queda. *Um
+A/B em que os dois lados dão o mesmo número só vale depois de o controle dar um
+número diferente.*
+
+Fica a sonda (`measure_whether_a_live_drop_really_dissolves_the_whole_scene`,
+com o controle embutido) e este parágrafo, para ninguém reconstruir a cura sem
+saber que ela já foi medida.
 
 ## §8 — Aberto, com o preço ao lado
 

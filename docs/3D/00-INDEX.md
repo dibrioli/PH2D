@@ -29,7 +29,7 @@ MUDANÇA: 2026-07-30 — o MVP em TypeScript foi CANCELADO (ver 02.4)
 
 | Se sua tarefa é… | Leia, nesta ordem |
 |---|---|
-| **ASSUMIR A LINHA E IMPLEMENTAR (comece aqui)** | [[03.8-HANDOFF-implementador-W4]] |
+| **ASSUMIR A LINHA E IMPLEMENTAR (comece aqui)** | [[HANDOFF_CONTINUACAO_line_sculpt3d_2026-08-06]] — o estado VIVO da linha (o que não entrou no `main` ainda, o que está aberto e em que ordem) → [[03.8-HANDOFF-implementador-W4]] (o protocolo) |
 | **portar QUALQUER COISA do SculptGL** | [[03.4-Referencia-SculptGL]] (a política + o livro-razão) → [[03.7-Oraculo-de-fidelidade]] (o protocolo) |
 | **saber o que vem agora** | [[06.1-Waves-riscos-e-alvos]] |
 | entender a decisão inteira | `ADR-0150` → [[02.1-Representacao-malha-primaria]] |

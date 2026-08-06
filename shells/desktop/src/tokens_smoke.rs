@@ -13,6 +13,7 @@
 //! ⚠️ **E ela imprime o número que a torna válida:** quantos tokens o painel vai listar. Se for
 //! zero, PARE — a tabela não chegou, e o resto do roteiro não diz nada.
 
+use crate::smoke_script::Step;
 use ph2d_vec_scene::{Paint, Rgba8, VecPath, rectangle};
 
 /// Três formas quaisquer: o CONTROLE de que a arte não é chrome.
@@ -62,6 +63,88 @@ fn open(app: &mut crate::App) {
     }
 }
 
+/// Os passos que o artista executa. ⚠️ Eles vivem numa CONST para o gate de largura os poder
+/// medir sem abrir uma janela — um roteiro que quebra no terminal é o defeito que a porta
+/// [`crate::smoke_script`] existe para impedir.
+const STEPS: &[Step] = &[
+    Step {
+        verb: "O PAINEL",
+        lines: &[
+            "Ele já está aberto à direita. A tecla T abre e fecha.",
+            "A 1ª linha diz o modo vigente e quantos tokens estão autorados nele.",
+        ],
+    },
+    Step {
+        verb: "A COR RE-VESTE O APP INTEIRO",
+        lines: &[
+            "Clique a swatch de 'accent' e escolha um verde no picker.",
+            "A janela toda muda enquanto você arrasta: realces, foco, botões.",
+            "Não é uma prévia — é o app que você está a usar.",
+        ],
+    },
+    Step {
+        verb: "O RESET DA LINHA",
+        lines: &[
+            "A linha autorada fica com o nome realçado e ganha um Reset.",
+            "Carregue nele: a cor volta à de fábrica e o Reset desaparece.",
+        ],
+    },
+    Step {
+        verb: "O MODO",
+        lines: &[
+            "Autore 'bg-0' (o fundo) e aperte M para ciclar o tema.",
+            "O Forge fica com a sua cor; os outros três seguem de fábrica —",
+            "o override é do PAR (modo, token). Volte ao Forge com mais três M.",
+        ],
+    },
+    Step {
+        verb: "RESET THIS MODE",
+        lines: &[
+            "Devolve o modo vigente inteiro, e SÓ ele.",
+            "Autore algo noutro modo antes, e confirme que aquilo sobrevive.",
+        ],
+    },
+    Step {
+        verb: "O ELO — um token SEGUE outro",
+        lines: &[
+            "Cada linha tem um botão de corrente à direita.",
+            "Clique o da linha que quer MUDAR: ela arma.",
+            "Clique o da linha que ela deve SEGUIR: o elo fecha.",
+            "É a ordem em que se fala — 'o border segue o accent'.",
+            "O rótulo passa a dizer 'border-emph - accent'.",
+            "Agora autore o accent noutra cor: quem o segue muda junto, na hora.",
+            "Clicar de novo a linha armada desarma (não existe auto-elo).",
+        ],
+    },
+    Step {
+        verb: "O CONTRASTE — o aviso da WCAG",
+        lines: &[
+            "Pegue 'text-1' e escolha uma cor quase igual à do fundo.",
+            "Nasce um bloco de aviso no topo: qual par quebrou, a razão medida",
+            "e a que a norma exige. E as DUAS linhas do par ganham a marca —",
+            "o texto E o fundo, porque escurecer o fundo quebra o texto.",
+            "Nada disso é clicável, de propósito: consertar é escolher outra cor.",
+            "Dê Reset no text-1 e o bloco tem de sumir inteiro.",
+        ],
+    },
+    Step {
+        verb: "O ARQUIVO",
+        lines: &[
+            "Autore duas cores E um elo. Ctrl+S, feche o app, reabra, Ctrl+O.",
+            "As cores e o elo voltam.",
+            "Depois abra um projeto de fábrica: o app tem de voltar ao de fábrica",
+            "(o load ESQUECE o documento anterior).",
+        ],
+    },
+    Step {
+        verb: "O CONTROLE",
+        lines: &[
+            "As três formas do canvas não mudam de cor em passo nenhum.",
+            "Re-vestir o chrome não toca no documento.",
+        ],
+    },
+];
+
 fn announce(app: &mut crate::App) {
     let Some(gfx) = app.gfx.as_ref() else {
         return;
@@ -71,56 +154,39 @@ fn announce(app: &mut crate::App) {
         .as_ref()
         .map_or_else(ph2d_tokens::Theme::default, |h| h.theme);
     eprintln!(
-        "[tokens] painel ABERTO com {} tokens de cor no modo vigente; {} autorado(s). A cena tem \
-         {} formas, e elas sao o CONTROLE.",
+        "[tokens] painel ABERTO: {} tokens de cor no modo vigente, {} autorado(s); \
+         {} formas de controle na cena.",
         ph2d_tokens::ColorToken::ALL.len(),
         ph2d_tokens::overrides::overridden_count(theme),
         gfx.vec_scene.paths().len()
     );
-    eprintln!("[tokens] o roteiro:");
-    eprintln!("  1. O painel **Tokens** esta' aberto a' direita (a tecla **T** abre e fecha).");
-    eprintln!("     A 1a linha diz o MODO vigente e quantos tokens estao autorados nele.");
-    eprintln!("  2. ⚠️ **A PROVA DA WAVE**: clique na swatch de **accent** e escolha um verde no");
-    eprintln!("     picker. A janela INTEIRA muda junto — realces, foco, botoes — enquanto voce");
-    eprintln!("     arrasta. Nao e' uma previa: e' o app que voce esta' a usar.");
-    eprintln!(
-        "  3. A linha autorada fica com o NOME realcado e ganha um **Reset**. Carregue nele:"
-    );
-    eprintln!("     a cor volta a' de fabrica e o Reset desaparece (um Reset sobre um token de");
-    eprintln!("     fabrica seria um clique que nao faz nada).");
-    eprintln!("  4. ⚠️ **O MODO**: autore **bg-0** (o fundo) e aperte **M** para ciclar o tema. O");
-    eprintln!("     Forge fica com a sua cor; os outros tres continuam de fabrica — o override e'");
-    eprintln!("     do PAR (modo, token). Volte ao Forge com mais tres **M**.");
-    eprintln!("  5. **Reset This Mode** devolve o modo vigente inteiro. ⚠️ SO' o vigente: autore");
-    eprintln!("     algo noutro modo antes, e confirme que ele sobrevive.");
-    eprintln!(
-        "  6. ⚠️ **O ELO** (W4b.1): cada linha tem um botao de CORRENTE a' direita. Clique o"
-    );
-    eprintln!("     da linha que voce quer MUDAR (ela arma) e depois o da linha que ela deve");
-    eprintln!("     SEGUIR — a ordem em que se fala: 'o border segue o accent'. O rotulo passa a");
-    eprintln!("     dizer 'border-emph  -  accent' e a swatch mostra a cor do ALVO.");
-    eprintln!("     Agora autore o **accent** noutra cor: quem o segue muda JUNTO, na hora.");
-    eprintln!("     Clicar a propria linha armada DESARMA (nao existe auto-elo).");
-    eprintln!("  7. ⚠️ **O CONTRASTE** (W4b.2): pegue **text-1** e escolha uma cor quase igual a'");
-    eprintln!("     do fundo. Aparece um bloco de AVISO no topo do painel dizendo qual par");
-    eprintln!("     quebrou, com a razao medida e a que a WCAG exige — e as DUAS linhas do par");
-    eprintln!("     (o texto E o fundo) ganham a marca de aviso.");
-    eprintln!("     ⚠️ Nada disso e' clicavel, de proposito: consertar e' escolher outra cor.");
-    eprintln!("     Devolva o **text-1** com o Reset e o bloco tem de SUMIR inteiro.");
-    eprintln!(
-        "  8. ⚠️ **ELA SOBREVIVE AO ARQUIVO**: autore duas cores E um elo, **Ctrl+S**, feche"
-    );
-    eprintln!(
-        "     o app, reabra e **Ctrl+O**. As cores E o elo voltam. Depois abra um projeto de"
-    );
-    eprintln!("     FABRICA: o app tem de voltar as cores de fabrica (o load ESQUECE o anterior).");
-    eprintln!("  9. ⚠️ **O CONTROLE**: as tres formas do canvas nao mudam de cor em passo nenhum.");
-    eprintln!("     Re-vestir o chrome nao toca no documento.");
+    crate::smoke_script::script("tokens", "o painel já está aberto", STEPS);
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// **O ROTEIRO cabe no terminal** — o defeito medido que originou a porta `smoke_script`.
+    ///
+    /// ⚠️ Sem ele o roteiro volta a quebrar sozinho: as linhas desta cena tinham 81-82 colunas
+    /// e o teto é 75, então a continuação perdia a indentação e lia-se como um passo novo.
+    #[test]
+    fn the_script_fits_in_a_terminal() {
+        crate::smoke_script::assert_fits("tokens", STEPS);
+    }
+
+    /// **A sonda que MOSTRA o roteiro** — o oráculo de legibilidade é o olho, não um assert.
+    ///
+    /// `cargo test -p ph2d-host-desktop --bins show_the_script -- --ignored --nocapture`
+    ///
+    /// ⚠️ O gate ao lado prova que as linhas CABEM; nenhum assert prova que elas se LEEM. Quem
+    /// escrever a próxima cena roda isto antes de decidir que o roteiro está pronto.
+    #[test]
+    #[ignore = "sonda: imprime o roteiro para ser lido"]
+    fn show_the_script() {
+        crate::smoke_script::script("tokens", "o painel já está aberto", STEPS);
+    }
 
     /// **A cena tem o que o passo do CONTROLE manda olhar** — três formas de cores distintas.
     ///
@@ -146,7 +212,7 @@ mod tests {
     fn the_table_the_panel_lists_is_not_empty() {
         assert!(
             ph2d_tokens::ColorToken::ALL.len() > 20,
-            "a tabela de cor tem {} tokens — o painel nao teria o que listar",
+            "a tabela de cor tem {} tokens — o painel não teria o que listar",
             ph2d_tokens::ColorToken::ALL.len()
         );
     }

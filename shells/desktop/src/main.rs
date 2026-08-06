@@ -306,6 +306,7 @@ mod sim_populate;
 /// As cenas de smoke do Sketch (=31) e do Hatch (=32) — irmão de `build_smoke`, teto de LOC.
 mod sketch_hatch_smoke;
 mod smoke_layout;
+mod smoke_script;
 mod splice_smoke;
 mod stack_smoke;
 mod stagger_smoke;

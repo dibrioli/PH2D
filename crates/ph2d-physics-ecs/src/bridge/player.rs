@@ -118,12 +118,60 @@ impl PhysicsBridge {
     /// fora (CLAUDE.md §0: nenhum teto sem medição, e aqui não é preciso medir
     /// porque não é preciso teto).
     ///
-    /// ⚠️ **O caso degenerado, nomeado em vez de escondido:** um vão entre duas
-    /// plataformas MENOR que o personagem deixa a descida armada para sempre —
-    /// ele nunca fica inteiramente abaixo da de cima. Essa cena já está quebrada
-    /// sem descida nenhuma (o personagem não cabe ali), e é por isso que ela não
-    /// ganhou um relógio de segurança: o relógio consertaria o caso impossível
-    /// e estragaria o normal.
+    /// # ⚠️ O caso degenerado é REAL, e a nota que o isentava estava ERRADA
+    ///
+    /// A frase que esteve aqui dizia: *"um vão entre duas plataformas menor que
+    /// o personagem deixa a descida armada para sempre — essa cena já está
+    /// quebrada sem descida nenhuma (o personagem não cabe ali)"*. A segunda
+    /// metade foi **MEDIDA e é falsa** (`tests/measure_drop_retire.rs`): numa
+    /// cápsula de meia-altura 0,5 flutuando 0,9 sobre pranchas de
+    /// meia-espessura 0,1, todo vão entre **1,15 m e 1,55 m** põe o personagem
+    /// em pé no degrau de baixo, **perfeitamente estável** (0,0000 m de
+    /// variação num segundo), com a cabeça a atravessar o de cima — que é
+    /// literalmente para isso que uma prancha jump-through existe. Ele CABE.
+    ///
+    /// ⚠️ **E o preço não é a prancha de onde ele desceu:** o bit viaja no
+    /// CORPO e o gancho limpa os contatos com **qualquer** plataforma one-way
+    /// (ver `oneway::modify_solver_contacts`), então uma descida que nunca se
+    /// aposenta apaga **todas as pranchas da cena, para sempre** — medido, um
+    /// pulo simples deixa de voltar a pousar na prancha de cima.
+    ///
+    /// # ⚠️ E a lei de HOJE tem uma segunda borda, que também é um defeito
+    ///
+    /// Ela aposenta a descida quando a caixa fica inteiramente abaixo da
+    /// prancha, e **isso acontece a meio da queda** — a prancha volta a ser
+    /// sólida com o personagem ainda a atravessá-la, e o contato pode atirá-lo
+    /// para cima. Mapeado numa escada de três degraus, um aperto e uma
+    /// tentativa de voltar:
+    ///
+    /// | meia-espessura | vão | o que acontece |
+    /// |---|---|---|
+    /// | 0,15 | 1,60 – 1,70 | desce, e a prancha fica **fantasma** para sempre |
+    /// | 0,15 | **1,75 – 1,85** | **ARREMESSADO de volta** — não desce de todo |
+    /// | 0,15 | 1,90 + | funciona |
+    /// | 0,10 | 1,50 – 1,60 | fantasma |
+    /// | 0,10 | 1,65 + | funciona |
+    ///
+    /// ⚠️ **O mecanismo tem uma janela útil e as DUAS bordas dela são
+    /// defeitos**, e a cena 91 (`RISE = 2,0`, pranchas de 0,15) vive **dez
+    /// centímetros** acima da borda de arremesso sem que ninguém soubesse.
+    ///
+    /// ⚠️ **A cura NÃO é mexer neste limiar, e isso foi medido a caro.** Três
+    /// leis foram construídas e reprovadas, cada uma trocando um regime por
+    /// outro: o centro do corpo abaixo da base da prancha (a virada do cuspe,
+    /// medida **em repouso** em quatro espessuras) **cospe o personagem a meio
+    /// da queda** — numa prancha de 0,15 ele desce a 5,79 e volta a repousar em
+    /// 7,05, dois degraus ACIMA; exigir que ele tenha pousado dispara no
+    /// instante em que o raio ALCANÇA o degrau, ainda uma altura-de-perna acima
+    /// dele; e *"deixou de descer"* não tem régua — em repouso a mola deixa um
+    /// resíduo descendente de ~1e-7 m/tique, então o sinal é uma moeda ao ar e
+    /// o limiar de sono do mundo é largo demais.
+    ///
+    /// **O momento seguro de re-solidificar uma prancha que o SOBREPÕE não é
+    /// função da pose sozinha**, e uma lei que o afirme é verde num regime e
+    /// vermelha no outro. Fica para uma wave com smoke próprio — quem a abrir
+    /// julga as duas bordas ao mesmo tempo, porque a de cima é a que hoje
+    /// **parece que o botão não faz nada**.
     fn retire_drops(&mut self) {
         // O caso comum é ninguém a descer, e ele não lê um byte.
         if self.player_drop.is_empty() {

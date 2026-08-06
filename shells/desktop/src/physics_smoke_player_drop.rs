@@ -27,6 +27,24 @@
 //! é possível **por pouco**, que é o que faz a escada ser subida E descida com o
 //! mesmo par de botões. Um vão de 2,5 tornaria a subida impossível e a cena
 //! mediria só metade do idioma.
+//!
+//! # ⚠️ E os 2,0 m estão DEZ CENTÍMETROS acima de um penhasco
+//!
+//! Os `0,3 m de margem` acima são a folga que a lei de aposentadoria EXIGE, e
+//! a medição (`ph2d-physics-ecs/tests/measure_drop_retire.rs`) mostra que ela é
+//! mais apertada do que parece. Nesta geometria exacta — pranchas de
+//! meia-espessura `0,15`, um aperto e uma tentativa de voltar:
+//!
+//! | `RISE` | o que acontece |
+//! |---|---|
+//! | 1,60 – 1,70 | desce, e as pranchas ficam **fantasma** para sempre |
+//! | **1,75 – 1,85** | **arremessado de volta** — o botão parece não fazer nada |
+//! | 1,90 + | funciona |
+//!
+//! ⚠️ **Portanto: NÃO aperte o `RISE`.** Não é uma escolha de composição — é a
+//! diferença entre a cena e um defeito. O porquê das duas bordas está no aviso
+//! de `bridge::player::retire_drops`, junto com as três leis que já foram
+//! construídas e reprovadas para as curar.
 
 use ph2d_core::Vec2;
 use ph2d_ecs::{Name, Transform};

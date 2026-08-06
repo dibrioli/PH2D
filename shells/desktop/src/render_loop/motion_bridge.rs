@@ -174,14 +174,14 @@ mod plumbing_tests;
 #[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
 #[path = "motion_bridge_range_tests.rs"]
 mod range_tests;
+#[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
+#[path = "motion_bridge_rename_tests.rs"]
+mod rename_tests;
 /// O censo do TETO de linhas — o terceiro irmão do `range_tests`/`unit_tests`: eles pinam a
 /// escala e a unidade de um valor, este pina que o valor **aparece**.
 #[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
 #[path = "motion_bridge_rowcap_tests.rs"]
 mod rowcap_tests;
-#[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
-#[path = "motion_bridge_rename_tests.rs"]
-mod rename_tests;
 #[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
 #[path = "motion_bridge_subgraph_ports_tests.rs"]
 mod subgraph_ports_tests;

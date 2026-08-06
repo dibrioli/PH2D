@@ -18,8 +18,7 @@ use std::fs;
 
 #[test]
 fn the_gpu_extra_draw_loops_the_runs_binding_material_bg() {
-    let src =
-        fs::read_to_string("src/renderer_draw.rs").expect("renderer_draw.rs");
+    let src = fs::read_to_string("src/renderer_draw.rs").expect("renderer_draw.rs");
 
     // The `gpu_extra` block of the normal pass.
     let block = src
@@ -50,9 +49,7 @@ fn the_gpu_extra_draw_loops_the_runs_binding_material_bg() {
         block.contains("material_bg(r.texture_id"),
         "each run must bind its object's texture via material_bg(r.texture_id, ..)"
     );
-    let per_run = block
-        .find("for r in runs")
-        .expect("checked above");
+    let per_run = block.find("for r in runs").expect("checked above");
     let bind = block
         .find("material_bg(r.texture_id")
         .expect("checked above");

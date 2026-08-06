@@ -225,7 +225,8 @@ fn a_shared_batch_tessellates_each_geometry_once_not_per_instance() {
     dispatch_batch(&star, &disc, &items, &mut target);
     let (builds, cooks) = counters::take();
     assert_eq!(
-        builds, 2,
+        builds,
+        2,
         "o lote tesselou por INSTANCIA ({}) em vez de por geometria (2) — o cache nao disparou",
         2 * n
     );

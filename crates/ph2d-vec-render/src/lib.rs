@@ -437,9 +437,13 @@ pub(crate) fn draw_path_with(
                     }
                     Cow::Owned(p) => {
                         let line_bp = build_bezpath(&p);
-                        target
-                            .inner_mut()
-                            .stroke(&kurbo_stroke(&s), transform, &brush, None, &line_bp);
+                        target.inner_mut().stroke(
+                            &kurbo_stroke(&s),
+                            transform,
+                            &brush,
+                            None,
+                            &line_bp,
+                        );
                     }
                 },
                 StrokePiece::Symbol { path: geo } => {

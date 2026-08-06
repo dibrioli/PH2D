@@ -95,7 +95,11 @@ fn measure_the_param_row_census() {
     let census = row_census();
     println!("\n=== LINHAS DE PAINEL POR NÓ (teto atual: {MAX_PARAM_ROWS}) ===");
     for (ty, n) in census.iter().take(20) {
-        let flag = if *n > MAX_PARAM_ROWS { "  <-- CORTADO" } else { "" };
+        let flag = if *n > MAX_PARAM_ROWS {
+            "  <-- CORTADO"
+        } else {
+            ""
+        };
         println!("{n:3}  {ty}{flag}");
     }
     let over = census.iter().filter(|(_, n)| *n > MAX_PARAM_ROWS).count();
@@ -105,4 +109,3 @@ fn measure_the_param_row_census() {
         over
     );
 }
-

@@ -323,13 +323,11 @@ pub(crate) fn build_params_snapshot(
                 .and_then(|m| m.get(h.param))
                 .cloned()
                 .unwrap_or_default();
-            rows.push(ParamRow::Palette(
-                ph2d_panel_motion_params::PaletteRow {
-                    name: h.param,
-                    label: h.label.to_string(),
-                    value,
-                },
-            ));
+            rows.push(ParamRow::Palette(ph2d_panel_motion_params::PaletteRow {
+                name: h.param,
+                label: h.label.to_string(),
+                value,
+            }));
             continue;
         }
         if h.widget == ParamWidget::Gradient {

@@ -48,7 +48,14 @@ pub fn lower_module(present: [bool; 6]) -> String {
          @group(0) @binding(0) var<uniform> params: LowerParams;\n\
          @group(0) @binding(1) var<storage, read_write> instances: array<u32>;\n",
     );
-    let tys = ["vec2<f32>", "vec2<f32>", "f32", "vec4<f32>", "vec4<f32>", "f32"];
+    let tys = [
+        "vec2<f32>",
+        "vec2<f32>",
+        "f32",
+        "vec4<f32>",
+        "vec4<f32>",
+        "f32",
+    ];
     let mut slot = 2u32;
     for (i, col) in LOWER_COLUMNS.iter().enumerate() {
         if present[i] {

@@ -395,8 +395,7 @@ fn the_live_vector_scale_of_shared_instances() {
         // (D) A PORTA DO PRODUTO: `draw_shared_instances` com a estrela COMPLETA (fill+stroke).
         // É o número honesto que decide o joelho do LOD — o custo crisp cacheado do que o artista
         // de fato pinta (o `=5`/`=6`), não só o fill isolado de (B).
-        let items: Vec<(u32, Affine, [f32; 4])> =
-            (0..n).map(|i| (1u32, pose(i), tint)).collect();
+        let items: Vec<(u32, Affine, [f32; 4])> = (0..n).map(|i| (1u32, pose(i), tint)).collect();
         let mut door = VectorScene::new();
         door.reset();
         draw_shared_instances(items.iter().copied(), |_| Some(&star_full), &mut door);

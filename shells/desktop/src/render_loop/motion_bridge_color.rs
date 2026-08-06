@@ -242,7 +242,9 @@ pub(super) fn apply_palette_pick(
     srgb: [u8; 4],
 ) {
     let mut colors = current_palette(motion, nid, param);
-    let Some(slot) = colors.get_mut(i) else { return };
+    let Some(slot) = colors.get_mut(i) else {
+        return;
+    };
     // ⚠️ Compare in sRGB8 — the space the pick lives in — so merely OPENING the picker on
     // a colour that is not an exact 8-bit round-trip does not quantize the palette. The
     // same guard `apply_gradient_stop_pick` and `apply_color_to_node` document.

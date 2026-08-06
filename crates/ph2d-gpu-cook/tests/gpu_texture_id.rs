@@ -50,7 +50,13 @@ fn registry() -> NodeRegistry {
     reg
 }
 
-fn connect(g: &mut Graph, from: ph2d_nodegraph::graph::NodeId, fp: u16, to: ph2d_nodegraph::graph::NodeId, tp: u16) {
+fn connect(
+    g: &mut Graph,
+    from: ph2d_nodegraph::graph::NodeId,
+    fp: u16,
+    to: ph2d_nodegraph::graph::NodeId,
+    tp: u16,
+) {
     g.connect(Edge {
         from: (from, fp),
         to: (to, tp),

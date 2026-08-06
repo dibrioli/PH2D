@@ -38,6 +38,7 @@ pub mod falloff;
 pub mod falloff_curve;
 pub mod footprint;
 pub mod heading;
+pub mod ablate; // measurement-only ablation switch for the height texel loop (never armed in product)
 pub mod height;
 /// **Impasto — volume conservation**: the paint the brush shoves aside, and the ridge it banks it into.
 pub mod height_film;

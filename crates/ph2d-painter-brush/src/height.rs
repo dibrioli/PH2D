@@ -314,6 +314,9 @@ pub fn accumulate_dab_height(
     let lut = film_lut
         .as_ref()
         .map(|l| crate::height_film::FilmLutPlan::new(l, dab.footprint, radius, sweep));
+    // A máscara de ablação, lida UMA vez por dab (ao lado do `film_lut_for`, que já é TLS por dab).
+    // `0` em todo caminho de produto; ver [`crate::ablate`].
+    let ablate = crate::ablate::get();
     let mut touched = false;
     for py in y0..y1 {
         let dy = (py as f32 + 0.5) - cy;
@@ -325,25 +328,33 @@ pub fn accumulate_dab_height(
             // lives in that space (see [`crate::height_film::FilmAa::film_at_lut`]).
             let wv = dab.footprint.apply([rx * inv_radius, ry * inv_radius]);
             let t = (wv[0] * wv[0] + wv[1] * wv[1]).sqrt();
-            let w = crate::dab::silhouette_at(spec, dab.shape, t, px, py, dab.center, radius);
+            let w = if ablate & crate::ablate::SILHOUETTE != 0 {
+                f32::from(t < 1.0) // MESMO suporte, sem falloff/Shape/mascara -- so a sonda arma isto
+            } else {
+                crate::dab::silhouette_at(spec, dab.shape, t, px, py, dab.center, radius)
+            };
             // The film at this texel: single-sample `film_of` (byte-identical old path), or the
             // fractional area coverage under Smooth Edges — the SAME fraction `dab.rs` gives the
             // pigment (same door, same grid, the caller's own swept-silhouette chain).
-            let film = match &film_aa {
-                Some(aa) => aa.film_at_planned(
-                    lut.as_ref(),
-                    t,
-                    wv,
-                    [dx, dy],
-                    || w,
-                    |ox, oy| {
-                        let (rx2, ry2) = sweep_residual(dx + ox, dy + oy, sweep);
-                        spec.falloff_weight(
-                            dab.footprint.falloff_t(rx2 * inv_radius, ry2 * inv_radius),
-                        )
-                    },
-                ),
-                None => crate::height_film::film_of(w),
+            let film = if ablate & crate::ablate::FILM_AA != 0 {
+                crate::height_film::film_of(w) // o ramo `None` do proprio kernel
+            } else {
+                match &film_aa {
+                    Some(aa) => aa.film_at_planned(
+                        lut.as_ref(),
+                        t,
+                        wv,
+                        [dx, dy],
+                        || w,
+                        |ox, oy| {
+                            let (rx2, ry2) = sweep_residual(dx + ox, dy + oy, sweep);
+                            spec.falloff_weight(
+                                dab.footprint.falloff_t(rx2 * inv_radius, ry2 * inv_radius),
+                            )
+                        },
+                    ),
+                    None => crate::height_film::film_of(w),
+                }
             };
             // A texel wholly outside silhouette AND film lays nothing (with AA a rim texel can carry
             // fractional film while its CENTRE silhouette is already 0 — it must not be skipped).
@@ -366,6 +377,9 @@ pub fn accumulate_dab_height(
             // Enveloping the paint rather than the height is what makes every knob live: the winner is
             // then chosen by a quantity that no setting can change, so re-deriving the relief at a new
             // Body / Source / Depth cannot silently re-shuffle which dab shaped which pixel.
+            if ablate & crate::ablate::TAIL != 0 {
+                continue; // sem grain, sem mordida, sem as quatro escritas, sem derive_height
+            }
             let m = (w * coverage).clamp(0.0, 1.0);
             if m <= fields.paint[i] {
                 continue;

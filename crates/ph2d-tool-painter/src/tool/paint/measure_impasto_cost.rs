@@ -499,3 +499,91 @@ fn is_the_silhouette_chain_the_aa_cost() {
         );
     }
 }
+
+/// **DE QUE OS 111,6 ms DA ALTURA SÃO FEITOS** — a medição que o `the_impasto_draw_to_split`
+/// prescreveu e ninguém fez.
+///
+/// O nível 2 isolou a metade da ALTURA pelo `DrawTo` (a última porta de PRODUTO que existe) e parou
+/// com a pergunta escrita: *"o que eu NÃO consegui estabelecer: **por que** esses 118 ms"*. Abaixo do
+/// `DrawTo` não há knob do artista que separe a silhueta do AA do filme, nem o miolo do laço da cauda
+/// de escritas — então a ablação passa a ser feita **DENTRO do laço que o produto roda**
+/// ([`ph2d_painter_brush::ablate`]), e não num laço próprio que ficaria cego à porta.
+///
+/// ⚠️ **A CAUDA é desligada nos DOIS lados de cada comparação**, e sem isso a tabela mente: trocar a
+/// silhueta por um degrau muda `m = w·coverage`, que decide a rejeição de envelope
+/// (`if m <= paint[i] { continue }`) — com `w = 1` o 1º dab satura o texel e os vizinhos passam a ser
+/// rejeitados mais cedo, então `full` contra `full|SILHOUETTE` mediria a silhueta **e** a mudança na
+/// taxa de rejeição, atribuindo as duas à silhueta.
+///
+/// Leitura:
+/// * `cauda`      = `full − TAIL` — grain, mordida do bow wave, as quatro escritas, `derive_height`
+/// * `silhueta`   = `TAIL − TAIL|SILHOUETTE` — o `silhouette_at` por texel (o alvo da FUSÃO)
+/// * `filme (AA)` = `TAIL − TAIL|FILM_AA` — o anti-aliasing do filme
+/// * `miolo`      = `TAIL|SILHOUETTE|FILM_AA` — sweep + footprint + `sqrt` + laço + envelope do filme
+///
+/// ⚠️ **O raio é o do PRODUTO.** O log de smoke opera em ~185 (107 k visitas/dab); as tabelas dos
+/// irmãos param em 100, e a wave que sair daqui é decidida pelo regime que o artista usa.
+///
+/// Rodar: `cargo test -p ph2d-tool-painter --release what_the_height_walk_is_made_of -- --ignored --nocapture --test-threads=1`
+#[test]
+#[ignore = "measurement, not a gate — run explicitly"]
+fn what_the_height_walk_is_made_of() {
+    use ph2d_painter_brush::ablate;
+    use ph2d_painter_brush::height::DrawTo;
+
+    const DIST: f32 = 600.0;
+    const SAMPLES: u8 = 5;
+
+    // Só a metade da ALTURA: `DrawTo::Depth` é corpo sem pigmento, a porta do nível 2.
+    fn stroke_ms(side: u32, radius: f32, mask: u32) -> f64 {
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; (side * side * 4) as usize], side, side);
+        t.toggle_brush_impasto();
+        t.set_brush_size_px(radius * 2.0);
+        t.paint.brush.impasto_draw_to = DrawTo::Depth;
+        for slot in &mut t.paint.brush_by_mode {
+            slot.impasto_draw_to = DrawTo::Depth;
+        }
+        let mut samples = Vec::new();
+        for k in 0..SAMPLES {
+            // ⚠️ Faixa PRÓPRIA por amostra: o `ground` é da CAMADA, então um 2º traço na mesma faixa
+            // acorda a família do bow wave e a tabela passa a medir outra coisa.
+            let y = 400.0 + f32::from(k) * 700.0;
+            samples.push(ablate::with(mask, || {
+                ms(&mut || {
+                    t.on_canvas_pointer(cp([300.0, y], PointerPhase::Down));
+                    for i in 1..=24u8 {
+                        let x = 300.0 + DIST / 24.0 * f32::from(i);
+                        t.on_canvas_pointer(cp([x, y], PointerPhase::Move));
+                    }
+                    t.on_canvas_pointer(cp([300.0 + DIST, y], PointerPhase::Up));
+                })
+            }));
+        }
+        samples.sort_by(|a, b| a.partial_cmp(b).expect("finite"));
+        samples[samples.len() / 2]
+    }
+
+    println!("[altura] 4096^2, DrawTo::Depth, traco de 600 px, mediana de {SAMPLES}");
+    println!(
+        "{:>6}  {:>9} {:>9} {:>9} {:>9}  {:>6}",
+        "raio", "full", "cauda", "silhueta", "filme", "miolo"
+    );
+    for radius in [100.0f32, 185.0] {
+        let full = stroke_ms(4096, radius, 0);
+        let no_tail = stroke_ms(4096, radius, ablate::TAIL);
+        let no_sil = stroke_ms(4096, radius, ablate::TAIL | ablate::SILHOUETTE);
+        let no_film = stroke_ms(4096, radius, ablate::TAIL | ablate::FILM_AA);
+        let core = stroke_ms(
+            4096,
+            radius,
+            ablate::TAIL | ablate::SILHOUETTE | ablate::FILM_AA,
+        );
+        println!(
+            "{radius:>6.0}  {full:>9.2} {:>9.2} {:>9.2} {:>9.2}  {core:>6.2}",
+            full - no_tail,
+            no_tail - no_sil,
+            no_tail - no_film,
+        );
+    }
+}

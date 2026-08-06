@@ -241,3 +241,183 @@ fn picking_a_colour_on_a_linked_row_breaks_the_link() {
     let _ = &mut hero;
     clear_color_overrides();
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// A família NUMÉRICA (plano UI/UX W4c.1) — os mesmos gates, na outra grandeza.
+// ═══════════════════════════════════════════════════════════════════════════
+
+use ph2d_panel_tokens::TokensIntent;
+use ph2d_panel_tokens::state::push_intent_for_tests as push;
+use ph2d_tokens::NumToken;
+use ph2d_tokens::num_overrides::{
+    NumValue, clear_num_overrides, num_override, num_overrides, set_num_override,
+};
+
+fn fresh_both() {
+    clear_color_overrides();
+    clear_num_overrides();
+}
+
+/// Uma tela sem picker nenhum — os intents numéricos não passam por ele.
+fn plain_hero() -> HeroScreen {
+    HeroScreen::new(ph2d_editor::NodeId(1))
+}
+
+/// **Um número digitado chega à camada.**
+#[test]
+fn a_num_set_reaches_the_layer() {
+    fresh_both();
+    let mut hero = plain_hero();
+    let theme = hero.theme;
+    push(TokensIntent::NumSet { row: 0, px: 13.0 });
+    assert!(dispatch(&mut hero, &mut toasts()));
+    assert_eq!(NumToken::ALL[0].px(theme), 13.0);
+    fresh_both();
+}
+
+/// ⚠️ **Só escreve quando MUDA**, e o oráculo é o valor EFETIVO — a mesma lei do read-back do
+/// picker. Sem ela, um chip que espelha o efetivo marcaria o projeto sujo por o artista lhe tocar.
+#[test]
+fn a_num_set_that_matches_the_effective_value_writes_nothing() {
+    fresh_both();
+    let mut hero = plain_hero();
+    let theme = hero.theme;
+    let token = NumToken::ALL[0];
+    push(TokensIntent::NumSet {
+        row: 0,
+        px: token.px(theme),
+    });
+    assert!(
+        !dispatch(&mut hero, &mut toasts()),
+        "escrever o valor que ja' estava marcou o projeto como sujo"
+    );
+    assert_eq!(
+        num_override(theme, token),
+        None,
+        "o slot foi AUTORADO com o valor de fabrica — soltar e autorar-o-mesmo nao sao a mesma coisa"
+    );
+    fresh_both();
+}
+
+/// **Digitar um número numa linha que SEGUE outra QUEBRA o elo** — mesmo com o número a coincidir.
+#[test]
+fn typing_a_number_on_a_linked_row_breaks_the_link() {
+    fresh_both();
+    let mut hero = plain_hero();
+    let theme = hero.theme;
+    let (a, b) = (0usize, 3usize);
+    set_num_override(
+        theme,
+        NumToken::ALL[a],
+        Some(NumValue::Alias(NumToken::ALL[b])),
+    )
+    .expect("a fixture nao fecha laco");
+    // Digita EXACTAMENTE o número que o elo já mostrava.
+    let shown = NumToken::ALL[a].px(theme);
+    push(TokensIntent::NumSet { row: a, px: shown });
+    assert!(
+        dispatch(&mut hero, &mut toasts()),
+        "digitar sobre uma linha ligada tem de QUEBRAR o elo"
+    );
+    assert!(
+        matches!(
+            num_override(theme, NumToken::ALL[a]),
+            Some(NumValue::Literal(_))
+        ),
+        "a linha continua a SEGUIR outra depois de o artista escrever um numero"
+    );
+    fresh_both();
+}
+
+/// **Um número que não é um comprimento vira TOAST e não escreve nada.**
+#[test]
+fn a_refused_number_is_said_out_loud_and_writes_nothing() {
+    fresh_both();
+    let mut hero = plain_hero();
+    let theme = hero.theme;
+    let before = num_overrides();
+    let mut q = toasts();
+    push(TokensIntent::NumSet { row: 0, px: -5.0 });
+    assert!(
+        !dispatch(&mut hero, &mut q),
+        "a recusa nao pode marcar o projeto como sujo"
+    );
+    assert_eq!(q.len(), 1, "a recusa foi SILENCIOSA");
+    assert_eq!(num_overrides(), before, "a recusa escreveu na tabela");
+    assert_eq!(NumToken::ALL[0].px(theme), NumToken::ALL[0].factory_px());
+    fresh_both();
+}
+
+/// **O elo numérico chega à camada, e um laço vira toast.**
+#[test]
+fn a_num_link_reaches_the_layer_and_a_loop_is_said_out_loud() {
+    fresh_both();
+    let mut hero = plain_hero();
+    let theme = hero.theme;
+    push(TokensIntent::NumLink { from: 0, to: 3 });
+    assert!(dispatch(&mut hero, &mut toasts()));
+    assert!(matches!(
+        num_override(theme, NumToken::ALL[0]),
+        Some(NumValue::Alias(_))
+    ));
+    // Fechar 3 -> 0 fecha o laço.
+    let mut q = toasts();
+    push(TokensIntent::NumLink { from: 3, to: 0 });
+    assert!(!dispatch(&mut hero, &mut q), "o laco foi ACEITE");
+    assert_eq!(q.len(), 1, "a recusa foi SILENCIOSA");
+    fresh_both();
+}
+
+/// **O Reset numérico solta o slot** (nunca congela o valor de fábrica nele).
+#[test]
+fn a_num_reset_releases_the_slot() {
+    fresh_both();
+    let mut hero = plain_hero();
+    let theme = hero.theme;
+    set_num_override(theme, NumToken::ALL[0], Some(NumValue::Literal(13.0))).unwrap();
+    push(TokensIntent::NumReset(0));
+    assert!(dispatch(&mut hero, &mut toasts()));
+    assert_eq!(num_override(theme, NumToken::ALL[0]), None);
+    fresh_both();
+}
+
+/// ⚠️ **O *Reset This Mode* limpa as DUAS famílias — e só ESTE modo.**
+///
+/// As duas metades falham por defeitos opostos: esquecer a família numérica deixa a escala de pé
+/// depois de um reset que se anuncia total (a metade que ninguém procura), e limpar os quatro modos
+/// leva trabalho que o artista não está a olhar.
+#[test]
+fn reset_all_clears_both_families_of_this_mode_only() {
+    fresh_both();
+    let mut hero = plain_hero();
+    let theme = hero.theme;
+    let other = if theme == Theme::Forge {
+        Theme::Workshop
+    } else {
+        Theme::Forge
+    };
+    put(theme, ColorToken::ALL[0], Some(Color::from_hex(0x00FF00)));
+    put(other, ColorToken::ALL[0], Some(Color::from_hex(0x00FF00)));
+    set_num_override(theme, NumToken::ALL[0], Some(NumValue::Literal(13.0))).unwrap();
+    set_num_override(other, NumToken::ALL[0], Some(NumValue::Literal(13.0))).unwrap();
+
+    push(TokensIntent::ResetAll);
+    assert!(dispatch(&mut hero, &mut toasts()));
+
+    assert_eq!(
+        num_override(theme, NumToken::ALL[0]),
+        None,
+        "o Reset This Mode deixou a ESCALA de pe' — a metade que ninguem procura"
+    );
+    assert_eq!(
+        ph2d_tokens::overrides::color_override(theme, ColorToken::ALL[0]),
+        None,
+        "o Reset This Mode deixou a COR de pe'"
+    );
+    assert!(
+        num_override(other, NumToken::ALL[0]).is_some()
+            && ph2d_tokens::overrides::color_override(other, ColorToken::ALL[0]).is_some(),
+        "o Reset This Mode apagou trabalho de OUTRO modo"
+    );
+    fresh_both();
+}

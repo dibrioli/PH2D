@@ -209,3 +209,134 @@ fn a_file_carrying_a_loop_still_opens() {
     assert_eq!(a.resolve(Theme::Forge), b.resolve(Theme::Forge));
     let _ = set_color_overrides(Vec::new());
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// A família NUMÉRICA (plano UI/UX W4c.1) — ela viaja na MESMA lista.
+// ═══════════════════════════════════════════════════════════════════════════
+
+use ph2d_tokens::num_overrides::{clear_num_overrides, num_override};
+
+fn wipe() {
+    let _ = set_color_overrides(Vec::new());
+    clear_num_overrides();
+}
+
+/// **Um comprimento autorado sobrevive ao save**, e viaja pela CHAVE.
+#[test]
+fn a_numeric_token_round_trips() {
+    wipe();
+    ph2d_tokens::num_overrides::set_num_override(
+        Theme::Forge,
+        NumToken::ALL[0],
+        Some(NumValue::Literal(13.0)),
+    )
+    .unwrap();
+    let saved = collect();
+    assert_eq!(saved.len(), 1);
+    assert_eq!(
+        saved[0].key,
+        NumToken::ALL[0].key(),
+        "viajou o indice, nao a chave"
+    );
+
+    wipe();
+    assert_eq!(install(&saved), 0);
+    assert_eq!(NumToken::ALL[0].px(Theme::Forge), 13.0);
+    wipe();
+}
+
+/// ⚠️ **As DUAS famílias na MESMA lista, e o load devolve cada uma à sua camada.**
+///
+/// Sem a rota por CHAVE, uma entrada de `spacing.md` cairia no `from_key` da cor, devolveria `None`
+/// e seria **contada como descartada** — o artista veria *"1 token descartado"* sobre um arquivo
+/// perfeitamente bom, e a escala não voltaria.
+#[test]
+fn the_two_families_share_one_list_and_each_lands_in_its_own_layer() {
+    wipe();
+    let c = Color {
+        r: 0x11,
+        g: 0x22,
+        b: 0x33,
+        a: 0xFF,
+    };
+    put(Theme::Forge, ColorToken::Accent, Some(c));
+    ph2d_tokens::num_overrides::set_num_override(
+        Theme::Forge,
+        NumToken::ALL[0],
+        Some(NumValue::Literal(13.0)),
+    )
+    .unwrap();
+    let saved = collect();
+    assert_eq!(saved.len(), 2);
+
+    wipe();
+    assert_eq!(
+        install(&saved),
+        0,
+        "uma entrada boa foi contada como descarte"
+    );
+    assert_eq!(ColorToken::Accent.resolve(Theme::Forge), c);
+    assert_eq!(NumToken::ALL[0].px(Theme::Forge), 13.0);
+    wipe();
+}
+
+/// **O load ESQUECE a escala do documento anterior** — o keystone, na outra família.
+///
+/// ⚠️ Um `install` que só instalasse a família presente no arquivo deixaria a escala do projeto A
+/// de pé debaixo das cores do projeto B, e nada na tela diria porquê.
+#[test]
+fn loading_forgets_the_previous_documents_scale() {
+    wipe();
+    ph2d_tokens::num_overrides::set_num_override(
+        Theme::Forge,
+        NumToken::ALL[0],
+        Some(NumValue::Literal(13.0)),
+    )
+    .unwrap();
+    // Um arquivo que NAO tem tokens numericos nenhuns.
+    install(&[]);
+    assert_eq!(
+        num_override(Theme::Forge, NumToken::ALL[0]),
+        None,
+        "a escala do documento ANTERIOR sobreviveu ao load"
+    );
+    wipe();
+}
+
+/// **Um par mal-emparelhado CAI** — chave de uma família, valor da outra.
+///
+/// ⚠️ Nenhuma porta emite isto; só um arquivo editado à mão. Dobrá-lo para o que der faria a
+/// re-vestida inventar-se sozinha, então ele é descartado e **contado**.
+#[test]
+fn a_key_and_value_from_different_families_is_dropped_and_counted() {
+    wipe();
+    let bad = vec![
+        SavedToken {
+            theme: 0,
+            key: NumToken::ALL[0].key().to_string(),
+            value: SavedValue::Literal([1, 2, 3, 4]),
+        },
+        SavedToken {
+            theme: 0,
+            key: ColorToken::Accent.key().to_string(),
+            value: SavedValue::Number(13.0),
+        },
+    ];
+    assert_eq!(install(&bad), 2);
+    assert_eq!(num_override(Theme::Forge, NumToken::ALL[0]), None);
+    wipe();
+}
+
+/// Um token numérico que o design system já não tem é **descartado e contado** — a tabela de
+/// fábrica é a autoridade sobre quais tokens existem.
+#[test]
+fn an_unknown_numeric_key_is_dropped_and_counted() {
+    wipe();
+    let bad = vec![SavedToken {
+        theme: 0,
+        key: "spacing.nope".to_string(),
+        value: SavedValue::Number(13.0),
+    }];
+    assert_eq!(install(&bad), 1);
+    wipe();
+}

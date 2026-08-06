@@ -100,7 +100,7 @@ const STEPS: &[Step] = &[
     Step {
         verb: "RESET THIS MODE",
         lines: &[
-            "Devolve o modo vigente inteiro, e SÓ ele.",
+            "Devolve o modo vigente inteiro, e SÓ ele — cor E escala.",
             "Autore algo noutro modo antes, e confirme que aquilo sobrevive.",
         ],
     },
@@ -128,12 +128,32 @@ const STEPS: &[Step] = &[
         ],
     },
     Step {
+        verb: "A ESCALA (px) — a família numérica",
+        lines: &[
+            "Role até 'Scale (px)': spacing, radius e stroke, uma linha cada.",
+            "O campo é um número: digite, ou arraste-o para varrer.",
+            "Reset e corrente funcionam igual aos da cor (px pode seguir px:",
+            "'radius.md' pode seguir 'spacing.md' — é a mesma unidade).",
+            "Um valor negativo é RECUSADO com um toast, e o campo volta.",
+        ],
+    },
+    Step {
+        verb: "⚠️ A ESCALA AINDA NÃO MOVE O APP, E ISSO É A WAVE",
+        lines: &[
+            "Mude 'spacing.md' e a janela NÃO se mexe. Não é um defeito.",
+            "O app lê a escala por um caminho `const` (compile-time), e",
+            "trocar os 15 sítios por leitura viva é a wave SEGUINTE (W4c.2).",
+            "O que esta wave entrega é o valor autorado, o elo, o reset e o",
+            "arquivo. Se ele se mexesse hoje, é que algo foi ligado cedo.",
+        ],
+    },
+    Step {
         verb: "O ARQUIVO",
         lines: &[
-            "Autore duas cores E um elo. Ctrl+S, feche o app, reabra, Ctrl+O.",
-            "As cores e o elo voltam.",
-            "Depois abra um projeto de fábrica: o app tem de voltar ao de fábrica",
-            "(o load ESQUECE o documento anterior).",
+            "Autore duas cores, um elo E um número. Ctrl+S, feche, reabra,",
+            "Ctrl+O. As cores, o elo e o número voltam.",
+            "Depois abra um projeto de fábrica: o app tem de voltar ao de",
+            "fábrica (o load ESQUECE o documento anterior — os dois).",
         ],
     },
     Step {
@@ -154,10 +174,12 @@ fn announce(app: &mut crate::App) {
         .as_ref()
         .map_or_else(ph2d_tokens::Theme::default, |h| h.theme);
     eprintln!(
-        "[tokens] painel ABERTO: {} tokens de cor no modo vigente, {} autorado(s); \
-         {} formas de controle na cena.",
+        "[tokens] painel ABERTO: {} tokens de cor + {} de escala (px) no modo vigente, \
+         {} autorado(s); {} formas de controle na cena.",
         ph2d_tokens::ColorToken::ALL.len(),
-        ph2d_tokens::overrides::overridden_count(theme),
+        ph2d_tokens::NumToken::ALL.len(),
+        ph2d_tokens::overrides::overridden_count(theme)
+            + ph2d_tokens::num_overrides::num_overridden_count(theme),
         gfx.vec_scene.paths().len()
     );
     crate::smoke_script::script("tokens", "o painel já está aberto", STEPS);
@@ -214,6 +236,12 @@ mod tests {
             ph2d_tokens::ColorToken::ALL.len() > 20,
             "a tabela de cor tem {} tokens — o painel não teria o que listar",
             ph2d_tokens::ColorToken::ALL.len()
+        );
+        assert!(
+            ph2d_tokens::NumToken::ALL.len() > 10,
+            "a tabela de escala tem {} tokens — o passo da família numérica \
+             falaria sobre nada",
+            ph2d_tokens::NumToken::ALL.len()
         );
     }
 }

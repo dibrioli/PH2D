@@ -87,6 +87,76 @@ pub(super) fn batch_bounds(dabs: &[Dab], w: u32, h: u32) -> Option<DirtyRect> {
         })
 }
 
+/// **O trabalho de cada LINHA da união**, em visitas de texel.
+///
+/// Usa o MESMO [`dab_write_bounds`] do [`batch_bounds`] e do laço de rejeição por banda — a largura
+/// declarada do dab naquelas linhas. ⚠️ Uma segunda estimativa aqui (o raio, a área do círculo) diria
+/// um número diferente do que a banda de fato executa, e o corte passaria a equilibrar uma grandeza
+/// que ninguém paga.
+///
+/// Custo: `Σ altura(dab)` incrementos — ~67 k para uma figura de 700 dabs de raio 48, contra os
+/// milhões de visitas do carimbo que ele vai distribuir.
+pub(super) fn row_work(dabs: &[Dab], w: u32, h: u32, bounds: DirtyRect) -> Vec<u32> {
+    let mut rows = vec![0u32; bounds.h as usize];
+    let top = bounds.y;
+    let bot = bounds.y + bounds.h;
+    for d in dabs {
+        let Some(b) = dab_write_bounds(d.center, d.radius_px, w, h) else {
+            continue;
+        };
+        let y0 = b.y.max(top) - top;
+        let y1 = (b.y + b.h).min(bot) - top;
+        for r in &mut rows[y0 as usize..y1 as usize] {
+            *r = r.saturating_add(b.w);
+        }
+    }
+    rows
+}
+
+/// **As ALTURAS das bandas, cortadas em quantis iguais de TRABALHO** — a porta única que o produto usa
+/// para DECIDIR e o gate para AFIRMAR.
+///
+/// Devolve uma altura por banda, somando exatamente `rows.len()`. Duas propriedades carregam o peso:
+///
+/// * **nenhuma banda é vazia em LINHAS** — uma banda de altura zero seria uma thread aberta para
+///   iterar a lista de dabs e rejeitar todos;
+/// * **a última banda leva o resto**, então o corte nunca perde nem duplica uma linha, aconteça o que
+///   acontecer com a aritmética dos quantis.
+///
+/// ⚠️ **Trabalho ZERO devolve uma banda só.** Um lote cujo `dab_write_bounds` não escreve nada não tem
+/// o que equilibrar, e dividi-lo seria abrir threads para não fazer nada — o oposto do que esta função
+/// existe para evitar.
+pub(super) fn work_bands(rows: &[u32], bands: usize) -> Vec<usize> {
+    let n = rows.len();
+    if bands <= 1 || n == 0 {
+        return vec![n];
+    }
+    let total: u64 = rows.iter().map(|&x| u64::from(x)).sum();
+    if total == 0 {
+        return vec![n];
+    }
+    let mut out: Vec<usize> = Vec::with_capacity(bands);
+    let mut acc: u64 = 0;
+    let mut start = 0usize;
+    for (i, &r) in rows.iter().enumerate() {
+        acc += u64::from(r);
+        let done = out.len();
+        if done + 1 >= bands {
+            break; // a última banda leva o resto
+        }
+        // O alvo do corte `k` é `k/bands` do trabalho total.
+        let target = total * (done as u64 + 1) / bands as u64;
+        // …e sempre sobra pelo menos uma linha para cada banda que ainda vem.
+        let rows_left = n - (i + 1);
+        if acc >= target && i + 1 > start && rows_left >= bands - done - 1 {
+            out.push(i + 1 - start);
+            start = i + 1;
+        }
+    }
+    out.push(n - start);
+    out
+}
+
 /// A união de dois retângulos sujos — uma porta, quatro consumidores.
 fn union(a: DirtyRect, b: DirtyRect) -> DirtyRect {
     let x = a.x.min(b.x);
@@ -273,7 +343,20 @@ fn stamp_plain_dabs_banded_run(
     // têm de concordar sobre onde uma banda começa, senão o cap é lido no lugar errado e a lei de
     // cobertura sai deslocada por linhas ([[feedback_derived_coordinate_seed_must_match_sample]]).
     let mrow = w as usize;
-    let rows_per_band = rows.div_ceil(threads);
+    // ⚠️ **As bandas são cortadas por TRABALHO, não por altura** — medido em 2026-08-06, e a diferença
+    // não é de segunda ordem. Com bandas de altura uniforme o lote da figura viva paga o custo de ser
+    // ESPARSO: uma elipse no centro + uma forma parqueada num canto dá uma união quase do tamanho da
+    // tela, e cortá-la em N fatias iguais entrega a maioria das bandas a linhas onde **nenhum dab
+    // escreve**. As threads dessas bandas terminam instantaneamente, a que contém a figura faz o
+    // trabalho todo, e o lote roda no tempo de UMA banda depois de pagar N spawns.
+    //
+    // Medido com o MESMO lote (mesmos dabs, mesmas visitas, mesmos pixels) em dois lugares — colado à
+    // ativa contra espalhado pelo canto: **4,72 → 8,01 ms** com 2 formas paradas e **11,21 → 24,10**
+    // com 8. O trabalho não mudou; só a esparsidade da caixa. Cortar por trabalho apaga essa
+    // diferença, e ⚠️ **ela não é exótica**: Tiling embrulha cópias para a borda oposta e Symmetry as
+    // espelha para o outro lado do canvas — as duas produzem exatamente esta união rala com UMA
+    // figura só.
+    let band_rows = work_bands(&row_work(dabs, w, h, bounds), threads);
     let y_top = bounds.y as usize;
     let region = &mut buf[y_top * stride..(y_top + rows) * stride];
     let mask_region = mask.map(|m| &mut m[y_top * mrow..(y_top + rows) * mrow]);
@@ -331,20 +414,33 @@ fn stamp_plain_dabs_banded_run(
             touched
         };
     let band_work = &band_work;
-    // ⚠️ Os dois iteradores avançam JUNTOS (`zip` não serve: a máscara é opcional), e o `next` só é
-    // chamado uma vez por banda — é isso que mantém a n-ésima fatia de tinta emparelhada com a
-    // n-ésima de cobertura.
-    let mut mask_bands = mask_region.map(|m| m.chunks_mut(rows_per_band * mrow));
+    // ⚠️ As fatias são cortadas **na mesma passada** para a tinta e para a cobertura, com a MESMA
+    // altura de banda — é isso que mantém a n-ésima fatia de tinta emparelhada com a n-ésima de
+    // cobertura ([[feedback_derived_coordinate_seed_must_match_sample]]). O `chunks_mut` uniforme não
+    // serve mais: as bandas têm alturas diferentes.
+    let mut rest = region;
+    let mut mrest = mask_region;
+    let mut y = y_top;
+    /// A fatia de uma banda: tinta, cobertura opcional e a linha em que ela começa.
+    type Band<'a> = (&'a mut [u8], Option<&'a mut [u8]>, u32);
+    let mut parts: Vec<Band<'_>> = Vec::with_capacity(band_rows.len());
+    for &bh in &band_rows {
+        let (chunk, tail) = rest.split_at_mut(bh * stride);
+        rest = tail;
+        let mchunk = mrest.take().map(|m| {
+            let (mc, mtail) = m.split_at_mut(bh * mrow);
+            mrest = Some(mtail);
+            mc
+        });
+        #[allow(clippy::cast_possible_truncation)]
+        parts.push((chunk, mchunk, y as u32));
+        y += bh;
+    }
     #[allow(clippy::cast_possible_truncation)]
     std::thread::scope(|s| {
-        region
-            .chunks_mut(rows_per_band * stride)
-            .enumerate()
-            .map(|(bi, chunk)| {
-                let mchunk = mask_bands.as_mut().and_then(Iterator::next);
-                let band_y0 = (y_top + bi * rows_per_band) as u32;
-                s.spawn(move || band_work(chunk, mchunk, band_y0))
-            })
+        parts
+            .into_iter()
+            .map(|(chunk, mchunk, band_y0)| s.spawn(move || band_work(chunk, mchunk, band_y0)))
             // Colhe primeiro para que TODA banda seja juntada (sem short-circuit deixando thread solta).
             .collect::<Vec<_>>()
             .into_iter()

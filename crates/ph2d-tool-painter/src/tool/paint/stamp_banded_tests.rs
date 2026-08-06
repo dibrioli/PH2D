@@ -8,14 +8,14 @@
 use super::stamp_banded::{BATCH_MIN_AREA, batch_work, stamp_plain_dabs_banded_with, wants_bands};
 use ph2d_painter_brush::{BrushSpec, Dab};
 
-const W: u32 = 512;
-const H: u32 = 512;
+pub(super) const W: u32 = 512;
+pub(super) const H: u32 = 512;
 
-fn canvas() -> Vec<u8> {
+pub(super) fn canvas() -> Vec<u8> {
     vec![255u8; (W as usize) * (H as usize) * 4]
 }
 
-fn brush() -> BrushSpec {
+pub(super) fn brush() -> BrushSpec {
     BrushSpec {
         radius_px: 12.0,
         color: [0.1, 0.2, 0.8],
@@ -25,7 +25,7 @@ fn brush() -> BrushSpec {
 
 /// Um arco de `n` dabs — a forma que um editor de figura re-carimba, com sobreposição de verdade
 /// (espaçamento bem menor que o diâmetro) para que a ORDEM entre dabs seja observável.
-fn arc(n: usize, radius: f32) -> Vec<Dab> {
+pub(super) fn arc(n: usize, radius: f32) -> Vec<Dab> {
     (0..n)
         .map(|i| {
             #[allow(clippy::cast_precision_loss)]
@@ -88,45 +88,34 @@ fn covers_every_change(
 fn the_banded_batch_paints_exactly_what_the_serial_loop_painted() {
     for n in [2usize, 17, 200] {
         for radius in [40.0f32, 160.0] {
-            let dabs = arc(n, radius);
-            let pristine = canvas();
-            let mut serial = canvas();
-            let mut banded = canvas();
-            let rs = stamp_plain_dabs_banded_with(
-                &mut serial,
-                W,
-                H,
-                &dabs,
-                &brush(),
-                false,
-                None,
-                usize::MAX,
-            );
-            let rb =
-                stamp_plain_dabs_banded_with(&mut banded, W, H, &dabs, &brush(), false, None, 0);
-            // A metade que importa: os PIXELS.
-            let diff = serial.iter().zip(&banded).filter(|(a, b)| a != b).count();
-            assert_eq!(diff, 0, "{diff} bytes divergem (n={n}, r={radius})");
-            // E o retângulo cobre tudo que mudou — nas DUAS rotas.
-            let (ok_s, changed) = covers_every_change(rs, &serial, &pristine);
-            let (ok_b, _) = covers_every_change(rb, &banded, &pristine);
-            assert!(changed > 0, "a fixture não pintou nada (n={n}, r={radius})");
-            assert!(
-                ok_s,
-                "o retângulo serial não cobre tudo (n={n}, r={radius})"
-            );
-            assert!(
-                ok_b,
-                "o retângulo da banda não cobre tudo (n={n}, r={radius})"
-            );
-            // …e não inventa área: o da banda cabe dentro do serial.
-            if let (Some(a), Some(b)) = (rb, rs) {
-                assert!(
-                    a.x >= b.x && a.y >= b.y && a.x + a.w <= b.x + b.w && a.y + a.h <= b.y + b.h,
-                    "o retângulo da banda escapa do serial (n={n}, r={radius}): {a:?} vs {b:?}"
-                );
-            }
+            identity_of(&arc(n, radius), &format!("denso n={n} r={radius}"));
         }
+    }
+}
+
+/// A metade que compara as duas rotas, para o laço acima varrer denso E esparso.
+pub(super) fn identity_of(dabs: &[Dab], case: &str) {
+    let pristine = canvas();
+    let mut serial = canvas();
+    let mut banded = canvas();
+    let rs =
+        stamp_plain_dabs_banded_with(&mut serial, W, H, dabs, &brush(), false, None, usize::MAX);
+    let rb = stamp_plain_dabs_banded_with(&mut banded, W, H, dabs, &brush(), false, None, 0);
+    // A metade que importa: os PIXELS.
+    let diff = serial.iter().zip(&banded).filter(|(a, b)| a != b).count();
+    assert_eq!(diff, 0, "{diff} bytes divergem ({case})");
+    // E o retângulo cobre tudo que mudou — nas DUAS rotas.
+    let (ok_s, changed) = covers_every_change(rs, &serial, &pristine);
+    let (ok_b, _) = covers_every_change(rb, &banded, &pristine);
+    assert!(changed > 0, "a fixture não pintou nada ({case})");
+    assert!(ok_s, "o retângulo serial não cobre tudo ({case})");
+    assert!(ok_b, "o retângulo da banda não cobre tudo ({case})");
+    // …e não inventa área: o da banda cabe dentro do serial.
+    if let (Some(a), Some(b)) = (rb, rs) {
+        assert!(
+            a.x >= b.x && a.y >= b.y && a.x + a.w <= b.x + b.w && a.y + a.h <= b.y + b.h,
+            "o retângulo da banda escapa do serial ({case}): {a:?} vs {b:?}"
+        );
     }
 }
 

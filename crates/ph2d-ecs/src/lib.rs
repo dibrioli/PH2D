@@ -129,6 +129,7 @@ mod vec_symmetry;
 mod vec_text_path;
 mod vec_widget;
 mod vec_widget_bind;
+mod vec_widget_value;
 pub use children_order::reinsert_children_in_order;
 pub use vec_anchors::VecAnchors;
 pub use vec_bindings::{BoundProp, TokenRef, VecBindings};
@@ -148,6 +149,7 @@ pub use vec_symmetry::VecSymmetry;
 pub use vec_text_path::VecTextPath;
 pub use vec_widget::VecWidget;
 pub use vec_widget_bind::VecWidgetBind;
+pub use vec_widget_value::VecWidgetValue;
 
 mod vec_morph;
 pub use vec_morph::VecMorph;

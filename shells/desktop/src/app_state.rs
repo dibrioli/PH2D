@@ -1000,6 +1000,11 @@ pub(crate) struct App {
     /// arm; o clique seguinte no canvas prende, um clique no vazio desiste. Sair do modo Select (ou
     /// da tool) o limpa. Runtime-only: o pick não é documento — o vínculo que ele cria é.
     pub(crate) vec_path_pick: Option<crate::vec_pick::PathPick>,
+    /// **O que já foi propagado entre o painel autorado e o mundo** (plano UI/UX W8b.4).
+    ///
+    /// ⚠️ O memo do reconcile de duas direções: sem ele o ponteiro e o mundo sobrescreviam-se em
+    /// frames alternados e o slider tremeria. Ver `vec_widget_value::reconcile`.
+    pub(crate) vec_widget_applied: crate::vec_widget_value::Applied,
     /// **The armed §12 joint-body eyedropper** (`(joint_bits, slot_b)`): `Some`
     /// while a Physics-Joint "Body A/B" pick waits for the next canvas click to
     /// name that end's body. Modal like `vec_path_pick` — the click resolves the

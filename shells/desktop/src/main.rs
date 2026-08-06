@@ -414,6 +414,7 @@ mod vec_ui_state_edit;
 mod vec_variants;
 mod vec_widget_drive;
 mod vec_widget_edit;
+mod vec_widget_value;
 mod warp_smoke;
 mod wetpaint_smoke;
 /// **A PELE por-widget** (plano UI/UX W6.2) — uma forma marcada é pintada pelo pintor REAL do
@@ -712,6 +713,7 @@ impl App {
             motion_path_last_click: None,
             vec_patternpath_handle: None,
             vec_path_pick: None,
+            vec_widget_applied: Default::default(),
             joint_body_pick: None,
             joint_clipboard: None,
             wheel_body_pick: None,

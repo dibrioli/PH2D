@@ -4596,6 +4596,18 @@ impl crate::App {
                 ph2d_vec_scene::VecPathId,
                 ph2d_vec_scene::VecPathId,
             )> = None;
+            // **A POSIÇÃO dos controles autorados** (W8b.4): o store e o mundo de acordo, nas
+            // duas direções. ⚠️ ANTES do resolvedor dos drives (mais abaixo, no passe de desenho)
+            // — um valor que acabou de chegar de um load tem de mexer na arte NESTE frame, senão a
+            // cena abre com a arte antiga por um quadro e pisca.
+            if crate::vec_widget_value::reconcile(
+                sim,
+                &self.vec_entities,
+                &mut hero.store,
+                &mut self.vec_widget_applied,
+            ) {
+                self.any_input_this_frame = true;
+            }
             if let Some(verb) = pending_widget_edit {
                 let sel: Vec<ph2d_vec_scene::VecPathId> = self.vec_pen.selected_paths().to_vec();
                 crate::vec_widget_edit::apply(sim, &self.vec_entities, &sel, verb);

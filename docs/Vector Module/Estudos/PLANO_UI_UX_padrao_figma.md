@@ -1151,9 +1151,39 @@ para a mesma coisa e a divergência só aparece numa screenshot.
 > dependem dela, nunca o contrário), e quem impede o literal de divergir do `Panel::ID` é um gate
 > na **SHELL**, que alcança os dois lados e dirige o pill até a porta do painel.
 >
-> **FALTA, e é a fronteira honesta:** o valor de um controle vive no `WidgetStore`, que é de
-> runtime ⇒ **ele não é salvo**. Reabrir devolve os controles ao default e a arte ao que o artista
-> autorou. Guardar a POSIÇÃO de um controle é a W4b/W8a — o fio existe, a memória dele não.
+🔨 **E a W8b.4 fechou essa fronteira no mesmo dia (2026-08-05)** — mesma cena `=62`.
+
+> ✅ **A posição do controle sobrevive ao arquivo.** Componente `VecWidgetValue { value }`
+> (registro **53 → 54**, os dois espelhos **54 → 55**), e a arte volta onde o artista a deixou.
+> ⚠️ **Não era um luxo:** sem isto o documento **não fazia round-trip visual** — punha-se a forma a
+> 30%, salvava-se, reabria-se, e a arte estava a 100%.
+>
+> ⚠️ **Isto NÃO revoga a lei da W8b.3** (*a row modula a VISTA; o documento é do artista*): são
+> dois fatos diferentes. A tinta continua intocada; o que é autorado é **onde o CONTROLE está**, e
+> a vista é derivada dele. E o componente existe **mesmo sem vínculo** — um slider que ninguém
+> prendeu ainda tem posição, e perdê-la seria perder trabalho.
+>
+> ⚠️ **O reconcile tem DUAS direções, e ignorar qualquer uma quebra algo:** o **ponteiro** escreve
+> o store (arrastar), o **mundo** escreve o componente (um load · um Ctrl+Z · a cena de um smoke).
+> Sem *store → mundo* nada é salvo; sem *mundo → store* o Ctrl+Z devolve o componente antigo e o
+> painel continua a mostrar a posição nova — o controle e a arte discordando sobre o mesmo número,
+> na tela, sem nada dizer por quê. O desempate é um memo do que já foi propagado, e **o artista
+> ganha** (senão o slider salta para trás sob o dedo).
+>
+> ⚠️ **E a PRIMEIRA vez que um controle é visto NÃO escreve o mundo** — um defeito meu, achado ao
+> rever o ciclo de vida antes de ele shipar: a ausência do componente significa *onde quer que o
+> controle esteja*, e materializá-la faria **abrir uma cena registar um passo de undo que ninguém
+> pediu** (o defeito exacto que o `restore_painted_docs` custou ao load de projeto). Quem escreve
+> é o MOVIMENTO — e um passo por GESTO, não por frame, porque o `post_frame_undo` já suprime
+> enquanto o botão está preso.
+>
+> ⚠️ **`value_of` e `seed_state` são portas SEPARADAS e têm de fazer ROUND-TRIP** (gate sobre todo
+> tipo × todo valor): uma tradução que não volta é um controle que muda de posição sozinho ao
+> reabrir — e muda a ARTE junto, porque a row a dirige. Preço nomeado: o `Indeterminate` de um
+> checkbox volta como `Checked`, porque um controle autorado não tem filhos para estar *em parte*.
+>
+> **7 mutações, 7 sangram.** **Zero schema** (`PROJECT_SCHEMA` **56** — componente novo cunha
+> blob-key própria), **zero `Cargo.toml`**, **zero ADR**.
 
 **Schema.** +1 componente (**49 → 50**). **Gates:** o desenho e o widget pintam **os mesmos bytes**
 (readback) · um `kind` desconhecido degrada para o desenho, nunca para um painel vazio · trocar um
@@ -1487,6 +1517,7 @@ escreveu**:
 | **W8b.1** ✅ | o codegen: a árvore descreve um painel e o app escreve o código dele | — | — | — | — | `=62` |
 | **W8b.2** ✅ | o gerado vira painel VIVO (crate, registro, runtime das rows) | — | — | — | **nenhum** | `=62` |
 | **W8b.3** ✅ | a row MEXE na arte (o vínculo row → forma, derivado do tipo) + o pill **UI** | +1 (**53**) | — | — | **nenhum** | `=62` |
+| **W8b.4** ✅ | a POSIÇÃO do controle é autorada (sobrevive ao arquivo e ao Ctrl+Z) | +1 (**54**) | — | — | **nenhum** | `=62` |
 | **W8a** | o runtime (para os jogos) | — | seção | — | sim (fronteira) | — |
 | **W9** | DTCG / SVG / export | — | — | — | — | — |
 

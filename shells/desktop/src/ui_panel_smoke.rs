@@ -244,9 +244,12 @@ fn announce(app: &mut crate::App) {
     eprintln!(" 12. ⚠️ **O CONTROLE:** selecione 'Reset' (um Button) — a linha *Drives* nao");
     eprintln!("     aparece. Um botao produz um EVENTO, nao um valor; oferecer-lhe o vinculo");
     eprintln!("     daria um conta-gotas que resolve e nao faz nada.");
-    eprintln!(" 13. ⚠️ **E o vinculo NAO e' salvo com o valor:** feche e reabra e os controles");
-    eprintln!("     voltam ao default (a arte volta ao que voce autorou). Guardar a POSICAO de");
-    eprintln!("     um controle e' a W4b/W8a — o fio existe, a memoria dele nao.");
+    eprintln!(" 13. ⚠️ **A POSICAO do controle SOBREVIVE ao arquivo** (W8b.4): ponha o slider em");
+    eprintln!("     ~30%, **Ctrl+S**, feche o app, reabra e **Ctrl+O** — a estrela volta a 30%.");
+    eprintln!("     A TINTA nao foi tocada: o que o arquivo guarda e' onde o CONTROLE esta'.");
+    eprintln!(" 14. E o **Ctrl+Z** move o slider de volta junto com a arte — mover um controle e'");
+    eprintln!("     uma edicao, e um passo por GESTO (nao por frame). ⚠️ Abrir a cena, ao");
+    eprintln!("     contrario, nao autora nada: a fila de undo nasce vazia.");
 }
 
 #[cfg(test)]

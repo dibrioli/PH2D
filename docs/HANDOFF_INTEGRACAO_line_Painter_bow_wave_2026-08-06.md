@@ -1,9 +1,11 @@
-# HANDOFF DE INTEGRAÇÃO — `line/Painter`, o bow wave gateado no knob (2026-08-06)
+# HANDOFF DE INTEGRAÇÃO — `line/Painter`, o bow wave gateado no knob + as bandas por trabalho (2026-08-06)
 
-> **7 commits · 10 arquivos · +663/−66 · nenhum `Cargo.toml` · nenhum ADR · `project.rs` intocado.**
+> **9 commits · 13 arquivos · nenhum `Cargo.toml` · nenhum ADR · `project.rs` intocado.**
 >
-> ⚠️ **PENDENTE DE SMOKE.** Seis dos sete commits são medição e gate; **um muda o produto**, e o que
-> ele muda não aparece em nenhum diff de schema. Leia o §3 antes de integrar.
+> ⚠️ **PENDENTE DE SMOKE.** A jornada tem **duas metades independentes**: a do **bow wave** (§1-§9,
+> sete commits, um deles muda o produto — leia o §3) e a das **BANDAS POR TRABALHO** (§10, dois
+> commits, um deles muda o produto e é **byte-idêntico**). As duas podem ser integradas juntas; elas
+> não se tocam.
 
 ---
 
@@ -159,3 +161,137 @@ números que ele devolveu (`3 files changed`, `0 commits`) eram do **primário s
 Nada foi commitado lá — todo commit saiu `[line/Painter …]` — e os fatos do §6 foram refeitos dentro da
 worktree. É a **quarta** ocorrência registrada nesta linha, e a regra continua a mesma:
 *todo comando começa com o `cd` da worktree.*
+
+---
+
+## §10 A SEGUNDA METADE — o sistema de SHAPES VIVAS, e as bandas por TRABALHO
+
+Ordem do Enio: *"em vez de investigar a tinta investigue o sistema de shapes vivas (freehand, elipse,
+Polygon, Curve, Line). Descubra o custo do sistema mesmo que a pintura não esteja envolvida. Descubra
+se é possível otimizar."*
+
+### §10.1 A separação não precisou de ablação nova
+
+O `stamp_drag_preview` já cronometra as suas quatro fases **no código que shipa**
+(`stamp_banded::diag::note_restamp`), então `sistema = evento − carimbo`, e a geometria — captura,
+clone do conjunto parqueado, offset/flatten/trim da espinha, `fill_*_preview` — sai por subtração.
+Sonda nova: `measure_shape_system` (cinco tabelas).
+
+### §10.2 O que a máquina custa (e o que ela NÃO custa)
+
+* **O quadro OCIOSO é livre:** ~**20 µs** com 16 formas parqueadas e uma curva de 512 âncoras — 0,1%
+  de um quadro. O `stroke_op_badges` constrói a lista de dabs inteira de cada forma parada só para
+  tirar um min/max, e mesmo assim o número absoluto é ruído.
+* **A máquina é NEUTRA ao método.** Line · Ellipse · Polygon · Curve · FreeHand custam ~1 ns/visita
+  cada; o que difere entre as colunas é **quantos dabs a figura tem**, não o editor.
+* Num move normal (figura de 400 px, 4096²) o sistema é **13-18%** do evento e o depósito é o resto,
+  na estrada em **banda**.
+
+### §10.3 ⬛ O ACHADO: o mesmo lote custa 2,15× só por estar ESPALHADO
+
+O `stamp_plain_dabs_banded_run` dividia a **ALTURA** da união dos dabs em N fatias iguais e abria uma
+thread por fatia. Uma figura viva raramente enche a própria caixa: uma elipse no centro mais uma
+forma parqueada num canto dá uma união quase do tamanho da tela **com o miolo vazio**, e o corte por
+altura entrega a maioria das bandas a linhas onde nenhum dab escreve — elas terminam
+instantaneamente, a banda da figura faz tudo, e o lote roda no tempo de UMA banda depois de pagar N
+spawns.
+
+Medido com o **MESMO lote em dois lugares** (mesmos dabs, mesmas visitas, mesmos pixels — só a
+esparsidade da caixa muda), 4096², pela porta do artista:
+
+| | colado | espalhado | |
+|---|---|---|---|
+| 2 formas paradas | 4,72 ms | 8,01 ms | 1,70× |
+| 8 formas paradas | 11,21 ms | 24,10 ms | **2,15×** |
+
+⚠️ **E não é cena exótica:** **Tiling** embrulha as cópias para a borda oposta e **Symmetry** as
+espelha para o outro lado do canvas — as duas produzem exatamente esta união rala **com uma figura
+só**.
+
+### §10.4 A cura, e por que ela é byte-idêntica
+
+O corte passa a sair de um **perfil de trabalho por linha** (`row_work`, a MESMA `dab_write_bounds`
+que o lote já usa para se limitar e que a banda já usa para rejeitar dab) cortado em **quantis iguais**
+(`work_bands`). Byte-idêntica pelo argumento do **ADR-0109** que o módulo já carregava: bandas são
+linhas **disjuntas** e cada uma percorre TODOS os dabs na ordem da lista, então muda quem **avalia** a
+linha, nunca o que a linha diz.
+
+Medido depois, mesma porta, máquina calma (`load 1,25`):
+
+| cena | antes | depois | |
+|---|---|---|---|
+| uma figura só | 3,58 ms | **2,52** | 1,42× |
+| 2 formas, coladas | 4,72 | **2,71** | 1,74× |
+| 2 formas, espalhadas | 8,01 | **5,17** | 1,55× |
+| 8 formas, espalhadas | 24,10 | **6,64** | **3,63×** |
+
+⚠️ **O `ns/visita` ficou CONSTANTE em 0,69-0,85 nas cinco cenas** — era 1,16 a 3,78. É essa coluna que
+prova que o que sumiu foi desequilíbrio, e não trabalho.
+
+### §10.5 Gates, e as duas fixtures que nasceram cegas
+
+Cinco gates novos em `stamp_banded_work_tests.rs` (irmão por ASSUNTO: lá *"dividir as linhas não move
+um byte"*, aqui *"as linhas são divididas de modo que as bandas paguem o mesmo"*) — a identidade sobre
+um lote **esparso** · o corte reparte o trabalho · o perfil por linha soma a área declarada · nenhuma
+banda nasce com altura zero · e a **consequência, como RAZÃO** entre as duas posições.
+
+**4 mutações, 4 sangram** (corte por altura ⇒ 2,42× no gate de razão · perfil constante ⇒ o gate do
+perfil · sem a guarda ⇒ `[4, 0]` · a fatia da máscara desalinhada da tinta ⇒ **6 gates**, incluindo o
+fingerprint byte-a-byte do impasto).
+
+⚠️ **Duas fixtures minhas nasceram sem o fenômeno, e as duas mutações PASSARAM antes de eu as
+consertar:** o gate de razão usava a tela de 512² dos gates de identidade, onde a união rala tem
+poucas centenas de linhas e a fatia vazia de cada banda é curta; e o gate da banda vazia punha o
+trabalho no **meio** do perfil, onde a guarda nunca chega a ser consultada (ela só morde com o
+trabalho no **fim**).
+
+⚠️ **E a fixture do gate de identidade irmão é um arco DENSO** — nela toda linha da união recebe
+trabalho, então cortar por altura e cortar por trabalho dão bandas parecidas: ela **não conseguia** ver
+esta wave, e por isso o lote esparso entrou como fixture própria.
+
+### §10.6 O que sobra, com o número
+
+Depois desta wave o resíduo é **UMA coisa só, em todas as tabelas**: o `save_region`/`restore_region`
+copiam a **bbox da união**, enquanto a tinta de uma figura fechada é um **anel**.
+
+* figura de raio **1600**: `restore 3,68 + save 6,25 = 9,93 ms` de um evento de 19,24 — **54%**;
+* com formas parqueadas: `1,05 + 1,01 = 2,06 ms`, hoje **40-43%** do evento.
+
+Desperdício medido (bbox ÷ tiles de 64 px que a tinta toca): Ellipse/Polygon **1,7× a 5,5×** conforme
+a figura cresce — mas ⚠️ **Line e Curve medem 0,7×**, isto é, uma pegada por tile seria **PIOR** para
+elas. Uma cura tem de escolher a mais barata das duas, não trocar de régua.
+
+⚠️ **E há uma frente maior atrás dessa:** com formas paradas, o depósito ainda **re-carimba todas** a
+cada move — a baseline do preview é pristina, então a tinta parqueada é apagada pelo restore e
+re-laid. Fazer a baseline **incluir** as formas paradas (só a ativa fica no preview) é o desenho
+correto e é **wave própria**: mexe no ciclo de vida do baseline (park/activate/offset/booleana) e
+interage com o relevo, o sculpt e o Wet Paint.
+
+### §10.7 Outros números que a varredura deixou nomeados
+
+* **Impasto: 19,7 ns/visita** contra 0,91 do Digital, na MESMA figura e MESMO pincel — 21×. É o
+  depósito de altura, território da metade anterior desta jornada.
+* **Aquarela: n/medido.** Ela entra pela porta própria (`stamp_drag_preview_watercolor`), que não
+  chama o `note_restamp` — a sonda **declara** isso em vez de deixar a subtração inventar 73 ms de
+  "geometria".
+* ⚠️ **`set_brush_size_px` escreve o RAIO, não o diâmetro.** A sonda irmã `measure_shape_cost` passa
+  `radius * 2.0` e rotula a coluna `r=24`: o pincel que ela roda tem raio **48**, e a varredura que o
+  doc dela apresenta como *"o ponto do log de 05/08, pincel r~185"* roda com raio **370** — quatro
+  vezes a área por dab. O veredito de **RAZÃO** daquela tabela (Impasto ÷ Digital) sobrevive, porque
+  os dois lados pagam a mesma duplicação; os **ABSOLUTOS** dela descrevem outro pincel.
+
+### §10.8 O SMOKE desta metade
+
+```
+\
+env PH2D_PAINT_PERF=1 cargo run -p ph2d-host-desktop --release
+```
+
+Canvas 4096, ferramenta Painter, um método de figura (Ellipse/Polygon/Curve/Line/Free Hand).
+
+1. **A tinta não pode ter mudado.** A wave é byte-idêntica por construção e o fingerprint do impasto
+   prova; o smoke é a testemunha independente.
+2. **Desenhe uma figura, deixe-a na tela, comece outra.** É aqui que o ganho vive — antes, a segunda
+   figura ficava progressivamente mais lenta a cada forma parada na tela.
+3. **Ligue o Tiling ou a Symmetry e arraste uma figura.** É o caso de UMA figura só que produz a
+   união rala; o arrasto tem de ficar liso.

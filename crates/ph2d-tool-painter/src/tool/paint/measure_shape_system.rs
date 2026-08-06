@@ -205,7 +205,7 @@ fn header() {
         "relevo",
         "save",
         "carimbo",
-        "sist%",
+        "maq%",
         "rota",
         "visitas",
         "ns/vis"
@@ -245,7 +245,7 @@ fn row(name: &str, side: u32, size: f32, p: Phases) {
 
 /// **A tabela-mãe: quanto de um move de shape NÃO é o depósito**, por método.
 ///
-/// O oráculo é a coluna `sist%` — a fração do evento que a máquina de shape cobra por conta própria.
+/// O oráculo é a coluna `maq%` — a fração do evento que a máquina de shape cobra por conta própria.
 /// Se ela for pequena, otimizar o depósito é otimizar a figura viva; se for grande, o módulo tem uma
 /// frente que nenhuma wave de tinta alcança.
 #[test]
@@ -595,7 +595,7 @@ fn measure_shape_footprint_waste() {
 /// **A máquina de shape contra o MEIO** — ela é a mesma nos quatro?
 ///
 /// A decomposição por meio (`what_a_shape_move_is_made_of`) mostrou o Impasto custando 19× o Digital,
-/// e a wave de 06/08 atribuiu isso ao depósito de ALTURA. Se a coluna `sist%` for parecida nos quatro,
+/// e a wave de 06/08 atribuiu isso ao depósito de ALTURA. Se a coluna `maq%` for parecida nos quatro,
 /// a máquina é neutra ao meio e a diferença é toda do carimbo — o que fecha a atribuição.
 #[test]
 #[ignore = "measurement, not a gate — run explicitly"]

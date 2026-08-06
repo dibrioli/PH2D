@@ -255,8 +255,17 @@ fn the_impasto_draw_to_split() {
             }
             // ⚠️ MEDIANA de 5, e cada traço numa faixa PRÓPRIA: a 1ª versão desta sonda dava UMA amostra
             // por config e o Color a raio 100 saiu ABAIXO do de raio 50 (não-monotônico), o que tornava o
-            // termo "superaditivo" indistinguível de ruído. E as faixas têm de ser distintas, senão o 2º
-            // traço encontra o relevo do 1º e o bow wave entra na conta (o `ground` é da CAMADA).
+            // termo "superaditivo" indistinguível de ruído.
+            //
+            // ⚠️ **E a frase que vinha aqui era auto-contraditória** (corrigida 2026-08-06): ela dizia
+            // *"as faixas têm de ser distintas, senão o 2º traço encontra o relevo do 1º e o bow wave
+            // entra na conta"* e **no mesmo parênteses** enunciava o mecanismo que a refuta — *o `ground`
+            // é da CAMADA*. Faixa distinta NÃO mantém `ground` em `None`: só a 1ª amostra é virgem, e as
+            // outras quatro carregam o bow wave. **Logo a coluna `Depth` desta tabela está contaminada**,
+            // e o *"a altura custa 2,3x a 12x o pigmento"* dela é um número com o bow wave dentro.
+            //
+            // O corte limpo mora no irmão `what_the_height_walk_is_made_of`, que troca o TOOL a cada
+            // amostra: lá a cauda é 15,40 ms na camada virgem contra 53,74 numa camada suja.
             let mut samples = Vec::new();
             for k in 0..5u8 {
                 let y = 200.0 + f32::from(k) * 300.0;

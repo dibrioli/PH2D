@@ -524,6 +524,36 @@ fn is_the_silhouette_chain_the_aa_cost() {
 /// ⚠️ **O raio é o do PRODUTO.** O log de smoke opera em ~185 (107 k visitas/dab); as tabelas dos
 /// irmãos param em 100, e a wave que sair daqui é decidida pelo regime que o artista usa.
 ///
+/// Medido (ms por traço):
+///
+/// | tela | raio | camada | full | cauda | silhueta | filme | miolo |
+/// |---|---|---|---|---|---|---|---|
+/// | 2048 | 100 | virgem | 57,58 | 7,76 | 10,40 | 11,61 | 23,21 |
+/// | 2048 | 100 | s/ tinta | 82,67 | **38,82** | 10,11 | 11,75 | 17,34 |
+/// | 4096 | 100 | virgem | 71,23 | 8,59 | 10,62 | 12,62 | 34,77 |
+/// | 4096 | 100 | s/ tinta | 79,89 | **34,60** | 8,57 | 11,50 | 18,05 |
+/// | 2048 | 185 | virgem | 88,10 | 11,49 | 18,82 | 20,25 | 29,42 |
+/// | 2048 | 185 | s/ tinta | 133,84 | **56,95** | 17,75 | 19,86 | 29,57 |
+/// | 4096 | 185 | virgem | 109,00 | 12,94 | 18,66 | 20,89 | 46,83 |
+/// | 4096 | 185 | s/ tinta | 134,12 | **52,51** | 18,89 | 22,57 | 32,70 |
+///
+/// **Quatro leituras, e a primeira corrige a mim mesmo:**
+///
+/// 1. **A CAUDA salta 4-5x da camada virgem para tinta-sobre-tinta, em TODA célula** — é o **bow
+///    wave**, cuja mordida mora dentro dela. A 1a versão desta sonda usava um tool só e mediana de 5,
+///    então media *quatro amostras com bow wave* e reportou "cauda 40 % crescendo 8x com o raio". Na
+///    camada virgem a cauda é **11,9 %** e cresce **1,5x** do raio 100 ao 185 — coerente com a área
+///    varrida (1,85x). **As escritas de plano NÃO são superlineares.**
+/// 2. **A SILHUETA e o FILME são estáveis nas oito células** (17-20 no raio 185, 8,5-12,6 no 100):
+///    não dependem do `ground` nem da tela, que é a forma correta, e é isso que torna a tabela
+///    confiável — eles são o controle interno.
+/// 3. **A silhueta — o alvo da FUSÃO — vale 14-17 % em todo regime.** Fundir as duas varreduras ataca
+///    o MENOR dos quatro itens.
+/// 4. **O bow wave sozinho é ~40 ms = 30 % da caminhada de altura** no ponto do produto, e ele roda
+///    **mesmo com Push em 0** — por decisão declarada no `impasto.rs` (*"Recorded whenever there IS
+///    paint to shove, NOT only when the knob is up"*), porque o ingrediente tem de existir para o
+///    knob Push seguir vivo depois do traço. **É preço de uma feature, não defeito.**
+///
 /// Rodar: `cargo test -p ph2d-tool-painter --release what_the_height_walk_is_made_of -- --ignored --nocapture --test-threads=1`
 #[test]
 #[ignore = "measurement, not a gate — run explicitly"]
@@ -535,7 +565,7 @@ fn what_the_height_walk_is_made_of() {
     const SAMPLES: u8 = 5;
 
     // Só a metade da ALTURA: `DrawTo::Depth` é corpo sem pigmento, a porta do nível 2.
-    fn stroke_ms(side: u32, radius: f32, mask: u32) -> f64 {
+    fn tool(side: u32, radius: f32) -> PainterTool {
         let mut t = PainterTool::default();
         t.set_source(vec![255u8; (side * side * 4) as usize], side, side);
         t.toggle_brush_impasto();
@@ -544,11 +574,34 @@ fn what_the_height_walk_is_made_of() {
         for slot in &mut t.paint.brush_by_mode {
             slot.impasto_draw_to = DrawTo::Depth;
         }
+        t
+    }
+
+    /// A faixa propria NAO basta, e o comment da 1a versao desta sonda estava errado: o `ground` e
+    /// `self.heights.get(&active)`, ou seja da **CAMADA**, entao o 2o traco acorda o bow wave mesmo
+    /// numa faixa intocada -- e a mordida dele mora DENTRO da cauda. Uma mediana de 5 num tool so
+    /// mede QUATRO amostras com bow wave. (O irmao `the_impasto_draw_to_split` carrega a mesma frase
+    /// errada no proprio comment.)
+    ///
+    /// `virgin` troca o TOOL a cada amostra, dando `ground = None` em TODAS elas.
+    ///
+    /// E eu escrevi aqui que "o primeiro-toque e comum as duas colunas e nao entra na diferenca" --
+    /// a TABELA refuta: o `miolo` da coluna virgem cresce com a TELA (29,42 -> 46,83 do 2048 ao 4096
+    /// no raio 185) e o da coluna com tinta fica PLANO (29,57 -> 32,70). Um traco e limitado pela
+    /// PEGADA, entao crescer com a tela e assinatura de memoria: a coluna virgem aloca um jogo novo
+    /// de planos por amostra e falta pagina em cada um. E custo REAL (o 1o traco numa camada paga
+    /// isso), mas e de UMA vez, e nao pertence ao regime permanente.
+    fn stroke_ms(side: u32, radius: f32, mask: u32, virgin: bool) -> f64 {
+        let mut shared = tool(side, radius);
         let mut samples = Vec::new();
         for k in 0..SAMPLES {
-            // ⚠️ Faixa PRÓPRIA por amostra: o `ground` é da CAMADA, então um 2º traço na mesma faixa
-            // acorda a família do bow wave e a tabela passa a medir outra coisa.
-            let y = 400.0 + f32::from(k) * 700.0;
+            let mut fresh = if virgin {
+                Some(tool(side, radius))
+            } else {
+                None
+            };
+            let t = fresh.as_mut().unwrap_or(&mut shared);
+            let y = 300.0 + f32::from(k) * 400.0;
             samples.push(ablate::with(mask, || {
                 ms(&mut || {
                     t.on_canvas_pointer(cp([300.0, y], PointerPhase::Down));
@@ -564,26 +617,34 @@ fn what_the_height_walk_is_made_of() {
         samples[samples.len() / 2]
     }
 
-    println!("[altura] 4096^2, DrawTo::Depth, traco de 600 px, mediana de {SAMPLES}");
+    println!("[altura] DrawTo::Depth, traco de 600 px, mediana de {SAMPLES}");
     println!(
-        "{:>6}  {:>9} {:>9} {:>9} {:>9}  {:>6}",
-        "raio", "full", "cauda", "silhueta", "filme", "miolo"
+        "{:>6} {:>5} {:>9}  {:>9} {:>9} {:>9} {:>9}  {:>6}",
+        "tela", "raio", "camada", "full", "cauda", "silhueta", "filme", "miolo"
     );
-    for radius in [100.0f32, 185.0] {
-        let full = stroke_ms(4096, radius, 0);
-        let no_tail = stroke_ms(4096, radius, ablate::TAIL);
-        let no_sil = stroke_ms(4096, radius, ablate::TAIL | ablate::SILHOUETTE);
-        let no_film = stroke_ms(4096, radius, ablate::TAIL | ablate::FILM_AA);
-        let core = stroke_ms(
-            4096,
-            radius,
-            ablate::TAIL | ablate::SILHOUETTE | ablate::FILM_AA,
-        );
-        println!(
-            "{radius:>6.0}  {full:>9.2} {:>9.2} {:>9.2} {:>9.2}  {core:>6.2}",
-            full - no_tail,
-            no_tail - no_sil,
-            no_tail - no_film,
-        );
+    for (side, radius) in [
+        (2048u32, 100.0f32),
+        (4096, 100.0),
+        (2048, 185.0),
+        (4096, 185.0),
+    ] {
+        for (label, virgin) in [("virgem", true), ("s/ tinta", false)] {
+            let full = stroke_ms(side, radius, 0, virgin);
+            let no_tail = stroke_ms(side, radius, ablate::TAIL, virgin);
+            let no_sil = stroke_ms(side, radius, ablate::TAIL | ablate::SILHOUETTE, virgin);
+            let no_film = stroke_ms(side, radius, ablate::TAIL | ablate::FILM_AA, virgin);
+            let core = stroke_ms(
+                side,
+                radius,
+                ablate::TAIL | ablate::SILHOUETTE | ablate::FILM_AA,
+                virgin,
+            );
+            println!(
+                "{side:>6} {radius:>5.0} {label:>9}  {full:>9.2} {:>9.2} {:>9.2} {:>9.2}  {core:>6.2}",
+                full - no_tail,
+                no_tail - no_sil,
+                no_tail - no_film,
+            );
+        }
     }
 }

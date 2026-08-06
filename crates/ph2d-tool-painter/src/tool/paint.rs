@@ -215,6 +215,8 @@ mod tests;
 #[cfg(test)]
 mod impasto_aa_tests; // screen-space AA of the impasto film silhouette (BUGS #16, impasto half)
 #[cfg(test)]
+mod impasto_fingerprint_tests; // the deposit's byte-for-byte pin — the net any kernel rewrite needs
+#[cfg(test)]
 mod sculpt_tests;
 #[cfg(test)]
 mod watercolor_aa_tests; // screen-space AA of the thin-stroke watercolor silhouette

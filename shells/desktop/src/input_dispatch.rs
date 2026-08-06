@@ -332,17 +332,40 @@ pub(crate) fn apply_vec_duplicate(
         eprintln!("[ph2d-vec] duplicate: nenhum path selecionado");
         return;
     }
-    // Duplicar É copiar-e-colar: um caminho só, então a estrutura de grupo vem
-    // junto e as duas rotas nunca divergem.
-    let clip = scene.copy_paths(&sel);
+    duplicate_vec_paths(scene, history, pen, &sel, dx, dy);
+}
+
+/// **A porta de DUPLICAR uma forma** — ela recebe *quais* paths, e quem pergunta responde isso de
+/// maneiras diferentes: o botão Duplicate do painel dá a seleção da caneta, e a row **Duplicate**
+/// da Hierarchy dá o path da linha clicada com o botão direito.
+///
+/// ⚠️ Ela é UMA porque as duas rotas têm de produzir a mesma coisa. Uma segunda implementação
+/// para a Hierarchy divergiria no primeiro detalhe que só uma delas aprendesse — a estrutura de
+/// grupo, o passo de undo, ou qual cópia fica selecionada no fim.
+///
+/// Duplicar **É** copiar-e-colar: um caminho só, então a estrutura de grupo vem junto.
+/// Grava **UM** passo de undo sse alguma cópia nasceu, e devolve se nasceu.
+pub(crate) fn duplicate_vec_paths(
+    scene: &mut ph2d_vec_scene::VecScene,
+    history: &mut ph2d_vec_edit::History,
+    pen: &mut ph2d_vec_edit::PenTool,
+    ids: &[ph2d_vec_scene::VecPathId],
+    dx: f64,
+    dy: f64,
+) -> bool {
+    if ids.is_empty() {
+        return false;
+    }
+    let clip = scene.copy_paths(ids);
     let pre = scene.clone();
     let new_ids = scene.paste_clip(&clip, dx, dy);
     if new_ids.is_empty() {
-        return;
+        return false;
     }
     history.push_undo(pre);
     pen.select_many(&new_ids);
     eprintln!("[ph2d-vec] duplicate: {} path(s)", new_ids.len());
+    true
 }
 
 /// Map a Vector-panel Arrange z-order button `NodeId` to its [`ph2d_vec_scene::ZOrder`]

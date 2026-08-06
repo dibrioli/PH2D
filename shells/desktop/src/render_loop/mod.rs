@@ -5029,8 +5029,11 @@ impl crate::App {
             if pending_vec_duplicate {
                 // Offset the clone by a fixed SCREEN distance (px → world) so it's
                 // visibly separated at any zoom.
-                const OFFSET_PX: f64 = 12.0;
-                let off = OFFSET_PX * vec_px_to_world;
+                //
+                // ⚠️ A const é a PARTILHADA. Ela vivia aqui como cópia local de 12.0 ao lado do
+                // `PASTE_OFFSET_PX`, que é o mesmo número pela mesma razão — exatamente a
+                // divergência contra a qual o doc de `screen_offset_world` avisa.
+                let off = crate::input_dispatch::PASTE_OFFSET_PX * vec_px_to_world;
                 crate::input_dispatch::apply_vec_duplicate(
                     vec_scene,
                     &mut self.vec_history,
@@ -7454,6 +7457,9 @@ impl crate::App {
                 camera,
                 toasts,
                 window_size,
+                vec_scene,
+                &mut self.vec_history,
+                &mut self.vec_pen,
                 &mut duplicate_made,
             ) {
                 self.title_dirty = true;

@@ -62,6 +62,11 @@ pub(super) fn dispatch(
     camera: &mut Camera2d,
     toasts: &mut ToastQueue,
     window_size: WindowSize,
+    // O documento vetorial. ⚠️ Ele chega aqui porque a row **Duplicate** da Hierarchy tem de
+    // duplicar uma FORMA pela mesma porta do botão do painel — ver o bloco de `duplicate_row`.
+    vec_scene: &mut ph2d_vec_scene::VecScene,
+    vec_history: &mut ph2d_vec_edit::History,
+    vec_pen: &mut ph2d_vec_edit::PenTool,
     // Out: `(source_bits, new_bits)` of a sprite duplicate so the caller (which holds the painter +
     // renderer) can bake the source's live paint and give the copy an independent texture.
     duplicate_made: &mut Option<(u64, u64)>,
@@ -168,42 +173,71 @@ pub(super) fn dispatch(
         && let Some(entity_bits) = live.bridge.entity_for(row)
     {
         let src = ph2d_ecs::Entity::from_bits(entity_bits);
-        let transform = sim.world().get::<Transform>(src).copied();
-        let sprite = sim.world().get::<ph2d_render::Sprite>(src).copied();
-        let name = sim
-            .world()
-            .get::<Name>(src)
-            .map(|n| n.as_str().to_owned())
-            .unwrap_or_else(|| "Entity".to_string());
-        let parent = sim
-            .world()
-            .get::<ph2d_ecs::ChildOf>(src)
-            .map(|c| c.parent());
-        // Names MUST be unique scene-wide — the hierarchy panel's old
-        // label-match selection fallback (now removed) flagged every
-        // homonym as selected, and any future code that keys off the
-        // friendly label deserves the same defense. Strip + bump
-        // suffix so `Sprite (1)` duplicated → `Sprite (2)`.
-        let copy_name = crate::name_unique::unique_name(sim, &name);
-        let sim_w = sim.world_mut();
-        let mut builder = sim_w.spawn_empty();
-        if let Some(t) = transform {
-            builder.insert(t);
+        // ⚠️ **Uma forma VETORIAL não se duplica clonando a entidade.** O dono da geometria é o
+        // documento, e `vec_entities::sync` mantém UMA entidade por path, nas duas direções:
+        //
+        // - clonar a entidade sem o `VecPathRef` dá um sósia que **não desenha nada** — uma linha
+        //   na Hierarchy sobre geometria nenhuma, que era o que esta row fazia;
+        // - copiar o `VecPathRef` seria pior: duas entidades a apontar para o MESMO path, e o
+        //   `sync` tem de escolher uma.
+        //
+        // Então o clone é um **PATH**, feito pela porta que o botão Duplicate do painel usa, e o
+        // `sync` cunha a entidade dele (com nome único e `RootOrder`) no mesmo frame.
+        if let Some(vp) = sim.world().get::<ph2d_ecs::VecPathRef>(src).copied() {
+            let (dx, dy) = crate::input_dispatch::screen_offset_world(
+                camera,
+                window_size,
+                crate::input_dispatch::PASTE_OFFSET_PX,
+            );
+            if crate::input_dispatch::duplicate_vec_paths(
+                vec_scene,
+                vec_history,
+                vec_pen,
+                &[vp.0],
+                dx,
+                dy,
+            ) {
+                toasts.push(Toast::success("Duplicated shape"));
+                title_dirty = true;
+            }
+        } else {
+            let transform = sim.world().get::<Transform>(src).copied();
+            let sprite = sim.world().get::<ph2d_render::Sprite>(src).copied();
+            let name = sim
+                .world()
+                .get::<Name>(src)
+                .map(|n| n.as_str().to_owned())
+                .unwrap_or_else(|| "Entity".to_string());
+            let parent = sim
+                .world()
+                .get::<ph2d_ecs::ChildOf>(src)
+                .map(|c| c.parent());
+            // Names MUST be unique scene-wide — the hierarchy panel's old
+            // label-match selection fallback (now removed) flagged every
+            // homonym as selected, and any future code that keys off the
+            // friendly label deserves the same defense. Strip + bump
+            // suffix so `Sprite (1)` duplicated → `Sprite (2)`.
+            let copy_name = crate::name_unique::unique_name(sim, &name);
+            let sim_w = sim.world_mut();
+            let mut builder = sim_w.spawn_empty();
+            if let Some(t) = transform {
+                builder.insert(t);
+            }
+            if let Some(s) = sprite {
+                builder.insert(s);
+            }
+            builder.insert(Name::new(copy_name));
+            if let Some(p) = parent {
+                builder.insert(ph2d_ecs::ChildOf(p));
+            }
+            // Report the pair so the caller can fork the copy's texture off the source (independent object)
+            // + flush any live paint on the source first. Only matters for sprite entities.
+            if sprite.is_some() {
+                *duplicate_made = Some((entity_bits, builder.id().to_bits()));
+            }
+            toasts.push(Toast::success("Duplicated entity"));
+            title_dirty = true;
         }
-        if let Some(s) = sprite {
-            builder.insert(s);
-        }
-        builder.insert(Name::new(copy_name));
-        if let Some(p) = parent {
-            builder.insert(ph2d_ecs::ChildOf(p));
-        }
-        // Report the pair so the caller can fork the copy's texture off the source (independent object)
-        // + flush any live paint on the source first. Only matters for sprite entities.
-        if sprite.is_some() {
-            *duplicate_made = Some((entity_bits, builder.id().to_bits()));
-        }
-        toasts.push(Toast::success("Duplicated entity"));
-        title_dirty = true;
     }
     if let Some(row) = add_child_row
         && let Some(live) = hero_live.as_ref()

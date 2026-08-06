@@ -322,6 +322,80 @@ mod tests {
     use super::*;
     use ph2d_vec_scene::rectangle;
 
+    /// **Duplicar uma forma dá ao clone o PRÓPRIO path, e o `sync` cunha UMA entidade para ele.**
+    ///
+    /// ⚠️ É o invariante que a row **Duplicate** da Hierarchy violava: ela clonava a ENTIDADE
+    /// (Transform + Name + ChildOf) e não o path, então o clone nascia sem `VecPathRef` — uma
+    /// linha na Hierarchy sobre geometria nenhuma. E copiar o `VecPathRef` teria sido pior: duas
+    /// entidades a apontar para o MESMO path, num mapa que é um-para-um.
+    #[test]
+    fn duplicating_a_shape_gives_the_copy_its_own_path_and_its_own_entity() {
+        let (mut sim, mut scene, mut map) = setup();
+        let a = scene.push_path(rectangle([0.0, 0.0], [1.0, 1.0]));
+        sync(&mut sim, &mut scene, &mut map);
+        assert_eq!(
+            map.len(),
+            1,
+            "o CONTROLE falhou: o sync nao cunhou a origem"
+        );
+
+        let mut history = ph2d_vec_edit::History::default();
+        let mut pen = ph2d_vec_edit::PenTool::default();
+        assert!(
+            !history.can_undo(),
+            "o CONTROLE falhou: o historico ja nascia sujo"
+        );
+        assert!(
+            crate::input_dispatch::duplicate_vec_paths(
+                &mut scene,
+                &mut history,
+                &mut pen,
+                &[a],
+                5.0,
+                5.0
+            ),
+            "a porta recusou duplicar um path que existe"
+        );
+        sync(&mut sim, &mut scene, &mut map);
+
+        assert_eq!(scene.paths().len(), 2, "o documento nao ganhou a copia");
+        assert_eq!(map.len(), 2, "o sync nao cunhou UMA entidade para a copia");
+        let copy = scene
+            .paths()
+            .iter()
+            .map(|p| p.id)
+            .find(|id| *id != a)
+            .expect("a copia tem id proprio");
+        // As duas entidades apontam para paths DIFERENTES — nenhuma aliasing.
+        let (ea, ec) = (bits(&map, a), bits(&map, copy));
+        assert_ne!(ea, ec, "a copia herdou a entidade da origem");
+        let ra = sim
+            .world()
+            .get::<VecPathRef>(ea)
+            .copied()
+            .expect("origem sem ref");
+        let rc = sim
+            .world()
+            .get::<VecPathRef>(ec)
+            .copied()
+            .expect("copia sem ref");
+        assert_ne!(ra.0, rc.0, "as duas entidades apontam para o MESMO path");
+
+        // ⚠️ **UM Ctrl+Z desfaz a cópia inteira.** O oráculo é o GESTO, não o comprimento da
+        // pilha: sem esta metade, tirar o `push_undo` da porta passava na suíte INTEIRA (medido)
+        // — duplicar ficava fora do Ctrl+Z, e o artista descobria isso com a forma já na tela.
+        assert!(
+            history.can_undo(),
+            "duplicar nao gravou passo de undo nenhum"
+        );
+        let back = history.undo(&scene).expect("o passo de undo existe");
+        assert_eq!(
+            back.paths().len(),
+            1,
+            "um Ctrl+Z nao devolveu o documento ao estado de antes da copia"
+        );
+    }
+
     /// O invariante da ponte: um path ⟺ uma entidade. Nas duas direções, e o
     /// sync é idempotente (rodar de novo não spawna fantasma).
     #[test]

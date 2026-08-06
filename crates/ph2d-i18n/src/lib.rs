@@ -420,6 +420,11 @@ pub fn tr(key: &str) -> &'static str {
         // dos tokens fora desta tabela.
         "panel.tokens.contrast.title" => "Contrast below WCAG",
         "panel.tokens.contrast.on" => "on",
+        // A família NUMÉRICA (plano UI/UX W4c.1) — a escala que se mede em px.
+        // ⚠️ O cabeçalho diz a UNIDADE, e é o que separa esta lista da de cima: as duas listam
+        // "tokens", e sem a unidade um chip com `8` ao lado de uma swatch não diz de que grandeza
+        // se está a falar. A unidade é a razão de as três escalas serem UMA família.
+        "panel.tokens.numeric" => "Scale (px)",
         "panel.physics.title" => "Physics",
         "panel.physics.section.world" => "World",
         "panel.physics.section.solver" => "Solver",

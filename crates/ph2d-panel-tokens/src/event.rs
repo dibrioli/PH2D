@@ -8,10 +8,10 @@
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::{EventOutcome, Panel, PanelHostInternal};
-use ph2d_tokens::ColorToken;
+use ph2d_tokens::{ColorToken, NumToken};
 
 use crate::TokensPanel;
-use crate::state::{TokensIntent, TokensPanelState, push_intent};
+use crate::state::{TokenFamily, TokensIntent, TokensPanelState, push_intent};
 
 pub(crate) fn apply_event(
     state: &mut TokensPanelState,
@@ -30,6 +30,20 @@ pub(crate) fn apply_event(
             push_intent(TokensIntent::ResetAll);
             true
         }
+        // ⚠️ **O chip numérico não tem braço de `Click`, ele tem este.** Um `NumberInput` publica o
+        // que o artista digitou/arrastou como `ValueChanged`, e o valor vive no store do HOST — o
+        // painel lê-o e enfileira; quem escreve a camada continua a ser a shell.
+        WidgetEvent::ValueChanged(id) => {
+            if let Some(row) = num_row_of(id, ids::tokens_num_chip_id) {
+                if let Some(px) = host.store().number_value(id) {
+                    #[allow(clippy::cast_possible_truncation)]
+                    push_intent(TokensIntent::NumSet { row, px: px as f32 });
+                }
+                true
+            } else {
+                false
+            }
+        }
         WidgetEvent::Click(id) => {
             // As varreduras são sobre `ColorToken::ALL` — o mesmo intervalo que o `populate`
             // regista. Um teto que o roteador conhecesse e o registro não deixaria as últimas
@@ -39,7 +53,13 @@ pub(crate) fn apply_event(
                 push_intent(TokensIntent::Reset(row));
                 true
             } else if let Some(row) = (0..n).find(|&r| ids::tokens_link_id(r) == id) {
-                apply_link_click(state, row);
+                apply_link_click(state, TokenFamily::Colour, row);
+                true
+            } else if let Some(row) = num_row_of(id, ids::tokens_num_reset_id) {
+                push_intent(TokensIntent::NumReset(row));
+                true
+            } else if let Some(row) = num_row_of(id, ids::tokens_num_link_id) {
+                apply_link_click(state, TokenFamily::Num, row);
                 true
             } else {
                 false
@@ -54,6 +74,15 @@ pub(crate) fn apply_event(
     }
 }
 
+/// A linha numérica de um id derivado, se for de alguma.
+///
+/// ⚠️ A varredura é sobre `NumToken::ALL` — o **mesmo** intervalo que o `populate` regista e que o
+/// `paint` percorre. Um teto que só um dos três conhecesse deixaria as últimas linhas pintadas e
+/// mortas sob o rato.
+fn num_row_of(id: ph2d_a11y::NodeId, of: fn(usize) -> ph2d_a11y::NodeId) -> Option<usize> {
+    (0..NumToken::ALL.len()).find(|&r| of(r) == id)
+}
+
 /// **A máquina do elo, e ela tem três respostas** para o mesmo botão.
 ///
 /// Nada armado ⇒ arma esta linha. Armada ESTA ⇒ desiste (o mesmo botão desfaz o próprio gesto, sem
@@ -66,13 +95,21 @@ pub(crate) fn apply_event(
 ///
 /// ⚠️ E o auto-elo é **inalcançável por construção** aqui (clicar a própria linha desarma), o que
 /// não dispensa a recusa no modelo: esta é a UI, e a porta é a lei.
-fn apply_link_click(state: &mut TokensPanelState, row: usize) {
+///
+/// ⚠️ **Armar noutra FAMÍLIA abandona o gesto**, nunca o fecha: um elo atravessa famílias no modelo
+/// numérico (px é px), mas **nunca** entre px e cor — não há valor que uma cor possa dar a um
+/// espaçamento. Fechá-lo aqui exigiria um terceiro `TokenValue` que não existe; abandoná-lo é o
+/// que o artista vê ao clicar noutra lista.
+fn apply_link_click(state: &mut TokensPanelState, family: TokenFamily, row: usize) {
     match state.armed {
-        Some(from) if from == row => state.armed = None,
-        Some(from) => {
-            push_intent(TokensIntent::Link { from, to: row });
+        Some((f, from)) if f == family && from == row => state.armed = None,
+        Some((f, from)) if f == family => {
+            match family {
+                TokenFamily::Colour => push_intent(TokensIntent::Link { from, to: row }),
+                TokenFamily::Num => push_intent(TokensIntent::NumLink { from, to: row }),
+            }
             state.armed = None;
         }
-        None => state.armed = Some(row),
+        _ => state.armed = Some((family, row)),
     }
 }

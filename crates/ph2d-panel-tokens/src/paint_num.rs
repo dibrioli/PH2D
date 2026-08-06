@@ -1,0 +1,218 @@
+//! **A FAMÍLIA NUMÉRICA do painel** — uma linha por token de `NumToken::ALL` (plano UI/UX W4c.1).
+//!
+//! Irmão do [`crate::paint`] pelo teto de LOC (HR-18), e o corte é por **assunto**: lá mora o
+//! chrome do painel e a lista de COR, aqui a lista que se mede em px. As duas percorrem a sua
+//! própria tabela de compile-time, e nenhuma tem uma cópia da outra.
+//!
+//! # A linha é a MESMA, e só o editor muda
+//!
+//! `[chip] chave [→ alvo] [elo] [Reset]` contra o `[swatch] chave [→ alvo] [⚠] [elo] [Reset]` da
+//! cor. É deliberado: as duas respondem à mesma pergunta (*quanto vale este token?*) e a única
+//! diferença honesta é a grandeza — então o que muda é o **editor daquela grandeza**, e o resto do
+//! gesto (autorar, seguir, resetar) o artista aprende uma vez.
+//!
+//! ⚠️ **Não há marca de contraste aqui, e a ausência é a decisão.** A WCAG fala de luminância entre
+//! duas cores; um espaçamento não participa de nenhum par. Uma coluna reservada para uma marca que
+//! nunca acende seria largura roubada ao rótulo em todas as 21 linhas.
+
+use ph2d_editor_core::icons::IconId;
+use ph2d_editor_core::ids;
+use ph2d_editor_core::interaction::{InteractiveState, format_number};
+use ph2d_editor_core::paint::{paint_text, resolve};
+use ph2d_editor_core::panel::PaintCtx;
+use ph2d_editor_core::widget::{
+    ButtonState, IconButtonStyle, IconGlyph, TextInputState, paint_icon_button, paint_number_chip,
+};
+use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
+use ph2d_tokens::num_overrides::{NumValue, num_override};
+use ph2d_tokens::{ColorToken, NumToken, ROW_H_PX, Spacing, Theme, TypeToken};
+
+use crate::paint::{LINK_W, RESET_W, command};
+
+/// Largura do chip de px. Larga o suficiente para `999` mais as setas do stepper.
+const CHIP_W: f32 = 56.0; // LITERAL-PX-OK: panel grid metric (numeric chip width)
+
+/// A lista numérica inteira, com o seu cabeçalho. Devolve o `y` depois dela.
+pub(crate) fn paint_numeric_family(
+    ctx: &mut PaintCtx,
+    theme: Theme,
+    x: f32,
+    w: f32,
+    mut y: f32,
+    armed: Option<usize>,
+) -> f32 {
+    // ⚠️ O cabeçalho diz a UNIDADE. Sem ele, um chip com `8` logo abaixo de uma coluna de swatches
+    // não diz de que grandeza se está a falar — e a unidade é exactamente a razão de as três
+    // escalas (espaço, raio, traço) serem UMA família e partilharem este editor.
+    let font = TypeToken::Sm.px();
+    y += Spacing::Md.px();
+    paint_text(
+        ctx.text_system,
+        ctx.scene,
+        tr("panel.tokens.numeric"),
+        x,
+        y + (ROW_H_PX - font) * 0.5,
+        font,
+        w,
+        resolve(ColorToken::Text2, theme),
+    );
+    y += ROW_H_PX + Spacing::Xs.px();
+
+    for (row, &token) in NumToken::ALL.iter().enumerate() {
+        y = paint_num_row(
+            ctx,
+            theme,
+            row,
+            token,
+            Rect::new(x, y, w, ROW_H_PX),
+            armed == Some(row),
+        );
+    }
+    y
+}
+
+/// `[chip]  chave-do-token  [→ alvo]      [elo] [Reset]`
+fn paint_num_row(
+    ctx: &mut PaintCtx,
+    theme: Theme,
+    row: usize,
+    token: NumToken,
+    box_: Rect,
+    armed: bool,
+) -> f32 {
+    let (x, w, y) = (box_.x, box_.w, box_.y);
+    let slot = num_override(theme, token);
+    let authored = slot.is_some();
+    let font = TypeToken::Sm.px();
+
+    // ⚠️ O chip mostra o valor EFETIVO (o que o app usaria), nunca o de fábrica sob um token
+    // autorado nem o alvo cru sob um elo: um campo que afirmasse um número que o desenho não usa é
+    // a mesma rachura que a swatch de cor documenta uma lista acima.
+    let value = token.px(theme);
+    paint_px_chip(
+        ctx,
+        theme,
+        Rect::new(x, y, CHIP_W, ROW_H_PX),
+        ids::tokens_num_chip_id(row),
+        value,
+    );
+
+    let label_x = x + CHIP_W + Spacing::Sm.px();
+    let tail = if authored { RESET_W } else { 0.0 } + LINK_W + Spacing::Xs.px();
+    let label_w = (w - CHIP_W - Spacing::Sm.px() - tail).max(1.0);
+    let label_token = if authored {
+        ColorToken::Accent
+    } else {
+        ColorToken::Text1
+    };
+    // Uma linha que SEGUE outra tem de DIZER quem ela segue — senão o artista vê um número que não
+    // obedece ao que ele digita, sem nada a explicar porquê.
+    let label = match slot {
+        Some(NumValue::Alias(target)) => format!("{}  -  {}", token.key(), target.key()),
+        _ => token.key().to_string(),
+    };
+    paint_text(
+        ctx.text_system,
+        ctx.scene,
+        &label,
+        label_x,
+        y + (ROW_H_PX - font) * 0.5,
+        font,
+        label_w,
+        resolve(label_token, theme),
+    );
+
+    let link_x = x + w - LINK_W - if authored { RESET_W } else { 0.0 };
+    paint_link_button(ctx, theme, ids::tokens_num_link_id(row), link_x, y, armed);
+
+    if authored {
+        command(
+            ctx,
+            ids::tokens_num_reset_id(row),
+            tr("panel.tokens.reset"),
+            x + w - RESET_W,
+            RESET_W,
+            y,
+        );
+    }
+    y + ROW_H_PX + Spacing::Xxs.px()
+}
+
+/// Pinta o chip de px e **espelha** o valor efetivo nele enquanto ninguém o está a editar.
+///
+/// ⚠️ O espelho é gateado no FOCO, e é o que separa *"o app diz quanto vale"* de *"o artista está a
+/// dizer quanto quer"*: sem ele, cada frame reescreveria o buffer por cima do que está a ser
+/// digitado. Com ele, um valor recusado pela porta volta sozinho ao efetivo quando o campo perde o
+/// foco — o "não pegou" fica visível, e o toast diz porquê.
+fn paint_px_chip(ctx: &mut PaintCtx, theme: Theme, rect: Rect, id: ph2d_a11y::NodeId, value: f32) {
+    let text = format_number(f64::from(value));
+    let store = ctx.host.store_mut();
+    if store.focus_id() != Some(id)
+        && let Some(InteractiveState::NumberInput {
+            value: v,
+            buffer,
+            caret,
+            last_committed,
+            ..
+        }) = store.get_mut(id)
+    {
+        *v = f64::from(value);
+        buffer.clear();
+        buffer.push_str(&text);
+        *caret = buffer.len();
+        *last_committed = f64::from(value);
+    }
+    let (st, buf, caret, anchor) = match store.get(id) {
+        Some(InteractiveState::NumberInput {
+            state,
+            buffer,
+            caret,
+            selection_anchor,
+            ..
+        }) => (*state, buffer.clone(), *caret, *selection_anchor),
+        _ => (TextInputState::Normal, String::new(), 0, None),
+    };
+    paint_number_chip(
+        rect,
+        st,
+        f64::from(value),
+        None,
+        Some(&buf),
+        caret,
+        anchor,
+        ctx.scene,
+        ctx.text_system,
+        theme,
+    );
+    ctx.host.hit_index_mut().register(id, rect);
+}
+
+/// O botão de elo da linha — **Pressed enquanto armado**, o mesmo desenho do irmão de cor.
+fn paint_link_button(
+    ctx: &mut PaintCtx,
+    theme: Theme,
+    id: ph2d_a11y::NodeId,
+    x: f32,
+    y: f32,
+    armed: bool,
+) {
+    let rect = Rect::new(x, y + (ROW_H_PX - LINK_W) * 0.5, LINK_W, LINK_W);
+    let state = if armed {
+        ButtonState::Pressed
+    } else {
+        ctx.host
+            .store()
+            .button_state(id)
+            .unwrap_or(ButtonState::Normal)
+    };
+    paint_icon_button(
+        rect,
+        IconGlyph::Builtin(IconId::Link),
+        IconButtonStyle::Compact,
+        state,
+        ctx.scene,
+        theme,
+    );
+    ctx.host.hit_index_mut().register(id, rect);
+}

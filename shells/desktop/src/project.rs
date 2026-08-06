@@ -260,7 +260,18 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// exclusivos e nada no formato o diria. Postcard é POSICIONAL e a forma do registro mudou ⇒ o
 /// bump é obrigatório nos dois sentidos, o mesmo raciocínio do v50/v51.
 /// ⚠️ **PROVISÓRIO** pelo mesmo motivo que o v56.
-const PROJECT_SCHEMA: u32 = 57;
+/// v58 (plano UI/UX W4c.1 — a camada NUMÉRICA): a escala (`spacing.*`, `radius.*`, `stroke.*`)
+/// passa a ser autorável, e o valor autorado viaja na **MESMA lista** `tokens` — o `SavedValue`
+/// ganha a variante **`Number(f32)`**, e a chave (`"spacing.md"`) é quem diz de que família a
+/// entrada é. ⚠️ Uma lista só, e não um campo `num_tokens` ao lado: o que o arquivo guarda é *"que
+/// tokens o artista autorou"*, e duas listas para isso seriam duas respostas à mesma pergunta que
+/// o import/export DTCG (W4c.5) teria de juntar de novo.
+/// ⚠️ **Apendar variante NÃO move `Literal`(0) nem `Alias`(1)**, então todo arquivo já salvo
+/// continua a ler — o bump é pelo caminho **INVERSO**: um build antigo a ler um arquivo novo
+/// bateria num índice de variante que ele não tem, e o número transforma isso num erro de VERSÃO
+/// em vez de num postcard a falhar longe da causa (o raciocínio do `JointKind::Weld`/`Cap::Square`).
+/// ⚠️ **PROVISÓRIO** pelo mesmo motivo que o v56.
+const PROJECT_SCHEMA: u32 = 58;
 
 /// O conteúdo de um arquivo de projeto.
 #[derive(serde::Serialize, serde::Deserialize)]

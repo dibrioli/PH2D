@@ -46,11 +46,11 @@
 mod alias_walk;
 pub mod chrome;
 pub mod color;
-pub mod layer;
-pub mod motion;
 /// **A camada de OVERRIDE de cor** (plano UI/UX W6) — o que o artista autora sobre a tabela
 /// gerada. Vazia, `ColorToken::resolve` é byte-idêntico ao de sempre.
 pub mod contrast;
+pub mod layer;
+pub mod motion;
 /// **A identidade de um token NUMÉRICO** (plano UI/UX W4c.1) — a família que se mede em px.
 pub mod num;
 /// **A camada de OVERRIDE numérica** — a irmã da [`overrides`], no molde dela.

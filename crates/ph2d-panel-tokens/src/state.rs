@@ -20,11 +20,34 @@
 
 use std::cell::{Cell, RefCell};
 
-/// O que um clique neste painel PEDE. Os índices são posições em `ColorToken::ALL`.
+/// **De que LISTA é uma linha** — a família de cor, ou a numérica (plano UI/UX W4c.1).
+///
+/// ⚠️ O painel passou a ter DUAS listas, e um índice cru deixou de identificar uma linha. Um par
+/// `(família, índice)` torna impossível o modo de falha barato: um clique numa linha de
+/// espaçamento a escrever no token de COR de mesmo índice, em silêncio.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum TokenFamily {
+    /// `ColorToken::ALL` — a swatch e o picker.
+    Colour,
+    /// `NumToken::ALL` — o chip de px.
+    Num,
+}
+
+/// O que um clique neste painel PEDE. Os índices são posições em `ColorToken::ALL`.
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum TokensIntent {
     /// Devolve UM token do modo vigente à fábrica.
     Reset(usize),
+    /// Devolve UM token NUMÉRICO do modo vigente à fábrica. Índice em `NumToken::ALL`.
+    NumReset(usize),
+    /// **O artista digitou/arrastou um número.** Índice em `NumToken::ALL`, valor em px.
+    ///
+    /// ⚠️ O painel NÃO escreve a camada — ele diz o que o chip passou a mostrar, e a shell decide
+    /// se isso muda alguma coisa. É o mesmo motivo que mantém o read-back do picker na shell: um
+    /// segundo escritor é sempre o que esquece de marcar o projeto como sujo.
+    NumSet { row: usize, px: f32 },
+    /// **`from` passa a SEGUIR `to`**, na família numérica.
+    NumLink { from: usize, to: usize },
     /// Devolve o MODO VIGENTE inteiro à fábrica.
     ///
     /// ⚠️ Só o vigente: o artista vê um modo de cada vez, e apagar trabalho que ele não está a
@@ -92,22 +115,39 @@ pub fn last_visible_h() -> f32 {
 /// documento continua a não ter cópia nenhuma aqui.
 #[derive(Default)]
 pub struct TokensPanelState {
-    /// A linha que está à espera de um alvo, se alguma.
+    /// A linha que está à espera de um alvo, se alguma — **e de que lista ela é**.
     ///
     /// ⚠️ Estado de GESTO, não de documento — é por isso que ele não é serializado nem atravessa a
     /// fila de intents: fechar o painel no meio de um elo simplesmente desiste dele, que é o que
     /// desistir de um gesto significa.
-    pub(crate) armed: Option<usize>,
+    ///
+    /// ⚠️ **UM slot para as duas famílias, e não um por família.** Dois slots deixariam as duas
+    /// listas armadas ao mesmo tempo, com dois botões acesos e nada a dizer qual deles o próximo
+    /// clique fecharia. Armar na outra família **abandona** o gesto anterior, que é o que
+    /// abandoná-lo parece.
+    pub(crate) armed: Option<(TokenFamily, usize)>,
 }
 
 impl TokensPanelState {
-    /// Que linha está à espera de um alvo, se alguma.
+    /// Que linha de COR está à espera de um alvo, se alguma.
     ///
     /// ⚠️ **Leitura, e é `pub` para o gate de seam** — que vive noutra crate e precisa de ver que
     /// o primeiro clique ARMOU sem que ele tenha enfileirado uma edição. Escrever continua a ser
     /// só do `apply_event`: um segundo escritor daria duas respostas a *"onde este gesto começou?"*.
     #[must_use]
     pub fn armed(&self) -> Option<usize> {
-        self.armed
+        match self.armed {
+            Some((TokenFamily::Colour, row)) => Some(row),
+            _ => None,
+        }
+    }
+
+    /// Que linha NUMÉRICA está à espera de um alvo, se alguma.
+    #[must_use]
+    pub fn armed_num(&self) -> Option<usize> {
+        match self.armed {
+            Some((TokenFamily::Num, row)) => Some(row),
+            _ => None,
+        }
     }
 }

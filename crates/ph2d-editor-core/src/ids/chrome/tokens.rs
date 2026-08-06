@@ -62,3 +62,30 @@ pub fn tokens_reset_id(row: usize) -> NodeId {
 pub fn tokens_link_id(row: usize) -> NodeId {
     fnv_node_id_runtime(&format!("tokens.link.{row}"))
 }
+
+/// O **chip numérico** da linha `row` da família de px (plano UI/UX W4c.1) — o campo que o artista
+/// digita ou arrasta.
+///
+/// ⚠️ Um `NumberInput`, e **não** um alvo de picker como a swatch: as duas linhas fazem a mesma
+/// pergunta (*quanto vale este token?*) sobre grandezas diferentes, e o editor de cada uma é o que
+/// o app já usa para aquela grandeza. Registá-lo como botão o deixaria pintado, aceso ao clique e
+/// **inedidável** — a cicatriz que a swatch já pagou.
+#[must_use]
+pub fn tokens_num_chip_id(row: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("tokens.num.chip.{row}"))
+}
+
+/// O **Reset** da linha numérica `row`.
+#[must_use]
+pub fn tokens_num_reset_id(row: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("tokens.num.reset.{row}"))
+}
+
+/// O **elo** da linha numérica `row` — o mesmo gesto de dois toques do elo de cor.
+///
+/// ⚠️ **Ids PRÓPRIOS, e não os da família de cor**: as duas listas coexistem no mesmo painel, e um
+/// id partilhado faria o clique numa linha de espaçamento acertar a linha de cor de mesmo índice.
+#[must_use]
+pub fn tokens_num_link_id(row: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("tokens.num.link.{row}"))
+}

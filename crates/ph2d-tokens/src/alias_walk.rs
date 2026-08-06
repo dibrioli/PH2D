@@ -78,7 +78,10 @@ mod tests {
 
     #[test]
     fn a_long_honest_chain_is_not_a_loop() {
-        assert_eq!(closes_a_loop(9, 1, 8, walk(&[(1, 2), (2, 3), (3, 4)])), None);
+        assert_eq!(
+            closes_a_loop(9, 1, 8, walk(&[(1, 2), (2, 3), (3, 4)])),
+            None
+        );
     }
 
     #[test]

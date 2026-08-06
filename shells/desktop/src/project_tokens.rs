@@ -16,8 +16,9 @@
 //! re-pintaria o app com as cores trocadas — a mesma lei que a W4a aplicou ao binding.
 
 use ph2d_tokens::color::Color;
+use ph2d_tokens::num_overrides::{NumOverride, NumValue, num_overrides, set_num_overrides};
 use ph2d_tokens::overrides::{ColorOverride, TokenValue, color_overrides, set_color_overrides};
-use ph2d_tokens::{ColorToken, Theme};
+use ph2d_tokens::{ColorToken, NumToken, Theme};
 
 /// **O que um token autorado vale, no arquivo** — as duas espécies do [`TokenValue`].
 ///
@@ -30,6 +31,13 @@ pub(crate) enum SavedValue {
     Literal([u8; 4]),
     /// **A CHAVE do token seguido** — nunca o índice, a mesma lei do campo `key` abaixo.
     Alias(String),
+    /// Um comprimento em px (plano UI/UX W4c.1).
+    ///
+    /// ⚠️ **Apendado**, e postcard indexa variants por posição: `Literal`(0) e `Alias`(1) não se
+    /// movem, então **todo arquivo já salvo continua a ler**. O `PROJECT_SCHEMA` sobe pelo caminho
+    /// INVERSO — um build antigo a ler um arquivo novo bateria num índice de variant que ele não
+    /// tem —, que é o mesmo raciocínio do `JointKind::Weld` e do `Cap::Square`.
+    Number(f32),
 }
 
 /// Um token de cor autorado: **que modo, que token, valendo o quê**.
@@ -65,6 +73,14 @@ const fn theme_from_u8(b: u8) -> Theme {
 /// ⚠️ Sai da PORTA (`color_overrides()`), que já devolve a lista em ordem canônica: dois projetos
 /// logicamente iguais dão os mesmos bytes, seja qual for a ordem dos cliques.
 pub(crate) fn collect() -> Vec<SavedToken> {
+    // ⚠️ **UMA lista para as duas famílias**, e não um campo novo ao lado. O que o arquivo guarda é
+    // *"que tokens o artista autorou"*, e a chave já é a identidade de um token — `"accent"` para
+    // uma cor, `"spacing.md"` para um comprimento. Duas listas seriam duas respostas à mesma
+    // pergunta, e o import/export DTCG (W4c.5) teria de as juntar de novo.
+    //
+    // ⚠️ Isto só é seguro porque as duas famílias são **provavelmente disjuntas** nas chaves — há
+    // gate a afirmá-lo (`no_key_is_claimed_by_both_families`), porque sem ele o load teria de
+    // escolher um dono e a escolha seria silenciosa.
     color_overrides()
         .into_iter()
         .map(|e| SavedToken {
@@ -75,6 +91,14 @@ pub(crate) fn collect() -> Vec<SavedToken> {
                 TokenValue::Alias(t) => SavedValue::Alias(t.key().to_string()),
             },
         })
+        .chain(num_overrides().into_iter().map(|e| SavedToken {
+            theme: e.theme as u8,
+            key: e.token.key().to_string(),
+            value: match e.value {
+                NumValue::Literal(px) => SavedValue::Number(px),
+                NumValue::Alias(t) => SavedValue::Alias(t.key().to_string()),
+            },
+        }))
         .collect()
 }
 
@@ -93,47 +117,77 @@ pub(crate) fn collect() -> Vec<SavedToken> {
 /// ⚠️ Duas representações do MESMO fato, para dois públicos: a linha de log é para a pessoa que
 /// abriu o projeto, o retorno é para o gate. Sem ele, um descarte que deixasse de ser contado
 /// passaria com a suíte verde, que é precisamente o *encolher em silêncio* que este doc proíbe.
+/// ⚠️ **A CHAVE decide de que família é a entrada**, e é a única coisa que decide. Uma entrada cuja
+/// chave é de cor mas cujo valor é um número (ou o contrário) é um par que nenhuma porta emite —
+/// só um arquivo editado à mão o produz — e ela **cai**, em vez de ser dobrada para o que der: uma
+/// cor que aparecesse por um `spacing` mal-emparelhado seria a re-vestida a inventar-se sozinha.
 pub(crate) fn install(saved: &[SavedToken]) -> usize {
     let mut dropped = 0usize;
-    let list: Vec<ColorOverride> = saved
-        .iter()
-        .filter_map(|t| {
-            let Some(token) = ColorToken::from_key(&t.key) else {
-                dropped += 1;
-                return None;
-            };
+    let mut colours: Vec<ColorOverride> = Vec::new();
+    let mut nums: Vec<NumOverride> = Vec::new();
+
+    for t in saved {
+        let theme = theme_from_u8(t.theme);
+        if let Some(token) = ColorToken::from_key(&t.key) {
             // ⚠️ Um alias cujo ALVO já não existe cai pelo mesmo motivo que o token desconhecido:
             // a tabela de fábrica é a autoridade sobre quais tokens existem, e um elo pendurado no
             // vazio não tem valor a devolver.
-            let value = match &t.value {
-                SavedValue::Literal([r, g, b, a]) => TokenValue::Literal(Color {
-                    r: *r,
-                    g: *g,
-                    b: *b,
-                    a: *a,
+            match &t.value {
+                SavedValue::Literal([r, g, b, a]) => colours.push(ColorOverride {
+                    theme,
+                    token,
+                    value: TokenValue::Literal(Color {
+                        r: *r,
+                        g: *g,
+                        b: *b,
+                        a: *a,
+                    }),
                 }),
                 SavedValue::Alias(key) => match ColorToken::from_key(key) {
-                    Some(target) => TokenValue::Alias(target),
-                    None => {
-                        dropped += 1;
-                        return None;
-                    }
+                    Some(target) => colours.push(ColorOverride {
+                        theme,
+                        token,
+                        value: TokenValue::Alias(target),
+                    }),
+                    None => dropped += 1,
                 },
-            };
-            Some(ColorOverride {
-                theme: theme_from_u8(t.theme),
-                token,
-                value,
-            })
-        })
-        .collect();
-    // ⚠️ A porta descarta os elos que fechariam um laço e DIZ quantos — um arquivo editado à mão
-    // pode trazer um, e recusar o projeto inteiro por causa dele seria jogar fora a re-vestida.
-    dropped += set_color_overrides(list);
+                SavedValue::Number(_) => dropped += 1,
+            }
+        } else if let Some(token) = NumToken::from_key(&t.key) {
+            match &t.value {
+                SavedValue::Number(px) => nums.push(NumOverride {
+                    theme,
+                    token,
+                    value: NumValue::Literal(*px),
+                }),
+                SavedValue::Alias(key) => match NumToken::from_key(key) {
+                    Some(target) => nums.push(NumOverride {
+                        theme,
+                        token,
+                        value: NumValue::Alias(target),
+                    }),
+                    None => dropped += 1,
+                },
+                SavedValue::Literal(_) => dropped += 1,
+            }
+        } else {
+            dropped += 1;
+        }
+    }
+
+    // ⚠️ As DUAS portas correm sempre, mesmo com a lista vazia: instalar é o que faz o load
+    // ESQUECER, e pular a família que este arquivo não usa deixaria a escala do documento ANTERIOR
+    // de pé sob as cores do novo.
+    //
+    // ⚠️ Cada porta descarta o que não pode entrar (um laço, um número que não é comprimento) e DIZ
+    // quantos — um arquivo editado à mão pode trazer um, e recusar o projeto inteiro por causa dele
+    // seria jogar fora a re-vestida.
+    dropped += set_color_overrides(colours);
+    dropped += set_num_overrides(nums);
     if dropped > 0 {
         eprintln!(
-            "[proj] {dropped} token(s) de cor do arquivo nao existem mais no design system (ou \
-             fechavam um laco de alias) e foram descartados"
+            "[proj] {dropped} token(s) do arquivo nao existem mais no design system (ou fechavam \
+             um laco de alias, ou nao eram um valor daquela familia) e foram descartados"
         );
     }
     dropped

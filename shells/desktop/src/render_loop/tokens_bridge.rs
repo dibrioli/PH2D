@@ -18,9 +18,12 @@
 //! editar um modo e ver outro re-vestir.
 
 use ph2d_panel_tokens::TokensIntent;
-use ph2d_tokens::ColorToken;
 use ph2d_tokens::color::Color;
+use ph2d_tokens::num_overrides::{
+    NumRefusal, NumValue, num_override, num_overrides, set_num_override, set_num_overrides,
+};
 use ph2d_tokens::overrides::{TokenValue, color_override, set_color_override, set_color_overrides};
+use ph2d_tokens::{ColorToken, NumToken};
 
 use ph2d_editor::screens::hero::HeroScreen;
 use ph2d_editor::{Toast, ToastQueue};
@@ -95,6 +98,9 @@ pub(crate) fn dispatch(hero: &mut HeroScreen, toasts: &mut ToastQueue) -> bool {
             }
             // ⚠️ Só o MODO VIGENTE. A lista é filtrada em vez de limpa: apagar os outros três
             // levaria trabalho que o artista não está a olhar.
+            //
+            // ⚠️ E as DUAS famílias, porque o botão diz *"Reset This Mode"*: deixar a escala de pé
+            // depois de um reset que se anuncia total é a metade que ninguém procura.
             TokensIntent::ResetAll => {
                 let keep: Vec<_> = ph2d_tokens::overrides::color_overrides()
                     .into_iter()
@@ -103,11 +109,71 @@ pub(crate) fn dispatch(hero: &mut HeroScreen, toasts: &mut ToastQueue) -> bool {
                 // ⚠️ Filtrar uma tabela ACÍCLICA não pode produzir um laço (remover arestas nunca
                 // fecha um ciclo), então o descarte é zero por aritmética — não por confiança.
                 debug_assert_eq!(set_color_overrides(keep), 0);
+                let keep_num: Vec<_> = num_overrides()
+                    .into_iter()
+                    .filter(|e| e.theme != theme)
+                    .collect();
+                debug_assert_eq!(set_num_overrides(keep_num), 0);
                 changed = true;
+            }
+
+            // ── A família NUMÉRICA (plano UI/UX W4c.1) ────────────────────
+            TokensIntent::NumReset(row) => {
+                if let Some(&token) = NumToken::ALL.get(row) {
+                    // Soltar nunca pode falhar: `None` não é um valor a validar nem um elo a fechar.
+                    let _ = set_num_override(theme, token, None);
+                    changed = true;
+                }
+            }
+            // ⚠️ **Só escreve quando MUDA**, e o oráculo é o valor EFETIVO — a mesma lei do
+            // read-back do picker. Sem ela, um chip que espelha o efetivo marcaria o projeto sujo
+            // por o artista ter clicado nele.
+            TokensIntent::NumSet { row, px } => {
+                if let Some(&token) = NumToken::ALL.get(row) {
+                    // ⚠️ Digitar um número numa linha que SEGUE outra QUEBRA o elo, mesmo que o
+                    // número coincida: o artista foi ao campo e escreveu, e isso é a decisão de ter
+                    // um valor próprio.
+                    let breaks_a_link =
+                        matches!(num_override(theme, token), Some(NumValue::Alias(_)));
+                    if breaks_a_link || token.px(theme) != px {
+                        match set_num_override(theme, token, Some(NumValue::Literal(px))) {
+                            Ok(()) => changed = true,
+                            Err(e) => {
+                                toasts.push(refusal_toast(&e));
+                            }
+                        }
+                    }
+                }
+            }
+            TokensIntent::NumLink { from, to } => {
+                if let (Some(&a), Some(&b)) = (NumToken::ALL.get(from), NumToken::ALL.get(to)) {
+                    match set_num_override(theme, a, Some(NumValue::Alias(b))) {
+                        Ok(()) => changed = true,
+                        Err(e) => {
+                            toasts.push(refusal_toast(&e));
+                        }
+                    }
+                }
             }
         }
     }
     changed
+}
+
+/// **A recusa vira frase.** Um gesto que não acontece sem nada na tela é indistinguível de um botão
+/// quebrado, e o que torna a mensagem accionável é ela nomear *o que* foi pedido e *por quê* não deu.
+fn refusal_toast(e: &NumRefusal) -> Toast {
+    match e {
+        NumRefusal::Cycle { token, target, at } => Toast::warning(format!(
+            "Can't make {} follow {}: that closes a loop at {}",
+            token.key(),
+            target.key(),
+            at.key()
+        )),
+        NumRefusal::NotALength(v) => Toast::warning(format!(
+            "{v} is not a length: a px token needs a finite value >= 0"
+        )),
+    }
 }
 
 #[cfg(test)]

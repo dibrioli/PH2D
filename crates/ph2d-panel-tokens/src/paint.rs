@@ -22,6 +22,7 @@ use ph2d_editor_core::widget::{
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_tokens::contrast::{failing_pairs, token_is_in_a_failing_pair};
+use ph2d_tokens::num_overrides::num_overridden_count;
 use ph2d_tokens::overrides::{TokenValue, color_override, overridden_count};
 use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, StrokeToken, Theme, TypeToken};
 
@@ -29,9 +30,13 @@ use crate::TokensPanel;
 use crate::state::{TokensPanelState, set_last_content_h, set_last_visible_h};
 
 /// Largura do botão *Reset* de uma linha. Estreito de propósito: ele é a exceção, não a coluna.
-const RESET_W: f32 = 48.0; // LITERAL-PX-OK: panel grid metric (per-row reset button width)
+///
+/// ⚠️ `pub(crate)` porque a família numérica ([`crate::paint_num`]) desenha a MESMA coluna: as duas
+/// listas partilham a régua, e dois números iguais escritos em dois sítios são dois números que
+/// divergem no dia em que um deles muda.
+pub(crate) const RESET_W: f32 = 48.0; // LITERAL-PX-OK: panel grid metric (per-row reset button width)
 /// Lado do botão de ELO — quadrado, como todo botão de ícone compacto do app.
-const LINK_W: f32 = 20.0; // LITERAL-PX-OK: panel grid metric (compact icon button side)
+pub(crate) const LINK_W: f32 = 20.0; // LITERAL-PX-OK: panel grid metric (compact icon button side)
 /// Lado da marca de AVISO da linha. Menor que o botão de elo de propósito: ela é um **glifo**,
 /// não um alvo — não há gesto para lhe dar, então não carrega a caixa de toque de um botão.
 const MARK_W: f32 = 16.0; // LITERAL-PX-OK: panel grid metric (warning glyph side)
@@ -87,7 +92,7 @@ pub(crate) fn paint(state: &mut TokensPanelState, ctx: &mut PaintCtx) {
     ctx.scene.push_clip(&rect_to_vello(body_rect));
     let x = rect.x + PANEL_HEAD_PAD;
     let w = (rect.w - PANEL_HEAD_PAD * 2.0).max(0.0);
-    let y_after = paint_body(ctx, theme, x, w, body_top - scroll, state.armed);
+    let y_after = paint_body(ctx, theme, x, w, body_top - scroll, state);
     let content_h = (y_after + scroll) - body_top + PANEL_HEAD_PAD;
     set_last_content_h(content_h);
     set_last_visible_h(body_h);
@@ -96,16 +101,20 @@ pub(crate) fn paint(state: &mut TokensPanelState, ctx: &mut PaintCtx) {
     paint_scrollbar_and_publish(ctx, body_rect, content_h, body_h, scroll, theme);
 }
 
-/// O readout do modo + o *Reset All* + a lista.
+/// O readout do modo + o *Reset All* + as DUAS listas.
 fn paint_body(
     ctx: &mut PaintCtx,
     theme: Theme,
     x: f32,
     w: f32,
     mut y: f32,
-    armed: Option<usize>,
+    state: &TokensPanelState,
 ) -> f32 {
-    let n = overridden_count(theme);
+    let armed = state.armed();
+    // ⚠️ A contagem soma as DUAS famílias, e é o que faz o *Reset This Mode* dizer a verdade: ele
+    // devolve o modo inteiro à fábrica, e um readout que contasse só as cores ofereceria o botão
+    // sobre um modo "de fábrica" que ainda carrega uma escala autorada.
+    let n = overridden_count(theme) + num_overridden_count(theme);
     let font = TypeToken::Sm.px();
     // ⚠️ O modo VIGENTE é dito, e não inferido: o mesmo token tem quatro valores, e um painel que
     // não nomeia qual deles está a mostrar torna o `M` (que cicla o tema) indistinguível de um bug.
@@ -150,7 +159,7 @@ fn paint_body(
             armed == Some(row),
         );
     }
-    y
+    crate::paint_num::paint_numeric_family(ctx, theme, x, w, y, state.armed_num())
 }
 
 /// **O READOUT DE CONTRASTE** — os pares que um valor AUTORADO deixou abaixo da WCAG, neste modo.
@@ -353,7 +362,14 @@ fn paint_link_button(ctx: &mut PaintCtx, theme: Theme, row: usize, x: f32, y: f3
 }
 
 /// Um botão de ação simples — o mesmo desenho do irmão no painel de física.
-fn command(ctx: &mut PaintCtx, id: ph2d_a11y::NodeId, label: &str, x: f32, w: f32, y: f32) -> f32 {
+pub(crate) fn command(
+    ctx: &mut PaintCtx,
+    id: ph2d_a11y::NodeId,
+    label: &str,
+    x: f32,
+    w: f32,
+    y: f32,
+) -> f32 {
     let theme = ctx.host.theme();
     let rect = Rect::new(x, y, w, ROW_H_PX);
     let state = ctx

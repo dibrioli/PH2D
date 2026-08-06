@@ -19,9 +19,9 @@ fn the_duplicate_row_asks_for_a_vec_path_before_it_spawns() {
     let asks = SRC
         .find("get::<ph2d_ecs::VecPathRef>")
         .expect("o drain nao pergunta se a row e' uma forma vetorial");
-    let spawns = SRC
-        .find("spawn_empty()")
-        .expect("CONTROLE: o caminho do sprite deixou de spawnar — este gate mede o arquivo errado");
+    let spawns = SRC.find("spawn_empty()").expect(
+        "CONTROLE: o caminho do sprite deixou de spawnar — este gate mede o arquivo errado",
+    );
     assert!(
         asks < spawns,
         "o spawn corre ANTES da pergunta: uma forma vetorial ganharia um sosia sem geometria"

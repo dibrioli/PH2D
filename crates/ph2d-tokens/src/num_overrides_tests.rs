@@ -5,9 +5,8 @@
 //! [`crate::overrides`], e ele vale igual aqui).
 
 use super::{
-    AuthoredNum, NumOverride, NumRefusal, NumValue, clear_num_overrides, num_override,
-    num_overridden_count, num_overrides, resolved_num_override, set_num_override,
-    set_num_overrides,
+    AuthoredNum, NumOverride, NumRefusal, NumValue, clear_num_overrides, num_overridden_count,
+    num_override, num_overrides, resolved_num_override, set_num_override, set_num_overrides,
 };
 use crate::num::NumToken;
 use crate::theme::Theme;

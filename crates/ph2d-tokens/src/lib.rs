@@ -43,6 +43,7 @@
 //!   import/export are not here. See `docs/Vector Module/Estudos/
 //!   PLANO_UI_UX_padrao_figma.md` §4/W4.
 
+mod alias_walk;
 pub mod chrome;
 pub mod color;
 pub mod layer;
@@ -50,6 +51,10 @@ pub mod motion;
 /// **A camada de OVERRIDE de cor** (plano UI/UX W6) — o que o artista autora sobre a tabela
 /// gerada. Vazia, `ColorToken::resolve` é byte-idêntico ao de sempre.
 pub mod contrast;
+/// **A identidade de um token NUMÉRICO** (plano UI/UX W4c.1) — a família que se mede em px.
+pub mod num;
+/// **A camada de OVERRIDE numérica** — a irmã da [`overrides`], no molde dela.
+pub mod num_overrides;
 pub mod overrides;
 pub mod radius;
 pub mod spacing;
@@ -76,6 +81,7 @@ pub use color::{
 };
 pub use layer::Layer;
 pub use motion::{Duration, Easing};
+pub use num::NumToken;
 pub use radius::Radius;
 pub use spacing::{Density, ICON_BTN_SIZE_PX, ROW_H_PX, SECTION_GAP_PX, Spacing};
 pub use stroke::StrokeToken;

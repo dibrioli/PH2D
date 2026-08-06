@@ -187,25 +187,23 @@ pub fn resolved_override(theme: Theme, token: ColorToken) -> Option<Authored> {
 }
 
 /// *Fazer `token` seguir `target` fecharia um laço?* — devolve **onde** ele fecha.
+///
+/// ⚠️ **A caminhada mora no [`crate::alias_walk`]**, e não aqui: a pergunta é sobre o GRAFO e não
+/// sabe nada sobre cor, então a camada numérica faz exactamente a mesma e uma segunda cópia seria
+/// a que esquece o auto-alias no dia em que alguém ajusta esta. O que fica aqui é o que é DESTA
+/// família: como se lê um slot, e quantos slots existem.
 fn closes_a_loop(
     list: &[ColorOverride],
     theme: Theme,
     token: ColorToken,
     target: ColorToken,
 ) -> Option<ColorToken> {
-    let mut cur = target;
-    // ⚠️ O teste é feito ANTES do primeiro salto, e é isso que apanha o auto-alias: um token que
-    // segue a si mesmo é um laço de comprimento um.
-    for _ in 0..=max_alias_hops() {
-        if cur == token {
-            return Some(cur);
-        }
+    crate::alias_walk::closes_a_loop(token, target, max_alias_hops(), |cur| {
         match slot(list, theme, cur) {
-            Some(TokenValue::Alias(next)) => cur = next,
-            _ => return None,
+            Some(TokenValue::Alias(next)) => Some(next),
+            _ => None,
         }
-    }
-    Some(cur)
+    })
 }
 
 /// **A porta ÚNICA de escrita** — `None` devolve o token à fábrica.

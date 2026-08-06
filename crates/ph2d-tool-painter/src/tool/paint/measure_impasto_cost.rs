@@ -524,35 +524,43 @@ fn is_the_silhouette_chain_the_aa_cost() {
 /// ⚠️ **O raio é o do PRODUTO.** O log de smoke opera em ~185 (107 k visitas/dab); as tabelas dos
 /// irmãos param em 100, e a wave que sair daqui é decidida pelo regime que o artista usa.
 ///
-/// Medido (ms por traço):
+/// Medido a 4096 (ms por traço):
 ///
-/// | tela | raio | camada | full | cauda | silhueta | filme | miolo |
-/// |---|---|---|---|---|---|---|---|
-/// | 2048 | 100 | virgem | 57,58 | 7,76 | 10,40 | 11,61 | 23,21 |
-/// | 2048 | 100 | s/ tinta | 82,67 | **38,82** | 10,11 | 11,75 | 17,34 |
-/// | 4096 | 100 | virgem | 71,23 | 8,59 | 10,62 | 12,62 | 34,77 |
-/// | 4096 | 100 | s/ tinta | 79,89 | **34,60** | 8,57 | 11,50 | 18,05 |
-/// | 2048 | 185 | virgem | 88,10 | 11,49 | 18,82 | 20,25 | 29,42 |
-/// | 2048 | 185 | s/ tinta | 133,84 | **56,95** | 17,75 | 19,86 | 29,57 |
-/// | 4096 | 185 | virgem | 109,00 | 12,94 | 18,66 | 20,89 | 46,83 |
-/// | 4096 | 185 | s/ tinta | 134,12 | **52,51** | 18,89 | 22,57 | 32,70 |
+/// | raio | camada | full | cauda | silhueta | filme | miolo |
+/// |---|---|---|---|---|---|---|
+/// | 100 | virgem | 74,85 | 7,32 | 10,27 | 11,34 | 40,97 |
+/// | 100 | tela nua | 81,47 | **33,79** | 11,43 | 10,99 | 20,95 |
+/// | 100 | sobreposto | 80,04 | **32,69** | 11,30 | 11,69 | 19,67 |
+/// | 185 | virgem | 111,33 | 15,40 | 19,36 | 21,97 | 48,85 |
+/// | 185 | tela nua | 136,64 | **53,74** | 19,84 | 21,52 | 34,22 |
+/// | 185 | sobreposto | 135,84 | **54,79** | 18,74 | 18,42 | 32,19 |
 ///
 /// **Quatro leituras, e a primeira corrige a mim mesmo:**
 ///
-/// 1. **A CAUDA salta 4-5x da camada virgem para tinta-sobre-tinta, em TODA célula** — é o **bow
-///    wave**, cuja mordida mora dentro dela. A 1a versão desta sonda usava um tool só e mediana de 5,
-///    então media *quatro amostras com bow wave* e reportou "cauda 40 % crescendo 8x com o raio". Na
-///    camada virgem a cauda é **11,9 %** e cresce **1,5x** do raio 100 ao 185 — coerente com a área
-///    varrida (1,85x). **As escritas de plano NÃO são superlineares.**
-/// 2. **A SILHUETA e o FILME são estáveis nas oito células** (17-20 no raio 185, 8,5-12,6 no 100):
-///    não dependem do `ground` nem da tela, que é a forma correta, e é isso que torna a tabela
-///    confiável — eles são o controle interno.
-/// 3. **A silhueta — o alvo da FUSÃO — vale 14-17 % em todo regime.** Fundir as duas varreduras ataca
-///    o MENOR dos quatro itens.
-/// 4. **O bow wave sozinho é ~40 ms = 30 % da caminhada de altura** no ponto do produto, e ele roda
-///    **mesmo com Push em 0** — por decisão declarada no `impasto.rs` (*"Recorded whenever there IS
-///    paint to shove, NOT only when the knob is up"*), porque o ingrediente tem de existir para o
-///    knob Push seguir vivo depois do traço. **É preço de uma feature, não defeito.**
+/// 1. **A CAUDA salta 3,5-4x da camada virgem para uma camada SUJA** — é o **bow wave**, cuja
+///    mordida mora dentro dela. A 1ª versão desta sonda usava um tool só e mediana de 5, então media
+///    *quatro amostras com bow wave* e reportou "cauda 40 % crescendo 8x com o raio". Na camada
+///    virgem a cauda é **~12 %** e cresce ~1,5x do raio 100 ao 185 — coerente com a área varrida
+///    (1,85x). **As escritas de plano NÃO são superlineares.**
+/// 2. ⚠️ **E o `impasto.rs` afirmava que *"o custo cai exatamente onde a feature está, em tinta sobre
+///    tinta"*. MEDIDO, a segunda metade é FALSA:** *tela nua* (traço pela parte NUA de uma camada que
+///    tem relevo noutro lugar) custa **53,74** e *sobreposto* custa **54,79** — o mesmo. O gate é
+///    per-CAMADA (`ground = self.heights.get(&active)`), não per-texel: **qualquer** traço numa
+///    camada suja paga a mordida inteira. A 1ª metade da frase segue verdadeira (camada virgem: 15,40).
+/// 3. ⛔ **MEDIDO E REJEITADO — não refaça: o early-out por-texel.** A leitura de (2) sugeria que a
+///    mordida trabalhava à toa na tela nua, e um `if q != 0` antes da divisão seria byte-idêntico e
+///    grátis. **Construído, medido, revertido:** 53,74 -> 53,24, dentro do ruído de corrida (~5 %).
+///    O porquê é o mecanismo: `q = ground + plane`, e o **`plane` recebe o BANCO do próprio traço**,
+///    então `q != 0` sob quase todo texel mesmo com `ground = 0`. A mordida está recolhendo a onda
+///    que o dab anterior bancou adiante — **ela não está ociosa, está transportando**.
+/// 4. ⛔ **E a saída algébrica também não existe.** O doc do kernel prova que a mordida telescopa para
+///    `g·m_final`, o que sugeriria computá-la numa passada só, no fim. **Não fecha pelo mesmo motivo:**
+///    o `plane` acumula o banco entre dabs, então `q` não é `ground·(1−m)` e a identidade quebra.
+/// 5. **A SILHUETA e o FILME são estáveis nas seis células** (17-22 no raio 185, 10-12 no 100): não
+///    dependem do `ground` nem da tela, que é a forma correta, e é isso que torna a tabela confiável
+///    — eles são o controle interno. **A silhueta, o alvo da FUSÃO, vale 14 %.**
+/// 6. O `miolo` da coluna virgem cresce com a TELA e o das outras fica plano: é o primeiro-toque dos
+///    planos recém-alocados. Custo real, de **uma vez por camada**, fora do regime permanente.
 ///
 /// Rodar: `cargo test -p ph2d-tool-painter --release what_the_height_walk_is_made_of -- --ignored --nocapture --test-threads=1`
 #[test]
@@ -591,17 +599,24 @@ fn what_the_height_walk_is_made_of() {
     /// PEGADA, entao crescer com a tela e assinatura de memoria: a coluna virgem aloca um jogo novo
     /// de planos por amostra e falta pagina em cada um. E custo REAL (o 1o traco numa camada paga
     /// isso), mas e de UMA vez, e nao pertence ao regime permanente.
-    fn stroke_ms(side: u32, radius: f32, mask: u32, virgin: bool) -> f64 {
+    fn stroke_ms(side: u32, radius: f32, mask: u32, layer: u8) -> f64 {
+        // 0 = camada VIRGEM (tool novo por amostra, `ground` = None)
+        // 1 = camada SUJA, mas o traco anda por tela NUA (faixas distintas, `ground[i]` = 0 sob ele)
+        // 2 = SOBREPOSTO: o traco anda em cima do relevo que ele mesmo deixou
         let mut shared = tool(side, radius);
         let mut samples = Vec::new();
         for k in 0..SAMPLES {
-            let mut fresh = if virgin {
+            let mut fresh = if layer == 0 {
                 Some(tool(side, radius))
             } else {
                 None
             };
             let t = fresh.as_mut().unwrap_or(&mut shared);
-            let y = 300.0 + f32::from(k) * 400.0;
+            let y = if layer == 2 {
+                600.0
+            } else {
+                300.0 + f32::from(k) * 400.0
+            };
             samples.push(ablate::with(mask, || {
                 ms(&mut || {
                     t.on_canvas_pointer(cp([300.0, y], PointerPhase::Down));
@@ -622,22 +637,17 @@ fn what_the_height_walk_is_made_of() {
         "{:>6} {:>5} {:>9}  {:>9} {:>9} {:>9} {:>9}  {:>6}",
         "tela", "raio", "camada", "full", "cauda", "silhueta", "filme", "miolo"
     );
-    for (side, radius) in [
-        (2048u32, 100.0f32),
-        (4096, 100.0),
-        (2048, 185.0),
-        (4096, 185.0),
-    ] {
-        for (label, virgin) in [("virgem", true), ("s/ tinta", false)] {
-            let full = stroke_ms(side, radius, 0, virgin);
-            let no_tail = stroke_ms(side, radius, ablate::TAIL, virgin);
-            let no_sil = stroke_ms(side, radius, ablate::TAIL | ablate::SILHOUETTE, virgin);
-            let no_film = stroke_ms(side, radius, ablate::TAIL | ablate::FILM_AA, virgin);
+    for (side, radius) in [(4096u32, 100.0f32), (4096, 185.0)] {
+        for (label, layer) in [("virgem", 0u8), ("tela nua", 1), ("sobreposto", 2)] {
+            let full = stroke_ms(side, radius, 0, layer);
+            let no_tail = stroke_ms(side, radius, ablate::TAIL, layer);
+            let no_sil = stroke_ms(side, radius, ablate::TAIL | ablate::SILHOUETTE, layer);
+            let no_film = stroke_ms(side, radius, ablate::TAIL | ablate::FILM_AA, layer);
             let core = stroke_ms(
                 side,
                 radius,
                 ablate::TAIL | ablate::SILHOUETTE | ablate::FILM_AA,
-                virgin,
+                layer,
             );
             println!(
                 "{side:>6} {radius:>5.0} {label:>9}  {full:>9.2} {:>9.2} {:>9.2} {:>9.2}  {core:>6.2}",

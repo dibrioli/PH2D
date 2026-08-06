@@ -295,3 +295,86 @@ Canvas 4096, ferramenta Painter, um método de figura (Ellipse/Polygon/Curve/Lin
    figura ficava progressivamente mais lenta a cada forma parada na tela.
 3. **Ligue o Tiling ou a Symmetry e arraste uma figura.** É o caso de UMA figura só que produz a
    união rala; o arrasto tem de ficar liso.
+
+---
+
+## §11 O BOOLEAN das shapes — era CARO, e da forma errada
+
+Pergunta do Enio: *"avalie se o boolean das shapes é barato ou caro"*.
+
+### §11.1 O veredito
+
+**Caro, e da forma errada.** Escolher **Add** ou **Remove** numa forma tira a figura do caminho de dabs
+e a manda pelo `stroke_boolean_contours`, que roda a **cada move de ponteiro** — e ele alocava e
+percorria um buffer supersampleado do **canvas inteiro**. Com `SS = 3` isso é **12288² = 151 MB** a
+4096², zerado uma vez para o `crisp`, **outra vez POR FORMA** para o `region`, mais duas dentro do
+traçado; e o `scanline_fill` percorria as 12288 linhas para desenhar uma figura de 400 px.
+
+Medido pela porta do artista, com a **MESMA figura de 200 px** nas três telas (um move, mediana):
+
+| tela | Overlay | 1 Add | 2 Add | 4 Add | Add ÷ Overlay |
+|---|---|---|---|---|---|
+| 1024 | 1,30 ms | 21,7 | 37,4 | 39,0 | 16,7× |
+| 2048 | 1,40 | 77,8 | 118,9 | 127,3 | 55,8× |
+| 4096 | 1,50 | **284,4** | 450,3 | 483,3 | **190×** |
+
+⚠️ **A coluna Overlay é PLANA** — a figura não mudou, o custo não muda; é o comportamento certo. A de
+Add cresce **4× por 4× de área**: o custo era do **BUFFER**, não do desenho. Marcar `Add` custava 190×
+um move normal por uma razão que não tem nada a ver com o que o artista pediu.
+
+⚠️ **E uma forma sozinha já paga:** com `active_is_bool` a figura ativa entra sozinha no composite (o
+contorno dela passa a vir do traçado, não dos próprios dabs). A coluna `1 Add` não é caso de canto —
+é o que acontece assim que alguém escolhe a Operation no painel. **284 ms num move** são 17 quadros.
+
+### §11.2 A cura
+
+A janela sai da **caixa das formas que ADICIONAM** — o resultado de um boolean está contido na união
+dos Add, então um Remove distante não pode mudar um texel —, presa ao canvas. O rasterizador recebe as
+coordenadas deslocadas e a largura da janela: uma **tela virtual**, o mesmo truque da banda do
+`stamp_banded`, sem segunda resposta a *"que pixels esta forma cobre?"*. O `region` passou a ser um só,
+reusado.
+
+| tela | Overlay | 1 Add | 2 Add | 4 Add |
+|---|---|---|---|---|
+| 1024 | 1,36 ms | 7,62 | 15,3 | 18,9 |
+| 2048 | 1,53 | 8,15 | 15,6 | 17,7 |
+| 4096 | 1,64 | **8,08** | 16,7 | 17,9 |
+
+⚠️ **A coluna Add ficou PLANA na tela** — o boolean virou um fato da FIGURA. A 4096²: **284,4 → 8,08
+ms, 35×**.
+
+### §11.3 Gates
+
+A identidade é contra a **rota de TELA CHEIA congelada sob `cfg(test)`** (`stroke_boolean_contours_whole_canvas`)
+— o oráculo é *o que shipava*, não uma reimplementação escrita para o teste. 12 cenas × 3 offsets: uma
+Add sozinha · duas que se cruzam · duas separadas (duas componentes) · Add menos Remove · **Remove
+longe** · a figura **saindo** do canvas · **colada** na aresta · **elipse girada** · polígono · **curva
+fechada com as alças fora da caixa dos pontos** · e as duas com Remove. Mais o early-out sem Add, e a
+**consequência como razão** entre duas telas.
+
+**3 mutações, 3 sangram** (a caixa cega à rotação · o casco sem as alças · a janela saindo dos Remove).
+
+### §11.4 ⚠️ Uma 4ª mutação acusou a minha AFIRMAÇÃO, não o gate
+
+Eu pus uma folga de 2 texels em volta da janela com o comentário de que **era ela** que mantinha o
+traçado idêntico (*"uma componente colada na borda do buffer não é percorrida como uma que tem zeros
+em volta"*), e armei a mutação que deveria sangrar. Ela **passou**, nos dez casos — inclusive numa
+figura no meio do canvas cuja caixa apertada a encosta na coluna 0 da janela.
+
+O motivo está no `selection_trace::inside`: ele **confere os limites** e devolve `false` fora do
+buffer, ou seja **fora lê como FUNDO** — exatamente o que uma borda de zeros daria. A folga saiu, em
+vez de ficar com uma justificativa falsa ao lado. O que de fato mantém a identidade é o `clamp` ao
+canvas.
+
+⚠️ **E a fixture da mutação das alças nascia cega:** Polygon e Line fechada produzem `Freehand` com as
+alças **em cima** dos pontos (`[q, q]`, quinas vivas), então dropar as alças não muda uma coordenada.
+Só com uma **curva fechada cujas alças saem da caixa dos pontos** ela morde.
+
+### §11.5 O que sobra
+
+Um Add ainda custa **~8 ms** contra 1,6 do Overlay — **5×**. Isso é o preço intrínseco de rasterizar a
+figura a `SS = 3` (9× os pixels dela), inundá-la e andar a fronteira; agora é **proporcional à
+figura**, que é a forma certa, mas 8 ms ainda é meio quadro. As alavancas óbvias, **não medidas**:
+baixar o `SS` (é decisão de LOOK — ele existe para o contorno não sair serrilhado) · traçar sem o
+flood-fill por componente (o `trace_all_contours` aloca um buffer do tamanho da janela **por
+componente** e faz um `find` linear a cada volta) · e cachear o contorno enquanto a geometria não muda.

@@ -74,14 +74,9 @@ pub fn forward_to_hero(
             reparent = Some((dragged, drop));
             continue;
         }
-        if !hero.apply_event(e) {
-            // Focus/Blur land unhandled BY DESIGN (the store tracks focus internally; the hero has no
-            // per-widget arm for them) — logging each number-input click drowned the console (Enio
-            // 2026-07-07). Every OTHER unhandled event still prints: it's the dead-seam detector (a
-            // painted-but-unwired widget shows up here first).
-            if !matches!(e, WidgetEvent::Focus(_) | WidgetEvent::Blur(_)) {
-                eprintln!("[hero] unhandled event: {e:?}");
-            }
+        if !hero.apply_event(e) && !expected_unhandled(&e) {
+            // O detector de SEAM MORTO: um widget pintado mas não-fiado aparece aqui primeiro.
+            eprintln!("[hero] unhandled event: {e:?}");
         }
     }
     // Palette Import / Export: a click on the picker's button flagged a host file-I/O request (the
@@ -104,6 +99,30 @@ thread_local! {
 }
 
 /// Save the picker's named palettes to `~/.ph2d/palettes.txt` when they changed since the last call.
+/// *Este evento chegar sem handler é ESPERADO?* — a isenção do detector de seam morto.
+///
+/// ⚠️ Ela é por MOTIVO, nunca por conveniência. O log ao lado é como um widget pintado-mas-mudo
+/// se anuncia, então cada linha desta função apaga uma classe inteira de aviso e tem de dizer
+/// por que aquele evento não tem handler.
+///
+/// - **Focus/Blur**: o store rastreia foco internamente e o hero não tem braço por-widget para
+///   eles — logar cada clique num campo numérico afogava o console (Enio 2026-07-07).
+/// - **`ValueChanged` do color picker**: o valor dele é lido por **POLLING**, não consumido como
+///   evento — seis pontes (vector · painter · flip · motion · tokens · o render_loop) chamam
+///   `store.blender_picker(INSP_BLENDER_PICKER)` a cada frame. Arrastar a cor emitia uma linha
+///   por frame sobre um seam que está VIVO (Enio 2026-08-06).
+///
+/// ⚠️ A isenção do picker é pelo **ID**, jamais pelo tipo `ValueChanged`: calar o tipo inteiro
+/// cegaria o detector para todo slider e chip do app, que é precisamente o que ele existe para
+/// apanhar.
+fn expected_unhandled(e: &WidgetEvent) -> bool {
+    match e {
+        WidgetEvent::Focus(_) | WidgetEvent::Blur(_) => true,
+        WidgetEvent::ValueChanged(id) => *id == ph2d_editor::ids::INSP_BLENDER_PICKER,
+        _ => false,
+    }
+}
+
 fn persist_palettes_if_changed(hero: &ph2d_editor::HeroScreen) {
     let Some(set) = hero
         .store
@@ -434,4 +453,38 @@ pub(crate) fn resolve_live_entry(
     _picked: Option<u64>,
 ) -> Option<ph2d_editor::screens::hero::fixture::HierarchyEntity> {
     None
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// **O picker é isento, e QUALQUER outro `ValueChanged` continua a gritar.**
+    ///
+    /// ⚠️ As duas metades são o gate. Sem a segunda, calar `WidgetEvent::ValueChanged` inteiro
+    /// passaria — e o detector de seam morto ficaria cego para todo slider e chip do app, que é
+    /// a classe de bug que ele existe para apanhar (um widget pintado, registado e MUDO).
+    #[test]
+    fn the_picker_is_exempt_but_every_other_value_changed_still_reports() {
+        let picker = WidgetEvent::ValueChanged(ph2d_editor::ids::INSP_BLENDER_PICKER);
+        assert!(
+            expected_unhandled(&picker),
+            "o picker nao foi isento: o log volta a uma linha por frame de arrasto"
+        );
+
+        // Um id qualquer que NÃO é o picker — o controle.
+        let other = WidgetEvent::ValueChanged(ph2d_editor::ids::VECTOR_ARRANGE_DUPLICATE);
+        assert!(
+            !expected_unhandled(&other),
+            "a isencao alargou para o TIPO: o detector de seam morto ficou cego"
+        );
+    }
+
+    /// **Focus/Blur seguem isentos** — a isenção que já existia não pode cair na reescrita.
+    #[test]
+    fn focus_and_blur_stay_exempt() {
+        let id = ph2d_editor::ids::INSP_BLENDER_PICKER;
+        assert!(expected_unhandled(&WidgetEvent::Focus(id)));
+        assert!(expected_unhandled(&WidgetEvent::Blur(id)));
+    }
 }

@@ -122,8 +122,10 @@ fn median_of(mut v: Vec<Phases>) -> Phases {
 
 /// Roda um gesto de shape e devolve a mediana das fases de um MOVE.
 ///
-/// `grow`: a figura CRESCE a cada move (o gesto de criação). `false` oscila em torno de `size`, que é
-/// o gesto de ajuste — a figura fica do mesmo tamanho e o que se mede é re-carimbá-la.
+/// O gesto medido é o de **AJUSTE**: a figura oscila em torno de `size`, então ela fica do mesmo
+/// tamanho e o que se mede é re-carimbá-la — não o gesto de criação, em que ela cresce.
+///
+/// ⚠️ O doc anterior descrevia um parâmetro `grow` que esta função **nunca teve**.
 fn measure(
     side: u32,
     media: PaintMedia,
@@ -132,7 +134,29 @@ fn measure(
     size: f32,
     parked: usize,
 ) -> Phases {
+    measure_flat(side, media, radius, method, size, parked, false)
+}
+
+/// O irmão com a **ablação do meio**: `flat` desarma o relevo (ou a aquarela) no pincel do artista,
+/// deixando a rota de cor pura.
+///
+/// ⚠️ **Não é um caminho novo — é a porta do PRODUTO** (`set_brush_impasto`/`set_brush_watercolor`,
+/// as mesmas que o dropdown de Paint Mode chama). É isso que torna a linha `chato` uma medição do que
+/// o artista de fato veria, e não de um kernel que só existe na sonda.
+fn measure_flat(
+    side: u32,
+    media: PaintMedia,
+    radius: f32,
+    method: StrokeMethod,
+    size: f32,
+    parked: usize,
+    flat: bool,
+) -> Phases {
     let mut t = tool(side, media, radius);
+    if flat {
+        t.set_brush_impasto(false);
+        t.set_brush_watercolor(false);
+    }
     t.paint.brush.stroke_method = method;
     #[allow(clippy::cast_precision_loss)]
     let cx = (side / 2) as f32;
@@ -609,5 +633,46 @@ fn measure_shape_system_by_medium() {
     ] {
         let p = measure(4096, media, 96.0, StrokeMethod::Ellipse, 400.0, 0);
         row(name, 4096, 400.0, p);
+    }
+}
+
+/// **O que um preview CHATO custaria** — a pergunta do Enio de 2026-08-07: *"ligar o pigmento apenas
+/// no mouse up; se o usuário mover a shape, a pintura some e só volta no mouse up"*.
+///
+/// A tabela do meio acima diz que o carimbo é **99,3%** de um move de Impasto, então adiar o depósito
+/// para o commit é atacar o lugar certo. O que ela NÃO responde é o desenho da cura, e há duas:
+///
+/// - **apagar** — durante o arrasto sobra só o guia do editor (perímetro + alças, que a shell desenha
+///   no vector scene, fora do carimbo). Custa a coluna `EVENTO − carimbo` da tabela do meio.
+/// - **o preview CHATO** — a rota que o doc 21 **já shipa no Wet Paint**: o artista autora com a
+///   pintura plana e o meio caro entra no commit. Custa esta linha.
+///
+/// ⚠️ **A diferença entre as duas colunas é o preço da INFORMAÇÃO que o artista mantém sob a mão** —
+/// cor, largura real do traço, textura do pincel e o resultado do booleano, nenhum dos quais o guia
+/// mostra. Se `chato` couber no quadro, apagar não compra nada que valha o que custa.
+#[test]
+#[ignore = "measurement, not a gate — run explicitly"]
+fn measure_what_a_flat_preview_would_cost() {
+    println!("[shape-sys] o preview CHATO contra o meio CARO — Ellipse 400 px, 4096, raio 96");
+    println!(
+        "{:>10}  {:>10} {:>10}  {:>8}  {:>10}",
+        "meio", "caro(ms)", "chato(ms)", "razao", "so guia(ms)"
+    );
+    for (name, media) in [
+        ("Impasto", PaintMedia::Impasto),
+        ("Aquarela", PaintMedia::Watercolor),
+    ] {
+        let full = measure_flat(4096, media, 96.0, StrokeMethod::Ellipse, 400.0, 0, false);
+        let flat = measure_flat(4096, media, 96.0, StrokeMethod::Ellipse, 400.0, 0, true);
+        // ⚠️ `system()` é o EVENTO menos o carimbo: é o que sobraria apagando o pigmento, e ele sai
+        // da rota CHATA porque só ela publica as quatro fases (a Aquarela entra por porta própria e
+        // não chama o `note_restamp` — a coluna dela viria vazia da rota cara).
+        println!(
+            "{name:>10}  {:>10.3} {:>10.3}  {:>7.2}x  {:>10.3}",
+            full.total,
+            flat.total,
+            full.total / flat.total.max(1e-9),
+            flat.system()
+        );
     }
 }

@@ -7489,3 +7489,44 @@ desligada. *Dirija a porta do artista, não o campo que ela escreve.*
 7 mutações, 7 sangram — incluindo o controle que separa *"a mão está no knob"* de
 *"um valor mudou"* (`a_panel_edit_with_no_hand_on_it_leaves_the_shape_on_screen`,
 que sangra com o `draft_stamp` cravado em `true`).
+
+### O Delete apaga a figura em mãos (2026-08-07)
+
+Pedido do Enio: *"permita usar del para deletar a forma selecionada por último"*.
+
+O verbo (`delete_active_shape`) é o **gêmeo exato do `park_active_shape` menos o
+empurrão**: parquear guarda a geometria na lista, apagar a joga fora; as duas
+depois limpam os slots vivos e re-carimbam o conjunto que sobrou sobre a linha de
+base pristina. Nada mais precisa saber que uma figura sumiu, porque **os pixels
+são cache DERIVADO do conjunto** — a invariante do cabeçalho do `stroke_multi`.
+
+⚠️ **Não é o Esc.** O `cancel_open_shape` descarta o conjunto INTEIRO (ativa +
+parqueadas) e não deixa passo de undo, porque nada foi commitado. Este apaga UMA
+figura, deixa as outras de pé, e é **um passo de undo** — o artista tem de poder
+trazê-la de volta. E nada fica selecionado depois, de propósito: promover uma
+parqueada escolheria por ele qual, e a próxima que ele quer é a que ele vai
+clicar.
+
+**A PRECEDÊNCIA é a feature.** Há uma tecla só e três donos: âncora de curva →
+**figura** → falloff. Com um nó selecionado numa curva o Delete tira o nó (o
+`curve_delete_selected` já se gateia nisso e recusa quando sobrariam menos de 2
+pontos); sem nó, tira a figura. É a divisão que o Illustrator faz com **duas
+ferramentas** (seta branca × seta preta) — aqui é uma tecla, então a ordem é o que
+a expressa. ⚠️ E **um gate de unidade não vê isso**: cada verbo, chamado sozinho,
+está certo; o que erra é a ordem, e ela só existe no roteador.
+
+⚠️ **O degrau novo fecha um buraco que já existia:** sem ele, um Delete com figura
+viva caía no caminho genérico do hero e apagava a **ENTIDADE** — o sprite inteiro,
+com a arte dentro.
+
+**5 mutações, 5 sangram** — e a lição é de oráculo: *"não re-carimbe o conjunto
+que sobrou"* matava só o gate de **undo**, enquanto o gate cujo NOME promete *"as
+outras continuam de pé"* media a **LISTA** de badges e não a **TELA**. Com a lista
+intacta e a tinta da figura apagada ainda no canvas, ele passava. *O oráculo do
+que o artista vê são os texels.*
+
+**LOC:** três arquivos cruzaram o teto e cada corte foi por assunto —
+`stroke_router.rs` (*o que um Down SIGNIFICA quando há mais de uma figura*) e
+`keyboard_painter.rs`, que leva a cadeia **e os verbos dela**: eles não são
+entrada de CANVAS, são o que uma TECLA faz, e vê-los ao lado da ordem que os
+chama é o que torna a precedência auditável de um relance.

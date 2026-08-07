@@ -1,6 +1,6 @@
 # HANDOFF DE INTEGRAÇÃO — `line/Painter`, o bow wave gateado no knob + as bandas por trabalho (2026-08-06)
 
-> **30 commits · 44 arquivos · nenhum `Cargo.toml` · nenhum ADR · `project.rs` intocado.**
+> **33 commits · 50 arquivos · nenhum `Cargo.toml` · nenhum ADR · `project.rs` intocado.**
 >
 > ⚠️ O par `commits · arquivos` deste cabeçalho **se CONTA** (`git log --oneline origin/main..HEAD | wc -l`
 > e `git diff --name-only origin/main..HEAD | wc -l`). Ele nasceu dizendo *11 · 17*, que já era falso
@@ -584,3 +584,16 @@ quando o artista solta **não chega evento de painel nenhum**. Detalhe e as liç
 
 **O que o smoke julga:** com uma figura aberta numa cena booleana pesada, arraste **Size** e **Offset**
 — o arrasto tem de ser instantâneo, a pintura some sob a mão e volta ao **soltar o slider**.
+
+### E o Delete apaga a figura em mãos (2026-08-07)
+
+*"Permita usar del para deletar a forma selecionada por último."* O verbo é o gêmeo do
+`park_active_shape` menos o empurrão, em **um passo de undo**; a precedência da tecla é âncora →
+figura → falloff, e o degrau novo fecha um buraco que já existia (sem ele um Delete com figura viva
+caía no caminho genérico do hero e apagava a **ENTIDADE**). Detalhe no
+[doc 28 §5.79](../Painter/28_otimizacoes_o_que_funcionou.md).
+
+**O que o smoke julga:** com várias figuras na tela, `Delete` tira **a última que você tocou** e deixa
+as outras; `Ctrl+Z` a traz de volta. Numa curva **com um nó selecionado**, `Delete` tira o **nó** — não
+a curva.
+

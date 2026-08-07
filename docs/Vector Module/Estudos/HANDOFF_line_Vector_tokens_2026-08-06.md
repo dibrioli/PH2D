@@ -93,11 +93,28 @@ alcança-o**, em toda escala testada até `65536 px`. ⇒ **não há cap a escre
 `y ≈ 158 + 2·px` é função da altura da JANELA, e um literal estaria errado para metade dos
 monitores. Gate: `ph2d-panel-tokens/tests/scale_ceiling.rs`.
 
-### W4c.3 — MATH *(comece aqui)*
-`TokenValue::Expr`. Só agora `{spacing.md} * 2` é o que o plano pediu desde o início.
-⚠️ **NÃO comece por aqui.** Math sem a camada (W4c.1) é um parser sem onde guardar a resposta.
+### ~~W4c.3 — MATH~~ ✅ FEITA (2026-08-06, `ae56c1abd` + `1754f14e2`)
+`NumValue::Expr(String)` + a crate leaf **`ph2d-token-math`**. `{spacing.md} * 2` é o que o plano
+pediu desde o início, e ele resolve VIVO (mudar o `spacing.md` move quem o lê).
 
-### W4c.4 — ESCALA
+⚠️ **O parser NÃO entrou na `ph2d-tokens`, e a razão é uma aresta MEDIDA:** `ph2d-expr-parse`
+arrasta `ph2d-expr` → `ph2d-nodegraph`, e a `ph2d-tokens` é a folha de que 44 widgets dependem. Ele
+é **injectado** (`num_expr::MathHost`, dois fn-pointers), o padrão do `LutSpec`/`set_ml_available`.
+
+⚠️ **As chaves vêm entre `{}` por MEDIÇÃO:** o lexer partilhado só junta um `.` ao identificador
+quando o que vem a seguir é uma LETRA, e **quatro** chaves têm um dígito (`spacing.2xl`, `3xl`,
+`4xl`, `radius.2xl`). Alargar o lexer moveria o significado de `x.5` para dois consumidores que já
+shipam.
+
+⚠️ **A lei do ciclo ganhou FAN-OUT** (`alias_walk`): um alias tem 1 sucessor, uma expressão tem N ⇒
+DFS com conjunto-visitado, que **subsumiu** a casa dos pombos.
+
+Deixado ABERTO com o motivo, não esquecido: **a fórmula não é oferecida à COR** (seria um terceiro
+`TokenValue` a responder a mesma pergunta — ver §4) · **um readout de dependências** (*quem lê este
+token?*) não existe, e o preço de o não ter é o artista descobrir um laço pela recusa · **o campo
+não faz auto-completar** de chaves.
+
+### W4c.4 — ESCALA *(comece aqui)*
 Cai **de graça** no (1)+(2): escala **é** um token numérico. Se custar mais que fiação, o (1) foi
 feito estreito demais.
 

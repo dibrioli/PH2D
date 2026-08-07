@@ -73,7 +73,8 @@ pub use ride::{RideConfig, damping_axis, ride_spring, within_reach};
 pub use slope::{Footing, footing, footing_verdict, is_grounded, no_uphill};
 pub use walk::{WalkConfig, walk};
 pub use wall::{
-    WallConfig, WallLaunch, WallSample, cling, wall_launch, wall_probe_wanted, wall_slide,
+    WALL_SAMPLES, WallConfig, WallHit, WallLaunch, WallProbe, WallSample, cling, wall_launch,
+    wall_offsets, wall_probe_wanted, wall_slide,
 };
 
 /// Um vetor 2D em MUNDO (metros), na convenção do módulo (Y para cima).
@@ -369,7 +370,7 @@ pub fn player_motor(
     cfg: &PlayerConfig,
     sample: Option<&GroundSample>,
     ceiling: Option<&CeilingProbe>,
-    wall: Option<&WallSample>,
+    wall: Option<&WallProbe>,
     headroom: Option<&Headroom>,
     input: PlayerInput,
     state: PlayerState,
@@ -401,7 +402,7 @@ pub fn player_motor(
         rel_up,
         input.jump,
         input.down,
-        wall::wall_launch(&cfg.wall, clinging),
+        wall::wall_launch(&cfg.wall, clinging.as_ref()),
         gravity,
         up,
         dt,

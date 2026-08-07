@@ -33,9 +33,9 @@ use bevy_ecs::entity::Entity;
 use ph2d_ecs::SimWorld;
 use ph2d_platformer::{
     CORNER_LOOKAHEAD, CORNER_SAMPLES, CeilingProbe, GroundSample, HEADROOM_SAMPLES, Headroom,
-    PlayerConfig, PlayerInput, PlayerState, WallSample, corner_offsets, corner_probe_wanted,
-    footing, headroom_offsets, headroom_probe_wanted, player_motor, relative_rise,
-    wall_probe_wanted,
+    PlayerConfig, PlayerInput, PlayerState, WALL_SAMPLES, WallHit, WallProbe, corner_offsets,
+    corner_probe_wanted, footing, headroom_offsets, headroom_probe_wanted, player_motor,
+    relative_rise, wall_offsets, wall_probe_wanted,
 };
 
 use crate::components::{BodyKind, PlatformPlayer};
@@ -617,37 +617,55 @@ fn probe_headroom(
 /// significar alguma coisa, e o que a lei quer saber é quanto há de parede
 /// **além** da borda.
 ///
-/// ⚠️ **A altura é o MEIO do corpo, e é uma escolha com preço nomeado:** uma
-/// beirada que só alcance os pés (ou só os ombros) não é vista. Um segundo par
-/// de raios curaria isso, e a caixa envolvente responde hoje sem discussão — é
-/// a mesma limitação honesta que a folga lateral da W10 carrega, e pela mesma
-/// razão.
+/// ⚠️ **O FLANCO INTEIRO, não só a cintura** — a altura de cada raio vem de
+/// [`wall_offsets`], que é a porta única (o `crouch` e a quina têm as suas, pela
+/// mesma razão). A versão de um raio só media a meia-altura, e o preço disso
+/// está MEDIDO no `measure_wall_flank`: uma parede com fresta de 0,75 m, num
+/// corpo de 1,0 m, **recusava o pulo de parede por inteiro** com 12,5 cm de pé e
+/// de ombro ainda encostados.
 ///
-/// ⚠️ **Este módulo NÃO decide se aquilo é parede.** Ele reporta a normal; quem
-/// classifica é a lei, pela régua que a perna já usa (`ph2d_platformer::cling`).
-/// Uma segunda régua aqui seria o `wall_min_angle` que o `wall.rs` existe para
-/// não ter.
+/// ⚠️ **Fica o hit mais PRÓXIMO, e o meio desempata** (é o primeiro da lista):
+/// numa parede plana os três raios medem a mesma distância, então a resposta é a
+/// de sempre — o que muda é só onde o meio sozinho não via nada. E *mais
+/// próximo* é o que um corpo empurrado de lado de facto encosta primeiro.
+///
+/// ⚠️ **Uma normal DEGENERADA não é candidata.** `distance == 0` significa que a
+/// ⚠️ **Este módulo NÃO decide se aquilo é parede, NEM qual das amostras vale.**
+/// Ele entrega o array inteiro e a lei escolhe (`ph2d_platformer::cling`) — o
+/// padrão exato dos outros dois sensores multi-amostra desta ponte
+/// ([`ph2d_platformer::Headroom`], [`ph2d_platformer::CeilingProbe`]). Reduzir
+/// aqui seria uma segunda régua ao lado da que a perna já usa, e as duas
+/// divergiriam no dia em que o `max_slope` autorado se movesse.
 fn probe_wall(
     world: &ph2d_physics::PhysicsWorld,
     handle: rapier2d_handle::Handle,
     layer: u8,
     cfg: &PlayerConfig,
     drive: f32,
-) -> Option<WallSample> {
+) -> Option<WallProbe> {
     let side = if drive > 0.0 { 1.0 } else { -1.0 };
     let (mins, maxs) = world.body_aabb(handle)?;
     let half_width = (maxs[0] - mins[0]) * 0.5;
-    if !half_width.is_finite() || half_width <= 0.0 {
+    let half_height = (maxs[1] - mins[1]) * 0.5;
+    if !half_width.is_finite() || half_width <= 0.0 || !half_height.is_finite() {
         return None;
     }
     let cx = (maxs[0] + mins[0]) * 0.5;
-    let mid = (maxs[1] + mins[1]) * 0.5;
+    let cy = (maxs[1] + mins[1]) * 0.5;
     let reach = half_width + cfg.wall.reach.max(0.0);
-    let hit = world.cast_ray([cx, mid], [side, 0.0], reach, Some(handle), layer)?;
-    Some(WallSample {
-        side,
-        normal: hit.normal,
-    })
+    let mut hits = [None; WALL_SAMPLES];
+    for (slot, off) in hits
+        .iter_mut()
+        .zip(wall_offsets(half_height.max(0.0)).iter())
+    {
+        *slot = world
+            .cast_ray([cx, cy + off], [side, 0.0], reach, Some(handle), layer)
+            .map(|hit| WallHit {
+                distance: hit.distance,
+                normal: hit.normal,
+            });
+    }
+    Some(WallProbe { side, hits })
 }
 
 /// O handle do rapier, nomeado sem importar o rapier aqui — esta crate declara-se

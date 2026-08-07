@@ -34,8 +34,33 @@
 
 use crate::{Motor, PlayerConfig, Vec2};
 
-/// **O que o sensor lateral viu** — `None` no chamador significa *"não há nada
-/// naquela direção"*, e a lei lê isso como não haver parede.
+/// **O que UM raio lateral viu.**
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct WallHit {
+    /// Distância da borda do corpo até a superfície.
+    pub distance: f32,
+    /// A normal dela.
+    pub normal: Vec2,
+}
+
+/// **O que o sensor lateral viu, altura por altura** (W13, o flanco) — uma
+/// entrada por amostra de [`wall_offsets`], na MESMA ordem.
+///
+/// ⚠️ **O array chega inteiro à lei, e isso é o padrão dos outros dois sensores
+/// desta ponte** ([`crate::Headroom`], [`crate::CeilingProbe`]): a ponte
+/// AMOSTRA, a lei DECIDE. Reduzir na ponte faria dela a dona de *"qual destas
+/// superfícies é a parede?"*, que é exactamente a pergunta que este módulo
+/// existe para responder — e a redução divergiria da classificação no dia em que
+/// o `max_slope` se movesse.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct WallProbe {
+    /// Para que lado o sensor olhou: `-1` à esquerda, `+1` à direita.
+    pub side: f32,
+    /// Um `Option` por altura do flanco; `None` = aquele raio não achou nada.
+    pub hits: [Option<WallHit>; WALL_SAMPLES],
+}
+
+/// **A parede escolhida** — o que a lei devolve depois de olhar o flanco todo.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct WallSample {
     /// Para que lado ela está: `-1` à esquerda, `+1` à direita.
@@ -174,6 +199,43 @@ pub fn wall_probe_wanted(cfg: &WallConfig, grounded: bool, drive: f32) -> bool {
     cfg.armed() && cfg.reach >= 0.0 && !grounded && drive != 0.0
 }
 
+/// **Quantos raios o sensor lateral casta.**
+pub const WALL_SAMPLES: usize = 3;
+
+/// **Onde os raios da parede nascem**, medidos do centro do corpo — o FLANCO
+/// inteiro, não só a cintura.
+///
+/// # ⚠️ O meio vem PRIMEIRO, e a ordem é load-bearing
+///
+/// A ponte fica com o hit mais PRÓXIMO e desempata pela ordem desta lista. Numa
+/// parede plana os três raios medem a mesma distância, então o meio vence — e é
+/// isso que torna toda parede que já funcionava **byte-idêntica**: o que muda é
+/// só a geometria que o meio sozinho não via.
+///
+/// # ⚠️ O preço deste sensor estava MEDIDO antes de ele existir
+///
+/// Com um raio só, uma parede com uma **fresta** de 0,75 m (num corpo de 1,0 m,
+/// ou seja com 12,5 cm de pé E de ombro ainda encostados) **recusa o pulo de
+/// parede por inteiro** — 0,000 m de subida contra 2,162 m na parede sólida. E o
+/// escorregamento quase não denuncia (0,0500 → 0,0632 m/tique), porque a *cola*
+/// do módulo segura o personagem de qualquer jeito: quem paga o defeito é o
+/// PULO, que não tem cola. Abaixo de ~0,70 m de fresta o **buffer do pulo**
+/// mascarava tudo — ele guarda o aperto até o bloco de baixo reaparecer.
+///
+/// ⚠️ **As bordas são as da CAIXA envolvente**, como no [`crate::headroom_offsets`],
+/// e a direção do erro é a certa: numa cápsula a ponta é um ponto, então um raio
+/// de pé rasante pode ver parede onde o corpo mal encosta — agarrar-se um triz
+/// cedo demais é o que Celeste faz por sobreposição de hitbox, e a lei ainda
+/// exige empurrar contra ela e estar a descer.
+///
+/// ⚠️ **Três raios, e a limitação continua nomeada:** uma fresta mais estreita
+/// que meia altura, entre duas amostras, segue invisível. A cura dos três
+/// sensores é a mesma (um *shape cast*, que este wrapper ainda não tem).
+#[must_use]
+pub fn wall_offsets(half_height: f32) -> [f32; WALL_SAMPLES] {
+    [0.0, -half_height, half_height]
+}
+
 /// **AGARRADO?** — a pergunta feita **UMA vez**, e as duas leis desta wave são
 /// vistas dela.
 ///
@@ -200,14 +262,33 @@ pub fn wall_probe_wanted(cfg: &WallConfig, grounded: bool, drive: f32) -> bool {
 /// como o chão a trata: no chão a suposição menos daninha é deixar a mola
 /// empurrar o personagem para fora; numa parede seria agarrá-lo ao que quer que
 /// ele esteja atravessado, que é o oposto de menos daninho.
+///
+/// # ⚠️ O FLANCO tem várias alturas, e a escolha é feita AQUI
+///
+/// De todas as amostras, fica a **mais próxima que é PAREDE** — e cada motivo de
+/// descarte já era uma regra desta função (nada visto · normal degenerada ·
+/// inclinação que a perna aceita). É por isso que a redução mora aqui e não na
+/// ponte: escolher *qual superfície* e decidir *se é parede* são a mesma
+/// pergunta, e separá-las daria duas respostas que divergem no dia em que o
+/// `max_slope` autorado se mover.
+///
+/// ⚠️ **Numa parede plana as amostras empatam e a PRIMEIRA vence** — e a
+/// primeira é a cintura ([`wall_offsets`]), então toda parede que já funcionava
+/// responde exactamente o que respondia. O que muda é só a geometria que a
+/// cintura sozinha não via.
+///
+/// ⚠️ **E isto resolve um caso que um raio só não tinha como resolver:** uma
+/// rampa aos pés (que a perna ACEITA, logo não é parede) deixava de cegar o
+/// tronco encostado à parede — a rampa é descartada por inclinação e a parede
+/// continua lá.
 #[must_use]
-pub fn cling<'a>(
+pub fn cling(
     cfg: &PlayerConfig,
-    wall: Option<&'a WallSample>,
+    wall: Option<&WallProbe>,
     drive: f32,
     rel_up: f32,
     up: Vec2,
-) -> Option<&'a WallSample> {
+) -> Option<WallSample> {
     if !cfg.wall.armed() {
         return None;
     }
@@ -215,16 +296,25 @@ pub fn cling<'a>(
     if drive * w.side <= 0.0 || rel_up >= 0.0 {
         return None;
     }
-    let n2 = w.normal[0] * w.normal[0] + w.normal[1] * w.normal[1];
-    if n2 < 1.0e-6 {
-        return None;
+    let mut best: Option<WallHit> = None;
+    for hit in w.hits.iter().flatten() {
+        let n2 = hit.normal[0] * hit.normal[0] + hit.normal[1] * hit.normal[1];
+        if n2 < 1.0e-6 {
+            continue;
+        }
+        // A MESMA régua da perna: parede é o que ela recusou por inclinação.
+        let cos = hit.normal[0] * up[0] + hit.normal[1] * up[1];
+        if cos >= cfg.walk.max_slope_cos() {
+            continue;
+        }
+        if best.is_none_or(|b| hit.distance < b.distance) {
+            best = Some(*hit);
+        }
     }
-    // A MESMA régua da perna: parede é o que ela recusou por inclinação.
-    let cos = w.normal[0] * up[0] + w.normal[1] * up[1];
-    if cos >= cfg.walk.max_slope_cos() {
-        return None;
-    }
-    Some(w)
+    Some(WallSample {
+        side: w.side,
+        normal: best?.normal,
+    })
 }
 
 /// **O ESCORREGAMENTO** — a velocidade com que se desce uma parede.
@@ -315,199 +405,5 @@ pub fn wall_launch(cfg: &WallConfig, clinging: Option<&WallSample>) -> Option<Wa
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::WalkConfig;
-
-    const UP: Vec2 = [0.0, 1.0];
-
-    fn cfg(slide: f32, height: f32) -> PlayerConfig {
-        PlayerConfig {
-            wall: WallConfig {
-                slide_speed: slide,
-                jump_height: height,
-                ..WallConfig::STARTING_POINT
-            },
-            ..PlayerConfig::STARTING_POINT
-        }
-    }
-
-    /// Uma parede à direita, normal apontando para a esquerda.
-    fn right_wall() -> WallSample {
-        WallSample {
-            side: 1.0,
-            normal: [-1.0, 0.0],
-        }
-    }
-
-    /// **A régua é a da PERNA**, e este gate é o que impede alguém de escrever
-    /// um segundo ângulo: uma rampa que a caminhada ACEITA nunca é parede.
-    #[test]
-    fn a_surface_the_leg_accepts_is_never_a_wall() {
-        let c = cfg(4.0, 2.0);
-        // 30°: dentro do `max_slope` default (45°), logo é chão, não parede.
-        let ramp = WallSample {
-            side: 1.0,
-            normal: [-0.5, 0.866],
-        };
-        assert!(cling(&c, Some(&ramp), 1.0, -5.0, UP).is_none());
-        // E a vertical é parede.
-        assert!(cling(&c, Some(&right_wall()), 1.0, -5.0, UP).is_some());
-    }
-
-    /// **Agarrar-se exige EMPURRAR contra ela** — raspar não conta.
-    #[test]
-    fn brushing_a_wall_is_not_clinging() {
-        let c = cfg(4.0, 2.0);
-        let w = right_wall();
-        assert!(
-            cling(&c, Some(&w), -1.0, -5.0, UP).is_none(),
-            "empurrando para LONGE da parede"
-        );
-        assert!(
-            cling(&c, Some(&w), 0.0, -5.0, UP).is_none(),
-            "sem empurrar nada"
-        );
-        assert!(cling(&c, Some(&w), 1.0, -5.0, UP).is_some());
-    }
-
-    /// **E exige DESCER** — subindo, a parede não tem nada a fazer.
-    #[test]
-    fn rising_past_a_wall_is_not_clinging() {
-        let c = cfg(4.0, 2.0);
-        let w = right_wall();
-        assert!(cling(&c, Some(&w), 1.0, 5.0, UP).is_none(), "subindo");
-        assert!(cling(&c, Some(&w), 1.0, 0.0, UP).is_none(), "no apice");
-        assert!(cling(&c, Some(&w), 1.0, -0.1, UP).is_some());
-    }
-
-    /// **O escorregamento DEFINE a velocidade, nas DUAS direções.**
-    ///
-    /// ⚠️ A metade de baixo (`-1 → -3`) é a que a medição obrigou: com um teto
-    /// só, um personagem colado à parede por atrito nunca era solto, e o knob
-    /// era um número que não fazia nada. Ver o doc da função.
-    #[test]
-    fn the_slide_sets_the_speed_in_both_directions() {
-        let c = WallConfig {
-            slide_speed: 3.0,
-            ..WallConfig::STARTING_POINT
-        };
-        let braked = wall_slide(&c, true, -9.0, UP);
-        assert!(
-            (braked.boost[1] - 6.0).abs() < 1.0e-5,
-            "de -9 para -3 sao +6: {:?}",
-            braked.boost
-        );
-        let released = wall_slide(&c, true, -1.0, UP);
-        assert!(
-            (released.boost[1] + 2.0).abs() < 1.0e-5,
-            "de -1 para -3 sao -2 -- o COLADO tem de ser solto: {:?}",
-            released.boost
-        );
-        assert_eq!(braked.accel, [0.0, 0.0], "e' um boost, nunca uma forca");
-    }
-
-    /// **Desligado é desligado, AO BIT** — o zero de `slide_speed` não é um teto
-    /// muito alto, é a ausência da assistência.
-    #[test]
-    fn a_zero_slide_speed_is_the_world_untouched() {
-        let c = WallConfig {
-            slide_speed: 0.0,
-            ..WallConfig::STARTING_POINT
-        };
-        assert_eq!(wall_slide(&c, true, -40.0, UP), Motor::default());
-    }
-
-    /// **O empurrão sai pela NORMAL**, e é isso que faz uma parede inclinada
-    /// lançar para onde ela aponta.
-    #[test]
-    fn the_launch_leaves_along_the_normal() {
-        let c = WallConfig {
-            jump_height: 2.0,
-            jump_push: 6.0,
-            ..WallConfig::STARTING_POINT
-        };
-        let w = right_wall();
-        let l = wall_launch(&c, Some(&w)).expect("ha' pulo a oferecer");
-        assert!(
-            (l.away[0] + 6.0).abs() < 1.0e-5,
-            "para a ESQUERDA: {:?}",
-            l.away
-        );
-        assert!(l.away[1].abs() < 1.0e-5);
-        assert_eq!(l.height, 2.0);
-        assert_eq!(
-            l.lockout,
-            WallConfig::STARTING_POINT.jump_lockout,
-            "a oferta carrega o silencio do controle aereo"
-        );
-    }
-
-    /// **Sem altura autorada a parede não oferece pulo nenhum** — e o
-    /// escorregamento continua a valer sozinho.
-    #[test]
-    fn a_wall_with_no_jump_height_offers_nothing() {
-        let c = WallConfig {
-            jump_height: 0.0,
-            ..WallConfig::STARTING_POINT
-        };
-        assert!(wall_launch(&c, Some(&right_wall())).is_none());
-    }
-
-    /// **O sensor não é castado onde não pode agir** — a porta única.
-    #[test]
-    fn the_probe_is_only_wanted_where_it_can_act() {
-        let off = WallConfig::STARTING_POINT;
-        assert!(!off.armed(), "o ponto de partida nasce DESLIGADO");
-        assert!(!wall_probe_wanted(&off, false, 1.0));
-
-        let on = WallConfig {
-            slide_speed: 4.0,
-            ..off
-        };
-        assert!(wall_probe_wanted(&on, false, 1.0));
-        assert!(!wall_probe_wanted(&on, true, 1.0), "no chao, nao");
-        assert!(!wall_probe_wanted(&on, false, 0.0), "sem empurrar, nao");
-    }
-
-    /// ⚠️ **Uma normal degenerada é RECUSADA**, ao contrário do chão que a trata
-    /// como plano: ali a suposição menos daninha empurra o personagem para fora,
-    /// aqui ela o agarraria ao que quer que ele esteja atravessado.
-    #[test]
-    fn a_degenerate_normal_is_refused() {
-        let c = cfg(4.0, 2.0);
-        let w = WallSample {
-            side: 1.0,
-            normal: [0.0, 0.0],
-        };
-        assert!(cling(&c, Some(&w), 1.0, -5.0, UP).is_none());
-    }
-
-    /// O `max_slope` autorado MOVE a fronteira da parede — a prova de que a
-    /// régua é mesmo a da perna, e não uma cópia.
-    #[test]
-    fn the_authored_max_slope_moves_the_wall_boundary() {
-        // 60° de inclinação: normal a 60° do `up`.
-        let steep = WallSample {
-            side: 1.0,
-            normal: [-0.866, 0.5],
-        };
-        let mut c = cfg(4.0, 2.0);
-        c.walk = WalkConfig {
-            max_slope_deg: 45.0,
-            ..c.walk
-        };
-        assert!(
-            cling(&c, Some(&steep), 1.0, -5.0, UP).is_some(),
-            "com o limite em 45, uma rampa de 60 e' parede"
-        );
-        c.walk = WalkConfig {
-            max_slope_deg: 70.0,
-            ..c.walk
-        };
-        assert!(
-            cling(&c, Some(&steep), 1.0, -5.0, UP).is_none(),
-            "com o limite em 70 ela volta a ser CHAO, e chao nao se agarra"
-        );
-    }
-}
+#[path = "wall_tests.rs"]
+mod tests;

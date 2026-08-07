@@ -25,6 +25,9 @@ pub const FLOAT_HEIGHT: f32 = 0.9;
 pub const WALL_FACE: f32 = 0.75;
 /// Onde o personagem começa a cair.
 pub const START_Y: f32 = 5.0;
+/// A altura da FRESTA na parede — longe do começo, para o personagem já estar
+/// preso quando chegar nela.
+pub const GAP_CENTER: f32 = 1.0;
 
 pub struct Rig {
     pub sim: SimWorld,
@@ -72,6 +75,22 @@ pub fn into_wall() -> PlayerInput {
 /// duas dá o CONTROLE — a mesma cena, o mesmo número de tiques, com a parede a
 /// ser só geometria.
 pub fn rig(slide: f32, jump_height: f32) -> Rig {
+    rig_gapped(slide, jump_height, 0.0)
+}
+
+/// **A mesma parede, com uma FRESTA horizontal** de `gap` metros de altura,
+/// centrada em `GAP_CENTER`.
+///
+/// ⚠️ **A fresta é a única reprodução que SEGURA o personagem**, e a primeira
+/// tentativa desta sonda não segurava: uma parede que *começa* num topo deixa o
+/// personagem andar por cima dela e ir embora (medido — ele atravessa `x = 1,2 …
+/// 9,7` em queda livre, sem nunca encostar), e uma beirada solta é atravessada
+/// em três tiques. Com a fresta ele desce a parede inteira, e a pergunta *"o
+/// sensor vê o flanco ou só o meio?"* fica visível no instante em que a fresta
+/// passa pela cintura dele.
+///
+/// `gap == 0.0` dá a parede sólida de sempre.
+pub fn rig_gapped(slide: f32, jump_height: f32, gap: f32) -> Rig {
     let mut sim = SimWorld::new();
     // Um chão bem longe: a cena é sobre a queda, e o chão existe só para o
     // personagem não cair para sempre.
@@ -89,21 +108,31 @@ pub fn rig(slide: f32, jump_height: f32) -> Rig {
         },
         Transform::from_translation(Vec2::new(0.0, -20.0)),
     ));
-    // A parede: alta e fina, com a face esquerda em `WALL_FACE`.
-    sim.world_mut().spawn((
-        Name::new("Wall"),
-        RigidBody {
-            kind: BodyKind::Static,
-        },
-        Collider {
-            shape: ColliderShape::Cuboid {
-                half_x: 0.5,
-                half_y: 12.0,
+    // A parede: alta e fina, com a face esquerda em `WALL_FACE`. Sem fresta ela
+    // e' UM bloco de 24 m; com fresta sao dois, e a soma continua cobrindo a
+    // mesma faixa — o que muda e' so o buraco no meio.
+    let mut wall = |lo: f32, hi: f32| {
+        sim.world_mut().spawn((
+            Name::new("Wall"),
+            RigidBody {
+                kind: BodyKind::Static,
             },
-            ..Collider::default()
-        },
-        Transform::from_translation(Vec2::new(WALL_FACE + 0.5, 0.0)),
-    ));
+            Collider {
+                shape: ColliderShape::Cuboid {
+                    half_x: 0.5,
+                    half_y: (hi - lo) * 0.5,
+                },
+                ..Collider::default()
+            },
+            Transform::from_translation(Vec2::new(WALL_FACE + 0.5, (hi + lo) * 0.5)),
+        ));
+    };
+    if gap > 0.0 {
+        wall(GAP_CENTER + gap * 0.5, 12.0);
+        wall(-12.0, GAP_CENTER - gap * 0.5);
+    } else {
+        wall(-12.0, 12.0);
+    }
 
     let player = sim
         .world_mut()

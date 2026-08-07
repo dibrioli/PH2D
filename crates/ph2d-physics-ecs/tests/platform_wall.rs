@@ -21,7 +21,7 @@
 mod rig_fixture;
 
 use ph2d_physics_ecs::PlayerInput;
-use rig_fixture::{Rig, START_Y, into_wall, pose, rig};
+use rig_fixture::{GAP_CENTER, Rig, START_Y, into_wall, pose, rig, rig_gapped};
 
 /// Corre `ticks` tiques com a entrada dada, a partir de `from`.
 fn run(r: &mut Rig, input: PlayerInput, ticks: u64, from: u64) -> u64 {
@@ -189,4 +189,61 @@ fn without_the_capability_the_same_press_does_nothing() {
         peak < y0 + 0.05,
         "sem altura autorada a parede nao oferece pulo nenhum: pico {peak:.3} contra {y0:.3}"
     );
+}
+
+/// **O GATE DO FLANCO: uma parede que a CINTURA não vê continua a segurar.**
+///
+/// A cena é a parede de sempre com uma **fresta** de 0,8 m atravessada na
+/// altura do peito. O corpo mede 1,0 m de caixa, então pé e ombro continuam com
+/// 10 cm encostados na pedra — geometria que qualquer jogador lê como *"estou
+/// contra a parede"*.
+///
+/// ⚠️ **O oráculo é o PULO, e não o escorregamento** — a escolha está medida no
+/// `measure_wall_flank`. A descida quase não denuncia o defeito (0,0500 →
+/// 0,0632 m/tique) porque a **cola** que o cabeçalho deste arquivo documenta
+/// segura o personagem de qualquer jeito; o pulo não tem cola: ou a lei vê
+/// parede naquele tique, ou o aperto do botão não faz **nada**.
+///
+/// ⚠️ **E a fresta é 0,8 e não 0,4 por um motivo medido:** abaixo de ~0,70 m o
+/// **buffer do pulo** mascara tudo — ele guarda o aperto até o bloco de baixo
+/// reaparecer, e um gate escrito ali passaria com o sensor cego.
+///
+/// **Medido:** com um raio só, `0.000 m`; com o flanco, `2.295 m` — contra
+/// `2.162 m` na parede sólida.
+#[test]
+fn the_wall_jump_survives_a_gap_the_waist_falls_into() {
+    const GAP: f32 = 0.8;
+    let solid = wall_jump_rise(0.0);
+    let gapped = wall_jump_rise(GAP);
+    assert!(
+        solid > 1.5,
+        "o CONTROLE: na parede solida o pulo sobe (subiu {solid:.3} m)"
+    );
+    assert!(
+        gapped > solid * 0.8,
+        "com {GAP:.1} m de fresta e 10 cm de pe/ombro na pedra, o pulo tem de \
+         sair: subiu {gapped:.3} m contra {solid:.3} m na parede solida"
+    );
+}
+
+/// Desce até a fresta e aperta pulo; devolve quanto subiu a partir dali.
+fn wall_jump_rise(gap: f32) -> f32 {
+    let mut r = rig_gapped(3.0, 2.0, gap);
+    r.bridge.set_player_input(r.player, into_wall());
+    let mut t = 0u64;
+    while t < 400 && pose(&r.sim).1 > GAP_CENTER {
+        t += 1;
+        r.bridge.dispatch(&mut r.sim, true, t);
+    }
+    let from = pose(&r.sim).1;
+    let mut input = into_wall();
+    input.jump = true;
+    r.bridge.set_player_input(r.player, input);
+    let mut peak = from;
+    for _ in 0..90 {
+        t += 1;
+        r.bridge.dispatch(&mut r.sim, true, t);
+        peak = peak.max(pose(&r.sim).1);
+    }
+    peak - from
 }

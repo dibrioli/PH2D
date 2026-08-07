@@ -528,6 +528,98 @@ e o passo é abrir a §14 e ler o número. **Nenhum bump** (`PROJECT_SCHEMA` fic
 
 ---
 
+## §5i — W22: o sensor lateral vê o FLANCO, não a cintura (cena `=98`)
+
+**O item aberto da W13**, e o próprio aviso de `bridge::player::probe_wall` já o
+nomeava desde a wave: *"a altura é o MEIO do corpo … uma beirada que só alcance
+os pés (ou só os ombros) não é vista"*.
+
+### ⚠️ A nota SUBESTIMAVA o defeito, e a medição veio antes de uma linha
+
+A frase descrevia uma beirada rasa. O que a sonda
+(`ph2d-physics-ecs/tests/measure_wall_flank.rs`) achou é maior: com uma parede
+que tem uma **fresta** na altura da cintura, e **pé e ombro ainda encostados na
+pedra**, o **pulo de parede é recusado por inteiro**.
+
+| fresta | sobreposição pé/ombro | pulo de parede |
+|---|---|---|
+| parede sólida | 0,500 m | **2,162 m** |
+| 0,60 m | 0,200 m | 1,997 m |
+| 0,70 m | 0,150 m | 2,292 m |
+| **0,75 m** | 0,125 m | **0,000 m** |
+| **0,80 m** | 0,100 m | **0,000 m** |
+| 0,90 m | 0,050 m | **0,000 m** |
+
+⚠️ **Abaixo de ~0,70 m o defeito era INVISÍVEL, e não por acaso:** o **buffer do
+pulo** guarda o aperto até o bloco de baixo reaparecer. Um gate escrito naquela
+faixa passaria com o sensor cego — é por isso que a cena e o gate usam **0,8**.
+
+⚠️ **E o oráculo NÃO é o escorregamento.** Ele quase não denuncia (pior descida
+0,0500 → 0,0632 m/tique), porque a **cola** que o `platform_wall` documenta
+(atrito + gravidade do ápice) segura o personagem de qualquer jeito. O pulo não
+tem cola: ou a lei vê parede naquele tique, ou o botão não faz nada.
+
+### ⚠️ Três cenas foram construídas e duas não continham o fenômeno
+
+Uma parede que *começa* num topo não serve — medido, o personagem **anda por cima
+dela e vai embora** (atravessa `x = 1,2 … 9,7` em queda livre sem nunca
+encostar). Uma beirada solta também não: ele a atravessa em três tiques. A
+**fresta** segura, e o defeito aparece no instante em que o buraco passa pela
+cintura.
+
+### O desenho: a ponte AMOSTRA, a lei DECIDE
+
+`wall_offsets(half_height)` dá **três** alturas (cintura · pés · ombros), a ponte
+casta uma por uma e entrega o **array inteiro** (`WallProbe`) — que é o padrão
+exato dos outros dois sensores multi-amostra desta ponte (`Headroom`,
+`CeilingProbe`). O `cling` reduz: fica a **mais próxima que É parede**, e cada
+motivo de descarte já era uma regra daquela função (nada visto · normal
+degenerada · inclinação que a perna aceita).
+
+⚠️ **Reduzir na PONTE foi recusado com motivo:** ela ficaria dona de *"qual destas
+superfícies é a parede?"*, que é a pergunta que o `wall.rs` existe para
+responder — e a redução divergiria da classificação no dia em que o `max_slope`
+autorado se movesse.
+
+⚠️ **A cintura é a PRIMEIRA da lista, e a ordem é load-bearing:** numa parede
+plana as três distâncias empatam, o desempate vai para a primeira, e a resposta é
+a de sempre. É isso que torna **byte-idêntica** toda parede que já funcionava —
+e o `physics_ecs_c9` confirma no nível que importa: `74d4ea5d…`, 108 corpos,
+**debug ≡ release**, o mesmo hash de antes da wave.
+
+⚠️ **E isto resolve de graça um caso que um raio só não tinha como resolver:** uma
+rampa aos pés (que a perna ACEITA, logo não é parede) deixou de cegar o tronco
+encostado na parede.
+
+### O que ficou de limitação, nomeado
+
+Uma fresta **mais estreita que meia altura**, entre duas amostras, segue
+invisível — e uma **maior que o corpo** não é parede nenhuma, ali a recusa está
+certa. A cura dos três sensores é a mesma (um *shape cast*, que este wrapper
+ainda não tem), e é a mesma frase que o `headroom_offsets` já carrega.
+
+### Números
+
+**`PROJECT_SCHEMA` 59 INTOCADO** · registro do `ph2d-physics-ecs` **fica em 28** ·
+gizmo ids **nenhum novo** (próximo livre segue **974**) · **nenhum ADR** ·
+contrato congelado **4/4 + 3/3** (rodado) · **zero `Cargo.toml`** · `c9`
+byte-idêntico. **9 gates, 5 mutações, 5 sangram** — ⚠️ a mutação *"volta a ler só
+a cintura"* sangra o gate de comportamento com o número exato do defeito
+(`subiu 0.000 m contra 2.162 m`).
+
+⚠️ **Superfície pública nova na `ph2d-platformer`:** `WALL_SAMPLES` ·
+`wall_offsets` · `WallHit` · `WallProbe`; e **`cling` mudou de assinatura**
+(recebe `Option<&WallProbe>` e devolve `WallSample` por valor). `wall.rs` passou
+de 613 para 409 linhas com o `mod tests` a sair para o irmão `wall_tests.rs` (o
+precedente do `crouch_tests`).
+
+### Smoke
+
+**`PH2D_PHYSICS_SMOKE=98`** — o poço da 92 com uma parede **lisa** (o controle) e
+outra **com janelas** de 0,8 m. ⚠️ A cena imprime quantas janelas montou; **se
+essa linha não aparecer, pare**. O que se julga é apertar PULO com a cintura numa
+janela: antes desta wave o botão não fazia nada ali.
+
 ## §6 — Ordem
 
 1. `git rebase main` (ou merge). Os arquivos compartilhados são o `project.rs`
@@ -814,10 +906,12 @@ saber que ela já foi medida.
   cabe e fica quieto. Três curas construídas e reprovadas. Ver a §5g e o aviso
   de `bridge::player::retire_drops`; a cura é decisão de produto e pede smoke
   próprio.
-- **W13:** o sensor lateral olha só a altura do **MEIO** do corpo — uma beirada
-  que alcance só os pés não é vista (a mesma limitação honesta da folga lateral da
-  W10). E não há *wall grab*: ficar **parado** numa parede é outra mecânica, com
-  botão próprio, e não se alcança escrevendo `0` no `Wall Slide`.
+- ~~**W13:** o sensor lateral olha só a altura do **MEIO** do corpo~~ —
+  **FECHADO pela W22** (§5i), e ⚠️ **a medição mostrou que a nota subestimava**:
+  não era *"uma beirada não é vista"*, era **o pulo de parede RECUSADO por
+  inteiro** com pé e ombro na pedra. Continua aberto o resto do item: não há
+  *wall grab* — ficar **parado** numa parede é outra mecânica, com botão próprio,
+  e não se alcança escrevendo `0` no `Wall Slide`.
 - ~~**W15:** o piso geométrico da altura agachada~~ — **FECHADO pela W18**, e
   ⚠️ **a medição refutou a premissa desta nota**: o corpo **não enterra, ele
   SATURA**. Ver a §5f.

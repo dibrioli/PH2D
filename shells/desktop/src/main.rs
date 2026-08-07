@@ -265,6 +265,7 @@ mod physics_smoke_player_carry;
 mod physics_smoke_player_crouch;
 mod physics_smoke_player_dash;
 mod physics_smoke_player_drop;
+mod physics_smoke_player_flank;
 mod physics_smoke_player_forgive;
 mod physics_smoke_player_run;
 mod physics_smoke_player_slope;

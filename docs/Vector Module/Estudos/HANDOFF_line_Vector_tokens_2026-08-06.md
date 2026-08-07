@@ -4,7 +4,7 @@
 > [`MODELO_TROCA_DE_AGENTE_NA_LINHA.md`](../../IntegracaoMultiAgente/MODELO_TROCA_DE_AGENTE_NA_LINHA.md)
 > **antes de abrir qualquer arquivo** — a janela abre na raiz (que é `main`) e os mesmos paths
 > relativos existem nas duas árvores: editar a errada **compila e commita sem um único erro**.
-> Módulo = `Vector`. Worktree: `Worktrees/line-Vector/`. HEAD deste handoff: **`3ff1e1379`**.
+> Módulo = `Vector`. Worktree: `Worktrees/line-Vector/`. HEAD deste handoff: **`ba37d0725`**.
 >
 > O plano-mãe é [`PLANO_UI_UX_padrao_figma.md`](PLANO_UI_UX_padrao_figma.md); este doc é o
 > **estado** e a **ordem**, não a especificação.
@@ -18,6 +18,8 @@
 | **W4b.1** — o ALIAS | Um token de cor **SEGUE** outro, no mesmo modo. Gesto de duas etapas no botão de corrente da row. Detecção de ciclo **na porta de escrita**. Viaja no arquivo. | ✅ `=59` |
 | **W4b.2** — o CONTRASTE | A lei WCAG virou **DADO** (`ph2d_tokens::contrast::CONTRAST_PAIRS`): **uma lista, dois consumidores** (o gate de compilação e o painel). Bloco de aviso + marca nos **dois** lados do par. | ✅ `=59` |
 | **W4c.1** — a CAMADA NUMÉRICA | A escala (`spacing.*`/`radius.*`/`stroke.*`) vira autorável, no molde exacto do de cor: chave `(modo, token)`, porta única, ciclo na porta, alias que atravessa famílias (px é px). Row com chip+elo+Reset no MESMO painel; viaja no arquivo. ⚠️ **`PROJECT_SCHEMA` 57→58** (PROVISÓRIO). | ✅ `=59` |
+| **W4c.3** — MATH | `NumValue::Expr(String)` + a crate leaf **`ph2d-token-math`**: `{spacing.md} * 2` resolve VIVO. O parser é **injectado** por fn-pointers (a `ph2d-tokens` é folha de 44 widgets e `ph2d-expr-parse` arrasta o `ph2d-nodegraph`). ⚠️ **`PROJECT_SCHEMA` 58→59**. | ⏳ `=59` |
+| **W4c.4** — ESCALA no DOCUMENTO | A espessura de um traço e o vão de um auto layout passam a SEGUIR um token numérico. ⚠️ A régua px↔mundo é a do PROJETO (`pixels_per_meter`) — sem ela o número erra por duas ordens de grandeza. ⚠️ **`PROJECT_SCHEMA` 59→60**. | ⏳ `=51` |
 | **W4c.2** — A ESCALA VIVA | `Spacing::px()` passa a ser o valor **AUTORADO**: `num_runtime` projecta o grafo para uma tabela plana uma vez por quadro, e os ~1187 sítios de leitura ficam vivos **sem serem tocados**. Os 13 `const` viraram `fn` (o compilador enumerou-os, e achou 3 que a varredura não via). ⚠️ **PENDENTE DE SMOKE** — handoff [`HANDOFF_INTEGRACAO_line_Vector_W4c2_2026-08-06.md`](HANDOFF_INTEGRACAO_line_Vector_W4c2_2026-08-06.md). | ⏳ `=59` |
 
 **Aprovados pelo Enio em 2026-08-06** (*"Tudo perfeito"*), cena `PH2D_BUILD_SMOKE=59`.
@@ -78,7 +80,13 @@ achatada por modo é a forma de RUNTIME; o grafo de autoria vive no editor.* Por
 ### ~~W4c.1 — A CAMADA NUMÉRICA~~ *(FEITA 2026-08-06, pendente de smoke)*
 `ph2d-tokens::num` (a identidade `NumToken`) + `num_overrides` (a camada) + a row no painel + a
 ponte + o arquivo. **A família é *o que se mede em PIXELS*** — Spacing+Radius+Stroke —, e é isso que
-faz a **W4c.4 ser fiação**: uma escala nova é uma entrada na macro `num_tokens!`.
+faz **um DEGRAU novo ser fiação**: uma escala nova é uma entrada na macro `num_tokens!`.
+
+> ⚠️ **Esta frase dizia *"e é isso que faz a W4c.4 ser fiação"*, e a W4c.4 a corrigiu.** As duas
+> coisas não são a mesma: acrescentar um **token** à tabela é de facto uma linha de macro;
+> acrescentar um **ALVO** que o segue (uma propriedade do documento) esbarra numa fronteira que
+> ninguém tinha medido — o token vale PIXELS e o documento mede MUNDO. Ver a W4c.4 abaixo.
+
 ⚠️ `Motion` (ms), `Density` (já é escolha) e `chrome.*` (sem identidade de token) ficaram FORA, cada
 um com o motivo escrito no `num.rs`.
 ⚠️ **`PROJECT_SCHEMA` 57→58** (PROVISÓRIO) — o `SavedValue` ganhou `Number(f32)` e o numérico viaja
@@ -114,11 +122,29 @@ Deixado ABERTO com o motivo, não esquecido: **a fórmula não é oferecida à C
 token?*) não existe, e o preço de o não ter é o artista descobrir um laço pela recusa · **o campo
 não faz auto-completar** de chaves.
 
-### W4c.4 — ESCALA *(comece aqui)*
-Cai **de graça** no (1)+(2): escala **é** um token numérico. Se custar mais que fiação, o (1) foi
-feito estreito demais.
+### ~~W4c.4 — ESCALA~~ ✅ FEITA (2026-08-06, `ba37d0725`)
+A espessura de um traço e o vão de um auto layout passam a poder **SEGUIR** um token numérico.
 
-### W4c.5 — DTCG (o W9)
+⚠️ **A frase desta linha estava ERRADA, e o (1) não tinha culpa.** Ela dizia *"cai de graça … se
+custar mais que fiação, o (1) foi feito estreito demais"*; o custo estava noutro eixo, que ninguém
+mediu: os três alvos vivem em **unidades de MUNDO** e um `NumToken` vale **PIXELS**. Ler o número
+cru como mundo erra por duas ordens de grandeza — `stroke.default = 1,5` viraria **19% da altura**
+de uma moldura de telefone, e `radius.full` daria 125 molduras.
+
+A régua **já tinha dono**: `ProjectSettings::pixels_per_meter` (ADR-0131 D4). Não é o `px_to_world`
+da câmera, que é px de TELA no zoom do momento — resolver por ele faria o valor SALVO depender de
+onde o artista estava a olhar.
+
+⚠️ **`CornerRadius` continua fora, e o motivo MUDOU:** o canal chegou (W4c.1); o que falta é um
+controle **por-FORMA** — o raio é por-VÉRTICE e um binding é por-forma.
+
+⚠️ **`PROJECT_SCHEMA` 59→60** (PROVISÓRIO) · `VEC_SCENE_SCHEMA` **intacto** (o binding é tabela
+LATERAL no ECS) · **zero `Cargo.toml`**, **zero ADR**.
+
+Detalhe, as 4 mutações que expuseram buraco de gate e o roteiro de smoke:
+[`HANDOFF_INTEGRACAO_line_Vector_W4c4_2026-08-06.md`](HANDOFF_INTEGRACAO_line_Vector_W4c4_2026-08-06.md).
+
+### W4c.5 — DTCG (o W9) *(comece aqui)*
 Import/export do grafo, agora que o grafo existe. ⚠️ `color.rs:276` já nota que a nomenclatura das
 chaves casa com o que o DTCG fala — confira antes de inventar um mapeamento.
 

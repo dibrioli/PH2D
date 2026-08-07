@@ -268,3 +268,186 @@ fn the_two_layers_do_not_share_their_fast_path_flag() {
         }
     );
 }
+
+// ── A MATH (plano UI/UX W4c.3) ──────────────────────────────────────────────
+//
+// ⚠️ Estes gates instalam um host de BRINQUEDO, e é deliberado: o que eles medem é a CAMADA (a
+// porta admite? a leitura resolve? o laço é recusado?), não a linguagem. Instalar o parser real
+// faria esta crate depender do substrato de grafo por causa de um teste — a aresta que o
+// `num_expr` inteiro existe para não ter.
+
+/// Um host cuja "fórmula" é o nome de um token: `"md"` lê o `MD`, `"lg"` lê o `LG`, e o valor é o
+/// DOBRO do que ele valer. Qualquer outro texto é recusado.
+fn install_toy_math() {
+    crate::num_expr::install_math(crate::num_expr::MathHost {
+        deps: |src| match src {
+            "md" => Ok(vec![NumToken::Spacing(Spacing::Md)]),
+            "lg" => Ok(vec![NumToken::Spacing(Spacing::Lg)]),
+            "md+lg" => Ok(vec![
+                NumToken::Spacing(Spacing::Md),
+                NumToken::Spacing(Spacing::Lg),
+            ]),
+            "negative" => Ok(Vec::new()),
+            _ => Err("nope".to_string()),
+        },
+        eval: |src, value_of| match src {
+            "md" => Ok(value_of(NumToken::Spacing(Spacing::Md)) * 2.0),
+            "lg" => Ok(value_of(NumToken::Spacing(Spacing::Lg)) * 2.0),
+            "md+lg" => {
+                Ok(value_of(NumToken::Spacing(Spacing::Md))
+                    + value_of(NumToken::Spacing(Spacing::Lg)))
+            }
+            "negative" => Ok(-1.0),
+            _ => Err("nope".to_string()),
+        },
+    });
+}
+
+fn expr(theme: Theme, token: NumToken, src: &str) -> Result<(), NumRefusal> {
+    set_num_override(theme, token, Some(NumValue::Expr(src.to_string())))
+}
+
+#[test]
+fn a_formula_resolves_to_the_number_it_computes() {
+    clear_num_overrides();
+    install_toy_math();
+    lit(Theme::Forge, MD, 10.0);
+    expr(Theme::Forge, LG, "md").expect("uma formula valida entra");
+    assert_eq!(LG.px(Theme::Forge), 20.0);
+    crate::num_expr::uninstall_math();
+}
+
+/// **A fórmula lê o valor EFETIVO da dependência, não a fábrica dela** — é isso que a torna uma
+/// relação viva em vez de uma cópia, a mesma lei do alias.
+#[test]
+fn a_formula_follows_its_dependency_when_it_changes() {
+    clear_num_overrides();
+    install_toy_math();
+    expr(Theme::Forge, LG, "md").expect("entra");
+    let from_factory = LG.px(Theme::Forge);
+    assert_eq!(from_factory, MD.factory_px() * 2.0);
+    lit(Theme::Forge, MD, 100.0);
+    assert_eq!(
+        LG.px(Theme::Forge),
+        200.0,
+        "a formula ficou presa no valor de quando foi escrita — ela virou uma copia"
+    );
+    crate::num_expr::uninstall_math();
+}
+
+/// **Uma fórmula que se lê a si mesma é um laço de comprimento um**, e a porta a recusa.
+#[test]
+fn a_formula_that_reads_its_own_token_is_refused() {
+    clear_num_overrides();
+    install_toy_math();
+    let err = expr(Theme::Forge, MD, "md").expect_err("auto-referencia tem de ser recusada");
+    assert!(matches!(err, NumRefusal::Cycle { .. }), "{err:?}");
+    assert_eq!(num_override(Theme::Forge, MD), None, "o slot foi escrito");
+    crate::num_expr::uninstall_math();
+}
+
+/// **O laço por um RAMO do fan-out também é um laço** — o caso que a caminhada de corrente não
+/// sabia fazer, e a razão de a lei do ciclo ter passado a ser uma DFS.
+#[test]
+fn a_loop_down_one_branch_of_a_formula_is_refused() {
+    clear_num_overrides();
+    install_toy_math();
+    // LG segue XL; a fórmula em XL lê MD **e** LG ⇒ o ramo do LG volta ao XL.
+    set_num_override(Theme::Forge, LG, Some(NumValue::Alias(XL))).expect("alias");
+    let err = expr(Theme::Forge, XL, "md+lg").expect_err("o ramo do LG fecha o laco");
+    assert!(matches!(err, NumRefusal::Cycle { .. }), "{err:?}");
+    crate::num_expr::uninstall_math();
+}
+
+/// **Uma fórmula que não parseia é recusada COM A FRASE** — e o slot fica como estava.
+#[test]
+fn an_unparseable_formula_is_refused_with_its_sentence() {
+    clear_num_overrides();
+    install_toy_math();
+    lit(Theme::Forge, MD, 7.0);
+    let err = expr(Theme::Forge, MD, "?!").expect_err("texto que o host recusa");
+    assert!(
+        matches!(err, NumRefusal::BadFormula(ref s) if s == "nope"),
+        "{err:?}"
+    );
+    assert_eq!(
+        MD.px(Theme::Forge),
+        7.0,
+        "a recusa apagou o valor que ja' estava la'"
+    );
+    crate::num_expr::uninstall_math();
+}
+
+/// **Uma fórmula cujo resultado não é um comprimento é recusada** — a mesma lei do literal, e não
+/// um caso à parte: o que a porta promete é que a tabela só carrega comprimentos.
+#[test]
+fn a_formula_that_does_not_compute_a_length_is_refused() {
+    clear_num_overrides();
+    install_toy_math();
+    let err = expr(Theme::Forge, MD, "negative").expect_err("-1 nao e' um comprimento");
+    assert!(
+        matches!(err, NumRefusal::NotALength(v) if v < 0.0),
+        "{err:?}"
+    );
+    crate::num_expr::uninstall_math();
+}
+
+/// **Sem host de math nenhuma fórmula entra** — nem por gesto, nem de um arquivo.
+///
+/// ⚠️ O modo de falha é RECUSAR, nunca dobrar num número: um valor inventado seria indistinguível
+/// de um autorado, que é a rachura que o `Bindings` do IR tem e que esta camada não herda.
+#[test]
+fn without_math_a_formula_never_enters_the_table() {
+    clear_num_overrides();
+    crate::num_expr::uninstall_math();
+    assert!(expr(Theme::Forge, MD, "md").is_err());
+    assert_eq!(num_override(Theme::Forge, MD), None);
+    // E pelo caminho do ARQUIVO: ela é descartada, e o descarte é CONTADO.
+    let dropped = set_num_overrides(vec![NumOverride {
+        theme: Theme::Forge,
+        token: MD,
+        value: NumValue::Expr("md".to_string()),
+    }]);
+    assert_eq!(dropped, 1, "a formula entrou numa tabela sem quem a leia");
+    assert_eq!(num_override(Theme::Forge, MD), None);
+}
+
+/// **O arquivo carrega a fórmula, e ela resolve depois de carregada.**
+#[test]
+fn a_formula_survives_the_round_trip_through_the_loader() {
+    clear_num_overrides();
+    install_toy_math();
+    lit(Theme::Forge, MD, 10.0);
+    expr(Theme::Forge, LG, "md").expect("entra");
+    let saved = num_overrides();
+    clear_num_overrides();
+    assert_eq!(set_num_overrides(saved), 0, "o round-trip descartou algo");
+    assert_eq!(LG.px(Theme::Forge), 20.0);
+    crate::num_expr::uninstall_math();
+}
+
+/// **Uma tabela que chega CÍCLICA de um arquivo cai na fábrica em vez de girar** — a rede de
+/// profundidade, agora atravessada por uma fórmula.
+#[test]
+fn a_formula_cycle_that_slipped_past_the_door_falls_back_to_the_factory() {
+    clear_num_overrides();
+    install_toy_math();
+    // Instalado à FORÇA, sem passar pela porta — é o que um arquivo editado à mão produz.
+    let dropped = set_num_overrides(vec![
+        NumOverride {
+            theme: Theme::Forge,
+            token: MD,
+            value: NumValue::Expr("lg".to_string()),
+        },
+        NumOverride {
+            theme: Theme::Forge,
+            token: LG,
+            value: NumValue::Expr("md".to_string()),
+        },
+    ]);
+    // O loader recusa a SEGUNDA (a 1ª ainda não tinha com que fechar laço), e é isso que o torna
+    // acíclico por construção.
+    assert_eq!(dropped, 1);
+    assert!(MD.px(Theme::Forge).is_finite(), "a leitura nao terminou");
+    crate::num_expr::uninstall_math();
+}

@@ -89,3 +89,19 @@ pub fn tokens_num_reset_id(row: usize) -> NodeId {
 pub fn tokens_num_link_id(row: usize) -> NodeId {
     fnv_node_id_runtime(&format!("tokens.num.link.{row}"))
 }
+
+/// O botão **`f(x)`** da linha numérica `row` — *dá uma fórmula a este token* (plano UI/UX W4c.3).
+///
+/// ⚠️ Ele só é PINTADO quando a linha ainda não tem uma: uma vez que ela tenha, o campo É o editor
+/// dela e não há nada a alternar, então o botão teria de existir e não fazer nada. Quem retira a
+/// fórmula é o *Reset*, que já está na mesma linha.
+#[must_use]
+pub fn tokens_num_fx_id(row: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("tokens.num.fx.{row}"))
+}
+
+/// O **campo de fórmula** da linha numérica `row`.
+#[must_use]
+pub fn tokens_num_formula_id(row: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("tokens.num.formula.{row}"))
+}

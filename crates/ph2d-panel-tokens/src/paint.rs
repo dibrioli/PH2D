@@ -159,7 +159,7 @@ fn paint_body(
             armed == Some(row),
         );
     }
-    crate::paint_num::paint_numeric_family(ctx, theme, x, w, y, state.armed_num())
+    crate::paint_num::paint_numeric_family(ctx, theme, x, w, y, state.armed_num(), state.fx_open())
 }
 
 /// **O READOUT DE CONTRASTE** — os pares que um valor AUTORADO deixou abaixo da WCAG, neste modo.

@@ -234,6 +234,9 @@ ph2d-panel-painter-layers = { path = "../../crates/ph2d-panel-painter-layers", o
 # registry-init's mirror feature.
 ph2d-panel-hierarchy = { path = "../../crates/ph2d-panel-hierarchy", optional = true }
 ph2d-i18n = { path = "../../crates/ph2d-i18n" }
+# A MATH dos tokens (plano UI/UX W4c.3). ⚠️ A aresta e do SHELL, nunca da `ph2d-tokens`: e o
+# que impede o substrato de grafo (`ph2d-expr` -> `ph2d-nodegraph`) de chegar a 44 widgets.
+ph2d-token-math = { path = "../../crates/ph2d-token-math" }
 ph2d-tokens = { path = "../../crates/ph2d-tokens" }
 # M11 widget paint pass — Vello scene encoder + parley text contexts.
 # Editor's `Paint` trait lowers widgets into a `VectorScene` that the

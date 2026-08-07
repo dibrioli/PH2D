@@ -38,6 +38,13 @@ use std::cell::RefCell;
 
 use crate::num::NumToken;
 
+/// *Quanto vale este token?* — a pergunta que a avaliação faz ao chamador, uma vez por referência.
+///
+/// ⚠️ Um alias de tipo, e não porque a assinatura é longa: ela é a **fronteira** desta camada, e um
+/// nome torna dizível o que ela é — *o chamador é quem sabe o que um token vale; esta crate só sabe
+/// perguntar*. É também o que o `clippy::type_complexity` estava a apontar.
+pub type ValueOf<'a> = &'a dyn Fn(NumToken) -> f32;
+
 /// As duas perguntas que esta crate sabe fazer sobre uma fórmula, respondidas por quem tem o parser.
 ///
 /// ⚠️ `fn` ponteiros e não `Box<dyn Fn>`: o host é instalado uma vez no boot e nunca captura estado
@@ -49,7 +56,7 @@ pub struct MathHost {
     /// recusa, pronta para um toast.
     pub deps: fn(&str) -> Result<Vec<NumToken>, String>,
     /// *Quanto ela vale?* — `value_of` responde por cada token referido.
-    pub eval: fn(&str, &dyn Fn(NumToken) -> f32) -> Result<f32, String>,
+    pub eval: fn(&str, ValueOf<'_>) -> Result<f32, String>,
 }
 
 thread_local! {
@@ -93,7 +100,7 @@ pub fn deps_of(src: &str) -> Result<Vec<NumToken>, String> {
 /// indistinguível de *"vale zero"* — que é exactamente a rachura que o `Bindings` do IR tem e que
 /// esta camada existe para não herdar.
 #[must_use]
-pub fn eval(src: &str, value_of: &dyn Fn(NumToken) -> f32) -> Option<f32> {
+pub fn eval(src: &str, value_of: ValueOf<'_>) -> Option<f32> {
     let host = HOST.with(|h| *h.borrow())?;
     (host.eval)(src, value_of).ok()
 }

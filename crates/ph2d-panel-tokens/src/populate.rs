@@ -71,5 +71,20 @@ pub fn populate(store: &mut WidgetStore) {
         store.set_number_range(ids::tokens_num_chip_id(row), 0.0, PX_DRAG_MAX, PX_STEP);
         button(store, ids::tokens_num_reset_id(row));
         button(store, ids::tokens_num_link_id(row));
+        // O `f(x)` (W4c.3). ⚠️ Registado em TODAS as linhas mesmo que o `paint` só o ofereça a
+        // algumas: o registro é sobre *este id pode receber foco*, e condicioná-lo ao estado do
+        // documento faria o botão nascer morto na linha em que ele acabou de aparecer.
+        button(store, ids::tokens_num_fx_id(row));
+        // ⚠️ E o CAMPO é um `TextInput`, nunca um botão — a mesma cicatriz que a swatch e o chip
+        // já pagaram: como botão, o clique acenderia o widget e nunca abriria o cursor.
+        store.register(
+            ids::tokens_num_formula_id(row),
+            InteractiveState::TextInput {
+                state: TextInputState::Normal,
+                text: String::new(),
+                caret: 0,
+                selection_anchor: None,
+            },
+        );
     }
 }

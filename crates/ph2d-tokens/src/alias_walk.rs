@@ -95,7 +95,10 @@ mod tests {
 
     #[test]
     fn a_long_honest_chain_is_not_a_loop() {
-        assert_eq!(closes_a_loop(9, &[1], walk(&[(1, 2), (2, 3), (3, 4)])), None);
+        assert_eq!(
+            closes_a_loop(9, &[1], walk(&[(1, 2), (2, 3), (3, 4)])),
+            None
+        );
     }
 
     /// ⚠️ **O caso que a corrente não sabia fazer:** um dos ramos volta, o outro não.
@@ -123,6 +126,9 @@ mod tests {
     /// fecha nada PARA o 9, e o `visited` é o que garante que ela pára.
     #[test]
     fn a_pre_existing_loop_that_does_not_reach_the_token_terminates() {
-        assert_eq!(closes_a_loop(9, &[1], walk(&[(1, 2), (2, 3), (3, 1)])), None);
+        assert_eq!(
+            closes_a_loop(9, &[1], walk(&[(1, 2), (2, 3), (3, 1)])),
+            None
+        );
     }
 }

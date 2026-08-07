@@ -39,7 +39,11 @@ pub(crate) enum TokenFamily {
 }
 
 /// O que um clique neste painel PEDE. Os índices são posições em `ColorToken::ALL`.
-#[derive(Clone, Copy, Debug, PartialEq)]
+///
+/// ⚠️ Sem `Copy` desde a math (W4c.3): uma fórmula é TEXTO, e interná-la num índice poria uma
+/// segunda tabela ao lado da que já existe para poupar clones num caminho que corre uma vez por
+/// CLIQUE.
+#[derive(Clone, Debug, PartialEq)]
 pub enum TokensIntent {
     /// Devolve UM token do modo vigente à fábrica.
     Reset(usize),
@@ -58,6 +62,15 @@ pub enum TokensIntent {
     /// ⚠️ Só o vigente: o artista vê um modo de cada vez, e apagar trabalho que ele não está a
     /// olhar é a forma mais barata de perder uma re-vestida.
     ResetAll,
+    /// **O artista escreveu uma FÓRMULA** (plano UI/UX W4c.3). Índice em `NumToken::ALL`.
+    ///
+    /// ⚠️ Texto CRU, e a admissão é da shell: quem sabe se `{spacing.md} * 2` serve é a porta de
+    /// escrita (sintaxe, laço, comprimento), e o painel a duplicar essa pergunta seria a segunda
+    /// resposta que diverge no dia em que a linguagem ganhar um operador.
+    ///
+    /// ⚠️ Texto VAZIO significa *retire a fórmula* — é o gesto que o artista faz (apagar o campo),
+    /// e não um valor à espera de um caso especial.
+    NumFormula { row: usize, src: String },
     /// **`from` passa a SEGUIR `to`** (plano UI/UX W4b).
     ///
     /// ⚠️ O ARMAR não é intent, e a assimetria é deliberada: armar não muda o documento — é o
@@ -131,6 +144,15 @@ pub struct TokensPanelState {
     /// clique fecharia. Armar na outra família **abandona** o gesto anterior, que é o que
     /// abandoná-lo parece.
     pub(crate) armed: Option<(TokenFamily, usize)>,
+    /// A linha numérica cujo **campo de fórmula** está aberto sem ela ainda ter uma (W4c.3).
+    ///
+    /// ⚠️ UM slot, pelo mesmo motivo do `armed` acima: dois campos abertos seriam duas fórmulas
+    /// meio-escritas com nada a dizer qual delas o próximo Enter grava.
+    ///
+    /// ⚠️ E ele é **dominado pelo documento** — uma linha já autorada como fórmula mostra o campo
+    /// haja o que houver aqui, porque o campo É o editor dela. Este bit só responde por *"o artista
+    /// pediu um campo numa linha que ainda não tem fórmula"*.
+    pub(crate) fx_open: Option<usize>,
 }
 
 impl TokensPanelState {
@@ -145,6 +167,15 @@ impl TokensPanelState {
             Some((TokenFamily::Colour, row)) => Some(row),
             _ => None,
         }
+    }
+
+    /// Que linha numérica tem o campo de fórmula ABERTO por gesto, se alguma.
+    ///
+    /// ⚠️ `pub` pelo mesmo motivo do `armed`: o gate de seam vive noutra crate e precisa de ver que
+    /// o clique no `f(x)` abriu o campo sem ter enfileirado edição nenhuma.
+    #[must_use]
+    pub fn fx_open(&self) -> Option<usize> {
+        self.fx_open
     }
 
     /// Que linha NUMÉRICA está à espera de um alvo, se alguma.

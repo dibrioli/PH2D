@@ -69,9 +69,15 @@ pub fn install() {
         deps: |src| translate(src).map(|(_, refs)| refs),
         eval: |src, value_of| {
             let (rewritten, refs) = translate(src)?;
-            let ir = ph2d_expr_parse::parse(&rewritten).map_err(|e| format!("{e}"))?;
+            let ir = ph2d_expr_parse::parse(&rewritten).map_err(|e| e.to_string())?;
             reject_unbound_names(&ir)?;
-            Ok(ph2d_expr::eval(&ir, &Refs { refs: &refs, value_of }))
+            Ok(ph2d_expr::eval(
+                &ir,
+                &Refs {
+                    refs: &refs,
+                    value_of,
+                },
+            ))
         },
     });
 }
@@ -84,7 +90,8 @@ pub fn install() {
 /// cair na fábrica em silêncio.
 fn translate(src: &str) -> Result<(String, Vec<NumToken>), String> {
     let (rewritten, refs) = translate_references(src)?;
-    let ir = ph2d_expr_parse::parse(&rewritten).map_err(|e| format!("that formula doesn't parse: {e}"))?;
+    let ir = ph2d_expr_parse::parse(&rewritten)
+        .map_err(|e| format!("that formula doesn't parse: {e}"))?;
     reject_unbound_names(&ir)?;
     Ok((rewritten, refs))
 }

@@ -145,6 +145,30 @@ pub(crate) fn dispatch(hero: &mut HeroScreen, toasts: &mut ToastQueue) -> bool {
                     }
                 }
             }
+            // ⚠️ Uma fórmula VAZIA solta o token, e é o gesto que o artista faz: ele apaga o
+            // campo. Tratá-la como fórmula inválida daria um toast a explicar um erro que ele não
+            // cometeu; e um botão próprio de *"apagar fórmula"* seria a segunda porta do Reset,
+            // que está na mesma linha.
+            TokensIntent::NumFormula { row, ref src } => {
+                if let Some(&token) = NumToken::ALL.get(row) {
+                    let want = if src.trim().is_empty() {
+                        None
+                    } else {
+                        Some(NumValue::Expr(src.trim().to_string()))
+                    };
+                    // ⚠️ Só escreve quando MUDA — a mesma lei do `NumSet` e do read-back do
+                    // picker: um campo que perde o foco sem ter sido editado marcaria o projeto
+                    // sujo por o artista ter olhado para ele.
+                    if want != num_override(theme, token) {
+                        match set_num_override(theme, token, want) {
+                            Ok(()) => changed = true,
+                            Err(e) => {
+                                toasts.push(refusal_toast(&e));
+                            }
+                        }
+                    }
+                }
+            }
             TokensIntent::NumLink { from, to } => {
                 if let (Some(&a), Some(&b)) = (NumToken::ALL.get(from), NumToken::ALL.get(to)) {
                     match set_num_override(theme, a, Some(NumValue::Alias(b))) {

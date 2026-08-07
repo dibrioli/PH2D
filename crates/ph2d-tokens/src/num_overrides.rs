@@ -265,16 +265,20 @@ pub fn set_num_override(
                     // O `target` da mensagem é onde a busca reencontrou o token de partida — para
                     // uma fórmula não há um alvo único, e apontar o primeiro nome escrito mandaria
                     // o artista ao lugar errado quando o laço passa pelo segundo.
-                    return Err(NumRefusal::Cycle { token, target: at, at });
+                    return Err(NumRefusal::Cycle {
+                        token,
+                        target: at,
+                        at,
+                    });
                 }
                 // ⚠️ E o VALOR é conferido com a tabela **como ela ficaria**: uma fórmula avaliada
                 // contra a tabela de hoje pode dar um comprimento e a de amanhã não. O que a porta
                 // pode prometer é o instante da escrita; o resto cai na fábrica, por desenho.
                 let src = src.clone();
-                let v = crate::num_expr::eval(&src, &|t| {
-                    effective_px(&list, theme, t, 0)
-                })
-                .ok_or_else(|| NumRefusal::BadFormula("that formula could not be evaluated".into()))?;
+                let v = crate::num_expr::eval(&src, &|t| effective_px(&list, theme, t, 0))
+                    .ok_or_else(|| {
+                        NumRefusal::BadFormula("that formula could not be evaluated".into())
+                    })?;
                 if !is_a_length(v) {
                     return Err(NumRefusal::NotALength(v));
                 }
@@ -336,9 +340,7 @@ pub fn set_num_overrides(list: Vec<NumOverride>) -> usize {
         let ok = match e.value {
             // ⚠️ Contra o que JÁ foi aceite, não contra a lista de entrada: é isso que torna o
             // resultado acíclico por construção, seja qual for a ordem em que os laços aparecem.
-            NumValue::Alias(target) => {
-                closes_a_loop(&kept, e.theme, e.token, &[target]).is_none()
-            }
+            NumValue::Alias(target) => closes_a_loop(&kept, e.theme, e.token, &[target]).is_none(),
             NumValue::Literal(v) => is_a_length(v),
             // ⚠️ Uma fórmula que não parseia é descartada AQUI, e não deixada para a leitura cair
             // na fábrica: o painel mostraria a linha como autorada e o artista veria o valor de

@@ -425,6 +425,7 @@ pub fn tr(key: &str) -> &'static str {
         // "tokens", e sem a unidade um chip com `8` ao lado de uma swatch não diz de que grandeza
         // se está a falar. A unidade é a razão de as três escalas serem UMA família.
         "panel.tokens.numeric" => "Scale (px)",
+        "panel.tokens.formula.hint" => "e.g. {spacing.md} * 2",
         "panel.physics.title" => "Physics",
         "panel.physics.section.world" => "World",
         "panel.physics.section.solver" => "Solver",

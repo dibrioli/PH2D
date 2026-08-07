@@ -999,6 +999,19 @@ pub(crate) const MIN_SPRITE_SIZE: f32 = 0.001;
 /// (`forge`, `workshop`, `sunstone`, `blueprint`).
 fn main() {
     install_panic_hook();
+    // **A math dos tokens de design** (plano UI/UX W4c.3) — uma linha, e é a única.
+    //
+    // ⚠️ Ela vive AQUI e não dentro da `ph2d-tokens` por uma aresta MEDIDA: o parser arrasta
+    // `ph2d-expr` → `ph2d-nodegraph`, e a `ph2d-tokens` é a folha de que 44 widgets dependem — um
+    // botão de ícone passaria a compilar o motor de cozimento para saber de que cor é.
+    //
+    // ⚠️ E o modo de falha de a ESQUECER é o certo: o app compila, corre, e o painel simplesmente
+    // não OFERECE o botão de fórmula (`math_available()` é falso) — em vez de o oferecer e não
+    // fazer nada. É o padrão do `set_ml_available` do AI Denoise.
+    //
+    // ⚠️ Antes do `App::new()`, e na thread do laço de eventos: o host mora num `thread_local`, e
+    // quem pergunta por ele é o painel a pintar.
+    ph2d_token_math::install();
     let event_loop = EventLoop::new().expect("create EventLoop");
     event_loop.set_control_flow(ControlFlow::Poll);
 

@@ -61,6 +61,32 @@ pub(crate) fn apply_event(
             } else if let Some(row) = num_row_of(id, ids::tokens_num_link_id) {
                 apply_link_click(state, TokenFamily::Num, row);
                 true
+            } else if let Some(row) = num_row_of(id, ids::tokens_num_fx_id) {
+                // ⚠️ Abrir um campo NÃO é uma edição — é o painel a lembrar-se de onde o gesto
+                // começou —, então isto não atravessa a fila de intents. A mesma assimetria do
+                // ARMAR do elo, e pelo mesmo motivo: só o que ESCREVE atravessa.
+                state.fx_open = if state.fx_open == Some(row) {
+                    None
+                } else {
+                    Some(row)
+                };
+                true
+            } else {
+                false
+            }
+        }
+        // **O COMMIT da fórmula** — Enter (`Submit`) ou o campo a perder o foco (`Blur`), as duas
+        // portas que o dispatch global já emite. ⚠️ As duas, e não só o Enter: um campo abandonado
+        // com o texto certo escrito dentro dele lê-se como *"eu autorei isto"*.
+        WidgetEvent::Submit(id) | WidgetEvent::Blur(id) => {
+            if let Some(row) = num_row_of(id, ids::tokens_num_formula_id) {
+                let src = host.store().text(id).unwrap_or_default().to_string();
+                // ⚠️ Fechar o campo é do PAINEL e acontece sempre; escrever é da shell e pode ser
+                // recusado. Deixá-lo aberto até a shell responder faria um Enter que não pegou
+                // parecer um Enter que não chegou.
+                state.fx_open = None;
+                push_intent(TokensIntent::NumFormula { row, src });
+                true
             } else {
                 false
             }

@@ -174,16 +174,19 @@ impl NumToken {
     }
 }
 
-/// ⚠️ **O acessor VIVO por-família NÃO mora aqui, e a ausência é a decisão.**
-///
-/// A W4c.1 gerou um `Spacing::px_live(theme)` ao lado do `px()` de fábrica, à espera de que a
-/// W4c.2 trocasse os sítios de uso um a um. A medição da W4c.2 derrubou esse plano: são **~1200**
-/// sítios de leitura contra **13** `const` items, e enfiar o modo em cada um deles seria responder
-/// mil e duzentas vezes a uma pergunta que o app responde **uma** vez por quadro.
-///
-/// Hoje `Spacing::px()` **é** o acessor vivo (lê a tabela do [`crate::num_runtime`]) e
-/// `Spacing::factory_px()` é o de fábrica. Ter os dois **mais** um `px_live(theme)` daria três
-/// portas para duas perguntas, e a terceira seria a que alguém chama por engano.
+// ⚠️ **O acessor VIVO por-família NÃO mora aqui, e a ausência é a decisão.**
+//
+// A W4c.1 gerou um `Spacing::px_live(theme)` ao lado do `px()` de fábrica, à espera de que a
+// W4c.2 trocasse os sítios de uso um a um. A medição da W4c.2 derrubou esse plano: são **~1200**
+// sítios de leitura contra **13** `const` items, e enfiar o modo em cada um deles seria responder
+// mil e duzentas vezes a uma pergunta que o app responde **uma** vez por quadro.
+//
+// Hoje `Spacing::px()` **é** o acessor vivo (lê a tabela do `num_runtime`) e
+// `Spacing::factory_px()` é o de fábrica. Ter os dois **mais** um `px_live(theme)` daria três
+// portas para duas perguntas, e a terceira seria a que alguém chama por engano.
+//
+// ⚠️ Comentário de LINHA e não doc-comment: ele documenta uma AUSÊNCIA, e um `///` sem item
+// adiante é um doc órfão — o clippy o aponta, e com razão: ele documentaria o que vier a seguir.
 
 #[cfg(test)]
 #[path = "num_tests.rs"]

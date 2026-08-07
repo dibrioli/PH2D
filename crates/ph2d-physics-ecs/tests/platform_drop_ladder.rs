@@ -4,27 +4,36 @@
 //! é por isso que ele nunca viu isto: ali a caixa inteira do personagem chega a
 //! ficar abaixo da prancha. Numa escada apertada ela nunca chega.
 //!
-//! # A lei que estes gates pinam (W20)
+//! # A lei que estes gates pinam (W20, fechada na W27)
 //!
-//! A descida morre quando **já passei** E **a prancha já parou de me pegar**. As
-//! duas metades são obrigatórias e cada uma cura o defeito da outra — o
-//! mecanismo, com os números, está no aviso de `bridge::player::retire_drops`.
+//! ```text
+//!   aposenta  ⇔  estou a SUBIR  ∨  (já passei  ∧  a prancha parou de me pegar)
+//! ```
 //!
-//! Daí as duas bordas terem destinos diferentes, e é isso que se lê aqui:
+//! As duas últimas metades são obrigatórias e cada uma cura o defeito da outra;
+//! a primeira fechou a borda de baixo. O mecanismo, com os números, está no
+//! aviso de `bridge::player::retire_drops`.
 //!
-//! * **a borda de CIMA fechou** — o vão em que a prancha voltava a ser sólida a
-//!   meio da queda e o **arremessava de volta** (prancha 0,15, vãos 1,75–1,85)
-//!   agora desce um degrau;
-//! * **a borda de BAIXO fica, e ganhou uma LEI** — a descida sobrevive
-//!   exactamente onde a caixa de repouso do personagem ainda **sobrepõe** a
-//!   prancha. Ali ela *de facto* o pegaria, então as saídas são *fantasma* ou
-//!   *cuspido*, e fantasma é a menos má.
+//! * **a borda de CIMA fechou na W20** — o vão em que a prancha voltava a ser
+//!   sólida a meio da queda e o **arremessava de volta** (prancha 0,15, vãos
+//!   1,75–1,85) desce um degrau;
+//! * **a borda de BAIXO fechou na W27** — e o que a fechou foi medir o preço
+//!   dela. O item estava registado como *"as pranchas ficam fantasma"*, que é o
+//!   sintoma; medido (`measure_what_an_armed_drop_costs`), o preço era o
+//!   personagem descer um degrau e **ficar lá para sempre** (`−0,598 → −0,598` a
+//!   1,60, em toda célula da janela). Uma **ARMADILHA**, não um contorno.
 //!
-//! ⚠️ **O gate do fantasma fica VERMELHO no dia em que alguém curar a borda de
-//! baixo**, e isso é o desenho: a cura conhecida é a descida por-PLATAFORMA (o
-//! gancho a consultar um conjunto de pares em vez de um bit no `user_data`), que
-//! muda a assinatura do gancho — quem a fizer tem de passar por aqui de
-//! propósito em vez de descobrir que um gate ficou verde sozinho.
+//! ⚠️ **A cura NÃO foi a que este aviso prescrevia.** Ele dizia que a saída
+//! conhecida era a descida por-PLATAFORMA — que a W21 construiu, mediu (**nenhuma
+//! diferença**: quem segura o personagem é a MOLA, e o raio dela já ignora só a
+//! plataforma da travessia) e reverteu. A que fechou é uma cláusula de
+//! **intenção**: uma descida travada existe para deixar passar para BAIXO, e
+//! quem decide na subida já é o **cone** do one-way.
+//!
+//! ⚠️ **E o gate do fantasma fez exactamente o que foi escrito para fazer:** ele
+//! afirmava o DEFEITO com a instrução de ficar vermelho no dia em que a lei
+//! mudasse, e ficou — com o número que ele próprio previu. Foi reescrito de
+//! propósito, não contornado.
 
 use ph2d_core::Vec2;
 use ph2d_ecs::{Name, SimWorld, Transform};
@@ -214,17 +223,41 @@ fn a_short_gap_ladder_is_a_scene_the_character_fits_in() {
     );
 }
 
-/// **A DESCIDA NÃO SE APOSENTA ONDE A CAIXA DE REPOUSO SOBREPÕE A PRANCHA.**
+/// **A BORDA DE BAIXO FECHOU: subir APOSENTA a descida, e ele volta.** (W27)
 ///
-/// Depois de descer um degrau, um pulo simples **não** volta a pousar na
-/// prancha de cima: ela ficou atravessável para sempre, e com ela todas as
-/// outras da cena (o bit viaja no CORPO, e o gancho one-way limpa os contatos
-/// com qualquer plataforma).
+/// ⚠️ **Este gate era o inverso dele mesmo, e a reescrita é deliberada** — o
+/// aviso do módulo pedia exactamente isto. Ele nascera a afirmar o DEFEITO
+/// (*"depois de descer um degrau, um pulo simples não volta a pousar na prancha
+/// de cima"*), com a instrução de ficar vermelho no dia em que a lei mudasse; e
+/// ficou, com o número que ele próprio previu.
 ///
-/// ⚠️ **Este gate afirma o defeito, não a cura.** Ele fica vermelho no dia em
-/// que a lei mudar — ver o aviso do módulo.
+/// **O que a medição mostrou, e ela muda a gravidade do item:** o custo do vão
+/// preso não era cosmético. Medido (`measure_what_an_armed_drop_costs`), em toda
+/// célula da janela o personagem descia e **ficava lá para sempre** —
+/// `−0,598 → −0,598` a 1,60, `−0,198 → −0,198` a 1,20. Não é *"as pranchas ficam
+/// fantasma"*: é uma **ARMADILHA**.
+///
+/// **A lei que fechou:** uma descida travada existe para deixar passar **para
+/// BAIXO**. No instante em que o corpo SOBE, quem decide já é o **cone** do
+/// one-way (`ALLOWED_COS`), que deixa passar por baixo por conta própria —
+/// manter o bit ali não protege nada e só o prende. Então o `retire_drops` ganha
+/// uma terceira cláusula, em OU com as duas que já tinha:
+///
+/// ```text
+///   aposenta  ⇔  estou a SUBIR  ∨  (já passei  ∧  a prancha parou de me pegar)
+/// ```
+///
+/// ⚠️ **Ela não podia reabrir a borda de CIMA** (o cuspe), e não reabre: aquele
+/// defeito é a prancha voltar a ser sólida **com ele a CAIR através dela**, e
+/// esta cláusula só dispara com a velocidade para cima. Os gates dessa borda
+/// ficam verdes ao lado deste.
+///
+/// ⚠️ **E o CONTROLE de pé não se moveu:** a tabela do
+/// `measure_whether_a_short_gap_is_a_broken_scene` sai **idêntica** antes e
+/// depois — inclusive o `+1,002` dos vãos de 1,00 e 0,80, que é a prancha
+/// SÓLIDA a cuspi-lo e não tem descida nenhuma envolvida.
 #[test]
-fn the_drop_never_retires_on_a_short_gap_ladder_and_this_is_its_number() {
+fn a_short_gap_ladder_lets_him_climb_back_because_rising_retires_the_drop() {
     let gap = 1.20_f32;
     let lower_top = -gap + PLANK_HALF_Y;
 
@@ -242,12 +275,12 @@ fn the_drop_never_retires_on_a_short_gap_ladder_and_this_is_its_number() {
     press(&mut r, jump_only(), 6, 150, t);
     let (_, climbed) = pose(&r.sim);
     assert!(
-        (climbed - rest_over(lower_top)).abs() < 0.1,
-        "HOJE a prancha de cima fica fantasma e ele volta ao degrau de baixo ({:.3}); \
-         parou em {climbed:.3} — se isto ficou perto de {:.3}, a lei foi CURADA e este \
-         gate tem de ser reescrito de proposito (ver o aviso do modulo)",
-        rest_over(lower_top),
-        rest_over(UPPER_TOP)
+        (climbed - rest_over(UPPER_TOP)).abs() < 0.1,
+        "ele tinha de voltar a pousar na prancha de cima ({:.3}) e parou em \
+         {climbed:.3} -- se isto ficou perto de {:.3}, a descida voltou a ser uma \
+         ARMADILHA (o vao preso, medido em `measure_what_an_armed_drop_costs`)",
+        rest_over(UPPER_TOP),
+        rest_over(lower_top)
     );
 }
 
@@ -313,14 +346,21 @@ fn a_wide_gap_ladder_retires_the_drop_as_it_should() {
     );
 }
 
-/// **A LEI da borda que ficou: a descida sobrevive EXACTAMENTE onde a caixa de
-/// repouso ainda sobrepõe a prancha.**
+/// **A LEI da EVIDÊNCIA: EM REPOUSO, a descida sobrevive exactamente onde a
+/// caixa de repouso ainda sobrepõe a prancha.**
 ///
 /// Não é uma faixa de números escolhida — é um bicondicional, e ele vale célula
-/// a célula nas duas espessuras varridas. É isto que torna o fantasma que resta
+/// a célula nas duas espessuras varridas. É isto que torna o que resta
 /// **honesto** em vez de arbitrário: onde ele acontece, a prancha de facto
-/// pegaria o personagem (o cone do gancho devolve `+1,000`, medido), e as duas
-/// saídas possíveis são *fantasma* ou *cuspido*.
+/// pegaria o personagem (o cone do gancho devolve `+1,000`, medido).
+///
+/// ⚠️ **"EM REPOUSO" é a premissa, e ela ficou load-bearing na W27:** a cláusula
+/// da INTENÇÃO aposenta a descida no instante em que o corpo SOBE, então este
+/// bicondicional descreve o personagem **parado** — que é o estado em que ele foi
+/// medido, e o único em que a pergunta *"a prancha me pegaria?"* tem uma resposta
+/// que não depende de para onde ele vai. O gate irmão
+/// [`a_short_gap_ladder_lets_him_climb_back_because_rising_retires_the_drop`]
+/// mede o outro estado, e os dois passam ao mesmo tempo.
 ///
 /// ⚠️ **É também o gate que impede a lei de regredir para os DOIS lados:**
 /// aposentar cedo demais reprova nas células que sobrepõem (volta o arremesso),

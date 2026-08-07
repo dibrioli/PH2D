@@ -222,8 +222,30 @@ impl PhysicsBridge {
                 // veredito, pela mesma razão.
                 _ => true,
             };
+            // ── A INTENÇÃO: já estou a SUBIR? (W27) ──────────────────────────
+            //
+            // ⚠️ **Uma descida travada existe para deixar passar para BAIXO.**
+            // No instante em que o corpo sobe, quem decide já é o **cone** do
+            // one-way (`ALLOWED_COS`), que deixa passar por baixo por conta
+            // própria — manter o bit ali não protege nada, e prende.
+            //
+            // ⚠️ **E o que ele prendia era o PERSONAGEM, não um contorno.**
+            // Medido (`measure_what_an_armed_drop_costs`): no vão em que a
+            // descida nunca se aposentava, ele descia um degrau e **ficava lá
+            // para sempre** — `−0,598 → −0,598` a 1,60, em toda célula da
+            // janela. O item estava registado como *"as pranchas ficam
+            // fantasma"*, que é o sintoma; a armadilha é o preço.
+            //
+            // ⚠️ **Ela não pode reabrir a borda de CIMA**, e a razão é o sinal:
+            // aquele defeito é a prancha voltar a ser sólida **com ele a CAIR
+            // através dela**, e esta cláusula só dispara com a velocidade para
+            // cima. Os gates daquela borda ficam verdes ao lado do desta.
+            let rising = self
+                .world
+                .body_velocity(b.handle)
+                .is_some_and(|v| v[1] > 0.0);
             // ── A EVIDÊNCIA: e a prancha já parou de me pegar? ───────────────
-            if past && !self.world.drop_is_catching(b.handle) {
+            if rising || (past && !self.world.drop_is_catching(b.handle)) {
                 done.push(entity);
             }
         }

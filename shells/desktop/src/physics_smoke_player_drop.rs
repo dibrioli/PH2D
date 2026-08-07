@@ -35,16 +35,22 @@
 //! mais apertada do que parece. Nesta geometria exacta — pranchas de
 //! meia-espessura `0,15`, um aperto e uma tentativa de voltar:
 //!
-//! | `RISE` | o que acontece |
-//! |---|---|
-//! | 1,60 – 1,70 | desce, e as pranchas ficam **fantasma** para sempre |
-//! | **1,75 – 1,85** | **arremessado de volta** — o botão parece não fazer nada |
-//! | 1,90 + | funciona |
+//! | `RISE` | antes (W19) | **hoje** |
+//! |---|---|---|
+//! | 1,60 – 1,70 | fantasma para sempre — e ele ficava **PRESO** lá | **funciona** (W27) |
+//! | **1,75 – 1,85** | **arremessado de volta** | **funciona** (W20) |
+//! | 1,90 + | funciona | funciona |
 //!
-//! ⚠️ **Portanto: NÃO aperte o `RISE`.** Não é uma escolha de composição — é a
-//! diferença entre a cena e um defeito. O porquê das duas bordas está no aviso
-//! de `bridge::player::retire_drops`, junto com as três leis que já foram
-//! construídas e reprovadas para as curar.
+//! ⚠️ **As duas bordas fecharam, e a de baixo custou uma medição para se
+//! entender:** ela estava registada como *"as pranchas ficam fantasma"*, que é o
+//! sintoma; o preço era o personagem descer um degrau e **ficar lá para sempre**
+//! (`−0,598 → −0,598` a 1,60, em toda célula da janela). A cura é uma cláusula
+//! de intenção — **subir aposenta a descida** —, e o porquê está no aviso de
+//! `bridge::player::retire_drops`.
+//!
+//! ⚠️ **O `RISE` continua em 2,0**, e não porque seja apertado: a cena existe
+//! para o artista julgar o GESTO, e um vão folgado é o que a torna legível. O
+//! que mudou é que apertá-lo já não a transforma num defeito.
 
 use ph2d_core::Vec2;
 use ph2d_ecs::{Name, Transform};

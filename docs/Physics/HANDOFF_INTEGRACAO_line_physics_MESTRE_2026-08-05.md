@@ -1021,13 +1021,35 @@ saber que ela já foi medida.
   ⚠️ **O default NÃO se move:** ele fica no teto (deriva zero exacta), que é o
   que o smoke de 05/08 pediu. O que a wave entrega é o caminho de volta para
   quem quer o quique.
-- **W12:** ⚠️ **MEDIDO pela W19, e é maior do que esta nota dizia.** A escada de
-  pranchas tem uma **janela útil** e as DUAS bordas dela são defeitos — abaixo,
-  as pranchas ficam fantasma para sempre; logo acima, o personagem é
-  **arremessado de volta**. A metade *"a cena já está quebrada"* é falsa: ele
-  cabe e fica quieto. Três curas construídas e reprovadas. Ver a §5g e o aviso
-  de `bridge::player::retire_drops`; a cura é decisão de produto e pede smoke
-  próprio.
+- ~~**W12:** a escada de pranchas tem uma **janela útil** e as DUAS bordas dela
+  são defeitos~~ — **FECHADO pela W27** (2026-08-07). A de cima já era da W20; a
+  de baixo caiu quando alguém finalmente **mediu o preço dela**.
+  ⚠️ **Ela estava registada pelo SINTOMA.** *"As pranchas ficam fantasma"*
+  descreve o contorno; medido (`measure_what_an_armed_drop_costs`), o preço era o
+  personagem descer um degrau e **ficar lá para sempre** — `−0,598 → −0,598` a
+  1,60, `−0,198 → −0,198` a 1,20, em **toda** célula da janela. Uma **ARMADILHA**,
+  não um enfeite.
+  ⚠️ **E a cura não foi nenhuma das quatro que este handoff prescreveu.** As três
+  da W19 eram sobre *quando* aposentar e cada uma trocava um regime por outro; a
+  da W21 (descida por-PLATAFORMA) foi construída, medida — **nenhuma diferença** —
+  e revertida. A que fechou é uma cláusula de **INTENÇÃO**:
+
+  ```text
+    aposenta  ⇔  estou a SUBIR  ∨  (já passei  ∧  a prancha parou de me pegar)
+  ```
+
+  Uma descida travada existe para deixar passar **para BAIXO**; no instante em
+  que o corpo sobe, quem decide já é o **cone** do one-way, que deixa passar por
+  baixo por conta própria. Manter o bit ali não protegia nada e prendia.
+  ⚠️ **Ela não reabre a borda de cima, e a razão é o SINAL:** aquele defeito é a
+  prancha voltar a ser sólida com ele a **CAIR** através dela, e a cláusula só
+  dispara com a velocidade para cima. Os gates daquela borda ficam verdes ao lado
+  do desta.
+  ⚠️ **E o gate que pinava o defeito fez o que foi escrito para fazer:** ele
+  afirmava o fantasma com a instrução de ficar VERMELHO no dia em que a lei
+  mudasse, e ficou — com o número que ele próprio previu. Reescrito de propósito.
+  ⚠️ **`c9` byte-idêntico** (`74d4ea5d…`, 108 corpos, debug ≡ release): nenhuma
+  cena do hash exercita uma descida.
 - ~~**W13:** o sensor lateral olha só a altura do **MEIO** do corpo~~ —
   **FECHADO pela W22** (§5i), e ⚠️ **a medição mostrou que a nota subestimava**:
   não era *"uma beirada não é vista"*, era **o pulo de parede RECUSADO por

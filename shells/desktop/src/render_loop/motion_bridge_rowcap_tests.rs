@@ -304,3 +304,100 @@ fn the_oscillator_offers_only_the_time_ruler_it_uses() {
     );
     ph2d_panel_motion_graph::set_graph_selection(Vec::new());
 }
+
+/// A altura do dock do inspector, do dono dela — nunca um literal copiado.
+use ph2d_editor::screens::layout::INSPECTOR_MAX_H;
+use ph2d_editor::zones::Rect;
+
+/// Quanto o painel OCUPA ao desenhar cada tipo de nó, do maior para o menor.
+///
+/// ⚠️ O oráculo são os **retângulos que o próprio painel registrou**, não uma soma de alturas
+/// de linha ao lado dele: as linhas não têm a mesma altura (um editor de Curva, de Gradiente ou
+/// de Paleta devolve a própria), então *mais linhas* não é o mesmo que *mais alto* — e uma
+/// segunda aritmética divergiria exatamente no nó composto, que é o caso que importa.
+fn height_census() -> Vec<(&'static str, f32)> {
+    let mut motion = MotionState::new();
+    let types: Vec<&'static str> = motion.registry.manifests().map(|m| m.name).collect();
+    let mut census: Vec<(&'static str, f32)> = types
+        .into_iter()
+        .map(|ty| {
+            let node = motion.doc.graph.add_node(ty);
+            ph2d_panel_motion_graph::set_graph_selection(vec![node.0]);
+            let snap = build_params_snapshot(&motion, ProjectSettings::default());
+            ph2d_panel_motion_params::set_current_params(snap);
+            let mut host = ph2d_ui_testkit::MockPanelHost::with_panel::<
+                ph2d_panel_motion_params::MotionParamsPanel,
+            >();
+            let mut state = ph2d_panel_motion_params::MotionParamsPanelState;
+            let rects = host.paint::<ph2d_panel_motion_params::MotionParamsPanel>(
+                &mut state,
+                Rect {
+                    x: 0.0,
+                    y: 0.0,
+                    w: ph2d_editor::screens::layout::INSPECTOR_W,
+                    h: INSPECTOR_MAX_H,
+                },
+            );
+            // O fundo do retângulo mais baixo que o painel registrou: o último pixel que o
+            // artista consegue apontar.
+            let bottom = rects.iter().map(|(_, r)| r.y + r.h).fold(0.0f32, f32::max);
+            (ty, bottom)
+        })
+        .collect();
+    ph2d_panel_motion_params::set_current_params(None);
+    ph2d_panel_motion_graph::set_graph_selection(Vec::new());
+    census.sort_by(|a, b| b.1.total_cmp(&a.1));
+    census
+}
+
+/// A SONDA da altura: imprime o censo, para o veredito sair de uma medição.
+/// `cargo test -p ph2d-host-desktop --bins measure_the_param_height_census -- --ignored --nocapture`
+#[test]
+#[ignore = "sonda de medição, não gate"]
+fn measure_the_param_height_census() {
+    let census = height_census();
+    println!("\n=== ALTURA OCUPADA POR NÓ (dock: {INSPECTOR_MAX_H} px) ===");
+    for (ty, h) in census.iter().take(20) {
+        let over = if *h > INSPECTOR_MAX_H {
+            "  <-- ESTOURA"
+        } else {
+            ""
+        };
+        println!("{h:7.1}  {ty}{over}");
+    }
+    let over = census.iter().filter(|(_, h)| *h > INSPECTOR_MAX_H).count();
+    println!(
+        "--- {} tipos no total, {over} acima da altura do dock\n",
+        census.len()
+    );
+}
+
+/// **E as linhas CABEM no dock** — a outra metade do corte silencioso.
+///
+/// O gate irmão prova que nenhum param é descartado pelo `.take()`. Ele não vê a segunda porta
+/// para a MESMA invisibilidade: um teto de linhas alto o bastante para todo nó só é honesto se
+/// essas linhas couberem na altura do inspector, senão a linha 14 deixa de ser cortada pelo
+/// `.take()` e passa a ser cortada pela borda da tela. O painel **não rola**.
+///
+/// ⚠️ Este gate é a razão pela qual o `INSPECTOR_MAX_H` foi NOMEADO (era literal solto no
+/// `Rect::new` do layout), e ele não existia — a constante ganhou um dono e ficou sem leitor.
+///
+/// Medido hoje: o pior nó é o `field.remap` com **778 px** de **880**, ou seja **102 px** de
+/// folga — menos que duas linhas. Não é margem confortável: é a distância entre o catálogo de
+/// hoje e um param a mais no nó mais cheio.
+#[test]
+fn every_node_fits_the_inspector_dock() {
+    let census = height_census();
+    let (worst_ty, worst_h) = census.first().copied().expect("o registry não é vazio");
+    let over: Vec<String> = census
+        .iter()
+        .filter(|(_, h)| *h > INSPECTOR_MAX_H)
+        .map(|(ty, h)| format!("{ty} ({h:.0} px)"))
+        .collect();
+    assert!(
+        over.is_empty(),
+        "estes nós desenham além da altura do dock ({INSPECTOR_MAX_H} px) e o excedente sai \
+         pela borda da tela — o param existe, o painel o registra, e o artista não o vê: \
+         {over:?}. O pior é {worst_ty} com {worst_h:.0} px."
+    );
+}

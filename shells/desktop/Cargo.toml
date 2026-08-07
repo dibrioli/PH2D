@@ -359,6 +359,14 @@ rfd = "0.15"
 # dep via winit/macos; promoting to a direct dep is free (no extra
 # compile unit) and keeps the crate `forbid(unsafe_code)`-clean
 # because all wrapping is inside the core-graphics crate itself.
+[dev-dependencies]
+# O harness headless de painel (`MockPanelHost`) — a shell precisa dele para medir a
+# GEOMETRIA que um painel de fato registra. O censo de linhas (doc 88 B3) mede quantas
+# linhas um nó produz; a metade que faltava é se elas CABEM na altura do dock, e a única
+# testemunha honesta disso são os retângulos que o próprio painel registrou (uma segunda
+# aritmética de altura ao lado dele divergiria no dia em que uma linha composta mudar).
+ph2d-ui-testkit = { path = "../../crates/ph2d-ui-testkit" }
+
 [target.'cfg(target_os = "macos")'.dependencies]
 core-graphics = "0.23"
 

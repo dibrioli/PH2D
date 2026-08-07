@@ -1,6 +1,6 @@
 # HANDOFF DE INTEGRAÇÃO — `line/Painter`, o bow wave gateado no knob + as bandas por trabalho (2026-08-06)
 
-> **26 commits · 32 arquivos · nenhum `Cargo.toml` · nenhum ADR · `project.rs` intocado.**
+> **28 commits · 41 arquivos · nenhum `Cargo.toml` · nenhum ADR · `project.rs` intocado.**
 >
 > ⚠️ O par `commits · arquivos` deste cabeçalho **se CONTA** (`git log --oneline origin/main..HEAD | wc -l`
 > e `git diff --name-only origin/main..HEAD | wc -l`). Ele nasceu dizendo *11 · 17*, que já era falso
@@ -12,7 +12,8 @@
 > commits, um deles muda o produto e é **byte-idêntico**), a do **BOOLEAN** (§11-§12: a **janela**
 > muda o produto; o **traçado** e a **sub-janela por forma** são **byte-idênticos**) e a do **REPOUSO**
 > (§13 — ⚠️ **muda o que o artista VÊ durante um arrasto**, e é a única que precisa de veredito de
-> gosto). As quatro podem ser integradas juntas; elas não se tocam.
+> gosto; a rodada de 07/08 que fecha a §13 traz o **CONTORNO**, e com ele a correção de *"clicar dentro
+> de uma forma não deixa desenhar outra"*). As quatro podem ser integradas juntas; elas não se tocam.
 
 ---
 
@@ -550,3 +551,26 @@ a feature). Suíte **1007 release / 1005 debug**, clippy limpo, LOC sob o teto, 
 ### Aberto
 
 O arrasto de um **slider do painel** também re-carimba por quadro e não passa por esta porta.
+
+### A rodada seguinte: o contorno (2026-08-07)
+
+O smoke aprovou a lei e trouxe **dois reports que são o mesmo defeito** — *"o
+gizmo está invisível ao ser criado / ao criar outro círculo"* e *"se clicar
+dentro de uma forma já desenhada, não aceita desenhar outra"*.
+
+⚠️ **A premissa que esta wave invalidou sem ninguém reconferir:** enquanto a
+tinta aparecia sob a mão, uma figura podia ser uma **CAIXA** (o desenho dizia
+onde ela estava). Com o gesto rascunhado a caixa virou a única coisa na tela — e
+o hit-test que a acompanhava aceitava o **interior** dela, engolindo o gesto de
+começar uma figura nova.
+
+Cura: **uma porta** (`stroke_outline.rs`) produz o contorno, e o gizmo e o clique
+leem dela — *o que é desenhado é o que é clicável*. As alças seguem a fase
+(`EllipseOverlay::editing`). Detalhe, números e as lições de mutação/fixture no
+[doc 28 §5.79](../Painter/28_otimizacoes_o_que_funcionou.md).
+
+**O que o smoke julga:** desenhe quatro círculos que se cruzem — **cada um tem de
+continuar visível** enquanto você desenha o seguinte, e o que está em criação tem
+de aparecer desde o primeiro pixel do arrasto. Depois **clique bem no meio** de
+um deles: tem de começar uma figura NOVA. Encostar no **contorno** (ou no
+quadradinho `+` do centro) é que reativa aquela.

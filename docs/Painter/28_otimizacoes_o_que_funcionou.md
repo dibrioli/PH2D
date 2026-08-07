@@ -7345,3 +7345,99 @@ O arrasto de um **slider do painel** também re-carimba por quadro e **não** pa
 por esta porta (ele não tem Down/Up de canvas). Se afinar um knob sobre uma cena
 booleana engasgar, a cura é fiar o `held_button` da shell no mesmo `shape_draft`
 — mesma lei, segundo fio.
+
+## §5.79 — O contorno é o que se VÊ e o que se CLICA (2026-08-07)
+
+O smoke da §5.78 aprovou a lei e trouxe **dois reports que são o mesmo defeito
+visto pelos dois lados** (Enio):
+
+> *"O gizmo está invisível ao ser criado. E fica invisível ao criar outro
+> círculo. Mas agora precisamos de todos os gizmos sempre visíveis."*
+> *"Se clicar dentro de uma forma já desenhada, não aceita desenhar outra."*
+
+⚠️ **Os dois são consequência de uma premissa que a §5.78 invalidou sem que
+ninguém reconferisse.** Enquanto a TINTA aparecia sob a mão, uma figura podia ser
+representada por uma **CAIXA**: o desenho pintado dizia onde ela estava, e a
+caixa só precisava dizer *"ainda dá para clicar aqui"*. Com o gesto rascunhado a
+caixa virou a **única coisa na tela**, e as duas metades do acordo quebraram de
+uma vez:
+
+- **o que se VÊ** — `stroke_op_badges` dava uma moldura AABB apagada por figura
+  parqueada, e o `ellipse_overlay`/`polygon_overlay` devolvia `None` até o Up
+  (*"`None` until the radius drag is released"*, escrito no próprio tipo). Quatro
+  círculos viravam quatro retângulos, e o círculo em criação, nada;
+- **o que se CLICA** — `hit_parked_shape_bbox` aceitava o **INTERIOR** da caixa.
+  A caixa de um círculo cobre `4/π` da área dele, então o passo 4 do
+  `maybe_switch_or_new_shape` (*reativar uma parqueada*) engolia todo Down e o
+  passo 5 (*parquear a ativa e começar outra*) ficava **inalcançável**. O sintoma
+  se lê como intermitente porque depende de o clique cair fora de TODAS as
+  caixas.
+
+### A cura é uma porta só
+
+`stroke_outline.rs` produz **o contorno**, e os dois consumidores que precisam
+concordar leem dele: o gizmo que a shell desenha e o hit-test que decide se um
+clique alcança a figura. ***O que é DESENHADO é o que é CLICÁVEL.***
+
+A lei de cada família **não é escolha** — ela espelha o gizmo ATIVO daquela
+família, senão reativar uma figura a faria SALTAR: Ellipse/Polygon com o **Offset
+aplicado** (como os `*_overlay` deles), Curve/Line **PRISTINO** (o offset é
+*drawing-only*, Enio 2026-07-05).
+
+O hit-test tem **duas** regiões e as duas são coisas que o artista vê: o contorno
+e o **quadrado central do badge** (com o glifo de Operation dentro). Alvo
+desenhado que não responde é a metade oposta do mesmo defeito.
+
+E as **ALÇAS** seguem a fase (`EllipseOverlay::editing`, o espelho exato do
+`LineOverlay::editing` que já existia): o contorno aparece desde o primeiro pixel
+do arrasto, as alças só depois do Up — no meio do arrasto de criação nenhum Down
+as alcança (`ellipse_down` sai por *"mid radius-drag — ignore extra Downs"*), e
+alça desenhada que não responde é chrome morto.
+
+### O bônus medido: o badge parou de construir DABS
+
+`shape_state_bbox` chama `parked_shape_dabs`, ou seja **monta a lista de dabs
+inteira de cada figura parqueada, a cada quadro**, para guardar quatro floats —
+exatamente o que o header de `measure_idle_frame_of_a_live_shape` já nomeava como
+*"o suspeito"*. O contorno é a linha, não o pigmento.
+
+A/B costas-com-costas, mesma corrida, máquina calma (`load 3,5`),
+`measure_idle_frame_of_a_live_shape`, coluna `badges` em µs:
+
+| parqueadas | caixa (via DABS) | contorno | razão |
+|---|---|---|---|
+| 1 | 7,0 | 1,3 | 5,4× |
+| 2 | 13,4 | 2,7 | 5,0× |
+| 4 | 26,9 | 5,1 | 5,3× |
+| 8 | 57,7 | 10,8 | 5,3× |
+| 16 | 105,0 | 19,8 | 5,3× |
+
+⚠️ **A cena da sonda é PEQUENA** (figura de 400 px, raio 48) — o valor absoluto é
+de microssegundos. O que a tabela entrega é a **razão**, constante em 5,3×, e o
+fato de o custo ter deixado de crescer com o TAMANHO da figura (a lista de dabs
+cresce com a área varrida; o contorno, não).
+
+### O que as mutações ensinaram
+
+**7 mutações, 7 sangram** — e a que importa é a que **sobreviveu na 1ª rodada**:
+*"tire o quadrado central do hit-test"* passava em tudo. O buraco era da
+**FIXTURE**: os três círculos estavam tão próximos que o centro do primeiro caía
+a **1,66 px do contorno do segundo**, então o gate do quadrado central passava
+pelo ramo do CONTORNO — verde pelo motivo errado. Refeita com **≥ 45 px** de
+folga entre todo centro/sonda e QUALQUER contorno, cada ramo é medido sozinho e a
+mesma mutação sangra.
+
+⚠️ **E quatro gates PRÉ-EXISTENTES pinavam o MECANISMO em vez da intenção:** *"no
+handles while drawing"* estava escrito como `overlay().is_none()`. A intenção
+sobrevive intacta — o que mudou foi onde ela se afirma (`editing` /
+`points.is_empty()`). *Um gate que afirma o mecanismo em vez da propriedade
+reprova a correção junto com a regressão.*
+
+### LOC
+
+`curve.rs` cruzou o teto e o corte foi por **assunto**: o snapshot read-only saiu
+para `curve_overlay.rs` — módulo **FILHO**, não irmão. Ele lê quatro campos
+privados do `CurveEditor` (`grab`/`freehand`/`anchor`/`draft_to`), e em Rust um
+filho enxerga o privado do ancestral; um irmão obrigaria a alargar os quatro para
+`pub(super)` só por causa do teto, que é **mover o problema de lado** em vez de
+cortá-lo (a lição do corte que levou `paint.rs` de 596 a 613).

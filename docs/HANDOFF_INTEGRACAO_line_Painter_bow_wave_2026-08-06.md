@@ -1,11 +1,16 @@
 # HANDOFF DE INTEGRAÇÃO — `line/Painter`, o bow wave gateado no knob + as bandas por trabalho (2026-08-06)
 
-> **11 commits · 17 arquivos · nenhum `Cargo.toml` · nenhum ADR · `project.rs` intocado.**
+> **19 commits · 23 arquivos · nenhum `Cargo.toml` · nenhum ADR · `project.rs` intocado.**
+>
+> ⚠️ O par `commits · arquivos` deste cabeçalho **se CONTA** (`git log --oneline origin/main..HEAD | wc -l`
+> e `git diff --name-only origin/main..HEAD | wc -l`). Ele nasceu dizendo *11 · 17*, que já era falso
+> quando foi escrito, e eu quase o bumpei para *12 · 18* fazendo aritmética em cima do valor errado —
+> a mesma classe de [[feedback_numbers_that_sum_across_lines_count_dont_pick]], dentro de um doc só.
 >
 > ⚠️ **PENDENTE DE SMOKE.** A jornada tem **três metades independentes**: a do **bow wave** (§1-§9,
 > sete commits, um deles muda o produto — leia o §3), a das **BANDAS POR TRABALHO** (§10, dois
-> commits, um deles muda o produto e é **byte-idêntico**) e a do **BOOLEAN** (§11-§12, dois commits +
-> dois, o primeiro par muda o produto e o segundo é **byte-idêntico**). As três podem ser integradas
+> commits, um deles muda o produto e é **byte-idêntico**) e a do **BOOLEAN** (§11-§12: a **janela**
+> muda o produto; o **traçado** e a **sub-janela por forma** são **byte-idênticos**). As três podem ser integradas
 > juntas; elas não se tocam.
 
 ---
@@ -417,6 +422,36 @@ fator comum): **2,69× · 2,80× · 2,17×**. O composite de uma forma cai de **
 contendo os três casos que separam as rotas: o blob que **encosta na borda**, os blobs que se tocam
 **só na diagonal** (4-conexo × 8-conexo — é a conectividade que decide **quantos** contornos saem), e a
 forma **côncava**. **3 mutações, 3 sangram.**
+
+### §12.2b E cada forma passou a rasterizar na CAIXA dela (byte-idêntico, 1 commit)
+
+Com o traçado curado, o `rasteriza` virou o maior item — e ele tinha o **mesmo defeito da janela, um
+nível abaixo**: a janela do composite já era a das formas, mas dentro dela **cada forma pagava a união
+inteira três vezes** (zerar o `region`, avaliar a elipse em cada texel, compor). Com quatro figuras que
+mal se tocam, isso é quatro vezes a união para desenhar quatro caixas disjuntas.
+
+**A/B na MESMA corrida** (a rota de janela cheia é o `else` do mesmo laço, viva no produto para uma
+forma sem caixa): **1,01× · 1,73× · 2,43×** com 1 / 2 / 4 formas.
+
+⚠️ **A linha de UMA forma é o negativo honesto e estava previsto:** a caixa dela **É** a janela, então
+não há o que economizar — e é a cena mais comum. O ganho é dos casos com várias formas.
+
+⚠️ **Byte-idêntico por ARITMÉTICA:** fora da caixa a `region` é zero, e `max(c, 0) == c` e
+`(c · (255 − 0)) / 255 == c` **em inteiros, exatamente**. Por isso a rota curta é oferecida só aos wires
+de Add e Remove — o wire 0 é um `copy_from_slice`, que zeraria tudo fora da caixa; nenhum chamador o
+passa hoje, e **a guarda existe em vez de uma nota dizendo que ninguém passa**.
+
+⚠️ **Uma mutação SOBREVIVE de propósito** (`PAD = 0`), e ela corrigiu a minha justificativa: os dois
+alcances que eu citei não existem por esta porta (o clamp de meio texel do `rasterize_ellipse` é
+**anulado** por um clamp de meio **px de imagem** um passo antes; e `round(v) ∈ [floor(v), ceil(v)]` por
+definição). Com `PAD = 0` a caixa já seria exata — a folga fica porque a primeira premissa mora em
+**outra função**, e o modo de falha sem ela é *forma truncada em silêncio*. **3 mutações sangram**
+(caixa um texel menor · a linha esquece o `ry` · rasterizar com a origem da janela).
+
+**O composite inteiro nesta jornada:** 1 forma **6,45 → 4,31 ms**, 4 formas **16,31 → 7,49**.
+
+⚠️ **E aqui a rota de raster acaba:** as duas fases ficaram equilibradas e a janela já é a figura ⇒ o
+que sobra é `O(área da figura)` nas duas, irredutível *para este método*.
 
 ### §12.3 O que NÃO entrou, e por quê
 

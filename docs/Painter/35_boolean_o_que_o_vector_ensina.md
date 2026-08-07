@@ -145,9 +145,7 @@ tabela):
 | 2 | 5,910 | 8,813 → **3,605** | 14,409 → **9,515** |
 | 4 | 7,455 | 8,912 → **4,147** | 16,311 → **11,602** |
 
-⚠️ **Com isso o `rasteriza` passa a ser o maior item** — e ele é `O(células)` por natureza (para saber
-o que está dentro é preciso preencher). É exatamente aí que a rota do §4 deixa de ser um refinamento e
-passa a ser a única resposta.
+⚠️ **Com isso o `rasteriza` passou a ser o maior item** — e é ele que a §3.1 ataca.
 
 **Gate:** `the_span_scan_traces_what_the_pixel_flood_traced` compara contra a rota antiga **congelada
 sob `cfg(test)`** (`trace_all_contours_flood`) — o precedente do `warp_axis`, do `serial_side` e da
@@ -156,6 +154,65 @@ que **encosta na borda** (onde `sy == 0` faz o vizinho de cima estourar), os blo
 na diagonal**, e a forma **côncava** (mais de uma corrida por linha, que é o que obriga a semeadura
 por-corrida a estar certa). Irmão: `a_reused_buffer_does_not_leak_the_previous_component`, que só
 pode falhar a partir do **segundo** blob — daí a fixture ter três em fila.
+
+### 3.1 E cada forma passou a rasterizar na CAIXA dela, não na união
+
+A janela do composite já era a das formas. Dentro dela, porém, **cada forma pagava a união inteira
+três vezes** — zerar o `region`, avaliar a elipse em cada texel, compor —, e a união é o que as
+*outras* formas ocupam. Com quatro figuras que mal se tocam, isso é quatro vezes a união para desenhar
+quatro caixas disjuntas.
+
+Agora cada forma rasteriza numa sub-janela do tamanho da própria caixa (`window_sub_rect`), e o
+`combine_into` é chamado por LINHA sobre a fatia correspondente do `crisp`.
+
+⚠️ **A troca é BYTE-IDÊNTICA por aritmética, não por medição:** fora da caixa a `region` é zero, e
+`max(c, 0) == c` (união) e `(c · (255 − 0)) / 255 == c` (subtração) **em inteiros, exatamente**. É por
+isso que a rota curta é oferecida só a esses dois wires — o wire 0 (Overlay) é um `copy_from_slice`,
+que **zeraria** tudo fora da caixa. Nenhum chamador o passa hoje (os dois filtram Overlay antes), e a
+guarda existe **em vez de** uma nota dizendo que ninguém passa.
+
+**O A/B, na MESMA corrida** (`measure_the_sub_rect_against_the_full_window`) — a rota de janela cheia é
+o `else` do mesmo laço, viva no produto para uma forma sem caixa, e as duas são cronometradas
+alternadas sobre o mesmo estado, porque esta máquina é compartilhada e comparar duas corridas
+atribuiria a deriva dela ao ganho:
+
+| formas | janela cheia | caixa da forma | razão |
+|---|---|---|---|
+| 1 | 1,697 | **1,685** | **1,01×** |
+| 2 | 5,652 | **3,259** | **1,73×** |
+| 4 | 7,342 | **3,027** | **2,43×** |
+
+⚠️ **A linha de UMA forma é o negativo honesto, e estava previsto pelo modelo:** com uma figura só, a
+caixa dela **É** a janela — não há o que economizar. E essa é a cena mais comum, porque `active_is_bool`
+põe a figura ativa no composite assim que o artista escolhe a Operation. O ganho é dos casos com
+várias formas, e cresce com elas exatamente porque o que ele remove é *cada uma pagar a união*.
+
+⚠️ **O `PAD` de um texel é FOLGA DECLARADA, e a mutação que o zera SOBREVIVE de propósito.** Eu o
+justifiquei primeiro por dois alcances que a leitura desmentiu — o `max(0.5)` de texel do
+`rasterize_ellipse` é **inalcançável por esta porta** (o `stroke_state_to_fill_shape` já clampa em meio
+px de IMAGEM, `SS` vezes maior), e `round(v)` fica em `[floor(v), ceil(v)]` **por definição**, então um
+span nunca sai da caixa. Com `PAD = 0` ela já seria exata. A folga fica porque a primeira premissa mora
+em **outra função**: afrouxado aquele clamp, com folga o preço é um texel de trabalho a mais, e sem
+folga é **forma truncada em silêncio**.
+
+**Gates:** o mesmo `the_boolean_window_draws_what_the_whole_canvas_window_drew`, contra a rota de tela
+cheia **congelada** — a fixture ganhou a forma **degenerada** (semi-eixo mínimo), onde um off-by-one na
+caixa é uma fração grande do desenho em vez de um texel perdido numa figura de 40 px. **Três mutações
+sangram** (caixa um texel menor · a linha esquece o `ry` e compõe nas linhas erradas · rasterizar com a
+origem da JANELA em vez da sub-janela); a quarta é o `PAD`, acima.
+
+**O composite inteiro**, medido em corrida separada (contexto, não veredito — o número que carrega a
+conclusão é a razão in-run acima):
+
+| formas | rasteriza | traça | TOTAL | (antes desta sessão) |
+|---|---|---|---|---|
+| 1 | 2,17 | 2,15 | **4,31** | 6,45 |
+| 2 | 3,56 | 3,66 | **7,22** | 14,41 |
+| 4 | 3,50 | 3,99 | **7,49** | 16,31 |
+
+⚠️ **E aqui a rota de raster acaba:** com as duas fases equilibradas e a janela já sendo a figura, o que
+sobra é `O(área da figura)` nas duas — irredutível *para este método*. Descer mais é a rota do §4, que
+muda o DESENHO.
 
 ---
 

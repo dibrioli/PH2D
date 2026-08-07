@@ -166,3 +166,94 @@ fn a_grouped_node_delivers_its_rows_sorted_with_the_loose_ones_first() {
     }
     ph2d_panel_motion_graph::set_graph_selection(Vec::new());
 }
+
+/// **Toda entrada de `ParamGroup` nomeia um param que o nó DECLARA.**
+///
+/// Um nome errado numa tabela de seções não falha em lugar nenhum: o `param_group` não acha a
+/// entrada, a row fica solta, e "solta" é exatamente o que uma escolha deliberada também
+/// parece. O nó continua compilando, o painel continua pintando, e o param que devia estar
+/// numa seção fica na parede — que é o problema que a seção existe para resolver.
+///
+/// Por isso o censo é sobre o REGISTRY inteiro, e não sobre um nó: cada gate por-nó usa a
+/// fixture do próprio nó, e a tabela do sétimo nasce sem testemunha nenhuma.
+///
+/// O conjunto aceito é *params do manifesto* ∪ *nomes das rows do snapshot* — a união porque um
+/// text param (curva, gradiente, paleta, fórmula) produz row e **não** aparece no manifesto,
+/// e agrupá-lo é legítimo.
+#[test]
+fn every_param_group_entry_names_a_param_the_node_declares() {
+    let mut motion = MotionState::new();
+    let types: Vec<(&'static str, ph2d_nodegraph::node::NodeTypeId)> = motion
+        .registry
+        .manifests()
+        .map(|m| (m.name, m.id))
+        .collect();
+    let mut bad: Vec<String> = Vec::new();
+    for (ty, id) in types {
+        let groups = motion.registry.param_groups(id);
+        if groups.is_empty() {
+            continue;
+        }
+        let node = motion.doc.graph.add_node(ty);
+        ph2d_panel_motion_graph::set_graph_selection(vec![node.0]);
+        let mut declared: std::collections::BTreeSet<String> = Default::default();
+        if let Some(snap) = build_params_snapshot(&motion, ProjectSettings::default()) {
+            for row in &snap.rows {
+                declared.extend(row.params().iter().map(|p| (*p).to_string()));
+            }
+        }
+        if let Some(op) = {
+            use ph2d_nodegraph::cook::OpResolver;
+            motion.registry.resolve(id)
+        } {
+            declared.extend(op.manifest().params.iter().map(|p| p.name.to_string()));
+        }
+        for g in groups {
+            if !declared.contains(g.param) {
+                bad.push(format!("{ty}: a seção {:?} nomeia {:?}", g.group, g.param));
+            }
+        }
+    }
+    ph2d_panel_motion_graph::set_graph_selection(Vec::new());
+    assert!(
+        bad.is_empty(),
+        "estas entradas de ParamGroup nomeiam params que o nó não tem — a row fica SOLTA e \
+         nada acusa: {bad:?}"
+    );
+}
+
+/// **E os nós que a medição nomeou de fato entregam seções.**
+///
+/// A metade oposta do gate acima: sem ela, "conserte os nomes" tem a resposta trivial de
+/// apagar as tabelas. A lista sai da sonda `measure_the_param_row_census` — são os nós de 9+
+/// linhas, os que a parede de sliders de fato machuca.
+#[test]
+fn the_nodes_the_census_named_all_ship_sections() {
+    let mut motion = MotionState::new();
+    for ty in [
+        "field.remap",
+        "motion.emitter",
+        "motion.boids",
+        "field.radial_sweep",
+        "value.pattern",
+        "motion.spline_wrap",
+        "motion.distribute_curve",
+    ] {
+        let node = motion.doc.graph.add_node(ty);
+        ph2d_panel_motion_graph::set_graph_selection(vec![node.0]);
+        let snap = build_params_snapshot(&motion, ProjectSettings::default())
+            .unwrap_or_else(|| panic!("{ty} existe no registry"));
+        assert!(
+            !snap.sections.is_empty(),
+            "{ty} tem {} linhas e nenhuma seção — é a parede plana que o doc 88 B3 ataca",
+            snap.rows.len()
+        );
+        // E sobra algo SOLTO: uma seção que engole o nó inteiro põe todo controle atrás de um
+        // clique, que troca uma parede por uma porta trancada.
+        assert!(
+            snap.sections[0].1 > 0,
+            "{ty} agrupou TODOS os params — nenhum essencial ficou solto na frente",
+        );
+    }
+    ph2d_panel_motion_graph::set_graph_selection(Vec::new());
+}

@@ -8,7 +8,7 @@
 
 use super::MAX_ALIVE;
 use ph2d_node_registry::{
-    ParamHardMax, ParamHardMin, ParamUiHint, ParamUnit, ParamUnitDecl, ParamWidget,
+    ParamGroup, ParamHardMax, ParamHardMin, ParamUiHint, ParamUnit, ParamUnitDecl, ParamWidget,
 };
 
 /// **What each of this node's numbers IS** (doc 88, Wave A) — never how it is
@@ -169,4 +169,25 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         step: 0.01,
         widget: ParamWidget::Slider,
     },
+];
+
+/// As SEÇÕES deste nó (doc 88 B3). Dez controles numa lista plana são uma parede; a pergunta
+/// que cada seção responde é uma só.
+///
+/// ⚠️ O `seed` está em **Velocity** por MEDIÇÃO, não por hábito: ele alimenta um único lane
+/// (`LANE_ANGLE`), ou seja é a aleatoriedade do `spread` — pô-lo numa seção "Random" o
+/// separaria justamente do número que ele randomiza.
+///
+/// ⚠️ E ficam SOLTOS `rate`, `life`, `size` e `max`: os três primeiros são o que um emissor
+/// É (com que frequência, por quanto tempo, de que tamanho) e o quarto é o orçamento. Param
+/// sem grupo pinta antes de toda seção, e é ali que os essenciais moram.
+pub static PARAM_GROUPS: &[ParamGroup] = &[
+    // Como a partícula é lançada.
+    ParamGroup::new("speed", "Velocity"),
+    ParamGroup::new("angle", "Velocity"),
+    ParamGroup::new("spread", "Velocity"),
+    ParamGroup::new("seed", "Velocity"),
+    // De onde.
+    ParamGroup::new("x", "Origin"),
+    ParamGroup::new("y", "Origin"),
 ];

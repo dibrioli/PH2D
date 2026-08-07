@@ -47,7 +47,7 @@ mod hash;
 mod params_ui;
 mod trig;
 use hash::rand01;
-use params_ui::{PARAM_HARD_MAX, PARAM_HARD_MIN, PARAM_HINTS, PARAM_UNITS};
+use params_ui::{PARAM_GROUPS, PARAM_HARD_MAX, PARAM_HARD_MIN, PARAM_HINTS, PARAM_UNITS};
 use trig::cos_sin_cycles;
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
@@ -415,6 +415,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_groups(MANIFEST.id, PARAM_GROUPS);
     reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
     reg.register_param_hard_min(MANIFEST.id, PARAM_HARD_MIN);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);

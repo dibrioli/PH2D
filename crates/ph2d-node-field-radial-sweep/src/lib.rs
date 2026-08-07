@@ -399,12 +399,32 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_groups(MANIFEST.id, PARAM_GROUPS);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     Ok(())
 }
 
-use ph2d_node_registry::{ParamUiHint, ParamWidget};
+use ph2d_node_registry::{ParamGroup, ParamUiHint, ParamWidget};
+
+/// As SEÇÕES deste nó (doc 88 B3).
+///
+/// ⚠️ A VARREDURA fica solta inteira (`radius`, `start_angle`, `end_angle`, `repetitions`):
+/// ela é a razão de existir do nó, e sepultá-la atrás de um clique é o erro que o gate do
+/// `field.remap` já pegou uma vez nesta linha.
+///
+/// ⚠️ O `curve` aqui é o SELETOR de contorno do falloff (um `Enum`), não um editor de curva —
+/// por isso ele agrupa com `soft`/`invert` em vez de ficar solto como o do `field.remap`.
+static PARAM_GROUPS: &[ParamGroup] = &[
+    // Onde o radar está plantado, e para onde ele aponta.
+    ParamGroup::new("center_x", "Placement"),
+    ParamGroup::new("center_y", "Placement"),
+    ParamGroup::new("rotation", "Placement"),
+    // Como a borda do feixe desvanece.
+    ParamGroup::new("soft", "Falloff"),
+    ParamGroup::new("curve", "Falloff"),
+    ParamGroup::new("invert", "Falloff"),
+];
 
 /// Param UI hints (M1.P1): the sweep's radius (gizmo-driven), the angular sector
 /// (start/end in degrees), the repetition count, a normalized softness, a signed centre,

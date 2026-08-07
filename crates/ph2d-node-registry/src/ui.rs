@@ -235,6 +235,19 @@ pub struct ParamGroup {
     pub group: &'static str,
 }
 
+impl ParamGroup {
+    /// `ParamGroup::new("min", "Range")`.
+    ///
+    /// A tabela de um nó grande são dezenas de entradas, e a forma literal escreve cada uma em
+    /// quatro linhas — uma tabela que o autor do nó não consegue LER de relance é uma tabela
+    /// que ele não confere. Um construtor no tipo, e não um helper por-crate, porque seis
+    /// cópias de `const fn g(..)` são seis respostas à mesma pergunta.
+    #[must_use]
+    pub const fn new(param: &'static str, group: &'static str) -> Self {
+        Self { param, group }
+    }
+}
+
 /// **Show a param row only when another param has one of a set of values** — the
 /// side-channel that makes a param CONDITIONAL, so a node shows only the controls
 /// that apply to its current mode (a `source.shape` gear shows `hole`/`tooth_depth`;

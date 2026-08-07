@@ -194,10 +194,11 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_groups(MANIFEST.id, PARAM_GROUPS);
     Ok(())
 }
 
-use ph2d_node_registry::{ParamUiHint, ParamWidget};
+use ph2d_node_registry::{ParamGroup, ParamUiHint, ParamWidget};
 
 /// A value slider for one slot, `0..1` (the value-domain normalised convention;
 /// compose a `value.map_range` for another range).
@@ -211,6 +212,22 @@ const fn slot(param: &'static str, label: &'static str) -> ParamUiHint {
         widget: ParamWidget::Slider,
     }
 }
+
+/// As SEÇÕES deste nó (doc 88 B3). Oito valores e um contador não são nove controles do mesmo
+/// peso: `steps` diz QUANTOS slots ciclam, e os oito são o conteúdo.
+///
+/// ⚠️ Uma seção nasce ABERTA — agrupar não é esconder. O que ela compra é o gesto de dobrar
+/// depois que o padrão está posto, e a fronteira visível entre *quantos* e *quais*.
+static PARAM_GROUPS: &[ParamGroup] = &[
+    ParamGroup::new("v0", "Values"),
+    ParamGroup::new("v1", "Values"),
+    ParamGroup::new("v2", "Values"),
+    ParamGroup::new("v3", "Values"),
+    ParamGroup::new("v4", "Values"),
+    ParamGroup::new("v5", "Values"),
+    ParamGroup::new("v6", "Values"),
+    ParamGroup::new("v7", "Values"),
+];
 
 static PARAM_HINTS: &[ParamUiHint] = &[
     // How many slots cycle. The extra slots stay on the panel but are ignored

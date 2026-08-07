@@ -212,6 +212,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_groups(MANIFEST.id, PARAM_GROUPS);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     // CPU-only: this node reads `falloff` only at eval runtime (no GPU kernel), so the
     // diagnoser cannot derive the role from a `ColumnBinding` — declare it (ADR-0155).
@@ -222,7 +223,21 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     Ok(())
 }
 
-use ph2d_node_registry::{ParamUiHint, ParamWidget};
+use ph2d_node_registry::{ParamGroup, ParamUiHint, ParamWidget};
+
+/// As SEÇÕES deste nó (doc 88 B3). As oito coordenadas são UMA coisa — o polígono de controle
+/// de uma cúbica —, e listá-las ao lado dos dois controles reais faz um nó de dois botões
+/// parecer um nó de dez.
+static PARAM_GROUPS: &[ParamGroup] = &[
+    ParamGroup::new("p0x", "Curve"),
+    ParamGroup::new("p0y", "Curve"),
+    ParamGroup::new("p1x", "Curve"),
+    ParamGroup::new("p1y", "Curve"),
+    ParamGroup::new("p2x", "Curve"),
+    ParamGroup::new("p2y", "Curve"),
+    ParamGroup::new("p3x", "Curve"),
+    ParamGroup::new("p3y", "Curve"),
+];
 
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {

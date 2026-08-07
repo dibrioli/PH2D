@@ -300,6 +300,14 @@ impl NodeRegistry {
             .map(|g| g.group)
     }
 
+    /// A tabela de seções deste tipo, crua. Existe para o CENSO — o gate que confere que toda
+    /// entrada nomeia um param que o nó de fato declara. Um nome errado aqui não falha: a row
+    /// simplesmente não acha grupo nenhum e fica solta, que é indistinguível de uma escolha.
+    #[must_use]
+    pub fn param_groups(&self, id: NodeTypeId) -> &'static [ParamGroup] {
+        self.param_groups.get(&id).copied().unwrap_or(&[])
+    }
+
     /// As seções deste tipo, **na ordem em que a tabela as declara** (primeira aparição).
     ///
     /// ⚠️ A ordem é da TABELA, não alfabética nem a de descoberta nas rows: quem escreve o nó

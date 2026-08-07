@@ -144,11 +144,26 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_groups(MANIFEST.id, PARAM_GROUPS);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     Ok(())
 }
 
-use ph2d_node_registry::{ParamUiHint, ParamWidget};
+use ph2d_node_registry::{ParamGroup, ParamUiHint, ParamWidget};
+
+/// As SEÇÕES deste nó (doc 88 B3). O mesmo corte do `motion.spline_wrap`, e com o mesmo nome
+/// de propósito: as oito coordenadas são o polígono de controle de uma cúbica nos dois nós, e
+/// dois títulos para o mesmo objeto ensinariam que são coisas diferentes.
+static PARAM_GROUPS: &[ParamGroup] = &[
+    ParamGroup::new("p0x", "Curve"),
+    ParamGroup::new("p0y", "Curve"),
+    ParamGroup::new("p1x", "Curve"),
+    ParamGroup::new("p1y", "Curve"),
+    ParamGroup::new("p2x", "Curve"),
+    ParamGroup::new("p2y", "Curve"),
+    ParamGroup::new("p3x", "Curve"),
+    ParamGroup::new("p3y", "Curve"),
+];
 
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {

@@ -445,39 +445,15 @@ use ph2d_node_registry::{ParamGroup, ParamUiHint, ParamWidget};
 /// para não a sepultar.
 static PARAM_GROUPS: &[ParamGroup] = &[
     // A FAIXA de saída: entre que números o resultado vive.
-    ParamGroup {
-        param: "min",
-        group: "Range",
-    },
-    ParamGroup {
-        param: "max",
-        group: "Range",
-    },
-    ParamGroup {
-        param: "multiplier",
-        group: "Range",
-    },
-    ParamGroup {
-        param: "clamp",
-        group: "Range",
-    },
-    ParamGroup {
-        param: "invert",
-        group: "Range",
-    },
+    ParamGroup::new("min", "Range"),
+    ParamGroup::new("max", "Range"),
+    ParamGroup::new("multiplier", "Range"),
+    ParamGroup::new("clamp", "Range"),
+    ParamGroup::new("invert", "Range"),
     // E quanto do resultado chega ao mundo.
-    ParamGroup {
-        param: "strength",
-        group: "Output",
-    },
-    ParamGroup {
-        param: "probability",
-        group: "Output",
-    },
-    ParamGroup {
-        param: "seed",
-        group: "Output",
-    },
+    ParamGroup::new("strength", "Output"),
+    ParamGroup::new("probability", "Output"),
+    ParamGroup::new("seed", "Output"),
 ];
 
 static PARAM_HINTS: &[ParamUiHint] = &[

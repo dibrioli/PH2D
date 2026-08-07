@@ -375,10 +375,33 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_groups(MANIFEST.id, PARAM_GROUPS);
     Ok(())
 }
 
-use ph2d_node_registry::{ParamUiHint, ParamWidget};
+use ph2d_node_registry::{ParamGroup, ParamUiHint, ParamWidget};
+
+/// As SEÇÕES deste nó (doc 88 B3). Nove sliders numa lista plana escondem que eles respondem
+/// a três perguntas diferentes — e as três pesos clássicos do boids (separação, alinhamento,
+/// coesão) são literalmente UMA.
+///
+/// ⚠️ O `radius` está em **Flocking** porque é o raio de PERCEPÇÃO: é ele que decide quem é
+/// vizinho, e sem vizinho os três pesos não têm sobre o que agir.
+///
+/// ⚠️ Fica SOLTO só o `count` — o número que o artista muda o tempo todo.
+static PARAM_GROUPS: &[ParamGroup] = &[
+    // Quem é vizinho, e o que fazer com ele.
+    ParamGroup::new("radius", "Flocking"),
+    ParamGroup::new("separation", "Flocking"),
+    ParamGroup::new("alignment", "Flocking"),
+    ParamGroup::new("cohesion", "Flocking"),
+    // Para onde o bando é levado, e quão rápido pode ir.
+    ParamGroup::new("seek", "Steering"),
+    ParamGroup::new("max_speed", "Steering"),
+    // Como a nuvem inicial nasce.
+    ParamGroup::new("seed", "Spawn"),
+    ParamGroup::new("spread", "Spawn"),
+];
 
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {

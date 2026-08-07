@@ -47,6 +47,7 @@ pub(crate) fn paint_selection_section(
             (core_ids::PAINTER_SEL_MODE_FREEHAND, "Free"),
             (core_ids::PAINTER_SEL_MODE_RECT, "Rect"),
             (core_ids::PAINTER_SEL_MODE_ELLIPSE, "Ellipse"),
+            (core_ids::PAINTER_SEL_MODE_PEN, "Pen"),
         ],
         brush.selection_mode as usize,
     );

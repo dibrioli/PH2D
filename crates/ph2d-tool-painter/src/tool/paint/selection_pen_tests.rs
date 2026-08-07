@@ -1,0 +1,253 @@
+//! Gates da **CANETA da seleção** ([`super::selection_pen`]).
+//!
+//! O invariante que os organiza: **a peça que a caneta entrega é a peça que o Convert to Curve já
+//! entregava** — uma `Freehand` FECHADA e editável ponto-a-ponto. Tudo o mais (a rasterização, o
+//! booleano, o Edit mode, o undo) é consequência disso, e é por isso que nenhum gate aqui re-testa
+//! aqueles sistemas.
+
+use super::*;
+use crate::tool::PainterTool;
+use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase};
+
+fn cp(pos: [f32; 2], phase: PointerPhase) -> CanvasPointer {
+    CanvasPointer {
+        pos,
+        pressure: 1.0,
+        tilt: [0.0, 0.0],
+        phase,
+    }
+}
+
+/// Tela branca em modo Selection com a caneta em mãos.
+fn pen_tool(size: u32) -> PainterTool {
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+    t.set_paint_tool_mode("selection");
+    t.set_selection_mode(selection_pen::SELECTION_MODE_PEN);
+    t
+}
+
+/// Um clique de caneta SEM arrasto (uma quina).
+fn click(t: &mut PainterTool, p: [f32; 2]) {
+    t.on_canvas_pointer(cp(p, PointerPhase::Down));
+    t.on_canvas_pointer(cp(p, PointerPhase::Up));
+}
+
+/// Um clique COM arrasto — o gesto que puxa as tangentes (`to` é onde a mão parou).
+fn click_drag(t: &mut PainterTool, p: [f32; 2], to: [f32; 2]) {
+    t.on_canvas_pointer(cp(p, PointerPhase::Down));
+    t.on_canvas_pointer(cp(to, PointerPhase::Move));
+    t.on_canvas_pointer(cp(to, PointerPhase::Up));
+}
+
+fn selected(t: &PainterTool, x: u32, y: u32) -> bool {
+    t.selection_coverage_at(x, y) >= 128
+}
+
+fn selected_count(t: &PainterTool, size: u32) -> usize {
+    (0..size)
+        .flat_map(|y| (0..size).map(move |x| (x, y)))
+        .filter(|&(x, y)| selected(t, x, y))
+        .count()
+}
+
+/// **A caneta entrega uma CURVA, e é isso que a separa do laço.** Um laço nasce polilinha e só vira
+/// editável ponto-a-ponto depois do Convert; a caneta nasce editável, porque o artista acabou de pôr
+/// cada tangente com a mão.
+///
+/// **Mutação que sangra:** o commit empurrar `CurveModel::raw_lasso(points, true)` — a forma fica igual
+/// e `is_curve()` cai, então o Edit mode abre a CAIXA de transformação em vez do editor de pontos.
+#[test]
+fn the_pen_delivers_an_editable_curve_not_a_raw_polyline() {
+    let mut t = pen_tool(64);
+    click(&mut t, [16.0, 16.0]);
+    click(&mut t, [48.0, 16.0]);
+    click(&mut t, [48.0, 48.0]);
+    click(&mut t, [16.0, 48.0]);
+    // Fechar: o clique volta ao PRIMEIRO ponto.
+    click(&mut t, [16.0, 16.0]);
+    assert!(!t.selection_pen_live(), "a sessao terminou ao fechar");
+    let shapes = t.selection_shapes_snapshot();
+    assert_eq!(shapes.len(), 1, "uma forma entregue");
+    let selection_shapes::SelectionShape::Freehand { model, .. } = &shapes[0].shape else {
+        panic!("a caneta entrega uma Freehand");
+    };
+    assert!(model.closed, "uma regiao de selecao e FECHADA");
+    assert!(
+        model.is_curve(),
+        "e ela e uma CURVA (handles paralelos), logo editavel ponto-a-ponto"
+    );
+    assert_eq!(model.points.len(), 4, "quatro quinas, sem ancora duplicada");
+    assert!(selected(&t, 32, 32), "o miolo do quadrado esta selecionado");
+    assert!(!selected(&t, 4, 4), "e o lado de fora nao");
+}
+
+/// **Arrastar CURVA o caminho.** É a metade da caneta que um polígono não tem: as mesmas quatro
+/// posições de clique, com tangentes puxadas para fora, delimitam MAIS área.
+///
+/// **Mutação que sangra:** o `selection_pen_drag` não escrever os handles (o arrasto vira clique) — as
+/// duas áreas passam a ser iguais.
+#[test]
+fn dragging_an_anchor_pulls_a_real_tangent() {
+    let corners = [[16.0, 16.0], [48.0, 16.0], [48.0, 48.0], [16.0, 48.0]];
+    let mut sharp = pen_tool(64);
+    for c in corners {
+        click(&mut sharp, c);
+    }
+    click(&mut sharp, corners[0]);
+
+    let mut curved = pen_tool(64);
+    // Cada âncora sai com a tangente puxada no sentido do percurso, para as arestas arquearem PARA FORA.
+    let pulls = [[16.0, 6.0], [58.0, 16.0], [48.0, 58.0], [6.0, 48.0]];
+    for (c, to) in corners.iter().zip(pulls) {
+        click_drag(&mut curved, *c, to);
+    }
+    click(&mut curved, corners[0]);
+
+    let (a, b) = (selected_count(&sharp, 64), selected_count(&curved, 64));
+    assert!(
+        b > a + 64,
+        "as tangentes puxadas tem de arquear as arestas: quinas {a} px, curva {b} px"
+    );
+}
+
+/// **Menos de três âncoras não é região, e não vira passo de undo.** Um Enter sobre um caminho de dois
+/// pontos descarta — commitá-lo gravaria um passo cujo efeito é zero.
+#[test]
+fn a_path_with_fewer_than_three_anchors_is_discarded_not_committed() {
+    let mut t = pen_tool(64);
+    click(&mut t, [16.0, 16.0]);
+    click(&mut t, [48.0, 16.0]);
+    assert!(t.selection_pen_commit(), "havia sessao a terminar");
+    assert!(!t.selection_pen_live());
+    assert!(
+        t.selection_shapes_snapshot().is_empty(),
+        "nada foi entregue"
+    );
+    assert!(!t.selection_active(), "e nenhuma selecao nasceu");
+}
+
+/// **Esc devolve a seleção ao que era, sem gastar undo.** A sessão nunca foi commitada, então um
+/// "cancelar via undo" apontaria o Ctrl+Z do artista para o gesto errado.
+///
+/// **Mutação que sangra:** o `selection_pen_cancel` não restaurar o `stroke_undo` — o preview da caneta
+/// fica na máscara depois do Esc.
+#[test]
+fn esc_gives_the_selection_back_and_spends_no_undo() {
+    let mut t = pen_tool(64);
+    // Uma seleção PRÉVIA, para o Esc ter ao que voltar.
+    t.set_rect_selection(4, 4, 8, 8);
+    let before = selected_count(&t, 64);
+    assert!(before > 0);
+
+    click(&mut t, [16.0, 16.0]);
+    click(&mut t, [48.0, 16.0]);
+    click(&mut t, [48.0, 48.0]);
+    assert!(t.selection_pen_live());
+    assert!(t.selection_pen_cancel(), "havia caneta a descartar");
+
+    assert_eq!(
+        selected_count(&t, 64),
+        before,
+        "Esc devolve exatamente a selecao anterior"
+    );
+    assert!(
+        t.selection_shapes_snapshot().len() == 1,
+        "e a forma previa continua sendo a unica da lista"
+    );
+}
+
+/// **A base booleana é da SESSÃO, não do clique.** Com `Add`, cada âncora nova compõe contra a seleção
+/// que existia ANTES da caneta — senão o preview do clique anterior viraria base do seguinte e o `Add`
+/// acumularia em cima de si mesmo.
+///
+/// O oráculo é o que sobra FORA da união: um retângulo prévio disjunto tem de sobreviver inteiro, e a
+/// região da caneta tem de ser a do caminho FINAL, não a união dos previews intermediários.
+///
+/// **Mutação que sangra:** re-capturar `selection_base` em cada Down — os previews intermediários (o
+/// triângulo dos três primeiros cliques) ficam somados ao quadrado final.
+#[test]
+fn the_boolean_base_is_the_session_not_the_click() {
+    let mut t = pen_tool(64);
+    t.set_rect_selection(2, 2, 6, 6); // um selo distante, que o Add tem de preservar
+    t.set_selection_bool_op(1); // Add
+
+    // ⚠️ A fixture tem de conter o fenômeno: o preview INTERMEDIÁRIO precisa cobrir pixels que a forma
+    // FINAL não cobre — senão acumular contra ele é indistinguível de compor contra a sessão. Três
+    // cliques dão um triângulo grande; o quarto fecha em GRAVATA-BORBOLETA, cujo preenchimento são dois
+    // triângulos que encostam no cruzamento e deixam de fora a faixa lateral.
+    click(&mut t, [20.0, 20.0]);
+    click(&mut t, [60.0, 20.0]);
+    click(&mut t, [20.0, 60.0]); // preview: o triângulo, que cobre (25, 40)
+    click(&mut t, [60.0, 60.0]); // a gravata: (25, 40) fica de fora
+    click(&mut t, [20.0, 20.0]); // fecha
+
+    assert!(selected(&t, 4, 4), "o selo previo sobrevive ao Add");
+    assert!(
+        !selected(&t, 25, 40),
+        "e o triangulo INTERMEDIARIO nao ficou somado a mascara"
+    );
+}
+
+/// **Sair do modo Pen com uma caneta em voo a descarta** — um caminho aberto num modo que não o desenha
+/// nem o termina é trabalho perdido em silêncio.
+#[test]
+fn leaving_pen_mode_discards_the_live_path() {
+    let mut t = pen_tool(64);
+    click(&mut t, [16.0, 16.0]);
+    click(&mut t, [48.0, 16.0]);
+    assert!(t.selection_pen_live());
+    t.set_selection_mode(1); // Freehand
+    assert!(!t.selection_pen_live(), "a caneta morreu ao trocar de modo");
+    assert!(t.selection_shapes_snapshot().is_empty());
+}
+
+/// **Uma porta só desenha a Bézier autorada.** Enquanto a caneta vive, é ela que o overlay publica — e o
+/// caminho aberto aparece desde o PRIMEIRO clique (senão o artista clica e não vê nada).
+///
+/// **Mutação que sangra:** a shell voltar a ler `curve_overlay()` — a caneta fica invisível.
+#[test]
+fn the_authoring_overlay_shows_the_pen_from_the_first_click() {
+    let mut t = pen_tool(64);
+    assert!(
+        t.authoring_curve_overlay().is_none(),
+        "sem caneta e sem figura, nada a desenhar"
+    );
+    click(&mut t, [16.0, 16.0]);
+    let o = t.authoring_curve_overlay().expect("a caneta e publicada");
+    assert_eq!(o.points.len(), 1, "a ancora ja aparece");
+    assert!(
+        o.transform_gizmo.is_none(),
+        "um caminho em construcao nao carrega caixa de transformacao"
+    );
+    click(&mut t, [48.0, 16.0]);
+    let o = t.authoring_curve_overlay().expect("segue publicada");
+    assert!(
+        o.spine.len() >= 2,
+        "e o caminho entre as ancoras e desenhado"
+    );
+}
+
+/// **A linha-fantasma segue a mão com o botão solto** — é ela que mostra onde a próxima âncora cai.
+///
+/// **Mutação que sangra:** tirar o `selection_pen_hover` do `on_canvas_hover` — o spine para de crescer
+/// entre cliques.
+/// ⚠️ O oráculo é **onde a perna TERMINA**, não quantos pontos o spine tem: a sessão nasce com o hover
+/// no ponto do clique, então a perna existe desde o começo — ela só é DEGENERADA (comprimento zero) até
+/// a mão andar. Medir o comprimento da lista mediria a existência da perna, que nunca falha.
+#[test]
+fn the_rubber_band_follows_the_hovering_hand() {
+    let mut t = pen_tool(64);
+    click(&mut t, [16.0, 16.0]);
+    assert_eq!(
+        t.authoring_curve_overlay().expect("publicada").spine.last(),
+        Some(&[16.0, 16.0]),
+        "recem-clicada, a perna e degenerada: ela termina na propria ancora"
+    );
+    t.on_canvas_hover([48.0, 40.0]);
+    assert_eq!(
+        t.authoring_curve_overlay().expect("publicada").spine.last(),
+        Some(&[48.0, 40.0]),
+        "e depois do hover ela termina onde a mao esta"
+    );
+}

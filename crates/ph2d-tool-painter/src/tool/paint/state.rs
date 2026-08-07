@@ -77,6 +77,10 @@ pub(crate) struct PaintState {
     /// The in-progress selection gesture (marquee rubber-band / lasso path / Automatic seed); `None` when
     /// idle. The overlay (Wave 4) draws from this; the mask is rasterized on pen-up. [`selection`].
     pub(super) selection_drag: Option<selection_input::SelectionDrag>,
+    /// A **CANETA** em voo (modo Pen): a Bézier que o artista está autorando clique a clique. Vive num
+    /// campo próprio, e não no `selection_drag`, porque uma sessão de caneta **sobrevive ao pen-up** —
+    /// o `selection_drag` é `take()`-ado lá. [`selection_pen`].
+    pub(super) selection_pen: Option<selection_pen::SelectionPen>,
     /// The selection mask at the START of the current gesture — Add/Remove combine against this base. [`selection`].
     pub(super) selection_base: Arc<Vec<u8>>,
     /// The CRISP selection mask (pre-Feather), the accumulator the Feather slider re-derives from — so

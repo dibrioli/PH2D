@@ -83,6 +83,7 @@ impl Default for PaintState {
             selection_overlay_opacity: 0.2, // subtle hatch by default (Enio 2026-07-02)
             selection_stabilizer: 0.5, // moderate lasso smoothing (mirrors the brush default)
             selection_drag: None,
+            selection_pen: None,
             selection_base: Arc::new(Vec::new()),
             selection_crisp: Arc::new(Vec::new()),
             selection_feather: 0.0,

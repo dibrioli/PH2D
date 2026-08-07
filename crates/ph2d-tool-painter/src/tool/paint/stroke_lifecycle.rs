@@ -164,6 +164,10 @@ impl PainterTool {
     /// ([`ph2d_painter_brush::heading::advance`] / `smooth_len`), so the ring does not jump when the stroke
     /// takes over. Only maintained when a slot follows the stroke — a plain brush pays a bool test.
     pub fn on_canvas_hover(&mut self, pos: [f32; 2]) {
+        // A CANETA da seleção também mira antes do clique: a linha-fantasma até o cursor é o que mostra
+        // onde a próxima âncora cai. Fora do `follows_stroke`, que é a pergunta do anel do PINCEL — duas
+        // perguntas distintas sobre o mesmo evento.
+        self.selection_pen_hover(pos);
         if !self.paint.brush.follows_stroke() {
             // Nothing reads it; keep the state cold so a plain brush is untouched.
             self.paint.hover_pos = None;

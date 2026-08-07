@@ -5,18 +5,22 @@
 //! tool over the frozen `PanelEvent` channel (`Click` / `SetValue`).
 use super::{NodeId, hash_node_id};
 
-// ── Mode picker (segmented): Automatic · Freehand · Rectangle · Ellipse ──────────────────────────────
+// ── Mode picker (segmented): Automatic · Freehand · Rectangle · Ellipse · Pen ────────────────────────
 pub const PAINTER_SEL_MODE: NodeId = hash_node_id("painter_sel.mode"); // group (a11y RadioGroup)
 pub const PAINTER_SEL_MODE_AUTO: NodeId = hash_node_id("painter_sel.mode_auto");
 pub const PAINTER_SEL_MODE_FREEHAND: NodeId = hash_node_id("painter_sel.mode_freehand");
 pub const PAINTER_SEL_MODE_RECT: NodeId = hash_node_id("painter_sel.mode_rect");
 pub const PAINTER_SEL_MODE_ELLIPSE: NodeId = hash_node_id("painter_sel.mode_ellipse");
-/// Mode segments in `selection_mode` discriminant order (`0` Automatic … `3` Ellipse).
-pub const PAINTER_SEL_MODE_IDS: [NodeId; 4] = [
+/// **Pen** — a caneta Bézier do vetor, aqui: clique põe quina, arrasta puxa tangentes, fechar no
+/// primeiro ponto entrega a região (Enio 2026-08-07).
+pub const PAINTER_SEL_MODE_PEN: NodeId = hash_node_id("painter_sel.mode_pen");
+/// Mode segments in `selection_mode` discriminant order (`0` Automatic … `4` Pen).
+pub const PAINTER_SEL_MODE_IDS: [NodeId; 5] = [
     PAINTER_SEL_MODE_AUTO,
     PAINTER_SEL_MODE_FREEHAND,
     PAINTER_SEL_MODE_RECT,
     PAINTER_SEL_MODE_ELLIPSE,
+    PAINTER_SEL_MODE_PEN,
 ];
 
 // ── Boolean-op picker (segmented): New · Add · Remove · Intersect ────────────────────────────────────

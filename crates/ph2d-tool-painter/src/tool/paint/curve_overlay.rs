@@ -27,6 +27,24 @@ pub struct CurveOverlay {
 }
 
 impl PainterTool {
+    /// **Que Bézier está sendo AUTORADA agora?** — a porta única do overlay de curva, e a ÚNICA que a
+    /// shell lê.
+    ///
+    /// Dois produtores, um desenho: o editor de curva do TRAÇO ([`Self::curve_overlay`]) e a CANETA da
+    /// seleção ([`super::super::selection_pen`]). Eles nunca estão vivos ao mesmo tempo — a caneta só
+    /// existe em `PaintMode::Selection`, onde os editores de figura do traço são inalcançáveis —, e é
+    /// isso que torna a alternativa honesta em vez de uma precedência inventada.
+    ///
+    /// ⚠️ A alternativa a esta porta seria a shell perguntar aos dois e escolher; e *a shell escolhendo*
+    /// é exatamente a forma de o terceiro produtor nascer invisível.
+    #[must_use]
+    pub fn authoring_curve_overlay(&self) -> Option<CurveOverlay> {
+        match self.curve_overlay() {
+            Some(o) => Some(o),
+            None => self.selection_pen_overlay(),
+        }
+    }
+
     /// Snapshot the Curve editor for the shell overlay.
     ///
     /// ⚠️ Na fase de DESENHO (o arrasto Down→Up da reta inicial) ele publica **só o spine** — a linha que

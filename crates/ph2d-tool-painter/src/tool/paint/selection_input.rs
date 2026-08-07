@@ -31,9 +31,17 @@ pub(crate) enum SelectionDrag {
 }
 
 impl PainterTool {
-    /// Set the Selection sub-mode (`0` Automatic · `1` Freehand · `2` Rectangle · `3` Ellipse).
+    /// Set the Selection sub-mode (`0` Automatic · `1` Freehand · `2` Rectangle · `3` Ellipse · `4` Pen).
+    ///
+    /// ⚠️ **Sair do Pen com uma caneta em voo a DESCARTA** — o caminho aberto é uma conversa com a
+    /// ferramenta que não existe fora dela, e deixá-lo pendurado num modo que não o desenha nem o
+    /// termina é a forma exata de o artista perder trabalho sem que nada diga por quê.
     pub fn set_selection_mode(&mut self, m: u8) {
-        self.paint.selection_mode = m.min(3);
+        let m = m.min(super::selection_pen::SELECTION_MODE_PEN);
+        if m != self.paint.selection_mode {
+            self.selection_pen_cancel();
+        }
+        self.paint.selection_mode = m;
     }
     /// The active Selection sub-mode discriminant.
     #[must_use]
@@ -103,7 +111,16 @@ impl PainterTool {
     }
 
     /// Route a Selection-mode canvas pointer to the active sub-mode (called from `on_canvas_pointer`).
+    ///
+    /// ⚠️ **O Pen desvia antes do resto**, e não é preferência: os outros modos são um gesto Down→Up e
+    /// a caneta é uma sessão de vários cliques — passá-la pelo `selection_down`/`_up` faria cada clique
+    /// abrir e fechar uma forma.
     pub(super) fn selection_pointer(&mut self, ev: CanvasPointer) -> bool {
+        if self.paint.selection_mode == super::selection_pen::SELECTION_MODE_PEN
+            || self.selection_pen_live()
+        {
+            return self.selection_pen_pointer(ev);
+        }
         match ev.phase {
             PointerPhase::Down => self.selection_down(ev.pos),
             PointerPhase::Move => self.selection_move(ev.pos),

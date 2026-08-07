@@ -160,3 +160,62 @@ fn the_patch_key_consumes_only_when_a_patch_is_live() {
         "toda outra tecla cai fora, sem consumir"
     );
 }
+
+// ── A CANETA da seleção (Enio, 2026-08-07: *"um modo pen exatamente como a pen do vector"*) ──────────
+
+const CURVE_OVERLAY: &str = "shells/desktop/src/render_loop/painter_bridge_curve_overlay.rs";
+const CANVAS_INPUT: &str = "shells/desktop/src/input_dispatch/painter_canvas_input.rs";
+
+/// **A shell desenha por UMA porta.** O overlay de curva lê `authoring_curve_overlay` — *que Bézier
+/// está sendo autorada agora?* — e nunca um dos dois produtores direto.
+///
+/// ⚠️ Um gate de unidade é CEGO a isto: `authoring_curve_overlay()` pode devolver a caneta perfeitamente
+/// enquanto a shell continua lendo `curve_overlay()`, e aí a caneta é invisível com a suíte inteira
+/// verde — o modo de falha exato que a `line/anim` mediu no overlay de trajetória.
+///
+/// **Mutação que sangra:** voltar a chamada para `painter.curve_overlay()`.
+#[test]
+fn the_shell_draws_the_bezier_being_authored_through_the_one_door() {
+    let src = read(CURVE_OVERLAY);
+    assert!(
+        src.contains("painter.authoring_curve_overlay()"),
+        "o overlay tem de perguntar pela porta unica"
+    );
+    assert!(
+        !src.contains("painter.curve_overlay()"),
+        "e nunca por um dos dois produtores direto — a shell escolhendo e como o terceiro nasce invisivel"
+    );
+}
+
+/// **Enter e Esc são da caneta enquanto ela vive, e ela decide ANTES do Offset / do cancel de figura.**
+/// Ela é a sessão mais interna: um Enter que assasse o offset por baixo dela largaria um caminho aberto
+/// sobre uma seleção que mudou.
+///
+/// **Mutação que sangra:** mover qualquer um dos dois blocos para depois do dono seguinte.
+#[test]
+fn the_live_pen_owns_enter_and_escape_before_the_outer_sessions() {
+    let src = read(CANVAS_INPUT);
+    let commit = src
+        .find("fn painter_shape_commit")
+        .expect("o Enter do Painter existe");
+    let body = &src[commit..];
+    let pen = body
+        .find("painter.selection_pen_commit()")
+        .expect("a caneta e consultada no Enter");
+    let offset = body
+        .find("painter.selection_offset_engaged()")
+        .expect("o Offset segue no Enter");
+    assert!(pen < offset, "a caneta decide antes do Offset");
+
+    let cancel = src
+        .find("fn painter_shape_cancel")
+        .expect("o Esc do Painter existe");
+    let body = &src[cancel..];
+    let pen = body
+        .find("painter.selection_pen_cancel()")
+        .expect("a caneta e consultada no Esc");
+    let shape = body
+        .find("painter.cancel_open_shape()")
+        .expect("o cancel de figura segue no Esc");
+    assert!(pen < shape, "a caneta descarta antes do cancel de figura");
+}

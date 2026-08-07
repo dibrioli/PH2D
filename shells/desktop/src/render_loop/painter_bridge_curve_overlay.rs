@@ -26,7 +26,7 @@ pub(super) fn draw_curve_overlay(
     // chrome, not a hover hint. Maps image px → screen via the SAME sprite affine as the paint delivery, so
     // the dots sit exactly on the painted curve under any transform.
     if let Some(bits) = hero.gizmo.selection
-        && let Some(overlay) = painter.curve_overlay()
+        && let Some(overlay) = painter.authoring_curve_overlay()
     {
         let (iw, ih) = painter.canvas_size();
         let entity = ph2d_ecs::Entity::from_bits(bits);

@@ -495,6 +495,14 @@ impl App {
         let Some(painter) = self.painter_tool_mut() else {
             return false;
         };
+        // A CANETA da seleção fecha com Enter — a mesma tecla que termina toda figura em mãos. Ela vem
+        // ANTES do Offset porque é a sessão MAIS INTERNA: enquanto um caminho está aberto, ele é o que
+        // a mão está fazendo, e um Enter que assasse o offset por baixo dele largaria o caminho vivo
+        // sobre uma seleção que mudou.
+        if painter.selection_pen_live() {
+            painter.selection_pen_commit();
+            return true;
+        }
         // A live Selection Offset (grow/shrink or Apply & Keep rings) takes Enter as its **Apply** — bake the
         // current (possibly ringed) selection + leave offset mode, mirroring the stroke editor's Enter = Apply.
         if painter.selection_offset_engaged() {
@@ -521,6 +529,11 @@ impl App {
         let Some(painter) = self.painter_tool_mut() else {
             return false;
         };
+        // A caneta descarta com Esc — e devolve a seleção ao que era antes dela, sem gastar undo (nada
+        // foi commitado). Precede o cancel de figura pela mesma razão do Enter: é a sessão mais interna.
+        if painter.selection_pen_cancel() {
+            return true;
+        }
         painter.cancel_open_shape()
     }
 }

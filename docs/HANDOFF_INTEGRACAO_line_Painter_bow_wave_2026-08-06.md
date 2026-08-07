@@ -1,6 +1,6 @@
 # HANDOFF DE INTEGRAÇÃO — `line/Painter`, o bow wave gateado no knob + as bandas por trabalho (2026-08-06)
 
-> **28 commits · 41 arquivos · nenhum `Cargo.toml` · nenhum ADR · `project.rs` intocado.**
+> **30 commits · 44 arquivos · nenhum `Cargo.toml` · nenhum ADR · `project.rs` intocado.**
 >
 > ⚠️ O par `commits · arquivos` deste cabeçalho **se CONTA** (`git log --oneline origin/main..HEAD | wc -l`
 > e `git diff --name-only origin/main..HEAD | wc -l`). Ele nasceu dizendo *11 · 17*, que já era falso
@@ -548,9 +548,9 @@ a feature). Suíte **1007 release / 1005 debug**, clippy limpo, LOC sob o teto, 
 3. **a pausa ao soltar incomoda mais do que os 2 fps incomodavam?** É a pergunta;
 4. e o **undo/redo** de um arrasto de curva tem de devolver a curva — é a metade de correção.
 
-### Aberto
+### ~~Aberto~~ — FECHADO na mesma jornada (2026-08-07)
 
-O arrasto de um **slider do painel** também re-carimba por quadro e não passa por esta porta.
+O arrasto de um **slider do painel** também re-carimba por quadro e não passava por esta porta.
 
 ### A rodada seguinte: o contorno (2026-08-07)
 
@@ -574,3 +574,13 @@ continuar visível** enquanto você desenha o seguinte, e o que está em criaç�
 de aparecer desde o primeiro pixel do arrasto. Depois **clique bem no meio** de
 um deles: tem de começar uma figura NOVA. Encostar no **contorno** (ou no
 quadradinho `+` do centro) é que reativa aquela.
+
+O fio que faltava é `PainterTool::set_shape_draft_hold(bool)`, alimentado pelo **`held_button`** da
+shell — a MESMA porta que o `post_frame_undo` já usa para *"um arrasto é UM passo"*. **Armar** no drain
+de `ToolPanelEvent` (é o próprio edit que re-carimba; publicar um quadro depois faria o 1º quadro do
+arrasto pagar o composite inteiro) e **soltar** no `painter_bridge::dispatch`, que roda todo quadro —
+quando o artista solta **não chega evento de painel nenhum**. Detalhe e as lições de gate no
+[doc 28 §5.79](../Painter/28_otimizacoes_o_que_funcionou.md).
+
+**O que o smoke julga:** com uma figura aberta numa cena booleana pesada, arraste **Size** e **Offset**
+— o arrasto tem de ser instantâneo, a pintura some sob a mão e volta ao **soltar o slider**.

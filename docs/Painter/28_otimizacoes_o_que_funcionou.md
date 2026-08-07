@@ -7441,3 +7441,51 @@ privados do `CurveEditor` (`grab`/`freehand`/`anchor`/`draft_to`), e em Rust um
 filho enxerga o privado do ancestral; um irmão obrigaria a alargar os quatro para
 `pub(super)` só por causa do teto, que é **mover o problema de lado** em vez de
 cortá-lo (a lição do corte que levou `paint.rs` de 596 a 613).
+
+### O segundo fio: o PAINEL (2026-08-07)
+
+Pedido do Enio depois do smoke: *"o mesmo mecanismo de apagar o preview deve ser
+aplicado quando se está mudando os parâmetros do painel para shapes vivas (Size,
+Offset, etc.)"* — o item que esta seção e o handoff já deixavam **nomeado em
+aberto**.
+
+Um arrasto de **knob** re-carimba a figura INTEIRA a cada quadro: o mesmo
+trabalho, pela mesma porta (`restamp_shapes_preview`), sem passar pelo
+`route_shape_draft` (não há Down/Up de canvas). O fio que faltava é
+`PainterTool::set_shape_draft_hold(bool)`, alimentado pelo **`held_button`** da
+shell.
+
+⚠️ **O sinal não foi escolhido por conveniência:** é a MESMA porta que o
+`post_frame_undo` consulta para *"um arrasto é UM passo de undo"*. A pergunta
+*"estamos no meio de um gesto?"* já tem dono nesta shell, e inventar um segundo
+sinal é a segunda resposta que diverge no dia em que um deles ganhar um caso
+especial.
+
+**Campo próprio** (`shape_draft_hold`), e não uma 2ª escrita no `shape_draft`:
+são dois gestos com donos diferentes (o roteador de ponteiro × a shell). Cada um
+escreve o seu; quem LÊ faz o OU — *a pergunta é uma só, as respostas é que vêm de
+dois lugares*.
+
+**A fiação tem DOIS sítios, cada um por um motivo:**
+
+- **armar** no drain de `ToolPanelEvent`, porque **é o próprio edit que
+  re-carimba**. Publicado um quadro depois, o 1º quadro do arrasto pagaria o
+  composite inteiro (~300 ms na cena do report) e o engasgo apareceria ao *pegar*
+  o slider;
+- **soltar** no `painter_bridge::dispatch`, que roda todo quadro, porque quando o
+  artista solta **não chega evento de painel nenhum**. Sem ele a figura ficaria
+  fora da tela até o próximo edit — o pior modo de falha desta lei.
+
+E o `settle` derruba as **duas** bandeiras: assentar promete uma tela honesta
+AGORA, e uma bandeira de pé faria o próximo re-carimbo descascar o que acabou de
+voltar.
+
+⚠️ **A lição de gate:** a 1ª versão chamava `set_brush_size_px` — o **setter
+cru**, que só escreve o número; quem decide re-carimbar a figura aberta é o
+`handle_panel_event` (`refill_if_appearance_changed`). O gate media o
+**SILÊNCIO**: a tela ficava com o carimbo anterior e ele passava verde com a lei
+desligada. *Dirija a porta do artista, não o campo que ela escreve.*
+
+7 mutações, 7 sangram — incluindo o controle que separa *"a mão está no knob"* de
+*"um valor mudou"* (`a_panel_edit_with_no_hand_on_it_leaves_the_shape_on_screen`,
+que sangra com o `draft_stamp` cravado em `true`).

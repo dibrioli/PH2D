@@ -219,11 +219,17 @@ fn the_boolean_window_draws_what_the_whole_canvas_window_drew() {
         // `PAD = 0` sobreviveu e foi ela que corrigiu a afirmação.
         (
             "elipse de semi-eixo MINIMO — a caixa tem poucos texels",
-            vec![(ellipse([128.0, 128.0], 0.1, 40.0, [1.0, 0.0]), StrokeOp::Add)],
+            vec![(
+                ellipse([128.0, 128.0], 0.1, 40.0, [1.0, 0.0]),
+                StrokeOp::Add,
+            )],
         ),
         (
             "a mesma, GIRADA — a caixa cruza os dois eixos",
-            vec![(ellipse([128.0, 128.0], 0.1, 40.0, [0.6, 0.8]), StrokeOp::Add)],
+            vec![(
+                ellipse([128.0, 128.0], 0.1, 40.0, [0.6, 0.8]),
+                StrokeOp::Add,
+            )],
         ),
     ];
     for (case, shapes) in cases {

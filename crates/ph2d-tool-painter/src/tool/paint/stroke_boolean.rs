@@ -550,7 +550,6 @@ impl PainterTool {
         self.undo.record_structural(before, after);
         true
     }
-
 }
 
 /// **A decomposição do composite, MEDIDA no código que shipa.**

@@ -158,6 +158,8 @@ pub const INSP_PLAYER_WALL_PUSH: NodeId = hash_node_id("insp.player.wall.push");
 pub const INSP_PLAYER_WALL_LOCK: NodeId = hash_node_id("insp.player.wall.lock");
 /// **Wall Reach (m)** (W13).
 pub const INSP_PLAYER_WALL_REACH: NodeId = hash_node_id("insp.player.wall.reach");
+/// **WALL GRAB** (W23) — por quantos segundos ele segura a parede de vez.
+pub const INSP_PLAYER_WALL_GRAB: NodeId = hash_node_id("insp.player.wall.grab");
 
 /// **Os CARDS da §14** (W9) — os títulos que agrupam os dezenove números.
 ///

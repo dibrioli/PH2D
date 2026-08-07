@@ -142,6 +142,30 @@ pub struct WallConfig {
     /// mirar velocidade nula e FREAR o empurrão que o pulo acabou de dar — o
     /// mesmo erro, com outra roupa.
     pub jump_lockout: f32,
+
+    /// **Por quantos SEGUNDOS ele segura a parede de vez**, com o botão de
+    /// agarrar apertado. `0.0` **desliga** — a capacidade não existe.
+    ///
+    /// # ⚠️ O zero não é um caso especial, ele é exato
+    ///
+    /// Segurar por zero segundos **é** não ter agarrar-se, então o idioma dos
+    /// irmãos (`coyote_time`, `corner_reach`, `slide_speed`) cai aqui sem
+    /// nenhuma cerimônia — não há um `bool` ao lado a discordar do número.
+    ///
+    /// # ⚠️ Por que uma RESERVA, e não um interruptor
+    ///
+    /// Um agarrar-se sem custo transforma toda parede numa beirada permanente, e
+    /// a pesquisa é unânime sobre isso: o Celeste **começou sem reserva** e o
+    /// jogo ficava resolvível pendurando-se; um TEMPORIZADOR simples também foi
+    /// tentado e foi abandonado por não distinguir *escalar* de *pendurar*. A
+    /// reserva é o que ficou, e é o mesmo desenho de Hollow Knight/Ori pelo lado
+    /// oposto (lá o que limita é a habilidade, não o recurso).
+    ///
+    /// ⚠️ **UM número, e a assimetria do Celeste NÃO foi construída** (lá subir
+    /// custa mais que pendurar): o segundo knob teria o valor certo em função do
+    /// primeiro, que é a ergonomia que este repositório trata como bug de
+    /// desenho. Aqui a leitura é direta — *quanto tempo ele fica pendurado*.
+    pub grab_stamina: f32,
 }
 
 impl WallConfig {
@@ -173,13 +197,17 @@ impl WallConfig {
         // décimo além de 0,2 s é controle tirado do jogador comprando alcance —
         // uma escolha de PRODUTO, e o slider está lá para quem a quiser fazer.
         jump_lockout: 0.2,
+        // ⚠️ Desligado, como as duas metades acima: agarrar-se de vez é uma
+        // CAPACIDADE do personagem, e ligá-la por default mudaria o
+        // comportamento de todo player já autorado.
+        grab_stamina: 0.0,
     };
 
     /// **A capacidade está armada?** — nenhuma das duas metades ligada significa
     /// que a parede não existe para este personagem, e o sensor não é castado.
     #[must_use]
     pub fn armed(&self) -> bool {
-        self.slide_speed > 0.0 || self.jump_height > 0.0
+        self.slide_speed > 0.0 || self.jump_height > 0.0 || self.grab_stamina > 0.0
     }
 }
 
@@ -317,6 +345,61 @@ pub fn cling(
     })
 }
 
+/// **O que o personagem carrega entre tiques sobre agarrar-se** (W23).
+///
+/// ⚠️ Ele mora no [`crate::PlayerState`] e não num mapa à parte da ponte, pela
+/// razão que aquele tipo já documenta: é o `PlayerState` que a **fita** guarda no
+/// ring de tiques âncora, e um estado que vivesse noutro lugar teria de ser
+/// acrescentado àquele ring **à mão** — esquecê-lo é um scrub que devolve o
+/// mundo de um tique e a memória do controlador de outro.
+#[derive(Copy, Clone, Debug, Default, PartialEq)]
+pub struct GrabState {
+    /// **Quanto já se gastou da reserva**, em segundos.
+    ///
+    /// ⚠️ O GASTO, e não o que sobra, e a diferença não é cosmética: o artista
+    /// pode mover o `grab_stamina` com o personagem pendurado, e um "quanto
+    /// sobra" guardado ficaria acima da reserva nova — um número que descreve um
+    /// mundo que deixou de existir. O gasto é sempre legível contra qualquer
+    /// reserva.
+    pub spent: f32,
+}
+
+/// **A RESERVA de agarrar-se neste tique** — quanto se gastou depois dele, e se
+/// o personagem está de facto AGARRADO.
+///
+/// # ⚠️ O agarrar-se cavalga o [`cling`], não o substitui
+///
+/// A pergunta *estou numa parede?* é feita **uma vez** e já tem dono. Agarrar-se
+/// acrescenta duas condições ao que ela respondeu (o botão está apertado, e
+/// ainda há reserva) — e é por isso que ele herda de graça as três metades do
+/// `cling`: é parede pela régua da perna, o jogador empurra contra ela, e ele
+/// está a descer.
+///
+/// ⚠️ **A reserva volta ao cheio no CHÃO, de uma vez.** Qualquer outra regra
+/// (recarga por segundo, recarga ao soltar) faria o jogador esperar parado, e um
+/// jogo que ensina a esperar é o que a reserva existe para não ser.
+#[must_use]
+pub fn grab_step(
+    cfg: &WallConfig,
+    state: GrabState,
+    clinging: bool,
+    held: bool,
+    grounded: bool,
+    dt: f32,
+) -> (GrabState, bool) {
+    if grounded {
+        return (GrabState::default(), false);
+    }
+    if cfg.grab_stamina <= 0.0 || !clinging || !held {
+        return (state, false);
+    }
+    if state.spent >= cfg.grab_stamina {
+        return (state, false);
+    }
+    let spent = (state.spent + dt.max(0.0)).min(cfg.grab_stamina);
+    (GrabState { spent }, true)
+}
+
 /// **O ESCORREGAMENTO** — a velocidade com que se desce uma parede.
 ///
 /// ⚠️ **Ele DEFINE a velocidade, não a limita — e a medição é que decidiu.**
@@ -349,11 +432,21 @@ pub fn cling(
 /// uma força chegaria lá com atraso e passaria do ponto — a mesma escolha que o
 /// amortecimento da mola faz, pelo mesmo motivo.
 #[must_use]
-pub fn wall_slide(cfg: &WallConfig, clinging: bool, rel_up: f32, up: Vec2) -> Motor {
-    if !clinging || cfg.slide_speed <= 0.0 {
+pub fn wall_slide(
+    cfg: &WallConfig,
+    clinging: bool,
+    gripping: bool,
+    rel_up: f32,
+    up: Vec2,
+) -> Motor {
+    if !clinging || (cfg.slide_speed <= 0.0 && !gripping) {
         return Motor::default();
     }
-    let target = -cfg.slide_speed;
+    // ⚠️ **UMA expressão, dois regimes:** agarrado, a velocidade alvo e' ZERO;
+    // solto, e' a descida autorada. Um segundo termo somado ao escorregamento
+    // daria dois donos do mesmo numero, e o sintoma seria um personagem que
+    // "quase" para.
+    let target = if gripping { 0.0 } else { -cfg.slide_speed };
     let delta = target - rel_up;
     Motor {
         accel: [0.0, 0.0],

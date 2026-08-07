@@ -288,9 +288,15 @@ pub(super) fn populate_player(store: &mut WidgetStore) {
         (ids::INSP_PLAYER_WALL_PUSH, 6.0, 0.0, 16.0, 0.25),  // LITERAL-PX-OK: m/s
         (ids::INSP_PLAYER_WALL_LOCK, 0.2, 0.0, 0.6, 0.02),   // LITERAL-PX-OK: seconds
         (ids::INSP_PLAYER_WALL_REACH, 0.08, 0.0, 0.4, 0.01), // LITERAL-PX-OK: metres
-        (ids::INSP_PLAYER_DASH_SPEED, 0.0, 0.0, 40.0, 0.5),  // LITERAL-PX-OK: m/s
-        (ids::INSP_PLAYER_DASH_TIME, 0.15, 0.0, 1.0, 0.01),  // LITERAL-PX-OK: seconds
-        (ids::INSP_PLAYER_DASH_COOL, 0.2, 0.0, 2.0, 0.02),   // LITERAL-PX-OK: seconds
+        // ⚠️ O teto de 10 s NAO e' um limite de recurso — nao ha' recurso, e' um
+        // `f32`. E' a FAIXA da UI, e o numero vem da referencia: a reserva do
+        // Celeste da' ~11 s de pendura pura. Acima disso o artista nao quer um
+        // numero maior, quer INFINITO, que e' outra feature (uma habilidade que
+        // se ganha, nao um recurso que se gasta).
+        (ids::INSP_PLAYER_WALL_GRAB, 0.0, 0.0, 10.0, 0.25), // LITERAL-PX-OK: seconds
+        (ids::INSP_PLAYER_DASH_SPEED, 0.0, 0.0, 40.0, 0.5), // LITERAL-PX-OK: m/s
+        (ids::INSP_PLAYER_DASH_TIME, 0.15, 0.0, 1.0, 0.01), // LITERAL-PX-OK: seconds
+        (ids::INSP_PLAYER_DASH_COOL, 0.2, 0.0, 2.0, 0.02),  // LITERAL-PX-OK: seconds
         (ids::INSP_PLAYER_CROUCH_HEIGHT, 0.0, 0.0, 3.0, 0.05), // LITERAL-PX-OK: metres
         (ids::INSP_PLAYER_CROUCH_SPEED, 2.0, 0.0, 20.0, 0.25), // LITERAL-PX-OK: m/s
         // A REAÇÃO (W6), em FRAÇÃO da força que o personagem faz. ⚠️ O piso é 0

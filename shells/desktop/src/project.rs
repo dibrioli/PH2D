@@ -347,7 +347,17 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// último item aberto do §4 do plano 06, e é o **bake da W16** que o torna útil:
 /// a fita é a entrada que o bake replaya, então reabrir um projeto e apertar Bake
 /// devolve a corrida de ontem. Medido: 60 s de corrida pesam **28,1 kB**.
-const PROJECT_SCHEMA: u32 = 67;
+
+/// v68 (physics, W23 — O AGARRAR-SE): o `PlatformPlayer` ganhou
+/// **`wall_grab_stamina`**. Um campo apendado ao componente, pelo mesmo
+/// raciocínio posicional de todos os degraus acima.
+/// ⚠️ **Note o que este degrau NÃO traz:** o botão novo (`PlayerInput::grab`)
+/// **não** move o formato da fita — ela guarda os botões num BITMASK (`(f32,
+/// u8)`), e um bit livre não muda um byte do postcard. Uma corrida gravada antes
+/// desta wave volta com o agarrar em zero, que é o que ela de facto tinha; um
+/// campo novo na tupla teria custado o bump por si só e recusado todo arquivo já
+/// salvo.
+const PROJECT_SCHEMA: u32 = 68;
 
 /// O conteúdo de um arquivo de projeto.
 #[derive(serde::Serialize, serde::Deserialize)]

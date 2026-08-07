@@ -168,7 +168,7 @@ const REACT_ROWS: [PlayerRow; 2] = [
 /// escorregamento não é um pulo, e o que agrupa estes cinco números é a
 /// superfície, não o gesto. As duas primeiras rows nascem em ZERO porque a
 /// capacidade é opt-in (ver `WallConfig::STARTING_POINT`).
-const WALL_ROWS: [PlayerRow; 5] = [
+const WALL_ROWS: [PlayerRow; 6] = [
     (
         "Wall Slide (m/s)",
         ids::INSP_PLAYER_WALL_SLIDE,
@@ -193,6 +193,11 @@ const WALL_ROWS: [PlayerRow; 5] = [
         "Wall Reach (m)",
         ids::INSP_PLAYER_WALL_REACH,
         "How far past your own width the wall sensor looks.",
+    ),
+    (
+        "Wall Grab (s)",
+        ids::INSP_PLAYER_WALL_GRAB,
+        "Hold R against a wall to stick instead of sliding, for this long. 0 = off.",
     ),
 ];
 

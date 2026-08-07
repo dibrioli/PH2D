@@ -56,6 +56,7 @@ pub fn tape(ticks: u64) -> InputTape {
                 // byte-idêntico ao da wave anterior, que é o que torna
                 // verificável a promessa de que a capacidade é opt-in.
                 dash: false,
+                grab: false,
             },
         );
     }

@@ -73,8 +73,8 @@ pub use ride::{RideConfig, damping_axis, ride_spring, within_reach};
 pub use slope::{Footing, footing, footing_verdict, is_grounded, no_uphill};
 pub use walk::{WalkConfig, walk};
 pub use wall::{
-    WALL_SAMPLES, WallConfig, WallHit, WallLaunch, WallProbe, WallSample, cling, wall_launch,
-    wall_offsets, wall_probe_wanted, wall_slide,
+    GrabState, WALL_SAMPLES, WallConfig, WallHit, WallLaunch, WallProbe, WallSample, cling,
+    grab_step, wall_launch, wall_offsets, wall_probe_wanted, wall_slide,
 };
 
 /// Um vetor 2D em MUNDO (metros), na convenção do módulo (Y para cima).
@@ -183,6 +183,8 @@ pub struct PlayerState {
     /// O agachar (W15) — um bit, e ele existe porque levantar-se pode ser
     /// RECUSADO (ver o topo de [`crate::crouch`]).
     pub crouch: CrouchState,
+    /// O agarrar-se (W23) — quanto já se gastou da reserva de parede.
+    pub grab: GrabState,
 }
 
 /// **O que a porta única decidiu neste tick** — as três respostas.
@@ -299,6 +301,11 @@ pub struct PlayerInput {
     /// do mesmo fato do lado de fora divergiria no primeiro dispatch que deve
     /// mais de um tique.
     pub dash: bool,
+    /// **O botão de AGARRAR está pressionado agora** (W23).
+    ///
+    /// ⚠️ O estado, como os outros três — e aqui nem sequer há borda a derivar:
+    /// agarrar-se é um regime que dura enquanto o dedo dura.
+    pub grab: bool,
 }
 
 /// **O que fazer com o corpo neste tick.** Ver a distinção accel/boost no topo.
@@ -395,6 +402,19 @@ pub fn player_motor(
     // superfície de que ele não consegue pular, e a diferença seria invisível
     // até alguém mexer num dos dois testes.
     let clinging = wall::cling(cfg, wall, input.drive, rel_up, up);
+    // ⚠️ **A reserva anda AQUI, uma vez, ao lado da pergunta que ela qualifica.**
+    // Agarrar-se cavalga o `clinging` — ele já respondeu *é parede, ele empurra,
+    // ele desce* —, então o grip só acrescenta *o botão está apertado* e *ainda
+    // há reserva*. Uma segunda pergunta sobre a parede daria um tique em que ele
+    // se agarra a uma superfície de que não consegue pular.
+    let (grab, gripping) = wall::grab_step(
+        &cfg.wall,
+        state.grab,
+        clinging.is_some(),
+        input.grab,
+        footing.is_some(),
+        dt,
+    );
     let jump = jump_step(
         &cfg.jump,
         state.jump,
@@ -537,7 +557,7 @@ pub fn player_motor(
     // escrever velocidade ali seria dois donos do mesmo número. A `standing` é a
     // mesma resposta que a mola consumiu.
     let slide = if standing.is_none() && !dashing {
-        wall::wall_slide(&cfg.wall, clinging.is_some(), rel_up, up)
+        wall::wall_slide(&cfg.wall, clinging.is_some(), gripping, rel_up, up)
     } else {
         Motor::default()
     };
@@ -571,6 +591,7 @@ pub fn player_motor(
             jump: jump.state,
             dash: dash.state,
             crouch,
+            grab,
         },
         reaction,
         nudge,

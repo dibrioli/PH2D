@@ -66,6 +66,7 @@ pub fn into_wall() -> PlayerInput {
         jump: false,
         down: false,
         dash: false,
+        grab: false,
     }
 }
 

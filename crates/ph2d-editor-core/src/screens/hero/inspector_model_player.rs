@@ -76,6 +76,8 @@ pub struct InspectorPlayerInfo {
     pub wall_jump_lockout: f32,
     /// **Wall Reach** (W13) — metros além da própria largura.
     pub wall_reach: f32,
+    /// **WALL GRAB** (W23) — por quantos segundos ele segura a parede de vez.
+    pub wall_grab_stamina: f32,
     /// **Dash Speed** (W14) — m/s. `0` desliga a capacidade.
     pub dash_speed: f32,
     /// **Dash Time** (W14) — segundos.
@@ -164,6 +166,8 @@ pub enum PlayerFieldEdit {
     WallJumpPush(f32),
     WallJumpLockout(f32),
     WallReach(f32),
+    /// Quantos segundos ele segura a parede de vez (W23). `0` desliga.
+    WallGrabStamina(f32),
     /// O ARRANQUE (W14).
     DashSpeed(f32),
     DashTime(f32),

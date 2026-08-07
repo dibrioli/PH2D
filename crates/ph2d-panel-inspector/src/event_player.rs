@@ -59,6 +59,7 @@ pub(crate) fn apply_player_event(host: &mut dyn PanelHostInternal, ev: WidgetEve
                 ids::INSP_PLAYER_WALL_PUSH => Some(PlayerFieldEdit::WallJumpPush(v)),
                 ids::INSP_PLAYER_WALL_LOCK => Some(PlayerFieldEdit::WallJumpLockout(v)),
                 ids::INSP_PLAYER_WALL_REACH => Some(PlayerFieldEdit::WallReach(v)),
+                ids::INSP_PLAYER_WALL_GRAB => Some(PlayerFieldEdit::WallGrabStamina(v)),
                 ids::INSP_PLAYER_DASH_SPEED => Some(PlayerFieldEdit::DashSpeed(v)),
                 ids::INSP_PLAYER_DASH_TIME => Some(PlayerFieldEdit::DashTime(v)),
                 ids::INSP_PLAYER_DASH_COOL => Some(PlayerFieldEdit::DashCooldown(v)),

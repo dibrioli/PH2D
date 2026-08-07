@@ -88,13 +88,13 @@ fn the_slide_sets_the_speed_in_both_directions() {
         slide_speed: 3.0,
         ..WallConfig::STARTING_POINT
     };
-    let braked = wall_slide(&c, true, -9.0, UP);
+    let braked = wall_slide(&c, true, false, -9.0, UP);
     assert!(
         (braked.boost[1] - 6.0).abs() < 1.0e-5,
         "de -9 para -3 sao +6: {:?}",
         braked.boost
     );
-    let released = wall_slide(&c, true, -1.0, UP);
+    let released = wall_slide(&c, true, false, -1.0, UP);
     assert!(
         (released.boost[1] + 2.0).abs() < 1.0e-5,
         "de -1 para -3 sao -2 -- o COLADO tem de ser solto: {:?}",
@@ -111,7 +111,7 @@ fn a_zero_slide_speed_is_the_world_untouched() {
         slide_speed: 0.0,
         ..WallConfig::STARTING_POINT
     };
-    assert_eq!(wall_slide(&c, true, -40.0, UP), Motor::default());
+    assert_eq!(wall_slide(&c, true, false, -40.0, UP), Motor::default());
 }
 
 /// **O empurrão sai pela NORMAL**, e é isso que faz uma parede inclinada
@@ -318,4 +318,132 @@ fn a_degenerate_sample_is_skipped_not_chosen() {
     // E um flanco inteiro degenerado nao e' parede nenhuma.
     let all = flank([Some((0.0, [0.0, 0.0])), Some((0.0, [0.0, 0.0])), None]);
     assert!(cling(&c, Some(&all), 1.0, -5.0, UP).is_none());
+}
+
+// ── O AGARRAR-SE (W23) ───────────────────────────────────────────────────────
+
+/// A config com o agarrar-se armado.
+fn grab_cfg(stamina: f32) -> WallConfig {
+    WallConfig {
+        slide_speed: 4.0,
+        grab_stamina: stamina,
+        ..WallConfig::STARTING_POINT
+    }
+}
+
+/// **O GATE DA WAVE: agarrado, ele NÃO desce** — e o mesmo `wall_slide` é quem
+/// responde.
+///
+/// ⚠️ O oráculo é o alvo de velocidade, não uma distância: agarrado o alvo é
+/// **zero** e solto é `−slide_speed`, e é essa diferença que o motor entrega.
+/// Um segundo termo somado ao escorregamento daria dois donos do mesmo número e
+/// o sintoma seria um personagem que *quase* para.
+#[test]
+fn gripping_holds_him_where_he_is_and_letting_go_slides() {
+    let c = grab_cfg(2.0);
+    // Solto: e' o escorregamento de sempre — de −9 para −4 sao +5.
+    let sliding = wall_slide(&c, true, false, -9.0, UP);
+    assert!(
+        (sliding.boost[1] - 5.0).abs() < 1.0e-5,
+        "{:?}",
+        sliding.boost
+    );
+    // Agarrado: o alvo e' ZERO — de −9 para 0 sao +9.
+    let gripping = wall_slide(&c, true, true, -9.0, UP);
+    assert!(
+        (gripping.boost[1] - 9.0).abs() < 1.0e-5,
+        "agarrado o alvo e' zero: {:?}",
+        gripping.boost
+    );
+    assert_eq!(gripping.accel, [0.0, 0.0], "e' um boost, nunca uma forca");
+}
+
+/// **A reserva ACABA, e quando acaba ele volta a escorregar.**
+#[test]
+fn the_reserve_runs_out_and_then_he_slides_again() {
+    let c = grab_cfg(0.5);
+    let mut st = GrabState::default();
+    let mut held_for = 0;
+    for _ in 0..60 {
+        let (next, gripping) = grab_step(&c, st, true, true, false, 1.0 / 60.0);
+        st = next;
+        if gripping {
+            held_for += 1;
+        }
+    }
+    // 0,5 s a 60 Hz sao 30 tiques — e o 31º ja' nao segura.
+    assert_eq!(
+        held_for, 30,
+        "a reserva autorada e' quanto tempo ele segura"
+    );
+    assert!(st.spent >= c.grab_stamina);
+    // E dali em diante o escorregamento volta.
+    let (_, gripping) = grab_step(&c, st, true, true, false, 1.0 / 60.0);
+    assert!(!gripping, "sem reserva nao ha' agarrar-se");
+}
+
+/// **O CHÃO enche a reserva, de uma vez.**
+///
+/// ⚠️ Qualquer outra regra (recarga por segundo, recarga ao soltar) ensinaria o
+/// jogador a esperar parado, que é exactamente o que a reserva existe para não
+/// ser.
+#[test]
+fn the_ground_refills_the_reserve_at_once() {
+    let c = grab_cfg(1.0);
+    let spent = GrabState { spent: 0.9 };
+    let (st, gripping) = grab_step(&c, spent, false, false, true, 1.0 / 60.0);
+    assert_eq!(st, GrabState::default(), "o chao devolve a reserva inteira");
+    assert!(!gripping, "no chao nao se agarra a parede nenhuma");
+}
+
+/// **Sem o botão não há agarrar-se, e sem parede também não** — as duas metades
+/// que o `grab_step` acrescenta ao que o `cling` já respondeu.
+#[test]
+fn the_grip_needs_both_the_button_and_the_wall() {
+    let c = grab_cfg(2.0);
+    let st = GrabState::default();
+    assert!(
+        !grab_step(&c, st, true, false, false, 0.016).1,
+        "parede sim, botao nao"
+    );
+    assert!(
+        !grab_step(&c, st, false, true, false, 0.016).1,
+        "botao sim, parede nao"
+    );
+    assert!(grab_step(&c, st, true, true, false, 0.016).1);
+}
+
+/// **Desligado é desligado**, e o zero não é um caso especial: segurar por zero
+/// segundos **é** não ter agarrar-se.
+#[test]
+fn a_zero_reserve_is_no_grab_at_all() {
+    let c = grab_cfg(0.0);
+    let st = GrabState::default();
+    let (next, gripping) = grab_step(&c, st, true, true, false, 0.016);
+    assert!(!gripping);
+    assert_eq!(next, st, "e nada e' gasto");
+    // ⚠️ E o escorregamento continua o AUTORADO. O primeiro corte deste gate
+    // comparava contra o `STARTING_POINT`, que tem `slide_speed: 0.0` — um
+    // controle que descreve outra config, e que reprovava produto correto.
+    let m = wall_slide(&c, true, false, -9.0, UP);
+    assert!(
+        (m.boost[1] - 5.0).abs() < 1.0e-5,
+        "de -9 para -4 sao +5, o escorregamento de sempre: {:?}",
+        m.boost
+    );
+}
+
+/// **A reserva conta a capacidade como ARMADA** — senão o sensor lateral nunca
+/// seria castado, e um agarrar-se sem escorregamento nem pulo de parede ficaria
+/// morto sem nada dizer por quê.
+#[test]
+fn a_grab_alone_arms_the_wall_sensor() {
+    let only_grab = WallConfig {
+        slide_speed: 0.0,
+        jump_height: 0.0,
+        grab_stamina: 2.0,
+        ..WallConfig::STARTING_POINT
+    };
+    assert!(only_grab.armed(), "so' o agarrar-se ja' arma a parede");
+    assert!(wall_probe_wanted(&only_grab, false, 1.0));
 }

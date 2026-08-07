@@ -25,6 +25,7 @@ fn scripted() -> InputTape {
                 jump: k % 2 == 0,
                 down: k % 3 == 0,
                 dash: k % 5 == 0,
+                grab: false,
             },
         );
     }
@@ -80,10 +81,19 @@ fn an_empty_run_survives_the_round_trip_as_empty() {
 /// layout do arquivo não se move.
 #[test]
 fn an_unknown_button_bit_is_ignored_rather_than_misread() {
-    // O que um build FUTURO, com um quinto botão, gravaria neste tique.
+    // O que um build FUTURO, com mais um botão, gravaria neste tique.
+    //
+    // ⚠️ **O bit é o ÚLTIMO do byte, e a escolha é uma cicatriz:** a primeira
+    // versão desta fixture usava o bit **3** para dizer *"desconhecido"*, e a
+    // W23 reclamou-o para o botão de AGARRAR — o gate ficou vermelho no dia
+    // exacto em que a sua premissa deixou de valer, o que é o comportamento
+    // certo, mas a lição fica: um oráculo que codifica *"ninguém usa isto"* num
+    // número literal expira quando alguém usa. No bit 7 ele só pode expirar
+    // quando o byte encher, e nesse dia a conversa é outra (um segundo byte é
+    // mudança de FORMATO, não um bit livre).
     let from_the_future = TapeWire {
         first: 1,
-        frames: vec![(0.5, 0b1000_1001)],
+        frames: vec![(0.5, 0b1000_0001)],
     };
     let mut tape = InputTape::from_wire(&from_the_future);
     let got = tape.input(1).expect("o tique 1 esta' na fita");
@@ -94,6 +104,7 @@ fn an_unknown_button_bit_is_ignored_rather_than_misread() {
             jump: true,
             down: false,
             dash: false,
+            grab: false,
         },
         "um bit desconhecido foi lido como um botao que este build tem"
     );

@@ -129,6 +129,7 @@ fn a_wall_jump_goes_up_and_away() {
             jump: true,
             down: false,
             dash: false,
+            grab: false,
         },
     );
     let (mut peak, mut far) = (y0, x0);
@@ -175,6 +176,7 @@ fn without_the_capability_the_same_press_does_nothing() {
             jump: true,
             down: false,
             dash: false,
+            grab: false,
         },
         3,
         t,
@@ -246,4 +248,73 @@ fn wall_jump_rise(gap: f32) -> f32 {
         peak = peak.max(pose(&r.sim).1);
     }
     peak - from
+}
+
+/// **O GATE DO AGARRAR-SE (W23): com o botão apertado ele PARA na parede.**
+///
+/// ⚠️ **O oráculo é a razão entre dois regimes da MESMA cena**, não uma distância
+/// absoluta — a lição que o gate do escorregamento já carrega: com a capacidade
+/// desligada o personagem pressionado contra uma parede quase não desce (a
+/// *cola*), então qualquer número solto seria pequeno e não diria nada. O que
+/// diz é: **agarrado ele desce muito menos do que escorregando**, e depois de a
+/// reserva acabar volta a escorregar.
+///
+/// **Medido:** com `wall_grab_stamina = 1,0` e `wall_slide_speed = 3,0`, em 60
+/// tiques agarrado ele desce uma fração do que desce solto — e o mesmo rig com
+/// o botão SOLTO é o controle.
+#[test]
+fn holding_the_grab_button_stops_him_on_the_wall() {
+    let sliding = wall_descent(0.0, false);
+    let held = wall_descent(2.0, true);
+    let released = wall_descent(2.0, false);
+    assert!(
+        sliding > 2.0,
+        "o CONTROLE: escorregando ele desce de facto ({sliding:.3} m)"
+    );
+    assert!(
+        held < sliding * 0.25,
+        "agarrado ele tem de PARAR: desceu {held:.3} m contra {sliding:.3} m \
+         escorregando"
+    );
+    assert!(
+        (released - sliding).abs() < 0.05,
+        "e com a reserva armada mas o botao SOLTO nada muda: {released:.3} \
+         contra {sliding:.3}"
+    );
+}
+
+/// **E quando a reserva acaba ele volta a escorregar** — a outra metade, e a que
+/// impede o agarrar-se de virar uma beirada permanente.
+#[test]
+fn when_the_reserve_runs_out_he_slides_again() {
+    // Reserva curta: 0,5 s de 60 tiques (1 s) — metade agarrado, metade solto.
+    let short = wall_descent(0.5, true);
+    let long = wall_descent(2.0, true);
+    assert!(
+        short > long * 2.0,
+        "com a reserva curta ele desce muito mais ({short:.3} contra \
+         {long:.3} m): a reserva acaba e o escorregamento volta"
+    );
+}
+
+/// Desce a parede por 60 tiques com a reserva dada; devolve quanto desceu.
+fn wall_descent(stamina: f32, grab: bool) -> f32 {
+    let mut r = rig(3.0, 0.0);
+    r.player_cfg(|p| p.wall_grab_stamina = stamina);
+    // Um tique para o sensor ver a parede antes de o botao contar.
+    let mut input = into_wall();
+    r.bridge.set_player_input(r.player, input);
+    let mut t = 0u64;
+    for _ in 0..30 {
+        t += 1;
+        r.bridge.dispatch(&mut r.sim, true, t);
+    }
+    let from = pose(&r.sim).1;
+    input.grab = grab;
+    r.bridge.set_player_input(r.player, input);
+    for _ in 0..60 {
+        t += 1;
+        r.bridge.dispatch(&mut r.sim, true, t);
+    }
+    from - pose(&r.sim).1
 }

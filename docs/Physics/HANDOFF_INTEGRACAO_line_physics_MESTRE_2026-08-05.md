@@ -620,6 +620,101 @@ outra **com janelas** de 0,8 m. ⚠️ A cena imprime quantas janelas montou; **
 essa linha não aparecer, pare**. O que se julga é apertar PULO com a cintura numa
 janela: antes desta wave o botão não fazia nada ali.
 
+## §5j — W23: o agarrar-se, e a reserva que o torna um custo (cena `=99`)
+
+**A outra metade do item aberto da W13**, ao pé da letra: *"ficar parado numa
+parede é outra mecânica, com botão próprio, e não se alcança escrevendo `0` no
+`Wall Slide`"*.
+
+### ⚠️ A pesquisa não ensina o BOTÃO, ensina o CUSTO
+
+Duas famílias, e as duas convergem: **resource-gated** (Celeste — botão + reserva
+que se gasta) e **ability-gated** (Ori/Hollow Knight — a parede é uma habilidade
+que se ganha, sem recurso). O que decidiu foi o que a referência **tentou e
+abandonou**: o Celeste começou **sem reserva** e o jogo ficava resolvível
+pendurando-se; um **temporizador** simples também foi tentado lá e abandonado por
+não distinguir *escalar* de *pendurar*.
+
+Aqui a reserva é **um número em segundos** (`Wall Grab (s)`), e ⚠️ **o zero não é
+um caso especial — ele é exato**: segurar por zero segundos **é** não ter
+agarrar-se. Isso põe o knob no mesmo idioma dos irmãos (`coyote_time`,
+`corner_reach`, `slide_speed`) sem um `bool` ao lado a discordar do número.
+
+⚠️ **UM knob, e a assimetria do Celeste NÃO foi construída** (lá subir custa mais
+que pendurar): o segundo número teria o valor certo **em função do primeiro**,
+que é a ergonomia que este repositório trata como bug de desenho
+[[feedback_ergonomics_verdict_is_a_design_bug]].
+
+### O desenho: uma expressão, dois regimes
+
+O `wall_slide` já **DEFINE** a velocidade vertical enquanto se está agarrado (a
+lei que a medição da W13 obrigou). O agarrar-se não soma um termo — ele troca o
+**alvo**: `0` agarrado, `−slide_speed` solto. Um segundo termo daria dois donos
+do mesmo número, e o sintoma seria um personagem que *quase* para.
+
+⚠️ **E o grip CAVALGA o `cling`, não o duplica.** A pergunta *estou numa parede?*
+é feita uma vez e já tem dono; agarrar-se acrescenta duas condições ao que ela
+respondeu (o botão está apertado, e ainda há reserva). Por isso ele herda de
+graça as três metades do `cling` — é parede pela régua da perna, o jogador
+empurra contra ela, e está a descer.
+
+⚠️ **A reserva volta ao cheio no CHÃO, de uma vez.** Qualquer outra regra
+(recarga por segundo, ao soltar) ensina o jogador a **esperar parado**, que é
+exactamente o que a reserva existe para não ser.
+
+⚠️ **O gasto é guardado, não o que sobra** (`GrabState.spent`): o artista pode
+mover o `Wall Grab` com o personagem pendurado, e um *"quanto sobra"* guardado
+ficaria acima da reserva nova — um número que descreve um mundo que deixou de
+existir. E ele mora no **`PlayerState`** porque é esse tipo que a **fita** guarda
+no ring de tiques âncora; um estado noutro lugar teria de ser acrescentado àquele
+ring à mão.
+
+### ⚠️ A tecla saiu de uma varredura, não de gosto
+
+`E` tem **três** donos, `F` quatro, `G` e `C` seis, `X` sete, `V` cinco, `T` é o
+painel de Tokens (sem guarda nenhuma) e `B` é o contorno de collider que **toda**
+cena de física usa. Sobra **`R`**, com **um** — e esse um é o
+`ReverseSelectedKeys` da timeline, que vive atrás de `timeline_panel_open()` **E**
+`has_selection`: **exactamente a guarda sob a qual o `D` do próprio player já
+convive** desde a wave das joias. Não é uma coexistência nova, é a que já shipa.
+
+### ⚠️ O botão novo NÃO move o formato da fita
+
+A fita guarda os botões num **bitmask** (`(f32, u8)`), então o `BIT_GRAB` é um bit
+livre e **o postcard vê os mesmos bytes**. Uma corrida gravada antes desta wave
+volta com o agarrar em zero — que é o que ela de facto tinha. Um campo novo na
+tupla teria custado o bump por si só e recusado todo arquivo já salvo.
+
+⚠️ **E isso expôs um gate cuja fixture envelheceu no dia certo:** o
+`an_unknown_button_bit_is_ignored_rather_than_misread` codificava *"bit
+desconhecido"* como o **bit 3** — que esta wave reclamou. Ele ficou **VERMELHO**,
+que é o comportamento correto, e a fixture passou para o **bit 7**: ali ela só
+pode expirar quando o byte encher, e nesse dia a conversa é outra (um segundo
+byte é mudança de FORMATO, não um bit livre).
+
+### Números
+
+**`PROJECT_SCHEMA` 59→60** — ⚠️ **PROVISÓRIO**, o valor se CONTA contra o `main`
+do dia (v60: o `PlatformPlayer` ganhou `wall_grab_stamina`, um campo apendado,
+postcard posicional). Tripla do pin **`(60, 13, 14)`**. Registro do
+`ph2d-physics-ecs` **fica em 28** · gizmo ids **nenhum novo** (próximo livre segue
+**974**) · **nenhum ADR** · contrato congelado **4/4 + 3/3** (rodado) · **zero
+`Cargo.toml`** · `c9` **byte-idêntico** (`74d4ea5d…`, 108 corpos, debug ≡
+release — a capacidade nasce desligada). **12 gates, 7 mutações, 7 sangram.**
+
+⚠️ **Superfície pública nova na `ph2d-platformer`:** `GrabState` · `grab_step` ·
+`WallConfig::grab_stamina` · `PlayerInput::grab` · `PlayerState::grab`; e
+**`wall_slide` mudou de assinatura** (ganhou `gripping: bool`).
+`PLAYER_ROW_COUNT` **31→32**.
+
+### Smoke
+
+**`PH2D_PHYSICS_SMOKE=99`** — três estações idênticas, beiral a **4,4 m** (alto
+demais para um pulo de parede sozinho). ⚠️ A cena **abre com a capacidade
+desligada, de propósito**: o passo 2 é o controle, e os passos 3-4 pedem ao
+artista que escreva `0,5` e depois `2,0` na §14 — o gesto que a wave entrega é
+justamente esse número na mão dele.
+
 ## §6 — Ordem
 
 1. `git rebase main` (ou merge). Os arquivos compartilhados são o `project.rs`
@@ -909,9 +1004,14 @@ saber que ela já foi medida.
 - ~~**W13:** o sensor lateral olha só a altura do **MEIO** do corpo~~ —
   **FECHADO pela W22** (§5i), e ⚠️ **a medição mostrou que a nota subestimava**:
   não era *"uma beirada não é vista"*, era **o pulo de parede RECUSADO por
-  inteiro** com pé e ombro na pedra. Continua aberto o resto do item: não há
-  *wall grab* — ficar **parado** numa parede é outra mecânica, com botão próprio,
-  e não se alcança escrevendo `0` no `Wall Slide`.
+  inteiro** com pé e ombro na pedra.
+- ~~**W13:** não há *wall grab*~~ — **FECHADO pela W23** (§5j). O item está
+  cumprido ao pé da letra: botão próprio (`R`), e o `0` no `Wall Slide` continua
+  a não o alcançar. ⚠️ **O que NÃO foi construído, e por quê:** não se **ESCALA**
+  a parede (subir e descer agarrado pede um eixo VERTICAL que a entrada deste app
+  não tem — *cima* já é o pulo, e um botão novo por direção seria um input model
+  novo), e a **assimetria do Celeste** (subir custar mais que pendurar) foi
+  recusada porque o segundo knob teria o valor certo em função do primeiro.
 - ~~**W15:** o piso geométrico da altura agachada~~ — **FECHADO pela W18**, e
   ⚠️ **a medição refutou a premissa desta nota**: o corpo **não enterra, ele
   SATURA**. Ver a §5f.

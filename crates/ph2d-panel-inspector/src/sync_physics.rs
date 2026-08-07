@@ -197,6 +197,7 @@ pub(crate) fn sync_player_fields(host: &mut dyn PanelHostInternal) {
         (ids::INSP_PLAYER_WALL_PUSH, info.wall_jump_push),
         (ids::INSP_PLAYER_WALL_LOCK, info.wall_jump_lockout),
         (ids::INSP_PLAYER_WALL_REACH, info.wall_reach),
+        (ids::INSP_PLAYER_WALL_GRAB, info.wall_grab_stamina),
         (ids::INSP_PLAYER_DASH_SPEED, info.dash_speed),
         (ids::INSP_PLAYER_DASH_TIME, info.dash_time),
         (ids::INSP_PLAYER_DASH_COOL, info.dash_cooldown),

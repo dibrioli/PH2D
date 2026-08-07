@@ -34,6 +34,7 @@ pub(crate) struct PlayerKeys {
     jump: bool,
     down: bool,
     dash: bool,
+    grab: bool,
 }
 
 impl PlayerKeys {
@@ -71,6 +72,14 @@ impl PlayerKeys {
         self.dash
     }
 
+    /// **O botão de AGARRAR está pressionado agora** (W23).
+    ///
+    /// Estado, como os outros três, e aqui nem há borda a derivar: agarrar-se é
+    /// um regime que dura enquanto o dedo dura.
+    pub(crate) fn grab(self) -> bool {
+        self.grab
+    }
+
     /// **O dedo do jogador, inteiro.**
     ///
     /// ⚠️ Porta ÚNICA de propósito: entregar `drive` e `jump` por caminhos
@@ -84,6 +93,7 @@ impl PlayerKeys {
             jump: self.jump(),
             down: self.down(),
             dash: self.dash(),
+            grab: self.grab(),
         }
     }
 
@@ -132,6 +142,21 @@ impl PlayerKeys {
             // ligação só é honesto; dois donos não.
             KeyCode::KeyQ => {
                 self.dash = pressed;
+                true
+            }
+            // ⚠️ **`R`, e a escolha é por CONFLITO MEDIDO** — a mesma varredura
+            // que deu o `Q` ao arranque, refeita: `E` tem TRÊS donos, `F` quatro,
+            // `G` e `C` seis, `X` sete, `V` cinco, `T` é o painel de Tokens (sem
+            // guarda nenhuma), `B` é o contorno de collider que TODA cena de
+            // física usa. Sobra `R`, com **um** dono.
+            //
+            // ⚠️ E esse único dono é o `ReverseSelectedKeys` da timeline, que
+            // vive atrás de `timeline_panel_open()` **E** `has_selection` — que
+            // é **exatamente a guarda sob a qual o `D` do próprio player já
+            // convive** (a timeline reclama `KeyD if has_selection` desde a wave
+            // das joias). Não é uma coexistência nova: é a que já shipa.
+            KeyCode::KeyR => {
+                self.grab = pressed;
                 true
             }
             _ => false,
@@ -255,11 +280,13 @@ mod tests {
         k.key(KeyCode::KeyZ, true);
         k.key(KeyCode::KeyS, true);
         k.key(KeyCode::KeyQ, true);
+        k.key(KeyCode::KeyR, true);
         let input = k.input();
         assert_eq!(input.drive, 1.0);
         assert!(input.jump);
         assert!(input.down, "o baixo tem de atravessar a porta unica");
         assert!(input.dash, "e o arranque tambem");
+        assert!(input.grab, "e o agarrar-se tambem");
     }
 
     /// **O ARRANQUE é um botão como os outros** (W14).
@@ -271,6 +298,17 @@ mod tests {
         assert!(k.dash());
         k.key(KeyCode::KeyQ, false);
         assert!(!k.dash());
+    }
+
+    /// **O AGARRAR é um botão como os outros** (W23).
+    #[test]
+    fn the_grab_button_is_held_and_released() {
+        let mut k = PlayerKeys::default();
+        assert!(!k.grab());
+        assert!(k.key(KeyCode::KeyR, true));
+        assert!(k.grab());
+        k.key(KeyCode::KeyR, false);
+        assert!(!k.grab());
     }
 
     /// E perder o foco solta o pulo junto com as setas.

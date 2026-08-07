@@ -114,6 +114,7 @@ fn jump(r: &mut Rig) -> (f32, f32, f32) {
             jump: true,
             down: false,
             dash: false,
+            grab: false,
         },
     );
     let (mut peak, mut mid) = (y0, x0);

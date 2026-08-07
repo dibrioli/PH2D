@@ -155,6 +155,7 @@ fn down_jump() -> PlayerInput {
         jump: true,
         down: true,
         dash: false,
+        grab: false,
     }
 }
 
@@ -164,6 +165,7 @@ fn jump_only() -> PlayerInput {
         jump: true,
         down: false,
         dash: false,
+        grab: false,
     }
 }
 

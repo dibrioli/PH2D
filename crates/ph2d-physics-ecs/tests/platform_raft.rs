@@ -381,6 +381,7 @@ fn on_static_ground_the_reaction_changes_nothing_at_all() {
                     jump: t > 60,
                     down: false,
                     dash: false,
+                    grab: false,
                 },
             );
             bridge.dispatch(&mut sim, true, t);

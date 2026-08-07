@@ -185,6 +185,15 @@ const BIT_JUMP: u8 = 1 << 0;
 const BIT_DOWN: u8 = 1 << 1;
 /// O bit do botão de ARRANQUE.
 const BIT_DASH: u8 = 1 << 2;
+/// O bit do botão de AGARRAR (W23).
+///
+/// ⚠️ **Um bit NOVO no bitmask não move o formato de arquivo**, e é por isso que
+/// a fita foi desenhada assim: a forma do [`TapeWire`] continua `(f32, u8)`, o
+/// postcard vê exactamente os mesmos bytes, e uma corrida gravada antes desta
+/// wave volta com o botão em zero — que é o que ela de facto tinha. Um campo
+/// novo na tupla teria custado um bump de `PROJECT_SCHEMA` e recusado todo
+/// arquivo já salvo.
+const BIT_GRAB: u8 = 1 << 3;
 
 impl InputTape {
     /// A fita na forma que vai para o arquivo.
@@ -206,6 +215,9 @@ impl InputTape {
                     if i.dash {
                         bits |= BIT_DASH;
                     }
+                    if i.grab {
+                        bits |= BIT_GRAB;
+                    }
                     (i.drive, bits)
                 })
                 .collect(),
@@ -225,6 +237,7 @@ impl InputTape {
                     jump: bits & BIT_JUMP != 0,
                     down: bits & BIT_DOWN != 0,
                     dash: bits & BIT_DASH != 0,
+                    grab: bits & BIT_GRAB != 0,
                 })
                 .collect(),
         }

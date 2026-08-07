@@ -20,6 +20,11 @@ fn a_recorded_run() -> ph2d_physics_ecs::InputTape {
                 jump: k % 2 == 0,
                 down: k % 3 == 0,
                 dash: k % 5 == 0,
+                // ⚠️ **O botão novo VARIA na fita** (W23), e não é decoração: o
+                // `BIT_GRAB` mora num bit livre do mesmo `u8`, então a forma do
+                // arquivo não muda — e um gate cujo `grab` fosse constante
+                // passaria com o bit nunca gravado.
+                grab: k % 7 == 0,
             },
         );
     }

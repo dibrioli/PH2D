@@ -161,6 +161,7 @@ fn down_jump() -> PlayerInput {
         jump: true,
         down: true,
         dash: false,
+        grab: false,
     }
 }
 
@@ -170,6 +171,7 @@ fn jump_only() -> PlayerInput {
         jump: true,
         down: false,
         dash: false,
+        grab: false,
     }
 }
 
@@ -603,6 +605,7 @@ fn measure_whether_a_live_drop_really_dissolves_the_whole_scene() {
                 jump: false,
                 down: false,
                 dash: false,
+                grab: false,
             },
         );
         // Anda o bastante para sair da escada e cair sobre a prancha solta, e
@@ -638,6 +641,7 @@ fn measure_whether_a_live_drop_really_dissolves_the_whole_scene() {
             jump: false,
             down: false,
             dash: false,
+            grab: false,
         },
     );
     let mid = settle(&mut r, 45, t);

@@ -25,6 +25,7 @@ fn scripted(ticks: u64) -> InputTape {
                 jump: (40..48).contains(&t),
                 down: false,
                 dash: false,
+                grab: false,
             },
         );
     }
@@ -110,6 +111,7 @@ fn without_a_tape_the_world_is_byte_identical() {
                     jump: false,
                     down: false,
                     dash: false,
+                    grab: false,
                 },
             );
             if with_tape {
@@ -150,6 +152,7 @@ fn the_tape_overrides_what_the_caller_is_holding() {
             jump: false,
             down: false,
             dash: false,
+            grab: false,
         },
     );
     // ...e a fita diz "para a ESQUERDA".
@@ -162,6 +165,7 @@ fn the_tape_overrides_what_the_caller_is_holding() {
                 jump: false,
                 down: false,
                 dash: false,
+                grab: false,
             },
         );
     }
@@ -187,6 +191,7 @@ fn a_tape_answers_only_for_the_ticks_it_holds() {
             jump: true,
             down: false,
             dash: false,
+            grab: false,
         },
     );
     assert_eq!(
@@ -200,7 +205,8 @@ fn a_tape_answers_only_for_the_ticks_it_holds() {
             drive: 0.5,
             jump: true,
             down: false,
-            dash: false
+            dash: false,
+            grab: false
         })
     );
     assert_eq!(tape.input(11), None, "e depois do fim tambem nao");
@@ -214,6 +220,7 @@ fn a_tape_answers_only_for_the_ticks_it_holds() {
             jump: false,
             down: false,
             dash: false,
+            grab: false,
         },
     );
     assert_eq!(
@@ -231,6 +238,7 @@ fn a_tape_answers_only_for_the_ticks_it_holds() {
             jump: false,
             down: false,
             dash: false,
+            grab: false,
         },
     );
     assert_eq!(tape.input(10).map(|i| i.drive), Some(-0.25));

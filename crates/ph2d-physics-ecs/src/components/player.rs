@@ -146,6 +146,16 @@ pub struct PlatformPlayer {
     /// controle aéreo puxa-o de volta para ela. Ver
     /// [`ph2d_platformer::WallConfig::jump_lockout`].
     pub wall_jump_lockout: f32,
+    /// **WALL GRAB** (W23) — por quantos SEGUNDOS ele segura a parede de vez,
+    /// com o botão de agarrar apertado. `0` desliga (a capacidade não existe).
+    ///
+    /// ⚠️ **Nasce DESLIGADO**, como as outras metades da parede. E o zero não é
+    /// um caso especial: segurar por zero segundos **é** não ter agarrar-se.
+    ///
+    /// ⚠️ A reserva volta ao cheio no CHÃO, de uma vez — ver
+    /// [`ph2d_platformer::grab_step`], que também traz o porquê de ser uma
+    /// RESERVA e não um interruptor.
+    pub wall_grab_stamina: f32,
 
     /// **DASH** (W14) — a velocidade do arranque, m/s. `0` desliga.
     ///
@@ -227,6 +237,7 @@ impl PlatformPlayer {
                 jump_push: self.wall_jump_push,
                 reach: self.wall_reach,
                 jump_lockout: self.wall_jump_lockout,
+                grab_stamina: self.wall_grab_stamina,
             },
             dash: DashConfig {
                 speed: self.dash_speed,
@@ -277,6 +288,7 @@ impl Default for PlatformPlayer {
             wall_jump_push: c.wall.jump_push,
             wall_reach: c.wall.reach,
             wall_jump_lockout: c.wall.jump_lockout,
+            wall_grab_stamina: c.wall.grab_stamina,
             dash_speed: c.dash.speed,
             dash_time: c.dash.time,
             dash_cooldown: c.dash.cooldown,

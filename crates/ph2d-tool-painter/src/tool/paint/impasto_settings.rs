@@ -25,6 +25,25 @@ const LIGHT_INTENSITY_MAX: f32 = 2.0;
 /// Azimuth wraps, so it is a full turn. // CLAMP-OK
 const ANGLE_MAX: f32 = 360.0;
 
+/// **Os slots de pincel que DEPOSITAM corpo** — o fan-out que o `set_brush_impasto` e o
+/// `set_material_field` escrevem, e a lista que responde *"quem lê o que a seção Impasto edita?"*.
+///
+/// ⚠️ **O `Fill` entrou aqui em 2026-08-07, e a ausência dele era um controle morto** (Enio: *"no modo
+/// Impasto vamos implementar o Fill … além da cor ele preenche com relevo"*): cada modo tem `BrushSpec`
+/// próprio, então ligar o Impasto escrevia Deposit/Knife/Sculpt e o BALDE continuava sem corpo — o
+/// artista escolhia o meio, pegava o balde e enchia uma região com um decalque plano, sem nada na tela
+/// dizendo por quê. É a MESMA forma de falha que o `set_paint_media` já pagou com o Smear.
+///
+/// ⚠️ E `Fill` **não** entra no `cannot_outlive` do meio: o balde não existe por causa do Impasto (o
+/// pincel comum também o usa), então desligar o meio não pode arrancar a ferramenta da mão — a mesma
+/// isenção que o `Paint` tem, e pelo mesmo motivo.
+pub(super) const RELIEF_SLOTS: [PaintMode; 4] = [
+    PaintMode::Paint,
+    PaintMode::Knife,
+    PaintMode::Sculpt,
+    PaintMode::Fill,
+];
+
 impl PainterTool {
     /// Route the Impasto section's controls from the panel's generic channel to the setters below.
     /// Returns `true` when it consumed the event. Called from `handle_panel_event`.
@@ -247,7 +266,7 @@ impl PainterTool {
         // write moves that flag behind this door's back: `apply_brush_preset` replaces `paint.brush`
         // outright, so the live `impasto` read false while `brush_by_mode[Knife]` still held `true`,
         // ready to come back on the next tool switch. Caught by a gate, not by reasoning.
-        for mode in [PaintMode::Paint, PaintMode::Knife, PaintMode::Sculpt] {
+        for mode in RELIEF_SLOTS {
             self.paint.brush_by_mode[mode.slot()].impasto = on;
         }
         // Also unconditional, and for the same reason: if the flag was cleared behind this door while a
@@ -416,13 +435,13 @@ impl PainterTool {
         self.paint.impasto_live_edit = !self.paint.impasto_live_edit;
     }
 
-    /// Write one material field on the active brush AND the three relief-mode slots — the
+    /// Write one material field on the active brush AND every slot of [`RELIEF_SLOTS`] — the
     /// `toggle_brush_impasto` pattern. The Material card is visible under every impasto tool since the
     /// all-cards rule (Enio, 2026-07-22), and only the DEPOSIT slot's material is ever baked: without
     /// the fan-out, editing Shine while holding the Knife would write a slot nothing reads.
     fn set_material_field(&mut self, write: impl Fn(&mut BrushSpec)) {
         write(&mut self.paint.brush);
-        for mode in [PaintMode::Paint, PaintMode::Knife, PaintMode::Sculpt] {
+        for mode in RELIEF_SLOTS {
             write(&mut self.paint.brush_by_mode[mode.slot()]);
         }
         self.rebake_live_material();

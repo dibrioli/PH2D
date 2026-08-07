@@ -215,3 +215,47 @@ pub(super) fn closing_fill(pre_cover: &[u8], w: usize, cr: Region, rho: f32) -> 
         dtnd2.iter().map(|&d2| fill(d2)).collect()
     }
 }
+
+/// **A distância de cada texel de dentro de uma região até a borda dela**, em texels, sobre `r`
+/// (`r.w × r.h`, row-major). Fora da região o valor é `0`.
+///
+/// O MESMO motor de EDT do fechamento, com o segundo consumidor que ele sempre poderia ter: o
+/// [`super::impasto_fill`] pergunta *"quão fundo estou?"* para pousar o perfil do Falloff na borda da
+/// seleção. Duas cópias de uma EDT exata seriam duas respostas a *"que distância é esta"*, e a segunda
+/// nasceria sem a paralelização, sem o `PAR_MIN` medido e sem o caso degenerado.
+///
+/// ⚠️ **A moldura NÃO é semente.** Uma região que encosta na borda de `r` não vê "fora" ali — e é isso
+/// que faz um Select All não ganhar rampa nenhuma: uma seleção que cobre a tela inteira não tem borda
+/// visível a perfilar, e inventar uma no limite do documento seria uma moldura que ninguém desenhou.
+pub(super) fn distance_inside(inside: &[u8], w: usize, r: Region, thresh: u8) -> Vec<f32> {
+    let (rw, rh) = (r.w as usize, r.h as usize);
+    let (rx, ry) = (r.x as usize, r.y as usize);
+    let n = rw * rh;
+    if n == 0 {
+        return Vec::new();
+    }
+    let par = n >= PAR_MIN;
+    // Semente invertida em relação ao fechamento: `0` FORA (é dali que a distância se mede), `INF` dentro.
+    let mut seed = vec![0.0f32; n];
+    let mut any_out = false;
+    for yy in 0..rh {
+        let g = (ry + yy) * w + rx;
+        for xx in 0..rw {
+            if inside.get(g + xx).copied().unwrap_or(0) > thresh {
+                seed[yy * rw + xx] = INF;
+            } else {
+                any_out = true;
+            }
+        }
+    }
+    if !any_out {
+        return vec![f32::MAX; n]; // tudo dentro: nenhuma borda, logo nenhuma rampa
+    }
+    let d2_t = edt_half(seed, rw, rh, par);
+    let d2 = transpose(&d2_t, rh, rw, par);
+    if par {
+        d2.par_iter().map(|&v| v.sqrt()).collect()
+    } else {
+        d2.iter().map(|&v| v.sqrt()).collect()
+    }
+}

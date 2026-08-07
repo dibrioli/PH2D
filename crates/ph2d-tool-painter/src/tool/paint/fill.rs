@@ -25,6 +25,10 @@ fn color_match(px: &[u8], i: usize, seed: [u8; 4], tol: u8) -> bool {
 /// `tol` of the seed colour with opaque `fill`. Returns the affected bounding box, or `None` if the seed
 /// is out of bounds or nothing changed. A `visited` bitmap makes it correct even when `fill` equals the
 /// seed colour (no infinite loop).
+/// ⚠️ **`mask` é o CONJUNTO preenchido, não um segundo desenho.** O balde escreve pixels duros e o
+/// clip da seleção os compõe depois; o corpo do Impasto precisa saber *onde* o flood chegou, e a
+/// varredura já mantém exatamente esse conjunto no `visited`. Publicá-lo custa uma escrita por texel
+/// preenchido e evita um segundo flood — que seria uma segunda resposta a *"até onde a cor foi"*.
 pub(super) fn flood_fill(
     px: &mut [u8],
     w: usize,
@@ -32,6 +36,7 @@ pub(super) fn flood_fill(
     seed: (usize, usize),
     fill: [u8; 3],
     tol: u8,
+    mut mask: Option<&mut [u8]>,
 ) -> Option<Region> {
     if w == 0 || h == 0 || px.len() != w * h * 4 {
         return None;
@@ -72,6 +77,11 @@ pub(super) fn flood_fill(
         for xx in lx..=rx {
             let idx = y * w + xx;
             visited[idx] = true;
+            if let Some(m) = mask.as_deref_mut()
+                && let Some(cell) = m.get_mut(idx)
+            {
+                *cell = 255;
+            }
             let o = idx * 4;
             if px[o..o + 4] != fillpx {
                 changed = true;
@@ -184,6 +194,15 @@ impl PainterTool {
         // 2026-07-04). Computed before the mutable canvas borrow. `None` when there's no live selection.
         let clip = (self.paint.selection_active && self.paint.selection_mask.len() == w * h)
             .then(|| self.selection_component_at(sx, sy, w, h));
+        // ⚠️ A cobertura que a SELEÇÃO concede a um fill: a máscara verbatim no digital, e com o perfil
+        // do Falloff na borda quando há corpo em mãos (`impasto_fill`). O balde a lê pela MESMA porta que
+        // o Color Fill — duas leituras divergiriam no dia em que uma delas ganhasse um caso especial.
+        let keep_mask = self.fill_selection_keep();
+        // O corpo do Impasto precisa do conjunto preenchido; o digital nem aloca o plano.
+        // ⚠️ A pergunta é do PINCEL (`deposits_height`), não do MODO: um balde nunca está em
+        // `PaintMode::Paint`, então o `impasto_applies` — que exige aquele modo — deixaria este plano
+        // sempre `None` e o corpo do balde morto em todo caminho, com a suíte inteira verde.
+        let mut fill_mask = self.paint.brush.deposits_height().then(|| vec![0u8; w * h]);
         let buf = crate::tool::paint::plane_fork::fork_canvas(
             &mut self.canvas_rgba,
             &self.undo.write_state,
@@ -197,12 +216,12 @@ impl PainterTool {
         if self.paint.fill_snapshot.len() == buf.len() {
             buf.copy_from_slice(&self.paint.fill_snapshot);
         }
-        let filled = flood_fill(buf, w, h, (sx, sy), color, tol);
+        let filled = flood_fill(buf, w, h, (sx, sy), color, tol, fill_mask.as_deref_mut());
         // Clip the fill to the drop's selection region — the flood writes `canvas_rgba` directly, bypassing
         // the per-dab stamp gate, so revert texels outside that component (feathered coverage kept inside it,
         // 0 outside) back to the pre-fill snapshot (ADR-0103).
         if let Some(comp) = &clip {
-            let mask = &self.paint.selection_mask;
+            let mask = &keep_mask;
             let snap = &self.paint.fill_snapshot;
             let n = (w * h).min(snap.len() / 4);
             for i in 0..n {
@@ -224,6 +243,25 @@ impl PainterTool {
                         .clamp(0.0, 255.0) as u8;
                 }
             }
+        }
+        // **O CORPO**: o mesmo conjunto que a cor pintou, pela mesma cobertura. Re-armado a cada tique do
+        // slider (o `reset` antes) — o commit é o `close_stroke` do Done, exatamente como num traço.
+        if let Some(fm) = fill_mask {
+            self.reset_stroke_height();
+            let keep = &keep_mask;
+            let cov: Vec<u8> = (0..w * h)
+                .map(|i| {
+                    let inside = clip.as_ref().is_none_or(|c| c[i] >= 128);
+                    if !inside || fm[i] == 0 {
+                        return 0;
+                    }
+                    let k = clip
+                        .as_ref()
+                        .map_or(255, |_| keep.get(i).copied().unwrap_or(255));
+                    (u32::from(fm[i]) * u32::from(k) / 255) as u8
+                })
+                .collect();
+            self.arm_fill_body(&cov);
         }
         // The buffer now holds the snapshot everywhere EXCEPT the new fill. Dirty the UNION of the
         // previous fill and the new one so a SHRINKING fill re-uploads the pixels it vacated (restored to
@@ -346,6 +384,7 @@ impl PainterTool {
         if let Some(rect) = self.paint.fill_last_rect {
             self.mark_dirty(rect); // repaint what the fill had painted
         }
+        self.reset_stroke_height(); // o corpo armado morre com a cor que ele acompanhava
         self.paint.stroke_undo = None; // no committed change → no undo entry
         self.paint.fill_seed = None;
         self.paint.fill_snapshot = Vec::new();
@@ -391,7 +430,7 @@ mod tests {
     fn fills_the_connected_region_and_stops_at_a_colour_boundary() {
         let (w, h) = (8, 8);
         let mut px = split(w, h, [200, 0, 0, 255], [0, 0, 200, 255]);
-        let rect = flood_fill(&mut px, w, h, (1, 1), [0, 255, 0], 10).expect("filled");
+        let rect = flood_fill(&mut px, w, h, (1, 1), [0, 255, 0], 10, None).expect("filled");
         for y in 0..h {
             for x in 0..w {
                 if x < 4 {
@@ -430,7 +469,7 @@ mod tests {
             px[x * 4..x * 4 + 4].copy_from_slice(c);
         }
         let mut tight = px.clone();
-        flood_fill(&mut tight, w, h, (0, 0), [0, 255, 0], 0);
+        flood_fill(&mut tight, w, h, (0, 0), [0, 255, 0], 0, None);
         assert_eq!(rgb(&tight, w, 0, 0), [0, 255, 0]);
         assert_eq!(
             rgb(&tight, w, 2, 0),
@@ -438,7 +477,7 @@ mod tests {
             "Δ=8 not bridged at tol 0"
         );
         let mut loose = px.clone();
-        flood_fill(&mut loose, w, h, (0, 0), [0, 255, 0], 20);
+        flood_fill(&mut loose, w, h, (0, 0), [0, 255, 0], 20, None);
         assert_eq!(rgb(&loose, w, 2, 0), [0, 255, 0], "Δ=8 bridged at tol 20");
         assert_eq!(rgb(&loose, w, 4, 0), [0, 0, 200], "far blue never crossed");
     }
@@ -446,7 +485,7 @@ mod tests {
     #[test]
     fn out_of_bounds_seed_returns_none() {
         let mut px = vec![255u8; 4 * 4 * 4];
-        assert!(flood_fill(&mut px, 4, 4, (9, 9), [1, 2, 3], 0).is_none());
+        assert!(flood_fill(&mut px, 4, 4, (9, 9), [1, 2, 3], 0, None).is_none());
     }
 
     #[test]
@@ -457,6 +496,6 @@ mod tests {
         for c in px.chunks_exact_mut(4) {
             c.copy_from_slice(&[0, 255, 0, 255]);
         }
-        assert!(flood_fill(&mut px, w, h, (1, 1), [0, 255, 0], 0).is_none());
+        assert!(flood_fill(&mut px, w, h, (1, 1), [0, 255, 0], 0, None).is_none());
     }
 }

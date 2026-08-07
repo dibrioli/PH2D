@@ -58,7 +58,10 @@ impl PainterTool {
             (self.paint.brush.color[2].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
             255,
         ];
-        let mask = Arc::clone(&self.paint.selection_mask);
+        // ⚠️ **A cobertura de um FILL não é a máscara crua no Impasto.** A porta única
+        // (`fill_selection_keep`) devolve a máscara verbatim no digital — byte-idêntico, o mesmo `Arc` —
+        // e, com corpo em mãos, a borda da seleção com o perfil do Falloff que o artista escolheu.
+        let mask = self.fill_selection_keep();
         let buf = crate::tool::paint::plane_fork::fork_canvas(
             &mut self.canvas_rgba,
             &self.undo.write_state,
@@ -84,6 +87,9 @@ impl PainterTool {
             w: w as u32,
             h: h as u32,
         });
+        // …e o CORPO, pela MESMA cobertura que pintou a cor: as duas metades da mesma tinta não podem
+        // discordar sobre onde ela está (a doença que o Accumulate do relevo já custou uma wave).
+        self.deposit_fill_body(&mask);
         self.commit_structural_edit(before);
     }
 

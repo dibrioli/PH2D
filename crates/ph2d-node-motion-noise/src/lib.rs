@@ -21,7 +21,7 @@
 //! `delta_i = fbm(P_i·scale, seed, octaves, roughness, type @ t·speed) ·
 //! amplitude · falloff_i`, added to the chosen channel.
 
-use ph2d_node_registry::{NodeRegistry, RegistryError};
+use ph2d_node_registry::{NodeRegistry, ParamGroup, ParamUnit, ParamUnitDecl, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
@@ -96,6 +96,11 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "speed",
             default: 0.4,
         },
+        // O comprimento do LOOP em segundos (`0` = nunca fecha, o mundo de sempre).
+        ParamSpec {
+            name: "loop_len",
+            default: 0.0,
+        },
         // Decorrelates several Noise nodes.
         ParamSpec {
             name: "seed",
@@ -121,7 +126,7 @@ impl NodeOp for MotionNoise {
         let ty = NoiseType::from_index(ctx.param("type"));
         let speed = ctx.param("speed");
         let seed = ctx.param("seed").round() as i32;
-        let t = ctx.playhead() as f32;
+        let (t_a, t_b, w) = loop_times(ctx.playhead() as f32, ctx.param("loop_len"));
 
         let out = {
             let input = ctx.input(0);
@@ -133,14 +138,23 @@ impl NodeOp for MotionNoise {
             let deltas: Vec<f32> = (0..n)
                 .map(|i| {
                     let (px, py) = pos[i];
-                    let s = fbm_2d(
-                        px * scale,
-                        py * scale + t * speed,
-                        seed,
-                        octaves,
-                        roughness,
-                        ty,
-                    );
+                    let sample = |tt: f32| {
+                        fbm_2d(
+                            px * scale,
+                            py * scale + tt * speed,
+                            seed,
+                            octaves,
+                            roughness,
+                            ty,
+                        )
+                    };
+                    // `w == 0` é o caminho de sempre: a segunda amostra nem é avaliada.
+                    let s = if w == 0.0 {
+                        sample(t_a)
+                    } else {
+                        let a = sample(t_a);
+                        a + (sample(t_b) - a) * w
+                    };
                     s * amplitude * falloff_at(input, i)
                 })
                 .collect();
@@ -148,6 +162,36 @@ impl NodeOp for MotionNoise {
         };
         ctx.emit(out);
     }
+}
+
+/// **O tempo que o campo LÊ, fechado num ciclo** (`loop_len` em segundos; `0` = nunca fecha).
+///
+/// Devolve `(t_a, t_b, w)`: o ruído é `lerp(campo(t_a), campo(t_b), w)`. Com o loop desligado
+/// `w = 0` e `t_a = t`, então **o mundo de sempre sai byte-idêntico** e o segundo `fbm` nem é
+/// avaliado.
+///
+/// ⚠️ **O cross-fade ingênuo — misturar `t` com `t − L` — NÃO fecha o ciclo**, e é o erro
+/// natural: comparando `s(t)` com `s(t+L)` os dois lados são `lerp(campo(t+L), campo(t))` contra
+/// `lerp(campo(t), campo(t−L))`, que não são a mesma coisa. O que fecha é o tempo **WRAPAR
+/// primeiro**: o campo é lido em `τ = frac(t/L)·L`, que já é periódico, e a segunda amostra é
+/// `τ − L`. Em `τ = 0` o resultado é `campo(0)`; em `τ → L` o peso vai a 1 e a segunda amostra
+/// vale `campo(0)` de novo — a costura fecha no MESMO número.
+///
+/// ⚠️ **O peso é smoothstep, não linear, e isso não é enfeite:** com peso linear o VALOR fecha
+/// mas a DERIVADA salta na costura, e um salto de derivada num campo de movimento lê como um
+/// tranco a cada volta. Com `w' = 0` nas duas pontas os dois lados da costura têm a mesma
+/// inclinação (`campo'(0)`), então o ciclo é C¹.
+///
+/// Transcendental-free (HR-5): só `floor`, multiplicação e soma — a técnica que usa
+/// `sin`/`cos` para andar num círculo do espaço de ruído está fora por essa razão.
+pub(crate) fn loop_times(t: f32, loop_len: f32) -> (f32, f32, f32) {
+    if loop_len <= 0.0 {
+        return (t, t, 0.0);
+    }
+    let u = t / loop_len;
+    let u = u - u.floor();
+    let tau = u * loop_len;
+    (tau, tau - loop_len, u * u * (3.0 - 2.0 * u))
 }
 
 /// Each element's `P` (absent → origin), the field's sample points.
@@ -177,10 +221,40 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_units(MANIFEST.id, PARAM_UNITS);
+    reg.register_param_groups(MANIFEST.id, PARAM_GROUPS);
     Ok(())
 }
 
 use ph2d_node_registry::{ParamUiHint, ParamWidget};
+
+/// **O que o `loop_len` É** (doc 88, Wave A): uma DURAÇÃO. É a única unidade deste nó — a
+/// `amplitude` é `FromChannel` como a do oscilador seria, mas aqui ela não é declarada porque
+/// este nó ainda não passou pela varredura de unidades; o `loop_len` entra declarado para não
+/// nascer com a dívida.
+static PARAM_UNITS: &[ParamUnitDecl] = &[ParamUnitDecl {
+    param: "loop_len",
+    unit: ParamUnit::Seconds,
+}];
+
+/// As SEÇÕES deste nó (doc 88 B3). Nove controles respondem a três perguntas.
+///
+/// ⚠️ **"Timing" é o MESMO título do `motion.oscillator`, de propósito** — os dois respondem
+/// *em que relógio isto anda*, e dois nomes para a mesma pergunta ensinariam que são coisas
+/// diferentes (o precedente dos dois nós de curva, que partilham "Curve").
+///
+/// Ficam SOLTOS `channel`, `amplitude` e `type`: onde o ruído escreve, quanto ele vale, e que
+/// ruído ele é.
+static PARAM_GROUPS: &[ParamGroup] = &[
+    // A FORMA do campo.
+    ParamGroup::new("scale", "Field"),
+    ParamGroup::new("octaves", "Field"),
+    ParamGroup::new("roughness", "Field"),
+    ParamGroup::new("seed", "Field"),
+    // Em que relógio ele anda.
+    ParamGroup::new("speed", "Timing"),
+    ParamGroup::new("loop_len", "Timing"),
+];
 
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
@@ -241,6 +315,17 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         min: 0.0,
         max: 3.0,
         step: 0.05,
+        widget: ParamWidget::Slider,
+    },
+    // A faixa de um loop é a de um take de motion graphics: 0 (nunca fecha) até 30 s. O teto é
+    // do PAINEL, não do modelo — a caixa aceita além dele pelo `ParamHardMax` se alguém
+    // precisar de um ciclo mais longo.
+    ParamUiHint {
+        param: "loop_len",
+        label: "Loop Length",
+        min: 0.0,
+        max: 30.0,
+        step: 0.1,
         widget: ParamWidget::Slider,
     },
     ParamUiHint {
@@ -346,6 +431,211 @@ mod tests {
         assert!(
             max_step < peak * 0.9,
             "neighbours should move coherently: step {max_step} vs peak {peak}"
+        );
+    }
+
+    /// SONDA: quanto o ciclo deriva ao longo de muitas voltas (precisao de f32).
+    #[test]
+    #[ignore = "sonda de medição"]
+    fn measure_the_loop_drift() {
+        let l = 3.0f32;
+        println!("\n=== tempo LIDO pelo campo, volta a volta (L = 3.0) ===");
+        for volta in [0u32, 1, 2, 10, 100, 1000] {
+            let t = 0.125 + f32::from(u16::try_from(volta).unwrap()) * l;
+            let (a, _b, w) = loop_times(t, l);
+            let mut g = Graph::new();
+            let src = g.add_node("test.grid");
+            let noise = g.add_node("motion.noise");
+            g.connect(ph2d_nodegraph::graph::Edge {
+                from: (src, 0),
+                to: (noise, 0),
+                delayed: false,
+            })
+            .unwrap();
+            g.set_param(noise, "speed", 1.0);
+            g.set_param(noise, "loop_len", l);
+            let base = cook_y(&g, noise, 0.125);
+            let here = cook_y(&g, noise, f64::from(t));
+            let dev = base
+                .iter()
+                .zip(&here)
+                .map(|(a, b)| (a - b).abs())
+                .fold(0.0f32, f32::max);
+            println!(
+                "  volta {volta:>5}: t={t:>10.4}  tau={a:>12.9}  w={w:>12.9}  desvio no VALOR={dev:.3e}"
+            );
+        }
+        println!();
+    }
+
+    /// SONDA: a inclinação do campo ao longo do ciclo — a costura é quina ou é ruído?
+    #[test]
+    #[ignore = "sonda de medição"]
+    fn measure_the_seam_slope() {
+        let mut g = Graph::new();
+        let src = g.add_node("test.grid");
+        let noise = g.add_node("motion.noise");
+        g.connect(ph2d_nodegraph::graph::Edge {
+            from: (src, 0),
+            to: (noise, 0),
+            delayed: false,
+        })
+        .unwrap();
+        g.set_param(noise, "speed", 1.0);
+        let l = 3.0f64;
+        g.set_param(noise, "loop_len", l as f32);
+        for d in [0.05f64, 0.02, 0.005, 0.001] {
+            let slope = |t: f64| -> f32 {
+                let lo = cook_y(&g, noise, t - d);
+                let hi = cook_y(&g, noise, t + d);
+                ((hi[0] - lo[0]) as f64 / (2.0 * d)) as f32
+            };
+            print!("d={d:>6} |");
+            for frac in [0.02f64, 0.25, 0.5, 0.75, 0.98] {
+                print!("  tau={:>5.2}: {:>7.3}", frac * l, slope(frac * l));
+            }
+            println!(
+                "   salto na costura: {:.4}",
+                (slope(l - 2.0 * d) - slope(2.0 * d)).abs()
+            );
+        }
+    }
+
+    /// **O ciclo FECHA: o campo em `t` e em `t + L` é o mesmo.**
+    ///
+    /// Nasce vermelho sobre o cross-fade ingênuo (misturar `t` com `t − L` sem wrapar o tempo
+    /// primeiro), que é o erro natural aqui — ele produz um valor contínuo e um ciclo que NÃO
+    /// fecha, errando por O(1); nenhum outro gate desta crate o distingue.
+    ///
+    /// Amostra o ciclo inteiro, não os endpoints: uma lei que só casasse em `t = 0` passaria
+    /// por um oráculo de dois pontos.
+    ///
+    /// ⚠️ **A tolerância é MEDIDA, não escolhida, e o mecanismo dela é `f32`:** a igualdade é
+    /// exata em ℝ, mas `frac(t / L)` perde mantissa conforme `t` cresce, então o tempo que o
+    /// campo lê deriva. Medido (sonda `measure_the_loop_drift`, L = 3): **2,1e-7 na 1ª volta ·
+    /// 1,4e-5 na centésima · 1,1e-4 na milésima** — 50 minutos de relógio para um desvio de um
+    /// décimo de milésimo de unidade de mundo. Fazer o wrap em `f64` cortaria isso, e foi
+    /// RECUSADO: o WGSL só tem `f32`, então os dois lados divergiriam e a paridade CPU×GPU —
+    /// que é o que prova que o device concorda — passaria a ter um épsilon que ninguém mediu.
+    #[test]
+    fn the_loop_closes_the_field_repeats_exactly() {
+        let mut g = Graph::new();
+        let src = g.add_node("test.grid");
+        let noise = g.add_node("motion.noise");
+        g.connect(ph2d_nodegraph::graph::Edge {
+            from: (src, 0),
+            to: (noise, 0),
+            delayed: false,
+        })
+        .unwrap();
+        g.set_param(noise, "speed", 1.0);
+        g.set_param(noise, "loop_len", 3.0);
+        // 10× o desvio medido na 2ª volta — aperta o bastante para o cross-fade ingênuo, que
+        // erra por O(1), morrer com folga de quatro ordens.
+        const TOL: f32 = 5e-6;
+        let dev = |a: &[f32], b: &[f32]| {
+            a.iter()
+                .zip(b)
+                .map(|(x, y)| (x - y).abs())
+                .fold(0.0f32, f32::max)
+        };
+        for k in 0..24 {
+            let t = f64::from(k) * 0.125;
+            let base = cook_y(&g, noise, t);
+            let d1 = dev(&base, &cook_y(&g, noise, t + 3.0));
+            let d2 = dev(&base, &cook_y(&g, noise, t + 6.0));
+            assert!(
+                d1 < TOL && d2 < TOL,
+                "o campo em t={t} nao volta em t+L: desvio {d1} numa volta, {d2} em duas"
+            );
+        }
+    }
+
+    /// **Loop desligado é o mundo de sempre, AO BIT** — o default não move um número.
+    ///
+    /// A metade oposta do gate acima: sem ela, "faça o ciclo fechar" tem a resposta trivial de
+    /// congelar o campo, que fecha o ciclo perfeitamente e destrói o nó.
+    #[test]
+    fn no_loop_is_the_old_world_and_the_field_still_evolves() {
+        let mut g = Graph::new();
+        let src = g.add_node("test.grid");
+        let noise = g.add_node("motion.noise");
+        g.connect(ph2d_nodegraph::graph::Edge {
+            from: (src, 0),
+            to: (noise, 0),
+            delayed: false,
+        })
+        .unwrap();
+        g.set_param(noise, "speed", 1.0);
+        // Sem loop o campo NUNCA se repete no alcance medido.
+        assert_ne!(cook_y(&g, noise, 0.0), cook_y(&g, noise, 3.0));
+        assert_ne!(cook_y(&g, noise, 0.0), cook_y(&g, noise, 1.0));
+        // E com o loop ARMADO ele continua evoluindo DENTRO do ciclo (não congela).
+        g.set_param(noise, "loop_len", 3.0);
+        assert_ne!(cook_y(&g, noise, 0.0), cook_y(&g, noise, 1.0));
+        assert_ne!(cook_y(&g, noise, 1.0), cook_y(&g, noise, 2.0));
+    }
+
+    /// **A costura é C¹: o salto de inclinação CONVERGE A ZERO quando a amostragem aperta.**
+    ///
+    /// O peso smoothstep existe só para isto — com peso LINEAR o valor fecha e a derivada
+    /// salta, e um salto de derivada num campo de movimento lê como um tranco a cada volta.
+    ///
+    /// ⚠️ **O oráculo é a CONVERGÊNCIA, não um número**, e as duas versões anteriores deste
+    /// gate erraram de maneiras opostas — vale mais que a lei:
+    ///
+    /// 1. A primeira media a inclinação de `a + (b − a)·w`, uma mistura de TEMPOS, e ficava
+    ///    **VERDE sobre o peso linear**: ali `w = u` colapsa a expressão em `τ − L·(τ/L) = 0`,
+    ///    constante. Mas o campo faz `lerp(fbm(a), fbm(b), w)`, e `fbm` não é linear — misturar
+    ///    tempos não é misturar campos. Era espelho da aritmética, não do fenômeno.
+    /// 2. A segunda amostrou o campo COZIDO (certo) com uma diferença central de `d = 0,02` e
+    ///    **REPROVOU a lei correta**, acusando um salto de 0,60. Medido (sonda
+    ///    `measure_the_seam_slope`), o salto é **0,9653 · 0,2609 · 0,0206 · 0,0009** para
+    ///    `d = 0,05 · 0,02 · 0,005 · 0,001`: ele converge a zero, que é a assinatura de uma
+    ///    derivada que EXISTE. Uma quina de verdade daria salto constante.
+    ///
+    /// Por isso o gate compara o salto em duas resoluções: se a derivada existe ele encolhe com
+    /// `d`; se há quina, ele fica onde está.
+    #[test]
+    fn the_seam_of_the_loop_is_smooth_not_a_kink() {
+        let mut g = Graph::new();
+        let src = g.add_node("test.grid");
+        let noise = g.add_node("motion.noise");
+        g.connect(ph2d_nodegraph::graph::Edge {
+            from: (src, 0),
+            to: (noise, 0),
+            delayed: false,
+        })
+        .unwrap();
+        g.set_param(noise, "speed", 1.0);
+        let l = 3.0f64;
+        g.set_param(noise, "loop_len", l as f32);
+
+        // O salto de inclinação através da costura, medido com passo `d`.
+        let jump = |d: f64| -> f32 {
+            let slope = |t: f64| -> Vec<f32> {
+                let lo = cook_y(&g, noise, t - d);
+                let hi = cook_y(&g, noise, t + d);
+                hi.iter()
+                    .zip(&lo)
+                    .map(|(a, b)| ((a - b) as f64 / (2.0 * d)) as f32)
+                    .collect()
+            };
+            let before = slope(l - 2.0 * d);
+            let after = slope(2.0 * d);
+            before
+                .iter()
+                .zip(&after)
+                .map(|(a, b)| (a - b).abs())
+                .fold(0.0f32, f32::max)
+        };
+
+        let coarse = jump(0.02);
+        let fine = jump(0.001);
+        assert!(
+            fine < coarse * 0.25,
+            "o salto de inclinacao NAO converge ({coarse} em d=0.02 contra {fine} em d=0.001) \
+             -- a costura tem QUINA, e nao erro de amostragem"
         );
     }
 

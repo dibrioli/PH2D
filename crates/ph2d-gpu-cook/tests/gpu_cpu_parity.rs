@@ -1781,6 +1781,33 @@ fn the_rotation_and_size_variants_match_the_cpu() {
     }
 }
 
+/// **O LOOP do ruído atravessa a fronteira** (doc 88 B3).
+///
+/// Mesmo formato de buraco do irmão do oscilador: os gates de paridade do `motion.noise` rodam
+/// nos DEFAULTS, e `loop_len = 0` é exatamente o caminho neutro (peso zero, um `fbm` só). O
+/// WGSL do wrap podia estar escrito ao contrário com a suíte inteira VERDE.
+///
+/// ⚠️ **A cena escolhe um playhead que NÃO é o começo do ciclo**: em `τ = 0` o peso é zero e o
+/// braço novo do shader nem roda, então um gate no zero mediria o caminho antigo com outro nome.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn the_noise_loop_crosses_the_boundary() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter - skipping");
+        return;
+    };
+    let reg = registry();
+    for (label, loop_len) in [("ciclo curto", 1.5f32), ("ciclo longo", 7.0)] {
+        let mut g = Graph::new();
+        let (node, out) = deformer_chain(&mut g, 40.0, "motion.noise");
+        g.set_param(node, "amplitude", 1.9);
+        g.set_param(node, "speed", 1.0);
+        g.set_param(node, "loop_len", loop_len);
+        eprintln!("  noise: {label}");
+        assert_gpu_parity(&gpu, &reg, &g, out, 2);
+    }
+}
+
 /// **A régua de TEMPO do oscilador atravessa a fronteira** (doc 88 B3).
 ///
 /// Os gates de paridade que já existiam rodam o oscilador nos DEFAULTS, e no default a régua

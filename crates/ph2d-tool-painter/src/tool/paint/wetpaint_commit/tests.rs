@@ -54,63 +54,68 @@ fn draw_ellipse(t: &mut PainterTool) {
     t.on_canvas_pointer(cp([100.0, 80.0], PointerPhase::Up));
 }
 
-/// Doc 21 G2 (red-first): the commit deposits EXACTLY once, and only the
-/// commit — N authoring refills put nothing in the fluid; Enter deposits;
-/// a second commit call adds zero. Mutation that bleeds it: depositing the
-/// stash from a refill (I2 returns — mass grows while the artist looks).
+/// **O rascunho É a água, e ele não EMPILHA** (a lei que substituiu a G2 do doc 21 quando o smoke de
+/// 2026-08-07 decidiu que o traço vivo tem de ser o do Wet Painter).
+///
+/// A autoria deposita — é esse o pedido — mas re-carimbar a figura N vezes tem de deixar a MESMA água
+/// que uma vez: cada quadro restaura o recorte do anterior antes de depositar. E o commit não
+/// deposita nada: ele apenas para de restaurar.
+///
+/// **Mutação que sangra:** tirar o `wet_restore_preview_patch` do começo do `wet_stamp_drag_preview`
+/// (a massa cresce enquanto o artista só OLHA — o I2 de volta, agora dentro da água).
 #[test]
-fn the_commit_deposits_exactly_once_and_it_is_the_preview() {
+fn authoring_deposits_but_re_stamping_does_not_pile_up() {
     let mut t = wet_tool();
     draw_ellipse(&mut t);
-    // More authoring: nudge a handle (refills re-run; still zero deposit).
-    t.on_canvas_pointer(cp([100.0, 80.0], PointerPhase::Down));
-    t.on_canvas_pointer(cp([104.0, 82.0], PointerPhase::Move));
-    t.on_canvas_pointer(cp([104.0, 82.0], PointerPhase::Up));
-    assert_eq!(
-        grid_mass(&t),
-        0.0,
-        "authoring refills deposited into the fluid before the commit"
+    let m0 = grid_mass(&t);
+    assert!(m0 > 1.0, "a autoria tem de depositar NA ÁGUA (massa {m0})");
+    // Mais autoria: mexer numa alça re-carimba a figura inteira, várias vezes.
+    for k in 0..3u8 {
+        let x = 100.0 + f32::from(k);
+        t.on_canvas_pointer(cp([x, 80.0], PointerPhase::Down));
+        t.on_canvas_pointer(cp([x + 4.0, 82.0], PointerPhase::Move));
+        t.on_canvas_pointer(cp([x + 4.0, 82.0], PointerPhase::Up));
+    }
+    let m1 = grid_mass(&t);
+    assert!(
+        m1 < m0 * 1.6,
+        "re-carimbar EMPILHOU água ({m0} -> {m1}): o recorte do quadro anterior não está sendo desfeito"
     );
     assert!(t.commit_open_shape(), "fixture: a shape was open");
-    let m1 = grid_mass(&t);
-    assert!(m1 > 1.0, "the commit deposited nothing (mass {m1})");
-    t.commit_drag_preview(); // stash is empty — must be a no-op on the grid
-    assert_eq!(grid_mass(&t), m1, "a second commit deposited again");
+    let m2 = grid_mass(&t);
+    assert!(
+        (m2 - m1).abs() < m1 * 0.01,
+        "o commit depositou DE NOVO ({m1} -> {m2}) — ele só devia parar de restaurar"
+    );
 }
 
-/// Doc 21 G3 (red-first via mutation): the flat preview is PEELED before
-/// the deposit — after Enter, pristine paper shows through where the fluid
-/// laid nothing (the bristle sieve's gaps), instead of the flat sketch
-/// remaining underneath. Mutation that bleeds it: skipping the peel in
-/// `wetpaint_commit_deposit` (every flat pixel then stays painted).
+/// **Não há esboço para derreter** — a tela que o artista vê DURANTE a autoria já é a que ele terá
+/// depois do Enter, ao texel.
+///
+/// Era a G3 do doc 21, que provava o contrário (o esboço plano era PELADO no commit e o papel voltava
+/// a aparecer nos vãos da peneira de cerdas). Sob a lei nova esse retorno de papel é exatamente o
+/// defeito: se o commit muda a tela, o que se autorou não era o que se pintou.
+///
+/// **Mutação que sangra:** fazer o commit depositar o stash de novo (a tela ganha uma segunda demão).
 #[test]
-fn the_preview_is_peeled_before_the_deposit() {
+fn the_commit_does_not_change_a_single_texel() {
     let mut t = wet_tool();
     draw_ellipse(&mut t);
-    let flat: Vec<bool> = t
-        .canvas_rgba
-        .chunks_exact(4)
-        .map(|p| p[0] != 255 || p[1] != 255 || p[2] != 255)
-        .collect();
+    let before: Vec<u8> = t.canvas_rgba.as_ref().clone();
     assert!(
-        flat.iter().any(|&b| b),
-        "fixture: the flat preview painted something"
+        before.chunks_exact(4).any(|p| p[0] != 255 || p[1] != 255),
+        "fixture: a autoria pintou alguma coisa"
     );
     assert!(t.commit_open_shape());
-    let after: Vec<bool> = t
-        .canvas_rgba
+    let after = t.canvas_rgba.as_ref();
+    let moved = before
         .chunks_exact(4)
-        .map(|p| p[0] != 255 || p[1] != 255 || p[2] != 255)
-        .collect();
-    let returned = flat
-        .iter()
-        .zip(after.iter())
-        .filter(|&(&f, &a)| f && !a)
+        .zip(after.chunks_exact(4))
+        .filter(|(b, a)| b != a)
         .count();
-    assert!(
-        returned > 10,
-        "no flat-painted texel returned to pristine paper — the sketch was \
-         never peeled, the deposit landed ON TOP of it ({returned})"
+    assert_eq!(
+        moved, 0,
+        "o commit mexeu em {moved} texels — o que se autora tem de ser o que fica"
     );
 }
 
@@ -125,14 +130,14 @@ fn mouse_up_is_the_drag_dot_and_anchored_commit() {
         t.set_brush_stroke_method(method.to_u8());
         t.on_canvas_pointer(cp([60.0, 60.0], PointerPhase::Down));
         t.on_canvas_pointer(cp([100.0, 60.0], PointerPhase::Move));
-        assert_eq!(
-            grid_mass(&t),
-            0.0,
-            "{method:?}: the drag deposited before the release"
+        let dragging = grid_mass(&t);
+        assert!(
+            dragging > 1.0,
+            "{method:?}: o arrasto tem de já estar NA ÁGUA ({dragging}) — o rascunho é a própria água"
         );
         t.on_canvas_pointer(cp([100.0, 60.0], PointerPhase::Up));
         let m = grid_mass(&t);
-        assert!(m > 1.0, "{method:?}: the release deposited nothing ({m})");
+        assert!(m > 1.0, "{method:?}: a água sumiu no pen-up ({m})");
     }
 }
 
@@ -190,7 +195,9 @@ fn cancel_leaves_no_pending_deposit_and_the_stash_rides_the_preview() {
         draw_ellipse(&mut t);
         assert!(t.commit_open_shape_keep());
         assert!(
-            !t.paint.wetpaint.pending_deposit.is_empty() && t.paint.drag_preview.is_none(),
+            !t.paint.wetpaint.pending_deposit.is_empty()
+                && t.paint.drag_preview.is_none()
+                && !t.wet_preview_is_live(),
             "o Apply & Keep tem de deixar o lote armado SEM esboço (a água corre, o aperto seguinte \
              deposita)"
         );
@@ -202,7 +209,9 @@ fn cancel_leaves_no_pending_deposit_and_the_stash_rides_the_preview() {
     }
     let inv = |t: &PainterTool, ctx: &str| {
         assert!(
-            t.paint.wetpaint.pending_deposit.is_empty() || t.paint.drag_preview.is_some(),
+            t.paint.wetpaint.pending_deposit.is_empty()
+                || t.paint.drag_preview.is_some()
+                || t.wet_preview_is_live(),
             "stash without a live preview after {ctx}"
         );
     };
@@ -381,16 +390,19 @@ fn a_live_session_survives_authoring_and_the_deposit_fuses() {
         preview_px, still,
         "a tick composite tore the flat preview off the canvas"
     );
-    // Enter: the deposit lands in the SAME session — the fusion oracle.
-    let m0 = grid_mass(&t);
+    // ⚠️ **O oráculo da FUSÃO mudou de instante, não de lei:** o depósito acontece na AUTORIA agora,
+    // então é ali que ele tem de estar na MESMA sessão — e o Enter só para de restaurar.
+    assert!(
+        grid_mass(&t) > 1.0,
+        "a autoria não depositou na água viva — não há o que fundir"
+    );
     assert!(t.commit_open_shape());
     let sess = t.paint.wetpaint.session.as_ref().expect("fused session");
     assert_eq!(
         std::sync::Arc::as_ptr(&sess.base),
         base_ptr,
-        "the deposit landed in a FRESH session — nothing fuses with the old water"
+        "o depósito caiu numa sessão NOVA — nada funde com a água velha"
     );
-    assert!(grid_mass(&t) > m0 + 1.0, "the commit deposited nothing");
 }
 
 /// Doc 21 G5: Esc returns the water ALIVE and untouched — the cancel peel is
@@ -435,15 +447,27 @@ fn undo_over_a_wet_apply_reinstates_the_editable_shape_over_still_water() {
     let mut t = wet_tool();
     draw_ellipse(&mut t);
     assert!(t.commit_open_shape());
-    assert!(
-        t.paint.wetpaint.session.is_some(),
-        "fixture: deposit landed"
-    );
+    let before = t
+        .paint
+        .wetpaint
+        .session
+        .as_ref()
+        .map(|s| std::sync::Arc::as_ptr(&s.base))
+        .expect("fixture: deposit landed");
     assert!(t.undo_last(), "fixture: the Apply undoes");
     t.paint_tick(1.0 / 40.0); // the guard runs — the foreign swap is seen here
+    // ⚠️ **O oráculo é a IDENTIDADE, não a ausência.** A água velha tem de morrer (o undo é um swap
+    // foreign, a lei do guard) — mas a forma reinstalada RE-AUTORA, e re-autorar é depositar, então
+    // uma sessão NOVA nasce no mesmo gesto. Pedir `is_none` aqui mediria o instante, não a lei.
+    let after = t
+        .paint
+        .wetpaint
+        .session
+        .as_ref()
+        .map(|s| std::sync::Arc::as_ptr(&s.base));
     assert!(
-        t.paint.wetpaint.session.is_none(),
-        "the water SURVIVED an undo — the guard's law is broken"
+        after != Some(before),
+        "a água SOBREVIVEU a um undo — a lei do guard está quebrada"
     );
     assert!(
         t.paint.ellipse.is_some(),
@@ -453,7 +477,9 @@ fn undo_over_a_wet_apply_reinstates_the_editable_shape_over_still_water() {
         .canvas_rgba
         .chunks_exact(4)
         .any(|p| p[0] != 255 || p[1] != 255 || p[2] != 255);
-    assert!(painted, "the reinstated shape has no visible flat preview");
+    assert!(painted, "the reinstated shape has no visible preview");
+    // ⚠️ O re-Apply re-autora: o rascunho é a água, então o depósito acontece no re-stamp que a
+    // reinstalação dispara — e a sessão NOVA é a prova de que ele não caiu na água morta.
     assert!(t.commit_open_shape(), "re-Apply must commit");
     assert!(
         grid_mass(&t) > 1.0,
@@ -601,10 +627,12 @@ fn the_commit_deposits_water_as_well_as_pigment_and_the_sim_runs() {
                 )
             })
     };
-    assert_eq!(
-        read(&mut t),
-        (0.0, 0.0, 0.0),
-        "a autoria depositou no fluido ANTES do commit — a fixture não separa as duas metades"
+    // ⚠️ A autoria JÁ depositou (o rascunho é a água); o que este gate mede é que o depósito trouxe
+    // **água** e não só pigmento, e que a sim volta a andar depois do commit.
+    let (f0, s0, _) = read(&mut t);
+    assert!(
+        f0 + s0 > 1.0,
+        "a autoria não pôs nada no fluido — não há o que assentar"
     );
 
     assert!(t.commit_open_shape(), "fixture: havia uma forma aberta");

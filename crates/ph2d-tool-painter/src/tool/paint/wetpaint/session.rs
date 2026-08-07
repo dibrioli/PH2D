@@ -100,6 +100,16 @@ pub(in crate::tool::paint) struct WetSession {
     /// reconcile pushes the authored values when they differ. Same law as
     /// `paper_key`: the facts are authored state, the session is not.
     pub(super) applied: WetEngineFacts,
+    /// **O rascunho da autoria, na PRÓPRIA água** — o recorte do grid de antes
+    /// do depósito que este quadro carimbou, para o quadro seguinte poder
+    /// desfazê-lo (o gêmeo exato do [`DragPreview`] do canvas, uma camada
+    /// abaixo).
+    ///
+    /// ⚠️ Ele mora na SESSÃO, e não no `WetPaintState`, porque descreve o grid
+    /// DESTA sessão: se o guard de identidade a matar, o recorte descreve uma
+    /// água que não existe mais e morre com ela. Guardá-lo fora seria a lista
+    /// de sítios de limpeza que o §13.13 já pagou uma vez.
+    pub(super) preview: Option<ph2d_wet_paint::grid::GridPatch>,
 }
 
 /// Everything the paper seed reads — the reconcile re-seeds exactly when one

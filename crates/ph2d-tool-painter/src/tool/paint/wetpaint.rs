@@ -329,6 +329,7 @@ impl PainterTool {
 }
 
 mod authored_actions; // canvas actions + session birth + facts — child file (LOC cap)
+mod authoring; // o rascunho é a PRÓPRIA água (o preview de autoria) — filho por LOC
 mod composite;
 #[cfg(test)]
 pub(in crate::tool::paint) use composite::split as composite_split;

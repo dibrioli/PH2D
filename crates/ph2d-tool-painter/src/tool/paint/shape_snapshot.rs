@@ -67,7 +67,11 @@ impl PainterTool {
         patch: Option<crate::undo::PreviewPatch>,
         parked: Vec<crate::undo::ParkedShapeState>,
     ) {
-        let had_preview = patch.is_some();
+        // ⚠️ **Em Wet Paint não há esboço PLANO para o snapshot ter guardado** — o rascunho é a
+        // própria água (`wetpaint::authoring`), então `patch` vem `None` mesmo quando a forma estava
+        // viva. Uma forma reinstalada tem de RE-AUTORAR, senão ela volta editável e invisível: o
+        // artista vê a figura (os pixels que o undo restaurou) e o Apply seguinte não deposita nada.
+        let had_preview = patch.is_some() || self.wet_preview_owns_the_gesture();
         if let Some(p) = patch {
             let rect = Region {
                 x: p.x,

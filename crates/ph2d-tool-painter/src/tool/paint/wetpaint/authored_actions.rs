@@ -53,6 +53,7 @@ impl PainterTool {
             stroke_open: false,
             paper_key: None,
             applied: WetEngineFacts::BOOT,
+            preview: None,
         });
         true
     }

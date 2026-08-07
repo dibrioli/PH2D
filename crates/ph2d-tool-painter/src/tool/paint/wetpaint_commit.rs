@@ -24,7 +24,8 @@ impl PainterTool {
     /// copies `sess.base` verbatim where pigment α = 0 and would erase the
     /// preview inside its dirty rect: a torn state).
     pub(super) fn wet_authoring_hold(&self) -> bool {
-        matches!(self.paint.paint_mode, PaintMode::WetPaint) && self.paint.drag_preview.is_some()
+        matches!(self.paint.paint_mode, PaintMode::WetPaint)
+            && (self.paint.drag_preview.is_some() || self.wet_preview_is_live())
     }
 
     /// Doc 21 law D: mark the write we JUST made to `canvas_rgba` as OURS, so

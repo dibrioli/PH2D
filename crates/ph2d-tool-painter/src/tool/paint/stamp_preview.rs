@@ -61,6 +61,14 @@ impl PainterTool {
             self.peel_drag_preview();
             return;
         }
+        // **O RASCUNHO É A PRÓPRIA ÁGUA** (Enio, 2026-08-07). Em Wet Paint um método de re-stamp não
+        // pinta mais um esboço digital que derrete no commit: ele restaura o recorte do quadro
+        // anterior, deposita a figura inteira no FLUIDO e composita — a mesma dança que as linhas
+        // abaixo fazem no canvas, uma camada abaixo (`wetpaint::authoring`).
+        if self.wet_preview_owns_the_gesture() {
+            self.wet_stamp_drag_preview(dabs);
+            return;
+        }
         // ⚠️ **As quatro fases são MEDIDAS aqui, no código que SHIPA** (o precedente do split do
         // composite da água): uma sonda com laço próprio ficaria cega à porta, e o report de
         // 2026-08-03 (*"não houve melhora real"*) provou que a atribuição por raciocínio erra — o
@@ -145,6 +153,8 @@ impl PainterTool {
     /// deliberately NOT this door: an undo restore is a wholesale foreign
     /// swap and the guard's whole law is that undo kills the water.
     pub(super) fn peel_drag_preview(&mut self) {
+        // A água tem o seu próprio rascunho, e ele é desfeito pela porta dela (grid + tela).
+        self.wet_peel_preview();
         if let Some(prev) = self.paint.drag_preview.take() {
             self.restore_region(&prev.rect, &prev.pixels);
             self.wetpaint_rearm_after_own_write();
@@ -188,6 +198,14 @@ impl PainterTool {
         // let the sim resume ("the sketch melts"). The eraser and an empty
         // stash fall through to the flat commit below (a flat erase bakes;
         // an empty stash means nothing previewed).
+        // O rascunho na PRÓPRIA água: o depósito já está lá, então commitar é apenas PARAR de
+        // restaurar — e é isso que devolve o relógio à sim (`wet_authoring_hold`).
+        if self.wet_preview_owns_the_gesture() && self.wet_preview_is_live() {
+            self.wet_commit_preview();
+            self.paint.drag_preview = None;
+            self.paint.wet_shape_active = false;
+            return;
+        }
         if matches!(self.paint.paint_mode, PaintMode::WetPaint)
             && !self.paint.eraser
             && !self.paint.wetpaint.pending_deposit.is_empty()

@@ -1317,14 +1317,15 @@ fn the_paint_mode_flat_pipeline_survives_the_deposit_at_commit_diff() {
 
 // ── Doc 21 — Stage 1: the authoring law (un-owned flat previews) ──────────
 
-/// Doc 21 G1 (red-first): a shape editor in Wet Paint AUTHORS — the flat
-/// preview paints pixels through the normal pipeline — and the engine stays
-/// untouched during authoring (dry canvas: no session is even born). RED
-/// today: the wet route owns and refuses the batch, so an ellipse draws
-/// NOTHING. Mutation that bleeds it: dropping the `is_incremental` conjunct
-/// from `wet_owns_the_dabs`.
+/// **O rascunho de uma forma em Wet Paint é a PRÓPRIA água** (Enio, 2026-08-07 — a inversão da G1 do
+/// doc 21, que pinava o oposto: um esboço plano pelo pipeline digital, com o motor intocado).
+///
+/// A autoria pinta pixels **e** nasce uma sessão de fluido, porque o que se vê já é o depósito.
+///
+/// **Mutação que sangra:** tirar o ramo `wet_preview_owns_the_gesture` do `stamp_drag_preview` (volta
+/// o esboço digital: pinta, e o motor fica intocado).
 #[test]
-fn a_wet_shape_previews_flat_and_the_engine_stays_untouched() {
+fn a_wet_shape_previews_in_the_water_itself() {
     use ph2d_painter_brush::StrokeMethod;
     let mut t = tool_in_mode("wetpaint");
     t.set_brush_stroke_method(StrokeMethod::Ellipse.to_u8());
@@ -1335,13 +1336,10 @@ fn a_wet_shape_previews_flat_and_the_engine_stays_untouched() {
         .canvas_rgba
         .chunks_exact(4)
         .any(|px| px[0] != 255 || px[1] != 255 || px[2] != 255);
+    assert!(painted, "uma elipse em modo wet não autorou NADA");
     assert!(
-        painted,
-        "a wet-mode ellipse authored NOTHING — the flat preview never painted"
-    );
-    assert!(
-        t.paint.wetpaint.session.is_none(),
-        "authoring on a dry canvas built a fluid session — the engine must stay untouched"
+        t.paint.wetpaint.session.is_some(),
+        "a autoria não construiu sessão de fluido — o rascunho ainda é o digital"
     );
 }
 

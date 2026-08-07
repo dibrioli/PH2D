@@ -1781,6 +1781,40 @@ fn the_rotation_and_size_variants_match_the_cpu() {
     }
 }
 
+/// **A régua de TEMPO e o FADE do oscilador atravessam a fronteira** (doc 88 B3).
+///
+/// Os gates de paridade que já existiam rodam o oscilador nos DEFAULTS, e nos defaults as
+/// duas leis novas são exatamente o caminho neutro: `time_mode = 0` cai no `frequency` de
+/// sempre e `fade = 0` devolve ganho 1. Ou seja, o WGSL de `osc_cycles_per_second` e
+/// `osc_fade_gain` podia estar escrito ao contrário e a suíte inteira ficava VERDE — o
+/// mesmo formato de buraco que este arquivo já documenta para os variants de canal.
+///
+/// As duas metades num gate só, porque cada uma sozinha tem uma resposta trivial errada: um
+/// `bpm` ignorado passa no fade, e um `fade` ignorado passa no bpm.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn the_oscillators_time_ruler_and_fade_cross_the_boundary() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter - skipping");
+        return;
+    };
+    let reg = registry();
+    for (label, mode, bpm, fade) in [
+        ("BPM", 1.0, 150.0, 0.0),
+        ("fade a meio caminho", 0.0, 120.0, 0.8),
+        ("BPM + fade", 1.0, 200.0, 0.5),
+    ] {
+        let mut g = Graph::new();
+        let (node, out) = deformer_chain(&mut g, 40.0, "motion.oscillator");
+        g.set_param(node, "amplitude", 1.9);
+        g.set_param(node, "time_mode", mode);
+        g.set_param(node, "bpm", bpm);
+        g.set_param(node, "fade", fade);
+        eprintln!("  oscillator: {label}");
+        assert_gpu_parity(&gpu, &reg, &g, out, 2);
+    }
+}
+
 /// **Two VARIANTS of one node type, in one cook, must not share a pipeline** —
 /// the exact sibling of the presence-signature crash above, for the axis
 /// `GpuKernel::variant_by_param` introduced.

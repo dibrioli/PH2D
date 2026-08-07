@@ -28,12 +28,13 @@
 use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
-use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
+mod gpu;
+use gpu::GPU_KERNEL;
 mod params_ui;
-use params_ui::{PARAM_HINTS, PARAM_UNITS};
+use params_ui::{PARAM_GATES, PARAM_GROUPS, PARAM_HINTS, PARAM_UNITS};
 mod channel;
 use channel::{apply_channel_delta, falloff_at};
 use ph2d_nodegraph::attr::par_build;
@@ -83,6 +84,18 @@ pub const MANIFEST: NodeManifest = NodeManifest {
         },
         ParamSpec {
             name: "phase",
+            default: 0.0,
+        },
+        ParamSpec {
+            name: "time_mode",
+            default: 0.0,
+        },
+        ParamSpec {
+            name: "bpm",
+            default: 120.0,
+        },
+        ParamSpec {
+            name: "fade",
             default: 0.0,
         },
     ],
@@ -141,252 +154,30 @@ fn waveform(kind: i32, phase: f32) -> f32 {
     }
 }
 
-/// GPU compute kernel (GPU/M5 Fase 1, ADR-0126). The waveform library is a
-/// straight WGSL port of [`waveform`] — same piecewise polynomials, same
-/// Capens 2nd-order sine correction (HR-5: WGSL `sin` has no cross-vendor
-/// guarantee; the parabola is plain mul/abs arithmetic, so GPU-vs-CPU parity
-/// holds within float ULPs). `osc_round` is round-half-AWAY-from-zero to match
-/// Rust's `f32::round` (WGSL's builtin `round` is half-to-even, which would
-/// pick a different waveform at `wave = 2.5`).
+/// **Ciclos por segundo, na régua que o artista escolheu** (`time_mode`: `0` segundos,
+/// `1` BPM).
 ///
-/// **Every channel**, by shipping one variant per target column
-/// ([`GpuKernel::variant_by_param`]). It used to cover X/Y only: the Rotation and
-/// Size channels write a DIFFERENT column, which a static binding set cannot
-/// switch on, so those fell back to the CPU. The engine can switch now, and the
-/// four channels map exactly as `channel_column` does — including its
-/// `_ => size` catch-all for an out-of-range value.
+/// ⚠️ Isto NÃO é um segundo multiplicador de frequência — é a UNIDADE do mesmo número, a
+/// mesma família do px/m da Wave A. A distinção importa porque o Cavalry também traz um
+/// *Time Scale*, e esse **não foi construído de propósito**: sem uma porta de tempo externa,
+/// `sin(2π·(s·t)·f) ≡ sin(2π·t·(s·f))`, ou seja Time Scale É Frequency por identidade
+/// algébrica — um knob que não pode mudar nada que o outro não mude.
+fn cycles_per_second(mode: f32, frequency: f32, bpm: f32) -> f32 {
+    if mode >= 0.5 { bpm / 60.0 } else { frequency }
+}
+
+/// **A oscilação ASSENTA** (`fade` em segundos; `0` = nunca) — o *Strength Fade to Zero*.
 ///
-/// The delta is computed identically in all three variants (the shared
-/// `osc_delta`); only the column it lands on differs, which is precisely why the
-/// variants exist and not a body-level branch.
-const OSC_PARAMS: &[&str] = &[
-    "channel",
-    "wave",
-    "amplitude",
-    "frequency",
-    "phase_stagger",
-    "offset",
-    "phase",
-];
-
-/// The falloff mask, bound identically by every variant.
-const OSC_FALLOFF: ColumnBinding = ColumnBinding {
-    column: "falloff",
-    dim: Dim::Scalar,
-    access: ColumnAccess::Read,
-    identity: [1.0; 4],
-    port: 0,
-};
-
-/// **X / Y** — adds the delta to one component of `P`. The channel test is
-/// `< 0.5`, which agrees with the CPU's `round()` for both values this variant
-/// is selected for.
-const OSC_P: GpuKernel = GpuKernel {
-    wgsl: "\
-        let osc_d = osc_delta(i, params.playhead);\n\
-        var osc_p = read_P(i);\n\
-        if (params.channel < 0.5) {\n\
-            osc_p.x = osc_p.x + osc_d;\n\
-        } else {\n\
-            osc_p.y = osc_p.y + osc_d;\n\
-        }\n\
-        write_P(i, osc_p);\n",
-    wgsl_lib: "\
-        fn osc_delta(i: u32, t: f32) -> f32 {\n\
-            let phase = t * params.frequency + f32(i) * params.phase_stagger\n\
-            \x20   + params.phase;\n\
-            let w = osc_wave(i32(osc_round(params.wave)), phase);\n\
-            return (w * params.amplitude + params.offset) * read_falloff(i);\n\
-        }\n\
-        fn osc_round(x: f32) -> f32 {\n\
-            // Rust f32::round = half away from zero (WGSL round is half-even).\n\
-            return select(ceil(x - 0.5), floor(x + 0.5), x >= 0.0);\n\
-        }\n\
-        fn osc_wave(kind: i32, phase: f32) -> f32 {\n\
-            let f = phase - floor(phase);\n\
-            if (kind == 1) {\n\
-                // Triangle: 0 at 0, +1 at 1/4, 0 at 1/2, -1 at 3/4.\n\
-                if (f < 0.25) { return 4.0 * f; }\n\
-                if (f < 0.75) { return 2.0 - 4.0 * f; }\n\
-                return 4.0 * f - 4.0;\n\
-            }\n\
-            if (kind == 2) {\n\
-                if (f < 0.5) { return 1.0; }\n\
-                return -1.0;\n\
-            }\n\
-            if (kind == 3) { return 2.0 * f - 1.0; }\n\
-            if (kind == 4) {\n\
-                if (f < 0.08) { return 1.0; }\n\
-                return 0.0;\n\
-            }\n\
-            // Parabolic sine-approximation + Capens correction (~0.09% off a\n\
-            // true sine, transcendental-free) — the port of `waveform`'s default.\n\
-            var p: f32;\n\
-            if (f < 0.5) {\n\
-                let u = f * 2.0;\n\
-                p = 4.0 * u * (1.0 - u);\n\
-            } else {\n\
-                let u = (f - 0.5) * 2.0;\n\
-                p = -4.0 * u * (1.0 - u);\n\
-            }\n\
-            return 0.225 * (p * abs(p) - p) + p;\n\
-        }\n",
-    bindings: &[
-        // The target channel is materialized from its identity when absent —
-        // the CPU's `apply_channel_delta` does the same (`base_vec2`).
-        ColumnBinding {
-            column: "P",
-            dim: Dim::Vec2,
-            access: ColumnAccess::ReadWrite,
-            identity: [0.0; 4],
-            port: 0,
-        },
-        OSC_FALLOFF,
-    ],
-    params: OSC_PARAMS,
-    count_law: None,
-    variant_by_param: None,
-    applicable: None,
-};
-
-/// **Rotation** — adds the delta to `rot`.
-const OSC_ROT: GpuKernel = GpuKernel {
-    wgsl: "\
-        write_rot(i, read_rot(i) + osc_delta(i, params.playhead));\n",
-    wgsl_lib: "\
-        fn osc_delta(i: u32, t: f32) -> f32 {\n\
-            let phase = t * params.frequency + f32(i) * params.phase_stagger\n\
-            \x20   + params.phase;\n\
-            let w = osc_wave(i32(osc_round(params.wave)), phase);\n\
-            return (w * params.amplitude + params.offset) * read_falloff(i);\n\
-        }\n\
-        fn osc_round(x: f32) -> f32 {\n\
-            // Rust f32::round = half away from zero (WGSL round is half-even).\n\
-            return select(ceil(x - 0.5), floor(x + 0.5), x >= 0.0);\n\
-        }\n\
-        fn osc_wave(kind: i32, phase: f32) -> f32 {\n\
-            let f = phase - floor(phase);\n\
-            if (kind == 1) {\n\
-                // Triangle: 0 at 0, +1 at 1/4, 0 at 1/2, -1 at 3/4.\n\
-                if (f < 0.25) { return 4.0 * f; }\n\
-                if (f < 0.75) { return 2.0 - 4.0 * f; }\n\
-                return 4.0 * f - 4.0;\n\
-            }\n\
-            if (kind == 2) {\n\
-                if (f < 0.5) { return 1.0; }\n\
-                return -1.0;\n\
-            }\n\
-            if (kind == 3) { return 2.0 * f - 1.0; }\n\
-            if (kind == 4) {\n\
-                if (f < 0.08) { return 1.0; }\n\
-                return 0.0;\n\
-            }\n\
-            // Parabolic sine-approximation + Capens correction (~0.09% off a\n\
-            // true sine, transcendental-free) — the port of `waveform`'s default.\n\
-            var p: f32;\n\
-            if (f < 0.5) {\n\
-                let u = f * 2.0;\n\
-                p = 4.0 * u * (1.0 - u);\n\
-            } else {\n\
-                let u = (f - 0.5) * 2.0;\n\
-                p = -4.0 * u * (1.0 - u);\n\
-            }\n\
-            return 0.225 * (p * abs(p) - p) + p;\n\
-        }\n",
-    bindings: &[
-        ColumnBinding {
-            column: "rot",
-            dim: Dim::Scalar,
-            access: ColumnAccess::ReadWrite,
-            identity: [0.0; 4],
-            port: 0,
-        },
-        OSC_FALLOFF,
-    ],
-    params: OSC_PARAMS,
-    count_law: None,
-    variant_by_param: None,
-    applicable: None,
-};
-
-/// **Size** — adds the delta to BOTH components, from the UNIT identity (never
-/// `[0,0]`: unit scale is what "no size" means).
-const OSC_SIZE: GpuKernel = GpuKernel {
-    wgsl: "\
-        let osc_d = osc_delta(i, params.playhead);\n\
-        let osc_s = read_size(i);\n\
-        write_size(i, vec2<f32>(osc_s.x + osc_d, osc_s.y + osc_d));\n",
-    wgsl_lib: "\
-        fn osc_delta(i: u32, t: f32) -> f32 {\n\
-            let phase = t * params.frequency + f32(i) * params.phase_stagger\n\
-            \x20   + params.phase;\n\
-            let w = osc_wave(i32(osc_round(params.wave)), phase);\n\
-            return (w * params.amplitude + params.offset) * read_falloff(i);\n\
-        }\n\
-        fn osc_round(x: f32) -> f32 {\n\
-            // Rust f32::round = half away from zero (WGSL round is half-even).\n\
-            return select(ceil(x - 0.5), floor(x + 0.5), x >= 0.0);\n\
-        }\n\
-        fn osc_wave(kind: i32, phase: f32) -> f32 {\n\
-            let f = phase - floor(phase);\n\
-            if (kind == 1) {\n\
-                // Triangle: 0 at 0, +1 at 1/4, 0 at 1/2, -1 at 3/4.\n\
-                if (f < 0.25) { return 4.0 * f; }\n\
-                if (f < 0.75) { return 2.0 - 4.0 * f; }\n\
-                return 4.0 * f - 4.0;\n\
-            }\n\
-            if (kind == 2) {\n\
-                if (f < 0.5) { return 1.0; }\n\
-                return -1.0;\n\
-            }\n\
-            if (kind == 3) { return 2.0 * f - 1.0; }\n\
-            if (kind == 4) {\n\
-                if (f < 0.08) { return 1.0; }\n\
-                return 0.0;\n\
-            }\n\
-            // Parabolic sine-approximation + Capens correction (~0.09% off a\n\
-            // true sine, transcendental-free) — the port of `waveform`'s default.\n\
-            var p: f32;\n\
-            if (f < 0.5) {\n\
-                let u = f * 2.0;\n\
-                p = 4.0 * u * (1.0 - u);\n\
-            } else {\n\
-                let u = (f - 0.5) * 2.0;\n\
-                p = -4.0 * u * (1.0 - u);\n\
-            }\n\
-            return 0.225 * (p * abs(p) - p) + p;\n\
-        }\n",
-    bindings: &[
-        ColumnBinding {
-            column: "size",
-            dim: Dim::Vec2,
-            access: ColumnAccess::ReadWrite,
-            identity: [1.0, 1.0, 0.0, 0.0],
-            port: 0,
-        },
-        OSC_FALLOFF,
-    ],
-    params: OSC_PARAMS,
-    count_law: None,
-    variant_by_param: None,
-    applicable: None,
-};
-
-const GPU_KERNEL: GpuKernel = GpuKernel {
-    // The top-level shape IS the X/Y variant, so a caller that never resolves
-    // still sees a real kernel rather than the empty (pass-through) one.
-    wgsl: OSC_P.wgsl,
-    wgsl_lib: OSC_P.wgsl_lib,
-    bindings: OSC_P.bindings,
-    params: OSC_PARAMS,
-    count_law: None,
-    variant_by_param: Some(|param| match param("channel").round() as i32 {
-        2 => &OSC_ROT,
-        0 | 1 => &OSC_P,
-        _ => &OSC_SIZE,
-    }),
-    applicable: None,
-};
+/// A rampa é linear e chega a zero exatamente em `t = fade`, medida no relógio do playhead,
+/// que é o mesmo `t` que a onda lê. Um tremor que decai é o gesto que um oscilador não sabia
+/// fazer: sem isto, a única forma de parar a oscilação era keyframar a amplitude.
+fn fade_gain(t: f32, fade: f32) -> f32 {
+    if fade <= 0.0 {
+        1.0
+    } else {
+        (1.0 - t / fade).max(0.0)
+    }
+}
 
 struct MotionOscillator;
 
@@ -398,19 +189,23 @@ impl NodeOp for MotionOscillator {
     fn eval(&self, ctx: &mut EvalCtx<'_>) {
         let channel = ctx.param("channel").round() as i32;
         let wave = ctx.param("wave").round() as i32;
-        let amplitude = ctx.param("amplitude");
-        let frequency = ctx.param("frequency");
         let phase_stagger = ctx.param("phase_stagger");
         let offset = ctx.param("offset");
         let phase0 = ctx.param("phase");
         let t = ctx.playhead() as f32;
+        let cps = cycles_per_second(
+            ctx.param("time_mode"),
+            ctx.param("frequency"),
+            ctx.param("bpm"),
+        );
+        let amplitude = ctx.param("amplitude") * fade_gain(t, ctx.param("fade"));
         let out = {
             let input = ctx.input(0);
             let n = input.count();
             // Pure per-instance map → parallel above the threshold (bit-identical,
             // no reduction). GPU/M5 Fase 0.
             let deltas: Vec<f32> = par_build(n, |i| {
-                let phase = t * frequency + i as f32 * phase_stagger + phase0;
+                let phase = t * cps + i as f32 * phase_stagger + phase0;
                 // DC `offset` shifts the oscillation centre; the whole
                 // contribution is falloff-masked (like every behaviour).
                 (waveform(wave, phase) * amplitude + offset) * falloff_at(input, i)
@@ -436,6 +231,8 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_gates(MANIFEST.id, PARAM_GATES);
+    reg.register_param_groups(MANIFEST.id, PARAM_GROUPS);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     // GPU/M5 Fase 1 (ADR-0126): the WGSL lowering, registered on the side.
     reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
@@ -533,6 +330,79 @@ mod tests {
             g.set_param(osc, "phase_stagger", 0.25);
         });
         assert_eq!(p, vec![[0.0, 0.0], [0.0, 2.0]]);
+    }
+
+    /// **BPM é a MESMA frequência noutra régua** — `120 BPM ≡ 2 Hz`, ao bit.
+    ///
+    /// O gate é uma IGUALDADE entre as duas rotas, não um número escolhido: é isso que torna
+    /// `time_mode` uma unidade em vez de um segundo multiplicador. A mutação que troca o
+    /// divisor sangra aqui e em lugar nenhum mais.
+    #[test]
+    fn bpm_is_the_same_frequency_in_another_ruler() {
+        let hz = osc_y_at(0.3, |g, osc| {
+            g.set_param(osc, "amplitude", 4.0);
+            g.set_param(osc, "phase_stagger", 0.0);
+            g.set_param(osc, "frequency", 2.0);
+        });
+        let bpm = osc_y_at(0.3, |g, osc| {
+            g.set_param(osc, "amplitude", 4.0);
+            g.set_param(osc, "phase_stagger", 0.0);
+            g.set_param(osc, "time_mode", 1.0);
+            g.set_param(osc, "bpm", 120.0);
+        });
+        assert_eq!(hz, bpm, "120 BPM tem de ser 2 Hz, ao bit");
+        // E o controle: a régua escolhida MANDA — em BPM o `frequency` não é lido.
+        let ignored = osc_y_at(0.3, |g, osc| {
+            g.set_param(osc, "amplitude", 4.0);
+            g.set_param(osc, "phase_stagger", 0.0);
+            g.set_param(osc, "time_mode", 1.0);
+            g.set_param(osc, "bpm", 120.0);
+            g.set_param(osc, "frequency", 7.0);
+        });
+        assert_eq!(bpm, ignored, "em BPM o slider de Hz nao pode ter voto");
+    }
+
+    /// **A oscilação ASSENTA, e `fade = 0` é o mundo de antes AO BIT.**
+    ///
+    /// As duas metades num gate só, de propósito: só a rampa passaria com um fade que sempre
+    /// desvanece (a arte de todo mundo mudaria em silêncio), e só o neutro passaria com um
+    /// `fade` que nunca faz nada — o botão morto.
+    #[test]
+    fn the_oscillation_settles_and_zero_fade_is_the_old_world() {
+        let at = |t: f64, fade: f32| {
+            osc_y_at(t, move |g, osc| {
+                g.set_param(osc, "amplitude", 4.0);
+                g.set_param(osc, "phase_stagger", 0.0);
+                g.set_param(osc, "fade", fade);
+            })[0][1]
+        };
+        // Neutro: byte-idêntico em todo instante medido.
+        for step in 0..8 {
+            let t = f64::from(step) * 0.25;
+            assert_eq!(at(t, 0.0), at(t, 0.0), "determinismo");
+        }
+        // Pico do quarto de ciclo (a onda vale +1 ali) ⇒ o valor É a amplitude viva.
+        assert_eq!(at(0.25, 0.0), 4.0, "sem fade, a amplitude cheia");
+        assert!(
+            (at(0.25, 4.0) - 3.75).abs() < 1e-5,
+            "a 1/16 do fade sobra 15/16 da amplitude, e nao {}",
+            at(0.25, 4.0)
+        );
+        // E chega a ZERO no fim da rampa, sem passar para o outro lado.
+        assert_eq!(at(2.25, 2.0), 0.0, "depois do fade a onda morreu");
+        assert_eq!(at(4.25, 2.0), 0.0, "e continua morta, nunca negativa");
+    }
+
+    /// **O par `cycles_per_second`/`fade_gain` é o que o WGSL porta** — pinado aqui para as
+    /// duas metades serem lidas lado a lado quando alguém mexer numa delas.
+    #[test]
+    fn the_two_laws_the_shader_ports() {
+        assert_eq!(cycles_per_second(0.0, 3.0, 999.0), 3.0);
+        assert_eq!(cycles_per_second(1.0, 999.0, 120.0), 2.0);
+        assert_eq!(fade_gain(10.0, 0.0), 1.0, "fade 0 = sem fade, em t grande");
+        assert_eq!(fade_gain(0.0, 4.0), 1.0);
+        assert_eq!(fade_gain(2.0, 4.0), 0.5);
+        assert_eq!(fade_gain(9.0, 4.0), 0.0, "nunca negativo");
     }
 
     #[test]

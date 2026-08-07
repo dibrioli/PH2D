@@ -257,3 +257,46 @@ fn the_nodes_the_census_named_all_ship_sections() {
     }
     ph2d_panel_motion_graph::set_graph_selection(Vec::new());
 }
+
+/// **Só a régua ESCOLHIDA é oferecida** — o `time_mode` do oscilador (doc 88 B3).
+///
+/// `frequency` e `bpm` são a MESMA grandeza em duas unidades. Mostrar as duas seria pior que
+/// um botão morto: seriam dois números na tela discordando sobre um só valor, sem nada dizendo
+/// qual manda — e o cook lê exatamente um deles.
+///
+/// As duas metades (presença E ausência) num gate só, porque cada uma sozinha tem resposta
+/// trivial: "sempre mostre os dois" passa na presença, "nunca mostre nenhum" passa na ausência.
+#[test]
+fn the_oscillator_offers_only_the_time_ruler_it_uses() {
+    let mut motion = MotionState::new();
+    let node = motion.doc.graph.add_node("motion.oscillator");
+    ph2d_panel_motion_graph::set_graph_selection(vec![node.0]);
+
+    let names = |motion: &MotionState| -> Vec<String> {
+        build_params_snapshot(motion, ProjectSettings::default())
+            .expect("o no existe")
+            .rows
+            .iter()
+            .flat_map(|r| r.params().into_iter().map(|p| p.to_string()))
+            .collect()
+    };
+
+    // Segundos (o default): o Hz aparece, o BPM não.
+    let secs = names(&motion);
+    assert!(secs.iter().any(|p| p == "frequency"), "{secs:?}");
+    assert!(!secs.iter().any(|p| p == "bpm"), "{secs:?}");
+
+    // BPM: exatamente o inverso.
+    motion.doc.graph.set_param(node, "time_mode", 1.0);
+    let bpm = names(&motion);
+    assert!(bpm.iter().any(|p| p == "bpm"), "{bpm:?}");
+    assert!(!bpm.iter().any(|p| p == "frequency"), "{bpm:?}");
+
+    // E o seletor + o fade estão sempre lá — a régua se escolhe, e a oscilação assenta
+    // em qualquer uma delas.
+    for p in ["time_mode", "fade"] {
+        assert!(secs.iter().any(|n| n == p), "{p} sumiu em Seconds");
+        assert!(bpm.iter().any(|n| n == p), "{p} sumiu em BPM");
+    }
+    ph2d_panel_motion_graph::set_graph_selection(Vec::new());
+}

@@ -3,7 +3,9 @@
 //! (`ph2d-node-motion-emitter/src/params_ui.rs`): none of this is behaviour, so the
 //! node computes exactly the same result whatever a slider looks like.
 
-use ph2d_node_registry::{ParamUiHint, ParamUnit, ParamUnitDecl, ParamWidget};
+use ph2d_node_registry::{
+    ParamGate, ParamGroup, ParamUiHint, ParamUnit, ParamUnitDecl, ParamWidget,
+};
 
 /// Param UI hints (M1.P1). `channel` / `wave` are **named** selectors (segmented
 /// buttons) — never number sliders. The enum option index IS the param value
@@ -71,6 +73,68 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         step: 0.01,
         widget: ParamWidget::Slider,
     },
+    ParamUiHint {
+        param: "time_mode",
+        label: "Time Mode",
+        min: 0.0,
+        max: 1.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: &["Seconds", "BPM"],
+        },
+    },
+    // A faixa de um BPM é a de uma música, não a de um Hz: 20 é um *largo* muito
+    // lento e 300 passa o topo de qualquer gênero. Uma faixa 0..8 aqui (a do
+    // `frequency`) faria o slider inteiro caber entre 0 e 8 batidas por minuto.
+    ParamUiHint {
+        param: "bpm",
+        label: "BPM",
+        min: 20.0,
+        max: 300.0,
+        step: 1.0,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "fade",
+        label: "Fade Out",
+        min: 0.0,
+        max: 10.0,
+        step: 0.1,
+        widget: ParamWidget::Slider,
+    },
+];
+
+/// **Só a régua escolhida aparece.**
+///
+/// `frequency` e `bpm` são o MESMO número em duas unidades, então mostrar os dois seria
+/// mostrar um controle que o cook não lê — e pior que o botão morto: dois números na tela
+/// que discordam entre si sobre a mesma grandeza, sem nada dizendo qual manda.
+pub(crate) static PARAM_GATES: &[ParamGate] = &[
+    ParamGate {
+        param: "frequency",
+        when: "time_mode",
+        values: &[0],
+    },
+    ParamGate {
+        param: "bpm",
+        when: "time_mode",
+        values: &[1],
+    },
+];
+
+/// As SEÇÕES deste nó (doc 88 B3). Dez controles, e os quatro do TEMPO só falam entre si.
+///
+/// ⚠️ Ficam soltos `channel`, `wave`, `amplitude` e `offset` — o que a onda É e quanto ela
+/// vale. Um oscilador que abre com a régua de tempo na cara e a amplitude escondida seria a
+/// hierarquia ao contrário.
+pub(crate) static PARAM_GROUPS: &[ParamGroup] = &[
+    // Que relógio a onda anda.
+    ParamGroup::new("time_mode", "Timing"),
+    ParamGroup::new("frequency", "Timing"),
+    ParamGroup::new("bpm", "Timing"),
+    ParamGroup::new("phase", "Timing"),
+    ParamGroup::new("phase_stagger", "Timing"),
+    ParamGroup::new("fade", "Timing"),
 ];
 
 /// **What each of this node's numbers IS** (doc 88, Wave A). This node's magnitude
@@ -86,5 +150,10 @@ pub(crate) static PARAM_UNITS: &[ParamUnitDecl] = &[
     ParamUnitDecl {
         param: "offset",
         unit: ParamUnit::FromChannel,
+    },
+    // O fade é uma DURAÇÃO — a única unidade deste nó que não depende do canal.
+    ParamUnitDecl {
+        param: "fade",
+        unit: ParamUnit::Seconds,
     },
 ];

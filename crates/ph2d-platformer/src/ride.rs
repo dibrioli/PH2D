@@ -70,6 +70,36 @@ impl RideConfig {
     /// **exacto em toda inclinação** — não um cruzamento calibrado a 30°, que
     /// era a suspeita que a varredura foi escrita para matar.
     ///
+    /// ## ⚠️ E a lei tem um TERCEIRO eixo, que esta tabela esconde (W26)
+    ///
+    /// A tabela é medida no `substeps = 4` do produto, e as duas colunas do meio
+    /// **não escalam igual** com esse número:
+    ///
+    /// | | `spring_damping` | `substeps` |
+    /// |---|---|---|
+    /// | deriva de rampa | `∝ (1 − d)` | **`∝ 1/n`** |
+    /// | quique do pouso | `∝ (1 − d)` | **INDEPENDENTE** |
+    ///
+    /// Medido (30°, 10 s parado; queda de 1,5 m no plano, `float_height = 0,9`):
+    ///
+    /// ```text
+    ///   substeps   d=0.25  deriva / quique   d=0.50  deriva / quique
+    ///          1       0.2299 m /  34.1 mm      0.1533 m /   4.6 mm
+    ///          4       0.0575 m /  32.7 mm      0.0383 m /   1.2 mm
+    ///         12       0.0194 m /  32.4 mm      0.0130 m /   0.4 mm
+    /// ```
+    ///
+    /// ⇒ **A deriva e o quique NÃO estão soldados**, e quem os desprende é um
+    /// knob que o artista já tem: baixar este número devolve o pouso, e subir os
+    /// **Sub-steps** (painel de mundo, teto medido `12`) devolve a quietude. No
+    /// par `d = 0,25 · n = 12` sobram **99% do quique com um terço da deriva** do
+    /// default de sub-passos.
+    ///
+    /// ⚠️ **A tabela do `BUGS_physics.md` §7 que mede sub-passos é
+    /// PRÉ-`gravity_hold`**: lá a deriva CRESCE com `n`, e ajustar a lei dela
+    /// hoje leva à conclusão oposta. Gate:
+    /// `platform_idle.rs::the_bounce_is_a_fact_of_the_knob_and_the_drift_is_a_fact_of_the_substeps`.
+    ///
     /// ⚠️ **A tabela é a SEGUNDA, e a primeira fica registada porque a diferença
     /// entre as duas É a wave** ([`ph2d_platformer::PlayerStep::gravity_hold`]):
     /// o cancelamento da gravidade passou a ser **integrado como a gravidade**,
@@ -545,6 +575,11 @@ mod tests {
     ///
     /// ⇒ Quem mover este número de volta está comprando 24 mm de quique com um
     /// defeito, e é isso que este gate obriga a ler primeiro.
+    ///
+    /// ⚠️ **E a troca tem um TERCEIRO eixo, medido na W26** — ver a tabela de
+    /// sub-passos no doc do [`RideConfig::STARTING_POINT`]. A frase acima
+    /// continua verdadeira **a sub-passos constantes**; quem baixa este knob
+    /// **e** sobe os `Sub-steps` compra o quique sem comprar a subida inteira.
     #[test]
     fn the_shipped_damping_is_a_decision_not_a_leftover() {
         assert_eq!(

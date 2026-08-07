@@ -808,6 +808,38 @@ o impulso e a gravidade caem na mesma integração). Medido:
 impulso da perna a ser pago de uma vez em vez de espalhado. A gravidade era
 metade da história; a outra metade é o próprio bloco.
 
+> ### ⚠️ A TABELA ACIMA É **PRÉ-`gravity_hold`**, E O SINAL DELA INVERTEU (W26)
+>
+> Ela é o que **decidiu** a wave, e por isso fica — mas ela descreve o mundo de
+> **antes** de o cancelamento da gravidade passar a ser integrado como a
+> gravidade. Re-medida no produto de hoje (2026-08-07, mesmo rig, mesmas
+> colunas), a série **cai pela metade a cada dobra**, com o `n = 1` idêntico:
+>
+> | substeps | d = 0,25 | d = 0,50 | d = 1,00 |
+> |---|---|---|---|
+> | 1 | 0,2299 | 0,1533 | 0,0000 |
+> | 2 | 0,1150 | 0,0766 | 0,0000 |
+> | **4** (o produto) | **0,0575** | **0,0383** | 0,0000 |
+> | 8 | 0,0287 | 0,0193 | 0,0000 |
+> | 12 (o teto do knob) | 0,0194 | 0,0130 | 0,0000 |
+>
+> ⇒ **a deriva é `∝ 1/n`**, e não `A·(1 − 1/(4n))`. Quem ler a tabela velha hoje
+> ajusta uma lei cujo limite `n → ∞` é `A` e conclui que subir sub-passos **não**
+> ajuda — o contrário do que o produto faz.
+>
+> ⚠️ **E isto reconcilia o item (3) abaixo:** fatiar o motor *"corta a deriva
+> 4×"* é exactamente **uma potência de `n`** no default `n = 4`. Fatiar não
+> removia o defeito; ele deslocava a série de um degrau — e o degrau já é
+> comprável pelo knob de sub-passos que o artista tem.
+>
+> ⚠️ **A consequência de PRODUTO** (e a razão de a W26 existir): o **quique do
+> pouso NÃO segue os sub-passos** — medido, 32,7 mm a `n = 4` contra 32,4 mm a
+> `n = 12`, com `d = 0,25`. A deriva e o quique deixaram de estar soldados: o
+> knob move os dois, os sub-passos movem só a deriva. Gate:
+> `platform_idle.rs::the_bounce_is_a_fact_of_the_knob_and_the_drift_is_a_fact_of_the_substeps`
+> (a mutação que reverte a `gravity_hold` devolve a razão **1,033** — ou seja
+> reproduz a tabela velha, que é a prova de quando ela foi medida).
+
 **(2) A componente horizontal veio dos PIXELS, não de um raciocínio.** A `d = 0`
 todas as forças são verticais (a mola é no `up`, a gravidade também) e o freio da
 caminhada mede `−8,7e−8`: não há ator horizontal. E mesmo assim o personagem

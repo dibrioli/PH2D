@@ -45,10 +45,16 @@ const LEG_ROWS: [PlayerRow; 4] = [
         ids::INSP_PLAYER_STIFFNESS,
         "How hard the leg pushes back. Higher is a firmer stance.",
     ),
+    // ⚠️ **A dica nomeia o TERCEIRO eixo, e ele foi medido** (W26): baixar este
+    // número devolve o quique do pouso E uma subida lenta em rampa, mas só a
+    // subida escala com os `Sub-steps` do painel de mundo (`∝ 1/n`) — o quique é
+    // independente deles. Sem esta frase o artista baixa o knob, vê o
+    // personagem andar sozinho, e não tem como saber que o outro knob paga.
     (
         "Leg Damping",
         ids::INSP_PLAYER_DAMPING,
-        "How fast the bounce dies out. Above 1 he pops.",
+        "How fast the bounce dies out. Above 1 he pops. Lower it for a bouncier \
+         landing, then raise World > Sub-steps to stop him creeping up ramps.",
     ),
 ];
 

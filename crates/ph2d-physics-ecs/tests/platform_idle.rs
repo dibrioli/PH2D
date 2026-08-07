@@ -22,7 +22,8 @@ mod scene_fixture;
 use ph2d_core::Vec2;
 use ph2d_ecs::{Name, SimWorld, Transform};
 use ph2d_physics_ecs::{
-    BodyKind, Collider, ColliderShape, LockRotation, PhysicsBridge, PlatformPlayer, RigidBody,
+    BodyKind, Collider, ColliderShape, LockRotation, PhysicsBridge, PhysicsSettings,
+    PlatformPlayer, RigidBody,
 };
 use ph2d_platformer::RideConfig;
 use scene_fixture::pose;
@@ -41,6 +42,15 @@ const FLOAT: f32 = 0.9;
 
 /// Chão inclinado + player em cima, sem entrada nenhuma.
 fn rig(slope_deg: f32, damping: f32) -> (SimWorld, PhysicsBridge) {
+    rig_n(slope_deg, damping, PhysicsSettings::default().substeps)
+}
+
+/// O mesmo rig com o número de SUB-PASSOS escolhido.
+///
+/// ⚠️ Ele existe porque o sub-passo **não é** um detalhe de integração invisível
+/// ao produto: a deriva é `∝ 1/n` e o quique do pouso **não é**, e é essa
+/// diferença que desfaz a solda entre os dois.
+fn rig_n(slope_deg: f32, damping: f32, substeps: u32) -> (SimWorld, PhysicsBridge) {
     let slope = slope_deg.to_radians();
     let mut sim = SimWorld::new();
     sim.world_mut().spawn((
@@ -82,7 +92,12 @@ fn rig(slope_deg: f32, damping: f32) -> (SimWorld, PhysicsBridge) {
         },
         Transform::from_translation(Vec2::new(0.0, 0.5 / slope.cos() + FLOAT)),
     ));
-    (sim, PhysicsBridge::new())
+    let mut bridge = PhysicsBridge::new();
+    bridge.set_settings(PhysicsSettings {
+        substeps,
+        ..PhysicsSettings::default()
+    });
+    (sim, bridge)
 }
 
 /// Quantos segundos a perna tem para assentar antes de a medição começar.
@@ -269,4 +284,129 @@ fn the_leg_still_holds_the_height_it_was_asked_for() {
             "rampa {slope:.0}°: a perna segurou {held:.4} em vez de {FLOAT}"
         );
     }
+}
+
+/// A viagem parada com o número de SUB-PASSOS escolhido.
+fn idle_travel_n(slope_deg: f32, secs: u64, damping: f32, substeps: u32) -> f32 {
+    let (mut sim, mut bridge) = rig_n(slope_deg, damping, substeps);
+    for t in 1..=SETTLE_SECS * 60 {
+        bridge.dispatch(&mut sim, true, t);
+    }
+    let start = pose(&sim);
+    for t in SETTLE_SECS * 60 + 1..=(SETTLE_SECS + secs) * 60 {
+        bridge.dispatch(&mut sim, true, t);
+    }
+    let end = pose(&sim);
+    ((end.0 - start.0).powi(2) + (end.1 - start.1).powi(2)).sqrt()
+}
+
+/// **O QUIQUE DO POUSO, em milímetros** — quanto a perna sobe acima da altura de
+/// repouso depois de tocar.
+///
+/// ⚠️ **O oráculo é o PICO depois do MÍNIMO**, e não a altura final: um pouso
+/// com quique e um sem quique acabam no mesmo lugar, e o que o artista vê é o
+/// caminho entre os dois.
+fn landing_bounce_mm(damping: f32, substeps: u32) -> f32 {
+    let rest = 0.5 + FLOAT;
+    let (mut sim, mut bridge) = rig_n(0.0, damping, substeps);
+    // Largado ACIMA da altura de repouso: é a queda que produz o quique.
+    {
+        let mut q = sim.world_mut().query::<(&PlatformPlayer, &mut Transform)>();
+        for (_, mut t) in q.iter_mut(sim.world_mut()) {
+            t.translation.y += 1.5;
+        }
+    }
+    let mut lowest = f32::INFINITY;
+    let mut peak_after = f32::NEG_INFINITY;
+    for t in 1..=300 {
+        bridge.dispatch(&mut sim, true, t);
+        let y = pose(&sim).1;
+        if y < lowest {
+            lowest = y;
+            peak_after = f32::NEG_INFINITY;
+        } else if y > peak_after {
+            peak_after = y;
+        }
+    }
+    ((peak_after - rest) * 1000.0).max(0.0)
+}
+
+/// **⚠️ A DERIVA E O QUIQUE NÃO ESTÃO SOLDADOS — e a nota que dizia o contrário
+/// foi medida** (W26).
+///
+/// A §8 do handoff fechava a W11c com *"o pouso perdeu os 24 mm de quique que o
+/// `Spring Damping` em meio curso dava; o slider devolve-o"* — uma troca, com o
+/// mesmo knob nos dois lados. Ela está **incompleta**, e o que faltava é um
+/// terceiro eixo:
+///
+/// | | `spring_damping` | `substeps` |
+/// |---|---|---|
+/// | deriva de rampa | `∝ (1 − d)` | **`∝ 1/n`** |
+/// | quique do pouso | `∝ (1 − d)` | **INDEPENDENTE** |
+///
+/// Medido nesta fixture (30°, 10 s parado; queda de 1,5 m no plano):
+///
+/// ```text
+///   substeps   d=0.25  deriva / quique   d=0.50  deriva / quique
+///          1       0.2299 /     34.1        0.1533 /      4.6
+///          4       0.0575 /     32.7        0.0383 /      1.2
+///         12       0.0194 /     32.4        0.0130 /      0.4
+/// ```
+///
+/// ⇒ **O artista que quer o quique pode comprá-lo:** baixar o `Spring Damping`
+/// **e** subir os `Sub-steps` devolve o pouso com uma fração da subida. No teto
+/// medido do outro knob (`MAX_SUBSTEPS = 12`, W2b) o `d = 0,25` mantém 99% do
+/// quique com **um terço** da deriva do default de sub-passos.
+///
+/// ⚠️ **E isto reconcilia a tentativa REJEITADA do `BUGS §7 (3)`:** fatiar o
+/// motor *"corta a deriva 4×"* — que é exactamente **uma potência de `n`** no
+/// default `n = 4`. Fatiar não removia o defeito; ele deslocava a série de um
+/// degrau, e o degrau já é comprável pelo knob que o artista tem.
+///
+/// ⚠️ **A tabela do `BUGS §7` inverteu de sinal e ninguém reconferiu:** lá a
+/// deriva **CRESCE** com `n` (`0,1533 → 0,1788 → 0,1916 → 0,1980` a `d = 0,5`) e
+/// ajusta `A·(1 − 1/(4n))·(1 − d)`. Ela é **PRÉ-`gravity_hold`**; depois daquela
+/// wave a série cai pela metade a cada dobra, com o `n = 1` idêntico.
+///
+/// **Mutação que deve sangrar:** devolver o cancelamento da gravidade ao topo do
+/// tique (juntar `gravity_hold` no `lumped`) — a `gravity_hold` revertida.
+#[test]
+fn the_bounce_is_a_fact_of_the_knob_and_the_drift_is_a_fact_of_the_substeps() {
+    let d = 0.25 * MAX_DAMPING;
+
+    // 1. A deriva CAI pela metade quando os sub-passos dobram.
+    let drift4 = idle_travel_n(30.0, 10, d, 4);
+    let drift8 = idle_travel_n(30.0, 10, d, 8);
+    let ratio = drift8 / drift4;
+    assert!(
+        (0.45..0.55).contains(&ratio),
+        "a deriva tinha de cair ~1/n ao dobrar os sub-passos: {drift4:.4} -> \
+         {drift8:.4} (razao {ratio:.3}). A tabela do BUGS §7 e' PRE-`gravity_hold` \
+         e la' esta razao e' MAIOR que 1"
+    );
+
+    // 2. E o QUIQUE não se move com eles — é a metade que desfaz a solda.
+    let bounce4 = landing_bounce_mm(d, 4);
+    let bounce8 = landing_bounce_mm(d, 8);
+    assert!(
+        bounce4 > 10.0,
+        "fixture: com o knob em quarto de curso o pouso TEM de quicar ({bounce4:.1} mm)"
+    );
+    let keep = bounce8 / bounce4;
+    assert!(
+        (0.9..1.1).contains(&keep),
+        "o quique mudou com os sub-passos ({bounce4:.1} -> {bounce8:.1} mm, {keep:.3}) \
+         -- se ele seguisse a deriva os dois estariam soldados e nao haveria \
+         terceiro eixo"
+    );
+
+    // 3. O controle: quem compra o quique é o KNOB, não os sub-passos. Sem esta
+    //    metade, uma lei que desse o mesmo quique em todo amortecimento passaria
+    //    nas duas de cima.
+    let at_ceiling = landing_bounce_mm(MAX_DAMPING, 4);
+    assert!(
+        at_ceiling * 4.0 < bounce4,
+        "o teto do amortecimento tinha de matar o quique ({at_ceiling:.1} mm contra \
+         {bounce4:.1} mm em quarto de curso)"
+    );
 }

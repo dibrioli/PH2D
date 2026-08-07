@@ -388,3 +388,87 @@ fn measure_the_drift_against_the_slope() {
            autorado e' 45deg, e a cena =88 existe para esse par."
     );
 }
+
+/// O rig do POUSO: a mesma cápsula, no plano, largada de `drop` metros ACIMA da
+/// altura de repouso da perna.
+fn landing_rig(damping: f32, substeps: u32, drop: f32) -> (SimWorld, PhysicsBridge) {
+    let (mut sim, bridge) = rig(0.0, damping, substeps);
+    let mut q = sim.world_mut().query::<(&PlatformPlayer, &mut Transform)>();
+    for (_, mut t) in q.iter_mut(sim.world_mut()) {
+        t.translation.y += drop;
+    }
+    (sim, bridge)
+}
+
+/// **O QUIQUE DO POUSO, em milímetros** — quanto a perna sobe acima da altura de
+/// repouso depois de tocar.
+///
+/// ⚠️ **O oráculo é o PICO depois do mínimo**, não a altura final: um pouso sem
+/// quique e um pouso com quique acabam no mesmo lugar, e é o caminho entre os
+/// dois que o artista vê.
+fn landing_bounce_mm(damping: f32, substeps: u32) -> f32 {
+    let rest = 0.5 + FLOAT;
+    let (mut sim, mut bridge) = landing_rig(damping, substeps, 1.5);
+    let mut lowest = f32::INFINITY;
+    let mut peak_after = f32::NEG_INFINITY;
+    for t in 1..=300 {
+        bridge.dispatch(&mut sim, true, t);
+        let y = pose(&sim).1;
+        if y < lowest {
+            lowest = y;
+            peak_after = f32::NEG_INFINITY;
+        } else if y > peak_after {
+            peak_after = y;
+        }
+    }
+    ((peak_after - rest) * 1000.0).max(0.0)
+}
+
+/// **⚠️ A TABELA DO `BUGS_physics.md` §7 ESTÁ STALE, E O SINAL DELA INVERTEU.**
+///
+/// Aquela tabela diz que a deriva **CRESCE** com o número de sub-passos
+/// (`0,1533 → 0,1788 → 0,1916 → 0,1980` a `d = 0,5`) e ajusta
+/// `A·(1 − 1/(4n))·(1 − d)`, cujo limite `n → ∞` é o próprio `A`. Ela foi medida
+/// **antes da wave `gravity_hold`**, que passou a integrar o cancelamento da
+/// gravidade como a gravidade — e depois dela a série **CAI pela metade a cada
+/// dobra** (`1/n` exacto), com o `n = 1` idêntico.
+///
+/// A consequência é de PRODUTO, e é o contrário do que a nota do `RideConfig`
+/// deixa entender: **a deriva e o quique deixaram de estar soldados.** Eles são
+/// os dois `∝ (1 − d)`, mas só a deriva é `∝ 1/n` — então `substeps` é um
+/// terceiro eixo que compra o quique de volta sem devolver a subida inteira.
+///
+/// ⚠️ **E ela reconcilia a tentativa REJEITADA:** fatiar o motor *"corta a
+/// deriva 4×"* (BUGS §7 (3)) — que é exactamente **uma potência de `n`** no
+/// default `n = 4`. Fatiar não some com o defeito; ele desloca a série de um
+/// degrau, e o degrau já é comprável pelo knob que o artista tem.
+#[test]
+#[ignore = "sonda"]
+fn measure_whether_substeps_buy_the_bounce_back() {
+    println!("\n=== A DERIVA (30 graus, 10 s, m) x O QUIQUE DO POUSO (plano, mm) ===");
+    println!("(⚠️ a tabela do BUGS §7 e' PRE-`gravity_hold`: la' a deriva CRESCE com n)\n");
+    println!(
+        "{:>9}  {:>22}  {:>22}",
+        "substeps", "d=0.25  deriva / quique", "d=0.50  deriva / quique"
+    );
+    for &n in &[1_u32, 2, 4, 8, 12] {
+        println!(
+            "{n:>9}  {:>10.4} / {:>8.1}  {:>10.4} / {:>8.1}",
+            idle_travel(30.0, 10, 0.25, n),
+            landing_bounce_mm(0.25, n),
+            idle_travel(30.0, 10, 0.5, n),
+            landing_bounce_mm(0.5, n),
+        );
+    }
+    println!(
+        "\n{:>9}  {:>22}",
+        "substeps", "d=1.00 (o default) deriva / quique"
+    );
+    for &n in &[4_u32, 12] {
+        println!(
+            "{n:>9}  {:>10.4} / {:>8.1}",
+            idle_travel(30.0, 10, 1.0, n),
+            landing_bounce_mm(1.0, n)
+        );
+    }
+}

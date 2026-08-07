@@ -992,8 +992,35 @@ saber que ela já foi medida.
 
 ## §8 — Aberto, com o preço ao lado
 
-- **W11c:** o pouso perdeu os 24 mm de quique que o `Spring Damping` em meio curso
-  dava. O slider devolve-o; a troca está nomeada no handoff da W11b §5.
+- ~~**W11c:** o pouso perdeu os 24 mm de quique que o `Spring Damping` em meio
+  curso dava~~ — **FECHADO pela W26** (2026-08-07), e a medição mostrou que a
+  troca tem um **TERCEIRO eixo** que esta nota escondia:
+
+  | | `spring_damping` | `substeps` |
+  |---|---|---|
+  | deriva de rampa | `∝ (1 − d)` | **`∝ 1/n`** |
+  | quique do pouso | `∝ (1 − d)` | **INDEPENDENTE** |
+
+  ⇒ **os dois não estão soldados.** Medido (30°, 10 s parado; queda de 1,5 m no
+  plano): a `d = 0,25` o quique fica em **32,7 mm a `n = 4`** e **32,4 mm a
+  `n = 12`** enquanto a deriva cai de **0,0575 m para 0,0194 m**. No teto medido
+  do outro knob (`MAX_SUBSTEPS = 12`, W2b) sobra **99% do quique com um terço da
+  subida**. O tooltip do **Leg Damping** passou a dizê-lo — sem ele o artista
+  baixa o knob, vê o personagem andar sozinho e não tem como saber que o outro
+  paga.
+  ⚠️ **E a tabela de sub-passos do `BUGS_physics.md` §7 estava STALE:** lá a
+  deriva **CRESCE** com `n` e ajusta `A·(1 − 1/(4n))`, cujo limite não é zero —
+  ela foi medida **antes da wave `gravity_hold`**, e depois dela a série
+  **inverteu** (cai pela metade a cada dobra, com o `n = 1` idêntico). Quem a
+  lesse hoje concluiria que subir sub-passos não ajuda. Corrigida no lugar, com a
+  velha mantida como o que **decidiu** aquela wave.
+  ⚠️ **Ela também reconcilia o item `BUGS §7 (3)`:** fatiar o motor *"corta a
+  deriva 4×"* é exactamente **uma potência de `n`** no default — fatiar nunca
+  removeria o defeito, só deslocaria a série de um degrau, e o degrau já é
+  comprável pelo knob que o artista tem.
+  ⚠️ **O default NÃO se move:** ele fica no teto (deriva zero exacta), que é o
+  que o smoke de 05/08 pediu. O que a wave entrega é o caminho de volta para
+  quem quer o quique.
 - **W12:** ⚠️ **MEDIDO pela W19, e é maior do que esta nota dizia.** A escada de
   pranchas tem uma **janela útil** e as DUAS bordas dela são defeitos — abaixo,
   as pranchas ficam fantasma para sempre; logo acima, o personagem é

@@ -243,6 +243,24 @@ fn paint_symmetry(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y
 /// muda a lâmpada, o outro acrescenta uma anotação por cima. Nenhum deles toca a
 /// escultura, e é isso que os separa de tudo que está acima na coluna.
 fn paint_shading_tail(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y: f32) -> f32 {
+    // **ASSAR O AO**, logo abaixo do slider que o mostra — a força só significa
+    // alguma coisa depois de haver o que mostrar, e separar os dois faria o
+    // artista arrastar um controle inerte sem nada dizendo por quê.
+    let mut y = command(
+        ctx,
+        ids::SCULPT3D_BAKE_AO,
+        tr("panel.sculpt3d.bake_ao"),
+        x,
+        w,
+        y,
+    );
+    // ⚠️ **E a obsolescência é DITA, não deixada para o artista descobrir.** Um
+    // AO velho não parece velho: parece uma escolha de iluminação. A linha só
+    // existe quando há o que avisar — um aviso permanente vira moldura.
+    if snap.ao_stale {
+        y = readout(ctx, tr("panel.sculpt3d.ao_stale"), x, w, y);
+    }
+    let y = y + Spacing::Sm.px();
     // A primeira opção é o RIG e as seguintes são os materiais, então o índice
     // selecionado é `matcap + 1` — o mesmo deslocamento que o `ShadeRaw` faz
     // para o device. ⚠️ Ele é escrito aqui e lido no `event` pela mesma

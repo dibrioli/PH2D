@@ -39,6 +39,8 @@ const VIEWPORT: Rect = Rect {
 /// Põe um estado conhecido na frente do painel e limpa o que estiver na fila.
 fn arrange(ui: Sculpt3dUi) -> (MockPanelHost, Sculpt3dPanelState) {
     set_current_sculpt3d(Some(Sculpt3dSnapshot {
+        // O AO fresco e' o caso comum; o gate do aviso arma o outro.
+        ao_stale: false,
         ui,
         dyntopo: false,
         level: 0,

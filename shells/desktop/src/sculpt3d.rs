@@ -133,6 +133,11 @@ const SCALE_PER_PX: f32 = 0.01;
 #[path = "sculpt3d_scenes.rs"]
 mod scenes;
 
+/// O QUE A CENA DIZ ao artista — ver o módulo.
+#[path = "sculpt3d_announce.rs"]
+mod announce_mod;
+pub(crate) use announce_mod::announce;
+
 /// **AS MALHAS DE FIXTURE** — como cada modelo de smoke é esculpido. Irmão das
 /// cenas, e o corte é entre *que cena o smoke monta* e *como a malha dela é
 /// FEITA*; ele nasceu quando o arquivo das cenas cruzou o cap de LOC.
@@ -140,9 +145,9 @@ mod scenes;
 mod fixtures;
 
 pub(crate) use scenes::{
-    alpha_scene, announce, bake_scene, cavity_scene, donation_scene, dyntopo_scene, fuse_scene,
-    holes_scene, remesh_scene, reopen_scene, reversion_scene, scene_objects, smoke_armed,
-    smoke_mesh, turn_scene, wants_canvas,
+    alpha_scene, bake_scene, cavity_scene, donation_scene, dyntopo_scene, fuse_scene, holes_scene,
+    remesh_scene, reopen_scene, reversion_scene, scene_objects, smoke_armed, smoke_mesh,
+    turn_scene, wants_canvas,
 };
 
 /// O que o arrasto está fazendo.
@@ -373,6 +378,10 @@ pub(crate) struct Sculpt3dScene {
     /// W3 entregou e o Enio aprovou, e um canal de sombreamento que se arma
     /// sozinho muda a arte de todo mundo que já esculpiu. O `Shift+C` o liga.
     cavity: f32,
+    /// Quanto do AO ASSADO entra no sombreamento — o irmão da `cavity`, e o
+    /// oposto dela na origem: a cavidade é derivada e existe sempre, o AO só
+    /// existe depois de o artista pedir um bake.
+    ao: f32,
     stroke: SculptStroke,
     undo: Vec<Entry>,
     /// **O futuro guardado** — o que um Ctrl+Z tirou e um Ctrl+Shift+Z devolve.
@@ -443,6 +452,7 @@ impl Sculpt3dScene {
             symmetry: Symmetry::default(),
             rig: LightRig::default(),
             cavity: ph2d_mesh_render::DEFAULT_CAVITY,
+            ao: ph2d_mesh_render::DEFAULT_AO_STRENGTH,
             stroke: SculptStroke::default(),
             undo: Vec::new(),
             redo: Vec::new(),
@@ -495,6 +505,7 @@ impl Sculpt3dScene {
     pub(crate) fn shade(&self) -> ph2d_mesh_render::Shade {
         ph2d_mesh_render::Shade {
             cavity: self.cavity,
+            ao: self.ao,
             matcap: self.matcap,
             wireframe: self.wireframe,
         }

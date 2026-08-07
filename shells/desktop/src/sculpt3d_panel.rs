@@ -38,6 +38,7 @@ impl Sculpt3dScene {
                 matcap: self.matcap,
                 wireframe: self.wireframe,
                 cavity: self.cavity,
+                ao: self.ao,
                 light_az_deg: f32::from(light.angle_deg),
                 light_elev_deg: f32::from(light.elev_deg),
                 detail: detail_index(self.dyntopo.detail),
@@ -45,6 +46,7 @@ impl Sculpt3dScene {
             dyntopo: self.dyntopo.armed,
             level: self.level(),
             level_count: self.level_count(),
+            ao_stale: self.mesh().ao_is_stale(),
             pieces: self.objects.len(),
             isolated: self.isolated.is_some(),
             matcaps: ph2d_mesh_render::MATCAPS.as_slice(),
@@ -66,6 +68,7 @@ impl Sculpt3dScene {
         self.matcap = ui.matcap;
         self.wireframe = ui.wireframe;
         self.cavity = ui.cavity;
+        self.ao = ui.ao;
         let l = self.rig.current_mut();
         // Graus INTEIROS é a unidade em que o rig é autorado — o `f32` existe só
         // porque a pista de um slider é contínua.
@@ -130,6 +133,10 @@ impl Sculpt3dScene {
                 ),
                 None => eprintln!("[sculpt3d] nao' reconstroi com a pilha montada: reverta antes"),
             },
+            Sculpt3dIntent::BakeAo => {
+                let r = self.bake_ao();
+                eprintln!("[sculpt3d] AO assado: {} vertices em {:.0} ms", r.0, r.1);
+            }
             Sculpt3dIntent::CloseHoles => match self.close_holes() {
                 Some(r) if r.is_noop() => {
                     eprintln!("[sculpt3d] nenhum buraco: a malha ja' e' fechada");

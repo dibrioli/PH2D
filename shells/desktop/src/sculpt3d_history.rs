@@ -23,6 +23,17 @@ use ph2d_mesh::{DetachedLevel, Reversal, Stamped};
 
 use super::{ObjectId, SceneObject, Sculpt3dScene, SculptStroke};
 
+/// A resolução do campo que um bake de AO constrói.
+///
+/// ⚠️ **É a mesma do remesh (`ph2d_sdf::DEFAULT_RESOLUTION`), e a razão é
+/// MEDIDA:** voxelizar é limitado por TRIÂNGULO e não por célula — subir a
+/// resolução de 64 para 192 (**23× as células**) custa só **1,52×**, enquanto
+/// subir a malha de 13,7 k para 425 k custa **11,3×**
+/// (`ph2d-sdf/tests/measure_ao.rs`). Um campo FINO é barato; então não há
+/// economia a fazer aqui, e um segundo número seria um knob que compra pouco e
+/// precisa concordar com o do remesh.
+const AO_FIELD_RESOLUTION: u32 = ph2d_sdf::DEFAULT_RESOLUTION;
+
 /// **O estado anterior de um gesto** — a entrada de undo.
 ///
 /// ⚠️ **Um enum e não um struct com bandeiras.** Ele começou como um `struct`
@@ -327,6 +338,42 @@ impl Sculpt3dScene {
         self.stroke = SculptStroke::default();
         self.mesh_rebuilt();
         Some(report)
+    }
+
+    /// **ASSA O AO** — mede quanto do céu cada vértice enxerga e instala o canal.
+    /// Devolve `(vértices, ms)`.
+    ///
+    /// ⚠️ **É um BOTÃO porque não cabe num pen-up, e o número é medido:** o campo
+    /// custa ~301 ms e o traço ~37 ms na malha que a cena `=16` abre
+    /// (`ph2d-sdf/tests/measure_ao.rs`). Um passe automático por traço gastaria
+    /// um terço de segundo a cada pincelada para produzir um dado que o traço
+    /// seguinte invalida.
+    ///
+    /// ⚠️ **E ele NÃO entra na história, de propósito.** O que o undo guarda é
+    /// GEOMETRIA, e o AO é uma medição dela — desfazer um bake devolveria uma
+    /// oclusão que descreve a mesma forma, ou seja nada. O gesto inverso já
+    /// existe e é mais direto: baixar a força a zero, ou assar de novo.
+    pub(super) fn bake_ao(&mut self) -> (usize, f64) {
+        let t = std::time::Instant::now();
+        let mesh = self.mesh();
+        let mut field = ph2d_sdf::VoxelField::for_bounds(mesh.bounds(), AO_FIELD_RESOLUTION);
+        field.voxelize(mesh);
+        field.flood_fill();
+        let ao = ph2d_sdf::bake_ao(
+            &field,
+            mesh.positions(),
+            mesh.normals(),
+            ph2d_sdf::AoParams::for_bounds(mesh.bounds()),
+        );
+        let n = ao.len();
+        if let Some(m) = self.mesh_mut() {
+            m.set_ao(ao);
+        }
+        // O canal mudou: o buffer do device descreve o bake anterior (ou o céu
+        // aberto de antes do primeiro). A rota parcial não o toca de propósito,
+        // então quem o leva é o re-upload inteiro.
+        self.mesh_rebuilt();
+        (n, t.elapsed().as_secs_f64() * 1000.0)
     }
 
     /// **Troca de nível** — `up` sobe, senão desce. Devolve `false` na ponta.

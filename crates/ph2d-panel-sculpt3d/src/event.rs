@@ -19,7 +19,7 @@ fn index_of(group: &[ph2d_a11y::NodeId], id: ph2d_a11y::NodeId) -> Option<usize>
 /// Todo comando de um só toque: o id e o que ele significa. Uma tabela, e não uma
 /// cascata de `if id == …`, porque o `event` e o `populate` têm de concordar sobre
 /// a LISTA e uma cascata é o formato que apodrece calado.
-const COMMANDS: &[(ph2d_a11y::NodeId, Sculpt3dIntent)] = &[
+pub(crate) const COMMANDS: &[(ph2d_a11y::NodeId, Sculpt3dIntent)] = &[
     (ids::SCULPT3D_DYNTOPO, Sculpt3dIntent::ToggleDyntopo),
     (ids::SCULPT3D_LEVEL_DOWN, Sculpt3dIntent::ChangeLevel(false)),
     (ids::SCULPT3D_LEVEL_UP, Sculpt3dIntent::ChangeLevel(true)),
@@ -27,6 +27,7 @@ const COMMANDS: &[(ph2d_a11y::NodeId, Sculpt3dIntent)] = &[
     (ids::SCULPT3D_REVERSE, Sculpt3dIntent::ReverseLevel),
     (ids::SCULPT3D_REMESH, Sculpt3dIntent::Remesh),
     (ids::SCULPT3D_CLOSE_HOLES, Sculpt3dIntent::CloseHoles),
+    (ids::SCULPT3D_BAKE_AO, Sculpt3dIntent::BakeAo),
     (ids::SCULPT3D_DUPLICATE, Sculpt3dIntent::Duplicate),
     (ids::SCULPT3D_DELETE, Sculpt3dIntent::Delete),
     (ids::SCULPT3D_ISOLATE, Sculpt3dIntent::ToggleIsolate),

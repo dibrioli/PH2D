@@ -39,7 +39,7 @@ mod wire;
 pub use camera::Camera3d;
 pub use lighting::{LampRaw, RigRaw};
 pub use pipeline::{MeshRenderer, camera_uniform_bytes, view_proj_from_bytes};
-pub use shade::{CAVITY_GAIN, DEFAULT_CAVITY, MATCAPS, Shade, ShadeRaw};
+pub use shade::{CAVITY_GAIN, DEFAULT_AO_STRENGTH, DEFAULT_CAVITY, MATCAPS, Shade, ShadeRaw};
 pub use wire::wire_indices;
 
 /// **O material do barro** — o realce e a largura dele.

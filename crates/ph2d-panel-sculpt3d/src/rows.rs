@@ -255,6 +255,19 @@ static SHADING: &[Row] = &[
         show: under_the_rig,
         in_tail: false,
     },
+    Row {
+        label: "panel.sculpt3d.ao",
+        slider: ids::SCULPT3D_AO,
+        chip: ids::SCULPT3D_AO_NUM,
+        min: 0.0,
+        max: 1.0,
+        step: 0.05, // LITERAL-PX-OK: passo de um knob adimensional, não métrica de layout
+        decimals: 2,
+        get: |u| u.ao,
+        set: |u, v| u.ao = v,
+        show: always,
+        in_tail: false,
+    },
 ];
 
 /// O piso da elevação, lido do dono dele.

@@ -51,6 +51,10 @@ pub struct Sculpt3dUi {
     pub symmetry: Symmetry,
     /// Quanto a curvatura escurece a fresta e clareia a crista.
     pub cavity: f32,
+    /// Quanto do AO ASSADO entra. Nasce em zero, e não por timidez: o canal só
+    /// existe depois de um bake, então qualquer default acima de zero faria a
+    /// peça escurecer sozinha no instante do primeiro bake.
+    pub ao: f32,
     /// Azimute da lâmpada selecionada, em graus.
     pub light_az_deg: f32,
     /// Elevação da lâmpada selecionada, em graus.
@@ -74,6 +78,7 @@ impl Default for Sculpt3dUi {
             radius_px: 50.0, // LITERAL-PX-OK: espelha o DEFAULT_RADIUS_PX do shell (raio de pincel, medido)
             symmetry: Symmetry::default(),
             cavity: 0.0,
+            ao: 0.0,
             light_az_deg: 0.0,
             light_elev_deg: 45.0, // LITERAL-PX-OK: graus de elevacao, nao metrica de design
             matcap: None,
@@ -95,6 +100,14 @@ pub struct Sculpt3dSnapshot {
     /// O nível de multiresolução vivo, e quantos existem.
     pub level: usize,
     pub level_count: usize,
+    /// **O AO assado descreve uma forma que não existe mais.**
+    ///
+    /// ⚠️ Um FATO, como `dyntopo` e `level`: o painel o MOSTRA e não o possui —
+    /// quem sabe se a malha mudou desde o bake é a malha. E ele é mostrado em
+    /// vez de escondido porque a obsolescência deste canal é **inerente ao
+    /// desenho**: um AO velho não parece velho, parece uma escolha de
+    /// iluminação.
+    pub ao_stale: bool,
     /// Quantas peças a cena tem, e se uma delas está isolada.
     pub pieces: usize,
     pub isolated: bool,
@@ -141,6 +154,11 @@ pub enum Sculpt3dIntent {
     ReverseLevel,
     Remesh,
     CloseHoles,
+    /// Mede quanto do céu cada vértice enxerga e instala o canal.
+    ///
+    /// ⚠️ Um comando e não um knob: o bake custa ~338 ms na malha da cena `=16`,
+    /// então ele é um gesto que o artista PEDE, nunca um passe que roda sozinho.
+    BakeAo,
     /// As quatro primitivas, na ordem em que o painel as lista.
     ///
     /// ⚠️ **Um comando por forma, e não um enum espelho do `Primitive` do

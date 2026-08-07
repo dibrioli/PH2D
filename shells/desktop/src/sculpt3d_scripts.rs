@@ -16,7 +16,7 @@ use super::*;
 /// ⚠️ Recebe a MALHA porque dois roteiros medem a fixture antes de falar dela (a `=4` conta as
 /// arestas de beira, a `=6` mede a maior aresta): um roteiro que afirmasse um número sem o medir
 /// seria exatamente a cena mentindo, que é o defeito que o smoke do Colorize pagou.
-pub(super) fn for_scene(mesh: &ph2d_mesh::Mesh) {
+pub(crate) fn for_scene(mesh: &ph2d_mesh::Mesh) {
     if crate::sculpt3d::holes_scene() {
         // ⚠️ **A cena DECLARA o furo que montou.** Um smoke de fechar buraco
         // sobre uma malha sem buraco é indistinguível da feature quebrada —

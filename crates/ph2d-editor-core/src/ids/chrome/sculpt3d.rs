@@ -141,6 +141,18 @@ pub const SCULPT3D_CAVITY: NodeId = hash_node_id("sculpt3d.cavity");
 /// Chip ligado a [`SCULPT3D_CAVITY`].
 pub const SCULPT3D_CAVITY_NUM: NodeId = hash_node_id("sculpt3d.cavity_num");
 
+/// **QUANTO DO AO ASSADO ENTRA** — irmão da cavidade no painel, e o oposto dela
+/// na origem: a cavidade é derivada e existe sempre, o AO só existe depois de um
+/// bake explícito.
+pub const SCULPT3D_AO: NodeId = hash_node_id("sculpt3d.ao");
+/// Chip ligado a [`SCULPT3D_AO`].
+pub const SCULPT3D_AO_NUM: NodeId = hash_node_id("sculpt3d.ao_num");
+/// **ASSAR O AO** — o botão que mede quanto do céu cada vértice enxerga.
+///
+/// ⚠️ É um BOTÃO e não um passe automático porque o bake não cabe num pen-up:
+/// ~338 ms na malha que a cena `=16` abre (`ph2d-sdf/tests/measure_ao.rs`).
+pub const SCULPT3D_BAKE_AO: NodeId = hash_node_id("sculpt3d.bake_ao");
+
 /// **COM QUE LUZ o barro é mostrado** — a primeira opção é o RIG DO ARTISTA e as
 /// outras são os matcaps de [`ph2d_mesh_render::MATCAPS`].
 ///

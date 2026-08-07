@@ -93,23 +93,24 @@ pub fn populate(store: &mut WidgetStore) {
     // espelho e o dyntopo, que PARECEM checkbox e não são: um `Checkbox` emite
     // `Toggled`, que o `event.rs` deste painel não encaminha, então ele nasceria
     // registrado e morto (o mesmo aviso que o painel de física carrega).
+    // ⚠️ **Todo comando de um toque é registrado A PARTIR da tabela que os
+    // despacha**, e não de uma segunda lista escrita à mão. A lista à mão que
+    // morava aqui apodreceu na primeira adição — o botão de assar o AO nasceu
+    // pintado, hit-indexado e **morto sob o mouse**, e quem o pegou foi o
+    // `every_painted_control_is_clickable_where_it_is_drawn`. Derivando, um
+    // comando novo nasce clicável pelo mesmo commit que o faz existir.
+    for (id, _) in crate::event::COMMANDS {
+        button(store, *id);
+    }
+    // Os que NÃO são comandos de um toque: as três opções de simetria (chips de
+    // um grupo), os dois toggles que o `event` resolve por outra rota, e o fechar
+    // do painel.
     for id in [
         ids::SCULPT3D_SYM_X,
         ids::SCULPT3D_SYM_Y,
         ids::SCULPT3D_SYM_Z,
-        ids::SCULPT3D_DYNTOPO,
         ids::SCULPT3D_WIREFRAME,
         ids::SCULPT3D_ACCUMULATE,
-        ids::SCULPT3D_LEVEL_DOWN,
-        ids::SCULPT3D_LEVEL_UP,
-        ids::SCULPT3D_SUBDIVIDE,
-        ids::SCULPT3D_REVERSE,
-        ids::SCULPT3D_REMESH,
-        ids::SCULPT3D_CLOSE_HOLES,
-        ids::SCULPT3D_DUPLICATE,
-        ids::SCULPT3D_DELETE,
-        ids::SCULPT3D_ISOLATE,
-        ids::SCULPT3D_MERGE,
         ids::SCULPT3D_CLOSE,
     ] {
         button(store, id);

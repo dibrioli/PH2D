@@ -55,7 +55,8 @@ fn no_edge_of_any_face_is_missing() {
     }
     assert!(!from_faces.is_empty(), "a fixture não tem faces");
     assert_eq!(
-        drawn, from_faces,
+        drawn,
+        from_faces,
         "a lista de arestas e as faces discordam ({} contra {})",
         drawn.len(),
         from_faces.len()

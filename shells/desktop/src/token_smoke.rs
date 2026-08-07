@@ -46,10 +46,19 @@ fn outlined(mut p: VecPath, rgb: [u8; 3]) -> VecPath {
 pub(crate) fn frame(app: &mut crate::App, f: u32) {
     match f {
         3 => build(app),
-        4 => announce(app),
+        4 => adopt(app),
+        5 => announce(app),
         _ => {}
     }
 }
+
+/// A BARRA da W4c.4: uma moldura com três filhos, para o token de VÃO ter onde espaçar.
+///
+/// ⚠️ **Ela não recebe `VecLayout`**, pela mesma lei do resto desta cena e da cena do auto layout:
+/// o fluxo é o que o artista arma. Uma cena que já o trouxesse ligado provaria o passe e não o
+/// produto.
+const BAR_KIDS: usize = 3;
+const BAR_Y: [f64; 2] = [-1.4, -0.4];
 
 /// Um card: o painel de fundo (com traço) + a barra de "texto" dentro.
 fn card(s: &mut ph2d_vec_scene::VecScene, x: f64) {
@@ -63,11 +72,18 @@ fn card(s: &mut ph2d_vec_scene::VecScene, x: f64) {
     ));
 }
 
-fn build(app: &mut crate::App) {
-    let Some(gfx) = app.gfx.as_mut() else {
-        return;
-    };
-    let s = &mut gfx.vec_scene;
+/// **A geometria da cena, numa porta pura** — a mesma que o produto empurra e que o gate mede.
+///
+/// ⚠️ O gate re-implementava esta lista, e por isso ela DERIVAVA: acrescentar uma forma ao produto
+/// deixava o gate a medir a cena de ontem, verde, sobre um roteiro que já falava de outra coisa.
+#[cfg(test)]
+fn scene_paths() -> ph2d_vec_scene::VecScene {
+    let mut s = ph2d_vec_scene::VecScene::new();
+    fill_scene(&mut s);
+    s
+}
+
+fn fill_scene(s: &mut ph2d_vec_scene::VecScene) {
     card(s, CARD_X[0]);
     card(s, CARD_X[1]);
     // A forma SEM TRAÇO — onde a row do token de traço não é oferecida.
@@ -75,6 +91,57 @@ fn build(app: &mut crate::App) {
         rectangle([CARD_X[1] + 1.6, 0.4], [CARD_X[1] + 2.4, 1.2]),
         [200, 150, 120],
     ));
+    // A BARRA (W4c.4): os três filhos primeiro, a moldura por último — a mesma ordem de pilha da
+    // cena do auto layout, e pela mesma razão (a moldura é o fundo do card).
+    for i in 0..BAR_KIDS {
+        let x = CARD_X[0] + 0.15 + i as f64 * 0.5;
+        s.push_path(tint(
+            rectangle([x, BAR_Y[0] + 0.15], [x + 0.4, BAR_Y[1] - 0.15]),
+            [120, 170, 220],
+        ));
+    }
+    s.push_path(tint(
+        rectangle([CARD_X[0], BAR_Y[0]], [CARD_X[0] + 3.4, BAR_Y[1]]),
+        [48, 48, 56],
+    ));
+}
+
+fn build(app: &mut crate::App) {
+    let Some(gfx) = app.gfx.as_mut() else {
+        return;
+    };
+    fill_scene(&mut gfx.vec_scene);
+}
+
+/// Pendura os três filhos na barra e a marca como MOLDURA — sem armar o fluxo (ver [`BAR_KIDS`]).
+fn adopt(app: &mut crate::App) {
+    let Some(gfx) = app.gfx.as_mut() else {
+        return;
+    };
+    let ids: Vec<u64> = gfx.vec_scene.paths().iter().map(|p| p.id).collect();
+    // A barra é o ÚLTIMO caminho; os três filhos são os que a precedem.
+    let Some((&bar, kids)) = ids.split_last().map(|(b, r)| (b, &r[r.len() - BAR_KIDS..])) else {
+        return;
+    };
+    let Some(&fb) = app.vec_entities.get(&bar) else {
+        return;
+    };
+    let frame = ph2d_ecs::Entity::from_bits(fb);
+    if let Ok(mut e) = gfx.sim.world_mut().get_entity_mut(frame) {
+        e.insert(ph2d_ecs::VecFrame { clip: false });
+    }
+    for k in kids {
+        let Some(&kb) = app.vec_entities.get(k) else {
+            continue;
+        };
+        if let Ok(mut e) = gfx
+            .sim
+            .world_mut()
+            .get_entity_mut(ph2d_ecs::Entity::from_bits(kb))
+        {
+            e.insert(ph2d_ecs::ChildOf(frame));
+        }
+    }
 }
 
 fn announce(app: &mut crate::App) {
@@ -117,6 +184,23 @@ fn announce(app: &mut crate::App) {
     eprintln!("     la', e a do Stroke NAO: um token de cor nao inventa a largura que falta.");
     eprintln!(" 10. Ctrl+Z depois de bindar e de soltar — os dois desfazem.");
     eprintln!(" 11. Ctrl+S e Ctrl+O: o binding sobrevive ao arquivo.");
+    eprintln!("[token] ⚠️ **W4c.4 — OS TOKENS DE ESCALA (e' ESTA a wave nova):**");
+    eprintln!(" 12. Selecione o FUNDO do card da esquerda (ele tem traco). Na secao Stroke, logo");
+    eprintln!("     abaixo do slider 'Width', ha' uma row 'Token' NOVA. Escolha 'stroke.heavy'.");
+    eprintln!("     ⚠️ O contorno ENGROSSA, e o CHIP do Width ganha a rachura: o numero que ele");
+    eprintln!("     mostra e' a largura autorada, e o token a cobre.");
+    eprintln!(" 13. ⚠️ **A pergunta:** va' ao painel de TOKENS (tecla T), secao 'Scale (px)', e");
+    eprintln!("     mexa em 'stroke.heavy'. O contorno da ARTE segue junto — e o app tambem.");
+    eprintln!(" 14. Digite um numero no campo Width. ⚠️ O token volta para None sozinho: autorar");
+    eprintln!("     um valor SOLTA o token, a mesma lei da cor.");
+    eprintln!(" 15. Selecione a BARRA de baixo (a moldura com tres quadrados). Na secao Layout");
+    eprintln!("     escolha a direcao 'Row' — os tres entram em fila. Agora, na row 'Token' logo");
+    eprintln!("     abaixo do campo 'Gap', escolha 'spacing.4xl'. ⚠️ A FILA SE ABRE.");
+    eprintln!("     Mexa em 'spacing.4xl' no painel de tokens: o espacamento segue.");
+    eprintln!(" 16. ⚠️ CONTROLE da regua: um token de escala vale PIXELS e o documento mede");
+    eprintln!("     MUNDO. Sem a regua do projeto (Settings > pixels per meter, 100 por padrao)");
+    eprintln!("     'stroke.default' seria 1,5 UNIDADE — um traco com 19% da altura de uma");
+    eprintln!("     moldura de telefone. Se algum traco sair grosso assim, a regua se perdeu.");
 }
 
 #[cfg(test)]
@@ -129,22 +213,54 @@ mod tests {
     /// passos 3 e 7 dependem de haver forma COM traço e forma SEM traço na mesma tela.
     #[test]
     fn the_scene_holds_what_the_script_asks_for() {
-        let mut s = ph2d_vec_scene::VecScene::new();
-        card(&mut s, CARD_X[0]);
-        card(&mut s, CARD_X[1]);
-        s.push_path(tint(
-            rectangle([CARD_X[1] + 1.6, 0.4], [CARD_X[1] + 2.4, 1.2]),
-            [200, 150, 120],
-        ));
+        let s = scene_paths();
         let stroked = s.paths().iter().filter(|p| p.stroke.is_some()).count();
         let bare = s.paths().iter().filter(|p| p.stroke.is_none()).count();
-        assert_eq!(s.paths().len(), 5, "dois cards de duas pecas + a forma nua");
-        assert_eq!(stroked, 2, "o passo 3 precisa de forma COM traco");
-        assert!(bare >= 1, "o passo 7 precisa de forma SEM traco");
+        assert_eq!(
+            s.paths().len(),
+            5 + BAR_KIDS + 1,
+            "dois cards de duas pecas + a forma nua + a barra com os filhos dela"
+        );
+        assert_eq!(stroked, 2, "os passos 3 e 12 precisam de forma COM traco");
+        assert!(bare >= 1, "o passo 9 precisa de forma SEM traco");
         assert!(
             s.paths().iter().all(|p| p.fill.is_some()),
             "toda forma tem preenchimento — o passo 1 binda o Fill"
         );
+    }
+
+    /// **A BARRA do passo 15 existe, e os filhos dela CABEM dentro dela.**
+    ///
+    /// ⚠️ O oráculo é a GEOMETRIA, não a contagem: uma barra estreita demais faria o `Row` empurrar
+    /// os filhos para fora no primeiro frame, e o artista atribuiria ao token um transbordo que a
+    /// cena já tinha. E ela mede a FOLGA — sem folga, aumentar o vão não abre nada e o passo não
+    /// mostra o que promete.
+    #[test]
+    fn the_bar_has_room_for_the_gap_to_open() {
+        let s = scene_paths();
+        let paths = s.paths();
+        let bar = paths.last().expect("a barra e' o ultimo caminho");
+        let (blo, bhi) =
+            ph2d_vec_scene::curve_bbox_in_frame(bar, 1.0, 0.0).expect("a barra tem caixa");
+        let kids = &paths[paths.len() - 1 - BAR_KIDS..paths.len() - 1];
+        let content: f64 = kids
+            .iter()
+            .filter_map(|k| ph2d_vec_scene::curve_bbox_in_frame(k, 1.0, 0.0))
+            .map(|(lo, hi)| hi[0] - lo[0])
+            .sum();
+        let slack = (bhi[0] - blo[0]) - content;
+        assert_eq!(kids.len(), BAR_KIDS);
+        assert!(
+            slack > 1.0,
+            "a barra tem de sobrar espaco para o vao ABRIR a fila, e sobra {slack}"
+        );
+        for k in kids {
+            let (lo, hi) = ph2d_vec_scene::curve_bbox_in_frame(k, 1.0, 0.0).expect("caixa");
+            assert!(
+                lo[0] >= blo[0] && hi[0] <= bhi[0] && lo[1] >= blo[1] && hi[1] <= bhi[1],
+                "um filho nasce FORA da barra: {lo:?}..{hi:?} contra {blo:?}..{bhi:?}"
+            );
+        }
     }
 
     /// Os dois cards são **visualmente iguais** — é isso que faz do da direita um controle.

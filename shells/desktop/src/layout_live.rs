@@ -85,7 +85,13 @@ fn bbox_of(items: &[VecPath]) -> Option<([f64; 2], [f64; 2])> {
 ///
 /// ⚠️ Porta ÚNICA, e os `match` são exaustivos de propósito: uma direção nova no documento sem
 /// tradução aqui **não compila**, em vez de cair num `_ =>` que a desenharia como uma linha.
-fn frame_style(l: &VecLayout) -> FrameStyle {
+///
+/// ⚠️ **O `gap` chega RESOLVIDO** (W4c.4): o número autorado em `VecLayout::gap`, ou o comprimento
+/// que um token de escala dá àquele eixo. Ele entra por aqui, e por mais lugar nenhum — é a mesma
+/// razão de esta função existir: o motor tem de receber UM vocabulário, e um segundo sítio a
+/// escolher entre o literal e o token faria a moldura espaçar por um número e o painel mostrar
+/// outro.
+fn frame_style(l: &VecLayout, gap: [Option<f64>; 2]) -> FrameStyle {
     use ph2d_ecs::{LayoutAlign as A, LayoutDir as D, LayoutJustify as J};
     FrameStyle {
         dir: match l.dir {
@@ -93,7 +99,7 @@ fn frame_style(l: &VecLayout) -> FrameStyle {
             D::Column => Dir::Column,
             D::RowWrap => Dir::RowWrap,
         },
-        gap: l.gap,
+        gap: [gap[0].unwrap_or(l.gap[0]), gap[1].unwrap_or(l.gap[1])],
         pad: l.pad,
         align: match l.align {
             A::Start => Align::Start,
@@ -249,6 +255,9 @@ impl LayoutLive {
         me
     }
 
+    /// ⚠️ **O `tok` é o MODO + a RÉGUA** (W4c.4): um vão pode seguir um token de escala, e resolver
+    /// um token de comprimento exige a régua px↔mundo do projeto. Ele viaja como par nomeado
+    /// (`vec_bindings::TokenCtx`) pela razão que aquele tipo documenta.
     pub(crate) fn recook(
         &mut self,
         scene: &VecScene,
@@ -256,13 +265,14 @@ impl LayoutLive {
         map: &VecEntityMap,
         xforms: &VecXforms,
         live: &mut LiveGeometry,
+        tok: crate::vec_bindings::TokenCtx,
     ) {
         self.placed = 0;
         self.anchored = 0;
         self.slots.clear();
         self.poses.clear();
         for frame in outermost_flowing_frames(scene, sim, map) {
-            self.lay_out(scene, sim, xforms, live, frame);
+            self.lay_out(scene, sim, xforms, live, frame, tok);
         }
         // ⚠️ **As âncoras DEPOIS do fluxo, e a ordem é load-bearing pela MEDIÇÃO** (plano UI/UX
         // W3). A âncora lê a caixa da moldura; o fluxo DECIDE essa caixa. Ao contrário, o fluxo
@@ -285,6 +295,7 @@ impl LayoutLive {
         xforms: &VecXforms,
         live: &mut LiveGeometry,
         frame: Entity,
+        tok: crate::vec_bindings::TokenCtx,
     ) {
         let w = sim.world();
         let mut nodes: Vec<Node> = Vec::new();
@@ -304,7 +315,10 @@ impl LayoutLive {
         };
         nodes.push(Node {
             parent: None,
-            frame: Some(frame_style(root_layout)),
+            frame: Some(frame_style(
+                root_layout,
+                crate::vec_bindings::bound_gap(sim, frame, tok),
+            )),
             item: ItemStyle::default(),
             size: [
                 root_bbox.1[0] - root_bbox.0[0],
@@ -345,7 +359,9 @@ impl LayoutLive {
                 };
                 nodes.push(Node {
                     parent: Some(parent_idx),
-                    frame: w.get::<VecLayout>(kid).map(frame_style),
+                    frame: w
+                        .get::<VecLayout>(kid)
+                        .map(|l| frame_style(l, crate::vec_bindings::bound_gap(sim, kid, tok))),
                     item: item_style(w.get::<VecLayoutItem>(kid)),
                     size: [bbox.1[0] - bbox.0[0], bbox.1[1] - bbox.0[1]],
                 });

@@ -212,7 +212,7 @@ pub fn dispatch(
                 // têm id próprio, então procurá-las na tabela não acharia nada e o token pararia
                 // na borda do primeiro efeito (a forma re-vestiria e as cópias ficariam com a cor
                 // velha).
-                let bound = view.bound_paint(path.id);
+                let bound = view.bound_style(path.id);
                 // A derivada já está em MUNDO (a shell assou a pose dentro dela), então ela sobe
                 // pela CÂMERA e não pelo afim do path — aplicar a pose duas vezes foi bug real
                 // desta linha.

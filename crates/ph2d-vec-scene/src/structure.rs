@@ -37,7 +37,7 @@ pub struct VecViewState {
     /// Mora aqui, e não num 8º argumento do `dispatch`, porque é a MESMA categoria de fato que os
     /// vizinhos: algo que só a shell sabe, projetado do ECS uma vez por frame. O documento não
     /// conhece tema nenhum.
-    pub bound: Vec<crate::BoundPaint>,
+    pub bound: Vec<crate::BoundStyle>,
     /// **ONDE O AUTO LAYOUT PÔS ESTA FORMA** — o afim de MUNDO que a moldura lhe deu neste frame
     /// (ADR-0153). Vazio = ninguém flui, e tudo se lê exactamente como antes.
     ///
@@ -103,7 +103,7 @@ impl VecViewState {
     /// procurá-las na tabela não acharia nada e o token pararia na borda do primeiro efeito — a
     /// forma re-vestiria e as cópias dela ficariam com a cor velha.
     #[must_use]
-    pub fn bound_paint(&self, id: VecPathId) -> Option<&crate::BoundPaint> {
+    pub fn bound_style(&self, id: VecPathId) -> Option<&crate::BoundStyle> {
         self.bound.iter().find(|b| b.path == id)
     }
 

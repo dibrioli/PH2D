@@ -40,6 +40,7 @@ fn bound(fill: Option<&str>, stroke: Option<&str>, stroke_exists: bool) -> Token
         fill: fill.map(str::to_owned),
         stroke: stroke.map(str::to_owned),
         stroke_exists,
+        ..TokenBindings::default()
     }
 }
 
@@ -262,21 +263,201 @@ fn choosing_a_token_closes_the_chip() {
 ///
 /// A geometria em si é gateada onde ela vive (`paint_shapes::fill_slash`).
 #[test]
-fn the_slash_is_painted_for_both_swatches_and_only_when_bound() {
-    const SECTIONS: &str = include_str!("../src/paint_sections.rs");
-    assert_eq!(
-        SECTIONS.matches("self.token_slash(").count(),
-        2,
-        "a rachura tem de sair nas DUAS swatches — a que nao a tem afirma uma cor que a arte nao usa"
+fn the_slash_is_painted_for_every_covered_control_and_only_when_bound() {
+    const SOURCES: [(&str, &str); 2] = [
+        (
+            "paint_sections.rs",
+            include_str!("../src/paint_sections.rs"),
+        ),
+        ("paint_layout.rs", include_str!("../src/paint_layout.rs")),
+    ];
+    // ⚠️ A afirmação é a PROPRIEDADE (*toda rachura é a primeira linha da guarda dela*), e não uma
+    // CONTAGEM nem uma distância em BYTES. Uma contagem teria de ser editada a cada slot novo, e o
+    // modo de falha de a esquecer é um gate vermelho sobre código correto — que se conserta subindo
+    // o número, o que não prova nada. Uma janela de bytes é o proxy que EXPIRA assim que alguém põe
+    // uma linha no meio: foi exactamente o que aconteceu na 1ª versão deste gate, na wave que o
+    // escreveu ([[feedback_a_gate_anchored_on_a_byte_distance_is_a_proxy_that_expires]]).
+    // Contar só serve para recusar a varredura VAZIA.
+    let mut total = 0;
+    for (name, src) in SOURCES {
+        let lines: Vec<&str> = src.lines().collect();
+        for (n, line) in lines.iter().enumerate() {
+            if !line.contains("self.token_slash(") {
+                continue;
+            }
+            total += 1;
+            let prev = lines[..n]
+                .iter()
+                .rev()
+                .find(|l| !l.trim().is_empty())
+                .copied()
+                .unwrap_or("");
+            assert!(
+                prev.contains("is_some()"),
+                "em {name}:{} a rachura nao e' a primeira linha de uma guarda *ha' token nesta \
+                 propriedade?* — riscada sempre, ela deixa de significar coisa nenhuma",
+                n + 1
+            );
+        }
+    }
+    assert!(
+        total >= 5,
+        "a varredura achou {total} rachuras — as duas swatches, a largura e os dois vaos sao 5; \
+         zero significa que este gate deixou de olhar para o produto"
     );
-    for guard in [
-        "b.fill.is_some()) {\n            self.token_slash(",
-        "b.stroke.is_some()) {\n            self.token_slash(",
-    ] {
-        assert!(
-            SECTIONS.contains(guard),
-            "a rachura saiu de tras da pergunta *ha' token nesta propriedade?* — riscada sempre, \
-             ela deixa de significar coisa nenhuma"
+}
+
+/// **O chip da ESPESSURA segue o traço** — a mesma cerca da cor do traço, pela metade que falta.
+#[test]
+fn the_width_chip_follows_the_stroke() {
+    for (stroke_exists, expect) in [(true, true), (false, false)] {
+        state::set_token_bindings(Some(bound(None, None, stroke_exists)));
+        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut st = VectorPanelState;
+        assert_eq!(
+            host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, ids::VECTOR_TOKEN_WIDTH)
+                .is_some(),
+            expect,
+            "a row da espessura tem de seguir a existencia do traco \
+             (stroke_exists={stroke_exists})"
         );
     }
+    state::set_token_bindings(None);
+}
+
+/// **Os chips de VÃO só existem sobre uma moldura que FLUI** — e o transversal só no `Wrap`.
+///
+/// ⚠️ Ele espelha a cerca que o CAMPO do vão já tem (*"em linha ou coluna o número entre faixas não
+/// tem entre o que ficar"*): prender um token onde o campo não é oferecido seria uma escolha que
+/// não move um pixel.
+#[test]
+fn the_gap_chips_follow_the_flow_and_the_cross_one_follows_wrap() {
+    state::set_token_bindings(Some(bound(None, None, true)));
+
+    // Sem moldura: nenhum dos dois.
+    state::set_frame_clip(None);
+    state::set_layout_flow(None);
+    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut st = VectorPanelState;
+    for id in [ids::VECTOR_TOKEN_GAP_MAIN, ids::VECTOR_TOKEN_GAP_CROSS] {
+        assert!(
+            host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, id)
+                .is_none(),
+            "uma row de vao foi pintada sem moldura"
+        );
+    }
+
+    // Em linha: o principal existe, o transversal não.
+    state::set_frame_clip(Some(true));
+    for (dir, cross_expected) in [
+        (ids::VECTOR_LAYOUT_DIR_ROW, false),
+        (ids::VECTOR_LAYOUT_DIR_WRAP, true),
+    ] {
+        state::set_layout_flow(Some(state::LayoutFlow {
+            dir,
+            gap: [0.0, 0.0],
+            pad: [0.0; 4],
+            align: ids::VECTOR_LAYOUT_ALIGN_START,
+            justify: ids::VECTOR_LAYOUT_JUSTIFY_START,
+        }));
+        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut st = VectorPanelState;
+        assert!(
+            host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, ids::VECTOR_TOKEN_GAP_MAIN)
+                .is_some(),
+            "a row do vao principal existe em toda moldura que flui"
+        );
+        assert_eq!(
+            host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, ids::VECTOR_TOKEN_GAP_CROSS)
+                .is_some(),
+            cross_expected,
+            "a row do vao transversal tem de seguir o Wrap, como o campo dela"
+        );
+    }
+    state::set_frame_clip(None);
+    state::set_layout_flow(None);
+    state::set_token_bindings(None);
+}
+
+/// **O PICKER de cada slot lista a tabela DELE** — e este gate mede o PAINEL, não a shell.
+///
+/// ⚠️ A shell tem o irmão dele (`every_token_slot_paints_its_own_table`), e os dois **não são
+/// redundantes**: aquele prova que o CLIQUE decodifica para a tabela certa, este que a LISTA
+/// pintada é a certa. Com só o primeiro, o picker da espessura podia oferecer nomes de cor — o
+/// artista escolheria `"accent"`, o índice dele seria decodificado contra a tabela de COMPRIMENTO,
+/// e a espessura pousaria num token que ele nunca viu. Errado, e em silêncio.
+///
+/// O oráculo é a linha DESTACADA: ela sai do `table_of` do painel, e uma chave que não pertence à
+/// tabela consultada não tem posição nenhuma — o picker cai para *Unbind*.
+#[test]
+fn every_pickers_painted_list_is_its_own_table() {
+    for slot in ids::TOKEN_SLOTS {
+        let first = slot.table.key(0).expect("toda tabela tem uma 1a chave");
+        let mut b = TokenBindings {
+            stroke_exists: true,
+            ..TokenBindings::default()
+        };
+        match slot.code {
+            0 => b.fill = Some(first.to_owned()),
+            1 => b.stroke = Some(first.to_owned()),
+            2 => b.width = Some(first.to_owned()),
+            3 => b.gap_main = Some(first.to_owned()),
+            _ => b.gap_cross = Some(first.to_owned()),
+        }
+        state::set_token_bindings(Some(b));
+        assert_eq!(
+            ph2d_panel_vector::selected_token_row(slot.code),
+            1,
+            "o slot {} tem '{first}' preso — a 1a linha da tabela DELE. O picker destacou outra \
+             coisa, entao ele esta' a listar a tabela errada",
+            slot.code
+        );
+    }
+    state::set_token_bindings(None);
+}
+
+/// **TODO slot está vivo sob o mouse, e o picker dele lista a tabela DELE.**
+///
+/// ⚠️ O gate percorre `ids::TOKEN_SLOTS` — a mesma lista que o `populate` percorre —, então um slot
+/// novo entra aqui de graça. Ele afirma as duas metades que a wave dos tokens numéricos podia
+/// perder: o chip ABRE, e a ÚLTIMA linha do popover está registada (a que um literal errado no
+/// `populate` deixaria pintada e morta).
+#[test]
+fn every_token_slot_is_alive_and_lists_its_own_table() {
+    state::set_token_bindings(Some(bound(None, None, true)));
+    state::set_frame_clip(Some(true));
+    state::set_layout_flow(Some(state::LayoutFlow {
+        dir: ids::VECTOR_LAYOUT_DIR_WRAP,
+        gap: [0.0, 0.0],
+        pad: [0.0; 4],
+        align: ids::VECTOR_LAYOUT_ALIGN_START,
+        justify: ids::VECTOR_LAYOUT_JUSTIFY_START,
+    }));
+
+    for slot in ids::TOKEN_SLOTS {
+        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut st = VectorPanelState;
+        press(
+            &mut host,
+            &mut st,
+            slot.chip,
+            &format!("o chip do slot {}", slot.code),
+        );
+        assert_eq!(
+            host.dropdown_is_open(slot.chip),
+            Some(true),
+            "o ponteiro sobre o chip do slot {} nao o abriu — ele esta' desenhado e nao existe \
+             para o dispatcher",
+            slot.code
+        );
+        let last = ids::vector_token_option_id(slot.code, slot.table.len());
+        assert!(
+            host.store().get(last).is_some(),
+            "a ULTIMA opcao do slot {} nao esta' registada — ela pinta e morre sob o mouse",
+            slot.code
+        );
+    }
+    state::set_frame_clip(None);
+    state::set_layout_flow(None);
+    state::set_token_bindings(None);
 }

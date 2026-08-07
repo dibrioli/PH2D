@@ -240,6 +240,11 @@ impl BodyCtx<'_> {
             .store
             .number_value(ids::VECTOR_WIDTH_NUM)
             .unwrap_or(snap.stroke_width_px);
+        // **O TOKEN da ESPESSURA** (W4c.4). ⚠️ A rachura vai sobre o CHIP da row de Width, e não
+        // sobre a row inteira: é o número que mente — ele mostra a largura AUTORADA (em px de tela)
+        // enquanto o traço desenha o comprimento que o token dá. O retângulo vem da porta do
+        // widget, para a marca não cair ao lado do campo num painel estreito, onde a row empilha.
+        let width_row = Rect::new(self.inner_x, y, self.inner_w, self.row_h);
         y = self.slider_row(
             "Width",
             ids::VECTOR_WIDTH,
@@ -249,6 +254,19 @@ impl BodyCtx<'_> {
             &format!("{}", px.round() as i64),
             y,
         );
+        // ⚠️ Oferecida sob a MESMA condição da cor do traço, e pela metade que falta: um token de
+        // largura numa forma sem traço teria de inventar a COR.
+        if let Some(b) = crate::state::token_bindings().filter(|b| b.stroke_exists) {
+            let width_chip = ph2d_editor_core::widget::slider_with_chip_chip_rect(
+                width_row,
+                LABEL_COL_W,
+                self.chip_w,
+            );
+            if b.width.is_some() {
+                self.token_slash(width_chip);
+            }
+            y = self.token_row(ids::VECTOR_TOKEN_WIDTH, b.width.as_deref(), y);
+        }
 
         let swatch_w = SwatchSize::Md.px();
         // Stroke colour swatch.
@@ -284,7 +302,7 @@ impl BodyCtx<'_> {
         // **O TOKEN do traço** (plano UI/UX W4), logo abaixo da cor que ele cobre. Só é oferecido
         // quando a seleção TEM traço: o token colore o traço que existe e nunca inventa largura.
         if let Some(b) = bindings.filter(|b| b.stroke_exists) {
-            y = self.token_row(ids::VECTOR_TOKEN_STROKE, 1, b.stroke.as_deref(), y);
+            y = self.token_row(ids::VECTOR_TOKEN_STROKE, b.stroke.as_deref(), y);
         }
 
         // Stroke Opacity slider (single source of the stroke alpha).
@@ -304,6 +322,20 @@ impl BodyCtx<'_> {
             y,
         );
 
+        // **COMO a linha se comporta e TERMINA** — irmã pelo teto de 200 LOC por fn.
+        self.stroke_ends_and_dashes(snap, y)
+    }
+
+    /// **Cap · Join · Alinhamento · Tracejado · Pontas** — a metade da seção Stroke que decide
+    /// *como a linha se comporta e onde ela acaba*, contra a de cima, que decide *com que
+    /// espessura e cor ela é desenhada*.
+    ///
+    /// ⚠️ O corte é por RESPONSABILIDADE e não por tamanho, mas o gatilho foi o teto de 200 LOC
+    /// por fn: a row de token da ESPESSURA (W4c.4) levou a `stroke_style` a 207. ⚠️ E ele sai para
+    /// uma fn IRMÃ no mesmo arquivo de propósito — o teto de ARQUIVO desta crate ainda tem folga, e
+    /// mover para um módulo novo separaria duas metades que se leem juntas.
+    fn stroke_ends_and_dashes(&mut self, snap: &VectorStyleSnapshot, y: f32) -> f32 {
+        let mut y = y;
         // Cap / Join segmented rows.
         y = self.segmented3(
             "Cap",
@@ -450,7 +482,7 @@ impl BodyCtx<'_> {
 
         // **O TOKEN do preenchimento** (plano UI/UX W4), logo abaixo da swatch que ele cobre.
         if let Some(b) = bindings {
-            y = self.token_row(ids::VECTOR_TOKEN_FILL, 0, b.fill.as_deref(), y);
+            y = self.token_row(ids::VECTOR_TOKEN_FILL, b.fill.as_deref(), y);
         }
 
         let track = self

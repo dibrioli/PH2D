@@ -514,6 +514,15 @@ const CHROME_IDS: &[(&str, NodeId)] = &[
     ("VECTOR_CLOSE", ids::VECTOR_CLOSE),
     ("VECTOR_WIDTH", ids::VECTOR_WIDTH),
     ("VECTOR_WIDTH_NUM", ids::VECTOR_WIDTH_NUM),
+    // Os chips de BINDING DE TOKEN (plano UI/UX W4 / W4c.4). ⚠️ Os dois de cor entraram tarde:
+    // eles existiam desde a W4a e nunca participaram desta varredura, então uma colisão de slug
+    // com eles teria passado. As opções do popover NÃO entram — elas são hash de RUNTIME
+    // (`vector_token_option_id`), e esta lista é de consts.
+    ("VECTOR_TOKEN_FILL", ids::VECTOR_TOKEN_FILL),
+    ("VECTOR_TOKEN_STROKE", ids::VECTOR_TOKEN_STROKE),
+    ("VECTOR_TOKEN_WIDTH", ids::VECTOR_TOKEN_WIDTH),
+    ("VECTOR_TOKEN_GAP_MAIN", ids::VECTOR_TOKEN_GAP_MAIN),
+    ("VECTOR_TOKEN_GAP_CROSS", ids::VECTOR_TOKEN_GAP_CROSS),
     ("VECTOR_STROKE_SWATCH", ids::VECTOR_STROKE_SWATCH),
     ("VECTOR_FILL_SWATCH", ids::VECTOR_FILL_SWATCH),
     ("VECTOR_FILL_KIND_SOLID", ids::VECTOR_FILL_KIND_SOLID),

@@ -237,7 +237,14 @@ mod tests {
         });
         let mut live = LiveGeometry::new();
         let mut pass = crate::layout_live::LayoutLive::default();
-        pass.recook(&scene, &sim, &map, &VecXforms::default(), &mut live);
+        pass.recook(
+            &scene,
+            &sim,
+            &map,
+            &VecXforms::default(),
+            &mut live,
+            crate::vec_bindings::TokenCtx::factory(),
+        );
 
         let slots = pass
             .slots_of(frame)
@@ -302,7 +309,14 @@ mod tests {
         });
         let mut live = LiveGeometry::new();
         let mut pass = crate::layout_live::LayoutLive::default();
-        pass.recook(&scene, &sim, &map, &VecXforms::default(), &mut live);
+        pass.recook(
+            &scene,
+            &sim,
+            &map,
+            &VecXforms::default(),
+            &mut live,
+            crate::vec_bindings::TokenCtx::factory(),
+        );
 
         let grown = width_of(&live, kids[3]);
         let authored = KIDS[3].0 * 2.0;

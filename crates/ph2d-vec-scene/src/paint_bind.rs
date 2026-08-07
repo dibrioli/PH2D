@@ -1,4 +1,7 @@
-//! **A TINTA RESOLVIDA** — o que uma forma bindada a um token desenha NESTE modo.
+//! **O ESTILO RESOLVIDO** — o que uma forma bindada a um token desenha NESTE modo.
+//!
+//! ⚠️ **O tipo chamava-se `BoundPaint` e foi renomeado na W4c.4**, quando a ESPESSURA entrou: uma
+//! largura não é tinta, e um `BoundPaint { width }` seria um nome a mentir em todo sítio de uso.
 //!
 //! É a costura *fonte autorada ≠ o que o mundo consome* do ADR-0121, agora na TINTA em vez da
 //! geometria: o documento guarda o literal, e o que se desenha é derivado. Daí a forma da resposta
@@ -22,8 +25,11 @@ use crate::{Paint, Rgba8, VecPath, VecPathId};
 /// A tinta que os tokens desta forma produzem no modo vigente.
 ///
 /// `None` num campo = aquela propriedade **não** está bindada e o literal do documento vale.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct BoundPaint {
+// ⚠️ **Sem `Eq`, e a ausência é o campo `width`**: um comprimento é `f64`, e `f64` não é `Eq`
+// (`NaN != NaN`). Ninguém compara duas entradas destas por igualdade total — o consumidor pergunta
+// campo a campo —, então o que se perde é nada e o que se ganharia seria uma promessa falsa.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct BoundStyle {
     /// A forma a que isto se refere.
     pub path: VecPathId,
     /// Cor do preenchimento vinda de um token.
@@ -41,13 +47,23 @@ pub struct BoundPaint {
     /// tinta autorada fica onde o artista a escreveu. É a costura *fonte ≠ o que o mundo consome*
     /// do ADR-0121, aqui na opacidade — arrastar até zero e voltar devolve exatamente a arte.
     pub alpha: Option<u8>,
+    /// **A ESPESSURA que um token de escala dá ao traço**, em unidades de MUNDO (W4c.4).
+    ///
+    /// ⚠️ Ela chega aqui **já convertida**: o token fala pixels, o documento fala mundo, e quem
+    /// cruza a fronteira é a régua do projeto (`ProjectSettings::pixels_per_meter`), na shell.
+    /// Esta crate é o modelo de documento e não conhece régua nenhuma — como já não conhece tema.
+    ///
+    /// ⚠️ E ela **pinta o traço que existe**, nunca cria um: é a mesma lei que a cor do traço já
+    /// segue (ver [`VecPath::painted`]), e pela mesma razão — um traço precisa também de COR, e
+    /// inventá-la seria escolher por um artista que não escolheu.
+    pub width: Option<f64>,
 }
 
-impl BoundPaint {
+impl BoundStyle {
     /// Nada resolvido ⇒ esta entrada não muda desenho nenhum.
     #[must_use]
     pub fn is_noop(&self) -> bool {
-        self.fill.is_none() && self.stroke.is_none() && self.alpha.is_none()
+        self.fill.is_none() && self.stroke.is_none() && self.alpha.is_none() && self.width.is_none()
     }
 }
 
@@ -66,19 +82,29 @@ impl VecPath {
     /// que o artista não escreveu —, então o token do traço **pinta o traço que existe** e não
     /// cria nenhum. Bindar sem ver mudança nenhuma seria pior do que a row não estar lá; é por
     /// isso que o painel só oferece a row do traço quando há traço.
+    ///
+    /// ⚠️ **A ESPESSURA segue a MESMA lei, e pela mesma metade que falta:** um token de largura
+    /// numa forma sem traço teria de inventar a COR. Então ela engrossa o traço que existe, e a
+    /// row dela é oferecida sob a mesma condição.
     #[must_use]
-    pub fn painted<'a>(&'a self, bound: Option<&BoundPaint>) -> std::borrow::Cow<'a, VecPath> {
+    pub fn painted<'a>(&'a self, bound: Option<&BoundStyle>) -> std::borrow::Cow<'a, VecPath> {
         let Some(b) = bound.filter(|b| !b.is_noop()) else {
             return std::borrow::Cow::Borrowed(self);
         };
         // Um traço bindado numa forma SEM traço não tem o que colorir — e se ele fosse o único
         // binding, clonar aqui seria uma cópia que não muda um pixel.
         let paints_stroke = b.stroke.is_some() && self.stroke.is_some();
+        // ⚠️ A ESPESSURA entra no early-out pelo MESMO teste, e não por um `is_some()` solto: um
+        // token de largura numa forma sem traço não tem o que engrossar, exactamente como a cor.
+        let widens = b
+            .width
+            .zip(self.stroke.as_ref())
+            .is_some_and(|(w, s)| (s.width - w).abs() > f64::EPSILON);
         // ⚠️ A opacidade entra na conta do early-out: `alpha == Some(255)` é a identidade, e um
         // clone por forma por frame para não mudar um pixel é o custo que este `Cow` existe para
         // não pagar — um slider parado no topo tem de sair byte-idêntico à arte.
         let fades = b.alpha.is_some_and(|a| a < u8::MAX);
-        if b.fill.is_none() && !paints_stroke && !fades {
+        if b.fill.is_none() && !paints_stroke && !fades && !widens {
             return std::borrow::Cow::Borrowed(self);
         }
         let mut out = self.clone();
@@ -87,6 +113,9 @@ impl VecPath {
         }
         if let (Some(c), Some(s)) = (b.stroke, out.stroke.as_mut()) {
             s.color = c;
+        }
+        if let (Some(w), Some(s)) = (b.width, out.stroke.as_mut()) {
+            s.width = w;
         }
         if fades {
             // O token entra ANTES, então a opacidade desvanece o que de fato vai ser desenhado —

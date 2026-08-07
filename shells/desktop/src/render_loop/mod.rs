@@ -6350,7 +6350,14 @@ impl crate::App {
             // **OS TOKENS** (plano UI/UX W4): a tinta que cada binding produz no modo VIGENTE.
             // Resolvido aqui, no passe de DESENHO, e não dentro do `view_state` — aquela porta é
             // chamada por todo hit-test e gesto, e nenhum deles pergunta de que cor a forma é.
-            vec_view.bound = crate::vec_bindings::resolve(sim, &self.vec_entities, hero.theme);
+            vec_view.bound = crate::vec_bindings::resolve(
+                sim,
+                &self.vec_entities,
+                crate::vec_bindings::TokenCtx {
+                    theme: hero.theme,
+                    pixels_per_meter: hero.project.pixels_per_meter,
+                },
+            );
             // **AS ROWS AUTORADAS** (plano UI/UX W8b.3): o valor VIVO de cada controle que dirige
             // uma forma. Depois dos tokens, porque a opacidade desvanece o que de fato vai ser
             // desenhado; e aqui, no passe de desenho, pela MESMA razão que os tokens — nenhum
@@ -6800,7 +6807,7 @@ impl crate::App {
                 // ⚠️ O detach vem ANTES da escolha do picker: no mesmo frame em que o artista
                 // escolhe um TOKEN o `colour_authored` está limpo, então nenhum dos dois pisa no
                 // outro — mas na ordem inversa uma cor autorada soltaria o token recém-escolhido.
-                crate::vec_bindings::detach_on_authored_colour(sim, &self.vec_entities, &sel);
+                crate::vec_bindings::detach_on_authored(sim, &self.vec_entities, &sel);
                 if let Some((prop, token)) = pending_token_bind {
                     crate::vec_bindings::set_selected_binding(
                         sim,
@@ -6853,8 +6860,17 @@ impl crate::App {
             //
             // E ele TRANSFORMA o mapa (não o estende) pelo motivo do `bool_live`: é um componente
             // do PAI, então convive com o offset vivo de cada filho.
-            self.layout_live
-                .recook(vec_scene, sim, &self.vec_entities, &vec_xf, &mut vec_live);
+            self.layout_live.recook(
+                vec_scene,
+                sim,
+                &self.vec_entities,
+                &vec_xf,
+                &mut vec_live,
+                crate::vec_bindings::TokenCtx {
+                    theme: hero.theme,
+                    pixels_per_meter: hero.project.pixels_per_meter,
+                },
+            );
             // **A POSE que cada filho colocado recebeu**, publicada para quem NÃO desenha
             // geometria: as âncoras do modo Node, a caixa do gizmo e o hit-test leem a pose
             // AUTORADA, e ela não se mexeu com o layout.

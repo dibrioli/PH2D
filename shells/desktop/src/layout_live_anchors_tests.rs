@@ -57,7 +57,14 @@ fn run(
     live: &mut LiveGeometry,
 ) -> LayoutLive {
     let mut ll = LayoutLive::default();
-    ll.recook(scene, sim, map, &VecXforms::default(), live);
+    ll.recook(
+        scene,
+        sim,
+        map,
+        &VecXforms::default(),
+        live,
+        crate::vec_bindings::TokenCtx::factory(),
+    );
     ll
 }
 
@@ -151,7 +158,14 @@ fn the_local_delta_reaches_the_screen_through_the_frames_own_ratio() {
     xf.insert(kids[0], twice);
     let mut live = LiveGeometry::new();
     let mut ll = LayoutLive::default();
-    ll.recook(&scene, &sim, &map, &xf, &mut live);
+    ll.recook(
+        &scene,
+        &sim,
+        &map,
+        &xf,
+        &mut live,
+        crate::vec_bindings::TokenCtx::factory(),
+    );
     let items = world_of(&scene, &xf, &live, kids[0]);
     let (lo, _) = bbox_of(&items).expect("caixa");
     assert!(

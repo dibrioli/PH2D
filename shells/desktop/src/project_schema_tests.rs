@@ -230,9 +230,17 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // `Number`(2) não se movem e todo arquivo salvo continua a ler; o bump é pelo caminho
         // INVERSO, o mesmo raciocínio do v58 acima e do `JointKind::Weld` (v28).
         // ⚠️ `FLIP`/`VEC_SCENE` NÃO se movem: a tabela é do ARQUIVO, não da cena.
-        // ⚠️ O 59 é PROVISÓRIO pela mesma razão de todos os acima — ele se CONTA contra o `main`
+        // PROJECT 59→60: os tokens de ESCALA chegam ao DOCUMENTO (W4c.4) — o `ph2d_ecs::BoundProp`
+        // ganha `StrokeWidth`(2), `LayoutGapMain`(3) e `LayoutGapCross`(4), então a espessura de um
+        // traço e o vão de um auto layout podem SEGUIR um token numérico. Variantes APENDADAS:
+        // `Fill`(0) e `StrokeColor`(1) não se movem e todo binding salvo continua a ler; o bump é
+        // pelo caminho INVERSO, o mesmo raciocínio do v58/v59 acima.
+        // ⚠️ `FLIP`/`VEC_SCENE` NÃO se movem: o binding é uma tabela LATERAL no ECS, e nenhum campo
+        // foi apendado a `Paint`, a `StrokeSpec` ou a `VecShape` — que é a decisão inteira do
+        // `vec_bindings` e a razão de o `VEC_SCENE_SCHEMA` ficar quieto numa feature de estilo.
+        // ⚠️ O 60 é PROVISÓRIO pela mesma razão de todos os acima — ele se CONTA contra o `main`
         // do dia da integração ([[feedback_numbers_that_sum_across_lines_count_dont_pick]]).
-        (59, 13, 14),
+        (60, 13, 14),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

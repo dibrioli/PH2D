@@ -10,8 +10,8 @@
 //! só quer geometria. Quem publica é o passe de desenho, uma vez por frame.
 
 use ph2d_ecs::{BoundProp, Entity, SimWorld, VecBindings};
-use ph2d_tokens::{ColorToken, Theme};
-use ph2d_vec_scene::{BoundPaint, Rgba8};
+use ph2d_tokens::{ColorToken, NumToken, Theme};
+use ph2d_vec_scene::{BoundStyle, Rgba8};
 
 use crate::vec_entities::VecEntityMap;
 
@@ -31,12 +31,90 @@ pub(crate) fn token_color(key: &str, theme: Theme) -> Option<Rgba8> {
     Some(Rgba8::new(c.r, c.g, c.b, c.a))
 }
 
+/// **O que é preciso para resolver um token neste frame**: o MODO, e a RÉGUA.
+///
+/// ⚠️ Um par nomeado, e não dois escalares soltos, porque ele atravessa a shell inteira — o passe
+/// de desenho e o passe de AUTO LAYOUT resolvem tokens em sítios diferentes, e dois `f32`/`Theme`
+/// soltos numa lista de argumentos são o par que alguém troca de ordem sem o compilador reclamar.
+///
+/// ⚠️ **A cor não usa a régua**, e é por isso que [`token_color`] continua a tomar só o [`Theme`]:
+/// uma cor é adimensional. Dar-lhe a régua sugeriria que ela tem uma.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct TokenCtx {
+    /// O modo vigente — a metade que já existia.
+    pub theme: Theme,
+    /// `ProjectSettings::pixels_per_meter` — ver [`token_world`].
+    pub pixels_per_meter: f32,
+}
+
+impl TokenCtx {
+    /// **O modo e a régua de FÁBRICA** — para fixtures que não autoram nenhum dos dois.
+    ///
+    /// ⚠️ Um construtor NOMEADO, e não um `Default`: um `TokenCtx::default()` alcançável do
+    /// caminho de produto seria a porta por onde alguém resolveria um comprimento com a régua
+    /// errada sem o compilador dizer nada, e o sintoma — um traço com a espessura de outro
+    /// projeto — não se vê em teste nenhum.
+    #[cfg(test)]
+    pub(crate) fn factory() -> Self {
+        Self {
+            theme: Theme::default(),
+            pixels_per_meter: ph2d_editor::project::DEFAULT_PIXELS_PER_METER,
+        }
+    }
+}
+
+/// **O comprimento de MUNDO que um token de escala vale** — a irmã numérica do [`token_color`],
+/// e a porta ÚNICA da fronteira px↔mundo desta feature (W4c.4).
+///
+/// # ⚠️ A régua não é escolhida aqui: ela já tem dono
+///
+/// `ProjectSettings::pixels_per_meter` é a única px↔mundo do projeto (ADR-0131 D4 — *"um 2º
+/// `PIXELS_PER_METER` seria a segunda porta que diverge"*), e é ela. Com o default de 100,
+/// `stroke.default = 1.5 px` vale **0,015** unidades — 1,58 pt numa moldura de telefone, que mede
+/// 8 unidades no lado maior.
+///
+/// ⚠️ **NÃO é o `px_to_world` da câmera**, embora a row *Width* do painel fale nele: aquele número
+/// é px de TELA no zoom do momento, então resolver por ele faria o traço mudar de espessura quando
+/// o artista se aproximasse — e o valor SALVO dependeria de onde ele estava olhando.
+///
+/// Chave desconhecida devolve `None` pelo mesmo motivo que a cor: o LITERAL do documento tem de
+/// valer, e nunca um comprimento de emergência.
+#[must_use]
+pub(crate) fn token_world(key: &str, tok: TokenCtx) -> Option<f64> {
+    let px = f64::from(NumToken::from_key(key)?.px(tok.theme));
+    let ppm = f64::from(tok.pixels_per_meter);
+    // O `set_pixels_per_meter` clampa em `MIN_PIXELS_PER_METER = 1.0`, mas o campo é público: uma
+    // escrita direta de zero daria `inf`, e uma espessura infinita pinta a tela inteira.
+    (ppm > 0.0).then_some(px / ppm)
+}
+
+/// **O vão que o auto layout desta moldura tem NESTE frame** — `[principal, transversal]`, e
+/// `None` num eixo = o número autorado em `VecLayout::gap` vale.
+///
+/// ⚠️ Ele lê o mesmo `VecBindings` que a tinta, pela mesma porta de conversão. Um segundo caminho
+/// para *"quanto vale este token em mundo?"* dentro do passe de layout divergiria da largura do
+/// traço no dia em que a régua mudasse — e o sintoma seria uma moldura a espaçar por uma régua e
+/// um traço a engrossar por outra.
+#[must_use]
+pub(crate) fn bound_gap(sim: &SimWorld, frame: Entity, tok: TokenCtx) -> [Option<f64>; 2] {
+    let Some(b) = sim.world().get::<VecBindings>(frame) else {
+        return [None, None];
+    };
+    [
+        b.get(BoundProp::LayoutGapMain)
+            .and_then(|k| token_world(k, tok)),
+        b.get(BoundProp::LayoutGapCross)
+            .and_then(|k| token_world(k, tok)),
+    ]
+}
+
 /// As tintas que os tokens produzem neste frame, para o `VecViewState`.
 ///
 /// Vazio quando nada está bindado — que é todo documento que já existe, e é o que faz o desenho
 /// deles ficar byte-idêntico ao mundo pré-token.
 #[must_use]
-pub(crate) fn resolve(sim: &SimWorld, map: &VecEntityMap, theme: Theme) -> Vec<BoundPaint> {
+pub(crate) fn resolve(sim: &SimWorld, map: &VecEntityMap, tok: TokenCtx) -> Vec<BoundStyle> {
+    let theme = tok.theme;
     let w = sim.world();
     let mut out = Vec::new();
     for (&id, &bits) in map {
@@ -47,7 +125,7 @@ pub(crate) fn resolve(sim: &SimWorld, map: &VecEntityMap, theme: Theme) -> Vec<B
         let Some(b) = w.get::<VecBindings>(e) else {
             continue;
         };
-        let paint = BoundPaint {
+        let paint = BoundStyle {
             path: id,
             fill: b.get(BoundProp::Fill).and_then(|k| token_color(k, theme)),
             stroke: b
@@ -56,6 +134,9 @@ pub(crate) fn resolve(sim: &SimWorld, map: &VecEntityMap, theme: Theme) -> Vec<B
             // A opacidade VIVA não vem de token nenhum — quem a produz é uma row autorada, e ela
             // é fundida nesta mesma entrada pelo `vec_widget_drive::apply` (W8b.3).
             alpha: None,
+            width: b
+                .get(BoundProp::StrokeWidth)
+                .and_then(|k| token_world(k, tok)),
         };
         // Uma entrada que não resolveu nada não descreve desenho nenhum — publicá-la faria o
         // renderer perguntar por ela em toda forma da cena sem nunca ter o que responder.
@@ -73,13 +154,16 @@ pub(crate) fn resolve(sim: &SimWorld, map: &VecEntityMap, theme: Theme) -> Vec<B
 /// clique — não num frame.
 #[must_use]
 pub(crate) fn token_choice(id: ph2d_editor::NodeId) -> Option<(BoundProp, Option<&'static str>)> {
-    for (prop, code) in [(BoundProp::Fill, 0_u16), (BoundProp::StrokeColor, 1)] {
-        if id == ph2d_editor::ids::vector_token_option_id(code, 0) {
+    for slot in ph2d_editor::ids::TOKEN_SLOTS {
+        // ⚠️ O alvo vem do CÓDIGO da tabela pela porta do modelo, e não de um `match` escrito aqui:
+        // um slot novo nasce ligado, em vez de virar uma linha de picker que não faz nada.
+        let prop = BoundProp::from_code(slot.code)?;
+        if id == ph2d_editor::ids::vector_token_option_id(slot.code, 0) {
             return Some((prop, None));
         }
-        for (i, t) in ColorToken::ALL.iter().enumerate() {
-            if id == ph2d_editor::ids::vector_token_option_id(code, i + 1) {
-                return Some((prop, Some(t.key())));
+        for i in 0..slot.table.len() {
+            if id == ph2d_editor::ids::vector_token_option_id(slot.code, i + 1) {
+                return Some((prop, slot.table.key(i)));
             }
         }
     }
@@ -140,46 +224,55 @@ pub(crate) fn selected_bindings(
         return None;
     }
     let b = sim.world().get::<VecBindings>(e);
+    let key = |p: BoundProp| b.and_then(|b| b.get(p)).map(str::to_owned);
     Some(ph2d_panel_vector::state::TokenBindings {
-        fill: b.and_then(|b| b.get(BoundProp::Fill)).map(str::to_owned),
-        stroke: b
-            .and_then(|b| b.get(BoundProp::StrokeColor))
-            .map(str::to_owned),
+        fill: key(BoundProp::Fill),
+        stroke: key(BoundProp::StrokeColor),
+        width: key(BoundProp::StrokeWidth),
+        gap_main: key(BoundProp::LayoutGapMain),
+        gap_cross: key(BoundProp::LayoutGapCross),
         stroke_exists: scene.path(*id).is_some_and(|p| p.stroke.is_some()),
+        // ⚠️ O gêmeo do `stroke_exists` para os vãos: sem `VecLayout` a moldura não empilha, e um
+        // token de vão preso ali seria uma escolha que não move um pixel.
+        flows: sim.world().get::<ph2d_ecs::VecLayout>(e).is_some(),
     })
 }
 
 thread_local! {
-    /// `(fill, stroke)` — uma cor foi AUTORADA neste frame, e a propriedade tem de soltar o token.
-    static COLOUR_AUTHORED: std::cell::Cell<(bool, bool)> = const { std::cell::Cell::new((false, false)) };
+    /// **Que propriedades foram AUTORADAS neste frame**, como máscara sobre o discriminante do
+    /// [`BoundProp`] — cada uma tem de soltar o token dela.
+    ///
+    /// ⚠️ Uma máscara, e não um par de `bool`: ela cresce com a lista de alvos sem que o canal
+    /// mude de forma, e foi o par `(fill, stroke)` que teria de virar tripla na W4c.4 — a lista
+    /// paralela que envelhece assim que um alvo novo entra num lado só.
+    static AUTHORED: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
 }
 
-/// A ponte drena o one-shot do tool aqui; o passe de aplicação o consome.
+/// A ponte drena os one-shots do tool aqui; o passe de aplicação os consome.
 ///
-/// ⚠️ Um canal interno da shell, e não um argumento a mais: quem SABE que uma cor foi autorada é o
-/// tool (a ponte é quem fala com ele), e quem pode SOLTAR o token é o passe que tem o mundo e a
+/// ⚠️ Um canal interno da shell, e não um argumento a mais: quem SABE que um valor foi autorado é
+/// o tool (a ponte é quem fala com ele), e quem pode SOLTAR o token é o passe que tem o mundo e a
 /// seleção na mão. Os dois correm no mesmo frame, em ordem — a ponte primeiro.
-pub(crate) fn note_colour_authored(v: (bool, bool)) {
-    COLOUR_AUTHORED.with(|c| c.set(v));
+pub(crate) fn note_authored(prop: BoundProp) {
+    AUTHORED.with(|c| c.set(c.get() | 1 << (prop as u16)));
 }
 
-/// **Escolher uma cor SOLTA o token daquela propriedade** — o *detach* do Figma.
+/// **Autorar um valor SOLTA o token daquela propriedade** — o *detach* do Figma.
 ///
-/// ⚠️ Sem isto o artista escolheria uma cor, o token continuaria a cobri-la, e a swatch mostraria
-/// um valor que a arte não usa: o pior estado possível para um controlo (decisão do Enio,
-/// 2026-08-02). E é por isso que o `colour_authored` do tool arma só quando o valor MUDA — o
-/// read-back do picker corre em todo frame em que ele está aberto.
-pub(crate) fn detach_on_authored_colour(
+/// ⚠️ Sem isto o artista escolheria uma cor (ou digitaria uma espessura), o token continuaria a
+/// cobri-la, e o controlo mostraria um valor que a arte não usa: o pior estado possível
+/// (decisão do Enio, 2026-08-02). E é por isso que os one-shots do tool armam só quando o valor
+/// MUDA — o read-back do picker corre em todo frame em que ele está aberto.
+pub(crate) fn detach_on_authored(
     sim: &mut SimWorld,
     map: &VecEntityMap,
     selected: &[ph2d_vec_scene::VecPathId],
 ) {
-    let (fill, stroke) = COLOUR_AUTHORED.with(std::cell::Cell::take);
-    if fill {
-        set_selected_binding(sim, map, selected, BoundProp::Fill, None);
-    }
-    if stroke {
-        set_selected_binding(sim, map, selected, BoundProp::StrokeColor, None);
+    let mask = AUTHORED.with(std::cell::Cell::take);
+    for &prop in BoundProp::ALL {
+        if mask & (1 << (prop as u16)) != 0 {
+            set_selected_binding(sim, map, selected, prop, None);
+        }
     }
 }
 

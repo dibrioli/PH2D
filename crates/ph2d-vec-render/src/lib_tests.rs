@@ -323,7 +323,7 @@ fn encode_cost_by_n() {
 /// uma forma cujo LITERAL já é aquela cor.
 #[test]
 fn the_dispatch_draws_the_token_colour_not_the_literal() {
-    use ph2d_vec_scene::{BoundPaint, Paint, Rgba8};
+    use ph2d_vec_scene::{BoundStyle, Paint, Rgba8};
 
     let token = Rgba8::new(11, 222, 33, 255);
     let encode = |scene: &VecScene, view: &VecViewState| {
@@ -347,11 +347,12 @@ fn the_dispatch_draws_the_token_colour_not_the_literal() {
 
     // (b) A mesma forma, BINDADA ao token.
     let bound_view = VecViewState {
-        bound: vec![BoundPaint {
+        bound: vec![BoundStyle {
             path: id,
             fill: Some(token),
             stroke: None,
             alpha: None,
+            width: None,
         }],
         ..VecViewState::default()
     };

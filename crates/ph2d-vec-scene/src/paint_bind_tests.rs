@@ -24,7 +24,7 @@ fn a_shape_with_no_binding_is_the_very_same_path() {
     assert!(std::ptr::eq(&*borrowed, &p), "e o MESMO ponteiro");
 
     // Uma entrada VAZIA (a forma está na tabela, mas nada resolveu) também não clona.
-    let noop = BoundPaint {
+    let noop = BoundStyle {
         path: p.id,
         ..Default::default()
     };
@@ -39,11 +39,12 @@ fn a_shape_with_no_binding_is_the_very_same_path() {
 fn the_token_covers_the_literal_without_erasing_it() {
     let p = shape();
     let tok = Rgba8::new(200, 40, 90, 255);
-    let drawn = p.painted(Some(&BoundPaint {
+    let drawn = p.painted(Some(&BoundStyle {
         path: p.id,
         fill: Some(tok),
         stroke: None,
         alpha: None,
+        width: None,
     }));
     assert_eq!(drawn.fill, Some(Paint::Solid(tok)), "desenha o token");
     assert_eq!(
@@ -60,11 +61,12 @@ fn binding_a_fill_where_there_is_none_paints_it() {
     let mut p = shape();
     p.fill = None;
     let tok = Rgba8::new(1, 2, 3, 255);
-    let drawn = p.painted(Some(&BoundPaint {
+    let drawn = p.painted(Some(&BoundStyle {
         path: p.id,
         fill: Some(tok),
         stroke: None,
         alpha: None,
+        width: None,
     }));
     assert_eq!(drawn.fill, Some(Paint::Solid(tok)));
 }
@@ -75,11 +77,12 @@ fn binding_a_fill_where_there_is_none_paints_it() {
 #[test]
 fn binding_a_stroke_colours_an_existing_stroke_and_never_invents_one() {
     let tok = Rgba8::new(7, 8, 9, 255);
-    let b = |p: &VecPath| BoundPaint {
+    let b = |p: &VecPath| BoundStyle {
         path: p.id,
         fill: None,
         stroke: Some(tok),
         alpha: None,
+        width: None,
     };
 
     let mut with = shape();
@@ -108,10 +111,10 @@ fn binding_a_stroke_colours_an_existing_stroke_and_never_invents_one() {
 #[test]
 fn a_full_opacity_is_the_identity_and_costs_nothing() {
     let p = shape();
-    let full = BoundPaint {
+    let full = BoundStyle {
         path: p.id,
         alpha: Some(255),
-        ..BoundPaint::default()
+        ..BoundStyle::default()
     };
     let drawn = p.painted(Some(&full));
     assert!(
@@ -121,11 +124,11 @@ fn a_full_opacity_is_the_identity_and_costs_nothing() {
 
     // E pela rota que CLONA (um token junto), o alfa tem de sair intacto: aqui o early-out não
     // salva — o clone acontece pelo `fill`, e o que prova a identidade é o `fades` ser falso.
-    let with_token = BoundPaint {
+    let with_token = BoundStyle {
         path: p.id,
         fill: Some(Rgba8::new(9, 9, 9, 255)),
         alpha: Some(255),
-        ..BoundPaint::default()
+        ..BoundStyle::default()
     };
     let drawn = p.painted(Some(&with_token));
     assert_eq!(drawn.fill, Some(Paint::Solid(Rgba8::new(9, 9, 9, 255))));
@@ -140,10 +143,10 @@ fn a_full_opacity_is_the_identity_and_costs_nothing() {
 fn the_opacity_rounds_to_nearest_instead_of_always_down() {
     let mut p = shape();
     p.fill = Some(Paint::Solid(Rgba8::new(9, 9, 9, 100)));
-    let b = BoundPaint {
+    let b = BoundStyle {
         path: p.id,
         alpha: Some(130),
-        ..BoundPaint::default()
+        ..BoundStyle::default()
     };
     let drawn = p.painted(Some(&b));
     assert_eq!(
@@ -170,10 +173,10 @@ fn the_opacity_fades_every_species_of_paint() {
         end: [1.0, 0.0],
     });
     p.stroke = Some(StrokeSpec::new(Rgba8::new(0, 0, 0, 255), 0.05));
-    let half = BoundPaint {
+    let half = BoundStyle {
         path: p.id,
         alpha: Some(128),
-        ..BoundPaint::default()
+        ..BoundStyle::default()
     };
     let drawn = p.painted(Some(&half));
     let Some(Paint::Linear { stops, .. }) = drawn.fill.as_ref() else {
@@ -199,11 +202,11 @@ fn the_opacity_fades_every_species_of_paint() {
 #[test]
 fn the_opacity_fades_what_the_token_put_there() {
     let p = shape();
-    let both = BoundPaint {
+    let both = BoundStyle {
         path: p.id,
         fill: Some(Rgba8::new(1, 2, 3, 255)),
         alpha: Some(51),
-        ..BoundPaint::default()
+        ..BoundStyle::default()
     };
     let drawn = p.painted(Some(&both));
     assert_eq!(drawn.fill, Some(Paint::Solid(Rgba8::new(1, 2, 3, 51))));

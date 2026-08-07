@@ -195,6 +195,28 @@ pub fn paint_slider_with_chip_layout(
     }
 }
 
+/// **Onde o CHIP numérico desta row cai** — o mesmo retângulo que o painter usa e regista.
+///
+/// ⚠️ Existe para quem precisa DESENHAR POR CIMA do chip (a rachura de *"um token cobre este
+/// valor"*, plano UI/UX W4c.4) sem re-derivar a conta. Uma segunda expressão para *"onde está o
+/// chip?"* divergiria no dia em que a row empilhasse — e a marca apareceria ao lado do número em
+/// vez de sobre ele, num painel estreito.
+#[must_use]
+pub fn slider_with_chip_chip_rect(rect: Rect, label_w: f32, chip_w: f32) -> Rect {
+    let row = if slider_with_chip_is_stacked(rect.w, label_w, chip_w) {
+        // Empilhada: a linha de baixo é onde o slider e o chip de facto vivem.
+        Rect::new(
+            rect.x,
+            rect.y + rect.h + crate::widget::panel_chrome::SECTION_LABEL_TO_CONTROL_PX,
+            rect.w,
+            rect.h,
+        )
+    } else {
+        rect
+    };
+    Rect::new(row.x + row.w - chip_w, row.y, chip_w, row.h)
+}
+
 /// Whether [`paint_slider_with_chip_layout_adaptive`] will STACK (demote the label to its own row) at
 /// `content_w` for the given `label_w` / `chip_w` — the same threshold the painter uses. Lets a container
 /// that must size a background BEFORE painting the adaptive rows (e.g. the Jitter card) agree exactly.

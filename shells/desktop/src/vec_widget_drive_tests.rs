@@ -168,10 +168,10 @@ fn the_toggle_hides_and_only_when_off() {
 #[test]
 fn the_opacity_merges_into_the_paint_the_shape_already_has() {
     let mut view = VecViewState::default();
-    view.bound.push(BoundPaint {
+    view.bound.push(BoundStyle {
         path: 7,
         fill: Some(ph2d_vec_scene::Rgba8::new(1, 2, 3, 255)),
-        ..BoundPaint::default()
+        ..BoundStyle::default()
     });
     apply(&[(7, Drive::Opacity(128))], &mut view);
     assert_eq!(view.bound.len(), 1, "uma forma, uma entrada");

@@ -33,9 +33,9 @@ use crate::ids;
 /// ⚠️ Os CHIPS não entram: eles são `Dropdown`, e abrir/fechar é do dispatch genérico. Só as
 /// opções são `Click` puro que a shell aplica.
 fn is_token_option(id: ph2d_a11y::NodeId) -> bool {
-    (0..=1_u16).any(|prop| {
-        (0..=ph2d_tokens::ColorToken::ALL.len()).any(|i| id == ids::vector_token_option_id(prop, i))
-    })
+    ids::TOKEN_SLOTS
+        .iter()
+        .any(|s| (0..=s.table.len()).any(|i| id == ids::vector_token_option_id(s.code, i)))
 }
 
 fn is_frame_widget(id: ph2d_a11y::NodeId) -> bool {

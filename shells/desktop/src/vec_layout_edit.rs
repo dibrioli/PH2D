@@ -283,6 +283,22 @@ pub(crate) fn apply_layout_field(
                 LayoutField::Pad(i) => next.pad[i] = v,
                 _ => next.pad = [v; 4],
             }
+            // **Digitar um vão SOLTA o token dele** — o *detach* do Figma (W4c.4), a mesma lei que
+            // a cor já segue. Sem isto o artista escreveria um número, o token continuaria a
+            // espaçar, e o campo mostraria um valor que a moldura não usa: o pior estado possível
+            // para um controlo.
+            //
+            // ⚠️ Ele solta AQUI, e não por um canal one-shot como o da cor, porque este sítio já
+            // tem o mundo e a seleção na mão — e o da cor só existe porque quem SABE que uma cor
+            // foi autorada é o tool, que não tem nenhum dos dois.
+            if let LayoutField::Gap(i) = field {
+                let prop = if i == 0 {
+                    ph2d_ecs::BoundProp::LayoutGapMain
+                } else {
+                    ph2d_ecs::BoundProp::LayoutGapCross
+                };
+                crate::vec_bindings::set_selected_binding(sim, map, selected, prop, None);
+            }
             write_layout(sim, e, Some(cur), Some(next))
         }
     }

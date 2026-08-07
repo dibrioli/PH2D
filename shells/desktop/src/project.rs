@@ -278,7 +278,13 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// ⚠️ **Apendar variante NÃO move `Literal`(0)/`Alias`(1)/`Number`(2)**, então todo arquivo já
 /// salvo continua a ler; o bump é pelo caminho INVERSO, o mesmo raciocínio do v58 logo acima.
 /// ⚠️ **PROVISÓRIO** pelo mesmo motivo que o v56.
-const PROJECT_SCHEMA: u32 = 59;
+/// v60 (plano UI/UX W4c.4 — os tokens de ESCALA no DOCUMENTO): o `ph2d_ecs::BoundProp` ganha
+/// **`StrokeWidth`(2)**, **`LayoutGapMain`(3)** e **`LayoutGapCross`(4)** — a espessura de um traço
+/// e o vão de um auto layout passam a poder SEGUIR um token numérico, como a cor já seguia.
+/// ⚠️ **Apendar variantes NÃO move `Fill`(0) nem `StrokeColor`(1)**, então todo binding já salvo
+/// continua a ler; o bump é pelo caminho INVERSO, o mesmo raciocínio do v58/v59 acima.
+/// ⚠️ **PROVISÓRIO** pelo mesmo motivo que o v56.
+const PROJECT_SCHEMA: u32 = 60;
 
 /// O conteúdo de um arquivo de projeto.
 #[derive(serde::Serialize, serde::Deserialize)]

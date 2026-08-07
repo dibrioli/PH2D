@@ -35,6 +35,27 @@
 //! camada por cima na hora de DESENHAR (a costura fonte ≠ cozido do ADR-0121, agora na TINTA).
 //! Desbindar devolve exatamente a cor que estava lá — sem isso, experimentar um token custaria a
 //! escolha anterior.
+//!
+//! # ⚠️ Um token de ESCALA fala PIXELS, e este documento fala MUNDO (W4c.4)
+//!
+//! Uma cor é adimensional e atravessa a fronteira sem conversão; um comprimento não. Os três alvos
+//! de escala que o plano nomeia vivem em **unidades de mundo** (`StrokeSpec::width`,
+//! `VecLayout::gap`, `VecVertex::corner_radius`), e um [`ph2d_tokens::NumToken`] vale **pixels**.
+//!
+//! ⚠️ **Ler o número do token como se fosse mundo erra por duas ordens de grandeza, e o número
+//! está medido:** `stroke.default = 1.5` px viraria 1,5 unidades, e a moldura de telefone mede
+//! **8** unidades no lado maior (`ph2d_tool_vector::frames::LONG_SIDE`) — um traço com **19% da
+//! altura do aparelho**. `radius.full = 999` daria 125 molduras.
+//!
+//! A régua existe e **já tem um dono declarado**: `ProjectSettings::pixels_per_meter` (ADR-0131
+//! D4 — *"a única px→m é a do PROJETO; um 2º `PIXELS_PER_METER` seria a segunda porta que
+//! diverge"*). Com o default de 100, `stroke.default` vale 0,015 unidades = 1,58 pt naquela
+//! moldura, que é o cabelo que o token promete.
+//!
+//! ⚠️ E ela **não** é o `px_to_world` da câmera, embora a row *Width* do painel fale nele: aquele
+//! número é px de TELA no zoom do momento (`vector_bridge.rs`, *"a largura viaja em px de tela na
+//! tool e em MUNDO no documento"*), então resolver por ele faria a arte SALVA depender de quão
+//! perto o artista estava quando o token mudou.
 
 use bevy_ecs::component::Component;
 use serde::{Deserialize, Serialize};
@@ -47,10 +68,13 @@ use crate::SimComponent;
 /// no fim, nunca no meio. Inserir um no meio re-interpretaria todo binding já salvo — o `Fill` de
 /// ontem viraria o `StrokeColor` de hoje, em silêncio e com o projeto abrindo normalmente.
 ///
-/// A lista de hoje é a das propriedades de COR, que são as que o `ph2d-tokens` sabe resolver. As
-/// que o plano nomeia e que ainda não estão aqui (`CornerRadius`, `StrokeWidth`, `LayoutGap`) são
-/// tokens de ESCALA, e cada uma espera o canal que a resolve — acrescentá-las agora seria oferecer
-/// um alvo que nada preenche.
+/// ⚠️ **`CornerRadius` continua FORA, e o motivo mudou** (medido 2026-08-06, W4c.4). A nota
+/// anterior dizia que as três propriedades de ESCALA esperavam *"o canal que as resolve"*, e o
+/// canal chegou (`ph2d_tokens::NumToken`, autorável desde a W4c.1). O que falta ao raio é outra
+/// coisa: ele é **por-VÉRTICE** (`VecVertex::corner_radius`, autorado pela alça do modo Node e
+/// pela ferramenta Fillet) e o painel **não tem um controle por-FORMA** para ele. Um binding é
+/// por-forma, então `BoundProp::CornerRadius` seria hoje um alvo que nada preenche — a mesma
+/// frase, sobre um vão diferente.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[repr(u16)]
 pub enum BoundProp {
@@ -58,14 +82,49 @@ pub enum BoundProp {
     Fill = 0,
     /// A cor do traço (`VecPath::stroke.paint`).
     StrokeColor = 1,
+    /// A **espessura** do traço (`VecPath::stroke.width`).
+    StrokeWidth = 2,
+    /// O vão do auto layout no eixo PRINCIPAL (`VecLayout::gap[0]`).
+    LayoutGapMain = 3,
+    /// O vão do auto layout no eixo TRANSVERSAL (`VecLayout::gap[1]`).
+    LayoutGapCross = 4,
 }
 
 impl BoundProp {
+    /// **A INVERSA do discriminante** — o código de arquivo de volta ao alvo.
+    ///
+    /// ⚠️ Ela existe porque o discriminante É o código que a UI usa para nomear as opções do
+    /// picker (`ph2d_editor_core::ids::vector_token_option_id`), e sem esta porta a shell teria de
+    /// escrever um `match` paralelo — uma segunda lista, que envelhece no dia em que um alvo novo
+    /// entra só numa delas e o clique deixa de chegar a lado nenhum.
+    ///
+    /// ⚠️ **De que TABELA cada alvo se serve NÃO se pergunta aqui**, e a ausência é deliberada: é
+    /// uma pergunta de UI (*que lista o picker pinta?*), e a resposta mora na crate que o painel e
+    /// a shell alcançam — `ph2d_editor_core::ids::TOKEN_SLOTS`. Duas respostas ofereceriam cores
+    /// para escolher uma espessura no dia em que uma delas ganhasse um membro sozinha.
+    #[must_use]
+    pub const fn from_code(code: u16) -> Option<Self> {
+        match code {
+            0 => Some(Self::Fill),
+            1 => Some(Self::StrokeColor),
+            2 => Some(Self::StrokeWidth),
+            3 => Some(Self::LayoutGapMain),
+            4 => Some(Self::LayoutGapCross),
+            _ => None,
+        }
+    }
+
     /// As propriedades que se podem bindar hoje — a lista que o painel OFERECE.
     ///
     /// Ela é DADO pelo mesmo motivo que o `ColorToken::ALL`: uma segunda lista escrita à mão na UI
     /// nasce desatualizada no dia em que esta ganhar um membro.
-    pub const ALL: &'static [Self] = &[Self::Fill, Self::StrokeColor];
+    pub const ALL: &'static [Self] = &[
+        Self::Fill,
+        Self::StrokeColor,
+        Self::StrokeWidth,
+        Self::LayoutGapMain,
+        Self::LayoutGapCross,
+    ];
 
     /// Rótulo curto, para a UI dizer QUAL propriedade está presa.
     #[must_use]
@@ -73,6 +132,9 @@ impl BoundProp {
         match self {
             Self::Fill => "Fill",
             Self::StrokeColor => "Stroke",
+            Self::StrokeWidth => "Width",
+            Self::LayoutGapMain => "Gap",
+            Self::LayoutGapCross => "Gap (cross)",
         }
     }
 }

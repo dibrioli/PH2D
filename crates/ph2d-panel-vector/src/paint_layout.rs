@@ -19,6 +19,7 @@
 //! e um controlo que o artista mexe e que não faz nada é pior do que um controlo que falta.
 
 use ph2d_i18n::tr;
+use ph2d_tokens::Spacing;
 
 use crate::ids;
 use crate::paint_sections::BodyCtx;
@@ -97,20 +98,40 @@ impl BodyCtx<'_> {
         // ⚠️ **O vão TRANSVERSAL só é pintado no `Wrap`.** Em linha ou coluna há uma faixa só, e
         // o número entre faixas não tem entre o que ficar: seria um campo que o artista edita e
         // que não move um pixel. Ele nasce com o modo que o usa.
-        if f.dir == ids::VECTOR_LAYOUT_DIR_WRAP {
-            y = self.number_row(
-                tr("panel.vector.layout.gap"),
-                ids::VECTOR_LAYOUT_GAP_MAIN,
+        // **OS TOKENS DE VÃO** (W4c.4): a chave presa em cada eixo, para a rachura sobre o número
+        // que ela cobre e para a row do picker logo abaixo.
+        let bound = state::token_bindings().unwrap_or_default();
+        let wrap = f.dir == ids::VECTOR_LAYOUT_DIR_WRAP;
+        let cw = self.half_cell_w();
+        let main = self.number_cell(
+            tr("panel.vector.layout.gap"),
+            ids::VECTOR_LAYOUT_GAP_MAIN,
+            self.inner_x,
+            cw,
+            y,
+        );
+        if bound.gap_main.is_some() {
+            self.token_slash(main);
+        }
+        if wrap {
+            let cross = self.number_cell(
                 "Cross",
                 ids::VECTOR_LAYOUT_GAP_CROSS,
+                self.inner_x + cw + Spacing::Sm.px(),
+                cw,
                 y,
             );
-        } else {
-            y = self.lone_number_row(
-                tr("panel.vector.layout.gap"),
-                ids::VECTOR_LAYOUT_GAP_MAIN,
-                y,
-            );
+            if bound.gap_cross.is_some() {
+                self.token_slash(cross);
+            }
+        }
+        y += self.row_h + self.row_gap;
+        // ⚠️ **A row do vão transversal segue a mesma cerca do CAMPO dele** (só no `Wrap`): em
+        // linha ou coluna não há entre-faixas, então prender um token ali seria uma escolha que
+        // não move um pixel — a definição de controle morto que o campo já evita.
+        y = self.token_row(ids::VECTOR_TOKEN_GAP_MAIN, bound.gap_main.as_deref(), y);
+        if wrap {
+            y = self.token_row(ids::VECTOR_TOKEN_GAP_CROSS, bound.gap_cross.as_deref(), y);
         }
         y = self.layout_padding_rows(y);
         y = self.layout_align_rows(&f, y);

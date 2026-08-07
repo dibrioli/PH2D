@@ -49,6 +49,11 @@ pub use ph2d_editor_core::ids::{
     MAX_WIDGET_KINDS, VECTOR_SECTION_WIDGET, VECTOR_WIDGET_BIND, VECTOR_WIDGET_REMOVE,
     VECTOR_WIDGET_UNBIND, VECTOR_WIDGET_WEAR, vector_widget_kind_id,
 };
+/// **Os TOKENS** (plano UI/UX W4): os dois chips + o gerador das opções do popover.
+pub use ph2d_editor_core::ids::{
+    TOKEN_SLOTS, TokenTable, VECTOR_TOKEN_FILL, VECTOR_TOKEN_GAP_CROSS, VECTOR_TOKEN_GAP_MAIN,
+    VECTOR_TOKEN_STROKE, VECTOR_TOKEN_WIDTH, token_slot, token_slot_of, vector_token_option_id,
+};
 pub use ph2d_editor_core::ids::{
     VECTOR_ALIGN_BOTTOM, VECTOR_ALIGN_CENTRE, VECTOR_ALIGN_HCENTER, VECTOR_ALIGN_INNER,
     VECTOR_ALIGN_LEFT, VECTOR_ALIGN_OUTER, VECTOR_ALIGN_RIGHT, VECTOR_ALIGN_TOP,
@@ -136,8 +141,6 @@ pub use ph2d_editor_core::ids::{
     VECTOR_SYM_KIND_CUSTOM, VECTOR_SYM_KIND_RADIAL, VECTOR_SYM_KIND_X, VECTOR_SYM_KIND_Y,
     VECTOR_SYM_OFF, VECTOR_SYM_ON, VECTOR_SYM_SEGMENTS, VECTOR_SYM_SEGMENTS_NUM,
 };
-/// **Os TOKENS** (plano UI/UX W4): os dois chips + o gerador das opções do popover.
-pub use ph2d_editor_core::ids::{VECTOR_TOKEN_FILL, VECTOR_TOKEN_STROKE, vector_token_option_id};
 
 /// **Text on Path** (plano 22): a seção + os quatro controles + o par do offset.
 pub use ph2d_editor_core::ids::{

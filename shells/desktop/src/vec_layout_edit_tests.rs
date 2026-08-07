@@ -267,3 +267,53 @@ fn a_foreign_id_belongs_to_neither_door() {
     assert!(layout_edit_for_id(foreign).is_none());
     assert!(layout_field_for_id(foreign).is_none());
 }
+
+/// **Digitar um vão SOLTA o token dele** — o *detach* do Figma, no eixo autorado e só nele (W4c.4).
+///
+/// ⚠️ Sem isto o artista escreveria um número, o token continuaria a espaçar, e o campo mostraria
+/// um valor que a moldura não usa: exactamente o estado que a rachura existe para denunciar, e que
+/// nenhuma marca conserta.
+#[test]
+fn typing_a_gap_detaches_that_axis_token_and_only_that_one() {
+    let (mut sim, _scene, map, ids) = frame_with(1);
+    let sel = vec![ids[0]];
+    let frame = ent(&sim, &map, ids[0]);
+    apply_layout_edit(
+        &mut sim,
+        &map,
+        &sel,
+        LayoutEdit::Dir(Some(LayoutDir::RowWrap)),
+    );
+
+    let mut b = ph2d_ecs::VecBindings::default();
+    b.set(ph2d_ecs::BoundProp::LayoutGapMain, "spacing.md");
+    b.set(ph2d_ecs::BoundProp::LayoutGapCross, "spacing.lg");
+    sim.world_mut().entity_mut(frame).insert(b);
+
+    apply_layout_field(&mut sim, &map, &sel, LayoutField::Gap(0), 4.0);
+    let b = sim
+        .world()
+        .get::<ph2d_ecs::VecBindings>(frame)
+        .expect("o eixo transversal sobrevive, entao o componente fica");
+    assert_eq!(
+        b.get(ph2d_ecs::BoundProp::LayoutGapMain),
+        None,
+        "o eixo autorado soltou o token"
+    );
+    assert_eq!(
+        b.get(ph2d_ecs::BoundProp::LayoutGapCross),
+        Some("spacing.lg"),
+        "e NAO soltou o outro eixo"
+    );
+
+    // ⚠️ CONTROLE: um campo que NÃO é vão não solta nada — o recuo não tem token nesta wave, e
+    // soltar por ele seria a lei a alcançar mais do que ela diz.
+    apply_layout_field(&mut sim, &map, &sel, LayoutField::PadAll, 2.0);
+    assert_eq!(
+        sim.world()
+            .get::<ph2d_ecs::VecBindings>(frame)
+            .and_then(|b| b.get(ph2d_ecs::BoundProp::LayoutGapCross)),
+        Some("spacing.lg"),
+        "editar o RECUO nao pode soltar o token de um VAO"
+    );
+}

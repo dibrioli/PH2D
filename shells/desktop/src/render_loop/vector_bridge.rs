@@ -25,7 +25,7 @@ use ph2d_editor::{HeroScreen, ToolId, ToolRegistry};
 use ph2d_tool_vector::VectorDrawConfig;
 use ph2d_vec_edit::{History, PenStyle, PenTool, ShapeTool};
 use ph2d_vec_render::GradHandle;
-use ph2d_vec_scene::{LineCap, LineJoin, Paint, VecScene};
+use ph2d_vec_scene::{Paint, VecScene};
 
 /// O estilo do traço (o registro que o painel edita, o detector e o escritor — juntos de
 /// propósito). Módulo irmão pelo teto de LOC; o doc dele explica por que os três não se
@@ -193,7 +193,13 @@ pub(super) fn dispatch(
 
     // **Uma cor autorada SOLTA o token** (plano UI/UX W4a) — o one-shot do tool, drenado aqui e
     // consumido pelo passe que tem o mundo e a seleção na mão.
-    crate::vec_bindings::note_colour_authored(tool.take_colour_authored());
+    let (fill_authored, stroke_authored) = tool.take_colour_authored();
+    if fill_authored {
+        crate::vec_bindings::note_authored(ph2d_ecs::BoundProp::Fill);
+    }
+    if stroke_authored {
+        crate::vec_bindings::note_authored(ph2d_ecs::BoundProp::StrokeColor);
+    }
     let stroke = tool.stroke_rgba();
     let fill = tool.fill_rgba();
     let cap = line_cap(tool.cap());
@@ -247,6 +253,10 @@ pub(super) fn dispatch(
         Some((ph2d_editor::widget::SliderState::Dragging, _))
     );
     let width_authored = tool.take_width_authored();
+    // **Digitar uma espessura SOLTA o token dela** (W4c.4) — a mesma lei da cor, pelo mesmo canal.
+    if width_authored {
+        crate::vec_bindings::note_authored(ph2d_ecs::BoundProp::StrokeWidth);
+    }
     let session = stroke_open || fill_open || width_dragging;
     // The selected gradient handle, kept only if it still addresses a colour on the
     // current fill (a stale handle after a kind switch resolves to `None` and falls
@@ -554,42 +564,7 @@ pub(super) fn dispatch(
 #[path = "vector_bridge_tests.rs"]
 mod tests;
 
-/// Map the UI-facing `StrokeCap`/`StrokeJoin` to the geometry enums.
-fn line_cap(c: ph2d_tool_vector::StrokeCap) -> LineCap {
-    use ph2d_tool_vector::StrokeCap;
-    match c {
-        StrokeCap::Butt => LineCap::Butt,
-        StrokeCap::Round => LineCap::Round,
-        StrokeCap::Square => LineCap::Square,
-    }
-}
-fn line_join(j: ph2d_tool_vector::StrokeJoin) -> LineJoin {
-    use ph2d_tool_vector::StrokeJoin;
-    match j {
-        StrokeJoin::Miter => LineJoin::Miter,
-        StrokeJoin::Round => LineJoin::Round,
-        StrokeJoin::Bevel => LineJoin::Bevel,
-    }
-}
-
-/// Map the geometry `VertexKind` to the panel's UI-facing `VertexType`.
-/// O que a seleção de vértices tem em comum, no vocabulário do painel. `Mixed` viaja porque nenhum
-/// chip descreve uma seleção de tipos diferentes — publicar o tipo do PRIMÁRIO fazia o painel
-/// afirmar um deles (auditoria do plano 25, item 5).
-fn vertex_sel_of(sel: ph2d_vec_edit::SelectedKind) -> ph2d_tool_vector::VertexSel {
-    use ph2d_tool_vector::VertexSel;
-    match sel {
-        ph2d_vec_edit::SelectedKind::Uniform(k) => VertexSel::Uniform(vertex_type_of(k)),
-        ph2d_vec_edit::SelectedKind::Mixed => VertexSel::Mixed,
-    }
-}
-
-fn vertex_type_of(k: ph2d_vec_scene::VertexKind) -> ph2d_tool_vector::VertexType {
-    use ph2d_tool_vector::VertexType;
-    use ph2d_vec_scene::VertexKind;
-    match k {
-        VertexKind::Corner => VertexType::Corner,
-        VertexKind::Smooth => VertexType::Smooth,
-        VertexKind::Symmetric => VertexType::Symmetric,
-    }
-}
+/// A TRADUÇÃO do vocabulário tool ⟷ documento — módulo irmão pelo teto de 600 LOC (HR-18).
+#[path = "vector_bridge_vocab.rs"]
+mod vocab;
+use vocab::{line_cap, line_join, vertex_sel_of};

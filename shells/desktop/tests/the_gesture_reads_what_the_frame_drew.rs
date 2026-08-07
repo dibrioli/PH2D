@@ -101,11 +101,16 @@ fn the_draw_pass_publishes_the_facts_it_derived() {
     }
     // ⚠️ **A ORDEM é load-bearing**: publicar ANTES do passe de layout publicaria a tabela do
     // frame anterior, e a forma recém-colocada ficaria um frame inteira sem pose.
-    let recook = src
-        .find(".layout_live\n                .recook(")
-        .or_else(|| src.find("layout_live\n                .recook("))
+    //
+    // ⚠️ E a metade da ORDEM lê o `flat` pela MESMA razão que a de cima — ela ficou para trás e
+    // expirou na W4c.4: a chamada ganhou um argumento, o `rustfmt` a re-quebrou, e a agulha
+    // (`".layout_live\n                .recook("`, com a indentação escrita à mão) deixou de casar
+    // com código correto. *Uma âncora que inclui espaço em branco afirma a FORMATAÇÃO, não o
+    // produto* — e curar só uma das duas metades é como esta voltou a morder.
+    let recook = flat
+        .find("self.layout_live.recook(")
         .expect("o passe de layout");
-    let publish = src
+    let publish = flat
         .find("self.vec_view_derived.poses")
         .expect("a publicacao das poses");
     assert!(

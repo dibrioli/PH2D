@@ -39,7 +39,7 @@
 use ph2d_ecs::{Entity, SimWorld, VecWidget, VecWidgetBind};
 use ph2d_editor::interaction::{InteractiveState, WidgetStore};
 use ph2d_editor::widget::{CheckboxValue, WidgetKind};
-use ph2d_vec_scene::{BoundPaint, VecPathId, VecViewState};
+use ph2d_vec_scene::{BoundStyle, VecPathId, VecViewState};
 
 use crate::vec_entities::VecEntityMap;
 
@@ -132,7 +132,7 @@ pub(crate) fn resolve(
 /// **Aplica os drives na projeção do frame.**
 ///
 /// ⚠️ A opacidade é FUNDIDA na entrada de tinta que a forma já tenha, nunca acrescentada ao lado:
-/// o consumidor lê **uma** entrada por forma (`bound_paint(id)` devolve a primeira), então uma
+/// o consumidor lê **uma** entrada por forma (`bound_style(id)` devolve a primeira), então uma
 /// segunda entrada para a mesma forma seria silenciosamente descartada — e qual das duas some
 /// dependeria da ordem de iteração de um mapa.
 pub(crate) fn apply(drives: &[(VecPathId, Drive)], view: &mut VecViewState) {
@@ -148,10 +148,10 @@ pub(crate) fn apply(drives: &[(VecPathId, Drive)], view: &mut VecViewState) {
                 if let Some(b) = view.bound.iter_mut().find(|b| b.path == id) {
                     b.alpha = Some(a);
                 } else {
-                    view.bound.push(BoundPaint {
+                    view.bound.push(BoundStyle {
                         path: id,
                         alpha: Some(a),
-                        ..BoundPaint::default()
+                        ..BoundStyle::default()
                     });
                 }
             }

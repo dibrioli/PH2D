@@ -42,7 +42,14 @@ fn run(
     live: &mut LiveGeometry,
 ) -> LayoutLive {
     let mut ll = LayoutLive::default();
-    ll.recook(scene, sim, map, &VecXforms::default(), live);
+    ll.recook(
+        scene,
+        sim,
+        map,
+        &VecXforms::default(),
+        live,
+        crate::vec_bindings::TokenCtx::factory(),
+    );
     ll
 }
 
@@ -266,5 +273,57 @@ fn the_layout_places_what_the_other_producers_drew() {
         approx(second.0[0], 30.0),
         "o 2o tem de comecar onde o 1o DESENHADO acaba (30), e comeca em {}",
         second.0[0]
+    );
+}
+
+/// **O VÃO pode seguir um TOKEN, e o passe honra o comprimento resolvido** (W4c.4).
+///
+/// ⚠️ É o gate da COSTURA, e ele existe porque nenhum dos outros a cobria: `bound_gap` pode estar
+/// perfeito e o `frame_style` continuar a ler o literal — a mutação que troca o vão resolvido pelo
+/// autorado passava por toda a suíte até este gate nascer.
+///
+/// ⚠️ O oráculo é a POSIÇÃO do segundo filho, e não o número que a régua devolve: o número seria o
+/// espelho do `token_world`, e o que se quer saber é se a moldura de facto espaça por ele.
+#[test]
+fn a_gap_token_spaces_the_flow_and_the_literal_is_ignored_while_it_is_bound() {
+    let tok = crate::vec_bindings::TokenCtx::factory();
+    let expected = crate::vec_bindings::token_world("spacing.4xl", tok).expect("o token existe");
+    assert!(
+        (expected - 3.0).abs() > 0.5,
+        "premissa: o token tem de valer um numero DIFERENTE do literal da fixture, senao o gate \
+         nao distingue as duas fontes (ele vale {expected})"
+    );
+
+    let (mut sim, scene, map, frame, kids) = frame_with_children(2);
+    arm(
+        &mut sim,
+        frame,
+        VecLayout {
+            dir: LayoutDir::Row,
+            gap: [3.0, 0.0],
+            ..VecLayout::default()
+        },
+    );
+
+    // CONTROLE: sem binding, o vão é o literal — o 2º filho começa em 10 + 3.
+    let mut live = LiveGeometry::new();
+    run(&sim, &scene, &map, &mut live);
+    let plain = drawn(&live, &scene, kids[1]);
+    assert!(
+        approx(plain.0[0], 13.0),
+        "o literal tem de valer sem binding: {plain:?}"
+    );
+
+    // Com o token preso, o passe espaça pelo comprimento RESOLVIDO.
+    let mut b = ph2d_ecs::VecBindings::default();
+    b.set(ph2d_ecs::BoundProp::LayoutGapMain, "spacing.4xl");
+    sim.world_mut().entity_mut(frame).insert(b);
+    let mut live = LiveGeometry::new();
+    run(&sim, &scene, &map, &mut live);
+    let bound = drawn(&live, &scene, kids[1]);
+    assert!(
+        approx(bound.0[0], 10.0 + expected),
+        "o 2o filho tinha de comecar em 10 + {expected} (o token), e comeca em {}",
+        bound.0[0]
     );
 }

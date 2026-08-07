@@ -503,14 +503,10 @@ fn pick_token(host: &mut dyn PanelHostInternal, id: ph2d_a11y::NodeId) -> bool {
 /// A enumeração é a mesma do `event_clicks::is_token_option` (um `NodeId` é hash e não se
 /// inverte); o que muda é a resposta, porque aqui a pergunta é *de quem é este popover?*.
 fn token_option_chip(id: ph2d_a11y::NodeId) -> Option<ph2d_a11y::NodeId> {
-    let n = ph2d_tokens::ColorToken::ALL.len();
-    [
-        (0_u16, ids::VECTOR_TOKEN_FILL),
-        (1, ids::VECTOR_TOKEN_STROKE),
-    ]
-    .into_iter()
-    .find(|&(prop, _)| (0..=n).any(|i| id == ids::vector_token_option_id(prop, i)))
-    .map(|(_, chip)| chip)
+    ids::TOKEN_SLOTS
+        .iter()
+        .find(|s| (0..=s.table.len()).any(|i| id == ids::vector_token_option_id(s.code, i)))
+        .map(|s| s.chip)
 }
 
 /// A lista de ids cujo `Click` é apenas ENCAMINHADO — irmão pelo teto de 600 LOC do painel.

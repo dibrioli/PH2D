@@ -209,7 +209,7 @@ impl BodyCtx<'_> {
     /// **A largura de UMA célula da grade de dois** — a mesma expressão para quem preenche as
     /// duas e para quem preenche só a da esquerda. Duas cópias divergem no dia em que o vão
     /// mudar, e o resultado é uma fileira desalinhada da de cima.
-    fn half_cell_w(&self) -> f32 {
+    pub(crate) fn half_cell_w(&self) -> f32 {
         ((self.inner_w - Spacing::Sm.px()) / 2.0).max(1.0)
     }
 
@@ -235,6 +235,11 @@ impl BodyCtx<'_> {
     ///
     /// Medir em vez de escolher uma constante maior é o que mantém `X`/`Y` **onde sempre
     /// estiveram**: um caractere mede menos que o piso, então a seção Transform não se move.
+    ///
+    /// ⚠️ **Devolve o retângulo do CAMPO** (W4c.4): quem precisa desenhar por cima dele — a
+    /// rachura de *"um token cobre este número"* — tem de receber a caixa que o painter usou. Uma
+    /// segunda conta da mesma posição divergiria assim que a calha do rótulo, que é MEDIDA,
+    /// mudasse com o texto.
     pub(crate) fn number_cell(
         &mut self,
         label: &str,
@@ -242,7 +247,7 @@ impl BodyCtx<'_> {
         cx: f32,
         cw: f32,
         y: f32,
-    ) {
+    ) -> Rect {
         let lab_w = self
             .text_system
             .prefix_width(label, TypeToken::Sm.px())
@@ -273,6 +278,7 @@ impl BodyCtx<'_> {
             self.text_system,
             self.theme,
         );
+        rect
     }
 
     /// A 2-column row of two half-width action buttons; returns the advanced `y`.

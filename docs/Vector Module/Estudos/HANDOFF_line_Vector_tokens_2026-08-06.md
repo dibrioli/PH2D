@@ -4,7 +4,7 @@
 > [`MODELO_TROCA_DE_AGENTE_NA_LINHA.md`](../../IntegracaoMultiAgente/MODELO_TROCA_DE_AGENTE_NA_LINHA.md)
 > **antes de abrir qualquer arquivo** — a janela abre na raiz (que é `main`) e os mesmos paths
 > relativos existem nas duas árvores: editar a errada **compila e commita sem um único erro**.
-> Módulo = `Vector`. Worktree: `Worktrees/line-Vector/`. HEAD deste handoff: **`ba37d0725`**.
+> Módulo = `Vector`. Worktree: `Worktrees/line-Vector/`. HEAD deste handoff: **`85056908a`**.
 >
 > O plano-mãe é [`PLANO_UI_UX_padrao_figma.md`](PLANO_UI_UX_padrao_figma.md); este doc é o
 > **estado** e a **ordem**, não a especificação.
@@ -20,6 +20,7 @@
 | **W4c.1** — a CAMADA NUMÉRICA | A escala (`spacing.*`/`radius.*`/`stroke.*`) vira autorável, no molde exacto do de cor: chave `(modo, token)`, porta única, ciclo na porta, alias que atravessa famílias (px é px). Row com chip+elo+Reset no MESMO painel; viaja no arquivo. ⚠️ **`PROJECT_SCHEMA` 57→58** (PROVISÓRIO). | ✅ `=59` |
 | **W4c.3** — MATH | `NumValue::Expr(String)` + a crate leaf **`ph2d-token-math`**: `{spacing.md} * 2` resolve VIVO. O parser é **injectado** por fn-pointers (a `ph2d-tokens` é folha de 44 widgets e `ph2d-expr-parse` arrasta o `ph2d-nodegraph`). ⚠️ **`PROJECT_SCHEMA` 58→59**. | ⏳ `=59` |
 | **W4c.4** — ESCALA no DOCUMENTO | A espessura de um traço e o vão de um auto layout passam a SEGUIR um token numérico. ⚠️ A régua px↔mundo é a do PROJETO (`pixels_per_meter`) — sem ela o número erra por duas ordens de grandeza. ⚠️ **`PROJECT_SCHEMA` 59→60**. | ⏳ `=51` |
+| **W4c.5** — DTCG | Import/export do grafo em `.tokens.json` (o W3C do Tokens Studio / Style Dictionary). O mapeamento é a **IDENTIDADE** — a chave já é o caminho DTCG. Crate leaf nova `ph2d-tokens-dtcg`. ⚠️ **Zero schema, zero ADR, nenhuma dep externa nova.** | ⏳ `=59` |
 | **W4c.2** — A ESCALA VIVA | `Spacing::px()` passa a ser o valor **AUTORADO**: `num_runtime` projecta o grafo para uma tabela plana uma vez por quadro, e os ~1187 sítios de leitura ficam vivos **sem serem tocados**. Os 13 `const` viraram `fn` (o compilador enumerou-os, e achou 3 que a varredura não via). ⚠️ **PENDENTE DE SMOKE** — handoff [`HANDOFF_INTEGRACAO_line_Vector_W4c2_2026-08-06.md`](HANDOFF_INTEGRACAO_line_Vector_W4c2_2026-08-06.md). | ⏳ `=59` |
 
 **Aprovados pelo Enio em 2026-08-06** (*"Tudo perfeito"*), cena `PH2D_BUILD_SMOKE=59`.
@@ -144,9 +145,51 @@ LATERAL no ECS) · **zero `Cargo.toml`**, **zero ADR**.
 Detalhe, as 4 mutações que expuseram buraco de gate e o roteiro de smoke:
 [`HANDOFF_INTEGRACAO_line_Vector_W4c4_2026-08-06.md`](HANDOFF_INTEGRACAO_line_Vector_W4c4_2026-08-06.md).
 
-### W4c.5 — DTCG (o W9) *(comece aqui)*
-Import/export do grafo, agora que o grafo existe. ⚠️ `color.rs:276` já nota que a nomenclatura das
-chaves casa com o que o DTCG fala — confira antes de inventar um mapeamento.
+### ~~W4c.5 — DTCG (o W9)~~ ✅ FEITA (2026-08-07, `85056908a`)
+Import/export do grafo em `.tokens.json` — o formato W3C que o Tokens Studio / Style Dictionary /
+Penpot falam.
+
+⚠️ **O aviso desta linha estava certo, e a conferência fechou a questão:** o mapeamento é a
+**IDENTIDADE**. Um caminho DTCG é `grupo.token` e um alias é `{spacing.md}` — as nossas chaves já
+são exactamente isso, porque o `num.rs` pôs o ponto ali escrevendo que *"o ponto é também a forma
+que o DTCG fala (W4c.5)"*. Pôr as cores debaixo de um grupo `color` daria caminhos mais bonitos e
+**quebraria a coincidência**: a fórmula que o artista escreve no painel deixaria de ser o mesmo
+texto que o arquivo carrega.
+
+⚠️ **A forma do `$value` foi MEDIDA na spec, não assumida:** em `2025.10` cor e dimensão são
+**objetos** (`{colorSpace, components, alpha, hex}` / `{value, unit}`); as strings `"#rrggbb"` e
+`"12px"` são dos rascunhos anteriores, que metade do ecossistema ainda emite. **Escrevemos a da
+spec** (com o `hex`, que ela própria chama de fallback) e **lemos as duas**.
+
+⚠️ **A lei da wave:** o export traz a **tabela inteira** e o import **só autora o que DIFERE da
+fábrica**. Sem essa segunda metade, reimportar um export de um projeto intocado autoraria os ~80
+tokens e re-editar o `tokens.json` deixaria de alcançar o app **em silêncio**. Só vale para
+literais — um alias e uma fórmula são estruturais.
+
+**Crate nova `ph2d-tokens-dtcg`** (leaf) pela aresta que a `ph2d-tokens` declara no próprio
+`Cargo.toml` (*"zero runtime deps"*) — o precedente da `ph2d-token-math`, e agora com **arch-gate**
+a impedir a próxima linha de a furar. **Porta única nova `ph2d_tokens::route`** (*a chave decide a
+família*), com o `project_tokens::install` a delegar.
+
+⚠️ **Zero schema** (`PROJECT_SCHEMA` **60** e `VEC_SCENE_SCHEMA` **14** intactos), **zero ADR**,
+**nenhuma dep externa nova** ⇒ esta wave fica **fora** de toda disputa de número.
+
+Detalhe, as 13 mutações (uma sobreviveu e nomeou um buraco) e o roteiro de smoke:
+[`HANDOFF_INTEGRACAO_line_Vector_W4c5_2026-08-07.md`](HANDOFF_INTEGRACAO_line_Vector_W4c5_2026-08-07.md).
+
+---
+
+## 3.1 ⭐ A FILA DE TOKENS FECHOU
+
+As cinco waves do §3 estão feitas. O que resta desta linha é o §5 (fora da fila de tokens) e o que
+a W4c.5 nomeou como **deliberadamente fora**:
+
+- **Tipografia e motion em DTCG** — `Motion` mede-se em **ms** (outra régua) e `chrome.*` não tem
+  identidade de token; um `$type: "duration"` precisa primeiro de o `Duration` ganhar `key()`/`ALL`.
+- **SVG de entrada com hierarquia** e **exportação de sprites/atlas** — as outras duas metades do
+  W9 no plano-mãe, com outros consumidores.
+- **O `Resolver` do DTCG** (a spec separada que modela modos) não é lido nem escrito: um arquivo é
+  um modo, que é o que o ecossistema faz.
 
 ---
 

@@ -27,7 +27,7 @@ const PX_STEP: f64 = 0.5;
 /// ponta a ponta atravessa. Sai do maior valor de fábrica da família — `radius.full` = 999 —,
 /// porque uma régua que não alcançasse a fábrica tornaria um token inautorável pelo arrasto.
 /// Digitar continua a alcançar qualquer número que a porta aceite.
-const PX_DRAG_MAX: f64 = 1000.0;
+const PX_DRAG_MAX: f64 = 1000.0; // LITERAL-PX-OK: regua de um GESTO (quanto um arrasto varre), nao uma metrica de design
 
 fn button(store: &mut WidgetStore, id: ph2d_a11y::NodeId) {
     store.register(

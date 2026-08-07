@@ -25,8 +25,13 @@ use std::cell::{Cell, RefCell};
 /// ⚠️ O painel passou a ter DUAS listas, e um índice cru deixou de identificar uma linha. Um par
 /// `(família, índice)` torna impossível o modo de falha barato: um clique numa linha de
 /// espaçamento a escrever no token de COR de mesmo índice, em silêncio.
+///
+/// ⚠️ `pub(crate)`: ele descreve o GESTO dentro do painel, e nenhum consumidor de fora o pergunta
+/// (os intents nomeiam a família no próprio variant — `Reset` contra `NumReset`). Exportá-lo seria
+/// superfície pública à espera de um chamador, e a próxima linha a olhar para ela teria de
+/// adivinhar para que serve.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum TokenFamily {
+pub(crate) enum TokenFamily {
     /// `ColorToken::ALL` — a swatch e o picker.
     Colour,
     /// `NumToken::ALL` — o chip de px.

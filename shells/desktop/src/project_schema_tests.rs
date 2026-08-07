@@ -211,7 +211,23 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // um arquivo v56 com o layout errado; o número transforma isso num erro de VERSÃO.
         // ⚠️ Um enum e não um `rgba` com um `alias` ao lado: os dois seriam mutuamente exclusivos
         // e nada no formato o diria — a representação apaga o estado que ninguém especificou.
-        (57, 13, 14),
+        // PROJECT 57→58: a ESCALA (`spacing.*`, `radius.*`, `stroke.*`) passa a ser autorável
+        // (plano UI/UX W4c.1), e o valor autorado viaja na MESMA lista `tokens` — o `SavedValue`
+        // ganha a variante `Number(f32)`, e a CHAVE (`"spacing.md"`) é quem diz de que família a
+        // entrada é. ⚠️ **Uma lista só, e não um campo `num_tokens` ao lado**: o que o arquivo
+        // guarda é *"que tokens o artista autorou"*, e duas listas para isso seriam duas respostas
+        // à mesma pergunta que o import/export DTCG (W4c.5) teria de juntar de novo. Isso só é
+        // seguro porque as duas famílias são provavelmente disjuntas nas chaves — há gate a
+        // afirmá-lo (`no_key_is_claimed_by_both_families`).
+        // ⚠️ Aqui o bump é o **caminho INVERSO**, e é a única razão: apender variante NÃO move
+        // `Literal`(0) nem `Alias`(1), então todo arquivo já salvo continua a ler — mas um build
+        // ANTIGO a ler um arquivo novo bateria num índice de variante que ele não tem, e o número
+        // transforma isso num erro de VERSÃO em vez de num postcard a falhar longe da causa. É o
+        // mesmo raciocínio do `JointKind::Weld` (v28) e do `Cap::Square` (v48).
+        // ⚠️ `FLIP`/`VEC_SCENE` NÃO se movem: a tabela é do ARQUIVO, não da cena.
+        // ⚠️ O 58 é PROVISÓRIO pela mesma razão de todos os acima — ele se CONTA contra o `main`
+        // do dia da integração ([[feedback_numbers_that_sum_across_lines_count_dont_pick]]).
+        (58, 13, 14),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

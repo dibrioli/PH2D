@@ -60,8 +60,15 @@ impl PainterTool {
     }
 
     /// `true` when a transient scratch mask is live on the CURRENT layer (target still active, non-empty).
+    ///
+    /// ⚠️ **É também a pergunta *"o overlay da proteção está sendo desenhado?"***, e por isso ela é
+    /// `pub`: o tinte por-pixel ([`Self::apply_mask_overlay`]) roda exatamente sob esta condição, e a
+    /// SHELL precisa dela para decidir quem produz o preview — o produtor de GPU não desenha o overlay,
+    /// então enquanto ele existe a pista de CPU é a única que pode mostrá-lo
+    /// (`painter_gpu_preview::gpu_eligible`). Um segundo nome para o mesmo fato é como as duas metades
+    /// passam a discordar sobre quando a proteção está na tela.
     #[must_use]
-    pub(crate) fn mask_scratch_active(&self) -> bool {
+    pub fn mask_scratch_active(&self) -> bool {
         self.paint.mask_scratch_target.is_some()
             && self.paint.mask_scratch_target == self.layers.active()
             && !self.paint.mask_scratch_rgba.is_empty()

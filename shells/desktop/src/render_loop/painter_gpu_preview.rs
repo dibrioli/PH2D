@@ -235,6 +235,21 @@ fn gpu_eligible(painter: &PainterTool) -> Option<(Vec<LayerOp>, Vec<f32>)> {
     if painter.repeat_image() {
         return None;
     }
+    // A PROTEÇÃO é chrome que mora no COMPOSITE: `apply_mask_overlay` tinge o composto por-pixel pela
+    // cobertura do scratch, na `runtime.rs`, e o produtor de GPU **não a desenha** — ele composita e
+    // ilumina, e o overlay não é uma `LayerOp`. Enquanto não havia relevo isso não aparecia: um
+    // documento com scratch vivo é quase sempre trivial, e a bow-out acima o mandava para a CPU.
+    // Com o relevo o documento vira elegível (a luz na GPU, 2026-07-18) e o overlay SOME — o artista
+    // pinta sob uma proteção que ele não vê (Enio, 2026-08-07: *"a máscara funcionou, mas fica
+    // invisível ao usar impasto"*).
+    //
+    // ⚠️ **A cura é a mesma do Repeat Image acima, e pelo mesmo motivo:** quem desenha aquele chrome é
+    // a pista de CPU, então enquanto o artista está OLHANDO para ele a CPU produz. A alternativa —
+    // portar o tinte para o shader — seria uma segunda resposta a *"como uma proteção se parece"*,
+    // divergindo no único lugar onde ninguém lê um número.
+    if painter.mask_scratch_active() {
+        return None;
+    }
     super::painter_gpu_flatten::flatten_for_gpu(painter.layers())
 }
 

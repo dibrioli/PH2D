@@ -69,6 +69,48 @@ fn repeat_image_keeps_the_cpu_producer() {
     );
 }
 
+/// **A PROTEÇÃO mantém o produtor de CPU** (Enio 2026-08-07: *"a máscara funcionou, mas fica invisível
+/// ao usar impasto"*): o overlay dela é um tinte por-pixel sobre o COMPOSTO (`apply_mask_overlay`, na
+/// `runtime.rs`), e o produtor de GPU não o desenha — ele composita e ilumina, e o overlay não é uma
+/// `LayerOp`.
+///
+/// ⚠️ **A fixture tem de ser o documento ESCULPIDO**, e é isso que torna o gate o do report: sem relevo
+/// um documento com scratch é trivial e a bow-out do topo já o mandava para a CPU, então o defeito não
+/// existia. Foi o relevo — elegível desde o port da luz — que o expôs.
+///
+/// **Mutação que deve sangrar:** apagar o `mask_scratch_active` do `gpu_eligible`.
+#[test]
+fn a_live_protection_keeps_the_cpu_producer() {
+    use ph2d_editor::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, Tool as _};
+    let mut t = sculpted_tool();
+    assert!(
+        gpu_eligible(&t).is_some(),
+        "precondition: o documento esculpido é elegível SEM proteção"
+    );
+    // A proteção pela porta do artista: modo Mask + um traço no scratch.
+    t.handle_panel_event(ph2d_editor::tool::PanelEvent::SelectOption(
+        ph2d_editor::ids::PAINTER_PAINT_MODE,
+        "mask".to_string(),
+    ));
+    let cp = |pos: [f32; 2], phase: PointerPhase| CanvasPointer {
+        pos,
+        pressure: 1.0,
+        tilt: [0.0, 0.0],
+        phase,
+    };
+    t.on_canvas_pointer(cp([24.0, 24.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([24.0, 24.0], PointerPhase::Up));
+    assert!(
+        t.mask_scratch_active(),
+        "precondition: o traço de máscara criou o scratch"
+    );
+    assert!(
+        gpu_eligible(&t).is_none(),
+        "com proteção viva a pista de CPU tem de produzir — é ela que desenha o overlay, e sem isto o \
+         artista pinta sob uma máscara que não vê"
+    );
+}
+
 #[test]
 fn non_trivial_representable_stack_is_gpu_eligible() {
     // Opacity < 1 on the single layer breaks triviality without leaving

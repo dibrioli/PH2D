@@ -858,6 +858,7 @@ impl crate::App {
         self.value_curve_smoke();
         self.gradient_smoke();
         self.osc_ruler_smoke();
+        self.driven_row_smoke();
         self.units_smoke();
         self.splice_smoke();
         self.value_noise_smoke();

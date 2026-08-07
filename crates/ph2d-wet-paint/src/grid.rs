@@ -23,6 +23,10 @@ use crate::paper::PaperPreset;
 mod scratch;
 pub use scratch::{AdvCell, SolverScratch};
 
+#[path = "grid/patch.rs"]
+mod patch;
+pub use patch::{GridPatch, restore_grid_region, snapshot_grid_region};
+
 pub const DEFAULT_WIDTH: usize = 900;
 pub const DEFAULT_HEIGHT: usize = 450;
 

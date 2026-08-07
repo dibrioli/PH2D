@@ -7235,3 +7235,137 @@ e antes disso o cache de substrato) mediram 0,2 e 0,9 ms.
 
 **Nenhuma das duas é minha para escolher.** O que a sessão entrega é o número ao
 lado de cada uma.
+
+---
+
+## §5.78 — O meio caro renderiza em REPOUSO: o move de Impasto 99 → 6 ms (2026-08-07)
+
+Pedido do Enio: *"temos boa performance de modo geral, exceto usando as shapes
+vivas. Que acha de ligar o pigmento apenas no mouse up quando o usuário estiver
+em repouso? No mouse up a shape pinta, se o usuário mover a shape a pintura some
+e só volta no mouse up."*
+
+### O número que confirma o alvo
+
+Um move de figura viva, 4096², elipse de 400 px, pincel r=96
+(`measure_shape_system_by_medium`):
+
+```text
+meio        move (ms)   do qual: carimbo   ns/visita
+Digital          4,52   4,01  (89%)          0,79
+Impasto         99,10   98,38 (99,3%)       19,40
+Aquarela        74,27   -                       -
+```
+
+⚠️ **A máquina de shape custa 0,25 ms.** Geometria, restore, save — tudo somado.
+Quem cobra é o CARIMBO, e ele não é ineficiente: ele é **repetido**, porque o
+shape editor re-carimba a figura INTEIRA a cada quadro do arrasto. O quadro
+também não esconde nada: o `what_a_frame_of_a_live_shape_costs` mede o composite
+em **0,000 ms** para uma figura viva, então *o evento É o quadro*.
+
+### A escolha do desenho, medida em vez de opinada
+
+A proposta dizia **apagar** a pintura durante o arrasto. A pergunta que faltava
+era quanto isso compra sobre a alternativa, e ela tem número
+(`measure_what_a_flat_preview_would_cost`, ablação pelas portas do PRODUTO —
+`set_brush_impasto`/`set_brush_watercolor`, as mesmas do dropdown de Paint Mode):
+
+```text
+meio        caro    RASCUNHO   só o guia
+Impasto   101,17      4,38       0,39
+Aquarela   73,78      4,38       0,32
+```
+
+⚠️ **As duas linhas do rascunho darem 4,382 é o CONTROLE da ablação:** com os dois
+flags desarmados o meio deixa de importar, então elas *têm* de coincidir.
+
+**Apagar** custa 0,39 ms e deixa só o guia amarelo (perímetro + alças, que a shell
+desenha no vector scene, fora do carimbo). **O rascunho** custa 4,38 — 26% de um
+quadro de 60 fps — e mantém sob a mão a COR, a **largura real do traço** (o pincel
+passa do guia), a textura do pincel e **o resultado do booleano**, nenhum dos
+quais o guia mostra. Ajustar uma figura é ajustar até *ficar bom*: apagar o que se
+julga durante o gesto tira justamente a informação do julgamento, por 4 ms.
+
+⚠️ **E não é desenho novo — é o padrão que o doc 21 já shipa no Wet Paint**
+(autoria com preview flat estático, o meio caro entrando num commit), smokado e
+aprovado. O que muda aqui é a **FRONTEIRA**: lá o caro entra no *commit*
+(Enter/Apply), aqui entra **em repouso** (o Up), então ajustar → soltar → olhar →
+ajustar funciona sem esperar o Apply. Essa metade da proposta do Enio é melhor
+que a do doc 21 e foi adotada verbatim.
+
+### O resultado, pela porta do artista
+
+`on_canvas_pointer`, 4096², elipse de 400 px, duas corridas:
+
+```text
+meio        antes     depois
+Digital      4,52    4,27-4,45   <- o CONTROLE, inalterado
+Impasto     99,10    5,66-6,03   (16x)
+Aquarela    74,27    4,87-5,28   (14x)
+```
+
+⚠️ **O Digital inalterado é o que prova que a ablação não é larga demais** — uma
+que apagasse o depósito inteiro durante o gesto daria os mesmos 16× no Impasto e
+faria os pixels do pincel comum sumirem sob a mão. O rascunho custa um pouco mais
+que o Digital (5,7-6,0 contra 4,3) porque o pincel de impasto tem outro spec
+(falloff Sphere, entre outros); o número é passado como é.
+
+⚠️ E a primeira corrida pós-mudança media o Digital em **5,57** — 23% acima do
+controle. Não reproduziu: as duas seguintes deram 4,27 e 4,45, com o mesmo
+`ns/visita` de antes (0,76-0,79). *Um número que não reproduz não é achado.*
+
+### As três decisões de estrutura
+
+**(1) A lei mora no roteador de ponteiro**, em `on_canvas_pointer` — o único
+lugar que vê o Down e o Up dos **cinco** editores. Um flag por editor seria a
+enumeração que apodrece no sexto.
+
+**(2) A bandeira cai ANTES da rota no Up**, não depois: assim o re-carimbo que o
+próprio editor faz ao soltar JÁ é o final, e o gesto paga **exatamente um**
+carimbo caro. Cair depois custaria dois pelo mesmo resultado.
+
+**(3) A pergunta da aquarela foi PARTIDA em duas.** `watercolor_render_active`
+tinha **quatro** leitores: três decidem *"o que ESTE lote desenha?"* e um — o
+`snapshot` — decide *"que meio o artista escolheu?"*, e é ele que esconde a row
+**Accumulate** no painel. Coladas, a row apareceria e sumiria a cada arrasto de
+figura: **UI piscando por causa de uma decisão de render**. Agora
+`watercolor_armed` responde ao painel e `watercolor_render_active` conhece o
+rascunho. O `impasto_batch_active` já era a pergunta certa e ganhou o termo
+direto.
+
+### O contador, e por que ele não é cerimônia
+
+O Up pergunta ao FATO — `restamp_seq`, *alguém re-carimbou?* — em vez de enumerar
+os ramos de Up de cada editor. ⚠️ E isso **não é defesa hipotética**: o ramo
+`editing` do `ellipse_up` fecha a transação de undo e sai por `return true` **sem
+re-carimbar**, então sem o fallback a figura ficaria plana depois de todo arrasto
+de AJUSTE — que é literalmente o gesto que o Enio descreveu.
+
+### Duas lições de fixture, as duas minhas
+
+⚠️ **O oráculo do relevo é o envelope por-traço, não o plano commitado.** A 1ª
+versão do gate lia `t.heights` e nascia **VERMELHA** na metade *"em repouso"* com
+o produto correto: o depósito acumula em `relief.stroke_height` e só funde na
+camada no COMMIT, que para um shape editor é o Apply/Enter — não o Up. A fixture
+não continha o fenômeno, ela media outro. O oráculo certo é a MESMA grandeza que
+o `impasto_visible` consulta para acender a luz.
+
+⚠️ **A fixture de CRIAÇÃO não alcança o fallback.** Com ela a mutação *"tire o
+fallback do Up"* **sobreviveu** — e não por buraco de gate: o ramo de criação do
+`ellipse_up` re-carimba por conta. Só a fixture de **ajuste** (criar, soltar,
+depois pegar e mover) exercita o ramo `editing`, e com ela a mesma mutação sangra.
+*Uma bateria que só cria figuras deixaria passar o defeito no gesto reportado.*
+
+### Preço, nomeado
+
+Sob Impasto o **relevo** some durante o arrasto (forma, cor e largura ficam); sob
+Aquarela, o sangramento. É o mesmo trade que o Wet Paint já faz, e o pisca ao
+pegar de novo é real — o doc 21 o chama de *"o esboço derrete"*. **Trocar para
+apagar é uma linha** (`shape_draft` deixaria de exigir o meio e passaria a
+suprimir o depósito inteiro), se o smoke disser que o pisca incomoda mais que a
+informação vale.
+
+**Aberto:** o arrasto de um **slider do painel** também re-carimba por quadro e
+**não** passa por esta porta (ele não tem Down/Up de canvas). Se o smoke mostrar
+que afinar um knob sob Impasto ainda engasga, a cura é fiar o `held_button` da
+shell no mesmo `shape_draft` — mesma lei, segundo fio.

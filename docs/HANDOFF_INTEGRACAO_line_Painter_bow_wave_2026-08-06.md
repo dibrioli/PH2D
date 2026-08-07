@@ -1,17 +1,18 @@
 # HANDOFF DE INTEGRAÇÃO — `line/Painter`, o bow wave gateado no knob + as bandas por trabalho (2026-08-06)
 
-> **19 commits · 23 arquivos · nenhum `Cargo.toml` · nenhum ADR · `project.rs` intocado.**
+> **23 commits · 31 arquivos · nenhum `Cargo.toml` · nenhum ADR · `project.rs` intocado.**
 >
 > ⚠️ O par `commits · arquivos` deste cabeçalho **se CONTA** (`git log --oneline origin/main..HEAD | wc -l`
 > e `git diff --name-only origin/main..HEAD | wc -l`). Ele nasceu dizendo *11 · 17*, que já era falso
 > quando foi escrito, e eu quase o bumpei para *12 · 18* fazendo aritmética em cima do valor errado —
 > a mesma classe de [[feedback_numbers_that_sum_across_lines_count_dont_pick]], dentro de um doc só.
 >
-> ⚠️ **PENDENTE DE SMOKE.** A jornada tem **três metades independentes**: a do **bow wave** (§1-§9,
+> ⚠️ **PENDENTE DE SMOKE.** A jornada tem **quatro metades independentes**: a do **bow wave** (§1-§9,
 > sete commits, um deles muda o produto — leia o §3), a das **BANDAS POR TRABALHO** (§10, dois
-> commits, um deles muda o produto e é **byte-idêntico**) e a do **BOOLEAN** (§11-§12: a **janela**
-> muda o produto; o **traçado** e a **sub-janela por forma** são **byte-idênticos**). As três podem ser integradas
-> juntas; elas não se tocam.
+> commits, um deles muda o produto e é **byte-idêntico**), a do **BOOLEAN** (§11-§12: a **janela**
+> muda o produto; o **traçado** e a **sub-janela por forma** são **byte-idênticos**) e a do **REPOUSO**
+> (§13 — ⚠️ **muda o que o artista VÊ durante um arrasto**, e é a única que precisa de veredito de
+> gosto). As quatro podem ser integradas juntas; elas não se tocam.
 
 ---
 
@@ -471,3 +472,83 @@ a resposta é um; o raster não tem esse modo de falha) · o fechamento exato ·
 Módulo novo `measure_boolean_cost.rs` (as duas tabelas do boolean saíram do `measure_shape_system`,
 que bateu 749 > 700 — corte por assunto) · `selection_trace_tests.rs` · `stroke_boolean::diag` sob
 `cfg(test)`. **Nenhum `Cargo.toml`, nenhum ADR, `project.rs` intocado, contrato congelado 4/4.**
+
+---
+
+## §13 O meio caro renderiza em REPOUSO — a 4ª metade (2026-08-07)
+
+**Pedido do Enio:** *"temos boa performance de modo geral, exceto usando as shapes vivas. Que acha de
+ligar o pigmento apenas no mouse up quando o usuário estiver em repouso? … se o usuário mover a shape
+a pintura some e só volta no mouse up."*
+
+⚠️ **Esta é a única metade da jornada que MUDA O QUE O ARTISTA VÊ**, e por isso é a única que precisa
+de veredito de gosto no smoke. As outras três são invisíveis ou já aprovadas.
+
+### O diagnóstico dele estava certo, e a medição diz por quê
+
+Um move de figura viva a 4096², elipse de 400 px: **99,10 ms no Impasto, dos quais 98,38 (99,3%) são
+o CARIMBO**; a máquina de shape (geometria, restore, save) custa 0,25. O carimbo não é ineficiente —
+ele é **repetido**: o shape editor re-carimba a figura INTEIRA a cada quadro do arrasto.
+
+### A correção no desenho: RASCUNHO, não apagar
+
+| meio | caro | **rascunho** | só o guia |
+|---|---|---|---|
+| Impasto | 101,17 ms | **4,38** | 0,39 |
+| Aquarela | 73,78 ms | **4,38** | 0,32 |
+
+Apagar economiza mais 4 ms e leva embora a cor, a largura real do traço, a textura do pincel e o
+resultado do booleano. O rascunho cabe em 26% de um quadro de 60 fps. ⚠️ **E é o padrão que o doc 21
+já shipa no Wet Paint**, smokado e aprovado — o que muda é a FRONTEIRA (repouso, não commit), que é a
+metade da proposta do Enio adotada verbatim.
+
+### O resultado
+
+| meio | antes | depois |
+|---|---|---|
+| Digital | 4,52 | **4,27-4,45** ← o CONTROLE, inalterado |
+| Impasto | 99,10 | **5,66-6,03** (16×) |
+| Aquarela | 74,27 | **4,87-5,28** (14×) |
+
+### Estrutura
+
+Módulo novo **`shape_draft.rs`** (a lei inteira: o predicado, o embrulho da rota, a porta de re-carimbo
+agnóstica de editor) + `shape_draft_tests.rs`. `PaintState` ganha **dois campos transientes**
+(`shape_draft`, `restamp_seq`) — nada serializado, nada no `ModelSnapshot`.
+
+⚠️ **A pergunta da aquarela foi PARTIDA em duas.** `watercolor_render_active` tinha quatro leitores;
+três perguntam *"o que ESTE lote desenha?"* e o `snapshot` pergunta *"que meio o artista escolheu?"* —
+e é ele que esconde a row **Accumulate**. Coladas, a row apareceria e sumiria a cada arrasto. Agora
+**`watercolor_armed`** serve o painel. Se alguém reverter isso, o gate
+`the_watercolor_chip_does_not_flicker_while_the_shape_is_dragged` sangra.
+
+⚠️ **O `restamp_seq` não é cerimônia:** o ramo `editing` do `ellipse_up` **não re-carimba** (fecha a
+transação de undo e sai), então sem o fallback a figura ficaria plana depois de todo arrasto de
+AJUSTE — o gesto exato que o Enio descreveu.
+
+### Verificação
+
+**5 gates, 5 mutações, 5 sangram.** Suíte da crate **1006 release / 1004 debug**, clippy limpo, LOC
+sob o teto (o `mod shape_draft` foi **reancorado** depois que o `rustfmt` o pôs entre um doc-comment e
+o módulo dele — a cicatriz que esta linha já pagou). **Nenhum `Cargo.toml`, nenhum ADR, `project.rs`
+intocado, contrato congelado 4/4.**
+
+### O que o smoke tem de julgar
+
+**`env PH2D_IMPASTO_SMOKE=1 PH2D_PAINT_PERF=1 cargo run -p ph2d-host-desktop --release`**, canvas
+**4096**, Paint Mode **Impasto**, método **Ellipse**:
+
+1. desenhe uma elipse e **arraste-a** — o arrasto tem de ficar liso, e a figura sai **plana** (cor e
+   largura ficam, o relevo some);
+2. **solte** — o relevo volta na hora;
+3. repita pegando e soltando: **o pisca incomoda mais do que a fluidez vale?** É a pergunta inteira.
+4. o mesmo em **Watercolor**; e em **Digital** nada pode mudar (é o controle).
+
+⚠️ **Trocar para *apagar* é uma linha**, se o veredito for que o rascunho plano confunde mais do que
+ajuda.
+
+### Aberto
+
+O arrasto de um **slider do painel** também re-carimba por quadro e **não** passa por esta porta (ele
+não tem Down/Up de canvas). Se afinar um knob sob Impasto ainda engasgar, a cura é fiar o
+`held_button` da shell no mesmo `shape_draft` — mesma lei, segundo fio.

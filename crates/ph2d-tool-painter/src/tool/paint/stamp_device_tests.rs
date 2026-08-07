@@ -40,6 +40,9 @@ fn figure_tool() -> crate::tool::PainterTool {
 fn draw(t: &mut crate::tool::PainterTool) {
     t.on_canvas_pointer(cpx([512.0, 512.0], PointerPhase::Down));
     t.on_canvas_pointer(cpx([692.0, 652.0], PointerPhase::Move));
+    // ⚠️ **O carimbo agora acontece em REPOUSO** (`super::shape_draft`): sob a mão o gizmo é o
+    // preview e nenhum lote é produzido, então a fixture tem de SOLTAR — senão ela mede o silêncio.
+    t.on_canvas_pointer(cpx([692.0, 652.0], PointerPhase::Up));
 }
 
 /// **Cada recusa nomeia uma LEI que o kernel não transcreve** — e o controle positivo é o pincel de

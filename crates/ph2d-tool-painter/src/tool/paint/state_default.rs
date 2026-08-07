@@ -130,7 +130,7 @@ impl Default for PaintState {
             moved_this_frame: false,
             drag_preview: None,
             shape_draft: false,
-            restamp_seq: 0,
+            shape_stale: false,
             line_anchor: None,
             line_constrain: false,
             scale_uniform: false,

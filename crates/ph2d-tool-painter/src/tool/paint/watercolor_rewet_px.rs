@@ -20,17 +20,6 @@ impl PainterTool {
     /// plain brush (the whole path is skipped, deposit + composite alike). Split from `watercolor_render`
     /// (workspace LOC cap); the gate on the render path lives with the per-pixel terms it guards.
     pub(super) fn watercolor_render_active(&self) -> bool {
-        self.watercolor_armed() && !self.draft_stamp()
-    }
-
-    /// **A aquarela está ARMADA?** — a mesma pergunta menos o rascunho, e é a que o PAINEL faz.
-    ///
-    /// ⚠️ **As duas não podem ser uma só.** O painel publica isto como `BrushSettings::watercolor_active`
-    /// para esconder a row **Accumulate** sob a lavagem; se ele lesse a irmã, a row apareceria e sumiria
-    /// a cada arrasto de figura — a UI piscando por causa de uma decisão de RENDER. Uma pergunta é
-    /// *"que meio o artista escolheu?"*, a outra *"o que ESTE lote desenha?"*, e só a segunda conhece o
-    /// rascunho (`super::shape_draft`).
-    pub(super) fn watercolor_armed(&self) -> bool {
         self.paint.brush.watercolor
             && matches!(self.paint.paint_mode, PaintMode::Paint)
             && !self.paint.eraser

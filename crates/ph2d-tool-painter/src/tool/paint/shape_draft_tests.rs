@@ -9,6 +9,19 @@ use crate::tool::paint::media::PaintMedia;
 use ph2d_editor_core::tool::{CanvasPaintTool, PointerPhase};
 use ph2d_painter_brush::StrokeMethod;
 
+/// Quantos texels da tela deixaram de ser papel branco — *"há tinta na tela?"*.
+///
+/// ⚠️ **É o oráculo do que o ARTISTA vê**, e é por isso que a lei do repouso se mede por ele e não
+/// pelo relógio: um bar de tempo mediria o perfil do build (a lição que esta linha já pagou).
+fn painted(t: &crate::tool::PainterTool) -> usize {
+    t.canvas_rgba
+        .iter()
+        .step_by(4)
+        .zip(t.canvas_rgba.iter().skip(1).step_by(4))
+        .filter(|(r, g)| **r != 255 || **g != 255)
+        .count()
+}
+
 /// Quanto CORPO de tinta a figura VIVA carrega.
 ///
 /// ⚠️ **O envelope por-traço, não o plano commitado** (`heights`): o depósito acumula o relevo em
@@ -57,69 +70,86 @@ fn move_an_existing_ellipse(media: PaintMedia) -> (crate::tool::PainterTool, [f3
     (t, [c + 14.0, c + 10.0])
 }
 
-/// **A wave inteira se apoia nisto:** com a mão em movimento a figura sai PLANA, e ao soltar ela
-/// ganha o corpo.
+/// **A wave inteira se apoia nisto:** com a mão em movimento a tinta SOME, e ao soltar ela volta.
 ///
-/// ⚠️ **O oráculo é o RELEVO, não o relógio** — um gate de tempo mediria o perfil do build (a lição
-/// que esta linha já pagou), enquanto *"há corpo de tinta na camada?"* é o fato que o artista vê.
+/// O relevo entra como corolário — sem carimbo não há corpo — e é ele que prova que o carimbo final
+/// roda com o meio de VERDADE, e não numa versão desarmada.
 #[test]
-fn the_expensive_medium_renders_at_rest_not_under_the_hand() {
+fn the_paint_is_gone_under_the_hand_and_back_at_rest() {
     let (mut t, up_at) = drag_an_ellipse(PaintMedia::Impasto);
-    let under_the_hand = relief(&t);
+    let under_the_hand = painted(&t);
     assert_eq!(
-        under_the_hand, 0.0,
-        "um gesto EM VOO nao pode depositar corpo — o re-carimbo devia sair rascunhado, e mediu {under_the_hand}"
+        under_the_hand, 0,
+        "um gesto EM VOO nao pode deixar tinta na tela — o gizmo e o preview, e mediu {under_the_hand} texels"
     );
+    assert_eq!(relief(&t), 0.0, "nem corpo");
     t.on_canvas_pointer(cp(up_at, PointerPhase::Up));
+    assert!(
+        painted(&t) > 0,
+        "ao SOLTAR a tinta tem de voltar — o carimbo final nao rodou"
+    );
     let at_rest = relief(&t);
     assert!(
         at_rest > 0.0,
-        "ao SOLTAR a figura tem de ganhar o corpo — o carimbo final nao rodou (relevo {at_rest})"
+        "o carimbo final rodou sem o meio de verdade (relevo {at_rest})"
     );
 }
 
-/// **O CONTROLE:** o Digital não tem meio caro para desarmar, então o rascunho não pode movê-lo.
+/// **A lei não é sobre o MEIO — ela vale para o Digital também**, porque o que ela pula é o composite
+/// booleano, e ele custa o mesmo em qualquer meio (medido: 284 dos 308 ms, com o pincel quase
+/// irrelevante).
 ///
-/// ⚠️ Sem esta metade a wave passaria com uma ablação larga demais (algo que apagasse o depósito
-/// inteiro durante o gesto), e os pixels do pincel comum sumiriam sob a mão sem nenhum gate reclamar.
-/// A afirmação é **byte a byte**: o que o Move desenha é o que o Up desenha.
+/// ⚠️ Uma 1ª versão desta wave gateava o meio caro e deixava o Digital intacto — e o smoke reprovou
+/// exatamente aí: *"mesmo o preview plano é extremamente custoso"*. Este gate é o que impede alguém
+/// de re-estreitar a lei ao Impasto/Aquarela e reintroduzir o defeito reportado.
 #[test]
-fn the_plain_brush_draws_the_same_under_the_hand_and_at_rest() {
+fn the_plain_brush_disappears_under_the_hand_too() {
     let (mut t, up_at) = drag_an_ellipse(PaintMedia::Digital);
-    let under_the_hand = t.canvas_rgba.as_ref().clone();
-    let painted = under_the_hand
-        .iter()
-        .step_by(4)
-        .filter(|a| **a != 255)
-        .count();
-    assert!(
-        painted > 0,
-        "a fixture nao pintou nada — o gate ficaria verde sobre duas telas em branco"
+    assert_eq!(
+        painted(&t),
+        0,
+        "o Digital continuou pintando sob a mao — a lei foi estreitada ao meio caro"
     );
     t.on_canvas_pointer(cp(up_at, PointerPhase::Up));
-    assert_eq!(
-        under_the_hand,
-        t.canvas_rgba.as_ref().clone(),
-        "o pincel comum mudou ao soltar — o rascunho vazou para um meio que nao tem meio caro"
+    assert!(
+        painted(&t) > 0,
+        "o Digital nao voltou ao soltar — a fixture nao pinta nada, ou o carimbo final nao roda"
     );
 }
 
-/// **O PAINEL não pisca.** `watercolor_active` responde *"que meio o artista escolheu?"*, e essa
-/// resposta não pode depender de a mão estar em movimento.
+/// **O que a lei existe para pular: o composite BOOLEANO.** Com Operation Add um gesto em voo não
+/// pode traçar contorno nenhum.
 ///
-/// ⚠️ É o gate que separa as duas perguntas: se o snapshot voltar a ler `watercolor_render_active`, a
-/// row **Accumulate** aparece e some a cada arrasto de figura.
+/// ⚠️ Este é o gate que fala do NÚMERO do report — 284 dos 308 ms de um move são rasterizar as
+/// figuras e traçar os contornos, `O(área da união × SS²)`, refeito por quadro do arrasto para
+/// produzir um contorno que a mão invalida no quadro seguinte. O contador do diag é o oráculo: ele
+/// conta CHAMADAS do composite, não milissegundos.
 #[test]
-fn the_watercolor_chip_does_not_flicker_while_the_shape_is_dragged() {
-    let (mut t, up_at) = drag_an_ellipse(PaintMedia::Watercolor);
-    assert!(
-        t.brush_settings().watercolor_active,
-        "o painel perdeu a aquarela com a mao em movimento — a UI segue uma decisao de RENDER"
+fn a_gesture_in_flight_runs_no_boolean_composite() {
+    use crate::tool::paint::stroke_boolean::diag;
+    let side = 256u32;
+    let mut t = tool(side, PaintMedia::Digital, 12.0);
+    t.set_stroke_op_mode(1); // Add — a figura entra no composite booleano
+    t.paint.brush.stroke_method = StrokeMethod::Ellipse;
+    #[allow(clippy::cast_precision_loss)]
+    let c = (side / 2) as f32;
+    t.on_canvas_pointer(cp([c, c], PointerPhase::Down));
+    t.on_canvas_pointer(cp([c + 50.0, c], PointerPhase::Move));
+    t.on_canvas_pointer(cp([c + 50.0, c], PointerPhase::Up));
+    // O gesto de AJUSTE, com o contador zerado logo antes dos Moves.
+    t.on_canvas_pointer(cp([c, c], PointerPhase::Down));
+    let _ = diag::take();
+    t.on_canvas_pointer(cp([c + 8.0, c + 6.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([c + 14.0, c + 10.0], PointerPhase::Move));
+    assert_eq!(
+        diag::take().calls,
+        0,
+        "o composite booleano rodou sob a mao — sao 92% do custo do move na cena do report"
     );
-    t.on_canvas_pointer(cp(up_at, PointerPhase::Up));
+    t.on_canvas_pointer(cp([c + 14.0, c + 10.0], PointerPhase::Up));
     assert!(
-        t.brush_settings().watercolor_active,
-        "o painel perdeu a aquarela em repouso"
+        diag::take().calls > 0,
+        "o composite nao rodou ao soltar — a figura fica sem o contorno booleano"
     );
 }
 
@@ -131,20 +161,64 @@ fn the_watercolor_chip_does_not_flicker_while_the_shape_is_dragged() {
 #[test]
 fn adjusting_an_existing_shape_also_ends_at_rest() {
     let (mut t, up_at) = move_an_existing_ellipse(PaintMedia::Impasto);
-    let under_the_hand = relief(&t);
+    let under_the_hand = painted(&t);
     assert_eq!(
-        under_the_hand, 0.0,
-        "ajustar uma figura existente devia rascunhar tambem, e mediu {under_the_hand}"
+        under_the_hand, 0,
+        "ajustar uma figura existente devia sumir tambem, e mediu {under_the_hand} texels"
     );
-    let before = t.paint.restamp_seq;
     t.on_canvas_pointer(cp(up_at, PointerPhase::Up));
     assert!(
-        t.paint.restamp_seq > before,
-        "o Up do AJUSTE nao re-carimbou — a figura fica plana ate o proximo evento"
+        !t.paint.shape_stale,
+        "o Up do AJUSTE deixou a tela DEVENDO — a figura fica invisivel ate o proximo evento"
+    );
+    assert!(
+        painted(&t) > 0,
+        "ao soltar o ajuste a figura tem de voltar a tela"
     );
     let at_rest = relief(&t);
     assert!(
         at_rest > 0.0,
-        "ao soltar o ajuste a figura tem de recuperar o corpo (relevo {at_rest})"
+        "…e com o corpo: o carimbo final rodou sem o meio de verdade (relevo {at_rest})"
     );
+}
+
+/// **Nenhum editor deixa a tela DEVENDO ao soltar** — a propriedade, perguntada aos quatro.
+///
+/// ⚠️ O `commit_shape_txn` assenta a tela antes de capturar, mas ele **sai cedo quando não há
+/// transação aberta** (`stroke_undo == None`) — e aí a captura não acontece, logo a correção não é
+/// devida, mas a TELA ainda está. Este gate varre os quatro editores porque *qual deles fecha o Up
+/// sem transação* é detalhe interno que muda; a propriedade não.
+#[test]
+fn no_editor_leaves_the_canvas_owing_at_rest() {
+    for method in [
+        StrokeMethod::Ellipse,
+        StrokeMethod::Polygon,
+        StrokeMethod::Line,
+        StrokeMethod::Arc,
+    ] {
+        let side = 256u32;
+        let mut t = tool(side, PaintMedia::Digital, 10.0);
+        t.paint.brush.stroke_method = method;
+        #[allow(clippy::cast_precision_loss)]
+        let c = (side / 2) as f32;
+        // Criação, e depois DOIS gestos de ajuste — o 2º pega onde o 1º largou.
+        t.on_canvas_pointer(cp([c, c], PointerPhase::Down));
+        t.on_canvas_pointer(cp([c + 40.0, c], PointerPhase::Move));
+        t.on_canvas_pointer(cp([c + 40.0, c + 20.0], PointerPhase::Move));
+        t.on_canvas_pointer(cp([c + 40.0, c + 20.0], PointerPhase::Up));
+        assert!(
+            !t.paint.shape_stale,
+            "{method:?}: a criacao deixou a tela devendo"
+        );
+        for _ in 0..2 {
+            t.on_canvas_pointer(cp([c, c], PointerPhase::Down));
+            t.on_canvas_pointer(cp([c + 6.0, c + 4.0], PointerPhase::Move));
+            t.on_canvas_pointer(cp([c + 12.0, c + 8.0], PointerPhase::Move));
+            t.on_canvas_pointer(cp([c + 12.0, c + 8.0], PointerPhase::Up));
+            assert!(
+                !t.paint.shape_stale,
+                "{method:?}: um gesto deixou a tela devendo — a figura fica invisivel ate o proximo evento"
+            );
+        }
+    }
 }

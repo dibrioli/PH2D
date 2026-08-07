@@ -213,3 +213,88 @@ fn measure_what_the_boolean_is_made_of() {
         );
     }
 }
+
+/// **A CENA DO REPORT** — 4 círculos grandes com Operation Add, num 4096, pincel grosso.
+///
+/// ⚠️ O smoke de 2026-08-07 veio com *"mesmo o preview plano é extremamente custoso; 4 círculos com
+/// boolean +, o fps cai para 2 ou menos"* — **500 ms/quadro contra os 4,38 que a tabela do rascunho
+/// mediu**. Cem vezes fora ⇒ a fixture daquela tabela (UMA elipse de 400 px, pincel r=96) **não
+/// descreve esta cena**, e a atribuição tem de sair de uma que descreva.
+///
+/// A tabela separa as três coisas que um move faz aqui, porque elas têm curas OPOSTAS:
+/// **geometria** (o composite booleano: rasterizar 4 figuras, inundar, traçar) · **carimbo** (os dabs
+/// ao longo do contorno traçado) · e o resto do evento. Se o peso for do carimbo, apagar a tinta
+/// resolve; se for do composite, apagar a tinta **não resolve nada** — o contorno é traçado do mesmo
+/// jeito, porque é ele que diz onde a figura está.
+#[test]
+#[ignore = "measurement, not a gate — run explicitly"]
+fn measure_the_scene_the_report_describes() {
+    use super::stroke_boolean::diag as bdiag;
+    println!("[shape-sys] a cena do report: 4 circulos Add, 4096, pincel GROSSO");
+    println!(
+        "{:>8} {:>7}  {:>9} {:>9} {:>9}  {:>9}  {:>9} {:>9} {:>9}  {:>8}",
+        "formas",
+        "raio",
+        "MOVE",
+        "geom",
+        "carimbo",
+        "SOLTAR",
+        "converte",
+        "rasteriza",
+        "traca",
+        "pts"
+    );
+    for (shapes, r_brush) in [(1usize, 120.0f32), (2, 120.0), (4, 120.0), (4, 40.0)] {
+        let side = 4096u32;
+        let mut t = tool(side, PaintMedia::Digital, r_brush);
+        t.set_stroke_op_mode(1); // Add
+        let r = 900.0f32;
+        let spots = [
+            [1400.0f32, 1400.0],
+            [2700.0, 1400.0],
+            [1400.0, 2700.0],
+            [2700.0, 2700.0],
+        ];
+        // As figuras PARQUEADAS (todas menos a última), cada uma criada por um gesto real.
+        for spot in spots.iter().take(shapes - 1) {
+            t.paint.brush.stroke_method = StrokeMethod::Ellipse;
+            t.on_canvas_pointer(cp(*spot, PointerPhase::Down));
+            t.on_canvas_pointer(cp([spot[0] + r, spot[1]], PointerPhase::Move));
+            t.on_canvas_pointer(cp([spot[0] + r, spot[1]], PointerPhase::Up));
+            t.park_active_shape();
+        }
+        // A ATIVA, e o gesto que o artista faz: arrastá-la.
+        let last = spots[shapes - 1];
+        t.paint.brush.stroke_method = StrokeMethod::Ellipse;
+        t.on_canvas_pointer(cp(last, PointerPhase::Down));
+        let _ = super::stamp_banded::diag::take();
+        let _ = bdiag::take();
+        let mut samples = Vec::new();
+        for k in 0..5 {
+            let d = if k % 2 == 0 { r + 4.0 } else { r - 4.0 };
+            let t0 = std::time::Instant::now();
+            t.on_canvas_pointer(cp([last[0] + d, last[1]], PointerPhase::Move));
+            let total = t0.elapsed().as_secs_f64() * 1e3;
+            let ph = super::stamp_banded::diag::take();
+            if k > 0 {
+                samples.push((total, ph.stamp_us as f64 / 1e3));
+            }
+        }
+        let t_up = std::time::Instant::now();
+        t.on_canvas_pointer(cp([last[0] + r, last[1]], PointerPhase::Up));
+        let up_ms = t_up.elapsed().as_secs_f64() * 1e3;
+        let g = bdiag::take();
+        let n = f64::from(g.calls.max(1));
+        samples.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+        let (total, stamp) = samples[samples.len() / 2];
+        #[allow(clippy::cast_precision_loss)]
+        let pts = g.pts as f64 / n;
+        println!(
+            "{shapes:>8} {r_brush:>7.0}  {total:>9.3} {:>9.3} {stamp:>9.3}  {up_ms:>9.3}  {:>9.3} {:>9.3} {:>9.3}  {pts:>8.0}",
+            (total - stamp).max(0.0),
+            g.convert_us as f64 / 1e3 / n,
+            g.raster_us as f64 / 1e3 / n,
+            g.trace_us as f64 / 1e3 / n,
+        );
+    }
+}

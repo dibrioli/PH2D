@@ -308,6 +308,9 @@ fn the_artists_default_brush_takes_the_banded_road_on_a_live_figure() {
     let _ = super::stamp_banded::diag::take(); // zera o que esta thread trouxe
     t.on_canvas_pointer(cpx([100.0, 412.0], PointerPhase::Down));
     t.on_canvas_pointer(cpx([900.0, 612.0], PointerPhase::Move));
+    // ⚠️ **O carimbo agora acontece em REPOUSO** (`super::shape_draft`): sob a mão o gizmo é o
+    // preview e nenhum lote é produzido, então a fixture tem de SOLTAR — senão ela mede o silêncio.
+    t.on_canvas_pointer(cpx([900.0, 612.0], PointerPhase::Up));
     let d = super::stamp_banded::diag::take();
     let (banded, serial, dabs) = (d.banded, d.serial, d.dabs);
 
@@ -338,6 +341,8 @@ fn the_artists_default_brush_takes_the_banded_road_on_a_live_figure() {
     // genuinamente não enche duas bandas, senão ele afirma o lado errado da cerca.
     t.on_canvas_pointer(cpx([100.0, 118.0], PointerPhase::Down));
     t.on_canvas_pointer(cpx([102.0, 119.0], PointerPhase::Move));
+    // ⚠️ O carimbo acontece em REPOUSO (`super::shape_draft`) — a fixture tem de SOLTAR.
+    t.on_canvas_pointer(cpx([102.0, 119.0], PointerPhase::Up));
     let d = super::stamp_banded::diag::take();
     let (banded, serial, dabs) = (d.banded, d.serial, d.dabs);
     assert!(dabs > 0, "o controle não carimbou nada");
@@ -380,6 +385,9 @@ fn the_paint_media_survives_every_live_shape_method() {
         t.paint.brush.stroke_method = method;
         t.on_canvas_pointer(cpx([80.0, 128.0], PointerPhase::Down));
         t.on_canvas_pointer(cpx([170.0, 128.0], PointerPhase::Move));
+        // ⚠️ **O carimbo agora acontece em REPOUSO** (`super::shape_draft`): sob a mão o gizmo é o
+        // preview e nenhum lote é produzido, então a fixture tem de SOLTAR — senão ela mede o silêncio.
+        t.on_canvas_pointer(cpx([170.0, 128.0], PointerPhase::Up));
         let after_move = t.paint_media();
         t.on_canvas_pointer(cpx([170.0, 128.0], PointerPhase::Up));
         let after_up = t.paint_media();
@@ -418,6 +426,9 @@ fn the_deposit_ratio_divides_its_own_time_by_its_own_work() {
     for x in 1..=8u8 {
         let px = 120.0 + f32::from(x) * 100.0;
         t.on_canvas_pointer(cpx([px, 500.0], PointerPhase::Move));
+        // ⚠️ **O carimbo agora acontece em REPOUSO** (`super::shape_draft`): sob a mão o gizmo é o
+        // preview e nenhum lote é produzido, então a fixture tem de SOLTAR — senão ela mede o silêncio.
+        t.on_canvas_pointer(cpx([px, 500.0], PointerPhase::Up));
     }
     let d = super::stamp_banded::diag::take();
 
@@ -666,6 +677,9 @@ fn a_capped_brush_reaches_the_banded_batch_too() {
     let _ = super::stamp_banded::diag::take();
     t.on_canvas_pointer(cpx([100.0, 412.0], PointerPhase::Down));
     t.on_canvas_pointer(cpx([900.0, 612.0], PointerPhase::Move));
+    // ⚠️ **O carimbo agora acontece em REPOUSO** (`super::shape_draft`): sob a mão o gizmo é o
+    // preview e nenhum lote é produzido, então a fixture tem de SOLTAR — senão ela mede o silêncio.
+    t.on_canvas_pointer(cpx([900.0, 612.0], PointerPhase::Up));
     let d = super::stamp_banded::diag::take();
     assert!(
         t.canvas_rgba.iter().any(|&b| b != 255),

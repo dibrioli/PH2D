@@ -41,14 +41,11 @@ impl PainterTool {
     /// entirely). Those modes never reach here, except Mask — which routes *through* `stamp_dabs_inner`
     /// — so the mode gate is load-bearing, not decorative.
     ///
-    /// ⚠️ **E um RASCUNHO não deposita corpo** (`super::shape_draft`): com um gesto de figura em voo o
-    /// re-carimbo sai plano, e o relevo entra no carimbo final que o Up dispara. Medido: um move de
-    /// Impasto custa **101,17 ms** com o corpo e **4,38** sem — 99,3% do evento é este depósito, pago
-    /// uma vez por quadro de arrasto sobre a figura inteira.
+    /// ⚠️ **Um gesto de figura em voo nem chega aqui** (`super::shape_draft`): o re-carimbo descasca e
+    /// volta antes de produzir dab nenhum. Uma 1ª versão desta lei gateava o corpo AQUI, e a medição a
+    /// derrubou — na cena do report o depósito é 8% do move e o composite booleano é 92%.
     fn impasto_batch_active(&self) -> bool {
-        matches!(self.paint.paint_mode, PaintMode::Paint)
-            && self.paint.brush.impasto
-            && !self.draft_stamp()
+        matches!(self.paint.paint_mode, PaintMode::Paint) && self.paint.brush.impasto
     }
 
     /// Deposit (or, for the Eraser, scrub) this dab batch's HEIGHT.

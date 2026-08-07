@@ -143,6 +143,10 @@ impl PainterTool {
         let Some(before) = self.paint.stroke_undo.take() else {
             return;
         };
+        // ⚠️ Nenhuma captura vê a tela RASCUNHADA (`super::shape_draft`): o snapshot carrega o
+        // `drag_preview` como `preview_patch`, e um que descreva a tela sem as figuras é um estado que
+        // o artista nunca viu.
+        self.settle_shape_draft();
         let after = self.capture_shape_model();
         if shape_model_changed(&before, &after) {
             self.undo.record_structural(before, after);
@@ -155,6 +159,7 @@ impl PainterTool {
         let Some(before) = self.paint.stroke_undo.take() else {
             return;
         };
+        self.settle_shape_draft(); // idem `commit_shape_txn`: a captura nunca vê a tela rascunhada
         let after = self.capture_shape_model();
         if shape_model_changed(&before, &after) {
             self.undo.record_structural_coalesced(kind, before, after);

@@ -170,13 +170,13 @@ pub(crate) struct PaintState {
     /// ⚠️ **Transiente, como o `line_constrain`:** não entra no `ModelSnapshot` nem no arquivo — é
     /// fato sobre a mão do artista, não sobre o documento.
     pub(super) shape_draft: bool,
-    /// Quantos re-carimbos de figura já rodaram — o sinal de *"o editor re-carimbou por conta"*.
+    /// **A tela NÃO mostra as figuras abertas** — um re-carimbo foi pulado pela lei do rascunho.
     ///
-    /// ⚠️ Ele existe porque a alternativa é **enumerar** quais ramos de Up de quais editores refazem
-    /// a figura, e essa lista apodrece no dia em que um ramo ganha um early-return: o modo de falha
-    /// seria a figura ficando PLANA para sempre, em silêncio. Com o contador o Up pergunta o FATO
-    /// (*alguém re-carimbou?*) e força o carimbo final se ninguém o fez.
-    pub(super) restamp_seq: u32,
+    /// ⚠️ Ele existe porque a alternativa é **enumerar** quais ramos de Up de quais editores refazem a
+    /// figura, e essa lista apodrece no dia em que um ramo ganha um early-return. Com o fato guardado,
+    /// quem precisa de uma tela honesta (o Up do gesto, e toda captura de undo) pergunta
+    /// `settle_shape_draft` e a paga **uma vez, se for devida**.
+    pub(super) shape_stale: bool,
     /// The press point of the in-progress stroke — the pivot the Line's Alt-constrain snaps around (45°).
     pub(super) line_anchor: Option<[f32; 2]>,
     /// Alt held this event — constrains the Line to 45° increments (Blender `constrain_line`); set by the shell each pointer event.

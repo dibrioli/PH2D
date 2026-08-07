@@ -78,7 +78,10 @@ impl CanvasPaintTool for PainterTool {
                 | StrokeMethod::Polygon
                 | StrokeMethod::Line
         ) {
-            return self.route_shape_pointer_multi(ev);
+            // …embrulhada pela lei do REPOUSO (`super::shape_draft`): enquanto o gesto está em voo o
+            // re-carimbo roda um rascunho plano, e o Up entrega a figura no meio de verdade. É aqui,
+            // e só aqui, porque este é o ÚNICO ponto que vê o Down e o Up de todos os cinco editores.
+            return self.route_shape_draft(ev);
         }
         // Stencil texture: grabbing an overlay handle (corner = resize, centre = move) edits the
         // rect and consumes the event; a Down away from every handle (or any move without a grab)

@@ -40,8 +40,15 @@ impl PainterTool {
     /// named), Mask (a grayscale channel has no body) and Inpaint (a heal disc that ignores the brush
     /// entirely). Those modes never reach here, except Mask — which routes *through* `stamp_dabs_inner`
     /// — so the mode gate is load-bearing, not decorative.
+    ///
+    /// ⚠️ **E um RASCUNHO não deposita corpo** (`super::shape_draft`): com um gesto de figura em voo o
+    /// re-carimbo sai plano, e o relevo entra no carimbo final que o Up dispara. Medido: um move de
+    /// Impasto custa **101,17 ms** com o corpo e **4,38** sem — 99,3% do evento é este depósito, pago
+    /// uma vez por quadro de arrasto sobre a figura inteira.
     fn impasto_batch_active(&self) -> bool {
-        matches!(self.paint.paint_mode, PaintMode::Paint) && self.paint.brush.impasto
+        matches!(self.paint.paint_mode, PaintMode::Paint)
+            && self.paint.brush.impasto
+            && !self.draft_stamp()
     }
 
     /// Deposit (or, for the Eraser, scrub) this dab batch's HEIGHT.

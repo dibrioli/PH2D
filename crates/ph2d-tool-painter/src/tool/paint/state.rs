@@ -158,6 +158,25 @@ pub(crate) struct PaintState {
     pub(super) moved_this_frame: bool,
     /// Restore record for the in-progress Drag Dot's single moving dab; `None` for every other method.
     pub(super) drag_preview: Option<DragPreview>,
+    /// **Um gesto de shape está em VOO** — entre o Down e o Up de um arrasto no canvas.
+    ///
+    /// Enquanto isto vale, o re-carimbo da figura roda um RASCUNHO: o meio caro (Impasto, Aquarela)
+    /// é desarmado e a figura sai plana. No Up ele cai e o editor re-carimba pela última vez, agora
+    /// com o meio de verdade — *o caro renderiza em REPOUSO*. Medido a 4096² com figura de 400 px:
+    /// um move de Impasto custa **101,17 ms** com o meio ligado e **4,38** sem
+    /// (`measure_what_a_flat_preview_would_cost`), porque o carimbo é 99,3% do evento e o shape
+    /// editor re-carimba a figura INTEIRA a cada quadro do arrasto.
+    ///
+    /// ⚠️ **Transiente, como o `line_constrain`:** não entra no `ModelSnapshot` nem no arquivo — é
+    /// fato sobre a mão do artista, não sobre o documento.
+    pub(super) shape_draft: bool,
+    /// Quantos re-carimbos de figura já rodaram — o sinal de *"o editor re-carimbou por conta"*.
+    ///
+    /// ⚠️ Ele existe porque a alternativa é **enumerar** quais ramos de Up de quais editores refazem
+    /// a figura, e essa lista apodrece no dia em que um ramo ganha um early-return: o modo de falha
+    /// seria a figura ficando PLANA para sempre, em silêncio. Com o contador o Up pergunta o FATO
+    /// (*alguém re-carimbou?*) e força o carimbo final se ninguém o fez.
+    pub(super) restamp_seq: u32,
     /// The press point of the in-progress stroke — the pivot the Line's Alt-constrain snaps around (45°).
     pub(super) line_anchor: Option<[f32; 2]>,
     /// Alt held this event — constrains the Line to 45° increments (Blender `constrain_line`); set by the shell each pointer event.

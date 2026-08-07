@@ -56,6 +56,7 @@ pub use sculpt_filter::FilterScope; // the two scopes the card's Filter buttons 
 mod sculpt_offset; // Sculpt: Inflate's kernel — the relief offset by a BALL (dilation / erosion)
 mod sculpt_panel; // Sculpt: the seam with the card — the accessors it paints from + the event router
 mod sculpt_session; // Sculpt: the per-stroke session — birth, the dab walk, snapshot, cancel, re-stamp
+mod shape_draft; // o meio caro renderiza em REPOUSO: gesto em voo re-carimba um rascunho plano
 /// Multi-layer Shape (z-ordered layers + per-layer-colour state); split from `paint.rs` (LOC cap).
 mod shape_layers;
 /// Imported-image slots (Grain + Shape) + Shape geometry + Grain Depth setters; split from `brush_settings`.

@@ -318,7 +318,10 @@ impl PainterTool {
             wet_fluid_dims: wet_fluid,
             wet_flow_dims: wet_flow,
             watercolor: b.watercolor,
-            watercolor_active: self.watercolor_render_active(),
+            // ⚠️ `watercolor_armed`, NÃO `watercolor_render_active`: o painel quer saber que MEIO o
+            // artista escolheu, e a irmã cai durante um rascunho de figura — a row Accumulate
+            // piscaria a cada arrasto (`super::watercolor_rewet_px`).
+            watercolor_active: self.watercolor_armed(),
             watercolor_shape_auto: b.watercolor_shape_auto,
             edge_gain: b.edge_gain,
             edge_spread: b.edge_spread,

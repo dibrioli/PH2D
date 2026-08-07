@@ -185,6 +185,8 @@ impl PainterTool {
     /// ACTIVE shape keeps its exact `own` dabs when it paints an outline (no regression); with no parked
     /// shapes and an Overlay active shape this is byte-identical to the former single-shape stamp.
     pub(super) fn restamp_shapes_preview(&mut self, own: &[Dab]) {
+        // O sinal que o Up do gesto lê para saber se ainda deve o carimbo FINAL (`super::shape_draft`).
+        self.paint.restamp_seq = self.paint.restamp_seq.wrapping_add(1);
         let off = self.shape_offset_px();
         // The ACTIVE shape's state + op (captured), so it can join the boolean composite or keep its `own`.
         let active = self.capture_shape().map(|s| (*s, self.paint.active_op));

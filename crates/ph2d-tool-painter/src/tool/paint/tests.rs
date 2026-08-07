@@ -42,6 +42,8 @@ mod measure_wetpaint_cost; // de que é feito um MOVE de Wet Paint (doc 28 §7, 
 mod measure_window_premise;
 #[path = "selection_trace_tests.rs"]
 mod selection_trace_tests; // a varredura por FAIXAS traca o que o flood pixel-a-pixel tracava
+#[path = "shape_draft_tests.rs"]
+mod shape_draft_tests; // o meio caro renderiza em REPOUSO — a lei do rascunho sob a mao
 #[path = "stamp_banded_tests.rs"]
 mod stamp_banded_tests; // o lote em bandas pinta o que o laco serial pintava (doc 28 §5.78)
 #[path = "stamp_banded_work_tests.rs"]

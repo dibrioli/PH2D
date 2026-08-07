@@ -129,6 +129,8 @@ impl Default for PaintState {
             symmetry_auto_center: true,
             moved_this_frame: false,
             drag_preview: None,
+            shape_draft: false,
+            restamp_seq: 0,
             line_anchor: None,
             line_constrain: false,
             scale_uniform: false,

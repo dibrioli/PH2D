@@ -15,7 +15,10 @@ fn the_rig_is_zero_and_no_matcap_lands_there() {
             matcap: Some(u8::try_from(i).expect("a tabela cabe num u8")),
             ..Shade::default()
         });
-        assert_ne!(packed.matcap, 0, "o material {i} empacotou como \"sem matcap\"");
+        assert_ne!(
+            packed.matcap, 0,
+            "o material {i} empacotou como \"sem matcap\""
+        );
         assert_eq!(packed.matcap, i as u32 + 1);
     }
 }

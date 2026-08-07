@@ -93,6 +93,30 @@ fn render_using_rig_cavity(
     rig: &LightRig,
     cavity: f32,
 ) -> Vec<u8> {
+    render_using_rig_shade(
+        device,
+        queue,
+        renderer,
+        camera,
+        rig,
+        ph2d_mesh_render::Shade {
+            cavity,
+            ..ph2d_mesh_render::Shade::default()
+        },
+    )
+}
+
+/// O mesmo desenho, com o [`ph2d_mesh_render::Shade`] INTEIRO — a porta que o
+/// gate do AO precisa, e a que o helper de cavidade agora delega. Um segundo
+/// corpo aqui seria duas respostas a *"como esta cena é desenhada"*.
+fn render_using_rig_shade(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    renderer: &mut MeshRenderer,
+    camera: &Camera3d,
+    rig: &LightRig,
+    shade: ph2d_mesh_render::Shade,
+) -> Vec<u8> {
     let target = device.create_texture(&wgpu::TextureDescriptor {
         label: Some("alvo"),
         size: wgpu::Extent3d {
@@ -138,10 +162,7 @@ fn render_using_rig_cavity(
         &view,
         camera,
         resolved.as_ref(),
-        ph2d_mesh_render::Shade {
-            cavity,
-            ..ph2d_mesh_render::Shade::default()
-        },
+        shade,
         (W, H),
     );
 
@@ -1573,5 +1594,137 @@ fn a_region_upload_carries_the_curvature_the_dab_recomputed() {
     assert_eq!(
         got, want,
         "a regiao subiu o relevo novo e a curvatura VELHA -- a fresta ficou onde estava"
+    );
+}
+
+/// ⚠️ **O GATE QUE O DEFAULT ESCONDE.** `DEFAULT_AO_STRENGTH` é `0`, então uma
+/// fiação QUEBRADA do canal — o buffer não ligado, o `@location` errado, o
+/// atributo fora do layout — deixaria os outros 26 gates **verdes**, porque com
+/// força zero o termo é `1.0` e nada muda. Este é o único que olha o canal a
+/// chegar.
+///
+/// O oráculo é a FORMA da diferença, não um pixel: metade dos vértices recebe
+/// AO `0` (enterrado) e metade `1` (céu aberto), e a metade enterrada tem de
+/// escurecer enquanto a outra fica onde estava.
+#[test]
+#[ignore = "precisa de adapter"]
+fn o_ao_assado_chega_ao_shader_e_so_escurece_onde_foi_assado() {
+    let Some((device, queue)) = device() else {
+        eprintln!("sem adapter: pulado");
+        return;
+    };
+    let mut mesh = shapes::uv_sphere(32, 48, 1.0);
+    let cam = camera_for(&mesh);
+    let rig = LightRig::default();
+
+    // Enterrado à ESQUERDA (x < 0), céu aberto à direita. Um degrau, e não um
+    // gradiente: a fronteira torna a metade escura inequívoca.
+    let ao: Vec<f32> = mesh
+        .positions()
+        .iter()
+        .map(|p| if p[0] < 0.0 { 0.0 } else { 1.0 })
+        .collect();
+    mesh.set_ao(ao);
+
+    let mut renderer = MeshRenderer::new(&device, FORMAT);
+    renderer.upload_at(&device, &queue, 0, &mesh);
+    let desligado = render_using_rig_shade(
+        &device,
+        &queue,
+        &mut renderer,
+        &cam,
+        &rig,
+        ph2d_mesh_render::Shade::default(),
+    );
+    let ligado = render_using_rig_shade(
+        &device,
+        &queue,
+        &mut renderer,
+        &cam,
+        &rig,
+        ph2d_mesh_render::Shade {
+            ao: 1.0,
+            ..ph2d_mesh_render::Shade::default()
+        },
+    );
+
+    // ⚠️ **As duas FAIXAS EXTREMAS, e não as duas metades — a fixture aprendeu
+    // isto falhando.** O AO é por VÉRTICE e o rasterizador INTERPOLA, então um
+    // triângulo que cruza `x = 0` desenha uma rampa de escuro a claro que sangra
+    // para além do meio da tela: medindo por metades, a direita mexia 12% e o
+    // gate reprovava um produto correto. O quinto de cada borda está longe da
+    // fronteira e é inequivocamente de um lado só.
+    let faixa = |px: &[u8], esquerda: bool| {
+        let (mut soma, mut n) = (0.0f32, 0u32);
+        for y in 0..H {
+            for x in 0..W {
+                let dentro = if esquerda { x < W / 5 } else { x >= 4 * W / 5 };
+                if !dentro {
+                    continue;
+                }
+                let l = lum(px, x, y);
+                if l > 0.01 {
+                    soma += l;
+                    n += 1;
+                }
+            }
+        }
+        soma / n.max(1) as f32
+    };
+
+    let (e_off, d_off) = (faixa(&desligado, true), faixa(&desligado, false));
+    let (e_on, d_on) = (faixa(&ligado, true), faixa(&ligado, false));
+    println!("esquerda (AO=0): {e_off:.4} -> {e_on:.4}   direita (AO=1): {d_off:.4} -> {d_on:.4}");
+
+    assert!(
+        e_on < e_off * 0.7,
+        "a metade ASSADA COMO ENTERRADA tinha de escurecer: {e_off:.4} -> {e_on:.4} \
+         (o canal nao chegou ao shader?)"
+    );
+    assert!(
+        (d_on - d_off).abs() < 0.02,
+        "a metade de CEU ABERTO nao pode mudar: {d_off:.4} -> {d_on:.4}"
+    );
+}
+
+/// E a metade oposta do par: **uma malha que ninguém assou não escurece**, por
+/// mais que o artista suba o controle. É o que faz o canal ausente ser
+/// invisível em vez de preto.
+#[test]
+#[ignore = "precisa de adapter"]
+fn sem_bake_o_controle_de_ao_nao_muda_um_pixel() {
+    let Some((device, queue)) = device() else {
+        eprintln!("sem adapter: pulado");
+        return;
+    };
+    let mesh = shapes::uv_sphere(32, 48, 1.0);
+    let cam = camera_for(&mesh);
+    let rig = LightRig::default();
+    assert!(mesh.ao().is_none(), "o controle: ninguem assou");
+
+    let mut renderer = MeshRenderer::new(&device, FORMAT);
+    renderer.upload_at(&device, &queue, 0, &mesh);
+    let zero = render_using_rig_shade(
+        &device,
+        &queue,
+        &mut renderer,
+        &cam,
+        &rig,
+        ph2d_mesh_render::Shade::default(),
+    );
+    let cheio = render_using_rig_shade(
+        &device,
+        &queue,
+        &mut renderer,
+        &cam,
+        &rig,
+        ph2d_mesh_render::Shade {
+            ao: 1.0,
+            ..ph2d_mesh_render::Shade::default()
+        },
+    );
+    assert_eq!(
+        zero, cheio,
+        "sem bake, o controle de AO tem de ser inerte AO BYTE"
     );
 }

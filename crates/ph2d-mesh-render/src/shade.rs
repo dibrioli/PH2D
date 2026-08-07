@@ -61,6 +61,16 @@ pub const DEFAULT_CAVITY: f32 = 0.0;
 /// interessa.
 pub const CAVITY_GAIN: f32 = 4.0;
 
+/// **Quanto do AO assado entra por default: NADA.**
+///
+/// ⚠️ Não é timidez, é a única resposta que não muda a tela sozinha. O canal
+/// nasce ausente e sobe como `1` em toda parte (ver `ao_of`), então com uma
+/// força qualquer acima de zero a peça renderizaria igual **até o instante do
+/// primeiro bake** — e aí
+/// escureceria sem ninguém ter tocado num controle, que é a classe de mudança
+/// que o artista não consegue reportar.
+pub const DEFAULT_AO_STRENGTH: f32 = 0.0;
+
 /// **OS MATERIAIS DO MATCAP**, na ordem em que o shader os numera.
 ///
 /// ⚠️ **Os NÚMEROS ficam no WGSL e os NOMES aqui, e não há uma terceira cópia.**
@@ -89,6 +99,16 @@ pub struct Shade {
     /// matcap, e um sentinela obrigaria todo leitor a saber disso. A conversão
     /// para o sentinela do uniform acontece **uma vez**, no [`ShadeRaw::pack`].
     pub matcap: Option<u8>,
+    /// **Quanto do AO assado entra.** `0` = o barro sem oclusão, e é o default:
+    /// um canal que nem foi assado não pode escurecer nada.
+    ///
+    /// ⚠️ **Ele NÃO é irmão da `cavity`, e a diferença decide o default.** A
+    /// cavidade é derivada e existe em toda malha, então ligá-la por padrão é
+    /// mostrar um dado que já está lá. O AO só existe depois de um BAKE
+    /// explícito, e um default > 0 faria a peça não-assada renderizar igual (o
+    /// canal é 1 em toda parte) até o instante do primeiro bake — quando ela
+    /// escureceria sozinha, sem ninguém ter mexido num controle.
+    pub ao: f32,
     /// A malha desenhada por cima da forma.
     ///
     /// ⚠️ Ele viaja aqui e **não entra no [`ShadeRaw`]**: é um segundo PASSE, não
@@ -102,6 +122,7 @@ impl Default for Shade {
     fn default() -> Self {
         Self {
             cavity: DEFAULT_CAVITY,
+            ao: DEFAULT_AO_STRENGTH,
             matcap: None,
             wireframe: false,
         }
@@ -120,10 +141,14 @@ pub struct ShadeRaw {
     /// `Option`, e a alternativa (um segundo `u32` dizendo *"tem matcap?"*) seria
     /// dois campos que precisam concordar.
     pub matcap: u32,
-    /// ⚠️ Declarado e não implícito: um `f32` solto num uniform alinha em 16 B de
-    /// qualquer jeito, e os dois que sobram são exatamente onde SSS e AO vão
-    /// pousar sem mexer no layout.
-    pub _pad: [f32; 2],
+    /// Quanto do AO assado entra. `0` = byte-idêntico ao barro sem o canal.
+    ///
+    /// ⚠️ **Este é um dos dois `f32` que o `_pad` reservava** dizendo *"é aqui
+    /// que SSS e AO vão pousar sem mexer no layout"*. A promessa foi cobrada e o
+    /// layout não mudou — sobra um, e ele continua nomeando o SSS.
+    pub ao: f32,
+    /// O slot que sobra, e ele continua reservado ao SSS pré-integrado.
+    pub _pad: [f32; 1],
 }
 
 impl Default for ShadeRaw {
@@ -153,7 +178,10 @@ impl ShadeRaw {
         Self {
             cavity: shade.cavity.clamp(0.0, 1.0),
             matcap: shade.matcap.map_or(0, |i| u32::from(i.min(n - 1)) + 1),
-            _pad: [0.0; 2],
+            // Clampado pela mesma razão da cavidade: o device não tem opinião, e
+            // um `ao` de 3 faria o `mix` extrapolar para além do canal.
+            ao: shade.ao.clamp(0.0, 1.0),
+            _pad: [0.0; 1],
         }
     }
 }

@@ -67,6 +67,13 @@ struct Shade {
     // é um clique, e recompilar um pipeline por clique é meia-tela de trava. É a
     // mesma decisão que a cavidade já tomou, pelo motivo vizinho.
     matcap: u32,
+    // **QUANTO DO AO ASSADO ENTRA.** `0` = o barro sem oclusão, **ao byte** — e
+    // é o default, porque um canal que nem foi assado não pode escurecer nada.
+    //
+    // ⚠️ Ele pousa no primeiro dos dois `f32` que o `ShadeRaw` já reservava
+    // dizendo *"é aqui que SSS e AO vão pousar sem mexer no layout"*. O layout
+    // não mudou: a promessa foi cobrada.
+    ao: f32,
 };
 
 @group(0) @binding(0) var<uniform> cam: Camera;
@@ -257,6 +264,7 @@ struct VsOut {
     @location(0) n_view: vec3<f32>,
     @location(1) mask: f32,
     @location(2) curv: f32,
+    @location(3) ao: f32,
 };
 
 @vertex
@@ -265,10 +273,15 @@ fn vs_main(
     @location(1) normal: vec3<f32>,
     @location(2) mask: f32,
     @location(3) curv: f32,
+    @location(4) ao: f32,
 ) -> VsOut {
     var out: VsOut;
     out.clip = cam.view_proj * obj.model * vec4<f32>(pos, 1.0);
     out.mask = mask;
+    // O AO tampouco cruza `obj.model`, e pela razão da curvatura logo abaixo:
+    // ele é uma FRAÇÃO (quanto do céu o vértice enxerga), não uma direção nem um
+    // comprimento. Mover a peça não muda o quanto ela se auto-oclui.
+    out.ao = ao;
     // ⚠️ **A curvatura NÃO cruza `obj.model`, e a normal cruza.** Ela é
     // adimensional por construção (a divisão pelo raio médio do anel, em
     // `ph2d_mesh::curvature`), então a escala da `Pose` já se cancelou na CPU —
@@ -375,6 +388,19 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     // para o material que ele escolheu para ler melhor.
     let cav = 1.0 - shade.cavity * clamp(in.curv * CAVITY_GAIN, -1.0, 1.0);
 
+    // **O AO ASSADO**, e ele mora ao lado da cavidade pelo mesmo motivo: também
+    // não é iluminação, é leitura de FORMA. Os dois canais respondem a perguntas
+    // diferentes e é por isso que somam em vez de competir — a cavidade é LOCAL
+    // (a virada de uma aresta, o vinco que o dedo sente) e o AO é GLOBAL (o que
+    // um cone enxerga a meio corpo de distância, a axila e o vão entre membros).
+    //
+    // ⚠️ `mix` e não multiplicação direta: com `shade.ao = 0` o termo é
+    // exatamente `1.0`, então o barro sem oclusão é **byte-idêntico** ao de antes
+    // deste canal — e é isso que faz o default não mover um pixel de nada que já
+    // foi esculpido.
+    let occ = mix(1.0, clamp(in.ao, 0.0, 1.0), shade.ao);
+    let cav_occ = cav * occ;
+
     // **O MATCAP** — a luz do OLHO, e não a do documento. Ele vem ANTES da recusa
     // por rig apagado: ele não usa o rig, então apagar as lâmpadas do card não
     // pode apagá-lo.
@@ -388,8 +414,8 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
         // razão que deixa a máscara tingir com a MESMA lei nos dois modos.
         let flat = max(matcap_shade(vec3<f32>(0.0, 0.0, 1.0), id), vec3<f32>(FLAT_FLOOR));
         let ratio = lit / flat;
-        var cm = lit * cav;
-        cm = mix(cm, MASK_TINT * ratio * cav, clamp(in.mask, 0.0, 1.0) * MASK_STRENGTH);
+        var cm = lit * cav_occ;
+        cm = mix(cm, MASK_TINT * ratio * cav_occ, clamp(in.mask, 0.0, 1.0) * MASK_STRENGTH);
         return vec4<f32>(cm, 1.0);
     }
 
@@ -440,7 +466,11 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     // ela não entra no G-buffer.
 
     // Soma, não `screen`: o destino é HDR e quem faz o roll-off é o tonemap.
-    var c = CLAY * m * cav + CLAY_SHINE * spec;
+    // ⚠️ **O AO entra no DIFUSO e não no realce**, exatamente onde a cavidade já
+    // entrava: `CLAY_SHINE * spec` fica de fora da multiplicação nas duas. É a
+    // colocação fisicamente certa — oclusão é sobre a luz AMBIENTE que chega, e
+    // um realce especular é a imagem da lâmpada, que ou está visível ou não.
+    var c = CLAY * m * cav_occ + CLAY_SHINE * spec;
 
     // A máscara entra DEPOIS da luz, sobre a cor já acesa: ela tinge o que se vê
     // em vez de mudar como a superfície responde à lâmpada. Tingir antes faria a
@@ -450,6 +480,6 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     // leitura de forma que o resto da peça tem, e o artista veria a máscara
     // *achatar* o relevo que ela deveria só cobrir — que é exatamente o que o
     // `MASK_STRENGTH` de 0,75 existe para não fazer.
-    c = mix(c, MASK_TINT * m * cav, clamp(in.mask, 0.0, 1.0) * MASK_STRENGTH);
+    c = mix(c, MASK_TINT * m * cav_occ, clamp(in.mask, 0.0, 1.0) * MASK_STRENGTH);
     return vec4<f32>(c, 1.0);
 }

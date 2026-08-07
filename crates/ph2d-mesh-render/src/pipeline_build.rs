@@ -156,6 +156,11 @@ impl MeshRenderer {
         /// em TODO dab. Juntá-las faria um upload incremental de forma reenviar
         /// a autoria que ninguém tocou.
         const CURV: [wgpu::VertexAttribute; 1] = f32_attr(3);
+        /// O AO ASSADO por vértice — buffer próprio pela razão da curvatura, e
+        /// por uma a mais: ele é o canal que muda MENOS de todos (só num bake
+        /// explícito), então empacotá-lo com qualquer vizinho faria o upload
+        /// dele viajar de carona em toda mudança de forma.
+        const AO: [wgpu::VertexAttribute; 1] = f32_attr(4);
         // Irmão do `vec3_buffer`, e uma CLOSURE pela mesma razão que ele: o
         // `make` abaixo é chamado duas vezes (a cena e o G-buffer), e um valor
         // capturado por move faria dele um `FnOnce`.
@@ -209,6 +214,7 @@ impl MeshRenderer {
                         vec3_buffer(&NRM),
                         f32_buffer(&MASK),
                         f32_buffer(&CURV),
+                        f32_buffer(&AO),
                     ],
                 },
                 fragment: Some(wgpu::FragmentState {
@@ -323,6 +329,7 @@ impl MeshRenderer {
             scratch_moved: Vec::new(),
             scratch_runs: Vec::new(),
             scratch_masks: Vec::new(),
+            scratch_ao: Vec::new(),
         }
     }
 }

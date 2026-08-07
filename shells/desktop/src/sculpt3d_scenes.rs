@@ -191,6 +191,41 @@ pub(crate) fn scene_objects() -> Vec<(ph2d_mesh::Mesh, ph2d_mesh::Pose)> {
             (b, ph2d_mesh::Pose::new([2.6, -0.4, 0.0], 0.8)),
         ];
     }
+    if sss_scene() {
+        // ⚠️ **Esferas LISAS, e de propósito.** O que este canal desenha é o
+        // TERMINADOR — a fronteira entre o lado aceso e o escuro —, e num barro
+        // vincado ele passaria por cima de curvaturas locais que competem com a
+        // da própria peça. O oráculo do smoke é a ESCADA entre as três, e ela só
+        // é legível se cada uma tiver uma curvatura só.
+        let ball = |segs: usize, r: f32| {
+            let mut m = ph2d_mesh::shapes::uv_sphere(segs * 2 / 3, segs, r);
+            m.triangulate();
+            m
+        };
+        eprintln!(
+            "[sculpt3d] =19 O ESPALHAMENTO SUB-SUPERFICIAL: tres esferas, MESMO material,
+             [sculpt3d]    raios 1.00 / 0.45 / 0.20. O eixo do efeito e' `scatter / RAIO`, entao
+             [sculpt3d]    a MENOR e' a que a luz atravessa -- e a escada e' o oraculo.
+             [sculpt3d]    1) Aperte Shift+S ate 1.00. A borda da sombra tem de AMOLECER, e
+             [sculpt3d]       amolecer MAIS na esfera pequena que na grande. Se as tres
+             [sculpt3d]       mudarem igual, o canal virou um brilho global -- PARE.
+             [sculpt3d]    2) Olhe a COR na borda da sombra: ela puxa para o VERMELHO. Medido,
+             [sculpt3d]       o vermelho vaza 2x o azul. Se sair cinza, o perfil por canal
+             [sculpt3d]       virou uma media e o efeito perdeu a unica coisa que faz carne
+             [sculpt3d]       parecer carne.
+             [sculpt3d]    3) Shift+S de volta a 0.00: o barro tem de voltar EXATAMENTE ao que
+             [sculpt3d]       era (ha gate de byte-identidade).
+             [sculpt3d]    4) ESCULPA a esfera grande com um pincel pequeno: os vincos novos sao
+             [sculpt3d]       finos, entao ELES passam a espalhar enquanto o corpo nao.
+             [sculpt3d]    5) Experimente com o matcap 'Skin' (tecla M): la o `rim` FINGE
+             [sculpt3d]       translucidez e aqui ela e' medida -- os dois convivem."
+        );
+        return vec![
+            (ball(72, 1.0), ph2d_mesh::Pose::at([-1.7, 0.0, 0.0])),
+            (ball(48, 0.45), ph2d_mesh::Pose::at([0.35, 0.0, 0.0])),
+            (ball(36, 0.2), ph2d_mesh::Pose::at([1.35, 0.0, 0.0])),
+        ];
+    }
     if screen_ao_scene() {
         // ⚠️ **Duas esferas ENCOSTADAS, e a distância é o oráculo.** A `2,04` de
         // separação entre centros de raio 1 deixa uma fresta de 0,04 — funda o
@@ -332,6 +367,18 @@ pub(crate) fn ao_scene() -> bool {
 /// cones contra o campo SDF de UM corpo, e aquele corpo é convexo e não vê a
 /// vizinha. Numa peça só, as duas fontes mediriam a mesma coisa e o smoke não
 /// conseguiria distinguir a feature de um slider redundante.
+pub(crate) fn sss_scene() -> bool {
+    std::env::var("PH2D_SCULPT3D_SMOKE").ok().as_deref() == Some("19")
+}
+
+/// `=19` — a cena do **ESPALHAMENTO SUB-SUPERFICIAL** (`docs/3D/05.1` §2a).
+///
+/// ⚠️ **A fixture é uma ESCADA de raios, e é ela que separa o efeito de um
+/// slider de brilho.** O eixo da tabela é `t = scatter/R`: o espalhamento é
+/// medido em **raios de curvatura**, então uma peça só não distingue *"a luz
+/// atravessa formas finas"* de *"a peça clareou"*. Três esferas de raios 1,0 /
+/// 0,45 / 0,2 sob o MESMO `scatter` dão `t` de 1 / 2,2 / 5 — e o que o smoke tem
+/// de ver é a MENOR ficando translúcida enquanto a maior mal se mexe.
 pub(crate) fn screen_ao_scene() -> bool {
     std::env::var("PH2D_SCULPT3D_SMOKE").ok().as_deref() == Some("18")
 }

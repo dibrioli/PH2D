@@ -244,26 +244,43 @@ fn tri_sphere(rings: usize, segs: usize) -> Mesh {
 fn assert_matches_a_rebuild(mesh: &Mesh, what: &str) {
     let twin = Mesh::from_parts(mesh.positions().to_vec(), mesh.faces().to_vec())
         .expect("a malha do produto e' valida");
-    assert_eq!(
-        mesh.curvatures().len(),
-        twin.curvatures().len(),
-        "{what}: a contagem de curvaturas nao bate com a de vertices"
-    );
-    let mut worst = (0usize, 0.0f32);
-    for (v, (a, b)) in mesh.curvatures().iter().zip(twin.curvatures()).enumerate() {
-        let d = (a - b).abs();
-        if d > worst.1 {
-            worst = (v, d);
+    // ⚠️ **OS DOIS canais, e a lista é o que torna este oráculo honesto.** Ele
+    // serve as três gates de topologia; cobrir só a curvatura adimensional o
+    // deixaria VERDE sobre uma porta que esqueceu a de mundo, e o sintoma seria
+    // o SSS desenhando a forma de antes do traço — exatamente a classe de falha
+    // que o comentário do `splice` avisa desde a W6 (*"o dia em que entrar um
+    // plano por-vértice novo, quem esquecer dele é esta função"*).
+    let planes: [(&str, &[f32], &[f32]); 2] = [
+        ("curvatura", mesh.curvatures(), twin.curvatures()),
+        ("curvatura de MUNDO", mesh.curv_world(), twin.curv_world()),
+    ];
+    for (name, mine, theirs) in planes {
+        assert_eq!(
+            mine.len(),
+            theirs.len(),
+            "{what}: a contagem de {name} nao bate com a de vertices"
+        );
+        let mut worst = (0usize, 0.0f32);
+        for (v, (a, b)) in mine.iter().zip(theirs).enumerate() {
+            // ⚠️ **Erro RELATIVO à escala do canal**, e não absoluto: a de mundo
+            // vive em `1/comprimento` e passa de 1 numa peça de raio 1, enquanto
+            // a adimensional fica em centésimos. Um limiar absoluto herdado da
+            // primeira mediria as duas com a régua da menor.
+            let scale = a.abs().max(b.abs()).max(1.0);
+            let d = (a - b).abs() / scale;
+            if d > worst.1 {
+                worst = (v, d);
+            }
         }
+        assert!(
+            worst.1 < 1e-5,
+            "{what}: a {name} do vertice {} leu {} e um rebuild diria {} (erro relativo {})",
+            worst.0,
+            mine[worst.0],
+            theirs[worst.0],
+            worst.1
+        );
     }
-    assert!(
-        worst.1 < 1e-5,
-        "{what}: o vertice {} leu {} e um rebuild diria {} (erro {})",
-        worst.0,
-        mesh.curvatures()[worst.0],
-        twin.curvatures()[worst.0],
-        worst.1
-    );
 }
 
 /// **UM DAB REFRESCA A CURVATURA DE TUDO QUE ELE MUDOU.**
@@ -354,4 +371,72 @@ fn a_loose_vertex_reads_zero_instead_of_nan() {
     let mesh = Mesh::from_parts(p, vec![Face::tri(0, 1, 2)]).expect("valida");
     let k = mesh.curvatures()[3];
     assert!(k.is_finite() && k == 0.0, "o vertice solto leu {k}");
+}
+
+/// **NUMA ESFERA DE RAIO `R`, A CURVATURA DE MUNDO É `−1/R`.** O oráculo é o raio
+/// que a FIXTURE escolheu — um número que a função não conhece.
+///
+/// ⚠️ **Este gate nasceu de uma mutação SOBREVIVENTE, e ela expôs um oráculo
+/// espelho.** Trocar o denominador `Σd²` pelo quadrado do raio médio (a forma
+/// "natural", que carrega um viés de Jensen de 4% num anel anisotrópico) passava
+/// em todos os gates de topologia — porque eles comparam o **produto contra um
+/// rebuild**, e o rebuild usa a mesma fórmula. Um oráculo que computa o esperado
+/// com a função sob teste é sempre verde.
+///
+/// A tolerância é **1%** e o erro medido é **0,02%**: a folga cobre a
+/// discretização da malha, e não caberia o viés de 4% que a mutação reintroduz.
+#[test]
+fn the_world_curvature_of_a_sphere_is_one_over_its_radius() {
+    for r in [0.5f32, 1.0, 2.0, 4.0] {
+        let mesh = {
+            let mut m = shapes::uv_sphere(48, 72, r);
+            m.triangulate();
+            m
+        };
+        // A MEDIANA, e não a média: os polos de uma UV-sphere têm valência
+        // diferente do resto e não são representativos da superfície.
+        let mut k: Vec<f32> = mesh.curv_world().to_vec();
+        k.sort_by(f32::total_cmp);
+        let median = k[k.len() / 2];
+        let want = -1.0 / r;
+        let err = (median - want).abs() / want.abs();
+        assert!(
+            err < 0.01,
+            "raio {r}: a curvatura de mundo leu {median:.4} e a esfera diz {want:.4} \
+             (erro relativo {:.2}%) — um vies desta ordem e' a forma de denominador errada",
+            err * 100.0
+        );
+    }
+}
+
+/// **E ela CAI PELA METADE quando a peça dobra de tamanho**, que é a propriedade
+/// que a irmã adimensional NÃO tem — e a razão inteira de as duas coexistirem.
+///
+/// ⚠️ O gate afirma as DUAS metades sobre a mesma malha: se alguém colapsasse os
+/// dois canais num só, uma das duas cairia. Um gate que só olhasse a de mundo
+/// ficaria verde com o Cavity trocado por ela, e a cavidade passaria a clarear
+/// quando o artista escalasse a peça — o bug que o cabeçalho deste módulo
+/// descreve como *"o sombreamento mudou sozinho"*.
+#[test]
+fn scaling_the_piece_moves_one_channel_and_not_the_other() {
+    let at = |r: f32| {
+        let mut m = shapes::uv_sphere(48, 72, r);
+        m.triangulate();
+        let mut a: Vec<f32> = m.curvatures().to_vec();
+        let mut w: Vec<f32> = m.curv_world().to_vec();
+        a.sort_by(f32::total_cmp);
+        w.sort_by(f32::total_cmp);
+        (a[a.len() / 2], w[w.len() / 2])
+    };
+    let (a1, w1) = at(1.0);
+    let (a2, w2) = at(2.0);
+    assert!(
+        (a1 - a2).abs() < 1e-6,
+        "a adimensional TEM de ser invariante de escala: {a1} contra {a2}"
+    );
+    assert!(
+        (w2 / w1 - 0.5).abs() < 0.01,
+        "a de mundo TEM de cair pela metade: {w1} contra {w2} (razao {})",
+        w2 / w1
+    );
 }

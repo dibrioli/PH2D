@@ -64,7 +64,9 @@ mod tri_geom;
 pub use aabb::Aabb;
 pub use adjacency::{Adjacency, Csr};
 pub use collapse::{Collapse, collapse_in_sphere, collapse_target};
-pub use curvature::{curvature_at, curvature_of, recompute_curvature};
+pub use curvature::{
+    curvature_at, curvature_of, curvature_pair_at, recompute_curvature, world_curvature_at,
+};
 pub use dyntopo::{Birth, Refine, edge_target, refine_in_sphere};
 pub use edges::Edges;
 pub use export::{ExportPiece, MeshFormat, triangle_count, write_obj, write_ply, write_stl};

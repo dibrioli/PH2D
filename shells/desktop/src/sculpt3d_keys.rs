@@ -194,6 +194,25 @@ impl App {
                 }
                 return true;
             }
+            // **O ESPALHAMENTO SUB-SUPERFICIAL** (`docs/3D/05.1` §2a, W10.5) —
+            // o terceiro dos três canais que o Enio nomeou, ao lado do AO e da
+            // cavidade.
+            //
+            // ⚠️ `Shift+S` pelo mnemônico do artista (**S**kin / **S**cattering),
+            // e ele estava livre no bloco de shift.
+            if code == K::KeyS {
+                let amount = scene.cycle_sss();
+                if amount == 0.0 {
+                    eprintln!(
+                        "[sculpt3d] espalhamento: DESLIGADO -- o barro de sempre, ao byte                          (Shift+S liga)"
+                    );
+                } else {
+                    eprintln!(
+                        "[sculpt3d] espalhamento: {amount:.2} -- a luz ATRAVESSA a borda da sombra,                          e o VERMELHO vai mais longe que o azul (Shift+S avanca)"
+                    );
+                }
+                return true;
+            }
             if code == K::KeyI {
                 let on = scene.toggle_isolate();
                 if on {

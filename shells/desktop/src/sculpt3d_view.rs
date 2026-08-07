@@ -75,6 +75,13 @@ impl Sculpt3dScene {
             cavity: self.cavity,
             ao: self.ao,
             ssao: self.ssao,
+            // ⚠️ **A força é do artista e o alcance é da PEÇA** — o mesmo corte do
+            // raio do AO de tela, e pelo mesmo motivo: um `scatter` guardado
+            // seria uma segunda verdade sobre o tamanho da escultura.
+            sss: ph2d_mesh_render::SssParams {
+                strength: self.sss,
+                ..ph2d_mesh_render::SssParams::for_bounds(self.world_bounds())
+            },
             matcap: self.matcap,
             wireframe: self.wireframe,
         }
@@ -111,6 +118,25 @@ impl Sculpt3dScene {
     /// multiplicação. Inventar o segundo agora seria um knob que nenhum gesto
     /// alcança; se o smoke disser que os dois lados querem quantidades
     /// diferentes, é ele que parte este número em dois.
+    /// **O ESPALHAMENTO, um passo adiante** — o irmão exato do
+    /// [`Self::cycle_cavity`], e os degraus são os mesmos pela mesma razão: é um
+    /// canal que o artista escolhe uma vez e volta a esculpir.
+    ///
+    /// ⚠️ **Só a FORÇA cicla.** O alcance (`scatter`) é semeado pelo tamanho da
+    /// peça a cada frame, então não há um segundo ciclo a oferecer — e um
+    /// controle para ele seria um número que o artista teria de manter de acordo
+    /// com o tamanho da escultura, que é exatamente o que o `for_bounds` existe
+    /// para não pedir.
+    pub(crate) fn cycle_sss(&mut self) -> f32 {
+        const STEPS: [f32; 4] = [0.0, 0.35, 0.70, 1.0];
+        let at = STEPS
+            .iter()
+            .position(|s| (s - self.sss).abs() < 1e-4)
+            .unwrap_or(0);
+        self.sss = STEPS[(at + 1) % STEPS.len()];
+        self.sss
+    }
+
     pub(crate) fn cycle_cavity(&mut self) -> f32 {
         const STEPS: [f32; 4] = [0.0, 0.35, 0.70, 1.0];
         let at = STEPS

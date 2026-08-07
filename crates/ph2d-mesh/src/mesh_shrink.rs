@@ -156,6 +156,13 @@ impl Mesh {
             // velhos juntos, e os dois gates de bit sangrariam juntos. É a camada
             // que existe para o dia em que a de baixo sair.
             self.curvatures[to as usize] = self.curvatures[from as usize];
+            // ⚠️ **E ela sobrevive à mesma mutação que a irmã acima** — medido:
+            // apagar esta linha deixa os 12 gates de curvatura VERDES, porque
+            // todo caminho que encolhe a topologia termina num `refresh_region`
+            // que recomputa os sobreviventes. Ela fica pelo motivo escrito no
+            // parágrafo acima: a lista de planos por-vértice tem de ser UNIFORME,
+            // e é esta a camada que existe para o dia em que a de baixo sair.
+            self.curv_world[to as usize] = self.curv_world[from as usize];
             if let Some(c) = self.colors.as_mut() {
                 c[to as usize] = c[from as usize];
             }
@@ -169,6 +176,7 @@ impl Mesh {
         self.positions.truncate(remap.verts);
         self.normals.truncate(remap.verts);
         self.curvatures.truncate(remap.verts);
+        self.curv_world.truncate(remap.verts);
         if let Some(c) = self.colors.as_mut() {
             c.truncate(remap.verts);
         }

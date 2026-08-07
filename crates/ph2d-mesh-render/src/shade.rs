@@ -131,6 +131,13 @@ pub struct Shade {
     /// não pelo produto — dois canais que descrevem a mesma sombra multiplicados
     /// a escureceriam em dobro exatamente onde os dois acertam.
     pub ssao: f32,
+    /// **O ESPALHAMENTO SUB-SUPERFICIAL** (`crate::sss`) — quanto, e até onde.
+    ///
+    /// ⚠️ Um struct aninhado e não dois `f32` soltos: `strength` e `scatter` são
+    /// as duas metades de UMA resposta (*como este material conduz luz por
+    /// dentro*), o [`crate::sss::SssParams`] é quem sabe semeá-las pelo tamanho
+    /// da peça, e ele é a porta única de empacotamento.
+    pub sss: crate::sss::SssParams,
     /// A malha desenhada por cima da forma.
     ///
     /// ⚠️ Ele viaja aqui e **não entra no [`ShadeRaw`]**: é um segundo PASSE, não
@@ -146,6 +153,7 @@ impl Default for Shade {
             cavity: DEFAULT_CAVITY,
             ao: DEFAULT_AO_STRENGTH,
             ssao: DEFAULT_SSAO_STRENGTH,
+            sss: crate::sss::SssParams::default(),
             matcap: None,
             wireframe: false,
         }
@@ -173,11 +181,23 @@ pub struct ShadeRaw {
     /// Quanto do AO de TELA entra.
     ///
     /// ⚠️ **Este era o slot que o `_pad` guardava para o SSS.** A promessa foi
-    /// cobrada por outro inquilino e o layout **continua o mesmo** (16 B, quatro
-    /// `f32`) — o SSS, quando chegar, acrescenta um campo e o `size_of` cresce
-    /// para 32 por alinhamento, que é o momento certo de re-conferir o uniform em
-    /// vez de fingir que ele nunca cresceria.
+    /// cobrada por outro inquilino, e quando o SSS de fato chegou o `size_of`
+    /// cresceu para 32 por alinhamento — exatamente o que este comentário
+    /// anunciava, e o gate `the_uniform_grew_the_way_it_said_it_would` é quem
+    /// cobra que o WGSL tenha crescido junto.
     pub ssao: f32,
+    /// **Quanto do espalhamento sub-superficial entra**, `0..1`. `0` = o barro de
+    /// sempre, **ao byte** — a tabela nem é consultada.
+    pub sss_strength: f32,
+    /// O `scatter` já dividido pelo teto da tabela ([`crate::sss::T_MAX`]) — a
+    /// coordenada `v` sai de `|κ| ×` isto. A divisão mora no
+    /// [`crate::sss::SssRaw::pack`], e só lá.
+    pub sss_scale: f32,
+    /// Padding explícito até 32 B. ⚠️ Ele existe para o `size_of` do Rust e o
+    /// tamanho que o WGSL calcula concordarem **sem depender do que o compilador
+    /// resolve fazer** — um uniform em que os dois discordam lê campos deslocados,
+    /// e o sintoma é um sombreamento levemente errado que ninguém consegue nomear.
+    pub _pad: [f32; 2],
 }
 
 impl Default for ShadeRaw {
@@ -211,6 +231,12 @@ impl ShadeRaw {
             // um `ao` de 3 faria o `mix` extrapolar para além do canal.
             ao: shade.ao.clamp(0.0, 1.0),
             ssao: shade.ssao.clamp(0.0, 1.0),
+            // ⚠️ Pelo `SssRaw`, nunca à mão: é ele que sabe que o `scatter` viaja
+            // dividido pelo teto da tabela, e uma segunda cópia dessa divisão
+            // divergiria no dia em que o teto mudasse.
+            sss_strength: crate::sss::SssRaw::pack(shade.sss).params[0],
+            sss_scale: crate::sss::SssRaw::pack(shade.sss).params[1],
+            _pad: [0.0; 2],
         }
     }
 }

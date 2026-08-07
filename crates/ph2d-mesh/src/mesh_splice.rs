@@ -121,6 +121,10 @@ impl Mesh {
             // *errada* no meio-tempo: o ponto médio de uma aresta tem a curvatura
             // do LUGAR onde ele caiu, não a média de quem o gerou.
             self.curvatures.push(0.0);
+            // ⚠️ A irmã de MUNDO (`curv_world`) pelo MESMO motivo e no MESMO
+            // lugar — as duas são derivadas do anel, e o anel de um vértice
+            // recém-nascido só existe depois do passo 5.
+            self.curv_world.push(0.0);
             if let Some(c) = self.colors.as_mut() {
                 let (ca, cb) = (c[a as usize], c[b as usize]);
                 c.push([

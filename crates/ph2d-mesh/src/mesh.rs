@@ -55,6 +55,20 @@ pub struct Mesh {
     /// de fazer é viajar na compactação, junto das normais — ver
     /// [`Self::shrink_topology`].
     curvatures: Vec<f32>,
+    /// **A curvatura em unidades de MUNDO** (`κ`, em `1/comprimento`) — a irmã
+    /// da de cima, do MESMO gather, com o MESMO sinal, e de dimensão diferente.
+    ///
+    /// ⚠️ **Ela existe porque as duas perguntas são diferentes, e a medição é
+    /// quem separa** (`tests/measure_curvature_units.rs`): escalar a peça 2×
+    /// deixa `curvatures` intacta e **divide esta pela metade**; dobrar a
+    /// tesselação faz o oposto. O Cavity quer a invariante de escala (uma ruga de
+    /// uma aresta lê igual em qualquer tamanho); o **SSS pré-integrado** quer
+    /// esta, porque a difusão tem escala física e a LUT é indexada pelo produto
+    /// `raio_de_espalhamento × κ`.
+    ///
+    /// Mesma classificação da irmã: **DERIVADA** — recomputada pelas quatro
+    /// portas, fora do undo, fora da serialização.
+    curv_world: Vec<f32>,
     colors: Option<Vec<[f32; 3]>>,
     masks: Option<Vec<f32>>,
     /// **O AO assado por vértice** (`ph2d_sdf::bake_ao`) — quanto do céu cada
@@ -117,6 +131,7 @@ impl Mesh {
         let mut mesh = Self {
             normals: vec![[0.0, 1.0, 0.0]; positions.len()],
             curvatures: vec![0.0; positions.len()],
+            curv_world: vec![0.0; positions.len()],
             positions,
             faces,
             ..Self::default()
@@ -146,6 +161,7 @@ impl Mesh {
             &self.normals,
             &self.adjacency.vert_verts,
             &mut self.curvatures,
+            &mut self.curv_world,
         );
         self.octree = Octree::build(&self.positions, &self.faces);
         self.bounds = Aabb::from_points(&self.positions);
@@ -183,6 +199,13 @@ impl Mesh {
     #[must_use]
     pub fn curvatures(&self) -> &[f32] {
         &self.curvatures
+    }
+
+    /// **A curvatura em unidades de MUNDO** (`1/comprimento`), mesmo sinal da
+    /// irmã. É o eixo que a LUT do SSS pré-integrado indexa — ver o campo.
+    #[must_use]
+    pub fn curv_world(&self) -> &[f32] {
+        &self.curv_world
     }
 
     #[must_use]
@@ -486,9 +509,16 @@ impl Mesh {
             &self.adjacency.vert_verts,
             &scratch.verts,
             &mut scratch.tmp_k,
+            &mut scratch.tmp_kw,
         );
-        for (&v, k) in scratch.verts.iter().zip(&scratch.tmp_k) {
+        for ((&v, k), w) in scratch
+            .verts
+            .iter()
+            .zip(&scratch.tmp_k)
+            .zip(&scratch.tmp_kw)
+        {
             self.curvatures[v as usize] = *k;
+            self.curv_world[v as usize] = *w;
         }
         // As MESMAS faces que moveram as normais movem as caixas. Duas listas
         // divergiriam no dia em que uma delas ganhasse um filtro.
@@ -556,6 +586,9 @@ pub struct RegionScratch {
     /// reuso do [`Self::tmp`]: a curvatura roda **depois** das normais e as lê,
     /// então os dois estão vivos ao mesmo tempo.
     tmp_k: Vec<f32>,
+    /// O irmão do `tmp_k` para a curvatura de MUNDO — mesma lista de vértices,
+    /// mesmo gather, saída própria (o `curvature_of` devolve o par).
+    tmp_kw: Vec<f32>,
     refit: RefitScratch,
 }
 

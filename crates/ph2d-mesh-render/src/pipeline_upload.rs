@@ -87,6 +87,7 @@ impl MeshRenderer {
                 bytemuck::cast_slice(masks_of(mesh, &mut self.scratch_masks)),
             );
             queue.write_buffer(&g.curvatures, 0, bytemuck::cast_slice(mesh.curvatures()));
+            queue.write_buffer(&g.curv_world, 0, bytemuck::cast_slice(mesh.curv_world()));
             queue.write_buffer(
                 &g.ao,
                 0,
@@ -120,6 +121,7 @@ impl MeshRenderer {
                 bytemuck::cast_slice(masks_of(mesh, &mut self.scratch_masks)),
             ),
             curvatures: vb("ph2d-mesh curv", bytemuck::cast_slice(mesh.curvatures())),
+            curv_world: vb("ph2d-mesh curvw", bytemuck::cast_slice(mesh.curv_world())),
             ao: vb(
                 "ph2d-mesh ao",
                 bytemuck::cast_slice(ao_of(mesh, &mut self.scratch_ao)),
@@ -239,6 +241,15 @@ impl MeshRenderer {
                 &g.curvatures,
                 a as u64 * 4,
                 bytemuck::cast_slice(&mesh.curvatures()[a..b]),
+            );
+            // **E a de MUNDO na mesma janela** — ela sai do MESMO gather que a
+            // irmã acima, então a lista que a torna válida é a mesma. Deixá-la
+            // de fora daria um espalhamento medido contra a curvatura de antes
+            // do traço, e o sintoma seria o SSS desenhando a forma anterior.
+            queue.write_buffer(
+                &g.curv_world,
+                a as u64 * 4,
+                bytemuck::cast_slice(&mesh.curv_world()[a..b]),
             );
             // ⚠️ **E o AO NÃO entra aqui, de propósito.** Ele é a exceção porque
             // é a exceção na malha: um dab RECOMPUTA normal e curvatura, e só

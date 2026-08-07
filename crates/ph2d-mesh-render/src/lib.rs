@@ -34,6 +34,7 @@ mod lighting;
 mod pipeline;
 mod shade;
 pub mod ssao;
+pub mod sss;
 pub mod upload;
 mod wire;
 
@@ -45,6 +46,9 @@ pub use shade::{
     ShadeRaw,
 };
 pub use ssao::{RADIUS_FRACTION as SSAO_RADIUS_FRACTION, SsaoParams, SsaoRaw};
+pub use sss::{
+    LUT_SIZE as SSS_LUT_SIZE, SCATTER_FRACTION as SSS_SCATTER_FRACTION, SssParams, SssRaw,
+};
 pub use wire::wire_indices;
 
 /// **O material do barro** — o realce e a largura dele.

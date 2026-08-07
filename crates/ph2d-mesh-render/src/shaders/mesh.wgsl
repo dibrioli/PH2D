@@ -77,6 +77,16 @@ struct Shade {
     // **QUANTO DO AO DE TELA ENTRA.** `1` = todo ele, e é o default — o oposto do
     // vizinho, porque este canal é MEDIDO todo frame em vez de assado uma vez.
     ssao: f32,
+    // **QUANTO DO ESPALHAMENTO SUB-SUPERFICIAL ENTRA.** `0` = o barro de sempre,
+    // ao byte — e é o default, porque isto é um MATERIAL e barro não é pele.
+    sss_strength: f32,
+    // O `scatter` do artista já dividido pelo teto da tabela: a coordenada `v`
+    // sai de `|kappa| *` isto. ⚠️ A divisão mora no `SssRaw::pack` e SÓ lá —
+    // reproduzi-la aqui seria a segunda cópia do teto, e ela divergiria no dia
+    // em que o teto mudasse.
+    sss_scale: f32,
+    _pad0: f32,
+    _pad1: f32,
 };
 
 @group(0) @binding(0) var<uniform> cam: Camera;
@@ -271,6 +281,48 @@ fn matcap_shade(n: vec3<f32>, id: u32) -> vec3<f32> {
 // consigo mesma.
 @group(2) @binding(0) var ssao_tex: texture_2d<f32>;
 
+// **A TABELA PRÉ-INTEGRADA DO SSS** (`crate::sss`) — grupo próprio porque a
+// frequência é a mais baixa de todas: ela é assada UMA vez na vida do processo,
+// enquanto o grupo 2 é recriado a cada resize.
+//
+// ⚠️ **COM sampler, ao contrário do AO** — aqui a textura é uma FUNÇÃO tabelada
+// e a consulta cai ENTRE os nós; é a interpolação que torna 128 linhas
+// suficientes. No AO a correspondência é 1:1 com a tela, e filtrar seria
+// interpolar uma medição consigo mesma.
+@group(3) @binding(0) var sss_lut: texture_2d<f32>;
+@group(3) @binding(1) var sss_samp: sampler;
+
+/// **A resposta difusa deste ponto, dado `N·L` e a curvatura de mundo.**
+///
+/// Sem espalhamento é `max(N·L, 0)` — o Lambert de sempre, nos três canais. Com
+/// espalhamento é a tabela de Penner, que devolve TRÊS números diferentes: o
+/// vermelho viaja mais dentro da carne, e é só isso que faz um rosto parecer
+/// carne em vez de plástico.
+///
+/// ⚠️ **`abs(curv)`, e não é economia:** a pré-integração é PAR em `x`, então
+/// `D(θ, r) = D(θ, |r|)` — uma narina e uma ponta de nariz do mesmo raio
+/// espalham igual. Quem usa o SINAL da curvatura é a cavidade, logo acima.
+///
+/// ⚠️ E o `mix` é o que faz `sss_strength = 0` ser **byte-idêntico** ao barro
+/// anterior a este canal: o segundo braço nem é consultado quando o peso é zero
+/// — mas ele É avaliado, e é por isso que a tabela zerada de antes do
+/// `ensure_sss_lut` não pode escurecer nada (ela entra multiplicada por 0).
+fn sss_diffuse(n_dot_l: f32, curv: f32) -> vec3<f32> {
+    let lambert = vec3<f32>(max(n_dot_l, 0.0));
+    if (shade.sss_strength <= 0.0) {
+        return lambert;
+    }
+    // `u` mapeia [-1, 1] em [0, 1] — a tabela cobre o lado ESCURO de propósito,
+    // porque é exatamente lá que a luz que vazou aparece.
+    let u = n_dot_l * 0.5 + 0.5;
+    // `v` satura no teto pelo `ClampToEdge` do sampler: pedir mais espalhamento
+    // do que a tabela representa faz o controle parar de responder, nunca voltar
+    // ao outro extremo.
+    let v = abs(curv) * shade.sss_scale;
+    let scattered = textureSample(sss_lut, sss_samp, vec2<f32>(u, v)).rgb;
+    return mix(lambert, scattered, shade.sss_strength);
+}
+
 /// **QUANTO ESTE PIXEL ESTÁ OCLUÍDO PELO QUE ESTÁ NA TELA.**
 ///
 /// ⚠️ A coordenada é CLAMPADA ao tamanho da textura, e a linha é load-bearing: sem
@@ -291,6 +343,7 @@ struct VsOut {
     @location(1) mask: f32,
     @location(2) curv: f32,
     @location(3) ao: f32,
+    @location(4) curv_world: f32,
 };
 
 @vertex
@@ -300,6 +353,7 @@ fn vs_main(
     @location(2) mask: f32,
     @location(3) curv: f32,
     @location(4) ao: f32,
+    @location(5) curv_world: f32,
 ) -> VsOut {
     var out: VsOut;
     out.clip = cam.view_proj * obj.model * vec4<f32>(pos, 1.0);
@@ -316,6 +370,15 @@ fn vs_main(
     // grandeza que não tem direção passando por uma transformação que só sabe
     // falar de direção.
     out.curv = curv;
+    // ⚠️ **A de MUNDO tampouco cruza `obj.model`, e por um motivo DIFERENTE do
+    // da irmã.** A adimensional não cruza porque a escala já se cancelou na CPU;
+    // esta não cruza porque ela é `1/comprimento` e a `Pose` escala UNIFORME —
+    // então uma peça duplicada de tamanho teria a curvatura de mundo dividida
+    // por dois, e é a CPU quem já a mediu na geometria local. O dia em que uma
+    // `Pose` com escala chegar ao SSS, é AQUI que ela entra (dividida, não
+    // multiplicada) — e o gate `the_scatter_is_a_fraction_of_the_piece` é o que
+    // mantém o knob na mesma proporção enquanto isso não existe.
+    out.curv_world = curv_world;
     // `w = 0` ⇒ direção, não ponto: a translação da vista **e a do objeto** não
     // entram. A matriz de vista é ortonormal (sai de uma `look_at`) e a do
     // objeto é uma SIMILARIDADE (`Pose` é translação + escala UNIFORME), então
@@ -475,7 +538,7 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
         // A resposta PLANA (N = (0,0,1) ⇒ N·L = L.z), que é o divisor de tudo.
         let lz = max(l.dir.z, 0.0);
         flat_d = flat_d + l.tint.rgb * lz;
-        diffuse = diffuse + l.tint.rgb * max(dot(nc, l.dir.xyz), 0.0);
+        diffuse = diffuse + l.tint.rgb * sss_diffuse(dot(nc, l.dir.xyz), in.curv_world);
         // O realce de cada lâmpada é relativo AO PRÓPRIO realce dela numa
         // superfície plana, e clampado em zero ALI: somar os brutos e subtrair o
         // total plano deixaria uma lâmpada virada para o outro lado tomar

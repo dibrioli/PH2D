@@ -77,21 +77,79 @@ pub fn curvature_at(
     vert_verts: &Csr,
     v: usize,
 ) -> f32 {
+    curvature_pair_at(positions, normals, vert_verts, v).0
+}
+
+/// **A curvatura em unidades de MUNDO** — `κ`, em `1/comprimento`, com o MESMO
+/// sinal da irmã adimensional (`> 0` côncavo, `< 0` convexo).
+///
+/// ```text
+/// κ(v) = 2 · dot(Σ(q_j − p), n) / Σ|q_j − p|²
+/// ```
+///
+/// # Por que ELA existe, quando já há uma curvatura
+///
+/// As duas medem a mesma dobra e respondem a perguntas diferentes, e a diferença
+/// é de **DIMENSÃO**:
+///
+/// | | grandeza | escalar a peça 2× | dobrar a tesselação |
+/// |---|---|---|---|
+/// | [`curvature_at`] | adimensional | **não muda** | **cai pela metade** |
+/// | esta | `1/comprimento` | **cai pela metade** | não muda |
+///
+/// (MEDIDO — `tests/measure_curvature_units.rs`: `−0,0372` nos três raios contra
+/// `−1,04 / −0,52 / −0,26`.)
+///
+/// O **Cavity** quer a primeira: ele desenha a *leitura da forma*, e uma ruga de
+/// uma aresta de largura tem de ler igual numa peça grande e numa pequena. O
+/// **SSS pré-integrado** ([`05.1`](../../docs/3D/05-Shading/05.1-Shader-de-runtime.md)
+/// §2a) quer a segunda: a difusão sub-superficial tem uma **escala física** (o
+/// raio de espalhamento, em milímetros de pele), e a LUT de Penner é indexada
+/// pelo produto adimensional `raio_de_espalhamento × κ`. Um canal invariante de
+/// escala não consegue formar esse produto — a mesma cabeça 10× maior espalharia
+/// igual, quando ela deveria espalhar 10× menos em termos relativos.
+///
+/// ⚠️ **Isto CORRIGE a frase *"um dado, dois usos"* daquele doc:** é o mesmo
+/// GATHER (esta função e a irmã percorrem o mesmo anel, e a
+/// [`curvature_pair_at`] o percorre **uma vez** para as duas), mas **não é o
+/// mesmo NÚMERO**.
+///
+/// # O denominador é a soma dos QUADRADOS, e isso vale 4%
+///
+/// Numa esfera de raio `R`, um vizinho a corda `d_j` satisfaz
+/// `(q_j − p)·n̂ = −d_j²/(2R)` **exatamente**. Então `2·(acc·n̂)/Σd²` devolve
+/// `−1/R` seja qual for a distribuição de comprimentos do anel.
+///
+/// ⚠️ A forma "natural" — dividir pelo raio médio ao quadrado — devolve
+/// `−(1/R)·mean(d²)/mean(d)²`, e o excesso é a **desigualdade de Jensen** sobre
+/// um anel anisotrópico, que é o que uma UV-sphere tem em toda latitude: medido,
+/// **1,0400 onde a resposta é 1,0000**. Bônus: esta forma **não usa `sqrt`**.
+#[must_use]
+pub fn world_curvature_at(
+    positions: &[[f32; 3]],
+    normals: &[[f32; 3]],
+    vert_verts: &Csr,
+    v: usize,
+) -> f32 {
+    curvature_pair_at(positions, normals, vert_verts, v).1
+}
+
+/// **As duas curvaturas de um vértice, num gather só** — `(adimensional, mundo)`.
+///
+/// É esta que as portas chamam. As duas irmãs públicas delegam aqui, então não há
+/// como uma responder sobre um anel e a outra sobre outro.
+#[must_use]
+pub fn curvature_pair_at(
+    positions: &[[f32; 3]],
+    normals: &[[f32; 3]],
+    vert_verts: &Csr,
+    v: usize,
+) -> (f32, f32) {
     let ring = vert_verts.neighbours(v);
     if ring.is_empty() {
-        return 0.0;
+        return (0.0, 0.0);
     }
     let p = positions[v];
-    let mut acc = [0.0f32; 3];
-    let mut radius = 0.0f32;
-    for &j in ring {
-        let q = positions[j as usize];
-        let d = [q[0] - p[0], q[1] - p[1], q[2] - p[2]];
-        acc[0] += d[0];
-        acc[1] += d[1];
-        acc[2] += d[2];
-        radius += (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt();
-    }
     // A soma acumula os DESLOCAMENTOS e não as posições. ⚠️ **E a vantagem disso
     // é MENOR do que eu escrevi antes de medir:** somar coordenadas absolutas
     // longe da origem e só então subtrair `p` cancela dígitos, sim, mas o erro
@@ -108,40 +166,67 @@ pub fn curvature_at(
     // Ou seja **2 a 3×**, não ordens de grandeza. A forma fica porque é
     // estritamente melhor e não custa nada — e porque na origem ela é EXATA,
     // que é onde toda escultura de fato vive.
-    if radius <= f32::MIN_POSITIVE {
-        return 0.0;
+    let mut acc = [0.0f32; 3];
+    let mut radius = 0.0f32;
+    // A soma dos QUADRADOS das cordas — o denominador do mundo. Ela sai de graça:
+    // o `radius` já precisa do produto interno antes da raiz.
+    let mut sq = 0.0f32;
+    for &j in ring {
+        let q = positions[j as usize];
+        let d = [q[0] - p[0], q[1] - p[1], q[2] - p[2]];
+        acc[0] += d[0];
+        acc[1] += d[1];
+        acc[2] += d[2];
+        let dd = d[0] * d[0] + d[1] * d[1] + d[2] * d[2];
+        sq += dd;
+        radius += dd.sqrt();
+    }
+    if radius <= f32::MIN_POSITIVE || sq <= f32::MIN_POSITIVE {
+        return (0.0, 0.0);
     }
     let nrm = normals[v];
-    // ⚠️ **A contagem do anel CANCELA e por isso não aparece:** o centroide
-    // relativo é `acc / n` e o raio médio é `radius / n`, então a razão entre os
-    // dois é `acc · n̂ / radius`. Dividir os dois por `n` seria trabalho que a
-    // álgebra já fez — e um `n` escrito num lado só é como esta função passaria
-    // a medir valência em vez de curvatura.
+    // ⚠️ **A contagem do anel CANCELA na primeira e por isso não aparece:** o
+    // centroide relativo é `acc / n` e o raio médio é `radius / n`, então a razão
+    // entre os dois é `acc · n̂ / radius`. Dividir os dois por `n` seria trabalho
+    // que a álgebra já fez — e um `n` escrito num lado só é como esta função
+    // passaria a medir valência em vez de curvatura. Na segunda o `n` cancela
+    // pelo mesmo motivo, entre `Σd²/n` e `(acc/n)`.
     let dot = acc[0] * nrm[0] + acc[1] * nrm[1] + acc[2] * nrm[2];
-    dot / radius
+    (dot / radius, 2.0 * dot / sq)
 }
 
-/// Recalcula a curvatura de TODOS os vértices.
+/// Recalcula **as duas** curvaturas de TODOS os vértices.
 ///
 /// ⚠️ **Roda DEPOIS das normais**, sempre: ela lê `normals[v]`, e com a normal
 /// velha o sinal do vértice que acabou de dobrar sai invertido — a crista
 /// aparece como fresta, no exato lugar onde o artista está olhando.
+///
+/// ⚠️ **Os dois planos saem do MESMO gather** ([`curvature_pair_at`]) e por isso
+/// não podem discordar sobre o anel. Duas varreduras seriam duas respostas para
+/// *"de que tamanho é a dobra aqui?"*, e o dia em que uma delas ganhasse um
+/// filtro a outra continuaria falando do anel antigo.
 pub fn recompute_curvature(
     positions: &[[f32; 3]],
     normals: &[[f32; 3]],
     vert_verts: &Csr,
     out: &mut Vec<f32>,
+    out_world: &mut Vec<f32>,
 ) {
     out.clear();
     out.resize(positions.len(), 0.0);
+    out_world.clear();
+    out_world.resize(positions.len(), 0.0);
     if out.len() < PAR_MIN {
-        for (v, o) in out.iter_mut().enumerate() {
-            *o = curvature_at(positions, normals, vert_verts, v);
+        for (v, (o, w)) in out.iter_mut().zip(out_world.iter_mut()).enumerate() {
+            (*o, *w) = curvature_pair_at(positions, normals, vert_verts, v);
         }
     } else {
         out.par_iter_mut()
+            .zip(out_world.par_iter_mut())
             .enumerate()
-            .for_each(|(v, o)| *o = curvature_at(positions, normals, vert_verts, v));
+            .for_each(|(v, (o, w))| {
+                (*o, *w) = curvature_pair_at(positions, normals, vert_verts, v);
+            });
     }
 }
 
@@ -155,17 +240,23 @@ pub fn curvature_of(
     vert_verts: &Csr,
     which: &[u32],
     out: &mut Vec<f32>,
+    out_world: &mut Vec<f32>,
 ) {
     out.clear();
     out.resize(which.len(), 0.0);
+    out_world.clear();
+    out_world.resize(which.len(), 0.0);
     if which.len() < PAR_MIN {
-        for (o, &v) in out.iter_mut().zip(which) {
-            *o = curvature_at(positions, normals, vert_verts, v as usize);
+        for ((o, w), &v) in out.iter_mut().zip(out_world.iter_mut()).zip(which) {
+            (*o, *w) = curvature_pair_at(positions, normals, vert_verts, v as usize);
         }
     } else {
         out.par_iter_mut()
+            .zip(out_world.par_iter_mut())
             .zip(which.par_iter())
-            .for_each(|(o, &v)| *o = curvature_at(positions, normals, vert_verts, v as usize));
+            .for_each(|((o, w), &v)| {
+                (*o, *w) = curvature_pair_at(positions, normals, vert_verts, v as usize);
+            });
     }
 }
 

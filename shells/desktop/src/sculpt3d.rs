@@ -397,6 +397,20 @@ pub(crate) struct Sculpt3dScene {
     /// foi medido"*. E é ele que decide se o passe roda — zero é a resposta
     /// completa para *"não quero pagar por isto"*, sem um segundo interruptor.
     ssao: f32,
+    /// **O ESPALHAMENTO SUB-SUPERFICIAL** — quanto, e até onde a luz viaja dentro
+    /// do material.
+    ///
+    /// ⚠️ Ele nasce em **zero**, como o AO assado e ao contrário do AO de tela, e
+    /// a razão é de outra família: os dois AOs são MEDIÇÕES da forma (mostrá-las
+    /// é honesto), e este é um **MATERIAL**. Barro não é pele; ligar o
+    /// espalhamento por padrão mudaria a aparência de toda escultura já feita
+    /// para uma que ninguém pediu.
+    ///
+    /// ⚠️ E o `scatter` **não** mora aqui: ele é semeado pelo tamanho da peça a
+    /// cada frame (`Sculpt3dScene::shade`), pela mesma razão do raio do AO de
+    /// tela — um número guardado seria uma segunda verdade sobre o tamanho da
+    /// peça, a que fica velha exatamente quando o artista a faz crescer.
+    sss: f32,
     stroke: SculptStroke,
     undo: Vec<Entry>,
     /// **O futuro guardado** — o que um Ctrl+Z tirou e um Ctrl+Shift+Z devolve.
@@ -469,6 +483,7 @@ impl Sculpt3dScene {
             cavity: ph2d_mesh_render::DEFAULT_CAVITY,
             ao: ph2d_mesh_render::DEFAULT_AO_STRENGTH,
             ssao: ph2d_mesh_render::DEFAULT_SSAO_STRENGTH,
+            sss: ph2d_mesh_render::SssParams::default().strength,
             stroke: SculptStroke::default(),
             undo: Vec::new(),
             redo: Vec::new(),

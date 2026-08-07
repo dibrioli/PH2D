@@ -56,6 +56,10 @@ struct MeshGpu {
     /// máscara não há `Option` a resolver: toda malha tem uma, sempre, e o
     /// buffer sobe direto do slice que já existe.
     curvatures: wgpu::Buffer,
+    /// A CURVATURA DE MUNDO por vértice (`ph2d_mesh::world_curvature_at`) — o
+    /// eixo `t = scatter·|κ|` da tabela do SSS. **Derivada como a irmã**, logo
+    /// sem `Option`: toda malha tem uma.
+    curv_world: wgpu::Buffer,
     /// O AO ASSADO por vértice — quanto do céu cada um enxerga.
     ///
     /// ⚠️ **Ao contrário da curvatura ao lado, ele é `Option` na malha**, e por
@@ -168,6 +172,12 @@ pub struct MeshRenderer {
     ssao: Option<ssao_pass::SsaoTargets>,
     /// A medição é DESTA vista? Posta pelo `render_ssao`, consumida pelo `render`.
     ssao_fresh: bool,
+    /// **A tabela pré-integrada do SSS** (`crate::sss`), no device.
+    sss_lut: wgpu::Texture,
+    /// O bind do grupo 3 — a tabela e o sampler. Construído uma vez.
+    sss_bind: wgpu::BindGroup,
+    /// A tabela já foi ASSADA e subiu? Ver [`Self::ensure_sss_lut`].
+    sss_lut_ready: bool,
 }
 
 /// COMO A MALHA SOBE para o device — ver o módulo.
@@ -268,12 +278,59 @@ impl MeshRenderer {
             pass.set_vertex_buffer(2, slot.gpu.masks.slice(..));
             pass.set_vertex_buffer(3, slot.gpu.curvatures.slice(..));
             pass.set_vertex_buffer(4, slot.gpu.ao.slice(..));
+            pass.set_vertex_buffer(5, slot.gpu.curv_world.slice(..));
             pass.set_index_buffer(indices.slice(..), wgpu::IndexFormat::Uint32);
             pass.draw_indexed(0..count, 0, 0..1);
         }
     }
 
     /// Garante o depth-buffer do tamanho pedido (recria se mudou).
+    /// **Garante a tabela do SSS no device** — assa e sobe, uma vez.
+    ///
+    /// ⚠️ **Lazy, e só quando alguém de fato pede espalhamento.** A tabela custa
+    /// `128² × 512` avaliações da integral de Penner, ou seja **oito milhões de
+    /// exponenciais**; assá-la no `new` faria toda cena pagar por um canal que
+    /// nasce em zero. E ela não pode ser assada no `new` de qualquer forma: ele
+    /// não tem `queue` (a restrição que fez o canal de AO guardar oclusão em vez
+    /// de visibilidade), e aqui não há inversão que dispense o upload.
+    ///
+    /// ⚠️ **O guard é `strength > 0` e não `strength != 0`**: o valor já chegou
+    /// clampado a `[0,1]` pela porta, então negativo não existe — e escrever a
+    /// desigualdade estrita torna a leitura *"alguém pediu espalhamento"* em vez
+    /// de *"o número não é exatamente zero"*.
+    pub fn ensure_sss_lut(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        shade: crate::Shade,
+    ) {
+        let _ = device;
+        if self.sss_lut_ready || shade.sss.strength <= 0.0 {
+            return;
+        }
+        let n = crate::sss::LUT_SIZE;
+        queue.write_texture(
+            wgpu::TexelCopyTextureInfo {
+                texture: &self.sss_lut,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            &crate::sss::bake_lut(),
+            wgpu::TexelCopyBufferLayout {
+                offset: 0,
+                bytes_per_row: Some(n * 4),
+                rows_per_image: Some(n),
+            },
+            wgpu::Extent3d {
+                width: n,
+                height: n,
+                depth_or_array_layers: 1,
+            },
+        );
+        self.sss_lut_ready = true;
+    }
+
     pub fn ensure_depth(&mut self, device: &wgpu::Device, size: (u32, u32)) {
         if self.depth.is_some() && self.depth_size == size {
             return;
@@ -337,6 +394,7 @@ impl MeshRenderer {
             return;
         }
         self.ensure_depth(device, size);
+        self.ensure_sss_lut(device, queue, shade);
         // ⚠️ **A frescura é consumida AQUI**, antes de qualquer empréstimo do
         // passe: quem não renovou a medição nesta vista desenha sem oclusão de
         // tela, nunca com a do frame passado.
@@ -385,6 +443,7 @@ impl MeshRenderer {
         pass.set_pipeline(&self.pipeline);
         pass.set_bind_group(0, &self.bind, &[]);
         pass.set_bind_group(2, self.ao_bind_for(fresh), &[]);
+        pass.set_bind_group(3, &self.sss_bind, &[]);
         self.draw_all(queue, &mut pass, Draw::Faces);
         // **AS ARESTAS, no MESMO passe de render.** Um segundo `begin_render_pass`
         // teria de recarregar cor e profundidade, e a profundidade que as linhas
@@ -466,6 +525,13 @@ impl MeshRenderer {
         // três pipelines partilham, e um passe com um grupo do layout por pôr é
         // erro de validação. O branco é a resposta inerte.
         pass.set_bind_group(2, &self.ao_white_bind, &[]);
+        // ⚠️ **E o grupo 3 pela MESMA razão, não porque ele o leia.** O `fs_gbuffer`
+        // devolve a normal e a cobertura e mais nada; a tabela do SSS entra aqui
+        // só para o layout ficar completo. Uma decisão de projeto está sendo
+        // cobrada: os três pipelines partilham UM layout de propósito (senão o
+        // G-buffer poderia divergir da tela sobre culling ou formato de depth), e
+        // o preço é este bind inerte.
+        pass.set_bind_group(3, &self.sss_bind, &[]);
         self.draw_all(queue, &mut pass, Draw::Faces);
     }
 }

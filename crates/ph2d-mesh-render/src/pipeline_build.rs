@@ -143,9 +143,101 @@ impl MeshRenderer {
             }],
         });
 
+        // ---- GRUPO 3: as TABELAS ESTÁVEIS (hoje, a LUT do SSS) ----
+        //
+        // ⚠️ **Grupo próprio, e o critério é o mesmo do grupo 2: a FREQUÊNCIA.**
+        // O 0 são uniforms por frame, o 1 é por objeto, o 2 é uma textura
+        // recriada a cada resize — e isto é uma tabela assada **uma vez na vida
+        // do processo**. Pendurá-la no 2 faria toda mudança de tamanho de janela
+        // reconstruir o bind de uma textura que não mudou.
+        //
+        // ⚠️ E **COM sampler**, ao contrário do AO: aqui a textura é uma FUNÇÃO
+        // tabelada e a consulta cai entre os nós, então a interpolação é o que
+        // torna 128 linhas suficientes (gate `the_table_is_fine_enough`). No AO
+        // a correspondência é 1:1 com a tela e filtrar seria interpolar uma
+        // medição consigo mesma.
+        let sss_bgl = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("ph2d-mesh sss bgl"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                    count: None,
+                },
+            ],
+        });
+
+        // A tabela nasce VAZIA e é preenchida no primeiro `render`.
+        //
+        // ⚠️ **Porque o `new` não tem `queue`** — a mesma restrição que fez o
+        // canal de AO guardar oclusão em vez de visibilidade. Lá a inversão
+        // resolveu de graça; aqui não há inversão que produza uma tabela de
+        // Penner, então a saída é o `ensure_sss_lut`, irmão exato do
+        // `ensure_depth`/`ensure_ssao`. Vinte chamadores do `new` continuam sem
+        // mudar de assinatura.
+        //
+        // ⚠️ E enquanto ela está zerada o barro renderiza IGUAL, porque o default
+        // de `sss_strength` é **0**: o `mix` nem consulta a tabela.
+        let sss_lut = device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("ph2d-mesh sss lut"),
+            size: wgpu::Extent3d {
+                width: crate::sss::LUT_SIZE,
+                height: crate::sss::LUT_SIZE,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Rgba8Unorm,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+            view_formats: &[],
+        });
+        // ⚠️ **`ClampToEdge` nos dois eixos, e ele é load-bearing:** o eixo `t`
+        // SATURA no teto da tabela (`sss::T_MAX`), e é o clamp que transforma
+        // *"pediu mais espalhamento do que a tabela representa"* em *"o controle
+        // parou de responder"* em vez de num wrap para o outro extremo — que
+        // desenharia uma superfície muito curva como se fosse plana.
+        let sss_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+            label: Some("ph2d-mesh sss sampler"),
+            address_mode_u: wgpu::AddressMode::ClampToEdge,
+            address_mode_v: wgpu::AddressMode::ClampToEdge,
+            address_mode_w: wgpu::AddressMode::ClampToEdge,
+            mag_filter: wgpu::FilterMode::Linear,
+            min_filter: wgpu::FilterMode::Linear,
+            mipmap_filter: wgpu::MipmapFilterMode::Nearest,
+            ..Default::default()
+        });
+        let sss_bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("ph2d-mesh sss bind"),
+            layout: &sss_bgl,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(
+                        &sss_lut.create_view(&wgpu::TextureViewDescriptor::default()),
+                    ),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(&sss_sampler),
+                },
+            ],
+        });
+
         let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("ph2d-mesh layout"),
-            bind_group_layouts: &[&bgl, &obj_bgl, &ao_bgl],
+            bind_group_layouts: &[&bgl, &obj_bgl, &ao_bgl, &sss_bgl],
             immediate_size: 0,
         });
 
@@ -185,6 +277,12 @@ impl MeshRenderer {
         /// explícito), então empacotá-lo com qualquer vizinho faria o upload
         /// dele viajar de carona em toda mudança de forma.
         const AO: [wgpu::VertexAttribute; 1] = f32_attr(4);
+        /// A CURVATURA DE MUNDO por vértice (`1/comprimento`) — o eixo da tabela
+        /// do SSS. Buffer próprio pela razão da irmã adimensional ao lado, e não
+        /// empacotada COM ela apesar de mudarem no mesmo instante: um `vec2` num
+        /// buffer só é o layout certo se as duas forem sempre lidas juntas, e o
+        /// Cavity lê uma sem a outra em todo frame com o SSS desligado.
+        const CURVW: [wgpu::VertexAttribute; 1] = f32_attr(5);
         // Irmão do `vec3_buffer`, e uma CLOSURE pela mesma razão que ele: o
         // `make` abaixo é chamado duas vezes (a cena e o G-buffer), e um valor
         // capturado por move faria dele um `FnOnce`.
@@ -239,6 +337,7 @@ impl MeshRenderer {
                         f32_buffer(&MASK),
                         f32_buffer(&CURV),
                         f32_buffer(&AO),
+                        f32_buffer(&CURVW),
                     ],
                 },
                 fragment: Some(wgpu::FragmentState {
@@ -484,6 +583,9 @@ impl MeshRenderer {
             ao_white_bind,
             ssao: None,
             ssao_fresh: false,
+            sss_lut,
+            sss_bind,
+            sss_lut_ready: false,
             uniform,
             rig_uniform,
             shade_uniform,

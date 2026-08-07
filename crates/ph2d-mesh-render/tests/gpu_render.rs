@@ -2420,3 +2420,202 @@ fn as_duas_fontes_de_ao_compoem_pelo_menos_ocluido() {
          pior desvio {pior_desvio:.2}"
     );
 }
+
+// ============ O SSS PRÉ-INTEGRADO (W10.5, `docs/3D/05.1` §2a) ============
+
+/// Uma esfera LISA — a fixture do SSS, e ela é lisa de propósito.
+///
+/// ⚠️ O que este canal desenha é o **TERMINADOR** (a fronteira entre o lado
+/// aceso e o escuro), e numa esfera ele é um arco limpo cuja posição a fixture
+/// conhece. Uma malha esculpida traria vincos com curvatura própria e o gate
+/// mediria a soma de dois efeitos.
+fn lit_sphere(device: &wgpu::Device, queue: &wgpu::Queue) -> (MeshRenderer, Camera3d) {
+    let mut sphere = shapes::uv_sphere(48, 72, 1.0);
+    sphere.triangulate();
+    let mut r = MeshRenderer::new(device, FORMAT);
+    r.upload_at(device, queue, 0, &sphere);
+    let bounds = sphere.bounds();
+    let mut cam = Camera3d::framing(bounds, core::f32::consts::FRAC_PI_4, W as f32 / H as f32);
+    cam.yaw = 0.0;
+    cam.pitch = 0.0;
+    cam.frame(bounds, W as f32 / H as f32);
+    (r, cam)
+}
+
+/// **A LUZ ATRAVESSA O TERMINADOR — e é para isto que o canal existe.**
+///
+/// ⚠️ O oráculo é o **LUGAR**, não o brilho da tela: o gate acha a coluna em que
+/// o barro sem espalhamento fica mais escuro (o terminador do rig, que ele NÃO
+/// escolhe — ele MEDE) e afirma que ligar o canal a ilumina. Um shader que
+/// clareasse a imagem inteira passaria num teste de *"ficou mais claro"* e seria
+/// um `Exposure`; este exige que o miolo aceso fique **onde está**.
+#[test]
+#[ignore = "precisa de GPU"]
+fn the_light_bleeds_past_the_terminator_on_screen() {
+    let Some((device, queue)) = device() else {
+        eprintln!("sem adapter — skip");
+        return;
+    };
+    let (mut r, cam) = lit_sphere(&device, &queue);
+    let rig = LightRig::default();
+    let shade = |sss: f32| ph2d_mesh_render::Shade {
+        sss: ph2d_mesh_render::SssParams {
+            strength: sss,
+            // ⚠️ **`scatter` pela porta do PRODUTO** (`for_bounds` numa esfera de
+            // raio 1 dá 0,04): um literal aqui julgaria uma configuração que
+            // nenhum artista alcança. Aqui ele é subido de propósito para o
+            // regime que a tabela representa — o gate mede o efeito, não o
+            // default, e o default tem gate próprio na crate.
+            scatter: 2.0,
+        },
+        ..ph2d_mesh_render::Shade::default()
+    };
+    let off = render_using_rig_shade(&device, &queue, &mut r, &cam, &rig, shade(0.0));
+    let on = render_using_rig_shade(&device, &queue, &mut r, &cam, &rig, shade(1.0));
+
+    // A linha do meio, e as colunas em que a esfera de fato está.
+    let y = H / 2;
+    let cols: Vec<u32> = (0..W).filter(|&x| lum(&off, x, y) > 0.01).collect();
+    assert!(cols.len() > 20, "a esfera nao cobriu a linha do meio");
+
+    // O TERMINADOR é a coluna mais escura da esfera no barro SEM espalhamento.
+    let (mut term, mut darkest) = (cols[0], f32::MAX);
+    for &x in &cols {
+        let l = lum(&off, x, y);
+        if l < darkest {
+            darkest = l;
+            term = x;
+        }
+    }
+    // E o MIOLO ACESO é a mais clara.
+    let (mut core_x, mut brightest) = (cols[0], 0.0f32);
+    for &x in &cols {
+        let l = lum(&off, x, y);
+        if l > brightest {
+            brightest = l;
+            core_x = x;
+        }
+    }
+
+    let term_on = lum(&on, term, y);
+    let core_on = lum(&on, core_x, y);
+    println!(
+        "terminador x={term}: {darkest:.4} -> {term_on:.4}   \
+         miolo x={core_x}: {brightest:.4} -> {core_on:.4}"
+    );
+    assert!(
+        term_on > darkest * 1.15,
+        "o terminador tinha de CLAREAR com o espalhamento: {darkest:.4} -> {term_on:.4} \
+         (a tabela nao chegou ao shader?)"
+    );
+    // ⚠️ **MEDIDO: 62,63 -> 82,55 no terminador (+31,8%) e 236,04 -> 228,34 no
+    // miolo (−3,3%).** A barra de 1,15 fica bem abaixo do medido para não
+    // depender de afinação do perfil, e bem acima de zero — que é o que o gate
+    // veria se a tabela não chegasse ao shader.
+    //
+    // ⚠️ **E o miolo CAIR um pouco é o certo, não um defeito.** A luz que vaza
+    // para o lado escuro sai de algum lugar: ela sai do lado aceso. Um canal em
+    // que o miolo ficasse intacto E o terminador clareasse estaria criando
+    // energia. A tolerância de 15% existe para permitir essa queda sem permitir
+    // um `Exposure` disfarçado, que moveria o miolo tanto quanto o terminador.
+    assert!(
+        (core_on - brightest).abs() < brightest * 0.15,
+        "o miolo ACESO nao pode se mover MUITO: {brightest:.4} -> {core_on:.4} \
+         — uma mudanca dessa ordem seria exposicao, nao espalhamento"
+    );
+}
+
+/// **O VERMELHO VAI MAIS LONGE QUE O AZUL, na tela.**
+///
+/// A assinatura que separa espalhamento de um simples `wrap lighting`: no
+/// terminador os três canais **não** clareiam igual. É o gate que morre se
+/// alguém colapsar as seis gaussianas de d'Eon numa média — o que pareceria uma
+/// simplificação inocente e apagaria a única coisa que faz carne parecer carne.
+#[test]
+#[ignore = "precisa de GPU"]
+fn the_terminator_goes_red_not_grey() {
+    let Some((device, queue)) = device() else {
+        eprintln!("sem adapter — skip");
+        return;
+    };
+    let (mut r, cam) = lit_sphere(&device, &queue);
+    // ⚠️ **Um rig BRANCO**, senão o gate mediria a cor da lâmpada. A assinatura
+    // tem de vir do material.
+    let rig = LightRig::default();
+    let shade = |sss: f32| ph2d_mesh_render::Shade {
+        sss: ph2d_mesh_render::SssParams {
+            strength: sss,
+            scatter: 0.5,
+        },
+        ..ph2d_mesh_render::Shade::default()
+    };
+    let off = render_using_rig_shade(&device, &queue, &mut r, &cam, &rig, shade(0.0));
+    let on = render_using_rig_shade(&device, &queue, &mut r, &cam, &rig, shade(1.0));
+
+    let y = H / 2;
+    let cols: Vec<u32> = (0..W).filter(|&x| lum(&off, x, y) > 0.01).collect();
+    let (mut term, mut darkest) = (cols[0], f32::MAX);
+    for &x in &cols {
+        let l = lum(&off, x, y);
+        if l < darkest {
+            darkest = l;
+            term = x;
+        }
+    }
+    let i = ((y * W + term) * 4) as usize;
+    let (dr, dg, db) = (
+        f32::from(on[i]) - f32::from(off[i]),
+        f32::from(on[i + 1]) - f32::from(off[i + 1]),
+        f32::from(on[i + 2]) - f32::from(off[i + 2]),
+    );
+    println!("no terminador o espalhamento acrescentou R{dr:.1} G{dg:.1} B{db:.1}");
+    assert!(
+        dr > dg && dg > db,
+        "esperava vermelho > verde > azul no terminador, e deu R{dr:.1} G{dg:.1} B{db:.1} \
+         — o perfil por canal virou uma media?"
+    );
+    assert!(dr > 2.0, "o vermelho mal se moveu ({dr:.1}/255)");
+}
+
+/// **Força zero é o barro de sempre, AO BYTE.**
+///
+/// ⚠️ Este é o gate que torna o default seguro, e ele não pode ser trocado por
+/// *"quase igual"*: o canal nasce em zero, então uma diferença de um byte aqui
+/// significaria que toda escultura já feita mudou de aparência sem ninguém ter
+/// tocado num controle.
+#[test]
+#[ignore = "precisa de GPU"]
+fn a_zero_strength_leaves_the_clay_byte_identical() {
+    let Some((device, queue)) = device() else {
+        eprintln!("sem adapter — skip");
+        return;
+    };
+    let (mut r, cam) = lit_sphere(&device, &queue);
+    let rig = LightRig::default();
+    let sem = render_using_rig_shade(
+        &device,
+        &queue,
+        &mut r,
+        &cam,
+        &rig,
+        ph2d_mesh_render::Shade::default(),
+    );
+    // O canal DECLARADO mas em zero, e com um `scatter` grande — se o `mix`
+    // vazasse, seria aqui.
+    let com = render_using_rig_shade(
+        &device,
+        &queue,
+        &mut r,
+        &cam,
+        &rig,
+        ph2d_mesh_render::Shade {
+            sss: ph2d_mesh_render::SssParams {
+                strength: 0.0,
+                scatter: 4.0,
+            },
+            ..ph2d_mesh_render::Shade::default()
+        },
+    );
+    let diff = sem.iter().zip(&com).filter(|(a, b)| a != b).count();
+    assert_eq!(diff, 0, "{diff} bytes divergiram com a forca em zero");
+}

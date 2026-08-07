@@ -127,6 +127,7 @@ fn measure_curvature_cost_of_a_dab() {
             let mut whole = Vec::new();
             let mut only_k = Vec::new();
             let mut out = Vec::new();
+            let mut out_world = Vec::new();
             for _ in 0..9 {
                 let t0 = Instant::now();
                 mesh.refresh_region(&moved, &mut scratch);
@@ -140,6 +141,7 @@ fn measure_curvature_cost_of_a_dab() {
                     &adj.vert_verts,
                     &refreshed,
                     &mut out,
+                    &mut out_world,
                 );
                 only_k.push(t1.elapsed().as_secs_f64() * 1e3);
             }

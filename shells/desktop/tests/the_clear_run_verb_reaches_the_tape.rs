@@ -23,6 +23,21 @@
 
 const SRC: &str = include_str!("../src/render_loop/mod.rs");
 
+/// **O fonte sem os COMENTÁRIOS** — o que uma asserção NEGATIVA tem de ler.
+///
+/// ⚠️ **Duas asserções deste arquivo nasceram vermelhas sobre código correto**,
+/// porque a prosa que explica *por que a troca mora numa porta* cita o
+/// `mem::take` que ela proíbe. É a mesma doença que o `{stamp_avg:` do Painter
+/// mediu por outro lado: *um oráculo que casa com a documentação de si mesmo não
+/// está a olhar para o produto*. Uma asserção de PRESENÇA sobrevive a isso por
+/// acidente; uma de AUSÊNCIA não pode.
+fn code_only(src: &str) -> String {
+    src.lines()
+        .map(|l| l.split("//").next().unwrap_or(""))
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
 /// O braço do laço de ações que trata uma edição da §14.
 fn player_edit_arm() -> &'static str {
     let at = SRC
@@ -62,32 +77,90 @@ fn the_clear_run_arm_does_not_fan_out() {
     );
 }
 
-/// **DESCARTAR ESVAZIA A FITA — GUARDANDO-A** (W17, reescrito na W24).
+/// **DESCARTAR ESVAZIA A FITA — GUARDANDO-A, E PELA PORTA** (W17 · W24 · W25).
 ///
-/// ⚠️ Este gate **substitui** o `the_clear_run_arm_clears_the_tape`, que
+/// ⚠️ Este gate **substituiu** o `the_clear_run_arm_clears_the_tape`, que
 /// afirmava o literal `self.player_tape.clear()`. O verbo não mudou de sentido:
-/// o `mem::take` esvazia a fita viva **e** entrega a corrida ao guardado, o que
-/// é estritamente mais que limpar — manter os dois seria pinar o mesmo fato por
+/// a troca esvazia a fita viva **e** entrega a corrida ao guardado, o que é
+/// estritamente mais que limpar — manter os dois seria pinar o mesmo fato por
 /// duas ancoragens, e a que cita `clear()` descreveria um mecanismo que já não
 /// existe.
+///
+/// ⚠️ **E desde a W25 ele afirma a PORTA, não o `mem::take`.** A corrida ganhou
+/// uma segunda VISTA (o painel de MUNDO), e duas cópias da troca fariam a mesma
+/// coisa hoje: é essa forma que apodrece no dia em que o descarte ganhar um caso
+/// especial. O gate irmão abaixo afirma a outra ponta do mesmo fio.
 ///
 /// ⚠️ **Ele é a metade que torna o descarte reversível**, e sem ele o
 /// `RestoreRun` seria um verbo pintado, clicável e inerte: a corrida ficaria
 /// guardada na sessão e **inalcançável**, que é o mesmo que perdida.
-///
-/// A troca é `mem::take` nos DOIS sentidos — descartar move a fita viva para o
-/// guardado, devolver move de volta — e é isso que faz o ciclo de vida ser
-/// **derivado** em vez de mantido: nunca há duas corridas ao mesmo tempo.
 #[test]
 fn the_discard_stashes_and_the_restore_brings_it_back() {
     let arm = player_edit_arm();
     assert!(
-        arm.contains("self.discarded_run = std::mem::take(&mut self.player_tape)"),
-        "descartar tem de GUARDAR a corrida, nao apaga-la. Braco:\n{arm}"
+        arm.contains("run_stash::apply(") && arm.contains("RunVerb::Discard"),
+        "descartar tem de atravessar a porta unica (`run_stash`). Braco:\n{arm}"
     );
     assert!(
-        arm.contains("self.player_tape = std::mem::take(&mut self.discarded_run)"),
+        arm.contains("RunVerb::Restore"),
         "o `RestoreRun` nao devolve a corrida guardada. Braco:\n{arm}"
+    );
+    assert!(
+        !code_only(arm).contains("mem::take"),
+        "a §14 voltou a fazer a troca a mao -- a porta existe porque o painel de \
+         MUNDO e' a segunda vista dela. Braco:\n{arm}"
+    );
+}
+
+/// **A SEGUNDA VISTA ATRAVESSA A MESMA PORTA** (W25).
+///
+/// ⚠️ **A corrida gravada tem duas vistas e um só dono.** A §14 do Inspector é
+/// por-ENTIDADE — o `build_player_info` devolve `None` para tudo o que não é um
+/// corpo Dynamic —, mas a fita é do DOCUMENTO e sobrevive ao player que a
+/// gravou: apagar o personagem prendia a corrida no arquivo, ainda a ser o que o
+/// Bake replaya, sem gesto nenhum que a alcançasse.
+///
+/// O que este gate impede é a cura barata e errada: duas cópias do `mem::take`,
+/// uma por vista. Elas fariam a mesma coisa hoje.
+#[test]
+fn the_world_panel_route_goes_through_the_same_door() {
+    const BRIDGE: &str = include_str!("../src/render_loop/physics_panel_bridge.rs");
+    for (intent, verb) in [
+        ("PhysicsIntent::ClearRun", "RunVerb::Discard"),
+        ("PhysicsIntent::RestoreRun", "RunVerb::Restore"),
+    ] {
+        let at = BRIDGE
+            .find(intent)
+            .unwrap_or_else(|| panic!("a ponte do painel de mundo tem de honrar {intent}"));
+        let arm = &BRIDGE[at..(at + 200).min(BRIDGE.len())];
+        assert!(
+            arm.contains("run_stash::apply(") && arm.contains(verb),
+            "{intent} nao atravessa a porta unica. Braco:\n{arm}"
+        );
+    }
+    assert!(
+        !code_only(BRIDGE).contains("mem::take"),
+        "a ponte do painel de mundo faz a troca a mao -- a porta e' o que impede as \
+         duas vistas de divergirem"
+    );
+}
+
+/// **E os dois números que ela publica saem das DUAS fitas** — a metade de cima
+/// do fio, no painel de mundo.
+///
+/// O irmão exato do `both_run_readouts_are_derived_from_their_own_tape` da §14,
+/// e existe pela mesma razão medida: trocar uma derivação por `0.0` deixa toda a
+/// suíte verde, porque os gates de seam constroem o snapshot à mão.
+#[test]
+fn the_world_panel_publishes_both_run_lengths() {
+    const BRIDGE: &str = include_str!("../src/render_loop/physics_panel_bridge.rs");
+    assert!(
+        BRIDGE.contains("recorded_run_seconds: (run.live.len()"),
+        "o readout de corrida GRAVADA do painel de mundo nao sai da fita viva"
+    );
+    assert!(
+        BRIDGE.contains("discarded_run_seconds: (run.stash.len()"),
+        "o readout de corrida DESCARTADA do painel de mundo nao sai do guardado"
     );
 }
 

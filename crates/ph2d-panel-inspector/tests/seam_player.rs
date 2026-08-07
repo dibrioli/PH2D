@@ -752,4 +752,24 @@ fn discarding_a_run_can_be_undone_and_the_two_buttons_never_coexist() {
     // 3. Nenhuma das duas: nenhum botao. A ausencia e' o outro readout.
     assert!(!has(runs(0.0, 0.0), ids::INSP_PLAYER_CLEAR_RUN));
     assert!(!has(runs(0.0, 0.0), ids::INSP_PLAYER_RESTORE_RUN));
+
+    // 4. ⚠️ **As DUAS cheias — o estado que a porta NAO produz** (W25).
+    //
+    //    A exclusividade tem duas camadas: a troca (`run_stash`) deixa sempre
+    //    uma das fitas vazia, e o paint escolhe UMA mesmo que lhe entreguem as
+    //    duas. Sem este caso a segunda camada nao tem gate — trocar o `else if`
+    //    por dois `if` independentes **sobrevive** a todo estado alcancavel, o
+    //    que foi medido no painel de MUNDO (a outra vista desta corrida) e vale
+    //    aqui pela mesma razao.
+    //
+    //    Quem vence e' a corrida VIVA: devolver por cima dela apagaria o que o
+    //    artista acabou de gravar.
+    assert!(
+        has(runs(4.0, 4.0), ids::INSP_PLAYER_CLEAR_RUN),
+        "com as duas cheias quem vence e' a corrida VIVA"
+    );
+    assert!(
+        !has(runs(4.0, 4.0), ids::INSP_PLAYER_RESTORE_RUN),
+        "e devolver nao pode ser oferecido por cima de uma corrida viva"
+    );
 }

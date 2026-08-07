@@ -146,6 +146,19 @@ pub(crate) fn apply_event(
             state::push_intent(PhysicsIntent::ToggleColliders);
             true
         }
+        // Os dois verbos de FITA (W25). Não tocam `PhysicsSettings`: a corrida
+        // gravada mora na shell e viaja no seu próprio campo do `ProjectFile`,
+        // então enfiá-la nas settings de mundo seriam duas cópias dela.
+        WidgetEvent::Click(id) if id == ids::PHYSICS_CLEAR_RUN => {
+            seam_reset_button(host, id);
+            state::push_intent(PhysicsIntent::ClearRun);
+            true
+        }
+        WidgetEvent::Click(id) if id == ids::PHYSICS_RESTORE_RUN => {
+            seam_reset_button(host, id);
+            state::push_intent(PhysicsIntent::RestoreRun);
+            true
+        }
         WidgetEvent::Click(id) if id == ids::PHYSICS_RESET_DEFAULTS => {
             seam_reset_button(host, id);
             state::push_intent(PhysicsIntent::SetSettings(PhysicsSettings::default()));

@@ -595,6 +595,8 @@ pub fn tr(key: &str) -> &'static str {
         "panel.physics.joint_hint.alt" => "Alt while dragging always carries the whole rig",
         "panel.physics.show_colliders" => "Show Colliders",
         "panel.physics.reset_defaults" => "Reset to Defaults",
+        "panel.physics.clear_run" => "Clear Recorded Run",
+        "panel.physics.restore_run" => "Restore Discarded Run",
         // The world scale is `ProjectSettings::pixels_per_meter` — a PROJECT
         // setting. This panel shows it so the metre-valued knobs above can be
         // read in pixels, and deliberately does not own or duplicate it (D4).

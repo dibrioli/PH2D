@@ -151,6 +151,52 @@ pub(super) fn paint_sections(
     );
     y += Spacing::Md.px();
 
+    // ── A CORRIDA GRAVADA (W25) ────────────────────────────────────────────
+    //
+    // ⚠️ **A segunda VISTA de um fato do documento, nunca uma segunda porta.**
+    // A §14 do Inspector mostra o mesmo par de números e emite os mesmos dois
+    // verbos, e os dois caminhos caem na MESMA função da shell — o precedente
+    // exato do `Show Colliders` acima, que espelha a tecla `B`.
+    //
+    // ⚠️ **E ela existe porque a §14 é por-ENTIDADE:** ela só nasce sobre um
+    // corpo Dynamic selecionado, enquanto a fita é do DOCUMENTO e sobrevive ao
+    // player que a gravou. Sem esta vista, apagar o personagem prendia a
+    // corrida — no arquivo, ainda a ser o que o Bake replaya, e sem gesto que a
+    // alcançasse.
+    //
+    // ⚠️ **Os dois botões nunca coexistem**, e o ciclo de vida é DERIVADO e não
+    // mantido: descartar esvazia a fita viva, então só um dos dois números pode
+    // ser não-zero. Gravar de novo esconde o de devolver.
+    if snapshot.recorded_run_seconds > 0.0 {
+        y = command(
+            ctx,
+            ids::PHYSICS_CLEAR_RUN,
+            &format!(
+                "{} ({:.1} s)",
+                tr("panel.physics.clear_run"),
+                snapshot.recorded_run_seconds
+            ),
+            x,
+            w,
+            y,
+        );
+        y += Spacing::Md.px();
+    } else if snapshot.discarded_run_seconds > 0.0 {
+        y = command(
+            ctx,
+            ids::PHYSICS_RESTORE_RUN,
+            &format!(
+                "{} ({:.1} s)",
+                tr("panel.physics.restore_run"),
+                snapshot.discarded_run_seconds
+            ),
+            x,
+            w,
+            y,
+        );
+        y += Spacing::Md.px();
+    }
+
     // Reset sits at the BOTTOM, past everything it would undo: a destructive
     // command should not be on the path a hand takes to the first slider.
     y = command(

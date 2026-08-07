@@ -260,3 +260,46 @@ fn a_fitted_crouch_never_rises_above_the_standing_leg() {
         info.float_height
     );
 }
+
+/// **A §14 NÃO É CASA PARA A CORRIDA GRAVADA** (W25) — a medição que abriu a
+/// wave, e ela afirma um DEFEITO do desenho antigo, não uma cura.
+///
+/// A fita de entrada é um fato do **DOCUMENTO**: ela viaja no arquivo (W17) e é
+/// o que o Bake replaya (W16). Os dois botões que a governam moravam só aqui,
+/// numa seção que **só existe sobre um corpo Dynamic selecionado** — e este gate
+/// mede exatamente isso: apagar o personagem, ou selecionar qualquer outra
+/// coisa, e a corrida fica presa no documento sem gesto que a alcance.
+///
+/// ⚠️ **O oráculo é a AUSÊNCIA da seção**, não a ausência do botão: com
+/// `build_player_info` em `None` o painel não pinta nada, então nenhum readout e
+/// nenhum verbo existem — é por isso que a cura teve de ser uma segunda VISTA
+/// noutro painel, e não um botão a mais dentro deste.
+///
+/// **Mutação que deve sangrar:** fazer o `build_player_info` devolver `Some`
+/// para qualquer entidade — o que consertaria o alcance e traria de volta a §14
+/// sobre um corpo Static, onde a mola (um impulso) não move massa infinita.
+#[test]
+fn the_player_section_is_no_home_for_a_document_wide_run() {
+    // 1. O corpo não é Dynamic: a §14 não existe, e com ela nenhum verbo de fita.
+    let (sim, bits) = body(BodyKind::Static, CAPSULE);
+    assert!(
+        build_player_info(&sim, bits, 4.0, 0.0).is_none(),
+        "a §14 nasceu sobre um corpo Static -- a mola e' um impulso e nao move \
+         massa infinita"
+    );
+
+    // 2. E o personagem foi APAGADO, que é o caso que fecha o argumento: a
+    //    corrida sobrevive a ele (está no arquivo), a seção não.
+    let (mut sim, bits) = body(BodyKind::Dynamic, CAPSULE);
+    apply_player_edit(&mut sim, bits, PlayerFieldEdit::Add);
+    assert!(
+        build_player_info(&sim, bits, 4.0, 0.0).is_some(),
+        "o controle: enquanto o player existe a §14 mostra a corrida"
+    );
+    sim.world_mut().despawn(ph2d_ecs::Entity::from_bits(bits));
+    assert!(
+        build_player_info(&sim, bits, 4.0, 0.0).is_none(),
+        "apagar o personagem tinha de levar a §14 embora -- e' isso que prendia \
+         a corrida"
+    );
+}

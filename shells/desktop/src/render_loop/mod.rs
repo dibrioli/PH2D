@@ -196,6 +196,8 @@ pub(crate) mod record_fit;
 /// `tokens_bridge`: um painel de MUNDO, publicado e drenado na mesma fase.
 #[cfg(feature = "sculpt3d")]
 pub(crate) mod sculpt3d_panel_bridge;
+/// A porta única dos verbos de FITA (descartar / devolver a corrida gravada).
+mod run_stash;
 pub(crate) mod timeline_bridge;
 pub(crate) mod timeline_onion;
 mod timeline_presets;
@@ -3391,15 +3393,29 @@ impl crate::App {
                         // editor de nós colava duas vezes porque um dispatch
                         // duplicado "nunca tinha importado enquanto todos os
                         // verbos eram idempotentes".
+                        //
+                        // ⚠️ **E a troca em si mora numa PORTA** (`run_stash`,
+                        // W25), porque o painel de MUNDO é uma segunda VISTA da
+                        // mesma corrida: duas cópias do `mem::take` fariam a
+                        // mesma coisa hoje e divergiriam no dia em que o
+                        // descarte ganhar um caso especial.
                         if matches!(edit, ph2d_editor::PlayerFieldEdit::ClearRun) {
                             // ⚠️ **Descartar GUARDA** (W24): a corrida sai do
                             // documento e fica na sessão, porque o clique era
                             // irreversível — a fita não é `ProjectState`, então
                             // sem isto o único caminho de volta era reabrir o
                             // arquivo.
-                            self.discarded_run = std::mem::take(&mut self.player_tape);
+                            run_stash::apply(
+                                run_stash::RunVerb::Discard,
+                                &mut self.player_tape,
+                                &mut self.discarded_run,
+                            );
                         } else if matches!(edit, ph2d_editor::PlayerFieldEdit::RestoreRun) {
-                            self.player_tape = std::mem::take(&mut self.discarded_run);
+                            run_stash::apply(
+                                run_stash::RunVerb::Restore,
+                                &mut self.player_tape,
+                                &mut self.discarded_run,
+                            );
                         } else {
                             player_edits.push((entity_bits, edit));
                         }
@@ -5769,6 +5785,14 @@ impl crate::App {
                 physics,
                 self.show_colliders,
                 &mut self.interaction,
+                // W25: a corrida gravada é um fato do DOCUMENTO, e este é o
+                // painel do documento. A §14 mostra o mesmo par de números; as
+                // duas vistas caem na mesma porta (`run_stash`).
+                physics_panel_bridge::RunTapes {
+                    live: &mut self.player_tape,
+                    stash: &mut self.discarded_run,
+                    fixed_dt: self.fixed_step.fixed_dt(),
+                },
             );
             // O painel de TOKENS (plano UI/UX W6), na MESMA fase e pela mesma razão: um painel de
             // MUNDO, cuja visibilidade é do artista. ⚠️ Ele tem de correr DEPOIS do dispatch de

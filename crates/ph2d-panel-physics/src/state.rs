@@ -55,6 +55,21 @@ pub struct PhysicsSnapshot {
     /// is why the panel emits a SEPARATE intent for it rather than folding it into
     /// `SetSettings`.
     pub interaction: InteractionSettings,
+    /// **Quantos segundos de CORRIDA GRAVADA o documento carrega** (W25).
+    ///
+    /// ⚠️ **A fita é um fato do DOCUMENTO e este painel é o painel do
+    /// documento** — a §14 do Inspector mostra o mesmo número, mas ela só existe
+    /// enquanto houver um corpo Dynamic selecionado, e uma corrida sobrevive ao
+    /// player que a gravou (ela viaja no arquivo). Sem esta vista, apagar o
+    /// personagem deixava a corrida **inalcançável**.
+    ///
+    /// Zero é a resposta *"ninguém correu"*, e é ela que apaga o botão.
+    pub recorded_run_seconds: f32,
+    /// Quantos segundos de corrida DESCARTADA esperam por um desfazer (W25).
+    ///
+    /// Sessão apenas, nunca no arquivo — a mesma regra da §14, e a mesma razão:
+    /// uma corrida descartada foi descartada.
+    pub discarded_run_seconds: f32,
 }
 
 impl Default for PhysicsSnapshot {
@@ -69,6 +84,8 @@ impl Default for PhysicsSnapshot {
             show_colliders: true,
             body_count: 0,
             interaction: InteractionSettings::default(),
+            recorded_run_seconds: 0.0,
+            discarded_run_seconds: 0.0,
         }
     }
 }
@@ -93,6 +110,17 @@ pub enum PhysicsIntent {
     /// does not. Folding them would make every knob drag of a runtime tool look
     /// like a document edit to whatever the shell does with `SetSettings` next.
     SetInteraction(InteractionSettings),
+    /// **Descartar a corrida gravada** (W25) — a vista de mundo do
+    /// `PlayerFieldEdit::ClearRun`.
+    ///
+    /// ⚠️ **Um intent, e não uma escrita:** a fita mora na shell (`App`), fora
+    /// do `PhysicsBridge` e fora de `PhysicsSettings`. Enfiá-la no
+    /// `SetSettings` a faria viajar no arquivo de settings de mundo — e ela já
+    /// viaja no seu próprio campo do `ProjectFile`, o que seriam duas cópias da
+    /// mesma corrida.
+    ClearRun,
+    /// **Devolver a corrida descartada** (W25) — o irmão exato do acima.
+    RestoreRun,
 }
 
 /// Retained per-instance state. Empty on purpose: the authority is the shell's

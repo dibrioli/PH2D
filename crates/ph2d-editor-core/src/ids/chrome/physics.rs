@@ -155,6 +155,25 @@ pub const fn physics_layer_cell_index(a: usize, b: usize) -> usize {
 /// and here the divergence would be visible: the key and the checkbox
 /// disagreeing about whether the outlines are on.
 pub const PHYSICS_SHOW_COLLIDERS: NodeId = hash_node_id("physics.show_colliders");
+/// **Descartar a CORRIDA GRAVADA** — a mesma que a §14 do Inspector descarta
+/// (W25).
+///
+/// ⚠️ **Uma segunda VISTA, nunca uma segunda porta** — o precedente do
+/// [`PHYSICS_SHOW_COLLIDERS`] logo acima e o dos chips de ferramenta do rail
+/// contra a lista do Impasto: os dois botões leem o MESMO número publicado e
+/// caem na MESMA função da shell, então não há estado a divergir.
+///
+/// ⚠️ **E ele existe porque a §14 é por-ENTIDADE enquanto a fita é do
+/// DOCUMENTO:** o `build_player_info` devolve `None` para tudo o que não é um
+/// corpo Dynamic, então apagar o player deixava a corrida gravada **presa** —
+/// ela continua no arquivo, continua a ser o que o Bake replaya, e não havia
+/// gesto nenhum que a alcançasse.
+pub const PHYSICS_CLEAR_RUN: NodeId = hash_node_id("physics.clear_run");
+/// **Devolver a corrida DESCARTADA** — a vista de mundo do `RestoreRun` da §14.
+///
+/// Os dois nunca são oferecidos ao mesmo tempo: o guardado só é alcançável com a
+/// fita viva vazia, que é a mesma regra derivada que a §14 honra.
+pub const PHYSICS_RESTORE_RUN: NodeId = hash_node_id("physics.restore_run");
 /// Restore every world setting to the engine defaults.
 pub const PHYSICS_RESET_DEFAULTS: NodeId = hash_node_id("physics.reset_defaults");
 

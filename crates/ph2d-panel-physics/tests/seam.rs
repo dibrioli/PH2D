@@ -47,12 +47,26 @@ fn arrange_with(
     settings: PhysicsSettings,
     interaction: InteractionSettings,
 ) -> (MockPanelHost, PhysicsPanelState) {
+    arrange_run(settings, interaction, 0.0, 0.0)
+}
+
+/// [`arrange_with`] com as duas fitas de corrida (W25) — o que a varredura dos
+/// dois verbos precisa, porque cada botão só PINTA quando o número dele é
+/// não-zero.
+fn arrange_run(
+    settings: PhysicsSettings,
+    interaction: InteractionSettings,
+    recorded_run_seconds: f32,
+    discarded_run_seconds: f32,
+) -> (MockPanelHost, PhysicsPanelState) {
     set_current_physics(Some(PhysicsSnapshot {
         settings,
         pixels_per_meter: 100.0,
         show_colliders: true,
         body_count: 3,
         interaction,
+        recorded_run_seconds,
+        discarded_run_seconds,
     }));
     let _ = drain_intents();
     (
@@ -266,6 +280,129 @@ fn reset_restores_the_engine_defaults() {
         vec![PhysicsIntent::SetSettings(PhysicsSettings::default())],
         "Reset to Defaults did not publish the defaults"
     );
+}
+
+/// **A CORRIDA GRAVADA tem casa no painel do MUNDO, e os dois botões nunca
+/// coexistem** (W25).
+///
+/// ⚠️ **A propriedade não é "um botão aparece": é QUAL, e que o outro NÃO.** A
+/// escolha é derivada das duas fitas, e é ela que impede uma corrida velha de
+/// ressuscitar — se os dois pudessem ser pintados ao mesmo tempo, devolver por
+/// cima de uma corrida viva a apagaria em silêncio.
+///
+/// ⚠️ E o clique é dirigido pelo **ponteiro no retângulo que o paint
+/// registrou**, não por um `WidgetEvent` sintético: um botão pintado que o
+/// `populate` não registrou fica hit-indexado e **morto sob o mouse**, e o
+/// evento à mão pula exatamente essa metade.
+#[test]
+fn the_world_panel_owns_the_recorded_run_and_offers_one_verb_at_a_time() {
+    let cases: [(
+        f32,
+        f32,
+        Option<ph2d_a11y::NodeId>,
+        Option<ph2d_a11y::NodeId>,
+    ); 4] = [
+        // Há corrida viva ⇒ descartar, e nada de devolver.
+        (
+            4.0,
+            0.0,
+            Some(ids::PHYSICS_CLEAR_RUN),
+            Some(ids::PHYSICS_RESTORE_RUN),
+        ),
+        // Só guardado ⇒ devolver, e nada de descartar.
+        (
+            0.0,
+            4.0,
+            Some(ids::PHYSICS_RESTORE_RUN),
+            Some(ids::PHYSICS_CLEAR_RUN),
+        ),
+        // Nenhuma corrida ⇒ nenhum dos dois: a ausência é o outro readout.
+        (0.0, 0.0, None, Some(ids::PHYSICS_CLEAR_RUN)),
+        // ⚠️ **As DUAS cheias — um estado que a porta não produz**, e é por isso
+        // que ele está aqui. A exclusividade tem duas camadas: a troca
+        // (`run_stash`) garante que só uma fita tem conteúdo, e o paint escolhe
+        // UMA mesmo que lhe entreguem as duas. Sem este caso a segunda camada
+        // não tem gate — a mutação que troca o `else if` por dois `if`
+        // independentes **sobrevive** a todo estado alcançável
+        // ([[feedback_layered_defenses_need_per_layer_gates]]).
+        //
+        // E quem vence é a corrida VIVA: devolver por cima dela apagaria o que
+        // o artista acabou de gravar.
+        (
+            4.0,
+            4.0,
+            Some(ids::PHYSICS_CLEAR_RUN),
+            Some(ids::PHYSICS_RESTORE_RUN),
+        ),
+    ];
+
+    for (recorded, discarded, want, unwanted) in cases {
+        let (mut host, mut state) = arrange_run(
+            PhysicsSettings::default(),
+            InteractionSettings::default(),
+            recorded,
+            discarded,
+        );
+        let painted = host.paint::<PhysicsPanel>(&mut state, VIEWPORT);
+        let drawn = |id: ph2d_a11y::NodeId| painted.iter().any(|(pid, _)| *pid == id);
+
+        if let Some(id) = unwanted
+            && Some(id) != want
+        {
+            assert!(
+                !drawn(id),
+                "com ({recorded}, {discarded}) o verbo {id:?} foi pintado e nao devia"
+            );
+        }
+
+        let Some(id) = want else {
+            assert!(
+                !drawn(ids::PHYSICS_CLEAR_RUN) && !drawn(ids::PHYSICS_RESTORE_RUN),
+                "sem corrida nenhuma o painel nao pode oferecer verbo de fita"
+            );
+            continue;
+        };
+
+        let rect = painted
+            .iter()
+            .rev()
+            .find(|(pid, _)| *pid == id)
+            .map(|(_, r)| *r)
+            .unwrap_or_else(|| {
+                panic!("com ({recorded}, {discarded}) o verbo {id:?} nao foi pintado")
+            });
+        let (cx, cy) = (rect.x + rect.w * 0.5, rect.y + rect.h * 0.5);
+        assert_eq!(
+            host.hit_at(cx, cy),
+            Some(id),
+            "{id:?} e' pintado mas outra coisa e' dona dos pixels do centro dele"
+        );
+
+        // O clique REAL primeiro: ele tem de achar o botão no índice de hit **e**
+        // achá-lo FOCÁVEL no store, que é a metade que um `WidgetEvent` à mão
+        // pula.
+        let events = host.click_at(cx, cy);
+        assert!(
+            events
+                .iter()
+                .any(|e| matches!(e, WidgetEvent::Click(c) if *c == id)),
+            "um clique real em {id:?} nao produziu Click -- ele esta' no indice de \
+             hit e nao no store, ou seja o `populate` nunca o registrou"
+        );
+
+        let _ = drain_intents();
+        host.apply_panel_event::<PhysicsPanel>(&mut state, WidgetEvent::Click(id));
+        let want_intent = if id == ids::PHYSICS_CLEAR_RUN {
+            PhysicsIntent::ClearRun
+        } else {
+            PhysicsIntent::RestoreRun
+        };
+        assert_eq!(
+            drain_intents(),
+            vec![want_intent],
+            "o clique em {id:?} nao levantou o verbo de fita"
+        );
+    }
 }
 
 /// **Folding a section is panel-local** — it must not reach the world.

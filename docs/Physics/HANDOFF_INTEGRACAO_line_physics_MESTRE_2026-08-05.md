@@ -1016,11 +1016,24 @@ saber que ela já foi medida.
   ⚠️ **a medição refutou a premissa desta nota**: o corpo **não enterra, ele
   SATURA**. Ver a §5f.
 - ~~**W16:** a fita não é persistida~~ — **FECHADO pela W17.**
-- **W17:** a fita é **uma só**, e o botão de descartá-la mora numa seção
-  por-entidade. É honesto hoje (há um teclado, logo um dedo — o mesmo desenho do
-  `hand_input_to_players`) e deixa de ser no dia em que houver um segundo jogador:
-  aí a fita passa a ser **por-player**, e os dois se movem juntos. Nada aqui o
-  impede; o que falta é o segundo dedo.
+- ~~**W17:** a fita é **uma só**, e o botão de descartá-la mora numa seção
+  por-entidade~~ — **FECHADO pela W25** (2026-08-07), e a medição mostrou que o
+  defeito era **de alcance**, não de modelo: o `build_player_info` devolve `None`
+  para tudo o que não é um corpo **Dynamic selecionado**, então apagar o
+  personagem prendia a corrida — ela continua no arquivo (W17), continua a ser o
+  que o Bake replaya (W16), e não havia gesto nenhum que a alcançasse.
+  ⚠️ **A cura NÃO é uma fita por-player, e a recomendação anterior está
+  corrigida:** com um teclado há um dedo, e o `hand_input_to_players` já o
+  entrega a todos — fitas por-entidade gravariam **N cópias idênticas** da mesma
+  corrida (uma segunda resposta a *"o que o dedo fez?"* sem um segundo dedo) e
+  custariam um bump de `PROJECT_SCHEMA` por uma capacidade que ninguém consegue
+  dirigir. O que faltava era o fato ter **casa onde os fatos do documento
+  moram**: o painel de MUNDO (`W`) ganhou o readout e os dois verbos.
+  ⚠️ **Duas VISTAS, uma PORTA** (`run_stash::apply`) — o precedente exato do
+  `Show Colliders` contra a tecla `B`. Duas cópias do `mem::take` fariam a mesma
+  coisa hoje, e é essa forma que apodrece.
+  ⚠️ **O segundo dedo continua a não existir**, e é ele — não este item — que
+  torna a fita por-player necessária. Nada aqui o impede.
 - ~~**W17:** descartar a corrida **não passa pelo undo**~~ — **FECHADO pela W24**
   (2026-08-07). A fita continua **fora** do `ProjectState`, de propósito (um
   Ctrl+Z do canvas não deve rebobinar uma gravação), então a cura não é o undo

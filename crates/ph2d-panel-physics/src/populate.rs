@@ -124,6 +124,13 @@ pub fn populate(store: &mut WidgetStore) {
     // panel's `event.rs` does not forward, so it would be registered and dead
     // (the painter-layers sculpt segments carry the same warning).
     button(store, ids::PHYSICS_SHOW_COLLIDERS);
+    // Os dois verbos de FITA (W25). Registrados sempre, pintados só quando há o
+    // que descartar ou o que devolver: registrar é barato e a alternativa —
+    // registrar condicionalmente — faria o botão nascer morto sob o mouse no
+    // primeiro frame em que ele aparece, que é o defeito que este `populate`
+    // existe para não ter.
+    button(store, ids::PHYSICS_CLEAR_RUN);
+    button(store, ids::PHYSICS_RESTORE_RUN);
     button(store, ids::PHYSICS_RESET_DEFAULTS);
     button(store, ids::PHYSICS_CLOSE);
 }

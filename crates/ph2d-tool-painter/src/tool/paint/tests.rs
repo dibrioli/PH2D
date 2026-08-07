@@ -2,6 +2,8 @@
 mod journal_delta_tests; // o delta do journal É o de dois snapshots (doc 28 §5.58.2, degrau 2 do S3)
 #[path = "journal_tests.rs"]
 mod journal_tests; // o journal descreve a TELA, e só ela (doc 28 §5.23, os 3 mecanismos do degrau 2)
+#[path = "measure_boolean_cost.rs"]
+mod measure_boolean_cost; // ...e o que a Operation cobra por cima dela
 #[path = "measure_commit_cost.rs"]
 mod measure_commit_cost; // …e de que é feito o CUSTO: fork, pen-up, commit, Ctrl+Z (doc 28 §5.13-§5.20)
 #[path = "measure_dirty_overclaim.rs"]
@@ -38,6 +40,8 @@ mod measure_watercolor_stamp; // o carimbo é função da PEGADA ou do estado do
 mod measure_wetpaint_cost; // de que é feito um MOVE de Wet Paint (doc 28 §7, frente V)
 #[path = "measure_window_premise.rs"]
 mod measure_window_premise;
+#[path = "selection_trace_tests.rs"]
+mod selection_trace_tests; // a varredura por FAIXAS traca o que o flood pixel-a-pixel tracava
 #[path = "stamp_banded_tests.rs"]
 mod stamp_banded_tests; // o lote em bandas pinta o que o laco serial pintava (doc 28 §5.78)
 #[path = "stamp_banded_work_tests.rs"]

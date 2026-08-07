@@ -25,22 +25,139 @@ const OFF: [(i32, i32); 8] = [
     (-1, 1),
 ];
 
+/// **Um componente 4-conexo, varrido por FAIXAS** — a mesma resposta do flood pixel-a-pixel, pelo
+/// caminho que a memória gosta.
+///
+/// Escreve as faixas `(y, x0, x1)` em `spans` (inclusivas nas duas pontas) e **limpa** o componente
+/// de `work`. Cada linha do componente vira UMA entrada, então uma elipse de 1200 linhas custa 1200
+/// faixas em vez de 1,13 M de índices numa pilha.
+///
+/// ⚠️ **4-conexo, como o flood que ele substitui** — e isso não é detalhe: o traçador de Moore é
+/// 8-conexo, então dois blobs que se tocam só na DIAGONAL são componentes separados aqui e um único
+/// contorno lá. Trocar a conectividade mudaria quantos contornos o composite entrega.
+fn flood_spans(
+    work: &mut [u8],
+    w: usize,
+    h: usize,
+    start: usize,
+    spans: &mut Vec<(usize, usize, usize)>,
+    stack: &mut Vec<(usize, usize)>,
+) {
+    spans.clear();
+    stack.clear();
+    stack.push((start % w, start / w));
+    while let Some((sx, sy)) = stack.pop() {
+        let row = sy * w;
+        if work[row + sx] < 128 {
+            continue; // já engolido por uma faixa anterior
+        }
+        let mut x0 = sx;
+        while x0 > 0 && work[row + x0 - 1] >= 128 {
+            x0 -= 1;
+        }
+        let mut x1 = sx;
+        while x1 + 1 < w && work[row + x1 + 1] >= 128 {
+            x1 += 1;
+        }
+        for x in x0..=x1 {
+            work[row + x] = 0;
+        }
+        spans.push((sy, x0, x1));
+        // Uma semente por CORRIDA nas linhas vizinhas — não uma por pixel.
+        for ny in [sy.wrapping_sub(1), sy + 1] {
+            if ny >= h {
+                continue; // cobre o `sy == 0` pelo wrap
+            }
+            let nrow = ny * w;
+            let mut x = x0;
+            while x <= x1 {
+                if work[nrow + x] >= 128 {
+                    let mut e = x;
+                    while e < x1 && work[nrow + e + 1] >= 128 {
+                        e += 1;
+                    }
+                    stack.push((e, ny));
+                    x = e + 2;
+                } else {
+                    x += 1;
+                }
+            }
+        }
+    }
+}
+
 /// Trace the outer contour of EVERY connected component of `mask` (multi-blob) — used by the stroke boolean
 /// composite, where separate Add/Remove regions must each become their own stroked contour (Enio 2026-07-04).
 /// Each component is flood-filled out of a working copy, then its outer boundary is traced + simplified.
+///
+/// ⚠️ **Três desperdícios saíram daqui em 2026-08-06, e nenhum move um ponto do contorno** (medido: o
+/// composite de UMA elipse de 200 px gastava 4,78 ms traçando 1,44 M de células): o buffer `comp` era
+/// `vec![0u8; w*h]` **por componente** (1,44 MB alocados e zerados a cada blob) · a busca pelo próximo
+/// blob recomeçava do índice **0** a cada volta · e o `trace_contour_raw` varria o buffer inteiro de
+/// novo só para redescobrir o pixel que este laço acabou de achar.
+///
+/// O `comp` agora é **um só**, escrito e apagado pelas FAIXAS do componente — a única forma de limpá-lo
+/// sem varrer a janela inteira nem guardar 1,13 M de índices.
 pub(super) fn trace_all_contours(mask: &[u8], w: usize, h: usize) -> Vec<Vec<[f32; 2]>> {
     if w == 0 || h == 0 || mask.len() != w * h {
         return Vec::new();
     }
     let mut work: Vec<u8> = mask.to_vec();
+    let mut comp: Vec<u8> = vec![0u8; w * h];
+    let mut spans: Vec<(usize, usize, usize)> = Vec::new();
+    let mut stack: Vec<(usize, usize)> = Vec::new();
     let mut out = Vec::new();
+    // ⚠️ A varredura RETOMA do último começo, e isso é EXATO: tudo antes dele já era zero quando ele
+    // foi achado, e o componente que saiu agora não pôs nada lá.
+    let mut scan_from = 0usize;
     let guard = w * h + 1; // at most one component per pixel
     for _ in 0..guard {
         // First inside texel in row-major order (also the trace start), or done.
+        let Some(start) = (scan_from..w * h).find(|&i| work[i] >= 128) else {
+            break;
+        };
+        scan_from = start;
+        flood_spans(&mut work, w, h, start, &mut spans, &mut stack);
+        for &(y, x0, x1) in &spans {
+            comp[y * w + x0..=y * w + x1].fill(255);
+        }
+        // RAW dense boundary (not the DP-simplified polygon). O `start` é, por construção, o primeiro
+        // texel do componente em ordem row-major — exatamente o que a varredura interna procurava.
+        let raw = trace_contour_raw_from(&comp, w, h, start);
+        for &(y, x0, x1) in &spans {
+            comp[y * w + x0..=y * w + x1].fill(0);
+        }
+        if raw.len() >= 3 {
+            // Smooth the ±0.5px pixel staircase so the stroked contour reads as regular as a direct ellipse
+            // outline (Enio 2026-07-04: Add/Remove was "discretamente irregular"), then CLOSE the loop so the
+            // stroke has no gap at the seam.
+            let mut c = smooth_closed(&raw, 2);
+            c.push(c[0]);
+            out.push(c);
+        }
+    }
+    out
+}
+
+/// **A rota do FLOOD pixel-a-pixel, congelada** — o corpo que [`trace_all_contours`] rodava até
+/// 2026-08-06, verbatim.
+///
+/// ⚠️ Ela existe como ORÁCULO e só como oráculo: um `fn` sem `cfg` seria uma segunda resposta a
+/// *"quais contornos esta máscara tem?"*, esperando alguém chamá-la — a lição que o `warp_axis`, o
+/// `serial_side` e a rota de tela cheia do boolean já pagaram nesta linha. Com o `cfg` o gate compara
+/// a varredura por faixas contra **o que shipava**, não contra uma reimplementação escrita no teste.
+#[cfg(test)]
+pub(super) fn trace_all_contours_flood(mask: &[u8], w: usize, h: usize) -> Vec<Vec<[f32; 2]>> {
+    if w == 0 || h == 0 || mask.len() != w * h {
+        return Vec::new();
+    }
+    let mut work: Vec<u8> = mask.to_vec();
+    let mut out = Vec::new();
+    let guard = w * h + 1;
+    for _ in 0..guard {
         let Some(start) = (0..w * h).find(|&i| work[i] >= 128) else {
             break;
         };
-        // Flood-fill this component into `comp` + clear it from `work` so the next pass finds the next blob.
         let mut comp = vec![0u8; w * h];
         let mut stack = vec![start];
         work[start] = 0;
@@ -67,11 +184,8 @@ pub(super) fn trace_all_contours(mask: &[u8], w: usize, h: usize) -> Vec<Vec<[f3
                 push(x, y - 1, &mut stack, &mut work);
             }
         }
-        let raw = trace_contour_raw(&comp, w, h); // RAW dense boundary (not the DP-simplified polygon)
+        let raw = trace_contour_raw(&comp, w, h);
         if raw.len() >= 3 {
-            // Smooth the ±0.5px pixel staircase so the stroked contour reads as regular as a direct ellipse
-            // outline (Enio 2026-07-04: Add/Remove was "discretamente irregular"), then CLOSE the loop so the
-            // stroke has no gap at the seam.
             let mut c = smooth_closed(&raw, 2);
             c.push(c[0]);
             out.push(c);
@@ -232,18 +346,24 @@ fn trace_contour_raw(mask: &[u8], w: usize, h: usize) -> Vec<[f32; 2]> {
     }
     // Start = the first inside texel in row-major order; the texel to its left is therefore outside, so the
     // initial backtrack is due West.
-    let mut start: Option<(i32, i32)> = None;
-    'scan: for y in 0..h {
-        for x in 0..w {
-            if mask[y * w + x] >= 128 {
-                start = Some((x as i32, y as i32));
-                break 'scan;
-            }
-        }
-    }
-    let Some(start) = start else {
+    let Some(start) = (0..w * h).find(|&i| mask[i] >= 128) else {
         return Vec::new();
     };
+    trace_contour_raw_from(mask, w, h, start)
+}
+
+/// Como [`trace_contour_raw`], mas o chamador **entrega o começo**.
+///
+/// ⚠️ O contrato do `start` é o do irmão acima e não é folgado: ele tem de ser o primeiro texel
+/// DENTRO em ordem row-major, porque é isso que garante que o texel à esquerda está FORA — e o
+/// retrocesso inicial (oeste) depende disso. Entregar outro pixel qualquer do componente faria o
+/// traçador partir de um retrocesso que não é fora, e o contorno sairia por dentro.
+fn trace_contour_raw_from(mask: &[u8], w: usize, h: usize, start: usize) -> Vec<[f32; 2]> {
+    if w == 0 || h == 0 || mask.len() != w * h || start >= w * h || mask[start] < 128 {
+        return Vec::new();
+    }
+    #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
+    let start = ((start % w) as i32, (start / w) as i32);
     let mut boundary: Vec<(i32, i32)> = vec![start];
     let mut current = start;
     let mut backtrack = (start.0 - 1, start.1); // West of start (outside)

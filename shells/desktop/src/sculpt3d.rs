@@ -411,6 +411,16 @@ pub(crate) struct Sculpt3dScene {
     /// tela — um número guardado seria uma segunda verdade sobre o tamanho da
     /// peça, a que fica velha exatamente quando o artista a faz crescer.
     sss: f32,
+    /// **Até onde a luz viaja, como FRAÇÃO do maior lado da peça.**
+    ///
+    /// ⚠️ **Fração e não comprimento, e é ela que resolve a tensão entre duas
+    /// coisas certas.** Um comprimento absoluto guardado seria uma segunda
+    /// verdade sobre o tamanho da escultura — a que fica velha exatamente quando
+    /// o artista a faz crescer. Mas o alcance é **o número que decide o LOOK**, e
+    /// derivá-lo inteiramente deixava o artista sem como julgá-lo. Guardar a
+    /// FRAÇÃO mantém as duas: o alcance segue sendo função da peça, e o slider é
+    /// o veredito de aparência, que nenhuma medição responde.
+    sss_scatter: f32,
     stroke: SculptStroke,
     undo: Vec<Entry>,
     /// **O futuro guardado** — o que um Ctrl+Z tirou e um Ctrl+Shift+Z devolve.
@@ -484,6 +494,7 @@ impl Sculpt3dScene {
             ao: ph2d_mesh_render::DEFAULT_AO_STRENGTH,
             ssao: ph2d_mesh_render::DEFAULT_SSAO_STRENGTH,
             sss: ph2d_mesh_render::SssParams::default().strength,
+            sss_scatter: ph2d_mesh_render::SSS_SCATTER_FRACTION,
             stroke: SculptStroke::default(),
             undo: Vec::new(),
             redo: Vec::new(),

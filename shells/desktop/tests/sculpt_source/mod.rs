@@ -36,9 +36,25 @@ pub fn source(name: &str) -> String {
 
 /// O corpo de `fn <name>` até a chave que o fecha, contando profundidade.
 pub fn function_body(src: &str, name: &str) -> String {
-    let at = src
-        .find(&format!("fn {name}"))
-        .unwrap_or_else(|| panic!("não achei `fn {name}`"));
+    // ⚠️ **O delimitador é load-bearing, e a falta dele custou um gate VERDE
+    // sobre o corpo errado.** `find("fn render")` casa por PREFIXO com
+    // `fn render_live`, que mora num arquivo que vem ANTES na ordenação do
+    // cluster — então o gate da cavidade lia o corpo do bake de luz e afirmava
+    // coisas sobre ele. O nome de uma função termina no `(` dos parâmetros (ou
+    // no `<` dos genéricos), e é isso que separa `render` de `render_live`.
+    //
+    // ⚠️ Alguns chamadores já passam a assinatura (`"radius_px(&self)"`) para
+    // desempatar sobrecargas — nesses o delimitador já está no nome, e exigir
+    // outro faria a busca nunca casar.
+    let at = if name.contains('(') {
+        src.find(&format!("fn {name}"))
+    } else {
+        ["(", "<"]
+            .iter()
+            .filter_map(|d| src.find(&format!("fn {name}{d}")))
+            .min()
+    }
+    .unwrap_or_else(|| panic!("não achei `fn {name}`"));
     let open = src[at..].find('{').expect("corpo") + at;
     let mut depth = 0i32;
     for (i, c) in src[open..].char_indices() {

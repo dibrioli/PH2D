@@ -78,9 +78,17 @@ impl Sculpt3dScene {
             // ⚠️ **A força é do artista e o alcance é da PEÇA** — o mesmo corte do
             // raio do AO de tela, e pelo mesmo motivo: um `scatter` guardado
             // seria uma segunda verdade sobre o tamanho da escultura.
+            // ⚠️ **A força e a FRAÇÃO são autoradas; o comprimento é derivado.**
+            // O `for_bounds` continua sendo quem sabe medir a peça — o que o
+            // slider move é a fração que ele aplica, então o alcance nunca fica
+            // velho quando a escultura cresce e o artista mesmo assim decide o
+            // look.
             sss: ph2d_mesh_render::SssParams {
                 strength: self.sss,
-                ..ph2d_mesh_render::SssParams::for_bounds(self.world_bounds())
+                ..ph2d_mesh_render::SssParams::for_bounds_with(
+                    self.world_bounds(),
+                    self.sss_scatter,
+                )
             },
             matcap: self.matcap,
             wireframe: self.wireframe,
@@ -122,11 +130,16 @@ impl Sculpt3dScene {
     /// [`Self::cycle_cavity`], e os degraus são os mesmos pela mesma razão: é um
     /// canal que o artista escolhe uma vez e volta a esculpir.
     ///
-    /// ⚠️ **Só a FORÇA cicla.** O alcance (`scatter`) é semeado pelo tamanho da
-    /// peça a cada frame, então não há um segundo ciclo a oferecer — e um
-    /// controle para ele seria um número que o artista teria de manter de acordo
-    /// com o tamanho da escultura, que é exatamente o que o `for_bounds` existe
-    /// para não pedir.
+    /// ⚠️ **Só a FORÇA cicla, e o alcance vive no PAINEL** — as duas metades
+    /// existem e são alcançáveis por caminhos diferentes de propósito. A tecla é
+    /// o gesto de *ligar e continuar esculpindo*; o alcance é o número que
+    /// decide o LOOK, e um veredito de aparência se procura arrastando, não
+    /// batendo em quatro degraus.
+    ///
+    /// ⚠️ **E o painel é o dono do valor, não uma segunda cópia dele.** Este
+    /// ciclo escreve o MESMO `self.sss` que o `apply_ui` escreve e que o
+    /// `panel_snapshot` publica, então a tecla e a pista nunca podem discordar —
+    /// apertar `Shift+S` move o slider na tela.
     pub(crate) fn cycle_sss(&mut self) -> f32 {
         const STEPS: [f32; 4] = [0.0, 0.35, 0.70, 1.0];
         let at = STEPS

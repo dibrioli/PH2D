@@ -208,7 +208,7 @@ impl App {
                     );
                 } else {
                     eprintln!(
-                        "[sculpt3d] espalhamento: {amount:.2} -- a luz ATRAVESSA a borda da sombra,                          e o VERMELHO vai mais longe que o azul (Shift+S avanca)"
+                        "[sculpt3d] espalhamento: {amount:.2} -- a luz ATRAVESSA a borda da sombra,                          e o VERMELHO vai mais longe que o azul.                          O painel tem as duas pistas: 'Subsurface' e 'Scatter' (o alcance)."
                     );
                 }
                 return true;

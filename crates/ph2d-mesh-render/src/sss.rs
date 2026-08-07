@@ -293,9 +293,20 @@ pub struct SssParams {
 pub const SCATTER_FRACTION: f32 = 0.25;
 
 impl SssParams {
-    /// Os parâmetros semeados pelo tamanho da peça.
+    /// Os parâmetros semeados pelo tamanho da peça, com o [`SCATTER_FRACTION`].
     #[must_use]
     pub fn for_bounds(bounds: ph2d_mesh::Aabb) -> Self {
+        Self::for_bounds_with(bounds, SCATTER_FRACTION)
+    }
+
+    /// O mesmo, com a **fração autorada** — a porta que o slider usa.
+    ///
+    /// ⚠️ Ela existe para o shell não ter de desfazer a constante para refazê-la
+    /// com outro número. *Quanto da peça a luz percorre* é uma pergunta só, e ela
+    /// tem uma resposta só; o default é o argumento que a [`Self::for_bounds`]
+    /// passa, não um segundo caminho.
+    #[must_use]
+    pub fn for_bounds_with(bounds: ph2d_mesh::Aabb, fraction: f32) -> Self {
         let e = [
             bounds.max[0] - bounds.min[0],
             bounds.max[1] - bounds.min[1],
@@ -303,7 +314,7 @@ impl SssParams {
         ];
         let longest = e[0].max(e[1]).max(e[2]).max(1e-4);
         Self {
-            scatter: longest * SCATTER_FRACTION,
+            scatter: longest * fraction.max(0.0),
             ..Self::default()
         }
     }

@@ -58,6 +58,14 @@ pub struct Sculpt3dUi {
     /// Quanto do AO DE TELA entra — o irmão MEDIDO do de cima, e ele nasce
     /// LIGADO porque nunca fica velho.
     pub ssao: f32,
+    /// Quanto do espalhamento sub-superficial entra.
+    pub sss: f32,
+    /// Até onde a luz viaja, como **FRAÇÃO do maior lado da peça**.
+    ///
+    /// ⚠️ Fração e não comprimento, e é o que impede a segunda verdade: o alcance
+    /// continua sendo função do tamanho da escultura (crescer a peça não deixa o
+    /// número velho), e o artista ganha o controle de LOOK que faltava.
+    pub sss_scatter: f32,
     /// Azimute da lâmpada selecionada, em graus.
     pub light_az_deg: f32,
     /// Elevação da lâmpada selecionada, em graus.
@@ -87,6 +95,17 @@ impl Default for Sculpt3dUi {
             // é medido a cada frame, então "ligado" quer dizer *mostre o que foi
             // medido*, e antes da primeira medição ele é inerte ao byte.
             ssao: 1.0,
+            // ⚠️ **Zero, e a assimetria com o vizinho de cima é deliberada:** os
+            // dois AOs são MEDIÇÕES da forma e mostrá-las é honesto; isto é um
+            // MATERIAL, e barro não é pele. O `Sculpt3dScene` é a fonte destes
+            // dois — este default só existe para o painel nascer coerente antes
+            // do primeiro snapshot.
+            sss: 0.0,
+            // ⚠️ O literal segue o precedente do `ssao: 1.0` acima: o painel é
+            // agnóstico ao renderer de propósito, e o valor que vale é o que o
+            // snapshot do shell escreve no primeiro frame. Ele espelha o
+            // `ph2d_mesh_render::sss::SCATTER_FRACTION`, que é a fonte.
+            sss_scatter: 0.25, // LITERAL-PX-OK: fração adimensional, não métrica de layout
             light_az_deg: 0.0,
             light_elev_deg: 45.0, // LITERAL-PX-OK: graus de elevacao, nao metrica de design
             matcap: None,

@@ -156,6 +156,15 @@ pub const SCULPT3D_AO_NUM: NodeId = hash_node_id("sculpt3d.ao_num");
 pub const SCULPT3D_SSAO: NodeId = hash_node_id("sculpt3d.ssao");
 /// Chip ligado a [`SCULPT3D_SSAO`].
 pub const SCULPT3D_SSAO_NUM: NodeId = hash_node_id("sculpt3d.ssao_num");
+/// **Quanto do espalhamento sub-superficial entra** (`ph2d_mesh_render::sss`).
+pub const SCULPT3D_SSS: NodeId = hash_node_id("sculpt3d.sss");
+/// Chip ligado a [`SCULPT3D_SSS`].
+pub const SCULPT3D_SSS_NUM: NodeId = hash_node_id("sculpt3d.sss_num");
+/// **Até onde a luz viaja dentro do material**, como FRAÇÃO do maior lado da
+/// peça — nunca um comprimento absoluto (ver a row).
+pub const SCULPT3D_SSS_SCATTER: NodeId = hash_node_id("sculpt3d.sss_scatter");
+/// Chip ligado a [`SCULPT3D_SSS_SCATTER`].
+pub const SCULPT3D_SSS_SCATTER_NUM: NodeId = hash_node_id("sculpt3d.sss_scatter_num");
 
 /// **ASSAR O AO** — o botão que mede quanto do céu cada vértice enxerga.
 ///

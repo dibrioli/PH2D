@@ -281,6 +281,41 @@ static SHADING: &[Row] = &[
         show: always,
         in_tail: false,
     },
+    Row {
+        label: "panel.sculpt3d.sss",
+        slider: ids::SCULPT3D_SSS,
+        chip: ids::SCULPT3D_SSS_NUM,
+        min: 0.0,
+        max: 1.0,
+        step: 0.05, // LITERAL-PX-OK: passo de um knob adimensional, não métrica de layout
+        decimals: 2,
+        get: |u| u.sss,
+        set: |u, v| u.sss = v,
+        show: always,
+        in_tail: false,
+    },
+    Row {
+        label: "panel.sculpt3d.sss_scatter",
+        slider: ids::SCULPT3D_SSS_SCATTER,
+        chip: ids::SCULPT3D_SSS_SCATTER_NUM,
+        min: 0.0,
+        // ⚠️ **O teto é 1,0 = "a luz atravessa a peça inteira"**, e ele não é um
+        // limite de recurso: é onde a grandeza deixa de descrever um sólido. O
+        // default MEDIDO é 0,25 (`sss::SCATTER_FRACTION`), e a faixa existe para
+        // o artista decidir o LOOK — que é a única pergunta que a medição não
+        // responde.
+        max: 1.0,
+        step: 0.05, // LITERAL-PX-OK: passo de um knob adimensional, não métrica de layout
+        decimals: 2,
+        get: |u| u.sss_scatter,
+        set: |u, v| u.sss_scatter = v,
+        // ⚠️ **Só com o espalhamento LIGADO.** Com a força em zero a tabela nem é
+        // consultada, então este slider não moveria um pixel — e um controle que
+        // não faz nada é o que esta casa varre a cada wave. É a mesma lei do
+        // `Plane Offset`, que só existe nos verbos que leem um plano.
+        show: |u| u.sss > 0.0,
+        in_tail: false,
+    },
 ];
 
 /// O piso da elevação, lido do dono dele.

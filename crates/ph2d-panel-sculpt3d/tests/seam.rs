@@ -801,3 +801,56 @@ fn the_accumulate_switch_flips_the_brush_field() {
         assert_eq!(got, want, "o accumulate não alternou, ou levou um vizinho");
     }
 }
+
+/// **AS DUAS PISTAS DO SSS EXISTEM** — por ID, e não por iteração da tabela.
+///
+/// ⚠️ **Este gate nasceu de uma mutação SOBREVIVENTE, e ela expôs um oráculo
+/// AUTO-REFERENTE.** Toda a varredura deste arquivo faz `for row in rows()` — o
+/// que é certo para *"cada row registrada é clicável"* e **cego** para *"esta row
+/// existe"*: apagar a linha do `Scatter` da tabela encolhe a lista que o gate
+/// percorre, e os 21 testes ficam VERDES sobre um slider que sumiu da tela. É a
+/// mesma forma que a `line/Painter` documentou (*"encolher o array encolhe a
+/// lista que ele itera"*).
+///
+/// A cura é perguntar pelo ID, que é um nome que a tabela não pode encolher.
+#[test]
+fn the_two_subsurface_tracks_are_on_the_table() {
+    let by_id = |id| rows::rows().any(|r| r.slider == id);
+    assert!(
+        by_id(ids::SCULPT3D_SSS),
+        "a pista da FORCA do espalhamento sumiu da tabela"
+    );
+    assert!(
+        by_id(ids::SCULPT3D_SSS_SCATTER),
+        "a pista do ALCANCE sumiu da tabela — e ela e' o numero que decide o LOOK"
+    );
+}
+
+/// **A pista do ALCANCE só existe com o espalhamento LIGADO.**
+///
+/// ⚠️ Com a força em zero a tabela do SSS nem é consultada, então este slider não
+/// moveria um pixel — e um controle que não faz nada é o que esta casa varre a
+/// cada wave. A metade oposta importa igual: com o canal ligado ele **tem** de
+/// aparecer, senão o artista fica sem o número que decide o look.
+#[test]
+fn the_scatter_track_follows_the_channel_it_belongs_to() {
+    let row = rows::rows()
+        .find(|r| r.slider == ids::SCULPT3D_SSS_SCATTER)
+        .expect("a pista do alcance esta' na tabela");
+    // ⚠️ O canal DESLIGADO é o default, e a fixture o declara em vez de o herdar:
+    // uma fixture que chega ao estado por omissão inverte de sentido no dia em
+    // que o default se move, e segue verde testando o oposto.
+    let mut ui = Sculpt3dUi {
+        sss: 0.0,
+        ..Sculpt3dUi::default()
+    };
+    assert!(
+        !(row.show)(&ui),
+        "com o espalhamento DESLIGADO o alcance seria um slider inerte"
+    );
+    ui.sss = 0.5;
+    assert!(
+        (row.show)(&ui),
+        "com o espalhamento LIGADO o alcance TEM de estar a' mao"
+    );
+}

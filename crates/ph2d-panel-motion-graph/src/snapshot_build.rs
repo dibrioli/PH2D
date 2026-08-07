@@ -37,11 +37,11 @@ pub fn snapshot_from(graph: &Graph, registry: &NodeRegistry) -> GraphViewSnapsho
                 // **The artist's name wins** (doc 61). Absent, the card says what the node IS
                 // (its type's display name) — which is also what the rename box seeds with, so
                 // the string you edit is the string you were looking at.
-                display_name: graph
-                    .label(inst.id)
-                    .map(str::to_string)
-                    .or_else(|| ui.map(|u| u.display_name.to_string()))
-                    .unwrap_or_else(|| inst.type_name.clone()),
+                display_name: ph2d_node_registry::card_title(
+                    graph.label(inst.id),
+                    ui,
+                    &inst.type_name,
+                ),
                 category: ui.map(|u| u.category).unwrap_or(NodeUiCategory::Utility),
                 silhouette: ui.map(|u| u.silhouette).unwrap_or(NodeSilhouette::Rect),
                 x: pos.x,

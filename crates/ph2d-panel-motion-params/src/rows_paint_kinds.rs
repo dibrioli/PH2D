@@ -7,11 +7,29 @@ use super::*;
 use crate::snapshot::scalar_text;
 use crate::{ChannelsRow, ColorRow, EnumRow, ScalarRow, SourceRow, ToggleRow};
 
+/// A coluna da DIREITA de uma row dirigida: o ícone de elo mais o nome de quem dirige.
+///
+/// Largura fixa e não medida do texto porque não há medidor de texto exposto aqui — um nome
+/// longo é cortado pelo `max_w` do `paint_text`, que é o mesmo corte que todo rótulo do painel
+/// já sofre. O valor fica com o resto da faixa.
+const DRIVER_COL_W: f32 = 96.0; // LITERAL-PX-OK: driven-row driver column (chrome-specific)
+
 /// **A row DIRIGIDA (doc 58) — o único caso que não é um widget.** O fio decide o número,
 /// então não há nada a registrar: sem hit rect, sem arrasto, sem id no store. É por isso que
 /// ela sai do laço em vez de virar mais um braço parecido com os outros — os oito braços
 /// restantes registram e despacham; este só *mostra*, e o acento diz que o valor vem de fora.
 /// (Extraída para o `paint_rows` caber no teto de 200 LOC de fn de painel, HR-18.)
+///
+/// ⚠️ **E ela diz QUEM dirige** (doc 88 B3). Antes ela parava no acento: um número que não
+/// obedece ao dedo, sem uma palavra sobre de onde vem — e a resposta exigia sair do inspector
+/// e caçar o fio no grafo. O nome vem da MESMA porta que escreve o título do card
+/// (`ph2d_node_registry::card_title`), então o nome que se lê aqui é o que está escrito lá,
+/// inclusive depois de um rename.
+///
+/// ⚠️ **Um ÍCONE, não uma frase** — é o Connection Icon do Attribute Editor do Cavalry, e é o
+/// que mantém este painel com **zero cópia de UI**: todo texto que ele desenha é dado (rótulo
+/// do param, número, nome de nó). Uma frase como *"driven by"* seria a primeira string
+/// traduzível de um painel que hoje não depende de i18n nenhum.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn paint_driven_row(
     row: &ScalarRow,
@@ -51,9 +69,38 @@ pub(super) fn paint_driven_row(
         inner_x + DEFAULT_LABEL_W,
         mid,
         label_font,
-        inner_w - DEFAULT_LABEL_W,
+        (inner_w - DEFAULT_LABEL_W - DRIVER_COL_W).max(0.0),
         // The accent says it: this number is coming from somewhere else.
         resolve(ColorToken::Accent, theme),
+    );
+    let Some(driver) = row.driven_by.as_deref() else {
+        return;
+    };
+    let col_x = inner_x + inner_w - DRIVER_COL_W;
+    // O elo, do tamanho da linha de texto — ele não é um botão e não registra nada: quem
+    // clica num indicador que não responde aprende que o painel mente.
+    ph2d_editor_core::paint::paint_icon(
+        scene,
+        ph2d_editor_core::IconId::Link,
+        Rect {
+            x: col_x,
+            y: mid,
+            w: label_font,
+            h: label_font,
+        },
+        resolve(ColorToken::Text2, theme),
+        ph2d_tokens::StrokeToken::Default.px(),
+    );
+    paint_text(
+        text_system,
+        scene,
+        driver,
+        col_x + label_font + Spacing::Xs.px(),
+        mid,
+        label_font,
+        (DRIVER_COL_W - label_font - Spacing::Xs.px()).max(0.0),
+        // Apagado de propósito: é a PROCEDÊNCIA, não o valor. O acento fica com o número.
+        resolve(ColorToken::Text2, theme),
     );
 }
 

@@ -308,3 +308,22 @@ impl Coupling {
         }
     }
 }
+
+/// **O que o card deste nó DIZ** — a única resposta, para os dois lados que a fazem.
+///
+/// A regra é uma escada de três degraus (doc 61): o nome que o **artista** deu vence; sem ele o
+/// card diz o que o nó É (o `display_name` do tipo); sem UI registrada, o `type_name` cru — que
+/// é também o que a caixa de rename semeia, então a string que você edita é a que estava lendo.
+///
+/// ⚠️ Ela mora aqui, e não no painel do grafo onde nasceu, porque ganhou um **segundo
+/// consumidor**: o painel de params nomeia o nó que DIRIGE um param, e esse nome tem de ser o
+/// mesmo que está escrito no card — senão o artista lê um nome no inspector e procura outro no
+/// grafo. Duas cópias da escada divergiriam no dia do rename, que é justamente o caso em que
+/// ela existe ([[feedback_two_doors_to_the_same_question_diverge]]).
+#[must_use]
+pub fn card_title(label: Option<&str>, ui: Option<&NodeUiManifest>, type_name: &str) -> String {
+    label
+        .map(str::to_string)
+        .or_else(|| ui.map(|u| u.display_name.to_string()))
+        .unwrap_or_else(|| type_name.to_string())
+}

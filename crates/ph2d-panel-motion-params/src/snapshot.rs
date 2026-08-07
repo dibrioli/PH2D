@@ -301,7 +301,16 @@ pub struct ScalarRow {
     /// knob that still turns under the finger while a wire decides the value is a control
     /// that lies once per drag — and dimming it would not help, because a dimmed widget
     /// still dispatches ([[feedback_disabled_button_still_dispatches]]).
-    pub driven: bool,
+    ///
+    /// ⚠️ **É o NOME do card que dirige, não um booleano** (doc 88 B3). A row lia
+    /// *"este número não é seu"* e parava aí: o artista via um valor apagado sem widget e
+    /// tinha de ir caçar o fio no grafo para saber de onde ele vem. O nome estava na mão o
+    /// tempo todo — `param_sources` resolve o nó fonte e o bridge o descartava.
+    ///
+    /// E é `Option<String>` e não um par `bool` + `Option<String>` porque os dois campos
+    /// seriam **duas cópias do mesmo fato**, livres para discordar; aqui *dirigido* é
+    /// exatamente *tem um nome*.
+    pub driven_by: Option<String>,
     /// The face every number above is already wearing, and the way back to the
     /// document. [`RowDisplay::default`] (unitless, unscaled) for a param that
     /// declared no unit — which is every param until a node opts in.

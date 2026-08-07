@@ -63,7 +63,7 @@ pub(crate) fn on_value_changed(
                 return EventOutcome::Consumed;
             };
             let typed = number_value(host.store(), id);
-            if row.driven || (typed >= row.min && typed <= row.max) {
+            if row.driven_by.is_some() || (typed >= row.min && typed <= row.max) {
                 return EventOutcome::Consumed;
             }
             push_param_intent(scalar_intent(snap, row, typed));
@@ -93,7 +93,7 @@ pub(crate) fn on_value_changed(
             // Second barrier (the paint registers nothing for a driven row, so this should be
             // unreachable — but a stale id from the frame the wire landed must not write a
             // number the wire is about to overwrite anyway).
-            if row.driven {
+            if row.driven_by.is_some() {
                 return EventOutcome::Ignored;
             }
             let track = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.5);

@@ -33,6 +33,13 @@ use params_channel::channel_unit;
 /// reader of a param's current value (a sibling child, shell LOC cap). The seam is
 /// *what the panel sends back* × *what the panel sees*; the builder below is the
 /// second half and never writes.
+/// A FAIXA que uma row oferece — irmã de `params_channel` (o que a row É) e de
+/// `params_stream` (o que os fios carregam). Cortada aqui pelo cap de 600 LOC da shell,
+/// por ASSUNTO: as duas funções respondem *"até onde este controle alcança?"*.
+#[path = "motion_bridge_params_range.rs"]
+mod params_range;
+use params_range::{channel_range_override, contain};
+
 #[path = "motion_bridge_params_edit.rs"]
 mod params_edit;
 use params_edit::apply_param_edits;
@@ -72,47 +79,6 @@ pub(super) fn publish(
         super::color::seed_color_swatches(store, s);
     }
     ph2d_panel_motion_params::set_current_params(snap);
-}
-
-/// A behaviour's magnitude param needs a **channel-aware widget range**, not just
-/// a channel-aware value: a `ParamUiHint`'s range is static, and the behaviours'
-/// were authored for position (`±10` world units). On the Rotation channel the
-/// same param means DEGREES, where `±10` is a barely-visible tilt — and, worse, a
-/// range that cannot even represent the `±90` preset: the slider would saturate,
-/// display `-10`, and overwrite the doc with `-10` on the first touch.
-///
-/// Widen `[min, max]` so it **contains** `value` — the invariant every row must
-/// satisfy before it reaches the panel.
-///
-/// A `ParamUiHint`'s range is a suggestion, not a constraint: `Graph::set_param`
-/// never clamps, so a preset, an undo, or a loaded document can hold a value
-/// outside it. A row whose range does not contain its value is a *lying widget* —
-/// `normalized_track` clamps it to the track end, the panel PAINTS the clamped
-/// number instead of the real one, and the first touch emits that clamped number
-/// straight back into the doc, silently destroying the authored value. (That is
-/// exactly the bug the Enio caught with Stagger on the Rotation channel.)
-///
-/// Containing the value costs a degraded slider span in the pathological case and
-/// self-heals the moment the value returns inside the hint's range — a cheap
-/// price for a widget that can never lie or destroy.
-fn contain(min: f32, max: f32, value: f32) -> (f32, f32) {
-    (min.min(value), max.max(value))
-}
-
-/// Returns `(min, max, step)` to use instead of the hint's, or `None` to keep it.
-/// Only Rotation needs widening (Position / Size are already world-unit-scaled).
-fn channel_range_override(type_name: &str, param: &str, channel: i32) -> Option<(f32, f32, f32)> {
-    if channel != params_channel::CHANNEL_ROTATION {
-        return None;
-    }
-    // A full turn each way, dialled in whole degrees.
-    const TURN: f32 = 360.0;
-    match (type_name, param) {
-        ("motion.stagger", "min" | "max") => Some((-TURN, TURN, 1.0)),
-        ("motion.oscillator", "offset") => Some((-TURN, TURN, 1.0)),
-        ("motion.oscillator" | "motion.wiggle", "amplitude") => Some((0.0, TURN, 1.0)),
-        _ => None,
-    }
 }
 
 /// **The display face for one param** (doc 88, Wave A) — the single place a
@@ -445,8 +411,11 @@ pub(crate) fn build_params_snapshot(
         // override the wire is overriding — the resolution order the cook uses, made visible.
         // Read from the cook's memo (`peek`), never by evaluating anything a second time.
         let driven = params_stream::driven_value(motion, nid, spec.name);
-        let value = f64::from(driven.unwrap_or_else(|| value_of(spec.name)));
-        let driven = driven.is_some();
+        let value = f64::from(driven.map_or_else(|| value_of(spec.name), |(v, _)| v));
+        // **O nome vem da MESMA resolução que o número** — nunca de uma segunda consulta ao
+        // `param_sources` (ver `driven_value`): dirigido É ter um nome, e é isso que impede
+        // uma row com dono e sem fio.
+        let driven_by = driven.and_then(|(_, src)| params_stream::driver_title(motion, src));
         // The row's face, resolved ONCE and applied to the whole tuple below.
         //
         // The widget answers the unit question first (`unit_of`), so an `Angle` /
@@ -505,7 +474,7 @@ pub(crate) fn build_params_snapshot(
                         hard_max: f64::from(hard_max),
                         step: f64::from(step),
                         integer: h.widget.is_integer(),
-                        driven,
+                        driven_by: driven_by.clone(),
                         // Neutral here on purpose: the face is applied to BOTH arms
                         // at the push below, so neither arm can carry a different one.
                         display: RowDisplay::default(),
@@ -542,7 +511,7 @@ pub(crate) fn build_params_snapshot(
                         hard_max: f64::from(max),
                         step: 0.1,
                         integer: false,
-                        driven,
+                        driven_by: driven_by.clone(),
                         display: RowDisplay::default(),
                     }
                 }

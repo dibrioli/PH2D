@@ -112,7 +112,7 @@ pub(crate) fn paint_rows(
             // A DRIVEN param (doc 58): the wire decides the number, so there is no widget —
             // just the label and the live value. Nothing is registered, so nothing can be
             // dragged; the artist unplugs the wire to take the knob back.
-            ParamRow::Scalar(row) if row.driven => {
+            ParamRow::Scalar(row) if row.driven_by.is_some() => {
                 paint_driven_row(
                     row,
                     inner_x,
@@ -273,7 +273,7 @@ mod tests {
             hard_max: 1.0,
             step: 0.01,
             integer: false,
-            driven: false,
+            driven_by: None,
             display: RowDisplay::default(),
         })
     }

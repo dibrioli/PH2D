@@ -25,7 +25,7 @@ fn snapshot_with_one_modified() -> ParamsSnapshot {
             hard_max: 10.0,
             step: 0.1,
             integer: false,
-            driven: false,
+            driven_by: None,
             display: RowDisplay::default(),
         })
     };
@@ -152,7 +152,7 @@ fn snapshot_with_a_section() -> ParamsSnapshot {
             hard_max: 10.0,
             step: 0.1,
             integer: false,
-            driven: false,
+            driven_by: None,
             display: RowDisplay::default(),
         })
     };

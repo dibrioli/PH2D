@@ -5448,6 +5448,7 @@ dependencies = [
  "ph2d-tool-vector",
  "ph2d-ui-codegen",
  "ph2d-ui-state",
+ "ph2d-ui-testkit",
  "ph2d-vec-blend",
  "ph2d-vec-boolean",
  "ph2d-vec-connect",

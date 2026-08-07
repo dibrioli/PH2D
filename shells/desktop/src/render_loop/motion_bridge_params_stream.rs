@@ -16,15 +16,22 @@ use crate::motion_state::MotionState;
 /// `param_source::driven_value`, the tap path is `readout::reading_of` — the one
 /// already-unified "what a wire is worth" the readout row and the probe share, so a
 /// third copy is never minted ([[feedback_two_doors_to_the_same_question_diverge]]).
+/// ⚠️ Devolve TAMBÉM o nó fonte, e é uma coisa só de propósito: a row dirigida mostra o
+/// número **e** o nome de quem o põe ali, e as duas metades têm de vir da MESMA resolução.
+/// Uma segunda consulta a `param_sources` para o nome poderia dizer *"dirigido por X"* num
+/// frame em que esta função devolve `None` (a GPU só publica a porta 0) — a row ficaria com
+/// dono e sem fio, que é a contradição que o `Option<String>` do `driven_by` existe para
+/// tornar inexprimível.
 pub(super) fn driven_value(
     motion: &MotionState,
     node: ph2d_nodegraph::graph::NodeId,
     param: &str,
-) -> Option<f32> {
+) -> Option<(f32, ph2d_nodegraph::graph::NodeId)> {
     let (src, port) = *motion.doc.graph.param_sources(node)?.get(param)?;
     // CPU-cooked frame: the memo holds the real thing.
     if let Some(cooked) = motion.pump.cook.peek(src) {
-        return ph2d_nodegraph::param_source::driven_value(cooked.get(port as usize)?);
+        return ph2d_nodegraph::param_source::driven_value(cooked.get(port as usize)?)
+            .map(|v| (v, src));
     }
     // GPU-cooked frame: the memo is empty. The tap carries one subsampled stream per
     // STAGED node — port 0 only, which is what a value driver has — so a driver off a
@@ -32,9 +39,24 @@ pub(super) fn driven_value(
     // override instead). Row 0 of the tap IS element 0, so `v[0]` matches the memo.
     let stream = motion.gpu_tap.as_ref()?.get(&src).filter(|_| port == 0)?;
     match super::super::readout::reading_of(stream, stream.count() as u32) {
-        super::super::readout::Reading::Value(v) => Some(v),
+        super::super::readout::Reading::Value(v) => Some((v, src)),
         super::super::readout::Reading::Instances(_) => None,
     }
+}
+
+/// **O nome que o card daquele nó mostra** — pela porta única (`card_title`), nunca por uma
+/// escada de fallbacks copiada: o nome que o artista lê no inspector tem de ser o que ele vai
+/// procurar no grafo, inclusive depois de renomear.
+pub(super) fn driver_title(
+    motion: &MotionState,
+    src: ph2d_nodegraph::graph::NodeId,
+) -> Option<String> {
+    let inst = motion.doc.graph.node(src)?;
+    Some(ph2d_node_registry::card_title(
+        motion.doc.graph.label(src),
+        motion.registry.ui_manifest(inst.type_id()),
+        &inst.type_name,
+    ))
 }
 
 /// The scalar columns the stream feeding `node`'s input port 0 carries — the live
@@ -300,8 +322,9 @@ mod tests {
         )]));
         assert_eq!(
             super::driven_value(&motion, b, "strength"),
-            Some(42.0),
-            "the driven value comes from the tap when the memo is empty"
+            Some((42.0, a)),
+            "the driven value comes from the tap when the memo is empty — e o NÓ junto, \
+             porque a row dirigida mostra os dois e eles vêm da mesma resolução"
         );
     }
 }

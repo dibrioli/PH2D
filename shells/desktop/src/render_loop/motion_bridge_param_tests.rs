@@ -427,3 +427,73 @@ fn the_source_picker_hides_the_editors_reserved_namespace() {
         "only the artist's name is pickable: {opts:?}"
     );
 }
+
+/// **A row DIRIGIDA diz QUEM a dirige, e o nome é o que está escrito no card** (doc 88 B3).
+///
+/// Nasceu VERMELHO: a row carregava um `bool`. O artista via um número acentuado que não
+/// obedecia ao dedo e não tinha uma palavra sobre a procedência — a resposta exigia sair do
+/// inspector e caçar o fio no grafo, num nó que ele ainda não sabia qual era.
+///
+/// As duas metades, e a segunda é a que importa: o nome sai da porta única
+/// `ph2d_node_registry::card_title`, então **um rename move os dois** — o card e a row. Uma
+/// escada de fallbacks copiada aqui ficaria verde neste gate e mentiria no dia do rename, que
+/// é justamente o dia em que o artista precisa do nome para achar o nó.
+#[test]
+fn a_driven_row_names_the_card_that_drives_it() {
+    use ph2d_nodegraph::attr::{Column, Stream};
+    use std::collections::BTreeMap;
+
+    let mut motion = MotionState::new();
+    let driver = motion.doc.graph.add_node("value.gain");
+    let target = motion.doc.graph.add_node("value.gain");
+    motion
+        .doc
+        .graph
+        .drive_param(target, "strength", (driver, 0))
+        .expect("o fio entra no param");
+    // O tap é o caminho de um frame de GPU (o default do app); o memo estaria vazio.
+    motion.gpu_tap = Some(BTreeMap::from([(
+        driver,
+        Stream::new(1).with("v", Column::Scalar(vec![42.0])),
+    )]));
+    ph2d_panel_motion_graph::set_graph_selection(vec![target.0]);
+
+    let driven_by = |motion: &MotionState| -> Option<String> {
+        build_params_snapshot(motion, ProjectSettings::default())
+            .expect("o alvo resolve")
+            .rows
+            .iter()
+            .find_map(|r| match r {
+                ph2d_panel_motion_params::ParamRow::Scalar(s) if s.name == "strength" => {
+                    Some(s.driven_by.clone())
+                }
+                _ => None,
+            })
+            .expect("a row do param dirigido existe")
+    };
+
+    // Sem rename: o card diz o nome do TIPO, e a row diz o mesmo.
+    assert_eq!(
+        driven_by(&motion).as_deref(),
+        Some("Gain"),
+        "a row dirigida nomeia o card que a dirige"
+    );
+
+    // Com rename: o nome do ARTISTA vence nos dois lugares.
+    motion.doc.graph.set_label(driver, "Volume");
+    assert_eq!(
+        driven_by(&motion).as_deref(),
+        Some("Volume"),
+        "e o nome segue o rename — é a MESMA porta que escreve o título do card"
+    );
+
+    // O CONTROLE: sem fio não há nome. `driven_by` é o fato inteiro, então isto é o que
+    // impede a row de nascer com dono e sem procedência.
+    ph2d_panel_motion_graph::set_graph_selection(vec![driver.0]);
+    assert_eq!(
+        driven_by(&motion),
+        None,
+        "um param que ninguém dirige não tem quem o nomeie"
+    );
+    ph2d_panel_motion_graph::set_graph_selection(Vec::new());
+}

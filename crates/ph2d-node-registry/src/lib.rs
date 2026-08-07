@@ -22,7 +22,7 @@ use std::collections::BTreeMap;
 mod ui;
 pub use ui::{
     Coupling, NodeSilhouette, NodeUiCategory, NodeUiManifest, ParamGate, ParamGroup, ParamHardMax,
-    ParamUiHint, ParamWidget, ReadChannel,
+    ParamUiHint, ParamWidget, ReadChannel, card_title,
 };
 
 /// The param UNIT vocabulary (doc 88, Wave A) — a sibling module rather than more

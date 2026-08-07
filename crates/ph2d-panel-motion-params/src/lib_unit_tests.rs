@@ -32,7 +32,7 @@ fn pixel_row(value_px: f64) -> ParamsSnapshot {
             hard_max: 1000.0,
             step: 10.0,
             integer: false,
-            driven: false,
+            driven_by: None,
             display: RowDisplay::new(100.0, "px"),
         })],
     }

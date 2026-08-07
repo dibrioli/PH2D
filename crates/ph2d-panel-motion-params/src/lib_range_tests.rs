@@ -29,7 +29,7 @@ fn soft_hard_row(value: f64) -> ParamsSnapshot {
             hard_max: 4_000_000.0,
             step: 1.0,
             integer: false,
-            driven: false,
+            driven_by: None,
             display: RowDisplay::default(),
         })],
     }
@@ -53,7 +53,7 @@ fn soft_hard_floor_row(value: f64) -> ParamsSnapshot {
             hard_max: 4.0,
             step: 0.01,
             integer: false,
-            driven: false,
+            driven_by: None,
             display: RowDisplay::default(),
         })],
     }

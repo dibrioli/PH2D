@@ -38,7 +38,7 @@ fn params_and_intent_channels_round_trip() {
             hard_max: 20.0,
             step: 1.0,
             integer: true,
-            driven: false,
+            driven_by: None,
             display: RowDisplay::default(),
         })],
     }));

@@ -91,6 +91,9 @@ impl Default for PaintState {
             selection_raster_cache: Vec::new(),
             selection_grab: None,
             selection_clipboard: None,
+            paste_patch: None,
+            paste_pristine: None,
+            paste_grab: None,
             selection_offset_norm: 0.5, // centred → 0px offset (whole selection unchanged)
             selection_offset_active: false,
             selection_offset_rings: Vec::new(),

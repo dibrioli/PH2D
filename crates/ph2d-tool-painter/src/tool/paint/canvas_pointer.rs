@@ -26,6 +26,13 @@ impl CanvasPaintTool for PainterTool {
         if self.eyedropper_armed() {
             return self.eyedropper_pointer(ev);
         }
+        // **A peça COLADA que ainda flutua tem a primeira palavra sobre o canvas** (Enio, 2026-08-07):
+        // enquanto ela vive, o ponteiro a transforma. Precede a seleção — e TODO o resto — porque ela é
+        // modal por desenho: as duas saídas são Enter (aplica) e Esc (descarta), e um clique que
+        // caísse noutro dono deixaria a peça pendurada sobre uma tela que mudou debaixo dela.
+        if self.paste_patch_live() {
+            return self.paste_patch_pointer(ev);
+        }
         // Selection mode builds a canvas-wide selection mask (Procreate-style), NOT a layer paint — so it
         // precedes the paintable-target gate. Routes to the mode engine (Automatic / Freehand / Rectangle /
         // Ellipse + Add/Remove operators); the mask joins the single undo queue on pen-up.

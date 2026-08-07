@@ -42,6 +42,21 @@ impl App {
             return true;
         }
 
+        // **A peça COLADA que flutua: Enter aplica, Esc descarta** (Enio, 2026-08-07). A razão é a
+        // mesma do lado do ponteiro: a peça é MODAL — enquanto ela existe, essas duas teclas são
+        // inequivocamente sobre ela. Sem esta precedência o Enter cairia no Apply da figura em
+        // mãos, que assaria o traço e deixaria a peça pendurada sobre uma tela que acabou de mudar
+        // debaixo dela. Consome só quando há peça viva.
+        //
+        // ⚠️ **Ela entra DEPOIS da preview e ANTES de todo o resto**, e a integração decidiu esse
+        // par: a `line/Painter` a escreveu como *"PRIMEIRO entre os Enter/Escape"* contra a lista
+        // que ela conhecia (joint · pick · build · pen · figura), e a preview — que nasceu no
+        // `main` na mesma janela — é o modo mais EXTERNO dos dois (ela toma o rato do editor
+        // inteiro). A ordem relativa que a linha afirmou fica intacta.
+        if self.painter_paste_patch_key(state, physical_key, repeat) {
+            return true;
+        }
+
         // **Esc cancela o gesto de DESENHAR um joint** (W-J4b), e vem PRIMEIRO entre os
         // Escapes: o gesto e modal e independe de ferramenta (do lado do ponteiro ele
         // precede picking e gizmos pela mesma razao), entao com ele armado o Esc e

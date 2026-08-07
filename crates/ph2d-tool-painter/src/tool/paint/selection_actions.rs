@@ -213,51 +213,14 @@ impl PainterTool {
         });
     }
 
-    /// **Paste**: composite the clipboard back over the active layer at its original location (source-over
-    /// by the clip's alpha). One undo entry. No-op with an empty clipboard.
+    /// **Paste**: arma a peça FLUTUANTE do clipboard sobre a camada ativa, no lugar de origem, com o
+    /// gizmo de transformação vivo. **Enter aplica** ([`PainterTool::paste_commit`]), **Esc descarta**
+    /// ([`PainterTool::paste_cancel`]). No-op com o clipboard vazio.
+    ///
+    /// ⚠️ **MUDANÇA DE COMPORTAMENTO (Enio, 2026-08-07):** antes ele compositava na hora e gravava undo
+    /// ali mesmo — colar e querer mover custava um Ctrl+Z. Agora nada é commitado até o Enter, e é por
+    /// isso que o Esc não precisa de undo nenhum: não há o que desfazer.
     pub fn selection_paste(&mut self) {
-        let Some(clip) = self.paint.selection_clipboard.clone() else {
-            return;
-        };
-        let (w, h) = (self.source_size.0 as usize, self.source_size.1 as usize);
-        if w == 0 || h == 0 || self.canvas_rgba.len() != w * h * 4 {
-            return;
-        }
-        let before = self.snapshot_model();
-        let (cx, cy, cw, ch) = (
-            clip.rect.x as usize,
-            clip.rect.y as usize,
-            clip.rect.w as usize,
-            clip.rect.h as usize,
-        );
-        let buf = crate::tool::paint::plane_fork::fork_canvas(
-            &mut self.canvas_rgba,
-            &self.undo.write_state,
-            self.source_size.0,
-            None,
-        );
-        for y in 0..ch {
-            for x in 0..cw {
-                let (dx, dy) = (cx + x, cy + y);
-                if dx >= w || dy >= h {
-                    continue;
-                }
-                let s = (y * cw + x) * 4;
-                let a = f32::from(clip.rgba[s + 3]) / 255.0;
-                if a <= 0.0 {
-                    continue;
-                }
-                let d = (dy * w + dx) * 4;
-                for c in 0..3 {
-                    let src = f32::from(clip.rgba[s + c]);
-                    let dst = f32::from(buf[d + c]);
-                    buf[d + c] = (src * a + dst * (1.0 - a)).round().clamp(0.0, 255.0) as u8;
-                }
-                let da = f32::from(buf[d + 3]) / 255.0;
-                buf[d + 3] = ((a + da * (1.0 - a)) * 255.0).round().clamp(0.0, 255.0) as u8;
-            }
-        }
-        self.mark_dirty(clip.rect);
-        self.commit_structural_edit(before);
+        self.arm_paste_patch();
     }
 }

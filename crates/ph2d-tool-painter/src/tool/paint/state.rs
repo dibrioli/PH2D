@@ -110,6 +110,16 @@ pub(crate) struct PaintState {
     /// In-memory **Copy** buffer of selected pixels (source bbox + coverage-premultiplied RGBA), consumed by
     /// **Paste**. `None` until a Copy. [`selection_actions`].
     pub(super) selection_clipboard: Option<selection_actions::SelectionClip>,
+    /// A peça COLADA que ainda flutua (ADR-0103, Enio 2026-08-07) — transformável pelo gizmo de
+    /// sprite até o Enter. Ver [`super::paste_patch`].
+    pub(super) paste_patch: Option<super::paste_patch::PastePatch>,
+    /// Os pixels que estavam sob a peça flutuante, para o quadro seguinte os devolver.
+    ///
+    /// ⚠️ **Morre COM o patch, sempre pela mesma porta**: um pristino órfão é um retângulo de arte
+    /// velha esperando ser restaurado por cima de tinta nova.
+    pub(super) paste_pristine: Option<(Region, Vec<u8>)>,
+    /// A alça do gizmo da peça em arrasto: `(handle, ponteiro no grab, peça no grab)`.
+    pub(super) paste_grab: Option<(u8, [f32; 2], super::paste_patch::PastePatch)>,
     /// **Selection Offset** state (ADR-0103 Am.3) — grow/shrink + concentric protected/paint rings. See
     /// [`selection_offset`]: `_norm` = slider (`0.5` = no offset); `_active` = ring mode (post-Apply & Keep);
     /// `_rings` = frozen cumulative band offsets (px, PAINT iff even index); `_source` = the pre-offset crisp

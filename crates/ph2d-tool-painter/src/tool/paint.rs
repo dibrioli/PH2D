@@ -176,6 +176,9 @@ mod selection_raster;
 #[path = "paint/selection_verbs_tests.rs"]
 mod selection_verbs_tests; // Cut / Select All / Intersect (report do Enio, 2026-08-07)
 
+/// O **Paste FLUTUANTE**: a peça colada transformável antes de pousar (Enio, 2026-08-07).
+mod paste_patch;
+
 pub(super) mod selection_shapes; // SelectionEntry is re-exported at `crate::tool` for the undo snapshot
 /// Selection **Edit** mode contour tracing (mask → editable boundary polyline); split for the LOC cap.
 mod selection_trace;

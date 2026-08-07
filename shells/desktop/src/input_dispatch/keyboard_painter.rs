@@ -79,6 +79,34 @@ impl crate::App {
         painter.curve_delete_selected() || painter.selection_curve_delete_selected_point()
     }
 
+    /// **A peça COLADA que flutua: Enter aplica, Esc descarta.** `true` quando havia peça viva — só
+    /// então a tecla é consumida, senão o Enter/Esc segue para os donos de sempre.
+    ///
+    /// ⚠️ **Não há terceira saída, de propósito.** Um clique perdido no canvas não aplica nem cancela
+    /// (o roteador de ponteiro o consome sem agir): aplicar num toque acidental viraria tinta, e
+    /// cancelar jogaria fora o posicionamento. As duas saídas são teclas porque são DECISÕES.
+    pub(crate) fn painter_paste_patch_key(
+        &mut self,
+        state: ElementState,
+        physical_key: PhysicalKey,
+        repeat: bool,
+    ) -> bool {
+        if state != ElementState::Pressed || repeat {
+            return false;
+        }
+        let PhysicalKey::Code(code) = physical_key else {
+            return false;
+        };
+        let Some(painter) = self.painter_tool_mut() else {
+            return false;
+        };
+        match code {
+            KeyCode::Enter | KeyCode::NumpadEnter => painter.paste_commit(),
+            KeyCode::Escape => painter.paste_cancel(),
+            _ => false,
+        }
+    }
+
     /// **Os atalhos de área de transferência da SELEÇÃO do Painter** — Ctrl+X / C / V, mais Ctrl+A
     /// (tudo), Ctrl+D (nada) e Ctrl+Shift+I (inverter). `true` quando um deles consumiu a tecla.
     ///

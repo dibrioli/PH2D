@@ -10563,7 +10563,12 @@ fn selection_color_fill_paints_only_inside() {
     );
 }
 
-/// ADR-0103 Wave 5: **Copy** then **Paste** re-applies the captured pixels at their source location.
+/// ADR-0103 Wave 5: **Copy** then **Paste** traz os pixels capturados de volta ao lugar de origem.
+///
+/// ⚠️ **Desde 2026-08-07 o Paste FLUTUA** (a peça transformável, `super::paste_patch`): os pixels
+/// aparecem na hora — que é o que este gate mede —, mas só viram tinta no Enter. As duas metades
+/// estão aqui de propósito: sem a asserção de que a peça segue VIVA, este gate passaria igual se
+/// alguém revertesse o Paste para o composite imediato, e a mudança de comportamento sumiria.
 #[test]
 fn selection_copy_then_paste_reapplies_the_pixels() {
     let mut t = white_canvas(32, 4.0);
@@ -10579,7 +10584,11 @@ fn selection_copy_then_paste_reapplies_the_pixels() {
         [255, 255, 255, 255],
         "left half wiped to white"
     );
-    t.selection_paste(); // re-apply the copied black pixels
+    t.selection_paste(); // a peca flutuante aparece sobre a regiao de origem
+    assert!(
+        t.paste_patch_live(),
+        "o Paste ARMA uma peca transformavel; ela so vira tinta no Enter"
+    );
     assert_eq!(
         px(&t, 32, 4, 16),
         [0, 0, 0, 255],

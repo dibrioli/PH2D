@@ -22,7 +22,12 @@ pub(super) fn draw_selection_gizmos(
     vector_scene: &mut VectorScene,
     cursor: (f32, f32),
 ) {
-    let gizmos = painter.selection_gizmos();
+    // ⚠️ **A peça COLADA que flutua entra na MESMA lista** (Enio, 2026-08-07): ela é uma caixa
+    // orientada com as mesmas oito alças, então publicá-la como um `SelectionGizmoView` é o que
+    // impede uma segunda resposta a *"como se desenha um gizmo de transformação neste app"*. Ela vem
+    // por ÚLTIMO para ser pintada por cima, e é a única cujo `op` sai da faixa booleana.
+    let mut gizmos = painter.selection_gizmos();
+    gizmos.extend(painter.paste_patch_gizmo());
     if gizmos.is_empty() {
         return;
     }
@@ -131,6 +136,8 @@ pub(super) fn draw_selection_gizmos(
         let op_glyph = match g.op {
             1 => "+",
             2 => "-",
+            3 => "x", // Intersect
+            4 => "P", // a peca COLADA — nao e operacao de conjunto, e um `n` aqui diria que e
             _ => "n",
         };
         super::painter_bridge_gizmo::center_glyph_handle(scene, map(g.center), &pal, op_glyph);

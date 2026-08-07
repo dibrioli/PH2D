@@ -292,11 +292,15 @@ fn the_oscillator_offers_only_the_time_ruler_it_uses() {
     assert!(bpm.iter().any(|p| p == "bpm"), "{bpm:?}");
     assert!(!bpm.iter().any(|p| p == "frequency"), "{bpm:?}");
 
-    // E o seletor + o fade estão sempre lá — a régua se escolhe, e a oscilação assenta
-    // em qualquer uma delas.
-    for p in ["time_mode", "fade"] {
-        assert!(secs.iter().any(|n| n == p), "{p} sumiu em Seconds");
-        assert!(bpm.iter().any(|n| n == p), "{p} sumiu em BPM");
-    }
+    // E o SELETOR está sempre lá — a régua se escolhe, então o controle que a escolhe não
+    // pode desaparecer com a escolha (seria a única porta de volta).
+    assert!(
+        secs.iter().any(|n| n == "time_mode"),
+        "o seletor sumiu em Seconds"
+    );
+    assert!(
+        bpm.iter().any(|n| n == "time_mode"),
+        "o seletor sumiu em BPM"
+    );
     ph2d_panel_motion_graph::set_graph_selection(Vec::new());
 }

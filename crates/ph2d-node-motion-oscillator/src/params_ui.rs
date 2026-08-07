@@ -94,14 +94,6 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         step: 1.0,
         widget: ParamWidget::Slider,
     },
-    ParamUiHint {
-        param: "fade",
-        label: "Fade Out",
-        min: 0.0,
-        max: 10.0,
-        step: 0.1,
-        widget: ParamWidget::Slider,
-    },
 ];
 
 /// **Só a régua escolhida aparece.**
@@ -134,7 +126,6 @@ pub(crate) static PARAM_GROUPS: &[ParamGroup] = &[
     ParamGroup::new("bpm", "Timing"),
     ParamGroup::new("phase", "Timing"),
     ParamGroup::new("phase_stagger", "Timing"),
-    ParamGroup::new("fade", "Timing"),
 ];
 
 /// **What each of this node's numbers IS** (doc 88, Wave A). This node's magnitude
@@ -150,10 +141,5 @@ pub(crate) static PARAM_UNITS: &[ParamUnitDecl] = &[
     ParamUnitDecl {
         param: "offset",
         unit: ParamUnit::FromChannel,
-    },
-    // O fade é uma DURAÇÃO — a única unidade deste nó que não depende do canal.
-    ParamUnitDecl {
-        param: "fade",
-        unit: ParamUnit::Seconds,
     },
 ];

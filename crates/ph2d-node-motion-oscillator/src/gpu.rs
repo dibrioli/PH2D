@@ -38,7 +38,6 @@ const OSC_PARAMS: &[&str] = &[
     "phase",
     "time_mode",
     "bpm",
-    "fade",
 ];
 
 /// The falloff mask, bound identically by every variant.
@@ -68,17 +67,12 @@ pub(crate) const OSC_P: GpuKernel = GpuKernel {
             let cps = osc_cycles_per_second();\n\
             let phase = t * cps + f32(i) * params.phase_stagger + params.phase;\n\
             let w = osc_wave(i32(osc_round(params.wave)), phase);\n\
-            let amp = params.amplitude * osc_fade_gain(t);\n\
-            return (w * amp + params.offset) * read_falloff(i);\n\
+            return (w * params.amplitude + params.offset) * read_falloff(i);\n\
         }\n\
         fn osc_cycles_per_second() -> f32 {\n\
             // BPM: a MESMA grandeza noutra regua (batidas por minuto).\n\
             if (params.time_mode >= 0.5) { return params.bpm / 60.0; }\n\
             return params.frequency;\n\
-        }\n\
-        fn osc_fade_gain(t: f32) -> f32 {\n\
-            if (params.fade <= 0.0) { return 1.0; }\n\
-            return max(0.0, 1.0 - t / params.fade);\n\
         }\n\
         fn osc_round(x: f32) -> f32 {\n\
             // Rust f32::round = half away from zero (WGSL round is half-even).\n\

@@ -94,10 +94,6 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "bpm",
             default: 120.0,
         },
-        ParamSpec {
-            name: "fade",
-            default: 0.0,
-        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
@@ -166,18 +162,27 @@ fn cycles_per_second(mode: f32, frequency: f32, bpm: f32) -> f32 {
     if mode >= 0.5 { bpm / 60.0 } else { frequency }
 }
 
-/// **A oscilação ASSENTA** (`fade` em segundos; `0` = nunca) — o *Strength Fade to Zero*.
-///
-/// A rampa é linear e chega a zero exatamente em `t = fade`, medida no relógio do playhead,
-/// que é o mesmo `t` que a onda lê. Um tremor que decai é o gesto que um oscilador não sabia
-/// fazer: sem isto, a única forma de parar a oscilação era keyframar a amplitude.
-fn fade_gain(t: f32, fade: f32) -> f32 {
-    if fade <= 0.0 {
-        1.0
-    } else {
-        (1.0 - t / fade).max(0.0)
-    }
-}
+// ⛔ **O `fade` foi construído e REMOVIDO no mesmo dia** (smoke do Enio, doc 88 B3) — não
+// reconstrua sem ler isto. Era o *Strength Fade to Zero* do Cavalry portado como uma rampa em
+// segundos a partir do zero ABSOLUTO do playhead, e tinha três defeitos, o primeiro MEDIDO:
+//
+// 1. **Expirava.** O slider ia até 10 s, então a partir de ~10 s de relógio TODO valor da
+//    faixa entregava amplitude zero — o estado permanente do controle era *expirado*, e na
+//    tela isso lê como *"o oscilador travou tudo"*, que foi o report.
+// 2. **A régua era invisível.** No Cavalry o fade desvanece ao longo da DURAÇÃO DA
+//    COMPOSIÇÃO — uma janela com começo e fim na régua. Aqui a janela começava num zero que
+//    o artista não vê e terminava num instante que ele não vê; a duração da composição **não
+//    existe neste nível** (`EvalCtx` oferece `playhead`/`dt`/`started`, e nada mais).
+// 3. **Era uma SEGUNDA PORTA.** `ctx.param` resolve **wire > override > default**, então
+//    `value.time → value.map_range → amplitude` já É um fade — com a régua VISÍVEL no grafo,
+//    o começo e o fim escolhidos pelo artista, e o painel marcando o param como *driven*.
+//
+// ⚠️ O `time_mode`/`bpm` FICA, e a distinção é o que separa os dois: uma UNIDADE não expira.
+// BPM é a mesma frequência noutra régua e vale igual no segundo 0 e no segundo 600.
+//
+// O gate `no_control_of_this_oscillator_expires_with_the_clock` guarda a CLASSE, não este
+// campo: qualquer knob futuro cuja unidade seja *"segundos desde um zero que ninguém vê"*
+// nasce vermelho nele.
 
 struct MotionOscillator;
 
@@ -198,7 +203,7 @@ impl NodeOp for MotionOscillator {
             ctx.param("frequency"),
             ctx.param("bpm"),
         );
-        let amplitude = ctx.param("amplitude") * fade_gain(t, ctx.param("fade"));
+        let amplitude = ctx.param("amplitude");
         let out = {
             let input = ctx.input(0);
             let n = input.count();
@@ -242,6 +247,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::params_ui::PARAM_HINTS;
     use ph2d_nodegraph::attr::{Column, Stream};
     use ph2d_nodegraph::cook::{Cook, OpResolver};
     use ph2d_nodegraph::graph::{Edge, Graph, NodeId};
@@ -362,47 +368,79 @@ mod tests {
         assert_eq!(bpm, ignored, "em BPM o slider de Hz nao pode ter voto");
     }
 
-    /// **A oscilação ASSENTA, e `fade = 0` é o mundo de antes AO BIT.**
-    ///
-    /// As duas metades num gate só, de propósito: só a rampa passaria com um fade que sempre
-    /// desvanece (a arte de todo mundo mudaria em silêncio), e só o neutro passaria com um
-    /// `fade` que nunca faz nada — o botão morto.
+    /// **A régua de tempo é o que o WGSL porta** — pinada aqui para os dois lados serem lidos
+    /// lado a lado quando alguém mexer num deles.
     #[test]
-    fn the_oscillation_settles_and_zero_fade_is_the_old_world() {
-        let at = |t: f64, fade: f32| {
-            osc_y_at(t, move |g, osc| {
-                g.set_param(osc, "amplitude", 4.0);
-                g.set_param(osc, "phase_stagger", 0.0);
-                g.set_param(osc, "fade", fade);
-            })[0][1]
-        };
-        // Neutro: byte-idêntico em todo instante medido.
-        for step in 0..8 {
-            let t = f64::from(step) * 0.25;
-            assert_eq!(at(t, 0.0), at(t, 0.0), "determinismo");
-        }
-        // Pico do quarto de ciclo (a onda vale +1 ali) ⇒ o valor É a amplitude viva.
-        assert_eq!(at(0.25, 0.0), 4.0, "sem fade, a amplitude cheia");
-        assert!(
-            (at(0.25, 4.0) - 3.75).abs() < 1e-5,
-            "a 1/16 do fade sobra 15/16 da amplitude, e nao {}",
-            at(0.25, 4.0)
-        );
-        // E chega a ZERO no fim da rampa, sem passar para o outro lado.
-        assert_eq!(at(2.25, 2.0), 0.0, "depois do fade a onda morreu");
-        assert_eq!(at(4.25, 2.0), 0.0, "e continua morta, nunca negativa");
-    }
-
-    /// **O par `cycles_per_second`/`fade_gain` é o que o WGSL porta** — pinado aqui para as
-    /// duas metades serem lidas lado a lado quando alguém mexer numa delas.
-    #[test]
-    fn the_two_laws_the_shader_ports() {
+    fn the_time_ruler_the_shader_ports() {
         assert_eq!(cycles_per_second(0.0, 3.0, 999.0), 3.0);
         assert_eq!(cycles_per_second(1.0, 999.0, 120.0), 2.0);
-        assert_eq!(fade_gain(10.0, 0.0), 1.0, "fade 0 = sem fade, em t grande");
-        assert_eq!(fade_gain(0.0, 4.0), 1.0);
-        assert_eq!(fade_gain(2.0, 4.0), 0.5);
-        assert_eq!(fade_gain(9.0, 4.0), 0.0, "nunca negativo");
+    }
+
+    /// SONDA: a EXCURSÃO do oscilador ao longo do relógio — a grandeza que o gate vigia.
+    /// `cargo test -p ph2d-node-motion-oscillator measure_the_excursion -- --ignored --nocapture`
+    #[test]
+    #[ignore = "sonda de medição"]
+    fn measure_the_excursion_over_the_playhead() {
+        println!("\n=== EXCURSAO pico-a-pico (amplitude 4.0, janela de 6 s) ===");
+        for t0 in [0.0f64, 10.0, 30.0, 60.0, 600.0] {
+            let (mut lo, mut hi) = (f32::MAX, f32::MIN);
+            for k in 0..240 {
+                let v = osc_y_at(t0 + f64::from(k) * 0.025, |g, osc| {
+                    g.set_param(osc, "amplitude", 4.0);
+                    g.set_param(osc, "phase_stagger", 0.0);
+                })[0][1];
+                lo = lo.min(v);
+                hi = hi.max(v);
+            }
+            println!("  t0={t0:>6}: {:>6.3}", hi - lo);
+        }
+        println!();
+    }
+
+    /// **Um oscilador é PERIÓDICO: a excursão dele não pode depender de QUANDO você olha.**
+    ///
+    /// Nasceu VERMELHO sobre o `fade` (smoke do Enio, *"Fade out > 0 trava as shapes"*): ele era
+    /// uma rampa a partir do zero ABSOLUTO do playhead, com o slider indo até 10 — medido, a
+    /// partir de ~10 s de relógio TODO valor da faixa entregava amplitude zero, e o estado
+    /// permanente do controle era *expirado*.
+    ///
+    /// O gate varre a FAIXA DECLARADA de cada param e compara a excursão pico-a-pico de uma
+    /// janela cedo contra uma tarde. É de propósito que ele não nomeia `fade`: o que ele
+    /// proíbe é a CLASSE — qualquer knob futuro cuja unidade seja *"segundos desde um zero que
+    /// o artista não vê"* nasce vermelho aqui.
+    #[test]
+    fn no_control_of_this_oscillator_expires_with_the_clock() {
+        // Excursão pico-a-pico numa janela de 6 s (contém um ciclo até no BPM mínimo, 20 =
+        // 0,33 Hz), amostrada fino o bastante para pegar a crista.
+        let excursion = |t0: f64, setup: &dyn Fn(&mut Graph, NodeId)| -> f32 {
+            let (mut lo, mut hi) = (f32::MAX, f32::MIN);
+            for k in 0..240 {
+                let t = t0 + f64::from(k) * 0.025;
+                let v = osc_y_at(t, |g, osc| setup(g, osc))[0][1];
+                lo = lo.min(v);
+                hi = hi.max(v);
+            }
+            hi - lo
+        };
+        for h in PARAM_HINTS {
+            // Três pontos da faixa declarada: as duas pontas e o meio.
+            for frac in [0.0f32, 0.5, 1.0] {
+                let v = h.min + (h.max - h.min) * frac;
+                let setup = move |g: &mut Graph, osc: NodeId| {
+                    g.set_param(osc, "amplitude", 4.0);
+                    g.set_param(osc, "phase_stagger", 0.0);
+                    g.set_param(osc, h.param, v);
+                };
+                let early = excursion(0.0, &setup);
+                let late = excursion(60.0, &setup);
+                assert!(
+                    (early - late).abs() <= 1e-3,
+                    "{} = {v}: a excursao caiu de {early} para {late} entre t=0 e t=60 -- este \
+                     controle EXPIRA com o relogio, e o artista nao ve a regua dele",
+                    h.param
+                );
+            }
+        }
     }
 
     #[test]

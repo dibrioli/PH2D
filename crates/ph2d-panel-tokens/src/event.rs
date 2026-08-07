@@ -30,6 +30,14 @@ pub(crate) fn apply_event(
             push_intent(TokensIntent::ResetAll);
             true
         }
+        WidgetEvent::Click(id) if id == ids::TOKENS_DTCG_EXPORT => {
+            push_intent(TokensIntent::ExportDtcg);
+            true
+        }
+        WidgetEvent::Click(id) if id == ids::TOKENS_DTCG_IMPORT => {
+            push_intent(TokensIntent::ImportDtcg);
+            true
+        }
         // ⚠️ **O chip numérico não tem braço de `Click`, ele tem este.** Um `NumberInput` publica o
         // que o artista digitou/arrastou como `ValueChanged`, e o valor vive no store do HOST — o
         // painel lê-o e enfileira; quem escreve a camada continua a ser a shell.

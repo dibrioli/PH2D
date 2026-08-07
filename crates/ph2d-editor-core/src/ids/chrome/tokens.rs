@@ -105,3 +105,18 @@ pub fn tokens_num_fx_id(row: usize) -> NodeId {
 pub fn tokens_num_formula_id(row: usize) -> NodeId {
     fnv_node_id_runtime(&format!("tokens.num.formula.{row}"))
 }
+
+/// **Export DTCG** — a tabela deste modo sai para um `.tokens.json` (plano UI/UX W9).
+///
+/// ⚠️ **Oferecido SEMPRE, ao contrário do [`TOKENS_RESET_ALL`]**, e a assimetria é a decisão: um
+/// *Reset* sobre um modo de fábrica é um clique que não faz nada, mas um EXPORT de um modo de
+/// fábrica é o design system inteiro — que é precisamente o que alguém quer levar para o Figma. Um
+/// export condicionado ao que o artista autorou daria um arquivo vazio no caso mais comum.
+pub const TOKENS_DTCG_EXPORT: NodeId = hash_node_id("tokens.dtcg.export");
+
+/// **Import DTCG** — um `.tokens.json` re-veste o MODO VIGENTE.
+///
+/// ⚠️ O modo é o que o painel está a mostrar, nunca o que o arquivo diz: o artista vê um modo de
+/// cada vez e a primeira linha nomeia-o, então escrever num modo que ele não está a olhar é a
+/// mesma falha que o *Reset This Mode* evita ao só resetar o vigente.
+pub const TOKENS_DTCG_IMPORT: NodeId = hash_node_id("tokens.dtcg.import");

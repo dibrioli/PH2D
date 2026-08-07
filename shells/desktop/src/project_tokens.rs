@@ -15,10 +15,15 @@
 //! variant amarraria todo projeto salvo à ORDEM da lista, e acrescentar um token no meio da tabela
 //! re-pintaria o app com as cores trocadas — a mesma lei que a W4a aplicou ao binding.
 
+use ph2d_tokens::Theme;
 use ph2d_tokens::color::Color;
 use ph2d_tokens::num_overrides::{NumOverride, NumValue, num_overrides, set_num_overrides};
 use ph2d_tokens::overrides::{ColorOverride, TokenValue, color_overrides, set_color_overrides};
-use ph2d_tokens::{ColorToken, NumToken, Theme};
+use ph2d_tokens::route::{AuthoredValue, Routed, route};
+// ⚠️ `ColorToken`/`NumToken` deixaram de ser usados pelo `install` (o roteamento mudou-se para a
+// [`ph2d_tokens::route`]), mas continuam a ser a linguagem em que os GATES deste arquivo falam.
+#[cfg(test)]
+use ph2d_tokens::{ColorToken, NumToken};
 
 /// **O que um token autorado vale, no arquivo** — as duas espécies do [`TokenValue`].
 ///
@@ -137,60 +142,29 @@ pub(crate) fn install(saved: &[SavedToken]) -> usize {
     let mut nums: Vec<NumOverride> = Vec::new();
 
     for t in saved {
-        let theme = theme_from_u8(t.theme);
-        if let Some(token) = ColorToken::from_key(&t.key) {
-            // ⚠️ Um alias cujo ALVO já não existe cai pelo mesmo motivo que o token desconhecido:
-            // a tabela de fábrica é a autoridade sobre quais tokens existem, e um elo pendurado no
-            // vazio não tem valor a devolver.
-            match &t.value {
-                SavedValue::Literal([r, g, b, a]) => colours.push(ColorOverride {
-                    theme,
-                    token,
-                    value: TokenValue::Literal(Color {
-                        r: *r,
-                        g: *g,
-                        b: *b,
-                        a: *a,
-                    }),
-                }),
-                SavedValue::Alias(key) => match ColorToken::from_key(key) {
-                    Some(target) => colours.push(ColorOverride {
-                        theme,
-                        token,
-                        value: TokenValue::Alias(target),
-                    }),
-                    None => dropped += 1,
-                },
-                SavedValue::Number(_) | SavedValue::Formula(_) => dropped += 1,
-            }
-        } else if let Some(token) = NumToken::from_key(&t.key) {
-            match &t.value {
-                SavedValue::Number(px) => nums.push(NumOverride {
-                    theme,
-                    token,
-                    value: NumValue::Literal(*px),
-                }),
-                SavedValue::Alias(key) => match NumToken::from_key(key) {
-                    Some(target) => nums.push(NumOverride {
-                        theme,
-                        token,
-                        value: NumValue::Alias(target),
-                    }),
-                    None => dropped += 1,
-                },
-                // ⚠️ A fórmula entra CRUA e quem a admite é a porta (`set_num_overrides`), que
-                // confere sintaxe, laço e comprimento — a MESMA admissão do gesto do artista. Um
-                // 2º validador aqui seria a segunda resposta a *"esta fórmula serve?"*, e a que
-                // diverge no dia em que a linguagem ganhar um operador.
-                SavedValue::Formula(src) => nums.push(NumOverride {
-                    theme,
-                    token,
-                    value: NumValue::Expr(src.clone()),
-                }),
-                SavedValue::Literal(_) => dropped += 1,
-            }
-        } else {
-            dropped += 1;
+        // ⚠️ **O roteamento é da [`ph2d_tokens::route`], não daqui** (plano UI/UX W4c.5). Esta
+        // função já dizia, no doc acima, que o import DTCG teria de juntar as famílias de novo — e
+        // duas cópias da mesma lei não dão a mesma resposta por muito tempo: a próxima família de
+        // tokens entraria numa e faltaria na outra, em silêncio.
+        //
+        // ⚠️ A fórmula entra CRUA e quem a admite é a porta (`set_num_overrides`), que confere
+        // sintaxe, laço e comprimento — a MESMA admissão do gesto do artista. Um 2º validador aqui
+        // seria a segunda resposta a *"esta fórmula serve?"*.
+        let value = match &t.value {
+            SavedValue::Literal([r, g, b, a]) => AuthoredValue::Colour(Color {
+                r: *r,
+                g: *g,
+                b: *b,
+                a: *a,
+            }),
+            SavedValue::Number(px) => AuthoredValue::Px(*px),
+            SavedValue::Alias(key) => AuthoredValue::Alias(key),
+            SavedValue::Formula(src) => AuthoredValue::Formula(src),
+        };
+        match route(theme_from_u8(t.theme), &t.key, value) {
+            Some(Routed::Colour(o)) => colours.push(o),
+            Some(Routed::Num(o)) => nums.push(o),
+            None => dropped += 1,
         }
     }
 

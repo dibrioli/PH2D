@@ -512,18 +512,36 @@ impl ColorToken {
         // o token em que ela terminou — cuja FÁBRICA é lida aqui embaixo, pela mesma tabela de
         // sempre. É isso que faz `border → surface` valer o `surface` **deste modo** sem que a
         // camada de override precise conhecer a tabela gerada.
-        let key = match crate::overrides::resolved_override(theme, self) {
-            Some(crate::overrides::Authored::Colour(c)) => return c,
-            Some(crate::overrides::Authored::Factory(t)) => t.key(),
-            None => self.key(),
-        };
+        match crate::overrides::resolved_override(theme, self) {
+            Some(crate::overrides::Authored::Colour(c)) => c,
+            Some(crate::overrides::Authored::Factory(t)) => t.factory(theme),
+            None => self.factory(theme),
+        }
+    }
+
+    /// **O valor de FÁBRICA** — a tabela gerada do `tokens.json`, sem passar pela camada.
+    ///
+    /// É a irmã exacta da [`crate::NumToken::factory_px`], e existe pelo mesmo motivo que ela: há
+    /// duas perguntas diferentes sobre um token — *quanto ele vale agora?* ([`Self::resolve`]) e
+    /// *quanto ele valeria se ninguém o tivesse tocado?* — e só a segunda diz se um valor que
+    /// chegou de fora **é** uma escolha do artista ou apenas a fábrica escrita por extenso.
+    ///
+    /// ⚠️ **É ela que torna o import DTCG idempotente** (plano UI/UX W4c.5): o arquivo exportado
+    /// traz a tabela INTEIRA, e reimportá-lo sem esta pergunta autoraria todos os ~80 tokens — o
+    /// que faria re-editar o `tokens.json` deixar de alcançar o app, em silêncio. Ver
+    /// [`crate::route`].
+    ///
+    /// ⚠️ Ela **não** é o caminho comum: quem pinta usa o `resolve`. Um widget que chamasse esta
+    /// ficaria cego à re-vestida do artista, que é a razão de a camada existir.
+    #[must_use]
+    pub fn factory(self, theme: Theme) -> Color {
         let table: &[(&str, crate::generated::OklchRaw)] = match theme {
             Theme::Forge => crate::generated::COLORS_FORGE,
             Theme::Workshop => crate::generated::COLORS_WORKSHOP,
             Theme::Sunstone => crate::generated::COLORS_SUNSTONE,
             Theme::Blueprint => crate::generated::COLORS_BLUEPRINT,
         };
-        lookup_color(table, key)
+        lookup_color(table, self.key())
     }
 }
 

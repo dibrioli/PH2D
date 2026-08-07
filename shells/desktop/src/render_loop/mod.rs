@@ -193,6 +193,7 @@ mod timeline_presets;
 /// **A ponte do painel de TOKENS** (plano UI/UX W6) — o read-back do picker e os intents de
 /// Reset. A shell é o único escritor da camada de override de cor.
 pub(crate) mod tokens_bridge;
+pub(crate) mod tokens_bridge_dtcg;
 #[cfg(test)]
 mod wet_brush_look_probe; // render-and-look do pincel GRANDE do wet paint
 /// Render-and-look da razão da grade do fluido (diagnóstica, `#[ignore]`d).

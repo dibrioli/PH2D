@@ -871,6 +871,15 @@ const CHROME_IDS: &[(&str, NodeId)] = &[
     ("PHYSICS_SLEEP_DELAY_NUM", ids::PHYSICS_SLEEP_DELAY_NUM),
     ("PHYSICS_SHOW_COLLIDERS", ids::PHYSICS_SHOW_COLLIDERS),
     ("PHYSICS_RESET_DEFAULTS", ids::PHYSICS_RESET_DEFAULTS),
+    // O painel de TOKENS (plano UI/UX W6 + W9). ⚠️ A família inteira, e não só o par novo do
+    // interop: ela nunca esteve nesta lista — os três consts do W6 entraram no app sem passar por
+    // aqui, e acrescentar só os dois de hoje deixaria a lacuna aberta com a aparência de fechada.
+    // (Os ids POR-LINHA são derivados do índice em runtime e têm gate próprio no painel.)
+    ("TOKENS_PANEL", ids::TOKENS_PANEL),
+    ("TOKENS_CLOSE", ids::TOKENS_CLOSE),
+    ("TOKENS_RESET_ALL", ids::TOKENS_RESET_ALL),
+    ("TOKENS_DTCG_EXPORT", ids::TOKENS_DTCG_EXPORT),
+    ("TOKENS_DTCG_IMPORT", ids::TOKENS_DTCG_IMPORT),
 ];
 
 /// Pairwise uniqueness across every chrome [`NodeId`]. O(n²) over ~200

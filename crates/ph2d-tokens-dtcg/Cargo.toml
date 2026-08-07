@@ -1,0 +1,44 @@
+[package]
+name = "ph2d-tokens-dtcg"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+# O CODEC DTCG (plano UI/UX W9 / W4c.5) — a tabela de tokens em `.tokens.json`, o formato W3C que
+# o Tokens Studio / Style Dictionary / Penpot falam.
+#
+# ⚠️ Ele é uma crate PRÓPRIA por uma aresta que a `ph2d-tokens` declara no próprio `Cargo.toml`
+# dela: *"design-data puro — zero runtime deps"*. Ela é a folha de que 44 widgets e todo painel
+# dependem, e `serde_json` ali poria um parser de JSON no caminho de compilação de cada um deles
+# para uma feature que corre **duas vezes na vida de um projeto** (um import, um export).
+#
+# É o mesmo argumento — e o mesmo precedente desta linha — da `ph2d-token-math`, que ficou de fora
+# porque `ph2d-expr-parse` arrasta o `ph2d-nodegraph`. A diferença é que a math é CHAMADA de dentro
+# da `ph2d-tokens` (e por isso é injectada por fn-pointers) e o codec não é: ele corre na fronteira,
+# então uma dependência normal na direcção certa basta.
+ph2d-tokens = { path = "../ph2d-tokens" }
+# ⚠️ E `serde_json` é a ÚNICA outra: o codec **não avalia** fórmulas, ele carrega o texto delas —
+# por isso o parser de math fica nas dev-deps, onde só os gates lhe chegam.
+#
+# serde_json e não um parser à mão: o `build.rs` da `ph2d-tokens` tem um parser ad-hoc porque lê um
+# arquivo de schema fixo que nós escrevemos. Um `.tokens.json` chega de FORA, com grupos aninhados,
+# `$extensions` de terceiros e o que o Figma exportar — e um parser à mão para isso seria a segunda
+# resposta a *"o que este JSON diz?"*, escrita por quem tem menos casos de teste que a `serde_json`.
+serde_json = "1"
+
+[dev-dependencies]
+# ⚠️ **Só os GATES a usam, e o `src/` não a toca** ⇒ machete-safe (o padrão da `ph2d-painter-brush`
+# em `[dev-dependencies]` da `ph2d-flip-render`).
+#
+# A razão é uma propriedade do produto, não conveniência de teste: a porta de escrita RECUSA uma
+# fórmula quando ninguém instalou o `MathHost` — *"um número inventado seria indistinguível de um
+# número autorado"* —, então um gate de round-trip sem o parser instalado não conseguiria sequer
+# CRIAR a fórmula que ele quer ver voltar. O host é instalado pela shell, no boot; aqui ele é
+# instalado pelo gate, pela MESMA porta.
+ph2d-token-math = { path = "../ph2d-token-math" }

@@ -41,6 +41,10 @@ fn button(store: &mut WidgetStore, id: ph2d_a11y::NodeId) {
 pub fn populate(store: &mut WidgetStore) {
     button(store, ids::TOKENS_CLOSE);
     button(store, ids::TOKENS_RESET_ALL);
+    // O interop DTCG (plano UI/UX W9). ⚠️ Registados SEMPRE, como todos os outros: o registro é
+    // sobre *este id pode receber foco*, e o `paint` também os oferece sempre — ver o `ids`.
+    button(store, ids::TOKENS_DTCG_EXPORT);
+    button(store, ids::TOKENS_DTCG_IMPORT);
     for row in 0..ColorToken::ALL.len() {
         // ⚠️ A swatch é alvo de PICKER, não botão: registá-la como botão faria o clique acender o
         // widget e **nunca abrir o picker** — a cor ficaria ineditável com todos os gates verdes.

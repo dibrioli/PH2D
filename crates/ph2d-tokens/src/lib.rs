@@ -38,10 +38,14 @@
 //!
 //! - Rendering (Vello, raster) — lives in `ph2d-editor` / `ph2d-vector`.
 //! - Theme persistence — lives in `ph2d-editor` settings.
-//! - **Authoring** the tokens. The table is a hand-edited JSON and the four
-//!   themes are enum variants; aliases, math, artist-defined modes and DTCG
-//!   import/export are not here. See `docs/Vector Module/Estudos/
-//!   PLANO_UI_UX_padrao_figma.md` §4/W4.
+//! - **Authoring** the tokens está AQUI desde a W6: a camada de override ([`overrides`],
+//!   [`num_overrides`]) dá alias e math sobre a tabela gerada, e o [`route`] é a porta por onde
+//!   uma tabela vinda de FORA encontra o token dela.
+//!
+//!   ⚠️ Ficam de fora, cada um com o seu motivo: **os modos são os quatro variants do
+//!   [`Theme`]** (o artista não cria um quinto), e o **codec DTCG** vive na `ph2d-tokens-dtcg`,
+//!   porque esta crate é a folha de que 44 widgets dependem e um parser de JSON é uma aresta que
+//!   ela não paga. Ver `docs/Vector Module/Estudos/PLANO_UI_UX_padrao_figma.md` §4/W4.
 
 mod alias_walk;
 pub mod chrome;
@@ -59,6 +63,9 @@ pub mod num_overrides;
 pub mod num_runtime;
 pub mod overrides;
 pub mod radius;
+/// **A chave decide a família** — a porta única por onde uma tabela de FORA (o arquivo de projeto,
+/// um `.tokens.json` DTCG) encontra o token a que pertence.
+pub mod route;
 pub mod spacing;
 pub mod stroke;
 pub mod theme;

@@ -146,8 +146,24 @@ fn paint_body(
             x,
             w,
             y,
-        ) + Spacing::Sm.px();
+        ) + Spacing::Xs.px();
     }
+
+    // **O interop DTCG** (plano UI/UX W9) — o par vive ao lado do *Reset This Mode* porque tem o
+    // MESMO escopo: uma operação sobre o modo inteiro, as duas famílias juntas.
+    //
+    // ⚠️ **Sem o `if n > 0` do vizinho, e a assimetria é a decisão.** Um *Reset* de um modo de
+    // fábrica é um clique que não faz nada; um EXPORT de um modo de fábrica é o design system
+    // inteiro, que é precisamente o que alguém quer levar para outra ferramenta. Condicioná-lo ao
+    // que o artista autorou daria um arquivo vazio no caso mais comum.
+    y = command_pair(
+        ctx,
+        (ids::TOKENS_DTCG_EXPORT, tr("panel.tokens.dtcg.export")),
+        (ids::TOKENS_DTCG_IMPORT, tr("panel.tokens.dtcg.import")),
+        x,
+        w,
+        y,
+    ) + Spacing::Sm.px();
 
     for (row, &token) in ColorToken::ALL.iter().enumerate() {
         y = paint_token_row(
@@ -370,8 +386,39 @@ pub(crate) fn command(
     w: f32,
     y: f32,
 ) -> f32 {
+    command_at(ctx, id, label, Rect::new(x, y, w, ROW_H_PX));
+    y + ROW_H_PX
+}
+
+/// **DOIS comandos na mesma linha** — o par de interop DTCG (plano UI/UX W9).
+///
+/// ⚠️ Lado a lado, e não empilhados: importar e exportar são a MESMA operação em dois sentidos,
+/// e separá-los em duas linhas faria o artista procurar o segundo em vez de o ver ao lado do
+/// primeiro. Os dois chamam o mesmo [`command_at`] — uma segunda cópia da pintura de um botão
+/// seria a que diverge no dia em que o estilo do botão mudar.
+fn command_pair(
+    ctx: &mut PaintCtx,
+    left: (ph2d_a11y::NodeId, &str),
+    right: (ph2d_a11y::NodeId, &str),
+    x: f32,
+    w: f32,
+    y: f32,
+) -> f32 {
+    let gap = Spacing::Xs.px();
+    let half = ((w - gap) * 0.5).max(0.0);
+    command_at(ctx, left.0, left.1, Rect::new(x, y, half, ROW_H_PX));
+    command_at(
+        ctx,
+        right.0,
+        right.1,
+        Rect::new(x + half + gap, y, half, ROW_H_PX),
+    );
+    y + ROW_H_PX
+}
+
+/// Um comando num rect dado — a pintura e o registro de hit, num sítio só.
+fn command_at(ctx: &mut PaintCtx, id: ph2d_a11y::NodeId, label: &str, rect: Rect) {
     let theme = ctx.host.theme();
-    let rect = Rect::new(x, y, w, ROW_H_PX);
     let state = ctx
         .host
         .store()
@@ -388,7 +435,6 @@ pub(crate) fn command(
         theme,
     );
     hit_index.register(id, rect);
-    y + ROW_H_PX
 }
 
 /// O nome do modo, como o artista o conhece.

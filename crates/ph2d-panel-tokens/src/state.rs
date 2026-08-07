@@ -71,6 +71,16 @@ pub enum TokensIntent {
     /// ⚠️ Texto VAZIO significa *retire a fórmula* — é o gesto que o artista faz (apagar o campo),
     /// e não um valor à espera de um caso especial.
     NumFormula { row: usize, src: String },
+    /// **A tabela deste modo SAI** para um `.tokens.json` DTCG (plano UI/UX W9).
+    ///
+    /// ⚠️ Sem operando: quem escolhe o arquivo é a shell, que é a única que tem o diálogo nativo.
+    /// Um caminho enfiado aqui faria o painel — que não sabe o que é um sistema de arquivos —
+    /// passar a ter opinião sobre onde as coisas se guardam.
+    ExportDtcg,
+    /// **Um `.tokens.json` DTCG re-veste o MODO VIGENTE.**
+    ///
+    /// ⚠️ O modo é o do painel, nunca o que o arquivo diz — ver o id `TOKENS_DTCG_IMPORT`.
+    ImportDtcg,
     /// **`from` passa a SEGUIR `to`** (plano UI/UX W4b).
     ///
     /// ⚠️ O ARMAR não é intent, e a assimetria é deliberada: armar não muda o documento — é o

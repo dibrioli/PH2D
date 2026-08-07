@@ -169,6 +169,16 @@ pub(crate) fn dispatch(hero: &mut HeroScreen, toasts: &mut ToastQueue) -> bool {
                     }
                 }
             }
+            // ── O interop DTCG (plano UI/UX W9) ──────────────────────────
+            //
+            // ⚠️ Os dois só aparecem aqui como uma LINHA cada: a política mora no
+            // [`super::tokens_bridge_dtcg`], porque um diálogo nativo não corre num teste e o que
+            // decide (que modo recebe, o que se mantém, por que porta se escreve) tem de ser
+            // dirigível sem tocar num arquivo.
+            TokensIntent::ExportDtcg => super::tokens_bridge_dtcg::export(theme, toasts),
+            TokensIntent::ImportDtcg => {
+                changed |= super::tokens_bridge_dtcg::import(theme, toasts);
+            }
             TokensIntent::NumLink { from, to } => {
                 if let (Some(&a), Some(&b)) = (NumToken::ALL.get(from), NumToken::ALL.get(to)) {
                     match set_num_override(theme, a, Some(NumValue::Alias(b))) {

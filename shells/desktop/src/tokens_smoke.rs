@@ -177,6 +177,23 @@ const STEPS: &[Step] = &[
         ],
     },
     Step {
+        verb: "O DTCG — é ESTA a wave (W9)",
+        lines: &[
+            "No topo há 'Export DTCG...' e 'Import DTCG...', lado a lado.",
+            "Autore uma cor, um elo e uma fórmula. Export: escolha um lugar.",
+            "Abra o arquivo num editor de texto — ele é para ser LIDO:",
+            "cada token com $type e $value, o elo como  {accent} , e a",
+            "fórmula no $extensions (o $value dela é o número que ela deu).",
+            "Agora *Reset This Mode* e Import do mesmo arquivo: os três voltam,",
+            "e a fórmula volta como FÓRMULA. O toast diz quantos entraram.",
+            "⚠️ Import de um arquivo de fábrica autora ZERO — o toast diz",
+            "'already at factory'. Se ele autorar ~80, PARE: a tabela de",
+            "fábrica ficou inalcançável e re-editar tokens.json não chega ao app.",
+            "Aperte M antes do Import e ele re-veste o modo que está NA TELA,",
+            "não o que o arquivo diz no $description.",
+        ],
+    },
+    Step {
         verb: "O CONTROLE",
         lines: &[
             "As três formas do canvas não mudam de cor em passo nenhum.",

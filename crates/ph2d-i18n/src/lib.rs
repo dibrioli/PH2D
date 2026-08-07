@@ -426,6 +426,16 @@ pub fn tr(key: &str) -> &'static str {
         // se está a falar. A unidade é a razão de as três escalas serem UMA família.
         "panel.tokens.numeric" => "Scale (px)",
         "panel.tokens.formula.hint" => "e.g. {spacing.md} * 2",
+        // O INTEROP DTCG (plano UI/UX W9). ⚠️ **"DTCG" não é traduzido**: é o nome próprio do
+        // formato W3C que o Tokens Studio / Style Dictionary / Penpot falam, e é a palavra que o
+        // artista procura no menu da OUTRA ferramenta — a mesma lei que mantém "WCAG 2.2 AA" e as
+        // chaves dos tokens fora desta tabela.
+        //
+        // ⚠️ E as reticências são ASCII (`...`), como as do `Import Font...` do painel de vetor —
+        // este painel não tem outro botão que abra um diálogo com quem ser consistente, e a fonte
+        // agrupada cobre o `\u{2026}` mas o gate de tofu não o vigia.
+        "panel.tokens.dtcg.export" => "Export DTCG...",
+        "panel.tokens.dtcg.import" => "Import DTCG...",
         "panel.physics.title" => "Physics",
         "panel.physics.section.world" => "World",
         "panel.physics.section.solver" => "Solver",

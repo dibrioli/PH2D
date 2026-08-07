@@ -99,11 +99,48 @@ pub struct Trail {
 }
 
 /// Canvas rect touched by a transfer (cell coords, inclusive).
+#[derive(Clone, Copy)]
 pub struct TouchedRect {
     pub x0: i32,
     pub y0: i32,
     pub x1: i32,
     pub y1: i32,
+}
+
+impl TouchedRect {
+    /// A união de dois retângulos tocados; `None` é o conjunto vazio.
+    ///
+    /// Existe porque um dab de tinta escreve no grid por **DUAS** portas — o
+    /// `accumulate` carimba a umidade, o `transfer` pousa o pigmento — e quem
+    /// declara o sujo tem de declarar as duas. Unir aqui, e não no chamador,
+    /// é o que mantém **um** `merge_dirty` por porta de dispatch.
+    #[must_use]
+    pub fn union(a: Option<Self>, b: Option<Self>) -> Option<Self> {
+        match (a, b) {
+            (Some(a), Some(b)) => Some(Self {
+                x0: a.x0.min(b.x0),
+                y0: a.y0.min(b.y0),
+                x1: a.x1.max(b.x1),
+                y1: a.y1.max(b.y1),
+            }),
+            (some, None) | (None, some) => some,
+        }
+    }
+}
+
+/// O que uma acumulação de tinta fez — ver [`Trail::accumulate_paint`].
+///
+/// ⚠️ **É um struct e não o `bool` que era, de propósito:** o `wrote` nasceu
+/// porque a umidade escrita pelo `accumulate` **nunca era declarada suja**
+/// (Enio, 2026-08-07: *"se Show Wet estiver checado e pintar com água pura não
+/// se vê a água"*), e um campo novo num `bool` de retorno seria exatamente o
+/// canal que o terceiro chamador nasce sem. Trocando o TIPO, o compilador
+/// obriga cada porta de dispatch a olhar para ele.
+pub struct Accumulated {
+    /// A janela encheu: o chamador tem de transferir.
+    pub window_full: bool,
+    /// Onde este dab escreveu no canvas (o carimbo de umidade), em células.
+    pub wrote: Option<TouchedRect>,
 }
 
 /// Grow a local-extent tuple (lx0, ly0, lx1, ly1) to include (lx, ly).
@@ -283,8 +320,12 @@ impl Trail {
         self.spacing = spacing;
     }
 
-    /// Accumulate one paint dab into the trail. Returns true when the window
-    /// is full and the caller must transfer.
+    /// Accumulate one paint dab into the trail. `window_full` says the caller
+    /// must transfer; `wrote` is the canvas rect this dab already changed.
+    ///
+    /// ⚠️ **Um `accumulate` JÁ escreve no grid** — ele carimba a umidade
+    /// (`wet[i]`) por baixo do dab, e isso é estado do documento, não rascunho
+    /// da janela. Quem escreve declara.
     pub fn accumulate_paint(
         &mut self,
         g: &mut Grid,
@@ -292,7 +333,7 @@ impl Trail {
         tex: &[f32],
         dab: &Dab,
         ext_bypass: bool,
-    ) -> bool {
+    ) -> Accumulated {
         self.accumulate_paint_impl(g, p, tex, dab, ext_bypass, None, None)
     }
 
@@ -312,7 +353,7 @@ impl Trail {
         ext_bypass: bool,
         sil: &mut dyn FnMut(i32, i32) -> f64,
         grain: Option<&mut dyn FnMut(i32, i32) -> f64>,
-    ) -> bool {
+    ) -> Accumulated {
         self.accumulate_paint_impl(g, p, tex, dab, ext_bypass, Some(sil), grain)
     }
 
@@ -326,7 +367,7 @@ impl Trail {
         ext_bypass: bool,
         sil: Option<&mut dyn FnMut(i32, i32) -> f64>,
         grain: Option<&mut dyn FnMut(i32, i32) -> f64>,
-    ) -> bool {
+    ) -> Accumulated {
         if self.dab_count == 0 {
             // the window's first dab anchors it
             self.anchor_x = js_round(dab.x) as i32;
@@ -348,6 +389,12 @@ impl Trail {
         let pig = &mut self.pig;
         let water = &mut self.water;
         let mut ext = (self.lx0, self.ly0, self.lx1, self.ly1);
+        // O que ESTE dab escreveu no CANVAS, em células. Distinto do `ext`
+        // acima: aquele é a extensão da JANELA (coordenadas locais, e só de
+        // texels que couberam nela), este é o carimbo de umidade — gravado
+        // ANTES do teste de janela, e alcança células que a janela não
+        // descreve. Sentinela de vazio: `x1 < x0`, a mesma do `touch_ext`.
+        let mut wrote = (0i32, 0i32, -1i32, -1i32);
         let Grid {
             s,
             w,
@@ -390,7 +437,14 @@ impl Trail {
             }
             // Wetness seed: OVERWRITE (not max) — repainting can dry the
             // byte back down.
+            //
+            // ⚠️ **Esta é uma escrita no DOCUMENTO, e é declarada aqui.** Ela
+            // acontece mesmo quando nada de pigmento vai pousar (Pigment 0, ou
+            // um texel fora da janela do trail), e é dela que o véu do Show Wet
+            // se alimenta — só o `transfer` declarava sujo, e o retângulo dele
+            // é onde o PIGMENTO caiu, um conjunto diferente deste.
             wet[i] = wet_byte_from_paper(tooth);
+            touch_ext(&mut wrote, x, y);
             let lx = x - anchor_x + self.half;
             let ly = y - anchor_y + self.half;
             if !(0..self.size).contains(&lx) || !(0..self.size).contains(&ly) {
@@ -429,7 +483,15 @@ impl Trail {
         }
         (self.lx0, self.ly0, self.lx1, self.ly1) = ext;
         self.dab_count += 1;
-        self.dab_count > self.window_size
+        Accumulated {
+            window_full: self.dab_count > self.window_size,
+            wrote: (wrote.2 >= wrote.0).then_some(TouchedRect {
+                x0: wrote.0,
+                y0: wrote.1,
+                x1: wrote.2,
+                y1: wrote.3,
+            }),
+        }
     }
 
     /// Accumulate one blend dab: a saturating mask, no water/tip/wetness

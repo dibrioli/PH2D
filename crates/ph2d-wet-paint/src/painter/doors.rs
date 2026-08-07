@@ -136,7 +136,7 @@ impl Engine {
             self.brush_tex = Some(tex);
             return;
         };
-        let full = match sil {
+        let acc = match sil {
             Some(sil) => trail.accumulate_paint_shaped(
                 &mut layer.grid,
                 &p,
@@ -148,11 +148,14 @@ impl Engine {
             ),
             None => trail.accumulate_paint(&mut layer.grid, &p, &tex, &dab, ext_bypass),
         };
-        let rect = if full {
+        let landed = if acc.window_full {
             trail.transfer_paint(&mut layer.grid, &p)
         } else {
             None
         };
+        // As DUAS escritas do dab: o carimbo de umidade (todo dab) e o pigmento
+        // pousado (quando a janela enche). Ver [`crate::trail::Accumulated`].
+        let rect = TouchedRect::union(acc.wrote, landed);
         self.brush_tex = Some(tex);
         if let Some(rc) = rect {
             self.merge_dirty(rc.x0, rc.y0, rc.x1, rc.y1);

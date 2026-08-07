@@ -86,7 +86,7 @@ fn measure_what_a_wet_dab_is_made_of() {
             let t0 = Instant::now();
             let full = t.accumulate_paint(g, &p, &tex, &dab_at(x, cy, r), false);
             acc_ms += t0.elapsed().as_secs_f64() * 1e3;
-            if full {
+            if full.window_full {
                 let t1 = Instant::now();
                 let _ = t.transfer_paint(g, &p);
                 tra_ms += t1.elapsed().as_secs_f64() * 1e3;
@@ -178,7 +178,7 @@ fn measure_what_the_hosts_silhouette_costs_over_the_engines_own() {
                     t.accumulate_paint(g, &p, &tex, &d, false)
                 };
                 row[slot] += t0.elapsed().as_secs_f64() * 1e3;
-                if full {
+                if full.window_full {
                     let _ = t.transfer_paint(g, &p);
                 }
             }

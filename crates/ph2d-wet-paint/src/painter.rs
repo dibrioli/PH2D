@@ -282,14 +282,17 @@ impl Engine {
         let layer = &mut self.layers[self.active_layer];
         let rect: Option<TouchedRect> = match self.tool {
             Tool::Paint => {
-                if self
+                let acc = self
                     .trail
-                    .accumulate_paint(&mut layer.grid, &p, &tex, &dab, ext_bypass)
-                {
+                    .accumulate_paint(&mut layer.grid, &p, &tex, &dab, ext_bypass);
+                let landed = if acc.window_full {
                     self.trail.transfer_paint(&mut layer.grid, &p)
                 } else {
                     None
-                }
+                };
+                // As DUAS escritas do dab: o carimbo de umidade (todo dab) e o
+                // pigmento pousado (quando a janela enche).
+                TouchedRect::union(acc.wrote, landed)
             }
             Tool::Blend => {
                 // Blend is a tool (fixed hardness 4.8, intensity clamped to 3)

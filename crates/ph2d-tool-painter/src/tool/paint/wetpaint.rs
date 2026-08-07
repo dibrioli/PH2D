@@ -345,10 +345,18 @@ mod flow_ratio_tests; // os gates de PRODUTO da razão da grade de FLUXO
 #[cfg(test)]
 #[path = "wetpaint/offthread_tests.rs"]
 mod offthread_tests; // os gates da sim FORA da thread do frame
+
+// o veu do Show Wet e VIVO (report do Enio, 2026-08-07)
+#[cfg(test)]
+#[path = "wetpaint/showwet_tests.rs"]
+mod showwet_tests;
+
 #[cfg(test)]
 mod tests; // the W1/W2 gates — child file (workspace file-LOC cap)
+
 #[cfg(test)]
 mod tests_doc22; // the doc-22 gates (tuning/tilt/tools/actions/flags)
+
 #[cfg(test)]
 #[path = "wetpaint/undo_drip_tests.rs"]
 mod undo_drip_tests; // o escorrido que sobrou do Undo (smoke do Enio, 2026-07-26)

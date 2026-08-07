@@ -133,7 +133,21 @@ impl Mesh {
                 let v = (m[a as usize] + m[b as usize]) * 0.5;
                 m.push(v);
             }
+            // ⚠️ **O AO herda a MÉDIA dos pais, ao contrário da curvatura logo
+            // acima** — e a diferença é a classificação do canal, não gosto. A
+            // curvatura entra como placeholder porque o `refresh_region` a
+            // reescreve; o AO **ninguém reescreve** (ele só volta com um bake),
+            // então um placeholder ficaria na malha como um buraco preto no meio
+            // de uma superfície assada. A média dos pais é a melhor estimativa
+            // disponível — e o `ao_stale` abaixo é o que impede essa estimativa
+            // de se apresentar como medição.
+            if let Some(a_o) = self.ao.as_mut() {
+                let v = (a_o[a as usize] + a_o[b as usize]) * 0.5;
+                a_o.push(v);
+            }
         }
+        // A topologia mudou: o que estava assado descreve outra malha.
+        self.ao_stale = true;
         // 2 — as faces. Só o que MUDA é copiado para ter o "antes".
         let changed: Vec<(u32, Face, Face)> = edits
             .iter()

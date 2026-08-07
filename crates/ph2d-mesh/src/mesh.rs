@@ -34,6 +34,10 @@ mod splice;
 #[path = "mesh_shrink.rs"]
 mod shrink;
 
+/// OS PLANOS OPCIONAIS (cor, máscara, AO) e a validade do AO — ver o módulo.
+#[path = "mesh_planes.rs"]
+mod planes;
+
 pub use shrink::VertexMerge;
 pub use splice::VertexAppend;
 
@@ -53,6 +57,24 @@ pub struct Mesh {
     curvatures: Vec<f32>,
     colors: Option<Vec<[f32; 3]>>,
     masks: Option<Vec<f32>>,
+    /// **O AO assado por vértice** (`ph2d_sdf::bake_ao`) — quanto do céu cada
+    /// vértice enxerga, `1` aberto e `0` enterrado.
+    ///
+    /// ⚠️ **Ele não é da família de nenhum dos dois vizinhos acima, e é isso que
+    /// decide o resto.** A curvatura é **DERIVADA**: as portas a recomputam, e
+    /// ela nunca fica velha. A máscara é **AUTORADA**: as portas a carregam, e
+    /// ela continua válida seja qual for a forma. O AO é **MEDIDO DA FORMA** —
+    /// então mexer na forma não o apaga nem o mantém: deixa-o **ERRADO**.
+    ///
+    /// E errado de um jeito que ninguém reporta: uma fresta clara demais lê como
+    /// escolha de iluminação, não como número velho. Daí o [`Self::ao_is_stale`]
+    /// existir ao lado — o canal carrega a própria data de validade, porque a
+    /// obsolescência aqui é **inerente ao desenho e tem de ser DITA**.
+    ///
+    /// `None` = nunca assado (e não paga 4 B/vértice por isso).
+    ao: Option<Vec<f32>>,
+    /// A forma mudou desde o último bake de [`Self::ao`]? Ver o campo acima.
+    ao_stale: bool,
     faces: Vec<Face>,
     face_normals: Vec<[f32; 3]>,
     adjacency: Adjacency,
@@ -64,6 +86,12 @@ pub struct Mesh {
 pub const DEFAULT_COLOR: [f32; 3] = [1.0, 1.0, 1.0];
 /// Máscara de um vértice que ninguém mascarou (0 = totalmente esculpível).
 pub const DEFAULT_MASK: f32 = 0.0;
+/// AO de um vértice que ninguém assou (1 = céu aberto).
+///
+/// ⚠️ **O default é o que NÃO escurece.** Um canal ausente tem de ser
+/// invisível; se a ausência escurecesse, toda malha nasceria suja e o
+/// artista iria procurar a sujeira no shader.
+pub const DEFAULT_AO: f32 = 1.0;
 
 impl Mesh {
     /// Constrói a partir de posições e faces cruas: valida os índices, deriva
@@ -194,56 +222,6 @@ impl Mesh {
         self.bounds
     }
 
-    /// A cor por vértice, se a malha já foi pintada. `None` = `DEFAULT_COLOR`
-    /// em todo vértice.
-    #[must_use]
-    pub fn colors(&self) -> Option<&[[f32; 3]]> {
-        self.colors.as_deref()
-    }
-
-    /// A máscara por vértice, se alguém mascarou. `None` = `DEFAULT_MASK`.
-    #[must_use]
-    pub fn masks(&self) -> Option<&[f32]> {
-        self.masks.as_deref()
-    }
-
-    /// Materializa o plano de cor (aloca no primeiro uso — ver o doc do módulo).
-    pub fn colors_mut(&mut self) -> &mut [[f32; 3]] {
-        self.colors
-            .get_or_insert_with(|| vec![DEFAULT_COLOR; self.positions.len()])
-    }
-
-    /// Materializa o plano de máscara.
-    pub fn masks_mut(&mut self) -> &mut [f32] {
-        self.masks
-            .get_or_insert_with(|| vec![DEFAULT_MASK; self.positions.len()])
-    }
-
-    /// **Tira o plano de máscara da malha**, se houver — o gesto de *limpar*, e
-    /// a metade que empresta o plano a quem precisa ler a adjacência ao mesmo
-    /// tempo.
-    ///
-    /// ⚠️ **A segunda razão é o borrow, e ela decide o desenho das operações de
-    /// máscara:** borrar uma máscara é `m ← média do anel`, o que exige a
-    /// adjacência (imutável) e o plano (mutável) no MESMO escopo. Clonar a
-    /// adjacência custaria milhões de `u32` por passo; tirar o plano custa mover
-    /// um `Vec`. Quem tira devolve com [`Self::put_masks`].
-    ///
-    /// Devolve `None` se ninguém mascarou — e é isso que faz *limpar uma malha
-    /// limpa* não alocar nada.
-    pub fn take_masks(&mut self) -> Option<Vec<f32>> {
-        self.masks.take()
-    }
-
-    /// **Tira o plano de COR da malha**, se houver — o espelho de
-    /// [`Self::take_masks`], e ele existe porque *restaurar* um estado tem de
-    /// poder devolver a malha ao que ela era, inclusive a **não ter** o plano.
-    /// Sem ele, desfazer uma operação que criou a cor deixaria a malha pagando
-    /// 12 B/vértice por um canal que ninguém pediu.
-    pub fn take_colors(&mut self) -> Option<Vec<[f32; 3]>> {
-        self.colors.take()
-    }
-
     /// **Descarta os vértices e faces do FIM** — a inversa exata de uma
     /// operação que só ACRESCENTA (hoje: fechar buraco).
     ///
@@ -286,6 +264,10 @@ impl Mesh {
         if let Some(m) = self.masks.as_mut() {
             m.truncate(verts);
         }
+        if let Some(a) = self.ao.as_mut() {
+            a.truncate(verts);
+            self.ao_stale = true;
+        }
         self.rebuild();
         Ok(())
     }
@@ -327,21 +309,6 @@ impl Mesh {
         added
     }
 
-    /// Devolve o plano tirado por [`Self::take_masks`].
-    ///
-    /// ⚠️ **Recusa em silêncio um plano do tamanho errado** — não: ele PANICA,
-    /// porque um plano curto seria lido como *"os últimos vértices estão
-    /// livres"*, que é uma máscara diferente da que o artista pintou, e nada na
-    /// tela diria por quê.
-    pub fn put_masks(&mut self, masks: Vec<f32>) {
-        assert_eq!(
-            masks.len(),
-            self.positions.len(),
-            "o plano de máscara tem de medir a malha"
-        );
-        self.masks = Some(masks);
-    }
-
     /// As posições para escrita — o que um kernel de pincel move.
     ///
     /// Quem escreve aqui **fica devendo** um `refresh_region`: a normal, o
@@ -350,6 +317,12 @@ impl Mesh {
     /// dab que reconstruísse o octree inteiro seria O(malha) num gesto que é
     /// O(pegada), que é precisamente o que este índice existe para evitar.
     pub fn positions_mut(&mut self) -> &mut [[f32; 3]] {
+        // ⚠️ **E fica devendo mais uma coisa: o AO passa a descrever a forma de
+        // antes.** Marcar aqui é o mais perto de uma porta ÚNICA que este plano
+        // consegue — `positions` é privado e esta é a única saída `&mut` dele,
+        // então todo kernel de pincel do módulo passa por aqui. As outras duas
+        // que mexem na forma são as de TOPOLOGIA, e elas marcam por conta.
+        self.ao_stale = true;
         &mut self.positions
     }
 

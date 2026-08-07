@@ -17,7 +17,8 @@
 |---|---|---|
 | **W4b.1** — o ALIAS | Um token de cor **SEGUE** outro, no mesmo modo. Gesto de duas etapas no botão de corrente da row. Detecção de ciclo **na porta de escrita**. Viaja no arquivo. | ✅ `=59` |
 | **W4b.2** — o CONTRASTE | A lei WCAG virou **DADO** (`ph2d_tokens::contrast::CONTRAST_PAIRS`): **uma lista, dois consumidores** (o gate de compilação e o painel). Bloco de aviso + marca nos **dois** lados do par. | ✅ `=59` |
-| **W4c.1** — a CAMADA NUMÉRICA | A escala (`spacing.*`/`radius.*`/`stroke.*`) vira autorável, no molde exacto do de cor: chave `(modo, token)`, porta única, ciclo na porta, alias que atravessa famílias (px é px). Row com chip+elo+Reset no MESMO painel; viaja no arquivo. ⚠️ **PENDENTE DE SMOKE** — handoff de integração [`HANDOFF_INTEGRACAO_line_Vector_W4c1_2026-08-06.md`](HANDOFF_INTEGRACAO_line_Vector_W4c1_2026-08-06.md). | ⏳ `=59` |
+| **W4c.1** — a CAMADA NUMÉRICA | A escala (`spacing.*`/`radius.*`/`stroke.*`) vira autorável, no molde exacto do de cor: chave `(modo, token)`, porta única, ciclo na porta, alias que atravessa famílias (px é px). Row com chip+elo+Reset no MESMO painel; viaja no arquivo. ⚠️ **`PROJECT_SCHEMA` 57→58** (PROVISÓRIO). | ✅ `=59` |
+| **W4c.2** — A ESCALA VIVA | `Spacing::px()` passa a ser o valor **AUTORADO**: `num_runtime` projecta o grafo para uma tabela plana uma vez por quadro, e os ~1187 sítios de leitura ficam vivos **sem serem tocados**. Os 13 `const` viraram `fn` (o compilador enumerou-os, e achou 3 que a varredura não via). ⚠️ **PENDENTE DE SMOKE** — handoff [`HANDOFF_INTEGRACAO_line_Vector_W4c2_2026-08-06.md`](HANDOFF_INTEGRACAO_line_Vector_W4c2_2026-08-06.md). | ⏳ `=59` |
 
 **Aprovados pelo Enio em 2026-08-06** (*"Tudo perfeito"*), cena `PH2D_BUILD_SMOKE=59`.
 
@@ -52,6 +53,13 @@ que o que já shipa**.
 Spacing::Sm.px();` não pode chamar uma fn não-const — e são **15 sítios `const`** assim
 (`grep -rn "const .*Spacing::.*\.px()" crates shells`).
 
+> ⚠️ **A W4c.2 mediu, e o número deste parágrafo era metade da história.** Os `const` são **13**
+> (a varredura acima perde os que vivem dentro de um `const fn` — o compilador achou-os), e os
+> sítios de LEITURA são **~1200**. Trocar cada um por `px_live(theme)` seria mil e duzentas edições
+> para responder mil e duzentas vezes uma pergunta que o app responde **uma** vez por quadro. Por
+> isso a resposta virou ao contrário: `px()` **é** o vivo, `factory_px()` é a fábrica, e a tabela
+> plana do `num_runtime` é publicada uma vez por quadro pela ponte. Detalhe no `num_runtime.rs`.
+
 **A arquitetura do padrão-ouro é a que o próprio plano enuncia** (§(b), Vol. 2 §4): *a tabela
 achatada por modo é a forma de RUNTIME; o grafo de autoria vive no editor.* Portanto:
 
@@ -77,18 +85,15 @@ um com o motivo escrito no `num.rs`.
 na **MESMA lista** `tokens`, roteado pela CHAVE.
 Detalhe, colisões e o que smoke-testar: [`HANDOFF_INTEGRACAO_line_Vector_W4c1_2026-08-06.md`](HANDOFF_INTEGRACAO_line_Vector_W4c1_2026-08-06.md).
 
-### W4c.2 — OS 15 SÍTIOS *(comece aqui)*
-`const` **item** → `px_live(theme)` no ponto de uso, **um a um**, rodando o `design_token_sync` a
-cada passo. É mecânico e é onde está o trabalho real. ⚠️ Um `const` que vira `fn` muda a assinatura
-de quem o consome — espere churn, não surpresa.
-⚠️ **O sítio a orçar primeiro é o `TOOL_RAIL_WIDTH_PX`**: ele alimenta dois `pub const RAIL_W`
-(`screens/layout.rs`, `screens/hero/style.rs`), então a conversão cascateia.
-⚠️ **E esta wave deve o TETO.** A porta recusa o que não é um comprimento e **não inventa um
-máximo** (§0: cap sem medição é palpite). Antes de ligar a leitura viva, meça isto: **o painel de
-Tokens desenha-se a si mesmo com estes tokens**, então um valor absurdo pode empurrar para fora da
-tela o *Reset* que o desfaria. Hoje é inofensivo porque ninguém lê.
+### ~~W4c.2 — OS 15 SÍTIOS~~ *(FEITA 2026-08-06, pendente de smoke)*
+Virou **a tabela achatada** em vez das 1200 edições (ver a nota na §2). O `TOOL_RAIL_WIDTH_PX`
+cascateou como previsto (dois `pub const RAIL_W` → `fn rail_w()`), e o **TETO foi MEDIDO**: com
+`spacing.* = 1024 px` o *Reset This Mode* pousa em `y = 2206` numa viewport de 900 **e a rolagem
+alcança-o**, em toda escala testada até `65536 px`. ⇒ **não há cap a escrever** — o penhasco
+`y ≈ 158 + 2·px` é função da altura da JANELA, e um literal estaria errado para metade dos
+monitores. Gate: `ph2d-panel-tokens/tests/scale_ceiling.rs`.
 
-### W4c.3 — MATH
+### W4c.3 — MATH *(comece aqui)*
 `TokenValue::Expr`. Só agora `{spacing.md} * 2` é o que o plano pediu desde o início.
 ⚠️ **NÃO comece por aqui.** Math sem a camada (W4c.1) é um parser sem onde guardar a resposta.
 

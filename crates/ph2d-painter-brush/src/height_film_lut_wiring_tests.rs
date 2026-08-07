@@ -67,6 +67,7 @@ impl Planes {
             grain: &mut self.grain,
             film: &mut self.film,
             radius: &mut self.radius,
+            gate: None,
         }
     }
 }

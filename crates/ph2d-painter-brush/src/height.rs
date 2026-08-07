@@ -209,9 +209,67 @@ pub struct HeightFields<'a> {
     /// re-derives the stroke at the size that actually made it — and the Size slider AFTER a stroke
     /// no longer silently re-scales relief that is already on the canvas.
     pub radius: &'a mut [f32],
+    /// **O quanto deste dab pousa em cada texel** — o gate de depósito, `None` = livre.
+    ///
+    /// ⚠️ Ele entra AQUI, no único lugar onde um dab escreve o envelope, e não em quem LÊ o envelope
+    /// depois: o relevo é lido por quatro consumidores (a luz do traço vivo, a cobertura no commit, o
+    /// material no commit, o re-derive do card Body) e o deslocamento do Push é tomado DENTRO deste
+    /// mesmo laço. Uma regra escrita em cada leitor é uma regra que o quinto leitor nasce sem.
+    ///
+    /// E ela não compõe entre dabs, o que é o que a torna aplicável no lugar mais quente do app: o
+    /// envelope é um `max`, e `max_k(f·w_k) = f·max_k(w_k)` — um fator constante por texel atravessa o
+    /// máximo intacto, então nenhum número de dabs (nem a taxa de polling do mouse) muda o resultado.
+    pub gate: Option<DepositGate<'a>>,
+}
+
+/// O fator por-texel que ESCALA o que um dab deposita: `1` livre, `0` congelado.
+///
+/// ⚠️ **Descrito pela REPRESENTAÇÃO, não pelo assunto** — este crate não aprende o que é uma *máscara
+/// de proteção* nem uma *seleção*; ele recebe *"um plano cuja luminância é um fator"* e *"um plano de
+/// bytes que é um fator"*, e multiplica. Quem sabe o que os planos SIGNIFICAM é o Painter, que é onde
+/// a mesma pergunta já é feita ao pigmento (`project_gate_region`).
+#[derive(Clone, Copy, Default)]
+pub struct DepositGate<'a> {
+    /// Um plano RGBA cuja **luminância** (Rec.601, a mesma do compositor) é o fator.
+    pub luma_rgba: Option<&'a [u8]>,
+    /// Um plano de bytes que **é** o fator (`255` = livre).
+    pub scalar: Option<&'a [u8]>,
+}
+
+impl DepositGate<'_> {
+    /// O fator em `i` — o PRODUTO dos planos presentes, exatamente como o gate do pigmento compõe
+    /// proteção × seleção. Um texel além do fim de um plano é um texel sobre o qual aquele plano não
+    /// diz nada, e fica livre (a mesma postura do `project_gate_region`).
+    #[inline]
+    #[must_use]
+    pub fn factor_at(&self, i: usize) -> f32 {
+        let mut k = 1.0_f32;
+        if let Some(s) = self.luma_rgba
+            && i < s.len() / 4
+        {
+            let b = i * 4;
+            k *= (0.299 * f32::from(s[b])
+                + 0.587 * f32::from(s[b + 1])
+                + 0.114 * f32::from(s[b + 2]))
+                / 255.0;
+        }
+        if let Some(m) = self.scalar
+            && i < m.len()
+        {
+            k *= f32::from(m[i]) / 255.0;
+        }
+        k
+    }
 }
 
 impl HeightFields<'_> {
+    /// O fator do gate em `i` — `1.0` EXATO sem gate, e é isso que torna o kernel byte-idêntico onde
+    /// não há máscara nenhuma (`x * 1.0 == x` em IEEE-754).
+    #[inline]
+    fn gate_at(&self, i: usize) -> f32 {
+        self.gate.map_or(1.0, |g| g.factor_at(i))
+    }
+
     /// Whether every plane is at least `n` long — a real early-out, not a `debug_assert` that vanishes
     /// from the build the artist runs (the lesson of the 2026-07-12 SIGSEGV).
     fn fits(&self, n: usize) -> bool {
@@ -362,10 +420,16 @@ pub fn accumulate_dab_height(
                 continue;
             }
             let i = (py as usize) * (width as usize) + px as usize;
+            // **O gate do depósito** — quanto deste dab pousa AQUI. Sem gate é `1.0` exato, e
+            // `x * 1.0 == x`, então o kernel de um documento sem máscara é byte-idêntico.
+            let k = fields.gate_at(i);
+            if k <= 0.0 {
+                continue; // texel congelado: nem filme, nem carga, nem mordida do Push
+            }
             // The **film's** envelope, taken FIRST and on its own: the light's coverage is a different
             // function of the dab than the relief's ingredient is, so it cannot ride the same winner.
             // `coverage · film` is exactly the old `solid_paint(w, coverage)` when `film = film_of(w)`.
-            let fq = ((coverage * film).clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
+            let fq = ((coverage * film * k).clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
             if fq > fields.film[i] {
                 fields.film[i] = fq;
                 touched = true;
@@ -380,7 +444,7 @@ pub fn accumulate_dab_height(
             if ablate & crate::ablate::TAIL != 0 {
                 continue; // sem grain, sem mordida, sem as quatro escritas, sem derive_height
             }
-            let m = (w * coverage).clamp(0.0, 1.0);
+            let m = (w * coverage * k).clamp(0.0, 1.0);
             if m <= fields.paint[i] {
                 continue;
             }
@@ -464,6 +528,7 @@ pub fn erase_dab_height(
     height: u32,
     spec: &crate::BrushSpec,
     dab: &HeightDab<'_>,
+    gate: Option<DepositGate<'_>>,
 ) -> Option<crate::dab::DirtyRect> {
     let n = (width as usize) * (height as usize);
     if dst.len() < n || cover.len() < n || width == 0 || height == 0 {
@@ -501,7 +566,11 @@ pub fn erase_dab_height(
             if dst[i] == 0.0 && cover[i] == 0 {
                 continue;
             }
-            let scrub = 1.0 - (w * coverage).clamp(0.0, 1.0);
+            // O MESMO gate do deposito, com o sinal oposto: um texel congelado nao pode ser
+            // ESVAZIADO de relevo tampouco -- meia protecao (segura o que entra, deixa sair o que ja
+            // esta la) e pior que protecao nenhuma, porque o artista so descobre a metade que falta.
+            let k = gate.map_or(1.0, |g| g.factor_at(i));
+            let scrub = 1.0 - (w * coverage * k).clamp(0.0, 1.0);
             dst[i] *= scrub;
             cover[i] = (f32::from(cover[i]) * scrub) as u8; // the paint goes, so does its presence
             touched = true;

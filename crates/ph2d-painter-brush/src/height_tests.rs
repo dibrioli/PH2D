@@ -59,6 +59,7 @@ fn deposit_fields(spec: &BrushSpec) -> (Vec<f32>, Vec<f32>, Vec<u8>) {
         grain: &mut grain,
         film: &mut film,
         radius: &mut radius,
+        gate: None,
     };
     let _ = accumulate_dab_height(&mut fields, W, W, spec, &dab, None);
     (dst, paint, grain)
@@ -235,7 +236,7 @@ fn eraser_scrubs_the_relief_it_finds() {
         prev_center: None,
     };
     let mut cov = vec![255u8; (W * W) as usize];
-    let rect = erase_dab_height(&mut field, &mut cov, W, W, &spec, &dab)
+    let rect = erase_dab_height(&mut field, &mut cov, W, W, &spec, &dab, None)
         .expect("the eraser touched relief");
     // (The eraser scrubs the COMMITTED layer — height + coverage. The ingredient planes are the
     // live stroke's, and an erase drops that stroke: there is nothing left to re-derive.)

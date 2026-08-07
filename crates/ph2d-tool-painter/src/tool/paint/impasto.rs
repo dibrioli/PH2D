@@ -171,6 +171,24 @@ impl PainterTool {
         }
         let mut scratch = std::mem::take(&mut self.paint.relief.push_scratch);
 
+        // **A MASCARA ALCANCA O RELEVO** (Enio, 2026-08-07: *"Mask nao consegue mascarar o relevo de
+        // impasto, apenas o pigmento"*). O gate do pigmento (`mask::project_gate_region`) mora no
+        // CANVAS, e o relevo tem planos proprios -- entao o mesmo `keep = protecao x selecao` entra
+        // onde um dab ESCREVE o envelope, e daqui alcanca de uma vez o filme, a carga, o material e a
+        // mordida do Push, no traco VIVO e no commit, sem uma segunda lei em cada leitor.
+        let gate_luma = self
+            .mask_protection_active()
+            .then(|| std::sync::Arc::clone(&self.paint.mask_scratch_rgba));
+        let gate_sel = self
+            .selection_restricts_paint()
+            .then(|| std::sync::Arc::clone(&self.paint.selection_mask));
+        let gate = (gate_luma.is_some() || gate_sel.is_some()).then(|| {
+            ph2d_painter_brush::height::DepositGate {
+                luma_rgba: gate_luma.as_deref().map(Vec::as_slice),
+                scalar: gate_sel.as_deref().map(Vec::as_slice),
+            }
+        });
+
         // Resolve each dab's frames EXACTLY as the colour route will — same `d.dir` (Rake), same
         // footprint (Jitter Rotate), same Random draws, same order (Shape before Grain). The RNG is a
         // COPY: this pass must not advance the stream the colour pass is about to read (rule 2).
@@ -358,7 +376,7 @@ impl PainterTool {
                 wave[copy_slot].1 = None;
             }
             let hit = if erasing {
-                erase_dab_height(&mut field, &mut cover, w, h, &spec, &hd)
+                erase_dab_height(&mut field, &mut cover, w, h, &spec, &hd, gate)
             } else {
                 // The BITE rides inside the deposit's own walk (which already knows the silhouette and the
                 // envelope-so-far); the BANK is a separate pass over the RIM, which the deposit never
@@ -376,6 +394,7 @@ impl PainterTool {
                     grain: &mut grain,
                     film: &mut film,
                     radius: &mut radius,
+                    gate,
                 };
                 let laid = accumulate_dab_height(&mut fields, w, h, &spec, &hd, bite.as_mut());
                 let displaced = bite.map_or(0.0, |b| b.displaced);

@@ -576,3 +576,9 @@ fn mask_overlay_rgb(idx: u8) -> [u8; 3] {
         _ => [51, 51, 51],   // dark gray (default)
     }
 }
+
+// O gate de DEPÓSITO — a máscara alcançando o RELEVO (`height::DepositGate`). Irmão dos dois acima, e
+// arquivo próprio pelo mesmo motivo: o `mask_gate_tests` já está em 649 das 700 linhas.
+#[cfg(test)]
+#[path = "mask_relief_tests.rs"]
+mod mask_relief_tests;

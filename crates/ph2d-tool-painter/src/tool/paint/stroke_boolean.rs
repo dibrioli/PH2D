@@ -4,9 +4,8 @@
 //! multi-component contour trace, so a group of fillable Add/Remove shapes becomes the STROKED outline of
 //! the combined region (the inner arcs where they overlap vanish, as in a real boolean).
 
-use super::selection_shapes::{
-    SelectionShape, combine_into, rasterize_ellipse, sel_polygon_vertices,
-};
+use super::selection_shapes::{SelectionShape, combine_into, sel_polygon_vertices};
+use super::stroke_boolean_raster::window_sub_rect;
 use super::stroke_multi::StrokeOp;
 use super::*;
 use crate::undo::ShapeEditState;
@@ -14,11 +13,15 @@ use crate::undo::ShapeEditState;
 /// SUPERSAMPLE factor for the boolean mask: rasterise + trace at `SS×` the canvas resolution, then scale the
 /// contour back down, so the stroked boolean outline reads as SMOOTH as a direct (analytic) ellipse outline —
 /// no visible raster staircase (Enio 2026-07-04 wants a "perfect" Add/Remove appearance). Transcendental-free.
-const SS: usize = 3;
+pub(super) const SS: usize = 3;
 
 /// O wire de [`StrokeOp::Add`] — a Operation que CONTRIBUI região, e por isso a única que define a
 /// janela do composite.
 const ADD_WIRE: u8 = 1;
+
+/// O wire de [`StrokeOp::Remove`] — ela RETIRA região, então não alarga a janela, mas compõe por
+/// `(c · (255 − r)) / 255`, que é a identidade onde `r == 0`: é isso que a deixa entrar na sub-janela.
+const SUB_WIRE: u8 = 2;
 
 /// Build an editing [`CurveState`](crate::undo::CurveState) from a fitted [`CurveModel`] — installs the
 /// boolean-composite result as one editable Curve.
@@ -304,13 +307,50 @@ impl PainterTool {
         #[cfg(test)]
         let t_raster = std::time::Instant::now();
         let mut crisp = vec![0u8; sw * sh];
-        // ⚠️ **UM `region` para todas as formas.** Ele era alocado dentro do laço, uma vez por forma —
-        // com a janela do canvas isso eram 151 MB por forma, por move.
-        let mut region = vec![0u8; sw * sh];
+        // ⚠️ **UM `region` para todas as formas** — ele era alocado dentro do laço, uma vez por forma —
+        // e **do tamanho da FORMA, não da janela**. A janela do composite é a UNIÃO dos Add, então com
+        // quatro formas cada uma pagava quatro vezes a própria área: `region.fill(0)` percorria a união,
+        // o `rasterize_ellipse` avaliava a elipse em cada texel dela, e o `combine_into` compunha a união
+        // inteira — três varreduras de janela por forma, quando o que a forma pode escrever é a caixa
+        // dela.
+        //
+        // ⚠️ **A sub-janela é BYTE-IDÊNTICA, e a razão é aritmética, não empírica:** fora da caixa a
+        // `region` é zero, e `max(c, 0) == c` (união) e `(c · (255−0)) / 255 == c` (subtração) **em
+        // inteiros, exatamente**. Por isso a rota curta é oferecida SÓ a esses dois wires: o wire 0
+        // (Overlay) é um `copy_from_slice`, que **zeraria** tudo fora da caixa — hoje nenhum chamador o
+        // passa, e é justamente por isso que a guarda existe em vez de uma nota dizendo que ninguém passa.
+        let mut region: Vec<u8> = Vec::new();
+        // A rota de ablação do `diag` — no produto isto é um `false` constante (ver `set_force_full`).
+        #[cfg(test)]
+        let forced_full = diag::force_full();
+        #[cfg(not(test))]
+        let forced_full = false;
         for (sel, wire) in &fills {
-            region.fill(0);
-            self.rasterize_fill_ss(sel, sw, sh, origin, &mut region);
-            combine_into(&mut crisp, &region, *wire);
+            let sub = (!forced_full && (*wire == ADD_WIRE || *wire == SUB_WIRE))
+                .then(|| self.fill_shape_bounds(sel))
+                .flatten()
+                .and_then(|r| window_sub_rect(r, s, [x0, y0], sw, sh));
+            if let Some((rx, ry, rw, rh)) = sub {
+                region.clear();
+                region.resize(rw * rh, 0);
+                #[allow(clippy::cast_precision_loss)]
+                let sub_origin = [(x0 + rx) as f32, (y0 + ry) as f32];
+                self.rasterize_fill_ss(sel, rw, rh, sub_origin, &mut region);
+                for row in 0..rh {
+                    let d = (ry + row) * sw + rx;
+                    combine_into(
+                        &mut crisp[d..d + rw],
+                        &region[row * rw..(row + 1) * rw],
+                        *wire,
+                    );
+                }
+            } else {
+                // Sem caixa (um `Raster`, que este rasterizador não desenha) ou caixa fora da janela.
+                region.clear();
+                region.resize(sw * sh, 0);
+                self.rasterize_fill_ss(sel, sw, sh, origin, &mut region);
+                combine_into(&mut crisp, &region, *wire);
+            }
         }
         #[cfg(test)]
         let raster_us = t_raster.elapsed().as_micros() as u64;
@@ -511,77 +551,6 @@ impl PainterTool {
         true
     }
 
-    /// Rasterise one fill shape scaled by `SS` into the supersampled `crisp` via `op` (transcendental-free:
-    /// exact ellipse inside-test / baked-step polygon / flattened freehand → scanline fill).
-    /// Rasteriza UMA forma na janela local, com `origin` (em texels supersampleados) subtraído.
-    ///
-    /// ⚠️ **A janela é uma TELA VIRTUAL**, o mesmo truque da banda do `stamp_banded`: o rasterizador
-    /// recebe as coordenadas deslocadas e a largura/altura da janela, e o recorte cai do `clamp` que
-    /// ele já faz contra o tamanho da tela. Nenhuma segunda resposta a *"que pixels esta forma cobre?"*.
-    fn rasterize_fill_ss(
-        &self,
-        sel: &SelectionShape,
-        sw: usize,
-        sh: usize,
-        origin: [f32; 2],
-        region: &mut [u8],
-    ) {
-        let s = SS as f32;
-        let at = |p: [f32; 2]| [p[0] * s - origin[0], p[1] * s - origin[1]];
-        match sel {
-            SelectionShape::Ellipse { center, u, rx, ry } => {
-                rasterize_ellipse(at(*center), *u, rx * s, ry * s, sw, sh, region);
-            }
-            SelectionShape::Polygon {
-                center,
-                u,
-                rx,
-                ry,
-                sides,
-            } => {
-                let verts: Vec<[f32; 2]> = sel_polygon_vertices(*center, *u, *rx, *ry, *sides)
-                    .iter()
-                    .map(|p| at(*p))
-                    .collect();
-                scanline_fill(&verts, sw, sh, region);
-            }
-            SelectionShape::Freehand { model, .. } => {
-                let spine = self.freehand_spine(&model.points, &model.handles);
-                let verts: Vec<[f32; 2]> = spine.iter().map(|p| at(*p)).collect();
-                scanline_fill(&verts, sw, sh, region);
-            }
-            SelectionShape::Raster { .. } => {}
-        }
-    }
-}
-
-/// Even-odd scanline polygon fill of the closed polyline `pts` into `cov` (0/255) at `w`×`h`. Mirrors the
-/// selection `raster_lasso` but writes into a caller buffer at an arbitrary (supersampled) resolution.
-fn scanline_fill(pts: &[[f32; 2]], w: usize, h: usize, cov: &mut [u8]) {
-    if pts.len() < 3 {
-        return;
-    }
-    for yy in 0..h {
-        let yc = yy as f32 + 0.5;
-        let mut xs: Vec<f32> = Vec::new();
-        for i in 0..pts.len() {
-            let p = pts[i];
-            let q = pts[(i + 1) % pts.len()];
-            if (p[1] <= yc && yc < q[1]) || (q[1] <= yc && yc < p[1]) {
-                xs.push(p[0] + (yc - p[1]) / (q[1] - p[1]) * (q[0] - p[0]));
-            }
-        }
-        xs.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-        let mut i = 0;
-        while i + 1 < xs.len() {
-            let xa = xs[i].max(0.0).round() as usize;
-            let xb = (xs[i + 1].min(w as f32).round() as usize).min(w);
-            for xx in xa..xb {
-                cov[yy * w + xx] = 255;
-            }
-            i += 2;
-        }
-    }
 }
 
 /// **A decomposição do composite, MEDIDA no código que shipa.**
@@ -625,6 +594,26 @@ pub(super) mod diag {
         CELLS.with(|c| c.set(c.get().saturating_add(cells)));
         PTS.with(|c| c.set(c.get().saturating_add(pts)));
         CALLS.with(|c| c.set(c.get().saturating_add(1)));
+    }
+
+    thread_local! {
+        static FORCE_FULL: Cell<bool> = const { Cell::new(false) };
+    }
+
+    /// **A rota de ABLAÇÃO: manda toda forma pela janela CHEIA**, que é a rota que o composite rodava
+    /// antes da sub-janela por forma — e que segue VIVA no produto (é por ela que passa um `Raster`,
+    /// que não tem caixa).
+    ///
+    /// ⚠️ Ela não é uma segunda implementação: é o `else` do mesmo laço. Existe para o A/B ser feito
+    /// **costas-com-costas dentro da MESMA corrida**, sobre o mesmo estado — a lição que a §5.46 do doc
+    /// 28 pagou, e que esta máquina cobra: ela divide 32 núcleos com outras linhas, e comparar duas
+    /// CORRIDAS atribui a deriva de carga ao ganho.
+    pub(in crate::tool::paint) fn set_force_full(v: bool) {
+        FORCE_FULL.with(|c| c.set(v));
+    }
+
+    pub(super) fn force_full() -> bool {
+        FORCE_FULL.with(Cell::get)
     }
 
     /// Lê E ZERA. ⚠️ UM leitor só — dois publicariam pedaços da mesma janela como se fossem janelas

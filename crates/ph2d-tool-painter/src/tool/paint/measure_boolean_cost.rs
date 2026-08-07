@@ -87,6 +87,72 @@ fn measure_the_boolean_of_shapes() {
     }
 }
 
+/// **O A/B da sub-janela por forma, na MESMA corrida** — a janela cheia contra a caixa de cada forma.
+///
+/// ⚠️ **Comparar duas CORRIDAS aqui atribuiria a deriva da máquina ao ganho**, e esta worktree divide
+/// 32 núcleos com outras linhas: a §5.46 do doc 28 mediu o MESMO passo do produto indo de 14,5 a 30,2
+/// ms sem uma linha de código mudar. As duas rotas são cronometradas **alternadas, dentro da corrida,
+/// sobre o mesmo estado**, então a carga vira fator comum e a RAZÃO sobrevive.
+///
+/// ⚠️ A rota "cheia" **não é uma reimplementação**: é o `else` do mesmo laço, o que o composite fazia
+/// antes desta sub-janela e o que ele ainda faz para uma forma sem caixa.
+#[test]
+#[ignore = "measurement, not a gate — run explicitly"]
+fn measure_the_sub_rect_against_the_full_window() {
+    use super::stroke_boolean::diag;
+    println!("[shape-sys] rasterizar: janela CHEIA x caixa da FORMA — a mesma corrida, 4096");
+    println!(
+        "{:>8}  {:>11} {:>11}  {:>8}",
+        "formas", "cheia(ms)", "caixa(ms)", "razao"
+    );
+    for extra in [0usize, 1, 3] {
+        let side = 4096u32;
+        let mut t = tool(side, PaintMedia::Digital, 48.0);
+        #[allow(clippy::cast_precision_loss)]
+        let cx = (side / 2) as f32;
+        let r = 200.0f32;
+        t.set_stroke_op_mode(1);
+        for k in 0..extra {
+            #[allow(clippy::cast_precision_loss)]
+            let dx = -r * 1.6 + (k as f32) * r * 0.8;
+            t.paint.brush.stroke_method = StrokeMethod::Ellipse;
+            t.on_canvas_pointer(cp([cx + dx, cx], PointerPhase::Down));
+            t.on_canvas_pointer(cp([cx + dx + r, cx], PointerPhase::Move));
+            t.on_canvas_pointer(cp([cx + dx + r, cx], PointerPhase::Up));
+            t.park_active_shape();
+        }
+        t.paint.brush.stroke_method = StrokeMethod::Ellipse;
+        t.on_canvas_pointer(cp([cx, cx], PointerPhase::Down));
+        let (mut full, mut sub) = (Vec::new(), Vec::new());
+        for k in 0..9 {
+            let d = if k % 2 == 0 { r + 2.0 } else { r - 2.0 };
+            for force in [true, false] {
+                diag::set_force_full(force);
+                let _ = diag::take();
+                t.on_canvas_pointer(cp([cx + d, cx], PointerPhase::Move));
+                let g = diag::take();
+                let ms = g.raster_us as f64 / 1e3 / f64::from(g.calls.max(1));
+                // A 1ª volta aquece o alocador do `region` — descartada, como no irmão acima.
+                if k > 0 {
+                    if force { &mut full } else { &mut sub }.push(ms);
+                }
+            }
+        }
+        diag::set_force_full(false);
+        t.on_canvas_pointer(cp([cx + r, cx], PointerPhase::Up));
+        let med = |v: &mut Vec<f64>| {
+            v.sort_by(|a, b| a.partial_cmp(b).unwrap());
+            v[v.len() / 2]
+        };
+        let (a, b) = (med(&mut full), med(&mut sub));
+        println!(
+            "{:>8}  {a:>11.3} {b:>11.3}  {:>7.2}x",
+            extra + 1,
+            a / b.max(1e-9)
+        );
+    }
+}
+
 /// **DE QUE o composite booleano é feito** — as três fases, medidas no código que SHIPA.
 ///
 /// A tabela acima diz *quanto* custa; esta diz *o quê*, e as três fases têm curas OPOSTAS:

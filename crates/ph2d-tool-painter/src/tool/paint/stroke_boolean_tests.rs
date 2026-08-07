@@ -209,6 +209,22 @@ fn the_boolean_window_draws_what_the_whole_canvas_window_drew() {
                 ),
             ],
         ),
+        // ⚠️ **A forma DEGENERADA é onde um off-by-one na sub-janela é mais alto:** a caixa de um
+        // semi-eixo mínimo tem uns poucos texels de largura, então errá-la por um é errar uma fração
+        // grande do desenho — numa figura de 40 px o mesmo erro se esconde.
+        //
+        // ⚠️ E o que estes dois casos **não** contêm: o `rx = 0.1` NÃO alcança o `max(0.5)` de texel do
+        // `rasterize_ellipse`, porque o `stroke_state_to_fill_shape` já clampa em meio **px de imagem**
+        // (`SS` vezes maior) antes de chegar lá. Escrevi o contrário na primeira versão; a mutação
+        // `PAD = 0` sobreviveu e foi ela que corrigiu a afirmação.
+        (
+            "elipse de semi-eixo MINIMO — a caixa tem poucos texels",
+            vec![(ellipse([128.0, 128.0], 0.1, 40.0, [1.0, 0.0]), StrokeOp::Add)],
+        ),
+        (
+            "a mesma, GIRADA — a caixa cruza os dois eixos",
+            vec![(ellipse([128.0, 128.0], 0.1, 40.0, [0.6, 0.8]), StrokeOp::Add)],
+        ),
     ];
     for (case, shapes) in cases {
         for off in [0.0f32, 6.0, -6.0] {

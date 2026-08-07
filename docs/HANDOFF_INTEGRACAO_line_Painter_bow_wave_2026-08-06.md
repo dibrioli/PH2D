@@ -1,11 +1,12 @@
 # HANDOFF DE INTEGRAÇÃO — `line/Painter`, o bow wave gateado no knob + as bandas por trabalho (2026-08-06)
 
-> **9 commits · 13 arquivos · nenhum `Cargo.toml` · nenhum ADR · `project.rs` intocado.**
+> **11 commits · 17 arquivos · nenhum `Cargo.toml` · nenhum ADR · `project.rs` intocado.**
 >
-> ⚠️ **PENDENTE DE SMOKE.** A jornada tem **duas metades independentes**: a do **bow wave** (§1-§9,
-> sete commits, um deles muda o produto — leia o §3) e a das **BANDAS POR TRABALHO** (§10, dois
-> commits, um deles muda o produto e é **byte-idêntico**). As duas podem ser integradas juntas; elas
-> não se tocam.
+> ⚠️ **PENDENTE DE SMOKE.** A jornada tem **três metades independentes**: a do **bow wave** (§1-§9,
+> sete commits, um deles muda o produto — leia o §3), a das **BANDAS POR TRABALHO** (§10, dois
+> commits, um deles muda o produto e é **byte-idêntico**) e a do **BOOLEAN** (§11-§12, dois commits +
+> dois, o primeiro par muda o produto e o segundo é **byte-idêntico**). As três podem ser integradas
+> juntas; elas não se tocam.
 
 ---
 
@@ -374,7 +375,64 @@ Só com uma **curva fechada cujas alças saem da caixa dos pontos** ela morde.
 
 Um Add ainda custa **~8 ms** contra 1,6 do Overlay — **5×**. Isso é o preço intrínseco de rasterizar a
 figura a `SS = 3` (9× os pixels dela), inundá-la e andar a fronteira; agora é **proporcional à
-figura**, que é a forma certa, mas 8 ms ainda é meio quadro. As alavancas óbvias, **não medidas**:
-baixar o `SS` (é decisão de LOOK — ele existe para o contorno não sair serrilhado) · traçar sem o
-flood-fill por componente (o `trace_all_contours` aloca um buffer do tamanho da janela **por
-componente** e faz um `find` linear a cada volta) · e cachear o contorno enquanto a geometria não muda.
+figura**, que é a forma certa, mas 8 ms ainda é meio quadro. As alavancas nomeadas eram três, e a §12
+**mediu e fechou uma delas** — o traçado sem o flood por componente. Seguem abertas: baixar o `SS` (é
+decisão de LOOK — ele existe para o contorno não sair serrilhado) · cachear o contorno enquanto a
+geometria não muda · e a **rota analítica** do §12, que é a resposta de verdade.
+
+---
+
+## §12 O boolean, a pergunta seguinte do Enio — e o que o módulo Vector ensina
+
+> *"deve haver meios de otimizar o boolean do painter. Veja como o módulo vector faz o boolean não
+> destrutivo para runtime dele e veja se descobre como tornar o painter mais otimizado."*
+
+A pesquisa inteira, com as tabelas e a reprodução, está em
+[`docs/Painter/35_boolean_o_que_o_vector_ensina.md`](../docs/Painter/35_boolean_o_que_o_vector_ensina.md).
+O que o integrador precisa saber:
+
+### §12.1 O achado
+
+O composite foi decomposto **no código que shipa** (`#[cfg(test)] stroke_boolean::diag`), e a primeira
+coluna decide tudo: **converter as formas custa `0,000 ms`**. A geometria que o artista autorou já está
+em mãos — uma elipse são **quatro cúbicas** — e o composite a joga fora para redescobrir a mesma forma
+a partir de **1,44 M de células de pixel**, devolvendo **3 400 pontos** para descrever o que chegou
+como 4 segmentos. Cada ponto vira posição de dab.
+
+⚠️ **Com UMA forma marcada o composite é a IDENTIDADE** (não há com quem combinar) e ainda assim paga
+o preço inteiro — e esse é o caso mais comum, porque `active_is_bool` põe a figura ativa no composite
+assim que o artista escolhe a Operation.
+
+### §12.2 O que ENTROU (byte-idêntico, 1 commit)
+
+O traçado era o maior item (4,777 de 6,448 ms). Três desperdícios saíram do `trace_all_contours` —
+buffer `comp` alocado **por componente**, busca recomeçando do índice 0, e o `trace_contour_raw`
+varrendo tudo de novo para redescobrir o pixel que o laço acabara de achar — e o flood pixel-a-pixel
+virou **varredura por faixas**.
+
+**Medido com as duas rotas na MESMA corrida** (a máquina é compartilhada, então a carga tem de ser
+fator comum): **2,69× · 2,80× · 2,17×**. O composite de uma forma cai de **6,45 para 3,93 ms**.
+
+⚠️ **Gate contra a rota antiga CONGELADA sob `cfg(test)`** (`trace_all_contours_flood`), com a fixture
+contendo os três casos que separam as rotas: o blob que **encosta na borda**, os blobs que se tocam
+**só na diagonal** (4-conexo × 8-conexo — é a conectividade que decide **quantos** contornos saem), e a
+forma **côncava**. **3 mutações, 3 sangram.**
+
+### §12.3 O que NÃO entrou, e por quê
+
+A rota **analítica** — o que o Vector faz: `linesweeper` sobre `BezPath`, `O(segmentos)`, a tela fora
+da conta. Medida sobre a nossa geometria: **14,409 → 0,090 ms** e **5 351 → 112 pontos**, com o
+achatamento a 1/6 px (**mais** preciso que o traçado de raster, que quantiza em 1/3 px). Robustez
+medida antes de recomendar: **15/15 sem pânico e sem erro** nos degenerados.
+
+⚠️ **Ela muda o DESENHO**, e o look é do artista. O doc 35 §4 nomeia o que ela exigiria — uma aresta de
+dependência **aditiva** (um `pub fn` de dado simples em `ph2d-vec-boolean`, nunca uma cópia do
+`engine.rs`, e nunca um *move*, porque `line/Vector` trabalha nesse crate) · a **dedup dos contornos
+degenerados** (o sweep devolve 2 grupos para dois círculos coincidentes e 4 para tangentes exatas, onde
+a resposta é um; o raster não tem esse modo de falha) · o fechamento exato · e um smoke.
+
+### §12.4 Superfície
+
+Módulo novo `measure_boolean_cost.rs` (as duas tabelas do boolean saíram do `measure_shape_system`,
+que bateu 749 > 700 — corte por assunto) · `selection_trace_tests.rs` · `stroke_boolean::diag` sob
+`cfg(test)`. **Nenhum `Cargo.toml`, nenhum ADR, `project.rs` intocado, contrato congelado 4/4.**

@@ -271,7 +271,14 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// bateria num índice de variante que ele não tem, e o número transforma isso num erro de VERSÃO
 /// em vez de num postcard a falhar longe da causa (o raciocínio do `JointKind::Weld`/`Cap::Square`).
 /// ⚠️ **PROVISÓRIO** pelo mesmo motivo que o v56.
-const PROJECT_SCHEMA: u32 = 58;
+/// v59 (plano UI/UX W4c.3 — a MATH): um token numérico passa a poder valer uma **fórmula**
+/// (`{spacing.md} * 2`), e o `SavedValue` ganha a variante **`Formula(String)`**. ⚠️ TEXTO, e não
+/// o IR parseado: é o texto que o artista reabre e edita, e serializar a árvore faria o formato do
+/// arquivo depender da forma de um tipo do parser — a decisão que a `motion.expression` já tomou.
+/// ⚠️ **Apendar variante NÃO move `Literal`(0)/`Alias`(1)/`Number`(2)**, então todo arquivo já
+/// salvo continua a ler; o bump é pelo caminho INVERSO, o mesmo raciocínio do v58 logo acima.
+/// ⚠️ **PROVISÓRIO** pelo mesmo motivo que o v56.
+const PROJECT_SCHEMA: u32 = 59;
 
 /// O conteúdo de um arquivo de projeto.
 #[derive(serde::Serialize, serde::Deserialize)]

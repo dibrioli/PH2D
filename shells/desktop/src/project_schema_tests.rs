@@ -225,9 +225,14 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // transforma isso num erro de VERSÃO em vez de num postcard a falhar longe da causa. É o
         // mesmo raciocínio do `JointKind::Weld` (v28) e do `Cap::Square` (v48).
         // ⚠️ `FLIP`/`VEC_SCENE` NÃO se movem: a tabela é do ARQUIVO, não da cena.
-        // ⚠️ O 58 é PROVISÓRIO pela mesma razão de todos os acima — ele se CONTA contra o `main`
+        // PROJECT 58→59: um token numérico passa a poder valer uma FÓRMULA (W4c.3), e o
+        // `SavedValue` ganha `Formula(String)` — variante APENDADA, então `Literal`(0)/`Alias`(1)/
+        // `Number`(2) não se movem e todo arquivo salvo continua a ler; o bump é pelo caminho
+        // INVERSO, o mesmo raciocínio do v58 acima e do `JointKind::Weld` (v28).
+        // ⚠️ `FLIP`/`VEC_SCENE` NÃO se movem: a tabela é do ARQUIVO, não da cena.
+        // ⚠️ O 59 é PROVISÓRIO pela mesma razão de todos os acima — ele se CONTA contra o `main`
         // do dia da integração ([[feedback_numbers_that_sum_across_lines_count_dont_pick]]).
-        (58, 13, 14),
+        (59, 13, 14),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

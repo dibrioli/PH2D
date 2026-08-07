@@ -38,6 +38,15 @@ pub(crate) enum SavedValue {
     /// INVERSO — um build antigo a ler um arquivo novo bateria num índice de variant que ele não
     /// tem —, que é o mesmo raciocínio do `JointKind::Weld` e do `Cap::Square`.
     Number(f32),
+    /// Uma FÓRMULA, como TEXTO (plano UI/UX W4c.3) — `{spacing.md} * 2`.
+    ///
+    /// ⚠️ Texto, e não uma árvore parseada: é o texto que o artista reabre e edita, e serializar o
+    /// IR faria o formato do arquivo depender da forma de um tipo do parser — a mesma decisão que
+    /// a `motion.expression` tomou, e a razão de o `NumValue::Expr` também guardar texto.
+    ///
+    /// ⚠️ Apendada DEPOIS do `Number` pelo mesmo raciocínio posicional dele: `Literal`(0),
+    /// `Alias`(1) e `Number`(2) não se movem, então todo arquivo já salvo continua a ler.
+    Formula(String),
 }
 
 /// Um token de cor autorado: **que modo, que token, valendo o quê**.
@@ -97,6 +106,7 @@ pub(crate) fn collect() -> Vec<SavedToken> {
             value: match e.value {
                 NumValue::Literal(px) => SavedValue::Number(px),
                 NumValue::Alias(t) => SavedValue::Alias(t.key().to_string()),
+                NumValue::Expr(src) => SavedValue::Formula(src),
             },
         }))
         .collect()
@@ -151,7 +161,7 @@ pub(crate) fn install(saved: &[SavedToken]) -> usize {
                     }),
                     None => dropped += 1,
                 },
-                SavedValue::Number(_) => dropped += 1,
+                SavedValue::Number(_) | SavedValue::Formula(_) => dropped += 1,
             }
         } else if let Some(token) = NumToken::from_key(&t.key) {
             match &t.value {
@@ -168,6 +178,15 @@ pub(crate) fn install(saved: &[SavedToken]) -> usize {
                     }),
                     None => dropped += 1,
                 },
+                // ⚠️ A fórmula entra CRUA e quem a admite é a porta (`set_num_overrides`), que
+                // confere sintaxe, laço e comprimento — a MESMA admissão do gesto do artista. Um
+                // 2º validador aqui seria a segunda resposta a *"esta fórmula serve?"*, e a que
+                // diverge no dia em que a linguagem ganhar um operador.
+                SavedValue::Formula(src) => nums.push(NumOverride {
+                    theme,
+                    token,
+                    value: NumValue::Expr(src.clone()),
+                }),
                 SavedValue::Literal(_) => dropped += 1,
             }
         } else {

@@ -37,8 +37,12 @@
 //! ⚠️ **E o CICLO é recusado na PORTA, não sobrevivido na leitura.** `a → b → a` não tem valor
 //! nenhum a devolver, então a única pergunta é *onde* isso é impedido: recusar na escrita torna a
 //! tabela acíclica **por construção** e mantém a leitura — que corre por 44 widgets em todo frame —
-//! sem trabalho defensivo. A caminhada ainda tem um teto (a casa dos pombos, [`max_alias_hops`]),
-//! porque uma tabela pode chegar de um ARQUIVO; as duas camadas têm gate cada.
+//! sem trabalho defensivo. A **LEITURA** ainda tem um teto (a casa dos pombos,
+//! [`max_alias_hops`]), porque uma tabela pode chegar de um ARQUIVO; as duas camadas têm gate cada.
+//!
+//! ⚠️ A busca do CICLO deixou de usar esse teto quando a math chegou (W4c.3): uma expressão tem N
+//! sucessores, então ela virou uma DFS com conjunto-visitado — que **observa** a repetição em vez
+//! de a deduzir da contagem. O detalhe está no [`crate::alias_walk`].
 //!
 //! # Vazio ⇒ BYTE-IDÊNTICO, e é o que torna a camada barata
 //!
@@ -198,11 +202,9 @@ fn closes_a_loop(
     token: ColorToken,
     target: ColorToken,
 ) -> Option<ColorToken> {
-    crate::alias_walk::closes_a_loop(token, target, max_alias_hops(), |cur| {
-        match slot(list, theme, cur) {
-            Some(TokenValue::Alias(next)) => Some(next),
-            _ => None,
-        }
+    crate::alias_walk::closes_a_loop(token, &[target], |cur| match slot(list, theme, cur) {
+        Some(TokenValue::Alias(next)) => vec![next],
+        _ => Vec::new(),
     })
 }
 

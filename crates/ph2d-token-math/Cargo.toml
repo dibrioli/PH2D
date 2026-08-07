@@ -1,0 +1,25 @@
+[package]
+name = "ph2d-token-math"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# A math dos tokens de design (plano UI/UX W4c.3): `{spacing.md} * 2`.
+#
+# ⚠️ Ela e' uma crate PROPRIA por uma aresta MEDIDA, nao por gosto: `ph2d-expr-parse` arrasta
+# `ph2d-expr`, que arrasta `ph2d-nodegraph`. A `ph2d-tokens` e' a folha de que 44 widgets e todo
+# painel dependem -- pô-la a compilar o substrato de grafo de nos seria a aresta ao contrario.
+# Entao a `ph2d-tokens` guarda a formula como TEXTO e recebe um `MathHost` injectado; esta crate
+# e' quem tem o parser, e o unico sitio do repo onde as duas metades se encontram.
+#
+# ⚠️ E o parser e' o PARTILHADO (ADR-0144), nunca um terceiro: a lei desta casa e' um parser, dois
+# consumidores -- aqui ele ganha o terceiro CONSUMIDOR, nao uma segunda implementacao.
+[dependencies]
+ph2d-tokens = { path = "../ph2d-tokens" }
+ph2d-expr = { path = "../ph2d-expr" }
+ph2d-expr-parse = { path = "../ph2d-expr-parse" }

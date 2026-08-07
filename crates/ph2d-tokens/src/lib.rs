@@ -54,6 +54,7 @@ pub mod motion;
 /// **A identidade de um token NUMÉRICO** (plano UI/UX W4c.1) — a família que se mede em px.
 pub mod num;
 /// **A camada de OVERRIDE numérica** — a irmã da [`overrides`], no molde dela.
+pub mod num_expr;
 pub mod num_overrides;
 pub mod num_runtime;
 pub mod overrides;

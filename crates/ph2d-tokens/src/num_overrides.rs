@@ -40,16 +40,27 @@ use crate::theme::Theme;
 ///
 /// ⚠️ **A terceira espécie — `Expr` — é a W4c.3**, e ela entra AQUI (mais um variant), nunca num
 /// mapa ao lado: math é outra resposta à mesma pergunta.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum NumValue {
     /// Um número em px, digitado pelo artista.
     Literal(f32),
     /// **Este token SEGUE aquele**, no mesmo modo.
     Alias(NumToken),
+    /// **Uma FÓRMULA** — `{spacing.md} * 2` (plano UI/UX W4c.3).
+    ///
+    /// ⚠️ Guardada como **TEXTO**, e não como uma árvore parseada, por duas razões que apontam
+    /// para o mesmo lado: é o texto que o arquivo grava (uma árvore teria de ser serializada, e o
+    /// formato passaria a depender da forma do IR), e é o texto que o artista reabre e edita. É a
+    /// mesma decisão que a `motion.expression` tomou.
+    ///
+    /// ⚠️ E é ela que tira o `Copy` deste enum. A alternativa — internar a fórmula num índice —
+    /// poria uma segunda tabela ao lado da que já existe, para poupar clones num caminho que corre
+    /// **uma vez por quadro sobre 21 slots**.
+    Expr(String),
 }
 
 /// Um valor autorado: **que token, em que modo, valendo o quê**.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct NumOverride {
     pub theme: Theme,
     pub token: NumToken,
@@ -67,7 +78,10 @@ pub enum AuthoredNum {
 
 /// A escrita foi RECUSADA — e a recusa **diz porquê**, porque um gesto que não acontece sem nada na
 /// tela é indistinguível de um botão quebrado.
-#[derive(Clone, Copy, Debug, PartialEq)]
+///
+/// ⚠️ Sem `Copy`: a frase de uma fórmula recusada é uma `String`, e ela vem do parser — dobrá-la num
+/// código de erro sem texto poria o artista a adivinhar QUAL caractere o motor não entendeu.
+#[derive(Clone, Debug, PartialEq)]
 pub enum NumRefusal {
     /// O elo pedido fecharia um laço, e é **aqui** que ele fecha.
     Cycle {
@@ -81,6 +95,12 @@ pub enum NumRefusal {
     /// membros desta família são **comprimentos**, e nem um `NaN` nem um `-4` descrevem um. Não há
     /// máximo aqui, e a ausência é deliberada — ver o cabeçalho do [`crate::num`].
     NotALength(f32),
+    /// A fórmula não foi admitida. Traz a frase pronta para o toast.
+    ///
+    /// ⚠️ Um braço PRÓPRIO em vez de dobrar em `NotALength`: *"isto não parseia"* e *"isto não é um
+    /// comprimento"* mandam o artista a lugares diferentes, e uma mensagem só mandaria a metade
+    /// deles ao lugar errado.
+    BadFormula(String),
 }
 
 /// **Quantos saltos uma cadeia honesta pode ter** — a casa dos pombos sobre esta família.
@@ -124,7 +144,7 @@ pub fn any_authored() -> bool {
 fn slot(list: &[NumOverride], theme: Theme, token: NumToken) -> Option<NumValue> {
     list.iter()
         .find(|e| e.theme == theme && e.token == token)
-        .map(|e| e.value)
+        .map(|e| e.value.clone())
 }
 
 /// **Onde a cadeia deste token termina** — a pergunta que o `px(theme)` faz.
@@ -135,26 +155,59 @@ pub fn resolved_num_override(theme: Theme, token: NumToken) -> Option<AuthoredNu
     if !ANY.with(std::cell::Cell::get) {
         return None;
     }
-    OVERRIDES.with(|o| {
-        let list = o.borrow();
-        let mut cur = token;
-        for _ in 0..max_alias_hops() {
-            match slot(&list, theme, cur) {
-                None => {
-                    return if cur == token {
-                        None
-                    } else {
-                        Some(AuthoredNum::Factory(cur))
-                    };
-                }
-                Some(NumValue::Literal(v)) => return Some(AuthoredNum::Px(v)),
-                Some(NumValue::Alias(next)) => cur = next,
+    OVERRIDES.with(|o| resolve_at(&o.borrow(), theme, token, 0))
+}
+
+/// A resolução de UM slot, **recursiva**, porque uma fórmula tem N dependências.
+///
+/// ⚠️ Ela era um laço (`while` sobre a corrente de aliases) até a math chegar. Um alias tem um
+/// sucessor e cabe num passeio; uma expressão tem N, e a resolução dela é uma ÁRVORE. Manter o
+/// laço obrigaria a uma pilha explícita para poupar recursão num grafo de **21 nós** que a porta
+/// de escrita garante acíclico.
+///
+/// ⚠️ **`depth` é a rede da tabela CORROMPIDA**, não do uso normal: a porta recusa laços, então o
+/// único caminho até aqui é um arquivo editado à mão. Estourar cai na fábrica em vez de girar.
+fn resolve_at(
+    list: &[NumOverride],
+    theme: Theme,
+    token: NumToken,
+    depth: usize,
+) -> Option<AuthoredNum> {
+    if depth > max_alias_hops() {
+        return None;
+    }
+    match slot(list, theme, token) {
+        None => None,
+        Some(NumValue::Literal(v)) => Some(AuthoredNum::Px(v)),
+        // ⚠️ A pergunta *"o slot seguinte está autorado?"* é feita ANTES de recursar, e a ordem é
+        // load-bearing: um `unwrap_or(Factory(next))` colapsaria DOIS fatos diferentes no mesmo
+        // `None` — *a cadeia terminou num slot de fábrica* (que vale a fábrica DELE) e *a rede de
+        // profundidade estourou* (que tem de valer a fábrica de QUEM PERGUNTOU). O gate da tabela
+        // corrompida nasceu vermelho exactamente aí.
+        Some(NumValue::Alias(next)) => {
+            if slot(list, theme, next).is_none() {
+                return Some(AuthoredNum::Factory(next));
             }
+            resolve_at(list, theme, next, depth + 1)
         }
-        // Excedeu a casa dos pombos ⇒ há um laço. A porta de escrita não deixa um nascer, então
-        // isto só é alcançável por uma tabela corrompida fora daqui: cai na fábrica em vez de girar.
-        None
-    })
+        // ⚠️ A fórmula é avaliada com os valores EFETIVOS das dependências — que podem ser, elas
+        // próprias, fórmulas. E o resultado **é conferido**: uma divisão por zero, ou uma cadeia que
+        // mudou por baixo desde que a porta a admitiu, cai na FÁBRICA em vez de publicar um NaN.
+        // Um comprimento inventado seria indistinguível de um autorado.
+        Some(NumValue::Expr(src)) => {
+            let v = crate::num_expr::eval(&src, &|t| effective_px(list, theme, t, depth + 1))?;
+            is_a_length(v).then_some(AuthoredNum::Px(v))
+        }
+    }
+}
+
+/// Quanto um token VALE agora, para alimentar uma fórmula — autorado, ou a fábrica dele.
+fn effective_px(list: &[NumOverride], theme: Theme, token: NumToken, depth: usize) -> f32 {
+    match resolve_at(list, theme, token, depth) {
+        Some(AuthoredNum::Px(v)) => v,
+        Some(AuthoredNum::Factory(t)) => t.factory_px(),
+        None => token.factory_px(),
+    }
 }
 
 /// *Fazer `token` seguir `target` fecharia um laço?* — devolve **onde** ele fecha.
@@ -165,13 +218,15 @@ fn closes_a_loop(
     list: &[NumOverride],
     theme: Theme,
     token: NumToken,
-    target: NumToken,
+    targets: &[NumToken],
 ) -> Option<NumToken> {
-    crate::alias_walk::closes_a_loop(token, target, max_alias_hops(), |cur| {
-        match slot(list, theme, cur) {
-            Some(NumValue::Alias(next)) => Some(next),
-            _ => None,
-        }
+    crate::alias_walk::closes_a_loop(token, targets, |cur| match slot(list, theme, cur) {
+        Some(NumValue::Alias(next)) => vec![next],
+        // ⚠️ Uma fórmula que não parseia não tem dependências que se possam seguir — e ela nunca
+        // chega aqui pela porta (a admissão vem antes). Este braço existe para a tabela que veio
+        // de um arquivo: sem dependências, aquele ramo termina, que é o conservador certo.
+        Some(NumValue::Expr(src)) => crate::num_expr::deps_of(&src).unwrap_or_default(),
+        _ => Vec::new(),
     })
 }
 
@@ -197,8 +252,31 @@ pub fn set_num_override(
                 return Err(NumRefusal::NotALength(v));
             }
             Some(NumValue::Alias(target)) => {
-                if let Some(at) = closes_a_loop(&list, theme, token, target) {
+                if let Some(at) = closes_a_loop(&list, theme, token, &[target]) {
                     return Err(NumRefusal::Cycle { token, target, at });
+                }
+            }
+            // ⚠️ A admissão de uma fórmula é feita AQUI, e é o que torna o resto da camada simples:
+            // se ela parseia, todo nome dela é um token deste sistema, ela não fecha laço e o
+            // resultado É um comprimento, então a LEITURA nunca precisa de ter opinião sobre erro.
+            Some(NumValue::Expr(ref src)) => {
+                let deps = crate::num_expr::deps_of(src).map_err(NumRefusal::BadFormula)?;
+                if let Some(at) = closes_a_loop(&list, theme, token, &deps) {
+                    // O `target` da mensagem é onde a busca reencontrou o token de partida — para
+                    // uma fórmula não há um alvo único, e apontar o primeiro nome escrito mandaria
+                    // o artista ao lugar errado quando o laço passa pelo segundo.
+                    return Err(NumRefusal::Cycle { token, target: at, at });
+                }
+                // ⚠️ E o VALOR é conferido com a tabela **como ela ficaria**: uma fórmula avaliada
+                // contra a tabela de hoje pode dar um comprimento e a de amanhã não. O que a porta
+                // pode prometer é o instante da escrita; o resto cai na fábrica, por desenho.
+                let src = src.clone();
+                let v = crate::num_expr::eval(&src, &|t| {
+                    effective_px(&list, theme, t, 0)
+                })
+                .ok_or_else(|| NumRefusal::BadFormula("that formula could not be evaluated".into()))?;
+                if !is_a_length(v) {
+                    return Err(NumRefusal::NotALength(v));
                 }
             }
             _ => {}
@@ -258,8 +336,15 @@ pub fn set_num_overrides(list: Vec<NumOverride>) -> usize {
         let ok = match e.value {
             // ⚠️ Contra o que JÁ foi aceite, não contra a lista de entrada: é isso que torna o
             // resultado acíclico por construção, seja qual for a ordem em que os laços aparecem.
-            NumValue::Alias(target) => closes_a_loop(&kept, e.theme, e.token, target).is_none(),
+            NumValue::Alias(target) => {
+                closes_a_loop(&kept, e.theme, e.token, &[target]).is_none()
+            }
             NumValue::Literal(v) => is_a_length(v),
+            // ⚠️ Uma fórmula que não parseia é descartada AQUI, e não deixada para a leitura cair
+            // na fábrica: o painel mostraria a linha como autorada e o artista veria o valor de
+            // fábrica ao lado dela — *autorado* e *inerte* ao mesmo tempo.
+            NumValue::Expr(ref src) => crate::num_expr::deps_of(src)
+                .is_ok_and(|deps| closes_a_loop(&kept, e.theme, e.token, &deps).is_none()),
         };
         if ok {
             kept.push(e);

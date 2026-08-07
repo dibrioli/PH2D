@@ -7346,6 +7346,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-token-math"
+version = "0.0.0"
+dependencies = [
+ "ph2d-expr",
+ "ph2d-expr-parse",
+ "ph2d-tokens",
+]
+
+[[package]]
 name = "ph2d-tokens"
 version = "0.0.0"
 dependencies = [

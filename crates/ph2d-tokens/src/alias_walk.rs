@@ -7,47 +7,58 @@
 //! família seria duas respostas à mesma pergunta — e a segunda é a que esquece o auto-alias no dia
 //! em que alguém ajusta a primeira.
 //!
+//! # ⚠️ O FAN-OUT chegou com a math (W4c.3), e ele mudou a forma da lei
+//!
+//! Enquanto o grafo era só de aliases, um nó tinha **um** sucessor e a caminhada era uma corrente.
+//! Uma **expressão** (`{spacing.md} + {radius.lg}`) tem **N**, e a pergunta deixa de ser *"a
+//! corrente volta?"* para ser *"algum caminho volta?"* — uma busca em profundidade, não um passeio.
+//!
+//! ⚠️ **E o conjunto-visitado SUBSUMIU a casa dos pombos.** A versão anterior capava a caminhada em
+//! `ALL.len()` saltos, argumentando que mais do que isso significa ter visitado o mesmo token duas
+//! vezes. Estava certo, e era uma *inferência* sobre a contagem; um `visited` **observa** a
+//! repetição em vez de a deduzir, o que é ao mesmo tempo mais forte (não depende de quem chama
+//! passar o `max_hops` certo) e mais simples (não há segundo braço a explicar). O teto saiu do
+//! parâmetro e passou a ser o tamanho do grafo, que é o que ele sempre quis dizer.
+//!
 //! # ⚠️ A caminhada de LEITURA **não** está aqui, e a ausência é a decisão
 //!
 //! Ela termina num VALOR (uma cor, um número) ou num token de fábrica, e esses terminais **são** o
 //! tipo: generificá-los pediria um parâmetro de valor e um trait para poupar quatro linhas por
 //! família. O que se partilha é a **lei**; o que difere é o que a cadeia **entrega**.
 
-/// *Fazer `token` seguir `target` fecharia um laço?* — devolve **onde** ele fecha.
+/// *Ligar `token` a `targets` fecharia um laço?* — devolve **onde** ele fecha.
 ///
-/// `alias_of` responde *"este slot é um alias, e para quem?"* — `None` termina a cadeia (um valor
-/// literal, ou um slot que ninguém autorou).
+/// `successors` responde *"deste token, para quais outros o valor dele aponta?"* — vazio termina
+/// aquele ramo (um literal, ou um slot que ninguém autorou). Um alias devolve zero ou um; uma
+/// expressão devolve tantos quantos os tokens que ela lê.
 ///
-/// ⚠️ **O teste é feito ANTES do primeiro salto**, e é isso que apanha o auto-alias: um token que
-/// segue a si mesmo é um laço de comprimento um, e uma caminhada que só comparasse *depois* de
-/// avançar passaria por cima dele.
+/// ⚠️ **Os alvos são testados ANTES do primeiro salto**, e é isso que apanha o auto-alias: um token
+/// que segue a si mesmo — ou uma fórmula que se lê a si mesma, `{spacing.md} * 2` em `spacing.md` —
+/// é um laço de comprimento um, e uma busca que só comparasse *depois* de avançar passaria por cima
+/// dele.
 ///
-/// ⚠️ **`max_hops` é a casa dos pombos, não um teto escolhido**: só existem `N` slots por modo,
-/// então uma caminhada com mais de `N` saltos **visitou o mesmo token duas vezes** — e isso É um
-/// ciclo. Quem chama passa o `ALL.len()` da sua família.
-///
-/// ⚠️ **O token devolvido significa coisas diferentes nos dois braços**, e isto vale para quem
-/// escreve a mensagem ao artista: no encontro (`cur == token`) ele é **onde o laço fecha**, e é
-/// accionável; no estouro da casa dos pombos ele é apenas **onde a caminhada parou** — há um laço
-/// algures naquela cadeia, mas nada garante que seja neste token. O segundo braço só é alcançável
-/// por uma tabela corrompida fora da porta, e é por isso que o produto não constrói frase sobre ele.
+/// ⚠️ **O token devolvido é onde a busca REENCONTROU o de partida**, e é accionável: é o nome que a
+/// mensagem ao artista precisa de dizer.
 pub(crate) fn closes_a_loop<T: Copy + PartialEq>(
     token: T,
-    target: T,
-    max_hops: usize,
-    alias_of: impl Fn(T) -> Option<T>,
+    targets: &[T],
+    successors: impl Fn(T) -> Vec<T>,
 ) -> Option<T> {
-    let mut cur = target;
-    for _ in 0..=max_hops {
+    let mut stack: Vec<T> = targets.to_vec();
+    let mut visited: Vec<T> = Vec::new();
+    while let Some(cur) = stack.pop() {
         if cur == token {
             return Some(cur);
         }
-        match alias_of(cur) {
-            Some(next) => cur = next,
-            None => return None,
+        // ⚠️ O `visited` é o que torna o grafo FINITO para esta busca: sem ele, uma tabela que já
+        // chegou cíclica de um arquivo faria a pilha crescer para sempre. Ele não é uma optimização.
+        if visited.contains(&cur) {
+            continue;
         }
+        visited.push(cur);
+        stack.extend(successors(cur));
     }
-    Some(cur)
+    None
 }
 
 #[cfg(test)]
@@ -55,43 +66,63 @@ mod tests {
     use super::closes_a_loop;
 
     /// A tabela do teste: um grafo de inteiros, que é exactamente o que o kernel vê.
-    fn walk(edges: &[(u8, u8)]) -> impl Fn(u8) -> Option<u8> + '_ {
-        move |t| edges.iter().find(|(a, _)| *a == t).map(|(_, b)| *b)
+    fn walk(edges: &[(u8, u8)]) -> impl Fn(u8) -> Vec<u8> + '_ {
+        move |t| {
+            edges
+                .iter()
+                .filter(|(a, _)| *a == t)
+                .map(|(_, b)| *b)
+                .collect()
+        }
     }
 
     #[test]
     fn a_token_that_follows_itself_is_a_loop_of_length_one() {
-        // ⚠️ O caso que uma caminhada "salta primeiro, compara depois" deixa passar.
-        assert_eq!(closes_a_loop(1, 1, 8, walk(&[])), Some(1));
+        // ⚠️ O caso que uma busca "salta primeiro, compara depois" deixa passar.
+        assert_eq!(closes_a_loop(1, &[1], walk(&[])), Some(1));
     }
 
     #[test]
     fn a_fresh_target_closes_nothing() {
-        assert_eq!(closes_a_loop(1, 2, 8, walk(&[])), None);
+        assert_eq!(closes_a_loop(1, &[2], walk(&[])), None);
     }
 
     #[test]
     fn the_loop_is_reported_where_it_closes() {
         // 1 → 2 pedido; 2 → 3 → 1 já existe ⇒ fecha em 1.
-        assert_eq!(closes_a_loop(1, 2, 8, walk(&[(2, 3), (3, 1)])), Some(1));
+        assert_eq!(closes_a_loop(1, &[2], walk(&[(2, 3), (3, 1)])), Some(1));
     }
 
     #[test]
     fn a_long_honest_chain_is_not_a_loop() {
+        assert_eq!(closes_a_loop(9, &[1], walk(&[(1, 2), (2, 3), (3, 4)])), None);
+    }
+
+    /// ⚠️ **O caso que a corrente não sabia fazer:** um dos ramos volta, o outro não.
+    #[test]
+    fn a_loop_down_one_branch_of_a_fan_out_is_still_a_loop() {
+        // 9 lê 1 e 5. O ramo do 1 morre; o do 5 volta ao 9.
         assert_eq!(
-            closes_a_loop(9, 1, 8, walk(&[(1, 2), (2, 3), (3, 4)])),
-            None
+            closes_a_loop(9, &[1, 5], walk(&[(1, 2), (5, 6), (6, 9)])),
+            Some(9)
         );
     }
 
+    /// ⚠️ E o irmão: fan-out **sem** laço termina, em vez de ficar preso num losango.
     #[test]
-    fn a_chain_longer_than_the_pigeonhole_is_a_loop_even_without_meeting_the_token() {
-        // 1 → 2 → 3 → 1 é um laço que NÃO passa pelo token de partida (9). A casa dos pombos é a
-        // segunda camada: ela existe para uma tabela que chegou de um ARQUIVO já corrompida.
-        //
-        // ⚠️ O que se afirma é **que há laço**, e não QUAL token volta: neste braço o valor é onde
-        // a caminhada parou, e depende de quantos saltos couberam. A 1ª versão deste gate cravava
-        // `Some(1)` e falhou sobre produto correcto — a expectativa é que estava errada.
-        assert!(closes_a_loop(9, 1, 3, walk(&[(1, 2), (2, 3), (3, 1)])).is_some());
+    fn a_diamond_without_a_loop_terminates() {
+        // 1 e 2 convergem em 3 — o `visited` impede que o 3 seja expandido duas vezes.
+        assert_eq!(closes_a_loop(9, &[1, 2], walk(&[(1, 3), (2, 3)])), None);
+    }
+
+    /// Uma tabela que já chegou CÍCLICA de um arquivo não pendura a busca.
+    ///
+    /// ⚠️ Este era o braço da "casa dos pombos", e a afirmação mudou de forma: antes ele só podia
+    /// dizer *"há laço algures"* (o token devolvido era onde a contagem estourou); agora a busca
+    /// **termina** e responde a pergunta que lhe foi feita — este laço não passa pelo 9, então não
+    /// fecha nada PARA o 9, e o `visited` é o que garante que ela pára.
+    #[test]
+    fn a_pre_existing_loop_that_does_not_reach_the_token_terminates() {
+        assert_eq!(closes_a_loop(9, &[1], walk(&[(1, 2), (2, 3), (3, 1)])), None);
     }
 }

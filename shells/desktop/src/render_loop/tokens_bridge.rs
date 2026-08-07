@@ -188,6 +188,9 @@ fn refusal_toast(e: &NumRefusal) -> Toast {
         NumRefusal::NotALength(v) => Toast::warning(format!(
             "{v} is not a length: a px token needs a finite value >= 0"
         )),
+        // ⚠️ A frase vem do MOTOR e é repassada inteira: dobrá-la num texto genérico poria o
+        // artista a adivinhar QUAL caractere não foi entendido, que é o oposto de accionável.
+        NumRefusal::BadFormula(why) => Toast::warning(why.clone()),
     }
 }
 

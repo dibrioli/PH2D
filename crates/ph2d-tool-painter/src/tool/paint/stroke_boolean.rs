@@ -243,6 +243,8 @@ impl PainterTool {
         // ⚠️ A janela sai das formas que **ADICIONAM**: o resultado de um boolean está contido na união
         // dos Add, então uma forma de Remove longe dali não pode mudar um texel — incluí-la só faria o
         // buffer crescer de novo. Sem nenhum Add não há região nenhuma, e a saída é vazia.
+        #[cfg(test)]
+        let t_convert = std::time::Instant::now();
         let mut fills: Vec<(SelectionShape, u8)> = Vec::with_capacity(shapes.len());
         let mut bb: Option<[f32; 4]> = None;
         for (st, op) in shapes {
@@ -297,6 +299,10 @@ impl PainterTool {
         let (sw, sh) = (x1 - x0, y1 - y0);
         #[allow(clippy::cast_precision_loss)]
         let origin = [x0 as f32, y0 as f32];
+        #[cfg(test)]
+        let convert_us = t_convert.elapsed().as_micros() as u64;
+        #[cfg(test)]
+        let t_raster = std::time::Instant::now();
         let mut crisp = vec![0u8; sw * sh];
         // ⚠️ **UM `region` para todas as formas.** Ele era alocado dentro do laço, uma vez por forma —
         // com a janela do canvas isso eram 151 MB por forma, por move.
@@ -306,14 +312,27 @@ impl PainterTool {
             self.rasterize_fill_ss(sel, sw, sh, origin, &mut region);
             combine_into(&mut crisp, &region, *wire);
         }
-        super::selection_trace::trace_all_contours(&crisp, sw, sh)
+        #[cfg(test)]
+        let raster_us = t_raster.elapsed().as_micros() as u64;
+        #[cfg(test)]
+        let t_trace = std::time::Instant::now();
+        let out: Vec<Vec<[f32; 2]>> = super::selection_trace::trace_all_contours(&crisp, sw, sh)
             .into_iter()
             .map(|c| {
                 c.iter()
                     .map(|p| [(p[0] + origin[0]) / s, (p[1] + origin[1]) / s])
                     .collect()
             })
-            .collect()
+            .collect();
+        #[cfg(test)]
+        diag::note(
+            convert_us,
+            raster_us,
+            t_trace.elapsed().as_micros() as u64,
+            (sw * sh) as u64,
+            out.iter().map(|c| c.len() as u64).sum(),
+        );
+        out
     }
 
     /// **A rota da TELA CHEIA, congelada** — o código que este módulo rodava até 2026-08-06, verbatim
@@ -561,6 +580,63 @@ fn scanline_fill(pts: &[[f32; 2]], w: usize, h: usize, cov: &mut [u8]) {
                 cov[yy * w + xx] = 255;
             }
             i += 2;
+        }
+    }
+}
+
+/// **A decomposição do composite, MEDIDA no código que shipa.**
+///
+/// ⚠️ Uma sonda com laço próprio ficaria cega à porta — a lição que esta linha pagou três vezes
+/// (o `warp_axis`, o `flow_at_point`, o `build_flow_field`). As três fases têm CURAS diferentes
+/// (rasterizar é `O(área)`, traçar é `O(área)` mais uma alocação por componente, e converter é
+/// `O(segmentos)`), então saber qual delas é o custo decide a wave inteira.
+///
+/// `cfg(test)` porque é diagnóstico: o produto não paga um `Instant::now()` por forma.
+#[cfg(test)]
+pub(super) mod diag {
+    use std::cell::Cell;
+
+    thread_local! {
+        static CONVERT_US: Cell<u64> = const { Cell::new(0) };
+        static RASTER_US: Cell<u64> = const { Cell::new(0) };
+        static TRACE_US: Cell<u64> = const { Cell::new(0) };
+        static CELLS: Cell<u64> = const { Cell::new(0) };
+        static PTS: Cell<u64> = const { Cell::new(0) };
+        static CALLS: Cell<u32> = const { Cell::new(0) };
+    }
+
+    /// O que UMA chamada do composite gastou, e sobre quanto.
+    #[derive(Clone, Copy, Debug, Default)]
+    pub(in crate::tool::paint) struct BoolSplit {
+        pub convert_us: u64,
+        pub raster_us: u64,
+        pub trace_us: u64,
+        /// Células supersampleadas da janela (o que rasterizar e traçar percorrem).
+        pub cells: u64,
+        /// Pontos de contorno entregues — o que vira DABS a jusante.
+        pub pts: u64,
+        pub calls: u32,
+    }
+
+    pub(super) fn note(convert_us: u64, raster_us: u64, trace_us: u64, cells: u64, pts: u64) {
+        CONVERT_US.with(|c| c.set(c.get().saturating_add(convert_us)));
+        RASTER_US.with(|c| c.set(c.get().saturating_add(raster_us)));
+        TRACE_US.with(|c| c.set(c.get().saturating_add(trace_us)));
+        CELLS.with(|c| c.set(c.get().saturating_add(cells)));
+        PTS.with(|c| c.set(c.get().saturating_add(pts)));
+        CALLS.with(|c| c.set(c.get().saturating_add(1)));
+    }
+
+    /// Lê E ZERA. ⚠️ UM leitor só — dois publicariam pedaços da mesma janela como se fossem janelas
+    /// (a lição do `wash_diag`).
+    pub(in crate::tool::paint) fn take() -> BoolSplit {
+        BoolSplit {
+            convert_us: CONVERT_US.with(Cell::take),
+            raster_us: RASTER_US.with(Cell::take),
+            trace_us: TRACE_US.with(Cell::take),
+            cells: CELLS.with(Cell::take),
+            pts: PTS.with(Cell::take),
+            calls: CALLS.with(Cell::take),
         }
     }
 }

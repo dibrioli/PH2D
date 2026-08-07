@@ -29,7 +29,7 @@ use ph2d_painter_brush::StrokeMethod;
 use super::media::PaintMedia;
 use super::stamp_banded::diag;
 
-fn cp(pos: [f32; 2], phase: PointerPhase) -> CanvasPointer {
+pub(super) fn cp(pos: [f32; 2], phase: PointerPhase) -> CanvasPointer {
     CanvasPointer {
         pos,
         pressure: 1.0,
@@ -46,7 +46,7 @@ fn cp(pos: [f32; 2], phase: PointerPhase) -> CanvasPointer {
 /// a área por dab. O veredito de RAZÃO daquela tabela (Impasto ÷ Digital) sobrevive, porque os dois
 /// lados pagam a mesma duplicação; os ABSOLUTOS dela descrevem outro pincel. Aqui o número é passado
 /// como é: `radius` é o raio.
-fn tool(side: u32, media: PaintMedia, radius: f32) -> PainterTool {
+pub(super) fn tool(side: u32, media: PaintMedia, radius: f32) -> PainterTool {
     let mut t = PainterTool::default();
     t.set_source(vec![255u8; (side * side * 4) as usize], side, side);
     t.set_paint_media(media);
@@ -241,81 +241,6 @@ fn row(name: &str, side: u32, size: f32, p: Phases) {
         p.visits,
         p.stamp * 1e6 / p.visits.max(1.0)
     );
-}
-
-/// **O BOOLEAN é barato ou caro?** — a pergunta do Enio de 2026-08-06.
-///
-/// A Operation de uma forma (Overlay / Add / Remove) não é um enfeite: escolher **Add** ou **Remove**
-/// tira a figura do caminho de dabs e a manda pelo `stroke_boolean_contours`, que **rasteriza a
-/// máscara num buffer supersampleado do CANVAS INTEIRO** (`SS = 3` ⇒ 12288² a 4096²), traça os
-/// contornos e depois carimba o traçado.
-///
-/// ⚠️ **O eixo que decide é a TELA, não a figura.** Se a coluna crescer com o canvas enquanto a figura
-/// fica do mesmo tamanho, o custo é do buffer e não do desenho — e aí o preço de marcar `Add` numa
-/// forma não tem nada a ver com o que o artista pediu.
-///
-/// ⚠️ **UMA forma marcada já paga.** Com `active_is_bool` a figura ativa entra sozinha no composite
-/// (o contorno dela passa a vir do traçado, não dos próprios dabs), então a coluna `1 Add` não é um
-/// caso de canto: é o que acontece assim que alguém escolhe a Operation no painel.
-#[test]
-#[ignore = "measurement, not a gate — run explicitly"]
-fn measure_the_boolean_of_shapes() {
-    println!(
-        "[shape-sys] o custo de um MOVE com a Operation em ADD — Ellipse 400 px, Digital, raio 48"
-    );
-    println!(
-        "{:>6}  {:>10} {:>10} {:>10} {:>10}  {:>9}",
-        "tela", "Overlay", "1 Add", "2 Add", "4 Add", "Add/Ovl"
-    );
-    for side in [1024u32, 2048, 4096] {
-        let mut row = Vec::new();
-        for (op, extra) in [(0u8, 0usize), (1, 0), (1, 1), (1, 3)] {
-            let mut t = tool(side, PaintMedia::Digital, 48.0);
-            #[allow(clippy::cast_precision_loss)]
-            let cx = (side / 2) as f32;
-            // ⚠️ **A figura é FIXA em 200 px nas três telas.** A primeira versão desta fixture usava
-            // `side * 0.1`, e aí a figura crescia junto com o canvas: as duas explicações possíveis
-            // — *o custo é do buffer da tela* e *o custo é do desenho* — davam a MESMA coluna, e a
-            // tabela não separava nada.
-            let r = 200.0f32;
-            t.set_stroke_op_mode(op);
-            // As formas PARQUEADAS, todas com a mesma Operation.
-            for k in 0..extra {
-                #[allow(clippy::cast_precision_loss)]
-                let dx = -r * 1.6 + (k as f32) * r * 0.8;
-                t.paint.brush.stroke_method = StrokeMethod::Ellipse;
-                t.on_canvas_pointer(cp([cx + dx, cx], PointerPhase::Down));
-                t.on_canvas_pointer(cp([cx + dx + r, cx], PointerPhase::Move));
-                t.on_canvas_pointer(cp([cx + dx + r, cx], PointerPhase::Up));
-                t.park_active_shape();
-            }
-            t.paint.brush.stroke_method = StrokeMethod::Ellipse;
-            t.on_canvas_pointer(cp([cx, cx], PointerPhase::Down));
-            let mut s = Vec::new();
-            for k in 0..5 {
-                let d = if k % 2 == 0 { r + 2.0 } else { r - 2.0 };
-                let e = cp([cx + d, cx], PointerPhase::Move);
-                let t0 = std::time::Instant::now();
-                t.on_canvas_pointer(e);
-                let dt = t0.elapsed().as_secs_f64() * 1e3;
-                if k > 0 {
-                    s.push(dt);
-                }
-            }
-            t.on_canvas_pointer(cp([cx + r, cx], PointerPhase::Up));
-            s.sort_by(|a, b| a.partial_cmp(b).unwrap());
-            row.push(s[s.len() / 2]);
-        }
-        let ovl = row[0].max(1e-9);
-        println!(
-            "{side:>6}  {:>10.3} {:>10.3} {:>10.3} {:>10.3}  {:>8.1}x",
-            row[0],
-            row[1],
-            row[2],
-            row[3],
-            row[1] / ovl
-        );
-    }
 }
 
 /// **A tabela-mãe: quanto de um move de shape NÃO é o depósito**, por método.

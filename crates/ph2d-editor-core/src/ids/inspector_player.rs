@@ -59,6 +59,8 @@ pub const INSP_PLAYER_FIT_CROUCH: NodeId = hash_node_id("insp_player_fit_crouch"
 /// desenho do `hand_input_to_players`, que entrega UM dedo a todos os players.
 /// Quando houver um segundo dedo, os dois se movem juntos.
 pub const INSP_PLAYER_CLEAR_RUN: NodeId = hash_node_id("insp_player_clear_run");
+/// **Devolve a corrida DESCARTADA** (W24) — o desfazer do botão acima.
+pub const INSP_PLAYER_RESTORE_RUN: NodeId = hash_node_id("insp.player.restore.run");
 
 /// **A altura a que o personagem PAIRA**, metros, medida do centro do corpo.
 pub const INSP_PLAYER_FLOAT: NodeId = hash_node_id("insp_player_float");

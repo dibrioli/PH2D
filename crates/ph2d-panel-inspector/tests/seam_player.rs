@@ -84,6 +84,7 @@ fn player() -> InspectorPlayerInfo {
         // base é a que NÃO o oferece — e é ela que dá sentido à metade de
         // ausência do gate `the_clear_run_button…`.
         recorded_run_seconds: 0.0,
+        discarded_run_seconds: 0.0,
     }
 }
 
@@ -700,4 +701,55 @@ fn a_shape_without_a_known_floor_gets_no_crouch_fit_either() {
             .any(|(n, _)| *n == ids::INSP_PLAYER_FIT_CROUCH),
         "uma caixa recebeu um ajuste de agachar que nao sabe para onde ajustar"
     );
+}
+
+/// **DESCARTAR TEM VOLTA, e os dois botões nunca coexistem** (W24).
+///
+/// ⚠️ São TRÊS afirmações, e a segunda é a que importa: o botão de devolver é
+/// **pintado, hittable e levanta o próprio verbo** pelo `click_at` REAL — sem
+/// ela a corrida descartada ficaria guardada e inalcançável, que é o mesmo que
+/// perdida.
+///
+/// A exclusividade é **por construção** (descartar esvazia a fita viva), e o
+/// gate a afirma nos três estados: só corrida viva · só descartada · nenhuma.
+#[test]
+fn discarding_a_run_can_be_undone_and_the_two_buttons_never_coexist() {
+    let runs = |live: f32, gone: f32| InspectorPlayerInfo {
+        recorded_run_seconds: live,
+        discarded_run_seconds: gone,
+        ..player()
+    };
+    let has = |info: InspectorPlayerInfo, id: ph2d_a11y::NodeId| {
+        painted(info).iter().any(|(n, _)| *n == id)
+    };
+
+    // 1. Corrida VIVA: o botao e' o de descartar.
+    assert!(
+        has(runs(4.0, 0.0), ids::INSP_PLAYER_CLEAR_RUN),
+        "com corrida viva o botao de descartar tem de estar na tela"
+    );
+    assert!(
+        !has(runs(4.0, 0.0), ids::INSP_PLAYER_RESTORE_RUN),
+        "e o de devolver NAO"
+    );
+
+    // 2. Corrida DESCARTADA: o mesmo lugar oferece o caminho de volta, e o
+    //    clique REAL levanta o verbo.
+    assert!(
+        has(runs(0.0, 4.0), ids::INSP_PLAYER_RESTORE_RUN),
+        "com corrida descartada o botao de devolver tem de estar na tela"
+    );
+    assert!(
+        !has(runs(0.0, 4.0), ids::INSP_PLAYER_CLEAR_RUN),
+        "e o de descartar NAO -- nao ha' o que descartar"
+    );
+    expect(
+        &click_real(runs(0.0, 4.0), ids::INSP_PLAYER_RESTORE_RUN),
+        PlayerFieldEdit::RestoreRun,
+        "devolver a corrida descartada",
+    );
+
+    // 3. Nenhuma das duas: nenhum botao. A ausencia e' o outro readout.
+    assert!(!has(runs(0.0, 0.0), ids::INSP_PLAYER_CLEAR_RUN));
+    assert!(!has(runs(0.0, 0.0), ids::INSP_PLAYER_RESTORE_RUN));
 }

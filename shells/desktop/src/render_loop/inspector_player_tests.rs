@@ -41,11 +41,11 @@ const CAPSULE: ColliderShape = ColliderShape::Capsule {
 #[test]
 fn the_empty_face_becomes_a_player_with_the_laws_starting_point() {
     let (mut sim, bits) = body(BodyKind::Dynamic, CAPSULE);
-    let before = build_player_info(&sim, bits, 0.0).expect("todo corpo Dynamic tem a §14");
+    let before = build_player_info(&sim, bits, 0.0, 0.0).expect("todo corpo Dynamic tem a §14");
     assert!(!before.has_player, "ele ainda nao e' um player");
 
     apply_player_edit(&mut sim, bits, PlayerFieldEdit::Add);
-    let after = build_player_info(&sim, bits, 0.0).expect("a secao continua viva");
+    let after = build_player_info(&sim, bits, 0.0, 0.0).expect("a secao continua viva");
     assert!(after.has_player);
     assert_eq!(after.speed, 6.0, "a velocidade do ponto de partida");
     assert_eq!(after.max_slope_deg, 45.0);
@@ -61,7 +61,7 @@ fn the_empty_face_becomes_a_player_with_the_laws_starting_point() {
 fn a_new_player_floats_over_its_own_collider() {
     let (mut sim, bits) = body(BodyKind::Dynamic, CAPSULE);
     apply_player_edit(&mut sim, bits, PlayerFieldEdit::Add);
-    let info = build_player_info(&sim, bits, 0.0).unwrap();
+    let info = build_player_info(&sim, bits, 0.0, 0.0).unwrap();
     assert!(
         info.min_float_known,
         "uma capsula tem piso computavel — sem isto o resto do gate nao diz nada"
@@ -80,14 +80,14 @@ fn fit_to_collider_raises_a_short_float_height() {
     let (mut sim, bits) = body(BodyKind::Dynamic, CAPSULE);
     apply_player_edit(&mut sim, bits, PlayerFieldEdit::Add);
     apply_player_edit(&mut sim, bits, PlayerFieldEdit::FloatHeight(0.2));
-    let short = build_player_info(&sim, bits, 0.0).unwrap();
+    let short = build_player_info(&sim, bits, 0.0, 0.0).unwrap();
     assert!(
         short.float_height < short.min_float_height,
         "a fixture TEM de conter o defeito"
     );
 
     apply_player_edit(&mut sim, bits, PlayerFieldEdit::FitFloatHeight);
-    let fixed = build_player_info(&sim, bits, 0.0).unwrap();
+    let fixed = build_player_info(&sim, bits, 0.0, 0.0).unwrap();
     assert!(
         fixed.float_height > fixed.min_float_height,
         "o ajuste tem de passar do piso: {:.3} vs {:.3}",
@@ -107,7 +107,7 @@ fn a_static_body_gets_neither_the_section_nor_the_write() {
     for kind in [BodyKind::Static, BodyKind::Kinematic] {
         let (mut sim, bits) = body(kind, CAPSULE);
         assert!(
-            build_player_info(&sim, bits, 0.0).is_none(),
+            build_player_info(&sim, bits, 0.0, 0.0).is_none(),
             "{kind:?} nao pode receber a secao"
         );
         apply_player_edit(&mut sim, bits, PlayerFieldEdit::Add);
@@ -127,7 +127,7 @@ fn remove_gives_the_body_back_and_keeps_the_door_open() {
     let (mut sim, bits) = body(BodyKind::Dynamic, CAPSULE);
     apply_player_edit(&mut sim, bits, PlayerFieldEdit::Add);
     apply_player_edit(&mut sim, bits, PlayerFieldEdit::Remove);
-    let info = build_player_info(&sim, bits, 0.0).expect("a secao NAO some com o componente");
+    let info = build_player_info(&sim, bits, 0.0, 0.0).expect("a secao NAO some com o componente");
     assert!(!info.has_player);
 }
 
@@ -142,7 +142,7 @@ fn the_damping_is_clamped_to_the_measured_ceiling() {
     let (mut sim, bits) = body(BodyKind::Dynamic, CAPSULE);
     apply_player_edit(&mut sim, bits, PlayerFieldEdit::Add);
     apply_player_edit(&mut sim, bits, PlayerFieldEdit::SpringDamping(5.0));
-    let info = build_player_info(&sim, bits, 0.0).unwrap();
+    let info = build_player_info(&sim, bits, 0.0, 0.0).unwrap();
     assert_eq!(
         info.spring_damping,
         ph2d_physics_ecs::RideConfig::MAX_DAMPING
@@ -165,7 +165,7 @@ fn a_box_reports_no_known_floor() {
             half_y: 0.5,
         },
     );
-    let info = build_player_info(&sim, bits, 0.0).unwrap();
+    let info = build_player_info(&sim, bits, 0.0, 0.0).unwrap();
     assert!(!info.min_float_known);
 }
 
@@ -182,14 +182,14 @@ fn the_two_w10_assists_land_on_the_component_and_are_clamped() {
 
     apply_player_edit(&mut sim, bits, PlayerFieldEdit::CornerReach(0.2));
     apply_player_edit(&mut sim, bits, PlayerFieldEdit::LiftMomentum(0.8));
-    let info = build_player_info(&sim, bits, 0.0).unwrap();
+    let info = build_player_info(&sim, bits, 0.0, 0.0).unwrap();
     assert!((info.corner_reach - 0.2).abs() < 1.0e-6, "{info:?}");
     assert!((info.lift_momentum - 0.8).abs() < 1.0e-6, "{info:?}");
 
     // Negativo não é uma direção nem uma janela: vira o desligado.
     apply_player_edit(&mut sim, bits, PlayerFieldEdit::CornerReach(-1.0));
     apply_player_edit(&mut sim, bits, PlayerFieldEdit::LiftMomentum(-1.0));
-    let clamped = build_player_info(&sim, bits, 0.0).unwrap();
+    let clamped = build_player_info(&sim, bits, 0.0, 0.0).unwrap();
     assert_eq!((clamped.corner_reach, clamped.lift_momentum), (0.0, 0.0));
 }
 
@@ -220,7 +220,7 @@ fn fitting_the_crouch_seeds_it_from_the_floor_not_from_the_standing_leg() {
     apply_player_edit(&mut sim, bits, PlayerFieldEdit::CrouchHeight(0.10));
 
     apply_player_edit(&mut sim, bits, PlayerFieldEdit::FitCrouchHeight);
-    let info = build_player_info(&sim, bits, 0.0).unwrap();
+    let info = build_player_info(&sim, bits, 0.0, 0.0).unwrap();
 
     assert!(
         info.crouch_height > info.min_float_height,
@@ -252,7 +252,7 @@ fn a_fitted_crouch_never_rises_above_the_standing_leg() {
     apply_player_edit(&mut sim, bits, PlayerFieldEdit::FloatHeight(0.20));
     apply_player_edit(&mut sim, bits, PlayerFieldEdit::CrouchHeight(0.10));
     apply_player_edit(&mut sim, bits, PlayerFieldEdit::FitCrouchHeight);
-    let info = build_player_info(&sim, bits, 0.0).unwrap();
+    let info = build_player_info(&sim, bits, 0.0, 0.0).unwrap();
     assert!(
         info.crouch_height <= info.float_height,
         "o agachar ({:.3}) passou da perna de pe ({:.3})",

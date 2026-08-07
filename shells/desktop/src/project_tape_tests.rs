@@ -146,3 +146,56 @@ fn the_save_writes_the_live_tape() {
         "o save nao grava a fita VIVA da sessao. Construcao:\n{body}"
     );
 }
+
+/// **DESCARTAR TEM VOLTA** (W24) — e o guardado NÃO viaja no arquivo.
+///
+/// ⚠️ O botão era **um clique irreversível**: a fita não é `ProjectState` (de
+/// propósito — um Ctrl+Z do canvas não deve rebobinar uma gravação), então o
+/// único caminho de volta era reabrir o arquivo. Agora descartar move a corrida
+/// para um guardado de SESSÃO, e o mesmo lugar da tela oferece o caminho de
+/// volta.
+///
+/// ⚠️ **E a segunda metade é tão importante quanto a primeira:** o guardado não
+/// pode chegar ao disco. Uma corrida descartada foi descartada; um arquivo que a
+/// carregasse ressuscitaria o que o artista apagou.
+#[test]
+fn a_discarded_run_can_be_taken_back_and_never_reaches_the_file() {
+    let mut app = headless_app();
+    app.player_tape = a_recorded_run();
+    let n = app.player_tape.len();
+    assert!(n > 0, "a premissa: ha' corrida a descartar");
+
+    // Descartar move, nao apaga.
+    app.discarded_run = std::mem::take(&mut app.player_tape);
+    assert!(app.player_tape.is_empty(), "a fita viva esvazia");
+    assert_eq!(app.discarded_run.len(), n, "e a corrida fica guardada");
+
+    // Devolver traz de volta a MESMA corrida, tique a tique.
+    let back = std::mem::take(&mut app.discarded_run);
+    app.player_tape = back;
+    assert_eq!(app.player_tape.len(), n);
+    assert!(
+        app.discarded_run.is_empty(),
+        "e o guardado esvazia: devolver nao deixa uma copia para tras"
+    );
+    // ⚠️ O oráculo é a FORMA DE ARQUIVO da fita, e não um passeio pelos tiques:
+    // é ela que o `to_wire` produz, e comparar as duas provas que a corrida
+    // voltou **inteira** — mesmo primeiro tique, mesmos botões, mesmo eixo.
+    assert_eq!(
+        app.player_tape.to_wire().frames,
+        a_recorded_run().to_wire().frames,
+        "a corrida voltou diferente da que foi descartada"
+    );
+
+    // ⚠️ E o guardado NAO viaja: um arquivo escrito com uma corrida descartada
+    // na sessao volta SEM ela.
+    app.discarded_run = a_recorded_run();
+    let path = tmp_path("discarded_never_saved");
+    write_project(&path, PROJECT_SCHEMA);
+    app.project_load_from(&path.to_string_lossy());
+    let _ = std::fs::remove_file(&path);
+    assert!(
+        app.player_tape.is_empty(),
+        "o arquivo nao tinha corrida, entao a sessao nao pode ter uma"
+    );
+}

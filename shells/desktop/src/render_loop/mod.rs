@@ -2000,6 +2000,10 @@ impl crate::App {
                 // é o zero que tira o *Clear Recorded Run* da tela, pelo mesmo
                 // desenho do Paste acima.
                 self.player_tape.len(),
+                // W24: e quantos esperam por um desfazer. O par decide QUAL
+                // botão a §14 pinta, e os dois nunca são não-zero ao mesmo tempo
+                // (descartar esvazia a fita viva).
+                self.discarded_run.len(),
                 self.fixed_step.fixed_dt(),
                 // W-Pulley W3: o eyedropper de montagem da §13, pelo mesmo motivo.
                 self.wheel_body_pick,
@@ -3388,7 +3392,14 @@ impl crate::App {
                         // duplicado "nunca tinha importado enquanto todos os
                         // verbos eram idempotentes".
                         if matches!(edit, ph2d_editor::PlayerFieldEdit::ClearRun) {
-                            self.player_tape.clear();
+                            // ⚠️ **Descartar GUARDA** (W24): a corrida sai do
+                            // documento e fica na sessão, porque o clique era
+                            // irreversível — a fita não é `ProjectState`, então
+                            // sem isto o único caminho de volta era reabrir o
+                            // arquivo.
+                            self.discarded_run = std::mem::take(&mut self.player_tape);
+                        } else if matches!(edit, ph2d_editor::PlayerFieldEdit::RestoreRun) {
+                            self.player_tape = std::mem::take(&mut self.discarded_run);
                         } else {
                             player_edits.push((entity_bits, edit));
                         }

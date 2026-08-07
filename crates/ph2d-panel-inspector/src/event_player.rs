@@ -30,6 +30,9 @@ pub(crate) fn apply_player_event(host: &mut dyn PanelHostInternal, ev: WidgetEve
         WidgetEvent::Click(id) if id == ids::INSP_PLAYER_CLEAR_RUN => {
             Some(PlayerFieldEdit::ClearRun)
         }
+        WidgetEvent::Click(id) if id == ids::INSP_PLAYER_RESTORE_RUN => {
+            Some(PlayerFieldEdit::RestoreRun)
+        }
         WidgetEvent::Click(id) if id == ids::INSP_PLAYER_FIT_CROUCH => {
             Some(PlayerFieldEdit::FitCrouchHeight)
         }

@@ -103,6 +103,17 @@ pub struct InspectorPlayerInfo {
     /// `PlatformPlayer` como os vinte e quatro acima: a fita é uma só. Quem o
     /// preenche é a shell, que é quem a tem.
     pub recorded_run_seconds: f32,
+    /// **Quantos segundos de corrida DESCARTADA esperam por um desfazer** (W24).
+    ///
+    /// ⚠️ **Sessão apenas, e nunca no arquivo:** uma corrida descartada foi
+    /// descartada, e um arquivo que a carregasse ressuscitaria o que o artista
+    /// apagou. Isto é o desfazer de um CLIQUE, não um segundo documento.
+    ///
+    /// ⚠️ **Ele só é OFERECIDO com a fita viva vazia**, e essa é a regra inteira
+    /// do ciclo de vida — derivada, não mantida: gravar de novo enche a fita, o
+    /// botão de devolver some, e o próximo descarte sobrescreve o guardado. Não
+    /// existe caminho em que ele ressuscite uma corrida velha.
+    pub discarded_run_seconds: f32,
 }
 
 /// Uma edição na §14 — o vocabulário que o painel emite e a shell honra.
@@ -127,6 +138,13 @@ pub enum PlayerFieldEdit {
     /// é interceptado no laço de ações, onde o `self` é mutável — o lugar e a
     /// razão exatos do `Join` da §11 e do eyedropper da §12.
     ClearRun,
+    /// **Devolve a corrida que o `ClearRun` descartou** (W24).
+    ///
+    /// ⚠️ Ele existe porque descartar era **um clique irreversível**: a fita não
+    /// é `ProjectState` (de propósito — um Ctrl+Z do canvas não deve rebobinar
+    /// uma gravação), então sem isto o único caminho de volta era reabrir o
+    /// arquivo.
+    RestoreRun,
 
     FloatHeight(f32),
     ClingDistance(f32),

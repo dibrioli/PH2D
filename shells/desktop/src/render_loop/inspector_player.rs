@@ -50,6 +50,7 @@ pub(crate) fn build_player_info(
     sim: &SimWorld,
     entity_bits: u64,
     recorded_run_seconds: f32,
+    discarded_run_seconds: f32,
 ) -> Option<InspectorPlayerInfo> {
     let entity = Entity::from_bits(entity_bits);
     let body = sim.world().get::<RigidBody>(entity)?;
@@ -99,6 +100,7 @@ pub(crate) fn build_player_info(
         reaction_support: p.reaction_support,
         reaction_movement: p.reaction_movement,
         recorded_run_seconds,
+        discarded_run_seconds,
     })
 }
 
@@ -161,7 +163,10 @@ pub(crate) fn apply_player_edit(sim: &mut SimWorld, entity_bits: u64, edit: Play
         // fan-out por entidade, como faz com o `Join` da §11. Ele está nomeado
         // neste braço em vez de num `_` justamente para o dia em que alguém mover
         // a interceptação: o braço fica INERTE e visível, e não engole o verbo.
-        PlayerFieldEdit::Add | PlayerFieldEdit::Remove | PlayerFieldEdit::ClearRun => {}
+        PlayerFieldEdit::Add
+        | PlayerFieldEdit::Remove
+        | PlayerFieldEdit::ClearRun
+        | PlayerFieldEdit::RestoreRun => {}
         PlayerFieldEdit::FitFloatHeight => {
             if let Some(fit) = fitted_float(shape, p.max_slope_deg) {
                 p.float_height = fit;

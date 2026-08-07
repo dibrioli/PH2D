@@ -1021,10 +1021,19 @@ saber que ela já foi medida.
   `hand_input_to_players`) e deixa de ser no dia em que houver um segundo jogador:
   aí a fita passa a ser **por-player**, e os dois se movem juntos. Nada aqui o
   impede; o que falta é o segundo dedo.
-- **W17:** descartar a corrida **não passa pelo undo** — não há Ctrl+Z para
-  ele. A fita não é `ProjectState` (de propósito: um Ctrl+Z do canvas não deve
-  rebobinar uma gravação), então o único jeito de recuperar uma corrida
-  descartada é reabrir o arquivo. O botão não pede confirmação.
+- ~~**W17:** descartar a corrida **não passa pelo undo**~~ — **FECHADO pela W24**
+  (2026-08-07). A fita continua **fora** do `ProjectState`, de propósito (um
+  Ctrl+Z do canvas não deve rebobinar uma gravação), então a cura não é o undo
+  global: descartar **move** a corrida para um guardado de SESSÃO (`mem::take`)
+  e o mesmo lugar da tela oferece **Restore Discarded Run**.
+  ⚠️ **O ciclo de vida é DERIVADO, não mantido:** o botão de devolver só é
+  oferecido com a fita viva vazia, então gravar de novo o esconde e o próximo
+  descarte sobrescreve o guardado — não existe caminho em que uma corrida velha
+  ressuscite, e é por isso que os dois botões nunca coexistem.
+  ⚠️ **O guardado não viaja no arquivo**: uma corrida descartada foi descartada,
+  e um arquivo que a carregasse ressuscitaria o que o artista apagou.
+  O botão segue **sem confirmação**, e agora isso é honesto — o gesto é
+  reversível num clique.
 - **Do plano 06 §4, o que sobra:** **player Kinematic** — e ele é o item que o
   Enio disse que virá um dia. Este plano não o proíbe: a lei pura da
   `ph2d-platformer` é agnóstica de como o motor é aplicado, e é exatamente onde

@@ -922,6 +922,19 @@ pub(crate) struct App {
     /// instante. Persistir a fita (um replay que sobrevive a fechar o app) é
     /// wave posterior, e está escrito aqui para não virar promessa esquecida.
     pub(crate) player_tape: ph2d_physics_ecs::InputTape,
+    /// **A última corrida DESCARTADA** (W24) — o desfazer do `Clear Recorded Run`.
+    ///
+    /// ⚠️ **Sessão apenas, e nunca no arquivo:** uma corrida descartada foi
+    /// descartada, e um arquivo que a carregasse ressuscitaria o que o artista
+    /// apagou. Isto é o desfazer de um CLIQUE, não um segundo documento — e é
+    /// também por isso que ela não entra no `ProjectState`: um Ctrl+Z do canvas
+    /// não deve rebobinar uma gravação (a razão que o W17 já escreveu).
+    ///
+    /// ⚠️ **O ciclo de vida é DERIVADO, não mantido:** o botão de devolver só é
+    /// oferecido com a fita viva VAZIA, então gravar de novo o faz desaparecer e
+    /// o descarte seguinte sobrescreve o que está aqui. Não existe caminho em
+    /// que ele ressuscite uma corrida velha.
+    pub(crate) discarded_run: ph2d_physics_ecs::InputTape,
     /// ADR-0114 W7.5: o arrasto do gizmo de POSE em curso (modo Edit, quadro
     /// instanciado) — rotate/scale escrevendo a pose da chave, nunca o `Transform`.
     /// `None` fora de um arrasto. Ver `flip_pose_gizmo`.

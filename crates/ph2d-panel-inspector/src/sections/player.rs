@@ -458,18 +458,35 @@ pub(crate) fn paint_player_section(
     // ⚠️ **A AUSÊNCIA dele é o outro readout.** Sem corrida não há o que
     // descartar, e um botão pintado sobre nada seria um controle que não faz nada
     // — a lei do knob morto que esta seção honra em toda row opt-in.
-    if info.recorded_run_seconds > 0.0 {
-        let label = format!("Clear Recorded Run ({:.1} s)", info.recorded_run_seconds);
+    //
+    // ⚠️ **E DESCARTAR TEM VOLTA** (W24): a corrida some do documento mas fica
+    // guardada na sessão, e o mesmo lugar da tela passa a oferecer o caminho de
+    // volta. Os dois nunca aparecem juntos — *há corrida viva* e *há corrida
+    // descartada com a fita vazia* são estados mutuamente exclusivos por
+    // construção, e é isso que dispensa qualquer coordenação entre eles.
+    let run_button = if info.recorded_run_seconds > 0.0 {
+        Some((
+            ids::INSP_PLAYER_CLEAR_RUN,
+            format!("Clear Recorded Run ({:.1} s)", info.recorded_run_seconds),
+        ))
+    } else if info.discarded_run_seconds > 0.0 {
+        Some((
+            ids::INSP_PLAYER_RESTORE_RUN,
+            format!(
+                "Restore Discarded Run ({:.1} s)",
+                info.discarded_run_seconds
+            ),
+        ))
+    } else {
+        None
+    };
+    if let Some((id, label)) = run_button {
         let rect = Rect::new(x, yy, w, h);
-        let btn = Button::new(ids::INSP_PLAYER_CLEAR_RUN, &label)
+        let btn = Button::new(id, &label)
             .kind(ButtonKind::Default)
-            .state(
-                store
-                    .button_state(ids::INSP_PLAYER_CLEAR_RUN)
-                    .unwrap_or(ButtonState::Normal),
-            );
+            .state(store.button_state(id).unwrap_or(ButtonState::Normal));
         paint_button(&btn, rect, scene, text_system, theme);
-        hit_index.register(ids::INSP_PLAYER_CLEAR_RUN, rect);
+        hit_index.register(id, rect);
         yy += h + Spacing::Sm.px();
     }
 

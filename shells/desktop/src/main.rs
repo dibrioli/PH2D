@@ -715,6 +715,7 @@ impl App {
             flip_peek: None,
             player_keys: crate::player_input::PlayerKeys::default(),
             player_tape: ph2d_physics_ecs::InputTape::new(),
+            discarded_run: ph2d_physics_ecs::InputTape::new(),
             flip_pose_drag: None,
             flip_selection_drag: None,
             field_gizmo_drag: None,

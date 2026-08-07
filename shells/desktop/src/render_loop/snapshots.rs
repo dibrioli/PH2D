@@ -127,6 +127,7 @@ pub(super) fn publish(
     // fita é do shell (`App.player_tape`), como a área de transferência acima; o
     // passo fixo que a converte em segundos é o `fixed_dt` do parâmetro seguinte.
     player_tape_ticks: usize,
+    discarded_run_ticks: usize,
     // O passo fixo do relógio, para o número acima virar SEGUNDOS pela mesma
     // régua com que os tiques foram gravados.
     fixed_dt: f64,
@@ -862,10 +863,15 @@ pub(super) fn publish(
     // documento, não desta entidade, e é o único número da §14 que não sai do
     // componente. Segundos, medidos com o MESMO passo fixo que gravou os tiques.
     let recorded_run_seconds = (player_tape_ticks as f64 * fixed_dt) as f32;
-    let inspector_player = hero
-        .gizmo
-        .selection
-        .and_then(|b| super::inspector_player::build_player_info(sim, b, recorded_run_seconds));
+    let discarded_run_seconds = (discarded_run_ticks as f64 * fixed_dt) as f32;
+    let inspector_player = hero.gizmo.selection.and_then(|b| {
+        super::inspector_player::build_player_info(
+            sim,
+            b,
+            recorded_run_seconds,
+            discarded_run_seconds,
+        )
+    });
     let inspector_visibility_section = hero.gizmo.selection.and_then(|b| {
         super::inspector_visibility::build_visibility_section_info(
             sim.world(),

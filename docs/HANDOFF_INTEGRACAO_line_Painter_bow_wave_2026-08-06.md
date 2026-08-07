@@ -1,6 +1,6 @@
 # HANDOFF DE INTEGRAÇÃO — `line/Painter`, o bow wave gateado no knob + as bandas por trabalho (2026-08-06)
 
-> **23 commits · 31 arquivos · nenhum `Cargo.toml` · nenhum ADR · `project.rs` intocado.**
+> **26 commits · 32 arquivos · nenhum `Cargo.toml` · nenhum ADR · `project.rs` intocado.**
 >
 > ⚠️ O par `commits · arquivos` deste cabeçalho **se CONTA** (`git log --oneline origin/main..HEAD | wc -l`
 > e `git diff --name-only origin/main..HEAD | wc -l`). Ele nasceu dizendo *11 · 17*, que já era falso
@@ -475,80 +475,78 @@ que bateu 749 > 700 — corte por assunto) · `selection_trace_tests.rs` · `str
 
 ---
 
-## §13 O meio caro renderiza em REPOUSO — a 4ª metade (2026-08-07)
+## §13 Sob a mão, o GIZMO é o preview — a 4ª metade (2026-08-07)
 
-**Pedido do Enio:** *"temos boa performance de modo geral, exceto usando as shapes vivas. Que acha de
-ligar o pigmento apenas no mouse up quando o usuário estiver em repouso? … se o usuário mover a shape
-a pintura some e só volta no mouse up."*
+**Duas rodadas de smoke do Enio**, e a segunda derrubou a primeira versão desta lei:
+*"funcionou, MAS mesmo o preview plano (digital comum) é extremamente custoso e numa imagem de 4096,
+4 círculos com boolean +, fps cai para 2 ou menos. Minha ideia é deixar só as linhas do gizmo."*
 
-⚠️ **Esta é a única metade da jornada que MUDA O QUE O ARTISTA VÊ**, e por isso é a única que precisa
-de veredito de gosto no smoke. As outras três são invisíveis ou já aprovadas.
+⚠️ **Esta é a única metade da jornada que MUDA O QUE O ARTISTA VÊ**, e por isso a única que precisa de
+veredito de gosto no smoke.
 
-### O diagnóstico dele estava certo, e a medição diz por quê
+### O que a segunda rodada ensinou
 
-Um move de figura viva a 4096², elipse de 400 px: **99,10 ms no Impasto, dos quais 98,38 (99,3%) são
-o CARIMBO**; a máquina de shape (geometria, restore, save) custa 0,25. O carimbo não é ineficiente —
-ele é **repetido**: o shape editor re-carimba a figura INTEIRA a cada quadro do arrasto.
+A v1 desarmava o **meio caro** e media 16× num move de figura única. ⚠️ **A fixture não era a cena do
+report** — uma elipse de 400 px contra quatro círculos de 900 px com Add num 4096
+(`measure_boolean_cost::measure_the_scene_the_report_describes`):
 
-### A correção no desenho: RASCUNHO, não apagar
+| formas | raio | EVENTO | **geom (boolean)** | carimbo |
+|---|---|---|---|---|
+| 1 | 120 | 90,79 | 79,16 | 11,64 |
+| 4 | 120 | **308,16** | **284,10 (92%)** | 24,06 (8%) |
+| 4 | **40** | 289,23 | 280,85 | 8,38 |
 
-| meio | caro | **rascunho** | só o guia |
-|---|---|---|---|
-| Impasto | 101,17 ms | **4,38** | 0,39 |
-| Aquarela | 73,78 ms | **4,38** | 0,32 |
-
-Apagar economiza mais 4 ms e leva embora a cor, a largura real do traço, a textura do pincel e o
-resultado do booleano. O rascunho cabe em 26% de um quadro de 60 fps. ⚠️ **E é o padrão que o doc 21
-já shipa no Wet Paint**, smokado e aprovado — o que muda é a FRONTEIRA (repouso, não commit), que é a
-metade da proposta do Enio adotada verbatim.
+**308 ms/quadro reproduz o `2 fps` do report**, e **a tinta era 8%**. Os 92% são rasterizar as figuras
+num buffer supersampleado + traçar os contornos, e isso quase não responde ao pincel.
+⛔ **Medido e rejeitado:** rascunhar o composite em `SS` menor dá 60 ms (16 fps) **e** piora o contorno
+(30.884 → 10.291 pontos).
 
 ### O resultado
 
-| meio | antes | depois |
+| formas | MOVE (antes → depois) | SOLTAR |
 |---|---|---|
-| Digital | 4,52 | **4,27-4,45** ← o CONTROLE, inalterado |
-| Impasto | 99,10 | **5,66-6,03** (16×) |
-| Aquarela | 74,27 | **4,87-5,28** (14×) |
+| 1 | 90,79 → **0,018** | 111,3 |
+| 4 | 308,16 → **0,019** | **370,2** |
 
-### Estrutura
+⚠️ **O custo mudou de lugar, não sumiu:** soltar custa 370 ms nessa cena — **uma vez por gesto, em vez
+de por quadro**. A cura da pausa é a **rota analítica do doc 35 §4** (booleano sobre CURVAS,
+`O(segmentos)`), que segue sendo decisão do Enio.
 
-Módulo novo **`shape_draft.rs`** (a lei inteira: o predicado, o embrulho da rota, a porta de re-carimbo
-agnóstica de editor) + `shape_draft_tests.rs`. `PaintState` ganha **dois campos transientes**
-(`shape_draft`, `restamp_seq`) — nada serializado, nada no `ModelSnapshot`.
+### A metade de CORREÇÃO, que é o que vale ler
 
-⚠️ **A pergunta da aquarela foi PARTIDA em duas.** `watercolor_render_active` tinha quatro leitores;
-três perguntam *"o que ESTE lote desenha?"* e o `snapshot` pergunta *"que meio o artista escolheu?"* —
-e é ele que esconde a row **Accumulate**. Coladas, a row apareceria e sumiria a cada arrasto. Agora
-**`watercolor_armed`** serve o painel. Se alguém reverter isso, o gate
-`the_watercolor_chip_does_not_flicker_while_the_shape_is_dragged` sangra.
+⚠️ **Nenhuma captura de undo pode ver a tela rascunhada.** Um `ModelSnapshot` guarda o `drag_preview`
+como `preview_patch`, e a montagem que escrevia a figura de volta **depois** do commit tinha essa
+escrita **absorvida pelo passo anterior** (`undo_absorb`): o **redo** de um arrasto de curva devolvia
+uma cena **sem a curva**. Os **dois gates de undo que já existiam** nasceram vermelhos com isso — a
+mutação *"o commit deixa de assentar"* sangra por eles, escritos anos antes desta wave.
 
-⚠️ **O `restamp_seq` não é cerimônia:** o ramo `editing` do `ellipse_up` **não re-carimba** (fecha a
-transação de undo e sai), então sem o fallback a figura ficaria plana depois de todo arrasto de
-AJUSTE — o gesto exato que o Enio descreveu.
+A porta é **`settle_shape_draft`**, chamada por `commit_shape_txn` ANTES de capturar. O sinal é o FATO
+(`shape_stale`), nunca uma lista de ramos: o `editing` do `ellipse_up` fecha a transação e sai **sem
+re-carimbar**, e sem o fato a figura ficaria invisível depois de todo ajuste.
+
+### O que mexeu fora da wave
+
+**Seis** gates de `stamp_banded`/`stamp_device` passaram a **SOLTAR** — o carimbo acontece em repouso,
+então medi-lo num Move é medir o silêncio. O assunto deles não mudou.
 
 ### Verificação
 
-**5 gates, 5 mutações, 5 sangram.** Suíte da crate **1006 release / 1004 debug**, clippy limpo, LOC
-sob o teto (o `mod shape_draft` foi **reancorado** depois que o `rustfmt` o pôs entre um doc-comment e
-o módulo dele — a cicatriz que esta linha já pagou). **Nenhum `Cargo.toml`, nenhum ADR, `project.rs`
-intocado, contrato congelado 4/4.**
+**5 gates, 5 mutações, 4 sangram**; a 5ª (o `settle` do Up) fica **documentada no código** com o
+motivo — hoje é no-op, e fica porque as duas portas existem por razões diferentes (correção do undo ×
+a feature). Suíte **1007 release / 1005 debug**, clippy limpo, LOC sob o teto, `typos` limpo. **Nenhum
+`Cargo.toml`, nenhum ADR, `project.rs` intocado, contrato congelado 4/4.**
 
 ### O que o smoke tem de julgar
 
 **`env PH2D_IMPASTO_SMOKE=1 PH2D_PAINT_PERF=1 cargo run -p ph2d-host-desktop --release`**, canvas
-**4096**, Paint Mode **Impasto**, método **Ellipse**:
+**4096**, método **Ellipse**, Operation **Add**:
 
-1. desenhe uma elipse e **arraste-a** — o arrasto tem de ficar liso, e a figura sai **plana** (cor e
-   largura ficam, o relevo some);
-2. **solte** — o relevo volta na hora;
-3. repita pegando e soltando: **o pisca incomoda mais do que a fluidez vale?** É a pergunta inteira.
-4. o mesmo em **Watercolor**; e em **Digital** nada pode mudar (é o controle).
-
-⚠️ **Trocar para *apagar* é uma linha**, se o veredito for que o rascunho plano confunde mais do que
-ajuda.
+1. desenhe **quatro círculos grandes** que se cruzem — durante cada arrasto **a pintura some** e só o
+   guia amarelo acompanha a mão; o arrasto tem de ficar **instantâneo**;
+2. **solte** — o blob booleano volta, com uma **pausa** (é o composite, e ela está medida em ~370 ms);
+3. **a pausa ao soltar incomoda mais do que os 2 fps incomodavam?** É a pergunta;
+4. e o **undo/redo** de um arrasto de curva tem de devolver a curva — é a metade de correção.
 
 ### Aberto
 
-O arrasto de um **slider do painel** também re-carimba por quadro e **não** passa por esta porta (ele
-não tem Down/Up de canvas). Se afinar um knob sob Impasto ainda engasgar, a cura é fiar o
-`held_button` da shell no mesmo `shape_draft` — mesma lei, segundo fio.
+O arrasto de um **slider do painel** também re-carimba por quadro e não passa por esta porta.

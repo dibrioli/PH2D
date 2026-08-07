@@ -7238,134 +7238,110 @@ lado de cada uma.
 
 ---
 
-## §5.78 — O meio caro renderiza em REPOUSO: o move de Impasto 99 → 6 ms (2026-08-07)
+## §5.78 — Sob a mão, o GIZMO é o preview: o move da cena do report 308 → 0,02 ms (2026-08-07)
 
 Pedido do Enio: *"temos boa performance de modo geral, exceto usando as shapes
 vivas. Que acha de ligar o pigmento apenas no mouse up quando o usuário estiver
-em repouso? No mouse up a shape pinta, se o usuário mover a shape a pintura some
-e só volta no mouse up."*
+em repouso?"* — e, depois do smoke da primeira versão: *"mesmo o preview plano
+(digital comum) é extremamente custoso e numa imagem de 4096, 4 círculos com
+boolean +, fps cai para 2 ou menos. Minha ideia é deixar só as linhas do gizmo."*
 
-### O número que confirma o alvo
+### A v1, e o que a derrubou
 
-Um move de figura viva, 4096², elipse de 400 px, pincel r=96
-(`measure_shape_system_by_medium`):
+A primeira versão desarmava o **MEIO CARO** (o corpo do Impasto, a lavagem da
+Aquarela) durante o gesto e media, pela porta do artista, **99,10 → 5,66 ms**
+num move de figura única. O número era real e a wave estava gateada.
 
-```text
-meio        move (ms)   do qual: carimbo   ns/visita
-Digital          4,52   4,01  (89%)          0,79
-Impasto         99,10   98,38 (99,3%)       19,40
-Aquarela        74,27   -                       -
-```
-
-⚠️ **A máquina de shape custa 0,25 ms.** Geometria, restore, save — tudo somado.
-Quem cobra é o CARIMBO, e ele não é ineficiente: ele é **repetido**, porque o
-shape editor re-carimba a figura INTEIRA a cada quadro do arrasto. O quadro
-também não esconde nada: o `what_a_frame_of_a_live_shape_costs` mede o composite
-em **0,000 ms** para uma figura viva, então *o evento É o quadro*.
-
-### A escolha do desenho, medida em vez de opinada
-
-A proposta dizia **apagar** a pintura durante o arrasto. A pergunta que faltava
-era quanto isso compra sobre a alternativa, e ela tem número
-(`measure_what_a_flat_preview_would_cost`, ablação pelas portas do PRODUTO —
-`set_brush_impasto`/`set_brush_watercolor`, as mesmas do dropdown de Paint Mode):
+⚠️ **E ela não resolvia o problema do Enio, porque a fixture não era a cena
+dele.** A minha usava **UMA** elipse de 400 px com pincel r=96; a dele tem
+**quatro** círculos de 900 px com Operation **Add** num 4096. Medida
+(`measure_boolean_cost::measure_the_scene_the_report_describes`):
 
 ```text
-meio        caro    RASCUNHO   só o guia
-Impasto   101,17      4,38       0,39
-Aquarela   73,78      4,38       0,32
+formas  raio    EVENTO   geom (boolean)   carimbo
+     1   120     90,79        79,16        11,64
+     4   120    308,16       284,10 (92%)  24,06 (8%)
+     4    40    289,23       280,85         8,38
 ```
 
-⚠️ **As duas linhas do rascunho darem 4,382 é o CONTROLE da ablação:** com os dois
-flags desarmados o meio deixa de importar, então elas *têm* de coincidir.
+**308 ms/quadro é o `2 fps ou menos` do report** — a cena reproduz. E a
+atribuição é o achado: **a tinta era 8%**. Os 92% são o composite booleano —
+rasterizar as quatro figuras num buffer supersampleado (142 ms) e traçar os
+contornos (124) — e ele **quase não responde ao pincel** (r=120 dá 308 ms,
+r=40 dá 289). Desarmar só o meio caro levaria 308 para ~300.
 
-**Apagar** custa 0,39 ms e deixa só o guia amarelo (perímetro + alças, que a shell
-desenha no vector scene, fora do carimbo). **O rascunho** custa 4,38 — 26% de um
-quadro de 60 fps — e mantém sob a mão a COR, a **largura real do traço** (o pincel
-passa do guia), a textura do pincel e **o resultado do booleano**, nenhum dos
-quais o guia mostra. Ajustar uma figura é ajustar até *ficar bom*: apagar o que se
-julga durante o gesto tira justamente a informação do julgamento, por 4 ms.
+*Um ganho de 16× medido numa fixture que não contém o fenômeno não é um ganho.*
 
-⚠️ **E não é desenho novo — é o padrão que o doc 21 já shipa no Wet Paint**
-(autoria com preview flat estático, o meio caro entrando num commit), smokado e
-aprovado. O que muda aqui é a **FRONTEIRA**: lá o caro entra no *commit*
-(Enter/Apply), aqui entra **em repouso** (o Up), então ajustar → soltar → olhar →
-ajustar funciona sem esperar o Apply. Essa metade da proposta do Enio é melhor
-que a do doc 21 e foi adotada verbatim.
+### ⛔ Medido e rejeitado — não refaça
 
-### O resultado, pela porta do artista
+**Rascunhar o composite em resolução menor.** `SS` de 3 para 1 leva a cena a
+**60,10 ms** (5×, ainda 16 fps) **e muda o desenho sob a mão**: o contorno cai de
+30.884 para 10.291 pontos, visivelmente mais grosseiro. Não há ponto de operação
+nessa direção — ela paga aparência e não chega a lugar nenhum.
 
-`on_canvas_pointer`, 4096², elipse de 400 px, duas corridas:
+### A lei que shipou
+
+Enquanto um gesto de figura está em voo, o `restamp_shapes_preview` **descasca o
+preview e volta**: nenhum composite, nenhum carimbo. O guia amarelo (perímetro +
+alças) e os badges de Operation já são desenhados pela shell no vector scene,
+**fora do carimbo**, e portanto de graça.
 
 ```text
-meio        antes     depois
-Digital      4,52    4,27-4,45   <- o CONTROLE, inalterado
-Impasto     99,10    5,66-6,03   (16x)
-Aquarela    74,27    4,87-5,28   (14x)
+formas  raio    MOVE (antes → depois)      SOLTAR
+     1   120     90,79 → 0,018             111,3
+     4   120    308,16 → 0,019             370,2
 ```
 
-⚠️ **O Digital inalterado é o que prova que a ablação não é larga demais** — uma
-que apagasse o depósito inteiro durante o gesto daria os mesmos 16× no Impasto e
-faria os pixels do pincel comum sumirem sob a mão. O rascunho custa um pouco mais
-que o Digital (5,7-6,0 contra 4,3) porque o pincel de impasto tem outro spec
-(falloff Sphere, entre outros); o número é passado como é.
+⚠️ **O custo não sumiu — ele mudou de lugar, e isso está nomeado:** soltar custa
+**370 ms** nessa cena, uma vez por gesto em vez de por quadro. É a diferença
+entre *inutilizável* e *uma pausa ao largar*, e a cura da pausa é a **rota
+analítica** do [doc 35 §4](35_boolean_o_que_o_vector_ensina.md) — o booleano
+sobre CURVAS em vez de sobre pixels, `O(segmentos)` em vez de `O(área)`. A wave
+de 06/08 já havia levado a rota de raster ao piso do método; esta lei é o que
+torna a cena usável enquanto aquela decisão não é tomada.
 
-⚠️ E a primeira corrida pós-mudança media o Digital em **5,57** — 23% acima do
-controle. Não reproduziu: as duas seguintes deram 4,27 e 4,45, com o mesmo
-`ns/visita` de antes (0,76-0,79). *Um número que não reproduz não é achado.*
+### A metade que não era sobre velocidade
 
-### As três decisões de estrutura
+⚠️ **Nenhuma captura de undo pode ver a tela rascunhada.** Um `ModelSnapshot`
+guarda o `drag_preview` como `preview_patch`, e a primeira montagem escrevia a
+figura de volta **depois** de o editor commitar — uma escrita estrangeira
+pós-commit, que o `undo_absorb` (doc 28 §5.14 da jornada do journal) **absorve no
+passo anterior**. Consequência medida: o **redo** de um arrasto de curva
+devolvia uma cena **sem a curva** (`curve_overlay()` = `None`).
 
-**(1) A lei mora no roteador de ponteiro**, em `on_canvas_pointer` — o único
-lugar que vê o Down e o Up dos **cinco** editores. Um flag por editor seria a
-enumeração que apodrece no sexto.
+Os **dois gates de undo que já existiam** nasceram vermelhos com isso
+(`a_curve_point_move_is_undoable_and_redoable`,
+`line_fillet_persists_through_undo_redo_snapshot`) — e é por isso que a mutação
+*"o commit deixa de assentar"* é a mais forte da wave: ela sangra pelos gates de
+outro sistema, escritos anos antes, que sabiam o que este desenho não sabia.
 
-**(2) A bandeira cai ANTES da rota no Up**, não depois: assim o re-carimbo que o
-próprio editor faz ao soltar JÁ é o final, e o gesto paga **exatamente um**
-carimbo caro. Cair depois custaria dois pelo mesmo resultado.
+A cura é uma porta: **`settle_shape_draft`**, chamada por `commit_shape_txn`
+ANTES de capturar. O sinal é o FATO (`shape_stale`), nunca uma lista de quais
+ramos de Up de quais editores re-carimbam — o ramo `editing` do `ellipse_up`
+fecha a transação de undo e sai por `return true` **sem re-carimbar**, e sem o
+fato guardado a figura ficaria invisível depois de todo arrasto de ajuste, que é
+exatamente o gesto reportado.
 
-**(3) A pergunta da aquarela foi PARTIDA em duas.** `watercolor_render_active`
-tinha **quatro** leitores: três decidem *"o que ESTE lote desenha?"* e um — o
-`snapshot` — decide *"que meio o artista escolheu?"*, e é ele que esconde a row
-**Accumulate** no painel. Coladas, a row apareceria e sumiria a cada arrasto de
-figura: **UI piscando por causa de uma decisão de render**. Agora
-`watercolor_armed` responde ao painel e `watercolor_render_active` conhece o
-rascunho. O `impasto_batch_active` já era a pergunta certa e ganhou o termo
-direto.
+### O que a wave custou em fixtures alheias
 
-### O contador, e por que ele não é cerimônia
+**Seis** gates de `stamp_banded`/`stamp_device` dirigiam `Down` + `Move` e
+mediam o carimbo. Com a lei, um Move não produz lote nenhum — eles passaram a
+**SOLTAR**. Não é afrouxamento: o assunto deles (*a estrada em banda roda numa
+figura viva*) continua verdadeiro, só que **em repouso**.
 
-O Up pergunta ao FATO — `restamp_seq`, *alguém re-carimbou?* — em vez de enumerar
-os ramos de Up de cada editor. ⚠️ E isso **não é defesa hipotética**: o ramo
-`editing` do `ellipse_up` fecha a transação de undo e sai por `return true` **sem
-re-carimbar**, então sem o fallback a figura ficaria plana depois de todo arrasto
-de AJUSTE — que é literalmente o gesto que o Enio descreveu.
+### Verificação
 
-### Duas lições de fixture, as duas minhas
+5 gates, **5 mutações, 4 sangram**. A 5ª — o `settle` do Up — fica
+**DOCUMENTADA**: hoje todo Up dos quatro editores passa por `commit_shape_txn`,
+que já assenta (varrido pelo `no_editor_leaves_the_canvas_owing_at_rest`), então
+a linha é no-op. Ela fica porque as duas portas existem por razões **diferentes**
+— aquela é da CORREÇÃO do undo, esta é da FEATURE (o artista tem de ver a figura
+ao soltar) —, e delegar a segunda à primeira faz a lei depender de todo Up abrir
+transação, que é a enumeração que este desenho evita.
 
-⚠️ **O oráculo do relevo é o envelope por-traço, não o plano commitado.** A 1ª
-versão do gate lia `t.heights` e nascia **VERMELHA** na metade *"em repouso"* com
-o produto correto: o depósito acumula em `relief.stroke_height` e só funde na
-camada no COMMIT, que para um shape editor é o Apply/Enter — não o Up. A fixture
-não continha o fenômeno, ela media outro. O oráculo certo é a MESMA grandeza que
-o `impasto_visible` consulta para acender a luz.
+### Aberto
 
-⚠️ **A fixture de CRIAÇÃO não alcança o fallback.** Com ela a mutação *"tire o
-fallback do Up"* **sobreviveu** — e não por buraco de gate: o ramo de criação do
-`ellipse_up` re-carimba por conta. Só a fixture de **ajuste** (criar, soltar,
-depois pegar e mover) exercita o ramo `editing`, e com ela a mesma mutação sangra.
-*Uma bateria que só cria figuras deixaria passar o defeito no gesto reportado.*
-
-### Preço, nomeado
-
-Sob Impasto o **relevo** some durante o arrasto (forma, cor e largura ficam); sob
-Aquarela, o sangramento. É o mesmo trade que o Wet Paint já faz, e o pisca ao
-pegar de novo é real — o doc 21 o chama de *"o esboço derrete"*. **Trocar para
-apagar é uma linha** (`shape_draft` deixaria de exigir o meio e passaria a
-suprimir o depósito inteiro), se o smoke disser que o pisca incomoda mais que a
-informação vale.
-
-**Aberto:** o arrasto de um **slider do painel** também re-carimba por quadro e
-**não** passa por esta porta (ele não tem Down/Up de canvas). Se o smoke mostrar
-que afinar um knob sob Impasto ainda engasga, a cura é fiar o `held_button` da
-shell no mesmo `shape_draft` — mesma lei, segundo fio.
+O arrasto de um **slider do painel** também re-carimba por quadro e **não** passa
+por esta porta (ele não tem Down/Up de canvas). Se afinar um knob sobre uma cena
+booleana engasgar, a cura é fiar o `held_button` da shell no mesmo `shape_draft`
+— mesma lei, segundo fio.

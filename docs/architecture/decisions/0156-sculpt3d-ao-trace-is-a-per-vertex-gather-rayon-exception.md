@@ -1,7 +1,10 @@
 # ADR-0156 — O traço de AO é um GATHER por-vértice, e por isso o `rayon` entra na `ph2d-sdf`
 
-- **Status:** proposto — aguarda aceite do Enio.
-  ⚠️ **O 0156 é o próximo livre no `main` de 2026-08-06** (o último é o 0155). Número de ADR escolhido
+- **Status:** **ACEITO** pelo Enio em 2026-08-06 (*"pode usar rayon. siga"*), depois de a decisão ser
+  reapresentada sem jargão — ⚠️ **a primeira formulação foi recusada por ser ininteligível**
+  (*"não sei do que vc está falando"*), e o registro disso fica aqui de propósito: um ADR cuja pergunta
+  o dono não consegue ler não é uma decisão, é um carimbo.
+- ⚠️ **O 0156 é o próximo livre no `main` de 2026-08-06** (o último é o 0155). Número de ADR escolhido
   numa linha paralela é **provisório**: se outra linha reivindicar o mesmo na mesma janela, **renumera na
   integração** — já aconteceu **três** vezes neste repo
   ([[feedback_numbers_that_sum_across_lines_count_dont_pick]]).

@@ -17,6 +17,7 @@
 |---|---|---|
 | **W4b.1** — o ALIAS | Um token de cor **SEGUE** outro, no mesmo modo. Gesto de duas etapas no botão de corrente da row. Detecção de ciclo **na porta de escrita**. Viaja no arquivo. | ✅ `=59` |
 | **W4b.2** — o CONTRASTE | A lei WCAG virou **DADO** (`ph2d_tokens::contrast::CONTRAST_PAIRS`): **uma lista, dois consumidores** (o gate de compilação e o painel). Bloco de aviso + marca nos **dois** lados do par. | ✅ `=59` |
+| **W4c.1** — a CAMADA NUMÉRICA | A escala (`spacing.*`/`radius.*`/`stroke.*`) vira autorável, no molde exacto do de cor: chave `(modo, token)`, porta única, ciclo na porta, alias que atravessa famílias (px é px). Row com chip+elo+Reset no MESMO painel; viaja no arquivo. ⚠️ **PENDENTE DE SMOKE** — handoff de integração [`HANDOFF_INTEGRACAO_line_Vector_W4c1_2026-08-06.md`](HANDOFF_INTEGRACAO_line_Vector_W4c1_2026-08-06.md). | ⏳ `=59` |
 
 **Aprovados pelo Enio em 2026-08-06** (*"Tudo perfeito"*), cena `PH2D_BUILD_SMOKE=59`.
 
@@ -66,18 +67,26 @@ achatada por modo é a forma de RUNTIME; o grafo de autoria vive no editor.* Por
 > Cada uma fecha com **UI na mesma wave** e **smoke próprio** — a lei desta linha
 > ([[feedback_ship_the_ui_in_the_same_wave_not_later]]).
 
-### W4c.1 — A CAMADA NUMÉRICA *(comece aqui)*
-O override de `Spacing` no **molde exato** do de cor (`crates/ph2d-tokens/src/overrides.rs`): a
-chave é o par `(modo, token)`, a **porta única** de escrita, e a detecção de ciclo que a W4b.1 já
-tem. Nada de segundo mapa lateral.
-**UI:** a mesma row do painel de tokens, na família numérica.
-**O oráculo já existe:** o gate **`design_token_sync`** — os 4 temas e as ~350 folhas têm de
-resolver **byte-idênticos**. Ele prova que a camada nova é **inerte enquanto ninguém autora**.
+### ~~W4c.1 — A CAMADA NUMÉRICA~~ *(FEITA 2026-08-06, pendente de smoke)*
+`ph2d-tokens::num` (a identidade `NumToken`) + `num_overrides` (a camada) + a row no painel + a
+ponte + o arquivo. **A família é *o que se mede em PIXELS*** — Spacing+Radius+Stroke —, e é isso que
+faz a **W4c.4 ser fiação**: uma escala nova é uma entrada na macro `num_tokens!`.
+⚠️ `Motion` (ms), `Density` (já é escolha) e `chrome.*` (sem identidade de token) ficaram FORA, cada
+um com o motivo escrito no `num.rs`.
+⚠️ **`PROJECT_SCHEMA` 57→58** (PROVISÓRIO) — o `SavedValue` ganhou `Number(f32)` e o numérico viaja
+na **MESMA lista** `tokens`, roteado pela CHAVE.
+Detalhe, colisões e o que smoke-testar: [`HANDOFF_INTEGRACAO_line_Vector_W4c1_2026-08-06.md`](HANDOFF_INTEGRACAO_line_Vector_W4c1_2026-08-06.md).
 
-### W4c.2 — OS 15 SÍTIOS
-`const` **item** → leitura viva no ponto de uso, **um a um**, rodando o `design_token_sync` a cada
-passo. É mecânico e é onde está o trabalho real. ⚠️ Um `const` que vira `fn` muda a assinatura de
-quem o consome — espere churn, não surpresa.
+### W4c.2 — OS 15 SÍTIOS *(comece aqui)*
+`const` **item** → `px_live(theme)` no ponto de uso, **um a um**, rodando o `design_token_sync` a
+cada passo. É mecânico e é onde está o trabalho real. ⚠️ Um `const` que vira `fn` muda a assinatura
+de quem o consome — espere churn, não surpresa.
+⚠️ **O sítio a orçar primeiro é o `TOOL_RAIL_WIDTH_PX`**: ele alimenta dois `pub const RAIL_W`
+(`screens/layout.rs`, `screens/hero/style.rs`), então a conversão cascateia.
+⚠️ **E esta wave deve o TETO.** A porta recusa o que não é um comprimento e **não inventa um
+máximo** (§0: cap sem medição é palpite). Antes de ligar a leitura viva, meça isto: **o painel de
+Tokens desenha-se a si mesmo com estes tokens**, então um valor absurdo pode empurrar para fora da
+tela o *Reset* que o desfaria. Hoje é inofensivo porque ninguém lê.
 
 ### W4c.3 — MATH
 `TokenValue::Expr`. Só agora `{spacing.md} * 2` é o que o plano pediu desde o início.

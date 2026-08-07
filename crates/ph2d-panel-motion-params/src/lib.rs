@@ -160,6 +160,7 @@ impl Panel for MotionParamsPanel {
                 text_system,
                 theme,
                 &snap.modified,
+                &snap.sections,
             )
         };
 
@@ -169,6 +170,13 @@ impl Panel for MotionParamsPanel {
         // dispatch reads `canvas`/`index` off these to normalize a drag) + its buttons.
         {
             let store = ctx.host.store_mut();
+            // O collapse genérico exige DOIS sítios: o hit-rect (no paint) e a MARCA aqui.
+            // Sem a marca o cabeçalho pinta um chevron e não dobra — o título morto que o
+            // painel do Vector já pagou. Marcado na fase mutável porque os títulos são do NÓ
+            // selecionado, e o `populate` (estático) não os conhece.
+            for (title, _) in &snap.sections {
+                store.mark_collapsible_section(rows_paint::sections::section_id(title));
+            }
             for row in &snap.rows {
                 if let ParamRow::Color(c) = row {
                     store.register_picker_swatch(param_swatch_id(c.channels[0]));

@@ -18,6 +18,7 @@ fn soft_hard_row(value: f64) -> ParamsSnapshot {
         node: 7,
         title: "Emitter".into(),
         modified: Default::default(),
+        sections: Vec::new(),
         rows: vec![ParamRow::Scalar(ScalarRow {
             name: "rate",
             label: "Rate".into(),
@@ -41,6 +42,7 @@ fn soft_hard_floor_row(value: f64) -> ParamsSnapshot {
         node: 7,
         title: "Noise".into(),
         modified: Default::default(),
+        sections: Vec::new(),
         rows: vec![ParamRow::Scalar(ScalarRow {
             name: "frequency",
             label: "Frequency".into(),

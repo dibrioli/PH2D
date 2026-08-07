@@ -418,17 +418,68 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_groups(MANIFEST.id, PARAM_GROUPS);
     reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     reg.register_luts(MANIFEST.id, LUTS);
     Ok(())
 }
 
-use ph2d_node_registry::{ParamUiHint, ParamWidget};
+use ph2d_node_registry::{ParamGroup, ParamUiHint, ParamWidget};
 
 /// Param UI hints (M1.P1): the C4D Remapping controls. `contour` is the transfer
 /// selector; `curve` is the A1 curve editor (a text param, live when contour = Curve);
 /// `curvature` bends the Quadratic; `steps` counts the Step/Quantize levels; `strength`
 /// is the input→remapped blend (0 = passthrough).
+/// As SEÇÕES deste nó (doc 88 B3). Treze controles numa lista plana são uma parede; em dois
+/// grupos, com os essenciais soltos na frente, eles viram três perguntas.
+///
+/// ⚠️ **A TRANSFERÊNCIA inteira fica de FORA de propósito** — `contour` (qual curva),
+/// `CURVE_KEY` (a curva), `curvature` e `steps` (as formas das outras contours) e
+/// `inner_offset`. Param sem grupo pinta antes de toda seção, e é ali que os essenciais devem
+/// estar: a transferência é a razão de existir deste nó, e pô-la numa seção seria escondê-la
+/// atrás de um clique.
+///
+/// ⚠️ E isto foi corrigido pelo gate `selected_field_remap_yields_an_interactive_curve_row`,
+/// que já afirmava que a curva é a PRIMEIRA row: a primeira versão desta tabela punha o
+/// `CURVE_KEY` num grupo "Shape" — contradizendo, duas linhas acima, o comentário que dizia
+/// para não a sepultar.
+static PARAM_GROUPS: &[ParamGroup] = &[
+    // A FAIXA de saída: entre que números o resultado vive.
+    ParamGroup {
+        param: "min",
+        group: "Range",
+    },
+    ParamGroup {
+        param: "max",
+        group: "Range",
+    },
+    ParamGroup {
+        param: "multiplier",
+        group: "Range",
+    },
+    ParamGroup {
+        param: "clamp",
+        group: "Range",
+    },
+    ParamGroup {
+        param: "invert",
+        group: "Range",
+    },
+    // E quanto do resultado chega ao mundo.
+    ParamGroup {
+        param: "strength",
+        group: "Output",
+    },
+    ParamGroup {
+        param: "probability",
+        group: "Output",
+    },
+    ParamGroup {
+        param: "seed",
+        group: "Output",
+    },
+];
+
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "inner_offset",

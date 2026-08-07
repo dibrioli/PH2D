@@ -33,6 +33,7 @@ fn snapshot_with_one_modified() -> ParamsSnapshot {
         node: 7,
         title: "Grid".into(),
         modified: ["rows".to_string()].into_iter().collect(),
+        sections: Vec::new(),
         rows: vec![row("rows"), row("cols")],
     }
 }
@@ -109,6 +110,7 @@ fn reverting_a_colour_undoes_all_four_channels() {
         node: 3,
         title: "Tint".into(),
         modified: ["c_g".to_string()].into_iter().collect(),
+        sections: Vec::new(),
         rows: vec![ParamRow::Color(ColorRow {
             label: "Colour".into(),
             channels: ["c_r", "c_g", "c_b", "c_a"],
@@ -134,5 +136,75 @@ fn reverting_a_colour_undoes_all_four_channels() {
         })
         .collect();
     assert_eq!(got, vec!["c_r", "c_g", "c_b", "c_a"], "os QUATRO canais");
+    set_current_params(None);
+}
+
+/// Três rows, as duas últimas numa seção "Range".
+fn snapshot_with_a_section() -> ParamsSnapshot {
+    let row = |name: &'static str| {
+        ParamRow::Scalar(ScalarRow {
+            name,
+            label: name.to_string(),
+            value: 3.0,
+            min: 0.0,
+            max: 10.0,
+            hard_min: 0.0,
+            hard_max: 10.0,
+            step: 0.1,
+            integer: false,
+            driven: false,
+            display: RowDisplay::default(),
+        })
+    };
+    ParamsSnapshot {
+        node: 7,
+        title: "Remap".into(),
+        modified: Default::default(),
+        sections: vec![("Range".to_string(), 1)],
+        rows: vec![row("contour"), row("min"), row("max")],
+    }
+}
+
+/// **A seção pinta um cabeçalho, e ele DOBRA.**
+///
+/// O collapse genérico exige DOIS sítios (a marca no store e o hit-rect no paint), e a
+/// falha de esquecer um é um cabeçalho que desenha um chevron e não responde — o título
+/// morto que o painel do Vector já pagou. As duas metades num gate só: a de cima prova que
+/// o cabeçalho é alcançável, a de baixo que dobrar ESCONDE as rows dele.
+#[test]
+fn a_section_header_is_reachable_and_folding_it_hides_its_rows() {
+    use crate::rows_paint::sections::section_id;
+    set_current_params(Some(snapshot_with_a_section()));
+    let mut host = ph2d_ui_testkit::MockPanelHost::with_panel::<MotionParamsPanel>();
+    let mut state = MotionParamsPanelState;
+
+    let painted = host.paint::<MotionParamsPanel>(&mut state, viewport());
+    let id = section_id("Range");
+    assert!(
+        painted.iter().any(|(w, _)| *w == id),
+        "o cabeçalho da seção tem de entrar no hit index"
+    );
+    // Aberta: as rows da seção têm widgets.
+    assert!(
+        painted.iter().any(|(w, _)| *w == param_slider_id(1)),
+        "com a seção aberta, a row dentro dela é desenhada"
+    );
+
+    // O clique no cabeçalho dobra (dispatch GENÉRICO — se a marca faltar, nada acontece).
+    let rect = painted
+        .iter()
+        .find(|(w, _)| *w == id)
+        .map(|(_, r)| *r)
+        .expect("pintado");
+    let _ = host.click_at(rect.x + rect.w * 0.5, rect.y + rect.h * 0.5);
+    let painted = host.paint::<MotionParamsPanel>(&mut state, viewport());
+    assert!(
+        !painted.iter().any(|(w, _)| *w == param_slider_id(1)),
+        "dobrada, a row de dentro não pode continuar desenhada"
+    );
+    assert!(
+        painted.iter().any(|(w, _)| *w == param_slider_id(0)),
+        "e a row SOLTA, fora da seção, continua lá"
+    );
     set_current_params(None);
 }

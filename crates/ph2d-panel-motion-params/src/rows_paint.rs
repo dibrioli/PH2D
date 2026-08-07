@@ -26,8 +26,12 @@ use ph2d_vector::VectorScene;
 
 #[path = "rows_paint_editors.rs"]
 mod editors;
+#[path = "rows_paint_number.rs"]
+mod number;
 #[path = "rows_paint_reset.rs"]
 mod reset;
+#[path = "rows_paint_sections.rs"]
+pub(crate) mod sections;
 use reset::{RESET_GUTTER_W, paint_reset_button, row_is_modified};
 #[path = "rows_paint_kinds.rs"]
 mod kinds;
@@ -61,6 +65,7 @@ pub(crate) fn paint_rows(
     text_system: &mut TextSystem,
     theme: Theme,
     modified: &std::collections::BTreeSet<String>,
+    section_at: &[(String, usize)],
 ) -> (CurveWidgets, ColourRowWidgets, f32) {
     let mut y = body_top;
     // Toda row cede a MESMA calha à direita, tenha ou não o que reverter — largura que depende
@@ -68,7 +73,29 @@ pub(crate) fn paint_rows(
     let inner_w = (inner_w - RESET_GUTTER_W).max(0.0);
     let mut curve_widgets = CurveWidgets::new();
     let mut gradient_widgets = ColourRowWidgets::new();
+    // Dobrada até o próximo cabeçalho. Uma row DOBRADA é pulada no desenho e mantém o índice
+    // `i` — os eventos enumeram a MESMA lista, então pular no pintor sem pular no roteador
+    // desalinharia os slots (o bug clássico de lista filtrada).
+    let mut collapsed = false;
     for (i, row) in rows.iter().enumerate().take(MAX_PARAM_ROWS) {
+        if let Some((dy, folded)) = sections::header_at(
+            section_at,
+            i,
+            inner_x,
+            inner_w + RESET_GUTTER_W,
+            y,
+            store,
+            hit_index,
+            scene,
+            text_system,
+            theme,
+        ) {
+            y += dy;
+            collapsed = folded;
+        }
+        if collapsed {
+            continue;
+        }
         if row_is_modified(row, modified) {
             paint_reset_button(
                 i,
@@ -158,49 +185,21 @@ pub(crate) fn paint_rows(
                     theme,
                 );
             }
-            ParamRow::Angle(row) => {
-                // A `deg` number box — never a raw turns/radians slider.
-                let used = paint_angle_row(
-                    Rect::new(inner_x, y, inner_w, ROW_H_PX),
-                    &row.label,
-                    param_number_id(i),
-                    row.step_deg,
+            ParamRow::Angle(_) | ParamRow::Seed(_) | ParamRow::Text(_) => {
+                // As rows-CAIXA: uma altura de row, um `Rect` explícito.
+                let used = number::paint_box_row(
+                    row,
+                    i,
+                    inner_x,
+                    inner_w,
+                    y,
                     store,
                     hit_index,
                     scene,
                     text_system,
                     theme,
-                );
-                y += used + row_gap;
-            }
-            ParamRow::Seed(row) => {
-                // A whole-number box + a re-roll button (never a slider).
-                let used = paint_seed_row(
-                    Rect::new(inner_x, y, inner_w, ROW_H_PX),
-                    &row.label,
-                    param_number_id(i),
-                    param_reroll_id(i),
-                    store,
-                    hit_index,
-                    scene,
-                    text_system,
-                    theme,
-                );
-                y += used + row_gap;
-            }
-            ParamRow::Text(row) => {
-                // A full-width free-text field (a formula) — the shared TextInput.
-                let used = paint_text_row(
-                    Rect::new(inner_x, y, inner_w, ROW_H_PX),
-                    &row.label,
-                    "e.g. sin(t)",
-                    param_text_id(i),
-                    store,
-                    hit_index,
-                    scene,
-                    text_system,
-                    theme,
-                );
+                )
+                .expect("o braço e a porta casam por construção");
                 y += used + row_gap;
             }
             ParamRow::Channels(row) => {
@@ -312,6 +311,7 @@ mod tests {
             &mut text,
             Theme::default(),
             &Default::default(),
+            &[],
         );
         // O corpo começa abaixo do título; a folga que sobra é o que ele custa.
         let head = 64.0; // LITERAL-PX-OK: folga de titulo+padding, generosa de proposito

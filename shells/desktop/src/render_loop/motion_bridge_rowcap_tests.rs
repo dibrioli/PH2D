@@ -109,3 +109,60 @@ fn measure_the_param_row_census() {
         over
     );
 }
+
+/// **As SEÇÕES agrupam as rows, e a ordem é a que a tabela declara.**
+///
+/// Um nó com grupos tem de entregar as rows já ORDENADAS (soltas primeiro, depois grupo a
+/// grupo) e dizer onde cada seção começa. Sem a ordenação o pintor desenharia o mesmo
+/// cabeçalho várias vezes, intercalado — que é pior que lista plana.
+#[test]
+fn a_grouped_node_delivers_its_rows_sorted_with_the_loose_ones_first() {
+    let mut motion = MotionState::new();
+    let node = motion.doc.graph.add_node("field.remap");
+    ph2d_panel_motion_graph::set_graph_selection(vec![node.0]);
+    let snap = build_params_snapshot(&motion, ProjectSettings::default()).expect("o nó existe");
+
+    assert!(
+        !snap.sections.is_empty(),
+        "o field.remap declara grupos — sem seções a tabela não chegou ao painel"
+    );
+    // As soltas vêm antes da primeira seção, e são os essenciais (a transferência).
+    let first = snap.sections[0].1;
+    assert!(
+        first > 0,
+        "os params SEM grupo têm de vir antes de toda seção — é onde os essenciais moram"
+    );
+    // Os índices são crescentes e cada seção começa onde uma row começa.
+    let mut prev = 0;
+    for (title, at) in &snap.sections {
+        assert!(*at > prev || *at == first, "{title}: seções fora de ordem");
+        assert!(
+            *at < snap.rows.len(),
+            "{title}: seção depois do fim das rows"
+        );
+        prev = *at;
+    }
+    // E nenhuma seção repete: rows do mesmo grupo são contíguas.
+    let titles: Vec<&String> = snap.sections.iter().map(|(t, _)| t).collect();
+    let mut uniq = titles.clone();
+    uniq.sort();
+    uniq.dedup();
+    assert_eq!(
+        titles.len(),
+        uniq.len(),
+        "um grupo apareceu duas vezes — as rows dele não estão contíguas: {titles:?}"
+    );
+    // E nenhuma seção fica VAZIA: um cabeçalho sem rows embaixo é a seção-morta, irmã do
+    // botão-morto — ele desenha, dobra, e não esconde nada.
+    for (k, (title, at)) in snap.sections.iter().enumerate() {
+        let end = snap
+            .sections
+            .get(k + 1)
+            .map_or(snap.rows.len(), |(_, next)| *next);
+        assert!(
+            end > *at,
+            "a seção {title} não tem row nenhuma embaixo dela"
+        );
+    }
+    ph2d_panel_motion_graph::set_graph_selection(Vec::new());
+}

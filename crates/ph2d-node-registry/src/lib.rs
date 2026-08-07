@@ -21,8 +21,8 @@ use std::collections::BTreeMap;
 
 mod ui;
 pub use ui::{
-    Coupling, NodeSilhouette, NodeUiCategory, NodeUiManifest, ParamGate, ParamHardMax, ParamUiHint,
-    ParamWidget, ReadChannel,
+    Coupling, NodeSilhouette, NodeUiCategory, NodeUiManifest, ParamGate, ParamGroup, ParamHardMax,
+    ParamUiHint, ParamWidget, ReadChannel,
 };
 
 /// The param UNIT vocabulary (doc 88, Wave A) — a sibling module rather than more
@@ -45,6 +45,9 @@ pub struct NodeRegistry {
     /// registration is a single insert; the params panel reads it to build rows.
     param_ui: BTreeMap<NodeTypeId, &'static [ParamUiHint]>,
     param_hard_max: BTreeMap<NodeTypeId, &'static [ParamHardMax]>,
+    /// A SEÇÃO de cada param (doc 88, B3 — o passe visual). Mesma forma, mesmo default
+    /// vazio: nó sem entrada pinta uma lista plana, exatamente como antes.
+    param_groups: BTreeMap<NodeTypeId, &'static [ParamGroup]>,
     /// The floor twin of `param_hard_max` (doc 88, Wave A): how far BELOW the
     /// slider a typed value may reach. Same shape, same default-empty meaning —
     /// absent ⇒ the slider's own `min`, which is what every param meant until now.
@@ -280,6 +283,37 @@ impl NodeRegistry {
             .iter()
             .find(|l| l.param == param)
             .map(|l| l.max)
+    }
+
+    /// Registra a SEÇÃO de cada param ([`ParamGroup`]). Aditivo; a última escrita vence.
+    pub fn register_param_groups(&mut self, id: NodeTypeId, groups: &'static [ParamGroup]) {
+        self.param_groups.insert(id, groups);
+    }
+
+    /// A seção de `(id, param)`, se houver. `None` = solto, ANTES de toda seção — que é onde
+    /// os params essenciais de um nó devem estar.
+    pub fn param_group(&self, id: NodeTypeId, param: &str) -> Option<&'static str> {
+        self.param_groups
+            .get(&id)?
+            .iter()
+            .find(|g| g.param == param)
+            .map(|g| g.group)
+    }
+
+    /// As seções deste tipo, **na ordem em que a tabela as declara** (primeira aparição).
+    ///
+    /// ⚠️ A ordem é da TABELA, não alfabética nem a de descoberta nas rows: quem escreve o nó
+    /// decide o que vem primeiro, e uma ordenação derivada mudaria de lugar quando um param
+    /// mudasse de posição no manifesto.
+    #[must_use]
+    pub fn param_group_order(&self, id: NodeTypeId) -> Vec<&'static str> {
+        let mut seen: Vec<&'static str> = Vec::new();
+        for g in self.param_groups.get(&id).copied().unwrap_or(&[]) {
+            if !seen.contains(&g.group) {
+                seen.push(g.group);
+            }
+        }
+        seen
     }
 
     /// Register the params whose typed entry reaches BELOW their slider

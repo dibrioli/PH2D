@@ -388,6 +388,16 @@ pub struct ParamsSnapshot {
     /// então um param digitado de volta ao número do default continua sendo uma escolha do
     /// artista — e uma comparação de `f32` responderia outra coisa.
     pub modified: std::collections::BTreeSet<String>,
+    /// **Onde cada SEÇÃO começa** — `(título, índice da primeira row do grupo)`, em ordem.
+    ///
+    /// ⚠️ Não é um campo `group` em cada row (seriam doze structs e doze sítios de construção),
+    /// e não é um mapa param→grupo (o painter teria de re-derivar as fronteiras): é exatamente
+    /// o que o pintor precisa saber — *antes da row `i`, desenhe o cabeçalho `t`*. As rows já
+    /// chegam ORDENADAS por grupo, com as soltas primeiro; quem ordena é a ponte, uma vez.
+    ///
+    /// Vazio = lista plana, que é como todo nó sem tabela de grupos pinta — e como TODOS
+    /// pintavam antes do doc 88 B3.
+    pub sections: Vec<(String, usize)>,
 }
 
 /// A param edit the panel asks the shell to apply (M1.P1). Tagged with the node

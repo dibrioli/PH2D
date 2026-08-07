@@ -214,6 +214,27 @@ pub struct ParamHardMax {
     pub max: f32,
 }
 
+/// **A que SEÇÃO do painel um param pertence** — a metade visual do doc 88 B3.
+///
+/// Um nó com treze params é uma parede de sliders: eles cabem na tela (o teto de linhas é
+/// medido contra a altura do dock), e ainda assim não se LEEM. Agrupá-los é o que todo editor
+/// profissional faz — e o grupo é uma propriedade do param, não do widget dele.
+///
+/// ⚠️ Tabela paralela, nunca campo do [`ParamUiHint`], **pela mesma razão mecânica do
+/// [`ParamHardMax`]**: o hint é literal `&'static` em ~275 sítios, e um campo novo são 275
+/// edições para exprimir o que uma tabela exprime nas linhas que interessam.
+///
+/// ⚠️ E param sem entrada **não fica num grupo "Outros"** — ele fica ANTES de toda seção, solto,
+/// que é onde os essenciais devem estar (o padrão do Blender: o principal na cara, o resto em
+/// sub-painéis). Um nó sem tabela nenhuma pinta exatamente como pintava.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct ParamGroup {
+    /// The `ParamSpec::name` (ou o nome do text param) que esta linha agrupa.
+    pub param: &'static str,
+    /// O título da seção, em inglês (HR-15: a face do artista sai por i18n no painel).
+    pub group: &'static str,
+}
+
 /// **Show a param row only when another param has one of a set of values** — the
 /// side-channel that makes a param CONDITIONAL, so a node shows only the controls
 /// that apply to its current mode (a `source.shape` gear shows `hole`/`tooth_depth`;

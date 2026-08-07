@@ -299,6 +299,7 @@ mod tests {
                 node: 1,
                 title: "motion.color_array".into(),
                 modified: Default::default(),
+                sections: Vec::new(),
                 rows: vec![crate::snapshot::ParamRow::Palette(PaletteRow {
                     name: "palette",
                     label: "Palette".into(),

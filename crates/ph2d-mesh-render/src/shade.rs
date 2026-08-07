@@ -71,6 +71,19 @@ pub const CAVITY_GAIN: f32 = 4.0;
 /// que o artista não consegue reportar.
 pub const DEFAULT_AO_STRENGTH: f32 = 0.0;
 
+/// **Quanto do AO DE TELA entra por default: TUDO.**
+///
+/// ⚠️ **O oposto do [`DEFAULT_AO_STRENGTH`], e a assimetria é a wave inteira.**
+/// O assado nasce em zero porque é um canal que **não existe** até alguém apertar
+/// um botão, e ligá-lo por default faria a peça escurecer sozinha no instante do
+/// primeiro bake. Este é medido **todo frame** a partir do que está na tela: ele
+/// existe sempre que a forma existe, e nunca fica velho.
+///
+/// ⚠️ **E ele não muda nada até alguém MEDIR:** o barro lê a oclusão de um canal
+/// que vale zero enquanto ninguém rodar o [`crate::MeshRenderer::render_ssao`] —
+/// então este `1.0` é *"mostre o que foi medido"*, não *"escureça"*.
+pub const DEFAULT_SSAO_STRENGTH: f32 = 1.0;
+
 /// **OS MATERIAIS DO MATCAP**, na ordem em que o shader os numera.
 ///
 /// ⚠️ **Os NÚMEROS ficam no WGSL e os NOMES aqui, e não há uma terceira cópia.**
@@ -109,6 +122,15 @@ pub struct Shade {
     /// canal é 1 em toda parte) até o instante do primeiro bake — quando ela
     /// escureceria sozinha, sem ninguém ter mexido num controle.
     pub ao: f32,
+    /// **Quanto do AO de TELA entra.** `1` = todo ele, e é o default.
+    ///
+    /// ⚠️ Ele e o [`Self::ao`] respondem a mesma pergunta em ALCANCES
+    /// diferentes: o assado mede metros de campo SDF e enxerga o corpo inteiro
+    /// em qualquer direção; este mede um raio em torno do pixel e só vê o que
+    /// está na tela. O barro os compõe pelo MENOS-OCLUÍDO (ver `mesh.wgsl`), e
+    /// não pelo produto — dois canais que descrevem a mesma sombra multiplicados
+    /// a escureceriam em dobro exatamente onde os dois acertam.
+    pub ssao: f32,
     /// A malha desenhada por cima da forma.
     ///
     /// ⚠️ Ele viaja aqui e **não entra no [`ShadeRaw`]**: é um segundo PASSE, não
@@ -123,6 +145,7 @@ impl Default for Shade {
         Self {
             cavity: DEFAULT_CAVITY,
             ao: DEFAULT_AO_STRENGTH,
+            ssao: DEFAULT_SSAO_STRENGTH,
             matcap: None,
             wireframe: false,
         }
@@ -147,8 +170,14 @@ pub struct ShadeRaw {
     /// que SSS e AO vão pousar sem mexer no layout"*. A promessa foi cobrada e o
     /// layout não mudou — sobra um, e ele continua nomeando o SSS.
     pub ao: f32,
-    /// O slot que sobra, e ele continua reservado ao SSS pré-integrado.
-    pub _pad: [f32; 1],
+    /// Quanto do AO de TELA entra.
+    ///
+    /// ⚠️ **Este era o slot que o `_pad` guardava para o SSS.** A promessa foi
+    /// cobrada por outro inquilino e o layout **continua o mesmo** (16 B, quatro
+    /// `f32`) — o SSS, quando chegar, acrescenta um campo e o `size_of` cresce
+    /// para 32 por alinhamento, que é o momento certo de re-conferir o uniform em
+    /// vez de fingir que ele nunca cresceria.
+    pub ssao: f32,
 }
 
 impl Default for ShadeRaw {
@@ -181,7 +210,7 @@ impl ShadeRaw {
             // Clampado pela mesma razão da cavidade: o device não tem opinião, e
             // um `ao` de 3 faria o `mix` extrapolar para além do canal.
             ao: shade.ao.clamp(0.0, 1.0),
-            _pad: [0.0; 1],
+            ssao: shade.ssao.clamp(0.0, 1.0),
         }
     }
 }

@@ -87,6 +87,16 @@ pub(crate) fn announce(mesh: &ph2d_mesh::Mesh) {
          [sculpt3d]     ⚠️ DEPOIS DE ESCULPIR o painel avisa 'AO describes the previous shape' --\n\
          [sculpt3d]     o numero fica VELHO e nao parece velho, entao ele e' DITO. Asse de novo\n\
          [sculpt3d]     A CENA =17 e' um TORO: o aro de DENTRO tem de escurecer e o de FORA nao\n\
+         [sculpt3d] 'Screen Occlusion' e' o OUTRO AO, e ele nasce LIGADO: medido a cada frame\n\
+         [sculpt3d]     a partir da PROFUNDIDADE e das NORMAIS da tela (GTAO), entao ele nunca\n\
+         [sculpt3d]     fica velho -- esculpa uma cratera e ela escurece na hora, sem botao\n\
+         [sculpt3d]     ⚠️ Ele NAO substitui o assado: so' ve o que esta' na TELA (o assado ve o\n\
+         [sculpt3d]     corpo inteiro em qualquer direcao, viaja no arquivo e vai para a doacao\n\
+         [sculpt3d]     ao 2D). Um ve a sombra ENTRE duas pecas, o outro ve dentro de uma so'.\n\
+         [sculpt3d]     Ligados os dois, eles compoem pela MAIS ESCURA -- nunca multiplicando\n\
+         [sculpt3d]     Custa 0,41 ms/frame a 1920x1080 (2,4% de um quadro de 60 fps), MEDIDO\n\
+         [sculpt3d]     A CENA =18 sao duas esferas ENCOSTADAS: a fresta entre elas e' o que\n\
+         [sculpt3d]     SO' este passe consegue medir\n\
          [sculpt3d] o ANEL do cursor e' desenhado NO PONTO DE ACERTO -- se ele nao estiver\n\
          [sculpt3d]     debaixo do mouse sobre o barro, o pick esta' errado e da' para VER",
         mesh.vert_count(),

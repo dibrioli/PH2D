@@ -39,6 +39,7 @@ impl Sculpt3dScene {
                 wireframe: self.wireframe,
                 cavity: self.cavity,
                 ao: self.ao,
+                ssao: self.ssao,
                 light_az_deg: f32::from(light.angle_deg),
                 light_elev_deg: f32::from(light.elev_deg),
                 detail: detail_index(self.dyntopo.detail),
@@ -69,6 +70,7 @@ impl Sculpt3dScene {
         self.wireframe = ui.wireframe;
         self.cavity = ui.cavity;
         self.ao = ui.ao;
+        self.ssao = ui.ssao;
         let l = self.rig.current_mut();
         // Graus INTEIROS é a unidade em que o rig é autorado — o `f32` existe só
         // porque a pista de um slider é contínua.

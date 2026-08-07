@@ -191,6 +191,37 @@ pub(crate) fn scene_objects() -> Vec<(ph2d_mesh::Mesh, ph2d_mesh::Pose)> {
             (b, ph2d_mesh::Pose::new([2.6, -0.4, 0.0], 0.8)),
         ];
     }
+    if screen_ao_scene() {
+        // ⚠️ **Duas esferas ENCOSTADAS, e a distância é o oráculo.** A `2,04` de
+        // separação entre centros de raio 1 deixa uma fresta de 0,04 — funda o
+        // bastante para a oclusão ser inequívoca, e estreita o bastante para o
+        // AO ASSADO **não conseguir vê-la** (o bake marcha contra o campo de UM
+        // corpo, e cada esfera é convexa). É essa diferença que o smoke julga.
+        let mut a = ph2d_mesh::shapes::uv_sphere(48, 72, 1.0);
+        a.triangulate();
+        let b = a.clone();
+        eprintln!(
+            "[sculpt3d] =18 O AO DE TELA: duas esferas ENCOSTADAS.\n\
+             [sculpt3d]    A oclusao que UMA lanca sobre a OUTRA e' o que so' este passe mede --\n\
+             [sculpt3d]    o bake marcha contra o campo de um corpo so', e cada esfera e' convexa.\n\
+             [sculpt3d]    1) Olhe a FRESTA entre elas: ela tem de estar escura, e o flanco de\n\
+             [sculpt3d]       FORA claro. Medido: a fresta escurece 46,6% e o flanco 0,5%.\n\
+             [sculpt3d]    2) Arraste 'Screen Occlusion' de 1 a 0 e de volta: a fresta clareia e\n\
+             [sculpt3d]       escurece, o flanco quase nao se move. Em ZERO a peca e' byte-\n\
+             [sculpt3d]       identica ao barro de sempre.\n\
+             [sculpt3d]    3) GIRE a cena: a oclusao tem de ficar COLADA na fresta, nunca na\n\
+             [sculpt3d]       tela. Se ela grudar na tela, o passe esta lendo a vista errada.\n\
+             [sculpt3d]    4) ESCULPA uma cratera funda: ela escurece NA HORA, sem botao. Este e'\n\
+             [sculpt3d]       o ponto inteiro -- o AO assado so' mudaria depois de 'Bake AO'.\n\
+             [sculpt3d]    5) Agora aperte 'Bake AO' e suba tambem 'Ambient Occlusion': as duas\n\
+             [sculpt3d]       fontes compoem pela MAIS ESCURA, nunca multiplicando. A peca nao\n\
+             [sculpt3d]       pode ficar preta na fresta ao ligar a segunda."
+        );
+        return vec![
+            (a, ph2d_mesh::Pose::at([-1.02, 0.0, 0.0])),
+            (b, ph2d_mesh::Pose::at([1.02, 0.0, 0.0])),
+        ];
+    }
     if document_scene() {
         // ⚠️ **Um CUBO e um OCTAEDRO, cada um com pose própria** — e a peça que
         // a cena abre é a esfera com CRISTAS. As três escolhas são o oráculo: o
@@ -292,6 +323,17 @@ pub(crate) fn holes_scene() -> bool {
 /// conseguiria distinguir a feature de um slider inerte.
 pub(crate) fn ao_scene() -> bool {
     std::env::var("PH2D_SCULPT3D_SMOKE").ok().as_deref() == Some("17")
+}
+
+/// `=18` — a cena do **AO DE TELA**: duas peças ENCOSTADAS.
+///
+/// ⚠️ **Duas peças, e é a fixture inteira.** A oclusão que uma lança sobre a
+/// outra é exatamente o que o AO ASSADO **não consegue medir** — o bake marcha
+/// cones contra o campo SDF de UM corpo, e aquele corpo é convexo e não vê a
+/// vizinha. Numa peça só, as duas fontes mediriam a mesma coisa e o smoke não
+/// conseguiria distinguir a feature de um slider redundante.
+pub(crate) fn screen_ao_scene() -> bool {
+    std::env::var("PH2D_SCULPT3D_SMOKE").ok().as_deref() == Some("18")
 }
 
 /// `=16` — a cena do **ALPHA**: uma esfera DENSA o bastante para o padrão ser

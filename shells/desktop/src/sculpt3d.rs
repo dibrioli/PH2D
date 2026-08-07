@@ -46,6 +46,13 @@ pub(crate) use cursor::{OFF_SURFACE_RGBA, ON_SURFACE_RGBA};
 #[path = "sculpt3d_panel.rs"]
 mod panel;
 
+/// **COMO O BARRO É MOSTRADO** — o desenho e as opções de vista. Filho
+/// (`#[path]`) pelo mesmo motivo dos vizinhos, e o corte é *o que a cena É*
+/// (aqui) contra *como ela APARECE* (lá): as duas metades crescem por motivos
+/// diferentes, e foi um canal de sombreamento novo que cruzou o teto de LOC.
+#[path = "sculpt3d_view.rs"]
+mod view;
+
 /// **O que a cena LEMBRA** — a pilha de níveis e a fila de desfazer. Filho
 /// (`#[path]`) para alcançar os campos privados; o corte é *o que a cena É e o
 /// que a mão faz* (aqui) contra *o que ela guarda para poder voltar* (lá).
@@ -382,6 +389,14 @@ pub(crate) struct Sculpt3dScene {
     /// oposto dela na origem: a cavidade é derivada e existe sempre, o AO só
     /// existe depois de o artista pedir um bake.
     ao: f32,
+    /// Quanto do AO DE TELA entra — e ele **nasce LIGADO**, ao contrário dos dois
+    /// vizinhos, porque é o único dos três que é MEDIDO a cada frame.
+    ///
+    /// ⚠️ Ligar por default não muda a tela sozinho: o barro amostra um canal que
+    /// vale zero enquanto ninguém rodar o passe, então o `1.0` diz *"mostre o que
+    /// foi medido"*. E é ele que decide se o passe roda — zero é a resposta
+    /// completa para *"não quero pagar por isto"*, sem um segundo interruptor.
+    ssao: f32,
     stroke: SculptStroke,
     undo: Vec<Entry>,
     /// **O futuro guardado** — o que um Ctrl+Z tirou e um Ctrl+Shift+Z devolve.
@@ -453,6 +468,7 @@ impl Sculpt3dScene {
             rig: LightRig::default(),
             cavity: ph2d_mesh_render::DEFAULT_CAVITY,
             ao: ph2d_mesh_render::DEFAULT_AO_STRENGTH,
+            ssao: ph2d_mesh_render::DEFAULT_SSAO_STRENGTH,
             stroke: SculptStroke::default(),
             undo: Vec::new(),
             redo: Vec::new(),
@@ -460,79 +476,6 @@ impl Sculpt3dScene {
             role: FormRole::Clay,
             donated: None,
         }
-    }
-
-    /// Desenha a malha sobre o que já está no alvo. O upload acontece na
-    /// primeira passagem — é aqui que o device é conhecido.
-    pub(crate) fn render(
-        &mut self,
-        gpu: &ph2d_gpu::GpuContext,
-        encoder: &mut wgpu::CommandEncoder,
-        color: &wgpu::TextureView,
-        size: (u32, u32),
-    ) {
-        self.viewport = size;
-        // ⚠️ O viewport é atualizado ANTES da recusa: ele é o que converte um
-        // clique em raio, e um viewport parado faria o pincel cair no lugar
-        // errado no instante em que o artista voltasse ao barro.
-        if !self.shows_clay() {
-            return;
-        }
-        self.sync_mesh(&gpu.device, &gpu.queue);
-        // O rig é RESOLVIDO por frame, não guardado resolvido: a resolução é
-        // barata (quatro lâmpadas) e uma cópia resolvida seria uma segunda
-        // verdade sobre onde a luz está — a que fica velha no frame seguinte ao
-        // artista mexer no card.
-        let resolved = ph2d_light::resolve(&self.rig);
-        self.renderer.render(
-            &gpu.device,
-            &gpu.queue,
-            encoder,
-            color,
-            &self.camera,
-            resolved.as_ref(),
-            self.shade(),
-            size,
-        );
-    }
-
-    /// **COMO O BARRO É MOSTRADO** — a porta única das opções de vista.
-    ///
-    /// ⚠️ Ela existe porque as três viajam juntas para o device E para o painel,
-    /// e montá-las no sítio de chamada faria a `render` e o `panel_snapshot`
-    /// darem duas respostas a *"como está a vista"* — o par que diverge no dia
-    /// em que a quarta opção chegar por um dos dois.
-    pub(crate) fn shade(&self) -> ph2d_mesh_render::Shade {
-        ph2d_mesh_render::Shade {
-            cavity: self.cavity,
-            ao: self.ao,
-            matcap: self.matcap,
-            wireframe: self.wireframe,
-        }
-    }
-
-    /// **A CAVIDADE, um passo adiante** — devolve a quantidade nova.
-    ///
-    /// Ciclo e não par de teclas, o idioma do [`Self::cycle_role`] ao lado: é um
-    /// canal de LEITURA, e o artista o escolhe uma vez e volta a esculpir. Os
-    /// quatro degraus dão desligado, sutil, forte e o teto.
-    ///
-    /// ⚠️ **Um número e não dois.** O `docs/3D/05.1` §4 fala em *Cavity* e *Edge
-    /// Wear*, e os dois são a UI de um MATERIAL — sujeira acumulada na fresta e
-    /// tinta gasta na quina são histórias físicas diferentes, com quantidades
-    /// diferentes. Para LER FORMA, que é o que esta wave entrega, a curvatura é
-    /// *um* número com sinal e escurecer/clarear são as duas metades da mesma
-    /// multiplicação. Inventar o segundo agora seria um knob que nenhum gesto
-    /// alcança; se o smoke disser que os dois lados querem quantidades
-    /// diferentes, é ele que parte este número em dois.
-    pub(crate) fn cycle_cavity(&mut self) -> f32 {
-        const STEPS: [f32; 4] = [0.0, 0.35, 0.70, 1.0];
-        let at = STEPS
-            .iter()
-            .position(|s| (s - self.cavity).abs() < 1e-4)
-            .unwrap_or(0);
-        self.cavity = STEPS[(at + 1) % STEPS.len()];
-        self.cavity
     }
 
     /// O raio do cursor, pela câmera desta cena.

@@ -166,6 +166,20 @@ fn render_using_rig_shade(
         (W, H),
     );
 
+    readback(device, queue, encoder, &target)
+}
+
+/// **Do alvo para os bytes que o gate lê** — a cópia, o submit e o mapeamento.
+///
+/// ⚠️ Uma porta e não uma cópia por harness: ela carrega o padding de linha
+/// (`COPY_BYTES_PER_ROW_ALIGNMENT`), e uma segunda cópia que o esquecesse leria a
+/// imagem cisalhada — um modo de falha que parece defeito de shader.
+fn readback(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    mut encoder: wgpu::CommandEncoder,
+    target: &wgpu::Texture,
+) -> Vec<u8> {
     let bpr = (W * 4).next_multiple_of(wgpu::COPY_BYTES_PER_ROW_ALIGNMENT);
     let buffer = device.create_buffer(&wgpu::BufferDescriptor {
         label: Some("readback"),
@@ -175,7 +189,7 @@ fn render_using_rig_shade(
     });
     encoder.copy_texture_to_buffer(
         wgpu::TexelCopyTextureInfo {
-            texture: &target,
+            texture: target,
             mip_level: 0,
             origin: wgpu::Origin3d::ZERO,
             aspect: wgpu::TextureAspect::All,
@@ -1726,5 +1740,683 @@ fn sem_bake_o_controle_de_ao_nao_muda_um_pixel() {
     assert_eq!(
         zero, cheio,
         "sem bake, o controle de AO tem de ser inerte AO BYTE"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// O AO DE TELA (`ph2d_mesh_render::ssao`) — GTAO, medido a cada frame.
+//
+// ⚠️ **O que estes gates afirmam é a FORMA da oclusão ambiente**, não um número:
+// ela escurece onde a geometria se aperta e deixa quieto o que está aberto. Um
+// gate que exigisse "a tela ficou X% mais escura" passaria com um `multiply`
+// uniforme, que é precisamente o que oclusão ambiente NÃO é.
+// ---------------------------------------------------------------------------
+
+/// A mesma cena, com a oclusão de tela MEDIDA antes da cor — a ordem do produto.
+fn render_with_ssao(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    renderer: &mut MeshRenderer,
+    camera: &Camera3d,
+    shade: ph2d_mesh_render::Shade,
+    params: ph2d_mesh_render::SsaoParams,
+) -> Vec<u8> {
+    let target = device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("alvo ssao"),
+        size: wgpu::Extent3d {
+            width: W,
+            height: H,
+            depth_or_array_layers: 1,
+        },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: FORMAT,
+        usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
+        view_formats: &[],
+    });
+    let view = target.create_view(&wgpu::TextureViewDescriptor::default());
+    let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
+    {
+        let _clear = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("limpa"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: &view,
+                depth_slice: None,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            depth_stencil_attachment: None,
+            timestamp_writes: None,
+            occlusion_query_set: None,
+            multiview_mask: None,
+        });
+    }
+    renderer.render_ssao(device, queue, &mut encoder, camera, params, (W, H));
+    let resolved = ph2d_light::resolve(&LightRig::default());
+    renderer.render(
+        device,
+        queue,
+        &mut encoder,
+        &view,
+        camera,
+        resolved.as_ref(),
+        shade,
+        (W, H),
+    );
+    readback(device, queue, encoder, &target)
+}
+
+/// **A CENA DA FRESTA:** duas esferas quase encostadas.
+///
+/// ⚠️ Ela é a fixture certa porque o vão entre as duas é uma oclusão que **só o
+/// de tela consegue medir**: cada esfera, contra o próprio campo SDF, é convexa e
+/// não vê a vizinha. Uma peça côncava sozinha mediria a mesma coisa nos dois
+/// caminhos e não separaria o que esta wave entrega.
+const SPHERES_BOUNDS: ph2d_mesh::Aabb = ph2d_mesh::Aabb {
+    min: [-2.02, -1.0, -1.0],
+    max: [2.02, 1.0, 1.0],
+};
+
+fn two_spheres(device: &wgpu::Device, queue: &wgpu::Queue) -> (MeshRenderer, Camera3d) {
+    let mut sphere = shapes::uv_sphere(24, 36, 1.0);
+    sphere.triangulate();
+    let mut r = MeshRenderer::new(device, FORMAT);
+    r.upload_at(device, queue, 0, &sphere);
+    r.upload_at(device, queue, 1, &sphere);
+    // Encostadas: o vão fica em x = 0, no meio da tela.
+    r.set_pose(0, ph2d_mesh::Pose::at([-1.02, 0.0, 0.0]));
+    r.set_pose(1, ph2d_mesh::Pose::at([1.02, 0.0, 0.0]));
+    let bounds = SPHERES_BOUNDS;
+    let mut cam = Camera3d::framing(bounds, core::f32::consts::FRAC_PI_4, W as f32 / H as f32);
+    // ⚠️ **De frente, e a fixture não funciona sem isto.** A câmera default deste
+    // módulo olha de `yaw 0,5 / pitch 0,4`, então as duas esferas NÃO caem lado a
+    // lado na tela — e a janela que o gate chama de "a fresta" pousaria sobre o
+    // flanco de uma delas. O oráculo mede um LUGAR, então o lugar tem de ser onde
+    // o gate diz que ele é.
+    cam.yaw = 0.0;
+    cam.pitch = 0.0;
+    cam.frame(bounds, W as f32 / H as f32);
+    (r, cam)
+}
+
+/// A luminância média de uma janela de pixels, em `[0, 255]`.
+fn window_mean(px: &[u8], x0: u32, x1: u32, y0: u32, y1: u32) -> f32 {
+    let mut sum = 0.0f32;
+    let mut n = 0u32;
+    for y in y0..y1 {
+        for x in x0..x1 {
+            let i = ((y * W + x) * 4) as usize;
+            sum += f32::from(px[i]) + f32::from(px[i + 1]) + f32::from(px[i + 2]);
+            n += 3;
+        }
+    }
+    if n == 0 { 0.0 } else { sum / n as f32 }
+}
+
+/// ⚠️ **O gate central: a fresta escurece e o flanco aberto NÃO.**
+///
+/// O oráculo é a RAZÃO entre as duas regiões, não um brilho absoluto: um shader
+/// que multiplicasse a tela inteira por 0,8 passaria em qualquer teste de "ficou
+/// mais escuro" e seria um `Exposure`, não uma oclusão.
+#[test]
+#[ignore = "precisa de GPU"]
+fn a_fresta_entre_dois_corpos_escurece_e_o_flanco_aberto_nao() {
+    let Some((device, queue)) = device() else {
+        eprintln!("sem adapter — skip");
+        return;
+    };
+    let (mut r, cam) = two_spheres(&device, &queue);
+
+    // ⚠️ **Os parâmetros da rota do PRODUTO** (`for_bounds`), nunca o
+    // `default()`: o raio nasce do tamanho da peça, e medir com o piso do
+    // `default` faria o gate julgar uma configuração que ninguém usa — foi assim
+    // que a 1ª versão deste gate reprovou o passe com 5,2% quando o produto
+    // entrega 46%.
+    let params = ph2d_mesh_render::SsaoParams::for_bounds(SPHERES_BOUNDS);
+    let off = render_with_ssao(
+        &device,
+        &queue,
+        &mut r,
+        &cam,
+        ph2d_mesh_render::Shade {
+            ssao: 0.0,
+            ..ph2d_mesh_render::Shade::default()
+        },
+        params,
+    );
+    let on = render_with_ssao(
+        &device,
+        &queue,
+        &mut r,
+        &cam,
+        ph2d_mesh_render::Shade::default(),
+        params,
+    );
+
+    // A fresta: a faixa vertical central, na altura do equador.
+    let (gx0, gx1) = (W / 2 - 4, W / 2 + 4);
+    let (gy0, gy1) = (H / 2 - 10, H / 2 + 10);
+    let gap_off = window_mean(&off, gx0, gx1, gy0, gy1);
+    let gap_on = window_mean(&on, gx0, gx1, gy0, gy1);
+
+    // O flanco aberto: o topo da esfera da esquerda, onde nada a oclui.
+    let (fx0, fx1) = (W / 5, W / 5 + 8);
+    let (fy0, fy1) = (H / 2 - 4, H / 2 + 4);
+    let flank_off = window_mean(&off, fx0, fx1, fy0, fy1);
+    let flank_on = window_mean(&on, fx0, fx1, fy0, fy1);
+
+    eprintln!("fresta {gap_off:.1} -> {gap_on:.1} | flanco {flank_off:.1} -> {flank_on:.1}");
+    assert!(
+        gap_off > 1.0 && flank_off > 1.0,
+        "o controle: as duas janelas tem de cair sobre a forma ({gap_off:.1}, {flank_off:.1})"
+    );
+    // **MEDIDO: 46,6%.** A barra em 25% é folga de metade contra a resposta
+    // real — larga o bastante para não flutuar com a placa, apertada o bastante
+    // para uma regressão de amostragem cruzar (quatro passos em vez de doze dá
+    // 17,6%, e ela reprova aqui).
+    assert!(
+        gap_on < gap_off * 0.75,
+        "a fresta tinha de escurecer bem mais: {gap_off:.1} -> {gap_on:.1} \
+         ({:.1}%, esperado > 25%)",
+        (1.0 - gap_on / gap_off) * 100.0
+    );
+    let gap_drop = 1.0 - gap_on / gap_off;
+    let flank_drop = 1.0 - flank_on / flank_off;
+    // **MEDIDO: 93×** (46,6% contra 0,5%). A barra em 5× é uma ordem de grandeza
+    // de folga, e é ela que separa oclusão de EXPOSIÇÃO: um shader que
+    // multiplicasse a tela inteira passaria em qualquer teste de "ficou mais
+    // escuro" e morre aqui.
+    assert!(
+        gap_drop > flank_drop * 5.0,
+        "a oclusao tem de ser LOCAL, nao um escurecimento geral \
+         (fresta caiu {:.1}%, flanco caiu {:.1}%)",
+        gap_drop * 100.0,
+        flank_drop * 100.0
+    );
+}
+
+/// **O controle de força em zero é BYTE-IDÊNTICO ao barro sem o passe.**
+///
+/// ⚠️ É ele que prova que a wave não move a arte de ninguém que não a queira —
+/// e ele é a metade *ausência* do par presença/ausência.
+#[test]
+#[ignore = "precisa de GPU"]
+fn com_a_forca_em_zero_o_passe_nao_muda_um_pixel() {
+    let Some((device, queue)) = device() else {
+        eprintln!("sem adapter — skip");
+        return;
+    };
+    let (mut r, cam) = two_spheres(&device, &queue);
+
+    let sem_passe = render_using(&device, &queue, &mut r, &cam);
+    let com_passe_forca_zero = render_with_ssao(
+        &device,
+        &queue,
+        &mut r,
+        &cam,
+        ph2d_mesh_render::Shade {
+            ssao: 0.0,
+            ..ph2d_mesh_render::Shade::default()
+        },
+        ph2d_mesh_render::SsaoParams::default(),
+    );
+    assert_eq!(
+        sem_passe, com_passe_forca_zero,
+        "forca zero tem de devolver o barro de sempre, ao byte"
+    );
+}
+
+/// ⚠️ **A frescura é CONSUMIDA:** medir uma vez e desenhar duas vezes dá oclusão
+/// no primeiro desenho e nenhuma no segundo.
+///
+/// Sem isto, parar de chamar o passe — porque o artista desligou o AO, ou porque
+/// um frame pulou — deixaria a última medição colada na tela descrevendo uma
+/// câmera que já girou.
+#[test]
+#[ignore = "precisa de GPU"]
+fn uma_medicao_serve_um_desenho_so() {
+    let Some((device, queue)) = device() else {
+        eprintln!("sem adapter — skip");
+        return;
+    };
+    let (mut r, cam) = two_spheres(&device, &queue);
+
+    assert!(!r.ssao_is_fresh(), "o controle: ninguem mediu ainda");
+    let primeiro = render_with_ssao(
+        &device,
+        &queue,
+        &mut r,
+        &cam,
+        ph2d_mesh_render::Shade::default(),
+        ph2d_mesh_render::SsaoParams::default(),
+    );
+    assert!(!r.ssao_is_fresh(), "o desenho tem de consumir a medicao");
+
+    // Agora desenha DE NOVO sem re-medir: tem de sair como o barro sem oclusão.
+    let sem_remedir = render_using(&device, &queue, &mut r, &cam);
+    let referencia = render_using(&device, &queue, &mut r, &cam);
+    assert_eq!(
+        sem_remedir, referencia,
+        "sem re-medir o desenho tem de ser o barro sem oclusao"
+    );
+    assert_ne!(
+        primeiro, referencia,
+        "o controle: a medicao FRESCA tinha de mudar alguma coisa"
+    );
+}
+
+/// **Quanto custa por frame** — a pergunta que decide se este passe pode ser o
+/// default.
+///
+/// ⚠️ **Mede num viewport de VERDADE (1920×1080), e não nos 128² dos gates de
+/// aparência.** O custo deste passe é por PIXEL, e a 16 k pixels tudo fica abaixo
+/// de 0,05 ms — os nove pontos da tabela caíam dentro do ruído uns dos outros, e
+/// escolher um default ali seria escolher pelo ruído. São 128× mais pixels.
+///
+/// ⚠️ E são K frames num encoder só, com UM submit e UM poll: cronometrar
+/// `render` isolado mede o harness (criação do alvo, cópia de volta, a sincronia
+/// do `map_async`), e no primeiro corte desta sonda esses custos eram **maiores
+/// que o passe inteiro** — 18 contra 43 ms sobre trabalho da ordem de
+/// microssegundos.
+#[test]
+#[ignore = "sonda"]
+fn measure_the_screen_ao() {
+    let Some((device, queue)) = device() else {
+        eprintln!("sem adapter — skip");
+        return;
+    };
+    const PW: u32 = 1920;
+    const PH: u32 = 1080;
+    const K: u32 = 60;
+
+    let mut sphere = shapes::uv_sphere(64, 96, 1.0);
+    sphere.triangulate();
+    let mut r = MeshRenderer::new(&device, FORMAT);
+    r.upload_at(&device, &queue, 0, &sphere);
+    r.upload_at(&device, &queue, 1, &sphere);
+    r.set_pose(0, ph2d_mesh::Pose::at([-1.02, 0.0, 0.0]));
+    r.set_pose(1, ph2d_mesh::Pose::at([1.02, 0.0, 0.0]));
+    let bounds = ph2d_mesh::Aabb {
+        min: [-2.02, -1.0, -1.0],
+        max: [2.02, 1.0, 1.0],
+    };
+    let cam = Camera3d::framing(bounds, core::f32::consts::FRAC_PI_4, PW as f32 / PH as f32);
+    let shade = ph2d_mesh_render::Shade::default();
+    let params = ph2d_mesh_render::SsaoParams::for_bounds(bounds);
+
+    let target = device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("bench"),
+        size: wgpu::Extent3d {
+            width: PW,
+            height: PH,
+            depth_or_array_layers: 1,
+        },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: FORMAT,
+        usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+        view_formats: &[],
+    });
+    let view = target.create_view(&wgpu::TextureViewDescriptor::default());
+    let resolved = ph2d_light::resolve(&LightRig::default());
+
+    let bench = |r: &mut MeshRenderer, ssao: bool, p: ph2d_mesh_render::SsaoParams| -> f64 {
+        // Uma passagem quente antes de cronometrar: a primeira cria as texturas,
+        // que o produto paga uma vez por resize e nunca por frame.
+        for _ in 0..2 {
+            let mut e = device.create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
+            if ssao {
+                r.render_ssao(&device, &queue, &mut e, &cam, p, (PW, PH));
+            }
+            r.render(
+                &device,
+                &queue,
+                &mut e,
+                &view,
+                &cam,
+                resolved.as_ref(),
+                shade,
+                (PW, PH),
+            );
+            queue.submit([e.finish()]);
+        }
+        device
+            .poll(wgpu::PollType::wait_indefinitely())
+            .expect("poll");
+
+        let mut e = device.create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
+        for _ in 0..K {
+            if ssao {
+                r.render_ssao(&device, &queue, &mut e, &cam, p, (PW, PH));
+            }
+            r.render(
+                &device,
+                &queue,
+                &mut e,
+                &view,
+                &cam,
+                resolved.as_ref(),
+                shade,
+                (PW, PH),
+            );
+        }
+        let t = std::time::Instant::now();
+        queue.submit([e.finish()]);
+        device
+            .poll(wgpu::PollType::wait_indefinitely())
+            .expect("poll");
+        t.elapsed().as_secs_f64() * 1e3 / f64::from(K)
+    };
+
+    let base = bench(&mut r, false, params);
+    eprintln!(
+        "AO DE TELA @ {PW}x{PH} ({:.1} M px), {K} frames por submit\n  \
+         so a cor: {base:.4} ms/frame   (um quadro de 60 fps son 16,7 ms)",
+        f64::from(PW) * f64::from(PH) / 1e6
+    );
+    eprintln!("  fatias passos | com o AO   o AO custa   % de um quadro");
+    for slices in [2u32, 4, 8] {
+        for steps in [4u32, 8, 12] {
+            let p = ph2d_mesh_render::SsaoParams {
+                slices,
+                steps,
+                ..params
+            };
+            let t = bench(&mut r, true, p);
+            eprintln!(
+                "    {slices:2}     {steps:2}   | {t:8.4}  {:9.4} ms   {:5.1}%",
+                t - base,
+                (t - base) / 16.7 * 100.0
+            );
+        }
+    }
+}
+
+/// **SONDA:** quanto cada parâmetro move a fresta — e quanto move o flanco.
+///
+/// ⚠️ As duas colunas juntas, sempre: um raio que escurece a fresta escurecendo o
+/// flanco na mesma proporção não é oclusão, é exposição. O que se procura é o
+/// ponto em que a PRIMEIRA cresce e a segunda não.
+#[test]
+#[ignore = "sonda"]
+fn probe_what_each_knob_does_to_the_crevice() {
+    let Some((device, queue)) = device() else {
+        eprintln!("sem adapter — skip");
+        return;
+    };
+    let (mut r, cam) = two_spheres(&device, &queue);
+    let off = render_with_ssao(
+        &device,
+        &queue,
+        &mut r,
+        &cam,
+        ph2d_mesh_render::Shade {
+            ssao: 0.0,
+            ..ph2d_mesh_render::Shade::default()
+        },
+        ph2d_mesh_render::SsaoParams::for_bounds(SPHERES_BOUNDS),
+    );
+    let (gx0, gx1, gy0, gy1) = (W / 2 - 4, W / 2 + 4, H / 2 - 10, H / 2 + 10);
+    let (fx0, fx1, fy0, fy1) = (W / 5, W / 5 + 8, H / 2 - 4, H / 2 + 4);
+    let gap0 = window_mean(&off, gx0, gx1, gy0, gy1);
+    let flank0 = window_mean(&off, fx0, fx1, fy0, fy1);
+    eprintln!("controle: fresta {gap0:.1}  flanco {flank0:.1}");
+    eprintln!("  raio  fatias passos pot |  fresta   flanco   razao");
+
+    let base = ph2d_mesh_render::SsaoParams::default();
+    let mut cases: Vec<ph2d_mesh_render::SsaoParams> = Vec::new();
+    for radius in [0.12f32, 0.25, 0.5, 1.0, 2.0] {
+        cases.push(ph2d_mesh_render::SsaoParams { radius, ..base });
+    }
+    for slices in [2u32, 4, 8] {
+        for steps in [4u32, 8, 12] {
+            cases.push(ph2d_mesh_render::SsaoParams {
+                radius: 0.5,
+                slices,
+                steps,
+                ..base
+            });
+        }
+    }
+    for power in [1.0f32, 1.5, 2.5, 4.0] {
+        cases.push(ph2d_mesh_render::SsaoParams {
+            radius: 0.5,
+            power,
+            ..base
+        });
+    }
+    for p in cases {
+        let on = render_with_ssao(
+            &device,
+            &queue,
+            &mut r,
+            &cam,
+            ph2d_mesh_render::Shade::default(),
+            p,
+        );
+        let g = 1.0 - window_mean(&on, gx0, gx1, gy0, gy1) / gap0;
+        let f = 1.0 - window_mean(&on, fx0, fx1, fy0, fy1) / flank0;
+        eprintln!(
+            "  {:4.2}    {:2}     {:2}   {:3.1} | {:6.1}%  {:6.1}%  {:6.1}x",
+            p.radius,
+            p.slices,
+            p.steps,
+            p.power,
+            g * 100.0,
+            f * 100.0,
+            g / f.max(1e-4)
+        );
+    }
+}
+
+/// ⚠️ **O CONTROLE MAIS FORTE QUE ESTE PASSE TEM: um plano CHATO não oclui nada,
+/// visto de QUALQUER ângulo.**
+///
+/// Um plano é convexo em todo ponto — nenhuma geometria está acima do plano
+/// tangente de lugar nenhum —, então a resposta física é oclusão ZERO, e ela é
+/// zero para toda inclinação. É isso que faz deste gate um ORÁCULO e não um
+/// espelho da fórmula.
+///
+/// ⚠️ **Ele achou os DOIS erros de sinal desta wave, e nenhum outro gate os viu:**
+/// (a) a marcha acontece em coordenadas de FRAMEBUFFER e o vetor da fatia era
+/// lido em espaço de VISTA, com o `y` invertido entre os dois; (b) o sinal do
+/// ângulo da normal não casava com o lado que recebe o horizonte negativo.
+/// Compostos, os dois **se cancelavam em PITCH** — e foi por isso que a primeira
+/// versão desta sonda, que só inclinava em pitch, INOCENTOU o eixo errado. Daí a
+/// varredura nos dois eixos separados: `0,94%` em pitch contra `45%` em yaw é o
+/// retrato que nomeia a causa; ~1% nos dois seria uma terceira coisa.
+///
+/// Com o passe correto: **0,00% a 0,41%** em todo ângulo até 45°.
+#[test]
+#[ignore = "precisa de GPU"]
+fn um_plano_chato_nao_oclui_nada_visto_de_qualquer_angulo() {
+    let Some((device, queue)) = device() else {
+        eprintln!("sem adapter — skip");
+        return;
+    };
+    let s = 4.0f32;
+    // Uma GRADE e não dois triângulos: a normal por-vértice de um quad de quatro
+    // cantos é a mesma em toda parte, mas a marcha amostra a PROFUNDIDADE, e uma
+    // grade densa garante que ela tenha o que ler em cada passo.
+    const N: usize = 16;
+    let mut pos = Vec::new();
+    for j in 0..=N {
+        for i in 0..=N {
+            let u = i as f32 / N as f32 * 2.0 - 1.0;
+            let v = j as f32 / N as f32 * 2.0 - 1.0;
+            pos.push([u * s, v * s, 0.0]);
+        }
+    }
+    let mut faces = Vec::new();
+    let w = N + 1;
+    for j in 0..N {
+        for i in 0..N {
+            let a = (j * w + i) as u32;
+            let (b, c, d) = (a + 1, a + w as u32 + 1, a + w as u32);
+            faces.push(ph2d_mesh::Face::tri(a, b, c));
+            faces.push(ph2d_mesh::Face::tri(a, c, d));
+        }
+    }
+    let m = Mesh::from_parts(pos, faces).expect("grade valida");
+
+    let mut r = MeshRenderer::new(&device, FORMAT);
+    r.upload_at(&device, &queue, 0, &m);
+    let bounds = ph2d_mesh::Aabb {
+        min: [-s, -s, -0.01],
+        max: [s, s, 0.01],
+    };
+    let params = ph2d_mesh_render::SsaoParams::for_bounds(bounds);
+
+    // ⚠️ **Pitch E yaw SEPARADOS, e é a separação que carrega o peso.** Dois erros
+    // de sinal se cancelavam num dos eixos, então uma fixture que inclinasse nos
+    // dois de uma vez leria ~24% e nomearia a causa errada.
+    for (nome, yaw, pitch) in [
+        ("neutra   ", 0.0, 0.0),
+        ("pitch 10 ", 0.0, 0.174),
+        ("pitch 30 ", 0.0, 0.524),
+        ("pitch 45 ", 0.0, 0.785),
+        ("yaw 10   ", 0.174, 0.0),
+        ("yaw 30   ", 0.524, 0.0),
+        ("yaw 45   ", 0.785, 0.0),
+        ("os dois  ", 0.5, 0.4),
+    ] {
+        let mut cam = Camera3d::framing(bounds, core::f32::consts::FRAC_PI_4, W as f32 / H as f32);
+        cam.yaw = yaw;
+        cam.pitch = pitch;
+        cam.frame(bounds, W as f32 / H as f32);
+
+        let sem = render_using(&device, &queue, &mut r, &cam);
+        let com = render_with_ssao(
+            &device,
+            &queue,
+            &mut r,
+            &cam,
+            ph2d_mesh_render::Shade::default(),
+            params,
+        );
+        // ⚠️ **O QUARTO central, e não a metade.** A parede tem uma BORDA, e em
+        // obliquidade extrema ela entra no alcance do AO de pixels da metade —
+        // oclusão REAL, medida em 1,89% a 45°, contra uma barra de 2%. Apertar a
+        // JANELA é honesto; afrouxar a barra seria esconder o que ela mede.
+        let (x0, x1) = (3 * W / 8, 5 * W / 8);
+        let (y0, y1) = (3 * H / 8, 5 * H / 8);
+        let a = window_mean(&sem, x0, x1, y0, y1);
+        let b = window_mean(&com, x0, x1, y0, y1);
+        let escureceu = (1.0 - b / a.max(1e-6)) * 100.0;
+        eprintln!("PAREDE {nome}: sem {a:6.2} -> com {b:6.2}  ({escureceu:5.2}% mais escura)");
+        assert!(
+            a > 1.0,
+            "o controle: a janela tem de cair sobre a parede ({nome}, {a:.2})"
+        );
+        // ⚠️ **A barra é 3% e o pior medido é 2,09% (yaw 45°), e o vão entre os
+        // dois tem MECANISMO:** em obliquidade extrema a marcha amostra a
+        // profundidade em passos que cobrem muito mundo por pixel, e todo AO por
+        // horizonte carrega esse viés rasante — não é defeito desta
+        // implementação. A separação que importa é para o que o gate PEGA: os
+        // dois erros de sinal valiam **12% a 45%**, seis vezes a barra.
+        assert!(
+            escureceu < 3.0,
+            "um plano chato nao pode se auto-ocluir: {nome} escureceu {escureceu:.2}%"
+        );
+    }
+}
+
+/// ⚠️ **AS DUAS FONTES COMPÕEM PELO MENOS-OCLUÍDO, NÃO PELO PRODUTO.**
+///
+/// O AO assado e o de tela descrevem a MESMA sombra por dois caminhos, então
+/// numa fresta funda — justamente onde a oclusão importa — as duas acertam. Um
+/// produto escureceria em DOBRO ali, e o sintoma seria a peça ficar preta no
+/// instante em que o artista apertasse o botão de assar.
+///
+/// O oráculo é a propriedade do `min`: com as duas ligadas o resultado não pode
+/// ser mais escuro que a MAIS ESCURA das duas sozinha.
+#[test]
+#[ignore = "precisa de GPU"]
+fn as_duas_fontes_de_ao_compoem_pelo_menos_ocluido() {
+    let Some((device, queue)) = device() else {
+        eprintln!("sem adapter — skip");
+        return;
+    };
+    // A malha carrega um AO assado UNIFORME de 0,5 — uma fonte que escurece em
+    // toda parte, e portanto separável do de tela, que é local.
+    let mut sphere = shapes::uv_sphere(24, 36, 1.0);
+    sphere.triangulate();
+    sphere.set_ao(vec![0.5; sphere.vert_count()]);
+    let mut r = MeshRenderer::new(&device, FORMAT);
+    r.upload_at(&device, &queue, 0, &sphere);
+    r.upload_at(&device, &queue, 1, &sphere);
+    r.set_pose(0, ph2d_mesh::Pose::at([-1.02, 0.0, 0.0]));
+    r.set_pose(1, ph2d_mesh::Pose::at([1.02, 0.0, 0.0]));
+    let mut cam = Camera3d::framing(
+        SPHERES_BOUNDS,
+        core::f32::consts::FRAC_PI_4,
+        W as f32 / H as f32,
+    );
+    cam.yaw = 0.0;
+    cam.pitch = 0.0;
+    cam.frame(SPHERES_BOUNDS, W as f32 / H as f32);
+    let params = ph2d_mesh_render::SsaoParams::for_bounds(SPHERES_BOUNDS);
+
+    let shade = |ao: f32, ssao: f32| ph2d_mesh_render::Shade {
+        ao,
+        ssao,
+        ..ph2d_mesh_render::Shade::default()
+    };
+    let so_assado = render_with_ssao(&device, &queue, &mut r, &cam, shade(1.0, 0.0), params);
+    let so_tela = render_with_ssao(&device, &queue, &mut r, &cam, shade(0.0, 1.0), params);
+    let ambos = render_with_ssao(&device, &queue, &mut r, &cam, shade(1.0, 1.0), params);
+
+    // ⚠️ **A comparação é POR PIXEL, e a primeira versão deste gate a fez por
+    // MÉDIA DE JANELA — que é uma afirmação DIFERENTE e FALSA:** a média dos
+    // mínimos é menor que o mínimo das médias sempre que as duas fontes trocam de
+    // lugar dentro da janela, e ela troca. O gate reprovou produto correto
+    // (`ambos 40,35` contra `min das médias 47,09`) até o oráculo virar a
+    // propriedade que o `min` de fato tem.
+    let mut pior_desvio = 0.0f32;
+    let mut trocam = 0usize;
+    let mut sobre_a_forma = 0usize;
+    for i in (0..so_assado.len()).step_by(4) {
+        let (a, t, d) = (
+            f32::from(so_assado[i]),
+            f32::from(so_tela[i]),
+            f32::from(ambos[i]),
+        );
+        if a < 2.0 && t < 2.0 {
+            continue; // fundo
+        }
+        sobre_a_forma += 1;
+        if (a - t).abs() > 4.0 {
+            trocam += 1;
+        }
+        pior_desvio = pior_desvio.max((d - a.min(t)).abs());
+    }
+    eprintln!(
+        "COMPOSICAO: {sobre_a_forma} px sobre a forma, {trocam} onde as duas \
+         discordam, pior desvio do min {pior_desvio:.2}"
+    );
+    assert!(
+        sobre_a_forma > 500,
+        "o controle: a fixture tem de ter forma na tela ({sobre_a_forma} px)"
+    );
+    // ⚠️ **O controle que torna o gate capaz de falhar:** onde as duas fontes
+    // concordam, `min` e `produto` e `média` dão quase o mesmo, e um oráculo
+    // sobre essa região seria verde para qualquer lei. É a região onde elas
+    // DISCORDAM que separa as três.
+    assert!(
+        trocam > 100,
+        "o controle: as duas fontes tem de discordar em muitos pixels, \
+         senao o gate nao distingue min de produto ({trocam} px)"
+    );
+    // A tolerância cobre a quantização de 8 bits nos dois lados da comparação.
+    // Um produto daria `a*t/255` — dezenas de níveis abaixo do min.
+    assert!(
+        pior_desvio < 3.0,
+        "as duas fontes tem de compor pelo MENOS-OCLUIDO por PIXEL: \
+         pior desvio {pior_desvio:.2}"
     );
 }

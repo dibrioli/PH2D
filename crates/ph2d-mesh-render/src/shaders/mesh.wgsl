@@ -74,6 +74,9 @@ struct Shade {
     // dizendo *"é aqui que SSS e AO vão pousar sem mexer no layout"*. O layout
     // não mudou: a promessa foi cobrada.
     ao: f32,
+    // **QUANTO DO AO DE TELA ENTRA.** `1` = todo ele, e é o default — o oposto do
+    // vizinho, porque este canal é MEDIDO todo frame em vez de assado uma vez.
+    ssao: f32,
 };
 
 @group(0) @binding(0) var<uniform> cam: Camera;
@@ -259,6 +262,29 @@ fn matcap_shade(n: vec3<f32>, id: u32) -> vec3<f32> {
     return m.base * (m.key * kd + m.fill * fd) + m.rim * rim + m.spec * sp;
 }
 
+// **A OCLUSÃO DE TELA** (`crate::ssao`) — grupo próprio porque a frequência é
+// outra: o grupo 0 são três uniforms estáveis e isto é uma TEXTURA recriada a
+// cada resize.
+//
+// ⚠️ Sem sampler: `textureLoad` com as coordenadas inteiras do próprio fragmento.
+// A correspondência é 1:1 com a tela, então filtrar seria interpolar uma medição
+// consigo mesma.
+@group(2) @binding(0) var ssao_tex: texture_2d<f32>;
+
+/// **QUANTO ESTE PIXEL ESTÁ OCLUÍDO PELO QUE ESTÁ NA TELA.**
+///
+/// ⚠️ A coordenada é CLAMPADA ao tamanho da textura, e a linha é load-bearing: sem
+/// medição o binding é um 1×1 zerado, e um `textureLoad` fora dos limites devolve
+/// zero em WGSL — que nesta convenção também é *"nada oclui"*, mas por acidente de
+/// especificação em vez de por desenho. Com o clamp a resposta é a MESMA por
+/// construção, e o dia em que a convenção mudar de sinal isto não vira uma peça
+/// preta.
+fn screen_occlusion(frag: vec2<f32>) -> f32 {
+    let dim = vec2<i32>(textureDimensions(ssao_tex)) - vec2<i32>(1);
+    let px = clamp(vec2<i32>(frag), vec2<i32>(0), dim);
+    return clamp(textureLoad(ssao_tex, px, 0).r, 0.0, 1.0);
+}
+
 struct VsOut {
     @builtin(position) clip: vec4<f32>,
     @location(0) n_view: vec3<f32>,
@@ -398,7 +424,23 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     // exatamente `1.0`, então o barro sem oclusão é **byte-idêntico** ao de antes
     // deste canal — e é isso que faz o default não mover um pixel de nada que já
     // foi esculpido.
-    let occ = mix(1.0, clamp(in.ao, 0.0, 1.0), shade.ao);
+    let baked = mix(1.0, clamp(in.ao, 0.0, 1.0), shade.ao);
+
+    // **O AO DE TELA**, medido nesta vista e nunca velho (`crate::ssao`).
+    //
+    // ⚠️ **As duas fontes compõem pelo MENOS-OCLUÍDO, não pelo produto**, e a
+    // razão é que elas descrevem a MESMA sombra por dois caminhos: o assado
+    // enxerga o corpo inteiro em qualquer direção (metros de campo SDF), este vê
+    // um raio em torno do pixel. Onde as duas acertam — uma axila funda, que é
+    // justamente onde a oclusão importa — um produto escureceria em DOBRO, e o
+    // artista veria a peça ficar preta ao assar. `min` diz *"a mais escura das
+    // duas medições vale"*, que é o que uma medição de visibilidade significa.
+    //
+    // ⚠️ E com uma das duas ausente o `min` é a IDENTIDADE da outra (o ausente
+    // vale 1), então nem o caminho só-assado nem o caminho só-tela pagam nada por
+    // existirem lado a lado.
+    let screen = 1.0 - shade.ssao * screen_occlusion(in.clip.xy);
+    let occ = min(baked, screen);
     let cav_occ = cav * occ;
 
     // **O MATCAP** — a luz do OLHO, e não a do documento. Ele vem ANTES da recusa

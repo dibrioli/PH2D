@@ -24,9 +24,27 @@ const SCENE: &str = include_str!("../src/sculpt3d.rs");
 /// nomear o arquivo de cada função.
 const INPUT: &str = include_str!("../src/sculpt3d_input.rs");
 
-/// A cena e o gesto como um só texto — ver [`INPUT`].
+/// ⚠️ **E o DESENHO mora num terceiro** (`sculpt3d_view.rs`), pelo mesmo motivo e
+/// pelo mesmo gatilho: um canal de sombreamento novo (o AO de tela) cruzou o teto
+/// de 600 LOC do pai e o `render` saiu para cá. **Este gate reprovou nessa
+/// mudança** — ele estava CERTO sobre um produto que tinha se mudado, que é a
+/// classe de defeito que este repo já pagou três vezes. A cura é a que o
+/// comentário acima já prescrevia: nomear o arquivo UMA vez, na concatenação, e
+/// afirmar a PROPRIEDADE sobre a família.
+const VIEW: &str = include_str!("../src/sculpt3d_view.rs");
+
+/// A cena, o gesto e o desenho como um só texto — ver [`INPUT`] e [`VIEW`].
 fn scene_and_gesture() -> String {
-    format!("{SCENE}\n{INPUT}")
+    let all = format!("{SCENE}\n{INPUT}\n{VIEW}");
+    // **Controle positivo.** Um `include_str!` que apontasse para um arquivo
+    // esvaziado por um corte deixaria toda busca abaixo devolver "não achei" —
+    // e o gate falaria com confiança sobre um texto que não existe.
+    assert!(
+        all.len() > 10_000 && all.contains("impl Sculpt3dScene"),
+        "a familia do modulo 3D nao foi lida: {} bytes",
+        all.len()
+    );
+    all
 }
 const DONATION: &str = include_str!("../src/sculpt3d_donation.rs");
 
@@ -121,8 +139,11 @@ fn a_hidden_clay_hands_the_pointer_back() {
         );
     }
     // E o passe de cor idem: desenhar o barro no modo LUZ esconderia a tinta que a doação acende.
+    //
+    // ⚠️ Sobre a FAMÍLIA e não sobre o `SCENE`: o passe de cor mudou de arquivo
+    // num corte de LOC, e esta linha era o endereço que expirou.
     assert!(
-        SCENE.contains("if !self.shows_clay() {"),
+        both.contains("if !self.shows_clay() {"),
         "o passe de cor tem de recusar fora do barro"
     );
 }

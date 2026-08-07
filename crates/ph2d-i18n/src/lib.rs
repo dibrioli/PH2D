@@ -494,6 +494,7 @@ pub fn tr(key: &str) -> &'static str {
         "panel.sculpt3d.cavity" => "Cavity",
         "panel.sculpt3d.ao" => "Ambient Occlusion",
         "panel.sculpt3d.bake_ao" => "Bake AO",
+        "panel.sculpt3d.ssao" => "Screen Occlusion",
         "panel.sculpt3d.ao_stale" => "AO describes the previous shape",
         "panel.sculpt3d.matcap" => "Material",
         // ⚠️ "Rig" e não "None": a primeira opção NÃO é a ausência de luz, é a

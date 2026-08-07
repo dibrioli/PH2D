@@ -20,6 +20,9 @@ use crate::upload;
 /// precisar de device — o molde do `IMPASTO_LIGHT_WGSL` do `ph2d-render`.
 pub(crate) const MESH_WGSL: &str = include_str!("shaders/mesh.wgsl");
 
+/// O passe de tela cheia do AO de tela — ver [`crate::ssao`].
+pub(crate) const SSAO_WGSL: &str = include_str!("shaders/ssao.wgsl");
+
 /// O uniform da câmera. `mat4x4` alinha em 16 B, então não há padding a declarar.
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable)]
@@ -149,11 +152,31 @@ pub struct MeshRenderer {
     /// Zeros para uma malha que ninguém mascarou — ver [`masks_of`].
     scratch_masks: Vec<f32>,
     scratch_ao: Vec<f32>,
+    // ---- o AO de TELA (`crate::ssao`) ----
+    ssao_bgl: wgpu::BindGroupLayout,
+    ssao_uniform: wgpu::Buffer,
+    ssao_pipeline: wgpu::RenderPipeline,
+    /// O layout do grupo 2 do passe de cor: a visibilidade que o barro amostra.
+    ao_bgl: wgpu::BindGroupLayout,
+    /// **O BRANCO 1×1** — a resposta a *"ninguém mediu oclusão nesta vista"*.
+    ///
+    /// ⚠️ Ele existe porque o grupo 2 é obrigatório no layout: um passe sem bind
+    /// group posto é erro de validação, então a ausência de AO precisa de uma
+    /// TEXTURA que diga *nada oclui*. Uma permutação de pipeline diria o mesmo ao
+    /// preço de recompilar o shader quando o artista mexe num toggle.
+    ao_white_bind: wgpu::BindGroup,
+    ssao: Option<ssao_pass::SsaoTargets>,
+    /// A medição é DESTA vista? Posta pelo `render_ssao`, consumida pelo `render`.
+    ssao_fresh: bool,
 }
 
 /// COMO A MALHA SOBE para o device — ver o módulo.
 #[path = "pipeline_upload.rs"]
 mod marshal;
+
+/// OS ALVOS E O PASSE do AO de tela — ver o módulo.
+#[path = "pipeline_ssao.rs"]
+mod ssao_pass;
 
 impl MeshRenderer {
     /// O formato do depth-buffer da cena 3D.
@@ -266,11 +289,21 @@ impl MeshRenderer {
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
             format: Self::DEPTH_FORMAT,
-            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+            // ⚠️ **`TEXTURE_BINDING` além do anexo, e não é folga:** o AO de tela
+            // LÊ esta textura para saber onde cada pixel está. Sem a flag o wgpu
+            // recusa o bind group — e a flag não custa nada a quem não a usa.
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
             view_formats: &[],
         });
         self.depth = Some(tex.create_view(&wgpu::TextureViewDescriptor::default()));
         self.depth_size = size;
+        // ⚠️ **Trocar a profundidade INVALIDA o grupo de entrada do AO de tela**,
+        // que aponta para a view antiga. Derrubar os alvos aqui é o que garante
+        // que os dois sejam sempre do mesmo enquadramento; deixá-los de pé faria
+        // o passe ler uma textura morta — e a validação do wgpu pegaria isso, mas
+        // só na máquina de quem redimensionasse a janela.
+        self.ssao = None;
+        self.ssao_fresh = false;
     }
 
     /// Desenha a malha em `color_view`, PRESERVANDO o que já está lá
@@ -304,6 +337,10 @@ impl MeshRenderer {
             return;
         }
         self.ensure_depth(device, size);
+        // ⚠️ **A frescura é consumida AQUI**, antes de qualquer empréstimo do
+        // passe: quem não renovou a medição nesta vista desenha sem oclusão de
+        // tela, nunca com a do frame passado.
+        let fresh = std::mem::take(&mut self.ssao_fresh);
 
         let aspect = size.0 as f32 / size.1 as f32;
         queue.write_buffer(
@@ -347,6 +384,7 @@ impl MeshRenderer {
         });
         pass.set_pipeline(&self.pipeline);
         pass.set_bind_group(0, &self.bind, &[]);
+        pass.set_bind_group(2, self.ao_bind_for(fresh), &[]);
         self.draw_all(queue, &mut pass, Draw::Faces);
         // **AS ARESTAS, no MESMO passe de render.** Um segundo `begin_render_pass`
         // teria de recarregar cor e profundidade, e a profundidade que as linhas
@@ -424,6 +462,10 @@ impl MeshRenderer {
         });
         pass.set_pipeline(&self.gbuffer_pipeline);
         pass.set_bind_group(0, &self.bind, &[]);
+        // O G-buffer não lê oclusão nenhuma — mas o grupo 2 está no layout que os
+        // três pipelines partilham, e um passe com um grupo do layout por pôr é
+        // erro de validação. O branco é a resposta inerte.
+        pass.set_bind_group(2, &self.ao_white_bind, &[]);
         self.draw_all(queue, &mut pass, Draw::Faces);
     }
 }

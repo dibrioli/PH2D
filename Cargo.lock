@@ -5717,6 +5717,7 @@ dependencies = [
  "ph2d-light",
  "ph2d-mesh",
  "ph2d-sculpt3d",
+ "ph2d-sdf",
  "pollster",
  "wgpu",
 ]

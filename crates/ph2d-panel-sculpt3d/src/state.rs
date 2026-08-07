@@ -55,6 +55,9 @@ pub struct Sculpt3dUi {
     /// existe depois de um bake, então qualquer default acima de zero faria a
     /// peça escurecer sozinha no instante do primeiro bake.
     pub ao: f32,
+    /// Quanto do AO DE TELA entra — o irmão MEDIDO do de cima, e ele nasce
+    /// LIGADO porque nunca fica velho.
+    pub ssao: f32,
     /// Azimute da lâmpada selecionada, em graus.
     pub light_az_deg: f32,
     /// Elevação da lâmpada selecionada, em graus.
@@ -79,6 +82,11 @@ impl Default for Sculpt3dUi {
             symmetry: Symmetry::default(),
             cavity: 0.0,
             ao: 0.0,
+            // ⚠️ **LIGADO, ao contrário do vizinho.** O assado nasce em zero
+            // porque é um canal que não existe até alguém apertar um botão; este
+            // é medido a cada frame, então "ligado" quer dizer *mostre o que foi
+            // medido*, e antes da primeira medição ele é inerte ao byte.
+            ssao: 1.0,
             light_az_deg: 0.0,
             light_elev_deg: 45.0, // LITERAL-PX-OK: graus de elevacao, nao metrica de design
             matcap: None,

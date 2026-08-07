@@ -119,9 +119,33 @@ impl MeshRenderer {
             }],
         });
 
+        // **A VISIBILIDADE DE TELA** (`crate::ssao`) — grupo 2 do passe de cor.
+        //
+        // ⚠️ Grupo próprio e não uma quarta entrada do grupo 0 pela razão de
+        // sempre, a FREQUÊNCIA: o grupo 0 é um bind por frame com três uniforms
+        // estáveis, e isto é uma TEXTURA que é recriada a cada resize. Juntá-los
+        // faria toda mudança de tamanho de janela reconstruir o bind da câmera.
+        //
+        // ⚠️ E sem SAMPLER, de propósito: o barro lê `textureLoad` com as
+        // coordenadas inteiras do próprio fragmento — a correspondência é 1:1 com
+        // a tela, então filtrar seria interpolar uma medição consigo mesma.
+        let ao_bgl = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("ph2d-mesh ao bgl"),
+            entries: &[wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Texture {
+                    sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                    view_dimension: wgpu::TextureViewDimension::D2,
+                    multisampled: false,
+                },
+                count: None,
+            }],
+        });
+
         let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("ph2d-mesh layout"),
-            bind_group_layouts: &[&bgl, &obj_bgl],
+            bind_group_layouts: &[&bgl, &obj_bgl, &ao_bgl],
             immediate_size: 0,
         });
 
@@ -311,10 +335,155 @@ impl MeshRenderer {
             bias: WIRE,
         });
 
+        // **O 1×1 VAZIO** — *"ninguém mediu oclusão nesta vista"*.
+        //
+        // ⚠️ **É por causa deste fallback que o canal guarda OCLUSÃO e não
+        // visibilidade.** Uma textura recém-criada nasce zerada, e ela precisa de
+        // um conteúdo que signifique *nada aqui escurece nada*: com visibilidade,
+        // zero quer dizer *tudo é sombra* e a peça sairia preta; com oclusão, zero
+        // é exatamente a resposta certa — e sai **de graça**, sem escrever um
+        // texel, sem `queue` no construtor, e sem que os vinte chamadores do
+        // `new` mudem de assinatura por causa de um pixel.
+        //
+        // ⚠️ A mesma inversão faz o `textureLoad` FORA DOS LIMITES cair do lado
+        // seguro: WGSL devolve zero, que aqui é *não oclui*. O shader clampa a
+        // coordenada mesmo assim — depender do comportamento de borda seria uma
+        // regra invisível, e ela é a diferença entre uma peça normal e uma peça
+        // preta.
+        let empty = device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("ph2d-mesh ao empty"),
+            size: wgpu::Extent3d {
+                width: 1,
+                height: 1,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: Self::SSAO_FORMAT,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING,
+            view_formats: &[],
+        });
+        let ao_white_bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("ph2d-mesh ao empty bind"),
+            layout: &ao_bgl,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: wgpu::BindingResource::TextureView(
+                    &empty.create_view(&wgpu::TextureViewDescriptor::default()),
+                ),
+            }],
+        });
+
+        // ---- O PASSE de tela cheia do AO (`shaders/ssao.wgsl`) ----
+        let ssao_bgl = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("ph2d-mesh ssao bgl"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                // A PROFUNDIDADE, como textura de leitura.
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Depth,
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
+                // As NORMAIS — o mesmo G-buffer que a doação produz.
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
+            ],
+        });
+        let ssao_uniform = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("ph2d-mesh ssao params"),
+            size: crate::ssao::SsaoRaw::SIZE as u64,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        let ssao_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("ph2d-mesh ssao shader"),
+            source: wgpu::ShaderSource::Wgsl(super::SSAO_WGSL.into()),
+        });
+        let ssao_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("ph2d-mesh ssao pipeline"),
+            layout: Some(
+                &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("ph2d-mesh ssao layout"),
+                    bind_group_layouts: &[&ssao_bgl],
+                    immediate_size: 0,
+                }),
+            ),
+            vertex: wgpu::VertexState {
+                module: &ssao_shader,
+                entry_point: Some("vs_fullscreen"),
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
+                // Sem buffer nenhum: as coordenadas do triângulo saem do índice.
+                buffers: &[],
+            },
+            fragment: Some(wgpu::FragmentState {
+                module: &ssao_shader,
+                entry_point: Some("fs_ssao"),
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
+                targets: &[Some(wgpu::ColorTargetState {
+                    format: Self::SSAO_FORMAT,
+                    blend: None,
+                    write_mask: wgpu::ColorWrites::RED,
+                })],
+            }),
+            primitive: wgpu::PrimitiveState {
+                topology: wgpu::PrimitiveTopology::TriangleList,
+                strip_index_format: None,
+                front_face: wgpu::FrontFace::Ccw,
+                // Um triângulo de tela cheia não tem lado de trás a descartar, e o
+                // sentido dele depende de como os índices caem — descartar aqui
+                // seria uma tela preta por uma convenção invisível.
+                cull_mode: None,
+                polygon_mode: wgpu::PolygonMode::Fill,
+                unclipped_depth: false,
+                conservative: false,
+            },
+            // ⚠️ **Sem depth-stencil**: este passe LÊ a profundidade pelo bind
+            // group, e anexá-la aqui a poria em escrita e leitura ao mesmo tempo.
+            depth_stencil: None,
+            multisample: wgpu::MultisampleState {
+                count: 1,
+                mask: !0,
+                alpha_to_coverage_enabled: false,
+            },
+            multiview_mask: None,
+            cache: None,
+        });
+
         Self {
             pipeline,
             gbuffer_pipeline,
             wire_pipeline,
+            ssao_bgl,
+            ssao_uniform,
+            ssao_pipeline,
+            ao_bgl,
+            ao_white_bind,
+            ssao: None,
+            ssao_fresh: false,
             uniform,
             rig_uniform,
             shade_uniform,

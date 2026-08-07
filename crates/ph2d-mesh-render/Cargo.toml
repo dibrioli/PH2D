@@ -46,3 +46,10 @@ pollster = "0.4"
 # vertices um dab move", e ela divergiria em silencio. O `src/` nao a toca, entao
 # isto e machete-safe (o padrao que a `line/Flip` usou com `ph2d-painter-brush`).
 ph2d-sculpt3d = { path = "../ph2d-sculpt3d" }
+# ⚠️ DEV-dependency pela MESMA razao que a de cima, e o gate que a exige e
+# `as_duas_fontes_de_ao_medem_o_mesmo_alcance`: o AO de tela e o AO assado tem
+# de semear o raio pela MESMA fracao da peca, senao a composicao `min` das duas
+# tem uma costura visivel na distancia em que uma acaba. Reescrever a fracao aqui
+# seria a segunda resposta -- a que fica velha na primeira afinacao do bake. O
+# `src/` nao a toca => machete-safe.
+ph2d-sdf = { path = "../ph2d-sdf" }

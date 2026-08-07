@@ -130,8 +130,21 @@ impl Camera3d {
     /// atrás do plano near — o modelo apareceria cortado ao meio.
     #[must_use]
     pub fn view_proj(&self, aspect: f32) -> Mat4 {
+        self.proj(aspect) * self.view()
+    }
+
+    /// A matriz vista → clip, **sozinha**.
+    ///
+    /// ⚠️ Ela existe porque o AO de tela precisa da INVERSA dela: a profundidade
+    /// guarda `z` em clip e a marcha do GTAO acontece em espaço de VISTA, então
+    /// alguém tem de desfazer a perspectiva. Uma segunda montagem da mesma
+    /// `perspective_rh` do outro lado dessa fronteira divergiria no dia em que os
+    /// planos de corte mudassem — e o `clip_planes` deriva os dele da DISTÂNCIA,
+    /// ou seja muda a cada dolly.
+    #[must_use]
+    pub fn proj(&self, aspect: f32) -> Mat4 {
         let (near, far) = self.clip_planes();
-        Mat4::perspective_rh(self.fov_y, aspect.max(0.01), near, far) * self.view()
+        Mat4::perspective_rh(self.fov_y, aspect.max(0.01), near, far)
     }
 
     /// Os planos near/far, **derivados da distância** em vez de constantes.

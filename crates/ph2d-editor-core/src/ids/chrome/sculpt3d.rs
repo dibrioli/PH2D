@@ -147,6 +147,16 @@ pub const SCULPT3D_CAVITY_NUM: NodeId = hash_node_id("sculpt3d.cavity_num");
 pub const SCULPT3D_AO: NodeId = hash_node_id("sculpt3d.ao");
 /// Chip ligado a [`SCULPT3D_AO`].
 pub const SCULPT3D_AO_NUM: NodeId = hash_node_id("sculpt3d.ao_num");
+/// **QUANTO DO AO DE TELA ENTRA** — o irmão MEDIDO do de cima.
+///
+/// ⚠️ Dois knobs e não um, e a diferença não é gosto: o assado é exato, viaja no
+/// arquivo e ENVELHECE a cada pincelada; este é medido todo frame, nunca fica
+/// velho e só vê o que está na tela. Colapsá-los num knob só obrigaria o artista
+/// a escolher entre a oclusão que ele VÊ enquanto trabalha e a que ele EXPORTA.
+pub const SCULPT3D_SSAO: NodeId = hash_node_id("sculpt3d.ssao");
+/// Chip ligado a [`SCULPT3D_SSAO`].
+pub const SCULPT3D_SSAO_NUM: NodeId = hash_node_id("sculpt3d.ssao_num");
+
 /// **ASSAR O AO** — o botão que mede quanto do céu cada vértice enxerga.
 ///
 /// ⚠️ É um BOTÃO e não um passe automático porque o bake não cabe num pen-up:

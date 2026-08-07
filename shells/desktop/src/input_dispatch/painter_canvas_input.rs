@@ -523,17 +523,6 @@ impl App {
         };
         painter.cancel_open_shape()
     }
-
-    /// Delete/Backspace: remove the selected Curve control point. Returns `true` (consuming) iff a
-    /// point was removed, so the key falls through to the Falloff-point delete / other tools when
-    /// no curve point is selected.
-    pub(crate) fn painter_curve_delete_selected_point(&mut self) -> bool {
-        let Some(painter) = self.painter_tool_mut() else {
-            return false;
-        };
-        // Either curve owner: the stroke Shape curve or the selection Convert-to-Curve editor.
-        painter.curve_delete_selected() || painter.selection_curve_delete_selected_point()
-    }
 }
 
 /// Whether a canvas Down at image fraction `t` (u or v) is inside the acceptance region on that axis:

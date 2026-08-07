@@ -57,12 +57,12 @@ impl ShapeOutline {
     /// ⚠️ O segmento de fecho entra aqui e em lugar nenhum: num polígono de 3 lados ele é **um terço da
     /// figura**, e esquecê-lo deixaria uma aresta inteira inalcançável.
     pub fn hit(&self, pos: [f32; 2], band: f32) -> bool {
-        if super::stroke_multi::point_near_polyline(pos, &self.points, band) {
+        if super::stroke_router::point_near_polyline(pos, &self.points, band) {
             return true;
         }
         self.closed
             && self.points.len() >= 3
-            && super::stroke_multi::point_near_polyline(
+            && super::stroke_router::point_near_polyline(
                 pos,
                 &[self.points[self.points.len() - 1], self.points[0]],
                 band,

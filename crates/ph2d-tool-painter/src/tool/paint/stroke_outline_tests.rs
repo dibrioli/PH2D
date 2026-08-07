@@ -287,3 +287,90 @@ fn every_shape_family_shows_its_line_while_it_is_drawn() {
         assert!(n >= 2, "{method:?} publicou {n} pontos de linha");
     }
 }
+
+// ── DELETE: apagar a figura em mãos ──────────────────────────────────────────────────────────────
+
+/// **O pedido** (Enio, 2026-08-07): *"permita usar del para deletar a forma selecionada por último"*.
+///
+/// A figura em mãos sai; as parqueadas ficam de pé, na tela.
+#[test]
+fn delete_drops_the_shape_in_hand_and_leaves_the_others_standing() {
+    let mut t = three_big_circles();
+    let parked_before = t.paint.parked_shapes.len();
+    let painted_before = painted_texels(&t);
+    assert!(t.capture_shape().is_some(), "ha uma figura em maos");
+
+    assert!(t.delete_active_shape(), "a tecla foi consumida");
+
+    assert!(
+        t.capture_shape().is_none(),
+        "nada fica selecionado depois — a proxima e a que o artista clicar"
+    );
+    assert_eq!(
+        t.paint.parked_shapes.len(),
+        parked_before,
+        "as parqueadas nao foram tocadas"
+    );
+    assert_eq!(
+        t.stroke_op_badges().len(),
+        parked_before,
+        "…e continuam com contorno"
+    );
+    // ⚠️ **A lista não é a TELA.** A 1ª versão parava nos badges, e a mutação *"não re-carimbe o
+    // conjunto que sobrou"* passava por ela: os parqueados continuavam na lista com a tinta da figura
+    // apagada ainda na tela. O oráculo do que o artista vê são os texels.
+    let after = painted_texels(&t);
+    assert!(
+        after < painted_before,
+        "a tinta da figura apagada continua na tela ({after} de {painted_before} texels)"
+    );
+    assert!(
+        after > 0,
+        "as parqueadas sumiram junto — o re-carimbo do conjunto que sobrou nao rodou"
+    );
+}
+
+/// Sem figura em mãos a tecla **não é consumida** — ela segue para quem mais a quiser.
+///
+/// ⚠️ É o controle que impede a rota de virar um Delete que engole tudo: sem ele, `delete_active_shape`
+/// cravado em `true` passaria, e o artista perderia o Delete de todo o resto do app.
+#[test]
+fn delete_with_no_shape_in_hand_is_not_consumed() {
+    let mut t = tool(256, PaintMedia::Digital, 10.0);
+    assert!(
+        !t.delete_active_shape(),
+        "sem figura viva a tecla tem de cair para o proximo dono"
+    );
+}
+
+/// Apagar é **UM passo de undo**, e o undo traz a figura de volta.
+#[test]
+fn deleting_a_shape_is_one_undo_step_that_brings_it_back() {
+    let mut t = three_big_circles();
+    let before = t.capture_shape().expect("a figura em maos");
+    let painted_before = painted_texels(&t);
+
+    assert!(t.delete_active_shape());
+    assert!(
+        painted_texels(&t) < painted_before,
+        "a tinta dela saiu da tela"
+    );
+
+    assert!(t.undo_last(), "um Ctrl+Z");
+    let back = t.capture_shape().expect("a figura voltou para as maos");
+    assert_eq!(
+        format!("{back:?}"),
+        format!("{before:?}"),
+        "…e voltou IGUAL"
+    );
+}
+
+/// Quantos texels deixaram de ser papel branco — o oráculo do que o artista vê.
+fn painted_texels(t: &crate::tool::PainterTool) -> usize {
+    t.canvas_rgba
+        .iter()
+        .step_by(4)
+        .zip(t.canvas_rgba.iter().skip(1).step_by(4))
+        .filter(|(r, g)| **r != 255 || **g != 255)
+        .count()
+}

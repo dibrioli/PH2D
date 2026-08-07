@@ -447,29 +447,9 @@ impl App {
             return;
         }
 
-        // Painter Curve: Delete/Backspace drops the selected control point (kept ≥ 2). Tried BEFORE
-        // the Falloff delete — curve editing is on-canvas, falloff editing is in the Brush dock, so
-        // only one can have a selection. Consumed only when a curve point was removed.
-        if state == ElementState::Pressed
-            && matches!(
-                physical_key,
-                PhysicalKey::Code(KeyCode::Delete | KeyCode::Backspace)
-            )
-            && self.painter_curve_delete_selected_point()
-        {
-            return;
-        }
-
-        // Painter Falloff curve: Delete/Backspace drops the selected control
-        // point. Consumed only when a Falloff point is selected (the helper gates
-        // on it), so the key falls through to other tools otherwise.
-        if state == ElementState::Pressed
-            && matches!(
-                physical_key,
-                PhysicalKey::Code(KeyCode::Delete | KeyCode::Backspace)
-            )
-            && self.painter_delete_selected_falloff_point()
-        {
+        // **A cadeia do DELETE no Painter** — âncora → figura → falloff, e a ORDEM é a feature
+        // (`keyboard_painter`). Corta ANTES do hero, cujo caminho genérico apagaria a ENTIDADE.
+        if self.painter_delete_chain(state, physical_key) {
             return;
         }
 

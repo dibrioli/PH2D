@@ -58,6 +58,7 @@ mod keyboard_escapes;
 
 /// **Os acordes de ARQUIVO** — irmão do `keyboard`, cortado dele pelo cap de LOC.
 mod keyboard_files;
+mod keyboard_painter; // a cadeia do Delete do Painter: ancora -> figura -> falloff
 mod keyboard_timeline;
 pub(crate) mod painter_canvas_input;
 pub(crate) mod painter_falloff_input;

@@ -10,6 +10,12 @@
 
 use super::*;
 
+// A geometria de polilinha mudou-se para o roteador (`super::stroke_router`) junto com o hit-test que
+// a usa; re-exportada aqui porque os editores já a leem por este caminho — mover o CÓDIGO não é
+// motivo para mover o endereço de quem o chama.
+use super::stroke_router::dist2;
+pub(super) use super::stroke_router::{min_dist2_to_polyline, point_near_polyline};
+
 /// The boolean Operation a stroke shape participates in. Mirrors the Selection ops, except the former
 /// "New" (replace) is replaced by **Overlay** — no boolean at all, the shape simply paints independently.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
@@ -131,6 +137,39 @@ impl PainterTool {
         self.paint.line = None;
         // Re-stamp the parked shapes onto the pristine canvas so they stay visible with no active editor.
         self.restamp_shapes_preview(&[]);
+    }
+
+    /// **Apaga a figura em mãos** (a tecla Delete) — a última selecionada, e só ela. `true` quando havia
+    /// uma.
+    ///
+    /// Gêmeo exato do [`Self::park_active_shape`] **menos o empurrão**: parquear guarda a geometria na
+    /// lista e apagar a joga fora; as duas depois limpam os slots vivos e re-carimbam o conjunto que
+    /// sobrou sobre a linha de base pristina. Nada mais precisa saber que uma figura sumiu, porque os
+    /// pixels **são cache derivado** do conjunto (a invariante do cabeçalho deste módulo).
+    ///
+    /// ⚠️ **Não é o Esc.** O `cancel_open_shape` descarta o conjunto INTEIRO (ativa + parqueadas) e não
+    /// deixa passo de undo, porque nada foi commitado; este apaga UMA figura, deixa as outras de pé e é
+    /// **um passo de undo** — o artista tem de poder trazê-la de volta.
+    ///
+    /// ⚠️ **Nada fica selecionado depois**, de propósito: promover uma parqueada a ativa escolheria por
+    /// ele qual — e a próxima que ele quer é a que ele vai clicar, não a que a lista tinha por último.
+    pub fn delete_active_shape(&mut self) -> bool {
+        if self.capture_shape().is_none() {
+            return false; // nenhuma figura em mãos — a tecla segue para quem mais a quiser
+        }
+        self.begin_shape_txn(); // apagar é UM passo de undo
+        self.paint.curve = None;
+        self.paint.ellipse = None;
+        self.paint.polygon = None;
+        self.paint.line = None;
+        // O relevo e a sessão de sculpt descreviam a figura que acabou de sair: deixá-los de pé faria a
+        // luz iluminar uma crista sobre tinta que não está mais lá (a mesma frase do Esc, e do
+        // `restamp_shapes_preview` sob a mão).
+        self.reset_stroke_height();
+        self.restamp_reset_sculpt();
+        self.restamp_shapes_preview(&[]);
+        self.commit_shape_txn();
+        true
     }
 
     /// Pull parked shape `i` back into the live editor (its op becomes the active op), parking whatever is
@@ -395,7 +434,7 @@ impl PainterTool {
 
     /// `true` when `pos` is within `tol` of the ACTIVE shape's centre (its gizmo type-square). Used both to
     /// keep a centre click from being read as "empty space" and to arm the op-cycle tap.
-    fn on_active_centre_square(&self, pos: [f32; 2], tol: f32) -> bool {
+    pub(super) fn on_active_centre_square(&self, pos: [f32; 2], tol: f32) -> bool {
         let Some(state) = self.capture_shape() else {
             return false;
         };
@@ -531,91 +570,8 @@ impl PainterTool {
         out
     }
 
-    /// The Down-time multi-shape decision (see [`Self::route_shape_pointer_multi`]): switch to a parked
-    /// shape under the cursor, or park the active shape when the click is in empty space.
-    fn maybe_switch_or_new_shape(&mut self, pos: [f32; 2]) {
-        // Never interrupt a Line that is still placing its corner points (multi-Down authoring).
-        if self.paint.line.as_ref().is_some_and(|l| !l.is_editing()) {
-            return;
-        }
-        let tol = self.paint.shape_grab_tol_px.max(6.0);
-        // The active shape's centre square (its op type-square) is an edit target (tap = cycle op, drag =
-        // move) — never treat it as empty space.
-        if self.on_active_centre_square(pos, tol * 2.0) {
-            return;
-        }
-        // A click that would EDIT the ACTIVE shape (grab a handle / point / gizmo, or land on its outline)
-        // is left to the per-type editor — never park it. This precise per-editor test (not a coarse bbox)
-        // is why grabbing a rotate ring that sits OUTSIDE the outline still counts as editing.
-        if self.active_shape_hit(pos) {
-            return;
-        }
-        // A click on a PARKED shape re-activates it (its handle is then grabbed by the following `*_down`).
-        if let Some(i) = self.hit_parked_shape(pos, tol) {
-            self.activate_parked_shape(i);
-            return;
-        }
-        // Empty space with a complete editable active shape → park it; the following `*_down` starts fresh.
-        if self.is_editing_shape() {
-            self.park_active_shape();
-        }
-    }
-
-    /// `true` when a Down at `pos` targets the ACTIVE editor (whichever slot is live) for editing — the
-    /// per-type predicate; each returns `false` when its slot is empty, so exactly the live one answers.
-    fn active_shape_hit(&self, pos: [f32; 2]) -> bool {
-        self.curve_hit_active(pos)
-            || self.ellipse_hit_active(pos)
-            || self.polygon_hit_active(pos)
-            || self.line_hit_active(pos)
-    }
-
-    /// Index of the topmost (last-drawn) parked shape that `pos` **alcança**, ou `None`.
-    ///
-    /// ⚠️ **Alcançar é encostar no que está DESENHADO**, não cair dentro de uma caixa. A versão anterior
-    /// perguntava `bbox_contains` — o INTERIOR da AABB —, e com quatro círculos grandes sobrepostos a
-    /// união das caixas cobre quase a tela: todo Down reativava uma figura parqueada e o gesto de
-    /// *começar outra* ficava inalcançável (Enio, 2026-08-07: *"se clicar dentro de uma forma já
-    /// desenhada, não aceita desenhar outra"*). Detalhe do mecanismo em [`super::stroke_outline`].
-    ///
-    /// São **duas** regiões, e as duas são coisas que o artista VÊ: o contorno e o quadrado central do
-    /// badge (com o glifo de Operation dentro dele). Um alvo desenhado que não responde é a metade
-    /// oposta do mesmo defeito.
-    fn hit_parked_shape(&self, pos: [f32; 2], tol: f32) -> Option<usize> {
-        let states: Vec<crate::undo::ShapeEditState> = self
-            .paint
-            .parked_shapes
-            .iter()
-            .map(|s| s.state.clone())
-            .collect();
-        states
-            .iter()
-            .enumerate()
-            .rev()
-            .find(|(_, st)| self.parked_shape_hit(st, pos, tol))
-            .map(|(i, _)| i)
-    }
-
-    /// `true` quando `pos` encosta no contorno da figura ou no quadrado central dela. O raio do centro é
-    /// `tol * 2.0`, o MESMO que o `maybe_switch_or_new_shape` passa ao `on_active_centre_square` — o
-    /// quadrado da figura ativa e o da parqueada têm o mesmo tamanho na tela, então têm de ter o mesmo
-    /// alcance.
-    fn parked_shape_hit(&self, st: &crate::undo::ShapeEditState, pos: [f32; 2], tol: f32) -> bool {
-        let Some(o) = self.shape_state_outline(st) else {
-            return false;
-        };
-        if let Some(bb) = o.bbox() {
-            let c = [(bb[0] + bb[2]) * 0.5, (bb[1] + bb[3]) * 0.5];
-            let r = tol * 2.0;
-            if dist2(pos, c) <= r * r {
-                return true;
-            }
-        }
-        o.hit(pos, tol)
-    }
-
     /// AABB over a shape's stamped dab centres (reuses [`Self::parked_shape_dabs`]).
-    fn shape_state_bbox(&self, st: &crate::undo::ShapeEditState) -> Option<[f32; 4]> {
+    pub(super) fn shape_state_bbox(&self, st: &crate::undo::ShapeEditState) -> Option<[f32; 4]> {
         let mut dabs = Vec::new();
         self.parked_shape_dabs(st, &mut dabs);
         let mut bb = [f32::MAX, f32::MAX, f32::MIN, f32::MIN];
@@ -652,40 +608,3 @@ impl PainterTool {
 /// insert-on-curve EDIT rather than a "start a new shape". Keeps the new-shape gesture from firing on a
 /// click that visually reads as "on the curve".
 pub(super) const NEW_SHAPE_INSERT_BAND_PX: f32 = 20.0;
-
-/// `true` when `pos` is within `band` px of the polyline `spine` (min distance to any segment).
-pub(super) fn point_near_polyline(pos: [f32; 2], spine: &[[f32; 2]], band: f32) -> bool {
-    min_dist2_to_polyline(pos, spine).is_some_and(|d2| d2 <= band * band)
-}
-
-/// The MIN squared distance from `pos` to the polyline `spine` (any segment), or `None` when empty. Used to
-/// pick which of several curves a click is nearest to (multi-curve point insertion).
-pub(super) fn min_dist2_to_polyline(pos: [f32; 2], spine: &[[f32; 2]]) -> Option<f32> {
-    if spine.is_empty() {
-        return None;
-    }
-    if spine.len() == 1 {
-        return Some(dist2(pos, spine[0]));
-    }
-    spine
-        .windows(2)
-        .map(|w| dist2_point_segment(pos, w[0], w[1]))
-        .fold(None, |acc, d| Some(acc.map_or(d, |a: f32| a.min(d))))
-}
-
-fn dist2(a: [f32; 2], b: [f32; 2]) -> f32 {
-    let (dx, dy) = (a[0] - b[0], a[1] - b[1]);
-    dx * dx + dy * dy
-}
-
-/// Squared distance from `p` to segment `a`–`b` (transcendental-free; HR-5).
-fn dist2_point_segment(p: [f32; 2], a: [f32; 2], b: [f32; 2]) -> f32 {
-    let (abx, aby) = (b[0] - a[0], b[1] - a[1]);
-    let len2 = abx * abx + aby * aby;
-    if len2 <= f32::EPSILON {
-        return dist2(p, a);
-    }
-    let t = (((p[0] - a[0]) * abx + (p[1] - a[1]) * aby) / len2).clamp(0.0, 1.0);
-    let proj = [a[0] + t * abx, a[1] + t * aby];
-    dist2(p, proj)
-}

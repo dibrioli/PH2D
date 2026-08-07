@@ -138,13 +138,15 @@ const STEPS: &[Step] = &[
         ],
     },
     Step {
-        verb: "⚠️ A ESCALA AINDA NÃO MOVE O APP, E ISSO É A WAVE",
+        verb: "⚠️ A ESCALA MOVE O APP — é ESTA a wave (W4c.2)",
         lines: &[
-            "Mude 'spacing.md' e a janela NÃO se mexe. Não é um defeito.",
-            "O app lê a escala por um caminho `const` (compile-time), e",
-            "trocar os 15 sítios por leitura viva é a wave SEGUINTE (W4c.2).",
-            "O que esta wave entrega é o valor autorado, o elo, o reset e o",
-            "arquivo. Se ele se mexesse hoje, é que algo foi ligado cedo.",
+            "Suba 'spacing.lg' de 12 para ~40: o app RE-ESPAÇA na hora —",
+            "o painel, os cards, o rail. Baixe para 2 e ele aperta.",
+            "⚠️ Se a janela NÃO se mexer, PARE: a tabela de runtime não está",
+            "a ser publicada, e o resto do roteiro não diz nada.",
+            "'stroke.default' engrossa as linhas; 'radius.*' arredonda as quinas.",
+            "Reset devolve na hora. E o *Reset This Mode* continua alcançável",
+            "mesmo num valor absurdo — role até ele (foi medido: até 65536 px).",
         ],
     },
     Step {

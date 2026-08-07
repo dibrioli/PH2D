@@ -20,7 +20,7 @@ use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, Theme};
 use ph2d_vector::VectorScene;
 
-use super::layout::ROW_GAP;
+use super::layout::row_gap;
 
 pub(crate) fn paint_section_label(
     label: &str,
@@ -91,7 +91,7 @@ pub(crate) fn paint_snap_top_toggle(
     // Suppress unused-store warning while the snap state lives on the
     // Toggle in store too (canonical InteractiveState).
     let _ = store;
-    y + h + ROW_GAP
+    y + h + row_gap()
 }
 
 /// Generic segmented button row helper — paints one Button at `rect`
@@ -184,7 +184,7 @@ pub(crate) fn paint_kind_button_grid(
         }
         cy = row_y + h;
     }
-    cy + ROW_GAP
+    cy + row_gap()
 }
 
 /// Vertical stack of 5 full-width Target buttons (Center,
@@ -240,7 +240,7 @@ pub(crate) fn paint_target_button_stack(
         );
         cy = row_y + h;
     }
-    cy + ROW_GAP
+    cy + row_gap()
 }
 
 /// 2-button row for the Square-family Neighborhood (Von4 / Moore8)
@@ -330,7 +330,7 @@ pub(crate) fn paint_neighborhood_button_row(
         hit_index,
         store,
     );
-    y + h + ROW_GAP
+    y + h + row_gap()
 }
 
 /// Generic labeled segmented-button row — renders a small Text2 label
@@ -383,7 +383,7 @@ pub(crate) fn paint_labeled_segmented_row(
             store,
         );
     }
-    y + h + ROW_GAP
+    y + h + row_gap()
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

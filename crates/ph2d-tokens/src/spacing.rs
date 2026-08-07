@@ -31,7 +31,13 @@ pub enum Spacing {
 }
 
 impl Spacing {
-    pub const fn px(self) -> f32 {
+    /// O valor de **FÁBRICA** — a tabela gerada do `tokens.json`, sem passar pela camada de
+    /// override. `const fn`, e é isso que a mantém legal em contexto `const`.
+    ///
+    /// ⚠️ Quem quer o número que o app **DESENHA** chama [`Spacing::px`]. Os dois nomes existem
+    /// para que o sítio de uso diga qual das duas perguntas está a fazer: um nome só tornaria a
+    /// diferença invisível no diff.
+    pub const fn factory_px(self) -> f32 {
         match self {
             Self::Xxs => crate::generated::SPACING_XXS,
             Self::Xs => crate::generated::SPACING_XS,
@@ -43,6 +49,20 @@ impl Spacing {
             Self::Xl3 => crate::generated::SPACING_XL3,
             Self::Xl4 => crate::generated::SPACING_XL4,
         }
+    }
+
+    /// O valor **VIVO** — o que o artista autorou neste modo, ou a fábrica.
+    ///
+    /// ⚠️ **Não recebe modo, e isso é a wave inteira numa assinatura:** a pergunta *"qual é o modo
+    /// vigente?"* é respondida **uma vez por quadro** pelo [`crate::num_runtime::publish`], que a
+    /// lê de onde ela é POSSUÍDA. Enfiá-la aqui obrigaria os ~1200 sítios de leitura a carregá-la,
+    /// e a resposta seria a mesma nos 1200.
+    ///
+    /// ⚠️ Com a escala de fábrica intacta isto é **uma leitura de bool** e o resultado é o
+    /// [`Spacing::factory_px`], bit a bit.
+    #[must_use]
+    pub fn px(self) -> f32 {
+        crate::num_runtime::live(crate::num::NumToken::Spacing(self)).unwrap_or(self.factory_px())
     }
 
     /// Token id (matches JSON key).

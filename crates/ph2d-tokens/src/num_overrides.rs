@@ -109,6 +109,17 @@ pub fn num_override(theme: Theme, token: NumToken) -> Option<NumValue> {
     OVERRIDES.with(|o| slot(&o.borrow(), theme, token))
 }
 
+/// *Existe ALGUMA coisa autorada, em qualquer modo?*
+///
+/// ⚠️ É a bandeira que torna a camada gratuita: com ela em `false` toda leitura sai por um `if` e
+/// devolve a fábrica. Ela é `pub` para o [`crate::num_runtime`], que precisa de saber se vale a
+/// pena encher a tabela — e **não** é a mesma pergunta que o `is_filled` de lá: *"há autoria"* é
+/// sobre o GRAFO, *"a tabela vale"* é sobre a PROJEÇÃO dele.
+#[must_use]
+pub fn any_authored() -> bool {
+    ANY.with(std::cell::Cell::get)
+}
+
 /// O slot cru, sem o guard do `ANY` — o helper interno que as caminhadas usam.
 fn slot(list: &[NumOverride], theme: Theme, token: NumToken) -> Option<NumValue> {
     list.iter()

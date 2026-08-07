@@ -157,6 +157,21 @@ pub(crate) fn dispatch(hero: &mut HeroScreen, toasts: &mut ToastQueue) -> bool {
             }
         }
     }
+
+    // ── 3. A ESCALA vai para a forma de RUNTIME (plano UI/UX W4c.2) ───────
+    //
+    // ⚠️ **No FIM, e a posição é a lei inteira.** Acima, esta função pode ter escrito a camada
+    // (um `NumSet` digitado neste quadro); a publicação projeta o grafo para a tabela plana que
+    // todo widget lê. Publicar ANTES faria o quadro em que o artista digita um número pintar com
+    // o valor anterior — o chip mostraria 20 e a tela mediria 12, e o número "piscaria de volta".
+    //
+    // ⚠️ **E mora AQUI, não num sítio próprio do laço**, porque esta é a única função que já é
+    // dona das duas metades: a camada de override e o modo vigente. Um segundo sítio teria de
+    // perguntar o modo outra vez, e duas respostas a *"que modo é este?"* é como o artista edita
+    // um modo e vê outro re-vestir. A ordem está pinada num arch-gate — ela não é observável por
+    // nenhum teste de unidade.
+    ph2d_tokens::num_runtime::publish(theme);
+
     changed
 }
 

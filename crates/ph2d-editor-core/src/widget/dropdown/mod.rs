@@ -83,7 +83,9 @@ pub enum DropdownState {
 /// popover panel's top edge. Keeps the two surfaces visually
 /// distinct (without it the chip's border merges into the panel
 /// border on themes where both use the same Border token).
-const POPOVER_GAP: f32 = Spacing::Xs.px();
+fn popover_gap() -> f32 {
+    Spacing::Xs.px()
+}
 /// Inner padding inside the open popover panel — option rows live
 /// inside this margin. Tight on purpose so the list doesn't look
 /// "shifted down" inside an oversized panel (per the user's report).
@@ -152,7 +154,7 @@ impl<T: Clone + PartialEq> Dropdown<T> {
     /// when the chip can sit near the screen edge.
     pub fn popover_rect(&self, chip: Rect) -> Rect {
         let h = chip.h * self.options.len().max(1) as f32 + POPOVER_PANEL_PAD_Y * 2.0;
-        Rect::new(chip.x, chip.y + chip.h + POPOVER_GAP, chip.w, h)
+        Rect::new(chip.x, chip.y + chip.h + popover_gap(), chip.w, h)
     }
 
     /// Like [`Self::popover_rect`] but flips ABOVE the chip when below
@@ -161,23 +163,23 @@ impl<T: Clone + PartialEq> Dropdown<T> {
     pub fn popover_rect_clamped(&self, chip: Rect, viewport: Rect) -> Rect {
         let row_h = chip.h;
         let wanted_h = row_h * self.options.len().max(1) as f32 + POPOVER_PANEL_PAD_Y * 2.0;
-        let space_below = (viewport.y + viewport.h) - (chip.y + chip.h + POPOVER_GAP);
-        let space_above = (chip.y - POPOVER_GAP) - viewport.y;
+        let space_below = (viewport.y + viewport.h) - (chip.y + chip.h + popover_gap());
+        let space_above = (chip.y - popover_gap()) - viewport.y;
         let min_h = row_h + POPOVER_PANEL_PAD_Y * 2.0;
         if wanted_h <= space_below {
-            Rect::new(chip.x, chip.y + chip.h + POPOVER_GAP, chip.w, wanted_h)
+            Rect::new(chip.x, chip.y + chip.h + popover_gap(), chip.w, wanted_h)
         } else if wanted_h <= space_above {
-            Rect::new(chip.x, chip.y - POPOVER_GAP - wanted_h, chip.w, wanted_h)
+            Rect::new(chip.x, chip.y - popover_gap() - wanted_h, chip.w, wanted_h)
         } else if space_below >= space_above {
             Rect::new(
                 chip.x,
-                chip.y + chip.h + POPOVER_GAP,
+                chip.y + chip.h + popover_gap(),
                 chip.w,
                 space_below.max(min_h),
             )
         } else {
             let h = space_above.max(min_h);
-            Rect::new(chip.x, chip.y - POPOVER_GAP - h, chip.w, h)
+            Rect::new(chip.x, chip.y - popover_gap() - h, chip.w, h)
         }
     }
 

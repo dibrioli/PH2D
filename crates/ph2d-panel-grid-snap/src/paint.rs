@@ -17,7 +17,7 @@
 
 use crate::GridSnapPanel;
 use crate::ids;
-use crate::layout::{PAD, ROW_GAP};
+use crate::layout::{pad, row_gap};
 use crate::paint_helpers::paint_snap_top_toggle;
 use crate::state::{
     GridSnapPanelState, meters_to_display, set_current_display_unit, set_last_content_h,
@@ -131,8 +131,8 @@ fn paint_body(
         hit_index.register(ids::GS_RESIZE_HANDLE_BL, resize_handle_bl_rect);
     }
 
-    let inner_x = rect.x + PAD;
-    let inner_w = rect.w - PAD * 2.0;
+    let inner_x = rect.x + pad();
+    let inner_w = rect.w - pad() * 2.0;
     // Canonical panel title (single source of truth — `panel_chrome`).
     // Reserve ~close-button width on the right.
     let title_y = rect.y + PANEL_TITLE_BASELINE;
@@ -146,7 +146,7 @@ fn paint_body(
     );
     let close_size = Density::Compact.row_h_px();
     let close_rect = Rect::new(
-        rect.x + rect.w - close_size - PAD,
+        rect.x + rect.w - close_size - pad(),
         title_y - 2.0,
         close_size,
         close_size,
@@ -164,8 +164,8 @@ fn paint_body(
     }
 
     // Body rect — sits below the title row, above the corner dot.
-    let body_top = title_y + close_size + ROW_GAP * 2.0;
-    let body_h = (rect.y + rect.h - body_top - PAD).max(0.0);
+    let body_top = title_y + close_size + row_gap() * 2.0;
+    let body_h = (rect.y + rect.h - body_top - pad()).max(0.0);
     let body_rect = Rect::new(rect.x, body_top, rect.w, body_h);
     let scroll = ctx.host.store().panel_scroll(ids::GS_PANEL);
 
@@ -187,7 +187,7 @@ fn paint_body(
             state,
         );
     }
-    y += ROW_GAP * 2.0;
+    y += row_gap() * 2.0;
 
     // Wave 11 §2.2: 4 section helpers in `paint_body_sections.rs`.
     y = crate::paint_body_sections::paint_grid_kind_section(ctx, state, inner_x, inner_w, y);

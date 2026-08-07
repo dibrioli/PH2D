@@ -5,7 +5,7 @@
 //! standard widget dispatch, and `dispatch::pointer`'s menu-close guard keeps the popover open while
 //! the user types into the field.
 
-use super::context_menu_overlay::{PAD_Y, ROW_H};
+use super::context_menu_overlay::{ROW_H, pad_y};
 use super::ids;
 use crate::interaction::{HitIndex, InteractiveState, WidgetStore};
 use crate::paint::{fill_rounded_rect, paint_text, resolve, stroke_rounded_rect};
@@ -83,7 +83,7 @@ fn paint_centered_input_dialog(
         _ => ("", 0, None, crate::widget::TextInputState::Normal),
     };
 
-    let total_h = PAD_Y * 2.0 + title_h + hint_h + field_h + button_h + gap * 3.0; // LITERAL-PX-OK: 3 inter-row gaps between the 4 stacked dialog rows
+    let total_h = pad_y() * 2.0 + title_h + hint_h + field_h + button_h + gap * 3.0; // LITERAL-PX-OK: 3 inter-row gaps between the 4 stacked dialog rows
     let rect_x = (viewport.x + (viewport.w - menu_w) * 0.5).max(viewport.x);
     let rect_y = (viewport.y + (viewport.h - total_h) * 0.5).max(viewport.y);
     let rect = Rect::new(rect_x, rect_y, menu_w, total_h);
@@ -99,7 +99,7 @@ fn paint_centered_input_dialog(
     let font = TypeToken::Sm.px();
 
     // Title.
-    let mut y = rect.y + PAD_Y;
+    let mut y = rect.y + pad_y();
     paint_text(
         text_system,
         scene,
@@ -220,7 +220,7 @@ pub(super) fn paint_new_image_dialog(
     let n_sizes = ids::CTX_MENU_NEW_IMAGE_SIZES.len() as f32;
     let menu_w = Spacing::Md.px() * 2.0 + n_sizes * SIZE_BTN_W + (n_sizes - 1.0) * gap;
     // Six stacked rows: title · Size label · size buttons · Background label · bg buttons · Create.
-    let total_h = PAD_Y * 2.0 + row_h * 6.0 + gap * 5.0; // LITERAL-PX-OK: 5 inter-row gaps
+    let total_h = pad_y() * 2.0 + row_h * 6.0 + gap * 5.0; // LITERAL-PX-OK: 5 inter-row gaps
     let rect_x = (viewport.x + (viewport.w - menu_w) * 0.5).max(viewport.x);
     let rect_y = (viewport.y + (viewport.h - total_h) * 0.5).max(viewport.y);
     let rect = Rect::new(rect_x, rect_y, menu_w, total_h);
@@ -231,7 +231,7 @@ pub(super) fn paint_new_image_dialog(
     let inner_x = rect.x + Spacing::Md.px();
     let inner_w = rect.w - Spacing::Md.px() * 2.0;
     let font = TypeToken::Sm.px();
-    let mut y = rect.y + PAD_Y;
+    let mut y = rect.y + pad_y();
 
     // Title.
     paint_text(

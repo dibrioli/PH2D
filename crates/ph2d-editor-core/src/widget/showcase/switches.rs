@@ -43,7 +43,7 @@ pub(super) fn paint_switches_section(
         .state(cb_state)
         .value(cb_value);
     paint_checkbox(&cb, r, scene, text_system, theme);
-    y += Density::Compact.row_h_px() + ROW_GAP;
+    y += Density::Compact.row_h_px() + row_gap();
 
     // Toggle.
     let toggle_w = TypeToken::Xl3.px(); // LITERAL-PX-OK: toggle widget width (matches TypeToken::Xl3 = 44px by coincidence; chrome-specific)
@@ -67,7 +67,7 @@ pub(super) fn paint_switches_section(
         y,
         row_h,
     );
-    y += row_h + ROW_GAP;
+    y += row_h + row_gap();
 
     // Segmented RadioGroup. We use the per-tab pressed-button trick
     // (mirrors the Inspector-tabs pattern in `paint_inspector_tabs`

@@ -9,7 +9,9 @@ use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, ICON_BTN_SIZE_PX, Radius, Spacing, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
-const HEADER_H: f32 = Spacing::Xl3.px();
+fn header_h() -> f32 {
+    Spacing::Xl3.px()
+}
 const FOOTER_H: f32 = ICON_BTN_SIZE_PX;
 
 #[derive(Clone, Debug)]
@@ -40,7 +42,7 @@ impl Card {
 
     pub fn header_rect(&self, host: Rect) -> Option<Rect> {
         if self.title.is_some() {
-            Some(Rect::new(host.x, host.y, host.w, HEADER_H))
+            Some(Rect::new(host.x, host.y, host.w, header_h()))
         } else {
             None
         }
@@ -64,7 +66,7 @@ impl Card {
         let mut top = host.y;
         let mut bot = host.y + host.h;
         if self.title.is_some() {
-            top += HEADER_H;
+            top += header_h();
         }
         if self.footer {
             bot -= FOOTER_H;
@@ -188,7 +190,7 @@ mod tests {
         let host = Rect::new(0.0, 0.0, 200.0, 200.0);
         let card = Card::new(NodeId(1)).title("x").footer(true);
         let body = card.body_rect(host);
-        assert!(body.y > host.y + HEADER_H * 0.5);
+        assert!(body.y > host.y + header_h() * 0.5);
         assert!(body.y + body.h < host.y + host.h - FOOTER_H * 0.5);
     }
 

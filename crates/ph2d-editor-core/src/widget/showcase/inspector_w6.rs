@@ -22,7 +22,9 @@ use crate::widget::{
 };
 use ph2d_tokens::ColorToken;
 
-const W6_FIELD_H: f32 = FIELD_H;
+fn w6_field_h() -> f32 {
+    field_h()
+}
 
 /// Group ids for the SegmentedAdaptive demo — clicking one pins the
 /// selection (handled by `apply_showcase_event`).
@@ -84,7 +86,7 @@ pub(super) fn paint_inspector_w6_section(
         NumberInput::new(ids::INSP_SAMPLE_W6_RECT[3], "", vh).state(sh),
     )
     .layout(Rect2Layout::Grid2x2);
-    let rect2_h = Rect2Editor::preferred_height(Rect2Layout::Grid2x2, W6_FIELD_H);
+    let rect2_h = Rect2Editor::preferred_height(Rect2Layout::Grid2x2, w6_field_h());
     let rect2_host = Rect::new(x, y, w, rect2_h);
     for (i, fr) in rect2.field_rects(rect2_host).iter().enumerate() {
         hit_index.register(ids::INSP_SAMPLE_W6_RECT[i], *fr);
@@ -99,7 +101,7 @@ pub(super) fn paint_inspector_w6_section(
         text_system,
         theme,
     );
-    y += rect2_h + ROW_GAP;
+    y += rect2_h + row_gap();
 
     // ── NumericInputWithUnit ────────────────────────────────────────
     y = mini_label(
@@ -118,7 +120,7 @@ pub(super) fn paint_inspector_w6_section(
         NumberInput::new(ids::INSP_SAMPLE_W6_UNIT, "", uv).state(us),
         Unit::Degrees,
     );
-    let unit_host = Rect::new(x, y, w, W6_FIELD_H);
+    let unit_host = Rect::new(x, y, w, w6_field_h());
     hit_index.register(ids::INSP_SAMPLE_W6_UNIT, unit_widget.input_rect(unit_host));
     paint_numeric_input_with_unit(
         &unit_widget,
@@ -130,7 +132,7 @@ pub(super) fn paint_inspector_w6_section(
         text_system,
         theme,
     );
-    y += W6_FIELD_H + ROW_GAP;
+    y += w6_field_h() + row_gap();
 
     // ── BitmaskGrid32 ───────────────────────────────────────────────
     y = mini_label(
@@ -164,7 +166,7 @@ pub(super) fn paint_inspector_w6_section(
         hit_index.register(*id, BitmaskGrid32::cell_rect(x, y, w, cell_h, bit));
     }
     paint_bitmask_grid32(&grid, x, y, w, cell_h, scene, text_system, theme);
-    y += BitmaskGrid32::grid_height(cell_h) + ROW_GAP;
+    y += BitmaskGrid32::grid_height(cell_h) + row_gap();
 
     // ── SegmentedAdaptive ───────────────────────────────────────────
     y = mini_label(
@@ -192,14 +194,14 @@ pub(super) fn paint_inspector_w6_section(
     .selected(selected);
     let seg_h = paint_segmented_adaptive(
         &seg,
-        Rect::new(x, y, w, W6_FIELD_H),
+        Rect::new(x, y, w, w6_field_h()),
         scene,
         text_system,
         theme,
         store,
         hit_index,
     );
-    y += seg_h + ROW_GAP;
+    y += seg_h + row_gap();
 
     // ── VariantEditor (visual reference) ────────────────────────────
     y = mini_label(
@@ -225,13 +227,13 @@ pub(super) fn paint_inspector_w6_section(
     let variant_rows = variant.rows().len();
     paint_variant_editor(
         &variant,
-        Rect::new(x, y, w, W6_FIELD_H * variant_rows as f32),
-        W6_FIELD_H,
+        Rect::new(x, y, w, w6_field_h() * variant_rows as f32),
+        w6_field_h(),
         scene,
         text_system,
         theme,
     );
-    y += W6_FIELD_H * variant_rows as f32 + ROW_GAP;
+    y += w6_field_h() * variant_rows as f32 + row_gap();
 
     // ── KeyValueList (visual reference) ─────────────────────────────
     y = mini_label(
@@ -257,9 +259,9 @@ pub(super) fn paint_inspector_w6_section(
         )],
         ids::INSP_SAMPLE_W6_KV_ADD,
     );
-    let kv_host = Rect::new(x, y, w, kv.total_height(W6_FIELD_H));
-    paint_key_value_list(&kv, kv_host, W6_FIELD_H, scene, text_system, theme);
-    y += kv.total_height(W6_FIELD_H);
+    let kv_host = Rect::new(x, y, w, kv.total_height(w6_field_h()));
+    paint_key_value_list(&kv, kv_host, w6_field_h(), scene, text_system, theme);
+    y += kv.total_height(w6_field_h());
 
     y + SECTION_BOTTOM_PAD_PX
 }

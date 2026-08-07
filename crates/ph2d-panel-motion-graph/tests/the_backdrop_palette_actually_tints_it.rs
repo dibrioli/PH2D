@@ -34,7 +34,7 @@ fn layout() -> HeroLayout {
     HeroLayout::for_viewport_split(
         VIEWPORT,
         false,
-        ph2d_editor_core::screens::layout::RAIL_W,
+        ph2d_editor_core::screens::layout::rail_w(),
         CenterSplit::Horizontal {
             t: CenterSplit::T_DEFAULT,
         },

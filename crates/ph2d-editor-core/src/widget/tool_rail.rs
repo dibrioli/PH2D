@@ -30,7 +30,10 @@ use ph2d_vector::VectorScene;
 /// 44-px chip, small right margin. The chip's x is computed from
 /// the label column budget so changing label padding only shifts
 /// the chip, not the rail width.
-pub const TOOL_RAIL_WIDTH_PX: f32 = CHIP_X_OFFSET_PX + TOOL_CHIP_PX + Spacing::Xs.px();
+/// ⚠️ `fn` e nao `const`: a escala e AUTORAVEL (plano UI/UX W4c.2).
+pub fn tool_rail_width_px() -> f32 {
+    CHIP_X_OFFSET_PX + TOOL_CHIP_PX + Spacing::Xs.px()
+}
 /// Per tokens.json `chrome.tool-chip`.
 pub const TOOL_CHIP_PX: f32 = CHROME_TOOL_CHIP;
 pub const COMPOUND_TOTAL_H_PX: f32 = TOOL_CHIP_PX; // sub-label moved to vertical-left
@@ -72,7 +75,7 @@ impl RailButtonSize {
     }
 
     /// Total rail column width for this size preset (mirrors
-    /// [`TOOL_RAIL_WIDTH_PX`] formula but using this size's chip px).
+    /// [`tool_rail_width_px`] formula but using this size's chip px).
     pub fn rail_width_px(self) -> f32 {
         CHIP_X_OFFSET_PX + self.chip_px() + Spacing::Xs.px()
     }

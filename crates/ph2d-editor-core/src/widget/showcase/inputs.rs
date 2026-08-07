@@ -34,7 +34,7 @@ pub(super) fn paint_inputs_section(
     }
 
     // TextInput.
-    let r = Rect::new(x, y, w, FIELD_H);
+    let r = Rect::new(x, y, w, field_h());
     hit_index.register(ids::INSP_SAMPLE_TEXT, r);
     let (ti_state, ti_text, ti_caret, ti_anchor) = read_text_input(store, ids::INSP_SAMPLE_TEXT);
     let input = TextInput::new(ids::INSP_SAMPLE_TEXT, "Name")
@@ -50,7 +50,7 @@ pub(super) fn paint_inputs_section(
         text_system,
         theme,
     );
-    y += FIELD_H + ROW_GAP;
+    y += field_h() + row_gap();
 
     // TextArea (3 lines tall).
     let area_h = 60.0_f32; // LITERAL-PX-OK: 3-line TextArea showcase height (chrome-specific demo dim)
@@ -63,10 +63,10 @@ pub(super) fn paint_inputs_section(
         .state(ta_state);
     ta.value = ta_text.to_string();
     paint_text_area_with_state(&ta, Some(ta_caret), ta_anchor, r, scene, text_system, theme);
-    y += area_h + ROW_GAP;
+    y += area_h + row_gap();
 
     // Combobox.
-    let r = Rect::new(x, y, w, FIELD_H);
+    let r = Rect::new(x, y, w, field_h());
     hit_index.register(ids::INSP_SAMPLE_COMBO, r);
     let (cb_state, cb_open, cb_query, cb_caret, cb_anchor) =
         read_combobox(store, ids::INSP_SAMPLE_COMBO);
@@ -83,14 +83,14 @@ pub(super) fn paint_inputs_section(
     .open(cb_open)
     .state(cb_state);
     paint_combobox_with_state(&combo, cb_caret, cb_anchor, r, scene, text_system, theme);
-    y += FIELD_H + ROW_GAP;
+    y += field_h() + row_gap();
 
     // NumberInput.
     let label_w = 80.0_f32; // LITERAL-PX-OK: showcase label column width (demo geometry)
     let chip_w = (w - label_w - Spacing::Md.px()).max(40.0); // LITERAL-PX-OK: min chip width (demo)
-    let r = Rect::new(x + label_w + Spacing::Md.px(), y, chip_w, FIELD_H);
+    let r = Rect::new(x + label_w + Spacing::Md.px(), y, chip_w, field_h());
     hit_index.register(ids::INSP_SAMPLE_NUMBER, r);
-    paint_left_label(scene, text_system, theme, x, "Value", label_w, y, FIELD_H);
+    paint_left_label(scene, text_system, theme, x, "Value", label_w, y, field_h());
     let (n_state, n_value, n_buffer, n_caret, n_anchor) =
         read_number_input(store, ids::INSP_SAMPLE_NUMBER);
     let num = NumberInput::new(ids::INSP_SAMPLE_NUMBER, "Value", n_value).state(n_state);
@@ -104,5 +104,5 @@ pub(super) fn paint_inputs_section(
         text_system,
         theme,
     );
-    y + FIELD_H
+    y + field_h()
 }

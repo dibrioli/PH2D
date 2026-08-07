@@ -16,25 +16,26 @@
 //! - **`chrome.*`** são consts livres, sem identidade de token (`id()`/`ALL`): dar-lhes uma é uma
 //!   wave própria, e sem ela não há chave estável para o arquivo guardar.
 //!
-//! # `px()` continua `const fn`, e é isso que mantém o build de jogo byte-idêntico
+//! # A FÁBRICA é `const fn`; o VIVO não precisa de ser (W4c.2)
 //!
-//! A parede que segurou esta wave nunca foi de performance ([plano W4c](../../../docs/Vector%20Module/Estudos/PLANO_UI_UX_padrao_figma.md)):
-//! `const PAD: f32 = Spacing::Sm.px();` **não pode** chamar uma fn não-const. Então `px()` fica
-//! como está e continua a valer a **FÁBRICA**; quem quer o valor que o artista escolheu chama
-//! [`Spacing::px_live`], a irmã que consulta a camada.
+//! A parede que segurou a W4c.1 nunca foi de performance ([plano W4c](../../../docs/Vector%20Module/Estudos/PLANO_UI_UX_padrao_figma.md)):
+//! `const PAD: f32 = Spacing::Sm.px();` **não pode** chamar uma fn não-const. A W4c.1 respondeu
+//! mantendo `px()` na fábrica e pondo um `px_live(theme)` ao lado; a W4c.2 **mediu** e virou a
+//! resposta ao contrário — `Spacing::px()` **é** o valor vivo (lê a tabela do
+//! [`crate::num_runtime`]) e [`Spacing::factory_px`] é a fábrica, `const fn` como sempre.
 //!
-//! ⚠️ **Nada no app chama a irmã ainda** — trocar os 15 sítios `const` por leitura viva é a W4c.2,
-//! e é lá que está o trabalho real. Enquanto isso, esta camada é **inerte por construção** e o
-//! `design_token_sync` continua a medir a tabela gerada, que é o oráculo de que ela é.
+//! ⚠️ **A medição que decidiu:** a escala é lida em ~1200 sítios e só **13** são `const` items.
+//! Manter `px()` como fábrica obrigaria os 1187 restantes a mudar de nome para ficarem vivos;
+//! virando a resposta, eles ficam vivos **sem serem tocados** e os treze quebram na compilação —
+//! o compilador enumera-os, e nenhuma lista escrita à mão pode envelhecer.
 //!
-//! # ⚠️ O TETO de um valor autorado pertence a quem o CONSOME, e o consumidor nasce na W4c.2
+//! # ⚠️ O TETO de um valor autorado pertence a quem o CONSOME — e agora existe consumidor
 //!
 //! A porta recusa o que não é um comprimento (não-finito, negativo — ver
-//! [`crate::num_overrides::set_num_override`]) e **não inventa um máximo**: não há recurso que um
-//! número grande consuma hoje, porque hoje ninguém o lê. O que a W4c.2 tem de medir antes de ligar
-//! a leitura viva: **o painel de Tokens desenha-se a si mesmo com estes tokens**, então um valor
-//! absurdo pode empurrar para fora da tela o botão *Reset* que o desfaria. O escape existe (o
-//! arquivo, o *Reset This Mode*); o número que o protege é uma medição que aquela wave deve.
+//! [`crate::num_overrides::set_num_override`]) e **não inventa um máximo**. O que a W4c.2 mediu
+//! antes de ligar a leitura viva está no [`crate::num_runtime`]: **o painel de Tokens desenha-se a
+//! si mesmo com estes tokens**, então o teto é sobre a *alcançabilidade do Reset*, não sobre um
+//! recurso — e a medição está no gate `the_panel_survives_an_absurd_scale`.
 
 use crate::radius::Radius;
 use crate::spacing::Spacing;
@@ -90,6 +91,23 @@ macro_rules! num_tokens {
             pub fn from_key(key: &str) -> Option<Self> {
                 match key { $( $( $key => Some(Self::$variant($ty::$member)), )* )* _ => None }
             }
+
+            /// A posição deste token em [`NumToken::ALL`] — o índice da tabela achatada de runtime.
+            ///
+            /// ⚠️ Gerado pela MESMA lista que produz o `ALL`, então não há como um degrau novo
+            /// entrar num e faltar no outro. E ⚠️ **isto NÃO é identidade durável** — o arquivo
+            /// guarda a [`NumToken::key`], porque inserir um degrau no meio de uma escala move
+            /// todos os índices depois dele.
+            #[must_use]
+            pub const fn index(self) -> usize {
+                let mut i = 0;
+                $( $(
+                    if matches!(self, Self::$variant($ty::$member)) { return i; }
+                    i += 1;
+                )* )*
+                let _ = i;
+                0
+            }
         }
     };
 }
@@ -132,9 +150,9 @@ impl NumToken {
     #[must_use]
     pub const fn factory_px(self) -> f32 {
         match self {
-            Self::Spacing(s) => s.px(),
-            Self::Radius(r) => r.px(),
-            Self::Stroke(s) => s.px(),
+            Self::Spacing(s) => s.factory_px(),
+            Self::Radius(r) => r.factory_px(),
+            Self::Stroke(s) => s.factory_px(),
         }
     }
 
@@ -156,29 +174,16 @@ impl NumToken {
     }
 }
 
-/// A irmã VIVA do `px()` de cada família.
+/// ⚠️ **O acessor VIVO por-família NÃO mora aqui, e a ausência é a decisão.**
 ///
-/// ⚠️ Um delegate de uma linha, e ele existe para que o **sítio de uso** diga qual das duas
-/// perguntas está a fazer: `Spacing::Sm.px()` é a fábrica (e continua legal em contexto `const`),
-/// `Spacing::Sm.px_live(theme)` é o que o artista vê. Um nome só para as duas tornaria a W4c.2
-/// impossível de rever — o diff não mostraria qual sítio mudou de significado.
-macro_rules! live_accessor {
-    ( $( $ty:ident => $variant:ident ),* $(,)? ) => { $(
-        impl $ty {
-            /// O valor **VIVO** deste token no modo dado — a fábrica, ou o que o artista autorou.
-            #[must_use]
-            pub fn px_live(self, theme: Theme) -> f32 {
-                NumToken::$variant(self).px(theme)
-            }
-        }
-    )* };
-}
-
-live_accessor! {
-    Spacing => Spacing,
-    Radius => Radius,
-    StrokeToken => Stroke,
-}
+/// A W4c.1 gerou um `Spacing::px_live(theme)` ao lado do `px()` de fábrica, à espera de que a
+/// W4c.2 trocasse os sítios de uso um a um. A medição da W4c.2 derrubou esse plano: são **~1200**
+/// sítios de leitura contra **13** `const` items, e enfiar o modo em cada um deles seria responder
+/// mil e duzentas vezes a uma pergunta que o app responde **uma** vez por quadro.
+///
+/// Hoje `Spacing::px()` **é** o acessor vivo (lê a tabela do [`crate::num_runtime`]) e
+/// `Spacing::factory_px()` é o de fábrica. Ter os dois **mais** um `px_live(theme)` daria três
+/// portas para duas perguntas, e a terceira seria a que alguém chama por engano.
 
 #[cfg(test)]
 #[path = "num_tests.rs"]

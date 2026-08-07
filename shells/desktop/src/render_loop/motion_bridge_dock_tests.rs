@@ -12,7 +12,7 @@
 //! Declared by the parent as a `#[path]` sibling, so `super` is `render_loop::motion_bridge`.
 
 use ph2d_editor::screens::hero::{PANEL_MOTION_GRAPH, PANEL_TIMELINE};
-use ph2d_editor::screens::layout::{CenterSplit, HeroLayout, RAIL_W};
+use ph2d_editor::screens::layout::{CenterSplit, HeroLayout, rail_w};
 use ph2d_editor::zones::Rect;
 
 const VP: Rect = Rect {
@@ -31,7 +31,7 @@ fn without_the_dock_the_timeline_lies_on_top_of_the_graph() {
     let l = HeroLayout::for_viewport_split(
         VP,
         false,
-        RAIL_W,
+        rail_w(),
         CenterSplit::Horizontal {
             t: CenterSplit::T_DEFAULT,
         },
@@ -51,7 +51,7 @@ fn the_dock_separates_them() {
     let mut l = HeroLayout::for_viewport_split(
         VP,
         false,
-        RAIL_W,
+        rail_w(),
         CenterSplit::Horizontal {
             t: CenterSplit::T_DEFAULT,
         },

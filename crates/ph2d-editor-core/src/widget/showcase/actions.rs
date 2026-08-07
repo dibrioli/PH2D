@@ -52,7 +52,7 @@ pub(super) fn paint_actions_section(
         let btn = Button::new(*id, *label).kind(*kind).state(state);
         paint_button(&btn, r, scene, text_system, theme);
     }
-    y += btn_h + ROW_GAP;
+    y += btn_h + row_gap();
 
     // Icon button + Tag (removable) on one row.
     let icon_size = Spacing::Xl3.px();

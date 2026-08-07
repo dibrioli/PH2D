@@ -8,7 +8,7 @@
 //! Re-exported from here for backwards compatibility — existing
 //! call sites inside `ph2d-editor` keep working unchanged.
 //!
-//! Hero-layout constants (EDGE_PAD, TOPBAR_H, RAIL_W, HIERARCHY_W,
+//! Hero-layout constants (EDGE_PAD, TOPBAR_H, rail_w(), HIERARCHY_W,
 //! INSPECTOR_W, HUD_H, HUD_BOTTOM_PAD, HIER_ROW_H, TOPBAR_GAP,
 //! HERO_VIEWPORT_*) stay here — they describe the hero orchestrator's
 //! 4-zone layout, not the per-panel chrome.
@@ -39,10 +39,12 @@ pub const HERO_VIEWPORT_H: f32 = HERO_VIEWPORT_H_PX;
 pub const EDGE_PAD: f32 = EDGE_PAD_PX;
 pub const TOPBAR_H: f32 = TOPBAR_H_PX;
 pub const TOPBAR_GAP: f32 = TOPBAR_GAP_PX;
-/// Mirrors `crate::widget::TOOL_RAIL_WIDTH_PX`. The hero layout uses
+/// Mirrors `crate::widget::tool_rail_width_px()`. The hero layout uses
 /// this for the rail's outer rect; the widget reuses it as a sizing
 /// hint. Keep them in lockstep.
-pub const RAIL_W: f32 = crate::widget::TOOL_RAIL_WIDTH_PX;
+pub fn rail_w() -> f32 {
+    crate::widget::tool_rail_width_px()
+}
 pub const INSPECTOR_W: f32 = INSPECTOR_W_PX;
 pub const HIERARCHY_W: f32 = HIERARCHY_W_PX;
 pub const HUD_H: f32 = HUD_H_PX;

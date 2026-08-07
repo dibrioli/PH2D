@@ -129,25 +129,32 @@ fn an_empty_layer_reads_the_factory_bit_for_bit_in_every_mode() {
     }
 }
 
-/// O acessor VIVO de cada família chega ao mesmo número que o `NumToken` — um delegate, não uma
+/// O acessor de cada família chega ao mesmo número que o `NumToken` — um delegate, não uma
 /// segunda rota.
+///
+/// ⚠️ Reescrito na W4c.2: era `px_live(mode)` contra `NumToken::px(mode)`. Hoje o de cada família
+/// **não recebe modo** (lê a tabela publicada), então o par que tem de concordar é
+/// `Spacing::px()` contra `NumToken::px(modo_publicado)` — e é justamente a publicação que
+/// estabelece a premissa que o teste antigo recebia de graça.
 #[test]
-fn the_live_accessor_of_each_family_is_the_same_answer() {
+fn the_family_accessor_is_the_same_answer_as_the_token() {
     crate::num_overrides::clear_num_overrides();
     for mode in MODES {
+        crate::num_runtime::publish(mode);
         assert_eq!(
-            Spacing::Md.px_live(mode).to_bits(),
+            Spacing::Md.px().to_bits(),
             NumToken::Spacing(Spacing::Md).px(mode).to_bits()
         );
         assert_eq!(
-            Radius::Lg.px_live(mode).to_bits(),
+            Radius::Lg.px().to_bits(),
             NumToken::Radius(Radius::Lg).px(mode).to_bits()
         );
         assert_eq!(
-            StrokeToken::Thin.px_live(mode).to_bits(),
+            StrokeToken::Thin.px().to_bits(),
             NumToken::Stroke(StrokeToken::Thin).px(mode).to_bits()
         );
     }
+    crate::num_runtime::publish(Theme::Forge);
 }
 
 /// A fábrica de um número **não tem modo** — é o único ponto em que esta camada difere da de cor,

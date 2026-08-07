@@ -7,7 +7,7 @@
 //! geometry params, and a `y_in: f32` cursor; returns `y_out: f32`.
 
 use crate::ids;
-use crate::layout::{ROW_GAP, ROW_H};
+use crate::layout::{ROW_H, row_gap};
 use crate::paint_helpers::{
     paint_color_swatch_row, paint_kind_button_grid, paint_labeled_segmented_row,
     paint_section_label, paint_target_button_stack,
@@ -53,7 +53,7 @@ pub(crate) fn paint_grid_kind_section(
             state,
         );
     }
-    y += ROW_GAP;
+    y += row_gap();
     {
         let (store, hit_index) = ctx.host.store_and_hit_index_mut();
         y = paint_kind_config(
@@ -68,7 +68,7 @@ pub(crate) fn paint_grid_kind_section(
             state,
         );
     }
-    y += ROW_GAP * 2.0;
+    y += row_gap() * 2.0;
     y
 }
 
@@ -132,7 +132,7 @@ pub(crate) fn paint_target_section(
             store,
         );
     }
-    y += ROW_GAP * 2.0;
+    y += row_gap() * 2.0;
     y
 }
 
@@ -169,7 +169,7 @@ pub(crate) fn paint_display_section(
             state,
         );
     }
-    y += ROW_H + ROW_GAP;
+    y += ROW_H + row_gap();
 
     let opacity_row = Rect::new(inner_x, y, inner_w, ROW_H);
     {
@@ -184,7 +184,7 @@ pub(crate) fn paint_display_section(
             state,
         );
     }
-    y += ROW_H + ROW_GAP;
+    y += ROW_H + row_gap();
 
     let color_row = Rect::new(inner_x, y, inner_w, ROW_H);
     {
@@ -199,7 +199,7 @@ pub(crate) fn paint_display_section(
             state,
         );
     }
-    y += ROW_H + ROW_GAP;
+    y += ROW_H + row_gap();
 
     let layer_idx = if state.grid_in_front { 0 } else { 1 };
     {
@@ -221,7 +221,7 @@ pub(crate) fn paint_display_section(
             store,
         );
     }
-    y += ROW_GAP;
+    y += row_gap();
     y
 }
 

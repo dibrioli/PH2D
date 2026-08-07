@@ -39,14 +39,14 @@ pub(super) fn paint_status_section(
         .show_percent(true);
     let bar_rect = Rect::new(x, y, w, Spacing::Lg.px());
     paint_progress_bar(&bar, bar_rect, scene, text_system, theme);
-    y += Spacing::Lg.px() + ROW_GAP;
+    y += Spacing::Lg.px() + row_gap();
 
     // LevelMeter — vertical stereo peak meter (Success/Warn/Danger zones).
     let meter = LevelMeter::new(NodeId(0), "Level").levels(0.55, 0.85); // LITERAL-PX-OK: demo levels
     let meter_w = 16.0_f32; // LITERAL-PX-OK: showcase meter width (chrome demo)
     let meter_h = 60.0_f32; // LITERAL-PX-OK: showcase meter height (chrome demo)
     paint_level_meter(&meter, Rect::new(x, y, meter_w, meter_h), scene, theme);
-    y += meter_h + ROW_GAP;
+    y += meter_h + row_gap();
 
     // Spinner + caption.
     let spin_rect = Rect::new(x, y, Radius::Xl2.px(), Radius::Xl2.px());
@@ -61,7 +61,7 @@ pub(super) fn paint_status_section(
         y,
         Radius::Xl2.px(),
     );
-    y += Radius::Xl2.px() + ROW_GAP;
+    y += Radius::Xl2.px() + row_gap();
 
     // Tag chips — Accent + Success + Warn.
     let chip_w = 50.0_f32; // LITERAL-PX-OK: tag chip width (chrome-specific)

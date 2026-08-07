@@ -34,7 +34,7 @@ pub(super) fn paint_lists_section(
     }
 
     // Dropdown.
-    let r = Rect::new(x, y, w, FIELD_H);
+    let r = Rect::new(x, y, w, field_h());
     hit_index.register(ids::INSP_SAMPLE_DROPDOWN, r);
     let (dd_state, dd_open, dd_sel) = match store.get(ids::INSP_SAMPLE_DROPDOWN) {
         Some(InteractiveState::Dropdown {
@@ -71,7 +71,7 @@ pub(super) fn paint_lists_section(
     if dd_open {
         set_pending_dropdown_chip(Some((dd_sel.unwrap_or(0), r)));
     }
-    y += FIELD_H + ROW_GAP;
+    y += field_h() + row_gap();
 
     // Tabs (segmented).
     let r = Rect::new(x, y, w, ROW_H_PX);
@@ -128,7 +128,7 @@ pub(super) fn paint_lists_section(
         body_rect.w - Spacing::Md.px() * 2.0,
         resolve(tone, theme),
     );
-    y += body_h + ROW_GAP;
+    y += body_h + row_gap();
 
     // TreeView (1 root + 2 leaves). Expand-state lives on the
     // store's `collapsed` side-table (same one that drives section
@@ -169,7 +169,7 @@ pub(super) fn paint_lists_section(
     for (i, (_depth, node)) in tree.visible_rows().iter().enumerate() {
         hit_index.register(node.id, tree.row_rect(r, i, Density::Cozy.row_h_px()));
     }
-    y += tree_h + ROW_GAP;
+    y += tree_h + row_gap();
 
     // ListItem.
     let li_h = Density::Cozy.row_h_px();

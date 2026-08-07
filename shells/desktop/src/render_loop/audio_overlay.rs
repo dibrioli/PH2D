@@ -14,7 +14,7 @@
 use ph2d_editor::ids;
 use ph2d_editor::paint::{fill_rounded_rect, paint_text_centered, resolve};
 use ph2d_editor::screens::HeroScreen;
-use ph2d_editor::screens::layout::{EDGE_PAD, HIERARCHY_W, INSPECTOR_W, RAIL_W};
+use ph2d_editor::screens::layout::{EDGE_PAD, HIERARCHY_W, INSPECTOR_W, rail_w};
 use ph2d_editor::widget::panel_chrome::{
     PANEL_HEADER_CLOSE_RESERVE, PANEL_HEADER_H_DEFAULT, clamp_panel_rect, paint_panel_corner_dot,
     paint_panel_corner_dot_bl, paint_panel_surface, panel_drag_handle_rect,
@@ -192,7 +192,7 @@ pub(super) fn draw_audio_overlay(
 /// below the TopBar. Strictly smaller than the viewport so the viewport-clamped
 /// drag/resize have real travel.
 fn default_rect(viewport: Rect) -> Rect {
-    let hier_right = viewport.x + RAIL_W + EDGE_PAD + HIERARCHY_W;
+    let hier_right = viewport.x + rail_w() + EDGE_PAD + HIERARCHY_W;
     let insp_left = viewport.x + viewport.w - EDGE_PAD - INSPECTOR_W;
     let x = hier_right + EDGE_PAD;
     // Stop before the docked Audio Editor panel column (width + a gap).

@@ -132,10 +132,16 @@ pub const TAB_GROUP_IDS: [NodeId; 3] = [
 ];
 
 pub(super) const BODY_PAD: f32 = 10.0; // LITERAL-PX-OK: showcase body inset
-pub(super) const ROW_GAP: f32 = Spacing::Sm.px();
+pub(super) fn row_gap() -> f32 {
+    Spacing::Sm.px()
+}
 pub(super) const SECTION_HEAD_H: f32 = ROW_H_PX;
-pub(super) const FIELD_H: f32 = Spacing::Xl3.px();
-const SEPARATOR_PAD_Y: f32 = Spacing::Md.px();
+pub(super) fn field_h() -> f32 {
+    Spacing::Xl3.px()
+}
+fn separator_pad_y() -> f32 {
+    Spacing::Md.px()
+}
 
 // ── Helpers (formerly inspector::mod.rs) ───────────────────────────────────
 
@@ -211,7 +217,7 @@ pub fn paint_section_separator(
     y: f32,
 ) -> f32 {
     let pad_x = 2.0_f32;
-    let pad_y = SEPARATOR_PAD_Y;
+    let pad_y = separator_pad_y();
     let thickness = 1.0_f32;
     let line = Rect::new(x + pad_x, y + pad_y, (w - pad_x * 2.0).max(0.0), thickness);
     fill_rounded_rect(scene, line, 0.5, resolve(ColorToken::Accent, theme));

@@ -25,7 +25,9 @@ pub enum Radius {
 }
 
 impl Radius {
-    pub const fn px(self) -> f32 {
+    /// O valor de **FÁBRICA** — irmão exacto do [`crate::Spacing::factory_px`], e o porquê da
+    /// separação está escrito lá.
+    pub const fn factory_px(self) -> f32 {
         match self {
             Self::Xs => crate::generated::RADIUS_XS,
             Self::Sm => crate::generated::RADIUS_SM,
@@ -35,6 +37,12 @@ impl Radius {
             Self::Xl2 => crate::generated::RADIUS_XL2,
             Self::Full => crate::generated::RADIUS_FULL,
         }
+    }
+
+    /// O valor **VIVO** — o que o artista autorou neste modo, ou a fábrica.
+    #[must_use]
+    pub fn px(self) -> f32 {
+        crate::num_runtime::live(crate::num::NumToken::Radius(self)).unwrap_or(self.factory_px())
     }
 
     pub const fn id(self) -> &'static str {

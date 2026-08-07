@@ -62,13 +62,13 @@ pub(super) fn paint_vector_section(
         scene,
         "X",
         x,
-        y + (FIELD_H - axis_label_font) * 0.5,
+        y + (field_h() - axis_label_font) * 0.5,
         axis_label_font,
         axis_col_w + tag_box_gap,
         resolve(ColorToken::Danger, theme),
     );
     let x_box_x = x + axis_col_w + tag_box_gap;
-    let x_rect = Rect::new(x_box_x, y, two_chip_w, FIELD_H);
+    let x_rect = Rect::new(x_box_x, y, two_chip_w, field_h());
     hit_index.register(ids::INSP_SAMPLE_V3_X, x_rect);
     let nx = NumberInput::new(ids::INSP_SAMPLE_V3_X, "", vx).state(sx);
     crate::widget::paint_number_input_with_buffer(
@@ -89,13 +89,13 @@ pub(super) fn paint_vector_section(
         scene,
         "Y",
         y_tag_x,
-        y + (FIELD_H - axis_label_font) * 0.5,
+        y + (field_h() - axis_label_font) * 0.5,
         axis_label_font,
         axis_col_w + tag_box_gap,
         resolve(ColorToken::Success, theme),
     );
     let y_box_x = y_tag_x + axis_col_w + tag_box_gap;
-    let y_rect = Rect::new(y_box_x, y, two_chip_w, FIELD_H);
+    let y_rect = Rect::new(y_box_x, y, two_chip_w, field_h());
     hit_index.register(ids::INSP_SAMPLE_V3_Y, y_rect);
     let ny = NumberInput::new(ids::INSP_SAMPLE_V3_Y, "", vy).state(sy);
     crate::widget::paint_number_input_with_buffer(
@@ -109,5 +109,5 @@ pub(super) fn paint_vector_section(
         theme,
     );
 
-    y + FIELD_H + SECTION_BOTTOM_PAD_PX
+    y + field_h() + SECTION_BOTTOM_PAD_PX
 }

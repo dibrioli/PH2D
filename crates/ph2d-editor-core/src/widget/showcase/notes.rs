@@ -28,11 +28,15 @@ use ph2d_vector::VectorScene;
 /// dispatch math in `byte_offset_from_click_xy` (`rect.x + 12.0`) so
 /// click→caret + drag-select route to the byte under the visible
 /// cursor.
-const NOTE_TEXT_PAD_X: f32 = Spacing::Lg.px();
+fn note_text_pad_x() -> f32 {
+    Spacing::Lg.px()
+}
 
 /// Vertical inset for multi-line note body painting. Mirrors the
 /// `TextArea` dispatch math (`text_start_y = rect.y + 8.0`).
-const NOTE_TEXT_PAD_Y: f32 = Spacing::Md.px();
+fn note_text_pad_y() -> f32 {
+    Spacing::Md.px()
+}
 
 /// Paint a single sticky-note. Editable: the title + body each
 /// have their own TextInput state in the store
@@ -53,7 +57,7 @@ pub fn paint_one_note(
     let title_font = TypeToken::Base.px();
     let body_font = TypeToken::Base.px();
     let title_h = title_font + Spacing::Md.px();
-    let body_h = NOTE_TEXT_PAD_Y * 2.0 + (body_font + Spacing::Xs.px()) * 3.0; // LITERAL-PX-OK: 3 lines (line count)
+    let body_h = note_text_pad_y() * 2.0 + (body_font + Spacing::Xs.px()) * 3.0; // LITERAL-PX-OK: 3 lines (line count)
     let note_h = title_h + body_h + pad * 2.0;
     let r = Rect::new(x, *y, w, note_h);
     if let Some(slot_id) = NOTE_SLOT_IDS.get(slot) {
@@ -108,8 +112,8 @@ fn paint_note_editable_line(
 ) {
     let (state, text, caret, anchor) = read_text_input(store, id);
     let focused = state == TextInputState::Focused;
-    let text_x = rect.x + NOTE_TEXT_PAD_X;
-    let text_w = (rect.w - NOTE_TEXT_PAD_X).max(0.0);
+    let text_x = rect.x + note_text_pad_x();
+    let text_w = (rect.w - note_text_pad_x()).max(0.0);
     let text_y = rect.y + (rect.h - font_size) * 0.5;
     if focused
         && !text.is_empty()
@@ -185,9 +189,9 @@ fn paint_note_editable_multiline(
     let (state, text, caret, anchor) = read_text_input(store, id);
     let focused = state == TextInputState::Focused;
     let line_h = font_size + Spacing::Xs.px();
-    let text_x = rect.x + NOTE_TEXT_PAD_X;
-    let text_y0 = rect.y + NOTE_TEXT_PAD_Y;
-    let text_w = (rect.w - NOTE_TEXT_PAD_X).max(0.0);
+    let text_x = rect.x + note_text_pad_x();
+    let text_y0 = rect.y + note_text_pad_y();
+    let text_w = (rect.w - note_text_pad_x()).max(0.0);
     if text.is_empty() && !focused {
         paint_text(
             text_system,

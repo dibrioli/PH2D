@@ -205,7 +205,7 @@ fn paint_hierarchy_body(
     let order: Vec<ph2d_a11y::NodeId> = store.hierarchy_order().to_vec();
     let dragging = store.hierarchy_drag().filter(|d| d.active);
 
-    const INDENT_PX: f32 = Spacing::Xl.px();
+    let indent_px: f32 = Spacing::Xl.px();
     let mut row_rects: Vec<(ph2d_a11y::NodeId, Rect)> = Vec::with_capacity(order.len());
     let live_mode = current_live_entries().is_some();
     let depths: Vec<u32> = order
@@ -245,7 +245,7 @@ fn paint_hierarchy_body(
         let has_children = depths.get(i + 1).is_some_and(|&d| d > depth);
         let is_collapsed = has_children && !search_active && store.is_hierarchy_collapsed(*id);
         let mut entity = entity_template.clone();
-        let indent = (depth as f32) * INDENT_PX;
+        let indent = (depth as f32) * indent_px;
         let direct_match = search_active && direct_match_mask.get(i).copied().unwrap_or(false);
         let row_rect = Rect::new(
             rect.x + body_pad + indent,
@@ -308,7 +308,7 @@ fn paint_hierarchy_body(
             let row_gap = Spacing::Xxs.px();
             let parent_chev_y = row_rect.y - HIER_ROW_H * 0.5 - row_gap;
             for c in 0..(depth as usize) {
-                let col_chev_x = rect.x + body_pad + c as f32 * INDENT_PX + row_inner_pad;
+                let col_chev_x = rect.x + body_pad + c as f32 * indent_px + row_inner_pad;
                 let line_x = col_chev_x + half_chev;
                 let is_my_column = c == (depth as usize) - 1;
                 // Does column `c+1` continue past row i? (Some future
@@ -342,7 +342,7 @@ fn paint_hierarchy_body(
                     );
                     ph2d_editor_core::paint::fill_rounded_rect(scene, vert, 0.0, line_color);
                     let next_col_chev =
-                        rect.x + body_pad + (c + 1) as f32 * INDENT_PX + row_inner_pad;
+                        rect.x + body_pad + (c + 1) as f32 * indent_px + row_inner_pad;
                     let h_stub = Rect::new(
                         line_x,
                         row_rect.y + row_rect.h * 0.5 - 0.5,
@@ -361,7 +361,7 @@ fn paint_hierarchy_body(
         if is_renaming {
             let icon_x_local = rect.x
                 + Spacing::Md.px()
-                + (depth as f32) * INDENT_PX
+                + (depth as f32) * indent_px
                 + Spacing::Lg.px()
                 + Spacing::Xs.px();
             let name_x = icon_x_local + Spacing::Xl.px() + Spacing::Md.px();

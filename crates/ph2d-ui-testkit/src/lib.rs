@@ -127,6 +127,16 @@ impl MockPanelHost {
         &self.store
     }
 
+    /// Rola um painel — o que a roda do mouse escreve no store antes da pintura seguinte.
+    ///
+    /// ⚠️ Um método NOMEADO em vez de um `store_mut()` genérico: a segunda forma seria uma porta
+    /// aberta para um gate escrever qualquer coisa no store e depois "provar" o que ele mesmo
+    /// semeou. Esta responde a uma pergunta só — *e se o artista rolar?* —, que é o que separa
+    /// *onde um botão está* de *se o artista chega lá*.
+    pub fn set_panel_scroll(&mut self, panel: NodeId, y: f32) {
+        self.store.set_panel_scroll(panel, y);
+    }
+
     pub fn set_slider_value(&mut self, id: NodeId, value: f32) {
         match self.store.get_mut(id) {
             Some(InteractiveState::Slider { value: v, .. }) => *v = value,

@@ -35,7 +35,7 @@ pub(super) fn paint_slider_section(
     let (_, value) = store
         .slider(ids::INSP_SAMPLE_SLIDER)
         .unwrap_or((SliderState::Normal, 0.62)); // LITERAL-PX-OK: slider default ratio (showcase demo seed value)
-    let r = Rect::new(x, y, w, FIELD_H);
+    let r = Rect::new(x, y, w, field_h());
     let slider_h = paint_slider_with_chip(
         r,
         "Speed",

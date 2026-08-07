@@ -24,7 +24,11 @@ use ph2d_vector::{Color as VelloColor, VectorScene};
 /// its parent row or needs to flip to the left.
 pub const MENU_W: f32 = 200.0; // LITERAL-PX-OK: context menu fixed width (chrome-specific)
 pub(super) const ROW_H: f32 = ROW_H_PX;
-pub(super) const PAD_Y: f32 = Spacing::Sm.px();
+/// ⚠️ `fn` e nao `const`: a escala e AUTORAVEL (plano UI/UX W4c.2), entao este numero e lido
+/// por quadro em vez de assado na compilacao.
+pub(super) fn pad_y() -> f32 {
+    Spacing::Sm.px()
+}
 const EDGE_INSET: f32 = 4.0; // LITERAL-PX-OK: keep the menu 4px away from the viewport edge
 
 /// Clamp a menu rect anchored at `(anchor_x, anchor_y)` so it stays
@@ -380,7 +384,7 @@ pub fn paint_context_menu_overlay(
         paint_dialog(scene, text_system, theme, hit_index, store, viewport);
         return;
     }
-    let total_h = ROW_H * items.len() as f32 + PAD_Y * 2.0;
+    let total_h = ROW_H * items.len() as f32 + pad_y() * 2.0;
     let rect = clamp_to_viewport(req.x, req.y, MENU_W, total_h, viewport);
 
     // Floating panel: BgElev fill + Border stroke + Md radius.
@@ -396,7 +400,7 @@ pub fn paint_context_menu_overlay(
     // the row is current or not.
     let bullet_col_w: f32 = 10.0; // LITERAL-PX-OK: chrome-specific bullet→text gap
     for (i, (id, label, swatch)) in items.iter().enumerate() {
-        let r = Rect::new(row_x, rect.y + PAD_Y + ROW_H * i as f32, row_w, ROW_H);
+        let r = Rect::new(row_x, rect.y + pad_y() + ROW_H * i as f32, row_w, ROW_H);
         hit_index.register(*id, r);
         if Some(*id) == store.hot_id() {
             fill_rounded_rect(scene, r, Radius::Sm.px(), resolve(ColorToken::Bg2, theme));
@@ -526,7 +530,7 @@ fn paint_scene_list(
         .collect();
 
     let row_count = filtered.len().max(1); // reserve at least one row for "No matches"
-    let total_h = PAD_Y * 2.0 + search_h + Spacing::Xs.px() + row_count as f32 * row_h;
+    let total_h = pad_y() * 2.0 + search_h + Spacing::Xs.px() + row_count as f32 * row_h;
     let rect = clamp_to_viewport(req.x, req.y, menu_w, total_h, viewport);
 
     // Floating panel surface.
@@ -537,7 +541,7 @@ fn paint_scene_list(
     // Search input row.
     let inner_x = rect.x + Spacing::Xs.px();
     let inner_w = rect.w - Spacing::Xs.px() * 2.0;
-    let search_rect = Rect::new(inner_x, rect.y + PAD_Y, inner_w, search_h);
+    let search_rect = Rect::new(inner_x, rect.y + pad_y(), inner_w, search_h);
     hit_index.register(ids::CTX_SCENE_SEARCH, search_rect);
     let ti = TextInput::new(ids::CTX_SCENE_SEARCH, "")
         .placeholder("Search scenes\u{2026}")

@@ -28,5 +28,5 @@ pub use hero::{
 };
 pub use layout::{
     EDGE_PAD, HERO_VIEWPORT_H, HERO_VIEWPORT_W, HIER_ROW_H, HIERARCHY_W, HUD_BOTTOM_PAD, HUD_H,
-    HeroLayout, INSPECTOR_W, RAIL_W, TOPBAR_GAP, TOPBAR_H,
+    HeroLayout, INSPECTOR_W, TOPBAR_GAP, TOPBAR_H, rail_w,
 };

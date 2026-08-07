@@ -34,8 +34,9 @@ pub enum StrokeToken {
 
 impl StrokeToken {
     /// Stroke width in CSS pixels (1.0 device pixel ratio assumed;
-    /// renderer multiplies by `dpr`).
-    pub const fn px(self) -> f32 {
+    /// renderer multiplies by `dpr`) — o valor de **FÁBRICA**, irmão do
+    /// [`crate::Spacing::factory_px`].
+    pub const fn factory_px(self) -> f32 {
         match self {
             Self::Hairline => crate::generated::STROKE_HAIRLINE,
             Self::Thin => crate::generated::STROKE_THIN,
@@ -43,6 +44,12 @@ impl StrokeToken {
             Self::Thick => crate::generated::STROKE_THICK,
             Self::Heavy => crate::generated::STROKE_HEAVY,
         }
+    }
+
+    /// O valor **VIVO** — o que o artista autorou neste modo, ou a fábrica.
+    #[must_use]
+    pub fn px(self) -> f32 {
+        crate::num_runtime::live(crate::num::NumToken::Stroke(self)).unwrap_or(self.factory_px())
     }
 
     /// Token id (matches JSON key).

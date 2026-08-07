@@ -24,8 +24,10 @@ pub const HERO_VIEWPORT_H: f32 = HERO_VIEWPORT_H_PX;
 pub const EDGE_PAD: f32 = EDGE_PAD_PX;
 pub const TOPBAR_H: f32 = TOPBAR_H_PX;
 pub const TOPBAR_GAP: f32 = TOPBAR_GAP_PX;
-/// Mirrors `crate::widget::TOOL_RAIL_WIDTH_PX`.
-pub const RAIL_W: f32 = crate::widget::TOOL_RAIL_WIDTH_PX;
+/// Mirrors `crate::widget::tool_rail_width_px()`.
+pub fn rail_w() -> f32 {
+    crate::widget::tool_rail_width_px()
+}
 pub const INSPECTOR_W: f32 = INSPECTOR_W_PX;
 pub const HIERARCHY_W: f32 = HIERARCHY_W_PX;
 pub const HUD_H: f32 = HUD_H_PX;
@@ -222,7 +224,7 @@ impl HeroLayout {
     }
 
     pub fn for_viewport_mirrored(viewport: Rect, mirrored: bool) -> Self {
-        Self::for_viewport_mirrored_with_rail_w(viewport, mirrored, RAIL_W)
+        Self::for_viewport_mirrored_with_rail_w(viewport, mirrored, rail_w())
     }
 
     /// Layout constructor with an explicit rail-column width. Used by
@@ -492,7 +494,7 @@ mod split_tests {
         let l = HeroLayout::for_viewport_split(
             vp(),
             false,
-            RAIL_W,
+            rail_w(),
             CenterSplit::Horizontal { t: 0.55 },
         );
         // Scene sits above the graph; both share the band's x/width.
@@ -512,7 +514,7 @@ mod split_tests {
     #[test]
     fn vertical_split_scene_on_left_graph_on_right() {
         let l =
-            HeroLayout::for_viewport_split(vp(), false, RAIL_W, CenterSplit::Vertical { t: 0.5 });
+            HeroLayout::for_viewport_split(vp(), false, rail_w(), CenterSplit::Vertical { t: 0.5 });
         assert!(l.center_viewport.x < l.motion_graph.x);
         assert!(approx(l.center_viewport.y, l.motion_graph.y));
         assert!(approx(l.center_viewport.h, l.motion_graph.h));
@@ -526,8 +528,12 @@ mod split_tests {
     /// when the Motion tool AND the timeline are both on screen).
     #[test]
     fn timeline_slot_is_zero_height_until_it_is_docked_into() {
-        let l =
-            HeroLayout::for_viewport_split(vp(), false, RAIL_W, CenterSplit::Horizontal { t: 0.6 });
+        let l = HeroLayout::for_viewport_split(
+            vp(),
+            false,
+            rail_w(),
+            CenterSplit::Horizontal { t: 0.6 },
+        );
         assert_eq!(l.motion_timeline_slot.h, 0.0);
         assert!(approx(
             l.motion_timeline_slot.y,
@@ -543,8 +549,8 @@ mod split_tests {
     #[test]
     fn docking_the_timeline_takes_the_band_from_the_graph() {
         let split = CenterSplit::Horizontal { t: 0.6 };
-        let before = HeroLayout::for_viewport_split(vp(), false, RAIL_W, split);
-        let mut l = HeroLayout::for_viewport_split(vp(), false, RAIL_W, split);
+        let before = HeroLayout::for_viewport_split(vp(), false, rail_w(), split);
+        let mut l = HeroLayout::for_viewport_split(vp(), false, rail_w(), split);
         assert!(
             before.timeline.y < before.motion_graph.y + before.motion_graph.h,
             "the whole point: before the dock, the timeline lay ON the graph"
@@ -575,7 +581,7 @@ mod split_tests {
     /// timeline keeps the bottom dock it has everywhere else.
     #[test]
     fn docking_without_a_motion_split_changes_nothing() {
-        let mut l = HeroLayout::for_viewport_split(vp(), false, RAIL_W, CenterSplit::None);
+        let mut l = HeroLayout::for_viewport_split(vp(), false, rail_w(), CenterSplit::None);
         let before = l.timeline;
         l.dock_timeline_into_motion();
         assert_eq!(l.timeline, before);
@@ -590,7 +596,7 @@ mod split_tests {
         let mut l = HeroLayout::for_viewport_split(
             short,
             false,
-            RAIL_W,
+            rail_w(),
             CenterSplit::Horizontal { t: 0.6 },
         );
         l.dock_timeline_into_motion();

@@ -37,7 +37,10 @@ pub enum SwatchSize {
 }
 
 impl SwatchSize {
-    pub const fn px(self) -> f32 {
+    /// ⚠️ Deixou de ser `const fn` porque a escala e AUTORAVEL (plano UI/UX W4c.2) — uma swatch
+    /// mede o que o `spacing` do modo vigente disser.
+    #[must_use]
+    pub fn px(self) -> f32 {
         match self {
             Self::Sm => Spacing::Xl2.px(),
             Self::Md => Spacing::Xl3.px(),
@@ -96,7 +99,9 @@ impl ColorSwatch {
     }
 }
 
-const CHECKER_CELL_PX: f32 = Spacing::Xs.px();
+fn checker_cell_px() -> f32 {
+    Spacing::Xs.px()
+}
 // Alpha-checker tiles. Gray-on-gray is the universal convention for
 // communicating "translucency"; theme-invariant by design.
 const CHECKER_LIGHT: VelloColor = VelloColor::from_rgba8(220, 220, 220, 255); // LITERAL-COLOR-OK: alpha-checker tile (theme-invariant gray)
@@ -122,15 +127,15 @@ fn paint_checker(scene: &mut VectorScene, rect: Rect, corner_radius: f32) {
     if chk_w <= 0.0 || chk_h <= 0.0 {
         return;
     }
-    let cols = (chk_w / CHECKER_CELL_PX).ceil() as i32;
-    let rows = (chk_h / CHECKER_CELL_PX).ceil() as i32;
+    let cols = (chk_w / checker_cell_px()).ceil() as i32;
+    let rows = (chk_h / checker_cell_px()).ceil() as i32;
     for row in 0..rows {
         for col in 0..cols {
             let dark = (row + col) % 2 == 0;
-            let cx = chk_x + col as f32 * CHECKER_CELL_PX;
-            let cy = chk_y + row as f32 * CHECKER_CELL_PX;
-            let cw = CHECKER_CELL_PX.min(chk_x + chk_w - cx);
-            let ch = CHECKER_CELL_PX.min(chk_y + chk_h - cy);
+            let cx = chk_x + col as f32 * checker_cell_px();
+            let cy = chk_y + row as f32 * checker_cell_px();
+            let cw = checker_cell_px().min(chk_x + chk_w - cx);
+            let ch = checker_cell_px().min(chk_y + chk_h - cy);
             if cw <= 0.0 || ch <= 0.0 {
                 continue;
             }

@@ -5,7 +5,7 @@
 //! Phase C.4.
 
 use crate::ids;
-use crate::layout::{LABEL_COL_W, LABEL_FONT_SIZE, ROW_GAP, ROW_H};
+use crate::layout::{LABEL_COL_W, LABEL_FONT_SIZE, ROW_H, row_gap};
 use crate::paint_helpers::toggle_state;
 use crate::state::{meters_to_display, unit_suffix_paren};
 use ph2d_editor_core::NodeId;
@@ -146,7 +146,7 @@ pub(crate) fn paint_number_row_value(
         theme,
     );
     hit_index.register(id, input_rect);
-    y + ROW_H + ROW_GAP
+    y + ROW_H + row_gap()
 }
 
 /// Paint Origin X + Origin Y rows reading current values from

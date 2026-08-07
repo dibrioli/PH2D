@@ -79,7 +79,10 @@ fn an_alias_crosses_families_because_the_unit_is_the_same() {
     lit(Theme::Forge, MD, 9.0);
     set_num_override(Theme::Forge, R_MD, Some(NumValue::Alias(MD))).expect("elo legal");
     assert_eq!(R_MD.px(Theme::Forge), 9.0);
-    assert_eq!(Radius::Md.px_live(Theme::Forge), 9.0);
+    // ⚠️ E o acessor da família chega ao mesmo número — depois de publicado, que é onde
+    // a W4c.2 pôs a resposta a *"qual e o modo vigente?"*.
+    crate::num_runtime::publish(Theme::Forge);
+    assert_eq!(Radius::Md.px(), 9.0);
 }
 
 #[test]

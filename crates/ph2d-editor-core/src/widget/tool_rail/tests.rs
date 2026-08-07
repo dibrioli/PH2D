@@ -77,7 +77,7 @@ fn paint_smoke_full_rail() {
     let mut text = TextSystem::without_system_fonts();
     let rail = fixture();
     let size = RailButtonSize::default();
-    let host = Rect::new(0.0, 0.0, TOOL_RAIL_WIDTH_PX, rail.preferred_height(size));
+    let host = Rect::new(0.0, 0.0, tool_rail_width_px(), rail.preferred_height(size));
     let store = crate::interaction::WidgetStore::with_capacity(0);
     paint_tool_rail(&rail, host, &mut scene, &mut text, Theme::Forge, &store);
 }
@@ -96,7 +96,7 @@ fn paint_smoke_swatch_entry() {
     let size = RailButtonSize::default();
     paint_tool_rail(
         &rail,
-        Rect::new(0.0, 0.0, TOOL_RAIL_WIDTH_PX, rail.preferred_height(size)),
+        Rect::new(0.0, 0.0, tool_rail_width_px(), rail.preferred_height(size)),
         &mut scene,
         &mut text,
         Theme::Blueprint,
@@ -117,7 +117,7 @@ fn paint_smoke_minimal_rail() {
     let size = RailButtonSize::default();
     paint_tool_rail(
         &rail,
-        Rect::new(0.0, 0.0, TOOL_RAIL_WIDTH_PX, rail.preferred_height(size)),
+        Rect::new(0.0, 0.0, tool_rail_width_px(), rail.preferred_height(size)),
         &mut scene,
         &mut text,
         Theme::Sunstone,

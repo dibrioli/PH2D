@@ -17,7 +17,7 @@ fn layout_top_bar_inset_from_edge() {
 fn layout_left_rail_below_top_bar() {
     let layout = HeroLayout::for_viewport(ipad12_viewport());
     assert!(layout.left_rail.y > layout.top_bar.y + layout.top_bar.h);
-    assert!((layout.left_rail.w - style::RAIL_W).abs() < f32::EPSILON);
+    assert!((layout.left_rail.w - style::rail_w()).abs() < f32::EPSILON);
 }
 
 #[test]

@@ -5167,7 +5167,9 @@ fn circle_draw_creates_an_editable_ellipse_outline() {
     // rascunhado — `shape_draft`); quem diz que as alças ainda não valem é `editing`. A asserção antiga
     // era `is_none()`: a INTENÇÃO era a mesma, o MECANISMO é que mudou.
     assert!(
-        !t.ellipse_overlay().expect("o contorno existe ja no Down").editing,
+        !t.ellipse_overlay()
+            .expect("o contorno existe ja no Down")
+            .editing,
         "no handles while drawing"
     );
     t.on_canvas_pointer(cp([84.0, 64.0], PointerPhase::Move)); // radius 20
@@ -5354,7 +5356,9 @@ fn polygon_draw_creates_an_editable_outline() {
     t.on_canvas_pointer(cp([64.0, 64.0], PointerPhase::Down));
     // Gêmeo do gate da elipse: o contorno já existe, as alças ainda não (ver ali).
     assert!(
-        !t.polygon_overlay().expect("o contorno existe ja no Down").editing,
+        !t.polygon_overlay()
+            .expect("o contorno existe ja no Down")
+            .editing,
         "no handles while drawing"
     );
     t.on_canvas_pointer(cp([84.0, 64.0], PointerPhase::Move)); // radius 20

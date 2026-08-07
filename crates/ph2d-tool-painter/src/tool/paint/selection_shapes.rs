@@ -329,6 +329,15 @@ pub(super) fn combine_into(crisp: &mut [u8], region: &[u8], op: u8) {
                 crisp[i] = ((u16::from(crisp[i]) * u16::from(255 - region[i])) / 255) as u8;
             }
         }
+        // **Intersect** — o dual EXATO do Add. Add é `max` (a união fuzzy), então a interseção é
+        // `min`: as duas são as leis de Zadeh, e escolher `min` em vez de multiplicar é o que mantém
+        // o par coerente — `max`/`min` preservam uma borda feathered, `a·b` a escureceria mesmo onde
+        // as duas coberturas são cheias em 254.
+        3 => {
+            for i in 0..n {
+                crisp[i] = crisp[i].min(region[i]);
+            }
+        }
         _ => crisp[..n].copy_from_slice(&region[..n]),
     }
 }

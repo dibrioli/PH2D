@@ -79,6 +79,51 @@ impl crate::App {
         painter.curve_delete_selected() || painter.selection_curve_delete_selected_point()
     }
 
+    /// **Os atalhos de área de transferência da SELEÇÃO do Painter** — Ctrl+X / C / V, mais Ctrl+A
+    /// (tudo), Ctrl+D (nada) e Ctrl+Shift+I (inverter). `true` quando um deles consumiu a tecla.
+    ///
+    /// ⚠️ **Gateado em `is_selection_mode`, e é isso que o torna seguro:** Ctrl+A já é *selecionar
+    /// todos os nós* do vetor e Ctrl+C/V já são o clipboard do grafo e da timeline. A seleção do
+    /// Painter é **modo-exclusiva** (a seção do painel só existe nela), então perguntar pelo MODO é o
+    /// que dá a estes atalhos um dono sem tirá-los de ninguém.
+    ///
+    /// ⚠️ **E ele corre DEPOIS da cadeia do Delete** de propósito: as duas famílias não se cruzam
+    /// (aquela é Delete/Backspace, esta é Ctrl+letra), mas a ordem declarada é o que impede a próxima
+    /// tecla de nascer ambígua.
+    pub(crate) fn painter_selection_clipboard_chain(
+        &mut self,
+        state: ElementState,
+        physical_key: PhysicalKey,
+    ) -> bool {
+        if state != ElementState::Pressed {
+            return false;
+        }
+        let ctrl = self.modifiers.control_key() || self.modifiers.super_key();
+        if !ctrl {
+            return false;
+        }
+        let shift = self.modifiers.shift_key();
+        let PhysicalKey::Code(code) = physical_key else {
+            return false;
+        };
+        let Some(painter) = self.painter_tool_mut() else {
+            return false;
+        };
+        if !painter.is_selection_mode() {
+            return false;
+        }
+        match code {
+            KeyCode::KeyX => painter.selection_cut(),
+            KeyCode::KeyC => painter.selection_copy(),
+            KeyCode::KeyV => painter.selection_paste(),
+            KeyCode::KeyA => painter.selection_select_all(),
+            KeyCode::KeyD => painter.clear_selection(),
+            KeyCode::KeyI if shift => painter.invert_selection(),
+            _ => return false,
+        }
+        true
+    }
+
     /// **Delete apaga a FIGURA em mãos** (Enio, 2026-08-07: *"permita usar del para deletar a forma
     /// selecionada por último"*). `true` quando havia uma — só então a tecla é consumida.
     ///

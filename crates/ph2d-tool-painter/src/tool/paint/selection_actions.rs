@@ -87,6 +87,78 @@ impl PainterTool {
         self.commit_structural_edit(before);
     }
 
+    /// **Select All**: the whole canvas becomes the selection. One undo entry.
+    ///
+    /// ⚠️ **Substitui a lista de formas por UM `Raster` cheio**, e não por um retângulo paramétrico: um
+    /// marquee do tamanho da tela carregaria um gizmo de transformação nas bordas do documento, e
+    /// arrastá-lo por acidente encolheria a seleção "de tudo" sem que ninguém tivesse pedido.
+    pub fn selection_select_all(&mut self) {
+        let (w, h) = (self.source_size.0 as usize, self.source_size.1 as usize);
+        if w == 0 || h == 0 {
+            return;
+        }
+        let before = self.snapshot_model();
+        let crisp = vec![255u8; w * h];
+        self.paint.selection_shapes = vec![SelectionEntry {
+            shape: SelectionShape::Raster {
+                crisp: Arc::new(crisp.clone()),
+            },
+            op: 0,
+        }];
+        self.set_selection_from_crisp(crisp);
+        self.commit_structural_edit(before);
+    }
+
+    /// **Cut**: copiar os pixels selecionados e LIMPÁ-LOS, em UM passo de undo.
+    ///
+    /// ⚠️ **A metade que apaga tem de honrar a COBERTURA, não a máscara binarizada** — uma borda com
+    /// feather 0,5 fica meio apagada, exatamente como o Copy a levou meio opaca. As duas metades leem a
+    /// MESMA `selection_mask`, então o que sai é precisamente o que fica faltando.
+    ///
+    /// ⚠️ E o Copy **não** grava undo (é leitura); é por isso que o snapshot é tirado aqui, entre a
+    /// cópia e a limpeza — um `selection_copy()` seguido de um `selection_erase()` daria a MESMA imagem
+    /// e DOIS passos de undo, e o artista desfaria um Cut pela metade.
+    pub fn selection_cut(&mut self) {
+        if !self.selection_restricts_paint() {
+            return;
+        }
+        self.selection_copy();
+        if self.paint.selection_clipboard.is_none() {
+            return; // nada coberto — o Copy recusou, e não há o que apagar
+        }
+        let (w, h) = (self.source_size.0 as usize, self.source_size.1 as usize);
+        if w == 0 || h == 0 || self.canvas_rgba.len() != w * h * 4 {
+            return;
+        }
+        let before = self.snapshot_model();
+        let mask = Arc::clone(&self.paint.selection_mask);
+        let buf = crate::tool::paint::plane_fork::fork_canvas(
+            &mut self.canvas_rgba,
+            &self.undo.write_state,
+            self.source_size.0,
+            None,
+        );
+        let n = mask.len().min(buf.len() / 4);
+        for i in 0..n {
+            let cov = f32::from(mask[i]) / 255.0;
+            if cov <= 0.0 {
+                continue;
+            }
+            let b = i * 4;
+            // Straight-alpha erase: a cobertura RETIRA alfa, e a cor fica onde está (o que sobra de
+            // um texel meio cortado é a metade que não foi levada, com a cor dela).
+            let a = f32::from(buf[b + 3]);
+            buf[b + 3] = (a * (1.0 - cov)).round().clamp(0.0, 255.0) as u8;
+        }
+        self.mark_dirty(Region {
+            x: 0,
+            y: 0,
+            w: w as u32,
+            h: h as u32,
+        });
+        self.commit_structural_edit(before);
+    }
+
     /// **Copy**: capture the selected pixels (coverage-premultiplied) into the in-memory clipboard. No undo
     /// entry (a read-only capture). No-op without a live selection.
     pub fn selection_copy(&mut self) {

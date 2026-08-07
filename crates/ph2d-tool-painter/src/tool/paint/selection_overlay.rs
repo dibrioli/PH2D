@@ -177,6 +177,14 @@ impl PainterTool {
                 self.selection_color_fill();
                 true
             }
+            PanelEvent::Click(id) if *id == core_ids::PAINTER_SEL_ALL => {
+                self.selection_select_all();
+                true
+            }
+            PanelEvent::Click(id) if *id == core_ids::PAINTER_SEL_CUT => {
+                self.selection_cut();
+                true
+            }
             PanelEvent::Click(id) if *id == core_ids::PAINTER_SEL_COPY => {
                 self.selection_copy();
                 true

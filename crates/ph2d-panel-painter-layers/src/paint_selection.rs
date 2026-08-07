@@ -167,6 +167,7 @@ fn action_rows(
         NodeId(0), // group a11y id unused for a momentary action row
         "Selection actions",
         &[
+            (core_ids::PAINTER_SEL_ALL, "All"),
             (core_ids::PAINTER_SEL_INVERT, "Invert"),
             (core_ids::PAINTER_SEL_CLEAR, "Clear"),
         ],
@@ -183,6 +184,7 @@ fn action_rows(
         &[
             (core_ids::PAINTER_SEL_LAYER_CONTENTS, "Layer"),
             (core_ids::PAINTER_SEL_FILL, "Fill"),
+            (core_ids::PAINTER_SEL_CUT, "Cut"),
             (core_ids::PAINTER_SEL_COPY, "Copy"),
             (core_ids::PAINTER_SEL_PASTE, "Paste"),
         ],
@@ -210,6 +212,7 @@ fn operation_card(
             SegmentedOption::new(core_ids::PAINTER_SEL_OP_NEW, "New"),
             SegmentedOption::new(core_ids::PAINTER_SEL_OP_ADD, "Add"),
             SegmentedOption::new(core_ids::PAINTER_SEL_OP_REMOVE, "Remove"),
+            SegmentedOption::new(core_ids::PAINTER_SEL_OP_INTERSECT, "Intersect"),
         ],
     )
     .selected(selected);
@@ -257,7 +260,7 @@ fn offset_card(
     let header_h = Spacing::Xl3.px();
     let pad = Spacing::Lg.px();
     let gap = Spacing::Xs.px(); // matches the slider row's trailing gap
-    let card = Card::new(core_ids::PAINTER_SEL_OFFSET_CARD).title("OFFSET");
+    let card = Card::new(core_ids::PAINTER_SEL_OFFSET_CARD).title("EXPAND / CONTRACT");
     // Momentary buttons — nothing selected (usize::MAX), like the old inline group.
     let seg = SegmentedAdaptive::new(
         NodeId(0),
@@ -398,6 +401,9 @@ mod tests {
             .iter()
             .chain(core_ids::PAINTER_SEL_OP_IDS.iter())
             .chain(core_ids::PAINTER_SEL_ACTION_IDS.iter())
+            // ⚠️ As acoes de CONTEUDO entram aqui: Cut nasceu nesta lista, e sem ela um botao novo
+            // seria pintado sem ninguem exigir que ele esteja vivo sob o mouse.
+            .chain(core_ids::PAINTER_SEL_WAVE5_IDS.iter())
             .chain(
                 [
                     core_ids::PAINTER_SEL_FEATHER_SLIDER,

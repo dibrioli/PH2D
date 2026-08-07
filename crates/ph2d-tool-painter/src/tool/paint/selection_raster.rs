@@ -107,23 +107,14 @@ impl PainterTool {
         if self.paint.selection_bool_op == 0 {
             self.reset_selection_offset(); // a New gesture (marquee / flood) starts from a clean offset
         }
-        let mut out = vec![0u8; n];
-        match self.paint.selection_bool_op {
-            // Add: union (max).
-            1 => {
-                for i in 0..n {
-                    out[i] = base[i].max(region[i]);
-                }
-            }
-            // Remove: base ∧ ¬region.
-            2 => {
-                for i in 0..n {
-                    out[i] = ((u16::from(base[i]) * u16::from(255 - region[i])) / 255) as u8;
-                }
-            }
-            // New: replace.
-            _ => out.copy_from_slice(region),
-        }
+        // ⚠️ **UMA lei, dois consumidores.** Isto aqui era uma SEGUNDA cópia do `combine_into` — o
+        // mesmo `max` / `base ∧ ¬region` / replace escritos de novo —, e as duas divergiram no dia em
+        // que o Intersect chegou: a lista de formas o compunha e este caminho VIVO caía no `_`, que
+        // REPLACE, então o gesto mostrava a segunda faixa inteira enquanto o resultado guardado era a
+        // interseção. Byte-idêntico para New/Add/Remove: `out` começa na `base`, que é exatamente o
+        // `crisp` que o `combine_into` recebe.
+        let mut out = base.as_slice().to_vec();
+        super::selection_shapes::combine_into(&mut out, region, self.paint.selection_bool_op);
         self.set_selection_from_crisp(out);
     }
 

@@ -172,6 +172,10 @@ mod selection_offset_geom; // sharp-corner offset: trace(+holes) → refit → C
 mod selection_overlay;
 /// Selection rasterization: shape → coverage buffers, boolean combine, Feather (box-blur). [LOC split].
 mod selection_raster;
+#[cfg(test)]
+#[path = "paint/selection_verbs_tests.rs"]
+mod selection_verbs_tests; // Cut / Select All / Intersect (report do Enio, 2026-08-07)
+
 pub(super) mod selection_shapes; // SelectionEntry is re-exported at `crate::tool` for the undo snapshot
 /// Selection **Edit** mode contour tracing (mask → editable boundary polyline); split for the LOC cap.
 mod selection_trace;

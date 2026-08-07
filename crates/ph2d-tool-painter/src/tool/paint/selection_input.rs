@@ -40,9 +40,9 @@ impl PainterTool {
     pub fn selection_mode(&self) -> u8 {
         self.paint.selection_mode
     }
-    /// Set the boolean operator for the next gesture (`0` New · `1` Add · `2` Remove).
+    /// Set the boolean operator for the next gesture (`0` New · `1` Add · `2` Remove · `3` Intersect).
     pub fn set_selection_bool_op(&mut self, op: u8) {
-        self.paint.selection_bool_op = op.min(2);
+        self.paint.selection_bool_op = op.min(3);
     }
     /// The active boolean operator discriminant.
     #[must_use]

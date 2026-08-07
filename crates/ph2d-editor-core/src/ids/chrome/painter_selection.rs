@@ -19,16 +19,19 @@ pub const PAINTER_SEL_MODE_IDS: [NodeId; 4] = [
     PAINTER_SEL_MODE_ELLIPSE,
 ];
 
-// ── Boolean-op picker (segmented): New · Add · Remove ────────────────────────────────────────────────
+// ── Boolean-op picker (segmented): New · Add · Remove · Intersect ────────────────────────────────────
 pub const PAINTER_SEL_OP: NodeId = hash_node_id("painter_sel.op"); // group
 pub const PAINTER_SEL_OP_NEW: NodeId = hash_node_id("painter_sel.op_new");
 pub const PAINTER_SEL_OP_ADD: NodeId = hash_node_id("painter_sel.op_add");
 pub const PAINTER_SEL_OP_REMOVE: NodeId = hash_node_id("painter_sel.op_remove");
-/// Op segments in `selection_bool_op` discriminant order (`0` New / `1` Add / `2` Remove).
-pub const PAINTER_SEL_OP_IDS: [NodeId; 3] = [
+/// **Intersect** — keep only what BOTH cover; the fourth op of the industry standard.
+pub const PAINTER_SEL_OP_INTERSECT: NodeId = hash_node_id("painter_sel.op_intersect");
+/// Op segments in `selection_bool_op` discriminant order (`0` New / `1` Add / `2` Remove / `3` Intersect).
+pub const PAINTER_SEL_OP_IDS: [NodeId; 4] = [
     PAINTER_SEL_OP_NEW,
     PAINTER_SEL_OP_ADD,
     PAINTER_SEL_OP_REMOVE,
+    PAINTER_SEL_OP_INTERSECT,
 ];
 
 // ── Sliders (0..1 track; the tool maps to its range) ─────────────────────────────────────────────────
@@ -82,12 +85,18 @@ pub const PAINTER_SEL_FILL: NodeId = hash_node_id("painter_sel.fill");
 pub const PAINTER_SEL_COPY: NodeId = hash_node_id("painter_sel.copy");
 /// **Paste** the clipboard back over the active layer (Wave 5).
 pub const PAINTER_SEL_PASTE: NodeId = hash_node_id("painter_sel.paste");
-/// Momentary action segments (Invert / Clear) rendered as a button group.
-pub const PAINTER_SEL_ACTION_IDS: [NodeId; 2] = [PAINTER_SEL_INVERT, PAINTER_SEL_CLEAR];
-/// Wave-5 action buttons (Select layer contents / Color Fill / Copy / Paste).
-pub const PAINTER_SEL_WAVE5_IDS: [NodeId; 4] = [
+/// **Select All** — the whole canvas.
+pub const PAINTER_SEL_ALL: NodeId = hash_node_id("painter_sel.all");
+/// **Cut** — copy the selected pixels and clear them, in ONE undo step.
+pub const PAINTER_SEL_CUT: NodeId = hash_node_id("painter_sel.cut");
+/// Momentary action segments (All / Invert / Clear) rendered as a button group.
+pub const PAINTER_SEL_ACTION_IDS: [NodeId; 3] =
+    [PAINTER_SEL_ALL, PAINTER_SEL_INVERT, PAINTER_SEL_CLEAR];
+/// Content action buttons (Select layer contents / Color Fill / Cut / Copy / Paste).
+pub const PAINTER_SEL_WAVE5_IDS: [NodeId; 5] = [
     PAINTER_SEL_LAYER_CONTENTS,
     PAINTER_SEL_FILL,
+    PAINTER_SEL_CUT,
     PAINTER_SEL_COPY,
     PAINTER_SEL_PASTE,
 ];

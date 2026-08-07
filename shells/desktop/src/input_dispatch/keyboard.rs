@@ -453,6 +453,12 @@ impl App {
             return;
         }
 
+        // **O clipboard da SELEÇÃO do Painter** (Ctrl+X/C/V/A/D, Ctrl+Shift+I) — modo-exclusivo, então
+        // não disputa o Ctrl+A do vetor nem o Ctrl+C do grafo (`keyboard_painter`).
+        if self.painter_selection_clipboard_chain(state, physical_key) {
+            return;
+        }
+
         // Hero pipeline (ADR-0024): translate winit's physical KeyCode
         // into the editor's KEY_* constants and route to the focused
         // widget.

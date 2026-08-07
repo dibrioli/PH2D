@@ -475,7 +475,7 @@ fn the_boot_snow_claims_the_loop_and_only_the_poisson_stays_cpu() {
     let mut reg = NodeRegistry::new();
     ph2d_node_registry_init::register_all_nodes(&mut reg).expect("registry builds");
     let mut doc = ph2d_motion_doc::MotionDoc::new();
-    let sinks = build_default_document(&mut doc, &reg).expect("the boot document builds");
+    let sinks = build_default_document(&mut doc, &reg).expect("the snow document builds");
     let g = &doc.graph;
 
     // The snow's render sink is the one whose plan drives the sim loop.

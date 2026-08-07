@@ -1,11 +1,15 @@
 //! Arrange the WHOLE motion document for the value-domain smoke scenes, and MARK
 //! the node the reviewer should judge.
 //!
-//! Each value demo ADDS its comparison rows to the editor's boot document — the
-//! snow particle scene (`motion_demo_strobe`), a whole branchy graph with a `pre`
-//! feedback loop AND a collapsed group ("Age & Fade"). Hand-placed rows landed on
-//! top of that scene's own hand-placed rows, and the group card floated away from
-//! its chain. This delegates to the **subgraph-aware** layout in `ph2d-motion-doc`
+//! Each value demo ADDS its comparison rows to whatever the editor is holding. Isto
+//! nasceu porque o editor abria com um documento de boot — a neve (`motion_demo_strobe`),
+//! um grafo ramificado com laço `pre` E um grupo colapsado ("Age & Fade") — e as rows
+//! postas à mão caíam em cima das rows postas à mão daquela cena, com o card do grupo
+//! flutuando longe da própria cadeia. ⚠️ **O boot hoje é VAZIO** (Enio, 2026-08-07:
+//! *"tire a cena da cachoeira"*), mas isto continua sendo o certo: uma cena de smoke com
+//! grupo, ou duas cenas na mesma tela, colidem pelo mesmo motivo, e arrumar o documento
+//! inteiro é a resposta que não depende de quem estava lá antes. This delegates to the
+//! **subgraph-aware** layout in `ph2d-motion-doc`
 //! (which lays every canvas out — the root and each group's interior — treating a
 //! group as one inline card) and stamps `>> EVALUATE <<` on the node under
 //! evaluation, so the reviewer knows where to look without counting cards.

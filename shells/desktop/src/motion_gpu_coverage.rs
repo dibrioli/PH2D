@@ -5,11 +5,19 @@
 //! The next coverage kernel is CHOSEN by measurement, not by a shortlist: a
 //! kernel is worth writing when the node it covers is what forces a real
 //! document onto the CPU. This runs the planner ([`ph2d_gpu_cook::plan`]) over
-//! the boot document (the snow `sim.zone` sim — the one artist-grade document
-//! the app opens with) and the six `PH2D_GPU_COOK_DEMO` scenes, and reports, per
-//! document: is it fully GPU-resident, and if not, which node type is the
-//! **frontier** boundary (the immediate blocker) and which node types make up
-//! the whole CPU **prefix** behind it.
+//! the snow `sim.zone` sim — the one artist-grade document the repo builds — and
+//! the six `PH2D_GPU_COOK_DEMO` scenes, and reports, per document: is it fully
+//! GPU-resident, and if not, which node type is the **frontier** boundary (the
+//! immediate blocker) and which node types make up the whole CPU **prefix**
+//! behind it.
+//!
+//! ⚠️ A neve **deixou de ser o documento de boot** (Enio, 2026-08-07: *"tire a cena
+//! da cachoeira"*) — o editor abre vazio. Ela segue no corpus, e é o corpus que
+//! importa aqui: um documento que ninguém mais vê ao abrir o app continua sendo o
+//! único grafo desta lista que um artista poderia ter autorado, e é contra ele que
+//! a fronteira de CPU significa alguma coisa. Tirá-lo daqui junto com o boot teria
+//! deixado o censo medindo só andaimes — vários deles moldados à mão para serem
+//! 100% device, ou seja, incapazes de apontar trabalho.
 //!
 //! It is pure plan-time analysis — no device — so it runs on any CI lane. Read
 //! the report with `--nocapture`:
@@ -59,10 +67,10 @@ struct Doc {
     sinks: Vec<NodeId>,
 }
 
-/// The corpus: every graph the repo actually builds. The boot document is the
-/// only artist-grade one (the demos are GPU-path smoke scaffolds, several of
-/// them hand-shaped to be fully-GPU on purpose) — so a boundary in the BOOT
-/// document weighs differently from one in a demo, and the report names it.
+/// The corpus: every graph the repo actually builds. The snow is the only
+/// artist-grade one (the demos are GPU-path smoke scaffolds, several of them
+/// hand-shaped to be fully-GPU on purpose) — so a boundary in IT weighs
+/// differently from one in a demo, and the report names it.
 fn corpus(reg: &NodeRegistry) -> Vec<Doc> {
     let mut out = Vec::new();
     let mut push = |name: &'static str, build: &dyn Fn(&mut MotionDoc) -> Option<Vec<NodeId>>| {
@@ -70,9 +78,11 @@ fn corpus(reg: &NodeRegistry) -> Vec<Doc> {
         let sinks = build(&mut doc).unwrap_or_else(|| panic!("{name} builds a well-typed graph"));
         out.push(Doc { name, doc, sinks });
     };
-    // The real one: the boot document (snow `sim.zone` sim) — what every user
-    // sees on launch, and the only graph here an artist could have authored.
-    push("boot (snow sim.zone)", &|d| build_default_document(d, reg));
+    // The real one: the snow `sim.zone` sim — the only graph here an artist could
+    // have authored. (Ele já foi o documento de BOOT; hoje o editor abre vazio.)
+    push("snow sim.zone (artist-grade)", &|d| {
+        build_default_document(d, reg)
+    });
     push("demo=1 grid->osc->move", &|d| {
         build_gpu_demo_document(d, reg)
     });

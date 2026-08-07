@@ -123,7 +123,9 @@ fn the_ease_kills_the_twitch_and_keeps_the_motion() {
 #[test]
 fn the_snow_wanders_and_it_does_not_judder() {
     use std::collections::BTreeMap;
-    let state = MotionState::new();
+    // A neve é FIXTURE desde 2026-08-07 (o editor abre vazio, Enio: *"tire a cena da
+    // cachoeira"*) — este gate mede o que ela faz, então ele a instala em vez de a herdar.
+    let state = MotionState::with_snow();
     let zone = state
         .doc
         .graph

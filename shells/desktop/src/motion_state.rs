@@ -19,6 +19,17 @@
 //! Document ≠ tool (ADR-0040): the `MotionTool` is a thin activation handle; all
 //! the state lives here in the shell, mirroring `AppGfx.vec_scene`.
 
+/// **A neve NÃO BOOTA mais** (Enio, 2026-08-07: *"tire a cena da cachoeira"*) — o editor de
+/// Motion abre com a tela VAZIA, e o artista traz o que quiser pelo command-palette (`A`).
+///
+/// A cena continua aqui, `#[cfg(test)]`, porque ela tem CONSUMIDORES que não são o boot: o
+/// censo de cobertura de GPU (`motion_gpu_coverage`) a chama de *"o único documento de nível
+/// de artista"* e escolhe o próximo kernel medindo a fronteira de CPU DELA; o gate do
+/// `motion.delay` usa os números do mar como fixture; e `motion_state_tests` prova o
+/// save/load/relógio sobre um grafo RICO — sobre um documento vazio essas três provas ficam
+/// vácuas. É o padrão do `warp_axis`/`serial_side`: o que perde o chamador de produção vira
+/// **referência congelada**, não código morto e não um arquivo apagado.
+#[cfg(test)]
 #[path = "motion_demo_strobe.rs"]
 mod strobe;
 
@@ -267,15 +278,17 @@ pub(crate) fn gpu_enabled_from_env(var: Option<&str>) -> bool {
 }
 
 impl MotionState {
-    /// Build the boot state: register every node op + the **default document** — driven by
-    /// `motion.expression` formulas: on the left a **spiral** whose x/y are cos/sin
-    /// expressions plotted through `motion.make_point`; on the right a grid whose **colour
-    /// wave** is an expression fed to a ramp. Both formulas read `t`, so they animate.
-    /// Kept deliberately small (docs/Motion Nodes/12, 32). The earlier scenes (the
-    /// Cavalry grid rig, the sim scenes, the deformer scenes) and the earlier
-    /// value/pulse + M3/M4 chains were removed to keep the boot document focused; they
-    /// live in git history and every node keeps its own unit tests + stays registered
-    /// (drop them in the editor). Transport paused at tick 0 (bridge auto-plays).
+    /// Build the boot state: register every node op, e **abrir com a TELA VAZIA**.
+    ///
+    /// ⚠️ **O documento de boot não existe mais** (Enio, 2026-08-07: *"tire a cena da
+    /// cachoeira"*). O editor abria com a neve caindo no mar — um sistema de partículas de
+    /// 21 nós que o artista tinha de apagar antes de fazer qualquer coisa. Ele agora traz o
+    /// que quiser pelo command-palette (`A`); as cenas de demonstração seguem acessíveis por
+    /// `PH2D_GPU_COOK_DEMO`, e a neve segue viva como fixture dos gates
+    /// ([`build_default_document`]). Todas as cenas anteriores (o rig da Cavalry, as de sim,
+    /// as de deformer, as cadeias de value/pulse e M3/M4) já tinham saído pelo mesmo motivo e
+    /// vivem no git — *um documento de boot é uma demo, não um arquivo morto*, e agora nem
+    /// demo ele é. Transporte pausado no tick 0 (a ponte dá auto-play).
     pub(crate) fn new() -> Self {
         let mut registry = NodeRegistry::new();
         ph2d_node_registry_init::register_all_nodes(&mut registry)
@@ -383,7 +396,12 @@ impl MotionState {
             Ok("22") => {
                 build_gpu_field_curve_demo_document(&mut doc, &registry).unwrap_or_default()
             }
-            _ => build_default_document(&mut doc, &registry).unwrap_or_default(),
+            // **Sem env: a TELA VAZIA** (Enio, 2026-08-07: *"tire a cena da cachoeira"*). O
+            // editor abria com a neve caindo no mar — um sistema de partículas inteiro que o
+            // artista tinha de apagar antes de começar. Quem quiser um grafo o traz pelo
+            // command-palette (`A`); as cenas de demonstração seguem todas acessíveis pelo
+            // `PH2D_GPU_COOK_DEMO` acima, e a neve pelo censo/gates (`strobe`, `cfg(test)`).
+            _ => Vec::new(),
         };
         Self {
             doc,
@@ -500,56 +518,18 @@ impl MotionState {
     }
 }
 
-/// Author the **default document** into `g`: two small M4 simulation scenes (the
-/// module's most recent work). Returns their sinks (the Output nodes) if the graph
-/// is well-typed.
+/// **A fixture de nível de artista** — a neve, e a porta única que a instala.
 ///
-/// The scenes — built in the `strobe` sibling module — are formula-driven: on the LEFT a
-/// **spiral** (`motion.expression` cos/sin formulas → `motion.make_point`, 144 points that
-/// rotate); on the RIGHT a grid coloured by a scrolling **expression wave** (`sin(t·2 +
-/// f·a)` fed to a ramp's `t`). The formulas live in the graph's text channel (doc 32).
-/// See docs/Motion Nodes/12 (value), 32 (expression).
-///
-/// The earlier scenes were removed to keep the boot document small and legible: the
-/// **Cavalry grid rig**, the sim scenes, the deformer scenes, and the earlier value,
-/// pulse and M3/M4 chains. They remain in git history and every node keeps its own unit
-/// tests; the nodes stay registered, so any of them can be dropped.
-fn build_default_document(doc: &mut MotionDoc, reg: &NodeRegistry) -> Option<Vec<NodeId>> {
-    let demo = strobe::build(&mut doc.graph)?;
-    // Same "validate on load" the editor runs before cooking — proves the authored
-    // graph is well-typed and membrane-clean.
-    doc.graph.validate(reg).ok()?;
-    // **The boot document ships a SUBGRAPH** (doc 57): the six nodes that age, colour,
-    // shrink and fade a flake are folded into ONE card, sitting inline in the chain
-    // with one socket on each side. So the feature is on the canvas the moment the tool
-    // opens — double-click the card and you are inside it — and nobody has to build a
-    // graph to find out that groups exist.
-    //
-    // The snow is **byte-identical** with the group as without it (gate:
-    // `grouping_never_changes_the_cook`). That is the whole claim of the design, and
-    // the boot document is where it is easiest to see: the flakes still fall.
-    let sid = 0;
-    // The centroid of what it folds — the SAME place the Ctrl+G gesture would put it
-    // (`subgraph::group`), so the boot document is a document the artist could have
-    // authored, not a special case the code knows about.
-    let mut sum = (0.0f32, 0.0f32);
-    for n in &demo.aging {
-        let p = doc.graph.pos(*n)?;
-        sum = (sum.0 + p.x, sum.1 + p.y);
-    }
-    let n = demo.aging.len() as f32;
-    doc.subgraphs.push(ph2d_motion_doc::Subgraph {
-        id: sid,
-        parent: None,
-        x: sum.0 / n,
-        y: sum.1 / n,
-        title: "Age & Fade".to_string(),
-    });
-    for id in &demo.aging {
-        doc.members.insert(*id, sid);
-    }
-    Some(demo.sinks)
-}
+/// Irmão pelo cap de 600 LOC do shell (HR-18), cortado por ASSUNTO: o que sobra aqui é o
+/// que o app FAZ com um documento; o que saiu é o documento que só os gates constroem.
+#[cfg(test)]
+#[path = "motion_state_fixture.rs"]
+mod fixture;
+/// Re-exportado para os quatro módulos de teste que já o chamavam por `super::` — mover o
+/// arquivo não pode mover o caminho de quem chama.
+#[cfg(test)]
+pub(crate) use fixture::build_default_document;
+
 #[cfg(test)]
 #[path = "motion_state_tests.rs"]
 mod tests;

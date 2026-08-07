@@ -1,13 +1,13 @@
 //! **A cena pronta para o smoke do `motion.path`** (`PH2D_MOTION_NODE_PATH_SMOKE=1`, doc 65).
 //!
-//! Um nó que anda numa forma **desenhada** não pode ser demonstrado num documento de boot que não
-//! tem desenho nenhum — e a demo de boot é a NEVE (Enio: *"deixe só o grafo da chuva"*). Então esta
-//! cena vive atrás de uma env, como as do Shape Builder (`build_smoke.rs`), e monta as duas metades
-//! que o artista montaria:
+//! Um nó que anda numa forma **desenhada** não pode ser demonstrado sem um desenho, e o editor de
+//! Motion abre com a tela VAZIA (Enio, 2026-08-07: *"tire a cena da cachoeira"*). Então esta cena
+//! vive atrás de uma env, como as do Shape Builder (`build_smoke.rs`), e monta as duas metades que
+//! o artista montaria:
 //!
 //! 1. **a forma**: uma curva em S no documento vetorial, chamada **`Track`** na Hierarchy — porque o
 //!    **nome é a referência inteira** (doc 65: não há id pra copiar);
-//! 2. **o grafo**: `value.lfo → motion.path → scale → output` — um segundo sink, ao lado da neve.
+//! 2. **o grafo**: `value.lfo → motion.path → scale → output`.
 //!
 //! O que se vê: 24 instâncias percorrendo a curva em arco-comprimento **uniforme**, **giradas para a
 //! tangente**, e **fluindo** (o LFO empurra o `offset`, que dá a volta). Arraste a curva com a tool
@@ -88,7 +88,7 @@ pub(crate) fn name_and_wire(
             *n,
             Pos {
                 x: i as f32 * 190.0,
-                y: -220.0, // acima do grafo da neve, que ocupa a faixa 0..
+                y: -220.0, // sua própria faixa (a 0.. era a do antigo grafo de boot)
             },
         );
     }

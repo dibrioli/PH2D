@@ -12,7 +12,7 @@ use ph2d_panel_motion_graph::{GraphIntent, NodeViewKind, drain_intents, push_int
 /// The fixed timestep the shell cooks at (mirrors `motion_state_tests::run`).
 const FIXED_DT: f64 = 1.0 / 60.0;
 
-/// Cook the boot document forward `ticks` fixed steps and return the instance buffer
+/// Cook the snow fixture forward `ticks` fixed steps and return the instance buffer
 /// — the actual pixels-to-be, which is the only output that can settle an argument
 /// about whether the cook changed.
 ///
@@ -49,11 +49,11 @@ fn cook(motion: &mut MotionState, ticks: u64) -> Vec<u8> {
     bytemuck::cast_slice::<_, u8>(&motion.pump.instances).to_vec()
 }
 
-/// A `MotionState` with the boot document's group already dissolved — the same graph,
+/// A `MotionState` with the snow fixture's group already dissolved — the same graph,
 /// flat. Every test that wants to group something starts from here, so that "before"
 /// and "after" differ by exactly the grouping.
 pub(super) fn flat() -> MotionState {
-    let mut m = MotionState::new();
+    let mut m = MotionState::with_snow();
     m.doc.subgraphs.clear();
     m.doc.members.clear();
     m
@@ -74,15 +74,15 @@ pub(super) fn flat() -> MotionState {
 #[test]
 fn grouping_never_changes_the_cook() {
     let aging: Vec<u32> = {
-        // The six nodes the boot document folds — taken from the document itself, so
+        // The six nodes the fixture folds — taken from the document itself, so
         // this cannot drift from what ships.
-        let m = MotionState::new();
+        let m = MotionState::with_snow();
         m.doc.members.keys().map(|n| n.0).collect()
     };
     assert_eq!(
         aging.len(),
         6,
-        "the boot document ships one card of six nodes"
+        "the snow fixture ships one card of six nodes"
     );
 
     let mut before = flat();
@@ -303,7 +303,7 @@ fn a_vanished_level_falls_back_to_the_root() {
 /// (the gesture LOOKED like it worked).
 #[test]
 fn probing_a_card_reads_what_it_emits_and_the_hud_hangs_off_the_card() {
-    let mut m = MotionState::new();
+    let mut m = MotionState::with_snow();
     let sid = m.doc.subgraphs[0].id;
     let card = super::subgraph::view_id(sid);
 
@@ -348,7 +348,7 @@ fn probing_a_card_reads_what_it_emits_and_the_hud_hangs_off_the_card() {
 /// that is refused, out loud (a toast), never in silence.
 #[test]
 fn a_ghost_moves_but_cannot_be_deleted_from_inside_the_group() {
-    let mut m = MotionState::new();
+    let mut m = MotionState::with_snow();
     let sid = m.doc.subgraphs[0].id;
     m.level = Some(sid);
 

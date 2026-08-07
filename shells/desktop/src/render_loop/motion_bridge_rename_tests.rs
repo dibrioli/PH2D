@@ -15,7 +15,7 @@ use ph2d_panel_motion_graph::RenameTarget;
 /// A document with one of each: a node, a group, and a backdrop — all three carrying the id **1**,
 /// which is the ordinary case and the reason a rename cannot travel as a bare `u32`.
 fn scene() -> MotionState {
-    let mut motion = MotionState::new();
+    let mut motion = MotionState::with_snow();
     motion.doc.graph = Graph::new();
     motion.doc.graph.add_node("motion.grid"); // id 0
     motion.doc.graph.add_node("motion.move"); // id 1
@@ -114,15 +114,15 @@ fn clearing_the_box_gives_the_thing_its_own_name_back() {
     );
 }
 
-/// The boot document **names its cards** (doc 61) — which is both the ready-to-smoke example and
+/// A cena da neve **names its cards** (doc 61) — which is both the ready-to-smoke example and
 /// the thing that makes twenty cards, six of which are a `Move` or a `Drive`, readable.
 ///
 /// FALSIFIABLE the way it matters: it does not check that `set_label` was called, it checks that
 /// the name comes back out through the **snapshot the panel paints from**. Wire the label into the
 /// graph and forget to read it in `snapshot_from` and this is what goes red.
 #[test]
-fn the_boot_document_names_its_cards() {
-    let motion = MotionState::new();
+fn the_snow_fixture_names_its_cards() {
+    let motion = MotionState::with_snow();
     let snap = ph2d_panel_motion_graph::snapshot_from(&motion.doc.graph, &motion.registry);
     let named: Vec<&str> = snap
         .nodes

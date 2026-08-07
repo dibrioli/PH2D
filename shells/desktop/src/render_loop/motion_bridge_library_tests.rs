@@ -115,7 +115,7 @@ fn open_library_intent_stashes_the_spawn_and_wire_context() {
         "nothing stashed before the intent"
     );
 
-    let _ = ph2d_panel_motion_graph::drain_intents(); // clear the boot document's intents, if any
+    let _ = ph2d_panel_motion_graph::drain_intents(); // clear any intent the boot left behind
     ph2d_panel_motion_graph::push_intent(GraphIntent::OpenLibrary {
         x: 12.0,
         y: 34.0,

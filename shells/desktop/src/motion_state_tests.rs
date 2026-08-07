@@ -1,10 +1,17 @@
 //! Headless demo/cook tests for `motion_state` (split for the HR-18 600-LOC shell cap; declared
 //! there as a `#[path]` sibling, so `super` is `motion_state`).
 //!
-//! The default document is the **snow** — a whole particle system (`motion_demo_strobe`). It is
-//! cooked here through the REAL registry, tick by tick, exactly as the shell's pump does: a
-//! simulation only exists over time, and cooking one frame in isolation would show the empty
-//! world it starts from and prove nothing.
+//! O **editor abre VAZIO** (Enio, 2026-08-07: *"tire a cena da cachoeira"*), e a **neve** — o
+//! sistema de partículas inteiro do `motion_demo_strobe` — é a FIXTURE deste arquivo. Ela é
+//! cozida aqui pelo registry REAL, tick a tick, exatamente como o pump da shell: uma simulação
+//! só existe ao longo do tempo, e cozinhar um frame isolado mostraria o mundo vazio de que ela
+//! parte e não provaria nada.
+//!
+//! ⚠️ **Por que os gates de save/load/relógio usam a neve e não o documento vazio:** eles
+//! afirmam que uma volta pelo texto reproduz o cozido *bit a bit* e que um relógio não-rebobinado
+//! abre o documento no meio da cena. Sobre um grafo VAZIO os dois passam por vácuo — não há
+//! estado a esquecer, nem cena em que estar no meio. A fixture é a premissa, e por isso ela é
+//! nomeada aqui em vez de herdada do boot.
 //!
 //! The rig scenes' guards went with the scenes (Enio: *"deixe só o grafo da chuva"*). Every node
 //! they exercised — `rig.rubber_hose`, `rig.fabrik`, `rig.skin_deformer`, `rig.skeleton` — keeps
@@ -16,9 +23,35 @@ use super::*;
 use ph2d_nodegraph::attr::Column;
 use ph2d_nodegraph::cook::Cook;
 
+/// Um `MotionState` **com a neve dentro** — o documento que costumava BOOTAR, pela porta
+/// única ([`MotionState::with_snow`]). O que estes gates exercitam continua sendo o runtime da
+/// shell sobre um grafo que um artista poderia ter autorado; só que agora a fixture é DECLARADA.
+fn snow() -> MotionState {
+    MotionState::with_snow()
+}
+
+/// **O editor de Motion abre com a TELA VAZIA** (Enio, 2026-08-07: *"tire a cena da cachoeira"*).
+///
+/// Este gate é o que impede a cena de voltar ao boot por descuido: ela continua construída,
+/// testada e alcançável (é a fixture logo acima e o documento de nível de artista do censo de
+/// GPU), então nada além desta asserção separa *"existe"* de *"abre com ela"*.
+///
+/// ⚠️ A metade que importa é a do CANVAS, não a dos sinks: um documento com nós e sem `Output`
+/// também tem `sinks` vazio, e passaria por aqui mostrando um grafo que o artista não pediu.
 #[test]
-fn new_builds_the_well_typed_snow_document() {
+fn new_opens_an_empty_canvas() {
     let state = MotionState::new();
+    assert!(
+        state.doc.graph.nodes().is_empty(),
+        "o boot não autora nó nenhum: o artista traz o grafo pelo palette (A)"
+    );
+    assert!(state.sinks.is_empty(), "sem nós não há sink a desenhar");
+}
+
+/// A fixture é bem-tipada e tem a forma que os outros gates supõem.
+#[test]
+fn the_snow_fixture_is_the_well_typed_particle_system() {
+    let state = snow();
     assert_eq!(state.sinks.len(), 1, "one scene: the snow");
     assert_eq!(
         state.doc.graph.node(state.sinks[0]).unwrap().type_name,
@@ -56,7 +89,7 @@ fn new_builds_the_well_typed_snow_document() {
 ///    only a filter, would both break the plateau.
 #[test]
 fn the_snow_is_born_accelerates_and_settles_into_a_steady_state() {
-    let state = MotionState::new();
+    let state = snow();
     let snow = *state.sinks.last().expect("the snow is the last sink");
     // **The physics is measured on the PHYSICS.** The render chain now eases the displayed
     // position (`motion.delay`, doc 63) — a one-pole rounds the sharp bottom off a plunge, so the
@@ -371,7 +404,7 @@ fn run(state: &mut MotionState, ticks: u64) {
 /// falling; keep the transport and the playhead starts in the future.
 #[test]
 fn a_loaded_document_cooks_exactly_like_a_freshly_booted_one() {
-    let mut used = MotionState::new();
+    let mut used = snow();
     run(&mut used, 120); // two seconds of snow: the cook is now FULL of live flakes
     assert!(
         !used.pump.instances.is_empty(),
@@ -383,7 +416,7 @@ fn a_loaded_document_cooks_exactly_like_a_freshly_booted_one() {
     used.load_text(&text).expect("its own text round-trips");
 
     // A fresh boot of the same document — the reference for what a load must look like.
-    let mut booted = MotionState::new();
+    let mut booted = snow();
 
     for state in [&mut used, &mut booted] {
         run(state, 30);
@@ -407,7 +440,7 @@ fn a_loaded_document_cooks_exactly_like_a_freshly_booted_one() {
 /// panel would edit a node the artist never picked.
 #[test]
 fn loading_forgets_every_id_that_named_the_previous_document() {
-    let mut state = MotionState::new();
+    let mut state = snow();
     let victim = state.doc.graph.nodes()[0].id;
     state.probe = Some(victim);
     state.probe_ring.push(1.0);
@@ -458,7 +491,7 @@ fn a_clock_that_was_not_rewound_opens_the_document_mid_scene() {
 
     // The freshly installed document (what a load produces: a new pump, not one tick cooked)
     // driven at that INHERITED tick.
-    let mut loaded = MotionState::new();
+    let mut loaded = snow();
     loaded.sinks = sinks_of(&loaded);
     let scopes = ph2d_node_motion_time_remap::time_scopes(&loaded.doc.graph, &loaded.registry);
     loaded.pump.advance_or_scrub_scoped(
@@ -474,7 +507,7 @@ fn a_clock_that_was_not_rewound_opens_the_document_mid_scene() {
 
     // …against the same document on a REWOUND clock: tick 0, the sky still empty (the premise
     // of `the_snow_is_born_...`: `counts[0] == 0` — every flake is yet to be born).
-    let mut booted = MotionState::new();
+    let mut booted = snow();
     run(&mut booted, 0);
 
     assert!(
@@ -494,7 +527,7 @@ fn a_clock_that_was_not_rewound_opens_the_document_mid_scene() {
 /// so a loaded graph is not a pile of cards at the origin).
 #[test]
 fn a_saved_document_comes_back_whole() {
-    let mut state = MotionState::new();
+    let mut state = snow();
     // An edit that is the artist's, not the boot document's: a moved card + a dialled param.
     let node = state.doc.graph.nodes()[0].id;
     state
@@ -503,7 +536,7 @@ fn a_saved_document_comes_back_whole() {
         .set_pos(node, ph2d_nodegraph::graph::Pos { x: 123.0, y: -45.0 });
     let before = state.doc.to_text();
 
-    let mut loaded = MotionState::new();
+    let mut loaded = snow();
     loaded.load_text(&before).expect("round-trips");
 
     assert_eq!(

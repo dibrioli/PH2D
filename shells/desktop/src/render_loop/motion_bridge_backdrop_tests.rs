@@ -12,7 +12,7 @@ use crate::motion_state::MotionState;
 /// A state whose pump has already cooked once, so `is_dirty` is `false` and a
 /// later `true` can only have come from the edit under test.
 fn cooked_state() -> MotionState {
-    let mut motion = MotionState::new();
+    let mut motion = MotionState::with_snow();
     motion.pump.pump(
         &motion.doc.graph,
         &motion.registry,
@@ -31,7 +31,7 @@ fn cooked_state() -> MotionState {
 /// visually distinct instead of a wall of one colour.
 #[test]
 fn adding_backdrops_lands_them_on_the_doc_with_cycling_tints() {
-    let mut motion = MotionState::new();
+    let mut motion = MotionState::with_snow();
     backdrops::add(&mut motion, 10.0, 20.0, 300.0, 200.0);
     backdrops::add(&mut motion, 0.0, 0.0, 100.0, 100.0);
 
@@ -78,7 +78,7 @@ fn no_backdrop_edit_ever_re_cooks_the_graph() {
 /// hit-tests with, so the clamp can never drift from the geometry).
 #[test]
 fn a_resize_clamps_to_the_panels_minimum() {
-    let mut motion = MotionState::new();
+    let mut motion = MotionState::with_snow();
     backdrops::add(&mut motion, 0.0, 0.0, 300.0, 200.0);
     let id = motion.doc.backdrops[0].id;
     backdrops::resize(&mut motion, id, false, -9999.0, -9999.0);
@@ -95,7 +95,7 @@ fn a_resize_clamps_to_the_panels_minimum() {
 /// instead of dragging the whole region along with the cursor.
 #[test]
 fn a_left_corner_resize_holds_the_right_edge() {
-    let mut motion = MotionState::new();
+    let mut motion = MotionState::with_snow();
     backdrops::add(&mut motion, 100.0, 50.0, 300.0, 200.0);
     let id = motion.doc.backdrops[0].id;
     let right = 100.0 + 300.0;
@@ -124,7 +124,7 @@ fn a_left_corner_resize_holds_the_right_edge() {
 fn deleting_a_backdrop_leaves_every_node_standing() {
     let mut motion = cooked_state();
     let before = motion.doc.graph.nodes().len();
-    assert!(before > 0, "the boot document has nodes to lose");
+    assert!(before > 0, "the fixture has nodes to lose");
 
     backdrops::add(&mut motion, -500.0, -500.0, 5000.0, 5000.0); // frames everything
     let id = motion.doc.backdrops[0].id;
@@ -138,7 +138,7 @@ fn deleting_a_backdrop_leaves_every_node_standing() {
 /// the whole thing back — the `[backdrop]` section is part of the doc snapshot.
 #[test]
 fn a_backdrop_is_undoable() {
-    let mut motion = MotionState::new();
+    let mut motion = MotionState::with_snow();
     backdrops::add(&mut motion, 10.0, 20.0, 300.0, 200.0);
     assert_eq!(motion.doc.backdrops.len(), 1);
 
@@ -152,7 +152,7 @@ fn a_backdrop_is_undoable() {
 /// (space-bearing) title intact.
 #[test]
 fn an_authored_backdrop_survives_a_text_round_trip() {
-    let mut motion = MotionState::new();
+    let mut motion = MotionState::with_snow();
     backdrops::add(&mut motion, 12.5, -30.0, 420.0, 260.0);
     let id = motion.doc.backdrops[0].id;
     backdrops::set_title(&mut motion, id, "Force chain".to_string());

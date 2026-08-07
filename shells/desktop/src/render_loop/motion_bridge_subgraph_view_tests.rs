@@ -8,7 +8,7 @@
 //!
 //! ⚠️ FILHO e não irmão, de propósito: `flat()` e `cook()` são as fixtures do pai e
 //! têm de continuar sendo UMA porta — `use super::*` as alcança, e uma cópia
-//! divergiria no dia em que o boot document mudasse.
+//! divergiria no dia em que a cena da fixture mudasse.
 
 use super::*;
 
@@ -20,9 +20,14 @@ use super::*;
 #[test]
 fn a_card_exposes_exactly_the_crossing_edges() {
     let mut m = flat();
-    // The boot document's age chain: one edge in (collide -> lifetime), one out
+    // The snow fixture's age chain: one edge in (collide -> lifetime), one out
     // (drive -> falloff), and `value.attribute` feeding THREE consumers, all inside.
-    let aging: Vec<u32> = MotionState::new().doc.members.keys().map(|n| n.0).collect();
+    let aging: Vec<u32> = MotionState::with_snow()
+        .doc
+        .members
+        .keys()
+        .map(|n| n.0)
+        .collect();
     super::super::subgraph::group(&mut m, aging.clone());
     let sid = m.doc.subgraphs[0].id;
     let ports = super::super::subgraph::card_ports(&m, sid);
@@ -52,7 +57,7 @@ fn a_card_exposes_exactly_the_crossing_edges() {
 /// another part of the graph must not leak into the room.
 #[test]
 fn entering_a_group_shows_its_members_and_the_boundary_ghosts() {
-    let mut m = MotionState::new(); // the boot document, group and all
+    let mut m = MotionState::with_snow(); // a fixture da neve, com grupo e tudo
     let sid = m.doc.subgraphs[0].id;
     m.level = Some(sid);
 
@@ -101,7 +106,7 @@ fn entering_a_group_shows_its_members_and_the_boundary_ghosts() {
 /// its sockets.
 #[test]
 fn at_the_root_the_card_stands_in_for_its_contents() {
-    let m = MotionState::new();
+    let m = MotionState::with_snow();
     let sid = m.doc.subgraphs[0].id;
     let mut snap = ph2d_panel_motion_graph::snapshot_from(&m.doc.graph, &m.registry);
     fold::fold(&m, &mut snap);
@@ -149,7 +154,7 @@ fn at_the_root_the_card_stands_in_for_its_contents() {
 /// the members' node-bypass instead of the group flag (the old "all members muted" fold).
 #[test]
 fn a_group_card_draws_muted_when_the_group_is_bypassed_as_a_unit() {
-    let mut m = MotionState::new();
+    let mut m = MotionState::with_snow();
     let sid = m.doc.subgraphs[0].id;
     let inside = subgraph::member_nodes_deep(&m.doc.subgraphs, &m.doc.members, sid);
     assert!(inside.len() >= 2, "the demo group has members");

@@ -34,6 +34,13 @@
 //! Enio — e **é ela que tornaria o composite vivo sob a mão de novo**. Esta lei é o que torna a cena
 //! usável enquanto aquela decisão não é tomada.
 //!
+//! ## A mesma lei, o segundo fio: o PAINEL
+//!
+//! Um arrasto de **knob** (Size, Offset, Spacing…) sobre uma figura viva re-carimba a figura inteira a
+//! cada quadro — o MESMO trabalho de um arrasto no canvas, pela mesma porta (`restamp_shapes_preview`),
+//! e sem passar pelo roteador de ponteiro. [`PainterTool::set_shape_draft_hold`] é o fio que faltava; a
+//! shell o alimenta do `held_button`, o sinal que ela já usa para *"um arrasto é UM passo de undo"*.
+//!
 //! ## O que o artista vê
 //!
 //! O guia amarelo da figura ativa (perímetro + alças) e os badges de Operation das parqueadas — tudo
@@ -50,7 +57,31 @@ impl PainterTool {
     /// Verdadeira, o `restamp_shapes_preview` descasca o preview e volta sem carimbar nada: o gizmo
     /// carrega a forma sozinho.
     pub(super) fn draft_stamp(&self) -> bool {
-        self.paint.shape_draft
+        self.paint.shape_draft || self.paint.shape_draft_hold
+    }
+
+    /// **A mão do artista está num KNOB do painel?** — o segundo fio da mesma lei (Enio, 2026-08-07:
+    /// *"o mesmo mecanismo deve ser aplicado quando se está mudando os parâmetros do painel para
+    /// shapes vivas (Size, Offset, etc.)"*).
+    ///
+    /// Um arrasto de slider re-carimba a figura INTEIRA a cada quadro, exatamente como um arrasto no
+    /// canvas — e não passava por [`Self::route_shape_draft`], porque não tem Down/Up de canvas. Quem
+    /// sabe que um botão está preso é a shell, então a resposta vem de lá.
+    ///
+    /// ⚠️ **O sinal é o `held_button`, e a escolha não é de conveniência:** é a MESMA porta que o
+    /// `post_frame_undo` consulta para *"um arrasto é UM passo de undo"*. A pergunta *"estamos no meio
+    /// de um gesto?"* já tem dono nesta shell; inventar um segundo sinal seria a segunda resposta que
+    /// diverge no dia em que um deles ganhar um caso especial.
+    ///
+    /// ⚠️ **Soltar ASSENTA** — e é isto que fecha o ciclo: sem o `settle` a figura ficaria invisível
+    /// até o próximo evento que a re-carimbasse, que é o pior modo de falha desta lei.
+    pub fn set_shape_draft_hold(&mut self, held: bool) {
+        if held {
+            self.paint.shape_draft_hold = true;
+        } else if self.paint.shape_draft_hold {
+            self.paint.shape_draft_hold = false;
+            self.settle_shape_draft();
+        }
     }
 
     /// A rota dos editores de figura, embrulhada pela lei do repouso.
@@ -87,7 +118,11 @@ impl PainterTool {
     /// chama esta porta ANTES de capturar.
     pub(crate) fn settle_shape_draft(&mut self) {
         if self.paint.shape_stale {
+            // As DUAS bandeiras caem: assentar significa *"a figura tem de estar na tela AGORA"*, e
+            // deixar qualquer uma de pé faria o próximo re-carimbo descascar o que acabou de voltar.
+            // Quem ainda estiver com a mão no gesto re-arma a sua no quadro seguinte.
             self.paint.shape_draft = false;
+            self.paint.shape_draft_hold = false;
             self.refill_live_shape();
         }
     }

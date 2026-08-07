@@ -3009,6 +3009,18 @@ impl crate::App {
                                 || self.modifiers.control_key(),
                         );
                         if let Some(t) = tools.active_mut() {
+                            // ⚠️ **Sob a mão, o GIZMO é o preview — e um arrasto de KNOB é uma mão sobre
+                            // a figura tanto quanto um arrasto no canvas.** O edit abaixo é o que
+                            // re-carimba, então o gesto é publicado ANTES dele; o `held_button` é a
+                            // MESMA porta que o `post_frame_undo` consulta para *"um arrasto é UM
+                            // passo"*. O `false` que ASSENTA vem do `painter_bridge::dispatch`, uma vez
+                            // por quadro — aqui não há evento nenhum quando o artista solta.
+                            if let Some(p) = t
+                                .as_any_mut()
+                                .downcast_mut::<ph2d_tool_painter::PainterTool>()
+                            {
+                                p.set_shape_draft_hold(self.held_button.is_some());
+                            }
                             t.handle_panel_event(ev);
                         }
                     }
@@ -3826,6 +3838,7 @@ impl crate::App {
                 &mut self.painter_redo_requested,
                 &mut self.donated_form,
                 toasts,
+                self.held_button.is_some(),
             );
             // Live-preview a non-selected sprite used as the brush Shape (so its opacity/blend remote-
             // control edits show in real time), into a SECOND preview slot/override.

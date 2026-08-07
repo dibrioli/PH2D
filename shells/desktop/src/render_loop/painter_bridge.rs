@@ -100,6 +100,9 @@ pub(super) fn dispatch(
     // ⚠️ Nenhum tipo do módulo 3D atravessa: o que chega é `Vec<f32>`. Ver `donated_form`.
     donated_form: &mut crate::donated_form::DonatedForm,
     toasts: &mut ToastQueue,
+    // `true` enquanto um botão de ponteiro está preso — o sinal de *"há um gesto em voo"* que o
+    // `post_frame_undo` já usa. Aqui ele fecha o ciclo do rascunho de figura: ver `set_shape_draft_hold`.
+    pointer_held: bool,
 ) -> bool {
     // Diagnostic TRAP for the mask-path FPS report (2026-07-24): `PH2D_PAINT_PERF=1` logs, per frame
     // the painter is active, WHICH producer owned the preview + WHICH drain path ran + the phase
@@ -330,6 +333,13 @@ pub(super) fn dispatch(
             .as_any_mut()
             .downcast_mut::<ph2d_tool_painter::PainterTool>()
     {
+        // **O SOLTAR do arrasto de knob** (`shape_draft`, 2º fio): o `set_shape_draft_hold(true)` é
+        // publicado no instante do edit de painel (`render_loop::mod`, o drain de `ToolPanelEvent`),
+        // mas quando o artista SOLTA não chega evento nenhum — então a queda mora aqui, no passe que
+        // roda todo quadro, e é ela que ASSENTA a figura de volta na tela. Chamar com o valor vivo nos
+        // dois sítios não é duas respostas: é a mesma pergunta feita no momento em que ela decide algo
+        // (antes do re-carimbo) e uma vez por quadro (para o soltar ser visto).
+        painter.set_shape_draft_hold(pointer_held);
         // Cmd/Ctrl+Enter Apply — bake the layer composite into the sprite this
         // same frame (the `drive_pending_commit` drain below picks it up).
         if commit_requested {

@@ -6,7 +6,8 @@
 
 use super::measure_shape_system::{cp, tool};
 use crate::tool::paint::media::PaintMedia;
-use ph2d_editor_core::tool::{CanvasPaintTool, PointerPhase};
+use ph2d_editor_core::ids as core_ids;
+use ph2d_editor_core::tool::{CanvasPaintTool, PanelEvent, PointerPhase, Tool};
 use ph2d_painter_brush::StrokeMethod;
 
 /// Quantos texels da tela deixaram de ser papel branco — *"há tinta na tela?"*.
@@ -221,4 +222,95 @@ fn no_editor_leaves_the_canvas_owing_at_rest() {
             );
         }
     }
+}
+
+// ── O SEGUNDO FIO: a mão no PAINEL ───────────────────────────────────────────────────────────────
+
+/// **A porta do PAINEL**, não o setter cru: `set_brush_size_px` só escreve o número, e é o
+/// `handle_panel_event` que decide re-carimbar a figura aberta (`refill_if_appearance_changed`). Um
+/// gate que chamasse o setter mediria o silêncio — a tela ficaria com o carimbo anterior e passaria
+/// verde com a lei desligada.
+fn drag_the_size_slider(t: &mut crate::tool::PainterTool, v: f64) {
+    t.handle_panel_event(PanelEvent::SetValue(core_ids::PAINTER_BRUSH_SIZE_SLIDER, v));
+}
+
+/// Uma figura em REPOUSO (criada e solta) — o estado em que um arrasto de knob começa.
+fn a_settled_ellipse(media: PaintMedia) -> crate::tool::PainterTool {
+    let side = 256u32;
+    let mut t = tool(side, media, 12.0);
+    t.paint.brush.stroke_method = StrokeMethod::Ellipse;
+    #[allow(clippy::cast_precision_loss)]
+    let c = (side / 2) as f32;
+    t.on_canvas_pointer(cp([c, c], PointerPhase::Down));
+    t.on_canvas_pointer(cp([c + 50.0, c], PointerPhase::Move));
+    t.on_canvas_pointer(cp([c + 50.0, c], PointerPhase::Up));
+    t
+}
+
+/// **A mesma lei, o segundo fio** (Enio, 2026-08-07: *"o mesmo mecanismo deve ser aplicado quando se
+/// está mudando os parâmetros do painel para shapes vivas (Size, Offset, etc.)"*).
+///
+/// Um arrasto de knob re-carimba a figura INTEIRA a cada quadro, exatamente como um arrasto no canvas
+/// — e não passa pelo roteador de ponteiro. Com a mão publicada, o re-carimbo do knob descasca; ao
+/// soltar, a figura volta.
+#[test]
+fn a_panel_knob_drag_drafts_the_shape_and_the_release_settles_it() {
+    let mut t = a_settled_ellipse(PaintMedia::Impasto);
+    assert!(painted(&t) > 0, "a figura em repouso esta na tela");
+
+    // A mão pega o slider…
+    t.set_shape_draft_hold(true);
+    drag_the_size_slider(&mut t, 0.2); // o edit que RE-CARIMBA
+    assert_eq!(
+        painted(&t),
+        0,
+        "sob a mao no KNOB a tinta tem de sumir igual a um arrasto de canvas"
+    );
+
+    // …e solta.
+    t.set_shape_draft_hold(false);
+    assert!(
+        painted(&t) > 0,
+        "ao SOLTAR o knob a figura tem de voltar — sem isso ela fica invisivel ate o proximo evento"
+    );
+    assert!(
+        relief(&t) > 0.0,
+        "e o carimbo final roda com o meio de verdade"
+    );
+}
+
+/// ⚠️ **Um edit de painel SEM mão presa não descasca nada** — é o controle que separa *"a mão está no
+/// knob"* de *"um valor mudou"*. Sem ele, `set_shape_draft_hold(true)` cravado seria indistinguível do
+/// produto correto: todo edit programático (undo, preset, restore) deixaria a figura fora da tela.
+#[test]
+fn a_panel_edit_with_no_hand_on_it_leaves_the_shape_on_screen() {
+    let mut t = a_settled_ellipse(PaintMedia::Impasto);
+    drag_the_size_slider(&mut t, 0.2);
+    assert!(
+        painted(&t) > 0,
+        "sem gesto em voo o edit re-carimba normalmente"
+    );
+}
+
+/// O `settle` derruba as DUAS bandeiras: quem assenta promete uma tela honesta AGORA, e uma bandeira
+/// de pé faria o próximo re-carimbo descascar o que acabou de voltar.
+///
+/// **Mutação que deve sangrar:** `settle_shape_draft` deixar `shape_draft_hold` em pé.
+#[test]
+fn settling_clears_the_panel_hold_too_or_the_next_restamp_peels_it_again() {
+    let mut t = a_settled_ellipse(PaintMedia::Digital);
+    t.set_shape_draft_hold(true);
+    drag_the_size_slider(&mut t, 0.2);
+    assert_eq!(painted(&t), 0);
+
+    // Um commit de undo assenta (a metade de CORREÇÃO) — e a partir daí a tela tem de continuar
+    // honesta mesmo que outro re-carimbo aconteça antes de a mão soltar.
+    t.settle_shape_draft();
+    let after_settle = painted(&t);
+    assert!(after_settle > 0, "o settle devolveu a figura");
+    drag_the_size_slider(&mut t, 0.25);
+    assert!(
+        painted(&t) > 0,
+        "o re-carimbo seguinte descascou de novo — o settle deixou uma bandeira de pe"
+    );
 }

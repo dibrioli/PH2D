@@ -170,6 +170,13 @@ pub(crate) struct PaintState {
     /// ⚠️ **Transiente, como o `line_constrain`:** não entra no `ModelSnapshot` nem no arquivo — é
     /// fato sobre a mão do artista, não sobre o documento.
     pub(super) shape_draft: bool,
+    /// **A mesma mão, no PAINEL** — um arrasto de knob (Size, Offset, Spacing…) com uma figura viva.
+    ///
+    /// ⚠️ Campo próprio, e não uma 2ª escrita no [`Self::shape_draft`]: são dois gestos diferentes com
+    /// donos diferentes (o roteador de ponteiro de canvas × a shell, que é quem sabe que um botão está
+    /// preso). Cada um escreve o seu; quem LÊ (`draft_stamp`) faz o OU — a pergunta é uma só (*"há uma
+    /// mão sobre esta figura agora?"*), as respostas é que vêm de dois lugares.
+    pub(super) shape_draft_hold: bool,
     /// **A tela NÃO mostra as figuras abertas** — um re-carimbo foi pulado pela lei do rascunho.
     ///
     /// ⚠️ Ele existe porque a alternativa é **enumerar** quais ramos de Up de quais editores refazem a

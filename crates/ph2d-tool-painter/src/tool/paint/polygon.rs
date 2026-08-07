@@ -63,6 +63,8 @@ pub struct PolygonOverlay {
     pub grabbed: Option<u8>,
     /// The current side count (3..=12) — the shell can label the sides handle.
     pub sides: u32,
+    /// `true` na fase de EDIÇÃO — a shell só então desenha as alças. Gêmeo de `EllipseOverlay::editing`.
+    pub editing: bool,
 }
 
 impl PainterTool {
@@ -236,13 +238,11 @@ impl PainterTool {
         Some((points, handles))
     }
 
-    /// Snapshot the Polygon editor for the shell overlay — `None` until editing.
+    /// Snapshot the Polygon editor for the shell overlay — existe nas DUAS fases (o contorno aparece
+    /// desde o primeiro pixel do arrasto de criação); quem separa é [`PolygonOverlay::editing`].
     #[must_use]
     pub fn polygon_overlay(&self) -> Option<PolygonOverlay> {
         let ed = self.paint.polygon.as_ref()?;
-        if !ed.editing {
-            return None;
-        }
         // Display the OFFSET (grown/shrunk) polygon, so the outline + handles + paint move together.
         let off = self.shape_offset_px();
         let (erx, ery) = ((ed.rx + off).max(0.5), (ed.ry + off).max(0.5));
@@ -260,6 +260,7 @@ impl PainterTool {
             ),
             grabbed: ed.grabbed,
             sides: ed.sides,
+            editing: ed.editing,
         })
     }
 

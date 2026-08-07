@@ -50,6 +50,8 @@ mod stamp_banded_tests; // o lote em bandas pinta o que o laco serial pintava (d
 mod stamp_banded_work_tests; // ...e as bandas sao cortadas por TRABALHO - o lote ESPARSO
 #[path = "stroke_boolean_tests.rs"]
 mod stroke_boolean_tests; // o composite booleano roda na janela das FORMAS, nao na do canvas
+#[path = "stroke_outline_tests.rs"]
+mod stroke_outline_tests; // o CONTORNO e o que se ve E o que se clica
 #[path = "undo_confine_tests.rs"]
 mod undo_confine_tests; // um Ctrl+Z repinta so' o que ele mudou (doc 28 §5.63)
 #[path = "undo_live_base_tests.rs"]
@@ -4833,10 +4835,16 @@ fn curve_draw_creates_three_points_and_paints_the_line() {
     assert!(t.curve_overlay().is_none(), "no chrome before drawing");
     t.on_canvas_pointer(cp([8.0, 32.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([56.0, 32.0], PointerPhase::Move));
-    assert!(
-        t.curve_overlay().is_none(),
-        "still drawing — chrome appears on release"
-    );
+    // Durante o arrasto a curva publica SÓ o spine: as âncoras e o gizmo aparecem na soltura (nenhum
+    // Down as alcança antes disso). Era `is_none()` — mesma intenção, mecanismo novo.
+    {
+        let ov = t.curve_overlay().expect("o spine existe durante o arrasto");
+        assert!(
+            ov.points.is_empty() && ov.transform_gizmo.is_none(),
+            "still drawing — chrome appears on release"
+        );
+        assert!(ov.spine.len() >= 2, "…e a linha puxada e desenhada");
+    }
     t.on_canvas_pointer(cp([56.0, 32.0], PointerPhase::Up));
 
     let ov = t
@@ -5034,8 +5042,11 @@ fn curve_grab_tolerance_grabs_near_inserts_on_curve_never_in_space() {
     // Down in EMPTY space (far from the spine) → NO point is created; the multi-shape router parks this
     // curve and begins a fresh draw (no overlay until its release).
     t.on_canvas_pointer(cp([20.0, 52.0], PointerPhase::Down));
+    // A curva anterior foi PARQUEADA e um desenho novo começou: o overlay agora é o da figura NOVA
+    // (fase de desenho ⇒ sem âncoras), e não os 4 pontos da que ficou para trás.
     assert!(
-        t.curve_overlay().is_none(),
+        t.curve_overlay()
+            .is_none_or(|ov| ov.points.is_empty() && ov.transform_gizmo.is_none()),
         "empty-space press starts a NEW shape draw (nothing added to the parked curve)"
     );
     t.on_canvas_pointer(cp([20.0, 52.0], PointerPhase::Up));
@@ -5152,7 +5163,13 @@ fn interleaved_shape_edits_and_bakes_undo_in_reverse_order() {
 fn circle_draw_creates_an_editable_ellipse_outline() {
     let mut t = circle_tool();
     t.on_canvas_pointer(cp([64.0, 64.0], PointerPhase::Down));
-    assert!(t.ellipse_overlay().is_none(), "no handles while drawing");
+    // ⚠️ O overlay EXISTE desde o 1º pixel do arrasto (o contorno é a única coisa na tela sob o gesto
+    // rascunhado — `shape_draft`); quem diz que as alças ainda não valem é `editing`. A asserção antiga
+    // era `is_none()`: a INTENÇÃO era a mesma, o MECANISMO é que mudou.
+    assert!(
+        !t.ellipse_overlay().expect("o contorno existe ja no Down").editing,
+        "no handles while drawing"
+    );
     t.on_canvas_pointer(cp([84.0, 64.0], PointerPhase::Move)); // radius 20
     t.on_canvas_pointer(cp([84.0, 64.0], PointerPhase::Up));
 
@@ -5335,7 +5352,11 @@ fn draw_polygon(t: &mut PainterTool, cx: f32, cy: f32, r: f32) {
 fn polygon_draw_creates_an_editable_outline() {
     let mut t = polygon_tool();
     t.on_canvas_pointer(cp([64.0, 64.0], PointerPhase::Down));
-    assert!(t.polygon_overlay().is_none(), "no handles while drawing");
+    // Gêmeo do gate da elipse: o contorno já existe, as alças ainda não (ver ali).
+    assert!(
+        !t.polygon_overlay().expect("o contorno existe ja no Down").editing,
+        "no handles while drawing"
+    );
     t.on_canvas_pointer(cp([84.0, 64.0], PointerPhase::Move)); // radius 20
     t.on_canvas_pointer(cp([84.0, 64.0], PointerPhase::Up));
 

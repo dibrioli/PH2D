@@ -375,6 +375,11 @@ fn draw_ellipse_overlay(
                     let pts: Vec<Point> = overlay.perimeter.iter().map(|&p| map(p)).collect();
                     super::painter_bridge_gizmo::stroke_box(scene, &pts, &pal);
                 }
+                // ⚠️ O contorno aparece nas duas fases; as ALÇAS, só na de edição — no meio do arrasto
+                // de criação nenhum Down as alcança (`EllipseOverlay::editing`).
+                if !overlay.editing {
+                    continue;
+                }
                 for (i, &h) in overlay.handles.iter().enumerate() {
                     let p = map(h);
                     if i == 4 {
@@ -446,6 +451,10 @@ fn draw_polygon_overlay(
                 if overlay.perimeter.len() >= 2 {
                     let pts: Vec<Point> = overlay.perimeter.iter().map(|&p| map(p)).collect();
                     super::painter_bridge_gizmo::stroke_box(scene, &pts, &pal);
+                }
+                // O contorno nas duas fases, as ALÇAS só na de edição — ver `draw_ellipse_overlay`.
+                if !overlay.editing {
+                    continue;
                 }
                 for (i, &h) in overlay.handles.iter().enumerate() {
                     let p = map(h);

@@ -5,8 +5,8 @@
 //!
 //! ## Interaction
 //!
-//! 1. **Draw** — press at the centre and drag out the radius (a circle). On release the editing
-//!    handles appear.
+//! 1. **Draw** — press at the centre and drag out the radius (a circle). O CONTORNO aparece desde o
+//!    primeiro pixel do arrasto (`EllipseOverlay::editing`); on release the editing handles appear.
 //! 2. **Edit** — the session persists. Four **axis handles** (right / top / left / bottom in the
 //!    ellipse's local frame) resize each axis symmetrically about the centre (so a circle becomes an
 //!    ellipse); a **rotation handle** above the top spins the whole ellipse; the **centre** dot moves
@@ -49,7 +49,7 @@ pub(super) struct EllipseEditor {
 }
 
 /// A read-only snapshot of the Ellipse editor for the shell's on-canvas overlay (the outline + the
-/// six handles). `None` until the radius drag is released (the handles appear with the ellipse).
+/// six handles). Existe nas DUAS fases; quem separa é [`Self::editing`].
 pub struct EllipseOverlay {
     /// The ellipse outline (image-space px) — drawn as the guide; matches the painted dabs.
     pub perimeter: Vec<[f32; 2]>,
@@ -57,6 +57,12 @@ pub struct EllipseOverlay {
     pub handles: [[f32; 2]; 6],
     /// The handle being dragged (index into [`Self::handles`]), drawn highlighted.
     pub grabbed: Option<u8>,
+    /// `true` na fase de EDIÇÃO (o arrasto de raio terminou) — a shell só então desenha as alças.
+    ///
+    /// ⚠️ O contorno aparece nas duas fases e as ALÇAS não, e a razão é a mesma dos dois lados: uma alça
+    /// pertence à figura que se está EDITANDO, e no meio do arrasto de criação não há Down a receber
+    /// (o `ellipse_down` sai por *"mid radius-drag — ignore extra Downs"*). Espelha `LineOverlay::editing`.
+    pub editing: bool,
 }
 
 impl PainterTool {
@@ -256,9 +262,6 @@ impl PainterTool {
     #[must_use]
     pub fn ellipse_overlay(&self) -> Option<EllipseOverlay> {
         let ed = self.paint.ellipse.as_ref()?;
-        if !ed.editing {
-            return None;
-        }
         // Display the OFFSET (grown/shrunk) radii, so the outline + handles + paint move together.
         let (erx, ery) = self.ellipse_offset_radii(ed.rx, ed.ry);
         let mut perimeter = Vec::new();
@@ -268,6 +271,7 @@ impl PainterTool {
             perimeter,
             handles: ellipse_handles(ed.center, ed.u, erx, ery, gap),
             grabbed: ed.grabbed,
+            editing: ed.editing,
         })
     }
 

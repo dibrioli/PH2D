@@ -75,13 +75,17 @@ pub(crate) struct StrokeShape {
 pub struct StrokeOpBadge {
     /// Centre of the shape (where the type-square + glyph sit).
     pub center: [f32; 2],
-    /// AABB `[minx,miny,maxx,maxy]` of the shape (drawn as a faint frame for parked shapes).
-    pub bbox: [f32; 4],
+    /// **O CONTORNO da figura** em px de imagem (`super::stroke_outline`) — a linha que a shell traça.
+    ///
+    /// ⚠️ Era uma AABB, desenhada como moldura apagada. A caixa só bastava enquanto a TINTA aparecia sob
+    /// a mão e dizia onde a figura estava; com o gesto rascunhado ela virou a única coisa na tela, e
+    /// quatro círculos viravam quatro retângulos (Enio, 2026-08-07). O contorno é a MESMA linha que o
+    /// hit-test alcança — *o que é desenhado é o que é clicável*.
+    pub outline: Vec<[f32; 2]>,
+    /// `true` quando o contorno fecha — a shell traça fechado (`stroke_box`) ou aberto (`stroke_open`).
+    pub closed: bool,
     /// The Operation glyph: `"+"` Add · `"-"` Remove · `"o"` Overlay.
     pub glyph: &'static str,
-    /// `true` for the live editor's shape (its full gizmo is drawn separately — only the glyph is added);
-    /// `false` for a parked shape (draw the frame + glyph so it reads as an editable shape).
-    pub active: bool,
 }
 
 impl PainterTool {
@@ -495,10 +499,15 @@ impl PainterTool {
             .then(|| self.paint.active_op.glyph())
     }
 
-    /// The op badges the shell draws for the PARKED shapes only — each a faint AABB frame + its `+`/`−`/`o`
-    /// glyph so it reads as a still-editable shape. The ACTIVE shape's glyph is drawn INSIDE its gizmo
-    /// centre square instead (`active_op_glyph`), so there is never a second/duplicate square (Enio
-    /// 2026-07-04). Empty in the classic single-shape / no-parked case. Image px.
+    /// The op badges the shell draws for the PARKED shapes only — each the shape's **CONTORNO** + its
+    /// `+`/`−`/`o` glyph, so it reads as a still-editable shape. The ACTIVE shape's glyph is drawn INSIDE
+    /// its gizmo centre square instead (`active_op_glyph`), so there is never a second/duplicate square
+    /// (Enio 2026-07-04). Empty in the classic single-shape / no-parked case. Image px.
+    ///
+    /// ⚠️ O contorno vem de [`Self::shape_state_outline`], a MESMA porta que
+    /// [`Self::hit_parked_shape`] pergunta — desenho e clique não podem discordar sobre onde a figura
+    /// está. E ele **não constrói dabs**: a versão anterior pedia a AABB ao `shape_state_bbox`, que monta
+    /// a lista de dabs inteira de cada figura parqueada a cada quadro para guardar quatro floats.
     pub fn stroke_op_badges(&self) -> Vec<StrokeOpBadge> {
         let parked: Vec<(crate::undo::ShapeEditState, StrokeOp)> = self
             .paint
@@ -508,14 +517,16 @@ impl PainterTool {
             .collect();
         let mut out = Vec::new();
         for (st, op) in &parked {
-            if let Some(bb) = self.shape_state_bbox(st) {
-                out.push(StrokeOpBadge {
-                    center: [(bb[0] + bb[2]) * 0.5, (bb[1] + bb[3]) * 0.5],
-                    bbox: bb,
-                    glyph: op.glyph(),
-                    active: false,
-                });
-            }
+            let Some(o) = self.shape_state_outline(st) else {
+                continue;
+            };
+            let Some(bb) = o.bbox() else { continue };
+            out.push(StrokeOpBadge {
+                center: [(bb[0] + bb[2]) * 0.5, (bb[1] + bb[3]) * 0.5],
+                outline: o.points,
+                closed: o.closed,
+                glyph: op.glyph(),
+            });
         }
         out
     }
@@ -540,7 +551,7 @@ impl PainterTool {
             return;
         }
         // A click on a PARKED shape re-activates it (its handle is then grabbed by the following `*_down`).
-        if let Some(i) = self.hit_parked_shape_bbox(pos, tol) {
+        if let Some(i) = self.hit_parked_shape(pos, tol) {
             self.activate_parked_shape(i);
             return;
         }
@@ -559,8 +570,18 @@ impl PainterTool {
             || self.line_hit_active(pos)
     }
 
-    /// Index of the topmost (last-drawn) parked shape whose padded AABB contains `pos`, or `None`.
-    fn hit_parked_shape_bbox(&self, pos: [f32; 2], tol: f32) -> Option<usize> {
+    /// Index of the topmost (last-drawn) parked shape that `pos` **alcança**, ou `None`.
+    ///
+    /// ⚠️ **Alcançar é encostar no que está DESENHADO**, não cair dentro de uma caixa. A versão anterior
+    /// perguntava `bbox_contains` — o INTERIOR da AABB —, e com quatro círculos grandes sobrepostos a
+    /// união das caixas cobre quase a tela: todo Down reativava uma figura parqueada e o gesto de
+    /// *começar outra* ficava inalcançável (Enio, 2026-08-07: *"se clicar dentro de uma forma já
+    /// desenhada, não aceita desenhar outra"*). Detalhe do mecanismo em [`super::stroke_outline`].
+    ///
+    /// São **duas** regiões, e as duas são coisas que o artista VÊ: o contorno e o quadrado central do
+    /// badge (com o glifo de Operation dentro dele). Um alvo desenhado que não responde é a metade
+    /// oposta do mesmo defeito.
+    fn hit_parked_shape(&self, pos: [f32; 2], tol: f32) -> Option<usize> {
         let states: Vec<crate::undo::ShapeEditState> = self
             .paint
             .parked_shapes
@@ -571,11 +592,26 @@ impl PainterTool {
             .iter()
             .enumerate()
             .rev()
-            .find(|(_, st)| {
-                self.shape_state_bbox(st)
-                    .is_some_and(|bb| bbox_contains(bb, pos, tol))
-            })
+            .find(|(_, st)| self.parked_shape_hit(st, pos, tol))
             .map(|(i, _)| i)
+    }
+
+    /// `true` quando `pos` encosta no contorno da figura ou no quadrado central dela. O raio do centro é
+    /// `tol * 2.0`, o MESMO que o `maybe_switch_or_new_shape` passa ao `on_active_centre_square` — o
+    /// quadrado da figura ativa e o da parqueada têm o mesmo tamanho na tela, então têm de ter o mesmo
+    /// alcance.
+    fn parked_shape_hit(&self, st: &crate::undo::ShapeEditState, pos: [f32; 2], tol: f32) -> bool {
+        let Some(o) = self.shape_state_outline(st) else {
+            return false;
+        };
+        if let Some(bb) = o.bbox() {
+            let c = [(bb[0] + bb[2]) * 0.5, (bb[1] + bb[3]) * 0.5];
+            let r = tol * 2.0;
+            if dist2(pos, c) <= r * r {
+                return true;
+            }
+        }
+        o.hit(pos, tol)
     }
 
     /// AABB over a shape's stamped dab centres (reuses [`Self::parked_shape_dabs`]).
@@ -610,11 +646,6 @@ impl PainterTool {
         }
         self.reseed_preview_base();
     }
-}
-
-/// `true` when `pos` lies inside `[minx,miny,maxx,maxy]` padded by `tol` on every side.
-fn bbox_contains(bb: [f32; 4], pos: [f32; 2], tol: f32) -> bool {
-    pos[0] >= bb[0] - tol && pos[0] <= bb[2] + tol && pos[1] >= bb[1] - tol && pos[1] <= bb[3] + tol
 }
 
 /// Minimum distance (px), regardless of grab tolerance, within which a click on a Curve counts as an

@@ -20,7 +20,15 @@ use super::*;
 
 use super::curve_geom;
 use super::curve_gizmo;
+
+// O snapshot que a shell LÊ mora num FILHO, não num irmão: ele lê os campos privados do
+// `CurveEditor` (`grab` / `freehand` / `anchor` / `draft_to`), e em Rust um módulo filho enxerga o
+// privado do ancestral — um irmão obrigaria a alargar quatro campos para `pub(super)` só por causa
+// do teto de LOC, que é mover o problema de lado em vez de cortá-lo.
+#[path = "curve_overlay.rs"]
+mod overlay;
 use super::curve_offset;
+pub use overlay::CurveOverlay;
 use ph2d_painter_brush::{Stroke, lazy_mouse_step};
 
 /// Most control points the Free Hand fit / Simplify aims for — the SPARSE direction.
@@ -71,6 +79,14 @@ pub(super) struct CurveEditor {
     stabilized: [f32; 2],
     /// The initial line's press point — the curve's first endpoint + the draw-phase pivot.
     anchor: [f32; 2],
+    /// Curve/Arc apenas: **onde a mão está** durante o arrasto da reta inicial. `None` até o 1º Move.
+    ///
+    /// ⚠️ O `curve_move` da fase de desenho pinta `[anchor, pos]` sem guardar `pos` em lugar nenhum — o
+    /// `model` fica com UM ponto até o Up. Enquanto a tinta aparecia sob a mão isso bastava; com o gesto
+    /// rascunhado (`super::shape_draft`) o overlay é a única coisa na tela, e sem este campo ele não teria
+    /// o que desenhar. Transiente: NÃO viaja no `CurveState` (um snapshot é sempre tirado com o gesto
+    /// fechado, e a fase de desenho termina no Up).
+    draft_to: Option<[f32; 2]>,
     /// Per-session jitter seed, fixed at begin so every re-fill of the same points is identical.
     seed: u64,
     /// `true` once the user inserted a point — gates Simplify for Curve / converted shapes (Free Hand: always).
@@ -84,23 +100,6 @@ impl CurveEditor {
     pub(super) fn is_drawing_freehand(&self) -> bool {
         self.freehand && !self.editing
     }
-}
-
-/// A read-only snapshot of the Curve editor for the shell's overlay (control dots + auto-smoothed spine).
-pub struct CurveOverlay {
-    /// Control points (image-space px) — drawn as draggable dots.
-    pub points: Vec<[f32; 2]>,
-    /// The selected point index (drawn highlighted), if any.
-    pub selected: Option<usize>,
-    /// The flattened spine (px) — the curve guide; matches the painted dabs exactly (same `flatten_spine`).
-    pub spine: Vec<[f32; 2]>,
-    /// The selected anchor's draggable Bézier **tangent handles**, or `None` when none selected / collapsed.
-    pub tangents: Option<TangentHandles>,
-    /// The selected anchor's **handle kind** wire `u8` (`0=Free 1=Aligned 2=Vector 3=Auto`), or `None` —
-    /// lets the shell mark the active menu item.
-    pub selected_kind: Option<u8>,
-    /// The whole-curve **transform gizmo** (bbox move / scale / rotate), or `None` when too small to frame.
-    pub transform_gizmo: Option<TransformGizmo>,
 }
 
 impl PainterTool {
@@ -132,6 +131,7 @@ impl PainterTool {
                 freehand: matches!(self.paint.brush.stroke_method, StrokeMethod::FreeHand),
                 stabilized: pos,
                 anchor: pos,
+                draft_to: None,
                 seed,
                 added_point: false,
             });
@@ -206,6 +206,7 @@ impl PainterTool {
                 return true;
             }
             // Curve draw: preview the straight line anchor→cursor as a 2-point curve (no trail).
+            ed.draft_to = Some(pos); // …e o gizmo desenha a MESMA reta (`draft_to`).
             let pts = [ed.anchor, pos];
             let seed = ed.seed;
             self.curve_fill(&pts, &[], false, seed);
@@ -417,6 +418,7 @@ impl PainterTool {
             freehand: true, // keep the explicit handles (drag translates them), like the Free Hand fit
             stabilized: anchor,
             anchor,
+            draft_to: None,
             seed,
             added_point: false,
         });
@@ -502,56 +504,6 @@ impl PainterTool {
         self.paint.stroke_undo = None;
         self.paint.shape_offset_base_px = 0.0;
         self.paint.shape_offset_norm = 0.5;
-    }
-
-    /// Snapshot the Curve editor for the shell overlay — `None` until editing (the chrome appears
-    /// once the 3 control points exist).
-    #[must_use]
-    pub fn curve_overlay(&self) -> Option<CurveOverlay> {
-        let ed = self.paint.curve.as_ref()?;
-        if !ed.editing {
-            return None;
-        }
-        // DRAWING-ONLY offset (Enio 2026-07-05, the Selection model): the whole EDITOR — control anchors,
-        // handles, gizmo AND the guide **line** (spine) — stays on the PRISTINE curve; ONLY the painted
-        // drawing (the black dabs, filled in `curve_fill`) is offset. So the artist edits the real curve and
-        // sees the offset result, with nothing in the editor moving or bunching (Enio 2026-07-05: "ponto e
-        // linha ficassem parados e apenas o desenho sofresse o offset").
-        let points = ed.model.points.clone();
-        let handles = ed.model.handles.clone();
-        let osel = ed.model.selected;
-        let mut spine = Vec::new();
-        curve_geom::flatten_spine(&points, &handles, ed.model.closed, &mut spine);
-        // Which tangent handle (if any) is being dragged — for the overlay accent colour.
-        let grabbed_handle = match ed.grab {
-            Some(CurveGrab::Tangent(i, is_out)) => Some((i, is_out)),
-            _ => None,
-        };
-        let tangents = osel.and_then(|s| {
-            curve_tangent::build_tangents(
-                &points,
-                &handles,
-                s,
-                grabbed_handle,
-                self.paint.shape_grab_tol_px,
-                ed.model.closed,
-            )
-        });
-        let selected_kind = ed.model.selected_kind_wire();
-        let (grabbed, rotating) = match &ed.gizmo {
-            Some(g) => (Some(g.handle), curve_gizmo::is_rotate(g)),
-            None => (None, false),
-        };
-        let transform_gizmo =
-            curve_gizmo::overlay(&points, self.paint.shape_grab_tol_px, grabbed, rotating);
-        Some(CurveOverlay {
-            points,
-            selected: osel,
-            spine,
-            tangents,
-            selected_kind,
-            transform_gizmo,
-        })
     }
 
     /// Set the selected point's **handle kind** from the right-click menu's wire `u8` (`0=Free 1=Aligned
@@ -681,6 +633,7 @@ impl CurveEditor {
             freehand: s.freehand,
             stabilized: s.stabilized,
             anchor: s.anchor,
+            draft_to: None, // transiente: um snapshot é sempre tirado com o gesto FECHADO
             seed: s.seed,
             added_point: s.added_point,
         }

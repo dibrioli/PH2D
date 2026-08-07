@@ -1,8 +1,14 @@
 //! Multi-shape **op badges** overlay (Enio 2026-07-04): for every stroke shape currently on canvas, draw
 //! its Operation type-square in the gizmo centre — the `+` (Add) / `−` (Remove) / `○` (Overlay) glyph — and,
-//! for each PARKED (inactive-but-editable) shape, a faint AABB frame so the user sees it is still a shape
+//! for each PARKED (inactive-but-editable) shape, o **CONTORNO** dela, so the user sees it is still a shape
 //! they can click to re-edit. Pure draw: reads `PainterTool::stroke_op_badges()` + camera, mutates nothing.
 //! Split from `painter_bridge_overlays` for the HR-18 file-LOC cap.
+//!
+//! ⚠️ **Era uma moldura AABB apagada**, e ela mentia sobre a figura de duas maneiras que só apareceram
+//! quando o gesto passou a rascunhar a tinta (Enio, 2026-08-07): quatro círculos viravam quatro
+//! retângulos, e o hit-test que a acompanhava aceitava o INTERIOR da caixa — *"se clicar dentro de uma
+//! forma já desenhada, não aceita desenhar outra"*. O contorno sai da mesma porta que o clique alcança
+//! (`stroke_outline`), então **o que se vê é o que se clica**.
 
 use ph2d_ecs::SimWorld;
 use ph2d_editor::HeroScreen;
@@ -45,10 +51,11 @@ pub(super) fn draw_op_badges(
         camera,
         window_size,
     );
-    use ph2d_vector::{Affine, BezPath, Brush, Color, Point, Stroke};
-    // Parked shapes have no live gizmo, so they get a faint AABB frame (so they read as still-selectable)
+    use ph2d_vector::{Affine, Point};
+    // Parked shapes have no live gizmo, so they get their OUTLINE (so they read as still-selectable)
     // + the SAME doubled centre square + op glyph the active gizmo draws (`center_glyph_handle`).
-    let frame_col = Color::new([1.0, 0.85, 0.15, 0.35]); // LITERAL-COLOR-OK: parked-shape frame
+    // Mesmo acento do gizmo ativo: toda figura na tela lê como igualmente presente, e o que distingue a
+    // que está sendo editada são as ALÇAS, que só ela tem.
     let pal = super::painter_bridge_gizmo::palette_accent(
         hero.theme,
         super::painter_bridge_gizmo::GIZMO_ACCENTS[0],
@@ -60,23 +67,14 @@ pub(super) fn draw_op_badges(
         let affine = base_affine * Affine::translate((ox, oy));
         let map = |p: [f32; 2]| affine * Point::new(f64::from(p[0]), f64::from(p[1]));
         for b in &badges {
-            let p0 = map([b.bbox[0], b.bbox[1]]);
-            let p1 = map([b.bbox[2], b.bbox[1]]);
-            let p2 = map([b.bbox[2], b.bbox[3]]);
-            let p3 = map([b.bbox[0], b.bbox[3]]);
-            let mut frame = BezPath::new();
-            frame.move_to(p0);
-            frame.line_to(p1);
-            frame.line_to(p2);
-            frame.line_to(p3);
-            frame.close_path();
-            scene.stroke(
-                &Stroke::new(1.0),
-                Affine::IDENTITY,
-                &Brush::Solid(frame_col),
-                None,
-                &frame,
-            );
+            if b.outline.len() >= 2 {
+                let pts: Vec<Point> = b.outline.iter().map(|&p| map(p)).collect();
+                if b.closed {
+                    super::painter_bridge_gizmo::stroke_box(scene, &pts, &pal);
+                } else {
+                    super::painter_bridge_gizmo::stroke_open(scene, &pts, &pal);
+                }
+            }
             super::painter_bridge_gizmo::center_glyph_handle(scene, map(b.center), &pal, b.glyph);
         }
     }

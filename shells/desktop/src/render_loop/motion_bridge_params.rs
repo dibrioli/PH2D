@@ -48,6 +48,19 @@ use params_edit::apply_param_edits;
 /// split must not move where callers name it.
 pub(crate) use params_edit::param_value;
 
+/// O número que um fio põe num param, para a SONDA de uma cena de smoke — a mesma porta
+/// que a row dirigida lê (`params_stream::driven_value`), nunca uma segunda avaliação: uma
+/// sonda que re-implementa a resolução fica CEGA à porta e passa a medir a si mesma.
+/// Irmã de `source_options_for_tests`: `#[cfg(test)]`, porque só uma sonda a chama.
+#[cfg(test)]
+pub(crate) fn driven_value_for_probe(
+    motion: &MotionState,
+    node: ph2d_nodegraph::graph::NodeId,
+    param: &str,
+) -> Option<(f32, ph2d_nodegraph::graph::NodeId)> {
+    params_stream::driven_value(motion, node, param)
+}
+
 /// The picker's option list, for the sibling gate that pins the reserved-namespace
 /// filter.  is private to this module; the gate lives with the other
 /// panel-row gates, which is where a reader looks for "what does the picker offer?".

@@ -120,8 +120,12 @@ impl PainterTool {
                     .copied()
                     .map(line_corner::CornerMod::from_wire)
                     .collect();
-                points =
-                    line_corner::expand(&l.points, l.closed, &mods, self.paint.shape_grab_tol_px);
+                points = line_corner::cooked_path(
+                    &l.points,
+                    l.closed,
+                    &mods,
+                    self.paint.shape_grab_tol_px,
+                );
                 l.closed
             }
         };

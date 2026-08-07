@@ -198,6 +198,26 @@ pub(super) fn expand(
     points: &[[f32; 2]],
     closed: bool,
     mods: &[CornerMod],
+    tol: f32,
+) -> Vec<[f32; 2]> {
+    let mut out = cooked_path(points, closed, mods, tol);
+    if closed && out.len() >= 3 {
+        out.push(out[0]);
+    }
+    out
+}
+
+/// O MESMO caminho cozido, **sem** o ponto de fecho repetido — a face que o CHROME consome (o contorno
+/// desenhado e o hit-test dele), cuja convenção é *quem fecha é o consumidor*
+/// ([`super::stroke_outline::ShapeOutline`]).
+///
+/// ⚠️ Um corpo, duas faces: [`expand`] é isto mais o fecho. Duas cópias divergiriam no dia em que uma
+/// quina nova entrasse só numa delas — e as duas descrevem a MESMA figura, uma para a tinta e outra para
+/// o desenho.
+pub(super) fn cooked_path(
+    points: &[[f32; 2]],
+    closed: bool,
+    mods: &[CornerMod],
     _tol: f32,
 ) -> Vec<[f32; 2]> {
     let n = points.len();
@@ -217,9 +237,6 @@ pub(super) fn expand(
             }
             _ => out.push(points[i]),
         }
-    }
-    if closed && out.len() >= 3 {
-        out.push(out[0]);
     }
     out
 }

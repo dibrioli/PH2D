@@ -73,8 +73,11 @@ pub(super) fn draw_line_overlay(
                         scene, gz, affine, &pal, cursor,
                     );
                 }
-                // Segments through the committed corner points (themed frame colour, open or closed).
-                let pts = &overlay.points;
+                // A linha COZIDA (themed frame colour, aberta ou fechada) — as quinas Fillet/Chamfer JÁ
+                // aplicadas, porque com o gesto rascunhado (`shape_draft`) o contorno é a única coisa na
+                // tela: desenhar a polilinha AFIADA deixaria o arredondamento invisível enquanto se
+                // arrasta a alça que o cria. As ALÇAS seguem em `points` (a quina afiada é onde se pega).
+                let pts = &overlay.outline;
                 if pts.len() >= 2 {
                     let sp: Vec<Point> = pts.iter().map(|&p| map(p)).collect();
                     if overlay.closed && pts.len() >= 3 {

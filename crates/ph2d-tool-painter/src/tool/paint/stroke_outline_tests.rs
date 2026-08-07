@@ -374,3 +374,110 @@ fn painted_texels(t: &crate::tool::PainterTool) -> usize {
         .filter(|(r, g)| **r != 255 || **g != 255)
         .count()
 }
+
+// ── A LINHA COZIDA: o Fillet/Chamfer aparece na PRÓPRIA linha ────────────────────────────────────
+//
+// Enio, 2026-08-07: *"Line tem em seu gizmo a possibilidade de criar Chamfer e Fillet. Contudo, agora
+// que não temos mais o preview da tinta, o preview do chamfer e do fillet precisa acontecer na própria
+// linha."* Com o gesto rascunhado (`shape_draft`) o contorno é a ÚNICA coisa na tela, e ele desenhava a
+// polilinha AFIADA — o arredondamento ficava invisível exatamente enquanto a alça que o cria é
+// arrastada.
+
+/// Uma polilinha de 3 pontos (UMA quina interior) com o Fillet daquela quina ARRASTADO pela alça — o
+/// caminho do artista, nunca `corner_mods` escrito à mão.
+fn line_with_a_filleted_corner() -> crate::tool::PainterTool {
+    let mut t = tool(512, PaintMedia::Digital, 10.0);
+    t.paint.brush.stroke_method = StrokeMethod::Line;
+    t.set_shape_grab_tol_px(8.0);
+    for p in [[120.0, 120.0], [360.0, 120.0], [360.0, 360.0]] {
+        t.on_canvas_pointer(cp(p, PointerPhase::Down));
+        t.on_canvas_pointer(cp(p, PointerPhase::Up));
+    }
+    assert!(t.line_finish_points(), "fim da criação → fase de edição");
+    let fh = t.line_overlay().expect("sessão viva").corner_gizmos[0].fillet_handle;
+    let target = [fh[0] + 60.0, fh[1]]; // arrastar para a DIREITA cresce o raio
+    t.on_canvas_pointer(cp(fh, PointerPhase::Down));
+    t.on_canvas_pointer(cp(target, PointerPhase::Move));
+    t.on_canvas_pointer(cp(target, PointerPhase::Up));
+    assert_eq!(
+        t.line_overlay().unwrap().corner_gizmos[0].active,
+        1,
+        "a quina está filetada"
+    );
+    t
+}
+
+/// A menor distância de `p` à polilinha `spine` (px).
+fn dist_to(spine: &[[f32; 2]], p: [f32; 2]) -> f32 {
+    super::stroke_router::min_dist2_to_polyline(p, spine)
+        .expect("a linha tem pontos")
+        .sqrt()
+}
+
+/// **O gate da wave:** com a quina filetada, o contorno que a shell desenha PASSA LONGE da quina
+/// afiada — ele é o arco, não o bico.
+///
+/// ⚠️ O oráculo é a **distância da quina AUTORADA ao contorno**, não `outline != points`: uma
+/// desigualdade de vetores fica verde para qualquer diferença, inclusive uma que o olho não vê.
+///
+/// **Mutação que deve sangrar:** `outline: ed.points.clone()` no `line_overlay` (o desenho de volta ao
+/// bico) ⇒ a distância volta a 0.
+#[test]
+fn the_line_gizmo_draws_the_cooked_corner_not_the_sharp_one() {
+    let t = line_with_a_filleted_corner();
+    let ov = t.line_overlay().expect("sessão viva");
+    let sharp = ov.points[1];
+    let d = dist_to(&ov.outline, sharp);
+    assert!(
+        d > 5.0,
+        "a quina afiada tem de ficar FORA do contorno cozido (dist {d:.2} px) — o gizmo está \
+         desenhando o bico, e o fillet fica invisível enquanto se arrasta a alça"
+    );
+    // …e a alça continua NA quina afiada: é onde se pega, e ela não pode migrar para o arco.
+    assert_eq!(
+        ov.points[1],
+        [360.0, 120.0],
+        "a fonte autorada não se move — o cozido é derivado dela (ADR-0121)"
+    );
+}
+
+/// **A lei do não-SALTO:** o contorno da figura VIVA e o da mesma figura PARQUEADA são a MESMA linha.
+///
+/// O `stroke_outline` já cozinhava a quina para a parqueada enquanto o overlay vivo desenhava o bico —
+/// então parquear uma linha filetada e reativá-la fazia a forma **saltar** na tela. As duas metades
+/// perguntam à mesma porta (`line_corner::cooked_path`) e por isso não podem mais divergir.
+///
+/// **Mutação que deve sangrar:** trocar o `cooked_path` de um dos dois lados por `expand` (que fecha o
+/// laço) ou pelos pontos crus.
+#[test]
+fn the_live_line_and_the_parked_line_are_the_same_outline() {
+    let t = line_with_a_filleted_corner();
+    let live = t.line_overlay().expect("sessão viva").outline;
+    let st = t.capture_shape().expect("a figura está em mãos");
+    let parked = t
+        .shape_state_outline(&st)
+        .expect("a mesma figura, vista como parqueada");
+    assert_eq!(
+        live, parked.points,
+        "o contorno vivo e o parqueado descrevem linhas diferentes — reativar a figura a faz SALTAR"
+    );
+}
+
+/// **O controle:** sem quina modificada o cozido é os pontos VERBATIM — uma polilinha comum não se
+/// move um pixel com esta wave.
+#[test]
+fn a_plain_polyline_cooks_to_itself() {
+    let mut t = tool(512, PaintMedia::Digital, 10.0);
+    t.paint.brush.stroke_method = StrokeMethod::Line;
+    t.set_shape_grab_tol_px(8.0);
+    for p in [[120.0, 120.0], [360.0, 120.0], [360.0, 360.0]] {
+        t.on_canvas_pointer(cp(p, PointerPhase::Down));
+        t.on_canvas_pointer(cp(p, PointerPhase::Up));
+    }
+    assert!(t.line_finish_points());
+    let ov = t.line_overlay().expect("sessão viva");
+    assert_eq!(
+        ov.outline, ov.points,
+        "sem Fillet/Chamfer o contorno É a polilinha autorada"
+    );
+}

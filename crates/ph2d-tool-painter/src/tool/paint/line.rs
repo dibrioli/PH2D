@@ -77,8 +77,21 @@ pub(super) struct LineEditor {
 /// A read-only snapshot of the Line editor for the shell's on-canvas overlay: the polyline vertices,
 /// whether it is closed / in the editing phase, and the selected corner.
 pub struct LineOverlay {
-    /// Committed corner points (image-space px).
+    /// Committed corner points (image-space px) — a FONTE AUTORADA: onde ficam as alças que se arrastam.
     pub points: Vec<[f32; 2]>,
+    /// A linha COZIDA — o caminho que a figura de fato tem, com as quinas **Fillet/Chamfer** aplicadas
+    /// ([`line_corner::expand`], a MESMA porta que o depósito e o hit-test já perguntam).
+    ///
+    /// ⚠️ **Não é `points`, e a distinção é o ponto:** a fonte guarda a quina AFIADA + o raio, o mundo
+    /// consome a cozida — o `inkscape:original-d` + `d` que o [ADR-0121] pinou no módulo de vetor. Sem
+    /// quina modificada os dois são **idênticos** (o `expand` devolve os pontos verbatim), então o
+    /// desenho de uma polilinha comum não se move um pixel.
+    ///
+    /// Segue a convenção do [`super::stroke_outline::ShapeOutline`]: **nunca** repete o primeiro ponto
+    /// no fim — quem fecha é o consumidor.
+    ///
+    /// [ADR-0121]: ../../../../../docs/architecture/decisions/0121-vector-live-corners-authored-source-cooked-geometry.md
+    pub outline: Vec<[f32; 2]>,
     /// `true` once the loop is closed (last point clicked on the first).
     pub closed: bool,
     /// `true` in the editing phase (point-creation ended) — the shell then draws draggable corner dots.
@@ -446,8 +459,19 @@ impl PainterTool {
         } else {
             None
         };
+        // A linha COZIDA — o que a shell DESENHA. Enio 2026-08-07: *"agora que não temos mais o preview
+        // da tinta, o preview do chamfer e do fillet precisa acontecer na própria linha"*. Sem quina
+        // modificada o `cooked_path` devolve os pontos verbatim ⇒ o desenho de uma polilinha comum é
+        // byte-idêntico ao de antes; a alça continua na quina AFIADA, que é onde se arrasta.
+        let outline = line_corner::cooked_path(
+            &ed.points,
+            ed.closed,
+            &ed.corner_mods,
+            self.paint.shape_grab_tol_px,
+        );
         Some(LineOverlay {
             points: ed.points.clone(),
+            outline,
             closed: ed.closed,
             editing: ed.editing,
             selected: ed.selected,

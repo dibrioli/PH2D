@@ -18,11 +18,11 @@
 //! 2. Scroll the brush panel to **Taper**, directly under the Falloff. Drag the **left handle** in.
 //!    → Strokes now open from a point. The head must reach full width smoothly, with no step.
 //! 3. Drag the **right handle** in (it comes from the right edge — dragging it left LENGTHENS the end
-//!    taper). Now paint again, watching the tip.
-//!    → ⚠️ **The ink must stay under the cursor. No lag, no catching up, no smoothing.** That is the
-//!    whole point of this step: an earlier cut of this feature held the tail back to learn where the
-//!    stroke would end, and it was rejected on sight. On a plain drag the far end is simply left at
-//!    full width — see step 6 for where the end taper IS live.
+//!    taper). Now paint again, watching the tip **while you drag** and then **at the moment you lift**.
+//!    → ⚠️ **While you drag, the ink must stay under the cursor: no lag, no catching up, no smoothing.**
+//!    An earlier cut held the tail back to learn where the stroke would end and was rejected on sight.
+//!    → **The tail narrows the instant you lift.** The stroke is put back and laid again, tapered — one
+//!    stroke, one undo step. Press Ctrl+Z once and the whole thing goes.
 //! 4. **Tip** (sharp ↔ blunt) and **Opacity** (how much the taper fades as well as narrows). Untick
 //!    **Link tip sizes** to give the two ends different points — the end tip is seeded from the start's,
 //!    so nothing jumps at the instant you untick it.
@@ -42,11 +42,12 @@
 //!   the arbitrary point the fill happened to start at, and a circle with a notch in it is a defect.
 //! - **A stroke shorter than the two windows is a lens**, thinner throughout, never a vanishing act —
 //!   the two ends combine by `min`, not by product.
-//! - **A plain drag tapers its HEAD and not its tail** (steps 3 and 6). A stroke you are still making
-//!   has one end so far. Tapering the other one means either withholding dabs — the delay that was
-//!   rejected — or re-stamping the tail from a restored base every batch, which is a stroke buffer: it
-//!   has to restore four planes plus the per-stroke coverage buffer, and the Wet Paint fluid cannot be
-//!   rewound at all. That is a wave with its own acceptance, not a line inside this one.
+//! - **A plain drag's tail narrows at LIFT, not while you draw** (step 3). While the stroke is open its
+//!   far end has not happened yet; withholding dabs to find out is the delay that was rejected, so the
+//!   ink is laid full width and the last window is re-laid at pen-up.
+//! - **Watercolor and Wet Paint keep a blunt tail on a plain drag, deliberately.** The wash rebuilds
+//!   itself from its own accumulators and the fluid cannot be rewound, so putting their pixels back
+//!   would not put their STATE back. Their shape editors (step 6) still taper both ends.
 
 use ph2d_asset::{AssetDb, AssetId};
 use ph2d_core::Vec2;
@@ -92,8 +93,8 @@ pub(crate) fn spawn_if_enabled(
                  PH2D_TAPER_SMOKE: 1) paint one stroke: it must look exactly as it always has  \
                  2) brush panel -> TAPER (under the Falloff): drag the LEFT handle in — strokes open \
                  from a point  \
-                 3) drag the RIGHT handle in, then paint: THE INK MUST STAY UNDER THE CURSOR (no lag, \
-                 no smoothing) -- a plain drag tapers its HEAD, never its tail  \
+                 3) drag the RIGHT handle in, then paint: THE INK MUST STAY UNDER THE CURSOR while you \
+                 drag (no lag, no smoothing), and THE TAIL NARROWS WHEN YOU LIFT -- one undo step  \
                  4) Tip (sharp<->blunt), Opacity, and untick 'Link tip sizes' for two different points  \
                  5) switch the Paint Mode through all FOUR media — the taper must survive every switch \
                  and still be there when you come back  \

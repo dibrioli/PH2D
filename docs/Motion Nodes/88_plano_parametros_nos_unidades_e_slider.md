@@ -286,7 +286,7 @@ coisas diferentes, e o censo não sabe distingui-las — quem distingue é a ref
 | Família | Estado MEDIDO | Veredito |
 |---|---|---|
 | **TRANSFORM** (`move` · `rotate` · `scale` · `transform` · `mirror` · `orbit`) | `scale` escrevia uma coluna **Vec2** a partir de **um** número; `mirror` pregava a linha no **centroide** | ✅ **FECHADA** (2026-08-08) — o 2º eixo e o `Axis Offset`, smoke `PH2D_TRANSFORM_SMOKE=1` |
-| **ECHO** (`motion.trail`) | 3 params (`length`/`fade`/`shrink`) contra os 8 da referência | **ABERTA** — faltam `spacing` (um fantasma a cada N ticks) e `hue_shift` (a cauda colorida que o próprio caso de uso do catálogo nomeia). ⚠️ `spacing` precisa de um contador de ticks, e o nó é sequencial: mede-se primeiro onde o contador mora |
+| **ECHO** (`motion.trail`) | 3 params contra os 8 da referência | ✅ **FECHADA** (2026-08-08) — o `spacing`, smoke `PH2D_ECHO_SMOKE=1`. ⚠️ **Não custou estado novo**: a coluna `trail_age` já sabia há quantos ticks o último eco foi deixado, então a promoção é uma pergunta ao ESTADO, não a um contador. Segue aberto o `hue_shift`, **com o motivo** (abaixo) |
 | **DEFORMERS** (`bend` · `twist` · `spherize` · `four_point_warp` · `lattice` · `kaleidoscope` · `slit_scan`) | `spherize` 1 · `slit_scan` 1 · o resto 3-8 | **ABERTA, a medir** — os dois magros podem ser magros por natureza |
 | **VALUE** (24 nós) | quase todos 1-2 params | ⛔ **RECUSADA COM MOTIVO** — um `value.unary` é *um verbo sobre um número*; um param a mais ali é cerimônia, e a §12 (domínio de valor) desenhou essa família justamente para ser pequena e componível |
 | **ESTRUTURAIS** (`util.reroute*` · `motion.combine` · `integrate` · `output` · `luminance` · `make_point` · `morph` · `sim.zone` · `value.switch` · `pulse.sample_hold`) | 0 params | ⛔ **RECUSADA** — zero params é o contrato deles, não uma lacuna |
@@ -310,6 +310,23 @@ Invisible), e a leitura ingênua é *"faltam sete params"*. **Ela está errada**
 (N formas × M pontos = N·M cópias) e a referência tem `Auto Id` (cicla) / `Shape Id`
 (fixa). Com 3 formas e 100 pontos, *"cem pontos, cada um recebendo uma das três formas"*
 **não é exprimível hoje**. Isso é semântica de contagem, não um knob: ⇒ **wave própria**.
+
+### ⚠️ O `hueShift` do rastro NÃO entrou, e o motivo não é preguiça
+
+Ele é **barato como aritmética e caro como DECISÃO**. Girar matiz em RGB linear com uma
+matriz YIQ é o atalho que todo motor de partícula usa — e que este app **não usa em lugar
+nenhum**: a cor aqui passa por **OKLCH** (`ph2d-color`, o picker, o editor de gradiente, a
+paleta). Um segundo modelo de matiz dentro de um nó de rastro seria uma segunda resposta a
+*"o que é girar uma cor"*, e ela divergiria no único lugar onde ninguém lê um número — uma
+screenshot. Quando entrar, entra pela porta que já existe.
+
+### ⚠️ E o gate do SMOKE achou o que a suíte do nó não via
+
+Com a janela de idade ingênua (`length × spacing`) o `length` passava a significar **duas
+coisas**: LINHAS em espaçamento 1 e linhas + 1 acima dele. A janela correta é
+`(length − 1) × spacing + 1`, e o que a pina é a **igualdade de CONTAGEM** entre as duas
+esteiras da cena — a cadência muda, o número de cópias não. *Uma cena que compara dois
+ajustes lado a lado mede o que uma suíte de nó, que olha um ajuste por vez, não alcança.*
 
 ### A lei desta varredura, em uma linha
 

@@ -34,7 +34,7 @@ use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 mod gpu;
 use gpu::GPU_KERNEL;
 mod params_ui;
-use params_ui::{PARAM_GATES, PARAM_GROUPS, PARAM_HINTS, PARAM_UNITS};
+use params_ui::{PARAM_GATES, PARAM_GROUPS, PARAM_HARD_MAX, PARAM_HINTS, PARAM_UNITS};
 mod channel;
 use channel::{apply_channel_delta, falloff_at};
 use ph2d_nodegraph::attr::par_build;
@@ -236,6 +236,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
     reg.register_param_gates(MANIFEST.id, PARAM_GATES);
     reg.register_param_groups(MANIFEST.id, PARAM_GROUPS);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);

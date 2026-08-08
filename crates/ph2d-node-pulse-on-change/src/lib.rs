@@ -140,17 +140,34 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
     Ok(())
 }
 
-use ph2d_node_registry::{ParamUiHint, ParamWidget};
+use ph2d_node_registry::{ParamHardMax, ParamUiHint, ParamWidget};
+
+/// O teto DIGITÁVEL. Um dead-band de `1.0` continua exprimível — só não é mais o que
+/// o slider percorre, porque **quem quer um dead-band grande não quer este nó**: o
+/// doc-header já divide o trabalho (*"`pulse.compare` dispara num CRUZAMENTO de
+/// limiar; `on_change` dispara quando o valor MUDA"*), e o `epsilon` daqui existe para
+/// ignorar *dither* de float.
+static PARAM_HARD_MAX: &[ParamHardMax] = &[ParamHardMax {
+    param: "epsilon",
+    max: 1.0,
+}];
 
 static PARAM_HINTS: &[ParamUiHint] = &[ParamUiHint {
     param: "epsilon",
     label: "Epsilon",
     min: 0.0,
-    max: 1.0,
-    step: 0.001,
+    // O curso da MÃO: com o teto em `1.0` um pixel do track (~154 px) valia
+    // `0,0065` — **seis vezes e meia o default de 0,001** —, então a guarda de
+    // dither que este param É não podia ser afinada com o dedo. `1.0` segue
+    // digitável (`PARAM_HARD_MAX`).
+    max: 0.01,
+    // O passo acompanha o curso: mantê-lo em `0,001` deixaria o slider com DEZ
+    // degraus — trocar um curso ilegível por um seletor grosseiro não é conserto.
+    step: 0.0001,
     widget: ParamWidget::Slider,
 }];
 

@@ -3,14 +3,28 @@
 //! (`ph2d-node-motion-emitter/src/params_ui.rs`): none of this is behaviour, so the
 //! node computes exactly the same result whatever a slider looks like.
 
-use ph2d_node_registry::{ParamUiHint, ParamUnit, ParamUnitDecl, ParamWidget};
+use ph2d_node_registry::{ParamHardMax, ParamUiHint, ParamUnit, ParamUnitDecl, ParamWidget};
+
+/// O teto que a MÁQUINA (ou o bom senso) impõe, alcançável por DIGITAÇÃO — o slider fica
+/// onde a MÃO trabalha (soft/hard do Blender; doc 88 §11). O curso de antes é este número:
+/// nada ficou inalcançável, só deixou de ser o que o dedo percorre.
+pub(crate) static PARAM_HARD_MAX: &[ParamHardMax] = &[
+    ParamHardMax {
+        param: "rows",
+        max: 512.0,
+    },
+    ParamHardMax {
+        param: "cols",
+        max: 512.0,
+    },
+];
 
 pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "rows",
         label: "Rows",
         min: 2.0,
-        max: 512.0,
+        max: 64.0,
         step: 1.0,
         widget: ParamWidget::Slider,
     },
@@ -18,7 +32,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         param: "cols",
         label: "Cols",
         min: 2.0,
-        max: 512.0,
+        max: 64.0,
         step: 1.0,
         widget: ParamWidget::Slider,
     },

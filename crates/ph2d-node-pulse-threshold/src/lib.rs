@@ -201,10 +201,25 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
     Ok(())
 }
 
-use ph2d_node_registry::{ParamUiHint, ParamWidget};
+use ph2d_node_registry::{ParamHardMax, ParamUiHint, ParamWidget};
+
+/// O teto que a MÁQUINA (ou o bom senso) impõe, alcançável por DIGITAÇÃO — o slider fica
+/// onde a MÃO trabalha (soft/hard do Blender; doc 88 §11). O curso de antes é este número:
+/// nada ficou inalcançável, só deixou de ser o que o dedo percorre.
+static PARAM_HARD_MAX: &[ParamHardMax] = &[
+    ParamHardMax {
+        param: "rise",
+        max: 10.0,
+    },
+    ParamHardMax {
+        param: "fall",
+        max: 10.0,
+    },
+];
 
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
@@ -221,7 +236,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         param: "rise",
         label: "Rise",
         min: -10.0,
-        max: 10.0,
+        max: 5.0,
         step: 0.05,
         widget: ParamWidget::Slider,
     },
@@ -229,7 +244,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         param: "fall",
         label: "Fall",
         min: -10.0,
-        max: 10.0,
+        max: 3.0,
         step: 0.05,
         widget: ParamWidget::Slider,
     },

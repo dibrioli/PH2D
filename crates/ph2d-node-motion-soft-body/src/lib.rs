@@ -51,7 +51,7 @@ use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, Param
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
 mod params_ui;
-use params_ui::{PARAM_HINTS, PARAM_UNITS};
+use params_ui::{PARAM_HARD_MAX, PARAM_HINTS, PARAM_UNITS};
 mod shape;
 use shape::{rest_shape, shape_goals};
 
@@ -323,6 +323,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     Ok(())
 }
@@ -520,11 +521,17 @@ mod tests {
 #[cfg(test)]
 mod cap_gates {
     use super::shape::{rest_shape, shape_goals};
-    use super::{MAX_SIDE, PARAM_HINTS};
+    use super::{MAX_SIDE, PARAM_HARD_MAX, PARAM_HINTS};
 
-    /// The slider and the clamp are TWO copies of one number on opposite sides
-    /// of the file — a hint that says 40 over a clamp that says 512 is a
-    /// control whose top third does nothing, and nothing else would notice.
+    /// **A CAPACIDADE tem de ser alcançável, e o SLIDER tem de ser arrastável** — duas
+    /// perguntas, e este gate afirmava as duas com um número só.
+    ///
+    /// A preocupação original está inteira e continua gateada: *um controle que para em 40
+    /// sobre um clamp de 512 tem o terço de cima morto, e nada mais notaria*. O que mudou é
+    /// **de que lado do par soft/hard essa igualdade mora**: com o slider preso ao clamp, um
+    /// track de ~154 px movia **3,3 linhas por pixel** sobre um default de 4 — o `MAX_SIDE`
+    /// era alcançável e o DEFAULT não (doc 88 §11). Agora o teto DIGITÁVEL é o clamp (nada
+    /// se perdeu) e o curso do dedo é uma faixa de autoria estritamente abaixo dele.
     #[test]
     fn the_mesh_sliders_reach_exactly_the_clamp() {
         for param in ["rows", "cols"] {
@@ -532,9 +539,20 @@ mod cap_gates {
                 .iter()
                 .find(|h| h.param == param)
                 .unwrap_or_else(|| panic!("{param} has a hint"));
+            let hard = PARAM_HARD_MAX
+                .iter()
+                .find(|h| h.param == param)
+                .unwrap_or_else(|| panic!("{param} has a hard max"));
             assert_eq!(
-                hint.max, MAX_SIDE as f32,
-                "the {param} slider must reach the clamp, and stop there"
+                hard.max, MAX_SIDE as f32,
+                "o teto digitavel de {param} tem de alcancar o clamp, e parar nele"
+            );
+            assert!(
+                hint.max < hard.max,
+                "o slider de {param} e a FAIXA DE AUTORIA, nao o teto: \
+                 soft {} deveria ficar abaixo do hard {}",
+                hint.max,
+                hard.max
             );
         }
     }

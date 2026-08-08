@@ -158,17 +158,27 @@ use ph2d_node_registry::{ParamHardMax, ParamUiHint, ParamWidget};
 ///
 /// ⚠️ Freio ERGONÔMICO por eixo: as instâncias são `count × rings`, e um cap sobre um fator não
 /// exprime um limite sobre o produto (o precedente do `rate` do emitter).
-pub(crate) static PARAM_HARD_MAX: &[ParamHardMax] = &[ParamHardMax {
-    param: "count",
-    max: 1_000_000.0,
-}];
+pub(crate) static PARAM_HARD_MAX: &[ParamHardMax] = &[
+    ParamHardMax {
+        param: "count",
+        max: 2000.0,
+    },
+    ParamHardMax {
+        param: "inner",
+        max: 20.0,
+    },
+    ParamHardMax {
+        param: "count",
+        max: 1_000_000.0,
+    },
+];
 
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "count",
         label: "Count",
         min: 1.0,
-        max: 2000.0,
+        max: 600.0,
         step: 1.0,
         widget: ParamWidget::Slider,
     },
@@ -192,7 +202,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         param: "inner",
         label: "Inner",
         min: 0.0,
-        max: 20.0,
+        max: 6.0,
         step: 0.05,
         widget: ParamWidget::Slider,
     },

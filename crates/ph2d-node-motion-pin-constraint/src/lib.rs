@@ -309,7 +309,13 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         param: "count",
         label: "Count",
         min: 0.0,
-        max: 4096.0,
+        // ⚠️ **Um IntSlider cujo curso passa da largura do track não consegue
+        // selecionar todo inteiro.** O track mede ~154 px, então os 4.096 de
+        // antes moviam **27 pins por pixel**: pinar 2, 3 ou 5 era inexprimível
+        // com a mão, num nó cujo default é **1**. O teto de recurso não mudou —
+        // ele está no `PARAM_HARD_MAX` acima (um milhão, medido plano), e é lá
+        // que quem pina uma grade inteira digita.
+        max: 128.0,
         step: 1.0,
         widget: ParamWidget::Slider,
     },

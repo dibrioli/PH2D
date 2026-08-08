@@ -164,10 +164,16 @@ use ph2d_node_registry::{ParamGroup, ParamHardMax, ParamUiHint, ParamWidget};
 /// Um milhão de pontos custa **59% de um quadro de 60 fps** — caro, e ainda assim 500× o que o
 /// slider alcança. É o dobro do custo dos irmãos lineares (grade, fibonacci, radial) na mesma
 /// contagem, porque cada ponto paga uma avaliação de curva.
-static PARAM_HARD_MAX: &[ParamHardMax] = &[ParamHardMax {
-    param: "count",
-    max: 1_000_000.0,
-}];
+static PARAM_HARD_MAX: &[ParamHardMax] = &[
+    ParamHardMax {
+        param: "count",
+        max: 2000.0,
+    },
+    ParamHardMax {
+        param: "count",
+        max: 1_000_000.0,
+    },
+];
 
 /// As SEÇÕES deste nó (doc 88 B3). O mesmo corte do `motion.spline_wrap`, e com o mesmo nome
 /// de propósito: as oito coordenadas são o polígono de controle de uma cúbica nos dois nós, e
@@ -188,7 +194,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         param: "count",
         label: "Count",
         min: 1.0,
-        max: 2000.0,
+        max: 320.0,
         step: 1.0,
         widget: ParamWidget::Slider,
     },

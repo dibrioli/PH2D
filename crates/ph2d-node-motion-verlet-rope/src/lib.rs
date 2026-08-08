@@ -342,10 +342,16 @@ use ph2d_node_registry::{ParamHardMax, ParamUiHint, ParamWidget};
 ///
 /// Cem mil já passa de um quadro de 60 fps; cinquenta mil fica em ~60% dele — 250× o que o slider
 /// alcança. O teto é onde a medição parou de caber.
-static PARAM_HARD_MAX: &[ParamHardMax] = &[ParamHardMax {
-    param: "count",
-    max: 50_000.0,
-}];
+static PARAM_HARD_MAX: &[ParamHardMax] = &[
+    ParamHardMax {
+        param: "damping",
+        max: 0.5,
+    },
+    ParamHardMax {
+        param: "count",
+        max: 50_000.0,
+    },
+];
 
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
@@ -384,7 +390,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         param: "damping",
         label: "Damping",
         min: 0.0,
-        max: 0.5,
+        max: 0.2,
         step: 0.01,
         widget: ParamWidget::Slider,
     },

@@ -74,10 +74,22 @@ pub(crate) static PARAM_HARD_MIN: &[ParamHardMin] = &[ParamHardMin {
 /// which is why this one is an ergonomic stop and not a safety one. The fix is
 /// exact ids (wrapped indices, or a `u32`/`f64` id column) — a change to the
 /// stream data model, not to this table.
-pub(crate) static PARAM_HARD_MAX: &[ParamHardMax] = &[ParamHardMax {
-    param: "rate",
-    max: 4_000_000.0,
-}];
+pub(crate) static PARAM_HARD_MAX: &[ParamHardMax] = &[
+    ParamHardMax {
+        param: "rate",
+        max: 4_000_000.0,
+    },
+    // ⚠️ **DERIVED, never re-typed** — this entry and `MAX_ALIVE` answer the same
+    // question ("how many particles may be alive?"), and when the constant went
+    // 4096 → 16384 the literal that used to live in the *slider* stayed behind and
+    // silently became the real ceiling the artist could reach
+    // ([[feedback_two_doors_to_the_same_question_diverge]]). The derivation did not
+    // go away with the soft/hard split; it moved to the field that means *ceiling*.
+    ParamHardMax {
+        param: "max",
+        max: MAX_ALIVE as f32,
+    },
+];
 
 /// Param UI hints (M1.P1).
 pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
@@ -85,10 +97,15 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         param: "rate",
         label: "Rate",
         min: 0.0,
-        // The SLIDER's range: 12.000/s is a dense fountain at a 1 s life, and the
-        // whole authoring range lives below it. Typing reaches much further —
-        // see `PARAM_HARD_MAX`.
-        max: 12_000.0,
+        // ⚠️ The old comment here read *"12.000/s is a dense fountain at a 1 s
+        // life"* — and `life` defaults to **3 s**, where 12.000/s means 36.000
+        // alive: seventy times the `max` default of 512. **The two sliders were
+        // describing different scenes.** They now describe the same one: a `rate`
+        // dragged to its ceiling at the default life (1.200 × 3 = 3.600) fits
+        // inside a `max` dragged to its ceiling (4.096). The one-frame BURST the
+        // old comment gestured at is precisely what the hard max at 4.000.000
+        // serves — you type it.
+        max: 1_200.0,
         step: 1.0,
         widget: ParamWidget::Slider,
     },
@@ -152,12 +169,14 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         param: "max",
         label: "Max Particles",
         min: 1.0,
-        // DERIVED, never re-typed: this row and `MAX_ALIVE` answer the same
-        // question ("how many particles may be alive?"), and when the constant
-        // went 4096 → 16384 this literal stayed behind and silently became the
-        // real ceiling the artist could reach
-        // ([[feedback_two_doors_to_the_same_question_diverge]]).
-        max: MAX_ALIVE as f32,
+        // The SLIDER's range — where a HAND works, not where the machine stops.
+        // `MAX_ALIVE` is still the ceiling and is still DERIVED (never re-typed);
+        // it just moved to `PARAM_HARD_MAX`, where a ceiling belongs. Dragging to
+        // 4.194.304 was never authoring: at a 154 px track one pixel moved 27.000
+        // particles, so the default of 512 sat in the first fiftieth of a pixel
+        // and could not be expressed at all — the resource ruler had become the
+        // artist's ruler (CLAUDE.md §0, mirrored into the UI).
+        max: 4_096.0,
         step: 1.0,
         widget: ParamWidget::IntSlider,
     },

@@ -4,8 +4,16 @@
 //! node computes exactly the same result whatever a slider looks like.
 
 use ph2d_node_registry::{
-    ParamGate, ParamGroup, ParamUiHint, ParamUnit, ParamUnitDecl, ParamWidget,
+    ParamGate, ParamGroup, ParamHardMax, ParamUiHint, ParamUnit, ParamUnitDecl, ParamWidget,
 };
+
+/// O teto que a MÁQUINA (ou o bom senso) impõe, alcançável por DIGITAÇÃO — o slider fica
+/// onde a MÃO trabalha (soft/hard do Blender; doc 88 §11). O curso de antes é este número:
+/// nada ficou inalcançável, só deixou de ser o que o dedo percorre.
+pub(crate) static PARAM_HARD_MAX: &[ParamHardMax] = &[ParamHardMax {
+    param: "phase_stagger",
+    max: 2.0,
+}];
 
 /// Param UI hints (M1.P1). `channel` / `wave` are **named** selectors (segmented
 /// buttons) — never number sliders. The enum option index IS the param value
@@ -53,7 +61,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         param: "phase_stagger",
         label: "Stagger",
         min: 0.0,
-        max: 2.0,
+        max: 1.0,
         step: 0.02,
         widget: ParamWidget::Slider,
     },

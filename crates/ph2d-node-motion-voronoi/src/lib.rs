@@ -274,6 +274,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     // GPU/M5 (ADR-0139): PASSTHROUGH claims the node for the plan; the
     // algorithm side channel tells the sequencer what to actually run.
@@ -282,14 +283,29 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     Ok(())
 }
 
-use ph2d_node_registry::{ParamUiHint, ParamWidget};
+use ph2d_node_registry::{ParamHardMax, ParamUiHint, ParamWidget};
+
+/// O teto que a MÁQUINA impõe, alcançável por DIGITAÇÃO — o slider fica onde a mão
+/// trabalha (Blender soft/hard). **Derivado de `MAX_POINTS`, nunca re-digitado:** é o
+/// mesmo número que o `eval` usa para capar o `param_as_count`, e as duas respostas à
+/// pergunta *"quantas células cabem?"* têm de sair da mesma constante.
+static PARAM_HARD_MAX: &[ParamHardMax] = &[ParamHardMax {
+    param: "count",
+    max: MAX_POINTS as f32,
+}];
 
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "count",
         label: "Count",
         min: 1.0,
-        max: 165_000.0,
+        // O curso do SLIDER, não o teto da máquina: a 165.000 um pixel do track
+        // (~154 px) valia **1.070 células**, onde o default são 96 — o default
+        // caía dentro do primeiro décimo de pixel. `MAX_POINTS` continua sendo o
+        // teto e agora mora no `PARAM_HARD_MAX`, **derivado da constante** (o
+        // literal daqui já era a mesma armadilha de divergência que o
+        // `motion.emitter.max` pagou uma vez).
+        max: 1_024.0,
         step: 1.0,
         widget: ParamWidget::Slider,
     },

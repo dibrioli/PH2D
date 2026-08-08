@@ -28,7 +28,15 @@
 //! nothing else; the curve's own revision rides in the cook's fingerprint, so editing the shape
 //! re-cooks this node and *only* the nodes downstream of it.
 
-use ph2d_node_registry::{NodeRegistry, ParamUiHint, ParamWidget, RegistryError};
+use ph2d_node_registry::{NodeRegistry, ParamHardMax, ParamUiHint, ParamWidget, RegistryError};
+
+/// O teto que a MÁQUINA (ou o bom senso) impõe, alcançável por DIGITAÇÃO — o slider fica
+/// onde a MÃO trabalha (soft/hard do Blender; doc 88 §11). O curso de antes é este número:
+/// nada ficou inalcançável, só deixou de ser o que o dedo percorre.
+static PARAM_HARD_MAX: &[ParamHardMax] = &[ParamHardMax {
+    param: "count",
+    max: 500.0,
+}];
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
@@ -160,6 +168,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
     Ok(())
 }
 
@@ -180,7 +189,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         param: "count",
         label: "Count",
         min: 1.0,
-        max: 500.0,
+        max: 240.0,
         step: 1.0,
         widget: ParamWidget::IntSlider,
     },

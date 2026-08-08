@@ -9211,7 +9211,28 @@ ADR** · **zero `Cargo.toml`** · contrato congelado intacto.
 
 ---
 
-## W-KinMove — O SEGUNDO MODO (2026-08-08, cena `=101`, **pendente de smoke**)
+## W-KinMove — O SEGUNDO MODO (2026-08-08, cena `=101`, **RE-SMOKE pendente**)
+
+> ⚠️ **O 1º smoke REPROVOU, e os dois reports tinham causas DIFERENTES**
+> (2026-08-08). Detalhe medido no plano 07 §6 (`W-KinMove`); em uma linha cada:
+>
+> - *"o ciano está com uma mola extremamente exagerada, um pula-pula"* — **a
+>   CENA**, não o produto: ela nascia com o `spring_damping` de FIXTURE (¼ do
+>   teto) **e** com o personagem a `0,334 m` da rampa quando a perna dele
+>   repousa a `0,900`. As três condições juntas dão **5913 mm** de quique; cada
+>   uma sozinha dá **0,0 mm**. A cena passou a rodar no default, com cada um
+>   nascido na própria altura de repouso.
+> - *"o laranja ao pousar se aproxima da rampa … na direção da normal"* — **a
+>   LEI**, e a seta dele é o mecanismo: o freio da caminhada cancela a
+>   componente TANGENCIAL da queda, e o que sobra de uma queda vertical sem a
+>   tangente **é a normal**. Cura de ORDEM (a ponte absorve antes de a lei ler);
+>   desvio no pouso `−0,071 → −0,044 m`, dinâmico byte-intocado, resíduo do
+>   tique de contato NOMEADO.
+>
+> ⚠️ **E a §0 do plano ganhou a coluna que lhe faltava:** no default que shipa o
+> cinemático afunda **~4,5 cm** onde o dinâmico afunda **zero**. O modo troca
+> pele por independência de afinação — e essa é a frase honesta.
+
 
 O player de plataforma ganhou o modo **cinemático**: a pose é escrita, e o mundo
 só diz **quanto coube**. Plano: [`07_plano_player_kinematico.md`](07_plano_player_kinematico.md)

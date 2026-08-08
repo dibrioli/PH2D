@@ -480,6 +480,23 @@ pub(crate) struct App {
     /// the same frame and hands each to a consumer (v1: a toast). Runtime-only — a
     /// signal is a per-frame event, never persisted.
     pub(crate) timeline_signals: crate::render_loop::timeline_bridge::SignalEmitter,
+    /// **A saída ÚNICA de sinais** (ADR-0143 + ADR-0075) — o lugar onde a timeline e a física
+    /// se encontram. Os dois produtores publicam aqui, cada um no seu sítio do quadro (a
+    /// ORDEM é load-bearing), e os consumidores leem depois, cada um com o próprio cursor.
+    ///
+    /// ⚠️ **Antes disto o consumidor era um toast escrito à mão DUAS vezes**, uma ao lado de
+    /// cada produtor: dois lugares que decidiam o que um sinal faz, e nenhum lugar onde um
+    /// terceiro consumidor (som, Luau, UI) pudesse entrar sem virar a terceira cópia.
+    pub(crate) signals: ph2d_runtime::SignalOutbox,
+    /// O cursor do consumidor de TOAST — a prova visível de que o canal fecha a volta.
+    pub(crate) signal_toast_reader: ph2d_runtime::SignalReader,
+    /// O cursor do consumidor de DIAGNÓSTICO (`PH2D_SIGNAL_LOG=1`), `None` sem a env var.
+    ///
+    /// ⚠️ Ele existe por dois motivos, e o segundo é o que importa: um sinal que ninguém vê é
+    /// indistinguível de um sinal que não aconteceu (a lição que esta casa pagou quatro vezes
+    /// com instrumento mudo), e **dois cursores lendo a MESMA saída é a propriedade que o
+    /// desenho promete** — com um consumidor só ela nunca seria exercida no produto.
+    pub(crate) signal_log_reader: Option<ph2d_runtime::SignalReader>,
     /// Set by the `K` key: on the next frame, insert a keyframe at the playhead
     /// on every track bound to the selected sprite (capturing its current pose).
     pub(crate) timeline_insert_key: bool,

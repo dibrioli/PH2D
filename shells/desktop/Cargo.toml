@@ -26,6 +26,11 @@ ph2d-paint-gpu = { path = "../../crates/ph2d-paint-gpu" }
 # GPU/M5 Fase 1 (ADR-0126): GPU-resident node cook (PH2D_GPU_COOK=1).
 ph2d-gpu-cook = { path = "../../crates/ph2d-gpu-cook" }
 ph2d-ecs = { path = "../../crates/ph2d-ecs" }
+# A saida de SINAIS (ADR-0143 + ADR-0075). Crate-folha, sem uma unica dependencia:
+# a timeline e a fisica publicam nela, e cada consumidor le com o proprio cursor.
+# A shell e' o lugar onde as duas fontes se encontram -- e isso ja estava escrito
+# no doc do produtor da fisica (`bridge/signals.rs`), nao e' escolha desta linha.
+ph2d-runtime = { path = "../../crates/ph2d-runtime" }
 ph2d-physics-ecs = { path = "../../crates/ph2d-physics-ecs" }
 # The world-settings panel (ADR-0131 D8 / W2b). The shell drains its intents
 # in `render_loop::physics_panel_bridge`.

@@ -1744,6 +1744,13 @@ impl crate::App {
                 }
             }
         }
+        // **O quadro da saída de sinais vira AQUI — antes do primeiro produtor.**
+        //
+        // ⚠️ A posição é load-bearing e tem gate (`the_shell_turns_the_signal_frame_before_it
+        // _publishes`): virar o quadro no MEIO aposentaria sinais que consumidores deste mesmo
+        // quadro ainda não leram, e virar duas vezes cortaria pela metade a janela de graça de
+        // um quadro que existe para um consumidor futuro que rode CEDO demais.
+        self.signals.advance_frame();
         // General timeline (W1): drain pending panel/K intents into the app-general
         // document, then apply it to the scene. Three clocks, one chosen per view:
         // Keys drives the CLIP playhead (solo the clip); inside a container the
@@ -1785,12 +1792,15 @@ impl crate::App {
             self.last_timeline_container = None;
             ph2d_panel_timeline::state::reset_trail();
         }
-        // Hand each signal the SCENE play crossed this frame to a consumer (ADR-0143).
-        // v1 consumer: a toast — the visible proof the decoupled channel round-trips.
-        // Audio/gameplay/Luau are the deferred cross-line consumers of the SAME outbox;
-        // the timeline emits an event and never calls any of them (ADR-0075).
+        // **PRODUTOR 1 — a timeline PUBLICA os sinais que o play cruzou** (ADR-0143).
+        //
+        // Ela não escolhe consumidor, e é essa a mudança: antes daqui saía um toast escrito à
+        // mão, gêmeo de outro a oitenta linhas abaixo, ao lado do produtor da física — dois
+        // lugares decidindo o que um sinal FAZ. Agora os dois publicam na MESMA saída e quem
+        // escuta se serve depois, cada um com o seu cursor (ADR-0075: o produtor não chama).
         for sig in self.timeline_signals.out.drain(..) {
-            toasts.push(ph2d_editor::Toast::info(format!("Signal: {}", sig.name)));
+            self.signals
+                .publish(ph2d_runtime::Signal::from_timeline(&sig.name, sig.t));
         }
         // The playhead has now moved: a transport jump queued last frame can
         // finally ask the panel to pan to it (the snapshot below carries the
@@ -1873,7 +1883,40 @@ impl crate::App {
         // ANTERIOR. Um atraso de um quadro é invisível num toast e deixa de ser
         // invisível no dia em que o consumidor for som.
         for sig in physics.signal_events(sim) {
+            self.signals.publish(ph2d_runtime::Signal::from_contact(
+                &sig.name,
+                sig.source.to_bits(),
+                sig.other.to_bits(),
+            ));
+        }
+        // **O DRENO — o único lugar do app onde um sinal encontra quem escuta.**
+        //
+        // Ele roda DEPOIS dos dois produtores, e é por isso que a entrega é no MESMO quadro:
+        // um atraso de um quadro é invisível num toast e deixa de ser invisível no dia em que
+        // o consumidor for SOM. (A saída ainda guarda o quadro anterior, então um consumidor
+        // futuro que rode cedo demais recebe atrasado em vez de nunca — a rede, não a licença.)
+        //
+        // ⚠️ **Cada consumidor tem cursor próprio e lê a saída com `&self`**, então ele segura
+        // `&mut` no PRÓPRIO estado enquanto lê — é isso que um barramento de handlers boxeados
+        // não permite, e provavelmente por que o `ph2d-script::messaging` tem zero consumidores
+        // desde que nasceu.
+        for sig in self.signals.read(&mut self.signal_toast_reader) {
             toasts.push(Toast::info(format!("Signal: {}", sig.name)));
+        }
+        if let Some(reader) = self.signal_log_reader.as_mut() {
+            for sig in self.signals.read(reader) {
+                match sig.origin {
+                    ph2d_runtime::SignalOrigin::Timeline { t } => {
+                        eprintln!("[signal] {} <- timeline @ {t:.3}s", sig.name);
+                    }
+                    ph2d_runtime::SignalOrigin::Contact { source, other } => {
+                        eprintln!(
+                            "[signal] {} <- fisica, {} tocou {}",
+                            sig.name, source.0, other.0
+                        );
+                    }
+                }
+            }
         }
         sim_extract::run(
             dt,

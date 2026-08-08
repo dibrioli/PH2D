@@ -1,0 +1,28 @@
+[package]
+name = "ph2d-runtime"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# **O núcleo de eventos do runtime — e ele é uma FOLHA, sem uma única dependência.**
+#
+# Um sinal (ADR-0143) tem um produtor que não chama ninguém e N consumidores que não se
+# conhecem: o áudio, o Luau, a UI, um toast, um log. Se o tipo que eles compartilham morasse
+# numa crate pesada, cada consumidor pagaria o peso dela para ler um NOME — e o candidato
+# óbvio, `ph2d-script`, arrasta uma VM Luau (`mlua`) mais o `bevy_ecs`. O mixer de áudio
+# linkando um interpretador para saber que uma porta abriu é exatamente a fronteira que o
+# `no_ml_runtime_reaches_the_mixer` e o `no_codec_reaches_the_mixer` já defendem no outro lado
+# da casa.
+#
+# Por isso a lista abaixo está VAZIA de propósito, e a contenção é **estrutural, não
+# disciplinar**: `tests/the_event_core_is_a_leaf.rs` lê este arquivo. Uma dep aqui é vermelha
+# antes de alguém a usar.
+#
+# ⚠️ É também por isso que a origem de um contato carrega `u64` cru em vez de
+# `ph2d_ecs::Entity` — ver `EntityBits`, que nomeia o preço.
+[dependencies]

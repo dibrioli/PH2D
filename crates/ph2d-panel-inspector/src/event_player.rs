@@ -22,6 +22,16 @@ pub(crate) fn apply_player_event(host: &mut dyn PanelHostInternal, ev: WidgetEve
         return false;
     };
     let edit = match ev {
+        WidgetEvent::Click(id) if ids::INSP_PLAYER_MODE_IDS.contains(&id) => {
+            // ⚠️ O índice VIRA o tag pela porta única do `PlayerMode` — nunca um
+            // `match` local, que é o que faz um chip selecionar outra coisa no
+            // dia em que a terceira opção existir.
+            let i = ids::INSP_PLAYER_MODE_IDS
+                .iter()
+                .position(|&o| o == id)
+                .unwrap_or(0);
+            Some(PlayerFieldEdit::Mode(i as u8))
+        }
         WidgetEvent::Click(id) if id == ids::INSP_PLAYER_ADD => Some(PlayerFieldEdit::Add),
         WidgetEvent::Click(id) if id == ids::INSP_PLAYER_REMOVE => Some(PlayerFieldEdit::Remove),
         WidgetEvent::Click(id) if id == ids::INSP_PLAYER_FIT => {

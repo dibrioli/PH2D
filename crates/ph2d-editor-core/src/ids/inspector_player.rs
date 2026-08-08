@@ -62,6 +62,26 @@ pub const INSP_PLAYER_CLEAR_RUN: NodeId = hash_node_id("insp_player_clear_run");
 /// **Devolve a corrida DESCARTADA** (W24) — o desfazer do botão acima.
 pub const INSP_PLAYER_RESTORE_RUN: NodeId = hash_node_id("insp.player.restore.run");
 
+/// **COMO ele é movido** — o chip `Dynamic | Kinematic` (W-KinMove).
+///
+/// ⚠️ **Um gesto, DOIS campos.** Clicar aqui escreve o `PlayerMode` **e** o
+/// `RigidBody.kind`, porque um player cinemático precisa de um corpo cinemático
+/// e pedir ao artista que ponha o corpo em Kinematic noutra seção seria a falha
+/// de duas-portas que este módulo já pagou. O `PlayerMode` continua a ser o
+/// discriminador (um player ASSADO também tem corpo cinemático, e a cena é dona
+/// da pose dele) — ver `ph2d_physics_ecs::PlayerMode`.
+///
+/// ⚠️ **Ele mora na §14 e não na §11**, e a distinção não é arrumação: a §11
+/// responde *"que corpo é este?"* para QUALQUER objeto; esta pergunta só existe
+/// para um personagem, e a resposta dela cresce (o *"puro sangue"* é o terceiro).
+pub const INSP_PLAYER_MODE: NodeId = hash_node_id("insp_player_mode");
+/// As duas opções do chip. ⚠️ **Uma fatia, nunca um par** — a `W-KinPure` traz a
+/// terceira, e acrescentá-la tem de ser uma linha na tabela, não uma reescrita.
+pub const INSP_PLAYER_MODE_IDS: [NodeId; 2] = [
+    hash_node_id("insp_player_mode_dynamic"),
+    hash_node_id("insp_player_mode_kinematic"),
+];
+
 /// **A altura a que o personagem PAIRA**, metros, medida do centro do corpo.
 pub const INSP_PLAYER_FLOAT: NodeId = hash_node_id("insp_player_float");
 /// **Fit to Collider** — semeia a altura de flutuação a partir da forma.

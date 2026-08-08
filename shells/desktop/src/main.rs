@@ -257,6 +257,7 @@ mod physics_smoke_joint_pair;
 mod physics_smoke_joint_pose;
 mod physics_smoke_joint_rig;
 mod physics_smoke_joint_slider;
+mod physics_smoke_kinematic;
 mod physics_smoke_lead;
 mod physics_smoke_part;
 mod physics_smoke_player;

@@ -209,6 +209,18 @@ pub(super) fn populate_wheel(store: &mut WidgetStore) {
 /// resposta a *"com que números um player nasce?"*, e ela divergiria no dia em
 /// que a varredura da wave movesse um deles.
 pub(super) fn populate_player(store: &mut WidgetStore) {
+    // ⚠️ **O grupo do chip, registrado como os quinze da §11** — sem isto os dois
+    // botões nascem pintados, no hit-index, e MORTOS sob o mouse (a cicatriz das
+    // 36 células do W2c).
+    register_button_ids(store, &ids::INSP_PLAYER_MODE_IDS);
+    store.set_tooltip(
+        ids::INSP_PLAYER_MODE_IDS[0],
+        "The floating capsule: impulses, a spring leg, the solver owns the pose.",
+    );
+    store.set_tooltip(
+        ids::INSP_PLAYER_MODE_IDS[1],
+        "The controller: the pose is written, the world only says how much fit.",
+    );
     register_button_ids(
         store,
         &[

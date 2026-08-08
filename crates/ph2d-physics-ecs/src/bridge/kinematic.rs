@@ -78,8 +78,20 @@ impl PhysicsBridge {
             // ⚠️ **E um player CINEMÁTICO não é dirigido pela cena** (W-KinMove):
             // a pose dele é escrita pela lei, e apontá-lo para o `Transform` aqui
             // seria o segundo escritor que o doc do `solver_owns_pose` já
-            // proibia — o personagem voltaria, todo tique, para onde o `readback`
-            // do tique anterior o deixou. Ver `bridge::pose_owner`.
+            // proibia. Ver `bridge::pose_owner`.
+            //
+            // ⚠️ **DEFESA EM CAMADA, e hoje ela é inerte — MEDIDO, não suposto.**
+            // A mutação que apaga este `continue` **não sangra nenhum gate**, e o
+            // mecanismo é a ORDEM: este passe corre ANTES do `drive_players` no
+            // laço de tiques devidos, então a mira do player pousa por último e
+            // vence. A camada de fora é o ordenamento; esta é a que sobrevive a
+            // ele mudar — e o modo de falha do dia em que ele mudar é o
+            // personagem **congelado na pose do tique anterior**, com o solver a
+            // concordar e nada na tela a dizer por quê.
+            //
+            // Fica escrito aqui em vez de virar um arch-gate sobre a ordem porque
+            // *"quem corre antes de quem"* é exatamente a enumeração que apodrece
+            // (o precedente do early-out do `drag::apply` e do `any` do effector).
             if !super::pose_owner::pose_owner(world, e, b.kind).driven_by_scene() {
                 continue;
             }

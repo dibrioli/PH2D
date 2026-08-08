@@ -16,7 +16,7 @@
 //! argumento variável). Dobrá-los num laço apagaria a cobertura de paridade dos
 //! botões em silêncio — a cicatriz que a §11 já carrega escrita.
 
-use super::rows::{card_frame, num_row};
+use super::rows::{card_frame, num_row, seg_row};
 use super::*;
 use ph2d_editor_core::screens::hero::InspectorPlayerInfo;
 
@@ -365,6 +365,25 @@ pub(crate) fn paint_player_section(
         hit_index.register(ids::INSP_PLAYER_ADD, rect);
         return yy + h + Spacing::Sm.px();
     }
+
+    // **COMO ele é movido** (W-KinMove) — a primeira coisa da seção, porque toda
+    // row abaixo dela é interpretada por este modo (a `LEG` inteira é a mola, e
+    // sob Snap não há mola).
+    yy = seg_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        yy,
+        "Body",
+        ids::INSP_PLAYER_MODE,
+        &ids::INSP_PLAYER_MODE_IDS,
+        &["Dynamic", "Kinematic"],
+        info.mode_tag,
+    );
 
     for (title, _card_id, rows) in PLAYER_CARDS {
         let (ix, iw, mut ry, next_y) =

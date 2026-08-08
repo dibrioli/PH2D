@@ -372,3 +372,64 @@ fn the_two_modes_rest_at_different_heights() {
         "a capsula pousa sobre o chao, mais a pele: y = {k:.3}, contato {contact:.3}"
     );
 }
+
+/// **SONDA — os números que a cena `=101` afirma.**
+///
+/// ⚠️ Ela roda ANTES de a mensagem do smoke ser escrita: a política do módulo é
+/// que toda cena traz números MEDIDOS, e nesta jornada duas cenas já afirmaram
+/// coisas que a medição desmentiu.
+#[test]
+#[ignore = "sonda de medição"]
+fn probe_the_numbers_scene_101_claims() {
+    let d = 0.25 * RideConfig::MAX_DAMPING;
+    println!("\n=== CENA 101, os numeros ===");
+    println!(
+        "deriva de rampa (30deg, 10 s):  din {:.4}  kin {:.4}",
+        ramp_creep(false, d),
+        ramp_creep(true, d)
+    );
+    println!(
+        "repouso no plano:               din {:.3}  kin {:.3}",
+        {
+            let (mut sim, mut bridge, _) = platform::scene(0.0, 0.0);
+            for t in 1..=180u64 {
+                bridge.dispatch(&mut sim, true, t);
+            }
+            pose(&sim).1
+        },
+        {
+            let (mut sim, mut bridge, who) = platform::scene(0.0, 0.0);
+            make_kinematic(&mut sim, who);
+            for t in 1..=180u64 {
+                bridge.dispatch(&mut sim, true, t);
+            }
+            pose(&sim).1
+        }
+    );
+    let walk = |kin: bool| -> f32 {
+        let (mut sim, mut bridge, who) = platform::scene(0.0, 0.0);
+        if kin {
+            make_kinematic(&mut sim, who);
+        }
+        for t in 1..=60u64 {
+            bridge.dispatch(&mut sim, true, t);
+        }
+        let x0 = pose(&sim).0;
+        bridge.set_player_input(
+            who,
+            PlayerInput {
+                drive: 1.0,
+                ..PlayerInput::default()
+            },
+        );
+        for t in 61..=180u64 {
+            bridge.dispatch(&mut sim, true, t);
+        }
+        pose(&sim).0 - x0
+    };
+    let (wd, wk) = (walk(false), walk(true));
+    println!(
+        "caminhada em 2 s:               din {wd:.3}  kin {wk:.3}  ({:.1}%)",
+        (wd - wk).abs() / wd * 100.0
+    );
+}

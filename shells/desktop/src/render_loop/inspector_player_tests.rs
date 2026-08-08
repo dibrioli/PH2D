@@ -303,3 +303,56 @@ fn the_player_section_is_no_home_for_a_document_wide_run() {
          a corrida"
     );
 }
+
+/// **O gesto do MODO leva a algum lugar, e VOLTA** (W-KinMove).
+///
+/// ⚠️ **As duas metades, e a segunda é a que quase shipou quebrada:** o
+/// `build_player_info` recusava todo corpo que não fosse `Dynamic`, então clicar
+/// `Kinematic` fazia a §14 inteira **DESAPARECER** — o artista escolhia o modo e
+/// perdia o controle que o traria de volta. Um gate que só testasse a ida ficaria
+/// verde sobre isso.
+#[test]
+fn switching_the_mode_writes_both_halves_and_the_section_survives_the_trip() {
+    use ph2d_physics_ecs::PlayerMode;
+    let (mut sim, bits) = body(BodyKind::Dynamic, CAPSULE);
+    apply_player_edit(&mut sim, bits, PlayerFieldEdit::Add);
+
+    // Ida: o componente E o corpo.
+    apply_player_edit(&mut sim, bits, PlayerFieldEdit::Mode(1));
+    let e = ph2d_ecs::Entity::from_bits(bits);
+    assert_eq!(
+        sim.world().get::<PlayerMode>(e).copied(),
+        Some(PlayerMode::Kinematic),
+        "o modo tem de ser escrito"
+    );
+    assert_eq!(
+        sim.world().get::<RigidBody>(e).map(|b| b.kind),
+        Some(BodyKind::Kinematic),
+        "e o CORPO junto: pedir os dois em duas secoes e' a falha de duas-portas"
+    );
+    let info = build_player_info(&sim, bits, 0.0, 0.0)
+        .expect("a §14 tem de continuar VIVA num player cinematico");
+    assert_eq!(info.mode_tag, 1, "e o chip tem de mostrar onde ele esta");
+
+    // Volta: e o componente sai no neutro (o detach do `GravityScale`).
+    apply_player_edit(&mut sim, bits, PlayerFieldEdit::Mode(0));
+    assert_eq!(
+        sim.world().get::<PlayerMode>(e).copied(),
+        None,
+        "no neutro o componente sai: um arquivo nao carrega um no-op"
+    );
+    assert_eq!(
+        sim.world().get::<RigidBody>(e).map(|b| b.kind),
+        Some(BodyKind::Dynamic)
+    );
+    assert_eq!(build_player_info(&sim, bits, 0.0, 0.0).unwrap().mode_tag, 0);
+}
+
+/// **Um corpo cinemático que NÃO é player continua fora da §14** — ele é dirigido
+/// pela cena (um bake, uma curva), e oferecer *"Make Platform Player"* ali criaria
+/// um player que a ponte não dirige.
+#[test]
+fn a_scene_driven_kinematic_body_is_not_offered_the_section() {
+    let (sim, bits) = body(BodyKind::Kinematic, CAPSULE);
+    assert!(build_player_info(&sim, bits, 0.0, 0.0).is_none());
+}

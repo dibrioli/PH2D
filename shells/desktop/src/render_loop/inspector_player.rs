@@ -8,7 +8,8 @@
 use ph2d_ecs::{Entity, SimWorld};
 use ph2d_editor::{InspectorPlayerInfo, PlayerFieldEdit};
 use ph2d_physics_ecs::{
-    BodyKind, Collider, ColliderShape, PlatformPlayer, RideConfig, RigidBody, WalkConfig,
+    BodyKind, Collider, ColliderShape, PlatformPlayer, PlayerMode, RideConfig, RigidBody,
+    WalkConfig,
 };
 
 /// A altura de flutuação MÍNIMA que a forma deste corpo exige, se ela tiver uma.
@@ -54,17 +55,23 @@ pub(crate) fn build_player_info(
 ) -> Option<InspectorPlayerInfo> {
     let entity = Entity::from_bits(entity_bits);
     let body = sim.world().get::<RigidBody>(entity)?;
-    if body.kind != BodyKind::Dynamic {
-        return None;
-    }
     let shape = sim.world().get::<Collider>(entity).map(|c| c.shape);
     let player = sim.world().get::<PlatformPlayer>(entity).copied();
     let has_player = player.is_some();
+    if !player_section_applies(body.kind, has_player) {
+        return None;
+    }
     let p = player.unwrap_or_default();
     let min = shape.and_then(|s| min_float_for(s, p.max_slope_deg));
     Some(InspectorPlayerInfo {
         entity_bits,
         has_player,
+        mode_tag: sim
+            .world()
+            .get::<PlayerMode>(entity)
+            .copied()
+            .unwrap_or_default()
+            .tag(),
         float_height: p.float_height,
         min_float_height: min.unwrap_or(0.0),
         min_float_known: min.is_some(),
@@ -104,6 +111,24 @@ pub(crate) fn build_player_info(
     })
 }
 
+/// **A §14 vale para este corpo?** — a porta ÚNICA, e ela tem DOIS consumidores.
+///
+/// O `build_player_info` a pergunta para OFERECER a seção; o `apply_player_edit`
+/// a pergunta para HONRAR um clique. ⚠️ **Duas cópias divergiram e o preço foi
+/// medido:** a versão anterior era `kind == Dynamic`, escrita duas vezes, e sob
+/// o modo cinemático da `W-KinMove` isso significa que clicar `Kinematic` fazia
+/// a seção DESAPARECER — e, pior, o clique de volta era recusado pela outra
+/// cópia. O artista escolhia o modo e ficava preso nele, sem controle nenhum na
+/// tela a dizer por quê.
+///
+/// ⚠️ **`Dynamic`, ou um player que JÁ é cinemático.** Um corpo cinemático SEM o
+/// componente continua fora, e por física: ele é dirigido pela CENA (um bake,
+/// uma curva), e criar um player ali daria um personagem que a ponte não dirige
+/// (o `pose_owner` responderia `Scene`).
+fn player_section_applies(kind: BodyKind, has_player: bool) -> bool {
+    kind == BodyKind::Dynamic || (kind == BodyKind::Kinematic && has_player)
+}
+
 /// Uma `float_height` que de fato FLUTUA sobre esta forma.
 ///
 /// O mínimo mais uma folga de 20% — um valor exatamente no piso deixa a cápsula
@@ -116,9 +141,11 @@ fn fitted_float(shape: Option<ColliderShape>, max_slope_deg: f32) -> Option<f32>
 /// **Aplica uma edição da §14.** Sem fan-out — a seção descreve UM personagem.
 pub(crate) fn apply_player_edit(sim: &mut SimWorld, entity_bits: u64, edit: PlayerFieldEdit) {
     let entity = Entity::from_bits(entity_bits);
-    if sim.world().get::<RigidBody>(entity).map(|b| b.kind) != Some(BodyKind::Dynamic) {
-        // A ponte recusaria em silêncio; recusar AQUI é o que torna a regra
-        // uma só (o pintor não oferece, e o barramento não honra).
+    let kind = sim.world().get::<RigidBody>(entity).map(|b| b.kind);
+    let has_player = sim.world().get::<PlatformPlayer>(entity).is_some();
+    // A MESMA porta que decide se a seção é pintada — o pintor não oferece e o
+    // barramento não honra a partir de uma resposta só.
+    if !kind.is_some_and(|k| player_section_applies(k, has_player)) {
         return;
     }
     let shape = sim.world().get::<Collider>(entity).map(|c| c.shape);
@@ -140,6 +167,34 @@ pub(crate) fn apply_player_edit(sim: &mut SimWorld, entity_bits: u64, edit: Play
                 p.float_height = p.float_height.max(fit);
             }
             sim.world_mut().entity_mut(entity).insert(p);
+            return;
+        }
+        // ⚠️ **UM gesto, DOIS campos** — ver `ids::INSP_PLAYER_MODE`. O
+        // `PlayerMode` decide a LEI e quem escreve a pose; o `RigidBody.kind`
+        // decide o que o corpo É no rapier. Pedir os dois ao artista, em duas
+        // seções, é a falha de duas-portas; e derivar o kind do componente
+        // desfaria o BAKE (que põe `Kinematic` num player que a CENA dirige).
+        PlayerFieldEdit::Mode(tag) => {
+            let Some(mode) = PlayerMode::from_tag(tag) else {
+                // Tag que este build não conhece: o clique é IGNORADO, nunca
+                // dobrado num modo qualquer (a lição do `BodyKind::tag`).
+                return;
+            };
+            let mut e = sim.world_mut().entity_mut(entity);
+            if mode == PlayerMode::default() {
+                // **Detach no neutro** — o idioma do `GravityScale`: um arquivo
+                // não carrega um no-op.
+                e.remove::<PlayerMode>();
+            } else {
+                e.insert(mode);
+            }
+            if let Some(mut rb) = e.get_mut::<RigidBody>() {
+                rb.kind = if mode.drives_itself() {
+                    BodyKind::Kinematic
+                } else {
+                    BodyKind::Dynamic
+                };
+            }
             return;
         }
         PlayerFieldEdit::Remove => {
@@ -167,6 +222,7 @@ pub(crate) fn apply_player_edit(sim: &mut SimWorld, entity_bits: u64, edit: Play
         | PlayerFieldEdit::Remove
         | PlayerFieldEdit::ClearRun
         | PlayerFieldEdit::RestoreRun => {}
+        PlayerFieldEdit::Mode(_) => {}
         PlayerFieldEdit::FitFloatHeight => {
             if let Some(fit) = fitted_float(shape, p.max_slope_deg) {
                 p.float_height = fit;

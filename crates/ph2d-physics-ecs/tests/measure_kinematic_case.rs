@@ -52,7 +52,10 @@ fn measure_the_ramp_creep_today() {
     println!("\n=== DERIVA DE RAMPA (parado 10 s, corpo DINAMICO) ===");
     println!("{:<34} {:>10}", "amortecimento", "viajou (m)");
     for (label, d) in [
-        ("o DEFAULT que shipa", RideConfig::STARTING_POINT.spring_damping),
+        (
+            "o DEFAULT que shipa",
+            RideConfig::STARTING_POINT.spring_damping,
+        ),
         ("o teto", ceiling),
         ("meio curso", 0.5 * ceiling),
         ("um quarto", 0.25 * ceiling),

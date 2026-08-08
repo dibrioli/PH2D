@@ -40,6 +40,7 @@ fn player() -> InspectorPlayerInfo {
         // ajuste é oferecido no rótulo curto. Uma fixture que chegasse abaixo do
         // piso deixaria o gate do aviso verde pelo motivo errado.
         min_float_height: 0.58,
+        mode_tag: 0,
         min_float_known: true,
         cling_distance: 0.25,
         spring_strength: 400.0,
@@ -389,6 +390,7 @@ fn the_fit_and_remove_buttons_reach_the_bus() {
 #[test]
 fn a_shape_without_a_known_floor_gets_no_fit_button() {
     let boxed = InspectorPlayerInfo {
+        mode_tag: 0,
         min_float_known: false,
         ..player()
     };
@@ -658,6 +660,7 @@ fn the_crouch_fit_button_appears_only_when_the_crouch_is_armed() {
     let buried = InspectorPlayerInfo {
         crouch_height: 0.30,
         min_float_height: 0.58,
+        mode_tag: 0,
         min_float_known: true,
         ..player()
     };
@@ -671,6 +674,7 @@ fn the_crouch_fit_button_appears_only_when_the_crouch_is_armed() {
     let fine = InspectorPlayerInfo {
         crouch_height: 0.80,
         min_float_height: 0.58,
+        mode_tag: 0,
         min_float_known: true,
         ..player()
     };
@@ -692,6 +696,7 @@ fn the_crouch_fit_button_appears_only_when_the_crouch_is_armed() {
 fn a_shape_without_a_known_floor_gets_no_crouch_fit_either() {
     let boxed = InspectorPlayerInfo {
         crouch_height: 0.30,
+        mode_tag: 0,
         min_float_known: false,
         ..player()
     };
@@ -772,4 +777,48 @@ fn discarding_a_run_can_be_undone_and_the_two_buttons_never_coexist() {
         !has(runs(4.0, 4.0), ids::INSP_PLAYER_RESTORE_RUN),
         "e devolver nao pode ser oferecido por cima de uma corrida viva"
     );
+}
+
+/// **O chip do MODO é pintado, vivo sob o mouse, e cada opção levanta o SEU
+/// tag** (W-KinMove).
+///
+/// ⚠️ **`click_real`, e é a razão de este arquivo existir:** o `seg_row` registra
+/// as opções num LAÇO, que é o ponto cego do `architecture_panel_wiring_parity`
+/// (ele coleta `.register(ids::<LITERAL>`). Sem esta varredura, tirar o grupo do
+/// `populate` deixa os dois chips pintados, hit-registrados e MORTOS, com a
+/// suíte inteira verde — o buraco das 36 células do W2c.
+#[test]
+fn the_mode_chip_is_alive_and_each_option_raises_its_own_tag() {
+    for (i, &id) in ids::INSP_PLAYER_MODE_IDS.iter().enumerate() {
+        let acts = click_real(player(), id);
+        assert!(
+            acts.iter().any(|a| matches!(
+                a,
+                EditorAction::InspectorPlayerEdit { edit: PlayerFieldEdit::Mode(t), .. }
+                    if *t == i as u8
+            )),
+            "a opcao {i} do chip de modo tem de levantar Mode({i}): {acts:?}"
+        );
+    }
+}
+
+/// **E ele é oferecido em TODO modo** — inclusive já cinemático, que é o caminho
+/// de volta.
+///
+/// ⚠️ Sem esta metade, um artista que escolhe `Kinematic` fica sem o controle que
+/// o traria de volta: a quarta condição de UI (*a sequência leva a algum lugar*)
+/// falha de um lado só, e um gate que só testa a ida não a vê.
+#[test]
+fn the_mode_chip_is_painted_in_both_modes() {
+    for tag in [0u8, 1] {
+        let mut info = player();
+        info.mode_tag = tag;
+        let rects = painted(info);
+        for &id in &ids::INSP_PLAYER_MODE_IDS {
+            assert!(
+                rects.iter().any(|(n, _)| *n == id),
+                "com mode_tag {tag} o chip {id:?} tem de estar na tela"
+            );
+        }
+    }
 }

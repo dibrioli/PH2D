@@ -20,6 +20,14 @@ pub struct InspectorPlayerInfo {
     /// Esta entidade carrega `PlatformPlayer` agora?
     pub has_player: bool,
 
+    /// **Como este player é MOVIDO** — o tag do `PlayerMode` (0 = Dynamic).
+    ///
+    /// ⚠️ Um `u8` e não um enum, porque é a fronteira da UI: o mapeamento
+    /// tag↔variante é feito UMA vez, no `PlayerMode::tag`/`from_tag`, e um
+    /// segundo `match` aqui é o que faz um chip selecionar outra coisa no dia em
+    /// que a terceira opção existir (a cicatriz do `BodyKind::tag`).
+    pub mode_tag: u8,
+
     /// A altura a que ele paira, metros (do centro do corpo para baixo).
     pub float_height: f32,
     /// A altura MÍNIMA que a forma deste corpo exige para de fato flutuar —
@@ -145,6 +153,10 @@ pub enum PlayerFieldEdit {
     /// uma gravação), então sem isto o único caminho de volta era reabrir o
     /// arquivo.
     RestoreRun,
+
+    /// **Troca o modo** (W-KinMove) — escreve o `PlayerMode` E o `RigidBody.kind`
+    /// por UMA porta; ver `ids::INSP_PLAYER_MODE`.
+    Mode(u8),
 
     FloatHeight(f32),
     ClingDistance(f32),

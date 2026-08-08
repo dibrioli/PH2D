@@ -4772,8 +4772,13 @@ impl crate::App {
                     self.ui_preview
                         .leave(ui_machines, sim, vec_scene, &self.vec_entities);
                 } else if pending_ui_preview_toggle {
-                    self.ui_preview
-                        .enter(ui_states, sim, vec_scene, &self.vec_entities);
+                    self.ui_preview.enter(
+                        ui_machines,
+                        ui_states,
+                        sim,
+                        vec_scene,
+                        &self.vec_entities,
+                    );
                 }
             }
             // ⚠️ O relógio é o do FRAME — os ticks que o `FixedStep` de facto entregou, e não um

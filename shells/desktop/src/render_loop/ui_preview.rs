@@ -75,9 +75,10 @@ impl UiPreview {
     /// sobre uma cena sem poses é um modo que não faz nada, e o artista não teria como o saber.
     pub(crate) fn enter(
         &mut self,
+        machines: &mut UiMachines,
         states: &StateSets,
-        sim: &SimWorld,
-        scene: &VecScene,
+        sim: &mut SimWorld,
+        scene: &mut VecScene,
         map: &VecEntityMap,
     ) -> bool {
         if self.on || states.is_empty() {
@@ -90,6 +91,37 @@ impl UiPreview {
         self.on = true;
         self.hot.clear();
         self.pressed = false;
+
+        // ⭐ **A cena abre em REPOUSO.** Entrar na preview põe cada hospedeiro no `Default`.
+        //
+        // ⚠️ Sem isto ela abria no que o MUNDO tivesse — que é o que o artista deixou depois da
+        // última gravação, quase sempre a pose de `Hover`. A UI parecia já estar a ser tocada
+        // antes de o rato chegar perto, e o primeiro gesto **saía** de um estado em vez de entrar
+        // nele.
+        //
+        // ⚠️ **A captura vem ANTES, e a ordem é a lei da wave:** o que `leave` devolve é o MUNDO
+        // que ela encontrou, nunca o `Default` — a tentação barata (*"ao sair, vá para o
+        // Default"*) **moveria o desenho** de quem gravou o Default e depois mexeu na forma.
+        //
+        // ⚠️ E é INSTANTÂNEO, não animado: entrar num modo não é um gesto, e a pose de onde ela
+        // partiria não é um estado. A máquina nasce parada no primeiro estado gravado (que é o
+        // `Default`, porque os papéis são ordenados), então não há voo a construir — só a escrita.
+        //
+        // ⚠️ **Um hospedeiro SEM `Default` gravado fica onde está**, de propósito: não há para
+        // onde o mandar, e escolher outro papel por ele mostraria um botão em `Hover` que ninguém
+        // está a tocar.
+        let resting: Vec<_> = states
+            .hosts()
+            .filter(|&h| states.role(h, StateRole::Default).is_some())
+            .collect();
+        for host in resting {
+            request(machines, states, host, StateRole::Default);
+        }
+        for m in machines.values() {
+            for p in m.pose() {
+                crate::vec_ui_state_edit::install(sim, scene, map, p);
+            }
+        }
         true
     }
 

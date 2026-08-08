@@ -65,7 +65,7 @@ fn leaving_restores_the_world_it_found_not_the_default_state() {
         .translation
         .x = 7.0;
 
-    assert!(pv.enter(&states, &sim, &scene, &map));
+    assert!(pv.enter(&mut machines, &states, &mut sim, &mut scene, &map));
     pv.point(&mut machines, &states, &[HOST], false);
     machines.get_mut(&HOST).unwrap().advance(10.0);
     for p in machines[&HOST].pose() {
@@ -117,9 +117,15 @@ fn the_snapshot_covers_every_id_the_preview_can_write() {
 /// teria como saber que o que falta é gravar um estado.
 #[test]
 fn the_preview_refuses_to_open_on_a_scene_with_no_states() {
-    let (sim, scene, map, _) = world();
+    let (mut sim, mut scene, map, _) = world();
     let mut pv = UiPreview::default();
-    assert!(!pv.enter(&StateSets::default(), &sim, &scene, &map));
+    assert!(!pv.enter(
+        &mut UiMachines::new(),
+        &StateSets::default(),
+        &mut sim,
+        &mut scene,
+        &map
+    ));
     assert!(!pv.is_on());
 }
 
@@ -141,7 +147,7 @@ fn moving_from_one_host_to_another_returns_the_first_to_default() {
     }
     let mut machines = UiMachines::new();
     let mut pv = UiPreview::default();
-    assert!(pv.enter(&states, &sim, &scene, &map));
+    assert!(pv.enter(&mut machines, &states, &mut sim, &mut scene, &map));
 
     pv.point(&mut machines, &states, &[HOST], false);
     machines.get_mut(&HOST).unwrap().advance(10.0);
@@ -168,10 +174,10 @@ fn moving_from_one_host_to_another_returns_the_first_to_default() {
 /// **Os dois fatos do rato derivam os três papéis** — e apertar no VAZIO não prende ninguém.
 #[test]
 fn the_two_mouse_facts_derive_the_role() {
-    let (sim, scene, map, states) = world();
+    let (mut sim, mut scene, map, states) = world();
     let mut machines = UiMachines::new();
     let mut pv = UiPreview::default();
-    pv.enter(&states, &sim, &scene, &map);
+    pv.enter(&mut machines, &states, &mut sim, &mut scene, &map);
 
     pv.point(&mut machines, &states, &[HOST], false);
     assert_eq!(pv.role_for(HOST), StateRole::Hover);
@@ -275,7 +281,7 @@ fn an_ancestor_stays_lit_while_the_cursor_is_in_its_descendant() {
     let (mut sim, mut scene, map, states) = nested();
     let mut machines = UiMachines::new();
     let mut pv = UiPreview::default();
-    assert!(pv.enter(&states, &sim, &scene, &map));
+    assert!(pv.enter(&mut machines, &states, &mut sim, &mut scene, &map));
 
     // O cursor entra no MENU (só o fundo dele é tocado), e depois desce para o ITEM.
     pv.point(&mut machines, &states, &[MENU], false);
@@ -303,7 +309,7 @@ fn leaving_the_whole_tree_returns_every_ancestor_to_default() {
     let (mut sim, mut scene, map, states) = nested();
     let mut machines = UiMachines::new();
     let mut pv = UiPreview::default();
-    assert!(pv.enter(&states, &sim, &scene, &map));
+    assert!(pv.enter(&mut machines, &states, &mut sim, &mut scene, &map));
 
     pv.point(&mut machines, &states, &[MENU], false);
     pv.point(&mut machines, &states, &[ITEM, MENU], false);
@@ -352,10 +358,10 @@ fn the_innermost_host_wins_not_the_smaller_id() {
 /// ⇒ o filtro de *quem se deixa* tem de olhar a CADEIA inteira, e não só o hospedeiro anterior.
 #[test]
 fn an_ancestor_that_stays_lit_is_not_re_animated() {
-    let (sim, scene, map, states) = nested();
+    let (mut sim, mut scene, map, states) = nested();
     let mut machines = UiMachines::new();
     let mut pv = UiPreview::default();
-    assert!(pv.enter(&states, &sim, &scene, &map));
+    assert!(pv.enter(&mut machines, &states, &mut sim, &mut scene, &map));
 
     pv.point(&mut machines, &states, &[MENU], false);
     for m in machines.values_mut() {
@@ -375,5 +381,72 @@ fn an_ancestor_that_stays_lit_is_not_re_animated() {
     assert!(
         machines[&ITEM].is_animating(),
         "o item sob o cursor tinha de estar a animar — sem isso o gate acima e' vacuo"
+    );
+}
+
+/// ⭐ **ENTRAR põe a cena em REPOUSO** — cada hospedeiro vai para o `Default`.
+///
+/// ⚠️ Sem isto a preview abria no que o MUNDO tivesse, que é o que o artista deixou depois da
+/// última gravação — quase sempre a pose de `Hover`. A UI parecia já estar a ser tocada antes de
+/// o rato chegar perto, e o primeiro gesto **saía** de um estado em vez de entrar nele.
+///
+/// ⚠️ **E o CONTROLE está no gate irmão** (`leaving_restores_the_world_it_found…`): a pose que
+/// `leave` devolve continua a ser a do MUNDO, e não o `Default` que este gate acabou de instalar.
+/// As duas metades juntas são a lei inteira — *entrar mostra o repouso, sair devolve o desenho*.
+#[test]
+fn entering_the_preview_puts_every_host_at_rest() {
+    let (mut sim, mut scene, map, states) = world();
+    let mut machines = UiMachines::new();
+    let mut pv = UiPreview::default();
+
+    // O mundo está LONGE do Default (que está gravado em x = 0) — dois números que não podem
+    // coincidir por acidente.
+    let e = ph2d_ecs::Entity::from_bits(map[&HOST]);
+    sim.world_mut()
+        .get_mut::<Transform>(e)
+        .expect("transform")
+        .translation
+        .x = 7.0;
+    assert!((x_of(&sim, &map, HOST) - 7.0).abs() < 1e-9);
+
+    assert!(pv.enter(&mut machines, &states, &mut sim, &mut scene, &map));
+    assert!(
+        x_of(&sim, &map, HOST).abs() < 1e-9,
+        "entrar na preview deixou a cena em x = {} — ela tinha de abrir no Default (x = 0)",
+        x_of(&sim, &map, HOST)
+    );
+}
+
+/// **Um hospedeiro SEM `Default` gravado fica onde está.**
+///
+/// ⚠️ Não há para onde o mandar, e escolher outro papel por ele mostraria um botão em `Hover` que
+/// ninguém está a tocar. É a metade da AUSÊNCIA: sem ela, um recuo cego poria a cena num estado
+/// que o artista não pediu.
+#[test]
+fn a_host_without_a_default_is_left_where_it_is() {
+    let (mut sim, mut scene, map, _) = world();
+    let mut states = StateSets::default();
+    // SÓ o Hover, gravado em x = 40.
+    let mut st = UiState::new(StateRole::Hover);
+    st.objects = vec![ObjectPose {
+        translation: [40.0, 0.0],
+        ..ObjectPose::new(HOST)
+    }];
+    states.set(HOST, st);
+
+    let e = ph2d_ecs::Entity::from_bits(map[&HOST]);
+    sim.world_mut()
+        .get_mut::<Transform>(e)
+        .expect("transform")
+        .translation
+        .x = 7.0;
+
+    let mut machines = UiMachines::new();
+    let mut pv = UiPreview::default();
+    assert!(pv.enter(&mut machines, &states, &mut sim, &mut scene, &map));
+    assert!(
+        (x_of(&sim, &map, HOST) - 7.0).abs() < 1e-9,
+        "a cena foi para o Hover (x = {}) sem ninguem lhe tocar",
+        x_of(&sim, &map, HOST)
     );
 }

@@ -3223,12 +3223,21 @@ impl App {
         // desenhou. É a mesma doutrina dos picks armados (*um modo em curso é dono do clique*),
         // uma família adiante: aqueles são modais sobre o Vector, este é modal sobre o editor.
         //
-        // ⚠️ **`on_canvas` é a guarda certa** e não `over_canvas_or_gizmo`: ele exige que não haja
-        // widget nenhum sob o cursor, e é isso que mantém o próprio botão *Preview* — e todo o
-        // resto do chrome — clicável. Sem ele o modo seria uma armadilha sem porta de saída
-        // visível, com o Esc a ser o único caminho.
+        // ⚠️ **A guarda é `over_canvas_or_gizmo`, e o `on_canvas` estava ERRADO — reportado pelo
+        // Enio (2026-08-07: *"em preview permite que tanto o pai como o filho fossem
+        // selecionados"*).** O `on_canvas` exige o `hit_index` **VAZIO**, e o gizmo registra as
+        // alças (e o interior de translação) NELE — o doc do `over_canvas_or_gizmo` diz isto
+        // literalmente, e eu escolhi o outro justificando-o num comentário. Entrar na preview
+        // **exige o hospedeiro SELECIONADO** (a seção States só existe assim), logo o gizmo está
+        // sempre lá, logo a guarda **nunca disparava na configuração em que a feature roda** — o
+        // clique caía no picking e selecionava o filho. E ficava ERRÁTICO quando um estado movia
+        // a forma para longe: fora da caixa do gizmo o `hit_index` volta a estar vazio e a guarda
+        // acordava, então o mesmo gesto funcionava ou não conforme ONDE a forma estava.
+        //
+        // O `over_canvas_or_gizmo` aceita o gizmo por cima e **continua a barrar painel** — é
+        // isso que mantém o próprio botão *Preview* clicável, que é a porta de saída visível.
         if self.ui_preview.is_on()
-            && on_canvas
+            && self.over_canvas_or_gizmo(evt.x, evt.y)
             && !menu_open_before
             && mapped_button == ph2d_host::PointerButton::Primary
             && matches!(kind, PointerKind::Down | PointerKind::Up)

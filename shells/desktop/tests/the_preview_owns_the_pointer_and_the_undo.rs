@@ -87,6 +87,44 @@ fn the_preview_consumes_the_click_before_any_tool() {
         "a guarda da preview nao CONSOME o clique — ele segue para as ferramentas por baixo do \
          modo, e um Down primario abre um arrasto de edicao dentro da apresentacao"
     );
+    // ⚠️ **E O PREDICADO É `over_canvas_or_gizmo` — esta metade FALTAVA, e o bug passou por ela.**
+    //
+    // Reportado pelo Enio (2026-08-07): *"em preview permite que tanto o pai como o filho fossem
+    // selecionados"*. A v1 usava `on_canvas`, que exige o `hit_index` **VAZIO** — e o gizmo
+    // registra as alças NELE. Entrar na preview **exige o hospedeiro selecionado**, logo o gizmo
+    // está sempre lá, logo a guarda **nunca disparava**. As três asserções acima ficaram VERDES
+    // sobre uma guarda estruturalmente inalcançável: elas provavam que ela existe, consome e
+    // precede as ferramentas, e nenhuma perguntava *ela chega a correr?*.
+    assert!(
+        body.contains("self.over_canvas_or_gizmo(evt.x, evt.y)"),
+        "a guarda da preview usa outro predicado que nao o `over_canvas_or_gizmo` — se ele exigir \
+         o `hit_index` vazio (como o `on_canvas`), o gizmo do hospedeiro SELECIONADO a torna \
+         inalcancavel e o clique volta a selecionar o filho"
+    );
+}
+
+/// **O gizmo NÃO é publicado durante a preview.**
+///
+/// ⚠️ Duas razões, e as duas já estavam escritas no repo: a caixa é derivada da pose **AUTORADA**,
+/// então enquanto a máquina move a forma ela fica para trás e passa a descrever um lugar que a
+/// forma já não ocupa (é por isso que o ADR-0128 recusou cinco vezes um gizmo sobre geometria que
+/// se move); e as alças dela **registram hit-rects**, que é o mesmo motivo pelo qual o ADR-0112 já
+/// a suprime nos modos de nó.
+///
+/// ⚠️ **Ela e a guarda do clique NÃO são a mesma defesa**, e a distinção importa: esta responde
+/// *o que se VÊ na apresentação*, e a outra *de quem é o CLIQUE*. Hoje, com o gizmo fora, o
+/// `hit_index` do caso vetorial fica vazio e a guarda seria alcançável mesmo com o predicado
+/// errado — então **a camada da guarda é gateada aqui pela FONTE**, e não por comportamento
+/// ([[feedback_layered_defenses_need_per_layer_gates]]).
+#[test]
+fn the_gizmo_is_not_published_while_the_preview_runs() {
+    let src = read("src/render_loop/mod.rs");
+    let flat: String = src.chars().filter(|c| !c.is_whitespace()).collect();
+    assert!(
+        flat.contains("==ph2d_editor::ToolId::new(\"vector\"))||self.vec_draw_config.mode==ph2d_tool_vector::DrawMode::Select)&&!self.ui_preview.is_on()"),
+        "o `vec_gizmo_on` deixou de excluir a preview — a caixa fica sobre a pose autorada \
+         enquanto a forma anima para longe dela, e as alcas dela roubam o clique da apresentacao"
+    );
 }
 
 /// **O Move alimenta a preview e NÃO consome** — a assimetria é deliberada.

@@ -1927,10 +1927,18 @@ impl crate::App {
                 vec_scene,
                 // O gizmo da forma só existe fora da ferramenta vetorial, ou no modo
                 // Select dela (ADR-0112).
-                !tools
+                //
+                // ⚠️ **E nunca durante o modo de PREVIEW** (W7r): a caixa é derivada da pose
+                // AUTORADA, então enquanto a máquina move a forma ela fica para trás e passa a
+                // descrever um lugar que a forma já não ocupa — é a razão pela qual o ADR-0128
+                // recusou cinco vezes um gizmo sobre geometria que se move. E as alças dela
+                // registram hit-rects, que é o mesmo motivo pelo qual o ADR-0112 já a suprime
+                // nos modos de nó: uma caixa sobre a apresentação é um ladrão de cliques.
+                (!tools
                     .active()
                     .is_some_and(|t| t.id() == ph2d_editor::ToolId::new("vector"))
-                    || self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Select,
+                    || self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::Select)
+                    && !self.ui_preview.is_on(),
                 // As poses que o último desenho derivou — sem elas a caixa do gizmo de um filho
                 // colocado aparece onde a forma foi AUTORADA.
                 &self.vec_view_derived,

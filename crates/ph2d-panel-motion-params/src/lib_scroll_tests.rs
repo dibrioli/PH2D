@@ -161,3 +161,94 @@ fn switching_to_a_shorter_node_pulls_the_scroll_back() {
         "duas linhas cabem inteiras, então não sobra rolamento nenhum a honrar"
     );
 }
+
+/// **SONDA — uma linha rolada para fora do topo continua registrada onde?**
+///
+/// O `push_clip` recorta o DESENHO; o `HitIndex` recebe o retângulo no `y` já deslocado. Se esse
+/// `y` sobe acima do corpo, o retângulo de hit passa a morar sobre o TÍTULO do painel (ou fora
+/// dele) — e um clique ali resolveria uma linha que o artista não vê. A sonda mede em vez de
+/// supor, e imprime o número; ela é `#[ignore]` porque é diagnóstico, não gate.
+#[test]
+#[ignore = "sonda de diagnostico: cargo test -- --ignored measure_the_scrolled_row"]
+fn measure_the_scrolled_row_hit_rect() {
+    let mut host = ph2d_ui_testkit::MockPanelHost::with_panel::<MotionParamsPanel>();
+    set_current_params(Some(node_with_rows(MAX_PARAM_ROWS)));
+
+    let at_rest = paint(&mut host);
+    let first = param_slider_id(0);
+    let rest_y = at_rest
+        .iter()
+        .find(|(id, _)| *id == first)
+        .map(|(_, r)| r.y)
+        .expect("hit rect");
+
+    for scroll in [0.0_f32, 60.0, 200.0, 400.0] {
+        host.store_mut()
+            .set_panel_scroll(ids::MOTION_PARAMS_PANEL, scroll);
+        let painted = paint(&mut host);
+        let Some((_, r)) = painted.iter().find(|(id, _)| *id == first) else {
+            println!("scroll {scroll:6.1}: a 1a linha NAO registra hit rect");
+            continue;
+        };
+        let body_top = rest_y; // a 1a linha em repouso marca onde o corpo comeca
+        println!(
+            "scroll {scroll:6.1}: hit y={:7.1} (corpo comeca ~{body_top:.1}) -> {}",
+            r.y,
+            if r.y + r.h < body_top {
+                "FORA do corpo, e ainda registrado"
+            } else {
+                "dentro"
+            }
+        );
+    }
+}
+
+/// **A rolagem está INERTE no teto de hoje — e este gate dispara no dia em que deixar de estar.**
+///
+/// ⚠️ Medido: o `push_clip` recorta o DESENHO, mas o `HitIndex` recebe o retângulo no `y` já
+/// deslocado, então uma linha rolada para cima **continua registrada** onde ninguém a vê
+/// (`scroll 60` ⇒ hit em `y=78`, dentro da faixa do TÍTULO; `scroll 200` ⇒ `y=−62`, fora da tela).
+/// Num painel FLUTUANTE o precedente do `wet-tuning` já cobre isso — a banda de arraste é
+/// registrada DEPOIS do corpo e **blinda** o cabeçalho, porque o dispatch é *last-registered-wins*.
+/// Este painel é **DOCADO** e não tem banda de arraste: não há o que blindar.
+///
+/// O que torna isso inofensivo HOJE é aritmética, não sorte: o teto mora dentro do `paint_rows`,
+/// o conteúdo mede ~544 px contra um corpo de ~800, `max_scroll` é **0**, e o clamp devolve o
+/// rolamento a zero — nenhuma linha consegue sair do corpo. **O dia em que o teto subir é o dia em
+/// que a blindagem passa a ser necessária**, e é este gate que vai dizê-lo, em vez de uma nota que
+/// envelhece em silêncio. A cura tem duas formas candidatas (registrar o retângulo RECORTADO pela
+/// mesma banda que recorta o desenho — *uma banda, dois consumidores* — ou blindar o cabeçalho),
+/// e a escolha pertence à wave que levantar o teto.
+#[test]
+fn the_scroll_is_inert_at_todays_row_cap_so_no_row_can_hide_under_the_title() {
+    let mut host = ph2d_ui_testkit::MockPanelHost::with_panel::<MotionParamsPanel>();
+    set_current_params(Some(node_with_rows(MAX_PARAM_ROWS)));
+    paint(&mut host);
+
+    let content = host
+        .store()
+        .panel_content_h(ids::MOTION_PARAMS_PANEL)
+        .expect("o painel publica a altura do conteudo");
+    let visible = host
+        .store()
+        .panel_visible_h(ids::MOTION_PARAMS_PANEL)
+        .expect("o painel publica a altura visivel");
+
+    // Pede o rolamento máximo imaginável; o clamp do painter tem de devolvê-lo a zero.
+    host.store_mut()
+        .set_panel_scroll(ids::MOTION_PARAMS_PANEL, 10_000.0);
+    paint(&mut host);
+    let settled = host.store().panel_scroll(ids::MOTION_PARAMS_PANEL);
+
+    assert!(
+        content <= visible,
+        "o conteudo ({content}) passou a exceder o corpo ({visible}): a rolagem DEIXOU de ser \
+         inerte, e uma linha rolada para cima continua com hit rect sob o titulo — feche a \
+         blindagem (recorte do registro, ou banda que escuda o cabecalho) nesta mesma wave"
+    );
+    assert_eq!(
+        settled, 0.0,
+        "com o conteudo cabendo no corpo o rolamento tem de assentar em zero, e assentou em \
+         {settled} — sem isso uma linha sai do corpo e continua clicavel"
+    );
+}

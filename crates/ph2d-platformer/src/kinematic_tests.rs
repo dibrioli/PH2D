@@ -127,7 +127,7 @@ fn sliding_along_a_slope_is_not_absorbed() {
     let st = KinematicState {
         velocity: [0.0, -1.0],
     };
-    let wanted = [0.0, -1.0 * DT];
+    let wanted = [0.0, -DT];
     // A rampa desviou metade da queda para o lado.
     let effective = [0.5 * DT, -0.5 * DT];
     let settled = kinematic_settle(st, wanted, effective, DT);

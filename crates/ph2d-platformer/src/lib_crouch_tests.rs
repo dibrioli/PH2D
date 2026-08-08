@@ -9,6 +9,9 @@
 //! fixtures do pai (`at`, `UP`, `G`, `DT`) além dos tipos da lei.
 use super::*;
 
+/// A capsula flutuante — o modo que estes gates medem.
+const SPRING: Support = Support::Spring;
+
 /// Ar seco — todo gate deste arquivo mede o arco BALÍSTICO.
 const DRY: Buoyed = Buoyed::DRY;
 
@@ -85,6 +88,7 @@ fn a_crouched_leg_pulls_him_down_to_the_lower_rest() {
         UP,
         DT,
         DRY,
+        SPRING,
     );
     let down = player_motor(
         &cfg,
@@ -99,6 +103,7 @@ fn a_crouched_leg_pulls_him_down_to_the_lower_rest() {
         UP,
         DT,
         DRY,
+        SPRING,
     );
     assert!(down.state.crouch.crouched, "o botao tem de agachar");
     assert!(
@@ -135,6 +140,7 @@ fn a_crouched_walk_targets_the_crouch_speed() {
         UP,
         DT,
         DRY,
+        SPRING,
     );
     let low = player_motor(
         &cfg,
@@ -149,6 +155,7 @@ fn a_crouched_walk_targets_the_crouch_speed() {
         UP,
         DT,
         DRY,
+        SPRING,
     );
     let up_push = up.motor.accel[0] + up.motor.boost[0] / DT;
     let low_push = low.motor.accel[0] + low.motor.boost[0] / DT;
@@ -191,6 +198,7 @@ fn a_down_button_with_the_capability_off_changes_nothing() {
         UP,
         DT,
         DRY,
+        SPRING,
     );
     let held = player_motor(
         &cfg,
@@ -205,6 +213,7 @@ fn a_down_button_with_the_capability_off_changes_nothing() {
         UP,
         DT,
         DRY,
+        SPRING,
     );
     assert_eq!(quiet.motor, held.motor, "o botao nao pode mover um bit");
     assert!(!held.state.crouch.crouched);
@@ -229,6 +238,7 @@ fn a_ceiling_keeps_him_crouched_through_the_one_door() {
         UP,
         DT,
         DRY,
+        SPRING,
     );
     assert!(down.state.crouch.crouched);
 
@@ -251,6 +261,7 @@ fn a_ceiling_keeps_him_crouched_through_the_one_door() {
         UP,
         DT,
         DRY,
+        SPRING,
     );
     assert!(
         stuck.state.crouch.crouched,
@@ -273,6 +284,7 @@ fn a_ceiling_keeps_him_crouched_through_the_one_door() {
         UP,
         DT,
         DRY,
+        SPRING,
     );
     assert!(!free.state.crouch.crouched, "com espaco ele levanta-se");
 }

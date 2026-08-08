@@ -377,6 +377,65 @@ fn support_accel(push: f32, gravity: Vec2, up: Vec2) -> Vec2 {
     [up[0] * push - gravity[0], up[1] * push - gravity[1]]
 }
 
+/// **O QUE SEGURA O PERSONAGEM** — a escolha que separa os dois modos, lida
+/// **uma vez, dentro da lei** (K3 do plano 07).
+///
+/// # ⚠️ Por que esta pergunta é da LEI e não da ponte
+///
+/// A alternativa seria a ponte SUBTRAIR do `accel` as parcelas que dependem de
+/// o corpo ser dinâmico — uma **enumeração**, e enumeração apodrece no dia em
+/// que uma força nova entra no fold. Aqui o valor já existe isolado e com nome
+/// próprio (`let spring = ride_hold(…)`), então a escolha é uma linha.
+///
+/// ⚠️ **E ela governa DUAS respostas, não uma:** o que segura o personagem
+/// ([`ride_hold`]) e o que o chão sente disso ([`ride_support_on_ground`]). As
+/// duas perguntam ao MESMO valor — se divergissem, existiria um tique em que o
+/// personagem é segurado por uma mola que o chão não sente, ou o contrário.
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+pub enum Support {
+    /// A **cápsula flutuante**: uma mola segura o personagem, o solver resolve
+    /// o contato, e o mundo pode empurrá-lo de volta. O que shipa.
+    #[default]
+    Spring,
+    /// O personagem é **colocado** onde tem de estar, e a mola cala.
+    ///
+    /// ⚠️ **Não existe força vertical nenhuma neste modo** — o que mantém a
+    /// altura é a translação escrita no corpo. É por isso que a `gravity_hold`
+    /// não pode reclamar um cancelamento aqui: não há o que cancelar.
+    Snap,
+}
+
+impl Support {
+    /// **Uma MOLA segura este personagem?** — a porta única da pergunta.
+    ///
+    /// Ela tem três consumidores dentro da lei (o termo do motor, o que o chão
+    /// sente, e a declaração da `gravity_hold`), e é por serem três que ela é
+    /// uma função em vez de um `matches!` repetido.
+    #[must_use]
+    pub fn is_spring(self) -> bool {
+        matches!(self, Self::Spring)
+    }
+}
+
+/// **O que segura o personagem neste tique** — a porta única do §3.
+///
+/// Sob [`Support::Spring`] é o [`ride_spring`] verbatim; sob [`Support::Snap`]
+/// é **nada**, porque a altura passa a ser escrita e não empurrada.
+#[must_use]
+pub fn ride_hold(
+    support: Support,
+    cfg: &RideConfig,
+    sample: Option<&GroundSample>,
+    body_velocity: Vec2,
+    gravity: Vec2,
+    up: Vec2,
+) -> Motor {
+    if !support.is_spring() {
+        return Motor::default();
+    }
+    ride_spring(cfg, sample, body_velocity, gravity, up)
+}
+
 /// **O que o CHÃO sente da perna** — o peso, e só a metade que EMPURRA.
 ///
 /// # ⚠️ Por que isto não é o [`ride_spring`] outra vez
@@ -404,6 +463,7 @@ fn support_accel(push: f32, gravity: Vec2, up: Vec2) -> Vec2 {
 /// suporte: um amortecedor devolvido ao chão é o mesmo laço com outro nome.
 #[must_use]
 pub fn ride_support_on_ground(
+    support: Support,
     cfg: &RideConfig,
     sample: Option<&GroundSample>,
     gravity: Vec2,
@@ -415,7 +475,16 @@ pub fn ride_support_on_ground(
     if !within_reach(cfg, Some(s)) {
         return Motor::default();
     }
-    let push = ((cfg.float_height - s.distance) * clamped_strength(cfg)).max(0.0);
+    // ⚠️ **Sob Snap o chão sente o PESO, e só ele** (K6 do plano 07) — não há
+    // mola a comprimir, então não há termo de mola a transmitir. E repare que a
+    // fórmula não ganha um caso especial: `push = 0` já **é** o peso, porque o
+    // `support_accel` sempre carregou o `− gravity` ao lado do empurrão. É isso
+    // que faz a 3ª lei sobreviver ao modo sem uma segunda função.
+    let push = if support.is_spring() {
+        ((cfg.float_height - s.distance) * clamped_strength(cfg)).max(0.0)
+    } else {
+        0.0
+    };
     Motor {
         accel: support_accel(push, gravity, up),
         boost: [0.0, 0.0],
@@ -443,7 +512,7 @@ mod tests {
             motor.accel[1]
         );
         // ...e o chão sente só o peso.
-        let felt = ride_support_on_ground(&cfg, Some(&high), G, UP);
+        let felt = ride_support_on_ground(Support::Spring, &cfg, Some(&high), G, UP);
         assert!(
             (felt.accel[1] - 9.81).abs() < 1.0e-4,
             "o chao sente o PESO e nada mais: {}",
@@ -453,7 +522,7 @@ mod tests {
         // Comprimida: os dois concordam, ao bit.
         let low = flat(cfg.float_height - 0.05);
         let motor = ride_spring(&cfg, Some(&low), [0.0, 0.0], G, UP);
-        let felt = ride_support_on_ground(&cfg, Some(&low), G, UP);
+        let felt = ride_support_on_ground(Support::Spring, &cfg, Some(&low), G, UP);
         assert_eq!(
             motor.accel, felt.accel,
             "comprimida, o chao sente exatamente o que a perna faz"

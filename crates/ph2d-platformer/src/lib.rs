@@ -52,6 +52,7 @@ pub mod corner;
 pub mod crouch;
 pub mod dash;
 pub mod jump;
+pub mod kinematic;
 pub mod react;
 pub mod ride;
 pub mod slope;
@@ -68,8 +69,11 @@ pub use crouch::{
 };
 pub use dash::{DashConfig, DashState, DashStep, dash_burst, dash_step};
 pub use jump::{JumpConfig, JumpState, JumpStep, carried_frame, jump_step};
+pub use kinematic::{KinematicState, kinematic_advance, kinematic_settle};
 pub use react::{Reaction, ReactionConfig};
-pub use ride::{RideConfig, damping_axis, ride_spring, ride_support_on_ground, within_reach};
+pub use ride::{
+    RideConfig, Support, damping_axis, ride_hold, ride_spring, ride_support_on_ground, within_reach,
+};
 pub use slope::{Footing, footing, footing_verdict, is_grounded, no_uphill};
 pub use walk::{WalkConfig, walk};
 pub use wall::{
@@ -452,6 +456,7 @@ pub fn player_motor(
     up: Vec2,
     dt: f32,
     buoyed: Buoyed,
+    support: Support,
 ) -> PlayerStep {
     let verdict = footing_verdict(cfg, sample, up);
     let footing = verdict.ground();
@@ -554,7 +559,14 @@ pub fn player_motor(
     } else {
         None
     };
-    let spring = ride_spring(&cfg.ride, standing, body_velocity, gravity, up);
+    // ⚠️ **A pergunta *"o que me segura?"* e' feita UMA vez** (K3): sob Snap a
+    // mola cala e quem mantem a altura e' a translacao escrita no corpo.
+    let spring = ride::ride_hold(support, &cfg.ride, standing, body_velocity, gravity, up);
+    // ⚠️ **E este bool e' o unico consumidor da resposta fora dela**: ele decide
+    // se a `gravity_hold` pode reclamar um cancelamento. Sob Snap nao ha' termo
+    // de `- gravity` no `accel`, entao reclama-lo seria a ponte a subtrair uma
+    // coisa que nao esta' la'.
+    let spring_holds = support.is_spring() && standing.is_some();
     // ⚠️ **Só o termo de CAMINHADA passa pelo `no_uphill`, e a escolha é o
     // desenho.** A mola já está calada numa superfície recusada (é a `standing`
     // acima) e o PULO é um gesto deliberado do artista — capá-lo faria o
@@ -611,7 +623,7 @@ pub fn player_motor(
         // reação dela puxa o chão para CIMA — medido, uma jangada subia 96,9 mm
         // ao encontro de quem caía nela. A porta que separa as duas metades mora
         // no `ride`, ao lado da lei que as produz.
-        let felt = ride::ride_support_on_ground(&cfg.ride, standing, gravity, up);
+        let felt = ride::ride_support_on_ground(support, &cfg.ride, standing, gravity, up);
         react::reaction(&cfg.react, felt, impulse, step)
     });
 
@@ -678,7 +690,7 @@ pub fn player_motor(
         // por sub-passo. Os dois nunca coincidem — a `standing` é `None` sempre
         // que `dashing`, pela linha que cala a perna acima —, então isto continua
         // a ser **um** `−g`, e não dois.
-        gravity_hold: if standing.is_some() || dashing {
+        gravity_hold: if spring_holds || dashing {
             [-gravity[0], -gravity[1]]
         } else {
             [0.0, 0.0]

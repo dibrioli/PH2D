@@ -12,6 +12,9 @@
 //! disse que não, e ele tem razão.)
 use super::*;
 
+/// A capsula flutuante — o modo que estes gates medem.
+const SPRING: Support = Support::Spring;
+
 /// Ar seco — todo gate deste arquivo mede o arco BALÍSTICO.
 const DRY: Buoyed = Buoyed::DRY;
 
@@ -67,6 +70,7 @@ fn while_dashing_the_leg_the_walk_and_gravity_are_all_silent() {
         UP,
         DT,
         DRY,
+        SPRING,
     );
     let want = dash_burst(&cfg.dash, 1.0, [0.0, 0.0], vel, UP, G);
     assert!(
@@ -116,6 +120,7 @@ fn a_jump_out_of_a_dash_is_a_jump() {
         UP,
         DT,
         DRY,
+        SPRING,
     );
     assert!(
         started.state.dash.left > 0.0,
@@ -139,6 +144,7 @@ fn a_jump_out_of_a_dash_is_a_jump() {
         UP,
         DT,
         DRY,
+        SPRING,
     );
     assert!(
         jumped.motor.boost[1] > 0.0,
@@ -180,6 +186,7 @@ fn a_dash_button_with_the_capability_off_changes_nothing() {
         UP,
         DT,
         DRY,
+        SPRING,
     );
     let pressed = player_motor(
         &cfg,
@@ -198,6 +205,7 @@ fn a_dash_button_with_the_capability_off_changes_nothing() {
         UP,
         DT,
         DRY,
+        SPRING,
     );
     assert_eq!(
         quiet.motor, pressed.motor,
@@ -242,6 +250,7 @@ fn a_wall_jump_out_of_a_dash_also_ends_it() {
         UP,
         DT,
         DRY,
+        SPRING,
     );
     assert!(
         started.state.dash.left > 0.0,
@@ -286,6 +295,7 @@ fn a_wall_jump_out_of_a_dash_also_ends_it() {
         UP,
         DT,
         DRY,
+        SPRING,
     );
     assert!(
         jumped.motor.boost[1] > 0.0,

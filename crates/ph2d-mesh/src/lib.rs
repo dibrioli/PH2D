@@ -74,8 +74,8 @@ pub use face::{Face, TRI};
 pub use holes::{HoleFill, fill_holes};
 pub use merge::merge;
 pub use mesh::{
-    DEFAULT_AO, DEFAULT_COLOR, DEFAULT_MASK, Mesh, MeshError, QueryScratch, RegionScratch,
-    VertexMerge,
+    DEFAULT_AO, DEFAULT_COLOR, DEFAULT_MASK, DEFAULT_PREVIEW, Mesh, MeshError, QueryScratch,
+    RegionScratch, VertexMerge,
 };
 pub use multires::{DetachedLevel, Multires, Reversal, Stamped};
 pub use normals::{

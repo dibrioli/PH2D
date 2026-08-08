@@ -76,6 +76,14 @@ pub struct Sculpt3dUi {
     /// mas ele **não é do documento** (o shell não o salva) — escolher com que
     /// luz olhar não muda a escultura.
     pub matcap: Option<u8>,
+    /// **O padrão do pincel, VISTO NO BARRO** antes de o traço acontecer.
+    ///
+    /// ⚠️ Nasce **LIGADO**: o preview responde *"esta densidade serve para a
+    /// MINHA peça?"*, que é a pergunta que o artista faz no instante em que
+    /// escolhe um padrão — e uma resposta que ele tem de procurar num checkbox é
+    /// uma resposta que a maioria nunca vê. O interruptor existe porque o tinto
+    /// cobre a peça, e há hora de querer o barro limpo.
+    pub alpha_preview: bool,
     /// A malha de arestas por cima da forma.
     pub wireframe: bool,
     /// Qual degrau de detalhe a topologia dinâmica usa (índice em `DETAIL_STEPS`).
@@ -109,6 +117,7 @@ impl Default for Sculpt3dUi {
             light_az_deg: 0.0,
             light_elev_deg: 45.0, // LITERAL-PX-OK: graus de elevacao, nao metrica de design
             matcap: None,
+            alpha_preview: true,
             wireframe: false,
             detail: 1,
         }

@@ -129,13 +129,34 @@ impl Sculpt3dScene {
         for (k, line) in plan.into_iter().enumerate() {
             let i = line.piece;
             self.renderer.set_pose(k, self.objects[i].pose);
+            // ⚠️ **O preview é posto em dia ANTES do upload, e com o MESMO
+            // `dirty` que a posição vai subir** — é essa coincidência que o
+            // mantém barato: o padrão é lido na posição do vértice, então os
+            // vértices que se moveram são exatamente os que ele deixou de
+            // descrever. Depois do upload a lista está limpa e a janela seria
+            // vazia; o barro ficaria com o padrão de antes do traço.
+            {
+                let brush = self.brush;
+                let armed = self.alpha_preview;
+                let obj = &mut self.objects[i];
+                let mesh = obj.stack.mesh();
+                let moved = std::mem::take(&mut obj.dirty);
+                obj.preview.refresh(mesh, &brush, armed, &moved);
+                obj.dirty = moved;
+            }
             match line.job {
                 SlotJob::Skip => {}
                 SlotJob::Full => {
-                    self.renderer
-                        .upload_at(device, queue, k, self.objects[i].stack.mesh());
+                    self.renderer.upload_at(
+                        device,
+                        queue,
+                        k,
+                        self.objects[i].stack.mesh(),
+                        &self.objects[i].preview.values,
+                    );
                     self.objects[i].uploaded = true;
                     self.objects[i].dirty.clear();
+                    self.objects[i].preview.whole_dirty = false;
                 }
                 SlotJob::Region => {
                     // A região, e o cheio como fallback: `upload_region_at`
@@ -147,13 +168,34 @@ impl Sculpt3dScene {
                         k,
                         self.objects[i].stack.mesh(),
                         &self.objects[i].dirty,
+                        &self.objects[i].preview.values,
                     );
                     if !ok {
-                        self.renderer
-                            .upload_at(device, queue, k, self.objects[i].stack.mesh());
+                        self.renderer.upload_at(
+                            device,
+                            queue,
+                            k,
+                            self.objects[i].stack.mesh(),
+                            &self.objects[i].preview.values,
+                        );
+                        self.objects[i].preview.whole_dirty = false;
                     }
                     self.objects[i].dirty.clear();
                 }
+            }
+            // ⚠️ **FORA do `match`, e o defeito que isto conserta é MUDO.** A
+            // janela do dab não cobre uma troca de padrão — girar o eixo não
+            // move um vértice —, então o `dirty` fica VAZIO, o plano cai em
+            // `Skip`, e dentro do braço `Region` esta linha nunca rodaria no
+            // caso exato que ela existe para cobrir: o barro ficaria com o
+            // padrão anterior enquanto o quadro do painel já mostra o novo. Os
+            // dois discordando é o pior desfecho possível para um preview.
+            if self.objects[i].preview.whole_dirty
+                && self
+                    .renderer
+                    .upload_preview_at(queue, k, &self.objects[i].preview.values)
+            {
+                self.objects[i].preview.whole_dirty = false;
             }
             // ⚠️ **As ARESTAS, só com a malha armada.** A lista custa até 24 B por
             // vértice e a maioria esculpe sem ela; construí-la junto com a malha

@@ -62,6 +62,12 @@ pub(crate) struct SceneObject {
     /// Os vértices que a GPU ainda não viu — acumulados entre frames, porque
     /// vários eventos de ponteiro cabem num quadro.
     pub(super) dirty: Vec<u32>,
+    /// O PREVIEW do padrão do pincel nesta peça — ver
+    /// [`super::sculpt3d_preview::PreviewState`]. ⚠️ **Por objeto e não da
+    /// cena**, pelo mesmo motivo que `uploaded`/`dirty`: o padrão é lido na
+    /// POSIÇÃO do vértice, então cada peça tem o seu — e um par compartilhado
+    /// deixaria a segunda peça tingida pelo campo da primeira.
+    pub(super) preview: super::sculpt3d_preview::PreviewState,
 }
 
 impl SceneObject {
@@ -72,6 +78,7 @@ impl SceneObject {
             pose,
             uploaded: false,
             dirty: Vec::new(),
+            preview: super::sculpt3d_preview::PreviewState::default(),
         }
     }
 
@@ -88,6 +95,7 @@ impl SceneObject {
             pose,
             uploaded: false,
             dirty: Vec::new(),
+            preview: super::sculpt3d_preview::PreviewState::default(),
         }
     }
 }

@@ -830,6 +830,50 @@ fn the_lamp_rows_are_absent_under_a_matcap_and_present_under_the_rig() {
     }
 }
 
+/// **O INTERRUPTOR DO PREVIEW NO BARRO só existe com padrão armado, e ALTERNA.**
+///
+/// ⚠️ As duas metades num gate só, e a de AUSÊNCIA é a que carrega peso: sem
+/// padrão ele seria um interruptor de coisa nenhuma — o mesmo mecanismo da pista
+/// de escala, e a mesma lei do módulo (*uma row condicional é PULADA, nunca
+/// pintada apagada*).
+#[test]
+fn the_model_preview_switch_exists_only_with_a_pattern_and_flips_it() {
+    // SEM padrão: não é pintado.
+    let (mut host, mut state) = arrange(Sculpt3dUi::default());
+    let painted = host.paint::<Sculpt3dPanel>(&mut state, VIEWPORT);
+    assert!(
+        !painted
+            .iter()
+            .any(|(pid, _)| *pid == ids::SCULPT3D_ALPHA_PREVIEW),
+        "o interruptor apareceu sem padrão armado"
+    );
+
+    // COM padrão: pintado, e o clique alterna só ele.
+    for before in [false, true] {
+        let mut ui = Sculpt3dUi::default();
+        ui.brush.alpha = Some(ph2d_sculpt3d::Alpha::ALL[0]);
+        ui.alpha_preview = before;
+        let (mut host, mut state) = arrange(ui);
+        let painted = host.paint::<Sculpt3dPanel>(&mut state, VIEWPORT);
+        assert!(
+            painted
+                .iter()
+                .any(|(pid, _)| *pid == ids::SCULPT3D_ALPHA_PREVIEW),
+            "o interruptor sumiu com um padrão armado"
+        );
+        host.apply_panel_event::<Sculpt3dPanel>(
+            &mut state,
+            WidgetEvent::Click(ids::SCULPT3D_ALPHA_PREVIEW),
+        );
+        let Sculpt3dIntent::SetUi(got) = only_intent("preview no barro") else {
+            panic!("o preview enfileirou o tipo errado de intent");
+        };
+        let mut want = ui;
+        want.alpha_preview = !before;
+        assert_eq!(got, want, "o interruptor não alternou, ou levou um vizinho");
+    }
+}
+
 /// **O ACCUMULATE é oferecido — e SÓ — onde ele faz alguma coisa.**
 ///
 /// ⚠️ As duas metades num gate só, e a seleção é pelo GRIP e não por

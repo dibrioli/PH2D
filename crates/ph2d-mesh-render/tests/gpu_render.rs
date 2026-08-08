@@ -57,7 +57,7 @@ fn render_with_rig(
     rig: &LightRig,
 ) -> Vec<u8> {
     let mut renderer = MeshRenderer::new(device, FORMAT);
-    renderer.upload_at(device, queue, 0, mesh);
+    renderer.upload_at(device, queue, 0, mesh, &[]);
     render_using_rig(device, queue, &mut renderer, camera, rig)
 }
 
@@ -454,7 +454,7 @@ fn a_region_upload_shows_exactly_what_a_full_upload_shows() {
     // Um renderizador semeado com a malha ORIGINAL, que daqui para a frente só
     // recebe regiões — é ele o caminho sob teste.
     let mut incremental = MeshRenderer::new(&device, FORMAT);
-    incremental.upload_at(&device, &queue, 0, &mesh);
+    incremental.upload_at(&device, &queue, 0, &mesh, &[]);
 
     // Esculpe de verdade, pela porta do produto.
     let brush = Brush {
@@ -477,7 +477,7 @@ fn a_region_upload_shows_exactly_what_a_full_upload_shows() {
             Symmetry::default(),
         );
         assert!(
-            incremental.upload_region_at(&queue, 0, &mesh, stroke.last_refreshed()),
+            incremental.upload_region_at(&queue, 0, &mesh, stroke.last_refreshed(), &[]),
             "o upload incremental recusou uma malha de mesma topologia"
         );
         uploaded += incremental.last_region_verts();
@@ -514,13 +514,13 @@ fn a_region_upload_refuses_a_mesh_whose_topology_changed() {
     let big = shapes::uv_sphere(20, 28, 1.0);
     let mut r = MeshRenderer::new(&device, FORMAT);
     // Sem nada subido ainda: não há com que reconciliar.
-    assert!(!r.upload_region_at(&queue, 0, &small, &[0, 1, 2]));
-    r.upload_at(&device, &queue, 0, &small);
-    assert!(r.upload_region_at(&queue, 0, &small, &[0, 1, 2]));
+    assert!(!r.upload_region_at(&queue, 0, &small, &[0, 1, 2], &[]));
+    r.upload_at(&device, &queue, 0, &small, &[]);
+    assert!(r.upload_region_at(&queue, 0, &small, &[0, 1, 2], &[]));
     // Contagem diferente: recusar é a resposta certa. Escrever a região sobre um
     // buffer de outra topologia poria bytes VÁLIDOS nos vértices errados, e a
     // geometria seria puxada para lugares que ninguém tocou.
-    assert!(!r.upload_region_at(&queue, 0, &big, &[0, 1, 2]));
+    assert!(!r.upload_region_at(&queue, 0, &big, &[0, 1, 2], &[]));
 }
 
 #[test]
@@ -605,7 +605,7 @@ fn gbuffer(
     camera: &Camera3d,
 ) -> Vec<([f32; 3], f32)> {
     let mut renderer = MeshRenderer::new(device, FORMAT);
-    renderer.upload_at(device, queue, 0, mesh);
+    renderer.upload_at(device, queue, 0, mesh, &[]);
     let target = device.create_texture(&wgpu::TextureDescriptor {
         label: Some("gbuffer"),
         size: wgpu::Extent3d {
@@ -972,7 +972,7 @@ fn the_plane_the_painter_gets_is_the_gbuffer_the_device_wrote() {
     let expected = gbuffer(&device, &queue, &mesh, &camera);
 
     let mut renderer = MeshRenderer::new(&device, FORMAT);
-    renderer.upload_at(&device, &queue, 0, &mesh);
+    renderer.upload_at(&device, &queue, 0, &mesh, &[]);
     let plane = renderer
         .form_plane(
             &device,
@@ -1042,7 +1042,7 @@ fn a_renderer_with_no_mesh_donates_nothing() {
         "sem geometria, nada a doar"
     );
     // E com malha, mas extensão vazia: o mesmo silêncio, pelo outro motivo.
-    renderer.upload_at(&device, &queue, 0, &shapes::uv_sphere(8, 12, 1.0));
+    renderer.upload_at(&device, &queue, 0, &shapes::uv_sphere(8, 12, 1.0), &[]);
     assert!(
         renderer
             .form_plane(
@@ -1076,7 +1076,7 @@ fn measure_a_donation() {
     };
     let mesh = shapes::uv_sphere(96, 144, 1.0);
     let mut renderer = MeshRenderer::new(&device, FORMAT);
-    renderer.upload_at(&device, &queue, 0, &mesh);
+    renderer.upload_at(&device, &queue, 0, &mesh, &[]);
     let mut camera = Camera3d::default();
     camera.frame(mesh.bounds(), 1.0);
 
@@ -1252,9 +1252,9 @@ fn a_mask_dab_reaches_the_device_through_the_incremental_path() {
     // O caminho do produto: a malha limpa já está no device, e só a janela suja
     // do dab é copiada por cima.
     let mut renderer = MeshRenderer::new(&device, FORMAT);
-    renderer.upload_at(&device, &queue, 0, &plain);
+    renderer.upload_at(&device, &queue, 0, &plain, &[]);
     assert!(
-        renderer.upload_region_at(&queue, 0, &masked, &dirty),
+        renderer.upload_region_at(&queue, 0, &masked, &dirty, &[]),
         "a região tem de ser aceita: a topologia não mudou"
     );
     let incremental = render_using(&device, &queue, &mut renderer, &cam);
@@ -1281,7 +1281,7 @@ fn render_objects(
 ) -> Vec<u8> {
     let mut renderer = MeshRenderer::new(device, FORMAT);
     for (i, (mesh, pose)) in objects.iter().enumerate() {
-        renderer.upload_at(device, queue, i, mesh);
+        renderer.upload_at(device, queue, i, mesh, &[]);
         renderer.set_pose(i, *pose);
     }
     render_using(device, queue, &mut renderer, camera)
@@ -1465,9 +1465,9 @@ fn truncating_the_list_stops_drawing_what_left_the_scene() {
     );
 
     let mut renderer = MeshRenderer::new(&device, FORMAT);
-    renderer.upload_at(&device, &queue, 0, &mesh);
+    renderer.upload_at(&device, &queue, 0, &mesh, &[]);
     renderer.set_pose(0, ph2d_mesh::Pose::at([-1.5, 0.0, 0.0]));
-    renderer.upload_at(&device, &queue, 1, &mesh);
+    renderer.upload_at(&device, &queue, 1, &mesh, &[]);
     renderer.set_pose(1, ph2d_mesh::Pose::at([1.5, 0.0, 0.0]));
     let both = render_using(&device, &queue, &mut renderer, &cam);
     assert!(coverage_in(&both, 2 * W / 3, W) > 0.02, "as duas estão lá");
@@ -1523,7 +1523,7 @@ fn the_cavity_darkens_the_crevice_and_brightens_the_ridge() {
     let cam = camera_for(&mesh);
     let rig = LightRig::default();
     let mut renderer = MeshRenderer::new(&device, FORMAT);
-    renderer.upload_at(&device, &queue, 0, &mesh);
+    renderer.upload_at(&device, &queue, 0, &mesh, &[]);
     let off = render_using_rig_cavity(&device, &queue, &mut renderer, &cam, &rig, 0.0);
     let on = render_using_rig_cavity(&device, &queue, &mut renderer, &cam, &rig, 1.0);
 
@@ -1586,7 +1586,7 @@ fn a_cavity_of_zero_is_the_bare_clay_to_the_byte() {
     let cam = camera_for(&mesh);
     let rig = LightRig::default();
     let mut renderer = MeshRenderer::new(&device, FORMAT);
-    renderer.upload_at(&device, &queue, 0, &mesh);
+    renderer.upload_at(&device, &queue, 0, &mesh, &[]);
     let a = render_using_rig_cavity(&device, &queue, &mut renderer, &cam, &rig, 0.0);
     let b = render_using_rig_cavity(&device, &queue, &mut renderer, &cam, &rig, 0.7);
     assert_ne!(a, b, "o controle: com 0,7 o pixel TEM de mudar");
@@ -1654,7 +1654,7 @@ fn a_region_upload_carries_the_curvature_the_dab_recomputed() {
     let rig = LightRig::default();
 
     let mut incremental = MeshRenderer::new(&device, FORMAT);
-    incremental.upload_at(&device, &queue, 0, &mesh);
+    incremental.upload_at(&device, &queue, 0, &mesh, &[]);
 
     // Um traço de Crease: ele cava, então produz curvatura POSITIVA de verdade —
     // que é o sinal que a cavidade escurece. Um Draw suave mal moveria o canal, e
@@ -1676,7 +1676,7 @@ fn a_region_upload_carries_the_curvature_the_dab_recomputed() {
             Symmetry::default(),
         );
         assert!(
-            incremental.upload_region_at(&queue, 0, &mesh, stroke.last_refreshed()),
+            incremental.upload_region_at(&queue, 0, &mesh, stroke.last_refreshed(), &[]),
             "o upload incremental recusou uma malha de mesma topologia"
         );
     }
@@ -1684,10 +1684,10 @@ fn a_region_upload_carries_the_curvature_the_dab_recomputed() {
     // O controle: com a cavidade ligada, a malha esculpida TEM de diferir da lisa.
     // Sem ele o gate abaixo passaria comparando duas telas iguais.
     let mut fresh = MeshRenderer::new(&device, FORMAT);
-    fresh.upload_at(&device, &queue, 0, &mesh);
+    fresh.upload_at(&device, &queue, 0, &mesh, &[]);
     let want = render_using_rig_cavity(&device, &queue, &mut fresh, &camera, &rig, 1.0);
     let mut smooth = MeshRenderer::new(&device, FORMAT);
-    smooth.upload_at(&device, &queue, 0, &shapes::uv_sphere(40, 56, 1.0));
+    smooth.upload_at(&device, &queue, 0, &shapes::uv_sphere(40, 56, 1.0), &[]);
     let unsculpted = render_using_rig_cavity(&device, &queue, &mut smooth, &camera, &rig, 1.0);
     assert_ne!(
         want, unsculpted,
@@ -1731,7 +1731,7 @@ fn o_ao_assado_chega_ao_shader_e_so_escurece_onde_foi_assado() {
     mesh.set_ao(ao);
 
     let mut renderer = MeshRenderer::new(&device, FORMAT);
-    renderer.upload_at(&device, &queue, 0, &mesh);
+    renderer.upload_at(&device, &queue, 0, &mesh, &[]);
     let desligado = render_using_rig_shade(
         &device,
         &queue,
@@ -1807,7 +1807,7 @@ fn sem_bake_o_controle_de_ao_nao_muda_um_pixel() {
     assert!(mesh.ao().is_none(), "o controle: ninguem assou");
 
     let mut renderer = MeshRenderer::new(&device, FORMAT);
-    renderer.upload_at(&device, &queue, 0, &mesh);
+    renderer.upload_at(&device, &queue, 0, &mesh, &[]);
     let zero = render_using_rig_shade(
         &device,
         &queue,
@@ -1915,8 +1915,8 @@ fn two_spheres(device: &wgpu::Device, queue: &wgpu::Queue) -> (MeshRenderer, Cam
     let mut sphere = shapes::uv_sphere(24, 36, 1.0);
     sphere.triangulate();
     let mut r = MeshRenderer::new(device, FORMAT);
-    r.upload_at(device, queue, 0, &sphere);
-    r.upload_at(device, queue, 1, &sphere);
+    r.upload_at(device, queue, 0, &sphere, &[]);
+    r.upload_at(device, queue, 1, &sphere, &[]);
     // Encostadas: o vão fica em x = 0, no meio da tela.
     r.set_pose(0, ph2d_mesh::Pose::at([-1.02, 0.0, 0.0]));
     r.set_pose(1, ph2d_mesh::Pose::at([1.02, 0.0, 0.0]));
@@ -2126,8 +2126,8 @@ fn measure_the_screen_ao() {
     let mut sphere = shapes::uv_sphere(64, 96, 1.0);
     sphere.triangulate();
     let mut r = MeshRenderer::new(&device, FORMAT);
-    r.upload_at(&device, &queue, 0, &sphere);
-    r.upload_at(&device, &queue, 1, &sphere);
+    r.upload_at(&device, &queue, 0, &sphere, &[]);
+    r.upload_at(&device, &queue, 1, &sphere, &[]);
     r.set_pose(0, ph2d_mesh::Pose::at([-1.02, 0.0, 0.0]));
     r.set_pose(1, ph2d_mesh::Pose::at([1.02, 0.0, 0.0]));
     let bounds = ph2d_mesh::Aabb {
@@ -2355,7 +2355,7 @@ fn um_plano_chato_nao_oclui_nada_visto_de_qualquer_angulo() {
     let m = Mesh::from_parts(pos, faces).expect("grade valida");
 
     let mut r = MeshRenderer::new(&device, FORMAT);
-    r.upload_at(&device, &queue, 0, &m);
+    r.upload_at(&device, &queue, 0, &m, &[]);
     let bounds = ph2d_mesh::Aabb {
         min: [-s, -s, -0.01],
         max: [s, s, 0.01],
@@ -2438,8 +2438,8 @@ fn as_duas_fontes_de_ao_compoem_pelo_menos_ocluido() {
     sphere.triangulate();
     sphere.set_ao(vec![0.5; sphere.vert_count()]);
     let mut r = MeshRenderer::new(&device, FORMAT);
-    r.upload_at(&device, &queue, 0, &sphere);
-    r.upload_at(&device, &queue, 1, &sphere);
+    r.upload_at(&device, &queue, 0, &sphere, &[]);
+    r.upload_at(&device, &queue, 1, &sphere, &[]);
     r.set_pose(0, ph2d_mesh::Pose::at([-1.02, 0.0, 0.0]));
     r.set_pose(1, ph2d_mesh::Pose::at([1.02, 0.0, 0.0]));
     let mut cam = Camera3d::framing(
@@ -2523,7 +2523,7 @@ fn lit_sphere(device: &wgpu::Device, queue: &wgpu::Queue) -> (MeshRenderer, Came
     let mut sphere = shapes::uv_sphere(48, 72, 1.0);
     sphere.triangulate();
     let mut r = MeshRenderer::new(device, FORMAT);
-    r.upload_at(device, queue, 0, &sphere);
+    r.upload_at(device, queue, 0, &sphere, &[]);
     let bounds = sphere.bounds();
     let mut cam = Camera3d::framing(bounds, core::f32::consts::FRAC_PI_4, W as f32 / H as f32);
     cam.yaw = 0.0;
@@ -2754,7 +2754,7 @@ fn the_light_comes_through_the_thin_piece_and_not_the_thick_one() {
                 m.set_thickness(ph2d_sdf::bake_thickness(&field, &m));
             }
             let mut rr = MeshRenderer::new(&device, FORMAT);
-            rr.upload_at(&device, &queue, 0, &m);
+            rr.upload_at(&device, &queue, 0, &m, &[]);
             let bounds = m.bounds();
             let mut cam =
                 Camera3d::framing(bounds, core::f32::consts::FRAC_PI_4, W as f32 / H as f32);
@@ -2828,7 +2828,7 @@ fn nothing_is_transmitted_where_the_light_is_in_front() {
     };
     let shot = |m: &ph2d_mesh::Mesh| {
         let mut rr = MeshRenderer::new(&device, FORMAT);
-        rr.upload_at(&device, &queue, 0, m);
+        rr.upload_at(&device, &queue, 0, m, &[]);
         let bounds = m.bounds();
         let mut cam = Camera3d::framing(bounds, core::f32::consts::FRAC_PI_4, W as f32 / H as f32);
         cam.yaw = 0.0;
@@ -2900,7 +2900,7 @@ fn an_unbaked_mesh_transmits_nothing() {
     m.triangulate();
     m.set_thickness(vec![f32::INFINITY; m.vert_count()]);
     let mut r2 = MeshRenderer::new(&device, FORMAT);
-    r2.upload_at(&device, &queue, 0, &m);
+    r2.upload_at(&device, &queue, 0, &m, &[]);
     let opaque = render_using_rig_shade(&device, &queue, &mut r2, &cam, &rig, shade(1.0));
 
     let worst = unbaked
@@ -2943,7 +2943,7 @@ fn more_scatter_lets_more_light_through() {
     m.set_thickness(ph2d_sdf::bake_thickness(&field, &m));
 
     let mut rr = MeshRenderer::new(&device, FORMAT);
-    rr.upload_at(&device, &queue, 0, &m);
+    rr.upload_at(&device, &queue, 0, &m, &[]);
     let bounds = m.bounds();
     let mut cam = Camera3d::framing(bounds, core::f32::consts::FRAC_PI_4, W as f32 / H as f32);
     cam.yaw = 0.0;
@@ -3021,7 +3021,7 @@ fn the_donation_carries_the_form_occlusion() {
     let camera = camera_for(&mesh);
 
     let mut renderer = MeshRenderer::new(&device, FORMAT);
-    renderer.upload_at(&device, &queue, 0, &mesh);
+    renderer.upload_at(&device, &queue, 0, &mesh, &[]);
     let shade = ph2d_mesh_render::Shade {
         cavity: 1.0,
         ..ph2d_mesh_render::Shade::default()
@@ -3104,7 +3104,7 @@ fn the_donated_occlusion_follows_the_artists_knobs_without_a_viewport_render() {
 
     // ⚠️ Nenhum `render` nesta cena, de propósito: é o estado do modo LUZ e o do bake.
     let mut renderer = MeshRenderer::new(&device, FORMAT);
-    renderer.upload_at(&device, &queue, 0, &mesh);
+    renderer.upload_at(&device, &queue, 0, &mesh, &[]);
     let donate = |r: &mut MeshRenderer, cavity: f32| {
         r.form_plane(
             &device,

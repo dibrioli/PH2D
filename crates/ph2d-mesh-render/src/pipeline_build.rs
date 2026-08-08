@@ -288,6 +288,15 @@ impl MeshRenderer {
         /// empacotá-los juntos economizaria um buffer para pagar com um upload
         /// de canal que ninguém mexeu em toda troca de forma.
         const THICK: [wgpu::VertexAttribute; 1] = f32_attr(6);
+        /// O PREVIEW do padrão do pincel — o canal **transiente** que mostra,
+        /// no barro, o que o próximo traço vai depositar.
+        ///
+        /// ⚠️ **Irmão da máscara e não dela:** os dois são `f32` por vértice e
+        /// pintam um tinto, mas a máscara é AUTORADA (ela protege) e este é
+        /// DERIVADO do pincel vivo. Colapsá-los faria o preview apagar a
+        /// proteção que o artista pintou — e restaurá-la depois seria uma
+        /// promessa que um `return` esquecido quebra em silêncio.
+        const PREVIEW: [wgpu::VertexAttribute; 1] = f32_attr(7);
         // Irmão do `vec3_buffer`, e uma CLOSURE pela mesma razão que ele: o
         // `make` abaixo é chamado duas vezes (a cena e o G-buffer), e um valor
         // capturado por move faria dele um `FnOnce`.
@@ -369,6 +378,7 @@ impl MeshRenderer {
                         f32_buffer(&AO),
                         f32_buffer(&CURVW),
                         f32_buffer(&THICK),
+                        f32_buffer(&PREVIEW),
                     ],
                 },
                 fragment: Some(wgpu::FragmentState {
@@ -630,6 +640,7 @@ impl MeshRenderer {
             scratch_moved: Vec::new(),
             scratch_runs: Vec::new(),
             scratch_masks: Vec::new(),
+            scratch_preview: Vec::new(),
             scratch_ao: Vec::new(),
             scratch_thickness: Vec::new(),
         }

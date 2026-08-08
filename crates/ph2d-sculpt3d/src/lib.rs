@@ -37,6 +37,7 @@
 mod alpha;
 mod brush;
 pub mod mask_ops;
+mod preview;
 mod spacing;
 mod stroke;
 
@@ -45,5 +46,6 @@ pub use alpha::{
     recommended_scale,
 };
 pub use brush::{Amount, Brush, Falloff, Grip, REACH_FRACTION, Symmetry, Verb};
+pub use preview::{NO_PREVIEW, preview_into, preview_verts};
 pub use spacing::{ACCUM_PER_DAB, MIN_SPACING_FRACTION, Walk, min_spacing, walk};
 pub use stroke::{Dab, SculptStroke};

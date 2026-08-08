@@ -69,7 +69,7 @@ fn what_each_aspect_does_to_the_same_camera() {
     };
     let mesh = shapes::uv_sphere(48, 72, 1.0);
     let mut renderer = MeshRenderer::new(&device, wgpu::TextureFormat::Rgba8Unorm);
-    renderer.upload_at(&device, &queue, 0, &mesh);
+    renderer.upload_at(&device, &queue, 0, &mesh, &[]);
 
     // A câmera do escultor: enquadrada no VIEWPORT largo, que é o que o `Sculpt3dScene::new` faz.
     let wide = (1600u32, 900u32);

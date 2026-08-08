@@ -110,6 +110,7 @@ pub fn populate(store: &mut WidgetStore) {
         ids::SCULPT3D_SYM_X,
         ids::SCULPT3D_SYM_Y,
         ids::SCULPT3D_SYM_Z,
+        ids::SCULPT3D_ALPHA_PREVIEW,
         ids::SCULPT3D_WIREFRAME,
         ids::SCULPT3D_ACCUMULATE,
         ids::SCULPT3D_CLOSE,

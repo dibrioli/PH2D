@@ -151,6 +151,24 @@ const MASK_TINT: vec3<f32> = vec3<f32>(0.30, 0.42, 0.58);
 // que é sobre a forma, não sobre a máscara.
 const MASK_STRENGTH: f32 = 0.75;
 
+// O tinto do PREVIEW do padrão — o que o próximo traço vai depositar, mostrado
+// no barro antes de o artista tocá-lo.
+//
+// ⚠️ **VIOLETA, e a escolha não é gosto:** o barro é claro e quente, a máscara é
+// AZUL-FRIA, e o cursor é ÂMBAR. Um preview em qualquer um desses três leria
+// como *"isto está protegido"* ou como *"aqui está a mira" — as duas frases
+// erradas. Ele tem de ler como uma quarta coisa.
+const PREVIEW_TINT: vec3<f32> = vec3<f32>(0.62, 0.34, 0.66);
+
+// Quanto o barro cede ao tinto no pico do padrão.
+//
+// ⚠️ **MENOR que o da máscara, e é o ponto inteiro:** o artista olha o preview
+// para julgar se o padrão cabe na FORMA dele, então o que ele não pode perder é
+// a forma. A máscara pode ser opaca porque a pergunta dela é *"cobri a dobra?"*;
+// a deste é *"esta densidade serve para esta peça?"*, que se responde vendo o
+// relevo por baixo.
+const PREVIEW_STRENGTH: f32 = 0.45;
+
 // ============================ O MATCAP ============================
 //
 // **O que um matcap É:** sombreamento que é função APENAS da normal em espaço de
@@ -384,6 +402,7 @@ struct VsOut {
     @location(0) n_view: vec3<f32>,
     @location(1) mask: f32,
     @location(2) curv: f32,
+    @location(6) preview: f32,
     @location(3) ao: f32,
     @location(4) curv_world: f32,
     @location(5) thickness: f32,
@@ -398,10 +417,13 @@ fn vs_main(
     @location(4) ao: f32,
     @location(5) curv_world: f32,
     @location(6) thickness: f32,
+    @location(7) preview: f32,
 ) -> VsOut {
     var out: VsOut;
     out.clip = cam.view_proj * obj.model * vec4<f32>(pos, 1.0);
     out.mask = mask;
+    // Um peso adimensional, como a máscara: `obj.model` não o toca.
+    out.preview = preview;
     // O AO tampouco cruza `obj.model`, e pela razão da curvatura logo abaixo:
     // ele é uma FRAÇÃO (quanto do céu o vértice enxerga), não uma direção nem um
     // comprimento. Mover a peça não muda o quanto ela se auto-oclui.
@@ -604,6 +626,7 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
         let flat = max(matcap_shade(vec3<f32>(0.0, 0.0, 1.0), id), vec3<f32>(FLAT_FLOOR));
         let ratio = lit / flat;
         var cm = lit * cav_occ;
+        cm = mix(cm, PREVIEW_TINT * ratio * cav_occ, clamp(in.preview, 0.0, 1.0) * PREVIEW_STRENGTH);
         cm = mix(cm, MASK_TINT * ratio * cav_occ, clamp(in.mask, 0.0, 1.0) * MASK_STRENGTH);
         return vec4<f32>(cm, 1.0);
     }
@@ -683,6 +706,14 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     // leitura de forma que o resto da peça tem, e o artista veria a máscara
     // *achatar* o relevo que ela deveria só cobrir — que é exatamente o que o
     // `MASK_STRENGTH` de 0,75 existe para não fazer.
+    // ⚠️ **O preview entra ANTES da máscara, e a ordem é a lei dos dois canais.**
+    // A proteção é a palavra final sobre o que o traço alcança, então ela tem de
+    // vencer no pixel também: se o preview pintasse por cima, o artista veria
+    // padrão prometido em barro que o pincel não pode tocar. Na prática os dois
+    // raramente disputam — o kernel já zera o preview onde a máscara protege —,
+    // e é precisamente por isso que a ordem tem de estar certa no único caso em
+    // que eles se encontram: o verbo de MÁSCARA, que não é freado por ela.
+    c = mix(c, PREVIEW_TINT * m * cav_occ, clamp(in.preview, 0.0, 1.0) * PREVIEW_STRENGTH);
     c = mix(c, MASK_TINT * m * cav_occ, clamp(in.mask, 0.0, 1.0) * MASK_STRENGTH);
     return vec4<f32>(c, 1.0);
 }

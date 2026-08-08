@@ -35,6 +35,27 @@ fn masks_of<'a>(mesh: &'a Mesh, scratch: &'a mut Vec<f32>) -> &'a [f32] {
     }
 }
 
+/// O PREVIEW do padrão por vértice, com a ausência resolvida — o gêmeo exato do
+/// [`masks_of`], e com uma diferença que decide o desenho: a ausência dele não é
+/// `Option` na malha, é um **slice VAZIO** vindo de fora.
+///
+/// ⚠️ **Ele não mora na [`Mesh`] de propósito.** O preview é DERIVADO do pincel
+/// vivo, e um plano na malha atravessaria a subdivisão, o remesh, o fechamento
+/// de buraco, a fusão e o documento — cinco lugares que teriam de decidir o que
+/// fazer com ele, e esquecer um é um preview que descreve a malha anterior.
+///
+/// ⚠️ **Comprimento errado conta como AUSENTE.** Um preview de outra topologia
+/// não é *um pouco* velho: ele poria valores válidos nos vértices errados, que é
+/// o modo de falha que nenhum olho pega.
+fn preview_of<'a>(preview: &'a [f32], mesh: &Mesh, scratch: &'a mut Vec<f32>) -> &'a [f32] {
+    if preview.len() == mesh.vert_count() {
+        return preview;
+    }
+    scratch.clear();
+    scratch.resize(mesh.vert_count(), ph2d_mesh::DEFAULT_PREVIEW);
+    scratch
+}
+
 /// O AO por vértice, com a ausência resolvida — o gêmeo exato do
 /// [`masks_of`], e pelo mesmo motivo: o device não tem `Option`.
 ///
@@ -102,6 +123,7 @@ impl MeshRenderer {
         queue: &wgpu::Queue,
         index: usize,
         mesh: &Mesh,
+        preview: &[f32],
     ) {
         mesh.triangle_indices(&mut self.scratch_indices);
         let verts = mesh.vert_count();
@@ -137,6 +159,11 @@ impl MeshRenderer {
                 &g.thickness,
                 0,
                 bytemuck::cast_slice(thickness_of(mesh, &mut self.scratch_thickness)),
+            );
+            queue.write_buffer(
+                &g.preview,
+                0,
+                bytemuck::cast_slice(preview_of(preview, mesh, &mut self.scratch_preview)),
             );
             queue.write_buffer(&g.indices, 0, bytemuck::cast_slice(&self.scratch_indices));
             g.index_count = index_count;
@@ -174,6 +201,10 @@ impl MeshRenderer {
             thickness: vb(
                 "ph2d-mesh thick",
                 bytemuck::cast_slice(thickness_of(mesh, &mut self.scratch_thickness)),
+            ),
+            preview: vb(
+                "ph2d-mesh preview",
+                bytemuck::cast_slice(preview_of(preview, mesh, &mut self.scratch_preview)),
             ),
             indices: device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("ph2d-mesh idx"),
@@ -242,6 +273,7 @@ impl MeshRenderer {
         index: usize,
         mesh: &Mesh,
         moved: &[u32],
+        preview: &[f32],
     ) -> bool {
         let Some(slot) = self.slots.get(index) else {
             return false;
@@ -258,6 +290,13 @@ impl MeshRenderer {
         self.scratch_moved.dedup();
         upload::plan_runs(&self.scratch_moved, &mut self.scratch_runs);
         let masks = masks_of(mesh, &mut self.scratch_masks);
+        // ⚠️ **E o PREVIEW na mesma janela, e ele não é opcional aqui.** Um dab
+        // move vértices, e o padrão é lido na POSIÇÃO do vértice — então os
+        // exatos vértices que esta janela carrega são os que o preview deixou de
+        // descrever. Deixá-lo de fora daria um barro cuja forma é nova e cujo
+        // padrão desenhado é o de antes do traço, no lugar em que o artista está
+        // olhando: a mesma frase da curvatura, um canal ao lado.
+        let prev = preview_of(preview, mesh, &mut self.scratch_preview);
         let g = &self.slots.get(index).expect("conferido acima").gpu;
 
         let stride = size_of::<[f32; 3]>() as u64;
@@ -279,6 +318,7 @@ impl MeshRenderer {
             // qual canal é este dab) seria o chamador conhecendo a regra que o
             // `last_gpu_dirty` existe para responder.
             queue.write_buffer(&g.masks, a as u64 * 4, bytemuck::cast_slice(&masks[a..b]));
+            queue.write_buffer(&g.preview, a as u64 * 4, bytemuck::cast_slice(&prev[a..b]));
             // **E a CURVATURA também**, pela mesma janela e pelo mesmo motivo.
             // ⚠️ Aqui ela é ainda mais obrigatória que a máscara: a lista que
             // chega é o `refreshed()` do `RegionScratch`, que é exatamente o
@@ -327,6 +367,45 @@ impl MeshRenderer {
     /// muda topologia.
     ///
     /// Devolve `false` quando não há slot (a cena ainda não subiu o objeto).
+    /// **Sobe o canal de PREVIEW inteiro** do objeto `index`, sem tocar em mais
+    /// nada. Devolve `false` se o slot não existe ou não mede a malha.
+    ///
+    /// ⚠️ **Uma porta própria, e ela NÃO é a segunda resposta à mesma pergunta.**
+    /// O [`MeshRenderer::upload_region_at`] responde *"estes vértices se
+    /// moveram"* — e um giro de eixo do padrão **não move vértice nenhum**, então
+    /// a janela dele estaria vazia e o barro continuaria tingido pelo padrão
+    /// anterior. Esta responde *"o campo inteiro é outro"*, que é uma pergunta
+    /// que nenhuma janela sabe fazer.
+    ///
+    /// ⚠️ **É uma escrita SÓ**, e é isso que a torna barata mesmo por quadro de
+    /// arrasto: 4 B por vértice — 1,7 MB numa malha de 426k, contra os 63,7 ms
+    /// que custa AVALIAR o padrão sobre ela.
+    pub fn upload_preview_at(
+        &mut self,
+        queue: &wgpu::Queue,
+        index: usize,
+        preview: &[f32],
+    ) -> bool {
+        let Some(slot) = self.slots.get(index) else {
+            return false;
+        };
+        if slot.gpu.vert_capacity == 0 {
+            return false;
+        }
+        let verts = slot.gpu.vert_capacity;
+        let data: &[f32] = if preview.len() == verts {
+            preview
+        } else {
+            self.scratch_preview.clear();
+            self.scratch_preview
+                .resize(verts, ph2d_mesh::DEFAULT_PREVIEW);
+            &self.scratch_preview
+        };
+        let g = &self.slots.get(index).expect("conferido acima").gpu;
+        queue.write_buffer(&g.preview, 0, bytemuck::cast_slice(data));
+        true
+    }
+
     pub fn upload_wire_at(&mut self, device: &wgpu::Device, index: usize, mesh: &Mesh) -> bool {
         let Some(slot) = self.slots.get(index) else {
             return false;

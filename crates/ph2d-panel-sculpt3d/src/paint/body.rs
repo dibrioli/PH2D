@@ -203,6 +203,21 @@ fn paint_brush_tail(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32,
     // decisão que moveu a pista de escala para cá: um controle e o que ele
     // governa têm de estar no campo de visão um do outro, senão o artista arrasta
     // um número olhando para outro lugar.
+    // **O interruptor do preview NO BARRO**, entre as pistas e o quadro — os
+    // dois mostram o mesmo padrão e a caixa governa o de FORA, então ela fica
+    // onde o olho já está. ⚠️ Só com padrão armado, pela mesma razão da pista de
+    // escala: sem padrão ele é um interruptor de coisa nenhuma.
+    if snap.ui.brush.alpha.is_some() {
+        y = toggle(
+            ctx,
+            ids::SCULPT3D_ALPHA_PREVIEW,
+            tr("panel.sculpt3d.alpha_preview"),
+            snap.ui.alpha_preview,
+            x,
+            w,
+            y,
+        );
+    }
     y = preview::paint(ctx, snap, x, w, y);
     // **ACUMULAR**, e só onde ele faz alguma coisa. ⚠️ A pergunta é feita à
     // PORTA do motor (`Verb::accumulates`) e não a uma lista de nomes aqui: o

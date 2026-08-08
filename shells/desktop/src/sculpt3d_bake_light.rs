@@ -383,7 +383,11 @@ fn compare(
 fn stage(gpu: &GpuContext) -> (MeshRenderer, Camera3d, LightRig) {
     let mesh = ph2d_mesh::shapes::uv_sphere(96, 144, 1.0);
     let mut renderer = MeshRenderer::new(&gpu.device, wgpu::TextureFormat::Rgba16Float);
-    renderer.upload_at(&gpu.device, &gpu.queue, 0, &mesh);
+    // ⚠️ **Sem preview, e não é esquecimento:** este render é o BAKE da forma —
+    // o que ele doa à tinta é a normal da geometria, e o tinto de um preview
+    // seria uma decisão de UI assada num canal que o artista vai iluminar. O
+    // slice vazio é a ausência, e o renderizador a resolve em zeros.
+    renderer.upload_at(&gpu.device, &gpu.queue, 0, &mesh, &[]);
     let camera = Camera3d::framing(mesh.bounds(), core::f32::consts::FRAC_PI_4, 1.0);
     (renderer, camera, LightRig::default())
 }

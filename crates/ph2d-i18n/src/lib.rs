@@ -474,6 +474,7 @@ pub fn tr(key: &str) -> &'static str {
         "panel.sculpt3d.alpha_scale" => "Alpha Scale",
         "panel.sculpt3d.alpha_az" => "Pattern Angle",
         "panel.sculpt3d.alpha_elev" => "Pattern Tilt",
+        "panel.sculpt3d.alpha_preview" => "Preview on Model",
         "panel.sculpt3d.alpha.too_fine" => "Finer than this mesh resolves — subdivide (K)",
         "panel.sculpt3d.mask" => "Mask",
         "panel.sculpt3d.mask.clear" => "Clear",

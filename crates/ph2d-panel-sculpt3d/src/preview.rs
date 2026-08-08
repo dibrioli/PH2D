@@ -74,7 +74,7 @@ pub(crate) const SWATCH: usize = 64;
 /// densidade ser contável de relance. Um swatch do modelo INTEIRO teria 33
 /// features em 64 px: dois pixels cada, que é o aliasing que a lei das dez
 /// arestas existe para nomear.
-pub(crate) const SPAN_FRACTION: f32 = 0.125;
+pub(crate) const SPAN_FRACTION: f32 = 0.125; // LITERAL-PX-OK: fração do modelo (1/8), não métrica de layout
 
 /// Tudo o que muda a imagem. Ver o cabeçalho — esquecer um campo aqui é um
 /// preview velho que ninguém vê que é velho.
@@ -210,7 +210,7 @@ fn shade(t: f32, lo: [u8; 4], hi: [u8; 4]) -> [u8; 4] {
         // `hi`, e `254,999 as u8` é 254 — o mesmo degrau que a conversão de graus
         // deste painel já pagou, pego por um gate.
         let v = f32::from(lo[c]) + (f32::from(hi[c]) - f32::from(lo[c])) * t;
-        out[c] = v.round().clamp(0.0, 255.0) as u8;
+        out[c] = v.round().clamp(0.0, 255.0) as u8; // LITERAL-PX-OK: teto de um canal de byte
     }
     out
 }

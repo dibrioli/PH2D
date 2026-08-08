@@ -126,6 +126,9 @@ pub const SCULPT3D_ALPHA_AZ_NUM: NodeId = hash_node_id("sculpt3d.alpha_az_num");
 pub const SCULPT3D_ALPHA_ELEV: NodeId = hash_node_id("sculpt3d.alpha_elev");
 /// Chip ligado a [`SCULPT3D_ALPHA_ELEV`].
 pub const SCULPT3D_ALPHA_ELEV_NUM: NodeId = hash_node_id("sculpt3d.alpha_elev_num");
+/// **O preview do padrão NO BARRO** — o interruptor do tinto que mostra, na
+/// peça, o que o próximo traço vai depositar.
+pub const SCULPT3D_ALPHA_PREVIEW: NodeId = hash_node_id("sculpt3d.alpha_preview");
 
 // ── O espelho ───────────────────────────────────────────────────────────────
 // TRÊS botões e não um rádio: os eixos são independentes (o ZBrush espelha em

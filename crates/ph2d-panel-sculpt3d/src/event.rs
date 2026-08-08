@@ -162,6 +162,19 @@ pub(crate) fn apply_event(
             state::push_intent(Sculpt3dIntent::SetUi(ui));
             true
         }
+        // ⚠️ **Gateado no padrão armado, como a row que o pinta.** Sem o guard
+        // o clique chegaria a um interruptor que ninguém desenhou — e o estado
+        // dele mudaria pelas costas do artista, que é a forma exata de um
+        // controle nascer mentindo sobre o que a tela mostra.
+        WidgetEvent::Click(id)
+            if id == ids::SCULPT3D_ALPHA_PREVIEW && snapshot.ui.brush.alpha.is_some() =>
+        {
+            seam_reset_button(host, id);
+            let mut ui = snapshot.ui;
+            ui.alpha_preview = !ui.alpha_preview;
+            state::push_intent(Sculpt3dIntent::SetUi(ui));
+            true
+        }
         WidgetEvent::Click(id) if id == ids::SCULPT3D_WIREFRAME => {
             seam_reset_button(host, id);
             let mut ui = snapshot.ui;

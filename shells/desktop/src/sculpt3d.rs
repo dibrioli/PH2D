@@ -193,6 +193,8 @@ use mask::MaskOp;
 /// pelo motivo dos outros: o corte é de responsabilidade.
 #[path = "sculpt3d_objects.rs"]
 mod objects;
+#[path = "sculpt3d_preview.rs"]
+mod sculpt3d_preview;
 
 pub(crate) use objects::{Merge, Primitive};
 
@@ -351,6 +353,9 @@ pub(crate) struct Sculpt3dScene {
     wireframe: bool,
 
     brush: Brush,
+    /// **O padrão do pincel é mostrado no barro?** — ver
+    /// [`sculpt3d_preview::PreviewState`]. Nasce ligado.
+    alpha_preview: bool,
     /// O raio autorado, em **pixels de tela** — ver [`DEFAULT_RADIUS_PX`]. O raio
     /// de MUNDO é derivado por dab, contra a câmera e o ponto de acerto.
     radius_px: f32,
@@ -478,6 +483,7 @@ impl Sculpt3dScene {
             matcap: None,
             wireframe: false,
             brush: Brush::default(),
+            alpha_preview: true,
             radius_px: DEFAULT_RADIUS_PX,
             stroke_anchor: [0.0, 0.0],
             grab: None,

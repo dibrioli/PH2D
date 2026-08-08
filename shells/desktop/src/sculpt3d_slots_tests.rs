@@ -102,3 +102,40 @@ fn isolating_a_piece_moves_it_to_slot_zero_and_it_uploads_there() {
         "no slot 0, que era de outra peça: sobe inteira"
     );
 }
+
+/// **A SUBIDA DO CANAL DE PREVIEW NÃO MORA DENTRO DO `match` DO PLANO.**
+///
+/// ⚠️ **Arch-gate sobre o fonte porque nenhum teste de CPU alcança isto:** o
+/// `sync_mesh` exige um `wgpu::Device` e uma `Queue`, e o defeito é de POSIÇÃO —
+/// com a chave do padrão mudada e nenhum vértice movido, o plano do slot cai em
+/// [`SlotJob::Skip`] e um upload escrito dentro do braço `Region` nunca roda no
+/// caso exato que ele existe para cobrir. O sintoma seria o barro com o padrão
+/// ANTERIOR enquanto o quadro do painel já mostra o novo — dois previews
+/// discordando, que é pior que preview nenhum.
+///
+/// A propriedade afirmada é a RELAÇÃO (a chamada vem DEPOIS do `}` que fecha o
+/// `match`), nunca uma distância em bytes: um proxy de distância expira na
+/// primeira linha que alguém acrescenta no meio.
+#[test]
+fn the_whole_preview_upload_lives_outside_the_slot_job_match() {
+    let src = std::fs::read_to_string("src/sculpt3d_slots.rs")
+        .expect("o roteador de slots é legível a partir do pacote");
+    let call = src
+        .find("upload_preview_at")
+        .expect("a porta do canal inteiro sumiu do `sync_mesh`");
+    let m = src
+        .find("match line.job {")
+        .expect("o `match` do plano sumiu");
+    assert!(call > m, "o upload do canal inteiro precede o `match`");
+
+    // O `}` que FECHA o match: a linha de fechamento na indentação do `match`.
+    let close = src[m..]
+        .find("\n            }\n")
+        .map(|o| m + o)
+        .expect("o `match` do plano não fecha na indentação esperada");
+    assert!(
+        call > close,
+        "o upload do canal inteiro está DENTRO de um braço do `match` — com a \
+         chave do padrão mudada e nada sujo o plano cai em `Skip`, e ele nunca roda"
+    );
+}

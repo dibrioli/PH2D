@@ -119,6 +119,15 @@ pub struct Mesh {
 pub const DEFAULT_COLOR: [f32; 3] = [1.0, 1.0, 1.0];
 /// Máscara de um vértice que ninguém mascarou (0 = totalmente esculpível).
 pub const DEFAULT_MASK: f32 = 0.0;
+/// PREVIEW de um vértice que ninguém previu (0 = o barro não é tingido).
+///
+/// ⚠️ **O preview NÃO é um plano desta malha** — ele é derivado do pincel vivo e
+/// mora fora dela, precisamente para não atravessar a subdivisão, o remesh, o
+/// fechamento de buraco, a fusão e o documento. A CONSTANTE mora aqui porque
+/// dois crates que não se conhecem precisam do mesmo número: o kernel escreve
+/// isto para *"nada aqui"* e o renderizador sobe isto para *"ninguém armou"*, e
+/// se os dois divergirem o barro nasce tingido sem que ninguém tenha pedido.
+pub const DEFAULT_PREVIEW: f32 = 0.0;
 /// AO de um vértice que ninguém assou (1 = céu aberto).
 ///
 /// ⚠️ **O default é o que NÃO escurece.** Um canal ausente tem de ser

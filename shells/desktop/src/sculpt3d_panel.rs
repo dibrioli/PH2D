@@ -39,6 +39,7 @@ impl Sculpt3dScene {
                 radius_px: self.radius_px(),
                 symmetry: self.symmetry,
                 matcap: self.matcap,
+                alpha_preview: self.alpha_preview,
                 wireframe: self.wireframe,
                 cavity: self.cavity,
                 ao: self.ao,
@@ -82,6 +83,7 @@ impl Sculpt3dScene {
         self.radius_px = ui.radius_px;
         self.symmetry = ui.symmetry;
         self.matcap = ui.matcap;
+        self.alpha_preview = ui.alpha_preview;
         self.wireframe = ui.wireframe;
         self.cavity = ui.cavity;
         self.ao = ui.ao;

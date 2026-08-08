@@ -10,11 +10,11 @@
 | | |
 |---|---|
 | Branch | `line/motion-value` |
-| HEAD | `d7b2e2d1e` |
+| HEAD | `f9e6cf597` |
 | Merge-base com `main` | `a4018d203` |
-| Commits | **35** |
-| Diff | **165 arquivos, +13.210 / −2.589** |
-| Janela | 2026-08-05 → 2026-08-07 |
+| Commits | **39** |
+| Diff | **170 arquivos, +13.787 / −2.617** |
+| Janela | 2026-08-05 → 2026-08-08 |
 
 ---
 
@@ -40,6 +40,30 @@ mas agora só onde ela ainda é necessária — o gate `the_gpu_cook_recusal_pla
 - o **oscilador** ganha régua de tempo; o **ruído** fecha o ciclo e o WGSL dele deixa de existir
   em três cópias.
 
+**(B2) O SLIDER DUAL — a caixa vai ALÉM do slider** (`f60999baa` · `779cf4f9f` · `f9e6cf597`, o
+item A1 do doc 88). O `ParamUiHint.max` passa a ser **só a faixa confortável do arrasto**, e o
+`ParamHardMax` — canal *side-metadata* que já existia no registry — diz **onde o disfuncional
+começa**: o número que a caixa de texto ainda aceita. Onze nós de contagem carregam hoje um teto
+**MEDIDO**, com a tabela ao lado dele no doc-comment do próprio nó.
+
+⚠️ **A feature NÃO funcionava em lugar nenhum, e três gates ficavam VERDES sobre isso.** O
+espelho chip↔slider re-escrevia o chip com a re-projeção do slider **saturado**, e depois — já com
+o chip certo — o slider **também** emitia, com o thumb parado no topo, e *o último vencia*. Os
+gates de faixa do painel escrevem o valor com `set_number_value` e **nunca PINTAM**; a faixa
+registrada e o link com o slider nascem no `paint`, então a fixture deles não continha o espelho
+que diziam exercitar. A cura: a faixa do CHIP é a autoridade, e o evento do slider passa por uma
+**porta única** (`push_mirrored_slider_event`) que se cala quando o thumb é um substituto saturado
+— *dois sítios emitem esse evento hoje, e um `if` copiado é a regra que o terceiro nasce sem*.
+Ferramenta nova que tornou o gate possível: **`MockPanelHost::type_into_number`** — o testkit só
+sabia ESCREVER no store, que pula o caminho de commit inteiro. **Smokado pelo Enio.**
+
+⚠️ **E a varredura dos tetos achou mais defeito na SONDA que nos nós** — a lei que sobra está
+gravada em dois gates: **um teto digitável não pode passar do que o kernel HONRA** (`lattice` 400,
+`kaleidoscope` 256; uma caixa que aceita 5.000 sobre um clamp de 400 *aceita e mente*). E o
+`motion.boids` media 3,2 ns por agente porque **nunca dava um passo**: o estado dele chega por uma
+aresta DELAYED que o editor auto-liga e que `Graph::add_node` não faz. Com o grafo certo o
+quadrático aparece — 500 → 0,475 ms · 2.000 → 10,392 · 8.000 → **186,388**.
+
 **(C) A wave B** (`bd0bc6d7a` … `2378cfd10`) — a **paleta vira SWATCHES** (sem limite de
 comprimento, por construção) e o **look-at ganha alvo por NOME e pelo CURSOR**. Inclui o fix do
 **drift crônico do Motion** (o cursor era projetado pela janela CHEIA — **terceira vez** que este
@@ -60,6 +84,8 @@ Tudo **aditivo** salvo onde marcado.
 | `ph2d-color/src/palette_text.rs` **(NOVO)** + `lib.rs` (+2) | o formato TEXTO de uma paleta, ao lado do do gradiente — *uma crate é dona de como uma cor se escreve* (precedente: `motion-color-ramp`) | arquivo próprio ⇒ isolado por construção |
 | `ph2d-editor-core/src/screens/layout.rs` | **`INSPECTOR_MAX_H`** — const `pub` NOVA (era literal solto no `Rect::new`) | ⚠️ **símbolo novo, ver §4** |
 | `ph2d-editor-core/src/project.rs` | ⚠️ **SÓ doc-comments.** Os dois que contradiziam o `Default` real | **zero mudança de comportamento — ver §6** |
+| `ph2d-editor-core/src/interaction/dispatch/{mod,tick}.rs` | ⚠️ **MUDANÇA DE COMPORTAMENTO** no espelho chip↔slider: a **faixa do chip é a autoridade** (um valor digitado além da trilha sobrevive) e o evento do slider sai por **`push_mirrored_slider_event`**, que se cala com o thumb saturado | `pub(super) fn` nova + os 2 sítios de emissão roteados por ela |
+| `ph2d-ui-testkit/src/lib.rs` | **`type_into_number`** — digitar de verdade (foco → `dispatch_text_input` por caractere → Enter) | aditivo (`pub fn` novo) |
 | `ph2d-nodegraph/src/graph.rs` | `clear_param` / `clear_text_param` | aditivo (`pub fn` novos) |
 | `ph2d-nodegraph/src/external.rs` | o **namespace reservado `$`** (`RESERVED_PREFIX`, `is_reserved`, `CURSOR`, `position_of`) — o alvo do look-at pelo cursor | ⚠️ **símbolos novos, ver §4** |
 | `ph2d-node-registry/src/` (+ `unit.rs` NOVO) | **6 canais side-metadata** novos: `param_units` · `param_groups` · `param_hard_min` · `live_vector_source` · `object_source` · `card_title` | **o padrão canônico** — nenhum toca `NodeManifest` |
@@ -141,8 +167,8 @@ comentários é que estavam mentindo. Commit `5bc53584e`, e ele é `docs(...)` d
 
 ## 8. Ordem, dependências e o que smoke-testar
 
-**Ordem:** os 33 commits são sequenciais e o rebase deve preservá-los. O cluster **(A)** (GPU do
-objeto) é **independente** de (B)/(C)/(D); (B) → (C) → (D) compartilham o painel `motion-params` e
+**Ordem:** os 39 commits são sequenciais e o rebase deve preservá-los. O cluster **(A)** (GPU do
+objeto) é **independente** de (B)/(C)/(D); (B) → (B2) → (C) → (D) compartilham o painel `motion-params` e
 o bridge, então **não reordene**.
 
 **Smokes (todos `--release`, da worktree):**
@@ -154,6 +180,12 @@ o bridge, então **não reordene**.
 | Objeto/vetor vivo na GPU | `env PH2D_MOTION_OBJ_SMOKE=1 …` | aprovado |
 | Caminho de nós | `env PH2D_MOTION_NODE_PATH_SMOKE=1 …` | aprovado |
 | **Row dirigida** | `env PH2D_DRIVEN_ROW_SMOKE=1 …` | **aprovado 2026-08-07** |
+| **Slider dual** | a MESMA cena: `Grid` → caixa **Rows** → digite `5000` → Enter | **aprovado 2026-08-08** |
+
+⚠️ **O slider dual se julga digitando, nunca arrastando.** O número tem de **FICAR** (a fileira
+cresce para 5.000 e o thumb estaciona em 20, que é a ponta da faixa confortável). E o controle da
+outra ponta é o **`Scatter`**: ali digitar `50000` ainda clampa em **3.000**, porque aquele teto é
+um RECURSO medido (o quadro quebra entre 3.000 e 4.000), não ergonomia.
 
 ⚠️ **A cena da row dirigida imprime o que montou.** Se a linha `[driven-row smoke]` não aparecer,
 pare: o resto do smoke não diz nada.
@@ -168,24 +200,34 @@ vendo o produto correto.
 
 ## 9. Gate de fechamento (rodado nesta worktree)
 
-- **`cargo test --workspace` → 12.843 passed / 0 failed**
-- `cargo fmt --check` nas 5 crates tocadas → limpo (exit 0)
-- `cargo clippy -p ph2d-host-desktop --all-targets` → limpo
-- `cargo test -p ph2d-host-desktop` → 2.436 passed / 0 failed
-- LOC: todo arquivo tocado sob o teto (`driven_row_smoke.rs` 425 · `motion_bridge_params.rs` 581).
+- **`cargo test --workspace` → 12.851 passed / 0 failed**
+- `cargo fmt --check` nas crates tocadas → limpo (exit 0)
+- `cargo clippy --all-targets` na shell + nas 7 crates-nó da varredura → limpo
+- `cargo test -p ph2d-host-desktop` → 2.439 passed / 0 failed
+- LOC: todo arquivo tocado sob o teto (o maior é `verlet_rope/lib.rs` em **652**;
+  `motion_count_ceiling_tests.rs` 282 · `motion_bridge_range_tests.rs` 348).
+
+⚠️ **Rode a suíte, não o `cargo check`.** Esta wave deu verde no `cargo check -p` sobre **dois
+erros de compilação** — ele não compila código `#[cfg(test)]`, e a sonda de medição vive lá.
 
 ---
 
 ## 10. Aberto e NOMEADO (não é dívida escondida)
 
-- **O doc 88 não fechou inteiro.** O **slider dual (A1)** deixou de ser o item aberto: o mecanismo
-  já existia e a wave o POPULOU em 4 nós com números **medidos** (`motion.grid` rows/cols,
-  `motion.fibonacci`, `motion.distribute_radial` → **1.000.000**; `motion.scatter` → **3.000**,
-  porque ele é O(n²) e o quadro quebra entre 3.000 e 4.000). O que segue aberto é a **varredura
-  dos demais nós de contagem** — `motion.clone`, `motion.lattice`, `motion.boids`,
-  `motion.verlet_rope`, `motion.kaleidoscope`, `motion.pin_constraint`, `motion.distribute_curve`,
-  `motion.wave`, `field.remap`, `value.pattern` — e a sonda `measure_the_count_ceiling` já é a
-  ferramenta: cada um entra com a própria faixa de varredura e a própria tabela.
+- **O doc 88 não fechou inteiro, mas o A1 (o slider dual) FECHOU** — mecanismo, produto e
+  varredura. Onze nós de contagem carregam teto **medido**: `motion.grid` rows/cols ·
+  `motion.fibonacci` · `motion.distribute_radial` · `motion.distribute_curve` → **1.000.000** ·
+  `motion.pin_constraint` first/count → **1.000.000** (o eixo é PLANO: 0,534 / 0,490 / 0,516 ms) ·
+  `motion.clone` → **10.000 CÓPIAS** (1 M instâncias, 4,05 ms) · `motion.verlet_rope` → **50.000**
+  (linear) · `motion.scatter` → **3.000** e `motion.boids` → **2.000** (os dois O(n²)) ·
+  `motion.lattice` → **400** e `motion.kaleidoscope` → **256** (ali o teto **é o clamp do kernel**).
+- ⚠️ **Quatro nós ficam de FORA da varredura, cada um com o motivo escrito:** `motion.wave` e
+  `motion.soft_body` já têm **soft == clamp do kernel** (60 e 512), então não há folga a abrir sem
+  mexer no KERNEL — o que é wave própria, com a medição de `rows × cols` ao lado; e o `steps` de `field.remap` e
+  `value.pattern` **não é uma contagem que carrega recurso** — no `value.pattern` ele é
+  estruturalmente limitado pelos oito slots declarados (`max: SLOTS`), e no `field.remap` é uma
+  quantização do falloff, custo O(1) por elemento. *Um teto sobre param que não carrega recurso
+  seria cerimônia; e no `value.pattern` o soft JÁ é o limite estrutural.*
 - ⚠️ **`motion.voronoi` fica NOMEADO e não capado**, de propósito: o soft dele é **165.000** (medido
   pela linha da GPU) e o cook de **CPU** já passa o quadro em ~1.500 (8.000 = 259 ms). Derivar um
   teto do caminho de REFERÊNCIA seria deixar o mais lento definir o teto do mais rápido — o erro

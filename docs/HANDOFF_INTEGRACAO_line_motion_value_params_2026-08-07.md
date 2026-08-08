@@ -10,10 +10,10 @@
 | | |
 |---|---|
 | Branch | `line/motion-value` |
-| HEAD | `fb11e82ec` |
+| HEAD | `839188d6b` |
 | Merge-base com `main` | `a4018d203` |
-| Commits | **56** |
-| Diff | **191 arquivos, +17869 / −2816** |
+| Commits | **63** |
+| Diff | **205 arquivos, +19125 / −2877** |
 | Janela | 2026-08-05 → 2026-08-08 |
 
 ---
@@ -258,6 +258,66 @@ alcança** (a mesma causa estrutural que esta linha já documentou três vezes).
 
 ---
 
+**(F) O WIDGET DIZ O QUE O NÚMERO É** (`5a5678007`; doc 88 §11.1). Todo param é um `f32` no
+`NodeManifest` — **contrato CONGELADO** —, então o TIPO não distingue uma magnitude de uma
+escolha nem de uma semente; quem distingue é o `ParamWidget`, que é **side-metadata**. ⚠️ **E
+side-metadata sem gate apodrece por STRAGGLER, com número:** a varredura mediu **11 nós pintando
+`seed` como campo de dado e 4 como slider**, e **17 pintando `mode` como palavras e 1 como o
+número cru**. Curados: os quatro `seed` (`field.remap` · `value.instance_field` · `value.noise` ·
+`motion.distribute_poisson`) — *arrastar uma semente não quer dizer nada: toda vizinha é tão boa
+quanto ela, e o que o artista quer é OUTRA* · o `motion.delay.mode` vira **Enum** com as palavras
+que o próprio `ParamSpec` já nomeia · e o `motion.boids.spread` vira **Toggle**, porque o `eval`
+o lê como bool (`> 0.5`) e o comentário ao lado dele já dizia *"a 2-position slider"*.
+
+⚠️ **A 3ª lei do gate novo é a mais forte por ser PROPRIEDADE em vez de nome:** *um slider cujo
+passo mede o curso inteiro tem duas posições* — nenhum nome precisa ser conhecido para ela morder.
+E `rig.skin_deformer.falloff` aparece na varredura **por nome e NÃO é defeito** (ali o falloff é
+um expoente, magnitude de verdade), que é por que o gate casa **nome exato** e nunca família.
+
+**(G) O SLIDER ARRASTA ONDE A MÃO TRABALHA; A CAIXA DIGITA ATÉ O TETO** (`ba3c2aba3` ·
+`5c6785342`; doc 88 §11.2-§11.3). A generalização do A1 (o slider dual) do onze para o
+**catálogo inteiro**: **24 params em 18 crates** — o teto de hoje migra para `ParamHardMax` e o
+slider baixa para a faixa de AUTORIA. ⚠️ **Nada fica inalcançável**: a caixa numérica ao lado já
+digita até lá.
+
+⚠️ **A barra é DERIVADA da geometria, não escolhida:** o track do painel mede **~154 px**
+(`inner_w` 320 − label 70 − caixa 72) e o mapeamento é estritamente linear ⇒ `span / 154` **é o
+menor passo que um arrasto consegue**, e acima de `span / default = 154` esse passo mínimo passa
+do próprio default. Com o `emitter.max` arrastando até **4.194.304, um pixel valia 27.000
+partículas** e o default de 512 não cabia no primeiro cinquentavo de pixel. A régua sai de **28
+params fora da linha para QUATRO**, e os quatro são `IntSlider`s cujo curso cabe no track (todo
+inteiro alcançável, que é a propriedade que importa numa contagem).
+
+⚠️ **Duas cercas de Chesterton PRESERVADAS em vez de revogadas:** o `emitter.max` era `MAX_ALIVE`
+**de propósito**, contra a divergência que o comentário nomeia — a derivação não sumiu, mudou
+para o campo que quer dizer TETO (o `voronoi.count` ganhou a mesma cura); e o gate
+`the_mesh_sliders_reach_exactly_the_clamp` do `soft_body` afirmava *capacidade-alcançável* **e**
+*slider-arrastável* com um número só — agora afirma as duas, **cada uma do seu lado do par**.
+
+⚠️ **E o emitter tinha os dois knobs descrevendo CENAS diferentes:** o comentário do `rate` dizia
+*"12.000/s é uma fonte densa a 1 s de vida"* e o `life` tem default **3**, onde isso são 36.000
+vivas — **setenta vezes** o `max` default de 512. Agora `1.200 × 3 = 3.600` cabe no `max` de 4.096.
+
+⚠️ **O 3º gate é o MODO DE FALHA deste padrão:** `static PARAM_HARD_MAX` **declarado e nunca
+registrado** — a tabela existe, o `cargo` não reclama (o próprio crate a lê em gates), e o painel
+nunca a vê: o artista fica com o slider estreito **e** sem o teto digitável, que é pior que não
+ter feito a wave. **Hoje 25 crates-nó declaram e registram** (o 26º hit do grep é o gate).
+
+**(H) A CENA DO EMITTER** (`839188d6b`) — pedido do Enio no smoke: *"Emitter não sei se funciona
+corretamente"*. ⚠️ **E ela achou um defeito que os gates de CONTAGEM não podiam ver:** a 1ª versão
+da sonda cozinhava sem `Cook::advance_tick`, e **toda partícula ficava no bico** — `EvalCtx::dt` é
+`playhead − prev_playhead`, e o `prev_playhead` só existe depois do `advance_tick`, que é também
+quem carrega as arestas `delayed`. Os três gates de contagem ficavam **VERDES sobre essa cena
+imóvel**, porque o `motion.emitter` é **stateless** e conta certo com o laço parado — quem estava
+morto era o `motion.integrate`, e **nada que contasse partículas podia perceber**. *O oráculo tem
+de ser o LUGAR delas*, e é isso que o `the_fountain_flies_and_stays_in_frame` afirma (ele é
+também o gate de ENQUADRAMENTO: as outras cenas deste painel vivem em `|x|,|y| ≲ 1,5`, e um jato
+que sai da moldura faz o artista julgar um terço do que a mensagem descreve).
+
+**Zero schema, zero contrato congelado, zero dep, zero `Cargo.toml`** nos três clusters.
+
+---
+
 ## 3. Foundational / compartilhado tocado, e por quê
 
 Tudo **aditivo** salvo onde marcado.
@@ -302,6 +362,12 @@ duas linhas escrevendo o mesmo literal **não conflitam no git**, porque o git n
 sobre o que o número significa. O sinal é o conflito no `project_schema_tests.rs` ao lado.
 
 **Não há:** `NodeId(NNN)` numérico novo · chave i18n nova · token novo · id de gizmo novo.
+
+⚠️ **Os clusters (F)/(G)/(H) não acrescentam NADA a esta tabela** — conferido: zero `Cargo.toml`,
+zero símbolo novo, `PROJECT_SCHEMA` segue em **56**. Eles mexem em `PARAM_HINTS` /
+`PARAM_HARD_MAX` (side-metadata do registry, uma tabela `static` por crate-nó) e acrescentam
+`shells/desktop/src/emitter_smoke.rs` **novo** + duas linhas de fiação (`mod` no `main.rs`, a
+chamada no `render_loop/mod.rs`) — as mesmas duas linhas que toda cena de smoke desta shell tem.
 
 **`Cargo.toml` tocados — 3, todos arestas de PATH, zero pacote externo novo:**
 
@@ -349,13 +415,23 @@ comentários é que estavam mentindo. Commit `5bc53584e`, e ele é `docs(...)` d
   matriz de features não.
 - **RUSTSEC / `cargo deny`** — nenhuma dep externa nova, então o risco é herdado do `main`.
 
+⚠️ **E um `✗` que NÃO é do código, medido nesta máquina em 2026-08-08:** o `/home` estava em
+**946 G de 950 G (132 M livres)** e a suíte parou com `mold: failed to write to an output file.
+Disk full?` → `clang: Bus error` em `ph2d-host-desktop` e `ph2d-timeline`. **Nada disso é a
+linha** ([[feedback_a_ship_x_can_be_the_environment_not_the_code]]). O combustível são os
+`target/` das worktrees — medidos: **Painter 264 G · physics 205 G · Vector 162 G ·
+motion-value 100 G · sculpt3d 40 G · runtime 28 G = ~799 G**. Liberei **só o meu**
+(`target/debug/incremental`, 24 G, cache regenerável da minha própria árvore) e não toquei em
+árvore de outra linha. **Se o `ship.sh` do integrador falhar no LINKER, cheque o `df` antes de
+ler o erro como código.**
+
 ---
 
 ## 8. Ordem, dependências e o que smoke-testar
 
-**Ordem:** os 39 commits são sequenciais e o rebase deve preservá-los. O cluster **(A)** (GPU do
-objeto) é **independente** de (B)/(C)/(D); (B) → (B2) → (C) → (D) compartilham o painel `motion-params` e
-o bridge, então **não reordene**.
+**Ordem:** os 63 commits são sequenciais e o rebase deve preservá-los. O cluster **(A)** (GPU do
+objeto) é **independente** de (B)/(C)/(D); (B) → (B2) → (C) → (D) → (E) → (F) → (G) compartilham o
+painel `motion-params` e o bridge, então **não reordene**.
 
 **Smokes (todos `--release`, da worktree):**
 
@@ -367,6 +443,13 @@ o bridge, então **não reordene**.
 | Caminho de nós | `env PH2D_MOTION_NODE_PATH_SMOKE=1 …` | aprovado |
 | **Row dirigida** | `env PH2D_DRIVEN_ROW_SMOKE=1 …` | **aprovado 2026-08-07** |
 | **Slider dual** | a MESMA cena: `Grid` → caixa **Rows** → digite `5000` → Enter | **aprovado 2026-08-08** |
+| Transform (espelho + eixo Y) | `env PH2D_TRANSFORM_SMOKE=1 …` | aprovado |
+| Echo / rastro | `env PH2D_ECHO_SMOKE=1 …` | **aprovado 2026-08-08** |
+| **A FONTE (emitter)** | `env PH2D_EMITTER_SMOKE=1 …` | **aprovado 2026-08-08** |
+
+⚠️ **A cena do emitter é onde a régua da wave (G) se julga:** arraste **Rate** (default 40, teto
+de arrasto 1.200) e o jato adensa **sem bater no pool**; baixe **Max** (default 4.096) a ~300 e o
+jato **corta no ar**; e digite `20000` na caixa de **Max** — o teto DURO continua digitável.
 
 ⚠️ **O slider dual se julga digitando, nunca arrastando.** O número tem de **FICAR** (a fileira
 cresce para 5.000 e o thumb estaciona em 20, que é a ponta da faixa confortável). E o controle da
@@ -386,15 +469,30 @@ vendo o produto correto.
 
 ## 9. Gate de fechamento (rodado nesta worktree)
 
-- **`cargo test --workspace` → 12.851 passed / 0 failed**
-- `cargo fmt --check` nas crates tocadas → limpo (exit 0)
-- `cargo clippy --all-targets` na shell + nas 7 crates-nó da varredura → limpo
+- **`cargo test --workspace` → 12.851 passed / 0 failed** (rodado em 2026-08-07, sobre o cluster
+  (E); ⚠️ **a re-corrida de 2026-08-08 NÃO fechou por DISCO** — ver o aviso abaixo)
+- `cargo fmt --check` nas crates tocadas → **limpo (exit 0)**, conferido depois do `2a5b67db2`
+- `cargo clippy --all-targets` na shell + nas crates-nó da varredura → limpo
 - `cargo test -p ph2d-host-desktop` → 2.439 passed / 0 failed
-- LOC: todo arquivo tocado sob o teto (o maior é `verlet_rope/lib.rs` em **652**;
-  `motion_count_ceiling_tests.rs` 282 · `motion_bridge_range_tests.rs` 348).
+- **Contratos congelados rodados hoje:** `architecture_contract_surface` **3 passed** ·
+  `architecture_tool_contract_surface` **4 passed**
+- LOC: todo arquivo tocado sob o teto (`emitter_smoke.rs` **319** · `param_range_conventions.rs`
+  **159** · `param_widget_conventions.rs` **119** · `param_census.rs` **101**)
+
+⚠️ **A re-corrida de `cargo test --workspace` de 2026-08-08 parou em `mold: failed to write to an
+output file. Disk full?` → `clang: Bus error`**, com o `/home` em **946 G de 950 G**. É a mesma
+falha do §7, e ela **não é da linha**: as crates que caíram (`ph2d-timeline`,
+`ph2d-panel-motion-params`, `ph2d-host-desktop`) morreram no LINKER, não no compilador. Liberar
+espaço é decisão do Enio — eu limpei **só o meu** `target/debug/incremental` (24 G) e o rebuild
+o consumiu de volta em uma corrida.
 
 ⚠️ **Rode a suíte, não o `cargo check`.** Esta wave deu verde no `cargo check -p` sobre **dois
 erros de compilação** — ele não compila código `#[cfg(test)]`, e a sonda de medição vive lá.
+
+⚠️ **E NÃO leia o exit code através de um pipe.** Custou uma rodada nesta sessão: um
+`cargo fmt --check … | head -5` imprime o diff **e** devolve `0` (o exit do `head`), então o
+vermelho latente do `2a5b67db2` passou por verde. Redirecione para arquivo e leia o `$?`
+([[feedback_pipe_masks_script_exit_code]]).
 
 ---
 
@@ -439,6 +537,14 @@ erros de compilação** — ele não compila código `#[cfg(test)]`, e a sonda d
   (VALUE, ESTRUTURAIS, RIG), que existem para ninguém as "completar" por parecerem magras.
   **Duas fechadas** (TRANSFORM · ECHO); a próxima aberta é **DEFORMERS** (`spherize` e
   `slit_scan` com 1 param cada — a medir se são magros por natureza).
+- ⚠️ **O passe VISUAL do painel (a §11) fechou em três leis, e as três têm gate com controle
+  positivo:** *o widget diz o que o número É* (F) · *o slider arrasta onde a mão trabalha* (G) ·
+  *declarar não é registrar* (G). O que **não** foi varrido é a terceira pergunta da §11 — o
+  **AGRUPAMENTO** (quais params merecem seção própria) —, que é decisão por-nó e não tem
+  propriedade mecânica que um gate possa afirmar: um gate ali seria cerimônia.
+- ⚠️ **Os QUATRO params que a régua ainda reporta fora da linha ficam de propósito**, e a razão é
+  que a propriedade que importa numa contagem é *todo inteiro é alcançável* — os quatro são
+  `IntSlider`s cujo curso inteiro cabe no track. Baixá-los tiraria alcance sem comprar precisão.
 - ⚠️ **E o `motion.duplicator` tem ZERO params, o que está QUASE todo certo** — a tabela
   do Cavalry é grande e a leitura ingênua ("faltam sete params") é falsa: *Distribution*
   são 21 nós aqui, os transforms por-cópia são `motion.move`/`rotate`/`scale` a jusante, e
@@ -448,7 +554,8 @@ erros de compilação** — ele não compila código `#[cfg(test)]`, e a sonda d
 
 ---
 
-**Resumo:** linha `motion-value` pronta (HEAD `fb11e82ec`, 56 commits). Foundational tocado é
-aditivo salvo os doc-comments do §6(a); símbolos colidíveis são `PROJECT_SCHEMA = 56`
-(**provisório**), `INSPECTOR_MAX_H`, `RESERVED_PREFIX` e `CURSOR`; contratos congelados **3/3 +
-4/4 verdes**; zero pacote externo novo, zero crate nova, zero ADR. **Aguardo ordem de integração.**
+**Resumo:** linha `motion-value` pronta (HEAD `839188d6b`, **63 commits**, 205 arquivos,
++19125 / −2877). Foundational tocado é aditivo salvo os doc-comments do §6(a); símbolos colidíveis
+são `PROJECT_SCHEMA = 56` (**provisório**), `INSPECTOR_MAX_H`, `RESERVED_PREFIX` e `CURSOR`;
+contratos congelados **3/3 + 4/4 verdes**; zero pacote externo novo, zero crate nova, zero ADR.
+**Todos os smokes aprovados pelo Enio.** **Aguardo ordem de integração.**

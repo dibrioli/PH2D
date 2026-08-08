@@ -416,7 +416,7 @@ pub(crate) fn reopen_scene() -> bool {
 /// sim ([`donation_scene`] e [`bake_scene`]) precisam da mesma superfície branca pelo mesmo motivo:
 /// a luz da forma é o que se vê, e sobre branco não há cor competindo.
 pub(crate) fn wants_canvas() -> bool {
-    donation_scene() || bake_scene() || reopen_scene()
+    donation_scene() || bake_scene() || reopen_scene() || shading::occlusion_donation_scene()
 }
 /// **O roteiro de cada cena** — módulo filho, separado por ASSUNTO (e pelo teto de LOC).
 /// AS CENAS DOS CANAIS DE SOMBREAMENTO — ver o módulo.

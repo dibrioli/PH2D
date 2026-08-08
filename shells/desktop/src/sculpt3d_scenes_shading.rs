@@ -53,6 +53,24 @@ pub(crate) fn sss_scene() -> bool {
     std::env::var("PH2D_SCULPT3D_SMOKE").ok().as_deref() == Some("19")
 }
 
+/// `=20` — a cena da **OCLUSÃO QUE CHEGA À TINTA** (`docs/3D/05.2`, W10.7).
+///
+/// ⚠️ **Cena própria e não um passo da `=2`**, pela regra que o próprio
+/// `donation_scene` escreve: *a doação* e *a oclusão da doação* são duas
+/// perguntas. A `=2` pergunta **a forma acende a tinta?** (a normal); esta
+/// pergunta **a fresta da escultura ESCURECE a tinta?**, e o oráculo é outro —
+/// lá é o realce que aparece, aqui é a sombra que aparece onde a forma tem um
+/// vinco.
+///
+/// ⚠️ **A peça nasce SULCADA, e é a fixture inteira.** Sobre uma esfera lisa a
+/// curvatura é quase constante (medido: `k ≈ −0,037`, a faixa da oclusão fica
+/// em `1,108 .. 1,155`) e *"a oclusão chegou"* seria indistinguível de *"a peça
+/// clareou um pouco"*. Com os sulcos ela abre para `0,000 .. 1,781`, e é desse
+/// fosso que o olho decide.
+pub(crate) fn occlusion_donation_scene() -> bool {
+    std::env::var("PH2D_SCULPT3D_SMOKE").ok().as_deref() == Some("20")
+}
+
 /// A cena de um destes canais, **se alguma estiver armada**.
 ///
 /// ⚠️ **`Option` e não um `Vec` vazio:** *"nenhuma destas está armada"* e *"esta
@@ -93,25 +111,25 @@ pub(crate) fn scene_objects() -> Option<Vec<(ph2d_mesh::Mesh, Pose)>> {
             baked(ph2d_mesh::shapes::uv_sphere(segs * 2 / 3, segs, r))
         };
         eprintln!(
-            "[sculpt3d] =19 A TINTA QUE A LUZ ATRAVESSA: tres esferas (raios 1.00 / 0.45 /
-             [sculpt3d]    0.20) e uma CHAPA, todas com o MESMO material, todas ja' assadas.
-             [sculpt3d]    Os dois canais medem quanta MATERIA a luz vence -- entao a peca fina
-             [sculpt3d]    acende e a grossa nao. A ESCADA e' o oraculo.
-             [sculpt3d]    1) Aperte Shift+S ate 1.00 (ou arraste 'Subsurface'). Duas coisas tem
-             [sculpt3d]       de acontecer: a borda da sombra AMOLECE, e o lado ESCURO das pecas
-             [sculpt3d]       finas ACENDE -- medido, a esfera pequena ganha 4,3x o que a grande
-             [sculpt3d]       ganha. Se as quatro mudarem igual, o canal virou um brilho global
-             [sculpt3d]       e nao um material -- PARE.
-             [sculpt3d]    2) A CHAPA e' onde a cera mora: ela e' fina em toda parte, entao ela
-             [sculpt3d]       acende inteira. Olhe a COR do que acende -- tem de puxar para o
-             [sculpt3d]       VERMELHO (o azul se apaga 7,5x mais depressa, e e' isso que faz
-             [sculpt3d]       uma mao contra a lanterna parecer uma mao).
-             [sculpt3d]    3) Arraste 'Scatter': ele e' o alcance dentro do material, e e' ele
-             [sculpt3d]       que decide QUAO GROSSA uma peca pode ser e ainda atravessar.
-             [sculpt3d]    4) 'Subsurface' de volta a 0.00: o barro tem de voltar EXATAMENTE ao
-             [sculpt3d]       que era (ha gate de byte-identidade).
-             [sculpt3d]    5) ESCULPA a chapa e aperte 'Bake Occlusion + Thickness': a espessura
-             [sculpt3d]       e' MEDIDA da forma, entao ela envelhece com o dab -- o painel diz
+            "[sculpt3d] =19 A TINTA QUE A LUZ ATRAVESSA: tres esferas (raios 1.00 / 0.45 /\n\
+             [sculpt3d]    0.20) e uma CHAPA, todas com o MESMO material, todas ja' assadas.\n\
+             [sculpt3d]    Os dois canais medem quanta MATERIA a luz vence -- entao a peca fina\n\
+             [sculpt3d]    acende e a grossa nao. A ESCADA e' o oraculo.\n\
+             [sculpt3d]    1) Aperte Shift+S ate 1.00 (ou arraste 'Subsurface'). Duas coisas tem\n\
+             [sculpt3d]       de acontecer: a borda da sombra AMOLECE, e o lado ESCURO das pecas\n\
+             [sculpt3d]       finas ACENDE -- medido, a esfera pequena ganha 4,3x o que a grande\n\
+             [sculpt3d]       ganha. Se as quatro mudarem igual, o canal virou um brilho global\n\
+             [sculpt3d]       e nao um material -- PARE.\n\
+             [sculpt3d]    2) A CHAPA e' onde a cera mora: ela e' fina em toda parte, entao ela\n\
+             [sculpt3d]       acende inteira. Olhe a COR do que acende -- tem de puxar para o\n\
+             [sculpt3d]       VERMELHO (o azul se apaga 7,5x mais depressa, e e' isso que faz\n\
+             [sculpt3d]       uma mao contra a lanterna parecer uma mao).\n\
+             [sculpt3d]    3) Arraste 'Scatter': ele e' o alcance dentro do material, e e' ele\n\
+             [sculpt3d]       que decide QUAO GROSSA uma peca pode ser e ainda atravessar.\n\
+             [sculpt3d]    4) 'Subsurface' de volta a 0.00: o barro tem de voltar EXATAMENTE ao\n\
+             [sculpt3d]       que era (ha gate de byte-identidade).\n\
+             [sculpt3d]    5) ESCULPA a chapa e aperte 'Bake Occlusion + Thickness': a espessura\n\
+             [sculpt3d]       e' MEDIDA da forma, entao ela envelhece com o dab -- o painel diz\n\
              [sculpt3d]       'Baked channels describe the previous shape' ate' voce reassar."
         );
         // A CHAPA em pé: um disco de 0,12 de espessura, que é a forma do §2b.
@@ -153,6 +171,47 @@ pub(crate) fn scene_objects() -> Option<Vec<(ph2d_mesh::Mesh, Pose)>> {
             (a, ph2d_mesh::Pose::at([-1.02, 0.0, 0.0])),
             (b, ph2d_mesh::Pose::at([1.02, 0.0, 0.0])),
         ]);
+    }
+    if occlusion_donation_scene() {
+        // Três sulcos paralelos, fundos, feitos recuando faixas de latitude ao
+        // longo da própria normal — a MESMA fixture dos gates de GPU desta wave,
+        // e reusá-la é o que faz o smoke julgar o que o gate mede.
+        let mut m = ph2d_mesh::shapes::uv_sphere(72, 108, 1.0);
+        for band in [0.45f32, 0.0, -0.45] {
+            let moved: Vec<u32> = (0..m.vert_count() as u32)
+                .filter(|&v| (m.positions()[v as usize][1] - band).abs() < 0.045)
+                .collect();
+            for &v in &moved {
+                let n = m.normals()[v as usize];
+                let p = &mut m.positions_mut()[v as usize];
+                for k in 0..3 {
+                    p[k] -= n[k] * 0.07;
+                }
+            }
+        }
+        m.rebuild();
+        m.triangulate();
+        eprintln!(
+            "[sculpt3d] =20 A FRESTA CHEGA A TINTA: uma esfera com TRES SULCOS, e a tela branca.\n\
+             [sculpt3d]    Ate' agora a doacao levava so' a NORMAL: a tinta acendia pela forma e a\n\
+             [sculpt3d]    fresta que a escultura desenha ficava no viewport. Agora ela viaja.\n\
+             [sculpt3d]    1) Aperte D ate' 'LUZ', pegue o Painter e pinte CHAPADO por cima dos\n\
+             [sculpt3d]       sulcos. A tinta tem de sair com os TRES SULCOS ESCUROS -- nao so'\n\
+             [sculpt3d]       acesa de um lado, que e' o que a normal ja' fazia sozinha.\n\
+             [sculpt3d]    2) Arraste 'Cavity' de 0 a 1: a fresta na TINTA tem de escurecer junto\n\
+             [sculpt3d]       com a fresta no BARRO. Se uma se mexer e a outra nao, as duas metades\n\
+             [sculpt3d]       do shader divergiram -- PARE.\n\
+             [sculpt3d]    3) 'Cavity' de volta a 0.00: a tinta tem de voltar ao que era. Com os\n\
+             [sculpt3d]       tres canais em zero a oclusao doada vale 1 em toda parte, e 1 e' a\n\
+             [sculpt3d]       identidade exata (ha gate de byte-identidade).\n\
+             [sculpt3d]    4) GIRE a cena e pinte de novo: a sombra tem de seguir a FORMA, nunca\n\
+             [sculpt3d]       ficar colada na tela.\n\
+             [sculpt3d]    5) O TESTE QUE UMA MUTACAO PEDIU: aperte D ate' 'DESLIGADA', suba\n\
+             [sculpt3d]       'Cavity', e volte para 'LUZ'. A doacao tem de carregar o valor NOVO\n\
+             [sculpt3d]       do knob -- em modo LUZ o barro nem e' desenhado, e o passe que doa\n\
+             [sculpt3d]       precisa ser informado dos knobs por conta propria."
+        );
+        return Some(vec![(m, ph2d_mesh::Pose::default())]);
     }
     None
 }

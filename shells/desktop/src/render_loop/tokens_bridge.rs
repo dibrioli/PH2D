@@ -106,14 +106,22 @@ pub(crate) fn dispatch(hero: &mut HeroScreen, toasts: &mut ToastQueue) -> bool {
                     .into_iter()
                     .filter(|e| e.theme != theme)
                     .collect();
+                // ⚠️ **A escrita fica FORA da asserção**, e a razão é que ela já custou o
+                // botão: `debug_assert!` **apaga o argumento inteiro em release**, então com a
+                // chamada lá dentro o *Reset This Mode* não fazia NADA num build de release —
+                // sem erro, sem aviso, e com a suíte de debug verde.
+                //
                 // ⚠️ Filtrar uma tabela ACÍCLICA não pode produzir um laço (remover arestas nunca
-                // fecha um ciclo), então o descarte é zero por aritmética — não por confiança.
-                debug_assert_eq!(set_color_overrides(keep), 0);
+                // fecha um ciclo), então o descarte é zero por aritmética — não por confiança;
+                // é isso que a asserção afirma, e ela só precisa do NÚMERO.
+                let dropped = set_color_overrides(keep);
+                debug_assert_eq!(dropped, 0);
                 let keep_num: Vec<_> = num_overrides()
                     .into_iter()
                     .filter(|e| e.theme != theme)
                     .collect();
-                debug_assert_eq!(set_num_overrides(keep_num), 0);
+                let dropped_num = set_num_overrides(keep_num);
+                debug_assert_eq!(dropped_num, 0);
                 changed = true;
             }
 

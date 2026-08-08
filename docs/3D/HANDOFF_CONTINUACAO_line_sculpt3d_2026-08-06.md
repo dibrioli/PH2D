@@ -211,10 +211,33 @@ Consome **a mesma curvatura** que a W10.1 já publica — *um dado, dois usos*, 
 razão de a cavidade vir primeiro. É o item mais caro da W10 e o mais barato de
 começar.
 
-### 4.4 — O alpha por **IMAGEM** (a variante direcional)
+### 4.4 — ~~O alpha por **IMAGEM** (a variante direcional)~~ → **A METADE DIRECIONAL FECHOU (W11, 2026-08-08); a IMAGEM segue aberta, com o preço medido**
 
-Traz o frame do dab de volta, e é o caminho para um carimbo autorado. Entra como
-**variant novo**, não como reescrita (lei §3.2).
+~~Traz o frame do dab de volta~~ — ⚠️ **a medição REFUTOU essa metade da nota.** A
+sonda `measure_directional_wash.rs` mediu a lei 2 antes de uma linha ser escrita:
+quem lava um padrão sob o envelope **não é a direcionalidade, é o
+RE-ANCORAMENTO**. Uma coordenada presa ao CENTRO DO DAB perde **57% do contraste**
+(0,295 → 0,128) e deixa o pincel 20% mais forte; uma **absoluta** sobrevive
+intacta (**0,285** contra 0,295 de um carimbo único). ⇒ o frame do dab é
+exatamente o que não se pode usar, e um padrão direcional é apenas um padrão cujo
+eixo o artista aponta. Detalhe na **W11** do
+[`06.1`](06-Plano/06.1-Waves-riscos-e-alvos.md).
+
+**O que ficou aberto é a IMAGEM**, e o eixo desta wave é o pré-requisito dela (uma
+imagem precisa de um frame para ser projetada). O bloqueador está **medido**: o
+`Brush` é **`Copy` e é construído em ~20 arquivos**, então os pixels não cabem
+nele. Três saídas, nenhuma mecânica:
+
+* um **id + registro na cena** (o padrão do `texture_id`) — o `alpha_weight`
+  deixa de resolver sozinho e precisa da tabela;
+* **`Arc<AlphaImage>` no `Brush`**, que deixa de ser `Copy` — a churn atravessa o
+  `Sculpt3dUi` e o retrato do painel, que também são `Copy`;
+* a imagem como **parâmetro do dab**, que é a forma do `with_arc_len` que este
+  módulo já recusa em letra.
+
+A FONTE, essa, não é um problema: o `read_sprite_source` (a porta que o bake do
+objeto já usa) lê os pixels de um sprite da cena — é o *"Use as Brush Shape"* do
+Painter, sem pipeline novo.
 
 ### 4.5 — Abertos herdados, cada um com o motivo escrito
 

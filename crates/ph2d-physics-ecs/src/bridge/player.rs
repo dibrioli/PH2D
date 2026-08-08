@@ -33,7 +33,7 @@ use bevy_ecs::entity::Entity;
 use ph2d_ecs::SimWorld;
 use ph2d_platformer::{
     Buoyed, CORNER_LOOKAHEAD, CORNER_SAMPLES, CeilingProbe, GroundSample, HEADROOM_SAMPLES,
-    Headroom, PlayerConfig, PlayerInput, PlayerState, WALL_SAMPLES, WallHit, WallProbe,
+    Headroom, PlayerConfig, PlayerInput, PlayerState, Support, WALL_SAMPLES, WallHit, WallProbe,
     corner_offsets, corner_probe_wanted, footing, headroom_offsets, headroom_probe_wanted,
     player_motor, relative_rise, wall_offsets, wall_probe_wanted,
 };
@@ -409,6 +409,11 @@ impl PhysicsBridge {
                 UP,
                 dt,
                 buoyed,
+                // ⚠️ **A cápsula flutuante, sempre — por enquanto.** O `Support`
+                // existe desde a metade da LEI da `W-KinMove`, e é aqui que o
+                // componente `PlayerMode` vai escolher; até ele existir, ler
+                // qualquer outra coisa seria oferecer um modo que nada autora.
+                Support::Spring,
             );
             states.push((entity, step.state));
             // ⚠️ **A plataforma é a que o SENSOR viu, e é a mesma consulta que a

@@ -455,6 +455,14 @@ const PANEL_A11Y_DELEGATE_OK: &[(&str, &str)] = &[
         "ph2d-panel-painter-layers/src/paint_shape_dab.rs",
         "gizmo handles are CurvePoints dispatched in editor-core; rest is a decorative template render",
     ),
+    // TAPER widget (Procreate Touch Taper) — the two length handles are `CurvePoint`s dispatched in
+    // editor-core (the paint_shape_dab pattern), the Link toggle delegates to `paint_checkbox_row` and
+    // the Tip / Opacity rows to `number_field` (both a11y-wired); the stroke silhouette is a decorative
+    // preview render of the engine's own width law.
+    (
+        "ph2d-panel-painter-layers/src/paint_taper.rs",
+        "taper handles are CurvePoints dispatched in editor-core; toggle + rows delegate to a11y-wired primitives",
+    ),
     // Wet Paint TILT dial (doc 22) — the pad is a `CurvePoint` dispatched in editor-core (the
     // paint_shape_dab pattern) and its toggle delegates to `paint_checkbox_row` (the a11y-wired
     // Checkbox); the polar grid + knob are a decorative template render.

@@ -293,6 +293,10 @@ pub struct BrushSettings {
     /// Per-layer **opacity** `0..1` — a BRUSH-only scale on that layer's tip contribution (the numeric
     /// box), seeded from the captured document layer's opacity. Does NOT edit the painted document.
     pub shape_layer_opacity: [f32; MAX_SHAPE_LAYERS],
+    /// The **Taper** (Procreate *Touch Taper*): the stroke's own end shaping, published whole because the
+    /// panel draws a PREVIEW of it — the widget has to show the same silhouette the engine will lay, and
+    /// re-deriving it from a handful of scalars is how the picture and the paint start to disagree.
+    pub taper: ph2d_painter_brush::taper::Taper,
     /// **Dab Flatten** (`0..1`; `0` = round) — the Shape gizmo squishes the dab footprint into an ellipse.
     pub dab_flatten: f32,
     /// **Dab rotation** of the flatten/rotate gizmo, whole degrees (`0..=360`).

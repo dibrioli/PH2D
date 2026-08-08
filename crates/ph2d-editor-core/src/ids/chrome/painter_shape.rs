@@ -149,6 +149,37 @@ pub fn painter_brush_dab_handle_id(channel: u8) -> NodeId {
     fnv_node_id_runtime(&format!("painter_brush.dabhandle.{channel}"))
 }
 
+// ── **Taper** (Procreate *Touch Taper*; Enio 2026-08-08) ─────────────────────────────────────────
+// The stroke thins toward its ends because it is near an end, not because a pen pressed lightly — the
+// only way a mouse draws a calligraphic line. Sits directly below the Falloff, because it shapes the
+// same thing the falloff does (how wide the mark is) along the OTHER axis: the falloff across the dab,
+// the taper along the stroke.
+
+/// The taper **widget**: a stroke-shaped preview with a draggable handle at each end. Both handles are
+/// `CurvePoint`s parented here (channel `0` = the START length, `1` = the END length); the panel decodes
+/// the drag and forwards [`PAINTER_TAPER_START`] / [`PAINTER_TAPER_END`], exactly like the dab gizmo.
+pub const PAINTER_TAPER_GIZMO: NodeId = hash_node_id("painter_brush.taper_gizmo");
+/// Taper length at the stroke's **start**, in brush DIAMETERS. `SetValue` → `set_brush_taper_start`.
+pub const PAINTER_TAPER_START: NodeId = hash_node_id("painter_brush.taper_start");
+/// Taper length at the stroke's **end**, in brush DIAMETERS. `SetValue` → `set_brush_taper_end`.
+pub const PAINTER_TAPER_END: NodeId = hash_node_id("painter_brush.taper_end");
+/// **Tip size** at the start, `0..1` (`0` = a sharp point, `1` = blunt). Procreate's "Tip".
+pub const PAINTER_TAPER_TIP_START: NodeId = hash_node_id("painter_brush.taper_tip_start");
+/// **Tip size** at the end, `0..1`. Only painted while [`PAINTER_TAPER_LINK`] is unchecked.
+pub const PAINTER_TAPER_TIP_END: NodeId = hash_node_id("painter_brush.taper_tip_end");
+/// **Link tip sizes**: one tip size drives both ends. Click toggle (`Click` → `toggle_brush_taper_link`).
+pub const PAINTER_TAPER_LINK: NodeId = hash_node_id("painter_brush.taper_link");
+/// Taper **Opacity**, `0..1`: how much the taper fades as well as narrows.
+pub const PAINTER_TAPER_OPACITY: NodeId = hash_node_id("painter_brush.taper_opacity");
+
+/// Stable [`NodeId`] for the taper handle on `channel` (`0` = start, `1` = end). A FACTORY id
+/// (paint-time `CurvePoint` registration), the twin of [`painter_brush_dab_handle_id`], so it stays off
+/// the static hit↔populate wiring scan.
+#[must_use]
+pub fn painter_taper_handle_id(channel: u8) -> NodeId {
+    fnv_node_id_runtime(&format!("painter_brush.taperhandle.{channel}"))
+}
+
 // ── Shape **Colour Ramp** (colourises the silhouette; "Shape Color" section) ─────────────────────
 // The Shape ramp is a full `ph2d_color::ColorRamp` (twin of the Grain ramp), with a **B&W** filter:
 // off ⇒ the ramp owns the painted colour (indexed by the silhouette coverage); on ⇒ it's the grayscale

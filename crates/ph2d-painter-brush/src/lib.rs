@@ -79,6 +79,9 @@ pub mod stroke;
 pub(crate) mod stroke_cover;
 pub mod stroke_method;
 pub mod symmetry;
+pub mod taper;
+#[cfg(test)]
+mod taper_tests;
 pub mod texture;
 
 pub use blend::{BrushBlend, MAX_BRUSH_BLEND_MODES, blend_over};

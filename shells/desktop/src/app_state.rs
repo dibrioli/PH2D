@@ -507,6 +507,8 @@ pub(crate) struct App {
     pub(crate) impasto_smoke_done: bool,
     /// `PH2D_MASK_SMOKE` one-shot latch (doc 25 §13.9 — the coverage-law scene).
     pub(crate) mask_smoke_done: bool,
+    /// `PH2D_TAPER_SMOKE` one-shot latch (the Procreate Touch Taper scene).
+    pub(crate) taper_smoke_done: bool,
     /// Latch for the `PH2D_WETPAINT_SMOKE` canvas (Wet Paint mode, ADR-0134 W1; same rationale).
     pub(crate) wetpaint_smoke_done: bool,
     /// Latch da tela de `PH2D_SCULPT3D_SMOKE=2` — a cena da DOAÇÃO. ⚠️ Sem `cfg`: um campo `bool`

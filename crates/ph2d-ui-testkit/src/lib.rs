@@ -427,6 +427,43 @@ impl MockPanelHost {
         out
     }
 
+    /// **Drive a REAL pointer DRAG** from `(x0, y0)` to `(x1, y1)` — Down, Move, Up — through the same
+    /// [`dispatch_pointer`] the shell runs.
+    ///
+    /// [`Self::click_at`] proves a widget is alive under the mouse; it cannot prove anything about a
+    /// control whose whole meaning is the MOTION — a `CurvePoint` handle emits nothing on a Down/Up in
+    /// the same place, so a gate built from clicks would be green over a handle that never moves a value.
+    ///
+    /// The Move carries the same button state as the Down, which is what makes the dispatcher treat it
+    /// as a drag of the active widget rather than as hover.
+    pub fn drag_at(&mut self, x0: f32, y0: f32, x1: f32, y1: f32) -> Vec<WidgetEvent> {
+        let mut out = Vec::new();
+        for (kind, x, y) in [
+            (PointerKind::Down, x0, y0),
+            (PointerKind::Move, x1, y1),
+            (PointerKind::Up, x1, y1),
+        ] {
+            self.clock_ns += NANOS_PER_SECOND;
+            let arena = Bump::new();
+            let event = PointerEvent {
+                x,
+                y,
+                pressure: 1.0,
+                kind,
+                source: PointerSource::Mouse,
+                button: PointerButton::Primary,
+                timestamp_ns: self.clock_ns,
+            };
+            out.extend_from_slice(dispatch_pointer(
+                &mut self.store,
+                &self.hit_index,
+                event,
+                &arena,
+            ));
+        }
+        out
+    }
+
     /// The id a pointer at `(x, y)` actually LANDS ON — the dispatcher's own resolution
     /// (topmost = last registered wins). When [`Self::click_at`] emits nothing, this says
     /// whether the widget lost the hit to something painted over it, or was never hit at all.

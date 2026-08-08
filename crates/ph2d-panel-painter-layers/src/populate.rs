@@ -298,6 +298,8 @@ fn register_toggles_and_dropdowns(store: &mut WidgetStore) {
         // "Dimensions" checkbox below the Method dropdown (Line only) — dx/dy + corner angles while drawing.
         ph2d_editor_core::ids::PAINTER_BRUSH_LINE_DIMENSIONS,
         ph2d_editor_core::ids::PAINTER_BRUSH_EDGE_TO_EDGE,
+        // "Link tip sizes" in the Taper section (the two ends share one tip size).
+        ph2d_editor_core::ids::PAINTER_TAPER_LINK,
         // Clone card: "Set Source" (arms the sample pick) + "Aligned" toggle.
         ph2d_editor_core::ids::PAINTER_BRUSH_CLONE_SET_SOURCE,
         ph2d_editor_core::ids::PAINTER_BRUSH_CLONE_ALIGNED,

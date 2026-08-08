@@ -1147,6 +1147,35 @@ impl crate::App {
             }
         }
 
+        // Taper smoke (`PH2D_TAPER_SMOKE=1`): the same dance for the Procreate Touch Taper. Nothing but
+        // the canvas is staged — the taper opens OFF, because the first thing this scene asks is
+        // whether an untouched build still paints what it painted yesterday.
+        if let Some(hero) = hero_screen.as_mut()
+            && crate::taper_smoke::enabled()
+            && !std::mem::replace(&mut self.taper_smoke_done, true)
+        {
+            let ppm = hero.project.pixels_per_meter;
+            let cell = *next_import_cell;
+            if let Some(bits) = crate::taper_smoke::spawn_if_enabled(
+                sim,
+                renderer,
+                asset_db,
+                cell,
+                ppm,
+                atlas_asset_map,
+            ) {
+                *next_import_cell = next_import_cell.saturating_add(1);
+                hero.gizmo.replace_selection(Some(bits));
+                hero.bus
+                    .push(ph2d_editor::action_bus::EditorAction::SetViewFocus {
+                        kind: ph2d_editor::ViewFocusKind::Selected,
+                    });
+                toasts.push(Toast::success(
+                    "Taper smoke: brush panel -> TAPER, under the Falloff".to_string(),
+                ));
+            }
+        }
+
         // Wet Paint smoke (`PH2D_WETPAINT_SMOKE=1`): the impasto smoke's exact dance for the fluid
         // mode (ADR-0134 W1) — spawn, seat the selection, arm in `painter_bridge`.
         if let Some(hero) = hero_screen.as_mut()

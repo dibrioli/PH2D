@@ -271,6 +271,7 @@ impl PainterTool {
             shape_layer_color: self.paint.shape_layers.snapshot().2,
             shape_layer_blend,
             shape_layer_opacity,
+            taper: b.taper,
             dab_flatten: b.dab_flatten,
             dab_angle_deg: b.dab_angle_deg,
             // The orientation the NEXT dab will wear: the brush Angle turned by the stroke-follow rotor.

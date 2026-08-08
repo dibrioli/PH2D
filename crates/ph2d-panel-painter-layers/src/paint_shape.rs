@@ -92,6 +92,14 @@ pub(crate) fn paint_shape_section(
         }
         y = crate::paint_falloff::paint_falloff_section(ctx, theme, x, content_w, y, brush);
     }
+    // ── 3b. TAPER — the stroke's END shaping, directly below the Falloff (Enio 2026-08-08). ──
+    //    It belongs next to the falloff because the two shape the same thing on perpendicular axes:
+    //    the falloff decides how wide the mark is ACROSS a dab, the taper how wide it is ALONG the
+    //    stroke. Unlike the falloff it is NOT hidden behind a Shape image — an imported tip replaces
+    //    the silhouette, and the stroke still has two ends.
+    {
+        y = crate::paint_taper::paint_taper_section(ctx, theme, x, content_w, y, brush);
+    }
 
     // ── Flatten + rotate gizmo — below the Falloff preview, above the Texture picker (Enio 2026-06-26).
     //    Squishes/rotates the whole dab footprint (falloff + Shape + View-Grain). ──

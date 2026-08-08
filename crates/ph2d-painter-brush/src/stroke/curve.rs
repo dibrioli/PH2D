@@ -40,6 +40,10 @@ impl Stroke {
         self.tot_samples = 0;
         self.heading = [0.0, 0.0]; // fresh fill → the Rake heading re-aims along the spine from the start
         self.arc_len = 0.0; // fresh fill → the Flow along-coordinate starts at the spine's origin
+        // The whole geometry exists before a single dab, so the taper's far end is a number we can
+        // measure right here — no tail hold, no lag, both ends exact and live while the artist reshapes
+        // the curve. The walk lays dabs along these same chords, so this is the length it will travel.
+        self.taper_span = super::TaperSpan::Open(polyline_len(spine));
         // First dab at the curve start (dash-gated), like `fill_segment`.
         if self.spec.dash_on(self.tot_samples) {
             let pr = self.method_pressure(1.0);
@@ -59,6 +63,13 @@ impl Stroke {
             );
         }
     }
+}
+
+/// Total length of a polyline — the arc the dab walk will travel along `spine`, summed on the same
+/// chords [`Stroke::walk_space`] steps through, so the taper's far end is the end the dabs actually
+/// reach.
+fn polyline_len(spine: &[[f32; 2]]) -> f32 {
+    spine.windows(2).map(|w| dist(w[0], w[1])).sum()
 }
 
 /// Flatten a **Catmull-Rom spline** through `pts` (the authored Arc control points, clamped

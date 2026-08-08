@@ -16,6 +16,7 @@ use ph2d_painter_brush::{
 mod brush_core_settings; // Falloff/size/spacing/jitter/dash setters; split from `brush_settings` (LOC cap)
 mod brush_image; // The imported brush-texture image type (`BrushTextureImage`); split from `brush_settings`
 mod brush_settings; // Brush + Stroke-section snapshot & setters (shares `PaintState`'s private brush access)
+mod brush_taper_settings;
 mod brush_texture_settings; // Grain-texture / Stencil / Dab setters; split from `brush_settings` (LOC cap)
 /// The Curve stroke method's on-canvas point editor (submodule, as `brush_settings`).
 mod curve;
@@ -33,7 +34,9 @@ mod stroke_boolean; // multi-shape Add/Remove boolean composite (rasterise → u
 mod stroke_boolean_raster; // com que PIXELS uma forma entra no composite (sub-janela + rasterizadores)
 mod stroke_multi; // multi-shape: parked (inactive-but-editable) stroke shapes + their Operation; pixels are a derived recompose
 mod stroke_outline; // o CONTORNO de uma figura -- produtor unico do que o gizmo desenha E do que o clique alcanca
-mod stroke_router; // o que um Down SIGNIFICA com varias figuras: editar / reativar / comecar outra
+mod stroke_router;
+#[cfg(test)]
+mod taper_media_tests; // o que um Down SIGNIFICA com varias figuras: editar / reativar / comecar outra
 pub use self::stroke_multi::StrokeOpBadge;
 pub use self::wetpaint_settings::{WetKnobs, WetTool};
 mod impasto; // Impasto: the height channel (paint thickness) — the dab pipeline's SECOND output

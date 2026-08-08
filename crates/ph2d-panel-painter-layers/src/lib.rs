@@ -60,6 +60,7 @@ mod paint_shape_ramp;
 mod paint_stencil;
 mod paint_stroke;
 mod paint_symmetry;
+mod paint_taper;
 mod paint_texture;
 mod paint_texture_ramp;
 mod paint_watercolor;

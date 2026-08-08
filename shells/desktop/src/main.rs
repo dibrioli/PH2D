@@ -330,6 +330,7 @@ mod stagger_smoke;
 mod symmetry_live;
 /// A cena de smoke da SIMETRIA de desenho (`PH2D_BUILD_SMOKE=46`) — irmã de `build_smoke`.
 mod symmetry_smoke;
+mod taper_smoke;
 mod text_fx_smoke;
 mod text_path_gesture_smoke;
 mod text_path_smoke;
@@ -626,6 +627,7 @@ impl App {
             #[cfg(feature = "sculpt3d")]
             sculpt3d_pending: None,
             mask_smoke_done: false,
+            taper_smoke_done: false,
             wetpaint_smoke_done: false,
             stack_smoke_done: false,
             motion_path_smoke_done: false,

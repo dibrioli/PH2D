@@ -118,6 +118,17 @@ pub struct Stroke {
     /// by the Shape **Flow** mapping as the along-the-stroke coordinate. Reset in [`Self::begin`]; the shape
     /// editors build a fresh `Stroke` per re-stamp, so it restarts from `0` there on its own.
     arc_len: f32,
+    /// **What this stroke's [`crate::taper`] measures against** — see [`TaperSpan`]. Set by whoever knows
+    /// the geometry: the whole-path fills declare their own length, the closed-loop fills declare that
+    /// they have no ends at all, and a freehand stroke stays "end unknown" until the pen lifts.
+    taper_span: TaperSpan,
+    /// Dabs held back because they may still fall inside the END taper window (see [`Self::tail_gate`]).
+    /// Empty — and never even touched — unless the brush asks for an end taper on an incremental method.
+    tail_buf: Vec<Dab>,
+    /// Whether this stroke holds its tail: the brush wants an end taper AND the method is incremental,
+    /// so the far end only becomes knowable at [`Self::finish`]. Cached off the spec (recomputed in
+    /// [`Self::set_spec`]) because it is asked once per emitted dab.
+    holds_tail: bool,
 }
 
 /// Smallest lazy-mouse blend factor, reached at stabilizer `1.0` (heaviest smoothing / most lag).
@@ -160,6 +171,9 @@ impl Stroke {
             warm_from: [0.0, 0.0],
             warming: false,
             arc_len: 0.0,
+            taper_span: TaperSpan::for_method(spec.stroke_method),
+            tail_buf: Vec::new(),
+            holds_tail: holds_tail(&spec),
         }
     }
 
@@ -169,6 +183,10 @@ impl Stroke {
         self.spec = spec;
         self.overlap = spec.space_overlap_factor();
         self.sampler.set_window(spec.input_samples);
+        // A live edit can switch the end taper on or off mid-stroke. Turning it OFF must not strand the
+        // dabs already held: they are released here at full width, which is exactly what they would have
+        // become anyway once the cursor moved past them.
+        self.holds_tail = holds_tail(&spec);
     }
 
     /// Begin the stroke at `p`. For the continuous methods this emits the first dab at the down
@@ -211,6 +229,7 @@ impl Stroke {
             self.tot_samples = self.tot_samples.wrapping_add(1);
         }
         self.warmup_gate(out);
+        self.tail_gate(out);
     }
 
     /// Extend the stroke to the raw sample `raw`: average it into the input-sample window, run it
@@ -298,6 +317,7 @@ impl Stroke {
             }
         }
         self.warmup_gate(out);
+        self.tail_gate(out);
     }
 
     /// Fill the straight segment `a → b` with spaced dabs (Blender LINE / CURVE-segment finalise).
@@ -337,6 +357,9 @@ impl Stroke {
             self.warm_buf.append(out);
             self.release_warmup(out);
         }
+        // The pen lifted, so the far end is finally a number: everything still held is inside the end
+        // taper window by construction, and is released shaped.
+        self.finish_tail(out);
         self.prev_prev = None;
     }
 
@@ -556,8 +579,10 @@ impl Stroke {
             .clamp(0.5, MAX_BRUSH_RADIUS_PX);
         let coverage =
             (self.spec.strength * self.dynamics.coverage_scale(pressure) * overlap).clamp(0.0, 1.0);
+        // Jitter reads the UN-tapered radius on purpose: the scatter is a property of the brush, not of
+        // where along the stroke this dab happens to fall.
         let center = self.apply_jitter(pos, radius);
-        Dab {
+        let mut dab = Dab {
             center,
             radius_px: radius,
             coverage,
@@ -568,7 +593,23 @@ impl Stroke {
             dir: self.heading,
             arc_len: arc,
             stroke_radius_px: self.spec.clamped_radius(),
+        };
+        // The TAPER, applied here and only here for every dab this engine emits — except the ones the
+        // tail hold takes ownership of, which it tapers itself once the far end is known
+        // ([`mod@self::ends`]). Two callers, one law, one `scale_dab`.
+        if !self.holds_tail && self.spec.taper.is_active() {
+            let to_end = match self.taper_span {
+                TaperSpan::Open(total) => (total - arc).max(0.0),
+                TaperSpan::OpenUnknownEnd => f32::INFINITY,
+                TaperSpan::Closed => return dab, // no ends: nothing to measure from
+            };
+            let w = self
+                .spec
+                .taper
+                .width(arc, to_end, 2.0 * self.spec.clamped_radius());
+            crate::taper::scale_dab(&mut dab, &self.spec.taper, w);
         }
+        dab
     }
 
     /// The live **stroke heading** (unit vector; `[0, 0]` = not established yet), i.e. the direction the
@@ -636,9 +677,11 @@ pub use ellipse::ellipse_perimeter;
 /// The Polygon stroke method's regular-N-gon perimeter + fill (same child-module rationale).
 mod polygon;
 pub use polygon::{POLY_MAX_SIDES, POLY_MIN_SIDES, polygon_perimeter};
+/// The texture-Rake **warm-up** (`warmup_gate`/`release_warmup`) deferring a stroke's opening dabs.
+mod ends;
 /// The lazy-mouse stabilizer (`stabilize`/`settle`/`lazy_mouse_step`) — split out for the LOC-cap reason.
 pub mod stabilize;
-/// The texture-Rake **warm-up** (`warmup_gate`/`release_warmup`) deferring a stroke's opening dabs.
+use ends::{TaperSpan, holds_tail};
 mod warmup;
 
 #[cfg(test)]

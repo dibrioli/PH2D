@@ -100,6 +100,14 @@ pub struct BrushSpec {
     /// ON: it's centred on the midpoint anchor→cursor with half that radius, so the dab spans
     /// edge-to-edge from the press point to the cursor. See the Anchored arm of [`Stroke::extend`].
     pub edge_to_edge: bool,
+    /// **Taper** — the stroke thins toward its ends because it is *near an end*, not because a pen
+    /// pressed lightly (Procreate's *Touch Taper*). Default all-off, and an off taper leaves every dab
+    /// bit-identical. It is the only route to a calligraphic line without a tablet, so it lives on the
+    /// spec next to the rest of the stroke shaping rather than inside the pressure dynamics — the
+    /// pressure a mouse reports is always `1.0`, and a taper that rode it would be permanently inert.
+    /// See [`crate::taper`] for the law and [`Stroke`] for how each stroke method learns where its far
+    /// end is.
+    pub taper: crate::taper::Taper,
 
     // ── Grain slot (Blender `MTex` / `brush_painter_2d_tex_mapping`; = Procreate "Grain") ──────
     /// Brush **Grain**: a per-texel mask that modulates each dab's coverage *inside* the silhouette

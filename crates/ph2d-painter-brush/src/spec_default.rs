@@ -43,6 +43,8 @@ impl Default for BrushSpec {
             stabilizer: 0.5,
             airbrush_rate_s: 0.1,
             edge_to_edge: false,
+            // Off: no taper window, so `Taper::width` returns exactly 1.0 and no dab is touched.
+            taper: crate::taper::Taper::default(),
             texture: TextureSettings::default(),
             grain_depth: 1.0,
             shape: TextureSettings::default(),

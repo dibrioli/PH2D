@@ -23,6 +23,11 @@ pub(super) fn route(host: &mut dyn PanelHostInternal, id: ph2d_a11y::NodeId) -> 
         dab_gizmo::on_dab_gizmo_value_changed(host);
         return true;
     }
+    // Taper widget: the same shape, one section below — a handle `CurvePoint` drag → a length.
+    if id == core_ids::PAINTER_TAPER_GIZMO {
+        super::taper_gizmo::on_taper_gizmo_value_changed(host);
+        return true;
+    }
     // Wet Paint TILT pad (doc 22): drain + snap + forward ring/spoke (the
     // body lives beside the dial's paint — one conversion, one house).
     if id == core_ids::PAINTER_WETPAINT_TILT_PAD {

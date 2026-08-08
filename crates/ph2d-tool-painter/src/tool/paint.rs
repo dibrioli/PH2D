@@ -171,10 +171,10 @@ mod plane_fork;
 pub(super) mod relief_state;
 #[cfg(test)]
 mod selection_gizmo_mods_tests; // Shift/Ctrl no gizmo de selecao
-#[cfg(test)]
-mod selection_marquee_mods_tests; // Shift/Ctrl ao DESENHAR a selecao
 /// Selection creation input: mode/op/threshold setters + on-canvas pointer gestures (marquee/lasso/flood). [LOC split].
 mod selection_input;
+#[cfg(test)]
+mod selection_marquee_mods_tests; // Shift/Ctrl ao DESENHAR a selecao
 /// Selection **Offset** (ADR-0103 Am.3): signed-distance grow/shrink + concentric alternating protected /
 /// paint bands driven by Apply & Keep. [LOC split].
 mod selection_offset;

@@ -6,10 +6,19 @@
 > agnóstica de como o motor é aplicado, e é exatamente onde um segundo consumidor
 > entraria."* Ordem do Enio, 2026-08-07: **vai**.
 >
-> ⚠️ **E este plano carrega UMA wave que não é do modo novo:** a `W-Water`, por ordem do
-> Enio de 2026-08-07 (*"nosso player atual não interage corretamente com a água, como a
-> jangada faz"*). Ela é do player **DINÂMICO**, vem **primeiro**, e a medição mostrou que
-> não é sobre água — é sobre **o sensor de chão tratar um SENSOR como matéria sólida**.
+> ⚠️ **E este plano carrega TRÊS waves que não são do modo novo** — os três reports que o
+> Enio deu na mesma janela (2026-08-07). São defeitos VIVOS do player **DINÂMICO**, vêm
+> **primeiro**, e cada um foi medido antes de ter cura escrita:
+>
+> | wave | o report | o que a medição achou |
+> |---|---|---|
+> | **`W-Water`** | *"não interage corretamente com a água, como a jangada faz"* | **não é sobre água**: o sensor de chão trata um SENSOR como matéria sólida, e ele fica **de pé sobre a poça** |
+> | **`W-ClingPull`** | *"ao primeiro toque a jangada é ATRAÍDA para o player"* | a metade de baixo da mola **puxa**, e a 3ª lei transmite a puxada: a jangada **sobe 96,9 mm** |
+> | **`W-Landing`** | *"a desaceleração ao encostar no chão é muito lenta e artificial"* | **0,500 s** para assentar, e a causa é o `1 − k·dt²`: com a rigidez certa o mesmo pouso custa **0,133 s** |
+>
+> ⚠️ **A ORDEM entre elas é load-bearing:** a cura do pouso é uma mola mais RÍGIDA, e uma
+> mola mais rígida **amplifica a puxada** do `W-ClingPull`. Consertar o pouso primeiro
+> pioraria a jangada no mesmo commit.
 >
 > ⚠️ **A frase acima é meia-verdade, e a metade que falha decide o tamanho da wave.**
 > Ela vale para andar/pular/arrancar/parede/agachar/quina. Não vale para a **D1** (a
@@ -180,6 +189,12 @@ Cada uma fecha com gate batched verde · mutações · **cena de smoke com núme
 
 ### W-Water — O PERSONAGEM FICA DE PÉ EM CIMA DA ÁGUA (cena `=100`)
 
+⚠️ **UMA cena serve as três waves do player dinâmico**, e não é economia: uma poça, uma
+jangada a boiar e um personagem a pular nela mostram os três defeitos **ao mesmo tempo** —
+ele não pode ficar de pé na água (`W-Water`), a jangada não pode subir ao encontro dele
+(`W-ClingPull`), e o pouso não pode escorregar (`W-Landing`). Três cenas separadas fariam
+o artista julgar cada um sem ver que eles se tocam.
+
 ⚠️ **Esta wave é do player DINÂMICO, não do cinemático** — ela entra aqui porque o Enio
 a pediu neste plano (*"nosso player atual não interage corretamente com a água, como a
 jangada faz"*) e porque **vem primeiro**: é um defeito VIVO no que shipa hoje, e o modo
@@ -248,6 +263,94 @@ de produto. **Fica NOMEADA aqui e medida; o que o Enio escolher é a metade B da
 5. **O que NÃO pode mudar:** o `=91` (a escada de pranchas), o `=88` (as rampas) e o
    `c9` — uma plataforma jump-through é um collider **sólido** com um hook, e nenhuma
    cena do hash tem sensor no caminho de um raio. Gate + `c9` byte-idêntico.
+
+### W-ClingPull — A PERNA NÃO PUXA O CHÃO PARA CIMA (cena `=100`, a mesma)
+
+Report: *"ao pular na jangada, ao primeiro toque, em vez de empurrar a jangada para
+baixo, ela é ATRAÍDA para o player, e só depois de se aproximar é que recebe o impulso"*.
+
+**Medido** (`measure_landing::measure_first_touch_on_a_raft`), jangada a boiar em
+repouso, personagem caindo de 3 m: no instante em que o sensor a alcança (`dist =
+1,0758`, alcance `1,15`) ela **SOBE de `0,1634` a `0,2738` — 96,9 mm** — e só começa a
+descer quando `dist` cruza a altura de repouso (`0,9`).
+
+**A causa está escrita no próprio código, uma linha acima do sítio:**
+
+```rust
+// Positivo = está BAIXO demais e a mola empurra para cima; negativo = está
+// alto demais dentro do `cling_distance` e ela PUXA para baixo.
+let offset = cfg.float_height - s.distance;
+```
+
+Na faixa de *cling* o `offset` é **negativo** ⇒ a perna puxa o personagem para baixo ⇒ a
+3ª lei transmite fielmente o oposto e **puxa a jangada para cima**.
+
+⚠️ **A cura é uma frase sobre o que uma perna É:** o *cling* é uma **conveniência de
+modelagem** (é o que mantém o personagem colado ao descer uma lomba), não um músculo. Uma
+perna real **não puxa o chão para si**. Então a reação transmite **só a metade que
+EMPURRA** — `offset > 0` — e a puxada fica sendo o que sempre foi: um truque sobre o
+personagem, invisível para o mundo.
+
+⚠️ **E ela não é só sobre jangadas:** o mesmo se vê numa gangorra (a ponta sobe antes de
+descer) e num caixote solto. A água só a torna óbvia porque o corpo é leve e livre.
+
+**Gates, red-first:** a jangada **nunca sobe** acima do repouso durante uma aterragem
+(nasce vermelho em `+96,9 mm`) · a metade que EMPURRA continua a chegar, com o número do
+`W-KinWeight` como controle · e a mutação que devolve o `offset` cru à reação sangra o
+primeiro sem tocar o segundo.
+
+### W-Landing — O POUSO PARA DE ESCORREGAR (cena `=100`, a mesma)
+
+Report: *"a desaceleração ao encostar no chão é muito lenta e fica artificial"*.
+
+**Medido** (`measure_landing::measure_landing_profile`, queda de 3 m nos defaults):
+toque no tique 39, repouso no **69** — **30 tiques, 0,500 s** —, e o perfil **não é uma
+parada, é um decaimento**: `−0,258 · −0,229 · −0,204 · −0,181 …`, razão **0,888 por
+tique**. Ele nunca chega; ele se aproxima para sempre. E **não afunda** (mais baixo
+`0,9023` contra repouso `0,900`), então não é quique — é **arrasto**.
+
+**A causa é aritmética, e o número previsto bate com o medido:** com `damping = 1,0` — o
+que shipa — o boost apaga a velocidade relativa INTEIRA a cada tique, então o único
+movimento que sobra é o que a mola produz em UM tique, e o resto decai por
+
+```text
+1 − k·dt²  =  1 − 400/3600  =  0,889          (medido: 0,888)
+```
+
+⇒ **quem manda no pouso é a RIGIDEZ, e o amortecimento não.**
+
+| `spring_strength` (com `damping = 1,0`) | tiques | segundos | afunda | `1 − k·dt²` |
+|---|---|---|---|---|
+| **400 — o que shipa** | 30 | **0,500** | −0,2 cm | 0,889 |
+| 800 | 18 | 0,300 | −0,1 | 0,778 |
+| 1200 | 13 | 0,217 | −0,1 | 0,667 |
+| 1600 | 10 | 0,167 | −0,1 | 0,556 |
+| **2000** | **8** | **0,133** | −0,0 | 0,444 |
+| 3000 | 5 | 0,083 | −0,0 | 0,167 |
+
+⚠️ **O caminho ÓBVIO é o pior, e a varredura o mostra.** Baixar o amortecimento também
+acelera o pouso (`0,50` dá os mesmos `0,133 s`) — mas ele é o knob que a **W11c** pôs no
+teto para zerar a deriva de rampa, e a lei publicada diz o preço: `deriva(10 s) = 0,153 ·
+sen θ · (1 − d)`, ou seja `0,0382 m` a 30° se voltar para `0,50`. **A rigidez compra o
+mesmo pouso por ZERO de deriva** — não há troca a fazer.
+
+| | pouso | deriva 30°/10 s |
+|---|---|---|
+| hoje (`k = 400`, `d = 1,0`) | 0,500 s | 0,0000 m |
+| baixar o amortecimento (`d = 0,50`) | 0,133 s | **0,0382 m** |
+| **subir a rigidez (`k = 2000`, `d = 1,0`)** | **0,133 s** | **0,0000 m** |
+
+⚠️ **O que a rigidez CUSTA não está medido, e é isso que a wave tem de fechar:** `2000`
+é **5× o valor do `bevy-tnua`** que o ponto de partida cita, e uma perna rígida
+**transmite o terreno** — um degrau pequeno vira um solavanco, e a reação da 3ª lei chega
+mais forte à jangada. **Por isso esta wave vem DEPOIS da `W-ClingPull`:** ela amplifica
+tanto o empurrão quanto a puxada, e a puxada é a que não devia existir.
+
+**Gates, red-first:** o pouso assenta em menos de `0,20 s` (nasce vermelho em `0,500`) ·
+**não afunda** abaixo do repouso (o que protege contra "curar" isto por baixo do
+amortecimento) · a **deriva de rampa continua `0,0000`** (é o que separa esta cura da
+tentadora) · e a razão de decaimento medida bate com `1 − k·dt²`, que é o gate que impede
+alguém de re-derivar o número por tentativa.
 
 ### W-KinMove — O MODO EXISTE E O PERSONAGEM ANDA (cena `=101`)
 
@@ -333,6 +436,8 @@ Reservada de propósito: `autostep` afinado, `min_slope_slide_angle` exposto, ou
 | 4 | `snap_to_ground` mínimo útil | contra a altura do degrau que o `autostep` sobe |
 | 5 | quanto o `offset` (a folga do controlador) custa em aparência | o personagem paira `offset` acima do chão — é a D1 outra vez, num número menor |
 | 6 | **o que a jangada afunda** nos dois modos (K2) | a cena `=72` |
+| 7 | **o que uma perna RÍGIDA custa** (`W-Landing`) — o solavanco ao subir um degrau e o pico da reação na jangada | a cena `=91` (a escada de pranchas) e a `=100`, varrendo `k` |
+| 8 | a **deriva de rampa contra a rigidez** — a lei publicada varreu o amortecimento, **não** o `k` | a varredura do `platform_idle`, com `k` no eixo |
 
 ---
 

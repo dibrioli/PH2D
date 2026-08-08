@@ -1,5 +1,13 @@
 # HANDOFF MESTRE — `line/physics` → `main` (2026-08-05)
 
+> ⛔ **SUPERSEDED pelo [`HANDOFF_INTEGRACAO_line_physics_MESTRE_2026-08-08.md`](HANDOFF_INTEGRACAO_line_physics_MESTRE_2026-08-08.md).**
+> Este documento para na **W23**, e a jornada seguiu (W24..W27 + o plano 07
+> inteiro + o segundo modo). **Os NÚMEROS daqui estão velhos** — o
+> `PROJECT_SCHEMA` já não é 59, o registro já não é 28 e o `c9` já não é
+> `74d4ea5d…`. O que continua válido, e é por isso que ele não foi apagado, é o
+> **mecanismo** das waves W11b..W23 (§4..§5j), que o handoff de 08/08 aponta em
+> vez de copiar.
+
 **A linha está FECHADA e PARADA.** 12 commits, 4 waves de produto.
 Nada integrado, nada pushado.
 

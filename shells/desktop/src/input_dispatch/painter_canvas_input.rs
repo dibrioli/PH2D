@@ -357,6 +357,8 @@ impl App {
         // (Blender Alt-drag). The frozen `CanvasPointer` carries no modifiers, so it's forwarded
         // out-of-band via `PainterTool::set_line_constrain` just before delivery.
         let alt = self.modifiers.alt_key();
+        let shift = self.modifiers.shift_key();
+        let ctrl = self.modifiers.control_key() || self.modifiers.super_key();
         let Some(gfx) = self.gfx.as_mut() else {
             return false;
         };
@@ -443,9 +445,7 @@ impl App {
         // deform-gizmo margin reads the fresh value). Also refreshed once per frame in
         // `render_loop::painter_bridge_overlays::refresh_shape_grab_tol`, so a zoom with no pointer event
         // doesn't leave the drawn handles stale.
-        painter.set_line_constrain(alt);
-        painter.set_uniform_scale(self.modifiers.shift_key()); // Shift = uniform Stencil scale (Sprite gizmo)
-        painter.set_line_snap(self.modifiers.shift_key()); // Shift = 15° direction snap in the Line polyline editor
+        super::painter_canvas_mods::forward(painter, shift, ctrl, alt);
         // Grid snap for drawing-tool points: resolve the pointer to the nearest editor-grid node in WORLD
         // space (reuses `GridSnapState::snap_world` — all grid kinds + magnetism), map it back to image px,
         // and forward it. Only when the snap grid is ON; brush painting is unaffected (the tool consumes

@@ -61,6 +61,7 @@ mod keyboard_files;
 mod keyboard_painter; // a cadeia do Delete do Painter: ancora -> figura -> falloff
 mod keyboard_timeline;
 pub(crate) mod painter_canvas_input;
+mod painter_canvas_mods; // os modificadores que o CanvasPointer nao carrega
 pub(crate) mod painter_falloff_input;
 pub(crate) mod protect_brush;
 

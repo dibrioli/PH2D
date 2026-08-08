@@ -15,6 +15,10 @@ use super::selection_curve_gizmo::{self, SelectionCurveEdit};
 use super::selection_shapes::{SelectionShape, sel_polygon_vertices};
 use ph2d_editor_core::tool::{CanvasPointer, PointerPhase};
 
+#[path = "selection_gizmo_drag.rs"]
+mod drag;
+use drag::apply_gizmo_drag;
+
 /// Smallest half-extent a scale drag allows (image px).
 const MIN_AXIS_PX: f32 = 1.0;
 /// The rotate ring reaches this many grab-radii beyond a scale square.
@@ -251,6 +255,17 @@ impl PainterTool {
 
     /// Route a canvas pointer to the isolated selection gizmos (called from `on_canvas_pointer` while the
     /// gizmos are shown). Hit-tests EVERY shape's handles, drags the grabbed one, and recomposites the mask.
+    /// **Publica Shift / Ctrl / Alt** para o gizmo de seleção — o shell os amostra no ponteiro e os
+    /// entrega aqui, porque o `CanvasPointer` não os carrega e alargá-lo mexeria numa superfície que
+    /// muitos leitores compartilham.
+    ///
+    /// A lei é a do gizmo de sprite, palavra por palavra ([`ph2d_editor_core::GizmoModifiers`]): **Shift**
+    /// trava a razão de aspecto numa quina, **Ctrl/Cmd** troca a âncora do escalonamento para o CENTRO
+    /// (o default é a quina oposta). No macOS o Cmd conta como Ctrl, a mesma convenção do outro gizmo.
+    pub fn set_gizmo_modifiers(&mut self, shift: bool, ctrl: bool, alt: bool) {
+        self.paint.gizmo_mods = ph2d_editor_core::GizmoModifiers { shift, ctrl, alt };
+    }
+
     pub(super) fn selection_gizmo_pointer(&mut self, ev: CanvasPointer) -> bool {
         match ev.phase {
             PointerPhase::Down => self.selection_gizmo_down(ev.pos),
@@ -386,7 +401,14 @@ impl PainterTool {
             }
             shape
         } else {
-            apply_gizmo_drag(&grab.initial, grab.handle, grab.start, pos, tol)
+            apply_gizmo_drag(
+                &grab.initial,
+                grab.handle,
+                grab.start,
+                pos,
+                tol,
+                self.paint.gizmo_mods,
+            )
         };
         self.recompose_selection_mask();
         true
@@ -473,181 +495,6 @@ fn hit_shape(shape: &SelectionShape, pos: [f32; 2], tol: f32) -> Option<u8> {
 }
 
 /// Apply a gizmo drag to the PRISTINE `initial` shape and return the transformed shape (drift-free).
-fn apply_gizmo_drag(
-    initial: &SelectionShape,
-    handle: u8,
-    start: [f32; 2],
-    pos: [f32; 2],
-    tol: f32,
-) -> SelectionShape {
-    let Some(f) = shape_frame(initial) else {
-        return initial.clone();
-    };
-    if handle == H_SIDES {
-        return drag_sides(initial, &f, pos, tol);
-    }
-    if handle == H_MOVE {
-        let d = [pos[0] - start[0], pos[1] - start[1]];
-        return transform_shape(initial, |p| [p[0] + d[0], p[1] + d[1]], f.u, f.u);
-    }
-    if handle == H_ROTATE {
-        let v0 = unit_or([start[0] - f.center[0], start[1] - f.center[1]], [1.0, 0.0]);
-        let v1 = unit_or([pos[0] - f.center[0], pos[1] - f.center[1]], [1.0, 0.0]);
-        let cos = dot(v0, v1);
-        let sin = v0[0] * v1[1] - v0[1] * v1[0];
-        let c = f.center;
-        let nu = [f.u[0] * cos - f.u[1] * sin, f.u[0] * sin + f.u[1] * cos];
-        return transform_shape(
-            initial,
-            move |p| {
-                let r = [p[0] - c[0], p[1] - c[1]];
-                [
-                    c[0] + r[0] * cos - r[1] * sin,
-                    c[1] + r[0] * sin + r[1] * cos,
-                ]
-            },
-            f.u,
-            nu,
-        );
-    }
-    // Scale (handles 0..8): map the pointer onto the frame axes → new half-extents. The FREEHAND box is
-    // drawn inflated (`gizmo_frame`), so subtract the margin from the pointer distance — the drag then
-    // measures the TRUE extents and the inflated corner tracks the cursor exactly.
-    if handle < H_SCALE_END {
-        let m = if matches!(initial, SelectionShape::Freehand { .. }) {
-            tol * FREEHAND_BOX_MARGIN
-        } else {
-            0.0
-        };
-        let v = f.v();
-        let rel = [pos[0] - f.center[0], pos[1] - f.center[1]];
-        let du = (dot(rel, f.u).abs() - m).max(MIN_AXIS_PX);
-        let dv = (dot(rel, v).abs() - m).max(MIN_AXIS_PX);
-        // Corners (0..3) scale both axes; edge R/L (4/6) scale hx; edge T/B (5/7) scale hy.
-        let (nhx, nhy) = match handle {
-            0..=3 => (du, dv),
-            4 | 6 => (du, f.hy),
-            _ => (f.hx, dv),
-        };
-        return scale_shape(initial, &f, nhx, nhy);
-    }
-    initial.clone()
-}
-
-/// Rewrite a shape under a positional transform `xf` (applied to every geometric point), plus the new axis
-/// `new_u` for the parametric shapes (ellipse/polygon) whose orientation is stored explicitly.
-fn transform_shape(
-    shape: &SelectionShape,
-    xf: impl Fn([f32; 2]) -> [f32; 2],
-    _old_u: [f32; 2],
-    new_u: [f32; 2],
-) -> SelectionShape {
-    match shape {
-        SelectionShape::Ellipse { rx, ry, center, .. } => SelectionShape::Ellipse {
-            center: xf(*center),
-            u: new_u,
-            rx: *rx,
-            ry: *ry,
-        },
-        SelectionShape::Polygon {
-            rx,
-            ry,
-            sides,
-            center,
-            ..
-        } => SelectionShape::Polygon {
-            center: xf(*center),
-            u: new_u,
-            rx: *rx,
-            ry: *ry,
-            sides: *sides,
-        },
-        SelectionShape::Freehand { model, .. } => SelectionShape::Freehand {
-            model: CurveModel {
-                points: model.points.iter().map(|&p| xf(p)).collect(),
-                handles: model.handles.iter().map(|h| [xf(h[0]), xf(h[1])]).collect(),
-                kinds: model.kinds.clone(),
-                selected: model.selected,
-                closed: model.closed,
-            },
-            // The box orientation follows the shape (identity for move; rotated for rotate).
-            u: new_u,
-        },
-        SelectionShape::Raster { .. } => shape.clone(),
-    }
-}
-
-/// Scale a shape about its frame centre to new half-extents `nhx`/`nhy` (parametric → set rx/ry; freehand →
-/// scale every point/handle in the frame's u/v axes).
-fn scale_shape(shape: &SelectionShape, f: &Frame, nhx: f32, nhy: f32) -> SelectionShape {
-    match shape {
-        SelectionShape::Ellipse { center, u, .. } => SelectionShape::Ellipse {
-            center: *center,
-            u: *u,
-            rx: nhx,
-            ry: nhy,
-        },
-        SelectionShape::Polygon {
-            center, u, sides, ..
-        } => SelectionShape::Polygon {
-            center: *center,
-            u: *u,
-            rx: nhx,
-            ry: nhy,
-            sides: *sides,
-        },
-        SelectionShape::Freehand { model, .. } => {
-            let (c, u, v) = (f.center, f.u, f.v());
-            let sx = nhx / f.hx.max(0.001);
-            let sy = nhy / f.hy.max(0.001);
-            let scale = |p: [f32; 2]| {
-                let d = [p[0] - c[0], p[1] - c[1]];
-                let du = dot(d, u) * sx;
-                let dv = dot(d, v) * sy;
-                [c[0] + du * u[0] + dv * v[0], c[1] + du * u[1] + dv * v[1]]
-            };
-            SelectionShape::Freehand {
-                model: CurveModel {
-                    points: model.points.iter().map(|&p| scale(p)).collect(),
-                    handles: model
-                        .handles
-                        .iter()
-                        .map(|h| [scale(h[0]), scale(h[1])])
-                        .collect(),
-                    kinds: model.kinds.clone(),
-                    selected: model.selected,
-                    closed: model.closed,
-                },
-                u: f.u, // scaling keeps the box orientation
-            }
-        }
-        SelectionShape::Raster { .. } => shape.clone(),
-    }
-}
-
-/// Drag the polygon **sides** diamond → new side count from the pointer's projection along `u`.
-fn drag_sides(shape: &SelectionShape, f: &Frame, pos: [f32; 2], tol: f32) -> SelectionShape {
-    let SelectionShape::Polygon {
-        center, u, rx, ry, ..
-    } = shape
-    else {
-        return shape.clone();
-    };
-    let rel = [pos[0] - f.center[0], pos[1] - f.center[1]];
-    let proj = dot(rel, *u);
-    let base = *rx + tol * SIDES_GAP;
-    let step = (tol * SIDES_STEP).max(1.0);
-    let raw = MIN_SIDES as f32 + ((proj - base) / step).round();
-    let sides = (raw as i32).clamp(MIN_SIDES as i32, MAX_SIDES as i32) as u32;
-    SelectionShape::Polygon {
-        center: *center,
-        u: *u,
-        rx: *rx,
-        ry: *ry,
-        sides,
-    }
-}
-
 fn dot(a: [f32; 2], b: [f32; 2]) -> f32 {
     a[0] * b[0] + a[1] * b[1]
 }

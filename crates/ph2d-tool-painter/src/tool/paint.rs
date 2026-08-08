@@ -169,6 +169,8 @@ pub mod impasto_rig;
 /// The stamp route dispatcher (Shape + Grain → which of the 4 stamp paths); split for the LOC cap.
 mod plane_fork;
 pub(super) mod relief_state;
+#[cfg(test)]
+mod selection_gizmo_mods_tests; // Shift/Ctrl no gizmo de selecao
 /// Selection creation input: mode/op/threshold setters + on-canvas pointer gestures (marquee/lasso/flood). [LOC split].
 mod selection_input;
 /// Selection **Offset** (ADR-0103 Am.3): signed-distance grow/shrink + concentric alternating protected /

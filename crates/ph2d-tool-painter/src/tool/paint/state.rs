@@ -237,6 +237,14 @@ pub(crate) struct PaintState {
     pub(super) shape_edit_wrap: [f32; 2],
     /// Pending SELECTION op-cycle tap — Down on a shape's centre-move square arms `Some((shape, pos))`; Up without a drag past the slop cycles THAT shape's Add↔Remove op; a drag clears it + moves the shape. Mirrors [`op_tap`] but selection toggles only Add/Remove. [`selection_gizmo`].
     pub(super) selection_op_tap: Option<(usize, [f32; 2])>,
+    /// **Shift / Ctrl / Alt durante um arrasto de gizmo**, publicados pelo shell (o `CanvasPointer` não os
+    /// carrega, e alargá-lo mexeria numa superfície que muitos leitores compartilham).
+    ///
+    /// ⚠️ É a MESMA `GizmoModifiers` do gizmo de sprite, de propósito: o doc-comment dela **é** a lei
+    /// (*Shift trava a razão de aspecto; Ctrl/Cmd troca a âncora do escalonamento para o CENTRO, sendo o
+    /// default a quina oposta*), e dois gizmos do mesmo app que discordem sobre o que Shift significa é
+    /// exatamente o que uma segunda cópia produz.
+    pub(super) gizmo_mods: ph2d_editor_core::GizmoModifiers,
     /// Control-handle grab radius (image px) for the shape editors — shell forwards a footprint-scaled value.
     pub(super) shape_grab_tol_px: f32,
     /// **Offset** slider track (`0..1`, `0.5` = none) — perpendicular path offset for the shape editors.

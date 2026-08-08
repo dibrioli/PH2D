@@ -352,6 +352,13 @@ pub(crate) fn smoke_mesh() -> ph2d_mesh::Mesh {
     if turn_scene() || document_scene() || export_scene() || bake_scene() || reopen_scene() {
         return ridged_sphere();
     }
+    // ⚠️ **AS CENAS DE SOMBREAMENTO SÃO DONAS DO ELENCO INTEIRO**, e esta linha é a
+    // cura de um defeito que a aritmética achou: sem ela, uma cena que declarava
+    // as peças no `scene_objects` abria com a esfera lisa de 96×144 por cima,
+    // não convidada — e na `=19` isso ENTERRAVA uma das três bolas da escada.
+    if let Some(m) = shading::primary_mesh() {
+        return m;
+    }
     if remesh_scene() {
         return hooked_sphere();
     }

@@ -71,6 +71,81 @@ pub(crate) fn occlusion_donation_scene() -> bool {
     std::env::var("PH2D_SCULPT3D_SMOKE").ok().as_deref() == Some("20")
 }
 
+/// **A peça com que a cena ABRE**, para as cenas que têm elenco próprio.
+///
+/// ⚠️ **Ela existe por causa de um defeito que a aritmética achou e nenhum gate via.** O
+/// [`super::smoke_mesh`] devolve a peça PRIMÁRIA e o [`scene_objects`] só acrescenta **extras** —
+/// então uma cena que declarasse o elenco inteiro em `scene_objects` abria com a esfera lisa de
+/// 96×144 **por cima**, não convidada. Medido na `=19`: a bola de raio `0,45` em `x = 0,35` fica
+/// `0,35 + 0,45 = 0,80 < 1,0` — **inteiramente enterrada** dentro da primária —, e a de raio `1,0`
+/// em `x = −1,7` se funde com ela. *A escada que o roteiro chama de oráculo tinha um degrau
+/// invisível e um quarto corpo que ninguém pediu.*
+///
+/// A cura é estrutural: uma cena de sombreamento é dona do **elenco inteiro**, e o gate
+/// `a_shading_scene_owns_its_whole_cast` afirma que as duas portas respondem juntas.
+pub(crate) fn primary_mesh() -> Option<ph2d_mesh::Mesh> {
+    if screen_ao_scene() {
+        // ⚠️ **Uma das DUAS**, e o gate achou isto: a primária acidental era uma terceira esfera de
+        // raio 1 na ORIGEM — exatamente dentro da fresta de `0,04` que esta cena existe para
+        // mostrar. O artista olhava a fresta e via barro.
+        let mut a = ph2d_mesh::shapes::uv_sphere(48, 72, 1.0);
+        a.triangulate();
+        return Some(a);
+    }
+    if sss_scene() {
+        // A maior da escada — a peça que o artista enquadra primeiro.
+        return Some(baked(ph2d_mesh::shapes::uv_sphere(48, 72, 1.0)));
+    }
+    if occlusion_donation_scene() {
+        return Some(grooved_sphere());
+    }
+    None
+}
+
+/// **Os dois canais assados**, pela mesma sequência que o botão usa (voxeliza → flood fill → mede).
+///
+/// Sem isso a cena abriria opaca e o smoke julgaria um canal que não está ligado.
+fn baked(mut m: ph2d_mesh::Mesh) -> ph2d_mesh::Mesh {
+    m.triangulate();
+    let mut field = ph2d_sdf::VoxelField::for_bounds(m.bounds(), ph2d_sdf::DEFAULT_RESOLUTION);
+    field.voxelize(&m);
+    field.flood_fill();
+    let thickness = ph2d_sdf::bake_thickness(&field, &m);
+    let ao = ph2d_sdf::bake_ao(
+        &field,
+        m.positions(),
+        m.normals(),
+        ph2d_sdf::AoParams::for_bounds(m.bounds()),
+    );
+    m.set_thickness(thickness);
+    m.set_ao(ao);
+    m
+}
+
+/// A esfera de **três sulcos** da `=20` — faixas de latitude recuadas ao longo da própria normal.
+///
+/// ⚠️ É a MESMA fixture dos gates de GPU desta wave, e reusá-la é o que faz o smoke julgar o que o
+/// gate mede: numa esfera lisa a oclusão fica em `1,108 .. 1,155` e *"a oclusão chegou"* seria
+/// indistinguível de *"a peça clareou"*; com os sulcos ela abre para `0,000 .. 1,781`.
+fn grooved_sphere() -> ph2d_mesh::Mesh {
+    let mut m = ph2d_mesh::shapes::uv_sphere(72, 108, 1.0);
+    for band in [0.45f32, 0.0, -0.45] {
+        let moved: Vec<u32> = (0..m.vert_count() as u32)
+            .filter(|&v| (m.positions()[v as usize][1] - band).abs() < 0.045)
+            .collect();
+        for &v in &moved {
+            let n = m.normals()[v as usize];
+            let p = &mut m.positions_mut()[v as usize];
+            for k in 0..3 {
+                p[k] -= n[k] * 0.07;
+            }
+        }
+    }
+    m.rebuild();
+    m.triangulate();
+    m
+}
+
 /// A cena de um destes canais, **se alguma estiver armada**.
 ///
 /// ⚠️ **`Option` e não um `Vec` vazio:** *"nenhuma destas está armada"* e *"esta
@@ -88,28 +163,10 @@ pub(crate) fn scene_objects() -> Option<Vec<(ph2d_mesh::Mesh, Pose)>> {
         // vincado ele passaria por cima de curvaturas locais que competem com a
         // da própria peça.
         //
-        // ⚠️ **E cada peça nasce com os dois canais assados**, pela mesma
-        // sequência que o botão usa (voxeliza → flood fill → mede). Sem isso a
-        // cena abriria opaca e o smoke julgaria um canal que não está ligado.
-        let baked = |mut m: ph2d_mesh::Mesh| {
-            m.triangulate();
-            let mut field = ph2d_sdf::VoxelField::for_bounds(m.bounds(), ph2d_sdf::DEFAULT_RESOLUTION);
-            field.voxelize(&m);
-            field.flood_fill();
-            let thickness = ph2d_sdf::bake_thickness(&field, &m);
-            let ao = ph2d_sdf::bake_ao(
-                &field,
-                m.positions(),
-                m.normals(),
-                ph2d_sdf::AoParams::for_bounds(m.bounds()),
-            );
-            m.set_thickness(thickness);
-            m.set_ao(ao);
-            m
-        };
-        let ball = |segs: usize, r: f32| {
-            baked(ph2d_mesh::shapes::uv_sphere(segs * 2 / 3, segs, r))
-        };
+        // ⚠️ **E cada peça nasce com os dois canais assados** — ver o [`baked`], a porta que a
+        // [`primary_mesh`] também atravessa. Sem isso a cena abriria opaca e o smoke julgaria um
+        // canal que não está ligado.
+        let ball = |segs: usize, r: f32| baked(ph2d_mesh::shapes::uv_sphere(segs * 2 / 3, segs, r));
         eprintln!(
             "[sculpt3d] =19 A TINTA QUE A LUZ ATRAVESSA: tres esferas (raios 1.00 / 0.45 /\n\
              [sculpt3d]    0.20) e uma CHAPA, todas com o MESMO material, todas ja' assadas.\n\
@@ -134,11 +191,14 @@ pub(crate) fn scene_objects() -> Option<Vec<(ph2d_mesh::Mesh, Pose)>> {
         );
         // A CHAPA em pé: um disco de 0,12 de espessura, que é a forma do §2b.
         let slab = baked(ph2d_mesh::shapes::cylinder(48, 0.7, 0.12));
+        // ⚠️ **A de raio 1,0 saiu daqui e virou a PRIMÁRIA** — ver o doc do [`primary_mesh`]. E as
+        // posições foram RE-MEDIDAS para que nenhuma peça toque a outra: a primária ocupa
+        // `[−1, +1]`, então a de `0,45` começa em `1,0 + 0,15 + 0,45` e assim por diante. A escada
+        // só é oráculo se as três forem VISÍVEIS.
         return Some(vec![
-            (slab, ph2d_mesh::Pose::at([2.4, 0.0, 0.0])),
-            (ball(72, 1.0), ph2d_mesh::Pose::at([-1.7, 0.0, 0.0])),
-            (ball(48, 0.45), ph2d_mesh::Pose::at([0.35, 0.0, 0.0])),
-            (ball(36, 0.2), ph2d_mesh::Pose::at([1.35, 0.0, 0.0])),
+            (ball(48, 0.45), ph2d_mesh::Pose::at([1.60, 0.0, 0.0])),
+            (ball(36, 0.2), ph2d_mesh::Pose::at([2.45, 0.0, 0.0])),
+            (slab, ph2d_mesh::Pose::at([3.45, 0.0, 0.0])),
         ]);
     }
     if screen_ao_scene() {
@@ -147,9 +207,8 @@ pub(crate) fn scene_objects() -> Option<Vec<(ph2d_mesh::Mesh, Pose)>> {
         // bastante para a oclusão ser inequívoca, e estreita o bastante para o
         // AO ASSADO **não conseguir vê-la** (o bake marcha contra o campo de UM
         // corpo, e cada esfera é convexa). É essa diferença que o smoke julga.
-        let mut a = ph2d_mesh::shapes::uv_sphere(48, 72, 1.0);
-        a.triangulate();
-        let b = a.clone();
+        let mut b = ph2d_mesh::shapes::uv_sphere(48, 72, 1.0);
+        b.triangulate();
         eprintln!(
             "[sculpt3d] =18 O AO DE TELA: duas esferas ENCOSTADAS.\n\
              [sculpt3d]    A oclusao que UMA lanca sobre a OUTRA e' o que so' este passe mede --\n\
@@ -167,51 +226,37 @@ pub(crate) fn scene_objects() -> Option<Vec<(ph2d_mesh::Mesh, Pose)>> {
              [sculpt3d]       fontes compoem pela MAIS ESCURA, nunca multiplicando. A peca nao\n\
              [sculpt3d]       pode ficar preta na fresta ao ligar a segunda."
         );
-        return Some(vec![
-            (a, ph2d_mesh::Pose::at([-1.02, 0.0, 0.0])),
-            (b, ph2d_mesh::Pose::at([1.02, 0.0, 0.0])),
-        ]);
+        // ⚠️ **A primeira é a PRIMÁRIA** (ver [`primary_mesh`]), e ela abre na origem — então a
+        // segunda mora a `2,04`, que é a MESMA separação de antes entre as duas superfícies: a
+        // fresta continua medindo `0,04`, que é o número que o roteiro cita.
+        return Some(vec![(b, ph2d_mesh::Pose::at([2.04, 0.0, 0.0]))]);
     }
     if occlusion_donation_scene() {
-        // Três sulcos paralelos, fundos, feitos recuando faixas de latitude ao
-        // longo da própria normal — a MESMA fixture dos gates de GPU desta wave,
-        // e reusá-la é o que faz o smoke julgar o que o gate mede.
-        let mut m = ph2d_mesh::shapes::uv_sphere(72, 108, 1.0);
-        for band in [0.45f32, 0.0, -0.45] {
-            let moved: Vec<u32> = (0..m.vert_count() as u32)
-                .filter(|&v| (m.positions()[v as usize][1] - band).abs() < 0.045)
-                .collect();
-            for &v in &moved {
-                let n = m.normals()[v as usize];
-                let p = &mut m.positions_mut()[v as usize];
-                for k in 0..3 {
-                    p[k] -= n[k] * 0.07;
-                }
-            }
-        }
-        m.rebuild();
-        m.triangulate();
         eprintln!(
             "[sculpt3d] =20 A FRESTA CHEGA A TINTA: uma esfera com TRES SULCOS, e a tela branca.\n\
              [sculpt3d]    Ate' agora a doacao levava so' a NORMAL: a tinta acendia pela forma e a\n\
              [sculpt3d]    fresta que a escultura desenha ficava no viewport. Agora ela viaja.\n\
-             [sculpt3d]    1) Aperte D ate' 'LUZ', pegue o Painter e pinte CHAPADO por cima dos\n\
-             [sculpt3d]       sulcos. A tinta tem de sair com os TRES SULCOS ESCUROS -- nao so'\n\
-             [sculpt3d]       acesa de um lado, que e' o que a normal ja' fazia sozinha.\n\
-             [sculpt3d]    2) Arraste 'Cavity' de 0 a 1: a fresta na TINTA tem de escurecer junto\n\
-             [sculpt3d]       com a fresta no BARRO. Se uma se mexer e a outra nao, as duas metades\n\
-             [sculpt3d]       do shader divergiram -- PARE.\n\
-             [sculpt3d]    3) 'Cavity' de volta a 0.00: a tinta tem de voltar ao que era. Com os\n\
-             [sculpt3d]       tres canais em zero a oclusao doada vale 1 em toda parte, e 1 e' a\n\
-             [sculpt3d]       identidade exata (ha gate de byte-identidade).\n\
+             [sculpt3d]    ⚠️ D CICLA TRES POSICOES, e em LUZ o BARRO SAI DA TELA -- DE PROPOSITO.\n\
+             [sculpt3d]       O que voce olha ali e' a TINTA acesa pela forma; se a esfera ainda\n\
+             [sculpt3d]       estivesse la' ela taparia justamente o que ha' para julgar.\n\
+             [sculpt3d]    1) Em BARRO, olhe os tres sulcos e suba 'Cavity' ate' 1: eles escurecem.\n\
+             [sculpt3d]       Este e' o seu CONTROLE -- guarde como eles ficaram.\n\
+             [sculpt3d]    2) Aperte D ate' 'LUZ' (a esfera sai), pegue o Painter e pinte CHAPADO\n\
+             [sculpt3d]       sobre a tela. A tinta tem de sair com os TRES SULCOS ESCUROS -- nao\n\
+             [sculpt3d]       so' acesa de um lado, que e' o que a normal ja' fazia sozinha.\n\
+             [sculpt3d]    3) Arraste 'Cavity' de 1 a 0 com a tinta na tela: a fresta NA TINTA tem\n\
+             [sculpt3d]       de clarear junto. Em 0.00 a tinta volta ao que era -- os tres canais\n\
+             [sculpt3d]       em zero dao oclusao 1 em toda parte, e 1 e' a identidade exata.\n\
              [sculpt3d]    4) GIRE a cena e pinte de novo: a sombra tem de seguir a FORMA, nunca\n\
              [sculpt3d]       ficar colada na tela.\n\
-             [sculpt3d]    5) O TESTE QUE UMA MUTACAO PEDIU: aperte D ate' 'DESLIGADA', suba\n\
-             [sculpt3d]       'Cavity', e volte para 'LUZ'. A doacao tem de carregar o valor NOVO\n\
-             [sculpt3d]       do knob -- em modo LUZ o barro nem e' desenhado, e o passe que doa\n\
-             [sculpt3d]       precisa ser informado dos knobs por conta propria."
+             [sculpt3d]    5) O TESTE QUE UMA MUTACAO PEDIU: em 'LUZ', suba 'Cavity' e pinte. A\n\
+             [sculpt3d]       doacao tem de carregar o valor NOVO do knob -- em LUZ o barro nem e'\n\
+             [sculpt3d]       desenhado, e o passe que doa precisa ser informado por conta propria."
         );
-        return Some(vec![(m, ph2d_mesh::Pose::default())]);
+        // ⚠️ **A peça é a PRIMÁRIA** (ver [`primary_mesh`]), então esta cena não tem extras — e o
+        // `Some(vec![])` é deliberado: ele diz *"o elenco é meu e está completo"*, que é o que o
+        // gate `a_shading_scene_owns_its_whole_cast` afirma.
+        return Some(Vec::new());
     }
     None
 }

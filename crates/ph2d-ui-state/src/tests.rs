@@ -296,6 +296,50 @@ fn the_clamp_is_per_channel_position_overshoots_scale_does_not() {
     assert!(tr.at(-0.3)[0].opacity <= 1.0);
 }
 
+/// ⭐ **A lei por canal vale nos TRÊS ramos — e o irmão acima é CEGO a dois deles.**
+///
+/// ⚠️ **Foi um defeito real desta wave, achado a escrever o smoke.** Quem SAI e quem ENTRA têm um
+/// canal só — a opacidade — e ela é exatamente o canal que o doc do `at` nomeia como *"não é
+/// overshoot, é lixo"*. Os dois ramos ficaram com o `t` CRU quando o clamp deixou de ser global,
+/// então `Back Out` (pico 1,100) dava alfa **negativo** a quem sai, e uma MOLA revertida
+/// (`t < 0`, que é o momento a carregar) dava alfa negativo a quem entra.
+///
+/// ⚠️ **Ele era LATENTE, e a honestidade importa mais que o susto:** o `install` da shell não
+/// escreve `pose.opacity` hoje, então nada disto chegava à tela. É por isso que o gate afirma a
+/// LEI e não um sintoma — quem ligar a opacidade um dia não tem de redescobrir a regra.
+///
+/// ⚠️ E o gate anterior não podia pegá-lo: um objeto presente nos dois lados nunca vira
+/// `Leaving`/`Entering`. Uma fixture com o mesmo id dos dois lados é verde por construção aqui
+/// [[reference_topic_fixture_discipline]].
+#[test]
+fn the_per_channel_law_holds_for_the_one_who_leaves_and_the_one_who_enters() {
+    let mut a = UiState::new(StateRole::Default);
+    a.objects = vec![posed(1)]; // só na origem  ⇒ Leaving
+    let mut b = UiState::new(StateRole::Hover);
+    b.objects = vec![posed(2)]; // só no destino ⇒ Entering
+    let tr = Transition::new(&a.objects, &b.objects);
+
+    let alpha = |t: f64, id: u64| {
+        tr.at(t)
+            .into_iter()
+            .find(|p| p.id == id)
+            .expect("o objeto tem de estar no passo")
+            .opacity
+    };
+
+    // `t = 1.4` é o pico de um `Elastic Out`; `t = -0.3` é uma mola a carregar o momento.
+    for t in [1.4_f64, -0.3] {
+        for id in [1_u64, 2] {
+            let a = alpha(t, id);
+            assert!(
+                (0.0..=1.0).contains(&a),
+                "em t = {t} o objeto {id} saiu com alfa {a} — a opacidade e' um canal onde \
+                 passar do alvo nao significa nada, e o doc do `at` promete isso"
+            );
+        }
+    }
+}
+
 /// **A forma que sai do `Plan` usa a tinta da POSE, não a que o `Plan` interpolou por conta.**
 ///
 /// ⚠️ São dois números para a mesma pergunta, e quem está a jusante não pode ter de escolher. A

@@ -301,5 +301,12 @@ pub(crate) fn route(app: &mut crate::App, f: u32, level: u32) -> bool {
         crate::ui_nested_smoke::frame(app, f);
         return true;
     }
+    // A cena da MOLA (=65) — irmã `ui_spring_smoke`. Quatro faixas com a MESMA viagem e motores
+    // diferentes: a mola, o `Cubic In-Out` que é o A/B dela, o `Back Out` que mudou de
+    // comportamento nesta wave, e o `Cubic Out` de fábrica, que é o controle.
+    if level == 65 {
+        crate::ui_spring_smoke::frame(app, f);
+        return true;
+    }
     false
 }

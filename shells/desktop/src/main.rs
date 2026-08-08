@@ -343,6 +343,8 @@ mod ui_panel_spec;
 /// **O RATO dentro do modo de preview** (plano UI/UX W7r) — a metade da shell do
 /// `render_loop::ui_preview`: quem aponta, e o gesto modal que precede tudo.
 mod ui_preview_gesture;
+/// A cena de smoke da **MOLA** (`PH2D_BUILD_SMOKE=65`) — irmã de `build_smoke`.
+mod ui_spring_smoke;
 /// A cena de smoke dos **ESTADOS DE UI** (`PH2D_BUILD_SMOKE=61`) — irmã de `build_smoke`.
 mod ui_states_smoke;
 mod undo;

@@ -201,12 +201,17 @@ impl Transition {
                 // Quem SAI fica onde estava e desvanece; quem ENTRA já está no lugar de destino e
                 // aparece. ⚠️ Nenhum dos dois se move: mover algo que só existe de um lado seria
                 // inventar a outra ponta do caminho.
+                //
+                // ⚠️ **`tc`, e não `t`** — os dois têm um canal só, e ele é a OPACIDADE. Um
+                // `Back Out` (pico 1,100) daria alfa **−0,4** a quem sai; uma mola a carregar o
+                // momento (`t < 0`) daria alfa negativo a quem entra. É exatamente o caso que o
+                // doc acima nomeia: *não é overshoot, é lixo*.
                 Step::Leaving(p) => ObjectPose {
-                    opacity: lerp_f32(p.opacity, 0.0, t),
+                    opacity: lerp_f32(p.opacity, 0.0, tc),
                     ..p.clone()
                 },
                 Step::Entering(p) => ObjectPose {
-                    opacity: lerp_f32(0.0, p.opacity, t),
+                    opacity: lerp_f32(0.0, p.opacity, tc),
                     ..p.clone()
                 },
             })

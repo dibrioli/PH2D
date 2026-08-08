@@ -263,3 +263,57 @@ imprime o que montou.
   `shells/desktop/src/render_loop/motion_bridge_objects.rs:135,152`; `motion_bridge_color.rs`.
 - Doc/view state para o toggle: `ph2d-motion-doc/src/lib.rs:71,108`;
   `ph2d-panel-motion-graph/src/state.rs:109`; `ph2d-nodegraph/src/format.rs` (records append-only).
+
+---
+
+## §9 — B3: O CENSO, e o mapa da varredura (escrito 2026-08-08, com números MEDIDOS)
+
+> A §6 dizia *"nó a nó, ou família a família"*. A §0 do CLAUDE.md manda **medir antes de
+> decidir** — então a varredura começa por um censo executável, não por ordem alfabética.
+
+**A sonda:** `cargo test -p ph2d-node-registry-init --test param_census -- --ignored --nocapture`
+(roda na crate que registra os 118 nós — o build mais barato que os enxerga; uma sonda na
+shell mediria o mesmo e custaria o app inteiro).
+
+**O retrato de 2026-08-08:** **118 nós · 411 params · 395 com hint · 105 com unidade.**
+Só **um** nó tem param sem hint nenhum (`value.attribute`, cujo controle real é o picker
+de canais — o `f32` ali é o `mode` que o picker escreve). **Cinquenta** nós têm ≤ 2
+controles, e é aqui que a curadoria mora: *magro por natureza* e *magro por omissão* são
+coisas diferentes, e o censo não sabe distingui-las — quem distingue é a referência.
+
+### O mapa, com o veredito de cada família
+
+| Família | Estado MEDIDO | Veredito |
+|---|---|---|
+| **TRANSFORM** (`move` · `rotate` · `scale` · `transform` · `mirror` · `orbit`) | `scale` escrevia uma coluna **Vec2** a partir de **um** número; `mirror` pregava a linha no **centroide** | ✅ **FECHADA** (2026-08-08) — o 2º eixo e o `Axis Offset`, smoke `PH2D_TRANSFORM_SMOKE=1` |
+| **ECHO** (`motion.trail`) | 3 params (`length`/`fade`/`shrink`) contra os 8 da referência | **ABERTA** — faltam `spacing` (um fantasma a cada N ticks) e `hue_shift` (a cauda colorida que o próprio caso de uso do catálogo nomeia). ⚠️ `spacing` precisa de um contador de ticks, e o nó é sequencial: mede-se primeiro onde o contador mora |
+| **DEFORMERS** (`bend` · `twist` · `spherize` · `four_point_warp` · `lattice` · `kaleidoscope` · `slit_scan`) | `spherize` 1 · `slit_scan` 1 · o resto 3-8 | **ABERTA, a medir** — os dois magros podem ser magros por natureza |
+| **VALUE** (24 nós) | quase todos 1-2 params | ⛔ **RECUSADA COM MOTIVO** — um `value.unary` é *um verbo sobre um número*; um param a mais ali é cerimônia, e a §12 (domínio de valor) desenhou essa família justamente para ser pequena e componível |
+| **ESTRUTURAIS** (`util.reroute*` · `motion.combine` · `integrate` · `output` · `luminance` · `make_point` · `morph` · `sim.zone` · `value.switch` · `pulse.sample_hold`) | 0 params | ⛔ **RECUSADA** — zero params é o contrato deles, não uma lacuna |
+| **RIG** (`fk` · `ik_2bone` · `fabrik` · `rubber_hose` · `skin_deformer` · `skeleton`) | magros | ⏸ **ADIADA** — o CLAUDE.md §5 defere rig+skinning "pro FIM de tudo" |
+
+### ⚠️ O `motion.duplicator` tem ZERO params, e isso está quase todo CERTO
+
+A tabela §B da pesquisa do Cavalry é grande (Distribution · Shape Position/Rotation/Scale
+· Visibility/Opacity · Auto Id / Shape Id · Shape Time Offset · Use Index Context · Skip
+Invisible), e a leitura ingênua é *"faltam sete params"*. **Ela está errada**, e o motivo
+é arquitetural: o Duplicator do Cavalry é um **mega-nó** e o nosso é um **grafo**.
+
+- *Distribution* — lá é um dropdown de 21 tipos; aqui são **21 nós** que alimentam a porta
+  `points`. Trazê-la para dentro seriam duas portas para a mesma pergunta.
+- *Shape Position/Rotation/Scale/Opacity por-cópia* — lá são alvos que Falloff/Stagger
+  modulam dentro do nó; aqui são `motion.move`/`rotate`/`scale` **a jusante**, que é o que
+  torna o falloff composável.
+- *Skip Invisible Duplicates* — é o `motion.cull`.
+
+**O gap REAL é um só:** *que forma vai em que ponto*. Nós fazemos o **produto cartesiano**
+(N formas × M pontos = N·M cópias) e a referência tem `Auto Id` (cicla) / `Shape Id`
+(fixa). Com 3 formas e 100 pontos, *"cem pontos, cada um recebendo uma das três formas"*
+**não é exprimível hoje**. Isso é semântica de contagem, não um knob: ⇒ **wave própria**.
+
+### A lei desta varredura, em uma linha
+
+Um param novo entra quando a coluna que o nó escreve, ou a referência, **nomeia uma
+capacidade que hoje é inexprimível no grafo inteiro** — nunca porque o nó parece pequeno.
+E todo default novo **reduz LITERALMENTE à expressão anterior**, porque a arte já autorada
+é o que uma varredura de parâmetros mais facilmente destrói.

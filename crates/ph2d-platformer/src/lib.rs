@@ -69,7 +69,7 @@ pub use crouch::{
 pub use dash::{DashConfig, DashState, DashStep, dash_burst, dash_step};
 pub use jump::{JumpConfig, JumpState, JumpStep, carried_frame, jump_step};
 pub use react::{Reaction, ReactionConfig};
-pub use ride::{RideConfig, damping_axis, ride_spring, within_reach};
+pub use ride::{RideConfig, damping_axis, ride_spring, ride_support_on_ground, within_reach};
 pub use slope::{Footing, footing, footing_verdict, is_grounded, no_uphill};
 pub use walk::{WalkConfig, walk};
 pub use wall::{
@@ -538,7 +538,13 @@ pub fn player_motor(
         } else {
             Motor::default()
         };
-        react::reaction(&cfg.react, spring, impulse, step)
+        // ⚠️ **O que o CHÃO sente NÃO é o motor da perna** (W-ClingPull): a
+        // metade esticada da mola puxa o personagem para baixo, e transmitir a
+        // reação dela puxa o chão para CIMA — medido, uma jangada subia 96,9 mm
+        // ao encontro de quem caía nela. A porta que separa as duas metades mora
+        // no `ride`, ao lado da lei que as produz.
+        let felt = ride::ride_support_on_ground(&cfg.ride, standing, gravity, up);
+        react::reaction(&cfg.react, felt, impulse, step)
     });
 
     // ── A QUINA (W10) ────────────────────────────────────────────────────────

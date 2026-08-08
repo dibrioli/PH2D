@@ -188,7 +188,12 @@ pub(crate) fn apply_player_edit(sim: &mut SimWorld, entity_bits: u64, edit: Play
         }
         PlayerFieldEdit::FloatHeight(v) => p.float_height = v.max(0.0),
         PlayerFieldEdit::ClingDistance(v) => p.cling_distance = v.max(0.0),
-        PlayerFieldEdit::SpringStrength(v) => p.spring_strength = v.max(0.0),
+        // ⚠️ O teto é MEDIDO e é um fato da discretização — acima de `1/dt²` a
+        // mola passa do alvo em vez de chegar nele, e o personagem afunda e
+        // range. Mesmo tratamento do amortecimento, logo abaixo.
+        PlayerFieldEdit::SpringStrength(v) => {
+            p.spring_strength = v.clamp(0.0, RideConfig::MAX_SPRING_STRENGTH);
+        }
         // ⚠️ O clamp honra o TETO MEDIDO da lei: acima dele o boost inverte a
         // velocidade em vez de matá-la. A porta da lei também o clampa — duas
         // camadas, e a de fora existe para o número AUTORADO nunca guardar algo

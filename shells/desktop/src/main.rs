@@ -288,6 +288,7 @@ mod physics_smoke_signal;
 mod physics_smoke_signal_leave;
 mod physics_smoke_soft_weld;
 mod physics_smoke_stop;
+mod physics_smoke_water;
 mod physics_smoke_wheel;
 mod physics_smoke_world_pin;
 mod physics_smoke_zones;

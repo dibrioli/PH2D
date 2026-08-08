@@ -35,12 +35,55 @@ impl RideConfig {
     /// onde a mola ainda **converge**, e o `clamp` da porta o honra.
     pub const MAX_DAMPING: f32 = 1.0;
 
+    /// ⚠️ **O teto da RIGIDEZ, e ele é um fato da DISCRETIZAÇÃO** — o irmão
+    /// exato do [`Self::MAX_DAMPING`], medido pelo mesmo método
+    /// (`measure_landing::measure_landing_against_stiffness`).
+    ///
+    /// Com o amortecimento no teto o boost apaga a velocidade relativa inteira a
+    /// cada tique, então o que sobra do erro decai por **`1 − k·dt²`**. Em
+    /// `k = 1/dt²` a razão é **zero** — a mola chega no alvo em UM passo, a
+    /// resposta *deadbeat*. Acima disso ela fica **negativa**: a mola passa do
+    /// alvo em vez de chegar nele.
+    ///
+    /// | `spring_strength` | pouso | afunda | `1 − k·dt²` |
+    /// |---|---|---|---|
+    /// | 3400 | 0,050 s | −0,0 cm | 0,056 |
+    /// | **3600 (o teto)** | **0,033 s** | **−0,0 cm** | **−0,000** |
+    /// | 4000 | 0,067 s | **2,5 cm** | −0,111 |
+    /// | 5000 | 0,133 s | **8,9 cm** | −0,389 |
+    ///
+    /// ⚠️ **`3600` É `1/dt²` para o tique de 60 Hz deste módulo**, e o gate
+    /// `the_stiffness_ceiling_is_where_the_spring_overshoots` o afirma contra a
+    /// fórmula em vez de contra o literal — se o relógio mudar, ele sangra.
+    pub const MAX_SPRING_STRENGTH: f32 = 3600.0;
+
     /// Um perfil de partida — ⚠️ **NÃO são defaults de produto.**
     ///
     /// Os números que shipam saem da varredura da wave (o molde das tabelas do
-    /// `GRAB_STIFFNESS`), e enquanto ela não existe estes são explicitamente um
-    /// ponto de partida: `400` é a rigidez que o `bevy-tnua` usa, e o
-    /// amortecimento está em metade do teto medido.
+    /// `GRAB_STIFFNESS`).
+    ///
+    /// # ⚠️ A RIGIDEZ deixou de ser o ponto de partida (W-Landing, 2026-08-07)
+    ///
+    /// Ela era `400` — *"a rigidez que o `bevy-tnua` usa"* —, e o report do Enio
+    /// (*"a desaceleração ao encostar no chão é muito lenta e fica
+    /// artificial"*) tinha esse número como causa **inteira**: com o
+    /// amortecimento no teto o pouso decai por `1 − k·dt²`, que em `400` vale
+    /// `0,889` e dá **meio segundo** de escorregada.
+    ///
+    /// | `spring_strength` | pouso | deriva 30°/10 s | soco na jangada |
+    /// |---|---|---|---|
+    /// | 400 (o que shipava) | **0,500 s** | 0,0000 m | 19,6 cm |
+    /// | 1200 | 0,217 s | 0,0000 m | 19,8 cm |
+    /// | **2000 (o que shipa)** | **0,133 s** | **0,0000 m** | 19,9 cm |
+    ///
+    /// ⚠️ **As duas colunas da direita são o que torna esta a cura CERTA, e não
+    /// a óbvia:** baixar o amortecimento dá o mesmo pouso e **gasta** a deriva
+    /// que a W11c comprou (`0,0382 m` em `d = 0,50`); a rigidez não a toca —
+    /// `0,0000` em toda a faixa, medido, e a lei publicada não tem termo em `k`.
+    /// E o soco que a 3ª lei entrega a uma jangada **não muda** (+1,5%), porque
+    /// o impulso total é o peso do personagem e não a pressa da perna.
+    ///
+    /// O amortecimento fica onde a W11c o pôs — no teto (a tabela abaixo).
     ///
     /// # ⚠️ O que a varredura de 2026-08-04 mediu sobre `spring_damping`
     ///
@@ -141,7 +184,7 @@ impl RideConfig {
     pub const STARTING_POINT: Self = Self {
         float_height: 0.5,
         cling_distance: 0.25,
-        spring_strength: 400.0,
+        spring_strength: 2000.0,
         spring_damping: 1.0,
     };
 
@@ -293,7 +336,7 @@ pub fn ride_spring(
     let rel_along_axis = rel[0] * axis[0] + rel[1] * axis[1];
 
     let damping = cfg.spring_damping.clamp(0.0, RideConfig::MAX_DAMPING);
-    let spring = offset * cfg.spring_strength;
+    let spring = offset * clamped_strength(cfg);
 
     Motor {
         // ⚠️ **A MOLA fica no `up`, e isso é decisão, não esquecimento.** Ela
@@ -303,12 +346,79 @@ pub fn ride_spring(
         // normal cancelaria só a componente normal do peso e o personagem
         // escorregaria por toda ladeira, que é o oposto do que o `max_slope_deg`
         // significa (o `slopeLimit` da Unity, o `floor_max_angle` do Godot).
-        accel: [up[0] * spring - gravity[0], up[1] * spring - gravity[1]],
+        accel: support_accel(spring, gravity, up),
         // O amortecimento é BOOST — ver o aviso do `lib.rs`.
         boost: [
             -axis[0] * rel_along_axis * damping,
             -axis[1] * rel_along_axis * damping,
         ],
+    }
+}
+
+/// **A rigidez que a lei de facto usa** — o gêmeo do clamp do amortecimento.
+///
+/// ⚠️ **Uma porta, dois leitores:** o motor do personagem e o que o CHÃO sente
+/// ([`ride_support_on_ground`]) têm de concordar sobre o número, senão a 3ª lei
+/// devolve uma força que a perna não fez.
+#[must_use]
+fn clamped_strength(cfg: &RideConfig) -> f32 {
+    cfg.spring_strength
+        .clamp(0.0, RideConfig::MAX_SPRING_STRENGTH)
+}
+
+/// **A aceleração de uma perna** — a PORTA de um só termo, com dois leitores.
+///
+/// `push` é o termo da mola (`k·x`), e o `− gravity` é o peso que a perna
+/// cancela. Os dois leitores diferem em **uma** coisa nomeada: o motor do
+/// personagem passa o `push` como ele é, e o que o CHÃO sente passa-o
+/// clampado ([`ride_support_on_ground`]).
+#[must_use]
+fn support_accel(push: f32, gravity: Vec2, up: Vec2) -> Vec2 {
+    [up[0] * push - gravity[0], up[1] * push - gravity[1]]
+}
+
+/// **O que o CHÃO sente da perna** — o peso, e só a metade que EMPURRA.
+///
+/// # ⚠️ Por que isto não é o [`ride_spring`] outra vez
+///
+/// A mola tem duas metades e só uma existe fora do modelo. Comprimida
+/// (`offset > 0`) ela **empurra**, e o chão sente — é a 3ª lei, e é o que faz
+/// uma jangada afundar. Esticada dentro do `cling_distance` (`offset < 0`) ela
+/// **puxa o personagem para baixo**, que é o truque que o mantém colado ao
+/// descer uma lomba — e transmitir a reação DISSO puxa o chão para cima.
+///
+/// Medido antes desta porta existir: um personagem a cair numa jangada a fazia
+/// **subir 96,9 mm ao encontro dele** antes de a empurrar para baixo, porque na
+/// faixa de cling o termo da mola chega a `0,25 × 400 = 100 m/s²` — dez vezes a
+/// gravidade, e para o lado errado.
+///
+/// ⚠️ **O peso NÃO é clampado, e essa é a metade que decide a correção.** Em
+/// repouso o personagem converge para a altura de flutuação **por cima**
+/// (medido: `0,9023` contra `0,900`), ou seja o `offset` de repouso é levemente
+/// NEGATIVO para sempre. Zerar o suporte inteiro quando ele é negativo mataria a
+/// 3ª lei no caso mais comum que existe — alguém **parado** em cima de algo — e
+/// o gate `a_raft_still_sinks_under_a_player_that_stands_on_it` é quem recusa
+/// essa cura.
+///
+/// O `boost` sai zerado porque o [`crate::react::reaction`] já o ignora para o
+/// suporte: um amortecedor devolvido ao chão é o mesmo laço com outro nome.
+#[must_use]
+pub fn ride_support_on_ground(
+    cfg: &RideConfig,
+    sample: Option<&GroundSample>,
+    gravity: Vec2,
+    up: Vec2,
+) -> Motor {
+    let Some(s) = sample else {
+        return Motor::default();
+    };
+    if !within_reach(cfg, Some(s)) {
+        return Motor::default();
+    }
+    let push = ((cfg.float_height - s.distance) * clamped_strength(cfg)).max(0.0);
+    Motor {
+        accel: support_accel(push, gravity, up),
+        boost: [0.0, 0.0],
     }
 }
 
@@ -318,6 +428,37 @@ mod tests {
 
     const UP: Vec2 = [0.0, 1.0];
     const G: Vec2 = [0.0, -9.81];
+
+    /// **O chão sente o peso de quem está parado, e não sente a puxada.**
+    #[test]
+    fn the_ground_feels_the_push_and_the_weight_but_never_the_pull() {
+        let cfg = RideConfig::STARTING_POINT;
+
+        // Esticada dentro do cling: a perna PUXA o personagem para baixo...
+        let high = flat(cfg.float_height + 0.1);
+        let motor = ride_spring(&cfg, Some(&high), [0.0, 0.0], G, UP);
+        assert!(
+            motor.accel[1] < 0.0,
+            "a perna esticada puxa o personagem para BAIXO: {}",
+            motor.accel[1]
+        );
+        // ...e o chão sente só o peso.
+        let felt = ride_support_on_ground(&cfg, Some(&high), G, UP);
+        assert!(
+            (felt.accel[1] - 9.81).abs() < 1.0e-4,
+            "o chao sente o PESO e nada mais: {}",
+            felt.accel[1]
+        );
+
+        // Comprimida: os dois concordam, ao bit.
+        let low = flat(cfg.float_height - 0.05);
+        let motor = ride_spring(&cfg, Some(&low), [0.0, 0.0], G, UP);
+        let felt = ride_support_on_ground(&cfg, Some(&low), G, UP);
+        assert_eq!(
+            motor.accel, felt.accel,
+            "comprimida, o chao sente exatamente o que a perna faz"
+        );
+    }
 
     fn flat(distance: f32) -> GroundSample {
         GroundSample {

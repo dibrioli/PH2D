@@ -217,18 +217,35 @@ fn the_shipped_default_leaves_nothing_and_lowering_the_knob_is_what_costs() {
 /// teto sempre deu deriva exactamente zero; o que o impedia de ser o default era
 /// a coluna do PESO, e ela mudou de casa.
 ///
-/// | `spring_damping` | erro de repouso | peso transmitido |
+/// | `spring_damping` | erro de repouso | déficit da MOLA |
 /// |---|---|---|
-/// | 0,50 | 5,75 → **1,15 mm** | 77% → **95%** |
-/// | **1,00** (o teto, e o que shipa desde 05/08) | 11,50 → **2,30 mm** | 53% → **91%** |
+/// | 0,50 | 5,75 → **1,15 mm** (k=400) → **0,23 mm** (k=2000) | 0,46 m/s² |
+/// | **1,00** (o teto, e o que shipa desde 05/08) | 11,50 → 2,30 → **0,46 mm** | 0,92 m/s² |
 ///
-/// O peso é `(9,81 − k·erro)/9,81` com `k = spring_strength`: a perna paira
-/// ACIMA do pedido, o offset fica negativo, e o que a mola deixa de empurrar é o
-/// que o chão deixa de sentir. Cortar o erro por cinco corta a perda por cinco.
+/// A perna paira **ACIMA** do pedido, então o offset de repouso é negativo e a
+/// mola deixa de empurrar `k·erro`.
+///
+/// # ⚠️ Duas coisas mudaram sob este gate, e ele foi reescrito por causa das duas
+///
+/// **(1) O que ele afirma sobre a POSIÇÃO virou uma LEI, não uma banda.** A
+/// W-Landing levou a rigidez de `400` a `2000`, e o erro de repouso caiu por
+/// exactamente cinco (`2,30 → 0,459 mm`) — porque o que o repouso fixa é a
+/// FORÇA que falta, e uma mola mais rígida precisa de menos compressão para a
+/// mesma força. O invariante é o **produto** `k · erro ≈ 0,92 m/s²`, e é ele que
+/// este gate passa a afirmar: uma banda calibrada em milímetros sangraria a cada
+/// mudança de rigidez sem que nada estivesse errado.
+///
+/// **(2) A coluna do PESO saiu daqui, porque a aritmética dela deixou de
+/// descrever o produto.** A W-ClingPull clampou a metade que PUXA antes de a 3ª
+/// lei a transmitir, então o déficit acima **não chega mais ao chão**: em
+/// repouso ele sente o peso INTEIRO. Quem afirma isso agora é o
+/// `player_cling_pull::a_raft_still_sinks_under_a_player_that_stands_on_it`, que
+/// o mede numa jangada em vez de o derivar de uma fórmula — *um gate que calcula
+/// o que espera com a aritmética do produto não está a observar o produto*.
 ///
 /// **Mutação que deve sangrar:** agrupar o `gravity_hold` de volta no motor.
 #[test]
-fn the_ceiling_now_costs_a_tenth_of_the_weight_not_a_half() {
+fn the_resting_deficit_is_a_law_not_a_millimetre_band() {
     let (mut sim, mut bridge) = rig(0.0, MAX_DAMPING);
     for t in 1..=600 {
         bridge.dispatch(&mut sim, true, t);
@@ -237,16 +254,18 @@ fn the_ceiling_now_costs_a_tenth_of_the_weight_not_a_half() {
     let held = pose(&sim).1 - 0.5;
     let err = held - FLOAT;
     assert!(
-        (0.0005..0.005).contains(&err),
-        "o erro de repouso no teto mudou de ordem: {:.3} mm",
+        err > 0.0,
+        "a perna paira ACIMA do pedido: {:.3} mm",
         err * 1000.0
     );
-    // E o peso que sobra para o chão, pela mesma aritmética que a tabela usa.
-    let weight = (9.81 - RideConfig::STARTING_POINT.spring_strength * err) / 9.81;
+
+    let deficit = RideConfig::STARTING_POINT.spring_strength * err;
     assert!(
-        weight > 0.85,
-        "no teto o personagem tem de pesar quase tudo: {:.0}%",
-        weight * 100.0
+        (0.5..1.5).contains(&deficit),
+        "o deficit da mola em repouso e' invariante na rigidez (~0,92 m/s^2): \
+         {deficit:.3} m/s^2 com erro de {:.3} mm e k = {}",
+        err * 1000.0,
+        RideConfig::STARTING_POINT.spring_strength
     );
 }
 

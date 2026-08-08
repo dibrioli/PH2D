@@ -35,7 +35,7 @@
 use rapier2d::geometry::{ColliderHandle, Ray};
 use rapier2d::na::{Point2, Vector2};
 use rapier2d::parry::query::DefaultQueryDispatcher;
-use rapier2d::pipeline::{QueryFilter, QueryPipeline};
+use rapier2d::pipeline::{QueryFilter, QueryFilterFlags, QueryPipeline};
 
 use super::{PhysicsWorld, groups_for};
 use rapier2d::dynamics::RigidBodyHandle;
@@ -151,6 +151,30 @@ impl PhysicsWorld {
             groups: Some(groups_for(layer as usize, self.layer_matrix)),
             exclude_rigid_body: exclude_body,
             exclude_collider,
+            // ⚠️ **UM SENSOR NÃO É MATÉRIA, e esta porta pergunta por matéria.**
+            //
+            // O default do rapier é `QueryFilterFlags::empty()`, que o próprio
+            // código dele documenta como *"no filter"* — ou seja, um SENSOR
+            // responde ao raio como pedra. O preço estava medido e era grande:
+            // um personagem sobre uma poça de empuxo assentava **de pé sobre a
+            // superfície**, à `float_height` exacta acima dela, e imune à
+            // correnteza (`x = 0,0000` em cinco segundos), porque a caminhada
+            // freia a velocidade de quem está no chão. O mesmo raio serve o
+            // teto, o headroom e a parede, então ele também batia a cabeça num
+            // volume de gatilho (**0,17 m** de desvio lateral medido).
+            //
+            // O `buoyancy.rs` já escreve a frase do outro lado — *"um sensor não
+            // desloca fluido: um sensor é um marcador, não matéria"*. Esta é a
+            // mesma frase deste lado.
+            //
+            // ⚠️ **Por que na PORTA e não num parâmetro:** o `cast_ray` tem
+            // exactamente cinco consumidores no repo inteiro — o sensor de chão,
+            // os dois de teto, o de headroom e o de parede —, e os cinco querem
+            // matéria. Um parâmetro seria uma escolha oferecida a ninguém, e o
+            // dia em que alguém quiser detectar um sensor a resposta já existe e
+            // é outra: o canal de TRIGGERS (W7), que é o grafo de interseção do
+            // solver e não um raio.
+            flags: QueryFilterFlags::EXCLUDE_SENSORS,
             ..QueryFilter::default()
         };
         let pipeline: QueryPipeline<'_> =

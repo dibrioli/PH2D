@@ -225,7 +225,9 @@ fn measure_landing_against_stiffness() {
         "{:>10} {:>10} {:>12} {:>12} {:>10}",
         "strength", "tiques", "segundos", "afunda (cm)", "1 - k*dt²"
     );
-    for k in [400.0_f32, 800.0, 1200.0, 1600.0, 2000.0, 3000.0] {
+    for k in [
+        400.0_f32, 800.0, 1200.0, 1600.0, 2000.0, 2400.0, 3000.0, 3400.0, 3600.0, 4000.0, 5000.0,
+    ] {
         let mut sim = SimWorld::new();
         floor(&mut sim);
         player_k(&mut sim, 3.0, 1.0, k);
@@ -256,6 +258,43 @@ fn measure_landing_against_stiffness() {
             1.0 - k * DT * DT
         );
     }
+}
+
+/// A poça + a jangada, sem personagem — o CONTROLE do primeiro toque.
+fn pool_only(sim: &mut SimWorld) {
+    sim.world_mut().spawn((
+        Name::new("Pool"),
+        RigidBody {
+            kind: BodyKind::Static,
+        },
+        Collider {
+            is_sensor: true,
+            shape: ColliderShape::Cuboid {
+                half_x: 20.0,
+                half_y: 3.0,
+            },
+            ..Collider::default()
+        },
+        AreaBuoyancy(4.0),
+        AreaDrag(0.6),
+        Transform::from_translation(Vec2::new(0.0, -3.0)),
+    ));
+    sim.world_mut().spawn((
+        Name::new("Raft"),
+        RigidBody {
+            kind: BodyKind::Dynamic,
+        },
+        Collider {
+            shape: ColliderShape::Cuboid {
+                half_x: 1.5,
+                half_y: 0.2,
+            },
+            density: 1.0,
+            ..Collider::default()
+        },
+        LockRotation,
+        Transform::from_translation(Vec2::new(0.0, 0.5)),
+    ));
 }
 
 /// **A JANGADA** — o report 2, tick a tick no primeiro toque.
@@ -349,4 +388,140 @@ fn measure_first_touch_on_a_raft() {
         "\n  a jangada SOBE {:.2} mm acima do repouso antes de descer",
         (highest - rest) * 1000.0
     );
+
+    // ⚠️ **O CONTROLE, e ele foi acrescentado depois de me enganar:** com a cura
+    // da W-ClingPull o número acima caiu para ~5,7 mm e eu quase o reportei como
+    // *"puxada residual"*. Ele é a jangada **ainda a assentar** — sozinha, na
+    // mesma janela, ela sobe quase o mesmo.
+    let mut solo = SimWorld::new();
+    pool_only(&mut solo);
+    let mut b = PhysicsBridge::new();
+    for t in 1..=300u64 {
+        b.dispatch(&mut solo, true, t);
+    }
+    let solo_rest = y_of(&solo, "Raft");
+    let mut solo_high = solo_rest;
+    for t in 301..=420u64 {
+        b.dispatch(&mut solo, true, t);
+        solo_high = solo_high.max(y_of(&solo, "Raft"));
+    }
+    println!(
+        "  e SOZINHA, na mesma janela, ela sobe {:.2} mm (o que ainda esta' a assentar)",
+        (solo_high - solo_rest) * 1000.0
+    );
+}
+
+/// **O QUE UMA PERNA RÍGIDA CUSTA** — o §7 do plano 07, item 7 e 8.
+///
+/// A cura do pouso é subir a rigidez, e ⚠️ **um número sem o preço ao lado é um
+/// palpite** (CLAUDE.md §0). Três colunas, três perguntas diferentes:
+///
+/// - **deriva de rampa** — a varredura que produziu a lei publicada mexeu no
+///   amortecimento, **não** no `k`; se o `k` a mover, a cura do pouso custa
+///   exatamente o que a W11c comprou.
+/// - **o soco na jangada** — uma perna mais rígida chega mais forte, e é a
+///   mesma reação que a W-ClingPull acabou de tornar honesta.
+/// - **o degrau** — o solavanco de subir uma beirada.
+#[test]
+#[ignore = "sonda de medição"]
+fn measure_what_a_stiff_leg_costs() {
+    println!("\n=== O PREÇO DA RIGIDEZ (damping = 1,0) ===");
+    println!(
+        "{:>10} {:>12} {:>16} {:>14}",
+        "strength", "pouso (s)", "deriva 30° (m)", "soco jangada"
+    );
+    for k in [400.0_f32, 800.0, 1200.0, 1600.0, 2000.0] {
+        // (a) o pouso, no plano.
+        let mut sim = SimWorld::new();
+        floor(&mut sim);
+        player_k(&mut sim, 3.0, 1.0, k);
+        let mut bridge = PhysicsBridge::new();
+        let reach = FLOAT + PlatformPlayer::default().cling_distance;
+        let mut prev = 3.0_f32;
+        let (mut touch, mut settled) = (None, None);
+        for t in 1..=600u64 {
+            bridge.dispatch(&mut sim, true, t);
+            let y = y_of(&sim, "Player");
+            let vy = (y - prev) / DT;
+            prev = y;
+            if touch.is_none() && y <= reach {
+                touch = Some(t);
+            }
+            if touch.is_some() && settled.is_none() && (y - FLOAT).abs() < 0.01 && vy.abs() < 0.05 {
+                settled = Some(t);
+            }
+        }
+        let land = (settled.unwrap_or(600) - touch.unwrap()) as f32 * DT;
+
+        // (b) a deriva de rampa: 10 s parado a 30 graus.
+        let mut ramp = SimWorld::new();
+        ramp.world_mut().spawn((
+            Name::new("Floor"),
+            RigidBody {
+                kind: BodyKind::Static,
+            },
+            Collider {
+                shape: ColliderShape::Cuboid {
+                    half_x: 200.0,
+                    half_y: 0.5,
+                },
+                ..Collider::default()
+            },
+            Transform {
+                rotation: 30.0_f32.to_radians(),
+                ..Transform::from_translation(Vec2::new(0.0, 0.0))
+            },
+        ));
+        let top = 0.5 / 30.0_f32.to_radians().cos();
+        player_k(&mut ramp, top + FLOAT, 1.0, k);
+        let mut rb = PhysicsBridge::new();
+        for t in 1..=60u64 {
+            rb.dispatch(&mut ramp, true, t);
+        }
+        let x0 = {
+            let mut f = 0.0;
+            let mut q = ramp.world().try_query::<(&Name, &Transform)>().unwrap();
+            for (n, tr) in q.iter(ramp.world()) {
+                if n.as_str() == "Player" {
+                    f = tr.translation.x;
+                }
+            }
+            f
+        };
+        for t in 61..=660u64 {
+            rb.dispatch(&mut ramp, true, t);
+        }
+        let x1 = {
+            let mut f = 0.0;
+            let mut q = ramp.world().try_query::<(&Name, &Transform)>().unwrap();
+            for (n, tr) in q.iter(ramp.world()) {
+                if n.as_str() == "Player" {
+                    f = tr.translation.x;
+                }
+            }
+            f
+        };
+
+        // (c) o soco: quanto a jangada afunda ABAIXO do repouso na aterragem.
+        let mut w = SimWorld::new();
+        pool_only(&mut w);
+        let mut wb = PhysicsBridge::new();
+        for t in 1..=300u64 {
+            wb.dispatch(&mut w, true, t);
+        }
+        let rest = y_of(&w, "Raft");
+        player_k(&mut w, rest + 0.2 + 3.0, 1.0, k);
+        let mut deepest = rest;
+        for t in 301..=480u64 {
+            wb.dispatch(&mut w, true, t);
+            deepest = deepest.min(y_of(&w, "Raft"));
+        }
+
+        println!(
+            "{k:>10.0} {land:>12.3} {:>16.4} {:>14.1}",
+            (x1 - x0).abs(),
+            (rest - deepest) * 100.0
+        );
+    }
+    println!("  (a coluna do soco esta' em cm abaixo do repouso da jangada)");
 }

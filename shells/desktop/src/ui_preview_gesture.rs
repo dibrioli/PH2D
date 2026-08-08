@@ -15,16 +15,21 @@
 use ph2d_vec_scene::VecPathId;
 
 impl crate::App {
-    /// **Que hospedeiro está sob o cursor**, em coordenadas de tela.
+    /// **A CADEIA de hospedeiros sob o cursor**, em coordenadas de tela — do mais interno
+    /// para fora, vazia se nenhum.
     ///
     /// ⚠️ **As anotações NÃO são filtradas aqui**, ao contrário do irmão do conector
     /// ([`crate::App::shape_under_cursor`]): um rótulo *é* parte do botão, e pulá-lo faria o hover
     /// morrer exatamente onde o texto está — que é o meio do controle. A pergunta certa é *"o que
     /// foi tocado pertence à sub-árvore de algum hospedeiro?"*, e quem a responde é
     /// [`crate::render_loop::ui_preview::host_under`].
-    pub(crate) fn ui_preview_host_at(&self, sx: f32, sy: f32) -> Option<VecPathId> {
-        let gfx = self.gfx.as_ref()?;
-        let world = self.vec_world_at((sx, sy))?;
+    pub(crate) fn ui_preview_host_at(&self, sx: f32, sy: f32) -> Vec<VecPathId> {
+        let Some(gfx) = self.gfx.as_ref() else {
+            return Vec::new();
+        };
+        let Some(world) = self.vec_world_at((sx, sy)) else {
+            return Vec::new();
+        };
         let window_size = gfx.surface.size();
         let view = crate::vec_entities::view_state_for_pick(
             &gfx.sim,
@@ -79,6 +84,6 @@ impl crate::App {
             return;
         };
         self.ui_preview
-            .point(&mut gfx.ui_machines, &gfx.ui_states, hit, pressed);
+            .point(&mut gfx.ui_machines, &gfx.ui_states, &hit, pressed);
     }
 }

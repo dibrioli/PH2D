@@ -88,11 +88,20 @@
 //! de 1,00×. Os dois regimes onde ela morde são `InOut` (**0,00×**: a cena PARA e recomeça, o
 //! *stutter* que faz alguém pedir um solver) e `Elastic` (**7,02×**: estalo).
 //!
-//! ⚠️ **E os dois são INALCANÇÁVEIS hoje**, porque o seletor de curva não existe — a mesma
-//! decisão, por outro lado: o catálogo não dá nome às 33 combinações, então o knob não nasceu. O
-//! dia em que ele nascer, **esta medição volta à mesa** (§0: quem move o número reconfere a
-//! nota). O gate `the_default_curve_reverses_without_stopping_dead` pina a banda, com o `InOut`
-//! como controle.
+//! ⚠️ **E os dois eram INALCANÇÁVEIS enquanto o seletor de curva não existia. Ele EXISTE**
+//! (W7c, 2026-08-08), então — pela regra do §0, *quem move o número reconfere a nota* — **esta
+//! medição voltou à mesa e o veredito mudou de NATUREZA:** a mola deixou de ser dispensável por
+//! *ausência de regime* e passou a ser **decisão de produto**. `Cubic InOut` interrompido **para
+//! e recomeça**, e está a um clique.
+//!
+//! ⚠️ **O que continua verdadeiro é o resto:** a FORMA já está no catálogo, e o solver não se
+//! justifica *pela forma*. O que ele daria é continuidade de velocidade sob interrupção, e isso
+//! agora tem regime alcançável. ⛔ **Não o construa por conta própria:** uma mola não tem
+//! *duração* nem *curva* (tem rigidez e amortecimento), então o slider de duração **e o próprio
+//! seletor** deixariam de significar o que significam — é wave própria, e é do Enio.
+//!
+//! O gate `the_default_curve_reverses_without_stopping_dead` pina a banda, com o `InOut` como
+//! controle.
 //!
 //! # A correspondência é do PAR, nunca do `t` — e o número é grande
 //!

@@ -333,6 +333,8 @@ mod tokens_smoke;
 mod transport;
 /// A cena de smoke do Twist (o remoinho + o Falloff a modulá-lo) — irmão de `build_smoke`.
 mod twist_smoke;
+/// A cena de smoke da **HIERARQUIA** de estados (`PH2D_BUILD_SMOKE=64`) — irmã de `build_smoke`.
+mod ui_nested_smoke;
 /// A cena de smoke do **PAINEL GERADO** (`PH2D_BUILD_SMOKE=62`) — irmã de `build_smoke`.
 mod ui_panel_smoke;
 /// **Que painel esta árvore descreve** (plano UI/UX W8b) — a porta única que lê a moldura

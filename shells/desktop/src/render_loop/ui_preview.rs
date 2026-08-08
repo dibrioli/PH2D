@@ -54,8 +54,13 @@ pub(crate) struct UiPreview {
     /// ⚠️ Ela **não** é serializada e não pode ser: é *onde a cena estava*, um fato sobre uma
     /// sessão. O documento guarda *onde as poses são*.
     restore: Vec<ObjectPose>,
-    /// Sobre que hospedeiro o cursor está.
-    hot: Option<VecPathId>,
+    /// **A CADEIA de hospedeiros sob o cursor, do mais INTERNO para fora.**
+    ///
+    /// ⚠️ Ela é uma lista e não um id porque hospedeiros **ANINHAM** (um menu que contém itens),
+    /// e um menu não pode fechar quando o cursor entra num item dele. Guardar só o interno
+    /// obrigaria a re-derivar os ancestrais no `point`, que não tem ECS — e a versão que não os
+    /// derivava mandava o menu para o `Default`.
+    hot: Vec<VecPathId>,
     /// O botão primário está em baixo **sobre o `hot`**.
     pressed: bool,
 }
@@ -83,7 +88,7 @@ impl UiPreview {
             .map(|id| crate::vec_ui_state_edit::capture(sim, scene, map, id))
             .collect();
         self.on = true;
-        self.hot = None;
+        self.hot.clear();
         self.pressed = false;
         true
     }
@@ -109,49 +114,61 @@ impl UiPreview {
         self.restore.clear();
         machines.clear();
         self.on = false;
-        self.hot = None;
+        self.hot.clear();
         self.pressed = false;
         true
     }
 
-    /// **O rato mexeu-se.** `hit` é o hospedeiro sob o cursor (`None` = o vazio ou uma forma sem
-    /// estados); `pressed` é o botão primário.
+    /// **O rato mexeu-se.** `chain` é a cadeia de hospedeiros sob o cursor, **do mais interno
+    /// para fora** (vazia = o vazio, ou uma forma sem estados); `pressed` é o botão primário.
     ///
     /// ⚠️ **Só pede quando MUDA**, a mesma lei do read-back do picker de tokens: o rato publica
     /// posição a cada quadro, e re-pedir o mesmo papel a cada um faria o `retarget` correr sobre
     /// a tabela inteira sessenta vezes por segundo para não mudar nada.
     ///
-    /// ⚠️ **E o hospedeiro que se DEIXA volta ao Default no mesmo passo.** Sem isso, sair de um
-    /// botão para outro deixaria o primeiro aceso — o modo de falha que qualquer um vê e que um
-    /// gate de um botão só nunca mostra.
+    /// ⚠️ **Quem se DEIXA é quem SAIU DA CADEIA**, e não *"o hospedeiro anterior"*. Um ancestral
+    /// do novo *hot* continua sob o cursor — o menu não fecha porque o cursor desceu para um item
+    /// dele. A versão anterior comparava um id com um id, e não tinha como saber disso.
+    ///
+    /// ⚠️ **E só o mais INTERNO responde ao aperto.** Um `Pressed` que subisse a cadeia acenderia
+    /// o menu inteiro ao clicar num item; o ancestral segura o `Hover`, que é o que ele de facto
+    /// é — o cursor está dentro dele.
     pub(crate) fn point(
         &mut self,
         machines: &mut UiMachines,
         states: &StateSets,
-        hit: Option<VecPathId>,
+        chain: &[VecPathId],
         pressed: bool,
     ) {
-        if !self.on || (hit == self.hot && pressed == self.pressed) {
+        if !self.on || (chain == self.hot && pressed == self.pressed) {
             return;
         }
-        let left = self.hot.filter(|&h| Some(h) != hit);
-        self.hot = hit;
+        let left: Vec<VecPathId> = self
+            .hot
+            .iter()
+            .copied()
+            .filter(|h| !chain.contains(h))
+            .collect();
+        self.hot.clear();
+        self.hot.extend_from_slice(chain);
         // Apertar no vazio não "prende" hospedeiro nenhum.
-        self.pressed = pressed && hit.is_some();
+        self.pressed = pressed && !chain.is_empty();
 
-        if let Some(h) = left {
+        for h in left {
             request(machines, states, h, StateRole::Default);
         }
-        if let Some(h) = hit {
+        for &h in chain {
             request(machines, states, h, self.role_for(h));
         }
     }
 
     /// O papel que `host` deve mostrar, dados os dois fatos que o rato conhece.
+    ///
+    /// ⚠️ O `Pressed` é do mais interno; um ancestral sob o cursor fica em `Hover`.
     fn role_for(&self, host: VecPathId) -> StateRole {
-        match self.hot {
-            Some(h) if h == host && self.pressed => StateRole::Pressed,
-            Some(h) if h == host => StateRole::Hover,
+        match self.hot.first() {
+            Some(&h) if h == host && self.pressed => StateRole::Pressed,
+            _ if self.hot.contains(&host) => StateRole::Hover,
             _ => StateRole::Default,
         }
     }
@@ -180,7 +197,8 @@ fn touched(states: &StateSets) -> Vec<VecPathId> {
     ids
 }
 
-/// **Que hospedeiro está sob este ponto de mundo**, ou `None`.
+/// **A CADEIA de hospedeiros sob este ponto de mundo** — do mais INTERNO para fora, vazia se
+/// nenhum.
 ///
 /// ⚠️ Um hospedeiro é um GRUPO (um botão é fundo + rótulo), então um toque no rótulo é um toque no
 /// botão: a pergunta é *"o que foi tocado pertence à sub-árvore de algum hospedeiro?"*, e não
@@ -189,6 +207,12 @@ fn touched(states: &StateSets) -> Vec<VecPathId> {
 ///
 /// ⚠️ A lista de picks vem em ordem de Z (a frente primeiro), então o **primeiro** que pertence a
 /// um hospedeiro ganha — o de cima é o que o artista vê.
+///
+/// ⭐ **E ela devolve uma CADEIA, não um hospedeiro, porque hospedeiros ANINHAM.** A versão que
+/// devolvia um só varria `states.hosts()` — um `BTreeMap` — e parava no primeiro que contivesse
+/// o pick, então com um menu a conter um item o vencedor era decidido por **qual `VecPathId` era
+/// menor**. Aqui a cadeia é **ordenada por PERTENÇA**: se `a` está na sub-árvore de `b`, então
+/// `a` é mais interno — nenhuma ordem de mapa entra na resposta.
 #[must_use]
 pub(crate) fn host_under(
     sim: &SimWorld,
@@ -196,16 +220,36 @@ pub(crate) fn host_under(
     map: &VecEntityMap,
     states: &StateSets,
     picked: &[VecPathId],
-) -> Option<VecPathId> {
+) -> Vec<VecPathId> {
     for id in picked {
-        for h in states.hosts() {
-            if h == *id || crate::vec_ui_state_edit::members(sim, scene, map, h).contains(id) {
-                return Some(h);
-            }
+        let mut chain: Vec<VecPathId> = states
+            .hosts()
+            .filter(|&h| h == *id || members(sim, scene, map, h).contains(id))
+            .collect();
+        if chain.is_empty() {
+            continue;
         }
+        // Do mais interno para fora: `a` antes de `b` quando `a` está DENTRO de `b`.
+        //
+        // ⚠️ A relação é a pertença, e não a profundidade contada à parte: contar profundidade
+        // seria uma segunda travessia da árvore, com a chance de discordar da primeira.
+        chain.sort_by(|a, b| {
+            let a_in_b = members(sim, scene, map, *b).contains(a);
+            let b_in_a = members(sim, scene, map, *a).contains(b);
+            match (a_in_b, b_in_a) {
+                (true, false) => std::cmp::Ordering::Less,
+                (false, true) => std::cmp::Ordering::Greater,
+                // Irmãos (nenhum contém o outro) mantêm uma ordem estável, e ela não é
+                // observável: `point` acende a cadeia inteira em `Hover` menos o primeiro.
+                _ => a.cmp(b),
+            }
+        });
+        return chain;
     }
-    None
+    Vec::new()
 }
+
+use crate::vec_ui_state_edit::members;
 
 #[cfg(test)]
 #[path = "ui_preview_tests.rs"]

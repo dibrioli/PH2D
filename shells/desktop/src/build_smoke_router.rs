@@ -295,5 +295,11 @@ pub(crate) fn route(app: &mut crate::App, f: u32, level: u32) -> bool {
         crate::text_wrap_smoke::frame(app, f);
         return true;
     }
+    // A cena da HIERARQUIA (=64) — irmã `ui_nested_smoke`. Um menu com dois itens, e os três são
+    // hospedeiros: o menu não pode fechar quando o cursor desce para um item dele.
+    if level == 64 {
+        crate::ui_nested_smoke::frame(app, f);
+        return true;
+    }
     false
 }

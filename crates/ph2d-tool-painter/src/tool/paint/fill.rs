@@ -246,7 +246,19 @@ impl PainterTool {
         }
         // **O CORPO**: o mesmo conjunto que a cor pintou, pela mesma cobertura. Re-armado a cada tique do
         // slider (o `reset` antes) — o commit é o `close_stroke` do Done, exatamente como num traço.
+        let mut body = None;
         if let Some(fm) = fill_mask {
+            // O que o `reset` está prestes a APAGAR conta tanto quanto o que o `arm` põe: um fill que
+            // encolhe deixa relevo para trás, e quem some da tela precisa de repintura tanto quanto quem
+            // chega — a mesma razão pela qual a cor já une com o `fill_last_rect`.
+            //
+            // ⚠️ **Esta linha é defesa em camada, e a mutação que a apaga NÃO sangra** — varrida a suíte
+            // inteira. O motivo é aritmético e vale a pena escrever: cor-inalterada implica que o flood
+            // caiu sobre texels que já ERAM a cor do pincel, logo o conjunto não depende da tolerância e
+            // o corpo não encolhe; e quando ele encolhe é porque a cor mudou no tique anterior, e aí o
+            // `fill_last_rect` já cobre. Fica porque tirá-la faria o código AFIRMAR esse acoplamento sem
+            // nada o sustentar — e o `reset_stroke_height` apaga um plano que está na tela.
+            body = self.paint.relief.stroke_relief_bbox;
             self.reset_stroke_height();
             let keep = &keep_mask;
             let cov: Vec<u8> = (0..w * h)
@@ -262,17 +274,37 @@ impl PainterTool {
                 })
                 .collect();
             self.arm_fill_body(&cov);
+            body = match (body, self.paint.relief.stroke_relief_bbox) {
+                (Some(gone), Some(armed)) => Some(super::union_region(gone, armed)),
+                (a, b) => a.or(b),
+            };
         }
         // The buffer now holds the snapshot everywhere EXCEPT the new fill. Dirty the UNION of the
         // previous fill and the new one so a SHRINKING fill re-uploads the pixels it vacated (restored to
         // the snapshot) — marking only the new, smaller rect would leave the old overflow on screen.
-        let dirty = match (self.paint.fill_last_rect, filled) {
-            (Some(prev), Some(new)) => super::union_region(prev, new),
-            (Some(prev), None) => prev,
-            (None, Some(new)) => new,
-            (None, None) => return,
+        let colour = match (self.paint.fill_last_rect, filled) {
+            (Some(prev), Some(new)) => Some(super::union_region(prev, new)),
+            (Some(prev), None) => Some(prev),
+            (None, new) => new,
         };
         self.paint.fill_last_rect = filled;
+        // ⚠️ **A região suja é o que mudou na TELA, e o corpo é uma mudança na tela.** Ela saía só do que
+        // a COR escreveu, e o `flood_fill` devolve `None` quando nenhum pixel de cor mudou — então um
+        // balde sobre uma área que JÁ está na cor do pincel armava o relevo e não marcava nada: a tinta
+        // ganhava corpo que só aparecia no Done, porque o Done commita e marca. Medido na porta do
+        // produto: `dirty=false` no drop e `true` no Done, com o corpo armado nos DOIS. E o caso é o
+        // gesto mais natural do impasto — encher de novo o mesmo lugar para engrossar.
+        //
+        // Com corpo em mãos a bbox dele está DENTRO do que a cor escreveu sempre que a cor escreveu algo
+        // (o `cov` é a máscara do flood vezes a cobertura da seleção), então a união é um no-op no caminho
+        // comum; e sem corpo (`fill_mask` é `None` num balde digital) `body` fica `None` e isto é o código
+        // de antes, ao byte.
+        let dirty = match (colour, body) {
+            (Some(c), Some(b)) => super::union_region(c, b),
+            (Some(c), None) => c,
+            (None, Some(b)) => b,
+            (None, None) => return,
+        };
         self.mark_dirty(dirty);
     }
 

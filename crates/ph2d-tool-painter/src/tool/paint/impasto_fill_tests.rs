@@ -230,3 +230,67 @@ fn a_bigger_brush_fills_thicker_and_softer() {
         "a altura escala com o raio do pincel: {small} contra {big}"
     );
 }
+
+/// Balde em mãos sobre uma tela que JÁ está na cor do pincel — a cor não tem o que mudar.
+fn bucket_on_its_own_colour(impasto: bool) -> PainterTool {
+    let mut t = canvas(32, 8.0, impasto); // tela branca
+    t.set_brush_color_srgb8([255, 255, 255]); // ...e o pincel, branco
+    t.set_paint_tool_mode("fill");
+    t
+}
+
+/// **O corpo de um balde é uma mudança na TELA, e a região suja tem de contá-lo.**
+///
+/// O `flood_fill` devolve `None` quando nenhum pixel de COR mudou, e a região suja saía só dele — então
+/// encher uma área que já está na cor do pincel armava o relevo e **não marcava nada**: o corpo só
+/// aparecia ao apertar Done, que commita e marca (Enio 2026-08-07: *"o fill do impasto nem sempre
+/// acontece imediatamente, mas precisa apertar Done do modal Fill para aparecer"*). E o caso é o gesto
+/// mais natural do impasto — encher DE NOVO o mesmo lugar para engrossar.
+///
+/// O oráculo é a **região publicada**, não um pixel: quem decide se o frame chega à tela é ela, e um
+/// retângulo que não cobre o corpo armado deixa o relevo fora do que o shell repinta.
+///
+/// **Mutação que sangra:** a região suja voltar a sair só da cor (o `(None, None) => return` de antes) —
+/// o drop reporta LIMPO com o corpo armado.
+#[test]
+fn the_bucket_body_reaches_the_screen_when_the_colour_does_not_change() {
+    let mut t = bucket_on_its_own_colour(true);
+    let _ = t.take_preview_dirty(); // parte de um frame já drenado
+    t.on_canvas_pointer(cp([16.0, 16.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([16.0, 16.0], PointerPhase::Up));
+    let armed = t
+        .paint
+        .relief
+        .stroke_relief_bbox
+        .expect("o balde armou corpo");
+    let rect = t.dirty_rect_now().expect("e publicou uma regiao suja");
+    assert!(
+        rect.x <= armed.x
+            && rect.y <= armed.y
+            && rect.x + rect.w >= armed.x + armed.w
+            && rect.y + rect.h >= armed.y + armed.h,
+        "a regiao suja {rect:?} tem de cobrir o corpo armado {armed:?}"
+    );
+    assert!(
+        t.take_preview_dirty(),
+        "e o frame do DROP tem de sair sujo, sem esperar o Done"
+    );
+}
+
+/// **O controle:** sem corpo em mãos, um balde que não muda cor nenhuma segue reportando LIMPO. É ele
+/// que impede a cura de virar *"marque sempre"* — o caminho digital fica byte-idêntico ao de antes.
+#[test]
+fn a_digital_bucket_that_changes_nothing_still_reports_clean() {
+    let mut t = bucket_on_its_own_colour(false);
+    let _ = t.take_preview_dirty();
+    t.on_canvas_pointer(cp([16.0, 16.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([16.0, 16.0], PointerPhase::Up));
+    assert!(
+        t.paint.relief.stroke_relief_bbox.is_none(),
+        "um balde digital nao arma corpo"
+    );
+    assert!(
+        !t.take_preview_dirty(),
+        "e nada mudou na tela: o frame segue limpo"
+    );
+}

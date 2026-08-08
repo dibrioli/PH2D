@@ -121,7 +121,7 @@ pub(crate) struct PaintState {
     ///
     /// ⚠️ **Morre COM o patch, sempre pela mesma porta**: um pristino órfão é um retângulo de arte
     /// velha esperando ser restaurado por cima de tinta nova.
-    pub(super) paste_pristine: Option<(Region, Vec<u8>)>,
+    pub(super) paste_pristine: Option<super::paste_patch::PastePristine>,
     /// A alça do gizmo da peça em arrasto: `(handle, ponteiro no grab, peça no grab)`.
     pub(super) paste_grab: Option<(u8, [f32; 2], super::paste_patch::PastePatch)>,
     /// **Selection Offset** state (ADR-0103 Am.3) — grow/shrink + concentric protected/paint rings. See

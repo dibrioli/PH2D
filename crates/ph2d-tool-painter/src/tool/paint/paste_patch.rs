@@ -21,8 +21,10 @@
 //!    girar 90° em quatro passos de 22,5° deixaria a peça borrada. Aqui o que se compõe é a MOLDURA
 //!    (dois números e um eixo); a imagem é reamostrada uma vez, do original.
 
+use super::selection_actions::ReliefClip;
 use super::selection_gizmo::SelectionGizmoView;
 use super::{PainterTool, Region};
+use ph2d_painter_brush::material::MaterialBytes;
 
 /// A peça colada, flutuando sobre a tela até o Enter.
 #[derive(Clone, Debug)]
@@ -38,13 +40,19 @@ pub(crate) struct PastePatch {
     /// Meias-extensões ao longo de `u` e da perpendicular (a escala).
     pub hx: f32,
     pub hy: f32,
+    /// **O CORPO da peça** — os três planos do impasto, `None` quando a tinta copiada era chapada.
+    ///
+    /// Ele viaja pela MESMA moldura da cor (mesmo `sw`/`sh`, mesma `weights`), e é isso que garante que
+    /// pigmento e relevo pousem exatamente nos mesmos texels sob qualquer rotação ou escala.
+    pub relief: Option<ReliefClip>,
 }
 
 impl PastePatch {
     /// A moldura nascente: a peça pousa exatamente onde foi copiada, sem rotação.
-    fn at(rect: Region, rgba: Vec<u8>) -> Self {
+    fn at(rect: Region, rgba: Vec<u8>, relief: Option<ReliefClip>) -> Self {
         Self {
             rgba,
+            relief,
             sw: rect.w,
             sh: rect.h,
             center: [
@@ -94,13 +102,18 @@ impl PastePatch {
         })
     }
 
-    /// Amostra a peça no ponto de imagem `p`, bilinear; `None` fora dela.
+    /// **A GEOMETRIA da amostragem — uma porta, dois passageiros.** Devolve os quatro texels da fonte e
+    /// os pesos bilineares para o ponto de imagem `p`, ou `None` fora da moldura.
     ///
     /// ⚠️ **A inversa é a TRANSPOSTA porque a base é ortonormal** — `u` é sempre unitário e `v` é a
     /// perpendicular dele —, então a projeção é dois produtos escalares e nada de determinante. É o que
     /// mantém isto livre de caso degenerado: uma escala zero encolhe a peça, nunca a inverte de dentro
     /// para fora.
-    fn sample(&self, p: [f32; 2]) -> Option<[u8; 4]> {
+    ///
+    /// ⚠️ **Cor e RELEVO perguntam a ESTA função, nunca cada um à sua.** Uma segunda cópia da projeção
+    /// divergiria no primeiro arredondamento, e o que se veria é pigmento e corpo pousando em texels
+    /// diferentes sob rotação — as duas metades da mesma tinta discordando sobre onde ela está.
+    fn weights(&self, p: [f32; 2]) -> Option<([usize; 4], [f32; 4])> {
         if self.hx <= 0.0 || self.hy <= 0.0 {
             return None;
         }
@@ -119,37 +132,165 @@ impl PastePatch {
         let cl = |a: f32, n: u32| (a.max(0.0) as u32).min(n.saturating_sub(1));
         let (xa, xb) = (cl(x0, self.sw), cl(x0 + 1.0, self.sw));
         let (ya, yb) = (cl(y0, self.sh), cl(y0 + 1.0, self.sh));
-        let at = |x: u32, y: u32| {
-            let i = ((y * self.sw + x) * 4) as usize;
+        let idx = |x: u32, y: u32| (y * self.sw + x) as usize;
+        Some((
+            [idx(xa, ya), idx(xb, ya), idx(xa, yb), idx(xb, yb)],
             [
-                f32::from(self.rgba[i]),
-                f32::from(self.rgba[i + 1]),
-                f32::from(self.rgba[i + 2]),
-                f32::from(self.rgba[i + 3]),
-            ]
-        };
-        let (p00, p10, p01, p11) = (at(xa, ya), at(xb, ya), at(xa, yb), at(xb, yb));
+                (1.0 - fx) * (1.0 - fy),
+                fx * (1.0 - fy),
+                (1.0 - fx) * fy,
+                fx * fy,
+            ],
+        ))
+    }
+
+    /// Amostra a COR da peça no ponto de imagem `p`; `None` fora dela ou onde ela é transparente.
+    fn sample(&self, p: [f32; 2]) -> Option<[u8; 4]> {
+        let (ix, wt) = self.weights(p)?;
+        let px = |k: usize, c: usize| f32::from(self.rgba[ix[k] * 4 + c]);
         let mut out = [0u8; 4];
-        for c in 0..4 {
-            // ⚠️ Interpola em ALFA PREMULTIPLICADO nos canais de cor: em straight, um vizinho
-            // transparente arrastaria a cor DELE (tipicamente preto) para dentro da borda — o halo.
-            let w00 = (1.0 - fx) * (1.0 - fy);
-            let w10 = fx * (1.0 - fy);
-            let w01 = (1.0 - fx) * fy;
-            let w11 = fx * fy;
-            let v = if c == 3 {
-                p00[3] * w00 + p10[3] * w10 + p01[3] * w01 + p11[3] * w11
-            } else {
-                let pm = p00[c] * p00[3] * w00
-                    + p10[c] * p10[3] * w10
-                    + p01[c] * p01[3] * w01
-                    + p11[c] * p11[3] * w11;
-                let a = p00[3] * w00 + p10[3] * w10 + p01[3] * w01 + p11[3] * w11;
-                if a <= 0.0 { 0.0 } else { pm / a }
-            };
-            out[c] = v.round().clamp(0.0, 255.0) as u8;
+        // ⚠️ Interpola em ALFA PREMULTIPLICADO nos canais de cor: em straight, um vizinho transparente
+        // arrastaria a cor DELE (tipicamente preto) para dentro da borda — o halo.
+        let a: f32 = (0..4).map(|k| px(k, 3) * wt[k]).sum();
+        for (c, o) in out.iter_mut().take(3).enumerate() {
+            let pm: f32 = (0..4).map(|k| px(k, c) * px(k, 3) * wt[k]).sum();
+            let v = if a <= 0.0 { 0.0 } else { pm / a };
+            *o = v.round().clamp(0.0, 255.0) as u8;
         }
+        out[3] = a.round().clamp(0.0, 255.0) as u8;
         (out[3] > 0).then_some(out)
+    }
+
+    /// Amostra o CORPO da peça no ponto `p`: `(altura, cobertura, material)`. `None` sem relevo, fora da
+    /// moldura, ou onde a peça não tem tinta nenhuma.
+    ///
+    /// ⚠️ **A cobertura interpola em bruto, a ALTURA e o MATERIAL ponderados por ela** — o mesmo raciocínio
+    /// do alfa premultiplicado acima, e pela mesma razão: num texel de borda o vizinho vazio tem altura 0 e
+    /// material 0, e misturar isso na média *afinaria e desbotaria* a tinta que existe em vez de apenas
+    /// desvanecê-la. A cobertura já é o canal que conta *quanto há*.
+    fn sample_relief(&self, p: [f32; 2]) -> Option<(f32, u8, MaterialBytes)> {
+        let r = self.relief.as_ref()?;
+        let (ix, wt) = self.weights(p)?;
+        let cov: f32 = (0..4).map(|k| f32::from(r.covers[ix[k]]) * wt[k]).sum();
+        if cov <= 0.0 {
+            return None;
+        }
+        let hw: f32 = (0..4)
+            .map(|k| r.heights[ix[k]] * f32::from(r.covers[ix[k]]) * wt[k])
+            .sum();
+        let mut mats = [0u8; 7];
+        for (c, m) in mats.iter_mut().enumerate() {
+            let v: f32 = (0..4)
+                .map(|k| f32::from(r.mats[ix[k]][c]) * f32::from(r.covers[ix[k]]) * wt[k])
+                .sum();
+            *m = (v / cov).round().clamp(0.0, 255.0) as u8;
+        }
+        Some((hw / cov, cov.round().clamp(0.0, 255.0) as u8, mats))
+    }
+}
+
+/// **O pristino da peça flutuante — os QUATRO planos, não só os pixels.**
+///
+/// A dança de um quadro (*restaura → guarda → compõe*) só devolve a tela ao que era se guardar tudo o que
+/// o composite escreve. Guardar só o RGBA enquanto o composite passou a escrever relevo faria cada quadro
+/// de arrasto **acumular corpo** sobre o corpo do quadro anterior — a peça engrossaria com o tempo que o
+/// artista levasse para posicioná-la, que é a dependência-de-amostragem que esta linha já curou quatro
+/// vezes no relevo.
+///
+/// ⚠️ Os três planos do impasto são `None` juntos: ou a peça tem corpo e o composite os toca, ou não tem e
+/// eles nem são lidos.
+pub(crate) struct PastePristine {
+    pub rect: Region,
+    pub rgba: Vec<u8>,
+    pub relief: Option<(Vec<f32>, Vec<u8>, Vec<MaterialBytes>)>,
+}
+
+/// Recorta `rect` de um plano canvas-shaped — o irmão genérico do `region::region_pixels` (que é do RGBA,
+/// com o seu stride de 4).
+fn region_of<T: Copy + Default>(buf: &[T], rect: Region, canvas_w: u32) -> Vec<T> {
+    let row = rect.w as usize;
+    let mut out = vec![T::default(); row * rect.h as usize];
+    for ry in 0..rect.h {
+        let src = (rect.y + ry) as usize * canvas_w as usize + rect.x as usize;
+        if src + row <= buf.len() {
+            out[ry as usize * row..(ry as usize + 1) * row].copy_from_slice(&buf[src..src + row]);
+        }
+    }
+    out
+}
+
+impl PainterTool {
+    /// Guarda o que a peça está prestes a cobrir: os pixels, e o corpo quando ela tem corpo a escrever.
+    fn snapshot_paste_pristine(&self, patch: &PastePatch, rect: Region, w: u32) -> PastePristine {
+        // A peça vem por PARÂMETRO e não de `self.paint.paste_patch`: o chamador já a tem na mão, e
+        // relê-la daqui seria uma segunda fonte para o mesmo fato.
+        let relief = patch
+            .relief
+            .is_some()
+            .then(|| self.layers.active())
+            .flatten()
+            .map(|layer| {
+                (
+                    self.heights
+                        .get(&layer)
+                        .map_or_else(Vec::new, |p| region_of(p, rect, w)),
+                    self.covers
+                        .get(&layer)
+                        .map_or_else(Vec::new, |p| region_of(p, rect, w)),
+                    self.mats
+                        .get(&layer)
+                        .map_or_else(Vec::new, |p| region_of(p, rect, w)),
+                )
+            });
+        PastePristine {
+            rect,
+            rgba: super::region::region_pixels(&self.canvas_rgba, rect, w),
+            relief,
+        }
+    }
+
+    /// Devolve os três planos do impasto ao que estavam sob a peça.
+    fn restore_relief_region(&mut self, pr: &PastePristine) {
+        let (Some((h, c, m)), Some(layer), (w, ch)) =
+            (pr.relief.as_ref(), self.layers.active(), self.source_size)
+        else {
+            return;
+        };
+        let (wu, n) = (w as usize, (w as usize) * (ch as usize));
+        let row = pr.rect.w as usize;
+        if !h.is_empty()
+            && let Some(e) = self.heights.get_mut(&layer)
+            && e.len() == n
+        {
+            let dst =
+                super::plane_fork::fork_heights(e, &self.undo.write_state, layer, (w, ch), None);
+            for ry in 0..pr.rect.h as usize {
+                let d = (pr.rect.y as usize + ry) * wu + pr.rect.x as usize;
+                dst[d..d + row].copy_from_slice(&h[ry * row..(ry + 1) * row]);
+            }
+        }
+        if !c.is_empty()
+            && let Some(e) = self.covers.get_mut(&layer)
+            && e.len() == n
+        {
+            let dst =
+                super::plane_fork::fork_covers(e, &self.undo.write_state, layer, (w, ch), None);
+            for ry in 0..pr.rect.h as usize {
+                let d = (pr.rect.y as usize + ry) * wu + pr.rect.x as usize;
+                dst[d..d + row].copy_from_slice(&c[ry * row..(ry + 1) * row]);
+            }
+        }
+        if !m.is_empty()
+            && let Some(e) = self.mats.get_mut(&layer)
+            && e.len() == n
+        {
+            let dst = super::plane_fork::fork_mats(e, &self.undo.write_state, layer, (w, ch), None);
+            for ry in 0..pr.rect.h as usize {
+                let d = (pr.rect.y as usize + ry) * wu + pr.rect.x as usize;
+                dst[d..d + row].copy_from_slice(&m[ry * row..(ry + 1) * row]);
+            }
+        }
+        self.sync_relief_flags();
     }
 }
 
@@ -172,17 +313,19 @@ impl PainterTool {
         // Uma peça viva é substituída pela nova — colar duas vezes cola duas vezes, e a primeira já
         // teria de ter sido aplicada ou cancelada para virar tinta.
         self.restore_paste_pristine();
-        self.paint.paste_patch = Some(PastePatch::at(clip.rect, clip.rgba));
+        self.paint.paste_patch = Some(PastePatch::at(clip.rect, clip.rgba, clip.relief));
         self.redraw_paste_patch();
         true
     }
 
     /// Devolve a tela ao que estava sob a peça (se havia pristino guardado).
     fn restore_paste_pristine(&mut self) {
-        if let Some((rect, pixels)) = self.paint.paste_pristine.take() {
-            self.restore_region(&rect, &pixels);
-            self.mark_dirty(rect);
-        }
+        let Some(pr) = self.paint.paste_pristine.take() else {
+            return;
+        };
+        self.restore_region(&pr.rect, &pr.rgba);
+        self.restore_relief_region(&pr);
+        self.mark_dirty(pr.rect);
     }
 
     /// A dança de um quadro: restaura o anterior, guarda o novo pristino, compõe a peça.
@@ -198,15 +341,32 @@ impl PainterTool {
         let Some(rect) = patch.footprint(w, h) else {
             return;
         };
-        self.paint.paste_pristine = Some((
-            rect,
-            super::region::region_pixels(&self.canvas_rgba, rect, w),
-        ));
+        self.paint.paste_pristine = Some(self.snapshot_paste_pristine(&patch, rect, w));
         self.composite_patch(&patch, rect);
         self.mark_dirty(rect);
     }
 
-    /// Compõe a peça sobre a tela dentro de `rect` (source-over pelo alfa da peça).
+    /// Compõe a peça sobre a tela dentro de `rect` (source-over pelo alfa da peça) — **e o CORPO junto**.
+    ///
+    /// ## A lei de cada plano é a que o DEPÓSITO já usa, e não uma inventada aqui
+    ///
+    /// - **Cobertura por `max`.** Duas demãos sobre o mesmo pixel não fazem "200% de tinta": cobertura é
+    ///   uma PRESENÇA. É literalmente o que o `commit_stroke_height` faz, e o que a chegada de matéria do
+    ///   Inflate faz (`v > pre_cover` ⇒ assume).
+    /// - **Material por `over`** na opacidade que de fato chegou: um material é uma IDENTIDADE, e tinta
+    ///   por cima de tinta se parece com a de cima na proporção em que a cobre.
+    /// - **Altura por `over` — e NÃO somada**, que é onde isto se afasta do depósito de propósito. Um
+    ///   depósito acrescenta MATÉRIA nova (mais tinta É mais grossa, e o `commit_stroke_height` soma por
+    ///   isso); um paste **coloca uma imagem** da tinta, exatamente como o RGBA dele compõe `over` em vez
+    ///   de somar. A prova é uma propriedade que o artista lê: **colar uma cópia opaca no mesmo lugar tem
+    ///   de ser a IDENTIDADE** — com `over` é (`a = 1` ⇒ o destino vira a fonte, que é ele mesmo), e
+    ///   somando a peça ficaria com o dobro da espessura num gesto que ninguém lê como "engrossar".
+    ///
+    /// ⚠️ **Só escreve relevo quando a peça TEM relevo** — e a mutação corrigiu o que eu ia afirmar aqui.
+    /// Os *pixels* do corpo já estão protegidos sem este early-out: sem relevo o `sample_relief` recusa
+    /// todo texel, então nada seria escrito de qualquer forma. O que ele de fato impede é a **ALOCAÇÃO** —
+    /// os `fork_*` criam os planos na camada, e colar tinta chapada daria 12 B/px de corpo vazio a uma
+    /// camada que nunca teve nenhum. É essa metade que o gate afirma.
     fn composite_patch(&mut self, patch: &PastePatch, rect: Region) {
         let w = self.source_size.0 as usize;
         let buf = crate::tool::paint::plane_fork::fork_canvas(
@@ -231,6 +391,69 @@ impl PainterTool {
                 buf[d + 3] = ((a + da * (1.0 - a)) * 255.0).round().clamp(0.0, 255.0) as u8;
             }
         }
+        self.composite_patch_relief(patch, rect);
+    }
+
+    /// A metade do [`Self::composite_patch`] que escreve os três planos do impasto. No-op sem relevo na
+    /// peça ou sem camada ativa.
+    fn composite_patch_relief(&mut self, patch: &PastePatch, rect: Region) {
+        if patch.relief.is_none() {
+            return;
+        }
+        let (Some(layer), (w, h)) = (self.layers.active(), self.source_size) else {
+            return;
+        };
+        let (wu, n) = (w as usize, (w as usize) * (h as usize));
+        {
+            let dst = super::plane_fork::fork_heights(
+                self.heights.entry(layer).or_default(),
+                &self.undo.write_state,
+                layer,
+                (w, h),
+                Some(rect),
+            );
+            if dst.len() != n {
+                dst.resize(n, 0.0);
+            }
+            let cov = super::plane_fork::fork_covers(
+                self.covers.entry(layer).or_default(),
+                &self.undo.write_state,
+                layer,
+                (w, h),
+                Some(rect),
+            );
+            if cov.len() != n {
+                cov.resize(n, 0);
+            }
+            let mat = super::plane_fork::fork_mats(
+                self.mats.entry(layer).or_default(),
+                &self.undo.write_state,
+                layer,
+                (w, h),
+                Some(rect),
+            );
+            if mat.len() != n {
+                mat.resize(n, [0u8; 7]);
+            }
+            for y in rect.y..rect.y + rect.h {
+                for x in rect.x..rect.x + rect.w {
+                    let Some((sh, sc, sm)) = patch.sample_relief([x as f32 + 0.5, y as f32 + 0.5])
+                    else {
+                        continue;
+                    };
+                    let gi = y as usize * wu + x as usize;
+                    let a = f32::from(sc) / 255.0;
+                    dst[gi] += a * (sh - dst[gi]);
+                    cov[gi] = cov[gi].max(sc);
+                    for c in 0..7 {
+                        let (old, new) = (f32::from(mat[gi][c]), f32::from(sm[c]));
+                        mat[gi][c] = (old + a * (new - old)).round().clamp(0.0, 255.0) as u8;
+                    }
+                }
+            }
+        }
+        // Sem isto a tinta tem corpo e a luz não sabe: o relevo só acende quando a camada se declara.
+        self.sync_relief_flags();
     }
 
     /// **Enter — aplica a peça.** Ela já está desenhada na tela; aplicar é PARAR de guardar o pristino,

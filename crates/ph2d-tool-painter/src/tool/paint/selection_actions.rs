@@ -6,6 +6,7 @@
 
 use super::selection_shapes::{SelectionEntry, SelectionShape};
 use super::{PainterTool, Region};
+use ph2d_painter_brush::material::MaterialBytes;
 use std::sync::Arc;
 
 /// An in-memory clip of copied selection pixels: the source bounding box + its straight-RGBA texels
@@ -14,6 +15,31 @@ use std::sync::Arc;
 pub(crate) struct SelectionClip {
     pub rect: Region,
     pub rgba: Vec<u8>,
+    /// **O CORPO da tinta copiada** — `None` quando a camada de origem não tem relevo nenhum.
+    ///
+    /// Ele viaja junto com a cor e não ao lado dela (Enio, 2026-08-07: *"o Copy/Paste não levou o relevo
+    /// do impasto, apenas a cor"*): sob impasto uma pincelada é **espessura + cobertura + material** tanto
+    /// quanto pigmento, e um clipboard que leva um quarto do fato cola uma decalcomania chapada de algo que
+    /// o artista esculpiu. A lei que o doc do MATERIAL já tinha escrito, do outro lado — *ao adicionar um
+    /// plano, adicione-o ao snapshot no MESMO commit* — vale igual para o clipboard.
+    pub relief: Option<ReliefClip>,
+}
+
+/// Os três planos que fazem da tinta uma substância (`docs/Painter/15..17`), recortados do mesmo `rect` do
+/// [`SelectionClip`]: espessura, quanta tinta há ali, e de que material ela é.
+///
+/// Eles andam **juntos ou nenhum**: a luz pesa a altura pela cobertura e a colore pelo material, então
+/// carregar um subconjunto é a doença de *duas coisas que devem concordar sobre a mesma tinta,
+/// discordando* — a mesma que custou a ESCADA da silhueta e o buraco do `mats` no `ModelSnapshot`.
+#[derive(Clone, Debug)]
+pub(crate) struct ReliefClip {
+    /// A espessura, em cargas de tinta.
+    pub heights: Vec<f32>,
+    /// Quanta tinta há ali — **já multiplicada pela cobertura da seleção**, o espelho exato do que o
+    /// alfa do RGBA faz: uma borda meio-selecionada leva meia tinta.
+    pub covers: Vec<u8>,
+    /// Rugosidade / metálico / cera + a cor da cera.
+    pub mats: Vec<MaterialBytes>,
 }
 
 impl PainterTool {
@@ -162,7 +188,40 @@ impl PainterTool {
             w: w as u32,
             h: h as u32,
         });
+        self.erase_relief(&mask);
         self.commit_structural_edit(before);
+    }
+
+    /// A metade do Cut que retira o **CORPO** — a cobertura recua pela mesma cobertura de seleção que
+    /// retirou o alfa.
+    ///
+    /// ⚠️ **Sem isto o Cut deixa tinta INVISÍVEL com espessura** (medido: alfa 0 e o par
+    /// `(altura 0,80, cobertura 255)` intacto), e a luz — que pesa a altura pela cobertura — desenha um
+    /// sulco fantasma onde não há mais pigmento nenhum. É o mesmo fato do report do Copy/Paste, visto do
+    /// outro lado: o corpo é metade da tinta, então quem leva a cor tem de levar o corpo.
+    ///
+    /// ⚠️ **A COBERTURA recua e a ALTURA fica**, a mesma assimetria de [`Self::copy_relief`] e do alfa:
+    /// cobertura é *quanta tinta há ali* — a grandeza que a luz integra e que zera o relevo quando some —,
+    /// e altura é *quão grossa é a que restou*. Afinar a metade não-cortada seria uma segunda coisa que
+    /// ninguém pediu.
+    fn erase_relief(&mut self, mask: &[u8]) {
+        let (Some(layer), (w, h)) = (self.layers.active(), self.source_size) else {
+            return;
+        };
+        let n = (w as usize) * (h as usize);
+        let Some(entry) = self.covers.get_mut(&layer).filter(|p| p.len() == n) else {
+            return; // sem corpo nesta camada não há corpo a retirar
+        };
+        let cov =
+            super::plane_fork::fork_covers(entry, &self.undo.write_state, layer, (w, h), None);
+        for (i, c) in cov.iter_mut().enumerate().take(n.min(mask.len())) {
+            let k = f32::from(mask[i]) / 255.0;
+            if k <= 0.0 {
+                continue;
+            }
+            *c = (f32::from(*c) * (1.0 - k)).round().clamp(0.0, 255.0) as u8;
+        }
+        self.sync_relief_flags();
     }
 
     /// **Copy**: capture the selected pixels (coverage-premultiplied) into the in-memory clipboard. No undo
@@ -208,15 +267,54 @@ impl PainterTool {
                     .clamp(0.0, 255.0) as u8;
             }
         }
-        self.paint.selection_clipboard = Some(SelectionClip {
-            rect: Region {
-                x: x0 as u32,
-                y: y0 as u32,
-                w: cw as u32,
-                h: ch as u32,
-            },
-            rgba,
-        });
+        let rect = Region {
+            x: x0 as u32,
+            y: y0 as u32,
+            w: cw as u32,
+            h: ch as u32,
+        };
+        let relief = self.copy_relief(rect, mask);
+        self.paint.selection_clipboard = Some(SelectionClip { rect, rgba, relief });
+    }
+
+    /// **O CORPO da tinta copiada** — os três planos do impasto recortados no mesmo `rect`, ou `None`
+    /// quando a camada não tem relevo (os planos são *lazy*: 12 B/px alocados só quando alguém pinta).
+    ///
+    /// ⚠️ **A cobertura é pré-multiplicada pela seleção e a ALTURA não**, e a assimetria é a mesma do
+    /// RGBA: lá a cor fica verbatim e o ALFA é escalado. Cobertura é *quanta tinta há ali* — a grandeza
+    /// pela qual a luz pesa —, então uma borda meio-selecionada leva meia tinta e a peça feather-a como a
+    /// cor. A altura é *quão grossa é a tinta que há ali*: escalá-la faria a borda da peça AFINAR além de
+    /// desbotar, que é uma segunda coisa que ninguém pediu.
+    ///
+    /// Os três são recortados juntos ou nenhum: ver [`ReliefClip`].
+    fn copy_relief(&self, rect: Region, mask: &[u8]) -> Option<ReliefClip> {
+        let layer = self.layers.active()?;
+        let (w, h) = (self.source_size.0 as usize, self.source_size.1 as usize);
+        let n = w * h;
+        let src_h = self.heights.get(&layer).filter(|p| p.len() == n)?;
+        let src_c = self.covers.get(&layer).filter(|p| p.len() == n)?;
+        let src_m = self.mats.get(&layer).filter(|p| p.len() == n)?;
+        let (cw, ch) = (rect.w as usize, rect.h as usize);
+        let mut heights = vec![0.0f32; cw * ch];
+        let mut covers = vec![0u8; cw * ch];
+        let mut mats = vec![[0u8; 7]; cw * ch];
+        for y in 0..ch {
+            for x in 0..cw {
+                let s = (rect.y as usize + y) * w + rect.x as usize + x;
+                let d = y * cw + x;
+                let cov = f32::from(mask[s]) / 255.0;
+                heights[d] = src_h[s];
+                covers[d] = (f32::from(src_c[s]) * cov).round().clamp(0.0, 255.0) as u8;
+                mats[d] = src_m[s];
+            }
+        }
+        // Uma peça sem tinta nenhuma não é relevo, é um retângulo de zeros que o composite teria de
+        // aprender a ignorar — a recusa aqui é o que mantém o caminho digital byte-idêntico.
+        covers.iter().any(|&c| c > 0).then_some(ReliefClip {
+            heights,
+            covers,
+            mats,
+        })
     }
 
     /// **Paste**: arma a peça FLUTUANTE do clipboard sobre a camada ativa, no lugar de origem, com o

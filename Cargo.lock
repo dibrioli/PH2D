@@ -7108,6 +7108,7 @@ dependencies = [
  "ph2d-sculpt3d",
  "ph2d-tokens",
  "ph2d-ui-testkit",
+ "ph2d-vector",
 ]
 
 [[package]]

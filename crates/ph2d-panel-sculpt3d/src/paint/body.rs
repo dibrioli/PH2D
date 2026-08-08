@@ -21,6 +21,7 @@ use ph2d_tokens::{ROW_H_PX, Spacing};
 mod widgets;
 use widgets::{command, header, labelled_seg, readout, row_of_two, seg, toggle};
 
+use crate::preview;
 use crate::rows;
 use crate::state::Sculpt3dSnapshot;
 
@@ -198,6 +199,11 @@ fn paint_brush_tail(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32,
     for row in rows::rows().filter(|r| r.in_tail && (r.show)(&snap.ui)) {
         y = paint_one_row(ctx, snap, row, x, w, y);
     }
+    // **O PREVIEW**, logo ABAIXO das pistas que o mudam — e a posição é a mesma
+    // decisão que moveu a pista de escala para cá: um controle e o que ele
+    // governa têm de estar no campo de visão um do outro, senão o artista arrasta
+    // um número olhando para outro lugar.
+    y = preview::paint(ctx, snap, x, w, y);
     // **ACUMULAR**, e só onde ele faz alguma coisa. ⚠️ A pergunta é feita à
     // PORTA do motor (`Verb::accumulates`) e não a uma lista de nomes aqui: o
     // aplicador pergunta à mesma para honrar o clique, e duas cópias divergiriam
@@ -531,4 +537,9 @@ fn knob_section(
     }
     y = tail(ctx, snap, x, w, y);
     y + Spacing::Md.px()
+}
+
+/// Ver [`crate::paint::readout_at`] — a porta única do readout para o preview.
+pub(super) fn readout_for(ctx: &mut PaintCtx, text: &str, x: f32, w: f32, y: f32) -> f32 {
+    readout(ctx, text, x, w, y)
 }

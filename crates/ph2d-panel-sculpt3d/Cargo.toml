@@ -11,6 +11,13 @@ authors.workspace = true
 
 [dependencies]
 ph2d-editor-core = { path = "../ph2d-editor-core" }
+
+# ⚠️ **O `ImageQuality` e a porta de imagem da cena, e só eles.** O preview do
+# padrão desenha uma IMAGEM (uma grade de 64² amostras do campo do alpha), e a
+# alternativa — desenhar 4096 retângulos — é a que o espectrograma do áudio já
+# recusou em letra: *"175k células não são retângulos"*. É a mesma aresta que o
+# `ph2d-panel-painter-layers` e o `ph2d-panel-motion-graph` já pagam.
+ph2d-vector = { path = "../ph2d-vector" }
 ph2d-a11y = { path = "../ph2d-a11y" }
 ph2d-tokens = { path = "../ph2d-tokens" }
 # HR-15: toda string nova de painel passa pelo `tr()`.

@@ -80,6 +80,10 @@ fn snapshot(ui: Sculpt3dUi, has_bake_target: bool) -> Sculpt3dSnapshot {
         // de fato aperta o botão — e o que mantém a DICA fora do caminho de
         // todo sweep de layout. Quem varia este campo é o gate do botão.
         has_bake_target,
+        // ⚠️ Um modelo de tamanho 2 — a esfera unitária que este módulo abre. Um
+        // zero aqui faria o preview cair no piso do `span_of` e a fixture mediria
+        // o degenerado em vez do caso normal.
+        model_span: 2.0,
     }
 }
 

@@ -166,6 +166,16 @@ pub struct Sculpt3dSnapshot {
     /// tamanho do modelo.** A primeira versão desta wave shipou um literal, e o
     /// smoke o reprovou em uma frase: *"os poros são gigantescos"*.
     pub alpha_seed: f32,
+    /// **O MAIOR LADO do modelo**, em unidades de objeto.
+    ///
+    /// ⚠️ **Um FATO do modelo, como o [`Self::alpha_seed`]** — e ele existe pela
+    /// mesma razão que aquele: uma escala é ABSOLUTA, mas o que ela significa
+    /// depende do tamanho da peça. O `alpha_seed` já é essa verdade *resolvida*
+    /// (`max(vão ÷ 33, 10 × aresta)`), e é justamente por ser um `max` que ele
+    /// **não devolve o vão**: numa malha grossa quem vence é a lei das dez
+    /// arestas, e o tamanho do modelo some da conta. O preview precisa do vão
+    /// CRU, porque é ele que diz *quanto do modelo cabe no swatch*.
+    pub model_span: f32,
     /// **Há um sprite selecionado para a forma acender?**
     ///
     /// ⚠️ Um FATO que o painel MOSTRA e não possui, como `dyntopo` e `ao_stale` —

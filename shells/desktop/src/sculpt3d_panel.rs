@@ -58,6 +58,15 @@ impl Sculpt3dScene {
             matcaps: ph2d_mesh_render::MATCAPS.as_slice(),
             verts: self.mesh().vert_count(),
             alpha_seed: ph2d_sculpt3d::recommended_scale(self.mesh()),
+            model_span: {
+                // O MAIOR lado, e não a diagonal — a mesma régua que o
+                // `recommended_scale` usa, e ele já pagou o `√3` de escolher a
+                // outra. Duas réguas para uma grandeza é a doença de sempre.
+                let b = self.mesh().bounds();
+                (b.max[0] - b.min[0])
+                    .max(b.max[1] - b.min[1])
+                    .max(b.max[2] - b.min[2])
+            },
             has_bake_target,
         }
     }

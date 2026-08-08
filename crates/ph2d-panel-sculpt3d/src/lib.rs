@@ -30,6 +30,7 @@
 pub mod ids;
 mod paint;
 mod populate;
+mod preview;
 pub mod rows;
 pub mod state;
 

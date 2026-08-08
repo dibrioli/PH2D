@@ -3,8 +3,6 @@
 
 use super::*;
 
-use super::*;
-
 /// **A cena `=16` só significa alguma coisa se a malha dela RESOLVER o
 /// padrão** — e isso é um fato sobre a GEOMETRIA que nenhum arch-gate de
 /// fonte enxerga.
@@ -58,9 +56,6 @@ fn the_alpha_scene_opens_dense_enough_to_resolve_the_pattern() {
 /// estaria a medir o vácuo.
 #[test]
 fn the_axis_scene_opens_on_the_same_dense_mesh_as_the_alpha_scene() {
-    // ⚠️ Relativo ao PACOTE e não `file!()`: a cwd de um teste é o diretório
-    // do `Cargo.toml`, e o `file!()` vem da raiz da workspace — é a mesma
-    // régua que o `no_two_sculpt3d_scenes_claim_the_same_level` usa.
     // ⚠️ **O arquivo do PAI, e não este.** Enquanto o `mod tests` morava dentro
     // do `sculpt3d_scenes.rs` os dois eram o mesmo arquivo; o corte de LOC os
     // separou, e um `file!()` aqui passaria a ler o arquivo dos TESTES — que não

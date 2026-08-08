@@ -177,3 +177,19 @@ fn paint_scrollbar_and_publish(
         store.set_panel_scroll(ids::SCULPT3D_PANEL, max_scroll);
     }
 }
+
+/// **A porta do READOUT para fora do módulo de pintura.**
+///
+/// ⚠️ O [`preview`](crate::preview) precisa dizer uma condição na mesma tipografia
+/// e no mesmo ritmo das outras linhas de fato do painel, e re-implementá-la lá
+/// seria a segunda resposta a *"como este painel escreve um fato?"* — divergindo
+/// no dia em que o token do texto secundário mudasse.
+pub(crate) fn readout_at(
+    ctx: &mut ph2d_editor_core::panel::PaintCtx,
+    text: &str,
+    x: f32,
+    w: f32,
+    y: f32,
+) -> f32 {
+    body::readout_for(ctx, text, x, w, y)
+}

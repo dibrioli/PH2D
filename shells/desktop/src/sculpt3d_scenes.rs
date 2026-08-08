@@ -460,10 +460,11 @@ pub(super) mod scripts;
 /// **OS GATES DAS CENAS** — ver o irmão.
 ///
 /// ⚠️ **FILHO e não irmão** (`#[cfg(test)] #[path]`), e a diferença é
-/// load-bearing: eles leem `smoke_mesh` e as funções de cena, que são
-/// `pub(crate)`, e um `use super::*` de um módulo FILHO as alcança sem que
-/// nada precise ficar mais público só para o teste. É o precedente exato do
-/// `physics_overlay_tests.rs` e do `undo_delta_tests.rs`.
+/// load-bearing: dois deles montam a fixture com `hooked_sphere` e
+/// `ridged_sphere`, que são **privadas** deste módulo, e um `use super::*` de um
+/// módulo FILHO as alcança sem que nada precise ficar mais público só para o
+/// teste. É o precedente exato do `physics_overlay_tests.rs` e do
+/// `undo_delta_tests.rs`.
 #[cfg(test)]
 #[path = "sculpt3d_scenes_tests.rs"]
 mod tests;

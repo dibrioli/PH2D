@@ -160,12 +160,21 @@ pub(crate) fn for_scene(mesh: &ph2d_mesh::Mesh) {
              [sculpt3d]       abaixo da Alpha Scale: PATTERN ANGLE e PATTERN TILT. Elas so'\n\
              [sculpt3d]       existem com um padrao direcional armado -- volte para 'Pores' e\n\
              [sculpt3d]       elas SOMEM (sob um isotropico o eixo nao move um bit, ha' gate).\n\
+             [sculpt3d]    1b) O PREVIEW aparece logo abaixo delas, e ele NAO e' um catalogo:\n\
+             [sculpt3d]       ele abrange 1/8 do SEU modelo, entao a densidade que voce ve e' a\n\
+             [sculpt3d]       que o pincel vai depositar. Arraste a ALPHA SCALE e o padrao no\n\
+             [sculpt3d]       quadro tem de ficar mais fino ou mais grosso NA HORA -- se ele\n\
+             [sculpt3d]       ficar igual, ele esta' medindo em unidades dele e nao do modelo.\n\
+             [sculpt3d]       Abaixo da escala que a malha resolve ele DIZ isso numa linha, em\n\
+             [sculpt3d]       vez de mostrar um padrao lindo que sai como chuvisco no barro.\n\
              [sculpt3d]    2) Desenhe uma faixa larga com o Draw (1). Tem de sair CAMADAS\n\
              [sculpt3d]       HORIZONTAIS -- e' o eixo de fabrica (+Y), a leitura que um estrato\n\
              [sculpt3d]       tem no mundo.\n\
              [sculpt3d]    3) ⚠️ O TESTE DA WAVE: arraste PATTERN ANGLE ate' 0. As camadas tem de\n\
-             [sculpt3d]       ficar DE PE'. Se elas nao girarem, o eixo nao esta' chegando ao\n\
-             [sculpt3d]       padrao -- PARE. Suba PATTERN TILT e elas se inclinam.\n\
+             [sculpt3d]       ficar DE PE' -- no PREVIEW e no BARRO, e os dois tem de concordar.\n\
+             [sculpt3d]       Se so' um deles girar, ha' duas respostas para a mesma pergunta e\n\
+             [sculpt3d]       a que mente e' a que voce esta' olhando -- PARE. Suba PATTERN TILT\n\
+             [sculpt3d]       e elas se inclinam.\n\
              [sculpt3d]    4) O padrao continua colado ao ESPACO, nao ao gesto: passe DEVAGAR e\n\
              [sculpt3d]       depois RAPIDO pelo mesmo lugar, e passe de VOLTA -- as camadas caem\n\
              [sculpt3d]       nos MESMOS lugares. (Medido: um traco de 27 dabs guarda contraste\n\

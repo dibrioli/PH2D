@@ -458,3 +458,92 @@ grafo salvo** que o sobrescreve — a cicatriz do `motion.color_ramp` na integra
 **Um knob de aparência nomeia o que o artista VÊ, nunca a taxa com que o motor chega lá** —
 e o teste disso é se o número continua querendo dizer a mesma coisa quando outro knob se
 move. Quando não continua, não é afinação: é bug de design.
+
+---
+
+## §11 — A RÉGUA: onde o default senta, e quanto do curso o artista alcança (2026-08-08)
+
+> Enio, depois da §10: **"quase tudo nesse módulo está mal ajustado. Siga."** A §10 curou a
+> classe cuja causa é a LEI. Esta seção mede a outra metade — a **régua** —, e ela é visível
+> **sem cozinhar nada**.
+
+**A sonda:** `cargo test -p ph2d-node-registry-init --test param_census -- --ignored --nocapture`
+(`measure_where_each_default_sits_on_its_slider`).
+
+⚠️ **A 1ª versão dela MENTIU, e a lição vale mais que a tabela:** ela lia os tetos `hard` por
+`grep` em `crates/ph2d-node-*/src/lib.rs` e reportou o `motion.emitter` **sem soft/hard** —
+quando ele é o nó que mais os usa (e o dono do único `ParamHardMin` do catálogo). Os hints dele
+moram no módulo irmão `params_ui.rs`. *Uma varredura que enumera um NOME DE ARQUIVO mente sobre
+toda crate que se parte* — a porta certa é o **registry**, que é o que o painel consome.
+
+### §11.1 — O que fechou: o widget diz o que o número É
+
+Todo param é um `f32` no `NodeManifest` (contrato CONGELADO), então o **tipo** não distingue
+*uma magnitude* de *uma escolha* nem de *uma semente*. Quem distingue é o `ParamWidget`, que é
+side-metadata — e side-metadata **sem gate apodrece por straggler**. Medido:
+
+| família | a convenção | os stragglers |
+|---|---|---|
+| `seed` | **11** nós usam `ParamWidget::Seed` | **4** pintavam um slider |
+| `mode` | **17** nós pintam PALAVRAS (`Enum`/`Channels`) | **1** pintava o índice cru |
+| bool | — | `motion.boids.spread`: `step == span` ⇒ duas posições num arrasto contínuo |
+
+Curados os seis. ⚠️ O `boids.spread` é o mais eloquente: o `eval` o lê como **`bool`**
+(`ctx.param("spread") > 0.5` → o campo `spread: bool`) e o comentário ao lado **já dizia**
+*"a 2-position slider"* — o código sabia, e a UI prometia um meio-termo que ele não lê.
+
+**Três gates novos, 3 mutações, 3 sangram** (`param_widget_conventions.rs`), cada um com
+**controle positivo** — uma varredura vazia passaria por vácuo. ⚠️ E a 3ª lei é a única
+enunciada como **PROPRIEDADE** em vez de nome, o que a torna a mais forte: *um slider cujo
+passo mede o curso inteiro tem duas posições*. Nenhum nome precisa ser conhecido para ela morder.
+
+⚠️ **`rig.skin_deformer.falloff` aparece na varredura por NOME e NÃO é defeito:** ali o falloff
+é um **expoente** (divide repetido, clamp 1..8), uma magnitude de verdade. É por isso que o gate
+casa nome EXATO e não família — a mesma varredura por nome que acha os quatro seeds produziria
+um falso positivo aqui.
+
+### §11.2 — O que fica ABERTO, com a linha DERIVADA em vez de escolhida
+
+O track do slider mede **~154 px** (`inner_w` de 320 − `DEFAULT_LABEL_W` 70 − chip 72), e o
+mapeamento é **estritamente LINEAR** (`row_value` = `min + track·span`, pareado com
+`normalized_track`). Logo `span / 154` **é o menor passo que um arrasto consegue** — e a linha
+honesta não é gosto:
+
+> **Acima de `span/default ≈ 154`, UM PIXEL de arrasto move o valor por mais que o próprio
+> default.** O artista não consegue exprimir o default, muito menos aproximá-lo.
+
+Cinco params cruzam essa linha (um pixel vale, em defaults: **53× · 27× · 11× · 6,5× · 1,9×**):
+
+| param | default | soft max | razão |
+|---|---|---|---|
+| `motion.emitter.max` | 512 | 4.194.304 | 8192× |
+| `motion.pin_constraint.count` *(tem hard 1e6)* | 1 | 4096 | 4096× |
+| `motion.voronoi.count` | 96 | 165.000 | 1719× |
+| `pulse.on_change.epsilon` | 0,001 | 1 | 1000× |
+| `motion.emitter.rate` *(tem hard)* | 40 | 12.000 | 300× |
+
+⚠️ **O achado é mais afiado que *"aplique o soft/hard"*:** dos 28 flagados, **quatro já carregam
+`ParamHardMax`** — ou seja o mecanismo foi aplicado e **o lado SOFT nunca foi re-perguntado**.
+O `pin_constraint.count` digita até um milhão **e ainda arrasta até 4096**. O teto soft continua
+sendo um número de RECURSO onde devia ser uma **faixa de autoria**, que é a inversão do §0 do
+CLAUDE.md espelhada na UI: *o slider é a régua do artista, o cap é a régua da máquina*.
+
+⚠️ **E o `motion.emitter.max` tem uma cerca de Chesterton que a cura PRESERVA:** o soft dele é
+`MAX_ALIVE as f32` **de propósito**, com o comentário nomeando a divergência que isso evitou
+(o dia em que a constante foi 4096 → 16384 e o literal ficou para trás). A cura não a revoga —
+ela **move a derivação do campo soft para o campo hard**: `hard = MAX_ALIVE as f32` continua
+derivado, e o soft passa a ser a faixa que a mão percorre.
+
+⚠️ **Escolher os cinco números soft é decisão de PRODUTO**, e o preço de errá-los é o artista
+perder alcance de arrasto — por isso eles não foram escritos aqui sem o smoke. **Nada fica
+inalcançável em nenhuma hipótese**: o teto de hoje vira o `hard`, e a caixa numérica ao lado do
+slider já digita até ele.
+
+**Rabo (20–128×), não flagado pela linha derivada mas medido:** `soft_body.rows`/`cols` (128×) ·
+`value.curve.in_hi`/`out_hi` e `value.map_range.in_hi`/`out_hi` (100×) · `value.noise.amplitude`
+(100×) · `distribute_curve.count` (62×) · `pulse.compare`/`threshold.rise`/`fall` (20–33×) ·
+`distribute_radial.count`/`inner`/`rings` · `field.radial_sweep.repetitions` · `force.curl.speed`
+· **`motion.verlet_rope.damping`** (0,02 num curso até 0,5) · `motion.path.count` ·
+`value.noise.frequency` · `field.box.soft` · `force.drag.coefficient` ·
+`motion.oscillator.phase_stagger`. ⚠️ Nestes o chip numérico **não é desculpa** como é numa
+contagem: um damping se afina por TATO, e digitar não é o idioma.

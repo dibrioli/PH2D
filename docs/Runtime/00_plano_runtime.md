@@ -134,10 +134,28 @@ jogo é **read-only**, então ela não paga essa dívida — mas é ela que a to
 Hoje um projeto é um `postcard` com os pixels embutidos e `PROJECT_SCHEMA` **55**. Um jogo precisa de
 *"o que roda"* sem *"o que se autora"*.
 
-⚠️ **A decisão que esta wave toma e que nenhuma outra pode:** o formato de jogo é o **mesmo**
-`ProjectFile` (e a shell de jogo simplesmente ignora o que não usa) **ou** é uma projeção dele? O
-segundo é o Godot; o primeiro é mais barato e não tem um segundo formato para divergir.
-**Recomendação: o mesmo arquivo**, até haver um número que o condene (tamanho ou tempo de load).
+⚠️⚠️ **ESTA WAVE JÁ TEM DONO, E ELE JÁ MEDIU — a minha recomendação anterior está RETIRADA.**
+
+A primeira versão desta secção dizia: *"o formato de jogo é o mesmo `ProjectFile` … recomendação: o
+mesmo arquivo, até haver um número que o condene."* Eu escrevi isso **sem saber que o número já
+existia**. A **`line/runtime`** (worktree própria, `37ff53467`) tem
+[`01_o_formato_medido.md`](01_o_formato_medido.md), que classifica **os 37 bumps documentados pelo
+lugar onde a mudança pousou**:
+
+| onde a mudança pousou | bumps |
+|---|---:|
+| **A** — dentro de um blob de COMPONENTE (`state.world`) | **18** |
+| **B** — dentro do `FlipDoc` | **12** |
+| **C** — dentro do `VecScene` | **3** |
+| **D** — a forma do `ProjectFile` (os campos de topo) | **4** |
+
+⇒ um envelope de seções no topo previne **4 de 37 — 11%**; a cura que alcança os 18 da linha A é
+**uma versão por `ComponentBlob`**, e as três peças juntas cobrem **37 de 37** com o mesmo
+mecanismo (*chave + versão + payload opaco*).
+
+**Ela já construiu o envelope** (`LEGACY_SCHEMA_FINAL = 48`) e o doc dela **derrubou o próprio plano
+aprovado** pela mesma regra que me obriga a retirar o meu. **O R2 é da `line/runtime`, não deste
+plano** — aqui ele fica só como dependência nomeada.
 
 ### **R3 — os consumidores diferidos**
 
@@ -173,6 +191,12 @@ segundo é o Godot; o primeiro é mais barato e não tem um segundo formato para
    **shell** mais uma fiação. Sugiro `shells/game`, e que `ph2d-runtime` deixe de ser citado como
    crate ausente nos quatro handoffs que o nomeiam.
 
+4. ⚠️ **De QUEM é este trabalho.** A `line/runtime` já existe, tem worktree e já fez o R2. O R0 toca
+   `render_loop/mod.rs` · `ph2d-script` · `ph2d-timeline` · `ph2d-physics-ecs` — **quatro módulos de
+   que a `line/Vector` não é dona**, dois deles com donos ativos. Construí-lo aqui violaria a
+   CLAUDE.md §0.2 e somaria superfície a uma integração que já é grande. **Recomendação: o R0..R3
+   vai para a `line/runtime`, com este plano em mãos.**
+
 ---
 
 ## §7 — Tabela-resumo
@@ -181,7 +205,7 @@ segundo é o Godot; o primeiro é mais barato e não tem um segundo formato para
 |---|---|---|---|---|---|
 | **R0** | os dois produtores entram no `MessageBus` | **nenhuma** | **nenhum** | **nenhuma** | o *sinal de gameplay* pedido 2× pela física; o 1º consumidor do bus |
 | **R1** | `shells/game` — janela, load, sim, render, bus | shell nova | nenhum | nenhuma | o binário que se distribui |
-| **R2** | o empacotamento | — | ⚠️ decisão do §4 | — | o jogo carrega só o que roda |
+| **R2** | o empacotamento | — | ⚠️ **da `line/runtime`** — ela já mediu (§4) | — | o jogo carrega só o que roda |
 | **R3** | áudio · Luau · UI como consumidores | — | — | — | 3 itens do ADR-0118; o W8a do vector |
 
 ⚠️ **A ordem não é por tamanho — é porque o R0 TESTA o desenho** com dois produtores reais, e é o

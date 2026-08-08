@@ -217,9 +217,17 @@ a W4c.5 nomeou como **deliberadamente fora**:
   por ausência de regime e passou a ser decisão do Enio, com os números medidos.
 - **W8a — o runtime dos jogos.** ⛔ **BLOQUEADO por ausência:** `ph2d-runtime` **não existe**
   (Front 2 não construída). Não é adiamento, é pré-requisito.
-- **W2a — `VecTextParams.wrap_width`** + a quebra de linha real (o **parley** já está na árvore).
-  ⚠️ Custa um **bump de `PROJECT_SCHEMA` global** — o número se **CONTA** contra o `main` do dia,
-  nunca se escolhe ([[feedback_numbers_that_sum_across_lines_count_dont_pick]]).
+- ~~**W2a — `VecTextParams.wrap_width`**~~ — **FECHADA (2026-08-08**, handoff
+  [`HANDOFF_INTEGRACAO_line_Vector_text_wrap_2026-08-08.md`](HANDOFF_INTEGRACAO_line_Vector_text_wrap_2026-08-08.md);
+  **pendente de smoke**, cena `PH2D_BUILD_SMOKE=63`). ⚠️ **E o parley NÃO foi usado:** o
+  quebrador mede com `line_advance`, a **MESMA régua do cozedor** — duas réguas que concordam
+  quase sempre são duas réguas que discordam num tracking qualquer. A porta é **UMA**
+  (`wrapped_lines`) e o **CURSOR** passa por ela, que é a metade que o smoke julga.
+  ⚠️ `PROJECT_SCHEMA` **60 → 61** (campo apendado ⇒ quebra dura), **PROVISÓRIO**: o número se
+  **CONTA** contra o `main` do dia ([[feedback_numbers_that_sum_across_lines_count_dont_pick]]).
+  ⚠️ **A bateria dela achou um bug de PRODUTO pré-existente** (§6 do handoff): o *Reset This
+  Mode* dos tokens não fazia nada em **release** — a escrita morava dentro de um
+  `debug_assert`, que apaga o argumento inteiro. Curado, com gate estrutural.
 
 ---
 

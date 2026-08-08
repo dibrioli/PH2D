@@ -320,11 +320,32 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     Ok(())
 }
 
-use ph2d_node_registry::{ParamUiHint, ParamWidget};
+use ph2d_node_registry::{ParamHardMax, ParamUiHint, ParamWidget};
+/// **O teto DURO de `count` — MEDIDO** (doc 88 A1 · §0), enquanto o slider fica nos 200 que cobrem
+/// uma corda de autoria confortável.
+///
+/// A relaxação é Gauss-Seidel por aresta — **sequencial por semântica**, mas LINEAR na contagem.
+/// Medido pela porta do produto (`measure_the_count_ceiling`, com a aresta `pre` de estado ligada;
+/// sem ela o `eval` semeia e a tabela reporta **300× menos**):
+///
+/// | partículas | cook |
+/// |---|---|
+/// | 10.000 | 2,040 ms |
+/// | **50.000** | **~10 ms** (interpolado do linear) |
+/// | 100.000 | 20,533 ms |
+/// | 400.000 | 83,267 ms |
+///
+/// Cem mil já passa de um quadro de 60 fps; cinquenta mil fica em ~60% dele — 250× o que o slider
+/// alcança. O teto é onde a medição parou de caber.
+static PARAM_HARD_MAX: &[ParamHardMax] = &[ParamHardMax {
+    param: "count",
+    max: 50_000.0,
+}];
 
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {

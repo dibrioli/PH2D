@@ -134,11 +134,32 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     Ok(())
 }
 
-use ph2d_node_registry::{ParamUiHint, ParamWidget};
+use ph2d_node_registry::{ParamHardMax, ParamUiHint, ParamWidget};
+/// **O teto DURO de `rows`/`cols` — é o CLAMP DO KERNEL, e a distinção é o achado** (doc 88 A1).
+///
+/// ⚠️ **Um teto digitável acima do que o kernel honra é uma caixa que MENTE:** o `eval` clampa
+/// cada lado em [`MAX_SIDE`], então uma caixa que aceitasse 5.000 mostraria 5.000 e o produto
+/// entregaria 400 — pior que um teto baixo, porque aceita e não avisa. O hard max é o clamp.
+///
+/// E o clamp **não é de custo**: medido pela porta do produto (`measure_the_count_ceiling`,
+/// `cols = 1`), a treliça no próprio teto de 400 por lado custa **0,001 ms** — quatro ordens de
+/// grandeza abaixo de um quadro. Subi-lo é mudar o KERNEL, com a medição do produto `rows × cols`
+/// ao lado; não é coisa que um teto de UI possa fazer sozinho.
+static PARAM_HARD_MAX: &[ParamHardMax] = &[
+    ParamHardMax {
+        param: "rows",
+        max: MAX_SIDE as f32,
+    },
+    ParamHardMax {
+        param: "cols",
+        max: MAX_SIDE as f32,
+    },
+];
 
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
@@ -285,6 +306,32 @@ mod tests {
         match out[0].as_stream().get("P").unwrap() {
             Column::Vec2(v) => assert_eq!(v.len(), 20),
             _ => panic!("P"),
+        }
+    }
+}
+
+#[cfg(test)]
+mod hard_max_gates {
+    use super::{MAX_SIDE, PARAM_HARD_MAX};
+
+    /// **O teto DIGITÁVEL não pode passar do que o KERNEL honra.**
+    ///
+    /// O slider dual separa *a faixa confortável* do *onde o disfuncional começa*, e a segunda
+    /// pergunta tem um respondente natural quando o `eval` clampa: o clamp. Se a caixa aceitar
+    /// 5.000 e o `eval` entregar 400, o artista digita, o número FICA na tela e a treliça não
+    /// muda — um controle que **aceita e mente**, que é pior que um teto baixo, porque um teto
+    /// baixo pelo menos recusa à vista.
+    #[test]
+    fn the_typed_ceiling_stops_where_the_kernel_clamps() {
+        for param in ["rows", "cols"] {
+            let limit = PARAM_HARD_MAX
+                .iter()
+                .find(|h| h.param == param)
+                .unwrap_or_else(|| panic!("{param} tem teto duro"));
+            assert_eq!(
+                limit.max, MAX_SIDE as f32,
+                "o teto digitável de {param} tem de ser o clamp do kernel, nem mais nem menos"
+            );
         }
     }
 }

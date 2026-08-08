@@ -218,11 +218,34 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     );
     // M1.P1 — param rows: whole-number copy count + signed per-copy step.
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     Ok(())
 }
 
-use ph2d_node_registry::{ParamUiHint, ParamWidget};
+use ph2d_node_registry::{ParamHardMax, ParamUiHint, ParamWidget};
+/// **O teto DURO de `count` — MEDIDO, e ele conta CÓPIAS, não instâncias** (doc 88 A1 · §0),
+/// enquanto o slider fica nas 32 que cobrem a autoria confortável.
+///
+/// ⚠️ **O custo de um multiplicador não é função só deste param:** ele é `count × entrada`, então
+/// a mesma contagem custa mil vezes mais sobre um stream mil vezes maior. O que torna um teto
+/// estático seguro aqui é o **orçamento de instâncias já existir a jusante** — `copies_within_budget`
+/// corta as cópias contra [`RECOMMENDED_MAX_ELEMENTS`], então pedir 10.000 cópias de um stream
+/// grande devolve menos cópias, nunca uma explosão. Medido pela porta do produto
+/// (`measure_the_count_ceiling`, fonte de 100 instâncias):
+///
+/// | cópias | instâncias | cook |
+/// |---|---|---|
+/// | 100 | 10.000 | 0,010 ms |
+/// | 1.000 | 100.000 | 0,102 ms |
+/// | **10.000** | **1.000.000** | **4,048 ms** |
+///
+/// Um milhão de instâncias por clonagem custa **24% de um quadro de 60 fps**, e são 312× o que o
+/// slider alcança.
+static PARAM_HARD_MAX: &[ParamHardMax] = &[ParamHardMax {
+    param: "count",
+    max: 10_000.0,
+}];
 
 /// Param UI hints (M1.P1) for the clone rows: whole-number copy count, a polar
 /// step (distance + free angle in degrees), and a centre toggle.

@@ -276,6 +276,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     // GPU/M5 (ADR-0136): a count-changing SourceRows kernel — the first that
     // READS its template (via `ColumnAccess::SourceRead`). Side metadata on the
@@ -285,7 +286,18 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     Ok(())
 }
 
-use ph2d_node_registry::{ParamUiHint, ParamWidget};
+use ph2d_node_registry::{ParamHardMax, ParamUiHint, ParamWidget};
+/// **O teto DURO de `segments` — é o CLAMP DO KERNEL** (doc 88 A1), enquanto o slider fica nos 64.
+///
+/// ⚠️ O `eval` **e** a lei de contagem clampam em [`MAX_SEGMENTS`], então um teto digitável acima
+/// dele daria uma caixa que aceita 1.000 e um produto que entrega 256 — a forma de controle morto
+/// que aceita e não avisa. Medido pela porta do produto (`measure_the_count_ceiling`, fonte de
+/// 100 instâncias): no teto de 256 o cook custa **0,032 ms** para 25.600 instâncias, ou seja o
+/// clamp é de FORMA (quantas dobras o padrão ainda lê), nunca de custo.
+static PARAM_HARD_MAX: &[ParamHardMax] = &[ParamHardMax {
+    param: "segments",
+    max: MAX_SEGMENTS as f32,
+}];
 
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
@@ -505,5 +517,27 @@ mod tests {
             Column::Vec2(v) => assert_eq!(v.len(), 12, "size duplicated per slice"),
             _ => panic!("size"),
         }
+    }
+}
+
+#[cfg(test)]
+mod hard_max_gates {
+    use super::{MAX_SEGMENTS, PARAM_HARD_MAX};
+
+    /// **O teto DIGITÁVEL não pode passar do que o KERNEL honra.**
+    ///
+    /// `eval` e a lei de contagem clampam `segments` em [`MAX_SEGMENTS`]. Uma caixa que
+    /// aceitasse 1.000 mostraria 1.000 e o caleidoscópio continuaria com 256 dobras — um
+    /// controle que **aceita e mente**. O irmão deste gate mora no `motion.lattice`.
+    #[test]
+    fn the_typed_ceiling_stops_where_the_kernel_clamps() {
+        let limit = PARAM_HARD_MAX
+            .iter()
+            .find(|h| h.param == "segments")
+            .expect("segments tem teto duro");
+        assert_eq!(
+            limit.max, MAX_SEGMENTS as f32,
+            "o teto digitável tem de ser o clamp do kernel, nem mais nem menos"
+        );
     }
 }

@@ -375,11 +375,33 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
     reg.register_param_groups(MANIFEST.id, PARAM_GROUPS);
     Ok(())
 }
 
-use ph2d_node_registry::{ParamGroup, ParamUiHint, ParamWidget};
+use ph2d_node_registry::{ParamGroup, ParamHardMax, ParamUiHint, ParamWidget};
+/// **O teto DURO de `count` — MEDIDO, e este é QUADRÁTICO** (doc 88 A1 · §0), enquanto o slider
+/// fica nos 500 que cobrem a autoria confortável.
+///
+/// A vizinhança de cada agente é varrida contra todos os outros, então o custo vai com `count²` —
+/// e é por isso que este nó não herda o milhão dos geradores lineares. Medido pela porta do
+/// produto (`measure_the_count_ceiling`, com a aresta `pre` de estado ligada, sem a qual o `eval`
+/// SEMEIA em vez de dar o passo e a tabela reporta 7× menos):
+///
+/// | agentes | cook |
+/// |---|---|
+/// | 500 | 0,475 ms |
+/// | **2.000** | **10,392 ms** |
+/// | 8.000 | 186,388 ms |
+///
+/// Quadruplicar a contagem multiplica o custo por ~18. Dois mil agentes já custam **63% de um
+/// quadro de 60 fps**; quatro mil passariam de dois quadros. O teto é onde a medição parou de
+/// caber num quadro, não uma potência bonita acima dela.
+static PARAM_HARD_MAX: &[ParamHardMax] = &[ParamHardMax {
+    param: "count",
+    max: 2_000.0,
+}];
 
 /// As SEÇÕES deste nó (doc 88 B3). Nove sliders numa lista plana escondem que eles respondem
 /// a três perguntas diferentes — e as três pesos clássicos do boids (separação, alinhamento,

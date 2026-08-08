@@ -275,6 +275,15 @@ fn the_typed_ceiling_reaches_past_the_slider() {
         ("motion.fibonacci", "count"),
         ("motion.distribute_radial", "count"),
         ("motion.scatter", "count"),
+        ("motion.distribute_curve", "count"),
+        ("motion.lattice", "rows"),
+        ("motion.lattice", "cols"),
+        ("motion.kaleidoscope", "segments"),
+        ("motion.boids", "count"),
+        ("motion.verlet_rope", "count"),
+        ("motion.clone", "count"),
+        ("motion.pin_constraint", "first"),
+        ("motion.pin_constraint", "count"),
     ] {
         let r = row_of(ty, param);
         assert!(
@@ -284,6 +293,28 @@ fn the_typed_ceiling_reaches_past_the_slider() {
             r.hard_max
         );
     }
+}
+
+/// **E o QUADRÁTICO da vizinhança mantém teto apertado pelo mesmo motivo do `scatter`.**
+///
+/// O boids varre a vizinhança de cada agente contra todos os outros — medido pela porta do
+/// produto (com a aresta `pre` de estado ligada, sem a qual ele SEMEIA em vez de dar o passo):
+/// 500 → 0,475 ms · 2.000 → 10,392 ms · 8.000 → **186,388 ms**. Quadruplicar multiplica por ~18.
+///
+/// Este gate existe pelo motivo que o irmão do `scatter` nomeia: para que ninguém "harmonize"
+/// este teto com o milhão dos nós lineares desta mesma wave. E ele afirma a **família**, não o
+/// literal — o número mora no nó, com a tabela; aqui mora a lei de que uma simulação `O(n²)`
+/// não pode oferecer a caixa de um gerador linear.
+#[test]
+fn the_neighbourhood_simulation_keeps_a_tight_ceiling() {
+    let boids = row_of("motion.boids", "count");
+    let linear = row_of("motion.fibonacci", "count");
+    assert!(
+        boids.hard_max < linear.hard_max / 100.0,
+        "o teto do boids ({}) tem de ficar ORDENS abaixo do de um gerador linear ({})",
+        boids.hard_max,
+        linear.hard_max
+    );
 }
 
 /// **E o teto do `scatter` continua APERTADO, porque ali ele é um RECURSO.**

@@ -264,10 +264,37 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
     Ok(())
 }
 
-use ph2d_node_registry::{ParamUiHint, ParamWidget};
+use ph2d_node_registry::{ParamHardMax, ParamUiHint, ParamWidget};
+/// **O teto DURO de `first`/`count` — MEDIDO, e o achado é que este eixo NÃO tem custo** (doc 88
+/// A1 · §0), enquanto os sliders ficam nos 4.096 que cobrem a autoria confortável.
+///
+/// Os dois params são ÍNDICES dentro do stream de entrada — eles escolhem QUAIS linhas ficam
+/// pinadas, não quantas existem —, então o custo do nó é o da entrada e é **plano no eixo medido**.
+/// Medido pela porta do produto (`measure_the_count_ceiling`, fonte de 200.000 instâncias):
+///
+/// | pins pedidos | cook |
+/// |---|---|
+/// | 4.096 | 0,534 ms |
+/// | 40.000 | 0,490 ms |
+/// | 200.000 | 0,516 ms |
+///
+/// Sem inclinação não há teto de recurso a derivar: o limite honesto é o comprimento do stream,
+/// que o `eval` já respeita ao fatiar. O hard max acompanha os geradores lineares — quem pina uma
+/// grade de um milhão precisa poder digitar o índice de um milhão.
+static PARAM_HARD_MAX: &[ParamHardMax] = &[
+    ParamHardMax {
+        param: "first",
+        max: 1_000_000.0,
+    },
+    ParamHardMax {
+        param: "count",
+        max: 1_000_000.0,
+    },
+];
 
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {

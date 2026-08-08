@@ -284,7 +284,19 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// ⚠️ **Apendar variantes NÃO move `Fill`(0) nem `StrokeColor`(1)**, então todo binding já salvo
 /// continua a ler; o bump é pelo caminho INVERSO, o mesmo raciocínio do v58/v59 acima.
 /// ⚠️ **PROVISÓRIO** pelo mesmo motivo que o v56.
-const PROJECT_SCHEMA: u32 = 60;
+/// v61 (plano UI/UX **W2a** — o texto sabe medir-se): o `ph2d_ecs::VecTextParams` ganha
+/// **`wrap_width: Option<f64>`**, a largura da caixa a que o texto REFLUI.
+/// ⚠️ **Este é o único bump que o plano UI/UX previu e NOMEOU o preço** (§6.3): campo apendado
+/// a componente EXISTENTE, e o blob de um componente é postcard **posicional** ⇒ um arquivo já
+/// salvo lido pelo build novo bate no fim dos bytes. Um componente NOVO teria custado zero (o
+/// precedente do `VecStrokeProfile`/ADR-0148 e dos overrides da física) — e foi recusado com
+/// motivo: `wrap_width` é um número de layout ao lado do `align`/`tracking`/`line_height`, e
+/// pô-lo noutro componente partiria a porta única `layout_of_params` em duas, com todo
+/// consumidor que esquecesse a segunda a desenhar um texto sem refluxo **em silêncio**.
+/// ⚠️ A dívida que este bump paga é a que a **F1.W1 da `line/runtime`** (*uma versão por
+/// `ComponentBlob`*) apagaria — ela não existe, então o preço é este, escrito.
+/// ⚠️ **PROVISÓRIO** pelo mesmo motivo que o v56.
+const PROJECT_SCHEMA: u32 = 61;
 
 /// O conteúdo de um arquivo de projeto.
 #[derive(serde::Serialize, serde::Deserialize)]

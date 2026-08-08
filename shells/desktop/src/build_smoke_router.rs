@@ -289,5 +289,11 @@ pub(crate) fn route(app: &mut crate::App, f: u32, level: u32) -> bool {
         crate::ui_panel_smoke::frame(app, f);
         return true;
     }
+    // A cena do REFLUXO (=63) — irmã `text_wrap_smoke`. Dois textos com a MESMA frase: um com
+    // caixa (várias linhas, selecionado) e um sem (o controle, numa linha só).
+    if level == 63 {
+        crate::text_wrap_smoke::frame(app, f);
+        return true;
+    }
     false
 }

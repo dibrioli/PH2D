@@ -55,6 +55,7 @@ fn an_end_bound_to_its_own_label_freezes_instead_of_chasing_it() {
             tracking: 0.0,
             align: 0,
             axes: Vec::new(),
+            wrap_width: None,
         }),
         VecLabel::on(conn),
     ));
@@ -129,6 +130,7 @@ fn an_end_dropped_on_a_shapes_label_anchors_to_the_shape() {
             tracking: 0.0,
             align: 0,
             axes: Vec::new(),
+            wrap_width: None,
         }),
         VecLabel::on(b),
     ));

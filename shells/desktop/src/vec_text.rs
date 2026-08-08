@@ -50,6 +50,10 @@ pub(crate) struct VecTextEdit {
     pub stroke: Option<StrokeSpec>,
     /// Conteúdo digitado.
     pub text: String,
+    /// A largura da caixa a que o texto REFLUI, em unidades de mundo. `None` = sem refluxo.
+    /// Espelha o campo homónimo do [`ph2d_ecs::VecTextParams`] — a sessão é a face VIVA do
+    /// componente, e as duas viajam pelo mesmo par `text_params`/`reopen_text_session`.
+    pub wrap_width: Option<f64>,
     /// O ÚNICO `VecPath` compound do texto vivo na cena (todos os glyphs num path só —
     /// um objeto). `None` enquanto não há geometria (string vazia). Atualizado
     /// IN-PLACE a cada mudança para o id — e a entidade + o `VecShape` — ficarem
@@ -114,6 +118,7 @@ impl crate::app_state::App {
             fill,
             stroke,
             text: String::new(),
+            wrap_width: self.vec_text_wrap, // Auto/Fixed corrente (Width)
             id: None,
             center: [0.0, 0.0],
         });
@@ -210,19 +215,20 @@ pub(crate) fn regen_into(scene: &mut ph2d_vec_scene::VecScene, edit: &mut VecTex
 }
 
 /// Os knobs de layout da sessão num `TextLayout` (o que o converter consome).
-fn layout_of(edit: &VecTextEdit) -> TextLayout {
+pub(crate) fn layout_of(edit: &VecTextEdit) -> TextLayout {
     TextLayout {
         size: edit.size,
         line_height: edit.line_height,
         tracking: edit.tracking,
         align: edit.align,
+        wrap_width: edit.wrap_width,
     }
 }
 
 /// Os valores dos eixos variáveis da sessão: o peso (`wght`) + os eixos extras que a
 /// fonte expõe (opsz/wdth/slnt/…). O skrifa clampa cada um no range da fonte; mandar
 /// todos é a `location` completa do glyph.
-fn axes_of(edit: &VecTextEdit) -> Vec<(ph2d_vector_font::AxisTag, f32)> {
+pub(crate) fn axes_of(edit: &VecTextEdit) -> Vec<(ph2d_vector_font::AxisTag, f32)> {
     let mut axes = Vec::with_capacity(1 + edit.extra_axes.len());
     axes.push((ph2d_vector_font::AxisTag::WEIGHT, edit.weight));
     axes.extend(edit.extra_axes.iter().copied());
@@ -329,6 +335,25 @@ pub(crate) fn apply_text_tracking(
     }
 }
 
+/// Aplica a largura de REFLUXO (a fileira Width + o slider): atualiza o default corrente da
+/// shell + a sessão ativa + regenera. Mirror de [`apply_text_tracking`].
+///
+/// `None` = Auto (sem caixa). ⚠️ **Uma porta só para as duas metades** — presença e valor —
+/// porque elas são o mesmo `Option`: dois setters dariam um estado em que a largura existe e
+/// o modo diz Auto, que é um documento que ninguém autorou.
+pub(crate) fn apply_text_wrap(
+    edit: &mut Option<VecTextEdit>,
+    wrap_field: &mut Option<f64>,
+    scene: &mut ph2d_vec_scene::VecScene,
+    wrap: Option<f64>,
+) {
+    *wrap_field = wrap;
+    if let Some(edit) = edit.as_mut() {
+        edit.wrap_width = wrap;
+        regen_into(scene, edit);
+    }
+}
+
 /// Aplica o alinhamento (botões L/C/R do painel): atualiza o default corrente da shell
 /// + a sessão ativa + regenera (cada linha se reposiciona). Mirror de [`apply_text_size`].
 pub(crate) fn apply_text_align(
@@ -427,19 +452,33 @@ pub(crate) fn import_text_font(
 pub(crate) fn caret_of(edit: Option<&VecTextEdit>) -> Option<([f64; 2], [f64; 2])> {
     let edit = edit?;
     let font = crate::vec_font::resolve(edit.family.as_deref());
-    let last_line = edit.text.rsplit('\n').next().unwrap_or("");
-    let line_idx = edit.text.matches('\n').count();
+    let layout = layout_of(edit);
+    let axes = axes_of(edit);
+    let placement = placement_of(edit);
+    // ⚠️ **Pela MESMA porta que o cozedor percorre** (`wrapped_lines`), e não por um
+    // `rsplit('\n')` — que era o que estava aqui e que só concorda com a tinta enquanto NÃO há
+    // refluxo. Com uma caixa de largura, contar `\n` responde *quantas quebras o artista
+    // escreveu*, e o cursor precisa de *em que linha o próximo glifo vai ser carimbado*: a
+    // lei [[feedback_derived_coordinate_seed_must_match_sample]], no cursor.
+    //
+    // Corolário honesto: com refluxo LIGADO o espaço final de uma linha não conta (o quebrador
+    // separa por espaço em branco), então o caret pousa depois da última LETRA — que é
+    // exactamente onde a tinta acaba. Sem refluxo nada disto muda: a porta cai no
+    // `split('\n')` e o caret é byte-idêntico ao de antes.
+    let lines = crate::vec_glyph::wrapped_lines(&font, &edit.text, &layout, &axes, &placement);
+    let last_line = lines.last().copied().unwrap_or("");
+    let line_idx = lines.len().saturating_sub(1);
     // Geometria centrada no local 0 + `Transform = origin + center`: o mundo =
     // baseline-rel − center + (origin + center) = origin + baseline-rel; o center
     // cancela, então o caret usa a baseline no clique (a mesma transform da geometria).
     let pen = [
-        caret_x_offset(&font, last_line, &layout_of(edit), &axes_of(edit)),
+        caret_x_offset(&font, last_line, &layout, &axes),
         -(line_idx as f64 * edit.size * edit.line_height),
     ];
     // Pela MESMA porta que posiciona os glyphs (`caret_frame` → `glyph_frame`): quando a
     // sessão cavalgar um caminho, o cursor cavalga junto sem que ninguém se lembre disto.
     // Perguntar em dois sítios é como o cursor fica no texto reto com as letras na curva.
-    let f = caret_frame(&placement_of(edit), pen)?;
+    let f = caret_frame(&placement, pen)?;
     Some((
         f.apply([0.0, -0.2 * edit.size]),
         f.apply([0.0, 0.72 * edit.size]),
@@ -464,111 +503,5 @@ pub(crate) use crate::vec_text_object::{
 };
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use ph2d_vec_scene::Rgba8;
-
-    fn black() -> Paint {
-        Paint::solid(Rgba8::new(0, 0, 0, 255))
-    }
-
-    /// O cursor de texto fica à direita da origem depois de digitar, e é vertical.
-    #[test]
-    fn the_caret_advances_as_text_is_typed() {
-        let edit = VecTextEdit {
-            origin: [5.0, 2.0],
-            size: 1.0,
-            weight: 400.0,
-            line_height: 1.2,
-            tracking: 0.0,
-            align: TextAlign::Left,
-            extra_axes: Vec::new(),
-            family: None,
-            fill: Some(black()),
-            stroke: None,
-            text: "Hi".to_string(),
-            id: None,
-            center: [0.0, 0.0],
-        };
-        let (a, b) = caret_of(Some(&edit)).expect("caret com edição ativa");
-        assert!(a[0] > 5.0, "o cursor avançou à direita da origem");
-        assert!((a[0] - b[0]).abs() < 1e-9, "cursor vertical");
-        assert!(b[1] > a[1], "topo acima da base");
-        assert!(caret_of(None).is_none(), "sem edição, sem cursor");
-    }
-
-    /// Sair do modo Text COMMITA a sessão: `sync_active_text_style` com um modo != Text
-    /// zera a sessão (os glyphs ficam na cena). Sem isto, uma sessão viva no Select
-    /// regeneraria o texto inteiro a cada mudança de Style — pegando letras não
-    /// selecionadas e sumindo com o gizmo (Enio 2026-07-11).
-    #[test]
-    fn leaving_text_mode_commits_the_session() {
-        use ph2d_tool_vector::DrawMode;
-        let mut scene = ph2d_vec_scene::VecScene::new();
-        let mut edit = Some(VecTextEdit {
-            origin: [0.0, 0.0],
-            size: 1.0,
-            weight: 400.0,
-            line_height: 1.2,
-            tracking: 0.0,
-            align: TextAlign::Left,
-            extra_axes: Vec::new(),
-            family: None,
-            fill: Some(black()),
-            stroke: None,
-            text: "A".to_string(),
-            id: None,
-            center: [0.0, 0.0],
-        });
-        let pen = ph2d_vec_edit::PenTool::default();
-        sync_active_text_style(&mut edit, DrawMode::Select, &pen, 0.01, &mut scene);
-        assert!(edit.is_none(), "modo != Text termina a sessão (commit)");
-    }
-
-    /// No modo Text, mudar o Style do painel regenera os glyphs vivos com o novo Paint
-    /// (herança em tempo real). O glyph troca de fill sem sair da sessão.
-    #[test]
-    fn active_text_restyles_live_when_the_panel_style_changes() {
-        use ph2d_tool_vector::DrawMode;
-        use ph2d_vec_edit::{PenStyle, PenTool};
-        let mut scene = ph2d_vec_scene::VecScene::new();
-        let mut edit = Some(VecTextEdit {
-            origin: [0.0, 0.0],
-            size: 1.0,
-            weight: 400.0,
-            line_height: 1.2,
-            tracking: 0.0,
-            align: TextAlign::Left,
-            extra_axes: Vec::new(),
-            family: None,
-            fill: Some(black()),
-            stroke: None,
-            text: "A".to_string(),
-            id: None,
-            center: [0.0, 0.0],
-        });
-        regen_into(&mut scene, edit.as_mut().unwrap());
-        assert_eq!(scene.paths().len(), 1, "o glyph foi para a cena");
-        let mut pen = PenTool::default();
-        pen.set_style(PenStyle {
-            fill: Rgba8::new(10, 200, 30, 255),
-            ..PenStyle::default()
-        });
-        sync_active_text_style(&mut edit, DrawMode::Text, &pen, 0.0, &mut scene);
-        let gid = edit.as_ref().unwrap().id.expect("o compound do texto");
-        let fill = scene
-            .paths()
-            .iter()
-            .find(|p| p.id == gid)
-            .and_then(|p| p.fill.clone());
-        assert!(
-            matches!(fill, Some(Paint::Solid(c)) if c.g == 200),
-            "o texto adotou o novo fill do painel ao vivo"
-        );
-        assert_eq!(
-            scene.paths().len(),
-            1,
-            "regen atualiza o compound in-place, não acumula"
-        );
-    }
-}
+#[path = "vec_text_tests.rs"]
+mod tests;

@@ -316,6 +316,8 @@ mod symmetry_smoke;
 mod text_fx_smoke;
 mod text_path_gesture_smoke;
 mod text_path_smoke;
+/// A cena de smoke do **REFLUXO** de texto (`PH2D_BUILD_SMOKE=63`) — irmã de `build_smoke`.
+mod text_wrap_smoke;
 mod theme;
 mod timeline_onion_smoke;
 #[cfg(test)]
@@ -775,6 +777,11 @@ impl App {
             vec_text_weight: ph2d_tool_vector::params::DEFAULT_TEXT_WEIGHT as f32,
             vec_text_line_height: ph2d_tool_vector::params::DEFAULT_TEXT_LINE_HEIGHT,
             vec_text_tracking: ph2d_tool_vector::params::DEFAULT_TEXT_TRACKING,
+            // ⚠️ **Auto é o default**, e é decisão de produto: um texto criado com a ferramenta
+            // cresce com o que se digita (é o que todo editor faz num clique-e-digite). Uma
+            // caixa nasce quando o artista a pede — e o gesto de ARRASTAR uma caixa ainda não
+            // existe, então pedi-la é escolher `Fixed`.
+            vec_text_wrap: None,
             vec_text_align: ph2d_tool_vector::TextAlign::Left,
             vec_text_extra_axes: vec_font::seed_extra_axes(None),
             vec_text_family: None,

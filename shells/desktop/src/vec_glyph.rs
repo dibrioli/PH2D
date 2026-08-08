@@ -93,6 +93,13 @@ pub(crate) struct TextLayout {
     pub line_height: f64,
     pub tracking: f64,
     pub align: TextAlign,
+    /// A largura da caixa a que o texto REFLUI, em unidades de mundo. `None` = sem refluxo (só
+    /// as quebras que o artista escreveu).
+    ///
+    /// ⚠️ Ele mora aqui, ao lado do `align` e do `tracking`, porque é a MESMA classe: um número
+    /// que decide onde os glifos pousam sem mudar quais são. Quem o consome é a porta única
+    /// [`wrapped_lines`].
+    pub wrap_width: Option<f64>,
 }
 
 /// Resolve o Style do Pen (fill/stroke/width em px) no par (fill, stroke) que cada
@@ -133,7 +140,7 @@ pub(crate) fn text_to_vec_paths(
     let track_px = layout.size * layout.tracking;
     let mut out = Vec::new();
     let mut pen_y = 0.0;
-    for line in text.split('\n') {
+    for line in wrapped_lines(font, text, layout, axes, placement) {
         let width = line_advance(font, line, scale, track_px, axes);
         let mut pen_x = align_offset(layout.align, width);
         for ch in line.chars() {
@@ -233,6 +240,97 @@ pub(crate) fn offset_path(path: &mut VecPath, d: [f64; 2]) {
     });
 }
 
+/// **A PORTA ÚNICA que decide onde uma linha acaba** — quebras explícitas (`\n`) sempre, mais o
+/// refluxo a `wrap_width` quando ele existe.
+///
+/// ⚠️ **Ela mede com a MESMA régua que o cozedor desenha** ([`line_advance`]), e isso é a wave
+/// inteira: a decisão *"esta palavra ainda cabe?"* e a decisão *"onde começa esta linha?"* (o
+/// `align_offset`) têm de vir do mesmo número. Duas réguas dariam um texto que quebra numa largura
+/// que ele não ocupa — e o alinhamento centraria linhas medidas por uma régua dentro de uma caixa
+/// medida por outra.
+///
+/// ⚠️ **É por isso que o `parley` NÃO decide isto**, apesar de estar na árvore. Ele **molda**
+/// (kerning, ligaduras, bidi) e este cozedor é *advance-only* por desenho — declarado no
+/// [`text_to_vec_paths`]. Um quebrador que moldasse e um desenhador que não moldasse discordariam
+/// sobre a largura de toda linha. Trazer o `parley` para cá é uma decisão de **shaping**, que muda
+/// a aparência de todo texto já autorado: outra wave, com aceitação própria.
+///
+/// ⚠️ **Uma palavra sozinha mais larga que a caixa TRANSBORDA em vez de partir ao meio** — é o que
+/// o browser e o Figma fazem sem `word-break`, e partir uma palavra sem o artista pedir é pior:
+/// ele vê uma palavra cortada e não tem como saber que foi a caixa.
+///
+/// ⚠️ **Um texto EM CAMINHO não reflui, e a recusa mora AQUI** — não nos sítios que montam o
+/// `TextLayout`. Refluir e cavalgar são duas respostas à mesma pergunta (*por onde correm os
+/// glifos?*): o caminho já a responde, e as linhas que a caixa produzisse seriam depois mapeadas
+/// pela curva **uma por cima da outra**, separadas só pela normal. Enumerar os construtores de
+/// layout é como o 4º nasceria sem a regra; a porta recebe o `placement` e ninguém pode esquecer.
+pub(crate) fn wrapped_lines<'a>(
+    font: &VariableFont,
+    text: &'a str,
+    layout: &TextLayout,
+    axes: &[(AxisTag, f32)],
+    placement: &TextPlacement<'_>,
+) -> Vec<&'a str> {
+    let mut out = Vec::new();
+    // ⚠️ `wrap_width` não-positivo é *sem refluxo*, e não uma caixa de zero: uma caixa de zero
+    // poria cada palavra na sua linha, que é o que um slider a meio de um arrasto produziria.
+    let w = match layout.wrap_width {
+        Some(w) if w > 0.0 && matches!(placement, TextPlacement::At(_)) => w,
+        _ => {
+            out.extend(text.split('\n'));
+            return out;
+        }
+    };
+    let scale = layout.size / f64::from(font.units_per_em().max(1));
+    let track_px = layout.size * layout.tracking;
+    for para in text.split('\n') {
+        let before = out.len();
+        let mut line_start = 0usize;
+        let mut line_end: Option<usize> = None;
+        for (start, word) in word_indices(para) {
+            let end = start + word.len();
+            match line_end {
+                // A 1ª palavra da linha entra sempre — é ela que transborda quando é larga
+                // demais, e o `else` abaixo nunca a poria numa linha vazia.
+                None => line_end = Some(end),
+                Some(fits_to) => {
+                    if line_advance(font, &para[line_start..end], scale, track_px, axes) <= w {
+                        line_end = Some(end);
+                    } else {
+                        out.push(&para[line_start..fits_to]);
+                        line_start = start;
+                        line_end = Some(end);
+                    }
+                }
+            }
+        }
+        match line_end {
+            Some(e) => out.push(&para[line_start..e]),
+            // ⚠️ Um parágrafo sem palavras (vazio, ou só espaços) continua a ser UMA linha: sem
+            // isto, `"a\n\nb"` perderia a linha em branco e o texto subiria uma entrelinha.
+            None => out.push(para),
+        }
+        debug_assert!(
+            out.len() > before,
+            "todo paragrafo produz ao menos uma linha"
+        );
+    }
+    out
+}
+
+/// As palavras de um parágrafo, com o índice de byte onde cada uma começa.
+///
+/// Separadas por espaço em branco — o que o quebrador precisa é do lugar onde a linha PODE partir,
+/// e é isso que um espaço é.
+fn word_indices(para: &str) -> impl Iterator<Item = (usize, &str)> {
+    para.split_whitespace().map(move |w| {
+        // `split_whitespace` devolve fatias do próprio `para`, então o offset sai do ponteiro —
+        // procurar a palavra por texto acharia a primeira ocorrência, não esta.
+        let off = w.as_ptr() as usize - para.as_ptr() as usize;
+        (off, w)
+    })
+}
+
 /// Largura visual de UMA linha em world: soma dos avanços + `tracking` entre glyphs
 /// (`n−1` gaps). `axes` no mesmo `location` do layout (o avanço muda com o peso).
 fn line_advance(
@@ -285,3 +383,7 @@ pub(crate) use crate::vec_glyph_build::glyph_to_vec_path;
 #[cfg(test)]
 #[path = "vec_glyph_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "vec_glyph_wrap_tests.rs"]
+mod wrap_tests;

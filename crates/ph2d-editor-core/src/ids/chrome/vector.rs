@@ -180,64 +180,10 @@ pub const VECTOR_MODE_NODE: NodeId = hash_node_id("vector.mode.node");
 pub const VECTOR_MODE_PEN: NodeId = hash_node_id("vector.mode.pen");
 /// Text mode: clica no canvas e digita (glyphs viram VecPaths). Botão do mode row.
 pub const VECTOR_MODE_TEXT: NodeId = hash_node_id("vector.mode.text");
-/// Text "Size" slider (world units) — shown only in Text mode; drives the glyph
-/// size of the active session + the size a new session starts at.
-pub const VECTOR_TEXT_SIZE: NodeId = hash_node_id("vector.text.size");
-/// Value chip paired with [`VECTOR_TEXT_SIZE`].
-pub const VECTOR_TEXT_SIZE_NUM: NodeId = hash_node_id("vector.text.size_num");
-/// Text "Weight" slider (`wght` axis 100..900) — shown only in Text mode; drives the
-/// variable-font weight of the active session + the weight a new session starts at.
-pub const VECTOR_TEXT_WEIGHT: NodeId = hash_node_id("vector.text.weight");
-/// Value chip paired with [`VECTOR_TEXT_WEIGHT`].
-pub const VECTOR_TEXT_WEIGHT_NUM: NodeId = hash_node_id("vector.text.weight_num");
-/// Text font-family picker prev / next buttons (`<` / `>`) — shown only in Text mode;
-/// cycle the chosen system font family (or the bundled default) of the text.
-pub const VECTOR_TEXT_FONT_PREV: NodeId = hash_node_id("vector.text.font_prev");
-pub const VECTOR_TEXT_FONT_NEXT: NodeId = hash_node_id("vector.text.font_next");
-/// Text "Import Font…" button — opens a native file picker for a `.ttf`/`.otf`,
-/// loads it as the current text font (and adds it to the cycle).
-pub const VECTOR_TEXT_FONT_IMPORT: NodeId = hash_node_id("vector.text.font_import");
-/// Text font **dropdown** chip (between the `<` / `>` arrows) — a `Dropdown` whose
-/// open popover lists every pickable family rendered **in its own outline** (real
-/// style preview). Option clicks route by [`vector_text_font_option_id`].
-pub const VECTOR_TEXT_FONT_DD: NodeId = hash_node_id("vector.text.font_dd");
-/// Paragraph section (Text mode): horizontal alignment L / C / R (segmented, sets
-/// `VecTextEdit::align`), line height (leading, × size) + its chip, and tracking
-/// (letter-spacing, em fraction) + its chip.
-pub const VECTOR_TEXT_ALIGN_LEFT: NodeId = hash_node_id("vector.text.align_left");
-pub const VECTOR_TEXT_ALIGN_CENTER: NodeId = hash_node_id("vector.text.align_center");
-pub const VECTOR_TEXT_ALIGN_RIGHT: NodeId = hash_node_id("vector.text.align_right");
-pub const VECTOR_TEXT_LINE_HEIGHT: NodeId = hash_node_id("vector.text.line_height");
-pub const VECTOR_TEXT_LINE_HEIGHT_NUM: NodeId = hash_node_id("vector.text.line_height_num");
-pub const VECTOR_TEXT_TRACKING: NodeId = hash_node_id("vector.text.tracking");
-pub const VECTOR_TEXT_TRACKING_NUM: NodeId = hash_node_id("vector.text.tracking_num");
+
 /// "Convert to Curves" — assa a forma VIVA selecionada (texto/paramétrica) em paths
 /// crus: texto explode num grupo de paths por-letra; formas descartam só o `VecShape`.
 pub const VECTOR_CONVERT_TO_CURVES: NodeId = hash_node_id("vector.convert_to_curves");
-
-/// Stable [`NodeId`] for the `index`-th family row in the open font dropdown
-/// (index into the shell's pickable list `[bundled] ++ imported ++ system`). Runtime
-/// `format!` (the family count is only known at runtime); the FNV twin keeps it in
-/// the same id space as the `hash_node_id` consts. Mirrors the Painter option-id
-/// fatories (`painter_brush_*_option_id`).
-#[must_use]
-pub fn vector_text_font_option_id(index: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.text.fontopt.{index}"))
-}
-
-/// Max variation-axis number fields the Text panel shows (besides the dedicated
-/// Weight slider) — one per non-`wght` axis the current font exposes. 6 covers every
-/// registered axis a real variable font ships (`wdth`/`slnt`/`opsz`/`ital`/`GRAD`/…).
-pub const MAX_TEXT_VARIATION_AXES: usize = 6;
-
-/// NodeId for the `index`-th variation-axis field in the Text panel — bound to the
-/// `index`-th non-`wght` axis of the current font (its name/range/value published by
-/// the shell). Runtime `format!` (the axis set is per-font). Mirrors the font-option
-/// factory.
-#[must_use]
-pub fn vector_text_axis_id(index: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.text.axis.{index}"))
-}
 // ── Formas: seletor + campos GENÉRICOS (catálogo data-driven) ───────────────
 // Com 25+ formas, um id por forma e um id por parâmetro seria insustentável (e o
 // painel, um pântano de `match`). Os ids são GERADOS por índice: o painel itera o

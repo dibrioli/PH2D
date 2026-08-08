@@ -2349,6 +2349,10 @@ impl crate::App {
             // Paragraph: line-height (× size), tracking (em), and alignment (L/C/R).
             let mut pending_vec_text_line_height: Option<f64> = None;
             let mut pending_vec_text_tracking: Option<f64> = None;
+            // ⚠️ `Option<Option<f64>>`: o de fora é *houve pedido neste frame?*, o de dentro é
+            // *Auto ou esta largura?*. Colapsá-los faria "voltar para Auto" indistinguível de
+            // "ninguém tocou", e o modo Auto seria inalcançável.
+            let mut pending_vec_text_wrap: Option<Option<f64>> = None;
             let mut pending_vec_text_align: Option<ph2d_tool_vector::TextAlign> = None;
             // Variation-axis field edit: (slot index into the font's non-wght axes, value).
             let mut pending_vec_text_axis: Option<(usize, f64)> = None;
@@ -2774,6 +2778,11 @@ impl crate::App {
                                 pending_vec_text_line_height = Some(
                                     ph2d_tool_vector::params::slider_to_text_line_height(*v as f32),
                                 );
+                            } else if *id == ph2d_editor::ids::VECTOR_TEXT_WRAP_W {
+                                // Track 0..1 -> largura de refluxo (mundo); shared mapping.
+                                pending_vec_text_wrap = Some(Some(
+                                    ph2d_tool_vector::params::slider_to_text_wrap(*v as f32),
+                                ));
                             } else if *id == ph2d_editor::ids::VECTOR_TEXT_TRACKING {
                                 // Track 0..1 → tracking (em fraction); shared mapping.
                                 pending_vec_text_tracking = Some(
@@ -5305,6 +5314,23 @@ impl crate::App {
                     );
                 }
             }
+            if let Some(wrap) = pending_vec_text_wrap {
+                crate::vec_text::apply_text_wrap(
+                    &mut self.vec_text_edit,
+                    &mut self.vec_text_wrap,
+                    vec_scene,
+                    wrap,
+                );
+                if !editing_session {
+                    crate::vec_text::edit_selected_text(
+                        sim,
+                        vec_scene,
+                        &self.vec_entities,
+                        &vec_text_sel,
+                        |p| p.wrap_width = wrap,
+                    );
+                }
+            }
             if let Some(tr) = pending_vec_text_tracking {
                 crate::vec_text::apply_text_tracking(
                     &mut self.vec_text_edit,
@@ -5944,6 +5970,12 @@ impl crate::App {
                 );
                 ph2d_panel_vector::set_current_text_align(
                     visible.then(|| target.as_ref().map_or(self.vec_text_align, |t| t.align)),
+                );
+                // ⚠️ A fileira Width lê o ALVO quando há um selecionado, e o default da shell
+                // quando não há — a mesma regra do Align logo acima. Sem isto o painel mostraria
+                // "Auto" sobre um texto que reflui, e o 1º clique em Fixed não mudaria nada.
+                ph2d_panel_vector::set_current_text_wrap(
+                    target.as_ref().map_or(self.vec_text_wrap, |t| t.wrap_width),
                 );
                 // Semente dos sliders: só quando o ALVO muda (senão brigaria com o drag).
                 let target_id = target.as_ref().map(|t| t.id);

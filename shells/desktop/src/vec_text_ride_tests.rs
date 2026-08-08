@@ -28,6 +28,7 @@ fn params(text: &str) -> VecTextParams {
         tracking: 0.0,
         align: 0,
         axes: Vec::new(),
+        wrap_width: None,
     }
 }
 

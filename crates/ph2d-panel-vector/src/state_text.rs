@@ -9,7 +9,7 @@
 
 use super::{
     CURRENT_TEXT, CURRENT_TEXT_ALIGN, CURRENT_TEXT_AXES, CURRENT_TEXT_FONT, CURRENT_TEXT_VISIBLE,
-    FONT_PREVIEWS, TEXT_SEED, WANT_FONT_PREVIEWS,
+    CURRENT_TEXT_WRAP, FONT_PREVIEWS, TEXT_SEED, WANT_FONT_PREVIEWS,
 };
 use super::{FontPreview, TextAxisSlot};
 use ph2d_tool_vector::TextAlign;
@@ -59,6 +59,18 @@ pub fn set_current_text_align(align: Option<TextAlign>) {
 /// O alinhamento corrente este frame (destaca o botão L/C/R ativo). `None` = default.
 pub(crate) fn current_text_align() -> Option<TextAlign> {
     CURRENT_TEXT_ALIGN.with(Cell::get)
+}
+
+/// Publica a largura de refluxo corrente do texto. `None` = **Auto** (sem caixa) — e é o
+/// mesmo `None` que o documento guarda, não um "não sei": a fileira Width tem sempre uma
+/// resposta, e a seção inteira já é gateada por [`super::text_visible`].
+pub fn set_current_text_wrap(wrap: Option<f64>) {
+    CURRENT_TEXT_WRAP.with(|c| c.set(wrap));
+}
+
+/// A largura de refluxo corrente este frame. `None` = Auto ⇒ o slider **não é pintado**.
+pub(crate) fn current_text_wrap() -> Option<f64> {
+    CURRENT_TEXT_WRAP.with(Cell::get)
 }
 
 /// Publica os eixos de variação da fonte corrente (sem `wght`), na ordem em que a

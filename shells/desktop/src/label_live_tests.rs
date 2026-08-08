@@ -43,6 +43,7 @@ fn text_params() -> VecTextParams {
         tracking: 0.0,
         align: 0,
         axes: Vec::new(),
+        wrap_width: None,
     }
 }
 

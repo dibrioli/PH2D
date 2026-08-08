@@ -73,6 +73,8 @@ mod vector_states;
 /// Os ids da seção **Symmetry** (a simetria de desenho, plano 25 §9 W6.3) — irmão de `vector`
 /// pelo teto de 700 LOC.
 mod vector_symmetry;
+/// Os ids da seção **Text** — irmão de `vector` pelo teto de 700 LOC.
+mod vector_text;
 /// Os ids da seção **Text on Path** — irmão de `vector` pelo teto de 700 LOC.
 mod vector_textpath;
 mod vector_tokens;
@@ -124,6 +126,7 @@ pub use vector_sections::*;
 pub use vector_snap::*;
 pub use vector_states::*;
 pub use vector_symmetry::*;
+pub use vector_text::*;
 pub use vector_textpath::*;
 pub use vector_tokens::*;
 pub use vector_widget::*;

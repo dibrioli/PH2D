@@ -18,6 +18,13 @@ use crate::vec_entities::{VecEntityMap, group_entities};
 use crate::vec_glyph::{TextLayout, TextPlacement, text_to_compound_path, text_to_vec_paths};
 use crate::vec_text::VecTextEdit;
 
+/// A porta `sessão → componente`, exposta aos gates do módulo irmão: o round-trip da caixa
+/// de refluxo é uma propriedade das DUAS metades, e afirmá-la só de um lado é afirmar metade.
+#[cfg(test)]
+pub(crate) fn text_params_for_test(edit: &VecTextEdit) -> VecTextParams {
+    text_params(edit)
+}
+
 fn text_params(edit: &VecTextEdit) -> VecTextParams {
     VecTextParams {
         text: edit.text.clone(),
@@ -33,6 +40,7 @@ fn text_params(edit: &VecTextEdit) -> VecTextParams {
             .iter()
             .map(|(t, v)| (t.to_bytes(), *v))
             .collect(),
+        wrap_width: edit.wrap_width,
     }
 }
 
@@ -77,6 +85,7 @@ pub(crate) fn layout_of_params(p: &VecTextParams) -> TextLayout {
             2 => TextAlign::Right,
             _ => TextAlign::Left,
         },
+        wrap_width: p.wrap_width,
     }
 }
 
@@ -234,6 +243,10 @@ pub(crate) struct TextTarget {
     /// `[size, weight, line_height, tracking]` — a semente dos sliders do painel.
     pub sliders: [f64; 4],
     pub axes: Vec<(AxisTag, f32)>,
+    /// A largura de refluxo do alvo (`None` = Auto) — o que a fileira **Width** do painel
+    /// mostra. Fora do array `sliders` de propósito: aquilo são quatro `f64` que existem
+    /// SEMPRE, e esta é a única grandeza de texto cuja ausência é um estado.
+    pub wrap_width: Option<f64>,
 }
 
 /// Resolve o alvo: a sessão ativa tem prioridade; sem ela, o objeto de texto
@@ -253,6 +266,7 @@ pub(crate) fn panel_text_target(
             align: e.align,
             sliders: [e.size, f64::from(e.weight), e.line_height, e.tracking],
             axes: e.extra_axes.clone(),
+            wrap_width: e.wrap_width,
         });
     }
     let (id, _, p) = selected_text_object(sim, map, selection)?;
@@ -263,6 +277,7 @@ pub(crate) fn panel_text_target(
         align: align_from_u8(p.align),
         sliders: [p.size, f64::from(p.weight), p.line_height, p.tracking],
         axes: p.axes.iter().map(|(b, v)| (AxisTag::new(*b), *v)).collect(),
+        wrap_width: p.wrap_width,
     })
 }
 
@@ -393,6 +408,7 @@ mod tests {
             fill: Some(black()),
             stroke: None,
             text: "Hi".to_string(),
+            wrap_width: None,
             id: None,
             center: [0.0, 0.0],
         }
@@ -479,6 +495,7 @@ mod tests {
             text: "Hi".to_string(),
             id: None,
             center: [0.0, 0.0],
+            wrap_width: None,
         });
         // Texto vivo: 1 compound + entidade + VecShape::Text.
         regen_into(&mut scene, edit.as_mut().unwrap());

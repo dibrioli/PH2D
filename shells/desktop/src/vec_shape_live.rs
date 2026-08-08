@@ -239,6 +239,7 @@ mod tests {
             tracking: 0.0,
             align: 0,
             axes: Vec::new(),
+            wrap_width: None,
         });
         assert!(recook_shape(&t).is_none());
 

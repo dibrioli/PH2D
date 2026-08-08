@@ -435,6 +435,9 @@ impl crate::app_state::App {
                     fill,
                     stroke,
                     text: String::new(),
+                    // Um rótulo de conector é curto por natureza — a caixa seria um
+                    // controle sem uso, e o refluxo tem UI própria na seção Text.
+                    wrap_width: None,
                     id: None,
                     center: [0.0, 0.0],
                 });

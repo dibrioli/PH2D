@@ -45,6 +45,18 @@ pub struct VecTextParams {
     pub align: u8,
     /// Eixos de variação extras (fora `wght`): `(tag OT de 4 bytes, valor)`.
     pub axes: Vec<([u8; 4], f32)>,
+    /// A largura da caixa a que o texto REFLUI, em unidades de mundo. `None` = sem refluxo:
+    /// as únicas quebras são as que o artista escreveu.
+    ///
+    /// ⚠️ Ele mora AQUI, ao lado do `align`/`tracking`/`line_height`, e não num componente
+    /// próprio — e a escolha custou um bump. Um componente novo não bumparia nada (o
+    /// precedente do `VecStrokeProfile`/ADR-0148 e dos overrides da física), mas partiria a
+    /// resposta a *"como este bloco de texto se dispõe?"* em dois lugares: a porta única
+    /// [`crate::VecTextParams`] → `TextLayout` deixaria de bastar, e todo consumidor que
+    /// esquecesse o segundo componente desenharia um texto sem refluxo **em silêncio**.
+    /// Um número de layout ao lado dos seus irmãos vale o bump; a lista de bumps está no
+    /// `project.rs`.
+    pub wrap_width: Option<f64>,
 }
 
 /// Teto de parâmetros de uma forma. **Espelha `ph2d_vec_scene::MAX_SHAPE_FIELDS`** — o

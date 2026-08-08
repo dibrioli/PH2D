@@ -33,7 +33,7 @@ use ph2d_tokens::{ColorToken, Spacing, TypeToken};
 use ph2d_tool_vector::params::{
     DEFAULT_TEXT_LINE_HEIGHT, DEFAULT_TEXT_SIZE, DEFAULT_TEXT_TRACKING, DEFAULT_TEXT_WEIGHT,
     DrawMode, text_line_height_to_slider, text_size_to_slider, text_tracking_to_slider,
-    text_weight_to_slider,
+    text_weight_to_slider, text_wrap_to_slider,
 };
 use ph2d_tool_vector::shapes;
 use ph2d_tool_vector::{TextAlign, VectorStyleSnapshot};
@@ -508,7 +508,7 @@ impl BodyCtx<'_> {
             .store
             .number_value(ids::VECTOR_TEXT_TRACKING_NUM)
             .unwrap_or(DEFAULT_TEXT_TRACKING);
-        self.slider_row(
+        y = self.slider_row(
             "Tracking",
             ids::VECTOR_TEXT_TRACKING,
             ids::VECTOR_TEXT_TRACKING_NUM,
@@ -516,7 +516,46 @@ impl BodyCtx<'_> {
             tr_val,
             &format!("{tr_val:.2}"),
             y,
-        )
+        );
+        self.wrap_rows(y)
+    }
+
+    /// **Width: Auto | Fixed** + a largura, quando ela existe.
+    ///
+    /// ⚠️ **Só UMA row viva de cada vez**, e é a lei do knob-morto: em `Auto` não há largura
+    /// nenhuma a editar, e um slider ali seria um controle que não faz nada. É a forma do
+    /// `Mass: Auto | Manual` do editor de áudio — *duas portas para uma grandeza* é o que se
+    /// evita, e aqui a grandeza tem presença E valor.
+    fn wrap_rows(&mut self, y: f32) -> f32 {
+        let wrap = state::current_text_wrap();
+        let mut y = self.segmented(
+            "Width",
+            &[
+                (ids::VECTOR_TEXT_WRAP_AUTO, "Auto", wrap.is_none()),
+                (ids::VECTOR_TEXT_WRAP_FIXED, "Fixed", wrap.is_some()),
+            ],
+            y,
+        );
+        let Some(w) = wrap else { return y };
+        let track = self
+            .store
+            .slider(ids::VECTOR_TEXT_WRAP_W)
+            .map(|(_, v)| v)
+            .unwrap_or_else(|| text_wrap_to_slider(w));
+        let val = self
+            .store
+            .number_value(ids::VECTOR_TEXT_WRAP_W_NUM)
+            .unwrap_or(w);
+        y = self.slider_row(
+            "Wrap width",
+            ids::VECTOR_TEXT_WRAP_W,
+            ids::VECTOR_TEXT_WRAP_W_NUM,
+            track,
+            val,
+            &format!("{val:.2}"),
+            y,
+        );
+        y
     }
 
     /// Seção **AXES** — um campo por eixo de variação (fora o `wght`, que tem slider

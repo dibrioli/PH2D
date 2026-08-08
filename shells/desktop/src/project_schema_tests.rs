@@ -240,7 +240,21 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // `vec_bindings` e a razão de o `VEC_SCENE_SCHEMA` ficar quieto numa feature de estilo.
         // ⚠️ O 60 é PROVISÓRIO pela mesma razão de todos os acima — ele se CONTA contra o `main`
         // do dia da integração ([[feedback_numbers_that_sum_across_lines_count_dont_pick]]).
-        (60, 13, 14),
+        // PROJECT 60→61: o texto ganha uma CAIXA (W2a) — o `ph2d_ecs::VecTextParams` ganha
+        // `wrap_width: Option<f64>`, a largura a que ele reflui.
+        // ⚠️ **Este bump é de outra CLASSE que os cinco acima, e é a diferença que importa:**
+        // v57..v60 apendaram VARIANTES (o índice 0 não se move ⇒ o arquivo velho continua a ler,
+        // e o número serve só ao caminho inverso). Aqui é um CAMPO num componente existente, e o
+        // blob é postcard POSICIONAL ⇒ **todo arquivo já salvo bate no fim dos bytes**. O bump
+        // não é cortesia com o build antigo: é o que transforma lixo bem-formado num erro.
+        // ⚠️ Um componente NOVO teria custado zero (`VecStrokeProfile`/ADR-0148 é o precedente
+        // desta própria linha) e foi recusado com motivo — a largura é um número de layout ao
+        // lado do `align`/`tracking`, e um segundo componente partiria a porta `layout_of_params`
+        // em duas. O `project.rs` guarda o argumento inteiro.
+        // ⚠️ `FLIP`/`VEC_SCENE` NÃO se movem: o texto é um COMPONENTE do ECS, e a `VecScene` só
+        // guarda a geometria já cozida — nenhum campo foi apendado a `VecPath` nem a `VecShape`.
+        // ⚠️ O 61 é PROVISÓRIO pela mesma razão de todos os acima.
+        (61, 13, 14),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

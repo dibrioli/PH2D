@@ -82,6 +82,7 @@ pub(crate) fn reopen_text_session(
         fill,
         stroke,
         text: params.text.clone(),
+        wrap_width: params.wrap_width,
         id: Some(id),
         center,
     }
@@ -243,6 +244,7 @@ mod tests {
             fill: Some(black()),
             stroke: None,
             text: "Hi".to_string(),
+            wrap_width: None,
             id: None,
             center: [0.0, 0.0],
         });

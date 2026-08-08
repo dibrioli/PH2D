@@ -64,6 +64,7 @@ fn build(app: &mut crate::App) {
         fill: Some(Paint::solid(Rgba8::new(90, 150, 220, 255))),
         stroke: None,
         text: WORD.to_owned(),
+        wrap_width: None,
         id: None,
         center: [0.0, 0.0],
     };

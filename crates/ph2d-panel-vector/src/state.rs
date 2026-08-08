@@ -116,6 +116,10 @@ thread_local! {
     static CURRENT_TEXT: RefCell<Option<String>> = const { RefCell::new(None) };
     static CURRENT_TEXT_FONT: RefCell<Option<String>> = const { RefCell::new(None) };
     static CURRENT_TEXT_ALIGN: Cell<Option<TextAlign>> = const { Cell::new(None) };
+    /// A largura de refluxo corrente do texto (`None` = Auto, sem caixa). Publicada pela
+    /// shell como todo knob de texto; quem a lê é a fileira **Width** e o slider que só vive
+    /// no modo `Fixed`.
+    static CURRENT_TEXT_WRAP: Cell<Option<f64>> = const { Cell::new(None) };
     static CURRENT_TEXT_AXES: RefCell<Vec<TextAxisSlot>> = const { RefCell::new(Vec::new()) };
     static WANT_FONT_PREVIEWS: Cell<bool> = const { Cell::new(false) };
     /// Live snapshot published by the host before each `paint`. `None` until

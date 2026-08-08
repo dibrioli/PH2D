@@ -1262,6 +1262,9 @@ pub(crate) struct App {
     /// Tracking (fração do tamanho, em) corrente do texto — slider Tracking do painel;
     /// persiste entre sessões.
     pub(crate) vec_text_tracking: f64,
+    /// A largura de refluxo corrente do texto (`None` = Auto). Default da PRÓXIMA sessão e
+    /// espelho da que está viva — o mesmo papel dos irmãos `vec_text_*`.
+    pub(crate) vec_text_wrap: Option<f64>,
     /// Alinhamento horizontal corrente do texto (L/C/R) — botões do painel; persiste
     /// entre sessões.
     pub(crate) vec_text_align: ph2d_tool_vector::TextAlign,

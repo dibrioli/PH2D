@@ -148,6 +148,10 @@ fn layout() -> TextLayout {
         line_height: 1.25,
         tracking: 0.0,
         align: TextAlign::Left,
+        // ⚠️ Um texto EM CAMINHO não reflui, e a razão é que seriam duas respostas à mesma
+        // pergunta: o caminho já diz por onde os glifos correm. Refluir ali quebraria o texto
+        // em linhas que a curva depois mapearia todas por cima uma da outra.
+        wrap_width: None,
     }
 }
 
@@ -286,6 +290,7 @@ mod perf {
             line_height: 1.2,
             tracking: 0.0,
             align: TextAlign::Left,
+            wrap_width: None,
         };
         let verts = wiggle(50);
         let text: String = "ABCDEFGHIJ".repeat(20);

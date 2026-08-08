@@ -24,6 +24,7 @@ fn lay(size: f64) -> TextLayout {
         line_height: 1.2,
         tracking: 0.0,
         align: TextAlign::Left,
+        wrap_width: None,
     }
 }
 
@@ -408,6 +409,7 @@ fn straight_fingerprint_paths() -> Vec<VecPath> {
         line_height: 1.15,
         tracking: 0.07,
         align: TextAlign::Center,
+        wrap_width: None,
     };
     text_to_vec_paths(
         &font,
@@ -446,6 +448,7 @@ fn a_second_line_sits_below_the_first() {
         line_height: 1.2,
         tracking: 0.0,
         align: TextAlign::Left,
+        wrap_width: None,
     };
     let one = text_to_vec_paths(font, "A", &lay, &[], &at0(), &Some(black()), &None);
     let two = text_to_vec_paths(font, "A\nA", &lay, &[], &at0(), &Some(black()), &None);
@@ -476,6 +479,7 @@ fn alignment_shifts_the_line_horizontally() {
         line_height: 1.2,
         tracking: 0.0,
         align,
+        wrap_width: None,
     };
     let left = text_to_vec_paths(
         &font,
@@ -524,6 +528,7 @@ fn compound_path_merges_all_glyph_contours() {
         line_height: 1.2,
         tracking: 0.0,
         align: TextAlign::Left,
+        wrap_width: None,
     };
     let one = text_to_compound_path(&font, "Hi", &lay, &[], &at0(), &Some(black()), &None).unwrap();
     assert!(
@@ -546,6 +551,7 @@ fn positive_tracking_widens_the_line() {
         line_height: 1.2,
         tracking: 0.0,
         align: TextAlign::Left,
+        wrap_width: None,
     };
     let wide = TextLayout {
         tracking: 0.3,

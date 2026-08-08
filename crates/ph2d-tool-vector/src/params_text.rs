@@ -84,6 +84,40 @@ pub fn text_line_height_to_slider(line_height: f64) -> f32 {
         .clamp(0.0, 1.0)
 }
 
+/// A largura da caixa a que o texto REFLUI, em unidades de MUNDO — a faixa do slider "Wrap
+/// width", vivo só no modo `Fixed`.
+///
+/// ⚠️ **Isto é o ALCANCE do slider, não um teto do modelo** (§0): `wrap_width` é um
+/// `Option<f64>` e não consome recurso nenhum — não há memória, banda nem precisão a proteger,
+/// então não há número a MEDIR. O que a faixa diz é *onde arrastar deixa de ser útil*: o mínimo
+/// é ~uma palavra curta no tamanho default (1.0), abaixo do qual toda palavra transborda para a
+/// sua própria linha; o máximo é 4× a altura da vista do editor (~10 unidades), onde a caixa já
+/// não cabe no ecrã. Uma caixa fora da faixa continua **exprimível** — o documento guarda um
+/// `f64` — e é o smoke que decide se estes dois números são os certos.
+pub const TEXT_WRAP_MIN: f64 = 1.0;
+pub const TEXT_WRAP_MAX: f64 = 40.0;
+/// A largura com que uma caixa nasce ao passar de `Auto` para `Fixed` — larga o bastante para
+/// caber uma frase no tamanho default, estreita o bastante para o refluxo ser VISÍVEL no ecrã.
+pub const DEFAULT_TEXT_WRAP: f64 = 12.0;
+
+/// Affine slider mapping `wrap = track * SCALE + OFFSET` (track `0..=1`).
+pub const TEXT_WRAP_SLIDER_SCALE: f32 = (TEXT_WRAP_MAX - TEXT_WRAP_MIN) as f32;
+pub const TEXT_WRAP_SLIDER_OFFSET: f32 = TEXT_WRAP_MIN as f32;
+
+/// Normalized slider track `0..=1` → largura de refluxo (mundo) `MIN..=MAX`.
+#[must_use]
+pub fn slider_to_text_wrap(track: f32) -> f64 {
+    TEXT_WRAP_MIN + f64::from(track.clamp(0.0, 1.0)) * (TEXT_WRAP_MAX - TEXT_WRAP_MIN)
+}
+
+/// Largura de refluxo → normalized slider track `0..=1` (inverso de [`slider_to_text_wrap`]).
+#[must_use]
+pub fn text_wrap_to_slider(wrap: f64) -> f32 {
+    (((wrap.clamp(TEXT_WRAP_MIN, TEXT_WRAP_MAX) - TEXT_WRAP_MIN) / (TEXT_WRAP_MAX - TEXT_WRAP_MIN))
+        as f32)
+        .clamp(0.0, 1.0)
+}
+
 /// Text letter-spacing (tracking) as a FRACTION of the glyph size (em), added between
 /// glyphs. 0 = the font's native spacing; negative tightens, positive opens up.
 pub const TEXT_TRACKING_MIN: f64 = -0.1;

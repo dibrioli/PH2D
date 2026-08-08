@@ -17,11 +17,12 @@ use ph2d_editor_core::widget::{
 };
 use ph2d_tool_vector::params::{
     DEFAULT_TEXT_LINE_HEIGHT, DEFAULT_TEXT_SIZE, DEFAULT_TEXT_TRACKING, DEFAULT_TEXT_WEIGHT,
-    TEXT_LINE_HEIGHT_SLIDER_OFFSET, TEXT_LINE_HEIGHT_SLIDER_SCALE, TEXT_SIZE_SLIDER_OFFSET,
-    TEXT_SIZE_SLIDER_SCALE, TEXT_TRACKING_SLIDER_OFFSET, TEXT_TRACKING_SLIDER_SCALE,
-    TEXT_WEIGHT_SLIDER_OFFSET, TEXT_WEIGHT_SLIDER_SCALE, WIDTH_SLIDER_OFFSET, WIDTH_SLIDER_SCALE,
+    DEFAULT_TEXT_WRAP, TEXT_LINE_HEIGHT_SLIDER_OFFSET, TEXT_LINE_HEIGHT_SLIDER_SCALE,
+    TEXT_SIZE_SLIDER_OFFSET, TEXT_SIZE_SLIDER_SCALE, TEXT_TRACKING_SLIDER_OFFSET,
+    TEXT_TRACKING_SLIDER_SCALE, TEXT_WEIGHT_SLIDER_OFFSET, TEXT_WEIGHT_SLIDER_SCALE,
+    TEXT_WRAP_SLIDER_OFFSET, TEXT_WRAP_SLIDER_SCALE, WIDTH_SLIDER_OFFSET, WIDTH_SLIDER_SCALE,
     text_line_height_to_slider, text_size_to_slider, text_tracking_to_slider,
-    text_weight_to_slider,
+    text_weight_to_slider, text_wrap_to_slider,
 };
 use ph2d_tool_vector::shapes;
 use ph2d_tool_vector::{DEFAULT_STROKE_WIDTH_PX, px_to_slider};
@@ -380,6 +381,20 @@ fn populate_shape(store: &mut WidgetStore) {
         },
     );
     // Paragraph: alignment L / C / R (buttons) + Line-height slider + Tracking slider.
+    // **Width: Auto | Fixed** + a largura. Registados SEMPRE, inclusive o slider que só é
+    // pintado no modo Fixed: o `populate` corre uma vez na instalação do painel, e registar "o
+    // que está visível agora" deixaria o slider morto sob o rato no primeiro clique em Fixed.
+    button(store, ids::VECTOR_TEXT_WRAP_AUTO);
+    button(store, ids::VECTOR_TEXT_WRAP_FIXED);
+    slider_chip(
+        store,
+        ids::VECTOR_TEXT_WRAP_W,
+        ids::VECTOR_TEXT_WRAP_W_NUM,
+        text_wrap_to_slider(DEFAULT_TEXT_WRAP),
+        DEFAULT_TEXT_WRAP,
+        TEXT_WRAP_SLIDER_SCALE,
+        TEXT_WRAP_SLIDER_OFFSET,
+    );
     button(store, ids::VECTOR_TEXT_ALIGN_LEFT);
     button(store, ids::VECTOR_TEXT_ALIGN_CENTER);
     button(store, ids::VECTOR_TEXT_ALIGN_RIGHT);

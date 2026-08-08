@@ -136,6 +136,8 @@ pub(super) fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         || id == ids::VECTOR_TEXT_FONT_PREV
         || id == ids::VECTOR_TEXT_FONT_NEXT
         || id == ids::VECTOR_TEXT_FONT_IMPORT
+        || id == ids::VECTOR_TEXT_WRAP_AUTO
+        || id == ids::VECTOR_TEXT_WRAP_FIXED
         || id == ids::VECTOR_TEXT_ALIGN_LEFT
         || id == ids::VECTOR_TEXT_ALIGN_CENTER
         || id == ids::VECTOR_TEXT_ALIGN_RIGHT

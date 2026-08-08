@@ -255,6 +255,7 @@ pub(crate) fn apply_event(
                 || id == ids::VECTOR_TEXT_WEIGHT
                 || id == ids::VECTOR_TEXT_LINE_HEIGHT
                 || id == ids::VECTOR_TEXT_TRACKING
+                || id == ids::VECTOR_TEXT_WRAP_W
                 || id == ids::VECTOR_STROKE_OPACITY
                 || id == ids::VECTOR_FILL_OPACITY
                 || id == ids::VECTOR_DASH
@@ -279,6 +280,7 @@ pub(crate) fn apply_event(
                 || id == ids::VECTOR_TEXT_WEIGHT_NUM
                 || id == ids::VECTOR_TEXT_LINE_HEIGHT_NUM
                 || id == ids::VECTOR_TEXT_TRACKING_NUM
+                || id == ids::VECTOR_TEXT_WRAP_W_NUM
                 || id == ids::VECTOR_STROKE_OPACITY_NUM
                 || id == ids::VECTOR_FILL_OPACITY_NUM
                 || id == ids::VECTOR_DASH_NUM

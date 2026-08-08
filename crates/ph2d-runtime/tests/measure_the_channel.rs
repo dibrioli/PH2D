@@ -95,7 +95,10 @@ fn what_the_signal_channel_costs_per_frame() {
     // ⚠️ É uma RAZÃO, não um wall-clock: a barra tem de sobreviver a uma máquina disputada.
     let dois = measure(256, 2, 2000);
     let oito = measure(256, 8, 2000);
-    eprintln!("[canal] 8 consumidores / 2 consumidores = {:.2}x", oito / dois);
+    eprintln!(
+        "[canal] 8 consumidores / 2 consumidores = {:.2}x",
+        oito / dois
+    );
     assert!(
         oito < dois * 1.5,
         "8 consumidores custaram {oito:.3} us contra {dois:.3} us de 2 — {:.2}x. Ler devia ser \

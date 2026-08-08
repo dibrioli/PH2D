@@ -5423,6 +5423,7 @@ dependencies = [
  "ph2d-panel-wet-tuning",
  "ph2d-physics-ecs",
  "ph2d-render",
+ "ph2d-runtime",
  "ph2d-script",
  "ph2d-sculpt3d",
  "ph2d-sdf",
@@ -7268,6 +7269,10 @@ dependencies = [
  "vello",
  "wgpu",
 ]
+
+[[package]]
+name = "ph2d-runtime"
+version = "0.0.0"
 
 [[package]]
 name = "ph2d-save"

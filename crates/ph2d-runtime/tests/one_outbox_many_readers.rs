@@ -49,7 +49,8 @@ impl Host {
 #[test]
 fn a_consumer_reads_the_outbox_while_mutating_its_own_state() {
     let mut host = Host::default();
-    host.outbox.publish(Signal::from_timeline("porta_abriu", 1.5));
+    host.outbox
+        .publish(Signal::from_timeline("porta_abriu", 1.5));
     host.drain_toasts();
     assert_eq!(host.toasts, vec!["Signal: porta_abriu".to_owned()]);
 }
@@ -147,7 +148,11 @@ fn a_consumer_that_sleeps_too_long_reports_what_it_missed() {
         "dos 4, os 2 mais velhos saíram da janela — e ele SABE"
     );
     assert_eq!(host.toasts.len(), 2, "os 2 que ainda estavam na janela");
-    assert_eq!(host.log_reader.missed(), 0, "quem leu todo quadro não perdeu");
+    assert_eq!(
+        host.log_reader.missed(),
+        0,
+        "quem leu todo quadro não perdeu"
+    );
 }
 
 /// A janela viva nunca passa de dois quadros — é isso que faz a memória ser função da TAXA de
@@ -180,7 +185,11 @@ fn a_reader_wired_mid_session_starts_at_the_present() {
     outbox.publish(Signal::from_timeline("antes", 0.0));
 
     let mut late = SignalReader::at(&outbox);
-    assert_eq!(outbox.read(&mut late).count(), 0, "a história não o alcança");
+    assert_eq!(
+        outbox.read(&mut late).count(),
+        0,
+        "a história não o alcança"
+    );
 
     outbox.publish(Signal::from_timeline("depois", 1.0));
     let seen: Vec<_> = outbox.read(&mut late).map(|s| s.name.to_string()).collect();

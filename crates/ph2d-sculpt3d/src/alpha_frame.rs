@@ -1,0 +1,106 @@
+//! **O FRAME DO PADRÃO** — a direção em que um alpha direcional é lido.
+//!
+//! ⚠️ **Módulo irmão do [`super`], e o corte é por RESPONSABILIDADE:** lá mora *o
+//! que um padrão É* (as nove fórmulas, o hash, o ruído); aqui mora *em que
+//! direção ele é lido*. As duas perguntas têm consumidores diferentes — o painel
+//! pergunta a esta para OFERECER as duas pistas de eixo, e o motor pergunta à de
+//! lá para saber que número sai do vértice.
+//!
+//! ⚠️ **E o corte tem preço, então ele é nomeado:** o [`AlphaFrame`] guarda campos
+//! PRIVADOS e o `weight_at` do irmão os lê pela [`AlphaFrame::project`], que é
+//! `pub(super)` — a fronteira do módulo é o que garante que ninguém construa um
+//! frame torto por fora.
+
+use ph2d_painter_brush::texture::rotate_by_degrees;
+
+/// **O FRAME em que um padrão DIRECIONAL é lido** — três eixos ortonormais em
+/// espaço de OBJETO.
+///
+/// ⚠️ **Ele é derivado UMA vez por dab, nunca por vértice**, e a razão é medida:
+/// a conversão ângulo→vetor deste app é o rotor de um grau ACUMULADO
+/// (`rotate_by_degrees`, o mesmo do Jitter Rotate e da luz do impasto), que é
+/// **O(graus)** — até 359 iterações. Por vértice ele custaria mais que o padrão
+/// inteiro que ele orienta.
+///
+/// ⚠️ **E ele não tem `Default`:** o único jeito de obter um é
+/// [`crate::Brush::alpha_frame`], então *"esqueci de passar o frame do pincel"*
+/// não é um erro que se comete distraído. É a lição do `ShapeFrame` do Painter
+/// 2D, que existe pela mesma razão — lá um builder opcional fez a feature chegar
+/// em 2 de 7 rotas, em silêncio.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct AlphaFrame {
+    /// **O EIXO: a direção em que o padrão VARIA.** O Strata empilha ao longo
+    /// dele, as faixas do Scratches são indexadas por ele, e a trama do Weave é
+    /// o plano perpendicular a ele.
+    n: [f32; 3],
+    /// A tangente, sempre no plano XY do objeto — ver [`AlphaFrame::from_degrees`].
+    t: [f32; 3],
+    /// `n × t`, completando a base.
+    b: [f32; 3],
+}
+
+impl AlphaFrame {
+    /// O frame de um eixo autorado em GRAUS (azimute `0..360`, elevação `0..=90`).
+    ///
+    /// ⚠️ **A REPRESENTAÇÃO APAGA O CASO ESPECIAL, e é isso que a torna a certa.**
+    /// A receita óbvia — ortonormalizar contra um "para cima" de referência — tem
+    /// um POLO onde o eixo encosta na referência, e ali o frame SALTA: arrastar a
+    /// elevação faria a trama girar noventa graus de repente, com o artista
+    /// segurando o slider. Aqui a tangente sai do próprio azimute, e ela é
+    /// unitária e perpendicular ao eixo **por identidade**, em qualquer elevação:
+    ///
+    /// ```text
+    /// n = (cos_e·cos_az,  cos_e·sen_az,  sen_e)
+    /// t = (   −sen_az,       cos_az,       0  )
+    /// n·t = −cos_e·cos_az·sen_az + cos_e·sen_az·cos_az + 0 = 0
+    /// ```
+    ///
+    /// Sem ramo, sem limiar, sem polo — e no zênite (`elev = 90`, onde o azimute
+    /// não move mais o eixo) ele passa a ROLAR o padrão, que é exatamente o
+    /// controle que faltaria ali.
+    ///
+    /// ⚠️ **O rotor é o do APP INTEIRO**, e não um `sin`/`cos` escrito aqui: a
+    /// sequência dele é específica (uma rotação de 1° acumulada), e a luz, o
+    /// Jitter Rotate e o Angle por-slot giram por ela. Um segundo caminho daria
+    /// outro número nos últimos bits — a razão que a `ph2d-light` escreveu no
+    /// próprio `Cargo.toml` quando pagou esta mesma aresta.
+    /// ⚠️ **`pub(crate)` de propósito:** de fora, o único caminho para um frame é
+    /// [`crate::Brush::alpha_frame`], então um chamador não consegue construir um
+    /// que DISCORDE do pincel que ele passa ao lado. Duas portas para *"em que
+    /// direção este padrão corre?"* divergiriam no primeiro sítio novo.
+    #[must_use]
+    pub(crate) fn from_degrees(az_deg: u16, elev_deg: u16) -> Self {
+        let az = rotate_by_degrees(az_deg % 360);
+        let el = rotate_by_degrees(elev_deg.min(MAX_AXIS_ELEV_DEG));
+        let (cos_e, sin_e) = (el[0], el[1]);
+        let n = [cos_e * az[0], cos_e * az[1], sin_e];
+        let t = [-az[1], az[0], 0.0];
+        // `b = n × t` — unitário porque `n` e `t` são unitários e perpendiculares.
+        let b = [
+            n[1] * t[2] - n[2] * t[1],
+            n[2] * t[0] - n[0] * t[2],
+            n[0] * t[1] - n[1] * t[0],
+        ];
+        Self { n, t, b }
+    }
+
+    /// O eixo autorado — o que o overlay desenharia e o que o gate mede.
+    #[must_use]
+    pub fn axis(&self) -> [f32; 3] {
+        self.n
+    }
+
+    /// O ponto `p` nas coordenadas do frame: `(ao longo de t, ao longo de b, ao
+    /// longo do EIXO)`.
+    pub(super) fn project(&self, p: [f32; 3]) -> [f32; 3] {
+        [
+            p[0] * self.t[0] + p[1] * self.t[1] + p[2] * self.t[2],
+            p[0] * self.b[0] + p[1] * self.b[1] + p[2] * self.b[2],
+            p[0] * self.n[0] + p[1] * self.n[1] + p[2] * self.n[2],
+        ]
+    }
+}
+
+/// O zênite. Acima dele o eixo desceria do outro lado, e o azimute já cobre os
+/// 360° do outro hemisfério — dois caminhos para a mesma direção.
+pub const MAX_AXIS_ELEV_DEG: u16 = 90;

@@ -15,3 +15,19 @@ authors.workspace = true
 # simetria e os outros 19 verbos sao a W2, e cada um chega com o gate dele.
 [dependencies]
 ph2d-mesh = { path = "../ph2d-mesh" }
+
+# ⚠️ O ROTOR, e só ele. A conversão azimute→vetor do EIXO do alpha direcional
+# passa por `texture::rotate_by_degrees`, que ACUMULA uma rotação de 1° — uma
+# sequência numérica específica, não `(cos θ, sin θ)`. Um `sin`/`cos` escrito
+# aqui daria outro número nos últimos bits, e o app inteiro (Jitter Rotate,
+# Angle por-slot, a luz do impasto, o rig da `ph2d-light`) gira por aquele:
+# duas respostas para *"que vetor é este ângulo?"* divergiriam no dia em que
+# alguém comparasse um eixo de padrão com uma direção de luz.
+#
+# ⚠️ **E ele NÃO traz a libm junto:** `ph2d-painter-brush` é FOLHA (zero
+# dependências) e o rotor é transcendental-free por construção, então esta crate
+# continua `libm`-free — a promessa que o `alpha.rs` faz no cabeçalho.
+#
+# É a MESMA aresta, pela MESMA razão, que a `ph2d-light` já paga e escreveu no
+# `Cargo.toml` dela; folha→folha não inverte arquitetura nenhuma.
+ph2d-painter-brush = { path = "../ph2d-painter-brush" }

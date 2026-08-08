@@ -472,6 +472,8 @@ pub fn tr(key: &str) -> &'static str {
         "panel.sculpt3d.alpha" => "Alpha",
         "panel.sculpt3d.alpha.none" => "None",
         "panel.sculpt3d.alpha_scale" => "Alpha Scale",
+        "panel.sculpt3d.alpha_az" => "Pattern Angle",
+        "panel.sculpt3d.alpha_elev" => "Pattern Tilt",
         "panel.sculpt3d.mask" => "Mask",
         "panel.sculpt3d.mask.clear" => "Clear",
         "panel.sculpt3d.mask.invert" => "Invert",

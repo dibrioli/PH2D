@@ -40,29 +40,74 @@
 //! cena não faz a pele nadar. A alternativa (colar ao índice do vértice) não
 //! sobrevive a uma subdivisão.
 //!
-//! # E o que ficou de FORA, com o motivo
+//! # OS DIRECIONAIS, e o que a medição mudou na nota que os previa
 //!
-//! Os seis padrões daqui são **isotrópicos**: lêem igual de qualquer direção,
-//! que é o que os deixa viver sem frame. Um padrão **direcional** — um tecido, um
-//! carimbo, um símbolo, qualquer IMAGEM — é precisamente o caso que *quer* a
-//! tangente e o rake do `04.1`, porque ele tem um "para cima". Então o desenho
-//! daquela nota não está errado: ele é a resposta a outra pergunta, e a porta
-//! para ela é uma variante nova deste enum, não uma reescrita desta.
+//! Os seis primeiros padrões são **isotrópicos**: lêem igual de qualquer
+//! direção, que é o que os deixa viver sem frame. Um padrão **direcional** — um
+//! estrato, um risco, um tecido — tem uma direção de VARIAÇÃO, e a nota que
+//! abriu este item dizia que ele *"traz o frame do dab de volta"*.
+//!
+//! ⚠️ **A sonda `tests/measure_directional_wash.rs` mediu isso e o número
+//! reformulou o item.** Quem lava um padrão sob o envelope não é a
+//! DIRECIONALIDADE — é o **RE-ANCORAMENTO**:
+//!
+//! | gesto · âncora | dabs | média (verdade = 0,500) | contraste |
+//! |---|---|---|---|
+//! | 1 dab (o controle) | 1 | 0,492 | **0,295** |
+//! | traço 1,00 · **absoluta** | 27 | 0,490 | **0,285** |
+//! | traço 1,00 · por-dab (o `04.1`) | 27 | 0,592 | **0,128** |
+//!
+//! Uma coordenada medida a partir do CENTRO DO DAB muda de fase a cada dab, e o
+//! `max` sobre dezenas dela come **57% do contraste** e deixa o pincel 20% mais
+//! forte — a lei 2 do módulo, agora com número. Uma coordenada **absoluta**
+//! (o objeto) sobrevive ao envelope INTACTA: 0,285 contra 0,295 de um carimbo
+//! único. ⇒ **o frame do dab é exatamente o que não se pode usar**, e um padrão
+//! direcional é apenas um padrão cujo eixo o artista aponta.
+//!
+//! O eixo é autorado em dois ângulos e resolvido pelo [`AlphaFrame`]. **O eixo
+//! aponta a direção do padrão**, e o que cada um faz com ela está no doc do
+//! variant — o Strata EMPILHA ao longo dele, as faixas do Scratches se SUCEDEM
+//! ao longo dele, e uma das duas famílias de fios do Weave CORRE ao longo dele.
+//!
+//! ⚠️ **Uma frase única e mais forte que essa foi escrita e é FALSA** — *"o eixo
+//! é a direção em que o padrão varia"*. Ela vale para o Strata e para o
+//! Scratches e quebra no Weave, que é uma trama: ela varia nas DUAS direções do
+//! plano dela. Escrevê-la assim mesmo faria o doc mentir sobre um terço da
+//! família, e o gate `turning_the_axis_turns_the_pattern` é o que afirma o que os
+//! três de fato compartilham — que eles LEEM o frame.
 //!
 //! ⚠️ E não há imagem para carregar hoje — o mesmo fato que fez os matcaps serem
 //! analíticos. Sintetizar uma textura para depois amostrá-la seria a mesma
-//! fórmula avaliada duas vezes.
+//! fórmula avaliada duas vezes; uma imagem AUTORADA é outra wave, e o preço dela
+//! está medido no handoff (o `Brush` é `Copy` em vinte arquivos).
 //!
 //! # HR-5
 //!
 //! Zero transcendental: hash inteiro, `floor`, `sqrt` (instrução de hardware) e
-//! aritmética. Esta crate é `libm`-free e continua sendo.
+//! aritmética. Esta crate é `libm`-free e continua sendo — ver [`frac`], que
+//! existe porque `%` **não** é uma instrução.
 
-/// **OS SEIS PADRÕES**, na ordem em que a UI os lista.
+/// **EM QUE DIREÇÃO** — ver [`frame`].
+#[path = "alpha_frame.rs"]
+mod frame;
+pub use frame::{AlphaFrame, MAX_AXIS_ELEV_DEG};
+
+/// **QUE TAMANHO ESTE MODELO COMPORTA** — ver [`scale`].
+#[path = "alpha_scale.rs"]
+mod scale;
+pub use scale::{DEFAULT_ALPHA_SCALE, MAX_ALPHA_SCALE, MIN_ALPHA_SCALE, recommended_scale};
+
+/// **OS NOVE PADRÕES**, na ordem em que a UI os lista: seis isotrópicos e três
+/// **direcionais**, que leem o [`AlphaFrame`].
 ///
 /// Cada um é nomeado pelo que ele PARECE, não pelo uso: o mesmo Worley que faz
 /// escama faz casco de tartaruga, e um nome de intenção envelheceria no primeiro
 /// artista que o usasse para outra coisa.
+///
+/// ⚠️ **Os direcionais vêm por ÚLTIMO, e a ordem é load-bearing na UI:** o painel
+/// desloca a seleção de um (a primeira opção dele é *nenhum*), então um variant
+/// no MEIO moveria o índice de todo padrão depois dele. Apender é o que mantém o
+/// chip que o artista aprendeu no lugar onde ele estava.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Alpha {
     /// fBm de ruído de valor, três oitavas. Irregularidade geral — rocha, massa.
@@ -77,167 +122,29 @@ pub enum Alpha {
     Grain,
     /// fBm dobrado: cristas afiadas em vez de ondas. Ruga, estrato, casca de árvore.
     Ridges,
-}
-
-/// O tamanho de feature com que um alpha nasce **quando ninguém perguntou ao
-/// modelo** — ver [`recommended_scale`], que é quem o produto usa.
-///
-/// ⚠️ **O trabalho real desta constante é ser SENTINELA**, não ser um bom
-/// tamanho: é comparando contra ela que o painel sabe *"o artista ainda não
-/// escolheu"* e pode semear a recomendação — o mesmo papel do `Smooth de fábrica`
-/// no `arm_inflate_defaults` do Painter.
-///
-/// ⚠️ **Ela já foi o default de verdade, e o smoke a reprovou** (*"os poros são
-/// gigantescos"*, Enio, 2026-08-05). O número era `0,25`, escolhido como *a
-/// escala mais fina que a malha da cena RESOLVE* — e resolver não é parecer:
-/// medido, `0,25` põe **oito** features atravessando uma esfera unitária, o que
-/// lê como cratera. **Uma escala absoluta não significa nada sem o tamanho do
-/// modelo**, e era esse o defeito.
-pub const DEFAULT_ALPHA_SCALE: f32 = 0.06;
-
-/// O piso da pista de escala.
-///
-/// Pela lei das dez arestas ele serve uma malha de aresta `0,0002` — três
-/// subdivisões abaixo do que a cena mais densa deste módulo abre. Um piso mais
-/// alto tiraria do artista a única faixa em que uma malha de milhões de vértices
-/// vale a pena.
-pub const MIN_ALPHA_SCALE: f32 = 0.002;
-
-/// O teto da pista: quatro features atravessando um modelo de tamanho 2.
-///
-/// ⚠️ Acima disto o padrão deixa de ser padrão e vira um multiplicador quase
-/// constante — o regime que o smoke reprovou. A pista **não** precisa alcançar
-/// "uma célula do tamanho da peça": esse valor não desenha textura nenhuma.
-pub const MAX_ALPHA_SCALE: f32 = 0.5;
-
-/// **Quantas features o padrão atravessa o modelo** na recomendação.
-///
-/// ⚠️ **Medido, não escolhido** (`measure_how_many_features_cross_the_model`):
-///
-/// | escala numa esfera unitária | features | malha para resolver |
-/// |---|---|---|
-/// | 0,25 | **8** — a cratera que o smoke reprovou | 17 k verts |
-/// | 0,12 | 17 | 86 k |
-/// | **0,06** | **33 — textura** | 426 k |
-/// | 0,03 | 67 — pele | 959 k |
-const FEATURES_ACROSS: f32 = 33.0;
-
-/// **A lei das dez arestas**: quantas arestas uma feature precisa medir para ser
-/// amostrada como padrão em vez de como chuvisco. Ver [`DEFAULT_ALPHA_SCALE`].
-const EDGES_PER_FEATURE: f32 = 10.0;
-
-/// Quantos vértices a estimativa de aresta amostra.
-///
-/// ⚠️ **Amostra, e não a mediana verdadeira**, porque o retrato do painel a chama
-/// a CADA QUADRO: sobre 425 k vértices a mediana exata ordena ~1,2 M
-/// comprimentos, e isso é um imposto por frame para um número que só é lido num
-/// clique.
-///
-/// **MEDIDO** (`measure_the_recommendation_per_frame`), e o número foi escolhido
-/// pela varredura em vez de pelo conforto: com 2048 amostras o custo é
-/// **0,11 ms/quadro**; com **384** ele cai para **0,017** — e a sonda de viés
-/// (`measure_the_edge_estimator_bias`) mostra a estimativa em **1,00×** da
-/// mediana verdadeira nas duas. Seis vezes mais barato pela mesma resposta.
-///
-/// ⚠️ **E ele é PLANO na malha** (0,017 a 153 k e a 425 k) — que é o requisito de
-/// projeto, não um bônus: um seed cujo custo crescesse com o modelo seria um
-/// imposto que aparece justamente na peça pesada.
-const EDGE_SAMPLES: usize = 384;
-
-/// **A escala que ESTE modelo comporta** — o seed do `Alpha Scale`.
-///
-/// Duas restrições, e o resultado é a mais grossa das duas porque as duas são
-/// verdadeiras ao mesmo tempo:
-///
-/// * **o LOOK** — `maior lado ÷ 33`, que é o que faz um padrão parecer textura
-///   em vez de cratera, em qualquer tamanho de modelo;
-/// * **a REPRESENTABILIDADE** — `10 × aresta`, a lei das dez arestas: mais fino
-///   que isso a malha não amostra o padrão, ela o pica.
-///
-/// ⚠️ **É por isso que uma escala absoluta precisava de um seed.** O número certo
-/// é em unidades de objeto (um poro tem o tamanho de um poro, e trocar o pincel
-/// não pode mudá-lo), mas *qual* número depende de duas coisas que só o modelo
-/// sabe. Um literal no código acerta uma esfera unitária de uma densidade e erra
-/// todo o resto — foi exatamente o que o smoke pegou.
-///
-/// ⚠️ **Numa malha grossa a segunda restrição VENCE**, e isso é honesto: o padrão
-/// sai grosso porque a malha não comporta outro. A cura é subdividir, e é o que
-/// o smoke manda fazer — o mesmo fato que faz um escultor de ZBrush subdividir
-/// antes de pegar um alpha.
-///
-/// ⚠️ **E há um regime em que NEM o teto basta**, achado pelo gate: numa esfera
-/// 24×36 a aresta mede `0,131`, então a lei das dez arestas pediria `1,31` —
-/// mais que o modelo inteiro. Ali não existe escala que sirva: a malha **não
-/// carrega padrão nenhum**. A recomendação pousa no teto, que é o estado
-/// reconhecível; devolver um valor no meio fingiria que resolveu.
-#[must_use]
-pub fn recommended_scale(mesh: &ph2d_mesh::Mesh) -> f32 {
-    let b = mesh.bounds();
-    // ⚠️ **O MAIOR LADO, e não a diagonal da caixa** — e a diferença é um fator
-    // `√3` que eu shipei errado uma vez. A tabela que fixou `FEATURES_ACROSS`
-    // conta features atravessando uma esfera unitária, ou seja sobre o
-    // **diâmetro** (2); a diagonal da caixa dela mede `3,464`, então o mesmo
-    // número devolvia uma feature 1,73× maior que a medida. Duas réguas para uma
-    // grandeza é a doença de sempre, e aqui ela sai como *"os poros continuam
-    // grandes"* depois de um conserto que parecia certo.
-    let span = (b.max[0] - b.min[0])
-        .max(b.max[1] - b.min[1])
-        .max(b.max[2] - b.min[2]);
-    let look = span / FEATURES_ACROSS;
-    let floor = EDGES_PER_FEATURE * sampled_edge(mesh);
-    look.max(floor).clamp(MIN_ALPHA_SCALE, MAX_ALPHA_SCALE)
-}
-
-/// A aresta mediana de uma AMOSTRA de vértices — ver [`EDGE_SAMPLES`].
-///
-/// ⚠️ **Duas armadilhas de amostragem, as duas MEDIDAS e as duas curadas aqui.**
-///
-/// **(1) O passo constante ressoa com a malha.** A primeira versão andava de
-/// `len / 2048` em `len / 2048`, e numa esfera UV — cujos vértices são guardados
-/// por linhas de latitude — esse passo entra em ressonância com o comprimento da
-/// linha: a sonda `measure_the_edge_estimator_bias` mediu o **MESMO** valor
-/// (`0,0105`) para duas malhas de 153 k e 734 k vértices, um viés de **2,34×** na
-/// maior. O passo agora é o da razão áurea sobre o índice, que não tem relação
-/// nenhuma com a ordem em que a malha guarda os vértices.
-///
-/// **(2) O PRIMEIRO vizinho não é uma aresta típica.** Ele é o que o CSR pôs
-/// primeiro, e numa esfera UV isso é sistematicamente o meridiano ou o raio do
-/// polo. A amostra toma o **anel inteiro** de cada vértice sorteado.
-fn sampled_edge(mesh: &ph2d_mesh::Mesh) -> f32 {
-    let pos = mesh.positions();
-    let ring = mesh.adjacency();
-    if pos.is_empty() {
-        return 0.0;
-    }
-    let n = pos.len();
-    let mut lens: Vec<f32> = Vec::with_capacity(EDGE_SAMPLES * 6);
-    let mut cursor: u64 = 0;
-    for _ in 0..EDGE_SAMPLES.min(n) {
-        cursor = cursor.wrapping_add(0x9E37_79B9_7F4A_7C15);
-        let v = ((cursor >> 33) as usize) % n;
-        let a = pos[v];
-        for &nb in ring.vert_verts.neighbours(v) {
-            let b = pos[nb as usize];
-            let e = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
-            lens.push(e[2].mul_add(e[2], e[0].mul_add(e[0], e[1] * e[1])).sqrt());
-        }
-    }
-    if lens.is_empty() {
-        return 0.0;
-    }
-    lens.sort_by(f32::total_cmp);
-    lens[lens.len() / 2]
+    /// **DIRECIONAL** — camadas paralelas empilhadas ao longo do eixo, com a
+    /// fronteira ondulada. Rocha sedimentar, veio de madeira, estratificação.
+    Strata,
+    /// **DIRECIONAL** — riscos finos e ESPARSOS, correndo perpendiculares ao
+    /// eixo. Metal escovado, marca de garra, desgaste.
+    Scratches,
+    /// **DIRECIONAL** — a trama de duas famílias de fios que passam uma por cima
+    /// da outra; uma delas corre AO LONGO do eixo. Tecido, cesta, malha.
+    Weave,
 }
 
 impl Alpha {
     /// Todos, na ordem em que a UI os lista.
-    pub const ALL: [Self; 6] = [
+    pub const ALL: [Self; 9] = [
         Self::Noise,
         Self::Pores,
         Self::Scales,
         Self::Cracks,
         Self::Grain,
         Self::Ridges,
+        Self::Strata,
+        Self::Scratches,
+        Self::Weave,
     ];
 
     /// O nome que a UI mostra.
@@ -250,7 +157,26 @@ impl Alpha {
             Self::Cracks => "Cracks",
             Self::Grain => "Grain",
             Self::Ridges => "Ridges",
+            Self::Strata => "Strata",
+            Self::Scratches => "Scratches",
+            Self::Weave => "Weave",
         }
+    }
+
+    /// **Este padrão tem um "para onde"?** — a porta única do eixo.
+    ///
+    /// Os seis isotrópicos leem igual de qualquer direção, e é isso que os deixa
+    /// viver sem frame nenhum. Os três direcionais têm uma direção de VARIAÇÃO, e
+    /// é ela que o artista aponta.
+    ///
+    /// ⚠️ **Porta e não um `matches!` no sítio de uso:** o painel pergunta para
+    /// OFERECER as duas pistas de eixo, o motor pergunta para decidir se projeta
+    /// no frame, e o gate pergunta para provar a byte-identidade dos isotrópicos.
+    /// Três cópias divergiriam em dois controles que aparecem e não fazem nada —
+    /// o mesmo mecanismo do `Verb::uses_plane`.
+    #[must_use]
+    pub fn is_directional(self) -> bool {
+        matches!(self, Self::Strata | Self::Scratches | Self::Weave)
     }
 
     /// **A frequência RELATIVA do padrão**, em células por unidade de escala.
@@ -267,6 +193,13 @@ impl Alpha {
             Self::Pores | Self::Scales | Self::Cracks => 1.0,
             // Um chuvisco: três vezes mais fino que os demais na mesma escala.
             Self::Grain => 3.0,
+            // Uma camada e um fio medem a escala inteira: a `tri` que os desenha
+            // já ocupa a célula toda, ao contrário do Worley, cuja semente é um
+            // ponto no volume.
+            Self::Strata | Self::Weave => 1.0,
+            // Um risco é FINO na travessia e o que a escala nomeia é a distância
+            // entre faixas — o mesmo raciocínio do Grain.
+            Self::Scratches => 2.0,
         }
     }
 
@@ -279,13 +212,24 @@ impl Alpha {
     /// pelo mesmo motivo: um `NaN` que escorre daqui vira peso `NaN` num vértice,
     /// e uma malha inteira sai `NaN` a partir de um ponto ruim em algum lugar.
     #[must_use]
-    pub fn weight_at(self, p: [f32; 3], scale: f32) -> f32 {
+    pub fn weight_at(self, p: [f32; 3], scale: f32, frame: &AlphaFrame) -> f32 {
         if !p[0].is_finite() || !p[1].is_finite() || !p[2].is_finite() {
             return 0.0;
         }
         let s = scale.clamp(MIN_ALPHA_SCALE, MAX_ALPHA_SCALE);
         let k = self.frequency() / s;
-        let q = [p[0] * k, p[1] * k, p[2] * k];
+        // ⚠️ **Os seis isotrópicos NÃO passam pelo frame, e é isso que os deixa
+        // BYTE-IDÊNTICOS ao mundo pré-direcional.** Eles leem igual de qualquer
+        // direção por construção, então projetá-los mudaria os bits sem mudar o
+        // que descrevem — e esta wave inteira se apoia em nenhum deles se mover.
+        // A pergunta é feita à porta ([`Self::is_directional`]), nunca a uma
+        // lista de nomes escrita aqui.
+        let q = if self.is_directional() {
+            let f = frame.project(p);
+            [f[0] * k, f[1] * k, f[2] * k]
+        } else {
+            [p[0] * k, p[1] * k, p[2] * k]
+        };
 
         let w = match self {
             Self::Noise => {
@@ -319,6 +263,77 @@ impl Alpha {
                 let (f1, f2) = worley(q);
                 1.0 - smoothstep(0.0, CRACK_WIDTH, f2 - f1)
             }
+            Self::Strata => {
+                // A coordenada ao longo do EIXO é o índice da camada, e o fBm a
+                // ONDULA: é isso que faz uma camada engrossar e afinar em vez de
+                // sair um código de barras. ⚠️ O deslocamento é em CÉLULAS (a
+                // régua de `q`), então ele acompanha a escala — em unidades de
+                // objeto ele seria um número absoluto que só serve num tamanho
+                // de modelo, que é exatamente o defeito que o seed de escala
+                // existe para não ter.
+                let wob = fbm([
+                    q[0] * STRATA_WOBBLE_FREQ,
+                    q[1] * STRATA_WOBBLE_FREQ,
+                    q[2] * STRATA_WOBBLE_FREQ,
+                ]);
+                contrast(tri(q[2] + STRATA_WOBBLE * (wob - 0.5)), 0.15, 0.85)
+            }
+            Self::Scratches => {
+                // A FAIXA: o padrão varia ao longo do eixo, então cada faixa é
+                // indexada por `q[2]` e o risco corre atravessado, em `q[0]`.
+                let lane = q[2].floor();
+                let h = hash3(lane as i32, SCRATCH_SALT, 0);
+                if unit(h) >= SCRATCH_DENSITY {
+                    // ⚠️ **Esparso de propósito:** um risco em TODA faixa é uma
+                    // grade de listras, não arranhões. O Pores recusa pelo mesmo
+                    // motivo — os dois são padrões de EVENTO, não de campo.
+                    0.0
+                } else {
+                    // A fase e o comprimento saem do MESMO hash por rotação, o
+                    // que já é a economia que o `worley` faz nas três sementes:
+                    // um segundo avalanche por faixa custaria o dobro para
+                    // descorrelacionar o que o olho não distingue.
+                    let phase = unit(h.rotate_left(9));
+                    let along = frac(q[0] * SCRATCH_STRETCH + phase);
+                    let len = SCRATCH_MIN_LEN + unit(h.rotate_left(18)) * (1.0 - SCRATCH_MIN_LEN);
+                    // Ao longo: cheio até `len`, desvanecendo na ponta — um
+                    // risco termina em ponta, não em parede.
+                    let run = 1.0 - smoothstep(len - SCRATCH_TIP, len, along);
+                    // Através: o perfil fino, centrado na faixa.
+                    let across =
+                        1.0 - smoothstep(0.0, SCRATCH_WIDTH, (q[2] - lane - 0.5).abs() * 2.0);
+                    run * across
+                }
+            }
+            Self::Weave => {
+                // Duas famílias de fios, no plano `t`–`n`: uma corre AO LONGO do
+                // eixo (indexada por `q[0]`), a outra atravessada (indexada por
+                // `q[2]`, a coordenada do eixo). O perfil de cada fio é a `tri` —
+                // cheio no meio, zero na borda.
+                //
+                // ⚠️ **O plano é `t`–`n` e NÃO `t`–`b`, e a diferença é o que o
+                // artista vê no primeiro traço.** Com `b` a trama vive no plano
+                // perpendicular ao eixo; no eixo de fábrica (+Y) esse plano é o
+                // do CHÃO, visto de perfil por uma câmera em +Z — e uma trama
+                // vista de perfil é um conjunto de listras. Com `n` uma das
+                // famílias corre ao longo do eixo, a trama fica de FRENTE no
+                // default, e a leitura *"um fio corre na direção que você
+                // apontou"* vale para os três padrões desta família.
+                let along = tri(q[0]);
+                let across = tri(q[2]);
+                // ⚠️ **O XADREZ é o que faz disto uma TRAMA e não uma grade.**
+                // Quem passa por cima alterna com a paridade das duas bandas,
+                // que é literalmente como um tecido é tecido. Somados, o
+                // cruzamento sairia mais ALTO que os fios — o oposto de uma
+                // trama, onde o cruzamento é onde um fio MERGULHA.
+                let over = ((q[0].floor() as i32 + q[2].floor() as i32) & 1) == 0;
+                let (top, under) = if over {
+                    (along, across)
+                } else {
+                    (across, along)
+                };
+                contrast(top.max(under * WEAVE_UNDER), 0.1, 0.9)
+            }
         };
 
         if w.is_finite() {
@@ -345,6 +360,76 @@ const PORE_EDGE: f32 = 0.42;
 const SCALE_RIM: f32 = 0.30;
 /// Largura de uma trinca, na mesma régua. Bem menor: é o que a faz ser um traço.
 const CRACK_WIDTH: f32 = 0.08;
+
+/// Quanto a fronteira de uma camada de estrato ONDULA, em células.
+///
+/// ⚠️ **Meia célula, e o teto é geométrico, não de gosto:** em `1,0` a ondulação
+/// vale uma camada inteira e as fronteiras se CRUZAM — o padrão deixa de ser
+/// estratificado e vira um fBm com listras. Em `0,5` a camada engrossa e afina
+/// até o dobro sem nunca encostar na vizinha.
+const STRATA_WOBBLE: f32 = 0.5;
+/// A ondulação é de baixa frequência de propósito: ela descreve a DOBRA do
+/// terreno, e no mesmo passo da camada ela seria ruído sobre ruído.
+const STRATA_WOBBLE_FREQ: f32 = 0.35;
+
+/// Que fração das faixas carrega um risco.
+///
+/// ⚠️ **MEDIDA, e a primeira escolha errou por 4×** (`measure_alpha_coverage`).
+/// Com `0,35` de densidade e `0,35` de largura a cobertura saiu em **0,034, com
+/// 1,1% dos pontos acima de 0,9** — os números *exatos* que este módulo já
+/// registrou como o pincel que o artista lê como **quebrado** (ver
+/// [`PORE_CORE`], onde a primeira calibração dos poros deu 0,039 e 1,1%).
+///
+/// ⚠️ **Mas a CAUSA é outra, e confundi-las levaria à correção errada.** Lá o
+/// erro era volumétrico — sementes são pontos no volume, e a fração que a
+/// superfície vê cai com o CUBO. Aqui não há volume: o padrão é função de duas
+/// coordenadas e constante na terceira, então a cobertura é simplesmente a área
+/// que ele ocupa, e o produto `densidade × perfil-atravessado × perfil-ao-longo`
+/// **prevê 0,0337 contra os 0,034 medidos**. O que estava errado eram os três
+/// fatores, não a geometria.
+const SCRATCH_DENSITY: f32 = 0.55;
+/// O tempero do hash da faixa — só para os riscos não caírem sobre as sementes
+/// do Worley, que usam o mesmo [`hash3`] com `y = 0`.
+const SCRATCH_SALT: i32 = 0x5C_A7;
+/// Quantas células um risco percorre antes de o padrão repetir. Ele é > 1
+/// porque um risco é LONGO: a razão comprimento÷largura é o que o olho lê como
+/// arranhão.
+const SCRATCH_STRETCH: f32 = 0.18;
+/// O menor comprimento de risco, em fração do período. Ver [`SCRATCH_DENSITY`].
+const SCRATCH_MIN_LEN: f32 = 0.5;
+/// Quanto da ponta desvanece. ⚠️ **Menor que [`SCRATCH_MIN_LEN`]**, senão o
+/// desvanecimento começaria antes do risco e ele nasceria já apagado.
+const SCRATCH_TIP: f32 = 0.25;
+/// A largura de um risco, em fração da faixa. Ver [`SCRATCH_DENSITY`] — é o
+/// fator que mais pesou na re-calibração, porque ele entra na cobertura pela
+/// integral do ombro, não pelo valor de pico.
+const SCRATCH_WIDTH: f32 = 0.6;
+
+/// Quanto do fio que passa por BAIXO ainda aparece.
+///
+/// ⚠️ Não é zero, e a diferença é o que faz a trama ter profundidade: com `0` o
+/// fio de baixo some e a trama vira um tijolo; com `1` os dois empatam e o
+/// xadrez fica invisível. É o mesmo raciocínio do sulco do Scales.
+const WEAVE_UNDER: f32 = 0.55;
+
+/// A parte fracionária de `x`.
+///
+/// ⚠️ **`%` e `f32::rem_euclid` são chamadas a `fmod` da LIBM, não instruções** —
+/// medido pela `line/Painter` no doc 28 §5.43 (2,51 ns contra 0,54) —, e esta
+/// crate é `libm`-free. O `floor` é instrução de hardware, e é o mesmo caminho
+/// que o [`value_noise`] já toma.
+fn frac(x: f32) -> f32 {
+    x - x.floor()
+}
+
+/// Onda triangular em `[0, 1]`: **1 no meio da célula, 0 nas fronteiras**.
+///
+/// É o perfil de uma banda — uma camada de estrato, um fio de trama —, e ela é
+/// simétrica de propósito: um perfil assimétrico daria ao padrão um SENTIDO, e o
+/// eixo já diz a direção.
+fn tri(x: f32) -> f32 {
+    1.0 - 2.0 * (frac(x) - 0.5).abs()
+}
 
 /// `smoothstep` — o degrau C¹ que todo remapeamento daqui usa.
 fn smoothstep(e0: f32, e1: f32, x: f32) -> f32 {

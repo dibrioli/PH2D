@@ -304,6 +304,27 @@ pub(crate) fn alpha_scene() -> bool {
     std::env::var("PH2D_SCULPT3D_SMOKE").ok().as_deref() == Some("16")
 }
 
+/// `=21` — a cena do **EIXO**: a família DIRECIONAL do alpha.
+///
+/// ⚠️ **Cena própria e não um passo da `=16`**, pela mesma regra que separou a
+/// `=20` da `=2`: a `=16` pergunta *o padrão sobrevive à lei do traço?* e o
+/// oráculo dela é o padrão APARECER; esta pergunta *o eixo aponta o padrão?*, e
+/// o oráculo é ele GIRAR. Um passo a mais na `=16` faria o artista julgar a
+/// segunda coisa com a fixture da primeira.
+///
+/// ⚠️ **Ela abre com a MESMA malha densa da `=16`**, e não por comodidade: a lei
+/// das dez arestas vale igual, e um estrato picado por uma malha grossa lê como
+/// chuvisco — o artista veria o eixo girar um ruído.
+///
+/// ⚠️ **E ela NÃO arma o padrão.** O doc do `impasto_smoke` do Painter pregou o
+/// preço disso em letra — *"a cena que arma estado por baixo do pano pula
+/// justamente a costura que ela devia provar"* —, e aqui a costura É o gesto: os
+/// chips novos existem, estão registrados, respondem ao mouse e levam a algum
+/// lugar. O roteiro manda escolher; a cena entrega o barro.
+pub(crate) fn directional_alpha_scene() -> bool {
+    std::env::var("PH2D_SCULPT3D_SMOKE").ok().as_deref() == Some("21")
+}
+
 /// A malha com que cada cena abre.
 ///
 /// ⚠️ **Porta única, e ela existe para o gate.** A cena `=3` só significa alguma
@@ -338,7 +359,10 @@ pub(crate) fn smoke_mesh() -> ph2d_mesh::Mesh {
     // 96×144 recomenda 0,327 (6 features atravessando) · 160×240 dá 0,196 (10) ·
     // 320×480 dá 0,098 (20) · **533×800 dá 0,061 (33)**, que é textura. Custa
     // 35 ms para abrir e 0,555 ms por dab — medido, e sob o kill de 8.
-    if alpha_scene() {
+    // ⚠️ **A `=21` abre com a MESMA malha, e a razão é a lei das dez arestas.**
+    // Um estrato picado por uma malha grossa lê como chuvisco, e o artista veria
+    // o eixo girar RUÍDO — que é indistinguível de o eixo não fazer nada.
+    if alpha_scene() || directional_alpha_scene() {
         return ph2d_mesh::shapes::uv_sphere(533, 800, 1.0);
     }
     // ⚠️ **A `=17` abre um TORO, e o furo é o ponto.** O AO mede o que um cone
@@ -433,112 +457,13 @@ pub(crate) mod shading;
 #[path = "sculpt3d_scripts.rs"]
 pub(super) mod scripts;
 
+/// **OS GATES DAS CENAS** — ver o irmão.
+///
+/// ⚠️ **FILHO e não irmão** (`#[cfg(test)] #[path]`), e a diferença é
+/// load-bearing: eles leem `smoke_mesh` e as funções de cena, que são
+/// `pub(crate)`, e um `use super::*` de um módulo FILHO as alcança sem que
+/// nada precise ficar mais público só para o teste. É o precedente exato do
+/// `physics_overlay_tests.rs` e do `undo_delta_tests.rs`.
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// **A cena `=16` só significa alguma coisa se a malha dela RESOLVER o
-    /// padrão** — e isso é um fato sobre a GEOMETRIA que nenhum arch-gate de
-    /// fonte enxerga.
-    ///
-    /// A lei das dez arestas (`ph2d_sculpt3d::DEFAULT_ALPHA_SCALE`) mede pela
-    /// razão `célula ÷ aresta`: abaixo de ~8 a correlação entre vértices
-    /// vizinhos desmorona e o que chega ao barro é chuvisco por vértice. A
-    /// esfera 96×144 que o resto do módulo abre daria ~7,6 — o smoke julgaria o
-    /// aliasing e chamaria de alpha.
-    #[test]
-    fn the_alpha_scene_opens_dense_enough_to_resolve_the_pattern() {
-        let mesh = ph2d_mesh::shapes::uv_sphere(533, 800, 1.0);
-        let pos = mesh.positions();
-        let ring = mesh.adjacency();
-        let mut lens: Vec<f32> = Vec::new();
-        for v in 0..pos.len() {
-            for &n in ring.vert_verts.neighbours(v) {
-                if n as usize > v {
-                    let (a, b) = (pos[v], pos[n as usize]);
-                    let d = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
-                    lens.push(d[2].mul_add(d[2], d[0].mul_add(d[0], d[1] * d[1])).sqrt());
-                }
-            }
-        }
-        lens.sort_by(f32::total_cmp);
-        let edge = lens[lens.len() / 2];
-        let ratio = ph2d_sculpt3d::DEFAULT_ALPHA_SCALE / edge;
-        assert!(
-            ratio >= 8.0,
-            "a malha da cena `=16` tem aresta {edge:.4}, e na escala default a \
-             razão é {ratio:.1} — abaixo de 8 o padrão sai como chuvisco"
-        );
-    }
-
-    /// ⚠️ **A cena `=6` só significa alguma coisa se o bico dela estiver
-    /// ESTICADO** — e a forma sobrevive ao remesh nos dois casos, então a
-    /// densidade é a única coisa que separa a feature funcionando da morta. O
-    /// oráculo é a maior ARESTA, que é a medida do esticamento.
-    #[test]
-    fn the_remesh_scene_opens_with_a_stretched_spike() {
-        let mesh = hooked_sphere();
-        let pos = mesh.positions();
-        let mut tris = Vec::new();
-        mesh.triangle_indices(&mut tris);
-        let mut longest = 0.0f32;
-        for t in &tris {
-            for k in 0..3 {
-                let a = pos[t[k] as usize];
-                let b = pos[t[(k + 1) % 3] as usize];
-                longest = longest.max(
-                    ((a[0] - b[0]).powi(2) + (a[1] - b[1]).powi(2) + (a[2] - b[2]).powi(2)).sqrt(),
-                );
-            }
-        }
-        // A esfera de 48×72 tem aresta ~0.09 em repouso; o gancho tem de
-        // multiplicar isso, senão não há barro gasto a demonstrar.
-        assert!(
-            longest > 0.15,
-            "a maior aresta mede {longest:.4}: o gancho nao esticou nada"
-        );
-        // E a ponta tem de ter SAÍDO da esfera — um bico que não anda é um
-        // esticamento que o olho não encontra.
-        let far = mesh
-            .positions()
-            .iter()
-            .map(|p| (p[0] * p[0] + p[1] * p[1] + p[2] * p[2]).sqrt())
-            .fold(0.0f32, f32::max);
-        assert!(far > 1.5, "a ponta chegou so' a {far:.3} de raio");
-    }
-
-    /// ⚠️ **A cena `=5` só significa alguma coisa se a esfera dela TIVER cristas**,
-    /// e isso é um fato sobre geometria que nenhum arch-gate de fonte enxerga —
-    /// o mesmo argumento do gate da cena `=3`, que pina que ela é construída
-    /// subdividindo.
-    ///
-    /// ⚠️ **O oráculo tem duas metades, e a segunda é a que importa:** a crista
-    /// tem de subir E a região LISA tem de ficar lisa. Só a primeira ficaria
-    /// verde se o traço vazasse pela esfera inteira — e aí a fixture não teria
-    /// forma a seguir, que é exatamente o que ela existe para dar.
-    #[test]
-    fn the_turn_scene_opens_with_a_sphere_that_has_ridges() {
-        let mesh = ridged_sphere();
-        let (mut on, mut off) = (0.0f32, 0.0f32);
-        for p in mesh.positions() {
-            let r = (p[0] * p[0] + p[1] * p[1] + p[2] * p[2]).sqrt();
-            // A cruz vive na calota `+Z`, ao longo dos planos `y = 0` e `x = 0`.
-            if p[2] < 0.7 {
-                continue;
-            }
-            if p[0].abs() < 0.05 || p[1].abs() < 0.05 {
-                on = on.max(r - 1.0);
-            } else if p[0].abs() > 0.3 && p[1].abs() > 0.3 {
-                off = off.max((r - 1.0).abs());
-            }
-        }
-        assert!(
-            on > 0.04,
-            "a crista subiu só {on:.4} do raio — numa esfera de diâmetro 2 isso não se segue com o olho"
-        );
-        assert!(
-            off < 0.005,
-            "a região LISA subiu {off:.4}: o traço vazou, e a fixture perdeu a forma que ela existe para dar"
-        );
-    }
-}
+#[path = "sculpt3d_scenes_tests.rs"]
+mod tests;

@@ -436,6 +436,14 @@ fn every_painted_control_is_clickable_where_it_is_drawn() {
     // passaria — a forma exata do sweep que perde a premissa.
     let mut ui = Sculpt3dUi::default();
     ui.brush.verb = Verb::Crease;
+    // ⚠️ **E um padrão DIRECIONAL armado, pela mesma razão, uma wave depois.**
+    // As três rows do alpha (a escala e os dois ângulos do eixo) só existem com
+    // um padrão em mãos, e as duas do EIXO só com um dos direcionais: com o
+    // `alpha` no `None` de fábrica esta varredura passaria por cima delas e
+    // ficaria verde sobre três controles que nunca foram clicados. É a terceira
+    // vez que este arquivo escreve a mesma frase — *a fixture tem de conter o
+    // fenômeno*.
+    ui.brush.alpha = Some(Alpha::Strata);
     let (mut host, mut state) = arrange(ui);
     let painted = host.paint::<Sculpt3dPanel>(&mut state, VIEWPORT);
 
@@ -718,6 +726,47 @@ fn the_alpha_scale_row_is_absent_without_a_pattern() {
                 painted.iter().any(|(pid, _)| *pid == id),
                 want,
                 "com alpha {alpha:?} a pista de escala devia {}",
+                if want { "estar lá" } else { "sumir" }
+            );
+        }
+    }
+}
+
+/// **AS DUAS PISTAS DO EIXO SÓ EXISTEM COM UM PADRÃO DIRECIONAL.**
+///
+/// Três estados e não dois, e é o do meio que carrega o gate: **sem padrão**
+/// nenhum eixo faz sentido · com um **isotrópico** o eixo não move um bit (há
+/// gate no motor provando: os seis nem olham o frame) · com um **direcional** ele
+/// é o controle da wave.
+///
+/// ⚠️ **O caso isotrópico é o que separa este gate de um `alpha.is_some()`.** Um
+/// predicado que só perguntasse *"há padrão?"* pintaria duas pistas mortas sob o
+/// Pores — e mortas do jeito pior, porque elas RESPONDEM ao arrasto e não mudam
+/// um pixel, que é indistinguível de *"o eixo está quebrado"*.
+#[test]
+fn the_axis_rows_are_absent_unless_the_pattern_has_a_direction() {
+    for (alpha, want) in [
+        (None, false),
+        (Some(Alpha::Pores), false),
+        (Some(Alpha::Noise), false),
+        (Some(Alpha::Strata), true),
+        (Some(Alpha::Scratches), true),
+        (Some(Alpha::Weave), true),
+    ] {
+        let mut ui = Sculpt3dUi::default();
+        ui.brush.alpha = alpha;
+        let (mut host, mut state) = arrange(ui);
+        let painted = host.paint::<Sculpt3dPanel>(&mut state, VIEWPORT);
+        for id in [
+            ids::SCULPT3D_ALPHA_AZ,
+            ids::SCULPT3D_ALPHA_AZ_NUM,
+            ids::SCULPT3D_ALPHA_ELEV,
+            ids::SCULPT3D_ALPHA_ELEV_NUM,
+        ] {
+            assert_eq!(
+                painted.iter().any(|(pid, _)| *pid == id),
+                want,
+                "com alpha {alpha:?} as pistas de eixo deviam {}",
                 if want { "estar lá" } else { "sumir" }
             );
         }

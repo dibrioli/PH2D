@@ -40,7 +40,10 @@ pub mod mask_ops;
 mod spacing;
 mod stroke;
 
-pub use alpha::{Alpha, DEFAULT_ALPHA_SCALE, MAX_ALPHA_SCALE, MIN_ALPHA_SCALE, recommended_scale};
+pub use alpha::{
+    Alpha, AlphaFrame, DEFAULT_ALPHA_SCALE, MAX_ALPHA_SCALE, MAX_AXIS_ELEV_DEG, MIN_ALPHA_SCALE,
+    recommended_scale,
+};
 pub use brush::{Amount, Brush, Falloff, Grip, REACH_FRACTION, Symmetry, Verb};
 pub use spacing::{ACCUM_PER_DAB, MIN_SPACING_FRACTION, Walk, min_spacing, walk};
 pub use stroke::{Dab, SculptStroke};

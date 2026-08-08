@@ -4,7 +4,7 @@
 //! resto: **o `Dab` é onde e com que força a mão apertou; o `Brush` é que
 //! ferramenta está na mão.** Um traço é uma lista de dabs contra UM brush.
 
-use crate::Alpha;
+use crate::{Alpha, AlphaFrame};
 
 /// A curva de peso do pincel, do centro (`t = 0`) à borda (`t = 1`).
 ///
@@ -473,6 +473,21 @@ pub struct Brush {
     /// O tamanho de uma feature do alpha, em unidades de OBJETO — ver
     /// [`crate::DEFAULT_ALPHA_SCALE`].
     pub alpha_scale: f32,
+    /// **O AZIMUTE do eixo do padrão**, em graus (`0..360`) — só os padrões
+    /// direcionais o leem ([`Alpha::is_directional`]).
+    ///
+    /// ⚠️ **Graus INTEIROS, e é a convenção da lâmpada** (`ph2d_light::Light`):
+    /// o rotor deste app anda de um grau em um grau, então um ângulo fracionário
+    /// não teria como ser resolvido sem um segundo caminho. Um número, uma
+    /// régua, um rotor.
+    pub alpha_az_deg: u16,
+    /// **A ELEVAÇÃO do eixo**, em graus (`0..=`[`crate::MAX_AXIS_ELEV_DEG`]).
+    ///
+    /// ⚠️ **Sem o piso que a LÂMPADA tem.** Lá o `MIN_ELEV_DEG` existe porque
+    /// uma luz rasante degenera a resposta plana; um EIXO não degenera em lugar
+    /// nenhum — o frame é ortonormal por identidade em qualquer elevação —, e um
+    /// piso aqui seria um limite copiado de um vizinho em vez de medido.
+    pub alpha_elev_deg: u16,
     /// Raio de influência, em unidades de MUNDO.
     pub radius: f32,
     /// Intensidade em `[0, 1]` — o que multiplica o falloff para virar o peso.
@@ -495,6 +510,14 @@ impl Default for Brush {
             falloff: Falloff::Smooth,
             alpha: None,
             alpha_scale: crate::DEFAULT_ALPHA_SCALE,
+            // ⚠️ **O eixo nasce em +Y — as camadas saem HORIZONTAIS**, que é a
+            // leitura que um estrato tem no mundo e a que o olho resolve na
+            // primeira olhada. Com `az = 0` o eixo seria +X e as camadas
+            // sairiam de pé; com `elev = 90` ele apontaria para a CÂMERA (a
+            // vista é `+Z`) e o artista veria uma camada só, o que é
+            // indistinguível de *"o padrão não funciona"*.
+            alpha_az_deg: 90,
+            alpha_elev_deg: 0,
             radius: 0.25,
             strength: 0.5,
             invert: false,
@@ -530,11 +553,28 @@ impl Brush {
     /// produzir a aritmética que ele produzia antes desta wave, sem um `if` no
     /// laço quente para provar.
     #[must_use]
-    pub fn alpha_weight(&self, p: [f32; 3]) -> f32 {
+    pub fn alpha_weight(&self, p: [f32; 3], frame: &AlphaFrame) -> f32 {
         match self.alpha {
-            Some(a) => a.weight_at(p, self.alpha_scale),
+            Some(a) => a.weight_at(p, self.alpha_scale, frame),
             None => 1.0,
         }
+    }
+
+    /// **O FRAME que orienta um padrão direcional** — os dois ângulos autorados,
+    /// resolvidos.
+    ///
+    /// ⚠️ **Chame UMA vez por dab, nunca por vértice.** O rotor deste app é a
+    /// rotação de um grau ACUMULADA, ou seja **O(graus)** — até 359 iterações —,
+    /// e por vértice ele custaria mais que o padrão inteiro que orienta. É por
+    /// isso que [`Self::alpha_weight`] o RECEBE em vez de o derivar: a assinatura
+    /// é o que impede o caminho quente de pagar o preço errado.
+    ///
+    /// ⚠️ **É o ÚNICO construtor de [`AlphaFrame`] que o produto tem** (ele não
+    /// implementa `Default`), então o frame que chega ao padrão é sempre o do
+    /// pincel que o carrega — o mesmo desenho do `ShapeFrame` do Painter 2D.
+    #[must_use]
+    pub fn alpha_frame(&self) -> AlphaFrame {
+        AlphaFrame::from_degrees(self.alpha_az_deg, self.alpha_elev_deg)
     }
 
     #[must_use]

@@ -10,7 +10,13 @@
 //! decide o default da pista de escala e o que o smoke tem de dizer ao artista.
 
 use ph2d_mesh::{Mesh, shapes};
-use ph2d_sculpt3d::Alpha;
+use ph2d_sculpt3d::{Alpha, AlphaFrame, Brush};
+
+/// O frame do pincel de FÁBRICA — os seis isotrópicos o ignoram por construção, e
+/// os três direcionais são medidos no eixo em que o artista os encontra.
+fn frame() -> AlphaFrame {
+    Brush::default().alpha_frame()
+}
 
 /// A aresta MEDIANA de uma malha, em unidades de objeto.
 fn median_edge(mesh: &Mesh) -> f32 {
@@ -47,6 +53,7 @@ fn cloud(n: usize) -> Vec<[f32; 3]> {
 #[test]
 #[ignore = "sonda"]
 fn measure_alpha_coverage() {
+    let f = frame();
     let pts = cloud(200_000);
     println!("\n== COBERTURA (a força aparente que o pincel guarda ao armar o alpha) ==");
     println!("{:<8} {:>8} {:>8} {:>8}", "padrão", "média", ">0,9", "<0,1");
@@ -54,7 +61,7 @@ fn measure_alpha_coverage() {
         let mut sum = 0.0f64;
         let (mut hi, mut lo) = (0usize, 0usize);
         for &p in &pts {
-            let w = a.weight_at(p, 0.25);
+            let w = a.weight_at(p, 0.25, &f);
             sum += f64::from(w);
             if w > 0.9 {
                 hi += 1;
@@ -92,6 +99,7 @@ fn measure_alpha_coverage() {
 #[test]
 #[ignore = "sonda"]
 fn measure_alpha_against_mesh_resolution() {
+    let f = frame();
     println!("\n== O PADRÃO CONTRA A MALHA (Pores, esfera unitária) ==");
     println!(
         "{:<18} {:>7} {:>8} {:>7} {:>10} {:>10}",
@@ -106,8 +114,8 @@ fn measure_alpha_against_mesh_resolution() {
             for i in 0..mesh.vert_count() {
                 for &n in ring.vert_verts.neighbours(i) {
                     if n as usize > i {
-                        a.push(Alpha::Pores.weight_at(mesh.positions()[i], scale));
-                        b.push(Alpha::Pores.weight_at(mesh.positions()[n as usize], scale));
+                        a.push(Alpha::Pores.weight_at(mesh.positions()[i], scale, &f));
+                        b.push(Alpha::Pores.weight_at(mesh.positions()[n as usize], scale, &f));
                     }
                 }
             }
@@ -144,13 +152,14 @@ fn correlation(a: &[f32], b: &[f32]) -> f32 {
 #[ignore = "sonda"]
 fn measure_alpha_cost() {
     use std::time::Instant;
+    let f = frame();
     let pts = cloud(1_000_000);
     println!("\n== CUSTO (1 M avaliações) ==");
     for a in Alpha::ALL {
         let t = Instant::now();
         let mut acc = 0.0f32;
         for &p in &pts {
-            acc += a.weight_at(p, 0.25);
+            acc += a.weight_at(p, 0.25, &f);
         }
         let ms = t.elapsed().as_secs_f64() * 1000.0;
         // São exatamente 1 M avaliações, então `ms` e `ns/avaliação` são o MESMO
@@ -174,6 +183,7 @@ fn measure_alpha_cost() {
 #[test]
 #[ignore = "sonda"]
 fn measure_how_many_features_cross_the_model() {
+    let f = frame();
     println!("\n== FEATURES ATRAVESSANDO UMA ESFERA UNITARIA (diâmetro 2) ==");
     println!(
         "{:>7} {:>10} {:>22} {:>10}",
@@ -190,8 +200,8 @@ fn measure_how_many_features_cross_the_model() {
             for i in 0..mesh.vert_count() {
                 for &n in ring.vert_verts.neighbours(i) {
                     if n as usize > i {
-                        a.push(Alpha::Pores.weight_at(mesh.positions()[i], scale));
-                        b.push(Alpha::Pores.weight_at(mesh.positions()[n as usize], scale));
+                        a.push(Alpha::Pores.weight_at(mesh.positions()[i], scale, &f));
+                        b.push(Alpha::Pores.weight_at(mesh.positions()[n as usize], scale, &f));
                     }
                 }
             }

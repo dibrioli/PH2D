@@ -33,14 +33,23 @@ fn cloud(n: usize) -> Vec<[f32; 3]> {
 
 const SCALE: f32 = 0.25;
 
+/// O frame de FÁBRICA — o que o pincel default carrega.
+///
+/// ⚠️ Os seis isotrópicos o ignoram por construção (e há gate para isso); os três
+/// direcionais são medidos no eixo em que o artista os encontra.
+fn frame() -> AlphaFrame {
+    crate::Brush::default().alpha_frame()
+}
+
 /// **Todo padrão é um STENCIL: ele fica em `[0, 1]` e cobre quase a faixa toda.**
 #[test]
 fn every_pattern_is_a_stencil_and_not_a_dimmer() {
+    let f = frame();
     let pts = cloud(4000);
     for a in Alpha::ALL {
         let (mut lo, mut hi) = (f32::INFINITY, f32::NEG_INFINITY);
         for &p in &pts {
-            let w = a.weight_at(p, SCALE);
+            let w = a.weight_at(p, SCALE, &f);
             assert!(
                 (0.0..=1.0).contains(&w),
                 "{} saiu da faixa unitária em {p:?}: {w}",
@@ -69,17 +78,18 @@ fn every_pattern_is_a_stencil_and_not_a_dimmer() {
 /// posição desse dois valores, o envelope voltaria a lavar o padrão.
 #[test]
 fn the_same_point_always_weighs_the_same() {
+    let f = frame();
     let pts = cloud(500);
     for a in Alpha::ALL {
-        let first: Vec<f32> = pts.iter().map(|&p| a.weight_at(p, SCALE)).collect();
+        let first: Vec<f32> = pts.iter().map(|&p| a.weight_at(p, SCALE, &f)).collect();
         // De trás para a frente, e intercalando os padrões: se houvesse cache ou
         // estado, a ordem o denunciaria.
         for (i, &p) in pts.iter().enumerate().rev() {
             for other in Alpha::ALL {
-                let _ = other.weight_at([p[1], p[2], p[0]], SCALE * 1.3);
+                let _ = other.weight_at([p[1], p[2], p[0]], SCALE * 1.3, &f);
             }
             assert_eq!(
-                a.weight_at(p, SCALE),
+                a.weight_at(p, SCALE, &f),
                 first[i],
                 "{} mudou de opinião sobre {p:?}",
                 a.label()
@@ -100,13 +110,14 @@ fn the_same_point_always_weighs_the_same() {
 /// procurar a escala certa envolveria re-procurar o padrão que já se tinha.
 #[test]
 fn doubling_the_scale_doubles_the_feature_bit_for_bit() {
+    let f = frame();
     let pts = cloud(1000);
     for a in Alpha::ALL {
         for &p in &pts {
             let twice = [p[0] * 2.0, p[1] * 2.0, p[2] * 2.0];
             assert_eq!(
-                a.weight_at(twice, SCALE * 2.0),
-                a.weight_at(p, SCALE),
+                a.weight_at(twice, SCALE * 2.0, &f),
+                a.weight_at(p, SCALE, &f),
                 "{} não é auto-similar em {p:?}",
                 a.label()
             );
@@ -118,6 +129,7 @@ fn doubling_the_scale_doubles_the_feature_bit_for_bit() {
 /// [`crate::Falloff::weight`], e pelo mesmo motivo.
 #[test]
 fn a_non_finite_point_weighs_nothing() {
+    let f = frame();
     let bad = [
         [f32::NAN, 0.0, 0.0],
         [0.0, f32::INFINITY, 0.0],
@@ -127,22 +139,23 @@ fn a_non_finite_point_weighs_nothing() {
     for a in Alpha::ALL {
         for &p in &bad {
             assert_eq!(
-                a.weight_at(p, SCALE),
+                a.weight_at(p, SCALE, &f),
                 0.0,
                 "{} deixou {p:?} passar",
                 a.label()
             );
         }
         // E uma escala absurda é grampeada, não propagada.
-        assert!(a.weight_at([0.3, 0.2, 0.1], f32::NAN).is_finite());
-        assert!(a.weight_at([0.3, 0.2, 0.1], 0.0).is_finite());
-        assert!(a.weight_at([0.3, 0.2, 0.1], -5.0).is_finite());
+        assert!(a.weight_at([0.3, 0.2, 0.1], f32::NAN, &f).is_finite());
+        assert!(a.weight_at([0.3, 0.2, 0.1], 0.0, &f).is_finite());
+        assert!(a.weight_at([0.3, 0.2, 0.1], -5.0, &f).is_finite());
     }
 }
 
 /// A fração média da superfície que um padrão cobre.
 fn coverage(a: Alpha, pts: &[[f32; 3]]) -> f32 {
-    let sum: f32 = pts.iter().map(|&p| a.weight_at(p, SCALE)).sum();
+    let f = frame();
+    let sum: f32 = pts.iter().map(|&p| a.weight_at(p, SCALE, &f)).sum();
     sum / pts.len() as f32
 }
 
@@ -169,22 +182,41 @@ fn the_sparse_patterns_cover_less_than_the_dense_ones() {
     }
 }
 
-/// **O padrão não repete com o período da grade que o gera.**
+/// **Um padrão ISOTRÓPICO não repete com o período da grade que o gera.**
 ///
 /// A correlação entre `w(p)` e `w(p + 1 célula)` tem de ser baixa. Se ela fosse
 /// alta, o artista veria a trama da grade de hash impressa na escultura — uma
 /// regularidade que ninguém autorou, e a assinatura clássica de um ruído mal
 /// construído.
+///
+/// ⚠️ **A premissa é sobre RUÍDO, e ela não alcança a família direcional** — um
+/// estrato REPETE por construção, e uma trama também: a regularidade deles é
+/// AUTORADA, que é a palavra que separa as duas coisas. Este gate mediu 0,956 no
+/// Strata no dia em que ele nasceu, e o número estava certo sobre um padrão
+/// correto. O que os três direcionais prometem em vez disto é
+/// [`turning_the_axis_turns_the_pattern`].
+///
+/// ⚠️ **A pergunta é feita à PORTA** ([`Alpha::is_directional`]), nunca a uma
+/// lista de nomes aqui — e o **controle positivo** logo abaixo é o que impede
+/// este gate de virar vácuo: um `is_directional` que respondesse `true` para
+/// todos o deixaria verde sem medir nada.
 #[test]
-fn the_pattern_does_not_repeat_with_the_lattice() {
+fn an_isotropic_pattern_does_not_repeat_with_the_lattice() {
+    let f = frame();
     let pts = cloud(3000);
+    let (mut iso, mut dir) = (0usize, 0usize);
     for a in Alpha::ALL {
+        if a.is_directional() {
+            dir += 1;
+            continue;
+        }
+        iso += 1;
         // Um passo de exatamente uma célula, no eixo x.
         let cell = SCALE / a.frequency();
-        let xs: Vec<f32> = pts.iter().map(|&p| a.weight_at(p, SCALE)).collect();
+        let xs: Vec<f32> = pts.iter().map(|&p| a.weight_at(p, SCALE, &f)).collect();
         let ys: Vec<f32> = pts
             .iter()
-            .map(|&p| a.weight_at([p[0] + cell, p[1], p[2]], SCALE))
+            .map(|&p| a.weight_at([p[0] + cell, p[1], p[2]], SCALE, &f))
             .collect();
         assert!(
             correlation(&xs, &ys).abs() < 0.35,
@@ -193,6 +225,132 @@ fn the_pattern_does_not_repeat_with_the_lattice() {
             correlation(&xs, &ys)
         );
     }
+    assert!(
+        iso > 0 && dir > 0,
+        "a família se colapsou ({iso} isotrópicos, {dir} direcionais) — \
+         este gate está medindo o vácuo"
+    );
+}
+
+/// **GIRAR O EIXO GIRA O PADRÃO** — o que os três direcionais compartilham, e a
+/// única coisa que os separa dos seis isotrópicos.
+///
+/// O oráculo é uma IDENTIDADE, não um limiar escolhido: o frame de `az + 90°` é o
+/// de `az` girado de 90° em torno de Z (`n' = Rn`, `t' = Rt`, `b' = n' × t' =
+/// Rb`), então projetar `Rp` no frame girado devolve **as mesmas coordenadas**
+/// que projetar `p` no original. ⇒ o padrão visto no ponto girado, com o eixo
+/// girado, tem de ser o MESMO padrão.
+///
+/// ⚠️ **Correlação e não igualdade ao bit**, e o motivo é o rotor: ele ACUMULA
+/// noventa passos de um grau, então `rotate_by_degrees(az + 90)` não é o
+/// perpendicular exato de `rotate_by_degrees(az)`. A rotação do PONTO é exata
+/// (`(x, y) → (−y, x)`); o que carrega o erro é o frame, e sobre uma nuvem ele
+/// aparece como uma correlação um pouco abaixo de 1, nunca como um padrão
+/// diferente.
+///
+/// ⚠️ **A metade ISOTRÓPICA é o controle, e ela é BIT-EXATA — mas afirmando
+/// OUTRA coisa.** A primeira versão deste gate exigiu a rotação dos NOVE e
+/// reprovou o Noise com correlação 0,006, sobre um padrão perfeitamente correto:
+/// *isotrópico* aqui quer dizer **não lê o frame**, e não *invariante por
+/// rotação* — a grade do ruído é alinhada ao OBJETO, então girar o ponto muda o
+/// valor, como tem de mudar. O que os seis prometem é o oposto do que os três
+/// prometem: **girar o eixo não move um bit**, com o ponto parado. Duas
+/// afirmações, uma por família, e é o par que impede um `is_directional` mentiroso
+/// de deixar o gate verde nos dois sentidos.
+#[test]
+fn turning_the_axis_turns_the_pattern() {
+    let pts = cloud(3000);
+    let a90 = crate::Brush {
+        alpha_az_deg: 90,
+        ..crate::Brush::default()
+    }
+    .alpha_frame();
+    let a180 = crate::Brush {
+        alpha_az_deg: 180,
+        ..crate::Brush::default()
+    }
+    .alpha_frame();
+    // `(x, y) → (−y, x)`: os 90° exatos, sem passar por rotor nenhum.
+    let turn = |p: [f32; 3]| [-p[1], p[0], p[2]];
+
+    let (mut iso, mut dir) = (0usize, 0usize);
+    for a in Alpha::ALL {
+        let here: Vec<f32> = pts.iter().map(|&p| a.weight_at(p, SCALE, &a90)).collect();
+        if a.is_directional() {
+            dir += 1;
+            let there: Vec<f32> = pts
+                .iter()
+                .map(|&p| a.weight_at(turn(p), SCALE, &a180))
+                .collect();
+            assert!(
+                correlation(&here, &there) > 0.95,
+                "{} não girou com o eixo (correlação {:.3})",
+                a.label(),
+                correlation(&here, &there)
+            );
+        } else {
+            iso += 1;
+            let same: Vec<f32> = pts.iter().map(|&p| a.weight_at(p, SCALE, &a180)).collect();
+            assert_eq!(
+                here,
+                same,
+                "{} é isotrópico e mesmo assim mudou com o eixo",
+                a.label()
+            );
+        }
+    }
+    assert!(
+        iso > 0 && dir > 0,
+        "a família se colapsou ({iso} isotrópicos, {dir} direcionais) — \
+         este gate está medindo o vácuo"
+    );
+}
+
+/// **O STRATA EMPILHA AO LONGO DO EIXO** — a promessa que o artista lê no nome.
+///
+/// Andar ao longo do eixo atravessa as camadas (o valor varia muito); andar
+/// DENTRO de uma camada, perpendicular ao eixo, quase não muda nada. É a
+/// diferença entre *camada* e *listra em qualquer direção*, e ela é o que faz o
+/// controle de eixo significar alguma coisa.
+///
+/// ⚠️ **A razão é o oráculo, não os dois números soltos:** uma escala diferente
+/// mudaria os dois juntos, e é a RAZÃO entre eles que descreve a forma.
+#[test]
+fn the_strata_stack_along_the_axis() {
+    let f = frame();
+    let axis = f.axis();
+    // A perpendicular ao eixo, no plano XY — a direção "dentro da camada".
+    let across = [-axis[1], axis[0], 0.0];
+    let step = SCALE / 4.0;
+    let (mut along_var, mut across_var) = (0.0f32, 0.0f32);
+    for &p in &cloud(2000) {
+        let w = Alpha::Strata.weight_at(p, SCALE, &f);
+        let a = Alpha::Strata.weight_at(
+            [
+                p[0] + axis[0] * step,
+                p[1] + axis[1] * step,
+                p[2] + axis[2] * step,
+            ],
+            SCALE,
+            &f,
+        );
+        let c = Alpha::Strata.weight_at(
+            [
+                p[0] + across[0] * step,
+                p[1] + across[1] * step,
+                p[2] + across[2] * step,
+            ],
+            SCALE,
+            &f,
+        );
+        along_var += (a - w).abs();
+        across_var += (c - w).abs();
+    }
+    assert!(
+        along_var > across_var * 4.0,
+        "as camadas não empilham ao longo do eixo: \
+         variação ao longo {along_var:.1} contra {across_var:.1} atravessada"
+    );
 }
 
 /// Correlação de Pearson. `0` = as duas amostras não sabem nada uma da outra.
@@ -278,107 +436,6 @@ fn permuting_the_axes_gives_a_different_cell() {
     assert_ne!(hash3(1, 2, 3), hash3(3, 2, 1));
 }
 
-/// **A recomendação é RESOLVIDA pela malha de onde ela saiu** — as duas metades.
-///
-/// Ela é a mais grossa de duas restrições, e um gate que medisse só uma delas
-/// deixaria passar exatamente o defeito que o smoke pegou:
-///
-/// * numa malha DENSA manda o LOOK, e o padrão tem de atravessar o modelo ~33
-///   vezes — foi a falta desta metade que pôs oito crateras numa esfera;
-/// * numa malha GROSSA manda a lei das dez arestas, e o padrão sai grosso
-///   porque a malha não comporta outro — honesto, e a cura é subdividir.
-#[test]
-fn the_recommended_scale_is_resolved_by_the_mesh_it_came_from() {
-    use ph2d_mesh::shapes;
-    for (u, v, dense) in [
-        (24usize, 36usize, false),
-        (96, 144, false),
-        (700, 1050, true),
-    ] {
-        let mesh = shapes::uv_sphere(u, v, 1.0);
-        let s = crate::recommended_scale(&mesh);
-        let edge = super::sampled_edge(&mesh);
-        // ⚠️ **O `min` com o teto NÃO é folga, é um REGIME que este gate
-        // descobriu.** Na esfera 24×36 a aresta mede `0,131`, então a lei das dez
-        // arestas pediria `1,31` — mais que o modelo inteiro. Não há escala que
-        // salve aquela malha: ela **não carrega padrão nenhum**, e a única cura é
-        // subdividir. O que a recomendação faz é pousar no teto, que é o estado
-        // reconhecível; escolher um valor no meio seria fingir que resolveu.
-        let want = (super::EDGES_PER_FEATURE * edge).min(super::MAX_ALPHA_SCALE);
-        assert!(
-            s >= want * 0.999,
-            "uv_sphere({u},{v}): a recomendação {s} é mais fina que 10 arestas ({edge}) \
-             — o padrão sairia como chuvisco"
-        );
-        // ⚠️ **E o LOOK é um PISO da escala, não um alvo** — esta metade nasceu
-        // de uma mutação SOBREVIVENTE: com a recomendação reduzida à lei das dez
-        // arestas (`floor` sozinho) o gate ficava verde, porque a asserção era
-        // *"atravessa mais de 20 features"* e numa malha densa o `floor` sozinho
-        // atravessa muito mais que isso. A afirmação certa é a que o `max` faz:
-        // **a recomendação nunca é mais fina que `span ÷ 33`**, por mais densa
-        // que a malha seja. Sem ela, uma peça de um milhão de vértices receberia
-        // um padrão fino demais para o olho — o oposto exato do defeito que o
-        // smoke reportou, e igualmente inútil.
-        let look = 2.0 / super::FEATURES_ACROSS;
-        assert!(
-            s >= look * 0.999,
-            "uv_sphere({u},{v}): a recomendação {s} é mais fina que `span ÷ 33` ({look}) \
-             — o padrão fica fino demais para se ver"
-        );
-        // O modelo mede 2 (esfera unitária), então `2 / s` é quantas features o
-        // padrão atravessa. Numa malha densa a restrição de LOOK tem de mandar,
-        // e a fixture é escolhida FOLGADAMENTE do lado dela: em 533×800 as duas
-        // restrições empatam (0,059 contra 0,061) e nenhuma mutação sangraria.
-        let across = 2.0 / s;
-        if dense {
-            assert!(
-                across > 20.0,
-                "uv_sphere({u},{v}) comporta detalhe e a recomendação só atravessa \
-                 {across:.0} features — isso lê como cratera, não como textura"
-            );
-        }
-        assert!(
-            (super::MIN_ALPHA_SCALE..=super::MAX_ALPHA_SCALE).contains(&s),
-            "a recomendação {s} caiu fora da pista"
-        );
-    }
-}
-
-/// **E ela é BARATA**, porque roda num clique.
-///
-/// ⚠️ A mediana exata sobre 425 k vértices ordena ~1,2 M comprimentos; um
-/// engasgo visível ao escolher um padrão seria pior que a precisão que ele
-/// compra. O oráculo é a RAZÃO contra uma malha 11× menor: se a estimativa
-/// percorresse a malha inteira em vez de amostrar, ela cresceria com o modelo.
-#[test]
-fn the_recommendation_does_not_walk_the_whole_mesh() {
-    use ph2d_mesh::shapes;
-    use std::time::Instant;
-    let small = shapes::uv_sphere(48, 72, 1.0);
-    let big = shapes::uv_sphere(160, 240, 1.0);
-    assert!(
-        big.vert_count() > small.vert_count() * 8,
-        "a fixture não escala"
-    );
-
-    let t = Instant::now();
-    for _ in 0..20 {
-        std::hint::black_box(crate::recommended_scale(&small));
-    }
-    let a = t.elapsed().as_secs_f64();
-    let t = Instant::now();
-    for _ in 0..20 {
-        std::hint::black_box(crate::recommended_scale(&big));
-    }
-    let b = t.elapsed().as_secs_f64();
-    assert!(
-        b < a * 4.0,
-        "a recomendação custa {:.2}× mais numa malha 11× maior — ela está \
-         percorrendo a malha em vez de amostrá-la",
-        b / a
-    );
-}
-
 /// **Um pincel sem alpha pesa `1.0` EXATO** — é daqui que sai a byte-identidade.
 ///
 /// ⚠️ **A afirmação inteira é sobre o BIT.** `x * 1.0` é `x` ao bit no IEEE-754
@@ -389,13 +446,14 @@ fn the_recommendation_does_not_walk_the_whole_mesh() {
 /// nenhuma tolerância de gate veria.
 #[test]
 fn a_brush_without_an_alpha_weighs_exactly_one() {
+    let f = frame();
     let plain = crate::Brush::default();
     assert!(plain.alpha.is_none(), "o default tem de ser SEM alpha");
     for p in cloud(200) {
-        assert_eq!(plain.alpha_weight(p), 1.0, "peso ≠ 1 em {p:?}");
+        assert_eq!(plain.alpha_weight(p, &f), 1.0, "peso ≠ 1 em {p:?}");
     }
     // Inclusive onde o padrão armado devolveria zero.
-    assert_eq!(plain.alpha_weight([f32::NAN, 0.0, 0.0]), 1.0);
+    assert_eq!(plain.alpha_weight([f32::NAN, 0.0, 0.0], &f), 1.0);
 
     // E o inverso: armado, ele deixa de ser constante.
     let armed = crate::Brush {
@@ -404,7 +462,7 @@ fn a_brush_without_an_alpha_weighs_exactly_one() {
     };
     let ws: Vec<f32> = cloud(500)
         .into_iter()
-        .map(|p| armed.alpha_weight(p))
+        .map(|p| armed.alpha_weight(p, &f))
         .collect();
     let lo = ws.iter().copied().fold(f32::INFINITY, f32::min);
     let hi = ws.iter().copied().fold(f32::NEG_INFINITY, f32::max);

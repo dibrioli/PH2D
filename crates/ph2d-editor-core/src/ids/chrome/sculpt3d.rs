@@ -96,7 +96,7 @@ pub const SCULPT3D_PINCH_NUM: NodeId = hash_node_id("sculpt3d.pinch_num");
 /// é um padrão. É a mesma aritmética do [`SCULPT3D_MATCAP`], e pelo mesmo
 /// motivo: um chip a mais pinta uma opção que o motor não tem, um a menos deixa
 /// um padrão inalcançável. Gateado.
-pub const SCULPT3D_ALPHA: [NodeId; 7] = [
+pub const SCULPT3D_ALPHA: [NodeId; 10] = [
     hash_node_id("sculpt3d.alpha.none"),
     hash_node_id("sculpt3d.alpha.0"),
     hash_node_id("sculpt3d.alpha.1"),
@@ -104,11 +104,28 @@ pub const SCULPT3D_ALPHA: [NodeId; 7] = [
     hash_node_id("sculpt3d.alpha.3"),
     hash_node_id("sculpt3d.alpha.4"),
     hash_node_id("sculpt3d.alpha.5"),
+    hash_node_id("sculpt3d.alpha.6"),
+    hash_node_id("sculpt3d.alpha.7"),
+    hash_node_id("sculpt3d.alpha.8"),
 ];
 /// Tamanho de uma feature do alpha, em unidades de objeto.
 pub const SCULPT3D_ALPHA_SCALE: NodeId = hash_node_id("sculpt3d.alpha_scale");
 /// Chip ligado a [`SCULPT3D_ALPHA_SCALE`].
 pub const SCULPT3D_ALPHA_SCALE_NUM: NodeId = hash_node_id("sculpt3d.alpha_scale_num");
+
+/// **O AZIMUTE do eixo de um padrão DIRECIONAL.**
+///
+/// ⚠️ **Não é a lâmpada, e a distinção importa mais do que parece:** os dois
+/// pares de pistas falam a mesma língua (azimute + elevação em graus, o rotor do
+/// app) e descrevem coisas diferentes — um aponta a LUZ, o outro aponta o
+/// PADRÃO. Ids separados são o que impede um clique de virar o outro.
+pub const SCULPT3D_ALPHA_AZ: NodeId = hash_node_id("sculpt3d.alpha_az");
+/// Chip ligado a [`SCULPT3D_ALPHA_AZ`].
+pub const SCULPT3D_ALPHA_AZ_NUM: NodeId = hash_node_id("sculpt3d.alpha_az_num");
+/// A ELEVAÇÃO do eixo — ver [`SCULPT3D_ALPHA_AZ`].
+pub const SCULPT3D_ALPHA_ELEV: NodeId = hash_node_id("sculpt3d.alpha_elev");
+/// Chip ligado a [`SCULPT3D_ALPHA_ELEV`].
+pub const SCULPT3D_ALPHA_ELEV_NUM: NodeId = hash_node_id("sculpt3d.alpha_elev_num");
 
 // ── O espelho ───────────────────────────────────────────────────────────────
 // TRÊS botões e não um rádio: os eixos são independentes (o ZBrush espelha em

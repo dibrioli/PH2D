@@ -324,6 +324,11 @@ impl SculptStroke {
         }
 
         let plane = self.fit_plane(brush, dab);
+        // ⚠️ **UMA vez por dab, e a assinatura é o que garante isso.** O frame do
+        // padrão sai do rotor de um grau ACUMULADO deste app, que é `O(graus)`:
+        // derivado por vértice ele custaria mais que o padrão inteiro que
+        // orienta. Ver `Brush::alpha_frame`.
+        let alpha_frame = brush.alpha_frame();
         let reach = brush.reach(dab.radius);
         let inv_r = 1.0 / dab.radius;
         let intensity = brush.strength * dab.pressure.clamp(0.0, 1.0);
@@ -451,7 +456,7 @@ impl SculptStroke {
             // todos os dabs concordam sobre aquele vértice, e o `max` de valores
             // iguais é o valor. É a mesma frase que a distância já obedece três
             // parágrafos acima.
-            let fall = brush.falloff.weight(dist * inv_r) * brush.alpha_weight(base);
+            let fall = brush.falloff.weight(dist * inv_r) * brush.alpha_weight(base, &alpha_frame);
             // ⚠️ **O `w` fica VERBATIM — mesma ordem, mesmos bits.** A forma
             // "natural" seria derivar um do outro (`w = shape * intensity`), e
             // ela **re-associa** o produto de `(falloff × intensity) × keep`

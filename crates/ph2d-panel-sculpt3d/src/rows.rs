@@ -207,7 +207,83 @@ static BRUSH: &[Row] = &[
         show: |u| u.brush.alpha.is_some(),
         in_tail: true,
     },
+    Row {
+        label: "panel.sculpt3d.alpha_az",
+        slider: ids::SCULPT3D_ALPHA_AZ,
+        chip: ids::SCULPT3D_ALPHA_AZ_NUM,
+        min: 0.0,
+        // 359 e não 360 — os dois extremos seriam o MESMO azimute, e uma pista
+        // cujas duas pontas significam a mesma coisa tem um degrau invisível. É
+        // a mesma régua do `light_az`, e de propósito: um artista que aprendeu a
+        // apontar a luz não devia reaprender a apontar o padrão.
+        max: 359.0, // LITERAL-PX-OK: graus de azimute, nao metrica de design
+        step: 5.0,  // LITERAL-PX-OK: passo em graus
+        decimals: 0,
+        get: |u| f32::from(u.brush.alpha_az_deg),
+        set: |u, v| u.brush.alpha_az_deg = degrees(v),
+        show: directional_alpha,
+        in_tail: true,
+    },
+    Row {
+        label: "panel.sculpt3d.alpha_elev",
+        slider: ids::SCULPT3D_ALPHA_ELEV,
+        chip: ids::SCULPT3D_ALPHA_ELEV_NUM,
+        // ⚠️ **Sem o piso que a LÂMPADA tem.** Lá o `MIN_ELEV_DEG` existe porque
+        // uma luz rasante degenera a resposta plana; um EIXO não degenera em
+        // lugar nenhum — o frame é ortonormal por identidade em qualquer
+        // elevação. Copiar o piso do vizinho seria um limite herdado por
+        // analogia, que é o que esta casa varre a cada wave.
+        min: 0.0,
+        // ⚠️ O zênite vem do MOTOR, não é escolhido aqui: acima dele o eixo
+        // desceria do outro lado e o azimute já cobre esse hemisfério — dois
+        // caminhos para a mesma direção.
+        max: MAX_AXIS_ELEV_F32,
+        step: 5.0, // LITERAL-PX-OK: passo em graus
+        decimals: 0,
+        get: |u| f32::from(u.brush.alpha_elev_deg),
+        set: |u, v| u.brush.alpha_elev_deg = degrees(v),
+        show: directional_alpha,
+        in_tail: true,
+    },
 ];
+
+/// **Só com um padrão DIRECIONAL armado.**
+///
+/// ⚠️ A pergunta é feita à porta do MOTOR ([`ph2d_sculpt3d::Alpha::is_directional`]),
+/// nunca a uma lista de nomes aqui: sob um dos seis isotrópicos o eixo não move
+/// um bit — há gate provando —, e duas pistas que desenham e não fazem nada são
+/// o controle morto que esta casa varre a cada wave. É a mesma lei do
+/// `Plane Offset` e das duas pistas de lâmpada sob um matcap.
+fn directional_alpha(u: &Sculpt3dUi) -> bool {
+    u.brush
+        .alpha
+        .is_some_and(ph2d_sculpt3d::Alpha::is_directional)
+}
+
+/// Um valor de pista → graus inteiros.
+///
+/// ⚠️ **A pista é `f32` e o ângulo é `u16`**, e a conversão mora AQUI, na
+/// fronteira, e não no motor: o rotor deste app anda de grau em grau, então um
+/// ângulo fracionário não teria como ser resolvido sem um segundo caminho. É a
+/// mesma travessia que o painel já faz para as duas pistas de lâmpada.
+/// ⚠️ **ARREDONDA, e o gate de costura pegou o truncamento na hora.** A row
+/// mostra zero casas, então `134,625` é lido como **135** no readout; truncando,
+/// o padrão iria para 134 e o número na tela discordaria do eixo que o pincel
+/// usa — a doença de *seed ≠ sample* que este repo já pagou em quatro módulos.
+/// A tolerância de `0,5` do gate `each_row_owns_exactly_one_field` é literalmente
+/// o arredondamento que ele espera encontrar aqui.
+///
+/// ⚠️ **`safe_clamp` e não `.clamp`**, e o `arch_safe_clamp_only` foi quem cobrou:
+/// o teto `f32::from(u16::MAX)` **não é um literal**, e o `.clamp` da `std`
+/// **panica** com bounds trocados e devolve o valor original com `NaN`. Aqui um
+/// `NaN` cairia no `as u16`, que é comportamento definido mas absurdo (zero) — a
+/// peneira tem de vir antes.
+fn degrees(v: f32) -> u16 {
+    ph2d_editor_core::math::safe_clamp(v.round(), 0.0, f32::from(u16::MAX)) as u16
+}
+
+/// O zênite do eixo, lido do dono dele.
+const MAX_AXIS_ELEV_F32: f32 = ph2d_sculpt3d::MAX_AXIS_ELEV_DEG as f32; // CLAMP-OK: teto do motor
 
 /// Como a forma é LIDA — a cavidade e a lâmpada.
 static SHADING: &[Row] = &[

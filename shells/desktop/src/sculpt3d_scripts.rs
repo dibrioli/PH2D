@@ -114,13 +114,16 @@ pub(crate) fn for_scene(mesh: &ph2d_mesh::Mesh) {
              [sculpt3d]    -- se as features nao passarem de ~20, PARE: o padrao vai sair como\n\
              [sculpt3d]    CRATERA, nao como textura, e o resto do smoke nao diz nada.\n\
              [sculpt3d]    O ALPHA e' a fileira nova na secao BRUSH, logo abaixo do Falloff:\n\
-             [sculpt3d]    None (o pincel liso) e seis padroes. A pista ALPHA SCALE aparece\n\
+             [sculpt3d]    None (o pincel liso) e NOVE padroes -- os seis ISOTROPICOS e os tres\n\
+             [sculpt3d]    DIRECIONAIS, que tem eixo e sao julgados pela cena =21. A pista\n\
+             [sculpt3d]    ALPHA SCALE aparece\n\
              [sculpt3d]    LOGO EMBAIXO dela, e SO' com um padrao armado -- sem padrao ela\n\
              [sculpt3d]    mediria uma feature que nao existe.\n\
              [sculpt3d]    Escolha 'Pores' e desenhe com o Draw (1) numa faixa larga: em vez de\n\
              [sculpt3d]    um monte liso tem de sair PELE -- pontos, nao uma rampa.\n\
-             [sculpt3d]    Passe pelos seis: Noise (rocha) · Pores (pele) · Scales (reptil) ·\n\
-             [sculpt3d]    Cracks (terra seca) · Grain (chatter fino) · Ridges (ruga, casca).\n\
+             [sculpt3d]    Passe pelos seis isotropicos: Noise (rocha) · Pores (pele) ·\n\
+             [sculpt3d]    Scales (reptil) · Cracks (terra seca) · Grain (chatter fino) ·\n\
+             [sculpt3d]    Ridges (ruga, casca).\n\
              [sculpt3d]    ESCOLHER UM PADRAO SEMEIA A ESCALA que o modelo comporta -- e' por\n\
              [sculpt3d]    isso que ele ja' abre com tamanho de textura em vez de cratera. Uma\n\
              [sculpt3d]    escala e' absoluta (um poro tem o tamanho de um poro), mas QUAL numero\n\
@@ -138,6 +141,43 @@ pub(crate) fn for_scene(mesh: &ph2d_mesh::Mesh) {
              [sculpt3d]    -- suba a Forca. O Ridges cobre ~70% e quase nao enfraquece.\n\
              [sculpt3d]    E pegue o Crease (0) com um padrao: o vinco AFIA o padrao (ele entra\n\
              [sculpt3d]    na quinta potencia), entao o mesmo alpha sai muito mais recortado."
+        );
+    }
+    if crate::sculpt3d::directional_alpha_scene() {
+        // ⚠️ **A MESMA medição da `=16`, e pelo mesmo motivo:** a lei das dez
+        // arestas não muda porque o padrão ganhou eixo. Um estrato picado por
+        // uma malha grossa lê como chuvisco, e girar o eixo de um chuvisco é
+        // indistinguível de o eixo não fazer nada.
+        let seed = ph2d_sculpt3d::recommended_scale(mesh);
+        let across = 2.0 / seed;
+        eprintln!(
+            "[sculpt3d] =21 O EIXO: a familia DIRECIONAL do alpha (a escala que esta malha\n\
+             [sculpt3d]    comporta e' {seed:.4}, {across:.0} features atravessando o modelo).\n\
+             [sculpt3d]    -- se as features nao passarem de ~20, PARE, como na =16.\n\
+             [sculpt3d]    Os seis primeiros padroes leem IGUAL de qualquer direcao. Os tres\n\
+             [sculpt3d]    ultimos -- Strata, Scratches, Weave -- tem um EIXO, e ele e' a wave.\n\
+             [sculpt3d]    1) Escolha STRATA na fileira Alpha. DUAS pistas novas aparecem logo\n\
+             [sculpt3d]       abaixo da Alpha Scale: PATTERN ANGLE e PATTERN TILT. Elas so'\n\
+             [sculpt3d]       existem com um padrao direcional armado -- volte para 'Pores' e\n\
+             [sculpt3d]       elas SOMEM (sob um isotropico o eixo nao move um bit, ha' gate).\n\
+             [sculpt3d]    2) Desenhe uma faixa larga com o Draw (1). Tem de sair CAMADAS\n\
+             [sculpt3d]       HORIZONTAIS -- e' o eixo de fabrica (+Y), a leitura que um estrato\n\
+             [sculpt3d]       tem no mundo.\n\
+             [sculpt3d]    3) ⚠️ O TESTE DA WAVE: arraste PATTERN ANGLE ate' 0. As camadas tem de\n\
+             [sculpt3d]       ficar DE PE'. Se elas nao girarem, o eixo nao esta' chegando ao\n\
+             [sculpt3d]       padrao -- PARE. Suba PATTERN TILT e elas se inclinam.\n\
+             [sculpt3d]    4) O padrao continua colado ao ESPACO, nao ao gesto: passe DEVAGAR e\n\
+             [sculpt3d]       depois RAPIDO pelo mesmo lugar, e passe de VOLTA -- as camadas caem\n\
+             [sculpt3d]       nos MESMOS lugares. (Medido: um traco de 27 dabs guarda contraste\n\
+             [sculpt3d]       0,285 contra 0,295 de um carimbo unico. Uma coordenada presa ao DAB\n\
+             [sculpt3d]       perderia 57% -- foi essa medicao que decidiu o desenho.)\n\
+             [sculpt3d]    5) SCRATCHES: riscos ESPARSOS, perpendiculares ao eixo. Ele cobre ~10%\n\
+             [sculpt3d]       da superficie de proposito (um risco e' uma LINHA), entao o pincel\n\
+             [sculpt3d]       parece fraco -- suba a Forca, como no Cracks.\n\
+             [sculpt3d]    6) WEAVE: a trama, e uma das duas familias de fios corre AO LONGO do\n\
+             [sculpt3d]       eixo. Gire o Pattern Angle e a trama gira junto.\n\
+             [sculpt3d]    7) E o de sempre: pegue o Crease (0) com o Strata -- o vinco AFIA as\n\
+             [sculpt3d]       camadas, porque o alpha entra na quinta potencia."
         );
     }
     if crate::sculpt3d::turn_scene() {

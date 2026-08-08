@@ -7285,6 +7285,7 @@ name = "ph2d-sculpt3d"
 version = "0.0.0"
 dependencies = [
  "ph2d-mesh",
+ "ph2d-painter-brush",
 ]
 
 [[package]]

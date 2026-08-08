@@ -193,6 +193,11 @@ pub struct ModelSnapshot {
 #[derive(Clone, Debug)]
 pub(crate) struct WarpSnap {
     pub(crate) disp: Arc<Vec<[f32; 2]>>,
+    /// A lista AUTORADA de dabs do Reshape, e se ela ainda explica o mapa inteiro (ADR-0156). Ela viaja
+    /// aqui pelo mesmo motivo que o `disp`: desfazer um passo tem de devolver as duas metades em
+    /// lock-step, senão a lista descreve um mapa que já não existe.
+    pub(crate) dabs: Arc<Vec<crate::tool::paint::warp::DabField>>,
+    pub(crate) derived: bool,
     pub(crate) pre: Arc<Vec<u8>>,
     pub(crate) pre_h: Arc<Vec<f32>>,
     pub(crate) pre_cover: Arc<Vec<u8>>,

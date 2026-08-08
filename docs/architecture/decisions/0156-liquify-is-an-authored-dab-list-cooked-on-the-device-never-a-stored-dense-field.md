@@ -145,15 +145,18 @@ Isto é a lei que esta casa já aplica em toda parte — **`fonte ≠ cozido`**:
 | `the_thin_line_survives_a_twist` | a linha de 3 px sobrevive ao swirl | **VERMELHO** (28,1% da tinta) |
 | `the_bounded_twist_still_turns_the_picture` | o campo limitado ainda DEFORMA (anti-vácuo) | verde nas DUAS leis, de propósito |
 | `the_device_walk_reproduces_the_cpu_law` | a 2ª implementação (WGSL) responde o que a 1ª responde | **verde** (pior delta **0,000307 px** no Twist, 0,000009 no Push, 0,000004 no Pinch; **0 de 4096 nós** acima de 1e-3) |
-| `no_dense_field_is_authored_state` | arch-gate: o campo denso não é serializado nem keyframeável | verde |
-| `the_lattice_is_a_cache_you_can_throw_away` | descartar e re-cozinhar dá resultado **bit-idêntico** | verde |
+| `the_authored_list_records_every_dab_in_order` | a lista existe e registra o que o artista carimbou | **verde** |
+| `the_lattice_is_a_cache_you_can_throw_away` | descartar o mapa e re-cozinhar da LISTA reproduz a deformação | **verde** — média de diferença **2,16** contra os **79,33** que a deformação em si move (37×). ⚠️ **NÃO é bit-idêntico**, e a redação anterior prometia isso: o mapa do produto é incremental e carrega a deriva; o re-cook é exato |
+| `reconstruct_says_the_list_no_longer_explains_the_map` | quem edita o MAPA baixa o `derived` | **verde** — sem ela a promessa quebra em silêncio no 1º Reconstruct |
+| `undo_carries_the_list_in_lock_step_with_the_map` | o snapshot leva as duas metades | **verde** — a lição que o `mats` desta linha custou |
+| `no_dense_field_is_authored_state` | arch-gate: o campo denso não é serializado nem keyframeável | da W2 |
 | `the_cook_reads_no_history_per_pixel` | paridade serial × paralelo (a condição do [ADR-0109](0109-rayon-exception-watercolor-composite.md)) | verde |
 | `the_product_composes_the_dab_list_instead_of_summing_it` | o `apply.rs` — não a lei — respeita o teto `2r` | **verde** (a travessia landou; a mutação *"lê no destino"* = a soma sangra) |
 | `one_dab_advances_the_map_by_exactly_one_composition` | um dab avança o mapa por UMA composição, contra o mapa que o produto tinha | verde |
 | `the_incremental_cache_drifts_from_the_exact_walk_and_this_is_the_number` | a deriva do cache incremental é ESTE número | verde — e ele afirma um **piso** a 200 dabs, para ninguém apagar a nota sem mexer no mecanismo |
 | `the_cook_is_bounded_by_the_footprint` | o cook percorre a união dos dabs, **nunca a tela** | verde — ele **substitui** *"o passo é medido"*: a medição do device dissolveu o passo e deixou o ESCOPO no lugar dele |
 
-⚠️ **Os QUATRO primeiros existem e rodaram** (`warp::compose_tests` e `warp::cook_gpu`, os dois de GPU sob `--ignored`); os quatro últimos são a lista da **W1** e nascem com ela. Misturar as duas metades sem dizer qual é qual é como uma tabela de gates vira um relatório de coisas que ninguém escreveu.
+⚠️ **Os OITO primeiros existem e rodaram** (`warp::compose_tests` e `warp::cook_gpu`, os dois de GPU sob `--ignored`); os três últimos são a lista da **W2** (o cook no device) e nascem com ela. Misturar as duas metades sem dizer qual é qual é como uma tabela de gates vira um relatório de coisas que ninguém escreveu.
 
 ⚠️ **O gate de paridade é a ÚNICA defesa desta wave, e é por desenho.** O irmão `ph2d-paint-gpu` consegue contenção **estrutural** (a lei do dab é 1-D em `t` ⇒ a CPU manda uma TABELA e o device só amostra, e a crate não tem como alcançar o `falloff_weight`). Aqui não existe tabela: `at` é um campo VETORIAL por dab, então o device **carrega a lei** e há duas implementações da mesma frase — a situação do `ImpastoLightPass`, não a do carimbo. Fingir contenção seria teatro; medir é o que sobra. Mutações provadas: a caminhada parar de retro-traçar (isto é, virar a SOMA que o ADR condena) sangra **58,53 px em 3938 de 4096 nós**, e matar o lerp do rotor — o *staircase* que o `twist_rotor` da CPU existe para curar — sangra **17,33 px**.
 

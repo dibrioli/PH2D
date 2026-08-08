@@ -29,6 +29,8 @@ fn model(active_px: u8) -> ModelSnapshot {
         selection_shapes: Vec::new(),
         deform: WarpSnap {
             disp: Arc::new(Vec::new()),
+            dabs: Arc::new(Vec::new()),
+            derived: true,
             pre: Arc::new(Vec::new()),
             pre_h: Arc::new(Vec::new()),
             pre_cover: Arc::new(Vec::new()),
@@ -378,6 +380,8 @@ fn model_all_planes(seed: u8) -> ModelSnapshot {
     m.selection_crisp = bytes(seed.wrapping_add(3));
     m.deform = WarpSnap {
         disp: disp(seed),
+        dabs: Arc::new(Vec::new()),
+        derived: true,
         pre: rgba(seed.wrapping_add(4)),
         pre_h: floats(seed.wrapping_add(5)),
         pre_cover: bytes(seed.wrapping_add(6)),

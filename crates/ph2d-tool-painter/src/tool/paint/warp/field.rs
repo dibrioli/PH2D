@@ -100,7 +100,8 @@ fn value_noise(seed: u64, x: f32, y: f32) -> f32 {
 
 /// A per-dab warp field: fixed dab geometry + knobs, sampled per pixel by [`Self::at`]. Built once per
 /// dab in [`super::apply`]; for Twist it bakes the rotor table up front so `at` is O(1) per pixel.
-pub(super) struct DabField {
+#[derive(Clone, Debug)]
+pub(crate) struct DabField {
     pub(super) mode: DeformMode,
     center: [f32; 2],
     inv_r2: f32,

@@ -126,6 +126,11 @@ impl PainterTool {
                 buf[b..b + 4].copy_from_slice(&px);
             }
         }
+        // ⚠️ **A LISTA é o estado; o mapa acima é o cache dela** (ADR-0156). O dab entra DEPOIS de o mapa
+        // ter sido avançado com ele, para que as duas metades descrevam sempre o mesmo instante — um push
+        // antes do laço deixaria a lista à frente do mapa por uma linha, e um early-return no meio a
+        // deixaria à frente para sempre.
+        Arc::make_mut(&mut self.paint.warp.dabs).push(field.clone());
         // W4: the body rides the same displacement — one door for every warp render (`warp/relief.rs`).
         self.warp_render_relief(bbox);
         self.mark_dirty(bbox);

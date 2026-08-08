@@ -158,7 +158,7 @@ mod selection_edit;
 /// Selection **isolated gizmos** (ADR-0103 Am.2 v2): per-shape gizmos decoupled from the stroke editors.
 mod selection_gizmo;
 /// **Deform** (Liquify) — the single inverse-warp kernel + per-mode displacement fields + Reconstruct/Amount.
-mod warp;
+pub(crate) mod warp;
 pub use self::{selection_gizmo::SelectionGizmoView, warp::DeformGizmoView};
 #[cfg(test)]
 mod impasto_eraser_tests; // o eraser do Impasto sob os metodos de FORMA

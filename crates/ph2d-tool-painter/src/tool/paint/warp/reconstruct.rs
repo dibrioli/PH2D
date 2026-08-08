@@ -44,6 +44,11 @@ impl PainterTool {
             }
         }
 
+        // ⚠️ **O Reconstruct edita o MAPA, e a lista de dabs não expressa isso** (ADR-0156 §preço, que já o
+        // nomeia como *o escape*): relaxar não é um `v` que componha, é uma redução. A partir daqui o cache
+        // deixa de ser derivável da lista, e dizê-lo é o que impede a promessa de virar mentira silenciosa.
+        self.paint.warp.derived = false;
+
         // Pass 2 (mutable): shrink the displacement toward zero and re-render from `pre`.
         let src = Arc::clone(&self.paint.warp.pre);
         let disp = Arc::make_mut(&mut self.paint.warp.disp);

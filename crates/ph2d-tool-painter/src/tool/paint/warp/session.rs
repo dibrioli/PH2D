@@ -8,8 +8,13 @@
 //! ```
 //!
 //! — a **single resample from a pristine baseline**, which is what keeps a long gesture sharp (nothing
-//! ever re-reads its own output) and what makes transport a **sum over the dab list instead of a
-//! product**. The second property is why this type has two owners now.
+//! ever re-reads its own output) and what makes transport a **composição sobre a lista de dabs em vez de
+//! um produto**. A segunda propriedade é por que este tipo tem dois donos hoje.
+//!
+//! ⚠️ E desde o [ADR-0156] a lista **é o estado**: [`WarpSession::dabs`] guarda o que o artista carimbou e
+//! o `disp` é o cache dela. Quem escreve o mapa por fora (Reconstruct, Smear) baixa o
+//! [`WarpSession::derived`], porque *"jogue o cache fora e re-cozinhe"* só pode ser prometido enquanto for
+//! verdade.
 //!
 //! ## Two tools, one session type, one door
 //!
@@ -66,12 +71,34 @@ pub(crate) struct WarpSession {
     pub(crate) relief_layer: Option<crate::tool::RtLayerId>,
     /// A session is live (`pre` captured).
     pub(crate) active: bool,
-    /// **Session cumulative displacement** (`[dx, dy]` px per texel) — the source of truth. Contributors
-    /// ADD to it (Deform's fields, the Smear's dabs); **Reconstruct REDUCES it** toward zero (pixels slide
+    /// **Session cumulative displacement** (`[dx, dy]` px per texel) — o **CACHE** de [`Self::dabs`].
+    /// Contribuidores o **COMPÕEM** (`D_k = v_k + D_{k−1}(p − v_k)`, a lei do `apply`/`smear_field`);
+    /// **Reconstruct REDUCES it** toward zero (pixels slide
     /// BACK to where they started — a real un-warp, not a cross-fade); Reset zeroes it. Sized `w·h`,
     /// allocated at session start, empty when idle. `Arc`-shared so the undo snapshot captures it cheaply
     /// (CoW).
     pub(crate) disp: Arc<Vec<[f32; 2]>>,
+    /// **A LISTA AUTORADA — o estado, do qual [`Self::disp`] é o cache** ([ADR-0156]).
+    ///
+    /// Cada dab que o Reshape carimba entra aqui, em ordem. `Arc` pelo mesmo motivo que o `disp`: o
+    /// snapshot de undo a captura por refcount, e um passo desfeito tem de devolver a lista **em
+    /// lock-step com o mapa** — a lição que o `mats` desta linha pagou por ficar de fora do
+    /// `ModelSnapshot` (*ao adicionar um plano, adicione-o ao snapshot no MESMO commit*).
+    ///
+    /// ⚠️ **Custo nomeado:** um `DabField` mede ~160 B (a tabela de rotor do Twist é a única gordura), então
+    /// uma sessão de 18 000 dabs — cinco minutos de trabalho contínuo — são ~2,9 MB. O `DeformDab` de ~40 B
+    /// que o ADR descreve é o emagrecimento, e ele é passo próprio: guardar o `DabField` hoje é honesto
+    /// porque ele **é** a entrada da lei, não uma paráfrase dela.
+    ///
+    /// [ADR-0156]: ../../../../../docs/architecture/decisions/0156-liquify-is-an-authored-dab-list-cooked-on-the-device-never-a-stored-dense-field.md
+    pub(crate) dabs: Arc<Vec<super::field::DabField>>,
+    /// **A lista explica o mapa INTEIRO?**
+    ///
+    /// ⚠️ Nem tudo que escreve `disp` é um dab: o **Reconstruct** o REDUZ em direção a zero (uma edição do
+    /// MAPA que a lista não expressa — o ADR-0156 §preço já a nomeia como *o escape*) e o **Smear** tem
+    /// transporte próprio. Nos dois casos isto vira `false`, e a promessa *"jogue o cache fora e re-cozinhe
+    /// da lista"* deixa de valer **explicitamente** em vez de virar uma mentira silenciosa.
+    pub(crate) derived: bool,
     /// How far the BODY rides along `disp`, as a fraction of how far the pixels ride (`1.0` = together).
     ///
     /// There is still exactly ONE displacement map — this is not a second transport, it is the single
@@ -95,6 +122,8 @@ impl Default for WarpSession {
             relief_layer: None,
             active: false,
             disp: Arc::new(Vec::new()),
+            dabs: Arc::new(Vec::new()),
+            derived: true,
             relief_disp_scale: 1.0,
         }
     }
@@ -117,6 +146,8 @@ impl PainterTool {
         if !self.paint.warp.active || self.paint.warp.pre.len() != n * 4 {
             self.paint.warp.pre = Arc::clone(&self.canvas_rgba);
             self.paint.warp.disp = Arc::new(vec![[0.0, 0.0]; n]);
+            self.paint.warp.dabs = Arc::new(Vec::new());
+            self.paint.warp.derived = true;
             // The impasto planes freeze BESIDE the pixels — all of them, at the same instant, whatever the
             // Affect Relief toggle currently says (three refcount bumps; a layer with no relief pays
             // nothing). A session that froze the pixels at stroke 1 and the body at stroke 40 would
@@ -154,6 +185,8 @@ impl PainterTool {
         self.paint.warp.active = false;
         self.paint.warp.pre = Arc::new(Vec::new());
         self.paint.warp.disp = Arc::new(Vec::new());
+        self.paint.warp.dabs = Arc::new(Vec::new());
+        self.paint.warp.derived = true;
         self.paint.warp.pre_h = Arc::new(Vec::new());
         self.paint.warp.pre_cover = Arc::new(Vec::new());
         self.paint.warp.pre_mats = Arc::new(Vec::new());
@@ -167,6 +200,8 @@ impl PainterTool {
     pub(crate) fn warp_for_snapshot(&self) -> crate::undo::WarpSnap {
         crate::undo::WarpSnap {
             disp: Arc::clone(&self.paint.warp.disp),
+            dabs: Arc::clone(&self.paint.warp.dabs),
+            derived: self.paint.warp.derived,
             pre: Arc::clone(&self.paint.warp.pre),
             pre_h: Arc::clone(&self.paint.warp.pre_h),
             pre_cover: Arc::clone(&self.paint.warp.pre_cover),
@@ -180,6 +215,8 @@ impl PainterTool {
     /// Reconstruct stays usable after an undo.
     pub(crate) fn restore_warp(&mut self, s: crate::undo::WarpSnap) {
         self.paint.warp.disp = s.disp;
+        self.paint.warp.dabs = s.dabs;
+        self.paint.warp.derived = s.derived;
         self.paint.warp.pre = s.pre;
         self.paint.warp.pre_h = s.pre_h;
         self.paint.warp.pre_cover = s.pre_cover;

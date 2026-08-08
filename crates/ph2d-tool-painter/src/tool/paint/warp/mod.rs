@@ -17,6 +17,10 @@ mod cook_gpu;
 #[cfg(test)]
 mod cook_probe;
 mod field;
+/// A entrada da lei — o snapshot de undo a carrega, então ela sai do `warp` (ADR-0156).
+pub(crate) use field::DabField;
+#[cfg(test)]
+mod list_tests;
 #[cfg(test)]
 mod perf_tests;
 mod reconstruct;

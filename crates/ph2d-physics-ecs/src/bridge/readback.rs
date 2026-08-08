@@ -67,7 +67,11 @@ impl PhysicsBridge {
         {
             let world = sim.world();
             for (&e, b) in self.bodies.iter() {
-                if !b.kind.solver_owns_pose() {
+                // ⚠️ **A porta é o `pose_owner`, não o `solver_owns_pose`** desde
+                // a W-KinMove: um player cinemático escreve a própria pose e ela
+                // sai por aqui como a de um dinâmico — o DONO mudou, a direção do
+                // fluxo não. Ver `bridge::pose_owner`.
+                if !super::pose_owner::pose_owner(world, e, b.kind).flows_out() {
                     continue;
                 }
                 if let Some(pose) = self.world.body_pose(b.handle) {

@@ -35,6 +35,7 @@ mod kinematic;
 /// A metade PEÇA do reconcile — os colliders extra de um corpo composto.
 pub mod parts;
 mod player;
+mod pose_owner;
 mod readback;
 mod rewind;
 pub mod rope;

@@ -12,11 +12,18 @@ fn still() -> KinematicState {
     KinematicState::default()
 }
 
+fn resting() -> KinematicState {
+    KinematicState {
+        grounded: true,
+        ..KinematicState::default()
+    }
+}
+
 /// **No ar, a gravidade é aplicada AQUI** — e é a assimetria central: o solver
 /// não a aplica a um corpo cinemático.
 #[test]
 fn gravity_is_integrated_by_this_law_when_airborne() {
-    let (st, wanted) = kinematic_advance(still(), Motor::default(), false, [0.0, 0.0], G, UP, DT);
+    let (st, wanted) = kinematic_advance(still(), Motor::default(), [0.0, 0.0], G, UP, DT);
     assert!(
         (st.velocity[1] - G[1] * DT).abs() < 1e-6,
         "um tique de queda livre tem de dar {} e deu {}",
@@ -26,16 +33,16 @@ fn gravity_is_integrated_by_this_law_when_airborne() {
     assert!(wanted[1] < 0.0, "e o deslocamento pedido aponta para baixo");
 }
 
-/// **No chão, a componente que aponta PARA o chão é absorvida** — sem isto o
-/// personagem parado acumula velocidade para baixo para sempre.
+/// **No chão, a componente que aponta PARA o chão é absorvida** — e sem ela um
+/// personagem parado numa rampa desliza (ver o aviso do módulo, com o número).
 ///
-/// ⚠️ **E a metade oposta é o pulo:** subir com o raio ainda a ver o chão é
+/// ⚠️ **A metade oposta é o pulo:** subir com o raio ainda a ver o chão é
 /// exactamente o tique da decolagem, e zerar o eixo inteiro mataria o salto.
 #[test]
 fn the_ground_absorbs_only_what_points_into_it() {
-    let mut st = still();
+    let mut st = resting();
     for _ in 0..600 {
-        st = kinematic_advance(st, Motor::default(), true, [0.0, 0.0], G, UP, DT).0;
+        st = kinematic_advance(st, Motor::default(), [0.0, 0.0], G, UP, DT).0;
     }
     assert_eq!(
         st.velocity[1], 0.0,
@@ -44,12 +51,25 @@ fn the_ground_absorbs_only_what_points_into_it() {
 
     let takeoff = KinematicState {
         velocity: [0.0, 5.0],
+        grounded: true,
     };
-    let (up_st, _) = kinematic_advance(takeoff, Motor::default(), true, [0.0, 0.0], G, UP, DT);
+    let (up_st, _) = kinematic_advance(takeoff, Motor::default(), [0.0, 0.0], G, UP, DT);
     assert!(
         up_st.velocity[1] > 4.8,
         "o tique da decolagem ve' o chao e NAO pode ser zerado: {}",
         up_st.velocity[1]
+    );
+}
+
+/// **E no AR ela não age** — o controle que separa *"pousei"* de *"a perna
+/// alcança"*, e a razão de a régua do `grounded` ser corrigida sob Snap.
+#[test]
+fn nothing_is_absorbed_while_airborne() {
+    let (st, _) = kinematic_advance(still(), Motor::default(), [0.0, 0.0], G, UP, DT);
+    assert!(
+        (st.velocity[1] - G[1] * DT).abs() < 1.0e-6,
+        "no ar a gravidade tem de sobreviver: {}",
+        st.velocity[1]
     );
 }
 
@@ -61,7 +81,7 @@ fn the_ground_absorbs_only_what_points_into_it() {
 #[test]
 fn a_moving_platform_carries_without_being_owned() {
     let gv = [3.0, 0.0];
-    let (st, wanted) = kinematic_advance(still(), Motor::default(), true, gv, G, UP, DT);
+    let (st, wanted) = kinematic_advance(resting(), Motor::default(), gv, G, UP, DT);
     assert!(
         (wanted[0] - gv[0] * DT).abs() < 1e-6,
         "o deslocamento tem de levar o vagao: {}",
@@ -82,16 +102,17 @@ fn a_moving_platform_carries_without_being_owned() {
 fn a_blocked_body_stops_and_does_not_bounce() {
     let st = KinematicState {
         velocity: [4.0, 0.0],
+        grounded: true,
     };
     let wanted = [4.0 * DT, 0.0];
-    let settled = kinematic_settle(st, wanted, [0.0, 0.0], DT);
+    let settled = kinematic_settle(st, wanted, [0.0, 0.0], true, DT);
     assert_eq!(
         settled.velocity[0], 0.0,
         "encostado numa parede a velocidade propria tem de ir a ZERO"
     );
 
     // E um bloqueio maior que a velocidade não a inverte.
-    let hard = kinematic_settle(st, [10.0 * DT, 0.0], [0.0, 0.0], DT);
+    let hard = kinematic_settle(st, [10.0 * DT, 0.0], [0.0, 0.0], true, DT);
     assert_eq!(hard.velocity[0], 0.0, "e nunca trocar de sinal");
 }
 
@@ -106,9 +127,9 @@ fn a_blocked_body_stops_and_does_not_bounce() {
 #[test]
 fn a_platform_blocked_by_a_wall_does_not_owe_the_character_velocity() {
     let gv = [3.0, 0.0];
-    let (st, wanted) = kinematic_advance(still(), Motor::default(), true, gv, G, UP, DT);
+    let (st, wanted) = kinematic_advance(resting(), Motor::default(), gv, G, UP, DT);
     // A parede impede tudo.
-    let settled = kinematic_settle(st, wanted, [0.0, 0.0], DT);
+    let settled = kinematic_settle(st, wanted, [0.0, 0.0], true, DT);
     assert_eq!(
         settled.velocity[0], 0.0,
         "parado sobre um vagao prensado, a velocidade propria continua ZERO -- \
@@ -126,11 +147,12 @@ fn a_platform_blocked_by_a_wall_does_not_owe_the_character_velocity() {
 fn sliding_along_a_slope_is_not_absorbed() {
     let st = KinematicState {
         velocity: [0.0, -1.0],
+        grounded: false,
     };
     let wanted = [0.0, -DT];
     // A rampa desviou metade da queda para o lado.
     let effective = [0.5 * DT, -0.5 * DT];
-    let settled = kinematic_settle(st, wanted, effective, DT);
+    let settled = kinematic_settle(st, wanted, effective, true, DT);
     assert_eq!(
         settled.velocity[0], 0.0,
         "o eixo em que ele nao empurrava nao pode ganhar correcao"

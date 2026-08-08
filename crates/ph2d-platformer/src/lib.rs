@@ -248,6 +248,16 @@ pub struct PlayerState {
     pub crouch: CrouchState,
     /// O agarrar-se (W23) — quanto já se gastou da reserva de parede.
     pub grab: GrabState,
+    /// **A velocidade do modo CINEMÁTICO** (W-KinMove, K5) — o que o solver
+    /// possuiria se o corpo fosse dinâmico.
+    ///
+    /// ⚠️ Mora AQUI e não num mapa da ponte pela razão que o doc deste tipo já
+    /// enuncia acima: este é o valor que o ring de tiques âncora guarda, e um
+    /// estado que vivesse noutro mapa teria de ser acrescentado ao ring **à
+    /// mão** — esquecê-lo é um scrub que devolve o mundo de um tique e a
+    /// memória do controlador de outro. **Inerte no modo dinâmico** (fica em
+    /// zero: ninguém o escreve), então o campo é byte-neutro para quem não o usa.
+    pub kin: kinematic::KinematicState,
 }
 
 /// **O que a porta única decidiu neste tick** — as três respostas.
@@ -678,6 +688,12 @@ pub fn player_motor(
             dash: dash.state,
             crouch,
             grab,
+            // ⚠️ **A LEI DE INTENÇÃO não toca a velocidade cinemática**, e é a
+            // divisão inteira: ela diz o que o personagem QUER; quem integra é
+            // o `kinematic_advance`, chamado pela ponte com o `was.kin` na mão.
+            // Passar `was` por aqui só para o devolver seria uma segunda porta
+            // para o mesmo número.
+            kin: state.kin,
         },
         reaction,
         nudge,

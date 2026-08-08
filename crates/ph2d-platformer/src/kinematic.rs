@@ -22,14 +22,32 @@
 //! existe para a ponte dinâmica dividir o impulso entre sub-passos, e aqui não
 //! há sub-passo nenhum a dividir.
 //!
-//! # ⚠️ E é por isso que o CHÃO tem de absorver a componente que aponta para ele
+//! # ⚠️ E o CHÃO absorve a componente que aponta para ele — mas a RÉGUA importa
 //!
-//! Sem a absorção o personagem parado acumula velocidade para baixo para sempre
-//! (o snap corrige a POSIÇÃO todo tique e a velocidade continua a crescer), e o
-//! primeiro degrau que ele descer vira uma queda de mil metros por segundo. É o
-//! mesmo passo que o `CharacterController` da Unity e o `move_and_slide` do
-//! Godot dão, e a pergunta *"estou no chão?"* vem da [`crate::footing`] — **não**
-//! do `grounded` do `move_shape` (K4).
+//! Sem a absorção um personagem parado numa rampa **DESLIZA**: a gravidade entra
+//! no deslocamento pedido, o controlador a projeta ao longo da superfície
+//! (`slide`, que é o que faz uma parede não travar o movimento) e o resultado é
+//! deriva morro abaixo. Medido, numa rampa de 30°: **−0,0279 m em 10 s**, e
+//! insensível ao limite de rampa — não é o *auto-slide* do rapier, é o slide
+//! genérico. É o `floor_stop_on_slope` do Godot, que shipa **ligado**.
+//!
+//! ⚠️ **A primeira versão desta lei absorvia com a régua ERRADA, e a medição a
+//! pegou:** ela perguntava à [`crate::footing`], cujo alcance é o da PERNA
+//! (`float_height + cling_distance`) — calibrado para uma cápsula que **paira**.
+//! Sob Snap não há perna, e absorver a esse alcance congelava o personagem a
+//! **0,4 m no ar**, exatamente onde nasceu, com todos os outros gates verdes (a
+//! caminhada andava, a rampa não derivava).
+//!
+//! A cura não foi tirar a absorção — foi **corrigir a régua**: sob Snap o
+//! `float_height` que a lei recebe é o
+//! [`PhysicsWorld::body_foot_distance`](../../ph2d_physics/struct.PhysicsWorld.html#method.body_foot_distance),
+//! *onde os pés deste corpo de facto ficam*. Aí *"estou no chão"* volta a
+//! significar o que a palavra diz, e a [`crate::footing`] continua a porta ÚNICA
+//! nos dois modos (K4).
+//!
+//! ⚠️ **Só a componente que aponta PARA o chão é absorvida**: zerar o eixo
+//! inteiro mataria o pulo no tique da decolagem, em que o raio ainda vê o chão e
+//! a subida já começou.
 
 use crate::{Motor, Vec2};
 
@@ -43,6 +61,23 @@ use crate::{Motor, Vec2};
 pub struct KinematicState {
     /// Metros por segundo, em MUNDO.
     pub velocity: Vec2,
+    /// **O mundo segurou-me no tique anterior?**
+    ///
+    /// ⚠️ **Esta NÃO é a resposta da lei sobre chão** (K4) — essa é a
+    /// [`crate::footing`], e é ela que decide pulo, perdão do coyote, caminhada
+    /// e agachar, nos DOIS modos. Esta é a pergunta do INTEGRADOR, que é outra:
+    /// *"há alguma coisa a segurar-me AGORA?"*.
+    ///
+    /// As duas medem coisas diferentes de propósito, e colapsá-las foi medido:
+    /// a `footing` tem uma faixa de tolerância (`cling_distance`) para o gesto
+    /// não morrer num degrau, e absorver a gravidade dentro dessa faixa deixa o
+    /// personagem **pendurado no ar** na borda dela — 1,237 m onde o chão está a
+    /// 1,000, para sempre, com todos os outros gates verdes.
+    ///
+    /// Vem do controlador, que é quem tocou no mundo; e mora aqui — e não num
+    /// mapa da ponte — pelo mesmo motivo que a velocidade: é o ring de tiques
+    /// âncora que guarda este tipo.
+    pub grounded: bool,
 }
 
 /// **O deslocamento que este tique PEDE** — e o estado que ele deixa.
@@ -61,7 +96,6 @@ pub struct KinematicState {
 pub fn kinematic_advance(
     state: KinematicState,
     motor: Motor,
-    grounded: bool,
     ground_velocity: Vec2,
     gravity: Vec2,
     up: Vec2,
@@ -72,11 +106,8 @@ pub fn kinematic_advance(
         state.velocity[1] + (gravity[1] + motor.accel[1]) * dt + motor.boost[1],
     ];
 
-    // ⚠️ **Só a componente que aponta PARA o chão é absorvida.** Zerar o eixo
-    // inteiro mataria o pulo no tique da decolagem — o raio ainda vê o chão ali
-    // (o personagem não saiu do `cling_distance`), que é a mesma armadilha que a
-    // `JumpState::airborne` existe para cobrir do outro lado.
-    if grounded {
+    // Ver [`KinematicState::grounded`]: a pergunta do INTEGRADOR, não a da lei.
+    if state.grounded {
         let into = v[0] * up[0] + v[1] * up[1];
         if into < 0.0 {
             v[0] -= up[0] * into;
@@ -88,7 +119,13 @@ pub fn kinematic_advance(
         (v[0] + ground_velocity[0]) * dt,
         (v[1] + ground_velocity[1]) * dt,
     ];
-    (KinematicState { velocity: v }, wanted)
+    (
+        KinematicState {
+            velocity: v,
+            ..state
+        },
+        wanted,
+    )
 }
 
 /// **O que o mundo NÃO deixou acontecer** — a diferença entre o pedido e o
@@ -126,10 +163,11 @@ pub fn kinematic_settle(
     state: KinematicState,
     wanted: Vec2,
     effective: Vec2,
+    grounded: bool,
     dt: f32,
 ) -> KinematicState {
     if dt <= 0.0 {
-        return state;
+        return KinematicState { grounded, ..state };
     }
     let mut v = state.velocity;
     for i in 0..2 {
@@ -139,7 +177,10 @@ pub fn kinematic_settle(
         // o teto é `v` — o resultado nunca troca de sinal.
         v[i] -= lost.clamp(v[i].min(0.0), v[i].max(0.0));
     }
-    KinematicState { velocity: v }
+    KinematicState {
+        velocity: v,
+        grounded,
+    }
 }
 
 #[cfg(test)]

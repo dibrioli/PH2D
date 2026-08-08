@@ -75,6 +75,14 @@ impl PhysicsBridge {
             if b.kind != BodyKind::Kinematic {
                 continue;
             }
+            // ⚠️ **E um player CINEMÁTICO não é dirigido pela cena** (W-KinMove):
+            // a pose dele é escrita pela lei, e apontá-lo para o `Transform` aqui
+            // seria o segundo escritor que o doc do `solver_owns_pose` já
+            // proibia — o personagem voltaria, todo tique, para onde o `readback`
+            // do tique anterior o deixou. Ver `bridge::pose_owner`.
+            if !super::pose_owner::pose_owner(world, e, b.kind).driven_by_scene() {
+                continue;
+            }
             // WORLD: the scene wrote a LOCAL pose, and the solver is aimed in
             // world space. A parented platform driven by its local coordinates
             // would carry its cargo along a path nobody authored.

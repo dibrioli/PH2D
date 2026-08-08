@@ -31,14 +31,16 @@
 
 use bevy_ecs::entity::Entity;
 use ph2d_ecs::SimWorld;
+use ph2d_physics::CharacterParams;
 use ph2d_platformer::{
     Buoyed, CORNER_LOOKAHEAD, CORNER_SAMPLES, CeilingProbe, GroundSample, HEADROOM_SAMPLES,
-    Headroom, PlayerConfig, PlayerInput, PlayerState, Support, WALL_SAMPLES, WallHit, WallProbe,
-    corner_offsets, corner_probe_wanted, footing, headroom_offsets, headroom_probe_wanted,
-    player_motor, relative_rise, wall_offsets, wall_probe_wanted,
+    Headroom, KinematicState, PlayerConfig, PlayerInput, PlayerState, WALL_SAMPLES, WallHit,
+    WallProbe, corner_offsets, corner_probe_wanted, footing, headroom_offsets,
+    headroom_probe_wanted, kinematic_advance, kinematic_settle, player_motor, relative_rise,
+    wall_offsets, wall_probe_wanted,
 };
 
-use crate::components::{BodyKind, PlatformPlayer};
+use crate::components::PlatformPlayer;
 
 use super::PhysicsBridge;
 
@@ -59,6 +61,21 @@ const UP: [f32; 2] = [0.0, 1.0];
 /// Uma struct e não uma tupla de cinco: os dois primeiros campos são handles do
 /// MESMO tipo, e trocá-los daria um mundo em que o chão empurra o personagem
 /// com a massa dele — compila, roda, e está errado.
+/// **Um deslocamento cinemático devido** (W-KinMove) — colhido no laço e
+/// aplicado depois, pelo motivo de sempre: perguntar ao mundo toma `&self` e
+/// escrever a pose toma `&mut self`.
+struct KinMove {
+    entity: Entity,
+    handle: rapier2d_handle::Handle,
+    layer: u8,
+    passing: Option<ph2d_physics::ColliderHandle>,
+    params: CharacterParams,
+    /// O deslocamento que a lei PEDIU.
+    wanted: [f32; 2],
+    /// A velocidade depois do avanço e **antes** do assentamento.
+    advanced: KinematicState,
+}
+
 struct GroundPush {
     ground: rapier2d_handle::Handle,
     player: rapier2d_handle::Handle,
@@ -294,9 +311,20 @@ impl PhysicsBridge {
             rapier2d_handle::Handle,
             ph2d_physics::ColliderHandle,
         )> = Vec::new();
+        // Os deslocamentos do modo CINEMÁTICO (W-KinMove), colhidos pelo mesmo
+        // motivo que todas as outras listas: perguntar ao mundo quanto coube toma
+        // `&self` e escrever a pose toma `&mut self`.
+        let mut moves: Vec<KinMove> = Vec::new();
         for (&entity, b) in self.bodies.iter() {
-            // Dynamic-only, e é FÍSICA: um impulso não move massa infinita.
-            if b.kind != BodyKind::Dynamic {
+            // ⚠️ **Quem escreve a pose deste corpo?** — a porta única do
+            // `bridge::pose_owner`, e ela decide DUAS coisas de uma vez: se este
+            // laço dirige o corpo, e **o que o segura** (o `Support` da lei).
+            // Perguntadas em dois lugares elas poderiam discordar, e a lei de
+            // Snap num corpo dinâmico deixa o personagem cair através do mundo.
+            let owner = super::pose_owner::pose_owner(world, entity, b.kind);
+            if owner.driven_by_scene() {
+                // A cena manda nele (um corpo estático, um bake, uma curva) — e
+                // um impulso não move massa infinita de qualquer forma.
                 continue;
             }
             let Some(cfg) = world.get::<PlatformPlayer>(entity) else {
@@ -306,11 +334,33 @@ impl PhysicsBridge {
                 continue;
             };
             let origin = [pose.translation.x, pose.translation.y];
-            let Some(vel) = self.world.body_velocity(b.handle) else {
+            let Some(solver_vel) = self.world.body_velocity(b.handle) else {
                 continue;
             };
+            let was = self.player_state.get(&entity).copied().unwrap_or_default();
+            // ⚠️ **Sob Snap a velocidade é a NOSSA** (K5): um corpo cinemático
+            // não tem velocidade que o solver possua — o que o rapier reporta é
+            // derivado da pose que nós escrevemos no tique ANTERIOR, ou seja um
+            // eco atrasado do que a lei já sabe. Ler o eco faria o pulo e a
+            // caminhada decidirem sobre um estado de um tique atrás.
+            let vel = if owner.writes_own_pose() {
+                was.kin.velocity
+            } else {
+                solver_vel
+            };
 
-            let cfg = cfg.config();
+            let mut cfg = cfg.config();
+            // ⚠️ **Sob Snap a PERNA é o próprio corpo** — ver
+            // `PhysicsWorld::body_foot_distance`. O `float_height` autorado
+            // descreve onde a cápsula flutuante paira, e sob Snap ela não paira:
+            // ela pousa. Deixar a régua da perna aqui faz a lei dizer *"estou no
+            // chão"* com o personagem a 0,4 m no ar.
+            if owner.writes_own_pose()
+                && let Some(foot) = self.world.body_foot_distance(b.handle, UP)
+            {
+                cfg.ride.float_height = foot;
+            }
+            let cfg = cfg;
             // O alcance do sensor é o que a lei considera "no chão", e nem um
             // milímetro além: perguntar mais longe faria o cast achar coisas que
             // a lei descartaria, ao preço de descer mais no BVH.
@@ -372,7 +422,6 @@ impl PhysicsBridge {
             } else {
                 None
             };
-            let was = self.player_state.get(&entity).copied().unwrap_or_default();
 
             // ── O SENSOR DE TETO DO AGACHAR (W15) ────────────────────────────
             // ⚠️ A pergunta *"vale a pena castar?"* é a MESMA que a lei faz para
@@ -409,11 +458,9 @@ impl PhysicsBridge {
                 UP,
                 dt,
                 buoyed,
-                // ⚠️ **A cápsula flutuante, sempre — por enquanto.** O `Support`
-                // existe desde a metade da LEI da `W-KinMove`, e é aqui que o
-                // componente `PlayerMode` vai escolher; até ele existir, ler
-                // qualquer outra coisa seria oferecer um modo que nada autora.
-                Support::Spring,
+                // ⚠️ **A MESMA resposta que decidiu quem escreve a pose** — ver o
+                // aviso no topo do laço e o `bridge::pose_owner`.
+                owner.support(),
             );
             states.push((entity, step.state));
             // ⚠️ **A plataforma é a que o SENSOR viu, e é a mesma consulta que a
@@ -430,22 +477,78 @@ impl PhysicsBridge {
                 nudges.push((b.handle, step.nudge));
             }
             let motor = step.motor;
-            // ⚠️ **O motor sai por DUAS portas, e a lei é quem as separa** (W11):
-            // o que CANCELA a gravidade é integrado como ela (por sub-passo), o
-            // resto continua a ser um impulso no topo do tique. O porquê de cada
-            // metade está em [`PlayerStep::gravity_hold`]; aqui só se honra a
-            // declaração — subtrair `− gravity` por conta própria seria a ponte
-            // a adivinhar se a mola agiu.
-            let hold = step.gravity_hold;
-            let lumped = [motor.accel[0] - hold[0], motor.accel[1] - hold[1]];
-            if lumped != [0.0, 0.0] || motor.boost != [0.0, 0.0] {
-                motors.push((b.handle, lumped, motor.boost));
-            }
-            if hold != [0.0, 0.0] {
-                holds.push((b.handle, hold));
+            if owner.writes_own_pose() {
+                // ── O MODO CINEMÁTICO (W-KinMove) ────────────────────────────
+                // ⚠️ **A `gravity_hold` NÃO é consultada aqui, e é deliberado:**
+                // ela existe para a ponte DINÂMICA dividir o impulso entre
+                // sub-passos, e a lei cinemática integra a gravidade ela mesma
+                // (ver o topo de `ph2d_platformer::kinematic`). O `motor.accel`
+                // já traz o cancelamento embutido quando ele existe — somá-lo
+                // outra vez o pagaria duas vezes.
+                let (next_kin, wanted) = kinematic_advance(
+                    was.kin,
+                    motor,
+                    // ⚠️ **A plataforma entra por AQUI** (K7): o número já viaja
+                    // no `GroundSample` desde a W3, e somá-lo fora da lei seria
+                    // uma segunda resposta para *"quanto o chão me leva?"*.
+                    stand.map_or([0.0, 0.0], |s| s.ground_velocity),
+                    gravity,
+                    UP,
+                    dt,
+                );
+                moves.push(KinMove {
+                    entity,
+                    handle: b.handle,
+                    layer: b.rest.layer,
+                    // A MESMA plataforma que o sensor está a atravessar (W12):
+                    // sem esta exclusão o controlador o pararia em cima do que
+                    // ele pediu para atravessar.
+                    passing,
+                    params: CharacterParams {
+                        up: UP,
+                        // ⚠️ Os dois números saem da configuração que o artista
+                        // JÁ autora — um default do rapier em qualquer um deles
+                        // seria o produto a discordar de si mesmo (ver
+                        // `CharacterParams`).
+                        snap_distance: cfg.ride.cling_distance,
+                        max_slope_deg: cfg.walk.max_slope_deg,
+                        step_height: cfg.ride.cling_distance,
+                    },
+                    wanted,
+                    advanced: next_kin,
+                });
+                // ⚠️ **O estado guardado leva a velocidade ANTES do assentamento**
+                // — a lista de moves a corrige depois de o mundo responder. É a
+                // razão de o `states` ser gravado primeiro: o `settle` precisa do
+                // que o mundo deixou acontecer, e isso só existe com `&mut self`.
+                if let Some(last) = states.last_mut() {
+                    last.1.kin = next_kin;
+                }
+            } else {
+                // ⚠️ **O motor sai por DUAS portas, e a lei é quem as separa** (W11):
+                // o que CANCELA a gravidade é integrado como ela (por sub-passo), o
+                // resto continua a ser um impulso no topo do tique. O porquê de cada
+                // metade está em [`PlayerStep::gravity_hold`]; aqui só se honra a
+                // declaração — subtrair `− gravity` por conta própria seria a ponte
+                // a adivinhar se a mola agiu.
+                let hold = step.gravity_hold;
+                let lumped = [motor.accel[0] - hold[0], motor.accel[1] - hold[1]];
+                if lumped != [0.0, 0.0] || motor.boost != [0.0, 0.0] {
+                    motors.push((b.handle, lumped, motor.boost));
+                }
+                if hold != [0.0, 0.0] {
+                    holds.push((b.handle, hold));
+                }
             }
 
-            // ── A 3ª LEI (W6) ────────────────────────────────────────────────
+            // ── A 3ª LEI (W6) — NOS DOIS MODOS ───────────────────────────────
+            // ⚠️ **Fora do ramo de propósito (K6):** a `reaction` toma o suporte
+            // como ARGUMENTO e o chão vem da `footing` — nada nela depende de o
+            // corpo ser dinâmico. Sob Snap o `push` é zero, e zero **já É o
+            // peso**, porque o `support_accel` sempre carregou o `− gravity` ao
+            // lado do empurrão: o chão sente quem está em cima dele nos dois
+            // modos, pela MESMA função.
+            //
             // ⚠️ O hit **inteiro** é carregado até aqui, e é o desenho que o
             // módulo declara no topo: *quem decide "estou no chão" e quem decide
             // "em quem eu empurro" têm de ser a MESMA consulta*. Uma segunda
@@ -518,6 +621,42 @@ impl PhysicsBridge {
         for r in reactions {
             self.world
                 .apply_ground_reaction(r.ground, r.player, r.accel, r.boost, r.at);
+        }
+        // ── O MOVIMENTO CINEMÁTICO (W-KinMove) ───────────────────────────────
+        // ⚠️ **Por último, e a ordem importa:** a reação já foi enfileirada
+        // contra o chão, e o `move_shape` lê o BVH que o `step` ANTERIOR deixou
+        // (o mesmo contrato do sensor, ver o topo do módulo) — nada aqui depende
+        // dos impulsos deste tique.
+        for m in moves {
+            let got = self
+                .world
+                .move_character(m.handle, m.wanted, m.params, m.passing, m.layer);
+            if let Some(pose) = self.world.body_pose(m.handle) {
+                // ⚠️ **`set_next_kinematic_pose`, nunca uma escrita direta:** é
+                // ela que faz o solver tratar o corpo como MOVENDO-SE, e é isso
+                // que o faz empurrar o que toca em vez de o atravessar.
+                self.world.set_next_kinematic_pose(
+                    m.handle,
+                    pose.translation.x + got.translation[0],
+                    pose.translation.y + got.translation[1],
+                    pose.rotation.angle(),
+                );
+            }
+            // ⚠️ **E o que o mundo NÃO deixou acontecer volta como velocidade**
+            // — sem isto o personagem acelera contra uma parede para sempre e
+            // sai disparado quando ela acaba (ver `kinematic_settle`).
+            if let Some(st) = self.player_state.get_mut(&m.entity) {
+                st.kin = kinematic_settle(
+                    m.advanced,
+                    m.wanted,
+                    got.translation,
+                    // ⚠️ **A pergunta do INTEGRADOR** (ver `KinematicState::grounded`)
+                    // — quem responde é quem TOCOU no mundo. A resposta da LEI
+                    // sobre chão continua a `footing`, nos dois modos (K4).
+                    got.grounded,
+                    dt,
+                );
+            }
         }
     }
 }

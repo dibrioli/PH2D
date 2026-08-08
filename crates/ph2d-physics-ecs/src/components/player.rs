@@ -297,3 +297,78 @@ impl Default for PlatformPlayer {
         }
     }
 }
+
+/// **Como este player é MOVIDO** (W-KinMove, K2 do plano 07) — o segundo modo.
+///
+/// # ⚠️ Componente VALUADO, e ausente = [`PlayerMode::Dynamic`]
+///
+/// Componente novo cunha `stable_type_id` próprio ⇒ **`PROJECT_SCHEMA` NÃO
+/// bumpa** (o idioma do `GravityScale`/`MassOverride`/`Dominance`, com *detach
+/// no neutro*), e a razão é a que este módulo escreveu sete vezes: *um bump
+/// RECUSA todo projeto já salvo*.
+///
+/// ⚠️ **Um MARCADOR seria a representação errada**, e é a ordem do Enio de
+/// 2026-08-07 que o prova: ela nomeia um **terceiro** modo (*"um cinemático puro
+/// sangue"*), e a presença de um marcador só sabe dizer duas coisas. Um bit hoje
+/// seria um segundo componente amanhã.
+///
+/// # ⚠️ O que ele decide, e o que NÃO decide
+///
+/// Ele decide **a lei** ([`ph2d_platformer::Support`]) e **quem é dono da
+/// pose**. Ele **não** decide o tipo do corpo no rapier: quem o decide é o
+/// `RigidBody.kind`, sempre — e essa separação é o que faz o **bake** continuar
+/// a funcionar. Assar um player escreve `RigidBody.kind = Kinematic` para
+/// entregar a pose; se este componente sobrescrevesse o tipo do corpo, o bake
+/// seria desfeito no frame seguinte, em silêncio.
+///
+/// **A pergunta do §8 do plano fica respondida:** *um player cinemático assado e
+/// um player cinemático dirigido são o mesmo `BodyKind` com donos diferentes da
+/// pose*, e o discriminador é **este componente**, nunca o `BodyKind`. Assado
+/// sem ele, a cena é dona da pose; com ele, o player é.
+///
+/// ⚠️ O gesto da §14 escreve **os dois** (este e o `RigidBody.kind`) por UMA
+/// porta, porque pedir ao artista que ponha o corpo em Kinematic noutra seção
+/// seria a falha de duas-portas que este módulo já pagou.
+#[derive(Component, Copy, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum PlayerMode {
+    /// A **cápsula flutuante**: impulsos, mola, e o solver dono da pose.
+    #[default]
+    Dynamic,
+    /// O **controlador**: a pose é escrita, o mundo só diz quanto coube.
+    Kinematic,
+}
+
+impl PlayerMode {
+    /// **Este modo escreve a própria pose?** — a pergunta que separa os dois
+    /// caminhos da ponte.
+    #[must_use]
+    pub fn drives_itself(self) -> bool {
+        matches!(self, PlayerMode::Kinematic)
+    }
+
+    /// O `u8` com que este modo atravessa a fronteira da UI, e volta.
+    ///
+    /// Uma porta, as duas direções — o precedente literal do
+    /// [`super::BodyKind::tag`], cujo doc explica o preço de duas: *"o momento
+    /// em que existe um terceiro, é um chip que o artista clica e que
+    /// silenciosamente seleciona outro"*. E aqui o terceiro **está anunciado**
+    /// (a `W-KinPure`).
+    #[must_use]
+    pub fn tag(self) -> u8 {
+        match self {
+            PlayerMode::Dynamic => 0,
+            PlayerMode::Kinematic => 1,
+        }
+    }
+
+    /// A volta: `None` para um tag que este build não conhece — que o chamador
+    /// trata ignorando o clique, nunca dobrando num modo qualquer.
+    #[must_use]
+    pub fn from_tag(tag: u8) -> Option<Self> {
+        match tag {
+            0 => Some(PlayerMode::Dynamic),
+            1 => Some(PlayerMode::Kinematic),
+            _ => None,
+        }
+    }
+}

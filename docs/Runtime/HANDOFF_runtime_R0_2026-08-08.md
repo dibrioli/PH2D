@@ -5,8 +5,10 @@
 > **antes de abrir qualquer arquivo** — a janela abre na raiz (que é `main`) e os mesmos paths
 > relativos existem nas duas árvores: editar a errada **compila e commita sem um único erro**.
 >
-> **Módulo:** Runtime. **Worktree:** `Worktrees/line-runtime/`. **Branch:** `line/runtime`.
-> **HEAD deste handoff:** `37ff53467` (3 commits à frente de `main`).
+> **Módulo:** Runtime. ⚠️ **A branch antiga `line/runtime` (`37ff53467`) foi DESCARTADA** por ordem
+> do Enio em 2026-08-08 — ela nunca foi integrada, e o §7.5 mede por que o descarte vence o rebase.
+> **A linha nova nasce do `main`**, pela rota *"linha NOVA"* do
+> [`MODELO_ABERTURA_LINHA`](../IntegracaoMultiAgente/MODELO_ABERTURA_LINHA.md).
 >
 > ⚠️ **Este handoff foi escrito NA `line/Vector`**, que é onde a investigação aconteceu. Ele é
 > **plano e medição**, não código: a `line/Vector` **não escreveu uma linha de runtime**, de
@@ -149,7 +151,48 @@ competir com ele.
 
 ---
 
-## 7.5 ⚠️ O REBASE: 366 commits atrás, e o risco é LOCALIZADO — medido
+## 7.5 ⚠️ A branch antiga foi DESCARTADA — a linha nasce do `main`
+
+**Decisão do Enio, 2026-08-08.** A `line/runtime` **nunca foi integrada** (nenhum dos 3 commits é
+ancestral do `main`) e a medição abaixo sustenta o descarte em vez de o rebase.
+
+⚠️ **A razão não é o atraso — é O QUE ela tinha construído.** O
+[`01_o_formato_medido.md`](01_o_formato_medido.md) §5, escrito por ela própria, classifica as
+waves:
+
+| wave | o que faz | bumps que preveniria | estado na branch |
+|---|---|---:|---|
+| **F1.W0** | o envelope de topo + as 3 seções | 19 (dos quais **4** são os de topo) | ✅ **construída** |
+| **F1.W1** | **versão por `ComponentBlob`** + migração por append-default | **18** | ❌ nunca construída |
+| F1.W2 | política de degradação por seção | — | ❌ |
+
+⇒ **ela construiu a wave que a própria medição dela mostra ser a menos valiosa**, e a peça que
+alcança os 18 da linha A não existe. Somando: **366 commits** de atraso, o `project.rs` **partido
+pela `line/sculpt3d`** (04/08) no meio de exactamente o que ela reescrevia, e um
+`LEGACY_SCHEMA_FINAL = 48` que descreve uma fronteira que o `main` já levou a **55**.
+
+**O que sobreviveu: a MEDIÇÃO.** O `01_o_formato_medido.md` foi resgatado para cá (§0 dele diz de
+onde veio e o que nele deixou de valer). É ele que torna a reconstrução mais barata que o rebase:
+quem reescrever o envelope já sabe **quanto ele compra** antes da primeira linha.
+
+### O que a linha nova herda, e o que não
+
+| herda | não herda |
+|---|---|
+| a **medição dos 37 bumps** (a tabela A/B/C/D) | as ~1675 linhas de `ph2d-project-format` + `project_envelope.rs` |
+| o **desenho** — *chave + versão + payload opaco + carry-through*, o primitivo das três camadas | o `LEGACY_SCHEMA_FINAL = 48` (**re-medir** contra o `main` do dia) |
+| a **ordem corrigida** (a F1.W1 é que vale 18) | 366 commits de dívida e o `project.rs` partido no meio |
+| a pergunta de PRODUTO do §4 daquele doc, **ainda aberta** (recusar · trancar · avisar) | — |
+
+⚠️ **E o `project.rs` de hoje tem ONZE irmãos** (`project_load` · `project_assets` · `project_tokens`
+· `project_forget` · `project_painter` · `project_baked_form` · …). Nascer do `main` significa
+escrever **contra o corte que já existe**, em vez de fundir contra um corte que aconteceu depois —
+que era a armadilha inteira.
+
+<details>
+<summary>O que o rebase teria custado (medido, para o registo)</summary>
+
+## O REBASE que não vai acontecer: 366 commits atrás, e o risco era LOCALIZADO
 
 **A linha nunca foi integrada** (`git merge-base --is-ancestor` sobre os 3 commits → nenhum está no
 `main`) e está **366 commits atrás**. Antes de reabrir, o custo:
@@ -187,8 +230,12 @@ linha descreve uma fronteira que **já não é o fim da escada**. Esse número t
 **RE-MEDIDO** contra o `main` do dia, não transportado
 [[feedback_numbers_that_sum_across_lines_count_dont_pick]].
 
-**Recomendação:** reabrir **vale a pena** (85% limpo, e a crate nova é o coração do trabalho), com
-o rebase feito **antes de escrever uma linha nova**, e o `project.rs` conferido hunk a hunk.
+⚠️ **Eu recomendei reabrir**, com o argumento *"85% limpo, e a crate nova é o coração do trabalho"*.
+**O Enio preferiu descartar, e ele está certo por uma razão que o meu argumento não pesou:** os
+"85% limpos" são a implementação da **F1.W0**, que a medição da própria linha classifica como
+**11% do problema**. *Rebasear limpo não torna valioso o que se rebaseia.*
+
+</details>
 
 ---
 

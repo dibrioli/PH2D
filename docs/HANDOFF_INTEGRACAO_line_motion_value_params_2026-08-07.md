@@ -10,10 +10,10 @@
 | | |
 |---|---|
 | Branch | `line/motion-value` |
-| HEAD | `9f1b8ff63` |
+| HEAD | `d7b2e2d1e` |
 | Merge-base com `main` | `a4018d203` |
-| Commits | **33** |
-| Diff | **163 arquivos, +12.679 / −2.585** |
+| Commits | **35** |
+| Diff | **165 arquivos, +13.210 / −2.589** |
 | Janela | 2026-08-05 → 2026-08-07 |
 
 ---
@@ -178,9 +178,22 @@ vendo o produto correto.
 
 ## 10. Aberto e NOMEADO (não é dívida escondida)
 
-- **O doc 88 não fechou inteiro:** a wave B3 entregou seções, reset, teto de linhas, unidades e a
-  row dirigida. **Não** entregou o **slider DUAL** (a faixa macia × a faixa dura numa régua só) —
-  é o item que dá nome ao plano e continua no doc.
+- **O doc 88 não fechou inteiro.** O **slider dual (A1)** deixou de ser o item aberto: o mecanismo
+  já existia e a wave o POPULOU em 4 nós com números **medidos** (`motion.grid` rows/cols,
+  `motion.fibonacci`, `motion.distribute_radial` → **1.000.000**; `motion.scatter` → **3.000**,
+  porque ele é O(n²) e o quadro quebra entre 3.000 e 4.000). O que segue aberto é a **varredura
+  dos demais nós de contagem** — `motion.clone`, `motion.lattice`, `motion.boids`,
+  `motion.verlet_rope`, `motion.kaleidoscope`, `motion.pin_constraint`, `motion.distribute_curve`,
+  `motion.wave`, `field.remap`, `value.pattern` — e a sonda `measure_the_count_ceiling` já é a
+  ferramenta: cada um entra com a própria faixa de varredura e a própria tabela.
+- ⚠️ **`motion.voronoi` fica NOMEADO e não capado**, de propósito: o soft dele é **165.000** (medido
+  pela linha da GPU) e o cook de **CPU** já passa o quadro em ~1.500 (8.000 = 259 ms). Derivar um
+  teto do caminho de REFERÊNCIA seria deixar o mais lento definir o teto do mais rápido — o erro
+  que o §0 nomeia. Quem quiser fechar isto precisa medir o **device**, não a CPU.
+- ⚠️ **E a sonda de contagem mentiu na 1ª versão** — vale ler antes de escrever a próxima: ela dava
+  `0,00 ms` em toda célula enquanto o teste levava **1402 s**, porque o `Cook` **memoiza** e eu
+  descartava a 1ª corrida (a cautela de *first-touch*). *A lição certa noutro lugar cega o
+  instrumento*, e quem denunciou foi o relógio de parede. Ela hoje carrega um CONTROLE próprio.
 - **O `value.gain` da cena de smoke ensina uma armadilha real e vale reler:** ele opera em `[0,1]`
   e **clampa**, então alimentá-lo fora da banda o torna mudo (a cena v1 fazia isso e o fio ficou
   inerte com a suíte verde). Quem for construir cena com ele: `map_range` antes e depois, como a

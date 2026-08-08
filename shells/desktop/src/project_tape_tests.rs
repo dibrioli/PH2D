@@ -66,6 +66,7 @@ fn a_recorded_run_survives_the_file() {
         timeline: Vec::new(),
         physics: Default::default(),
         tokens: Vec::new(),
+        settings: crate::project_settings::collect(Default::default()),
         sculpt: Vec::new(),
         baked_forms: Vec::new(),
         player_tape: saved.to_wire(),

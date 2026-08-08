@@ -42,11 +42,9 @@
 
 /// Taper lengths are authored in **diameters**; this is the top of the slider.
 ///
-/// It is a limit on the LAG, not on the arithmetic: for the incremental methods the end taper is paid
-/// by holding the tail of the stroke back until it is out of the taper window ([`crate::stroke`]), so
-/// the length the artist dials is exactly how far the wet end trails the cursor. Eight diameters is
-/// where a 40 px brush trails by 320 px — already past what reads as "the brush", and far past any
-/// taper in the reference app.
+/// Eight is where a 40 px brush tapers over 320 px — already longer than anything that reads as "the
+/// brush", and far past any taper in the reference app. It costs no latency at any value: nothing is
+/// ever held back ([`mod@crate::stroke::ends`]).
 pub const MAX_TAPER_DIAMETERS: f32 = 8.0;
 
 /// The stroke-end shaping of a brush (Procreate *Touch Taper*). All-zero is off, and an off taper is
@@ -172,9 +170,10 @@ fn ramp(d: f32, len: f32, tip: f32) -> f32 {
 
 /// Scale a dab in place by a taper width `w`, keeping the radius inside the engine's own bounds.
 ///
-/// The single place a taper ever touches a [`crate::Dab`]: the stroke engine applies it either at
-/// emission (when the far end is known) or at tail release (when it becomes known), and both go
-/// through here so the two cannot drift into two slightly different tapers.
+/// The single place a taper ever touches a [`crate::Dab`], and it is applied at EMISSION — the instant
+/// the dab is made, at the position the pointer put it. Nothing is buffered waiting to learn its
+/// distance-to-the-end; what the far end costs is answered by geometry instead
+/// ([`mod@crate::stroke::ends`]).
 ///
 /// ⚠️ [`crate::Dab::stroke_radius_px`] is deliberately NOT scaled. It is the stroke's *nominal* radius
 /// and it is stroke-constant by contract — the Shape **Flow** mapping divides its along-the-stroke

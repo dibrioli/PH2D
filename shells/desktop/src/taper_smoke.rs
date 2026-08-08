@@ -18,21 +18,21 @@
 //! 2. Scroll the brush panel to **Taper**, directly under the Falloff. Drag the **left handle** in.
 //!    → Strokes now open from a point. The head must reach full width smoothly, with no step.
 //! 3. Drag the **right handle** in (it comes from the right edge — dragging it left LENGTHENS the end
-//!    taper).
-//!    → Strokes now close to a point too. ⚠️ **This is where the price is:** the wet end trails the
-//!    cursor by exactly the length you set. Measured on the shipped default brush (radius 25):
-//!    **1 diameter = 50 px of trail, 2 = 100 px, 3 = 150 px** — and on a radius-60 brush 2 diameters is
-//!    **240 px**, because the length is brush-relative and always will be. The full-width body never
-//!    waits; what lags is the thin part, which is thin *because* it is tapering.
+//!    taper). Now paint again, watching the tip.
+//!    → ⚠️ **The ink must stay under the cursor. No lag, no catching up, no smoothing.** That is the
+//!    whole point of this step: an earlier cut of this feature held the tail back to learn where the
+//!    stroke would end, and it was rejected on sight. On a plain drag the far end is simply left at
+//!    full width — see step 6 for where the end taper IS live.
 //! 4. **Tip** (sharp ↔ blunt) and **Opacity** (how much the taper fades as well as narrows). Untick
 //!    **Link tip sizes** to give the two ends different points — the end tip is seeded from the start's,
 //!    so nothing jumps at the instant you untick it.
 //! 5. **The four media.** Set a taper, then switch the Paint Mode dropdown through Digital →
 //!    Watercolor → Impasto → Wet Paint → back to Digital, painting one stroke in each.
 //!    → The taper must be the SAME in all four, and must still be there when you come back.
-//! 6. **The shape editors.** Pick Method = **Line** (or Curve / Free Hand) and drag one out.
-//!    → Both ends taper **live, with no lag at all** — the whole path exists before the first dab, so
-//!    the engine measures it. This is the half where the taper costs nothing.
+//! 6. **The shape editors — this is where the END taper lives.** Pick Method = **Line** (or Curve, or
+//!    **Free Hand**) and drag one out.
+//!    → Both ends taper, **live and exact**, with no lag at all: the whole path exists before the first
+//!    dab, so the engine measures it instead of guessing. Reshape the curve and watch both ends follow.
 //! 7. **Ellipse / Polygon.**
 //!    → They must come out with **no taper at all**, uniform all the way round.
 //!
@@ -42,10 +42,11 @@
 //!   the arbitrary point the fill happened to start at, and a circle with a notch in it is a defect.
 //! - **A stroke shorter than the two windows is a lens**, thinner throughout, never a vanishing act —
 //!   the two ends combine by `min`, not by product.
-//! - **The tail lag of step 3.** It is the design's stated price and it is bounded by the number you
-//!   set. The alternative (lay the tail full-width and re-derive it at pen-up) needs the region restored
-//!   and every dab re-stamped, which the fluid, Smear/Blur/Clone and the watercolor accumulators would
-//!   each have to be taught — a wave with its own acceptance, not a line inside this one.
+//! - **A plain drag tapers its HEAD and not its tail** (steps 3 and 6). A stroke you are still making
+//!   has one end so far. Tapering the other one means either withholding dabs — the delay that was
+//!   rejected — or re-stamping the tail from a restored base every batch, which is a stroke buffer: it
+//!   has to restore four planes plus the per-stroke coverage buffer, and the Wet Paint fluid cannot be
+//!   rewound at all. That is a wave with its own acceptance, not a line inside this one.
 
 use ph2d_asset::{AssetDb, AssetId};
 use ph2d_core::Vec2;
@@ -91,12 +92,13 @@ pub(crate) fn spawn_if_enabled(
                  PH2D_TAPER_SMOKE: 1) paint one stroke: it must look exactly as it always has  \
                  2) brush panel -> TAPER (under the Falloff): drag the LEFT handle in — strokes open \
                  from a point  \
-                 3) drag the RIGHT handle in — strokes close to a point. THE PRICE: the wet end trails \
-                 the cursor by the length you set (radius 25: 1 diameter = 50 px, 2 = 100, 3 = 150)  \
+                 3) drag the RIGHT handle in, then paint: THE INK MUST STAY UNDER THE CURSOR (no lag, \
+                 no smoothing) -- a plain drag tapers its HEAD, never its tail  \
                  4) Tip (sharp<->blunt), Opacity, and untick 'Link tip sizes' for two different points  \
                  5) switch the Paint Mode through all FOUR media — the taper must survive every switch \
                  and still be there when you come back  \
-                 6) Method = Line / Curve / Free Hand: both ends taper LIVE, with no lag  \
+                 6) Method = Line / Curve / Free Hand: THIS is where the END taper lives -- both ends, \
+                 live and exact  \
                  7) Ellipse / Polygon: NO taper at all — a closed loop has no ends."
             );
             Some(bits)

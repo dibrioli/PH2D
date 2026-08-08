@@ -1,5 +1,5 @@
-//! Gates for the **Taper** (Procreate *Touch Taper*): [`crate::taper`] + the stroke engine's two
-//! doors into it (emission when the far end is known, the tail hold when it is not).
+//! Gates for the **Taper** (Procreate *Touch Taper*): [`crate::taper`] + the single door the stroke
+//! engine applies it through, at emission, for every dab it ever makes.
 //!
 //! The oracle throughout is **the dab list the artist's stroke actually produces** — never the law
 //! re-implemented here. A gate that recomputed `tip + (1-tip)*smoothstep` and compared it to itself
@@ -226,152 +226,94 @@ fn a_closed_loop_has_no_ends_to_taper() {
     }
 }
 
-/// **The freehand end taper lands, and it lands on the dabs that are really at the end.**
+/// **NO DAB IS EVER WITHHELD, AND NO DAB IS EVER MOVED.**
 ///
-/// The end is unknown while the stroke is open, so the tail is held and released shaped at pen-up. Two
-/// halves, and both matter: the tail IS tapered, and the body — which passed through the same buffer —
-/// is NOT (a hold that tapered everything it touched would thin the whole stroke).
+/// This is the law the taper lives under, and it is structural rather than a setting: the dab stream a
+/// tapered brush produces has the SAME COUNT, at the SAME POSITIONS, in the SAME ORDER as the stream the
+/// same brush produces with the taper off. Only the radii differ.
 ///
-/// **Mutation that must bleed:** make `holds_tail` return `false` — the tail is never held, `to_end` is
-/// `INFINITY` for every dab, and the stroke ends bluntly at full width.
+/// ⛔ The first cut of this feature broke exactly this. It held the tail back until the cursor had
+/// travelled past the end-taper window so it could learn each dab's distance-to-the-end, which is exact
+/// and is **wrong as a product**: the mark stops following the hand. Enio, 2026-08-08 — *"o algoritmo que
+/// vc usou para o taper é ruim, tem um super delay e um stabilize ruim. O traço não pode ter nenhum
+/// delay e nenhum stabilize"*. The two complaints are one mechanism: a stroke that lags and then catches
+/// up in a lump is what a heavy stabilizer feels like.
+///
+/// The oracle is deliberately the raw stream and not a clock: latency measured with a timer would drift
+/// with the machine, while *"where did the engine put the dabs?"* is exact and cannot be argued with.
+///
+/// **Mutation that must bleed:** hold anything back — buffer the trailing dabs and release them later —
+/// and the counts, the centres or the order stop matching.
 #[test]
-fn a_freehand_stroke_is_tapered_at_the_end_it_turned_out_to_have() {
-    let mut spec = brush();
-    spec.taper = Taper {
-        start: 0.0,
-        end: 3.0, // 60 px
-        ..Taper::default()
-    };
-    let dabs = freehand(spec, 400.0, 40);
-    let r = radii(&dabs);
-    assert!(r.len() > 20, "fixture: too few dabs ({})", r.len());
-    assert!(
-        (r[0] - 10.0).abs() < 1e-4,
-        "the HEAD was tapered by an end-only taper ({:.4})",
-        r[0]
-    );
-    assert!(
-        *r.last().unwrap() <= 1.0,
-        "the stroke does not end in a point ({:.2})",
-        r.last().unwrap()
-    );
-    // Everything more than one window from the end is full width.
-    for d in dabs.iter().filter(|d| d.arc_len < 320.0) {
-        assert!(
-            (d.radius_px - 10.0).abs() < 1e-4,
-            "a dab at arc {:.1} — far from either end — was thinned to {:.4}",
-            d.arc_len,
-            d.radius_px
-        );
-    }
-}
-
-/// **The held dabs come out in the order they were laid.**
-///
-/// The tail hold is the only thing in this engine that can reorder a stroke, and the deposits that
-/// would be destroyed by a reorder — the fluid, the read-modify tools — are exactly the ones no gate on
-/// WIDTH can see. So `arc_len` is asserted non-decreasing across the whole released list.
-///
-/// **Mutation that must bleed:** append the released prefix AFTER the fresh batch in `tail_gate`.
-#[test]
-fn the_tail_hold_never_reorders_the_stroke() {
-    let mut spec = brush();
-    spec.taper = Taper {
-        start: 1.0,
+fn no_dab_is_ever_withheld_or_moved() {
+    let plain = brush();
+    let mut tapered = brush();
+    tapered.taper = Taper {
+        start: 2.0,
         end: 3.0,
         ..Taper::default()
     };
-    let dabs = freehand(spec, 400.0, 40);
-    for w in dabs.windows(2) {
-        assert!(
-            w[1].arc_len >= w[0].arc_len - 1e-4,
-            "the stroke came out of order: arc {:.3} after {:.3}",
-            w[1].arc_len,
-            w[0].arc_len
-        );
-    }
-}
-
-/// **Turning the end taper off mid-stroke releases what was held — in order, and only once.**
-///
-/// `set_spec` is live: the artist drags the End slider while the stroke is open. The dabs already held
-/// must come out (stranding them would silently delete part of the stroke), they must come out BEFORE
-/// the batch being laid right now, and they must not be tapered a second time.
-///
-/// ⚠️ This gate exists because the reorder mutation **survived** without it: with the hold ON the fresh
-/// batch has already been drained into the buffer, so `fresh` is empty and the order branch is
-/// unobservable. The only way to reach it is to switch the hold off with dabs still held — the fixture
-/// has to contain the phenomenon, or the branch is guarded by nothing.
-///
-/// **Mutation that must bleed:** append the released prefix AFTER the fresh batch in `tail_gate`.
-#[test]
-fn dropping_the_end_taper_mid_stroke_releases_the_held_dabs_in_order() {
-    let mut spec = brush();
-    spec.taper = Taper {
-        start: 0.0,
-        end: 3.0,
-        ..Taper::default()
-    };
-    let mut st = Stroke::new(spec, Dynamics::default(), 7);
-    let (mut out, mut all) = (Vec::new(), Vec::new());
-    st.begin(
-        StrokePoint {
-            pos: [0.0, 0.0],
-            pressure: 1.0,
-        },
-        &mut out,
-    );
-    all.append(&mut out);
-    for i in 1..=40 {
-        if i == 20 {
-            // The artist drags End to zero with a taper window's worth of dabs still held.
-            let mut off = spec;
-            off.taper.end = 0.0;
-            st.set_spec(off);
-        }
-        st.extend(
-            StrokePoint {
-                pos: [10.0 * i as f32, 0.0],
-                pressure: 1.0,
-            },
-            &mut out,
-        );
-        all.append(&mut out);
-    }
-    st.finish(&mut out);
-    all.append(&mut out);
-
-    // ⚠️ **Not one dab may be LOST.** This half exists because the reorder mutation survived the order
-    // assertion alone: dropping the fresh batch on the release path leaves what remains perfectly
-    // ordered and perfectly full-width, and the stroke is simply missing a piece. A hold that silently
-    // deletes part of a stroke is worse than one that reorders it — and only a COUNT can see it.
-    let mut off = spec;
-    off.taper.end = 0.0;
-    let control = freehand(off, 400.0, 40);
+    // 40 pointer moves: enough that a hold would still be sitting on dabs at several points along it.
+    let a = freehand(plain, 400.0, 40);
+    let b = freehand(tapered, 400.0, 40);
     assert_eq!(
-        all.len(),
-        control.len(),
-        "the hold swallowed {} dab(s) when the end taper was switched off mid-stroke",
-        control.len() as i64 - all.len() as i64
+        a.len(),
+        b.len(),
+        "the taper changed how MANY dabs the stroke has ({} vs {}) — something is being held or dropped",
+        a.len(),
+        b.len()
     );
-    for w in all.windows(2) {
+    for (i, (p, t)) in a.iter().zip(b.iter()).enumerate() {
+        assert_eq!(
+            p.center, t.center,
+            "dab {i} moved: {:?} without the taper, {:?} with it",
+            p.center, t.center
+        );
         assert!(
-            w[1].arc_len >= w[0].arc_len - 1e-4,
-            "the released tail came out AFTER the batch that followed it: arc {:.3} then {:.3}",
-            w[0].arc_len,
-            w[1].arc_len
+            (p.arc_len - t.arc_len).abs() < 1e-4,
+            "dab {i} landed at a different arc ({:.3} vs {:.3}) — the stream was re-ordered",
+            p.arc_len,
+            t.arc_len
         );
     }
-    // Nothing was tapered: the start length was zero all along and the end length was zero before any
-    // dab could reach the end of the stroke.
-    for d in &all {
-        assert!(
-            (d.radius_px - 10.0).abs() < 1e-4,
-            "a dab at arc {:.1} was thinned after the taper was switched off ({:.4})",
-            d.arc_len,
-            d.radius_px
-        );
-    }
+}
+
+/// **The freehand far end is left at FULL WIDTH, and that is the design — not an omission.**
+///
+/// A stroke the artist is still making has one end so far. The only two ways to taper the other one are
+/// to withhold dabs (the delay that was rejected above) or to re-stamp the tail from a restored base
+/// every batch — a stroke buffer, which is how Procreate affords it and which is a wave with its own
+/// acceptance: it has to restore four planes plus the per-stroke coverage buffer, and the Wet Paint
+/// fluid cannot be rewound at all.
+///
+/// So this gate pins the honest half of the bargain: the HEAD tapers exactly, live, and the TAIL does
+/// not. It exists so nobody re-introduces a hold to "finish" the feature without reading why it went.
+///
+/// **Mutation that must bleed:** give `TaperSpan::OpenUnknownEnd` a finite `to_end` — any guess about
+/// where the stroke will end thins the last dabs of a stroke that has not ended.
+#[test]
+fn the_freehand_far_end_is_left_at_full_width() {
+    let mut spec = brush();
+    spec.taper = Taper {
+        start: 2.0,
+        end: 3.0,
+        ..Taper::default()
+    };
+    let dabs = freehand(spec, 400.0, 40);
+    let full = spec.clamped_radius();
+    let first = dabs.first().expect("the stroke laid dabs");
+    assert!(
+        first.radius_px < full * 0.2,
+        "the head did not taper ({:.3} of {full:.3}) — the half that IS live is broken",
+        first.radius_px
+    );
+    let last = dabs.last().expect("the stroke laid dabs");
+    assert!(
+        (last.radius_px - full).abs() < 1e-3,
+        "the last dab of a freehand stroke came out at {:.3} instead of the full {full:.3} — something \
+         is guessing where the stroke ends",
+        last.radius_px
+    );
 }
 
 /// **A stroke shorter than the two taper windows is a lens, not a vanishing act.**
@@ -381,16 +323,22 @@ fn dropping_the_end_taper_mid_stroke_releases_the_held_dabs_in_order() {
 /// being broken. The oracle is the widest dab in the stroke — under `min` it still reaches a real
 /// fraction of the brush.
 ///
+/// ⚠️ Laid through the whole-path door, and the fixture had to be MOVED there: a plain drag has no far
+/// end, so its second window is inert and `a * b` and `a.min(b)` give the same answer everywhere — the
+/// mutation below **survived** while this gate drove a freehand stroke. Two ends can only fight over a
+/// dab where both of them exist.
+///
 /// **Mutation that must bleed:** combine by `a * b` in [`Taper::width`].
 #[test]
 fn a_short_stroke_is_a_lens_not_a_vanishing_act() {
     let mut spec = brush();
+    spec.stroke_method = StrokeMethod::Line;
     spec.taper = Taper {
         start: 4.0, // 80 px each — a 100 px stroke is inside both windows everywhere
         end: 4.0,
         ..Taper::default()
     };
-    let dabs = freehand(spec, 100.0, 20);
+    let dabs = polyline(spec, 100.0);
     let widest = radii(&dabs).into_iter().fold(0.0f32, f32::max);
     // `min` at the midpoint of a 100 px stroke: both ends see 50 of 80 px ⇒ smoothstep(0.625) ≈ 0.68.
     assert!(
@@ -436,14 +384,19 @@ fn the_taper_fades_the_tip_only_when_opacity_asks() {
 /// **Link tip sizes is one number driving two ends.**
 ///
 /// Linked, the end wears the start's tip; unlinked, it wears its own. Asserted through the ENGINE (the
-/// released tail dab) rather than by calling [`Taper::effective_tip_end`] — that would be the accessor
-/// checking itself.
+/// last dab of a laid path) rather than by calling [`Taper::effective_tip_end`] — that would be the
+/// accessor checking itself.
+///
+/// ⚠️ The fixture is the whole-path door, not a freehand drag, and that is not convenience: a plain
+/// drag has no far end, so its last dab is full width by design and BOTH tips would read the same
+/// there. A gate about the END tip has to be run where the end taper exists.
 ///
 /// **Mutation that must bleed:** always return `tip_end` from [`Taper::effective_tip_end`].
 #[test]
 fn linking_the_tips_makes_the_end_wear_the_starts_tip() {
     let tail_radius = |link: bool| {
         let mut spec = brush();
+        spec.stroke_method = StrokeMethod::Line;
         spec.taper = Taper {
             start: 2.0,
             end: 2.0,
@@ -452,7 +405,7 @@ fn linking_the_tips_makes_the_end_wear_the_starts_tip() {
             link_tips: link,
             opacity: 0.0,
         };
-        freehand(spec, 400.0, 40).last().unwrap().radius_px
+        polyline(spec, 400.0).last().unwrap().radius_px
     };
     let linked = tail_radius(true);
     let free = tail_radius(false);
@@ -497,22 +450,19 @@ fn the_taper_length_scales_with_the_brush() {
     );
 }
 
-/// **The price of the freehand end taper, in a number: the wet end trails the cursor by the taper
-/// length, and by nothing more.**
+/// **The stroke reaches the cursor the instant the pointer does.**
 ///
-/// The tail hold is the one thing in this feature the artist can FEEL rather than see, so it is
-/// measured rather than described. Two halves: it must trail at least the window (or the end taper is
-/// not actually being resolved at the end) and at most the window plus one dab spacing (or the hold is
-/// keeping dabs it could have released, and the lag is larger than the control the artist set).
+/// The consequence of the law above, measured where the artist feels it: after a long drag with an end
+/// taper armed, the last dab the engine has emitted sits within one dab spacing of the pointer. Not
+/// within a taper window — within a SPACING, which is the granularity the brush has anyway.
 ///
-/// Measured at the shipped default brush (radius 25, diameter 50): an end taper of **1 diameter trails
-/// 50 px**, **2 diameters 100 px**, **3 diameters 150 px** — and on a radius-60 brush 2 diameters is
-/// **240 px**, because the length is brush-relative.
+/// The four cases sweep brush radius and taper length together, because the withheld-tail design that
+/// this replaces lagged by `end × diameter`: it trailed 50 px at one diameter on the shipped brush,
+/// 100 at two, 150 at three, and 240 px on a radius-60 brush. Every one of those is a failure here.
 ///
-/// **Mutation that must bleed:** release on `>= end_px * 2.0` — the artist sets one number and the
-/// stroke trails by twice it.
+/// **Mutation that must bleed:** buffer the trailing dabs again — the lag jumps to the taper window.
 #[test]
-fn the_wet_end_trails_the_cursor_by_exactly_the_taper_the_artist_set() {
+fn the_stroke_reaches_the_cursor_the_instant_the_pointer_does() {
     for (radius, end_d) in [(25.0f32, 1.0f32), (25.0, 2.0), (25.0, 3.0), (60.0, 2.0)] {
         let mut spec = BrushSpec {
             radius_px: radius,
@@ -522,8 +472,6 @@ fn the_wet_end_trails_the_cursor_by_exactly_the_taper_the_artist_set() {
             end: end_d,
             ..Taper::default()
         };
-        let diameter = 2.0 * radius;
-        let window = end_d * diameter;
         let mut st = Stroke::new(spec, Dynamics::default(), 1);
         let mut out = Vec::new();
         st.begin(
@@ -533,7 +481,7 @@ fn the_wet_end_trails_the_cursor_by_exactly_the_taper_the_artist_set() {
             },
             &mut out,
         );
-        // 1 px steps: the pointer's own granularity must not be mistaken for the hold's.
+        // 1 px steps: the pointer's own granularity must not be mistaken for the engine's.
         let mut last = 0.0f32;
         let mut cursor = 0.0f32;
         for i in 1..=1200 {
@@ -552,14 +500,9 @@ fn the_wet_end_trails_the_cursor_by_exactly_the_taper_the_artist_set() {
         let lag = cursor - last;
         let spacing = spec.dab_spacing_px();
         assert!(
-            lag >= window - spacing,
-            "radius {radius}, end {end_d} diameters: the tail trailed only {lag:.1} px of a {window:.1} \
-             px window — the end taper is not being resolved at the end"
-        );
-        assert!(
-            lag <= window + 2.0 * spacing,
-            "radius {radius}, end {end_d} diameters: the tail trailed {lag:.1} px for a {window:.1} px \
-             window — the hold is keeping dabs it could have released"
+            lag <= spacing + 1.0,
+            "radius {radius}, end {end_d} diameters: the ink trailed the cursor by {lag:.1} px with a \
+             dab spacing of {spacing:.1} px — something is holding dabs back"
         );
     }
 }

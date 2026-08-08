@@ -35,9 +35,9 @@ impl PainterTool {
 
     /// **Taper length at the stroke's end**, in brush diameters (`0` = off).
     ///
-    /// ⚠️ Non-zero is what arms the tail hold for the incremental methods, so this is the number that
-    /// decides how far the wet end of a freehand stroke trails the cursor — see
-    /// [`ph2d_painter_brush::stroke`].
+    /// ⚠️ It is live on every method whose PATH is known when the dabs are laid (Line / Arc / Curve /
+    /// Free Hand); a plain freehand drag has no far end yet and is not tapered there. Nothing is ever
+    /// held back to find out — see `ph2d_painter_brush::stroke::ends`.
     pub fn set_brush_taper_end(&mut self, v: f32) {
         let v = v.clamp(0.0, MAX_TAPER_DIAMETERS);
         self.set_taper_field(|t| t.end = v);

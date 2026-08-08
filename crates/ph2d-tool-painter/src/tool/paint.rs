@@ -17,6 +17,9 @@ mod brush_core_settings; // Falloff/size/spacing/jitter/dash setters; split from
 mod brush_image; // The imported brush-texture image type (`BrushTextureImage`); split from `brush_settings`
 mod brush_settings; // Brush + Stroke-section snapshot & setters (shares `PaintState`'s private brush access)
 mod brush_taper_settings;
+mod taper_tail;
+#[cfg(test)]
+mod taper_tail_tests;
 mod brush_texture_settings; // Grain-texture / Stencil / Dab setters; split from `brush_settings` (LOC cap)
 /// The Curve stroke method's on-canvas point editor (submodule, as `brush_settings`).
 mod curve;

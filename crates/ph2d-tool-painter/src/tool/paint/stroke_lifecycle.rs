@@ -52,6 +52,7 @@ impl PainterTool {
         // quando `strong_count > 1`, e um `Weak` não conta. O lado `before` do delta sai do journal.
         let before = self.snapshot_model_eliding_relief();
         self.paint.stroke_undo = Some(before);
+        self.drop_taper_record(); // a new gesture: whatever the last one recorded is not ours
         self.paint.drag_preview = None;
         self.paint.wetpaint.pending_deposit.clear(); // doc 21: a new gesture invalidates the stash
         self.paint.line_anchor = Some(ev.pos);
@@ -343,6 +344,10 @@ impl PainterTool {
             self.paint.dabs = dabs;
             self.paint.stroke = Some(stroke);
         }
+        // The far end of a freehand stroke finally exists: put the stroke back and lay it again,
+        // tapered ([`super::taper_tail`]). BEFORE `close_stroke`, so the artist gets one undo step —
+        // and before the watercolor / wet / inpaint commits below, which own their own ground.
+        self.resolve_taper_tail();
         // Drag Dot: the dab at the release point is the commit — keep it (drop the restore record).
         self.commit_drag_preview();
         // Wet Paint: close the engine's direct stroke (the sim resumes; the session — the water —

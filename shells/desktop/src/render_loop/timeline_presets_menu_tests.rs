@@ -223,3 +223,68 @@ fn a_column_rove_selects_the_column_and_toggles_it() {
     );
     let _ = target;
 }
+
+/// **UM catálogo de nomes, DOIS consumidores** — as dez rows de famílias do menu de easing
+/// dizem exactamente o `EasingFamily::label()` da família em que resolvem.
+///
+/// ⚠️ Este gate existe porque o segundo consumidor chegou. O menu da timeline nomeava as
+/// famílias com literais próprios (editar-core **não pode** depender de `ph2d-anim` — está
+/// escrito no cabeçalho do `timeline_presets`), e o seletor de curva dos estados de UI pinta
+/// as mesmas famílias a partir do enum. Duas listas de nomes divergem no dia em que alguém
+/// renomeia uma delas, e o artista lê *"Expo"* num painel e outra palavra no menu.
+///
+/// A shell é o único sítio onde os dois lados são visíveis ao mesmo tempo: ela tem a tabela de
+/// editor-core **e** o `preset_for` que a traduz para vocabulário de anim. Por isso o gate mora
+/// aqui e não em nenhuma das duas crates.
+///
+/// ⚠️ Ele compara **famílias**, não modos: as rows de modo da cascata são decoradas
+/// (*"Ease In ▶"*) porque ali são rows de um menu, e exigir que a decoração de um consumidor
+/// fosse o nome canónico seria fazer o catálogo servir a um layout.
+#[test]
+fn the_easing_menu_names_every_family_exactly_as_the_catalogue_does() {
+    let mut seen = 0;
+    for (id, label, _) in c::TIMELINE_EASE_MENU.iter() {
+        let Some(Preset::Eased(e)) = preset_for(*id, c::TL_EASE_MODE_IN) else {
+            panic!("a row {label:?} do menu de easing nao resolve numa curva");
+        };
+        assert_eq!(
+            e.family.label(),
+            *label,
+            "a row do menu diz {:?} e o catalogo diz {:?} -- duas listas de nomes",
+            *label,
+            e.family.label()
+        );
+        seen += 1;
+    }
+    assert_eq!(seen, 10, "o menu de easing deixou de cobrir dez familias");
+}
+
+/// **A família que o menu NÃO oferece é exactamente a que ignora o modo.**
+///
+/// `Linear` é uma row de topo do menu de segmento, e não uma das dez da cascata — porque a
+/// cascata é *família × modo* e o `Linear` não tem modo (`uses_mode() == false`). Oferecê-lo ali
+/// daria três rows que pintam a mesma curva.
+///
+/// ⚠️ A decisão já estava tomada e não escrita: este gate é o que a torna verificável, e o que
+/// impede que a próxima família sem modo entre na cascata sem ninguém reparar.
+#[test]
+fn the_cascade_offers_exactly_the_families_whose_mode_is_alive() {
+    use ph2d_anim::EasingFamily;
+    let in_cascade: Vec<EasingFamily> = c::TIMELINE_EASE_MENU
+        .iter()
+        .filter_map(|(id, _, _)| match preset_for(*id, c::TL_EASE_MODE_IN) {
+            Some(Preset::Eased(e)) => Some(e.family),
+            _ => None,
+        })
+        .collect();
+    for f in EasingFamily::ALL {
+        assert_eq!(
+            in_cascade.contains(&f),
+            f.uses_mode(),
+            "{}: esta' na cascata familia x modo? {} -- mas uses_mode() diz {}",
+            f.label(),
+            in_cascade.contains(&f),
+            f.uses_mode()
+        );
+    }
+}

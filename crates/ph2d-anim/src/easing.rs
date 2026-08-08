@@ -88,6 +88,45 @@ impl EasingFamily {
                 | EasingFamily::Bounce
         )
     }
+
+    /// O nome desta família na interface.
+    ///
+    /// ⚠️ Mora aqui, e não numa tabela do consumidor, porque uma segunda lista divergiria da
+    /// primeira no dia em que alguém acrescentasse uma família — o mesmo motivo escrito no
+    /// `SymmetryKind::label`. Hoje há **dois** consumidores (o menu de easing da timeline e o
+    /// seletor de curva dos estados de UI) e um gate a exigir que digam a mesma palavra.
+    #[must_use]
+    pub const fn label(self) -> &'static str {
+        match self {
+            EasingFamily::Linear => "Linear",
+            EasingFamily::Quad => "Quad",
+            EasingFamily::Cubic => "Cubic",
+            EasingFamily::Quart => "Quart",
+            EasingFamily::Quint => "Quint",
+            EasingFamily::Back => "Back",
+            EasingFamily::Bounce => "Bounce",
+            EasingFamily::Sine => "Sine",
+            EasingFamily::Expo => "Expo",
+            EasingFamily::Circ => "Circ",
+            EasingFamily::Elastic => "Elastic",
+        }
+    }
+
+    /// O [`EasingMode`] muda a curva desta família?
+    ///
+    /// ⚠️ **`Linear` é a única que responde `false`, e a consequência é uma UI, não uma curiosidade:**
+    /// o `eval` devolve `u` antes de olhar para o modo, então `Linear In`, `Linear Out` e
+    /// `Linear In-Out` são **a mesma curva escrita três vezes**. Um seletor que oferecesse os três
+    /// pintaria dois controlos que não fazem nada — a row-de-menu-morta que este repo mantém *uma
+    /// tabela por menu* para prevenir. Quem pergunta é o painel, para decidir se OFERECE o modo.
+    ///
+    /// A afirmação não é declarada e sim **medida**: o gate `the_mode_is_dead_exactly_where_the_
+    /// catalogue_says_it_is` avalia as três curvas de cada família e exige que coincidam
+    /// exactamente onde este predicado diz `false`, e difiram onde ele diz `true`.
+    #[must_use]
+    pub const fn uses_mode(self) -> bool {
+        !matches!(self, EasingFamily::Linear)
+    }
 }
 
 /// The direction an easing family is applied in.
@@ -104,6 +143,21 @@ pub enum EasingMode {
 impl EasingMode {
     /// Every mode, for iteration.
     pub const ALL: [EasingMode; 3] = [EasingMode::In, EasingMode::Out, EasingMode::InOut];
+
+    /// O nome deste modo na interface — o par do [`EasingFamily::label`], e pelo mesmo motivo.
+    ///
+    /// ⚠️ Curto de propósito: quem o pinta é uma fileira de três chips ao lado do nome da família,
+    /// e ali *"Ease In"* repetiria uma palavra que a linha inteira já diz. O menu da timeline
+    /// decora os seus (*"Ease In ▶"*) porque ali eles são rows de uma cascata — o gate compara as
+    /// **famílias**, que são o vocabulário partilhado, e não a decoração de cada consumidor.
+    #[must_use]
+    pub const fn label(self) -> &'static str {
+        match self {
+            EasingMode::In => "In",
+            EasingMode::Out => "Out",
+            EasingMode::InOut => "In-Out",
+        }
+    }
 }
 
 /// An easing preset: a [`EasingFamily`] plus an [`EasingMode`].

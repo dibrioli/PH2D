@@ -14,7 +14,7 @@
 //! ordem do código do produto, o gate lê o código do produto.
 
 mod sculpt_source;
-use sculpt_source::{function_body, sculpt_src, source};
+use sculpt_source::{function_body, project_family_fn, sculpt_src, source};
 
 /// **A RECUSA vem antes de qualquer mutação da sessão.**
 ///
@@ -104,7 +104,7 @@ fn the_writer_goes_through_the_one_encoder() {
 /// é passa-adiante, é triturador.
 #[test]
 fn the_save_prefers_the_live_scene_and_falls_back_to_the_bytes() {
-    let body = function_body(&source("project.rs"), "sculpt_bytes_for_save");
+    let body = project_family_fn("sculpt_bytes_for_save");
     let live = body
         .find("to_doc_bytes()")
         .expect("o save le a cena VIVA quando ela existe");

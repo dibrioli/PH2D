@@ -127,7 +127,13 @@ fn loading_a_project_without_a_run_forgets_the_one_in_the_session() {
 /// acima (que constroem o arquivo à mão) e perde toda corrida que alguém jogar.
 #[test]
 fn the_save_writes_the_live_tape() {
-    let src = include_str!("project.rs");
+    // ⚠️ **A FAMÍLIA, não um endereço.** O `project.rs` já foi PARTIDO duas vezes
+    // por teto de LOC — o `project_load_from` saiu em 05/08 e o `project_save` na
+    // integração de 08/08 —, e um gate ancorado num arquivo reprova produto
+    // correto no dia em que a função se muda. O `include_str!` é o controle: se
+    // um membro da família sumir, isto vira **erro de COMPILAÇÃO** em vez de um
+    // `.expect()` que ninguém sabe ler.
+    let src = concat!(include_str!("project.rs"), include_str!("project_save.rs"));
     // ⚠️ **Ancorado na CONSTRUÇÃO, não no nome do campo.** A primeira ocorrência
     // de `player_tape:` no arquivo é a DECLARAÇÃO do struct, e um gate que a
     // lesse ficaria verde afirmando uma coisa sobre a outra.

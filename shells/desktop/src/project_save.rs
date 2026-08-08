@@ -9,7 +9,7 @@
 //! sozinha. O gate de LOC da shell só corre na varredura impactada, então quem
 //! o viu foi a árvore combinada.
 
-use super::{PROJECT_SCHEMA, ProjectFile, SavedAsset};
+use super::{PROJECT_SCHEMA, ProjectFile};
 
 impl crate::App {
     /// Caminho do arquivo de projeto (env `PH2D_PROJECT_PATH`, default no CWD).

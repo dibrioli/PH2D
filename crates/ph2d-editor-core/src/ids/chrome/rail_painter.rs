@@ -32,15 +32,34 @@ pub const PAINTER_RAIL_CLONE: NodeId = hash_node_id("painter_rail.clone");
 pub const PAINTER_RAIL_SMEAR: NodeId = hash_node_id("painter_rail.smear");
 /// Blur — soften pixels under the brush.
 pub const PAINTER_RAIL_BLUR: NodeId = hash_node_id("painter_rail.blur");
-/// Deform — brush-driven reshape (Liquify: Push / Twist / Pinch / Wrinkle / Fold / Reconstruct). Sits
-/// above the Mask group. Forwards paint mode `"deform"`; the reshape kernel + inspector UI live in the
-/// painter (Deform Wave 1). Reuses [`IconId::Transform`] (no new SVG).
-pub const PAINTER_RAIL_DEFORM: NodeId = hash_node_id("painter_rail.deform");
-/// Sculpt — reshape the impasto RELIEF (Smooth / Sharpen; the spatula verbs follow in Wave 2). Sits
-/// beside Deform, and the pairing is the point: Deform moves PIXELS, Sculpt moves the paint's BODY.
-/// Forwards paint mode `"sculpt"`; the kernel lives in the painter (`docs/Painter/18…`). Reuses
-/// [`IconId::Material`](crate::icons::IconId::Material) — the relief IS the material's body (no new SVG).
-pub const PAINTER_RAIL_SCULPT: NodeId = hash_node_id("painter_rail.sculpt");
+/// **Liquify** — the brush-driven warp (Push / Twist / Pinch / Wrinkle / Fold / Reconstruct), directly
+/// under Blur because it is the last of the brush-family tools. Forwards paint mode `"liquify"`, which
+/// lands the artist IN the Reshape temperament: this chip is the tool, not a lobby.
+///
+/// ⚠️ **It took this slot from `Sculpt`, and the trade was measured** (`measure_rail_chips`, a drag
+/// through `on_canvas_pointer` in the medium the Painter opens in — Digital):
+///
+/// | chip | pixels moved | relief texels moved |
+/// |---|---:|---:|
+/// | Sculpt | **0** | **0** |
+/// | Liquify | **26 964** | — |
+///
+/// Sculpt is not broken — it reshapes RELIEF, and Digital has none (the control in the same probe:
+/// with impasto on the canvas the same gesture moves 1 676 relief texels). But the rail is the
+/// UNIVERSAL bar, identical in all four media, and a slot there that does nothing in the medium the
+/// app opens in is a slot most artists never see work. Sculpt keeps the home it already had — the
+/// Impasto TOOL list, which only exists where its medium is armed — exactly like the **Knife**, which
+/// has deliberately had no rail chip since 2026-07-19.
+pub const PAINTER_RAIL_LIQUIFY: NodeId = hash_node_id("painter_rail.liquify");
+/// **Transform** — the gizmo half of the warp: lift a patch and move / scale / rotate it freely.
+/// Forwards paint mode `"transform"`, which lands the artist IN the Transform temperament.
+///
+/// ⚠️ **This is the ex-`Deform` chip, and it was an ANTECHAMBER** — the same probe measured a drag on
+/// it moving **0** pixels, because entering Deform opens the temperament UNSELECTED and the canvas
+/// router consumes the event without acting (`_ => true`). One extra click in the panel and the same
+/// chip moved 26 964. Splitting the lobby into its two doors is what removes the dead click; the chip
+/// keeps [`IconId::Transform`](crate::icons::IconId::Transform), which it was already wearing.
+pub const PAINTER_RAIL_TRANSFORM: NodeId = hash_node_id("painter_rail.transform");
 /// **Mask group** — the shared rail button (mirrors [`PAINTER_RAIL_SHAPES`]): pressing it reveals a
 /// flyout of its two sub-tools ([`PAINTER_RAIL_MASK_SUB_IDS`]) — **Mask** (paint a layer mask) and
 /// **Selection** (Procreate-style marquee) — to its right. A member of the tool radio group; the button
@@ -74,7 +93,8 @@ pub const PAINTER_RAIL_SHAPE_ELLIPSE: NodeId = hash_node_id("painter_rail.shape_
 pub const PAINTER_RAIL_SHAPE_POLYGON: NodeId = hash_node_id("painter_rail.shape_polygon");
 
 /// Routing id (not a painted widget): the rail forwards the selected paint tool's mode to the active
-/// Painter via `PanelEvent::SelectOption(PAINTER_PAINT_MODE, "brush" | "eraser" | "smear" | "blur")`,
+/// Painter via `PanelEvent::SelectOption(PAINTER_PAINT_MODE, "brush" | "eraser" | "smear" | "blur" |
+/// "liquify" | "transform" | …)`,
 /// drained by the shell into `PainterTool::handle_panel_event` → `set_paint_tool_mode`.
 /// Dependency-legal (a frozen-channel message, no dep on the concrete painter crate).
 pub const PAINTER_PAINT_MODE: NodeId = hash_node_id("painter_rail.paint_mode");
@@ -90,8 +110,8 @@ pub const PAINTER_RAIL_TOOL_IDS: [NodeId; 12] = [
     PAINTER_RAIL_CLONE,
     PAINTER_RAIL_SMEAR,
     PAINTER_RAIL_BLUR,
-    PAINTER_RAIL_DEFORM,
-    PAINTER_RAIL_SCULPT,
+    PAINTER_RAIL_LIQUIFY,
+    PAINTER_RAIL_TRANSFORM,
     PAINTER_RAIL_MASK_GROUP,
     PAINTER_RAIL_INPAINT,
     PAINTER_RAIL_SHAPES,

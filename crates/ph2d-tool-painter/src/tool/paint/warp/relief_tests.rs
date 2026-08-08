@@ -55,7 +55,7 @@ fn deformable_relief_tool() -> (PainterTool, crate::tool::RtLayerId) {
         "fixture: the deposit laid no relief"
     );
 
-    t.set_paint_tool_mode("deform");
+    t.set_paint_tool_mode("liquify");
     t.set_deform_temperament(super::super::DEFORM_TEMPERAMENT_RESHAPE);
     t.set_deform_mode(0); // Push
     t.set_deform_size_norm(0.5);
@@ -371,7 +371,7 @@ fn a_bare_layer_gains_no_planes_from_a_warp() {
     t.on_canvas_pointer(cp([60.0, 48.0], PointerPhase::Move));
     t.on_canvas_pointer(cp([60.0, 48.0], PointerPhase::Up));
 
-    t.set_paint_tool_mode("deform");
+    t.set_paint_tool_mode("liquify");
     t.set_deform_temperament(super::super::DEFORM_TEMPERAMENT_RESHAPE);
     t.set_deform_pressure(1.0);
     t.on_canvas_pointer(cp([45.0, 48.0], PointerPhase::Down));

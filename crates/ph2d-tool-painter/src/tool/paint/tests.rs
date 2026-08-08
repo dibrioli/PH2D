@@ -18,6 +18,8 @@ mod measure_input_cost;
 mod measure_journal_cost; // captura por REGIÃO x fork do PLANO — o número que decide o S3 (doc 28 §7)
 #[path = "measure_pendown_cost.rs"]
 mod measure_pendown_cost; // o que COMEÇAR um traço custa (doc 28 §4.5); irmão do impasto_cost
+#[path = "measure_rail_chips.rs"]
+mod measure_rail_chips; // o que cada chip do rail FAZ no meio Digital — a medicao que decide o pill
 #[path = "measure_route_cost.rs"]
 mod measure_route_cost; // quem RODA o deposito, e quanto essa escolha custa (doc 28)
 #[path = "measure_shape_cost.rs"]
@@ -7326,7 +7328,7 @@ fn deform_square_canvas(size: u32, x0: u32, y0: u32, x1: u32, y1: u32) -> Painte
         }
     }
     t.set_source(buf, size, size);
-    t.set_paint_tool_mode("deform");
+    t.set_paint_tool_mode("liquify");
     t.set_shape_grab_tol_px(8.0);
     t
 }
@@ -7481,7 +7483,7 @@ fn deform_transform_perf_move_is_under_frame_budget() {
     }
     let mut t = PainterTool::default();
     t.set_source(src, size, size);
-    t.set_paint_tool_mode("deform");
+    t.set_paint_tool_mode("liquify");
     t.set_shape_grab_tol_px(12.0);
     // A 512×512 selection near the centre — a typical "move this region" gesture.
     t.set_rect_selection(760, 760, 512, 512);
@@ -7518,7 +7520,7 @@ fn deform_warp_perf_drag_is_under_frame_budget() {
     }
     let mut t = PainterTool::default();
     t.set_source(src, size, size);
-    t.set_paint_tool_mode("deform");
+    t.set_paint_tool_mode("liquify");
     t.set_shape_grab_tol_px(16.0);
     t.set_rect_selection(760, 760, 512, 512);
     t.set_deform_transform_on(true);
@@ -7606,7 +7608,7 @@ fn perf_transform_whole_image_table() {
         }
         let mut t = PainterTool::default();
         t.set_source(src, size, size);
-        t.set_paint_tool_mode("deform");
+        t.set_paint_tool_mode("liquify");
         t.set_shape_grab_tol_px(12.0);
         if !whole {
             t.set_rect_selection(760, 760, 512, 512);
@@ -7670,7 +7672,7 @@ fn deform_transform_whole_image_corner_grabs_from_slightly_outside() {
     // margin to the shell (`deform_gizmo_grab_margin_px`) and must resolve a Down slightly outside the
     // corner to the DEFORM corner handle — scaling the patch, not silently no-oping.
     let mut t = white_canvas(64, 6.0);
-    t.set_paint_tool_mode("deform");
+    t.set_paint_tool_mode("liquify");
     t.set_shape_grab_tol_px(8.0);
     assert_eq!(
         t.deform_gizmo_grab_margin_px(),
@@ -7787,8 +7789,15 @@ fn deform_transform_redo_recreates_the_gizmo() {
 
 #[test]
 fn deform_transform_relifts_when_repicked_after_leaving_the_panel() {
-    // Leaving Deform bakes the transform; re-entering opens the temperament UNSELECTED, so re-picking
-    // Transform re-lifts a fresh gizmo (Enio 2026-07-04: the gizmo used to not reappear).
+    // Leaving Deform bakes the transform; re-entering and picking Transform re-lifts a FRESH gizmo
+    // (Enio 2026-07-04: the gizmo used to not reappear). That guarantee is what this gate protects.
+    //
+    // ⚠️ **The MECHANISM under it changed on 2026-08-08 and this gate was asserting the mechanism.** It
+    // used to read "re-entering opens the temperament UNSELECTED", which was true because the only wire
+    // into the mode was `"deform"` — a lobby. Now each half has its own chip and its own wire, so the
+    // entry itself names a half: coming in by `"liquify"` lands in the brush half (no gizmo, asserted
+    // below) and picking Transform in the panel lifts one. The rail's own door is gated next door, in
+    // `warp/rail_tests::entering_transform_from_another_tool_lifts_a_fresh_gizmo`.
     use ph2d_editor_core::ids as core_ids;
     use ph2d_editor_core::tool::PanelEvent;
     let mut t = deform_square_canvas(64, 20, 20, 44, 44);
@@ -7798,14 +7807,11 @@ fn deform_transform_relifts_when_repicked_after_leaving_the_panel() {
         "gizmo shown when Transform is picked"
     );
     t.set_paint_tool_mode("brush"); // leave Deform (bakes)
-    t.set_paint_tool_mode("deform"); // re-enter
-    assert_eq!(
-        t.paint.deform.temperament, 0,
-        "temperament reopens unselected"
-    );
+    t.set_paint_tool_mode("liquify"); // re-enter
     assert!(
         t.deform_gizmo().is_none(),
-        "no gizmo until a mode is picked"
+        "re-entering by the Liquify wire must leave the brush half in hand — a gizmo here would mean \
+         the bake left one floating"
     );
     assert!(t.route_deform_event(&PanelEvent::Click(
         core_ids::PAINTER_DEFORM_TEMPERAMENT_TRANSFORM
@@ -11707,7 +11713,7 @@ fn deform_ramp(size: u32) -> PainterTool {
     }
     let mut t = PainterTool::default();
     t.set_source(src, size, size);
-    t.set_paint_tool_mode("deform");
+    t.set_paint_tool_mode("liquify");
     t.set_deform_transform_on(false); // pick the Reshape temperament (the panel opens on NONE)
     t.set_deform_size_norm(0.25); // ~33px radius: spans the sampled pixels, corner stays outside the dab
     t

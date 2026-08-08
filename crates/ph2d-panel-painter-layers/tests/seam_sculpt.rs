@@ -120,20 +120,23 @@ fn centre(r: Rect) -> (f32, f32) {
     (r.x + r.w * 0.5, r.y + r.h * 0.5)
 }
 
-/// **The rail button puts the Painter in Sculpt mode.**
+/// **The `"sculpt"` wire puts the Painter in Sculpt mode.**
 ///
-/// The rail forwards `"sculpt"` over the frozen `SelectOption` channel; the tool's router maps it to
-/// `PaintMode::Sculpt`. If either half is missing the tool is unreachable — you can paint the chip on the
-/// rail all day and the brush will still be laying pigment.
+/// ⚠️ **Its sender changed on 2026-08-08 and the wire did not.** Sculpt used to have a rail chip; it
+/// lost it to Liquify, measured — in the medium the Painter opens in, a Sculpt drag moves 0 pixels and
+/// 0 relief texels, because it reshapes RELIEF and Digital has none. Today the sender is the Impasto
+/// section's **TOOL list**, which only exists where that medium is armed. The seam is the same and
+/// this gate is unchanged: if either half is missing the tool is unreachable, and every door to it —
+/// there is one now, not two — leads nowhere.
 ///
 /// **Mutation that must bleed:** drop the `"sculpt" => PaintMode::Sculpt` arm from `set_paint_tool_mode`
 /// (the mode silently falls through to `_ => PaintMode::Paint`, which is the quietest possible failure).
 #[test]
-fn the_rail_button_enters_sculpt_mode() {
+fn the_sculpt_wire_enters_sculpt_mode() {
     let mut tool = PainterTool::default();
     assert!(!tool.is_sculpt_mode(), "fixture: the tool starts in Paint");
 
-    // Exactly what `chrome/rail_painter_tools::push_paint_mode` puts on the bus for PAINTER_RAIL_SCULPT.
+    // Exactly what the Impasto TOOL list puts on the bus when a sculpt verb is picked.
     tool.handle_panel_event(PanelEvent::SelectOption(
         core_ids::PAINTER_PAINT_MODE,
         "sculpt".to_string(),
@@ -142,7 +145,7 @@ fn the_rail_button_enters_sculpt_mode() {
     assert!(
         tool.is_sculpt_mode(),
         "the rail's `sculpt` message did not reach the tool — `set_paint_tool_mode` has no arm for it, \
-         so it fell through to plain Paint and the rail button does nothing at all"
+         so it fell through to plain Paint and picking a sculpt verb does nothing at all"
     );
     // …and the round trip, which the shell relies on to restore the tool after a momentary Fill drag.
     assert_eq!(

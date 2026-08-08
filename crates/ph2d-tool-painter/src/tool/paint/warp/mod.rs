@@ -23,6 +23,8 @@ pub(crate) use field::DabField;
 mod list_tests;
 #[cfg(test)]
 mod perf_tests;
+#[cfg(test)]
+mod rail_tests;
 mod reconstruct;
 mod relief;
 #[cfg(test)]

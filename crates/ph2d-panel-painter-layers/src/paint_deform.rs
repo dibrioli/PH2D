@@ -34,9 +34,18 @@ pub(crate) fn paint_deform_section(
     y: f32,
     brush: BrushSettings,
 ) -> f32 {
-    // Temperament — Reshape (brush dabs) vs Transform (gizmo). Opens UNSELECTED each time the panel is
-    // entered: the artist must pick, and re-picking Transform re-lifts a fresh gizmo (Enio 2026-07-04). The
-    // body + session actions only appear once a mode is chosen.
+    // Temperament — Liquify (brush dabs) vs Transform (gizmo).
+    //
+    // ⚠️ **This group and the rail chips are two VIEWS of one radio**, so they read the same word: the
+    // rail's `Liquify` / `Transform` chips arm exactly these two segments (`set_paint_tool_mode`), and
+    // this group arms them back. The segment used to be labelled "Reshape" — the internal name of the
+    // temperament, which the code still uses — but three unrelated subsystems in this repo own the
+    // word *reshape* (`ph2d-flip-reshape`, `ph2d-vec-scene::reshape`, and this), while **Liquify** is
+    // unambiguous tree-wide and is the word every other painting app puts on this tool.
+    //
+    // It can still open UNSELECTED — nothing on the rail leads here any more without naming a half, but
+    // undo can un-lift a Transform back to NONE (`transform.rs`), and the body + session actions only
+    // appear once a half is chosen.
     let selected = match brush.deform_temperament {
         ph2d_tool_painter::DEFORM_TEMPERAMENT_RESHAPE => 0,
         ph2d_tool_painter::DEFORM_TEMPERAMENT_TRANSFORM => 1,
@@ -49,9 +58,9 @@ pub(crate) fn paint_deform_section(
         content_w,
         y,
         core_ids::PAINTER_DEFORM_TEMPERAMENT,
-        "Deform temperament",
+        "Warp tool",
         &[
-            (core_ids::PAINTER_DEFORM_TEMPERAMENT_RESHAPE, "Reshape"),
+            (core_ids::PAINTER_DEFORM_TEMPERAMENT_RESHAPE, "Liquify"),
             (core_ids::PAINTER_DEFORM_TEMPERAMENT_TRANSFORM, "Transform"),
         ],
         selected,

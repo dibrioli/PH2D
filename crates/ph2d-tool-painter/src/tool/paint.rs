@@ -129,6 +129,8 @@ mod line_snap;
 mod polygon;
 pub use polygon::PolygonOverlay;
 /// The Stencil texture mapping's on-canvas handle editor (move/resize the image-space rect).
+/// As duas direções de *"que ferramenta está na mão?"* — extraído de `stencil.rs` (teto de LOC).
+mod mode_switch;
 mod stencil;
 /// Stroke-method control (set / non-shape memory / restore) — the Brush-panel + rail Shapes seam.
 mod stroke_ctl;

@@ -1,6 +1,6 @@
 //! Icon glyph table (Phase 0.1 of the M13 UI sprint).
 //!
-//! 89 glyphs ported from `docs/design/icons/*.svg`. Each icon is a
+//! Every glyph in `docs/design/icons/*.svg`, ported. Each icon is a
 //! list of [`IconCmd`] primitives (paths, polylines, lines, circles,
 //! rounded rects) on a 24x24 viewBox. The paint helper strokes them
 //! with `currentColor` semantics: caller passes the color, we apply
@@ -56,7 +56,11 @@ pub enum IconCmd {
     Rect(f32, f32, f32, f32, f32),
 }
 
-/// All 100 glyphs in the canonical icon set.
+/// The canonical icon set — one variant per `docs/design/icons/*.svg`.
+///
+/// ⚠️ No count in this prose, on purpose: the two numbers that used to be here ("89" and "100") were
+/// both stale against a set of 136, and a number that only a human re-counts is a number that lies.
+/// The array below IS the count, and `enum_order_matches_svgs` is what keeps it true.
 ///
 /// Variants declared in **alphabetical order by kebab-case slug**
 /// (matching `docs/design/icons/*.svg` filenames sorted). Order is
@@ -129,6 +133,11 @@ pub enum IconId {
     Light,
     Line,
     Link,
+    /// Liquify — the inward spiral. The universal figure for a warp that swirls pixels (Photoshop
+    /// Twirl, Procreate/Affinity Liquify), and deliberately a NESTED double loop: the app's other
+    /// circular glyphs (Rotate / Reset / History / Spinner) are all a single open arc with a tail, so
+    /// the two families cannot be confused at chip size.
+    Liquify,
     Lock,
     LockKeyhole,
     LockKeyholeOpen,
@@ -472,6 +481,7 @@ mod tests {
         IconId::Light,
         IconId::Line,
         IconId::Link,
+        IconId::Liquify,
         IconId::Lock,
         IconId::LockKeyhole,
         IconId::LockKeyholeOpen,

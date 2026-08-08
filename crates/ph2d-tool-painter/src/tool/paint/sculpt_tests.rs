@@ -580,9 +580,17 @@ fn no_other_paint_mode_touches_the_relief() {
     /// One mode, dragged across the ridge. Returns how many relief texels moved and whether a SCULPT
     /// session was opened — the two questions this gate keeps apart.
     fn sweep(mode: &str, plow: Option<f32>) -> (usize, bool) {
+        sweep_with(mode, plow, false)
+    }
+    /// …and the same drag with the Liquify's **Affect Relief** disarmed, which is the only other mode
+    /// with a legitimate claim on the body of the paint.
+    fn sweep_with(mode: &str, plow: Option<f32>, disarm_warp_relief: bool) -> (usize, bool) {
         let size = 100u32;
         let (mut t, layer, before) = sculpt_canvas(size);
         t.set_paint_tool_mode(mode);
+        if disarm_warp_relief {
+            t.toggle_deform_relief(); // default is ON — tinta é substância (W4, 2026-07-15)
+        }
         let mut b = t.paint.brush;
         b.strength = 1.0;
         if let Some(p) = plow {
@@ -612,16 +620,20 @@ fn no_other_paint_mode_touches_the_relief() {
         "inpaint",
         "fill",
         "selection",
-        "deform",
+        "liquify",
     ] {
-        // The Smear is the one mode with a LEGITIMATE claim on the relief — the Plow, the palette knife.
-        // Disarm it and the sweep asks its real question of that route too.
-        let (moved, session) = sweep(mode, (mode == "smear").then_some(0.0));
+        // TWO modes have a LEGITIMATE claim on the relief — the Smear's Plow (the palette knife) and the
+        // Liquify's Affect Relief (W4: the warp carries `h`/`covers`/`mats` along the same `disp`, and
+        // the toggle defaults ON because paint is a substance). Disarm each and the sweep asks its real
+        // question of those routes too.
+        let (moved, session) =
+            sweep_with(mode, (mode == "smear").then_some(0.0), mode == "liquify");
         assert_eq!(
             moved, 0,
-            "the `{mode}` tool reshaped {moved} texels of RELIEF. Only Sculpt may (and the Smear's Plow, \
-             which is disarmed here) — the Mask route is the one to suspect first: it swaps the canvas \
-             for a scratch and re-enters the same choke point the sculpt hangs off."
+            "the `{mode}` tool reshaped {moved} texels of RELIEF. Only Sculpt may — plus the two modes \
+             that own the body by design and are DISARMED here: the Smear's Plow and the Liquify's \
+             Affect Relief. The Mask route is the one to suspect first: it swaps the canvas for a \
+             scratch and re-enters the same choke point the sculpt hangs off."
         );
         assert!(!session, "the `{mode}` tool opened a sculpt session");
     }
@@ -637,5 +649,21 @@ fn no_other_paint_mode_touches_the_relief() {
     assert!(
         !session,
         "…and it must do that through the Plow, not by opening a sculpt session"
+    );
+
+    // ⚠️ **The same two halves for the Liquify, and this one had been GREEN OVER NOTHING.** The sweep
+    // used to list the wire `"deform"`, which entered the mode and left the temperament unselected — the
+    // canvas router consumed the drag without acting, so of course no relief moved. The assertion was
+    // true about an inert tool, not about a rule. Now that the chip lands in the tool (2026-08-08), the
+    // warp moves relief by default, exactly as W4 shipped it, and the honest gate is the Smear's shape:
+    // disarmed, not one texel; armed, relief MUST move with the sculpt session still closed.
+    let (moved, session) = sweep("liquify", None);
+    assert!(
+        moved > 100,
+        "with Affect Relief at its default the warp must carry the paint's BODY — it moved {moved} texels"
+    );
+    assert!(
+        !session,
+        "…and it must do that through the warp's own advection, not by opening a sculpt session"
     );
 }

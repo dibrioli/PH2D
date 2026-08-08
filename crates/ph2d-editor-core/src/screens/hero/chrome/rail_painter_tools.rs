@@ -38,10 +38,13 @@ fn push_paint_mode(hero: &mut HeroScreen, tool_id: NodeId) {
         "selection"
     } else if tool_id == ids::PAINTER_RAIL_INPAINT {
         "inpaint"
-    } else if tool_id == ids::PAINTER_RAIL_DEFORM {
-        "deform"
-    } else if tool_id == ids::PAINTER_RAIL_SCULPT {
-        "sculpt"
+    } else if tool_id == ids::PAINTER_RAIL_LIQUIFY {
+        // ⚠️ NOT "deform": the two halves of the warp get one chip each, and each wire lands the artist
+        // IN its temperament. The old single "deform" wire opened an antechamber where the canvas
+        // consumed the drag and moved nothing (measured: 0 pixels — `measure_rail_chips`).
+        "liquify"
+    } else if tool_id == ids::PAINTER_RAIL_TRANSFORM {
+        "transform"
     } else if tool_id == ids::PAINTER_RAIL_FILL {
         // Placeholder: the Fill (Bucket) behaviour + colour-picker wiring lands in a follow-up; for now
         // selecting it just marks the rail radio (the painter defaults an unknown mode to Brush paint).
@@ -82,15 +85,18 @@ pub fn sync_from_mode(store: &mut crate::interaction::WidgetStore, mode: &str) {
         "mask" => ids::PAINTER_RAIL_MASK,
         "inpaint" => ids::PAINTER_RAIL_INPAINT,
         "selection" => ids::PAINTER_RAIL_SELECTION,
-        "deform" => ids::PAINTER_RAIL_DEFORM,
-        "sculpt" => ids::PAINTER_RAIL_SCULPT,
+        "liquify" => ids::PAINTER_RAIL_LIQUIFY,
+        "transform" => ids::PAINTER_RAIL_TRANSFORM,
         "eraser" => ids::PAINTER_RAIL_ERASER,
         "brush" => ids::PAINTER_RAIL_BRUSH,
         // ⚠️ The **Knife** deliberately has no rail button — the rail's Smear is the plain one, and the
         // knife is picked from the Impasto TOOL list (Enio, 2026-07-19). So the honest rail for it is a
         // rail with NOTHING pressed: the artist is holding a tool this strip does not offer, and lighting
         // up its nearest relative would be the rail naming the wrong tool.
-        "knife" => {
+        // …and **Sculpt** joined it in 2026-08-08, for the same reason and by the same measurement: it
+        // reshapes the paint's BODY, so it belongs to the Impasto TOOL list where that medium is armed,
+        // not to the universal rail where it moves nothing at all.
+        "knife" | "sculpt" => {
             set_radio(store, &ids::PAINTER_RAIL_TOOL_IDS, NodeId(0));
             return;
         }
@@ -279,373 +285,11 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
     }
     false
 }
-
+// ⚠️ Os gates moram em `rail_painter_tools/tests.rs`, num DIRETÓRIO — não num irmão
+// `rail_painter_tools_tests.rs`. O `ph2d-chrome-sync` varre `chrome/*.rs` do topo e trata **todo**
+// arquivo como um handler, então um irmão `*_tests.rs` vira um handler-fantasma no `dispatch_all` e no
+// bloco de `mod` gerado (a cicatriz exata que o `command_palette_tests.rs` deixou em 2026-08-02, curada
+// do mesmo jeito). Dentro do diretório ele é invisível para o gerador e segue sendo o módulo FILHO
+// daqui, então o `use super::*` continua alcançando o que é privado.
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use ph2d_a11y::NodeId as Aid;
-
-    fn pressed(hero: &HeroScreen, id: Aid) -> bool {
-        matches!(hero.store.button_state(id), Some(ButtonState::Pressed))
-    }
-
-    #[test]
-    fn selecting_a_paint_tool_is_an_exclusive_radio() {
-        let mut hero = HeroScreen::new(NodeId(1));
-        super::super::super::left_rail::populate(&mut hero.store);
-        // Brush is the default selection.
-        assert!(pressed(&hero, ids::PAINTER_RAIL_BRUSH));
-        assert!(apply(
-            &mut hero,
-            WidgetEvent::Click(ids::PAINTER_RAIL_ERASER)
-        ));
-        assert!(pressed(&hero, ids::PAINTER_RAIL_ERASER));
-        assert!(!pressed(&hero, ids::PAINTER_RAIL_BRUSH));
-    }
-
-    #[test]
-    fn shapes_button_toggles_the_flyout() {
-        let mut hero = HeroScreen::new(NodeId(1));
-        super::super::super::left_rail::populate(&mut hero.store);
-        assert!(!hero.store.painter_shapes_flyout_open());
-        assert!(apply(
-            &mut hero,
-            WidgetEvent::Click(ids::PAINTER_RAIL_SHAPES)
-        ));
-        assert!(hero.store.painter_shapes_flyout_open());
-        assert!(pressed(&hero, ids::PAINTER_RAIL_SHAPES));
-        // Click again closes it.
-        assert!(apply(
-            &mut hero,
-            WidgetEvent::Click(ids::PAINTER_RAIL_SHAPES)
-        ));
-        assert!(!hero.store.painter_shapes_flyout_open());
-    }
-
-    #[test]
-    fn picking_a_shape_selects_shapes_tool_and_closes_flyout() {
-        let mut hero = HeroScreen::new(NodeId(1));
-        super::super::super::left_rail::populate(&mut hero.store);
-        apply(&mut hero, WidgetEvent::Click(ids::PAINTER_RAIL_SHAPES));
-        assert!(apply(
-            &mut hero,
-            WidgetEvent::Click(ids::PAINTER_RAIL_SHAPE_ELLIPSE)
-        ));
-        assert!(pressed(&hero, ids::PAINTER_RAIL_SHAPE_ELLIPSE));
-        assert!(!pressed(&hero, ids::PAINTER_RAIL_SHAPE_FREEHAND));
-        assert!(pressed(&hero, ids::PAINTER_RAIL_SHAPES));
-        assert!(!hero.store.painter_shapes_flyout_open());
-    }
-
-    #[test]
-    fn selecting_another_tool_closes_the_flyout() {
-        let mut hero = HeroScreen::new(NodeId(1));
-        super::super::super::left_rail::populate(&mut hero.store);
-        apply(&mut hero, WidgetEvent::Click(ids::PAINTER_RAIL_SHAPES));
-        assert!(hero.store.painter_shapes_flyout_open());
-        apply(&mut hero, WidgetEvent::Click(ids::PAINTER_RAIL_BRUSH));
-        assert!(!hero.store.painter_shapes_flyout_open());
-        assert!(pressed(&hero, ids::PAINTER_RAIL_BRUSH));
-    }
-
-    #[test]
-    fn eyedropper_arms_the_pick_without_opening_the_wheel() {
-        let mut hero = HeroScreen::new(NodeId(1));
-        super::super::super::left_rail::populate(&mut hero.store);
-        assert!(hero.store.picker_target().is_none());
-        assert!(apply(
-            &mut hero,
-            WidgetEvent::Click(ids::PAINTER_RAIL_EYEDROPPER)
-        ));
-        // The rail Eyedropper now arms an ON-CANVAS pick — it must NOT open the colour wheel.
-        assert!(
-            hero.store.picker_target().is_none(),
-            "Eyedropper does not open the colour wheel — it arms an on-canvas pick"
-        );
-        assert!(
-            pressed(&hero, ids::PAINTER_RAIL_EYEDROPPER),
-            "Eyedropper is checked while the pick is armed"
-        );
-    }
-
-    #[test]
-    fn reset_to_brush_snaps_the_rail_radio() {
-        let mut hero = HeroScreen::new(NodeId(1));
-        super::super::super::left_rail::populate(&mut hero.store);
-        apply(&mut hero, WidgetEvent::Click(ids::PAINTER_RAIL_EYEDROPPER));
-        assert!(pressed(&hero, ids::PAINTER_RAIL_EYEDROPPER));
-        // The shell calls this when the on-canvas pick completes → back to Brush.
-        super::reset_to_brush(&mut hero.store);
-        assert!(pressed(&hero, ids::PAINTER_RAIL_BRUSH));
-        assert!(!pressed(&hero, ids::PAINTER_RAIL_EYEDROPPER));
-    }
-
-    /// **The rail radio FOLLOWS the painter's mode** — it is derived, not remembered.
-    ///
-    /// The Painter panel's unified Impasto TOOL list can change the paint mode (picking "Chisel" there
-    /// enters Sculpt), so a rail that only learned about its own clicks would go on highlighting the
-    /// button the artist last pressed while the canvas is holding something else. Two answers to *"which
-    /// tool am I holding?"*, with the wrong one on screen.
-    ///
-    /// The fixture starts from a rail that has been CLICKED, so the assertion is that the sync overrides
-    /// a stale pressed state — not merely that it can press a button on a fresh store.
-    ///
-    /// **Mutation that must bleed:** make `sync_from_mode` return early for every mode. Nothing else in
-    /// the workspace notices: the tool is in the right mode, the panel paints the right card, and only
-    /// the rail lies.
-    #[test]
-    fn the_rail_radio_follows_the_published_paint_mode() {
-        let mut hero = HeroScreen::new(NodeId(1));
-        super::super::super::left_rail::populate(&mut hero.store);
-        // The artist clicked Brush on the rail…
-        apply(&mut hero, WidgetEvent::Click(ids::PAINTER_RAIL_BRUSH));
-        assert!(pressed(&hero, ids::PAINTER_RAIL_BRUSH));
-        // …then picked a sculpt verb in the Impasto tool list, which put the painter in Sculpt.
-        super::sync_from_mode(&mut hero.store, "sculpt");
-        assert!(
-            pressed(&hero, ids::PAINTER_RAIL_SCULPT),
-            "the rail did not follow the painter into Sculpt — it would keep highlighting Brush while \
-             the artist sculpts"
-        );
-        assert!(
-            !pressed(&hero, ids::PAINTER_RAIL_BRUSH),
-            "…and it is a RADIO: the previous tool must let go"
-        );
-        // …and the Knife takes it to the Smear, from a mode that is not Brush.
-        super::sync_from_mode(&mut hero.store, "smear");
-        assert!(pressed(&hero, ids::PAINTER_RAIL_SMEAR));
-        assert!(!pressed(&hero, ids::PAINTER_RAIL_SCULPT));
-    }
-
-    /// A mode with no rail button of its own leaves the radio ALONE.
-    ///
-    /// `fill` is drag-activated (the C&F button is a colour well, not a mode radio — see
-    /// `clicking_c_and_f_is_a_colour_well_not_a_fill_mode_radio`) and `eyedropper` is momentary, owned by
-    /// `reset_to_brush`. Without this, the catch-all would have to guess, and guessing here means the
-    /// radio flickering to Brush every frame the artist is mid-ColorDrop.
-    #[test]
-    fn a_mode_with_no_rail_button_leaves_the_radio_alone() {
-        let mut hero = HeroScreen::new(NodeId(1));
-        super::super::super::left_rail::populate(&mut hero.store);
-        apply(&mut hero, WidgetEvent::Click(ids::PAINTER_RAIL_SMEAR));
-        assert!(pressed(&hero, ids::PAINTER_RAIL_SMEAR));
-        for unmapped in ["fill", "eyedropper", ""] {
-            super::sync_from_mode(&mut hero.store, unmapped);
-            assert!(
-                pressed(&hero, ids::PAINTER_RAIL_SMEAR),
-                "mode {unmapped:?} has no rail button, so it must not move the radio"
-            );
-        }
-    }
-
-    #[test]
-    fn ignores_non_rail_ids() {
-        let mut hero = HeroScreen::new(NodeId(1));
-        super::super::super::left_rail::populate(&mut hero.store);
-        assert!(!apply(&mut hero, WidgetEvent::Click(ids::TOOL_ROTATE)));
-    }
-
-    /// The value of the last `PAINTER_BRUSH_STROKE_METHOD` command pushed on the bus (drains it).
-    fn drained_stroke_method(hero: &mut HeroScreen) -> Option<String> {
-        hero.bus.drain().find_map(|a| match a {
-            EditorAction::ToolPanelEvent(PanelEvent::SelectOption(id, v))
-                if id == ids::PAINTER_BRUSH_STROKE_METHOD =>
-            {
-                Some(v)
-            }
-            _ => None,
-        })
-    }
-
-    #[test]
-    fn picking_a_shape_emits_its_stroke_method_over_the_frozen_channel() {
-        // Forward seam: a flyout shape pick sends the shape's wire u8 on PAINTER_BRUSH_STROKE_METHOD
-        // (Ellipse = 7), and selects the Shapes tool + the Ellipse sub-radio.
-        let mut hero = HeroScreen::new(NodeId(1));
-        super::super::super::left_rail::populate(&mut hero.store);
-        apply(&mut hero, WidgetEvent::Click(ids::PAINTER_RAIL_SHAPES));
-        assert!(apply(
-            &mut hero,
-            WidgetEvent::Click(ids::PAINTER_RAIL_SHAPE_ELLIPSE)
-        ));
-        assert!(pressed(&hero, ids::PAINTER_RAIL_SHAPES));
-        assert!(pressed(&hero, ids::PAINTER_RAIL_SHAPE_ELLIPSE));
-        assert_eq!(
-            drained_stroke_method(&mut hero).as_deref(),
-            Some("7"),
-            "the Ellipse pick forwarded StrokeMethod::Ellipse (wire 7)"
-        );
-    }
-
-    #[test]
-    fn clicking_brush_emits_the_restore_sentinel() {
-        // Forward seam: the Brush button sends the "brush" sentinel → the tool restores the last
-        // non-shape method (the rail can't know that value; the tool owns the memory).
-        let mut hero = HeroScreen::new(NodeId(1));
-        super::super::super::left_rail::populate(&mut hero.store);
-        assert!(apply(
-            &mut hero,
-            WidgetEvent::Click(ids::PAINTER_RAIL_BRUSH)
-        ));
-        assert_eq!(
-            drained_stroke_method(&mut hero).as_deref(),
-            Some("brush"),
-            "the Brush button forwarded the restore sentinel"
-        );
-    }
-
-    /// The value of the last `PAINTER_PAINT_MODE` command pushed on the bus (drains it).
-    fn drained_paint_mode(hero: &mut HeroScreen) -> Option<String> {
-        hero.bus.drain().find_map(|a| match a {
-            EditorAction::ToolPanelEvent(PanelEvent::SelectOption(id, v))
-                if id == ids::PAINTER_PAINT_MODE =>
-            {
-                Some(v)
-            }
-            _ => None,
-        })
-    }
-
-    #[test]
-    fn clicking_c_and_f_is_a_colour_well_not_a_fill_mode_radio() {
-        // The **C&F** (Colour & Fill) rail button is a colour WELL: a plain click neither activates Fill nor
-        // moves the tool radio (it only opens the picker, in the shell). Fill activates via the ColorDrop
-        // DRAG onto the canvas, not this click (Enio 2026-07-02).
-        let mut hero = HeroScreen::new(NodeId(1));
-        super::super::super::left_rail::populate(&mut hero.store);
-        assert!(pressed(&hero, ids::PAINTER_RAIL_BRUSH));
-        assert!(apply(&mut hero, WidgetEvent::Click(ids::PAINTER_RAIL_FILL)));
-        // The click is consumed but changes nothing: Brush stays selected, Fill never presses, no mode fires.
-        assert!(!pressed(&hero, ids::PAINTER_RAIL_FILL));
-        assert!(pressed(&hero, ids::PAINTER_RAIL_BRUSH));
-        assert_eq!(
-            drained_paint_mode(&mut hero).as_deref(),
-            None,
-            "a C&F click forwards NO operating mode (drag-to-canvas activates Fill)"
-        );
-    }
-
-    #[test]
-    fn selecting_inpaint_forwards_the_inpaint_heal_mode() {
-        // Forward seam: the Inpaint rail button forwards the "inpaint" operating mode over the frozen
-        // PAINTER_PAINT_MODE channel → the tool's content-aware heal brush (ADR-0102).
-        let mut hero = HeroScreen::new(NodeId(1));
-        super::super::super::left_rail::populate(&mut hero.store);
-        assert!(apply(
-            &mut hero,
-            WidgetEvent::Click(ids::PAINTER_RAIL_INPAINT)
-        ));
-        assert!(pressed(&hero, ids::PAINTER_RAIL_INPAINT));
-        assert_eq!(
-            drained_paint_mode(&mut hero).as_deref(),
-            Some("inpaint"),
-            "the Inpaint button forwarded the heal mode, not the brush fallback"
-        );
-    }
-
-    #[test]
-    fn selecting_deform_forwards_the_deform_mode() {
-        // Forward seam: the Deform rail button forwards the "deform" operating mode over the frozen
-        // PAINTER_PAINT_MODE channel → the painter's reshape/liquify kernel (Deform Wave 1). It is a plain
-        // radio tool (no flyout), so the generic tool branch drives it.
-        let mut hero = HeroScreen::new(NodeId(1));
-        super::super::super::left_rail::populate(&mut hero.store);
-        assert!(apply(
-            &mut hero,
-            WidgetEvent::Click(ids::PAINTER_RAIL_DEFORM)
-        ));
-        assert!(pressed(&hero, ids::PAINTER_RAIL_DEFORM));
-        assert!(!pressed(&hero, ids::PAINTER_RAIL_BRUSH));
-        assert_eq!(
-            drained_paint_mode(&mut hero).as_deref(),
-            Some("deform"),
-            "the Deform button forwarded the reshape mode, not the brush fallback"
-        );
-    }
-
-    #[test]
-    fn mask_group_button_toggles_its_flyout_and_forwards_the_active_sub() {
-        // The Mask group button (shared with Selection) toggles the Mask flyout on click and forwards
-        // the active sub-tool's mode — Mask by default (populate presses the Mask sub).
-        let mut hero = HeroScreen::new(NodeId(1));
-        super::super::super::left_rail::populate(&mut hero.store);
-        assert!(!hero.store.painter_mask_flyout_open());
-        assert!(apply(
-            &mut hero,
-            WidgetEvent::Click(ids::PAINTER_RAIL_MASK_GROUP)
-        ));
-        assert!(hero.store.painter_mask_flyout_open());
-        assert!(pressed(&hero, ids::PAINTER_RAIL_MASK_GROUP));
-        assert_eq!(
-            drained_paint_mode(&mut hero).as_deref(),
-            Some("mask"),
-            "the Mask group forwards its default sub-tool (Mask) mode"
-        );
-        // Click again closes it.
-        assert!(apply(
-            &mut hero,
-            WidgetEvent::Click(ids::PAINTER_RAIL_MASK_GROUP)
-        ));
-        assert!(!hero.store.painter_mask_flyout_open());
-    }
-
-    #[test]
-    fn picking_selection_activates_the_mask_group_and_forwards_selection() {
-        // Forward seam: picking Selection in the Mask flyout sets the sub-radio, makes the Mask group the
-        // active tool, closes the flyout, and forwards the "selection" paint mode over PAINTER_PAINT_MODE.
-        let mut hero = HeroScreen::new(NodeId(1));
-        super::super::super::left_rail::populate(&mut hero.store);
-        // Flyout already open (the group was pressed); pick Selection from it. Pick directly so the bus
-        // holds only the pick's forwarded mode (clicking the group first would enqueue a stale "mask").
-        hero.store.set_painter_mask_flyout_open(true);
-        assert!(apply(
-            &mut hero,
-            WidgetEvent::Click(ids::PAINTER_RAIL_SELECTION)
-        ));
-        assert!(pressed(&hero, ids::PAINTER_RAIL_SELECTION));
-        assert!(!pressed(&hero, ids::PAINTER_RAIL_MASK));
-        assert!(pressed(&hero, ids::PAINTER_RAIL_MASK_GROUP));
-        assert!(!hero.store.painter_mask_flyout_open());
-        assert_eq!(
-            drained_paint_mode(&mut hero).as_deref(),
-            Some("selection"),
-            "the Selection pick forwarded the selection mode"
-        );
-    }
-
-    #[test]
-    fn mask_and_shapes_flyouts_are_mutually_exclusive() {
-        // Opening one group flyout closes the other — they anchor to different chips and must never both
-        // be open.
-        let mut hero = HeroScreen::new(NodeId(1));
-        super::super::super::left_rail::populate(&mut hero.store);
-        apply(&mut hero, WidgetEvent::Click(ids::PAINTER_RAIL_SHAPES));
-        assert!(hero.store.painter_shapes_flyout_open());
-        apply(&mut hero, WidgetEvent::Click(ids::PAINTER_RAIL_MASK_GROUP));
-        assert!(hero.store.painter_mask_flyout_open());
-        assert!(
-            !hero.store.painter_shapes_flyout_open(),
-            "opening the Mask flyout closes the Shapes flyout"
-        );
-    }
-
-    #[test]
-    fn sync_reflects_a_shape_method_and_leaves_a_non_shape_alone() {
-        // Reverse seam: a shape method (from the Method dropdown) moves the rail to Shapes + its sub-radio;
-        // a non-shape method must NOT stomp a non-Brush tool selection (e.g. Eraser).
-        let mut hero = HeroScreen::new(NodeId(1));
-        super::super::super::left_rail::populate(&mut hero.store);
-        // Ellipse (7) → Shapes + Ellipse sub-radio active.
-        super::sync_rail_to_stroke_method(&mut hero.store, 7);
-        assert!(pressed(&hero, ids::PAINTER_RAIL_SHAPES));
-        assert!(pressed(&hero, ids::PAINTER_RAIL_SHAPE_ELLIPSE));
-        // Now select Eraser, then a non-shape method (Space = 3) must leave Eraser alone (no bounce).
-        apply(&mut hero, WidgetEvent::Click(ids::PAINTER_RAIL_ERASER));
-        super::sync_rail_to_stroke_method(&mut hero.store, 3);
-        assert!(
-            pressed(&hero, ids::PAINTER_RAIL_ERASER),
-            "a non-shape method must not force the rail off Eraser"
-        );
-        assert!(!pressed(&hero, ids::PAINTER_RAIL_SHAPES));
-    }
-}
+mod tests;

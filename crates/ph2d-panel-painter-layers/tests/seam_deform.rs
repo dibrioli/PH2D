@@ -46,7 +46,7 @@ fn tool_in_deform_with_relief() -> PainterTool {
 
     tool.handle_panel_event(PanelEvent::SelectOption(
         core_ids::PAINTER_PAINT_MODE,
-        "deform".to_string(),
+        "liquify".to_string(),
     ));
     tool.set_deform_temperament(1); // Reshape — the brush temperament, where the row lives
 
@@ -150,7 +150,7 @@ fn the_row_does_not_exist_on_a_layer_with_no_relief() {
     tool.set_source(vec![255u8; (size * size * 4) as usize], size, size);
     tool.handle_panel_event(PanelEvent::SelectOption(
         core_ids::PAINTER_PAINT_MODE,
-        "deform".to_string(),
+        "liquify".to_string(),
     ));
     tool.set_deform_temperament(1);
     let bs = tool.brush_settings();

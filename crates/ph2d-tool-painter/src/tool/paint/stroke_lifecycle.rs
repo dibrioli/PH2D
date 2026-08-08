@@ -399,6 +399,7 @@ impl PainterTool {
         // the line below records takes the carving with the paint that was under it. (No-op after
         // `commit_drag_preview`, which the freehand pen-up already ran: one death, not two.)
         self.end_sculpt_session();
+        self.drop_erase_session(); // a mesma morte, um canal adiante (no-op depois do `commit_drag_preview`)
         // Smear: the knife's warp session is per STROKE (unlike Deform's, which spans them for
         // Reconstruct). The result stays on the canvas and becomes the next stroke's baseline.
         self.end_smear_session();

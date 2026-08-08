@@ -78,14 +78,39 @@ impl PainterTool {
         // and the layer takes them at stroke end.
         let mut erase_buffers = None;
         if erasing {
-            match self.heights.remove(&active).map(owned) {
-                Some(f) if f.len() == n => {
-                    let c = self
-                        .covers
-                        .remove(&active)
-                        .map(owned)
-                        .filter(|c| c.len() == n);
-                    let c = c.unwrap_or_else(|| vec![0u8; n]);
+            match self.heights.remove(&active) {
+                Some(ha) if ha.len() == n => {
+                    let ca = self.covers.remove(&active).filter(|c| c.len() == n);
+                    // **O `pre` DA BORRACHA**, congelado uma vez por sessão (Enio 2026-08-07: *"no modo
+                    // eraser de impasto, as shapes vivas do stroke estão marcando (reduzindo o relevo) da
+                    // massa antes de apertar apply/enter"*). Um editor de forma pousa uma figura, a mão
+                    // arrasta a ponta, e a mordida da figura ANTERIOR ficava para sempre — este sítio
+                    // esfrega o plano COMMITADO, então não há envelope a descascar; o que há é um estado
+                    // de partida a que voltar, exatamente como o sculpt tem
+                    // (`super::impasto_erase_session`).
+                    //
+                    // ⚠️ **Refcount, não cópia:** o `Arc` que sai do mapa é guardado ANTES do `owned`, e
+                    // como o `owned` é um `try_unwrap` ele passa a copiar — **uma vez**, no primeiro
+                    // batch da sessão. Dos batches seguintes em diante o mapa carrega um `Arc` novo e
+                    // único, e o `owned` volta a mover sem copiar.
+                    if self
+                        .paint
+                        .relief
+                        .erase_pre
+                        .as_ref()
+                        .is_none_or(|p| p.layer != active)
+                    {
+                        self.paint.relief.erase_pre = Some(super::relief_state::ErasePre {
+                            layer: active,
+                            heights: std::sync::Arc::clone(&ha),
+                            covers: ca
+                                .clone()
+                                .unwrap_or_else(|| std::sync::Arc::new(vec![0u8; n])),
+                            bbox: None,
+                        });
+                    }
+                    let f = owned(ha);
+                    let c = ca.map(owned).unwrap_or_else(|| vec![0u8; n]);
                     // ⚠️ **A CAPTURA do plano inteiro, e ela é o que torna o eraser descritível**
                     // (degrau 4, doc 28 §5.72). Este sítio **arranca** o plano do mapa e devolve outro
                     // objeto lá adiante: nenhuma porta de fork o vê, então sem isto o journal fica em
@@ -527,6 +552,11 @@ impl PainterTool {
             self.heights.insert(active, std::sync::Arc::new(field));
             self.covers.insert(active, std::sync::Arc::new(cover));
             self.sync_relief_flags();
+            // A janela que a sessão terá de devolver num re-carimbo. Ela ACUMULA (não substitui) porque um
+            // traço à mão livre chega em BATCHES, e a devolução é sobre a mordida inteira.
+            if let (Some(pre), Some(rect)) = (self.paint.relief.erase_pre.as_mut(), touched) {
+                pre.bbox = Some(pre.bbox.map_or(rect, |acc| union_region(acc, rect)));
+            }
         } else {
             self.paint.relief.stroke_height = field;
             self.paint.relief.stroke_paint = paint;

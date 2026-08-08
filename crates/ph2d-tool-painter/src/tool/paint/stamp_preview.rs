@@ -91,6 +91,9 @@ impl PainterTool {
         // layer's own plane live, so it has to actually restore it. Without this a Curve would carve deeper
         // on every pointer move while the artist merely LOOKED at it (`super::sculpt`, §4).
         self.restamp_reset_sculpt();
+        // …e a BORRACHA pelo mesmo motivo, um canal adiante: ela tambem reescreve o plano da
+        // camada ao vivo, e sem isto a mordida de toda figura por onde a mao passou fica para sempre.
+        self.restamp_reset_erase();
         let relief_us = t_relief.elapsed().as_micros() as u64;
         // Coverage bbox over the wrapped Tiling copies (the stamp re-tiles them itself).
         let coverage_storage;
@@ -217,6 +220,7 @@ impl PainterTool {
         }
         self.commit_stroke_height();
         self.end_sculpt_session(); // committed ⇒ the sculpt session dies (the card arms the NEXT stroke)
+        self.drop_erase_session(); // …e a da borracha com ela: a mordida commitada e permanente
         // (The protection epoch does NOT die here — it belongs to the protection, not to the gesture.)
         self.paint.drag_preview = None;
         // #3: end any shape watercolor session so the ground (backdrop) rebuilds fresh for the next shape

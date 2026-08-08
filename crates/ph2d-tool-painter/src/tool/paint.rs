@@ -38,6 +38,8 @@ pub use self::stroke_multi::StrokeOpBadge;
 pub use self::wetpaint_settings::{WetKnobs, WetTool};
 mod impasto; // Impasto: the height channel (paint thickness) — the dab pipeline's SECOND output
 mod impasto_ceiling; // Impasto: the glass ceiling — how the paint TOPS OUT (a compression, not a clamp)
+/// A SESSAO da borracha de impasto: o `pre` da massa e a devolucao que um re-carimbo faz.
+mod impasto_erase_session;
 mod impasto_fill; // o Fill no Impasto: cor + CORPO, borda no perfil do Falloff (Enio 2026-08-07)
 pub mod impasto_gpu; // Impasto: the composed relief, materialised for the GPU light pass
 mod impasto_light; // Impasto: the light pass — normal from the height field + Lambert/Blinn-Phong
@@ -158,6 +160,8 @@ mod selection_gizmo;
 /// **Deform** (Liquify) — the single inverse-warp kernel + per-mode displacement fields + Reconstruct/Amount.
 mod warp;
 pub use self::{selection_gizmo::SelectionGizmoView, warp::DeformGizmoView};
+#[cfg(test)]
+mod impasto_eraser_tests; // o eraser do Impasto sob os metodos de FORMA
 #[cfg(test)]
 mod impasto_fill_tests; // o Fill no Impasto: corpo + a borda com o perfil do Falloff
 /// Selection **shape list** model (ADR-0103 Am.2): the `Vec<SelectionShape>` source of truth + compositing. [LOC split].

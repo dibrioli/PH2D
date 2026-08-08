@@ -240,6 +240,7 @@ impl PainterTool {
             // tela — deixá-los de pé faria a próxima luz iluminar uma figura que não está mais lá.
             self.reset_stroke_height();
             self.restamp_reset_sculpt();
+            self.restamp_reset_erase(); // idem, no ramo do rascunho sob a mao
             return;
         }
         // A partir daqui a tela volta a mostrar as figuras abertas.

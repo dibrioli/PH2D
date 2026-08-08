@@ -101,4 +101,28 @@ pub(super) struct ReliefState {
     /// Whether the layer already carried a height entry before the live stroke — so a re-derive that
     /// zeroes the stroke out (Depth 0) knows whether the entry is now empty or merely untouched here.
     pub(super) live_relief_had_entry: bool,
+    /// **A massa como a BORRACHA a encontrou** — o `pre` dela, e a janela que ela já mordeu.
+    ///
+    /// O eraser não tem envelope próprio a descascar: ele esfrega o plano que já está COMMITADO na camada
+    /// (`super::impasto`, a metade `erasing`). Isso é a mesma forma do sculpt, e o
+    /// `stamp_preview::stamp_drag_preview` já explica por que o sculpt precisa restaurar — *sem isso uma
+    /// Curve cavaria mais fundo a cada movimento do ponteiro enquanto o artista apenas OLHAVA*. O eraser
+    /// não tinha restauração nenhuma, e a mordida de toda figura por onde a mão passou ficava para sempre.
+    pub(super) erase_pre: Option<ErasePre>,
+}
+
+/// A camada como a borracha do impasto a encontrou, mais a janela que ela mordeu desde então.
+///
+/// ⚠️ Os dois planos são `Arc` da entrada que estava no mapa — **refcount, não cópia**. O
+/// `stamp_dabs_height` ARRANCA o `Arc` do mapa e insere outro objeto no fim, então guardar o antigo
+/// congela o estado de partida sem uma segunda alocação canvas-sized por batch.
+pub(super) struct ErasePre {
+    /// De quem é este `pre`. Trocar de camada com a borracha em mãos encerra a sessão: restaurar um plano
+    /// numa camada que não é a dele escreveria a massa de outro desenho.
+    pub(super) layer: crate::tool::RtLayerId,
+    pub(super) heights: std::sync::Arc<Vec<f32>>,
+    pub(super) covers: std::sync::Arc<Vec<u8>>,
+    /// A união do que a borracha esfregou desde o congelamento — a janela que a restauração percorre.
+    /// `None` ⇒ nada a devolver, e a restauração é um no-op sem tocar num byte.
+    pub(super) bbox: Option<Region>,
 }

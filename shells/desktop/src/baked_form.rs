@@ -100,6 +100,13 @@ pub(crate) struct BakedForm {
     pub(crate) base: Vec<u8>,
     /// O G-buffer da malha: `[nx, ny, nz, peso]` por texel. Não depende do rig.
     pub(crate) form: Vec<f32>,
+    /// **A OCLUSÃO DE FORMA** — cavidade × os dois AOs, um escalar por texel. Tampouco depende do rig.
+    ///
+    /// ⚠️ **Ela viaja em vez de ser assada no [`Self::base`], e o motivo está no `bake_one`:** um
+    /// re-bake REUSA o `base` (ler a tela de volta acenderia o que já está aceso), então
+    /// pré-multiplicar a oclusão ali a comporia a cada gesto e o objeto escureceria sozinho — o
+    /// defeito exato que o `base` existe para impedir, um nível acima.
+    pub(crate) form_occ: Vec<f32>,
     /// O slot individual que o sprite passou a apontar. Re-acender COPIA para ele.
     pub(crate) texture_id: u32,
     /// **O rig AUTORADO destes pixels** — o que o artista tinha na mão quando assou.
@@ -146,7 +153,7 @@ pub(crate) fn light(
     };
     let src = upload_rgba(gpu, bake.size, &bake.base);
     let pass = pass.get_or_insert_with(|| ImpastoLightPass::new(gpu));
-    let input = build_input(bake.size, &planes, &bake.form, SpecLut::get());
+    let input = build_input(bake.size, &planes, &bake.form, &bake.form_occ, SpecLut::get());
     let out = pass
         .run(gpu, &src, &input)
         .map_err(|e| format!("o passe de luz recusou: {e:?}"))?;
@@ -223,6 +230,28 @@ pub(crate) fn form_to_rgba8(form: &[f32]) -> Vec<u8> {
         o[3] = quantise(f[3]);
     }
     out
+}
+
+/// **A OCLUSÃO virada IMAGEM** — um byte por texel, o mesmo argumento do irmão acima.
+///
+/// ⚠️ **`R8` e não `f32`, e a medição que decide é a mesma da W8.7:** a oclusão é uma FRAÇÃO em
+/// `[0, 1]`, então 256 níveis sobre uma quantidade que o olho lê como sombra suave custam **um
+/// quarto** do disco de um plano de `f32` — e a alternativa seria fazer um plano que nunca mais muda
+/// depois do bake pesar tanto quanto o G-buffer inteiro.
+pub(crate) fn occlusion_to_r8(occ: &[f32]) -> Vec<u8> {
+    occ.iter().map(|o| quantise(*o)).collect()
+}
+
+/// A inversa de [`occlusion_to_r8`].
+///
+/// ⚠️ **Sem renormalização, ao contrário da irmã** — e a assimetria diz o que cada canal É: uma
+/// normal é uma DIREÇÃO (comprimento errado é brilho errado), uma oclusão é um NÚMERO.
+///
+/// ⚠️ **E um plano VAZIO decodifica para vazio, não para zeros:** um documento anterior a esta wave
+/// não traz oclusão nenhuma, e o neutro dela é `1.0`. Devolver `vec![0.0]` pintaria de preto toda
+/// arte já assada; quem substitui o neutro é o `Option` do consumidor.
+pub(crate) fn occlusion_from_r8(bytes: &[u8]) -> Vec<f32> {
+    bytes.iter().map(|b| f32::from(*b) / 255.0).collect()
 }
 
 /// **A imagem virada G-BUFFER de volta** — a inversa de [`form_to_rgba8`].
@@ -394,6 +423,7 @@ mod tests {
         let mut authored = LightRig::default();
         authored.current_mut().angle_deg += 90;
         let loaded = BakedForm {
+            form_occ: Vec::new(),
             size: (2, 1),
             base: vec![255; 8],
             form: vec![0.0; 8],

@@ -85,14 +85,15 @@ fn bake_one(
             (size, straight.pixels, id)
         }
     };
-    let form = scene
+    let planes = scene
         .form_plane_for(gpu, size)
         .ok_or_else(|| "a cena nao tem malha para doar".to_string())?;
     let rig = *scene.rig();
     let bake = BakedForm {
         size,
         base,
-        form,
+        form: planes.normal,
+        form_occ: planes.occlusion,
         texture_id,
         rig,
         lit_with: None,

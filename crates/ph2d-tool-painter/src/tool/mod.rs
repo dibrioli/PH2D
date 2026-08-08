@@ -148,6 +148,13 @@ pub struct PainterTool {
     /// `ph2d-mesh-render`, uma vez, e o resultado chega aqui como números. É essa cerca que mantém o
     /// Painter sem saber o que é um triângulo.
     donated_form: Option<Arc<Vec<f32>>>,
+    /// A **OCLUSAO DE FORMA** doada junto com a normal — um escalar por texel do canvas.
+    ///
+    /// ⚠️ Campo proprio e nao um quinto canal do plano acima: aquele e' `[f32; 4]` e os quatro estao
+    /// ocupados (`docs/3D/05.2`). E `Option` separado do irmao **porque o neutro dele e' uma
+    /// CONSTANTE** (`1.0` = nada oclui), enquanto o neutro de uma normal (`[0, 0, 1]`) nao e' o zero
+    /// do buffer — e' essa assimetria que torna a ausencia desta segura e a daquela um bug.
+    donated_occlusion: Option<Arc<Vec<f32>>>,
     /// The runtime layer model — source of truth for layer structure + per-layer
     /// blend/opacity/visibility/flags. The ACTIVE layer's pixels live in
     /// `canvas_rgba`; non-active layers' pixels live in `images`.
@@ -360,6 +367,7 @@ impl Default for PainterTool {
             device_stamp: None,
             lut_cache: paint::stamp_device::LutCache::default(),
             donated_form: None,
+            donated_occlusion: None,
             layers: LayerStack::new(),
             images: BTreeMap::new(),
             heights: BTreeMap::new(),

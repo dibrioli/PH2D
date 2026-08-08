@@ -56,7 +56,12 @@ fn bake_with(
     };
     let src = upload_rgba(gpu, (SIDE, SIDE), &base);
     let mut pass = ImpastoLightPass::new(gpu);
-    let input = build_input((SIDE, SIDE), &planes, form, SpecLut::get());
+    // ⚠️ Sem oclusão, e de propósito: esta sonda mede a QUANTIZAÇÃO DA NORMAL. Misturar o outro
+    // plano faria os bytes divergentes terem duas causas e a tabela deixaria de responder à pergunta
+    // que ela existe para fazer. (A do plano de oclusão não precisa de sonda: ela multiplica o difuso
+    // direto, então um erro de `1/255` nele move o pixel em no máximo **um** nível, por aritmética —
+    // `|Δ(albedo·mul·occ)| ≤ Δocc`.)
+    let input = build_input((SIDE, SIDE), &planes, form, &[], SpecLut::get());
     let out = pass.run(gpu, &src, &input).expect("o passe aceitou");
     readback(gpu, out, SIDE, SIDE, 4)
 }
@@ -76,8 +81,16 @@ fn measure_the_form_quantised_to_eight_bits() {
     let (mut renderer, camera, rig) = stage(&gpu);
     let resolved = ph2d_light::resolve(&rig).expect("o rig default tem lampada acesa");
     let form = renderer
-        .form_plane(&gpu.device, &gpu.queue, &camera, (SIDE, SIDE))
-        .expect("a malha esta la'");
+        .form_plane(
+            &gpu.device,
+            &gpu.queue,
+            &camera,
+            (SIDE, SIDE),
+            ph2d_mesh_render::Shade::default(),
+            None,
+        )
+        .expect("a malha esta la'")
+        .normal;
     let quantised = quantise_form(&form);
 
     let clay = [

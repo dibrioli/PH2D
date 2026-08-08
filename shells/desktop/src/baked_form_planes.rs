@@ -115,6 +115,7 @@ pub(crate) fn build_input<'a>(
     size: (u32, u32),
     planes: &'a BakePlanes,
     form: &'a [f32],
+    form_occ: &'a [f32],
     lut: &'a SpecLut,
 ) -> ImpastoLightInput<'a> {
     let (w, h) = size;
@@ -133,6 +134,11 @@ pub(crate) fn build_input<'a>(
         lut_width: u32::try_from(SPEC_LUT).unwrap_or(1),
         rough_levels: u32::try_from(ROUGH_LEVELS).unwrap_or(1),
         form: Some(form),
+        // ⚠️ **Um plano VAZIO vira `None`, e não um `Some` de nada.** Um documento assado antes desta
+        // wave não traz oclusão, e o neutro dela é `1.0` — o `None` é exatamente essa leitura, e
+        // passar um slice vazio faria o `check()` recusar o pedido inteiro (o sintoma de um pedido
+        // recusado é o bake não fazer nada, em silêncio).
+        form_occlusion: (!form_occ.is_empty()).then_some(form_occ),
     }
 }
 
@@ -260,7 +266,8 @@ mod tests {
         };
         // Quatro floats por texel — a forma que o G-buffer entrega.
         let form = vec![0.0f32; n * 4];
-        let input = build_input(size, &planes, &form, SpecLut::get());
+        let form_occ = vec![1.0f32; n];
+        let input = build_input(size, &planes, &form, &form_occ, SpecLut::get());
         assert_eq!(
             input.check(),
             Ok(()),

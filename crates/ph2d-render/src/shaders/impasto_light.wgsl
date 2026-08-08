@@ -73,6 +73,13 @@ struct Globals {
     // horizontal. O neutro de "nao ha forma aqui" e [0, 0, 1] -- e uma textura
     // neutra uploadada por frame custaria uma tela inteira para dizer nada.
     has_form: u32,
+    // 1 quando a textura `form_occ` carrega a oclusao de forma deste frame.
+    //
+    // ⚠️ Um bit e nao "uma textura de uns", pelo motivo de sempre -- mas note a
+    // ASSIMETRIA com o irmao acima: la o bit e' NECESSARIO (o zero do buffer e'
+    // uma normal deitada, que nao e' o neutro); aqui ele e' so' economia, porque
+    // o neutro da oclusao E' um numero (`1.0`).
+    has_form_occ: u32,
     pad1: u32,
     pad2: u32,
 };
@@ -88,6 +95,9 @@ struct Globals {
 // A FORMA doada pelo modulo 3D (docs/3D/05.2): xyz = a normal no espaco do rig,
 // w = quanta forma ha ali.
 @group(0) @binding(8) var form: texture_2d<f32>;
+// A OCLUSAO DE FORMA -- cavidade x os dois AOs, composta do lado de quem doa por
+// uma porta unica (`mesh.wgsl::form_occlusion`). Um escalar em [0, 1].
+@group(0) @binding(9) var form_occ: texture_2d<f32>;
 
 // Wrap lighting (`Wax`): Valve's half-Lambert. At w = 0 this is `max(N.L, 0)` exactly, which is what
 // makes the neutral material the pass as it shaded before materials existed.
@@ -116,6 +126,18 @@ fn spec_at(level: i32, ndh: f32) -> f32 {
 // O que fica e o bit `has_form`, que responde outra pergunta: a textura e
 // PERSISTENTE, entao sem ele um documento que PERDEU a escultura continuaria sendo
 // iluminado pela ultima forma que passou por ali.
+// A oclusao de forma neste pixel -- ou o neutro `1.0` onde nao ha doacao.
+//
+// ⚠️ Fora da silhueta o alvo de quem doa e' limpo em BRANCO, entao o papel nu ja
+// le 1.0 sem caso especial: o unico ramo aqui e' o do documento que nao tem
+// escultura nenhuma.
+fn form_occlusion_at(c: vec2<i32>) -> f32 {
+    if (u.has_form_occ == 0u) {
+        return 1.0;
+    }
+    return clamp(textureLoad(form_occ, c, 0).r, 0.0, 1.0);
+}
+
 fn form_at(c: vec2<i32>) -> vec4<f32> {
     if (u.has_form == 0u) {
         return vec4<f32>(0.0, 0.0, 1.0, 0.0);
@@ -255,10 +277,18 @@ fn cs_main(@builtin(global_invocation_id) gid: vec3<u32>) {
     let cg = channel(diffuse.g, spec.g, flat_rgb.g, body, gloss, shine);
     let cb = channel(diffuse.b, spec.b, flat_rgb.b, body, gloss, shine);
 
+    // **A OCLUSAO DE FORMA multiplica o DIFUSO e nao o realce**, e e' a mesma lei
+    // que o barro aplica do outro lado (`mesh.wgsl`): uma fresta oclui a luz de
+    // AMBIENTE, e o caminho especular de uma lampada ou alcanca aquele ponto ou
+    // nao -- o `N·H` ja responde isso. Ela nao entra no early-out acima e nao
+    // precisa: onde a oclusao e' < 1 ha forma, logo `f.w > 0` e `body > 0`, entao
+    // aquele ramo ja nao dispara. Com `occ == 1.0` isto e' a identidade EXATA em
+    // IEEE-754, e e' isso que mantem o documento sem escultura byte-identico.
+    let occ = form_occlusion_at(coord);
     let out = vec4<f32>(
-        quantise(light_pixel(albedo.r, cr.x, cr.y)),
-        quantise(light_pixel(albedo.g, cg.x, cg.y)),
-        quantise(light_pixel(albedo.b, cb.x, cb.y)),
+        quantise(light_pixel(albedo.r, cr.x * occ, cr.y)),
+        quantise(light_pixel(albedo.g, cg.x * occ, cg.y)),
+        quantise(light_pixel(albedo.b, cb.x * occ, cb.y)),
         texel.a,
     );
     textureStore(dst, coord, out);

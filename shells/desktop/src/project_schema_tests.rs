@@ -265,7 +265,17 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // ⚠️ `FLIP`/`VEC_SCENE` NÃO se movem: os estados de UI viajam no `ProjectFile` ao lado da
         // cena, não dentro dela.
         // ⚠️ O 62 é PROVISÓRIO pela mesma razão de todos os acima.
-        (62, 13, 14),
+        //
+        // PROJECT 62→63: o `BakedFormDocument` ganhou `form_occ` (3D, W10.7 — a oclusão de
+        // forma de um objeto assado). UM campo apendado, postcard posicional ⇒ um save anterior
+        // lido por este chega ao fim dos bytes nele. ⚠️ Ela viaja em vez de ser assada no
+        // `base` porque um re-bake REUSA o `base`, e pré-multiplicá-la ali a comporia a cada
+        // gesto. ⚠️ `FLIP`/`VEC_SCENE` NÃO se movem: o documento assado viaja no
+        // `ProjectFile` ao lado da cena, não dentro dela.
+        // ⚠️ **A linha escreveu 56; o valor CONTADO é 63** — a `line/Vector` trouxe os SETE
+        // degraus v56..v62 na mesma janela de integração, e o número se CONTA, não se escolhe
+        // ([[feedback_numbers_that_sum_across_lines_count_dont_pick]]).
+        (63, 13, 14),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

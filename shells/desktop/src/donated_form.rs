@@ -18,6 +18,20 @@
 
 use std::sync::Arc;
 
+/// **O que uma doação É, do lado do canal** — os dois planos, da mesma rasterização.
+///
+/// ⚠️ **É AQUI que "meia doação" fica inexprimível, e é aqui de propósito.** O `PainterTool` aceita
+/// as duas metades por portas separadas — e pode, porque o neutro da oclusão é a constante `1.0`,
+/// então uma ausência ali é honesta (é o que toda doação anterior a esta wave produz). O que **não**
+/// pode acontecer é o produtor rasterizar as duas e o fio entregar uma; um struct no canal torna
+/// isso um erro de compilação em vez de uma escultura cuja fresta some da tinta.
+pub(crate) struct DonatedPlanes {
+    /// `[nx, ny, nz, cobertura]` por texel do canvas.
+    pub(crate) normal: Arc<Vec<f32>>,
+    /// A oclusão de forma — cavidade × os dois AOs —, um escalar por texel.
+    pub(crate) occlusion: Arc<Vec<f32>>,
+}
+
 /// O canal, nos dois sentidos — a notícia a entregar e o tamanho a rasterizar.
 #[derive(Default)]
 pub(crate) struct DonatedForm {
@@ -30,7 +44,7 @@ pub(crate) struct DonatedForm {
     /// ⚠️ Colapsar os dois primeiros num `Option` só perderia o desligamento: *um interruptor que só
     /// sabe ligar não é um interruptor*. E o silêncio é o caso comum — a forma só muda quando a
     /// malha, a câmera ou o canvas mudam, então o produtor fica quieto quase todo frame.
-    pub(crate) news: Option<Option<Arc<Vec<f32>>>>,
+    pub(crate) news: Option<Option<DonatedPlanes>>,
 
     /// O tamanho do canvas que o Painter reportou no **último** frame.
     ///

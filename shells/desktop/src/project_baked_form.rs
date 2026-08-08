@@ -36,7 +36,9 @@ use ph2d_light::LightRig;
 use ph2d_render::{Sprite, SpriteSource};
 use std::collections::BTreeMap;
 
-use crate::baked_form::{BakedForm, form_from_rgba8, form_to_rgba8};
+use crate::baked_form::{
+    BakedForm, form_from_rgba8, form_to_rgba8, occlusion_from_r8, occlusion_to_r8,
+};
 
 /// Os canais de UM objeto assado, como o arquivo os guarda.
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -49,6 +51,12 @@ pub(crate) struct BakedFormDocument {
     pub(crate) base: Vec<u8>,
     /// O G-buffer, RGBA8: normal em `n × 0,5 + 0,5`, peso no alfa.
     pub(crate) form: Vec<u8>,
+    /// A OCLUSÃO DE FORMA, um byte por texel (`R8`) — ver [`crate::baked_form::occlusion_to_r8`].
+    ///
+    /// ⚠️ **VAZIO num documento anterior a esta wave**, e é a leitura honesta: o neutro da oclusão é
+    /// `1.0`, e um plano de zeros pintaria de preto toda arte já assada. Quem substitui o neutro é o
+    /// `Option` do consumidor, não um `Vec` inventado aqui.
+    pub(crate) form_occ: Vec<u8>,
     /// **O rig com que o artista assou.**
     ///
     /// ⚠️ Sem ele o load acenderia com o rig DEFAULT, e a arte mudaria de luz ao ser reaberta — em
@@ -87,6 +95,7 @@ impl crate::App {
                 height: bake.size.1,
                 base: bake.base.clone(),
                 form: form_to_rgba8(&bake.form),
+                form_occ: occlusion_to_r8(&bake.form_occ),
                 rig: bake.rig,
             });
         }
@@ -152,6 +161,7 @@ impl crate::App {
                     size,
                     base: doc.base,
                     form: form_from_rgba8(&doc.form),
+                    form_occ: occlusion_from_r8(&doc.form_occ),
                     texture_id,
                     rig: doc.rig,
                     // Nunca aceso NESTA sessão: é isto que faz o passe de re-acendida trabalhar no
@@ -196,6 +206,7 @@ mod tests {
         authored.lights[1].on = true; // uma segunda lâmpada, para o array inteiro viajar
 
         let doc = BakedFormDocument {
+            form_occ: crate::baked_form::occlusion_to_r8(&[1.0, 0.5]),
             id: 3,
             width: 2,
             height: 1,

@@ -316,6 +316,13 @@ impl MeshRenderer {
             label: &'a str,
             entry: &'a str,
             format: wgpu::TextureFormat,
+            /// O SEGUNDO alvo, quando o fragment escreve dois — hoje só o
+            /// G-buffer, que doa a normal **e** a oclusão de forma.
+            ///
+            /// ⚠️ `Option` e não um formato com sentinela: *"este passe escreve
+            /// um alvo só"* não é um formato, e um sentinela obrigaria os três
+            /// chamadores a saber disso.
+            second: Option<wgpu::TextureFormat>,
             topology: wgpu::PrimitiveTopology,
             blend: Option<wgpu::BlendState>,
             bias: wgpu::DepthBiasState,
@@ -325,10 +332,28 @@ impl MeshRenderer {
                 label,
                 entry,
                 format,
+                second,
                 topology,
                 blend,
                 bias,
             } = v;
+            let targets = [
+                Some(wgpu::ColorTargetState {
+                    format,
+                    blend,
+                    write_mask: wgpu::ColorWrites::ALL,
+                }),
+                second.map(|format| wgpu::ColorTargetState {
+                    format,
+                    blend,
+                    write_mask: wgpu::ColorWrites::ALL,
+                }),
+            ];
+            // Um alvo ausente é a LISTA mais curta, não um `None` no meio dela: o
+            // wgpu lê `targets[i]` como *"o attachment i existe e está
+            // desabilitado"*, e um buraco declarado aqui exigiria um attachment
+            // vazio em toda render pass que usasse o pipeline.
+            let targets = &targets[..if second.is_some() { 2 } else { 1 }];
             device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
                 label: Some(label),
                 layout: Some(&layout),
@@ -350,15 +375,11 @@ impl MeshRenderer {
                     module: &shader,
                     entry_point: Some(entry),
                     compilation_options: wgpu::PipelineCompilationOptions::default(),
-                    targets: &[Some(wgpu::ColorTargetState {
-                        format,
-                        // Opaco nos passes de FORMA: a escultura é sólida, e um
-                        // blend ali só serviria para esconder um erro de
-                        // profundidade atrás de uma mistura. O passe de ARESTAS é
-                        // o oposto — ele anota a forma sem a apagar.
-                        blend,
-                        write_mask: wgpu::ColorWrites::ALL,
-                    })],
+                    // Opaco nos passes de FORMA: a escultura é sólida, e um blend
+                    // ali só serviria para esconder um erro de profundidade atrás
+                    // de uma mistura. O passe de ARESTAS é o oposto — ele anota a
+                    // forma sem a apagar.
+                    targets,
                 }),
                 primitive: wgpu::PrimitiveState {
                     topology,
@@ -419,6 +440,7 @@ impl MeshRenderer {
             label: "ph2d-mesh pipeline",
             entry: "fs_main",
             format: target_format,
+            second: None,
             topology: wgpu::PrimitiveTopology::TriangleList,
             blend: None,
             bias: SOLID,
@@ -427,6 +449,7 @@ impl MeshRenderer {
             label: "ph2d-mesh gbuffer",
             entry: "fs_gbuffer",
             format: Self::GBUFFER_FORMAT,
+            second: Some(Self::OCCLUSION_FORMAT),
             topology: wgpu::PrimitiveTopology::TriangleList,
             blend: None,
             bias: SOLID,
@@ -435,6 +458,7 @@ impl MeshRenderer {
             label: "ph2d-mesh wire",
             entry: "fs_wire",
             format: target_format,
+            second: None,
             topology: wgpu::PrimitiveTopology::LineList,
             blend: Some(wgpu::BlendState::ALPHA_BLENDING),
             bias: WIRE,

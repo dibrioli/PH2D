@@ -232,7 +232,7 @@ impl Sculpt3dScene {
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         size: (u32, u32),
-    ) -> Option<Arc<Vec<f32>>> {
+    ) -> Option<crate::donated_form::DonatedPlanes> {
         let stamp = self.form_stamp(size);
         if self.donated == Some(stamp) {
             return None;
@@ -241,11 +241,14 @@ impl Sculpt3dScene {
         // desenho, que num frame em modo LUZ nem roda. Perguntar aqui custa um `if` e é o que
         // impede a doação de descrever a malha de antes do traço.
         self.sync_mesh(device, queue);
-        let plane = self
+        let planes = self
             .renderer
-            .form_plane(device, queue, &self.camera, size)?;
+            .form_plane(device, queue, &self.camera, size, self.shade(), self.donation_ssao())?;
         self.donated = Some(stamp);
-        Some(Arc::new(plane))
+        Some(crate::donated_form::DonatedPlanes {
+            normal: Arc::new(planes.normal),
+            occlusion: Arc::new(planes.occlusion),
+        })
     }
 
     /// **A forma, INCONDICIONALMENTE** — o G-buffer no tamanho pedido, sem carimbo.
@@ -261,10 +264,32 @@ impl Sculpt3dScene {
         &mut self,
         gpu: &ph2d_gpu::GpuContext,
         size: (u32, u32),
-    ) -> Option<Vec<f32>> {
+    ) -> Option<ph2d_mesh_render::FormPlanes> {
         self.sync_mesh(&gpu.device, &gpu.queue);
-        self.renderer
-            .form_plane(&gpu.device, &gpu.queue, &self.camera, size)
+        self.renderer.form_plane(
+            &gpu.device,
+            &gpu.queue,
+            &self.camera,
+            size,
+            // ⚠️ **Os MESMOS knobs do viewport** (`Self::shade`), e não um default: a oclusão que a
+            // doação carrega é função deles, e o artista afinou a cavidade olhando o barro.
+            self.shade(),
+            self.donation_ssao(),
+        )
+    }
+
+    /// **A oclusão de tela que a DOAÇÃO mede** — os mesmos parâmetros do viewport, `None` quando o
+    /// artista a desligou.
+    ///
+    /// ⚠️ **Ela é medida na rasterização da doação, nunca herdada do viewport**, e o motivo não é
+    /// pureza: a doação tem outro tamanho (o do canvas) e outro aspecto. Reaproveitar a medição da
+    /// tela desenharia a sombra de um enquadramento sobre a forma de outro — e o `render_gbuffer`
+    /// CONSOME a frescura justamente para que isso não possa acontecer em silêncio.
+    ///
+    /// ⚠️ **E sem ela a wave entregaria nada no estado em que o artista está:** `DEFAULT_CAVITY` e
+    /// `DEFAULT_AO_STRENGTH` são `0`, então a de TELA é a única oclusão acesa por padrão.
+    fn donation_ssao(&self) -> Option<ph2d_mesh_render::SsaoParams> {
+        (self.ssao > 0.0).then(|| self.ssao_params())
     }
 
     /// O interruptor avança uma posição. Devolve o rótulo do estado novo.

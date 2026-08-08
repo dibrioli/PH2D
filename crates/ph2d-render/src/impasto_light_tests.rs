@@ -110,6 +110,7 @@ fn a_mis_shaped_request_is_refused_without_a_device() {
         rough_levels: 2,
         // O mundo sem escultura — e a doação é opcional exatamente para que ele continue existindo.
         form: None,
+        form_occlusion: None,
     };
     assert_eq!(base().check(), Ok(()), "a well-formed request passes");
 

@@ -121,6 +121,15 @@ pub struct ImpastoLightInput<'a> {
     /// (`has_form`), e é o shader que substitui o neutro `[0, 0, 1]` — exatamente como o `form_at` do
     /// lado da CPU. Uma textura neutra uploadada por frame custaria uma tela inteira para dizer nada.
     pub form: Option<&'a [f32]>,
+    /// **A OCLUSÃO DE FORMA** doada com ela (`docs/3D/05.2`) — um escalar por texel de
+    /// [`Self::plane_region`], ou `None`.
+    ///
+    /// ⚠️ **`None` aqui É seguro, ao contrário do irmão acima**, e a diferença é o NEUTRO: uma
+    /// oclusão ausente vale `1.0` (*"nada oclui"*), que é a leitura exata de um documento sem
+    /// escultura **e** de toda doação anterior a esta wave. O ausente ainda viaja como um bit
+    /// (`has_form_occ`) e não como uma tela de uns, pelo motivo de sempre: uploadar uma tela inteira
+    /// para dizer nada custa uma tela inteira.
+    pub form_occlusion: Option<&'a [f32]>,
 }
 
 impl ImpastoLightInput<'_> {
@@ -139,6 +148,9 @@ impl ImpastoLightInput<'_> {
         // buffer reach `write_texture`, where the failure is a driver error instead of a named refusal.
         let n = (self.plane_region.w as usize) * (self.plane_region.h as usize);
         if self.form.is_some_and(|f| f.len() < n * 4) {
+            return Err(ImpastoLightError::PlaneSize);
+        }
+        if self.form_occlusion.is_some_and(|o| o.len() < n) {
             return Err(ImpastoLightError::PlaneSize);
         }
         if self.width == 0 || self.height == 0 || self.region.w == 0 || self.region.h == 0 {
@@ -213,7 +225,12 @@ struct Globals {
     /// ⚠️ Ocupa a vaga que era `pad0`: o uniform não muda de tamanho, então nenhum offset se move e o
     /// gate que pina a forma do `Globals` continua medindo o que media.
     has_form: u32,
-    pad1: u32,
+    /// `1` quando a textura de oclusão de forma carrega a doação deste frame.
+    ///
+    /// ⚠️ Ocupa a vaga que era `pad1`, pela mesma razão do irmão acima: o uniform não muda de
+    /// tamanho, nenhum offset se move, e o gate que pina a forma do [`Globals`] continua medindo o
+    /// que media.
+    has_form_occ: u32,
     pad2: u32,
 }
 
@@ -242,6 +259,10 @@ struct Canvas {
     /// reconstrói juntas, e cinco checagens independentes seriam cinco chances de dois planos
     /// discordarem sobre o tamanho da pintura.
     form: Plane,
+    /// A **oclusão** doada com ela — um escalar. Vive aqui pelo mesmo motivo da irmã: ela tem a vida
+    /// da pintura, e um plano com ciclo de vida próprio seria mais uma chance de dois discordarem
+    /// sobre o tamanho da tela.
+    form_occ: Plane,
     mat1: Plane,
     out: Plane,
 }
@@ -298,6 +319,7 @@ impl ImpastoLightPass {
                     sampled(5), // mat1
                     sampled(6), // spec LUT
                     sampled(8), // a forma doada
+                    sampled(9), // a oclusao de forma
                     wgpu::BindGroupLayoutEntry {
                         binding: 7,
                         visibility: wgpu::ShaderStages::COMPUTE,
@@ -392,6 +414,7 @@ impl ImpastoLightPass {
                 bind(5, &canvas.mat1.view),
                 bind(6, &lut.view),
                 bind(8, &canvas.form.view),
+                bind(9, &canvas.form_occ.view),
                 wgpu::BindGroupEntry {
                     binding: 7,
                     resource: self.globals.as_entire_binding(),
@@ -445,6 +468,10 @@ impl ImpastoLightPass {
             // `[-1, 1]`, e um unorm exigiria codificar de um lado e decodificar do outro — duas
             // metades que precisam concordar, num canal onde a discordância é uma luz levemente torta.
             form: plane(gpu, "form", w, h, F::Rgba32Float, read),
+            // Um canal, e ponto flutuante como a irmã: a oclusão vive em `[0, 1]` e um unorm caberia,
+            // mas o plano chega do device já em `f32` e quantizá-lo aqui só para o shader o
+            // desquantizar seria uma conversão que existe para nada.
+            form_occ: plane(gpu, "form_occ", w, h, F::R32Float, read),
             out: plane(
                 gpu,
                 "out",
@@ -505,6 +532,11 @@ impl ImpastoLightPass {
         if let Some(f) = input.form {
             write_plane(gpu, &c.form, bytemuck::cast_slice(f), r.w * 16, r);
         }
+        // O mesmo argumento, e um a mais: uma doação anterior a esta wave não traz a oclusão, e o
+        // neutro dela é a constante `1.0` — que o shader substitui pelo bit, sem tela nenhuma.
+        if let Some(o) = input.form_occlusion {
+            write_plane(gpu, &c.form_occ, bytemuck::cast_slice(o), r.w * 4, r);
+        }
     }
 
     /// **Do the plane textures for this canvas hold the artist's relief, everywhere?**
@@ -535,7 +567,7 @@ impl ImpastoLightPass {
             rw: input.region.w,
             rh: input.region.h,
             has_form: u32::from(input.form.is_some()),
-            pad1: 0,
+            has_form_occ: u32::from(input.form_occlusion.is_some()),
             pad2: 0,
         };
         for (slot, l) in g.lamps.iter_mut().zip(input.lamps) {

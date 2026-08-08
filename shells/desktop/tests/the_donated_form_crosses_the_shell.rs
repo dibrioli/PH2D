@@ -69,6 +69,42 @@ fn the_bridge_publishes_the_canvas_and_installs_the_news() {
     );
 }
 
+/// **AS DUAS METADES DE UMA DOAÇÃO SÃO INSTALADAS JUNTAS.**
+///
+/// Uma doação é uma normal **e** a oclusão de forma (`docs/3D/05.2`, W10.7), rasterizadas na mesma
+/// passada sobre a mesma geometria. O `PainterTool` as aceita por portas separadas — e pode, porque
+/// o neutro da oclusão é a constante `1.0`, então uma ausência ali é a leitura honesta de todo
+/// documento anterior a esta wave. **O que não pode é ESTE sítio entregar uma e esquecer a outra**,
+/// e o modo de falha disso é mudo: a fresta que o artista vê na escultura simplesmente não aparece
+/// na tinta, e nada dá erro em lugar nenhum.
+///
+/// ⚠️ **É por isso que o canal carrega um STRUCT** (`DonatedPlanes`) e não dois `Option` soltos —
+/// o tipo torna *meia doação* inexprimível no fio. Este gate afirma a outra metade: que o bridge
+/// consome as duas do MESMO `news`, e não de dois lugares que podem divergir.
+#[test]
+fn the_bridge_installs_both_halves_of_a_donation() {
+    assert!(
+        BRIDGE.contains("painter.set_donated_occlusion("),
+        "a oclusão tem de ser instalada — sem isto a doação chega pela metade, em silêncio"
+    );
+    let body = BRIDGE
+        .split_once("donated_form.news.take()")
+        .expect("o consumo da notícia existe")
+        .1;
+    let occ = body
+        .find("set_donated_occlusion(")
+        .expect("a instalação da oclusão vem DEPOIS do consumo da notícia");
+    let normal = body
+        .find("set_donated_form(")
+        .expect("e a da normal também");
+    // As duas dentro do mesmo bloco, que é o que o `take()` abre: nenhuma delas pode ser alimentada
+    // por um segundo canal, porque não há um segundo `take` entre elas.
+    assert!(
+        body[..occ.max(normal)].matches("news.take()").count() == 0,
+        "as duas metades têm de sair do MESMO `news` — um segundo consumo entre elas é um segundo fio"
+    );
+}
+
 /// **O canal não menciona o módulo 3D**, e é isso que mantém a promessa do `docs/3D/02.3`.
 ///
 /// ⚠️ O gate é sobre o BRIDGE de propósito: ele é o consumidor, e um consumidor que precisasse de

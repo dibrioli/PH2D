@@ -18,6 +18,16 @@ use crate::ssao::{SsaoParams, SsaoRaw};
 /// que já passou.
 pub(super) struct SsaoTargets {
     pub(super) normal: wgpu::TextureView,
+    /// O alvo de OCLUSÃO que o pré-passe é obrigado a declarar e ninguém lê.
+    ///
+    /// ⚠️ **Ele existe porque o pipeline do G-buffer escreve DOIS alvos** (a
+    /// normal e a oclusão de forma, `docs/3D/05.2`), e este pré-passe quer só a
+    /// normal e a profundidade. Um attachment de render pass tem de casar em
+    /// TAMANHO com os outros, então não há como servi-lo com um 1×1: o preço é
+    /// `R16Float` na resolução da vista, **2 B/texel**, e ele está aqui em vez
+    /// de num segundo pipeline sem o alvo porque os três pipelines partilham UM
+    /// layout de propósito — dois divergiriam sobre culling ou profundidade.
+    pub(super) occlusion_scrap: wgpu::TextureView,
     pub(super) ao: wgpu::TextureView,
     pub(super) size: (u32, u32),
     /// O grupo que o passe de tela cheia LÊ (uniform + profundidade + normal).
@@ -72,6 +82,11 @@ impl MeshRenderer {
         let attach_read =
             wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING;
         let normal = make("ph2d-mesh ssao normal", Self::GBUFFER_FORMAT, attach_read);
+        let occlusion_scrap = make(
+            "ph2d-mesh ssao occlusion scrap",
+            Self::OCCLUSION_FORMAT,
+            wgpu::TextureUsages::RENDER_ATTACHMENT,
+        );
         let ao = make("ph2d-mesh ssao", Self::SSAO_FORMAT, attach_read);
         let depth = self.depth.as_ref().expect("ensure_depth roda antes");
 
@@ -104,6 +119,7 @@ impl MeshRenderer {
 
         self.ssao = Some(SsaoTargets {
             normal,
+            occlusion_scrap,
             ao,
             size,
             input,
@@ -157,11 +173,28 @@ impl MeshRenderer {
         // o Painter consome, este é rascunho interno deste passe. Servi-los pelo
         // mesmo argumento faria a doação e o AO disputarem uma textura só, e o
         // primeiro a rodar veria a normal do outro enquadramento.
-        let normal = {
+        let (normal, scrap) = {
             let t = self.ssao.as_ref().expect("ensure_ssao acabou de rodar");
-            t.normal.clone()
+            (t.normal.clone(), t.occlusion_scrap.clone())
         };
-        self.render_gbuffer(device, queue, encoder, &normal, camera, size);
+        // ⚠️ **O pré-passe escreve a oclusão de forma num rascunho, e o valor dela
+        // aqui é lixo por construção**: o `form_occlusion` consulta a oclusão de
+        // TELA, que é exatamente o que este passe está prestes a medir. Ninguém
+        // lê este alvo — e não é desperdício disfarçado, é o preço de os três
+        // pipelines partilharem um layout só.
+        // O shade NEUTRO: este pré-passe quer normal e profundidade, e o alvo de oclusão dele é
+        // rascunho. Passar o do artista escreveria o uniform com o valor certo pelo motivo errado —
+        // e o `render_ssao` não o conhece, porque ele mede VISIBILIDADE, que não tem knob.
+        self.render_gbuffer(
+            device,
+            queue,
+            encoder,
+            &normal,
+            &scrap,
+            camera,
+            crate::Shade::default(),
+            size,
+        );
 
         // Etapa 2 — o horizonte, por pixel.
         let t = self.ssao.as_ref().expect("ensure_ssao acabou de rodar");

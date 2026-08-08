@@ -264,7 +264,17 @@ pub(super) fn dispatch(
         // zeros o faria rasterizar uma extensão que o `form_plane` recusa de qualquer jeito.
         donated_form.canvas = (w != 0 && h != 0).then_some((w, h));
         if let Some(news) = donated_form.news.take() {
-            painter.set_donated_form(news);
+            // ⚠️ **As duas metades são instaladas do MESMO `news`, e é isto que o arch-gate
+            // `the_bridge_installs_both_halves_of_a_donation` exige.** O tool as aceita por portas
+            // separadas (o neutro da oclusão é `1.0`, então uma ausência ali é legítima); o que não
+            // pode é este sítio entregar uma e esquecer a outra, porque aí a fresta que o artista
+            // vê na escultura não apareceria na tinta e nada daria erro.
+            let (normal, occlusion) = match news {
+                Some(planes) => (Some(planes.normal), Some(planes.occlusion)),
+                None => (None, None),
+            };
+            painter.set_donated_form(normal);
+            painter.set_donated_occlusion(occlusion);
         }
     }
 

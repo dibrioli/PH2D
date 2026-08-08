@@ -621,11 +621,37 @@ fn gbuffer(
         view_formats: &[],
     });
     let view = target.create_view(&wgpu::TextureViewDescriptor::default());
+    // O segundo alvo, que este oráculo não lê: ele mede a NORMAL, e a oclusão tem
+    // gates próprios. Um attachment tem de casar em tamanho com o irmão.
+    let occ = device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("occ scrap"),
+        size: wgpu::Extent3d {
+            width: W,
+            height: H,
+            depth_or_array_layers: 1,
+        },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: MeshRenderer::OCCLUSION_FORMAT,
+        usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+        view_formats: &[],
+    });
+    let occ_view = occ.create_view(&wgpu::TextureViewDescriptor::default());
     let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
     // ⚠️ Sem pré-passe de limpeza, de propósito: o `render_gbuffer` LIMPA o alvo
     // ele mesmo, e é isso que faz a cobertura sair certa sem o chamador combinar
     // nada. Se ele parar de limpar, este gate mede o lixo.
-    renderer.render_gbuffer(device, queue, &mut encoder, &view, camera, (W, H));
+    renderer.render_gbuffer(
+        device,
+        queue,
+        &mut encoder,
+        &view,
+        &occ_view,
+        camera,
+        ph2d_mesh_render::Shade::default(),
+        (W, H),
+    );
 
     let bpr = (W * 8).next_multiple_of(wgpu::COPY_BYTES_PER_ROW_ALIGNMENT);
     let buffer = device.create_buffer(&wgpu::BufferDescriptor {
@@ -948,9 +974,18 @@ fn the_plane_the_painter_gets_is_the_gbuffer_the_device_wrote() {
     let mut renderer = MeshRenderer::new(&device, FORMAT);
     renderer.upload_at(&device, &queue, 0, &mesh);
     let plane = renderer
-        .form_plane(&device, &queue, &camera, (W, H))
+        .form_plane(&device, &queue, &camera, (W, H), ph2d_mesh_render::Shade::default(), None)
         .expect("com malha, o plano existe");
-    assert_eq!(plane.len(), (W * H * 4) as usize, "quatro floats por texel");
+    assert_eq!(
+        plane.normal.len(),
+        (W * H * 4) as usize,
+        "quatro floats por texel"
+    );
+    assert_eq!(
+        plane.occlusion.len(),
+        (W * H) as usize,
+        "um escalar de oclusão por texel"
+    );
 
     // Premissa: a cena de fato tem forma E vazio, senão a comparação é entre duas telas em branco.
     let covered = expected.iter().filter(|(_, w)| *w > 0.5).count();
@@ -961,7 +996,7 @@ fn the_plane_the_painter_gets_is_the_gbuffer_the_device_wrote() {
     );
 
     for (i, (n, w)) in expected.iter().enumerate() {
-        let got = &plane[i * 4..i * 4 + 4];
+        let got = &plane.normal[i * 4..i * 4 + 4];
         assert_eq!(
             (got[0], got[1], got[2], got[3]),
             (n[0], n[1], n[2], *w),
@@ -988,7 +1023,7 @@ fn a_renderer_with_no_mesh_donates_nothing() {
     let camera = Camera3d::default();
     assert!(
         renderer
-            .form_plane(&device, &queue, &camera, (W, H))
+            .form_plane(&device, &queue, &camera, (W, H), ph2d_mesh_render::Shade::default(), None)
             .is_none(),
         "sem geometria, nada a doar"
     );
@@ -996,7 +1031,7 @@ fn a_renderer_with_no_mesh_donates_nothing() {
     renderer.upload_at(&device, &queue, 0, &shapes::uv_sphere(8, 12, 1.0));
     assert!(
         renderer
-            .form_plane(&device, &queue, &camera, (0, H))
+            .form_plane(&device, &queue, &camera, (0, H), ph2d_mesh_render::Shade::default(), None)
             .is_none(),
         "canvas de largura zero não é um plano de zero texels — é ausência"
     );
@@ -1028,19 +1063,47 @@ fn measure_a_donation() {
         "uma doacao, por lado de canvas (malha: {} triangulos)",
         mesh.triangle_count()
     );
+    // ⚠️ **As duas colunas, porque a wave da oclusão acrescentou DUAS coisas** e elas têm preços de
+    // naturezas diferentes: o segundo plano é largura de banda de LEITURA (2 B/texel contra os 8 do
+    // primeiro) e a medição do AO de tela é um passe de tela cheia. Uma coluna só não diria qual das
+    // duas paga o quê — e é a segunda que o artista de fato usa, porque com `DEFAULT_CAVITY = 0` e
+    // `DEFAULT_AO_STRENGTH = 0` a de tela é a única oclusão acesa por padrão.
+    let ssao = ph2d_mesh_render::SsaoParams::for_bounds(mesh.bounds());
+    eprintln!("  lado      sem AO de tela    com AO de tela      lidos");
     for edge in [512u32, 1024, 2048, 4096] {
-        // A primeira é descartada: ela paga a alocação da textura de profundidade e o first-touch
-        // do buffer de leitura, que nenhuma doação seguinte paga.
-        let _ = renderer.form_plane(&device, &queue, &camera, (edge, edge));
-        let mut best = f64::MAX;
-        for _ in 0..5 {
-            let t0 = std::time::Instant::now();
-            let plane = renderer.form_plane(&device, &queue, &camera, (edge, edge));
-            best = best.min(t0.elapsed().as_secs_f64() * 1000.0);
-            assert!(plane.is_some());
+        let mut col = [0f64; 2];
+        // ⚠️ **As DUAS configurações aquecem ANTES de qualquer relógio, e a primeira versão desta
+        // sonda não fazia isso:** ela aquecia dentro do laço, então a coluna que rodava primeiro
+        // pagava a alocação da textura de profundidade e do buffer de leitura para as duas — e o
+        // resultado saía com o AO de tela *mais barato* que o caminho sem ele, em todas as linhas.
+        // *Uma tabela em que a coluna mais cara é a mais rápida está medindo a ordem.*
+        for params in [None, Some(ssao)] {
+            let _ = renderer.form_plane(
+                &device,
+                &queue,
+                &camera,
+                (edge, edge),
+                ph2d_mesh_render::Shade::default(),
+                params,
+            );
         }
-        let mb = f64::from(edge) * f64::from(edge) * 16.0 / 1_048_576.0;
-        eprintln!("  {edge:>5}²  {best:>7.2} ms   ({mb:>6.1} MB lidos)");
+        for (k, params) in [None, Some(ssao)].into_iter().enumerate() {
+            let mut best = f64::MAX;
+            for _ in 0..5 {
+                let t0 = std::time::Instant::now();
+                let plane =
+                    renderer.form_plane(&device, &queue, &camera, (edge, edge), ph2d_mesh_render::Shade::default(), params);
+                best = best.min(t0.elapsed().as_secs_f64() * 1000.0);
+                assert!(plane.is_some());
+            }
+            col[k] = best;
+        }
+        // 16 B/texel do plano de normais + 4 do de oclusão (o `f16` do device chega em `f32`).
+        let mb = f64::from(edge) * f64::from(edge) * 20.0 / 1_048_576.0;
+        eprintln!(
+            "  {edge:>5}²   {:>8.2} ms      {:>8.2} ms    ({mb:>6.1} MB)",
+            col[0], col[1]
+        );
     }
 }
 
@@ -2883,5 +2946,163 @@ fn more_scatter_lets_more_light_through() {
     assert!(
         far > mid && mid > near,
         "mais alcance tem de deixar passar MAIS luz: {near:.2} / {mid:.2} / {far:.2}"
+    );
+}
+
+/// **A DOAÇÃO CARREGA A OCLUSÃO DE FORMA** — o objetivo 2 do módulo no pixel (`docs/3D/05.2`).
+///
+/// O G-buffer sempre doou uma normal; a fresta que a escultura desenha ficava no viewport. Este gate
+/// afirma as duas metades que a wave promete, e as duas são necessárias:
+///
+/// 1. **Dentro da peça, um vinco escurece** — senão o canal não carrega informação nenhuma;
+/// 2. **Fora da peça vale exatamente `1`** — o alvo é limpo em BRANCO, e é isso que deixa o
+///    consumidor multiplicar sem consultar a cobertura. ⚠️ Com limpeza em transparente o papel nu
+///    da pintura seria multiplicado por ZERO, e a tinta em volta da escultura apagaria.
+///
+/// ⚠️ **A fixture liga a cavidade explicitamente, e é premissa e não conveniência:**
+/// `DEFAULT_CAVITY` é `0` — um canal que nem foi assado não pode escurecer nada —, então um gate que
+/// usasse o default mediria `1.0` em toda parte e passaria sobre um produto quebrado.
+#[test]
+#[ignore = "precisa de adapter de GPU"]
+fn the_donation_carries_the_form_occlusion() {
+    let Some((device, queue)) = device() else {
+        eprintln!("sem adapter — pulando");
+        return;
+    };
+    // ⚠️ **O sulco é a MESMA fixture do `the_cavity_darkens_the_crevice_and_brightens_the_ridge`**,
+    // e reusá-la não é preguiça: a primeira versão deste gate esculpia com um `Brush` e mediu a
+    // faixa `1,108 .. 1,155` — uma esfera LISA (`k ≈ −0,037` × ganho 4 = 1,148, a aritmética do
+    // plano W10.1 ao dígito). *A fixture não continha o fenômeno*, e o gate teria passado sobre uma
+    // doação que não carrega informação nenhuma se eu tivesse escrito a barra por raciocínio.
+    let mut mesh = shapes::uv_sphere(60, 90, 1.0);
+    let moved: Vec<u32> = (0..mesh.vert_count() as u32)
+        .filter(|&v| (mesh.positions()[v as usize][1] - 0.25).abs() < 0.035)
+        .collect();
+    assert!(
+        moved.len() > 60,
+        "a fixture nao contem o fenomeno: {} vertices no sulco",
+        moved.len()
+    );
+    for &v in &moved {
+        let n = mesh.normals()[v as usize];
+        let p = &mut mesh.positions_mut()[v as usize];
+        for k in 0..3 {
+            p[k] -= n[k] * 0.045;
+        }
+    }
+    mesh.rebuild();
+    let camera = camera_for(&mesh);
+
+    let mut renderer = MeshRenderer::new(&device, FORMAT);
+    renderer.upload_at(&device, &queue, 0, &mesh);
+    let shade = ph2d_mesh_render::Shade {
+        cavity: 1.0,
+        ..ph2d_mesh_render::Shade::default()
+    };
+    let planes = renderer
+        .form_plane(&device, &queue, &camera, (W, H), shade, None)
+        .expect("com malha, o plano existe");
+
+    let (mut inside_min, mut inside_n, mut outside_wrong) = (f32::MAX, 0u32, 0u32);
+    for (i, occ) in planes.occlusion.iter().enumerate() {
+        if planes.normal[i * 4 + 3] > 0.5 {
+            inside_min = inside_min.min(*occ);
+            inside_n += 1;
+        } else if (*occ - 1.0).abs() > 1.0e-3 {
+            outside_wrong += 1;
+        }
+    }
+    assert!(
+        inside_n > 200,
+        "premissa: a peça tem de cobrir a tela — {inside_n} texels"
+    );
+    assert_eq!(
+        outside_wrong, 0,
+        "fora da silhueta a oclusão TEM de ser 1 (o alvo é limpo em branco); \
+         {outside_wrong} texels diziam outra coisa"
+    );
+    let mut inside_max = f32::MIN;
+    for (i, occ) in planes.occlusion.iter().enumerate() {
+        if planes.normal[i * 4 + 3] > 0.5 {
+            inside_max = inside_max.max(*occ);
+        }
+    }
+    // ⚠️ **As barras saem da MEDIÇÃO, e o controle está ao lado:** sobre a esfera LISA a faixa medida
+    // é `1,108 .. 1,155` (a curvatura de fundo, `k ≈ −0,037` × ganho 4 — a aritmética do W10.1 ao
+    // dígito); com o sulco ela abre para `0,000 .. 1,781`. Os dois números abaixo caem no meio desse
+    // fosso, então a fixture SEM o fenômeno reprova nos dois.
+    assert!(
+        inside_min < 0.5,
+        "a fresta tinha de escurecer a oclusão doada — o mínimo dentro da peça foi {inside_min:.3} \
+         (uma esfera lisa dá 1,108)"
+    );
+    assert!(
+        inside_max > 1.3,
+        "…e a crista tinha de clarear: o máximo foi {inside_max:.3} (uma esfera lisa dá 1,155)"
+    );
+}
+
+/// **A OCLUSÃO DOADA SEGUE OS KNOBS DO ARTISTA**, e este gate existe por causa de uma MUTAÇÃO.
+///
+/// ⚠️ Até esta wave o `render_gbuffer` não escrevia o uniform de sombreamento — ele devolvia normal
+/// e cobertura, que não dependem de knob nenhum, e lia o que o `render` tivesse deixado lá. Com a
+/// oclusão no segundo alvo isso virou defeito: **num frame em modo LUZ o `render` não roda**, e no
+/// caminho do BAKE ele pode nunca ter rodado — a doação carregaria a cavidade de outro instante, ou
+/// os zeros de um renderizador virgem. O sintoma seria uma fresta que some da tinta dependendo do
+/// interruptor de vista, sem erro em lugar nenhum.
+///
+/// O oráculo é a DIFERENÇA entre dois knobs sobre a MESMA malha e a MESMA câmera: se o uniform não
+/// for escrito aqui, as duas doações saem idênticas.
+#[test]
+#[ignore = "precisa de adapter de GPU"]
+fn the_donated_occlusion_follows_the_artists_knobs_without_a_viewport_render() {
+    let Some((device, queue)) = device() else {
+        eprintln!("sem adapter — pulando");
+        return;
+    };
+    // O mesmo sulco do gate acima, e pelo mesmo motivo.
+    let mut mesh = shapes::uv_sphere(60, 90, 1.0);
+    let moved: Vec<u32> = (0..mesh.vert_count() as u32)
+        .filter(|&v| (mesh.positions()[v as usize][1] - 0.25).abs() < 0.035)
+        .collect();
+    for &v in &moved {
+        let n = mesh.normals()[v as usize];
+        let p = &mut mesh.positions_mut()[v as usize];
+        for k in 0..3 {
+            p[k] -= n[k] * 0.045;
+        }
+    }
+    mesh.rebuild();
+    let camera = camera_for(&mesh);
+
+    // ⚠️ Nenhum `render` nesta cena, de propósito: é o estado do modo LUZ e o do bake.
+    let mut renderer = MeshRenderer::new(&device, FORMAT);
+    renderer.upload_at(&device, &queue, 0, &mesh);
+    let donate = |r: &mut MeshRenderer, cavity: f32| {
+        r.form_plane(
+            &device,
+            &queue,
+            &camera,
+            (W, H),
+            ph2d_mesh_render::Shade {
+                cavity,
+                ..ph2d_mesh_render::Shade::default()
+            },
+            None,
+        )
+        .expect("com malha, o plano existe")
+        .occlusion
+    };
+    let off = donate(&mut renderer, 0.0);
+    let on = donate(&mut renderer, 1.0);
+
+    assert!(
+        off.iter().all(|o| (*o - 1.0).abs() < 1.0e-3),
+        "com a cavidade em 0 a oclusão doada tem de ser 1 em toda parte — o default é o barro liso"
+    );
+    let moved = off.iter().zip(&on).filter(|(a, b)| (*a - *b).abs() > 0.01).count();
+    assert!(
+        moved > 100,
+        "o knob do artista não chegou à doação: só {moved} texels mudaram entre cavidade 0 e 1"
     );
 }

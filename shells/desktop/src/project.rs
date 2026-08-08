@@ -306,7 +306,19 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// porque *ter mola* e *que mola* são a mesma decisão (o desenho do `wrap_width` do v61), e
 /// desligá-la **não apaga** o que o artista afinou nas outras duas.
 /// ⚠️ **PROVISÓRIO** pelo mesmo motivo que o v56.
-const PROJECT_SCHEMA: u32 = 62;
+/// v63 (3D, W10.7 — a oclusão que a doação carrega): o `BakedFormDocument` ganhou
+/// **`form_occ`**, a oclusão de forma de um objeto assado (cavidade × os dois AOs),
+/// um byte por texel. Bump obrigatório pela razão de sempre — postcard é POSICIONAL.
+/// ⚠️ **E ela viaja em vez de ser assada no `base`**, o que seria de graça em disco: um
+/// re-bake REUSA o `base` (`sculpt3d_bake::bake_one`), então pré-multiplicar a oclusão
+/// ali a comporia a cada gesto e o objeto escureceria sozinho — o defeito exato que o
+/// `base` existe para impedir. ⚠️ **VAZIO num documento anterior**, e é a leitura
+/// honesta: o neutro da oclusão é `1.0`, e um plano de zeros pintaria de preto toda arte
+/// já assada.
+/// ⚠️ **A linha escreveu 56; o valor CONTADO contra o `main` da integração é 63** — a
+/// `line/Vector` trouxe os SETE degraus v56..v62 na mesma janela, e o número se CONTA,
+/// não se escolhe ([[feedback_numbers_that_sum_across_lines_count_dont_pick]]).
+const PROJECT_SCHEMA: u32 = 63;
 
 /// O conteúdo de um arquivo de projeto.
 #[derive(serde::Serialize, serde::Deserialize)]

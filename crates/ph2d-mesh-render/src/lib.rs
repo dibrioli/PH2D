@@ -39,6 +39,7 @@ pub mod upload;
 mod wire;
 
 pub use camera::Camera3d;
+pub use form::FormPlanes;
 pub use lighting::{LampRaw, RigRaw};
 pub use pipeline::{MeshRenderer, camera_uniform_bytes, view_proj_from_bytes};
 pub use shade::{

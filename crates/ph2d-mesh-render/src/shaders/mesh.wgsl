@@ -475,6 +475,55 @@ fn canvas_normal(n_view: vec3<f32>) -> vec3<f32> {
     return vec3<f32>(n.x, -n.y, n.z);
 }
 
+// **A OCLUSÃO DE FORMA — a porta ÚNICA, e a razão de ela existir.**
+//
+// Os três canais que este número compõe não são iluminação: são **leitura de
+// FORMA** (a cavidade desenha a fresta, os dois AOs medem o quanto do céu um
+// ponto enxerga), e é por isso que eles multiplicam o resultado nos DOIS modos —
+// e é por isso que eles podem viajar para a tinta 2D, onde não há rig nenhum
+// deste lado.
+//
+// ⚠️ **Uma porta e não duas cópias.** O barro pergunta isto para se acender e o
+// G-buffer pergunta para DOAR. Duas expressões seriam duas respostas a *"quão
+// escura é esta fresta?"*, e elas divergiriam no único lugar onde ninguém lê um
+// número de volta: uma escultura que escurece de um jeito no viewport e de outro
+// na tinta que ela acende, no mesmo documento, sob o mesmo card.
+fn form_occlusion(curv: f32, ao: f32, frag: vec2<f32>) -> f32 {
+    // **A CAVIDADE** vale nos DOIS modos, e é por isso que ela subiu para cá: ela
+    // não é iluminação, é leitura de FORMA — o canal que desenha a fresta. Deixá-la
+    // no caminho do rig faria o artista perder a curvatura justamente ao trocar
+    // para o material que ele escolheu para ler melhor.
+    let cav = 1.0 - shade.cavity * clamp(curv * CAVITY_GAIN, -1.0, 1.0);
+
+    // **O AO ASSADO**, e ele mora ao lado da cavidade pelo mesmo motivo: também
+    // não é iluminação, é leitura de FORMA. Os dois canais respondem a perguntas
+    // diferentes e é por isso que somam em vez de competir — a cavidade é LOCAL
+    // (a virada de uma aresta, o vinco que o dedo sente) e o AO é GLOBAL (o que
+    // um cone enxerga a meio corpo de distância, a axila e o vão entre membros).
+    //
+    // ⚠️ `mix` e não multiplicação direta: com `shade.ao = 0` o termo é
+    // exatamente `1.0`, então o barro sem oclusão é **byte-idêntico** ao de antes
+    // deste canal — e é isso que faz o default não mover um pixel de nada que já
+    // foi esculpido.
+    let baked = mix(1.0, clamp(ao, 0.0, 1.0), shade.ao);
+
+    // **O AO DE TELA**, medido nesta vista e nunca velho (`crate::ssao`).
+    //
+    // ⚠️ **As duas fontes compõem pelo MENOS-OCLUÍDO, não pelo produto**, e a
+    // razão é que elas descrevem a MESMA sombra por dois caminhos: o assado
+    // enxerga o corpo inteiro em qualquer direção (metros de campo SDF), este vê
+    // um raio em torno do pixel. Onde as duas acertam — uma axila funda, que é
+    // justamente onde a oclusão importa — um produto escureceria em DOBRO, e o
+    // artista veria a peça ficar preta ao assar. `min` diz *"a mais escura das
+    // duas medições vale"*, que é o que uma medição de visibilidade significa.
+    //
+    // ⚠️ E com uma das duas ausente o `min` é a IDENTIDADE da outra (o ausente
+    // vale 1), então nem o caminho só-assado nem o caminho só-tela pagam nada por
+    // existirem lado a lado.
+    let screen = 1.0 - shade.ssao * screen_occlusion(frag);
+    return cav * min(baked, screen);
+}
+
 // **O G-BUFFER — a DOAÇÃO, do lado de quem doa.**
 //
 // `docs/3D/05.2` numa frase: *"a malha não pede um sistema de luz novo, ela pede
@@ -494,9 +543,26 @@ fn canvas_normal(n_view: vec3<f32>) -> vec3<f32> {
 // não uma propriedade da forma. Se ela entrasse aqui, a tinta que o Painter
 // acende por baixo sairia azulada onde o escultor protegeu, e o artista veria a
 // sua ferramenta de trabalho vazar para dentro da obra. Há gate.
+//
+// ⚠️ **E o SEGUNDO alvo é a OCLUSÃO DE FORMA**, pela porta acima. Ela é um alvo
+// próprio e não um canal do primeiro porque o primeiro **não tem vaga**: `xyz` é
+// a normal e `w` é a cobertura, e nenhum dos quatro é derivável dos outros (a
+// normal é flipada para a frente pelo `canvas_normal`, então `z` seria
+// reconstrutível por `sqrt(1 − x² − y²)` — mas essa raiz é mal-condicionada
+// exatamente na silhueta, onde `z → 0`, que é a mesma armadilha que o doc 24 do
+// Painter mediu e recusou na razão K/S). Um alvo `R16Float` custa **2 B/texel**
+// contra os 8 do primeiro; o preço da doação está medido no `form_plane`.
+struct GbufferOut {
+    @location(0) form: vec4<f32>,
+    @location(1) occlusion: f32,
+};
+
 @fragment
-fn fs_gbuffer(in: VsOut) -> @location(0) vec4<f32> {
-    return vec4<f32>(canvas_normal(in.n_view), 1.0);
+fn fs_gbuffer(in: VsOut) -> GbufferOut {
+    var out: GbufferOut;
+    out.form = vec4<f32>(canvas_normal(in.n_view), 1.0);
+    out.occlusion = form_occlusion(in.curv, in.ao, in.clip.xy);
+    return out;
 }
 
 // **O WIREFRAME** — o passe de LINHAS sobre a forma já acesa.
@@ -519,40 +585,10 @@ fn fs_wire() -> @location(0) vec4<f32> {
 fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     let nc = canvas_normal(in.n_view);
 
-    // **A CAVIDADE** vale nos DOIS modos, e é por isso que ela subiu para cá: ela
-    // não é iluminação, é leitura de FORMA — o canal que desenha a fresta. Deixá-la
-    // no caminho do rig faria o artista perder a curvatura justamente ao trocar
-    // para o material que ele escolheu para ler melhor.
-    let cav = 1.0 - shade.cavity * clamp(in.curv * CAVITY_GAIN, -1.0, 1.0);
-
-    // **O AO ASSADO**, e ele mora ao lado da cavidade pelo mesmo motivo: também
-    // não é iluminação, é leitura de FORMA. Os dois canais respondem a perguntas
-    // diferentes e é por isso que somam em vez de competir — a cavidade é LOCAL
-    // (a virada de uma aresta, o vinco que o dedo sente) e o AO é GLOBAL (o que
-    // um cone enxerga a meio corpo de distância, a axila e o vão entre membros).
-    //
-    // ⚠️ `mix` e não multiplicação direta: com `shade.ao = 0` o termo é
-    // exatamente `1.0`, então o barro sem oclusão é **byte-idêntico** ao de antes
-    // deste canal — e é isso que faz o default não mover um pixel de nada que já
-    // foi esculpido.
-    let baked = mix(1.0, clamp(in.ao, 0.0, 1.0), shade.ao);
-
-    // **O AO DE TELA**, medido nesta vista e nunca velho (`crate::ssao`).
-    //
-    // ⚠️ **As duas fontes compõem pelo MENOS-OCLUÍDO, não pelo produto**, e a
-    // razão é que elas descrevem a MESMA sombra por dois caminhos: o assado
-    // enxerga o corpo inteiro em qualquer direção (metros de campo SDF), este vê
-    // um raio em torno do pixel. Onde as duas acertam — uma axila funda, que é
-    // justamente onde a oclusão importa — um produto escureceria em DOBRO, e o
-    // artista veria a peça ficar preta ao assar. `min` diz *"a mais escura das
-    // duas medições vale"*, que é o que uma medição de visibilidade significa.
-    //
-    // ⚠️ E com uma das duas ausente o `min` é a IDENTIDADE da outra (o ausente
-    // vale 1), então nem o caminho só-assado nem o caminho só-tela pagam nada por
-    // existirem lado a lado.
-    let screen = 1.0 - shade.ssao * screen_occlusion(in.clip.xy);
-    let occ = min(baked, screen);
-    let cav_occ = cav * occ;
+    // A leitura de FORMA — cavidade × os dois AOs — pela porta que o G-buffer
+    // também atravessa, para que a tinta acesa por esta peça escureça a fresta
+    // exatamente onde o barro escurece.
+    let cav_occ = form_occlusion(in.curv, in.ao, in.clip.xy);
 
     // **O MATCAP** — a luz do OLHO, e não a do documento. Ele vem ANTES da recusa
     // por rig apagado: ele não usa o rig, então apagar as lâmpadas do card não

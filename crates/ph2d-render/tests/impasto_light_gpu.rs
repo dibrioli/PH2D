@@ -191,6 +191,7 @@ fn gpu_lit(gpu: &GpuContext, planes: &ImpastoPlanes, base: &[u8]) -> Vec<u8> {
         rough_levels: planes.rough_levels,
         // A doação segue a MESMA janela dos outros planos, e `None` quando não há escultura.
         form: planes.form.as_deref(),
+        form_occlusion: None,
     };
     let out = pass.run(gpu, &src, &input).expect("a well-formed dispatch");
     readback(gpu, out)
@@ -230,6 +231,15 @@ fn gpu_impasto_light_matches_the_cpu_pass_with_a_donated_form() {
         }
     }
     t.set_donated_form(Some(std::sync::Arc::new(form)));
+    // ⚠️ **A OCLUSÃO entra na MESMA fixture, e não num gate separado.** Ela é a outra metade da
+    // doação e viaja pelo mesmo seam; um gate de paridade que a deixasse de fora provaria que as
+    // duas rotas concordam sobre a normal enquanto uma delas escurece a fresta e a outra não —
+    // exatamente a divergência que este arquivo existe para tornar impossível. Um degradê, para que
+    // a comparação não seja entre dois valores constantes.
+    let occ: Vec<f32> = (0..w * h)
+        .map(|i| 0.25 + 0.75 * (i % w) as f32 / (w - 1).max(1) as f32)
+        .collect();
+    t.set_donated_occlusion(Some(std::sync::Arc::new(occ)));
 
     let planes = t
         .impasto_gpu_planes()
@@ -237,6 +247,10 @@ fn gpu_impasto_light_matches_the_cpu_pass_with_a_donated_form() {
     assert!(
         planes.form.is_some(),
         "premissa: o plano de forma tem de atravessar o seam da CPU, senão isto compara dois nadas"
+    );
+    assert!(
+        planes.form_occ.is_some(),
+        "premissa: e o plano de oclusão também"
     );
     let cpu = cpu_lit(&t, &base);
     let gpu_out = gpu_lit(&gpu, &planes, &base);
@@ -578,6 +592,7 @@ fn a_partial_plane_upload_lands_where_it_belongs_at_any_width() {
                 mat0: &p.mat0,
                 mat1: &p.mat1,
                 form: p.form.as_deref(),
+                form_occlusion: None,
                 lamps,
                 spec_lut: p.spec_lut,
                 lut_width: p.lut_width,
@@ -739,6 +754,7 @@ fn run_pass(
         mat0: &planes.mat0,
         mat1: &planes.mat1,
         form: planes.form.as_deref(),
+        form_occlusion: None,
         lamps: &lamps,
         spec_lut: planes.spec_lut,
         lut_width: planes.lut_width,

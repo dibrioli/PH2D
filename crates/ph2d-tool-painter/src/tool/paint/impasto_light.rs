@@ -163,6 +163,12 @@ pub(super) struct ReliefFields<'a> {
     /// resposta a *"que forma há neste pixel"* — a mesma cerca que mantém o FOLD do relevo fora do
     /// shader.
     form: Option<&'a [f32]>,
+    /// **A OCLUSÃO DE FORMA** doada com ela — cavidade × os dois AOs, um escalar por texel do canvas.
+    ///
+    /// ⚠️ Ela chega PRONTA, pela mesma razão do plano acima: quem a compõe é o shader do barro, por
+    /// uma porta única (`mesh.wgsl::form_occlusion`), e uma segunda composição aqui divergiria da
+    /// que o artista vê no viewport.
+    form_occ: Option<&'a [f32]>,
     /// `Material::NEUTRAL`, quantised ONCE — the ground the material fold starts from, and the material
     /// a layer with no entry reads as. It is a constant, and it is read per texel; deriving it in the
     /// loop is the kind of thing that costs half a millisecond and looks like nothing.
@@ -325,6 +331,18 @@ impl ReliefFields<'_> {
         [f[i], f[i + 1], f[i + 2], f[i + 3]]
     }
 
+    /// A oclusão de forma neste pixel — `1.0` (nada oclui) onde não há doação.
+    ///
+    /// ⚠️ **O neutro é uma CONSTANTE, e é isso que separa esta porta da irmã.** O `form_at` tem de
+    /// inventar `[0, 0, 1]` porque o zero do buffer é uma normal deitada; aqui o zero do buffer
+    /// seria PRETO, mas o alvo é limpo em BRANCO do lado de quem doa (`render_gbuffer`), então fora
+    /// da silhueta o número já é o neutro e não há caso especial a escrever.
+    #[inline]
+    pub(super) fn form_occlusion_at(&self, x: i64, y: i64) -> f32 {
+        self.form_occ
+            .map_or(1.0, |o| o[self.index(x, y)].clamp(0.0, 1.0))
+    }
+
     #[inline]
     fn index(&self, x: i64, y: i64) -> usize {
         let cx = x.clamp(0, self.width as i64 - 1) as usize;
@@ -440,6 +458,14 @@ impl PainterTool {
             .as_deref()
             .map(Vec::as_slice)
             .filter(|f| f.len() == n * 4);
+        // A oclusão passa pelo MESMO filtro de forma, e por um motivo a mais: ela é opcional mesmo
+        // COM doação (uma doação de antes desta wave não a traz), então um plano curto aqui é o caso
+        // normal de um documento salvo antes — e o `map_or(1.0)` da porta o cobre sem ramo especial.
+        let form_occ = self
+            .donated_occlusion
+            .as_deref()
+            .map(Vec::as_slice)
+            .filter(|o| o.len() == n);
         // ⚠️ A segunda camada da mesma pergunta: sem camada de relevo E sem forma não há nada a
         // iluminar. Com forma e nenhum relevo há — é *pintar sobre forma*, o objetivo O1 inteiro.
         if layers.is_empty() && form.is_none() {
@@ -453,6 +479,7 @@ impl PainterTool {
             // O plano só é aceito com a FORMA do canvas: um plano de outro tamanho descreveria a forma
             // no lugar errado, e o modo de falha disso é uma luz torta que ninguém liga à escultura.
             form,
+            form_occ,
             neutral: ph2d_painter_brush::material::Material::NEUTRAL.to_bytes(),
             width: w as usize,
             height: h as usize,
@@ -474,6 +501,26 @@ impl PainterTool {
     /// *inofensivo* em vez de invisível.
     pub fn set_donated_form(&mut self, form: Option<std::sync::Arc<Vec<f32>>>) {
         self.donated_form = form;
+    }
+
+    /// **A outra metade da doação** — a oclusão de forma, um escalar por texel do canvas.
+    ///
+    /// ⚠️ **Uma porta separada, e a segurança disso não é convenção — é o NEUTRO.** Uma normal
+    /// ausente não tem valor honesto (o zero do buffer é uma normal deitada, e é por isso que a irmã
+    /// viaja com um bit no uniform); uma oclusão ausente vale `1.0`, que é *"nada oclui"* — a
+    /// leitura exata de um documento que ninguém esculpiu, e a de toda doação anterior a esta wave.
+    /// Instalar uma sem a outra portanto **não pode** produzir um estado que ninguém pediu.
+    ///
+    /// O que garante que elas andem juntas na prática é o CHAMADOR: o shell as instala do mesmo
+    /// `FormPlanes`, no mesmo sítio, e há arch-gate exigindo isso.
+    pub fn set_donated_occlusion(&mut self, occ: Option<std::sync::Arc<Vec<f32>>>) {
+        self.donated_occlusion = occ;
+    }
+
+    /// O plano de oclusão vigente, se houver — o irmão do [`Self::donated_form`], e pelo mesmo motivo.
+    #[must_use]
+    pub fn donated_occlusion(&self) -> Option<&[f32]> {
+        self.donated_occlusion.as_deref().map(Vec::as_slice)
     }
 
     /// O plano de forma vigente, se houver. Existe para o gate poder afirmar o que o tool guarda sem
@@ -537,11 +584,16 @@ impl PainterTool {
                 let body = paint_body(cover).max(form[3]);
                 let (mul, add) =
                     light.shade_over(&mat, body, gloss_body(cover), dhx, dhy, form, albedo);
-                if mul == [1.0; 3] && add == [0.0; 3] {
+                // **A OCLUSÃO DE FORMA multiplica o DIFUSO e não o realce**, e é a mesma lei que o
+                // barro aplica do outro lado (`mesh.wgsl`): uma fresta oclui a luz de AMBIENTE, e o
+                // caminho especular de uma lâmpada ou alcança aquele ponto ou não — o `N·H` já
+                // responde isso. Somá-la ao `add` clarearia a fresta quando ela devia escurecer.
+                let occ = fields.form_occlusion_at(gx, gy);
+                if mul == [1.0; 3] && add == [0.0; 3] && occ >= 1.0 {
                     continue; // flat: byte-identical, and not even a rounding trip through f32
                 }
                 for c in 0..3 {
-                    let lit = light_pixel(albedo[c], mul[c], add[c]);
+                    let lit = light_pixel(albedo[c], mul[c] * occ, add[c]);
                     rgba[i + c] = (lit * 255.0 + 0.5) as u8;
                 }
             }

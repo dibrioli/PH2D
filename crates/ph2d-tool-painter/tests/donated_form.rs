@@ -237,3 +237,80 @@ fn paint_relief_outside_the_forms_silhouette_is_still_read_as_relief() {
         "a escultura mudou o relevo da tinta FORA dela em {worst} níveis — a normal deitou"
     );
 }
+
+// ---------------------------------------------------------------------------------------------
+// A OCLUSÃO DE FORMA (docs/3D/05.2, W10.7) — a segunda metade da doação.
+// ---------------------------------------------------------------------------------------------
+
+/// Um plano de oclusão uniforme.
+fn occlusion(v: f32) -> Arc<Vec<f32>> {
+    Arc::new(vec![v; (N * N) as usize])
+}
+
+/// **A OCLUSÃO ESCURECE A TINTA** — a frase inteira da wave, no pixel.
+///
+/// ⚠️ **A fixture tem de ter uma forma CHAPADA, e é o que torna o gate um oráculo.** Com a forma
+/// inclinada o pixel muda por dois motivos (a normal e a oclusão) e *"escureceu"* deixaria de
+/// distinguir os dois; com `[0, 0, 1]` a normal multiplica por exatamente 1 (o gate acima o pina),
+/// então o que sobra na diferença é a oclusão e nada mais.
+#[test]
+fn the_donated_occlusion_darkens_the_paint() {
+    let mut t = flat_tool();
+    let flat_form: Vec<f32> = (0..N * N).flat_map(|_| [0.0, 0.0, 1.0, 1.0]).collect();
+    t.set_donated_form(Some(Arc::new(flat_form)));
+    let unoccluded = lit(&t);
+
+    t.set_donated_occlusion(Some(occlusion(0.5)));
+    let occluded = lit(&t);
+    assert!(
+        occluded[0] < unoccluded[0],
+        "meia oclusão tinha de escurecer: {} contra {}",
+        occluded[0],
+        unoccluded[0]
+    );
+    // E o quanto: a oclusão multiplica o DIFUSO, e sobre uma forma chapada o difuso é o pixel
+    // inteiro — então meia oclusão é meio pixel, dentro do arredondamento de um nível.
+    let half = f32::from(unoccluded[0]) * 0.5;
+    assert!(
+        (f32::from(occluded[0]) - half).abs() <= 1.0,
+        "a lei é multiplicativa: esperava ~{half:.1}, veio {}",
+        occluded[0]
+    );
+}
+
+/// **Oclusão CHEIA é byte-idêntica a oclusão nenhuma** — o neutro é `1.0`, e é a identidade exata.
+///
+/// ⚠️ É esta propriedade que torna a ausência do plano segura, e ela é o que separa esta metade da
+/// irmã: uma normal ausente **não tem** valor honesto (o zero do buffer é uma normal deitada, e por
+/// isso ela viaja com um bit), enquanto uma oclusão ausente vale `1.0`. Um documento salvo antes
+/// desta wave — e toda doação que o `main` já produziu — cai exatamente aqui.
+#[test]
+fn a_full_occlusion_is_the_same_bytes_as_no_occlusion_at_all() {
+    let mut t = flat_tool();
+    t.set_donated_form(Some(tilted_form()));
+    let without = lit(&t);
+    t.set_donated_occlusion(Some(occlusion(1.0)));
+    assert_eq!(
+        lit(&t),
+        without,
+        "oclusão 1.0 tinha de ser a identidade, ao byte"
+    );
+    t.set_donated_occlusion(None);
+    assert_eq!(lit(&t), without, "e removê-la também");
+}
+
+/// **Um plano de oclusão do tamanho errado é RECUSADO em silêncio** — o irmão exato do gate do
+/// plano de forma, e pela mesma razão: um canvas pode ser redimensionado entre a rasterização e a
+/// luz, e um plano com a forma errada descreveria a escultura no lugar errado.
+#[test]
+fn an_occlusion_plane_of_the_wrong_shape_is_refused() {
+    let mut t = flat_tool();
+    t.set_donated_form(Some(tilted_form()));
+    let good = lit(&t);
+    t.set_donated_occlusion(Some(Arc::new(vec![0.25f32; (N * N) as usize - 1])));
+    assert_eq!(
+        lit(&t),
+        good,
+        "um plano curto tinha de ser ignorado, não lido torto"
+    );
+}

@@ -108,7 +108,7 @@ impl Sculpt3dScene {
     /// tela, e a sombra que uma peça lança sobre outra é exatamente o que só ele
     /// consegue medir; semear o raio pela peça ativa faria essa sombra encolher
     /// quando o artista clicasse na menor das duas.
-    fn ssao_params(&self) -> ph2d_mesh_render::SsaoParams {
+    pub(super) fn ssao_params(&self) -> ph2d_mesh_render::SsaoParams {
         ph2d_mesh_render::SsaoParams::for_bounds(self.world_bounds())
     }
 

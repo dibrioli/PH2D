@@ -296,7 +296,7 @@ fn compare(
 
     let live = render_live(gpu, renderer, camera, &resolved, size);
     let form = renderer
-        .form_plane(&gpu.device, &gpu.queue, camera, size)
+        .form_plane(&gpu.device, &gpu.queue, camera, size, ph2d_mesh_render::Shade::default(), None)
         .expect("a malha esta la'");
 
     let mut base = vec![0u8; n * 4];
@@ -313,13 +313,13 @@ fn compare(
     };
     let src = upload_rgba(gpu, size, &base);
     let mut pass = ImpastoLightPass::new(gpu);
-    let input = build_input(size, &planes, &form, SpecLut::get());
+    let input = build_input(size, &planes, &form.normal, &form.occlusion, SpecLut::get());
     let baked = {
         let out = pass.run(gpu, &src, &input).expect("o passe aceitou");
         readback(gpu, out, SIDE, SIDE, 4)
     };
 
-    let depth = depth_from_edge(&form, SIDE, SIDE);
+    let depth = depth_from_edge(&form.normal, SIDE, SIDE);
     let mut c = Comparison {
         count: [0; 8],
         mean_diff: [0.0; 8],
@@ -332,7 +332,7 @@ fn compare(
         inside: 0,
     };
     for i in 0..n {
-        let w = form[i * 4 + 3];
+        let w = form.normal[i * 4 + 3];
         if w > 0.0 && w < 1.0 {
             c.partial += 1;
         }

@@ -26,6 +26,54 @@
 > corpo é Dynamic. O §2 diz o que acontece com cada uma — e a resposta não é a mesma
 > para as duas, que é o achado desta pesquisa.
 
+> ### ⚠️ E as três CURARAM o que este plano usava para justificar o modo novo
+>
+> **Re-medido em 2026-08-08, antes de a `W-KinMove` ser escrita**
+> (`measure_kinematic_case.rs`), pela regra do `CLAUDE.md` §0 aplicada a este
+> documento: *quem move o número que justificava algo tem de reconferir a nota.*
+>
+> | defeito que o §0 deste plano nomeava | o número dele | **hoje, no default** |
+> |---|---|---|
+> | deriva de rampa (parado 10 s a 30°) | `0,164 m` | **`0,0000 m`** |
+> | penetração no impacto | `23 mm` | **`−0,5 mm`** (ele nunca desce abaixo da altura de flutuação) |
+>
+> ⚠️ **E a tabela só significa alguma coisa por causa da coluna de CONTROLE:** os
+> dois zeros são **comprados por um knob no TETO**, não estruturais. Baixando o
+> `spring_damping` a um quarto eles voltam inteiros —
+>
+> | queda | `damping` no teto (o default) | `damping` a ¼ |
+> |---|---|---|
+> | 0,5 m | −0,5 mm | **155,6 mm** |
+> | 10,0 m | −0,5 mm | **295,5 mm** |
+>
+> e a deriva de rampa faz o mesmo (`0,0000` → `0,0332` a meio curso, `0,0498` a
+> um quarto). O mecanismo é o boost: no teto ele **mata a velocidade relativa
+> inteira em UM tique**, então o personagem é apanhado no instante em que o raio
+> o vê.
+>
+> ### O que isto faz com a justificação da wave — e o que NÃO faz
+>
+> ⛔ **Some:** *"o modo cinemático conserta a deriva e a penetração"*. Não
+> conserta o que já é zero.
+>
+> ✅ **Fica, e é o que o Enio de facto pediu** (*"a intenção é que nosso player
+> reaja a tudo e **influencie tudo** no mundo físico"*):
+>
+> 1. **A precisão deixa de depender de um knob.** Sob Snap o resíduo é zero **em
+>    qualquer `spring_damping`**, porque não há mola — é estrutural, não afinado.
+>    Um artista que baixe o amortecimento para um pouso mais macio hoje **compra
+>    de volta** 30 cm de penetração; sob Snap não compra nada.
+> 2. **A K6 e a `W-KinPush`** — transmitir peso e empurrar de lado pela NOSSA lei
+>    — são capacidade nova, não cura de defeito, e são o que a ordem nomeia.
+> 3. **A ESCOLHA**, que a ordem pede explicitamente (*"com a possibilidade de
+>    escolha para ligar e desligar esse modo, sem sobrescrever o que já temos"*).
+>
+> ⚠️ **Consequência para os gates:** o `the_kinematic_player_does_not_creep_up_a_ramp`
+> e o `..._does_not_sink_into_the_floor` **têm de correr com o amortecimento
+> ABAIXO do teto** — no teto os dois ficariam verdes nos dois modos, e *um gate
+> que passa no controle está a medir a coisa errada*. O plano já exigia isso do
+> primeiro; agora vale para os dois.
+
 ---
 
 ## §1 — A pesquisa: o que os outros fazem, e o que foi tentado e abandonado

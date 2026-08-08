@@ -21,6 +21,15 @@ fn handle_sign(handle: u8) -> [f32; 2] {
     }
 }
 
+/// `PH2D_SEL_GIZMO_DIAG=1` — o par do diagnóstico do shell (`painter_canvas_mods`). Um "a tecla não
+/// funcionou" tem três elos possíveis, e só a comparação dos dois lados diz qual quebrou: **shell mudo**
+/// ⇒ o evento não chega ao Painter (outro consumidor o tomou antes) · **shell fala e isto cala** ⇒ o
+/// gesto não é um arrasto de alça de gizmo · **os dois falam** ⇒ o que está errado é a lei, não a fiação.
+fn diag() -> bool {
+    static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *ON.get_or_init(|| std::env::var_os("PH2D_SEL_GIZMO_DIAG").is_some())
+}
+
 pub(super) fn apply_gizmo_drag(
     initial: &SelectionShape,
     handle: u8,
@@ -63,6 +72,14 @@ pub(super) fn apply_gizmo_drag(
     // drawn inflated (`gizmo_frame`), so subtract the margin from the pointer distance — the drag then
     // measures the TRUE extents and the inflated corner tracks the cursor exactly.
     if handle < H_SCALE_END {
+        if diag() {
+            eprintln!(
+                "[sel-gizmo] tool escalou alca {handle} shift={} ctrl={} (ancora {})",
+                mods.shift,
+                mods.ctrl,
+                if mods.ctrl { "CENTRO" } else { "quina oposta" }
+            );
+        }
         let m = if matches!(initial, SelectionShape::Freehand { .. }) {
             tol * FREEHAND_BOX_MARGIN
         } else {

@@ -1,0 +1,218 @@
+//! **O MODO DE PREVIEW** (plano UI/UX W7, a metade de RUNTIME) — a UI que o artista desenhou
+//! passa a **responder ao rato**, e só aqui.
+//!
+//! # Por que um MODO, e não simplesmente ligar o rato
+//!
+//! A ponte dos estados escreveu, no dia em que nasceu, as duas razões pelas quais o rato não
+//! dirigia nada — e as duas continuam verdadeiras:
+//!
+//! 1. **Um hover que animasse a forma enquanto o artista trabalha tornaria o editor inutilizável.**
+//!    É por isso que o Figma põe a interação num *modo de apresentação* separado.
+//! 2. **O undo deste editor é por DIFF do mundo**, então uma pose escrita por hover viraria um
+//!    passo de undo a cada vez que o rato passasse por cima de um botão.
+//!
+//! ⇒ o modo resolve as duas de uma vez: **enquanto ele está ligado, o gesto de edição não existe e
+//! o undo não regista**; quando ele desliga, **o mundo volta exactamente ao que era**.
+//!
+//! # ⭐ Sair RESTAURA, e a restauração é do MUNDO — nunca do estado Default
+//!
+//! A tentação barata é *"ao sair, vá para o Default"*. Ela está errada, e o modo de falha é
+//! silencioso: o **Default é uma pose GRAVADA**, e o artista pode ter movido a forma depois de a
+//! gravar. Sair para o Default **moveria** o desenho dele — o documento mudaria por ele ter olhado.
+//!
+//! O que se restaura é a pose que o mundo tinha **no instante em que a preview foi ligada**. Ela é
+//! capturada pela MESMA porta que o botão *Rec* usa ([`crate::vec_ui_state_edit::capture`]): uma
+//! segunda leitura ao lado seria a que esquece um canal no dia em que a pose ganhar um.
+//!
+//! # O conjunto capturado é EXACTAMENTE o que a preview pode escrever
+//!
+//! A [`ph2d_ui_state::Machine`] só emite poses cujos ids aparecem nos estados autorados (o
+//! `overlay` dela escreve o que a `Transition` produziu, e a `Transition` casa as duas listas
+//! autoradas). ⇒ capturar todo id mencionado por qualquer estado de qualquer hospedeiro é
+//! **completo por construção**, e não uma lista que envelhece. Há gate a medi-lo.
+//!
+//! # O rato diz *o que aconteceu*; o papel é DERIVADO
+//!
+//! `hot` (sobre que hospedeiro o cursor está) + `pressed` (o botão está em baixo) são os dois
+//! fatos que a shell conhece. O papel sai deles por uma função, e não por uma tabela de gatilhos:
+//! uma tabela teria de ser mantida em dia com a lista de papéis, e a lista já é um catálogo fixo.
+
+use ph2d_ecs::SimWorld;
+use ph2d_ui_state::{ObjectPose, StateRole, StateSets};
+use ph2d_vec_scene::{VecPathId, VecScene};
+
+use crate::vec_entities::VecEntityMap;
+
+use super::ui_state_bridge::{UiMachines, request};
+
+/// O modo de preview: se está ligado, o que restaurar, e onde o rato está.
+#[derive(Default)]
+pub(crate) struct UiPreview {
+    on: bool,
+    /// A pose do MUNDO no instante em que a preview ligou — tudo o que ela pode escrever.
+    ///
+    /// ⚠️ Ela **não** é serializada e não pode ser: é *onde a cena estava*, um fato sobre uma
+    /// sessão. O documento guarda *onde as poses são*.
+    restore: Vec<ObjectPose>,
+    /// Sobre que hospedeiro o cursor está.
+    hot: Option<VecPathId>,
+    /// O botão primário está em baixo **sobre o `hot`**.
+    pressed: bool,
+}
+
+impl UiPreview {
+    #[must_use]
+    pub(crate) fn is_on(&self) -> bool {
+        self.on
+    }
+
+    /// Que hospedeiro está sob o cursor — o readout que o painel mostra.
+    #[must_use]
+    pub(crate) fn hot(&self) -> Option<VecPathId> {
+        self.hot
+    }
+
+    /// **LIGA**, capturando o mundo. Sem estado nenhum autorado ela não liga — um modo de preview
+    /// sobre uma cena sem poses é um modo que não faz nada, e o artista não teria como o saber.
+    pub(crate) fn enter(
+        &mut self,
+        states: &StateSets,
+        sim: &SimWorld,
+        scene: &VecScene,
+        map: &VecEntityMap,
+    ) -> bool {
+        if self.on || states.is_empty() {
+            return false;
+        }
+        self.restore = touched(states)
+            .into_iter()
+            .map(|id| crate::vec_ui_state_edit::capture(sim, scene, map, id))
+            .collect();
+        self.on = true;
+        self.hot = None;
+        self.pressed = false;
+        true
+    }
+
+    /// **DESLIGA**, devolvendo o mundo ao que era. As máquinas morrem com o modo.
+    ///
+    /// ⚠️ **As máquinas são limpas, e não deixadas paradas**: uma máquina viva continuaria a
+    /// afirmar que a cena mostra um papel (o readout do painel lê `live_role`), e o artista veria
+    /// *"Showing: Hover"* sobre uma cena que voltou ao repouso.
+    pub(crate) fn leave(
+        &mut self,
+        machines: &mut UiMachines,
+        sim: &mut SimWorld,
+        scene: &mut VecScene,
+        map: &VecEntityMap,
+    ) -> bool {
+        if !self.on {
+            return false;
+        }
+        for pose in &self.restore {
+            crate::vec_ui_state_edit::install(sim, scene, map, pose);
+        }
+        self.restore.clear();
+        machines.clear();
+        self.on = false;
+        self.hot = None;
+        self.pressed = false;
+        true
+    }
+
+    /// **O rato mexeu-se.** `hit` é o hospedeiro sob o cursor (`None` = o vazio ou uma forma sem
+    /// estados); `pressed` é o botão primário.
+    ///
+    /// ⚠️ **Só pede quando MUDA**, a mesma lei do read-back do picker de tokens: o rato publica
+    /// posição a cada quadro, e re-pedir o mesmo papel a cada um faria o `retarget` correr sobre
+    /// a tabela inteira sessenta vezes por segundo para não mudar nada.
+    ///
+    /// ⚠️ **E o hospedeiro que se DEIXA volta ao Default no mesmo passo.** Sem isso, sair de um
+    /// botão para outro deixaria o primeiro aceso — o modo de falha que qualquer um vê e que um
+    /// gate de um botão só nunca mostra.
+    pub(crate) fn point(
+        &mut self,
+        machines: &mut UiMachines,
+        states: &StateSets,
+        hit: Option<VecPathId>,
+        pressed: bool,
+    ) {
+        if !self.on || (hit == self.hot && pressed == self.pressed) {
+            return;
+        }
+        let left = self.hot.filter(|&h| Some(h) != hit);
+        self.hot = hit;
+        // Apertar no vazio não "prende" hospedeiro nenhum.
+        self.pressed = pressed && hit.is_some();
+
+        if let Some(h) = left {
+            request(machines, states, h, StateRole::Default);
+        }
+        if let Some(h) = hit {
+            request(machines, states, h, self.role_for(h));
+        }
+    }
+
+    /// O papel que `host` deve mostrar, dados os dois fatos que o rato conhece.
+    fn role_for(&self, host: VecPathId) -> StateRole {
+        match self.hot {
+            Some(h) if h == host && self.pressed => StateRole::Pressed,
+            Some(h) if h == host => StateRole::Hover,
+            _ => StateRole::Default,
+        }
+    }
+}
+
+/// **Todo id que a preview pode escrever** — a união dos objetos de todos os estados autorados.
+///
+/// ⚠️ Ordenado e sem repetições: a restauração é uma sequência de escritas, e uma lista cuja ordem
+/// dependesse da iteração de um mapa faria dois `leave` logicamente iguais escreverem em ordens
+/// diferentes — invisível hoje, e a forma exacta de um bug que só aparece quando duas poses
+/// disputam o mesmo id.
+#[must_use]
+fn touched(states: &StateSets) -> Vec<VecPathId> {
+    let mut ids: Vec<VecPathId> = states
+        .hosts()
+        .flat_map(|h| {
+            states
+                .get(h)
+                .iter()
+                .flat_map(|s| s.objects.iter().map(|o| o.id))
+                .collect::<Vec<_>>()
+        })
+        .collect();
+    ids.sort_unstable();
+    ids.dedup();
+    ids
+}
+
+/// **Que hospedeiro está sob este ponto de mundo**, ou `None`.
+///
+/// ⚠️ Um hospedeiro é um GRUPO (um botão é fundo + rótulo), então um toque no rótulo é um toque no
+/// botão: a pergunta é *"o que foi tocado pertence à sub-árvore de algum hospedeiro?"*, e não
+/// *"o que foi tocado é um hospedeiro?"*. A segunda faria o hover morrer sempre que o cursor
+/// passasse por cima do texto.
+///
+/// ⚠️ A lista de picks vem em ordem de Z (a frente primeiro), então o **primeiro** que pertence a
+/// um hospedeiro ganha — o de cima é o que o artista vê.
+#[must_use]
+pub(crate) fn host_under(
+    sim: &SimWorld,
+    scene: &VecScene,
+    map: &VecEntityMap,
+    states: &StateSets,
+    picked: &[VecPathId],
+) -> Option<VecPathId> {
+    for id in picked {
+        for h in states.hosts() {
+            if h == *id || crate::vec_ui_state_edit::members(sim, scene, map, h).contains(id) {
+                return Some(h);
+            }
+        }
+    }
+    None
+}
+
+#[cfg(test)]
+#[path = "ui_preview_tests.rs"]
+mod tests;

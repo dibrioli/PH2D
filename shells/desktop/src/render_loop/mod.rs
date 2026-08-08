@@ -230,6 +230,7 @@ mod upscale_bridge;
 // pub(crate): `set_mode` é chamado do `vec_text` (o `T` troca o modo pela allowlist
 // de downcast deste bridge).
 /// **A ponte dos ESTADOS de UI** (plano UI/UX W7) — quem faz a cena ANDAR entre duas poses.
+pub(crate) mod ui_preview;
 pub(crate) mod ui_state_bridge;
 pub(crate) mod vector_bridge;
 

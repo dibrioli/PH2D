@@ -73,7 +73,11 @@ fn entity_of(map: &VecEntityMap, id: VecPathId) -> Option<Entity> {
 }
 
 /// Os caminhos que este hospedeiro governa: ele próprio e cada descendente que é uma forma.
-fn members(
+///
+/// ⚠️ `pub(crate)` desde o modo de PREVIEW (W7r): ele pergunta o INVERSO — *"o que o rato tocou
+/// pertence a algum hospedeiro?"* — e uma segunda travessia da árvore ao lado daria duas respostas
+/// a *"quem este botão governa"*, com o hover a morrer sobre a metade que uma delas esquecesse.
+pub(crate) fn members(
     sim: &SimWorld,
     scene: &VecScene,
     map: &VecEntityMap,
@@ -92,8 +96,17 @@ fn members(
 }
 
 /// **A pose de AGORA**, lida do mundo e do documento.
+///
+/// ⚠️ `pub(crate)` desde o modo de PREVIEW (W7r): ele captura, ao ENTRAR, exactamente a mesma
+/// coisa que o **Rec** captura — *o que a cena mostra agora* —, e uma segunda leitura ao lado
+/// seria a que esquece um canal no dia em que a pose ganhar um. Uma porta, dois consumidores.
 #[must_use]
-fn capture(sim: &SimWorld, scene: &VecScene, map: &VecEntityMap, id: VecPathId) -> ObjectPose {
+pub(crate) fn capture(
+    sim: &SimWorld,
+    scene: &VecScene,
+    map: &VecEntityMap,
+    id: VecPathId,
+) -> ObjectPose {
     let mut pose = ObjectPose::new(id);
     if let Some(e) = entity_of(map, id) {
         if let Some(t) = sim.world().get::<Transform>(e) {

@@ -6,6 +6,11 @@
 > agnóstica de como o motor é aplicado, e é exatamente onde um segundo consumidor
 > entraria."* Ordem do Enio, 2026-08-07: **vai**.
 >
+> ⚠️ **E este plano carrega UMA wave que não é do modo novo:** a `W-Water`, por ordem do
+> Enio de 2026-08-07 (*"nosso player atual não interage corretamente com a água, como a
+> jangada faz"*). Ela é do player **DINÂMICO**, vem **primeiro**, e a medição mostrou que
+> não é sobre água — é sobre **o sensor de chão tratar um SENSOR como matéria sólida**.
+>
 > ⚠️ **A frase acima é meia-verdade, e a metade que falha decide o tamanho da wave.**
 > Ela vale para andar/pular/arrancar/parede/agachar/quina. Não vale para a **D1** (a
 > cápsula flutuante) nem para a **D3** (a reação da 3ª lei): as duas existem *porque* o
@@ -173,7 +178,78 @@ Cada uma fecha com gate batched verde · mutações · **cena de smoke com núme
 (a sonda headless roda ANTES de a mensagem ser escrita) · entrada no tracker + linha no
 `00_plano_waves.md`, na mesma sessão.
 
-### W-KinMove — O MODO EXISTE E O PERSONAGEM ANDA (cena `=100`)
+### W-Water — O PERSONAGEM FICA DE PÉ EM CIMA DA ÁGUA (cena `=100`)
+
+⚠️ **Esta wave é do player DINÂMICO, não do cinemático** — ela entra aqui porque o Enio
+a pediu neste plano (*"nosso player atual não interage corretamente com a água, como a
+jangada faz"*) e porque **vem primeiro**: é um defeito VIVO no que shipa hoje, e o modo
+novo herdaria metade dele.
+
+⚠️ **E não é sobre água.** Medido pela porta do produto antes de uma linha
+(`measure_player_in_water.rs`), com o CONTROLE sendo uma cápsula **idêntica** sem o
+`PlatformPlayer` — mesma forma, mesma densidade, mesma poça:
+
+| | cápsula (controle) | player | com a cura |
+|---|---|---|---|
+| **`y` numa poça FUNDA** | `0,2174` (bóia na linha d'água) | **`0,9023`** | `0,3446` |
+| **`y` numa poça RASA** (fundo a `−2`) | `0,2174` | **`0,9023`** | `0,3446` |
+| **`x` após 5 s de correnteza** (8 N) | levado | **`0,0000`** | `3,3927` |
+
+**`0,9023` é `float_height`** — ele está **de pé sobre a superfície da poça**, à altura
+exata a que a perna o segura sobre qualquer chão. E o `x = 0,0000` é o corolário: quem
+está no chão tem a caminhada a frear a velocidade dele para o alvo (zero), então a
+correnteza é **apagada**.
+
+**A causa é uma linha, e o repo já escreveu a frase do outro lado.** O `cast_ray` do
+wrapper monta `QueryFilter { .., ..default() }`, e `QueryFilterFlags::empty()` no rapier
+significa *"no filter"* ⇒ **um SENSOR responde ao raio como matéria sólida**. O
+`buoyancy.rs` já diz, sobre o outro eixo: *"um sensor não desloca fluido: um sensor é um
+marcador, não matéria"*. **Se não é matéria, não se fica de pé em cima.**
+
+⚠️ **E o alcance do defeito é TODA a família de zonas, não a água:** o mesmo raio
+serve o sensor de chão, os DOIS de teto, o de headroom e o de parede — então o
+personagem também bate a cabeça num gatilho e escorrega na parede de uma rajada de
+vento. **O `cast_ray` tem exatamente cinco consumidores no repo inteiro, e os cinco são
+este player, e os cinco querem matéria** (conferido por grep) — é por isso que a cura
+mora na PORTA e não num parâmetro: não existe chamador que queira o contrário, e a
+pergunta *"onde está o sólido?"* nunca significou outra coisa.
+
+⚠️ **E ela vale para o modo novo:** o `move_shape` monta o próprio `QueryFilter`, e sem
+a mesma exclusão o personagem cinemático seria **bloqueado** por um volume de gatilho —
+o mesmo defeito, um grau pior.
+
+#### A SEGUNDA metade, e ela não é a mesma linha
+
+Com a cura, o player bóia a **`0,3446`** contra os **`0,2174`** da cápsula idêntica —
+**12,7 cm mais alto**. A ablação nomeia a causa **exatamente**: com os multiplicadores
+de gravidade do pulo neutros (`takeoff`/`peak`/`fall`/`cut` = 1) ele bóia em
+**`0,2174`, `+0,0000` contra o controle**.
+
+> O `peak_gravity` (default **0,5**) dispara numa janela de **velocidade vertical perto
+> de zero** — e é isso que boiar **é**. Um personagem a flutuar vive permanentemente no
+> **ápice de um pulo que ele nunca deu**, e leva um empurrão para cima de meia gravidade
+> para sempre.
+
+⚠️ **No AR isso nunca acontece** (a gravidade tira-o da janela em poucos tiques, e o
+*hang time* no ápice é a feature); na água a janela é o **regime permanente**. Por isso
+a cura não é apagar o perdão — é decidir *o que qualifica um ápice*, e essa decisão é
+de produto. **Fica NOMEADA aqui e medida; o que o Enio escolher é a metade B da wave.**
+
+**Gates, red-first:**
+
+1. **`a_player_does_not_stand_on_water`** — nasce **VERMELHO** em `0,9023`; verde
+   quando o `y` cair para dentro da poça. O oráculo é a **linha d'água do CONTROLE**,
+   nunca um literal.
+2. **`a_player_is_carried_by_a_current_like_a_raft`** — `x = 0,0000` hoje.
+3. **`a_trigger_volume_is_not_a_ceiling`** — a outra face do mesmo raio, para a cura ser
+   afirmada como propriedade da PORTA e não como conserto do chão.
+4. **`a_floating_player_is_not_forever_at_the_apex`** — a metade B, com o número da
+   ablação (`+0,1272` contra `+0,0000`).
+5. **O que NÃO pode mudar:** o `=91` (a escada de pranchas), o `=88` (as rampas) e o
+   `c9` — uma plataforma jump-through é um collider **sólido** com um hook, e nenhuma
+   cena do hash tem sensor no caminho de um raio. Gate + `c9` byte-idêntico.
+
+### W-KinMove — O MODO EXISTE E O PERSONAGEM ANDA (cena `=101`)
 
 O marcador, o `Support::Snap`, o `move_shape`, a velocidade no `PlayerState`, a
 plataforma móvel, e o chip da §14.
@@ -203,7 +279,7 @@ plataforma móvel, e o chip da §14.
 do teto** (no teto o resíduo dinâmico já é zero e o gate 1 seria verde nos dois modos —
 *um gate que passa no controle está a medir a coisa errada*, a lição da W-AreaFalloff).
 
-### W-KinWeight — O CHÃO SENTE O PERSONAGEM (cena `=101`)
+### W-KinWeight — O CHÃO SENTE O PERSONAGEM (cena `=102`)
 
 A K6 no eixo vertical: sob Snap o `support` é o peso, e a jangada afunda.
 
@@ -215,7 +291,7 @@ sangra.
 ⚠️ **A massa é AUTORADA** (o corpo cinemático não tem massa que o rapier calcule) — e é
 por isso que esta é wave própria: um número novo na §14 tem as suas quatro condições.
 
-### W-KinPush — E O QUE ESTÁ AO LADO TAMBÉM (cena `=102`)
+### W-KinPush — E O QUE ESTÁ AO LADO TAMBÉM (cena `=103`)
 
 A outra metade da ordem *"influencie tudo"*: o que o `move_shape` **não** conseguiu
 mover, projetado na normal, volta como impulso no ponto de contato.
@@ -290,7 +366,7 @@ Reservada de propósito: `autostep` afinado, `min_slope_slide_angle` exposto, ou
 - **`PROJECT_SCHEMA`: NÃO bumpa** (K2) — e se algum campo acabar apendado, o valor se
   **CONTA** contra o `main` do dia, nunca se escolhe.
 - **Ids novos da §14** (os chips do modo + a massa da `W-KinWeight`), anotados no handoff.
-- **Cenas de smoke `=100` · `=101` · `=102`** — ⚠️ o roteador é um `match` de strings
+- **Cenas de smoke `=100` · `=101` · `=102` · `=103`** — ⚠️ o roteador é um `match` de strings
   cujo `_` cai na cena 1: um nível inexistente **não avisa**, mostra outra coisa. O `=84`
   não existe de propósito; **100 é o próximo livre** (o último ocupado é o `=99`).
 - **Contrato congelado: nenhum. Dep externa nova: nenhuma** (o

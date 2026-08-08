@@ -10,10 +10,10 @@
 | | |
 |---|---|
 | Branch | `line/motion-value` |
-| HEAD | `dc8ac591e` |
+| HEAD | `c00a2f2fa` |
 | Merge-base com `main` | `a4018d203` |
-| Commits | **48** |
-| Diff | **181 arquivos, +15.565 / −2.673** |
+| Commits | **53** |
+| Diff | **185 arquivos,, 16595 / 2701** |
 | Janela | 2026-08-05 → 2026-08-08 |
 
 ---
@@ -152,6 +152,45 @@ alcança.*
 em RGB linear com uma matriz YIQ é o atalho que todo motor de partícula usa e que este app
 **não usa em lugar nenhum** — a cor aqui passa por OKLCH. Seria uma segunda resposta a
 *"o que é girar uma cor"*, divergindo no único lugar onde ninguém lê um número.
+
+**(B5) O SMOKE REPROVOU, E OS TRÊS REPORTES FECHARAM** (`a690e470a` · `ba5f40ba9`).
+
+**(i) *"Fade e Shrink não têm efeito algum"* — VERDADE**, e o mecanismo é exato: os dois
+multiplicam colunas que **precisam existir**, e um stream posicional puro não carrega
+`tint` nem `size`. Medido na cena real: as colunas eram `["Count","Index","P","trail_age"]`
+— um `motion.grid`, a fonte mais comum que existe, não emite nenhuma das duas. ⚠️ **E o
+gate PINAVA o defeito:** `a_bare_positional_stream_still_echoes` afirmava `tint.is_none()`
+e explicava, no próprio doc-comment, que *"o fade/shrink simplesmente não têm o que
+tocar"* — descrevendo como contrato exatamente o que o artista reportou como bug. A cura é
+a do `motion.scale`: começar da **identidade que a própria lowering assume**, o que torna o
+1º tick byte-idêntico no render.
+
+**(ii) *"a transparência das cores não está sendo respeitada"* — VERDADE, e são TRÊS
+degraus**, cada um jogando a alfa fora por conta própria: `serialize_gradient` (`g1`)
+**dropava** a alfa (`let [r,g,b,_a]`) — a transparência era inexprimível **no formato**;
+`apply_gradient_stop_pick` cravava `1.0`; e `apply_palette_pick` **descartava a alfa
+escolhida** sob um comentário afirmando que *"o picker OKLCH é opaco"* — **ele não é**
+(tem a 4ª linha de canal R+G+B+**A** e um campo `#RRGGBBAA`). ⚠️ *A premissa estava escrita
+em dois lugares e cada um implementou um erro diferente por causa dela.* O formato ganhou
+**`g2`**, com a versão **escolhida pelo conteúdo**: um ramp opaco serializa `g1` byte a
+byte como antes, só quem usa a alfa paga o header novo. **Zero schema** — o gradiente
+viaja como texto e carrega a própria versão.
+
+**(iii) O padrão-ouro do rastro** (ordem: *"quero mais que os outros e não menos"*): de 3
+para **SETE** knobs — `length · spacing · fade · shrink · hue_shift · saturation · spin` —
+com as rows em três perguntas (soltas no topo · seção **Decay** · seção **Colour**).
+⚠️ **Nenhuma referência tem `spin`.** E a minha recusa anterior do `hueShift` estava na
+**camada errada**: *"a cor neste app passa por OKLCH"* é verdade da AUTORIA e falsa do
+COOK, que é linear-RGB por construção — o operador certo é a rotação que **preserva a
+luma** (o `feColorMatrix type="hueRotate"` do SVG, especificado em linearRGB pelo mesmo
+motivo), com `sincos` **uma vez por tick** e as duas matrizes compostas numa só.
+
+⚠️ **Dep NOVA:** `libm = "=0.2.16"` na `ph2d-node-motion-trail` — **mesmo pin** de
+`ph2d-ecs`/`physics`/`wet-paint`/`platformer`: uma **aresta**, não um pacote novo.
+
+⚠️ **Não construído, com o mecanismo:** `include_original` é **estruturalmente duro** (a
+saída **É** o anel: esconder a cabeça do render a esconde do estado e o rastro morre) e a
+**curva de cauda** pede que o desbote vire função da IDADE — as duas na §9 do doc 88.
 
 **Smokes: `PH2D_TRANSFORM_SMOKE=1`** · **`PH2D_ECHO_SMOKE=1`** (duas esteiras iguais em
 órbita, só o espaçamento difere — se os dois rastros forem iguais, o param não chegou).
@@ -364,7 +403,7 @@ erros de compilação** — ele não compila código `#[cfg(test)]`, e a sonda d
 
 ---
 
-**Resumo:** linha `motion-value` pronta (HEAD `dc8ac591e`, 48 commits). Foundational tocado é
+**Resumo:** linha `motion-value` pronta (HEAD `c00a2f2fa`, 53 commits). Foundational tocado é
 aditivo salvo os doc-comments do §6(a); símbolos colidíveis são `PROJECT_SCHEMA = 56`
 (**provisório**), `INSPECTOR_MAX_H`, `RESERVED_PREFIX` e `CURSOR`; contratos congelados **3/3 +
 4/4 verdes**; zero pacote externo novo, zero crate nova, zero ADR. **Aguardo ordem de integração.**

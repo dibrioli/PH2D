@@ -22,13 +22,14 @@ fn handle_sign(handle: u8) -> [f32; 2] {
 }
 
 /// `PH2D_SEL_GIZMO_DIAG=1` — o par do diagnóstico do shell (`painter_canvas_mods`). Um "a tecla não
-/// funcionou" tem três elos possíveis, e só a comparação dos dois lados diz qual quebrou: **shell mudo**
-/// ⇒ o evento não chega ao Painter (outro consumidor o tomou antes) · **shell fala e isto cala** ⇒ o
-/// gesto não é um arrasto de alça de gizmo · **os dois falam** ⇒ o que está errado é a lei, não a fiação.
-fn diag() -> bool {
-    static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
-    *ON.get_or_init(|| std::env::var_os("PH2D_SEL_GIZMO_DIAG").is_some())
-}
+/// funcionou" tem três elos possíveis, e só a comparação dos lados diz qual quebrou: **shell mudo** ⇒ o
+/// evento não chega ao Painter · **shell fala e nenhum tool responde** ⇒ o gesto não é nenhum dos dois
+/// que têm lei · **os dois falam** ⇒ o que está errado é a lei, não a fiação.
+///
+/// ⚠️ E foi ELE que nomeou o defeito de 2026-08-08: o shell falava, este lado calava, e o outro gesto da
+/// seleção — **desenhar** a marquee (`selection_input`) — não tinha lei nenhuma. A pergunta mora lá, uma
+/// vez para os dois gestos.
+use super::super::selection_input::diag;
 
 pub(super) fn apply_gizmo_drag(
     initial: &SelectionShape,

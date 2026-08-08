@@ -9,6 +9,63 @@ use super::selection_shapes::SelectionShape;
 use ph2d_editor_core::tool::{CanvasPointer, PointerPhase};
 use std::sync::Arc;
 
+/// `PH2D_SEL_GIZMO_DIAG=1` — a UMA pergunta *"o diagnóstico da seleção está ligado?"*, feita por todos os
+/// seus gestos (aqui o de desenhar, em `selection_gizmo_drag` o de editar) e pelo lado do shell
+/// (`painter_canvas_mods`). Um segundo `OnceLock` sobre a mesma variável seria uma segunda resposta —
+/// inofensiva hoje e divergente no dia em que a pergunta ganhar um caso.
+pub(super) fn diag() -> bool {
+    static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *ON.get_or_init(|| std::env::var_os("PH2D_SEL_GIZMO_DIAG").is_some())
+}
+
+/// **As teclas acessórias do gesto de DESENHAR a marquee** — os dois cantos EFETIVOS que a régua do
+/// artista descreve, dado o canto onde ele pousou (`anchor`), onde o cursor está (`pos`) e as teclas.
+///
+/// ⚠️ **A lei é a MESMA do gizmo de edição** ([`ph2d_editor_core::GizmoModifiers`], que o gizmo de sprite
+/// declara palavra por palavra): **Shift** trava a razão de aspecto, **Ctrl/Cmd** ancora no CENTRO — e o
+/// default é o canto oposto. São duas metades do mesmo pedido do Enio (2026-08-07: *"as seleções ainda
+/// não têm aquele sistema de teclas acessórias (shift e ctrl) para escalonar a partir do centro e manter
+/// as proporções"*), e a que ele testa primeiro é esta: **desenhar** uma seleção é o gesto que se faz
+/// antes de existir um gizmo para editar.
+///
+/// ⚠️ **UMA porta, dois consumidores** — o `selection_move` (que pinta o preview a cada amostra) e o
+/// `selection_up` (que rasteriza a máscara E constrói a forma paramétrica) resolvem os cantos por AQUI.
+/// Duas cópias divergiriam no dia em que uma ganhasse um caso, e o sintoma seria o pior deles: o artista
+/// vê um círculo enquanto arrasta e recebe uma elipse ao soltar.
+///
+/// A ordem é `Shift` e depois `Ctrl`, e ela compõe: o Shift quadra o DELTA, o Ctrl espelha o delta já
+/// quadrado em torno da âncora ⇒ Shift+Ctrl é o círculo perfeito centrado no ponto onde a mão pousou.
+/// Sem tecla nenhuma a função devolve `(anchor, pos)` **ao bit**, que é o mundo que já shipava.
+pub(super) fn marquee_corners(
+    anchor: [f32; 2],
+    pos: [f32; 2],
+    mods: ph2d_editor_core::GizmoModifiers,
+) -> ([f32; 2], [f32; 2]) {
+    if diag() && (mods.shift || mods.ctrl) {
+        eprintln!(
+            "[sel-marquee] tool desenhou com shift={} ctrl={} (ancora {})",
+            mods.shift,
+            mods.ctrl,
+            if mods.ctrl { "CENTRO" } else { "canto" }
+        );
+    }
+    let mut d = [pos[0] - anchor[0], pos[1] - anchor[1]];
+    if mods.shift {
+        // O lado vem do eixo que o cursor puxou MAIS — é o que mantém a quina sob o dedo em vez de a
+        // deixar para trás. `copysign` preserva a DIREÇÃO de cada eixo, então a caixa cresce para o lado
+        // em que a mão foi, e não sempre para a direita e para baixo.
+        let s = d[0].abs().max(d[1].abs());
+        d = [s.copysign(d[0]), s.copysign(d[1])];
+    }
+    if mods.ctrl {
+        return (
+            [anchor[0] - d[0], anchor[1] - d[1]],
+            [anchor[0] + d[0], anchor[1] + d[1]],
+        );
+    }
+    (anchor, [anchor[0] + d[0], anchor[1] + d[1]])
+}
+
 /// The in-progress selection gesture — the overlay draws its rubber-band; the mask is rasterized on Up
 /// (Automatic writes it live). Held in [`super::PaintState`].
 #[derive(Clone, Debug)]
@@ -227,6 +284,10 @@ impl PainterTool {
                 if let Some(SelectionDrag::Marquee { cur, .. }) = &mut self.paint.selection_drag {
                     *cur = pos;
                 }
+                // As teclas são lidas VIVAS a cada amostra (o shell as empurra logo antes de cada
+                // evento): apertar Shift no meio do arrasto quadra a caixa na hora, e soltá-lo a
+                // devolve — que é o que todo editor faz e o que um estado congelado no Down proibiria.
+                let (anchor, pos) = marquee_corners(anchor, pos, self.paint.gizmo_mods);
                 let region = self.raster_marquee(anchor, pos, ellipse);
                 self.apply_selection_region(&region);
                 self.invalidate_composite();
@@ -268,6 +329,9 @@ impl PainterTool {
             Some(SelectionDrag::Marquee {
                 anchor, ellipse, ..
             }) => {
+                // ⚠️ A MESMA porta do preview, e é ela que impede o gesto de mentir: os três usos
+                // abaixo (a máscara, o centro e os raios) leem os cantos JÁ resolvidos.
+                let (anchor, pos) = marquee_corners(anchor, pos, self.paint.gizmo_mods);
                 let region = self.raster_marquee(anchor, pos, ellipse);
                 let shape = if ellipse {
                     let center = [(anchor[0] + pos[0]) * 0.5, (anchor[1] + pos[1]) * 0.5];

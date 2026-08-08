@@ -20,7 +20,11 @@ fn diag() -> bool {
 /// Empurra os três modificadores para o tool. `ctrl` já chega com o Cmd do macOS dobrado dentro dele — a
 /// convenção do gizmo de sprite, e dobrá-lo aqui seria uma segunda resposta a *"o que conta como Ctrl?"*.
 pub(crate) fn forward(painter: &mut PainterTool, shift: bool, ctrl: bool, alt: bool) {
-    if diag() && (shift || ctrl) {
+    // ⚠️ O Alt entra na guarda porque sem ele o instrumento é CEGO justamente à tecla que o Enio
+    // reportou muda (2026-08-08: *"apenas alt não responde"*) — e a resposta esperada é que ele nunca
+    // chegue: o KDE/Plasma toma o Alt-drag para si (a mesma razão pela qual o smoke do Stagger da
+    // timeline usa Ctrl). Um balde que não pode acender não distingue *"não chegou"* de *"não medi"*.
+    if diag() && (shift || ctrl || alt) {
         eprintln!("[sel-gizmo] shell entregou shift={shift} ctrl={ctrl} alt={alt}");
     }
     // Alt: o método Line restringe a 45° enquanto ele está preso (o Alt-drag do Blender).

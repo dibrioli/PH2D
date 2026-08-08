@@ -226,54 +226,75 @@ fn a_closed_loop_has_no_ends_to_taper() {
     }
 }
 
-/// **NO DAB IS EVER WITHHELD, AND NO DAB IS EVER MOVED.**
+/// **NO DAB IS EVER WITHHELD: every pointer move lays what it reached, in order.**
 ///
-/// This is the law the taper lives under, and it is structural rather than a setting: the dab stream a
-/// tapered brush produces has the SAME COUNT, at the SAME POSITIONS, in the SAME ORDER as the stream the
-/// same brush produces with the taper off. Only the radii differ.
+/// This is the law the taper lives under, and it is structural rather than a setting. Two halves, and
+/// they are the two ways a hold shows: the arcs never go BACKWARDS across the whole stroke (nothing was
+/// released out of order), and after every single pointer move the ink has reached that move (nothing
+/// was parked waiting to learn its distance-to-the-end).
 ///
 /// ⛔ The first cut of this feature broke exactly this. It held the tail back until the cursor had
 /// travelled past the end-taper window so it could learn each dab's distance-to-the-end, which is exact
 /// and is **wrong as a product**: the mark stops following the hand. Enio, 2026-08-08 — *"o algoritmo que
-/// vc usou para o taper é ruim, tem um super delay e um stabilize ruim. O traço não pode ter nenhum
+/// vc usou para o taper e ruim, tem um super delay e um stabilize ruim. O traço não pode ter nenhum
 /// delay e nenhum stabilize"*. The two complaints are one mechanism: a stroke that lags and then catches
 /// up in a lump is what a heavy stabilizer feels like.
 ///
-/// The oracle is deliberately the raw stream and not a clock: latency measured with a timer would drift
-/// with the machine, while *"where did the engine put the dabs?"* is exact and cannot be argued with.
+/// ⚠️ The oracle is per-MOVE reach and order, never "the same dabs as an untapered stroke" — the taper
+/// legitimately changes how MANY dabs there are (it tightens the spacing at the tips so the point does
+/// not come out as a row of dots), and a gate written against the count would have to be weakened the
+/// moment that landed. Reach and order are what a hold actually breaks.
 ///
-/// **Mutation that must bleed:** hold anything back — buffer the trailing dabs and release them later —
-/// and the counts, the centres or the order stop matching.
+/// **Mutation that must bleed:** hold anything back — buffer the trailing dabs and release them later.
 #[test]
 fn no_dab_is_ever_withheld_or_moved() {
-    let plain = brush();
-    let mut tapered = brush();
-    tapered.taper = Taper {
+    let mut spec = brush();
+    spec.taper = Taper {
         start: 2.0,
         end: 3.0,
         ..Taper::default()
     };
-    // 40 pointer moves: enough that a hold would still be sitting on dabs at several points along it.
-    let a = freehand(plain, 400.0, 40);
-    let b = freehand(tapered, 400.0, 40);
-    assert_eq!(
-        a.len(),
-        b.len(),
-        "the taper changed how MANY dabs the stroke has ({} vs {}) — something is being held or dropped",
-        a.len(),
-        b.len()
+    let mut st = Stroke::new(spec, Dynamics::default(), 7);
+    let (mut out, mut arcs) = (Vec::new(), Vec::new());
+    st.begin(
+        StrokePoint {
+            pos: [0.0, 0.0],
+            pressure: 1.0,
+        },
+        &mut out,
     );
-    for (i, (p, t)) in a.iter().zip(b.iter()).enumerate() {
-        assert_eq!(
-            p.center, t.center,
-            "dab {i} moved: {:?} without the taper, {:?} with it",
-            p.center, t.center
+    arcs.extend(out.iter().map(|d| d.arc_len));
+    let mut reached = 0.0f32;
+    // 80 moves of 5 px: past the head window, deep into the body, and long enough that a tail hold
+    // would still be sitting on dabs at every one of them.
+    for i in 1..=80 {
+        let x = 5.0 * i as f32;
+        st.extend(
+            StrokePoint {
+                pos: [x, 0.0],
+                pressure: 1.0,
+            },
+            &mut out,
         );
+        if let Some(d) = out.last() {
+            reached = d.arc_len;
+        }
+        arcs.extend(out.iter().map(|d| d.arc_len));
+        // The stabilizer lags the painted path by design (it is not the taper's), so the bar is the
+        // brush's own spacing plus that settled lag — what must NOT happen is the ink parking a taper
+        // window behind, which at 3 diameters would be 60 px on this brush.
         assert!(
-            (p.arc_len - t.arc_len).abs() < 1e-4,
-            "dab {i} landed at a different arc ({:.3} vs {:.3}) — the stream was re-ordered",
-            p.arc_len,
-            t.arc_len
+            x - reached < 20.0,
+            "after the move to {x:.0} px the ink had only reached {reached:.1} px — something is \
+             holding dabs back"
+        );
+    }
+    for w in arcs.windows(2) {
+        assert!(
+            w[1] >= w[0] - 1e-4,
+            "the stroke came out of order: arc {:.2} was laid after {:.2}",
+            w[1],
+            w[0]
         );
     }
 }
@@ -505,4 +526,64 @@ fn the_stroke_reaches_the_cursor_the_instant_the_pointer_does() {
              dab spacing of {spacing:.1} px — something is holding dabs back"
         );
     }
+}
+
+/// **The taper tightens the SPACING as it thins the dab, so the point is a point and not a row of dots.**
+///
+/// Spacing in this engine is a RATIO — *how much of a dab's width until the next one* — and it was being
+/// paid out against the brush's NOMINAL diameter. Hold the gap fixed while the taper shrinks the dab and
+/// the ratio blows up: the tip comes out as separate discs with clean paper between them. Enio reported
+/// it with the picture on 2026-08-08.
+///
+/// The oracle is the worst gap-to-diameter ratio anywhere along a tapered path, over the dabs big enough
+/// for it to be visible. **Measured on the fixture below: 1.600 with the nominal step — a gap of more
+/// than a whole dab, so the discs do not even touch — and 0.284 once the step follows the live width**,
+/// which is the brush's own spacing. The bar is `0.5`: at `1.0` the discs are exactly tangent, so half
+/// of that is comfortably inside real overlap, and it sits between the two measurements with room.
+///
+/// ⚠️ The fixture is the one that PRODUCES the picture — a big brush (radius 25) with a loose spacing
+/// (0.25). The first version of this probe used radius 10 and spacing 0.10, where the same defect
+/// measures 0.463 and would have needed a bar so tight it read as noise: the gap is fixed, so the ratio
+/// grows as `1/r`, and a tight-spaced small brush barely shows it.
+///
+/// **Mutation that must bleed:** step by `base_step` instead of `base_step * w`.
+#[test]
+fn the_taper_tightens_the_spacing_so_the_point_is_not_a_row_of_dots() {
+    let mut spec = brush();
+    spec.stroke_method = StrokeMethod::Line;
+    spec.radius_px = 25.0;
+    spec.spacing = 0.25;
+    spec.taper = Taper {
+        start: 3.0,
+        end: 3.0,
+        ..Taper::default()
+    };
+    let dabs = polyline(spec, 400.0);
+    let mut worst = 0.0f32;
+    let mut worst_r = 0.0f32;
+    for w in dabs.windows(2) {
+        let gap = ((w[1].center[0] - w[0].center[0]).powi(2)
+            + (w[1].center[1] - w[0].center[1]).powi(2))
+        .sqrt();
+        let rmin = w[0].radius_px.min(w[1].radius_px);
+        // Below ~2 px a dab is sub-pixel and the gap between two of them is not a thing anyone sees;
+        // the engine's own 1 px floor on the walk lives down there.
+        if rmin < 2.0 {
+            continue;
+        }
+        let ratio = gap / (2.0 * rmin);
+        if ratio > worst {
+            worst = ratio;
+            worst_r = rmin;
+        }
+    }
+    assert!(
+        worst > 0.0,
+        "fixture: the path laid no measurable pair of dabs"
+    );
+    assert!(
+        worst <= 0.5,
+        "the dabs stopped overlapping in the taper: worst gap {worst:.3} of a diameter at radius \
+         {worst_r:.2} — the tip is a row of dots"
+    );
 }

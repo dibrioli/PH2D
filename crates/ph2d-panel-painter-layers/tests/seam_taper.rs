@@ -12,6 +12,8 @@
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::ids::{self as core_ids, painter_taper_handle_id};
+use ph2d_editor_core::interaction::WidgetEvent;
+use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::tool::Tool;
 use ph2d_editor_core::zones::Rect;
 use ph2d_panel_painter_layers::PainterLayersPanel;
@@ -184,4 +186,61 @@ fn the_link_toggle_reaches_the_tool_and_reveals_the_second_tip() {
         rect_of(&rects2, core_ids::PAINTER_TAPER_TIP_END).is_some(),
         "unlinking the tips did not put the Tip End row on screen — the toggle leads nowhere"
     );
+}
+
+/// **The three numeric rows reach the tool — the fourth condition, and the one the other gates cannot
+/// see.**
+///
+/// A number row is painted by `paint_num_row`, which registers a `NumberInput` and MIRRORS the tool's
+/// value back into it on every frame. So a row whose `ValueChanged` is not claimed by the panel's value
+/// forward is painted, hit-registered, focusable, editable — and **reverts the instant the artist lets
+/// go**, because the next frame writes the tool's unchanged value back over what they typed. That is
+/// exactly what Enio reported on 2026-08-08 (*"Tip start, Tip End e Opacity não aceitam ajustes (voltam
+/// a zero)"*), and the presence gate above stayed green through all of it: painted and alive are two
+/// of the four independent conditions, and *the value lands* is a third.
+///
+/// Driven through the real event, with the store carrying the new value the way a commit leaves it.
+///
+/// **Mutation that must bleed:** drop `PAINTER_TAPER_FIELDS` from `number_field::is_param_field`.
+#[test]
+fn every_taper_number_row_lands_on_the_tool() {
+    // Unlinked, so the Tip End row is on screen at all (linked it is deliberately absent).
+    for (id, name, set, read) in [
+        (
+            core_ids::PAINTER_TAPER_TIP_START,
+            "Tip Start",
+            0.62_f64,
+            (|t: &PainterTool| t.brush_settings().taper.tip_start) as fn(&PainterTool) -> f32,
+        ),
+        (
+            core_ids::PAINTER_TAPER_TIP_END,
+            "Tip End",
+            0.37,
+            (|t: &PainterTool| t.brush_settings().taper.tip_end) as fn(&PainterTool) -> f32,
+        ),
+        (
+            core_ids::PAINTER_TAPER_OPACITY,
+            "Opacity",
+            0.81,
+            (|t: &PainterTool| t.brush_settings().taper.opacity) as fn(&PainterTool) -> f32,
+        ),
+    ] {
+        // Unlinked, so the Tip End row is on screen at all (linked it is deliberately absent).
+        let mut tool = PainterTool::default();
+        tool.toggle_brush_taper_link();
+        let (mut host, mut st, rects) = painted(&tool);
+        assert!(
+            rect_of(&rects, id).is_some(),
+            "the `{name}` row was not painted"
+        );
+        host.store_mut().set_number_value(id, set);
+        host.apply_panel_event::<PainterLayersPanel>(&mut st, WidgetEvent::ValueChanged(id));
+        pump(&mut host, &mut tool);
+        let got = read(&tool);
+        assert!(
+            (f64::from(got) - set).abs() < 1e-3,
+            "`{name}` never reached the tool: asked for {set:.3}, the brush still reads {got:.3} — the \
+             row is painted and mute, so it reverts on the next frame"
+        );
+    }
 }

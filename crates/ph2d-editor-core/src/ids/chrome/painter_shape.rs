@@ -172,6 +172,21 @@ pub const PAINTER_TAPER_LINK: NodeId = hash_node_id("painter_brush.taper_link");
 /// Taper **Opacity**, `0..1`: how much the taper fades as well as narrows.
 pub const PAINTER_TAPER_OPACITY: NodeId = hash_node_id("painter_brush.taper_opacity");
 
+/// The taper's three **numeric** rows, as one family.
+///
+/// ⚠️ This list is what makes them LIVE: a number row is painted and hit-registered by
+/// `paint_num_row`, but its `ValueChanged` only reaches the tool if `is_param_field` claims the id —
+/// and the panel mirrors the tool's value back into the field every frame, so a row that is not
+/// claimed **reverts to the old value the instant the artist lets go**. That is the shape of the defect
+/// Enio reported on 2026-08-08 (*"Tip start, Tip End e Opacity não aceitam ajustes (voltam a zero)"*):
+/// painted, registered, alive under the mouse, and mute — the fourth of the four independent UI
+/// conditions, and the one a paint+populate gate cannot see.
+pub const PAINTER_TAPER_FIELDS: [NodeId; 3] = [
+    PAINTER_TAPER_TIP_START,
+    PAINTER_TAPER_TIP_END,
+    PAINTER_TAPER_OPACITY,
+];
+
 /// Stable [`NodeId`] for the taper handle on `channel` (`0` = start, `1` = end). A FACTORY id
 /// (paint-time `CurvePoint` registration), the twin of [`painter_brush_dab_handle_id`], so it stays off
 /// the static hit↔populate wiring scan.

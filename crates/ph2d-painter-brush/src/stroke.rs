@@ -405,8 +405,19 @@ impl Stroke {
         loop {
             // **Jitter Spacing** scales each gap by the carried multiplier (`1.0` = even); a break does
             // not redraw (no wasted draw), and the next-gap draw is gated so an off brush is unchanged.
-            let step = (base_step * self.spacing_mult).max(1.0);
-            let to_next = step - self.accum;
+            // ⚠️ The gap is `spacing × the diameter that will actually be stamped here`, not the nominal
+            // one. Spacing is a RATIO — "how much of a dab's width until the next" — so holding the gap
+            // fixed while the taper shrinks the dab makes the ratio blow up and the tip comes out as a
+            // row of separate DOTS (Enio 2026-08-08, with the picture). Scaling the step by the same
+            // width factor the dab gets keeps the overlap constant all the way to the point.
+            //
+            // The `max(1.0)` floor is the engine's own, not a new number: it already bounded the walk,
+            // and it is what stops the loop from stalling as the factor approaches zero at a sharp tip.
+            let w = self.taper_width_at(base_arc + traveled);
+            let step = (base_step * w * self.spacing_mult).max(1.0);
+            // A step that shrank below what is already banked (a taper ramp, or a live spacing edit)
+            // must not walk BACKWARDS: emit here, and the reset of `accum` below carries the walk on.
+            let to_next = (step - self.accum).max(0.0);
             if traveled + to_next > seg {
                 break;
             }
@@ -583,19 +594,31 @@ impl Stroke {
         // nenhum delay e nenhum stabilize"*). What the far end costs, [`mod@self::ends`] answers by
         // GEOMETRY instead: a path that knows its length is tapered exactly, and one that does not is
         // not tapered at its far end at all.
-        if self.spec.taper.is_active() {
-            let to_end = match self.taper_span {
-                TaperSpan::Open(total) => (total - arc).max(0.0),
-                TaperSpan::OpenUnknownEnd => f32::INFINITY,
-                TaperSpan::Closed => return dab, // no ends: nothing to measure from
-            };
-            let w = self
-                .spec
-                .taper
-                .width(arc, to_end, 2.0 * self.spec.clamped_radius());
+        let w = self.taper_width_at(arc);
+        if w < 1.0 {
             crate::taper::scale_dab(&mut dab, &self.spec.taper, w);
         }
         dab
+    }
+
+    /// **How wide the taper is at `arc`** — the one place that question is answered, for BOTH of the
+    /// things that depend on it: how big the dab is, and how far the next one goes.
+    ///
+    /// `1.0` when the taper is off, when the contour is closed, or past both windows — exactly `1.0`, so
+    /// every arithmetic that multiplies by it is byte-identical to the arithmetic that shipped before the
+    /// taper existed.
+    fn taper_width_at(&self, arc: f32) -> f32 {
+        if !self.spec.taper.is_active() {
+            return 1.0;
+        }
+        let to_end = match self.taper_span {
+            TaperSpan::Open(total) => (total - arc).max(0.0),
+            TaperSpan::OpenUnknownEnd => f32::INFINITY,
+            TaperSpan::Closed => return 1.0, // no ends: nothing to measure from
+        };
+        self.spec
+            .taper
+            .width(arc, to_end, 2.0 * self.spec.clamped_radius())
     }
 
     /// The live **stroke heading** (unit vector; `[0, 0]` = not established yet), i.e. the direction the

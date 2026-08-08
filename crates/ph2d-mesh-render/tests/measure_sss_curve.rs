@@ -234,7 +234,10 @@ fn measure_where_the_colour_lives() {
             );
         }
     }
-    println!("\n  PICO da separacao R-B: t = {:.1} (R-B = {:.4})", best.0, best.1);
+    println!(
+        "\n  PICO da separacao R-B: t = {:.1} (R-B = {:.4})",
+        best.0, best.1
+    );
 }
 
 #[test]

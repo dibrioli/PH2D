@@ -117,7 +117,9 @@ fn predicate_of(src: &str, level: &str) -> String {
     let at = src.find(&needle).expect("a cena existe");
     // sobe até o `pub(crate) fn <nome>(` imediatamente anterior
     let head = &src[..at];
-    let start = head.rfind("pub(crate) fn ").expect("toda cena e' uma funcao");
+    let start = head
+        .rfind("pub(crate) fn ")
+        .expect("toda cena e' uma funcao");
     let after = &head[start + "pub(crate) fn ".len()..];
     after
         .split('(')

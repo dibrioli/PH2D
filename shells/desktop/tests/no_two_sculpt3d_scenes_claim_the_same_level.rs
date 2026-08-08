@@ -61,7 +61,10 @@ fn no_two_sculpt3d_scenes_claim_the_same_level() {
     // **Controle positivo**, nas duas pontas: uma varredura que não achasse arquivo nenhum — ou que
     // achasse arquivos e nenhuma cena — passaria por vácuo, que é a falha que este gate existe para
     // não ter.
-    assert!(walked > 20, "a varredura leu {walked} arquivos — o `src/` mudou de lugar");
+    assert!(
+        walked > 20,
+        "a varredura leu {walked} arquivos — o `src/` mudou de lugar"
+    );
     assert!(
         claims.len() >= 15,
         "achei {} cenas do modulo 3D — a forma de declarar uma mudou e o gate esta' a medir nada",

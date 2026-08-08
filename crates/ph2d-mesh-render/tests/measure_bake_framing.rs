@@ -86,7 +86,14 @@ fn what_each_aspect_does_to_the_same_camera() {
         ("viewport LARGO (o que o artista ve)", wide),
         ("sprite QUADRADO (o que o bake grava)", (1024u32, 1024u32)),
     ] {
-        let Some(plane) = renderer.form_plane(&device, &queue, &camera, size, ph2d_mesh_render::Shade::default(), None) else {
+        let Some(plane) = renderer.form_plane(
+            &device,
+            &queue,
+            &camera,
+            size,
+            ph2d_mesh_render::Shade::default(),
+            None,
+        ) else {
             panic!("form_plane devolveu None");
         };
         let Some((x0, y0, x1, y1)) = silhouette(&plane.normal, size) else {

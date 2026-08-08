@@ -974,7 +974,14 @@ fn the_plane_the_painter_gets_is_the_gbuffer_the_device_wrote() {
     let mut renderer = MeshRenderer::new(&device, FORMAT);
     renderer.upload_at(&device, &queue, 0, &mesh);
     let plane = renderer
-        .form_plane(&device, &queue, &camera, (W, H), ph2d_mesh_render::Shade::default(), None)
+        .form_plane(
+            &device,
+            &queue,
+            &camera,
+            (W, H),
+            ph2d_mesh_render::Shade::default(),
+            None,
+        )
         .expect("com malha, o plano existe");
     assert_eq!(
         plane.normal.len(),
@@ -1023,7 +1030,14 @@ fn a_renderer_with_no_mesh_donates_nothing() {
     let camera = Camera3d::default();
     assert!(
         renderer
-            .form_plane(&device, &queue, &camera, (W, H), ph2d_mesh_render::Shade::default(), None)
+            .form_plane(
+                &device,
+                &queue,
+                &camera,
+                (W, H),
+                ph2d_mesh_render::Shade::default(),
+                None
+            )
             .is_none(),
         "sem geometria, nada a doar"
     );
@@ -1031,7 +1045,14 @@ fn a_renderer_with_no_mesh_donates_nothing() {
     renderer.upload_at(&device, &queue, 0, &shapes::uv_sphere(8, 12, 1.0));
     assert!(
         renderer
-            .form_plane(&device, &queue, &camera, (0, H), ph2d_mesh_render::Shade::default(), None)
+            .form_plane(
+                &device,
+                &queue,
+                &camera,
+                (0, H),
+                ph2d_mesh_render::Shade::default(),
+                None
+            )
             .is_none(),
         "canvas de largura zero não é um plano de zero texels — é ausência"
     );
@@ -1091,8 +1112,14 @@ fn measure_a_donation() {
             let mut best = f64::MAX;
             for _ in 0..5 {
                 let t0 = std::time::Instant::now();
-                let plane =
-                    renderer.form_plane(&device, &queue, &camera, (edge, edge), ph2d_mesh_render::Shade::default(), params);
+                let plane = renderer.form_plane(
+                    &device,
+                    &queue,
+                    &camera,
+                    (edge, edge),
+                    ph2d_mesh_render::Shade::default(),
+                    params,
+                );
                 best = best.min(t0.elapsed().as_secs_f64() * 1000.0);
                 assert!(plane.is_some());
             }
@@ -3100,7 +3127,11 @@ fn the_donated_occlusion_follows_the_artists_knobs_without_a_viewport_render() {
         off.iter().all(|o| (*o - 1.0).abs() < 1.0e-3),
         "com a cavidade em 0 a oclusão doada tem de ser 1 em toda parte — o default é o barro liso"
     );
-    let moved = off.iter().zip(&on).filter(|(a, b)| (*a - *b).abs() > 0.01).count();
+    let moved = off
+        .iter()
+        .zip(&on)
+        .filter(|(a, b)| (*a - *b).abs() > 0.01)
+        .count();
     assert!(
         moved > 100,
         "o knob do artista não chegou à doação: só {moved} texels mudaram entre cavidade 0 e 1"

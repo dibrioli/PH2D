@@ -153,7 +153,13 @@ pub(crate) fn light(
     };
     let src = upload_rgba(gpu, bake.size, &bake.base);
     let pass = pass.get_or_insert_with(|| ImpastoLightPass::new(gpu));
-    let input = build_input(bake.size, &planes, &bake.form, &bake.form_occ, SpecLut::get());
+    let input = build_input(
+        bake.size,
+        &planes,
+        &bake.form,
+        &bake.form_occ,
+        SpecLut::get(),
+    );
     let out = pass
         .run(gpu, &src, &input)
         .map_err(|e| format!("o passe de luz recusou: {e:?}"))?;

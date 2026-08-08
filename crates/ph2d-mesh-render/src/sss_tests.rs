@@ -252,7 +252,10 @@ fn a_zero_scatter_packs_a_finite_opaque_coefficient() {
         scatter: 0.0,
     });
     let k = raw.params[2];
-    assert!(k.is_finite(), "o coeficiente subiu como {k}, e inf vira NaN");
+    assert!(
+        k.is_finite(),
+        "o coeficiente subiu como {k}, e inf vira NaN"
+    );
     // E ele tem de ser grande o bastante para `exp(-espessura × k)` ser zero em
     // `f32` para qualquer espessura positiva: `exp` some abaixo de ~88.
     assert!(

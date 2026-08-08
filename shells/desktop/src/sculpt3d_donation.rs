@@ -241,9 +241,14 @@ impl Sculpt3dScene {
         // desenho, que num frame em modo LUZ nem roda. Perguntar aqui custa um `if` e é o que
         // impede a doação de descrever a malha de antes do traço.
         self.sync_mesh(device, queue);
-        let planes = self
-            .renderer
-            .form_plane(device, queue, &self.camera, size, self.shade(), self.donation_ssao())?;
+        let planes = self.renderer.form_plane(
+            device,
+            queue,
+            &self.camera,
+            size,
+            self.shade(),
+            self.donation_ssao(),
+        )?;
         self.donated = Some(stamp);
         Some(crate::donated_form::DonatedPlanes {
             normal: Arc::new(planes.normal),

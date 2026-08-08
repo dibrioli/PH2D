@@ -62,9 +62,7 @@ fn measure_how_to_ask_a_vertex_how_thick_it_is() {
                 p[2] - nrm[2] * eps,
             ];
             let dir = [-nrm[0], -nrm[1], -nrm[2]];
-            let by_ray = m
-                .raycast(&Ray::new(o, dir))
-                .map_or(f32::NAN, |h| h.t + eps);
+            let by_ray = m.raycast(&Ray::new(o, dir)).map_or(f32::NAN, |h| h.t + eps);
             let by_field = thickness_by_field(&field, p, nrm);
             let exact = 2.0 * r;
             ray_worst = ray_worst.max((by_ray - exact).abs() / exact);
@@ -157,7 +155,13 @@ fn measure_the_free_proxy_against_the_ray() {
         let err: Vec<f32> = rays
             .iter()
             .zip(&proxies)
-            .map(|(&r, &p)| if p.is_finite() { (p - r).abs() / r } else { 99.0 })
+            .map(|(&r, &p)| {
+                if p.is_finite() {
+                    (p - r).abs() / r
+                } else {
+                    99.0
+                }
+            })
             .collect();
         let mut e = err.clone();
         let (mut a, mut b) = (rays.clone(), proxies.clone());

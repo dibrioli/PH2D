@@ -1315,9 +1315,14 @@ mudar `radius.md` move os dois.
 > catálogo (`Elastic Out`: pico 1,373 / assenta 0,631 / 4 travessias, contra 1,309 / 0,600 / 3 de
 > um oscilador massa-mola macio), e a pergunta de verdade — a **interrupção** — o default passa:
 > revertendo a 30% do caminho, a volta arranca a **1,34×** a velocidade com que a ida chegava.
-> ⚠️ Os dois regimes onde ela morde (`InOut` **0,00×**, `Elastic` **7,02×**) são **inalcançáveis
-> hoje** porque o seletor de curva não existe — **o dia em que ele nascer, esta medição volta à
-> mesa**. Sonda: `measure_spring`.
+> ⚠️ Os dois regimes onde ela morde (`InOut` **0,00×**, `Elastic` **7,02×**) eram **inalcançáveis**
+> porque o seletor de curva não existia — e **esse dia chegou (W7c, 2026-08-08)**. Re-medido com o
+> knob no lugar: os números reproduzem-se idênticos, e o veredito MUDA DE NATUREZA — a mola deixou
+> de ser dispensável por *ausência de regime* e passou a ser **decisão de produto**, porque
+> `Cubic InOut` interrompido **para e recomeça** e agora está a um clique. ⚠️ Ela não é um
+> follow-up: uma mola não tem *duração* nem *curva* (tem rigidez e amortecimento), então o slider
+> de duração e o próprio seletor deixariam de significar o que significam — é wave própria, e é do
+> Enio. Segunda leitura escrita no cabeçalho da sonda: `measure_spring`.
 >
 > **FALTA, e o que falta não é polimento:**
 >
@@ -1329,9 +1334,15 @@ mudar `radius.md` move os dois.
 > - ⛔ **O input de runtime → token → arte** (a ponte do Vol. 3 §4 que o smoke desta wave pedia) é a
 >   **W8a**, não esta.
 > - ⛔ **A hierarquia** (um menu que abre, um card que expande com sub-estados) — ver acima.
-> - ⛔ **O seletor de CURVA**: 11 famílias × 3 modos = **33 combinações**, e o `ph2d-anim` **não dá
->   nome a nenhuma**; um dropdown hoje pintaria identificadores em inglês crus (HR-15). *O catálogo
->   precisa de nomes antes do knob* — e é esse knob que re-abre a medição da mola.
+> - ✅ **O seletor de CURVA — FEITO (W7c, 2026-08-08).** ⚠️ E o parágrafo que aqui estava errava
+>   nos dois números: as combinações **distintas** são **31**, não 33 (`Linear` ignora o modo — o
+>   `eval` devolve `u` antes de o olhar —, então `Linear In/Out/In-Out` são a mesma curva escrita
+>   três vezes, hoje medido pelo gate `the_mode_is_dead_exactly_where_the_catalogue_says_it_is`); e
+>   o catálogo **já tinha nomes**, shipados e à frente do artista desde o menu de easing da
+>   timeline (`TIMELINE_EASE_MENU`: dez famílias, com `Linear` como row própria exatamente pela
+>   mesma razão). O que faltava não era vocabulário, era **dono**: os nomes passaram para
+>   `EasingFamily::label()` / `EasingMode::label()`, e um gate na shell — o único sítio que vê os
+>   dois lados — exige que o menu e o seletor digam a mesma palavra.
 
 **O quê.** Um botão tem *idle/hover/press/disabled*; um menu abre; um card expande. Estados +
 transições + o tween **automático** entre eles (Vol. 2 §5 e Vol. 3 §1).

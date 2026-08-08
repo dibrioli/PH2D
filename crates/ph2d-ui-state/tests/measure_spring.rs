@@ -8,6 +8,33 @@
 //! Rode com: `cargo test -p ph2d-ui-state --test measure_spring -- --ignored --nocapture
 //! --test-threads=1` — ⚠️ a última metade não é opcional: as duas sondas escrevem no MESMO
 //! stdout, e em paralelo as tabelas saem intercaladas linha a linha.
+//!
+//! # ⚠️ SEGUNDA LEITURA (2026-08-08) — a premissa da primeira EXPIROU
+//!
+//! A primeira medição fechou a M6 com *"o solver não se constrói"*, e o argumento inteiro era
+//! condicional: *a pergunta de verdade é a interrupção, e **o default passa** (1,34×)*. Os dois
+//! regimes que mordem — `Cubic InOut` a **0,00×** e `Elastic Out` a **7,02×** — foram arquivados
+//! como **inalcançáveis**, porque o seletor de curva não existia e todo documento usava o default.
+//!
+//! **O seletor nasceu nesta wave, e os números reproduzem-se idênticos.** Ou seja: o que era um
+//! regime teórico está agora a um clique do artista, e a nota que o dispensava apoiava-se
+//! exatamente na impossibilidade que deixou de existir (CLAUDE.md §0 — *quem move o número que
+//! tornava algo inalcançável tem de reconferir a nota*).
+//!
+//! **O que a segunda leitura diz, e o que ela NÃO diz:**
+//!
+//! - `Cubic InOut` interrompido **para e recomeça** (a volta arranca do repouso). Não é defeito
+//!   desta máquina: toda animação por CURVA tem velocidade zero no `t = 0` de uma família
+//!   `InOut`, e é por isso que CSS transitions e o modo *tween* do Framer partilham o artefacto.
+//! - A POSE é contínua — a lei (a) da `Machine` (*uma transição parte da pose VIVA*) garante-o.
+//!   O que salta é a **velocidade**, e é precisamente isso que um solver de mola carrega.
+//! - ⇒ **A mola deixou de ser dispensável por AUSÊNCIA de regime e passou a ser uma decisão de
+//!   PRODUTO**, com o número ao lado. Ela não se constrói de repente aqui: uma mola não tem
+//!   *duração* nem *curva* (tem rigidez e amortecimento), então o slider de duração e este próprio
+//!   seletor deixam de significar o que significam — é wave própria, e é do Enio.
+//!
+//! Enquanto ela não vier, o default continua a ser o que a indústria converge (`Cubic Out`,
+//! 1,34×) e o artista que escolher `Elastic` recebe o que `Elastic` é.
 
 use ph2d_anim::{Easing, EasingFamily, EasingMode};
 

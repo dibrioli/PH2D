@@ -9208,3 +9208,85 @@ ADR** · **zero `Cargo.toml`** · contrato congelado intacto.
   não fazer.
 - Os três sem cura de engenharia da sessão anterior seguem lá (consumidor de
   gameplay do sinal · um Ctrl+Z para as duas metades do bake).
+
+---
+
+## W-KinMove — O SEGUNDO MODO (2026-08-08, cena `=101`, **pendente de smoke**)
+
+O player de plataforma ganhou o modo **cinemático**: a pose é escrita, e o mundo
+só diz **quanto coube**. Plano: [`07_plano_player_kinematico.md`](07_plano_player_kinematico.md)
+§6 (a seção da wave foi reescrita com o que a medição decidiu).
+
+### O desenho, em quatro peças
+
+1. **`PlayerMode`** (`ph2d-physics-ecs`) — componente **valuado**, ausente =
+   `Dynamic`, *detach no neutro*. ⚠️ Um marcador seria a representação errada: a
+   ordem do Enio nomeia um **terceiro** modo (o *"puro sangue"*), e a presença de
+   um marcador só sabe dizer duas coisas.
+2. **`bridge::pose_owner`** — a porta ÚNICA, com TRÊS respostas
+   (`Solver` · `Scene` · `Player`). ⚠️ Ela decide **duas coisas de uma vez**: quem
+   escreve a pose, e **o que segura o personagem** (o `Support` da lei).
+   Perguntadas em dois lugares elas discordariam, e a lei de Snap num corpo
+   dinâmico **derruba o personagem através do mundo**. A falha é a SEGURA: com o
+   corpo `Dynamic` a resposta é `Solver` ⇒ `Spring` ⇒ o player de sempre.
+3. **`PhysicsWorld::move_character`** — o `move_shape` do rapier atrás de uma
+   porta que **não escreve nada**: devolve o deslocamento efetivo, e quem escreve
+   a pose é quem é dono dela. Exclui sensores pela MESMA razão do `cast_ray`
+   (*um gatilho não é uma parede* — aqui um grau pior: ele **pararia** o
+   personagem).
+4. **`ph2d_platformer::kinematic`** — `advance` (a intenção vira deslocamento
+   pedido) + `settle` (o que o mundo não deixou acontecer volta como velocidade).
+
+### As três coisas que a MEDIÇÃO derrubou
+
+| o que o plano dizia | o que a medição mostrou |
+|---|---|
+| *"absorva a gravidade quando a `footing` disser chão"* | a régua da `footing` é a da **PERNA** ⇒ o personagem **congela a 0,4 m no ar**, onde nasceu |
+| a régua corrigida basta | ainda pendurado a **1,237** com o chão em **1,000**: o `cling` é tolerância, não *"encostei"* |
+| *"penetração zero por construção"* | afunda **4,7 cm** — a **PELE** do controlador — e ela **não cresce com a queda** |
+
+⚠️ **Nenhuma das três é um bug do rapier: as três são eu a usar a régua de um
+modo no outro.** A cura da (1) é `body_foot_distance`; a da (2) é
+`KinematicState.grounded`, que vem do CONTROLADOR e é a pergunta do **integrador**
+(a da LEI continua a `footing`, com arch-gate); a da (3) é trocar a barra
+absoluta por uma de **CRESCIMENTO**.
+
+### O que ficou NOMEADO, não escondido
+
+- **Os dois modos repousam a alturas diferentes** (`1,400` × `1,057`) — o
+  dinâmico PAIRA por desenho (D1), o cinemático POUSA. Trocar de modo move o
+  personagem ~34 cm para baixo, com gate a pinar que assim é.
+- **A caminhada é IDÊNTICA** (`11,830 m` em 2 s nos dois, três decimais).
+- **A 3ª lei já corre nos dois modos** (K6), pela mesma porta: sob Snap o `push`
+  é zero e zero **já É o peso**. O que a `W-KinWeight` deve é a massa AUTORADA.
+- **A mutação sobrevivente** é o `continue` do `drive_kinematic`: inerte HOJE
+  pela **ORDEM** (aquele passe corre antes do `drive_players`, então a mira do
+  player pousa por último e vence). Documentada no sítio, com o modo de falha do
+  dia em que a ordem mudar.
+
+### Números
+
+**Registro `ph2d-physics-ecs` 28 → 29** (`PlayerMode`) · **`PROJECT_SCHEMA`
+INTOCADO (60)** · **`physics_ecs_c9` byte-idêntico** (`dd5230d7…`, 108 corpos,
+debug ≡ release) · gizmo ids **nenhum novo** (próximo livre **974**) · **nenhum
+ADR** · **zero `Cargo.toml`** · contrato congelado intacto.
+
+**LOC:** três cortes por RESPONSABILIDADE — `ride_tests.rs` · `contract.rs` (o
+VOCABULÁRIO da lei contra o `lib.rs`, que diz o que o personagem FAZ) ·
+`player_probes.rs` (os três sensores). ⚠️ **Dois deles eram vermelho-latente do
+commit anterior desta linha** (o gate mora na `ph2d-editor-core` e um fechamento
+por `cargo test -p` por crate nunca o alcança — a mesma causa estrutural que
+physics, motion-value e Vector já documentaram).
+
+### ⚠️ Flake ALHEIA, vista na varredura
+
+`ph2d-mesh::measure_normals` (da `line/sculpt3d`) é gate de **RAZÃO** de speedup
+do rayon e reprova sob carga — 1,05× numa varredura com `load average 10,6`, e
+**3/3 verde isolado**. Esta linha toca **zero** arquivos naquela crate (`git diff
+main -- crates/ph2d-mesh` vazio). Re-rode sozinho antes de suspeitar de um merge.
+
+### Smoke
+
+**`env PH2D_PHYSICS_SMOKE=101 cargo run -p ph2d-host-desktop --release`** — a
+cena imprime o que montou e traz os seis passos com os números medidos ao lado.
+⚠️ **Se a linha do cabeçalho não aparecer, pare.**

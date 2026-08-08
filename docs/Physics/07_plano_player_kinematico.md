@@ -442,10 +442,76 @@ amortecimento) · a **deriva de rampa continua `0,0000`** (é o que separa esta 
 tentadora) · e a razão de decaimento medida bate com `1 − k·dt²`, que é o gate que impede
 alguém de re-derivar o número por tentativa.
 
-### W-KinMove — O MODO EXISTE E O PERSONAGEM ANDA (cena `=101`)
+### W-KinMove — O MODO EXISTE E O PERSONAGEM ANDA (cena `=101`) — **FECHADA (2026-08-08)**
 
-O marcador, o `Support::Snap`, o `move_shape`, a velocidade no `PlayerState`, a
-plataforma móvel, e o chip da §14.
+O componente, o `Support::Snap`, o `move_shape`, a velocidade no `PlayerState`, a
+plataforma móvel, e o chip da §14. **A MEDIÇÃO derrubou três coisas deste plano,
+e as três ficam escritas porque a próxima pessoa faria as mesmas.**
+
+#### 1. A RÉGUA da perna — *"absorva a gravidade quando a `footing` disser chão"*
+
+A lei absorve a componente que aponta para o chão, e sem ela um personagem
+**parado numa rampa de 30° desliza `0,0279 m` em 10 s** (é o `floor_stop_on_slope`
+do Godot, que shipa **ligado**; e a deriva é insensível ao limite de rampa —
+não é o *auto-slide* do rapier, é o slide genérico do deslocamento pedido).
+
+⚠️ **Mas a régua da `footing` é a da PERNA** (`float_height + cling_distance`),
+calibrada para uma cápsula que **paira**. Sob Snap não há perna, e absorver a
+esse alcance **congelava o personagem a 0,4 m NO AR**, exatamente onde nasceu,
+com todos os outros gates verdes (a caminhada andava, a rampa não derivava).
+
+A cura foi **corrigir a régua, não tirar a absorção**:
+`PhysicsWorld::body_foot_distance` — *onde os pés deste corpo de facto ficam* —
+substitui o `float_height` autorado sob Snap.
+
+#### 2. DUAS perguntas, e a `footing` só responde UMA
+
+A régua corrigida ainda deixava o personagem pendurado a **1,237 m** com o chão
+em **1,000**: a faixa do `cling` existe para o gesto não morrer num degrau, e ela
+não é *"encostei"*.
+
+⇒ `KinematicState.grounded` passa a vir do **CONTROLADOR**. É a pergunta do
+**INTEGRADOR** (*"há algo a segurar-me AGORA?"*), distinta da pergunta da **LEI**
+(*"posso pular?"*), que continua a `footing` nos dois modos — e a K4 sobrevive
+intacta, agora com arch-gate que afirma a PROPRIEDADE (a lei recebe a amostra do
+cast; o `grounded` do controlador tem exatamente UM leitor, o `kinematic_settle`).
+
+#### 3. A BARRA do gate de impacto — *"zero por construção"*
+
+O plano prometia zero. Ele afunda **4,7 cm**, e os 4,7 cm são a **PELE do
+controlador** (`predict_ground = offset + 0.05`, o `skinWidth` da Unity).
+
+⚠️ **Ela NÃO cresce com a queda** — `0,044 / 0,012 / 0,047 / 0,047` para quedas
+de `0,5 / 2 / 5 / 10 m`, contra `0,052 / 0,149 / 0,261 / 0,296` do dinâmico.
+*Estrutural* não quer dizer *zero*: quer dizer **limitado por uma constante da
+geometria em vez de pela energia do impacto**, e o oráculo passou a medir o
+**CRESCIMENTO**. Uma barra absoluta media a pele.
+
+#### O que a UI custou, e o defeito que ela quase shipou
+
+O chip escreve **os dois campos** por uma porta (`PlayerMode` + `RigidBody.kind`).
+⚠️ E a quarta condição de UI falhava **dos dois lados**, por duas cópias da mesma
+pergunta: `build_player_info` e `apply_player_edit` escreviam `kind == Dynamic`
+cada um por sua conta, então clicar `Kinematic` fazia a §14 **desaparecer** e o
+clique de volta era **recusado** pela outra cópia. Uma porta só
+(`player_section_applies`) fecha as duas metades.
+
+#### Consequências NOMEADAS, não escondidas
+
+- **Os dois modos repousam a alturas diferentes** (`1,400` contra `1,057`): o
+  dinâmico PAIRA por desenho (a D1) e o cinemático POUSA. Trocar de modo move o
+  personagem ~34 cm para baixo, e isso é o que o modo É.
+- **A caminhada é IDÊNTICA** (`11,830 m` em 2 s nos dois, a três decimais).
+- A 3ª lei (K6) já corre nos dois modos, pela MESMA porta: sob Snap o `push` é
+  zero e zero **já É o peso**. O que a `W-KinWeight` ainda deve é a **massa
+  AUTORADA**.
+
+**Números:** registro `ph2d-physics-ecs` **28 → 29** · `PROJECT_SCHEMA`
+**intocado (60)** · `physics_ecs_c9` **byte-idêntico** (`dd5230d7…`, 108 corpos) ·
+nenhum ADR · zero `Cargo.toml` · **10 mutações, 9 sangram** (a sobrevivente é o
+`continue` do `drive_kinematic`, inerte HOJE pela ORDEM — documentada no sítio).
+
+#### O plano ORIGINAL desta wave, para referência
 
 **Gates, red-first:**
 

@@ -95,6 +95,7 @@ mod cut_smoke;
 mod donated_form;
 mod driven_row_smoke;
 mod echo_family_smoke;
+mod emitter_smoke;
 mod envelope_gesture;
 mod envelope_live;
 /// As cenas de smoke do Envelope (ADR-0129) — irmão de `build_smoke`, teto de LOC.
@@ -366,7 +367,6 @@ mod ui_spring_smoke;
 mod ui_states_smoke;
 mod undo;
 mod undo_route;
-mod emitter_smoke;
 mod units_smoke;
 mod value_curve_smoke;
 mod value_gain_smoke;

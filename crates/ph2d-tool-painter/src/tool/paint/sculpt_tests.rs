@@ -541,6 +541,7 @@ mod inflate_smooth;
 mod inflate_support;
 mod memo;
 mod plane;
+mod selection_reach;
 mod session;
 mod w3;
 mod w3_heading;

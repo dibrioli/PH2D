@@ -96,7 +96,7 @@ impl PainterTool {
         // construction: a source contributes only inside its own `ρ·amount` ball, so outside the touched
         // set dilated by the ball the field is `pre` AO BIT (no cap, no taper, no sentinel — the reasons
         // those existed left with the parabola).
-        let (mut hbuf, sbuf) =
+        let (mut hbuf, mut sbuf) =
             super::sculpt_offset::blob_ball(&pre, &amount, w, h, cr, depth, unit, dilate);
 
         if smooth > 0 {
@@ -132,6 +132,56 @@ impl PainterTool {
                     } else {
                         pre[gy + rx] + m * (blurred[i] - pre[gy + rx])
                     };
+                }
+            }
+        }
+
+        // ── A SELEÇÃO é o alcance da espátula, e o Blob é o único verbo que precisa dela AQUI. ──────────
+        //
+        // Todo outro verbo escreve `pre + k·Δ` com `k = amount[i]`, e o `amount` já nasce atenuado pela
+        // seleção (na fonte: `stamp_dabs_sculpt` a entrega ao kernel, e o filtro a multiplica em) — então
+        // `k = 0` fora dela e o `continue` do `render_sculpt` os confina de graça. **Medido:** Smooth e
+        // Sharpen vazam ZERO texel em qualquer raio, como traço e como filtro.
+        //
+        // ⚠️ **O Blob não é um verbo por-texel: ele é uma DILATAÇÃO.** Uma fonte com `amount > 0` levanta
+        // destinos até `ρ·a_p` de distância, e a razão de ele existir é justamente crescer *além* dos
+        // texels tocados (o doc do `render_sculpt` diz isso). Com uma seleção viva isso põe as duas coisas
+        // em conflito: a marquee é uma fronteira que o artista DESENHOU, e a bola a atravessava — medido,
+        // **7 px** com o knob Smooth em 0 e **23 px** com ele no máximo (o blur alarga a janela por cima da
+        // bola), tanto no Filter Layer quanto num traço que terminou 20 px dentro da borda.
+        //
+        // A confinação é no DESTINO, que é o lado que a seleção nunca alcançava — e é **depois** do blur,
+        // de propósito: confinar antes deixaria o `smooth` esfregar o resultado por cima da fronteira, que
+        // é o vazamento outra vez, só que mais macio. A marquee é a última palavra.
+        //
+        // ⚠️ **E o `sbuf` vai junto.** Ele é o argmax de onde a MATÉRIA veio, e o `tc` da advecção deriva do
+        // `hbuf` — confinar só a altura deixaria cobertura e cor crescendo onde o relevo não cresce, que é
+        // *exatamente* a doença de duas-coisas-que-discordam-sobre-onde-a-forma-acaba que esta linha já
+        // pagou como a ESCADA da silhueta (2026-07-16).
+        //
+        // Sem seleção — e dentro dela, onde `s == 1` — nada aqui roda: o `continue` mantém a byte-identidade
+        // do mundo que o Enio aprovou, e é o que o gate de regressão afirma.
+        if self.selection_restricts_paint() {
+            let sel = Arc::clone(&self.paint.selection_mask);
+            if sel.len() == n {
+                for ry in 0..ch {
+                    let gy = (cr.y as usize + ry) * wu + cr.x as usize;
+                    for rx in 0..cw {
+                        let (ci, gi) = (ry * cw + rx, gy + rx);
+                        let s = f32::from(sel[gi]) / 255.0;
+                        if s >= 1.0 {
+                            continue; // dentro: o que a bola disse, ao bit
+                        }
+                        let p = pre[gi];
+                        if s <= 0.0 {
+                            hbuf[ci] = p;
+                            // `pack_src(0, 0) == 0` — o valor que o `blob_ball` usa para *a matéria aqui
+                            // é a dela mesma*, e o que o laço de matéria abaixo lê como `arrival = None`.
+                            sbuf[ci] = 0;
+                        } else {
+                            hbuf[ci] = p + s * (hbuf[ci] - p);
+                        }
+                    }
                 }
             }
         }

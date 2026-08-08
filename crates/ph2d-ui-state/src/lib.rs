@@ -120,12 +120,17 @@ mod machine;
 mod pose;
 mod role;
 mod sets;
+mod spring;
 mod transition;
 
 pub use machine::Machine;
 pub use pose::{ObjectPose, UiState};
 pub use role::StateRole;
 pub use sets::{DEFAULT_DURATION_S, DEFAULT_EASING, HostStates, MAX_DURATION_S, StateSets};
+pub use spring::{
+    DEFAULT_DAMPING, DEFAULT_STIFFNESS, MAX_DAMPING, MAX_STIFFNESS, MIN_DAMPING, MIN_STIFFNESS,
+    Spring, SpringState,
+};
 pub use transition::Transition;
 
 #[cfg(test)]

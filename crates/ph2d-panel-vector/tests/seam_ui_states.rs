@@ -61,6 +61,7 @@ fn with_all(recorded: [bool; 4], preview: Option<bool>, move_all: Option<bool>) 
         ],
         live: None,
         duration_s: 0.15,
+        spring: None,
         preview,
         move_all,
         // ⚠️ Uma familia que USA o modo, de proposito: com `Linear` a fileira da direcao nao e'

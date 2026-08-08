@@ -260,19 +260,40 @@ fn the_colour_path_is_perceptual_not_muddy() {
     );
 }
 
-/// **`t` fora de `[0, 1]` encosta na ponta e para** — um ease com overshoot não quebra a pose.
+/// ⭐ **O clamp é POR CANAL** — a POSIÇÃO passa do alvo, a ESCALA e a OPACIDADE não.
+///
+/// ⚠️ **Este gate mudou de afirmação (W7m), e a razão está medida.** Ele pinava um clamp GLOBAL,
+/// e o preço era que `Back Out` (pico 1,100) e `Elastic Out` (1,3731) desenhavam a mesma coisa
+/// que uma curva sem overshoot — metade do seletor da W7c era um controle morto — e que uma MOLA
+/// revertida **congelava** (primeiro quadro: 0,000000 de deslocamento) em vez de carregar o
+/// momento, que é a única coisa que ela compra.
+///
+/// A linha nova é *passar do alvo significa alguma coisa neste canal?*: numa posição, sim (é o
+/// movimento); numa escala que vai a zero, **espelha o objeto**; numa opacidade, pede alfa
+/// negativo. A geometria continua clampada pela razão original — um morph casado não tem
+/// significado além do destino.
 #[test]
-fn overshoot_clamps_instead_of_breaking() {
+fn the_clamp_is_per_channel_position_overshoots_scale_does_not() {
     let mut a = UiState::new(StateRole::Default);
     a.objects = vec![posed(1)];
     let mut b = UiState::new(StateRole::Hover);
     b.objects = vec![ObjectPose {
         translation: [10.0, 0.0],
+        scale: [0.0, 0.0],
+        opacity: 0.0,
         ..posed(1)
     }];
     let tr = Transition::new(&a.objects, &b.objects);
-    assert_eq!(tr.at(1.4)[0].translation, [10.0, 0.0]);
-    assert_eq!(tr.at(-0.3)[0].translation, [0.0, 0.0]);
+
+    // A POSIÇÃO passa do alvo, e volta atrás da origem — as duas metades do momento.
+    assert_eq!(tr.at(1.4)[0].translation, [14.0, 0.0]);
+    assert_eq!(tr.at(-0.3)[0].translation, [-3.0, 0.0]);
+
+    // A ESCALA não: `t = 1.4` sobre um alvo de 0 daria −0,4, e escala negativa ESPELHA o objeto.
+    assert_eq!(tr.at(1.4)[0].scale, [0.0, 0.0]);
+    // E a OPACIDADE não: um alfa negativo não é uma tinta.
+    assert!(tr.at(1.4)[0].opacity >= 0.0);
+    assert!(tr.at(-0.3)[0].opacity <= 1.0);
 }
 
 /// **A forma que sai do `Plan` usa a tinta da POSE, não a que o `Plan` interpolou por conta.**

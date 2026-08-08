@@ -29,6 +29,12 @@ pub struct UiStatesState {
     /// dela.
     pub live: Option<usize>,
     pub duration_s: f32,
+    /// **A MOLA**: `None` = o par duração+curva, `Some((rigidez, amortecimento))` = ela.
+    ///
+    /// ⚠️ Uma `Option` de PAR, e não um bool ao lado de dois números: *ter mola* e *que mola* são
+    /// a mesma decisão, e separá-los daria ao painel dois estados para manter de acordo — o
+    /// checkbox a dizer uma coisa e as linhas a mostrar outra.
+    pub spring: Option<(f32, f32)>,
     /// **O MODO DE PREVIEW** (W7r): `None` = não oferecer, `Some(on)` = o interruptor e se ele
     /// está ligado.
     ///

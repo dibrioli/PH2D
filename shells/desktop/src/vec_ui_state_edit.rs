@@ -349,6 +349,13 @@ pub(crate) fn publish(
         live,
         #[allow(clippy::cast_possible_truncation)]
         duration_s: duration as f32,
+        // **A MOLA** — pela MESMA porta que o motor pergunta (`StateSets::spring`), e não por uma
+        // leitura ao lado: se o painel derivasse a resposta noutro lugar, ele pintaria as linhas
+        // de mola sobre uma cena a andar por curva.
+        #[allow(clippy::cast_possible_truncation)]
+        spring: states
+            .spring(h)
+            .map(|s| (s.stiffness as f32, s.damping as f32)),
         // **O interruptor da PREVIEW** só é oferecido quando existe pose autorada em ALGUM
         // hospedeiro — que é exatamente a condição em que [`UiPreview::enter`] liga.
         //

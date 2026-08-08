@@ -2,6 +2,7 @@
 
 use crate::pose::UiState;
 use crate::role::StateRole;
+use crate::spring::Spring;
 use ph2d_anim::{Easing, EasingFamily, EasingMode};
 use ph2d_vec_scene::VecPathId;
 use serde::{Deserialize, Serialize};
@@ -51,6 +52,16 @@ pub struct HostStates {
     states: Vec<UiState>,
     pub duration_s: f64,
     pub easing: Easing,
+    /// **A MOLA, quando o artista a escolhe.** `None` = o par duração+curva, e é o caminho que
+    /// já shipava — byte-idêntico.
+    ///
+    /// ⚠️ **`Option` e não um par de números com um "modo" ao lado:** *ter mola* e *que mola* são
+    /// a mesma decisão, e um bool separado dos parâmetros seria um estado a mais para manter de
+    /// acordo. É o mesmo desenho do `wrap_width` do texto.
+    ///
+    /// ⚠️ **E ela EXCLUI a duração e a curva**, que continuam no struct porque o artista volta a
+    /// elas ao desmarcar — desligar a mola não pode apagar o que ele já tinha afinado.
+    pub spring: Option<Spring>,
 }
 
 impl Default for HostStates {
@@ -59,6 +70,7 @@ impl Default for HostStates {
             states: Vec::new(),
             duration_s: DEFAULT_DURATION_S,
             easing: DEFAULT_EASING,
+            spring: None,
         }
     }
 }
@@ -112,6 +124,16 @@ impl StateSets {
             })
     }
 
+    /// **A mola deste hospedeiro, se ele a escolheu.**
+    ///
+    /// ⚠️ Porta ÚNICA, ao lado do [`Self::timing`]: quem anima pergunta a UMA das duas, e a
+    /// resposta desta decide qual. Duas cópias da pergunta *"este hospedeiro usa mola?"* seriam
+    /// duas oportunidades de o painel pintar uma coisa e o motor correr outra.
+    #[must_use]
+    pub fn spring(&self, host: VecPathId) -> Option<Spring> {
+        self.by_host.get(&host).and_then(|h| h.spring)
+    }
+
     /// Quem tem estados. Ordem determinista (é um `BTreeMap`).
     pub fn hosts(&self) -> impl Iterator<Item = VecPathId> + '_ {
         self.by_host.keys().copied()
@@ -161,6 +183,15 @@ impl StateSets {
 
     pub fn set_easing(&mut self, host: VecPathId, easing: Easing) {
         self.by_host.entry(host).or_default().easing = easing;
+    }
+
+    /// **Liga ou desliga a mola** deste hospedeiro, e afina-a.
+    ///
+    /// ⚠️ Desligar **não apaga** a duração nem a curva: o artista volta a elas com o mesmo clique,
+    /// e um desmarcar que jogasse fora o que ele afinou seria trabalho destruído por um gesto que
+    /// não promete nada disso.
+    pub fn set_spring(&mut self, host: VecPathId, spring: Option<Spring>) {
+        self.by_host.entry(host).or_default().spring = spring.map(Spring::clamped);
     }
 
     /// **Esquece um hospedeiro que já não existe.** Chamado quando uma forma é apagada: sem isto a

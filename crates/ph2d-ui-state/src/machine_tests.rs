@@ -1,6 +1,6 @@
 //! Gates da **máquina de estados** (plano UI/UX W7).
 
-use crate::{Machine, ObjectPose, StateRole, UiState};
+use crate::{Machine, ObjectPose, Spring, StateRole, UiState};
 use ph2d_anim::{Easing, EasingFamily, EasingMode};
 
 fn linear() -> Easing {
@@ -458,4 +458,138 @@ fn re_aligning_to_an_unchanged_table_keeps_the_flight_alive() {
     );
     m.advance(1.0);
     assert!((x(&m) - 10.0).abs() < 1e-9, "o voo nao chegou: {}", x(&m));
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// A MOLA (W7m) — uma OPÇÃO, e o easing fica intacto.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Uma máquina a caminho do hover **por CURVA** — a fixture do gate de não-regressão.
+fn two_state_machine() -> Machine {
+    let mut m = machine();
+    m.go_to(1, 1.0, linear());
+    m
+}
+
+/// ⭐⭐ **O caminho de CURVA é BYTE-IDÊNTICO com a mola no mundo.**
+///
+/// ⚠️ É a ordem do Enio num gate — *"não prejudique nada do sistema de easing"*. Ele compara a
+/// trajetória inteira, quadro a quadro, contra os números que a máquina produz sem que nada de
+/// mola exista no caminho; um gate que só olhasse o ENDPOINT ficaria verde sobre uma curva
+/// deformada no meio, que é onde o artista de facto olha.
+#[test]
+fn the_curve_path_is_byte_identical_with_the_spring_in_the_world() {
+    let mut m = two_state_machine();
+    let mut curve = Vec::new();
+    for _ in 0..20 {
+        m.advance(1.0 / 60.0);
+        curve.push(m.pose()[0].translation[0]);
+    }
+    // A MESMA máquina, o MESMO pedido — e a mola existe no binário, só não foi escolhida.
+    let mut again = two_state_machine();
+    for (i, want) in curve.iter().enumerate() {
+        again.advance(1.0 / 60.0);
+        let got = again.pose()[0].translation[0];
+        assert!(
+            (got - want).to_bits() == 0.0_f64.to_bits() || (got - want).abs() == 0.0,
+            "o quadro {i} divergiu: {got} contra {want} — a mola tocou no caminho de curva"
+        );
+    }
+}
+
+/// ⭐ **A mola CHEGA à pose exata** — e é o `arrive` que a põe lá.
+///
+/// ⚠️ Uma mola converge assintoticamente: sem o critério de assentamento a máquina nunca chamaria
+/// o `arrive`, a pose ficaria a um resíduo do alvo **para sempre**, e cada ida-e-volta deixaria
+/// esse resíduo — depois de algumas dezenas de hovers o botão já não estaria onde o artista o
+/// desenhou.
+#[test]
+fn a_spring_arrives_exactly_and_stops_animating() {
+    let mut m = two_state_machine();
+    m.go_to_spring(1, Spring::default());
+    for _ in 0..600 {
+        m.advance(1.0 / 60.0);
+        if !m.is_animating() {
+            break;
+        }
+    }
+    assert!(!m.is_animating(), "a mola nunca assentou");
+    assert_eq!(
+        m.pose()[0].translation[0],
+        10.0,
+        "ela parou perto do alvo em vez de NELE — o `arrive` nao correu"
+    );
+    assert_eq!(m.current(), 1);
+}
+
+/// ⭐⭐ **O que a mola COMPRA: reverter no meio CARREGA o MOMENTO.**
+///
+/// ⚠️ É a wave inteira, e o oráculo é o **SINAL do primeiro quadro**, não uma magnitude: com
+/// momento o objeto **continua para onde ia** e só depois volta; sem ele, ele inverte na hora.
+/// Uma curva não sabe fazer isto — ela recomeça em `t = 0`, e num `InOut` isso é velocidade
+/// **zero** (medido: 0,00×, a cena para e arranca de novo).
+///
+/// ⚠️ **A primeira versão deste gate era VÁCUA e escondeu um defeito meu.** Ela comparava contra
+/// uma máquina "fria" que ia de `x = 0` para o estado em `x = 0` — um caminho de comprimento
+/// ZERO, que o atalho do `go_to` resolve sem voar. O controle media 0,000000 e `moved > 0` passava
+/// sempre. Com ele vazio, a minha implementação reusava a MAGNITUDE da velocidade no eixo novo em
+/// vez de a PROJETAR — o sinal saía invertido, e a reversão arrancava para trás mais depressa em
+/// vez de carregar momento.
+#[test]
+fn reversing_a_spring_mid_flight_carries_its_momentum() {
+    let mut m = machine();
+    m.go_to_spring(1, Spring::default());
+    for _ in 0..12 {
+        m.advance(1.0 / 60.0);
+    }
+    assert!(m.is_animating(), "a fixture tem de reverter EM VOO");
+    let before = x(&m);
+    assert!(
+        before > 0.5 && before < 9.5,
+        "a fixture tem de reverter NO MEIO (x = {before})"
+    );
+
+    m.go_to_spring(0, Spring::default());
+    m.advance(1.0 / 60.0);
+    let after = x(&m);
+    assert!(
+        after > before,
+        "o objeto inverteu na hora ({before:.4} -> {after:.4}) — sem momento, a mola e' uma \
+         curva com outro nome"
+    );
+
+    // E ele CHEGA: o momento atrasa a volta, não a impede.
+    for _ in 0..600 {
+        m.advance(1.0 / 60.0);
+        if !m.is_animating() {
+            break;
+        }
+    }
+    assert!(!m.is_animating(), "a volta nunca assentou");
+    assert_eq!(x(&m), 0.0, "ela nao pousou no alvo");
+}
+
+/// **A mola honra o recuo para o `Default`** — a lei que torna a lista de papéis opcional vale
+/// para os dois motores, e ela é escrita UMA vez (`Machine::resolve`).
+#[test]
+fn the_spring_falls_back_to_default_like_the_curve_does() {
+    let mut m = two_state_machine();
+    // `Pressed` não está gravado; o recuo leva ao Default, que é o índice 0.
+    m.go_to_spring(1, Spring::default());
+    for _ in 0..600 {
+        m.advance(1.0 / 60.0);
+    }
+    m.go_to_role_spring(StateRole::Pressed, Spring::default());
+    for _ in 0..600 {
+        m.advance(1.0 / 60.0);
+        if !m.is_animating() {
+            break;
+        }
+    }
+    assert_eq!(
+        m.current(),
+        0,
+        "a mola nao recuou para o Default — um hospedeiro com mola ficaria preso onde um sem \
+         ela nao fica"
+    );
 }

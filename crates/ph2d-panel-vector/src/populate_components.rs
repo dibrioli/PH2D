@@ -161,7 +161,65 @@ pub(super) fn component_controls(store: &mut WidgetStore) {
         STATE_DURATION_MAX_S,
         0.0,
     );
+    // **A MOLA** — o checkbox e os dois sliders. Eles são REGISTADOS sempre, mesmo quando o
+    // `paint` não os desenha: registar é dizer *"este widget existe e é focável"*, e a decisão de
+    // o pintar é do estado publicado. É o mesmo protocolo das linhas de duração, que também não
+    // são pintadas com a preview ligada.
+    store.register(
+        ids::VECTOR_STATE_SPRING,
+        InteractiveState::Button {
+            state: ButtonState::Normal,
+        },
+    );
+    for (slider, num, lo, hi, def) in [
+        (
+            ids::VECTOR_STATE_STIFFNESS,
+            ids::VECTOR_STATE_STIFFNESS_NUM,
+            SPRING_STIFFNESS_MIN,
+            SPRING_STIFFNESS_MAX,
+            SPRING_STIFFNESS_DEFAULT,
+        ),
+        (
+            ids::VECTOR_STATE_DAMPING,
+            ids::VECTOR_STATE_DAMPING_NUM,
+            SPRING_DAMPING_MIN,
+            SPRING_DAMPING_MAX,
+            SPRING_DAMPING_DEFAULT,
+        ),
+    ] {
+        store.register(
+            slider,
+            ph2d_editor_core::interaction::InteractiveState::Slider {
+                state: ph2d_editor_core::widget::SliderState::Normal,
+                value: (def - lo) / (hi - lo),
+                orientation: ph2d_editor_core::widget::SliderOrientation::Horizontal,
+            },
+        );
+        store.register(
+            num,
+            ph2d_editor_core::interaction::InteractiveState::NumberInput {
+                state: ph2d_editor_core::widget::TextInputState::Normal,
+                value: f64::from(def),
+                buffer: format!("{def:.2}"),
+                caret: 0,
+                last_committed: f64::from(def),
+                selection_anchor: None,
+            },
+        );
+        // ⚠️ O mapeamento é AFIM (`escala`, `offset`), e não só uma escala: a régua da mola não
+        // começa em zero — `MIN_STIFFNESS` é 1 e `MIN_DAMPING` é 0,1. Sem o offset o trilho no
+        // canto esquerdo leria um número que a porta depois clampa.
+        store.link_slider_number_mapped(slider, num, hi - lo, lo);
+    }
 }
+
+/// As réguas da MOLA — os mesmos números do modelo (`ph2d_ui_state::*`), com gate a compará-los.
+const SPRING_STIFFNESS_MIN: f32 = 1.0;
+const SPRING_STIFFNESS_MAX: f32 = 60.0;
+const SPRING_STIFFNESS_DEFAULT: f32 = 12.0;
+const SPRING_DAMPING_MIN: f32 = 0.1;
+const SPRING_DAMPING_MAX: f32 = 2.0;
+const SPRING_DAMPING_DEFAULT: f32 = 1.0;
 
 /// O default da duração — **o token do design system**, cujo doc diz literalmente *"button
 /// press, icon swap"*: a pergunta *"quanto tempo leva a reação de um controle neste app?"* já

@@ -280,6 +280,33 @@ fn every_role_reaches_the_panel_with_a_translated_name() {
     }
 }
 
+/// ⭐ **As réguas da MOLA são UMA** — o irmão exato do gate da duração abaixo.
+///
+/// ⚠️ O painel escreve os seis números para encher o trilho e a shell converte o track de volta
+/// pelos do MODELO. Se divergirem, o artista arrasta até ao fim e lê um valor que a porta depois
+/// clampa — o slider cheio a mostrar um número que o documento não tem.
+///
+/// ⚠️ **E o mapeamento é AFIM, não uma escala**: as duas réguas não começam em zero
+/// (`MIN_STIFFNESS` é 1, `MIN_DAMPING` é 0,1), então um `link_slider_number_mapped` sem offset
+/// poria o trilho no canto esquerdo a ler zero.
+#[test]
+fn the_spring_rulers_are_one_number() {
+    for (got, want, what) in [
+        (ph2d_ui_state::MIN_STIFFNESS, 1.0, "MIN_STIFFNESS"),
+        (ph2d_ui_state::MAX_STIFFNESS, 60.0, "MAX_STIFFNESS"),
+        (ph2d_ui_state::MIN_DAMPING, 0.1, "MIN_DAMPING"),
+        (ph2d_ui_state::MAX_DAMPING, 2.0, "MAX_DAMPING"),
+        (ph2d_ui_state::DEFAULT_STIFFNESS, 12.0, "DEFAULT_STIFFNESS"),
+        (ph2d_ui_state::DEFAULT_DAMPING, 1.0, "DEFAULT_DAMPING"),
+    ] {
+        assert!(
+            (got - want).abs() < 1e-9,
+            "{what} do modelo e' {got} e o painel escreve {want} — o trilho vai encher no \
+             valor errado"
+        );
+    }
+}
+
 /// **A régua da duração é UMA.** O teto que o painel usa para encher o trilho e o que o modelo
 /// usa para clampar têm de ser o mesmo número.
 ///

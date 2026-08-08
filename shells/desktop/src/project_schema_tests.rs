@@ -254,7 +254,18 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // ⚠️ `FLIP`/`VEC_SCENE` NÃO se movem: o texto é um COMPONENTE do ECS, e a `VecScene` só
         // guarda a geometria já cozida — nenhum campo foi apendado a `VecPath` nem a `VecShape`.
         // ⚠️ O 61 é PROVISÓRIO pela mesma razão de todos os acima.
-        (61, 13, 14),
+        //
+        // PROJECT 61→62: a MOLA como OPÇÃO (W7m) — o `ph2d_ui_state::HostStates` ganha
+        // `spring: Option<Spring>`, a alternativa ao par *duração + curva*.
+        // ⚠️ **Mesma classe do v61** (campo apendado a struct serializado ⇒ postcard posicional ⇒
+        // quebra dura), e um `#[serde(default)]` **não salva**: o postcard não sinaliza ausência.
+        // ⚠️ **O easing fica INTACTO** — `duration_s` e `easing` continuam onde estavam, e um
+        // hospedeiro sem mola percorre o mesmo caminho byte a byte. É por isso que a mola é uma
+        // `Option` e não uma substituição.
+        // ⚠️ `FLIP`/`VEC_SCENE` NÃO se movem: os estados de UI viajam no `ProjectFile` ao lado da
+        // cena, não dentro dela.
+        // ⚠️ O 62 é PROVISÓRIO pela mesma razão de todos os acima.
+        (62, 13, 14),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

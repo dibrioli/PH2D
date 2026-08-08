@@ -22,6 +22,12 @@ use ph2d_tokens::Spacing;
 /// compará-los: uma segunda régua faria o trilho encher num valor e o clamp cortar noutro.
 const MAX_DURATION_S: f32 = 2.0;
 
+/// As réguas da MOLA — os mesmos números do modelo (`ph2d_ui_state::MIN/MAX_*`), com gate.
+const MIN_STIFFNESS: f32 = 1.0;
+const MAX_STIFFNESS: f32 = 60.0;
+const MIN_DAMPING: f32 = 0.1;
+const MAX_DAMPING: f32 = 2.0;
+
 use crate::ids;
 use crate::paint_sections::BodyCtx;
 use crate::paint_sections::LABEL_COL_W;
@@ -88,6 +94,22 @@ impl BodyCtx<'_> {
             return y;
         }
 
+        // ⭐ **A MOLA é uma OPÇÃO, e ela TROCA as linhas em vez de as somar.**
+        //
+        // ⚠️ Rigidez e amortecimento respondem a MESMA pergunta que duração e curva (*quanto
+        // tempo, e com que forma*). Oferecer as quatro pediria ao artista que mantivesse dois
+        // modelos de acordo, e a cena obedeceria a um deles sem dizer qual — é o par
+        // `Width: Auto | Fixed` do texto e o `Mass: Auto | Manual` do editor de áudio.
+        y = self.checkbox_row(
+            ids::VECTOR_STATE_SPRING,
+            tr("panel.vector.states.spring"),
+            s.spring.is_some(),
+            y,
+        );
+        if let Some((stiffness, damping)) = s.spring {
+            return self.spring_rows(stiffness, damping, y);
+        }
+
         // A DURAÇÃO é o número que o artista de facto afina; a régua é a mesma do modelo
         // (`MAX_DURATION_S`), publicada como fração para o trilho.
         let track = (s.duration_s / MAX_DURATION_S).clamp(0.0, 1.0);
@@ -102,6 +124,33 @@ impl BodyCtx<'_> {
         );
 
         self.easing_rows(s.easing, y)
+    }
+
+    /// **As duas linhas da mola** — e são só duas, porque uma mola tem só dois números.
+    ///
+    /// ⚠️ As réguas são as do MODELO (`ph2d_ui_state::MIN/MAX_*`), com gate a compará-las: um par
+    /// de tetos escrito aqui divergiria no dia em que o modelo mudasse, e o slider entregaria um
+    /// valor que a porta depois clampa — o artista arrastaria até ao fim e o número pararia antes.
+    fn spring_rows(&mut self, stiffness: f32, damping: f32, y: f32) -> f32 {
+        let track = |v: f32, lo: f32, hi: f32| ((v - lo) / (hi - lo)).clamp(0.0, 1.0);
+        let y = self.slider_row(
+            tr("panel.vector.states.stiffness"),
+            ids::VECTOR_STATE_STIFFNESS,
+            ids::VECTOR_STATE_STIFFNESS_NUM,
+            track(stiffness, MIN_STIFFNESS, MAX_STIFFNESS),
+            f64::from(stiffness),
+            &format!("{stiffness:.1}"),
+            y,
+        );
+        self.slider_row(
+            tr("panel.vector.states.damping"),
+            ids::VECTOR_STATE_DAMPING,
+            ids::VECTOR_STATE_DAMPING_NUM,
+            track(damping, MIN_DAMPING, MAX_DAMPING),
+            f64::from(damping),
+            &format!("{damping:.2}"),
+            y,
+        )
     }
 
     /// **O SELETOR DE CURVA** — a forma da transição, e a direção quando ela tem uma.

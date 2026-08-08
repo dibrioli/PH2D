@@ -163,6 +163,10 @@ const FORWARDED_TRACK_SLIDERS: &[ph2d_a11y::NodeId] = &[
     // A DURAÇÃO da transição de estado (W7): o track vai cru e a shell o multiplica pela régua
     // — a mesma que o painel usa para encher o trilho.
     ids::VECTOR_STATE_DURATION,
+    // A MOLA: rigidez e amortecimento seguem a mesma rota — track cru, e a shell aplica a régua
+    // afim. Um braço próprio aqui seria um corpo copiado com um `unwrap_or` a divergir.
+    ids::VECTOR_STATE_STIFFNESS,
+    ids::VECTOR_STATE_DAMPING,
 ];
 
 pub(crate) fn apply_event(

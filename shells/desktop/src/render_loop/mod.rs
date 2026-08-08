@@ -2188,6 +2188,11 @@ impl crate::App {
             // shell — o painel so' mostra que verbos fazem sentido agora.
             let mut pending_ui_state: Option<crate::vec_ui_state_edit::UiStateEdit> = None;
             let mut pending_ui_state_duration: Option<f64> = None;
+            // ⚠️ Um TOGGLE não traz valor: o pedido é *"inverta"*, e quem sabe o estado atual é
+            // a tabela. Um `Some(bool)` obrigaria a shell a lê-la duas vezes.
+            let mut pending_ui_spring_toggle = false;
+            // (é a rigidez?, valor) — só o knob que o artista arrastou.
+            let mut pending_ui_spring_knob: Option<(bool, f64)> = None;
             let mut pending_ui_easing: Option<crate::vec_ui_state_edit::EasingPick> = None;
             let mut pending_ui_preview_toggle = false;
             let mut pending_ui_move_all_toggle = false;
@@ -2593,6 +2598,11 @@ impl crate::App {
                             {
                                 // **O SELETOR DE CURVA** (W7): a forma e a direcao da transicao.
                                 pending_ui_easing = Some(p);
+                            } else if *id == ph2d_editor::ids::VECTOR_STATE_SPRING {
+                                // **A MOLA** (W7m): ela troca o MOTOR da transição, e o motor mora
+                                // na tabela do documento — então o checkbox atravessa o barramento
+                                // como os verbos ao lado.
+                                pending_ui_spring_toggle = true;
                             } else if *id == ph2d_editor::ids::VECTOR_STATE_MOVE_ALL {
                                 // **Mover o widget com TODOS os estados** (W7r): quem desloca é a
                                 // shell — só ela vê o `Transform` andar —, então o toggle
@@ -2756,6 +2766,20 @@ impl crate::App {
                                 // do documento — o painel só o mostra.
                                 pending_ui_state_duration =
                                     Some(*v * ph2d_ui_state::MAX_DURATION_S);
+                            } else if *id == ph2d_editor::ids::VECTOR_STATE_STIFFNESS
+                                || *id == ph2d_editor::ids::VECTOR_STATE_DAMPING
+                            {
+                                // W7m: o track `0..1` vira o número autorado pela régua AFIM do
+                                // modelo — as duas não começam em zero, então o offset é parte da
+                                // conversão. Ela mora aqui pela mesma razão da duração: o número
+                                // é do documento, e o painel só o mostra.
+                                let stiff = *id == ph2d_editor::ids::VECTOR_STATE_STIFFNESS;
+                                let (lo, hi) = if stiff {
+                                    (ph2d_ui_state::MIN_STIFFNESS, ph2d_ui_state::MAX_STIFFNESS)
+                                } else {
+                                    (ph2d_ui_state::MIN_DAMPING, ph2d_ui_state::MAX_DAMPING)
+                                };
+                                pending_ui_spring_knob = Some((stiff, lo + *v * (hi - lo)));
                             } else if *id == ph2d_editor::ids::VECTOR_ARRANGE_Z {
                                 pending_vec_z = Some(*v);
                             } else if let Some(f) = crate::vec_layout_edit::layout_field_for_id(*id)
@@ -4694,6 +4718,32 @@ impl crate::App {
                 && let [host] = self.vec_pen.selected_paths()
             {
                 ui_states.set_duration(*host, secs);
+            }
+            // **A MOLA** (W7m) — a mesma guarda de hospedeiro único da duração e da curva.
+            //
+            // ⚠️ Ligar SEMEIA com o default; desligar guarda `None` e **não apaga** a duração nem
+            // a curva, que o artista recupera com o mesmo clique.
+            if pending_ui_spring_toggle && let [host] = self.vec_pen.selected_paths() {
+                let next = ui_states
+                    .spring(*host)
+                    .is_none()
+                    .then(ph2d_ui_state::Spring::default);
+                ui_states.set_spring(*host, next);
+            }
+            if let Some((stiff, v)) = pending_ui_spring_knob
+                && let [host] = self.vec_pen.selected_paths()
+            {
+                // ⚠️ Arrastar um knob de mola num hospedeiro que ainda não a tem **liga-a**: o
+                // slider só é pintado no modo mola, então este caminho só corre com ela ligada —
+                // e o `unwrap_or_default` é o que impede um `None` de engolir o gesto em silêncio
+                // se um dia ele passar a ser alcançável.
+                let mut sp = ui_states.spring(*host).unwrap_or_default();
+                if stiff {
+                    sp.stiffness = v;
+                } else {
+                    sp.damping = v;
+                }
+                ui_states.set_spring(*host, Some(sp));
             }
             // **A CURVA** (W7) — a outra metade do *como este hospedeiro transita*, e por isso
             // honrada ao lado da duracao e pela mesma guarda de hospedeiro unico.

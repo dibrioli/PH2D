@@ -50,6 +50,10 @@ pub(crate) fn request(
     host: VecPathId,
     role: StateRole,
 ) {
+    // ⚠️ **A porta é UMA:** `spring(host)` decide qual motor corre, e o painel pinta a partir da
+    // MESMA resposta. Duas perguntas — uma no painel, outra aqui — seriam duas chances de o
+    // artista ver linhas de mola e a cena andar por curva.
+    let spring = states.spring(host);
     let (duration, easing) = states.timing(host);
     let m = machines
         .entry(host)
@@ -58,7 +62,10 @@ pub(crate) fn request(
     // debaixo de uma máquina que já existe. Sem isto o Show seguinte animaria para a pose ANTIGA,
     // e o botão pareceria ignorar a gravação que acabou de acontecer.
     m.retarget(states.get(host).to_vec());
-    m.go_to_role(role, duration, easing);
+    match spring {
+        Some(sp) => m.go_to_role_spring(role, sp),
+        None => m.go_to_role(role, duration, easing),
+    }
 }
 
 /// Uma máquina sem estado nenhum — o caso em que o hospedeiro perdeu as poses entre o pedido e o

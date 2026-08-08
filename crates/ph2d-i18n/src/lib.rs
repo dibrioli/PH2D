@@ -257,6 +257,9 @@ pub fn tr(key: &str) -> &'static str {
         // gravação seguinte do Default o sobrescreve com a pose errada.
         "panel.vector.states.showing" => "Showing",
         "panel.vector.states.duration" => "Duration",
+        "panel.vector.states.spring" => "Spring",
+        "panel.vector.states.stiffness" => "Stiffness",
+        "panel.vector.states.damping" => "Damping",
         // **O MODO DE PREVIEW** (W7r). O segundo rótulo diz como SAIR, e não é cortesia: um modo
         // que toma o rato e não anuncia a porta de saída é um modo em que o artista fica preso.
         "panel.vector.states.preview" => "Preview",

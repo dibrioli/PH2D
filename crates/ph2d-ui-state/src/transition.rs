@@ -121,8 +121,27 @@ impl Transition {
 
     /// A pose de cada objeto em movimento, no ponto `t` do caminho.
     ///
-    /// `t` é clampado a `[0, 1]`: uma curva com *overshoot* (um ease `Back` ou `Elastic`) encosta
-    /// na ponta e para, em vez de quebrar a forma — a mesma escolha que o `VecMorph` já faz.
+    /// ⭐ **O clamp é POR CANAL, e a linha é *o que passar do alvo significa alguma coisa?*.**
+    ///
+    /// - **Posição e rotação** recebem o `t` CRU. Passar do alvo ali **é** o movimento: é o que um
+    ///   `Back`/`Elastic` desenha, e é o que uma MOLA faz ao reverter (ela continua um instante
+    ///   para onde ia, e só depois volta — isso é `t < 0`).
+    /// - **Escala, opacidade, tinta e largura** são clampadas. Passar do alvo numa escala que vai
+    ///   a zero **espelha o objeto**; numa opacidade, pede um alfa negativo. Não é overshoot, é
+    ///   lixo.
+    /// - **A geometria** é clampada, e é a razão original desta linha: um morph casado por
+    ///   Hungarian não tem significado além do destino (a mesma escolha do `VecMorph`).
+    ///
+    /// ⚠️ **O clamp era GLOBAL, e isso custava duas coisas.** Medido: `Back Out` pica em **1,100**
+    /// e `Elastic Out` em **1,3731** — os dois eram postos em 1,000, então o artista escolhia
+    /// *Elastic* e via um botão que apenas chegava; metade do seletor de curva da W7c era um
+    /// controle morto. E a MOLA não era entregável de todo: o primeiro quadro de uma reversão
+    /// media **0,000000** de deslocamento — o objeto **congelava** em vez de carregar o momento,
+    /// que é a única coisa que ela compra sobre uma curva.
+    ///
+    /// ⚠️ **Toda curva contida em `[0, 1]` é BYTE-IDÊNTICA** ao que já shipava — para ela o clamp
+    /// nunca mordia. As que mudam são exatamente as duas cujo nome promete o que elas não
+    /// entregavam.
     ///
     /// ⚠️ **A ROTAÇÃO vai pelo ARCO MAIS CURTO.** De 350° para 10° ela anda +20°, não −340°, que é
     /// o que qualquer ferramenta de UI faz e o que o artista espera de um par de estados. **A
@@ -131,7 +150,8 @@ impl Transition {
     /// keyframe, não estado.
     #[must_use]
     pub fn at(&self, t: f64) -> Vec<ObjectPose> {
-        let t = t.clamp(0.0, 1.0);
+        // `tc` é o `t` dos canais onde passar do alvo não significa nada — ver o doc acima.
+        let tc = t.clamp(0.0, 1.0);
         self.steps
             .iter()
             .map(|s| match s {
@@ -144,19 +164,19 @@ impl Transition {
                         ],
                         rotation: lerp_angle(from.rotation, to.rotation, t),
                         scale: [
-                            lerp(from.scale[0], to.scale[0], t),
-                            lerp(from.scale[1], to.scale[1], t),
+                            lerp(from.scale[0], to.scale[0], tc),
+                            lerp(from.scale[1], to.scale[1], tc),
                         ],
-                        opacity: lerp_f32(from.opacity, to.opacity, t),
+                        opacity: lerp_f32(from.opacity, to.opacity, tc),
                         // A TINTA vai SEMPRE pela porta do Blend, com forma ou sem ela — uma
                         // resposta só para *"como duas tintas interpolam neste app"*.
-                        fill: ph2d_vec_blend::mix_paint(from.fill.as_ref(), to.fill.as_ref(), t),
-                        stroke: ph2d_vec_blend::mix_stroke(from.stroke, to.stroke, t),
+                        fill: ph2d_vec_blend::mix_paint(from.fill.as_ref(), to.fill.as_ref(), tc),
+                        stroke: ph2d_vec_blend::mix_stroke(from.stroke, to.stroke, tc),
                         geometry: None,
                         // A LARGURA VIVA pela porta da crate que a define — e o `None` é o
                         // perfil uniforme, então um lado sem perfil é um lado com o perfil que
                         // não faz nada. Não há caso especial a escrever.
-                        width: mix_width(from.width.as_ref(), to.width.as_ref(), t),
+                        width: mix_width(from.width.as_ref(), to.width.as_ref(), tc),
                     };
                     // ⚠️ E a forma que sai do `Plan` recebe a tinta da POSE, não a que o `Plan`
                     // interpolou por conta: se o objeto sai auto-consistente daqui, ninguém a
@@ -169,7 +189,7 @@ impl Transition {
                     // que o motor não sabe traçar seria um salto no primeiro quadro.
                     p.geometry = match shape.as_ref() {
                         Some(plan) => {
-                            let mut g = plan.at(t);
+                            let mut g = plan.at(tc);
                             g.fill.clone_from(&p.fill);
                             g.stroke = p.stroke;
                             Some(g)

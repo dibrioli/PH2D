@@ -337,4 +337,7 @@ fn is_prefab_click(id: ph2d_a11y::NodeId) -> bool {
     // **Mover o widget com TODOS os estados** (W7r): o deslocamento e' aplicado a' TABELA, que
     // mora no documento — entao o toggle atravessa o barramento como os verbos ao lado.
     || id == ids::VECTOR_STATE_MOVE_ALL
+    // **A MOLA** (W7m): ela troca o motor da transicao, e o motor mora na tabela do DOCUMENTO —
+    // entao o checkbox atravessa o barramento como os verbos ao lado.
+    || id == ids::VECTOR_STATE_SPRING
 }

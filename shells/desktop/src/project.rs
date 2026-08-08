@@ -296,7 +296,17 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// ⚠️ A dívida que este bump paga é a que a **F1.W1 da `line/runtime`** (*uma versão por
 /// `ComponentBlob`*) apagaria — ela não existe, então o preço é este, escrito.
 /// ⚠️ **PROVISÓRIO** pelo mesmo motivo que o v56.
-const PROJECT_SCHEMA: u32 = 61;
+/// v62 (plano UI/UX **W7m** — a MOLA como opção): o `ph2d_ui_state::HostStates` ganha
+/// **`spring: Option<Spring>`**, a alternativa ao par *duração + curva*.
+/// ⚠️ **Campo apendado a um struct SERIALIZADO** ⇒ postcard posicional ⇒ quebra dura, a mesma
+/// classe do v61. Um `#[serde(default)]` **não salva**: o postcard não sinaliza ausência, então
+/// um arquivo antigo bate no fim dos bytes de qualquer maneira.
+/// ⚠️ **O sistema de easing fica INTACTO** — `duration_s` e `easing` continuam onde estavam e um
+/// hospedeiro sem mola percorre o MESMO caminho de antes, byte a byte. A mola é uma `Option`
+/// porque *ter mola* e *que mola* são a mesma decisão (o desenho do `wrap_width` do v61), e
+/// desligá-la **não apaga** o que o artista afinou nas outras duas.
+/// ⚠️ **PROVISÓRIO** pelo mesmo motivo que o v56.
+const PROJECT_SCHEMA: u32 = 62;
 
 /// O conteúdo de um arquivo de projeto.
 #[derive(serde::Serialize, serde::Deserialize)]

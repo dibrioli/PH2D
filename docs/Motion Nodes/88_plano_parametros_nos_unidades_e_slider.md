@@ -534,16 +534,37 @@ CLAUDE.md espelhada na UI: *o slider é a régua do artista, o cap é a régua d
 ela **move a derivação do campo soft para o campo hard**: `hard = MAX_ALIVE as f32` continua
 derivado, e o soft passa a ser a faixa que a mão percorre.
 
-⚠️ **Escolher os cinco números soft é decisão de PRODUTO**, e o preço de errá-los é o artista
-perder alcance de arrasto — por isso eles não foram escritos aqui sem o smoke. **Nada fica
-inalcançável em nenhuma hipótese**: o teto de hoje vira o `hard`, e a caixa numérica ao lado do
-slider já digita até ele.
+### §11.3 — EXECUTADO (ordem do Enio: *"siga sua recomendação"*)
 
-**Rabo (20–128×), não flagado pela linha derivada mas medido:** `soft_body.rows`/`cols` (128×) ·
-`value.curve.in_hi`/`out_hi` e `value.map_range.in_hi`/`out_hi` (100×) · `value.noise.amplitude`
-(100×) · `distribute_curve.count` (62×) · `pulse.compare`/`threshold.rise`/`fall` (20–33×) ·
-`distribute_radial.count`/`inner`/`rings` · `field.radial_sweep.repetitions` · `force.curl.speed`
-· **`motion.verlet_rope.damping`** (0,02 num curso até 0,5) · `motion.path.count` ·
-`value.noise.frequency` · `field.box.soft` · `force.drag.coefficient` ·
-`motion.oscillator.phase_stagger`. ⚠️ Nestes o chip numérico **não é desculpa** como é numa
-contagem: um damping se afina por TATO, e digitar não é o idioma.
+**Vinte e quatro params em 18 crates**: o teto de hoje foi para o `ParamHardMax` e o slider
+baixou para a faixa de autoria. **Nada ficou inalcançável em nenhuma hipótese** — a caixa
+numérica ao lado do slider digita até o teto de sempre.
+
+A régua saiu de **28 params fora da linha para QUATRO**, e os quatro são `IntSlider`s cujo curso
+cabe no track (`pin_constraint.count` 128 · `radial_sweep.repetitions` 32 ·
+`distribute_radial.rings` 64 · `emitter.rate` 1200): ali **todo inteiro é alcançável**, que é a
+propriedade que de fato importa numa contagem.
+
+⚠️ **O `emitter` tinha os dois knobs descrevendo CENAS diferentes**, e só a leitura lado a lado
+mostrou: o comentário do `rate` dizia *"12.000/s é uma fonte densa a 1 s de vida"* — e `life`
+tem default **3 s**, onde isso são 36.000 vivas, **setenta vezes** o `max` default de 512. Agora
+`1.200 × 3 = 3.600` cabe no `max` de 4.096, e a rajada de um quadro (que o comentário antigo
+gesticulava) é exatamente o que o hard em 4.000.000 serve.
+
+⚠️ **Uma segunda cerca de Chesterton apareceu no `soft_body` e ficou MAIS FORTE:** o gate
+`the_mesh_sliders_reach_exactly_the_clamp` afirmava *capacidade alcançável* **e** *slider
+arrastável* com um número só (`hint.max == MAX_SIDE`), e a preocupação dele é legítima — *um
+controle que para em 40 sobre um clamp de 512 tem o terço de cima morto*. Ela continua inteira;
+o que mudou é **de que lado do par soft/hard a igualdade mora**, e o gate agora afirma as duas
+metades separadamente.
+
+**Três gates novos** (`param_range_conventions.rs`), cada um com controle positivo,
+**3 mutações, 3 sangram** — e o terceiro é o **modo de falha exato deste padrão**:
+*`static PARAM_HARD_MAX` declarado e nunca registrado*. A tabela existe, o `cargo` não reclama
+(o próprio crate a lê em gates), e o painel nunca a vê — o artista fica com o slider estreito
+**e** sem o teto digitável, que é pior que não ter feito a wave.
+
+⚠️ **Aberto, e é para o SMOKE:** os números soft são decisão de produto. O risco não é regressão
+(nada ficou inalcançável) — é o arrasto ficar CURTO demais para uma cena densa, e quem responde
+isso é a mão do artista. Os candidatos mais prováveis de re-tuning são `emitter.rate` (1.200) e
+`emitter.max` (4.096), que são os únicos cujo par tem de continuar concordando.

@@ -11,6 +11,27 @@
 //! twin — a mirror of the *layout*, which is exact for a positional distribution (a
 //! moving sim's `vel`/`rot` are duplicated, not flipped). Transcendental-free (HR-5):
 //! reflection is arithmetic — no trig, no `sqrt`. `Effect::Pure`.
+//!
+//! ## Onde a LINHA de espelho fica (doc 88 §B3 — a varredura PRO da família TRANSFORM)
+//!
+//! O eixo era **pregado no centroide**: o layout só sabia espelhar contra si mesmo, e
+//! encostar a simetria numa parede — a metade das composições que pedem um espelho —
+//! não era difícil, era **inexprimível**. O `offset` move a linha.
+//!
+//! ⚠️ **Ele é medido A PARTIR DO CENTROIDE, e é isso que faz o default ser byte-idêntico
+//! ao que já shipava.** Um offset em coordenada de mundo absoluta não teria como
+//! exprimir "no centroide" — o número certo dependeria do conteúdo —, então o zero
+//! deixaria de ser o comportamento antigo e todo grafo autorado saltaria. O mesmo
+//! raciocínio do *Relative Offset* do Array do Blender: **um número redondo tem de
+//! significar alguma coisa** sem o artista saber onde a nuvem está.
+//!
+//! ⚠️ **CONSIDERADO E NÃO CONSTRUÍDO, com o motivo** (para ninguém o reconstruir cego):
+//! um **ângulo** livre de eixo. O `axis` já responde *qual eixo*, e um ângulo por cima
+//! dele seriam duas portas para a mesma pergunta (`Vertical + 90°` é `Horizontal`); a
+//! simetria de ângulo arbitrário já tem dono — o `motion.kaleidoscope`, que é N-fold
+//! por construção. E **refletir `rot`/`vel` no gêmeo** (hoje eles são copiados, não
+//! espelhados — o parágrafo acima) é mudança de COMPORTAMENTO de uma sim espelhada, não
+//! um param: ela merece o seu próprio smoke.
 
 use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
@@ -41,13 +62,27 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "axis",
             default: 0.0,
         },
+        // Deslocamento da LINHA de espelho a partir do centroide, ao longo da normal
+        // do eixo escolhido. `0` = a linha do centroide, o que sempre shipou.
+        ParamSpec {
+            name: "offset",
+            default: 0.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
 
-/// Reflect + duplicate the positions across the axis through their centroid. Returns
-/// the `2n` positions (originals then their mirror images).
-fn mirror_positions(p: &[[f32; 2]], vertical: bool) -> Vec<[f32; 2]> {
+/// Reflect + duplicate the positions across the mirror line — the axis through the
+/// centroid, **deslocada de `offset`** ao longo da normal do eixo. Returns the `2n`
+/// positions (originals then their mirror images).
+///
+/// A reflexão de `q` na reta que passa por `c` com normal unitária `n` é
+/// `q − 2·((q − c)·n)·n`; com `c = centroide + offset·n` e `n` unitária isso vira
+/// `q − 2·((q − centroide)·n − offset)·n`. Com `offset = 0` a expressão reduz
+/// LITERALMENTE a `2·cx − qx` (ou `2·cy − qy`) — o código que já shipava —, e é por
+/// isso que o default não pode mover um bit. Segue transcendental-free (HR-5): a
+/// normal é um eixo, não um ângulo.
+fn mirror_positions(p: &[[f32; 2]], vertical: bool, offset: f32) -> Vec<[f32; 2]> {
     let n = p.len();
     if n == 0 {
         return Vec::new();
@@ -59,9 +94,9 @@ fn mirror_positions(p: &[[f32; 2]], vertical: bool) -> Vec<[f32; 2]> {
     let mut out = p.to_vec();
     out.extend(p.iter().map(|q| {
         if vertical {
-            [2.0 * c[0] - q[0], q[1]]
+            [2.0 * (c[0] + offset) - q[0], q[1]]
         } else {
-            [q[0], 2.0 * c[1] - q[1]]
+            [q[0], 2.0 * (c[1] + offset) - q[1]]
         }
     }));
     out
@@ -76,13 +111,14 @@ impl NodeOp for MotionMirror {
 
     fn eval(&self, ctx: &mut EvalCtx<'_>) {
         let vertical = ctx.param("axis").round() as i64 == 0;
+        let offset = ctx.param("offset");
         let input = ctx.input(0);
         let n = input.count();
         let p: Vec<[f32; 2]> = match input.get("P") {
             Some(Column::Vec2(v)) => v.clone(),
             _ => vec![[0.0, 0.0]; n],
         };
-        let mirrored = mirror_positions(&p, vertical);
+        let mirrored = mirror_positions(&p, vertical, offset);
         // Every column is duplicated onto the twin; only `P` is reflected.
         let mut out = Stream::new(mirrored.len());
         for (name, col) in input.columns() {
@@ -119,20 +155,40 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     Ok(())
 }
 
-use ph2d_node_registry::{ParamUiHint, ParamWidget};
+use ph2d_node_registry::{ParamUiHint, ParamUnit, ParamUnitDecl, ParamWidget};
 
-static PARAM_HINTS: &[ParamUiHint] = &[ParamUiHint {
-    param: "axis",
-    label: "Axis",
-    min: 0.0,
-    max: 1.0,
-    step: 1.0,
-    widget: ParamWidget::Enum {
-        labels: &["Vertical", "Horizontal"],
+static PARAM_HINTS: &[ParamUiHint] = &[
+    ParamUiHint {
+        param: "axis",
+        label: "Axis",
+        min: 0.0,
+        max: 1.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: &["Vertical", "Horizontal"],
+        },
     },
+    ParamUiHint {
+        param: "offset",
+        label: "Axis Offset",
+        // Simetrico em torno do centroide: a linha anda para os DOIS lados, e o
+        // teto e o piso sao a folga de autoria confortavel, nao um recurso.
+        min: -400.0,
+        max: 400.0,
+        step: 1.0,
+        widget: ParamWidget::Slider,
+    },
+];
+
+/// O deslocamento e uma DISTANCIA de mundo — a fronteira de display (doc 88, Wave A)
+/// a mostra em px ou m conforme a escolha do projeto, e o store fica em metros.
+static PARAM_UNITS: &[ParamUnitDecl] = &[ParamUnitDecl {
+    param: "offset",
+    unit: ParamUnit::Length,
 }];
 
 #[cfg(test)]
@@ -145,7 +201,7 @@ mod tests {
     fn vertical_mirror_reflects_x_and_doubles() {
         // Two points, centroid x = 1.
         let p = vec![[0.0, 2.0], [2.0, -1.0]];
-        let out = mirror_positions(&p, true);
+        let out = mirror_positions(&p, true, 0.0);
         assert_eq!(out.len(), 4, "count doubled");
         assert_eq!(&out[0..2], &p[..], "originals kept");
         // Reflected across cx=1: (0,2)→(2,2), (2,−1)→(0,−1).
@@ -157,7 +213,7 @@ mod tests {
     #[test]
     fn horizontal_mirror_reflects_y() {
         let p = vec![[1.0, 0.0], [-1.0, 4.0]]; // centroid y = 2
-        let out = mirror_positions(&p, false);
+        let out = mirror_positions(&p, false, 0.0);
         assert_eq!(out[2], [1.0, 4.0]); // (1,0) → (1, 4)
         assert_eq!(out[3], [-1.0, 0.0]); // (−1,4) → (−1, 0)
     }
@@ -167,7 +223,7 @@ mod tests {
     #[test]
     fn the_mirrored_layout_is_symmetric() {
         let p = vec![[0.5, 1.0], [3.0, -2.0], [1.5, 0.5]];
-        let out = mirror_positions(&p, true);
+        let out = mirror_positions(&p, true, 0.0);
         let c = out
             .iter()
             .fold([0.0f32; 2], |a, q| [a[0] + q[0], a[1] + q[1]]);
@@ -239,6 +295,72 @@ mod tests {
         match s.get("size").unwrap() {
             Column::Vec2(v) => assert_eq!(v.len(), 4, "size duplicated onto the twin"),
             _ => panic!("size"),
+        }
+        // Sem offset autorado, a linha e a do centroide (cx = 2): (0,0) -> (4,0).
+        match s.get("P").unwrap() {
+            Column::Vec2(v) => assert_eq!(v[2], [4.0, 0.0]),
+            _ => panic!("P"),
+        }
+
+        // ⚠️ E o param AUTORADO tem de ATRAVESSAR o cook. O gate do kernel prova a
+        // matematica e e CEGO a um `ctx.param` que ninguem chamou: uma capacidade sem
+        // porta passa em todo gate que so olha para a funcao pura.
+        g.set_param(m, "offset", 3.0);
+        let out = cook.cook(&g, &Ops, m, 0.0).unwrap();
+        match out[0].as_stream().get("P").unwrap() {
+            Column::Vec2(v) => assert_eq!(
+                v[2],
+                [10.0, 0.0],
+                "o offset autorado no grafo nao chegou ao no"
+            ),
+            _ => panic!("P"),
+        }
+    }
+
+    /// **A LINHA DE ESPELHO ANDA** (doc 88 §B3).
+    ///
+    /// ⚠️ Nasceu VERMELHO: o eixo era pregado no centroide, entao espelhar contra
+    /// qualquer outra linha era inexprimivel. O oraculo e a POSICAO da linha, derivada
+    /// do resultado — o ponto medio entre um original e o seu gemeo — e nao os valores
+    /// crus: e ela que o param nomeia, e ela nao se move em offset nenhum se o numero
+    /// for descartado.
+    #[test]
+    fn the_axis_offset_moves_the_mirror_line() {
+        let p = vec![[0.0, 0.0], [4.0, 0.0]]; // centroide x = 2
+        let out = mirror_positions(&p, true, 3.0);
+        // A linha esta em cx + offset = 5.
+        let line = (out[0][0] + out[2][0]) / 2.0;
+        assert!(
+            (line - 5.0).abs() < 1e-5,
+            "a linha tinha de estar em 5.0 e o resultado a poe em {line} —              um offset descartado a deixaria em 2.0 para sempre"
+        );
+        assert_eq!(out[2], [10.0, 0.0]);
+        assert_eq!(out[3], [6.0, 0.0]);
+        // E o eixo escolhido continua sendo o unico que o offset move.
+        let h = mirror_positions(&p, false, 3.0);
+        assert_eq!(h[2], [0.0, 6.0], "no eixo horizontal o offset anda em y");
+    }
+
+    /// **O DEFAULT E O MUNDO QUE JA SHIPAVA, AO BIT.**
+    ///
+    /// A regressao que importa: todo grafo autorado antes desta wave nao declara
+    /// `offset`, e o `ctx.param` devolve o default. O gate compara as DUAS rotas —
+    /// o zero explicito e o helper — contra os mesmos numeros que os gates de sempre.
+    #[test]
+    fn the_zero_offset_is_the_centroid_line_to_the_bit() {
+        let p = vec![[0.5, 1.0], [3.0, -2.0], [1.5, 0.5]];
+        for vertical in [true, false] {
+            let out = mirror_positions(&p, vertical, 0.0);
+            let cx = p.iter().map(|q| q[0]).sum::<f32>() / p.len() as f32;
+            let cy = p.iter().map(|q| q[1]).sum::<f32>() / p.len() as f32;
+            for (i, q) in p.iter().enumerate() {
+                let want = if vertical {
+                    [2.0 * cx - q[0], q[1]]
+                } else {
+                    [q[0], 2.0 * cy - q[1]]
+                };
+                assert_eq!(out[p.len() + i], want, "vertical={vertical} i={i}");
+            }
         }
     }
 }

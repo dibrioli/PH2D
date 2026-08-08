@@ -516,6 +516,29 @@ fn scale_kernel_matches_the_cpu_within_epsilon() {
     assert_gpu_parity(&gpu, &reg, &g, out, 2);
 }
 
+/// **O eixo DESTRAVADO também cozinha no device** (doc 88 §B3).
+///
+/// ⚠️ O irmão acima roda com o link no default, e `select(y, x, uniform >= 0.5)`
+/// devolve `x` ali — ou seja, **ele nunca entra no ramo novo**. Um ramo de kernel que
+/// nenhum gate percorre é o que ship quebrado com a suíte verde, e a razão de aspecto
+/// é o oráculo: com `amount != amount_y` ela sai de 1, e um WGSL que ignorasse o
+/// segundo eixo devolveria quadrados onde a CPU devolve retângulos.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn the_unlinked_scale_axes_match_the_cpu_within_epsilon() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    let mut g = Graph::new();
+    let (node, out) = deformer_chain(&mut g, 160.0, "motion.scale");
+    g.set_param(node, "uniform", 0.0);
+    g.set_param(node, "amount", 2.4);
+    g.set_param(node, "amount_y", 0.35);
+    assert_gpu_parity(&gpu, &reg, &g, out, 2);
+}
+
 #[test]
 #[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
 fn wiggle_kernel_matches_the_cpu_within_epsilon() {

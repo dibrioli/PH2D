@@ -345,6 +345,7 @@ mod timescale_smoke;
 mod token_smoke;
 /// A cena de smoke dos **TOKENS** (`PH2D_BUILD_SMOKE=59`) — o painel que re-veste o app.
 mod tokens_smoke;
+mod transform_family_smoke;
 mod transport;
 /// A cena de smoke do Twist (o remoinho + o Falloff a modulá-lo) — irmão de `build_smoke`.
 mod twist_smoke;

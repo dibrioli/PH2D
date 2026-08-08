@@ -78,6 +78,14 @@ impl PainterTool {
             && !self.paint.eraser
             && !self.watercolor_render_active()
             && !self.paint.wetpaint.armed
+        // ⛔ IMPASTO IS OUT, and the number is why (Enio 2026-08-08: *"o mouse up do Taper retira a
+        // tinta e deixa só o relevo"*). Ablated: with the restore, an impasto stroke measures **0
+        // inked rows** afterwards; without it, 20. So the restore takes the paint and the replay
+        // does NOT put it back — under impasto the canvas colour is not simply what each dab
+        // deposited, and re-running the live relief render after the replay does not bring it back
+        // either (measured). Losing the artist's paint is far worse than a blunt tail, so the resolve
+        // stays out of the mode until that is understood rather than guessed at.
+            && !self.paint.brush.impasto
     }
 
     /// Record what a batch stamped, so the tail can be laid again once the far end exists.

@@ -227,3 +227,57 @@ fn the_record_does_not_outlive_its_stroke() {
          {tip_after_its_own_stroke} rows to {tip_now}"
     );
 }
+
+/// **An impasto stroke keeps its PAINT through the pen-up resolve.**
+///
+/// The regression this exists to stop (Enio, 2026-08-08): *"o mouse up do Taper retira a tinta e deixa
+/// só o relevo"* — an impasto stroke came out as bare relief on white. Ablated: with the restore in
+/// place the stroke measured **0 inked rows**, without it **20**, so the restore was taking the paint
+/// and the replay was not putting it back. Under impasto the canvas colour is not simply the sum of what
+/// each dab deposited, and re-rendering the live relief after the replay does not bring it back either.
+///
+/// So impasto is OUT of the resolve until that is understood rather than guessed at: a blunt tail is a
+/// missing feature, and losing the artist's paint is destroying their work.
+///
+/// **Mutation that must bleed:** drop `&& !self.paint.brush.impasto` from `taper_tail_wanted`.
+#[test]
+fn an_impasto_stroke_keeps_its_paint_through_the_resolve() {
+    const SIZE: u32 = 160;
+    let ink = |end: f32| -> (u32, u32) {
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; (SIZE * SIZE * 4) as usize], SIZE, SIZE);
+        let b = BrushSpec {
+            radius_px: 10.0,
+            hardness: 1.0,
+            falloff: Falloff::Constant,
+            color: [0.0, 0.0, 0.0],
+            space_attenuation: false,
+            impasto: true,
+            taper: Taper {
+                end,
+                ..Taper::default()
+            },
+            ..Default::default()
+        };
+        t.paint.brush = b;
+        for slot in &mut t.paint.brush_by_mode {
+            *slot = b;
+        }
+        drag(&mut t, 80.0, 20.0, 130.0);
+        (ink_height(&t, 70, SIZE), ink_height(&t, 25, SIZE))
+    };
+    // The control is the SAME brush with the end taper off — so the bar is "as much paint as impasto
+    // lays anyway", not a number someone picked.
+    let (body_off, head_off) = ink(0.0);
+    assert!(
+        body_off >= 18 && head_off >= 18,
+        "fixture: plain impasto did not lay a full-width mark ({body_off} / {head_off} rows)"
+    );
+    let (body, head) = ink(2.0);
+    assert_eq!(
+        (body, head),
+        (body_off, head_off),
+        "arming the end taper cost an impasto stroke its paint: {body} / {head} inked rows against \
+         {body_off} / {head_off} with the taper off"
+    );
+}

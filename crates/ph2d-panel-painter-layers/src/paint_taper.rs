@@ -66,7 +66,14 @@ pub(crate) fn paint_taper_section(
     );
     let mut y = y + ROW_H_PX;
 
-    let canvas = Rect::new(x, y, content_w.max(1.0), CANVAS_H);
+    // ⚠️ The handles ride a track INSET by their own radius, not the full content width: a handle at
+    // either extreme is drawn from its centre, so on the raw width half of it hangs over the panel edge
+    // (Enio 2026-08-08, with the picture). The inset is applied to the `canvas` the `CurvePoint` drag
+    // normalises against as well — insetting only the DRAWING would put the dot somewhere the decoded
+    // value does not agree with, which is the seed-vs-sample split this codebase keeps paying for.
+    let track_x = x + HANDLE_R;
+    let track_w = (content_w - 2.0 * HANDLE_R).max(1.0);
+    let canvas = Rect::new(track_x, y, track_w, CANVAS_H);
     let cy = y + CANVAS_H * 0.5;
     // The centre line the two handles ride, the way the reference widget draws it.
     stroke_polyline(
@@ -85,13 +92,22 @@ pub(crate) fn paint_taper_section(
         let u = i as f32 / DISCS as f32;
         let s = u * total;
         let w = taper.width(s, total - s, 1.0);
-        fill_circle(ctx.scene, x + content_w * u, cy, (HALF_PX * w).max(0.5), ink);
+        fill_circle(
+            ctx.scene,
+            x + content_w * u,
+            cy,
+            (HALF_PX * w).max(0.5),
+            ink,
+        );
     }
 
     // The two handles, at the fraction of the widget their length occupies.
     let f_start = (taper.start / MAX_TAPER_DIAMETERS).clamp(0.0, 1.0);
     let f_end = (taper.end / MAX_TAPER_DIAMETERS).clamp(0.0, 1.0);
-    let hx = [x + content_w * f_start, x + content_w * (1.0 - f_end)];
+    let hx = [
+        track_x + track_w * f_start,
+        track_x + track_w * (1.0 - f_end),
+    ];
     {
         let store = ctx.host.store_mut();
         for ch in 0u8..2 {
@@ -113,7 +129,13 @@ pub(crate) fn paint_taper_section(
         );
     }
     for px in hx {
-        fill_circle(ctx.scene, px, cy, HANDLE_R, resolve(ColorToken::Accent, theme));
+        fill_circle(
+            ctx.scene,
+            px,
+            cy,
+            HANDLE_R,
+            resolve(ColorToken::Accent, theme),
+        );
     }
     y += CANVAS_H + Spacing::Sm.px();
 

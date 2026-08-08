@@ -384,6 +384,28 @@ pub(crate) use crate::vec_glyph_build::glyph_to_vec_path;
 #[path = "vec_glyph_tests.rs"]
 mod tests;
 
+/// A largura que este texto ocupa **sem caixa** — a linha mais larga que o artista digitou.
+///
+/// ⚠️ Ela mede pela MESMA `line_advance` que o quebrador e o cozedor usam (o terceiro consumidor
+/// dela), e é isso que a torna a semente honesta do modo **Fixed**: clicar Fixed passa a **não
+/// mover um glifo** — ele só torna o número editável. É o `Auto → Manual` da massa no editor de
+/// áudio, que semeia o campo com a massa que o corpo já tinha.
+///
+/// O `wrap_width` do `layout` é **ignorado de propósito**: a pergunta é *quanto este texto
+/// mede se ninguém o quebrar*.
+pub(crate) fn unwrapped_block_width(
+    font: &VariableFont,
+    text: &str,
+    layout: &TextLayout,
+    axes: &[(AxisTag, f32)],
+) -> f64 {
+    let scale = layout.size / f64::from(font.units_per_em().max(1));
+    let track_px = layout.size * layout.tracking;
+    text.split('\n')
+        .map(|l| line_advance(font, l, scale, track_px, axes))
+        .fold(0.0, f64::max)
+}
+
 #[cfg(test)]
 #[path = "vec_glyph_wrap_tests.rs"]
 mod wrap_tests;

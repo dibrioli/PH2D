@@ -130,7 +130,7 @@ estreitar E crescer em altura, senão ele passaria sobre um texto TRUNCADO).
 
 ## 4. Gates e mutações
 
-**18 gates novos.** O central mede a **TINTA** (a largura dos glifos produzidos), não chama
+**21 gates novos.** O central mede a **TINTA** (a largura dos glifos produzidos), não chama
 `line_advance` dos dois lados: duas cópias da mesma régua a concordar são **verdes por
 construção**, e cegas a uma régua errada nas duas pontas.
 
@@ -158,6 +158,37 @@ produzia 2 linhas, quando o gate exige ≥ 3 para o *"não é a última digitada
 sintético **pula a checagem de focabilidade do store**, então um chip tirado do `populate`
 continuaria a "passar": pintado, com área de hit, e **morto sob o mouse**.
 
+### 4.1 ⚠️ E o seam não bastou — os chips shiparam MORTOS
+
+**Reportado pelo Enio no smoke:** *"os botões Auto e Fixed não aceitam ser checados
+(provavelmente sem link)"*. Estava certo, e o diagnóstico dele também.
+
+O `render_loop` citava **só** o slider `VECTOR_TEXT_WRAP_W`. Os dois chips eram pintados,
+registados, o ponteiro sobre eles virava `Click`, o `Click` chegava ao barramento — **e do outro
+lado não havia braço nenhum**. O seam prova **painel → bus** e é **estruturalmente cego** ao
+passo seguinte.
+
+⚠️ **O número que fecha o caso:** com o defeito reinstalado, o seam do painel fica **3/3 VERDE** e
+só o gate novo sangra. *Dois gates verdes compostos não provam a corrente inteira*
+[[feedback_green_composed_gates_can_hide_an_unproven_connector]].
+
+O gate novo é **`shells/desktop/tests/the_width_chips_are_wired.rs`** (3 asserções): cada chip é
+citado por um braço que **escreve o pedido** · Auto pede `Some(None)` e Fixed **semeia** (sem a
+2ª metade, dois botões que fazem a mesma coisa passariam) · e o dreno chama a porta E escreve o
+`wrap_width` dos textos **selecionados**. ⚠️ Ele afirma a **relação**, nunca uma distância em
+bytes — o proxy que já expirou duas vezes nesta linha em 23/07.
+
+⚠️ **E o conserto trouxe uma decisão de produto:** **Fixed semeia com a largura que o texto JÁ
+mede** (`vec_glyph::unwrapped_block_width`, o **terceiro** consumidor da mesma `line_advance`),
+não com um número de fábrica — clicar Fixed **não move um glifo**, ele só torna o número
+editável. É o `Auto → Manual` da massa no editor de áudio, que semeia o campo com a massa que o
+corpo já tinha. Sem sessão viva não há texto a medir, e aí cai no default do slider.
+
+| # | Mutação | Sangra |
+|---|---|---|
+| M9 | tirar os dois braços do `render_loop` (**o defeito que shipou**) | `both_width_chips_are_consumed_by_the_shell` + `auto_asks_for_no_box…` — ⚠️ **o seam fica 3/3 verde** |
+| M10 | o Fixed semeia com `DEFAULT_TEXT_WRAP` | `auto_asks_for_no_box_and_fixed_asks_for_one` |
+
 ---
 
 ## 5. A bateria de fechamento (rodada, não auto-relatada)
@@ -171,6 +202,7 @@ continuaria a "passar": pintado, com área de hit, e **morto sob o mouse**.
 - `architecture_tool_contract_surface` — verde
 - `no_two_smoke_scenes_claim_the_same_level` — verde
 - `no_effect_inside_debug_assert` (**novo**, §6) — verde
+- `the_width_chips_are_wired` (**novo**, §4.1) — verde
 - suíte do shell **debug**: 2149 passed, 0 failed · crates tocadas: verdes
 - suíte **release**: 2149 passed, 0 failed — ⚠️ **e ela nasceu VERMELHA**, ver §6
 

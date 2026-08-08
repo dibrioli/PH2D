@@ -2728,6 +2728,17 @@ impl crate::App {
                                 pending_vec_text_align = Some(ph2d_tool_vector::TextAlign::Center);
                             } else if *id == ph2d_editor::ids::VECTOR_TEXT_ALIGN_RIGHT {
                                 pending_vec_text_align = Some(ph2d_tool_vector::TextAlign::Right);
+                            } else if *id == ph2d_editor::ids::VECTOR_TEXT_WRAP_AUTO {
+                                pending_vec_text_wrap = Some(None);
+                            } else if *id == ph2d_editor::ids::VECTOR_TEXT_WRAP_FIXED {
+                                // ⚠️ **Fixed semeia com a largura que o texto JÁ mede**, e não com
+                                // um número de fábrica: clicar Fixed não pode mover um glifo — ele
+                                // só torna o número editável. Sem sessão viva não há texto a medir,
+                                // e aí cai no default do slider.
+                                pending_vec_text_wrap = Some(Some(
+                                    crate::vec_text::seed_wrap_width(self.vec_text_edit.as_ref())
+                                        .unwrap_or(ph2d_tool_vector::params::DEFAULT_TEXT_WRAP),
+                                ));
                             } else if *id == ph2d_editor::ids::VECTOR_CONVERT_TO_CURVES {
                                 pending_vec_convert = true;
                             }

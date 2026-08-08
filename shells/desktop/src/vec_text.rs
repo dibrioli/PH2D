@@ -341,6 +341,23 @@ pub(crate) fn apply_text_tracking(
 /// `None` = Auto (sem caixa). ⚠️ **Uma porta só para as duas metades** — presença e valor —
 /// porque elas são o mesmo `Option`: dois setters dariam um estado em que a largura existe e
 /// o modo diz Auto, que é um documento que ninguém autorou.
+/// A largura de refluxo que o modo **Fixed** deve semear para esta sessão — a que o texto já
+/// mede. Ver [`crate::vec_glyph::unwrapped_block_width`]: clicar Fixed não move um glifo.
+///
+/// `None` quando não há sessão viva (aí o chamador cai no default do slider — um número que
+/// ninguém pode derivar de um texto que não existe).
+pub(crate) fn seed_wrap_width(edit: Option<&VecTextEdit>) -> Option<f64> {
+    let edit = edit?;
+    let font = crate::vec_font::resolve(edit.family.as_deref());
+    let w = crate::vec_glyph::unwrapped_block_width(
+        &font,
+        &edit.text,
+        &layout_of(edit),
+        &axes_of(edit),
+    );
+    (w > 0.0).then_some(w)
+}
+
 pub(crate) fn apply_text_wrap(
     edit: &mut Option<VecTextEdit>,
     wrap_field: &mut Option<f64>,

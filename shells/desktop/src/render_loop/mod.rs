@@ -860,6 +860,7 @@ impl crate::App {
         self.osc_ruler_smoke();
         self.driven_row_smoke();
         self.units_smoke();
+        self.emitter_smoke();
         self.transform_family_smoke();
         self.echo_family_smoke();
         self.splice_smoke();

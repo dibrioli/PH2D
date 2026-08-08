@@ -366,6 +366,7 @@ mod ui_spring_smoke;
 mod ui_states_smoke;
 mod undo;
 mod undo_route;
+mod emitter_smoke;
 mod units_smoke;
 mod value_curve_smoke;
 mod value_gain_smoke;

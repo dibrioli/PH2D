@@ -42,6 +42,11 @@ mod tests_gradient;
 #[path = "lib_range_tests.rs"]
 mod tests_range;
 
+/// A rolagem do corpo (doc 88 §B3) — irmão dos de faixa, cortado pelo mesmo assunto.
+#[cfg(test)]
+#[path = "lib_scroll_tests.rs"]
+mod tests_scroll;
+
 /// A afordância de **reverter ao default** — as quatro condições de UI dela.
 #[cfg(test)]
 #[path = "lib_reset_tests.rs"]
@@ -75,14 +80,17 @@ use text_rows::{mirror_text, paint_text_row, text_is_typing, text_value};
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent, WidgetStore, format_number};
+use ph2d_editor_core::paint::rect_to_vello;
 use ph2d_editor_core::panel::{EventOutcome, PaintCtx, Panel, PanelHostInternal};
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEAD_PAD, PANEL_TITLE_BASELINE, paint_panel_surface, paint_panel_title,
 };
 use ph2d_editor_core::widget::{
-    ButtonState, CheckboxState, CheckboxValue, NUMBER_INPUT_MIN_W_PX, SliderOrientation,
-    SliderState, TextInputState,
+    ButtonState, CheckboxState, CheckboxValue, MOTION_PARAMS_SCROLLBAR_ID, NUMBER_INPUT_MIN_W_PX,
+    SliderOrientation, SliderState, TextInputState, paint_scrollbar, scrollbar_is_needed,
+    scrollbar_thumb_rect, scrollbar_track_rect,
 };
+use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{Spacing, TypeToken};
 
 /// Retained panel state — none needed: the selected node + its params live
@@ -130,6 +138,18 @@ impl Panel for MotionParamsPanel {
         let chip_w = NUMBER_INPUT_MIN_W_PX;
         let row_gap = Spacing::Sm.px();
         let body_top = rect.y + PANEL_TITLE_BASELINE + title_size + Spacing::Md.px();
+        // ⚠️ **O corpo ROLA** (doc 88 §B3). Medido: uma linha escalar ocupa 34 px e o dock
+        // comporta 24 — contra um teto de 16 e um pior nó de 15 params. A varredura PRO
+        // consome essa folga, e o gate `a_full_panel_of_rows_fits_the_inspector` já dizia
+        // em texto o que fazer no dia: *"o painel precisa ROLAR antes de o teto subir mais"*.
+        //
+        // ⚠️ O `push_clip` **não é enfeite**: sem ele as linhas roladas para cima desenham
+        // por cima do título e para fora do painel — a rolagem ingênua que parece funcionar
+        // no meio do percurso e quebra nas duas pontas.
+        let body_h = (rect.y + rect.h - body_top - PANEL_HEAD_PAD).max(0.0);
+        let body_rect = Rect::new(rect.x, body_top, rect.w, body_h);
+        let scroll = ctx.host.store().panel_scroll(ids::MOTION_PARAMS_PANEL);
+        ctx.scene.push_clip(&rect_to_vello(body_rect));
 
         // Phase A — seed the pooled widgets from the doc values (skipping any row
         // being interacted with) + refresh each chip's range + slider↔chip link.
@@ -142,7 +162,7 @@ impl Panel for MotionParamsPanel {
         // `paint_rows` draws + registers hit rects (it holds `hit_index`); a Curve row's
         // `CurvePoint`/`Button` STORE states cannot be registered through the immutable
         // store here, so they ride back in `curve_widgets` for Phase C below.
-        let (curve_widgets, gradient_widgets, _body_h) = {
+        let (curve_widgets, gradient_widgets, content_h) = {
             let scene = &mut *ctx.scene;
             let text_system = &mut *ctx.text_system;
             let (store, hit_index) = ctx.host.store_and_hit_index_mut();
@@ -152,7 +172,7 @@ impl Panel for MotionParamsPanel {
                 inner_w,
                 chip_w,
                 row_gap,
-                body_top,
+                body_top - scroll,
                 label_font,
                 store,
                 hit_index,
@@ -163,6 +183,15 @@ impl Panel for MotionParamsPanel {
                 &snap.sections,
             )
         };
+        ctx.scene.pop_layer();
+        paint_scroll_chrome(
+            ctx,
+            body_rect,
+            content_h + PANEL_HEAD_PAD,
+            body_h,
+            scroll,
+            theme,
+        );
 
         // Phase B (mutable store) — mark each colour swatch so a Down opens the
         // shared OKLCH picker (generic `is_picker_swatch` dispatch). Idempotent.
@@ -473,5 +502,47 @@ fn seed_rows(store: &mut WidgetStore, rows: &[ParamRow]) {
         } else {
             store.link_slider_number_mapped(slider_id, chip_id, span as f32, row.min as f32);
         }
+    }
+}
+
+/// Desenha a barra de rolagem e **publica** o par `content_h`/`visible_h` que o dispatch da roda
+/// consome.
+///
+/// ⚠️ **Publicar é a metade que não se vê e sem a qual a roda não faz nada:** o
+/// `dispatch_wheel` deriva o `max_scroll` desses dois números, então um painel que recorta,
+/// desloca e desenha o thumb — mas não publica — rola com o thumb e fica **inerte na roda**. É
+/// o mesmo modo de falha silencioso que o arch-gate `scrollable_panels_intercept_the_wheel`
+/// documenta para a quarta edição (o `cursor_over_hero_panel`), uma casa antes.
+fn paint_scroll_chrome(
+    ctx: &mut PaintCtx,
+    body_rect: ph2d_editor_core::zones::Rect,
+    content_h: f32,
+    body_h: f32,
+    scroll: f32,
+    theme: ph2d_tokens::Theme,
+) {
+    if scrollbar_is_needed(content_h, body_h) {
+        let track = scrollbar_track_rect(body_rect);
+        let thumb = scrollbar_thumb_rect(track, scroll, content_h, body_h);
+        let is_active = matches!(
+            ctx.host.store().scrollbar_drag(),
+            Some(d) if d.panel == ids::MOTION_PARAMS_PANEL
+        );
+        paint_scrollbar(
+            body_rect, scroll, content_h, body_h, is_active, ctx.scene, theme,
+        );
+        ctx.host
+            .hit_index_mut()
+            .register(MOTION_PARAMS_SCROLLBAR_ID, thumb);
+    }
+    let store = ctx.host.store_mut();
+    store.set_panel_content_h(ids::MOTION_PARAMS_PANEL, content_h);
+    store.set_panel_visible_h(ids::MOTION_PARAMS_PANEL, body_h);
+    // ⚠️ O clamp existe porque o conteúdo ENCOLHE ao trocar de nó: um `field.remap` rolado até
+    // o fim seguido de um `motion.grid` deixaria o rolamento além do fim de um corpo de três
+    // linhas, e o painel abriria em branco.
+    let max_scroll = (content_h - body_h).max(0.0);
+    if store.panel_scroll(ids::MOTION_PARAMS_PANEL) > max_scroll {
+        store.set_panel_scroll(ids::MOTION_PARAMS_PANEL, max_scroll);
     }
 }

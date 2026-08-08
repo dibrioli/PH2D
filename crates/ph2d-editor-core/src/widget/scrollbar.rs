@@ -213,6 +213,14 @@ pub const AUTHORED_SCROLLBAR_ID: NodeId = NodeId(839);
 /// irmãos acima. Next free id is `841`; re-read the collision note above before
 /// taking it.
 pub const SCULPT3D_SCROLLBAR_ID: NodeId = NodeId(840);
+/// Motion **params** docked-panel scrollbar (doc 88 §B3). Medido: uma linha
+/// escalar ocupa **34 px** e o dock comporta **24** delas, contra um teto de
+/// `MAX_PARAM_ROWS = 16` e um pior nó (`motion.tint`) de **15 params** — ou seja
+/// oito linhas de folga para uma varredura que dá a TODO nó o conjunto PRO. O
+/// gate `a_full_panel_of_rows_fits_the_inspector` já previa o dia em texto:
+/// *"o painel precisa ROLAR antes de o teto subir mais"*. Next free id is `840`;
+/// re-read the collision note above before taking it.
+pub const MOTION_PARAMS_SCROLLBAR_ID: NodeId = NodeId(839);
 
 #[cfg(test)]
 mod tests {

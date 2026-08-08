@@ -361,7 +361,7 @@ pub fn cursor_over_hero_panel(gfx: Option<&AppGfx>, x: f32, y: f32) -> bool {
     };
     use ph2d_editor::screens::hero::ids::{
         AUDIO_EDITOR_PANEL, AUDIO_MIXER_PANEL, AUTHORED_PANEL, BGR_PANEL, CEQ_PANEL, EQS_PANEL,
-        FLIP_PANEL, FLIP_STRIP_PANEL, GAL_PANEL, HIER_PANEL, INSP_PANEL, PAD_PANEL,
+        FLIP_PANEL, FLIP_STRIP_PANEL, GAL_PANEL, HIER_PANEL, INSP_PANEL, MOTION_PARAMS_PANEL, PAD_PANEL,
         PAINTER_LAYERS_PANEL, PHYSICS_PANEL, SCULPT3D_PANEL, TOKENS_PANEL, UPS_PANEL, VECTOR_PANEL,
         WET_TUNING_PANEL,
     };
@@ -378,6 +378,7 @@ pub fn cursor_over_hero_panel(gfx: Option<&AppGfx>, x: f32, y: f32) -> bool {
     // panels (CEQ/BGR/PAD/UPS/EQS) added 2026-05-24 — without them
     // CEQ's wheel routed to camera zoom instead of panel scroll.
     inside(INSP_PANEL)
+        || inside(MOTION_PARAMS_PANEL)
         || inside(HIER_PANEL)
         || inside(GAL_PANEL)
         || inside(ph2d_editor::grid_snap::ids::GS_PANEL)

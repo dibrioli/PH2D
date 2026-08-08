@@ -278,20 +278,76 @@ mod tests {
         })
     }
 
-    /// **O teto de linhas cabe no dock.**
+    /// **Quanta folga o dock ainda tem** — a sonda que decide quando o painel precisa ROLAR.
     ///
-    /// O irmão deste gate mora na shell (`the_panel_shows_every_param_of_every_node`) e prende o
-    /// teto por BAIXO — nenhum nó do registry pode ter mais linhas que ele. Este o prende por
-    /// CIMA: as linhas que ele permite têm de caber na altura que o inspector tem. Sem os dois,
-    /// "conserte o corte" tem a resposta trivial de subir o teto até a linha 14 passar a ser
-    /// cortada pela borda da tela em vez do `.take()` — a MESMA invisibilidade por outra porta,
-    /// e a que nenhum teste de contagem vê.
-    ///
-    /// A fixture é PESSIMISTA de propósito: `MAX_PARAM_ROWS` linhas escalares, que é mais linhas
-    /// do que qualquer nó real declara. Um dia em que ela deixe de caber é um dia em que o painel
-    /// precisa rolar, e é isso que a falha vai dizer.
+    /// O gate irmão afirma que `MAX_PARAM_ROWS` linhas CABEM; ele é binário e não diz *por
+    /// quanto*. Esta imprime o número, porque a decisão que vem a seguir (a varredura PRO do
+    /// doc 88 §B3, que dá a cada nó o conjunto completo de params) é exatamente a que consome
+    /// essa folga — e escolher entre *"cabe mais uma família"* e *"o painel tem de rolar"*
+    /// precisa do px, não do booleano.
     #[test]
-    fn a_full_panel_of_rows_fits_the_inspector() {
+    #[ignore = "sonda de medição, não gate"]
+    fn measure_the_docks_headroom() {
+        let mut hit = HitIndex::default();
+        let mut scene = VectorScene::new();
+        let mut text = TextSystem::without_system_fonts();
+        let store = WidgetStore::default();
+        let head = 64.0; // LITERAL-PX-OK: a mesma folga de titulo que o gate irmao usa
+        let mut per_row = 0.0f32;
+        for n in [1usize, 8, MAX_PARAM_ROWS] {
+            let rows: Vec<ParamRow> = (0..n).map(scalar).collect();
+            let (_, _, used) = paint_rows(
+                &rows,
+                0.0,
+                ph2d_editor_core::screens::layout::INSPECTOR_W,
+                64.0,
+                Spacing::Sm.px(),
+                0.0,
+                TypeToken::Base.px(),
+                &store,
+                &mut hit,
+                &mut scene,
+                &mut text,
+                Theme::default(),
+                &Default::default(),
+                &[],
+            );
+            per_row = used / n as f32;
+            println!(
+                "{n:3} linhas: {used:7.1} px  (+{head} de titulo = {:7.1})  sobra {:7.1} de {INSPECTOR_MAX_H}",
+                used + head,
+                INSPECTOR_MAX_H - used - head
+            );
+        }
+        println!("por linha: {per_row:.1} px");
+        println!(
+            "cabem {:.0} linhas escalares no dock inteiro",
+            (INSPECTOR_MAX_H - head) / per_row
+        );
+    }
+
+    /// **A altura reportada e a altura VERDADEIRA das linhas.**
+    ///
+    /// Este gate se chamava `a_full_panel_of_rows_fits_the_inspector` e afirmava que
+    /// `MAX_PARAM_ROWS` linhas cabiam no dock — a defesa contra *"conserte o corte subindo o
+    /// teto ate a ultima linha ser cortada pela borda da tela em vez do `.take()`"*. O
+    /// doc-comment dele terminava dizendo: *"um dia em que ela deixe de caber e um dia em que o
+    /// painel precisa ROLAR"*. Esse dia chegou (doc 88 §B3) e a rolagem existe, entao **caber
+    /// deixou de ser requisito** — mante-la afirmada faria a proxima linha que nao coubesse
+    /// pedir um teto MENOR, que e o oposto da cura.
+    ///
+    /// O que sobrevive, e agora e load-bearing, e a HONESTIDADE do numero: o scrollbar deriva
+    /// `max_scroll` de `content_h - visible_h`, entao um `used` que saturasse na altura do dock
+    /// convenceria o painel de que tudo cabe e o artista **perderia a cauda em silencio** — com
+    /// as linhas desenhadas, o thumb ausente e a roda inerte. Por isso a afirmacao e sobre
+    /// CRESCIMENTO: dobrar as linhas dobra a altura, e o dock nao entra na conta.
+    #[test]
+    fn the_reported_height_is_the_true_height_of_the_rows() {
+        // ⚠️ O teto mora DENTRO do `paint_rows` (`.take(MAX_PARAM_ROWS)`), entao pedir mais
+        // linhas nao produz mais altura — 40 e 20 medem os MESMOS 544 px. A consequencia, que
+        // vale mais que este gate: com o teto em `MAX_PARAM_ROWS` o corpo mede no maximo ~544 px
+        // contra um dock de 880, entao **o painel nao transborda hoje** e a rolagem esta INERTE.
+        // Ela nao e enfeite: e o que remove o dock da lista de razoes para o teto nao subir.
         let rows: Vec<ParamRow> = (0..MAX_PARAM_ROWS).map(scalar).collect();
         let mut hit = HitIndex::default();
         let mut scene = VectorScene::new();
@@ -313,15 +369,46 @@ mod tests {
             &Default::default(),
             &[],
         );
-        // O corpo começa abaixo do título; a folga que sobra é o que ele custa.
-        let head = 64.0; // LITERAL-PX-OK: folga de titulo+padding, generosa de proposito
-        assert!(
-            used + head <= INSPECTOR_MAX_H,
-            "{MAX_PARAM_ROWS} linhas ocupam {used} px e o inspector tem {INSPECTOR_MAX_H}: o \
-             teto de linhas passou da altura do dock, entao a ultima linha e cortada pela borda \
-             da tela — o painel precisa ROLAR antes de o teto subir mais"
-        );
-        // E a metade oposta: um painel que nao desenha nada tambem "cabe".
+        // E a metade oposta: um painel que nao desenha nada tambem "cresce" trivialmente.
         assert!(used > 0.0, "as linhas nao ocuparam altura nenhuma");
+
+        // Metade das linhas tem de custar (aproximadamente) metade da altura. A tolerancia e de
+        // UMA linha porque o passo entre secoes nao e exatamente o passo entre linhas.
+        let half: Vec<ParamRow> = (0..MAX_PARAM_ROWS / 2).map(scalar).collect();
+        let mut hit2 = HitIndex::default();
+        let mut scene2 = VectorScene::new();
+        let mut text2 = TextSystem::without_system_fonts();
+        let (_, _, half_used) = paint_rows(
+            &half,
+            0.0,
+            ph2d_editor_core::screens::layout::INSPECTOR_W,
+            64.0,
+            Spacing::Sm.px(),
+            0.0,
+            TypeToken::Base.px(),
+            &store,
+            &mut hit2,
+            &mut scene2,
+            &mut text2,
+            Theme::default(),
+            &Default::default(),
+            &[],
+        );
+        let per_row = used / MAX_PARAM_ROWS as f32;
+        assert!(
+            (used - 2.0 * half_used).abs() < per_row,
+            "{MAX_PARAM_ROWS} linhas medem {used} px e {} medem {half_used}: a altura reportada \
+             nao esta crescendo com as linhas, entao ela foi clampada em algum lugar — e um \
+             painel que reporta menos conteudo do que desenha rola de menos e PERDE a cauda",
+            MAX_PARAM_ROWS / 2
+        );
+        // E o fato que decide a wave, afirmado em vez de suposto: no teto de HOJE o corpo cabe
+        // no dock com folga, entao a rolagem nunca dispara. O dia em que esta assercao virar
+        // vermelha e o dia em que ela passa a trabalhar — e nao ha nada a consertar nele.
+        assert!(
+            used < INSPECTOR_MAX_H,
+            "{MAX_PARAM_ROWS} linhas medem {used} px num dock de {INSPECTOR_MAX_H}: o painel \
+             passou a TRANSBORDAR, e a rolagem (doc 88 §B3) deixou de ser inerte"
+        );
     }
 }

@@ -94,6 +94,7 @@ mod cut_smoke;
 /// Sem `cfg`, de propósito: o que atravessa é `Vec<f32>`, nunca um tipo do módulo 3D.
 mod donated_form;
 mod driven_row_smoke;
+mod echo_family_smoke;
 mod envelope_gesture;
 mod envelope_live;
 /// As cenas de smoke do Envelope (ADR-0129) — irmão de `build_smoke`, teto de LOC.

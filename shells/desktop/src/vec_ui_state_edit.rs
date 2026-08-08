@@ -56,6 +56,48 @@ pub(crate) fn ui_state_edit_for_id(id: ph2d_editor::NodeId) -> Option<UiStateEdi
     None
 }
 
+/// Que metade da CURVA um clique escolheu.
+///
+/// ⚠️ **Duas variantes e não uma `Easing` inteira**, porque o artista escolhe uma metade de cada
+/// vez: clicar numa família tem de preservar a direção que ele já escolheu, e vice-versa. Um pick
+/// que carregasse a curva completa obrigaria o painel a reconstruir a outra metade — e o painel
+/// pinta a partir do que a shell publica, então ele estaria a adivinhar o que o documento tem.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum EasingPick {
+    Family(ph2d_anim::EasingFamily),
+    Mode(ph2d_anim::EasingMode),
+}
+
+/// Este id é um chip do seletor de curva? **Porta única** do roteador — a irmã exata do
+/// [`ui_state_edit_for_id`], e percorrida pelo mesmo `ALL` que os pinta.
+#[must_use]
+pub(crate) fn easing_pick_for_id(id: ph2d_editor::NodeId) -> Option<EasingPick> {
+    for (i, &f) in ph2d_anim::EasingFamily::ALL.iter().enumerate() {
+        if id == ph2d_editor::ids::vector_easing_family_id(i) {
+            return Some(EasingPick::Family(f));
+        }
+    }
+    for (i, &m) in ph2d_anim::EasingMode::ALL.iter().enumerate() {
+        if id == ph2d_editor::ids::vector_easing_mode_id(i) {
+            return Some(EasingPick::Mode(m));
+        }
+    }
+    None
+}
+
+/// Aplica um pick à curva que o hospedeiro tem hoje.
+///
+/// ⚠️ **Escolher `Linear` NÃO normaliza o modo guardado**, e é deliberado: `Linear` ignora-o, mas
+/// o artista que passe por `Linear` e volte a `Quad` espera reencontrar a direção que escolheu.
+/// Zerá-la aqui seria perder uma decisão dele para arrumar um byte que ninguém lê.
+#[must_use]
+pub(crate) fn easing_with(cur: ph2d_anim::Easing, pick: EasingPick) -> ph2d_anim::Easing {
+    match pick {
+        EasingPick::Family(family) => ph2d_anim::Easing { family, ..cur },
+        EasingPick::Mode(mode) => ph2d_anim::Easing { mode, ..cur },
+    }
+}
+
 /// O hospedeiro: a forma ÚNICA selecionada.
 ///
 /// ⚠️ Seleção múltipla não tem hospedeiro — *"gravar o estado destas três formas"* teria de
@@ -297,7 +339,7 @@ pub(crate) fn publish(
     move_all: bool,
 ) -> Option<ph2d_panel_vector::state::UiStatesState> {
     let h = host(selected)?;
-    let (duration, _easing) = states.timing(h);
+    let (duration, easing) = states.timing(h);
     Some(ph2d_panel_vector::state::UiStatesState {
         recorded: StateRole::ALL.map(|r| states.role(h, r).is_some()),
         // ⚠️ Os rótulos saem do CATÁLOGO, não de uma lista no painel: um papel novo aparece
@@ -321,6 +363,13 @@ pub(crate) fn publish(
             .iter()
             .any(|&r| states.role(h, r).is_some())
             .then_some(move_all),
+        // **A CURVA** — publicada SEMPRE, e não só onde há pose gravada.
+        //
+        // ⚠️ É a mesma regra da duração, que está uma linha acima: as duas descrevem *como este
+        // hospedeiro transita*, e afiná-las antes de gravar o primeiro estado é a ordem natural
+        // (escolho o feel, depois poso). Escondê-las até haver pose seria uma seção que muda de
+        // tamanho enquanto o artista trabalha, pelo motivo que ele não vê.
+        easing,
     })
 }
 

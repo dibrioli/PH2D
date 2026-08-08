@@ -96,6 +96,26 @@ pub(super) fn component_controls(store: &mut WidgetStore) {
             );
         }
     }
+    // **O SELETOR DE CURVA** (W7): as onze famílias e os três modos. Registados TODOS, e não só
+    // os da família de agora — o `populate` corre uma vez, sem seleção, e a fileira do modo é
+    // pintada ou escondida por frame conforme a família escolhida use o modo ou não. Registar "o
+    // que está visível agora" deixaria os chips do modo mortos sob o rato no primeiro `Elastic`.
+    for i in 0..ids::MAX_EASING_FAMILIES {
+        store.register(
+            ids::vector_easing_family_id(i),
+            InteractiveState::Button {
+                state: ButtonState::Normal,
+            },
+        );
+    }
+    for i in 0..ids::MAX_EASING_MODES {
+        store.register(
+            ids::vector_easing_mode_id(i),
+            InteractiveState::Button {
+                state: ButtonState::Normal,
+            },
+        );
+    }
     // **O MODO DE PREVIEW** (W7r): o interruptor que entrega o rato aos papéis.
     store.register(
         ids::VECTOR_STATE_PREVIEW,

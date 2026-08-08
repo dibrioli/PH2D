@@ -91,7 +91,7 @@ impl BodyCtx<'_> {
         // A DURAÇÃO é o número que o artista de facto afina; a régua é a mesma do modelo
         // (`MAX_DURATION_S`), publicada como fração para o trilho.
         let track = (s.duration_s / MAX_DURATION_S).clamp(0.0, 1.0);
-        self.slider_row(
+        y = self.slider_row(
             tr("panel.vector.states.duration"),
             ids::VECTOR_STATE_DURATION,
             ids::VECTOR_STATE_DURATION_NUM,
@@ -99,7 +99,41 @@ impl BodyCtx<'_> {
             f64::from(s.duration_s),
             &format!("{:.2}s", s.duration_s),
             y,
-        )
+        );
+
+        self.easing_rows(s.easing, y)
+    }
+
+    /// **O SELETOR DE CURVA** — a forma da transição, e a direção quando ela tem uma.
+    ///
+    /// ⚠️ **As duas fileiras saem de `ALL` + `label()`**, nunca de uma tabela deste painel: uma
+    /// família nova entra no vocabulário e ganha o chip de graça, exactamente como os tipos de
+    /// simetria. É também o que faz os dois consumidores do catálogo (este e o menu da timeline)
+    /// dizerem a mesma palavra, com gate na shell a exigi-lo.
+    ///
+    /// ⚠️ **E a fileira do MODO só é pintada onde ele muda a curva.** `Linear` ignora-o — o `eval`
+    /// devolve `u` antes de o olhar —, então oferecê-lo ali seriam três chips que desenham a mesma
+    /// coisa. A pergunta é feita ao enum (`uses_mode`), medida por gate, e nunca a uma lista de
+    /// exceções escrita aqui.
+    fn easing_rows(&mut self, e: ph2d_anim::Easing, y: f32) -> f32 {
+        use ph2d_anim::{EasingFamily, EasingMode};
+
+        let fams: Vec<(ph2d_a11y::NodeId, &str, bool)> = EasingFamily::ALL
+            .iter()
+            .enumerate()
+            .map(|(i, f)| (ids::vector_easing_family_id(i), f.label(), *f == e.family))
+            .collect();
+        let y = self.segmented(tr("panel.vector.states.curve"), &fams, y);
+
+        if !e.family.uses_mode() {
+            return y;
+        }
+        let modes: Vec<(ph2d_a11y::NodeId, &str, bool)> = EasingMode::ALL
+            .iter()
+            .enumerate()
+            .map(|(i, m)| (ids::vector_easing_mode_id(i), m.label(), *m == e.mode))
+            .collect();
+        self.segmented(tr("panel.vector.states.curve.mode"), &modes, y)
     }
 
     /// **O interruptor da preview**, e — quando ligada — a linha que diz como sair.

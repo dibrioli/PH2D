@@ -129,6 +129,10 @@ pub(super) fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         || ph2d_symmetry::SymmetryKind::ALL
             .iter()
             .any(|k| ph2d_tool_vector::params::symmetry_kind_id(*k) == id)
+        // **O SELETOR DE CURVA dos estados de UI** (W7). Percorrido pela MESMA porta que o pinta
+        // (`ALL` → `vector_easing_*_id`): uma família nova atravessa o barramento sozinha.
+        || (0..ids::MAX_EASING_FAMILIES).any(|i| ids::vector_easing_family_id(i) == id)
+        || (0..ids::MAX_EASING_MODES).any(|i| ids::vector_easing_mode_id(i) == id)
         || id == ids::VECTOR_TEXT_FONT_PREV
         || id == ids::VECTOR_TEXT_FONT_NEXT
         || id == ids::VECTOR_TEXT_FONT_IMPORT

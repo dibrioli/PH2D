@@ -63,6 +63,10 @@ fn with_all(recorded: [bool; 4], preview: Option<bool>, move_all: Option<bool>) 
         duration_s: 0.15,
         preview,
         move_all,
+        // ⚠️ Uma familia que USA o modo, de proposito: com `Linear` a fileira da direcao nao e'
+        // pintada (ela ignora o modo), e a fixture varreria o card mais POBRE. A licao do
+        // "card superset" — o sweep tem de conter as duas fileiras.
+        easing: ph2d_anim::Easing::new(ph2d_anim::EasingFamily::Cubic, ph2d_anim::EasingMode::Out),
     }
 }
 
@@ -345,4 +349,88 @@ fn a_host_with_no_states_offers_no_move_all_switch() {
         "a caixa sumiu num hospedeiro COM estado — relocar o widget volta a perder a animacao"
     );
     clear();
+}
+
+/// **Cada chip do seletor de curva está VIVO sob o rato** — as onze famílias e as três direções.
+///
+/// ⚠️ Ele varre `EasingFamily::ALL`, e não uma lista escrita aqui: uma família nova entra no
+/// catálogo e o gate passa a exigi-la sozinho. Uma lista à mão neste ficheiro seria a terceira
+/// cópia do vocabulário — depois do painel e do menu da timeline — e a que ficaria para trás.
+#[test]
+fn every_curve_chip_is_alive_under_the_pointer() {
+    use ph2d_anim::{Easing, EasingFamily, EasingMode};
+    // A família publicada USA o modo, senão a fileira das direções não seria pintada e metade
+    // deste gate testaria widgets que não estão na tela.
+    let st = |e: Easing| {
+        let mut s = with([true, true, false, false]);
+        s.easing = e;
+        s
+    };
+    let cur = Easing::new(EasingFamily::Cubic, EasingMode::Out);
+    for (i, f) in EasingFamily::ALL.iter().enumerate() {
+        click_reaches_bus(
+            st(cur),
+            ids::vector_easing_family_id(i),
+            &format!("o chip da familia {}", f.label()),
+        );
+    }
+    for (i, m) in EasingMode::ALL.iter().enumerate() {
+        click_reaches_bus(
+            st(cur),
+            ids::vector_easing_mode_id(i),
+            &format!("o chip da direcao {}", m.label()),
+        );
+    }
+    clear();
+}
+
+/// **A fileira da DIREÇÃO só existe onde a direção muda a curva.**
+///
+/// `Linear` ignora o modo, então oferecê-lo ali seriam três chips a desenhar a mesma coisa. As
+/// duas metades importam: sem a de PRESENÇA, esconder a fileira para sempre passaria.
+#[test]
+fn the_direction_row_is_offered_exactly_where_the_mode_is_alive() {
+    use ph2d_anim::{Easing, EasingFamily, EasingMode};
+    for f in EasingFamily::ALL {
+        let mut s = with([true, false, false, false]);
+        s.easing = Easing::new(f, EasingMode::Out);
+        let painted = rect_under(s, ids::vector_easing_mode_id(0)).is_some();
+        assert_eq!(
+            painted,
+            f.uses_mode(),
+            "{}: a fileira da direcao {} pintada, e uses_mode() diz {}",
+            f.label(),
+            if painted { "esta'" } else { "NAO esta'" },
+            f.uses_mode()
+        );
+    }
+    clear();
+}
+
+// ⚠️ **NAO ha' gate do "chip ACESO", e a ausencia e' medida:** a selecao de um chip segmentado e'
+// um argumento de PINTURA (`paint_segmented_group_adaptive` recebe `selected` e o store fica
+// read-only), entao o testkit nao tem como a observar — um gate escrito assim mesmo nao poderia
+// falhar pelo motivo que alegasse. O que ele provaria de verdade — *o painel LE a curva publicada*
+// — ja' esta' provado pelo gate acima: com `Linear` a fileira da direcao desaparece. E a metade
+// que sobra (compor o pick sobre a curva do documento) e' gateada na shell, onde ela mora.
+
+/// **O teto de ids cobre o catálogo inteiro** — e o gate mora AQUI porque editor-core não pode
+/// depender de `ph2d-anim` (a fronteira que faz o menu da timeline usar literais próprios).
+///
+/// Uma família além do teto seria pintada com um id que o `populate` nunca registou: viva na
+/// tela, morta sob o rato. É a armadilha que o `MAX_STATE_ROLES` já documenta, no catálogo ao lado.
+#[test]
+fn the_id_table_addresses_every_family_and_mode() {
+    assert!(
+        ids::MAX_EASING_FAMILIES >= ph2d_anim::EasingFamily::ALL.len(),
+        "o catalogo tem {} familias e a tabela de ids enderecea {}",
+        ph2d_anim::EasingFamily::ALL.len(),
+        ids::MAX_EASING_FAMILIES
+    );
+    assert!(
+        ids::MAX_EASING_MODES >= ph2d_anim::EasingMode::ALL.len(),
+        "o catalogo tem {} modos e a tabela de ids enderecea {}",
+        ph2d_anim::EasingMode::ALL.len(),
+        ids::MAX_EASING_MODES
+    );
 }

@@ -264,6 +264,12 @@ pub fn tr(key: &str) -> &'static str {
         // ⚠️ O rótulo diz o que ACONTECE, não o que a caixa é: *"Move All States"* descreve o
         // efeito do próximo arrasto, e é isso que o artista precisa de decidir antes de arrastar.
         "panel.vector.states.move_all" => "Move All States",
+        // **O SELETOR DE CURVA** (W7). *"Curve"* e não *"Easing"*: o artista escolhe a FORMA do
+        // movimento, e *easing* é o nome que a implementação lhe dá. Os rótulos dos chips não
+        // estão aqui — vêm do `EasingFamily::label()`, porque são o vocabulário do catálogo e não
+        // texto deste painel; uma segunda lista aqui divergiria do menu da timeline.
+        "panel.vector.states.curve" => "Curve",
+        "panel.vector.states.curve.mode" => "Direction",
         "panel.vector.section.widget" => "Widget Skin",
         "panel.vector.widget.wear" => "Wear a Widget",
         "panel.vector.widget.remove" => "Back to Drawing",

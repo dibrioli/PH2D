@@ -27,6 +27,14 @@ ph2d-tool-vector = { path = "../ph2d-tool-vector" }
 # `SymmetryKind::ALL` e dos `label()` do próprio enum — uma tabela paralela aqui nasceria
 # incompleta no dia do quinto tipo. Folha pura (só serde).
 ph2d-symmetry = { path = "../ph2d-symmetry" }
+# O CATÁLOGO DE CURVAS que o seletor de easing dos estados de UI pinta (W7): `EasingFamily::ALL`
+# + `label()` + `uses_mode()`, exatamente pelo motivo escrito acima para a simetria. É o único uso
+# desta crate aqui — o painel não avalia curva nenhuma, só nomeia as que existem.
+#
+# ⚠️ `ph2d-editor-core` NÃO pode ter esta aresta (está escrito no `timeline_presets`: é por isso
+# que o menu de easing da timeline nomeia as famílias com literais próprios). O painel pode, e é
+# essa assimetria que põe o gate dos dois catálogos na shell, onde ambos são visíveis.
+ph2d-anim = { path = "../ph2d-anim" }
 # O `WidthSource` que os três chips da seção Pencil pintam (W1d): o painel compara o enum que a
 # tool publica no snapshot, e não guarda um espelho dele — a mesma disciplina do `ShapeKind`.
 ph2d-vec-edit = { path = "../ph2d-vec-edit" }

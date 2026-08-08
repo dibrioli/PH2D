@@ -358,6 +358,30 @@ fn announce(app: &mut crate::App) {
     eprintln!(" 20. ⚠️ **E a caixa DESMARCADA tem de continuar a servir** — arraste com ela off e");
     eprintln!("     so' a pose de agora e' re-autorada. E' o que se quer quando a intencao e'");
     eprintln!("     corrigir UM estado, e por isso ela e' opt-in em vez de lei.");
+    eprintln!();
+    eprintln!("  --- O SELETOR DE CURVA (W7c) ---");
+    eprintln!(" 21. Abaixo de **Duration** ha' agora **Curve** (onze familias) e **Direction**");
+    eprintln!("     (In / Out / In-Out). O aceso e' o que o documento guarda: de fabrica,");
+    eprintln!("     **Cubic** + **Out**. Ate' hoje esse par era o UNICO alcancavel — o campo ja'");
+    eprintln!("     viajava no arquivo e nao havia gesto nenhum que o escrevesse.");
+    eprintln!(" 22. Escolha **Elastic**, entre em Preview e passe o rato pelo Play. A forma passa");
+    eprintln!("     do alvo e volta. Escolha **Bounce**: ela quica. E' a MESMA transicao — o que");
+    eprintln!("     mudou foi a curva, e o Duration continua a dizer quanto tempo ela leva.");
+    eprintln!(" 23. ⚠️ **Escolha Linear: a fileira Direction DESAPARECE.** Nao e' esquecimento —");
+    eprintln!(
+        "     Linear ignora a direcao (a curva e' a mesma nas tres), entao oferece-la seriam"
+    );
+    eprintln!(
+        "     tres botoes a desenhar a mesma coisa. Volte a **Quad** e ela reaparece **com a"
+    );
+    eprintln!("     direcao que voce tinha escolhido**: passar por Linear nao apaga a escolha.");
+    eprintln!(" 24. ⚠️ **O que ESPERAR de mau, porque esta' medido e e' decisao sua:** com");
+    eprintln!("     **In-Out** escolhido, interromper um hover no meio faz a forma **parar e");
+    eprintln!(
+        "     recomecar** (a volta arranca do repouso — 0,00x da velocidade que trazia); com"
+    );
+    eprintln!("     **Elastic**, ela arranca a 7,02x. A POSE nunca salta, so' a velocidade. E'");
+    eprintln!("     inerente a animacao por CURVA — a cura chama-se mola, e ela e' outra wave.");
 }
 
 #[cfg(test)]

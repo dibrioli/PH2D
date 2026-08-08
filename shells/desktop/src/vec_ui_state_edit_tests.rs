@@ -469,3 +469,93 @@ fn a_group_host_never_had_the_problem() {
          seria congelada em cada estado, que e' o defeito que esta wave existe para curar"
     );
 }
+
+/// **Escolher uma metade da curva preserva a outra.**
+///
+/// ⚠️ É a lei inteira do seletor num teste: o artista escolhe *Elastic* e continua com a direção
+/// que tinha; escolhe *In-Out* e continua com a família. Um pick que carregasse a curva completa
+/// obrigaria alguém a reconstruir a metade não-clicada, e a reconstrução seria feita a partir do
+/// que o painel MOSTRA em vez do que o documento TEM.
+#[test]
+fn picking_one_half_of_the_curve_keeps_the_other() {
+    use ph2d_anim::{Easing, EasingFamily as F, EasingMode as M};
+    let cur = Easing::new(F::Cubic, M::Out);
+    assert_eq!(
+        easing_with(cur, EasingPick::Family(F::Elastic)),
+        Easing::new(F::Elastic, M::Out),
+        "trocar a familia levou a direcao junto"
+    );
+    assert_eq!(
+        easing_with(cur, EasingPick::Mode(M::InOut)),
+        Easing::new(F::Cubic, M::InOut),
+        "trocar a direcao levou a familia junto"
+    );
+}
+
+/// **Passar por `Linear` não apaga a direção escolhida.**
+///
+/// `Linear` ignora o modo, então seria tentador normalizá-lo ao escolhê-la. Isso perderia uma
+/// decisão do artista para arrumar um byte que nenhum `eval` lê: ele voltaria a *Quad* e
+/// reencontraria *In* em vez do *In-Out* que tinha.
+#[test]
+fn a_detour_through_linear_remembers_the_direction() {
+    use ph2d_anim::{Easing, EasingFamily as F, EasingMode as M};
+    let cur = Easing::new(F::Elastic, M::InOut);
+    let linear = easing_with(cur, EasingPick::Family(F::Linear));
+    assert_eq!(linear.mode, M::InOut, "a direcao foi normalizada em Linear");
+    assert_eq!(
+        easing_with(linear, EasingPick::Family(F::Quad)),
+        Easing::new(F::Quad, M::InOut),
+        "voltar de Linear devolveu a direcao errada"
+    );
+}
+
+/// **Todo chip do seletor resolve num pick** — a porta é percorrida pelo mesmo `ALL` que a pinta.
+///
+/// ⚠️ E a metade NEGATIVA importa tanto quanto: um id qualquer **não** pode resolver, senão
+/// qualquer clique no painel viraria uma troca de curva silenciosa.
+#[test]
+fn every_curve_chip_resolves_and_nothing_else_does() {
+    use ph2d_anim::{EasingFamily, EasingMode};
+    for (i, f) in EasingFamily::ALL.iter().enumerate() {
+        assert_eq!(
+            easing_pick_for_id(ph2d_editor::ids::vector_easing_family_id(i)),
+            Some(EasingPick::Family(*f)),
+            "o chip da familia {} nao resolve",
+            f.label()
+        );
+    }
+    for (i, m) in EasingMode::ALL.iter().enumerate() {
+        assert_eq!(
+            easing_pick_for_id(ph2d_editor::ids::vector_easing_mode_id(i)),
+            Some(EasingPick::Mode(*m)),
+            "o chip da direcao {} nao resolve",
+            m.label()
+        );
+    }
+    assert_eq!(
+        easing_pick_for_id(ph2d_editor::ids::VECTOR_STATE_DURATION),
+        None,
+        "um id que nao e' do seletor resolveu num pick"
+    );
+}
+
+/// **A curva que o painel mostra é a que o documento guarda.**
+///
+/// ⚠️ O `publish` já buscava a curva e **deitava-a fora** (`let (duration, _easing) = …`) — era
+/// literalmente um sublinhado a separar um campo persistido desde o v56 do artista que o queria.
+/// Este gate é o que impede que ele volte a ser descartado.
+#[test]
+fn the_panel_is_shown_the_curve_the_document_holds() {
+    use ph2d_anim::{Easing, EasingFamily as F, EasingMode as M};
+    let host: VecPathId = 7;
+    let mut states = StateSets::default();
+    let mine = Easing::new(F::Bounce, M::In);
+    states.set_easing(host, mine);
+    let snap = publish(&[host], &states, None, false, false).expect("um hospedeiro, uma seccao");
+    assert_eq!(
+        snap.easing, mine,
+        "o painel receberia {:?} enquanto o documento guarda {:?}",
+        snap.easing, mine
+    );
+}

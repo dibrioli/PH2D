@@ -43,16 +43,18 @@ pub struct UiStatesState {
     /// ⚠️ **Ele qualifica o próximo ARRASTO, não o documento** — é por isso que ele não viaja no
     /// arquivo: é como o gesto se comporta, a mesma classe do `BakeChannels` da física.
     pub move_all: Option<bool>,
+    /// **A CURVA da transição** — a que o hospedeiro selecionado usa agora.
+    ///
+    /// ⚠️ **É o `Easing` inteiro, não um par de índices**, e a escolha evita a classe de defeito
+    /// que este repo já pagou várias vezes: um índice publicado por um lado e resolvido por outro
+    /// obriga as duas pontas a concordarem sobre a ORDEM de `EasingFamily::ALL`, e no dia em que
+    /// alguém reordenasse o catálogo o painel acenderia um chip e o documento guardaria outra
+    /// curva. Com o enum, a comparação é do próprio valor.
+    ///
+    /// Este campo **já viajava no arquivo** desde o v56 (`HostStates.easing`) e não tinha porta
+    /// nenhuma — o seletor é a porta, e é por isso que a wave não custa schema.
+    pub easing: ph2d_anim::Easing,
 }
-
-/// ⚠️ **A CURVA não é oferecida aqui, e a ausência é decisão MEDIDA, não esquecimento.** O
-/// catálogo de easing tem **11 famílias × 3 modos = 33 combinações** e a crate que o possui
-/// (`ph2d-anim`) **não dá nome a nenhuma** — não há `i18n_key` nem `label`. Um dropdown hoje
-/// pintaria `Quad/In`, `Expo/Out`… em identificador inglês cru, que é exatamente o que o HR-15
-/// proíbe; e uma tabela de rótulos vivendo NESTE painel seria a segunda lista a envelhecer ao
-/// lado do enum. O default (`Cubic Out`) é o que a indústria converge, e o knob nasce quando o
-/// catálogo ganhar nomes — no lugar onde as curvas moram.
-const _CURVE_IS_DEFERRED_NOT_FORGOTTEN: () = ();
 
 thread_local! {
     static STATES: RefCell<Option<UiStatesState>> = const { RefCell::new(None) };

@@ -2188,6 +2188,7 @@ impl crate::App {
             // shell — o painel so' mostra que verbos fazem sentido agora.
             let mut pending_ui_state: Option<crate::vec_ui_state_edit::UiStateEdit> = None;
             let mut pending_ui_state_duration: Option<f64> = None;
+            let mut pending_ui_easing: Option<crate::vec_ui_state_edit::EasingPick> = None;
             let mut pending_ui_preview_toggle = false;
             let mut pending_ui_move_all_toggle = false;
             // **A BOOLEANA VIVA** (plano UI/UX W1): o Apply consolida o que o produtor cozinhou
@@ -2583,6 +2584,11 @@ impl crate::App {
                             {
                                 // OS ESTADOS de UI (W7): gravar, mostrar e esquecer uma pose.
                                 pending_ui_state = Some(e);
+                            } else if let Some(p) =
+                                crate::vec_ui_state_edit::easing_pick_for_id(*id)
+                            {
+                                // **O SELETOR DE CURVA** (W7): a forma e a direcao da transicao.
+                                pending_ui_easing = Some(p);
                             } else if *id == ph2d_editor::ids::VECTOR_STATE_MOVE_ALL {
                                 // **Mover o widget com TODOS os estados** (W7r): quem desloca é a
                                 // shell — só ela vê o `Transform` andar —, então o toggle
@@ -4668,6 +4674,18 @@ impl crate::App {
                 && let [host] = self.vec_pen.selected_paths()
             {
                 ui_states.set_duration(*host, secs);
+            }
+            // **A CURVA** (W7) — a outra metade do *como este hospedeiro transita*, e por isso
+            // honrada ao lado da duracao e pela mesma guarda de hospedeiro unico.
+            //
+            // O pick e' uma METADE (familia ou direcao), entao ele e' aplicado sobre a curva que o
+            // documento tem: `set_easing` recebe sempre um `Easing` completo, e quem o compoe e' a
+            // porta unica `easing_with`.
+            if let Some(pick) = pending_ui_easing
+                && let [host] = self.vec_pen.selected_paths()
+            {
+                let cur = ui_states.timing(*host).1;
+                ui_states.set_easing(*host, crate::vec_ui_state_edit::easing_with(cur, pick));
             }
             // **O MODO DE PREVIEW** (W7r) — o interruptor e a saída por Esc, na MESMA porta: um
             // `leave` escrito num segundo sítio seria a segunda resposta a *"como se devolve o

@@ -251,3 +251,88 @@ fn the_rubber_band_follows_the_hovering_hand() {
         "e depois do hover ela termina onde a mao esta"
     );
 }
+
+/// **Fechar torna os pontos EDITÁVEIS** (Enio, 2026-08-07) — e o oráculo é o que a shell DESENHA, não o
+/// flag: depois do clique no primeiro ponto tem de existir um editor por-âncora, com uma âncora para
+/// cada ponto autorado.
+///
+/// ⚠️ A metade que este gate NÃO afirma sozinho é que aquelas âncoras respondem ao mouse — pintado e
+/// morto sob o mouse é a doença que este repo nomeia —, e é por isso que existe o gate seguinte.
+///
+/// **Mutação que sangra:** tirar o `selection_edit_mode = true` do commit — `selection_gizmos()` volta
+/// vazia e a curva fica invisível.
+#[test]
+fn closing_the_path_lights_the_gizmos_so_every_point_is_editable() {
+    let mut t = pen_tool(256);
+    for p in [[30.0, 30.0], [100.0, 30.0], [100.0, 100.0], [30.0, 100.0]] {
+        click(&mut t, p);
+    }
+    click(&mut t, [30.0, 30.0]); // fecha no primeiro ponto
+    assert!(!t.selection_pen_live(), "a sessao fechou");
+    assert!(
+        t.selection_gizmos_visible(),
+        "e fechar acendeu os gizmos — senao os pontos existem e ninguem os ve"
+    );
+    let views = t.selection_gizmos();
+    assert_eq!(views.len(), 1, "uma forma, um gizmo");
+    let edit = views[0]
+        .edit_curve
+        .as_ref()
+        .expect("o editor POR-ANCORA, nao a caixa de transformacao");
+    assert_eq!(
+        edit.anchors.len(),
+        4,
+        "uma ancora para cada ponto que a mao colocou"
+    );
+}
+
+/// **E as âncoras respondem ao mouse.** Com os gizmos acesos e a caneta AINDA em mãos, um Down sobre uma
+/// âncora a arrasta — ele não abre um caminho novo. É a primeira recusa dos gizmos, e é o que separa
+/// *"os pontos aparecem"* de *"os pontos são editáveis"*.
+///
+/// **Mutação que sangra:** a porta rotear todo Down para a caneta em modo Pen — a âncora não se move e
+/// uma sessão nova nasce sobre a curva fechada.
+#[test]
+fn an_anchor_of_the_closed_curve_moves_under_the_hand() {
+    let mut t = pen_tool(256);
+    for p in [[30.0, 30.0], [100.0, 30.0], [100.0, 100.0], [30.0, 100.0]] {
+        click(&mut t, p);
+    }
+    click(&mut t, [30.0, 30.0]);
+    // Down EM CIMA da âncora (100, 30) e arrasta 40 px para a direita.
+    t.on_canvas_pointer(cp([100.0, 30.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([140.0, 30.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([140.0, 30.0], PointerPhase::Up));
+    assert!(
+        !t.selection_pen_live(),
+        "pegar uma ancora NAO abre um caminho novo"
+    );
+    let views = t.selection_gizmos();
+    let edit = views[0].edit_curve.as_ref().expect("o editor de pontos");
+    let moved = edit
+        .anchors
+        .iter()
+        .any(|a| (a[0] - 140.0).abs() < 1.0 && (a[1] - 30.0).abs() < 1.0);
+    assert!(moved, "a ancora seguiu a mao: {:?}", edit.anchors);
+}
+
+/// **E a caneta continua sendo uma caneta.** Um Down em espaço vazio — que os gizmos não quiseram —
+/// começa o caminho seguinte; sem esta queda-livre ela seria uma ferramenta de UM só uso, porque o
+/// próprio fechamento acende os gizmos que passariam a comer todo clique.
+///
+/// **Mutação que sangra:** tirar a queda-livre — `selection_pen_live()` fica falso e o clique some.
+#[test]
+fn a_click_in_empty_space_starts_the_next_path() {
+    let mut t = pen_tool(256);
+    for p in [[30.0, 30.0], [100.0, 30.0], [100.0, 100.0], [30.0, 100.0]] {
+        click(&mut t, p);
+    }
+    click(&mut t, [30.0, 30.0]);
+    assert!(t.selection_gizmos_visible(), "os gizmos estao acesos");
+    click(&mut t, [200.0, 200.0]); // longe de toda ancora, alca e linha
+    assert!(
+        t.selection_pen_live(),
+        "o clique em espaco vazio abriu o caminho seguinte"
+    );
+    assert_eq!(t.selection_pen_points(), 1, "com a primeira ancora nele");
+}

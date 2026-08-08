@@ -37,12 +37,11 @@ impl CanvasPaintTool for PainterTool {
         // precedes the paintable-target gate. Routes to the mode engine (Automatic / Freehand / Rectangle /
         // Ellipse + Add/Remove operators); the mask joins the single undo queue on pen-up.
         if matches!(self.paint.paint_mode, super::PaintMode::Selection) {
-            // "Show Selection Gizmos" mode: EVERY shape's isolated gizmo is live (ADR-0103 Am.2 v2). Route
-            // pointers to the isolated gizmo system (never the stroke editors), which recomposites the mask.
-            if self.paint.selection_edit_mode {
-                return self.selection_gizmo_pointer(ev);
-            }
-            return self.selection_pointer(ev);
+            // A precedência (caneta viva · gizmos · sub-modo) é decidida numa porta só —
+            // `selection_canvas_pointer` —, e não aqui: ela ficou com três degraus quando fechar um
+            // caminho de caneta passou a ACENDER os gizmos, e três degraus escritos no roteador é como o
+            // quarto nasce numa ordem que ninguém releu.
+            return self.selection_canvas_pointer(ev);
         }
         if !self.paint_target_ready() {
             // Active layer isn't paintable (mask/group/adjustment) or no canvas:

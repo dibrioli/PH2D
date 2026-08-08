@@ -110,15 +110,53 @@ impl PainterTool {
         self.commit_structural_edit(before);
     }
 
-    /// Route a Selection-mode canvas pointer to the active sub-mode (called from `on_canvas_pointer`).
+    /// **Quem recebe este ponteiro no modo Selection?** — a porta ÚNICA da precedência, chamada pelo
+    /// `on_canvas_pointer`. Ela existe porque a caneta e os gizmos passaram a coexistir: fechar um
+    /// caminho **acende** os gizmos (é o que torna os pontos editáveis, Enio 2026-08-07), e gizmos
+    /// acesos possuíam o canvas inteiro.
+    ///
+    /// 1. **Uma sessão de caneta viva é MODAL.** Ela é uma conversa de vários cliques; um clique que
+    ///    caísse noutro dono deixaria o caminho pendurado sobre uma seleção que mudou debaixo dele.
+    /// 2. **Com os gizmos acesos, eles têm a PRIMEIRA RECUSA.** Um Down sobre âncora, tangente, alça de
+    ///    caixa — ou sobre a LINHA de uma curva, que insere âncora — é edição.
+    /// 3. **E em modo Pen, um Down que os gizmos não quiseram COMEÇA o caminho seguinte.** Sem esta
+    ///    terceira linha a caneta seria uma ferramenta de um só uso: o primeiro fechamento acende os
+    ///    gizmos e a partir daí nenhum clique chegaria a ela — pintada, viva no painel, e morta sob o
+    ///    mouse.
+    ///
+    /// ⚠️ **A queda-livre é só do Pen, de propósito.** Os outros modos seguem a regra de hoje (gizmos
+    /// acesos possuem o canvas), que é a MESMA que o `Convert to Curve` já produz ao deixá-los ligados
+    /// — quem quer laçar de novo desmarca *Show Selection Gizmos*, exatamente como antes desta wave.
+    /// Alargar a queda-livre faria um arrasto em espaço vazio começar um marquee POR CIMA de curvas em
+    /// edição: outra decisão, de outro dono.
+    pub(super) fn selection_canvas_pointer(&mut self, ev: CanvasPointer) -> bool {
+        if self.selection_pen_live() {
+            return self.selection_pen_pointer(ev);
+        }
+        if self.paint.selection_edit_mode {
+            let consumed = self.selection_gizmo_pointer(ev);
+            // ⚠️ A pergunta *"os gizmos quiseram este clique?"* é feita ao ESTADO que o Down acabou de
+            // escrever, nunca a um segundo hit-test: um segundo teste é uma segunda resposta à mesma
+            // pergunta, e as duas divergem no dia em que a primeira ganhar um caso (a banda de inserção
+            // sobre a linha já é um deles).
+            if ev.phase == PointerPhase::Down
+                && self.paint.selection_grab.is_none()
+                && self.paint.selection_mode == super::selection_pen::SELECTION_MODE_PEN
+            {
+                return self.selection_pen_pointer(ev);
+            }
+            return consumed;
+        }
+        self.selection_pointer(ev)
+    }
+
+    /// Route a Selection-mode canvas pointer to the active sub-mode.
     ///
     /// ⚠️ **O Pen desvia antes do resto**, e não é preferência: os outros modos são um gesto Down→Up e
     /// a caneta é uma sessão de vários cliques — passá-la pelo `selection_down`/`_up` faria cada clique
     /// abrir e fechar uma forma.
-    pub(super) fn selection_pointer(&mut self, ev: CanvasPointer) -> bool {
-        if self.paint.selection_mode == super::selection_pen::SELECTION_MODE_PEN
-            || self.selection_pen_live()
-        {
+    fn selection_pointer(&mut self, ev: CanvasPointer) -> bool {
+        if self.paint.selection_mode == super::selection_pen::SELECTION_MODE_PEN {
             return self.selection_pen_pointer(ev);
         }
         match ev.phase {

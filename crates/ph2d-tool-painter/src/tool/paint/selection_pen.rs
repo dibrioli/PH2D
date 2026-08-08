@@ -224,6 +224,19 @@ impl PainterTool {
             },
             self.paint.selection_bool_op,
         );
+        // **Fechar torna os pontos EDITÁVEIS** (Enio, 2026-08-07: *"ao clicar no primeiro ponto do path
+        // criado pela pen a curva se feche e assim todos os pontos se tornem editáveis"*).
+        //
+        // A peça entregue já é uma curva com tangentes (`model.is_curve()`), então o editor por-âncora
+        // sabe desenhá-la desde o primeiro frame — o que faltava era ACENDER os gizmos, e é exatamente o
+        // que o `Convert to Curve` e o `Merge` fazem depois de produzirem curvas (*"keep the gizmos shown
+        // on the new curves"*). Escrever o flag direto, sem passar pelo `enter_selection_edit`, é o mesmo
+        // precedente: aquela porta existe para CONVERTER o que ainda não é editável, e aqui o artista
+        // acabou de autorar algo que já é.
+        //
+        // ⚠️ O preço está pago em `super::selection_input::selection_canvas_pointer`: gizmos acesos
+        // possuem o canvas, então sem a queda-livre do modo Pen o segundo caminho nunca começaria.
+        self.paint.selection_edit_mode = true;
         if let Some(before) = self.paint.stroke_undo.take() {
             self.commit_structural_edit(before);
         }

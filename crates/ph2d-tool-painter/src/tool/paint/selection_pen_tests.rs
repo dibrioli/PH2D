@@ -472,3 +472,114 @@ fn placing_an_anchor_drops_what_the_undo_had_kept() {
         "o redo ressuscitou a ancora que a nova substituiu"
     );
 }
+
+/// **O PRIMEIRO nó mostra a alça que você está mirando** (Enio, 2026-08-08: *"no pen da seleção o
+/// primeiro nó nasce sem alça e não é possível definir a direção da alça"*).
+///
+/// ⚠️ **O oráculo é o OVERLAY, e essa escolha é o achado da wave.** Medido antes de tocar em código: o
+/// arrasto do primeiro nó JÁ escrevia `handles[0] = [[0,20],[40,20]]` com kind `Symmetric`, e o commit
+/// preservava isso **ao número** — o defeito era que a alça nunca era DESENHADA, porque o overlay pinta
+/// as tangentes da âncora *selecionada* e o ramo que abre a sessão deixava `selected` em `None`. Um gate
+/// sobre o modelo teria nascido **VERDE sobre o bug reportado**.
+///
+/// **Mutação que sangra:** devolver o `selected` do primeiro nó a `None` (tirar a frase única depois do
+/// `match`) — `tangents` volta a `None` e nada aparece.
+#[test]
+fn the_first_anchor_shows_the_handle_you_are_aiming() {
+    let mut t = pen_tool(128);
+    t.on_canvas_pointer(cp([20.0, 20.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([40.0, 20.0], PointerPhase::Move));
+    let ov = t.selection_pen_overlay().expect("a caneta esta viva");
+    let tan = ov
+        .tangents
+        .expect("o primeiro no tem de mostrar a alca que a mao esta puxando");
+    assert_eq!(tan.anchor, [20.0, 20.0], "a alca pertence ao no clicado");
+    assert_eq!(
+        tan.out_handle,
+        Some([40.0, 20.0]),
+        "a alca de SAIDA segue o dedo"
+    );
+    assert_eq!(
+        tan.in_handle,
+        Some([0.0, 20.0]),
+        "e a de entrada e o espelho dela"
+    );
+    assert_eq!(
+        tan.grabbed_out,
+        Some(true),
+        "e ela e desenhada como agarrada, nao como uma alca em repouso"
+    );
+}
+
+/// **O primeiro nó NÃO é um caso especial.** O mesmo gesto — clicar e arrastar — tem de desenhar a alça
+/// no nó que a mão acabou de pôr, seja ele o primeiro ou o quarto. É a forma de gate que sobrevive a
+/// alguém reintroduzir a assimetria por outro caminho: ela afirma a PARIDADE, não um valor.
+///
+/// **Mutação que sangra:** cravar `Some(0)` na frase única em vez de `len - 1` — o primeiro nó continua
+/// certo e o segundo passa a desenhar a alça no nó ERRADO.
+#[test]
+fn the_first_anchor_is_not_a_special_case() {
+    let mut t = pen_tool(128);
+    let mut aimed = Vec::new();
+    for (i, (click, drag)) in [
+        ([20.0f32, 20.0f32], [40.0f32, 20.0f32]),
+        ([90.0, 30.0], [110.0, 30.0]),
+        ([60.0, 100.0], [80.0, 100.0]),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        t.on_canvas_pointer(cp(click, PointerPhase::Down));
+        t.on_canvas_pointer(cp(drag, PointerPhase::Move));
+        let tan = t
+            .selection_pen_overlay()
+            .and_then(|o| o.tangents)
+            .unwrap_or_else(|| panic!("o no {i} nao mostrou alca nenhuma"));
+        aimed.push((tan.anchor, tan.out_handle));
+        t.on_canvas_pointer(cp(drag, PointerPhase::Up));
+    }
+    for (i, (anchor, out)) in aimed.iter().enumerate() {
+        assert_eq!(
+            (*anchor, *out),
+            match i {
+                0 => ([20.0, 20.0], Some([40.0, 20.0])),
+                1 => ([90.0, 30.0], Some([110.0, 30.0])),
+                _ => ([60.0, 100.0], Some([80.0, 100.0])),
+            },
+            "o no {i} desenhou a alca no lugar errado"
+        );
+    }
+}
+
+/// **E o que a mão mirou no primeiro nó chega à forma entregue.** O gate acima é sobre o que se VÊ; este
+/// é sobre o que se GUARDA — e ele já passava antes da correção, o que é precisamente por que ele não
+/// podia ser o único: o modelo estava certo o tempo todo.
+#[test]
+fn the_aim_of_the_first_anchor_reaches_the_committed_shape() {
+    let mut t = pen_tool(128);
+    for (click, drag) in [
+        ([20.0f32, 20.0f32], [40.0f32, 20.0f32]),
+        ([90.0, 30.0], [110.0, 30.0]),
+        ([60.0, 100.0], [80.0, 100.0]),
+    ] {
+        t.on_canvas_pointer(cp(click, PointerPhase::Down));
+        t.on_canvas_pointer(cp(drag, PointerPhase::Move));
+        t.on_canvas_pointer(cp(drag, PointerPhase::Up));
+    }
+    t.on_canvas_pointer(cp([20.0, 20.0], PointerPhase::Down)); // fecha no primeiro ponto
+    let Some(super::selection_shapes::SelectionShape::Freehand { model, .. }) =
+        t.paint.selection_shapes.last().map(|e| &e.shape)
+    else {
+        panic!("fechar no primeiro ponto entrega uma Freehand");
+    };
+    assert_eq!(
+        model.handles[0],
+        [[0.0, 20.0], [40.0, 20.0]],
+        "a tangente autorada no primeiro no sobrevive ao commit"
+    );
+    assert_eq!(
+        model.kinds[0],
+        super::curve_handle::HandleKind::Symmetric,
+        "e ela e MANUAL, senao o rebuild do commit a re-derivaria por cima"
+    );
+}

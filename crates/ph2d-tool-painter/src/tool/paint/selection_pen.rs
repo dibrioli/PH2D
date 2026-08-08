@@ -123,7 +123,6 @@ impl PainterTool {
                 pen.model.points.push(pos);
                 pen.model.handles.push([pos, pos]);
                 pen.model.kinds.push(HandleKind::Vector);
-                pen.model.selected = Some(pen.model.points.len() - 1);
                 pen.dragging = true;
                 pen.popped.clear(); // uma âncora nova encerra o futuro que o Ctrl+Z tinha guardado
             }
@@ -144,6 +143,22 @@ impl PainterTool {
                     popped: Vec::new(),
                 });
             }
+        }
+        // **A âncora recém-posta é a SELECIONADA** — e isto é UMA frase, depois do `match`, não uma por
+        // ramo. Era uma por ramo, e os dois discordavam: o ramo que ACRESCENTA a escrevia, o que ABRE a
+        // sessão herdava o `selected: None` do `CurveModel::from_curve` (que está certo para os outros
+        // chamadores dele — o Convert to Curve não tem âncora "recém-posta").
+        //
+        // ⚠️ **O preço era invisível no modelo e total na TELA** (Enio, 2026-08-08: *"no pen da seleção o
+        // primeiro nó nasce sem alça e não é possível definir a direção da alça"*). Medido: o arrasto do
+        // primeiro nó JÁ escrevia a tangente certa (`handles[0] = [[0,20],[40,20]]`, kind `Symmetric`) e
+        // ela sobrevivia ao commit **ao número** — mas o `selection_pen_overlay` desenha as tangentes da
+        // âncora **selecionada**, então com `None` não havia o que ver: nem alça, nem curva (com um ponto
+        // só ainda não há geometria). O artista aponta a direção, a tela não responde, e a conclusão
+        // honesta dele é que a caneta não deixa mirar. *Um gate sobre o modelo teria ficado VERDE sobre o
+        // bug reportado* — o oráculo desta wave é o overlay.
+        if let Some(pen) = self.paint.selection_pen.as_mut() {
+            pen.model.selected = pen.model.points.len().checked_sub(1);
         }
         self.selection_pen_preview();
         true

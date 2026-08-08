@@ -86,3 +86,43 @@ fn the_controllers_grounded_only_reaches_the_integrator() {
         "a lei recebe a AMOSTRA do cast, que e' de onde a `footing` sai. Args:\n{args}"
     );
 }
+
+/// **E a LEI recebe a velocidade JÁ absorvida** — a correção de ORDEM de
+/// 2026-08-08.
+///
+/// ⚠️ **Arch-gate porque a falha é de ORDEM, e ordem não é observável num teste
+/// de unidade:** o `settle` deixa no estado a queda que o mundo bloqueou e o
+/// `kinematic_advance` a apaga — mas entre os dois corre a lei, e enquanto ela
+/// lia aquela queda o freio da caminhada a tratava como escorregão, empurrando
+/// o personagem morro acima ao longo da NORMAL da rampa. Trocar a chamada por
+/// `was.kin.velocity` compila, roda, e a única coisa que muda é para onde o
+/// personagem anda ao pousar.
+///
+/// A metade comportamental é o
+/// `player_kinematic::the_kinematic_landing_does_not_keep_creeping_uphill`; esta
+/// é a que diz **onde** a resposta tem de ser tomada.
+#[test]
+fn the_law_is_handed_the_velocity_the_ground_already_holds() {
+    let src = bridge_player();
+    let bind = src
+        .find("let vel = if owner.writes_own_pose()")
+        .expect("o slot da velocidade da lei tem de existir");
+    let motor = src
+        .find("let step = player_motor(")
+        .expect("a chamada da lei tem de existir");
+    assert!(
+        bind < motor,
+        "a velocidade e' escolhida ANTES de a lei correr"
+    );
+    let arm = &src[bind..motor];
+    assert!(
+        arm.contains("supported_velocity("),
+        "o ramo Snap tem de passar pela porta da absorcao. Trecho:\n{arm}"
+    );
+    // E pela porta COMPARTILHADA com o integrador — uma segunda cópia da regra
+    // divergiria no dia em que o eixo do `up` deixasse de ser o eixo da perna.
+    assert!(
+        arm.contains("was.kin.grounded"),
+        "e com o `grounded` do INTEGRADOR, que e' quem tocou no mundo. Trecho:\n{arm}"
+    );
+}

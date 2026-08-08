@@ -433,3 +433,68 @@ fn probe_the_numbers_scene_101_claims() {
         (wd - wk).abs() / wd * 100.0
     );
 }
+
+/// **O DEFEITO 3 — o personagem entra na rampa ao longo da NORMAL dela.**
+///
+/// Report do Enio (2026-08-08, com seta na screenshot): *"o laranja ao pousar se
+/// aproxima da rampa de modo bizarro … como se fosse atraído por uma força cuja
+/// direção é a normal da rampa"*.
+///
+/// # ⚠️ A causa é o FREIO da caminhada, e a seta é literal
+///
+/// Com `drive = 0` a `walk` cancela a velocidade **ao longo da tangente do
+/// chão**. Uma queda vertical tem componente tangencial em qualquer inclinação,
+/// então o freio a lê como escorregão e a apaga — e o que sobra de uma queda
+/// vertical sem a tangente é **a normal**. Ablação pelo knob `acceleration`
+/// (que desliga o freio pela porta do artista): com freio `−0,0711 m`, sem freio
+/// `+0,0001 m`.
+///
+/// A cura é de ORDEM, não de lei: o `settle` deixa no estado a queda que o mundo
+/// bloqueou, o `kinematic_advance` a apaga — e entre os dois corria a LEI. Hoje
+/// a ponte chama a MESMA porta (`supported_velocity`) antes de a lei ler.
+///
+/// ⚠️ **O oráculo é o que a correção de facto remove:** o tique de CONTATO
+/// continua a dar um chute (ali o personagem está mesmo no ar, e nenhuma
+/// absorção é devida), e o que somem são os tiques SEGUINTES, em que a lei
+/// relia uma queda já morta. Medido numa queda de 3 m: **4,4 mm** contra os
+/// **39,0 mm** da mutação — 8,8×.
+///
+/// ⚠️ O SINAL é da fixture, não da lei: aqui quem gira é o CHÃO inteiro, então
+/// morro-acima é `+x`; na sonda da cena 101 (`probe_scene_101`) a rampa desce
+/// para a direita e o mesmo defeito sai negativo. O oráculo é `abs`.
+fn uphill_after_contact(drop: f32) -> f32 {
+    let (mut sim, mut bridge, who) = platform::scene(30.0_f32.to_radians(), 0.0);
+    make_kinematic(&mut sim, who);
+    {
+        let mut e = sim.world_mut().entity_mut(who);
+        if let Some(mut t) = e.get_mut::<Transform>() {
+            t.translation.y += drop;
+        }
+    }
+    let mut prev = pose(&sim).0;
+    let mut touched = false;
+    let mut after = 0.0_f32;
+    for t in 1..=240u64 {
+        bridge.dispatch(&mut sim, true, t);
+        let now = pose(&sim).0;
+        let dx = now - prev;
+        if touched {
+            after += dx;
+        } else if dx.abs() > 1.0e-4 {
+            touched = true;
+        }
+        prev = now;
+    }
+    assert!(touched, "a fixture tem de CONTER o pouso");
+    after
+}
+
+#[test]
+fn the_kinematic_landing_does_not_keep_creeping_uphill() {
+    let after = uphill_after_contact(3.0);
+    assert!(
+        after.abs() < 0.015,
+        "depois do tique de contato o personagem ainda andou {after:+.5} m \
+         (a mutacao — a lei a ler a queda que o integrador ja ia apagar — da' 0,039)"
+    );
+}

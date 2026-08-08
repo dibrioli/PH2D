@@ -163,3 +163,33 @@ fn sliding_along_a_slope_is_not_absorbed() {
         settled.velocity[1]
     );
 }
+
+/// **A porta da absorção — parada, e nos três casos que ela distingue.**
+///
+/// Ela é `pub` porque tem DOIS consumidores (o integrador e a ponte, que a chama
+/// antes da lei); este gate pina o que ela responde a cada um.
+#[test]
+fn the_supported_velocity_drops_only_what_the_ground_holds() {
+    // No chão, a caminho do chão: some a componente ao longo de `up`.
+    let held = supported_velocity([2.0, -5.0], true, UP);
+    assert!(
+        (held[1]).abs() < 1e-6,
+        "a queda tem de sair inteira: {held:?}"
+    );
+    assert!(
+        (held[0] - 2.0).abs() < 1e-6,
+        "e o eixo do chao passa intacto: {held:?}"
+    );
+    // No AR o valor é verbatim — é ali que a queda de facto acontece.
+    assert_eq!(
+        supported_velocity([2.0, -5.0], false, UP),
+        [2.0, -5.0],
+        "no ar nada e' absorvido"
+    );
+    // A SAIR do chão (um pulo) também é verbatim, senão a decolagem morre.
+    assert_eq!(
+        supported_velocity([2.0, 7.0], true, UP),
+        [2.0, 7.0],
+        "subir nao e' cair"
+    );
+}

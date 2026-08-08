@@ -92,6 +92,48 @@ pub struct KinematicState {
 /// plataforma acrescenta é deslocamento **deste** tique. Somá-la ao estado a
 /// tornaria permanente, e ele continuaria a voar para o lado depois de saltar
 /// para o chão firme.
+/// **A velocidade sem a parte que o chão já segura** — a porta ÚNICA da
+/// absorção, e ela tem DOIS consumidores.
+///
+/// # ⚠️ O segundo consumidor é a LEI, e é por isso que isto é uma função
+///
+/// O integrador a chama para a gravidade não se acumular contra o chão. Mas a
+/// **lei da caminhada** lê a mesma velocidade um passo ANTES, e enquanto ela
+/// via a componente que o integrador ia apagar, o freio dela — que existe para
+/// parar quem escorrega — lia a QUEDA como escorregão.
+///
+/// ⚠️ **O sintoma disso não é "ele freia demais", é uma DIREÇÃO:** o freio age
+/// ao longo da tangente do chão, então cancelar a componente tangencial de uma
+/// queda vertical deixa **só a componente normal** — o personagem deixa de cair
+/// para baixo e passa a entrar na rampa **ao longo da normal dela**. Medido numa
+/// rampa de 30°: **7,3 cm morro acima** em sete tiques, e o Enio desenhou a seta
+/// exatamente na normal.
+///
+/// Medido pela ablação do knob `acceleration` (que desliga o freio pela porta do
+/// artista): com freio `−0,0711 m`, sem freio `+0,0001 m` — o freio é a causa
+/// inteira.
+///
+/// ⚠️ **A pergunta continua sendo a do INTEGRADOR** (ver
+/// [`KinematicState::grounded`]) — o que mudou foi QUANDO ela é feita, não quem
+/// a responde: a `footing` segue a porta única da lei sobre chão (K4), e este
+/// `grounded` segue vindo de quem tocou no mundo.
+#[must_use]
+pub fn supported_velocity(v: Vec2, grounded: bool, up: Vec2) -> Vec2 {
+    if !grounded {
+        return v;
+    }
+    // ⚠️ **`into < 0.0`, e não `!(into >= 0.0)`** — a extração tinha de ser *pure
+    // code motion*, e as duas formas divergem em `NaN`: a primeira não absorve
+    // (o `NaN` passa intacto, como passava antes), a segunda propagaria o `NaN`
+    // para os dois eixos.
+    let into = v[0] * up[0] + v[1] * up[1];
+    if into < 0.0 {
+        [v[0] - up[0] * into, v[1] - up[1] * into]
+    } else {
+        v
+    }
+}
+
 #[must_use]
 pub fn kinematic_advance(
     state: KinematicState,
@@ -101,19 +143,15 @@ pub fn kinematic_advance(
     up: Vec2,
     dt: f32,
 ) -> (KinematicState, Vec2) {
-    let mut v = [
+    let v = [
         state.velocity[0] + (gravity[0] + motor.accel[0]) * dt + motor.boost[0],
         state.velocity[1] + (gravity[1] + motor.accel[1]) * dt + motor.boost[1],
     ];
 
-    // Ver [`KinematicState::grounded`]: a pergunta do INTEGRADOR, não a da lei.
-    if state.grounded {
-        let into = v[0] * up[0] + v[1] * up[1];
-        if into < 0.0 {
-            v[0] -= up[0] * into;
-            v[1] -= up[1] * into;
-        }
-    }
+    // Ver [`supported_velocity`]: a pergunta do INTEGRADOR, não a da lei — e a
+    // MESMA porta que a ponte usa para não entregar à lei uma queda que este
+    // passo vai apagar.
+    let v = supported_velocity(v, state.grounded, up);
 
     let wanted = [
         (v[0] + ground_velocity[0]) * dt,

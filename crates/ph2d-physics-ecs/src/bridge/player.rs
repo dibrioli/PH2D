@@ -343,8 +343,15 @@ impl PhysicsBridge {
             // derivado da pose que nós escrevemos no tique ANTERIOR, ou seja um
             // eco atrasado do que a lei já sabe. Ler o eco faria o pulo e a
             // caminhada decidirem sobre um estado de um tique atrás.
+            //
+            // ⚠️ **E ela vem SEM a parte que o chão já segura** — a mesma porta
+            // que o integrador usa (`supported_velocity`), chamada aqui porque a
+            // ORDEM importa: o `settle` deixa no estado a queda que o mundo
+            // bloqueou, o `kinematic_advance` a apaga, e entre os dois corre a
+            // LEI. Enquanto ela via essa queda, o freio da caminhada a lia como
+            // escorregão e empurrava morro acima — ver `supported_velocity`.
             let vel = if owner.writes_own_pose() {
-                was.kin.velocity
+                ph2d_platformer::supported_velocity(was.kin.velocity, was.kin.grounded, UP)
             } else {
                 solver_vel
             };

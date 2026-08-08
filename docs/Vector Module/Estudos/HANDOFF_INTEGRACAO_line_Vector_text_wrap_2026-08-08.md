@@ -1,7 +1,10 @@
 # Handoff de integração — `line/Vector` · W2a, **o texto REFLUI**
 
 > **Data:** 2026-08-08 · **Branch:** `line/Vector` · **Wave:** W2a (a fila dos Estudos)
-> **Estado:** fechada, gates verdes, **PENDENTE DE SMOKE** e de ordem de integração do Enio.
+> **Estado:** fechada, gates verdes, **SMOKE APROVADO pelo Enio (2026-08-08)** — aguarda
+> ordem de integração.
+>
+> ⚠️ O smoke reprovou uma vez: os chips `Auto|Fixed` shiparam **mortos** (§4.1). Aprovado na 2ª.
 
 ---
 

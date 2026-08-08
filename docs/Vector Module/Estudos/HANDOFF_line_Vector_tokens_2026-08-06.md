@@ -219,7 +219,7 @@ a W4c.5 nomeou como **deliberadamente fora**:
   (Front 2 não construída). Não é adiamento, é pré-requisito.
 - ~~**W2a — `VecTextParams.wrap_width`**~~ — **FECHADA (2026-08-08**, handoff
   [`HANDOFF_INTEGRACAO_line_Vector_text_wrap_2026-08-08.md`](HANDOFF_INTEGRACAO_line_Vector_text_wrap_2026-08-08.md);
-  **pendente de smoke**, cena `PH2D_BUILD_SMOKE=63`). ⚠️ **E o parley NÃO foi usado:** o
+  **SMOKE APROVADO 2026-08-08**, cena `PH2D_BUILD_SMOKE=63`). ⚠️ **E o parley NÃO foi usado:** o
   quebrador mede com `line_advance`, a **MESMA régua do cozedor** — duas réguas que concordam
   quase sempre são duas réguas que discordam num tracking qualquer. A porta é **UMA**
   (`wrapped_lines`) e o **CURSOR** passa por ela, que é a metade que o smoke julga.

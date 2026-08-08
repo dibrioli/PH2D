@@ -214,10 +214,14 @@ pub(super) fn component_controls(store: &mut WidgetStore) {
 }
 
 /// As réguas da MOLA — os mesmos números do modelo (`ph2d_ui_state::*`), com gate a compará-los.
+///
+/// ⚠️ Estes **não são valores de design**: são as pontas da régua de uma grandeza FÍSICA (rigidez
+/// em unidades de mola, amortecimento adimensional). Não existe token de escala para *"quão dura é
+/// uma mola"*, e inventar um poria uma constante de física dentro do design system.
 const SPRING_STIFFNESS_MIN: f32 = 1.0;
-const SPRING_STIFFNESS_MAX: f32 = 60.0;
-const SPRING_STIFFNESS_DEFAULT: f32 = 12.0;
-const SPRING_DAMPING_MIN: f32 = 0.1;
+const SPRING_STIFFNESS_MAX: f32 = 60.0; // LITERAL-PX-OK: régua de FÍSICA, não de design
+const SPRING_STIFFNESS_DEFAULT: f32 = 12.0; // LITERAL-PX-OK: régua de FÍSICA, não de design
+const SPRING_DAMPING_MIN: f32 = 0.1; // LITERAL-PX-OK: régua de FÍSICA, não de design
 const SPRING_DAMPING_MAX: f32 = 2.0;
 const SPRING_DAMPING_DEFAULT: f32 = 1.0;
 

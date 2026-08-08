@@ -23,9 +23,13 @@ use ph2d_tokens::Spacing;
 const MAX_DURATION_S: f32 = 2.0;
 
 /// As réguas da MOLA — os mesmos números do modelo (`ph2d_ui_state::MIN/MAX_*`), com gate.
+///
+/// ⚠️ Estes **não são valores de design**: são as pontas da régua de uma grandeza FÍSICA (rigidez
+/// em unidades de mola, amortecimento adimensional). Não existe token de escala para *"quão dura é
+/// uma mola"*, e inventar um poria uma constante de física dentro do design system.
 const MIN_STIFFNESS: f32 = 1.0;
-const MAX_STIFFNESS: f32 = 60.0;
-const MIN_DAMPING: f32 = 0.1;
+const MAX_STIFFNESS: f32 = 60.0; // LITERAL-PX-OK: régua de FÍSICA, não de design
+const MIN_DAMPING: f32 = 0.1; // LITERAL-PX-OK: régua de FÍSICA, não de design
 const MAX_DAMPING: f32 = 2.0;
 
 use crate::ids;

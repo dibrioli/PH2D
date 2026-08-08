@@ -146,12 +146,40 @@ o `node_id_collisions` confere-os.
 | gate | onde | estado |
 |---|---|---|
 | `cargo fmt --all -- --check` | workspace | ✅ limpo no tip |
-| bateria completa | `cargo nextest run --workspace` | rodada no fecho de cada wave |
+| **`cargo nextest run --workspace`** | 13 166 testes | ✅ **13 166 / 13 166**, ver §4.1 |
 | contrato congelado | `ph2d-nodegraph` · `ph2d-core/src/tool.rs` | ✅ **diff vazio** |
 | `no_two_smoke_scenes_claim_the_same_level` | `shells/desktop/tests/` | ✅ (61–65 são novos e únicos) |
 | `every_panel_the_shell_drives_is_in_its_registry` | `shells/desktop/tests/` | ✅ |
 | `the_leaf_stays_dep_free` | `ph2d-tokens/tests/` | **novo** — é ele que impede a `ph2d-tokens` de ganhar `serde_json` |
 | `no_effect_inside_debug_assert` | `ph2d-editor-core/tests/` | **novo** — ver §5.1 |
+
+### 4.1 A bateria completa, rodada no tip — e o que ela achou
+
+Primeira corrida: **13 163 passam, 3 falham**. Duas são **flakes de RAZÃO conhecidas** e uma era
+**real e minha**.
+
+| falha | dono | veredito |
+|---|---|---|
+| `ph2d-editor-core::no_magic_numeric` | **esta linha** | ⚠️ **REAL — corrigida**, ver abaixo |
+| `ph2d-timeline::nesting_clock::the_cost_of_depth_is_linear_not_explosive` | timeline | flake **PRÉ-EXISTENTE e documentada** no CLAUDE.md (*"gate de RAZÃO sensível a carga — passa isolado"*); re-rodado sozinho: **6/6** |
+| `ph2d-mesh::measure_normals::measure_normals_parallel_speedup` | `line/sculpt3d` | **mesma classe** (razão sob 13 k testes em paralelo); re-rodado sozinho: **3/3** |
+
+⚠️ **A que era minha é exatamente o modo de falha que o §4 descreve dois parágrafos acima**, e vale
+mais do que o conserto: **cinco literais de física** (`60.0` · `0.1` · `12.0` — as pontas da régua
+da MOLA) em `ph2d-panel-vector`, apanhados por um gate que mora na **`ph2d-editor-core`**. Um
+fechamento por `cargo test -p ph2d-panel-vector` **nunca o alcança** — a mesma causa estrutural que
+a `line/motion-value`, a `line/physics` e esta linha já documentaram, **e eu caí nela na wave em
+que a escrevi**.
+
+**O conserto é o escape que o próprio gate oferece** (`// LITERAL-PX-OK: <razão>`), porque estes
+números **não são valores de design**: são as pontas da régua de uma grandeza FÍSICA (rigidez em
+unidades de mola, amortecimento adimensional). *Não existe token de escala para "quão dura é uma
+mola", e inventar um poria uma constante de física dentro do design system.*
+
+⚠️ **O marcador tem de ficar NA linha**, e o `rustfmt` já reflowou uma correção destas para fora
+antes (a cicatriz da `line/motion-value`, 02/08) — conferido depois do `cargo fmt`: os cinco
+continuam onde deviam. A "mutação" é trivial e foi observada: tirar o marcador devolve o gate ao
+vermelho com os cinco sítios nomeados.
 
 ⚠️ **Rode a suíte do shell em DEBUG e em RELEASE.** Esta linha tem o precedente escrito: o
 `b7cb03d4e` corrige um botão que **não fazia nada em release** porque a escrita morava dentro de
@@ -284,5 +312,7 @@ dele (§ perto do fim) diz o que cada uma entregou e o que ficou.
    contra o `main` do dia. E confira o `project_schema_tests.rs` **mesmo que o `project.rs`
    funda limpo** — o modo de falha é mudo.
 3. **O contador de componentes é TRÊS** (52→54 no `ph2d-ecs`, 53→55 nos dois espelhos).
-4. **Rode `--workspace`, em debug E em release.**
+4. **Rode `--workspace`, em debug E em release.** No tip ela dá **13 166 / 13 166** (§4.1); se as
+   duas flakes de razão (`nesting_clock` · `measure_normals`) aparecerem sob carga, **re-rode-as
+   isoladas antes de suspeitar do merge**.
 5. **Cinco smokes novos (61–65), todos aprovados; as cenas herdadas têm de continuar iguais.**

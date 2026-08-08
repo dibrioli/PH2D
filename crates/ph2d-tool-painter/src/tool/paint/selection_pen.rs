@@ -51,6 +51,9 @@ pub(crate) struct SelectionPen {
     dragging: bool,
     /// Onde a mão está com o botão SOLTO — a linha-fantasma da próxima âncora. `None` até o 1º hover.
     hover: Option<[f32; 2]>,
+    /// As âncoras que o **Ctrl+Z desta sessão** tirou, na ordem em que saíram — a pilha que o
+    /// Ctrl+Shift+Z devolve. Zerada por toda âncora nova, que é a regra universal de um redo.
+    popped: Vec<([f32; 2], [[f32; 2]; 2], HandleKind)>,
 }
 
 impl PainterTool {
@@ -122,6 +125,7 @@ impl PainterTool {
                 pen.model.kinds.push(HandleKind::Vector);
                 pen.model.selected = Some(pen.model.points.len() - 1);
                 pen.dragging = true;
+                pen.popped.clear(); // uma âncora nova encerra o futuro que o Ctrl+Z tinha guardado
             }
             None => {
                 // A base booleana é a seleção que existe AGORA, e ela vale pela sessão inteira (lei 2).
@@ -137,6 +141,7 @@ impl PainterTool {
                     ),
                     dragging: true,
                     hover: Some(pos),
+                    popped: Vec::new(),
                 });
             }
         }
@@ -173,7 +178,29 @@ impl PainterTool {
         let Some(pen) = self.paint.selection_pen.as_ref() else {
             return;
         };
+        // ⚠️ **Abaixo de três âncoras ele repõe a BASE em vez de retornar**, e é isso que torna o preview
+        // uma função PURA do caminho — a propriedade de que o Ctrl+Z depende. O `return` cedo deixava na
+        // tela *o que o último preview tivesse escrito*: para um caminho que CRESCE isso é a seleção
+        // anterior (parece certo, por acidente), e para um que ENCOLHE é a região que as três âncoras
+        // desenhavam — a máscara descrevendo um caminho que não existe mais.
+        //
+        // ⚠️ E a base, não a região VAZIA: com `New` a vazia APAGARIA a seleção anterior no primeiro
+        // clique, e a lei honesta é que ela sobrevive até o caminho novo de fato delimitar área. Repor a
+        // base é a única resposta que serve às três operações — com a vazia, `Remove` também devolveria a
+        // base, mas `New` a perderia.
         if pen.model.points.len() < MIN_CLOSE_POINTS {
+            let base = Arc::clone(&self.paint.selection_base);
+            let n = (self.source_size.0 as usize) * (self.source_size.1 as usize);
+            // Uma base que não mede a tela é uma sessão que começou SEM seleção nenhuma — e o que se
+            // repõe então é o vazio, nunca o que estava desenhado. Deixá-la passar era o que mantinha a
+            // região das três âncoras na tela depois de tirar uma.
+            let crisp = if base.len() == n {
+                (*base).clone()
+            } else {
+                vec![0u8; n]
+            };
+            self.set_selection_from_crisp(crisp);
+            self.invalidate_composite();
             return;
         }
         let spine = self.freehand_spine_closed(&pen.model);
@@ -266,6 +293,66 @@ impl PainterTool {
         }
         self.paint.selection_base = Arc::new(Vec::new());
         self.invalidate_composite();
+    }
+
+    /// **Ctrl+Z com a caneta em voo tira a ÚLTIMA ÂNCORA** (Enio, 2026-08-07: *"se eu já criei uma
+    /// seleção com pen e estou criando outra, ao usar o undo, em vez de desfazer os pontos da nova linha,
+    /// se desfaz o da primeira"*).
+    ///
+    /// ⚠️ **É a mesma lei que o Deform Transform vivo já tem** (`transform_undo_step`, no topo do
+    /// `undo_last`): *uma sessão modal viva é dona do próprio Ctrl+Z e anda para trás pelos GESTOS dela,
+    /// sem tocar a linha do tempo estrutural.* As âncoras em voo não estão no `ProjectState` — a sessão
+    /// inteira é UM passo, gravado só no commit —, então sem este dono o atalho caía no passo anterior e
+    /// desfazia **a seleção que já estava pronta**, que é exatamente o que o Colorize do Flip já tinha
+    /// pago com os rabiscos transientes dele.
+    ///
+    /// Tirar a ÚLTIMA âncora encerra a sessão: um caminho sem pontos não é um caminho, e a seleção volta
+    /// ao que era antes dela **sem gastar passo de undo** (não há o que desfazer — nada foi commitado).
+    ///
+    /// `true` quando a caneta consumiu o atalho.
+    pub fn selection_pen_undo(&mut self) -> bool {
+        let Some(pen) = self.paint.selection_pen.as_mut() else {
+            return false;
+        };
+        let Some(i) = pen.model.points.len().checked_sub(1) else {
+            self.selection_pen_cancel();
+            return true;
+        };
+        let a = pen.model.points.remove(i);
+        let h = pen.model.handles.remove(i);
+        let k = pen.model.kinds.remove(i);
+        pen.popped.push((a, h, k));
+        pen.dragging = false;
+        pen.model.selected = pen.model.points.len().checked_sub(1);
+        if pen.model.points.is_empty() {
+            self.selection_pen_cancel();
+            return true;
+        }
+        self.selection_pen_preview();
+        self.invalidate_composite();
+        true
+    }
+
+    /// **Ctrl+Shift+Z devolve a âncora que o Ctrl+Z tirou.** `true` sempre que há uma sessão viva — com a
+    /// pilha vazia ele **consome sem fazer nada**, de propósito.
+    ///
+    /// ⚠️ Ceder o atalho ali seria refazer um passo ESTRUTURAL (a seleção anterior) enquanto o artista
+    /// desenha esta — a mesma confusão que o undo tinha, pela outra ponta. O irmão do Deform faz
+    /// literalmente isto (`if self.deform_transform_live() { return false; }` engole o redo).
+    pub fn selection_pen_redo(&mut self) -> bool {
+        let Some(pen) = self.paint.selection_pen.as_mut() else {
+            return false;
+        };
+        let Some((a, h, k)) = pen.popped.pop() else {
+            return true; // sessão viva, nada a devolver: engolido
+        };
+        pen.model.points.push(a);
+        pen.model.handles.push(h);
+        pen.model.kinds.push(k);
+        pen.model.selected = Some(pen.model.points.len() - 1);
+        self.selection_pen_preview();
+        self.invalidate_composite();
+        true
     }
 
     /// O que a shell DESENHA da caneta — o mesmo snapshot que o editor de curva do traço publica, para

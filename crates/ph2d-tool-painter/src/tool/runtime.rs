@@ -50,6 +50,12 @@ impl PainterTool {
         if self.transform_undo_step() {
             return true;
         }
+        // E a CANETA da seleção, pela MESMA razão: as âncoras em voo não estão no `ProjectState` (a
+        // sessão inteira é um passo, gravado só no fechamento), então sem este dono o Ctrl+Z desfazia a
+        // seleção ANTERIOR enquanto o artista desenhava esta (Enio, 2026-08-07).
+        if self.selection_pen_undo() {
+            return true;
+        }
         // ONE unified timeline: shape authoring (create / point-edit / reshape / Offset) and pixel bakes
         // (Apply / Apply & Keep) are all `ModelSnapshot` entries, so undo walks them in reverse chronological
         // order regardless of kind. Each entry carries the open-shape editor state, so a restore reinstates
@@ -87,6 +93,12 @@ impl PainterTool {
         // A live / just-un-lifted Transform owns redo: re-lift the gizmo (recreate it) or step a gizmo pose
         // FORWARD — mirroring transform_undo_step, WITHOUT touching the structural timeline (Enio 2026-07-04).
         if self.transform_redo_step() {
+            return true;
+        }
+        // A caneta viva é dona do redo pela mesma razão — e ela o ENGOLE com a pilha vazia, como o float
+        // do Transform faz logo abaixo: refazer um passo estrutural sob um caminho em voo é a confusão do
+        // undo pela outra ponta.
+        if self.selection_pen_redo() {
             return true;
         }
         // While a Transform float is live with nothing left to redo, the structural timeline is frozen (the

@@ -336,3 +336,139 @@ fn a_click_in_empty_space_starts_the_next_path() {
     );
     assert_eq!(t.selection_pen_points(), 1, "com a primeira ancora nele");
 }
+
+// ── O Ctrl+Z de uma caneta em voo ────────────────────────────────────────────────────────────────────
+
+/// Uma seleção JÁ PRONTA, feita com a caneta, e uma segunda em voo com três âncoras — a cena exata do
+/// report. O que o gate mede é de qual das duas o Ctrl+Z fala.
+fn one_committed_and_one_in_flight() -> PainterTool {
+    let mut t = pen_tool(256);
+    for p in [[30.0, 30.0], [100.0, 30.0], [100.0, 100.0], [30.0, 100.0]] {
+        click(&mut t, p);
+    }
+    click(&mut t, [30.0, 30.0]); // fecha a PRIMEIRA
+    assert!(!t.selection_pen_live(), "a primeira fechou");
+    assert!(selected(&t, 60, 60), "a primeira selecao existe");
+    for p in [[150.0, 150.0], [200.0, 150.0], [200.0, 200.0]] {
+        click(&mut t, p);
+    }
+    assert_eq!(t.selection_pen_points(), 3, "a segunda esta em voo");
+    t
+}
+
+/// **O Ctrl+Z fala do caminho EM VOO, não da seleção que já estava pronta** (Enio, 2026-08-07).
+///
+/// As âncoras em voo não estão no `ProjectState` — a sessão inteira é UM passo, gravado só no fechamento
+/// —, então sem um dono o atalho caía no passo estrutural anterior e apagava trabalho terminado enquanto
+/// o artista desenhava. É a mesma doença que o Colorize do Flip pagou com os rabiscos transientes.
+///
+/// **Mutação que sangra:** tirar o `selection_pen_undo` do topo do `undo_last` — a primeira seleção some
+/// e o caminho em voo fica com as três âncoras.
+#[test]
+fn undo_takes_the_last_anchor_not_the_selection_already_finished() {
+    let mut t = one_committed_and_one_in_flight();
+    assert!(t.undo_last(), "o undo foi consumido");
+    assert_eq!(
+        t.selection_pen_points(),
+        2,
+        "o Ctrl+Z tinha de tirar a ULTIMA ANCORA do caminho em voo"
+    );
+    assert!(
+        selected(&t, 60, 60),
+        "e a selecao que ja estava PRONTA continua la"
+    );
+}
+
+/// **Desfazer até a última âncora encerra a sessão, e a seleção volta ao que era** — sem gastar passo de
+/// undo, porque nada foi commitado.
+///
+/// **Mutação que sangra:** não encerrar a sessão com o caminho vazio — `selection_pen_live` fica verdadeiro
+/// sobre um caminho de zero pontos.
+#[test]
+fn undoing_every_anchor_ends_the_session_and_costs_no_undo_step() {
+    let mut t = one_committed_and_one_in_flight();
+    for _ in 0..3 {
+        assert!(t.undo_last(), "a caneta consumiu");
+    }
+    assert!(
+        !t.selection_pen_live(),
+        "a sessao morreu com o ultimo ponto"
+    );
+    assert!(
+        selected(&t, 60, 60),
+        "e a primeira selecao sobreviveu inteira"
+    );
+    // Agora sim: o Ctrl+Z seguinte é o estrutural, e desfaz a PRIMEIRA.
+    t.undo_last();
+    assert!(
+        !selected(&t, 60, 60),
+        "com a caneta fora, o Ctrl+Z volta a ser o estrutural"
+    );
+}
+
+/// **Desfazer abaixo de três âncoras tira a REGIÃO da tela.**
+///
+/// ⚠️ O preview retornava cedo com menos de três pontos, então desfazer da terceira para a segunda
+/// deixava desenhada a região que as TRÊS delimitavam: a máscara descrevendo um caminho que não existe
+/// mais. Agora ele aplica a região vazia — o preview é função pura do caminho, que é a propriedade de
+/// que o Ctrl+Z depende.
+///
+/// **Mutação que sangra:** o `return` cedo de volta ao `selection_pen_preview`.
+#[test]
+fn undoing_below_three_anchors_takes_the_region_off_the_screen() {
+    let mut t = pen_tool(256);
+    for p in [[150.0, 150.0], [220.0, 150.0], [220.0, 220.0]] {
+        click(&mut t, p);
+    }
+    assert!(selected(&t, 200, 190), "o triangulo em voo esta na tela");
+    assert!(t.undo_last(), "a caneta consumiu");
+    assert!(
+        !selected(&t, 200, 190),
+        "a regiao das TRES ancoras continua desenhada depois de tirar uma"
+    );
+}
+
+/// **Ctrl+Shift+Z devolve a âncora** — e, com a pilha vazia, é ENGOLIDO em vez de refazer um passo
+/// estrutural sob um caminho em voo (o irmão exato do float do Deform).
+///
+/// **Mutação que sangra:** `selection_pen_redo` devolvendo `false` com a pilha vazia — o redo escapa para
+/// o estrutural e reinstala a seleção que o teste acabou de desfazer.
+#[test]
+fn redo_gives_the_anchor_back_and_is_swallowed_when_there_is_none() {
+    let mut t = one_committed_and_one_in_flight();
+    t.undo_last();
+    assert_eq!(t.selection_pen_points(), 2);
+    assert!(t.redo_last(), "o redo foi consumido");
+    assert_eq!(t.selection_pen_points(), 3, "a ancora voltou");
+    // A pilha está vazia agora: o redo é ENGOLIDO.
+    assert!(t.redo_last(), "consumido mesmo sem nada a devolver");
+    assert_eq!(t.selection_pen_points(), 3);
+    // ⚠️ O oráculo NÃO é *"a primeira seleção está na tela"* — sob `New` um caminho de três âncoras
+    // SUBSTITUI a máscara, então ela corretamente não está. O que se afirma é que a fila ESTRUTURAL não
+    // foi mexida: Esc joga a sessão fora e a primeira volta inteira. Foi este assert que reprovou código
+    // correto na 1ª versão do gate.
+    assert!(t.selection_pen_cancel(), "havia sessao para descartar");
+    assert!(
+        selected(&t, 60, 60),
+        "a primeira selecao nao voltou — o redo mexeu na fila estrutural"
+    );
+}
+
+/// **Uma âncora nova encerra o futuro** — a regra universal de um redo, e sem ela o Ctrl+Shift+Z
+/// ressuscitaria um ponto que já não pertence ao caminho.
+///
+/// **Mutação que sangra:** tirar o `popped.clear()` do ramo que empurra a âncora.
+#[test]
+fn placing_an_anchor_drops_what_the_undo_had_kept() {
+    let mut t = one_committed_and_one_in_flight();
+    t.undo_last();
+    assert_eq!(t.selection_pen_points(), 2);
+    click(&mut t, [140.0, 210.0]); // uma âncora NOVA
+    assert_eq!(t.selection_pen_points(), 3);
+    assert!(t.redo_last(), "consumido");
+    assert_eq!(
+        t.selection_pen_points(),
+        3,
+        "o redo ressuscitou a ancora que a nova substituiu"
+    );
+}

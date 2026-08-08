@@ -65,6 +65,28 @@ fn a_signal_published_this_frame_is_read_this_frame() {
     assert_eq!(host.toasts.len(), 2, "os dois sinais do quadro chegaram");
 }
 
+/// **AS DUAS FONTES, UM DRENO.** É a wave inteira numa asserção: a timeline e a física publicam
+/// na mesma saída, no mesmo quadro, e o consumidor as recebe **na ordem em que foram
+/// publicadas** — sem saber que existem duas fontes.
+///
+/// ⚠️ A ordem importa e não é decorativa: ela é a ordem do QUADRO (a timeline resolve antes de o
+/// mundo andar), e é ela que faz um sinal de contato descrever a colisão DESTE quadro em vez da
+/// do anterior.
+#[test]
+fn both_producers_land_in_one_outbox_in_one_frame() {
+    let mut host = Host::default();
+    host.outbox.advance_frame();
+    host.outbox.publish(Signal::from_timeline("footstep", 1.0));
+    host.outbox.publish(Signal::from_contact("door", 11, 42));
+    host.outbox.publish(Signal::from_timeline("beat", 2.5));
+    host.drain_log();
+    assert_eq!(
+        host.log,
+        vec!["footstep @ 1", "door 11->42", "beat @ 2.5"],
+        "um consumidor só, as duas fontes, na ordem de publicação"
+    );
+}
+
 /// **Dois consumidores, dois cursores, e cada um vê tudo UMA vez.** A independência é o produto:
 /// o toast não consome o sinal do log, e vice-versa.
 #[test]

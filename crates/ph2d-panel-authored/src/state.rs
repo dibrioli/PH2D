@@ -47,7 +47,17 @@ pub(crate) fn push_intent(i: AuthoredIntent) {
     INTENTS.with(|q| q.borrow_mut().push(i));
 }
 
-/// **Drena** os pedidos — a shell chama uma vez por frame.
+/// **Drena** os pedidos.
+///
+/// ⚠️ **Esta linha dizia *"a shell chama uma vez por frame"*, e era FALSO** — a varredura do repo
+/// (2026-08-08) mostra que **ninguém fora dos testes desta crate a chama**. A ausência é a cerca
+/// declarada no cabeçalho, mas a nota dela envelheceu: a **W8b.3 ligou a row à ARTE** por outra
+/// rota (`WidgetStore` → `VecViewState`), então uma das três metades que a cerca escalonava já foi
+/// feita por fora.
+///
+/// ⚠️ **E o preço não é só higiene:** uma fila que só é empurrada **cresce sem teto** enquanto o
+/// painel está aberto — um arrasto de slider empurra um intent com duas `String` por quadro.
+/// Ligar o ouvinte **ou** parar de empurrar são as duas curas; escolher é da wave que o fizer.
 ///
 /// ⚠️ Drenar ESVAZIA: um segundo leitor veria a fila vazia e o gesto do artista viraria no-op num
 /// dos dois caminhos. É a mesma lei do `wash_diag` do Painter e do `drain_intents` dos Tokens.

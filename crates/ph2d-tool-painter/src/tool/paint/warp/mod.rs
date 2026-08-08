@@ -13,6 +13,8 @@ mod apply;
 #[cfg(test)]
 mod compose_tests;
 #[cfg(test)]
+mod cook_gpu;
+#[cfg(test)]
 mod cook_probe;
 mod field;
 #[cfg(test)]

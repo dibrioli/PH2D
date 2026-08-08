@@ -109,7 +109,21 @@ Isto é a lei que esta casa já aplica em toda parte — **`fonte ≠ cozido`**:
 - ⚠️ **Arte já deformada com o motor atual NÃO converte.** O campo somado não corresponde a nenhuma composição de dabs — ele não é o mapa de gesto nenhum. A migração honesta é **assar o que existe** (aplicar uma vez, como hoje) e seguir com o motor novo.
 - **Um dab não é editável ponto-a-ponto depois.** Não se "pega" um dab e o move; o escape continua sendo o **Reconstruct**, que já existe e já relaxa o mapa em direção à identidade.
 - **O cook passa a custar em cena ANIMADA, mesmo com ninguém pintando** — é a troca que torna a deformação uma propriedade viva em vez de pixels assados.
-- **NÃO MEDIDO, e é o primeiro número da implementação:** o custo de compor **N dabs por pixel** no device. É a razão de o cache existir; o kill-criterion do W0 é essa medição, e ela decide o passo da grade. ⚠️ Nenhum passo entra no código antes dela (§0: *meça antes de limitar*).
+- **MEDIDO (2026-08-08) — e o resultado DISSOLVE o passo da grade.** O kill-criterion do W0 era o custo de compor **N dabs por pixel** no device, porque é ele que decide quão grossa a grade precisa ser. Medido na RTX (`cook_gpu::measure_the_device_cook`, Twist, pincel cobrindo a grade inteira = o pior caso de cobertura, o mesmo regime dos 31,0 ns/(nó·dab) **seriais** da CPU):
+
+  | lado | N=16 | N=64 | N=256 |
+  |---:|---:|---:|---:|
+  | 512² | 0,047 ms | 0,162 | 0,568 |
+  | 1024² | 0,150 | 0,539 | 2,132 |
+  | 2048² | 0,557 | 2,190 | 8,450 |
+
+  **0,008 ns por (nó · dab)**, estável nas células grandes. ⚠️ **A evidência de que o número é real veio de graça, e é a mesma FORMA que a sonda de CPU exige:** o custo é **linear nas duas metades** — 4× o `N` dá 4× o tempo (2,190 → 8,450) e 4× os nós dá 3,7× (0,150 → 0,557). Um kernel elidido pelo driver não escala; este escala.
+
+  **O que isso decide:** um traço real cobre a PEGADA, não a tela — 600² nós com 64 dabs custam **0,18 ms**. Não há passo a escolher: **o passo é 1, e a "grade" é o próprio pixel**, com erro de reconstrução **zero**. A tabela de erro da alternativa 3 deixa de ser um trade e vira o que ela sempre foi por baixo: o preço de guardar, não o de cozinhar.
+
+  ⚠️ **E o teto está nomeado, não escondido:** cozinhar a TELA INTEIRA a 4096² custa ~8,6 ms com 64 dabs e ~34 ms com 256 — mais que um quadro. Ou seja o cook tem de ser **limitado pela pegada**, exatamente a lei que o resto desta linha já vive; um cook canvas-inteiro é a forma de falha, e ela é de escopo, não de velocidade.
+
+  ⚠️ **A razão contra a CPU não é o argumento, e não é vendida como tal:** os 31,0 ns são **seriais num núcleo** e esta caminhada satisfaz as condições do [ADR-0109] (linhas disjuntas, leitura pura), então uma CPU row-parallel encurtaria a distância por algo da ordem do número de núcleos. O que decide é o número ABSOLUTO acima: 0,18 ms por traço cabe num quadro com folga de duas ordens de grandeza.
 
 ## O que fica GATEADO — para ninguém re-litigar por prosa
 
@@ -118,10 +132,17 @@ Isto é a lei que esta casa já aplica em toda parte — **`fonte ≠ cozido`**:
 | `a_twist_is_a_rotation_not_a_runaway_shear` | N dabs de θ ⇒ `\|D\|` a raio `r` **≤ 2r** | **VERMELHO** (69,34 px contra teto 60, já em 20 dabs) |
 | `the_thin_line_survives_a_twist` | a linha de 3 px sobrevive ao swirl | **VERMELHO** (28,1% da tinta) |
 | `the_bounded_twist_still_turns_the_picture` | o campo limitado ainda DEFORMA (anti-vácuo) | verde nas DUAS leis, de propósito |
+| `the_device_walk_reproduces_the_cpu_law` | a 2ª implementação (WGSL) responde o que a 1ª responde | **verde** (pior delta **0,000307 px** no Twist, 0,000009 no Push, 0,000004 no Pinch; **0 de 4096 nós** acima de 1e-3) |
 | `no_dense_field_is_authored_state` | arch-gate: o campo denso não é serializado nem keyframeável | verde |
 | `the_lattice_is_a_cache_you_can_throw_away` | descartar e re-cozinhar dá resultado **bit-idêntico** | verde |
 | `the_cook_reads_no_history_per_pixel` | paridade serial × paralelo (a condição do [ADR-0109](0109-rayon-exception-watercolor-composite.md)) | verde |
-| `the_lattice_pitch_is_measured_not_chosen` | a tabela passo × raio, executável | verde |
+| `the_cook_is_bounded_by_the_footprint` | o cook percorre a união dos dabs, **nunca a tela** | verde — ele **substitui** *"o passo é medido"*: a medição do device dissolveu o passo e deixou o ESCOPO no lugar dele |
+
+⚠️ **Os QUATRO primeiros existem e rodaram** (`warp::compose_tests` e `warp::cook_gpu`, os dois de GPU sob `--ignored`); os quatro últimos são a lista da **W1** e nascem com ela. Misturar as duas metades sem dizer qual é qual é como uma tabela de gates vira um relatório de coisas que ninguém escreveu.
+
+⚠️ **O gate de paridade é a ÚNICA defesa desta wave, e é por desenho.** O irmão `ph2d-paint-gpu` consegue contenção **estrutural** (a lei do dab é 1-D em `t` ⇒ a CPU manda uma TABELA e o device só amostra, e a crate não tem como alcançar o `falloff_weight`). Aqui não existe tabela: `at` é um campo VETORIAL por dab, então o device **carrega a lei** e há duas implementações da mesma frase — a situação do `ImpastoLightPass`, não a do carimbo. Fingir contenção seria teatro; medir é o que sobra. Mutações provadas: a caminhada parar de retro-traçar (isto é, virar a SOMA que o ADR condena) sangra **58,53 px em 3938 de 4096 nós**, e matar o lerp do rotor — o *staircase* que o `twist_rotor` da CPU existe para curar — sangra **17,33 px**.
+
+⚠️ **E a medição levantou uma bifurcação que é da W1, não desta decisão:** o `value_noise` é **splitmix64**, aritmética de **64 bits que o WGSL do core não tem**. Ela alimenta Push+Distortion, Pinch+Distortion, Fold+Distortion e o **Wrinkle**, cuja crinkle é intrínseca. As duas saídas — textura de ruído pré-assada, ou um hash de 32 bits — **MUDAM os bytes**, então é escolha com smoke próprio. Até lá o construtor do payload **RECUSA** um dab que carregue ruído (`crosses_to_the_device`), em vez de deixar o device responder outra coisa em silêncio.
 
 ⚠️ **O gate que importa mais é o primeiro**, e ele é geométrico: não afirma um número nosso, afirma que **uma rotação é uma rotação**. Um oráculo que comparasse o mapa novo com o mapa antigo seria razão entre dois doentes.
 

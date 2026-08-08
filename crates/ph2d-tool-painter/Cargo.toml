@@ -77,3 +77,11 @@ dhat = "0.3"
 # O round-trip do documento pintado é provado no formato REAL do projeto (postcard, o wire canônico do
 # repo) — um teste que serializasse com outro formato não provaria o arquivo que o artista salva.
 postcard = { version = "1", features = ["alloc"] }
+
+# ⚠️ O KILL-CRITERION do ADR-0156 mede o cook do Liquify no DEVICE, e o oráculo dele é
+# `warp::field::compose_at`, que é `pub(super)`. Uma crate irmã só o alcançaria alargando a superfície
+# privada do tool para a workspace inteira — e a lei ainda muda de casa na W1 (o ADR pede um dab
+# AUTORADO, pequeno e animável). `dev`, então o `src/` segue sem device nenhum: quem despacha é a shell.
+wgpu = { version = "28", features = ["wgsl"] }
+bytemuck = { version = "1", features = ["derive"] }
+ph2d-gpu = { path = "../ph2d-gpu" }

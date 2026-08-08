@@ -265,6 +265,55 @@ impl DabField {
             base
         }
     }
+
+    /// Os campos que o device precisa para avaliar [`Self::at`], **construídos por quem os possui**.
+    ///
+    /// ⚠️ Uma sonda que re-derivasse `eff`/`perp`/`inv_r2`/`twist_deg_max` a partir dos argumentos do
+    /// construtor seria uma segunda cópia da derivação — e uma segunda cópia diverge no dia em que
+    /// [`Self::new`] ganhar um termo. O payload sai daqui de dentro, ao lado dos campos.
+    #[cfg(test)]
+    pub(super) fn device_fields(&self) -> DeviceFields {
+        DeviceFields {
+            center: self.center,
+            mv: self.mv,
+            perp: self.perp,
+            inv_r2: self.inv_r2,
+            radius: self.radius,
+            signed: self.signed,
+            pressure: self.pressure,
+            distortion: self.distortion,
+            twist_deg_max: self.twist_deg_max as f32,
+            // ⚠️ `as u32` sobre um enum sem payload dá a posição de DECLARAÇÃO, e é a mesma tabela que
+            // `from_u8` assume — `deform_mode_index_is_the_wire_index` pina o par para que reordenar os
+            // variants não vire um modo silenciosamente trocado no device.
+            mode: self.mode as u32,
+        }
+    }
+}
+
+/// O retrato plano de um [`DabField`] para o kernel de [`super::cook_gpu`] — só os números que a lei lê.
+#[cfg(test)]
+pub(super) struct DeviceFields {
+    pub(super) center: [f32; 2],
+    pub(super) mv: [f32; 2],
+    pub(super) perp: [f32; 2],
+    pub(super) inv_r2: f32,
+    pub(super) radius: f32,
+    pub(super) signed: f32,
+    pub(super) pressure: f32,
+    pub(super) distortion: f32,
+    pub(super) twist_deg_max: f32,
+    pub(super) mode: u32,
+}
+
+/// ⚠️ **O ruído não atravessa** — e a recusa mora do lado que pode ser lida, não num shader mudo.
+///
+/// [`value_noise`] é splitmix64: `u64`, que o WGSL do core não tem. Enquanto a W1 não decidir entre uma
+/// textura de ruído e um hash de 32 bits (as duas MUDAM os bytes), um dab que carrega ruído não tem
+/// resposta no device — então o payload o RECUSA em vez de o deixar responder outra coisa.
+#[cfg(test)]
+pub(super) fn crosses_to_the_device(f: &DabField) -> bool {
+    !matches!(f.mode, DeformMode::Wrinkle) && f.distortion <= 0.0
 }
 
 /// The displacement of a whole **dab list** at `p` — the fold that [ADR-0156] decided, and the single
@@ -312,7 +361,7 @@ pub(super) fn compose_at(dabs: &[DabField], p: [f32; 2]) -> [f32; 2] {
 
 /// Build `[rotor_0 .. rotor_deg_max]` where `rotor_k` = the unit vector `(1,0)` rotated by `k` whole
 /// degrees, via iterated 1° complex-multiply (transcendental-free — HR-5). `deg_max` is clamped to 360.
-fn build_rotor_table(deg_max: i32) -> Vec<[f32; 2]> {
+pub(super) fn build_rotor_table(deg_max: i32) -> Vec<[f32; 2]> {
     let n = deg_max.clamp(0, 360) as usize;
     let mut out = Vec::with_capacity(n + 1);
     let (mut x, mut y) = (1.0_f32, 0.0_f32);
@@ -445,6 +494,20 @@ mod tests {
         );
         assert!(pinch.at(rel_pt)[0] < 0.0, "pinch D points inward (−x)");
         assert!(punch.at(rel_pt)[0] > 0.0, "punch D points outward (+x)");
+    }
+
+    #[test]
+    fn deform_mode_index_is_the_wire_index() {
+        // `DeviceFields::mode` usa `self.mode as u32`, ou seja a posição de DECLARAÇÃO — e `from_u8`
+        // assume a mesma tabela. Enquanto ninguém prova o par, reordenar os variants troca o modo no
+        // device em silêncio (e o gate de paridade não pegaria: ele compara a MESMA lista dos dois lados).
+        for v in 0u8..=5 {
+            assert_eq!(
+                DeformMode::from_u8(v) as u32,
+                u32::from(v),
+                "a ordem de declaração É a ordem do wire"
+            );
+        }
     }
 
     #[test]

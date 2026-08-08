@@ -7509,6 +7509,7 @@ dependencies = [
 name = "ph2d-tool-painter"
 version = "0.0.0"
 dependencies = [
+ "bytemuck",
  "dhat",
  "ph2d-a11y",
  "ph2d-color",
@@ -7525,6 +7526,7 @@ dependencies = [
  "postcard",
  "rayon",
  "serde",
+ "wgpu",
 ]
 
 [[package]]

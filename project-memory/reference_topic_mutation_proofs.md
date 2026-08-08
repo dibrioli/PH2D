@@ -11,3 +11,4 @@ metadata:
 - [[feedback_check_the_oracle_is_achievable_before_writing_the_gate]] — o prescrito pode ser impossível
 - [[feedback_an_optimization_needs_a_gate_that_proves_it_fires]] — o fallback silencia o bug
 - [[feedback_a_mutation_that_survives_may_mean_a_missing_gate]] — explique por que é inofensiva ALI
+- [[feedback_a_restored_file_keeps_its_old_mtime_and_cargo_reuses_the_mutant]] — `touch` depois de todo restore

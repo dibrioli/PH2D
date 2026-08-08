@@ -39,16 +39,42 @@
 O portão 1 deixa de ser global e passa a ser **por-worktree**: para cada candidata, resolva o **`cwd`
 de cada processo de build vivo** e pule a worktree se algum estiver dentro dela.
 
+⚠️ **E pergunte também se alguém está EXECUTANDO de dentro do target** — ver "o portão que enumera
+construtores" logo abaixo.
+
 ```bash
 ativo=""
+# (a) quem CONSTRÓI: cwd dentro da worktree.
 for p in cargo rustc mold cc1 ld rustdoc; do
   for pid in $(pgrep -x "$p" 2>/dev/null); do
     cwd=$(readlink -f "/proc/$pid/cwd" 2>/dev/null) || continue
-    case "$cwd" in "$wt"|"$wt"/*) ativo="$p($pid)";; esac
+    case "$cwd" in "$wt"|"$wt"/*) ativo="build $p($pid)";; esac
   done
 done
-[ -n "$ativo" ] && { echo "· $(basename "$wt"): BUILD ATIVO $ativo — PULADO"; continue; }
+# (b) quem EXECUTA: o binário vivo mora dentro do target que eu ia apagar.
+#     Genérico de propósito — pergunta pelo exe, nunca por uma lista de nomes.
+for pid in $(ls /proc 2>/dev/null | grep -E '^[0-9]+$'); do
+  exe=$(readlink -f "/proc/$pid/exe" 2>/dev/null) || continue
+  case "$exe" in "$t"/*) ativo="APP RODANDO pid=$pid ($exe)";; esac
+done
+[ -n "$ativo" ] && { echo "· $(basename "$wt"): OCUPADA — $ativo — PULADO"; continue; }
 ```
+
+### ⚠️ O portão que enumera CONSTRUTORES é cego a quem EXECUTA
+
+A lista `cargo rustc mold cc1 ld rustdoc` responde *"alguém está compilando aqui?"*. Ela **não**
+responde *"alguém está usando isto?"* — e o gesto que fecha toda wave do Modo L é o **smoke**, que
+não compila nada: ele **roda o binário que mora dentro do `target/`**.
+
+> **Medido em 2026-08-04:** `line-Vector` passou os **três** portões — sem `cargo`/`rustc`, worktree
+> **limpa** (`git status --porcelain` vazio), target dir real — enquanto o pid 176476 executava
+> `…/line-Vector/target/release/ph2d-host-desktop`. Seguir o runbook ao pé da letra teria apagado
+> **197 GB debaixo de um smoke em andamento**, no exato momento em que aquela linha era julgada.
+
+Um `rm -rf` sob um processo vivo não o mata na hora (o binário já está mapeado), e é isso que torna a
+falha **pior**: o smoke segue rodando e falha adiante, ao carregar um asset ou ao re-executar — longe
+da causa. A pergunta certa é sobre o **exe**, não sobre um nome, senão a lista apodrece no dia em que
+nasce o segundo binário ([[feedback_a_condition_that_enumerates_its_readers_rots]]).
 
 **Os portões 2 e 3 não mudam** — e o 2 (worktree suja) faz o trabalho pesado aqui: um agente no meio
 de uma tarefa quase sempre tem alteração não-commitada, então *sujo* já é um bom detector de *ocupado*.
@@ -66,13 +92,45 @@ removidas **diretamente** em `target/` — escrita em subpasta não a move.
 > em curso — exatamente o que o portão 1 existe para impedir.
 
 O sinal que **funciona** é o arquivo mais recente *dentro* do target, e ele é barato por causa do
-`-quit` (para no primeiro achado):
+`-quit` (para no primeiro achado). ⚠️ **Data ABSOLUTA, e falha da sonda conta como QUENTE:**
 
 ```bash
-find "$t" -type f -newermt '-24 hours' -print -quit
+ref=$(date -d '-24 hours' '+%Y-%m-%d %H:%M:%S')   # absoluta: nem todo `find` aceita relativa
+if ! recente=$(find "$t" -type f -newermt "$ref" -print -quit 2>&1); then
+  echo "· $(basename "$wt"): SONDA FALHOU ($recente) — tratando como QUENTE, PULADO"; continue
+fi
+[ -n "$recente" ] && { echo "· $(basename "$wt"): escrita <24h — PULADO"; continue; }
 ```
 
-Vazio = fria. Use-o como **terceira confirmação**, nunca como substituto dos portões.
+Vazio **com exit 0** = fria. Use-o como **terceira confirmação**, nunca como substituto dos portões.
+
+⚠️ **A versão anterior desta sonda estava MORTA nesta máquina, e em silêncio.** O `find` aqui é
+**`bfs` 4.1.1**, não o findutils da GNU, e ele **recusa** `-newermt '-24 hours'` (string relativa):
+escreve o erro em **stderr** e devolve **exit 1 com stdout VAZIO**. Capturada por `$(...)` sem checar
+o exit, a sonda respondia **"fria" para toda worktree, sempre** — inclusive, medido no mesmo minuto,
+para duas que estavam **compilando naquele instante** (`line-motion-value` e `line-physics`).
+
+> *Zero não é o mesmo que não-medido.* Uma "terceira confirmação" que só sabe dizer *fria* não
+> confirma nada — ela **tranquiliza**, que é o pior modo de falha de um instrumento
+> ([[feedback_a_silenced_instrument_reads_as_a_result]]). Por isso a sonda agora **falha alto** e a
+> falha é interpretada do lado seguro (quente).
+
+### ⚠️ E no MODO PADRÃO ela responde QUENTE para tudo — por construção
+
+A sonda de 24 h pergunta *"alguém escreveu aqui hoje?"*, que é a pergunta do **modo parcial** (limpar no
+meio de uma jornada). No **fim de dia** a resposta é **sim por construção**: a jornada que encheu os
+targets terminou há poucas horas, então toda worktree candidata tem escrita recente.
+
+> **Medido em 2026-08-08:** as **cinco** worktrees com target responderam QUENTE, e o arquivo mais
+> recente de cada uma era da madrugada do mesmo dia (00:35 a 01:48) — com a limpeza rodando às 08:37,
+> **zero** processo vivo e as cinco com `git status --porcelain` vazio. Limpar era o veredito certo, e a
+> sonda dizia o contrário sobre todas.
+
+Promovê-la a portão no modo padrão faria o fim-de-dia **nunca limpar nada**. Quem responde *"está
+ocupada?"* são os portões **1** (processo vivo — construtor **e** executor) e **2** (fonte
+não-commitada); a idade de um arquivo não é evidência de ocupação, é evidência de que a jornada
+existiu. Antes de aceitar o veredito dela, **compare a mtime com o relógio**: madrugada do mesmo dia é
+a assinatura de uma jornada que acabou, não de um agente trabalhando.
 
 ### O risco residual, que é real e aceito
 
@@ -190,3 +248,26 @@ O `~/.cache/sccache` **não aparece** no script — de propósito. Ele fica.
   começou um build 30 s depois da limpeza — sem dano, mas com rebuild frio a reportar). Mesma lição do
   achado do `grep -vq` acima: *um runbook de segurança tem de ser EXERCITADO*
   ([[feedback_render_and_look_when_a_green_gate_is_contradicted]]).
+- **Emenda 2026-08-04 (§1-bis) — a 3ª vez, e a 1ª em que o runbook teria DESTRUÍDO trabalho.** Jornada
+  com 8 worktrees e disco a **69%** (651 G de 950 G — sem pressão). **Nada foi apagado, e esse é o
+  resultado certo:** das 5 worktrees com target não-vazio, 4 tinham fonte não-commitada (`line-physics`
+  217 G/23 arquivos · `line-Painter` 42 G/4 · `line-motion-value` 31 G/5 · `line-sculpt3d` 23 G/8) e a
+  5ª (`line-Vector`, 197 G) estava **limpa e passou os três portões** — com um smoke rodando de dentro
+  do próprio target. Dois defeitos independentes, os dois achados **exercitando**, nunca revisando:
+  o portão 1 **enumera construtores** e é cego a quem *executa*; e a sonda de frescor estava **morta em
+  silêncio** (`bfs` recusa a data relativa → exit 1, stdout vazio → *"fria"* para todas, sempre).
+  Sozinho, cada um é um buraco; **juntos, eles compõem exatamente o pior caso** — a única worktree que
+  os portões liberaram foi a única com um processo vivo dentro do alvo, e o instrumento que existia
+  para pegar isso respondeu *fria*. Corolário para a próxima emenda: **quando um portão e sua rede de
+  segurança discordam do mundo na MESMA worktree, desconfie do instrumento antes de confiar no portão.**
+- **Emenda 2026-08-08 (§1-bis) — a 4ª vez, e o modo de falha SIMÉTRICO ao da anterior.** Fim de dia com
+  8 worktrees, disco a **72%** (672 G de 950 G), **nenhum** agente vivo. As cinco worktrees com target
+  passaram os três portões (todas com `git status --porcelain` vazio; nenhum construtor, nenhum `exe`,
+  FD ou mapa de memória dentro dos alvos) e a limpeza liberou **518 GB** (→ 17%): `line-motion-value`
+  172 G · `line-Vector` 136 G · `line-physics` 105 G · `line-sculpt3d` 61 G · `line-Painter` 46 G. **A
+  sonda de frescor — a rede de segurança que a emenda anterior acabara de consertar — disse QUENTE para
+  as cinco**, porque a jornada terminara às 01:48 do mesmo dia. Onde 04/08 ensinou *desconfie do
+  instrumento antes de confiar no portão*, esta rodada ensina o inverso exato: **um instrumento que só
+  sabe dizer *quente* paralisa o runbook tão certamente quanto um que só sabia dizer *fria*** — e o
+  segundo modo de falha é mais fácil de aceitar, porque parece prudência. Nos dois casos quem decide é o
+  que os portões MEDEM sobre o mundo agora, nunca a idade de um arquivo.

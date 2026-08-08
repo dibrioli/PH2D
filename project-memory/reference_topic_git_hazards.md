@@ -11,3 +11,4 @@ metadata:
 - [[feedback_destructive_reset_collision_2026_05_28]] — `git add` cedo cria fence
 - [[feedback_worktree_agent_stale_base]] — ramifica do HEAD de início; só audit read-only
 - [[feedback_perl_utf8_mojibake_use_edit_tool]] — texto acentuado só via Edit tool
+- [[feedback_an_unanchored_replace_renames_english_identifiers_inside_pt_br_prose]] — troque a FRASE; depois `git diff | grep "^[-+].*fn "`

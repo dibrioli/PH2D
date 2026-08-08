@@ -8,6 +8,7 @@
 - [Paths canônicos](reference_canonical_files.md) — SKILL, HANDOFF, ADRs
 - [GPU tests headless](reference_gpu_tests_run_headless_metal.md) — `--features gpu -- --ignored` roda no sandbox
 - [Monitores da workstation](reference_display_topology_workstation.md) — perf no LG (RTX); AOC read-only
+- [A workstation travou 2× (08/08)](project_workstation_freeze_memory_reclaim.md) — livelock de reclaim, não bug do PH2D; 577 GB de `target/` é o combustível
 - [Prompt Deck](reference_prompt_deck_app.md) — apps pessoais em "Meus Apps"; fonte única `prompts.json`, 3 saídas geradas
 - [Atalho global no Plasma 6](reference_kde_plasma6_global_shortcut.md) — `[services][x.desktop]` + o grab que falta após o login
 - [HISTÓRICO: aquarela/wash](reference_topic_watercolor_historical.md) — ADR-0096/0099/0108; 17 memórias da era
@@ -16,6 +17,7 @@
 - [Decida, não pergunte](feedback_decide_dont_ask_gold_standard.md) — padrão-ouro, execute, reporte
 - [Estilo](feedback_communication_style.md) + [simplicidade](feedback_communication_simplicity.md) — pt-BR direto; recomendação primeiro
 - ["Difícil de ajustar" = bug de DESIGN](feedback_ergonomics_verdict_is_a_design_bug.md) — questione o modelo
+- [Knob por-passo é ALVO, não taxa](feedback_a_knob_consumed_as_a_per_step_rate_is_a_target_not_a_rate.md) — resposta exponencial e composta por OUTRO knob; meça a fração ÚTIL do curso
 - [Remédio novo → velho é CONTAGEM DUPLA](feedback_a_new_remedy_makes_the_old_one_double_counting.md) — 3º ajuste da mesma constante = modelo errado
 - [Parâmetro que não muda NADA](feedback_a_parameter_that_changes_nothing_is_discarded_downstream.md) — grepe o consumidor
 - [Rótulo promete o que o MODELO entrega](feedback_a_label_must_promise_what_the_model_delivers.md) — "Air Drag" sobre damping uniforme
@@ -32,6 +34,7 @@
 - [Comentário velho e código morto MENTEM](feedback_stale_comment_and_dead_code_lie.md)
 - ["O design rejeita X"? grepe o gate](feedback_before_declaring_the_design_rejects_an_invariant_grep_for_its_gate.md)
 - [Nota de diferido não é spec](feedback_a_deferral_notes_bar_may_exceed_the_projects_policy.md) — confira e corrija a nota
+- [Mecanismo certo, cura errada](feedback_a_correct_mechanism_can_prescribe_the_wrong_cure.md) — meça o mecanismo antes de construir o que a nota prescreve
 - [Cerca de Chesterton](feedback_documented_decision_chesterton_fence.md) — "intentionally NOT X" = decisão
 - [Revert pode diferir só no TEMPO DE VIDA](feedback_a_reverted_attempt_may_differ_only_in_lifetime_read_the_revert_reason.md) — leia o MOTIVO do revert, não o diff; escopo é o que mata tentativa boa
 - [`match` exaustivo NÃO guarda a lista que um laço itera](feedback_an_exhaustive_match_does_not_guard_the_list_a_loop_iterates.md) — variante nova = braço morto sem warning; agulha com espaço nunca casa
@@ -46,7 +49,7 @@
 - [`str.replace()` sem casar é no-op](feedback_python_replace_silent_noop_after_fmt.md) — `assert old in s`
 - [`sed -i` relativo erra de repo](feedback_sed_relative_path_hits_primary_cwd.md) — caminho absoluto
 - [Rewrite de token = só arquivos MUDADOS](feedback_a_token_rewrite_scopes_to_changed_files_not_the_whole_tree.md) — `git grep` corrompeu .ttf
-- [Mais perigos de git (5)](reference_topic_git_hazards.md) — stash · reset alheio · fence · worktree-base · mojibake
+- [Mais perigos de git (6)](reference_topic_git_hazards.md) — stash · reset alheio · fence · worktree-base · mojibake
 
 ## Ship / CI / cadência
 - [Multi-máquina](project_multi_machine_setup.md) — GitHub fonte única; memória via symlink
@@ -75,40 +78,15 @@
 - [Cadência de processo (10)](reference_topic_process_cadence.md) — gist em CLAUDE.md §2-§3
 
 ## Auditoria (famílias — 2 saltos)
-- [Reprodução/diagnóstico (9)](reference_topic_repro_discipline.md) — harness/mecanismo · cursor real · não-repro ≠ fix · escala antes de causa · controle positivo
-- [Ofício de gate (21)](reference_topic_gate_discipline.md) — ausência+presença · razão doente · verde por acidente · paridade CPU/GPU · fixture contém o fenômeno
-- [Âncora em BYTES é proxy que expira](feedback_a_gate_anchored_on_a_byte_distance_is_a_proxy_that_expires.md) — arch-gate afirma relação posicional, nunca distância/janela no fonte
+- [Reprodução/diagnóstico (17)](reference_topic_repro_discipline.md) — harness/mecanismo · cursor real · não-repro ≠ fix · escala antes de causa · controle positivo
+- [Ofício de gate (31)](reference_topic_gate_discipline.md) — ausência+presença · razão doente · verde por acidente · paridade CPU/GPU · fixture contém o fenômeno
 - [Estado autorado & relógios (19)](reference_topic_authored_state_and_clocks.md) — seed=sample · âncora · id-counter · load adota · ponto fixo · unidades mistas
-- [Capacidade sem PORTA passa em todo gate](feedback_a_capability_without_a_door_passes_every_gate.md) — grepe quem ESCREVE o campo, nao quem le
-- [Costura de UI (12)](reference_topic_ui_seam_discipline.md) — pintado/populado/clicado · duas portas · dimmed despacha · default é lei
-- [Gate de identidade não vê defeito no CORPO compartilhado](feedback_an_identity_gate_cannot_see_a_defect_in_the_shared_body.md) — rota A==rota B só prova o walker; o corpo quer oráculo externo
-- [Largar a POSSE cega todo comparador daquele lado](feedback_dropping_ownership_blinds_every_comparator_that_reads_that_side.md) — elidir um dado faz o detector que o lê responder "mudou" para sempre
-- [Ganho por-passe passa pela CADÊNCIA](feedback_a_per_pass_gain_becomes_a_product_gain_only_through_the_cadence.md) — 1,56× virou 1,10×; e razão não se transporta entre cenas
-- [Instrumento MUDO lê-se como resultado](feedback_a_silenced_instrument_reads_as_a_result.md) — zero ≠ não-medido; gateie a presença de cada balde
-- [Doc-comment que nomeia um `cfg` EXPIRA](feedback_a_doc_comment_naming_a_cfg_expires_grep_the_attribute.md) — grepe o atributo; e `cargo test --release` LIGA `cfg(test)`
-- [Veredito conservador: *não mudou* ≠ *não sei medir*](feedback_a_conservative_verdict_must_separate_unchanged_from_unmeasurable.md) — colapsá-los mata a otimização com todos os gates VERDES
-- [Gates compostos verdes escondem conector não-provado](feedback_green_composed_gates_can_hide_an_unproven_connector.md) — feature "sem efeito" + gates verdes ≠ percepção; dirija o CLIQUE real
-- [Provas de mutação (5)](reference_topic_mutation_proofs.md) — RED só sobre visto-VERDE · sobrevivente = gate faltando
-- [Disciplina de oráculo (6)](reference_topic_oracle_discipline.md) — aparência, não regra
-- ["Faça o desenho expressar X"? meça se o produto FAZ X](feedback_a_request_to_draw_a_property_is_first_a_question_of_whether_the_product_has_it.md) — desenhar X sobre quem não faz X é desenho que mente
-- [Regra copiada para um 2º sítio pode PERDER a premissa](feedback_a_rule_copied_to_a_second_site_may_lose_its_premise.md) — ablacione um braço por vez; o outro sítio pode ser o controle positivo
-- [Uma RAZÃO não salva um oráculo de MAX](feedback_a_ratio_cannot_rescue_a_max_based_oracle.md) — ruído aditivo só no numerador; propriedade estrutural = oráculo no FONTE
-- [Gate que espera DURAÇÃO fixa aposta na máquina](feedback_a_gate_that_waits_a_fixed_duration_bets_on_machine_speed.md) — vire CONDIÇÃO; se só o outro lado carimba, a espera DIRIGE o produto
-- [Sonda sem chamador leva o número citado junto](feedback_a_cited_number_whose_probe_lost_its_caller_stops_being_reproducible.md) — devolva a chamada e confira o valor, nunca silencie o lint
-- [Bug de default que persiste? é num RESET, não no CREATE](feedback_a_persistent_default_bug_lives_in_a_reset_path_not_the_create_path.md) — enumere toda porta que reconstrói o estado (new/default/purge/load)
-- [Mutação sem sangue acusa o ORÁCULO](feedback_a_mutation_that_does_not_bleed_may_indict_the_oracle_not_the_finding.md) — meça a propriedade que a mudança É antes de descartar o achado
-- [Aproximação dentro de ponto fixo CAMINHA](feedback_an_approximation_inside_a_fixed_point_walks_it_does_not_merely_err.md) — tabela num laço de realimentação: meça deriva sob iteração, não erro de chamada única
-- [Sonda de PARALELISMO roda sozinha](feedback_probes_that_measure_parallelism_must_run_alone.md) — concorrentes disputam o pool e medem uma à outra; o controle interno é o detector
-- [Varredura `--ignored` ≠ varredura dos gates de GPU](feedback_an_ignored_sweep_is_not_the_gpu_gate_sweep.md) — ela roda placeholders `unimplemented!()` e sondas lentas junto; rode os NOMES do handoff, por crate
-- [Replace sem âncora renomeia identificador INGLÊS dentro de prosa pt-BR](feedback_an_unanchored_replace_renames_english_identifiers_inside_pt_br_prose.md) — troque a FRASE; depois `git diff | grep "^[-+].*fn "`
-- [Disciplina de fixture (4)](reference_topic_fixture_discipline.md) — só prova o que contém; ordem de setup mascara bug de ordem
-- [Mexeu na fixture? re-rode a MUTAÇÃO](feedback_changing_a_fixture_invalidates_the_mutation_proof.md) — encolher para matar flake tira os dentes do gate em silêncio
-- [Duas grandezas que devem DIFERIR coincidem por fase do fixture](feedback_two_quantities_that_should_differ_can_coincide_by_fixture_phase.md) — max≠last verde-sobre-nada; ache fixture onde diferem por FÍSICA
-- [Coordenada que WRAPA é oráculo ruim — meça a TAXA](feedback_a_wrapping_coordinate_is_a_bad_oracle_measure_the_rate.md) — ângulo mod 2π vira ruído acima de 1 volta; leia angvel, não rotation
+- [Costura de UI (13)](reference_topic_ui_seam_discipline.md) — pintado/populado/clicado · duas portas · dimmed despacha · default é lei
+- [Provas de mutação (6)](reference_topic_mutation_proofs.md) — RED só sobre visto-VERDE · sobrevivente = gate faltando
+- [Disciplina de oráculo (9)](reference_topic_oracle_discipline.md) — aparência, não regra
+- [Disciplina de fixture (6)](reference_topic_fixture_discipline.md) — só prova o que contém; ordem de setup mascara bug de ordem
 - [Protocolo de auditoria (5)](reference_topic_audit_protocol.md) — lentes · claims · state-grep
 - [Física do impasto/sculpt (8)](reference_topic_impasto_physics.md)
-- [Componente que não cumpre o próprio contrato? suspeite do CHAMADOR](feedback_a_component_missing_its_contract_suspect_the_caller_first.md) — trocar o componente esconde a causa e costuma trazer um 2º defeito
-- [Restore preserva mtime → cargo reusa o MUTANTE](feedback_a_restored_file_keeps_its_old_mtime_and_cargo_reuses_the_mutant.md) — `touch` depois de todo restore
 - [Tornar um nó elegível pode REGREDIR um claim parcial — RECUE, não refute inteiro](feedback_making_a_node_eligible_can_regress_a_partial_claim_retreat_dont_refuse_whole.md) — re-meça o doc REAL; regra tudo-ou-nada vira regressão; a cura é un-claim, não refutar o plano
 
 ## Padrões de código (gotchas silenciosos)

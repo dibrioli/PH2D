@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: feedback
   originSessionId: 4d33a1a5-4cde-45a3-94d1-ae7125cd56bf
-  modified: 2026-07-22T20:56:10.395Z
+  modified: 2026-08-05T23:09:33.805Z
 ---
 
 No Modo L, a cwd da ferramenta Bash **não é estável**: ela volta ao **repo primário** (`~/Documentos/Projetos/PH2D`, que está em `main`) entre turnos do usuário, e qualquer comando composto que termine com `cd <primário> && ...` (ex.: conferir `git status` do primário) a **deixa lá para todos os comandos seguintes daquele turno**.
@@ -19,3 +19,7 @@ Como ela se revela (se revelar): `cargo test --test <alvo>` responde **"no test 
 ⚠️ **Refinamento (2026-07-29, 2ª e 3ª escorregadas na mesma sessão): todo script de edição in-place usa path ABSOLUTO.** O `cd` protege o cargo, mas um heredoc `python3`/`sed -i` com path relativo resolve contra a cwd escorregada e **edita a árvore errada sem erro** — foi assim que duas linhas de `mod` foram parar no `main`. Com path absoluto a disciplina do `cd` deixa de ser load-bearing para a CORREÇÃO (só para a velocidade do build). E a reversão de um acidente desses é **remoção cirúrgica** das linhas inseridas (python com path absoluto), **nunca `git checkout`** ([[feedback_mutation_undo_with_cp_never_git_checkout]]) — a árvore primária costuma ter trabalho alheio não-commitado (a `project-memory/`, por exemplo).
 
 O sintoma que denuncia: `cargo` reclama de `failed to create directory .../PH2D/target` — ele está tentando construir no primário.
+
+⚠️ **Refinamento (2026-08-07): pior que a busca vazia é a busca que RESPONDE — com o valor do `main`.** Numa mesma sessão o `grep` de um `const` leu a árvore primária e devolveu `spring_damping: 0.5` onde a linha diz `1.0`; ao lado de um doc-comment (da linha, lido pela ferramenta Read, que usa path absoluto e portanto acerta) que dizia *"1,00 é o que shipa"*, isso montou uma **contradição inteiramente fabricada** — e eu a anunciei ao Enio como *"o doc está mentindo"* antes de a sonda imprimir o número real. **Read/Write usam path absoluto e sempre acertam; `grep`/`sed`/`cargo` num Bash escorregado sempre erram** ⇒ misturar as duas fontes num mesmo raciocínio produz um conflito que não existe em árvore nenhuma. Quando um número lido por grep contradiz um doc lido pelo Read, **a primeira hipótese é a CWD**, não o doc; e o desempate é `grep` com path absoluto nas DUAS árvores, lado a lado.
+
+⚠️ **Refinamento (2026-08-05): o tell mais perigoso é uma BUSCA VAZIA, não um erro.** Os dois sintomas acima *falham alto*. O que morde de verdade é abrir a sessão seguinte (a cwd já voltou ao primário) e ler: `sed: arquivo inexistente` para um arquivo que o handoff diz existir, e depois `grep` de um símbolo da sua própria linha voltando **vazio**. Isso não se lê como *"árvore errada"* — lê-se como *"a feature não está aqui"*, e a resposta natural é contornar. **Um arquivo que o seu handoff afirma existir e não existe é sinal de CWD, nunca fato sobre o código** — é o [[feedback_a_negative_search_needs_a_positive_control]] aplicado à árvore: o controle positivo é `pwd && git branch --show-current`, e ele custa nada. Faça-o **no primeiro comando de todo turno**, não só antes de editar.

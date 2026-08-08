@@ -22,3 +22,4 @@ metadata:
 - [[feedback_the_fullest_card_premise_rots]] — "o card mais cheio" apodrece; pergunte a CADA modo
 - [[feedback_two_doors_to_the_same_question_diverge]] — duas portas para a mesma pergunta DIVERGEM
 - [[feedback_disabled_button_still_dispatches]] — botão dimmed ainda despacha; recuse no event.rs
+- [[feedback_ship_the_ui_in_the_same_wave_not_later]] — atalho com valores fixos é harness vazando; sem indicador não há diagnóstico

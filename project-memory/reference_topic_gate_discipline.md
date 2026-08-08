@@ -31,3 +31,13 @@ metadata:
 - [[feedback_ask_the_same_question_of_the_other_side]] — faça a MESMA pergunta ao outro lado; o gêmeo nasceu vermelho
 - [[feedback_test_with_product_numbers_not_convenient_ones]] — números do PRODUTO; `1.0` esconde erro de unidade
 - [[feedback_a_rule_that_never_observes_cannot_fire]] — regra que não OBSERVA não dispara (HR-13, 4351 MB)
+- [[feedback_a_gate_anchored_on_a_byte_distance_is_a_proxy_that_expires]] — arch-gate afirma relação posicional, nunca distância/janela no fonte
+- [[feedback_a_capability_without_a_door_passes_every_gate]] — grepe quem ESCREVE o campo, nao quem le
+- [[feedback_an_identity_gate_cannot_see_a_defect_in_the_shared_body]] — rota A==rota B só prova o walker; o corpo quer oráculo externo
+- [[feedback_a_silenced_instrument_reads_as_a_result]] — zero ≠ não-medido; gateie a presença de cada balde
+- [[feedback_a_doc_comment_naming_a_cfg_expires_grep_the_attribute]] — grepe o atributo; e `cargo test --release` LIGA `cfg(test)`
+- [[feedback_green_composed_gates_can_hide_an_unproven_connector]] — feature "sem efeito" + gates verdes ≠ percepção; dirija o CLIQUE real
+- [[feedback_a_ratio_cannot_rescue_a_max_based_oracle]] — ruído aditivo só no numerador; propriedade estrutural = oráculo no FONTE
+- [[feedback_a_gate_that_waits_a_fixed_duration_bets_on_machine_speed]] — vire CONDIÇÃO; se só o outro lado carimba, a espera DIRIGE o produto
+- [[feedback_an_ignored_sweep_is_not_the_gpu_gate_sweep]] — ela roda placeholders `unimplemented!()` e sondas lentas junto; rode os NOMES do handoff, por crate
+- [[feedback_dropping_ownership_blinds_every_comparator_that_reads_that_side]] — elidir um dado faz o detector que o lê responder "mudou" para sempre

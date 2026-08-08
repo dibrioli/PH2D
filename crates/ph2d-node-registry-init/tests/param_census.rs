@@ -148,8 +148,19 @@ fn measure_where_each_default_sits_on_its_slider() {
             if p.default < h.min || p.default > h.max {
                 outside.push((key.clone(), p.default, h.min, h.max));
             }
+            // ⚠️ O teto HARD tem de vir do REGISTRY, nunca de um grep: um nó pode declarar os
+            // hints num módulo irmão (`params_ui.rs`), e a 1ª versão desta medição varria só
+            // `src/lib.rs` — ela reportou o `motion.emitter` SEM soft/hard quando ele é o nó
+            // que mais os usa, incluindo um hard MIN. Uma varredura que enumera um nome de
+            // arquivo mente sobre as crates que se partem.
+            let hard = reg.param_hard_max(m.id, p.name);
             if p.default > 0.0 && h.max / p.default >= 20.0 {
-                reach.push((key.clone(), p.default, h.max, h.max / p.default));
+                reach.push((
+                    format!("{key}{}", if hard.is_some() { " [hard]" } else { "" }),
+                    p.default,
+                    h.max,
+                    h.max / p.default,
+                ));
             }
             if h.step > 0.0 && span > 0.0 {
                 let n = span / h.step;

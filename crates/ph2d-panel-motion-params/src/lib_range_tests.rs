@@ -227,3 +227,38 @@ fn a_typed_value_above_the_range_reaches_the_param_on_an_integer_row() {
         "a caixa de um IntSlider tem de reportar o que só ela pode segurar"
     );
 }
+
+/// **O gate que ATRAVESSA as duas camadas — e o único que reproduz o smoke.**
+///
+/// ⚠️ Os três gates acima escrevem o valor com `set_number_value` e **nunca pintam**. Sem o
+/// `paint` o chip não tem `set_number_range` nem link com o slider, então o espelho que eles
+/// deviam exercitar **não existe na fixture deles** — foi por isso que ficaram VERDES enquanto o
+/// produto capava a caixa no máximo do SLIDER (Enio, 2026-08-07: *"Máximo de 20 em grid"*).
+/// Este pinta, DIGITA pelos dispatchers reais, e entrega o evento ao painel: a composição
+/// inteira, que é onde o defeito vivia.
+#[test]
+fn typing_past_the_slider_reaches_the_param_through_the_painted_panel() {
+    let _ = drain_param_intents();
+    set_current_params(Some(integer_soft_hard_row(3.0)));
+    let mut host = ph2d_ui_testkit::MockPanelHost::with_panel::<MotionParamsPanel>();
+    let mut state = MotionParamsPanelState;
+    // PINTAR é parte da fixture: a faixa e o link do chip nascem aqui.
+    let _ = host.paint::<MotionParamsPanel>(
+        &mut state,
+        ph2d_editor_core::zones::Rect::new(0.0, 0.0, 320.0, 900.0),
+    );
+    let chip = param_chip_id(0);
+    for ev in host.type_into_number(chip, "5000") {
+        host.apply_panel_event::<MotionParamsPanel>(&mut state, ev);
+    }
+    assert_eq!(
+        drain_param_intents(),
+        vec![MotionParamIntent::SetParam {
+            node: 7,
+            param: "rows",
+            value: 5_000.0,
+        }],
+        "digitar 5000 num param cuja caixa vai a 1.000.000 tem de pousar 5000 — o slider satura \
+         no thumb, não no valor"
+    );
+}

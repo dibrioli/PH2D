@@ -46,8 +46,9 @@ use bumpalo::Bump;
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::action_bus::{ActionBus, EditorAction};
 use ph2d_editor_core::grid_snap::GridSnapState;
-use ph2d_editor_core::interaction::dispatch_pointer;
+use ph2d_editor_core::interaction::dispatch::keymap::KEY_ENTER;
 use ph2d_editor_core::interaction::{HitIndex, InteractiveState, WidgetEvent, WidgetStore};
+use ph2d_editor_core::interaction::{dispatch_key, dispatch_pointer, dispatch_text_input};
 use ph2d_editor_core::panel::{EventOutcome, PaintCtx, Panel, PanelHost, PanelHostInternal};
 use ph2d_editor_core::project::ProjectSettings;
 use ph2d_editor_core::screens::{HeroLayout, HeroSelection};
@@ -153,6 +154,50 @@ impl MockPanelHost {
             Some(_) => panic!("set_number_value: {id:?} is registered but is not a NumberInput"),
             None => panic!("set_number_value: {id:?} is not registered (did populate run?)"),
         }
+    }
+
+    /// **DIGITAR de verdade num chip numérico**, pelos dispatchers REAIS: foco, um
+    /// `dispatch_text_input` por caractere, e Enter. Devolve os `WidgetEvent` que o commit
+    /// emitiu (tipicamente `ValueChanged(id)`), para o chamador entregá-los ao painel.
+    ///
+    /// ⚠️ **Por que o testkit precisava disto, e é o achado que o motivou:** [`set_number_value`]
+    /// ESCREVE o valor no store e pula o commit inteiro — `apply_chip_value_with_mirror`, que é
+    /// onde o espelho chip↔slider decide o que sobrevive. Toda a família de gates do range do
+    /// `motion-params` usava o setter, então nenhum deles jamais exercitou a camada onde o valor
+    /// digitado morria, e os três ficaram VERDES enquanto o produto capava a caixa no máximo do
+    /// SLIDER (Enio, smoke de 2026-08-07: *"Máximo de 20 em grid"*).
+    ///
+    /// ⚠️ **PINTE o painel antes de chamar isto.** A faixa do chip (`set_number_range`) e o link
+    /// com o slider nascem no `paint`; sem ele o chip não tem régua nem espelho, e o teste passa
+    /// a medir uma fixture que o produto não tem.
+    ///
+    /// Panics se `id` não estiver registrado ou não for um `NumberInput`.
+    pub fn type_into_number(&mut self, id: NodeId, text: &str) -> Vec<WidgetEvent> {
+        match self.store.get_mut(id) {
+            Some(InteractiveState::NumberInput { buffer, caret, .. }) => {
+                buffer.clear();
+                *caret = 0;
+            }
+            Some(_) => panic!("type_into_number: {id:?} is registered but is not a NumberInput"),
+            None => panic!("type_into_number: {id:?} is not registered (did populate run?)"),
+        }
+        self.store.set_focus(Some(id));
+        let arena = Bump::new();
+        for ch in text.chars() {
+            let _ = dispatch_text_input(&mut self.store, ch, &arena);
+        }
+        let key = ph2d_host::KeyEvent {
+            keycode: KEY_ENTER,
+            modifiers: ph2d_host::Modifiers {
+                shift: false,
+                ctrl: false,
+                alt: false,
+                meta: false,
+            },
+            kind: ph2d_host::KeyKind::Down,
+            timestamp_ns: 0,
+        };
+        dispatch_key(&mut self.store, key, &arena).to_vec()
     }
 
     /// Set a registered text input's buffer — what a real keystroke would have

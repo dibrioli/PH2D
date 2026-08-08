@@ -66,9 +66,14 @@ use bumpalo::collections::Vec as BumpVec;
 /// sites (commit / stepper / tick / drag-scrub) all call this so the
 /// re-sync invariant can't drift between paths.
 ///
-/// Returns `(final_chip_value, slider_was_clamped)`. Callers use the
+/// Returns `(final_chip_value, slider_is_a_saturated_stand_in)`. Callers use the
 /// returned value to drive downstream events (`WidgetEvent::ValueChanged`,
 /// `last_committed` updates, etc.) without re-reading the store.
+///
+/// ⚠️ O **bool** é `true` só no caso do slider dual: o thumb saturou E o chip ficou com um valor
+/// que a trilha não representa. Aí um `ValueChanged` vindo do SLIDER reportaria o limite *soft* e
+/// **sobrescreveria o número que o artista acabou de digitar** — é a segunda metade do mesmo
+/// defeito, e quem a honra é [`push_mirrored_slider_event`], nunca um `if` copiado por sítio.
 pub(super) fn apply_chip_value_with_mirror(
     store: &mut WidgetStore,
     chip_id: ph2d_a11y::NodeId,
@@ -133,7 +138,7 @@ pub(super) fn apply_chip_value_with_mirror(
         if let Some((lo, hi, _)) = store.number_range(chip_id)
             && (lo..=hi).contains(&new_display)
         {
-            return (new_display, false);
+            return (new_display, true);
         }
         // Re-project the clamped storage into display and rewrite the
         // chip — keeps `value` + `buffer` in lockstep with the slider
@@ -148,9 +153,39 @@ pub(super) fn apply_chip_value_with_mirror(
             *value = resync_display;
             *buffer = super::format_number(resync_display);
         }
-        return (resync_display, true);
+        return (resync_display, false);
     }
     (new_display, false)
+}
+
+/// **O evento do slider depois de um espelho — a porta ÚNICA.**
+///
+/// O thumb só pode falar quando ele de fato REPRESENTA o valor. Sob o slider dual ele satura no
+/// limite *soft* enquanto o chip segura o número digitado, e deixá-lo emitir faz o painel
+/// reportar o limite — o valor do artista vive um instante e é sobrescrito pelo próprio widget
+/// que o mostra. Medido no smoke de 2026-08-07: digitar `5000` produzia
+/// `[SetParam(5000), SetParam(20)]`, e o último vencia.
+///
+/// Existe como porta porque **dois** sítios emitem este evento (o commit digitado e o hold do
+/// stepper) e um terceiro pode nascer: uma regra escrita uma vez por sítio é a regra que o
+/// próximo nasce sem.
+pub(super) fn push_mirrored_slider_event<'a>(
+    store: &WidgetStore,
+    chip_id: ph2d_a11y::NodeId,
+    slider_is_stand_in: bool,
+    events: &mut BumpVec<'a, WidgetEvent>,
+) {
+    if slider_is_stand_in {
+        return;
+    }
+    // Guard contra link obsoleto (id registrado, mas o `InteractiveState` foi substituído):
+    // só emite quando o variant Slider está de fato lá, casando com a condição de escrita
+    // do espelho.
+    if let Some(slider_id) = store.linked_slider(chip_id)
+        && matches!(store.get(slider_id), Some(InteractiveState::Slider { .. }))
+    {
+        events.push(WidgetEvent::ValueChanged(slider_id));
+    }
 }
 
 pub(super) fn init_number_buffer(store: &mut WidgetStore, id: ph2d_a11y::NodeId) {
@@ -317,7 +352,7 @@ pub(super) fn commit_number_buffer<'a>(
         // and re-syncs the chip if the slider clamped. Returns the
         // final chip value so we can park it in `last_committed` +
         // caret without re-reading the store.
-        let (final_v, _was_clamped) = apply_chip_value_with_mirror(store, id, parsed);
+        let (final_v, slider_is_stand_in) = apply_chip_value_with_mirror(store, id, parsed);
         new_value = Some(final_v);
         if let Some(InteractiveState::NumberInput {
             caret,
@@ -330,16 +365,9 @@ pub(super) fn commit_number_buffer<'a>(
             *caret = buffer.len();
         }
         events.push(WidgetEvent::ValueChanged(id));
-        // The slider's stored value changed (or clamped) — emit so
-        // downstream consumers re-render. Guard against a stale link
-        // (slider id registered but the InteractiveState was replaced):
-        // only emit when the slider variant is actually present, which
-        // matches the helper's actual-write condition above.
-        if let Some(slider_id) = store.linked_slider(id)
-            && matches!(store.get(slider_id), Some(InteractiveState::Slider { .. }))
-        {
-            events.push(WidgetEvent::ValueChanged(slider_id));
-        }
+        // The slider's stored value changed (or clamped) — emit so downstream consumers
+        // re-render, PELA PORTA ÚNICA (que se cala quando o thumb é só um substituto saturado).
+        push_mirrored_slider_event(store, id, slider_is_stand_in, events);
     } else if parsed_value.is_some() {
         // No-change commit (typed same value). Still normalize the
         // buffer so trailing whitespace etc. doesn't survive.

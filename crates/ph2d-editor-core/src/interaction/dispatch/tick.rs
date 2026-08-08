@@ -60,19 +60,16 @@ pub fn dispatch_tick<'frame>(
     };
     // Shared mirror — symmetric with stepper-Down + commit-Enter so
     // the continuous-hold path can't drift from the single-tick path.
-    let (final_val, _was_clamped) = super::apply_chip_value_with_mirror(store, hold.id, new_value);
+    let (final_val, slider_is_stand_in) =
+        super::apply_chip_value_with_mirror(store, hold.id, new_value);
     if let Some(InteractiveState::NumberInput { last_committed, .. }) = store.get_mut(hold.id) {
         *last_committed = final_val;
     }
     store.record_number_stepper_tick(now_ns);
     events.push(WidgetEvent::ValueChanged(hold.id));
-    // `apply_chip_value_with_mirror` also writes a linked slider —
-    // emit its ValueChanged so panel handlers keyed off the slider id
-    // (canonical pattern post-mapped-link) see the change.
-    if let Some(slider_id) = store.linked_slider(hold.id)
-        && matches!(store.get(slider_id), Some(InteractiveState::Slider { .. }))
-    {
-        events.push(WidgetEvent::ValueChanged(slider_id));
-    }
+    // `apply_chip_value_with_mirror` also writes a linked slider — emit its ValueChanged so
+    // panel handlers keyed off the slider id (canonical pattern post-mapped-link) see the
+    // change, PELA PORTA ÚNICA que o commit digitado também usa.
+    super::push_mirrored_slider_event(store, hold.id, slider_is_stand_in, &mut events);
     events.into_bump_slice()
 }

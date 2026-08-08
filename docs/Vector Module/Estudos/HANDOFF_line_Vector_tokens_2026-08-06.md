@@ -209,7 +209,12 @@ a W4c.5 nomeou como **deliberadamente fora**:
 
 ## 5. Aberto FORA da fila de tokens
 
-- **W7 — a metade de RUNTIME.** A máquina de estados é **PLANA**, não hierárquica.
+- **W7 — a metade de RUNTIME.** A máquina de estados é **PLANA**, não hierárquica. ⚠️ O **seletor
+  de CURVA** fechou (**W7c, 2026-08-08** — handoff
+  [`HANDOFF_INTEGRACAO_line_Vector_W7c_2026-08-08.md`](HANDOFF_INTEGRACAO_line_Vector_W7c_2026-08-08.md)):
+  `set_easing` existia desde o v56 e **nenhum caminho de produto o chamava**. O que resta aqui é a
+  **hierarquia** (um menu que abre com sub-estados) e a **MOLA**, que deixou de ser dispensável
+  por ausência de regime e passou a ser decisão do Enio, com os números medidos.
 - **W8a — o runtime dos jogos.** ⛔ **BLOQUEADO por ausência:** `ph2d-runtime` **não existe**
   (Front 2 não construída). Não é adiamento, é pré-requisito.
 - **W2a — `VecTextParams.wrap_width`** + a quebra de linha real (o **parley** já está na árvore).

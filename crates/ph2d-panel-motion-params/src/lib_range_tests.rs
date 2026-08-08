@@ -182,3 +182,48 @@ fn the_box_is_ranged_to_the_hard_limit_and_the_slider_to_the_soft_one() {
          slider's own bounds"
     );
 }
+
+/// A row de CONTAGEM do `motion.grid`: `IntSlider`, arrasto até 20, caixa até 1.000.000.
+fn integer_soft_hard_row(value: f64) -> ParamsSnapshot {
+    ParamsSnapshot {
+        node: 7,
+        title: "Grid".into(),
+        modified: Default::default(),
+        sections: Vec::new(),
+        rows: vec![ParamRow::Scalar(ScalarRow {
+            name: "rows",
+            label: "Rows".into(),
+            value,
+            min: 1.0,
+            max: 20.0,
+            hard_min: 1.0,
+            hard_max: 1_000_000.0,
+            step: 1.0,
+            integer: true,
+            driven_by: None,
+            display: RowDisplay::default(),
+        })],
+    }
+}
+
+/// **REPRO (Enio, smoke 2026-08-07: *"Máximo de 20 em grid"*).** Um valor digitado acima do
+/// arrasto tem de chegar ao param — na row **INTEIRA**, que é a que o grid usa.
+#[test]
+fn a_typed_value_above_the_range_reaches_the_param_on_an_integer_row() {
+    let _ = drain_param_intents();
+    set_current_params(Some(integer_soft_hard_row(3.0)));
+    let mut host = ph2d_ui_testkit::MockPanelHost::with_panel::<MotionParamsPanel>();
+    let mut state = MotionParamsPanelState;
+    let chip = param_chip_id(0);
+    host.set_number_value(chip, 5_000.0);
+    host.apply_panel_event::<MotionParamsPanel>(&mut state, WidgetEvent::ValueChanged(chip));
+    assert_eq!(
+        drain_param_intents(),
+        vec![MotionParamIntent::SetParam {
+            node: 7,
+            param: "rows",
+            value: 5_000.0,
+        }],
+        "a caixa de um IntSlider tem de reportar o que só ela pode segurar"
+    );
+}

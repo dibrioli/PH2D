@@ -56,6 +56,12 @@ use bumpalo::collections::Vec as BumpVec;
 /// input (e.g. `"999"` in an upscale chip bounded to ×16) snaps the
 /// visible buffer back to the clamped display.
 ///
+/// ⚠️ **…a menos que o chip tenha faixa PRÓPRIA** ([`WidgetStore::set_number_range`]) que
+/// admita o número. Aí a régua é a dele: o **thumb** satura na trilha e o **valor** fica. É o
+/// slider dual (doc 88 A1) — o arrasto cobre a faixa *soft*, a caixa digita até a *hard* — e sem
+/// esta cláusula ele não existia em lugar nenhum: o espelho puxava todo valor digitado de volta
+/// ao topo do slider, silenciosamente. Enio, smoke de 2026-08-07: *"Máximo de 20 em grid"*.
+///
 /// Single source of truth for the chip↔slider mirror; the 4 dispatch
 /// sites (commit / stepper / tick / drag-scrub) all call this so the
 /// re-sync invariant can't drift between paths.
@@ -117,6 +123,18 @@ pub(super) fn apply_chip_value_with_mirror(
         *value = storage_clamped;
     }
     if was_clamped {
+        // ⚠️ **A faixa registrada do chip é a AUTORIDADE; o slider é uma vista que satura.**
+        // Onde o chip declarou uma faixa própria (o `hard` do slider dual) e ela ADMITE o
+        // número, o thumb encosta no fim da trilha e o valor fica onde o artista o pôs —
+        // re-sincronizar aqui é o defeito que o smoke reportou, e ele valia para TODO chip
+        // com faixa, inclusive o `rate` do `motion.emitter`, cujo teto de 4.000.000 nunca foi
+        // alcançável por digitação. Sem faixa registrada nada muda: o espelho segue sendo a
+        // única régua que o chip tem, e o caso do `"999"` num upscale ×16 é byte-idêntico.
+        if let Some((lo, hi, _)) = store.number_range(chip_id)
+            && (lo..=hi).contains(&new_display)
+        {
+            return (new_display, false);
+        }
         // Re-project the clamped storage into display and rewrite the
         // chip — keeps `value` + `buffer` in lockstep with the slider
         // thumb. `last_committed` is NOT touched here: drag-scrub uses

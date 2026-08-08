@@ -705,3 +705,32 @@ fn a_flagged_chip_does_not_commit_an_unchanged_value_on_blur() {
         "blur must NOT author an unchanged value even when flagged, got {events:?}"
     );
 }
+
+/// **REPRO do smoke do Enio (2026-08-07: *"Máximo de 20 em grid"*).**
+///
+/// O slider dual promete: o arrasto cobre a faixa SOFT, a caixa digita até a HARD. O chip do
+/// `motion.grid` tem `set_number_range(1, 1_000_000)` e o slider cobre `1..20`. Digitar `5000`
+/// tem de pousar 5000.
+#[test]
+fn a_typed_value_beyond_the_sliders_span_survives_the_mirror() {
+    // A grade: display = storage*19 + 1 (o slider cobre 1..20), chip começa em 3.
+    let mut store = build_pair(19.0, 1.0, 2.0 / 19.0, 3.0);
+    store.set_number_range(NodeId(2), 1.0, 1_000_000.0, 1.0);
+    store.set_focus(Some(NodeId(2)));
+    let arena = Bump::new();
+    for _ in 0..8 {
+        let _ = dispatch_key(&mut store, key(KEY_BACKSPACE), &arena);
+    }
+    for ch in ['5', '0', '0', '0'] {
+        let _ = dispatch_text_input(&mut store, ch, &arena);
+    }
+    let _ = dispatch_key(&mut store, key(KEY_ENTER), &arena);
+    let v = match store.get(NodeId(2)) {
+        Some(InteractiveState::NumberInput { value, .. }) => *value,
+        _ => panic!("chip"),
+    };
+    assert!(
+        (v - 5000.0).abs() < 1e-6,
+        "a caixa digitou 5000 e o chip guardou {v} — o espelho do slider a puxou de volta"
+    );
+}

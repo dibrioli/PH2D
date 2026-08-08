@@ -218,9 +218,15 @@ pub const SCULPT3D_SCROLLBAR_ID: NodeId = NodeId(840);
 /// `MAX_PARAM_ROWS = 16` e um pior nó (`motion.tint`) de **15 params** — ou seja
 /// oito linhas de folga para uma varredura que dá a TODO nó o conjunto PRO. O
 /// gate `a_full_panel_of_rows_fits_the_inspector` já previa o dia em texto:
-/// *"o painel precisa ROLAR antes de o teto subir mais"*. Next free id is `840`;
+/// *"o painel precisa ROLAR antes de o teto subir mais"*. Next free id is `842`;
 /// re-read the collision note above before taking it.
-pub const MOTION_PARAMS_SCROLLBAR_ID: NodeId = NodeId(839);
+///
+/// ⚠️ **A linha escreveu 839; o valor CONTADO na integração é 841** — a
+/// `line/Vector` (AUTHORED, 839) e a `line/sculpt3d` (SCULPT3D, 840) pousaram
+/// antes na mesma janela, e os NOMES das constantes diferem, então o git funde
+/// as três limpas e deixa a colisão para o `assert_ne!` da lista abaixo. O
+/// número se CONTA a partir do `main` do dia, nunca se escolhe.
+pub const MOTION_PARAMS_SCROLLBAR_ID: NodeId = NodeId(841);
 
 #[cfg(test)]
 mod tests {
@@ -262,6 +268,7 @@ mod tests {
             ("TOKENS", TOKENS_SCROLLBAR_ID),
             ("AUTHORED", AUTHORED_SCROLLBAR_ID),
             ("SCULPT3D", SCULPT3D_SCROLLBAR_ID),
+            ("MOTION_PARAMS", MOTION_PARAMS_SCROLLBAR_ID),
             ("DROPDOWN", crate::widget::DROPDOWN_SCROLLBAR_ID),
         ];
         for (i, (na, a)) in ids.iter().enumerate() {

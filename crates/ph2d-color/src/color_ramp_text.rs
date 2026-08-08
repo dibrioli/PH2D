@@ -19,8 +19,23 @@
 //!   device bake could not match the CPU `eval`.
 //! - each stop is `pos:r,g,b` with `{}`-formatted `f32` (Rust's shortest decimal
 //!   that round-trips), in **linear** RGB — the wire space the `tint` column and
-//!   the compositor use. Alpha is implicit `1.0` (an opaque tint, matching every
-//!   `motion.color_ramp` preset); a per-stop alpha is an append-only future field.
+//!   the compositor use.
+//!
+//! ## `g2` — a alfa por stop (2026-08-08)
+//!
+//! O smoke reportou que *"a transparência das cores não está sendo respeitada no
+//! motion"*, e a causa mais funda era esta: o formato **não tinha onde guardá-la**. O
+//! `g1` dropava a alfa na serialização (`let [r, g, b, _a]`) e a doc a chamava de *"um
+//! campo append-only futuro"* — este é o campo.
+//!
+//! ```text
+//! g2 <interp_u8> <pos>:<r>,<g>,<b>,<a> …
+//! ```
+//!
+//! ⚠️ **A versão é ESCOLHIDA pelo conteúdo, não fixada:** um ramp em que todo stop é
+//! opaco serializa `g1`, **byte a byte** como antes — o mesmo padrão append-only dos
+//! records do formato de grafo (*um documento que ninguém mutou é byte-idêntico*). Só o
+//! ramp que de fato usa a alfa paga o header novo, e `parse_gradient` aceita os dois.
 //!
 //! Colour mode is always [`RampColorMode::Rgb`] and hue [`RampHue::Near`] in v1
 //! (the two the node evaluates); an HSV/HSL custom ramp is a future token, not a
@@ -29,15 +44,29 @@
 use crate::color_ramp::{ColorRamp, RampColorMode, RampInterp, RampStop};
 
 /// Serialize a ramp to the compact text form (the inverse of [`parse_gradient`]).
-/// Alpha is dropped (implicit `1.0`); colour mode/hue are not stored in v1.
+///
+/// Emite **`g1`** (três canais) quando todo stop é opaco e **`g2`** (quatro) quando
+/// algum não é — ver o cabeçalho do módulo: é o que mantém byte-idêntico todo gradiente
+/// já autorado. Colour mode/hue não são guardados.
 #[must_use]
 pub fn serialize_gradient(ramp: &ColorRamp) -> String {
-    let mut s = format!("g1 {}", ramp.interp.to_u8());
+    // ⚠️ `!= 1.0` e não `< 1.0`: uma alfa NaN ou fora de faixa também precisa viajar,
+    // senão ela é silenciosamente saneada para opaca só por não caber no header velho.
+    let translucent = ramp.stops().iter().any(|s| s.color[3] != 1.0);
+    let mut s = format!(
+        "{} {}",
+        if translucent { "g2" } else { "g1" },
+        ramp.interp.to_u8()
+    );
     for stop in ramp.stops() {
         // `{}` on f32 is the shortest decimal that round-trips (Rust's Grisu/Ryū),
         // so parse-then-serialize is byte-stable.
-        let [r, g, b, _a] = stop.color;
-        s.push_str(&format!(" {}:{},{},{}", stop.pos, r, g, b));
+        let [r, g, b, a] = stop.color;
+        if translucent {
+            s.push_str(&format!(" {}:{r},{g},{b},{a}", stop.pos));
+        } else {
+            s.push_str(&format!(" {}:{r},{g},{b}", stop.pos));
+        }
     }
     s
 }
@@ -49,9 +78,12 @@ pub fn serialize_gradient(ramp: &ColorRamp) -> String {
 #[must_use]
 pub fn parse_gradient(s: &str) -> Option<ColorRamp> {
     let mut it = s.split_whitespace();
-    if it.next()? != "g1" {
-        return None;
-    }
+    // `g1` = três canais (alfa implícita 1.0); `g2` = quatro.
+    let with_alpha = match it.next()? {
+        "g1" => false,
+        "g2" => true,
+        _ => return None,
+    };
     let interp = RampInterp::from_u8(it.next()?.parse::<u8>().ok()?);
     let mut stops = Vec::new();
     for tok in it {
@@ -61,13 +93,21 @@ pub fn parse_gradient(s: &str) -> Option<ColorRamp> {
         let r = c.next()?.parse::<f32>().ok()?;
         let g = c.next()?.parse::<f32>().ok()?;
         let b = c.next()?.parse::<f32>().ok()?;
+        // Em `g1` um 4º canal segue MALFORMADO (não é dado extra a ignorar); em `g2` ele
+        // é obrigatório — a versão diz quantos canais o stop tem, e um stop com o número
+        // errado de canais é um stop que ninguém escreveu.
+        let a = if with_alpha {
+            c.next()?.parse::<f32>().ok()?
+        } else {
+            1.0
+        };
         if c.next().is_some() {
-            return None; // a 4th channel is malformed, not extra data to ignore.
-        }
-        if !(pos.is_finite() && r.is_finite() && g.is_finite() && b.is_finite()) {
             return None;
         }
-        stops.push(RampStop::new(pos, [r, g, b, 1.0]));
+        if !(pos.is_finite() && r.is_finite() && g.is_finite() && b.is_finite() && a.is_finite()) {
+            return None;
+        }
+        stops.push(RampStop::new(pos, [r, g, b, a]));
     }
     if stops.len() < 2 {
         return None;
@@ -78,6 +118,56 @@ pub fn parse_gradient(s: &str) -> Option<ColorRamp> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// **A ALFA POR STOP SOBREVIVE AO ROUND-TRIP** — o defeito de 2026-08-08.
+    ///
+    /// ⚠️ Nasceu VERMELHO: o `g1` dropava a alfa na serialização, então um stop
+    /// translúcido voltava opaco e a transparência era **inexprimível no formato**, que é
+    /// a camada mais funda do que o smoke reportou.
+    #[test]
+    fn a_translucent_stop_survives_the_round_trip() {
+        let ramp = ColorRamp::new(
+            vec![
+                RampStop::new(0.0, [1.0, 0.0, 0.0, 0.25]),
+                RampStop::new(1.0, [0.0, 0.0, 1.0, 0.8]),
+            ],
+            RampColorMode::Rgb,
+            RampInterp::Linear,
+        );
+        let text = serialize_gradient(&ramp);
+        assert!(
+            text.starts_with("g2 "),
+            "um ramp translúcido pede o header novo: {text}"
+        );
+        let back = parse_gradient(&text).expect("round-trip");
+        assert_eq!(back.stops()[0].color[3], 0.25);
+        assert_eq!(back.stops()[1].color[3], 0.8);
+    }
+
+    /// **E um ramp OPACO segue byte-idêntico ao que já shipava** — a política append-only:
+    /// só quem usa a alfa paga o header novo.
+    #[test]
+    fn an_opaque_ramp_still_serializes_as_v1() {
+        let ramp = ColorRamp::new(
+            vec![
+                RampStop::new(0.0, [1.0, 0.0, 0.0, 1.0]),
+                RampStop::new(1.0, [0.0, 0.0, 1.0, 1.0]),
+            ],
+            RampColorMode::Rgb,
+            RampInterp::Linear,
+        );
+        assert_eq!(serialize_gradient(&ramp), "g1 2 0:1,0,0 1:0,0,1");
+    }
+
+    /// Um `g1` antigo continua legível, com a alfa implícita — e um 4º canal nele segue
+    /// MALFORMADO, porque a versão é quem diz quantos canais um stop tem.
+    #[test]
+    fn v1_is_still_read_and_its_stop_arity_is_still_enforced() {
+        let r = parse_gradient("g1 2 0:1,0,0 1:0,0,1").expect("v1 parses");
+        assert_eq!(r.stops()[0].color[3], 1.0);
+        assert!(parse_gradient("g1 2 0:1,0,0,0.5 1:0,0,1").is_none());
+        assert!(parse_gradient("g2 2 0:1,0,0 1:0,0,1").is_none());
+    }
 
     /// Round-trip: serialize then parse gives back the same stops + interp,
     /// bit-for-bit (the shortest-decimal `{}` form is stable).

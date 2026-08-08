@@ -56,7 +56,7 @@
 #![forbid(unsafe_code)]
 
 use ph2d_node_registry::{NodeRegistry, RegistryError};
-use ph2d_nodegraph::attr::{Column, Stream};
+use ph2d_nodegraph::attr::{Column, SIZE_IDENTITY, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
@@ -71,6 +71,33 @@ const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::F
 /// Namespaced away from the emitter's own `age` (a particle's lifetime), which
 /// means something else entirely and must survive untouched.
 const AGE: &str = "trail_age";
+
+/// A cor que a lowering assume quando não há coluna `tint` — branco opaco
+/// (`ph2d-eval-motion::lower`, `vec4_at(tint, i, [1,1,1,1])`).
+const TINT_IDENTITY: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
+
+/// **Materializa as colunas que o rastro DESBOTA.**
+///
+/// ⚠️ Este é o defeito que o smoke de 08/08 reportou como *"Fade e Shrink não têm efeito
+/// algum"*, e o mecanismo é exato: `fade_alpha`/`scale_vec2` multiplicam uma coluna que
+/// **precisa existir**, e um stream posicional puro — um `motion.grid`, o caso mais comum
+/// que existe — não carrega `tint` nem `size`. Medido na cena do smoke: as colunas eram
+/// `["Count", "Index", "P", "trail_age"]`. Os dois knobs eram no-ops silenciosos, com a
+/// lowering desenhando todo fantasma opaco e do mesmo tamanho.
+///
+/// A cura é a que o `motion.scale` já usa para o `size`: **começar da identidade que a
+/// própria lowering assume**, o que torna o primeiro tick byte-idêntico no render (a
+/// coluna passa a existir carregando exatamente o valor que a ausência dela significava)
+/// e dá aos ticks seguintes o que multiplicar.
+fn materialize_render_columns(s: &mut Stream) {
+    let n = s.count();
+    if s.get("size").is_none() {
+        s.set("size", Column::Vec2(vec![SIZE_IDENTITY; n]));
+    }
+    if s.get("tint").is_none() {
+        s.set("tint", Column::Vec4(vec![TINT_IDENTITY; n]));
+    }
+}
 
 /// Hard ceiling on the echo count, independent of the `length` param's own
 /// slider range — a document loaded from disk (or authored over MCP) can carry
@@ -225,6 +252,10 @@ fn step(
 
     let mut head = live.clone();
     head.set(AGE, Column::Scalar(vec![0.0; live.count()]));
+    // ⚠️ ANTES do concat: o head deste tick é o estado do próximo, então é aqui que as
+    // colunas nascem — materializá-las só nos `carried` deixaria o primeiro fantasma de
+    // cada geração sem nada a desbotar.
+    materialize_render_columns(&mut head);
     // Tail first, head last: the live element paints over its own echoes.
     concat(&carried, &head)
 }
@@ -567,17 +598,47 @@ mod tests {
         assert_eq!(generations(32.0, 999_999), 1, "never zero rows");
     }
 
-    /// A stream with neither `tint` nor `size` still echoes (the fade/shrink
-    /// simply have nothing to touch) — the trail is not silently a no-op on a
-    /// bare positional stream.
+    /// **UM STREAM POSICIONAL PURO DESBOTA E ENCOLHE** — o defeito de 2026-08-08.
+    ///
+    /// ⚠️ **Este gate PINAVA o bug.** Ele afirmava `state.get("tint").is_none()` e
+    /// explicava, no próprio doc-comment, que *"o fade/shrink simplesmente não têm o que
+    /// tocar"* — descrevendo como comportamento aquilo que o smoke reportou como
+    /// *"Fade e Shrink não têm efeito algum"*. Medido na cena real: as colunas eram
+    /// `["Count", "Index", "P", "trail_age"]`, e um `motion.grid` — a fonte mais comum
+    /// que existe — não carrega nenhuma das duas.
+    ///
+    /// *Um gate que descreve o sintoma como contrato mantém o defeito vivo com a suíte
+    /// verde.* Agora ele afirma o que o artista vê.
     #[test]
-    fn a_bare_positional_stream_still_echoes() {
+    fn a_bare_positional_stream_fades_and_shrinks() {
         let bare = |x: f32| Stream::new(1).with("P", Column::Vec2(vec![[x, 0.0]]));
         let mut state = Stream::new(0);
         for t in 0..4 {
             state = step(&bare(t as f32), &state, 3.0, 0.5, 0.5, 1.0);
         }
         assert_eq!(xs(&state), vec![1.0, 2.0, 3.0]);
-        assert!(state.get("tint").is_none());
+        // A cauda: dois ticks de meia-vida atrás do vivo.
+        assert_eq!(alphas(&state), vec![0.25, 0.5, 1.0]);
+        match state.get("size").unwrap() {
+            Column::Vec2(v) => assert_eq!(v, &vec![[0.25, 0.25], [0.5, 0.5], [1.0, 1.0]]),
+            _ => panic!("size"),
+        }
+    }
+
+    /// **E a materialização é a IDENTIDADE da lowering** — o primeiro tick não muda um
+    /// pixel, que é o que torna a cura segura para toda arte já autorada.
+    #[test]
+    fn the_materialised_columns_carry_the_lowerings_own_defaults() {
+        let bare = Stream::new(2).with("P", Column::Vec2(vec![[0.0, 0.0], [1.0, 0.0]]));
+        let out = step(&bare, &Stream::new(0), 4.0, 0.5, 0.5, 1.0);
+        assert_eq!(
+            alphas(&out),
+            vec![1.0, 1.0],
+            "opaco, como a ausência significava"
+        );
+        match out.get("size").unwrap() {
+            Column::Vec2(v) => assert_eq!(v, &vec![SIZE_IDENTITY; 2]),
+            _ => panic!("size"),
+        }
     }
 }

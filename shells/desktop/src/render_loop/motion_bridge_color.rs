@@ -251,12 +251,14 @@ pub(super) fn apply_palette_pick(
     if srgb == linear_rgba_to_srgb8(*slot) {
         return;
     }
-    // ⚠️ **Alpha is PRESERVED, not overwritten.** The palette carries per-colour alpha
-    // (`p1` has four components) and the OKLCH picker is opaque, so taking its byte would
-    // silently make every colour the artist touches fully opaque.
-    let a = slot[3];
+    // ⚠️ **A alfa vem do PICK, e a premissa contrária custou um smoke.** Este bloco
+    // preservava a alfa antiga afirmando que *"o picker OKLCH é opaco"* — ele **não é**:
+    // tem a 4ª linha de canal (R+G+B+**A**) e um campo hex `#RRGGBBAA`. Com a premissa
+    // errada o artista podia mover o slider A e o valor era descartado no caminho de
+    // volta, que é a metade de *"a transparência das cores não está sendo respeitada"*
+    // reportada em 2026-08-08. O guard acima já compara os QUATRO bytes, então abrir o
+    // picker sobre uma cor translúcida e não mexer segue sendo um no-op.
     *slot = srgb8_to_linear_rgba(srgb);
-    slot[3] = a;
     motion
         .doc
         .graph
@@ -295,8 +297,8 @@ fn current_gradient(
         .unwrap_or_default()
 }
 
-/// Write a picked sRGB colour into `stop` of a node's gradient text param (RGB via the sRGB
-/// transfer, alpha forced opaque — doc 85 stops carry no alpha), re-serializing the string
+/// Write a picked sRGB colour into `stop` of a node's gradient text param (RGBA via the sRGB
+/// transfer — a alfa do stop viaja no formato `g2` desde 2026-08-08), re-serializing the string
 /// and re-cooking only when the colour actually changed (the picker stays open across idle
 /// frames). The mirror of [`apply_color_to_node`] for a stop-in-a-string.
 pub(super) fn apply_gradient_stop_pick(
@@ -312,12 +314,15 @@ pub(super) fn apply_gradient_stop_pick(
     };
     // Compare in sRGB8 — the space the pick lives in — so merely OPENING the picker on a
     // colour that is not an exact 8-bit round-trip does not quantize the doc (the exact
-    // guard `apply_color_to_node` documents). A stop is opaque (alpha 1.0 → byte 255).
+    // guard `apply_color_to_node` documents).
     if srgb == linear_rgba_to_srgb8(cur.color) {
         return;
     }
-    let lin = srgb8_to_linear_rgba(srgb);
-    ramp.set_color(stop, [lin[0], lin[1], lin[2], 1.0]);
+    // ⚠️ **A alfa do pick é honrada.** Ela era cravada em `1.0` sob a justificativa de que
+    // *"stops não carregam alfa"* — o que era verdade do FORMATO (`g1` serializava três
+    // canais), não do desejo do artista; o `g2` abriu o campo, e forçar opaco aqui seria
+    // a segunda metade do mesmo defeito.
+    ramp.set_color(stop, srgb8_to_linear_rgba(srgb));
     motion
         .doc
         .graph

@@ -117,6 +117,110 @@ fn opening_the_picker_does_not_quantize_an_unmoved_colour() {
     assert_ne!(channel_values(&motion, tint, ["r", "g", "b", "a"]), before);
 }
 
+/// **A TRANSPARÊNCIA CHEGA À PALETA** — o defeito de 2026-08-08.
+///
+/// ⚠️ Nasceu VERMELHO. O caminho de volta do pick preservava a alfa ANTIGA do slot e
+/// descartava a escolhida, sob um comentário que afirmava *"o picker OKLCH é opaco"* —
+/// e ele **não é**: tem a 4ª linha de canal (R+G+B+**A**) e um campo `#RRGGBBAA`. O
+/// artista movia o slider e o número morria no caminho.
+///
+/// O oráculo é o `tint` COZIDO, não o texto: é o número que a lowering entrega ao
+/// shader, e é onde uma alfa perdida em qualquer degrau do caminho aparece.
+#[test]
+fn a_translucent_palette_pick_reaches_the_cooked_tint() {
+    use super::color::apply_palette_pick;
+    use ph2d_nodegraph::attr::Column;
+    use ph2d_nodegraph::cook::Cook;
+
+    let mut motion = MotionState::new();
+    // ⚠️ Os dois nós são MODIFICADORES: sem fonte o cook devolve zero elementos e o gate
+    // ficaria verde-sobre-vazio (a 1ª versão deste teste era exatamente isso).
+    let grid = motion.doc.graph.add_node("motion.grid");
+    let arr = motion.doc.graph.add_node("motion.color_array");
+    motion
+        .doc
+        .graph
+        .connect(ph2d_nodegraph::graph::Edge {
+            from: (grid, 0),
+            to: (arr, 0),
+            delayed: false,
+        })
+        .expect("grid -> array");
+    motion.doc.graph.set_text_param(
+        arr,
+        "palette",
+        ph2d_color::serialize_palette(&[[1.0, 0.0, 0.0, 1.0], [0.0, 0.0, 1.0, 1.0]]),
+    );
+    // Uma cor com METADE da alfa.
+    apply_palette_pick(&mut motion, arr, "palette", 0, [255, 0, 0, 128]);
+
+    let mut reg = ph2d_node_registry::NodeRegistry::new();
+    ph2d_node_registry_init::register_all_nodes(&mut reg).expect("registry");
+    let mut cook = Cook::new();
+    let out = cook
+        .cook(&motion.doc.graph, &reg, arr, 0.0)
+        .expect("the array cooks");
+    match out[0].as_stream().get("tint") {
+        Some(Column::Vec4(v)) => assert!(
+            (v[0][3] - 128.0 / 255.0).abs() < 1e-3,
+            "a alfa escolhida tinha de chegar ao tint cozido, e chegou {}",
+            v[0][3]
+        ),
+        _ => panic!("tint"),
+    }
+}
+
+/// **E CHEGA AO GRADIENTE** — a outra metade, que era mais funda: o formato `g1` não
+/// tinha onde guardar a alfa (`serialize_gradient` fazia `let [r, g, b, _a]`), então
+/// nem o pick nem o documento podiam expressá-la. O `g2` abriu o campo.
+#[test]
+fn a_translucent_gradient_stop_reaches_the_cooked_tint() {
+    use super::color::apply_gradient_stop_pick;
+    use ph2d_nodegraph::attr::Column;
+    use ph2d_nodegraph::cook::Cook;
+
+    let mut motion = MotionState::new();
+    let grid = motion.doc.graph.add_node("motion.grid");
+    let ramp = motion.doc.graph.add_node("motion.color_ramp");
+    motion
+        .doc
+        .graph
+        .connect(ph2d_nodegraph::graph::Edge {
+            from: (grid, 0),
+            to: (ramp, 0),
+            delayed: false,
+        })
+        .expect("grid -> ramp");
+    apply_gradient_stop_pick(&mut motion, ramp, "ramp", 0, [255, 0, 0, 64]);
+
+    let text = motion
+        .doc
+        .graph
+        .node_text_param_overrides(ramp)
+        .and_then(|m| m.get("ramp"))
+        .expect("o gradiente foi escrito")
+        .to_string();
+    assert!(
+        text.starts_with("g2 "),
+        "o header novo carrega a alfa: {text}"
+    );
+
+    let mut reg = ph2d_node_registry::NodeRegistry::new();
+    ph2d_node_registry_init::register_all_nodes(&mut reg).expect("registry");
+    let mut cook = Cook::new();
+    let out = cook
+        .cook(&motion.doc.graph, &reg, ramp, 0.0)
+        .expect("the ramp cooks");
+    match out[0].as_stream().get("tint") {
+        Some(Column::Vec4(v)) => assert!(
+            v.iter().any(|c| c[3] < 0.9),
+            "algum elemento tinha de sair translúcido: {:?}",
+            v.iter().map(|c| c[3]).collect::<Vec<_>>()
+        ),
+        _ => panic!("tint"),
+    }
+}
+
 /// **A paleta é UMA row, e o contador morreu com o cap.**
 ///
 /// O nó pintava doze sliders de canal, depois quatro swatches gateadas por um slider

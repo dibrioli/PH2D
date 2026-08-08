@@ -156,6 +156,40 @@ mod tests {
         v
     }
 
+    /// **A CENA DE FATO DESBOTA E ENCOLHE** — o gate do defeito de 2026-08-08.
+    ///
+    /// ⚠️ O smoke reportou *"Fade e Shrink não têm efeito algum"* e a sonda mediu a causa
+    /// na cena REAL: as colunas eram `["Count", "Index", "P", "trail_age"]` — um
+    /// `motion.grid` não carrega `tint` nem `size`, e os dois knobs multiplicavam o que
+    /// não existia. Este gate mede o que o artista VÊ (a rampa de alfa e de tamanho ao
+    /// longo da cauda), não a presença das colunas: presença é o mecanismo, e o mecanismo
+    /// pode mudar.
+    #[test]
+    fn the_echo_scene_actually_fades_and_shrinks() {
+        let (a, _) = run(12);
+        let alpha = |s: &Stream| match s.get("tint") {
+            Some(Column::Vec4(v)) => v.iter().map(|c| c[3]).collect::<Vec<_>>(),
+            _ => panic!("a cena tem de carregar `tint` — sem ela o Fade e um no-op"),
+        };
+        let al = alpha(&a);
+        assert!(
+            al.windows(2).all(|w| w[0] < w[1]),
+            "o alfa tinha de subir do eco mais velho ate a cabeca viva, e mediu {al:?}"
+        );
+        assert!(
+            *al.last().expect("a cabeca") > 0.99 && al[0] < 0.5,
+            "a cabeca e opaca e a cauda quase sumiu: {al:?}"
+        );
+        let sz = match a.get("size") {
+            Some(Column::Vec2(v)) => v.iter().map(|s| s[0]).collect::<Vec<_>>(),
+            _ => panic!("a cena tem de carregar `size` — sem ela o Shrink e um no-op"),
+        };
+        assert!(
+            sz.windows(2).all(|w| w[0] < w[1]),
+            "o tamanho tinha de crescer do eco mais velho ate a cabeca, e mediu {sz:?}"
+        );
+    }
+
     /// **A cena MOSTRA a diferença que a mensagem promete.**
     ///
     /// ⚠️ O oráculo é a CADÊNCIA das idades e o ARCO coberto — não a contagem: as duas

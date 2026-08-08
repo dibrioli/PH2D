@@ -10,10 +10,10 @@
 | | |
 |---|---|
 | Branch | `line/motion-value` |
-| HEAD | `a27ee6e81` |
+| HEAD | `87d57bdcb` |
 | Merge-base com `main` | `a4018d203` |
-| Commits | **41** |
-| Diff | **175 arquivos, +14.169 / −2.623** |
+| Commits | **45** |
+| Diff | **179 arquivos, +14.993 / −2.661** |
 | Janela | 2026-08-05 → 2026-08-08 |
 
 ---
@@ -93,6 +93,50 @@ cauda perdida em silêncio**.
 passa despercebido, porque o cap do `.take()` mantém o conteúdo abaixo dela — só um clamp abaixo
 de 544 é observável hoje. **E o nome que eu dei ao 1º gate de rolagem afirmava mais do que ele
 mede** (*"mais conteúdo do que o dock mostra"*), corrigido para o que ele prova de fato.
+
+**(B4) A VARREDURA POR FAMÍLIA COMEÇA — e um CENSO a escolhe** (`0e3e6270b` · `87d57bdcb`,
+o §B3 propriamente dito; o mapa curado vive na **§9 nova do doc 88**).
+
+A §6 do plano dizia *"nó a nó, ou família a família"*, e a §0 manda medir antes de decidir
+⇒ a wave abre com uma **sonda de censo** (`param_census`, na `ph2d-node-registry-init` — a
+crate que registra os 118 nós, e o build mais barato que os enxerga). **Retrato:
+118 nós · 411 params · 395 com hint · 105 com unidade**; **um** nó tem param sem hint
+nenhum e **cinquenta** têm ≤ 2 controles. ⚠️ *Magro por natureza* e *magro por omissão*
+são coisas diferentes e o censo não as distingue — quem distingue é a referência, e é
+disso que a §9 do doc 88 é a tabela (com o veredito **recusado-com-motivo** para as
+famílias VALUE, ESTRUTURAIS e RIG, para ninguém as "completar" depois).
+
+**Ele escolheu a família TRANSFORM, porque dois nós CONTRADIZIAM a coluna que escrevem:**
+
+- **`motion.scale`** escrevia `size`, uma coluna **Vec2**, a partir de **UM** número.
+  *Squash & stretch* não era difícil no grafo — era **inexprimível**. Agora `uniform` é o
+  *link* de corrente do AE/Cavalry/Figma e destravá-lo revela `amount_y`.
+- **`motion.mirror`** pregava a linha de espelho no **CENTROIDE**, então a simetria só
+  sabia acontecer contra si mesma. `offset` move a linha — e é medido **a partir do
+  centroide**, porque um offset absoluto não teria como exprimir *"no centroide"* e o
+  zero deixaria de ser o comportamento antigo.
+
+⚠️ **Os dois defaults são byte-idênticos ao que shipava** (`uniform` nasce ligado, `offset`
+nasce zero), cada um reduzindo **literalmente** à expressão anterior — a demo de boot
+sozinha põe treze `motion.scale`, e uma varredura de params é o que mais facilmente
+destrói arte já autorada.
+
+⚠️ **Duas lições de gate desta wave, as duas por MUTAÇÃO:**
+
+1. **O gate de paridade GPU antigo era CEGO ao ramo novo.** Com o link no default o
+   `select` do WGSL nunca entra no braço do segundo eixo — mutar o kernel para ignorá-lo
+   deixa `scale_kernel_matches_the_cpu_within_epsilon` **VERDE** e só o irmão novo
+   (`the_unlinked_scale_axes_match_the_cpu_within_epsilon`) sangra. *Um ramo de kernel que
+   nenhum gate percorre é o que ship quebrado com a suíte verde.*
+2. **Uma capacidade sem PORTA passa em todo gate de função pura.** Mutar o `eval` do mirror
+   para não ler `ctx.param("offset")` deixa os cinco gates do kernel verdes; só o gate que
+   atravessa o **COOK** sangra.
+
+**Smoke: `PH2D_TRANSFORM_SMOKE=1`** — a cena monta 4 pontos esticados 2.2×/0.45× e
+espelhados numa linha a 1.2 m do centroide (8 instâncias), com 4 testes na mensagem.
+⚠️ **Se os oito saírem quadrados, PARE**: o eixo Y não chegou.
+
+**Zero schema, zero contrato congelado, zero dep, zero `Cargo.toml`.**
 
 ---
 
@@ -283,7 +327,22 @@ erros de compilação** — ele não compila código `#[cfg(test)]`, e a sonda d
 
 ---
 
-**Resumo:** linha `motion-value` pronta (HEAD `9f1b8ff63`, 33 commits). Foundational tocado é
+- ⚠️ **A varredura B3 fechou UMA família (TRANSFORM) e o mapa das demais está na §9 do
+  doc 88, com o veredito de cada uma** — inclusive as três **recusadas com motivo**
+  (VALUE, ESTRUTURAIS, RIG), que existem para ninguém as "completar" por parecerem magras.
+  A próxima aberta é o **ECHO** (`motion.trail`: 3 params contra os 8 da referência —
+  faltam `spacing` e `hue_shift`; ⚠️ o `spacing` precisa de um contador de ticks e o nó é
+  sequencial, então mede-se primeiro onde o contador mora).
+- ⚠️ **E o `motion.duplicator` tem ZERO params, o que está QUASE todo certo** — a tabela
+  do Cavalry é grande e a leitura ingênua ("faltam sete params") é falsa: *Distribution*
+  são 21 nós aqui, os transforms por-cópia são `motion.move`/`rotate`/`scale` a jusante, e
+  *Skip Invisible* é o `motion.cull`. O gap REAL é **um**: *que forma vai em que ponto*
+  (nós fazemos o produto cartesiano; a referência cicla ou fixa por id) — semântica de
+  contagem, não um knob, ⇒ wave própria.
+
+---
+
+**Resumo:** linha `motion-value` pronta (HEAD `87d57bdcb`, 45 commits). Foundational tocado é
 aditivo salvo os doc-comments do §6(a); símbolos colidíveis são `PROJECT_SCHEMA = 56`
 (**provisório**), `INSPECTOR_MAX_H`, `RESERVED_PREFIX` e `CURSOR`; contratos congelados **3/3 +
 4/4 verdes**; zero pacote externo novo, zero crate nova, zero ADR. **Aguardo ordem de integração.**

@@ -149,6 +149,49 @@ competir com ele.
 
 ---
 
+## 7.5 ⚠️ O REBASE: 366 commits atrás, e o risco é LOCALIZADO — medido
+
+**A linha nunca foi integrada** (`git merge-base --is-ancestor` sobre os 3 commits → nenhum está no
+`main`) e está **366 commits atrás**. Antes de reabrir, o custo:
+
+| o que | linhas | commits no `main` desde a base | risco |
+|---|---:|---:|---|
+| `crates/ph2d-project-format/**` (a crate nova) | 684 | **0** | ✅ limpo |
+| `project_envelope.rs` + `_tests.rs` (novos) | 833 | **0** | ✅ limpo |
+| o gate `the_shell_carries_sections…` + o doc | 158 | **0** | ✅ limpo |
+| **`shells/desktop/src/project.rs`** | **294** | **12** | ⛔ **ver abaixo** |
+| `project_schema_tests.rs` | 102 | 7 | ⚠️ conflito provável |
+| `project_tests.rs` · `app_state.rs` · `main.rs` · 2 `Cargo.toml` | ~105 | 4 / 16 / 58 / 27 | ⚠️ pequeno |
+
+⇒ **~85% do trabalho rebaseia limpo.** O risco concentra-se em ~400 linhas.
+
+### ⛔ E o `project.rs` tem uma armadilha ESPECÍFICA, que já mordeu outra linha
+
+**Na base desta linha (`a9f5977e9`) o `shells/desktop/src/project_load.rs` NÃO EXISTIA.** No `main`
+de hoje ele existe: a `line/sculpt3d` **PARTIU** o `project.rs` em 2026-08-04 (teto de LOC), e o
+lado que saiu é ***"como o arquivo é LIDO"*** — que é **exactamente** o que esta linha reescreve
+(o envelope, o carry de seções desconhecidas).
+
+⚠️ **Isto é literalmente o defeito que quebrou a `line/Vector`** e que o handoff da `sculpt3d`
+avisou: *"uma linha que edite o corpo do `project_load_from` funde limpo contra um arquivo de onde
+a função saiu"* — o `project_tokens::install` **fundiu limpo para o lado errado do corte** e teria
+evaporado com a suíte inteira verde
+[[feedback_clean_text_merge_can_be_semantically_broken]].
+
+**O `project.rs` tem hoje ONZE irmãos** (`project_load` · `project_assets` · `project_tokens` ·
+`project_forget` · `project_painter` · `project_baked_form` · …). Depois do rebase, **confira onde
+cada hunk pousou**, não se o merge foi limpo.
+
+⚠️ **E o `PROJECT_SCHEMA` andou de 48 para 55** desde a base — o `LEGACY_SCHEMA_FINAL = 48` desta
+linha descreve uma fronteira que **já não é o fim da escada**. Esse número tem de ser
+**RE-MEDIDO** contra o `main` do dia, não transportado
+[[feedback_numbers_that_sum_across_lines_count_dont_pick]].
+
+**Recomendação:** reabrir **vale a pena** (85% limpo, e a crate nova é o coração do trabalho), com
+o rebase feito **antes de escrever uma linha nova**, e o `project.rs` conferido hunk a hunk.
+
+---
+
 ## 8. A lei da linha
 
 Cada wave fecha com **UI na mesma wave** (quando houver UI), **smoke próprio**, **bateria batched**,

@@ -10,10 +10,10 @@
 | | |
 |---|---|
 | Branch | `line/motion-value` |
-| HEAD | `87d57bdcb` |
+| HEAD | `dc8ac591e` |
 | Merge-base com `main` | `a4018d203` |
-| Commits | **45** |
-| Diff | **179 arquivos, +14.993 / −2.661** |
+| Commits | **48** |
+| Diff | **181 arquivos, +15.507 / −2.674** |
 | Janela | 2026-08-05 → 2026-08-08 |
 
 ---
@@ -132,7 +132,30 @@ destrói arte já autorada.
    para não ler `ctx.param("offset")` deixa os cinco gates do kernel verdes; só o gate que
    atravessa o **COOK** sangra.
 
-**Smoke: `PH2D_TRANSFORM_SMOKE=1`** — a cena monta 4 pontos esticados 2.2×/0.45× e
+**A 2ª família — ECHO** (`5867f2c22`): o censo mediu `motion.trail` com **3 params contra
+os 8** da referência, e o que faltava não era enfeite — um fantasma por TICK é um rastro
+**contínuo**, que a 60 fps lê como borrão; o *sprite echo* (que o catálogo traz com
+`spacing 2` no default DELE) era **inexprimível**. ⚠️ **O `spacing` não custou estado
+novo**, e é o desenho inteiro: a coluna `trail_age` já sabia há quantos ticks o último eco
+foi deixado, então a promoção da cabeça é uma pergunta ao **ESTADO**, não a um contador —
+e com `spacing = 1` a faixa consultada é vazia, a promoção acontece sempre, e o motor é
+**byte a byte** o que sempre shipou.
+
+⚠️ **E o gate do SMOKE achou o que a suíte do nó não via:** com a janela ingênua
+(`length × spacing`) o `length` passava a significar **duas coisas** — LINHAS em
+espaçamento 1 e linhas + 1 acima dele. A janela correta é `(length − 1) × spacing + 1`, e
+quem a pina é a **igualdade de CONTAGEM** entre as duas esteiras da cena. *Uma cena que
+compara dois ajustes lado a lado mede o que uma suíte que olha um ajuste por vez não
+alcança.*
+
+⚠️ **O `hueShift` do mesmo catálogo NÃO entrou, com o motivo no próprio nó:** girar matiz
+em RGB linear com uma matriz YIQ é o atalho que todo motor de partícula usa e que este app
+**não usa em lugar nenhum** — a cor aqui passa por OKLCH. Seria uma segunda resposta a
+*"o que é girar uma cor"*, divergindo no único lugar onde ninguém lê um número.
+
+**Smokes: `PH2D_TRANSFORM_SMOKE=1`** · **`PH2D_ECHO_SMOKE=1`** (duas esteiras iguais em
+órbita, só o espaçamento difere — se os dois rastros forem iguais, o param não chegou).
+O primeiro: — a cena monta 4 pontos esticados 2.2×/0.45× e
 espelhados numa linha a 1.2 m do centroide (8 instâncias), com 4 testes na mensagem.
 ⚠️ **Se os oito saírem quadrados, PARE**: o eixo Y não chegou.
 
@@ -330,9 +353,8 @@ erros de compilação** — ele não compila código `#[cfg(test)]`, e a sonda d
 - ⚠️ **A varredura B3 fechou UMA família (TRANSFORM) e o mapa das demais está na §9 do
   doc 88, com o veredito de cada uma** — inclusive as três **recusadas com motivo**
   (VALUE, ESTRUTURAIS, RIG), que existem para ninguém as "completar" por parecerem magras.
-  A próxima aberta é o **ECHO** (`motion.trail`: 3 params contra os 8 da referência —
-  faltam `spacing` e `hue_shift`; ⚠️ o `spacing` precisa de um contador de ticks e o nó é
-  sequencial, então mede-se primeiro onde o contador mora).
+  **Duas fechadas** (TRANSFORM · ECHO); a próxima aberta é **DEFORMERS** (`spherize` e
+  `slit_scan` com 1 param cada — a medir se são magros por natureza).
 - ⚠️ **E o `motion.duplicator` tem ZERO params, o que está QUASE todo certo** — a tabela
   do Cavalry é grande e a leitura ingênua ("faltam sete params") é falsa: *Distribution*
   são 21 nós aqui, os transforms por-cópia são `motion.move`/`rotate`/`scale` a jusante, e
@@ -342,7 +364,7 @@ erros de compilação** — ele não compila código `#[cfg(test)]`, e a sonda d
 
 ---
 
-**Resumo:** linha `motion-value` pronta (HEAD `87d57bdcb`, 45 commits). Foundational tocado é
+**Resumo:** linha `motion-value` pronta (HEAD `dc8ac591e`, 48 commits). Foundational tocado é
 aditivo salvo os doc-comments do §6(a); símbolos colidíveis são `PROJECT_SCHEMA = 56`
 (**provisório**), `INSPECTOR_MAX_H`, `RESERVED_PREFIX` e `CURSOR`; contratos congelados **3/3 +
 4/4 verdes**; zero pacote externo novo, zero crate nova, zero ADR. **Aguardo ordem de integração.**

@@ -198,7 +198,7 @@ impl PhysicsWorld {
             up,
             slide: true,
             // ⚠️ Zero DESLIGA — ver [`CharacterParams::step_height`].
-            autostep: (params.step_height > 0.0).then(|| CharacterAutostep {
+            autostep: (params.step_height > 0.0).then_some(CharacterAutostep {
                 max_height: CharacterLength::Absolute(params.step_height),
                 min_width: CharacterLength::Absolute(params.step_height * 0.5),
                 // Subir num caixote solto é o que um personagem faz; recusá-lo
@@ -211,7 +211,7 @@ impl PhysicsWorld {
             // nem escorrega — fica parado numa rampa que a lei já recusou.
             min_slope_slide_angle: params.max_slope_deg.clamp(0.0, 90.0).to_radians(),
             snap_to_ground: (params.snap_distance > 0.0)
-                .then(|| CharacterLength::Absolute(params.snap_distance)),
+                .then_some(CharacterLength::Absolute(params.snap_distance)),
             ..KinematicCharacterController::default()
         };
 

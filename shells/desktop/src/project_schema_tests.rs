@@ -280,18 +280,22 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // escorregar por uma e pular dela). Quatro campos apendados ao
         // componente, e o postcard é posicional ⇒ um save v63 lido por v64 chega
         // ao fim dos bytes no primeiro deles.
-        // PROJECT 56→57: `PlatformPlayer` ganhou `dash_speed`, `dash_time` e
+        // PROJECT 64→65: `PlatformPlayer` ganhou `dash_speed`, `dash_time` e
         // `dash_cooldown` (W14 — O ARRANQUE). Três campos apendados, mesmo
         // raciocínio posicional.
-        // PROJECT 57→58: `PlatformPlayer` ganhou `crouch_height` e
+        // PROJECT 65→66: `PlatformPlayer` ganhou `crouch_height` e
         // `crouch_speed` (W15 — O AGACHAR). Dois campos apendados; e note o que
         // ESTE degrau nao traz — nenhuma forma de collider muda, porque agachar
         // aqui e' uma perna mais CURTA e nao um corpo menor.
-        // PROJECT 58→59: campo de ARQUIVO novo, `player_tape` (W17 — a CORRIDA
+        // PROJECT 66→67: campo de ARQUIVO novo, `player_tape` (W17 — a CORRIDA
         // sobrevive ao arquivo). Nao e' um campo de componente: e' a gravacao do
         // dedo do jogador, tique a tique, que o bake da W16 replaya. Fora do
         // `ProjectState` pelo motivo de `motion`/`timeline`/`physics` — aquele e'
         // a unidade do undo GLOBAL.
+        // PROJECT 67→68: `PlatformPlayer` ganhou `wall_grab_stamina` (W23 — O
+        // AGARRAR-SE). Um campo apendado; ⚠️ e o botao novo (`PlayerInput::grab`)
+        // NAO move o formato da fita — ela guarda os botoes num BITMASK, e um bit
+        // livre nao muda um byte do postcard.
         // ⚠️ **PROVISÓRIO:** o valor se CONTA contra o `main` do dia da
         // integração — três linhas já colidiram neste número por o terem
         // escolhido, e a última vez o certo não estava em nenhum dos dois lados.

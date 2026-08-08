@@ -209,12 +209,21 @@ a W4c.5 nomeou como **deliberadamente fora**:
 
 ## 5. Aberto FORA da fila de tokens
 
-- **W7 — a metade de RUNTIME.** A máquina de estados é **PLANA**, não hierárquica. ⚠️ O **seletor
-  de CURVA** fechou (**W7c, 2026-08-08** — handoff
+- **W7 — a metade de RUNTIME.** Duas das três metades fecharam. O **seletor de CURVA**
+  (**W7c, 2026-08-08** — handoff
   [`HANDOFF_INTEGRACAO_line_Vector_W7c_2026-08-08.md`](HANDOFF_INTEGRACAO_line_Vector_W7c_2026-08-08.md)):
-  `set_easing` existia desde o v56 e **nenhum caminho de produto o chamava**. O que resta aqui é a
-  **hierarquia** (um menu que abre com sub-estados) e a **MOLA**, que deixou de ser dispensável
-  por ausência de regime e passou a ser decisão do Enio, com os números medidos.
+  `set_easing` existia desde o v56 e **nenhum caminho de produto o chamava**. E a
+  ~~**HIERARQUIA**~~ (**W7h, 2026-08-08** — handoff
+  [`HANDOFF_INTEGRACAO_line_Vector_hierarquia_2026-08-08.md`](HANDOFF_INTEGRACAO_line_Vector_hierarquia_2026-08-08.md);
+  **pendente de smoke**, cena `PH2D_BUILD_SMOKE=64`): *o menu não fecha quando o cursor desce para
+  um item dele* — `host_under` passou a devolver uma **CADEIA**, e esquecer os ancestrais ficou
+  impossível por TIPO. ⚠️ Ela fechou de carona um 2º defeito que ninguém tinha visto: com dois
+  hospedeiros aninhados, o vencedor era decidido por **qual `VecPathId` era menor**.
+  ⚠️ **O que resta aqui é a MOLA**, e ela é **decisão do Enio**, com os números medidos: ela
+  deixou de ser dispensável por *ausência de regime* (o seletor existe agora) e passou a ser
+  decisão de produto — ⛔ e **não se constrói por conta própria**, porque uma mola não tem duração
+  nem curva, então o slider de duração e o próprio seletor deixariam de significar o que
+  significam.
 - **W8a — o runtime dos jogos.** ⛔ **BLOQUEADO por ausência:** `ph2d-runtime` **não existe**
   (Front 2 não construída). Não é adiamento, é pré-requisito.
 - ~~**W2a — `VecTextParams.wrap_width`**~~ — **FECHADA (2026-08-08**, handoff

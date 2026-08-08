@@ -296,7 +296,14 @@ fn compare(
 
     let live = render_live(gpu, renderer, camera, &resolved, size);
     let form = renderer
-        .form_plane(&gpu.device, &gpu.queue, camera, size, ph2d_mesh_render::Shade::default(), None)
+        .form_plane(
+            &gpu.device,
+            &gpu.queue,
+            camera,
+            size,
+            ph2d_mesh_render::Shade::default(),
+            None,
+        )
         .expect("a malha esta la'");
 
     let mut base = vec![0u8; n * 4];

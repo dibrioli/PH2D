@@ -38,7 +38,25 @@ const VIEWPORT: Rect = Rect {
 
 /// Põe um estado conhecido na frente do painel e limpa o que estiver na fila.
 fn arrange(ui: Sculpt3dUi) -> (MockPanelHost, Sculpt3dPanelState) {
-    set_current_sculpt3d(Some(Sculpt3dSnapshot {
+    arrange_with(snapshot(ui, true))
+}
+
+/// A fixture com um retrato JÁ montado — a porta que o gate do botão de assar
+/// usa para variar UM campo sem copiar os outros doze.
+fn arrange_with(snap: Sculpt3dSnapshot) -> (MockPanelHost, Sculpt3dPanelState) {
+    set_current_sculpt3d(Some(snap));
+    let _ = drain_intents();
+    (
+        MockPanelHost::with_panel::<Sculpt3dPanel>(),
+        Sculpt3dPanelState,
+    )
+}
+
+/// O retrato da fixture. **Uma fixture, dois consumidores** — um gate que
+/// montasse o seu próprio `Sculpt3dSnapshot` continuaria passando depois de o
+/// desta função ficar torto.
+fn snapshot(ui: Sculpt3dUi, has_bake_target: bool) -> Sculpt3dSnapshot {
+    Sculpt3dSnapshot {
         // O AO fresco e' o caso comum; o gate do aviso arma o outro.
         ao_stale: false,
         ui,
@@ -58,12 +76,11 @@ fn arrange(ui: Sculpt3dUi) -> (MockPanelHost, Sculpt3dPanelState) {
         // para a do modelo"*, e com os dois iguais ela não distingue semear de
         // não fazer coisa nenhuma.
         alpha_seed: ALPHA_SEED,
-    }));
-    let _ = drain_intents();
-    (
-        MockPanelHost::with_panel::<Sculpt3dPanel>(),
-        Sculpt3dPanelState,
-    )
+        // ⚠️ **O `arrange` publica COM alvo**, que é o estado em que o artista
+        // de fato aperta o botão — e o que mantém a DICA fora do caminho de
+        // todo sweep de layout. Quem varia este campo é o gate do botão.
+        has_bake_target,
+    }
 }
 
 /// O único intent enfileirado, ou um pânico que diz o que faltou.
@@ -338,6 +355,8 @@ fn every_command_reaches_the_shell() {
         (ids::SCULPT3D_DELETE, Sculpt3dIntent::Delete),
         (ids::SCULPT3D_ISOLATE, Sculpt3dIntent::ToggleIsolate),
         (ids::SCULPT3D_MERGE, Sculpt3dIntent::Merge),
+        (ids::SCULPT3D_BAKE_AO, Sculpt3dIntent::BakeAo),
+        (ids::SCULPT3D_BAKE_SPRITE, Sculpt3dIntent::BakeToSprite),
         (ids::SCULPT3D_ADD[0], Sculpt3dIntent::AddSphere),
         (ids::SCULPT3D_ADD[1], Sculpt3dIntent::AddCube),
         (ids::SCULPT3D_ADD[2], Sculpt3dIntent::AddCylinder),
@@ -473,6 +492,8 @@ fn every_painted_control_is_clickable_where_it_is_drawn() {
         ("delete", ids::SCULPT3D_DELETE),
         ("isolate", ids::SCULPT3D_ISOLATE),
         ("merge", ids::SCULPT3D_MERGE),
+        ("bake ao", ids::SCULPT3D_BAKE_AO),
+        ("bake sprite", ids::SCULPT3D_BAKE_SPRITE),
     ] {
         want.push((name.to_string(), id));
     }
@@ -853,4 +874,64 @@ fn the_scatter_track_follows_the_channel_it_belongs_to() {
         (row.show)(&ui),
         "com o espalhamento LIGADO o alcance TEM de estar a' mao"
     );
+}
+
+/// **O BOTÃO DE ASSAR NO SPRITE existe COM e SEM alvo — o que some é a dica.**
+///
+/// ⚠️ **É a decisão inteira desta wave, e ela vai contra o reflexo desta casa.**
+/// A regra local é *oferecer só quando o gesto leva a algum lugar* (o "Join
+/// Selected Bodies" da física; o Filter Layer do Painter), e aqui ela seria
+/// exatamente errada: o gesto tinha uma porta só — o atalho `Shift+B` — e a
+/// queixa que o botão veio resolver é que **ninguém sabia que ele existia**. Um
+/// botão que só aparece para quem já preparou a cena é invisível para quem ainda
+/// não sabe que precisa preparar.
+///
+/// O que responde ao artista é a DICA, no molde do `ao_stale`: a condição é
+/// DITA, e a linha só existe quando há o que avisar.
+///
+/// ⚠️ **A dica em si não tem oráculo de unidade, e isto está declarado em vez de
+/// disfarçado:** ela é um `readout` — texto sem `NodeId` —, e a única grandeza
+/// que o harness expõe são os rects dos widgets REGISTRADOS. Um proxy (a altura
+/// do painel, a posição do vizinho de baixo) expiraria na primeira linha nova, e
+/// esta casa já pagou por âncoras assim. O que este gate prova é a metade que
+/// decide: **o botão não desaparece**. O texto é do smoke.
+#[test]
+fn the_bake_button_survives_having_no_sprite_selected() {
+    for has_target in [true, false] {
+        let (mut host, mut state) = arrange_with(snapshot(Sculpt3dUi::default(), has_target));
+        let painted = host.paint::<Sculpt3dPanel>(&mut state, VIEWPORT);
+        let rect = painted
+            .iter()
+            .find(|(id, _)| *id == ids::SCULPT3D_BAKE_SPRITE)
+            .map(|(_, r)| *r)
+            .unwrap_or_else(|| {
+                panic!("com alvo={has_target} o botao de assar no sprite nao foi pintado")
+            });
+        // E vivo sob o mouse no PRÓPRIO centro — a metade que separa
+        // *hit-registrado* de *responde*.
+        let evs = host.click_at(rect.x + rect.w * 0.5, rect.y + rect.h * 0.5);
+        assert!(
+            evs.iter()
+                .any(|e| matches!(e, WidgetEvent::Click(id) if *id == ids::SCULPT3D_BAKE_SPRITE)),
+            "com alvo={has_target} o botao esta pintado e morto sob o mouse"
+        );
+    }
+}
+
+/// **A dica tem tradução.** Um `tr` de chave desconhecida devolve a própria
+/// chave, então um rótulo esquecido chega à tela como `panel.sculpt3d.…` —
+/// pintado, legível, e errado.
+#[test]
+fn the_bake_labels_are_translated() {
+    for key in [
+        "panel.sculpt3d.section.bake",
+        "panel.sculpt3d.bake_sprite",
+        "panel.sculpt3d.bake_sprite.hint",
+    ] {
+        assert_ne!(
+            ph2d_i18n::tr(key),
+            key,
+            "`{key}` nao tem traducao e chegaria a tela como a propria chave"
+        );
+    }
 }

@@ -5746,8 +5746,14 @@ impl crate::App {
             // razão dos dois acima: depois do dispatch de eventos (os intents
             // são enfileirados ali) e ANTES do paint (senão o frame pintaria o
             // estado de antes do clique e o chip piscaria de volta).
+            // ⚠️ O retorno é o pedido de BAKE, e ele arma o MESMO campo que o
+            // `Shift+B` — uma porta, dois pedintes. O gesto é consumido no
+            // dispatch do frame SEGUINTE (o `bake::drain` roda mais cedo neste),
+            // exatamente como o do teclado.
             #[cfg(feature = "sculpt3d")]
-            sculpt3d_panel_bridge::dispatch(hero, sculpt3d.as_mut());
+            if sculpt3d_panel_bridge::dispatch(hero, sculpt3d.as_mut()) {
+                self.sculpt3d_bake_request = true;
+            }
             // O ARRASTO da tira (mover a chave / esticar o hold): o painel enfileirou o
             // pedido no pen-up do frame anterior; aqui ele vira documento — ANTES do
             // publish, senão o snapshot deste frame descreveria a tira de antes do gesto e

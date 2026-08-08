@@ -16,6 +16,72 @@ fn impasto_light_wgsl_parses_and_validates_via_naga() {
     );
 }
 
+/// **O `Globals` do WGSL MEDE exatamente o `Globals` do Rust** — e a ordem dos campos é a mesma.
+///
+/// ⚠️ **Este gate nasceu de um PANIC**, e o mecanismo vale mais que a asserção. A W10.7 deu ao
+/// uniform um bit novo (`has_form_occ`) ocupando a vaga que era `pad1`; o Rust trocou o nome da
+/// vaga, o WGSL **acrescentou o campo e deixou o `pad1` para trás**, e o alinhamento de 16 bytes do
+/// `Lamp` arredondou o struct de lá para **240 bytes contra os 224 daqui**. O wgpu recusa isso no
+/// dispatch — como **panic**, não como erro devolvido —, então TODO documento com relevo na rota de
+/// GPU, o bake da escultura e a re-acendida de um objeto assado morriam no primeiro quadro.
+///
+/// ⚠️ **Nenhum gate de unidade via, e os seis que veriam são `#[ignore]`** (`tests/impasto_light_gpu.rs`,
+/// que precisa de adapter). É por isso que este mora aqui e **sem device**: uma incompatibilidade de
+/// ABI entre duas declarações do mesmo buffer é aritmética, não é uma pergunta para a placa de vídeo.
+///
+/// ⚠️ **A lista de nomes é a TERCEIRA cópia da ordem dos campos, de propósito.** Ela não é
+/// redundância: é o que torna a terceira edição **obrigatória** em vez de silenciosa — um campo novo
+/// que só entre em dois dos três lugares reprova aqui, dizendo qual falta.
+#[test]
+fn the_wgsl_globals_measures_exactly_the_rust_globals() {
+    /// A ordem dos campos do [`Globals`] do Rust. Ver o ⚠️ acima.
+    const RUST_ORDER: [&str; 9] = [
+        "lamps",
+        "n",
+        "ox",
+        "oy",
+        "rw",
+        "rh",
+        "has_form",
+        "has_form_occ",
+        "pad2",
+    ];
+    /// Onde o uniform mora — o mesmo par que o `bind_group` do [`ImpastoLightPass::run`] escreve.
+    const UNIFORM: naga::ResourceBinding = naga::ResourceBinding {
+        group: 0,
+        binding: 7,
+    };
+
+    let module = naga::front::wgsl::parse_str(IMPASTO_LIGHT_WGSL).expect("parse");
+    let var = module
+        .global_variables
+        .iter()
+        .map(|(_, v)| v)
+        .find(|v| v.binding == Some(UNIFORM))
+        // **Controle positivo**: sem ele, mover o uniform para outro binding faria este gate passar
+        // por vácuo — verde sobre um shader que ninguém conferiu.
+        .expect("o shader declara um uniform em @group(0) @binding(7)");
+    let naga::TypeInner::Struct { members, span } = &module.types[var.ty].inner else {
+        panic!("o uniform do binding 7 tem de ser um struct");
+    };
+
+    let names: Vec<&str> = members
+        .iter()
+        .map(|m| m.name.as_deref().unwrap_or("<sem nome>"))
+        .collect();
+    assert_eq!(
+        names, RUST_ORDER,
+        "os campos do `Globals` do WGSL sairam da ordem do `Globals` do Rust"
+    );
+    assert_eq!(
+        *span as usize,
+        std::mem::size_of::<Globals>(),
+        "o `Globals` do WGSL mede {span} bytes e o do Rust mede {} — o wgpu recusa o dispatch, \
+         como PANIC, em TODA rota que acende relevo na GPU",
+        std::mem::size_of::<Globals>()
+    );
+}
+
 /// **The literal-level parity gate**, and the one that needs no device — so it runs on every CI
 /// runner, not only the GPU lane.
 ///

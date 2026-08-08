@@ -30,6 +30,13 @@ pub const SCULPT3D_SEC_TOPOLOGY: NodeId = hash_node_id("sculpt3d.sec.topology");
 pub const SCULPT3D_SEC_SHADING: NodeId = hash_node_id("sculpt3d.sec.shading");
 /// A lista de peças e os verbos que a mexem.
 pub const SCULPT3D_SEC_SCENE: NodeId = hash_node_id("sculpt3d.sec.scene");
+/// **A ENTREGA** — o que a forma escreve num objeto da cena 2D.
+///
+/// ⚠️ **Seção própria, e não uma linha na cauda do sombreamento**, porque o
+/// assunto é outro: as cinco de cima descrevem *como a escultura é*, esta
+/// descreve *o que sai dela para a arte*. E ela é a ÚLTIMA pela mesma lei que
+/// pôs a cena no fim — quanto mais raro o gesto, mais fundo ele pode estar.
+pub const SCULPT3D_SEC_BAKE: NodeId = hash_node_id("sculpt3d.sec.bake");
 
 // ── A ferramenta ────────────────────────────────────────────────────────────
 /// Os 16 verbos, na ordem de `ph2d_sculpt3d::Verb::ALL`.
@@ -171,6 +178,19 @@ pub const SCULPT3D_SSS_SCATTER_NUM: NodeId = hash_node_id("sculpt3d.sss_scatter_
 /// ⚠️ É um BOTÃO e não um passe automático porque o bake não cabe num pen-up:
 /// ~338 ms na malha que a cena `=16` abre (`ph2d-sdf/tests/measure_ao.rs`).
 pub const SCULPT3D_BAKE_AO: NodeId = hash_node_id("sculpt3d.bake_ao");
+
+/// **ASSAR A FORMA NO SPRITE** — o objetivo 2 do módulo (`docs/3D/02.2`).
+///
+/// ⚠️ **Não confundir com o [`SCULPT3D_BAKE_AO`] acima:** aquele mede um canal e
+/// o escreve **na MALHA**, este escreve o G-buffer inteiro **num objeto da cena
+/// 2D**, que passa a acender pela forma e a sobreviver à escultura. Os dois
+/// carregam a palavra *bake* e são gestos diferentes — é por isso que moram em
+/// seções diferentes e os rótulos dizem o ALVO, nunca só o verbo.
+///
+/// ⚠️ **Ele existe porque o gesto tinha uma porta só, e ela era um atalho**
+/// (`Shift+B`). Um verbo cuja única forma de ser pedido é uma combinação de
+/// teclas que nada na tela menciona é um verbo que só quem o escreveu alcança.
+pub const SCULPT3D_BAKE_SPRITE: NodeId = hash_node_id("sculpt3d.bake_sprite");
 
 /// **COM QUE LUZ o barro é mostrado** — a primeira opção é o RIG DO ARTISTA e as
 /// outras são os matcaps de [`ph2d_mesh_render::MATCAPS`].

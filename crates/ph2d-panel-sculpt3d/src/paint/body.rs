@@ -65,7 +65,50 @@ pub(super) fn paint_sections(
     y = paint_symmetry(ctx, snap, x, w, y);
     y = paint_topology(ctx, snap, x, w, y);
     y = knob_section(ctx, snap, &rows::SECTIONS[1], x, w, y, paint_shading_tail);
-    paint_scene(ctx, snap, x, w, y)
+    y = paint_scene(ctx, snap, x, w, y);
+    paint_bake(ctx, snap, x, w, y)
+}
+
+/// **A ENTREGA** — a forma escrita num objeto da cena 2D (`docs/3D/02.2`, o
+/// objetivo 2 do módulo).
+///
+/// ⚠️ **Seção própria, e por último.** As cinco de cima descrevem *como a
+/// escultura é*; esta descreve *o que sai dela*, e é o gesto mais raro do painel
+/// — que é exatamente a lei de ordenação que o doc do topo declara. Uma linha na
+/// cauda do sombreamento a colaria no *Bake Occlusion*, e os dois carregam a
+/// palavra **bake** significando coisas diferentes: aquele mede um canal e o
+/// escreve na MALHA, este escreve a forma inteira num SPRITE.
+///
+/// ⚠️ **O botão é SEMPRE pintado, e a dica é que some.** Esconder o botão sem
+/// alvo tornaria a única entrega do módulo invisível justamente para quem ainda
+/// não sabe que ela existe — que é a queixa que ele veio resolver (até aqui o
+/// gesto tinha uma porta só, o `Shift+B`, e nada na tela a mencionava). A
+/// condição é DITA, no molde do `ao_stale`: a linha só existe quando há o que
+/// avisar, porque um aviso permanente vira moldura.
+fn paint_bake(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y: f32) -> f32 {
+    let (open, mut y) = header(
+        ctx,
+        ids::SCULPT3D_SEC_BAKE,
+        tr("panel.sculpt3d.section.bake"),
+        x,
+        w,
+        y,
+    );
+    if !open {
+        return y;
+    }
+    y = command(
+        ctx,
+        ids::SCULPT3D_BAKE_SPRITE,
+        tr("panel.sculpt3d.bake_sprite"),
+        x,
+        w,
+        y,
+    );
+    if !snap.has_bake_target {
+        y = readout(ctx, tr("panel.sculpt3d.bake_sprite.hint"), x, w, y);
+    }
+    y + Spacing::Md.px()
 }
 
 /// **A FERRAMENTA** — os dezesseis verbos numa faixa que REFLUI.

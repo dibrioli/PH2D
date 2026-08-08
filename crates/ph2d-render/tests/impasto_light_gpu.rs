@@ -190,8 +190,14 @@ fn gpu_lit(gpu: &GpuContext, planes: &ImpastoPlanes, base: &[u8]) -> Vec<u8> {
         lut_width: planes.lut_width,
         rough_levels: planes.rough_levels,
         // A doação segue a MESMA janela dos outros planos, e `None` quando não há escultura.
+        //
+        // ⚠️ **Os DOIS planos, e a segunda linha nasceu `None` cravado.** O harness montava a
+        // fixture com o degradê de oclusão, a metade de CPU o consumia, e este lado o **descartava**
+        // — então o gate comparava *acesa com oclusão* contra *acesa sem*, e reprovava por 173 em
+        // 11373 bytes assim que o panic do uniform parou de o esconder. Um harness que joga fora
+        // metade da entrada não compara duas rotas: compara duas perguntas.
         form: planes.form.as_deref(),
-        form_occlusion: None,
+        form_occlusion: planes.form_occ.as_deref(),
     };
     let out = pass.run(gpu, &src, &input).expect("a well-formed dispatch");
     readback(gpu, out)

@@ -463,6 +463,7 @@ pub fn tr(key: &str) -> &'static str {
         "panel.sculpt3d.section.topology" => "Topology",
         "panel.sculpt3d.section.shading" => "Shading",
         "panel.sculpt3d.section.scene" => "Scene",
+        "panel.sculpt3d.section.bake" => "Bake to Sprite",
         "panel.sculpt3d.radius" => "Radius",
         "panel.sculpt3d.strength" => "Strength",
         "panel.sculpt3d.falloff" => "Falloff",
@@ -494,6 +495,11 @@ pub fn tr(key: &str) -> &'static str {
         "panel.sculpt3d.cavity" => "Cavity",
         "panel.sculpt3d.ao" => "Ambient Occlusion",
         "panel.sculpt3d.bake_ao" => "Bake Occlusion + Thickness",
+        // ⚠️ O rótulo nomeia o ALVO, não só o verbo. Este painel tem DOIS bakes
+        // e a palavra sozinha não os separa: o de cima escreve um canal na
+        // MALHA, este escreve a forma inteira no SPRITE selecionado.
+        "panel.sculpt3d.bake_sprite" => "Light the Selected Sprite",
+        "panel.sculpt3d.bake_sprite.hint" => "Select a sprite on the canvas — the form lights IT",
         "panel.sculpt3d.ssao" => "Screen Occlusion",
         "panel.sculpt3d.sss" => "Subsurface",
         "panel.sculpt3d.sss_scatter" => "Scatter",

@@ -23,13 +23,20 @@ use ph2d_editor::screens::hero::HeroScreen;
 use crate::sculpt3d::Sculpt3dScene;
 
 /// Publica o retrato para o `paint` e aplica o que o artista fez.
-pub(crate) fn dispatch(hero: &mut HeroScreen, scene: Option<&mut Sculpt3dScene>) {
+///
+/// Devolve `true` se o artista pediu o **bake no sprite** — o gesto que este
+/// bridge não consegue executar, porque ele precisa do mundo, do renderizador e
+/// do mapa de atlas. Ele só o repassa, e o chamador arma o MESMO campo que o
+/// `Shift+B` arma: uma porta, dois pedintes, e por isso o botão e o atalho não
+/// podem divergir. É o precedente do `physics_panel_bridge`, que devolve o
+/// `show_colliders` pela mesma razão.
+pub(crate) fn dispatch(hero: &mut HeroScreen, scene: Option<&mut Sculpt3dScene>) -> bool {
     let Some(scene) = scene else {
         // Sem cena não há retrato — e é isso que faz o `paint` do painel sair no
         // primeiro `if`. Publicar um retrato vazio seria pior: seis seções de
         // controles apontando para uma escultura que não existe.
         ph2d_panel_sculpt3d::set_current_sculpt3d(None);
-        return;
+        return false;
     };
 
     // ── 1. Abrir, uma vez. ──
@@ -42,10 +49,15 @@ pub(crate) fn dispatch(hero: &mut HeroScreen, scene: Option<&mut Sculpt3dScene>)
     }
 
     // ── 2. Publicar. Toda row lê isto; o painel não guarda cópia. ──
-    ph2d_panel_sculpt3d::set_current_sculpt3d(Some(scene.panel_snapshot()));
+    // ⚠️ O alvo do bake é um fato da cena **2D**, então ele é injetado aqui: a
+    // escultura não sabe — nem deve saber — quem está selecionado no canvas.
+    let has_bake_target = hero.gizmo.iter_selected().next().is_some();
+    ph2d_panel_sculpt3d::set_current_sculpt3d(Some(scene.panel_snapshot(has_bake_target)));
 
     // ── 3. Aplicar. O painel enfileirou os intents no dispatch de eventos. ──
+    let mut want_bake = false;
     for intent in ph2d_panel_sculpt3d::drain_intents() {
-        scene.apply_panel_intent(intent);
+        want_bake |= scene.apply_panel_intent(intent);
     }
+    want_bake
 }

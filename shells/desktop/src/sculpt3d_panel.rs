@@ -22,7 +22,10 @@ use super::{MaskOp, Primitive, Sculpt3dScene};
 impl Sculpt3dScene {
     /// **O retrato deste frame.** Tudo o que o painel pinta sai daqui, e ele não
     /// guarda cópia de nada — é a mesma lei do painel de física.
-    pub(crate) fn panel_snapshot(&self) -> Sculpt3dSnapshot {
+    ///
+    /// `has_bake_target` vem de FORA porque ele é um fato da cena **2D** — quem
+    /// está selecionado no canvas não é pergunta que uma escultura responda.
+    pub(crate) fn panel_snapshot(&self, has_bake_target: bool) -> Sculpt3dSnapshot {
         let light = self.rig.current();
         Sculpt3dSnapshot {
             ui: Sculpt3dUi {
@@ -55,6 +58,7 @@ impl Sculpt3dScene {
             matcaps: ph2d_mesh_render::MATCAPS.as_slice(),
             verts: self.mesh().vert_count(),
             alpha_seed: ph2d_sculpt3d::recommended_scale(self.mesh()),
+            has_bake_target,
         }
     }
 
@@ -84,12 +88,24 @@ impl Sculpt3dScene {
         self.dyntopo.detail = DETAIL_STEPS[(ui.detail as usize).min(DETAIL_STEPS.len() - 1)].0;
     }
 
-    /// **Um gesto do painel.** Devolve `true` se ele mexeu na cena de um jeito
-    /// que vale uma linha de log — os mesmos desfechos que as teclas imprimem,
-    /// pela MESMA porta, porque um botão e um atalho que fizessem coisas
-    /// diferentes seriam duas ferramentas com um nome só.
-    pub(crate) fn apply_panel_intent(&mut self, intent: Sculpt3dIntent) {
+    /// **Um gesto do painel**, traduzido para a cena — os mesmos desfechos que as
+    /// teclas imprimem, pela MESMA porta, porque um botão e um atalho que
+    /// fizessem coisas diferentes seriam duas ferramentas com um nome só.
+    ///
+    /// Devolve `true` quando o gesto **não é para a cena**: ele pede o bake, que
+    /// só o laço de frame consegue fazer (ver [`Sculpt3dIntent::BakeToSprite`]).
+    ///
+    /// ⚠️ **O `match` continua exaustivo, e é isso que este retorno compra.** A
+    /// alternativa era o bridge filtrar o intent antes de chegar aqui — e aí a
+    /// tradução passaria a morar em dois lugares, com o segundo sendo uma
+    /// cascata de `if` que apodrece calada no dia em que nascer o próximo verbo
+    /// que o frame tem de executar.
+    pub(crate) fn apply_panel_intent(&mut self, intent: Sculpt3dIntent) -> bool {
         match intent {
+            // ⚠️ Ele ARMA e sai, e não faz nada com a cena: o bake precisa do
+            // mundo, do renderizador e do mapa de atlas, e os três só existem
+            // dentro do frame. Mesmo desenho do `Shift+B`.
+            Sculpt3dIntent::BakeToSprite => return true,
             Sculpt3dIntent::SetUi(ui) => self.apply_ui(&ui),
             Sculpt3dIntent::ToggleDyntopo => {
                 let (on, tris) = self.toggle_dyntopo();
@@ -208,6 +224,7 @@ impl Sculpt3dScene {
             Sculpt3dIntent::MaskBlur => self.mask_from_panel(MaskOp::Blur),
             Sculpt3dIntent::MaskSharpen => self.mask_from_panel(MaskOp::Sharpen),
         }
+        false
     }
 
     fn add_from_panel(&mut self, kind: Primitive) {

@@ -204,6 +204,12 @@ pub(crate) fn follow_live_rig(forms: &mut BTreeMap<u64, BakedForm>, rig: &ph2d_l
 #[path = "sculpt3d_bake_light.rs"]
 mod light_measure;
 
+/// **O GESTO INTEIRO, num device de verdade** — ver o módulo. Irmão do
+/// `light_measure` pela mesma razão: tudo o que mora nele precisa de um adapter.
+#[cfg(test)]
+#[path = "sculpt3d_bake_gesture_tests.rs"]
+mod gesture;
+
 #[cfg(test)]
 mod tests {
     use super::*;

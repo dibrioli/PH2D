@@ -85,6 +85,7 @@ pub fn populate(store: &mut WidgetStore) {
         ids::SCULPT3D_SEC_SYMMETRY,
         ids::SCULPT3D_SEC_TOPOLOGY,
         ids::SCULPT3D_SEC_SCENE,
+        ids::SCULPT3D_SEC_BAKE,
     ] {
         button(store, id);
     }

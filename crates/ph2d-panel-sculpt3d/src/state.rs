@@ -166,6 +166,18 @@ pub struct Sculpt3dSnapshot {
     /// tamanho do modelo.** A primeira versão desta wave shipou um literal, e o
     /// smoke o reprovou em uma frase: *"os poros são gigantescos"*.
     pub alpha_seed: f32,
+    /// **Há um sprite selecionado para a forma acender?**
+    ///
+    /// ⚠️ Um FATO que o painel MOSTRA e não possui, como `dyntopo` e `ao_stale` —
+    /// e este é o único que nem a CENA 3D conhece: quem está selecionado é
+    /// pergunta da cena 2D, então ele é injetado pelo bridge do shell.
+    ///
+    /// ⚠️ **Ele NÃO esconde o botão**, e a diferença é a queixa que o botão veio
+    /// resolver: um verbo que só aparece quando já dá para usá-lo é um verbo que
+    /// ninguém descobre. Ele acende uma DICA — a mesma lei do `ao_stale`: *a
+    /// condição é dita, não deixada para o artista descobrir*, e a linha só
+    /// existe quando há o que avisar (um aviso permanente vira moldura).
+    pub has_bake_target: bool,
 }
 
 /// Um gesto do artista, para o shell aplicar.
@@ -186,6 +198,14 @@ pub enum Sculpt3dIntent {
     /// ⚠️ Um comando e não um knob: o bake custa ~338 ms na malha da cena `=16`,
     /// então ele é um gesto que o artista PEDE, nunca um passe que roda sozinho.
     BakeAo,
+    /// **Assa a FORMA no sprite selecionado** — o objetivo 2 (`docs/3D/02.2`).
+    ///
+    /// ⚠️ **É o único intent que a cena 3D não sabe executar**, e isso é o
+    /// desenho: o bake precisa do mundo, do renderizador e do mapa de atlas, e os
+    /// três só existem dentro do laço de frame. Ele ARMA um pedido e sai — o
+    /// mesmo caminho que o `Shift+B` já usava, e é por passarem pela MESMA porta
+    /// que o botão e o atalho não podem divergir.
+    BakeToSprite,
     /// As quatro primitivas, na ordem em que o painel as lista.
     ///
     /// ⚠️ **Um comando por forma, e não um enum espelho do `Primitive` do

@@ -80,7 +80,11 @@ struct Globals {
     // uma normal deitada, que nao e' o neutro); aqui ele e' so' economia, porque
     // o neutro da oclusao E' um numero (`1.0`).
     has_form_occ: u32,
-    pad1: u32,
+    // ⚠️ UM padding, nao dois. Ele existia em par com o `pad1` quando os dois
+    // bits acima eram vagas livres; cada bit que nasce COME uma delas, e deixar
+    // a vaga para tras faz o WGSL medir 16 bytes a mais que o `Globals` do Rust
+    // -- o que o wgpu recusa no dispatch, como PANIC. Ver o gate
+    // `the_wgsl_globals_measures_exactly_the_rust_globals`.
     pad2: u32,
 };
 
@@ -203,9 +207,22 @@ fn cs_main(@builtin(global_invocation_id) gid: vec3<u32>) {
     let body = max(cover_here, f.w);
     let gloss = cover_here;
 
+    // A OCLUSAO deste texel, lida ANTES do early-out.
+    //
+    // ⚠️ **Ela entra no early-out, e a primeira versao afirmava que nao precisava.** O argumento era
+    // que *"onde a oclusao e' < 1 ha forma, logo `f.w > 0` e `body > 0`"* -- verdade sobre o que a
+    // rasterizacao PRODUZ (o alvo e' limpo em branco fora da silhueta), e uma afirmacao sobre o
+    // dominio alcancavel de HOJE. A CPU sempre exigiu `occ >= 1.0` para nao tocar o pixel, entao as
+    // duas rotas concordavam por coincidencia do produtor: bastava uma oclusao chegar sem forma para
+    // uma escurecer o papel nu e a outra nao. Medido no gate de paridade: 150 de diferenca em 3504
+    // bytes.
+    //
+    // ⚠️ Sem doacao isto custa ZERO -- o `has_form_occ` e' 0 e a funcao devolve 1.0 sem ler textura.
+    let occ = form_occlusion_at(coord);
+
     // Flat paint — or bare paper — is untouched, to the byte. Writing the source back is byte-identical:
     // `textureLoad` returns an exact multiple of 1/255 and `quantise` reproduces it.
-    if ((dhx == 0.0 && dhy == 0.0 && f.w <= 0.0) || body <= 0.0) {
+    if (((dhx == 0.0 && dhy == 0.0 && f.w <= 0.0) || body <= 0.0) && occ >= 1.0) {
         textureStore(dst, coord, texel);
         return;
     }
@@ -280,11 +297,9 @@ fn cs_main(@builtin(global_invocation_id) gid: vec3<u32>) {
     // **A OCLUSAO DE FORMA multiplica o DIFUSO e nao o realce**, e e' a mesma lei
     // que o barro aplica do outro lado (`mesh.wgsl`): uma fresta oclui a luz de
     // AMBIENTE, e o caminho especular de uma lampada ou alcanca aquele ponto ou
-    // nao -- o `N·H` ja responde isso. Ela nao entra no early-out acima e nao
-    // precisa: onde a oclusao e' < 1 ha forma, logo `f.w > 0` e `body > 0`, entao
-    // aquele ramo ja nao dispara. Com `occ == 1.0` isto e' a identidade EXATA em
-    // IEEE-754, e e' isso que mantem o documento sem escultura byte-identico.
-    let occ = form_occlusion_at(coord);
+    // nao -- o `N·H` ja responde isso. Com `occ == 1.0` isto e' a identidade EXATA
+    // em IEEE-754, e e' isso que mantem o documento sem escultura byte-identico.
+    // (O `occ` e' lido la' em cima, antes do early-out -- ver o ⚠️ de la'.)
     let out = vec4<f32>(
         quantise(light_pixel(albedo.r, cr.x * occ, cr.y)),
         quantise(light_pixel(albedo.g, cg.x * occ, cg.y)),

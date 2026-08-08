@@ -134,6 +134,35 @@ pub(crate) fn ages(s: &Stream, name: &str) -> Vec<f32> {
     }
 }
 
+/// Aplica um operador de cor 3×3 ao `tint` (RGB; a alfa é do `fade`). No-op se a coluna
+/// não existir — mas ela SEMPRE existe depois do `materialize_render_columns`, e é isso
+/// que faz do Hue/Saturation knobs vivos em vez de no-ops silenciosos (o defeito que o
+/// smoke de 2026-08-08 reportou no Fade e no Shrink).
+pub(crate) fn tint_op(s: &mut Stream, name: &str, m: crate::colour::Mat3) {
+    if let Some(Column::Vec4(v)) = s.get(name) {
+        let mut out = v.clone();
+        for c in &mut out {
+            crate::colour::apply(m, c);
+        }
+        s.set(name, Column::Vec4(out));
+    }
+}
+
+/// Soma `k` a toda linha de uma coluna Scalar, materializando-a a partir de `zero` quando
+/// ela não existe — o `spin` precisa de um `rot` para girar, e um stream posicional puro
+/// não carrega um (a mesma lição do `materialize_render_columns`).
+pub(crate) fn add_scalar(s: &mut Stream, name: &str, k: f32) {
+    let n = s.count();
+    let mut out = match s.get(name) {
+        Some(Column::Scalar(v)) => v.clone(),
+        _ => vec![0.0; n],
+    };
+    for x in &mut out {
+        *x += k;
+    }
+    s.set(name, Column::Scalar(out));
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

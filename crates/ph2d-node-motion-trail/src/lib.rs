@@ -63,7 +63,8 @@ use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, Param
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
 mod carry;
-use carry::{ages, concat, fade_alpha, gather, scale_vec2};
+mod colour;
+use carry::{add_scalar, ages, concat, fade_alpha, gather, scale_vec2, tint_op};
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
 
@@ -158,6 +159,22 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "spacing",
             default: 1.0,
         },
+        // Graus de MATIZ por eco — a "cauda colorida" da referência. `0` = identidade.
+        ParamSpec {
+            name: "hue_shift",
+            default: 0.0,
+        },
+        // Multiplicador de SATURAÇÃO por eco. `1` = identidade; `0` desbota a cinza.
+        ParamSpec {
+            name: "saturation",
+            default: 1.0,
+        },
+        // Graus de GIRO por eco — o irmão rotacional do `shrink`. Nenhuma das referências
+        // tem: é o "e mais alguns" da ordem de 2026-08-08.
+        ParamSpec {
+            name: "spin",
+            default: 0.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
@@ -205,16 +222,72 @@ fn promotes_head(prev_ages: &[f32], s: usize) -> bool {
         .any(|&a| a >= 1.0 && (a as usize) < s.max(1))
 }
 
+/// **Tudo o que um eco sofre ao envelhecer UM tick**, num lugar só.
+///
+/// ⚠️ Todos são operadores **por TICK**, a forma que o `fade` e o `shrink` já tinham, e é
+/// ela que dá de graça a semântica *"por eco"* que as referências descrevem: um eco de
+/// `n` ticks recebeu cada operador exatamente `n` vezes. Um knob no neutro é a identidade
+/// **ao bit** — nenhum deles toca um byte no default.
+#[derive(Copy, Clone, Debug)]
+pub struct Decay {
+    /// Multiplicador de alfa por tick.
+    pub fade: f32,
+    /// Multiplicador de tamanho por tick.
+    pub shrink: f32,
+    /// Graus de matiz por tick (rotação que preserva a luma, em RGB linear).
+    pub hue_shift: f32,
+    /// Multiplicador de saturação por tick.
+    pub saturation: f32,
+    /// Graus somados ao `rot` por tick.
+    pub spin: f32,
+}
+
+impl Decay {
+    /// O ponto neutro — todo operador na identidade.
+    pub const NEUTRAL: Self = Self {
+        fade: 1.0,
+        shrink: 1.0,
+        hue_shift: 0.0,
+        saturation: 1.0,
+        spin: 0.0,
+    };
+
+    /// Só o par que sempre existiu (para as fixtures que não falam de cor).
+    #[must_use]
+    pub fn new(fade: f32, shrink: f32) -> Self {
+        Self {
+            fade,
+            shrink,
+            ..Self::NEUTRAL
+        }
+    }
+
+    /// Envelhece um conjunto de linhas carregadas em UM tick.
+    fn apply(self, carried: &mut Stream) {
+        fade_alpha(carried, "tint", self.fade);
+        scale_vec2(carried, "size", self.shrink);
+        // ⚠️ UMA matriz para os dois operadores de cor: compor antes do laço deixa o
+        // caminho por-linha com nove multiplicações, sejam zero, um ou dois knobs armados
+        // — e no neutro a matriz É a identidade, então o `tint` não se move.
+        let m = colour::compose(
+            colour::hue_rotation(self.hue_shift),
+            colour::saturation(self.saturation),
+        );
+        if m != colour::IDENTITY {
+            tint_op(carried, "tint", m);
+        }
+        // ⚠️ Gateado em `!= 0`, ao contrário dos outros: o `rot` é MATERIALIZADO quando
+        // ausente, e materializá-lo sem o artista ter pedido giro acrescentaria uma coluna
+        // que ninguém pediu a todo rastro do app.
+        if self.spin != 0.0 {
+            add_scalar(carried, "rot", self.spin);
+        }
+    }
+}
+
 /// One tick of the echo: age last tick's rows, drop the generation that fell
-/// off the end, fade + shrink the survivors, and put the live head in front.
-fn step(
-    live: &Stream,
-    state: &Stream,
-    length: f32,
-    fade: f32,
-    shrink: f32,
-    spacing: f32,
-) -> Stream {
+/// off the end, decay the survivors, and put the live head in front.
+fn step(live: &Stream, state: &Stream, length: f32, decay: Decay, spacing: f32) -> Stream {
     let k = generations(length, live.count());
     if k <= 1 {
         // A length-1 trail is the identity — forward the live stream untouched,
@@ -247,8 +320,7 @@ fn step(
     carried.set(AGE, Column::Scalar(bumped));
     // Geometric decay: applied once per tick to the rows carried forward, so a
     // row `n` ticks old has had it applied exactly `n` times. Nothing to undo.
-    fade_alpha(&mut carried, "tint", fade);
-    scale_vec2(&mut carried, "size", shrink);
+    decay.apply(&mut carried);
 
     let mut head = live.clone();
     head.set(AGE, Column::Scalar(vec![0.0; live.count()]));
@@ -268,13 +340,18 @@ impl NodeOp for MotionTrail {
     }
 
     fn eval(&self, ctx: &mut EvalCtx<'_>) {
-        let (length, fade, shrink) = (ctx.param("length"), ctx.param("fade"), ctx.param("shrink"));
+        let decay = Decay {
+            fade: ctx.param("fade"),
+            shrink: ctx.param("shrink"),
+            hue_shift: ctx.param("hue_shift"),
+            saturation: ctx.param("saturation"),
+            spin: ctx.param("spin"),
+        };
         let out = step(
             ctx.input(0),
             ctx.input(1),
-            length,
-            fade,
-            shrink,
+            ctx.param("length"),
+            decay,
             ctx.param("spacing"),
         );
         ctx.emit(out);
@@ -295,10 +372,11 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
+    reg.register_param_groups(MANIFEST.id, PARAM_GROUPS);
     Ok(())
 }
 
-use ph2d_node_registry::{ParamUiHint, ParamUnit, ParamUnitDecl, ParamWidget};
+use ph2d_node_registry::{ParamGroup, ParamUiHint, ParamUnit, ParamUnitDecl, ParamWidget};
 
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
@@ -326,6 +404,34 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         widget: ParamWidget::Slider,
     },
     ParamUiHint {
+        param: "hue_shift",
+        label: "Hue Shift",
+        // Uma volta inteira para cada lado: o eco pode dar a volta no círculo de matiz,
+        // que é exatamente o arco-íris da "cauda colorida" da referência.
+        min: -180.0,
+        max: 180.0,
+        step: 1.0,
+        widget: ParamWidget::Angle,
+    },
+    ParamUiHint {
+        param: "saturation",
+        label: "Saturation",
+        // Abaixo de 1 a cauda desbota a cinza; acima ela satura — as duas direções são
+        // usadas (fumaça × brasa), então a faixa não pode parar na identidade.
+        min: 0.0,
+        max: 2.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "spin",
+        label: "Spin",
+        min: -45.0,
+        max: 45.0,
+        step: 0.5,
+        widget: ParamWidget::Angle,
+    },
+    ParamUiHint {
         param: "spacing",
         label: "Spacing",
         min: 1.0,
@@ -337,12 +443,39 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
 ];
 
-/// O espaçamento é uma contagem de TICKS, não um comprimento — a unidade que o painel
-/// declara é a que o número É.
-static PARAM_UNITS: &[ParamUnitDecl] = &[ParamUnitDecl {
-    param: "spacing",
-    unit: ParamUnit::Count,
-}];
+/// O espaçamento é uma contagem de TICKS e os dois ângulos são GRAUS — a unidade que o
+/// painel declara é a que o número É.
+static PARAM_UNITS: &[ParamUnitDecl] = &[
+    ParamUnitDecl {
+        param: "spacing",
+        unit: ParamUnit::Count,
+    },
+    ParamUnitDecl {
+        param: "length",
+        unit: ParamUnit::Count,
+    },
+    ParamUnitDecl {
+        param: "hue_shift",
+        unit: ParamUnit::Angle,
+    },
+    ParamUnitDecl {
+        param: "spin",
+        unit: ParamUnit::Angle,
+    },
+];
+
+/// **As seções** (doc 88 §B3, a metade visual). Sete knobs numa coluna são uma parede;
+/// agrupados eles viram três perguntas — *que forma tem a cauda* (solto, no topo), *como
+/// ela morre* e *que cor ela toma*. ⚠️ `length`/`spacing` ficam FORA de seção de
+/// propósito: um param sem entrada é pintado ANTES de tudo, que é onde os essenciais
+/// devem estar (a lei do `ParamGroup`, e o padrão do Blender).
+static PARAM_GROUPS: &[ParamGroup] = &[
+    ParamGroup::new("fade", "Decay"),
+    ParamGroup::new("shrink", "Decay"),
+    ParamGroup::new("spin", "Decay"),
+    ParamGroup::new("hue_shift", "Colour"),
+    ParamGroup::new("saturation", "Colour"),
+];
 
 #[cfg(test)]
 mod tests {
@@ -379,7 +512,13 @@ mod tests {
     fn run(ticks: usize, length: f32, spacing: f32) -> Stream {
         let mut state = Stream::new(0);
         for t in 0..ticks {
-            state = step(&dot(t as f32, 1.0), &state, length, 1.0, 1.0, spacing);
+            state = step(
+                &dot(t as f32, 1.0),
+                &state,
+                length,
+                Decay::new(1.0, 1.0),
+                spacing,
+            );
         }
         state
     }
@@ -510,6 +649,204 @@ mod tests {
         );
     }
 
+    /// **CADA knob autorado atravessa o cook** — a porta, não a lei.
+    ///
+    /// ⚠️ O gate acima dirige só o `spacing`, e uma capacidade sem porta passa em todo
+    /// gate que olha para a função pura: bastaria um `ctx.param` esquecido para um knob
+    /// nascer morto com a suíte verde. Este dirige os SETE pelo grafo REAL, um a um,
+    /// exigindo que mover cada um mude a saída — e que o conjunto no default não a mude.
+    #[test]
+    fn every_authored_knob_reaches_the_node_through_the_cook() {
+        let baseline = cooked_with(&[]);
+        for (name, value) in [
+            ("length", 5.0),
+            ("fade", 0.3),
+            ("shrink", 0.5),
+            ("spacing", 3.0),
+            ("hue_shift", 90.0),
+            ("saturation", 0.0),
+            ("spin", 30.0),
+        ] {
+            let moved = cooked_with(&[(name, value)]);
+            assert!(
+                moved != baseline,
+                "mover `{name}` para {value} não mudou nada na saída do cook —                  o param não chegou ao nó"
+            );
+        }
+    }
+
+    /// **A CAUDA MUDA DE COR, SATURA E GIRA** — o padrão-ouro pedido em 2026-08-08.
+    ///
+    /// Um oráculo por knob, cada um medindo a grandeza que o knob NOMEIA:
+    /// - matiz: a cor do eco velho difere da do vivo **e a luma se conserva** (é o que
+    ///   separa um giro de matiz de um filtro que escurece);
+    /// - saturação: a distância de cada canal à luma ENCOLHE com a idade;
+    /// - giro: o `rot` do eco velho está `n · spin` atrás do vivo.
+    #[test]
+    fn the_tail_shifts_hue_desaturates_and_spins() {
+        let coloured = |x: f32| {
+            Stream::new(1)
+                .with("P", Column::Vec2(vec![[x, 0.0]]))
+                .with("tint", Column::Vec4(vec![[0.9, 0.2, 0.1, 1.0]]))
+                .with("size", Column::Vec2(vec![[1.0, 1.0]]))
+        };
+        let decay = Decay {
+            fade: 1.0,
+            shrink: 1.0,
+            hue_shift: 40.0,
+            saturation: 0.6,
+            spin: 7.0,
+        };
+        let mut state = Stream::new(0);
+        for t in 0..4 {
+            state = step(&coloured(t as f32), &state, 4.0, decay, 1.0);
+        }
+        let tints = match state.get("tint").unwrap() {
+            Column::Vec4(v) => v.clone(),
+            _ => panic!("tint"),
+        };
+        let luma = |c: [f32; 4]| 0.213 * c[0] + 0.715 * c[1] + 0.072 * c[2];
+        let spread = |c: [f32; 4]| {
+            let l = luma(c);
+            (c[0] - l).abs() + (c[1] - l).abs() + (c[2] - l).abs()
+        };
+        let (old_c, live) = (tints[0], tints[tints.len() - 1]);
+        assert!(
+            (old_c[0] - live[0]).abs() > 0.05 || (old_c[1] - live[1]).abs() > 0.05,
+            "o eco velho tinha de estar noutra matiz: {old_c:?} vs {live:?}"
+        );
+        assert!(
+            (luma(old_c) - luma(live)).abs() < 1e-3,
+            "e na MESMA luma: {} vs {}",
+            luma(old_c),
+            luma(live)
+        );
+        assert!(
+            spread(old_c) < spread(live) * 0.5,
+            "a saturacao tinha de cair com a idade: {} vs {}",
+            spread(old_c),
+            spread(live)
+        );
+        match state.get("rot").unwrap() {
+            Column::Scalar(v) => {
+                assert!((v[v.len() - 1] - 0.0).abs() < 1e-6, "o vivo nao girou");
+                assert!(
+                    (v[0] - 3.0 * 7.0).abs() < 1e-4,
+                    "o eco de 3 ticks: {}",
+                    v[0]
+                );
+            }
+            _ => panic!("rot"),
+        }
+    }
+
+    /// **Os três knobs no NEUTRO não tocam um byte** — nem a coluna `rot`, que só nasce
+    /// quando o artista pede giro: materializá-la sem pedido acrescentaria uma coluna a
+    /// todo rastro do app.
+    #[test]
+    fn the_neutral_colour_knobs_change_nothing_and_add_no_column() {
+        let coloured = Stream::new(1)
+            .with("P", Column::Vec2(vec![[0.0, 0.0]]))
+            .with("tint", Column::Vec4(vec![[0.9, 0.2, 0.1, 1.0]]));
+        let mut a = Stream::new(0);
+        let mut b = Stream::new(0);
+        for _ in 0..4 {
+            a = step(&coloured, &a, 4.0, Decay::new(0.8, 0.9), 1.0);
+            b = step(
+                &coloured,
+                &b,
+                4.0,
+                Decay {
+                    ..Decay::new(0.8, 0.9)
+                },
+                1.0,
+            );
+        }
+        match (a.get("tint"), b.get("tint")) {
+            (Some(Column::Vec4(x)), Some(Column::Vec4(y))) => assert_eq!(x, y),
+            _ => panic!("tint"),
+        }
+        assert!(a.get("rot").is_none(), "sem `spin` nao nasce coluna `rot`");
+    }
+
+    /// Cozinha o grafo REAL (com o `pre` self-loop) por 8 ticks e devolve um retrato
+    /// comparável da saída: contagem + toda coluna que o rastro pode tocar.
+    fn cooked_with(params: &[(&str, f32)]) -> Vec<String> {
+        use ph2d_nodegraph::cook::{Cook, OpResolver};
+        use ph2d_nodegraph::graph::{Edge, Graph};
+
+        static SRC: NodeManifest = NodeManifest {
+            id: NodeTypeId::of("motion.trail.test.src2"),
+            name: "motion.trail.test.src2",
+            inputs: &[],
+            outputs: &[PortSpec {
+                name: "out",
+                ty: INST_VEC2,
+            }],
+            effect: Effect::Pure,
+            clock: Clock::Frame,
+            params: &[],
+            lowerings: &[LoweringKind::Cpu],
+        };
+        struct Src;
+        impl NodeOp for Src {
+            fn manifest(&self) -> &'static NodeManifest {
+                &SRC
+            }
+            fn eval(&self, ctx: &mut EvalCtx<'_>) {
+                let x = ctx.playhead() as f32;
+                ctx.emit(
+                    Stream::new(1)
+                        .with("P", Column::Vec2(vec![[x, 0.0]]))
+                        .with("tint", Column::Vec4(vec![[0.9, 0.2, 0.1, 1.0]]))
+                        .with("size", Column::Vec2(vec![[1.0, 1.0]])),
+                );
+            }
+        }
+        struct Ops;
+        impl OpResolver for Ops {
+            fn resolve(&self, ty: NodeTypeId) -> Option<&dyn NodeOp> {
+                match ty {
+                    t if t == SRC.id => Some(&Src),
+                    t if t == MANIFEST.id => Some(&MotionTrail),
+                    _ => None,
+                }
+            }
+        }
+        let mut g = Graph::new();
+        let src = g.add_node("motion.trail.test.src2");
+        let tr = g.add_node("motion.trail");
+        g.connect(Edge {
+            from: (src, 0),
+            to: (tr, 0),
+            delayed: false,
+        })
+        .unwrap();
+        g.connect(Edge {
+            from: (tr, 0),
+            to: (tr, 1),
+            delayed: true,
+        })
+        .unwrap();
+        for (k, v) in params {
+            g.set_param(tr, *k, *v);
+        }
+        let mut cook = Cook::new();
+        let mut last = Stream::new(0);
+        for t in 0..8 {
+            last = cook.cook(&g, &Ops, tr, f64::from(t)).unwrap()[0]
+                .as_stream()
+                .clone();
+            cook.advance_tick(&g, &Ops, f64::from(t)).unwrap();
+        }
+        let mut out = vec![format!("n={}", last.count())];
+        for (name, col) in last.columns() {
+            out.push(format!("{name}={col:?}"));
+        }
+        out.sort();
+        out
+    }
+
     /// O teto do espaçamento é um recurso (a janela de idade é `length × spacing`), e um
     /// `f32` de documento é intocado — não-finito e negativo caem no contínuo.
     #[test]
@@ -528,7 +865,7 @@ mod tests {
     fn the_echo_holds_the_last_n_positions_oldest_first() {
         let mut state = Stream::new(0);
         for t in 0..6 {
-            state = step(&dot(t as f32, 1.0), &state, 3.0, 0.5, 1.0, 1.0);
+            state = step(&dot(t as f32, 1.0), &state, 3.0, Decay::new(0.5, 1.0), 1.0);
         }
         // Ticks 3, 4, 5 survive; the live head (x=5) is LAST so it draws on top.
         assert_eq!(xs(&state), vec![3.0, 4.0, 5.0]);
@@ -543,8 +880,14 @@ mod tests {
     /// head at full alpha and the one-tick echo at exactly `fade`.
     #[test]
     fn a_one_tick_old_echo_has_faded_exactly_once() {
-        let s = step(&dot(0.0, 1.0), &Stream::new(0), 4.0, 0.5, 1.0, 1.0);
-        let s = step(&dot(1.0, 1.0), &s, 4.0, 0.5, 1.0, 1.0);
+        let s = step(
+            &dot(0.0, 1.0),
+            &Stream::new(0),
+            4.0,
+            Decay::new(0.5, 1.0),
+            1.0,
+        );
+        let s = step(&dot(1.0, 1.0), &s, 4.0, Decay::new(0.5, 1.0), 1.0);
         assert_eq!(alphas(&s), vec![0.5, 1.0]);
         assert_eq!(xs(&s), vec![0.0, 1.0]);
     }
@@ -553,7 +896,7 @@ mod tests {
     fn shrink_compounds_and_length_one_is_the_identity() {
         let mut state = Stream::new(0);
         for t in 0..3 {
-            state = step(&dot(t as f32, 1.0), &state, 3.0, 1.0, 0.5, 1.0);
+            state = step(&dot(t as f32, 1.0), &state, 3.0, Decay::new(1.0, 0.5), 1.0);
         }
         match state.get("size").unwrap() {
             // Two ticks of 0.5, one tick, then the untouched head.
@@ -566,7 +909,7 @@ mod tests {
 
         // length = 1 → the live stream, verbatim, with no `trail_age` added.
         let live = dot(7.0, 1.0);
-        let out = step(&live, &state, 1.0, 0.5, 0.5, 1.0);
+        let out = step(&live, &state, 1.0, Decay::new(0.5, 0.5), 1.0);
         assert_eq!(out.count(), 1);
         assert_eq!(xs(&out), vec![7.0]);
         assert!(out.get(AGE).is_none(), "the identity adds no column");
@@ -578,7 +921,7 @@ mod tests {
     fn the_element_count_settles_at_length_times_live() {
         let mut state = Stream::new(0);
         for t in 0..50 {
-            state = step(&dot(t as f32, 1.0), &state, 8.0, 0.9, 0.99, 1.0);
+            state = step(&dot(t as f32, 1.0), &state, 8.0, Decay::new(0.9, 0.99), 1.0);
         }
         assert_eq!(state.count(), 8, "8 generations of a single dot");
     }
@@ -614,7 +957,7 @@ mod tests {
         let bare = |x: f32| Stream::new(1).with("P", Column::Vec2(vec![[x, 0.0]]));
         let mut state = Stream::new(0);
         for t in 0..4 {
-            state = step(&bare(t as f32), &state, 3.0, 0.5, 0.5, 1.0);
+            state = step(&bare(t as f32), &state, 3.0, Decay::new(0.5, 0.5), 1.0);
         }
         assert_eq!(xs(&state), vec![1.0, 2.0, 3.0]);
         // A cauda: dois ticks de meia-vida atrás do vivo.
@@ -630,7 +973,7 @@ mod tests {
     #[test]
     fn the_materialised_columns_carry_the_lowerings_own_defaults() {
         let bare = Stream::new(2).with("P", Column::Vec2(vec![[0.0, 0.0], [1.0, 0.0]]));
-        let out = step(&bare, &Stream::new(0), 4.0, 0.5, 0.5, 1.0);
+        let out = step(&bare, &Stream::new(0), 4.0, Decay::new(0.5, 0.5), 1.0);
         assert_eq!(
             alphas(&out),
             vec![1.0, 1.0],

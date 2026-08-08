@@ -12,3 +12,8 @@ authors.workspace = true
 [dependencies]
 ph2d-nodegraph = { path = "../ph2d-nodegraph" }
 ph2d-node-registry = { path = "../ph2d-node-registry" }
+# libm — `sincosf` puro-Rust (porte do MUSL) para a rotacao de matiz do rastro sair
+# bit-identica em Linux/macOS/Windows: `f32::sin` da plataforma nao e especificado ao ulp,
+# e a matiz de um eco e ARTE. Roda UMA vez por tick (a matriz), nunca por linha. MESMO pin
+# `=0.2.16` de ph2d-ecs / physics / wet-paint / platformer: uma aresta, nao um pacote novo.
+libm = { version = "=0.2.16", default-features = false }

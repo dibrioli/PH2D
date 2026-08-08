@@ -23,6 +23,8 @@ use ph2d_nodegraph::graph::{Edge, Graph, NodeId};
 
 /// O espaçamento da esteira de BAIXO — o eco discreto que a wave destrava.
 const SPACED: f32 = 4.0;
+/// Graus de matiz por eco na esteira de baixo — o arco-íris da "cauda colorida".
+const HUE_PER_ECHO: f32 = 35.0;
 /// Quantos ecos cada rastro carrega (os dois iguais: só o espaçamento difere).
 const ECHOES: f32 = 6.0;
 
@@ -32,6 +34,10 @@ fn lane(g: &mut Graph, y: f32, spacing: f32) -> (NodeId, NodeId) {
     let grid = g.add_node("motion.grid");
     let mv = g.add_node("motion.move");
     let orbit = g.add_node("motion.orbit");
+    // ⚠️ Uma cor SATURADA, e ela é parte do teste: girar a matiz do BRANCO não faz nada
+    // (o branco está no eixo acromático), então uma cena sem cor mediria o giro como
+    // ausente — a 1ª versão deste smoke caiu exatamente nisso.
+    let tint = g.add_node("motion.tint");
     let trail = g.add_node("motion.trail");
     let out = g.add_node("motion.output");
 
@@ -49,8 +55,25 @@ fn lane(g: &mut Graph, y: f32, spacing: f32) -> (NodeId, NodeId) {
     g.set_param(trail, "fade", 0.8);
     g.set_param(trail, "shrink", 0.93);
     g.set_param(trail, "spacing", spacing);
+    // A esteira ESPAÇADA leva também os knobs do padrão-ouro: a cauda muda de cor,
+    // desbota e gira. A de cima fica no neutro, e é o CONTROLE.
+    if spacing > 1.0 {
+        g.set_param(trail, "hue_shift", HUE_PER_ECHO);
+        g.set_param(trail, "saturation", 0.85);
+        g.set_param(trail, "spin", 9.0);
+    }
 
-    for (from, to) in [(grid, mv), (mv, orbit), (orbit, trail), (trail, out)] {
+    g.set_param(tint, "r", 0.9);
+    g.set_param(tint, "g", 0.15);
+    g.set_param(tint, "b", 0.05);
+
+    for (from, to) in [
+        (grid, mv),
+        (mv, orbit),
+        (orbit, tint),
+        (tint, trail),
+        (trail, out),
+    ] {
         g.connect(Edge {
             from: (from, 0),
             to: (to, 0),
@@ -113,7 +136,16 @@ impl crate::App {
              TESTE 2 (o alcance): com 'Spacing' alto, aumente o 'Length'. A cauda cobre \
              a orbita inteira sem custar um eco por quadro.\n  \
              TESTE 3 (a cabeca): o ponto VIVO nunca pisca -- ele e desenhado todo tick, \
-             espacado ou nao; o que espaca sao os FANTASMAS."
+             espacado ou nao; o que espaca sao os FANTASMAS.\n  \
+             TESTE 4 (Fade e Shrink AGORA FUNCIONAM): eles multiplicavam colunas que uma \
+             fonte posicional nao carrega, e eram no-ops silenciosos. Arraste os dois: a \
+             cauda tem de sumir e encolher nos DOIS rastros.\n  \
+             TESTE 5 (a secao Colour): a esteira de baixo ja vem com 'Hue Shift' \
+             {HUE_PER_ECHO} deg por eco -- a cauda percorre o circulo de matiz. Arraste \
+             'Saturation' ate 0: a cauda desbota a cinza SEM escurecer (a luma e \
+             preservada, e e isso que separa um giro de matiz de um filtro).\n  \
+             TESTE 6 (Spin): cada eco esta 9 deg atras do anterior. Ponha em 0 e a cauda \
+             para de girar sem parar de andar."
         );
     }
 }
@@ -154,6 +186,58 @@ mod tests {
         };
         v.sort_by(f32::total_cmp);
         v
+    }
+
+    /// **OS KNOBS DE COR CHEGAM À CENA** — o padrão-ouro pedido em 2026-08-08.
+    ///
+    /// A esteira de baixo leva `Hue Shift`, `Saturation` e `Spin`; a de cima é o
+    /// CONTROLE, no neutro. O oráculo por knob é a grandeza que ele nomeia — a matiz
+    /// muda **com a luma conservada**, a saturação encolhe, o `rot` anda.
+    #[test]
+    fn the_spaced_lane_shifts_hue_desaturates_and_spins() {
+        let (plain, fancy) = run(24);
+        let tints = |s: &Stream| match s.get("tint") {
+            Some(Column::Vec4(v)) => v.clone(),
+            _ => panic!("tint"),
+        };
+        let luma = |c: [f32; 4]| 0.213 * c[0] + 0.715 * c[1] + 0.072 * c[2];
+
+        // CONTROLE: sem knobs de cor, todo eco tem a MESMA cor (só a alfa desce).
+        let p = tints(&plain);
+        for c in &p {
+            assert!(
+                (c[0] - p[0][0]).abs() < 1e-6 && (c[1] - p[0][1]).abs() < 1e-6,
+                "a esteira neutra nao muda de matiz: {c:?} vs {:?}",
+                p[0]
+            );
+        }
+
+        let f = tints(&fancy);
+        let (old_c, live) = (f[0], f[f.len() - 1]);
+        assert!(
+            (old_c[0] - live[0]).abs() > 0.02 || (old_c[1] - live[1]).abs() > 0.02,
+            "o eco velho tinha de estar noutra matiz: {old_c:?} vs {live:?}"
+        );
+        // ⚠️ A luma tem de sobreviver: o `fade` mexe na ALFA, e um giro de matiz que
+        // escurecesse seria indistinguivel dele no olho -- e um filtro, nao um giro.
+        let unfade = |c: [f32; 4]| [c[0], c[1], c[2], 1.0];
+        assert!(
+            (luma(unfade(old_c)) - luma(unfade(live))).abs() < 0.15,
+            "a luma tinha de sobreviver ao giro: {} vs {}",
+            luma(unfade(old_c)),
+            luma(unfade(live))
+        );
+        match fancy.get("rot") {
+            Some(Column::Scalar(v)) => assert!(
+                (v[0] - v[v.len() - 1]).abs() > 1.0,
+                "o Spin tinha de deixar o eco velho girado: {v:?}"
+            ),
+            _ => panic!("sem coluna `rot` a esteira nao girou"),
+        }
+        assert!(
+            plain.get("rot").is_none(),
+            "e a esteira neutra NAO ganha uma coluna `rot` que ninguem pediu"
+        );
     }
 
     /// **A CENA DE FATO DESBOTA E ENCOLHE** — o gate do defeito de 2026-08-08.
@@ -228,10 +312,14 @@ mod tests {
         );
     }
 
-    /// **O TESTE 1 da mensagem é verdade** — em `spacing = 1` as duas esteiras são a
-    /// MESMA coisa, que é a prova de que o default desta wave não moveu nada.
+    /// **O TESTE 1 da mensagem é verdade** — em `spacing = 1` as duas esteiras têm a
+    /// MESMA CADÊNCIA, que é a prova de que o default do espaçamento não moveu nada.
+    ///
+    /// ⚠️ O oráculo é a cadência e a contagem, **não a cor**: a esteira de baixo leva
+    /// também os knobs de Colour, então afirmar "as duas são idênticas" seria afirmar
+    /// mais do que o teste mede.
     #[test]
-    fn at_spacing_one_the_two_lanes_are_the_same_trail() {
+    fn at_spacing_one_the_two_lanes_share_the_cadence() {
         let mut reg = NodeRegistry::new();
         ph2d_node_registry_init::register_all_nodes(&mut reg).expect("registry builds");
         let mut g = Graph::new();

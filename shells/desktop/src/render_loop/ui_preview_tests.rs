@@ -23,7 +23,7 @@ fn world() -> (SimWorld, VecScene, VecEntityMap, StateSets) {
         t.translation.x = x;
         let e = sim
             .world_mut()
-            .spawn((Name(format!("p{id}").into()), t, ph2d_ecs::VecPathRef(id)))
+            .spawn((Name(format!("p{id}")), t, ph2d_ecs::VecPathRef(id)))
             .id();
         map.insert(id, e.to_bits());
     }
@@ -183,7 +183,6 @@ fn the_two_mouse_facts_derive_the_role() {
         StateRole::Default,
         "apertar no vazio nao pode prender um hospedeiro"
     );
-    assert_eq!(pv.hot(), None);
 }
 
 /// **Com a preview DESLIGADA o rato não dirige nada** — é o interruptor inteiro num gate.

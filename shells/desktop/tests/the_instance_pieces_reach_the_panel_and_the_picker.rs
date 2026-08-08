@@ -72,14 +72,22 @@ fn the_picked_colour_is_read_back_onto_the_piece() {
 /// teclado, e nenhum teste de unidade a alcança.
 #[test]
 fn escape_gives_up_an_armed_pick() {
-    let s = src("input_dispatch/keyboard.rs");
+    // ⚠️ A cadeia de Escapes mudou de arquivo em 2026-08-07 (o `keyboard.rs` cruzou o cap de LOC
+    // com o Esc do modo de preview, W7r); a PROPRIEDADE afirmada continua exactamente a mesma.
+    let s = src("input_dispatch/keyboard_escapes.rs");
     let at = s
         .find("self.vec_path_pick.take().is_some()")
         .expect("o Esc deixou de desistir de um pick armado — o artista fica preso no conta-gotas");
     // ⚠️ Ele TEM de consumir: um Esc que desarma e deixa passar daria blur num widget que o
     // artista não estava a editar, no mesmo toque.
+    //
+    // ⚠️ **A forma de "consumir" MUDOU com o arquivo:** a cadeia atrás de uma porta devolve
+    // `true` em vez de `return;` nu, e a janela de 120 bytes deste gate — que procurava o
+    // literal antigo — reprovou produto CORRETO na primeira corrida depois do corte. É a
+    // armadilha que este repo já nomeou: *uma âncora em distância de bytes é um proxy que
+    // expira*. A pergunta é *ele volta daqui?*, e as duas formas a respondem.
     assert!(
-        s[at..at + 120].contains("return;"),
+        s[at..at + 120].contains("return"),
         "o Esc desarma o pick e deixa o evento seguir"
     );
     // E vem ANTES do Escape do Pen: com um pick armado o Esc é sobre ele, não sobre um caminho.

@@ -50,3 +50,10 @@ pub fn vector_state_apply_id(i: usize) -> NodeId {
 /// quando as curvas ganharem nomes, no lugar onde elas moram.
 pub const VECTOR_STATE_DURATION: NodeId = hash_node_id("vector.state.duration");
 pub const VECTOR_STATE_DURATION_NUM: NodeId = hash_node_id("vector.state.duration.num");
+
+/// **O MODO DE PREVIEW** (W7r) — o interruptor que faz a UI desenhada responder ao rato.
+///
+/// ⚠️ **Um id só, e não um por papel:** o modo não escolhe um papel, ele entrega os papéis ao
+/// rato. Um chip por papel seria a segunda forma de pedir o que o botão *Show* já pede, e as duas
+/// discordariam no dia em que uma delas ganhasse um caso especial.
+pub const VECTOR_STATE_PREVIEW: NodeId = hash_node_id("vector.state.preview");

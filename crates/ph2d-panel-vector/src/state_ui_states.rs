@@ -29,6 +29,14 @@ pub struct UiStatesState {
     /// dela.
     pub live: Option<usize>,
     pub duration_s: f32,
+    /// **O MODO DE PREVIEW** (W7r): `None` = não oferecer, `Some(on)` = o interruptor e se ele
+    /// está ligado.
+    ///
+    /// ⚠️ **É um fato da CENA dentro de uma seção da SELEÇÃO**, e de propósito: a preview entrega
+    /// o rato a *todos* os hospedeiros, não ao selecionado. O `None` é o que impede um botão que
+    /// não faz nada — a shell só o oferece quando existe alguma pose autorada em algum lugar, que
+    /// é exatamente a condição em que ligar a preview tem efeito.
+    pub preview: Option<bool>,
 }
 
 /// ⚠️ **A CURVA não é oferecida aqui, e a ausência é decisão MEDIDA, não esquecimento.** O

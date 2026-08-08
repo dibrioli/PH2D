@@ -96,6 +96,13 @@ pub(super) fn component_controls(store: &mut WidgetStore) {
             );
         }
     }
+    // **O MODO DE PREVIEW** (W7r): o interruptor que entrega o rato aos papéis.
+    store.register(
+        ids::VECTOR_STATE_PREVIEW,
+        InteractiveState::Button {
+            state: ButtonState::Normal,
+        },
+    );
     // A DURAÇÃO: o slider e o chip que o espelha. `link_slider_number_mapped` com escala
     // `MAX_DURATION_S` é o que faz o trilho `0..1` e o número em SEGUNDOS serem o mesmo valor —
     // sem ele o artista arrastaria o trilho e leria um número que não é o dele.

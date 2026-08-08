@@ -6,12 +6,16 @@
 //! duração que ele autorou. É assim que ele vê o tween que gravou, em vez de apenas confiar que
 //! ele existe.
 //!
-//! ⚠️ **Ela NÃO é dirigida pelo mouse, e a ausência é decisão.** Um hover que animasse a forma
-//! enquanto o artista trabalha tornaria o editor inutilizável — é por isso que o Figma põe a
-//! interação num **modo de apresentação** separado. E há um segundo motivo, que é nosso: o undo
-//! deste editor é por **DIFF do mundo**, então uma pose escrita por hover viraria passo de undo a
-//! cada vez que o rato passasse por cima de um botão. Ligar o mouse exige um modo de preview com
-//! história própria — decisão de produto, não trabalho mecânico.
+//! ⚠️ **Ela não é dirigida pelo mouse DAQUI, e as duas razões continuam de pé:** um hover que
+//! animasse a forma enquanto o artista trabalha tornaria o editor inutilizável (é por isso que o
+//! Figma põe a interação num **modo de apresentação** separado), e o undo deste editor é por
+//! **DIFF do mundo**, então uma pose escrita por hover viraria passo de undo a cada passagem do
+//! rato.
+//!
+//! ⇒ quem liga o rato é o **MODO DE PREVIEW** ([`super::ui_preview`], W7r): ele resolve as duas
+//! de uma vez — enquanto corre, o gesto de edição não existe e o undo não regista, e ao sair o
+//! mundo volta exactamente ao que era. Ele PEDE por esta mesma porta ([`request`]), então não há
+//! um segundo caminho para *"pôr a cena nesta pose"*.
 //!
 //! # O relógio é o do FRAME, e não um relógio próprio
 //!

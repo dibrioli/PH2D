@@ -208,8 +208,11 @@ fn a_completed_gesture_disarms_and_a_refusal_does_not() {
 /// Mutação: mover o braço para depois do Escape do Build ⇒ RED.
 #[test]
 fn escape_cancels_the_drawing_before_any_tool_scoped_escape() {
-    let src =
-        fs::read_to_string("src/input_dispatch/keyboard.rs").expect("input_dispatch/keyboard.rs");
+    // ⚠️ A cadeia MUDOU DE ARQUIVO em 2026-08-07 (o `keyboard.rs` cruzou o cap de 600 LOC com o
+    // Esc do modo de preview, W7r) — o gate segue o CÓDIGO, e o que ele afirma continua a ser a
+    // ORDEM, nunca o endereço.
+    let src = fs::read_to_string("src/input_dispatch/keyboard_escapes.rs")
+        .expect("input_dispatch/keyboard_escapes.rs");
     // A FAMÍLIA dos cancelamentos por Escape tem uma forma só — o guard
     // `matches!(physical_key, PhysicalKey::Code(KeyCode::Escape))` —, e a afirmação
     // é sobre a ORDEM dentro dela: o nosso é o primeiro.
@@ -223,8 +226,8 @@ fn escape_cancels_the_drawing_before_any_tool_scoped_escape() {
     const ARM: &str = "matches!(physical_key, PhysicalKey::Code(KeyCode::Escape))";
     let arms: Vec<usize> = src.match_indices(ARM).map(|(i, _)| i).collect();
     assert!(
-        arms.len() >= 4,
-        "esperava a família de cancelamentos por Escape (joint draw / Build / Pen / \
+        arms.len() >= 5,
+        "esperava a família de cancelamentos por Escape (preview / joint draw / Build / Pen / \
          shape do Painter); achei {} braços",
         arms.len()
     );
@@ -232,17 +235,28 @@ fn escape_cancels_the_drawing_before_any_tool_scoped_escape() {
         let end = arms.get(n + 1).copied().unwrap_or(src.len());
         &src[arms[n]..end]
     };
+    // ⚠️ **O braço 0 é o do MODO DE PREVIEW (W7r), e isso não afrouxa este gate — refina-o.**
+    // O nome dele sempre prometeu *"antes de todo Escape TOOL-SCOPED"*, e a preview não é uma:
+    // ela é modal sobre o EDITOR INTEIRO (com ela ligada não existe ferramenta nenhuma), um
+    // nível acima do gesto de joint. A afirmação continua a poder falhar — mover o joint para
+    // depois do Build, do Pen ou do Painter deixa este gate VERMELHO exactamente como antes.
     assert!(
-        extent(0).contains("self.joint_draw_cancel_key()"),
-        "o cancelamento do desenho de joint tem de ser o PRIMEIRO braço de Escape: o \
+        extent(0).contains("self.ui_preview.is_on()"),
+        "o braço 0 deixou de ser o do modo de preview — ele e' o unico modal sobre o editor \
+         inteiro, e um Esc dentro dele tem de sair dele. Braço 0 hoje: {}",
+        extent(0).lines().take(6).collect::<Vec<_>>().join(" / ")
+    );
+    assert!(
+        extent(1).contains("self.joint_draw_cancel_key()"),
+        "o cancelamento do desenho de joint tem de vir antes de todo Escape TOOL-SCOPED: o \
          gesto é modal e independe de ferramenta (do lado do ponteiro ele precede \
          picking e gizmos pela mesma razão), então cancelar não pode depender de qual \
-         ferramenta está na mão. Primeiro braço hoje: {}",
-        extent(0).lines().take(6).collect::<Vec<_>>().join(" / ")
+         ferramenta está na mão. Braço 1 hoje: {}",
+        extent(1).lines().take(6).collect::<Vec<_>>().join(" / ")
     );
     // E os três irmãos tool-scoped seguem lá, atrás — se algum sumir, o gate acima
     // pode ter ficado verde por o arquivo ter mudado de forma.
-    let rest: String = (1..arms.len()).map(extent).collect();
+    let rest: String = (2..arms.len()).map(extent).collect();
     for sibling in [
         "self.build_cancel()",
         "self.vec_pen.is_drawing()",

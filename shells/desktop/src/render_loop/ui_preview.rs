@@ -66,12 +66,6 @@ impl UiPreview {
         self.on
     }
 
-    /// Que hospedeiro está sob o cursor — o readout que o painel mostra.
-    #[must_use]
-    pub(crate) fn hot(&self) -> Option<VecPathId> {
-        self.hot
-    }
-
     /// **LIGA**, capturando o mundo. Sem estado nenhum autorado ela não liga — um modo de preview
     /// sobre uma cena sem poses é um modo que não faz nada, e o artista não teria como o saber.
     pub(crate) fn enter(

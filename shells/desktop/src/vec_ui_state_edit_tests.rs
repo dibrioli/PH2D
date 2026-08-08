@@ -199,7 +199,7 @@ fn a_multi_selection_has_no_host() {
         UiStateEdit::Record(StateRole::Default),
     );
     assert!(states.is_empty(), "uma selecao multipla gravou um estado");
-    assert!(publish(&[host, child], &states, None).is_none());
+    assert!(publish(&[host, child], &states, None, false).is_none());
 }
 
 /// **A seção é oferecida a qualquer forma única, com estados ou sem.**
@@ -210,7 +210,8 @@ fn a_multi_selection_has_no_host() {
 #[test]
 fn the_section_is_offered_before_there_is_anything_to_show() {
     let states = StateSets::default();
-    let v = publish(&[1], &states, None).expect("a secao e' oferecida numa forma sem estados");
+    let v =
+        publish(&[1], &states, None, false).expect("a secao e' oferecida numa forma sem estados");
     assert_eq!(v.recorded, [false; 4]);
     assert!(
         (v.duration_s - 0.15).abs() < 1e-6,
@@ -264,7 +265,7 @@ fn every_role_has_a_row_of_ids() {
 /// `panel.vector.states.role.…` ao artista.
 #[test]
 fn every_role_reaches_the_panel_with_a_translated_name() {
-    let v = publish(&[1], &StateSets::default(), None).expect("a secao e' oferecida");
+    let v = publish(&[1], &StateSets::default(), None, false).expect("a secao e' oferecida");
     for (i, &role) in StateRole::ALL.iter().enumerate() {
         let key = role.i18n_key();
         assert_ne!(
@@ -301,6 +302,50 @@ fn the_duration_ruler_is_one_number() {
             < 1e-6,
         "o default do modelo e o token do design system divergiram: o slider nasce num valor e o \
          documento noutro"
+    );
+}
+
+/// **O interruptor da PREVIEW só é oferecido onde há o que pré-visualizar** (W7r).
+///
+/// ⚠️ A pergunta é sobre a CENA (*algum hospedeiro tem pose?*) dentro de uma seção da SELEÇÃO, e
+/// é deliberado: a preview entrega o rato a todos os hospedeiros. O `None` é o que impede um
+/// botão que não faz nada — [`crate::render_loop::ui_preview::UiPreview::enter`] recusa
+/// exactamente a mesma condição, e um botão pintado sobre ela seria um clique que o artista não
+/// tem como diagnosticar.
+#[test]
+fn the_preview_switch_is_offered_only_where_there_is_something_to_preview() {
+    let states = StateSets::default();
+    let v = publish(&[1], &states, None, false).expect("a secao e' oferecida");
+    assert_eq!(
+        v.preview, None,
+        "o interruptor foi oferecido numa cena SEM pose nenhuma — ligar nao faria nada"
+    );
+
+    let (mut sim, mut scene, map, host, _child) = scene_with_host_and_child();
+    let mut states = StateSets::default();
+    apply(
+        &mut sim,
+        &mut scene,
+        &map,
+        &[host],
+        &mut states,
+        UiStateEdit::Record(StateRole::Default),
+    );
+    assert_eq!(
+        publish(&[host], &states, None, false).unwrap().preview,
+        Some(false),
+        "com uma pose gravada o interruptor tem de existir, desligado"
+    );
+    assert_eq!(
+        publish(&[host], &states, None, true).unwrap().preview,
+        Some(true),
+        "o estado LIGADO tem de chegar ao painel — senao o botao nunca acende"
+    );
+    // ⚠️ E a oferta é da CENA: um hospedeiro OUTRO que não o selecionado já basta.
+    assert_eq!(
+        publish(&[999], &states, None, false).unwrap().preview,
+        Some(false),
+        "a oferta seguiu a SELECAO em vez da cena — a preview dirige todos os hospedeiros"
     );
 }
 

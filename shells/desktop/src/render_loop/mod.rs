@@ -2180,6 +2180,7 @@ impl crate::App {
             // shell — o painel so' mostra que verbos fazem sentido agora.
             let mut pending_ui_state: Option<crate::vec_ui_state_edit::UiStateEdit> = None;
             let mut pending_ui_state_duration: Option<f64> = None;
+            let mut pending_ui_preview_toggle = false;
             // **A BOOLEANA VIVA** (plano UI/UX W1): o Apply consolida o que o produtor cozinhou
             // NESTE frame, então ele não pode correr aqui — corre logo depois do `recook`, onde o
             // plano existe. Aqui só se anota o clique.
@@ -2573,6 +2574,11 @@ impl crate::App {
                             {
                                 // OS ESTADOS de UI (W7): gravar, mostrar e esquecer uma pose.
                                 pending_ui_state = Some(e);
+                            } else if *id == ph2d_editor::ids::VECTOR_STATE_PREVIEW {
+                                // **O MODO DE PREVIEW** (W7r): ele NÃO é um verbo de estado — não
+                                // toca a tabela —, então tem rota própria em vez de um variant no
+                                // `UiStateEdit`, cujo assunto é *o que muda no documento*.
+                                pending_ui_preview_toggle = true;
                             } else if let Some(e) = crate::vec_widget_edit::widget_edit_for_id(*id)
                             {
                                 // A PELE por-widget (plano UI/UX W6.2): o componente mora no ECS,
@@ -4649,19 +4655,44 @@ impl crate::App {
             {
                 ui_states.set_duration(*host, secs);
             }
+            // **O MODO DE PREVIEW** (W7r) — o interruptor e a saída por Esc, na MESMA porta: um
+            // `leave` escrito num segundo sítio seria a segunda resposta a *"como se devolve o
+            // mundo?"*, e a que esquecesse um plano deixaria a cena numa pose que ninguém autorou.
+            //
+            // ⚠️ **`preview_frame` é lido ANTES de qualquer coisa acontecer**, e ele é o que
+            // suprime o undo no quadro da SAÍDA: `leave` escreve poses de volta no mundo, e um
+            // diff tirado depois disso registraria *"o artista mexeu na cena"* por ele ter
+            // olhado. Ligar não precisa (entrar só captura), mas custa uma disjunção e cobre o
+            // caso de alguém pôr uma escrita no `enter` um dia.
+            let preview_frame = self.ui_preview.is_on();
+            if pending_ui_preview_toggle || std::mem::take(&mut self.ui_preview_leave) {
+                if self.ui_preview.is_on() {
+                    self.ui_preview
+                        .leave(ui_machines, sim, vec_scene, &self.vec_entities);
+                } else if pending_ui_preview_toggle {
+                    self.ui_preview
+                        .enter(ui_states, sim, vec_scene, &self.vec_entities);
+                }
+            }
             // ⚠️ O relógio é o do FRAME — os ticks que o `FixedStep` de facto entregou, e não um
             // relógio próprio. É a lição W4.T7 do Motion, onde o `MotionTransport` morreu: dois
             // relógios divergem, e o modo de falha é a UI a andar noutra velocidade que a cena.
             #[allow(clippy::cast_precision_loss)]
             let ui_state_dt = report.ticks as f64 * self.fixed_step.fixed_dt();
-            self.ui_state_live = crate::render_loop::ui_state_bridge::dispatch(
-                ui_machines,
-                ui_states,
-                sim,
-                vec_scene,
-                &self.vec_entities,
-                ui_state_dt,
-            );
+            // ⚠️ A supressão do undo cobre a preview INTEIRA, e não só as máquinas em voo: uma
+            // máquina PARADA num hover deixa o mundo fora da pose autorada, e o diff registraria
+            // esse mundo como trabalho do artista. Os três termos são *estava ligada · está
+            // ligada · alguma máquina anda*, e a disjunção é o que fecha o quadro da saída.
+            self.ui_state_live = preview_frame
+                | self.ui_preview.is_on()
+                | crate::render_loop::ui_state_bridge::dispatch(
+                    ui_machines,
+                    ui_states,
+                    sim,
+                    vec_scene,
+                    &self.vec_entities,
+                    ui_state_dt,
+                );
             let mut arm_detached_under: Option<crate::vec_component_edit::Detached> = None;
             if let Some(verb) = pending_component {
                 let sel: Vec<ph2d_vec_scene::VecPathId> = self.vec_pen.selected_paths().to_vec();
@@ -6773,6 +6804,7 @@ impl crate::App {
                         ui_machines,
                         sel.first().copied(),
                     ),
+                    self.ui_preview.is_on(),
                 ));
                 // **O Z-INDEX da seleção** (Enio, 2026-08-04) — o número GLOBAL que sobrepõe a
                 // ordem da hierarquia. Publicado pela MESMA porta que o campo escreve e que os

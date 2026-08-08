@@ -42,9 +42,16 @@ impl BodyCtx<'_> {
             return y;
         }
 
+        // **O interruptor da PREVIEW** vem PRIMEIRO, porque ele muda o que a seção inteira
+        // significa: ligado, o rato dirige os papéis e a autoria fecha.
+        let preview_on = s.preview == Some(true);
+        if let Some(on) = s.preview {
+            y = self.preview_row(on, y);
+        }
+
         for i in 0..s.role_labels.len() {
             let label = s.role_labels[i].clone();
-            y = self.state_role_row(i, &label, s.recorded[i], s.live == Some(i), y);
+            y = self.state_role_row(i, &label, s.recorded[i], s.live == Some(i), !preview_on, y);
         }
 
         // ⚠️ O readout da pré-visualização é a única coisa que diz ao artista que a cena NÃO está
@@ -55,6 +62,18 @@ impl BodyCtx<'_> {
                 &format!("{} {}", tr("panel.vector.states.showing"), s.role_labels[i]),
                 y,
             );
+        }
+
+        // ⚠️ **Com a preview LIGADA a autoria fecha inteira** — nem os verbos, nem a duração.
+        //
+        // Não é rigor: o mundo, em preview, é uma pose DERIVADA que a máquina escreveu, e gravar
+        // dali autoraria uma pose que o artista nunca fez (*"Rec Default"* sobre um hover). E há
+        // um segundo motivo, que vale para a duração — um número que não move pose nenhuma: o
+        // registro de undo está **suprimido** enquanto a preview corre, então toda edição feita
+        // aqui dentro perderia o passo dela. Fechar a autoria remove a armadilha em vez de a
+        // documentar. É a mesma linha que o Figma traça entre editar e apresentar.
+        if preview_on {
+            return y;
         }
 
         // A DURAÇÃO é o número que o artista de facto afina; a régua é a mesma do modelo
@@ -71,8 +90,50 @@ impl BodyCtx<'_> {
         )
     }
 
+    /// **O interruptor da preview**, e — quando ligada — a linha que diz como sair.
+    ///
+    /// ⚠️ O botão troca de ESTADO, nunca de rótulo: um botão cujo texto alterna entre *"Preview"*
+    /// e *"Exit"* obriga o artista a ler para saber onde está, enquanto um aceso se lê de relance.
+    /// É a mesma escolha dos toggles do rail.
+    fn preview_row(&mut self, on: bool, y: f32) -> f32 {
+        let rect = Rect::new(self.inner_x, y, self.inner_w, self.row_h);
+        let st = self
+            .store
+            .button_state(ids::VECTOR_STATE_PREVIEW)
+            .unwrap_or(ButtonState::Normal);
+        // ⚠️ O *ligado* é o **KIND**, não o `ButtonState`: o `ButtonState` descreve o rato (hover,
+        // press) e o kind descreve o que o botão É. Escrever *ligado* no `ButtonState` faria o
+        // aceso desaparecer no instante em que o cursor passasse por cima dele.
+        let btn = Button::new(ids::VECTOR_STATE_PREVIEW, tr("panel.vector.states.preview"))
+            .kind(if on {
+                ButtonKind::Accent
+            } else {
+                ButtonKind::Default
+            })
+            .state(st);
+        paint_button(&btn, rect, self.scene, self.text_system, self.theme);
+        self.hit_index.register(ids::VECTOR_STATE_PREVIEW, rect);
+        let y = y + self.row_h + Spacing::Xs.px();
+        if on {
+            // ⚠️ A porta de saída é ANUNCIADA. Um modo que toma o rato e não diz como se sai é um
+            // modo em que o artista tenta clicar fora, nada acontece, e ele conclui que travou.
+            return self.label_line(tr("panel.vector.states.preview.on"), y);
+        }
+        y
+    }
+
     /// Uma linha: o nome do papel, e os verbos que fazem sentido para ele.
-    fn state_role_row(&mut self, i: usize, label: &str, recorded: bool, live: bool, y: f32) -> f32 {
+    ///
+    /// `verbs` é falso durante a preview — ver o comentário no corpo da seção.
+    fn state_role_row(
+        &mut self,
+        i: usize,
+        label: &str,
+        recorded: bool,
+        live: bool,
+        verbs: bool,
+        y: f32,
+    ) -> f32 {
         use ph2d_editor_core::paint::{paint_text, resolve};
         use ph2d_tokens::{ColorToken, TypeToken};
 
@@ -93,6 +154,10 @@ impl BodyCtx<'_> {
             LABEL_COL_W,
             resolve(text, self.theme),
         );
+
+        if !verbs {
+            return y + self.row_h + Spacing::Xs.px();
+        }
 
         let x0 = self.inner_x + LABEL_COL_W;
         let w = (self.inner_x + self.inner_w - x0).max(0.0);

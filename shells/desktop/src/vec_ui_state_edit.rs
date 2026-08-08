@@ -241,6 +241,7 @@ pub(crate) fn publish(
     selected: &[VecPathId],
     states: &StateSets,
     live: Option<usize>,
+    preview_on: bool,
 ) -> Option<ph2d_panel_vector::state::UiStatesState> {
     let h = host(selected)?;
     let (duration, _easing) = states.timing(h);
@@ -253,6 +254,13 @@ pub(crate) fn publish(
         live,
         #[allow(clippy::cast_possible_truncation)]
         duration_s: duration as f32,
+        // **O interruptor da PREVIEW** só é oferecido quando existe pose autorada em ALGUM
+        // hospedeiro — que é exatamente a condição em que [`UiPreview::enter`] liga.
+        //
+        // ⚠️ **A pergunta é a MESMA que o modelo faz**, e não uma segunda cópia da regra: um
+        // botão pintado sobre uma cena sem poses seria um clique que não faz nada, e o artista
+        // não teria como saber que o que falta é gravar um estado.
+        preview: (!states.is_empty()).then_some(preview_on),
     })
 }
 

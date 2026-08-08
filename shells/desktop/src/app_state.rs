@@ -845,6 +845,14 @@ pub(crate) struct App {
     /// transição de 150 ms viraria nove passos de undo. Quando a máquina chega, a cena está numa
     /// pose autorada e o diff registra **um** — o preço certo de *"eu mostrei o hover"*.
     pub(crate) ui_state_live: bool,
+    /// **O MODO DE PREVIEW** (plano UI/UX W7r) — a UI desenhada a responder ao rato.
+    ///
+    /// ⚠️ **Ele não é serializado e não pode ser:** guarda *onde a cena estava quando a preview
+    /// ligou*, um fato sobre uma sessão. O documento guarda *onde as poses são*.
+    pub(crate) ui_preview: crate::render_loop::ui_preview::UiPreview,
+    /// **Esc pediu para SAIR da preview.** Um pedido e não a saída: sair devolve poses ao mundo,
+    /// e o mundo mora dentro do `gfx` — o mesmo protocolo dos verbos de estado ao lado.
+    pub(crate) ui_preview_leave: bool,
     /// ADR-0114 W2: o traço do Flip em curso (amostras mundo+pressão); assado no
     /// `FlipDoc` no pen-up. Vazio quando não há gesto.
     pub(crate) flip_draw: crate::flip_draw::FlipDraw,

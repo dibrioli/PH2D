@@ -51,6 +51,11 @@ pub(crate) mod fill_drag;
 mod gizmo_drag;
 mod keyboard;
 
+/// **As teclas que ENCERRAM um gesto em curso** (Esc cancela, Enter confirma) — irmão do
+/// `keyboard`, cortado dele pelo cap de LOC. A ORDEM entre elas é a lei, e é por isso que
+/// viajam juntas em vez de por dono.
+mod keyboard_escapes;
+
 /// **Os acordes de ARQUIVO** — irmão do `keyboard`, cortado dele pelo cap de LOC.
 mod keyboard_files;
 mod keyboard_timeline;
@@ -2729,6 +2734,23 @@ impl App {
         if self.guide_pointer_move(self.last_pointer.0, self.last_pointer.1) {
             return;
         }
+        // **O MODO DE PREVIEW** (plano UI/UX W7r): o cursor decide que hospedeiro está aceso.
+        //
+        // ⚠️ **Ele NÃO consome, e a assimetria com o Down/Up é deliberada.** Um `Down` primário
+        // abriria um arrasto de edição e por isso é da preview; um movimento não abre nada, e
+        // consumi-lo mataria o pan e o zoom — que o Figma mantém vivos no modo de apresentação
+        // dele, pela mesma razão: olhar de perto não é editar.
+        //
+        // ⚠️ E ele corre **antes** dos `*_move` abaixo de propósito: um arrasto de gizmo não pode
+        // existir aqui dentro (o `Down` que o abriria foi consumido), então nada a jusante tem
+        // opinião sobre este movimento — mas se um dia tiver, o hover da UI é quem manda.
+        if self.ui_preview.is_on() {
+            // ⚠️ **`Primary`, e não `is_some()`**: o `held_button` guarda QUALQUER botão entre o
+            // Down e o Up, então um pan de botão do meio sobre um controle o mostraria `Pressed` —
+            // o papel errado por um gesto que nem é dele.
+            let pressed = self.held_button == Some(ph2d_host::PointerButton::Primary);
+            self.ui_preview_point(self.last_pointer.0, self.last_pointer.1, pressed);
+        }
         // BgRemoval eyedropper drag (SHELL-only): while the primary
         // button is held with the eyedropper armed, every motion
         // samples another colour. Early-return so the move does not
@@ -3194,6 +3216,26 @@ impl App {
                 h.store.panel_at(evt.x, evt.y).is_none() && h.hit_index.hit(evt.x, evt.y).is_none()
             })
             .unwrap_or(false);
+        // **O MODO DE PREVIEW** (plano UI/UX W7r) — a UI desenhada a responder ao rato.
+        //
+        // ⚠️ Vem antes de TODA ferramenta, e não só das do Vector: enquanto ele corre não existe
+        // pincel, traço do Flip, seleção, gizmo nem caneta — o clique é da interface que o artista
+        // desenhou. É a mesma doutrina dos picks armados (*um modo em curso é dono do clique*),
+        // uma família adiante: aqueles são modais sobre o Vector, este é modal sobre o editor.
+        //
+        // ⚠️ **`on_canvas` é a guarda certa** e não `over_canvas_or_gizmo`: ele exige que não haja
+        // widget nenhum sob o cursor, e é isso que mantém o próprio botão *Preview* — e todo o
+        // resto do chrome — clicável. Sem ele o modo seria uma armadilha sem porta de saída
+        // visível, com o Esc a ser o único caminho.
+        if self.ui_preview.is_on()
+            && on_canvas
+            && !menu_open_before
+            && mapped_button == ph2d_host::PointerButton::Primary
+            && matches!(kind, PointerKind::Down | PointerKind::Up)
+        {
+            self.ui_preview_point(evt.x, evt.y, kind == PointerKind::Down);
+            return;
+        }
         // ADR-0114 W2: desenho do Flip. O pen-UP sempre encerra um traço em curso
         // (consome), mesmo que o modo tenha mudado no meio. O pen-DOWN começa um
         // traço só no modo Draw, em canvas vazio — em Select cai no gizmo/pick.

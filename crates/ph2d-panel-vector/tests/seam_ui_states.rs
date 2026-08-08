@@ -39,8 +39,13 @@ fn clear() {
     state::set_ui_states_state(None);
 }
 
-/// Uma seleção com os papéis de `recorded` gravados.
+/// Uma seleção com os papéis de `recorded` gravados, sem preview.
 fn with(recorded: [bool; 4]) -> UiStatesState {
+    with_preview(recorded, None)
+}
+
+/// A mesma, dizendo o que a shell publica sobre o modo de preview.
+fn with_preview(recorded: [bool; 4], preview: Option<bool>) -> UiStatesState {
     UiStatesState {
         recorded,
         role_labels: [
@@ -51,6 +56,7 @@ fn with(recorded: [bool; 4]) -> UiStatesState {
         ],
         live: None,
         duration_s: 0.15,
+        preview,
     }
 }
 
@@ -207,5 +213,90 @@ fn the_duration_slider_is_alive_and_reaches_the_bus() {
         )),
         "arrastar a duracao nao chegou ao bus — o numero autorado nunca alcanca o documento"
     );
+    clear();
+}
+
+/// **O interruptor da PREVIEW está vivo sob o mouse e chega ao bus** (W7r).
+///
+/// ⚠️ Ele atravessa o barramento porque quem toma o rato é a SHELL — só ela tem o picking de
+/// canvas e o registro de undo. Um toggle que o painel resolvesse sozinho acenderia sem que a
+/// cena respondesse a nada.
+#[test]
+fn the_preview_switch_is_alive_and_reaches_the_bus() {
+    clear();
+    click_reaches_bus(
+        with_preview([true, true, false, false], Some(false)),
+        ids::VECTOR_STATE_PREVIEW,
+        "o interruptor de Preview",
+    );
+    // E ele continua clicável LIGADO — senao entra-se no modo e nao se sai por ele.
+    click_reaches_bus(
+        with_preview([true, true, false, false], Some(true)),
+        ids::VECTOR_STATE_PREVIEW,
+        "o interruptor de Preview LIGADO",
+    );
+    clear();
+}
+
+/// **Sem pose nenhuma na cena, o interruptor NÃO é pintado** — a metade da AUSÊNCIA.
+///
+/// ⚠️ A shell publica `None` exactamente na condição em que `UiPreview::enter` recusa; sem esta
+/// metade o gate acima ficaria verde sobre um botão que existe sempre e não faz nada em metade
+/// dos casos, que é a forma de o artista aprender a duvidar dos outros.
+#[test]
+fn a_scene_with_no_poses_offers_no_preview_switch() {
+    clear();
+    assert!(
+        rect_under(with_preview([false; 4], None), ids::VECTOR_STATE_PREVIEW).is_none(),
+        "o interruptor foi pintado numa cena sem pose: um clique que nao pode fazer nada"
+    );
+    assert!(
+        rect_under(
+            with_preview([true, false, false, false], Some(false)),
+            ids::VECTOR_STATE_PREVIEW
+        )
+        .is_some(),
+        "o interruptor sumiu numa cena COM pose — a preview fica inalcancavel"
+    );
+    clear();
+}
+
+/// **Com a preview LIGADA a autoria fecha inteira** — nem verbos, nem duração.
+///
+/// ⚠️ Não é rigor: o mundo, em preview, é uma pose DERIVADA que a máquina escreveu, e gravar dali
+/// autoraria uma pose que o artista nunca fez. E o registro de undo está suprimido enquanto ela
+/// corre, então toda edição feita aqui dentro perderia o passo dela — fechar a autoria remove a
+/// armadilha em vez de a documentar.
+#[test]
+fn the_preview_closes_authoring_while_it_runs() {
+    clear();
+    let on = with_preview([true, true, false, false], Some(true));
+    assert!(
+        rect_under(on.clone(), ids::VECTOR_STATE_PREVIEW).is_some(),
+        "o unico controlo que TEM de sobreviver e' o proprio interruptor"
+    );
+    for (id, what) in [
+        (ids::vector_state_record_id(0), "Rec"),
+        (ids::vector_state_apply_id(0), "Show"),
+        (ids::vector_state_clear_id(0), "Clear"),
+        (ids::VECTOR_STATE_DURATION, "a duracao"),
+    ] {
+        assert!(
+            rect_under(on.clone(), id).is_none(),
+            "{what} foi pintado durante a preview: uma edicao cujo passo de undo e' engolido"
+        );
+    }
+    // E o CONTROLE: com a preview desligada tudo isto volta.
+    let off = with_preview([true, true, false, false], Some(false));
+    for (id, what) in [
+        (ids::vector_state_record_id(0), "Rec"),
+        (ids::vector_state_apply_id(0), "Show"),
+        (ids::VECTOR_STATE_DURATION, "a duracao"),
+    ] {
+        assert!(
+            rect_under(off.clone(), id).is_some(),
+            "{what} nao voltou com a preview desligada — a seccao ficou inerte"
+        );
+    }
     clear();
 }

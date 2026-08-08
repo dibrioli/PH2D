@@ -336,6 +336,9 @@ mod ui_panel_smoke;
 /// **Que painel esta árvore descreve** (plano UI/UX W8b) — a porta única que lê a moldura
 /// autorada e devolve o `PanelSpec` que o gerador escreve.
 mod ui_panel_spec;
+/// **O RATO dentro do modo de preview** (plano UI/UX W7r) — a metade da shell do
+/// `render_loop::ui_preview`: quem aponta, e o gesto modal que precede tudo.
+mod ui_preview_gesture;
 /// A cena de smoke dos **ESTADOS DE UI** (`PH2D_BUILD_SMOKE=61`) — irmã de `build_smoke`.
 mod ui_states_smoke;
 mod undo;
@@ -677,6 +680,8 @@ impl App {
             flip_active: false,
             flip_style: None,
             ui_state_live: false,
+            ui_preview: crate::render_loop::ui_preview::UiPreview::default(),
+            ui_preview_leave: false,
             flip_draw: crate::flip_draw::FlipDraw::default(),
             flip_colorize: crate::flip_colorize::FlipColorize::default(),
             flip_gap: crate::flip_gap_live::GapHelpers::default(),

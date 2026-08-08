@@ -413,76 +413,11 @@ impl App {
             return;
         }
 
-        // **Esc cancela o gesto de DESENHAR um joint** (W-J4b), e vem PRIMEIRO entre os
-        // Escapes: o gesto e modal e independe de ferramenta (do lado do ponteiro ele
-        // precede picking e gizmos pela mesma razao), entao com ele armado o Esc e
-        // inequivocamente sobre ele. Consome so quando ha o que cancelar — o formato de
-        // todos os irmaos abaixo —, senao o Esc pararia de dar blur em widget.
-        if state == ElementState::Pressed
-            && !repeat
-            && matches!(physical_key, PhysicalKey::Code(KeyCode::Escape))
-            && self.joint_draw_cancel_key()
-        {
-            return;
-        }
-
-        // **Esc desiste de um PICK modal armado** (o conta-gotas de caminho-guia, e o *Swap Main*
-        // do componente). Enio, 2026-08-04: *"Esc não desativa Swap Main checado"* — e estava
-        // certo: o abortar existia só no botão DIREITO, e um smoke meu afirmava o contrário.
-        //
-        // ⚠️ Vem entre os Escapes de gesto modal, e pela mesma razão do irmão de cima: com um pick
-        // armado o Esc é inequivocamente sobre ele. Consome só quando há o que desistir, senão o
-        // Esc pararia de dar blur em widget.
-        if state == ElementState::Pressed
-            && !repeat
-            && matches!(physical_key, PhysicalKey::Code(KeyCode::Escape))
-            && self.vec_path_pick.take().is_some()
-        {
-            return;
-        }
-
-        // Shape Builder: Escape DESMARCA o que foi pintado, sem tocar na arte. Vem antes do
-        // Escape do Pen porque um modo exclui o outro, e este consome só quando há
-        // algo pintado para desmarcar (senão o Escape cai no blur de widget, como sempre).
-        if state == ElementState::Pressed
-            && !repeat
-            && matches!(physical_key, PhysicalKey::Code(KeyCode::Escape))
-            && self.vector_keys_live()
-            && self.build_cancel()
-        {
-            return;
-        }
-
-        // Vector: Escape ends an in-progress path (it stays in the scene, open).
-        // Consumed only while the Vector tool is active and the Pen is drawing,
-        // so Escape otherwise falls through to widget blur.
-        if state == ElementState::Pressed
-            && !repeat
-            && matches!(physical_key, PhysicalKey::Code(KeyCode::Escape))
-            && self.vector_keys_live()
-            && self.vec_pen.is_drawing()
-        {
-            self.vec_pen.finish();
-            return;
-        }
-        // Painter shapes (Curve/Circle): Escape discards the in-progress shape (reverts the preview);
-        // Enter commits it (bakes the painted stroke). Consumed only when a shape session is open (the
-        // helpers gate on it), so both keys fall through to widget-blur / text fields otherwise.
-        if state == ElementState::Pressed
-            && !repeat
-            && matches!(physical_key, PhysicalKey::Code(KeyCode::Escape))
-            && self.painter_shape_cancel()
-        {
-            return;
-        }
-        if state == ElementState::Pressed
-            && !repeat
-            && matches!(
-                physical_key,
-                PhysicalKey::Code(KeyCode::Enter | KeyCode::NumpadEnter)
-            )
-            && self.painter_shape_commit()
-        {
+        // As teclas que ENCERRAM um gesto em curso (Esc cancela, Enter confirma) moram no
+        // irmão `keyboard_escapes.rs`. ⚠️ **A ORDEM entre elas É a lei** — quem consome
+        // antes de quem —, e é por isso que elas viajam juntas em vez de por dono.
+        // `true` = consumiu.
+        if self.escape_key(physical_key, state, repeat) {
             return;
         }
 

@@ -1,0 +1,203 @@
+//! **A fiação do MODO DE PREVIEW** (plano UI/UX W7r) — arch-gate sobre as três costuras que
+//! nenhum teste de unidade alcança.
+//!
+//! # Por que este arquivo existe
+//!
+//! O modelo do preview ([`render_loop::ui_preview`]) é headless e tem gates próprios. O que ele
+//! **não** pode ver é se alguém o LIGA no produto: o gesto modal vive dentro do
+//! `on_mouse_input`/`on_cursor_moved` (que precisam de janela), a supressão de undo é uma
+//! expressão no `render_loop`, e a saída por Esc é um braço numa cadeia de Escapes cuja ORDEM é
+//! o que decide quem consome.
+//!
+//! ⚠️ **É a lição que a `line/anim` mediu em 2026-07-31:** com o `draw` cravado em `true` os vinte
+//! gates de unidade do overlay ficaram VERDES e só o arch-gate sangrou. Aqui é igual — os seis
+//! gates do modelo passam com o modo inalcançável.
+//!
+//! ⚠️ **E cada asserção é sobre uma PROPRIEDADE, nunca sobre distância em bytes:** um proxy de
+//! janela expira na primeira wave que mete uma linha no meio, que é como dois gates desta linha
+//! já morreram (o `the_dispatch_is_handed_the_live_geometry` e o
+//! `the_render_loop_wires_the_handle_gesture`, 2026-07-23).
+
+use std::fs;
+
+fn read(path: &str) -> String {
+    fs::read_to_string(path).unwrap_or_else(|e| panic!("{path}: {e}"))
+}
+
+fn at(src: &str, needle: &str, what: &str) -> usize {
+    src.find(needle)
+        .unwrap_or_else(|| panic!("{what} nao existe no fonte (procurei `{needle}`)"))
+}
+
+/// O corpo da função `fn_sig`, do cabeçalho até a assinatura seguinte.
+///
+/// ⚠️ **Ela existe porque um `find` no arquivo INTEIRO é um anchor ambíguo, e isso foi MEDIDO:**
+/// a agulha `if self.ui_preview.is_on()` casa PRIMEIRO no handler de movimento, ~480 linhas antes
+/// do handler de botão, então a mutação *"a guarda modal deixa de consumir o clique"* passava — o
+/// intervalo examinado varria meia dúzia de outros `return`. *Um gate que procura no arquivo todo
+/// afirma sobre o arquivo todo.*
+fn body_of<'a>(src: &'a str, fn_sig: &str, what: &str) -> &'a str {
+    let start = at(src, fn_sig, what);
+    let rest = &src[start + fn_sig.len()..];
+    let end = rest
+        .find("\n    pub(crate) fn ")
+        .or_else(|| rest.find("\n    fn "))
+        .unwrap_or(rest.len());
+    &rest[..end]
+}
+
+/// **O gesto do preview PRECEDE toda ferramenta.**
+///
+/// ⚠️ A âncora de comparação é o **primeiro consumo de ferramenta** do handler (o pen-up do Flip),
+/// e não um offset: enquanto a preview corre não existe pincel, traço, seleção, gizmo nem caneta —
+/// o clique é da interface que o artista desenhou. É a doutrina dos picks armados, uma família
+/// adiante (aqueles são modais sobre o Vector, este é modal sobre o editor inteiro).
+#[test]
+fn the_preview_consumes_the_click_before_any_tool() {
+    let src = read("src/input_dispatch.rs");
+    let handler = body_of(
+        &src,
+        "pub(crate) fn on_mouse_input",
+        "o handler de botao do ponteiro",
+    );
+    let guard = at(
+        handler,
+        "if self.ui_preview.is_on()",
+        "a guarda modal da preview no handler de botao",
+    );
+    let first_tool = at(
+        handler,
+        "self.flip_canvas_up()",
+        "o primeiro consumo de ferramenta do handler",
+    );
+    assert!(
+        guard < first_tool,
+        "a guarda da preview corre DEPOIS de uma ferramenta consumir o clique — dentro do modo o \
+         artista pintaria na cena em vez de a operar"
+    );
+    // ⚠️ E ela CONSOME: sem o `return` o clique cai adiante e abre um arrasto de edição por baixo
+    // do modo. A janela é o vão entre a guarda e a primeira ferramenta, que contém só este `if`.
+    let body = &handler[guard..first_tool];
+    assert!(
+        body.contains("self.ui_preview_point(evt.x, evt.y, kind == PointerKind::Down)"),
+        "a guarda da preview nao entrega os fatos do rato — o clique nao dirige papel nenhum"
+    );
+    assert!(
+        body.contains("return;"),
+        "a guarda da preview nao CONSOME o clique — ele segue para as ferramentas por baixo do \
+         modo, e um Down primario abre um arrasto de edicao dentro da apresentacao"
+    );
+}
+
+/// **O Move alimenta a preview e NÃO consome** — a assimetria é deliberada.
+///
+/// ⚠️ Um `Down` primário abriria um arrasto de edição e por isso é da preview; um movimento não
+/// abre nada, e consumi-lo mataria o pan e o zoom, que o Figma mantém vivos no modo de
+/// apresentação dele pela mesma razão: olhar de perto não é editar.
+#[test]
+fn the_pointer_move_feeds_the_preview_without_consuming_it() {
+    let src = read("src/input_dispatch.rs");
+    let moved = at(
+        &src,
+        "pub(crate) fn on_cursor_moved",
+        "o handler de movimento do cursor",
+    );
+    let tail = &src[moved..];
+    let hook = at(
+        tail,
+        "if self.ui_preview.is_on()",
+        "o hook da preview no Move",
+    );
+    // O bloco vai do `if` até ao fim do braço; um `return` dentro dele seria consumo.
+    let end = tail[hook..]
+        .find("\n        }\n")
+        .expect("o fim do bloco da preview no Move");
+    let block = &tail[hook..hook + end];
+    assert!(
+        block.contains("self.ui_preview_point("),
+        "o Move nao entrega a posicao a' preview — o hover nunca acende nada"
+    );
+    assert!(
+        !block.contains("return"),
+        "o Move da preview CONSOME o evento — o pan e o zoom morrem dentro do modo"
+    );
+}
+
+/// **A supressão de undo cobre a preview INTEIRA, e não só as máquinas em voo.**
+///
+/// ⚠️ Uma máquina PARADA num hover deixa o mundo fora da pose autorada, e o diff registraria esse
+/// mundo como trabalho do artista. E o quadro da SAÍDA precisa da supressão porque o `leave`
+/// escreve poses de volta: um passo de undo ali diria *"você mexeu na cena"* por ele ter olhado.
+#[test]
+fn the_undo_is_suppressed_for_the_whole_preview_not_just_the_machines() {
+    let src = read("src/render_loop/mod.rs");
+    // ⚠️ Sem espaço em branco dos dois lados: o `rustfmt` decide onde quebra a expressão, e uma
+    // âncora que inclui indentação afirma a FORMATAÇÃO em vez do produto (a cicatriz que o
+    // `the_draw_pass_publishes_the_facts_it_derived` já pagou duas vezes).
+    let flat: String = src.chars().filter(|c| !c.is_whitespace()).collect();
+    assert!(
+        flat.contains("self.ui_state_live=preview_frame|self.ui_preview.is_on()|"),
+        "a supressao de undo nao inclui os dois termos da preview — um hover parado, ou o quadro \
+         em que se sai dela, vira um passo de undo espurio"
+    );
+    // A leitura tem de ser ANTES de o toggle correr: depois, `preview_frame` responderia sobre o
+    // mundo pós-saída e o quadro da saída ficaria descoberto.
+    let read_at = at(
+        &flat,
+        "letpreview_frame=self.ui_preview.is_on()",
+        "a leitura",
+    );
+    let toggle = at(&flat, "self.ui_preview.leave(", "a saida da preview");
+    assert!(
+        read_at < toggle,
+        "`preview_frame` e' lido DEPOIS de a preview sair — o quadro da saida perde a supressao"
+    );
+}
+
+/// **Esc sai da preview, e vem antes de todos os outros Escapes.**
+///
+/// ⚠️ A preview toma o rato do editor inteiro, então com ela ligada o Esc é inequivocamente sobre
+/// ela; qualquer outro consumidor deixaria o artista preso num modo cuja única outra saída é um
+/// botão que a própria preview pode ter tirado de vista.
+#[test]
+fn escape_leaves_the_preview_before_any_other_escape() {
+    // ⚠️ A cadeia inteira mudou de arquivo quando o `keyboard.rs` cruzou o cap de LOC — o gate
+    // segue o CÓDIGO, e é a propriedade (*quem vem antes de quem*) que ele afirma, não o endereço.
+    let src = read("src/input_dispatch/keyboard_escapes.rs");
+    let ours = at(&src, "self.ui_preview.is_on()", "o Esc da preview");
+    let next = at(
+        &src,
+        "self.joint_draw_cancel_key()",
+        "o primeiro Esc de gesto modal",
+    );
+    assert!(
+        ours < next,
+        "o Esc da preview corre depois de outro Escape — dentro do modo a tecla faria outra coisa"
+    );
+    assert!(
+        src[ours..next].contains("self.ui_preview_leave = true"),
+        "o Esc da preview nao pede a saida — a tecla e' consumida e nada acontece"
+    );
+
+    // ⚠️ **E a CADEIA é chamada.** Esta metade é a que a integração da `line/physics` pagou em
+    // 2026-07-27: com a cadeia atrás de uma porta, um gate que só olha para DENTRO dela fica
+    // verde sobre um teclado que nunca a consulta. E a POSIÇÃO da chamada é a lei que o corte
+    // preservou — depois dos atalhos da timeline, antes de o Painter reivindicar as teclas.
+    let kb = read("src/input_dispatch/keyboard.rs");
+    let call = at(
+        &kb,
+        "self.escape_key(",
+        "a chamada da cadeia de encerramento",
+    );
+    let timeline = at(&kb, "self.timeline_key(", "os atalhos da timeline");
+    let painter = at(
+        &kb,
+        "self.painter_nudge_brush_size(",
+        "os atalhos de pincel do Painter",
+    );
+    assert!(
+        timeline < call && call < painter,
+        "a cadeia de encerramento saiu do lugar dela na sequencia — o Esc passa a ser de outro \
+         dono, e um gesto em curso deixa de poder ser cancelado"
+    );
+}

@@ -329,9 +329,23 @@ fn announce(app: &mut crate::App) {
     eprintln!("     alcas de quina continuam la', com o raio que voce autorou. A transicao passa");
     eprintln!("     geometria COZIDA pelo documento e a chegada devolve a FONTE — se as alcas");
     eprintln!("     sumissem, o Show teria assado o seu desenho.");
-    eprintln!(" 13. ⚠️ **O QUE NAO ESTA' AQUI, e e' decisao:** passar o rato por cima nao anima");
-    eprintln!("     nada. Um hover que animasse enquanto voce trabalha tornaria o editor");
-    eprintln!("     inutilizavel — a interacao pede um modo de apresentacao, que e' outra wave.");
+    eprintln!(" 13. ⚠️ **O MODO DE PREVIEW (W7r)** — a metade de RUNTIME. No topo da secao States");
+    eprintln!("     ha' um botao **Preview**. Aperte. Ele ACENDE, a linha diz como sair, e a");
+    eprintln!("     autoria inteira FECHA (nem Rec, nem Show, nem Clear, nem a duracao).");
+    eprintln!(" 14. ⚠️ **Agora passe o rato por cima do Play e do Card, SEM clicar.** Eles");
+    eprintln!("     reagem — e com o mesmo tween que voce autorou. Saia de um para o outro: o");
+    eprintln!("     que voce DEIXA volta ao Default no mesmo gesto (se ficasse aceso, seria o");
+    eprintln!("     defeito que um botao so' nunca mostra).");
+    eprintln!(" 15. ⚠️ **APERTE e SEGURE** sobre o Play: ele vai para **Pressed** se voce gravou");
+    eprintln!("     esse papel, e volta ao Hover ao soltar. Apertar no VAZIO nao prende ninguem.");
+    eprintln!(" 16. ⚠️ **O clique nao pinta, nao seleciona e nao arrasta** dentro do modo — mas");
+    eprintln!("     **pan e zoom continuam vivos** (o Figma faz igual: olhar de perto nao e'");
+    eprintln!("     editar). E o painel continua clicavel: o botao Preview e' a porta de saida.");
+    eprintln!(" 17. ⚠️ **A PROVA da wave: mova o Play com o gizmo ANTES de entrar** (ele fica");
+    eprintln!("     longe do Default que voce gravou). Entre na preview, passe o rato por cima,");
+    eprintln!("     saia por **Esc**. Ele tem de voltar para ONDE VOCE O DEIXOU, e nao para o");
+    eprintln!("     Default gravado — sair para o Default MOVERIA o seu desenho. E o **Ctrl+Z**");
+    eprintln!("     seguinte tem de desfazer o SEU move, nunca um passo que a preview inventou.");
 }
 
 #[cfg(test)]

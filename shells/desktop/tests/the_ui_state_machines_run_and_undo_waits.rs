@@ -44,8 +44,19 @@ fn the_frame_advances_the_ui_state_machines() {
     );
     // ⚠️ E o resultado tem de POUSAR no flag; um `dispatch` cujo retorno é descartado deixa a
     // supressão de undo cega, que é a outra metade desta wave.
+    //
+    // ⚠️ **A atribuição ganhou TERMOS em 2026-08-07** (o modo de preview, W7r: um hover parado
+    // também tem de suprimir), então o gate deixou de poder afirmar a expressão INTEIRA — ele
+    // afirma a propriedade *o retorno do `dispatch` alimenta o `ui_state_live`*, e quem pina os
+    // termos da preview é o `the_preview_owns_the_pointer_and_the_undo`. A comparação é sobre o
+    // fonte sem espaço em branco porque quem decide onde a expressão quebra é o `rustfmt`.
+    let flat: String = s.chars().filter(|c| !c.is_whitespace()).collect();
+    let assign = flat
+        .find("self.ui_state_live=")
+        .expect("ninguem escreve no `ui_state_live` — a supressao de undo nasce morta");
+    let stmt = &flat[assign..flat[assign..].find(");").map_or(flat.len(), |e| assign + e)];
     assert!(
-        s.contains("self.ui_state_live = crate::render_loop::ui_state_bridge::dispatch("),
+        stmt.contains("ui_state_bridge::dispatch("),
         "o `dispatch` corre e o resultado dele nao pousa no `ui_state_live` — a supressao de undo \
          fica cega e uma transicao vira um passo por quadro"
     );

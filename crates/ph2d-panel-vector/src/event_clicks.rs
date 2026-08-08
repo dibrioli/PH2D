@@ -325,4 +325,7 @@ fn is_prefab_click(id: ph2d_a11y::NodeId) -> bool {
             || ids::vector_state_clear_id(i) == id
             || ids::vector_state_apply_id(i) == id
     })
+    // **O MODO DE PREVIEW** (W7r) — quem toma o rato é a shell (só ela tem o picking e o
+    // registro de undo), então o interruptor atravessa o barramento como os verbos ao lado.
+    || id == ids::VECTOR_STATE_PREVIEW
 }

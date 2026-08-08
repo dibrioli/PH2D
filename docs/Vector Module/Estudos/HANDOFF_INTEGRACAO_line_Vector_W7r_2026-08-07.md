@@ -1,6 +1,7 @@
 # Handoff de integração — `line/Vector` · **W7r: o modo de PREVIEW**
 
-*2026-08-07 · 2 commits (`319a62552` o modelo, `68e3b78bd` a fiação) · 25 arquivos*
+*2026-08-07 · 4 commits de código: `319a62552` o modelo · `68e3b78bd` a fiação ·
+`e467ced79` o bug do gizmo · `cb9768de0` o Move All States*
 
 > **Estado:** a wave FECHOU. ⚠️ **PENDENTE DE SMOKE** — e de ordem explícita do Enio para
 > integrar. A linha não integra nem pusha sozinha.
@@ -49,7 +50,7 @@ a repetir.
 | **A autoria FECHA inteira com a preview ligada** (nem Rec/Show/Clear, nem a duração) | O mundo, em preview, é uma pose **DERIVADA**; gravar dali autoraria uma pose que o artista nunca fez. E o undo está **suprimido**, então toda edição feita ali perderia o passo dela. Fechar **remove** a armadilha em vez de a documentar. |
 | **O `Down`/`Up` primário é CONSUMIDO; o `Move` NÃO** | Um Down abriria um arrasto de edição por baixo do modo; um movimento não abre nada, e consumi-lo mataria **pan e zoom** — que o Figma mantém vivos pela mesma razão: *olhar de perto não é editar*. |
 | **A guarda precede TODA ferramenta**, não só as do Vector | Os picks armados (conta-gotas, eyedropper de joint) são modais **sobre o Vector**; este é modal **sobre o editor**. |
-| **`on_canvas` é a guarda, não `over_canvas_or_gizmo`** | Ela exige que não haja widget nenhum sob o cursor, e é isso que mantém o próprio botão *Preview* — e todo o chrome — clicável. Sem ela o modo seria uma armadilha sem porta de saída visível. |
+| **`over_canvas_or_gizmo` é a guarda** ⚠️ *(corrigido na 2ª rodada — ver §7b)* | Ele aceita o gizmo por cima e **continua a barrar painel**, que é o que mantém o próprio botão *Preview* clicável. A v1 usava `on_canvas`, que exige o `hit_index` **vazio** — e o gizmo do hospedeiro selecionado o torna **inalcançável**. |
 | **O interruptor só é oferecido onde há pose autorada** (`preview: Option<bool>`) | Um botão sobre uma cena vazia é um clique que não faz nada e que o artista não tem como diagnosticar. A pergunta é a **MESMA** que o `enter` recusa. |
 | **O *ligado* é o `ButtonKind`, não o `ButtonState`** | O `ButtonState` descreve o **rato** (hover, press); escrever *ligado* nele faria o aceso **desaparecer** no instante em que o cursor passasse por cima. |
 | **`held_button == Some(Primary)`, não `is_some()`** | O `held_button` guarda **qualquer** botão entre Down e Up, então um pan de botão do meio sobre um controle o mostraria `Pressed`. |
@@ -109,16 +110,17 @@ arquivo todo afirma sobre o arquivo todo** — agora ele escopa por FUNÇÃO (`b
 | **Contrato congelado** | intacto (`architecture_contract_surface` 3/3 · `architecture_tool_contract_surface` 4/4, **rodados**) |
 | **`Cargo.toml`** | **ZERO** — nenhuma dep, nenhuma crate |
 | **Registro do `ph2d-ecs`** | intocado |
-| **ids novos** | **um**: `VECTOR_STATE_PREVIEW` (hash de string ⇒ sem gate de contagem) |
-| **i18n** | 2 chaves (`panel.vector.states.preview`, `…preview.on`) |
+| **ids novos** | **dois**, os dois por hash de string ⇒ sem gate de contagem: `VECTOR_STATE_PREVIEW` e `VECTOR_STATE_MOVE_ALL` (2ª rodada) |
+| **i18n** | 3 chaves (`…states.preview`, `…preview.on`, `…move_all`) |
 | **Arquivo novo fora do módulo** | `input_dispatch/keyboard_escapes.rs` (o corte de LOC) |
 
 ---
 
 ## §6 — Gates e mutações
 
-**19 gates** (6 modelo · 3 seam de painel · 1 publish · 5 arch-gate de shell + 4 metades).
-**11 mutações, 11 sangram.**
+**19 gates** na 1ª rodada (6 modelo · 3 seam de painel · 1 publish · 5 arch-gate de shell + 4
+metades) e **+8 na 2ª** (§7b). ⚠️ **Total da wave: 16 mutações, 16 sangram** — a tabela abaixo é
+só a 1ª rodada.
 
 | # | Mutação | Sangra |
 |---|---|---|

@@ -286,7 +286,7 @@ coisas diferentes, e o censo não sabe distingui-las — quem distingue é a ref
 | Família | Estado MEDIDO | Veredito |
 |---|---|---|
 | **TRANSFORM** (`move` · `rotate` · `scale` · `transform` · `mirror` · `orbit`) | `scale` escrevia uma coluna **Vec2** a partir de **um** número; `mirror` pregava a linha no **centroide** | ✅ **FECHADA** (2026-08-08) — o 2º eixo e o `Axis Offset`, smoke `PH2D_TRANSFORM_SMOKE=1` |
-| **ECHO** (`motion.trail`) | 3 params contra os 8 da referência | ✅ **FECHADA** (2026-08-08) — o `spacing`, smoke `PH2D_ECHO_SMOKE=1`. ⚠️ **Não custou estado novo**: a coluna `trail_age` já sabia há quantos ticks o último eco foi deixado, então a promoção é uma pergunta ao ESTADO, não a um contador. Segue aberto o `hue_shift`, **com o motivo** (abaixo) |
+| **ECHO** (`motion.trail`) | 3 params contra os 8 da referência | ✅ **FECHADA no PADRÃO-OURO** (2026-08-08) — **SETE** knobs: `length · spacing · fade · shrink · hue_shift · saturation · spin`. Smoke `PH2D_ECHO_SMOKE=1`. ⚠️ O `spacing` **não custou estado novo** (a coluna `trail_age` já sabia há quantos ticks o último eco foi deixado ⇒ a promoção é pergunta ao ESTADO, não a um contador), e **nenhuma referência tem `spin`** |
 | **DEFORMERS** (`bend` · `twist` · `spherize` · `four_point_warp` · `lattice` · `kaleidoscope` · `slit_scan`) | `spherize` 1 · `slit_scan` 1 · o resto 3-8 | **ABERTA, a medir** — os dois magros podem ser magros por natureza |
 | **VALUE** (24 nós) | quase todos 1-2 params | ⛔ **RECUSADA COM MOTIVO** — um `value.unary` é *um verbo sobre um número*; um param a mais ali é cerimônia, e a §12 (domínio de valor) desenhou essa família justamente para ser pequena e componível |
 | **ESTRUTURAIS** (`util.reroute*` · `motion.combine` · `integrate` · `output` · `luminance` · `make_point` · `morph` · `sim.zone` · `value.switch` · `pulse.sample_hold`) | 0 params | ⛔ **RECUSADA** — zero params é o contrato deles, não uma lacuna |
@@ -311,14 +311,38 @@ Invisible), e a leitura ingênua é *"faltam sete params"*. **Ela está errada**
 (fixa). Com 3 formas e 100 pontos, *"cem pontos, cada um recebendo uma das três formas"*
 **não é exprimível hoje**. Isso é semântica de contagem, não um knob: ⇒ **wave própria**.
 
-### ⚠️ O `hueShift` do rastro NÃO entrou, e o motivo não é preguiça
+### ⚠️ E a recusa do `hueShift` estava na CAMADA ERRADA — a correção vale mais que o knob
 
-Ele é **barato como aritmética e caro como DECISÃO**. Girar matiz em RGB linear com uma
-matriz YIQ é o atalho que todo motor de partícula usa — e que este app **não usa em lugar
-nenhum**: a cor aqui passa por **OKLCH** (`ph2d-color`, o picker, o editor de gradiente, a
-paleta). Um segundo modelo de matiz dentro de um nó de rastro seria uma segunda resposta a
-*"o que é girar uma cor"*, e ela divergiria no único lugar onde ninguém lê um número — uma
-screenshot. Quando entrar, entra pela porta que já existe.
+Esta seção dizia que o hue shift não entrava porque *"a cor neste app passa por OKLCH"*.
+Isso é verdade da **AUTORIA** — o picker, o editor de gradiente, a paleta — e **falso do
+COOK**: a coluna `tint`, o `motion.color_ramp` (*"the ramp is evaluated in linear RGB —
+the same space the tint column and the compositor use"*) e a lowering inteira falam
+**linear RGB**. Girar matiz em OKLCH ali dentro meteria um **segundo espaço de cor no meio
+do cozimento**, e o preço não é teórico: a ida polar é uma `cbrt` + `atan2` **por linha e
+por tick**, num laço por-elemento.
+
+O operador certo nesta camada é a **rotação que PRESERVA a luma**, uma matriz 3×3 sobre
+linear RGB — exatamente o `feColorMatrix type="hueRotate"` do SVG, que é especificado em
+linearRGB pelo mesmo motivo. `sincos` **uma vez por tick**, nunca por linha; a matiz e a
+saturação compostas numa matriz só.
+
+*A lição não é sobre cor: uma recusa tem de nomear a CAMADA em que ela vale. "Este app usa
+X" pode ser verdade de uma camada e falso da vizinha, e uma recusa que não diz qual delas
+bloqueia trabalho legítimo.*
+
+### O que o rastro ainda NÃO tem, com o mecanismo (não é preguiça, é preço)
+
+- **`include_original`** (*"só fantasmas"*, do catálogo) é **estruturalmente duro neste
+  desenho**: a saída **É** o anel, então esconder a cabeça do render a esconde também do
+  estado e o rastro morre. Ela quer uma coluna de valor-de-nascimento ou uma segunda porta
+  de estado.
+- **A CURVA de cauda** — o superset do `fade` geométrico e do `opacityMin/Max` linear das
+  referências — pede que o desbote vire **função da IDADE** em vez de composição por tick.
+  ⚠️ E isso paga um segundo prêmio que vale mais que a curva: hoje mexer no `Fade` só
+  alcança os ecos FUTUROS (os vivos já têm o valor assado), enquanto age-driven **re-molda
+  a cauda inteira ao vivo**. O preço são três colunas de nascimento (~28 B/linha) e um
+  ADR-zinho sobre o custo; a queda geométrica atual continua exprimível como a tabela
+  `f[n] = f[n−1]·fade`, que é **bit-idêntica** por construção.
 
 ### ⚠️ E o gate do SMOKE achou o que a suíte do nó não via
 

@@ -141,3 +141,105 @@ fn measure_which_scatter_makes_the_channel_visible() {
          curva de fato anda (0,5 a 2). Abaixo disso o canal existe e nao se ve.\n"
     );
 }
+
+/// **QUANTO DA CURVA O SLIDER DE FATO ALCANÇA** — a sonda que o report do Enio
+/// (*"não chega perto de cera com SSS no máximo"*) exigiu.
+///
+/// Ela mede a cadeia inteira que decide o que o artista vê:
+/// `fração → scatter → t → resposta`, e compara com o que a integral tem a dar.
+#[test]
+#[ignore = "sonda de medição; roda sob demanda"]
+fn measure_how_far_the_slider_reaches() {
+    use ph2d_mesh_render::sss::{SssParams, T_MAX};
+
+    // A cena `=19`: três esferas, e o `for_bounds` mede a CENA inteira.
+    let scene = ph2d_mesh::Aabb {
+        min: [-2.7, -1.0, -1.0],
+        max: [1.55, 1.0, 1.0],
+    };
+    println!("\n=== O QUE O SLIDER ALCANCA (cena =19, tres esferas) ===");
+    println!(
+        "{:>8} | {:>9} | {:>8} {:>8} {:>8} | vazamento no terminador (R)",
+        "fracao", "scatter", "t(R=1)", "t(.45)", "t(.20)"
+    );
+    for f in [0.05f32, 0.10, 0.25, 0.50, 0.75, 1.00] {
+        let s = SssParams::for_bounds_with(scene, f).scatter;
+        let (t1, t2, t3) = (s / 1.0, s / 0.45, s / 0.20);
+        let clamp = |t: f32| t.min(T_MAX);
+        println!(
+            "{f:>8.2} | {s:>9.3} | {:>8.2} {:>8.2} {:>8.2} | {:.4} {:.4} {:.4}",
+            t1,
+            t2,
+            t3,
+            integrate(0.0, clamp(t1))[0],
+            integrate(0.0, clamp(t2))[0],
+            integrate(0.0, clamp(t3))[0],
+        );
+    }
+
+    println!("\n=== O TETO: o que o T_MAX corta ===");
+    let asym = integrate(0.0, 512.0);
+    println!("  assintota da INTEGRAL (t -> inf): R {:.4}", asym[0]);
+    for t in [T_MAX, 8.0, 12.0, 16.0, 24.0, 32.0] {
+        let d = integrate(0.0, t);
+        println!(
+            "  t {t:>5.1}: R {:.4}  = {:>5.1}% da assintota",
+            d[0],
+            100.0 * d[0] / asym[0]
+        );
+    }
+
+    println!("\n=== E O QUE O MODELO NUNCA DA': o perfil no lado ACESO ===");
+    println!("  (pre-integracao MEDIA a vizinhanca; ela nao pode passar do lambert cheio)");
+    for t in [4.0f32, 24.0] {
+        print!("  t {t:>5.1}: ");
+        for i in 0..6 {
+            let ndl = i as f32 * 0.2;
+            println!();
+            print!(
+                "      N.L {ndl:+.1}: lambert {:.3} -> R {:.3} G {:.3} B {:.3}",
+                ndl.max(0.0),
+                integrate(ndl, t)[0],
+                integrate(ndl, t)[1],
+                integrate(ndl, t)[2]
+            );
+        }
+        println!();
+    }
+}
+
+/// **ONDE A COR VIVE** — porque é ela, e não o brilho, que faz a tinta parecer
+/// carne. A sonda que decide se o eixo `t` é mesmo a direção da "cera".
+#[test]
+#[ignore = "sonda de medição; roda sob demanda"]
+fn measure_where_the_colour_lives() {
+    println!("\n=== A SEPARACAO CROMATICA NO TERMINADOR, por t ===");
+    println!(
+        "{:>7} | {:>7} {:>7} {:>7} | {:>8} | {:>9}",
+        "t", "R", "G", "B", "R-B", "R/B"
+    );
+    let mut best = (0.0f32, 0.0f32);
+    for i in 0..=60 {
+        let t = i as f32 * 0.5;
+        let d = integrate(0.0, t);
+        let sep = d[0] - d[2];
+        if sep > best.1 {
+            best = (t, sep);
+        }
+        if i % 2 == 0 || t < 4.0 {
+            let ratio = if d[2] > 1e-6 { d[0] / d[2] } else { f32::NAN };
+            println!(
+                "{t:>7.1} | {:>7.4} {:>7.4} {:>7.4} | {sep:>8.4} | {ratio:>9.2}",
+                d[0], d[1], d[2]
+            );
+        }
+    }
+    println!("\n  PICO da separacao R-B: t = {:.1} (R-B = {:.4})", best.0, best.1);
+}
+
+#[test]
+#[ignore = "sonda de medição; roda sob demanda"]
+fn measure_the_channel_attenuation() {
+    let k = ph2d_mesh_render::sss::channel_attenuation();
+    println!("\nTRANS_K = R {:.6}  G {:.6}  B {:.6}", k[0], k[1], k[2]);
+}

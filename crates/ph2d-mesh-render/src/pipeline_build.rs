@@ -283,6 +283,11 @@ impl MeshRenderer {
         /// buffer só é o layout certo se as duas forem sempre lidas juntas, e o
         /// Cavity lê uma sem a outra em todo frame com o SSS desligado.
         const CURVW: [wgpu::VertexAttribute; 1] = f32_attr(5);
+        /// A ESPESSURA assada por vértice — buffer próprio pela razão do AO, que
+        /// é a irmã dele em tudo: os dois nascem do MESMO bake, mudam só nele, e
+        /// empacotá-los juntos economizaria um buffer para pagar com um upload
+        /// de canal que ninguém mexeu em toda troca de forma.
+        const THICK: [wgpu::VertexAttribute; 1] = f32_attr(6);
         // Irmão do `vec3_buffer`, e uma CLOSURE pela mesma razão que ele: o
         // `make` abaixo é chamado duas vezes (a cena e o G-buffer), e um valor
         // capturado por move faria dele um `FnOnce`.
@@ -338,6 +343,7 @@ impl MeshRenderer {
                         f32_buffer(&CURV),
                         f32_buffer(&AO),
                         f32_buffer(&CURVW),
+                        f32_buffer(&THICK),
                     ],
                 },
                 fragment: Some(wgpu::FragmentState {
@@ -601,6 +607,7 @@ impl MeshRenderer {
             scratch_runs: Vec::new(),
             scratch_masks: Vec::new(),
             scratch_ao: Vec::new(),
+            scratch_thickness: Vec::new(),
         }
     }
 }

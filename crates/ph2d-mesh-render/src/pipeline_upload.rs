@@ -53,6 +53,46 @@ fn ao_of<'a>(mesh: &'a Mesh, scratch: &'a mut Vec<f32>) -> &'a [f32] {
     }
 }
 
+/// A **espessura** por vértice, com a ausência resolvida — o gêmeo do
+/// [`ao_of`], com uma diferença que não é estilo.
+///
+/// ⚠️ **O `DEFAULT_THICKNESS` da CPU é `INFINITY`, e infinito não sobe.** Na CPU
+/// ele é a resposta certa (*ninguém mediu ⇒ opaco*), e no device ele é um gerador
+/// de `NaN`: o interpolador de vértice computa `w·inf`, e um `w` exatamente zero
+/// numa quina dá `0 × inf = NaN` — que pinta um pixel preto ou branco no meio da
+/// peça, sem erro nenhum a caminho. A conversão para um coeficiente **grande e
+/// finito** acontece aqui, na mesma fronteira em que a ausência do `Option` já é
+/// resolvida, porque é a mesma pergunta: *como o device diz o que a CPU
+/// representou de outro jeito?*
+fn thickness_of<'a>(mesh: &'a Mesh, scratch: &'a mut Vec<f32>) -> &'a [f32] {
+    // ⚠️ Escala com a PEÇA (`span`), e não um absoluto: `exp(-x)` só é zero em
+    // `f32` acima de ~88, e `x = espessura / scatter`. Com o `scatter` no
+    // máximo (o próprio `span`), uma espessura de `span × OPAQUE_SPANS` já leva
+    // o expoente muito além disso — e continua longe de estourar para `inf`.
+    let b = mesh.bounds();
+    let span = (b.max[0] - b.min[0])
+        .max(b.max[1] - b.min[1])
+        .max(b.max[2] - b.min[2])
+        .max(f32::MIN_POSITIVE);
+    let opaque = span * OPAQUE_SPANS;
+    let finite = |v: f32| if v.is_finite() { v } else { opaque };
+    scratch.clear();
+    match mesh.thickness() {
+        Some(t) => scratch.extend(t.iter().copied().map(finite)),
+        None => scratch.resize(mesh.vert_count(), opaque),
+    }
+    scratch
+}
+
+/// Quantas travessias da peça inteira significam **opaco** no device.
+///
+/// ⚠️ **Medido, não escolhido:** `exp(-x)` desaparece em `f32` a partir de
+/// `x ≈ 88`, e o pior caso do produto é `scatter = span` (o slider no máximo),
+/// onde `x = espessura / span`. Com 256 o expoente é 256 no pior caso — três
+/// vezes o necessário — e o produto `span × 256` não chega perto de estourar
+/// nem para uma peça de milhões de unidades.
+const OPAQUE_SPANS: f32 = 256.0;
+
 impl MeshRenderer {
     /// Sobe a malha do objeto `index`. Reusa os buffers quando cabem — um dab
     /// que só move vértices não realoca nada.
@@ -93,6 +133,11 @@ impl MeshRenderer {
                 0,
                 bytemuck::cast_slice(ao_of(mesh, &mut self.scratch_ao)),
             );
+            queue.write_buffer(
+                &g.thickness,
+                0,
+                bytemuck::cast_slice(thickness_of(mesh, &mut self.scratch_thickness)),
+            );
             queue.write_buffer(&g.indices, 0, bytemuck::cast_slice(&self.scratch_indices));
             g.index_count = index_count;
             // ⚠️ **A topologia pode ter mudado, então as arestas morrem aqui.**
@@ -125,6 +170,10 @@ impl MeshRenderer {
             ao: vb(
                 "ph2d-mesh ao",
                 bytemuck::cast_slice(ao_of(mesh, &mut self.scratch_ao)),
+            ),
+            thickness: vb(
+                "ph2d-mesh thick",
+                bytemuck::cast_slice(thickness_of(mesh, &mut self.scratch_thickness)),
             ),
             indices: device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("ph2d-mesh idx"),
@@ -251,12 +300,18 @@ impl MeshRenderer {
                 a as u64 * 4,
                 bytemuck::cast_slice(&mesh.curv_world()[a..b]),
             );
-            // ⚠️ **E o AO NÃO entra aqui, de propósito.** Ele é a exceção porque
-            // é a exceção na malha: um dab RECOMPUTA normal e curvatura, e só
-            // ENVELHECE o AO — os valores por vértice ficam exatamente onde
-            // estavam, então esta janela empurraria bytes idênticos. O canal só
-            // muda quando um bake novo o instala ou quando a TOPOLOGIA mexe nele,
-            // e as duas rotas passam pelo upload inteiro logo acima.
+            // ⚠️ **E os dois canais ASSADOS — AO e ESPESSURA — não entram aqui,
+            // de propósito.** Eles são a exceção porque são a exceção na malha:
+            // um dab RECOMPUTA normal e curvatura, e só ENVELHECE os assados —
+            // os valores por vértice ficam exatamente onde estavam, então esta
+            // janela empurraria bytes idênticos. Os dois só mudam quando um bake
+            // novo os instala ou quando a TOPOLOGIA mexe neles, e as duas rotas
+            // passam pelo upload inteiro logo acima.
+            //
+            // ⚠️ **Eles são NOMEADOS juntos e não enumerados por acidente:** os
+            // dois dividem a MESMA validade (`Mesh::baked_stale`) porque saem do
+            // mesmo gesto — então *"o que é assado?"* tem uma resposta só, e um
+            // canal assado novo pertence a esta frase sem que ela mude.
         }
         true
     }

@@ -60,6 +60,7 @@ struct MeshGpu {
     /// eixo `t = scatter·|κ|` da tabela do SSS. **Derivada como a irmã**, logo
     /// sem `Option`: toda malha tem uma.
     curv_world: wgpu::Buffer,
+    thickness: wgpu::Buffer,
     /// O AO ASSADO por vértice — quanto do céu cada um enxerga.
     ///
     /// ⚠️ **Ao contrário da curvatura ao lado, ele é `Option` na malha**, e por
@@ -156,6 +157,7 @@ pub struct MeshRenderer {
     /// Zeros para uma malha que ninguém mascarou — ver [`masks_of`].
     scratch_masks: Vec<f32>,
     scratch_ao: Vec<f32>,
+    scratch_thickness: Vec<f32>,
     // ---- o AO de TELA (`crate::ssao`) ----
     ssao_bgl: wgpu::BindGroupLayout,
     ssao_uniform: wgpu::Buffer,
@@ -279,6 +281,7 @@ impl MeshRenderer {
             pass.set_vertex_buffer(3, slot.gpu.curvatures.slice(..));
             pass.set_vertex_buffer(4, slot.gpu.ao.slice(..));
             pass.set_vertex_buffer(5, slot.gpu.curv_world.slice(..));
+            pass.set_vertex_buffer(6, slot.gpu.thickness.slice(..));
             pass.set_index_buffer(indices.slice(..), wgpu::IndexFormat::Uint32);
             pass.draw_indexed(0..count, 0, 0..1);
         }

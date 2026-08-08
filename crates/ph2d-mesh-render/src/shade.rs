@@ -193,11 +193,25 @@ pub struct ShadeRaw {
     /// coordenada `v` sai de `|κ| ×` isto. A divisão mora no
     /// [`crate::sss::SssRaw::pack`], e só lá.
     pub sss_scale: f32,
+    /// **O coeficiente da TRANSMITÂNCIA**: `1 / scatter`, para o shader escrever
+    /// `exp(-espessura × isto × k_canal)`.
+    ///
+    /// ⚠️ **Ele ocupa um dos dois `_pad` que o comentário acima reservava** — e a
+    /// promessa era exatamente esta: *"é aqui que o SSS pousa sem mexer no
+    /// layout"*. O `size_of` fica em 32 B.
+    ///
+    /// ⚠️ **`1/scatter` e não `scatter`**, e a divisão mora numa porta só (o
+    /// [`crate::sss::SssRaw::pack`]): o device multiplicando é mais barato que o
+    /// device dividindo por frame, e — o que decide — `scatter = 0` vira um
+    /// número **grande e finito** aqui, que é a leitura certa (*a luz não anda
+    /// nada dentro deste material* ⇒ opaco), em vez de um `inf` que o
+    /// interpolador transformaria em `NaN`.
+    pub trans_scale: f32,
     /// Padding explícito até 32 B. ⚠️ Ele existe para o `size_of` do Rust e o
     /// tamanho que o WGSL calcula concordarem **sem depender do que o compilador
     /// resolve fazer** — um uniform em que os dois discordam lê campos deslocados,
     /// e o sintoma é um sombreamento levemente errado que ninguém consegue nomear.
-    pub _pad: [f32; 2],
+    pub _pad: [f32; 1],
 }
 
 impl Default for ShadeRaw {
@@ -236,7 +250,8 @@ impl ShadeRaw {
             // divergiria no dia em que o teto mudasse.
             sss_strength: crate::sss::SssRaw::pack(shade.sss).params[0],
             sss_scale: crate::sss::SssRaw::pack(shade.sss).params[1],
-            _pad: [0.0; 2],
+            trans_scale: crate::sss::SssRaw::pack(shade.sss).params[2],
+            _pad: [0.0; 1],
         }
     }
 }

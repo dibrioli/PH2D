@@ -135,6 +135,31 @@ fn reference_variance() -> f64 {
     num / den
 }
 
+/// **QUÃO DEPRESSA CADA CANAL SE APAGA ATRAVESSANDO A MATÉRIA**, relativo ao
+/// VERMELHO — o par de números da transmitância (o §2b do `05.1`).
+///
+/// O raio RMS de cada canal sai do [`PROFILE`]: `r_c = √(Σ w_c·v / Σ w_c)`. Quem
+/// viaja menos se apaga antes, então o coeficiente é `r_R / r_c ≥ 1`.
+///
+/// ⚠️ **Derivado, nunca um literal** — a mesma lei do [`reference_variance`]: um
+/// número copiado à mão aqui ficaria velho no dia em que alguém trocasse o
+/// ajuste, e o sintoma seria uma cera que muda de cor sem ninguém ter mexido
+/// nela. Medido: **G 4,505× · B 7,472×** — e é essa assimetria que faz uma mão
+/// contra a lanterna ficar VERMELHA em vez de cinza.
+#[must_use]
+pub fn channel_attenuation() -> [f32; 3] {
+    let mean_v = |c: usize| {
+        let (mut num, mut den) = (0.0f64, 0.0f64);
+        for (v, w) in PROFILE {
+            num += w[c] * v;
+            den += w[c];
+        }
+        num / den
+    };
+    let red = mean_v(0);
+    [0, 1, 2].map(|c| (red / mean_v(c)).sqrt() as f32)
+}
+
 /// `R(d)` — o perfil radial, por canal, já normalizado (ver o módulo).
 ///
 /// Cada gaussiana é a 2-D `1/(2πv)·exp(−d²/2v)`, que é a forma em que o perfil
@@ -292,6 +317,15 @@ pub struct SssParams {
 /// fração garante é que, ao ligar, ele **veja**.
 pub const SCATTER_FRACTION: f32 = 0.25;
 
+/// O coeficiente que significa **opaco** quando o `scatter` é zero.
+///
+/// ⚠️ **Grande e FINITO, e o número não é decorativo:** `exp(-x)` some abaixo do
+/// menor `f32` normal em `x ≈ 88`, então qualquer espessura positiva vezes isto
+/// já dá zero exato — e o valor continua longe do `f32::MAX`, onde
+/// `espessura × coeficiente` estouraria para `inf` e o produto seguinte
+/// devolveria `NaN`.
+pub const OPAQUE_COEFFICIENT: f32 = 1.0e9;
+
 impl SssParams {
     /// Os parâmetros semeados pelo tamanho da peça, com o [`SCATTER_FRACTION`].
     #[must_use]
@@ -341,7 +375,8 @@ impl Default for SssParams {
 #[derive(Clone, Copy, Debug, Pod, Zeroable)]
 pub struct SssRaw {
     /// `x` = força · `y` = o `scatter` já dividido por [`T_MAX`], que é o que
-    /// leva `|κ|` direto à coordenada `v` da textura · `zw` = reservado.
+    /// leva `|κ|` direto à coordenada `v` da textura · `z` = `1/scatter`, o
+    /// coeficiente da transmitância · `w` = reservado.
     pub params: [f32; 4],
 }
 
@@ -358,11 +393,21 @@ impl SssRaw {
     /// espalhamento levemente errado que ninguém consegue nomear.
     #[must_use]
     pub fn pack(p: SssParams) -> Self {
+        let scatter = p.scatter.max(0.0);
         Self {
             params: [
                 p.strength.clamp(0.0, 1.0),
-                p.scatter.max(0.0) / T_MAX,
-                0.0,
+                scatter / T_MAX,
+                // ⚠️ **`scatter = 0` tem de virar OPACO, não divisão por zero.**
+                // A leitura física é *a luz não anda nada dentro deste material*
+                // ⇒ `exp(-espessura/0) = 0`, e o jeito de dizer isso ao device é
+                // um coeficiente grande e **FINITO**: um `inf` aqui vira `NaN`
+                // no primeiro `0 × inf` do interpolador.
+                if scatter > f32::MIN_POSITIVE {
+                    1.0 / scatter
+                } else {
+                    OPAQUE_COEFFICIENT
+                },
                 0.0,
             ],
         }

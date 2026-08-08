@@ -91,6 +91,9 @@ impl Mesh {
             if let Some(a) = self.ao.as_mut() {
                 a[keep] = (a[keep] + a[gone]) * 0.5;
             }
+            if let Some(t) = self.thickness.as_mut() {
+                t[keep] = (t[keep] + t[gone]) * 0.5;
+            }
         }
 
         // ── Fase 1: as FACES. A numeração de vértice não se move aqui. ──
@@ -172,6 +175,9 @@ impl Mesh {
             if let Some(a) = self.ao.as_mut() {
                 a[to as usize] = a[from as usize];
             }
+            if let Some(t) = self.thickness.as_mut() {
+                t[to as usize] = t[from as usize];
+            }
         }
         self.positions.truncate(remap.verts);
         self.normals.truncate(remap.verts);
@@ -186,8 +192,11 @@ impl Mesh {
         if let Some(a) = self.ao.as_mut() {
             a.truncate(remap.verts);
         }
+        if let Some(t) = self.thickness.as_mut() {
+            t.truncate(remap.verts);
+        }
         // A topologia mudou: o que estava assado descreve outra malha.
-        self.ao_stale = true;
+        self.baked_stale = true;
         let affected = self
             .adjacency
             .shrink_verts(&mut self.faces, &remap, &mut mark);

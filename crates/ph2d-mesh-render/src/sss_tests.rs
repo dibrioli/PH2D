@@ -235,3 +235,50 @@ fn the_scatter_is_a_fraction_of_the_piece() {
 fn the_uniform_is_one_vec4() {
     assert_eq!(SssRaw::SIZE, 16);
 }
+
+/// **`scatter = 0` sobe um número FINITO** — o guard que impede o `NaN`.
+///
+/// ⚠️ O slider vai a zero, e a leitura física ali é *a luz não anda nada dentro
+/// deste material* ⇒ opaco. Escrever isso como `1/0 = inf` seria correto no
+/// papel e um gerador de `NaN` no device: o interpolador de vértice computa
+/// `w × coeficiente`, e um `w` exatamente zero numa quina dá `0 × inf = NaN` —
+/// que pinta um pixel preto ou branco no meio da peça, sem erro nenhum a
+/// caminho. O gate não pode ser um `#[test]` de aparência porque o sintoma é
+/// raro e depende da quina; ele afirma a PROPRIEDADE na porta.
+#[test]
+fn a_zero_scatter_packs_a_finite_opaque_coefficient() {
+    let raw = SssRaw::pack(SssParams {
+        strength: 1.0,
+        scatter: 0.0,
+    });
+    let k = raw.params[2];
+    assert!(k.is_finite(), "o coeficiente subiu como {k}, e inf vira NaN");
+    // E ele tem de ser grande o bastante para `exp(-espessura × k)` ser zero em
+    // `f32` para qualquer espessura positiva: `exp` some abaixo de ~88.
+    assert!(
+        (1.0e-6f32 * k) > 88.0,
+        "o coeficiente {k} nao apaga uma peca fina: ela ficaria de vidro"
+    );
+    // ...e pequeno o bastante para o produto não estourar para `inf`.
+    assert!(
+        (1.0e6f32 * k).is_finite(),
+        "o coeficiente {k} estoura numa peca grande, e inf volta a dar NaN"
+    );
+}
+
+/// **Um `scatter` positivo é o INVERSO**, e é isso que faz o slider ter direção.
+#[test]
+fn the_transmittance_coefficient_is_the_reciprocal_of_the_scatter() {
+    for s in [0.1f32, 0.5, 2.0, 17.0] {
+        let k = SssRaw::pack(SssParams {
+            strength: 1.0,
+            scatter: s,
+        })
+        .params[2];
+        assert!(
+            (k - 1.0 / s).abs() < 1e-6,
+            "scatter {s} tem de empacotar 1/{s} = {}, e empacotou {k}",
+            1.0 / s
+        );
+    }
+}

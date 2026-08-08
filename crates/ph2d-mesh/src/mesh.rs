@@ -87,8 +87,27 @@ pub struct Mesh {
     ///
     /// `None` = nunca assado (e não paga 4 B/vértice por isso).
     ao: Option<Vec<f32>>,
-    /// A forma mudou desde o último bake de [`Self::ao`]? Ver o campo acima.
-    ao_stale: bool,
+    /// **A ESPESSURA assada por vértice** (`crate::thickness::bake`) — quanto de
+    /// matéria há atrás de cada vértice, medido pelo raio que entra por ele.
+    ///
+    /// ⚠️ **Mesma família do [`Self::ao`], e é por isso que ela divide a
+    /// validade dele em vez de trazer uma segunda:** os dois são MEDIDOS DA
+    /// FORMA pelo mesmo gesto, contra a mesma malha, e ficam errados no mesmo
+    /// instante — no dab seguinte. Duas flags seriam duas respostas a *"o que
+    /// eu medi ainda descreve esta peça?"*, e a segunda é a que alguém esquece
+    /// de marcar.
+    ///
+    /// ⚠️ **E ela NÃO é `2/|κ|`.** O proxy pela curvatura é grátis e sai exato
+    /// numa esfera — e erra **420% num toro e 511% numa chapa**
+    /// (`ph2d-sdf/tests/measure_thickness.rs`), que é justamente a forma pela
+    /// qual a luz atravessa. Um proxy que só acerta na fixture que o validaria
+    /// não é uma medição.
+    ///
+    /// `None` = nunca assada (e não paga 4 B/vértice por isso).
+    thickness: Option<Vec<f32>>,
+    /// A forma mudou desde o último bake dos planos MEDIDOS? Ver os dois campos
+    /// acima — a validade é uma só porque o gesto que os produz é um só.
+    baked_stale: bool,
     faces: Vec<Face>,
     face_normals: Vec<[f32; 3]>,
     adjacency: Adjacency,
@@ -289,7 +308,11 @@ impl Mesh {
         }
         if let Some(a) = self.ao.as_mut() {
             a.truncate(verts);
-            self.ao_stale = true;
+            self.baked_stale = true;
+        }
+        if let Some(t) = self.thickness.as_mut() {
+            t.truncate(verts);
+            self.baked_stale = true;
         }
         self.rebuild();
         Ok(())
@@ -345,7 +368,7 @@ impl Mesh {
         // consegue — `positions` é privado e esta é a única saída `&mut` dele,
         // então todo kernel de pincel do módulo passa por aqui. As outras duas
         // que mexem na forma são as de TOPOLOGIA, e elas marcam por conta.
-        self.ao_stale = true;
+        self.baked_stale = true;
         &mut self.positions
     }
 

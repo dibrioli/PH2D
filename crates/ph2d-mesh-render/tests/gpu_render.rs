@@ -2619,3 +2619,269 @@ fn a_zero_strength_leaves_the_clay_byte_identical() {
     let diff = sem.iter().zip(&com).filter(|(a, b)| a != b).count();
     assert_eq!(diff, 0, "{diff} bytes divergiram com a forca em zero");
 }
+
+/// **A LUZ ATRAVESSA A PEÇA — e é isto que faz cera.**
+///
+/// ⚠️ **O oráculo é a ABLAÇÃO PELA ESPESSURA, e a primeira versão deste gate
+/// estava verde sobre nada.** Ela comparava duas esferas de raios diferentes com
+/// o canal ligado e desligado — mas raios diferentes têm `κ` diferente, então o
+/// canal PRÉ-INTEGRADO já responde diferente nas duas, e a razão de 4,3× que ela
+/// media era dele. Provado: com `d = 0` cravado no shader (a transmitância
+/// deixando de olhar a espessura) o gate ainda passava com 3,81×.
+///
+/// Aqui a única coisa que muda entre as duas renderizações é **o plano de
+/// espessura estar assado ou não**. Mesma malha, mesma câmera, mesmo material,
+/// mesma força: o que sobra na diferença só pode ter atravessado.
+#[test]
+#[ignore = "precisa de GPU"]
+fn the_light_comes_through_the_thin_piece_and_not_the_thick_one() {
+    let Some((device, queue)) = device() else {
+        eprintln!("sem adapter — skip");
+        return;
+    };
+    let rig = LightRig::default();
+
+    // ⚠️ **O ALCANCE é o MESMO para as duas peças**, e essa é a metade que faz o
+    // canal significar alguma coisa: o `scatter` descreve o MATERIAL — quanto a
+    // luz anda dentro dele —, e material é da CENA, não da peça. É por isso que o
+    // produto o semeia com `world_bounds()` e não com a caixa de cada objeto; com
+    // a caixa de cada uma, `espessura/alcance` fica idêntico em toda peça e o
+    // canal vira inerte (medido: razão 1,00×).
+    let scene = ph2d_mesh::Aabb {
+        min: [-1.0, -1.0, -1.0],
+        max: [1.0, 1.0, 1.0],
+    };
+    // Quanto o BAKE acrescenta no lado escuro de uma peça de raio `r`.
+    let gain_from_baking = |r: f32| {
+        let shot = |baked: bool| {
+            let mut m = shapes::uv_sphere(48, 72, r);
+            m.triangulate();
+            if baked {
+                let mut field =
+                    ph2d_sdf::VoxelField::for_bounds(m.bounds(), ph2d_sdf::DEFAULT_RESOLUTION);
+                field.voxelize(&m);
+                field.flood_fill();
+                m.set_thickness(ph2d_sdf::bake_thickness(&field, &m));
+            }
+            let mut rr = MeshRenderer::new(&device, FORMAT);
+            rr.upload_at(&device, &queue, 0, &m);
+            let bounds = m.bounds();
+            let mut cam =
+                Camera3d::framing(bounds, core::f32::consts::FRAC_PI_4, W as f32 / H as f32);
+            cam.yaw = 0.0;
+            cam.pitch = 0.0;
+            cam.frame(bounds, W as f32 / H as f32);
+            let shade = ph2d_mesh_render::Shade {
+                sss: ph2d_mesh_render::SssParams {
+                    strength: 1.0,
+                    ..ph2d_mesh_render::SssParams::for_bounds(scene)
+                },
+                ..ph2d_mesh_render::Shade::default()
+            };
+            render_using_rig_shade(&device, &queue, &mut rr, &cam, &rig, shade)
+        };
+        let opaque = shot(false);
+        let through = shot(true);
+        // A coluna mais ESCURA da peça opaca é o lado de trás; o gate a DESCOBRE
+        // em vez de a escolher.
+        let y = H / 2;
+        let cols: Vec<u32> = (0..W).filter(|&x| lum(&opaque, x, y) > 0.01).collect();
+        assert!(cols.len() > 20, "a esfera nao cobriu a linha do meio");
+        let mut darkest = (cols[0], f32::MAX);
+        for &x in &cols {
+            let l = lum(&opaque, x, y);
+            if l < darkest.1 {
+                darkest = (x, l);
+            }
+        }
+        (lum(&through, darkest.0, y) - darkest.1, darkest.1)
+    };
+
+    let (thin, thin_base) = gain_from_baking(0.2);
+    let (thick, _) = gain_from_baking(1.0);
+    eprintln!(
+        "o que o BAKE acrescenta no lado escuro: FINA +{thin:.2} (de {thin_base:.2})  \
+         GROSSA +{thick:.2}  razao {:.2}x",
+        thin / thick.max(1e-6)
+    );
+    // ⚠️ `lum` devolve 0..255 (bytes do alvo), não 0..1 — a barra é em NÍVEIS.
+    assert!(
+        thin > 5.0,
+        "a peca FINA tem de acender quando a espessura chega: ganhou so' {thin:.2} niveis"
+    );
+    assert!(
+        thin > thick * 2.0,
+        "a translucidez tem de ser funcao da ESPESSURA: fina +{thin:.2} contra \
+         grossa +{thick:.2}. Se as duas ganharem igual, o termo ignora a espessura"
+    );
+}
+
+/// **A luz tem de estar ATRÁS** — sem isso o termo é um `Exposure`.
+///
+/// ⚠️ Gate próprio porque o irmão acima **não** o prova: ele mede a coluna mais
+/// escura, onde a luz já está atrás, e ali `-N·L > 0` seja qual for a regra.
+/// A pergunta *"e no lado ACESO?"* só se responde medindo o lado aceso — e foi
+/// uma mutação (`back = 1.0`) que mostrou que ninguém a estava fazendo.
+#[test]
+#[ignore = "precisa de GPU"]
+fn nothing_is_transmitted_where_the_light_is_in_front() {
+    let Some((device, queue)) = device() else {
+        eprintln!("sem adapter — skip");
+        return;
+    };
+    let rig = LightRig::default();
+    let mut m = shapes::uv_sphere(48, 72, 0.2);
+    m.triangulate();
+    let scene = ph2d_mesh::Aabb {
+        min: [-1.0, -1.0, -1.0],
+        max: [1.0, 1.0, 1.0],
+    };
+    let shot = |m: &ph2d_mesh::Mesh| {
+        let mut rr = MeshRenderer::new(&device, FORMAT);
+        rr.upload_at(&device, &queue, 0, m);
+        let bounds = m.bounds();
+        let mut cam = Camera3d::framing(bounds, core::f32::consts::FRAC_PI_4, W as f32 / H as f32);
+        cam.yaw = 0.0;
+        cam.pitch = 0.0;
+        cam.frame(bounds, W as f32 / H as f32);
+        let shade = ph2d_mesh_render::Shade {
+            sss: ph2d_mesh_render::SssParams {
+                strength: 1.0,
+                ..ph2d_mesh_render::SssParams::for_bounds(scene)
+            },
+            ..ph2d_mesh_render::Shade::default()
+        };
+        render_using_rig_shade(&device, &queue, &mut rr, &cam, &rig, shade)
+    };
+    let opaque = shot(&m);
+    let mut field = ph2d_sdf::VoxelField::for_bounds(m.bounds(), ph2d_sdf::DEFAULT_RESOLUTION);
+    field.voxelize(&m);
+    field.flood_fill();
+    m.set_thickness(ph2d_sdf::bake_thickness(&field, &m));
+    let through = shot(&m);
+
+    // A coluna mais CLARA do barro opaco é o miolo aceso: ali a lâmpada está de
+    // frente, e a luz que atravessa a peça não pode ter saído por lá.
+    let y = H / 2;
+    let cols: Vec<u32> = (0..W).filter(|&x| lum(&opaque, x, y) > 0.01).collect();
+    assert!(cols.len() > 20, "a esfera nao cobriu a linha do meio");
+    let mut brightest = (cols[0], 0.0f32);
+    for &x in &cols {
+        let l = lum(&opaque, x, y);
+        if l > brightest.1 {
+            brightest = (x, l);
+        }
+    }
+    let delta = lum(&through, brightest.0, y) - brightest.1;
+    eprintln!("no miolo ACESO a espessura acrescenta {delta:.3} niveis");
+    assert!(
+        delta.abs() < 1.0,
+        "no lado ACESO nada pode atravessar: mudou {delta:.3} niveis"
+    );
+}
+
+/// **Sem bake, nada muda — e a peça é OPACA, não de vidro.**
+///
+/// ⚠️ O gate do default: a ausência de medição sobe como um coeficiente grande e
+/// finito, então uma malha que ninguém assou tem de renderizar EXATAMENTE como
+/// antes de este canal existir — byte a byte, e não *"parecido"*.
+#[test]
+#[ignore = "precisa de GPU"]
+fn an_unbaked_mesh_transmits_nothing() {
+    let Some((device, queue)) = device() else {
+        eprintln!("sem adapter — skip");
+        return;
+    };
+    let (mut r, cam) = lit_sphere(&device, &queue);
+    let rig = LightRig::default();
+    let shade = |sss: f32| ph2d_mesh_render::Shade {
+        sss: ph2d_mesh_render::SssParams {
+            strength: sss,
+            scatter: 2.0,
+        },
+        ..ph2d_mesh_render::Shade::default()
+    };
+    // ⚠️ A esfera do `lit_sphere` NUNCA foi assada, e o oráculo é a peça sob a
+    // MESMA força com a espessura assada como opaca à mão: se o canal respeitasse
+    // a ausência de outro jeito que não *opaco*, os dois quadros divergiriam.
+    let unbaked = render_using_rig_shade(&device, &queue, &mut r, &cam, &rig, shade(1.0));
+
+    let mut m = shapes::uv_sphere(48, 72, 1.0);
+    m.triangulate();
+    m.set_thickness(vec![f32::INFINITY; m.vert_count()]);
+    let mut r2 = MeshRenderer::new(&device, FORMAT);
+    r2.upload_at(&device, &queue, 0, &m);
+    let opaque = render_using_rig_shade(&device, &queue, &mut r2, &cam, &rig, shade(1.0));
+
+    let worst = unbaked
+        .iter()
+        .zip(&opaque)
+        .map(|(a, b)| i32::from(*a) - i32::from(*b))
+        .map(i32::abs)
+        .max()
+        .unwrap_or(0);
+    assert_eq!(
+        worst, 0,
+        "sem bake tem de ser byte-identico a uma peca medida como opaca"
+    );
+}
+
+/// **O `Scatter` do artista aumenta o que atravessa** — a direção do knob.
+///
+/// ⚠️ **Gate escrito por uma mutação que sobreviveu aos outros três.** Trocar
+/// `trans_scale` de `1/scatter` para `scatter` mantém a peça fina mais clara que
+/// a grossa (razão 2,2× contra os 18,5× corretos), então o gate da escada passa
+/// — e o produto fica com o slider **invertido**: arrastar *"até onde a luz
+/// anda dentro do material"* para a direita faria a peça ficar mais opaca.
+///
+/// A cura não é apertar a barra do outro gate (isso seria calibrar contra o
+/// mutante, não contra a propriedade). É perguntar o que o artista de fato faz:
+/// **mais alcance, mais luz do outro lado.**
+#[test]
+#[ignore = "precisa de GPU"]
+fn more_scatter_lets_more_light_through() {
+    let Some((device, queue)) = device() else {
+        eprintln!("sem adapter — skip");
+        return;
+    };
+    let rig = LightRig::default();
+    let mut m = shapes::uv_sphere(48, 72, 0.5);
+    m.triangulate();
+    let mut field = ph2d_sdf::VoxelField::for_bounds(m.bounds(), ph2d_sdf::DEFAULT_RESOLUTION);
+    field.voxelize(&m);
+    field.flood_fill();
+    m.set_thickness(ph2d_sdf::bake_thickness(&field, &m));
+
+    let mut rr = MeshRenderer::new(&device, FORMAT);
+    rr.upload_at(&device, &queue, 0, &m);
+    let bounds = m.bounds();
+    let mut cam = Camera3d::framing(bounds, core::f32::consts::FRAC_PI_4, W as f32 / H as f32);
+    cam.yaw = 0.0;
+    cam.pitch = 0.0;
+    cam.frame(bounds, W as f32 / H as f32);
+
+    let mut dark_at = |scatter: f32| {
+        let shade = ph2d_mesh_render::Shade {
+            sss: ph2d_mesh_render::SssParams {
+                strength: 1.0,
+                scatter,
+            },
+            ..ph2d_mesh_render::Shade::default()
+        };
+        let px = render_using_rig_shade(&device, &queue, &mut rr, &cam, &rig, shade);
+        let y = H / 2;
+        // ⚠️ A coluna é a MESMA nas três medições (a peça e a câmera não mudam),
+        // então a comparação é do mesmo pixel — e não de dois lugares diferentes.
+        (0..W)
+            .filter(|&x| lum(&px, x, y) > 0.01)
+            .map(|x| lum(&px, x, y))
+            .fold(f32::MAX, f32::min)
+    };
+
+    let (near, mid, far) = (dark_at(0.15), dark_at(0.5), dark_at(1.5));
+    eprintln!("lado escuro por alcance: 0,15 -> {near:.2}   0,50 -> {mid:.2}   1,50 -> {far:.2}");
+    assert!(
+        far > mid && mid > near,
+        "mais alcance tem de deixar passar MAIS luz: {near:.2} / {mid:.2} / {far:.2}"
+    );
+}

@@ -82,6 +82,15 @@ mod clay_tests {
             // a pergunta é uma só — *este número existe duas vezes?* — e uma
             // segunda função a faria de novo com outro parser.
             ("CAVITY_GAIN", super::CAVITY_GAIN),
+            // ⚠️ **A atenuação por canal da transmitância** entra na MESMA lista
+            // pelo mesmo argumento — e aqui o preço da divergência é mais alto
+            // que nos três acima: os dois números são DERIVADOS do perfil de
+            // difusão (`sss::channel_attenuation`), então trocar o ajuste
+            // publicado sem mexer no WGSL deixaria a luz que atravessa a peça
+            // com a cor do perfil ANTIGO — e ninguém tem como ver isso, porque
+            // a única testemunha é uma screenshot.
+            ("TRANS_K_G", super::sss::channel_attenuation()[1]),
+            ("TRANS_K_B", super::sss::channel_attenuation()[2]),
         ] {
             let needle = format!("const {name}: f32 = ");
             let at = src

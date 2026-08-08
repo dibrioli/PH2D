@@ -102,7 +102,7 @@ impl Mesh {
     /// que ninguém tem.
     #[must_use]
     pub fn ao_is_stale(&self) -> bool {
-        self.ao.is_some() && self.ao_stale
+        self.ao.is_some() && self.baked_stale
     }
 
     /// Instala o resultado de um bake — e é o **único** jeito de o AO deixar de
@@ -119,14 +119,14 @@ impl Mesh {
             "o AO tem de ter um valor por vertice"
         );
         self.ao = Some(ao);
-        self.ao_stale = false;
+        self.baked_stale = false;
     }
 
     /// Joga o bake fora — o gesto de *"não quero mais este canal"*, e o que
     /// devolve os 4 B/vértice.
     pub fn clear_ao(&mut self) {
         self.ao = None;
-        self.ao_stale = false;
+        self.baked_stale = false;
     }
 
     /// **Tira o plano de AO da malha**, se houver — o espelho do
@@ -136,8 +136,8 @@ impl Mesh {
     /// ⚠️ Devolve o par com a validade junto: separar os dois deixaria quem
     /// restaura reinstalar um AO velho dizendo que é fresco.
     pub fn take_ao(&mut self) -> Option<(Vec<f32>, bool)> {
-        let stale = self.ao_stale;
-        self.ao_stale = false;
+        let stale = self.baked_stale;
+        self.baked_stale = false;
         self.ao.take().map(|a| (a, stale))
     }
 
@@ -152,7 +152,71 @@ impl Mesh {
             "o AO tem de ter um valor por vertice"
         );
         self.ao = Some(ao);
-        self.ao_stale = stale;
+        self.baked_stale = stale;
+    }
+
+    /// A **espessura** assada por vértice, se alguém já assou. `None` = nunca
+    /// medida — e o consumidor lê isso como *opaca*, que é a leitura que não
+    /// acende nada por omissão.
+    #[must_use]
+    pub fn thickness(&self) -> Option<&[f32]> {
+        self.thickness.as_deref()
+    }
+
+    /// **A espessura descreve uma forma que não existe mais.**
+    ///
+    /// ⚠️ Lê a MESMA validade do [`Self::ao_is_stale`] — ver o campo em
+    /// [`crate::Mesh`]: os dois planos são medidos pelo mesmo gesto contra a
+    /// mesma malha, então envelhecem no mesmo instante. O que difere entre as
+    /// duas portas é só **de qual plano se está perguntando**, e é por isso que
+    /// cada uma é guardada pela própria presença.
+    #[must_use]
+    pub fn thickness_is_stale(&self) -> bool {
+        self.thickness.is_some() && self.baked_stale
+    }
+
+    /// Instala o resultado de um bake de espessura.
+    ///
+    /// ⚠️ **Ele NÃO zera a validade sozinho** — quem a zera é o [`Self::set_ao`],
+    /// e a razão é a mesma que junta os dois campos: assar um plano e não o
+    /// outro deixaria metade do que a tela lê descrevendo a forma de ontem, com
+    /// a UI anunciando que está tudo fresco. Os dois entram pelo mesmo gesto.
+    ///
+    /// # Panics
+    /// Se `thickness` não tiver um valor por vértice — a validação do
+    /// [`Self::put_masks`], pelo mesmo motivo.
+    pub fn set_thickness(&mut self, thickness: Vec<f32>) {
+        assert_eq!(
+            thickness.len(),
+            self.positions.len(),
+            "a espessura tem de ter um valor por vertice"
+        );
+        self.thickness = Some(thickness);
+    }
+
+    /// Joga o bake de espessura fora — o gesto de *"não quero mais este canal"*.
+    pub fn clear_thickness(&mut self) {
+        self.thickness = None;
+    }
+
+    /// **Tira o plano de espessura da malha**, se houver — o espelho do
+    /// [`Self::take_ao`], e ele existe pelo mesmo motivo: restaurar um estado
+    /// tem de poder devolver a malha a **não ter** o canal.
+    pub fn take_thickness(&mut self) -> Option<Vec<f32>> {
+        self.thickness.take()
+    }
+
+    /// Devolve o que o [`Self::take_thickness`] tirou.
+    ///
+    /// # Panics
+    /// Se o comprimento não bater com a contagem de vértices.
+    pub fn put_thickness(&mut self, thickness: Vec<f32>) {
+        assert_eq!(
+            thickness.len(),
+            self.positions.len(),
+            "a espessura tem de ter um valor por vertice"
+        );
+        self.thickness = Some(thickness);
     }
 }
 

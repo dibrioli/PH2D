@@ -365,8 +365,18 @@ impl Sculpt3dScene {
             mesh.normals(),
             ph2d_sdf::AoParams::for_bounds(mesh.bounds()),
         );
+        // ⚠️ **A ESPESSURA sai no MESMO gesto, e não num botão irmão.** Os dois
+        // canais são medidos da mesma forma contra a mesma malha e ficam errados
+        // no mesmo instante — é por isso que a `Mesh` lhes dá UMA validade. Dois
+        // botões dariam ao artista a chance de deixar metade do que a tela lê
+        // descrevendo a peça de ontem, com a UI dizendo que está tudo fresco.
+        let thickness = ph2d_sdf::bake_thickness(&field, mesh);
         let n = ao.len();
         if let Some(m) = self.mesh_mut() {
+            // ⚠️ A ordem importa: só o `set_ao` zera a validade compartilhada,
+            // então ele vem por ÚLTIMO. Ao contrário, um bake instalaria a
+            // espessura nova sob uma flag que o AO acabou de limpar.
+            m.set_thickness(thickness);
             m.set_ao(ao);
         }
         // O canal mudou: o buffer do device descreve o bake anterior (ou o céu

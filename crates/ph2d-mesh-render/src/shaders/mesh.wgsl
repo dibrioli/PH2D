@@ -85,8 +85,12 @@ struct Shade {
     // reproduzi-la aqui seria a segunda cópia do teto, e ela divergiria no dia
     // em que o teto mudasse.
     sss_scale: f32,
+    // `1 / scatter` — o coeficiente da transmitancia. Ver `sss::SssRaw::pack`.
+    trans_scale: f32,
+    // ⚠️ **UM `_pad` só.** O `trans_scale` ocupou o outro, que era exatamente o
+    // que o comentário do `ShadeRaw` reservava — e o `size_of` continua em 32 B,
+    // que é o que o gate de layout afirma.
     _pad0: f32,
-    _pad1: f32,
 };
 
 @group(0) @binding(0) var<uniform> cam: Camera;
@@ -307,6 +311,44 @@ fn matcap_shade(n: vec3<f32>, id: u32) -> vec3<f32> {
 /// anterior a este canal: o segundo braço nem é consultado quando o peso é zero
 /// — mas ele É avaliado, e é por isso que a tabela zerada de antes do
 /// `ensure_sss_lut` não pode escurecer nada (ela entra multiplicada por 0).
+// **A ATENUACAO POR CANAL na TRANSMITANCIA**, relativa ao vermelho.
+//
+// ⚠️ Os dois numeros sao DERIVADOS do mesmo `PROFILE` que a tabela usa
+// (`sss::channel_attenuation`), e o gate
+// `the_transmittance_channels_are_the_same_number_in_the_shader_and_in_rust`
+// e' quem impede esta copia de derivar. O vermelho e' 1 por construcao: e' ele
+// a referencia de normalizacao do perfil inteiro.
+//
+// E' esta assimetria -- o azul se apagando 7,5x mais depressa que o vermelho --
+// que faz uma mao contra a lanterna ficar VERMELHA em vez de cinza.
+const TRANS_K_G: f32 = 4.505294;
+const TRANS_K_B: f32 = 7.471505;
+
+// **A TRANSMITANCIA** -- a luz que ENTRA pelo outro lado e sai aqui.
+//
+// ⚠️ **Ela SOMA, e e' por isso que ela existe.** O canal pre-integrado
+// REDISTRIBUI a luz da frente, e o teto dele e' a media dela: medido, `1/pi` --
+// e chegar la' custa a cor inteira (a separacao R-B cai de 0,0375 em `t = 1,5`
+// para 0,0001 em `t = 24`, ou seja o disco fica CINZA). Nenhuma quantidade de
+// difusao pre-integrada acende o que o lambert deixou em zero; so' um termo
+// aditivo acende, e cera/folha/orelha sao todos ELE.
+//
+// ⚠️ **`-N·L`, e nao `N·L`:** a luz tem de estar ATRAS da superficie. De frente
+// o termo e' exatamente zero, entao ele nao clareia nada que ja' esteja aceso --
+// o que impede o canal de virar um `Exposure`.
+fn transmittance(n_dot_l: f32, thickness: f32) -> vec3<f32> {
+    if (shade.sss_strength <= 0.0) {
+        return vec3<f32>(0.0);
+    }
+    let back = max(-n_dot_l, 0.0);
+    if (back <= 0.0) {
+        return vec3<f32>(0.0);
+    }
+    let d = max(thickness, 0.0) * shade.trans_scale;
+    let through = vec3<f32>(exp(-d), exp(-d * TRANS_K_G), exp(-d * TRANS_K_B));
+    return shade.sss_strength * back * through;
+}
+
 fn sss_diffuse(n_dot_l: f32, curv: f32) -> vec3<f32> {
     let lambert = vec3<f32>(max(n_dot_l, 0.0));
     if (shade.sss_strength <= 0.0) {
@@ -344,6 +386,7 @@ struct VsOut {
     @location(2) curv: f32,
     @location(3) ao: f32,
     @location(4) curv_world: f32,
+    @location(5) thickness: f32,
 };
 
 @vertex
@@ -354,6 +397,7 @@ fn vs_main(
     @location(3) curv: f32,
     @location(4) ao: f32,
     @location(5) curv_world: f32,
+    @location(6) thickness: f32,
 ) -> VsOut {
     var out: VsOut;
     out.clip = cam.view_proj * obj.model * vec4<f32>(pos, 1.0);
@@ -379,6 +423,10 @@ fn vs_main(
     // multiplicada) — e o gate `the_scatter_is_a_fraction_of_the_piece` é o que
     // mantém o knob na mesma proporção enquanto isso não existe.
     out.curv_world = curv_world;
+    // A espessura tampouco cruza o `obj.model`: ela e' um COMPRIMENTO local, e
+    // o `Pose` da peca nao escala (`docs/3D/W8.1`). O dia em que escalar, e' aqui
+    // que ela cruza -- e o `trans_scale`, que e' `1/comprimento`, cruza junto.
+    out.thickness = thickness;
     // `w = 0` ⇒ direção, não ponto: a translação da vista **e a do objeto** não
     // entram. A matriz de vista é ortonormal (sai de uma `look_at`) e a do
     // objeto é uma SIMILARIDADE (`Pose` é translação + escala UNIFORME), então
@@ -531,6 +579,7 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     }
 
     var diffuse = vec3<f32>(0.0);
+    var trans = vec3<f32>(0.0);
     var spec = vec3<f32>(0.0);
     var flat_d = vec3<f32>(0.0);
     for (var i = 0u; i < rig.n; i = i + 1u) {
@@ -538,7 +587,14 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
         // A resposta PLANA (N = (0,0,1) ⇒ N·L = L.z), que é o divisor de tudo.
         let lz = max(l.dir.z, 0.0);
         flat_d = flat_d + l.tint.rgb * lz;
-        diffuse = diffuse + l.tint.rgb * sss_diffuse(dot(nc, l.dir.xyz), in.curv_world);
+        let ndl = dot(nc, l.dir.xyz);
+        diffuse = diffuse + l.tint.rgb * sss_diffuse(ndl, in.curv_world);
+        // ⚠️ **Fora do `diffuse`, e num acumulador proprio.** O `diffuse` e'
+        // dividido pelo `flat_c` logo abaixo (a resposta RELATIVA a uma
+        // superficie plana), e a transmitancia nao e' relativa a nada: ela e'
+        // luz que atravessou. Somar aqui a faria encolher quando o artista
+        // acrescentasse uma lampada.
+        trans = trans + l.tint.rgb * transmittance(ndl, in.thickness);
         // O realce de cada lâmpada é relativo AO PRÓPRIO realce dela numa
         // superfície plana, e clampado em zero ALI: somar os brutos e subtrair o
         // total plano deixaria uma lâmpada virada para o outro lado tomar
@@ -575,7 +631,13 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     // entrava: `CLAY_SHINE * spec` fica de fora da multiplicação nas duas. É a
     // colocação fisicamente certa — oclusão é sobre a luz AMBIENTE que chega, e
     // um realce especular é a imagem da lâmpada, que ou está visível ou não.
-    var c = CLAY * m * cav_occ + CLAY_SHINE * spec;
+    // ⚠️ **A TRANSMITANCIA entra FORA do `m`, e nao dentro.** O `m` e' a
+    // resposta relativa (`AMBIENT + (1-AMBIENT) * ratio`), e a luz que
+    // atravessou a peca nao e' relativa a superficie plana nenhuma. E ela
+    // tambem nao leva `cav_occ`: uma fresta oclui a luz que vem de FORA, e esta
+    // ja' estava dentro da materia -- ocluir aqui seria escurecer a luz pelo
+    // caminho que ela nao tomou.
+    var c = CLAY * m * cav_occ + CLAY * trans + CLAY_SHINE * spec;
 
     // A máscara entra DEPOIS da luz, sobre a cor já acesa: ela tinge o que se vê
     // em vez de mudar como a superfície responde à lâmpada. Tingir antes faria a

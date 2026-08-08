@@ -31,14 +31,24 @@ pub(crate) fn screen_ao_scene() -> bool {
     std::env::var("PH2D_SCULPT3D_SMOKE").ok().as_deref() == Some("18")
 }
 
-/// `=19` — a cena do **ESPALHAMENTO SUB-SUPERFICIAL** (`docs/3D/05.1` §2a).
+/// `=19` — a cena da **TINTA QUE A LUZ ATRAVESSA** (`docs/3D/05.1` §2a e §2b).
 ///
-/// ⚠️ **A fixture é uma ESCADA de raios, e é ela que separa o efeito de um
-/// slider de brilho.** O eixo da tabela é `t = scatter/R`: o espalhamento é
-/// medido em **raios de curvatura**, então uma peça só não distingue *"a luz
-/// atravessa formas finas"* de *"a peça clareou"*. Três esferas de raios 1,0 /
-/// 0,45 / 0,2 sob o MESMO material dão `t` crescente — e o que o smoke tem de
-/// ver é a MENOR ficando translúcida enquanto a maior mal se mexe.
+/// ⚠️ **A fixture é uma ESCADA, e é ela que separa o efeito de um slider de
+/// brilho.** Os dois canais são medidos em quanta MATÉRIA a luz tem de vencer,
+/// então uma peça só não distingue *"a luz atravessa formas finas"* de *"a peça
+/// clareou"*. Três esferas de raios 1,0 / 0,45 / 0,2 **sob o mesmo material** —
+/// e o que o smoke tem de ver é a MENOR acendendo enquanto a maior mal se mexe.
+///
+/// ⚠️ **E uma CHAPA, que as esferas não sabem mostrar.** O §2b existe para a
+/// folha, a orelha e a mão contra a lanterna, e nenhuma delas é uma bola: a
+/// chapa é a forma em que a luz de fato sai pelo outro lado. Ela também é o que
+/// impede a fixture de validar um atalho errado — o proxy `2/|κ|` acerta a
+/// esfera ao dígito e erra a chapa em **511%**.
+///
+/// ⚠️ **A cena nasce ASSADA**, e é por isso que ela mostra o canal no primeiro
+/// frame: a espessura é MEDIDA da forma, e sem o bake a peça lê como opaca (que
+/// é a leitura certa de *ninguém mediu*). Numa peça do artista, quem assa é o
+/// botão **Bake Occlusion + Thickness**.
 pub(crate) fn sss_scene() -> bool {
     std::env::var("PH2D_SCULPT3D_SMOKE").ok().as_deref() == Some("19")
 }
@@ -55,30 +65,59 @@ pub(crate) fn scene_objects() -> Option<Vec<(ph2d_mesh::Mesh, Pose)>> {
         // vincado ele passaria por cima de curvaturas locais que competem com a
         // da própria peça. O oráculo do smoke é a ESCADA entre as três, e ela só
         // é legível se cada uma tiver uma curvatura só.
-        let ball = |segs: usize, r: f32| {
-            let mut m = ph2d_mesh::shapes::uv_sphere(segs * 2 / 3, segs, r);
+        // ⚠️ **Esferas LISAS, e de propósito.** O que o §2a desenha é o
+        // TERMINADOR — a fronteira entre o lado aceso e o escuro —, e num barro
+        // vincado ele passaria por cima de curvaturas locais que competem com a
+        // da própria peça.
+        //
+        // ⚠️ **E cada peça nasce com os dois canais assados**, pela mesma
+        // sequência que o botão usa (voxeliza → flood fill → mede). Sem isso a
+        // cena abriria opaca e o smoke julgaria um canal que não está ligado.
+        let baked = |mut m: ph2d_mesh::Mesh| {
             m.triangulate();
+            let mut field = ph2d_sdf::VoxelField::for_bounds(m.bounds(), ph2d_sdf::DEFAULT_RESOLUTION);
+            field.voxelize(&m);
+            field.flood_fill();
+            let thickness = ph2d_sdf::bake_thickness(&field, &m);
+            let ao = ph2d_sdf::bake_ao(
+                &field,
+                m.positions(),
+                m.normals(),
+                ph2d_sdf::AoParams::for_bounds(m.bounds()),
+            );
+            m.set_thickness(thickness);
+            m.set_ao(ao);
             m
         };
+        let ball = |segs: usize, r: f32| {
+            baked(ph2d_mesh::shapes::uv_sphere(segs * 2 / 3, segs, r))
+        };
         eprintln!(
-            "[sculpt3d] =19 O ESPALHAMENTO SUB-SUPERFICIAL: tres esferas, MESMO material,
-             [sculpt3d]    raios 1.00 / 0.45 / 0.20. O eixo do efeito e' `scatter / RAIO`, entao
-             [sculpt3d]    a MENOR e' a que a luz atravessa -- e a escada e' o oraculo.
-             [sculpt3d]    1) Aperte Shift+S ate 1.00. A borda da sombra tem de AMOLECER, e
-             [sculpt3d]       amolecer MAIS na esfera pequena que na grande. Se as tres
-             [sculpt3d]       mudarem igual, o canal virou um brilho global -- PARE.
-             [sculpt3d]    2) Olhe a COR na borda da sombra: ela puxa para o VERMELHO. Medido,
-             [sculpt3d]       o vermelho vaza 2x o azul. Se sair cinza, o perfil por canal
-             [sculpt3d]       virou uma media e o efeito perdeu a unica coisa que faz carne
-             [sculpt3d]       parecer carne.
-             [sculpt3d]    3) 'Subsurface' de volta a 0.00: o barro tem de voltar EXATAMENTE ao que
-             [sculpt3d]       era (ha gate de byte-identidade).
-             [sculpt3d]    4) ESCULPA a esfera grande com um pincel pequeno: os vincos novos sao
-             [sculpt3d]       finos, entao ELES passam a espalhar enquanto o corpo nao.
-             [sculpt3d]    5) Experimente com o matcap 'Skin' (tecla M): la o `rim` FINGE
-             [sculpt3d]       translucidez e aqui ela e' medida -- os dois convivem."
+            "[sculpt3d] =19 A TINTA QUE A LUZ ATRAVESSA: tres esferas (raios 1.00 / 0.45 /
+             [sculpt3d]    0.20) e uma CHAPA, todas com o MESMO material, todas ja' assadas.
+             [sculpt3d]    Os dois canais medem quanta MATERIA a luz vence -- entao a peca fina
+             [sculpt3d]    acende e a grossa nao. A ESCADA e' o oraculo.
+             [sculpt3d]    1) Aperte Shift+S ate 1.00 (ou arraste 'Subsurface'). Duas coisas tem
+             [sculpt3d]       de acontecer: a borda da sombra AMOLECE, e o lado ESCURO das pecas
+             [sculpt3d]       finas ACENDE -- medido, a esfera pequena ganha 4,3x o que a grande
+             [sculpt3d]       ganha. Se as quatro mudarem igual, o canal virou um brilho global
+             [sculpt3d]       e nao um material -- PARE.
+             [sculpt3d]    2) A CHAPA e' onde a cera mora: ela e' fina em toda parte, entao ela
+             [sculpt3d]       acende inteira. Olhe a COR do que acende -- tem de puxar para o
+             [sculpt3d]       VERMELHO (o azul se apaga 7,5x mais depressa, e e' isso que faz
+             [sculpt3d]       uma mao contra a lanterna parecer uma mao).
+             [sculpt3d]    3) Arraste 'Scatter': ele e' o alcance dentro do material, e e' ele
+             [sculpt3d]       que decide QUAO GROSSA uma peca pode ser e ainda atravessar.
+             [sculpt3d]    4) 'Subsurface' de volta a 0.00: o barro tem de voltar EXATAMENTE ao
+             [sculpt3d]       que era (ha gate de byte-identidade).
+             [sculpt3d]    5) ESCULPA a chapa e aperte 'Bake Occlusion + Thickness': a espessura
+             [sculpt3d]       e' MEDIDA da forma, entao ela envelhece com o dab -- o painel diz
+             [sculpt3d]       'Baked channels describe the previous shape' ate' voce reassar."
         );
+        // A CHAPA em pé: um disco de 0,12 de espessura, que é a forma do §2b.
+        let slab = baked(ph2d_mesh::shapes::cylinder(48, 0.7, 0.12));
         return Some(vec![
+            (slab, ph2d_mesh::Pose::at([2.4, 0.0, 0.0])),
             (ball(72, 1.0), ph2d_mesh::Pose::at([-1.7, 0.0, 0.0])),
             (ball(48, 0.45), ph2d_mesh::Pose::at([0.35, 0.0, 0.0])),
             (ball(36, 0.2), ph2d_mesh::Pose::at([1.35, 0.0, 0.0])),

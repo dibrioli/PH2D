@@ -81,6 +81,10 @@ pub(crate) struct FloatingPatch {
     pub base: Arc<Vec<u8>>,
     /// The patch's source bbox (selection bbox, or opaque-content bbox when whole-layer).
     pub src: Region,
+    /// The impasto planes the patch carries — `None` when the layer has no relief. The body travels
+    /// with the colour or the light shades a ridge that is no longer there (2026-08-08; the W4
+    /// advection only ever covered the dab-driven half, which is the half that has a `disp`).
+    pub relief: Option<super::transform_relief::FloatingRelief>,
 }
 
 impl PainterTool {
@@ -142,10 +146,18 @@ impl PainterTool {
             h: y1 - y0 + 1,
         };
         let frame = frame_from_region(src);
+        // ⚠️ O corpo é congelado com a MESMA máscara que partiu o alfa da cor, logo acima — as duas
+        // metades da tinta têm de concordar sobre o que subiu com o patch e o que ficou no buraco.
+        let relief = if restrict {
+            self.lift_transform_relief(Some(&|x, y| self.selection_coverage_at(x, y)))
+        } else {
+            self.lift_transform_relief(None)
+        };
         self.paint.deform.xform_patch = Some(FloatingPatch {
             patch: Arc::new(patch),
             base: Arc::new(base),
             src,
+            relief,
         });
         self.paint.deform.xform = Some(super::transform::Xform {
             pristine: frame,
@@ -239,6 +251,11 @@ impl PainterTool {
                 }
             }
         });
+        // …e o CORPO pelo mesmo mapa, sobre a mesma janela. Depois da cor de propósito: os dois leem
+        // planos congelados no levante, então a ordem não muda o resultado — o que ela dá é que os
+        // argumentos (`minv`, `dirty`, `affected`) são os que a cor ACABOU de usar, e não uma segunda
+        // derivação que poderia divergir.
+        self.composite_transform_relief(minv, dirty, affected);
         self.paint.deform.xform_last_bbox = Some(affected);
         self.mark_dirty(dirty);
     }

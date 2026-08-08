@@ -389,3 +389,268 @@ fn a_bare_layer_gains_no_planes_from_a_warp() {
     assert!(t.paint.warp.relief_layer.is_none());
     let _ = Arc::clone(&t.canvas_rgba); // the pixels exist and moved; the body correctly never did
 }
+
+/// **O corpo viaja com a cor no TRANSFORM também** — o report do Enio (2026-08-08): *"as ferramentas do
+/// painel Transform não atuam sobre o relevo de impasto. Em Liquify funciona corretamente"*.
+///
+/// ⚠️ **A W4 cobriu METADE do Deform.** Ela deu ao warp a advecção de `h`/`covers`/`mats` pelo `disp`
+/// da sessão, e o `disp` só existe na metade das PINCELADAS (Push/Twist/Pinch/Wrinkle/Fold/
+/// Reconstruct). A metade do GIZMO não tem `disp`: ela LEVANTA um patch e o compõe sobre a base, e os
+/// quatro arquivos dela não citam `heights`/`covers`/`mats` uma única vez. A doutrina do `relief.rs` —
+/// *corpo e cor não podem divergir sobre "para onde foi"* — valia para um render e não para o outro.
+///
+/// O oráculo é a própria doutrina: os dois **CENTROIDES** (o da tinta e o do relevo) têm de andar
+/// juntos. Comparar posições absolutas seria frágil; comparar o DESLOCAMENTO de um contra o do outro é
+/// a pergunta que a frase faz.
+///
+/// **Mutação que tem de sangrar:** tirar a chamada ao relevo do `composite_transform`.
+#[test]
+fn the_transform_carries_the_body_where_it_carries_the_colour() {
+    let (mut t, layer) = deformable_relief_tool();
+    t.set_deform_temperament(super::super::DEFORM_TEMPERAMENT_TRANSFORM);
+
+    /// Centroide em x, pesado — `None` quando não há nada a pesar.
+    fn centroid_x(vals: &[f32], w: u32, keep: impl Fn(f32) -> bool) -> Option<f32> {
+        let (mut sum, mut wsum) = (0.0f64, 0.0f64);
+        for (i, v) in vals.iter().enumerate() {
+            if keep(*v) {
+                let x = (i % (w as usize)) as f64;
+                sum += x * f64::from(*v);
+                wsum += f64::from(*v);
+            }
+        }
+        (wsum > 0.0).then(|| (sum / wsum) as f32)
+    }
+    // ⚠️ **O peso da tinta é o PIGMENTO, não o alfa.** A fixture pinta sobre branco OPACO, então o alfa
+    // é 255 na tela inteira e o centroide dele descreve a MOLDURA, não o traço: um Transform de camada
+    // inteira que anda 20 px deixa uma faixa vazia de 20 px e move esse centroide ~10. Medir alfa
+    // contra altura seria comparar duas populações diferentes — o erro que fez este gate acusar um
+    // produto correto de mover o corpo "demais". O traço é vermelho sobre branco, então o déficit de
+    // VERDE é exatamente a tinta que a pincelada depositou.
+    let ink = |t: &PainterTool| {
+        let g: Vec<f32> = t
+            .canvas_rgba
+            .chunks_exact(4)
+            .map(|p| 255.0 - f32::from(p[1]))
+            .collect();
+        centroid_x(&g, 160, |v| v > 8.0).expect("fixture: a tinta existe")
+    };
+    let body = |t: &PainterTool| {
+        centroid_x(&heights_of(t, layer), 160, |v| v > 0.5).expect("fixture: o relevo existe")
+    };
+
+    let (ink0, body0) = (ink(&t), body(&t));
+    // Pega a alça central e arrasta o patch 20 px para a direita.
+    t.on_canvas_pointer(cp([80.0, 80.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([100.0, 80.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([100.0, 80.0], PointerPhase::Up));
+    let (ink1, body1) = (ink(&t), body(&t));
+
+    let ink_moved = ink1 - ink0;
+    let body_moved = body1 - body0;
+    assert!(
+        ink_moved > 5.0,
+        "fixture: o Transform não moveu a TINTA ({ink_moved:.2} px), então nada abaixo diz respeito ao \
+         relevo"
+    );
+    assert!(
+        (body_moved - ink_moved).abs() < 3.0,
+        "o Transform moveu a tinta {ink_moved:.2} px e o CORPO {body_moved:.2} px — a luz vai sombrear \
+         uma crista de tinta que não está mais lá"
+    );
+}
+
+/// **E o relevo DEIXA o lugar de onde saiu** — a outra metade da mesma frase.
+///
+/// Mover o corpo para o destino é só metade de *"para onde foi"*: se o antigo lugar mantém a crista, a
+/// luz desenha a tinta em DOIS sítios e o artista vê um fantasma que nenhum verbo alcança (a doença que
+/// o §5 do plano 18 já pagou no `covers` write-once do Inflate). Aqui o buraco não é código extra: fora
+/// da `affected` o composite escreve a BASE, e num Transform de camada inteira a base **não tem
+/// cobertura nenhuma** (`c_base: None`) — o buraco é o que sobra quando ninguém inventa nada.
+///
+/// **Mutação que tem de sangrar:** escrever só onde `total > 0` (deixar o texel quieto quando não sobra
+/// tinta) — a faixa vaga guarda a crista antiga e o gate a encontra.
+#[test]
+fn the_transform_leaves_no_ghost_ridge_where_the_body_used_to_be() {
+    let (mut t, layer) = deformable_relief_tool();
+    t.set_deform_temperament(super::super::DEFORM_TEMPERAMENT_TRANSFORM);
+
+    // A faixa que a pincelada ocupava e que um arrasto de 20 px para a direita VAGA.
+    let band = |t: &PainterTool| {
+        let h = heights_of(t, layer);
+        (30..50)
+            .map(|x| h[(80 * 160 + x) as usize])
+            .fold(0.0f32, f32::max)
+    };
+    let before = band(&t);
+    assert!(
+        before > 0.5,
+        "fixture: a faixa 30..50 não tinha relevo ({before:.2}), então esvaziá-la não prova nada"
+    );
+
+    t.on_canvas_pointer(cp([80.0, 80.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([100.0, 80.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([100.0, 80.0], PointerPhase::Up));
+
+    let after = band(&t);
+    assert!(
+        after < 0.5,
+        "o corpo foi para o destino e FICOU também na origem (pico {after:.2} na faixa vaga) — a luz \
+         sombreia uma crista de tinta que não está mais lá"
+    );
+}
+
+/// **Pegar a ferramenta e devolvê-la ao lugar não custa tinta** — a reconstituição do par `over`.
+///
+/// O levante SEPARA os planos (patch × base) e o composite os RECONSTITUI. Duas perguntas, e este gate
+/// faz as duas: **entrar** não pode escrever (o composite nem roda sem movimento — medido com uma sonda
+/// que força `out_c = 42`), e a **IDA E VOLTA** é o único gesto que roda o composite com `minv`
+/// identidade, porque o `recomposite_transform` re-renderiza sempre dos planos CONGELADOS.
+///
+/// ⚠️ **A barra da altura é MEDIDA, não escolhida, e duas versões deste gate reprovaram produto
+/// correto antes desta.** Na ida e volta a COR e a COBERTURA voltam **byte-exatas** (0 bytes, 0 texels)
+/// e a altura volta a **2 ulps (0,000002) onde a cobertura é CHEIA**. O que desvia até **0,43** são
+/// **2881 texels do RIM**, e são de duas espécies, ambas sem consequência na tela: metade são **órfãos**
+/// (`cover == 0` com altura ≠ 0), que o composite normaliza a zero **de propósito** — o próprio produto
+/// declara que *cobertura zero é "não há tinta aqui"* —, e o resto é o rim de cobertura parcial. **A luz
+/// pesa por COBERTURA**, então altura sobre cobertura ~0 contribui ~0 para a imagem: exigir byte-
+/// identidade ali seria pinar um número que ninguém pode ver, sobre um produto que está certo.
+///
+/// **Mutação que tem de sangrar:** trocar o `Arc::clone(covers)` do levante de camada inteira por um
+/// plano recomputado (`c·254/255`) — a cobertura deixa de voltar exata.
+#[test]
+fn a_transform_round_trip_gives_the_body_back() {
+    let (mut t, layer) = deformable_relief_tool();
+    let h0 = heights_of(&t, layer);
+    let c0 = covers_of(&t, layer);
+    let m0 = mats_of(&t, layer);
+    let px0 = (*t.canvas_rgba).clone();
+    assert!(
+        h0.iter().any(|v| *v > 0.5),
+        "fixture: há relevo a preservar"
+    );
+
+    // Metade 1 — ENTRAR não escreve.
+    t.set_deform_temperament(super::super::DEFORM_TEMPERAMENT_TRANSFORM);
+    assert!(
+        t.deform_gizmo().is_some(),
+        "fixture: o Transform não levantou patch nenhum, então não há reconstituição a julgar"
+    );
+    assert!(
+        h0.iter()
+            .zip(&heights_of(&t, layer))
+            .all(|(a, b)| a.to_bits() == b.to_bits()),
+        "levantar o patch — sem arrastar — já mexeu nas alturas; pegar a ferramenta para olhar custa tinta"
+    );
+    assert_eq!(c0, covers_of(&t, layer), "…e mexeu na cobertura");
+    assert_eq!(m0, mats_of(&t, layer), "…e mexeu no material");
+
+    // Metade 2 — IDA E VOLTA: o composite roda com `minv` identidade e tem de devolver o original.
+    t.on_canvas_pointer(cp([80.0, 80.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([100.0, 80.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([80.0, 80.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([80.0, 80.0], PointerPhase::Up));
+
+    assert_eq!(
+        c0,
+        covers_of(&t, layer),
+        "a ida e volta não devolveu a COBERTURA — e é ela que a luz pesa, então isto o artista vê"
+    );
+    assert_eq!(px0, *t.canvas_rgba, "…e não devolveu a COR");
+    let h1 = heights_of(&t, layer);
+    let worst = c0
+        .iter()
+        .zip(h0.iter().zip(&h1))
+        .filter(|(c, _)| **c > 250)
+        .map(|(_, (a, b))| (a - b).abs())
+        .fold(0.0f32, f32::max);
+    assert!(
+        worst < 1e-4,
+        "a ida e volta moveu a ALTURA em {worst:.6} onde a tinta é opaca — ali `cp = 1` e o `over` tem \
+         de reduzir à identidade; um desvio deste tamanho é o par levante/composite discordando"
+    );
+}
+
+/// **`Affect Relief` desligado vale para o TRANSFORM também** — o toggle é da sessão de warp, não da
+/// metade das pinceladas.
+///
+/// O irmão `the_toggle_off_leaves_the_body_byte_identical` prova isto para o Liquify. Sem este, a
+/// metade do gizmo poderia honrar o toggle ou ignorá-lo e a suíte ficaria verde das duas maneiras — que
+/// é exatamente como a advecção do W4 passou a existir só numa das metades.
+///
+/// **Mutação que tem de sangrar:** tirar o early-return de `affect_relief` do
+/// `composite_transform_relief` — o corpo viaja com o toggle desligado.
+#[test]
+fn the_toggle_off_holds_for_the_transform_half_too() {
+    let (mut t, layer) = deformable_relief_tool();
+    t.toggle_deform_relief();
+    assert!(!t.paint.warp.affect_relief, "fixture: toggled OFF");
+    t.set_deform_temperament(super::super::DEFORM_TEMPERAMENT_TRANSFORM);
+    let h0 = heights_of(&t, layer);
+    let c0 = covers_of(&t, layer);
+    let pre = (*t.canvas_rgba).clone();
+
+    t.on_canvas_pointer(cp([80.0, 80.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([100.0, 80.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([100.0, 80.0], PointerPhase::Up));
+
+    let h1 = heights_of(&t, layer);
+    assert!(
+        h0.len() == h1.len() && h0.iter().zip(&h1).all(|(a, b)| a.to_bits() == b.to_bits()),
+        "Affect Relief está OFF e o Transform moveu as alturas — o toggle governa a sessão, e uma \
+         metade que o ignora é um controle que mente sobre o que controla"
+    );
+    assert_eq!(c0, covers_of(&t, layer), "…e moveu a cobertura");
+    // O irmão de PRESENÇA: a COR moveu, senão as identidades acima são vácuo.
+    assert_ne!(
+        pre, *t.canvas_rgba,
+        "fixture: o Transform não moveu pixel nenhum, então as identidades acima não provam nada"
+    );
+}
+
+/// **Um Transform de SELEÇÃO leva o corpo e deixa o buraco** — o irmão de relevo do
+/// `deform_transform_lifts_the_selection_and_leaves_a_hole`, e a única rota que exercita a partição.
+///
+/// ⚠️ **Sem seleção o levante do corpo é um `Arc::clone` e `c_base` é `None`** (o buraco é total, e não
+/// há nada a repartir); é só aqui que `lift_transform_relief` de fato PARTE a cobertura em `c·m` e
+/// `c·(1−m)`, que é a metade do código que os outros gates desta família não alcançam — uma mutação no
+/// braço `Some(mask)` passa por todos eles.
+///
+/// A seleção pega o fim da pincelada e o arrasta para **fora** dela: o destino tinha relevo ZERO, então
+/// as duas metades da frase (*saiu de lá* · *chegou aqui*) são medíveis sem ambiguidade.
+///
+/// **Mutação que tem de sangrar:** dar à base a cobertura CHEIA (`Some(Arc::clone(covers))` no lugar de
+/// `c·(1−m)`) — o fundo passa a mentir sobre o que ficou para trás e o buraco não abre.
+#[test]
+fn a_selected_transform_carries_the_body_and_leaves_the_hole() {
+    let (mut t, layer) = deformable_relief_tool();
+    t.set_shape_grab_tol_px(8.0);
+    // O fim da pincelada (ela corre x≈36..124 em y=80), para que o destino caia em tela nua.
+    t.set_rect_selection(95, 66, 20, 28);
+    t.set_deform_temperament(super::super::DEFORM_TEMPERAMENT_TRANSFORM);
+
+    let at = |t: &PainterTool, x: u32| heights_of(t, layer)[(80 * 160 + x) as usize];
+    let (origin0, dest0) = (at(&t, 105), at(&t, 135));
+    assert!(
+        origin0 > 0.5 && dest0 < 0.5,
+        "fixture: a seleção tem de sair de relevo ({origin0:.2}) para tela nua ({dest0:.2}), senão as \
+         duas metades abaixo não distinguem nada"
+    );
+
+    // Pega o centro da seleção (105, 80) e arrasta +30 px.
+    t.on_canvas_pointer(cp([105.0, 80.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([135.0, 80.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([135.0, 80.0], PointerPhase::Up));
+
+    let (origin1, dest1) = (at(&t, 105), at(&t, 135));
+    assert!(
+        dest1 > 0.5,
+        "o corpo não CHEGOU ao destino (altura {dest1:.2} onde a tinta agora está) — a cor viajou \
+         sozinha e a luz não tem o que sombrear"
+    );
+    assert!(
+        origin1 < origin0 * 0.5,
+        "o corpo não SAIU da origem ({origin0:.2} → {origin1:.2}) — a seleção levou os pixels e deixou \
+         a crista, que é a luz sombrando tinta que não está mais lá"
+    );
+}

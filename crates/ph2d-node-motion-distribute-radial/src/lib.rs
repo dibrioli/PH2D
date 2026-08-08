@@ -140,11 +140,28 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     Ok(())
 }
 
-use ph2d_node_registry::{ParamUiHint, ParamWidget};
+use ph2d_node_registry::{ParamHardMax, ParamUiHint, ParamWidget};
+/// **O teto DURO de `count` — MEDIDO** (doc 88 A1 · §0); o slider fica nos 2.000 da autoria.
+/// A distribuição é um laço linear, e o cook mediu pela porta do produto (`rings = 1`, para o eixo
+/// ser o que a linha nomeia):
+///
+/// | instâncias | cook |
+/// |---|---|
+/// | 100.000 | 0,461 ms |
+/// | 400.000 | 1,858 ms |
+/// | **1.000.000** | **4,584 ms** |
+///
+/// ⚠️ Freio ERGONÔMICO por eixo: as instâncias são `count × rings`, e um cap sobre um fator não
+/// exprime um limite sobre o produto (o precedente do `rate` do emitter).
+pub(crate) static PARAM_HARD_MAX: &[ParamHardMax] = &[ParamHardMax {
+    param: "count",
+    max: 1_000_000.0,
+}];
 
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {

@@ -554,6 +554,13 @@ mod gpu_voronoi_tests;
 #[path = "motion_gpu_coverage.rs"]
 mod gpu_coverage;
 
+/// A sonda do TETO DE CONTAGEM (doc 88 A1) — irmã do censo de cobertura acima: os dois varrem o
+/// registry do produto e imprimem uma tabela, um sobre o que a GPU alcança e o outro sobre onde
+/// uma contagem começa a custar.
+#[cfg(test)]
+#[path = "motion_count_ceiling_tests.rs"]
+mod count_ceiling_tests;
+
 #[cfg(test)]
 #[path = "motion_delay_gate_tests.rs"]
 mod delay_gate_tests;

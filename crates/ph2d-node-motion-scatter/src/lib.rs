@@ -144,11 +144,32 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     Ok(())
 }
 
-use ph2d_node_registry::{ParamUiHint, ParamWidget};
+use ph2d_node_registry::{ParamHardMax, ParamUiHint, ParamWidget};
+/// **O teto DURO de `count` — e aqui ele é um limite de RECURSO, não um freio ergonômico** (doc 88
+/// A1 · §0). O blue noise por *best-candidate* (Mitchell) mede a distância de cada candidato a
+/// TODOS os pontos já postos (`nearest_sq`), logo o custo é **O(count² × CANDIDATES)** — inerente
+/// ao algoritmo, não um defeito. O cook mediu, pela porta do produto:
+///
+/// | instâncias | cook |
+/// |---|---|
+/// | 2.000 | 5,190 ms |
+/// | **3.000** | **11,443 ms** |
+/// | 4.000 | 20,661 ms ← passa o quadro |
+/// | 6.000 | 44,512 ms |
+///
+/// ⚠️ **O quadro de 60 fps quebra entre 3.000 e 4.000**, então o teto é **3.000** — e ele fica
+/// deliberadamente PERTO do soft de 2.000. Um teto redondo e generoso aqui (os 1.000.000 que os
+/// nós LINEARES desta mesma wave receberam) deixaria o artista digitar um número que **congela o
+/// app por minutos**: a 100.000 este cook custou **12,3 segundos**, e a 400.000, **208**.
+pub(crate) static PARAM_HARD_MAX: &[ParamHardMax] = &[ParamHardMax {
+    param: "count",
+    max: 3_000.0,
+}];
 
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {

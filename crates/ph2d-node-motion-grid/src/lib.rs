@@ -199,13 +199,40 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     );
     // M1.P1 — param rows: whole-number row/column counts, continuous per-axis gap.
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     // GPU/M5 Fase 1 (ADR-0126): the WGSL lowering, registered on the side.
     reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     Ok(())
 }
 
-use ph2d_node_registry::{ParamUiHint, ParamWidget};
+use ph2d_node_registry::{ParamHardMax, ParamUiHint, ParamWidget};
+/// **O teto DURO de `rows`/`cols` — MEDIDO** (doc 88 A1 · §0), enquanto o slider fica nos 20 que
+/// cobrem a autoria confortável. A grade é um laço linear e o cook mediu, pela porta do produto
+/// (`measure_the_count_ceiling`, `cols = 1` para o eixo ser o que a linha nomeia):
+///
+/// | instâncias | cook |
+/// |---|---|
+/// | 100.000 | 0,542 ms |
+/// | 400.000 | 1,466 ms |
+/// | **1.000.000** | **3,661 ms** |
+///
+/// Um milhão de pontos custa **22% de um quadro de 60 fps** — 50.000× o que o slider alcança. O
+/// teto é o número que a medição deu, e não uma potência bonita acima dela.
+///
+/// ⚠️ **Este é um freio ERGONÔMICO por eixo, não uma garantia de recurso** — o precedente exato do
+/// `rate` do emitter: as instâncias são `rows × cols`, e **nenhum cap estático sobre um FATOR
+/// exprime um limite sobre o PRODUTO**. Quem quiser a garantia tem de a pôr onde o produto existe.
+pub(crate) static PARAM_HARD_MAX: &[ParamHardMax] = &[
+    ParamHardMax {
+        param: "rows",
+        max: 1_000_000.0,
+    },
+    ParamHardMax {
+        param: "cols",
+        max: 1_000_000.0,
+    },
+];
 
 /// Param UI hints (M1.P1) for the grid (editable range + widget + label).
 static PARAM_HINTS: &[ParamUiHint] = &[

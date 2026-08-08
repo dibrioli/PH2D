@@ -117,11 +117,26 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     Ok(())
 }
 
-use ph2d_node_registry::{ParamUiHint, ParamWidget};
+use ph2d_node_registry::{ParamHardMax, ParamUiHint, ParamWidget};
+/// **O teto DURO de `count` — MEDIDO** (doc 88 A1 · §0); o slider fica nos 2.000 da autoria.
+/// O espiral é um laço linear, e o cook mediu pela porta do produto:
+///
+/// | instâncias | cook |
+/// |---|---|
+/// | 100.000 | 0,438 ms |
+/// | 400.000 | 1,796 ms |
+/// | **1.000.000** | **4,622 ms** |
+///
+/// Um milhão de pontos custa **28% de um quadro de 60 fps**. O teto é esse número.
+pub(crate) static PARAM_HARD_MAX: &[ParamHardMax] = &[ParamHardMax {
+    param: "count",
+    max: 1_000_000.0,
+}];
 
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {

@@ -240,3 +240,78 @@ fn every_param_default_is_inside_its_declared_range() {
         }
     }
 }
+
+/// A `ScalarRow` de `param` no nó `type_name`, montada pela porta REAL do bridge.
+fn row_of(type_name: &str, param: &str) -> ph2d_panel_motion_params::ScalarRow {
+    use ph2d_panel_motion_params::ParamRow;
+    let mut motion = MotionState::new();
+    let node = motion.doc.graph.add_node(type_name);
+    ph2d_panel_motion_graph::set_graph_selection(vec![node.0]);
+    let rows = build_params_snapshot(&motion, ProjectSettings::default())
+        .unwrap_or_else(|| panic!("{type_name} resolve"))
+        .rows;
+    ph2d_panel_motion_graph::set_graph_selection(Vec::new());
+    rows.into_iter()
+        .find_map(|r| match r {
+            ParamRow::Scalar(s) if s.name == param => Some(s),
+            _ => None,
+        })
+        .unwrap_or_else(|| panic!("{type_name}.{param} tem row escalar"))
+}
+
+/// **A CAIXA VAI ALÉM DO SLIDER** — o slider dual do doc 88 A1, na porta do produto.
+///
+/// Até esta wave o `hard_max` caía em `unwrap_or(max)` para todo nó menos o `motion.emitter`:
+/// a caixa de texto **não passava do slider**, e as duas perguntas — *que faixa o arrasto
+/// cobre* × *até onde um número digitado é aceito* — eram um número só. O gate afirma a
+/// separação onde ela agora existe, e afirma-a como RELAÇÃO (`hard > soft`), nunca repetindo
+/// o literal do nó: uma segunda cópia do número aqui divergiria no dia em que a medição o
+/// mover, e é a medição que manda (§0).
+#[test]
+fn the_typed_ceiling_reaches_past_the_slider() {
+    for (ty, param) in [
+        ("motion.grid", "rows"),
+        ("motion.grid", "cols"),
+        ("motion.fibonacci", "count"),
+        ("motion.distribute_radial", "count"),
+        ("motion.scatter", "count"),
+    ] {
+        let r = row_of(ty, param);
+        assert!(
+            r.hard_max > r.max,
+            "{ty}.{param}: a caixa tem de ir ALÉM do slider — soft {} contra hard {}",
+            r.max,
+            r.hard_max
+        );
+    }
+}
+
+/// **E o teto do `scatter` continua APERTADO, porque ali ele é um RECURSO.**
+///
+/// O blue noise por best-candidate é **O(count²)** e o cook mediu o quadro de 60 fps quebrando
+/// entre 3.000 (11,4 ms) e 4.000 (20,7 ms) — a 100.000 ele custa **12,3 segundos**. Este gate
+/// existe para que ninguém "harmonize" este teto com o **1.000.000** que os nós LINEARES da
+/// mesma wave receberam: os dois números descrevem coisas diferentes, e uniformizá-los daria ao
+/// artista uma caixa que aceita um valor capaz de congelar o app por minutos.
+///
+/// ⚠️ A barra é a contagem MEDIDA em que o quadro quebra, não um número escolhido.
+#[test]
+fn the_quadratic_node_keeps_a_tight_ceiling() {
+    const FRAME_BREAKS_AT: f64 = 4_000.0; // medido: 20,661 ms > 16,6 ms
+    let r = row_of("motion.scatter", "count");
+    assert!(
+        r.hard_max < FRAME_BREAKS_AT,
+        "o teto do scatter ({}) tem de ficar ABAIXO da contagem em que o quadro quebra \
+         ({FRAME_BREAKS_AT}) — ele é limite de RECURSO, não freio ergonômico",
+        r.hard_max
+    );
+    // E o CONTROLE, a metade que impede a leitura preguiçosa "então aperte todo mundo": um nó
+    // LINEAR desta mesma wave alcança MUITO mais longe, porque a medição dele disse isso.
+    let linear = row_of("motion.fibonacci", "count");
+    assert!(
+        linear.hard_max > r.hard_max * 100.0,
+        "um nó linear tem de alcançar muito além do quadrático — {} contra {}",
+        linear.hard_max,
+        r.hard_max
+    );
+}

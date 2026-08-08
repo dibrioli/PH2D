@@ -10,10 +10,10 @@
 | | |
 |---|---|
 | Branch | `line/motion-value` |
-| HEAD | `c00a2f2fa` |
+| HEAD | `fb11e82ec` |
 | Merge-base com `main` | `a4018d203` |
-| Commits | **53** |
-| Diff | **185 arquivos,, 16595 / 2701** |
+| Commits | **56** |
+| Diff | **191 arquivos, +17869 / −2816** |
 | Janela | 2026-08-05 → 2026-08-08 |
 
 ---
@@ -198,6 +198,13 @@ O primeiro: — a cena monta 4 pontos esticados 2.2×/0.45× e
 espelhados numa linha a 1.2 m do centroide (8 instâncias), com 4 testes na mensagem.
 ⚠️ **Se os oito saírem quadrados, PARE**: o eixo Y não chegou.
 
+⚠️ **A cena `PH2D_ECHO_SMOKE=1` foi RE-AJUSTADA** para a lei nova e ganhou três testes novos na
+mensagem: as duas esteiras levam agora o **mesmo** `Tail Alpha` e o **mesmo** `Tail Size` e têm de
+**terminar no mesmo lugar** (sob a lei antiga a de cima terminava em 0,33 e a de baixo em 0,02 — um
+fator de dezesseis); arrastar `Tail Saturation` de 1 a 0 tem de desbotar **progressivamente ao longo
+de todo o curso**; e com um valor escolhido, arrastar o `Length` de 2 a 32 e o `Spacing` de 1 a 16
+**não pode mudar o tom da ponta** — o que muda é quantos ecos há entre a cabeça e ela.
+
 **Zero schema, zero contrato congelado, zero dep, zero `Cargo.toml`.**
 
 ---
@@ -210,6 +217,44 @@ defeito aparece no módulo).
 **(D) O painel e a row dirigida** (`178fab5b1` … `9f1b8ff63`, 5 commits) — o editor **abre VAZIO**
 (a neve sai do boot e vira fixture `#[cfg(test)]`), o painel **prova que CABE** no dock, e a **row
 dirigida diz QUEM a dirige** (elo + nome do card, pela porta única `card_title`).
+
+**(E) O BALANCEAMENTO DOS SLIDERS** (2 commits; report do Enio de 2026-08-08 — *"sliders mal
+balanceados… Saturação 0.9 já fica quase todo dessaturado. Reveja tudo"*; plano §10 do
+[doc 88](../docs/Motion%20Nodes/88_plano_parametros_nos_unidades_e_slider.md)) — os cinco knobs
+de decaimento do `motion.trail` eram **taxas por tick**, e o preço está medido: na esteira do
+próprio smoke (vão 20) `saturation 0.90` entregava **0,17** na ponta, e a faixa útil inteira do
+controle cabia em **5,2%** do curso dele (1,9% a `spacing 8`). ⚠️ **São DOIS defeitos:** a resposta
+era exponencial no slider **e** o `spacing` multiplicava todo decaimento — a nota do módulo que
+dizia *"a semântica «por eco» cai de graça"* só era verdade em `spacing 1`, e a const do smoke
+chamada `HUE_PER_ECHO` valia na verdade **700° no total**.
+
+Agora os knobs são **ALVOS na ponta da cauda** (o `satMin/satMax` do catálogo de referência, que a
+wave anterior citou e não seguiu): o motor segue geométrico e a TAXA é **derivada** do alvo
+(`rate^vão == target`). O slider fica linear no que se vê, **o número não se move quando o Length
+ou o Spacing mudam**, e os ângulos viram totais percorridos. ⚠️ **Os defaults não foram escolhidos**
+— `0.10`/`0.65` são o que as taxas `0.72`/`0.94` que já shipavam produziam no default do nó, então
+o rastro no default é o mesmo. ⚠️ **Piso de `1/255`** (um nível de 8 bits, o número do renderer):
+sem ele um alvo de zero faz a taxa ser zero e a cauda colapsa no PRIMEIRO eco.
+
+⚠️ **E a medição achou no ANEL algo que PRECEDE esta wave:** com `spacing > 1` a idade do eco mais
+velho **CICLA** numa faixa de `s − 1` ticks (13↔14 a `sp 2`, 49..56 a `sp 8`), com a contagem
+estável — a lei antiga oscilava junto. Está pinado num gate próprio para ninguém o ler como
+regressão; curá-lo é o item da CURVA de cauda (decaimento por IDADE, ~28 B/linha).
+
+**A varredura que o *"reveja tudo"* pede** separa duas classes: `damping`/`friction`/`tension` são
+**FÍSICA** (por-tick É o modelo) e ficam; o **`motion.strobe.decay`** tem a doença idêntica — e o
+doc-comment dele já confessava a tradução (*"0.85 ≈ a ~0.2 s flash at 60 Hz"*): **86%** do curso
+cobria 5..34 ticks e **14%** cobria 34..551. Virou **`Flash Length` em TICKS** (default 34).
+⚠️ **RECUO REGISTRADO:** a v1 usava SEGUNDOS via `ctx.dt()`, e `dt` é `0.0` num time scope — um
+`dt` errado faria a taxa virar `1.0`, isto é **o flash nunca apagaria**. Ticks não dependem de nada.
+⚠️ O param **mantém o nome de fio `decay`**: renomeá-lo faria o `validate` recusar todo grafo salvo
+que o sobrescreve (a cicatriz do `motion.color_ramp`).
+
+⚠️ **Vermelho-latente curado de carona:** `ph2d-node-motion-trail/src/lib.rs` estava em **987 > 700**
+e não está na allowlist — o gate mora na `ph2d-editor-core`, então uma bateria por-crate **nunca o
+alcança** (a mesma causa estrutural que esta linha já documentou três vezes). Split por assunto em
+`lib_tests.rs` (a mecânica do anel) + `tail_target_tests.rs` (a lei do alvo), **filhos** por
+`#[path]` para o `use super::*` seguir alcançando os privados.
 
 ---
 
@@ -403,7 +448,7 @@ erros de compilação** — ele não compila código `#[cfg(test)]`, e a sonda d
 
 ---
 
-**Resumo:** linha `motion-value` pronta (HEAD `c00a2f2fa`, 53 commits). Foundational tocado é
+**Resumo:** linha `motion-value` pronta (HEAD `fb11e82ec`, 56 commits). Foundational tocado é
 aditivo salvo os doc-comments do §6(a); símbolos colidíveis são `PROJECT_SCHEMA = 56`
 (**provisório**), `INSPECTOR_MAX_H`, `RESERVED_PREFIX` e `CURSOR`; contratos congelados **3/3 +
 4/4 verdes**; zero pacote externo novo, zero crate nova, zero ADR. **Aguardo ordem de integração.**

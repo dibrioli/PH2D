@@ -358,3 +358,103 @@ Um param novo entra quando a coluna que o nó escreve, ou a referência, **nomei
 capacidade que hoje é inexprimível no grafo inteiro** — nunca porque o nó parece pequeno.
 E todo default novo **reduz LITERALMENTE à expressão anterior**, porque a arte já autorada
 é o que uma varredura de parâmetros mais facilmente destrói.
+
+---
+
+## §10 — O BALANCEAMENTO DOS SLIDERS (report do Enio, 2026-08-08)
+
+> *"sliders mal balanceados. a menor mudança faz um extremo efeito. Exemplo: Saturação 0.9
+> já fica quase todo dessaturado. Reveja tudo"*
+
+### §10.1 — O que a medição disse antes de qualquer hipótese
+
+Sonda `measure_slider_response.rs` (dirige o cook REAL, com o `pre` self-loop):
+
+| config | vão | sat 0.99 | 0.95 | **0.90** | 0.80 | 0.50 |
+|---|---|---|---|---|---|---|
+| len 8 sp 1 *(default do nó)* | 7 | 0,93 | 0,70 | 0,48 | 0,21 | 0,008 |
+| **len 6 sp 4** *(a esteira do smoke)* | 20 | 0,84 | 0,42 | **0,17** | 0,02 | 0,000 |
+| len 32 sp 1 | 31 | 0,73 | 0,20 | 0,04 | 0,001 | 0,000 |
+| len 8 sp 8 | 56 | 0,59 | 0,07 | 0,004 | 0,000 | 0,000 |
+
+**A faixa útil** (o que entrega entre 0,9 e 0,1 na ponta) mede **13,3%** do curso no
+default, **5,2%** na esteira do smoke, **3,4%** em `length 32` e **1,9%** a `spacing 8`.
+Ou seja: *o controle fica mais nervoso exatamente quando o artista faz a cauda mais
+interessante.* E `fade 0.80` chega a **0,0010** em `length 32` — cauda invisível, sem nada
+no slider dizendo isso.
+
+### §10.2 — São DOIS defeitos, e o segundo estava escrito como verdade
+
+1. **A resposta era exponencial no slider** (`valor^vão`).
+2. **O `spacing` MULTIPLICAVA todo decaimento.** A nota deste módulo dizia *"um eco de `n`
+   ticks recebeu cada operador exatamente `n` vezes, e a semântica «por eco» cai de
+   graça"* — verdade **só em `spacing = 1`**. A `spacing 4` o `hue_shift 35` do smoke
+   valia **140° por eco e 700° no total**, quase duas voltas, num número que se lê como um
+   terço de volta; a const chamava-se `HUE_PER_ECHO` e a mensagem dizia *"35 deg por eco"*.
+   **As duas mentiam.**
+
+O valor certo de um knob era **função de outros dois** — [[feedback_ergonomics_verdict_is_a_design_bug]].
+
+### §10.3 — A cura: o knob é um ALVO na ponta, não uma taxa
+
+É o `satMin/satMax` do catálogo de referência (um **estado final**), que a wave anterior
+citou e não seguiu. O motor continua geométrico — uma aplicação por tick — e o que muda é
+**de onde vem a taxa**: ela é derivada do alvo, `rate^vão == target`.
+
+| propriedade | antes | agora |
+|---|---|---|
+| `Tail Saturation 0.5` | 0,5^vão (0,008 no default) | **0,50 exato, em toda configuração** |
+| mexer no `Length`/`Spacing` | move o desenho | **não move o número** |
+| `hue_shift` / `spin` | graus por TICK | **totais percorridos pela cauda** |
+| o neutro | identidade | **identidade AO BIT** (`powf(1,y)` é 1 exato em IEEE-754) |
+
+**Os defaults não foram escolhidos:** `0.10`/`0.65` são o que as taxas `0.72`/`0.94` que já
+shipavam produziam no default do nó (vão 7) — o rastro no default não se move um pixel.
+
+**O piso `1/255`** (um nível de 8 bits, o número do RENDERER): sem ele um alvo de zero faria
+a taxa ser zero e a cauda colapsaria no PRIMEIRO eco — um penhasco onde o artista pediu uma
+rampa, e o slider morreria justamente na ponta que ele mais usa.
+
+### §10.4 — ⚠️ O que a medição achou no ANEL, e que precede esta wave
+
+Com `spacing > 1` a idade do eco mais velho **CICLA**, numa faixa de amplitude `s − 1`
+(medido: 13↔14 a `sp 2`, 17..20 a `sp 4`, 49..56 a `sp 8`), com a **contagem estável** — a
+cadência de promoção (uma cabeça a cada `s` ticks) e a de descarte (uma linha por tick) não
+são travadas uma na outra. A lei antiga oscilava junto (por `rate^(s−1)`; um fator de 5× no
+`fade 0.8` com `sp 8`), só que lá a cauda inteira já era invisível e ninguém a via tremer.
+
+O alvo é o que a ponta alcança no **topo do ciclo**, e é essa fase que os gates procuram.
+Curar a oscilação é a outra metade — o decaimento como função da **IDADE**, que exige o
+valor de nascimento por linha (~28 B/linha) e é o item da **CURVA de cauda** da §9.
+
+### §10.5 — A varredura que o *"reveja tudo"* pede
+
+O censo dos nós **sequenciais** (os que leem um `pre`, onde um knob pode compor por tick)
+separa **duas classes**:
+
+- **FÍSICA — não se re-parametriza.** `motion.spring` (`tension`/`friction`),
+  `motion.wave`, `motion.soft_body`, `motion.verlet_rope` (`damping`): por-tick **É** o
+  modelo, exatamente como no módulo de física.
+- **APARÊNCIA — a mesma doença.** `motion.strobe.decay`, e o doc-comment dele **já
+  confessava a tradução**: *"0.85 ≈ a ~0.2 s flash at 60 Hz"*. Medido: no curso `0..0.99`
+  os primeiros **86%** cobriam 5..34 ticks e os últimos **14%** cobriam 34..551.
+  *Catorze por cento do slider carregava noventa e quatro por cento da faixa.*
+
+Virou **`Flash Length`** em **TICKS** (default `34`, o que `0.85` produzia).
+
+⚠️ **RECUO REGISTRADO, para ninguém reconstruir:** a v1 usava **SEGUNDOS**, via
+`ctx.dt()`. `dt` é `0.0` dentro de um time scope e a unidade dele depende do relógio que o
+chamador passa ao cook (`|t| t as f64 * fixed_dt` na shell) — e um `dt` de zero faz a taxa
+virar `1.0`, isto é **o flash nunca apagaria**. Uma regressão dessas é muito pior que um
+slider mal escalado, e o vocabulário do módulo já é o tick (o `motion.trail` mede a cauda
+dele em `length`/`spacing`, ticks). Ticks não dependem de nada.
+
+⚠️ **O param mantém o nome de fio `decay`**: renomeá-lo faria o `validate` **recusar todo
+grafo salvo** que o sobrescreve — a cicatriz do `motion.color_ramp` na integração de
+2026-07-30. Quem o artista lê é o RÓTULO.
+
+### §10.6 — A lei desta correção, em uma linha
+
+**Um knob de aparência nomeia o que o artista VÊ, nunca a taxa com que o motor chega lá** —
+e o teste disso é se o número continua querendo dizer a mesma coisa quando outro knob se
+move. Quando não continua, não é afinação: é bug de design.

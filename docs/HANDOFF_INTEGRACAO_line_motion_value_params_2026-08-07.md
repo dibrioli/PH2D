@@ -10,10 +10,10 @@
 | | |
 |---|---|
 | Branch | `line/motion-value` |
-| HEAD | `f9e6cf597` |
+| HEAD | `a27ee6e81` |
 | Merge-base com `main` | `a4018d203` |
-| Commits | **39** |
-| Diff | **170 arquivos, +13.787 / −2.617** |
+| Commits | **41** |
+| Diff | **175 arquivos, +14.169 / −2.623** |
 | Janela | 2026-08-05 → 2026-08-08 |
 
 ---
@@ -64,6 +64,38 @@ gravada em dois gates: **um teto digitável não pode passar do que o kernel HON
 aresta DELAYED que o editor auto-liga e que `Graph::add_node` não faz. Com o grafo certo o
 quadrático aparece — 500 → 0,475 ms · 2.000 → 10,392 · 8.000 → **186,388**.
 
+**(B3) O CORPO DO PAINEL ROLA** (`a27ee6e81`, o §B3 do doc 88). `MAX_PARAM_ROWS` respondia a
+**duas** perguntas com um número: quantos ids o pool tem, e quantas linhas cabem na altura do
+inspector. **Medido:** uma linha escalar ocupa **34,0 px** e o dock comporta **24** delas, contra
+um teto de **16** e um pior nó (`motion.tint`) de **15** params — oito linhas de folga para uma
+varredura que promete a TODO nó o conjunto PRO. O gate `a_full_panel_of_rows_fits_the_inspector`
+já dizia o que fazer no dia: *"o painel precisa ROLAR antes de o teto subir mais"*.
+
+⚠️ **O FATO FICA NOMEADO, não escondido: a rolagem está INERTE hoje.** O teto mora **dentro** do
+`paint_rows` (`.take(MAX_PARAM_ROWS)`), então o corpo mede no máximo **~544 px contra um dock de
+880** e nenhum nó transborda. Ela não é enfeite — é o que **remove o dock da lista de razões para
+o teto não subir**, que é o pré-requisito da varredura B3 propriamente dita.
+
+⚠️ **As QUATRO edições que um painel rolável exige** (o arch-gate `scrollable_panels_intercept_the_wheel`
+as nomeia): id do thumb → arm no `scrollbar_panel_for_id` → o painter lê `panel_scroll` e publica
+`content_h`/`visible_h` → **e o id no `cursor_over_hero_panel`**, que é a que *compila, pinta,
+arrasta, e deixa a roda dando ZOOM na câmera em silêncio*. A mutação que tira a quarta produz
+exatamente essa mensagem no gate.
+
+⚠️ **E a cerca cuja premissa isto matou foi ENCARADA em vez de deixada verde:** o gate que afirmava
+*"as linhas CABEM"* pediria um teto **MENOR** no dia em que uma não coubesse — o oposto da cura.
+Ele virou **`the_reported_height_is_the_true_height_of_the_rows`**, a propriedade que passou a ser
+load-bearing: o scrollbar deriva `max_scroll` de `content_h − visible_h`, e uma altura que
+saturasse convenceria o painel de que tudo cabe — com as linhas desenhadas, o thumb ausente e **a
+cauda perdida em silêncio**.
+
+⚠️ **Uma mutação SOBREVIVEU e o defeito era da FIXTURE:** clampar a altura na altura do **dock**
+passa despercebido, porque o cap do `.take()` mantém o conteúdo abaixo dela — só um clamp abaixo
+de 544 é observável hoje. **E o nome que eu dei ao 1º gate de rolagem afirmava mais do que ele
+mede** (*"mais conteúdo do que o dock mostra"*), corrigido para o que ele prova de fato.
+
+---
+
 **(C) A wave B** (`bd0bc6d7a` … `2378cfd10`) — a **paleta vira SWATCHES** (sem limite de
 comprimento, por construção) e o **look-at ganha alvo por NOME e pelo CURSOR**. Inclui o fix do
 **drift crônico do Motion** (o cursor era projetado pela janela CHEIA — **terceira vez** que este
@@ -85,6 +117,9 @@ Tudo **aditivo** salvo onde marcado.
 | `ph2d-editor-core/src/screens/layout.rs` | **`INSPECTOR_MAX_H`** — const `pub` NOVA (era literal solto no `Rect::new`) | ⚠️ **símbolo novo, ver §4** |
 | `ph2d-editor-core/src/project.rs` | ⚠️ **SÓ doc-comments.** Os dois que contradiziam o `Default` real | **zero mudança de comportamento — ver §6** |
 | `ph2d-editor-core/src/interaction/dispatch/{mod,tick}.rs` | ⚠️ **MUDANÇA DE COMPORTAMENTO** no espelho chip↔slider: a **faixa do chip é a autoridade** (um valor digitado além da trilha sobrevive) e o evento do slider sai por **`push_mirrored_slider_event`**, que se cala com o thumb saturado | `pub(super) fn` nova + os 2 sítios de emissão roteados por ela |
+| `ph2d-editor-core/src/widget/scrollbar.rs` + `widget/mod.rs` | **`MOTION_PARAMS_SCROLLBAR_ID = NodeId(839)`** — ⚠️ **símbolo colidível**; próximo livre **840** | aditivo (const nova + re-export) |
+| `ph2d-editor-core/src/interaction/dispatch/scroll.rs` | o braço que ARMA o painel para a roda | aditivo (um `match` arm) |
+| `shells/desktop/src/forwarding.rs` | `MOTION_PARAMS_PANEL` no `cursor_over_hero_panel` | aditivo — **sem ele a roda dá ZOOM** |
 | `ph2d-ui-testkit/src/lib.rs` | **`type_into_number`** — digitar de verdade (foco → `dispatch_text_input` por caractere → Enter) | aditivo (`pub fn` novo) |
 | `ph2d-nodegraph/src/graph.rs` | `clear_param` / `clear_text_param` | aditivo (`pub fn` novos) |
 | `ph2d-nodegraph/src/external.rs` | o **namespace reservado `$`** (`RESERVED_PREFIX`, `is_reserved`, `CURSOR`, `position_of`) — o alvo do look-at pelo cursor | ⚠️ **símbolos novos, ver §4** |

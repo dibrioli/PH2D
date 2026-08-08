@@ -511,6 +511,84 @@ clique de volta era **recusado** pela outra cópia. Uma porta só
 nenhum ADR · zero `Cargo.toml` · **10 mutações, 9 sangram** (a sobrevivente é o
 `continue` do `drive_kinematic`, inerte HOJE pela ORDEM — documentada no sítio).
 
+#### ⚠️ O SMOKE de 2026-08-08 reprovou a cena, e achou um defeito de LEI
+
+Dois reports, e eles têm causas DIFERENTES — um é da cena, o outro do produto.
+
+**(a) *"O ciano está com uma mola extremamente exagerada, um pula-pula"*** — e
+estava certo: **5913 mm** de quique, medido. ⚠️ **A causa é a cena, e ela precisa
+de TRÊS condições ao mesmo tempo** (`probe_scene_101::probe_what_makes_the_bounce_29_metres`):
+
+| rampa | berço | `damping` | quique |
+|---|---|---|---|
+| plano | fora do repouso | 0,25 | **0,0 mm** |
+| rampa | no repouso | 0,25 | **0,0 mm** |
+| rampa | fora do repouso | 0,50 | **0,0 mm** |
+| **rampa** | **fora do repouso** | **0,25** | **5913 mm** |
+
+O gatilho era o **BERÇO**: a cena punha o ciano a `0,334 m` da rampa quando a
+perna dele repousa a `0,900` — meio metro de mola **comprimida**, que vezes a
+rigidez de 2000 é uma catapulta de `1132 m/s²`. O amortecimento a ¼ não a engole;
+o do teto engole.
+
+⚠️ **A lição não é sobre o valor `0,25`** — sozinho ele dá zero. É sobre a
+FRONTEIRA: *o número escolhido para uma FIXTURE não atravessa para a mão do
+artista.* Lá ele deixa de ser *"o valor que faz o fenômeno aparecer"* e passa a
+ser *"o que este produto é"*. Gate:
+`shells/desktop/tests/a_smoke_scene_ships_the_default_tuning.rs`.
+
+**(b) *"O laranja ao pousar se aproxima da rampa … como se fosse atraído por uma
+força cuja direção é a normal da rampa"*** — ⚠️ **e a seta que ele desenhou É o
+mecanismo, literalmente.**
+
+Com `drive = 0` a `walk` cancela a velocidade **ao longo da tangente do chão**.
+Uma queda vertical tem componente tangencial em qualquer inclinação, então o
+freio a lê como escorregão e a apaga — e **o que sobra de uma queda vertical sem
+a tangente é a NORMAL**. O personagem deixa de cair para baixo e passa a entrar
+na rampa perpendicularmente. Ablação pelo knob `acceleration`, que desliga o
+freio pela porta do artista: **com freio `−0,0711 m`, sem freio `+0,0001 m`** — o
+freio é a causa inteira.
+
+A cura é de **ORDEM, não de lei**: o `settle` deixa no estado a queda que o mundo
+bloqueou, o `kinematic_advance` a apaga — e **entre os dois corria a LEI**. Hoje
+a ponte chama a MESMA porta (`supported_velocity`, agora `pub` com dois
+consumidores) antes de a lei ler.
+
+| queda | antes | depois |
+|---|---|---|
+| 0,5 m | −0,102 m | **−0,068 m** |
+| 1,5 m | −0,071 m | **−0,044 m** |
+| 3,0 m | −0,057 m | **−0,023 m** |
+
+⚠️ **O modo DINÂMICO fica byte-intocado** (`+0,1469 / +0,3079 / +0,3905` antes e
+depois): a correção vive no ramo `writes_own_pose`.
+
+⚠️ **E o RESÍDUO está nomeado:** o tique de **CONTATO** ainda dá um chute, porque
+ali o personagem está mesmo no ar e nenhuma absorção é devida. O que a correção
+remove são os tiques SEGUINTES — medido no deslocamento **depois** do contato,
+`4,4 mm` contra `39,0 mm` (**8,8×**), e é esse o oráculo do gate. Fechá-lo por
+inteiro exigiria a `walk` perguntar ao **controlador** se está apoiada, o que
+quebra a K4 — decisão de produto, não dívida mecânica.
+
+#### ⚠️ E a §0 deste plano ganhou a coluna que lhe faltava
+
+A tabela do topo mede o **dinâmico** no default e conclui, corretamente, que o
+modo novo *"não conserta o que já é zero"*. O que ela nunca disse é o número do
+**cinemático** no mesmo default (`probe_what_differs_at_the_shipping_default`):
+
+| queda | afunda SPRING (default) | afunda SNAP (default) |
+|---|---|---|
+| 0,5 m | **0,0000 m** | 0,0436 m |
+| 2,0 m | **0,0000 m** | 0,0124 m |
+| 10,0 m | **0,0000 m** | 0,0465 m |
+
+⇒ **No default que shipa, o cinemático afunda ~4,5 cm onde o dinâmico afunda
+zero.** Isto não revoga a justificação do modo — ela nunca foi *"afunda menos"*,
+foi *"o número não depende de knob nenhum e não cresce com a queda"*, e as duas
+metades continuam medidas. Mas a frase honesta é: **hoje o modo cinemático troca
+4,5 cm de pele por independência de afinação**, e quem decide se esse é um bom
+negócio é o Enio, com a cena `=101` passo 4 na mão.
+
 #### O plano ORIGINAL desta wave, para referência
 
 **Gates, red-first:**

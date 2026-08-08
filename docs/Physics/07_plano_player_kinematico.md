@@ -48,14 +48,17 @@ seja um meio-termo, mas porque são **dois produtos**, com listas de trocas opos
 | # | decisão | o motivo curto |
 |---|---|---|
 | **K1** | É um **MODO do mesmo componente**, não um segundo player | a lei de INTENÇÃO (andar/pular/arrancar/parede/agachar/quina/perdão) é a mesma nos dois; duplicá-la daria duas respostas para *"o que o botão de pulo faz"* |
-| **K2** | **Marcador `KinematicPlayer`** — a presença é o modo —, nunca campo do `PlatformPlayer` | **zero bump de `PROJECT_SCHEMA`**; é o idioma exato do `Ccd` · `LockRotation` · `LockPositionX/Y` · `OneWayPlatform`, e a razão é a mesma que este módulo escreveu sete vezes: *um bump RECUSA todo projeto já salvo* |
+| **K2** | **Componente VALUADO `PlayerMode`**, ausente = `Dynamic`, nunca campo do `PlatformPlayer` | **zero bump de `PROJECT_SCHEMA`** (componente novo cunha blob-key própria — o idioma do `GravityScale`/`MassOverride`/`Dominance`, com *detach no neutro*), e a razão é a que este módulo escreveu sete vezes: *um bump RECUSA todo projeto já salvo*. ⚠️ **Um MARCADOR seria a representação errada, e a ordem do Enio de 2026-08-07 é quem o prova:** ele nomeou um **terceiro** modo (*"um cinemático puro sangue, como nos games de plataforma mais comuns"*), e a presença de um marcador só sabe dizer duas coisas. Um bit hoje seria um segundo componente amanhã |
 | **K3** | O modo de SUPORTE entra na **LEI**, não na ponte | a alternativa é a ponte SUBTRAIR do `accel` as parcelas que dependem do corpo — uma **enumeração**, e enumeração apodrece no dia em que uma força nova entra no fold. E o valor já existe isolado: `let spring = ride_spring(…)` (`lib.rs:489`) é um `Motor` com nome próprio |
 | **K4** | **`footing()` continua a porta ÚNICA** de *"onde está o chão"* | o `move_shape` devolve `grounded: bool` — consumi-lo seria a **segunda resposta** para o fato de que a lei inteira depende, a doença que este módulo curou quatro vezes. O `grounded` do rapier é DIAGNÓSTICO, e o gate afirma isso |
 | **K5** | A velocidade cinemática mora no **`PlayerState`** | o corpo cinemático não tem velocidade do solver, então alguém tem de a possuir — e o aviso já está escrito no próprio `PlayerState`: *"um estado de player que vivesse num segundo mapa da ponte teria de ser acrescentado àquele ring à mão, e esquecê-lo é um scrub que devolve o mundo de um tique e a memória de outro"* |
 | **K6** | A **3ª lei SOBREVIVE** ao modo | ⚠️ o achado da pesquisa: `reaction(cfg, support, impulse, movement)` toma o suporte como ARGUMENTO, e o chão vem do `footing` — **nada nela depende de o corpo ser Dynamic**. Sob Snap o suporte é o **PESO** (`m·g`), e a jangada afunda com a nossa reação exata em vez do impulso aproximado do rapier |
 | **K7** | A plataforma móvel entra pelo **`ground_velocity` que já existe** | é o `moving_platform_apply_velocity` do Godot, e o número já viaja no `GroundSample` desde a W3 — a ponte soma `ground_velocity · dt` à translação desejada, e não há segunda pergunta |
 
-### ⚠️ K6 é a decisão que separa este plano do resto da indústria — e o preço
+### ⚠️ K6 é a decisão que separa este plano do resto da indústria — ORDENADA pelo Enio
+
+Ordem de 2026-08-07: *"o cinemático transmite peso ao chão … a intenção é que nosso
+player reaja a tudo e influencie tudo no mundo físico"*.
 
 Unity, Godot e Unreal deixam o empurrão como escape manual porque **não têm a força**:
 o controlador cinemático deles não computa quanto peso o personagem transmite. **Nós
@@ -63,11 +66,30 @@ temos** — a `react.rs` já a computa e a W6 do plano 06 já a entrega ao chão
 de contato. Sob Snap o `support` deixa de ser a mola e passa a ser o peso, e é a **mesma
 função** que fecha o resto.
 
-⚠️ **O que isso NÃO dá:** a reação vai para o corpo que o **sensor de chão** encontrou.
-Uma caixa empurrada de LADO não é chão, então empurrar horizontalmente segue sendo o que
-o rapier oferece (`solve_character_collision_impulses`, aproximado) — e a K6 **não o
-usa**, porque duas fontes de impulso sobre o mesmo par seriam duas respostas. **Empurrar
-de lado fica FORA desta wave, nomeado no §8.**
+### ⚠️ E *"influencie TUDO"* alarga a K6 para o LADO — pela mesma lei, não por uma segunda
+
+A versão anterior deste plano punha *"empurrar de lado"* fora de escopo, com o argumento
+de que a alternativa era o `solve_character_collision_impulses` do rapier (aproximado) e
+que **duas fontes de impulso sobre o mesmo par seriam duas respostas**. O argumento
+continua certo; **a conclusão estava errada, porque existe uma terceira via que é a
+NOSSA lei outra vez:**
+
+> o `move_shape` devolve a translação **EFETIVA**. A diferença entre o que se pediu e o
+> que se conseguiu, **projetada na normal do contato**, é exatamente o movimento que
+> alguma coisa absorveu — e a força que o absorveu é `m · ((desejado − efetivo) · n) /
+> dt`, aplicada naquele ponto.
+
+É a **mesma frase** da 3ª lei que o chão já recebe (*o que eu queria fazer e não fiz,
+alguém fez por mim*), medida no outro eixo. Não é o solver do rapier, não é uma segunda
+fonte, e não precisa de constante nova: a massa é a mesma que a K2 já autora.
+
+⚠️ **O que continua FORA, e é assimetria honesta, não omissão:** este modo faz o
+personagem **influenciar** tudo; ele **não** é influenciado de volta. Um caixote que cai
+na cabeça dele não o derruba, porque um corpo cinemático tem massa infinita **por
+definição** — e implementar o retorno seria re-escrever um solver que já temos. *A
+resposta para "quero que o mundo o empurre" é o modo **Dynamic**, que é precisamente o
+que ele faz e por que foi construído primeiro.* Os dois modos são as duas metades da
+mesma escolha, e é isso que o chip diz.
 
 ---
 
@@ -113,7 +135,7 @@ de lado fica FORA desta wave, nomeado no §8.**
 |---|---|---|
 | `Tool=12` / `RasterEditTool=5` / `CanvasPaintTool=1` / `PanelEvent=4` | **não** | nada desta wave é uma ferramenta; o gesto é o §14 do Inspector, que já existe |
 | `NodeOp=2` / `OpResolver=1` / `NodeManifest=8` | **não** | o módulo de física não alcança o nodegraph |
-| `PROJECT_SCHEMA` | **não** (K2) | o marcador cunha `stable_type_id` próprio — o precedente literal do `Ccd`/`LockRotation`; o `PlatformPlayer` não ganha campo |
+| `PROJECT_SCHEMA` | **não** (K2) | o componente novo cunha `stable_type_id` próprio — o precedente literal do `GravityScale`/`Dominance`; o `PlatformPlayer` não ganha campo |
 | `InputTape` (persistida, W17) | **não** | ela guarda `Vec<PlayerInput>` e nada mais (`tape.rs:94`); o `PlayerState` vive no `PlayerStateRing`, que é **cache da ponte** |
 | registro do `ph2d-physics-ecs` | **sim: 28 → 29** | um componente novo; o gate `registers_every_physics_component` cobra |
 | `physics_ecs_c9` | **sim, se a cena do hash ganhar um player cinemático** — e ela **não ganha** nesta wave | o c9 mede o caminho determinístico do SOLVER; um corpo cinemático não passa por ele. Fica **byte-idêntico**, com gate |
@@ -129,7 +151,9 @@ desde a W3.
    (a lista `WRITERS`, que já ficou vermelha uma vez por um split — W-AreaFalloff).
 2. **É pintado E registrado** → a row `Body: Dynamic | Kinematic` na §14, um `seg_row`
    como o `Solid | Sensor` e o `Discrete | Continuous`; o `architecture_panel_wiring_parity`
-   cobra o `populate`.
+   cobra o `populate`. ⚠️ **Dois chips agora, TRÊS quando a `W-KinPure` chegar** — e é
+   por isso que o `seg_row` recebe uma fatia, nunca um par: acrescentar o terceiro tem de
+   ser uma linha na tabela, não uma reescrita da row.
 3. **O clique chega ao barramento** → varredura de seam com **`click_real`** (o helper
    que a W-AreaFrame criou porque `seg_row` registra em LAÇO e o `wiring_parity` é cego
    a isso).
@@ -149,7 +173,7 @@ Cada uma fecha com gate batched verde · mutações · **cena de smoke com núme
 (a sonda headless roda ANTES de a mensagem ser escrita) · entrada no tracker + linha no
 `00_plano_waves.md`, na mesma sessão.
 
-### K1 — O MODO EXISTE E O PERSONAGEM ANDA (cena `=100`)
+### W-KinMove — O MODO EXISTE E O PERSONAGEM ANDA (cena `=100`)
 
 O marcador, o `Support::Snap`, o `move_shape`, a velocidade no `PlayerState`, a
 plataforma móvel, e o chip da §14.
@@ -179,22 +203,47 @@ plataforma móvel, e o chip da §14.
 do teto** (no teto o resíduo dinâmico já é zero e o gate 1 seria verde nos dois modos —
 *um gate que passa no controle está a medir a coisa errada*, a lição da W-AreaFalloff).
 
-### K2 — O MUNDO SENTE O PERSONAGEM (cena `=101`)
+### W-KinWeight — O CHÃO SENTE O PERSONAGEM (cena `=101`)
 
-A K6: sob Snap o `support` é o peso, e a jangada afunda.
+A K6 no eixo vertical: sob Snap o `support` é o peso, e a jangada afunda.
 
-**Gates:** a jangada da cena `=72` com o marcador afunda **o mesmo** que com o corpo
-dinâmico (a comparação é o oráculo, e ela é honesta porque a força física é a mesma) ·
+**Gates:** a jangada da cena `=72` no modo cinemático afunda **o mesmo** que com o corpo
+dinâmico (a comparação é o oráculo, e é honesta porque a força física é a mesma) ·
 `Reaction Scale = 0` continua a desligar tudo · a mutação que zera o suporte sob Snap
 sangra.
 
 ⚠️ **A massa é AUTORADA** (o corpo cinemático não tem massa que o rapier calcule) — e é
-por isso que a K2 é wave própria: um número novo na §14 tem as suas quatro condições.
+por isso que esta é wave própria: um número novo na §14 tem as suas quatro condições.
 
-### K3 — O QUE O SMOKE PEDIR
+### W-KinPush — E O QUE ESTÁ AO LADO TAMBÉM (cena `=102`)
 
-Reservada de propósito. A K1 e a K2 entregam o modo; o que o Enio vir decide se falta
-`autostep` afinado, `min_slope_slide_angle` exposto, ou nada.
+A outra metade da ordem *"influencie tudo"*: o que o `move_shape` **não** conseguiu
+mover, projetado na normal, volta como impulso no ponto de contato.
+
+**Gates, red-first:** um caixote solto no caminho **não se move** antes da wave e é
+empurrado depois · a **massa manda** (o caixote leve anda mais que o pesado sob o mesmo
+personagem) · **uma parede estática não absorve nada** (o impulso vai para um corpo de
+massa infinita e o ledger fecha em zero) · e a **mutação que devolve o impulso pelo
+`solve_character_collision_impulses` do rapier** tem de sangrar, porque a wave é sobre
+*qual* lei empurra, não sobre *se* empurra.
+
+⚠️ **O risco desta wave é ESTABILIDADE, não correção, e o gate tem de o medir:** um
+personagem que empurra por impulso a 60 Hz pode entrar em ressonância com o slide (ele
+empurra, o caixote foge, o slide o segue, ele empurra outra vez). O número que decide é
+a **amplitude em regime** encostado num caixote parado — o mesmo kill-criterion que a W6
+do plano 06 usou para a plataforma dinâmica.
+
+### W-KinPure — O TERCEIRO MODO (não construída agora)
+
+O *"puro sangue"* que o Enio nomeou: nada de reação, nada de empurrão — o platformer
+clássico, em que o mundo físico é cenário. ⚠️ **Ele é BARATO por construção depois das
+duas waves acima** (é o mesmo caminho de movimento com a reação e o empurrão calados) e
+**é por isso que ele não vem primeiro**: construí-lo antes faria a K6 parecer um caso
+especial dele, quando é o contrário — *o pobre é o rico com dois canais desligados*.
+
+### W-KinTune — O QUE O SMOKE PEDIR
+
+Reservada de propósito: `autostep` afinado, `min_slope_slide_angle` exposto, ou nada.
 
 ---
 
@@ -213,15 +262,20 @@ Reservada de propósito. A K1 e a K2 entregam o modo; o que o Enio vir decide se
 
 ## §8 — O que NÃO entra (nomeado, não esquecido)
 
-- **Empurrar de LADO** (a caixa que o personagem arrasta). A K6 entrega o eixo do
-  suporte, que é o que o sensor de chão vê; o lado exigiria consumir o
-  `solve_character_collision_impulses` do rapier, e o próprio doc dele diz que é
-  aproximado — **duas fontes de impulso sobre o mesmo par são duas respostas**. Se o uso
-  pedir, é wave com aceitação própria.
+- ~~**Empurrar de LADO**~~ — **ENTROU** (a `W-KinPush`) por ordem do Enio de
+  2026-08-07. ⚠️ O argumento que o excluía continua CERTO e é ele que decide o desenho:
+  o `solve_character_collision_impulses` do rapier é aproximado por confissão própria, e
+  consumi-lo **ao lado** da nossa reação seriam duas fontes de impulso sobre o mesmo par.
+  O que mudou não foi o argumento — foi ter aparecido uma **terceira via** que é a nossa
+  lei no outro eixo (§2, K6).
+- **Ser EMPURRADO de volta.** O caixote que cai na cabeça não o derruba: massa infinita é
+  a definição de cinemático, e o retorno é o que o modo **Dynamic** já faz. Assimetria
+  declarada, não esquecida.
 - **Rotação do personagem.** Nem Unity nem Godot a oferecem no controlador; e o
   `LockRotation` já é o default deste módulo (D4).
-- **Um TERCEIRO modo.** O `motion_mode: Floating` do Godot (jogo top-down / nave) não
-  tem chão, então metade desta lei não se aplica — é outro produto, não um chip a mais.
+- **O `motion_mode: Floating` do Godot** (jogo top-down / nave). Não tem chão, então
+  metade desta lei não se aplica — é outro produto, não um chip a mais. ⚠️ Não confundir
+  com o *"puro sangue"* do Enio, que **tem** chão e é a `W-KinPure`.
 - **O bake.** Ele já funciona: assar vira o corpo `Kinematic` e entrega a pose. ⚠️ E
   isso levanta uma pergunta de UX que a K1 tem de responder no doc: **um player
   cinemático assado e um player cinemático dirigido são o mesmo `BodyKind` com donos
@@ -235,10 +289,10 @@ Reservada de propósito. A K1 e a K2 entregam o modo; o que o Enio vir decide se
 - **Registro `ph2d-physics-ecs` 28 → 29** (o gate diz existir *"to hurt"*).
 - **`PROJECT_SCHEMA`: NÃO bumpa** (K2) — e se algum campo acabar apendado, o valor se
   **CONTA** contra o `main` do dia, nunca se escolhe.
-- **Ids novos da §14** (o chip do modo + a massa da K2), anotados no handoff.
-- **Cena de smoke `=100`** — ⚠️ o roteador é um `match` de strings cujo `_` cai na cena
-  1: um nível inexistente **não avisa**, mostra outra coisa. O `=84` não existe de
-  propósito; **100 é o próximo livre**.
+- **Ids novos da §14** (os chips do modo + a massa da `W-KinWeight`), anotados no handoff.
+- **Cenas de smoke `=100` · `=101` · `=102`** — ⚠️ o roteador é um `match` de strings
+  cujo `_` cai na cena 1: um nível inexistente **não avisa**, mostra outra coisa. O `=84`
+  não existe de propósito; **100 é o próximo livre** (o último ocupado é o `=99`).
 - **Contrato congelado: nenhum. Dep externa nova: nenhuma** (o
   `KinematicCharacterController` é do `rapier2d` que já é dep, e não é feature-gated no
   2D).

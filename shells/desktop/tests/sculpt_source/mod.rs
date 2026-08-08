@@ -34,6 +34,36 @@ pub fn source(name: &str) -> String {
         .join("\n")
 }
 
+/// O corpo de `fn <name>` procurado na **FAMÍLIA** `src/project*.rs`.
+///
+/// ⚠️ **Afirme a PROPRIEDADE, nunca o ENDEREÇO.** O irmão deste gate lia
+/// `project.rs` por nome, e o `project.rs` foi PARTIDO duas vezes por teto de
+/// LOC — o `project_load_from` saiu em 05/08 e o `project_save` na integração de
+/// 08/08. Nas duas vezes o produto estava certo e o gate reprovava um endereço
+/// que tinha se mudado; um gate que se cura mudando o nome do arquivo que ele lê
+/// vai reprovar de novo no próximo corte.
+///
+/// O `expect` no fim é o **controle positivo**: uma varredura que não acha a
+/// função é ela mesma o defeito, e sem ele um `unwrap_or_default()` deixaria
+/// toda asserção sobre o corpo passar por VÁCUO.
+pub fn project_family_fn(name: &str) -> String {
+    let dir = format!("{}/src", env!("CARGO_MANIFEST_DIR"));
+    let mut files: Vec<_> = fs::read_dir(&dir)
+        .expect("src/")
+        .filter_map(|e| e.ok().map(|e| e.file_name().to_string_lossy().into_owned()))
+        .filter(|f| f.starts_with("project") && f.ends_with(".rs") && !f.ends_with("_tests.rs"))
+        .collect();
+    files.sort();
+    files
+        .iter()
+        .map(|f| source(f))
+        .find(|src| src.contains(&format!("fn {name}(")))
+        .map(|src| function_body(&src, name))
+        .unwrap_or_else(|| {
+            panic!("não achei `fn {name}` em nenhum src/project*.rs (varri {files:?})")
+        })
+}
+
 /// O corpo de `fn <name>` até a chave que o fecha, contando profundidade.
 pub fn function_body(src: &str, name: &str) -> String {
     // ⚠️ **O delimitador é load-bearing, e a falta dele custou um gate VERDE

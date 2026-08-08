@@ -11,7 +11,7 @@
 //! código do produto, o gate lê o código do produto.
 
 mod sculpt_source;
-use sculpt_source::{function_body, source};
+use sculpt_source::{function_body, project_family_fn, source};
 
 /// **A ACENDIDA NÃO ESTÁ ATRÁS DA FEATURE.**
 ///
@@ -82,7 +82,7 @@ fn the_module_that_holds_the_channels_is_unconditional() {
         "o `ProjectFile` precisa carregar os canais"
     );
     assert!(
-        !function_body(&source("project.rs"), "project_save").contains("cfg(feature"),
+        !project_family_fn("project_save").contains("cfg(feature"),
         "o save nao pode gravar formas de arquivo diferentes por build"
     );
 }

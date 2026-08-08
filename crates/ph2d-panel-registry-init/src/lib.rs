@@ -168,9 +168,9 @@ mod tests {
             n += 1;
         }
         #[cfg(feature = "panel-wet-tuning")]
-    {
-        n += 1;
-    }
+        {
+            n += 1;
+        }
         #[cfg(feature = "panel-timeline")]
         {
             n += 1;

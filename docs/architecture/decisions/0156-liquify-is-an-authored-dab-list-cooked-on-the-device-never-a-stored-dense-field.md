@@ -11,14 +11,25 @@ A decisão não pode esperar por três coisas que chegaram juntas:
 1. **O Reshape vai ser promovido ao rail.** A medição de hoje mostrou que o pill `Sculpt` é **inerte** (traço muda 0 bytes no meio Digital) e que o pill `Deform` é uma **antessala** (`DEFORM_TEMPERAMENT_NONE`, cujo braço do roteador é `_ => true`). A cura é dar o Reshape ao pill — mas promover ao rail uma ferramenta que **destrói arte** seria promover o defeito.
 2. **A ferramenta destrói arte, e está medido.** Twist no centro de uma linha preta de 3 px, tela 128:
 
-   | dabs | \|disp\| a r=30 | tinta restante |
-   |---:|---:|---:|
-   | 1 | 5,20 px | 98,6% |
-   | 5 | 15,60 px | 82,0% |
-   | 20 | 54,58 px | 24,0% |
-   | 60 | **158,55 px** | **3,4%** |
+   Twist parado, pincel `r=100`, sonda a `r=30`, linha preta de 3 px — a fixture do gate
+   `measure_the_divergence_of_the_sum`, que é **a mesma** de `a_twist_is_a_rotation_not_a_runaway_shear`:
+   tabela e gate concordam por construção, e qualquer um pode re-rodar os dois números.
 
-   ⚠️ Uma **rotação** em torno de um centro não pode deslocar um ponto de raio `r` mais que **`2r`** — o diâmetro do círculo dele, atingido a 180°. A r=30 o teto é **60 px**; passamos disso em ~22 dabs e seguimos crescendo **linearmente, sem limite**. O mapa deixou de ser uma rotação e virou um **cisalhamento tangencial divergente**: cada destino busca a fonte longe demais, a linha é esticada até virar fio translúcido (os arcos finos da foto do Enio) e depois some no branco.
+   | dabs | \|D\| **soma** (hoje) | \|D\| **composto** | tinta soma | tinta comp. |
+   |---:|---:|---:|---:|---:|
+   | 1 | 3,47 px | 3,47 px | 100,5% | 100,5% |
+   | 5 | 17,33 px | 17,10 px | 91,4% | 104,2% |
+   | 20 | **69,34 px** | 54,92 px | 57,3% | 113,8% |
+   | 60 | **208,01 px** | 19,28 px | **28,1%** | 103,9% |
+   | 200 | **693,36 px** | 50,61 px | **4,7%** | 119,0% |
+
+   ⚠️ **A soma é exatamente `N × corda`** — 3,47 × 200 = 694 — uma reta, sem teto. A composição **nunca
+   passa de 60** e *oscila* dentro do intervalo (54,92 → 19,28 → 50,61 conforme a rotação total cruza
+   180° e volta): essa oscilação **é** a assinatura de uma rotação, e nenhum ajuste de constante a produz
+   a partir de uma soma. ⚠️ E a tinta composta passa de 100% porque girar uma linha horizontal a deixa
+   **diagonal**, que cobre mais texels — tinta não está sendo criada, está sendo espalhada.
+
+   ⚠️ Uma **rotação** em torno de um centro não pode deslocar um ponto de raio `r` mais que **`2r`** — o diâmetro do círculo dele, atingido a 180°. A r=30 o teto é **60 px**; a 3,47 px por dab a soma o cruza em **~18 dabs** e segue crescendo **linearmente, sem limite** (693 px em 200). O mapa deixou de ser uma rotação e virou um **cisalhamento tangencial divergente**: cada destino busca a fonte longe demais, a linha é esticada até virar fio translúcido (os arcos finos da foto do Enio) e depois some no branco.
 
    **A causa é uma linha:** `warp/apply.rs` acumula `d[0] += a[0]; d[1] += a[1]` — uma **soma de cordas eulerianas**. Somar a corda `R(θ)v − v` N vezes dá `N·(corda)`, uma reta tangente; compor dá `R(Nθ)`, limitado. **Somar é composição exata para TRANSLAÇÃO e para mais nada** — e é exatamente por isso que só o **Push** parecia bom.
 
@@ -104,8 +115,9 @@ Isto é a lei que esta casa já aplica em toda parte — **`fonte ≠ cozido`**:
 
 | Gate | Afirma | Nasce |
 |---|---|---|
-| `a_twist_is_a_rotation_not_a_runaway_shear` | N dabs de θ ⇒ `\|disp\|` a raio `r` **≤ 2r** | **VERMELHO** (158,55 px hoje) |
-| `the_thin_line_survives_a_twist` | a linha de 3 px sobrevive ao swirl | **VERMELHO** (3,4% hoje) |
+| `a_twist_is_a_rotation_not_a_runaway_shear` | N dabs de θ ⇒ `\|D\|` a raio `r` **≤ 2r** | **VERMELHO** (69,34 px contra teto 60, já em 20 dabs) |
+| `the_thin_line_survives_a_twist` | a linha de 3 px sobrevive ao swirl | **VERMELHO** (28,1% da tinta) |
+| `the_bounded_twist_still_turns_the_picture` | o campo limitado ainda DEFORMA (anti-vácuo) | verde nas DUAS leis, de propósito |
 | `no_dense_field_is_authored_state` | arch-gate: o campo denso não é serializado nem keyframeável | verde |
 | `the_lattice_is_a_cache_you_can_throw_away` | descartar e re-cozinhar dá resultado **bit-idêntico** | verde |
 | `the_cook_reads_no_history_per_pixel` | paridade serial × paralelo (a condição do [ADR-0109](0109-rayon-exception-watercolor-composite.md)) | verde |

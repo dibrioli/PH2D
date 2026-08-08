@@ -198,6 +198,11 @@ impl DabField {
 
     /// The displacement `D(p)` at image-pixel `p` (grid coordinate). `[0,0]` outside the dab radius, so an
     /// identity field (no motion / zero strength) leaves the gather at `dst` → byte-identical (DoD parity).
+    ///
+    /// ⚠️ **This is one DAB.** A whole deformation is a LIST of them, and the way the list is folded is
+    /// the subject of [ADR-0156](../../../../../../docs/architecture/decisions/0156-liquify-is-an-authored-dab-list-cooked-on-the-device-never-a-stored-dense-field.md):
+    /// `compose_at` is the law it decided, `apply.rs`'s running `d += a` is the defect it replaces, and
+    /// the crossing between the two is W1 — not done here.
     pub(super) fn at(&self, p: [f32; 2]) -> [f32; 2] {
         let rel = [p[0] - self.center[0], p[1] - self.center[1]];
         let t2 = (rel[0] * rel[0] + rel[1] * rel[1]) * self.inv_r2;
@@ -260,6 +265,49 @@ impl DabField {
             base
         }
     }
+}
+
+/// The displacement of a whole **dab list** at `p` — the fold that [ADR-0156] decided, and the single
+/// door for it.
+///
+/// ⚠️ **A stroke is a RELAY, not a sum.** Dab `k` hands its result to dab `k+1`, so the list composes:
+/// `D_k(p) = v_k(p) + D_{k−1}(p − v_k(p))` — the semi-Lagrangian law that
+/// `ph2d_painter_brush::smear_field` already carries, and whose doc-comment says in as many words that
+/// the obvious `disp += v` *"is WRONG, and wrong in a way worth recording because it LOOKS right"*.
+/// `apply.rs` does the sum today, and the price is measured: a Twist that may displace a point at radius
+/// `r` by at most `2r` (a rotation cannot do more — that is the diameter, reached at 180°) walks it
+/// **158,55 px at r=30** after 60 dabs, because summing chords `R(θ)v − v` N times gives `N·chord`, a
+/// straight tangent, while composing gives `R(Nθ)`, bounded. Summing IS exact composition — for
+/// translation, and for nothing else, which is exactly why only **Push** ever looked right.
+///
+/// Unrolling that recursion is a **backwards walk**: start at `p` with the LAST dab and back-trace.
+///
+/// ⚠️ And the shape of this walk is the whole reason the cook can live on the device: it reads `p`, the
+/// dab list, and **nothing else** — no neighbour, no previous frame, no accumulator shared between
+/// pixels. Two nodes never talk. That is the condition [ADR-0109] asks of every parallel kernel here, and
+/// it holds by construction rather than by discipline.
+///
+/// ⚠️ **`cfg(test)` é o estado HONESTO de hoje, não um esquecimento.** O produto (`apply.rs`) ainda
+/// SOMA, e a travessia é a W1 do ADR — o cook, que substitui o acumulador incremental inteiro em vez de
+/// remendá-lo. Enquanto o produto não a chama, deixá-la `pub` seria exatamente o que esta linha já
+/// nomeou duas vezes (`warp_axis`, `serial_side`): **uma segunda resposta esperando alguém chamá-la**.
+/// Os gates de [`super::compose_tests`] provam que ela cura o defeito reportado; o que falta é a
+/// travessia, e ela tem smoke próprio porque muda o desenho de uma ferramenta que já shipa.
+///
+/// [ADR-0156]: ../../../../../../docs/architecture/decisions/0156-liquify-is-an-authored-dab-list-cooked-on-the-device-never-a-stored-dense-field.md
+/// [ADR-0109]: ../../../../../../docs/architecture/decisions/0109-rayon-exception-watercolor-composite.md
+#[cfg(test)]
+pub(super) fn compose_at(dabs: &[DabField], p: [f32; 2]) -> [f32; 2] {
+    let mut q = p;
+    let mut d = [0.0_f32, 0.0];
+    for f in dabs.iter().rev() {
+        let v = f.at(q);
+        d[0] += v[0];
+        d[1] += v[1];
+        q[0] -= v[0];
+        q[1] -= v[1];
+    }
+    d
 }
 
 /// Build `[rotor_0 .. rotor_deg_max]` where `rotor_k` = the unit vector `(1,0)` rotated by `k` whole

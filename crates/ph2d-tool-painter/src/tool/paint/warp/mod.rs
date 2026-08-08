@@ -10,6 +10,10 @@
 //! single clamp source (`apply_ui_edit`), routed from `handle_panel_event`.
 
 mod apply;
+#[cfg(test)]
+mod compose_tests;
+#[cfg(test)]
+mod cook_probe;
 mod field;
 #[cfg(test)]
 mod perf_tests;

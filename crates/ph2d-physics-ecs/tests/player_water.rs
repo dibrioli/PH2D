@@ -88,10 +88,17 @@ fn a_floating_player_settles_near_the_waterline_of_an_identical_capsule() {
     run(&mut sim, &mut b2, 600);
     let y = y_of(&sim, "Subject");
 
+    // ⚠️ **A barra APERTOU de 0,25 para 0,01 com a W-Submerged, e não é
+    // afinação — é uma LEI que passou a valer.** Ela nasceu folgada porque o
+    // player boiava 11 cm acima da cápsula: no ápice do arco a modelagem
+    // cortava o peso dele pela metade (medido, `empuxo÷peso = 0,49`, que é
+    // literalmente o `peak_gravity`). Com a modelagem calada dentro d'água, o
+    // equilíbrio é `empuxo = peso` para os DOIS, e o delta é o de dois corpos
+    // idênticos.
     assert!(
-        (y - line).abs() < 0.25,
+        (y - line).abs() < 0.01,
         "o player boia em {y:.4} e a capsula identica em {line:.4} (delta {:.4}) \
-         -- de pe sobre a poca o delta e' 0,68",
+         -- de pe sobre a poca o delta era 0,68, e com o arco moldado 0,11",
         y - line
     );
 }

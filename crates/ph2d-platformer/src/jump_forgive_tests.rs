@@ -11,6 +11,9 @@
 //! alcançar o que não é `pub`.
 use super::*;
 
+/// Ar seco — todo gate deste arquivo mede o arco BALÍSTICO.
+const DRY: crate::Buoyed = crate::Buoyed::DRY;
+
 const UP: Vec2 = [0.0, 1.0];
 const G: Vec2 = [0.0, -9.81];
 /// O tique de 60 Hz, o mesmo do produto.
@@ -40,6 +43,7 @@ fn standing(cfg: &JumpConfig) -> JumpState {
         G,
         UP,
         DT,
+        DRY,
     )
     .state
 }
@@ -67,9 +71,9 @@ fn walking_off_a_ledge_still_jumps_inside_the_window_and_not_after() {
         let mut st = standing(&cfg);
         // Anda para fora: sem chão, sem apertar, caindo.
         for _ in 0..ticks {
-            st = jump_step(&cfg, st, None, -0.5, false, false, None, G, UP, DT).state;
+            st = jump_step(&cfg, st, None, -0.5, false, false, None, G, UP, DT, DRY).state;
         }
-        let s = jump_step(&cfg, st, None, -0.5, true, false, None, G, UP, DT);
+        let s = jump_step(&cfg, st, None, -0.5, true, false, None, G, UP, DT, DRY);
         assert_eq!(
             s.takeoff,
             want,
@@ -85,12 +89,24 @@ fn walking_off_a_ledge_still_jumps_inside_the_window_and_not_after() {
 fn the_coyote_window_is_spent_by_the_jump_it_forgives() {
     let cfg = JumpConfig::STARTING_POINT;
     let mut st = standing(&cfg);
-    st = jump_step(&cfg, st, None, -0.5, false, false, None, G, UP, DT).state;
-    let first = jump_step(&cfg, st, None, -0.5, true, false, None, G, UP, DT);
+    st = jump_step(&cfg, st, None, -0.5, false, false, None, G, UP, DT, DRY).state;
+    let first = jump_step(&cfg, st, None, -0.5, true, false, None, G, UP, DT, DRY);
     assert!(first.takeoff, "o pulo de coyote tem de sair");
     assert_eq!(first.state.coyote, 0.0, "e a janela tem de ser GASTA");
     // Solta e aperta de novo, ainda no ar, dentro do que SERIA a janela.
-    let released = jump_step(&cfg, first.state, None, 3.0, false, false, None, G, UP, DT);
+    let released = jump_step(
+        &cfg,
+        first.state,
+        None,
+        3.0,
+        false,
+        false,
+        None,
+        G,
+        UP,
+        DT,
+        DRY,
+    );
     let again = jump_step(
         &cfg,
         released.state,
@@ -102,6 +118,7 @@ fn the_coyote_window_is_spent_by_the_jump_it_forgives() {
         G,
         UP,
         DT,
+        DRY,
     );
     assert!(!again.takeoff, "nao pode haver um segundo pulo no ar");
 }
@@ -120,10 +137,10 @@ fn pressing_early_jumps_on_the_very_tick_the_foot_lands() {
         ..JumpState::default()
     };
     // O aperto acontece no ar, 3 tiques antes de tocar.
-    let mut st = jump_step(&cfg, flying, None, -4.0, true, false, None, G, UP, DT).state;
+    let mut st = jump_step(&cfg, flying, None, -4.0, true, false, None, G, UP, DT, DRY).state;
     assert!(st.buffer > 0.0, "o aperto tem de ser GUARDADO");
     for _ in 0..2 {
-        st = jump_step(&cfg, st, None, -4.0, true, false, None, G, UP, DT).state;
+        st = jump_step(&cfg, st, None, -4.0, true, false, None, G, UP, DT, DRY).state;
     }
     // O pé toca — segurando ainda, que é o gesto real (ninguém solta a
     // tecla no ar de propósito).
@@ -138,6 +155,7 @@ fn pressing_early_jumps_on_the_very_tick_the_foot_lands() {
         G,
         UP,
         DT,
+        DRY,
     );
     assert!(
         land.takeoff,
@@ -149,10 +167,10 @@ fn pressing_early_jumps_on_the_very_tick_the_foot_lands() {
     // que nunca escorre passa no gate — o aperto chega ao pouso porque a
     // fixture pousava dentro da janela de qualquer jeito. Um perdão sem fim
     // é um pulo agendado para sempre.
-    let mut far = jump_step(&cfg, flying, None, -4.0, true, false, None, G, UP, DT).state;
+    let mut far = jump_step(&cfg, flying, None, -4.0, true, false, None, G, UP, DT, DRY).state;
     let past = (cfg.jump_buffer / DT).ceil() as i32 + 2;
     for _ in 0..past {
-        far = jump_step(&cfg, far, None, -4.0, true, false, None, G, UP, DT).state;
+        far = jump_step(&cfg, far, None, -4.0, true, false, None, G, UP, DT, DRY).state;
     }
     let late = jump_step(
         &cfg,
@@ -165,6 +183,7 @@ fn pressing_early_jumps_on_the_very_tick_the_foot_lands() {
         G,
         UP,
         DT,
+        DRY,
     );
     assert!(
         !late.takeoff,
@@ -180,7 +199,19 @@ fn pressing_early_jumps_on_the_very_tick_the_foot_lands() {
 fn one_press_is_one_jump() {
     let cfg = JumpConfig::STARTING_POINT;
     let st = standing(&cfg);
-    let first = jump_step(&cfg, st, Some(&ground()), 0.0, true, false, None, G, UP, DT);
+    let first = jump_step(
+        &cfg,
+        st,
+        Some(&ground()),
+        0.0,
+        true,
+        false,
+        None,
+        G,
+        UP,
+        DT,
+        DRY,
+    );
     assert!(first.takeoff);
     // O tique seguinte: ainda segurando, o raio ainda vê o chão (a decolagem
     // não teleporta ninguém).
@@ -195,6 +226,7 @@ fn one_press_is_one_jump() {
         G,
         UP,
         DT,
+        DRY,
     );
     assert!(!second.takeoff, "um aperto nao pode dar dois pulos");
 }
@@ -212,9 +244,9 @@ fn zero_windows_are_the_law_of_before_this_wave() {
     };
     // Fora da borda: nao pula.
     let mut st = standing(&cfg);
-    st = jump_step(&cfg, st, None, -0.5, false, false, None, G, UP, DT).state;
+    st = jump_step(&cfg, st, None, -0.5, false, false, None, G, UP, DT, DRY).state;
     assert!(
-        !jump_step(&cfg, st, None, -0.5, true, false, None, G, UP, DT).takeoff,
+        !jump_step(&cfg, st, None, -0.5, true, false, None, G, UP, DT, DRY).takeoff,
         "sem coyote, sair da borda tira o pulo no tique seguinte"
     );
     // Apertar no ar nao sobrevive ate' o pouso.
@@ -222,7 +254,7 @@ fn zero_windows_are_the_law_of_before_this_wave() {
         airborne: true,
         ..JumpState::default()
     };
-    let pressed = jump_step(&cfg, flying, None, -4.0, true, false, None, G, UP, DT).state;
+    let pressed = jump_step(&cfg, flying, None, -4.0, true, false, None, G, UP, DT, DRY).state;
     let land = jump_step(
         &cfg,
         pressed,
@@ -234,6 +266,7 @@ fn zero_windows_are_the_law_of_before_this_wave() {
         G,
         UP,
         DT,
+        DRY,
     );
     assert!(
         !land.takeoff,
@@ -269,6 +302,7 @@ fn the_lift_memory_fills_on_the_ground_and_drains_in_the_air() {
         G,
         UP,
         DT,
+        DRY,
     );
     assert_eq!(on.state.lift, [4.0, 0.0], "no chao ela guarda o VAGAO");
     assert!(
@@ -278,7 +312,9 @@ fn the_lift_memory_fills_on_the_ground_and_drains_in_the_air() {
     );
 
     // No ar ela escorre, e o VALOR lembrado não se apaga com ela.
-    let air = jump_step(&cfg, on.state, None, -1.0, false, false, None, G, UP, DT);
+    let air = jump_step(
+        &cfg, on.state, None, -1.0, false, false, None, G, UP, DT, DRY,
+    );
     assert_eq!(air.state.lift, [4.0, 0.0], "o que se lembra nao muda no ar");
     assert!(
         (air.state.lift_time - (cfg.lift_momentum - DT)).abs() < 1.0e-6,
@@ -306,12 +342,13 @@ fn the_carried_frame_holds_full_and_then_releases() {
         G,
         UP,
         DT,
+        DRY,
     )
     .state;
 
     // Meio da janela: ainda CHEIO — é isso que "preserva" quer dizer.
     for _ in 0..40 {
-        st = jump_step(&cfg, st, None, -1.0, false, false, None, G, UP, DT).state;
+        st = jump_step(&cfg, st, None, -1.0, false, false, None, G, UP, DT, DRY).state;
         assert_eq!(
             carried_frame(&cfg, &st),
             [4.0, 0.0],
@@ -322,7 +359,7 @@ fn the_carried_frame_holds_full_and_then_releases() {
 
     // Passada a janela: o referencial volta a ser o do mundo.
     for _ in 0..100 {
-        st = jump_step(&cfg, st, None, -1.0, false, false, None, G, UP, DT).state;
+        st = jump_step(&cfg, st, None, -1.0, false, false, None, G, UP, DT, DRY).state;
     }
     assert_eq!(st.lift_time, 0.0, "a janela fechou");
     assert_eq!(
@@ -349,6 +386,7 @@ fn a_still_ground_and_a_zero_window_both_carry_nothing() {
         G,
         UP,
         DT,
+        DRY,
     )
     .state;
     assert_eq!(
@@ -369,6 +407,7 @@ fn a_still_ground_and_a_zero_window_both_carry_nothing() {
         G,
         UP,
         DT,
+        DRY,
     )
     .state;
     assert_eq!(

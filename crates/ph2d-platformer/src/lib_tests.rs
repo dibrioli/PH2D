@@ -9,6 +9,9 @@
 
 use super::*;
 
+/// Ar seco — todo gate deste arquivo mede o arco BALÍSTICO.
+const DRY: Buoyed = Buoyed::DRY;
+
 const UP: Vec2 = [0.0, 1.0];
 const G: Vec2 = [0.0, -9.81];
 const DT: f32 = 1.0 / 60.0;
@@ -48,6 +51,7 @@ fn the_leg_declares_which_half_of_its_push_cancels_gravity() {
         G,
         UP,
         DT,
+        DRY,
     );
     assert_eq!(
         step.gravity_hold,
@@ -87,6 +91,7 @@ fn nothing_is_held_in_the_air() {
         G,
         UP,
         DT,
+        DRY,
     );
     assert_eq!(
         air.gravity_hold,
@@ -112,6 +117,7 @@ fn nothing_is_held_in_the_air() {
         G,
         UP,
         DT,
+        DRY,
     );
     assert_eq!(
         takeoff.gravity_hold,
@@ -152,6 +158,7 @@ fn the_spring_lets_go_of_a_wall() {
         G,
         UP,
         DT,
+        DRY,
     );
     // ⚠️ **O oráculo é a INDISTINGUIBILIDADE, não um zero.** A primeira
     // versão deste gate afirmava `Motor::default()` — ele QUERIA dizer *"a
@@ -172,6 +179,7 @@ fn the_spring_lets_go_of_a_wall() {
         G,
         UP,
         DT,
+        DRY,
     );
     assert_eq!(
         at_wall, in_the_air,
@@ -208,6 +216,7 @@ fn a_degenerate_normal_counts_as_flat() {
         G,
         UP,
         DT,
+        DRY,
     );
     assert!(
         m.motor.accel[1] > 0.0,
@@ -237,6 +246,7 @@ fn the_door_sums_both_laws() {
         G,
         UP,
         DT,
+        DRY,
     );
     let spring = ride_spring(&cfg.ride, Some(&ground), [0.0, 0.0], G, UP);
     let step = walk(
@@ -393,6 +403,7 @@ fn at_the_door_a_steep_slope_kills_the_walk_but_not_the_jump() {
         G,
         UP,
         DT,
+        DRY,
     );
     let idle = player_motor(
         &cfg,
@@ -406,6 +417,7 @@ fn at_the_door_a_steep_slope_kills_the_walk_but_not_the_jump() {
         G,
         UP,
         DT,
+        DRY,
     );
     assert_eq!(
         walking.motor, idle.motor,
@@ -438,6 +450,7 @@ fn at_the_door_a_steep_slope_kills_the_walk_but_not_the_jump() {
         G,
         UP,
         DT,
+        DRY,
     );
     assert!(
         jumping.motor.boost[1] > 0.0,

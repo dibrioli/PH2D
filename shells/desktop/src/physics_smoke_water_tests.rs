@@ -112,11 +112,16 @@ fn probe_smoke_100() {
     }
 }
 
-/// ⚠️ Troque para `1.0` e a ablação separa *"o pulo bombeia"* de *"o empuxo
-/// oscila"*.
+/// ⚠️ Ela era o discriminante do defeito da `W-Submerged` (*"o pulo bombeia"*
+/// contra *"o empuxo oscila"*) e hoje **os dois braços concordam**, porque a
+/// trava `JumpState::waterborne` cala a modelagem sozinha. Fica como o CONTROLE
+/// que prova isso: troque para `0.5` e o resultado não pode mudar.
 const NEUTRAL: f32 = 1.0;
 
-/// Sonda decisiva: um player LARGADO dentro da poça desta cena bóia?
+/// Sonda: um player LARGADO dentro da poça desta cena bóia?
+///
+/// ⚠️ **Ela tem de convergir agora** — era ela que media `−1,05 / +4,71 /
+/// +12,08 / −20,31`.
 #[test]
 #[ignore = "sonda de medição"]
 fn probe_dropped_in_the_pool() {

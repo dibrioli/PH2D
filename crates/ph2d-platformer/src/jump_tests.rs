@@ -1,6 +1,9 @@
 //! Os gates da lei do PULO — ver `jump.rs`.
 use super::*;
 
+/// Ar seco — todo gate deste arquivo mede o arco BALÍSTICO.
+const DRY: crate::Buoyed = crate::Buoyed::DRY;
+
 const UP: Vec2 = [0.0, 1.0];
 const G: Vec2 = [0.0, -9.81];
 /// O tique de 60 Hz, o mesmo do produto.
@@ -32,6 +35,7 @@ fn the_takeoff_speed_comes_from_the_authored_height() {
         G,
         UP,
         DT,
+        DRY,
     );
     let expected = (2.0 * 9.81 * 2.0_f32).sqrt();
     assert!(
@@ -65,6 +69,7 @@ fn jumping_while_already_rising_reaches_the_same_height() {
             G,
             UP,
             DT,
+            DRY,
         );
         let after = start + s.motor.boost[1];
         assert!(
@@ -92,6 +97,7 @@ fn holding_the_button_does_not_re_jump() {
         G,
         UP,
         DT,
+        DRY,
     );
     assert!(first.motor.boost[1] > 0.0);
     // O tick seguinte, ainda com a tecla presa e ainda vendo o chão.
@@ -106,6 +112,7 @@ fn holding_the_button_does_not_re_jump() {
         G,
         UP,
         DT,
+        DRY,
     );
     assert_eq!(second.motor.boost, [0.0, 0.0], "nada de segundo impulso");
 }
@@ -120,7 +127,7 @@ fn a_second_press_in_mid_air_does_nothing() {
         was_held: false,
         ..JumpState::default()
     };
-    let s = jump_step(&cfg, flying, None, 3.0, true, false, None, G, UP, DT);
+    let s = jump_step(&cfg, flying, None, 3.0, true, false, None, G, UP, DT, DRY);
     assert_eq!(s.motor.boost, [0.0, 0.0]);
 }
 
@@ -137,7 +144,7 @@ fn releasing_arms_the_cut_and_re_holding_does_not_undo_it() {
         was_held: true,
         ..JumpState::default()
     };
-    let released = jump_step(&cfg, flying, None, 4.0, false, false, None, G, UP, DT);
+    let released = jump_step(&cfg, flying, None, 4.0, false, false, None, G, UP, DT, DRY);
     assert!(released.state.cut, "soltar arma o corte");
     assert!(
         (released.motor.accel[1] - G[1] * (cfg.cut_gravity - 1.0)).abs() < 1.0e-4,
@@ -156,6 +163,7 @@ fn releasing_arms_the_cut_and_re_holding_does_not_undo_it() {
         G,
         UP,
         DT,
+        DRY,
     );
     assert!(re_held.state.cut, "segurar de novo NAO desfaz o corte");
 }
@@ -172,7 +180,7 @@ fn each_phase_gets_its_own_gravity() {
         ..JumpState::default()
     };
     let scale = |rel: f32, st: JumpState, held: bool| {
-        let s = jump_step(&cfg, st, None, rel, held, false, None, G, UP, DT);
+        let s = jump_step(&cfg, st, None, rel, held, false, None, G, UP, DT, DRY);
         s.motor.accel[1] / G[1] + 1.0
     };
     let rising = scale(5.0, flying, true);
@@ -220,7 +228,7 @@ fn neutral_multipliers_add_exactly_nothing() {
         ..JumpState::default()
     };
     for rel in [-9.0_f32, -1.0, 0.0, 1.0, 9.0] {
-        let s = jump_step(&cfg, flying, None, rel, false, false, None, G, UP, DT);
+        let s = jump_step(&cfg, flying, None, rel, false, false, None, G, UP, DT, DRY);
         assert_eq!(s.motor.accel, [0.0, 0.0], "a {rel} m/s");
     }
 }
@@ -250,12 +258,13 @@ fn landing_needs_both_halves() {
         G,
         UP,
         DT,
+        DRY,
     );
     assert!(rising.state.airborne, "ainda subindo, nao pousou");
     assert!(!rising.spring_armed, "e a perna segue CALADA");
 
     // Descendo SEM chão: também não.
-    let falling = jump_step(&cfg, flying, None, -5.0, false, false, None, G, UP, DT);
+    let falling = jump_step(&cfg, flying, None, -5.0, false, false, None, G, UP, DT, DRY);
     assert!(falling.state.airborne);
 
     // Descendo COM chão: pousou, e a perna volta.
@@ -270,6 +279,7 @@ fn landing_needs_both_halves() {
         G,
         UP,
         DT,
+        DRY,
     );
     assert!(!landed.state.airborne, "pousou");
     assert!(landed.spring_armed, "e a perna volta a agir");
@@ -310,12 +320,25 @@ fn landing_clears_the_cut_so_the_next_rise_is_not_punished() {
         G,
         UP,
         DT,
+        DRY,
     );
     assert!(!landed.state.airborne, "pousou");
     assert!(!landed.state.cut, "e o corte MORREU com o pouso");
 
     // Agora sai do chão SUBINDO sem pular (a plataforma o levou).
-    let rising = jump_step(&cfg, landed.state, None, 5.0, false, false, None, G, UP, DT);
+    let rising = jump_step(
+        &cfg,
+        landed.state,
+        None,
+        5.0,
+        false,
+        false,
+        None,
+        G,
+        UP,
+        DT,
+        DRY,
+    );
     let scale = rising.motor.accel[1] / G[1] + 1.0;
     assert!(
         (scale - cfg.takeoff_gravity).abs() < 1.0e-4,
@@ -339,6 +362,7 @@ fn walking_off_a_ledge_still_falls_faster() {
         G,
         UP,
         DT,
+        DRY,
     );
     assert!(!s.state.airborne, "ele nao pulou");
     assert!(
@@ -350,3 +374,111 @@ fn walking_off_a_ledge_still_falls_faster() {
 
 #[path = "jump_forgive_tests.rs"]
 mod forgive;
+
+// ═══ W-Submerged — A TRAVA DO FLUIDO ═════════════════════════════════════
+
+/// Um `Buoyed` que carrega o peso inteiro — o que uma cápsula boiando lê.
+const WET: crate::Buoyed = crate::Buoyed(1.0);
+
+/// **SEM fluido a lei é a de antes desta wave, AO BIT.**
+///
+/// ⚠️ É a metade que torna a trava uma adição honesta: uma cena sem poça nunca
+/// arma `waterborne`, então cada uma das quatro fases devolve exactamente o
+/// termo que devolvia. O gate varre as QUATRO em vez de amostrar uma, porque a
+/// trava é um fator único e um erro nela apareceria em todas.
+#[test]
+fn a_dry_scene_shapes_the_arc_exactly_as_it_always_did() {
+    let cfg = JumpConfig::STARTING_POINT;
+    let flying = JumpState {
+        airborne: true,
+        ..JumpState::default()
+    };
+    for (label, rel_up, scale) in [
+        ("subindo rapido", 8.0, cfg.takeoff_gravity),
+        ("no apice", 0.0, cfg.peak_gravity),
+        ("caindo", -8.0, cfg.fall_gravity),
+    ] {
+        let s = jump_step(
+            &cfg, flying, None, rel_up, true, false, None, G, UP, DT, DRY,
+        );
+        let want = G[1] * (scale - 1.0);
+        assert_eq!(
+            s.motor.accel[1], want,
+            "{label}: seco tem de dar {want} e deu {}",
+            s.motor.accel[1]
+        );
+        assert!(!s.state.waterborne, "{label}: seco nao arma a trava");
+    }
+}
+
+/// **O fluido CALA a modelagem, e o chão a re-arma.**
+///
+/// ⚠️ **As duas metades são a lei inteira**, e a segunda é a que a fração
+/// instantânea não tinha: o personagem que a água arremessou sobe SEM fluido
+/// nenhum a medir, e é exactamente ali que o `fall_gravity` injetava energia.
+/// A trava tem de sobreviver ao voo e morrer no pouso.
+#[test]
+fn the_fluid_silences_the_arc_and_the_ground_re_arms_it() {
+    let cfg = JumpConfig::STARTING_POINT;
+    let flying = JumpState {
+        airborne: true,
+        ..JumpState::default()
+    };
+
+    // Dentro d'água, caindo: a modelagem cala.
+    let wet = jump_step(&cfg, flying, None, -8.0, false, false, None, G, UP, DT, WET);
+    assert!(wet.state.waterborne, "o fluido tem de ARMAR a trava");
+    assert_eq!(
+        wet.motor.accel[1], 0.0,
+        "com o fluido a carregar, a modelagem nao acrescenta gravidade"
+    );
+
+    // Arremessado para FORA: nenhum fluido a medir, e a trava tem de segurar.
+    let airborne = jump_step(
+        &cfg, wet.state, None, -8.0, false, false, None, G, UP, DT, DRY,
+    );
+    assert!(
+        airborne.state.waterborne,
+        "a trava tem de SOBREVIVER ao voo -- e' no ar que a bomba injetava"
+    );
+    assert_eq!(airborne.motor.accel[1], 0.0);
+
+    // Pousa em algo sólido: re-arma.
+    let landed = jump_step(
+        &cfg,
+        airborne.state,
+        Some(&ground()),
+        -8.0,
+        false,
+        false,
+        None,
+        G,
+        UP,
+        DT,
+        DRY,
+    );
+    assert!(!landed.state.waterborne, "o CHAO tem de re-armar a trava");
+}
+
+/// **Um corpo que a água tomou sobe e desce com a MESMA gravidade** — e é isso,
+/// e só isso, que impede o ciclo de ganhar energia.
+///
+/// ⚠️ O oráculo é a SIMETRIA entre as duas fases, não um valor: `fall_gravity`
+/// pode ser o que o artista quiser, e o que a lei promete é que ela não
+/// distingue subida de descida enquanto a água estiver no comando. Sem isso, um
+/// arco que sobe com `g` e desce com `2g` volta com `√2` da velocidade.
+#[test]
+fn under_water_rising_and_falling_cost_the_same() {
+    let cfg = JumpConfig::STARTING_POINT;
+    let flying = JumpState {
+        airborne: true,
+        waterborne: true,
+        ..JumpState::default()
+    };
+    let up_leg = jump_step(&cfg, flying, None, 8.0, false, false, None, G, UP, DT, DRY);
+    let down_leg = jump_step(&cfg, flying, None, -8.0, false, false, None, G, UP, DT, DRY);
+    assert_eq!(
+        up_leg.motor.accel, down_leg.motor.accel,
+        "subir e descer tem de custar o mesmo, ou o ciclo bombeia"
+    );
+}

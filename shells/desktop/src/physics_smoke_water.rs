@@ -1,6 +1,6 @@
 //! **O PERSONAGEM E A ÁGUA** (`PH2D_PHYSICS_SMOKE=100`).
 //!
-//! Uma cena, TRÊS waves — e elas partilham a cena porque se tocam:
+//! Uma cena, QUATRO waves — e elas partilham a cena porque se tocam:
 //!
 //! - **`W-Water`** — ele não pode ficar **de pé sobre a poça**. Medido antes da
 //!   cura: assentava em `y = 0,9023`, a `float_height` exacta acima da
@@ -9,6 +9,8 @@
 //!   nela. Medido: `+96,90 mm` antes de descer.
 //! - **`W-Landing`** — o pouso não pode **escorregar**. Medido: `0,500 s` do
 //!   toque ao repouso, com o perfil de um decaimento e não de uma parada.
+//! - **`W-Submerged`** — a água não pode **alimentá-lo**. Medido: largado dentro
+//!   da poça ele oscilava `−1,05 / +4,71 / +12,08 / −20,31` e saía de quadro.
 //!
 //! ⚠️ **Separá-las em três cenas faria o artista julgar cada uma sem ver que a
 //! terceira PIORA a segunda:** a cura do pouso é uma perna mais rígida, e uma
@@ -49,13 +51,14 @@ const FLOAT: f32 = 0.9;
 
 /// **MEDIDO** (`probe_smoke_100`), e cada um é o número de uma wave.
 ///
-/// - `0` — onde o personagem assenta na água **hoje**. Uma cápsula idêntica sem
-///   `PlatformPlayer` (o CONTROLE) assenta em `WATERLINE`.
+/// - `0` — onde o personagem assenta na água depois de andar para dentro dela.
+///   Uma cápsula idêntica sem `PlatformPlayer` (o CONTROLE) assenta em
+///   `WATERLINE`, e os dois números **coincidem** desde a `W-Submerged`.
 /// - `1` — quanto a jangada sobe ao encontro dele no primeiro toque.
 /// - `2` — segundos do toque ao repouso, num pouso no cais.
-pub(crate) const MEASURED: [f32; 3] = [0.342, 0.0, 0.133];
+pub(crate) const MEASURED: [f32; 3] = [0.2285, 0.0, 0.133];
 /// A linha d'água de uma cápsula idêntica **sem** o player — o oráculo da cena.
-pub(crate) const WATERLINE: f32 = 0.227;
+pub(crate) const WATERLINE: f32 = 0.2265;
 
 const DOCK_RGBA: [f32; 4] = [0.55, 0.50, 0.44, 1.0];
 const RAFT_RGBA: [f32; 4] = [0.72, 0.74, 0.80, 1.0];
@@ -198,7 +201,7 @@ impl crate::App {
         }
 
         eprintln!(
-            "[physics-smoke 100] O PERSONAGEM E A AGUA -- tres reports numa cena so'.\n  \
+            "[physics-smoke 100] O PERSONAGEM E A AGUA -- quatro reports numa cena so'.\n  \
                Um cais solido a esquerda, uma poca a direita, uma jangada a boiar, e uma\n  \
                CAPSULA VERDE que e' o CONTROLE: mesma forma e mesma densidade do\n  \
                personagem, sem o componente de player. Ela boia em {line:.3}.\n\n  \
@@ -208,13 +211,15 @@ impl crate::App {
                   e a correnteza nao o movia um milimetro. O sensor de chao tratava um\n     \
                   SENSOR como pedra, e o mesmo raio serve o teto e a parede: ele tambem\n     \
                   batia a cabeca num volume de gatilho (0,17 m de desvio, medido).\n\n  \
-               (!) ABERTO, E E' O PROXIMO ITEM: submerso ele ainda NAO e' estavel. Os\n      \
-                   multiplicadores de gravidade do pulo (peak 0,5 / fall 2,0) sao uma\n      \
-                   BOMBA DE ENERGIA quando o empuxo e' quem o segura -- medido, largado\n      \
-                   dentro da poca ele oscila -1,05 / +4,71 / +12,08 / -20,31 e sai da\n      \
-                   cena; com os multiplicadores neutros ele converge para {line:.3}, a\n      \
-                   linha do controle. Entrando de CIMA ele assenta em {y0:.3} -- 11 cm\n      \
-                   acima do controle, pelo mesmo termo. Nao mergulhe fundo neste smoke.\n\n  \
+               1b. E A AGUA NAO O ALIMENTA (W-Submerged). Depois de cair, PULE dentro\n     \
+                   da poca varias vezes e olhe a capsula VERDE ao lado: os dois tem de\n     \
+                   assentar na MESMA linha ({y0:.3} contra {line:.3}, medido) e a\n     \
+                   oscilacao tem de DECAIR. O QUE ESTAVA QUEBRADO: ele bombeava --\n     \
+                   -1,05 / +4,71 / +12,08 / -20,31 -- e saia de quadro. A modelagem do\n     \
+                   arco de um pulo sobe com g e desce com 2g, o que devolve o corpo ao\n     \
+                   mesmo nivel com raiz-de-2 da velocidade; sobre chao isso e' absorvido,\n     \
+                   sobre AGUA acumula. Hoje ela CALA enquanto o fluido o tiver, e so\n     \
+                   re-arma quando ele pousa em algo solido.\n\n  \
                2. A JANGADA NAO SOBE AO SEU ENCONTRO (W-ClingPull). Reset, e pule (Espaco)\n     \
                   do cais para a jangada. No primeiro toque ela tem de ir para BAIXO.\n     \
                   O QUE ESTAVA QUEBRADO: ela SUBIA 96,90 mm ao encontro dele antes de\n     \

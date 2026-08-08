@@ -50,6 +50,19 @@ impl PhysicsBridge {
         ))
     }
 
+    /// **Quanto do peso deste corpo o fluido carrega**, em `[0, 1]` — a MESMA
+    /// pergunta que a ponte faz ao chamar a lei do player, pela mesma porta.
+    ///
+    /// ⚠️ Existe para que uma sonda possa medir a grandeza **sem a recalcular**:
+    /// um segundo recorte escrito no teste seria um oráculo que concorda consigo
+    /// mesmo e não com o produto. `0` para uma entidade sem corpo.
+    #[must_use]
+    pub fn buoyed(&self, entity: Entity) -> f32 {
+        self.bodies
+            .get(&entity)
+            .map_or(0.0, |b| self.world.buoyed(b.handle))
+    }
+
     /// Number of live rapier bodies (for tests / diagnostics).
     ///
     /// ⚠️ **Conta o mapa entidade→corpo da PONTE**, não a arena: um corpo sem

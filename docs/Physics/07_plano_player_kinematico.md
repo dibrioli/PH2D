@@ -233,22 +233,64 @@ pergunta *"onde está o sólido?"* nunca significou outra coisa.
 a mesma exclusão o personagem cinemático seria **bloqueado** por um volume de gatilho —
 o mesmo defeito, um grau pior.
 
-#### A SEGUNDA metade, e ela não é a mesma linha
+#### A SEGUNDA metade — `W-Submerged`, FECHADA, e o plano acertou metade
 
-Com a cura, o player bóia a **`0,3446`** contra os **`0,2174`** da cápsula idêntica —
-**12,7 cm mais alto**. A ablação nomeia a causa **exatamente**: com os multiplicadores
-de gravidade do pulo neutros (`takeoff`/`peak`/`fall`/`cut` = 1) ele bóia em
-**`0,2174`, `+0,0000` contra o controle**.
+Esta seção previa o defeito e **errou o tamanho dele**. Fica escrita como estava porque
+o que ela acertou é o que tornou a wave decidível, e o que ela errou é a lição.
 
-> O `peak_gravity` (default **0,5**) dispara numa janela de **velocidade vertical perto
-> de zero** — e é isso que boiar **é**. Um personagem a flutuar vive permanentemente no
-> **ápice de um pulo que ele nunca deu**, e leva um empurrão para cima de meia gravidade
-> para sempre.
+**O que o plano acertou.** Com a cura da `W-Water`, o player bóia a **`0,3446`** contra
+os **`0,2174`** da cápsula idêntica — 12,7 cm mais alto —, e a causa é mesmo o
+`peak_gravity`: boiar é viver na janela de velocidade quase-zero, ou seja **no ápice de
+um pulo que ele nunca deu**. A consulta nova mede isso diretamente: um player boiando lê
+`empuxo÷peso = 0,49`, que é **literalmente o valor do `peak_gravity`**.
 
-⚠️ **No AR isso nunca acontece** (a gravidade tira-o da janela em poucos tiques, e o
-*hang time* no ápice é a feature); na água a janela é o **regime permanente**. Por isso
-a cura não é apagar o perdão — é decidir *o que qualifica um ápice*, e essa decisão é
-de produto. **Fica NOMEADA aqui e medida; o que o Enio escolher é a metade B da wave.**
+**O que ele errou, e muda a natureza da wave.** Aquele desnível é cosmético; o defeito
+real é que o personagem **sai de quadro**. Medido: largado dentro da poça ele oscila
+`−1,05 / +4,71 / +12,08 / −20,31`. E a ablação nomeia um culpado que esta seção nem
+cita — **`fall_gravity`**:
+
+| ablação (largado de `y = 3`) | amplitude final |
+|---|---|
+| o que shipa | **14,55 m** (diverge) |
+| `fall = 1`, o resto shipa | **0,11 m** |
+| `peak = 1`, o resto shipa | 15,27 m (não ajuda) |
+| `takeoff = 1`, o resto shipa | 14,55 m (inerte) |
+
+> A modelagem do arco é **não-conservativa por construção**: subir com `g` e descer com
+> `2·g` devolve o corpo ao mesmo nível com **`√2` da velocidade** — o dobro da energia,
+> por ciclo. Num platformer isso é inofensivo porque todo arco termina absorvido pelo
+> CHÃO. Sobre uma superfície que **restaura**, a ficção acumula.
+
+⚠️ **E a cura óbvia — desvanecer a modelagem pela fração submersa — foi CONSTRUÍDA,
+MEDIDA e é insuficiente:** ela cura o repouso (amplitude `0,0046` contra `0,0050` do
+controle) e deixa o corpo largado de 1,5 m **divergindo a 11 m**, porque a energia é
+ganha **no AR**, entre dois mergulhos, onde não há fluido nenhum a medir.
+
+**Por isso não é decisão de produto, é uma LEI**, e ela não pergunta nada ao artista:
+
+> *A modelagem do arco vale entre dois contatos com o CHÃO. Um corpo que o fluido tomou
+> saiu desse arco, e só volta a ele quando pousa em algo sólido.*
+
+Implementada como a trava `JumpState::waterborne` (o fluido arma, o chão desarma) —
+`crates/ph2d-platformer/src/jump.rs`. **Resultado**, com a cápsula idêntica como
+controle em toda linha:
+
+| largado de | player y / amplitude | controle y / amplitude |
+|---|---|---|
+| 0,5 | 0,2279 / **0,0051** | 0,2280 / 0,0050 |
+| 1,5 | 0,2321 / **0,0393** | 0,2287 / 0,0214 |
+| 3,0 | 0,2514 / **0,1892** | 0,2362 / 0,0689 |
+| 6,0 | 0,2744 / **1,1288** | 0,2592 / 0,2773 |
+| −2,0 (dentro) | 0,2078 / **0,2772** | 0,2077 / 0,2770 |
+
+⚠️ **A linha que prova que a cura é a certa é a última:** com a MESMA condição inicial
+(os dois já submersos) player e cápsula são indistinguíveis à quarta decimal. O resíduo
+das quedas altas é o `fall_gravity` a fazer o mergulho ser mais rápido — que é o que o
+artista autorou, e decai.
+
+⚠️ **Consequência NOMEADA:** raspar a água ao atravessar uma poça de um salto deixa o
+resto daquela queda com a gravidade do MUNDO. É o preço de não ter um limiar mágico
+entre *"encostei"* e *"estou dentro"*, e ele erra para o lado da física honesta.
 
 **Gates, red-first:**
 

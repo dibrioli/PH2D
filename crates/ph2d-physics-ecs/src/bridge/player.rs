@@ -32,10 +32,10 @@
 use bevy_ecs::entity::Entity;
 use ph2d_ecs::SimWorld;
 use ph2d_platformer::{
-    CORNER_LOOKAHEAD, CORNER_SAMPLES, CeilingProbe, GroundSample, HEADROOM_SAMPLES, Headroom,
-    PlayerConfig, PlayerInput, PlayerState, WALL_SAMPLES, WallHit, WallProbe, corner_offsets,
-    corner_probe_wanted, footing, headroom_offsets, headroom_probe_wanted, player_motor,
-    relative_rise, wall_offsets, wall_probe_wanted,
+    Buoyed, CORNER_LOOKAHEAD, CORNER_SAMPLES, CeilingProbe, GroundSample, HEADROOM_SAMPLES,
+    Headroom, PlayerConfig, PlayerInput, PlayerState, WALL_SAMPLES, WallHit, WallProbe,
+    corner_offsets, corner_probe_wanted, footing, headroom_offsets, headroom_probe_wanted,
+    player_motor, relative_rise, wall_offsets, wall_probe_wanted,
 };
 
 use crate::components::{BodyKind, PlatformPlayer};
@@ -387,6 +387,15 @@ impl PhysicsBridge {
                 None
             };
 
+            // ── O FLUIDO (W-Submerged) ───────────────────────────────────────
+            // ⚠️ **Não há `*_wanted` aqui, e a assimetria é deliberada:** os três
+            // sensores acima lançam RAIOS, e a pergunta *"vale a pena castar?"*
+            // existe para os manter fora do caminho quando a lei não pode agir.
+            // Esta é uma consulta de LEITURA que sai por um early-out no primeiro
+            // `if` de uma cena sem zona de empuxo — e um `wanted` para ela seria
+            // uma segunda pergunta sobre a MESMA condição que a porta já faz.
+            let buoyed = Buoyed(self.world.buoyed(b.handle));
+
             let step = player_motor(
                 &cfg,
                 sample.as_ref(),
@@ -399,6 +408,7 @@ impl PhysicsBridge {
                 gravity,
                 UP,
                 dt,
+                buoyed,
             );
             states.push((entity, step.state));
             // ⚠️ **A plataforma é a que o SENSOR viu, e é a mesma consulta que a

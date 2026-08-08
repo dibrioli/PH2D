@@ -91,6 +91,65 @@ pub fn perp_cw(v: Vec2) -> Vec2 {
     [v[1], -v[0]]
 }
 
+/// **QUANTO DO PESO o fluido está a carregar**, em `[0, 1]` — o sentido que diz
+/// à lei que ela **não está num arco balístico**.
+///
+/// # ⚠️ Por que a lei precisa disto, e por que não é "quanto estou submerso"
+///
+/// A modelagem do arco de um pulo — leve no ápice, pesada na queda — descreve um
+/// corpo em **voo livre**, onde a gravidade é a única força e o arco é o produto
+/// dela. Quando é o **empuxo** quem o segura, os mesmos multiplicadores viram
+/// **amplificação paramétrica**: pesado ao descer injeta mais energia do que
+/// leve ao subir devolve, ciclo após ciclo (medido no produto: largado numa poça
+/// ele oscila `−1,05 / +4,71 / +12,08 / −20,31` e sai da cena).
+///
+/// ⚠️ **A grandeza é a razão empuxo÷peso, e a diferença foi MEDIDA:** à tona, a
+/// cápsula de controle desta linha submerge **26%** da área — uma lei que
+/// desvanecesse por *"quanto está molhado"* deixaria **74% da bomba ligada
+/// exactamente onde o personagem passa a vida**. A razão vale `1` ali por
+/// construção, porque *boiar em repouso* **é** o empuxo igualar o peso.
+///
+/// # ⚠️ A LEI é uma trava, e ela mora no [`crate::JumpState`]
+///
+/// A lei não desvanece com a fração — ela **cala** enquanto o fluido tiver o
+/// corpo, e só re-arma num contato com o CHÃO. O porquê (a energia é ganha no
+/// AR, entre dois mergulhos, onde não há fluido nenhum a medir) está escrito em
+/// [`crate::JumpState::waterborne`], com os números da ablação.
+///
+/// ⚠️ **O valor CONTÍNUO fica mesmo assim**, e não é enfeite: ele é o que a
+/// sonda imprime para verificar a teoria (à tona a razão vale `1,0000` porque
+/// *boiar em repouso* **é** o empuxo igualar o peso, e foi essa leitura que
+/// provou que o personagem passou a assentar na linha do controle). Um `bool`
+/// vindo da ponte teria escondido isso.
+///
+/// ⚠️ **E a MAGNITUDE não é load-bearing na lei — só o sinal é.** Está medido:
+/// uma mutação que troca o denominador (a razão deixa de ser peso e vira outra
+/// coisa) sangra **dois gates da CONSULTA e nenhum do produto**, porque a trava
+/// pergunta `> 0`. Escrito aqui para ninguém a ler como um número que a lei
+/// pesa; quem o pesa é quem lê a sonda, e a wave que trouxer natação.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct Buoyed(pub f32);
+
+impl Buoyed {
+    /// Ar seco — o neutro, e o que uma cena sem poça produz.
+    pub const DRY: Self = Self(0.0);
+
+    /// **O fluido carrega ALGUMA parte deste peso?** — a única pergunta que a
+    /// lei faz a este sentido.
+    ///
+    /// ⚠️ **O predicado mora AQUI, e não na ponte**, porque é a lei que depende
+    /// dele: uma ponte que publicasse um `bool` teria decidido o limiar longe do
+    /// único código que sabe o que ele significa.
+    ///
+    /// ⚠️ **`NaN` conta como SECO**, e é a escolha segura: uma zona degenerada
+    /// não pode calar a modelagem que o artista autorou (`NaN > 0.0` é falso, e
+    /// esta linha existe para dizer que isso é intencional, não descuido).
+    #[must_use]
+    pub fn carries_weight(self) -> bool {
+        self.0 > 0.0
+    }
+}
+
 /// **O que o sensor de chão viu.** `None` no chamador significa *"nada ao
 /// alcance"*, e a lei lê isso como estar no ar.
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -361,8 +420,15 @@ pub fn relative_rise(footing: Option<&GroundSample>, body_velocity: Vec2, up: Ve
 /// personagem e a caminhada a considerá-lo no ar — o estado impossível que
 /// nenhum gate de lei isolada consegue ver.
 ///
-/// ⚠️ **Nove argumentos, e o `allow` é deliberado** — o precedente é o
-/// `body_desc` desta mesma linha.
+/// ⚠️ **O `allow` de argumentos é deliberado** — o precedente é o `body_desc`
+/// desta mesma linha.
+///
+/// ⚠️ **E a nota abaixo, escrita na W10, tem agora um QUINTO sentido a nomear**
+/// ([`Buoyed`]): *o pacote certo, no dia em que valer a pena, é os SENTIDOS*, e
+/// eles são cinco. Isto é uma OBSERVAÇÃO de custo, não uma promessa de wave — a
+/// nota que a antecedeu prometeu empacotar *"quando a lista crescer de novo"* e
+/// a W10 teve de a corrigir em vez de a cumprir. O dia barato é aquele em que
+/// alguma wave já reescreva estes sítios de chamada por outro motivo.
 ///
 /// ⚠️ **A nota antiga prometia empacotar o quadro físico "quando a lista crescer
 /// de novo", e a W10 a corrigiu em vez de a cumprir:** o argumento que entrou
@@ -385,6 +451,7 @@ pub fn player_motor(
     gravity: Vec2,
     up: Vec2,
     dt: f32,
+    buoyed: Buoyed,
 ) -> PlayerStep {
     let verdict = footing_verdict(cfg, sample, up);
     let footing = verdict.ground();
@@ -426,6 +493,7 @@ pub fn player_motor(
         gravity,
         up,
         dt,
+        buoyed,
     );
 
     // ── O ARRANQUE (W14) ─────────────────────────────────────────────────────

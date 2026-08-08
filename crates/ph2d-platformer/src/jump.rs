@@ -257,6 +257,36 @@ pub struct JumpState {
     /// por um motivo que aconteceu no ar. É a mesma razão pela qual o coyote
     /// enche no chão em vez de acumular.
     pub wall_lock: f32,
+
+    /// **O FLUIDO me tomou, e ainda não pousei em nada sólido** — o interruptor
+    /// que cala a modelagem do arco (`W-Submerged`).
+    ///
+    /// # ⚠️ Por que é uma TRAVA e não a fração instantânea
+    ///
+    /// A modelagem do arco é **não-conservativa por construção**: subir com `g`
+    /// e descer com `2·g` devolve o corpo ao mesmo nível com **`√2` da
+    /// velocidade** — o dobro da energia, por ciclo. Num platformer isso é
+    /// inofensivo porque todo arco termina absorvido pelo CHÃO; sobre uma
+    /// superfície que RESTAURA (uma poça, e um trampolim no dia em que houver
+    /// um) a ficção passa a acumular, e o personagem sai de quadro.
+    ///
+    /// ⚠️ **E a metade que uma fração instantânea NÃO alcança é o AR:** medido,
+    /// desvanecer só enquanto submerso cura o repouso (amplitude 0,0046 contra
+    /// 0,0050 do controle) e deixa o corpo largado de 1,5 m divergindo a **11 m**
+    /// — porque a energia é ganha entre dois mergulhos, onde não há fluido
+    /// nenhum a medir. A ablação nomeia o culpado sem ambiguidade: com
+    /// `fall_gravity = 1` a amplitude cai de **14,55 para 0,11** e `peak`/
+    /// `takeoff` não movem um centímetro.
+    ///
+    /// **A lei, numa frase:** *a modelagem do arco vale entre dois contatos com
+    /// o CHÃO; um corpo que o fluido tomou saiu desse arco e só volta a ele
+    /// quando pousa em algo sólido.*
+    ///
+    /// ⚠️ **Consequência nomeada:** raspar a água ao atravessar uma poça de um
+    /// salto deixa o resto daquela queda com a gravidade do MUNDO — mais leve do
+    /// que o autorado. É o preço de não ter um limiar mágico entre *"encostei"*
+    /// e *"estou dentro"*, e ele erra para o lado da física honesta.
+    pub waterborne: bool,
 }
 
 impl JumpState {
@@ -336,6 +366,7 @@ pub fn jump_step(
     gravity: Vec2,
     up: Vec2,
     dt: f32,
+    buoyed: crate::Buoyed,
 ) -> JumpStep {
     let pressed = held && !state.was_held;
     let mut next = JumpState {
@@ -352,6 +383,18 @@ pub fn jump_step(
     // ⚠️ E os dois escorrem por `dt` de RELÓGIO, nunca por contagem de tiques:
     // uma tolerância medida em quadros muda de tamanho quando o `fixed_dt` muda,
     // e "0,1 s" é uma frase sobre o dedo do jogador, não sobre a taxa da sim.
+    // ── A TRAVA DO FLUIDO (W-Submerged) ──────────────────────────────────────
+    // ⚠️ **A ordem é a lei:** o chão desarma, o fluido arma. Quem está de pé num
+    // fundo submerso — vadeando — está GROUNDED e molhado no mesmo tique, e ali
+    // a modelagem já é inerte pelo early-out de baixo; o que a ordem decide é o
+    // tique em que ele PULA de dentro d'água, e ali o arco é mesmo da água.
+    if footing.is_some() {
+        next.waterborne = false;
+    }
+    if buoyed.carries_weight() {
+        next.waterborne = true;
+    }
+
     let grounded = state.on_ground(footing);
     if grounded {
         // No chão o coyote está CHEIO — ele é o que sobra depois de sair, não um
@@ -562,7 +605,12 @@ pub fn jump_step(
 
     // ⚠️ `(escala − 1)·g`, então `1.0` é EXATAMENTE zero — a queda do mundo,
     // byte a byte.
-    let extra = scale - 1.0;
+    //
+    // ⚠️ **E a modelagem CALA enquanto o fluido o tiver** (ver
+    // [`JumpState::waterborne`]): ela descreve um arco entre dois contatos com o
+    // chão, e um corpo que a água tomou não está num. Uma cena sem poça nunca
+    // arma a trava, então o termo é byte-idêntico ao que shipava.
+    let extra = if next.waterborne { 0.0 } else { scale - 1.0 };
     JumpStep {
         motor: Motor {
             accel: [gravity[0] * extra, gravity[1] * extra],

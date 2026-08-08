@@ -12,6 +12,9 @@
 //! disse que não, e ele tem razão.)
 use super::*;
 
+/// Ar seco — todo gate deste arquivo mede o arco BALÍSTICO.
+const DRY: Buoyed = Buoyed::DRY;
+
 // ── O ARRANQUE, na PORTA ÚNICA (W14) ─────────────────────────────────────────
 
 /// Uma config com o arranque LIGADO — a capacidade nasce desligada.
@@ -63,6 +66,7 @@ fn while_dashing_the_leg_the_walk_and_gravity_are_all_silent() {
         G,
         UP,
         DT,
+        DRY,
     );
     let want = dash_burst(&cfg.dash, 1.0, [0.0, 0.0], vel, UP, G);
     assert!(
@@ -111,6 +115,7 @@ fn a_jump_out_of_a_dash_is_a_jump() {
         G,
         UP,
         DT,
+        DRY,
     );
     assert!(
         started.state.dash.left > 0.0,
@@ -133,6 +138,7 @@ fn a_jump_out_of_a_dash_is_a_jump() {
         G,
         UP,
         DT,
+        DRY,
     );
     assert!(
         jumped.motor.boost[1] > 0.0,
@@ -173,6 +179,7 @@ fn a_dash_button_with_the_capability_off_changes_nothing() {
         G,
         UP,
         DT,
+        DRY,
     );
     let pressed = player_motor(
         &cfg,
@@ -190,6 +197,7 @@ fn a_dash_button_with_the_capability_off_changes_nothing() {
         G,
         UP,
         DT,
+        DRY,
     );
     assert_eq!(
         quiet.motor, pressed.motor,
@@ -233,6 +241,7 @@ fn a_wall_jump_out_of_a_dash_also_ends_it() {
         G,
         UP,
         DT,
+        DRY,
     );
     assert!(
         started.state.dash.left > 0.0,
@@ -276,6 +285,7 @@ fn a_wall_jump_out_of_a_dash_also_ends_it() {
         G,
         UP,
         DT,
+        DRY,
     );
     assert!(
         jumped.motor.boost[1] > 0.0,

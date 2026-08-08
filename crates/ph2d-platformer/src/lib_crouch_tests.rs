@@ -9,6 +9,9 @@
 //! fixtures do pai (`at`, `UP`, `G`, `DT`) além dos tipos da lei.
 use super::*;
 
+/// Ar seco — todo gate deste arquivo mede o arco BALÍSTICO.
+const DRY: Buoyed = Buoyed::DRY;
+
 /// Uma config com o agachar LIGADO — a capacidade nasce desligada.
 fn crouching_cfg() -> PlayerConfig {
     PlayerConfig {
@@ -81,6 +84,7 @@ fn a_crouched_leg_pulls_him_down_to_the_lower_rest() {
         G,
         UP,
         DT,
+        DRY,
     );
     let down = player_motor(
         &cfg,
@@ -94,6 +98,7 @@ fn a_crouched_leg_pulls_him_down_to_the_lower_rest() {
         G,
         UP,
         DT,
+        DRY,
     );
     assert!(down.state.crouch.crouched, "o botao tem de agachar");
     assert!(
@@ -129,6 +134,7 @@ fn a_crouched_walk_targets_the_crouch_speed() {
         G,
         UP,
         DT,
+        DRY,
     );
     let low = player_motor(
         &cfg,
@@ -142,6 +148,7 @@ fn a_crouched_walk_targets_the_crouch_speed() {
         G,
         UP,
         DT,
+        DRY,
     );
     let up_push = up.motor.accel[0] + up.motor.boost[0] / DT;
     let low_push = low.motor.accel[0] + low.motor.boost[0] / DT;
@@ -183,6 +190,7 @@ fn a_down_button_with_the_capability_off_changes_nothing() {
         G,
         UP,
         DT,
+        DRY,
     );
     let held = player_motor(
         &cfg,
@@ -196,6 +204,7 @@ fn a_down_button_with_the_capability_off_changes_nothing() {
         G,
         UP,
         DT,
+        DRY,
     );
     assert_eq!(quiet.motor, held.motor, "o botao nao pode mover um bit");
     assert!(!held.state.crouch.crouched);
@@ -219,6 +228,7 @@ fn a_ceiling_keeps_him_crouched_through_the_one_door() {
         G,
         UP,
         DT,
+        DRY,
     );
     assert!(down.state.crouch.crouched);
 
@@ -240,6 +250,7 @@ fn a_ceiling_keeps_him_crouched_through_the_one_door() {
         G,
         UP,
         DT,
+        DRY,
     );
     assert!(
         stuck.state.crouch.crouched,
@@ -261,6 +272,7 @@ fn a_ceiling_keeps_him_crouched_through_the_one_door() {
         G,
         UP,
         DT,
+        DRY,
     );
     assert!(!free.state.crouch.crouched, "com espaco ele levanta-se");
 }

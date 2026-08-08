@@ -161,6 +161,68 @@ A cena é a mesma do W7 e o roteiro dela cresceu — **os passos 13-17 são esta
 
 ---
 
+## §7b — A 2ª rodada de smoke (Enio, 2026-08-07)
+
+Veredito: *"Funciona como é dito"* — mais **um bug** e **uma feature**.
+
+### O BUG — a preview era inalcançável sob o próprio caso de uso
+
+*"Permite que o filho seja selecionado … com a forma longe da posição inicial, tanto o pai como
+o filho."*
+
+⚠️ **A causa estava escrita no repo, e eu escolhi a guarda errada citando-a num doc-comment meu.**
+O `over_canvas_or_gizmo` diz literalmente que o `on_canvas` *"exige o `hit_index` VAZIO, mas o
+gizmo registra as alças (e o interior de translação) NELE"*. Entrar na preview **exige o
+hospedeiro selecionado** ⇒ o gizmo está sempre lá ⇒ a guarda modal **nunca disparava na
+configuração em que a feature roda**.
+
+E o *"com a forma longe fica pior"* é o mesmo mecanismo a mostrar-se: fora da caixa do gizmo o
+`hit_index` volta a estar vazio e a guarda acorda — o **mesmo gesto** funcionava ou não conforme
+**onde a forma estava**.
+
+**Duas metades, e elas respondem a perguntas diferentes** (*de quem é o CLIQUE?* × *o que se VÊ na
+apresentação?*): a guarda passa a `over_canvas_or_gizmo`, e o gizmo **não é publicado** durante a
+preview (a caixa é derivada da pose AUTORADA, então fica para trás enquanto a máquina move a
+forma — a razão pela qual o ADR-0128 recusou cinco vezes um gizmo sobre geometria que se move).
+
+⚠️ **E o meu arch-gate era o buraco:** as três asserções dele provavam que a guarda existe,
+CONSOME e PRECEDE as ferramentas, e nenhuma perguntava ***ela chega a correr?*** — verdes sobre
+uma guarda estruturalmente inalcançável. Ele pina o **predicado** agora.
+
+### A FEATURE — "Move All States"
+
+*"Um botão que quando checado permita mover o widget … de modo que todas as posições dos
+componentes em todos os estados sejam movidas relativamente."*
+
+⚠️ **O defeito por trás do pedido, medido:** um estado grava a sub-árvore, e o hospedeiro está
+nela **sempre que ele próprio é uma forma desenhada** ⇒ a translação dele fica congelada em cada
+estado, e relocar o widget faz o Show seguinte devolvê-lo ao lugar antigo. ⚠️ **Um hospedeiro que
+seja um GRUPO puro nunca teve o problema** (o `members` não o inclui), e há gate a medir isso —
+é ele que separa *"a feature é necessária"* de *"a arquitetura está errada"*.
+
+**Só o HOSPEDEIRO se desloca**, e é isso que torna a operação correta: as poses dos filhos são
+locais a ele, então mover o `Transform` do pai já as leva junto; deslocá-las também moveria tudo
+**duas vezes**.
+
+⚠️ **A guarda anti-realimentação tem DUAS metades e nenhuma basta sozinha** — a condição
+`!ui_state_live` **e** o ancoradouro re-escrito em TODO quadro. Sem a segunda, um Show acumula
+dívida e o primeiro quadro que aplicar a despeja de uma vez. ⚠️ **O gate dela sobreviveu à
+mutação na 1ª rodada:** `anchor > apply` não distingue *depois* de *dentro do ramo* — a mesma
+distinção que o arch-gate do memo do Painter pagou em 2026-07-22.
+
+**Opt-in de propósito:** desmarcado, mover re-autora só a pose atual, que é o que se quer quando
+a intenção é corrigir UM estado.
+
+**Smoke:** os passos **18-20** — o 18 **MOSTRA o defeito** antes de o 19 o curar, e o 20 é o
+controle com a caixa desmarcada.
+
+**Inventário desta rodada:** id novo `VECTOR_STATE_MOVE_ALL` (hash de string) · 1 chave i18n ·
+`PROJECT_SCHEMA` **INTOCADO** (o toggle é transiente — ele qualifica o próximo ARRASTO, não o
+documento; a classe do `BakeChannels` da física) · **zero `Cargo.toml`** · **nenhum ADR**.
+**Total da wave: 16 mutações, 16 sangram.**
+
+---
+
 ## §8 — Aberto, nomeado
 
 - **Um grupo inteiro como hospedeiro** funciona (a sub-árvore é a unidade), mas **um

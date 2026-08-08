@@ -1,21 +1,50 @@
-//! The single **inverse-warp kernel** — `out[dst] = bilinear(stroke_src, dst − Σ D(dst))`, backward-gather
+//! The single **inverse-warp kernel** — `out[dst] = bilinear(stroke_src, dst − D(dst))`, backward-gather
 //! so there are never holes. Shared by every Reshape sub-mode (only the [`DabField`] differs).
 //!
 //! **Anti-blur (per-stroke single resample).** Each dab does NOT re-gather the already-warped canvas
-//! (which compounds bilinear softening into a smear). Instead it ACCUMULATES its displacement into a
-//! per-stroke map (`deform.stroke_disp`) and re-renders the dab bbox from the frozen stroke-start pixels
-//! (`deform.stroke_src`) using the TOTAL displacement — so the whole stroke costs exactly one resample per
-//! texel and stays sharp. Cross-stroke, each stroke resamples the previous stroke's result once.
+//! (which compounds bilinear softening into a smear). It advances the session's backward MAP and
+//! re-renders the dab bbox from the frozen session pixels using the TOTAL displacement — so the whole
+//! stroke costs exactly one resample per texel and stays sharp.
+//!
+//! ## Como a lista de dabs é dobrada — e por que a SOMA morreu ([ADR-0156])
+//!
+//! Este arquivo somava: `disp[i] += v_i`. ⚠️ **Somar é composição EXATA para translação e para mais
+//! nada** — e é por isso que só o **Push** parecia bom. Somar as cordas `R(θ)v − v` de um Twist `N` vezes
+//! dá `N·corda`, uma reta tangente sem teto; compor dá `R(Nθ)`, limitado. Medido na fixture dos gates
+//! (Twist parado, pincel r=100, sonda a r=30, onde uma rotação não pode passar de **2r = 60 px**): a soma
+//! deslocava **69,34 px com 20 dabs** e **693,36 px com 200**, enquanto a composição nunca passa de 60 e
+//! *oscila* dentro do intervalo — a assinatura de uma rotação. A linha preta de 3 px sobrevivia a **28,1%**
+//! sob a soma e a **103,9%** sob a composição (passa de 100 porque girar uma horizontal a deixa diagonal,
+//! que cobre mais texels: tinta espalhada, não criada).
+//!
+//! A lei é a mesma que `ph2d_painter_brush::smear_field` já carrega, e o doc-comment dele diz em tantas
+//! palavras que a acumulação óbvia *"é ERRADA, e errada de um jeito que vale registrar porque ela PARECE
+//! certa"*. Um traço é um **REVEZAMENTO**: o dab `k` entrega ao `k+1`, então
+//!
+//! ```text
+//! D_k(p) = v_k(p) + D_{k−1}(p − v_k(p))
+//! ```
+//!
+//! ⚠️ **Ela é INCREMENTAL, e isso não é sorte — é a razão de o cook caber num dab:** fora do disco do dab
+//! `k` vale `v_k(p) = 0`, logo `D_k(p) = D_{k−1}(p)`. Um dab novo só toca a PRÓPRIA pegada, exatamente
+//! como a soma tocava, então a travessia não custa uma ordem de grandeza — ela custa uma janela.
+//!
+//! ⚠️ E com `v = 0` em toda parte a leitura cai em coordenada INTEIRA, onde a bilinear devolve o texel
+//! exato ⇒ `disp` não se move: o campo identidade continua **byte-idêntico**.
+//!
+//! [ADR-0156]: ../../../../../../docs/architecture/decisions/0156-liquify-is-an-authored-dab-list-cooked-on-the-device-never-a-stored-dense-field.md
 
 use super::field::DabField;
 use crate::tool::PainterTool;
+use ph2d_painter_brush::MapWindow;
 use std::sync::Arc;
 
 impl PainterTool {
-    /// Apply one Reshape dab of the given field at `center` (image px) with pixel `radius`. Accumulates the
-    /// field into the per-stroke displacement map, then re-renders the dab bbox from `stroke_src`. No-op
-    /// outside a sized canvas or before the stroke buffers exist. With `D = 0` everywhere the render
-    /// resolves each `dst` to itself → **byte-identical**.
+    /// Apply one Reshape dab of the given field at `center` (image px) with pixel `radius`. **COMPÕE** o
+    /// campo no mapa de deslocamento da sessão (`D_k = v_k + D_{k−1}(p − v_k)`, a lei do módulo) e
+    /// re-renderiza a bbox do dab a partir do `pre` congelado. No-op fora de um canvas dimensionado ou
+    /// antes de os buffers da sessão existirem. Com `D = 0` em toda parte o render resolve cada `dst` para
+    /// si mesmo → **byte-idêntico**.
     pub(super) fn warp_apply_dab(&mut self, field: &DabField, center: [f32; 2], radius: f32) {
         let Some(bbox) = self.dab_bbox(center, radius) else {
             return;
@@ -33,6 +62,18 @@ impl PainterTool {
         // coverage (0 outside → no movement). Collected into a bbox-local buffer so the mutable
         // accumulate/render passes don't fight the `selection_coverage_at` borrow.
         let mut adds: Vec<[f32; 2]> = Vec::with_capacity((bbox.w * bbox.h) as usize);
+        // O quanto ESTE dab consegue retro-traçar — a margem que a janela do mapa antigo precisa. Sai da
+        // MEDIÇÃO do campo em vez de um teto por modo: a passada 1 já avalia todo texel, então um limite
+        // analítico seria uma segunda resposta, e é o tipo de número que envelhece quando um modo novo
+        // entra.
+        //
+        // ⚠️ **Defesa em camada, e ela NÃO é observável hoje** (medido: a mutação `reach → 0` sobrevive aos
+        // gates, inclusive ao de um Push de 25 px). O motivo é geométrico: todo modo multiplica por `f`,
+        // que é 1 no centro e **0 na borda**, então `|v|` é grande só onde o dab está fundo dentro do
+        // próprio bbox — o retro-traço aponta para DENTRO e o `+2` fixo da bilinear basta. Fica porque a
+        // alternativa é depender de uma invariante não dita: um modo cujo `v` não desapareça na borda a
+        // torna necessária no mesmo dia. Custa um `max` num laço que já avalia o campo.
+        let mut reach = 0.0_f32;
         for ry in 0..bbox.h {
             let dy = bbox.y + ry;
             for rx in 0..bbox.w {
@@ -43,15 +84,28 @@ impl PainterTool {
                     d[0] *= allow;
                     d[1] *= allow;
                 }
+                reach = reach.max(d[0].abs()).max(d[1].abs());
                 adds.push(d);
             }
         }
 
-        // Pass 2 (mutable): fold the contributions into the SESSION displacement map, then render the bbox
-        // from the pristine `pre` using the TOTAL displacement (one resample per texel → sharp, no compound
-        // blur, and cross-stroke it still samples the pristine source).
+        // Pass 2 (mutable): COMPOR a contribuição deste dab no mapa da sessão, e re-renderizar a bbox a
+        // partir do `pre` pristino com o deslocamento TOTAL (uma reamostragem por texel → nítido, sem blur
+        // composto, e entre traços ainda amostra a fonte pristina).
         let src = Arc::clone(&self.paint.warp.pre);
         let disp = Arc::make_mut(&mut self.paint.warp.disp);
+        // ⚠️ A janela é o mapa ANTIGO congelado: a atualização lê `disp_old(p − v)` de vizinhos de `p`, e
+        // ler-e-escrever o mesmo buffer no lugar deixaria um texel já atualizado poluir um que ainda não
+        // foi — a dependência sequencial que esta lei existe para remover.
+        let mut win_buf: Vec<[f32; 2]> = Vec::new();
+        let win = MapWindow::snapshot(
+            &mut win_buf,
+            disp,
+            w,
+            h,
+            (bbox.x, bbox.y, bbox.w, bbox.h),
+            reach,
+        );
         let buf = super::super::plane_fork::fork_canvas(
             &mut self.canvas_rgba,
             &self.undo.write_state,
@@ -63,10 +117,10 @@ impl PainterTool {
             for rx in 0..bbox.w {
                 let dx = bbox.x + rx;
                 let gi = (dy * w + dx) as usize;
-                let a = adds[(ry * bbox.w + rx) as usize];
-                let d = &mut disp[gi];
-                d[0] += a[0];
-                d[1] += a[1];
+                let v = adds[(ry * bbox.w + rx) as usize];
+                let back = win.sample(dx as f32 - v[0], dy as f32 - v[1]);
+                let d = [v[0] + back[0], v[1] + back[1]];
+                disp[gi] = d;
                 let px = bilinear_clamped(&src, w, h, dx as f32 - d[0], dy as f32 - d[1]);
                 let b = gi * 4;
                 buf[b..b + 4].copy_from_slice(&px);

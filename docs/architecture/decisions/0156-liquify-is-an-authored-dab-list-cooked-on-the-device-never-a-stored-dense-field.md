@@ -31,9 +31,9 @@ A decisão não pode esperar por três coisas que chegaram juntas:
 
    ⚠️ Uma **rotação** em torno de um centro não pode deslocar um ponto de raio `r` mais que **`2r`** — o diâmetro do círculo dele, atingido a 180°. A r=30 o teto é **60 px**; a 3,47 px por dab a soma o cruza em **~18 dabs** e segue crescendo **linearmente, sem limite** (693 px em 200). O mapa deixou de ser uma rotação e virou um **cisalhamento tangencial divergente**: cada destino busca a fonte longe demais, a linha é esticada até virar fio translúcido (os arcos finos da foto do Enio) e depois some no branco.
 
-   **A causa é uma linha:** `warp/apply.rs` acumula `d[0] += a[0]; d[1] += a[1]` — uma **soma de cordas eulerianas**. Somar a corda `R(θ)v − v` N vezes dá `N·(corda)`, uma reta tangente; compor dá `R(Nθ)`, limitado. **Somar é composição exata para TRANSLAÇÃO e para mais nada** — e é exatamente por isso que só o **Push** parecia bom.
+   **A causa era uma linha:** `warp/apply.rs` acumulava `d[0] += a[0]; d[1] += a[1]` — uma **soma de cordas eulerianas**. Somar a corda `R(θ)v − v` N vezes dá `N·(corda)`, uma reta tangente; compor dá `R(Nθ)`, limitado. **Somar é composição exata para TRANSLAÇÃO e para mais nada** — e é exatamente por isso que só o **Push** parecia bom.
 
-   ⚠️ **E a resposta certa já está neste repo, num arquivo irmão.** `ph2d-painter-brush::smear_field` compõe (`disp_new(p) = v(p) + disp_old(p − v(p))`, semi-lagrangiano) e o doc-comment dele diz textualmente: *"a acumulação óbvia, `disp[i] += step·w(i)`, é ERRADA, e errada de um jeito que vale registrar porque ela PARECE certa"*. O Deform faz hoje o que o irmão documenta como errado.
+   ⚠️ **E a resposta certa já está neste repo, num arquivo irmão.** `ph2d-painter-brush::smear_field` compõe (`disp_new(p) = v(p) + disp_old(p − v(p))`, semi-lagrangiano) e o doc-comment dele diz textualmente: *"a acumulação óbvia, `disp[i] += step·w(i)`, é ERRADA, e errada de um jeito que vale registrar porque ela PARECE certa"*. O Deform fazia o que o irmão documenta como errado — **a travessia landou em 2026-08-08** e as duas frases ficam aqui porque o CONTEXTO é o que obrigou a decidir; o estado de hoje está no §preço.
 
 3. **Tudo nesta engine é animado em runtime — e o estado atual não é animável.** O que hoje representa uma deformação é o campo denso `disp` (`[f32; 2]` por texel):
 
@@ -123,6 +123,18 @@ Isto é a lei que esta casa já aplica em toda parte — **`fonte ≠ cozido`**:
 
   ⚠️ **E o teto está nomeado, não escondido:** cozinhar a TELA INTEIRA a 4096² custa ~8,6 ms com 64 dabs e ~34 ms com 256 — mais que um quadro. Ou seja o cook tem de ser **limitado pela pegada**, exatamente a lei que o resto desta linha já vive; um cook canvas-inteiro é a forma de falha, e ela é de escopo, não de velocidade.
 
+- ⚠️ **MEDIDO na travessia (2026-08-08) — e é o que torna a LISTA obrigatória em vez de gosto arquitetural.** O `apply.rs` passou a compor, e o cache denso é avançado **incrementalmente** (`D_k(p) = v_k(p) + D_{k−1}(p − v_k(p))`, lendo o mapa antigo por bilinear). Isso mata o cisalhamento divergente — o teto `2r` passa no produto —, mas a reamostragem do mapa **num campo de ROTAÇÃO amplifica**, porque o erro de um passo entra na POSIÇÃO de leitura do seguinte:
+
+  | N dabs | deriva contra a lei exata | \|D\| no probe |
+  |---:|---:|---:|
+  | 1 | **0,0000 px** | 3,47 |
+  | 60 | 1,8709 | 19,28 |
+  | 200 | **41,4538** | 50,61 |
+
+  **A 200 dabs a deriva tem a ORDEM do próprio sinal**, e 200 dabs é um *hold* normal — o gesto reportado. Ou seja: **o cache incremental não substitui o re-cook exato**, e a decisão deste ADR deixa de ser preferência para virar a única forma que não acumula. O re-cook exato é pagável **só no device** (0,008 ns/(nó·dab)) — o §0 outra vez, em que o caminho lento não define o produto. `N = 1` sai **exato**, que é o teste da fiação: o que sobra depois dela é deriva, não bug.
+
+  ⚠️ **Preço de perf da travessia, medido:** o Deform saiu de **4,18/4,14 para 5,23/5,37 ms/move** (~+25%, kill 8) e a razão entre as duas telas segue **1,03×** — o kernel continua limitado pela pegada.
+
   ⚠️ **A razão contra a CPU não é o argumento, e não é vendida como tal:** os 31,0 ns são **seriais num núcleo** e esta caminhada satisfaz as condições do [ADR-0109] (linhas disjuntas, leitura pura), então uma CPU row-parallel encurtaria a distância por algo da ordem do número de núcleos. O que decide é o número ABSOLUTO acima: 0,18 ms por traço cabe num quadro com folga de duas ordens de grandeza.
 
 ## O que fica GATEADO — para ninguém re-litigar por prosa
@@ -136,6 +148,9 @@ Isto é a lei que esta casa já aplica em toda parte — **`fonte ≠ cozido`**:
 | `no_dense_field_is_authored_state` | arch-gate: o campo denso não é serializado nem keyframeável | verde |
 | `the_lattice_is_a_cache_you_can_throw_away` | descartar e re-cozinhar dá resultado **bit-idêntico** | verde |
 | `the_cook_reads_no_history_per_pixel` | paridade serial × paralelo (a condição do [ADR-0109](0109-rayon-exception-watercolor-composite.md)) | verde |
+| `the_product_composes_the_dab_list_instead_of_summing_it` | o `apply.rs` — não a lei — respeita o teto `2r` | **verde** (a travessia landou; a mutação *"lê no destino"* = a soma sangra) |
+| `one_dab_advances_the_map_by_exactly_one_composition` | um dab avança o mapa por UMA composição, contra o mapa que o produto tinha | verde |
+| `the_incremental_cache_drifts_from_the_exact_walk_and_this_is_the_number` | a deriva do cache incremental é ESTE número | verde — e ele afirma um **piso** a 200 dabs, para ninguém apagar a nota sem mexer no mecanismo |
 | `the_cook_is_bounded_by_the_footprint` | o cook percorre a união dos dabs, **nunca a tela** | verde — ele **substitui** *"o passo é medido"*: a medição do device dissolveu o passo e deixou o ESCOPO no lugar dele |
 
 ⚠️ **Os QUATRO primeiros existem e rodaram** (`warp::compose_tests` e `warp::cook_gpu`, os dois de GPU sob `--ignored`); os quatro últimos são a lista da **W1** e nascem com ela. Misturar as duas metades sem dizer qual é qual é como uma tabela de gates vira um relatório de coisas que ninguém escreveu.

@@ -103,13 +103,21 @@ fn warp_perf_kill_criterion() {
     /// Its sibling in the sculpt learned this the hard way: leaving it in produced the outlier failures
     /// that reddened the gate against code that had not changed.
     const WARMUP_MOVES: usize = 2;
-    /// Measured 2026-07-18, release, brush radius 100 (the widest footprint):
+    /// Measured 2026-08-08, release, brush radius 100 (the widest footprint):
     ///
     /// ```text
     ///            TOTAL @2048 / @4096      of which RELIEF advection      flat canvas
-    ///   DEFORM      4,18 / 4,14 ms              2,52 ms  (60%)             1,66
-    ///   SMEAR       3,28 / 3,30 ms              1,71 ms  (52%)             1,57
+    ///   DEFORM      5,23 / 5,37 ms              2,65 ms  (51%)             2,58
+    ///   SMEAR       3,43 / 3,29 ms              1,84 ms  (54%)             1,59
     /// ```
+    ///
+    /// ⚠️ **O Deform saiu de 4,18/4,14 e o preço tem nome: a travessia do [ADR-0156].** O `apply.rs` parou
+    /// de SOMAR e passou a COMPOR (`D_k = v_k + D_{k−1}(p − v_k)`), o que acrescenta um snapshot da janela
+    /// do mapa antigo + uma leitura bilinear por texel — **~+1,1 ms/move, ~25%**. É o custo de a ferramenta
+    /// deixar de destruir a arte (a soma deslocava 693 px onde uma rotação não pode passar de 60), e a
+    /// razão entre as duas telas segue **1,03×**: o kernel continua limitado pela PEGADA, que é a
+    /// propriedade que esta barra existe para vigiar. O Smear não se moveu — a extração do `MapWindow` foi
+    /// *pure code motion*, e os gates dele provam isso.
     ///
     /// **The relief advection is the larger half of the Deform**, which is the number the W4 note never
     /// had: it said *"3 amostragens/texel a mais"*, and three extra samplings turn out to more than double
@@ -123,7 +131,7 @@ fn warp_perf_kill_criterion() {
     /// **The structural bar, and the one that cannot flake.**
     ///
     /// Every kernel in this module is bounded by the BRUSH FOOTPRINT, so quadrupling the canvas must not
-    /// move the cost — measured, 4,18 → 4,14 and 3,28 → 3,30, i.e. flat inside the noise. The failure this
+    /// move the cost — measured, 5,23 → 5,37 and 3,43 → 3,29, i.e. flat inside the noise. The failure this
     /// catches is the one that actually happens here: a change that makes some pass walk the whole plane
     /// instead of the write window. A wall-clock bar would catch that only on a big canvas and only if the
     /// machine happened to be quiet; a RATIO between two sizes measured back to back is immune to how fast

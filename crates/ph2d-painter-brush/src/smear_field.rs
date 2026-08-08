@@ -123,23 +123,15 @@ pub fn accumulate_dab_smear(
     // `disp_old(p − v)` for neighbours of `p`, so reading and writing the same buffer in place would let
     // a texel updated earlier in the scan pollute one updated later — the very sequential dependence
     // this kernel exists to remove.
-    let reach = step[0].abs().max(step[1].abs()).ceil() as i64 + 2;
-    let wi = width as i64;
-    let hi = height as i64;
-    let wx0 = (rect.x as i64 - reach).max(0);
-    let wy0 = (rect.y as i64 - reach).max(0);
-    let wx1 = (rect.x as i64 + rect.w as i64 + reach).min(wi);
-    let wy1 = (rect.y as i64 + rect.h as i64 + reach).min(hi);
-    let ww = (wx1 - wx0) as usize;
-    let wh = (wy1 - wy0) as usize;
-    scratch.win.clear();
-    scratch.win.reserve(ww * wh);
-    for y in wy0..wy1 {
-        let row = (y * wi) as usize;
-        scratch
-            .win
-            .extend_from_slice(&disp[row + wx0 as usize..row + wx1 as usize]);
-    }
+    let reach = step[0].abs().max(step[1].abs());
+    let win = MapWindow::snapshot(
+        &mut scratch.win,
+        disp,
+        width,
+        height,
+        (rect.x, rect.y, rect.w, rect.h),
+        reach,
+    );
 
     // Pass 2 — compose. `disp_new(p) = v(p) + disp_old(p − v(p))`.
     for &(i, add) in &scratch.pairs {
@@ -147,15 +139,7 @@ pub fn accumulate_dab_smear(
         let px = (i % width as usize) as f32;
         let py = (i / width as usize) as f32;
         let v = [step[0] * add, step[1] * add];
-        let back = sample_window(
-            &scratch.win,
-            ww,
-            wh,
-            wx0 as f32,
-            wy0 as f32,
-            px - v[0],
-            py - v[1],
-        );
+        let back = win.sample(px - v[0], py - v[1]);
         disp[i] = [v[0] + back[0], v[1] + back[1]];
     }
     Some(rect)
@@ -178,11 +162,75 @@ pub struct SmearScratch {
     win: Vec<[f32; 2]>,
 }
 
-/// Bilinear-sample the windowed map snapshot at canvas coords `(x, y)`, clamping to the window's edge.
+/// **A janela congelada do mapa antigo** — o pedaço de `disp` que uma composição pode ler, e a
+/// amostragem bilinear dele.
 ///
-/// Clamping is safe because the window is grown by the dab's maximum backtrack, so a clamp can only bite
-/// at the true canvas edge — where extending the map is exactly the policy the pixel and relief samplers
-/// already use (`bilinear_clamped`: extend, never wrap).
+/// ⚠️ **Por que ela é `pub`:** a composição semi-lagrangiana `disp_new(p) = v(p) + disp_old(p − v(p))`
+/// tem DOIS consumidores nesta casa — o Smear (aqui, onde `v` é o passo escalado pelo peso do dab) e o
+/// **Reshape** (`ph2d-tool-painter::warp::apply`, onde `v` é o campo do dab, [ADR-0156]). O que difere é
+/// quem PRODUZ `v`; o que reamostra o mapa é o mesmo, e uma segunda cópia divergiria em silêncio no
+/// único lugar onde ninguém lê um número.
+///
+/// [ADR-0156]: ../../../../docs/architecture/decisions/0156-liquify-is-an-authored-dab-list-cooked-on-the-device-never-a-stored-dense-field.md
+pub struct MapWindow<'a> {
+    win: &'a [[f32; 2]],
+    ww: usize,
+    wh: usize,
+    ox: f32,
+    oy: f32,
+}
+
+impl<'a> MapWindow<'a> {
+    /// Copia `rect` de `disp` crescido por `reach` (o quanto esta atualização consegue retro-traçar) para
+    /// o `buf` do chamador — que é de quem chama para que um traço quente não aloque por dab.
+    ///
+    /// ⚠️ `reach` entra em px CONTÍNUOS e é arredondado para cima aqui: a decisão *"quanto de margem uma
+    /// leitura bilinear precisa"* é uma só, e deixá-la no chamador é como o segundo chamador nasce com
+    /// uma margem diferente.
+    pub fn snapshot(
+        buf: &'a mut Vec<[f32; 2]>,
+        disp: &[[f32; 2]],
+        width: u32,
+        height: u32,
+        rect: (u32, u32, u32, u32),
+        reach: f32,
+    ) -> Self {
+        let grow = i64::from(reach.max(0.0).ceil() as i32) + 2;
+        let (wi, hi) = (i64::from(width), i64::from(height));
+        let (rx, ry, rw, rh) = rect;
+        let wx0 = (i64::from(rx) - grow).max(0);
+        let wy0 = (i64::from(ry) - grow).max(0);
+        let wx1 = (i64::from(rx) + i64::from(rw) + grow).min(wi);
+        let wy1 = (i64::from(ry) + i64::from(rh) + grow).min(hi);
+        let ww = (wx1 - wx0).max(0) as usize;
+        let wh = (wy1 - wy0).max(0) as usize;
+        buf.clear();
+        buf.reserve(ww * wh);
+        for y in wy0..wy1 {
+            let row = (y * wi) as usize;
+            buf.extend_from_slice(&disp[row + wx0 as usize..row + wx1 as usize]);
+        }
+        Self {
+            win: buf,
+            ww,
+            wh,
+            ox: wx0 as f32,
+            oy: wy0 as f32,
+        }
+    }
+
+    /// Bilinear-sample the windowed map snapshot at canvas coords `(x, y)`, clamping to the window's edge.
+    ///
+    /// Clamping is safe because the window is grown by the dab's maximum backtrack, so a clamp can only
+    /// bite at the true canvas edge — where extending the map is exactly the policy the pixel and relief
+    /// samplers already use (`bilinear_clamped`: extend, never wrap).
+    #[inline]
+    #[must_use]
+    pub fn sample(&self, x: f32, y: f32) -> [f32; 2] {
+        sample_window(self.win, self.ww, self.wh, self.ox, self.oy, x, y)
+    }
+}
+
 #[inline]
 fn sample_window(
     win: &[[f32; 2]],

@@ -96,3 +96,93 @@ fn measure_the_param_surface_of_every_node() {
         println!("  {n:<34} {c}");
     }
 }
+
+/// **SONDA — O BALANCEAMENTO: onde o DEFAULT senta na régua, e quanto da régua o artista alcança.**
+///
+/// O report do Enio (doc 88 §10) foi *"sliders mal balanceados; a menor mudança faz um extremo
+/// efeito"*, e depois **"quase tudo nesse módulo está mal ajustado"**. A §10 curou a classe cuja
+/// causa é a LEI (knob consumido como taxa por-passo ⇒ resposta exponencial). Esta sonda ataca a
+/// outra metade, que é visível **sem cozinhar nada**: a RÉGUA.
+///
+/// Três defeitos, cada um com o número que o nomeia:
+/// - **FORA** — o default não cabe em `[min, max]`. O slider nasce mostrando outra coisa; é o
+///   único aqui que é defeito duro, sem julgamento de gosto.
+/// - **ALCANCE** — o default é positivo e `max / default` é grande: a vizinhança onde o artista
+///   de fato trabalha ocupa uma fração ínfima do curso, então **nudge é impossível** e todo
+///   arrasto é um salto. É a forma estrutural do que o Enio viu.
+/// - **PASSO** — quantos degraus de `step` cabem no curso. Poucos ⇒ o slider é um seletor
+///   grosseiro; muitos ⇒ o teclado leva uma era para atravessar.
+///
+/// ⚠️ **Default no ZERO não é flagado**, e é decisão: `amount = 0` é o NEUTRO de um efeito
+/// (a lei `every_kind_is_born_neutral`), não um slider mal posto — a régua ali está certa e
+/// quem decide se a resposta é linear é uma medição pela porta do produto, não esta tabela.
+#[test]
+#[ignore = "sonda de diagnostico: cargo test -p ph2d-node-registry-init --test param_census -- --ignored --nocapture"]
+fn measure_where_each_default_sits_on_its_slider() {
+    let reg = registry();
+
+    let mut outside: Vec<(String, f32, f32, f32)> = Vec::new();
+    let mut reach: Vec<(String, f32, f32, f32)> = Vec::new();
+    let mut steps: Vec<(String, f32, f32)> = Vec::new();
+    let mut counted = 0usize;
+
+    for m in reg.manifests() {
+        let hints = reg.param_ui(m.id).unwrap_or(&[]);
+        for p in m.params {
+            let Some(h) = hints.iter().find(|h| h.param == p.name) else {
+                continue;
+            };
+            // Widgets sem régua contínua (chip, toggle, enum, seed) não têm curso a balancear.
+            if !matches!(
+                h.widget,
+                ph2d_node_registry::ParamWidget::Slider
+                    | ph2d_node_registry::ParamWidget::IntSlider
+                    | ph2d_node_registry::ParamWidget::Angle
+            ) {
+                continue;
+            }
+            counted += 1;
+            let key = format!("{}.{}", m.name, p.name);
+            let span = h.max - h.min;
+
+            if p.default < h.min || p.default > h.max {
+                outside.push((key.clone(), p.default, h.min, h.max));
+            }
+            if p.default > 0.0 && h.max / p.default >= 20.0 {
+                reach.push((key.clone(), p.default, h.max, h.max / p.default));
+            }
+            if h.step > 0.0 && span > 0.0 {
+                let n = span / h.step;
+                if !(4.0..=4000.0).contains(&n) {
+                    steps.push((key, n, h.step));
+                }
+            }
+        }
+    }
+
+    reach.sort_by(|a, b| b.3.total_cmp(&a.3));
+    steps.sort_by(|a, b| a.1.total_cmp(&b.1));
+
+    println!("\n{counted} params continuos (slider/int/angle) com hint\n");
+
+    println!(
+        "FORA DA REGUA (o default nao cabe em [min,max]): {}",
+        outside.len()
+    );
+    for (k, d, lo, hi) in &outside {
+        println!("  {k:<40} default {d}  range [{lo}, {hi}]");
+    }
+
+    println!(
+        "\nALCANCE (max/default >= 20 -- nudge impossivel): {}",
+        reach.len()
+    );
+    for (k, d, hi, r) in &reach {
+        println!("  {k:<40} default {d:<10} max {hi:<10} = {r:>8.0}x");
+    }
+
+    println!("\nPASSO (degraus fora de 4..4000): {}", steps.len());
+    for (k, n, s) in &steps {
+        println!("  {k:<40} {n:>10.1} degraus de {s}");
+    }
+}

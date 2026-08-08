@@ -145,7 +145,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         min: 0.0,
         max: 999.0,
         step: 1.0,
-        widget: ParamWidget::IntSlider,
+        widget: ParamWidget::Seed,
     },
 ];
 

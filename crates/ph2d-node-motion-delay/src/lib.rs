@@ -248,7 +248,12 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         min: 0.0,
         max: 2.0,
         step: 1.0,
-        widget: ParamWidget::IntSlider,
+        // The `ParamSpec` above already names the three (`0 Delay · 1 Average · 2 Blend`); an
+        // `IntSlider` made the artist read those NUMBERS. Seventeen other `mode` params in the
+        // catalogue paint words.
+        widget: ParamWidget::Enum {
+            labels: &["Delay", "Average", "Blend"],
+        },
     },
     ParamUiHint {
         param: "ticks",

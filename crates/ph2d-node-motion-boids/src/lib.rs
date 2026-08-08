@@ -490,15 +490,18 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         step: 0.1,
         widget: ParamWidget::Slider,
     },
-    // A 2-position slider: 0 fixed (default), 1 the √N density-bounded spread
-    // that lets the count climb into the millions the GPU path can flock.
+    // 0 fixed (default), 1 the √N density-bounded spread that lets the count climb into the
+    // millions the GPU path can flock. **A `Toggle`, because the eval reads it as a `bool`**
+    // (`ctx.param("spread") > 0.5` → the `spread: bool` field): a slider whose step equals its
+    // whole range has exactly two positions, and painting it as a continuous drag tells the
+    // artist there is something in between.
     ParamUiHint {
         param: "spread",
         label: "Spread √N",
         min: 0.0,
         max: 1.0,
         step: 1.0,
-        widget: ParamWidget::Slider,
+        widget: ParamWidget::Toggle,
     },
 ];
 

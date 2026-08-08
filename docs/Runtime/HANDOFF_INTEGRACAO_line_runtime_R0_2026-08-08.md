@@ -78,6 +78,23 @@ conflita, e a resolução certa é manter o `publish`.
 - **`ph2d-audio::bus` já existe** e é *roteamento de áudio*. Foi por isso que este tipo se chama
   `SignalOutbox` e não `SignalBus` — "outbox" é a palavra que o próprio ADR-0143 usa.
 
+⚠️ **E a colisão que importa é com uma linha VIVA, não com o passado** (achado depois de a linha
+fechar, 2026-08-08): o [plano de UI/UX](../Vector%20Module/Estudos/PLANO_UI_UX_padrao_figma.md)
+aponta o nome **`ph2d-runtime` para o runtime de UI** — a §1.2 dele lista *"Runtime que toca UI sem
+editor | `ph2d-runtime` não existe (Front 2 não construída)"*, e a W8a diz *"é aqui que este plano
+encontra a Front 2 (`ph2d-runtime`)"*. A `line/Vector` está a **80 commits** do `main` com a W6.3 e
+a W7 construídas (`ph2d-ui-state`, `ph2d-ui-codegen`), e a W8a é a próxima.
+
+**Hoje não há conflito** — nenhuma das duas crates dela menciona esta (conferido: são folhas de
+zero dependências) e o nome está livre no `main`. O que existe é uma **expectativa**: quem abrir a
+W8a vai procurar um runtime em `ph2d-runtime` e vai achar um canal de eventos.
+
+**A decisão é do Enio, e são duas saídas:** ou a `ph2d-runtime` CRESCE para hospedar o runtime de
+UI — e aí o gate `the_event_core_has_no_dependencies_at_all` tem de ser **deliberadamente
+revogado**, com o preço medido na §8 (8 consumidores = 1,00× o custo de 2, sem arrastar VM nem ECS)
+— ou o runtime de UI nasce numa crate irmã e esta fica sendo só a saída de sinais.
+**Recomendação da linha: a segunda.**
+
 **⚠️ `docs/Runtime/` não existe no `main`** — ele é criado por esta linha **e** pela `line/Vector`
 (que carrega o `00_plano_runtime.md`, o `01_o_formato_medido.md` e o handoff de R0). Os **nomes de
 arquivo diferem**, então o git não conflita; as duas metades convivem no mesmo diretório.
@@ -207,6 +224,17 @@ env PH2D_SIGNAL_SMOKE=2 PH2D_SIGNAL_LOG=1 cargo run -p ph2d-host-desktop --relea
 - **A tabela de ligação `nome → ação`** é o R3 inteiro, e é conteúdo **autorado** (precisa de UI).
   Sem ela, um consumidor de áudio/Luau/UI é uma demo hard-coded. Medido acima: o canal não é o
   custo; a autoria é o trabalho.
+- ⚠️ **O envelope por SEÇÕES (F1.W0) não existe no `main`, e a W8a da `line/Vector` depende dele.**
+  Ela diz, verbatim, que *"o documento de UI é uma **seção** do envelope que a `line/runtime`
+  construiu (F1.W0), não um segundo formato"* — mas aquele envelope vivia na `line/runtime`
+  **antiga**, destruída por ordem do Enio em 2026-08-08 sem nunca ter integrado. Medido: nenhum
+  `SectionKind` / `LEGACY_SCHEMA_FINAL` no `main`, e a crate `ph2d-project-format` que ele criava
+  **não existe** lá.
+  **É recuperável**: o commit `37ff53467` sobreviveu à remoção da branch (`project_envelope.rs` 556
+  linhas + 277 de teste + o gate `the_shell_carries_sections_it_does_not_understand`). ⚠️ Mas o
+  **desenho** volta e o **diff não** — ele reescrevia o `project.rs`, que desde então andou de
+  `PROJECT_SCHEMA` 48 para **55**. Reconstruir contra o `main` de hoje é wave própria, desta linha,
+  e **não foi começada** (a linha está fechada).
 - **R1 (`shells/game`)** segue adiado por decisão do Enio. ⚠️ O argumento estrutural do plano
   (*"o runtime é uma SHELL, não uma feature"*, vindo da feature unification RFC 3692) está
   **suspenso, não resolvido** — e é por isso que o núcleo NÃO foi enterrado no `render_loop`

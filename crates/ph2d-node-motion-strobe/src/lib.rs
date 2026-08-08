@@ -10,7 +10,8 @@
 //!
 //! **The envelope IS the value of the `pre` self-loop.** A per-instance `glow`
 //! (0..1) rides the `state` port: a pulse sets it to 1.0, and each tick with no
-//! pulse multiplies it by `decay`. Applied ONCE per tick to the carried glow (so
+//! pulse multiplies it by a rate DERIVED from the authored `Flash Length` (see
+//! `decay_per_tick`). Applied ONCE per tick to the carried glow (so
 //! a glow `n` ticks old has decayed exactly `n` times), never recomputed from an
 //! age — the same geometric discipline as `motion.trail`. The lit look is
 //! applied to the FRESH upstream `in` each tick (size/tint), so the boost never
@@ -71,10 +72,17 @@ pub const MANIFEST: NodeManifest = NodeManifest {
     effect: Effect::Pure,
     clock: Clock::Frame,
     params: &[
-        // Per-tick envelope decay. 0.85 ≈ a ~0.2 s flash at 60 Hz.
+        // ⚠️ A DURAÇÃO do flash em TICKS, não a taxa por tick — ver `decay_per_tick`.
+        // O default NÃO foi escolhido: `34` ticks é o que a taxa `0.85` que já shipava
+        // produzia, então o flash no default é o mesmo de antes.
+        //
+        // ⚠️ O param mantém o nome de fio `decay` de propósito: renomeá-lo faria o
+        // `validate` RECUSAR todo grafo salvo que o sobrescreve (params que o manifesto
+        // não declara mais derrubam o documento inteiro — a cicatriz do `motion.color_ramp`
+        // na integração de 2026-07-30). Quem o artista lê é o RÓTULO.
         ParamSpec {
             name: "decay",
-            default: 0.85,
+            default: 34.0,
         },
         // Peak size multiplier at full glow: size *= 1 + size_boost·glow.
         ParamSpec {
@@ -107,6 +115,32 @@ struct Params {
     size_boost: f32,
     flash: [f32; 3],
     flash_amount: f32,
+}
+
+/// **O PISO do brilho** — um nível de 8 bits. Abaixo dele o `glow` não levanta um pixel
+/// de tamanho nem mistura uma cor visível, então é ali que o flash ACABOU. Mesmo número
+/// que o `motion.trail` usa para a ponta da cauda: uma lei, dois nós.
+const GLOW_FLOOR: f32 = 1.0 / 255.0;
+
+/// **A taxa por tick que apaga o brilho em `ticks` ticks.**
+///
+/// ⚠️ O knob é a DURAÇÃO do flash, nunca a taxa — o report de 2026-08-08 mediu o preço de
+/// expor a taxa: no curso `0..0.99` do controle antigo os primeiros **86%** cobriam
+/// 5..34 ticks e os últimos **14%** cobriam 34..551. *Catorze por cento do slider
+/// carregava noventa e quatro por cento da faixa.* Agora ele é linear no que se vê.
+///
+/// ⚠️ **TICKS e não segundos, e a escolha é sobre RISCO.** Segundos exigiriam `ctx.dt()`,
+/// que é `0.0` dentro de um time scope e cuja unidade depende do relógio que o chamador
+/// passa ao cook — e um `dt` de zero faria a taxa virar `1.0`, isto é **o flash nunca
+/// apagaria**. Uma regressão dessas é muito pior que um slider mal escalado, e o
+/// vocabulário do módulo já é o tick: o `motion.trail` mede a cauda dele em ticks
+/// (`length`, `spacing`) pela mesma razão.
+fn decay_per_tick(ticks: f32) -> f32 {
+    if !ticks.is_finite() || ticks <= 0.0 {
+        // O degenerado que o artista quer dizer com zero: um flash de UM tick.
+        return 0.0;
+    }
+    libm::powf(GLOW_FLOOR, 1.0 / ticks)
 }
 
 /// The envelope value for one instance this tick: a pulse re-arms it to 1.0,
@@ -190,7 +224,7 @@ impl NodeOp for MotionStrobe {
 
     fn eval(&self, ctx: &mut EvalCtx<'_>) {
         let p = Params {
-            decay: ctx.param("decay"),
+            decay: decay_per_tick(ctx.param("decay")),
             size_boost: ctx.param("size_boost"),
             flash: [
                 ctx.param("flash_r"),
@@ -218,18 +252,29 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     Ok(())
 }
 
-use ph2d_node_registry::{ParamUiHint, ParamWidget};
+use ph2d_node_registry::{ParamUiHint, ParamUnit, ParamUnitDecl, ParamWidget};
+
+/// O flash é uma contagem de TICKS — a unidade que o painel declara é a que o número É,
+/// e é a mesma do `length`/`spacing` do `motion.trail`.
+static PARAM_UNITS: &[ParamUnitDecl] = &[ParamUnitDecl {
+    param: "decay",
+    unit: ParamUnit::Count,
+}];
 
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "decay",
-        label: "Decay",
+        label: "Flash Length",
+        // Ticks. `0` é o flash de um tick; a 120 (dois segundos a 60 Hz) a coisa deixou
+        // de ser um strobe e virou um fade — não há recurso a limitar aqui, o que se
+        // fecha é a PALAVRA. Um documento pode carregar mais, e a derivação o honra.
         min: 0.0,
-        max: 0.99,
-        step: 0.01,
+        max: 120.0,
+        step: 1.0,
         widget: ParamWidget::Slider,
     },
     ParamUiHint {
@@ -408,5 +453,205 @@ mod tests {
             Column::Vec2(v) => assert_eq!(v[0], [5.0, 6.0], "P passes through"),
             _ => panic!(),
         }
+    }
+
+    /// **O DEFAULT REPRODUZ O FLASH QUE JÁ SHIPAVA**, e não foi escolhido.
+    ///
+    /// `34` ticks derivam exatamente a taxa `0.85` que o manifesto trazia — o strobe no
+    /// default não muda um pixel, e o que muda é que o número passou a ser linear no que
+    /// se vê.
+    #[test]
+    fn the_default_reproduces_the_shipped_rate() {
+        let d = MANIFEST
+            .params
+            .iter()
+            .find(|p| p.name == "decay")
+            .expect("param")
+            .default;
+        assert_eq!(d, 34.0);
+        let rate = decay_per_tick(d);
+        assert!((rate - 0.85).abs() < 1e-3, "taxa derivada: {rate}");
+    }
+
+    /// **O FLASH DURA O QUE O SLIDER DIZ** — o gate do report de 2026-08-08.
+    ///
+    /// ⚠️ Nasceu VERMELHO: o knob ERA a taxa, então `0.5` durava 8 ticks e `0.99` durava
+    /// 551 — a mesma unidade de curso do slider comprando dois tempos que diferem por
+    /// setenta vezes. O oráculo é o RELÓGIO: quantos ticks até o brilho chegar ao piso.
+    #[test]
+    fn the_flash_lasts_as_long_as_the_slider_says() {
+        for want in [5u32, 15, 34, 60, 120] {
+            let rate = decay_per_tick(want as f32);
+            let (mut glow, mut ticks) = (1.0f32, 0u32);
+            while glow > GLOW_FLOOR && ticks < 10_000 {
+                glow = glow_of(0.0, glow, rate);
+                ticks += 1;
+            }
+            assert!(
+                ticks.abs_diff(want) <= 1,
+                "{want} ticks pedidos, {ticks} medidos"
+            );
+        }
+    }
+
+    /// **O SLIDER É LINEAR NO QUE SE VÊ** — dobrar o número dobra o flash.
+    ///
+    /// ⚠️ É a propriedade que a lei antiga não tinha: lá `0.5` durava 8 ticks e `0.99`
+    /// durava 551, então uma mesma fração do curso comprava tempos que diferiam por
+    /// setenta vezes.
+    #[test]
+    fn doubling_the_number_doubles_the_flash() {
+        let life = |ticks: f32| {
+            let rate = decay_per_tick(ticks);
+            let (mut glow, mut n) = (1.0f32, 0u32);
+            while glow > GLOW_FLOOR && n < 10_000 {
+                glow = glow_of(0.0, glow, rate);
+                n += 1;
+            }
+            n as f32
+        };
+        for base in [10.0f32, 20.0, 40.0] {
+            let r = life(base * 2.0) / life(base);
+            assert!((r - 2.0).abs() < 0.1, "base {base}: a razao deu {r}");
+        }
+    }
+
+    /// O degenerado: duração zero (ou lixo de documento) é um flash de UM tick.
+    #[test]
+    fn the_degenerate_lengths_mean_what_the_artist_means() {
+        assert_eq!(decay_per_tick(0.0), 0.0, "zero = um tick");
+        assert_eq!(decay_per_tick(-3.0), 0.0);
+        assert_eq!(decay_per_tick(f32::NAN), 0.0);
+        assert_eq!(decay_per_tick(f32::INFINITY), 0.0);
+    }
+
+    /// **A DURAÇÃO AUTORADA ATRAVESSA O COOK** — a porta, não a lei.
+    ///
+    /// ⚠️ Os seis gates que este arquivo já tinha constroem `Params` com a TAXA à mão, e
+    /// são portanto cegos a um `decay_per_tick` que ninguém tivesse ligado no `eval`: a
+    /// capacidade passaria em todos eles nascendo morta. Este dirige o grafo REAL, com o
+    /// `pre` self-loop, e mede o brilho depois de um pulso.
+    #[test]
+    fn the_authored_length_reaches_the_node_through_the_cook() {
+        use ph2d_nodegraph::cook::{Cook, OpResolver};
+        use ph2d_nodegraph::graph::{Edge, Graph};
+
+        // ⚠️ DUAS fontes, como no produto: a geometria fala `Clock::Frame` e o pulso
+        // fala `Clock::Event`. A 1ª versao deste gate cravou os dois na MESMA fonte de
+        // Frame — o cook serviu o pulso do cache e ele ficou aceso para sempre, com o
+        // brilho pregado em 1 nos dois bracos e o gate reprovando produto correto.
+        static SRC: NodeManifest = NodeManifest {
+            id: NodeTypeId::of("motion.strobe.test.src"),
+            name: "motion.strobe.test.src",
+            inputs: &[],
+            outputs: &[PortSpec {
+                name: "out",
+                ty: INST_VEC2,
+            }],
+            effect: Effect::Pure,
+            clock: Clock::Frame,
+            params: &[],
+            lowerings: &[LoweringKind::Cpu],
+        };
+        static PSRC: NodeManifest = NodeManifest {
+            id: NodeTypeId::of("motion.strobe.test.pulse"),
+            name: "motion.strobe.test.pulse",
+            inputs: &[],
+            outputs: &[PortSpec {
+                name: "out",
+                ty: PULSE,
+            }],
+            // ⚠️ `Temporal`, nao `Pure`: o fingerprint do cook so inclui o playhead para
+            // um no TEMPORAL (`cook.rs`, `playhead: (effect == Temporal).then_some(..)`).
+            // Com `Pure` esta fonte era servida do CACHE do tick 0 para sempre, o pulso
+            // ficava aceso em todo tick, o brilho pregava em 1 nos dois bracos e o gate
+            // reprovava produto correto. A fixture tem de dizer a verdade sobre si mesma.
+            effect: Effect::Temporal,
+            clock: Clock::Event,
+            params: &[],
+            lowerings: &[LoweringKind::Cpu],
+        };
+        struct Src;
+        impl NodeOp for Src {
+            fn manifest(&self) -> &'static NodeManifest {
+                &SRC
+            }
+            fn eval(&self, ctx: &mut EvalCtx<'_>) {
+                ctx.emit(
+                    Stream::new(1)
+                        .with("P", Column::Vec2(vec![[0.0, 0.0]]))
+                        .with("size", Column::Vec2(vec![[1.0, 1.0]])),
+                );
+            }
+        }
+        struct PulseSrc;
+        impl NodeOp for PulseSrc {
+            fn manifest(&self) -> &'static NodeManifest {
+                &PSRC
+            }
+            fn eval(&self, ctx: &mut EvalCtx<'_>) {
+                // Um pulso no tick 0 e mais nada: o brilho decai a partir dali.
+                let fire = f32::from(u8::from(ctx.playhead() < 0.5));
+                ctx.emit(Stream::new(1).with(PULSE_COL, Column::Scalar(vec![fire])));
+            }
+        }
+        struct Ops;
+        impl OpResolver for Ops {
+            fn resolve(&self, ty: NodeTypeId) -> Option<&dyn NodeOp> {
+                match ty {
+                    t if t == SRC.id => Some(&Src),
+                    t if t == PSRC.id => Some(&PulseSrc),
+                    t if t == MANIFEST.id => Some(&MotionStrobe),
+                    _ => None,
+                }
+            }
+        }
+
+        // Duas cenas identicas, so a DURACAO difere: a longa tem de brilhar mais no
+        // mesmo tick. Um `eval` que ignorasse a derivacao daria o mesmo nos dois.
+        let glow_at = |seconds: f32, at: u32| {
+            let mut g = Graph::new();
+            let src = g.add_node("motion.strobe.test.src");
+            let psrc = g.add_node("motion.strobe.test.pulse");
+            let st = g.add_node("motion.strobe");
+            g.connect(Edge {
+                from: (src, 0),
+                to: (st, 0),
+                delayed: false,
+            })
+            .unwrap();
+            g.connect(Edge {
+                from: (psrc, 0),
+                to: (st, 1),
+                delayed: false,
+            })
+            .unwrap();
+            g.connect(Edge {
+                from: (st, 0),
+                to: (st, 2),
+                delayed: true,
+            })
+            .unwrap();
+            g.set_param(st, "decay", seconds);
+            g.set_param(st, "size_boost", 1.0);
+            let mut cook = Cook::new();
+            let mut last = Stream::new(0);
+            for t in 0..=at {
+                last = cook.cook(&g, &Ops, st, f64::from(t)).unwrap()[0]
+                    .as_stream()
+                    .clone();
+                cook.advance_tick(&g, &Ops, f64::from(t)).unwrap();
+            }
+            // `size = 1 + size_boost*glow`, entao o tamanho LE o brilho.
+            match last.get("size").unwrap() {
+                Column::Vec2(v) => v[0][0] - 1.0,
+                _ => panic!("size"),
+            }
+        };
+        let (short, long) = (glow_at(3.0, 8), glow_at(120.0, 8));
+        assert!(
+            long > short * 2.0,
+            "a duracao autorada nao chegou ao no: curta {short}, longa {long}"
+        );
     }
 }

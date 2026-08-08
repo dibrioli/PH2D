@@ -23,8 +23,16 @@ use ph2d_nodegraph::graph::{Edge, Graph, NodeId};
 
 /// O espaçamento da esteira de BAIXO — o eco discreto que a wave destrava.
 const SPACED: f32 = 4.0;
-/// Graus de matiz por eco na esteira de baixo — o arco-íris da "cauda colorida".
-const HUE_PER_ECHO: f32 = 35.0;
+/// Graus de matiz que a CAUDA INTEIRA percorre na esteira de baixo — o arco-íris da
+/// "cauda colorida".
+///
+/// ⚠️ A const chamava-se `HUE_PER_ECHO` e a mensagem dizia *"35 deg por eco"*: as duas
+/// **mentiam**. Sob a lei antiga o knob era por TICK, então a `spacing 4` ele valia 140°
+/// por eco e **700° no total** — quase duas voltas no círculo de matiz, num número que
+/// se lia como um terço de volta.
+const HUE_SWEEP: f32 = 220.0;
+/// Graus de giro que a cauda inteira percorre na esteira de baixo.
+const SPIN_SWEEP: f32 = 140.0;
 /// Quantos ecos cada rastro carrega (os dois iguais: só o espaçamento difere).
 const ECHOES: f32 = 6.0;
 
@@ -52,15 +60,20 @@ fn lane(g: &mut Graph, y: f32, spacing: f32) -> (NodeId, NodeId) {
     g.set_param(orbit, "speed", 140.0);
 
     g.set_param(trail, "length", ECHOES);
-    g.set_param(trail, "fade", 0.8);
-    g.set_param(trail, "shrink", 0.93);
+    // ⚠️ ALVOS na ponta da cauda, não taxas por tick (report de 2026-08-08). Sob a lei
+    // antiga estes mesmos números davam desenhos diferentes nas DUAS esteiras — a de
+    // baixo (span 20) chegava a alfa 0.02 e saturação 0.03, invisível, enquanto a de
+    // cima (span 5) ficava em 0.33. Agora as duas terminam no mesmo lugar e só a
+    // CADÊNCIA difere, que é o que a cena existe para mostrar.
+    g.set_param(trail, "fade", 0.15);
+    g.set_param(trail, "shrink", 0.55);
     g.set_param(trail, "spacing", spacing);
     // A esteira ESPAÇADA leva também os knobs do padrão-ouro: a cauda muda de cor,
     // desbota e gira. A de cima fica no neutro, e é o CONTROLE.
     if spacing > 1.0 {
-        g.set_param(trail, "hue_shift", HUE_PER_ECHO);
-        g.set_param(trail, "saturation", 0.85);
-        g.set_param(trail, "spin", 9.0);
+        g.set_param(trail, "hue_shift", HUE_SWEEP);
+        g.set_param(trail, "saturation", 0.25);
+        g.set_param(trail, "spin", SPIN_SWEEP);
     }
 
     g.set_param(tint, "r", 0.9);
@@ -137,15 +150,25 @@ impl crate::App {
              a orbita inteira sem custar um eco por quadro.\n  \
              TESTE 3 (a cabeca): o ponto VIVO nunca pisca -- ele e desenhado todo tick, \
              espacado ou nao; o que espaca sao os FANTASMAS.\n  \
-             TESTE 4 (Fade e Shrink AGORA FUNCIONAM): eles multiplicavam colunas que uma \
-             fonte posicional nao carrega, e eram no-ops silenciosos. Arraste os dois: a \
-             cauda tem de sumir e encolher nos DOIS rastros.\n  \
-             TESTE 5 (a secao Colour): a esteira de baixo ja vem com 'Hue Shift' \
-             {HUE_PER_ECHO} deg por eco -- a cauda percorre o circulo de matiz. Arraste \
-             'Saturation' ate 0: a cauda desbota a cinza SEM escurecer (a luma e \
-             preservada, e e isso que separa um giro de matiz de um filtro).\n  \
-             TESTE 6 (Spin): cada eco esta 9 deg atras do anterior. Ponha em 0 e a cauda \
-             para de girar sem parar de andar."
+             TESTE 4 (os knobs sao ALVOS na PONTA, nao taxas): os dois rastros levam o \
+             MESMO 'Tail Alpha' 0.15 e o mesmo 'Tail Size' 0.55, e as duas caudas \
+             terminam no MESMO lugar -- so a cadencia difere. Antes desta correcao o \
+             numero era uma taxa por tick, entao a esteira de baixo (vao 20) terminava \
+             em alfa 0.02 enquanto a de cima (vao 5) ficava em 0.33: o mesmo slider, \
+             dois desenhos.\n  \
+             TESTE 5 (o slider ficou LINEAR): arraste 'Tail Saturation' de 1 ate 0. A \
+             cauda desbota PROGRESSIVAMENTE ao longo de todo o curso -- 0.5 e meio \
+             caminho. Antes, 0.9 ja entregava 0.17 na esteira de baixo e a faixa util \
+             inteira cabia em 5% do controle.\n  \
+             TESTE 6 (e ele NAO se move quando outro knob se move): com um valor \
+             escolhido, arraste o 'Length' de 2 ate 32 e o 'Spacing' de 1 ate 16. A \
+             PONTA da cauda tem de continuar do mesmo tom -- o que muda e quantos ecos \
+             ha entre a cabeca e ela.\n  \
+             TESTE 7 (Hue e Spin sao TOTAIS): a esteira de baixo percorre {HUE_SWEEP} \
+             deg de matiz e {SPIN_SWEEP:.0} deg de giro da cabeca ate a ponta, seja qual \
+             for o Length. Arraste 'Tail Saturation' ate 0: a cauda vai a cinza SEM \
+             escurecer (a luma e preservada, e e isso que separa um giro de matiz de um \
+             filtro)."
         );
     }
 }
@@ -339,5 +362,44 @@ mod tests {
         }
         assert_eq!(ages(&a), ages(&b));
         assert_eq!(a.count(), b.count());
+    }
+
+    /// **AS DUAS ESTEIRAS TERMINAM NO MESMO LUGAR** — a afirmação central da mensagem,
+    /// e o gate do report de 2026-08-08.
+    ///
+    /// ⚠️ Nasceu VERMELHO. Elas levam o MESMO `Tail Alpha` e o MESMO `Tail Size`, e sob a
+    /// lei antiga o knob era a taxa por tick, então o `spacing` multiplicava o expoente:
+    /// com os valores que a cena trazia antes (`fade 0.8`) a de cima terminava em **0.33**
+    /// e a de baixo em **0.02**, um fator de dezesseis. Reinstalando a lei antiga sob os
+    /// valores de HOJE a mutação mede **3,4 × 10¹¹** de razão — a fixture nova é mais
+    /// sensível porque o alvo é mais fundo, e é o mesmo defeito.
+    ///
+    /// O que sobra de diferença é a FASE do anel: com `spacing 4` a idade do eco mais
+    /// velho cicla numa faixa de `s − 1` ticks, então neste instante a esteira de baixo
+    /// está a um tick de completar o vão dela. É do anel, precede esta wave, e vale ~9%.
+    #[test]
+    fn the_two_lanes_end_at_the_same_tail_value() {
+        let (a, b) = run(24);
+        let ends = |s: &Stream| {
+            let t = match s.get("tint") {
+                Some(Column::Vec4(v)) => v.clone(),
+                _ => panic!("tint"),
+            };
+            let z = match s.get("size") {
+                Some(Column::Vec2(v)) => v.clone(),
+                _ => panic!("size"),
+            };
+            let n = t.len() - 1;
+            (t[0][3] / t[n][3], z[0][0] / z[n][0])
+        };
+        let ((fa, sa), (fb, sb)) = (ends(&a), ends(&b));
+        for (name, x, y) in [("alfa", fa, fb), ("tamanho", sa, sb)] {
+            let ratio = (x / y).max(y / x);
+            assert!(
+                ratio < 1.25,
+                "as duas esteiras tinham de terminar no mesmo {name}: {x} contra {y} \
+                 (razao {ratio}) — sob a lei antiga isto media 16x"
+            );
+        }
     }
 }

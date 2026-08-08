@@ -322,7 +322,11 @@ fn a_loop_range_replays_the_simulation_from_its_start() {
     g.set_param(grid, "rows", 2.0);
     g.set_param(grid, "cols", 2.0);
     g.set_param(beat, "period", 0.5); // beats at ticks 0 and 30 (within the lap)
-    g.set_param(strobe, "decay", 0.85);
+    // ⚠️ TICKS, não a taxa por tick: o `Flash Length` do strobe passou a ser a duração
+    // (report de 2026-08-08). `34` é a duração que a taxa `0.85` daqui produzia — sem a
+    // troca a fixture pediria um flash de menos de UM tick e deixaria de conter o
+    // fenômeno que ela existe para medir (um envelope com estado a restaurar no wrap).
+    g.set_param(strobe, "decay", 34.0);
     g.set_param(strobe, "size_boost", 2.0);
     g.validate(registry).unwrap();
     let sinks = vec![output];

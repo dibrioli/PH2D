@@ -12,3 +12,9 @@ authors.workspace = true
 [dependencies]
 ph2d-nodegraph = { path = "../ph2d-nodegraph" }
 ph2d-node-registry = { path = "../ph2d-node-registry" }
+# libm — `powf` puro-Rust (porte do MUSL) para a taxa do envelope sair bit-identica em
+# Linux/macOS/Windows: `f32::powf` da plataforma nao e especificado ao ulp, e o brilho de
+# um flash dirige TAMANHO e COR, que sao ARTE. Roda UMA vez por tick, nunca por linha.
+# MESMO pin `=0.2.16` de ph2d-ecs / physics / wet-paint / motion-trail: uma aresta, nao um
+# pacote novo.
+libm = { version = "=0.2.16", default-features = false }

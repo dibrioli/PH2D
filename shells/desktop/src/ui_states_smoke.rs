@@ -346,6 +346,18 @@ fn announce(app: &mut crate::App) {
     eprintln!("     saia por **Esc**. Ele tem de voltar para ONDE VOCE O DEIXOU, e nao para o");
     eprintln!("     Default gravado — sair para o Default MOVERIA o seu desenho. E o **Ctrl+Z**");
     eprintln!("     seguinte tem de desfazer o SEU move, nunca um passo que a preview inventou.");
+    eprintln!(" 18. ⚠️ **RELOCAR O WIDGET (Enio 2026-08-07)** — o outro report. Saia da preview e");
+    eprintln!("     grave um **Pressed** no Play com a forma LONGE da posicao inicial. Agora");
+    eprintln!("     arraste o Play para outro canto e aperte **Show** no Pressed: ele volta para");
+    eprintln!("     o lugar ANTIGO. E' o defeito: a translacao do hospedeiro esta' congelada em");
+    eprintln!("     cada estado.");
+    eprintln!(" 19. ⚠️ Marque **Move All States** e arraste o Play de novo. Agora **todos** os");
+    eprintln!("     estados acompanham: Show no Pressed mostra a mesma animacao, no lugar novo.");
+    eprintln!("     ⚠️ E o **DOT** (o filho) nao se desloca duas vezes — a pose dele e' local ao");
+    eprintln!("     pai, entao ela ja' viaja junto: a coreografia interna fica intacta.");
+    eprintln!(" 20. ⚠️ **E a caixa DESMARCADA tem de continuar a servir** — arraste com ela off e");
+    eprintln!("     so' a pose de agora e' re-autorada. E' o que se quer quando a intencao e'");
+    eprintln!("     corrigir UM estado, e por isso ela e' opt-in em vez de lei.");
 }
 
 #[cfg(test)]

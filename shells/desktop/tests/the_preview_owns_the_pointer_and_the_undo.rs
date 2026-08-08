@@ -239,3 +239,60 @@ fn escape_leaves_the_preview_before_any_other_escape() {
          dono, e um gesto em curso deixa de poder ser cancelado"
     );
 }
+
+/// **O deslocamento dos estados não se REALIMENTA** (Enio, 2026-08-07).
+///
+/// ⚠️ O detector compara o `Transform` do hospedeiro com o do quadro anterior — o que faz o
+/// arrasto, a seta do teclado, o campo numérico e o align entrarem todos pela mesma porta. Mas um
+/// **Show** também move o `Transform`, e sem duas coisas o mesmo detector leria a pose que a
+/// MÁQUINA escreveu como um arrasto do artista e deslocaria todos os estados por uma distância
+/// que ninguém percorreu:
+///
+/// 1. **a guarda `!self.ui_state_live`** — nada é aplicado enquanto algo dirige a pose;
+/// 2. **o ancoradouro re-escrito em TODO quadro**, aplique-se ou não — sem isso, o primeiro
+///    quadro depois de um Show mediria a diferença acumulada e a aplicaria de uma vez.
+///
+/// É a doença que o `expr_owed` e o `skip` do autokey já pagaram noutros módulos: *uma pose
+/// derivada realimentada vira autoria que ninguém fez*.
+#[test]
+fn the_state_shift_never_feeds_back_on_a_pose_the_machine_wrote() {
+    let src = read("src/render_loop/mod.rs");
+    let flat: String = src.chars().filter(|c| !c.is_whitespace()).collect();
+    let apply = at(
+        &flat,
+        "shift_host_in_all_states(ui_states,h,d)",
+        "o deslocamento dos estados",
+    );
+    // A guarda vive na condição que precede a aplicação, no mesmo bloco.
+    let guard = at(
+        &flat,
+        "self.ui_states_move_all&&!self.ui_state_live",
+        "a guarda anti-realimentacao",
+    );
+    assert!(
+        guard < apply,
+        "a guarda `!ui_state_live` nao precede o deslocamento — a pose que a MAQUINA escreve \
+         seria lida como um arrasto do artista"
+    );
+    // ⚠️ **E o ancoradouro é escrito FORA do `if`**: dentro dele, um quadro que não aplica não
+    // re-ancora, e a diferença acumulada de um Show inteiro seria despejada de uma vez no quadro
+    // seguinte. É a metade que a guarda sozinha não dá.
+    let anchor = at(
+        &flat,
+        "self.ui_states_anchor=Some((h,now));",
+        "a re-ancoragem",
+    );
+    assert!(anchor > apply, "a re-ancoragem nao vem depois da aplicacao");
+    // ⚠️ **E ela está FORA do ramo — a chave que fecha o `if` vem imediatamente antes dela.**
+    //
+    // Esta linha nasceu de uma mutação SOBREVIVENTE: mover a re-ancoragem para DENTRO do ramo que
+    // aplica a mantém *depois* da aplicação, então o `anchor > apply` acima continuava VERDE — e o
+    // produto ficava com o defeito inteiro (um Show acumula dívida, e o primeiro quadro que
+    // aplicar a despeja de uma vez). *Depois* e *fora* não são a mesma pergunta — a mesma
+    // distinção que o arch-gate do memo do Painter pagou em 2026-07-22.
+    assert!(
+        flat.contains("}self.ui_states_anchor=Some((h,now));"),
+        "a re-ancoragem esta' DENTRO do ramo que aplica — um quadro que nao aplica deixa de \
+         re-ancorar, e a diferenca acumulada de um Show inteiro e' despejada de uma vez"
+    );
+}

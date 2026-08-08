@@ -103,6 +103,16 @@ pub(super) fn component_controls(store: &mut WidgetStore) {
             state: ButtonState::Normal,
         },
     );
+    // **Mover o widget com TODOS os estados** (W7r). ⚠️ Registado como `Button`, e não como
+    // `Checkbox`: é o precedente do `VECTOR_TRANSFORM_RESIZE_BOX`, o outro checkbox deste painel
+    // — o que atravessa o barramento é um `Click`, e quem decide o DESENHO é o `checkbox_row`.
+    // Duas convenções de registo para a mesma caixa dariam dois caminhos de evento.
+    store.register(
+        ids::VECTOR_STATE_MOVE_ALL,
+        InteractiveState::Button {
+            state: ButtonState::Normal,
+        },
+    );
     // A DURAÇÃO: o slider e o chip que o espelha. `link_slider_number_mapped` com escala
     // `MAX_DURATION_S` é o que faz o trilho `0..1` e o número em SEGUNDOS serem o mesmo valor —
     // sem ele o artista arrastaria o trilho e leria um número que não é o dele.

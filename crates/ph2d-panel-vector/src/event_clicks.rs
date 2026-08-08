@@ -328,4 +328,7 @@ fn is_prefab_click(id: ph2d_a11y::NodeId) -> bool {
     // **O MODO DE PREVIEW** (W7r) — quem toma o rato é a shell (só ela tem o picking e o
     // registro de undo), então o interruptor atravessa o barramento como os verbos ao lado.
     || id == ids::VECTOR_STATE_PREVIEW
+    // **Mover o widget com TODOS os estados** (W7r): o deslocamento e' aplicado a' TABELA, que
+    // mora no documento — entao o toggle atravessa o barramento como os verbos ao lado.
+    || id == ids::VECTOR_STATE_MOVE_ALL
 }

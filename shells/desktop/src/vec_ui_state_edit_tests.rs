@@ -199,7 +199,7 @@ fn a_multi_selection_has_no_host() {
         UiStateEdit::Record(StateRole::Default),
     );
     assert!(states.is_empty(), "uma selecao multipla gravou um estado");
-    assert!(publish(&[host, child], &states, None, false).is_none());
+    assert!(publish(&[host, child], &states, None, false, false).is_none());
 }
 
 /// **A seção é oferecida a qualquer forma única, com estados ou sem.**
@@ -210,8 +210,8 @@ fn a_multi_selection_has_no_host() {
 #[test]
 fn the_section_is_offered_before_there_is_anything_to_show() {
     let states = StateSets::default();
-    let v =
-        publish(&[1], &states, None, false).expect("a secao e' oferecida numa forma sem estados");
+    let v = publish(&[1], &states, None, false, false)
+        .expect("a secao e' oferecida numa forma sem estados");
     assert_eq!(v.recorded, [false; 4]);
     assert!(
         (v.duration_s - 0.15).abs() < 1e-6,
@@ -265,7 +265,7 @@ fn every_role_has_a_row_of_ids() {
 /// `panel.vector.states.role.…` ao artista.
 #[test]
 fn every_role_reaches_the_panel_with_a_translated_name() {
-    let v = publish(&[1], &StateSets::default(), None, false).expect("a secao e' oferecida");
+    let v = publish(&[1], &StateSets::default(), None, false, false).expect("a secao e' oferecida");
     for (i, &role) in StateRole::ALL.iter().enumerate() {
         let key = role.i18n_key();
         assert_ne!(
@@ -315,7 +315,7 @@ fn the_duration_ruler_is_one_number() {
 #[test]
 fn the_preview_switch_is_offered_only_where_there_is_something_to_preview() {
     let states = StateSets::default();
-    let v = publish(&[1], &states, None, false).expect("a secao e' oferecida");
+    let v = publish(&[1], &states, None, false, false).expect("a secao e' oferecida");
     assert_eq!(
         v.preview, None,
         "o interruptor foi oferecido numa cena SEM pose nenhuma — ligar nao faria nada"
@@ -332,18 +332,24 @@ fn the_preview_switch_is_offered_only_where_there_is_something_to_preview() {
         UiStateEdit::Record(StateRole::Default),
     );
     assert_eq!(
-        publish(&[host], &states, None, false).unwrap().preview,
+        publish(&[host], &states, None, false, false)
+            .unwrap()
+            .preview,
         Some(false),
         "com uma pose gravada o interruptor tem de existir, desligado"
     );
     assert_eq!(
-        publish(&[host], &states, None, true).unwrap().preview,
+        publish(&[host], &states, None, true, false)
+            .unwrap()
+            .preview,
         Some(true),
         "o estado LIGADO tem de chegar ao painel — senao o botao nunca acende"
     );
     // ⚠️ E a oferta é da CENA: um hospedeiro OUTRO que não o selecionado já basta.
     assert_eq!(
-        publish(&[999], &states, None, false).unwrap().preview,
+        publish(&[999], &states, None, false, false)
+            .unwrap()
+            .preview,
         Some(false),
         "a oferta seguiu a SELECAO em vez da cena — a preview dirige todos os hospedeiros"
     );
@@ -354,3 +360,112 @@ fn the_preview_switch_is_offered_only_where_there_is_something_to_preview() {
 /// porta**, e um irmão obrigaria a duplicá-la ou a torná-la pública para fora do assunto.
 #[path = "vec_ui_state_shape_tests.rs"]
 mod shape;
+
+/// **⭐ O DEFEITO REPORTADO, medido: relocar o widget PERDE a animação** (Enio, 2026-08-07).
+///
+/// ⚠️ **Não digo que este gate "nasceu vermelho" — a porta que ele mede não existia.** O que é
+/// verdade e está MEDIDO: com o deslocamento neutralizado, ele reprova, porque um estado grava a
+/// sub-árvore e o hospedeiro está nela **sempre que ele próprio é uma forma desenhada** — então a
+/// translação dele fica congelada em cada estado, e mostrar um deles depois de mover o widget o
+/// **devolve ao lugar antigo**. É o que o Enio viu depois de gravar um Pressed com a forma longe
+/// da posição inicial.
+///
+/// ⚠️ **E a face que explica por que ninguém tinha visto antes:** um hospedeiro que seja um GRUPO
+/// puro nunca teve o problema — o `members` não o inclui (ele não tem forma própria) —, então o
+/// defeito só nasce quando o artista grava um estado que move a própria forma-hospedeiro.
+#[test]
+fn moving_the_widget_carries_every_state_with_it() {
+    let (mut sim, mut scene, map, host, child) = scene_with_host_and_child();
+    let mut states = StateSets::default();
+    for role in [StateRole::Default, StateRole::Pressed] {
+        apply(
+            &mut sim,
+            &mut scene,
+            &map,
+            &[host],
+            &mut states,
+            UiStateEdit::Record(role),
+        );
+        // O Pressed é gravado com a forma LONGE — é o gesto do report.
+        let he = Entity::from_bits(*map.get(&host).unwrap());
+        sim.world_mut()
+            .get_mut::<Transform>(he)
+            .unwrap()
+            .translation
+            .x = 30.0;
+    }
+    let pressed_before = states
+        .role(host, StateRole::Pressed)
+        .unwrap()
+        .objects
+        .iter()
+        .find(|p| p.id == host)
+        .unwrap()
+        .translation[0];
+    let child_before = states
+        .role(host, StateRole::Default)
+        .unwrap()
+        .objects
+        .iter()
+        .find(|p| p.id == child)
+        .unwrap()
+        .translation[0];
+
+    // O artista reloca o widget inteiro em +100.
+    shift_host_in_all_states(&mut states, host, [100.0, 0.0]);
+
+    for role in [StateRole::Default, StateRole::Pressed] {
+        let x = states
+            .role(host, role)
+            .unwrap()
+            .objects
+            .iter()
+            .find(|p| p.id == host)
+            .unwrap()
+            .translation[0];
+        let want = if role == StateRole::Pressed {
+            pressed_before + 100.0
+        } else {
+            100.0
+        };
+        assert!(
+            (x - want).abs() < 1e-9,
+            "o estado {role:?} nao acompanhou a relocacao: x = {x}, esperado {want} — mostrar \
+             este estado devolveria a forma ao lugar antigo"
+        );
+    }
+    // ⚠️ **E o FILHO não se mexe** — a pose dele é LOCAL ao hospedeiro, então mover o pai já a
+    // leva junto na tela. Deslocá-la também moveria tudo DUAS vezes e destruiria exactamente o
+    // que o artista quer preservar: a coreografia interna do widget.
+    let child_after = states
+        .role(host, StateRole::Default)
+        .unwrap()
+        .objects
+        .iter()
+        .find(|p| p.id == child)
+        .unwrap()
+        .translation[0];
+    assert!(
+        (child_after - child_before).abs() < 1e-9,
+        "a pose do FILHO andou ({child_before} -> {child_after}) — ela e' local ao hospedeiro, \
+         entao ela ja' viaja com ele; some-la e' mover o widget duas vezes"
+    );
+}
+
+/// **Um hospedeiro-GRUPO nunca precisou disto** — o controle que explica o defeito.
+///
+/// ⚠️ Sem ele a lei acima leria como *"estados guardam posição absoluta"*, quando o que se passa é
+/// mais estreito: **o hospedeiro só entra na pose quando ele próprio desenha**. É o que separa
+/// *"a feature é necessária"* de *"a arquitetura está errada"*.
+#[test]
+fn a_group_host_never_had_the_problem() {
+    let (sim, scene, mut map, host, _child) = scene_with_host_and_child();
+    // Um id que não existe na cena: o `members` não o inclui, tal como um grupo puro.
+    map.remove(&host);
+    let ids = members(&sim, &scene, &map, host);
+    assert!(
+        !ids.contains(&host),
+        "um hospedeiro sem forma propria entrou na lista de poses — entao a translacao dele \
+         seria congelada em cada estado, que e' o defeito que esta wave existe para curar"
+    );
+}

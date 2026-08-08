@@ -46,6 +46,11 @@ fn with(recorded: [bool; 4]) -> UiStatesState {
 
 /// A mesma, dizendo o que a shell publica sobre o modo de preview.
 fn with_preview(recorded: [bool; 4], preview: Option<bool>) -> UiStatesState {
+    with_all(recorded, preview, None)
+}
+
+/// A mesma, dizendo também o que a shell publica sobre o *mover carregando os estados*.
+fn with_all(recorded: [bool; 4], preview: Option<bool>, move_all: Option<bool>) -> UiStatesState {
     UiStatesState {
         recorded,
         role_labels: [
@@ -57,6 +62,7 @@ fn with_preview(recorded: [bool; 4], preview: Option<bool>) -> UiStatesState {
         live: None,
         duration_s: 0.15,
         preview,
+        move_all,
     }
 }
 
@@ -298,5 +304,45 @@ fn the_preview_closes_authoring_while_it_runs() {
             "{what} nao voltou com a preview desligada — a seccao ficou inerte"
         );
     }
+    clear();
+}
+
+/// **O interruptor de *mover carregando os estados* está vivo e chega ao bus** (Enio 2026-08-07).
+///
+/// ⚠️ Ele atravessa o barramento porque quem desloca é a SHELL — só ela vê o `Transform` andar.
+/// E ele é oferecido **só onde ESTE hospedeiro tem pose gravada**: sem estados não há o que
+/// carregar, e a caixa seria um controle que não pode fazer nada.
+#[test]
+fn the_move_all_switch_is_alive_and_reaches_the_bus() {
+    clear();
+    click_reaches_bus(
+        with_all([true, false, false, false], Some(false), Some(false)),
+        ids::VECTOR_STATE_MOVE_ALL,
+        "o interruptor de Move All States",
+    );
+    click_reaches_bus(
+        with_all([true, false, false, false], Some(false), Some(true)),
+        ids::VECTOR_STATE_MOVE_ALL,
+        "o interruptor de Move All States MARCADO",
+    );
+    clear();
+}
+
+/// **Sem pose gravada NESTE hospedeiro, a caixa não é pintada** — a metade da AUSÊNCIA.
+#[test]
+fn a_host_with_no_states_offers_no_move_all_switch() {
+    clear();
+    assert!(
+        rect_under(with_all([false; 4], None, None), ids::VECTOR_STATE_MOVE_ALL).is_none(),
+        "a caixa foi pintada num hospedeiro sem estado: nao ha' o que carregar"
+    );
+    assert!(
+        rect_under(
+            with_all([true, false, false, false], Some(false), Some(false)),
+            ids::VECTOR_STATE_MOVE_ALL
+        )
+        .is_some(),
+        "a caixa sumiu num hospedeiro COM estado — relocar o widget volta a perder a animacao"
+    );
     clear();
 }

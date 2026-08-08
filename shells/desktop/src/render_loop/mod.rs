@@ -2189,6 +2189,7 @@ impl crate::App {
             let mut pending_ui_state: Option<crate::vec_ui_state_edit::UiStateEdit> = None;
             let mut pending_ui_state_duration: Option<f64> = None;
             let mut pending_ui_preview_toggle = false;
+            let mut pending_ui_move_all_toggle = false;
             // **A BOOLEANA VIVA** (plano UI/UX W1): o Apply consolida o que o produtor cozinhou
             // NESTE frame, então ele não pode correr aqui — corre logo depois do `recook`, onde o
             // plano existe. Aqui só se anota o clique.
@@ -2582,6 +2583,11 @@ impl crate::App {
                             {
                                 // OS ESTADOS de UI (W7): gravar, mostrar e esquecer uma pose.
                                 pending_ui_state = Some(e);
+                            } else if *id == ph2d_editor::ids::VECTOR_STATE_MOVE_ALL {
+                                // **Mover o widget com TODOS os estados** (W7r): quem desloca é a
+                                // shell — só ela vê o `Transform` andar —, então o toggle
+                                // atravessa o barramento como o interruptor de preview ao lado.
+                                pending_ui_move_all_toggle = true;
                             } else if *id == ph2d_editor::ids::VECTOR_STATE_PREVIEW {
                                 // **O MODO DE PREVIEW** (W7r): ele NÃO é um verbo de estado — não
                                 // toca a tabela —, então tem rota própria em vez de um variant no
@@ -4701,6 +4707,50 @@ impl crate::App {
                     &self.vec_entities,
                     ui_state_dt,
                 );
+            if pending_ui_move_all_toggle {
+                self.ui_states_move_all = !self.ui_states_move_all;
+            }
+            // **MOVER O WIDGET CARREGANDO TODOS OS ESTADOS** (Enio, 2026-08-07).
+            //
+            // Um estado grava a sub-árvore, e o hospedeiro está nela sempre que ele próprio é uma
+            // forma desenhada ⇒ a translação dele fica congelada em cada estado, e relocar o
+            // widget faz o Show seguinte **devolvê-lo ao lugar antigo**. Marcado, o deslocamento
+            // do hospedeiro é aplicado à pose dele em TODOS os estados.
+            //
+            // ⚠️ **O ancoradouro é re-escrito em TODO quadro, aplique-se ou não** — e é isso que
+            // impede a realimentação: um Show deixa a forma noutro lugar, e sem re-ancorar o
+            // quadro seguinte leria essa diferença como um arrasto do artista e deslocaria todos
+            // os estados por uma distância que ninguém percorreu. É a lição do `expr_owed` e do
+            // `skip` do autokey, aqui.
+            //
+            // ⚠️ E o gesto é detectado pelo `Transform`, não pelo gizmo: assim o arrasto, a seta
+            // do teclado, o campo numérico e o align entram todos pela mesma porta.
+            {
+                let host = match self.vec_pen.selected_paths() {
+                    [only] => Some(*only),
+                    _ => None,
+                };
+                let live = host.and_then(|h| {
+                    self.vec_entities
+                        .get(&h)
+                        .map(|&bits| ph2d_ecs::Entity::from_bits(bits))
+                        .and_then(|e| sim.world().get::<ph2d_ecs::Transform>(e))
+                        .map(|t| [t.translation.x, t.translation.y])
+                });
+                if let (Some(h), Some(now)) = (host, live) {
+                    if self.ui_states_move_all
+                        && !self.ui_state_live
+                        && let Some((prev_h, prev)) = self.ui_states_anchor
+                        && prev_h == h
+                    {
+                        let d = [f64::from(now[0] - prev[0]), f64::from(now[1] - prev[1])];
+                        crate::vec_ui_state_edit::shift_host_in_all_states(ui_states, h, d);
+                    }
+                    self.ui_states_anchor = Some((h, now));
+                } else {
+                    self.ui_states_anchor = None;
+                }
+            }
             let mut arm_detached_under: Option<crate::vec_component_edit::Detached> = None;
             if let Some(verb) = pending_component {
                 let sel: Vec<ph2d_vec_scene::VecPathId> = self.vec_pen.selected_paths().to_vec();
@@ -6813,6 +6863,7 @@ impl crate::App {
                         sel.first().copied(),
                     ),
                     self.ui_preview.is_on(),
+                    self.ui_states_move_all,
                 ));
                 // **O Z-INDEX da seleção** (Enio, 2026-08-04) — o número GLOBAL que sobrepõe a
                 // ordem da hierarquia. Publicado pela MESMA porta que o campo escreve e que os

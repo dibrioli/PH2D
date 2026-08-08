@@ -209,5 +209,6 @@ pub use ph2d_editor_core::ids::{
 /// **OS ESTADOS de UI** (plano UI/UX W7): a seção, os três verbos por papel e a duração.
 pub use ph2d_editor_core::ids::{
     MAX_STATE_ROLES, VECTOR_SECTION_STATES, VECTOR_STATE_DURATION, VECTOR_STATE_DURATION_NUM,
-    VECTOR_STATE_PREVIEW, vector_state_apply_id, vector_state_clear_id, vector_state_record_id,
+    VECTOR_STATE_MOVE_ALL, VECTOR_STATE_PREVIEW, vector_state_apply_id, vector_state_clear_id,
+    vector_state_record_id,
 };

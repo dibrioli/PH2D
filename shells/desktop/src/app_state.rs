@@ -850,6 +850,18 @@ pub(crate) struct App {
     /// ⚠️ **Ele não é serializado e não pode ser:** guarda *onde a cena estava quando a preview
     /// ligou*, um fato sobre uma sessão. O documento guarda *onde as poses são*.
     pub(crate) ui_preview: crate::render_loop::ui_preview::UiPreview,
+    /// **Mover o widget carrega TODOS os estados** (Enio, 2026-08-07) — o interruptor.
+    ///
+    /// ⚠️ **Transiente, e não do documento:** ele descreve como o próximo ARRASTO se comporta, e
+    /// não um fato sobre o widget. É a classe do `BakeChannels` da física.
+    pub(crate) ui_states_move_all: bool,
+    /// Onde o hospedeiro estava no quadro anterior — o ancoradouro do deslocamento.
+    ///
+    /// ⚠️ Ele é re-ancorado em TODO quadro, inclusive nos que não aplicam nada. Sem isso, um Show
+    /// deixa a forma noutro lugar e o quadro seguinte leria a diferença como um arrasto do
+    /// artista, deslocando todos os estados por uma distância que ninguém percorreu — a
+    /// realimentação que o `expr_owed` e o `skip` do autokey já pagaram noutros módulos.
+    pub(crate) ui_states_anchor: Option<(ph2d_vec_scene::VecPathId, [f32; 2])>,
     /// **Esc pediu para SAIR da preview.** Um pedido e não a saída: sair devolve poses ao mundo,
     /// e o mundo mora dentro do `gfx` — o mesmo protocolo dos verbos de estado ao lado.
     pub(crate) ui_preview_leave: bool,

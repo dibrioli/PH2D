@@ -49,6 +49,18 @@ impl BodyCtx<'_> {
             y = self.preview_row(on, y);
         }
 
+        // **Mover o widget carregando TODOS os estados** — ele fica ao lado do interruptor de
+        // preview porque os dois dizem *como um GESTO se comporta*, e não *o que existe*; a
+        // tabela de papéis abaixo é a segunda pergunta.
+        if let Some(on) = s.move_all {
+            y = self.checkbox_row(
+                ids::VECTOR_STATE_MOVE_ALL,
+                tr("panel.vector.states.move_all"),
+                on,
+                y,
+            );
+        }
+
         for i in 0..s.role_labels.len() {
             let label = s.role_labels[i].clone();
             y = self.state_role_row(i, &label, s.recorded[i], s.live == Some(i), !preview_on, y);

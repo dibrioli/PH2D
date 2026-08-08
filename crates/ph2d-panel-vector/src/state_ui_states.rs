@@ -37,6 +37,12 @@ pub struct UiStatesState {
     /// não faz nada — a shell só o oferece quando existe alguma pose autorada em algum lugar, que
     /// é exatamente a condição em que ligar a preview tem efeito.
     pub preview: Option<bool>,
+    /// **Mover o widget carrega TODOS os estados** (Enio, 2026-08-07): `None` = não oferecer
+    /// (nada gravado neste hospedeiro, logo não há o que carregar), `Some(on)` = o interruptor.
+    ///
+    /// ⚠️ **Ele qualifica o próximo ARRASTO, não o documento** — é por isso que ele não viaja no
+    /// arquivo: é como o gesto se comporta, a mesma classe do `BakeChannels` da física.
+    pub move_all: Option<bool>,
 }
 
 /// ⚠️ **A CURVA não é oferecida aqui, e a ausência é decisão MEDIDA, não esquecimento.** O

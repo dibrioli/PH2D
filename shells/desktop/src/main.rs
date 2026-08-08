@@ -681,6 +681,8 @@ impl App {
             flip_style: None,
             ui_state_live: false,
             ui_preview: crate::render_loop::ui_preview::UiPreview::default(),
+            ui_states_move_all: false,
+            ui_states_anchor: None,
             ui_preview_leave: false,
             flip_draw: crate::flip_draw::FlipDraw::default(),
             flip_colorize: crate::flip_colorize::FlipColorize::default(),

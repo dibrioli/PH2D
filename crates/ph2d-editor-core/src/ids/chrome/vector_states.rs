@@ -57,3 +57,10 @@ pub const VECTOR_STATE_DURATION_NUM: NodeId = hash_node_id("vector.state.duratio
 /// rato. Um chip por papel seria a segunda forma de pedir o que o botão *Show* já pede, e as duas
 /// discordariam no dia em que uma delas ganhasse um caso especial.
 pub const VECTOR_STATE_PREVIEW: NodeId = hash_node_id("vector.state.preview");
+
+/// **Mover o widget carregando TODOS os estados** (Enio, 2026-08-07).
+///
+/// ⚠️ Marcado, relocar o hospedeiro desloca a pose dele em cada estado gravado — o widget muda de
+/// lugar no canvas e continua **perfeitamente animado**. Desmarcado, mover re-autora só a pose
+/// atual, que é o que se quer quando a intenção é corrigir UM estado.
+pub const VECTOR_STATE_MOVE_ALL: NodeId = hash_node_id("vector.state.move.all");

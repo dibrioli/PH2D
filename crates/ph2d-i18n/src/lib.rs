@@ -261,6 +261,9 @@ pub fn tr(key: &str) -> &'static str {
         // que toma o rato e não anuncia a porta de saída é um modo em que o artista fica preso.
         "panel.vector.states.preview" => "Preview",
         "panel.vector.states.preview.on" => "Preview on — Esc to exit",
+        // ⚠️ O rótulo diz o que ACONTECE, não o que a caixa é: *"Move All States"* descreve o
+        // efeito do próximo arrasto, e é isso que o artista precisa de decidir antes de arrastar.
+        "panel.vector.states.move_all" => "Move All States",
         "panel.vector.section.widget" => "Widget Skin",
         "panel.vector.widget.wear" => "Wear a Widget",
         "panel.vector.widget.remove" => "Back to Drawing",

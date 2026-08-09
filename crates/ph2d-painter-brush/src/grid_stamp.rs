@@ -59,12 +59,24 @@ impl BrushSpec {
     /// ⚠️ O `flatten` é **clampado** em [`crate::DAB_FLATTEN_MAX`]: numa célula mais estreita que
     /// 1:20 o carimbo para de afinar. A alternativa seria um dab degenerado (eixo menor zero), que
     /// não é pintável.
+    /// ⚠️ **O raio é ANCORADO NA BORDA DA TINTA, não no círculo geométrico** — e sem isso o carimbo
+    /// não enche a célula. A silhueta de um falloff macio acaba bem antes do raio (o `W_TAIL` do
+    /// [`crate::height_film::body_edge_t`]: o Smooth padrão termina em `t ≈ 0,61`), então pôr o raio
+    /// em meia célula deixa um carimbo com ~60% da largura dela e uma folga que o artista lê como
+    /// "o método não faz o que promete". Dividir por `t0` estica a tinta até a borda.
+    ///
+    /// É a MESMA correção — e a MESMA porta — que a âncora do bow wave pagou em 2026-07-15: *o aro
+    /// nascia em `t = 1` do footprint enquanto a tinta macia termina em `t ≈ 0,61`*. Uma ponta dura
+    /// (Constant, hardness ≥ 1) tem `t0 = 1` e o raio é meia célula, exatamente como antes.
     #[must_use]
     pub fn grid_stamp_frame(&self) -> (f32, f32, u16) {
         let [w, h] = self.grid_cell();
         let (major, minor, angle) = if w >= h { (w, h, 0) } else { (h, w, 90) };
         let flatten = (1.0 - minor / major).clamp(0.0, crate::DAB_FLATTEN_MAX);
-        (major * 0.5, flatten, angle)
+        // `body_edge_t` é monotônico e nunca zero para um falloff válido; o piso é defesa contra um
+        // perfil custom degenerado, que produziria um raio infinito.
+        let t0 = crate::height_film::body_edge_t(self).max(0.05);
+        (major * 0.5 / t0, flatten, angle)
     }
 
     /// Este spec, reescrito para carimbar UMA célula: raio, achatamento e ângulo saem da grade.
@@ -139,21 +151,53 @@ mod tests {
     /// é o horizontal (ângulo 0) e numa em pé é o vertical (ângulo 90).
     #[test]
     fn the_footprint_is_the_cell_not_the_brush_size() {
-        let (r, f, a) = spec([40.0, 40.0], [0.0; 2]).grid_stamp_frame();
-        assert_eq!((r, f, a), (20.0, 0.0, 0), "quadrada: sem achatamento");
+        // O ACHATAMENTO e o ÂNGULO são pura razão de aspecto da célula — o RAIO tem lei própria (a
+        // âncora na borda da tinta), gateada em `the_radius_is_anchored_on_the_paints_edge`.
+        let (_, f, a) = spec([40.0, 40.0], [0.0; 2]).grid_stamp_frame();
+        assert_eq!((f, a), (0.0, 0), "quadrada: sem achatamento");
 
-        let (r, f, a) = spec([40.0, 10.0], [0.0; 2]).grid_stamp_frame();
+        let (_, f, a) = spec([40.0, 10.0], [0.0; 2]).grid_stamp_frame();
         assert_eq!(a, 0, "deitada: eixo maior horizontal");
-        assert!((r - 20.0).abs() < 1e-6);
         assert!((f - 0.75).abs() < 1e-6, "menor = 10 = 40*(1-0.75)");
 
-        let (r, f, a) = spec([10.0, 40.0], [0.0; 2]).grid_stamp_frame();
+        let (_, f, a) = spec([10.0, 40.0], [0.0; 2]).grid_stamp_frame();
         assert_eq!(
             a, 90,
             "em pé: eixo maior VERTICAL — o ângulo é quem diz isso"
         );
-        assert!((r - 20.0).abs() < 1e-6);
         assert!((f - 0.75).abs() < 1e-6);
+    }
+
+    /// ⚠️ **O raio é ancorado na borda da TINTA, não no círculo geométrico** — a correção que o
+    /// render-and-look pegou (2026-08-09: os carimbos enchiam ~60% da célula e sobrava folga).
+    ///
+    /// O **CONTROLE** é uma ponta DURA: com `Constant` a tinta chega ao aro (`t0 = 1`) e o raio é
+    /// exatamente meia célula. É ele que prova que a divisão não é um fator inventado — e que uma
+    /// ponta que já enchia a célula não passou a transbordar.
+    #[test]
+    fn the_radius_is_anchored_on_the_paints_edge() {
+        let hard = BrushSpec {
+            falloff: crate::Falloff::Constant,
+            ..spec([40.0, 40.0], [0.0; 2])
+        };
+        let (r, _, _) = hard.grid_stamp_frame();
+        assert!(
+            (r - 20.0).abs() < 1e-3,
+            "ponta dura: o raio É meia célula ({r})"
+        );
+
+        let soft = spec([40.0, 40.0], [0.0; 2]); // o falloff default, macio
+        let (r_soft, _, _) = soft.grid_stamp_frame();
+        let t0 = crate::height_film::body_edge_t(&soft);
+        assert!(
+            t0 < 0.8,
+            "fixture: o falloff default TEM de ser macio, senão o gate é vácuo (t0={t0})"
+        );
+        assert!(
+            (r_soft - 20.0 / t0).abs() < 1e-3,
+            "o raio macio compensa exatamente a cauda do falloff"
+        );
+        assert!(r_soft > 20.0, "…e por isso é MAIOR que meia célula");
     }
 
     /// ⚠️ O limite de REPRESENTAÇÃO, com o número medido ao lado: além de 1:20 o carimbo para de
@@ -290,7 +334,18 @@ mod tests {
         let mut st = crate::Stroke::new(s, crate::Dynamics::default(), 0);
         let mut out = Vec::new();
         st.begin(pt(10.0, 10.0), &mut out);
-        assert_eq!(out[0].radius_px, 40.0, "eixo maior da célula / 2");
+        let want = BrushSpec {
+            stroke_method: crate::StrokeMethod::GridStamp,
+            radius_px: 3.0,
+            ..spec([80.0, 20.0], [0.0, 0.0])
+        }
+        .grid_stamp_frame()
+        .0;
+        assert_eq!(out[0].radius_px, want, "o raio emitido é o da CÉLULA");
+        assert!(
+            want > 40.0,
+            "…e ancorado na borda da tinta, logo > meia célula"
+        );
     }
 
     /// `as_grid_stamp` e `grid_stamp_frame` têm de concordar — são a MESMA resposta, e se divergirem

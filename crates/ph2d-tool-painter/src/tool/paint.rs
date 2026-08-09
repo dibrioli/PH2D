@@ -145,6 +145,9 @@ mod blur_route;
 /// The `impl CanvasPaintTool` pointer entry (`on_canvas_pointer`); split from `paint.rs` (LOC cap).
 mod canvas_pointer;
 mod composite;
+/// **Grid Stamp** — os controles do método (célula, deslocamento, Show Grid) e a régua norm↔px.
+mod grid_stamp_settings;
+pub use grid_stamp_settings::GridAxis;
 #[cfg(test)]
 mod composite_look;
 #[cfg(test)]

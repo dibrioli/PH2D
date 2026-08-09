@@ -350,6 +350,11 @@ pub(crate) struct PaintState {
     /// Impasto at all. Default on — someone who sculpts wants to see it, and with no relief anywhere
     /// the pass costs a single `is_empty()`.
     pub(super) impasto_show: bool,
+    /// **Grid Stamp — desenhar a grade.** Exibição, não pintura: com ela ligada ou desligada o carimbo
+    /// pousa exatamente nas mesmas células (gate `show_grid_is_display_only`). Mora aqui, e não no
+    /// `BrushSpec`, pelo mesmo motivo do `impasto_show` logo acima — é uma ajuda de visão do canvas,
+    /// não uma propriedade do pincel que um slot deva carregar.
+    pub(super) grid_show: bool,
     /// The canvas's **light rig** — up to `MAX_LIGHTS` lamps, each with its own angle / elevation /
     /// intensity / colour, plus which one the card is editing. Light 0 is the key and starts on; the
     /// rest start off, so a canvas nobody has opened the rig on is byte-identical to the one-lamp build.

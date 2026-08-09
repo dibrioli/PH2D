@@ -155,6 +155,40 @@ fn composite_look() {
     }
 }
 
+/// RENDER-AND-LOOK do **Grid Stamp**: um arrasto em L numa grade retangular, com deslocamento.
+/// O oráculo é o olho — os carimbos têm de encher as células e ficar alinhados à rede.
+#[test]
+#[ignore = "render-and-look: escreve PNG, roda sob demanda"]
+fn grid_stamp_look() {
+    let dir = std::env::var("PH2D_COMPOSITE_LOOK_DIR").unwrap_or_else(|_| "/tmp/look".into());
+    std::fs::create_dir_all(&dir).unwrap();
+    for (name, cell, off) in [
+        ("grid_quadrada", [64.0f32, 64.0], [0.0f32, 0.0]),
+        ("grid_retangular", [80.0, 32.0], [0.0, 0.0]),
+        ("grid_deslocada", [64.0, 64.0], [32.0, 16.0]),
+    ] {
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; (SIZE * SIZE * 4) as usize], SIZE, SIZE);
+        t.paint.brush.color = [0.15, 0.35, 0.75];
+        t.paint.brush.stroke_method = ph2d_painter_brush::StrokeMethod::GridStamp;
+        t.paint.brush.grid_cell_px = cell;
+        t.paint.brush.grid_offset_px = off;
+        // Um L: uma perna horizontal e uma vertical, para ver as duas direções da caminhada.
+        t.on_canvas_pointer(cp([70.0, 120.0], PointerPhase::Down));
+        for i in 1..=40 {
+            t.on_canvas_pointer(cp([70.0 + i as f32 * 12.0, 120.0], PointerPhase::Move));
+        }
+        for i in 1..=30 {
+            t.on_canvas_pointer(cp([550.0, 120.0 + i as f32 * 14.0], PointerPhase::Move));
+        }
+        t.on_canvas_pointer(cp([550.0, 540.0], PointerPhase::Up));
+        let png = png_rgba(&t.canvas_rgba, SIZE, SIZE);
+        let path = format!("{dir}/{name}.png");
+        std::fs::write(&path, png).unwrap();
+        eprintln!("escrito {path}");
+    }
+}
+
 /// SONDA — **quanto** a pilha arrasta os cruzamentos, em px.
 ///
 /// O cruzamento é o único lugar da cena com contraste sob o pincel (o build-up de dois traços), então

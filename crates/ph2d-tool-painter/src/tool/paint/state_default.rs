@@ -193,6 +193,9 @@ impl Default for PaintState {
             relief: Default::default(),
             // Impasto lighting (canvas-level). Inert until some layer actually has relief.
             impasto_show: true,
+            // A grade nasce APAGADA: ela só faz sentido com o Grid Stamp escolhido, e o método
+            // default é o Space. Quem a acende é o checkbox, que o painel só pinta no método dela.
+            grid_show: false,
             // "Adjust Last Stroke" is OFF by default (Enio 2026-07-19). Finished paint stays finished:
             // dialling the brush in for the NEXT stroke must not silently reach back and rewrite the one
             // already on the canvas. The historical default was ON, which made every knob a retroactive

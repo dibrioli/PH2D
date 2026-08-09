@@ -40,9 +40,37 @@ impl Card {
         self
     }
 
+    /// **A altura que a cabeça de facto OCUPA em `host`** — nunca mais que o próprio `host`.
+    ///
+    /// ⚠️ Ela existe porque as três portas de layout deste widget devolviam retângulos **fora**
+    /// da caixa que lhes foi dada: a cabeça mede `Spacing::Xl3` (32 px) e uma row deste app mede
+    /// `ROW_H_PX` (28), e `WidgetKind::Card` **é um tipo de row** do painel autorado. Medido, com
+    /// `host = y 100..128`: a cabeça saía em `100..132` e o divisor dela pousava em `y = 131`,
+    /// **três píxeis por cima da row de baixo**; o rodapé pousava em `y = 92`, **oito acima do
+    /// topo**; e o corpo nascia em `y = 144`, dezasseis abaixo do fundo.
+    ///
+    /// ⚠️ **A cabeça tem PRECEDÊNCIA sobre o rodapé, e é uma escolha:** é nela que está o título,
+    /// que é o que identifica o cartão. Numa caixa que não comporta os dois, quem cede é o rodapé.
+    fn header_h_in(&self, host: Rect) -> f32 {
+        if self.title.is_some() {
+            header_h().min(host.h.max(0.0))
+        } else {
+            0.0
+        }
+    }
+
+    /// A altura que o rodapé ocupa — o que sobra depois da cabeça.
+    fn footer_h_in(&self, host: Rect) -> f32 {
+        if self.footer {
+            FOOTER_H.min((host.h.max(0.0) - self.header_h_in(host)).max(0.0))
+        } else {
+            0.0
+        }
+    }
+
     pub fn header_rect(&self, host: Rect) -> Option<Rect> {
         if self.title.is_some() {
-            Some(Rect::new(host.x, host.y, host.w, header_h()))
+            Some(Rect::new(host.x, host.y, host.w, self.header_h_in(host)))
         } else {
             None
         }
@@ -50,31 +78,26 @@ impl Card {
 
     pub fn footer_rect(&self, host: Rect) -> Option<Rect> {
         if self.footer {
-            Some(Rect::new(
-                host.x,
-                host.y + host.h - FOOTER_H,
-                host.w,
-                FOOTER_H,
-            ))
+            let h = self.footer_h_in(host);
+            Some(Rect::new(host.x, host.y + host.h - h, host.w, h))
         } else {
             None
         }
     }
 
     /// Body slot (between header and footer if either is present).
+    ///
+    /// ⚠️ **O `.max(0.0)` da altura salvava o TAMANHO e não a POSIÇÃO:** com a cabeça a comer a
+    /// caixa inteira o corpo nascia dezasseis píxeis abaixo do fundo, com altura zero — e o
+    /// [`push_card_body_clip`] empurrava um recorte degenerado **fora** da caixa, onde tudo o que o
+    /// consumidor pintasse era cortado para nada. Por isso o topo é limitado ao fundo disponível.
     pub fn body_rect(&self, host: Rect) -> Rect {
-        let mut top = host.y;
-        let mut bot = host.y + host.h;
-        if self.title.is_some() {
-            top += header_h();
-        }
-        if self.footer {
-            bot -= FOOTER_H;
-        }
+        let top = host.y + self.header_h_in(host);
+        let bot = host.y + host.h - self.footer_h_in(host);
         let pad = Spacing::Lg.px();
         Rect::new(
             host.x + pad,
-            top + pad,
+            (top + pad).min(bot),
             (host.w - pad * 2.0).max(0.0),
             (bot - top - pad * 2.0).max(0.0),
         )
@@ -157,6 +180,80 @@ pub fn pop_card_body_clip(scene: &mut VectorScene) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// **Nada que o cartao PUBLICA sai da caixa que lhe foi dada.**
+    ///
+    /// ⚠️ Isto e' alcancavel pelo artista HOJE: `WidgetKind::Card` e' um tipo de row do painel
+    /// autorado, uma row mede `ROW_H_PX` (28) e a cabeca mede `Spacing::Xl3` (32). Medido antes da
+    /// cura, com `host = y 100..128`: a cabeca saia em `100..132` e o divisor dela pousava em
+    /// `y = 131` -- tres pixeis por cima da row de baixo -- o rodape em `y = 92`, oito acima do
+    /// topo, e o corpo em `y = 144`, dezasseis abaixo do fundo.
+    ///
+    /// ⚠️ **A varredura de alturas e' o gate**, e nao uma caixa escolhida: o joelho de cada porta
+    /// esta' num sitio diferente (a cabeca cede a 32, o rodape a 36, o corpo ao par mais o
+    /// enchimento), entao uma altura so' mediria uma delas e ficaria verde sobre as outras duas.
+    /// A caixa GRANDE e' o controle -- ela ja' passava, e e' sobre ela que o defeito nao aparecia.
+    #[test]
+    fn every_slot_the_card_publishes_stays_inside_the_box() {
+        for h in [0.0_f32, 1.0, 12.0, 28.0, 32.0, 36.0, 60.0, 80.0, 200.0] {
+            let host = Rect::new(10.0, 100.0, 200.0, h);
+            for card in [
+                Card::new(NodeId(1)).title("Card"),
+                Card::new(NodeId(1)).footer(true),
+                Card::new(NodeId(1)).title("Card").footer(true),
+            ] {
+                let dentro = |r: Rect, nome: &str| {
+                    assert!(
+                        r.y >= host.y - 0.001
+                            && r.y + r.h <= host.y + host.h + 0.001
+                            && r.x >= host.x - 0.001
+                            && r.x + r.w <= host.x + host.w + 0.001,
+                        "h={h}: o {nome} ({:.1}..{:.1}) sai da caixa ({:.1}..{:.1})",
+                        r.y,
+                        r.y + r.h,
+                        host.y,
+                        host.y + host.h
+                    );
+                };
+                if let Some(r) = card.header_rect(host) {
+                    dentro(r, "cabecalho");
+                }
+                if let Some(r) = card.footer_rect(host) {
+                    dentro(r, "rodape");
+                }
+                dentro(card.body_rect(host), "corpo");
+            }
+        }
+    }
+
+    /// **A cabeca e o rodape nao se sobrepoem** -- numa caixa que nao comporta os dois, cede o
+    /// rodape.
+    ///
+    /// ⚠️ Sem ele, clampar cada um ao `host` isoladamente ficaria verde no gate acima e desenharia
+    /// os dois divisores um sobre o outro: cada retangulo caberia na caixa, e ainda assim o
+    /// desenho estaria errado. E a PRECEDENCIA e' uma escolha -- o titulo e' o que identifica o
+    /// cartao --, entao ela e' afirmada e nao deixada ao acaso da ordem das linhas.
+    #[test]
+    fn the_header_wins_the_room_and_the_footer_takes_what_is_left() {
+        let host = Rect::new(0.0, 0.0, 200.0, 40.0);
+        let card = Card::new(NodeId(1)).title("Card").footer(true);
+        let h = card.header_rect(host).expect("com titulo");
+        let f = card.footer_rect(host).expect("com rodape");
+        assert!(
+            (h.y + h.h) <= f.y + 0.001,
+            "a cabeca ({:.1}..{:.1}) invade o rodape ({:.1}..{:.1})",
+            h.y,
+            h.y + h.h,
+            f.y,
+            f.y + f.h
+        );
+        assert!(
+            h.h > f.h,
+            "numa caixa apertada quem cede tem de ser o rodape: cabeca {:.1}, rodape {:.1}",
+            h.h,
+            f.h
+        );
+    }
 
     #[test]
     fn header_rect_only_with_title() {

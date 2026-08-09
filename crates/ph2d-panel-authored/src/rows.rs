@@ -276,20 +276,56 @@ pub fn selected_of(live: Option<&InteractiveState>) -> Option<usize> {
 /// Devolve `false` quando o estado não é de escolha — o chamador larga o gesto em vez de o
 /// inventar.
 pub fn select_in(live: &mut InteractiveState, index: usize) -> bool {
+    if !set_index(live, index) {
+        return false;
+    }
+    if let InteractiveState::Dropdown { open, .. } = live {
+        *open = false;
+    }
+    true
+}
+
+/// **Onde o índice MORA** — a metade de escrita que as duas portas partilham.
+///
+/// ⚠️ Ela existe para que *escolher* e *reconciliar* não sejam duas respostas a **onde este tipo
+/// guarda a marca**. O que as separa é a outra metade: um GESTO fecha a lista, uma reconciliação
+/// não — e é por isso que o `open` está no [`select_in`] e não aqui.
+fn set_index(live: &mut InteractiveState, index: usize) -> bool {
     match live {
         InteractiveState::Tabs { selected } => *selected = index,
         InteractiveState::Radio { selected_index, .. } => *selected_index = index,
-        InteractiveState::Dropdown {
-            open,
-            selected_index,
-            ..
-        } => {
-            *open = false;
-            *selected_index = Some(index);
-        }
+        InteractiveState::Dropdown { selected_index, .. } => *selected_index = Some(index),
         _ => return false,
     }
     true
+}
+
+/// **Encolhe a marca para uma opção que a row consegue oferecer.**
+///
+/// ⚠️ **O documento muda por quadro e o store não sabe disso.** As opções de uma row de lista são
+/// os FILHOS da forma na Hierarquia; o artista apaga um e o índice guardado fica a apontar para um
+/// que já não existe. Ninguém reconciliava os dois, e as quatro variantes falhavam de maneiras
+/// DIFERENTES — o que é pior que falharem igual: `Tabs::selected` **CLAMPA** e acende a última aba,
+/// `RadioGroup`/`Dropdown` **IGNORAM em silêncio** e não acendem nada, e o `event` devolve o índice
+/// **CRU**. Medido: a faixa acendia a aba 1 e o painel reportava a 2.
+///
+/// ⚠️ **A lei é o clamp, e não um reset a zero, porque é o que a família já DESENHA:** `Tabs` é a
+/// variante mais usada e o widget dela clampa há muito. Encolher faz as outras três concordarem com
+/// o que ela mostra, em vez de inventar um quarto comportamento — e o desenho de uma faixa de abas
+/// não se move um pixel com esta wave.
+///
+/// ⚠️ **Sem opções não há índice válido**, e clampar para 0 afirmaria que o artista escolheu o
+/// primeiro de nada. A row fica como está: a pele desenha a moldura vazia, que é o que ela é.
+///
+/// Devolve `true` quando de facto encolheu — é o que o gate de mutação observa.
+pub fn clamp_selection_to(live: &mut InteractiveState, count: usize) -> bool {
+    let Some(cur) = selected_of(Some(live)) else {
+        return false;
+    };
+    if count == 0 || cur < count {
+        return false;
+    }
+    set_index(live, count - 1)
 }
 
 /// **A que row e a que opção pertence este id** — a inversa do [`ids::authored_option_id`].

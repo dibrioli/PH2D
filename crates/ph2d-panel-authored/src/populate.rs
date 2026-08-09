@@ -291,9 +291,16 @@ pub(crate) fn adopt(store: &mut WidgetStore, row: &Row) {
 /// `open` é estado que muda com o clique: registar só quando aberto daria um id que nasce
 /// focusável **depois** de o passe de pintura já ter registado o retângulo dele — a mesma corrida,
 /// um frame adiante.
+/// ⚠️ **E a marca é ENCOLHIDA aqui, pela mesma razão de TEMPO que trouxe o [`adopt`]:** as opções
+/// são os filhos da forma, o artista apaga um, e o índice guardado fica a apontar para um que já
+/// não existe. Reconciliar por quadro, na porta que já percorre a tabela viva, é o que impede o
+/// `paint` e o `event` de discordarem — a lei e o preço dela estão no [`crate::rows::clamp_selection_to`].
 fn options(store: &mut WidgetStore, row: &Row) {
     if !row.kind.takes_options() {
         return;
+    }
+    if let Some(live) = store.get_mut(row.id) {
+        crate::rows::clamp_selection_to(live, row.options.len());
     }
     for i in 0..row.options.len() {
         button(store, ids::authored_option_id(&row.key, i));

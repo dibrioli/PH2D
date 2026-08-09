@@ -80,7 +80,8 @@ fn no_option_is_offered_outside_the_panel_that_holds_it() {
 
     let mut offered = 0;
     for i in 0..OPTIONS {
-        let Some(r) = h.painted_rect::<AuthoredPanel>(&mut st, VIEWPORT, ids::authored_option_id(&key, i))
+        let Some(r) =
+            h.painted_rect::<AuthoredPanel>(&mut st, VIEWPORT, ids::authored_option_id(&key, i))
         else {
             continue;
         };
@@ -130,13 +131,18 @@ fn the_option_that_does_not_fit_is_reachable_by_scrolling() {
          mediria uma lista que cabe"
     );
 
-    h.store_mut()
-        .set_panel_scroll(id, content_h - visible_h);
+    h.store_mut().set_panel_scroll(id, content_h - visible_h);
     let last = ids::authored_option_id(&key, OPTIONS - 1);
-    let panel = h.store().dropdown_popover().map(|(_, r)| r).expect("sem painel");
+    let panel = h
+        .store()
+        .dropdown_popover()
+        .map(|(_, r)| r)
+        .expect("sem painel");
     let r = h
         .painted_rect::<AuthoredPanel>(&mut st, VIEWPORT, last)
-        .expect("a ultima opcao nao existe nem com a lista rolada ate' o fim — ela e' inalcancavel");
+        .expect(
+            "a ultima opcao nao existe nem com a lista rolada ate' o fim — ela e' inalcancavel",
+        );
     assert!(
         r.y >= panel.y - 0.5 && r.y + r.h <= panel.y + panel.h + 0.5,
         "a ultima opcao ({:.1}..{:.1}) continua fora do painel ({:.1}..{:.1}) depois de rolar tudo",

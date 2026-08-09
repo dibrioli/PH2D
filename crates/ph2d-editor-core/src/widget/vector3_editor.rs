@@ -191,15 +191,47 @@ mod tests {
         assert_eq!(v.z.state, TextInputState::Disabled);
     }
 
+    /// **Os três campos REPARTEM o host** — nem sobra folga à direita, nem transbordam.
+    ///
+    /// ⚠️ **Este gate chamava-se *"partition"* e media ORDEM** (`x` crescente) **e largura
+    /// positiva** — duas propriedades que sobrevivem a qualquer repartição errada. Medido: trocar
+    /// o divisor de `3.0` por `4.0`, isto é, deixar um quarto do host vazio à direita, mantinha-o
+    /// VERDE.
+    ///
+    /// ⚠️ **O oráculo é a BORDA, não a fórmula:** o primeiro campo começa no host e o último
+    /// termina nele, ao pixel. Re-derivar `field_w` aqui seria escrever a mesma aritmética num
+    /// segundo lugar — o oráculo que concorda com o produto estando os dois errados. E a
+    /// varredura cobre as DUAS geometrias (com e sem rótulo de eixo), porque o `label_w` entra na
+    /// conta e uma delas passaria sozinha.
     #[test]
     fn field_rects_partition_host() {
-        let v = fixture();
-        let host = Rect::new(0.0, 0.0, 360.0, 32.0);
-        let rects = v.field_rects(host);
-        assert!(rects[0].x < rects[1].x);
-        assert!(rects[1].x < rects[2].x);
-        for r in rects {
-            assert!(r.w > 0.0);
+        let gap = Spacing::Md.px();
+        for labels in [false, true] {
+            let v = fixture().colored_labels(labels);
+            let host = Rect::new(7.0, 0.0, 360.0, 32.0);
+            let r = v.field_rects(host);
+
+            assert!(
+                r[0].x >= host.x - 1e-3,
+                "labels={labels}: o primeiro campo comeca em {}, antes do host ({})",
+                r[0].x,
+                host.x
+            );
+            assert!(
+                (r[2].x + r[2].w - (host.x + host.w)).abs() < 1e-3,
+                "labels={labels}: o ultimo campo termina em {}, e o host acaba em {} — sobra ou \
+                 transborda",
+                r[2].x + r[2].w,
+                host.x + host.w
+            );
+            for i in 0..2 {
+                let free = r[i + 1].x - (r[i].x + r[i].w);
+                assert!(
+                    free >= gap - 1e-3,
+                    "labels={labels}: entre o campo {i} e o seguinte sobram {free} px, menos que o \
+                     gap ({gap}) — eles encostam ou sobrepoem"
+                );
+            }
         }
     }
 

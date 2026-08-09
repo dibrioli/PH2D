@@ -34,3 +34,8 @@ ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }
 # O gesto REAL do seam (Down+Up) precisa do tipo de evento de ponteiro. Um `WidgetEvent::Click`
 # sintético prova a allowlist e PULA a checagem de focabilidade no store.
 ph2d-host = { path = "../ph2d-host" }
+# ⚠️ **`dev-dependency`, e a direção é a wave inteira numa linha:** o gate de staleness precisa do
+# EMISSOR para re-emitir o painel versionado e comparar byte a byte, mas o `src/` desta crate não
+# pode alcançá-lo — o gerador é quem escreve este código, não quem ele consome. Em
+# `[dependencies]` seria a aresta que deixa o painel compilado depender do gerador que o produziu.
+ph2d-ui-codegen = { path = "../ph2d-ui-codegen" }

@@ -20,10 +20,10 @@ use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::paint::rect_to_vello;
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
-    PANEL_HEAD_PAD, PANEL_HEADER_CLOSE_RESERVE, PANEL_HEADER_H_DEFAULT, PANEL_TITLE_BASELINE,
-    clamp_panel_rect, paint_panel_close_button, paint_panel_corner_dot, paint_panel_corner_dot_bl,
-    paint_panel_surface, paint_panel_title, panel_drag_handle_rect, panel_resize_handle_rect,
-    panel_resize_handle_rect_bl,
+    PANEL_HEAD_PAD, PANEL_HEADER_CLOSE_RESERVE, PANEL_TITLE_BASELINE, clamp_panel_rect,
+    paint_panel_close_button, paint_panel_corner_dot, paint_panel_corner_dot_bl,
+    paint_panel_surface, paint_panel_title, panel_close_button_rect, panel_drag_handle_rect,
+    panel_resize_handle_rect, panel_resize_handle_rect_bl,
 };
 use ph2d_editor_core::widget::{
     AUTHORED_SCROLLBAR_ID, Dropdown, DropdownOption, SkinParam, icon_glyph, inline_option_rect,
@@ -113,15 +113,25 @@ pub(crate) fn paint(_state: &mut AuthoredPanelState, ctx: &mut PaintCtx) {
     paint_panel_corner_dot(rect, ctx.scene, theme);
     paint_panel_corner_dot_bl(rect, ctx.scene, theme);
     let hit_index = ctx.host.hit_index_mut();
+    // ⚠️ **A altura da faixa é `body_top`, NUNCA `PANEL_HEADER_H_DEFAULT`.** Aquela constante (56)
+    // está dimensionada para um cabeçalho com SUBTÍTULO, e este painel abre o corpo em 44 — os 12
+    // px de diferença caem dentro da primeira row, e como o chrome é registado depois (o hit é
+    // último-registado-ganha), a faixa GANHAVA: 43% de uma row de 28 px arrastava o painel em vez
+    // de operar o controle. Medido, e o irmão `ph2d-panel-wet-tuning` já faz esta conta.
     hit_index.register(
         ids::AUTHORED_DRAG_HANDLE,
-        panel_drag_handle_rect(rect, PANEL_HEADER_H_DEFAULT, PANEL_HEADER_CLOSE_RESERVE),
+        panel_drag_handle_rect(rect, body_top - rect.y, PANEL_HEADER_CLOSE_RESERVE),
     );
     hit_index.register(ids::AUTHORED_RESIZE_HANDLE, panel_resize_handle_rect(rect));
     hit_index.register(
         ids::AUTHORED_RESIZE_HANDLE_BL,
         panel_resize_handle_rect_bl(rect),
     );
+    // ⚠️ **O X é re-registado AQUI**, e não é redundante: ele foi registado pelo
+    // `paint_panel_title`, ou seja **antes** do corpo — e a faixa deixa a reserva dele livre de
+    // propósito, então uma row rolada para debaixo dessa reserva o SUPERAVA no
+    // último-registado-ganha. O irmão `wet-tuning` traz a mesma linha com o mesmo motivo.
+    hit_index.register(ids::AUTHORED_CLOSE, panel_close_button_rect(rect));
 
     // ⚠️ **O passe DIFERIDO, e ele é o ÚLTIMO de propósito** — as três coisas que a ordem decide:
     //

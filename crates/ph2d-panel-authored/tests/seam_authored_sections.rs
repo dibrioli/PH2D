@@ -210,3 +210,38 @@ fn a_folded_section_shrinks_the_body_instead_of_leaving_a_hole() {
     );
     rows::set_live_rows(None);
 }
+
+/// **A borda de CIMA da primeira row é da ROW, não da faixa de arraste.**
+///
+/// ⚠️ Gate red-first, e o defeito é de ARITMÉTICA: a faixa era registada com
+/// `PANEL_HEADER_H_DEFAULT` (56 px), uma constante dimensionada para um cabeçalho com SUBTÍTULO,
+/// enquanto este painel abre o corpo em `PANEL_TITLE_BASELINE + título + Md` = **44**. Os 12 px de
+/// diferença caem dentro do corpo, e como o chrome é registado **depois** (o hit é
+/// último-registado-ganha, de propósito, para blindar o cabeçalho de rows roladas), a faixa
+/// GANHAVA — 43% da altura de uma row de 28 px.
+///
+/// ⚠️ **Nenhum seam via, e a razão é a fixture:** todos clicam no CENTRO da row, que cai 2 px
+/// abaixo do fim da faixa. Ela passava raspando por cima do defeito. Este clica na BORDA.
+///
+/// ⚠️ E o sintoma lê como intermitente: clicar 3 px mais abaixo funciona, e o canto direito da row
+/// (o que a reserva do X deixa livre) responde sempre — o artista conclui que o painel é errático.
+///
+/// O irmão `ph2d-panel-wet-tuning` já passa `body_top - rect.y` com o motivo escrito ao lado.
+#[test]
+fn the_top_edge_of_the_first_row_belongs_to_the_row_not_to_the_drag_band() {
+    let (mut h, mut st) = host_with_two_sections();
+    let r = h
+        .painted_rect::<AuthoredPanel>(&mut st, VIEWPORT, key_id("Alpha"))
+        .expect("o cabecalho nao foi pintado");
+    // A BORDA de cima, não o centro — é ali que a faixa mordia.
+    let (cx, cy) = (r.x + r.w * 0.5, r.y + 2.0);
+    h.dispatch_pointer_event(pointer(PointerKind::Down, cx, cy, SEC));
+    for ev in h.dispatch_pointer_event(pointer(PointerKind::Up, cx, cy, SEC + SEC / 100)) {
+        AuthoredPanel::apply_event(&mut st, &mut h, ev);
+    }
+    assert!(
+        h.store().is_collapsed(key_id("Alpha")),
+        "o clique na borda de cima do cabecalho nao dobrou a secao — a faixa de arraste do painel \
+         comeu-o, e ela e' registada DEPOIS do corpo"
+    );
+}

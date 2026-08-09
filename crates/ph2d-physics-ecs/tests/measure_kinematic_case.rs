@@ -163,3 +163,142 @@ fn measure_the_impact_penetration_today() {
         );
     }
 }
+
+fn raft_y(sim: &SimWorld, raft: ph2d_ecs::Entity) -> f32 {
+    sim.world()
+        .get::<Transform>(raft)
+        .expect("raft")
+        .translation
+        .y
+}
+
+/// **O QUE A JANGADA SENTE NOS DOIS MODOS** — a medição que decide a
+/// `W-KinWeight` (plano 07 §6).
+///
+/// A K6 diz que a 3ª lei sobrevive ao modo: a `reaction` toma o suporte como
+/// ARGUMENTO e o chão vem do `footing`, então nada nela depende de o corpo ser
+/// dinâmico. A ponte já a monta **fora** do ramo de modo. A pergunta que falta
+/// é a que o plano nomeia: **a massa é AUTORADA**, e um corpo cinemático não
+/// tem massa que o rapier calcule.
+///
+/// ⚠️ **A jangada leva `GravityScale(0)`** — sem isso ela cai por conta própria
+/// e separar *"afundou porque o personagem pesa"* de *"afundou porque tudo
+/// cai"* viraria a subtração de dois números grandes. Com peso próprio zero,
+/// **todo milímetro é do personagem**, que é o oráculo desta wave.
+#[test]
+#[ignore = "sonda de medição"]
+fn measure_what_the_raft_feels_in_both_modes() {
+    println!("\n=== A JANGADA SOB O PERSONAGEM (120 tiques, parado no centro) ===");
+    println!(
+        "{:<22} {:>12} {:>16} {:>14}",
+        "modo", "massa", "acel (m/s2)", "% de m.g"
+    );
+    // ⚠️ **A ablação é pela porta do ARTISTA** (`MassOverride`, da W-Mass), não
+    // por um getter de debug: se o vão entre os modos for a MASSA, autorar a
+    // mesma nos dois fecha-o; se sobreviver, o vão é o SUPORTE, e uma massa
+    // autorada seria a cura errada.
+    for (kinematic, forced) in [
+        (false, None),
+        (true, None),
+        (false, Some(1.0_f32)),
+        (true, Some(1.0_f32)),
+    ] {
+        let mut sim = SimWorld::new();
+        let raft = sim
+            .world_mut()
+            .spawn((
+                Name::new("Raft"),
+                RigidBody {
+                    kind: BodyKind::Dynamic,
+                },
+                Collider {
+                    shape: ColliderShape::Cuboid {
+                        half_x: 3.0,
+                        half_y: 0.25,
+                    },
+                    ..Collider::default()
+                },
+                ph2d_physics_ecs::GravityScale(0.0),
+                Transform::from_translation(Vec2::new(0.0, 0.0)),
+            ))
+            .id();
+        let player = sim
+            .world_mut()
+            .spawn((
+                Name::new("Player"),
+                RigidBody {
+                    kind: if kinematic {
+                        BodyKind::Kinematic
+                    } else {
+                        BodyKind::Dynamic
+                    },
+                },
+                Collider {
+                    shape: ColliderShape::Capsule {
+                        half_height: 0.3,
+                        radius: 0.2,
+                    },
+                    ..Collider::default()
+                },
+                LockRotation,
+                PlatformPlayer {
+                    float_height: FLOAT_HEIGHT,
+                    ..PlatformPlayer::default()
+                },
+                Transform::from_translation(Vec2::new(0.0, 0.25 + FLOAT_HEIGHT)),
+            ))
+            .id();
+        if kinematic {
+            sim.world_mut()
+                .entity_mut(player)
+                .insert(ph2d_physics_ecs::PlayerMode::Kinematic);
+        }
+        if let Some(m) = forced {
+            sim.world_mut()
+                .entity_mut(player)
+                .insert(ph2d_physics_ecs::MassOverride(m));
+        }
+        let mut bridge = PhysicsBridge::new();
+        // ⚠️ **AQUECER antes de medir, e é a lição do berço da cena 101 outra
+        // vez:** os dois modos repousam a alturas DIFERENTES (sob Snap a perna é
+        // o próprio corpo, não o `float_height`), então largar os dois na mesma
+        // altura dá ao cinemático 0,4 m de QUEDA antes do primeiro contato — e a
+        // rampa `[27, 57, 70, 77]` que isso produz lê-se como *"ele pesa menos"*.
+        // Sessenta tiques de assentamento, e cada modo começa de onde ele
+        // realmente fica.
+        for t in 1..=60u64 {
+            bridge.dispatch(&mut sim, true, t);
+        }
+        // ⚠️ **O oráculo é a ACELERAÇÃO, não o deslocamento** — depois do
+        // aquecimento a jangada já tem velocidade (nada a segura: o peso próprio
+        // dela é zero de propósito), e `½at²` pressupõe partir do repouso. A
+        // segunda diferença sobre três amostras igualmente espaçadas mata o
+        // termo `v₀·t` por construção, e é isso que torna a comparação honesta
+        // entre um modo que assenta rápido e outro que assenta devagar.
+        let mut y = [0.0f32; 3];
+        y[0] = raft_y(&sim, raft);
+        for t in 61..=180u64 {
+            bridge.dispatch(&mut sim, true, t);
+            if t == 120 {
+                y[1] = raft_y(&sim, raft);
+            }
+        }
+        y[2] = raft_y(&sim, raft);
+        let secs = 1.0f32;
+        let accel = (y[2] - 2.0 * y[1] + y[0]) / (secs * secs);
+        // `a = (A_player / A_raft)·g` — a densidade CANCELA, então a expectativa
+        // não depende dela; o sinal é para BAIXO.
+        let area_p = 0.6 * 0.4 + core::f32::consts::PI * 0.2 * 0.2;
+        let want = -(area_p / 3.0) * 9.81;
+        println!(
+            "{:<22} {:>12} {:>16.4} {:>14.1}",
+            if kinematic { "CINEMATICO" } else { "dinamico" },
+            match forced {
+                Some(m) => format!("{m:.2} autorada"),
+                None => "auto".to_string(),
+            },
+            accel,
+            accel / want * 100.0
+        );
+    }
+}

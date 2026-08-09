@@ -69,7 +69,7 @@ Um segundo fato transversal: **os cinco nós são `LoweringKind::Cpu`**. Nenhum 
 | `motion.step` | idem | **contar para BAIXO** (TD tem uma 2ª entrada de count-down) | **PARCIAL** — `step` negativo desce o DESLOCAMENTO, mas o `count` publicado continua subindo ⇒ quem consome o índice (`value.attribute("count") → value.switch`) não desce | omissão | **P2** | direção `Up` |
 | `motion.step` | idem | ⚠️ **limitação estrutural AUTO-DECLARADA** (header, linhas 38-41): pareamento **POSICIONAL** — *"uma mudança de CONTAGEM desalinha as linhas … uma stream que roda (o emitter) dessincroniza um beat 'global'. Id-keyed pairing … é o follow-up v2"* | **NÃO** contornável no grafo | omissão — e a cura já existe no repo (`motion.integrate`/`motion.spring` pareiam por id) | **P1** | pareamento por id é byte-idêntico onde a contagem é estável |
 | `motion.step` | idem | `count_max` **sem `ParamUnit::Count`** (doc 88) | n/a | omissão (higiene) | **P2** | — |
-| `motion.morph` | **0** — o `blend` é PORTA de valor (animável) | ⚠️ **o nó emite APENAS `P`**: `ctx.emit(Stream::new(n).with("P", …))` descarta `size`·`tint`·`rot`·`id`·`uv_rect`·**`texture_id`**·**`geometry_id`**. Referência: [Cavalry Blend Shape/Morph §56](../referencia_pesquisa_cavalry.md) e [Houdini Blend Shapes §66](../referencia_pesquisa_houdini_mops.md) interpolam a GEOMETRIA inteira; o irmão `motion.mixer` do nosso repo **"reduz toda coluna presente em todas as entradas"** | **NÃO** — o descarte é do nó; a jusante dá para RE-pintar, nunca para recuperar identidade. ⚠️ Consequência medível: morfar dois `source.object`/`source.shape` **perde a aparência** (as convenções `texture_id`/`geometry_id` do doc 86 / ADR-0154 somem, e o fallback é a tile 0) | **omissão** — não é param, é contrato de stream, e a resposta certa já existe num nó irmão | **P0** | interpolar/propagar as colunas **é** o que a ausência delas significava (o `min` de comprimento não muda) |
+| `motion.morph` | **0** — o `blend` é PORTA de valor (animável) | ⚠️ **o nó emite APENAS `P`**: `ctx.emit(Stream::new(n).with("P", …))` descarta `size`·`tint`·`rot`·`id`·`uv_rect`·**`texture_id`**·**`geometry_id`**. Referência: [Cavalry Blend Shape/Morph §56](../referencia_pesquisa_cavalry.md) e [Houdini Blend Shapes §66](../referencia_pesquisa_houdini_mops.md) interpolam a GEOMETRIA inteira; o irmão `motion.mixer` do nosso repo **"reduz toda coluna presente em todas as entradas"** | **NÃO** — o descarte é do nó; a jusante dá para RE-pintar, nunca para recuperar identidade. ⚠️ Consequência medível: morfar dois `source.object`/`source.shape` **perde a aparência** (as convenções `texture_id`/`geometry_id` do doc 86 / ADR-0154 somem, e o fallback é a tile 0) | **omissão** — não é param, é contrato de stream | ✅ **FEITO** (era P0 DEFEITO) | interpolar/propagar as colunas **é** o que a ausência delas significava (o `min` de comprimento não muda) |
 | `motion.morph` | idem | **N formas com PESO** ([Houdini Blend Shapes §66](../referencia_pesquisa_houdini_mops.md): *"interpola N formas com pesos"*) | **PARCIAL** — `motion.mixer` tem 4 entradas, mas `Blend` dele é lerp de DUAS e `Avg` é média SEM pesos; `morph(morph(a,b,t1),c,t2)` funciona geometricamente mas os `t` **compõem** (não são pesos independentes). ⚠️ **A casa é o `motion.mixer`**, e o doc 63 §3.2 linha 205 já pede "peso POR entrada" lá — **não duplicar no morph** | omissão (de outro nó) | **P2** | peso ausente ⇒ média, a de hoje |
 | `motion.morph` | idem | **morph guiado por CAMPO** ([c4d_fields §130, Inheritance](../referencia_pesquisa_c4d_fields.md): *"Morph entre dois arranjos MoGraph (origem→destino guiado pelo campo)"*) | ⛔ **REFUTADO** — `field.box → value.attribute("falloff") → morph.blend` fecha: o `value.attribute` lê qualquer coluna nomeada (doc 50) e emite VALUE, que é o tipo da porta `blend`, e o `blend` já é **por elemento** | — | ⛔ | — |
 | `motion.morph` | idem | **easing** e **modo `switch`** ([minicavalry §morph](../referencia_catalogo_nodes_minicavalry.md): `t`·`easing`·`mode vertex/switch/crossfade`·resolution·threshold) | ⛔ **REFUTADO** — easing: `value.lfo → value.curve → morph.blend` (curva arbitrária, `ParamWidget::Curve`, LUT no device); switch: `value.step`/`value.quantize` no mesmo fio | — | ⛔ | — |
@@ -168,6 +168,48 @@ idêntico), porque é precisamente o tipo de propriedade que uma wave futura que
 5. **§2.4 linha 124 — `pulse.adsr` P1 (nó NOVO)** → o **consumidor de envelope já existe** e se
    auto-declara *"the minimal ADSR"* (`motion.strobe`). *Upgrade do strobe* × *nó novo* é escolha de
    produto; o doc só oferece a segunda, e as duas dividiriam a mesma lei de envelope.
+
+---
+
+## §6 — O que a W4 fechou (2026-08-09)
+
+### O primeiro P0 — **o morph descartava o stream inteiro menos `P`**
+
+`ctx.emit(Stream::new(n).with("P", …))` jogava fora `size` · `rot` · `tint` · `id` ·
+`uv_rect` · **`texture_id`** · **`geometry_id`**. ⚠️ **Não era param faltando, era perda de
+dados**, e a consequência estava medida: morfar dois `source.object` **perdia a aparência**
+(as convenções do doc 86 / ADR-0154 sumiam e o lowering caía na tile 0 — quads brancos).
+
+**A lei que ficou:** as quantidades que o lowering desenha (`P` · `size` · `rot` · `tint`)
+**desvanecem**; toda outra coluna é carregada pelo **VIZINHO MAIS PRÓXIMO**, por elemento.
+
+- ⚠️ **A lista é BRANCA, e a assimetria é o argumento inteiro.** As duas listas possíveis
+  apodrecem, mas o modo de falha é oposto: uma lista NEGRA (*"não interpole os `_id`"*)
+  medeia em silêncio a coluna de identidade que alguém acrescentar amanhã — e o lowering lê
+  `texture_id` com `as u32`, então a média de 0 e 7 vira a textura **3**, uma que ninguém
+  pediu; a lista BRANCA faz a quantidade nova **PULAR** em vez de desvanecer, o que se vê e
+  se conserta numa linha. *Escolha a lista cujo apodrecimento se VÊ.*
+- ⚠️ **`uv_rect` fica fora dela de propósito** — ele nomeia QUAIS pixels junto com o
+  `texture_id`, e interpolá-lo varre o átlas. Uma regra por SUFIXO `_id` o teria perdido, e
+  é por isso que a régua não é o nome.
+- ⚠️ **O vizinho próximo não é gosto, é o contrato do próprio nó:** o doc dele promete
+  *"`blend = 0` is all `a`, `1` all `b`"*, e segurar `a` faria `blend = 1` **não** ser `b`.
+  O corte no meio é o preço honesto de uma identidade não desvanecer.
+- ⚠️ **A resposta do irmão `motion.mixer` não servia inteira:** ele reduz toda coluna
+  presente em todas as entradas — **numericamente**, `texture_id` incluso. Copiá-lo teria
+  trocado o descarte por uma média silenciosa.
+
+⚠️ **E a wave achou um espelho:** a `fn morph` (a especialização `Vec2`) ficou **sem
+chamador de produto**, e os quatro gates de crossfade que já existiam chamavam ELA — eles
+teriam seguido verdes enquanto o `morph_stream` quebrava. Agora entram pela mesma porta que
+o `eval`, e a função morreu.
+
+**5 gates novos, 2 mutações, 2 sangram** (reinstalar o descarte derruba os cinco; pôr o
+`texture_id` na lista branca dá textura **1,4 e 5,6** — que o `as u32` trunca em 1 e 5).
+
+**Seguem P0 nesta família:** a máscara por campo do `motion.trail` (o único behaviour da
+família que não lê `falloff`) · o canal do `motion.delay` (hoje só atrasa `P`) · e o
+**reset** do `motion.step`.
 
 ---
 

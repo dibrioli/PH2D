@@ -219,8 +219,9 @@ que só aparece numa tabela não é um ganho que o Enio possa julgar.
 
 | nó | params hoje | falta (referência citada) | exprimível? (cadeia tentada) | nat./omissão | P | default que reduz |
 |---|---|---|---|---|---|---|
-| `motion.emitter` | 10 (`rate·life·speed·angle·spread·x·y·seed·max·size`), **1 lane de random** (`LANE_ANGLE=0`) | **variância** de vida/velocidade/tamanho/spin (Particular `*_Random %`; Apple Motion `+ Random` em cada knob; Niagara `Random Range` em todo Initialize; Cavalry `Override Lifespan`) | **NÃO** — um param dirigido (doc 58) é *um número por TICK*, não por partícula; nada a jusante reescreve `life`, que decide a própria janela do conjunto vivo | **omissão** | **P0** | variância `0` ⇒ o valor único de hoje |
-| `motion.emitter` | idem | **forma** do emissor: círculo/retângulo/curva/perímetro (+size, margin, normais) — Cavalry §165; Niagara Location; Apple Motion Shape | a tentar (`motion.scatter` a jusante dá offset por id? mede) | **omissão** | **P0** | shape `Point` ⇒ a origem `x,y` de hoje |
+| ~~`motion.emitter`~~ | ~~variância de **VIDA**~~ | ~~Particular `Life Random %`; Cavalry `Override Lifespan`~~ | ⛔ **REFUTADO — é UM nó**: `sim.lifetime(variance, seed)` já existe e lê o `age` que o emissor escreve (`lib.rs:259`). ⚠️ E ele hasheia **por `id`**, não por índice — o doc-comment diz *"stateless, so a scrub reproduces the same deaths"* | — | ⛔ | — |
+| `motion.emitter` | 10 (`rate·life·speed·angle·spread·x·y·seed·max·size`), **1 lane de random** (`LANE_ANGLE=0`) | **variância** de **velocidade/tamanho/spin** (Particular `*_Random %`; Apple Motion `+ Random` em cada knob; Niagara `Random Range` em todo Initialize) | **NÃO**, e a razão VERIFICADA é mais forte que a que eu havia escrito: a lane de aleatoriedade que serviria é `value.instance_field(Random)`, que hasheia **`(seed, index)`** — e o conjunto vivo do emissor é uma **janela DESLIZANTE de ids**, então o índice de uma partícula muda por baixo dela e a variância **CINTILA** | **omissão** | **P0** | variância `0` ⇒ o valor único de hoje |
+| `motion.emitter` | idem | **forma** do emissor: círculo/retângulo/curva/perímetro (+size, margin, normais) — Cavalry §165; Niagara Location; Apple Motion Shape | **NÃO** — a cadeia que eu mandei medir (`motion.scatter` a jusante) **não existe**: o `scatter` tem `inputs: &[]`, é *Source* e não filtro. A que funciona é `<distribuição> → sim.spawn → motion.combine → sim.step` dentro de uma `sim.zone`: **4 nós, e troca o emissor STATELESS por uma zona com estado** | **omissão** | **P0** | shape `Point` ⇒ a origem `x,y` de hoje |
 | `motion.emitter` | idem | direção **inwards/outwards** (Cavalry `Initial Direction Type`; Particular `Disc/Outwards`) | **NÃO** sem forma (é radial À FORMA) | omissão | P1 | modo `Angle` ⇒ o cone de hoje |
 | `motion.emitter` | idem | **inherit velocity** (Cavalry `Use Emitter Velocity`; Niagara) | **NÃO** | omissão | P1 | força `0` |
 | `motion.emitter` | idem | **burst**: count/time/period/**probability** (Niagara `Spawn Burst`; Cavalry `Duration·Interval·Probability`) | **PARCIAL** — `pulse.*` dirige o `rate` (doc 58); falta a forma declarativa | omissão | P2 | probability `1`, duração `∞` |
@@ -232,27 +233,219 @@ nas referências exige um acumulador aqui é **forma fechada e bit-exato sob scr
 a inversa do comprimento de arco — as duas coisas que os outros aproximam por integração e que
 divergem no scrub deles.
 
+## §10.0 — O ACHADO DA CONFERÊNCIA: o catálogo LÊ qualquer coluna e ESCREVE cinco
+
+> **Este é o resultado que a partição existia para produzir.** Nenhum agente o enunciou inteiro —
+> cinco famílias bateram nele por sintomas que pareciam não ter relação, e ele só aparece quando
+> os cinco relatos são postos lado a lado. Uma varredura por nó **não podia** tê-lo achado.
+
+**Verificado por grep, nos dois lados:**
+
+| direção | quem faz | alcance |
+|---|---|---|
+| **LER** | `value.attribute` (modo Custom) | **qualquer coluna, por nome** |
+| **ESCREVER** | `motion.drive` | **exatamente cinco**: `X · Y · Rotation · Size · Opacity` — e o comentário do próprio arquivo os chama de *"the shared channel vocabulary"* |
+
+⇒ **o domínio de VALOR é um beco sem saída assimétrico.** Ele enxerga tudo o que o stream tem e
+só consegue devolver cinco coisas. Cada "gap inexprimível" P0 abaixo é a MESMA ausência, vista
+de uma família diferente:
+
+| a coluna que ninguém escreve | o que fica inexprimível | família |
+|---|---|---|
+| `falloff` | campo de ruído/textura/fórmula/áudio · densidade por-instância · force-over-life | 2 · 10 |
+| `rot` a partir de uma tangente | texto em curva que gira · órbita que vira · *"vire para onde está indo"* | 1 · 4 · 5 · 6 · 15 |
+| `vel` | speed-limit suave · a rampa que inclina o chão | 13 |
+| `parent` · `len` | comprimento por-osso · ramificação · peso por-osso | 16 |
+
+⚠️ **A leitura ainda RESPONDE ERRADO** (T4): `value.attribute` cai em `_ => vec![0.0; n]` para
+Vec4 e para Vec2 em X/Y. Então a assimetria real é pior — *lê quase tudo, e o que não lê devolve
+zeros em silêncio; escreve cinco*.
+
+⇒ **A primeira pergunta da consolidação não é "que param falta": é *quem pode escrever uma
+coluna, e como?*.** Um escritor genérico (`motion.drive` com canal por NOME, o espelho exato do
+`value.attribute` Custom) destrava as quatro linhas da tabela acima **de uma vez**, sem tocar o
+contrato congelado — `drive` já é um nó, e o canal é um param dele. Isto **não se constrói antes
+das 17 famílias**, mas é a hipótese que a ordenação global tem de testar primeiro.
+
+## §10.1 — ACHADOS TRANSVERSAIS (verificados por mim, §5 — crescem a cada família)
+
+> Um achado que aparece em **duas famílias independentes** não cabe no arquivo de nenhuma delas,
+> e é precisamente o que a partição existia para produzir: os agentes não se falam, então a
+> convergência é evidência, não coincidência.
+
+### T1 — A coluna `falloff` é FECHADA À ESCRITA pelo domínio de VALOR
+
+**Quem achou:** FORCE (chamou de *"parede 4"*) **e** FIELD (*"o destravador"*), sem se verem.
+**Verificado por grep, não por raciocínio:**
+
+```
+25 crates tocam a coluna `falloff`  ·  ZERO delas tem uma porta `Domain::Values`
+```
+
+⚠️ **A consequência é maior que a soma das duas famílias.** A máscara espacial já é o vocabulário
+comum de **cinco** famílias (as `field.*`, as `force.*`, os deformers, os transforms e os
+estilísticos leem `falloff`), mas ela só pode ser **DERIVADA DE GEOMETRIA** — nenhuma quantidade
+computada pode virar campo. É isso que torna inexprimíveis, de uma vez:
+
+- `field.noise` (C4D *Random Field* · MOPs *Noise Falloff*);
+- a **densidade por-instância** do `force.buoyancy` (Cavalry `Buoyancy-FIELD`);
+- a *force-over-life* da Stardust e o speed-limit suave;
+- textura / fórmula / áudio / atributo como campo — o `motion.luminance` **já devolve luma como
+  VALOR** e não tem como virar máscara.
+
+⇒ **uma porta destrava uma classe inteira em cinco famílias**, e a decisão de *onde* ela mora
+(porta no `field.remap`? nó `field.attribute`? ambos?) é a primeira pergunta que a consolidação
+tem de responder. **Não construir antes das 17.**
+
+### T2 — Existem DUAS lanes de aleatoriedade e só uma sobrevive a um conjunto que desliza
+
+**Quem achou:** DISTRIBUIÇÃO+EMISSÃO. **Verificado no código:**
+
+| lane | hasheia | sobrevive a scrub / janela deslizante? |
+|---|---|---|
+| `sim.lifetime` | **`hash(seed, id, lane)`** | **sim** — o doc-comment diz *"stateless, so a scrub reproduces the same deaths"* |
+| `value.instance_field(Random)` | **`(seed, index)`** | **não** — o conjunto vivo do emissor é uma janela DESLIZANTE de ids, o índice de uma partícula muda por baixo dela, e a variância **CINTILA** |
+
+⚠️ Isto **refutou uma linha do meu próprio gabarito** (a variância de VIDA é UM nó, não um gap) e
+**fortaleceu outra**: a variância de velocidade/tamanho/spin não é P0 por *"nada reescreve o
+valor"*, é P0 porque *a única lane que a daria é indexada*. A regra da §5 vale para os meus
+claims tanto quanto para os dos agentes.
+
+### T4 — O muro tem DOIS lados, e o lado da LEITURA responde ERRADO EM SILÊNCIO
+
+**Quem achou:** TRANSFORM, COR e VALUE — **três** famílias independentes, cada uma batendo nele
+por um caminho diferente (o pivô-centroide · a leitura de matiz · o *"vire para onde está indo"*).
+**Verificado no código** (`ph2d-node-value-attribute/src/lib.rs:79`):
+
+```rust
+(Some(Column::Scalar(v)), m) if m != MODE_LENGTH && v.len() == n => v.clone(),
+(Some(Column::Vec2(v)),   MODE_LENGTH)            if v.len() == n => …magnitude…,
+_ => vec![0.0; n],                    // ← Vec4, Vec2 em X/Y, escalar-em-Length
+```
+
+⚠️ **`_ => vec![0.0; n]` não é "capacidade que falta": é uma resposta errada apresentada como
+dado.** Pedir o X de uma coluna Vec2, ou qualquer canal de uma Vec4 de cor, devolve **zeros** —
+sem erro, sem log, sem porta vermelha. O grafo cozinha, a cena desenha, e o número é falso.
+
+E o `motion.expression` **não é o escape**: o MANIFEST dele é `INST_VEC2 → VALUE`, ou seja ele é
+**fonte de valor e nunca transformador** — não tem porta VALUE de entrada, e o `fn attr` dele lê
+só `Column::Scalar`. ⚠️ Isto **corrige uma premissa que eu injetei em vários briefings**
+(*"tente o `motion.expression` antes de propor um knob"*): ele refuta muito menos do que eu
+supunha, e quem de fato refutou 17 gaps na família VALUE foi a **composição de nós de valor**
+(`1−x` é `map_range` · `ceil` é `quantize` · AND/OR são `Min`/`Max` · duty cycle é `lfo(Saw)→step`).
+
+⇒ **T1 e T4 são o mesmo muro visto dos dois lados:** o domínio de VALOR não lê as colunas ricas
+do stream (T4) e não escreve a máscara que cinco famílias consomem (T1). Enquanto os dois lados
+estiverem fechados, *"que param falta neste nó"* é a pergunta pequena.
+
+### T5 — DOIS defeitos com gates VERDES por cima (não são gaps; são bugs)
+
+1. **A alfa por-stop do gradiente nunca chega ao device.** O `g2` e o `ColorRamp::eval` a
+   carregam; **`LUTS` tem TRÊS entradas — `r`, `g`, `b`** (verificado) — e o kernel escreve `1.0`.
+   Os dois gates de paridade usam presets **opacos**: *a fixture não contém o fenômeno*, então
+   eles são verdes por construção.
+2. **O `spread` do `motion.collide` é uma porta POR-INSTÂNCIA que o `eval` colapsa em
+   `vals.first()`** (claim da família SIMULAÇÃO, ainda **não verificado por mim**) — raio por
+   elemento não seria param faltando, seria **entrada descartada**.
+
+⚠️ Os dois entram na tabela mestra como **defeito**, não como gap — e um defeito não espera a
+priorização de produto do §7: ele é conserto.
+
+### T6 — Nada no catálogo converte uma DIREÇÃO em ROTAÇÃO (e T4 é o mecanismo)
+
+**Quem achou:** DISTRIBUIÇÃO, DEFORMERS, TRANSFORM, ANIMADORES e VALUE — **cinco** famílias,
+cada uma por um sintoma diferente. **Verificado por grep:** exatamente **dois** nós escrevem a
+coluna `rot` — `motion.look_at` (que mira um PONTO) e `motion.rotate` (que aplica um ângulo).
+**Nenhum toma uma tangente.**
+
+| sintoma | família |
+|---|---|
+| `distribute_curve` não devolve tangente/normal/rotação — e o `motion.path`, que faz a mesma distribuição, **já tem `align`**: dois nós discordam sobre orientar | 1 |
+| `spline_wrap` não gira o que embrulha ⇒ **texto numa curva não vira** | 4 |
+| a órbita não carrega a orientação ⇒ o sprite **desliza de lado** | 5 |
+| *"vire para onde está indo"* é inexprimível | 6 · 15 |
+
+⚠️ **E T4 explica POR QUÊ:** a direção existe como coluna `Vec2` (`vel`, a tangente), e
+`value.attribute` **não lê X nem Y de uma Vec2** — só magnitude. A capacidade não falta por
+esquecimento de knob; ela é **bloqueada pelo muro da leitura**. T6 não é um sexto item da lista:
+é o que T4 custa, medido em features que o artista vê na primeira cena.
+
+### T7 — A cerca que RECUSA uma família inteira, e ela é ordem do Enio
+
+A família FX achou, por grep no histórico, que a **grade HDR de tela inteira foi construída
+(`9a36d4a27`) e REMOVIDA (`f2daa787a`) por ordem direta**: *"vamos abandonar esses efeitos de tela
+inteira dentro do motion. Pois teremos um módulo de pós produção no futuro."*
+
+⇒ levels · gamma · posterize · threshold · invert · B&W · grain · sharpen · vinheta **não são
+lacunas do grafo**. E a navalha que a família derivou torna a fronteira executável em vez de
+opinativa: **o passe do Motion compõe ADITIVAMENTE** (`One/One/Add`, medido) — foi por isso que o
+glow pôde ser nó. *Aditivo ⇒ cabe como `fx.*` hoje; subtrativo ou remapeador ⇒ é o módulo de
+pós-produção.* ⚠️ Sem essa navalha, ~21 dos ~41 filtros ausentes teriam virado proposta — e
+**eles já existem noutro módulo do app** (o Painter tem 24 `AdjustmentKind`, o Vector 15 FX
+raster): a pergunta nunca foi *"falta este efeito?"*, era *"onde ele mora?"*.
+
+### T3 — A cura mais barata às vezes é um param num nó que já existe
+
+`motion.falloff` é o **único** campo com forma **Linear** do catálogo e **não tem `rotation`**;
+o `field.box`, irmão dele, **tem**. Uma rampa linear em ângulo qualquer — que o C4D expõe como
+*Direction* — não pede nó novo, pede **um param**. ⚠️ E o doc 63 §198 chama o `motion.falloff` de
+*"alias/compat"*: seguir aquela nota teria **apagado** o único campo linear e radial do catálogo,
+do qual 5 das 13 composições da família FORCE dependem.
+
 ## §11 — Estado da conferência
 
-| # | Família | Agente | Resultado | Verificado por mim | Wave |
-|---|---|---|---|---|---|
-| 1 | DISTRIBUIÇÃO + EMISSÃO | ⏳ | — | — | — |
-| 2 | FORCE | ⏳ | — | — | — |
-| 3 | SIMULAÇÃO | ⏳ | — | — | — |
-| 4 | DEFORMERS | ⏳ | — | — | — |
-| 5 | TRANSFORM | ⏳ | — | — | — |
-| 6 | ANIMADORES | ⏳ | — | — | — |
-| 7 | TEMPO / ESTILÍSTICOS | ⏳ | — | — | — |
-| 8 | STREAM / UTILIDADE | ⏳ | — | — | — |
-| 9 | COR / APARÊNCIA | ⏳ | — | — | — |
-| 10 | FIELD | ⏳ | — | — | — |
-| 11 | FX (raster) | ⏳ | — | — | — |
-| 12 | PULSE (eventos) | ⏳ | — | — | — |
-| 13 | SIM.\* (o stack) | ⏳ | — | — | — |
-| 14 | SOURCE | ⏳ | — | — | — |
-| 15 | VALUE | ⏳ | — | — | — |
-| 16 | RIG (conferir, não implementar) | ⏳ | — | — | — |
-| 17 | ZERO-PARAM + DEBUG (conferir) | ⏳ | — | — | — |
+> ⚠️ **Cada agente ESCREVE o resultado num arquivo próprio** em
+> [`89_conferencia/`](89_conferencia/) e devolve só um resumo. Dezassete tabelas cruas num
+> contexto só matam a consolidação antes de ela começar — e um arquivo por família é também o
+> que faz a §10 ser montada por concatenação em vez de reescrita.
+
+| # | Família | Arquivo (em `89_conferencia/`) | P0 | P1 | P2 | ⛔/refutados | O que ela achou de mais caro |
+|---|---|---|---|---|---|---|---|
+| 1 | DISTRIBUIÇÃO + EMISSÃO | `01_distribuicao_emissao.md` | 4 | 13 | 9 | 6 / **7** | as duas lanes de random (**T2**); `distribute_curve` sem tangente |
+| 2 | FORCE | `02_force.md` | 1 | 5 | 6 | 10 / **13** | a parede `value → falloff` (**T1**); o cluster NOISE não chegou às forças |
+| 3 | SIMULAÇÃO | `03_simulacao.md` | 8 | 17 | 6 | — / **8** | os 3 geradores **não consomem `accel`** ⇒ a família `force.*` inteira não alcança sim nenhuma |
+| 4 | DEFORMERS | `04_deformers.md` | 2 | 6 | 8 | 6 / **4** | mascarar uma ROTAÇÃO encolhe o layout (o lerp corta pela corda) |
+| 5 | TRANSFORM | `05_transform.md` | 1 | 4 | 4 | 6 / **4** | escala em torno da ORIGEM DO MUNDO, sem pivô |
+| 6 | ANIMADORES | `06_animadores.md` | 3 | 12 | 15 | — / **9** | a porta `time` opcional (o melhor SUPERAR da conferência) |
+| 7 | TEMPO / ESTILÍSTICOS | `07_tempo_estilisticos.md` | 4 | 11 | 8 | 7 / **6** | ⚠️ o escopo de tempo **RECUSA** nó sequencial ⇒ 4 dos 5 não entram nele |
+| 8 | STREAM / UTILIDADE | `08_stream_utilidade.md` | 4 | 9 | 10 | 1 / **9** | `look_at` é o único behaviour que **não honra o `falloff`**; duas segundas portas |
+| 9 | COR / APARÊNCIA | `09_cor.md` | 6 | 5 | 4 | 6 / **5** | o loop de cor é one-way; a alfa da rampa **não chega ao device** (**T5**) |
+| 10 | FIELD | `10_field.md` | 3 | 9 | 5 | 8 / — | a coluna `falloff` é fechada à escrita (**T1**) |
+| 11 | FX (raster) | `11_fx_raster.md` | 0 | 6 | 7 | 3 / — | a navalha ADITIVO×SUBTRATIVO e a cerca do módulo de pós (**T7**) |
+| 12 | PULSE (eventos) | `12_pulse.md` | 2 | 6 | 7 | 4 / — | um pulso **não tem NÍVEL**; e o gabarito §10 estava errado sobre ele |
+| 13 | SIM.\* (o stack) | `13_sim_stack.md` | 3 | 7 | 8 | — / **6** | não há estágio de EVENTOS; substeps **provado** inexprimível |
+| 14 | SOURCE | `14_source.md` | 4 | 5 | 5 | — | **47 formas** existem atrás de uma porta única e o nó usa um enum próprio de **8** |
+| 15 | VALUE | `15_value.md` | 3 | 16 | 14 | 17 / — | `motion.expression` é **fonte**, não transformador ⇒ refuta muito menos do que eu supunha |
+| 16 | RIG *(deferida)* | `16_rig.md` | 3 | 13 | 7 | 4 / — | zero `Strength`/`Mix` (Rive tem em 7 de 7); `parent`/`len` sem escritor |
+| 17 | ZERO-PARAM + DEBUG | `17_zero_param_debug.md` | 1 | 1 | — | **9 confirmados** | o `motion.output` é o gap: a ponte crava **10 campos**, entre eles o BLEND |
+
+**Fechamento: 118 nós conferidos · ~52 P0 · ~145 P1 · ~123 P2 · ~65 gaps REFUTADOS por
+composição** — e os refutados valem tanto quanto os confirmados, porque cada um impede a próxima
+varredura de propor o que já é exprimível.
+
+⚠️ **E o erro mais caro do doc 63 é uma célula só, achada pela família 8:** ele marca
+**`Store Named Attribute` como "TEMOS"**, citando o `value.attribute` — que é o **LEITOR**. Um
+item marcado *TEMOS* que não existe não manda construir o construído: manda **não construir** o
+que a §10.0 acabou de identificar como o gargalo de seis famílias. *É provavelmente por isso que
+o escritor de coluna nunca foi escrito.*
+
+⚠️ **O `motion.output` é a mesma assimetria da §10.0 no lado da SAÍDA:** a ponte grafo→render lê
+sete colunas e crava dez campos em identidade nas DUAS rotas (CPU e GPU) — entre eles o **blend
+mode**, cuja máquina de roteamento por-instância **já existe e é testada**. Um grafo de Motion
+hoje não consegue fazer uma faísca aditiva, e o conserto é convenção de stream (o molde do
+`texture_id`): **zero ABI, zero contrato congelado**, com `Normal` reduzindo literalmente.
+
+⚠️ **Quatro famílias receberam um briefing MAIS LARGO que "que param falta"**, porque a pergunta
+honesta delas é de CATÁLOGO e não de knob — e um agente que só compara params responderia bem à
+pergunta errada:
+
+| Família | A pergunta que ela também responde | Por quê |
+|---|---|---|
+| 10 FIELD | `ESPÉCIES QUE FALTAM:` | o C4D Fields tem um catálogo de campos; nós temos **cinco** |
+| 11 FX | `EFEITOS QUE FALTAM:` (+ *já existe noutro módulo?*) | a Cavalry lista **54 filtros**; nós temos **três** — e Painter/Vector já têm parte deles |
+| 13 SIM.\* | `ESTÁGIOS QUE FALTAM:` | o stack do Niagara é System/Emitter/Particle com estágios nomeados |
+| 14 SOURCE | `ESPÉCIES DE FONTE QUE FALTAM:` | **duas** fontes contra o catálogo de primitivas da Cavalry |
+| 16 RIG | `CONSTRAINTS QUE FALTAM:` | Rive e Spine convergiram num conjunto pequeno e nomeado |
 
 ---
 

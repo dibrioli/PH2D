@@ -1,0 +1,160 @@
+# 12 — PULSE / EVENTOS (6 nós) — conferência contra a referência
+
+**Data:** 2026-08-09 · **Plano:** [89](../89_plano_conferencia_dos_nos.md) §3 · **Família 12/17**
+**Nós:** `pulse.beat` · `pulse.compare` · `pulse.counter` · `pulse.on_change` · `pulse.sample_hold` · `pulse.threshold`
+
+**Método:** params lidos do `MANIFEST` de cada crate (não do doc), faixas/unidades/widgets lidos do
+`register_param_ui`/`register_param_hard_max` de cada `register()`, e **toda cadeia de
+expressibilidade foi TENTADA contra o catálogo real de 118 nós** — três delas caíram por fatos do
+substrato que eu só descobri lendo o código (`driven_value` lê a coluna `v` · `value.slope` é
+derivada sobre o ÍNDICE, não sobre o tempo · `validate` nunca exige input conectado).
+
+**Referências:** as do repo — [doc 06](../06_pulse_gatilho_primeira_classe.md) (Rive · Cavalry ·
+Max/Pd · Schmitt · TD Trigger CHOP), [doc 08](../08_pulse_counter_reducer_bridge.md) (TD **Count
+CHOP** · Max **counter** · Houdini Count · Cavalry Timeline Counter, com URLs primárias),
+[doc 09](../09_handoff_pulse_signal_source_and_naming.md) §3 (a matriz MiniCavalry × Max × TD ×
+Rive), [doc 14](../14_sample_hold_instance_field_nota_adr.md) §2 (Buchla · Max `sah~` · TD Hold
+CHOP), [doc 17](../17_switch_on_change_nota_adr.md) §2 (Max `change`),
+[`referencia_pesquisa_niagara_stardust.md`](../referencia_pesquisa_niagara_stardust.md) linhas
+21/33/34/108/157 (Event Handler · Trigger Event · GPU events),
+[`referencia_pesquisa_cavalry.md`](../referencia_pesquisa_cavalry.md) linhas 92/93/100,
+[`referencia_pesquisa_blender_gn.md`](../referencia_pesquisa_blender_gn.md) (o CONTRASTE: Geometry
+Nodes **não tem tipo de evento nenhum** — o mais próximo é a Simulation Zone, que é estado entre
+frames, e o "Modal Event" aparece na lista de *faltantes* dos próprios devs, linha 237).
+
+---
+
+## A tabela
+
+| nó | params hoje | falta (referência CITADA) | exprimível? (a cadeia tentada) | natureza/omissão | P | default que reduz |
+|---|---|---|---|---|---|---|
+| **(família)** | — | **um pulso não tem NÍVEL** — o par pulso↔0/1 é unânime: MiniCavalry `threshold` emite *"0/1 **+** pulse"* (doc 09 §3), Cavalry Comparison *"output a value of 1 when true and 0 when false"* (doc 06 §1), TD **Logic CHOP** converte nível↔borda, Max `gate` | **NÃO.** Tentei as três pontes pulse→value que existem: `pulse.counter` **acumula** (monotônico, nunca volta a 0), `pulse.sample_hold` **segura** (precisa de um valor a amostrar, e o pulso não é um), `motion.strobe` escreve um **canal de transform** (= o "clock hack" que o doc 09 matou). Não há 4ª rota: `driven_value` lê a coluna `v` e um pulso emite a coluna `pulse` (verificado em `param_source.rs:92`) | **omissão** | **P0** | `pulse.level`: nó novo ⇒ nada existente muda |
+| **(família)** | — | **nada é DISPARADO por um pulso** além de 4 consumidores — Niagara **Event Handler** (`Spawned`/`Every Particle`, ref linha 21) e **Trigger Event On Die/Always** → GPU event alimentando o Initialize do sistema filho (linha 33/34); doc 63 §2.3 marca `sim.replicate` como **P0** e a ref linha 108 como *"o buraco grande"* | **NÃO.** Os únicos consumidores de `PULSE` no repo são `motion.strobe`, `motion.step`, `pulse.counter`, `pulse.sample_hold` (+`util.reroute_pulse`) — varredura por `grep -l PULSE crates/*/src/lib.rs`. `sim.spawn` (rate·scatter·seed) e `sim.lifetime` **não têm porta de pulso**; e o pulso não pode dirigir o `rate` por param (linha acima) | **omissão** | **P0** | porta `pulse` opcional ⇒ desconectada = `Empty` = hoje |
+| `pulse.beat` | 2 — `period` 1.0 s (0.05‥8, **sem hard max**) · `offset` 0.0 s (−4‥4) · `Temporal` | **BPM / Time Mode** — TD **Beat CHOP** é tempo-nativo em BPM (doc 09 §3, a linha "fonte de batida"); o doc 63 §3.2 já exige *"Time Mode: Seconds/BPM"* do irmão `motion.oscillator` | **NÃO** (é aritmética mental do artista: `60/bpm`; nenhuma composição converte a UNIDADE de um param) | omissão | **P2** | `mode = Seconds` ⇒ o `period` de hoje |
+| `pulse.beat` | idem | **swing / fase POR LINHA** — o próprio doc-header confessa (*"Per-row swing/stagger is a follow-up"*); `value.lfo` e `motion.oscillator` **já têm `phase_stagger`** ⇒ assimetria interna | **SIM** — `value.lfo(wave=Saw, phase_stagger=s) → pulse.compare(rise=0.5)` dá pulso escalonado por linha em **2 nós** (o `value.lfo` tem `Saw` e `phase_stagger`; verificado no `PARAM_HINTS` dele) | omissão | **P2** | `phase_stagger = 0` ⇒ `vec![pulse; n]` uniforme de hoje |
+| `pulse.beat` | idem | **janela de atividade** (começa em T, N batidas, para) — Cavalry `Sequence`/`Scheduling Group` (ref linha 95, marcada *"sem sequenciador"*) | **NÃO** (precisa do GATE da linha 1: `beat AND (t ∈ janela)`) | omissão | **P2** | `count = ∞` ⇒ metrônomo eterno de hoje |
+| `pulse.beat` | idem | ⚠️ **o teto do `period` é 8 s e NÃO há `ParamHardMax`** — o bridge cai no `hint.max` (`motion_bridge_params.rs:467`, `.unwrap_or(max)`) ⇒ **uma batida mais lenta que 8 s é indigitável**; nenhuma referência tem teto de período. Limite sem medição (§0) | n/a (é o teto, não uma capacidade) | omissão | **P2** | `ParamHardMax` acima do slider ⇒ o curso da mão não muda |
+| `pulse.threshold` | 4 — `channel` (X/Y/Rot/Size) · `rise` 0.5 (−10‥5, hard 10) · `fall` 0.3 (−10‥3, hard 10) · `edge` (Rise/Fall/Both) | **retrigger delay / debounce** — TD Trigger+Count CHOP têm `retrigger`; Pd `threshold~` tem *"debounce ms por borda"* (doc 06 §3, tabela). **Deferido de propósito** ali (*"a histerese já mata o chatter"*) — mas histerese mata *chatter de ruído*, não *repique de gesto* | **NÃO.** Precisaria segurar o pulso por N ticks: `motion.delay` (mode Delay·ticks) é `INST_VEC2`, não alcança `PULSE`, e não existe delay no domínio de valor | omissão | **P1** | `retrigger = 0` ⇒ dispara todo cruzamento, como hoje |
+| `pulse.threshold` | idem | ⚠️ **REDUNDÂNCIA, não gap** — desde que `value.attribute` virou picker de canais (2026-07-30), `value.attribute(Y) → pulse.compare(rise,fall,edge)` **é** o `pulse.threshold(channel=Y)`: mesmo Schmitt, mesmos 3 params, um adaptador na frente | **SIM, e é o problema** — dois nós respondendo uma pergunta. O doc 16 §1 já distinguia os dois pelo *domínio* (transform × valor), e o picker apagou a distinção | — | ⛔ | (consolidação, não param novo) |
+| `pulse.compare` | 3 — `rise` 0.5 (−10‥5, hard 10) · `fall` 0.3 (−10‥3, hard 10) · `edge` (Rise/Fall/Both) | **lógica booleana entre pulsos** (AND/OR/NOT/XOR) — Cavalry **Logic** (ref linha 92) e TD **Logic CHOP** | **SIM, se a linha 1 existir — e SÓ então.** Com nível 0/1, `value.math(Min)` **é** AND e `value.math(Max)` **é** OR (os dois já existem no enum `["Add","Subtract","Multiply","Divide","Min","Max"]`), e `pulse.compare(rise=0.5)` traz de volta ao domínio de pulso. Sem nível, **nada** | omissão | **P1** (colapsa na P0) | — (é a P0 que resolve) |
+| `pulse.compare` | idem | **comparar contra outro CAMPO**, não só contra uma constante — Cavalry Comparison compara dois valores; TD Logic CHOP compara canais | **SIM, duas rotas** — `value.math(Subtract, a=sinal, b=referência) → pulse.compare(rise=0)` (1 nó), **ou** dirigir o `rise` por fio (doc 58: `driven_value` lê `v`, e um `value.*` emite `v` ⇒ funciona hoje, sem nó nenhum) | — | **P2** | (já exprimível) |
+| `pulse.counter` | 2 — `count_max` 6 (1‥32, **sem hard max**) · `mode` (Wrap/Clamp/Zigzag) | **entrada de RESET** — TD **Count CHOP** tem `Reset` + `Reset Value`; Max `counter` reseta (doc 08 §1, com URLs). **Deferido no doc 08 §3.1** — ver CERCAS: a premissa do deferimento é FALSA hoje | **PARCIAL, num regime estreito** — `value.math(Subtract, a=count, b=pulse.sample_hold(value=count, pulse=reset))` dá *"contagem desde o último reset"*, **mas só com `mode=Clamp` e `count_max` alto**: sob Wrap a subtração de dois valores já modulados é aritmética errada, e `count_max` **não passa de 32 digitando** | omissão | **P1** | porta `reset` opcional ⇒ desconectada = `Empty` = hoje |
+| `pulse.counter` | idem | **incremento ≠ 1** — TD Count CHOP conta `±1` **ou `±tempo`** e tem entrada `Increment`; Cavalry **Accumulator** *"acumula valor ao longo do tempo"* (ref linha 93, marcada PARCIAL). ⚠️ E o `motion.step`, o irmão de onde este nó SAIU, **tem `step`** — o redutor perdeu a capacidade do ancestral | **PARCIAL** — escalar por uma constante é `value.gain`/`value.math(Multiply)` a jusante (**SIM**, 1 nó). Acumular um valor **VARIÁVEL** por pulso (o Accumulator) é **NÃO**: exigiria somar `sample_hold(v)` ao acumulado, e a realimentação de valor (`pre`) é porta interna, nunca autorável | omissão | **P1** | `increment = 1` ⇒ a escada de hoje |
+| `pulse.counter` | idem | **CARRY-OUT** — Max `counter` *"emite um bang no limite"*, e é *"exatamente como se encadeiam contadores"* (doc 08 §1). **Deferido no doc 08 §3.1** (*"exige 2ª porta de saída Event"*) | **NÃO** — tentei `counter(Wrap) → pulse.on_change`: dispara em **toda** mudança de contagem, não só no wrap. Isolar o wrap exige comparar com o tick **ANTERIOR**, e ⚠️ **`value.slope` NÃO é a derivada temporal** — o doc-header dele é explícito: *"the discrete `d(value)/d(index)` … across the instance order"* | omissão | **P1** | 2ª saída `carry` ⇒ desconectada = hoje |
+| `pulse.counter` | idem | **contar para BAIXO** — Max `counter` tem up/down/updown (doc 08 §1); `Zigzag` é o updown, "down" não existe | **SIM** — `value.math(Subtract, a=debug.const(N−1), b=count)` inverte a escada (1 nó) | — | **P2** | `direction = Up` ⇒ hoje |
+| `pulse.counter` | idem | ⚠️ **`count_max` para em 32 digitando** (hint 1‥32, sem `ParamHardMax` ⇒ fallback `hint.max`); TD/Max contam sem teto. Limite sem medição (§0), e é o mesmo número que trava a cadeia de reset acima | n/a | omissão | **P2** | `ParamHardMax` acima do slider ⇒ curso da mão intacto |
+| `pulse.on_change` | 1 — `epsilon` 0.001 (0‥0.01, **hard 1.0**, documentado) | **DIREÇÃO da mudança** (subiu / desceu / qualquer) — Max `edge~` tem **dois outlets** (doc 06 §3); TD Logic tem *Rising Edge* e *Falling Edge* como modos distintos. ⚠️ Assimetria interna: `pulse.compare` e `pulse.threshold` **têm** o param `edge` (Rise/Fall/Both) e este não | **NÃO** — `pulse.compare` dispara num cruzamento de NÍVEL, não na direção de um degrau qualquer; e `value.slope` é sobre o índice (acima) | omissão | **P1** | `direction = Both` ⇒ `\|v − prev\| > eps` de hoje, bit a bit |
+| `pulse.sample_hold` | **0** | **modo de borda** (TD Hold CHOP *"Off to On"*; doc 14 §2) | — | **NATUREZA, com mecanismo:** o nosso pulso carrega **só "disparou"** (doc 06 §2, decisão contra o `{value,edge,t}` do MiniCavalry) ⇒ um pulso de 1 tick **não tem** borda de descida nem "enquanto alto"; o modo de borda só existe sobre um GATE, e gate é a P0 da linha 1 (se ela nascer, este item nasce com ela) | ⛔ | — |
+| `pulse.sample_hold` | **0** | **slew / portamento** entre amostras (o par clássico S&H + lag do modular) | — | **NATUREZA:** a referência também os separa (TD tem Hold CHOP **e** Lag CHOP como nós distintos), e o `motion.lag` já está catalogado como **P0 no doc 63 §2.3** — pertence à família VALUE, não a este nó | ⛔ | — |
+| `pulse.sample_hold` | **0** | **magro por NATUREZA — o veredito, com mecanismo:** as duas entradas do sampler são PORTAS (o valor e o gatilho, ambos animáveis), e a única escolha que sobraria — *qual borda* — é inexprimível no tipo (linha acima). Zero params está **certo** | — | natureza | ⛔ | — |
+| **(família)** | — | **`pulse.adsr`** — envelope Delay/Attack/Sustain/Release no trigger (TD **Trigger CHOP**: *"starts an audio-style ADSR envelope to all trigger pulses"*, doc 06 §4); o doc 63 §2.4 já o lista como **P1** e continua correto (não há crate `pulse-adsr`) | **PELO HACK, e só** — `motion.strobe` É o envelope, mas escreve **canal de transform**; para usá-lo como VALOR seria `strobe → value.attribute(canal)` = exatamente o "clock hack" que o doc 09 matou | omissão | **P1** | envelope no domínio de valor ⇒ nó novo, nada muda |
+
+---
+
+## `SUPERAR:`
+
+As três derivam do mesmo par que **nenhuma referência tem junto**: *o pulso é um CAMPO* e *o cook é
+função pura do playhead com scrub bit-exato*.
+
+1. **O contador que REBOBINA — e ele já funciona, conferido no código.** O estado de toda a família
+   viaja no `pre` (= o output do tick anterior), `Cook::checkpoint` salva `prev_outputs`
+   (`cook.rs:429`) e `restore` o reinstala limpando o memo (`cook.rs:445`), com o gate
+   `checkpoint_then_restore_reproduces_a_past_frame_and_resim_is_bit_exact` (`cook_tests.rs:593`) e o
+   irmão que mostra que **o cook rebobinado ingênuo casa com nenhum frame passado** (`:655`) — a
+   prova de que o checkpoint é load-bearing. ⇒ **arrastar a régua para trás devolve a contagem
+   EXATA.** Niagara acumula estado por-partícula e não rebobina; Max/TD são streams ao vivo **sem
+   cursor de tempo** (não há o que rebobinar). O degrau inédito que isso destrava é **`pulse.at` — o
+   pulso AUTORADO na régua** (uma lista de tempos, ou os markers da timeline): nas referências um
+   padrão de disparos precisa ser *executado* e gravado; aqui ele é *função do playhead*, logo
+   reproduzível e editável como keyframes.
+2. **O pulso do CONJUNTO, derivado do pulso das partes.** `pulse.on_change`/`compare`/`threshold` já
+   disparam **por linha** — o gate `it_watches_each_instance_of_the_field_independently` prova
+   (`[0,1]` para duas linhas, só a que mudou). Max/Pd/TD são canais escalares (um bang é um bang) e
+   Niagara é por-partícula **sem editor de sinal**. ⇒ **`pulse.reduce`** (*quantas linhas dispararam
+   neste tick* → valor) e **`pulse.any`/`pulse.all`** (o pulso do conjunto) são operações que
+   **nenhuma referência pode ter**, porque nenhuma tem pulso-como-campo. É a ponte que faz *"quando
+   a última partícula morrer, dispare"* virar uma aresta em vez de um script.
+3. **O portão ESPACIAL.** A família `field.*` (5 nós componíveis, C4D Fields como referência de
+   origem) produz um peso por linha; o pulso é por linha. ⇒ **`pulse.gate` cujo portão é um CAMPO**
+   — *"dispare só quem está dentro da caixa"*, *"o beat varre a cena como um radar"* (o
+   `field.radial_sweep` já é o radar). C4D tem Fields e **zero eventos**; Niagara tem eventos e zero
+   campos componíveis; nós temos os dois e eles nunca se encontraram. ⚠️ E este item **é a mesma P0
+   da linha 1 vista de outro ângulo** — construir o nível/gate uma vez paga os dois.
+
+---
+
+## `CERCAS:`
+
+Grepadas antes de propor. Duas ainda valem, **duas envelheceram**, uma é lei.
+
+- ⚠️ **A cerca do RESET tem premissa FALSA hoje.** O doc 08 §3.1 defere a entrada de reset assim:
+  *"exige tolerar porta opcional desconectada (**validate rejeita input faltante**)"*. **Não rejeita:**
+  `Graph::validate` (`graph.rs:596`) itera sobre as **arestas** e nunca exige que um input tenha uma;
+  e `EvalCtx::input` está documentado como *"empty if unconnected"* (`cook.rs:128`). Dois nós que
+  SHIPAM já dependem disso: `value.lfo` (*"`in` opcional lido só pela contagem"*, doc 14 §3) e
+  `value.switch` (*"`select` desconectado → 0"*, doc 17 §3). ⇒ **a cerca pode ser removida**; o
+  motivo dela deixou de existir, provavelmente quando o domínio de valor nasceu.
+- ⚠️ **A cerca do CARRY-OUT tem premissa VIVA mas incompleta.** Doc 08 §3.1: *"exige 2ª porta de
+  saída `Event`"* — verdade (o manifesto declara 1 output). O que ela **não** diz é que a alternativa
+  por composição não existe (tentada acima), então o custo real é *uma porta* contra *nada*.
+- **`retrigger`/debounce deferido** (doc 06 §3): *"a histerese já mata o chatter"*. **Vale
+  parcialmente** — histerese mata chatter de **ruído**, não repique de **gesto** (dois cruzamentos
+  legítimos rápidos). A cerca fica; o item é P1, não P0.
+- **O pulso carrega SÓ "disparou"** (doc 06 §2, decisão contra o `{value,edge,t}` do MiniCavalry,
+  com o argumento: *"um consumidor que esqueça o `&& edge` conta o nível sustentado como N
+  disparos"*). ⚠️ **Isto NÃO proíbe a P0 da linha 1** — um nó `pulse.level` produz um valor
+  **separado**, no domínio de valor, e não põe um campo `value` dentro do pulso; a lei *"1.0 = borda,
+  o consumidor só lê o tick"* fica intacta.
+- **Zero RNG** (doc 06 §5): qualquer aleatoriedade futura da família é `hash(seed, id, …)`, nunca
+  `Math.random` — a lição que o MiniCavalry pagou. Vale para um `probability` de beat/gate.
+- **`pulse.counter` vs `motion.step`** (doc 08 cabeçalho + doc 09 §4.2): o `motion.step` é o
+  *behaviour* (empurra canal), o `pulse.counter` é o *redutor puro*. Não são duplicata — mas ver a
+  linha do `increment`: o redutor **perdeu** um param que o behaviour tem.
+
+---
+
+## `O DOC 63 ERROU EM:`
+
+1. **A §3.2 (*"gap por nó existente"*) não tem UMA LINHA para os seis `pulse.*`.** Ela cobre
+   `force.*`, `motion.*`, `value.map_range`, `sim.spawn` — e pula a família inteira. Não é
+   envelhecimento: é ausência desde 2026-07.
+2. ⚠️ **A afirmação *"o `pulse.*` já dirige o `rate`"* é FALSA** — e ela aparece **duas vezes**: no
+   doc 63 §2.2 (`Spawn Burst` = *"PARCIAL (pulse.\* pode dirigir rate…)"*, ref linha 95) e no
+   **gabarito do próprio plano 89** (§7 P2 e a linha de burst da §10). Verificado:
+   `param_source::driven_value` (`param_source.rs:92`) lê `crate::attr::VALUE_COLUMN` = `"v"`, e um
+   pulso emite `PULSE_COL` = `"pulse"` (`pulse-beat/src/lib.rs:126`) ⇒ **um pulso não dirige param
+   nenhum**. O que dirige é o `pulse.counter` (output `VALUE`, emite `v`) — e um contador é
+   **monotônico**, então dirigir `rate` com ele dá uma rampa crescente, não um burst. ⇒ a linha do
+   burst do emitter **sobe de P2 para P1**, e a cura barata é a P0 da linha 1 (com um nível 0/1 e um
+   `value.gain`, dirigir o `rate` dá um burst de um tick).
+3. **A ref Cavalry linha 92 diz *"Comparison / Logic / If Else — **TEMOS** (pulse.compare,
+   value.switch)"* — a metade `Logic` não tem dono.** Preciso: `Comparison` = `pulse.compare` ✅,
+   `If Else` = `value.switch` ✅, e **`Logic` existe no domínio de VALOR** (`value.math` Min/Max
+   **são** AND/OR sobre 0/1) **e não existe no domínio de PULSO** — pela mesma causa única da P0.
+   ⇒ a linha devia ler **PARCIAL**.
+4. **A ref Cavalry linha 93 (`Accumulator` = *"PARCIAL (pulse.counter)"*) está certa e nunca disse o
+   que falta:** o nosso conta `+1` por pulso; o Accumulator acumula um **valor**. Nomeado agora.
+5. **A §2.4 (`pulse.adsr` = P1, CHOP Trigger) continua CORRETA** — conferido: não existe crate
+   `pulse-adsr`, e o `motion.strobe` é o envelope sobre **transform**, não sobre valor. Registrado
+   aqui para não ser "descoberto" outra vez.
+
+---
+
+## A fronteira `pulse.*` ↔ `ph2d-runtime`
+
+**Medido primeiro:** `grep` nos dois sentidos dá **zero** — nenhuma crate `pulse-*` (nem
+`ph2d-nodegraph`, nem `ph2d-eval-motion`) menciona `ph2d-runtime`, e a `ph2d-runtime` tem **zero
+dependências** por gate estrutural (`the_event_core_is_a_leaf`). Os dois "eventos" respondem
+perguntas diferentes e é por isso que não colidiram: um `Signal` é **nomeado, por QUADRO, com bits
+de entidade**, consumido pelo host (toast, som, Luau); um `pulse` é **anônimo, por LINHA, por TICK
+do cook**, consumido por nós. **Não há decisão registrada em lugar nenhum** — não é fronteira
+declarada, é um vão que nenhum dos dois lados menciona; o único registro parcial é o doc 63 §4, que
+põe *"física↔grafo (collision events→pulse)"* como cross-line/decisão do Enio, e a ref Cavalry linha
+100 (*Collision Events* = **FALTA**). **Veredito: gap real, com as duas direções assimétricas** —
+`runtime → grafo` (colisão vira pulso) esbarra em que um sinal é fato do QUADRO e o cook é função do
+TICK, então ele teria de viajar como **conteúdo** (uma coluna) e não como evento efêmero, sob pena
+de um scrub perder o pulso e o grafo deixar de ser função do playhead; `grafo → runtime` (o beat
+dispara um som) é trivial de escrever e **errado por construção hoje** — o cook re-roda no scrub e o
+som sairia N vezes ao arrastar a régua —, e a regra que falta **já existe no bridge**
+(`motion_bridge::ticks_owed`: play = todo tick para a frente, scrub = uma chamada), o que faz desta a
+direção certa para abrir primeiro.

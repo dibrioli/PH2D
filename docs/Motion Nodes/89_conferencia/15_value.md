@@ -1,0 +1,212 @@
+# 89 · Família 15 — VALUE (23 nós)
+
+**Data:** 2026-08-09 · **Linha:** `line/motion-value` · **Briefing:** [doc 89 §3](../89_plano_conferencia_dos_nos.md)
+**Referências:** [`referencia_pesquisa_blender_gn.md`](../referencia_pesquisa_blender_gn.md) (Math · Map Range · Mix · Compare · Float Curve · Random Value · Attribute Statistic · Switch/Index Switch/Menu Switch · Blur Attribute) · [`referencia_pesquisa_niagara_stardust.md`](../referencia_pesquisa_niagara_stardust.md) (**Dynamic Inputs** · Float from Curve) · [`referencia_pesquisa_cavalry.md`](../referencia_pesquisa_cavalry.md) (Utilities · Oscillator · Noise · Random · Number Range · Arrays · Contexts) · TouchDesigner CHOPs (Math · Filter · LFO · Pattern · Logic · Analyze · Switch · Slope · Limit) · Houdini VEX/CHOP.
+
+⚠️ **Esta família foi RECUSADA EM ATACADO pelo doc 88 §9** (*"um `value.unary` é um verbo sobre um número; um param a mais ali é cerimônia"*) — **sem uma única comparação com o mercado**. A recusa está revogada (doc 89 §0). O que segue é a comparação.
+
+---
+
+## §0 — O FATO QUE DECIDE METADE DAS LINHAS: o `motion.expression` NÃO alcança o domínio de valor
+
+O briefing pede que a expressibilidade seja **tentada**, e a primeira tentativa é a mais importante: *o `motion.expression` (parser VEX-lite, fórmula como text param) pode tornar exprimível grande parte do domínio de valor?*
+
+**Medido no MANIFEST** (`crates/ph2d-node-motion-expression/src/lib.rs`):
+
+```
+inputs:  &[PortSpec { name: "in",  ty: INST_VEC2 }]     ← STREAM, não VALUE
+outputs: &[PortSpec { name: "out", ty: VALUE }]
+```
+
+E as ligações (`fn attr`): `i` · `n` · `t` · `f` (índice normalizado) · **qualquer coluna `Column::Scalar` por nome** · params `a`/`b`/`c`/`d`.
+O parser oferece `+ − * /`, `< > ==`, `&& ||`, `sin cos abs sqrt floor fract min max mix noise smoothnoise select wiggle`.
+
+⇒ **O `motion.expression` é uma FONTE de valor, nunca um TRANSFORMADOR de valor.** Ele lê o *stream* e emite VALUE; ele **não tem porta VALUE de entrada**. Consequência exata:
+
+| Sub-família | O que a expressão pode fazer |
+|---|---|
+| **fontes** (`instance_field` · `noise` · `lfo` · `wave` · `pattern` · `time` · `attribute`) | **muita coisa** — uma fórmula sobre `i`/`n`/`t`/`f`/colunas cobre boa parte dos gaps |
+| **transformadores** (os outros 16, que recebem VALUE) | **NADA** — o valor não tem como entrar na fórmula |
+
+⚠️ **Existe UM caminho de volta, e ele é destrutivo:** `value.* → motion.drive(channel, mode=Set) → stream → motion.expression("<canal>")`. Mas o `channel` do `motion.drive` é um enum de **cinco canais de ARTE** (`X · Y · Rotation · Size · Opacity`) — o round-trip **queima um canal visível**. É o caso-tipo do "exprimível a um custo que ninguém paga" (§7 do plano): entra como **P1**, nunca como refutação.
+
+⚠️ **E o `field.combine` NÃO socorre o domínio de valor:** os portos dele são `INST_VEC2` (medido no MANIFEST), não VALUE — os oito blend modes dele (`Normal · Add · Subtract · Multiply · Screen · Min · Max · Overlay`) vivem no domínio de CAMPO. A ausência deles no `value.mix` é gap real, não fatoração.
+
+**Refutações que SOBREVIVERAM à tentativa** (as boas notícias, contadas na §5): `1−x` · `ceil`/`round` · `clamp` · `AND`/`OR` · `a>b` · min/max-vs-amplitude/offset · custom wave · duty cycle · máscara por probabilidade · random com min/max · Factor da curva · dry/wet dos filtros · clock em loop/pingpong · `range`/`stddev`/`Selection` do reduce · time offset/scale.
+
+---
+
+## §1 — ARITMÉTICA E OPERADORES (4 nós)
+
+| nó | params hoje | falta (referência CITADA) | exprimível? (a cadeia tentada) | natureza/omissão | P | default que reduz |
+|---|---|---|---|---|---|---|
+| `value.math` | `op` (Add·Sub·Mul·Div·Min·Max) — 2 portas VALUE | **`Multiply Add` (a·b+c)** — Blender GN Math node (`Utilities▸Math`, ref §A "Math / Vector Math / Boolean Math") o ship como op própria por ser a cadeia mais frequente | **SIM** — `math(Multiply) → math(Add)` (2 nós, exato) | omissão de ergonomia | **P2** | op `MultiplyAdd` apendada no índice 6 ⇒ 0..5 intactos |
+| `value.math` | idem | **`Modulo`** com divisor variável — Blender Math (`Truncated Modulo`/`Floored Modulo`), TD Math CHOP | **NÃO** — `value.wrap(Repeat)` faz módulo, mas `lo`/`hi` são **params**, não portas ⇒ um módulo cujo divisor é outro campo é inexprimível | **omissão** | **P1** | op `Modulo` apendada (índice 7) |
+| `value.math` | idem | **`Power` · `Logarithm` · `Exponent`** — Blender Math os ship | **NÃO** | ⛔ **recusado com motivo, e a cerca está no código:** o comentário do MANIFEST diz *"Power/log are omitted by HR-5"*. E o **uso artístico** já está coberto: `value.gain` (Schlick 1994) dá gamma/contraste **sem `pow`**, e `value.unary` tem `Square`/`Sqrt` | ⛔ | — |
+| `value.math` | idem | **comparação `<` `>` `=` com EPSILON** produzindo máscara 0/1 — Blender **Compare** node (nó dedicado, com epsilon e modos); Cavalry **Comparison / Logic / If Else** (ref §A.3); TD Logic CHOP | **PARCIAL** — `a > b` = `math(Subtract) → value.step(threshold 0, Hard)` (**2 nós, exato**). Igualdade-com-epsilon = `sub → unary(Abs) → step(ε)` e depois **inverter**, que custa mais 1-2 nós (o `step` não tem invert) ⇒ **4-5 nós para um dropdown** | **omissão** | **P1** | um `value.compare` é NÓ novo (fora desta conferência); como param, `op` ganharia `Greater`/`Less`/`Equal` no índice 8+ ⇒ 0..5 intactos |
+| `value.math` | idem | **Boolean Math** (AND·OR·NOT·XOR) — Blender GN tem nó dedicado; Cavalry tem **Logic** | **SIM para AND/OR** — sobre um campo `{0,1}`, `Min` **É** AND e `Max` **É** OR, exatamente. **NÃO para NOT** — não há `1−x` no `value.unary`… mas há no `value.map_range(0..1 → 1..0)`, **1 nó** ⇒ refutado também. XOR = `math(Sub) → unary(Abs)` | **natureza** (a álgebra booleana em `{0,1}` **é** min/max/1−x) | ⛔ | — |
+| `value.math` | idem | **`Smooth Minimum` / `Smooth Maximum`** (com Distance) — Blender GN Math | **NÃO** (o blend suave de dois campos precisa da fórmula do par) | omissão | **P2** | ops apendadas |
+| `value.unary` | `op` (Abs·Negate·Sign·Floor·Fract·Square·Sqrt·Reciprocal) | **`Ceil` · `Round` · `Truncate`** — Blender **Float to Integer** (Round/Floor/Ceiling/Truncate) + Math `Round`/`Ceil`/`Trunc` | **SIM para Ceil/Round** — `value.quantize(step 1, mode Round\|Floor\|Ceil)` é **exatamente** isso, 1 nó. **NÃO para Truncate** (é Floor em `v>0` e Ceil em `v<0`) — cadeia `sign · floor(abs)` = 3 nós | omissão pequena; ver `value.quantize` | **P1** (no `quantize`, não aqui) | — |
+| `value.unary` | idem | **`One Minus` / `Invert`** — presente em toda referência (Blender Subtract-de-1; Cavalry Falloff **Invert**; C4D Remapping **Invert**; TD Math CHOP Invert) | **SIM** — `value.map_range(in 0..1 → out 1..0)`, **1 nó, exato** (e `clamp` já é o default) | **natureza** — a inversão é um remap, e o remap tem nó | ⛔ | — |
+| `value.unary` | idem | `Sin`/`Cos`/`Exp`/`Log` | **NÃO** | ⛔ **HR-5** (mesma cerca do `value.math`); o seno periódico existe em `value.wave`/`value.lfo` (aproximação parabólica, transcendental-free) | ⛔ | — |
+| `value.unary` | idem | **`Clamp`** — Blender ship um nó **Clamp** dedicado (Min/Max, modos Range/MinMax) | **SIM** — `value.wrap(mode=Clamp, lo, hi)` **É** o nó Clamp do Blender, com os mesmos dois números | **natureza** | ⛔ | — |
+| `value.mix` | `factor` · `clamp` — portas `a`/`b`/`t` | **`Clamp Result`** separado do `Clamp Factor` — Blender **Mix** ship os DOIS (medido: o nosso `clamp` é o *Clamp Factor*, o doc-comment do arquivo diz isso literalmente) | **SIM** — `mix → value.wrap(Clamp, min(a,b), max(a,b))`, mas os limites são params fixos ⇒ só serve para faixa conhecida | **omissão** | **P2** | `clamp_result` default `0` ⇒ hoje |
+| `value.mix` | idem | **BLEND MODES** (Multiply·Screen·Overlay·Difference·Darken·Lighten·Dodge·Burn…) — Blender Mix os ship (18 modos para Color); **e o nosso `field.combine` já tem 8** (`Normal·Add·Subtract·Multiply·Screen·Min·Max·Overlay`) | **NÃO** — ⚠️ **conferido no MANIFEST: `field.combine` opera em `INST_VEC2`, não em VALUE.** Não há caminho | **omissão**, e ela é *assimétrica*: a mesma pergunta tem resposta rica num domínio e nenhuma no outro | **P1** | `blend` default `Normal` (lerp) ⇒ hoje bit a bit |
+| `value.gain` | `strength` · `mode` (Gain·Bias) | — Houdini VEX `bias()`/`gain()`; Unity Shader Graph **Contrast**; AE Curves S-shape; Cavalry **Falloff Graph** | — | ✅ **NATUREZA, com mecanismo:** a família Schlick tem **um** grau de liberdade (`a ∈ (0,1)`) e o `strength` **é** esse grau re-assinado; um terceiro knob não teria o que controlar. E `strength = 0 ⇒ a = 0.5 ⇒ 1/a − 2 = 0` **exato** ⇒ o neutro é bit-exato por construção (cerca no doc-comment) | — | — |
+| `value.gain` | idem | **a faixa de operação** — o nó **CLAMPA a entrada em `[0,1]`** e o doc-comment manda pôr um `map_range` antes; TD Math CHOP resolve com `Range from/to` **no próprio nó** | **SIM** — `map_range → gain → map_range` (3 nós), e a fatoração está **declarada** no doc-comment | **natureza declarada** (a fatoração é a mesma do `field.remap`) | **P2** | — |
+
+---
+
+## §2 — REMAPEAMENTO E FAIXA (5 nós)
+
+| nó | params hoje | falta (referência CITADA) | exprimível? (a cadeia tentada) | natureza/omissão | P | default que reduz |
+|---|---|---|---|---|---|---|
+| `value.map_range` | `in_lo` · `in_hi` · `out_lo` · `out_hi` · `clamp` (+ `ParamHardMax` 100 em `in_hi`/`out_hi`) | **`Interpolation`: Linear · Stepped Linear (+ `Steps`) · Smooth Step · Smoother Step** — Blender **Map Range**, verbatim no dump (§B, URL `.../utilities/math/map_range.html`). Doc 63 §3.2 já nomeou este item | **PARCIAL, e o custo é o argumento:** Smooth Step = `map_range(→0..1) → value.step(0.5, width 1, Smooth) → map_range(→out)` = **3 nós**. Stepped = `map_range → value.quantize(1/steps) → map_range` = **3 nós**. **Smoother Step (`6t⁵−15t⁴+10t³`) é INEXPRIMÍVEL** — nenhum nó o computa e a cadeia de potências custa 5+ | **omissão** | **P1** — o dropdown de 4 modos é o único item real da linha | `interpolation = Linear` ⇒ a fórmula de hoje, bit a bit |
+| `value.map_range` | idem | *"· curva (D2)"* — doc 63 §3.2 | **SIM — e é um nó IRMÃO:** `value.curve` existe (crate `ph2d-node-value-curve`, `ParamWidget::Curve`, LUT no device). ⚠️ **Item do doc 63 ENVELHECIDO** | — | ⛔ | — |
+| `value.curve` | `in_lo` · `in_hi` · `out_lo` · `out_hi` · **`curve`** (text param, `ParamWidget::Curve`) | **`Factor`** (influência 0–1, lerp entre entrada e curva) — Blender **Float Curve** o ship como a PRIMEIRA entrada (§B, URL `.../math/float_curve.html`) | **SIM** — `value.mix(a = entrada, b = saída da curva, factor)`, 1 nó + uma bifurcação do fio | omissão de ergonomia | **P2** | `factor = 1` ⇒ hoje |
+| `value.curve` | idem | **índice de amostragem default = idade normalizada** — Niagara `Float from Curve` (ref §A1: *"sample index default = `Particles.NormalizedAge`"*, e a §D3 ranqueia isto como o 3º maior roubo de UX: *"curva-sobre-vida sem fios"*) | **PARCIAL** — `value.attribute(Age) → value.map_range(0..vida → 0..1) → value.curve` = 3 nós **e a vida é digitada à mão** (não há coluna `life`/`lifespan` legível) | **omissão de UX** (é um default, não um param) | **P2** | — |
+| `value.wrap` | `lo` · `hi` · `mode` (Clamp·Repeat·Mirror) | — Blender: **três nós** para isto (`Clamp` · Math `Wrap` · Math `Ping-Pong`); TD **Limit CHOP** (Clamp/Loop/Zone/Quantize) | — | ✅ **NATUREZA, e melhor que a referência:** o dropdown colapsa três nós do Blender em um; os três modos **são** as três maneiras de tratar o que sai da faixa (parar · repetir · refletir) | — | — |
+| `value.wrap` | idem | `lo`/`hi` como **PORTAS** (Blender's Wrap recebe Max/Min como *sockets*, logo como fields) | **NÃO** — uma faixa por-instância é inexprimível | omissão | **P2** | portas opcionais; desconectadas ⇒ os params de hoje |
+| `value.quantize` | `step` · `mode` (Round·Floor·Ceil) | **`Truncate`** (para zero) — Blender **Float to Integer** ship os 4; TD Math CHOP **Integer: None/Round/Floor/Ceiling** | **NÃO em 1 nó** — `sign · floor(abs)` = 3 nós | **omissão** (um item de enum) | **P1** | `Truncate` apendado no índice 3 ⇒ 0..2 intactos |
+| `value.quantize` | idem | **`offset` da grade** (a fase do reticulado) — Houdini `snap` e o quantize do TD Limit CHOP a expõem | **SIM** — `math(Sub) → quantize → math(Add)` = 3 nós | omissão | **P2** | `offset = 0` ⇒ hoje |
+| `value.step` | `threshold` · `width` · `mode` (Hard·Smooth) | **INVERT** (abaixo do limiar = 1) — Blender resolve com o par `Less Than`/`Greater Than`; Cavalry Falloff tem **Invert**; C4D Remapping tem **Invert** | **SIM** — `value.step → value.map_range(0..1 → 1..0)`, 2 nós | omissão de ergonomia | **P2** | `invert = 0` ⇒ hoje |
+| `value.step` | idem | **`Smoother Step`** como 3º modo — Blender Map Range | **NÃO** (mesmo item do `map_range`) | omissão | **P1** *(compartilhado com `map_range` — UMA wave)* | modo apendado no índice 2 |
+| `value.step` | idem | **histerese / Schmitt trigger** (`Off to On Delay` / `On to Off Delay`) — TD **Logic CHOP** | **NÃO** (precisa de estado) | ⚠️ **cerca a conferir:** `pulse.threshold` existe e é da família de EVENTOS; um limiar com memória no domínio de valor seria a 2ª resposta | **P2** | — |
+
+---
+
+## §3 — GERADORES TEMPORAIS E ESTOCÁSTICOS (4 nós)
+
+| nó | params hoje | falta (referência CITADA) | exprimível? (a cadeia tentada) | natureza/omissão | P | default que reduz |
+|---|---|---|---|---|---|---|
+| `value.lfo` | `wave`(Sine·Tri·Square·Saw·Spike) · `period` (com `ParamUnitDecl` s) · `amplitude` · `offset` · `phase` · `phase_stagger` | **Time Mode: Seconds / BPM** — Cavalry **Oscillator**, verbatim no dump (§B: *"Time Mode: Seconds/**BPM**"*). Doc 63 §3.2 nomeou o mesmo para o `motion.oscillator` | **PARCIAL e à mão** — `period = 60/BPM`, calculado pelo artista fora da ferramenta | **omissão** | **P1** | `time_mode = Seconds` ⇒ hoje |
+| `value.lfo` | idem | **Minimum / Maximum** em vez de `amplitude`+`offset` — Cavalry Oscillator e Noise usam Min/Max; doc 63 §3.1 chama de "cluster RANGE" | **SIM — é a MESMA parametrização com outro nome:** `min = offset − amp`, `max = offset + amp`, dois graus de liberdade nos dois casos, bijeção exata | **natureza** | ⛔ | — |
+| `value.lfo` | idem | **Custom wave por CURVA** — Cavalry **"Wave Style: … Custom (Graph)"** | **SIM** — `lfo(Saw, period) → map_range(→0..1) → value.curve` **é uma onda periódica arbitrária**, com o MESMO widget de curva, 3 nós. E é *mais* geral que a referência (a curva é o nosso `ParamWidget::Curve`, promovível) | **natureza** (a decomposição rampa×curva é exata) | ⛔ | — |
+| `value.lfo` | idem | **Pulse Width / duty cycle** do Square — TD **LFO CHOP** | **SIM** — `lfo(Saw) → value.step(threshold = duty, Hard)` = quadrada de duty arbitrário, 2 nós | natureza | ⛔ | — |
+| `value.lfo` | idem | **Time Offset / Time Scale por nó** — Cavalry: *"Time (auto-conectado; **desconectável**) · Time Offset (s) · Time Scale"*; doc 63 §3.1 "cluster TIME local" | **SIM** — `motion.time_remap` (`Cook::cook_scoped`) dá escopo de tempo à sub-árvore inteira, que é o superset do offset+scale por nó | **natureza** (a resposta é estrutural e já existe) | ⛔ | — |
+| `value.lfo` | idem | **`Strength Fade to Zero`** (a oscilação entra do zero, não do mínimo) — Cavalry Oscillator | **NÃO** (é um envelope de partida; precisa da origem do tempo decorrido) | omissão | **P2** | `fade_in = 0` ⇒ hoje |
+| `value.wave` | `wave`(5) · `frequency` · `amplitude` · `offset` · `phase` — Pure, indexado por instância | mesmas linhas do `value.lfo` (custom wave · duty · min/max) | **as MESMAS refutações** (o eixo é `i`, não `t`; a álgebra não muda) | natureza | ⛔ | — |
+| `value.wave` | idem | ⚠️ **observação estrutural, não gap:** `value.wave` e `value.lfo` compartilham as 5 formas e 4 dos 5 params — a diferença é **qual eixo dirige a fase** (`i/n` vs `t`). Nenhuma referência faz esse corte (a Cavalry usa UM Oscillator com **Use Index Context**; o Wave Texture do Blender recebe uma coordenada) | um enum `source = Time \| Index` colapsaria os dois num nó | **decisão de produto** (mata um id de nó) | — | — |
+| `value.noise` | `frequency` · `speed` · `octaves` · `roughness` · `amplitude` · `offset` · `seed` (`ParamHardMax`: amplitude 100, frequency 4) | **`type`** (Perlin · Simplex · Value · **Cellular/Worley**) — Cavalry Noise (*"Tipos: **Cellular** (Jitter, Distance Function Euclidean/Manhattan/Natural, Cellular Type) · Cubic/Simplex/Value"*); Unity **VFXG Turbulence** (`Noise Type: Value\|Perlin\|Cellular`, doc 63 §C.18); Blender Noise Texture | **NÃO** — um kernel diferente não sai de composição nenhuma | **omissão** | **P0** — inexprimível ✔ · o artista vê na 1ª cena ✔ (celular é *outro desenho*, não outra intensidade) · **todas** as referências têm ✔ | `type = 0` (o de hoje) ⇒ bit a bit |
+| `value.noise` | idem | **`lacunarity`** (o multiplicador de frequência por oitava) — Cavalry (*"Octaves, **Lacunarity**, Gain"*), VFXG Turbulence, Blender Noise Texture. Doc 63 §3.1 o põe no cluster NOISE | **NÃO** (vive dentro do laço fBm) | **omissão** | **P1** (só importa com `octaves > 1` ⇒ 2ª cena) | `lacunarity = 2.0` ⇒ hoje |
+| `value.noise` | idem | **`loop_period` / Looping** — Cavalry: *"**Looping + Loop Length (frames)**"*; doc 63 §3.1 o marca em negrito no cluster | **NÃO** — o ruído lê `t` linearmente | **omissão**, e é a de maior valor da família: *uma ferramenta de motion design cujo ruído não fecha o laço não faz um GIF* | **P1** (as referências não são unânimes: Cavalry sim, Blender só à mão via 4D) | `loop_period = 0` = desligado ⇒ hoje |
+| `value.noise` | idem | **pan/offset do DOMÍNIO** (Cavalry: *"Noise Position/Rotation/Scale"*) | **NÃO** — ⚠️ conferido no código: `seed` **desloca o reticulado** (outra fatia) mas é inteiro e passo 1 ⇒ é um *re-sorteio*, não um *deslize contínuo e animável*; `offset` é DC da SAÍDA; `speed` só anda no eixo do tempo | **omissão** | **P1** | `pan_x = pan_y = 0` ⇒ hoje |
+| `value.noise` | idem | Min/Max (cluster RANGE) | **SIM** — mesma bijeção do `value.lfo` | natureza | ⛔ | — |
+| `value.time` | `rate` · `offset` · `stagger` | **loop / ping-pong do relógio** — TD **Timer CHOP** (`length`, `cycles`, `cycle limit`) | **SIM** — `value.time → value.wrap(0..N, Repeat)` e `(…, Mirror)`, 1 nó | **natureza** | ⛔ | — |
+| `value.time` | idem | **saída em FRAMES além de segundos** — Blender **Scene Time** ship as duas saídas; TD Timer tem `units` | **SIM** — `rate = fps` | natureza | ⛔ | — |
+| `value.time` | idem | **idade normalizada** (`Particles.NormalizedAge` — o relógio mais usado do Niagara, default de toda curva) | **PARCIAL** — `value.attribute(Age) → value.map_range(0..vida → 0..1)`, **mas `life` não é coluna legível** ⇒ a vida é digitada à mão e desincroniza do `motion.emitter` em silêncio | **omissão** | **P1** | — |
+| `value.time` | idem | — | — | ✅ **NATUREZA, com mecanismo:** um relógio tem exatamente três graus de liberdade — *quão rápido* (`rate`), *a partir de quando* (`offset`), *quanto por instância* (`stagger`); as FORMAS do relógio (loop/pingpong/clamp) são trabalho do `value.wrap`, a mesma fatoração declarada no `field.remap` | — | — |
+
+---
+
+## §4 — FONTES POR-INSTÂNCIA (2 nós)
+
+| nó | params hoje | falta (referência CITADA) | exprimível? (a cadeia tentada) | natureza/omissão | P | default que reduz |
+|---|---|---|---|---|---|---|
+| `value.instance_field` | `mode` (Index·Ramp·Random) · `seed` | ⚠️ **A CHAVE É O ÍNDICE, NÃO O `id`.** Blender **Random Value** separa **ID** (default: atributo `id` se existir, senão índice) de **Seed**, e a doc de **Distribute Points on Faces** explica por quê: *"When the mesh is deformed or the density changes the values will be consistent for each remaining point"*. Cavalry **Random**: *"por índice — estável"* sobre uma lista que ela não reordena | **NÃO** — nada relê o `id`; um `motion.sort` ou `motion.cull` a montante **re-sorteia todo valor aleatório** do conjunto | **omissão**, e ela é *silenciosa* — nada na tela diz que a variação trocou de dono | **P0** — inexprimível ✔ · o artista vê (a cena inteira re-embaralha ao ordenar) ✔ · as duas referências têm ✔ | `key = Index` ⇒ hoje bit a bit; `key = Id` é opt-in |
+| `value.instance_field` | idem | **Min/Max** do Random — Blender Random Value; Cavalry Random | **SIM** — `→ value.map_range(0..1 → min..max)`, 1 nó, e é literalmente o que o `map_range` existe para fazer | natureza | ⛔ | — |
+| `value.instance_field` | idem | **Boolean / `Probability`** — Blender Random Value (Data Type Boolean + Probability); Cavalry Falloff (*"**Probability** no Falloff = máscara binária com um clique"*) | **SIM** — `instance_field(Random) → value.step(threshold = 1−p, Hard)` = máscara binária de probabilidade `p`, 2 nós, exato | natureza | ⛔ | — |
+| `value.instance_field` | idem | **`Use Layer as Seed`** — Cavalry (dump §D: *"Noise com Use Layer as Seed evita gêmeos"*); doc 63 §3.1 o põe no cluster SEED | **NÃO** — o nó não conhece a própria identidade | **omissão** | **P1** | ⚠️ **tem de ser opt-in**: `use_node_as_seed = 0` ⇒ hoje. Ligá-lo por default mudaria a aleatoriedade de **todo grafo já salvo** (lei 6) |
+| `value.instance_field` | idem | um 4º modo "Random Integer / N baldes" | **SIM** — `Random → map_range(0..N) → quantize(1, Floor)` | natureza | ⛔ | — |
+| `value.pattern` | `steps`(1..8) · `v0..v7` (grupo "Values") — categoria **Source** | **arrays SEM TETO** — Cavalry **Value/Color/String/Shape Array** (*"arrays indexáveis de cada tipo"*, §A.3); TD **Pattern CHOP** (`Length` livre) | **NÃO** acima de 8 (o teto vem de "params são f32") | **omissão** | **P1** | ⚠️ **e a cura já é padrão da casa:** uma lista como **TEXT PARAM** (o precedente exato do `motion.expression` e do `ramp` do `motion.color_ramp`) — `steps`/`v0..v7` sobrevivem como o caminho legado ⇒ redução literal |
+| `value.pattern` | idem | **interpolação entre slots** (degrau · linear · curva) — TD Pattern CHOP interpola | **NÃO** | omissão | **P2** | `interp = Step` ⇒ hoje |
+| `value.pattern` | idem | **offset/rotação do padrão** (`(i+k) % steps`) | **NÃO** (não há entrada de índice) | omissão | **P2** | `offset = 0` ⇒ hoje |
+
+---
+
+## §5 — LEITURA DE ATRIBUTO (1 nó)
+
+| nó | params hoje | falta (referência CITADA) | exprimível? (a cadeia tentada) | natureza/omissão | P | default que reduz |
+|---|---|---|---|---|---|---|
+| `value.attribute` | `mode` (Scalar·Length) + o text param `read` com **picker de canais** (Speed·Opacity·Rotation·Size·Age + texto livre) | **componentes X / Y de uma coluna Vec2** — Blender **Separate XYZ** é nó de primeira classe; Cavalry tem **Get Vector** e ainda separa **Velocity Context** de **Velocity Magnitude Context** (§A.3, duas linhas distintas do catálogo) | **NÃO.** Conferido: o ladder do `field()` só produz `Scalar` copiado ou `Vec2 → comprimento`; e o `motion.expression` **também não alcança** — o `fn attr` dele só lê `Column::Scalar` (*"if let Some(Column::Scalar(v))"*), então `vel` é invisível para a fórmula. **Não existe caminho para o X de uma velocidade** | **omissão** | **P0** — inexprimível ✔ (por duas rotas, medidas) · o artista vê na 1ª cena ✔ (*"vire para onde está indo"*, *"cor pela velocidade horizontal"*) · as duas referências têm ✔ | `mode` ganha `X`=2 e `Y`=3 ⇒ 0/1 intactos. ⚠️ **A cerca do ADR-0136:** o nome da coluna é text param e a projeção roda no `StreamOp::Project`; os modos novos entram **naquele ladder**, não num kernel novo (o GPU é `PASSTHROUGH`) |
+| `value.attribute` | idem | **saída `Exists`** — Blender **Named Attribute** ship um 2º output dizendo se o nome resolveu | **NÃO** — hoje um nome errado lê **zeros** em silêncio (`_ => vec![0.0; n]`) | **omissão** | **P1** — ⚠️ **e a cura barata NÃO é um param:** é o canal de diagnóstico que já existe (**`ph2d-motion-diagnose`**, ADR-0155) — um badge ⚠ *"este nome não resolve"* no nó, que é exatamente a classe de erro que aquele ADR foi escrito para pegar (*erro que não produz erro*) | — |
+| `value.attribute` | idem | mais canais no picker (**Index · Count · Fração de vida · `id`**) | **PARCIAL** — `Index` = `value.instance_field(Index)`; `f`/`n` existem **só dentro** de uma fórmula | omissão de ergonomia | **P2** | canais apendados em `READ_CHANNELS` |
+| `value.attribute` | idem | tipos de dado (int/bool/color) — Blender Named Attribute tem 7 | — | ⛔ **N/A por domínio:** o VALUE deste grafo é escalar por contrato (doc 12); cor tem a própria família (`motion.color_ramp`/`color_array`) | ⛔ | — |
+
+---
+
+## §6 — FILTROS DE VIZINHANÇA (4 nós)
+
+⚠️ **A observação que governa a sub-família inteira, e que nenhuma referência tem:** os quatro filtram sobre a **vizinhança de ÍNDICE** (`i−r .. i+r` na ordem do stream). Em toda referência a vizinhança é **tempo** (TD Filter CHOP: amostras de um canal) ou **espaço/topologia** (Blender **Blur Attribute**: vizinhos da malha; Houdini Attribute Blur: raio no ponto-nuvem). A nossa não é nenhuma das duas — **ela é a ordem em que as instâncias por acaso estão**. O que dá sentido a ela é um `motion.sort` a montante, e **esse é o mesmo mecanismo que o doc 88 §9.2 já escreveu para o `slit_scan`** (*"o eixo é um `motion.sort` a montante"*). ⇒ os quatro são **magros por NATUREZA, com mecanismo nomeado**: o parâmetro que falta é a ORDEM, e ela mora noutro nó.
+
+| nó | params hoje | falta (referência CITADA) | exprimível? (a cadeia tentada) | natureza/omissão | P | default que reduz |
+|---|---|---|---|---|---|---|
+| `value.smooth` | `radius` (0..16) | **`iterations` / `passes`** — TD **Filter CHOP** (`Passes`); Blender **Blur Attribute** (`Iterations`); Houdini Attribute Blur (`Iterations`). **As três referências têm; nós temos zero** | **PARCIAL** — encadear N cópias do nó **funciona** (e box-blur repetido converge para gaussiana, que é o motivo de a referência ship'ar o knob), mas *N não é um slider* e 3 nós para uma qualidade é o custo | **omissão** | **P1** | `iterations = 1` ⇒ hoje bit a bit |
+| `value.smooth` | idem | **forma do peso** (Gaussian vs Box; TD ship 11 tipos, Blender ship `Weight`) | **PARCIAL** — 3 passes de box ≈ gaussiana (cavalga o item acima) | omissão | **P1** *(mesma wave)* | `weight = Box` ⇒ hoje |
+| `value.smooth` · `median` · `percentile` · `slope` | — | **`Effect` / dry-wet 0..1** — TD Filter CHOP o ship; e **todo deformer deste repo tem mistura** | **SIM** — `value.mix(a = entrada, b = filtrado, factor)`, 1 nó + bifurcação | natureza | ⛔ | — |
+| `value.smooth` | idem | filtros **causais** (Left/Right Half Gaussian/Box) — TD Filter CHOP | **NÃO** | omissão nichada | **P2** | `window = Centered` ⇒ hoje |
+| `value.median` | `radius` (0..16; kernel GPU com `MAX_RADIUS` 33) | **`De-Spike` + `Tolerance`** — TD Filter CHOP ship o par | **PARCIAL** — o `median` **É** o de-spike (o próprio teste do arquivo diz *"a lone spike is deleted, not spread"*); falta só a tolerância | omissão | **P2** | `tolerance = 0` ⇒ hoje. ⚠️ **cerca:** o kernel GPU seleciona por *rank contado, sem sort*, com array de registradores dimensionado por `MAX_RADIUS` — uma tolerância não pode crescer a janela |
+| `value.percentile` | `radius` · `percentile` | — TD e Houdini ship **Median** (p = 0.5) e mais nada | — | ✅ **NATUREZA — e aqui NÓS somos o superset:** um filtro de rank com percentil livre não existe nas referências consultadas. Ver §8 | — | — |
+| `value.slope` | `scale` | `Units` (por amostra / por segundo) e `Interpolate` — TD **Slope CHOP** | **SIM** — o `scale` **é** o divisor da unidade | ✅ **NATUREZA:** a derivada tem um grau de liberdade (a unidade por que se divide) e `scale` é ele | ⛔ | — |
+| *(família)* | — | **blur ESPACIAL** (por proximidade 2D, não por índice) — Blender Blur Attribute e Houdini Attribute Blur são espaciais | **NÃO** — o `motion.sort` dá **um eixo**, não uma vizinhança 2D | **omissão estrutural** | **NÓ NOVO**, fora desta conferência de params — nomeado na §8 | — |
+
+---
+
+## §7 — AGREGAÇÃO, NORMALIZAÇÃO E SELEÇÃO (3 nós)
+
+| nó | params hoje | falta (referência CITADA) | exprimível? (a cadeia tentada) | natureza/omissão | P | default que reduz |
+|---|---|---|---|---|---|---|
+| `value.reduce` | `mode` (Sum·Mean·Min·Max) — com `register_reduces` (GPU) | **`Range` (max−min)** — Blender **Attribute Statistic** ship **8 saídas simultâneas** (Mean·Median·Sum·Min·Max·**Range**·**StdDev**·**Variance**), verbatim no dump §B | **SIM** — `reduce(Max) → math(Subtract) ← reduce(Min)`, 3 nós, exato (a regra de broadcast 1→N torna as reduções somáveis) | omissão | **P2** | modo apendado |
+| `value.reduce` | idem | **`StdDev` · `Variance`** — Blender Attribute Statistic; TD **Analyze CHOP** (Average/Length/Max/Median/Min/**RMS**/**Standard Deviation**/Sum); Houdini Attribute Promote | **SIM, a 5 nós** — `reduce(Mean) → math(Sub) ← in` → `unary(Square)` → `reduce(Mean)` → `unary(Sqrt)`. Funciona **porque** o length-1 faz broadcast | **omissão** — *exprimível a um custo que ninguém paga* | **P1** | modos apendados (4·5) ⇒ 0..3 intactos |
+| `value.reduce` | idem | **`Median` global** — Blender Attribute Statistic; TD Analyze; Houdini | **NÃO** — o `value.median` é **janelado** e o `radius` capa em 16; um rank global precisa do conjunto inteiro | **omissão** | **P1** | modo apendado |
+| `value.reduce` | idem | **`Selection`** (um campo booleano filtra o conjunto ANTES de reduzir) — Blender Attribute Statistic o ship como input, e as três estatísticas-sem-geometria de 4.5 também | **SIM, a 4 nós** — `Σ(v·mask) ÷ Σ(mask)`: `math(Mul) → reduce(Sum)` e `reduce(Sum) ← mask`, depois `math(Divide)`. ⚠️ Note que a forma ingênua `mean(v·mask)` está **errada** (o denominador conta os excluídos) | **omissão** — custo que ninguém paga | **P1** | porta `mask` opcional; desconectada ⇒ hoje |
+| `value.reduce` | idem | **`Group ID` / redução segmentada** — Blender 4.5 **Field Average / Field Min & Max / Field Variance** com Group ID; **Accumulate Field** com Group Index. Doc 63 §2.4 já o nomeou para o scan | **NÃO** — nenhuma composição faz *bins* | **omissão estrutural** | **P1** | porta `group` opcional ⇒ um grupo só = hoje |
+| `value.normalize` | `mode` (Range·MaxAbs) | banda de saída (0..1 vs −1..1 vs livre) — TD Math CHOP `Range from/to` | **SIM** — `normalize → value.map_range` | ✅ **NATUREZA, com mecanismo:** os dois modos **são** as duas normalizações que existem (afim-para-unidade · escala-por-magnitude); uma terceira precisaria de uma banda-alvo, e a banda é trabalho do `map_range` — a **mesma fatoração** que o doc-comment do `field.remap` declara. ⚠️ E o nó já é *melhor* que a referência: no Blender isto são 2-3 nós (`Attribute Statistic → Map Range`) | ⛔ | — |
+| `value.switch` | **zero params** — portas `select` + `in0..in3` | **N entradas** — Blender **Index Switch** (4.1) faz a lista de sockets crescer | **PARCIAL** — encadear switches (3 nós para 8 entradas) | **omissão** — ⚠️ mas a cura **não é um param**: `NodeManifest.inputs` é `&'static [PortSpec]`, então porta variável é pergunta de **CONTRATO CONGELADO** (§6 do CLAUDE.md). Fora de uma wave de params | **P1**, com a nota de contrato | — |
+| `value.switch` | idem | **Blend entre entradas** (índice fracionário faz cross-fade) — TD **Switch CHOP** | **SIM para 2** — `value.mix(a, b, t=frac)`; para 4 é cadeia | omissão | **P2** | `blend = 0` ⇒ hoje |
+| `value.switch` | idem | **avaliação preguiçosa** — Blender documenta duas vezes: *"only the input that is passed through the node is computed"* | **NÃO** (o cook puxa as quatro) | propriedade de **escalonamento do cook**, não param | **P2** | — |
+| `value.switch` | idem | — | — | ✅ **A recusa do doc 88 (*"zero params é o contrato deles"*) SOBREVIVE aqui — e agora com referência em vez de raciocínio:** o seletor é uma **porta** e não um param **de propósito**, porque no Blender o Index Switch também recebe um *field* — é o que permite escolher por instância. Zero params é a forma certa | — | — |
+
+---
+
+## §8 — `SUPERAR:` — o que só o nosso substrato torna barato
+
+1. **O filtro cujo EIXO é escolhido a montante — e ele já existe, sem ninguém saber.** Nenhuma referência deixa você dizer *"borre este valor ao longo do eixo X do layout"*: o TD borra ao longo do TEMPO, o Blender ao longo da TOPOLOGIA. Os nossos quatro filtros leem a **ordem do stream**, e o `motion.sort` **é** o seletor de eixo ⇒ `sort(por X) → smooth(r=8) → sort(por Index)` é um blur direcional de um campo arbitrário ao longo de um eixo arbitrário, **sem kernel novo**. Isto não é código: é um doc-comment e uma cena de smoke. (E é o mesmo mecanismo que o doc 88 §9.2 escreveu para o `slit_scan`.)
+2. **Ruído que faz LOOP EXATO — não "loop-ish".** A Cavalry aproxima o Looping sobre frames; o nosso `value.noise` já é **função pura de `(i, t, params)`** e o scrub é **bit-exato** (GGPO, doc 11) ⇒ um `loop_period` aqui garante *o mesmo valor em `t` e em `t+P`, ao bit*, e nenhuma referência pode prometer isso porque todas re-simulam. O item P1 vira um diferencial ao ser construído com essa garantia gateada.
+3. **Aleatoriedade por `id`, determinística cross-OS.** O Blender teve de **construir** ids estáveis dentro do *Distribute Points on Faces* para que o Random Value sobrevivesse a mudanças de densidade. O nosso `motion.emitter` já cunha `hash(seed, id, lane)` e o determinismo cross-OS é **gate de CI**. Chavear o `value.instance_field(Random)` no `id` dá um random que sobrevive a `sort`/`cull` **e** é idêntico nas três máquinas — o do Blender é estável por sessão, não por máquina.
+4. **O `value.percentile` já É o superset.** TD e Houdini oferecem `Median` (p = 0.5) e nada mais; o percentil livre sobre a janela não aparece em nenhuma referência consultada. É capacidade que temos e não nomeamos — merece a cena de smoke que a torna visível (p=0.1 e p=0.9 sobre o mesmo campo é um "envelope" que ninguém mais desenha em um nó).
+5. **A tabela de valores como TEXT PARAM, não como widget de lista.** A cura do teto de 8 do `value.pattern` pelo canal de text param (precedente `motion.expression` / `ramp` do `color_ramp`) dá algo que a lista da Cavalry não dá: uma tabela **ilimitada, colável de uma planilha, diffável no git e versionada com o grafo** — porque o text param já é canal serializado de primeira classe.
+6. **O nome que não resolve vira BADGE, não zero.** O gap do `Exists` do Blender é, aqui, um consumidor a mais do `ph2d-motion-diagnose` (ADR-0155) — a classe *"erro que não produz erro"* que aquele ADR já sabe diagnosticar e curar no gesto. A referência devolve um booleano que o artista tem de ligar em algum lugar; nós podemos **apontar para o nó**.
+
+---
+
+## §9 — `CERCAS:` — decisões já registradas (grepadas antes de propor)
+
+1. **`value.math`** — o MANIFEST diz, no comentário do `op`: *"Power/log are omitted by HR-5"*. Recusa deliberada, não esquecimento.
+2. **`value.gain`** — o módulo inteiro argumenta **Schlick 1994** *porque* evita `pow` (HR-5) e torna o port GPU bit-comparável; e `strength = 0 ⇒ a = 0.5 ⇒ 1/a − 2 = 0` **exato** ⇒ *o neutro é bit-exato por construção*. Qualquer reparametrização tem de preservar isso.
+3. **`value.gain`** — *"the input is CLAMPED to `[0,1]` … put a `value.map_range` before it"*: a fatoração está **declarada**, não esquecida.
+4. **`value.median` (kernel GPU)** — *"the selection is a counting rank, no sort"*, `MAX_RADIUS` limita a 33, e `vmd_round` casa com o `f32::round` do Rust porque *"a half-even disagreement would size a different window"*. Mexer no `radius` mexe no array de registradores.
+5. **`value.attribute`** — nota do **ADR-0136**: o NOME da coluna é text param (dinâmico, inexprimível como binding estático) ⇒ a projeção roda no `StreamOp::Project` e o kernel GPU é `PASSTHROUGH`. Modos novos entram **naquele ladder**.
+6. **`value.pattern`** é `NodeUiCategory::Source`, não Utility — é um GERADOR (o mesmo reparo de classificação que o doc 88 fez no `motion.lattice`).
+7. **`value.instance_field`** — *"Pure: a fresh field per cook, a pure function of N + params. No clock/state."* Um `use_node_as_seed` é estrutura de grafo, não estado — mas tem de nascer **desligado** (lei 6).
+8. **`value.math`** — divisão por zero *"collapses to zero, not infinity"*, com gate próprio. Não "consertar" para `inf`.
+9. **`value.curve` · `value.map_range` · `value.noise`** carregam **`ParamHardMax`** (`in_hi`/`out_hi` 100 · `amplitude` 100 · `frequency` 4) — o slider dual do doc 88 §11. Todo param novo decide o próprio teto duro.
+10. **`value.lfo`** é o único da família com **`ParamUnitDecl`** (`period` em segundos). Todo param temporal novo declara unidade.
+11. **`value.mix`** — o doc-comment diz que o `clamp` é *"Blender's Clamp Factor"*: a ausência do *Clamp Result* é conhecida, não omissa por descuido.
+12. **`value.switch`** tem **zero `register_param_ui`** — é o único da família sem hints, e isso é correto (não há param).
+
+---
+
+## §10 — `O DOC 63 ERROU EM:` (envelheceu nos DOIS sentidos)
+
+1. **`value.curve` marcado `FALTA` / P0** (§2.4: *"Float Curve — mapeia valor por CURVA (widget D2) + Factor"*) — **JÁ EXISTE**: crate `ph2d-node-value-curve`, `ParamWidget::Curve`, LUT no device, `ParamHardMax`. Só o **`Factor`** falta, e ele é **refutável** por `value.mix`. ⚠️ Item que manda construir o que está construído.
+2. **`value.index_switch` marcado `FALTA` / P1** (*"N entradas por inteiro"*) — **JÁ EXISTE como `value.switch`** (porta `select` + `in0..in3`). O que resta é N > 4, e isso esbarra em `NodeManifest.inputs: &'static [PortSpec]` (**contrato congelado**), não numa wave de params.
+3. **`value.stat` P1** — a frase *"o nosso `Sum/Min/Max` GPU ganha os irmãos"* está desatualizada: **`Mean` já entrou**. A lista honesta de hoje é `median · stddev · variance · range · Selection · GroupID`, e **três deles são refutáveis por composição** (range 3 nós · stddev 5 · Selection 4) — o que muda a prioridade de metade do item.
+4. **`value.random` P0** (*"nó dedicado: Float/Int/Bool(probability), min/max, ID+Seed separados"*) — **metade já existe** (`value.instance_field(Random)` + `seed`), e **min/max e bool-probability são REFUTÁVEIS** (`map_range` · `step`, 1-2 nós). ⚠️ **O que sobra do item é justamente o que ele NÃO diz:** a chave é o **ÍNDICE**, não o `id` — e é essa metade que é P0.
+5. **§3.2 para `value.map_range`** pede *"interpolation … · curva (D2)"* — a metade "curva" foi satisfeita por um **nó irmão** (`value.curve`), não por um param. Só o enum de 4 modos sobrevive do item.
+6. **Doc 88 §9 conta "VALUE (24 nós)"** — são **23**. Medido por duas rotas independentes: `ls crates | grep '^ph2d-node-value-'` = 23 e `grep -rh 'NodeTypeId::of("value\.' | sort -u` = 23. Um número errado numa tabela de recusa é como uma família ganha ou perde um nó sem ninguém ver.
+
+---
+
+## §11 — Placar
+
+| P | n | itens |
+|---|---|---|
+| **P0** | **3** | `value.noise` **`type`** (Perlin/Simplex/Value/Cellular) · `value.instance_field` **chave por `id`** · `value.attribute` **componentes X/Y de Vec2** |
+| **P1** | **16** | `math`: Modulo com divisor variável · compare-com-epsilon · blend modes do `mix` · `map_range`+`step`: interpolação (Stepped/Smooth/**Smoother**) · `quantize`: Truncate · `lfo`: BPM · `noise`: lacunarity · loop_period · pan do domínio · `time`: idade normalizada · `instance_field`: `use_node_as_seed` · `pattern`: tabela sem teto (text param) · `attribute`: `Exists` (via diagnose) · `smooth`: iterations+weight · `reduce`: median · stddev/variance · Selection · GroupID · `switch`: N entradas (⚠️ contrato) |
+| **P2** | 14 | ergonomia — MultiplyAdd · SmoothMin/Max · Clamp Result · Factor da curva · curva-sobre-vida · portas do `wrap` · offset do `quantize` · invert do `step` · histerese · fade-in do `lfo` · interp/offset do `pattern` · canais do picker · dry-wet (refutado, fica como conveniência) · blend do `switch` |
+| **⛔** | **17** | recusados **com referência**: power/log e sin/cos (HR-5, cerca no código) · `1−x` (é `map_range`) · ceil/round (é `quantize`) · clamp (é `wrap`) · AND/OR (são `Min`/`Max`) · min-max vs amplitude-offset (mesma parametrização) · custom wave (é `lfo(Saw)→curve`) · duty cycle (é `lfo(Saw)→step`) · time offset/scale (é `motion.time_remap`) · loop/pingpong do clock (é `wrap`) · min/max do random (é `map_range`) · probability (é `Random→step`) · random-integer (é `map_range→quantize`) · frames do `time` (é `rate`) · range do `reduce` (3 nós) · dry-wet dos filtros (é `mix`) · edge-detect (é `slope`) · tipos de dado do `attribute` (domínio escalar por contrato) |
+| **✅ natureza, com mecanismo** | 6 | `value.gain` (um grau de liberdade em Schlick) · `value.wrap` (as três saídas da faixa) · `value.time` (rápido/quando/por-instância) · `value.slope` (a unidade) · `value.normalize` (as duas normalizações que existem) · `value.switch` (o seletor é PORTA de propósito) · **e os quatro filtros**, cujo param faltante é a ORDEM e ela mora no `motion.sort` |
+
+**Wave sugerida por sub-família** (a §8 do plano manda uma wave por família; dentro desta, a partição natural é):
+**W-A** os três P0 (kernels/ladders distintos, mas UMA cena de smoke: um campo aleatório estável sob `sort`, um ruído celular e uma cor pela velocidade-X) · **W-B** o cluster NOISE completo (lacunarity·loop·pan, com o `type`) · **W-C** o cluster REMAP (interpolação compartilhada `map_range`+`step`, Truncate) · **W-D** o cluster REDUCE (median·stddev·variance·Selection·GroupID) · **W-E** os dois de tabela/semente (`pattern` por text param, `use_node_as_seed`).

@@ -263,3 +263,80 @@ fn no_generator_carries_the_accel_forward() {
         );
     }
 }
+
+/// **A GRAVIDADE VETOR já existe — ela é a cadeia de força, e este gate a mede.**
+///
+/// A conferência (doc 89, família 3) listava *"gravidade VETOR"* como P0 para o
+/// `verlet_rope` e para o `soft_body`, e o mecanismo que ela nomeava era literal:
+/// *"o nó não lê `accel`, e a cadeia `force.wind → rope.state` é autorável mas
+/// **INERTE**"*. O W1-A removeu exatamente esse mecanismo. Pelo §0 — *quem move o
+/// número que tornava algo inalcançável tem de reconferir a nota* — o item tem de
+/// ser re-perguntado ao produto em vez de construído por inércia.
+///
+/// A pergunta decisiva: **`gravity = 0` mais um vento apontando para baixo
+/// reproduz a gravidade embutida?** Se sim, a capacidade existe, e um `dir` por
+/// nó seria a SEGUNDA porta para a mesma pergunta — contra a semântica Houdini
+/// que este módulo inteiro segue (as forças acumulam em `accel`, um integrador
+/// aplica).
+///
+/// ⚠️ **A tolerância não é ε de conveniência, é ASSOCIAÇÃO:** o embutido computa
+/// `(g·dt)·dt` e o externo `a·(dt·dt)`, que em IEEE-754 podem diferir no último
+/// bit — a mesma não-associatividade que o `dt2` do W1-A preserva de propósito.
+/// Por isso a barra é relativa e minúscula, não zero.
+#[test]
+fn vector_gravity_is_the_force_chain_and_needs_no_second_door() {
+    let reg = registry();
+    // `angle = 270°` ⇒ `(cos, sin) = (0, −1)`: para baixo, exatamente o eixo em
+    // que a gravidade embutida atua.
+    const DOWN: f32 = 270.0;
+    const G: f32 = 12.0;
+    for ty in ["motion.verlet_rope", "motion.soft_body"] {
+        let built_in = {
+            let mut g = Graph::new();
+            let sim = rig(&mut g, ty, &[("gravity", G)], None);
+            positions(&run(&g, &reg, sim, 40))
+        };
+        let by_force = {
+            let mut g = Graph::new();
+            let sim = rig(&mut g, ty, &[("gravity", 0.0)], Some((DOWN, G)));
+            positions(&run(&g, &reg, sim, 40))
+        };
+        assert_eq!(built_in.len(), by_force.len(), "{ty}: mesma contagem");
+        let worst = built_in
+            .iter()
+            .zip(by_force.iter())
+            .map(|(a, b)| (a[0] - b[0]).abs().max((a[1] - b[1]).abs()))
+            .fold(0.0f32, f32::max);
+        // A queda depois de 40 tiques dá a escala contra a qual o resíduo é lido.
+        let fall = built_in
+            .iter()
+            .map(|p| p[1].abs())
+            .fold(0.0f32, f32::max)
+            .max(1.0);
+        assert!(
+            worst < fall * 1e-4,
+            "{ty}: um vento para baixo tem de reproduzir a gravidade embutida — \
+             pior divergencia {worst} sobre uma queda de {fall}. Se isto falhar, a \
+             gravidade vetor VOLTA a ser um gap real e o item P0 do doc 89 renasce."
+        );
+    }
+}
+
+/// **E o CONTROLE: a fixture acima cairia se o vento fosse ignorado.** Sem esta
+/// afirmação a igualdade seria verde por vácuo — duas rotas concordando porque a
+/// segunda simplesmente não cai (`gravity = 0`, vento inerte, tudo parado).
+#[test]
+fn the_vector_gravity_fixture_actually_falls() {
+    let reg = registry();
+    for ty in ["motion.verlet_rope", "motion.soft_body"] {
+        let mut g = Graph::new();
+        let sim = rig(&mut g, ty, &[("gravity", 0.0)], Some((270.0, 12.0)));
+        let p = positions(&run(&g, &reg, sim, 40));
+        let lowest = p.iter().map(|q| q[1]).fold(f32::INFINITY, f32::min);
+        assert!(
+            lowest < -0.05,
+            "{ty}: o vento para baixo tem de MOVER o corpo, senao a igualdade acima \
+             compara dois corpos parados: mais baixo {lowest}"
+        );
+    }
+}

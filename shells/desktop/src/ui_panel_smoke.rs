@@ -482,6 +482,22 @@ fn announce(app: &mut crate::App) {
     eprintln!("     sem recompilar. E' o passo 9 pelo avesso: o que a tabela viva ACRESCENTA");
     eprintln!("     responde ja'; o que ela RENOMEIA no codigo colado continua a precisar do");
     eprintln!("     passo 9.");
+    eprintln!(" 22. ⚠️ **O QUE VOCE CRIA COMPORTA-SE COMO O QUE VEIO NO CODIGO.** Naquele mesmo");
+    eprintln!("     retangulo, troque o tipo para **Checkbox** e clique-o no painel: ele tem de");
+    eprintln!("     FICAR MARCADO. Depois um **Toggle**, um **Slider**: cada um responde como o");
+    eprintln!("     irmao dele que veio da tabela compilada.");
+    eprintln!(
+        "     ⚠️ A causa do report de 09/08 (*'o meu nao fica checado mas emite sinal; o seu"
+    );
+    eprintln!(
+        "     nao emite sinal mas pode ser checado'*) e' UMA so', e ela e' o caminho NORMAL:"
+    );
+    eprintln!("     **Wear a Widget cria um BUTTON**, e so' depois voce escolhe o tipo. O estado");
+    eprintln!("     do Button ficava no store, entao o painel nao tinha o que marcar e o clique");
+    eprintln!("     caia no `Fired` dos BOTOES — que e' o unico intent que vira SINAL. Com");
+    eprintln!("     PH2D_SIGNAL_LOG=1, um checkbox NAO pode imprimir '[signal]'; um Button pode.");
+    eprintln!("     ⚠️ E o inverso tambem: um **Section Header** que vira Checkbox tem de MARCAR,");
+    eprintln!("     nao dobrar — a marca de secao e' consultada ANTES do tipo do widget.");
 }
 
 #[cfg(test)]

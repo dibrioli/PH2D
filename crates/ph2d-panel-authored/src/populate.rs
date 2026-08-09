@@ -159,23 +159,52 @@ pub fn populate(store: &mut WidgetStore) {
 /// desenhar uma seção a mais para o vão aparecer (report do Enio, 2026-08-09: *"não consigo
 /// contraí-la"*) — e o modo de falha é o mesmo para um controle novo, não só para um cabeçalho.
 ///
-/// ⚠️ **`register_if_absent`, nunca `register`, e a diferença é o produto inteiro:** quem pinta
-/// chama isto a cada quadro, e um `register` devolveria o slider ao zero e o botão a `Normal`
-/// **enquanto o dedo está em cima** — o valor do artista apagado sessenta vezes por segundo.
+/// ⚠️ **Nem `register` nem `register_if_absent`: a pergunta é sobre a VARIANTE.** Quem pinta chama
+/// isto a cada quadro, então um `register` devolveria o slider ao zero e o botão a `Normal` com o
+/// dedo em cima — o valor do artista apagado sessenta vezes por segundo. Mas um
+/// `register_if_absent` sozinho guarda o estado do tipo **ANTIGO**, e isso não é um caso de canto:
+/// **é o caminho normal de toda row que o artista cria.** O `WidgetEdit::Wear` insere
+/// `WidgetKind::Button` e só depois ele escolhe o tipo que queria, então todo controle autorado
+/// passa por Button e o id entra no store como Button antes de ser o que é.
+///
+/// ⚠️ **O report que trouxe isto tinha duas metades e uma causa** (Enio, 2026-08-09): *"o checkbox
+/// que criei não fica checado mas EMITE SINAL; o que você criou não emite sinal mas pode ser
+/// checado"*. Com o estado obsoleto, o `paint` lê um `Button` onde devia ler um `Checkbox` — não
+/// há o que marcar — e a cadeia do `event` cai no `else` final, que é o `Fired` dos BOTÕES, o
+/// único intent que vira **sinal**. A metade *"o seu funciona"* é o CONTROLE que nomeia a causa: a
+/// row da tabela compilada foi registada com o tipo certo no arranque e nunca trocou.
+///
+/// A lei, então: **o estado obsoleto é substituído; o estado do tipo CERTO é preservado.** A
+/// pergunta é `discriminant`, e não uma tabela de pares — `Button`/`IconButton` partilham
+/// `InteractiveState::Button` de propósito, e `Tabs`/`SegmentedAdaptive` partilham o `Tabs`: a
+/// variante já é a resposta, e uma lista à mão nasceria sem o próximo par.
 pub(crate) fn adopt(store: &mut WidgetStore, row: &Row) {
     // A pergunta é feita ao `is_control`, e o `initial` a espelha. As duas concordam por
     // construção — há gate a exigi-lo, porque uma delas mudar sozinha é o caminho para um
     // controle registado que o `paint` não desenha (ou o contrário).
     if let Some(st) = initial(row.kind) {
         debug_assert!(Row::is_control(row), "registado sem ser controle");
-        store.register_if_absent(row.id, st);
+        let stale = store
+            .get(row.id)
+            .is_none_or(|cur| std::mem::discriminant(cur) != std::mem::discriminant(&st));
+        if stale {
+            store.register(row.id, st);
+        }
     }
     // ⚠️ **Um cabeçalho não é registado como widget** — ele não tem `InteractiveState`, e o
     // despacho o trata ANTES do `switch` justamente por isso. O que ele precisa é de ser
     // MARCADO: sem esta linha o chevron desenha, o retângulo de hit existe, o clique chega —
     // e não dobra nada, porque o despacho não sabe que aquele id é uma seção.
+    //
+    // ⚠️ **E o `else` é a outra metade do mesmo defeito**, pelo lado inverso: o despacho consulta
+    // a marca ANTES do switch, então uma que sobreviva à troca de tipo faz o clique DOBRAR uma
+    // seção que já não existe em vez de marcar a caixa (medido). A pergunta *"esta row é um
+    // cabeçalho?"* é feita uma vez e a resposta é ESTABELECIDA, nas duas direções — em vez de
+    // acrescentada e nunca retirada.
     if row.folds_a_section() {
         store.mark_collapsible_section(row.id);
+    } else {
+        store.unmark_collapsible_section(row.id);
     }
     options(store, row);
 }

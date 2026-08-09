@@ -321,6 +321,23 @@ impl WidgetStore {
         self.collapsible_sections.insert(id);
     }
 
+    /// The sibling of [`mark_collapsible_section`](Self::mark_collapsible_section): this id is
+    /// **no longer** a section header.
+    ///
+    /// ⚠️ For the twenty-three hand-written panels this never fires — their tables are `const`,
+    /// and a header stays a header for the lifetime of the build. It exists for the **authored**
+    /// panel, whose table is the artist's document: a row that wore a `SectionHeader` a moment
+    /// ago can wear a `Checkbox` now. The mark is consulted by the dispatch **before** the widget
+    /// switch, so one that outlives the type change makes the click fold a section that no longer
+    /// exists instead of ticking the box — measured, 2026-08-09.
+    ///
+    /// Idempotent, and a no-op for an id that was never marked: the caller asks *"is this a
+    /// header?"* once and states the answer, rather than remembering whether it had said the
+    /// opposite before.
+    pub fn unmark_collapsible_section(&mut self, id: NodeId) {
+        self.collapsible_sections.remove(&id);
+    }
+
     /// True iff the section is registered as collapse-toggle eligible.
     /// Dispatch consults this before firing the toggle on a click.
     pub fn is_collapsible_section(&self, id: NodeId) -> bool {

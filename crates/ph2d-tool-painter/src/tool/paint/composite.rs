@@ -17,6 +17,7 @@ use super::PaintMode;
 use crate::tool::PainterTool;
 use ph2d_editor_core::tool::PanelEvent;
 use ph2d_painter_brush::Dab;
+use std::sync::Arc;
 
 /// One of the three composite operations. Wire discriminant (`to_u8`) travels in the panel snapshot so
 /// the panel can label each row; the panel maps it back to a name.
@@ -174,11 +175,60 @@ impl PainterTool {
                     } else {
                         self.stamp_dabs_inner(dabs);
                     }
+                    self.fold_brush_into_smear_base(dabs);
                 }
                 CompositeOp::Smear => self.stamp_dabs_smear(dabs, w, h),
                 CompositeOp::Blur => self.stamp_dabs_blur(dabs, w, h),
             }
         }
         self.paint.brush.strength = saved_strength;
+    }
+}
+
+impl PainterTool {
+    /// Let the smear session's frozen source ABSORB the ink this batch's Brush layer just laid.
+    ///
+    /// ⚠️ **Without this the stack cannot paint more than one blob** (Enio 2026-08-09), and the
+    /// mechanism is a collision of two lifetimes that are each correct alone. Since the smear became a
+    /// FIELD, a smudge *accumulates a displacement map and resolves ONCE from the pixels frozen at
+    /// pen-down* — the law that killed the filament. The composite promises the opposite: *each op
+    /// processes the canvas as the one below it left it*, which is per BATCH. So the next batch's smear
+    /// render rewrote the region from a base that had never seen the Brush, carrying away what the Brush
+    /// had just put there — measured, 108 of 141 columns inked, the gaps periodic with the batch rects
+    /// (the "rectangular streaks" of the report).
+    ///
+    /// Folding is what the card already promises the stack does — *paint, then smudge what you painted* —
+    /// and it keeps the field law intact: the map is still composed once and the IMAGE is still resampled
+    /// once per render. What changes is only that the source gains ink while the stroke runs.
+    ///
+    /// ⚠️ **It folds at the PAINTED position, not at the pre-image**, and that is a named approximation:
+    /// ink folded at batch `k` is then carried by the displacement accumulated over the WHOLE stroke, not
+    /// only from `k` onward, so a long smudge drags fresh paint slightly further than a physical
+    /// relay would. Folding at `p − disp(p)` instead would be exact and is a SCATTER, which can leave
+    /// holes in the source; that trade is not worth taking blind — if a smoke shows fresh paint sliding
+    /// too far, the inverse-map fold is the next step and this comment is where it starts.
+    ///
+    /// **Mutation that must bleed:** delete the call in the `Brush` arm of `stamp_dabs_composite`.
+    fn fold_brush_into_smear_base(&mut self, dabs: &[Dab]) {
+        // Only a live smear session has a frozen source to keep honest; the plain Brush has none.
+        if !self.paint.warp.active || self.paint.warp.pre.len() != self.canvas_rgba.len() {
+            return;
+        }
+        let (w, h) = self.source_size;
+        let Some(rect) = dabs
+            .iter()
+            .filter_map(|d| self.dab_bbox(d.center, d.radius_px))
+            .reduce(super::union_region)
+        else {
+            return;
+        };
+        let canvas = Arc::clone(&self.canvas_rgba);
+        let pre = Arc::make_mut(&mut self.paint.warp.pre);
+        let (x0, x1) = (rect.x.min(w), (rect.x + rect.w).min(w));
+        for y in rect.y..(rect.y + rect.h).min(h) {
+            let row = (y * w) as usize * 4;
+            let (a, b) = (row + x0 as usize * 4, row + x1 as usize * 4);
+            pre[a..b].copy_from_slice(&canvas[a..b]);
+        }
     }
 }

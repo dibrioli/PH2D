@@ -140,3 +140,54 @@ fn probe_composite_lays_a_whole_stroke() {
         eprintln!("{name}: {inked}/141  span={first:?}..{last:?}  {map}");
     }
 }
+
+/// **A pilha pinta o traço INTEIRO.**
+///
+/// O gate da regressão: *"o Composite Brush não consegue pintar mais que uma mancha"*. Com o
+/// `fold_brush_into_smear_base` no lugar as três pilhas medem 141/141; sem ele, 108.
+///
+/// ⚠️ **A OUTRA metade — *"e o Smear da pilha ainda esfrega"* — NÃO está gateada, e o motivo é fixture,
+/// não preguiça.** Três tentativas, cada uma saturada por um mecanismo diferente, medidas:
+/// 1. texels FORA do eixo do traço: **0 contra 0** — a esfregada desloca *ao longo* do traço, não para
+///    os lados, então não há nada a medir ali;
+/// 2. o ALCANCE da tinta além de onde o pincel parou: **176 contra 176** — é a pegada do próprio Brush,
+///    e esfregar uma faixa uniforme ao longo do próprio eixo é **no-op por simetria**;
+/// 3. uma marca AZUL pré-pintada para o Smear carregar: **0 contra 0** com o Brush opaco (ele cobre a
+///    marca) e também com ele translúcido (`strength 0.3`), onde a 1ª metade deixa de entintar.
+///
+/// ⇒ O risco que fica NOMEADO: se a absorção da base tornasse o Smear inerte dentro da pilha, este gate
+/// **não veria**. O smoke é quem julga isso hoje; a fixture que separa as duas provavelmente precisa de
+/// uma esfregada TRANSVERSAL sobre tinta seca, e não de um traço reto sobre uma marca.
+///
+/// **Mutação que must bleed:** apagar a chamada de `fold_brush_into_smear_base` na rota do Brush ⇒
+/// 108 de 141.
+#[test]
+fn the_composite_stack_lays_the_whole_stroke() {
+    const SIZE: u32 = 200;
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; (SIZE * SIZE * 4) as usize], SIZE, SIZE);
+    t.paint.brush.radius_px = 8.0;
+    t.paint.brush.hardness = 1.0;
+    t.paint.brush.falloff = Falloff::Constant;
+    t.paint.brush.color = [0.6, 0.0, 0.0];
+    t.paint.brush.space_attenuation = false;
+    t.paint.composite_enabled = true;
+    t.paint.composite[0] = CompositeLayer {
+        op: CompositeOp::Brush,
+        strength: 1.0,
+    };
+    t.paint.composite[1] = CompositeLayer {
+        op: CompositeOp::Smear,
+        strength: 0.5,
+    };
+    t.paint.composite[2] = CompositeLayer {
+        op: CompositeOp::Blur,
+        strength: 0.5,
+    };
+    drag(&mut t, 100.0, 30.0, 170.0);
+    let whole = inked_columns(&t, 100, SIZE, 30..171);
+    assert_eq!(
+        whole, 141,
+        "a pilha perdeu tinta: {whole} de 141 colunas entintadas ao longo do caminho"
+    );
+}

@@ -36,6 +36,35 @@
 //!
 //! `spin` still rotates everything, wedge and all: it is a *rotation*, the wedge is an *extent*,
 //! and they compose. **Default `0 .. 360`** is the closed circle that always shipped, byte for byte.
+//!
+//! ## `align` — the clone turns to face outward
+//!
+//! Placing a point is half of a radial array; the other half is **which way each clone looks**,
+//! and C4D's Radial Cloner has shipped the pair forever (`Count · Radius · Plane · **Align** ·
+//! Start/End Angle · Offset`). Nothing downstream could supply it: `motion.look_at` aims at a
+//! *target point*, so pointing every clone away from the centre would need a target *per clone*.
+//!
+//! ⚠️ **The heading is not derived — it IS the layout parameter.** The sibling that walks a curve
+//! (`motion.distribute_curve`, and `motion.path` before it) has to differentiate the geometry and
+//! then read the angle back with an `atan2` approximation. Here the angle is the number the layout
+//! already computed to place the point: `cycles`. Asking `atan2(y, x)` for it would re-derive a
+//! known quantity through an approximation — spending error to learn what we just typed — and
+//! would break at the one place it matters most (see the centre, below).
+//!
+//! ⚠️ **The angle is NOT wrapped, and that is deliberate.** An `atan2` hands back `[-180, 180]`
+//! because a direction has no history; this node knows the winding, because `spin` is an animatable
+//! input and the wedge may sweep past a full turn. Emitting the wrapped value would throw away
+//! information only this node has, and would plant a ±180 seam exactly where a downstream filter
+//! blows up (the `motion.delay` lesson: *an angle is a circle, so the line keeps the UNWRAPPED
+//! value*). The renderer builds a basis with `sin`/`cos`, which are periodic, so magnitude is free.
+//!
+//! ⚠️ **A clone at the centre still has a heading.** With `inner = 0` the innermost ring sits at
+//! radius zero and "outward" is the direction of a zero-length vector — undefined. The layout angle
+//! is not: it is what spaced that ring, so that is what the clone reports. An `atan2(0, 0)` would
+//! have answered `0` for every one of them, silently collapsing a ring's worth of orientation.
+//!
+//! **Default off** (`align = 0`): a graph that never heard of this param emits `P` and nothing
+//! else, byte for byte, exactly as it did before.
 
 use ph2d_node_registry::{NodeRegistry, ParamUnit, ParamUnitDecl, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
@@ -105,6 +134,12 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "end_angle",
             default: 360.0,
         },
+        // APPENDED, and `0` is off: a saved graph reads it as absent, takes the default and
+        // emits `P` alone — the stream it always emitted, byte for byte.
+        ParamSpec {
+            name: "align",
+            default: 0.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
@@ -173,6 +208,10 @@ fn ring_counts(count: usize, rings: usize) -> Vec<usize> {
 /// With the neutral wedge (`0 .. 360`) the angle expression reduces to the one that always shipped
 /// (`0 + frac·1 + spin`), term for term — which is why the default is byte-identical rather
 /// than merely close.
+///
+/// With `align`, each point also reports the **outward heading there**, in degrees. It is the very
+/// `cycles` that placed the point, scaled to degrees — not an `atan2` of the position, which would
+/// re-derive through an approximation what this loop already knows exactly (module docs).
 fn radial(
     count: usize,
     rings: usize,
@@ -180,8 +219,10 @@ fn radial(
     inner: f32,
     spin_cycles: f32,
     wedge: Wedge,
-) -> Vec<[f32; 2]> {
+    align: bool,
+) -> (Vec<[f32; 2]>, Vec<f32>) {
     let mut out = Vec::with_capacity(count);
+    let mut rot = Vec::with_capacity(if align { count } else { 0 });
     let per = ring_counts(count, rings);
     for (r, &n_ring) in per.iter().enumerate() {
         // Ring radius: `inner` at r=0 up to `radius` at the last ring (a lone ring
@@ -196,9 +237,12 @@ fn radial(
             let cycles = wedge.start + frac * wedge.sweep + spin_cycles;
             let (c, s) = cos_sin_cycles(cycles);
             out.push([rr * c, rr * s]);
+            if align {
+                rot.push(cycles * 360.0);
+            }
         }
     }
-    out
+    (out, rot)
 }
 
 struct MotionDistributeRadial;
@@ -218,8 +262,21 @@ impl NodeOp for MotionDistributeRadial {
             _ => 0.0,
         };
         let wedge = Wedge::from_degrees(ctx.param("start_angle"), ctx.param("end_angle"));
-        let positions = radial(count, rings.min(count), radius, inner, spin / 360.0, wedge);
-        ctx.emit(Stream::new(positions.len()).with("P", Column::Vec2(positions)));
+        let align = ctx.param("align") >= 0.5;
+        let (positions, rot) = radial(
+            count,
+            rings.min(count),
+            radius,
+            inner,
+            spin / 360.0,
+            wedge,
+            align,
+        );
+        let mut out = Stream::new(positions.len()).with("P", Column::Vec2(positions));
+        if align {
+            out = out.with("rot", Column::Scalar(rot));
+        }
+        ctx.emit(out);
     }
 }
 
@@ -317,6 +374,17 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         step: 1.0,
         widget: ParamWidget::Angle,
     },
+    // The label says what the clone DOES, not which column it writes: "Align" alone is the
+    // reference's word but leaves *to what?* open, and this array has two plausible answers
+    // (the radius, or the ring's tangent). It picks the radius, so it says so.
+    ParamUiHint {
+        param: "align",
+        label: "Align To Radius",
+        min: 0.0,
+        max: 1.0,
+        step: 1.0,
+        widget: ParamWidget::Toggle,
+    },
 ];
 
 /// **What each of this node's numbers IS** (doc 88, Wave A) — never how it is
@@ -348,274 +416,5 @@ static PARAM_UNITS: &[ParamUnitDecl] = &[
 ];
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn radius_of(p: [f32; 2]) -> f32 {
-        (p[0] * p[0] + p[1] * p[1]).sqrt()
-    }
-
-    /// Degrees CCW from +x, folded to `[0, 360)` — the standard-library `atan2`, so the oracle
-    /// shares nothing with the parabolic `cos_sin_cycles` it judges.
-    fn angle_of(p: [f32; 2]) -> f32 {
-        p[1].atan2(p[0]).to_degrees().rem_euclid(360.0)
-    }
-
-    /// **The layout as it stood before the wedge existed**, frozen verbatim under `cfg(test)`.
-    /// A `pub` copy with no caller would be a second answer waiting for someone to call it; this
-    /// one exists only to be disagreed with.
-    fn radial_before_the_wedge(
-        count: usize,
-        rings: usize,
-        radius: f32,
-        inner: f32,
-        spin_cycles: f32,
-    ) -> Vec<[f32; 2]> {
-        let mut out = Vec::with_capacity(count);
-        let per = ring_counts(count, rings);
-        for (r, &n_ring) in per.iter().enumerate() {
-            let rr = if rings > 1 {
-                inner + (radius - inner) * r as f32 / (rings as f32 - 1.0)
-            } else {
-                radius
-            };
-            for k in 0..n_ring {
-                let cycles = k as f32 / n_ring.max(1) as f32 + spin_cycles;
-                let (c, s) = cos_sin_cycles(cycles);
-                out.push([rr * c, rr * s]);
-            }
-        }
-        out
-    }
-
-    /// **The circle that always shipped is BYTE-identical** — every point, every bit, across a
-    /// spread of counts, rings and spins. This is what makes `0 .. 360` a default that costs
-    /// nothing rather than a default that is merely close.
-    #[test]
-    fn the_full_circle_is_byte_identical_to_the_law_that_shipped() {
-        for &(count, rings, spin) in &[
-            (60usize, 3usize, 0.0f32),
-            (8, 1, 0.0),
-            (61, 4, 0.137),
-            (1, 1, -0.4),
-            (255, 7, 1.75),
-        ] {
-            let before = radial_before_the_wedge(count, rings, 3.0, 0.6, spin);
-            let now = radial(count, rings, 3.0, 0.6, spin, Wedge::FULL);
-            assert_eq!(before, now, "count {count} rings {rings} spin {spin}");
-            let wired = radial(
-                count,
-                rings,
-                3.0,
-                0.6,
-                spin,
-                Wedge::from_degrees(0.0, 360.0),
-            );
-            assert_eq!(before, wired, "0..360 is FULL: {count}/{rings}");
-        }
-    }
-
-    /// **The wedge PACKS, it does not CULL** — the distinction the whole param exists for. The
-    /// composition it replaces (`field.radial_sweep → motion.cull`) would have returned FEWER
-    /// than `count` points; this returns all of them, inside the window.
-    #[test]
-    fn the_wedge_packs_the_points_it_does_not_cull_them() {
-        let pts = radial(8, 1, 2.0, 0.0, 0.0, Wedge::from_degrees(0.0, 180.0));
-        assert_eq!(pts.len(), 8, "every point asked for is placed");
-        for p in &pts {
-            let a = angle_of(*p);
-            assert!((-0.2..=180.2).contains(&a), "inside the wedge: {a} deg");
-        }
-    }
-
-    /// **An open wedge lands on both of its ends** — first on `start`, last on `end`. This is the
-    /// half that separates a fan from a ring, and the half an artist checks first.
-    #[test]
-    fn an_open_wedge_lands_on_both_of_its_ends() {
-        let pts = radial(5, 1, 2.0, 0.0, 0.0, Wedge::from_degrees(20.0, 200.0));
-        assert!((angle_of(pts[0]) - 20.0).abs() < 0.3, "{:?}", pts[0]);
-        assert!((angle_of(pts[4]) - 200.0).abs() < 0.3, "{:?}", pts[4]);
-        // And evenly, in between: 45 deg of wedge per step.
-        for k in 0..4 {
-            let step = angle_of(pts[k + 1]) - angle_of(pts[k]);
-            assert!((step - 45.0).abs() < 0.3, "even step {step}");
-        }
-    }
-
-    /// **A closed wedge does not double up its seam** — the price of the inclusive law, and the
-    /// reason the node reads `wraps` off the geometry instead of offering it as a mode. Eight
-    /// points over a full turn step by 45 deg and the last does NOT sit on the first.
-    #[test]
-    fn a_closed_wedge_does_not_double_up_its_seam() {
-        let pts = radial(8, 1, 2.0, 0.0, 0.0, Wedge::from_degrees(0.0, 360.0));
-        assert!((angle_of(pts[7]) - 315.0).abs() < 0.3, "{:?}", pts[7]);
-        let (dx, dy) = (pts[7][0] - pts[0][0], pts[7][1] - pts[0][1]);
-        assert!(dx * dx + dy * dy > 1.0, "the seam is not a stack");
-    }
-
-    /// `spin` carries the wedge with it: the fan is an EXTENT and the spin is a ROTATION, so
-    /// they compose instead of being two doors onto the same number.
-    #[test]
-    fn the_spin_carries_the_wedge_with_it() {
-        let wedge = Wedge::from_degrees(0.0, 90.0);
-        let still = radial(4, 1, 2.0, 0.0, 0.0, wedge);
-        let spun = radial(4, 1, 2.0, 0.0, 0.25, wedge);
-        for (a, b) in still.iter().zip(&spun) {
-            let d = (angle_of(*b) - angle_of(*a)).rem_euclid(360.0);
-            assert!(
-                (d - 90.0).abs() < 0.3,
-                "the whole fan turned 90 deg, got {d}"
-            );
-        }
-    }
-
-    /// **A graph that never heard of the wedge draws the circle it always drew.** It does not
-    /// name the defaults — it cooks through the registry without touching them.
-    #[test]
-    fn a_graph_that_never_heard_of_the_wedge_draws_the_circle() {
-        use ph2d_nodegraph::cook::{Cook, OpResolver};
-        use ph2d_nodegraph::graph::Graph;
-
-        struct Ops;
-        impl OpResolver for Ops {
-            fn resolve(&self, ty: NodeTypeId) -> Option<&dyn NodeOp> {
-                (ty == MANIFEST.id).then_some(&MotionDistributeRadial as &dyn NodeOp)
-            }
-        }
-        let mut g = Graph::new();
-        let n = g.add_node("motion.distribute_radial");
-        g.set_param(n, "count", 24.0);
-        g.set_param(n, "rings", 2.0);
-        let mut cook = Cook::new();
-        let out = cook.cook(&g, &Ops, n, 0.0).unwrap();
-        let Some(Column::Vec2(got)) = out[0].as_stream().get("P") else {
-            panic!("P")
-        };
-        assert_eq!(*got, radial_before_the_wedge(24, 2, 3.0, 0.6, 0.0));
-    }
-
-    /// **The authored wedge REACHES the layout.** Every other wedge gate calls `radial` directly,
-    /// so all of them stay green with the two params unread — this is the one that walks the seam
-    /// from `set_param` to a placed point.
-    #[test]
-    fn the_authored_wedge_reaches_the_layout() {
-        use ph2d_nodegraph::cook::{Cook, OpResolver};
-        use ph2d_nodegraph::graph::Graph;
-
-        struct Ops;
-        impl OpResolver for Ops {
-            fn resolve(&self, ty: NodeTypeId) -> Option<&dyn NodeOp> {
-                (ty == MANIFEST.id).then_some(&MotionDistributeRadial as &dyn NodeOp)
-            }
-        }
-        let mut g = Graph::new();
-        let n = g.add_node("motion.distribute_radial");
-        g.set_param(n, "count", 8.0);
-        g.set_param(n, "rings", 1.0);
-        g.set_param(n, "start_angle", 0.0);
-        g.set_param(n, "end_angle", 90.0);
-        let mut cook = Cook::new();
-        let out = cook.cook(&g, &Ops, n, 0.0).unwrap();
-        let Some(Column::Vec2(got)) = out[0].as_stream().get("P") else {
-            panic!("P")
-        };
-        assert_eq!(got.len(), 8, "the count survives the wedge");
-        for p in got {
-            let a = angle_of(*p);
-            assert!((-0.2..=90.2).contains(&a), "inside the quarter: {a} deg");
-        }
-    }
-
-    /// A single ring: every point sits on the outer radius, equally spaced. FALSIFIED
-    /// if they landed at mixed radii (that would be a spiral, not a ring).
-    #[test]
-    fn a_single_ring_is_evenly_spaced_on_the_radius() {
-        let pts = radial(8, 1, 3.0, 0.6, 0.0, Wedge::FULL);
-        assert_eq!(pts.len(), 8);
-        for p in &pts {
-            // ~1e-2 tolerance: the parabolic cos_sin_cycles is ~0.09% off unit.
-            assert!((radius_of(*p) - 3.0).abs() < 1e-2, "on the radius: {p:?}");
-        }
-        // Equal spacing: consecutive points differ by 1/8 turn — the same chord length.
-        let chord = |a: [f32; 2], b: [f32; 2]| {
-            let (dx, dy) = (a[0] - b[0], a[1] - b[1]);
-            (dx * dx + dy * dy).sqrt()
-        };
-        let d0 = chord(pts[0], pts[1]);
-        for k in 1..8 {
-            assert!(
-                (chord(pts[k], pts[(k + 1) % 8]) - d0).abs() < 2e-2,
-                "equal chords"
-            );
-        }
-    }
-
-    /// `rings` concentric rings: every point lands between `inner` and `radius`, and
-    /// more than one distinct radius appears.
-    #[test]
-    fn rings_are_concentric_between_inner_and_radius() {
-        let pts = radial(60, 3, 3.0, 1.0, 0.0, Wedge::FULL);
-        assert_eq!(pts.len(), 60);
-        let mut radii: Vec<f32> = pts.iter().map(|p| radius_of(*p)).collect();
-        for r in &radii {
-            assert!(
-                *r >= 1.0 - 1e-2 && *r <= 3.0 + 1e-2,
-                "within [inner, radius]: {r}"
-            );
-        }
-        radii.sort_by(|a, b| a.partial_cmp(b).unwrap());
-        assert!(radii[59] - radii[0] > 1.0, "spans multiple rings");
-    }
-
-    /// The exact count is honoured even when it doesn't divide evenly across rings.
-    #[test]
-    fn count_is_exact_across_uneven_rings() {
-        assert_eq!(radial(61, 4, 3.0, 0.5, 0.0, Wedge::FULL).len(), 61);
-        assert_eq!(ring_counts(61, 4), vec![16, 15, 15, 15]);
-    }
-
-    /// `spin` rotates the whole array: a quarter-turn spin moves a point that was on
-    /// +x onto +y. FALSIFIED by a dead spin (the point stays on +x).
-    #[test]
-    fn spin_rotates_the_array() {
-        let base = radial(4, 1, 2.0, 0.0, 0.0, Wedge::FULL); // points at 0°, 90°, 180°, 270°
-        let spun = radial(4, 1, 2.0, 0.0, 0.25, Wedge::FULL); // +90°
-        assert!(
-            base[0][0] > 1.9 && base[0][1].abs() < 1e-3,
-            "base point on +x"
-        );
-        assert!(
-            spun[0][1] > 1.9 && spun[0][0].abs() < 1e-3,
-            "spun point on +y: {:?}",
-            spun[0]
-        );
-    }
-
-    /// Deterministic + cooks through the registry, emitting `P` at the exact count.
-    #[test]
-    fn registers_and_cooks() {
-        use ph2d_nodegraph::cook::{Cook, OpResolver};
-        use ph2d_nodegraph::graph::Graph;
-
-        struct Ops;
-        impl OpResolver for Ops {
-            fn resolve(&self, ty: NodeTypeId) -> Option<&dyn NodeOp> {
-                (ty == MANIFEST.id).then_some(&MotionDistributeRadial as &dyn NodeOp)
-            }
-        }
-        let mut reg = NodeRegistry::new();
-        register(&mut reg).unwrap();
-        assert!(reg.resolve(MANIFEST.id).is_some());
-
-        let mut g = Graph::new();
-        let n = g.add_node("motion.distribute_radial");
-        g.set_param(n, "count", 24.0);
-        g.set_param(n, "rings", 2.0);
-        let mut cook = Cook::new();
-        let out = cook.cook(&g, &Ops, n, 0.0).unwrap();
-        match out[0].as_stream().get("P").unwrap() {
-            Column::Vec2(v) => assert_eq!(v.len(), 24),
-            _ => panic!("P"),
-        }
-    }
-}
+#[path = "lib_tests.rs"]
+mod tests;

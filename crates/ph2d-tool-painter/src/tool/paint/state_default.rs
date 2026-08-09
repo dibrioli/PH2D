@@ -198,6 +198,7 @@ impl Default for PaintState {
             // and the overlay are gated on Grid Stamp being the selected method — and a stamp that
             // snaps to a lattice you cannot see is a stamp whose rule the artist has to infer.
             grid_show: true,
+            grid_erase: false, // transiente: só vive dentro de um gesto de botão direito
             // "Adjust Last Stroke" is OFF by default (Enio 2026-07-19). Finished paint stays finished:
             // dialling the brush in for the NEXT stroke must not silently reach back and rewrite the one
             // already on the canvas. The historical default was ON, which made every knob a retroactive

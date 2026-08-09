@@ -61,8 +61,9 @@ mod keyboard_files;
 mod keyboard_painter; // a cadeia do Delete do Painter: ancora -> figura -> falloff
 mod keyboard_timeline;
 pub(crate) mod painter_canvas_input;
-mod painter_canvas_mods; // os modificadores que o CanvasPointer nao carrega
+mod painter_canvas_mods;
 pub(crate) mod painter_falloff_input;
+mod painter_grid_erase; // os modificadores que o CanvasPointer nao carrega
 pub(crate) mod protect_brush;
 
 /// Deslocamento diagonal de um paste/duplicate, em pixels de tela (o zoom converte
@@ -4557,9 +4558,20 @@ impl App {
             {
                 return;
             }
+            // Grid Stamp: o botão direito APAGA a célula (o esquerdo pinta). É o ÚLTIMO reivindicante do
+            // secundário de propósito — todos os arms acima são de outros métodos/ferramentas, e este só
+            // diz sim no Grid Stamp, então nenhum right-click que já funcionava é tirado de ninguém; o
+            // que não for dele continua caindo no menu de contexto abaixo.
+            (ph2d_host::PointerButton::Secondary, PointerKind::Down)
+                if !menu_open_before && self.painter_grid_erase_down(evt.x, evt.y) =>
+            {
+                return;
+            }
             (ph2d_host::PointerButton::Secondary, PointerKind::Up) => {
                 // End any erase drag (no-op when not erasing).
                 self.end_protect_paint();
+                // Fecha um gesto de apagar do Grid Stamp (no-op quando não há traço aberto).
+                self.painter_grid_erase_up();
             }
             (ph2d_host::PointerButton::Primary, PointerKind::Down)
                 if !menu_open_before && self.try_eyedropper_sample(evt.x, evt.y) =>

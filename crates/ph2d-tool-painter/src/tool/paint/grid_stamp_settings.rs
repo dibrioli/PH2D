@@ -102,6 +102,34 @@ impl PainterTool {
         self.paint.grid_show
     }
 
+    /// O gesto vigente do **Grid Stamp** apaga (botão direito). O shell arma antes de entregar o Down
+    /// e desarma no Up — o [`ph2d_editor_core::tool::CanvasPaintTool`] é contrato congelado e o
+    /// `CanvasPointer` dele não carrega botão, então o botão viaja fora de banda como os
+    /// modificadores (o precedente exato do `set_line_constrain`).
+    pub fn set_grid_stamp_erase(&mut self, on: bool) {
+        self.paint.grid_erase = on;
+    }
+
+    /// Este método **carimba numa grade**? A pergunta que o shell faz antes de reivindicar um clique
+    /// de botão direito para si: fora do Grid Stamp o secundário continua sendo do menu de contexto e
+    /// dos consumidores que já existiam, e roubá-lo seria tirar comportamento em troca de nada.
+    #[must_use]
+    pub fn stamps_on_a_grid(&self) -> bool {
+        self.paint.brush.stroke_method == ph2d_painter_brush::StrokeMethod::GridStamp
+    }
+
+    /// **O traço vigente APAGA?** A porta única da pergunta que o carimbo faz — a borracha AUTORADA
+    /// (o chip da barra) ou o gesto de botão direito do Grid Stamp.
+    ///
+    /// ⚠️ Os outros leitores de `paint.eraser` ficam no campo AUTORADO de propósito: eles respondem
+    /// *"que pincel é este?"* (o que o painel espelha, se o modo depõe relevo, o que um preset semeia)
+    /// e não *"o que a mão está fazendo neste instante"*. Colapsar as duas faria o chip da borracha
+    /// piscar durante um arrasto de botão direito.
+    #[must_use]
+    pub fn stroke_erases(&self) -> bool {
+        self.paint.eraser || self.paint.grid_erase
+    }
+
     /// O curso `0..1` que representa um tamanho de célula — a inversa de [`Self::set_grid_cell_norm`],
     /// para o painel desenhar o thumb onde o valor de fato está.
     #[must_use]
@@ -124,6 +152,7 @@ impl PainterTool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ph2d_editor_core::tool::RasterEditTool;
     use ph2d_painter_brush::grid_stamp::GRID_CELL_MIN_PX;
 
     /// **A régua e a sua inversa têm de fechar.** O painel desenha o thumb por `grid_cell_norm` e o
@@ -210,6 +239,102 @@ mod tests {
             t.paint.brush, before,
             "o interruptor da grade tocou o pincel — ele é de exibição"
         );
+    }
+
+    /// Um painter com uma tela branca opaca `size²`, o Grid Stamp escolhido e uma célula de `cell` px.
+    fn grid_canvas(size: u32, cell: f32) -> PainterTool {
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+        t.set_brush_stroke_method(ph2d_painter_brush::StrokeMethod::GridStamp.to_u8());
+        t.set_grid_cell_px(GridAxis::X, cell);
+        t.set_grid_cell_px(GridAxis::Y, cell);
+        t.paint.brush.color = [0.0, 0.0, 0.0];
+        t
+    }
+
+    fn tap(t: &mut PainterTool, pos: [f32; 2]) {
+        use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase};
+        for phase in [PointerPhase::Down, PointerPhase::Up] {
+            t.on_canvas_pointer(CanvasPointer {
+                pos,
+                pressure: 1.0,
+                tilt: [0.0, 0.0],
+                phase,
+            });
+        }
+    }
+
+    fn alpha_at(t: &PainterTool, size: u32, x: u32, y: u32) -> u8 {
+        t.canvas_rgba[((y * size + x) * 4 + 3) as usize]
+    }
+
+    /// **O botão direito APAGA a célula que o esquerdo pintou.**
+    ///
+    /// As duas metades juntas de propósito, porque uma sozinha não diz nada: sem a primeira o "apagar"
+    /// poderia estar apagando nada, e sem a segunda o flag poderia não fazer diferença nenhuma.
+    ///
+    /// Mutação que tem de sangrar: `stroke_erases` devolver só `self.paint.eraser`. O gesto de botão
+    /// direito volta a PINTAR a célula — a falha exata que o artista veria.
+    #[test]
+    fn the_right_button_gesture_erases_the_cell_the_left_one_painted() {
+        let size = 64;
+        let mut t = grid_canvas(size, 32.0);
+        tap(&mut t, [16.0, 16.0]);
+        assert_eq!(
+            alpha_at(&t, size, 16, 16),
+            255,
+            "o carimbo normal não pintou a célula — a fixture não contém o fenômeno"
+        );
+        t.set_grid_stamp_erase(true);
+        tap(&mut t, [16.0, 16.0]);
+        t.set_grid_stamp_erase(false);
+        // ⚠️ A barra é 4, não 0, e o número é MEDIDO: o carimbo apagado deixa **1** de 255 no centro —
+        // o resíduo de arredondamento de `1 − cobertura` em bytes, não tinta que sobrou. O fosso contra
+        // o controle acima (255) é de duas ordens, então a barra não decide nada por si.
+        let left = alpha_at(&t, size, 16, 16);
+        assert!(
+            left <= 4,
+            "o gesto de apagar não removeu a tinta (sobrou {left}/255) — o carimbo não perguntou à \
+             porta `stroke_erases`"
+        );
+    }
+
+    /// **O gesto não mexe na borracha AUTORADA.** O chip da barra é a escolha do artista; um arrasto de
+    /// botão direito é o que a mão está fazendo agora. Colapsar as duas faria o chip piscar durante o
+    /// arrasto e — pior — um gesto abandonado deixaria a borracha ligada por conta própria.
+    #[test]
+    fn the_gesture_answers_the_door_without_touching_the_authored_eraser() {
+        let mut t = PainterTool::default();
+        assert!(!t.stroke_erases(), "nada apaga em repouso");
+        let authored = t.brush_settings().eraser;
+        t.set_grid_stamp_erase(true);
+        assert!(t.stroke_erases(), "a porta ignorou o gesto");
+        assert_eq!(
+            t.brush_settings().eraser,
+            authored,
+            "o gesto escreveu na borracha autorada — o chip do painel piscaria"
+        );
+        t.set_grid_stamp_erase(false);
+        assert!(!t.stroke_erases(), "o gesto não foi desarmado");
+        // E a borracha autorada sozinha continua abrindo a porta (a outra metade da união).
+        t.toggle_brush_eraser();
+        assert!(
+            t.stroke_erases(),
+            "a borracha autorada deixou de abrir a porta"
+        );
+    }
+
+    /// **A pergunta que o shell faz antes de roubar o botão direito.** Fora do Grid Stamp o secundário
+    /// continua sendo do menu de contexto e dos consumidores que já existiam.
+    #[test]
+    fn only_the_grid_stamp_claims_the_secondary_button() {
+        let mut t = PainterTool::default();
+        assert!(
+            !t.stamps_on_a_grid(),
+            "o método default não carimba em grade e não pode reivindicar o botão direito"
+        );
+        t.set_brush_stroke_method(ph2d_painter_brush::StrokeMethod::GridStamp.to_u8());
+        assert!(t.stamps_on_a_grid());
     }
 
     /// O **default** que o Enio pediu, num teste que não menciona nenhum gesto — *um default só é

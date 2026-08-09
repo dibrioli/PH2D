@@ -365,7 +365,9 @@ impl PainterTool {
             return;
         }
         // Eraser overrides the blend with Erase Alpha (the drawing blend in `brush.blend` is kept).
-        if self.paint.eraser {
+        // ⚠️ Pergunta à PORTA, não ao campo: quem apaga é a borracha autorada **ou** o gesto de botão
+        // direito do Grid Stamp, e as duas têm de chegar aqui pelo mesmo caminho (ver `stroke_erases`).
+        if self.stroke_erases() {
             brush.blend = ph2d_painter_brush::BrushBlend::EraseAlpha;
         }
         // Alpha lock: the dab paints only into the active layer's existing alpha (clip/mask composite-time).

@@ -355,6 +355,16 @@ pub(crate) struct PaintState {
     /// `BrushSpec`, pelo mesmo motivo do `impasto_show` logo acima — é uma ajuda de visão do canvas,
     /// não uma propriedade do pincel que um slot deva carregar.
     pub(super) grid_show: bool,
+    /// **Grid Stamp — o gesto vigente APAGA** (o botão direito). Transiente: o shell o arma logo antes
+    /// de entregar o Down secundário e o desarma no Up, exatamente como empurra Shift/Ctrl/Alt, porque
+    /// o [`ph2d_editor_core::tool::CanvasPaintTool`] é contrato congelado e o ponteiro dele **não
+    /// carrega botão**.
+    ///
+    /// ⚠️ **Ele NÃO é o `eraser` autorado, e a diferença é load-bearing:** aquele é a escolha que o
+    /// artista fez no chip da barra e que o painel espelha; este é o que a MÃO está fazendo agora.
+    /// Escrevê-lo no `eraser` durante o arrasto deixaria o chip piscando e — pior — um gesto abandonado
+    /// deixaria a borracha do artista ligada por conta própria.
+    pub(super) grid_erase: bool,
     /// The canvas's **light rig** — up to `MAX_LIGHTS` lamps, each with its own angle / elevation /
     /// intensity / colour, plus which one the card is editing. Light 0 is the key and starts on; the
     /// rest start off, so a canvas nobody has opened the rig on is byte-identical to the one-lamp build.

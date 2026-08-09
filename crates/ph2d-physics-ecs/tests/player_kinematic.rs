@@ -240,10 +240,13 @@ fn the_law_is_the_same_in_both_modes() {
     );
 }
 
-/// **A plataforma móvel leva o personagem** (K7) — pelo `ground_velocity` que já
-/// viajava no `GroundSample`.
-#[test]
-fn a_kinematic_player_rides_a_moving_platform() {
+/// Uma corrida sobre plataforma que se move ao longo de `axis`, num modo dado.
+///
+/// ⚠️ **A plataforma é LONGA de propósito** (meia-largura 30): a 1ª versão desta
+/// fixture usava 3,0 e, sob a contagem dupla, o personagem era levado 7,02 m por
+/// um vagão que andou 4,00 — ou seja, ele **saía de cima dela** e a medição
+/// passava a ser de um deslize sem chão.
+fn platform_ride(kinematic: bool, axis: Vec2) -> (f32, f32) {
     let mut sim = SimWorld::new();
     let wagon = sim
         .world_mut()
@@ -254,7 +257,7 @@ fn a_kinematic_player_rides_a_moving_platform() {
             },
             Collider {
                 shape: ColliderShape::Cuboid {
-                    half_x: 3.0,
+                    half_x: 30.0,
                     half_y: 0.25,
                 },
                 ..Collider::default()
@@ -284,27 +287,149 @@ fn a_kinematic_player_rides_a_moving_platform() {
             Transform::from_translation(Vec2::new(0.0, 0.25 + FLOAT_HEIGHT)),
         ))
         .id();
+    if kinematic {
+        make_kinematic(&mut sim, who);
+    }
+    let mut bridge = PhysicsBridge::new();
+    for t in 1..=60u64 {
+        bridge.dispatch(&mut sim, true, t);
+    }
+    let p0 = pose(&sim);
+    let step = Vec2::new(axis.x * 2.0 / 60.0, axis.y * 2.0 / 60.0);
+    // A plataforma anda 2 m/s, dirigida pela CENA (o `Transform`).
+    for t in 61..=180u64 {
+        {
+            let mut e = sim.world_mut().entity_mut(wagon);
+            if let Some(mut tr) = e.get_mut::<Transform>() {
+                tr.translation.x += step.x;
+                tr.translation.y += step.y;
+            }
+        }
+        bridge.dispatch(&mut sim, true, t);
+    }
+    let p1 = pose(&sim);
+    let travelled = (p1.0 - p0.0) * axis.x + (p1.1 - p0.1) * axis.y;
+    (travelled, 4.0)
+}
+
+/// **A plataforma móvel leva o personagem — e leva IGUAL nos dois modos** (K7).
+///
+/// # ⚠️ O gate anterior era uma barra de UM LADO SÓ, e o defeito viveu nela
+///
+/// Ele pedia `travelled > 3.0` sobre uma plataforma que anda 4,0 m: tão contente
+/// com **8** quanto com 4. Medido, o modo cinemático era levado **7,92 m
+/// (1,98×)** enquanto o dinâmico media 3,95 — a plataforma era contada duas
+/// vezes (a caminhada leva pela tangente, o integrador somava de novo; a tabela
+/// e a ablação vivem no doc do `ph2d_platformer::ground_carry`).
+///
+/// # O oráculo é o outro MODO, não um número
+///
+/// A lei é a mesma nos dois e só muda quem escreve a pose, então a comparação
+/// contra o modo dinâmico é a afirmação que de facto importa — e ela é imune a
+/// re-afinações da tração, que moveriam qualquer literal que eu pinasse aqui.
+#[test]
+fn a_moving_platform_carries_the_same_in_both_modes() {
+    for (name, axis) in [
+        ("horizontal", Vec2::new(1.0, 0.0)),
+        ("vertical", Vec2::new(0.0, 1.0)),
+    ] {
+        let (dynamic, plat) = platform_ride(false, axis);
+        let (kinematic, _) = platform_ride(true, axis);
+        assert!(
+            dynamic > 0.5 * plat,
+            "a fixture tem de CONTER o fenomeno: no eixo {name} o controle \
+             dinamico andou {dynamic:.4} m de {plat:.1}"
+        );
+        assert!(
+            (kinematic - dynamic).abs() < 0.1,
+            "no eixo {name} os dois modos tem de ser levados IGUAL: \
+             dinamico {dynamic:.4} m, cinematico {kinematic:.4} m (plataforma {plat:.1})"
+        );
+    }
+}
+
+/// **Sem TRAÇÃO o chão não leva de lado — e leva para cima** (K7).
+///
+/// ⚠️ É a metade que separa as duas físicas que o `ground_carry` distingue: uma
+/// esteira leva por ATRITO (a caminhada, que o artista desliga em
+/// `acceleration`) e um elevador leva por CONTATO (a normal, que ninguém mais
+/// paga). Sem este gate, pagar a tangente incondicionalmente volta a passar.
+#[test]
+fn without_traction_the_floor_still_lifts_but_no_longer_drags() {
+    let drag = ride_without_traction(Vec2::new(1.0, 0.0));
+    let lift = ride_without_traction(Vec2::new(0.0, 1.0));
+    assert!(
+        drag.abs() < 0.1,
+        "chao liso nao leva de lado: andou {drag:.4} m"
+    );
+    assert!(
+        lift > 3.0,
+        "e um elevador leva pelo CONTATO mesmo sem atrito: subiu {lift:.4} m de 4,0"
+    );
+}
+
+/// A mesma corrida, com a tração desligada pela porta do ARTISTA.
+fn ride_without_traction(axis: Vec2) -> f32 {
+    let mut sim = SimWorld::new();
+    let wagon = sim
+        .world_mut()
+        .spawn((
+            Name::new("Wagon"),
+            RigidBody {
+                kind: BodyKind::Kinematic,
+            },
+            Collider {
+                shape: ColliderShape::Cuboid {
+                    half_x: 30.0,
+                    half_y: 0.25,
+                },
+                ..Collider::default()
+            },
+            Transform::from_translation(Vec2::new(0.0, 0.0)),
+        ))
+        .id();
+    let who = sim
+        .world_mut()
+        .spawn((
+            Name::new("Player"),
+            RigidBody {
+                kind: BodyKind::Dynamic,
+            },
+            Collider {
+                shape: ColliderShape::Capsule {
+                    half_height: 0.3,
+                    radius: 0.2,
+                },
+                ..Collider::default()
+            },
+            LockRotation,
+            PlatformPlayer {
+                float_height: FLOAT_HEIGHT,
+                acceleration: 0.0,
+                ..PlatformPlayer::default()
+            },
+            Transform::from_translation(Vec2::new(0.0, 0.25 + FLOAT_HEIGHT)),
+        ))
+        .id();
     make_kinematic(&mut sim, who);
     let mut bridge = PhysicsBridge::new();
     for t in 1..=60u64 {
         bridge.dispatch(&mut sim, true, t);
     }
-    let x0 = pose(&sim).0;
-    // O vagão anda 2 m/s para a direita, dirigido pela CENA (o `Transform`).
+    let p0 = pose(&sim);
+    let step = Vec2::new(axis.x * 2.0 / 60.0, axis.y * 2.0 / 60.0);
     for t in 61..=180u64 {
         {
             let mut e = sim.world_mut().entity_mut(wagon);
             if let Some(mut tr) = e.get_mut::<Transform>() {
-                tr.translation.x += 2.0 / 60.0;
+                tr.translation.x += step.x;
+                tr.translation.y += step.y;
             }
         }
         bridge.dispatch(&mut sim, true, t);
     }
-    let travelled = pose(&sim).0 - x0;
-    assert!(
-        travelled > 3.0,
-        "parado sobre o vagao ele tem de VIAJAR com ele: andou {travelled:.3} m de ~4"
-    );
+    let p1 = pose(&sim);
+    (p1.0 - p0.0) * axis.x + (p1.1 - p0.1) * axis.y
 }
 
 /// **A velocidade cinemática sobrevive a um SCRUB** (K5) — ela mora no

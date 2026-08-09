@@ -267,6 +267,63 @@ pub fn spawn(sim: &mut SimWorld) {
         Transform::from_translation(Vec2::new(PUSH_X, 0.6)),
     ));
 
+    // ── A PLATAFORMA MÓVEL (W-KinCarry) ─────────────────────────────────────
+    //
+    // ⚠️ **Uma lane, e a razão é uma AUSÊNCIA que ninguém tinha nomeado:**
+    // nenhuma lane deste harness tinha plataforma móvel, então
+    // `PhysicsWorld::point_velocity` **nunca saía de zero** em três OSes — e
+    // ela é a entrada de um número do rapier que o NOSSO código projeta
+    // (`ph2d_platformer::ground_carry`) e transforma numa POSE lida de volta
+    // para o `Transform`. É exactamente o que este harness existe para vigiar.
+    //
+    // ⚠️ **A laje é DINÂMICA e flutua**, e isso é deliberado: uma plataforma
+    // cinemática teria a velocidade derivada de uma pose que a CENA escreve,
+    // e o laço deste harness não escreve na cena (a fita é a única entrada
+    // por-tique, e é função pura do tique). Com `GravityScale(0)` a laje
+    // guarda a velocidade lateral que nasceu com ela — nada em `x` a freia —
+    // e a reação do personagem sobre ela cruza a fronteira junto.
+    const CARRY_X: f32 = 200.0;
+    sim.world_mut().spawn((
+        Name::new("C9 Carry Platform"),
+        RigidBody {
+            kind: BodyKind::Dynamic,
+        },
+        Collider {
+            shape: ColliderShape::Cuboid {
+                half_x: 12.0,
+                half_y: 0.25,
+            },
+            ..Collider::default()
+        },
+        LockRotation,
+        ph2d_physics_ecs::GravityScale(0.0),
+        ph2d_physics_ecs::InitialVelocity {
+            linvel: [2.0, 0.0],
+            angvel: 0.0,
+        },
+        Transform::from_translation(Vec2::new(CARRY_X, 0.0)),
+    ));
+    sim.world_mut().spawn((
+        Name::new("C9 Carry Player"),
+        RigidBody {
+            kind: BodyKind::Kinematic,
+        },
+        Collider {
+            shape: ColliderShape::Capsule {
+                half_height: 0.3,
+                radius: 0.2,
+            },
+            ..Collider::default()
+        },
+        LockRotation,
+        ph2d_physics_ecs::PlayerMode::Kinematic,
+        PlatformPlayer {
+            float_height: 0.9,
+            ..PlatformPlayer::default()
+        },
+        Transform::from_translation(Vec2::new(CARRY_X - 6.0, 0.6)),
+    ));
+
     // ⚠️ **O PURO SANGUE (W-KinPure) NÃO tem lane aqui, e é a mesma razão que a
     // fita usa para recusar o arranque:** ele não acrescenta aritmética nenhuma
     // — ele é a AUSÊNCIA de dois termos que as lanes acima já atravessam. Uma

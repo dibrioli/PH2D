@@ -391,15 +391,15 @@ impl PhysicsBridge {
                 // já traz o cancelamento embutido quando ele existe — somá-lo
                 // outra vez o pagaria duas vezes.
                 let (next_kin, wanted) = kinematic_advance(
-                    was.kin,
-                    motor,
-                    // ⚠️ **A plataforma entra por AQUI** (K7): o número já viaja
-                    // no `GroundSample` desde a W3, e somá-lo fora da lei seria
-                    // uma segunda resposta para *"quanto o chão me leva?"*.
-                    stand.map_or([0.0, 0.0], |s| s.ground_velocity),
-                    gravity,
-                    UP,
-                    dt,
+                    was.kin, motor,
+                    // ⚠️ **A plataforma entra por AQUI** (K7): a amostra já
+                    // viaja desde a W3, e resolvê-la fora da lei seria uma
+                    // segunda resposta para *"quanto o chão me leva?"*.
+                    //
+                    // ⚠️ E o que atravessa é a AMOSTRA, não a `ground_velocity`
+                    // dela: quem decide quanto o chão ainda deve é o
+                    // `ground_carry`, porque a caminhada já paga a tangente.
+                    stand, gravity, UP, dt,
                 );
                 moves.push(KinMove {
                     entity,

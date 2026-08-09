@@ -19,11 +19,21 @@ fn resting() -> KinematicState {
     }
 }
 
+/// Chão PLANO que se move — a única fixture que estas leis precisam do sensor.
+fn floor_moving(gv: Vec2) -> GroundSample {
+    GroundSample {
+        distance: 0.5,
+        normal: [0.0, 1.0],
+        ground_velocity: gv,
+        one_way: false,
+    }
+}
+
 /// **No ar, a gravidade é aplicada AQUI** — e é a assimetria central: o solver
 /// não a aplica a um corpo cinemático.
 #[test]
 fn gravity_is_integrated_by_this_law_when_airborne() {
-    let (st, wanted) = kinematic_advance(still(), Motor::default(), [0.0, 0.0], G, UP, DT);
+    let (st, wanted) = kinematic_advance(still(), Motor::default(), None, G, UP, DT);
     assert!(
         (st.velocity[1] - G[1] * DT).abs() < 1e-6,
         "um tique de queda livre tem de dar {} e deu {}",
@@ -42,7 +52,7 @@ fn gravity_is_integrated_by_this_law_when_airborne() {
 fn the_ground_absorbs_only_what_points_into_it() {
     let mut st = resting();
     for _ in 0..600 {
-        st = kinematic_advance(st, Motor::default(), [0.0, 0.0], G, UP, DT).0;
+        st = kinematic_advance(st, Motor::default(), None, G, UP, DT).0;
     }
     assert_eq!(
         st.velocity[1], 0.0,
@@ -53,7 +63,7 @@ fn the_ground_absorbs_only_what_points_into_it() {
         velocity: [0.0, 5.0],
         grounded: true,
     };
-    let (up_st, _) = kinematic_advance(takeoff, Motor::default(), [0.0, 0.0], G, UP, DT);
+    let (up_st, _) = kinematic_advance(takeoff, Motor::default(), None, G, UP, DT);
     assert!(
         up_st.velocity[1] > 4.8,
         "o tique da decolagem ve' o chao e NAO pode ser zerado: {}",
@@ -65,7 +75,7 @@ fn the_ground_absorbs_only_what_points_into_it() {
 /// alcança"*, e a razão de a régua do `grounded` ser corrigida sob Snap.
 #[test]
 fn nothing_is_absorbed_while_airborne() {
-    let (st, _) = kinematic_advance(still(), Motor::default(), [0.0, 0.0], G, UP, DT);
+    let (st, _) = kinematic_advance(still(), Motor::default(), None, G, UP, DT);
     assert!(
         (st.velocity[1] - G[1] * DT).abs() < 1.0e-6,
         "no ar a gravidade tem de sobreviver: {}",
@@ -73,23 +83,46 @@ fn nothing_is_absorbed_while_airborne() {
     );
 }
 
-/// **A plataforma leva o personagem sem o CONTAMINAR** (K7).
+/// **O integrador paga o CONTATO e não o ATRITO** (K7) — e as duas metades são
+/// o par que impede a plataforma de ser contada duas vezes.
 ///
-/// ⚠️ As duas metades são a decisão: o deslocamento deste tique inclui o vagão,
-/// e a velocidade guardada **não** — senão ele continuaria a voar para o lado
-/// depois de saltar para o chão firme.
+/// ⚠️ A metade do VAGÃO nasceu deste gate ao contrário: ele afirmava que o
+/// deslocamento *"tem de levar o vagão"*, o que é verdade sobre esta função
+/// isolada e **falso sobre o produto** — a [`crate::walk`] já leva o personagem
+/// ao referencial do chão pela tangente, e somar aqui dava 1,98× (a tabela está
+/// no doc do [`ground_carry`]). Um gate que mede uma função sem a lei que a
+/// alimenta pina a metade errada de um par.
+///
+/// A metade do ELEVADOR é a que sobrevive intacta: nenhuma tração empurra ao
+/// longo da normal, então o contato é dívida do integrador — e ele a paga no
+/// DESLOCAMENTO sem a escrever na velocidade guardada.
 #[test]
-fn a_moving_platform_carries_without_being_owned() {
-    let gv = [3.0, 0.0];
-    let (st, wanted) = kinematic_advance(resting(), Motor::default(), gv, G, UP, DT);
+fn the_integrator_owes_the_contact_and_not_the_traction() {
+    // VAGÃO: velocidade tangente ao chão -- a caminhada é quem a paga.
+    let wagon = floor_moving([3.0, 0.0]);
+    let (st, wanted) = kinematic_advance(resting(), Motor::default(), Some(&wagon), G, UP, DT);
     assert!(
-        (wanted[0] - gv[0] * DT).abs() < 1e-6,
-        "o deslocamento tem de levar o vagao: {}",
+        wanted[0].abs() < 1e-9,
+        "a tangente e' da caminhada; o integrador nao pode soma-la de novo: {}",
         wanted[0]
+    );
+
+    // ELEVADOR: velocidade ao longo da normal -- ninguem mais a paga.
+    let lift = floor_moving([0.0, 3.0]);
+    let (st_lift, w_lift) = kinematic_advance(resting(), Motor::default(), Some(&lift), G, UP, DT);
+    assert!(
+        (w_lift[1] - 3.0 * DT).abs() < 1e-6,
+        "o contato tem de levantar o personagem: {}",
+        w_lift[1]
     );
     assert_eq!(
         st.velocity[0], 0.0,
-        "e a velocidade PROPRIA nao pode herda-lo"
+        "e a velocidade PROPRIA nao pode herdar o vagao"
+    );
+    assert!(
+        st_lift.velocity[1] <= 0.0,
+        "nem o elevador: a subida e' deslocamento deste tique, nao posse ({})",
+        st_lift.velocity[1]
     );
 }
 
@@ -126,15 +159,25 @@ fn a_blocked_body_stops_and_does_not_bounce() {
 /// qualquer controlador cinemático escrito sem o teste de sinal.
 #[test]
 fn a_platform_blocked_by_a_wall_does_not_owe_the_character_velocity() {
-    let gv = [3.0, 0.0];
-    let (st, wanted) = kinematic_advance(resting(), Motor::default(), gv, G, UP, DT);
-    // A parede impede tudo.
+    // ⚠️ A fixture é um ELEVADOR e não um vagão desde que o `ground_carry`
+    // passou a pagar só o contato: com a plataforma tangente o integrador não
+    // pede deslocamento nenhum, e um bloqueio de zero não contém o fenômeno.
+    let gv = [0.0, 3.0];
+    let lift = floor_moving(gv);
+    let (st, wanted) = kinematic_advance(resting(), Motor::default(), Some(&lift), G, UP, DT);
+    assert!(
+        wanted[1] > 0.0,
+        "a fixture tem de CONTER o fenomeno: o pedido subiu {}",
+        wanted[1]
+    );
+    // O teto impede tudo.
     let settled = kinematic_settle(st, wanted, [0.0, 0.0], true, DT);
-    assert_eq!(
-        settled.velocity[0], 0.0,
-        "parado sobre um vagao prensado, a velocidade propria continua ZERO -- \
-         a regra ingenua daria {}",
-        -gv[0]
+    assert!(
+        settled.velocity[1] <= 0.0,
+        "prensado contra o teto, o elevador nao pode DEVER velocidade -- \
+         a regra ingenua daria {} e deu {}",
+        -gv[1],
+        settled.velocity[1]
     );
 }
 

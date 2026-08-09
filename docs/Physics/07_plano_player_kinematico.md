@@ -844,6 +844,57 @@ hash idêntico é o que torna verificável a promessa de byte-neutralidade.
 
 **Zero schema, zero componente novo, zero dep.** Smoke: **`PH2D_PHYSICS_SMOKE=103`**.
 
+### W-KinCarry — A PLATAFORMA ERA CONTADA DUAS VEZES (K7) — **FECHADA**
+
+Não é feature: é um defeito que a sonda da `W-KinPure` mediu de passagem e que eu
+registrei como aberto em vez de fechar. Um vagão andava **4,00 m** e o personagem
+cinemático era levado **7,92**, enquanto o dinâmico media 3,95.
+
+**A atribuição saiu de uma ablação de DUAS variáveis** (o eixo × a tração, esta
+última pela porta do ARTISTA — `PlatformPlayer::acceleration`), cada célula com o
+seu controle (`tests/measure_kinematic_carry.rs`):
+
+| eixo | modo | tração | levado | razão |
+|---|---|---|---|---|
+| horizontal | dinâmico | cheia | 3,9527 | 0,99× |
+| horizontal | dinâmico | **zero** | 0,0000 | **0,00×** |
+| horizontal | CINEMÁTICO | cheia | 7,9194 | **1,98×** |
+| horizontal | CINEMÁTICO | **zero** | 3,9666 | 0,99× |
+| vertical | qualquer | qualquer | ~4,0 | ~1,00× |
+
+⚠️ **A linha `dinâmico / zero` é a que fecha:** desligada a tração, o modo dinâmico
+**não é levado de todo** — logo quem carrega é a **caminhada**, e só ela. A `walk`
+mede tudo relativo ao chão e empurra `body_velocity` até o referencial dele; o
+`kinematic_advance` somava `ground_velocity` **outra vez**. O eixo vertical nunca
+teve o problema porque o eixo da caminhada é a **tangente**.
+
+**A cura** é a porta `ph2d_platformer::ground_carry` — *o que o chão ainda deve* =
+`g` menos a projeção no **MESMO** `perp_cw(normal)` que a caminhada usa. Ela tem
+sentido físico completo: um elevador leva pelo **contato** (a normal, sempre paga) e
+uma esteira leva por **atrito** (a tangente, que a tração modela) — sem tração o
+chão liso deixa de arrastar de lado e continua a levantar, que é o que o modo
+dinâmico sempre fez. ⚠️ E o parâmetro do `kinematic_advance` passou a ser a
+**AMOSTRA**, não um `Vec2`: passar o número cru de novo é inexprimível por tipo.
+
+**Depois:** toda célula horizontal bate com o controle dinâmico **até a quarta
+decimal** (3,9527/3,9527 · 0,0000/0,0000 · coast 0,0472/0,0472).
+
+⚠️ **O gate anterior era uma barra de UM LADO SÓ** — `travelled > 3.0` sobre uma
+plataforma que anda 4,0, tão contente com 8 quanto com 4, e é por isso que o
+defeito viveu. O oráculo novo é **o outro MODO** (a lei é a mesma, só muda quem
+escreve a pose), o que o torna imune a re-afinações da tração que moveriam qualquer
+literal pinado.
+
+⚠️ **E o c9 GANHOU lane, ao contrário da `W-KinPure`** — a razão é uma ausência que
+ninguém tinha nomeado: **nenhuma lane do harness tinha plataforma móvel**, logo
+`point_velocity` nunca saía de zero em três OSes, e ela é a entrada de um número do
+rapier que o nosso código projeta e transforma numa pose. A laje é **dinâmica e
+flutua** (`GravityScale(0)` + `InitialVelocity`) porque o laço do harness não
+escreve na cena. Hash **`cf900d0a…`, 113 corpos**, debug ≡ release; e a lane não é
+decorativa — sob a mutação ela dá `3daddcd7…`.
+
+**Zero schema, zero componente novo, zero dep.** 3 gates, 3 mutações, 3 sangram.
+
 ### W-KinTune — O QUE O SMOKE PEDIR
 
 Reservada de propósito: `autostep` afinado, `min_slope_slide_angle` exposto, ou nada.

@@ -49,7 +49,7 @@
 //! inteiro mataria o pulo no tique da decolagem, em que o raio ainda vê o chão e
 //! a subida já começou.
 
-use crate::{Motor, Vec2};
+use crate::{GroundSample, Motor, Vec2, ground_carry};
 
 /// **A velocidade que o modo cinemático possui** — o que o solver possuiria se
 /// o corpo fosse dinâmico.
@@ -82,16 +82,21 @@ pub struct KinematicState {
 
 /// **O deslocamento que este tique PEDE** — e o estado que ele deixa.
 ///
-/// `ground_velocity` entra aqui e não na ponte (K7): ela já viaja no
-/// [`crate::GroundSample`] desde a W3, e somá-la fora seria uma segunda resposta
+/// O chão entra aqui e não na ponte (K7): ele já viaja no
+/// [`crate::GroundSample`] desde a W3, e somá-lo fora seria uma segunda resposta
 /// para *"quanto o chão me leva?"*.
 ///
-/// ⚠️ **A velocidade do chão NÃO entra na velocidade guardada**, e a distinção é
-/// o que faz um personagem sair de uma plataforma móvel com o impulso dela em
-/// vez de colado a ela: o que ele *possui* é a velocidade dele; o que a
-/// plataforma acrescenta é deslocamento **deste** tique. Somá-la ao estado a
-/// tornaria permanente, e ele continuaria a voar para o lado depois de saltar
-/// para o chão firme.
+/// ⚠️ **E ele entra pelo [`ground_carry`], nunca pela `ground_velocity` crua** —
+/// ler o campo aqui contava a plataforma DUAS vezes (1,98× medido; a tabela e a
+/// ablação estão no doc daquela porta). O parâmetro é a AMOSTRA e não um `Vec2`
+/// justamente para que passar o número cru volte a ser inexprimível.
+///
+/// ⚠️ **A velocidade do chão não é ESCRITA na velocidade guardada por esta
+/// função**, e a distinção continua a valer para o que ela ainda paga: o que a
+/// plataforma acrescenta pelo CONTATO é deslocamento **deste** tique. O que o
+/// personagem de facto *possui* da plataforma vem da [`crate::walk`], que o
+/// acelera até o referencial do chão e o freia ao sair dela — e é por isso que
+/// ele sai de um vagão com o impulso dele em vez de colado a ele.
 /// **A velocidade sem a parte que o chão já segura** — a porta ÚNICA da
 /// absorção, e ela tem DOIS consumidores.
 ///
@@ -138,11 +143,12 @@ pub fn supported_velocity(v: Vec2, grounded: bool, up: Vec2) -> Vec2 {
 pub fn kinematic_advance(
     state: KinematicState,
     motor: Motor,
-    ground_velocity: Vec2,
+    footing: Option<&GroundSample>,
     gravity: Vec2,
     up: Vec2,
     dt: f32,
 ) -> (KinematicState, Vec2) {
+    let carry = ground_carry(footing);
     let v = [
         state.velocity[0] + (gravity[0] + motor.accel[0]) * dt + motor.boost[0],
         state.velocity[1] + (gravity[1] + motor.accel[1]) * dt + motor.boost[1],
@@ -153,10 +159,7 @@ pub fn kinematic_advance(
     // passo vai apagar.
     let v = supported_velocity(v, state.grounded, up);
 
-    let wanted = [
-        (v[0] + ground_velocity[0]) * dt,
-        (v[1] + ground_velocity[1]) * dt,
-    ];
+    let wanted = [(v[0] + carry[0]) * dt, (v[1] + carry[1]) * dt];
     (
         KinematicState {
             velocity: v,

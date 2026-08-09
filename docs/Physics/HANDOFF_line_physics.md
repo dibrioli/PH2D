@@ -9409,3 +9409,66 @@ o move) · **nenhum ADR** · contrato congelado intacto · **nenhuma dep nova**.
   carrega o passo da massa que a W-KinWeight não teve.
 
 ⚠️ **Se a linha do cabeçalho de cada cena não aparecer, pare.**
+
+---
+
+## W-KinCarry — a plataforma era contada DUAS vezes (2026-08-09)
+
+Não é wave de feature: é o achado que a sonda da `W-KinPure` produziu de passagem
+e que eu deixei escrito como aberto. Um vagão andava **4,00 m** e o personagem
+cinemático era levado **7,92**; o dinâmico media 3,95.
+
+### A atribuição
+
+Ablação de **duas** variáveis — o EIXO da plataforma × a TRAÇÃO, esta pela porta
+do artista (`PlatformPlayer::acceleration`) — em `tests/measure_kinematic_carry.rs`:
+
+| eixo | modo | tração | levado | razão |
+|---|---|---|---|---|
+| horizontal | dinâmico | cheia | 3,9527 | 0,99× |
+| horizontal | dinâmico | **zero** | 0,0000 | **0,00×** |
+| horizontal | CINEMÁTICO | cheia | 7,9194 | **1,98×** |
+| horizontal | CINEMÁTICO | **zero** | 3,9666 | 0,99× |
+| vertical | qualquer | qualquer | ~4,0 | ~1,00× |
+
+⚠️ **A linha `dinâmico / zero` fecha a atribuição:** sem tração o modo dinâmico
+não é levado de todo ⇒ quem carrega é a **caminhada**, e só ela. Ela leva
+`body_velocity` ao referencial do chão pela **tangente**, e o `kinematic_advance`
+somava `ground_velocity` outra vez. O eixo vertical nunca teve o defeito porque o
+eixo da caminhada é `perp_cw(normal)`.
+
+### A cura
+
+`ph2d_platformer::ground_carry` — *o que o chão ainda deve* = `g` menos a projeção
+no **MESMO** eixo que a caminhada usa. Física completa: o elevador leva pelo
+**contato** (normal, sempre paga), a esteira leva por **atrito** (tangente, que a
+tração modela). ⚠️ A representação apaga o caso degenerado (normal `[0,0]` ⇒ eixo
+`[0,0]` ⇒ devolve `g` inteiro, sem `if`), e o parâmetro do `kinematic_advance`
+passou a ser a **AMOSTRA**: passar o número cru é inexprimível por tipo.
+
+Depois: toda célula horizontal bate com o controle dinâmico **até a 4ª decimal**.
+
+### Os gates
+
+⚠️ O anterior era **barra de um lado só** (`travelled > 3.0` sobre 4,0 m) — tão
+contente com 8 quanto com 4. O oráculo novo é **o outro MODO**, imune a
+re-afinações da tração. 3 gates (os dois modos concordam · sem tração não arrasta
+mas levanta · o par contato/atrito no nível da lei), **3 mutações, 3 sangram**.
+
+### Números
+
+`PROJECT_SCHEMA` **fica em 70** · registro **fica em 29** · gizmo ids **nenhum
+novo** (próximo livre **974**) · **nenhum ADR** · contrato congelado intacto ·
+**nenhuma dep nova**.
+
+⚠️ **`physics_ecs_c9` `cf900d0a…`, 113 corpos, debug ≡ release** — e ele GANHOU
+lane, ao contrário da `W-KinPure`: **nenhuma lane tinha plataforma móvel**, logo
+`point_velocity` nunca saía de zero em três OSes. A laje é **dinâmica e flutua**
+(`GravityScale(0)` + `InitialVelocity`) porque o laço do harness não escreve na
+cena. A lane não é decorativa — sob a mutação ela dá `3daddcd7…`.
+
+### Smoke
+
+Sem cena nova: o oráculo é o modo dinâmico ao lado, e ele vive nos gates. A
+`=101` mostra a diferença se você puser um vagão embaixo — mas **o que decide é a
+tabela**, não o olho.

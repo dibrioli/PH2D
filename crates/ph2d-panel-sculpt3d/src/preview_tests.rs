@@ -26,6 +26,42 @@ fn pixels(ui: &Sculpt3dUi, span: f32) -> Vec<u8> {
     with_swatch(ui, span, Theme::Forge, |px| px.as_slice().to_vec()).expect("há padrão armado")
 }
 
+/// Um carimbo de bandas diagonais 32².
+///
+/// ⚠️ **Diagonal e não em barras**, porque um padrão que varia num eixo só
+/// concordaria consigo mesmo sob um deslocamento no outro — e o gate ficaria
+/// verde sobre metade da feature.
+///
+/// ⚠️ **Ele é construído UMA vez e COMPARTILHADO pelos estados que um gate
+/// compara** (ver [`ui_stamped`]), e isso é sobre o que está sendo testado: o
+/// `PartialEq` do [`Alpha`] compara imagens por **IDENTIDADE**, então dois `Arc`
+/// distintos dariam duas chaves diferentes e o cache **nunca acertaria** — o
+/// gate passaria a exercitar só o `render`, e um cache com a chave incompleta
+/// (que é o defeito que estes gates existem para pegar) ficaria verde.
+fn stamp() -> Alpha {
+    let n = 32u32;
+    let mut rgba = vec![0u8; (n * n * 4) as usize];
+    for y in 0..n {
+        for x in 0..n {
+            let v = u8::from((x + y) % 8 < 4) * 255;
+            let i = ((y * n + x) * 4) as usize;
+            rgba[i..i + 3].fill(v);
+            rgba[i + 3] = 255;
+        }
+    }
+    Alpha::Image(std::sync::Arc::new(
+        ph2d_sculpt3d::AlphaImage::from_rgba(n, n, &rgba).expect("imagem válida"),
+    ))
+}
+
+/// Um pincel com o carimbo DADO armado e o eixo ENCARANDO a vista, que é como o
+/// produto o semeia (`Sculpt3dScene::seed_alpha_placement`).
+fn ui_stamped(stamp: &Alpha, offset: [f32; 2]) -> Sculpt3dUi {
+    let mut ui = ui_with(stamp.clone(), 0.25, 90, ph2d_sculpt3d::MAX_AXIS_ELEV_DEG);
+    ui.brush.alpha_offset = offset;
+    ui
+}
+
 /// **SEM padrão armado não há preview** — e é um `None`, não uma moldura vazia.
 ///
 /// Uma moldura de coisa nenhuma ocuparia a mesma altura e diria ao artista que
@@ -156,12 +192,98 @@ fn the_cache_key_carries_every_input() {
             "mudar {name} não mudou o preview — a chave do cache não o carrega"
         );
     }
+    // ⚠️ **O DESLOCAMENTO precisa de fixture PRÓPRIA, e essa assimetria é a razão
+    // de ele ter sido esquecido.** Todos os campos acima são varridos sobre um
+    // padrão procedural, e para um procedural o deslocamento é NEUTRO por
+    // construção — acrescentar uma linha à lista de cima teria REPROVADO produto
+    // correto. Ele só está vivo com uma imagem armada, então é ali que se
+    // pergunta.
+    let s = stamp();
+    let stamped = ui_stamped(&s, [0.0, 0.0]);
+    let placed = ui_stamped(&s, [0.31, -0.17]);
+    assert_ne!(
+        pixels(&placed, 2.0),
+        pixels(&stamped, 2.0),
+        "mudar o deslocamento não mudou o preview — a chave do cache não o carrega"
+    );
+
     // ⚠️ E o TEMA: os dois extremos da rampa saem dele, e o `draw_image_rgba` só
     // BLITA — não há estágio de tint depois. Um tema ESCURO contra um CLARO, que
     // é o par em que os dois tokens de fato trocam de lugar.
     let dark = with_swatch(&base, 2.0, Theme::Forge, |p| p.as_slice().to_vec());
     let light = with_swatch(&base, 2.0, Theme::Sunstone, |p| p.as_slice().to_vec());
     assert_ne!(dark, light, "o tema não chega ao preview");
+}
+
+/// **COLOCAR O CARIMBO DESLIZA O PREVIEW — e desliza EXATAMENTE o que se pediu.**
+///
+/// ⚠️ **Este é o gate do report** *"Pattern Offset parece sem efeito"* (Enio,
+/// 2026-08-09). O deslocamento sempre chegou ao BARRO (medido: um passo do slider
+/// muda 10.159 de 13.682 vértices); quem estava cego era o swatch, a única
+/// superfície que responde sem esculpir — por DOIS motivos, e é preciso os dois
+/// mortos para ele passar: a chave do cache não carregava o campo, **e** o
+/// `render` remontava um pincel `..Brush::default()`, cujo `alpha: None` faz o
+/// `alpha_frame` zerar o deslocamento pela regra de neutralidade.
+///
+/// ⚠️ **O oráculo é TRANSLAÇÃO, não *"mudou"*.** Comparar bytes ficaria verde
+/// para qualquer coisa que mexesse na imagem — um padrão que se deformasse ou
+/// piscasse passaria igual. Aqui a imagem deslocada tem de ser a original
+/// **corrida por um número exato de texels**, que é o que *colocar* significa.
+///
+/// ⚠️ **A DIREÇÃO não é afirmada, de propósito:** *"arrastar para a direita move
+/// para a direita"* é pergunta de smoke (o olho é o oráculo), e cravá-la aqui
+/// faria este gate espelhar o sinal do `t` do frame em vez de julgá-lo.
+#[test]
+fn placing_the_stamp_slides_the_preview() {
+    let span = 2.0;
+    // ⚠️ **O texel do swatch mede `span_of(span)`, não `span`** — ele abrange um
+    // OITAVO do modelo ([`SPAN_FRACTION`]). A primeira versão deste gate dividiu
+    // pelo modelo inteiro e pediu 3 texels achando que pedia 3 colunas: eram 24,
+    // que no período de 16 do carimbo caem em 8 — e o gate acusou o PRODUTO por
+    // um erro da própria régua. *A conversão que o oráculo usa é a mesma que o
+    // desenho usa, ou o oráculo mede outra coisa.*
+    let step = span_of(span) / SWATCH as f32;
+    // ⚠️ **UM carimbo para todos os estados** — ver o doc de [`stamp`]: com dois
+    // `Arc` o cache nunca acertaria, e o gate deixaria de julgar a chave.
+    let s = stamp();
+    let base = pixels(&ui_stamped(&s, [0.0, 0.0]), span);
+
+    for texels in [3i32, 7] {
+        let along = pixels(&ui_stamped(&s, [step * texels as f32, 0.0]), span);
+        assert_ne!(along, base, "deslocar em X não mexeu no preview");
+        assert_eq!(
+            shift_cols(&base, &along),
+            Some(texels),
+            "deslocar {texels} texels em X não correu o preview {texels} colunas"
+        );
+
+        let across = pixels(&ui_stamped(&s, [0.0, step * texels as f32]), span);
+        assert_ne!(across, base, "deslocar em Y não mexeu no preview");
+        assert_eq!(
+            shift_rows(&base, &across),
+            Some(texels),
+            "deslocar {texels} texels em Y não correu o preview {texels} linhas"
+        );
+    }
+}
+
+/// **UM PADRÃO PROCEDURAL IGNORA O DESLOCAMENTO, AO BYTE** — o controle do gate
+/// acima, e ele NÃO é higiene.
+///
+/// O deslocamento é neutralizado dentro do [`ph2d_sculpt3d::Brush::alpha_frame`]
+/// quando não há imagem armada, porque os nove procedurais são campos infinitos e
+/// homogêneos: eles não têm posição, só fase. Se esta neutralidade se perdesse, a
+/// row — que o painel esconde para eles — passaria a agir sem como ser desfeita.
+#[test]
+fn a_procedural_pattern_ignores_the_stamp_offset() {
+    let quiet = ui_with(Alpha::Strata, 0.25, 90, ph2d_sculpt3d::MAX_AXIS_ELEV_DEG);
+    let mut moved = quiet.clone();
+    moved.brush.alpha_offset = [0.37, -0.11];
+    assert_eq!(
+        pixels(&moved, 2.0),
+        pixels(&quiet, 2.0),
+        "o deslocamento vazou para um padrão procedural"
+    );
 }
 
 /// **UM MODELO DEGENERADO NÃO COLAPSA O SWATCH.**
@@ -209,6 +331,63 @@ fn rows_crossed(px: &[u8]) -> usize {
         }
     }
     n
+}
+
+/// **Por quantas COLUNAS `moved` é `base` corrido?** `None` se não for uma
+/// translação pura.
+///
+/// ⚠️ O sinal é devolvido em MÓDULO: ver o gate que chama — a direção é pergunta
+/// de smoke, e o que se afirma aqui é *deslizou, e deslizou tanto*.
+fn shift_cols(base: &[u8], moved: &[u8]) -> Option<i32> {
+    (1..SWATCH as i32).find(|d| {
+        [*d, -*d]
+            .iter()
+            .any(|s| matches_shift(base, moved, *s, |r, c| (r, c)))
+    })
+}
+
+/// A irmã do [`shift_cols`] no outro eixo — a mesma varredura, com as
+/// coordenadas trocadas na entrada do oráculo.
+fn shift_rows(base: &[u8], moved: &[u8]) -> Option<i32> {
+    (1..SWATCH as i32).find(|d| {
+        [*d, -*d]
+            .iter()
+            .any(|s| matches_shift(base, moved, *s, |r, c| (c, r)))
+    })
+}
+
+/// `moved` é `base` corrido de `s` no eixo que o `axes` escolhe?
+///
+/// ⚠️ **Só o INTERIOR é comparado**, e é honesto: o swatch é uma JANELA sobre um
+/// campo infinito, então o que entra por uma borda não tem original com que ser
+/// comparado. Exigir as bordas seria exigir que o gate conhecesse o campo fora da
+/// janela.
+fn matches_shift(
+    base: &[u8],
+    moved: &[u8],
+    s: i32,
+    axes: fn(usize, usize) -> (usize, usize),
+) -> bool {
+    let mut compared = 0;
+    for a in 0..SWATCH {
+        for b in 0..SWATCH {
+            let Ok(src) = usize::try_from(b as i32 + s) else {
+                continue;
+            };
+            if src >= SWATCH {
+                continue;
+            }
+            let (mr, mc) = axes(a, b);
+            let (br, bc) = axes(a, src);
+            if lum(moved, mr, mc) != lum(base, br, bc) {
+                return false;
+            }
+            compared += 1;
+        }
+    }
+    // Um deslocamento que não deixa NADA em comum não é uma translação medida:
+    // seria um `true` por vácuo.
+    compared > SWATCH * SWATCH / 2
 }
 
 /// As transições ao andar na VERTICAL (descendo cada coluna).

@@ -51,8 +51,26 @@ use ph2d_sculpt3d::Brush;
 pub(crate) struct PreviewKey {
     alpha: Option<ph2d_sculpt3d::Alpha>,
     scale: f32,
-    az: u16,
-    elev: u16,
+    /// **O FRAME INTEIRO, e não os ângulos que o produzem.**
+    ///
+    /// ⚠️ **A versão anterior guardava `az` e `elev`, e foi assim que o
+    /// `Pattern Offset` nasceu sem efeito no barro** (Enio, 2026-08-09). O
+    /// deslocamento não move um vértice, então o `moved` do dab está VAZIO e a
+    /// chave era a única coisa que podia pedir o recálculo — ela dizia *"nada
+    /// mudou"*, e o preview seguia desenhando o carimbo no lugar de antes,
+    /// enquanto um dab de verdade o depositava no lugar novo (medido: um passo
+    /// do slider muda 10.159 dos 13.682 vértices).
+    ///
+    /// **É exatamente o modo de falha que o `whole_dirty` aqui embaixo já
+    /// nomeia** — *"um giro de eixo não move um vértice"* —, e um deslocamento é
+    /// um giro de eixo por outro nome. Guardar o [`ph2d_sculpt3d::AlphaFrame`]
+    /// apaga a classe: ele é o que o `weight_at` recebe, então uma entrada nova
+    /// do frame chega aqui **por dentro do tipo**.
+    ///
+    /// Custo MEDIDO (`measure_what_asking_for_the_frame_costs`): **0,537 µs** por
+    /// chamada no pior azimute, uma vez por peça por quadro — 0,03% de um quadro
+    /// de 60 fps com dez peças à vista.
+    frame: ph2d_sculpt3d::AlphaFrame,
     /// Se o verbo é freado pela máscara — o `paints_mask` do kernel, que decide
     /// se o padrão aparece sobre barro protegido.
     gated: bool,
@@ -64,8 +82,7 @@ impl PreviewKey {
         Self {
             alpha: brush.alpha.clone(),
             scale: brush.alpha_scale,
-            az: brush.alpha_az_deg,
-            elev: brush.alpha_elev_deg,
+            frame: brush.alpha_frame(),
             gated: !brush.verb.paints_mask(),
             verts: mesh.vert_count(),
         }

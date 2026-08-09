@@ -54,7 +54,7 @@
 //! mesma frase que o cache dos planos da luz do impasto já pagou.
 
 use ph2d_editor_core::paint::resolve;
-use ph2d_sculpt3d::{Alpha, Brush};
+use ph2d_sculpt3d::Alpha;
 use ph2d_tokens::{ColorToken, Theme};
 use std::cell::RefCell;
 
@@ -87,8 +87,19 @@ pub(crate) const SPAN_FRACTION: f32 = 0.125; // LITERAL-PX-OK: fração do model
 struct Key {
     alpha: Alpha,
     scale: f32,
-    az: u16,
-    elev: u16,
+    /// **O FRAME INTEIRO, e não os ângulos que o produzem.**
+    ///
+    /// ⚠️ **A versão anterior guardava `az` e `elev`, e o `Pattern Offset` nasceu
+    /// INVISÍVEL aqui** (Enio, 2026-08-09: *"Pattern Offset parece sem efeito"*):
+    /// o carimbo pousava noutro lugar no barro e o swatch — a única superfície
+    /// que responde sem esculpir — desenhava o de antes. O aviso três linhas
+    /// acima já era a lei; o que faltava era um campo, e **enumerar as entradas
+    /// de um valor é como se esquece a próxima**.
+    ///
+    /// Guardar o [`ph2d_sculpt3d::AlphaFrame`] apaga a classe: ele é o que o
+    /// `weight_at` de fato recebe, então uma entrada nova do frame chega aqui
+    /// **por dentro do tipo**, sem ninguém se lembrar de nada.
+    frame: ph2d_sculpt3d::AlphaFrame,
     span: f32,
     /// ⚠️ **O TEMA entra na chave, e a alternativa não existia.** A primeira
     /// versão deste módulo dizia que a rampa saía em cinza e *"quem a tinge é o
@@ -123,8 +134,11 @@ pub(crate) fn with_swatch<R>(
     let key = Key {
         alpha,
         scale: ui.brush.alpha_scale,
-        az: ui.brush.alpha_az_deg,
-        elev: ui.brush.alpha_elev_deg,
+        // ⚠️ **Pedido ao PINCEL DO ARTISTA, e não montado aqui.** É a mesma porta
+        // que o dab pergunta, então o swatch não consegue desenhar um frame que o
+        // barro não vai receber — inclusive a neutralidade do deslocamento para
+        // os nove procedurais, que mora dentro dela.
+        frame: ui.brush.alpha_frame(),
         span,
         theme,
     };
@@ -177,12 +191,15 @@ fn render(key: &Key, out: &mut Vec<u8>) {
     // preview não possa desenhar um eixo que o dab não usa. *Duas respostas para
     // "em que direção este padrão corre?" divergiriam, e a que mente é a que o
     // artista está olhando.*
-    let frame = Brush {
-        alpha_az_deg: key.az,
-        alpha_elev_deg: key.elev,
-        ..Brush::default()
-    }
-    .alpha_frame();
+    //
+    // ⚠️ **E ele chega PRONTO na chave, em vez de ser remontado aqui — o que era
+    // a SEGUNDA metade do `Pattern Offset` invisível.** A remontagem usava
+    // `..Brush::default()`, cujo `alpha` é `None`, e o `alpha_frame` **zera o
+    // deslocamento sem uma imagem armada** (a neutralidade dos nove
+    // procedurais). Ou seja: mesmo com o campo na chave, o swatch continuaria a
+    // desenhar o carimbo na origem. *Um pincel remontado não é o pincel do
+    // artista, e um frame remontado a partir dele responde sobre outro.*
+    let frame = key.frame;
 
     let lo = rgba(ColorToken::PanelBg, key.theme);
     let hi = rgba(ColorToken::Text1, key.theme);

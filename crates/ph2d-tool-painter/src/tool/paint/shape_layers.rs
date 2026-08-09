@@ -88,6 +88,17 @@ pub(super) struct ShapeLayers {
     /// Per-layer source **document layer id** (`LayerId.0`) — so the opacity box edits that layer's opacity
     /// (two-way with its Layers-panel slider). `0` ⇒ no back-reference (a non-document capture).
     doc_ids: Vec<u64>,
+    /// **O RELEVO capturado**, normalizado a `0..255` contra o próprio pico do documento — a FORMA da
+    /// escultura, não a aparência dela. Vazio quando a fonte não tem relevo.
+    ///
+    /// ⚠️ **Ele é uma coisa DIFERENTE do [`Self::gain`], e a diferença é a wave inteira:** o ganho é
+    /// *como a luz daquele documento sombreou aquele relevo* — um número já assado, que não reage a
+    /// nada. Este é a forma que a luz do documento de DESTINO vai sombrear sozinha, e é por isso que
+    /// o carimbo passa a ter brilho, especular e reação à luz que se move (Enio, 2026-08-09: *"não
+    /// temos o relevo e o brilho e a reação à luz de uma imagem criada com Impasto"*).
+    relief: Vec<u8>,
+    /// O relevo capturado VIAJA com o carimbo (o default quando existe relevo).
+    relief_from_image: bool,
     /// Bumped on any change that re-bakes the coloured stamp (layers / mode / a colour / a toggle).
     version: u64,
 }
@@ -114,6 +125,7 @@ impl ShapeLayers {
         // fica onde estava e a escolha passa a existir.
         self.alpha_from_image = true;
         self.gain.clear();
+        self.relief.clear();
         self.color_on = vec![false; n];
         self.color = vec![[0.0, 0.0, 0.0]; n];
         // The captured `rgb` / `opacity` / `doc_ids` are re-filled by the capture path via
@@ -136,7 +148,22 @@ impl ShapeLayers {
     /// relevo teve em 2026-08-09, aplicado no flatten e ausente do modo colorido).
     fn rebuild_derived(&mut self) {
         // (1) A COR sombreada pelo relevo. Ela vem primeiro porque a silhueta por TOM lê dela.
-        let gain = &self.gain;
+        //
+        // ⚠️ **E ela NÃO é sombreada quando o relevo VIAJA — esta é a espinha da wave, e o erro que
+        // ela evita é aritmético e mudo.** Se o carimbo deposita relevo de verdade, quem sombreia é a
+        // luz do documento de DESTINO; assar a sombra da luz de ORIGEM na cor faria a sombra pousar
+        // DUAS vezes — a mesma sombra escura multiplicada por si mesma, num carimbo que reage à luz e
+        // já vinha reagindo. Uma das duas tem de existir, nunca as duas:
+        //
+        //   - relevo VIAJA  ⇒ cor PRISTINA (`rgb`), a luz do destino faz a sombra, e ela se move
+        //     quando o artista move a lâmpada — que é o pedido;
+        //   - relevo NÃO viaja ⇒ cor SOMBREADA (`rgb × gain`), a aparência assada do documento de
+        //     origem, que é o que shipou de manhã e continua certo para quem só quer a APARÊNCIA.
+        let gain = if self.relief_travels() {
+            &[][..]
+        } else {
+            &self.gain[..]
+        };
         self.lit = self
             .rgb
             .iter()
@@ -218,6 +245,46 @@ impl ShapeLayers {
         self.rebuild_derived();
     }
 
+    /// Instala a **FORMA do relevo** capturada (normalizada) e arma a viagem dele. Vazio = sem relevo.
+    ///
+    /// ⚠️ **Armar aqui é o que torna a capacidade automática**, que é o que o pedido diz: o relevo é
+    /// propriedade da IMAGEM, não um ajuste do pincel — quem capturou uma escultura espera carimbá-la,
+    /// sem procurar um interruptor num painel que o modo Digital nem mostra.
+    pub(super) fn set_relief(&mut self, relief: Vec<u8>) {
+        self.relief_from_image = !relief.is_empty();
+        self.relief = relief;
+        self.rebuild_derived();
+    }
+
+    /// O relevo VIAJA com o carimbo? Só então a cor sai pristina — ver [`Self::rebuild_derived`].
+    pub(super) fn relief_travels(&self) -> bool {
+        self.relief_from_image && !self.relief.is_empty()
+    }
+
+    /// A FORMA do relevo capturada, para o dab a carimbar. `None` quando ela não viaja.
+    pub(super) fn relief_plane(&self) -> Option<&[u8]> {
+        self.relief_travels().then_some(self.relief.as_slice())
+    }
+
+    /// Liga/desliga a viagem do relevo e re-deriva — a cor muda com ele (a lei do duplo-sombreamento).
+    ///
+    /// ⚠️ **A capacidade é AUTOMÁTICA e este interruptor ainda não tem face no painel** — nomeado, não
+    /// escondido. O pedido era *"mesmo pintando com o Digital"*, e uma captura com escultura arma a
+    /// viagem sozinha; o que falta é a metade de DESLIGAR, que é uma row na seção Shape (pintada só
+    /// quando a captura tem relevo — a lei do knob morto). Enquanto ela não existe, quem quiser a
+    /// aparência assada de volta re-captura sem escultura visível.
+    #[cfg_attr(
+        not(test),
+        expect(
+            dead_code,
+            reason = "a porta que a row do painel vai chamar; hoje só os gates a usam"
+        )
+    )]
+    pub(super) fn set_relief_from_image(&mut self, on: bool) {
+        self.relief_from_image = on;
+        self.rebuild_derived();
+    }
+
     /// Fill the per-layer captured metadata in lock-step with [`Self::set_layers`] (same order / count):
     /// each layer's per-pixel straight `rgb` (`w·h·3`, empty if unavailable), its current document `opacity`
     /// and `blend` (mirrored into the box + dropdown), and its source document `doc_ids` (`LayerId.0`).
@@ -253,6 +320,8 @@ impl ShapeLayers {
         self.layers.clear();
         self.src.clear();
         self.gain.clear();
+        self.relief.clear();
+        self.relief_from_image = false;
         self.lit.clear();
         self.alpha_from_image = false;
         self.color_on.clear();

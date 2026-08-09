@@ -155,6 +155,9 @@ mod composite_probe;
 /// **Grid Stamp** — o que o carimbo de fato PINTA (o irmão do módulo acima, que mede os controles).
 #[cfg(test)]
 mod grid_stamp_paint_tests;
+/// **O relevo VIAJA com a Shape** — a capacidade pedida em 2026-08-09.
+#[cfg(test)]
+mod shape_relief_tests;
 pub(crate) use composite::{CompositeLayer, CompositeOp};
 mod clone;
 mod eyedropper;

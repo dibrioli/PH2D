@@ -63,6 +63,19 @@ pub struct HeightDab<'a> {
     pub grain: Option<&'a crate::texture::TexDabBasis>,
     /// The Grain's pixels (an `Image` Grain).
     pub grain_image: Option<&'a crate::texture::ImageMask<'a>>,
+    /// **A FORMA do relevo que a imagem de Shape carrega** (`0..255`, normalizada), amostrada pelo
+    /// MESMO frame da silhueta. `None` = o relevo é o do próprio dab, como sempre foi.
+    ///
+    /// ⚠️ **Ela substitui a CARGA, não a cobertura** — e essa distinção é a mesma lei que o report do
+    /// Enio de 2026-08-09 já tinha imposto um sistema adiante: *o relevo esculpe a tinta, ele não a
+    /// perfura*. O `film` (o alpha do pigmento) continua saindo da silhueta, então um vale fundo da
+    /// escultura sai ESCURO e não TRANSPARENTE; só a carga — o ingrediente de que a altura é
+    /// derivada — passa a vir da imagem.
+    ///
+    /// ⚠️ E ela entra como carga `0..1` justamente para que o `derive_height` a converta: assim o
+    /// relevo carimbado **escala com o tamanho do dab** pela mesma lei do depósito (a razão
+    /// altura÷largura é o que o olho lê), sem uma segunda regra de escala para divergir.
+    pub relief: Option<&'a crate::texture::ImageMask<'a>>,
 }
 
 /// How far back the body sweeps, in pixels (0 when there is no previous dab).
@@ -444,7 +457,26 @@ pub fn accumulate_dab_height(
             if ablate & crate::ablate::TAIL != 0 {
                 continue; // sem grain, sem mordida, sem as quatro escritas, sem derive_height
             }
-            let m = (w * coverage * k).clamp(0.0, 1.0);
+            // A CARGA: a da imagem quando ela carrega relevo, senão a do próprio dab. Amostrada pelo
+            // MESMO `silhouette_at` da silhueta — mesma base, mesmo frame, mesma deformação —, então
+            // a forma capturada pousa exatamente onde o carimbo pousa.
+            let load = match (dab.relief, dab.shape) {
+                (Some(img), Some(sh)) => crate::dab::silhouette_at(
+                    spec,
+                    Some(crate::dab::ShapeInput {
+                        basis: sh.basis,
+                        image: Some(img),
+                        ramp_lut: None,
+                    }),
+                    t,
+                    px,
+                    py,
+                    dab.center,
+                    radius,
+                ),
+                _ => w,
+            };
+            let m = (load * coverage * k).clamp(0.0, 1.0);
             if m <= fields.paint[i] {
                 continue;
             }

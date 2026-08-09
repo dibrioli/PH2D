@@ -47,6 +47,7 @@ fn deposit_fields(spec: &BrushSpec) -> (Vec<f32>, Vec<f32>, Vec<u8>) {
         shape: None,
         grain: Some(&basis),
         grain_image: None,
+        relief: None,
         prev_center: None, // a lone stamped dab — nothing to sweep back to
     };
     let mut paint = vec![0.0f32; (W * W) as usize];
@@ -233,6 +234,7 @@ fn eraser_scrubs_the_relief_it_finds() {
         shape: None,
         grain: None,
         grain_image: None,
+        relief: None,
         prev_center: None,
     };
     let mut cov = vec![255u8; (W * W) as usize];

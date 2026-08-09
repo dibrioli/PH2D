@@ -112,6 +112,12 @@ fn captured_colour(show_relief: bool) -> Vec<u8> {
     let mut t = ridge(255, true, [0.1, 0.2, 0.3]);
     t.paint.impasto_show = show_relief;
     t.capture_layers_as_brush_shape();
+    // ⚠️ **A PREMISSA destes gates mudou no mesmo dia, e ela é declarada aqui em vez de herdada.**
+    // Eles medem a metade em que o relevo NÃO viaja — a cor traz a sombra assada do documento de
+    // origem, que é a aparência que shipou de manhã. Com a viagem armada (o default de uma captura
+    // com escultura) a cor sai PRISTINA de propósito: quem sombreia passa a ser a luz do destino,
+    // e as duas leis não podem valer juntas sem a sombra pousar duas vezes.
+    t.paint.shape_layers.set_relief_from_image(false);
     t.paint
         .shape_layers
         .rgb_image(0)
@@ -122,6 +128,12 @@ fn captured_colour(show_relief: bool) -> Vec<u8> {
 
 fn silhouette(t: &mut PainterTool) -> Vec<u8> {
     t.capture_layers_as_brush_shape();
+    // ⚠️ **A PREMISSA destes gates mudou no mesmo dia, e ela é declarada aqui em vez de herdada.**
+    // Eles medem a metade em que o relevo NÃO viaja — a cor traz a sombra assada do documento de
+    // origem, que é a aparência que shipou de manhã. Com a viagem armada (o default de uma captura
+    // com escultura) a cor sai PRISTINA de propósito: quem sombreia passa a ser a luz do destino,
+    // e as duas leis não podem valer juntas sem a sombra pousar duas vezes.
+    t.paint.shape_layers.set_relief_from_image(false);
     t.brush_shape_image()
         .map(|(sil, _, _)| sil.to_vec())
         .expect("a captura produz uma silhueta")
@@ -315,6 +327,12 @@ fn the_gain_resolves_both_sides_of_the_relief() {
 fn the_relief_reaches_the_per_layer_colour_route_too() {
     let mut t = ridge(255, true, [0.1, 0.2, 0.3]);
     t.capture_layers_as_brush_shape();
+    // ⚠️ **A PREMISSA destes gates mudou no mesmo dia, e ela é declarada aqui em vez de herdada.**
+    // Eles medem a metade em que o relevo NÃO viaja — a cor traz a sombra assada do documento de
+    // origem, que é a aparência que shipou de manhã. Com a viagem armada (o default de uma captura
+    // com escultura) a cor sai PRISTINA de propósito: quem sombreia passa a ser a luz do destino,
+    // e as duas leis não podem valer juntas sem a sombra pousar duas vezes.
+    t.paint.shape_layers.set_relief_from_image(false);
     let masks = t.paint.shape_layers.masks();
     assert_eq!(masks.len(), 1, "a fixture tem uma camada");
     let (mmin, mmax) = masks[0]

@@ -167,7 +167,10 @@ impl PainterTool {
         // Derived at the radius that MADE each texel (the third ingredient), not at the panel
         // brush's: a drag-sized Anchored ball is as tall committed as it was live, and dialling the
         // Size slider after the stroke does not re-scale relief already on the canvas.
-        let brush = self.paint.brush;
+        // ⚠️ Pela porta única: em Digital o mestre do Impasto está desligado, e sem ela o commit
+        // re-derivaria a altura multiplicando por zero — o depósito da imagem chegaria aqui e
+        // evaporaria, com todos os gates do kernel verdes.
+        let brush = self.relief_spec(self.paint.brush);
         // ⚠️ **Por LINHA, não por `push`** — a derivação é pura por-texel e as linhas de saída são
         // disjuntas (ADR-0109), então cada thread avalia um conjunto de linhas e **nenhuma expressão
         // muda**: byte-idêntica por construção. O `push` sequencial era o que a prendia numa thread.

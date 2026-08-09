@@ -76,4 +76,49 @@ impl PainterTool {
                 .collect(),
         )
     }
+
+    /// A **FORMA do relevo** do documento, normalizada a `0..255` contra o próprio pico — ou `None`
+    /// quando não há escultura nenhuma.
+    ///
+    /// ⚠️ **Irmã do [`Self::relief_shade_gain`], e a diferença entre as duas é a razão de esta
+    /// existir.** Aquela devolve *como a luz DESTE documento sombreou este relevo* — um número já
+    /// assado, que não reage a nada e que, carimbado, pinta uma fotografia de tinta esculpida. Esta
+    /// devolve a **geometria**, que o documento de destino pode sombrear com a luz DELE: é o que dá
+    /// ao carimbo o brilho, o especular e a reação a mover a lâmpada.
+    ///
+    /// ⚠️ **Normalizada, e não absoluta, de propósito:** ela entra no motor como a CARGA de um dab
+    /// (`0..1`), e é o `derive_height` que a converte em altura — o que faz o relevo carimbado
+    /// escalar com o TAMANHO do dab pela mesma lei que o depósito já obedece
+    /// ([`crate::tool::paint::impasto`]: a razão altura÷largura é o que o olho lê, e um relevo
+    /// absoluto num carimbo pequeno viraria uma agulha). O pico vai junto para quem precise da
+    /// escala real.
+    ///
+    /// ⚠️ **Lê a altura pela porta ÚNICA da luz** (`height_at`), que é quem dobra a pilha de camadas,
+    /// aplica o `depth` de cada uma e o teto de vidro. Uma segunda leitura do buffer daria um relevo
+    /// que a luz do próprio documento não concorda em ter.
+    #[must_use]
+    pub fn captured_relief(&self) -> Option<(Vec<u8>, f32)> {
+        let fields = self.impasto_fields()?;
+        let (w, h) = self.source_size;
+        if w == 0 || h == 0 {
+            return None;
+        }
+        let n = (w as usize) * (h as usize);
+        let mut raw = Vec::with_capacity(n);
+        let mut peak = 0.0f32;
+        for y in 0..i64::from(h) {
+            for x in 0..i64::from(w) {
+                let v = fields.height_at(x, y).max(0.0);
+                peak = peak.max(v);
+                raw.push(v);
+            }
+        }
+        // Sem pico não há forma — e devolver um plano de zeros seria pior que `None`: ele ARMARIA a
+        // viagem do relevo, tirando a sombra assada da cor em troca de relevo nenhum.
+        if peak <= 0.0 {
+            return None;
+        }
+        let inv = 255.0 / peak;
+        Some((raw.iter().map(|v| (v * inv) as u8).collect(), peak))
+    }
 }

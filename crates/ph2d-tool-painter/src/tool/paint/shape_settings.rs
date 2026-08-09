@@ -254,6 +254,11 @@ impl PainterTool {
             if let Some(gain) = relief_gain {
                 self.paint.shape_layers.set_gain(gain);
             }
+            // E a FORMA do relevo, ao lado do ganho: as duas saem do mesmo documento e do mesmo
+            // passe, e é a viagem dela que decide qual das duas a cor usa (`rebuild_derived`).
+            if let Some((relief, _peak)) = self.captured_relief() {
+                self.paint.shape_layers.set_relief(relief);
+            }
             // The real opacities only land HERE — `set_layers` above reset them to 1.0 and the flatten
             // inside `set_brush_shape_layers` baked that. Re-bake now that the metadata is in.
             self.reflatten_shape_image();

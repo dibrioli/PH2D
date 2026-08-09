@@ -41,8 +41,9 @@
 
 use crate::interaction::InteractiveState;
 use crate::widget::{
-    Button, Card, Checkbox, Divider, ListItem, ProgressBar, SectionHeader, Slider, Spinner, Tag,
-    TextInput, Toggle, paint_button, paint_card, paint_checkbox, paint_divider, paint_list_item,
+    Button, Card, Checkbox, Divider, LevelMeter, ListItem, NumberInput, ProgressBar, SectionHeader,
+    Slider, Spinner, Tag, TextInput, Toggle, paint_button, paint_card, paint_checkbox,
+    paint_divider, paint_level_meter, paint_list_item, paint_number_input_with_buffer,
     paint_progress_bar, paint_section_header, paint_slider, paint_spinner, paint_tag,
     paint_text_input, paint_toggle,
 };
@@ -60,6 +61,18 @@ use ph2d_vector::VectorScene;
 /// um limite (não há recurso do qual seja): é o que a prévia mostra até a W7 ligar o valor a uma
 /// fonte.
 const PREVIEW_VALUE: f32 = 0.5;
+
+/// O pico que a prévia do medidor segura, acima do RMS.
+///
+/// ⚠️ **A razão do [`PREVIEW_VALUE`] vale aqui com força maior:** um medidor em `0` é uma coluna
+/// escura indistinguível de uma coluna quebrada, e um medidor em `1` come a escala inteira. E ele
+/// tem uma terceira parte que os outros controles não têm — o **marcador de pico** —, que só é
+/// visível se estiver ACIMA do preenchimento. Um pico igual ao RMS desenharia a marca dentro da
+/// barra, onde ela não se lê.
+///
+/// Não é um limite (não há recurso do qual seja): é o que a prévia mostra até uma fonte de áudio
+/// real alimentar o widget.
+const PREVIEW_PEAK: f32 = 0.72; // LITERAL-PX-OK: o pico da PRÉVIA, acima do RMS para a marca se ver
 
 /// O id que os pintores recebem na prévia.
 ///
@@ -128,18 +141,34 @@ pub enum WidgetKind {
     ListItem,
     Spinner,
     Divider,
+    NumberInput,
+    LevelMeter,
 }
 
 impl WidgetKind {
     /// Todos os tipos que uma forma pode vestir hoje, na ordem em que o painel os oferece.
     ///
-    /// ⚠️ **A fronteira desta lista é ESTRUTURAL, não um orçamento.** Um widget cuja aparência é
-    /// função de *(retângulo, rótulo, estado)* é vestível por uma forma **hoje**. Um widget cuja
-    /// aparência é função de uma **LISTA** (Tabs, TreeView, RadioGroup, Dropdown, Combobox) precisa
-    /// de filhos autorados — e filhos autorados são o degrau 3 (a árvore vira `Panel`, W8b). Pôr
-    /// um deles aqui obrigaria a inventar a lista, e a prévia mostraria itens que o documento não
-    /// tem.
-    pub const ALL: [WidgetKind; 12] = [
+    /// # A fronteira é ESTRUTURAL, não um orçamento — e o teste dela ficou mais FINO
+    ///
+    /// ⚠️ **A primeira formulação desta lei era *"tem um `Vec`?"*, e ela é NECESSÁRIA mas não
+    /// SUFICIENTE.** O levantamento de 2026-08-08 contou os quatro tipos ausentes que não têm
+    /// `Vec` — `ColorSwatch`, `NumberInput`, `IconButton`, `LevelMeter` — e chamou aos quatro
+    /// *omissão de fiação*. Medido campo a campo, dois deles pedem um parâmetro que **nem o
+    /// desenho, nem os tokens, nem o estado vivo determinam**: a `rgba` de uma swatch (o valor que
+    /// ela existe para mostrar) e o `IconGlyph` de um botão de ícone (*qual* ícone?).
+    ///
+    /// A lei, então, é: **todo parâmetro tem de ser determinado pelo retângulo, pelo rótulo, pelos
+    /// tokens ou pelo estado vivo.** Sob ela os ausentes se separam em três, não em dois:
+    ///
+    /// | natureza | tipos | o que falta |
+    /// |---|---|---|
+    /// | vestível **hoje** | os catorze desta lista | nada |
+    /// | pede **parâmetro por-tipo** | `ColorSwatch` · `IconButton` | um canal no `RowSpec` |
+    /// | pede **filhos autorados** | `Tabs` · `Dropdown` · `RadioGroup` · `SegmentedAdaptive` | a LISTA vem dos filhos (degrau 3) |
+    ///
+    /// ⚠️ Pôr um da terceira família aqui obrigaria a inventar a lista, e a prévia mostraria itens
+    /// que o documento não tem.
+    pub const ALL: [WidgetKind; 14] = [
         WidgetKind::Button,
         WidgetKind::Toggle,
         WidgetKind::Checkbox,
@@ -152,6 +181,8 @@ impl WidgetKind {
         WidgetKind::ListItem,
         WidgetKind::Spinner,
         WidgetKind::Divider,
+        WidgetKind::NumberInput,
+        WidgetKind::LevelMeter,
     ];
 
     /// O código que viaja no documento. Estável para sempre.
@@ -170,6 +201,8 @@ impl WidgetKind {
             WidgetKind::ListItem => 10,
             WidgetKind::Spinner => 11,
             WidgetKind::Divider => 12,
+            WidgetKind::NumberInput => 13,
+            WidgetKind::LevelMeter => 14,
         }
     }
 
@@ -208,6 +241,8 @@ impl WidgetKind {
             WidgetKind::ListItem => "ListItem",
             WidgetKind::Spinner => "Spinner",
             WidgetKind::Divider => "Divider",
+            WidgetKind::NumberInput => "NumberInput",
+            WidgetKind::LevelMeter => "LevelMeter",
         }
     }
 
@@ -227,6 +262,8 @@ impl WidgetKind {
             WidgetKind::ListItem => "panel.vector.widget.kind.list_item",
             WidgetKind::Spinner => "panel.vector.widget.kind.spinner",
             WidgetKind::Divider => "panel.vector.widget.kind.divider",
+            WidgetKind::NumberInput => "panel.vector.widget.kind.number_input",
+            WidgetKind::LevelMeter => "panel.vector.widget.kind.level_meter",
         }
     }
 }
@@ -371,6 +408,43 @@ pub fn paint_widget_skin_with(
         }
         WidgetKind::Spinner => paint_spinner(&Spinner::new(id, label), rect, scene, theme),
         WidgetKind::Divider => paint_divider(&Divider::new(id), rect, scene, theme),
+        WidgetKind::NumberInput => {
+            // ⚠️ `step`/`min`/`max` ficam nos defaults do construtor de propósito: eles governam o
+            // que um GESTO produz, e o gesto é do painel — a pele responde *que aparência tem um
+            // campo numérico*, e nenhum dos três a muda. Autorá-los seria um parâmetro por-tipo
+            // sem consumidor (ver o doc do `ALL`).
+            let mut n = NumberInput::new(id, label, f64::from(PREVIEW_VALUE));
+            // O buffer do estado vivo é o que o artista está DIGITANDO; sem estado, o pintor
+            // formata o `value` sozinho — é o que o `None` significa aqui.
+            let mut buf: Option<&str> = None;
+            let (mut caret, mut anchor) = (0usize, None);
+            if let Some(InteractiveState::NumberInput {
+                state,
+                value,
+                buffer,
+                caret: c,
+                selection_anchor,
+                ..
+            }) = live
+            {
+                n.state = *state;
+                n.value = *value;
+                buf = Some(buffer.as_str());
+                caret = *c;
+                anchor = *selection_anchor;
+            }
+            paint_number_input_with_buffer(&n, buf, caret, anchor, rect, scene, text_system, theme);
+        }
+        WidgetKind::LevelMeter => {
+            // ⚠️ Um medidor é READOUT: ele não tem estado de interação (não há
+            // `InteractiveState::LevelMeter`, e a `Row::is_control` o deixa de fora), então a
+            // prévia é tudo o que ele mostra até uma fonte de áudio o alimentar. É o molde exato
+            // do `ProgressBar` acima.
+            let mut m = LevelMeter::new(id, label);
+            m.rms = [PREVIEW_VALUE; 2];
+            m.peak_hold = [PREVIEW_PEAK; 2];
+            paint_level_meter(&m, rect, scene, theme);
+        }
     }
 }
 

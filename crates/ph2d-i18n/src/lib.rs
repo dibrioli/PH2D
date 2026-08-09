@@ -296,6 +296,8 @@ pub fn tr(key: &str) -> &'static str {
         "panel.vector.widget.kind.list_item" => "List Item",
         "panel.vector.widget.kind.spinner" => "Spinner",
         "panel.vector.widget.kind.divider" => "Divider",
+        "panel.vector.widget.kind.number_input" => "Number",
+        "panel.vector.widget.kind.level_meter" => "Level Meter",
         // **O AUTO LAYOUT** (plano UI/UX W2, ADR-0153) — a moldura que empilha os filhos.
         // ⚠️ Os rótulos de direção incluem o "Off" porque *"esta moldura flui?"* e *"em que
         // direção?"* são a MESMA pergunta (o `display` do CSS) — ver `VECTOR_LAYOUT_DIR_OFF`.

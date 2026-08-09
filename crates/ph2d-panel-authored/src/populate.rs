@@ -10,7 +10,7 @@ use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{BlenderHitKind, InteractiveState, WidgetStore};
 use ph2d_editor_core::widget::{
     ButtonState, CheckboxState, CheckboxValue, ListItemState, SliderOrientation, SliderState,
-    TagState, TextInputState, ToggleState, WidgetKind,
+    TagState, TextInputState, ToggleState, WidgetKind, format_number,
 };
 
 use crate::rows::{Row, rows};
@@ -52,13 +52,29 @@ fn initial(kind: WidgetKind) -> Option<InteractiveState> {
             state: ListItemState::Normal,
             selected: false,
         },
+        WidgetKind::NumberInput => InteractiveState::NumberInput {
+            state: TextInputState::Normal,
+            value: 0.0,
+            // ⚠️ O buffer ESPELHA o valor, e a formatação sai da porta do próprio widget: uma
+            // segunda regra aqui faria o campo nascer mostrando um texto que o pintor não
+            // escreveria, e a divergência só apareceria no primeiro foco.
+            buffer: format_number(0.0),
+            caret: 0,
+            last_committed: 0.0,
+            selection_anchor: None,
+        },
         // Os que só desenham. ⚠️ `None` é a resposta, e o `is_control` é quem a decide — ver o
         // doc dele: três cópias desta pergunta divergiriam com modos de falha diferentes.
+        //
+        // ⚠️ O `LevelMeter` está aqui por NATUREZA, não por omissão: ele é um READOUT (nível de
+        // áudio), e não existe `InteractiveState::LevelMeter` para registar. Um medidor que
+        // acendesse ao clique seria o item-de-menu-morto pintado com outro nome.
         WidgetKind::ProgressBar
         | WidgetKind::SectionHeader
         | WidgetKind::Card
         | WidgetKind::Spinner
-        | WidgetKind::Divider => return None,
+        | WidgetKind::Divider
+        | WidgetKind::LevelMeter => return None,
     })
 }
 

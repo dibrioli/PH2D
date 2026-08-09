@@ -38,6 +38,10 @@ const A11Y_OPT_OUT: &[(&str, &str)] = &[
     // solto vira um "widget" para o gerador de `mod`) — o pai delega ao pintor real do catálogo,
     // que é quem tem a11y.
     ("skin/tests.rs", "test module; parent owns a11y"),
+    // A outra metade dos gates da pele — *quanto da moldura ela ocupa* (BUGS_vector #26), separada
+    // quando o pai cruzou o teto de 500 LOC ao catálogo ganhar o `NumberInput` e o `LevelMeter`.
+    // Mesma razão do irmão acima: módulo de teste, e quem tem a11y é o pintor real do catálogo.
+    ("skin/frame_tests.rs", "test module; parent owns a11y"),
     // Unit tests for `tool_rail` (split out for the widget LOC cap) — no user-facing widget; the
     // parent `tool_rail.rs` owns the a11y wiring (build_a11y / build_entry_a11y).
     ("tool_rail/tests.rs", "test module; parent owns a11y"),

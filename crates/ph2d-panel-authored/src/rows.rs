@@ -47,6 +47,7 @@ impl Row {
                 | WidgetKind::TextInput
                 | WidgetKind::Tag
                 | WidgetKind::ListItem
+                | WidgetKind::NumberInput
         )
     }
 }

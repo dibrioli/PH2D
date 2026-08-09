@@ -952,7 +952,7 @@ Reservada de propósito: `autostep` afinado, `min_slope_slide_angle` exposto, ou
 
 | # | número | como se mede |
 |---|---|---|
-| 1 | **custo de um `move_shape`** por player por tique, contra o cast+solver de hoje | a sonda do módulo, N players, contra o HR-4 |
+| 1 | **custo de um `move_shape`** por player por tique, contra o cast+solver de hoje | ✅ **MEDIDO 2026-08-09** (`measure_player_budget`): **+0,34 µs/player, +37%** sobre o dinâmico, linear em N (µs/player plano de 10 a 200) ⇒ **~1200 personagens cinemáticos** cabem nos 1,5 ms do HR-4 (contra ~1648 dinâmicos) nesta máquina. **O orçamento não é o teto deste modo.** Gate de FORMA `the_cost_of_a_player_is_linear_in_their_number` |
 | 2 | **deriva de rampa** nos dois modos, varrendo `θ` | a fixture do gate 1, a mesma varredura que produziu a lei do `ride.rs` |
 | 3 | **penetração** no impacto nos dois modos | a fixture da W2a |
 | 4 | `snap_to_ground` mínimo útil | contra a altura do degrau que o `autostep` sobe |

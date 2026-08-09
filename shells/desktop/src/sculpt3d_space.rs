@@ -302,6 +302,35 @@ impl Sculpt3dScene {
         }
     }
 
+    /// **O EIXO de um giro no PLANO DA TELA em torno de `about_world`** — em
+    /// coordenadas locais, unitário, apontando para o OLHO.
+    ///
+    /// ⚠️ **Ele aponta para o olho, e o sinal é a ferramenta inteira.**
+    /// Rodrigues gira no anti-horário visto da PONTA do eixo, então um eixo
+    /// virado para DENTRO da tela faz a peça girar ao contrário do dedo — que é
+    /// literalmente o que o smoke reportou (*"a direção da rotação do mouse está
+    /// invertida em relação à rot do objeto"*). É o mesmo sinal que o kernel do
+    /// Twist nega no `stroke_target`, com o mesmo parágrafo ao lado: lá o
+    /// [`ph2d_sculpt3d::Dab::eye`] aponta para dentro e a negação mora no
+    /// consumidor; aqui a subtração já sai virada para fora, e o consumidor
+    /// ([`ph2d_sculpt3d::Gesture::Rotate`]) recebe o eixo pronto.
+    ///
+    /// ⚠️ **E ele passa PELO OLHO — não basta ser paralelo à vista.** Uma reta
+    /// que passa pelo olho projeta num PONTO (o próprio `about_world`
+    /// projetado), então girar em torno dela deixa o pivô parado na tela e a
+    /// silhueta a rodar em volta dele. O raio do pixel de PEN-DOWN é outra reta:
+    /// medido em `sculpt3d_transform_tests`, ela inclina **3,2° a 50 px** do
+    /// pivô e **19,2° a 340 px** — e o que o artista vê nessa inclinação é a
+    /// peça **cambalhotando** para fora do plano em vez de girar.
+    pub(super) fn view_axis_local(&self, about_world: [f32; 3]) -> [f32; 3] {
+        let e = self.camera.eye();
+        self.dir_to_local([
+            e.x - about_world[0],
+            e.y - about_world[1],
+            e.z - about_world[2],
+        ])
+    }
+
     /// O raio que passa pelo pixel — **a porta de projeção do gesto**.
     ///
     /// ⚠️ Ela mudou-se para cá quando o pai cruzou o teto de LOC, e o corte não

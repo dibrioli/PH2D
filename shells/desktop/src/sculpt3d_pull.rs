@@ -14,6 +14,18 @@ use ph2d_sculpt3d::{Amount, Dab};
 
 use super::{SCALE_PER_PX, Sculpt3dScene, TWIST_DEADZONE_PX, TwistSweep};
 
+/// A direção unitária de `center` até o pixel — `None` dentro da zona morta.
+///
+/// ⚠️ **Porta única da zona morta**, e ela tem dois consumidores desde que a
+/// varredura passou a ser armada no pen-down: quem ARMA e quem ACUMULA têm de
+/// concordar sobre *quando não há direção*, senão um gesto que começa em cima do
+/// pivô arma um `last` que o outro lado consideraria inexistente.
+fn sweep_dir(center: (f32, f32), x: f32, y: f32) -> Option<[f32; 2]> {
+    let d = [x - center.0, center.1 - y];
+    let len = (d[0] * d[0] + d[1] * d[1]).sqrt();
+    (len >= TWIST_DEADZONE_PX).then(|| [d[0] / len, d[1] / len])
+}
+
 impl Sculpt3dScene {
     /// **PEGA o barro** — o pen-down dos dois grips que puxam. Devolve `false`
     /// se o raio errou a malha (e aí o botão vira órbita, como em todo gesto).
@@ -111,11 +123,23 @@ impl Sculpt3dScene {
         );
     }
 
-    /// **O ângulo varrido em torno da âncora**, do pen-down até aqui.
+    /// **O ângulo varrido em torno de `center`**, do pen-down até aqui.
     ///
     /// `None` quando o gesto ainda não começou: dentro da zona morta e com nada
     /// varrido, não há torção a aplicar — e um dab de ângulo zero pagaria a
     /// pegada inteira (consulta, refit, upload) para não mover um vértice.
+    ///
+    /// ⚠️ **O CENTRO é parâmetro, e é ele que decide o que o gesto significa.**
+    /// O [`Grip::Turn`] gira em torno da ÂNCORA — cujo pixel *é* o pen-down, e
+    /// por isso os dois eram a mesma coisa enquanto este era o único chamador.
+    /// O transform da máscara gira em torno do **PIVÔ**, que é o centroide
+    /// ponderado do que se move e quase nunca cai debaixo do dedo: medir a
+    /// varredura a partir do pen-down fazia o dedo dar uma volta inteira em
+    /// torno do pivô e a peça girar **meia** (teorema do ângulo inscrito), com
+    /// a razão a variar conforme o percurso — medido em
+    /// `sculpt3d_transform_tests`, 0,31× a 0,45× para o mesmo gesto em três
+    /// amplitudes. *Uma razão que muda com a amplitude é o que o artista sente
+    /// como "impreciso".*
     ///
     /// ⚠️ **O sinal é o da TELA, e a conversão mora aqui:** `y` de janela cresce
     /// para BAIXO e o eixo `up` da câmera aponta para CIMA, então a componente
@@ -123,25 +147,46 @@ impl Sculpt3dScene {
     /// faz, e pelo mesmo motivo. Com ela, varrer no sentido anti-horário na tela
     /// dá ângulo positivo em torno do eixo que aponta para o observador, que é
     /// o que o artista vê o barro fazer.
-    pub(super) fn swept_angle(&mut self, from: (f32, f32), x: f32, y: f32) -> Option<f32> {
-        let d = [x - from.0, from.1 - y];
-        let len = (d[0] * d[0] + d[1] * d[1]).sqrt();
+    pub(super) fn swept_angle_about(&mut self, center: (f32, f32), x: f32, y: f32) -> Option<f32> {
+        let dir = sweep_dir(center, x, y);
         let g = self.twist.get_or_insert(TwistSweep {
             last: None,
             total: 0.0,
         });
-        if len < TWIST_DEADZONE_PX {
+        let Some(dir) = dir else {
             // O total FICA: o barro não desfaz a torção porque o dedo passou
             // perto do pivô. O que se perde é a referência de direção.
             g.last = None;
             return if g.total == 0.0 { None } else { Some(g.total) };
-        }
-        let dir = [d[0] / len, d[1] / len];
+        };
         if let Some(p) = g.last {
             g.total += (p[0] * dir[1] - p[1] * dir[0]).atan2(p[0] * dir[0] + p[1] * dir[1]);
         }
         g.last = Some(dir);
         Some(g.total)
+    }
+
+    /// **ARMA a varredura no PEN-DOWN** — a referência de direção nasce onde o
+    /// dedo desceu, não onde ele foi visto a mover-se pela primeira vez.
+    ///
+    /// ⚠️ **Sem ela o gesto perde o PRIMEIRO incremento, e nunca o recupera.**
+    /// A acumulação só soma quando já existe um `last`, então o trecho entre o
+    /// pen-down e o primeiro `move` some — um deslocamento CONSTANTE que o
+    /// artista lê como *"o barro não acompanha a mão"*. Medido antes de existir
+    /// (`sculpt3d_transform_tests`, amostrando de 5° em 5°): 25° de giro para
+    /// 30° de dedo, 85° para 90°, 175° para 180° — o déficit é exatamente um
+    /// passo, sempre.
+    ///
+    /// ⚠️ **E ela NÃO serve ao [`Grip::Turn`], que é por isso que ele continua
+    /// a perder o primeiro passo:** lá o centro do gesto é a âncora, cujo pixel
+    /// *é* o pen-down — a direção do centro até o dedo no instante zero é o
+    /// vetor nulo, e não existe. Só um gesto que gira em torno de um ponto
+    /// LONGE do dedo tem essa referência para armar.
+    pub(super) fn arm_sweep_at(&mut self, center: (f32, f32), x: f32, y: f32) {
+        self.twist = Some(TwistSweep {
+            last: sweep_dir(center, x, y),
+            total: 0.0,
+        });
     }
 
     /// **O gesto de quem GIRA** ([`Grip::Turn`]): a âncora fica onde foi presa e
@@ -169,7 +214,9 @@ impl Sculpt3dScene {
         let eye = self.dir_to_local(self.ray_at(from.0, from.1).dir());
         let dab = match kind {
             Amount::Angle => {
-                let Some(radians) = self.swept_angle(from, x, y) else {
+                // O centro é a ÂNCORA, e o pixel dela é o próprio pen-down —
+                // ver o doc de [`Self::swept_angle_about`].
+                let Some(radians) = self.swept_angle_about(from, x, y) else {
                     return;
                 };
                 Dab::turning(center, brush.radius, eye, radians)

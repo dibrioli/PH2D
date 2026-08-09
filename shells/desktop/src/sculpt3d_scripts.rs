@@ -385,6 +385,11 @@ pub(crate) fn for_scene(mesh: &ph2d_mesh::Mesh) {
              [sculpt3d]    (1) Clique na esfera da DIREITA, aperte 'Rotate' e ARRASTE com o botao\n\
              [sculpt3d]        ESQUERDO em volta dela. O topo gira, o fundo NAO se mexe, e o meio\n\
              [sculpt3d]        torce suave. O botao DIREITO continua orbitando a camera.\n\
+             [sculpt3d]    (1b) O QUE O SMOKE ANTERIOR REPROVOU: arraste em CIRCULO em volta da\n\
+             [sculpt3d]        esfera e confira que o barro segue a mao -- mesmo SENTIDO, e volta\n\
+             [sculpt3d]        por volta (uma volta do dedo = uma volta da peca). Faca de novo com\n\
+             [sculpt3d]        o pen-down LONGE do centro e depois PERTO: tem de dar o mesmo. Se\n\
+             [sculpt3d]        girar ao contrario, ou menos que a mao, PARE.\n\
              [sculpt3d]    (2) A PERGUNTA DA WAVE, e ela e' de OLHO: gire MEIA VOLTA ou mais. A\n\
              [sculpt3d]        cintura tem de continuar REDONDA -- ela torce, mas nao AFINA. Se a\n\
              [sculpt3d]        esfera pinçar em direcao ao eixo, como uma ampulheta, PARE: essa e'\n\

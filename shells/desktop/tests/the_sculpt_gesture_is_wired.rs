@@ -397,24 +397,32 @@ fn the_turn_takes_its_axis_from_the_ray_that_grabbed_the_clay() {
 /// ele volta a `−179°` e o barro **desanda** no meio do gesto. Somando os deltas
 /// (pequenos por construção) o total cresce sem teto — e a soma é exata, então o
 /// gesto continua sendo um fato do que a mão varreu.
+///
+/// ⚠️ **A zona morta mudou de casa e este gate falhou ALTO, que é o desenho
+/// dele.** Ela era um `if` dentro do acumulador; com a varredura passando a ser
+/// **armada no pen-down** ela ganhou um segundo consumidor e virou a porta
+/// `sweep_dir`. O `function_body` não achou `fn swept_angle` e **panicou** em vez
+/// de varrer o vácuo — um gate ancorado num endereço que se muda tem de produzir
+/// uma falha, nunca um verde.
 #[test]
 fn the_swept_angle_accumulates_instead_of_saturating_at_half_a_turn() {
     let src = sculpt_src();
-    let body = function_body(&src, "swept_angle");
+    let body = function_body(&src, "swept_angle_about");
     assert!(
         body.contains("g.total +=") && body.contains("atan2("),
         "o total tem de SOMAR o delta de cada evento"
     );
-    // A zona morta: perto da âncora a direção é ruído, e o que se perde ali é a
+    // A zona morta: perto do centro a direção é ruído, e o que se perde ali é a
     // REFERÊNCIA, nunca o que já foi varrido.
+    let dir = function_body(&src, "sweep_dir");
     assert!(
-        body.contains("TWIST_DEADZONE_PX"),
-        "a zona morta tem de existir: a um pixel da âncora um tremor vale meio radiano"
+        dir.contains("TWIST_DEADZONE_PX"),
+        "a zona morta tem de existir: a um pixel do centro um tremor vale meio radiano"
     );
-    let dead = braced_block(&body, "if len < TWIST_DEADZONE_PX");
+    let dead = braced_block(&body, "let Some(dir) = dir else");
     assert!(
         dead.contains("g.last = None"),
-        "dentro dela a referência de direção morre, senão a saída seguinte soma um salto"
+        "sem direção a referência morre, senão a saída seguinte soma um salto"
     );
     assert!(
         !dead.contains("g.total = 0"),
@@ -566,6 +574,53 @@ fn the_armed_transform_takes_the_left_button_before_the_stroke_does() {
     assert!(
         aim < begin,
         "o `begin_transform` congela a foto ANTES de mirar -- a sessão descreve a peça anterior"
+    );
+}
+
+/// **AS DUAS METADES DO GIRO SAEM DO PIVÔ — nenhuma do pen-down.**
+///
+/// ⚠️ **Este gate existe porque o smoke reprovou**: *"a direção da rotação do
+/// mouse está invertida em relação à rot do objeto e é imprecisa (não
+/// consistente)"*. As três queixas eram consequências de a v1 tirar o eixo e o
+/// centro do pixel de PEN-DOWN — medido em `sculpt3d_transform_tests`, o dedo
+/// varria 90° e a peça girava **−37°**.
+///
+/// ⚠️ **Ele é a metade que roda SEM PLACA.** Os dois gates que julgam o gesto na
+/// tela (`the_piece_turns_with_the_finger_turn_for_turn` e o irmão do eixo) são
+/// `#[ignore]` porque a cena 3D exige um device — ou seja, o `ship` não os corre.
+/// Uma regressão que devolvesse o eixo ao raio do pen-down passaria pela CI
+/// inteira; a propriedade estrutural é o que a impede.
+///
+/// ⚠️ **E o eixo do TWIST continua a sair do pen-down, de propósito** — é o que
+/// o `the_turn_takes_its_axis_from_the_ray_that_grabbed_the_clay` afirma, um
+/// gate acima. Lá o gesto gira em torno da ÂNCORA, que é o que está debaixo do
+/// dedo; aqui gira em torno do PIVÔ, que quase nunca está. O mesmo pixel é a
+/// resposta certa para um e a errada para o outro.
+#[test]
+fn the_rotation_takes_its_axis_and_its_centre_from_the_pivot() {
+    let src = sculpt_src();
+    let body = function_body(&src, "transform_gesture");
+    let arm = match_arm(&body, "TransformKind::Rotate =>");
+    assert!(
+        arm.contains("view_axis_local(pivot_world)"),
+        "o eixo do giro tem de ser a reta olho→pivô -- qualquer outra inclina, e a peça cambalhota"
+    );
+    assert!(
+        arm.contains("project(pivot_world") && arm.contains("swept_angle_about(center"),
+        "a varredura tem de ser medida em torno do pivô PROJETADO"
+    );
+    // ⚠️ A asserção NEGATIVA é a que fecha a porta: sem ela, acrescentar o
+    // pen-down de volta ao lado das duas chamadas certas passaria.
+    assert!(
+        !arm.contains("from"),
+        "nada no giro pode sair do pen-down: com o centro no pixel do dedo, uma volta \
+         inteira em torno do pivô gira a peça MEIA (ângulo inscrito)"
+    );
+    // E a varredura nasce ARMADA, senão o gesto perde o primeiro incremento e
+    // fica um passo atrás pelo resto do arrasto.
+    assert!(
+        function_body(&src, "begin_transform").contains("arm_sweep_at("),
+        "o pen-down tem de armar a referência de direção da varredura"
     );
 }
 

@@ -24,8 +24,13 @@
 //!
 //! * **mover** — o delta de tela inteiro, descido à profundidade do pivô pela
 //!   MESMA porta do Grab ([`Camera3d::screen_delta_to_world`]).
-//! * **girar** — o ângulo VARRIDO em torno do pivô, pela mesma porta do Twist
-//!   (`swept_angle`), em torno do eixo da vista.
+//! * **girar** — o ângulo VARRIDO em torno do **pivô projetado**, pela mesma
+//!   porta do Twist (`swept_angle_about`), em torno da reta **olho→pivô**.
+//!   ⚠️ As duas metades saem do PIVÔ, e a primeira versão tirava as duas do
+//!   pixel de pen-down: o smoke reprovou com as três consequências juntas —
+//!   *"a direção da rotação do mouse está invertida … e é imprecisa (não
+//!   consistente)"* —, e a medição as separou em sinal, magnitude (0,45× do
+//!   pedido) e proporcionalidade. Ver `sculpt3d_transform_tests`.
 //! * **escalar** — a **razão de distâncias** ao pivô projetado, e não um mapa
 //!   linear de pixels: assim o ponto sob o dedo continua sob o dedo, que é o que
 //!   *manipulação direta* significa.
@@ -65,12 +70,24 @@ impl Sculpt3dScene {
         let Some(session) = MaskTransform::begin(self.mesh()) else {
             return false;
         };
+        let pivot_world = self.pose().point_to_world(session.pivot());
         self.transform = Some(session);
         self.transform_from = (x, y);
         // ⚠️ O acumulador de ângulo é COMPARTILHADO com o verbo Twist, e ele é
         // do GESTO: deixá-lo vivo faria este transform começar já torcido, no
-        // ponto onde o gesto anterior parou. Mesma linha do `pointer_down`.
-        self.twist = None;
+        // ponto onde o gesto anterior parou. Mesma linha do `pointer_down` — e
+        // os dois braços abaixo o reescrevem, então nenhum caminho o herda.
+        //
+        // ⚠️ **Ele é ARMADO, não apenas limpo**, e é a diferença entre a peça
+        // acompanhar a mão e ficar um passo atrás para sempre — ver
+        // [`Sculpt3dScene::arm_sweep_at`]. O centro é o pivô PROJETADO, o mesmo
+        // que o [`Self::transform_gesture`] usa; um pivô fora da tela não tem
+        // referência a armar, e aí o gesto de girar já se recusa por conta
+        // própria.
+        match self.camera.project(pivot_world, self.viewport) {
+            Some(c) => self.arm_sweep_at(c, x, y),
+            None => self.twist = None,
+        }
         true
     }
 
@@ -120,8 +137,22 @@ impl Sculpt3dScene {
                 }
             }
             TransformKind::Rotate => {
-                let axis = self.dir_to_local(self.ray_at(from.0, from.1).dir());
-                let radians = self.swept_angle(from, x, y)?;
+                // ⚠️ **As DUAS metades do giro saem do PIVÔ, e nenhuma do
+                // pen-down.** O eixo é a reta olho→pivô (ver
+                // [`Sculpt3dScene::view_axis_local`]) e a varredura é medida em
+                // torno do pivô PROJETADO — é isso que faz o barro acompanhar a
+                // mão volta por volta. Medir do pen-down entregava 0,31×–0,45×
+                // do que o dedo pediu, e com o sinal trocado.
+                //
+                // ⚠️ **Pivô fora da tela ⇒ gesto NENHUM**, e não um neutro: o
+                // que já foi girado FICA (o `pre` congelado é a entrada de todo
+                // frame), enquanto um neutro devolveria a peça ao começo por o
+                // artista ter passado por um pixel onde a pergunta não tem
+                // resposta. É a mesma recusa do [`Self::scale_ratio`], pelo
+                // mesmo motivo: não se mira um centro que não está na tela.
+                let center = self.camera.project(pivot_world, self.viewport)?;
+                let axis = self.view_axis_local(pivot_world);
+                let radians = self.swept_angle_about(center, x, y)?;
                 Gesture::Rotate { axis, radians }
             }
             TransformKind::Scale => Gesture::Scale {
@@ -167,3 +198,7 @@ impl Sculpt3dScene {
         self.record(entry);
     }
 }
+
+#[cfg(test)]
+#[path = "sculpt3d_transform_tests.rs"]
+mod tests;

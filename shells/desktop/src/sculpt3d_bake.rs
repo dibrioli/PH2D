@@ -197,6 +197,27 @@ pub(crate) fn follow_live_rig(forms: &mut BTreeMap<u64, BakedForm>, rig: &ph2d_l
     }
 }
 
+impl Sculpt3dScene {
+    /// **O artista MEXEU na lâmpada desde a última pergunta?**
+    ///
+    /// ⚠️ **É a diferença entre *a cena existe* e *o artista fez alguma coisa*, e ela vale a arte
+    /// do documento.** O [`follow_live_rig`] re-autora o rig de TODO objeto assado, e o campo que
+    /// ele sobrescreve é o rig **AUTORADO no bake** — cujo próprio doc-comment diz que ele viaja no
+    /// arquivo justamente para *"reabrir o projeto não acender o objeto com o rig DEFAULT"*.
+    ///
+    /// Enquanto a cena 3D só nascia atrás de uma variável de ambiente, as duas frases não se
+    /// encontravam. Com o pill SCULPT **um clique cria uma cena com o rig default**, e sem esta
+    /// borda todo sprite já assado do documento era re-aceso com uma luz que ninguém escolheu —
+    /// que é, da cadeira do artista, *"o Bake to Sprite disparando sozinho"* (Enio, 2026-08-09).
+    ///
+    /// ⚠️ **Testemunha, não enumeração:** quem move o rig são as quatro teclas de luz, o painel, e
+    /// uma cena de smoke que traz rig próprio. Comparar carimbos cobre os três — e o quarto.
+    pub(crate) fn take_rig_edge(&mut self) -> bool {
+        let now = crate::baked_form::rig_stamp(&self.rig);
+        now != std::mem::replace(&mut self.rig_was, now)
+    }
+}
+
 /// **As duas luzes, medidas e pinadas.** Módulo irmão, e não parte de um `mod tests`, porque tudo o
 /// que mora nele precisa de um adapter de GPU — e porque ele carrega a medição que refutou o report
 /// do aro, ao lado do gate que a torna executável.

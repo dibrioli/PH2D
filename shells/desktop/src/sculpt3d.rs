@@ -494,6 +494,13 @@ pub(crate) struct Sculpt3dScene {
     /// *entrou*, então "abrir ao nascer" e "abrir ao voltar" deixam de ser duas
     /// regras — são a MESMA.
     clay_was_on: bool,
+    /// **O rig de quando alguém perguntou pela última vez** — a testemunha de que o artista MEXEU
+    /// na lâmpada; ver [`Sculpt3dScene::take_rig_edge`], a porta única que a lê.
+    ///
+    /// ⚠️ **Nasce com o rig ATUAL**, ao contrário do [`Self::clay_was_on`] logo acima, e a
+    /// assimetria é o conserto: uma cena recém-criada não mexeu em lâmpada nenhuma, e tratar o
+    /// nascimento dela como um gesto reescreve a luz de todo objeto já assado no documento.
+    rig_was: crate::baked_form::RigStamp,
     /// O carimbo da última doação entregue — `None` enquanto nada foi doado.
     donated: Option<FormStamp>,
 }
@@ -517,6 +524,11 @@ impl Sculpt3dScene {
             ..Camera3d::default()
         };
         camera.frame(mesh.bounds(), aspect);
+        // ⚠️ **UM binding, dois campos** — o rig e a testemunha dele. Escrever a expressão duas
+        // vezes deixaria a testemunha nascer discordando do rig no dia em que uma das duas mudasse,
+        // e o defeito seria *"o Bake to Sprite disparou sozinho"*: a discordância vira um gesto de
+        // lâmpada que ninguém fez. Aqui isso é inexprimível.
+        let rig = scenes::shading::scene_rig().unwrap_or_default();
         Self {
             objects: vec![SceneObject::new(ObjectId(0), mesh, Pose::IDENTITY)],
             active: 0,
@@ -553,7 +565,7 @@ impl Sculpt3dScene {
             symmetry: Symmetry::default(),
             // ⚠️ **A cena pode ser dona da própria LUZ**, e uma cena de
             // sombreamento quase sempre é: ver [`scenes::shading::scene_rig`].
-            rig: scenes::shading::scene_rig().unwrap_or_default(),
+            rig,
             cavity: ph2d_mesh_render::DEFAULT_CAVITY,
             env: ph2d_mesh_render::DEFAULT_ENV,
             ao: ph2d_mesh_render::DEFAULT_AO_STRENGTH,
@@ -567,6 +579,10 @@ impl Sculpt3dScene {
             edits: 0,
             role: FormRole::Clay,
             clay_was_on: false,
+            // ⚠️ **O rig com que ela NASCE**, e não um valor neutro: a cena acabou de existir e não
+            // mexeu em lâmpada nenhuma. Semear isto com um default faria o primeiro frame parecer
+            // um gesto do artista — e o preço é a luz de todo objeto já assado no documento.
+            rig_was: crate::baked_form::rig_stamp(&rig),
             donated: None,
         }
     }

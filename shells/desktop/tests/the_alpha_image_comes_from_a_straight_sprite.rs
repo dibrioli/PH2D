@@ -18,7 +18,7 @@ fn fulfilment(src: &str) -> String {
         .expect("o laço de frame cumpre o pedido do alpha por imagem");
     // Uma janela generosa: o bloco tem comentário longo, e o que importa é que
     // as duas chamadas apareçam nele — não a que distância.
-    src[at..].chars().take(1800).collect()
+    src[at..].chars().take(3600).collect()
 }
 
 /// **A conversão para STRAIGHT precede a construção da imagem.**
@@ -33,10 +33,21 @@ fn the_pixels_are_straightened_before_the_law_reads_them() {
     let src = fs::read_to_string(FRAME).expect("o laço de frame existe");
     let body = fulfilment(&src);
 
-    let straight = body
+    // ⚠️ **A asserção é sobre o caminho da imagem GUARDADA, e o recorte é o
+    // conserto de um proxy que envelheceu.** A 1ª versão procurava a primeira
+    // `from_rgba` do bloco inteiro; quando o padrão passou a consultar as CAMADAS
+    // vivas antes (`composite_to_lum`), a primeira `from_rgba` virou a do
+    // composite — e ela é ISENTA por construção: a luminância entra como cinza
+    // OPACO, onde premultiplicar é a identidade. Quem pode chegar premultiplicado
+    // é o readback do sprite, então é dele que esta ordem fala.
+    let stored = body
+        .split_once("read_sprite_source(")
+        .expect("o cumprimento lê os pixels do sprite")
+        .1;
+    let straight = stored
         .find("into_straight()")
         .expect("o cumprimento converte para straight");
-    let build = body
+    let build = stored
         .find("AlphaImage::from_rgba")
         .expect("o cumprimento constrói a imagem");
     assert!(

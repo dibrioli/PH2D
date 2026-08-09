@@ -532,3 +532,52 @@ fn the_two_lights_agree_where_the_form_turns_away() {
 /// luzes concordam?* e sim *a luz sobrevive à viagem por 8 bits?*.
 #[path = "sculpt3d_bake_form_bytes.rs"]
 mod form_bytes;
+
+/// **UMA CENA QUE NASCE NÃO É UM GESTO DO ARTISTA.**
+///
+/// O [`crate::sculpt3d::bake::follow_live_rig`] re-autora o rig de TODO objeto assado, e o campo
+/// que ele sobrescreve — `BakedForm::rig` — é o rig **AUTORADO no bake**, cujo próprio doc-comment
+/// diz que ele viaja no arquivo para *"reabrir o projeto não acender o objeto com o rig DEFAULT"*.
+///
+/// ⚠️ **As duas frases só se encontraram quando o pill SCULPT passou a criar cenas.** Antes disso a
+/// cena 3D só nascia atrás de uma variável de ambiente; hoje um clique a cria com o rig default, e
+/// sem esta borda todo sprite já assado do documento era re-aceso com uma luz que ninguém escolheu
+/// — que é, da cadeira do artista, *"o Bake to Sprite disparando sozinho"* (Enio, 2026-08-09).
+///
+/// ⚠️ **A asserção do MEIO é a que impede a cura de virar um congelamento:** mexer na lâmpada TEM
+/// de continuar re-autorando, senão o objeto assado fica com a luz de quando foi assado e o
+/// *"mova a lâmpada e ele RE-ACENDE"* que o toast promete vira mentira.
+#[test]
+#[ignore = "requires a GPU adapter (no GPU on CI); run with --ignored on a dev machine"]
+fn a_newborn_scene_does_not_re_author_the_light_of_what_is_already_baked() {
+    let Some(gpu) = gpu() else {
+        eprintln!("no GPU adapter on this machine — nothing to assert");
+        return;
+    };
+    let mut scene = crate::sculpt3d::Sculpt3dScene::new(
+        &gpu.device,
+        ph2d_mesh::shapes::uv_sphere(12, 24, 1.0),
+        1.0,
+    );
+    assert!(
+        !scene.take_rig_edge(),
+        "a cena recém-criada anuncia um gesto de lâmpada: todo objeto assado do documento é \
+         re-aceso com o rig default, sem ninguém ter pedido"
+    );
+
+    // O mesmo gesto que o `Q`/`E` faz — pela porta do rig, que é onde ele mora.
+    {
+        let l = scene.rig.current_mut();
+        l.angle_deg = (l.angle_deg + 15) % 360;
+    }
+    assert!(
+        scene.take_rig_edge(),
+        "mover a lâmpada não é reconhecido: o objeto assado congela com a luz de quando foi assado, \
+         e o `mova a lampada e ele RE-ACENDE` do toast passa a mentir"
+    );
+    assert!(
+        !scene.take_rig_edge(),
+        "a borda sobrevive ao frame: o rig seria re-autorado todo frame e a testemunha deixaria de \
+         distinguir gesto de existência"
+    );
+}

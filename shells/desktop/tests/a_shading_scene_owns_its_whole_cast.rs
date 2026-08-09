@@ -149,10 +149,16 @@ fn the_scene_rig_reaches_the_session() {
     // ⚠️ **Um SEED é uma chamada; uma DECLARAÇÃO de campo não é** — e a 1ª
     // versão deste gate ancorou na declaração (`rig: LightRig,`) e reprovou
     // produto correto. O filtro é essa diferença, e não uma posição no arquivo.
+    //
+    // ⚠️ **E ele aceita o campo semeado por um BINDING** (`let rig = …;` +
+    // `rig,`), que é como o construtor passou a fazer quando a testemunha do rig
+    // nasceu: o carimbo e o rig TÊM de sair da mesma expressão, senão a
+    // testemunha nasce discordando do que ela testemunha. A forma sintática do
+    // seed é um endereço; o que este gate afirma é *de onde a luz vem*.
     let seeds: Vec<&str> = src
         .lines()
         .map(str::trim)
-        .filter(|l| l.starts_with("rig: ") && l.contains('('))
+        .filter(|l| (l.starts_with("rig: ") || l.starts_with("let rig = ")) && l.contains('('))
         .collect();
 
     // **Controle positivo:** se o campo sumir ou for renomeado, isto falha ALTO

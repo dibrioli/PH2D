@@ -235,3 +235,81 @@ fn the_panel_visibility_is_written_by_the_edge_of_the_clay() {
         "a regra do `abre uma vez` voltou: fechar o painel passa a custá-lo para o resto da sessão"
     );
 }
+
+/// **O padrão do pincel vem do que o artista VÊ, não do que o sprite GUARDA.**
+///
+/// Um sprite cuja aparência nasce do sistema de CAMADAS do Painter (procedurais, ajustes, blend)
+/// continua apontando para a imagem de ORIGEM. Ler a origem devolve outra textura — e é literalmente
+/// o report do Enio (2026-08-09): *"veja a textura ao lado e veja a textura no preview"*, com
+/// *"é preciso que as texturas geradas proceduralmente no sistema de camadas da sprite tb
+/// funcionem"* como a outra metade da mesma frase.
+///
+/// ⚠️ **A porta não é nova: é a MESMA do "Use as Brush Grain"**, cujo doc-comment no Painter já a
+/// nomeia como *a fonte para usar o documento vivo como padrão*. Uma segunda resposta a *"como este
+/// documento vira um padrão?"* divergiria dela na primeira camada de ajuste.
+///
+/// ⚠️ E a ORDEM é a asserção: as camadas vivas vêm ANTES da imagem de origem. Invertida, o
+/// fallback ganha sempre — que é exatamente o mundo que o Enio fotografou.
+#[test]
+fn the_brush_pattern_reads_the_live_layers_before_the_stored_image() {
+    let src = fs::read_to_string(FRAME).expect("o laço de frame existe");
+    let arm = src
+        .find("sculpt3d_alpha_request, false")
+        .expect("o braço do padrão por imagem existe");
+    let tail = &src[arm..];
+    assert!(
+        tail.contains("composite_to_lum()"),
+        "o padrão não pergunta pelas CAMADAS vivas: uma textura procedural do sprite chega como a \
+         imagem de origem, que é outra coisa"
+    );
+    assert!(
+        tail.contains("read_sprite_source("),
+        "o padrão perdeu o caminho da imagem guardada — um sprite sem documento vivo deixa de \
+         servir de padrão"
+    );
+    // ⚠️ **A ORDEM que importa é a da CONSULTA, não a das definições.** A 1ª versão deste gate
+    // comparava onde cada uma APARECE no arquivo, e a mutação que troca o combinador
+    // (`baked().or(live)`) passava por ela: as duas continuam escritas na mesma ordem, e só a
+    // decisão muda. O sujeito é o escrutínio do `match`, que é onde a escolha de fato acontece.
+    let scrutinee = tail
+        .split_once("let line = match ")
+        .expect("a escolha entre as duas fontes mora num `match`")
+        .1;
+    assert!(
+        scrutinee.starts_with("live"),
+        "a imagem GUARDADA é consultada antes das camadas VIVAS: o fallback ganha sempre e o \
+         procedural nunca chega ao pincel"
+    );
+    // ⚠️ E perguntar o que a tela mostra não pode trocar a ferramenta da mão do artista.
+    assert!(
+        !tail[..tail.find("read_sprite_source(").expect("conferido acima")].contains("set_active("),
+        "o padrão ATIVA o Painter para poder perguntar: o artista perde a ferramenta que tinha na \
+         mão por causa de uma leitura"
+    );
+}
+
+/// **E o laço de frame HONRA a borda da lâmpada.**
+///
+/// ⚠️ **Um gate de unidade é cego à fiação do shell, e este par é a prova:** a testemunha
+/// (`take_rig_edge`) tem gate próprio ao lado da cena, e ele fica VERDE com o `follow_live_rig`
+/// chamado incondicionalmente — a mutação passou por ele. O que decide a arte do documento não é a
+/// testemunha existir, é o laço de frame perguntar a ela.
+#[test]
+fn the_frame_only_re_authors_the_baked_light_when_the_lamp_moved() {
+    let src = fs::read_to_string(FRAME).expect("o laço de frame existe");
+    assert!(
+        src.contains("if scene.take_rig_edge() {"),
+        "o laço re-autora o rig dos objetos assados sem perguntar se a lâmpada MOVEU: uma cena \
+         recém-criada re-acende a arte inteira com o rig default"
+    );
+    let guard = src
+        .find("if scene.take_rig_edge() {")
+        .expect("o guard existe");
+    let call = src
+        .find("bake::follow_live_rig(")
+        .expect("o laço re-autora o rig dos objetos assados");
+    assert!(
+        guard < call && call - guard < 200,
+        "a chamada saiu de dentro do guard da borda: ela volta a rodar todo frame"
+    );
+}

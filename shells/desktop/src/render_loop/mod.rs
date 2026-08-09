@@ -1124,45 +1124,74 @@ impl crate::App {
             // ponto do frame em que a cena 3D, o mundo 2D, o renderizador e o
             // mapa de atlas estão os quatro em escopo.
             if std::mem::replace(&mut self.sculpt3d_alpha_request, false) {
-                let read = selected.and_then(|bits| {
-                    crate::hero_intents::texture_edit::read_sprite_source(
-                        ph2d_ecs::Entity::from_bits(bits),
-                        sim,
-                        renderer,
-                        asset_db,
-                        atlas_asset_map,
-                    )
+                // ── O que o artista VÊ, e não o que o sprite GUARDA. ──
+                // ⚠️ Um sprite cuja aparência vem do sistema de CAMADAS do Painter (procedurais,
+                // ajustes, blend) ainda aponta para a imagem de origem: ler a origem devolve outra
+                // textura, e o padrão sai diferente do que está na tela (Enio, 2026-08-09: *"veja a
+                // textura ao lado e veja a textura no preview"*).
+                //
+                // ⚠️ **A porta já existe e é a MESMA do "Use as Brush Grain"** — o Painter resolveu
+                // esta pergunta uma vez (`composite_to_lum`, cujo doc-comment a nomeia) e uma
+                // segunda resposta divergiria dela. Ela é pedida SEM ativar o Painter
+                // (`tool_by_id_mut`), porque perguntar o que a tela mostra não pode trocar a
+                // ferramenta da mão do artista.
+                //
+                // ⚠️ E a luminância entra como CINZA OPACO: a lei do `AlphaImage` é
+                // `luminância × alfa`, e sobre um cinza opaco ela devolve a própria luminância —
+                // então o composite atravessa exato, sem um segundo cálculo de luminância.
+                let live = selected.and_then(|bits| {
+                    let painter = tools
+                        .tool_by_id_mut(&ph2d_editor::ToolId::new("painter"))?
+                        .as_any_mut()
+                        .downcast_mut::<ph2d_tool_painter::PainterTool>()?;
+                    if painter.needs_document_bind(bits) {
+                        return None;
+                    }
+                    let (lum, w, h) = painter.composite_to_lum()?;
+                    let rgba: Vec<u8> = lum.iter().flat_map(|&l| [l, l, l, 255]).collect();
+                    ph2d_sculpt3d::AlphaImage::from_rgba(w, h, &rgba).map(|a| (a, "as CAMADAS"))
                 });
-                let line = match read {
-                    Some(r) => {
-                        // ⚠️ **STRAIGHT, e a conversão é load-bearing:** a lei do
-                        // `AlphaImage` é `luminância × alfa`, e num buffer
-                        // PREMULTIPLICADO a luminância já traz o alfa dentro — o
-                        // peso sairia com o alfa ao QUADRADO, e toda borda macia
-                        // ficaria mais fina do que o desenho é. Um sprite
-                        // `Individual` volta premultiplicado do readback, então
-                        // este não é um caso de canto.
-                        let img = r.image.into_straight();
-                        match ph2d_sculpt3d::AlphaImage::from_rgba(
-                            img.width,
-                            img.height,
-                            &img.pixels,
-                        ) {
-                            Some(a) => {
-                                let (w, h) = (a.width(), a.height());
-                                scene.set_alpha_image(a);
-                                format!("[sculpt3d] padrao: a imagem selecionada ({w}x{h})")
-                            }
-                            None => "[sculpt3d] o sprite nao descreve uma imagem".to_string(),
-                        }
+                // ── E o que o sprite guarda, quando não há camadas vivas. ──
+                // ⚠️ **STRAIGHT, e a conversão é load-bearing:** a lei do `AlphaImage` é
+                // `luminância × alfa`, e num buffer PREMULTIPLICADO a luminância já traz o alfa
+                // dentro — o peso sairia com o alfa ao QUADRADO, e toda borda macia ficaria mais
+                // fina do que o desenho é. Um sprite `Individual` volta premultiplicado do
+                // readback, então este não é um caso de canto.
+                let baked = || {
+                    let r = selected.and_then(|bits| {
+                        crate::hero_intents::texture_edit::read_sprite_source(
+                            ph2d_ecs::Entity::from_bits(bits),
+                            sim,
+                            renderer,
+                            asset_db,
+                            atlas_asset_map,
+                        )
+                    })?;
+                    let img = r.image.into_straight();
+                    ph2d_sculpt3d::AlphaImage::from_rgba(img.width, img.height, &img.pixels)
+                        .map(|a| (a, "a imagem"))
+                };
+                let line = match live.or_else(baked) {
+                    Some((a, what)) => {
+                        let (w, h) = (a.width(), a.height());
+                        scene.set_alpha_image(a);
+                        format!("[sculpt3d] padrao: {what} do sprite selecionado ({w}x{h})")
+                    }
+                    None if selected.is_some() => {
+                        "[sculpt3d] o sprite nao descreve uma imagem".to_string()
                     }
                     None => "[sculpt3d] selecione um sprite para usar como padrao".to_string(),
                 };
                 eprintln!("{line}");
                 toasts.push(Toast::success(line));
             }
-            // Enquanto a cena existe, a luz dela AUTORA os objetos que ela assou.
-            crate::sculpt3d::bake::follow_live_rig(baked_forms, scene.rig());
+            // Enquanto a cena existe, a luz dela AUTORA os objetos que ela assou — **mas só quando
+            // o artista de fato MEXE nela**. Ver `Sculpt3dScene::take_rig_edge`: uma cena que
+            // acabou de nascer não é um gesto, e tratá-la como um re-acendia todo objeto assado do
+            // documento com o rig default, sem ninguém ter pedido.
+            if scene.take_rig_edge() {
+                crate::sculpt3d::bake::follow_live_rig(baked_forms, scene.rig());
+            }
         }
         // **A RE-ACENDIDA, e ela NÃO está atrás da feature.** É esta linha que torna a promessa da
         // rota A (`docs/3D/02.2`) verificável em vez de prosa: um objeto assado que voltou de um

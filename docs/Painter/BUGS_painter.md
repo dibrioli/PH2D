@@ -29,6 +29,107 @@
 | [19](#bug-19--o-smudge-forkava-o-canvas-do-documento-em-todo-evento-e-o-oráculo-por-endereço-não-via) | **Aquarela**: o **Smudge** forkava o canvas do DOCUMENTO em todo evento (67 MB) — e o gate por ENDEREÇO lia "não moveu" | `smear_wet_base` (`Arc::make_mut` com dois donos) | ✅ Resolvido (carimbo 9,8× · quadro 3,05×) | 2026-08-02 |
 | [20](#bug-20--o-véu-de-umidade-426-msquadro-no-shell-invisível-a-toda-sonda-de-bancada) | **Aquarela**: o **véu de umidade** custava 42,6 ms/quadro no SHELL — invisível a toda sonda de bancada | `draw_wetness_overlay` (densidade de construção ≠ de exibição) | ✅ Resolvido (220,8 → 16,6 ms; smoke Enio 2026-08-02) | 2026-08-02 |
 | [21](#bug-21--a-secagem-custava-10-16-ms-em-todo-quadro-e-três-curas-byte-idênticas-mediram-100) | **Aquarela**: a **secagem** custava 10-16 ms em TODO quadro — e três curas byte-idênticas mediram **1,00×** | `dry_canvas_wet` / `pour_canvas_wet` (o custo era o CAMINHAR) | ✅ Resolvido (9,3× e 19,8×, row-parallel; smoke Enio 2026-08-02) | 2026-08-02 |
+| [22](#bug-22--composite-brush-a-sessão-de-smear-nunca-era-encerrada--o-desenho-inteiro-escorregava) | **Composite Brush**: "não pinta mais que uma mancha" → retângulos → escada → **o desenho inteiro escorregando** — quatro rodadas, e a guarda que fechava a sessão era uma ENUMERAÇÃO | `end_smear_session` (`paint_mode.smears()`) — a pilha é o **terceiro** membro da família do smear | ✅ Resolvido (smoke Enio 2026-08-09: *"finalmente correto!"*) | 2026-08-09 |
+
+## Bug #22 — Composite Brush: a sessão de smear nunca era encerrada — o desenho inteiro escorregava
+
+**Sintoma, em quatro rodadas, cada uma com uma aparência diferente.** Enio, depois de os outros três
+meios de pintura landarem: *"o digital bugou em seu feature Composite Brush, que agora não consegue
+pintar mais que uma mancha de tinta e parece estar com o bug das áreas retangulares"*. Corrigido isso,
+vieram **estrias**, depois uma **escada axis-aligned**, depois uma assimetria (*"por que só na borda
+inferior?"*), e por fim — com o serrilhado já resolvido — *"por que esse resultado bizarro?"*: os
+cruzamentos dos traços apareciam **arrastados na diagonal**, com uma cunha de borda reta, e a arte
+não parava de escorregar enquanto o artista pintava.
+
+**A causa-raiz é uma linha, e o código já a tinha avisado.** `end_smear_session` perguntava
+`self.paint.paint_mode.smears()` — isto é, *Smear ou Knife*. A **camada Smear da pilha do Composite
+Brush roda em `PaintMode::Paint`**, então a resposta era NÃO e **a sessão de warp nunca era
+encerrada**. O doc-comment do próprio `PaintMode::smears` diz, palavra por palavra, o que acontece:
+
+> *"Every site that dispatches the smear asks HERE rather than testing `== Smear`, because an
+> enumeration of those sites is exactly what rots when a second member joins the family."*
+
+A pilha é o **terceiro** membro. A guarda que aquele doc justifica estava, ela mesma, escrita como a
+enumeração que ele condena — e num sítio que o doc não cobria (quem **FECHA**, não quem despacha).
+
+**Medido** (`probe_composite_session_lifetime`, três traços em composite):
+
+| | traço 1 | traço 2 | traço 3 |
+|---|---|---|---|
+| `warp.active` no pen-up | true | true | true |
+| texels com `disp` ≠ 0 | 9.904 | 19.808 | **29.712** |
+| região re-renderizada (altura) | 41 | 81 | **121** |
+
+Ou seja: a **fonte congelada** (`warp.pre`) era a do PRIMEIRO pen-down do documento, o campo de
+deslocamento **somava para sempre**, e cada batch re-resolvia a região **CUMULATIVA** através dele.
+Deriva do centroide dos texels de build-up contra o controle: **12,58 px** antes, **7,43 px** depois
+(o resíduo é o arrasto legítimo *dentro* do traço). Numa cena de três traços a diferença é 1,7×; ela
+**não tem teto** — cresce com o desenho, e o custo junto.
+
+**⚠️ E as três curas anteriores da mesma wave amplificaram a causa enquanto curavam sintomas.** Elas
+estão certas e continuam load-bearing:
+
+| commit | o que curou | por que continua necessário |
+|---|---|---|
+| `1d11d0da9` | o smear re-renderiza **tudo** que a sessão deslocou, não só o batch | a fonte deixou de ser imutável (a camada Brush deposita nela), então um texel deslocado fora deste batch mostraria uma fonte que não existe mais — **dentro** de um traço isso continua valendo |
+| `592091c89` | marca sujo o que foi **RENDERIZADO**, não o que foi deslocado | os texels re-resolvidos fora do `rect` não subiam para a tela; era a assimetria da borda inferior |
+| `3d6f0983b` | a dobra passa pela **porta** (`swap_canvas_plane`), repõe `stroke_mask`/`tex_rng`, e o Blur ganha a dela | sem elas o journal de undo é envenenado, o cap de Accumulate se esgota e o Blur é desfeito |
+
+⚠️ Mas o `touched_all` do primeiro, **combinado com uma sessão que nunca fecha**, transforma "a região
+cumulativa do traço" em "a união de tudo o que já foi esfregado no documento". Foi por isso que o
+serrilhado **sumiu** e o defeito passou a parecer *bizarro* em vez de *quebrado*: o dano deixou de ser
+uma escada de retângulos por batch e virou uma **deriva global e coerente**. *Curar o sintoma
+amplificou a causa, e a foto ficou mais bonita e mais errada.*
+
+**A solução.** A pergunta é sobre a **SESSÃO**, não sobre o modo — e o único dono **cross-traço** é o
+Deform, cuja sessão atravessa traços de propósito (o Reconstruct precisa da história, e Apply/Reset a
+encerram):
+
+```rust
+if self.paint.warp.active && self.paint.paint_mode != PaintMode::Deform {
+    self.end_warp_session();
+}
+```
+
+Assim o **quarto** membro da família nasce coberto, em vez de nascer com a sessão vazando.
+
+**Gate:** `the_composite_stack_closes_its_smear_session_at_pen_up`, com quatro metades e nenhuma
+implica as outras — **CONTROLE** (a sessão está VIVA no meio do traço; sem ele o gate passa com o
+Smear morto) · morre no pen-up e o `disp` é liberado · **não cresce entre traços** · e **o Deform
+segue isento** (a metade que um predicado só-`warp.active` quebraria). Mutação (voltar a `smears()`)
+sangra na segunda metade.
+
+**⚠️ Quatro sondas numéricas minhas não continham o fenômeno.** Rampa 90%..10% de borda livre, num
+traço reto sobre papel limpo, mediu **7 texels nas QUATRO combinações da pilha** — controle, +Smear,
++Blur, tudo. O fenômeno só apareceu **renderizando e olhando** (sonda nova `composite_look.rs`, com
+encoder PNG próprio de ~60 linhas: zero dependência nova). E a fixture só o contém sob **duas**
+condições que eu não tinha:
+
+1. **Strength < 1.** Com o pincel opaco os cruzamentos **saturam**, e as imagens com e sem pilha saem
+   idênticas. Na foto do Enio os cruzamentos **escurecem** — é o build-up que dá contraste ao
+   deslocamento, e o cruzamento é o **único** lugar da cena onde o arrasto do Smear é visível.
+2. ⚠️ **A pilha SUBSTITUI a Strength do pincel pela da camada** (`stamp_dabs_composite` escreve
+   `brush.strength = layer.strength`, e o default da camada Brush é 1,0). Um A/B que não iguale as
+   duas compara **opacidades diferentes** e não diz nada sobre a pilha — a minha primeira comparação
+   com Strength 0,5 mediu uma lavagem pálida contra uma pintura saturada e eu quase a li como achado.
+
+**Lições generalizáveis.**
+1. **Um doc-comment que nomeia uma classe de defeito não protege o sítio em que ele está escrito.** O
+   `smears()` avisa contra enumerar *quem despacha* o smear; a enumeração que sangrou era de *quem o
+   FECHA*, um sítio adiante. Ao escrever essa advertência, varra os dois lados do ciclo de vida.
+2. **Uma pergunta sobre CICLO DE VIDA se faz ao objeto que tem o ciclo, não a quem o abriu.** *"Este
+   modo esfrega?"* enumera donos; *"a sessão viva é por-traço?"* é uma propriedade da sessão, e a
+   isenção (o Deform) é nomeável e única.
+3. **Curar um sintoma pode amplificar a causa.** Alargar a região re-renderizada tornou o dano
+   coerente em vez de retangular — a escada sumiu e a deriva ficou global. Quando um fix melhora a
+   aparência sem que você tenha nomeado o mecanismo, desconfie de que ele mudou a **forma** do
+   defeito.
+4. **Quando quatro sondas numéricas medem o mesmo número nas quatro configurações, a fixture é que
+   está errada** — não o produto. Renderize e olhe; é mais barato que a quinta sonda.
+5. **O parâmetro que a feature SUBSTITUI é ingrediente da fixture.** Um A/B sobre um controle que o
+   caminho sob teste sobrescreve mede outra coisa, com números que parecem legítimos.
+
+---
 
 ## Bug #21 — A secagem custava 10-16 ms em TODO quadro, e três curas byte-idênticas mediram 1,00×
 

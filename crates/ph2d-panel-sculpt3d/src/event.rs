@@ -29,6 +29,7 @@ pub(crate) const COMMANDS: &[(ph2d_a11y::NodeId, Sculpt3dIntent)] = &[
     (ids::SCULPT3D_CLOSE_HOLES, Sculpt3dIntent::CloseHoles),
     (ids::SCULPT3D_BAKE_AO, Sculpt3dIntent::BakeAo),
     (ids::SCULPT3D_BAKE_SPRITE, Sculpt3dIntent::BakeToSprite),
+    (ids::SCULPT3D_ALPHA_SPRITE, Sculpt3dIntent::AlphaFromSprite),
     (ids::SCULPT3D_DUPLICATE, Sculpt3dIntent::Duplicate),
     (ids::SCULPT3D_DELETE, Sculpt3dIntent::Delete),
     (ids::SCULPT3D_ISOLATE, Sculpt3dIntent::ToggleIsolate),

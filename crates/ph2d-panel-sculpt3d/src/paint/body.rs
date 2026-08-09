@@ -195,6 +195,25 @@ fn paint_brush_tail(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32,
         w,
         y,
     );
+    // **O ALPHA POR IMAGEM**, logo abaixo da fileira de nomes — e ele é um
+    // BOTÃO, não um décimo chip. A fileira lista NOMES (as nove fórmulas); uma
+    // imagem não é um nome, é uma coisa para a qual se aponta. Um chip "Image"
+    // teria de existir antes de haver pixels, e é justamente esse estado que o
+    // `Alpha::Image` torna inexprimível ao carregar a imagem dentro de si.
+    //
+    // ⚠️ **Sem sprite selecionado ele NÃO é pintado**, e não é dimming: um botão
+    // que só pode falhar é como o artista aprende que ele não funciona. É a
+    // mesma decisão do "Bake to Sprite" logo acima, que mostra uma dica no lugar.
+    if snap.has_bake_target {
+        y = command(
+            ctx,
+            ids::SCULPT3D_ALPHA_SPRITE,
+            tr("panel.sculpt3d.alpha_sprite"),
+            x,
+            w,
+            y,
+        );
+    }
     // ⚠️ **A pista de escala vem AQUI, colada nos chips que a governam** — e não
     // no bloco de knobs acima, que é onde ela nasceu e onde o smoke a perdeu:
     // lá ela aparecia do nada, separada do seletor pela fileira do Falloff, e o

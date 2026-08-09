@@ -538,6 +538,12 @@ pub(crate) struct App {
     /// frame. É o mesmo desenho do `sculpt3d_canvas_done` ao lado, e sem `cfg` pela mesma razão:
     /// um `bool` não é símbolo do módulo 3D.
     pub(crate) sculpt3d_bake_request: bool,
+    /// **O pedido de usar o sprite selecionado como PADRÃO do pincel.**
+    ///
+    /// ⚠️ **Irmão do `sculpt3d_bake_request` acima, e pela mesma razão:** ler os
+    /// pixels de um sprite precisa do mundo, do renderizador e do mapa de atlas,
+    /// e os três só estão em escopo dentro do laço de frame.
+    pub(crate) sculpt3d_alpha_request: bool,
     /// **O documento de escultura como veio do arquivo.** ⚠️ **Sem `cfg`, e é
     /// deliberado:** ele é `Vec<u8>` opaco, não um símbolo do módulo, e é isso
     /// que faz um binário construído SEM a escultura ser um **passa-adiante** em

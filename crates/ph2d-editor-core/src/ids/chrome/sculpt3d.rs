@@ -224,6 +224,21 @@ pub const SCULPT3D_BAKE_AO: NodeId = hash_node_id("sculpt3d.bake_ao");
 /// teclas que nada na tela menciona é um verbo que só quem o escreveu alcança.
 pub const SCULPT3D_BAKE_SPRITE: NodeId = hash_node_id("sculpt3d.bake_sprite");
 
+/// **USAR O SPRITE SELECIONADO COMO PADRÃO** — o alpha por IMAGEM.
+///
+/// ⚠️ **Um BOTÃO e não um chip, e a diferença não é de gosto:** a fileira de
+/// chips lista NOMES (os nove padrões que são fórmulas), e uma imagem não é um
+/// nome — é uma coisa para a qual se aponta. Um chip *"Image"* teria de existir
+/// antes de haver pixels, e é exatamente esse estado que o
+/// [`ph2d_sculpt3d::Alpha::Image`] torna inexprimível ao carregar a imagem
+/// dentro de si.
+///
+/// ⚠️ **Ele é o irmão do *"Use as Brush Shape"* do Painter 2D**, e o gesto é o
+/// mesmo: o artista seleciona um sprite no canvas e aperta. Sem sprite
+/// selecionado o botão **não é pintado** — um botão que só pode falhar é a
+/// forma de o artista aprender que ele não funciona.
+pub const SCULPT3D_ALPHA_SPRITE: NodeId = hash_node_id("sculpt3d.alpha_sprite");
+
 /// **COM QUE LUZ o barro é mostrado** — a primeira opção é o RIG DO ARTISTA e as
 /// outras são os matcaps de [`ph2d_mesh_render::MATCAPS`].
 ///

@@ -370,6 +370,7 @@ pub fn tr(key: &str) -> &'static str {
         // e a palavra sozinha não os separa: o de cima escreve um canal na
         // MALHA, este escreve a forma inteira no SPRITE selecionado.
         "panel.sculpt3d.bake_sprite" => "Light the Selected Sprite",
+        "panel.sculpt3d.alpha_sprite" => "Use Selected Sprite as Pattern",
         "panel.sculpt3d.bake_sprite.hint" => "Select a sprite on the canvas — the form lights IT",
         "panel.sculpt3d.ssao" => "Screen Occlusion",
         "panel.sculpt3d.sss" => "Subsurface",

@@ -258,6 +258,13 @@ pub enum Sculpt3dIntent {
     /// mesmo caminho que o `Shift+B` já usava, e é por passarem pela MESMA porta
     /// que o botão e o atalho não podem divergir.
     BakeToSprite,
+    /// **Usar o sprite selecionado como padrão** — o alpha por IMAGEM.
+    ///
+    /// ⚠️ **Ele ARMA e sai, pelo mesmo motivo do [`Self::BakeToSprite`] logo
+    /// acima:** ler os pixels de um sprite precisa do mundo, do renderizador e
+    /// do mapa de atlas, e os três só existem dentro do laço de frame. O painel
+    /// não sabe o que é um atlas — e não deve saber.
+    AlphaFromSprite,
     /// As quatro primitivas, na ordem em que o painel as lista.
     ///
     /// ⚠️ **Um comando por forma, e não um enum espelho do `Primitive` do

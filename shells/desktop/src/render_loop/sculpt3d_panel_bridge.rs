@@ -30,13 +30,16 @@ use crate::sculpt3d::Sculpt3dScene;
 /// `Shift+B` arma: uma porta, dois pedintes, e por isso o botão e o atalho não
 /// podem divergir. É o precedente do `physics_panel_bridge`, que devolve o
 /// `show_colliders` pela mesma razão.
-pub(crate) fn dispatch(hero: &mut HeroScreen, scene: Option<&mut Sculpt3dScene>) -> bool {
+pub(crate) fn dispatch(
+    hero: &mut HeroScreen,
+    scene: Option<&mut Sculpt3dScene>,
+) -> Vec<crate::sculpt3d::Sculpt3dFrameRequest> {
     let Some(scene) = scene else {
         // Sem cena não há retrato — e é isso que faz o `paint` do painel sair no
         // primeiro `if`. Publicar um retrato vazio seria pior: seis seções de
         // controles apontando para uma escultura que não existe.
         ph2d_panel_sculpt3d::set_current_sculpt3d(None);
-        return false;
+        return Vec::new();
     };
 
     // ── 1. Abrir, uma vez. ──
@@ -55,9 +58,16 @@ pub(crate) fn dispatch(hero: &mut HeroScreen, scene: Option<&mut Sculpt3dScene>)
     ph2d_panel_sculpt3d::set_current_sculpt3d(Some(scene.panel_snapshot(has_bake_target)));
 
     // ── 3. Aplicar. O painel enfileirou os intents no dispatch de eventos. ──
-    let mut want_bake = false;
+    // ⚠️ **Os pedidos ACUMULAM num conjunto, não num `Option`:** dois gestos
+    // podem cair no mesmo frame (o artista clica os dois botões antes de o frame
+    // virar), e guardar só o último perderia um em silêncio.
+    let mut want = Vec::new();
     for intent in ph2d_panel_sculpt3d::drain_intents() {
-        want_bake |= scene.apply_panel_intent(intent);
+        if let Some(req) = scene.apply_panel_intent(intent)
+            && !want.contains(&req)
+        {
+            want.push(req);
+        }
     }
-    want_bake
+    want
 }

@@ -366,6 +366,7 @@ fn every_command_reaches_the_shell() {
         (ids::SCULPT3D_MERGE, Sculpt3dIntent::Merge),
         (ids::SCULPT3D_BAKE_AO, Sculpt3dIntent::BakeAo),
         (ids::SCULPT3D_BAKE_SPRITE, Sculpt3dIntent::BakeToSprite),
+        (ids::SCULPT3D_ALPHA_SPRITE, Sculpt3dIntent::AlphaFromSprite),
         (ids::SCULPT3D_ADD[0], Sculpt3dIntent::AddSphere),
         (ids::SCULPT3D_ADD[1], Sculpt3dIntent::AddCube),
         (ids::SCULPT3D_ADD[2], Sculpt3dIntent::AddCylinder),
@@ -1083,5 +1084,48 @@ fn the_bake_labels_are_translated() {
             key,
             "`{key}` nao tem traducao e chegaria a tela como a propria chave"
         );
+    }
+}
+
+/// **O botão do alpha por imagem existe SÓ com um sprite selecionado**, e as
+/// duas metades estão no mesmo gate.
+///
+/// ⚠️ **Ausência, não dimming.** Um botão que só pode falhar é como o artista
+/// aprende que ele não funciona; é a mesma decisão do "Light the Selected
+/// Sprite" logo acima, que troca o botão por uma dica quando não há alvo.
+///
+/// ⚠️ **E o oráculo do lado presente CLICA**, não só olha: pintar um retângulo
+/// e registrá-lo são coisas diferentes de estar vivo sob o mouse — a falha que
+/// este arquivo existe para pegar.
+#[test]
+fn the_pattern_from_sprite_button_needs_a_selected_sprite() {
+    for has in [false, true] {
+        let (mut host, mut state) = arrange(Sculpt3dUi::default());
+        set_current_sculpt3d(Some(Sculpt3dSnapshot {
+            ui: Sculpt3dUi::default(),
+            has_bake_target: has,
+            ..Sculpt3dSnapshot::default()
+        }));
+        let painted = host.paint::<Sculpt3dPanel>(&mut state, VIEWPORT);
+        assert_eq!(
+            painted
+                .iter()
+                .any(|(id, _)| *id == ids::SCULPT3D_ALPHA_SPRITE),
+            has,
+            "com sprite={has} o botao devia {}",
+            if has { "estar la'" } else { "sumir" }
+        );
+        if has {
+            let outcome = host.apply_panel_event::<Sculpt3dPanel>(
+                &mut state,
+                WidgetEvent::Click(ids::SCULPT3D_ALPHA_SPRITE),
+            );
+            assert_eq!(
+                outcome,
+                EventOutcome::Consumed,
+                "o botao e' pintado e o clique nao chega ao barramento"
+            );
+            assert_eq!(only_intent("alpha"), Sculpt3dIntent::AlphaFromSprite);
+        }
     }
 }

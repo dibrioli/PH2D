@@ -79,6 +79,31 @@ pub(crate) fn for_scene(mesh: &ph2d_mesh::Mesh) {
             l(up) / l(down)
         );
     }
+    if crate::sculpt3d::alpha_image_scene() {
+        eprintln!(
+            "[sculpt3d] =25 O ALPHA POR IMAGEM -- uma esfera SULCADA e um sprite na mesa.\n\
+             [sculpt3d]    Ate' agora os padroes eram NOVE FORMULAS: o artista escolhia um nome.\n\
+             [sculpt3d]    Agora ele pode APONTAR para uma imagem, e ela vira o padrao do pincel.\n\
+             [sculpt3d]    A lei e' a do ZBrush e a do slot Shape do Painter -- BRANCO E' CHEIO\n\
+             [sculpt3d]    (luminancia), e um texel TRANSPARENTE nao tem tinta nenhuma.\n\
+             [sculpt3d]    (1) Clique o SPRITE no canvas para selecionar. Abra o painel com a\n\
+             [sculpt3d]        CRASE (`) -- na secao Brush, logo abaixo da fileira de padroes,\n\
+             [sculpt3d]        aparece 'Use Selected Sprite as Pattern'.\n\
+             [sculpt3d]    ⚠️ Sem sprite selecionado o botao NAO EXISTE -- ele nao fica apagado.\n\
+             [sculpt3d]       Um botao que so' pode falhar e' como se aprende que ele nao funciona.\n\
+             [sculpt3d]    (2) Aperte-o. O log diz o TAMANHO que ele leu; se nao disser, PARE.\n\
+             [sculpt3d]        O swatch do preview passa a mostrar a imagem, e a escala e'\n\
+             [sculpt3d]        SEMEADA com o que este modelo comporta (sem isso os poros saem\n\
+             [sculpt3d]        gigantescos -- e' um smoke que ja' foi reprovado assim).\n\
+             [sculpt3d]    (3) ESCULPA. O relevo tem de sair com o desenho da imagem, LADRILHADO\n\
+             [sculpt3d]        pela superficie -- nao um carimbo unico com borda. Ele e' um\n\
+             [sculpt3d]        PADRAO, irmao dos nove, nao a ponta finita do slot Shape.\n\
+             [sculpt3d]    (4) A imagem e' DIRECIONAL: arraste 'Pattern Angle' e ela tem de GIRAR\n\
+             [sculpt3d]        na peca. As duas pistas de eixo aparecem por isso.\n\
+             [sculpt3d]    (5) Volte ao chip 'None' da fileira: o pincel volta a ser liso, e o\n\
+             [sculpt3d]        botao continua la' para apontar de novo."
+        );
+    }
     if crate::sculpt3d::cavity_scene() {
         // ⚠️ **A cena MEDE a escada antes de falar dela.** Um roteiro que
         // dissesse *"há sete sulcos de profundidades diferentes"* sem contar os

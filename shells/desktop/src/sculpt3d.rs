@@ -51,6 +51,7 @@ pub(crate) use cursor::{OFF_SURFACE_RGBA, ON_SURFACE_RGBA};
 /// próprio (o gesto chega como DADO, um frame depois, pela fila de intents).
 #[path = "sculpt3d_panel.rs"]
 mod panel;
+pub(crate) use panel::Sculpt3dFrameRequest;
 
 /// **COMO O BARRO É MOSTRADO** — o desenho e as opções de vista. Filho
 /// (`#[path]`) pelo mesmo motivo dos vizinhos, e o corte é *o que a cena É*
@@ -159,10 +160,10 @@ mod fixtures;
 
 pub(crate) use scenes::shading::env_scene;
 pub(crate) use scenes::{
-    alpha_scene, bake_scene, cavity_scene, directional_alpha_scene, donation_scene, dyntopo_scene,
-    extract_scene, fuse_scene, holes_scene, masked_dome_counts, remesh_scene, reopen_scene,
-    reversion_scene, scene_objects, smoke_armed, smoke_mesh, soft_masked_counts, transform_scene,
-    turn_scene, wants_canvas,
+    alpha_image_scene, alpha_scene, bake_scene, cavity_scene, directional_alpha_scene,
+    donation_scene, dyntopo_scene, extract_scene, fuse_scene, holes_scene, masked_dome_counts,
+    remesh_scene, reopen_scene, reversion_scene, scene_objects, smoke_armed, smoke_mesh,
+    soft_masked_counts, transform_scene, turn_scene, wants_canvas,
 };
 
 /// O que o arrasto está fazendo.

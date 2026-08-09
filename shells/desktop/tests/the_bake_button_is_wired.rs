@@ -57,8 +57,12 @@ fn the_button_and_the_shortcut_arm_the_same_request() {
 fn the_bake_intent_leaves_the_scene_untouched_and_travels_up() {
     let cluster = sculpt_src();
     let arm = arm_with(&cluster, "Sculpt3dIntent::BakeToSprite");
+    // ⚠️ **Era `return true` e virou um PEDIDO NOMEADO**, e este gate reprovou
+    // produto correto quando o alpha por imagem chegou: um `bool` que significa
+    // *"quer bake"* não carrega um segundo pedido. O que se afirma é a
+    // propriedade — *o braço SOBE em vez de fazer* —, não a forma da resposta.
     assert!(
-        arm.contains("return true"),
+        arm.contains("return Some(Sculpt3dFrameRequest::Bake)"),
         "o braco do bake tem de SUBIR o pedido: {arm}"
     );
     assert!(

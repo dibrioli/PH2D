@@ -1112,6 +1112,48 @@ impl crate::App {
                 eprintln!("{line}");
                 toasts.push(Toast::success(line));
             }
+            // **O SPRITE SELECIONADO VIRA O PADRÃO DO PINCEL** — o alpha por
+            // IMAGEM. Mora aqui pela MESMA razão do bake logo acima: é o único
+            // ponto do frame em que a cena 3D, o mundo 2D, o renderizador e o
+            // mapa de atlas estão os quatro em escopo.
+            if std::mem::replace(&mut self.sculpt3d_alpha_request, false) {
+                let read = selected.and_then(|bits| {
+                    crate::hero_intents::texture_edit::read_sprite_source(
+                        ph2d_ecs::Entity::from_bits(bits),
+                        sim,
+                        renderer,
+                        asset_db,
+                        atlas_asset_map,
+                    )
+                });
+                let line = match read {
+                    Some(r) => {
+                        // ⚠️ **STRAIGHT, e a conversão é load-bearing:** a lei do
+                        // `AlphaImage` é `luminância × alfa`, e num buffer
+                        // PREMULTIPLICADO a luminância já traz o alfa dentro — o
+                        // peso sairia com o alfa ao QUADRADO, e toda borda macia
+                        // ficaria mais fina do que o desenho é. Um sprite
+                        // `Individual` volta premultiplicado do readback, então
+                        // este não é um caso de canto.
+                        let img = r.image.into_straight();
+                        match ph2d_sculpt3d::AlphaImage::from_rgba(
+                            img.width,
+                            img.height,
+                            &img.pixels,
+                        ) {
+                            Some(a) => {
+                                let (w, h) = (a.width(), a.height());
+                                scene.set_alpha_image(a);
+                                format!("[sculpt3d] padrao: a imagem selecionada ({w}x{h})")
+                            }
+                            None => "[sculpt3d] o sprite nao descreve uma imagem".to_string(),
+                        }
+                    }
+                    None => "[sculpt3d] selecione um sprite para usar como padrao".to_string(),
+                };
+                eprintln!("{line}");
+                toasts.push(Toast::success(line));
+            }
             // Enquanto a cena existe, a luz dela AUTORA os objetos que ela assou.
             crate::sculpt3d::bake::follow_live_rig(baked_forms, scene.rig());
         }
@@ -5939,8 +5981,15 @@ impl crate::App {
             // dispatch do frame SEGUINTE (o `bake::drain` roda mais cedo neste),
             // exatamente como o do teclado.
             #[cfg(feature = "sculpt3d")]
-            if sculpt3d_panel_bridge::dispatch(hero, sculpt3d.as_mut()) {
-                self.sculpt3d_bake_request = true;
+            for req in sculpt3d_panel_bridge::dispatch(hero, sculpt3d.as_mut()) {
+                match req {
+                    crate::sculpt3d::Sculpt3dFrameRequest::Bake => {
+                        self.sculpt3d_bake_request = true;
+                    }
+                    crate::sculpt3d::Sculpt3dFrameRequest::AlphaFromSprite => {
+                        self.sculpt3d_alpha_request = true;
+                    }
+                }
             }
             // O ARRASTO da tira (mover a chave / esticar o hold): o painel enfileirou o
             // pedido no pen-up do frame anterior; aqui ele vira documento — ANTES do

@@ -19,6 +19,20 @@ use ph2d_panel_sculpt3d::{Sculpt3dIntent, Sculpt3dSnapshot, Sculpt3dUi};
 use super::dyntopo::DETAIL_STEPS;
 use super::{MaskOp, Primitive, Sculpt3dScene};
 
+/// **O que o LAÇO DE FRAME tem de cumprir** por um gesto do painel.
+///
+/// ⚠️ **Ele existe porque a resposta deixou de ser binária.** Os dois pedidos
+/// aqui têm a MESMA razão de não morarem na cena — o mundo 2D, o renderizador e
+/// o mapa de atlas só existem dentro do frame —, e nomeá-los é o que impede o
+/// terceiro de nascer como um segundo `bool` que alguém esquece de ler.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Sculpt3dFrameRequest {
+    /// Acender o sprite selecionado com a forma esculpida (o `Shift+B`).
+    Bake,
+    /// Ler os pixels do sprite selecionado como PADRÃO do pincel.
+    AlphaFromSprite,
+}
+
 impl Sculpt3dScene {
     /// **O retrato deste frame.** Tudo o que o painel pinta sai daqui, e ele não
     /// guarda cópia de nada — é a mesma lei do painel de física.
@@ -75,6 +89,19 @@ impl Sculpt3dScene {
         }
     }
 
+    /// **O SPRITE SELECIONADO VIRA O PADRÃO** — a porta única do alpha por
+    /// imagem.
+    ///
+    /// ⚠️ **Ela SEMEIA a escala, e é a mesma lei do chip:** armar um padrão sem
+    /// um tamanho que este modelo comporte é o defeito que um smoke já reprovou
+    /// (*"os poros são gigantescos"*). O chip semeia pelo `alpha_seed` que o
+    /// retrato publica; aqui a cena pergunta à MESMA `recommended_scale`, e a
+    /// diferença é que ela tem a malha na mão em vez de um número que viajou.
+    pub(crate) fn set_alpha_image(&mut self, img: ph2d_sculpt3d::AlphaImage) {
+        self.brush.alpha_scale = ph2d_sculpt3d::recommended_scale(self.mesh());
+        self.brush.alpha = Some(ph2d_sculpt3d::Alpha::Image(std::sync::Arc::new(img)));
+    }
+
     /// **O estado autorado, aplicado.** O painel manda a struct INTEIRA a cada
     /// arrasto; escrever campo a campo aqui é o que mantém um intent só.
     fn apply_ui(&mut self, ui: &Sculpt3dUi) {
@@ -108,20 +135,34 @@ impl Sculpt3dScene {
     /// teclas imprimem, pela MESMA porta, porque um botão e um atalho que
     /// fizessem coisas diferentes seriam duas ferramentas com um nome só.
     ///
-    /// Devolve `true` quando o gesto **não é para a cena**: ele pede o bake, que
-    /// só o laço de frame consegue fazer (ver [`Sculpt3dIntent::BakeToSprite`]).
+    /// Devolve o **pedido que o FRAME tem de cumprir**, quando o gesto não é
+    /// para a cena — ver [`Sculpt3dFrameRequest`].
+    ///
+    /// ⚠️ **Era um `bool` que significava *"quer bake"*, e ele não carregava um
+    /// SEGUNDO pedido.** Quando o alpha por imagem chegou, a escolha era
+    /// devolver dois booleanos (dois campos para uma pergunta que tem uma
+    /// resposta por gesto) ou nomear a resposta. O enum é o que faz o terceiro
+    /// pedido não caber num `if` esquecido.
     ///
     /// ⚠️ **O `match` continua exaustivo, e é isso que este retorno compra.** A
     /// alternativa era o bridge filtrar o intent antes de chegar aqui — e aí a
     /// tradução passaria a morar em dois lugares, com o segundo sendo uma
     /// cascata de `if` que apodrece calada no dia em que nascer o próximo verbo
     /// que o frame tem de executar.
-    pub(crate) fn apply_panel_intent(&mut self, intent: Sculpt3dIntent) -> bool {
+    pub(crate) fn apply_panel_intent(
+        &mut self,
+        intent: Sculpt3dIntent,
+    ) -> Option<Sculpt3dFrameRequest> {
         match intent {
             // ⚠️ Ele ARMA e sai, e não faz nada com a cena: o bake precisa do
             // mundo, do renderizador e do mapa de atlas, e os três só existem
             // dentro do frame. Mesmo desenho do `Shift+B`.
-            Sculpt3dIntent::BakeToSprite => return true,
+            Sculpt3dIntent::BakeToSprite => return Some(Sculpt3dFrameRequest::Bake),
+            // ⚠️ Mesmo desenho, e pela mesma razão: ler os pixels de um sprite
+            // precisa do mundo, do renderizador e do mapa de atlas.
+            Sculpt3dIntent::AlphaFromSprite => {
+                return Some(Sculpt3dFrameRequest::AlphaFromSprite);
+            }
             Sculpt3dIntent::SetUi(ui) => self.apply_ui(&ui),
             // ⚠️ **Quem decide o desligamento é a CENA**, não o painel: o
             // intent carrega o TIPO, e `arm_transform` compara com o que já
@@ -274,7 +315,7 @@ impl Sculpt3dScene {
             Sculpt3dIntent::MaskBlur => self.mask_from_panel(MaskOp::Blur),
             Sculpt3dIntent::MaskSharpen => self.mask_from_panel(MaskOp::Sharpen),
         }
-        false
+        None
     }
 
     fn add_from_panel(&mut self, kind: Primitive) {

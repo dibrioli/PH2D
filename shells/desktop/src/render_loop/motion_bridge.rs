@@ -162,6 +162,11 @@ mod dock_tests;
 #[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
 #[path = "motion_bridge_edit_tests.rs"]
 mod edit_tests;
+/// O censo do TETO de opções — o mesmo do `rowcap_tests` um nível abaixo: aquele pina que a
+/// ROW aparece, este que as OPÇÕES dentro dela aparecem.
+#[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
+#[path = "motion_bridge_enumcap_tests.rs"]
+mod enumcap_tests;
 #[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
 #[path = "motion_bridge_library_tests.rs"]
 mod library_tests;

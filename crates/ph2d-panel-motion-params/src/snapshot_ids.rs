@@ -12,10 +12,16 @@ use ph2d_a11y::NodeId;
 
 /// Max param rows the pooled slider/chip widgets support.
 ///
-/// ⚠️ **É um teto de RECURSO, e o recurso é o `populate`:** ele registra **21 widgets por
-/// slot** (slider · chip · number · reroll · text · checkbox · 2×8 botões de enum) de uma
-/// vez, para todos os slots, então o número multiplica direto. Não é o espaço de ids — eles
-/// saem de `fnv_id(&format!(…))`, e um slot a mais custa uma string a mais.
+/// ⚠️ **É um teto de RECURSO, e o recurso é o `populate`:** ele registra
+/// **`7 + 2 × MAX_ENUM_OPTIONS` widgets por slot** — sete avulsos (slider · chip · number ·
+/// reroll · **reset** · text · checkbox) e as duas fileiras de botão de opção — de uma vez,
+/// para todos os slots, então o número multiplica direto. Não é o espaço de ids — eles saem
+/// de `fnv_id(&format!(…))`, e um slot a mais custa uma string a mais.
+///
+/// ⚠️ **A conta é escrita como FÓRMULA porque o literal já apodreceu:** ela dizia *"21
+/// widgets (… 2×8 botões de enum)"* e a lista tinha **seis** avulsos — o `reset` chegou
+/// depois e ninguém recontou —, então o número certo naquele dia era 23 e o teto de opções
+/// já não era 8 quando isto foi lido.
 ///
 /// ⚠️ **E ele é MEDIDO, não escolhido** (§0). O valor anterior era **8**, com a justificativa
 /// *"grid/transform/clone têm 3; o teto cobre os nós de fan-out"* — verdade quando foi escrita
@@ -29,14 +35,48 @@ use ph2d_a11y::NodeId;
 /// o nó que passar deste teto deixa a suíte VERMELHA em vez de esconder um botão.
 pub const MAX_PARAM_ROWS: usize = 16;
 
-/// Max named options a single `Enum` row's segmented selector supports (covers
-/// the behaviours' channel / wave / easing sets with headroom).
-pub(crate) const MAX_ENUM_OPTIONS: usize = 8;
+/// Max named options a single segmented selector paints — an `Enum` row's `labels`, a
+/// `Channels` row's channels **plus its trailing "Custom…"**, and the live-column chips.
+///
+/// ⚠️ **É um teto de RECURSO, e o recurso é o mesmo `populate` do [`MAX_PARAM_ROWS`]:** ele
+/// registra `2 × MAX_ENUM_OPTIONS` botões por slot (a fileira de segmentos + a de chips), e
+/// os dois tetos se MULTIPLICAM — subir este custa `2 × MAX_PARAM_ROWS` registros por opção.
+///
+/// ⚠️ **E acima dele a falha é SILENCIOSA, exatamente como a do teto de linhas:** o
+/// `.min(MAX_ENUM_OPTIONS)` do `rows_paint_kinds` não desenha nem registra a opção excedente
+/// — o valor existe no modelo, o cook o lê, e o artista não tem gesto que o alcance. O censo
+/// que o mantém honesto é o `the_panel_paints_every_option_of_every_selector` (na shell, ao
+/// lado do censo de linhas): nenhum gate por-nó o veria, porque cada um usa a fixture do seu
+/// próprio nó.
+///
+/// ⚠️ **E ele é MEDIDO, não escolhido** (§0). O valor anterior era **8**, com a justificativa
+/// *"cobre os conjuntos de canal / onda / easing com folga"* — uma frase sobre o que ele
+/// cobria naquele dia, não sobre de que RECURSO ele é, e **falsa no dia em que foi lida**: o
+/// censo mede o `source.shape`, que declara as **43** formas do catálogo fillável, e o painel
+/// pintava **8**. Trinta e cinco formas existiam no modelo, o cook as cozinhava, e o artista
+/// não tinha gesto que as alcançasse — com o gate do próprio nó (`KIND_LABELS.len() == 43`)
+/// **verde**, porque ele pergunta sobre o NÓ e não sobre o painel.
+///
+/// O número é o pior caso medido (**43**) mais folga de uma família, arredondado ao múltiplo
+/// da grade de 4 colunas do seletor. O preço, medido pela porta do painel
+/// (`MockPanelHost::with_panel`, 200 construções): o `populate` sai de **22,0 µs** para
+/// **107,2 µs** — uma vez por construção de tela, não por quadro.
+///
+/// ⚠️ **Uma lista de 43 num seletor SEGMENTADO é o widget errado a longo prazo** — o painel
+/// já quebra em 4 colunas e o corpo dele rola, então a lista é *alcançável*, que é
+/// estritamente melhor que 35 opções invisíveis; o widget certo para lista longa é um
+/// dropdown (`widget/dropdown` já existe), e isso é `ParamWidget` novo, não uma constante.
+pub const MAX_ENUM_OPTIONS: usize = 48;
 
 /// Option-id base for a [`ChannelsRow`]'s live-column chips (the Custom picker).
-/// Well above `MAX_ENUM_OPTIONS` so a chip's `param_enum_id(slot, BASE + j)` never
-/// collides with a curated segment's `param_enum_id(slot, opt)` (`opt < 9`).
-pub(crate) const CHANNELS_EXTRA_BASE: usize = 32;
+///
+/// ⚠️ **DERIVADO do teto, nunca um literal ao lado dele.** Um segmento curado usa
+/// `param_enum_id(slot, opt)` com `opt < MAX_ENUM_OPTIONS`, então a base tem de começar
+/// exatamente onde eles acabam. Escrito como número solto (era **32**, "bem acima do teto")
+/// ele vira uma afirmação que **envelhece em silêncio**: subir o teto para 48 o faria mentir,
+/// e a colisão só apareceria num picker com mais de 32 canais — ids iguais, dois widgets,
+/// nenhum erro.
+pub(crate) const CHANNELS_EXTRA_BASE: usize = MAX_ENUM_OPTIONS;
 
 /// Max control points a single Curve row's editor supports (matches the field.remap
 /// text param's practical ceiling; a handful of points shape any transfer). The

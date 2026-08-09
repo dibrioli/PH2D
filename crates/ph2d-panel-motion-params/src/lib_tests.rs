@@ -451,3 +451,32 @@ fn the_add_button_emits_a_curve_with_one_more_point() {
     );
     set_current_params(None);
 }
+
+/// **Um chip de coluna viva nunca reusa o id de um segmento curado.**
+///
+/// As duas fileiras de um picker em Custom saem do MESMO pool (`param_enum_id(slot, opt)`),
+/// separadas só por `CHANNELS_EXTRA_BASE` começar onde os segmentos acabam. Se a base ficar
+/// ABAIXO do teto, um chip e um segmento pedem a mesma string ⇒ o mesmo `NodeId` ⇒ **um
+/// widget**, com dois desenhos e um roteamento: o clique no chip arma o segmento, ou o
+/// contrário, sem erro em lugar nenhum.
+///
+/// ⚠️ O gate é escrito sobre os **IDS QUE O PAINEL PEDE**, não sobre a desigualdade entre as
+/// duas constantes — comparar `CHANNELS_EXTRA_BASE >= MAX_ENUM_OPTIONS` seria repetir a
+/// derivação e nunca poderia falhar. A mutação que ele existe para pegar é a base voltar a
+/// ser um literal (`32`) enquanto o teto sobe.
+#[test]
+fn the_live_column_chips_never_land_on_a_curated_segments_id() {
+    for slot in 0..MAX_PARAM_ROWS {
+        let curated: Vec<_> = (0..MAX_ENUM_OPTIONS)
+            .map(|opt| param_enum_id(slot, opt))
+            .collect();
+        for j in 0..MAX_ENUM_OPTIONS {
+            let chip = param_enum_id(slot, CHANNELS_EXTRA_BASE + j);
+            assert!(
+                !curated.contains(&chip),
+                "chip {j} do slot {slot} caiu em cima de um segmento curado \
+                 (base {CHANNELS_EXTRA_BASE}, teto {MAX_ENUM_OPTIONS})"
+            );
+        }
+    }
+}

@@ -505,7 +505,10 @@ fn no_kind_hides_a_live_knob_or_shows_a_dead_one() {
     };
     // Um valor claramente diferente por param — o suficiente para a geometria
     // responder se ela responde de todo.
-    let nudge: &[(&str, fn(&mut ShapeParams))] = &[
+    /// O nome do param e o empurrão que ele leva — nomeado porque a tupla crua
+    /// dispara o `type_complexity` do clippy, e um `✗` de lint bloqueia o ship.
+    type Nudge = (&'static str, fn(&mut ShapeParams));
+    let nudge: &[Nudge] = &[
         ("aspect", |p| p.aspect = 2.5),
         ("sides", |p| p.sides = 11),
         ("corner", |p| p.corner = 0.6),

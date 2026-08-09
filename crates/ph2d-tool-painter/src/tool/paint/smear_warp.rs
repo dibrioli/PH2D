@@ -187,7 +187,13 @@ impl PainterTool {
             self.paint.warp.touched_all = Some(all);
             // One resample of the frozen source over everything that moved — colour and body together.
             self.warp_render_from_session(all);
-            self.mark_dirty(rect);
+            // ⚠️ Sujo o que foi RENDERIZADO, não o que foi deslocado neste batch. Marcar só `rect`
+            // deixava os texels re-resolvidos fora dele sem subir para a tela — o display ficava com os
+            // pixels de uma fonte anterior, e a fronteira era a borda de `rect`. Isso explica a
+            // assimetria que o Enio notou (2026-08-09: *"por que só na borda inferior?"*): `all` só
+            // EXCEDE `rect` do lado para onde o traço já andou, então o degrau aparece nas pontas `max`
+            // — a inferior num traço que desce, a direita num que vai para a direita.
+            self.mark_dirty(all);
         }
         true
     }

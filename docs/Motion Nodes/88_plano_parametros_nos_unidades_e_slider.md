@@ -285,6 +285,20 @@ de canais — o `f32` ali é o `mode` que o picker escreve). **Cinquenta** nós 
 controles, e é aqui que a curadoria mora: *magro por natureza* e *magro por omissão* são
 coisas diferentes, e o censo não sabe distingui-las — quem distingue é a referência.
 
+### ⛔ O MAPA ABAIXO ESTÁ SUPERSEDIDO — leia o [doc 89](89_plano_conferencia_dos_nos.md)
+
+⚠️ **Ele cobre 54 dos 118 nós e recusou três famílias em ATACADO** (VALUE 23 · ESTRUTURAIS 12 ·
+RIG 6) com raciocínio próprio sobre *o que um nó "é"*, **sem uma única comparação com o
+mercado** — e com sete documentos de pesquisa e uma tabela de lacunas já priorizada
+([doc 63 §3](63_pesquisa_industria_2026_e_plano_estado_da_arte.md)) parados na mesma pasta.
+**As três recusas ficam REVOGADAS.** A prova foi o `motion.emitter` (Enio, 2026-08-09): 10
+params e **uma** lane de aleatoriedade contra ~18 da Cavalry, ~30 do Particular e ~20 do Apple
+Motion.
+
+**O que sobrevive deste doc** são as quatro **leis de param** (unidade · piso/teto duro ·
+widget certo · todo param é desenhado), que são executáveis, e as duas famílias que de fato
+foram comparadas contra referência: **ECHO** e os dois magros dos **DEFORMERS**.
+
 ### O mapa, com o veredito de cada família
 
 | Família | Estado MEDIDO | Veredito |

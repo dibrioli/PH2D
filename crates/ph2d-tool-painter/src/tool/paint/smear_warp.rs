@@ -72,7 +72,7 @@ impl PainterTool {
         let tiled = tiling[0] || tiling[1];
         let source_size = self.source_size;
 
-        // ⚠️ O transporte do Smear não é um dab do Reshape, então a lista do ADR-0156 não o contém — e a
+        // ⚠️ O transporte do Smear não é um dab do Reshape, então a lista do ADR-0157 não o contém — e a
         // sessão passa a dizer isso em vez de deixar quem re-cozinhar da lista achar que ela basta.
         self.paint.warp.derived = false;
         let mut disp = std::mem::take(Arc::make_mut(&mut self.paint.warp.disp));

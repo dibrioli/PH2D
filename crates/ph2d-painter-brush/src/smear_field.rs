@@ -167,11 +167,11 @@ pub struct SmearScratch {
 ///
 /// ⚠️ **Por que ela é `pub`:** a composição semi-lagrangiana `disp_new(p) = v(p) + disp_old(p − v(p))`
 /// tem DOIS consumidores nesta casa — o Smear (aqui, onde `v` é o passo escalado pelo peso do dab) e o
-/// **Reshape** (`ph2d-tool-painter::warp::apply`, onde `v` é o campo do dab, [ADR-0156]). O que difere é
+/// **Reshape** (`ph2d-tool-painter::warp::apply`, onde `v` é o campo do dab, [ADR-0157]). O que difere é
 /// quem PRODUZ `v`; o que reamostra o mapa é o mesmo, e uma segunda cópia divergiria em silêncio no
 /// único lugar onde ninguém lê um número.
 ///
-/// [ADR-0156]: ../../../../docs/architecture/decisions/0156-liquify-is-an-authored-dab-list-cooked-on-the-device-never-a-stored-dense-field.md
+/// [ADR-0157]: ../../../../docs/architecture/decisions/0157-liquify-is-an-authored-dab-list-cooked-on-the-device-never-a-stored-dense-field.md
 pub struct MapWindow<'a> {
     win: &'a [[f32; 2]],
     ww: usize,

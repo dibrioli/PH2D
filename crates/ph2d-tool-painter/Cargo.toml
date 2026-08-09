@@ -78,7 +78,7 @@ dhat = "0.3"
 # repo) — um teste que serializasse com outro formato não provaria o arquivo que o artista salva.
 postcard = { version = "1", features = ["alloc"] }
 
-# ⚠️ O KILL-CRITERION do ADR-0156 mede o cook do Liquify no DEVICE, e o oráculo dele é
+# ⚠️ O KILL-CRITERION do ADR-0157 mede o cook do Liquify no DEVICE, e o oráculo dele é
 # `warp::field::compose_at`, que é `pub(super)`. Uma crate irmã só o alcançaria alargando a superfície
 # privada do tool para a workspace inteira — e a lei ainda muda de casa na W1 (o ADR pede um dab
 # AUTORADO, pequeno e animável). `dev`, então o `src/` segue sem device nenhum: quem despacha é a shell.

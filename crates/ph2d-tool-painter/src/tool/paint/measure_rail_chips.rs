@@ -1,5 +1,5 @@
 //! **O que cada chip do rail FAZ quando o artista o pega e arrasta** — a medição que decide qual pill
-//! recebe o Reshape (o escopo que o [ADR-0156] deixou para wave própria).
+//! recebe o Reshape (o escopo que o [ADR-0157] deixou para wave própria).
 //!
 //! O rail é a barra universal: ela é a mesma nos quatro meios de pintura, e o meio que o Painter abre
 //! é o **Digital** (Enio, 2026-07-22: *"o modo que aparece ao abrir o painter deve ser o digital
@@ -10,7 +10,7 @@
 //!
 //! Rodar: `cargo test -p ph2d-tool-painter --release the_rail_chips -- --ignored --nocapture`
 //!
-//! [ADR-0156]: ../../../../../docs/architecture/decisions/0156-liquify-is-an-authored-dab-list-cooked-on-the-device-never-a-stored-dense-field.md
+//! [ADR-0157]: ../../../../../docs/architecture/decisions/0157-liquify-is-an-authored-dab-list-cooked-on-the-device-never-a-stored-dense-field.md
 
 use crate::tool::PainterTool;
 use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, RasterEditTool};

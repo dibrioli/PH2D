@@ -111,7 +111,7 @@ fn warp_perf_kill_criterion() {
     ///   SMEAR       3,43 / 3,29 ms              1,84 ms  (54%)             1,59
     /// ```
     ///
-    /// ⚠️ **O Deform saiu de 4,18/4,14 e o preço tem nome: a travessia do [ADR-0156].** O `apply.rs` parou
+    /// ⚠️ **O Deform saiu de 4,18/4,14 e o preço tem nome: a travessia do [ADR-0157].** O `apply.rs` parou
     /// de SOMAR e passou a COMPOR (`D_k = v_k + D_{k−1}(p − v_k)`), o que acrescenta um snapshot da janela
     /// do mapa antigo + uma leitura bilinear por texel — **~+1,1 ms/move, ~25%**. É o custo de a ferramenta
     /// deixar de destruir a arte (a soma deslocava 693 px onde uma rotação não pode passar de 60), e a

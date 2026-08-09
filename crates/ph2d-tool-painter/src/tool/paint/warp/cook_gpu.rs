@@ -1,4 +1,4 @@
-//! **A metade DEVICE do kill-criterion do [ADR-0156]** — o número que o ADR nomeia como *o primeiro da
+//! **A metade DEVICE do kill-criterion do [ADR-0157]** — o número que o ADR nomeia como *o primeiro da
 //! implementação* e sem o qual **nenhum passo de grade entra no código** (`CLAUDE.md` §0).
 //!
 //! A metade CPU já está medida ([`super::cook_probe`]): o cook é `O(nós × N)` exato, a **31,0 ns por
@@ -18,7 +18,7 @@
 //! ⚠️ `#[ignore]` porque **precisa de adapter**. Sem GPU os dois testes fazem *skip* — e um skip **não
 //! é verde**, então quem fecha a linha roda-os na máquina com placa e lê os números.
 //!
-//! [ADR-0156]: ../../../../../../docs/architecture/decisions/0156-liquify-is-an-authored-dab-list-cooked-on-the-device-never-a-stored-dense-field.md
+//! [ADR-0157]: ../../../../../../docs/architecture/decisions/0157-liquify-is-an-authored-dab-list-cooked-on-the-device-never-a-stored-dense-field.md
 
 use super::field::{DabField, DeformMode, build_rotor_table, compose_at, crosses_to_the_device};
 use std::time::Instant;
@@ -61,7 +61,7 @@ fn payload(dabs: &[DabField]) -> Vec<GpuDab> {
         .map(|f| {
             assert!(
                 crosses_to_the_device(f),
-                "este dab carrega value_noise: o port do ruido e' decisao da W1 (ADR-0156)"
+                "este dab carrega value_noise: o port do ruido e' decisao da W1 (ADR-0157)"
             );
             let d = f.device_fields();
             GpuDab {

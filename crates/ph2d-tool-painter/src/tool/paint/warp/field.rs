@@ -201,7 +201,7 @@ impl DabField {
     /// identity field (no motion / zero strength) leaves the gather at `dst` → byte-identical (DoD parity).
     ///
     /// ⚠️ **This is one DAB.** A whole deformation is a LIST of them, and the way the list is folded is
-    /// the subject of [ADR-0156](../../../../../../docs/architecture/decisions/0156-liquify-is-an-authored-dab-list-cooked-on-the-device-never-a-stored-dense-field.md):
+    /// the subject of [ADR-0157](../../../../../../docs/architecture/decisions/0157-liquify-is-an-authored-dab-list-cooked-on-the-device-never-a-stored-dense-field.md):
     /// `compose_at` is the law it decided, `apply.rs`'s running `d += a` is the defect it replaces, and
     /// the crossing between the two is W1 — not done here.
     pub(super) fn at(&self, p: [f32; 2]) -> [f32; 2] {
@@ -317,7 +317,7 @@ pub(super) fn crosses_to_the_device(f: &DabField) -> bool {
     !matches!(f.mode, DeformMode::Wrinkle) && f.distortion <= 0.0
 }
 
-/// The displacement of a whole **dab list** at `p` — the fold that [ADR-0156] decided, and the single
+/// The displacement of a whole **dab list** at `p` — the fold that [ADR-0157] decided, and the single
 /// door for it.
 ///
 /// ⚠️ **A stroke is a RELAY, not a sum.** Dab `k` hands its result to dab `k+1`, so the list composes:
@@ -344,7 +344,7 @@ pub(super) fn crosses_to_the_device(f: &DabField) -> bool {
 /// Os gates de [`super::compose_tests`] provam que ela cura o defeito reportado; o que falta é a
 /// travessia, e ela tem smoke próprio porque muda o desenho de uma ferramenta que já shipa.
 ///
-/// [ADR-0156]: ../../../../../../docs/architecture/decisions/0156-liquify-is-an-authored-dab-list-cooked-on-the-device-never-a-stored-dense-field.md
+/// [ADR-0157]: ../../../../../../docs/architecture/decisions/0157-liquify-is-an-authored-dab-list-cooked-on-the-device-never-a-stored-dense-field.md
 /// [ADR-0109]: ../../../../../../docs/architecture/decisions/0109-rayon-exception-watercolor-composite.md
 #[cfg(test)]
 pub(super) fn compose_at(dabs: &[DabField], p: [f32; 2]) -> [f32; 2] {

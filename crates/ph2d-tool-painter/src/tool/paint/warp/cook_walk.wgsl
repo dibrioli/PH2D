@@ -1,4 +1,4 @@
-// A CAMINHADA DE TRÁS PARA A FRENTE, no device — a metade que faltava do kill-criterion do ADR-0156.
+// A CAMINHADA DE TRÁS PARA A FRENTE, no device — a metade que faltava do kill-criterion do ADR-0157.
 //
 // ⚠️ ESTA É A SEGUNDA IMPLEMENTAÇÃO DA MESMA LEI, e não há como não ser.
 //

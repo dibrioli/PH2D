@@ -44,7 +44,7 @@ impl PainterTool {
             }
         }
 
-        // ⚠️ **O Reconstruct edita o MAPA, e a lista de dabs não expressa isso** (ADR-0156 §preço, que já o
+        // ⚠️ **O Reconstruct edita o MAPA, e a lista de dabs não expressa isso** (ADR-0157 §preço, que já o
         // nomeia como *o escape*): relaxar não é um `v` que componha, é uma redução. A partir daqui o cache
         // deixa de ser derivável da lista, e dizê-lo é o que impede a promessa de virar mentira silenciosa.
         self.paint.warp.derived = false;

@@ -1,6 +1,6 @@
-# ADR-0156 — Uma deformação de Liquify é uma LISTA DE DABS autorada, cozida no device; o campo denso é cache, nunca estado
+# ADR-0157 — Uma deformação de Liquify é uma LISTA DE DABS autorada, cozida no device; o campo denso é cache, nunca estado
 
-**Status:** Proposto (linha `line/Painter`). ⚠️ **Número PROVISÓRIO** — um ADR escolhido numa linha paralela renumera na integração (precedente: 0130→0131, 0134→0140, 0145→0148/0149/0150). O `main` do dia manda; hoje o maior é **0155**.
+**Status:** Aceito (linha `line/Painter`, integrada 2026-08-08). ⚠️ **Este número nasceu 0156 e foi CONTADO para 0157 na integração** — a `line/sculpt3d` levou o 0156 (o AO por-vértice) na mesma janela e chegou ao `main` primeiro; como os NOMES de arquivo diferem o git **nunca conflitou**, e quem pega é o gate `architecture_adr_numbers_are_unique` (a **8ª** vez no repo, depois de 0130→0131, 0134→0140, 0145→0148/0149/0150). *Um número escolhido numa linha paralela é PROVISÓRIO; o `main` do dia manda.*
 
 **Data:** 2026-08-08 · **Contexto do pedido (Enio):** *"O Reshape implementado é o estado da arte? … Twist nas imagens: veja linhas sumindo."* → *"nessa engine tudo será animado em runtime inclusive a deformação do Liquify. Não é melhor pensar logo no modo mais propício para alta performance?"*
 

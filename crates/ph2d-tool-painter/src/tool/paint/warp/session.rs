@@ -11,7 +11,7 @@
 //! ever re-reads its own output) and what makes transport a **composição sobre a lista de dabs em vez de
 //! um produto**. A segunda propriedade é por que este tipo tem dois donos hoje.
 //!
-//! ⚠️ E desde o [ADR-0156] a lista **é o estado**: [`WarpSession::dabs`] guarda o que o artista carimbou e
+//! ⚠️ E desde o [ADR-0157] a lista **é o estado**: [`WarpSession::dabs`] guarda o que o artista carimbou e
 //! o `disp` é o cache dela. Quem escreve o mapa por fora (Reconstruct, Smear) baixa o
 //! [`WarpSession::derived`], porque *"jogue o cache fora e re-cozinhe"* só pode ser prometido enquanto for
 //! verdade.
@@ -78,7 +78,7 @@ pub(crate) struct WarpSession {
     /// allocated at session start, empty when idle. `Arc`-shared so the undo snapshot captures it cheaply
     /// (CoW).
     pub(crate) disp: Arc<Vec<[f32; 2]>>,
-    /// **A LISTA AUTORADA — o estado, do qual [`Self::disp`] é o cache** ([ADR-0156]).
+    /// **A LISTA AUTORADA — o estado, do qual [`Self::disp`] é o cache** ([ADR-0157]).
     ///
     /// Cada dab que o Reshape carimba entra aqui, em ordem. `Arc` pelo mesmo motivo que o `disp`: o
     /// snapshot de undo a captura por refcount, e um passo desfeito tem de devolver a lista **em
@@ -90,12 +90,12 @@ pub(crate) struct WarpSession {
     /// que o ADR descreve é o emagrecimento, e ele é passo próprio: guardar o `DabField` hoje é honesto
     /// porque ele **é** a entrada da lei, não uma paráfrase dela.
     ///
-    /// [ADR-0156]: ../../../../../docs/architecture/decisions/0156-liquify-is-an-authored-dab-list-cooked-on-the-device-never-a-stored-dense-field.md
+    /// [ADR-0157]: ../../../../../docs/architecture/decisions/0157-liquify-is-an-authored-dab-list-cooked-on-the-device-never-a-stored-dense-field.md
     pub(crate) dabs: Arc<Vec<super::field::DabField>>,
     /// **A lista explica o mapa INTEIRO?**
     ///
     /// ⚠️ Nem tudo que escreve `disp` é um dab: o **Reconstruct** o REDUZ em direção a zero (uma edição do
-    /// MAPA que a lista não expressa — o ADR-0156 §preço já a nomeia como *o escape*) e o **Smear** tem
+    /// MAPA que a lista não expressa — o ADR-0157 §preço já a nomeia como *o escape*) e o **Smear** tem
     /// transporte próprio. Nos dois casos isto vira `false`, e a promessa *"jogue o cache fora e re-cozinhe
     /// da lista"* deixa de valer **explicitamente** em vez de virar uma mentira silenciosa.
     pub(crate) derived: bool,

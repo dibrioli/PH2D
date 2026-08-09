@@ -22,7 +22,7 @@
 | **`PROJECT_SCHEMA`** | **55, intocado** | `git diff main...HEAD -- shells/desktop/src/project.rs` sai **VAZIO**. Esta linha fica **FORA da disputa de número** desta janela. |
 | **`FLIP_SCHEMA` / `VEC_SCENE` / `DOC_VERSION`** | intocados | nenhum documento desta linha viaja em arquivo. |
 | **Contrato congelado (§6)** | **4/4 verde** | `cargo test -p ph2d-editor-core --release --test architecture_tool_contract_surface` — rodado, não auto-relatado. |
-| **ADR novo** | **ADR-0156** | ⚠️ **PROVISÓRIO.** O maior no `main` de hoje é **0155**, então 0156 está CONTADO — mas outra linha da janela pode reivindicá-lo, e os NOMES de arquivo diferem, então **o git nunca conflita**. Se renumerar: o rewrite do token é escopado aos arquivos que **a LINHA** mudou, nunca à árvore ([[feedback_a_token_rewrite_scopes_to_the_changed_files_not_the_whole_tree]]). |
+| **ADR novo** | **ADR-0157** | ⚠️ **PROVISÓRIO.** O maior no `main` de hoje é **0155**, então 0156 está CONTADO — mas outra linha da janela pode reivindicá-lo, e os NOMES de arquivo diferem, então **o git nunca conflita**. Se renumerar: o rewrite do token é escopado aos arquivos que **a LINHA** mudou, nunca à árvore ([[feedback_a_token_rewrite_scopes_to_the_changed_files_not_the_whole_tree]]). |
 | **Registro do `ph2d-ecs`** | intocado | nenhum componente novo. |
 | **`Cargo.toml`** | **1** (`ph2d-tool-painter`) | ver §3 — e **nenhum pacote externo novo**. |
 | **Crates novas** | **nenhuma** | os 54 arquivos novos moram em crates que já existiam. |
@@ -42,7 +42,7 @@ Detalhe, números e as curas **construídas e refutadas**: [`HANDOFF_INTEGRACAO_
 
 ---
 
-## §3 O LIQUIFY — [ADR-0156](architecture/decisions/0156-liquify-is-an-authored-dab-list-cooked-on-the-device-never-a-stored-dense-field.md)
+## §3 O LIQUIFY — [ADR-0157](architecture/decisions/0157-liquify-is-an-authored-dab-list-cooked-on-the-device-never-a-stored-dense-field.md)
 
 **Uma deformação é uma LISTA DE DABS AUTORADA, cozida no device — nunca um campo denso guardado.**
 W0 (a lei da composição + os dois gates vermelhos + o custo do cook) · W0-device (**0,008 ns por

@@ -1,4 +1,4 @@
-//! **W0 do [ADR-0156]** — o kill-criterion: *quanto custa compor N dabs por pixel?*
+//! **W0 do [ADR-0157]** — o kill-criterion: *quanto custa compor N dabs por pixel?*
 //!
 //! O ADR fecha dizendo que este é **o primeiro número da implementação** e que **nenhum passo de grade
 //! entra no código antes dele** (`CLAUDE.md` §0: *meça antes de limitar*). Esta sonda é essa medição, e
@@ -9,7 +9,7 @@
 //! ## Por que o custo do cook tem uma forma diferente do custo de hoje
 //!
 //! O warp de hoje é **incremental**: cada dab escreve na própria pegada e some — `O(pegada)` por dab,
-//! pago uma vez. O cook do ADR-0156 é o oposto: o campo é **derivado**, então todo nó da grade re-anda a
+//! pago uma vez. O cook do ADR-0157 é o oposto: o campo é **derivado**, então todo nó da grade re-anda a
 //! lista INTEIRA a cada re-cozimento — `O(nós × N)`. É essa multiplicação que o cache existe para
 //! limitar, e é por isso que o número por-avaliação decide o passo da grade em vez de ser detalhe.
 //!
@@ -25,7 +25,7 @@
 //! ⚠️ **`--release` não é preferência** e `--test-threads=1` não é higiene: o perfil `test` mede o
 //! compilador, e duas sondas em paralelo disputam os mesmos núcleos e medem uma à outra.
 //!
-//! [ADR-0156]: ../../../../../../docs/architecture/decisions/0156-liquify-is-an-authored-dab-list-cooked-on-the-device-never-a-stored-dense-field.md
+//! [ADR-0157]: ../../../../../../docs/architecture/decisions/0157-liquify-is-an-authored-dab-list-cooked-on-the-device-never-a-stored-dense-field.md
 
 use super::field::{DabField, DeformMode, compose_at};
 use std::hint::black_box;
@@ -211,6 +211,6 @@ fn measure_the_lattice_pitch_table() {
     }
     println!(
         "\n⚠️ SERIAL, num núcleo. O device é a outra metade da medição e ainda NÃO foi feita — nenhum\n\
-           passo entra no código antes dela (ADR-0156 §preço)."
+           passo entra no código antes dela (ADR-0157 §preço)."
     );
 }

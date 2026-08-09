@@ -1,7 +1,7 @@
 //! **A lei do Reshape** — como a lista de dabs é dobrada, e a prova de que o `apply.rs` a segue.
 //!
 //! ⚠️ Os dois primeiros gates nasceram VERMELHOS contra a soma que shipava e ficaram verdes com a
-//! travessia do [ADR-0156] (2026-08-08). Eles julgam a **LEI** (`compose_at`); quem julga o **PRODUTO** é
+//! travessia do [ADR-0157] (2026-08-08). Eles julgam a **LEI** (`compose_at`); quem julga o **PRODUTO** é
 //! `the_product_composes_the_dab_list_instead_of_summing_it`, e a distinção é a lição inteira do W0:
 //! *uma suíte pode ficar verde sobre a lei e cega ao arquivo que o artista usa*.
 //!
@@ -29,7 +29,7 @@
 //! retro-traçado — que É a soma. Todas sangram, e as mensagens imprimem o número ao lado do teto
 //! geométrico.
 //!
-//! [ADR-0156]: ../../../../../../docs/architecture/decisions/0156-liquify-is-an-authored-dab-list-cooked-on-the-device-never-a-stored-dense-field.md
+//! [ADR-0157]: ../../../../../../docs/architecture/decisions/0157-liquify-is-an-authored-dab-list-cooked-on-the-device-never-a-stored-dense-field.md
 
 use super::apply::bilinear_clamped;
 use super::field::{DabField, DeformMode, compose_at};
@@ -112,7 +112,7 @@ fn the_bounded_twist_still_turns_the_picture() {
     );
 }
 
-/// **A tabela do [ADR-0156], saindo da MESMA fixture dos gates.**
+/// **A tabela do [ADR-0157], saindo da MESMA fixture dos gates.**
 ///
 /// ⚠️ Ela existe porque o ADR nasceu citando números de uma sonda exploratória com fixture PRÓPRIA
 /// (158,55 px · 3,4%), e um fato medido duas vezes com duas fixtures é um fato que ninguém consegue
@@ -200,14 +200,14 @@ fn the_product_composes_the_dab_list_instead_of_summing_it() {
 /// ⚠️ **A 200 dabs a deriva tem a ORDEM do próprio sinal** — e 200 dabs é um *hold* normal, o gesto que o
 /// Enio reportou (*"ele insiste"*). Ou seja: a travessia mata o cisalhamento divergente (o `2r` do gate
 /// acima passa no produto), **e o cache incremental não substitui o re-cook exato**. É por isso que o
-/// [ADR-0156] põe a LISTA como estado e o campo denso como cache: não é preferência de arquitetura, é a
+/// [ADR-0157] põe a LISTA como estado e o campo denso como cache: não é preferência de arquitetura, é a
 /// única forma que não acumula. E o re-cook exato só é pagável no **device** (0,008 ns por nó·dab,
 /// `cook_gpu`), o que é o §0 outra vez — *o caminho lento não define o produto*.
 ///
 /// ⚠️ **N=1 é EXATO (0,0000), e essa metade é o teste da FIAÇÃO**: qualquer erro de janela, de sinal ou de
 /// ordem apareceria ali. O que sobra depois dela é deriva de reamostragem, não bug.
 ///
-/// [ADR-0156]: ../../../../../../docs/architecture/decisions/0156-liquify-is-an-authored-dab-list-cooked-on-the-device-never-a-stored-dense-field.md
+/// [ADR-0157]: ../../../../../../docs/architecture/decisions/0157-liquify-is-an-authored-dab-list-cooked-on-the-device-never-a-stored-dense-field.md
 #[test]
 fn the_incremental_cache_drifts_from_the_exact_walk_and_this_is_the_number() {
     const SIDE: u32 = 256;

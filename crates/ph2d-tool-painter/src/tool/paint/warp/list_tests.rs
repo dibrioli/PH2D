@@ -1,11 +1,11 @@
-//! **A LISTA é o estado; o mapa denso é o cache** — os gates da segunda metade do [ADR-0156].
+//! **A LISTA é o estado; o mapa denso é o cache** — os gates da segunda metade do [ADR-0157].
 //!
 //! O [`super::compose_tests`] julga a LEI (como a lista é dobrada). Este julga o **ESTADO**: que a lista
 //! existe, que ela registra o que o artista fez, que ela **basta** para reconstruir a deformação, que ela
 //! viaja no undo em lock-step com o mapa, e que os dois escritores que ela **não** explica dizem isso em
 //! voz alta em vez de deixar a promessa virar mentira silenciosa.
 //!
-//! [ADR-0156]: ../../../../../../docs/architecture/decisions/0156-liquify-is-an-authored-dab-list-cooked-on-the-device-never-a-stored-dense-field.md
+//! [ADR-0157]: ../../../../../../docs/architecture/decisions/0157-liquify-is-an-authored-dab-list-cooked-on-the-device-never-a-stored-dense-field.md
 
 use super::field::{DabField, DeformMode, compose_at};
 use ph2d_editor_core::tool::RasterEditTool as _;

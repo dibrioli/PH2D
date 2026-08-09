@@ -6,7 +6,7 @@
 //! re-renders the dab bbox from the frozen session pixels using the TOTAL displacement — so the whole
 //! stroke costs exactly one resample per texel and stays sharp.
 //!
-//! ## Como a lista de dabs é dobrada — e por que a SOMA morreu ([ADR-0156])
+//! ## Como a lista de dabs é dobrada — e por que a SOMA morreu ([ADR-0157])
 //!
 //! Este arquivo somava: `disp[i] += v_i`. ⚠️ **Somar é composição EXATA para translação e para mais
 //! nada** — e é por isso que só o **Push** parecia bom. Somar as cordas `R(θ)v − v` de um Twist `N` vezes
@@ -32,7 +32,7 @@
 //! ⚠️ E com `v = 0` em toda parte a leitura cai em coordenada INTEIRA, onde a bilinear devolve o texel
 //! exato ⇒ `disp` não se move: o campo identidade continua **byte-idêntico**.
 //!
-//! [ADR-0156]: ../../../../../../docs/architecture/decisions/0156-liquify-is-an-authored-dab-list-cooked-on-the-device-never-a-stored-dense-field.md
+//! [ADR-0157]: ../../../../../../docs/architecture/decisions/0157-liquify-is-an-authored-dab-list-cooked-on-the-device-never-a-stored-dense-field.md
 
 use super::field::DabField;
 use crate::tool::PainterTool;
@@ -126,7 +126,7 @@ impl PainterTool {
                 buf[b..b + 4].copy_from_slice(&px);
             }
         }
-        // ⚠️ **A LISTA é o estado; o mapa acima é o cache dela** (ADR-0156). O dab entra DEPOIS de o mapa
+        // ⚠️ **A LISTA é o estado; o mapa acima é o cache dela** (ADR-0157). O dab entra DEPOIS de o mapa
         // ter sido avançado com ele, para que as duas metades descrevam sempre o mesmo instante — um push
         // antes do laço deixaria a lista à frente do mapa por uma linha, e um early-return no meio a
         // deixaria à frente para sempre.

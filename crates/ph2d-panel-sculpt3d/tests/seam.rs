@@ -100,7 +100,7 @@ fn only_intent(what: &str) -> Sculpt3dIntent {
         1,
         "`{what}` devia enfileirar UM intent e enfileirou {intents:?}"
     );
-    intents[0]
+    intents[0].clone()
 }
 
 /// **Toda row despacha, e carrega o valor que a pista significa.**
@@ -112,7 +112,7 @@ fn only_intent(what: &str) -> Sculpt3dIntent {
 fn every_row_reaches_the_authored_state() {
     for row in rows::rows() {
         let base = Sculpt3dUi::default();
-        let (mut host, mut state) = arrange(base);
+        let (mut host, mut state) = arrange(base.clone());
 
         let track = 0.75_f32;
         host.set_slider_value(row.slider, track);
@@ -273,7 +273,7 @@ fn picking_a_verb_arms_its_default_but_never_overwrites_the_artist() {
         .iter()
         .position(|v| *v == Verb::Mask)
         .expect("Mask está no ALL");
-    let (mut host, mut state) = arrange(base);
+    let (mut host, mut state) = arrange(base.clone());
     host.apply_panel_event::<Sculpt3dPanel>(
         &mut state,
         WidgetEvent::Click(ids::SCULPT3D_VERB[mask]),
@@ -483,7 +483,7 @@ fn every_painted_control_is_clickable_where_it_is_drawn() {
     // vez que este arquivo escreve a mesma frase — *a fixture tem de conter o
     // fenômeno*.
     ui.brush.alpha = Some(Alpha::Strata);
-    let (mut host, mut state) = arrange(ui);
+    let (mut host, mut state) = arrange(ui.clone());
     let painted = host.paint::<Sculpt3dPanel>(&mut state, VIEWPORT);
 
     // Duas listas, porque as duas metades do gate são diferentes: TUDO tem de
@@ -631,7 +631,7 @@ fn every_painted_control_is_clickable_where_it_is_drawn() {
 fn a_conditional_row_is_absent_with_the_wrong_tool() {
     let mut ui = Sculpt3dUi::default();
     ui.brush.verb = Verb::Smooth; // nem plano nem crease
-    let (mut host, mut state) = arrange(ui);
+    let (mut host, mut state) = arrange(ui.clone());
     let painted = host.paint::<Sculpt3dPanel>(&mut state, VIEWPORT);
     for id in [ids::SCULPT3D_PLANE_OFFSET, ids::SCULPT3D_PINCH] {
         assert!(
@@ -641,7 +641,7 @@ fn a_conditional_row_is_absent_with_the_wrong_tool() {
     }
     // E o controle: com o verbo que os lê, eles aparecem.
     ui.brush.verb = Verb::Clay;
-    let (mut host, mut state) = arrange(ui);
+    let (mut host, mut state) = arrange(ui.clone());
     let painted = host.paint::<Sculpt3dPanel>(&mut state, VIEWPORT);
     assert!(
         painted
@@ -661,7 +661,7 @@ fn a_conditional_row_is_absent_with_the_wrong_tool() {
 fn every_matcap_chip_arms_its_own_material() {
     for (i, &id) in ids::SCULPT3D_MATCAP.iter().enumerate() {
         let base = Sculpt3dUi::default();
-        let (mut host, mut state) = arrange(base);
+        let (mut host, mut state) = arrange(base.clone());
         let outcome = host.apply_panel_event::<Sculpt3dPanel>(&mut state, WidgetEvent::Click(id));
         assert_eq!(outcome, EventOutcome::Consumed, "o chip {i} não despacha");
         let Sculpt3dIntent::SetUi(got) = only_intent("matcap") else {
@@ -701,20 +701,20 @@ fn every_alpha_chip_arms_its_own_pattern() {
     );
     for (i, &id) in ids::SCULPT3D_ALPHA.iter().enumerate() {
         let base = Sculpt3dUi::default();
-        let (mut host, mut state) = arrange(base);
+        let (mut host, mut state) = arrange(base.clone());
         let outcome = host.apply_panel_event::<Sculpt3dPanel>(&mut state, WidgetEvent::Click(id));
         assert_eq!(outcome, EventOutcome::Consumed, "o chip {i} não despacha");
         let Sculpt3dIntent::SetUi(got) = only_intent("alpha") else {
             panic!("o chip {i} enfileirou o tipo errado de intent");
         };
-        let want = i.checked_sub(1).map(|k| Alpha::ALL[k]);
+        let want = i.checked_sub(1).map(|k| Alpha::ALL[k].clone());
         assert_eq!(
             got.brush.alpha, want,
             "o chip {i} armou {:?}",
             got.brush.alpha
         );
-        let mut expected = base;
-        expected.brush.alpha = want;
+        let mut expected = base.clone();
+        expected.brush.alpha = want.clone();
         // ⚠️ **Armar um padrão SEMEIA a escala do modelo** — e o chip `None` não,
         // porque não há padrão cujo tamanho medir. As duas metades no mesmo gate
         // de propósito: um seed que disparasse sempre poria um número de escala
@@ -736,7 +736,7 @@ fn every_alpha_chip_arms_its_own_pattern() {
 fn seeding_the_alpha_scale_never_overwrites_a_chosen_one() {
     let mut ui = Sculpt3dUi::default();
     ui.brush.alpha_scale = 0.123;
-    let (mut host, mut state) = arrange(ui);
+    let (mut host, mut state) = arrange(ui.clone());
     let _ = host
         .apply_panel_event::<Sculpt3dPanel>(&mut state, WidgetEvent::Click(ids::SCULPT3D_ALPHA[2]));
     let Sculpt3dIntent::SetUi(got) = only_intent("alpha") else {
@@ -763,8 +763,8 @@ fn the_alpha_scale_row_is_absent_without_a_pattern() {
         (Some(Alpha::Cracks), true),
     ] {
         let mut ui = Sculpt3dUi::default();
-        ui.brush.alpha = alpha;
-        let (mut host, mut state) = arrange(ui);
+        ui.brush.alpha = alpha.clone();
+        let (mut host, mut state) = arrange(ui.clone());
         let painted = host.paint::<Sculpt3dPanel>(&mut state, VIEWPORT);
         for id in [ids::SCULPT3D_ALPHA_SCALE, ids::SCULPT3D_ALPHA_SCALE_NUM] {
             assert_eq!(
@@ -799,8 +799,8 @@ fn the_axis_rows_are_absent_unless_the_pattern_has_a_direction() {
         (Some(Alpha::Weave), true),
     ] {
         let mut ui = Sculpt3dUi::default();
-        ui.brush.alpha = alpha;
-        let (mut host, mut state) = arrange(ui);
+        ui.brush.alpha = alpha.clone();
+        let (mut host, mut state) = arrange(ui.clone());
         let painted = host.paint::<Sculpt3dPanel>(&mut state, VIEWPORT);
         for id in [
             ids::SCULPT3D_ALPHA_AZ,
@@ -826,7 +826,7 @@ fn the_wireframe_toggle_flips_only_the_view() {
             wireframe: before,
             ..Sculpt3dUi::default()
         };
-        let (mut host, mut state) = arrange(base);
+        let (mut host, mut state) = arrange(base.clone());
         host.apply_panel_event::<Sculpt3dPanel>(
             &mut state,
             WidgetEvent::Click(ids::SCULPT3D_WIREFRAME),
@@ -904,9 +904,9 @@ fn the_model_preview_switch_exists_only_with_a_pattern_and_flips_it() {
     // COM padrão: pintado, e o clique alterna só ele.
     for before in [false, true] {
         let mut ui = Sculpt3dUi::default();
-        ui.brush.alpha = Some(ph2d_sculpt3d::Alpha::ALL[0]);
+        ui.brush.alpha = Some(ph2d_sculpt3d::Alpha::ALL[0].clone());
         ui.alpha_preview = before;
-        let (mut host, mut state) = arrange(ui);
+        let (mut host, mut state) = arrange(ui.clone());
         let painted = host.paint::<Sculpt3dPanel>(&mut state, VIEWPORT);
         assert!(
             painted
@@ -939,7 +939,7 @@ fn the_accumulate_switch_is_offered_only_where_it_does_something() {
     for verb in Verb::ALL {
         let mut ui = Sculpt3dUi::default();
         ui.brush.verb = verb;
-        let (mut host, mut state) = arrange(ui);
+        let (mut host, mut state) = arrange(ui.clone());
         let painted = host.paint::<Sculpt3dPanel>(&mut state, VIEWPORT);
         let stamps = matches!(verb.grip(), ph2d_sculpt3d::Grip::Stamp);
         assert_eq!(
@@ -959,7 +959,7 @@ fn the_accumulate_switch_flips_the_brush_field() {
     for before in [false, true] {
         let mut ui = Sculpt3dUi::default();
         ui.brush.accumulate = before;
-        let (mut host, mut state) = arrange(ui);
+        let (mut host, mut state) = arrange(ui.clone());
         host.apply_panel_event::<Sculpt3dPanel>(
             &mut state,
             WidgetEvent::Click(ids::SCULPT3D_ACCUMULATE),

@@ -43,8 +43,8 @@ mod stroke;
 mod transform;
 
 pub use alpha::{
-    Alpha, AlphaFrame, DEFAULT_ALPHA_SCALE, MAX_ALPHA_SCALE, MAX_AXIS_ELEV_DEG, MIN_ALPHA_SCALE,
-    recommended_scale,
+    Alpha, AlphaFrame, AlphaImage, DEFAULT_ALPHA_SCALE, MAX_ALPHA_SCALE, MAX_AXIS_ELEV_DEG,
+    MIN_ALPHA_SCALE, recommended_scale,
 };
 pub use brush::{Amount, Brush, Falloff, Grip, REACH_FRACTION, Symmetry, Verb};
 pub use preview::{NO_PREVIEW, preview_into, preview_verts};

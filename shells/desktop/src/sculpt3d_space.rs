@@ -204,7 +204,7 @@ impl Sculpt3dScene {
             .world_radius_for_screen_px(world, self.radius_px(), self.viewport);
         Brush {
             radius: (radius / pose.scale()).max(1e-6),
-            ..self.brush
+            ..self.brush.clone()
         }
     }
 

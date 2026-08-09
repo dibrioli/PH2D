@@ -136,7 +136,7 @@ impl Sculpt3dScene {
             // descrever. Depois do upload a lista está limpa e a janela seria
             // vazia; o barro ficaria com o padrão de antes do traço.
             {
-                let brush = self.brush;
+                let brush = self.brush.clone();
                 let armed = self.alpha_preview;
                 let obj = &mut self.objects[i];
                 let mesh = obj.stack.mesh();

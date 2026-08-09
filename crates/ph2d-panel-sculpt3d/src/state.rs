@@ -38,7 +38,7 @@ thread_local! {
 
 /// **O estado AUTORADO da cena 3D** — tudo o que um controle contínuo ou um
 /// rádio deste painel escreve.
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Sculpt3dUi {
     /// O verbo, a curva, a força e os dois knobs condicionais.
     ///
@@ -144,7 +144,7 @@ impl Default for Sculpt3dUi {
 
 /// O que o painel precisa saber da cena neste frame: o estado autorado mais os
 /// **fatos** que ele só mostra.
-#[derive(Copy, Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct Sculpt3dSnapshot {
     pub ui: Sculpt3dUi,
     /// **O que o transform ARMOU** — `None` é o estado normal, em que o botão
@@ -226,7 +226,7 @@ pub struct Sculpt3dSnapshot {
 }
 
 /// Um gesto do artista, para o shell aplicar.
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Sculpt3dIntent {
     /// Substitui o estado autorado inteiro — ver [`Sculpt3dUi`].
     SetUi(Sculpt3dUi),
@@ -300,7 +300,7 @@ pub fn set_current_sculpt3d(snapshot: Option<Sculpt3dSnapshot>) {
 /// **não pinta**: um painel de escultura sem escultura seria seis seções de
 /// controles que não alcançam nada.
 pub(crate) fn current() -> Option<Sculpt3dSnapshot> {
-    CURRENT.with(|c| *c.borrow())
+    CURRENT.with(|c| c.borrow().clone())
 }
 
 /// Painel → host. Enfileirado pelo `event`, drenado pela ponte do shell.

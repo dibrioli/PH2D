@@ -110,9 +110,9 @@ fn turning_the_axis_turns_the_preview() {
 /// *"gira"* de nenhum jeito e por esta de graça.
 #[test]
 fn an_isotropic_pattern_ignores_the_axis_byte_for_byte() {
-    for a in Alpha::ALL.into_iter().filter(|a| !a.is_directional()) {
-        let one = pixels(&ui_with(a, 0.1, 90, 0), 2.0);
-        let other = pixels(&ui_with(a, 0.1, 17, 63), 2.0);
+    for a in Alpha::ALL.iter().filter(|a| !a.is_directional()) {
+        let one = pixels(&ui_with(a.clone(), 0.1, 90, 0), 2.0);
+        let other = pixels(&ui_with(a.clone(), 0.1, 17, 63), 2.0);
         assert_eq!(one, other, "{} mudou com o eixo", a.label());
     }
 }
@@ -134,13 +134,13 @@ fn the_cache_key_carries_every_input() {
         "a mesma entrada deu duas imagens"
     );
 
-    let mut alpha = base;
+    let mut alpha = base.clone();
     alpha.brush.alpha = Some(Alpha::Weave);
-    let mut scale = base;
+    let mut scale = base.clone();
     scale.brush.alpha_scale = 0.05;
-    let mut az = base;
+    let mut az = base.clone();
     az.brush.alpha_az_deg = 30;
-    let mut elev = base;
+    let mut elev = base.clone();
     elev.brush.alpha_elev_deg = 45;
 
     for (name, ui, span) in [
@@ -148,7 +148,7 @@ fn the_cache_key_carries_every_input() {
         ("a escala", scale, 2.0),
         ("o azimute", az, 2.0),
         ("a elevação", elev, 2.0),
-        ("o tamanho do modelo", base, 5.0),
+        ("o tamanho do modelo", base.clone(), 5.0),
     ] {
         assert_ne!(
             pixels(&ui, span),

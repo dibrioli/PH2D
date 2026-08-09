@@ -92,6 +92,11 @@
 mod frame;
 pub use frame::{AlphaFrame, MAX_AXIS_ELEV_DEG};
 
+/// **OS PIXELS QUE UM PADRÃO AUTORADO CARREGA** — ver [`image`].
+#[path = "alpha_image.rs"]
+mod image;
+pub use image::AlphaImage;
+
 /// **QUE TAMANHO ESTE MODELO COMPORTA** — ver [`scale`].
 #[path = "alpha_scale.rs"]
 mod scale;
@@ -108,7 +113,18 @@ pub use scale::{DEFAULT_ALPHA_SCALE, MAX_ALPHA_SCALE, MIN_ALPHA_SCALE, recommend
 /// desloca a seleção de um (a primeira opção dele é *nenhum*), então um variant
 /// no MEIO moveria o índice de todo padrão depois dele. Apender é o que mantém o
 /// chip que o artista aprendeu no lugar onde ele estava.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+/// ⚠️ **`Copy` MORREU aqui, e o preço foi MEDIDO antes de a decisão ser tomada:**
+/// o compilador conta **3 derives** (este, o `Sculpt3dUi` e os dois que o contêm)
+/// mais cinco `.clone()` num arquivo de teste — contra a estimativa herdada de
+/// *"~20 arquivos"*, que era o que arquivava esta saída. Ver a W17 do
+/// `06.1-Waves-riscos-e-alvos.md`.
+///
+/// ⚠️ **E `PartialEq` é MANUAL, com um motivo de custo:** duas imagens são o
+/// mesmo padrão quando são a MESMA imagem ([`std::sync::Arc::ptr_eq`]). A
+/// derivada compararia **pixel a pixel**, e a chave do cache do swatch do painel
+/// é comparada a cada quadro — um megabyte de `memcmp` por frame para responder
+/// *"o artista mexeu?"*.
+#[derive(Clone, Debug)]
 pub enum Alpha {
     /// fBm de ruído de valor, três oitavas. Irregularidade geral — rocha, massa.
     Noise,
@@ -131,7 +147,33 @@ pub enum Alpha {
     /// **DIRECIONAL** — a trama de duas famílias de fios que passam uma por cima
     /// da outra; uma delas corre AO LONGO do eixo. Tecido, cesta, malha.
     Weave,
+    /// **A IMAGEM AUTORADA** — os pixels que o artista apontou, projetados ao
+    /// longo do eixo e ladrilhados. Ver [`AlphaImage`].
+    ///
+    /// ⚠️ **Os pixels moram AQUI, e é a wave inteira numa linha:** a escolha e a
+    /// imagem são o MESMO valor, então `Image` **sem** imagem é inexprimível. As
+    /// outras duas saídas (um id numa tabela · a imagem como parâmetro do dab)
+    /// deixam esse estado nascer, e ele significa *"liso"* em silêncio.
+    ///
+    /// ⚠️ **E ela fica FORA do [`Self::ALL`]**, de propósito: aquela lista é o
+    /// que a UI oferece como CHIPS, e um chip é um nome. Uma imagem não é um nome
+    /// — é uma coisa para a qual se aponta —, então o gesto que a arma é um
+    /// BOTÃO. Pôr um chip "Image" na fileira criaria exatamente o estado que o
+    /// parágrafo acima torna impossível.
+    Image(std::sync::Arc<AlphaImage>),
 }
+
+/// ⚠️ Ver o `derive` acima: identidade para a imagem, discriminante para os nove.
+impl PartialEq for Alpha {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Image(a), Self::Image(b)) => std::sync::Arc::ptr_eq(a, b),
+            _ => core::mem::discriminant(self) == core::mem::discriminant(other),
+        }
+    }
+}
+
+impl Eq for Alpha {}
 
 impl Alpha {
     /// Todos, na ordem em que a UI os lista.
@@ -149,7 +191,7 @@ impl Alpha {
 
     /// O nome que a UI mostra.
     #[must_use]
-    pub fn label(self) -> &'static str {
+    pub fn label(&self) -> &'static str {
         match self {
             Self::Noise => "Noise",
             Self::Pores => "Pores",
@@ -160,6 +202,7 @@ impl Alpha {
             Self::Strata => "Strata",
             Self::Scratches => "Scratches",
             Self::Weave => "Weave",
+            Self::Image(_) => "Image",
         }
     }
 
@@ -175,8 +218,11 @@ impl Alpha {
     /// Três cópias divergiriam em dois controles que aparecem e não fazem nada —
     /// o mesmo mecanismo do `Verb::uses_plane`.
     #[must_use]
-    pub fn is_directional(self) -> bool {
-        matches!(self, Self::Strata | Self::Scratches | Self::Weave)
+    pub fn is_directional(&self) -> bool {
+        matches!(
+            self,
+            Self::Strata | Self::Scratches | Self::Weave | Self::Image(_)
+        )
     }
 
     /// **A frequência RELATIVA do padrão**, em células por unidade de escala.
@@ -186,7 +232,7 @@ impl Alpha {
     /// este multiplicador o artista teria de re-afinar a escala a cada troca de
     /// padrão, e a pista significaria uma coisa diferente por chip — que é a
     /// definição de um controle que não se aprende.
-    fn frequency(self) -> f32 {
+    fn frequency(&self) -> f32 {
         match self {
             // A oitava base do fBm já é a mais grossa das três.
             Self::Noise | Self::Ridges => 1.0,
@@ -200,6 +246,10 @@ impl Alpha {
             // Um risco é FINO na travessia e o que a escala nomeia é a distância
             // entre faixas — o mesmo raciocínio do Grain.
             Self::Scratches => 2.0,
+            // Um ladrilho da imagem MEDE a escala inteira: a pista continua
+            // dizendo *"que tamanho tem uma feature"*, e para uma imagem a
+            // feature é ela.
+            Self::Image(_) => 1.0,
         }
     }
 
@@ -212,7 +262,7 @@ impl Alpha {
     /// pelo mesmo motivo: um `NaN` que escorre daqui vira peso `NaN` num vértice,
     /// e uma malha inteira sai `NaN` a partir de um ponto ruim em algum lugar.
     #[must_use]
-    pub fn weight_at(self, p: [f32; 3], scale: f32, frame: &AlphaFrame) -> f32 {
+    pub fn weight_at(&self, p: [f32; 3], scale: f32, frame: &AlphaFrame) -> f32 {
         if !p[0].is_finite() || !p[1].is_finite() || !p[2].is_finite() {
             return 0.0;
         }
@@ -304,6 +354,15 @@ impl Alpha {
                         1.0 - smoothstep(0.0, SCRATCH_WIDTH, (q[2] - lane - 0.5).abs() * 2.0);
                     run * across
                 }
+            }
+            Self::Image(img) => {
+                // ⚠️ **O PLANO é o perpendicular ao EIXO** (`q[0]`, `q[1]` são a
+                // tangente e a bitangente; `q[2]` corre ao longo dele — a mesma
+                // convenção que o Strata empilha). Ou seja: o artista APONTA o
+                // eixo para a superfície e a imagem é projetada por ali. Usar o
+                // eixo como uma das coordenadas do plano faria a imagem
+                // escorregar quando ele girasse, que é o oposto de apontar.
+                img.sample(q[0], q[1])
             }
             Self::Weave => {
                 // Duas famílias de fios, no plano `t`–`n`: uma corre AO LONGO do

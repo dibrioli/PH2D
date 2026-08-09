@@ -90,16 +90,16 @@ fn every_input_of_the_key_asks_for_the_whole_field() {
     let m = mesh();
     let base = textured();
 
-    let mut alpha = base;
+    let mut alpha = base.clone();
     alpha.alpha = Some(Alpha::Scales);
-    let mut scale = base;
+    let mut scale = base.clone();
     scale.alpha_scale = 0.05;
-    let mut az = base;
+    let mut az = base.clone();
     az.alpha_az_deg = 30;
-    let mut elev = base;
+    let mut elev = base.clone();
     elev.alpha_elev_deg = 45;
     // O verbo de máscara não é freado pela máscara — o campo muda com ele.
-    let mut verb = base;
+    let mut verb = base.clone();
     verb.verb = Verb::Mask;
 
     for (name, b) in [

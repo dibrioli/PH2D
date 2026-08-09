@@ -172,11 +172,17 @@ fn paint_brush_tail(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32,
     // `checked_sub`; as duas metades vivem uma ao lado da outra de propósito).
     let mut labels: Vec<&str> = vec![tr("panel.sculpt3d.alpha.none")];
     labels.extend(Alpha::ALL.iter().map(|a| a.label()));
+    // ⚠️ **`as_ref` e comparação por REFERÊNCIA:** desde que o alpha pode ser uma
+    // IMAGEM ele carrega um `Arc` e não é `Copy`. Uma imagem nunca está na
+    // `ALL` — a fileira de chips é a lista de NOMES —, então o `position`
+    // devolve `None` para ela e a seleção cai em *nenhum*: o chip aceso não
+    // mente sobre um padrão que aquela fileira não oferece.
     let selected = snap
         .ui
         .brush
         .alpha
-        .and_then(|a| Alpha::ALL.iter().position(|&x| x == a))
+        .as_ref()
+        .and_then(|a| Alpha::ALL.iter().position(|x| x == a))
         .map_or(0, |i| i + 1);
     let mut y = labelled_seg(
         ctx,

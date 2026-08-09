@@ -449,7 +449,11 @@ impl Verb {
 pub const REACH_FRACTION: f32 = 0.2;
 
 /// A ferramenta na mão. Um traço inteiro corre contra um destes.
-#[derive(Clone, Copy, Debug, PartialEq)]
+/// ⚠️ **`Copy` MORREU quando o alpha ganhou IMAGEM** — ver [`crate::Alpha`], onde
+/// a decisão e o preço medido estão escritos. Nada no caminho quente copiava um
+/// `Brush` por vértice; o que sobrou foram três `derive` e cinco `.clone()` num
+/// arquivo de teste, contra a estimativa herdada de *"~20 arquivos"*.
+#[derive(Clone, Debug, PartialEq)]
 pub struct Brush {
     pub verb: Verb,
     /// **ACUMULAR na mesma pincelada** — o `BRUSH_ACCUMULATE` do Blender, e o
@@ -528,18 +532,6 @@ impl Default for Brush {
 }
 
 impl Brush {
-    /// O deslocamento, com sinal, que um dab deste pincel alcança — em unidades
-    /// de mundo. Porta única: Draw, Inflate, Clay e Crease perguntam aqui.
-    ///
-    /// ⚠️ **O termo `honours_invert()` aqui é INERTE hoje, e fica assim mesmo.**
-    /// Depois que o predicado passou a dizer a verdade, *todo* verbo que lê
-    /// `reach` está na whitelist ⇒ trocá-lo por um `if self.invert` puro daria o
-    /// mesmo número em todos os doze, e uma mutação que o remova **não sangra**.
-    /// Ele fica porque é aqui que a pergunta pertence — *o sinal é assunto do
-    /// VERBO, não do checkbox* —, e porque o dia em que entrar um verbo que
-    /// consome `reach` sem ter oposto é o dia em que ele deixa de ser inerte, sem
-    /// ninguém precisar lembrar. Defesa em camadas documentada em vez de gateada,
-    /// pelo precedente do ADR-0145.
     /// **O peso do alpha no ponto `p`** (posição em espaço de OBJETO), ou `1.0`
     /// se não há alpha armado.
     ///
@@ -554,7 +546,7 @@ impl Brush {
     /// laço quente para provar.
     #[must_use]
     pub fn alpha_weight(&self, p: [f32; 3], frame: &AlphaFrame) -> f32 {
-        match self.alpha {
+        match &self.alpha {
             Some(a) => a.weight_at(p, self.alpha_scale, frame),
             None => 1.0,
         }
@@ -577,6 +569,23 @@ impl Brush {
         AlphaFrame::from_degrees(self.alpha_az_deg, self.alpha_elev_deg)
     }
 
+    /// O deslocamento, com sinal, que um dab deste pincel alcança — em unidades
+    /// de mundo. Porta única: Draw, Inflate, Clay e Crease perguntam aqui.
+    ///
+    /// ⚠️ **O termo `honours_invert()` aqui é INERTE hoje, e fica assim mesmo.**
+    /// Depois que o predicado passou a dizer a verdade, *todo* verbo que lê
+    /// `reach` está na whitelist ⇒ trocá-lo por um `if self.invert` puro daria o
+    /// mesmo número em todos os doze, e uma mutação que o remova **não sangra**.
+    /// Ele fica porque é aqui que a pergunta pertence — *o sinal é assunto do
+    /// VERBO, não do checkbox* —, e porque o dia em que entrar um verbo que
+    /// consome `reach` sem ter oposto é o dia em que ele deixa de ser inerte, sem
+    /// ninguém precisar lembrar. Defesa em camadas documentada em vez de gateada,
+    /// pelo precedente do ADR-0145.
+    ///
+    /// ⚠️ **Este bloco estava ÓRFÃO** — colado acima do `alpha_weight`, descrevendo
+    /// uma função que não é esta, com o `reach` sem doc nenhum. É a classe que
+    /// este módulo já registrou duas vezes (*"minhas linhas `mod` orfanaram
+    /// doc-comments"*), e ela não levanta erro: só uma leitura pega.
     #[must_use]
     pub fn reach(&self, radius: f32) -> f32 {
         let s = if self.invert && self.verb.honours_invert() {

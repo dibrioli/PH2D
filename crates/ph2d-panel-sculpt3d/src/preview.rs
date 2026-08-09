@@ -78,7 +78,12 @@ pub(crate) const SPAN_FRACTION: f32 = 0.125; // LITERAL-PX-OK: fração do model
 
 /// Tudo o que muda a imagem. Ver o cabeçalho — esquecer um campo aqui é um
 /// preview velho que ninguém vê que é velho.
-#[derive(Clone, Copy, PartialEq)]
+///
+/// ⚠️ **`Copy` saiu com a IMAGEM** (o [`Alpha::Image`] carrega um `Arc`), e a
+/// comparação continua **O(1)**: o `PartialEq` do `Alpha` compara duas imagens
+/// por IDENTIDADE, não pixel a pixel. Sem isso esta chave faria um `memcmp` de
+/// megabytes por quadro para responder *"o artista mexeu?"*.
+#[derive(Clone, PartialEq)]
 struct Key {
     alpha: Alpha,
     scale: f32,
@@ -113,7 +118,7 @@ pub(crate) fn with_swatch<R>(
     theme: Theme,
     f: impl FnOnce(&std::sync::Arc<Vec<u8>>) -> R,
 ) -> Option<R> {
-    let alpha = ui.brush.alpha?;
+    let alpha = ui.brush.alpha.clone()?;
     let span = span_of(model_span);
     let key = Key {
         alpha,
@@ -137,7 +142,7 @@ pub(crate) fn with_swatch<R>(
                 .and_then(|(_, a)| std::sync::Arc::try_unwrap(a).ok())
                 .unwrap_or_default();
             let mut px = reuse;
-            render(key, &mut px);
+            render(&key, &mut px);
             *slot = Some((key, std::sync::Arc::new(px)));
         }
         let (_, px) = slot.as_ref().expect("acabou de ser preenchido");
@@ -166,7 +171,7 @@ pub(crate) fn span_of(model_span: f32) -> f32 {
 /// é o fundo do painel e o `1` é o texto — os dois extremos que o tema já
 /// garante contrastados entre si, em qualquer variante clara ou escura. Um par
 /// escolhido à mão sairia ilegível no tema oposto.
-fn render(key: Key, out: &mut Vec<u8>) {
+fn render(key: &Key, out: &mut Vec<u8>) {
     // ⚠️ **O frame vem da PORTA do pincel** (`Brush::alpha_frame`), e não de um
     // construtor próprio: ele é `pub(crate)` no motor justamente para que o
     // preview não possa desenhar um eixo que o dab não usa. *Duas respostas para

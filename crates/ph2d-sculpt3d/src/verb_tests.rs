@@ -32,7 +32,7 @@ fn the_plane_offset_lifts_the_plane_the_verbs_project_onto() {
             &mut mesh,
             &Brush {
                 plane_offset: offset,
-                ..b
+                ..b.clone()
             },
             &dab_at(c, b.radius),
             Symmetry::default(),
@@ -207,8 +207,14 @@ fn invert_changes_the_result_of_exactly_the_verbs_that_have_an_opposite() {
             strength: 1.0,
             ..Brush::default()
         };
-        let (up_pos, up_mask) = run(&Brush { invert: false, ..b });
-        let (down_pos, down_mask) = run(&Brush { invert: true, ..b });
+        let (up_pos, up_mask) = run(&Brush {
+            invert: false,
+            ..b.clone()
+        });
+        let (down_pos, down_mask) = run(&Brush {
+            invert: true,
+            ..b.clone()
+        });
 
         let up_move = moved(&rest, &up_pos);
         let up_paint = up_mask.iter().fold(0.0f32, |m, &x| m.max(x));
@@ -272,7 +278,7 @@ fn smooth_flattens_a_spike_and_sharpen_deepens_it() {
         st.begin(m);
         st.dab(
             m,
-            &Brush { verb, ..b },
+            &Brush { verb, ..b.clone() },
             &dab_at([0.0, 0.0, 1.0], b.radius),
             Symmetry::default(),
         );
@@ -407,7 +413,7 @@ fn fill_only_raises_and_scrape_only_lowers() {
         st.begin(&mesh);
         st.dab(
             &mut mesh,
-            &Brush { verb, ..b },
+            &Brush { verb, ..b.clone() },
             &dab_at(c, b.radius),
             Symmetry::default(),
         );
@@ -462,7 +468,7 @@ fn clay_adds_material_where_flatten_conserves_it() {
         s.begin(&mesh);
         s.dab(
             &mut mesh,
-            &Brush { verb, ..b },
+            &Brush { verb, ..b.clone() },
             &dab_at(c, b.radius),
             Symmetry::default(),
         );
@@ -552,7 +558,7 @@ fn the_mask_verb_writes_its_channel_and_moves_no_geometry() {
             &Brush {
                 invert: true,
                 falloff,
-                ..b
+                ..b.clone()
             },
             &dab_at([0.0, 0.0, 1.0], b.radius),
             Symmetry::default(),

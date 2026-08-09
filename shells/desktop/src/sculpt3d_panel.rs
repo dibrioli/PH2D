@@ -30,7 +30,7 @@ impl Sculpt3dScene {
         Sculpt3dSnapshot {
             transform: self.transform_arm(),
             ui: Sculpt3dUi {
-                brush: self.brush,
+                brush: self.brush.clone(),
                 // ⚠️ **O raio publicado é o CLAMPADO**, e não o `radius_px` cru:
                 // o teto real é 1/8 da altura do viewport, então numa janela
                 // baixa o número que a pista mostraria seria um que o dab não
@@ -78,7 +78,7 @@ impl Sculpt3dScene {
     /// **O estado autorado, aplicado.** O painel manda a struct INTEIRA a cada
     /// arrasto; escrever campo a campo aqui é o que mantém um intent só.
     fn apply_ui(&mut self, ui: &Sculpt3dUi) {
-        self.brush = ui.brush;
+        self.brush = ui.brush.clone();
         // O raio autorado é o número cru; o clamp mora na porta `radius_px()`,
         // que é quem o dab e o retrato perguntam. Guardar o clampado aqui faria
         // o valor ENCOLHER de vez ao passar por uma janela baixa, e ele nunca

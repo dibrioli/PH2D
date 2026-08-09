@@ -44,7 +44,10 @@ use ph2d_sculpt3d::Brush;
 /// ⚠️ **A `strength` e o RAIO ficam de fora, e é a decisão do kernel:** o
 /// preview mostra o CAMPO, não um dab — o falloff e a força pertencem ao gesto,
 /// que ainda não aconteceu.
-#[derive(Clone, Copy, PartialEq, Debug)]
+/// ⚠️ **`Copy` saiu com o alpha por IMAGEM** — o `Alpha` carrega um `Arc`. A
+/// comparação continua **O(1)**: duas imagens são o mesmo padrão quando são a
+/// MESMA imagem, e é o `PartialEq` do `Alpha` que decide isso por identidade.
+#[derive(Clone, PartialEq, Debug)]
 pub(crate) struct PreviewKey {
     alpha: Option<ph2d_sculpt3d::Alpha>,
     scale: f32,
@@ -59,7 +62,7 @@ pub(crate) struct PreviewKey {
 impl PreviewKey {
     pub(crate) fn of(brush: &Brush, mesh: &Mesh) -> Self {
         Self {
-            alpha: brush.alpha,
+            alpha: brush.alpha.clone(),
             scale: brush.alpha_scale,
             az: brush.alpha_az_deg,
             elev: brush.alpha_elev_deg,
@@ -102,7 +105,7 @@ impl PreviewState {
             return;
         }
         let key = PreviewKey::of(brush, mesh);
-        if self.key != Some(key) {
+        if self.key.as_ref() != Some(&key) {
             ph2d_sculpt3d::preview_into(mesh, brush, &mut self.values);
             self.key = Some(key);
             self.whole_dirty = true;

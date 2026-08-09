@@ -198,7 +198,7 @@ fn one_full_strength_stroke_protects_completely() {
             &mut half,
             &Brush {
                 strength: 0.5,
-                ..brush
+                ..brush.clone()
             },
             &crate::Dab::at([0.0, 0.0, 1.0], 0.5, [0.0, 0.0, -1.0]),
             Symmetry::default(),

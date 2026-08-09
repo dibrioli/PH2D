@@ -323,6 +323,7 @@ static BRUSH: &[Row] = &[
 fn directional_alpha(u: &Sculpt3dUi) -> bool {
     u.brush
         .alpha
+        .as_ref()
         .is_some_and(ph2d_sculpt3d::Alpha::is_directional)
 }
 

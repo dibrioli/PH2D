@@ -47,7 +47,7 @@ pub(crate) const COMMANDS: &[(ph2d_a11y::NodeId, Sculpt3dIntent)] = &[
 /// porta a receber o estado inteiro, e aí ela deixaria de ser uma tabela.
 fn table_intent(id: ph2d_a11y::NodeId) -> Option<Sculpt3dIntent> {
     if let Some(i) = index_of(&ids::SCULPT3D_ADD, id) {
-        return Some(ADD_INTENTS[i]);
+        return Some(ADD_INTENTS[i].clone());
     }
     if let Some(i) = index_of(&ids::SCULPT3D_TRANSFORM, id) {
         // ⚠️ **Ele ARMA, e o painel não decide o que "clicar o aceso" faz.** A
@@ -56,7 +56,7 @@ fn table_intent(id: ph2d_a11y::NodeId) -> Option<Sculpt3dIntent> {
         // segunda cópia do arm para calcular o desligamento.
         return Some(Sculpt3dIntent::ArmTransform(TransformKind::ALL[i]));
     }
-    index_of(&ids::SCULPT3D_MASK_OP, id).map(|i| MASK_INTENTS[i])
+    index_of(&ids::SCULPT3D_MASK_OP, id).map(|i| MASK_INTENTS[i].clone())
 }
 
 const ADD_INTENTS: [Sculpt3dIntent; 4] = [
@@ -140,7 +140,7 @@ pub(crate) fn apply_event(
             let mut ui = snapshot.ui;
             ui.brush.alpha = i
                 .checked_sub(1)
-                .map(|k| Alpha::ALL[k.min(Alpha::ALL.len() - 1)]);
+                .map(|k| Alpha::ALL[k.min(Alpha::ALL.len() - 1)].clone());
             // ⚠️ **Armar um padrão SEMEIA a escala do modelo** — e só enquanto o
             // artista não escolheu a dele. Uma escala é absoluta (um poro tem o
             // tamanho de um poro), mas *qual número* depende do tamanho e da
@@ -248,7 +248,7 @@ pub(crate) fn apply_event(
             let intent = COMMANDS
                 .iter()
                 .find(|(k, _)| *k == id)
-                .map(|(_, i)| *i)
+                .map(|(_, i)| i.clone())
                 .expect("guard casou");
             state::push_intent(intent);
             true

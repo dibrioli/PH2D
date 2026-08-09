@@ -416,26 +416,52 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
 }
 
 use ph2d_node_registry::{ParamGroup, ParamHardMax, ParamUiHint, ParamWidget};
-/// **O teto DURO de `count` — MEDIDO, e este é QUADRÁTICO** (doc 88 A1 · §0), enquanto o slider
-/// fica nos 500 que cobrem a autoria confortável.
+/// **O teto DURO de `count` — MEDIDO NO DEVICE** (doc 88 A1 · doc 89 W1 · §0), enquanto o slider
+/// fica nos 500 que cobrem a autoria confortável por arrasto.
 ///
-/// A vizinhança de cada agente é varrida contra todos os outros, então o custo vai com `count²` —
-/// e é por isso que este nó não herda o milhão dos geradores lineares. Medido pela porta do
-/// produto (`measure_the_count_ceiling`, com a aresta `pre` de estado ligada, sem a qual o `eval`
-/// SEMEIA em vez de dar o passo e a tabela reporta 7× menos):
+/// ⚠️ **Ele já foi `2.000`, e esse número era o da CPU** — o caso do §0.0 na letra: o teto saía do
+/// `measure_the_count_ceiling`, que cozinha pelo `Cook` do registry (o caminho de REFERÊNCIA,
+/// `O(N²)` all-pairs), enquanto este nó tem `register_grid` + [`gpu::GPU_KERNEL`] e a GPU shipa
+/// LIGADA por default. Nos MESMOS 2.000 agentes: **CPU 10,392 ms · device 0,476 ms** — 21,8×.
+/// O caminho lento só precisa **computar a mesma resposta**; quem manda no teto é o dispositivo.
 ///
-/// | agentes | cook |
-/// |---|---|
-/// | 500 | 0,475 ms |
-/// | **2.000** | **10,392 ms** |
-/// | 8.000 | 186,388 ms |
+/// **A escala do device é CONDICIONAL ao [`Params::spread`]**, então as duas tabelas mandam juntas
+/// (`gpu_boids_scale::where_the_flock_leaves_the_frame_budget`, um quadro de 60 fps = 16,7 ms):
 ///
-/// Quadruplicar a contagem multiplica o custo por ~18. Dois mil agentes já custam **63% de um
-/// quadro de 60 fps**; quatro mil passariam de dois quadros. O teto é onde a medição parou de
-/// caber num quadro, não uma potência bonita acima dela.
+/// | agentes | packed (`spread` OFF, o DEFAULT) | spread ON |
+/// |---|---|---|
+/// | 2.000 | 0,476 ms · 3% | — |
+/// | 8.000 | 2,237 ms · 13% | — |
+/// | 16.384 | 5,314 ms · 32% | — |
+/// | 32.768 | **13,509 ms · 81%** | — |
+/// | 65.536 | 56,633 ms · 340% | 0,624 ms · 4% |
+/// | 262.144 | — | 2,083 ms · 12% |
+/// | **1.048.576** | — | **14,283 ms · 86%** |
+///
+/// Packed, a semeadura é uma caixa fixa de ~6×6 (`SEED_SPREAD`), o enxame inteiro cai em meia
+/// dúzia de células e a varredura 3×3 visita ~todo mundo ⇒ **a grade não acelera nada e o device
+/// também é `O(N²)`**, saindo do quadro entre 32.768 e 65.536. Com `spread`, a densidade fica
+/// limitada, a varredura é `O(k)` e o tique é `O(N)`.
+///
+/// **O teto quota a linha de baixo** — 2²⁰ é o que o `PH2D_GPU_COOK_DEMO=7` de fato SHIPA (três
+/// rodadas de smoke do Enio, medidas até o equilíbrio em 160 s), e o teto antigo tornava o número
+/// do próprio demo **indigitável**: o documento continha um valor que a caixa de texto recusava.
+///
+/// ⚠️ **E o preço da outra coluna fica NOMEADO, não escondido:** digitar um milhão com `spread`
+/// desligado pede ~256× a célula de 65 k — minutos por tique. O kernel **honra** o pedido (a
+/// resposta é a certa, só é lenta), o que o mantém do lado certo da lei *um teto digitável não
+/// pode passar do que o kernel honra* — é a parada ERGONÔMICA do `rate` do `motion.emitter`, e o
+/// interruptor que a resolve (`spread`) está na mesma seção do painel. O que `count` **não** pode
+/// exprimir é um limite sobre o PRODUTO `count × densidade`, exatamente como o `rate` do emitter
+/// não exprime `rate × playhead`.
+///
+/// ⚠️ **O slider fica em 500 por RESOLUÇÃO, não por custo** (o device faz 8.000 em 13% de um
+/// quadro): 1..500 dá ~2,5 agentes por pixel de arrasto contra um default de 48, e uma pista até
+/// 8.000 tornaria a contagem comum imprecisa de autorar. Quem quer a escala DIGITA — o par
+/// slider/chip do doc 88 B2.
 static PARAM_HARD_MAX: &[ParamHardMax] = &[ParamHardMax {
     param: "count",
-    max: 2_000.0,
+    max: 1_048_576.0,
 }];
 
 /// As SEÇÕES deste nó (doc 88 B3). Nove sliders numa lista plana escondem que eles respondem

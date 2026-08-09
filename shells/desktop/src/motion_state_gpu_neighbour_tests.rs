@@ -265,3 +265,62 @@ fn the_boid_demo_is_a_large_spread_flock_sized_for_headroom() {
          cannot help (O(N²)), which is the exact thing this demo disproves"
     );
 }
+
+/// **O teto de `count` quota o DEVICE, não o caminho de referência** (doc 89 W1 · §0.0).
+///
+/// Este demo shipa `count = 2²⁰` — três rodadas de smoke do Enio, medidas até o equilíbrio em
+/// 160 s — e o teto digitável do param dizia **2.000**, o número do `measure_the_count_ceiling`,
+/// que cozinha pelo `Cook` do registry, ou seja o caminho de **CPU** (`O(N²)` all-pairs). Nos
+/// MESMOS 2.000 agentes o device custa **0,476 ms contra 10,392** — 21,8× —, e a GPU shipa LIGADA
+/// por default.
+///
+/// ⚠️ **O sintoma não era um documento quebrado, e é por isso que nenhum gate via:** o painel
+/// ALARGA a faixa para conter o valor que o arquivo traz (`motion_bridge_params::contain`), então
+/// abrir a cena funcionava. O que não funcionava era **digitar 1.048.576 num nó novo** — o app
+/// continha um número que a própria caixa de texto recusava.
+///
+/// A régua é a do painel, verbatim, e deliberadamente **sem** o `contain`: o alargamento é
+/// exatamente o que esconde o defeito, então a pergunta tem de ser *o que uma sessão de autoria
+/// NOVA alcança*.
+///
+/// ⚠️ **O oráculo é o DEMO, não um literal** — afirmar `== 1_048_576.0` aqui seria a segunda
+/// cópia do número, verde no dia em que o demo mudasse de contagem e o teto não. A sonda
+/// `what_the_corpus_authors_and_no_one_can_type` faz a mesma pergunta ao corpus inteiro.
+#[test]
+fn the_boid_count_ceiling_quotes_the_device_not_the_reference_path() {
+    let mut registry = NodeRegistry::new();
+    ph2d_node_registry_init::register_all_nodes(&mut registry).expect("registry builds");
+    let mut doc = MotionDoc::new();
+    build_gpu_boids_demo_document(&mut doc, &registry).expect("well-typed boids demo");
+
+    let idx = doc
+        .graph
+        .nodes()
+        .iter()
+        .position(|n| n.type_name == "motion.boids")
+        .expect("the demo has a motion.boids");
+    let node = ph2d_nodegraph::graph::NodeId(idx as u32);
+    let ty = doc.graph.nodes()[idx].type_id();
+    let shipped = doc
+        .graph
+        .node_param_overrides(node)
+        .and_then(|p| p.get("count").copied())
+        .expect("the demo authors a count");
+
+    let hint_max = registry
+        .param_ui(ty)
+        .and_then(|h| h.iter().find(|h| h.param == "count"))
+        .map(|h| h.max)
+        .expect("count is hinted");
+    let typeable = registry
+        .param_hard_max(ty, "count")
+        .unwrap_or(hint_max)
+        .max(hint_max);
+
+    assert!(
+        shipped <= typeable,
+        "o demo shipa count = {shipped} e a caixa de texto para em {typeable}: o artista não \
+         consegue digitar o número que o app roda. O teto do device foi medido em \
+         `gpu_boids_scale::where_the_flock_leaves_the_frame_budget`."
+    );
+}

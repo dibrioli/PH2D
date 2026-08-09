@@ -47,7 +47,11 @@ use super::gpu_field_demos::{
     build_gpu_field_curve_demo_document, build_gpu_field_index_range_demo_document,
     build_gpu_field_radial_sweep_demo_document, build_gpu_field_remap_demo_document,
 };
+use super::gpu_neighbour_demos::{
+    build_gpu_boids_demo_document, build_gpu_collide_demo_document, build_gpu_sweep_demo_document,
+};
 use super::gpu_panel_demo::build_gpu_panel_demo_document;
+use super::gpu_voronoi_demo::build_gpu_voronoi_demo_document;
 use super::gpu_zone_demo::build_gpu_zone_demo_document;
 use ph2d_motion_doc::MotionDoc;
 use ph2d_node_registry::NodeRegistry;
@@ -160,6 +164,25 @@ fn corpus(reg: &NodeRegistry) -> Vec<Doc> {
     // The count-changing SourceRows deformer that reads its template.
     push("demo=15 kaleidoscope (SourceRows fan-out)", &|d| {
         build_gpu_kaleidoscope_demo_document(d, reg)
+    });
+    // ⚠️ **A família da VIZINHANÇA estava FORA, e a ausência tinha consequência.**
+    // Este corpus se declara *"todo grafo que o repo constrói"* e não incluía as
+    // três cenas da grade espacial (ADR-0140) nem o voronoi — então a sonda de
+    // tetos digitáveis nascia **CEGA ao demo que a motivou** (o boids de 2²⁰), e o
+    // censo de cobertura nunca planejou o caminho da grade. É a mesma doença que
+    // esta arquivo já pagou com os deformers, que também entraram tarde: *um
+    // buraco que ninguém põe num documento é ausência, não fronteira limpa.*
+    push("demo=7 boids murmuration (grid)", &|d| {
+        build_gpu_boids_demo_document(d, reg)
+    });
+    push("demo=8 collide (grid)", &|d| {
+        build_gpu_collide_demo_document(d, reg)
+    });
+    push("demo=9 sweep (grid reuse)", &|d| {
+        build_gpu_sweep_demo_document(d, reg)
+    });
+    push("demo=11 voronoi (JFA)", &|d| {
+        build_gpu_voronoi_demo_document(d, reg)
     });
     out
 }
@@ -293,4 +316,92 @@ fn sorted_desc(m: &BTreeMap<String, usize>) -> Vec<(String, usize)> {
 fn reg_has_kernel(reg: &NodeRegistry, ty: ph2d_nodegraph::node::NodeTypeId) -> Option<bool> {
     use ph2d_nodegraph::gpu::KernelResolver;
     Some(reg.gpu_kernel(ty).is_some())
+}
+
+/// **Que valores o repo AUTORA que o artista não consegue DIGITAR?** — a sonda que nasceu a
+/// caminho do teto do boids (doc 89 W1 · CLAUDE.md §0.0) e achou uma família inteira.
+///
+/// A cena `=7` shipa `motion.boids` com `count = 1.048.576` — três rodadas de smoke, 60 fps
+/// medidos — enquanto o teto digitável do param dizia **2.000**, herdado do caminho de CPU
+/// (`O(N²)`) que este nó só usa como referência. ⚠️ **Isso não quebra o documento**, e é por isso
+/// que nenhum gate via: o painel ALARGA a faixa para conter o que o arquivo traz. O que quebra é o
+/// artista **reproduzir à mão o número que o próprio app roda**.
+///
+/// ⚠️ **E a varredura mostrou que o boids era o caso MENOS comum.** As outras catorze violações
+/// não são tetos herdados de caminho lento: são params **sem `ParamHardMax` nenhum**, onde o teto
+/// digitável **colapsa na faixa de arrasto** — `motion.move.dx` para em 10 num demo que translada
+/// 260, `motion.spherize.radius` em 20 sobre um raio de 320. É o doc 88 B2 dizendo que faltam as
+/// duas metades: o soft (arrasto confortável) existe, o hard (onde o disfuncional começa) não.
+/// ⇒ **É a varredura por família da §9 do doc 88**, não desta wave, e o teto de cada um se MEDE.
+///
+/// Por isso isto é SONDA e não gate: transformá-la em vermelho hoje só ofereceria duas saídas
+/// ruins — fazer a wave alheia por dentro desta, ou shipar uma allowlist de catorze nomes, que é a
+/// enumeração que apodrece. O gate que ESTA wave sustenta é o do boids, e mora ao lado do demo que
+/// ele descreve (`motion_state_gpu_neighbour_tests.rs`).
+///
+/// A varredura mora aqui porque [`corpus`] já é a lista única de todo grafo que o repo constrói —
+/// uma segunda lista seria a porta que apodrece na primeira cena nova.
+///
+/// ⚠️ **A régua é a do PAINEL, verbatim** (`motion_bridge_params`): o alcance digitável é
+/// `param_hard_max.unwrap_or(hint.max).max(hint.max)`, deliberadamente **sem** o `contain` que
+/// alarga a faixa para conter o valor do documento — é justamente esse alargamento que esconde o
+/// defeito, então a pergunta tem de ser o que uma sessão de autoria NOVA alcança.
+///
+/// ⚠️ **Param sem hint nenhum é PULADO, e não por preguiça:** ali o painel deriva uma faixa
+/// neutra do default do manifesto e a contém no valor, ou seja **não existe teto a violar**.
+/// Afirmar um sobre ele seria inventar a régua que o produto não tem.
+///
+/// ```text
+/// cargo test -p ph2d-host-desktop --bins what_the_corpus_authors_and_no_one_can_type -- --ignored --nocapture
+/// ```
+#[test]
+#[ignore = "sonda: imprime uma tabela para a varredura por família do doc 88 §9"]
+fn what_the_corpus_authors_and_no_one_can_type() {
+    let reg = registry();
+    let mut offenders: Vec<String> = Vec::new();
+    let mut checked = 0usize;
+
+    for Doc { name, doc, .. } in &corpus(&reg) {
+        let g = &doc.graph;
+        for (i, inst) in g.nodes().iter().enumerate() {
+            let node = NodeId(i as u32);
+            let Some(overrides) = g.node_param_overrides(node) else {
+                continue;
+            };
+            let hints = reg.param_ui(inst.type_id()).unwrap_or(&[]);
+            for (param, &value) in overrides {
+                let Some(h) = hints.iter().find(|h| h.param == param) else {
+                    continue;
+                };
+                checked += 1;
+                let ceiling = reg
+                    .param_hard_max(inst.type_id(), param)
+                    .unwrap_or(h.max)
+                    .max(h.max);
+                let floor = reg
+                    .param_hard_min(inst.type_id(), param)
+                    .unwrap_or(h.min)
+                    .min(h.min);
+                if value > ceiling || value < floor {
+                    offenders.push(format!(
+                        "[{name}] {}.{param} = {value} está fora do digitável [{floor}, {ceiling}]",
+                        inst.type_name
+                    ));
+                }
+            }
+        }
+    }
+
+    assert!(
+        checked > 0,
+        "varredura vazia: o corpus não autorou um único param com hint — a sonda mediria nada"
+    );
+    println!(
+        "\n=== valores autorados que o artista NÃO consegue digitar ({} de {checked}) ===\n",
+        offenders.len()
+    );
+    for o in &offenders {
+        println!("  {o}");
+    }
+    println!();
 }

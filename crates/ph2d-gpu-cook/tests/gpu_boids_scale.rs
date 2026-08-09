@@ -113,6 +113,61 @@ fn time_step_ms(gpu: &GpuContext, g: &Graph, reg: &NodeRegistry, out: NodeId) ->
     start.elapsed().as_secs_f64() * 1e3 / TIMED as f64
 }
 
+/// **Where does the SHIPPED DEFAULT leave a 60 fps frame?** — the number a
+/// `count` ceiling must quote (doc 89 W1 · CLAUDE.md §0).
+///
+/// The hard max is one number and the device's scaling is CONDITIONAL, so this
+/// measures both sides of the condition at the counts where the decision lives:
+/// - **packed** (`spread = 0`, the node's DEFAULT): the seed cloud is a fixed
+///   ~6×6 box, so every agent's 3×3 sweep visits ~everyone and the grid gives no
+///   acceleration — `O(N²)` on the device too.
+/// - **spread** (`spread = 1`): density bounded, the sweep is `O(k)`, the tick
+///   is `O(N)` — the regime the demo ships (`=7`, a million at 60 fps).
+///
+/// ⚠️ The packed sweep STOPS at 65 536 **on purpose, and the omission is the
+/// measurement**: packed cost is quadratic, so a packed million is ~256× the
+/// 65 k cell — minutes per tick, not a number anyone would ship near. The
+/// sibling [`how_far_does_the_flock_scale`] carries the expensive tail; this one
+/// is meant to be cheap enough to re-run on a machine somebody else is using.
+#[test]
+#[ignore = "measurement, needs a GPU adapter"]
+fn where_the_flock_leaves_the_frame_budget() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping the frame-budget measurement");
+        return;
+    };
+    let reg = registry();
+    const FRAME_MS: f64 = 1000.0 / 60.0;
+    for (label, spread, counts) in [
+        (
+            "packed (spread OFF — the DEFAULT)",
+            false,
+            &[2_000u32, 8_000, 16_384, 32_768, 65_536][..],
+        ),
+        (
+            "spread (spread ON — the demo's regime)",
+            true,
+            &[65_536u32, 262_144, 1_048_576][..],
+        ),
+    ] {
+        eprintln!("\nboids on the GPU — {label}:");
+        eprintln!("  {:>10}  {:>10}  {:>12}", "agents", "ms/tick", "% of 16.7");
+        for &count in counts {
+            let (g, out) = boids_graph(count as f32, spread);
+            let ms = time_step_ms(&gpu, &g, &reg, out);
+            eprintln!(
+                "  {count:>10}  {ms:>10.3}  {:>11.0}%",
+                ms / FRAME_MS * 100.0
+            );
+        }
+    }
+    eprintln!(
+        "\n(the CPU reference path is O(N²) all-pairs and measures 0,475 / 10,392 /\n\
+         186,388 ms at 500 / 2 000 / 8 000 — `measure_the_count_ceiling`. It only has\n\
+         to compute the same answer; the DEVICE is what a ceiling quotes.)"
+    );
+}
+
 #[test]
 #[ignore = "measurement, needs a GPU adapter"]
 fn how_far_does_the_flock_scale() {

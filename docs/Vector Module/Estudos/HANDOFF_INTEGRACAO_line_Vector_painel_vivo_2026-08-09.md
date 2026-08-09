@@ -1,9 +1,15 @@
 # HANDOFF DE INTEGRAÇÃO — `line/Vector`, o painel autorado fica VIVO (2026-08-09)
 
-> **15 commits · 68 arquivos · +5.762/−778.**
+> **45 commits · 100 arquivos · +9.363/−917.**
 > **Todos os smokes aprovados pelo Enio** — os oito passos da cena, incluindo a família de
 > LISTA, o dropdown e a seleção de aba.
 > Supersede nada: é a continuação da jornada de UI/UX que integrou em 08/08.
+>
+> ⚠️ **A jornada tem DUAS metades e a segunda não tem smoke, de propósito:** os 15 primeiros
+> commits são a FEATURE (o painel autorado fica vivo, smokada); os 30 seguintes são a
+> **AUDITORIA do sistema de widgets** — dezoito achados, e nenhum deles muda o que o artista
+> vê exceto onde o desenho estava errado. O inventário fechado vive ao lado, em
+> [`AUDITORIA_widgets_achados_2026-08-09.md`](AUDITORIA_widgets_achados_2026-08-09.md).
 
 ## §1 — O que esta linha entrega
 
@@ -20,6 +26,17 @@ fecharam:
    (catálogo **16 → 20**), com as opções a virem dos **filhos que o artista desenhou** e
    **clicáveis uma a uma**. Era o maior buraco estrutural do levantamento de 08/08:
    **14,6% da UI real**.
+
+5. **A AUDITORIA do sistema de widgets** (30 commits) — dezoito achados com **um mecanismo
+   só**: *um fato com duas cópias que discordam*. Saíram como **catorze correções**, **três
+   itens que DISSOLVERAM na medição** e **um resíduo nomeado**. Os que mudam o produto:
+   a opção marcada podia não existir · a lista longa saía da tela em vez de rolar · a
+   `TextArea` tinha DUAS réguas (o caret caía na linha errada) · o texto de uma row saía
+   dela (337 px à esquerda; três linhas por cima das seguintes) · quatro slots de largura
+   FIXA dentro de hosts VARIÁVEIS · e **a faixa de arrasto do título comia 2 px do botão de
+   fechar** num painel real. Os que mudam a SUÍTE: seis gates que não podiam falhar pelo
+   motivo que alegavam, e **o gate de staleness que o cabeçalho do painel gerado prometia e
+   que não existia em lugar nenhum**.
 
 ## §2 — As leis, e onde cada uma mora
 
@@ -186,12 +203,20 @@ ainda acerta alguma), e só o gate de geometria a pega.
 | `PROJECT_SCHEMA` | **69, INTOCADO** (`git diff main -- project.rs` vazio) |
 | `VEC_SCENE_SCHEMA_VERSION` | **14, intocado** |
 | Contrato congelado (§6) | **intacto** (`ph2d-nodegraph`, `ph2d-core/src/tool.rs` com diff vazio) |
-| Registro do `ph2d-ecs` | **intocado** — `VecWidgetIcon` já existia |
+| Registro do `ph2d-ecs` | **54 → 55** (`VecWidgetIcon`), e os **DOIS espelhos 55 → 56** |
 | ADR | **nenhum** ⇒ fora de toda disputa de número |
 | `Cargo.toml` | **1**, e é aresta interna (`ph2d-panel-authored`) |
 | Dep externa nova | **nenhuma** (`Cargo.lock` sem `+name`) |
 | `WidgetKind` | 12 → **20** (variantes apendadas; o `code()` é estável) |
 | `ph2d-i18n` | `lib.rs` **partido** — as 186 chaves `panel.vector.*` para o irmão `vector.rs` (701 → 520 LOC) |
+
+⚠️ **Esta linha do registro estava ERRADA neste handoff até 09/08** — ela dizia *"intocado,
+`VecWidgetIcon` já existia"*, e medido contra a `main` (54 / 55 / 55) contra o tip (55 / 56 / 56)
+o componente é **novo**. É a linha mais cara da tabela para se errar: **o contador é TRÊS**
+(`ph2d-ecs` conta só os próprios; `ph2d-render` soma o `Sprite`; `ph2d-script` soma o
+`LuauScript`), cada um roda **só na suíte da própria crate**, e este repo já pagou o vermelho-
+latente dessa família três vezes. *Um handoff que erra aqui manda o integrador procurar o
+conflito no lugar errado.*
 
 ⚠️ **O split do `ph2d-i18n` é o único ponto de merge sensível desta linha.** Ele foi por
 **assunto** (o teto de LOC pegou nas 3 chaves novas), e uma linha que acrescente uma chave
@@ -268,10 +293,33 @@ LISTA e do dropdown.
   entidade errada — e **a contagem de rows deu certa por acidente** (a entidade adotada não
   vestia widget), então o `PARE` passou sobre um painel com a faixa **sem opção nenhuma**.
 
+## §6b — Para o integrador, o que a AUDITORIA acrescenta
+
+- ⚠️ **A `PANEL_HEADER_CLOSE_RESERVE` mudou de 40 para 42, e o `panel_drag_handle_rect`
+  passou a CLAMPAR.** Isso toca a faixa de arrasto de **todos** os painéis (encolhe 2 px à
+  direita). A lei mora na porta, não nos 21 chamadores, e o `min` **só encolhe** — nenhum
+  painel pode passar a sombrear o que não sombreava. Se um merge trouxer um painel novo, ele
+  nasce coberto.
+- ⚠️ **Quatro doc-comments tiveram a derivação corrigida** (`SECTION_LABEL_TO_CONTROL_PX`
+  dizia `Xxs`, que vale 2; `SECTION_INNER_ROW_GAP_PX` dizia `Sm`, que vale 6). **Os NÚMEROS
+  não mudaram** — se um merge "canonizar" um deles para o token nomeado, o gap de toda seção
+  do app muda.
+- ⚠️ **O `generated/panel.rs` ganhou um gate de staleness de verdade** e uma porta
+  `regenerate` (`#[ignore]`). Se o emissor mudar de formato, o gate fica vermelho e a
+  resposta é a porta — **nunca** editar o gerado à mão, que é o que o cabeçalho dele proíbe.
+- ⚠️ **`crates/ph2d-panel-authored/Cargo.toml` ganhou o `ph2d-ui-codegen` em
+  `[dev-dependencies]`** — em `[dependencies]` seria o painel compilado a depender do próprio
+  gerador. É a única mudança de `Cargo.toml` da linha; **nenhum pacote externo novo**.
+- ⚠️ **`ph2d-runtime` recebeu um variant `SignalOrigin::Control` + `Signal::from_control`,
+  ADITIVOS** — a linha CONSUMIU a crate-folha que o `line/runtime` R0 acabou de integrar, em
+  vez de disputar o nome dela. **Nenhuma dependência entrou**, então o gate estrutural
+  `the_event_core_is_a_leaf` continua de pé. A adjacência que o handoff do R0 nomeia (*o
+  runtime de UI querer este nome*) **não aconteceu aqui**.
+
 ## §7 — Gate de fechamento
 
-`scripts/nextest-impacted.sh` **8515/8515 verdes** · `cargo clippy --workspace
---all-targets` **limpo** · `cargo fmt --all` aplicado · golden do painel **em dia**.
+`scripts/nextest-impacted.sh` **8560/8560 verdes, 834 skipped** · `cargo clippy` limpo nas
+crates tocadas · `cargo fmt --all` aplicado · golden do painel **em dia**.
 
 ⚠️ **Uma flake ALHEIA, medida e exonerada:** `ph2d-flip::flip_smooth::…::the_fit_rebuilds_the_
 neighbourhood_not_the_whole_stroke` falhou duas vezes sob a suíte cheia e passou isolada e na

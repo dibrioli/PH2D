@@ -1,11 +1,13 @@
 # HANDOFF DE INTEGRAÇÃO — `line/Vector`, o painel autorado fica VIVO (2026-08-09)
 
-> **9 commits · 60 arquivos · +4.046/−583 · todos os smokes aprovados pelo Enio.**
+> **12 commits · 66 arquivos · +5.404/−779.**
+> ⚠️ **Os smokes aprovados pelo Enio cobrem os 9 primeiros commits.** Os três últimos — a
+> família de LISTA e o dropdown — estão **pendentes de smoke**; ver a §4.
 > Supersede nada: é a continuação da jornada de UI/UX que integrou em 08/08.
 
 ## §1 — O que esta linha entrega
 
-A W8b tinha entregue *a árvore autorada vira painel*. Faltavam três coisas, e as três
+A W8b tinha entregue *a árvore autorada vira painel*. Faltavam quatro coisas, e as quatro
 fecharam:
 
 1. **Os tipos que faltavam vestem** — `NumberInput`, `LevelMeter`, `ColorSwatch` e
@@ -14,6 +16,9 @@ fecharam:
    retângulo, nem o rótulo, nem os tokens determinam: a **cor** de uma swatch e o
    **glifo** de um botão de ícone.
 3. **O painel deixa de ser um SNAPSHOT** — ele segue o documento aberto, quadro a quadro.
+4. **A família de LISTA** — `Tabs`, `RadioGroup`, `SegmentedAdaptive` e `Dropdown`
+   (catálogo **16 → 20**), com as opções a virem dos **filhos que o artista desenhou**.
+   Era o maior buraco estrutural do levantamento de 08/08: **14,6% da UI real**.
 
 ## §2 — As leis, e onde cada uma mora
 
@@ -92,6 +97,57 @@ vale pelo store, e publicá-lo aqui também poria o mesmo fato em dois fios.
 do dreno. Fora dessa janela o aperto chega um quadro atrasado — invisível num toast e
 visível no dia em que o consumidor for som.
 
+### Um controle que toma opções POSSUI os seus filhos
+
+`WidgetKind::takes_options()`. Um controle de lista não tem *um valor*: tem N rótulos e um
+índice marcado, e o lugar nativo desses rótulos num editor vetorial são os **filhos**. A
+árvore já exprime contenção e o artista já os nomeia na Hierarquia ⇒ **zero campo novo,
+zero schema**.
+
+A consequência é uma lei de posse que muda a leitura da **ÁRVORE**, não só a da pele: a
+varredura **não desce** os filhos de um controle de lista como rows. Sem ela, desenhar três
+abas dentro de uma faixa daria uma faixa **e mais três linhas soltas** no painel.
+
+⚠️ **E ela derruba uma premissa que o levantamento de 08/08 deixou escrita.** Ele chamou a
+família de *estrutural*, por oposição a *omissão de fiação*, e a leitura implícita era que o
+canal de side-metadata não a alcançava. **Nada no molde do canal exige que o campo seja
+pequeno** — `options: &[String]` é um campo com neutro (a lista vazia) exactamente como
+`rgba: Option<_>` é.
+
+### O dropdown é o único que não cabe num passe de pintura só
+
+`WidgetKind::defers_a_popover()`, e a divisão é de **LAYOUT**, não de gosto. Os três irmãos
+desenham as N opções DENTRO do retângulo que lhes foi dado — quem os pinta acabou quando a
+função retorna. O dropdown desenha **um chip** e guarda a lista para uma superfície que tem
+de aparecer **por cima do que for pintado depois dela**.
+
+⇒ O painel colecta os abertos durante o corpo e pinta-os num **passe diferido**, cuja ordem
+decide três coisas: **depois do `pop_layer`** (senão a lista da última row é cortada pelo
+recorte do corpo) · **depois das rows** (senão elas pintam por cima dela) · **depois dos
+punhos de chrome** (o hit é *último-registado-ganha*, e uma lista sobre o canto de
+redimensionar tem de tomar o clique).
+
+⚠️ **A pele NUNCA o pinta aberto** — nem no painel nem na prévia do canvas. Ela desenha o
+chip; a lista é do passe de quem tem `hit_index` para registar as opções, que a prévia não
+tem e (§2 do plano) não deve ter.
+
+### A escolha diz QUAL opção, e fecha a lista
+
+`AuthoredIntent::Choice { key, index }` — e ele fecha um vão que a própria linha shipou três
+commits antes: as três primeiras da família caíam em `Fired`, que diz *"alguém mexeu neste
+controle"* e **não diz QUAL opção**.
+
+⚠️ **Fechar é a metade que o despacho genérico não faz.** Ele alterna o `open` de quem foi
+CLICADO, e quem foi clicado é a **opção**, não o chip. Sem essa linha a lista fica aberta
+depois de escolher, e o clique seguinte — que o artista dá para a fechar — escolhe outra
+coisa.
+
+⚠️ **`rows::selected_of` devolve `Option<usize>`, e é isso que a mantém uma porta ÚNICA em
+vez de duas.** Ela responde duas perguntas de uma vez (*este controle É de escolha?* e
+*qual?*), e os dois consumidores querem metades diferentes: o `paint` cai em `0` porque um
+controle de opções tem de desenhar alguma marcada, e o `event` precisa do `None` para saber
+que aquela row não emite escolha.
+
 ## §3 — Colisão: o que esta linha move
 
 | Eixo | Estado |
@@ -103,12 +159,22 @@ visível no dia em que o consumidor for som.
 | ADR | **nenhum** ⇒ fora de toda disputa de número |
 | `Cargo.toml` | **1**, e é aresta interna (`ph2d-panel-authored`) |
 | Dep externa nova | **nenhuma** (`Cargo.lock` sem `+name`) |
-| `WidgetKind` | 12 → **16** (variantes apendadas; o `code()` é estável) |
+| `WidgetKind` | 12 → **20** (variantes apendadas; o `code()` é estável) |
+| `ph2d-i18n` | `lib.rs` **partido** — as 186 chaves `panel.vector.*` para o irmão `vector.rs` (701 → 520 LOC) |
+
+⚠️ **O split do `ph2d-i18n` é o único ponto de merge sensível desta linha.** Ele foi por
+**assunto** (o teto de LOC pegou nas 3 chaves novas), e uma linha que acrescente uma chave
+`panel.vector.*` ao `lib.rs` **funde limpa contra um arquivo de onde a tabela saiu** — o
+mesmo modo de falha que o corte do `project.rs` produziu na integração de 04/08. Confira que
+o `tr` de toda chave `panel.vector.*` continua a resolver.
 
 ## §4 — Smokes
 
 **`env PH2D_BUILD_SMOKE=62 cargo run -p ph2d-host-desktop --release`** — a cena imprime
-o que montou; ⚠️ **se a linha `[ui-panel] … 7 row(s)` não aparecer, PARE.**
+o que montou; ⚠️ **se a linha `[ui-panel] … 9 row(s)` não aparecer, PARE.**
+
+Os passos 1-6 estão **aprovados**; os 7-8 são o que a família de LISTA acrescentou e seguem
+**pendentes**.
 
 1. A swatch **Tint** mostra o preenchimento *dela*, não o dos irmãos.
 2. **Play** desenha a ESTRELA que o artista fez — **em pé**, e igual no canvas e no painel.
@@ -116,17 +182,27 @@ o que montou; ⚠️ **se a linha `[ui-panel] … 7 row(s)` não aparecer, PARE.
 4. O cabeçalho **Appearance** dobra e o painel **encolhe**.
 5. **Renomeie um filho ou edite os nós da estrela: o painel muda enquanto você desenha.**
 6. Com `PH2D_SIGNAL_LOG=1`, clicar um botão dá toast + `[signal] … <- controle autorado`.
+7. ⚠️ **A row `View` é uma faixa de ABAS**, e as opções dela são os três filhos `Design` /
+   `Preview` / `Code`. Renomeie um na Hierarquia: a aba muda de nome. **Se em vez disso
+   aparecer uma linha nova solta no painel, a lei de posse quebrou.**
+8. ⚠️ **A row `Blend` ESCONDE as opções.** Clique no chip: a lista abre **por cima de tudo**,
+   inclusive do canto de redimensionar. Escolha `Screen`: ela **fecha** e o chip passa a
+   dizer `Screen`. **Se a lista ficar aberta depois da escolha, PARE.** E a pergunta de olho:
+   arraste o painel para baixo até o chip ficar perto do fundo, abra outra vez — a lista tem
+   de virar para **CIMA**, e as opções têm de responder ao clique **onde estão desenhadas**.
 
 ## §5 — Aberto, com o preço ao lado
 
-- **A família de LISTA** (`Tabs`/`Dropdown`/`RadioGroup`/`SegmentedAdaptive`) é **14,6% da
-  UI real** e o maior buraco estrutural do levantamento. ⚠️ **Não é fiação:** são quatro
-  **tipos novos** (variante + código estável + pele + o canal de OPÇÕES + codegen + caminho
-  vivo + golden). O desenho que a análise recomenda: as opções são **filhos autorados**, e
-  a lei que falta é *um controle que toma opções POSSUI os seus filhos* — o `walk` não
-  pode descê-los como rows. É uma wave inteira.
+- ⚠️ **A guarda do popover VAZIO não tem gate, e está medido:** a mutação que a remove
+  **sobreviveu** à suíte inteira. Um popover sem opções não regista opção nenhuma, logo
+  **não come cliques** — a primeira versão do doc-comment afirmava que sim, e foi a mutação
+  que a desmentiu. O efeito é **só visual** (um painel flutuante vazio), e o harness de
+  painel deste repo lê retângulos de hit e nunca a cena. Fica declarada no `paint.rs`, no
+  molde das defesas em camada que o ADR-0145 documentou em vez de gatear.
 - **Duas molduras autoradas:** o painel vivo mostra a **primeira**. Escolher pela SELEÇÃO
   é decisão de produto — inventar um desempate que o artista não vê seria pior.
+- **Mutar um GRUPO** de opções (esconder uma aba) não existe: um filho de controle de lista
+  é um rótulo, não um controle. Se vier, é campo autorado — decisão de produto.
 - **`AuthoredIntent::Value`/`Flag`/`Text`** são drenados e descartados (o store é a
   autoridade). Se um dia quiserem consumidor, ele entra na mesma ponte.
 
@@ -141,8 +217,22 @@ o que montou; ⚠️ **se a linha `[ui-panel] … 7 row(s)` não aparecer, PARE.
 - O arch-gate da porta única ancora no **nome** `icon_face`, não em `icon_face(`: ele já
   ficou vermelho sobre produto correto quando a metade do spec passou a **passar** a função
   em vez de a chamar.
+- ⚠️ **O `PARE` da cena e o gate de contagem são DERIVADOS**, não literais
+  (`ui_panel_smoke::expected_rows`). Um número escrito à mão só sabe dizer *"mudou"*, e a
+  pergunta é outra: *a lei de posse continua de pé?* — ele tem de disparar quando uma opção
+  escapa para a moldura e ficar quieto quando alguém acrescenta um controle.
+- ⚠️ **O parentesco da cena é por NOME, numa porta única** (`authored_parent`), e isso é
+  cicatriz: a versão por índice contou a tabela à mão, errou por um, pendurou as opções na
+  entidade errada — e **a contagem de rows deu certa por acidente** (a entidade adotada não
+  vestia widget), então o `PARE` passou sobre um painel com a faixa **sem opção nenhuma**.
 
 ## §7 — Gate de fechamento
 
-`scripts/nextest-impacted.sh` **8496/8496 verdes** · `cargo clippy --workspace
+`scripts/nextest-impacted.sh` **8512/8512 verdes** · `cargo clippy --workspace
 --all-targets` **limpo** · `cargo fmt --all` aplicado · golden do painel **em dia**.
+
+⚠️ **Uma flake ALHEIA, medida e exonerada:** `ph2d-flip::flip_smooth::…::the_fit_rebuilds_the_
+neighbourhood_not_the_whole_stroke` falhou duas vezes sob a suíte cheia e passou isolada e na
+terceira corrida cheia. É gate de RAZÃO morto de fome pelo runner, e a linha toca **zero
+arquivos** daquela crate (`git diff main -- crates/ph2d-flip` vazio). Re-rode sozinho antes
+de suspeitar de um merge.

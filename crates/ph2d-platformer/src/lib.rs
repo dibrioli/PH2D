@@ -73,7 +73,7 @@ pub use crouch::{
 pub use dash::{DashConfig, DashState, DashStep, dash_burst, dash_step};
 pub use jump::{JumpConfig, JumpState, JumpStep, carried_frame, jump_step};
 pub use kinematic::{
-    KinematicState, kinematic_advance, kinematic_settle, supported_velocity, surface_descent,
+    Fluid, KinematicState, kinematic_advance, kinematic_settle, supported_velocity, surface_descent,
 };
 pub use react::{Reaction, ReactionConfig, push_transfer};
 pub use ride::{

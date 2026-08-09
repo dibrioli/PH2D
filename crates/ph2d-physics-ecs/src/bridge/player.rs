@@ -33,7 +33,7 @@ use bevy_ecs::entity::Entity;
 use ph2d_ecs::SimWorld;
 use ph2d_physics::{CharacterHit, CharacterParams};
 use ph2d_platformer::{
-    Buoyed, CORNER_LOOKAHEAD, CORNER_SAMPLES, CeilingProbe, GroundSample, HEADROOM_SAMPLES,
+    Buoyed, CORNER_LOOKAHEAD, CORNER_SAMPLES, CeilingProbe, Fluid, GroundSample, HEADROOM_SAMPLES,
     Headroom, KinematicState, PlayerConfig, PlayerInput, PlayerState, ReactionConfig, WALL_SAMPLES,
     WallHit, WallProbe, corner_offsets, corner_probe_wanted, footing, headroom_offsets,
     headroom_probe_wanted, kinematic_advance, kinematic_settle, player_motor, relative_rise,
@@ -373,7 +373,17 @@ impl PhysicsBridge {
             // Esta é uma consulta de LEITURA que sai por um early-out no primeiro
             // `if` de uma cena sem zona de empuxo — e um `wanted` para ela seria
             // uma segunda pergunta sobre a MESMA condição que a porta já faz.
-            let buoyed = Buoyed(self.world.buoyed(b.handle));
+            // ⚠️ **UMA consulta, DOIS consumidores** (W-KinFluid): a `Buoyed` é o
+            // que a lei do pulo pergunta (a trava do fluido) e o `Fluid` inteiro é
+            // o que o integrador cinemático integra. Perguntar duas vezes pagaria o
+            // passeio pelo grafo de interseção em dobro por tique de player, e
+            // deixaria dois números para o mesmo fato.
+            let at = self.world.fluid_at(b.handle);
+            let buoyed = Buoyed(at.buoyed);
+            let fluid = Fluid {
+                buoyed,
+                drag: at.drag,
+            };
 
             let step = player_motor(
                 &cfg,
@@ -425,6 +435,12 @@ impl PhysicsBridge {
                     // dela: quem decide quanto o chão ainda deve é o
                     // `ground_carry`, porque a caminhada já paga a tangente.
                     stand, gravity, UP, dt,
+                    // ⚠️ **A ÁGUA entra por aqui, e é a MESMA leitura que a lei do
+                    // pulo já recebeu** (o `buoyed` acima sai deste `fluid`): uma
+                    // segunda consulta daria duas respostas para *"em que meio
+                    // estou?"*, e elas divergiriam no tique em que o personagem
+                    // cruza a superfície — precisamente onde ninguém confere.
+                    fluid,
                 );
                 moves.push(KinMove {
                     entity,

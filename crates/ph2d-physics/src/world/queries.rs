@@ -107,26 +107,81 @@ impl PhysicsWorld {
     /// do corpo, não o de zonas do mundo.
     ///
     /// ⚠️ **Só matéria conta** (`shapes::displaces`, a mesma porta do empuxo): um
-    /// pé-sensor não desloca fluido. E o resultado é **somado sobre zonas e
-    /// CLAMPADO** — duas poças sobrepostas somam força, e passar de `1` não
-    /// significa nada para quem lê isto: *"o fluido carrega-te inteiro"* é o fim
-    /// da escala.
+    /// pé-sensor não desloca fluido. E o resultado é **somado sobre zonas** — duas
+    /// poças sobrepostas somam força, exactamente como o solver as soma.
+    ///
+    /// ⚠️ **NÃO é mais capado em `1`, e a mudança é de 2026-08-09.** O teto existia
+    /// enquanto o único consumidor perguntava `> 0` (a trava do fluido do
+    /// W-Submerged), e para ele *"o fluido carrega-te inteiro"* era de facto o fim
+    /// da escala. A lei cinemática (W-KinFluid) lê a MAGNITUDE, e ali o teto era
+    /// fatal: uma cápsula 4× menos densa que a água satura em `1` já a **`y = 0,2`**
+    /// (medido), com mais de metade do corpo ainda fora — e uma gravidade efetiva
+    /// `g·(1 − 1)` é **zero**, então o personagem pararia no meio da poça e nunca
+    /// subiria. O número honesto é a razão, e ela passa de `1` para tudo que boia.
     #[must_use]
     pub fn buoyed(&self, handle: RigidBodyHandle) -> f32 {
+        self.fluid_at(handle).buoyed
+    }
+
+    /// **O que o MEIO faz a este corpo** — as duas grandezas do fluido, respondidas
+    /// numa varredura só.
+    ///
+    /// # ⚠️ Por que exactamente estas duas, e não a força da zona
+    ///
+    /// A fronteira não foi escolhida aqui: o **W-AreaFalloff** já a desenhou, e o
+    /// `effector::apply` a carrega num gate. O falloff pesa os dois **EMPURRÕES**
+    /// (força e torque) e **deixa o MEIO em paz** — `drag`, `density` e `form_drag`
+    /// descrevem uma substância, e uma substância não fica mais rala perto da
+    /// própria margem. É precisamente isso que torna o meio respondível por uma
+    /// consulta: ele não depende do frame da zona, nem do espelho dela, nem da
+    /// posição do corpo dentro dela.
+    ///
+    /// ⛔ **A força FICA de fora, e não por escopo:** ela precisa do frame da zona
+    /// (`zone_force_world`), do espelho (`zone_spin_sign`) e do falloff
+    /// (`zone_falloff_scale`) — re-derivá-los aqui seria uma **segunda resposta**
+    /// para *"que empurrão esta zona dá neste ponto?"*, que é o defeito recorrente
+    /// desta linha. Uma corrente não leva um personagem cinemático, e isso está
+    /// medido e nomeado, não esquecido.
+    ///
+    /// ⚠️ **O arrasto é o MÁXIMO sobre as zonas, e a escolha apaga uma dedup:** um
+    /// corpo COMPOSTO sobrepõe a mesma poça com cada uma das formas dele (a lição
+    /// da W-CompoundZone), então uma soma sobre PARES faria a água resistir `N`
+    /// vezes mais a uma jangada de `N` peças. O máximo é idempotente sob pares
+    /// repetidos ⇒ não há conjunto de zonas-já-vistas a manter, nem alocação, nem
+    /// teto. Duas poças sobrepostas dão a mais viscosa das duas, que é a leitura
+    /// honesta de *"em que substância estou?"* — o empuxo soma porque forças somam;
+    /// um coeficiente não é uma força.
+    ///
+    /// ⚠️ **`form_drag` fica de fora**: ele é um kernel por-aresta sobre o polígono
+    /// do collider, não um escalar do meio, e um personagem cinemático não tem
+    /// velocidade que o solver possa integrar contra cada normal.
+    #[must_use]
+    pub fn fluid_at(&self, handle: RigidBodyHandle) -> FluidAt {
         let g = self.gravity.norm();
         if g <= 0.0 || self.effectors.is_empty() {
-            return 0.0;
+            return FluidAt::DRY;
         }
         let Some(rb) = self.bodies.get(handle) else {
-            return 0.0;
+            return FluidAt::DRY;
         };
         // O peso REAL que o solver tem — inclusive o `MassOverride` do W-Mass, que
         // é precisamente o caso em que uma massa re-derivada da densidade mentiria.
+        //
+        // ⚠️ **E ele responde para TODA espécie de corpo, o que não era óbvio:** um
+        // corpo cinemático tem massa INFINITA para o solver, mas `rb.mass()` devolve
+        // a massa dos colliders na mesma (medido: `1,0000` em Dynamic, Kinematic e
+        // Fixed) — o rapier zera a inversa-massa EFETIVA, não esta. Uma versão desta
+        // wave carregava um `authored_weight` que somava as massas dos colliders
+        // quando este número era zero, com um doc a dizer que era ele que fazia a
+        // água existir no modo cinemático. **Era falso e a mutação o provou:**
+        // removê-lo deixou tudo verde, porque o zero que eu tinha medido vinha
+        // inteiramente do par que não existia no grafo (ver `collider_build`).
         let weight = rb.mass() * g;
         if weight <= 0.0 {
-            return 0.0;
+            return FluidAt::DRY;
         }
         let mut lift = 0.0f32;
+        let mut drag = 0.0f32;
         for &ch in rb.colliders() {
             let Some(mine) = self
                 .colliders
@@ -148,14 +203,20 @@ impl PhysicsWorld {
                 let Some(zone_body) = zone.parent() else {
                     continue;
                 };
-                let fluid = self
+                let Some(effect) = self
                     .effectors
                     .binary_search_by_key(&zone_body.into_raw_parts(), |(h, _, _)| {
                         h.into_raw_parts()
                     })
                     .ok()
-                    .map_or(0.0, |i| self.effectors[i].1.density);
-                if fluid <= 0.0 {
+                    .map(|i| &self.effectors[i].1)
+                else {
+                    continue;
+                };
+                // O arrasto é do MEIO: ele conta por ESTAR dentro, mesmo numa zona
+                // que não tem empuxo nenhum (uma corrente de ar viscosa).
+                drag = drag.max(effect.drag);
+                if effect.density <= 0.0 {
                     continue;
                 }
                 if let Some((force, _)) = buoyancy::buoyant_force(
@@ -164,12 +225,42 @@ impl PhysicsWorld {
                     zone.shape(),
                     zone.position(),
                     self.gravity,
-                    fluid,
+                    effect.density,
                 ) {
                     lift += force.norm();
                 }
             }
         }
-        (lift / weight).clamp(0.0, 1.0)
+        FluidAt {
+            // `max`, não `clamp`: com `NaN` o `clamp` PROPAGA e o `max` devolve o
+            // outro operando — um piso que também sanitiza, que é estritamente
+            // mais forte que o teto que saiu.
+            buoyed: (lift / weight).max(0.0),
+            drag,
+        }
     }
+}
+
+/// **O que o fluido faz a um corpo** — a resposta de [`PhysicsWorld::fluid_at`].
+///
+/// Duas grandezas e não uma porque são feitas na MESMA varredura do grafo de
+/// interseção: perguntá-las em duas consultas pagaria o passeio duas vezes por
+/// tique de player, e as duas descrevem o mesmo fato (*em que meio estou?*).
+#[derive(Copy, Clone, Debug, Default, PartialEq)]
+pub struct FluidAt {
+    /// **Quantos pesos deste corpo o fluido carrega.** `0` no ar seco, `1`
+    /// exactamente à tona (boiar em repouso É o empuxo igualar o peso), e **maior
+    /// que 1** para o que sobe — uma rolha submersa lê a razão das densidades.
+    pub buoyed: f32,
+    /// **O coeficiente de resistência do meio**, por segundo — o `AreaDrag` da zona
+    /// mais viscosa que contém este corpo. `0` no ar seco.
+    pub drag: f32,
+}
+
+impl FluidAt {
+    /// Ar seco — o neutro, e o que uma cena sem zona nenhuma produz.
+    pub const DRY: Self = Self {
+        buoyed: 0.0,
+        drag: 0.0,
+    };
 }

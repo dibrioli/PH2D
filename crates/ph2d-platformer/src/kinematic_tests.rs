@@ -46,7 +46,7 @@ fn floor_moving(gv: Vec2) -> GroundSample {
 /// não a aplica a um corpo cinemático.
 #[test]
 fn gravity_is_integrated_by_this_law_when_airborne() {
-    let (st, wanted) = kinematic_advance(still(), Motor::default(), None, G, UP, DT);
+    let (st, wanted) = kinematic_advance(still(), Motor::default(), None, G, UP, DT, Fluid::DRY);
     assert!(
         (st.velocity[1] - G[1] * DT).abs() < 1e-6,
         "um tique de queda livre tem de dar {} e deu {}",
@@ -66,7 +66,7 @@ fn the_ground_absorbs_only_what_points_into_it() {
     let ground = flat();
     let mut st = resting();
     for _ in 0..600 {
-        st = kinematic_advance(st, Motor::default(), Some(&ground), G, UP, DT).0;
+        st = kinematic_advance(st, Motor::default(), Some(&ground), G, UP, DT, Fluid::DRY).0;
     }
     assert_eq!(
         st.velocity[1], 0.0,
@@ -77,7 +77,15 @@ fn the_ground_absorbs_only_what_points_into_it() {
         velocity: [0.0, 5.0],
         grounded: true,
     };
-    let (up_st, _) = kinematic_advance(takeoff, Motor::default(), Some(&ground), G, UP, DT);
+    let (up_st, _) = kinematic_advance(
+        takeoff,
+        Motor::default(),
+        Some(&ground),
+        G,
+        UP,
+        DT,
+        Fluid::DRY,
+    );
     assert!(
         up_st.velocity[1] > 4.8,
         "o tique da decolagem ve' o chao e NAO pode ser zerado: {}",
@@ -89,7 +97,7 @@ fn the_ground_absorbs_only_what_points_into_it() {
 /// alcança"*, e a razão de a régua do `grounded` ser corrigida sob Snap.
 #[test]
 fn nothing_is_absorbed_while_airborne() {
-    let (st, _) = kinematic_advance(still(), Motor::default(), None, G, UP, DT);
+    let (st, _) = kinematic_advance(still(), Motor::default(), None, G, UP, DT, Fluid::DRY);
     assert!(
         (st.velocity[1] - G[1] * DT).abs() < 1.0e-6,
         "no ar a gravidade tem de sobreviver: {}",
@@ -114,7 +122,15 @@ fn nothing_is_absorbed_while_airborne() {
 fn the_integrator_owes_the_contact_and_not_the_traction() {
     // VAGÃO: velocidade tangente ao chão -- a caminhada é quem a paga.
     let wagon = floor_moving([3.0, 0.0]);
-    let (st, wanted) = kinematic_advance(resting(), Motor::default(), Some(&wagon), G, UP, DT);
+    let (st, wanted) = kinematic_advance(
+        resting(),
+        Motor::default(),
+        Some(&wagon),
+        G,
+        UP,
+        DT,
+        Fluid::DRY,
+    );
     assert!(
         wanted[0].abs() < 1e-9,
         "a tangente e' da caminhada; o integrador nao pode soma-la de novo: {}",
@@ -123,7 +139,15 @@ fn the_integrator_owes_the_contact_and_not_the_traction() {
 
     // ELEVADOR: velocidade ao longo da normal -- ninguem mais a paga.
     let lift = floor_moving([0.0, 3.0]);
-    let (st_lift, w_lift) = kinematic_advance(resting(), Motor::default(), Some(&lift), G, UP, DT);
+    let (st_lift, w_lift) = kinematic_advance(
+        resting(),
+        Motor::default(),
+        Some(&lift),
+        G,
+        UP,
+        DT,
+        Fluid::DRY,
+    );
     assert!(
         (w_lift[1] - 3.0 * DT).abs() < 1e-6,
         "o contato tem de levantar o personagem: {}",
@@ -178,7 +202,15 @@ fn a_platform_blocked_by_a_wall_does_not_owe_the_character_velocity() {
     // pede deslocamento nenhum, e um bloqueio de zero não contém o fenômeno.
     let gv = [0.0, 3.0];
     let lift = floor_moving(gv);
-    let (st, wanted) = kinematic_advance(resting(), Motor::default(), Some(&lift), G, UP, DT);
+    let (st, wanted) = kinematic_advance(
+        resting(),
+        Motor::default(),
+        Some(&lift),
+        G,
+        UP,
+        DT,
+        Fluid::DRY,
+    );
     assert!(
         wanted[1] > 0.0,
         "a fixture tem de CONTER o fenomeno: o pedido subiu {}",
@@ -300,7 +332,15 @@ fn nothing_is_absorbed_on_a_surface_the_law_refused() {
     let ground = flat();
 
     // CONTROLE: com chão a lei absorve, como sempre.
-    let (on_floor, _) = kinematic_advance(resting(), Motor::default(), Some(&ground), G, UP, DT);
+    let (on_floor, _) = kinematic_advance(
+        resting(),
+        Motor::default(),
+        Some(&ground),
+        G,
+        UP,
+        DT,
+        Fluid::DRY,
+    );
     assert_eq!(
         on_floor.velocity[1], 0.0,
         "o controle tem de absorver: com chão a queda sai inteira"
@@ -309,7 +349,8 @@ fn nothing_is_absorbed_on_a_surface_the_law_refused() {
     // E sem chão ACEITO — o `grounded` do integrador segue verdadeiro, porque
     // ele DE FACTO tocou — a gravidade tem de sobreviver, senão não sobra
     // deslocamento para o deslizamento do controlador redirecionar.
-    let (steep, wanted) = kinematic_advance(resting(), Motor::default(), None, G, UP, DT);
+    let (steep, wanted) =
+        kinematic_advance(resting(), Motor::default(), None, G, UP, DT, Fluid::DRY);
     assert!(
         (steep.velocity[1] - G[1] * DT).abs() < 1.0e-6,
         "tocar numa rampa recusada nao e' estar no chao: a queda tem de sobreviver ({})",
@@ -319,5 +360,136 @@ fn nothing_is_absorbed_on_a_surface_the_law_refused() {
         wanted[1] < 0.0,
         "e o deslocamento pedido tem de apontar para baixo ({})",
         wanted[1]
+    );
+}
+
+// ── A ÁGUA (W-KinFluid) ──────────────────────────────────────────────────────
+
+/// Uma poça que carrega `s` pesos deste corpo, com resistência `d`.
+fn water(s: f32, d: f32) -> Fluid {
+    Fluid {
+        buoyed: Buoyed(s),
+        drag: d,
+    }
+}
+
+/// **O AR SECO é o mundo de antes desta wave, AO BIT.**
+///
+/// ⚠️ O gate que carrega a rede de segurança inteira: `Fluid::DRY` tem
+/// `gravity_share() == 1.0` e `drag == 0.0`, e `x * 1.0` é `x` em IEEE-754 — não
+/// há aproximação a acumular numa cena sem poça. É por isto que os 139 gates que
+/// já existiam continuaram verdes sem um oráculo tocado.
+#[test]
+fn dry_air_is_the_world_before_this_wave_to_the_bit() {
+    let start = KinematicState {
+        velocity: [3.0, -2.0],
+        grounded: false,
+    };
+    let motor = Motor {
+        accel: [1.0, 0.5],
+        boost: [0.0, 0.25],
+    };
+    let (dry, w_dry) = kinematic_advance(start, motor, None, G, UP, DT, Fluid::DRY);
+    // O mesmo passo, feito à mão sem termo de fluido nenhum.
+    let want = [
+        start.velocity[0] + (G[0] + motor.accel[0]) * DT + motor.boost[0],
+        start.velocity[1] + (G[1] + motor.accel[1]) * DT + motor.boost[1],
+    ];
+    assert_eq!(
+        dry.velocity, want,
+        "seco, a lei tem de ser a expressão de antes termo a termo"
+    );
+    assert_eq!(w_dry, [want[0] * DT, want[1] * DT]);
+    assert_eq!(Fluid::DRY.gravity_share(), 1.0);
+    assert_eq!(Fluid::default(), Fluid::DRY);
+}
+
+/// **Boiar em equilíbrio é gravidade ZERO, e ir mais fundo é SUBIR.**
+///
+/// ⚠️ **A segunda metade é a que o clamp da consulta tornava inexprimível** — com
+/// a razão capada em `1` o melhor que a lei conseguia era a linha do meio, e o
+/// personagem ficava pendurado onde parasse. Um corpo que boia tem de acelerar
+/// para CIMA quando está submerso, que é o que o corpo dinâmico faz na mesma
+/// poça.
+#[test]
+fn the_fluid_scales_gravity_and_a_buoyant_body_rises() {
+    let s = KinematicState::default();
+    let dv = |f: Fluid| {
+        kinematic_advance(s, Motor::default(), None, G, UP, DT, f)
+            .0
+            .velocity[1]
+    };
+
+    let dry = dv(Fluid::DRY);
+    assert!(dry < 0.0, "seco ele cai ({dry})");
+
+    let half = dv(water(0.5, 0.0));
+    assert!(
+        (half - dry * 0.5).abs() < 1.0e-6,
+        "meia carga tem de dar meia queda: {half} contra {}",
+        dry * 0.5
+    );
+
+    let afloat = dv(water(1.0, 0.0));
+    assert_eq!(afloat, 0.0, "à tona o peso é inteiramente carregado");
+
+    let cork = dv(water(4.0, 0.0));
+    assert!(
+        cork > 0.0 && (cork - (-dry * 3.0)).abs() < 1.0e-6,
+        "uma rolha 4× menos densa SOBE a 3 g ({cork})"
+    );
+}
+
+/// **O meio RESISTE, com a mesma aritmética do `effector::apply`.**
+///
+/// ⚠️ Sem ele o empuxo é uma mola sem amortecimento — medido no produto, o
+/// personagem cinemático oscilava **2,90 m** de amplitude entre o 3.º e o 6.º
+/// segundo com `AreaDrag 0`, contra **1,44** com o `0,6` da fixture (que é o
+/// mesmo número que o corpo DINÂMICO faz: 1,4408 contra 1,4394).
+#[test]
+fn the_medium_resists_with_the_solvers_own_law() {
+    let fast = KinematicState {
+        velocity: [4.0, -6.0],
+        grounded: false,
+    };
+    // Sem gravidade, para isolar o amortecimento do resto do passo.
+    let g0 = [0.0, 0.0];
+    let (wet, _) = kinematic_advance(fast, Motor::default(), None, g0, UP, DT, water(0.0, 3.0));
+    let k = 1.0 / (1.0 + 3.0 * DT);
+    assert!((wet.velocity[0] - fast.velocity[0] * k).abs() < 1.0e-6);
+    assert!((wet.velocity[1] - fast.velocity[1] * k).abs() < 1.0e-6);
+    // E os DOIS eixos, porque um meio não escolhe direção.
+    assert!(
+        wet.velocity[0].abs() < fast.velocity[0].abs()
+            && wet.velocity[1].abs() < fast.velocity[1].abs(),
+        "a resistência é isotrópica"
+    );
+
+    // CONTROLE: arrasto zero não toca um bit.
+    let (dry, _) = kinematic_advance(fast, Motor::default(), None, g0, UP, DT, Fluid::DRY);
+    assert_eq!(dry.velocity, fast.velocity);
+}
+
+/// **O motor NÃO é escalado pelo empuxo, e a ordem é o gate.**
+///
+/// ⚠️ O `motor.accel` traz o cancelamento de gravidade que a lei do pulo autorou,
+/// e ele foi calculado contra a gravidade CHEIA. Escalar os dois juntos pagaria o
+/// empuxo **duas vezes** num pulo dentro d'água — e o sintoma seria um personagem
+/// que salta mais alto quanto mais fundo estiver, que é a amplificação
+/// paramétrica que o W-Submerged existe para impedir.
+#[test]
+fn the_buoyancy_scales_gravity_and_leaves_the_motor_alone() {
+    let s = KinematicState::default();
+    // Um motor que cancela a gravidade exactamente, como a `gravity_hold` faz.
+    let hold = Motor {
+        accel: [0.0, -G[1]],
+        boost: [0.0, 0.0],
+    };
+    let (v, _) = kinematic_advance(s, hold, None, G, UP, DT, water(1.0, 0.0));
+    // Gravidade anulada pelo empuxo + o motor a somar `-G[1]` = só o motor sobra.
+    assert!(
+        (v.velocity[1] - (-G[1]) * DT).abs() < 1.0e-6,
+        "o motor tem de sobreviver inteiro ao empuxo ({})",
+        v.velocity[1]
     );
 }

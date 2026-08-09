@@ -42,6 +42,7 @@ pub use world::joint_desc::{JointDesc, JointKind, MotorDesc, MotorMode};
 pub use world::joints::motor_axis;
 pub use world::layers::{LayerMatrix, MAX_LAYERS};
 pub use world::oneway::{ALLOWED_ANGLE, ALLOWED_COS};
+pub use world::queries::FluidAt;
 pub use world::{
     AreaEffect, BodyDesc, CAPSULE_CAP_SEGS, CombineRules, DampingDesc, ELLIPSE_SEGS, PhysicsWorld,
     ShapeDesc, capsule_vertices, ellipse_vertices,

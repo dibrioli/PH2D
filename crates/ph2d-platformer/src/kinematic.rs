@@ -49,7 +49,70 @@
 //! inteiro mataria o pulo no tique da decolagem, em que o raio ainda vê o chão e
 //! a subida já começou.
 
-use crate::{GroundSample, Motor, Vec2, ground_carry};
+use crate::{Buoyed, GroundSample, Motor, Vec2, ground_carry};
+
+/// **O MEIO em que este corpo está** — o sentido que o integrador cinemático lê
+/// para a água existir (W-KinFluid).
+///
+/// # ⚠️ Por que a lei, e não o solver
+///
+/// No modo dinâmico o empuxo e o arrasto de uma zona chegam por `apply_impulse` no
+/// corpo — e um corpo cinemático tem **massa infinita**, então o solver os ignora.
+/// É a MESMA frase que explica por que o `move_shape` não empurrava um caixote
+/// antes da `W-KinPush`, agora do outro lado: ele não *recebe*. Medido antes da
+/// cura, numa poça funda de 4 s: o controle boiava a `1,1072 m` do ponto de
+/// largada, o player dinâmico a `1,0893`, e o **cinemático afundava `139,67 m`** —
+/// queda livre com o multiplicador de queda por cima.
+///
+/// A ponte já lia a [`Buoyed`] para a trava do fluido; o que faltava era a lei
+/// **integrar** aquilo onde ela já integra a gravidade.
+///
+/// # ⚠️ Duas grandezas, e o par é o que impede uma mola sem amortecimento
+///
+/// Só o empuxo faz um oscilador conservativo: o personagem mergulha, é expulso,
+/// volta a cair, para sempre. É a mesma frase que a fixture da poça já carregava
+/// (*"empuxo sem resistência é uma mola sem amortecimento, e o repouso que este
+/// oráculo lê nunca chegaria"*), e o `drag` é a metade que a fecha.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct Fluid {
+    /// Quantos pesos deste corpo o fluido carrega — a mesma grandeza da [`Buoyed`].
+    pub buoyed: Buoyed,
+    /// A resistência do meio, por segundo (o `AreaDrag` da zona).
+    pub drag: f32,
+}
+
+impl Default for Fluid {
+    /// Ar seco — ver [`Fluid::DRY`], de que este é o espelho exigido pelo lint.
+    fn default() -> Self {
+        Self::DRY
+    }
+}
+
+impl Fluid {
+    /// Ar seco — o neutro, e o único valor com que a lei é **byte-idêntica** ao
+    /// mundo de antes desta wave.
+    pub const DRY: Self = Self {
+        buoyed: Buoyed::DRY,
+        drag: 0.0,
+    };
+
+    /// **A fração da gravidade que ainda pesa.** `1` seco · `0` boiando em
+    /// equilíbrio · **negativo** para o que sobe.
+    ///
+    /// ⚠️ **Ela pode ficar negativa, e é isso que faz um corpo SUBIR** — a
+    /// consulta deixou de capar a razão em `1` exactamente por isto (o teto
+    /// binava já com metade do corpo fora d'água, e uma gravidade efetiva zero
+    /// deixaria o personagem pendurado no meio da poça para sempre).
+    ///
+    /// ⚠️ **Não é clampada por baixo, de propósito:** uma rolha num fluido vinte
+    /// vezes mais denso SOBE vinte vezes mais depressa do que cairia, e é isso
+    /// que o dinâmico faz com a mesma zona. Capar aqui seria a lei a discordar do
+    /// solver sobre a mesma água.
+    #[must_use]
+    pub fn gravity_share(self) -> f32 {
+        1.0 - self.buoyed.0
+    }
+}
 
 /// **A velocidade que o modo cinemático possui** — o que o solver possuiria se
 /// o corpo fosse dinâmico.
@@ -238,12 +301,44 @@ pub fn kinematic_advance(
     gravity: Vec2,
     up: Vec2,
     dt: f32,
+    fluid: Fluid,
 ) -> (KinematicState, Vec2) {
     let carry = ground_carry(footing);
+
+    // ⚠️ **A ÁGUA entra AQUI, e é a única linha que ela precisa** (W-KinFluid): o
+    // empuxo é uma força para cima proporcional ao peso, então a soma dele com o
+    // peso é uma gravidade ESCALADA — `g·(1 − buoyed)`, que é exactamente a
+    // resultante que o solver dá ao corpo dinâmico na mesma poça. Seco, o fator é
+    // `1.0` e a expressão é a de antes **ao bit** (`x * 1.0` é `x` em IEEE-754), o
+    // que é a rede de segurança desta mudança inteira.
+    //
+    // ⚠️ **A gravidade escalada e o `motor.accel` NÃO são a mesma coisa, e a ordem
+    // importa:** o motor traz o cancelamento de gravidade que a lei do pulo
+    // autorou (a `gravity_hold`), e ele foi calculado contra a gravidade CHEIA —
+    // escalar os dois juntos pagaria o empuxo duas vezes num pulo dentro d'água.
+    let g = fluid.gravity_share();
     let v = [
-        state.velocity[0] + (gravity[0] + motor.accel[0]) * dt + motor.boost[0],
-        state.velocity[1] + (gravity[1] + motor.accel[1]) * dt + motor.boost[1],
+        state.velocity[0] + (gravity[0] * g + motor.accel[0]) * dt + motor.boost[0],
+        state.velocity[1] + (gravity[1] * g + motor.accel[1]) * dt + motor.boost[1],
     ];
+
+    // ⚠️ **E o MEIO resiste**, com a mesma lei que o `effector::apply` usa —
+    // `v /= 1 + d·dt`, que é literalmente o integrador de `linear_damping` do
+    // rapier. Escrevê-la como impulso seria uma segunda lei para a mesma palavra,
+    // e as duas discordariam em `d` grande (um impulso atravessa o zero e empurra
+    // o corpo para TRÁS; isto não pode).
+    //
+    // ⚠️ **A paridade com o dinâmico é aproximada, e o número está nomeado:** o
+    // solver amortece por SUB-PASSO e esta lei uma vez por TIQUE, então o que ele
+    // aplica é `(1 + d·h)⁻⁴` contra o `(1 + d·4h)⁻¹` daqui — a mesma classe de
+    // diferença que a W-AreaDrag mediu em 1,25% e escolheu nomear em vez de
+    // esconder. Um corpo cinemático não tem sub-passo para dividir.
+    let v = if fluid.drag > 0.0 {
+        let k = 1.0 / (1.0 + fluid.drag * dt);
+        [v[0] * k, v[1] * k]
+    } else {
+        v
+    };
 
     // ⚠️ **A absorção pede as DUAS respostas** (§8.3), e é a correção que a
     // varredura de rampa de 2026-08-09 obrigou.

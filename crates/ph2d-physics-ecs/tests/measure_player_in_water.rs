@@ -314,8 +314,14 @@ fn measure_the_kinematic_player_in_water() {
          o dinamico e o controle boiam, o empuxo nao alcanca massa infinita.\n"
     );
     println!(
-        "MEDIDO (2026-08-09): controle 1,1072 m · dinamico 1,0893 · CINEMATICO\n\
-         139,6739 -- ele atravessa a poca em queda livre, com o multiplicador de\n\
-         queda (1,78x os 78,5 m analiticos de 4 s). A agua NAO existe para ele.\n"
+        "MEDIDO ANTES DA CURA (2026-08-09): controle 1,1072 m · dinamico 1,0893 ·\n\
+         CINEMATICO 139,6739 -- ele atravessava a poca em queda livre. A agua\n\
+         NAO existia para ele: o par sensor-estatico x corpo-cinematico nem\n\
+         entrava no grafo de intersecao.\n\n\
+         DEPOIS (W-KinFluid, mesmo dia): 1,1072 · 1,0893 · 1,0860 -- os tres\n\
+         boiam. AVISO: o y de um INSTANTE nao e' um repouso -- nesta poca o\n\
+         player bobeia ~1,44 m de amplitude nos DOIS modos (a capsula solta\n\
+         faz 0,81), e quem afirma a cura e' o gate de PARIDADE que vive em\n\
+         `tests/player_in_water.rs`.\n"
     );
 }

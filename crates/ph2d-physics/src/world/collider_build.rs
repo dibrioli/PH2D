@@ -5,7 +5,7 @@
 //! second — every `BodyDesc` field that describes the SHAPE and its surface, in one
 //! place, so a new collider property has an obvious home.
 
-use rapier2d::geometry::{Collider, ColliderBuilder};
+use rapier2d::geometry::{ActiveCollisionTypes, Collider, ColliderBuilder};
 use rapier2d::na::Vector2;
 use rapier2d::pipeline::ActiveHooks;
 use rapier2d::prelude::nalgebra;
@@ -80,6 +80,29 @@ pub(super) fn build_collider(desc: &BodyDesc) -> Collider {
         // A sensor passes through (no contact forces) but the narrow phase
         // still records its overlaps — read back by `intersecting_body_pairs`.
         .sensor(desc.is_sensor)
+        // ⚠️ **E um sensor VÊ um corpo cinemático** (W-KinFluid). O default do
+        // rapier é `DYNAMIC_DYNAMIC | DYNAMIC_FIXED | DYNAMIC_KINEMATIC` — nenhum
+        // par que comece em KINEMATIC está lá —, então uma poça ESTÁTICA e um
+        // player Snap nunca chegavam a existir um para o outro no grafo de
+        // interseção. Medido: `fluid_at` lia `0,0000` para o cinemático e `3,99`
+        // para o mesmo corpo dinâmico, na mesma poça, no mesmo tique.
+        //
+        // ⚠️ **A porta é o SENSOR e não o corpo**, e o teste do rapier é
+        // `co1 || co2`: basta um lado abrir. Um sensor cuja razão de existir é
+        // NOTAR coisas não pode ser cego a metade das espécies de corpo, e pôr o
+        // bit no player em vez de aqui deixaria a próxima entidade cinemática
+        // (uma plataforma animada a atravessar um gatilho) fora outra vez.
+        //
+        // ⚠️ **Byte-neutro para tudo o que não é sensor** (o `else` é o default
+        // literal do rapier) e para todo par que já existia — isto só ACRESCENTA
+        // pares, e o `effector::apply` recusa um corpo não-dinâmico antes de
+        // tocar nele (`if !b.is_dynamic()`), então nenhuma pose se move por causa
+        // disto: o que muda é o que uma CONSULTA de leitura consegue ver.
+        .active_collision_types(if desc.is_sensor {
+            ActiveCollisionTypes::all()
+        } else {
+            ActiveCollisionTypes::default()
+        })
         // The collider's position relative to its body. `[0, 0]` centres it on
         // the body (rapier's default, byte-identical to before this existed);
         // rapier rotates this translation with the body, so an offset foot-box

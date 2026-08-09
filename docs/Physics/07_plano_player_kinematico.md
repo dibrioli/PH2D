@@ -1251,7 +1251,7 @@ lado (com chão, absorve).
 
 ---
 
-## §8.4 — NA FILA: a ÁGUA não existe para o modo cinemático (2026-08-09)
+## §8.4 — FECHADO: a ÁGUA não existia para o modo cinemático (W-KinFluid, 2026-08-09)
 
 Pergunta do Enio: *"testou o kinemático na água? ou ele não funciona lá?"* —
 **não tinha sido testado**, e as três sondas do `measure_player_in_water` são
@@ -1275,12 +1275,14 @@ caixote: *"um corpo cinemático tem massa INFINITA para o solver, então o
 `move_shape` desliza contra um caixote solto sem lhe transmitir nada"*. A mesma
 assimetria, do outro lado — ali ele não DAVA, aqui ele não RECEBE.
 
-⚠️ **E METADE da água já atravessa**, o que torna o estado atual pior que uma
-ausência limpa: a `Buoyed` é lida por `PhysicsWorld::buoyed` e entregue à lei
-**fora** do ramo de modo (`bridge/player.rs:376`), então a trava do fluido
-(`JumpState::waterborne`, W-Submerged) e tudo o que ela governa **valem nos dois
-modos**. O personagem cinemático *sabe* que está molhado — o arco do pulo dele
-muda — e **afunda como uma pedra na mesma poça**.
+⚠️ **E EU ESCREVI AQUI QUE *"metade da água já atravessa"*, e era FALSO.** A
+frase dizia que a `Buoyed` é lida **fora** do ramo de modo (`bridge/player.rs`),
+logo a trava do fluido (`JumpState::waterborne`, W-Submerged) valeria nos dois —
+*"o personagem cinemático SABE que está molhado e afunda como uma pedra"*. A
+**fiação** estava certa; o **VALOR** que ela entregava era morto: medido, `buoyed`
+lia `0,0000` para o corpo cinemático e `3,99` para o mesmo corpo dinâmico, na
+mesma poça, no mesmo tique — a trava nunca armava. *Uma afirmação sobre a
+estrutura não é uma medição do número que passa por ela.*
 
 ### As três saídas, com o preço de cada uma — decisão do Enio
 
@@ -1299,6 +1301,82 @@ muda — e **afunda como uma pedra na mesma poça**.
 
 **Recomendação: (1).** É a que põe a água no lugar onde a gravidade já está, e a
 única em que as duas metades da água passam a concordar.
+
+### ⇒ O Enio escolheu (1). E a causa raiz não era a que este plano nomeou
+
+**Era mais funda que a massa.** `ActiveCollisionTypes::default()` do rapier é
+`DYNAMIC_DYNAMIC | DYNAMIC_FIXED | DYNAMIC_KINEMATIC` — **nenhum par que comece
+em KINEMATIC está lá** —, então uma poça ESTÁTICA e um player Snap nunca chegavam
+a existir um para o outro no grafo de interseção. Não era o impulso a não alcançar
+massa infinita: era **o par que não existia**.
+
+⛔ **E a segunda causa que eu construí não existia.** Escrevi um `authored_weight`
+que somava as massas dos colliders quando `rb.mass()` fosse zero, com um doc a
+dizer que era ele que fazia a água existir no modo cinemático — **a mutação provou
+que era falso** (removê-lo deixou tudo verde), e a medição direta explica:
+`rb.mass()` devolve `1,0000` em Dynamic, Kinematic **e** Fixed; o rapier zera a
+inversa-massa *efetiva*, não esta. Removido no mesmo commit em que nasceu.
+
+| peça | onde | o que muda |
+|---|---|---|
+| **o sensor vê o cinemático** | `world/collider_build.rs` | `ActiveCollisionTypes::all()` **só em sensor** — o teste do rapier é `co1 ou co2`, basta um lado abrir, e um sensor cuja razão de existir é NOTAR coisas não pode ser cego a metade das espécies de corpo |
+| **o teto de `1` saiu** | `world/queries.rs` | a razão era capada, e ela **satura já a `y = 0,2`** com metade do corpo fora (medido) ⇒ `g·(1−1) = 0` deixaria o personagem pendurado no meio da poça para sempre |
+| **`fluid_at`** | `world/queries.rs` | UMA varredura devolve empuxo **e** arrasto; `buoyed()` delega. O arrasto é o **MÁXIMO** sobre as zonas, e é isso que apaga a dedup que um corpo composto exigiria |
+| **a lei integra** | `platformer/kinematic.rs` | `Fluid { buoyed, drag }` → `g·(1 − buoyed)` e `v /= 1 + d·dt`, **onde a gravidade já entrava** |
+
+**A FRONTEIRA não foi escolhida — o W-AreaFalloff já a desenhou:** o falloff pesa
+os dois **EMPURRÕES** (força, torque) e **deixa o MEIO em paz** (`drag`,
+`density`, `form_drag` descrevem uma substância, e uma substância não fica mais
+rala perto da própria margem). É exatamente isso que torna o meio respondível por
+uma consulta e a força não: ⛔ **a força FICA de fora**, porque precisa do frame
+da zona, do espelho e do falloff — re-derivá-los numa query seria uma **segunda
+resposta** para *"que empurrão esta zona dá neste ponto?"*, o defeito recorrente
+desta linha. Uma corrente não leva um personagem cinemático, e isso está
+**nomeado, não esquecido**.
+
+### Os números
+
+| | antes | depois |
+|---|---|---|
+| cinemático, poça funda, 4 s | afunda **139,67 m** | boia (**1,086 m** acima da largada) |
+| `buoyed` de um corpo cinemático | `0,0000` | `3,9912` — o mesmo que o dinâmico |
+| `physics_ecs_c9` | `fb27f676…`, 117 corpos | **idêntico** |
+
+⚠️ **O PRIMEIRO número que eu reportei desta cura estava errado, e a lição é de
+oráculo:** escrevi *"assenta a `0,4140`, três milímetros do dinâmico"* — e era
+**um instante de uma oscilação**. Nesta poça o player bobeia **1,44 m** de
+amplitude entre o 3.º e o 6.º segundo. *Uma amostra única de um sistema que
+oscila não é um repouso.*
+
+⚠️ **E a oscilação NÃO é desta wave:** o corpo **dinâmico** faz `1,4408` na mesma
+cena contra os `1,4394` do cinemático — concordam na quarta decimal —, e a
+cápsula solta (sem lei de player nenhuma) faz `0,8097`. O que bobeia é o *player*
+na água, nos **dois** modos, e é anterior a isto. Por isso o oráculo do gate é a
+**PARIDADE ENTRE MODOS** (`tests/player_in_water.rs`), nunca um literal de linha
+d'água: a espécie do corpo deixa de ser uma pergunta que a água faça.
+
+⚠️ **O arrasto é load-bearing e tem número:** com `AreaDrag 0` a amplitude sobe
+para **2,90 m** e não decai — empuxo sem resistência é uma mola sem
+amortecimento, a frase que a fixture da poça já carregava.
+
+⚠️ **Paridade APROXIMADA com o dinâmico, nomeada:** o solver amortece por
+SUB-PASSO e esta lei uma vez por TIQUE — `(1+d·h)⁻⁴` contra `(1+d·4h)⁻¹`, a mesma
+classe de diferença que a W-AreaDrag mediu em 1,25%. Um corpo cinemático não tem
+sub-passo para dividir.
+
+**Gates:** 4 na lei (`kinematic_tests.rs`) · 2 na consulta (`buoyed_query.rs`) ·
+3 no produto (`player_in_water.rs`). **6 mutações, 5 sangram** — a 6.ª acusou a
+minha própria afirmação (o `authored_weight`) e o código saiu.
+
+⚠️ **Um gate MUDOU DE NOME e de afirmação:** o
+`the_scale_tops_out_at_one_and_zero_gravity_carries_nothing` pinava o teto que
+esta wave removeu, e virou `the_scale_is_the_density_ratio_…`. Ele estava certo
+enquanto o único consumidor perguntava `> 0`; *quem acrescenta o consumidor que
+precisa da magnitude reconfere a nota que a capava.*
+
+**Aberto:** `form_drag` não alcança a lei (é um kernel por-aresta sobre o
+polígono, não um escalar do meio) · a **força** da zona (acima) · e **nadar** —
+controlar a subida dentro d'água — é produto, não correção.
 
 ---
 

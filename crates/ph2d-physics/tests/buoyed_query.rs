@@ -150,25 +150,38 @@ fn a_sinking_body_reads_the_share_of_its_weight_the_fluid_carries() {
     );
 }
 
-/// **A escala tem topo em `1`**, e sem gravidade não há empuxo nenhum.
+/// **A escala NÃO tem topo — ela é a razão das densidades**, e sem gravidade não
+/// há empuxo nenhum.
 ///
-/// As duas metades num gate só porque respondem à MESMA pergunta — *o que este
-/// número NUNCA é* — e porque a segunda é a mesma resposta que
-/// `buoyant_force` dá (Arquimedes é consequência do peso do fluido).
+/// # ⚠️ Este gate afirmava o CONTRÁRIO até 2026-08-09, e a mudança é deliberada
+///
+/// Ele chamava-se `the_scale_tops_out_at_one_…` e pinava um `clamp(0.0, 1.0)`.
+/// O teto era honesto enquanto o único consumidor perguntava `> 0` (a trava do
+/// fluido do W-Submerged) — *"o fluido carrega-te inteiro"* era de facto o fim da
+/// escala **para ele**. A lei cinemática (W-KinFluid) lê a MAGNITUDE para derivar
+/// a gravidade efetiva, e ali o teto era fatal: medido, uma cápsula 4× menos
+/// densa que a água satura em `1` já a **`y = 0,2`**, com mais de metade do corpo
+/// fora, e `g·(1 − 1)` é **zero** — o personagem pararia no meio da poça e nunca
+/// subiria. *Quem acrescenta o consumidor que precisa do número reconfere a nota
+/// que o capava.*
+///
+/// ⚠️ **O oráculo é a razão das DENSIDADES**, que é o que Arquimedes dá para um
+/// corpo todo submerso — e é ela que diz quantas vezes a gravidade dele o fluido
+/// mais que compensa. Nenhum literal de profundidade aparece: o gate não sabe
+/// onde a caixa está, só que **ela está toda dentro**.
+///
+/// A segunda metade fica: as duas respondem à MESMA pergunta (*o que este número
+/// nunca é*), e a de gravidade zero é a mesma resposta que `buoyant_force` dá.
 #[test]
-fn the_scale_tops_out_at_one_and_zero_gravity_carries_nothing() {
+fn the_scale_is_the_density_ratio_and_zero_gravity_carries_nothing() {
     let mut w = PhysicsWorld::new();
     pool(&mut w, 20.0);
     let c = crate_at(&mut w, 0.0, -1.5, 1.0);
     settle(&mut w, 3);
     let s = w.buoyed(c);
     assert!(
-        (0.0..=1.0).contains(&s),
-        "a razão tem de estar em [0, 1] e leu {s:.4}"
-    );
-    assert!(
-        s > 0.9,
-        "um fluido 20× mais denso carrega o corpo inteiro, e leu {s:.4}"
+        (s - 20.0).abs() < 0.5,
+        "um fluido 20× mais denso, com o corpo TODO dentro, carrega 20 pesos — e leu {s:.4}"
     );
 
     let mut dry = PhysicsWorld::new();
@@ -193,4 +206,104 @@ fn a_world_without_a_pool_answers_zero() {
     let c = crate_at(&mut w, 0.0, 2.0, 1.0);
     settle(&mut w, 5);
     assert_eq!(w.buoyed(c), 0.0);
+}
+
+// ── O CORPO CINEMÁTICO (W-KinFluid) ──────────────────────────────────────────
+
+/// Uma caixa **cinemática** — o corpo do player em modo Snap.
+fn kinematic_crate(w: &mut PhysicsWorld, x: f32, y: f32, d: f32) -> RigidBodyHandle {
+    w.spawn_body(BodyDesc {
+        density: d,
+        ..desc(
+            RigidBodyType::KinematicPositionBased,
+            x,
+            y,
+            ShapeDesc::Cuboid {
+                half_x: 0.25,
+                half_y: 0.25,
+            },
+        )
+    })
+}
+
+/// **A ÁGUA EXISTE PARA UM CORPO CINEMÁTICO, e ele lê o MESMO número que o
+/// dinâmico** — o gate que a wave inteira serve.
+///
+/// ⚠️ **Nasceu VERMELHO com `0,0000` contra `4,0`, e por DUAS causas em série:**
+/// o par sensor-estático × corpo-cinemático não existia no grafo de interseção
+/// (o `ActiveCollisionTypes::default()` do rapier só liga pares que começam em
+/// DYNAMIC) e, mesmo existindo, `RigidBody::mass()` devolve zero para massa
+/// infinita, então a consulta saía pelo `weight <= 0`. Cada uma sozinha bastava
+/// para a resposta ser muda.
+///
+/// ⚠️ **O oráculo é o CONTROLE dinâmico, não um literal:** a mesma caixa, na
+/// mesma poça, no mesmo tique — o que se afirma é que a espécie do corpo **não
+/// é uma pergunta que a água faça**.
+#[test]
+fn the_water_exists_for_a_kinematic_body_too() {
+    let mut w = PhysicsWorld::new();
+    pool(&mut w, 4.0);
+    let dynamic = crate_at(&mut w, -1.0, -1.0, 1.0);
+    let kinematic = kinematic_crate(&mut w, 1.0, -1.0, 1.0);
+    settle(&mut w, 3);
+
+    let d = w.buoyed(dynamic);
+    let k = w.buoyed(kinematic);
+    assert!(
+        d > 3.0,
+        "o CONTROLE dinâmico tem de ler a razão 4 e leu {d:.4}"
+    );
+    assert!(
+        (k - d).abs() < 0.01,
+        "o cinemático tem de ler o MESMO que o dinâmico: {k:.4} contra {d:.4}"
+    );
+}
+
+/// **E o ARRASTO do meio sai da MESMA varredura.**
+///
+/// ⚠️ **Ele é o MÁXIMO sobre as zonas, e é isso que apaga a dedup:** um corpo
+/// composto sobrepõe a mesma poça com CADA forma dele (a lição da
+/// W-CompoundZone), e uma soma sobre pares faria a água resistir `N` vezes mais
+/// a uma jangada de `N` peças. O gate mede as duas coisas: o número certo, e a
+/// **INVARIÂNCIA a quantas formas o corpo tem**.
+#[test]
+fn the_medium_reports_its_drag_once_however_many_shapes_i_have() {
+    let mut w = PhysicsWorld::new();
+    pool(&mut w, 4.0);
+    let one = crate_at(&mut w, -1.0, -1.0, 1.0);
+    // O mesmo corpo, com uma SEGUNDA forma dentro da mesma poça (W-Compound).
+    let two = crate_at(&mut w, 1.0, -1.0, 1.0);
+    w.attach_part(
+        two,
+        &desc(
+            RigidBodyType::Dynamic,
+            0.0,
+            0.0,
+            ShapeDesc::Cuboid {
+                half_x: 0.25,
+                half_y: 0.25,
+            },
+        ),
+        [0.6, 0.0, 0.0],
+    )
+    .expect("a peça tem de prender num corpo que existe");
+    settle(&mut w, 3);
+
+    let a = w.fluid_at(one);
+    let b = w.fluid_at(two);
+    assert!(
+        (a.drag - 1.5).abs() < 1.0e-6,
+        "o arrasto tem de ser o da poça (1,5) e leu {:.4}",
+        a.drag
+    );
+    assert!(
+        (b.drag - a.drag).abs() < 1.0e-6,
+        "duas formas na mesma poça não dobram a viscosidade dela: {:.4} contra {:.4}",
+        b.drag,
+        a.drag
+    );
+    // CONTROLE: o corpo seco não lê meio nenhum.
+    let dry = crate_at(&mut w, 6.0, 2.0, 1.0);
+    settle(&mut w, 3);
+    assert_eq!(w.fluid_at(dry), ph2d_physics::FluidAt::DRY);
 }

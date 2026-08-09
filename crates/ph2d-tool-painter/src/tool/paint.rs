@@ -145,6 +145,8 @@ mod blur_route;
 /// The `impl CanvasPaintTool` pointer entry (`on_canvas_pointer`); split from `paint.rs` (LOC cap).
 mod canvas_pointer;
 mod composite;
+#[cfg(test)]
+mod composite_probe;
 pub(crate) use composite::{CompositeLayer, CompositeOp};
 mod clone;
 mod eyedropper;

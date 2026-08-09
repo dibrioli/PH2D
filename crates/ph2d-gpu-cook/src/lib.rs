@@ -487,18 +487,24 @@ impl GpuCook {
                     count,
                 });
             }
-            let needed = codegen::storage_bindings(bindings, |b| {
-                column_present(gather_port, count, &inputs, b)
-            });
-            let limit = gpu.device.limits().max_storage_buffers_per_shader_stage;
-            if needed > limit {
-                return Err(GpuCookError::TooManyBindings(stage.ty, needed, limit));
-            }
             // A neighbourhood kernel (ADR-0140 D2) gets its grid built into this
             // same encoder BEFORE its pass — over the position column the spec
             // names, on the port the spec names (port 0 for a per-element node,
             // the `pre` state port for a self-loop sim).
             let grid_spec = kernels.grid(stage.ty);
+            // ⚠️ The budget is what the MODULE declares, not what its COLUMNS do: grid,
+            // reductions and LUTs bind buffers too (`codegen::storage_buffers`).
+            let needed = codegen::storage_buffers(
+                bindings,
+                |b| column_present(gather_port, count, &inputs, b),
+                grid_spec,
+                kernels.reduces(stage.ty),
+                kernels.luts(stage.ty),
+            );
+            let limit = gpu.device.limits().max_storage_buffers_per_shader_stage;
+            if needed > limit {
+                return Err(GpuCookError::TooManyBindings(stage.ty, needed, limit));
+            }
             // **How many sweeps?** A simulation STEP dispatches once (the tick is
             // the iteration); a relaxation SOLVER runs its `iterations` param
             // (`GridSpec::sweeps_param`, ADR-0140 Fase 5). Clamped to at least one

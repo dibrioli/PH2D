@@ -113,3 +113,79 @@ fn every_registered_kernel_fits_the_uniform_slot_and_declares_finite_identities(
         "swept only {swept} kernels — the loop went blind"
     );
 }
+
+/// **The storage-buffer budget counts what the module DECLARES.**
+///
+/// `cook` refuses a stage whose module would want more storage buffers than the device's
+/// `max_storage_buffers_per_shader_stage` — the point being to turn a `create_bind_group`
+/// validation error (a crash, at the artist's machine) into an error the cook reports. That
+/// only works if the number it checks is the number the module binds.
+///
+/// It was not. `codegen::storage_bindings` counts COLUMN bindings, and the module also emits
+/// the grid's two arrays (ADR-0140), one buffer per `ReduceSpec` and one per `LutSpec` — so
+/// the check granted a budget the module overran. Measured when the fourth colour LUT went in:
+/// `motion.four_point_warp` declares 8 where the columns alone say 4.
+///
+/// The oracle is the **generated text**, counted for `var<storage` — one side of this
+/// comparison is the artifact itself, so the arithmetic on the other side cannot drift away
+/// from it the way a hand-kept formula would.
+#[test]
+fn the_storage_budget_counts_every_buffer_the_module_declares() {
+    let mut reg = NodeRegistry::new();
+    ph2d_node_registry_init::register_all_nodes(&mut reg).expect("registry builds");
+
+    let (mut swept, mut worst) = (0usize, (0u32, ""));
+    for manifest in reg.manifests() {
+        let Some(kernel) = reg.gpu_kernel(manifest.id) else {
+            continue;
+        };
+        if kernel.is_passthrough() {
+            continue;
+        }
+        swept += 1;
+        let port_names: Vec<&str> = manifest.inputs.iter().map(|p| p.name).collect();
+        let src = ph2d_gpu_cook::codegen::kernel_module(
+            kernel,
+            kernel.bindings,
+            &port_names,
+            reg.grid(manifest.id),
+            reg.reduces(manifest.id),
+            reg.luts(manifest.id),
+            |_| true,
+        );
+        let declared = src.matches("var<storage").count() as u32;
+        // ⚠️ The PRODUCT's arithmetic, not a copy of it: `cook` calls this same
+        // `storage_buffers`. A gate that re-derived the formula here would stay green on
+        // the day somebody edits the one the dispatch actually uses — it would be a mirror
+        // of the answer instead of an oracle for it.
+        let budgeted = ph2d_gpu_cook::codegen::storage_buffers(
+            kernel.bindings,
+            |_| true,
+            reg.grid(manifest.id),
+            reg.reduces(manifest.id),
+            reg.luts(manifest.id),
+        );
+        assert_eq!(
+            budgeted, declared,
+            "{}: the cook would budget {budgeted} storage buffers for a module that \
+             declares {declared} — the check grants what the dispatch then overruns",
+            manifest.name
+        );
+        if declared > worst.0 {
+            worst = (declared, manifest.name);
+        }
+    }
+
+    // Positive control: a sweep that matched nothing agrees vacuously.
+    assert!(
+        swept >= 30,
+        "swept only {swept} kernels — the loop went blind"
+    );
+    // Not a cap — a READOUT, so the day a kernel doubles the widest layout it is visible in
+    // the log rather than discovered on a device with a tighter limit. wgpu's own DEFAULT
+    // limit is 8; this repo runs against adapter limits, which is why 13 ships today.
+    eprintln!(
+        "widest kernel: {} declares {} storage buffers ({swept} kernels swept)",
+        worst.1, worst.0
+    );
+}

@@ -131,7 +131,7 @@ fn scalar_col(s: &Stream, name: &str) -> Vec<f32> {
 /// (`BroadcastLengthMismatch`).
 ///
 /// **The gradient rides the LUT channel (doc 85).** A multi-stop gradient is not a fixed
-/// set of params, so the body samples three scalar LUTs (`cr_grad_r/g/b`, [`LUTS`]) the
+/// set of params, so the body samples four scalar LUTs (`cr_grad_r/g/b/a`, [`LUTS`]) the
 /// sequencer bakes from the `ramp` text param via [`ColorRamp::bake_into`] — the exact
 /// device analog of `value.curve`'s curve LUT. Presets are the SAME LUT (they are just seeds
 /// of the string), so this kernel is ONE branch — no inline preset table.
@@ -149,7 +149,7 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         \x20   cr_grad_r_sample(cr_t),\n\
         \x20   cr_grad_g_sample(cr_t),\n\
         \x20   cr_grad_b_sample(cr_t),\n\
-        \x20   1.0));\n",
+        \x20   cr_grad_a_sample(cr_t)));\n",
     wgsl_lib: "",
     bindings: &[
         ColumnBinding {
@@ -178,10 +178,16 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
     applicable: None,
 };
 
-/// The gradient's per-channel LUTs (doc 85): three scalar tables the sequencer bakes from
-/// the `ramp` text param, sampled by the WGSL as `cr_grad_r_sample(t)` etc. A colour LUT is
-/// just three scalar LUTs, so this reuses the existing scalar LUT channel three times —
+/// The gradient's per-channel LUTs (doc 85): four scalar tables the sequencer bakes from
+/// the `ramp` text param, sampled by the WGSL as `cr_grad_r_sample(t)` etc. An RGBA LUT is
+/// just four scalar LUTs, so this reuses the existing scalar LUT channel four times —
 /// **zero foundational GPU change** (the exact sibling of `value.curve`'s single LUT).
+///
+/// **What four costs, measured:** this kernel's module declares 2 column bindings + these
+/// LUTs = **6 storage buffers**, against a worst kernel in the registry (`motion.integrate`)
+/// that already declares **13** — so the fourth table is not near any device budget. It is
+/// measured rather than assumed because the runtime's check counts only the COLUMN bindings
+/// (`codegen::storage_bindings`); see the sibling gate that pins the true count.
 static LUTS: &[LutSpec] = &[
     LutSpec {
         name: "cr_grad_r",
@@ -200,6 +206,20 @@ static LUTS: &[LutSpec] = &[
         text_key: RAMP_KEY,
         resolution: LUT_RESOLUTION,
         fill: fill_grad_b,
+    },
+    // The FOURTH channel, and the reason it is a fourth scalar LUT rather than a
+    // widened one: doc 85 already weighed `LutSpec` carrying a vec4 and rejected it
+    // (*three scalar LUTs give the same thing reusing the existing channel*), so alpha
+    // is that decision applied one more time — zero foundational GPU change.
+    //
+    // ⚠️ An OPAQUE gradient bakes 1.0 into every entry, which is exactly the literal
+    // this replaced ⇒ every ramp authored before per-stop alpha existed renders
+    // byte-identically. What changes is only the ramp that has something else to say.
+    LutSpec {
+        name: "cr_grad_a",
+        text_key: RAMP_KEY,
+        resolution: LUT_RESOLUTION,
+        fill: fill_grad_a,
     },
 ];
 
@@ -228,6 +248,9 @@ fn fill_grad_g(text: &str, out: &mut [f32]) {
 }
 fn fill_grad_b(text: &str, out: &mut [f32]) {
     fill_grad_channel(text, out, 2);
+}
+fn fill_grad_a(text: &str, out: &mut [f32]) {
+    fill_grad_channel(text, out, 3);
 }
 
 struct MotionColorRamp;

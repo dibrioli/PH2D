@@ -142,10 +142,16 @@ pub fn plan_bindings(
 }
 
 /// How many **storage buffers** the generated module binds for this column set
-/// — one per `ReadBuffer` plus one per `WriteBuffer`, which is exactly what
-/// [`kernel_module`] emits and therefore what the device's
-/// `max_storage_buffers_per_shader_stage` is counted against. Derived by
-/// replaying [`plan_bindings`], so it cannot drift from the module it describes.
+/// — one per `ReadBuffer` plus one per `WriteBuffer`. Derived by replaying
+/// [`plan_bindings`], so it cannot drift from the columns it describes.
+///
+/// ⚠️ **This is the COLUMN half of the device budget, not the whole of it.** The
+/// doc here used to claim it was "exactly what [`kernel_module`] emits"; that was
+/// true when written and stopped being true three times over — the module also
+/// emits the grid's two arrays (ADR-0140), one buffer per `ReduceSpec`, and one
+/// per `LutSpec`. A caller checking `max_storage_buffers_per_shader_stage` must
+/// add those (see `cook`), or it grants a budget the module then overruns at
+/// `create_bind_group`.
 pub fn storage_bindings(
     bindings: &[ColumnBinding],
     present: impl FnMut(&ColumnBinding) -> bool,
@@ -268,6 +274,31 @@ pub fn declares_src_n(has_count_law: bool, port_names: &[&str]) -> bool {
 /// are: `0` = uniforms, then one slot per `ReadBuffer`, then one per
 /// `WriteBuffer`, in `kernel.bindings` order — the sequencer builds the bind
 /// group by replaying [`plan_bindings`].
+/// **Every storage buffer [`kernel_module`] declares** — the number the device's
+/// `max_storage_buffers_per_shader_stage` is counted against, and therefore the one
+/// `cook` must check before it dispatches.
+///
+/// The columns ([`storage_bindings`]) plus the three things the module emits that a
+/// column count knows nothing about: the grid's two arrays (ADR-0140), one buffer per
+/// reduction, one per LUT — in the same order [`kernel_module`] emits them, because it
+/// is the same list.
+///
+/// It takes exactly [`kernel_module`]'s arguments **so a caller cannot ask this question
+/// about a different module than the one it is about to build**: the shape of the call is
+/// the guarantee, not a comment asking the next author to remember.
+pub fn storage_buffers(
+    bindings: &[ColumnBinding],
+    present: impl FnMut(&ColumnBinding) -> bool,
+    grid: Option<&GridSpec>,
+    reduces: &[ReduceSpec],
+    luts: &[LutSpec],
+) -> u32 {
+    storage_bindings(bindings, present)
+        + u32::from(grid.is_some()) * 2
+        + reduces.len() as u32
+        + luts.len() as u32
+}
+
 pub fn kernel_module(
     kernel: &GpuKernel,
     bindings: &[ColumnBinding],

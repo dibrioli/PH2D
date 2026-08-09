@@ -1457,6 +1457,130 @@ fn color_ramp_custom_gradient_matches_the_cpu_on_the_device() {
 }
 
 #[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn a_translucent_ramp_keeps_its_alpha_on_the_device() {
+    // The two gates above compare all four channels and were GREEN over a device that
+    // wrote `1.0` into alpha, because neither fixture CONTAINS the phenomenon: the
+    // presets are opaque and the Custom string is `g1`, whose alpha is implicit 1.0
+    // (`color_ramp_text`). Opaque on both sides is agreement about a number nobody
+    // computed.
+    //
+    // The alpha per stop landed in the FORMAT and in `ColorRamp::eval` (2026-08-08,
+    // header `g2`) and stopped at the sequencer: three scalar LUTs (`cr_grad_r/g/b`)
+    // and a literal in the WGSL. So a gradient that fades to transparent renders
+    // opaque the moment the document cooks on the device — and cooking on the device
+    // is the DEFAULT.
+    //
+    // This fixture is the smallest thing the others are not: a `g2` string whose alpha
+    // SPANS the range. The spread assert below is what keeps it from decaying back into
+    // its siblings if somebody edits the string.
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    let mut g = Graph::new();
+    let grid = grid_node(&mut g, 160.0);
+    let cr = g.add_node("motion.color_ramp");
+    // Four stops, alpha 1 → 0.25 → 0.75 → 0 (interp 2 = Linear). The colour channels
+    // are non-round so a channel swap cannot hide in a round number.
+    g.set_text_param(
+        cr,
+        "ramp",
+        "g2 2 0:0.8125,0.1875,0.4375,1 0.35:0.0625,0.9375,0.5625,0.25 \
+         0.7:0.5,0.25,0.75,0.75 1:0.9375,0.5,0.125,0"
+            .to_string(),
+    );
+    let out = g.add_node("motion.output");
+    for (a, b) in [(grid, cr), (cr, out)] {
+        g.connect(Edge {
+            from: (a, 0),
+            to: (b, 0),
+            delayed: false,
+        })
+        .unwrap();
+    }
+    g.validate(&reg).expect("well-typed");
+
+    let mut cook = Cook::new();
+    let mut cpu = Vec::new();
+    ph2d_eval_motion::evaluate_motion_into(
+        &mut cook,
+        &g,
+        &reg,
+        out,
+        PLAYHEAD,
+        DEFAULT_UV,
+        DEFAULT_SIZE,
+        &mut cpu,
+    )
+    .expect("cpu cook");
+
+    // The fixture must CONTAIN the phenomenon: if the reference itself came out flat,
+    // the comparison below would be two opaque fields agreeing (the exact way the two
+    // sibling gates passed over this defect).
+    let alpha = cpu
+        .iter()
+        .map(|c| c.tint[3])
+        .fold((f32::MAX, f32::MIN), |(lo, hi), v| (lo.min(v), hi.max(v)));
+    assert!(
+        alpha.1 - alpha.0 > 0.5,
+        "the reference alpha must SPAN the range for this gate to mean anything, got {alpha:?}"
+    );
+
+    let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, out);
+    assert!(
+        plan.is_fully_gpu(),
+        "the translucent chain must cook whole on the device: {:?}",
+        plan.boundaries
+    );
+    let mut gc = ph2d_gpu_cook::GpuCook::new();
+    gc.cook(
+        &gpu,
+        &g,
+        &reg,
+        &reg,
+        &plan,
+        &[],
+        CookClock::at(PLAYHEAD),
+        DEFAULT_UV,
+        DEFAULT_SIZE,
+    )
+    .expect("gpu cook");
+    let gpu_out = ph2d_gpu_cook::read_instances(&gpu, gc.instances().expect("cooked"));
+
+    // The WORST divergence, not the first one: a fail-fast comparison reports whichever
+    // instance the scan reached earliest, and near the opaque end of this gradient that
+    // number is ~one epsilon — which reads as *"the tolerance is a hair tight"* and hides
+    // that the device is writing a CONSTANT. The magnitude is the diagnosis here.
+    const LUT_TOL: f32 = 6e-3;
+    let (mut max_a, mut worst) = (0.0f32, 0usize);
+    for (i, (c, gg)) in cpu.iter().zip(&gpu_out).enumerate() {
+        let d = (c.tint[3] - gg.tint[3]).abs();
+        if d > max_a {
+            (max_a, worst) = (d, i);
+        }
+    }
+    assert!(
+        max_a <= LUT_TOL,
+        "the device dropped the ramp's alpha: worst instance {worst} has cpu {} vs gpu {} \
+         (|Δ| {max_a:e} > {LUT_TOL:e}) over {} instances",
+        cpu[worst].tint[3],
+        gpu_out[worst].tint[3],
+        cpu.len()
+    );
+    for (i, (c, gg)) in cpu.iter().zip(&gpu_out).enumerate() {
+        for k in 0..3 {
+            assert_close("tint", i, c.tint[k], gg.tint[k], LUT_TOL);
+        }
+    }
+    eprintln!(
+        "color_ramp translucent parity: {} instances, alpha span {alpha:?}, max |Δa| = {max_a:e}",
+        cpu.len()
+    );
+}
+
+#[test]
 fn a_connected_t_is_claimed_since_the_broadcast_reader_exists() {
     // This gate used to pin the OPPOSITE — `RefuseIfPresent` kept a connected
     // `t` on the CPU because a wrong-length field would be silently judged
@@ -2137,12 +2261,19 @@ fn the_bare_emitters_match_the_cpu_and_keep_their_stream_shape() {
     // so the field varies and a mispair shows. (The fixture check below is what
     // caught the first draft using a solid tint.)
     let tint = g.add_node("motion.color_ramp");
-    g.set_param(tint, "a_r", 0.05);
-    g.set_param(tint, "a_g", 0.11);
-    g.set_param(tint, "a_b", 0.83);
-    g.set_param(tint, "b_r", 0.91);
-    g.set_param(tint, "b_g", 0.74);
-    g.set_param(tint, "b_b", 0.07);
+    // ⚠️ This used to seed six `a_*`/`b_*` params — the node's TWO-STOP manifest, retired
+    // when doc 85 moved the whole gradient into the `ramp` text param (`params: &[]`). A
+    // param the manifest no longer declares makes `validate` refuse the WHOLE graph, so
+    // this gate has been failing since; it is `#[ignore]` + needs an adapter, so neither
+    // `cargo test` nor the integration sweep ever reached it. Same family as the three
+    // demos the 2026-07-30 integration cured — and cured the same way, by preserving the
+    // AUTHORED colours rather than dropping the seed:
+    //   a = (0.05, 0.11, 0.83) → b = (0.91, 0.74, 0.07), interp 2 = Linear.
+    g.set_text_param(
+        tint,
+        "ramp",
+        "g1 2 0:0.05,0.11,0.83 1:0.91,0.74,0.07".to_string(),
+    );
     let lum = g.add_node("motion.luminance");
     let mr = g.add_node("value.map_range");
     g.set_param(mr, "in_lo", 0.13);

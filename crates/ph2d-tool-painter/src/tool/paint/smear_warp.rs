@@ -19,7 +19,7 @@
 //!    knife has no Apply or Reset to close one, and a stroke's result must become the next stroke's
 //!    baseline — the Smear edits the layer in place, as it always has.
 
-use super::{Region, union_region};
+use super::{PaintMode, Region, union_region};
 use crate::tool::PainterTool;
 use ph2d_painter_brush::{BrushSpec, Dab};
 use std::sync::Arc;
@@ -198,10 +198,34 @@ impl PainterTool {
         true
     }
 
-    /// Close the knife's per-stroke session. Called from `close_stroke`; a no-op in every other mode
-    /// because only the Smear opens a session there.
+    /// Fecha a sessão de warp POR-TRAÇO. Chamada de `close_stroke`.
+    ///
+    /// ⚠️ **A pergunta é sobre a SESSÃO, não sobre o MODO — e a versão antiga era uma ENUMERAÇÃO dos
+    /// donos** (`paint_mode.smears()`, isto é *Smear ou Knife*). O doc do próprio `smears()` avisa que
+    /// *"uma enumeração desses sítios é exatamente o que apodrece quando um segundo membro entra na
+    /// família"*, e a **camada Smear do Composite Brush é o terceiro membro**: ela roda em
+    /// `PaintMode::Paint`, então esta guarda dizia não e **a sessão nunca era encerrada**.
+    ///
+    /// **Medido (2026-08-09, `probe_composite_session_lifetime`), três traços em composite:**
+    ///
+    /// | | traço 1 | traço 2 | traço 3 |
+    /// |---|---|---|---|
+    /// | `warp.active` no pen-up | true | true | true |
+    /// | texels com `disp` ≠ 0 | 9.904 | 19.808 | 29.712 |
+    /// | região re-renderizada (h) | 41 | 81 | 121 |
+    ///
+    /// Ou seja: a fonte congelada era a do PRIMEIRO pen-down do documento, o campo de deslocamento
+    /// somava para sempre, e todo batch re-resolvia **o desenho inteiro** através dele — *a arte não
+    /// para de escorregar enquanto o artista pinta*, e o custo cresce com o desenho.
+    ///
+    /// **O único dono CROSS-traço é o Deform** (a sessão dele atravessa traços porque o Reconstruct
+    /// precisa da história, e ele tem Apply/Reset explícitos para encerrá-la). Perguntando isso — em vez
+    /// de listar quem abre —, o quarto membro da família nasce coberto.
+    ///
+    /// **Mutação que must bleed:** voltar a `paint_mode.smears()` ⇒ a sessão sobrevive ao pen-up em
+    /// composite (`the_composite_stack_closes_its_smear_session_at_pen_up`).
     pub(super) fn end_smear_session(&mut self) {
-        if self.paint.paint_mode.smears() {
+        if self.paint.warp.active && self.paint.paint_mode != PaintMode::Deform {
             self.end_warp_session();
         }
     }

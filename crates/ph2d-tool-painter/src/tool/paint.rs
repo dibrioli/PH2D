@@ -146,6 +146,8 @@ mod blur_route;
 mod canvas_pointer;
 mod composite;
 #[cfg(test)]
+mod composite_look;
+#[cfg(test)]
 mod composite_probe;
 pub(crate) use composite::{CompositeLayer, CompositeOp};
 mod clone;

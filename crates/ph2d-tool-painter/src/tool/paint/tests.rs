@@ -19950,6 +19950,79 @@ fn the_knives_warp_session_does_not_outlive_its_stroke() {
     );
 }
 
+/// **A pilha do Composite Brush é o TERCEIRO membro da família do smear, e a guarda que fechava a
+/// sessão era uma ENUMERAÇÃO dos dois primeiros.**
+///
+/// `end_smear_session` perguntava `paint_mode.smears()` — *Smear ou Knife*. A camada Smear da pilha roda
+/// em `PaintMode::Paint`, então a resposta era NÃO e **a sessão nunca era encerrada**: a fonte congelada
+/// continuava a do primeiro pen-down do documento, o campo de deslocamento somava para sempre, e cada
+/// batch re-resolvia a região CUMULATIVA através dele. Medido antes do conserto, três traços em
+/// composite: `disp` ≠ 0 em **9.904 → 19.808 → 29.712** texels e a região re-renderizada em **h 41 → 81
+/// → 121** — *o desenho inteiro escorregando enquanto o artista pinta*, com o custo crescendo junto.
+/// O doc de `PaintMode::smears` já avisava exatamente isto sobre enumerar os sítios.
+///
+/// As quatro metades importam e nenhuma implica as outras:
+/// 1. **CONTROLE** — a sessão está VIVA no meio do traço. Sem ele o gate passa com o Smear morto.
+/// 2. Ela morre no pen-up e o `disp` é liberado.
+/// 3. Ela **não cresce entre traços** — é a metade que o número acima descreve.
+/// 4. **O Deform continua isento** — a sessão dele atravessa traços de propósito (o Reconstruct precisa
+///    da história, e Apply/Reset a encerram). É a metade que um predicado só-`warp.active` quebraria.
+///
+/// **Mutação que must bleed:** voltar a guarda para `self.paint.paint_mode.smears()`.
+#[test]
+fn the_composite_stack_closes_its_smear_session_at_pen_up() {
+    let size = 160u32;
+    let mut t = impasto_canvas(size);
+    let mut b = t.paint.brush;
+    b.radius_px = 12.0;
+    t.paint.brush = b;
+    for slot in &mut t.paint.brush_by_mode {
+        *slot = b;
+    }
+    t.paint.composite_enabled = true;
+
+    let mut widths = Vec::new();
+    for k in 0..3 {
+        let y = 40.0 + k as f32 * 30.0;
+        t.on_canvas_pointer(cp([30.0, y], PointerPhase::Down));
+        for i in 1..=20 {
+            t.on_canvas_pointer(cp([30.0 + i as f32 * 5.0, y], PointerPhase::Move));
+        }
+        // (1) o CONTROLE: a pilha de fato abriu uma sessão de smear.
+        assert!(
+            t.paint.warp.active,
+            "fixture: a camada Smear da pilha abre uma sessao durante o traco"
+        );
+        t.on_canvas_pointer(cp([130.0, y], PointerPhase::Up));
+        // (2) ela morre com o traço.
+        assert!(
+            !t.paint.warp.active,
+            "a sessao da pilha morre no pen-up, como a do Smear"
+        );
+        assert!(
+            t.paint.warp.disp.is_empty(),
+            "o deslocamento e' liberado com a sessao, nao deixado para ser re-aplicado"
+        );
+        widths.push(t.paint.warp.touched_all.map_or(0, |r| r.h));
+    }
+    // (3) a região re-renderizada é POR TRAÇO: ela não pode crescer com a história.
+    assert!(
+        widths[2] <= widths[0] + 2,
+        "a regiao re-renderizada cresce com os tracos ({widths:?}) — a sessao esta' sobrevivendo"
+    );
+
+    // (4) e o Deform, que POSSUI uma sessão cross-traço, segue isento.
+    t.paint.composite_enabled = false;
+    t.set_paint_tool_mode("liquify");
+    t.on_canvas_pointer(cp([60.0, 80.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([90.0, 80.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([90.0, 80.0], PointerPhase::Up));
+    assert!(
+        t.paint.warp.active,
+        "a sessao do Deform atravessa tracos de proposito — Apply/Reset e' que a encerram"
+    );
+}
+
 /// **The knife's kill criterion**, mirroring the sculpt's: canvas 2048² and 4096², brush radius 100, a
 /// dragged stroke over a relief-bearing layer — so the body rides the same map and its three planes are
 /// re-rendered too. Target **≤ 4 ms/move**, **kill at 8**.

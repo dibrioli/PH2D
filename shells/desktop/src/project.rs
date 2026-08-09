@@ -357,6 +357,21 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// desta wave volta com o agarrar em zero, que é o que ela de facto tinha; um
 /// campo novo na tupla teria custado o bump por si só e recusado todo arquivo já
 /// salvo.
+
+/// v69 (`line/motion-value`, doc 88 D3 — AS SETTINGS DO PROJETO viajam no arquivo):
+/// campo de ARQUIVO novo, `settings` (`SavedSettings`) — a escala do mundo
+/// (`pixels_per_meter`), a unidade que o artista LÊ, os dois snaps do gizmo e o modo
+/// de filtragem. Fora do `ProjectState` pela razão dos irmãos `physics`/`motion`/
+/// `timeline`: o `ProjectState` é a unidade do undo GLOBAL, e um Ctrl+Z do canvas
+/// não deve rebobinar a escala do mundo.
+/// ⚠️ **A linha escreveu 56 e o valor CONTADO é 69** — a `line/Vector` (v56..v62), a
+/// `line/sculpt3d` (v63) e a `line/physics` (v64..v68) pousaram antes na mesma janela
+/// ([[feedback_numbers_that_sum_across_lines_count_dont_pick]]).
+/// ⚠️ **E esta linha do degrau nasceu AUSENTE:** a integração renumerou o literal de
+/// 56 para 69 e não escreveu a entrada, então a escada ficou documentando até v68 sob
+/// uma const que dizia 69 — o buraco que faz o próximo bump nascer mal-numerado, pois
+/// quem conta o próximo degrau lê a escada e não o literal. Escrita na varredura da
+/// §5 do CLAUDE.md, no fim da mesma jornada.
 const PROJECT_SCHEMA: u32 = 69;
 
 /// O conteúdo de um arquivo de projeto.

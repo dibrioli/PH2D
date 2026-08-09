@@ -112,8 +112,18 @@ fn measure_what_an_idle_player_does() {
     }
     println!();
 
+    // ⚠️ **A coluna `piso` é o que torna esta tabela legível, e a ausência dela
+    // custou uma caçada (2026-08-09):** o piso geométrico da cápsula CRESCE com
+    // a rampa (`half + radius/cos θ`), então a linha `float 0,50` — que é o
+    // `RideConfig::STARTING_POINT` — está ABAIXO do domínio dela em toda rampa,
+    // e a patologia que ela mostra é o corpo a bater na superfície, não uma
+    // deriva do produto. O gesto do artista nunca produz esse par (o
+    // `apply_player_edit(Add)` ajusta pela mesma fórmula, com 20% de margem);
+    // ver `measure_float_floor.rs`, que mede a fronteira e a gateia.
     for &slope in &[0.0_f32, 10.0, 20.0, 30.0] {
-        println!("--- rampa {slope:.0}° ---");
+        let floor =
+            ph2d_platformer::RideConfig::min_float_height(0.3, 0.2, slope.to_radians().cos());
+        println!("--- rampa {slope:.0}°  (piso geometrico da capsula: {floor:.4}) ---");
         println!(
             "{:>7}  {:>10}  {:>10}  {:>10}  {:>12}",
             "float", "deriva x", "amplitude", "y final", "subida/s"

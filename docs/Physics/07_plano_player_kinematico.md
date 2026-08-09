@@ -895,6 +895,53 @@ decorativa — sob a mutação ela dá `3daddcd7…`.
 
 **Zero schema, zero componente novo, zero dep.** 3 gates, 3 mutações, 3 sangram.
 
+### W-FloatFloor — O PISO DA PERNA É GEOMÉTRICO, E O PRODUTO JÁ O HONRA
+
+⚠️ **Esta não é uma wave: é uma caçada que terminou em *não há defeito*, e o que
+ela deixa é um gate e duas notas corrigidas.** Ela começou porque a sonda do
+repouso mede, numa rampa de 30° com `float_height = 0,50` — o
+`RideConfig::STARTING_POINT` —, o personagem a **descer 0,59 m oscilando 0,27 m**.
+
+**Varrido finamente contra a previsão** (`measure_float_floor.rs`):
+
+| rampa | `min_float_height` | onset medido | no default 0,50 |
+|---|---|---|---|
+| 10° | 0,5031 | 0,5100 | +0,0200 · amp 0,0035 |
+| 20° | 0,5128 | 0,5200 | +0,0393 · amp 0,0134 |
+| 30° | 0,5309 | 0,5400 | **−0,68 m · amp 0,34** |
+| 40° | 0,5611 | 0,5700 | **−5,14 m · amp 3,30** |
+| 45° | 0,5828 | 0,5900 | **−9,53 m · amp 6,73** |
+
+O onset segue a fórmula com **um passo de varredura** de folga em toda linha ⇒ o
+piso é geométrico. E o **gesto do artista já o honra**: `apply_player_edit(Add)`
+chama a mesma porta e multiplica por **1,2** — a 45° isso dá `0,6994` contra um
+onset de `0,59`, **19% de folga**, com gate próprio na shell.
+
+⚠️ **O que não estava escrito em lugar nenhum é a FORMA da falha abaixo do piso:**
+ela não cresce devagar — a 45° o personagem **cai 9,5 m oscilando 6,7 m**. É isso
+que torna a margem load-bearing em vez de decorativa.
+
+⚠️ **E o `0,50` fica onde está, de propósito:** ele é o ponto de partida do
+MODELO, e quem o veste com a geometria de um corpo concreto é o gesto. A tabela
+do `measure_idle` mostrava a patologia **sem** o piso ao lado, e foi ela que
+mandou nesta caçada — hoje ela imprime o piso no cabeçalho de cada rampa.
+
+**O gate que ficou** (`the_predicted_floor_is_the_floor_the_simulator_shows`)
+pergunta ao **SIMULADOR** se o onset segue a fórmula, o que o `ride_tests` não
+pode fazer — ele confere `min_float_height` contra a tabela do próprio doc, um
+espelho que continuaria verde se as duas se movessem juntas. ⚠️ **A 1ª versão
+dele não tinha dentes com este mesmo nome:** ela afirmava que `piso × 1,2` fica
+quieto, e a margem de 20% **absorve a fórmula errada** (piso colapsado numa
+constante ⇒ `0,60` contra onset `0,59`, e passava). 3 mutações na fórmula do
+produto, **3 sangram**.
+
+⚠️ **E DUAS notas foram RECONFERIDAS porque outra wave moveu o número delas**
+(CLAUDE.md §0): a §5 do `CLAUDE.md` afirmava **0,164 m de resíduo de rampa no
+default** — verdade em 04/08, e a **W11b** o levou a 0,0331 e a **W11c** a
+**0,0000 EXATO** de 20° a 45°; e o *"pulinho involuntário"* que a W11 declarou
+**não-reproduzível em cinco configurações** reproduz sim — **abaixo do piso**,
+que é uma configuração que aquelas cinco não continham.
+
 ### W-KinTune — O QUE O SMOKE PEDIR
 
 Reservada de propósito: `autostep` afinado, `min_slope_slide_angle` exposto, ou nada.

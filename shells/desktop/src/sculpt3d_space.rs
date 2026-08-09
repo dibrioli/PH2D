@@ -7,7 +7,7 @@
 //! e toda conversão entre os dois espaços mora neste arquivo, num lugar só.
 
 use super::{
-    Brush, Hit, Mesh, ObjectId, Pose, RADIUS_MAX_FRAC_OF_HEIGHT, RADIUS_MIN_PX, SceneObject,
+    Brush, Hit, Mesh, ObjectId, Pose, RADIUS_MAX_FRAC_OF_HEIGHT, RADIUS_MIN_PX, Ray, SceneObject,
     Sculpt3dScene,
 };
 
@@ -300,5 +300,15 @@ impl Sculpt3dScene {
         } else {
             d
         }
+    }
+
+    /// O raio que passa pelo pixel — **a porta de projeção do gesto**.
+    ///
+    /// ⚠️ Ela mudou-se para cá quando o pai cruzou o teto de LOC, e o corte não
+    /// foi por tamanho: são CINCO chamadores em quatro módulos (o carimbo, os
+    /// três grips, o transform), e este arquivo é o que já responde *onde as
+    /// coisas estão* — a pose, a direção local, o raio em pixels.
+    pub(super) fn ray_at(&self, x: f32, y: f32) -> Ray {
+        self.camera.ray_through(x, y, self.viewport)
     }
 }

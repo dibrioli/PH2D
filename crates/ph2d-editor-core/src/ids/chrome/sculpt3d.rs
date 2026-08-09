@@ -287,3 +287,20 @@ pub const SCULPT3D_EXTRACT_THICK_NUM: NodeId = hash_node_id("sculpt3d.extract_th
 pub const SCULPT3D_EXTRACT_SMOOTH: NodeId = hash_node_id("sculpt3d.extract_smooth");
 /// Chip ligado a [`SCULPT3D_EXTRACT_SMOOTH`].
 pub const SCULPT3D_EXTRACT_SMOOTH_NUM: NodeId = hash_node_id("sculpt3d.extract_smooth_num");
+
+/// **O TRANSFORM** — mover, girar e escalar a parte LIVRE.
+///
+/// ⚠️ **Rádio com DESLIGADO, e não três comandos:** as quatro operações de
+/// máscara ali em cima executam e acabam (nenhuma fica acesa); estes três
+/// **ARMAM** o botão esquerdo, então um deles fica aceso enquanto vale — e
+/// clicar o aceso desarma. É a diferença entre *um gesto* e *uma ferramenta na
+/// mão*, e ela decide o que o `selected` do grupo mostra.
+///
+/// ⚠️ E eles moram aqui, ao lado do extract, pela frase que já pôs as outras
+/// cinco nesta vizinhança: quem acabou de pintar uma máscara procura o que fazer
+/// com ela onde a pintou.
+pub const SCULPT3D_TRANSFORM: [NodeId; 3] = [
+    hash_node_id("sculpt3d.transform.0"),
+    hash_node_id("sculpt3d.transform.1"),
+    hash_node_id("sculpt3d.transform.2"),
+];

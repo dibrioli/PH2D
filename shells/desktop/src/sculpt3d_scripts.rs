@@ -369,6 +369,40 @@ pub(crate) fn for_scene(mesh: &ph2d_mesh::Mesh) {
              [sculpt3d]        Painter continua movendo as sombras dele -- sem cena 3D nenhuma."
         );
     }
+    if crate::sculpt3d::transform_scene() {
+        // ⚠️ **A cena DECLARA o tamanho da BANDA**, e é ele que a torna válida:
+        // a lei que esta wave corrige só é visível onde a máscara é PARCIAL, e
+        // uma cena com a banda vazia deixaria o artista julgando uma
+        // propriedade que ele não tem como ver.
+        let (band, total) = crate::sculpt3d::soft_masked_counts();
+        eprintln!(
+            "[sculpt3d] =23 O TRANSFORM -- a mascara MOVE. DUAS esferas:\n\
+             [sculpt3d]    a da DIREITA vem com mascara MACIA -- o polo sul pregado, o norte\n\
+             [sculpt3d]    livre, e {band} de {total} vertices na BANDA entre os dois;\n\
+             [sculpt3d]    a da ESQUERDA vem NUA. Se as duas nao aparecerem, PARE.\n\
+             [sculpt3d]    Abra o painel com a CRASE (`) -- os tres botoes 'Transform Free Part'\n\
+             [sculpt3d]    ficam no fim da secao Brush, logo abaixo do Extract.\n\
+             [sculpt3d]    (1) Clique na esfera da DIREITA, aperte 'Rotate' e ARRASTE com o botao\n\
+             [sculpt3d]        ESQUERDO em volta dela. O topo gira, o fundo NAO se mexe, e o meio\n\
+             [sculpt3d]        torce suave. O botao DIREITO continua orbitando a camera.\n\
+             [sculpt3d]    (2) A PERGUNTA DA WAVE, e ela e' de OLHO: gire MEIA VOLTA ou mais. A\n\
+             [sculpt3d]        cintura tem de continuar REDONDA -- ela torce, mas nao AFINA. Se a\n\
+             [sculpt3d]        esfera pinçar em direcao ao eixo, como uma ampulheta, PARE: essa e'\n\
+             [sculpt3d]        exatamente a lei que esta wave substituiu.\n\
+             [sculpt3d]    (3) Ctrl+Z devolve a esfera em UM passo. Repita com 'Move' (a metade\n\
+             [sculpt3d]        livre desliza e a pregada fica) e com 'Scale' (arrastar para longe\n\
+             [sculpt3d]        do centro cresce, para perto encolhe).\n\
+             [sculpt3d]    (4) Clique de novo no botao ACESO: ele desarma, e o esquerdo volta a\n\
+             [sculpt3d]        esculpir. Sem isso a ferramenta ficaria presa na mao.\n\
+             [sculpt3d]    (5) A METADE QUE PROVA A COSTURA: clique na esfera da ESQUERDA, pegue\n\
+             [sculpt3d]        o verbo Mask (tecla M), BAIXE a forca para ~0,3 e pinte uma mancha\n\
+             [sculpt3d]        de bordas MACIAS. Arme 'Rotate' e gire: o que voce pintou nao se\n\
+             [sculpt3d]        move, o resto sim, e a transicao acompanha a suavidade da mancha.\n\
+             [sculpt3d]    (6) Na esfera da esquerda: tecla C (limpa) e depois I (inverte) deixam\n\
+             [sculpt3d]        a peca TODA protegida. Arme e arraste: o log tem de RECUSAR com\n\
+             [sculpt3d]        uma frase, e nada pode se mover."
+        );
+    }
     if crate::sculpt3d::extract_scene() {
         // ⚠️ **A cena DECLARA quantos vértices ela mascarou**, e é esse número
         // que a torna válida: sem ele, *"apertei e nada saiu"* e *"apertei e

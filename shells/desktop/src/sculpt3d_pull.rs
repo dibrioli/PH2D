@@ -123,7 +123,7 @@ impl Sculpt3dScene {
     /// faz, e pelo mesmo motivo. Com ela, varrer no sentido anti-horário na tela
     /// dá ângulo positivo em torno do eixo que aponta para o observador, que é
     /// o que o artista vê o barro fazer.
-    fn swept_angle(&mut self, from: (f32, f32), x: f32, y: f32) -> Option<f32> {
+    pub(super) fn swept_angle(&mut self, from: (f32, f32), x: f32, y: f32) -> Option<f32> {
         let d = [x - from.0, from.1 - y];
         let len = (d[0] * d[0] + d[1] * d[1]).sqrt();
         let g = self.twist.get_or_insert(TwistSweep {

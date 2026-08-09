@@ -21,7 +21,7 @@ use ph2d_panel_sculpt3d::{
     Sculpt3dIntent, Sculpt3dPanel, Sculpt3dPanelState, Sculpt3dSnapshot, Sculpt3dUi, drain_intents,
     ids, rows, set_current_sculpt3d,
 };
-use ph2d_sculpt3d::{Alpha, Falloff, Verb};
+use ph2d_sculpt3d::{Alpha, Falloff, TransformKind, Verb};
 use ph2d_ui_testkit::MockPanelHost;
 
 /// A escala que a fixture finge que o modelo comporta.
@@ -57,6 +57,11 @@ fn arrange_with(snap: Sculpt3dSnapshot) -> (MockPanelHost, Sculpt3dPanelState) {
 /// desta função ficar torto.
 fn snapshot(ui: Sculpt3dUi, has_bake_target: bool) -> Sculpt3dSnapshot {
     Sculpt3dSnapshot {
+        // ⚠️ **DESARMADO e' o caso comum**, e a fixture o declara em vez de o
+        // herdar: um gate que chegasse ao estado armado por toggle inverteria de
+        // sentido no dia em que o default se movesse, e seguiria verde testando
+        // o oposto. E o gate do transform arma o outro.
+        transform: None,
         // O AO fresco e' o caso comum; o gate do aviso arma o outro.
         ao_stale: false,
         ui,
@@ -432,6 +437,36 @@ fn with_no_scene_nothing_dispatches() {
 /// Esta é a metade que um `WidgetEvent` empurrado à mão pula: um controle pode
 /// pintar, hit-registrar e encaminhar — todo outro gate verde — e continuar
 /// morto de pedra sob o mouse porque o `populate` nunca o registrou.
+/// **A QUARTA condição de UI: a sequência LEVA a algum lugar.**
+///
+/// ⚠️ **A varredura logo abaixo prova a TERCEIRA** — que um ponteiro REAL
+/// alcança os três retângulos. Ela não diz *o quê* eles empurram, e um id
+/// registrado sem braço no `event` pinta, responde ao mouse e enfileira nada.
+/// As duas metades são o par que este arquivo usa em todo grupo de chips.
+#[test]
+fn each_transform_chip_arms_its_own_kind() {
+    assert_eq!(
+        ids::SCULPT3D_TRANSFORM.len(),
+        TransformKind::ALL.len(),
+        "a lista de chips e a de espécies têm tamanhos diferentes -- uma delas é \
+         inalcançável, ou um chip nomeia uma que não existe"
+    );
+    for (i, want) in TransformKind::ALL.into_iter().enumerate() {
+        let (mut host, mut state) = arrange(Sculpt3dUi::default());
+        let outcome = host.apply_panel_event::<Sculpt3dPanel>(
+            &mut state,
+            WidgetEvent::Click(ids::SCULPT3D_TRANSFORM[i]),
+        );
+        assert_eq!(outcome, EventOutcome::Consumed, "o chip {i} nao despacha");
+        assert_eq!(
+            only_intent(want.label()),
+            Sculpt3dIntent::ArmTransform(want),
+            "o chip de {} armou outra coisa",
+            want.label()
+        );
+    }
+}
+
 #[test]
 fn every_painted_control_is_clickable_where_it_is_drawn() {
     // ⚠️ **O Crease em mãos**, e a premissa é declarada em vez de herdada: as
@@ -482,6 +517,12 @@ fn every_painted_control_is_clickable_where_it_is_drawn() {
     }
     for (i, id) in ids::SCULPT3D_MASK_OP.into_iter().enumerate() {
         want.push((format!("mask op {i}"), id));
+    }
+    for (i, k) in TransformKind::ALL.into_iter().enumerate() {
+        want.push((
+            format!("transform {}", k.label()),
+            ids::SCULPT3D_TRANSFORM[i],
+        ));
     }
     for (i, id) in ids::SCULPT3D_ADD.into_iter().enumerate() {
         want.push((format!("add {i}"), id));

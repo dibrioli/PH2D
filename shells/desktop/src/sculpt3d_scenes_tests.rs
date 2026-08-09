@@ -151,3 +151,31 @@ fn the_turn_scene_opens_with_a_sphere_that_has_ridges() {
         "a região LISA subiu {off:.4}: o traço vazou, e a fixture perdeu a forma que ela existe para dar"
     );
 }
+
+/// **A cena do transform tem de CONTER a banda** — sem ela o smoke julgaria uma
+/// propriedade que não está na tela.
+///
+/// ⚠️ É a lição das fixtures dos gates do kernel, aplicada à cena: com máscara
+/// DURA as duas leis de interpolação concordam em todo vértice, e o defeito que
+/// esta wave corrige (o colapso do lerp) só é visível onde o peso é PARCIAL. Uma
+/// cena de smoke é uma fixture, e uma fixture que não contém o fenômeno faz o
+/// artista aprovar o que ele não viu.
+#[test]
+fn the_transform_scene_has_a_soft_band_to_judge() {
+    let (band, total) = crate::sculpt3d::soft_masked_counts();
+    assert!(total > 10_000, "a esfera da cena tem so' {total} vertices");
+    // ⚠️ **A barra é um QUARTO, e o número saiu da medição depois de ela
+    // derrubar a minha conta.** Eu tinha escrito *"a maior parte da esfera"* (>
+    // metade) supondo que o peso `0,5 + y` distribuísse os vértices por `y`; uma
+    // `uv_sphere` os distribui uniformemente no ÂNGULO POLAR, e `|y| < 0,48` são
+    // 59° de 180° — **medido, 4464 de 13682 = 32,6%**. Um terço é banda de
+    // sobra para julgar; a barra fica abaixo dele com folga, porque o que ela
+    // guarda é *a cena contém o fenômeno*, não a aritmética da esfera.
+    assert!(
+        band * 4 > total,
+        "a banda tem {band} de {total} vertices -- a cena nao contem o fenomeno"
+    );
+    // ⚠️ E os DOIS extremos têm de existir: sem vértice de peso 0 não há o que
+    // fique parado, e sem peso 1 não há o que se mova inteiro.
+    assert!(band < total, "a esfera nao tem extremo nenhum");
+}

@@ -16,10 +16,8 @@ use ph2d_i18n::tr;
 use ph2d_sculpt3d::{Alpha, Falloff, Verb};
 use ph2d_tokens::{ROW_H_PX, Spacing};
 
-/// **OS WIDGETS** — ver [`widgets`].
-#[path = "widgets.rs"]
-mod widgets;
-use widgets::{command, header, labelled_seg, readout, row_of_two, seg, toggle};
+use super::mask_tools::paint_mask_tools;
+use super::widgets::{command, header, labelled_seg, readout, row_of_two, seg, toggle};
 
 use crate::preview;
 use crate::rows;
@@ -41,7 +39,7 @@ const ADD_LABELS: [&str; 4] = [
 ];
 
 /// Os rótulos das quatro operações de máscara, na ordem dos comandos `Mask*`.
-const MASK_LABELS: [&str; 4] = [
+pub(super) const MASK_LABELS: [&str; 4] = [
     "panel.sculpt3d.mask.clear",
     "panel.sculpt3d.mask.invert",
     "panel.sculpt3d.mask.blur",
@@ -237,43 +235,7 @@ fn paint_brush_tail(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32,
     } else {
         y
     };
-    // As quatro operações de máscara moram AQUI, ao lado do verbo que a pinta —
-    // um artista que acabou de pintar máscara procura o que fazer com ela onde
-    // ele a pintou, não numa seção própria três rolagens abaixo.
-    let mask: Vec<&str> = MASK_LABELS.iter().map(|k| tr(k)).collect();
-    let mut y = labelled_seg(
-        ctx,
-        tr("panel.sculpt3d.mask"),
-        ids::SCULPT3D_SEC_BRUSH,
-        &ids::SCULPT3D_MASK_OP,
-        &mask,
-        // ⚠️ Nenhum fica aceso, e `usize::MAX` é como se diz isso: as quatro são
-        // GESTOS (executam e acabam), não um modo escolhido. Acender uma delas
-        // afirmaria um estado que não existe.
-        usize::MAX,
-        x,
-        w,
-        y,
-    );
-    // **O EXTRACT**, e os dois números que ele lê, logo abaixo das quatro
-    // operações — a quinta coisa que se faz com uma máscara pintada, e a única
-    // que produz uma PEÇA. Ela aparece na seção da cena, no número de peças; o
-    // gesto fica onde a máscara foi pintada.
-    //
-    // ⚠️ **Os knobs vêm DEPOIS do botão**, e não antes: eles são os argumentos
-    // dele, e um argumento acima do verbo lê como um knob solto do pincel.
-    y = command(
-        ctx,
-        ids::SCULPT3D_EXTRACT,
-        tr("panel.sculpt3d.extract"),
-        x,
-        w,
-        y,
-    ) + Spacing::Sm.px();
-    for row in rows::rows().filter(|r| r.place == rows::Place::AfterExtract && (r.show)(&snap.ui)) {
-        y = paint_one_row(ctx, snap, row, x, w, y);
-    }
-    y
+    paint_mask_tools(ctx, snap, x, w, y)
 }
 
 /// **O ESPELHO** — três botões INDEPENDENTES.
@@ -532,7 +494,7 @@ fn paint_scene(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y: f
 /// Uma row, onde quer que ela seja desenhada. **Porta única** — o bloco de knobs
 /// e a cauda a chamam, então uma row de cauda não pode nascer com espaçamento ou
 /// leitura diferentes das irmãs.
-fn paint_one_row(
+pub(super) fn paint_one_row(
     ctx: &mut PaintCtx,
     snap: &Sculpt3dSnapshot,
     row: &rows::Row,

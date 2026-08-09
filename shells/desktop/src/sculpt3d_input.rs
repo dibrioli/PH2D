@@ -6,7 +6,7 @@
 //! chama, e todas recusam no primeiro `if` sem cena armada — a promessa de
 //! removibilidade do `docs/3D/02.3` no nível do frame.
 
-use super::{Drag, Grip, ORBIT_RAD_PER_PX, Sculpt3dScene, Verb};
+use super::{Dab, Drag, Grip, ORBIT_RAD_PER_PX, Sculpt3dScene, Verb};
 use crate::app_state::App;
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -76,6 +76,33 @@ impl App {
         }
         match button {
             winit::event::MouseButton::Left => {
+                // ⚠️ **Com o transform ARMADO o esquerdo transforma.** Não há
+                // fallback para órbita aqui, e é deliberado: o arm é um estado
+                // que o painel MOSTRA, e um botão que às vezes transforma e às
+                // vezes gira a câmera — conforme o que estava sob o cursor —
+                // seria o mesmo gesto significando duas coisas. A órbita
+                // continua inteira no botão direito.
+                if scene.transform_arm().is_some() {
+                    // ⚠️ **MIRAR VEM ANTES DE COMEÇAR**, a mesma ordem (e o
+                    // mesmo motivo) do traço logo abaixo: o `begin_transform`
+                    // congela a foto da malha ATIVA, e mirar depois faria a
+                    // sessão descrever a peça anterior.
+                    scene.aim(pos.0, pos.1);
+                    if scene.begin_transform(pos.0, pos.1) {
+                        scene.drag = Some(Drag::Transform);
+                    } else {
+                        // ⚠️ A recusa é REPORTADA: uma malha inteiramente
+                        // mascarada não tem o que mover, e um gesto que não faz
+                        // nada e não diz nada é indistinguível de um botão que
+                        // não chegou.
+                        eprintln!(
+                            "[sculpt3d] transform: a peca esta' toda PROTEGIDA -- nao ha' o que mover (I inverte a mascara)"
+                        );
+                        scene.drag = Some(Drag::Orbit);
+                    }
+                    scene.last = pos;
+                    return true;
+                }
                 // ⚠️ Os modificadores são lidos UMA vez, no pen-down, e valem o
                 // traço inteiro. Soltar o Shift no meio de uma pincelada faria
                 // metade dela ser outra ferramenta — e nenhum app de escultura
@@ -142,6 +169,9 @@ impl App {
         if was == Some(Drag::Sculpt) {
             scene.close_stroke();
         }
+        if was == Some(Drag::Transform) {
+            scene.close_transform();
+        }
         was.is_some()
     }
 
@@ -171,6 +201,12 @@ impl App {
                 .camera
                 .orbit(-dx * ORBIT_RAD_PER_PX, dy * ORBIT_RAD_PER_PX),
             Drag::Pan => scene.camera.pan(dx / height, dy / height),
+            // ⚠️ **Ele NÃO percorre o caminho, e não é o motivo do Grab:** o
+            // gesto do transform não é uma trilha nem um ângulo, é o vetor
+            // INTEIRO do pen-down até aqui — o `x`/`y` cru, e nunca o `dx`/`dy`
+            // do evento. Interpolar entre eventos daria o mesmo total em N
+            // parcelas, e a lei já é função do total.
+            Drag::Transform => scene.transform_at(x, y),
             // ⚠️ **Um evento de ponteiro NÃO é um dab.** O caminho entre a
             // âncora e o cursor é percorrido a passos de
             // [`ph2d_sculpt3d::min_spacing`], senão um gesto rápido deixa um vão
@@ -253,5 +289,61 @@ impl App {
 
     pub(super) fn sculpt3d_scene_mut(&mut self) -> Option<&mut Sculpt3dScene> {
         self.gfx.as_mut()?.sculpt3d.as_mut()
+    }
+}
+
+impl Sculpt3dScene {
+    /// Aplica um dab onde o cursor aponta. Devolve `false` se o raio errou a
+    /// malha — e errar é normal: a mão sai do modelo o tempo todo.
+    pub(super) fn sculpt_at(&mut self, x: f32, y: f32) -> bool {
+        // Na peça ATIVA — quem a escolheu foi o `aim` do pen-down. Ver o doc
+        // dele: um traço pertence a uma peça, e trocar no meio é um pânico.
+        let Some(hit) = self.pick_active(x, y) else {
+            return false;
+        };
+        let ray = self.ray_at(x, y);
+        if std::env::var("PH2D_SCULPT3D_DIAG").ok().as_deref() == Some("1") {
+            // ⚠️ **O instrumento que responde *"o pincel cai onde o cursor
+            // aponta?"* com um NÚMERO.** Ele reprojeta o acerto pela porta
+            // `project` — o inverso exato do `ray_through` — e imprime o erro em
+            // pixels. Um desvio grande acusa a fiação (viewport, escala, um
+            // flip); zero acusa a percepção, e aí a causa é outra.
+            let back = self
+                .camera
+                .project(self.pose().point_to_world(hit.point), self.viewport);
+            let err = back.map(|(bx, by)| ((bx - x).hypot(by - y), bx, by));
+            eprintln!(
+                "[sculpt3d] clique ({x:.1}, {y:.1}) viewport {:?} -> acerto {:?} \
+                 -> volta {err:?}",
+                self.viewport, hit.point
+            );
+        }
+        let brush = self.armed_brush(hit.point);
+        // ⚠️ **REFINA E DEPOIS CARIMBA** — ver `refine_for_dab`. E a malha que a
+        // linha seguinte recebe pode ter mais vértices que a do `pick_active`
+        // acima: é por isso que ela é pedida de novo, por índice, em vez de
+        // segurada numa referência desde o topo.
+        self.refine_for_dab(hit.point, brush.radius);
+        let eye = self.dir_to_local(ray.dir());
+        self.stroke.dab(
+            self.objects[self.active].stack.mesh_mut(),
+            &brush,
+            // ⚠️ **O olho é o `dir` do raio que ACABOU de produzir este acerto**,
+            // e não uma direção derivada da câmera de novo: duas respostas para
+            // *"de onde se está olhando"* divergem no frame em que a câmera se
+            // move entre o pick e o dab.
+            &Dab::at(hit.point, brush.radius, eye),
+            self.symmetry,
+        );
+        Self::mesh_changed(
+            &mut self.objects[self.active].dirty,
+            &mut self.edits,
+            // ⚠️ **`last_gpu_dirty`, não `last_refreshed`.** Um traço de máscara
+            // não move geometria, então ele não refresca normal nenhuma — e
+            // perguntar *"o que refresquei?"* devolveria VAZIO, deixando a
+            // máscara invisível na GPU com todos os gates de CPU verdes.
+            self.stroke.last_gpu_dirty(),
+        );
+        true
     }
 }

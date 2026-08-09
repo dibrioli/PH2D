@@ -344,6 +344,7 @@ pub fn tr(key: &str) -> &'static str {
         "panel.sculpt3d.mask.blur" => "Blur",
         "panel.sculpt3d.mask.sharpen" => "Sharpen",
         "panel.sculpt3d.extract" => "Extract Mask",
+        "panel.sculpt3d.transform" => "Transform Free Part",
         "panel.sculpt3d.extract_thickness" => "Extract Thickness",
         "panel.sculpt3d.extract_smooth" => "Extract Smooth",
         "panel.sculpt3d.sym.x" => "X",

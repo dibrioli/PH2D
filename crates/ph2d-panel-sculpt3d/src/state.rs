@@ -139,6 +139,14 @@ impl Default for Sculpt3dUi {
 #[derive(Copy, Clone, Debug, Default, PartialEq)]
 pub struct Sculpt3dSnapshot {
     pub ui: Sculpt3dUi,
+    /// **O que o transform ARMOU** — `None` é o estado normal, em que o botão
+    /// esquerdo esculpe.
+    ///
+    /// ⚠️ **Um FATO, como o `dyntopo` ao lado, e não um campo do
+    /// [`Sculpt3dUi`]:** armar uma ferramenta muda o que o BOTÃO faz, e uma
+    /// consequência dessas não pode viajar dentro do struct de valores que todo
+    /// arrasto de slider reenvia inteiro.
+    pub transform: Option<ph2d_sculpt3d::TransformKind>,
     /// A topologia dinâmica está armada? **Lido, nunca escrito por `SetUi`** —
     /// ligá-la TRIANGULA a malha, e uma consequência dessas não pode viajar
     /// dentro de um struct de valores que todo arrasto de slider reenvia.
@@ -214,6 +222,13 @@ pub struct Sculpt3dSnapshot {
 pub enum Sculpt3dIntent {
     /// Substitui o estado autorado inteiro — ver [`Sculpt3dUi`].
     SetUi(Sculpt3dUi),
+    /// **Arma (ou desarma) o transform.** Ver `ph2d_sculpt3d::TransformKind`.
+    ///
+    /// ⚠️ Ele carrega o TIPO e não um `Option`: a cena é quem sabe o que já
+    /// está armado, e mandar *"desligue"* de dentro do painel exigiria que ele
+    /// guardasse uma segunda cópia do arm para decidir. Clicar o aceso desarma —
+    /// e quem faz essa conta é `Sculpt3dScene::arm_transform`, uma vez.
+    ArmTransform(ph2d_sculpt3d::TransformKind),
     /// Liga/desliga a topologia dinâmica (e triangula, se ligar).
     ToggleDyntopo,
     /// Desce (`false`) ou sobe (`true`) um nível de multiresolução.

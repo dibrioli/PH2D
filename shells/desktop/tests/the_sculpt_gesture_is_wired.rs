@@ -535,3 +535,51 @@ fn the_cavity_is_born_off() {
         "o neutro E' zero: com ele o barro e' o da W3, ao byte"
     );
 }
+
+/// **O TRANSFORM ARMADO desvia o botão esquerdo ANTES do traço** — e ele mira
+/// antes de congelar a foto.
+///
+/// ⚠️ **Duas ordens, e cada uma é um defeito distinto se invertida.** Posta
+/// DEPOIS do `stroke.begin`, a checagem do arm deixaria o pen-down abrir um
+/// traço que ninguém fecha — e o gesto esculpiria antes de transformar. E o
+/// `aim` DEPOIS do `begin_transform` congelaria a foto da peça ANTERIOR: a
+/// sessão descreveria uma malha e o arrasto escreveria noutra, que é a mesma
+/// classe de erro que o comentário do traço logo abaixo já nomeia (com a peça
+/// nova maior, um pânico no primeiro evento).
+#[test]
+fn the_armed_transform_takes_the_left_button_before_the_stroke_does() {
+    let body = function_body(&sculpt_src(), "sculpt3d_pointer_down");
+    let arm = body
+        .find("scene.transform_arm().is_some()")
+        .expect("o pen-down não pergunta se o transform está armado");
+    let begin = body
+        .find("scene.begin_transform(")
+        .expect("o pen-down não abre a sessão do transform");
+    let aim = body.find("scene.aim(").expect("o pen-down não mira");
+    let stroke = body
+        .find("scene.stroke.begin(")
+        .expect("o pen-down não congela o `pre` do traço");
+    assert!(
+        arm < stroke && begin < stroke,
+        "o arm é perguntado DEPOIS de o traço começar -- o esquerdo esculpiria armado"
+    );
+    assert!(
+        aim < begin,
+        "o `begin_transform` congela a foto ANTES de mirar -- a sessão descreve a peça anterior"
+    );
+}
+
+/// **O pen-up FECHA a sessão do transform** — e é ele que grava o passo de undo.
+///
+/// ⚠️ Sem esta linha o gesto funcionaria inteiro na tela e **não seria
+/// desfazível**: a sessão morreria no pen-down seguinte, sem nunca gravar o
+/// *antes*. É a falha que não parece falha — nada quebra, o Ctrl+Z é que fica
+/// mudo.
+#[test]
+fn the_pen_up_closes_the_transform_and_that_is_where_the_undo_step_is_written() {
+    let body = function_body(&sculpt_src(), "sculpt3d_pointer_up");
+    assert!(
+        body.contains("Drag::Transform") && body.contains("scene.close_transform()"),
+        "o pen-up não fecha a sessão do transform -- o gesto não teria undo"
+    );
+}

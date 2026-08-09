@@ -27,6 +27,12 @@ pub(crate) mod donation;
 #[path = "sculpt3d_input.rs"]
 mod input;
 
+/// **O TRANSFORM PONDERADO PELA MÁSCARA** — mover, girar e escalar a parte
+/// LIVRE. Filho (`#[path]`) pelo motivo dos vizinhos; o corte é *o que a mão na
+/// tela quer dizer* (lá) contra *a LEI* (no kernel, `ph2d-sculpt3d`).
+#[path = "sculpt3d_transform.rs"]
+mod transform;
+
 /// **O TECLADO** — que tecla escolhe o quê. Irmão do [`input`], e o corte é
 /// entre *o que a mão faz com o PONTEIRO* e *o que ela ESCOLHE com o teclado*;
 /// ele nasceu quando a tabela de teclas levou o arquivo do gesto ao teto de LOC.
@@ -154,7 +160,8 @@ mod fixtures;
 pub(crate) use scenes::{
     alpha_scene, bake_scene, cavity_scene, directional_alpha_scene, donation_scene, dyntopo_scene,
     extract_scene, fuse_scene, holes_scene, masked_dome_counts, remesh_scene, reopen_scene,
-    reversion_scene, scene_objects, smoke_armed, smoke_mesh, turn_scene, wants_canvas,
+    reversion_scene, scene_objects, smoke_armed, smoke_mesh, soft_masked_counts, transform_scene,
+    turn_scene, wants_canvas,
 };
 
 /// O que o arrasto está fazendo.
@@ -163,6 +170,9 @@ enum Drag {
     Orbit,
     Pan,
     Sculpt,
+    /// **O TRANSFORM ARMADO** — o botão esquerdo move/gira/escala a parte livre
+    /// em vez de esculpir. Ver `sculpt3d_transform`.
+    Transform,
 }
 
 /// **O ângulo VARRIDO desde o pen-down**, acumulado evento a evento.
@@ -372,6 +382,16 @@ pub(crate) struct Sculpt3dScene {
     /// **O ângulo já varrido** pelo gesto do Twist — ver [`TwistSweep`]. `None`
     /// fora de um gesto; o pen-down o zera.
     twist: Option<TwistSweep>,
+    /// **O que o painel ARMOU** — `None` é o estado normal, em que o botão
+    /// esquerdo esculpe.
+    ///
+    /// ⚠️ Estado de FERRAMENTA, não de gesto: ele sobrevive ao pen-up, como o
+    /// verbo do pincel. Quem o desarma é o artista, clicando o mesmo botão.
+    transform_arm: Option<ph2d_sculpt3d::TransformKind>,
+    /// A sessão VIVA — a foto do pen-down. Vazia fora do gesto.
+    transform: Option<ph2d_sculpt3d::MaskTransform>,
+    /// Onde o dedo pousou: a âncora contra a qual todo gesto é medido.
+    transform_from: (f32, f32),
     symmetry: Symmetry,
     /// **O rig de luz do artista** — as mesmas quatro lâmpadas que acendem a tinta
     /// do Painter (`ph2d-light`).
@@ -494,6 +514,9 @@ impl Sculpt3dScene {
             stroke_anchor: [0.0, 0.0],
             grab: None,
             twist: None,
+            transform_arm: None,
+            transform: None,
+            transform_from: (0.0, 0.0),
             // ⚠️ **DESLIGADA por default, e é decisão do smoke.** O ZBrush
             // nasce com espelho ligado — e MOSTRA isso. Aqui o artista clicava
             // de um lado e via uma segunda protuberância do outro, sem nada na
@@ -515,64 +538,5 @@ impl Sculpt3dScene {
             role: FormRole::Clay,
             donated: None,
         }
-    }
-
-    /// O raio do cursor, pela câmera desta cena.
-    fn ray_at(&self, x: f32, y: f32) -> Ray {
-        self.camera.ray_through(x, y, self.viewport)
-    }
-
-    /// Aplica um dab onde o cursor aponta. Devolve `false` se o raio errou a
-    /// malha — e errar é normal: a mão sai do modelo o tempo todo.
-    fn sculpt_at(&mut self, x: f32, y: f32) -> bool {
-        // Na peça ATIVA — quem a escolheu foi o `aim` do pen-down. Ver o doc
-        // dele: um traço pertence a uma peça, e trocar no meio é um pânico.
-        let Some(hit) = self.pick_active(x, y) else {
-            return false;
-        };
-        let ray = self.ray_at(x, y);
-        if std::env::var("PH2D_SCULPT3D_DIAG").ok().as_deref() == Some("1") {
-            // ⚠️ **O instrumento que responde *"o pincel cai onde o cursor
-            // aponta?"* com um NÚMERO.** Ele reprojeta o acerto pela porta
-            // `project` — o inverso exato do `ray_through` — e imprime o erro em
-            // pixels. Um desvio grande acusa a fiação (viewport, escala, um
-            // flip); zero acusa a percepção, e aí a causa é outra.
-            let back = self
-                .camera
-                .project(self.pose().point_to_world(hit.point), self.viewport);
-            let err = back.map(|(bx, by)| ((bx - x).hypot(by - y), bx, by));
-            eprintln!(
-                "[sculpt3d] clique ({x:.1}, {y:.1}) viewport {:?} -> acerto {:?} \
-                 -> volta {err:?}",
-                self.viewport, hit.point
-            );
-        }
-        let brush = self.armed_brush(hit.point);
-        // ⚠️ **REFINA E DEPOIS CARIMBA** — ver `refine_for_dab`. E a malha que a
-        // linha seguinte recebe pode ter mais vértices que a do `pick_active`
-        // acima: é por isso que ela é pedida de novo, por índice, em vez de
-        // segurada numa referência desde o topo.
-        self.refine_for_dab(hit.point, brush.radius);
-        let eye = self.dir_to_local(ray.dir());
-        self.stroke.dab(
-            self.objects[self.active].stack.mesh_mut(),
-            &brush,
-            // ⚠️ **O olho é o `dir` do raio que ACABOU de produzir este acerto**,
-            // e não uma direção derivada da câmera de novo: duas respostas para
-            // *"de onde se está olhando"* divergem no frame em que a câmera se
-            // move entre o pick e o dab.
-            &Dab::at(hit.point, brush.radius, eye),
-            self.symmetry,
-        );
-        Self::mesh_changed(
-            &mut self.objects[self.active].dirty,
-            &mut self.edits,
-            // ⚠️ **`last_gpu_dirty`, não `last_refreshed`.** Um traço de máscara
-            // não move geometria, então ele não refresca normal nenhuma — e
-            // perguntar *"o que refresquei?"* devolveria VAZIO, deixando a
-            // máscara invisível na GPU com todos os gates de CPU verdes.
-            self.stroke.last_gpu_dirty(),
-        );
-        true
     }
 }

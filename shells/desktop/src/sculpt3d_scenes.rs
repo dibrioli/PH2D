@@ -234,6 +234,14 @@ pub(crate) fn scene_objects() -> Vec<(ph2d_mesh::Mesh, ph2d_mesh::Pose)> {
             ),
         ];
     }
+    if transform_scene() {
+        // A da direita é a MASCARADA; a esquerda é a nua que o `smoke_mesh` abre
+        // — a mesma divisão da `=22`, e pelo mesmo motivo.
+        return vec![(
+            soft_masked_sphere(),
+            ph2d_mesh::Pose::new([2.6, 0.0, 0.0], 1.0),
+        )];
+    }
     if extract_scene() {
         // ⚠️ **A da direita é a MASCARADA**, e a esquerda é a que a cena já abre
         // (nua, pelo `smoke_mesh`). Sem a nua ao lado, o smoke provaria só que
@@ -376,6 +384,56 @@ fn masked_dome() -> ph2d_mesh::Mesh {
     let mask = m.masks_mut();
     for i in 0..n {
         mask[i] = f32::from(u8::from(cap[i]));
+    }
+    m
+}
+
+/// `=23` — a cena do **TRANSFORM**: a máscara MOVE.
+///
+/// ⚠️ **Duas esferas, e a assimetria é a mesma da `=22`:** a da DIREITA já vem
+/// mascarada (o artista arma e julga a LEI, sem o confundidor de ter acabado de
+/// pintar), a da ESQUERDA vem nua (é ela que prova a costura *pincel → botão*).
+///
+/// ⚠️ **E a máscara dela é MACIA, de propósito.** Uma máscara dura faria o
+/// transform mover meia esfera rigidamente — correto, e **cego à lei**: as duas
+/// interpolações possíveis concordam em todo vértice de peso 0 ou 1. O defeito
+/// que esta wave corrige (o lerp da referência, que colapsa o vértice de meio
+/// peso sobre o eixo) só é VISÍVEL na banda de transição — que é também o que um
+/// pincel de máscara macio pinta. *A fixture tem de conter o fenômeno*, e uma
+/// cena de smoke é uma fixture.
+pub(crate) fn transform_scene() -> bool {
+    std::env::var("PH2D_SCULPT3D_SMOKE").ok().as_deref() == Some("23")
+}
+
+/// **Quantos vértices da esfera da `=23` estão PARCIALMENTE livres, e de
+/// quantos** — o número que torna aquele smoke válido.
+///
+/// ⚠️ O que conta é a BANDA (`0 < peso < 1`): é ela que separa as duas leis, e
+/// uma cena que a tivesse vazia deixaria o artista julgando uma propriedade que
+/// ele não consegue ver. Sai da MESMA malha que a cena monta.
+#[must_use]
+pub(crate) fn soft_masked_counts() -> (usize, usize) {
+    let m = soft_masked_sphere();
+    let total = m.vert_count();
+    let band = m
+        .masks()
+        .map_or(0, |k| k.iter().filter(|&&v| v > 0.02 && v < 0.98).count());
+    (band, total)
+}
+
+/// A esfera que a cena `=23` abre à direita, com máscara MACIA.
+#[must_use]
+fn soft_masked_sphere() -> ph2d_mesh::Mesh {
+    let mut m = ph2d_mesh::shapes::uv_sphere(96, 144, 1.0);
+    let n = m.vert_count();
+    // O peso LIVRE varre 0..1 com a latitude: o polo sul fica pregado, o norte
+    // livre, e o meio é a banda.
+    let free: Vec<f32> = (0..n)
+        .map(|i| (0.5 + m.positions()[i][1]).clamp(0.0, 1.0))
+        .collect();
+    let mask = m.masks_mut();
+    for i in 0..n {
+        mask[i] = 1.0 - free[i];
     }
     m
 }

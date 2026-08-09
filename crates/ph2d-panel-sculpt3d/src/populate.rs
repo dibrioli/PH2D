@@ -67,6 +67,7 @@ pub fn populate(store: &mut WidgetStore) {
         &ids::SCULPT3D_DETAIL[..],
         &ids::SCULPT3D_ADD[..],
         &ids::SCULPT3D_MASK_OP[..],
+        &ids::SCULPT3D_TRANSFORM[..],
         &ids::SCULPT3D_MATCAP[..],
     ] {
         for &id in group {

@@ -4,7 +4,7 @@
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::{EventOutcome, Panel, PanelHostInternal, seam_reset_button};
-use ph2d_sculpt3d::{Alpha, Falloff, Verb};
+use ph2d_sculpt3d::{Alpha, Falloff, TransformKind, Verb};
 
 use crate::rows;
 use crate::state::{self, Sculpt3dIntent};
@@ -38,6 +38,27 @@ pub(crate) const COMMANDS: &[(ph2d_a11y::NodeId, Sculpt3dIntent)] = &[
 
 /// As quatro primitivas e as quatro operações de máscara, na ordem em que o
 /// painel as lista.
+/// **O intent de um chip de grupo** — a porta única dos três grupos cujo clique
+/// é uma entrada de tabela.
+///
+/// ⚠️ Os outros grupos (verbo, falloff, alpha, matcap, detalhe) **não** entram
+/// aqui de propósito: eles não empurram uma constante, eles COMPÕEM um
+/// [`Sculpt3dUi`] a partir do retrato vivo. Enfiá-los nesta tabela obrigaria a
+/// porta a receber o estado inteiro, e aí ela deixaria de ser uma tabela.
+fn table_intent(id: ph2d_a11y::NodeId) -> Option<Sculpt3dIntent> {
+    if let Some(i) = index_of(&ids::SCULPT3D_ADD, id) {
+        return Some(ADD_INTENTS[i]);
+    }
+    if let Some(i) = index_of(&ids::SCULPT3D_TRANSFORM, id) {
+        // ⚠️ **Ele ARMA, e o painel não decide o que "clicar o aceso" faz.** A
+        // cena é quem sabe o que já está armado (`arm_transform`), então mandar
+        // o TIPO — e não um `Option` — é o que impede o painel de guardar uma
+        // segunda cópia do arm para calcular o desligamento.
+        return Some(Sculpt3dIntent::ArmTransform(TransformKind::ALL[i]));
+    }
+    index_of(&ids::SCULPT3D_MASK_OP, id).map(|i| MASK_INTENTS[i])
+}
+
 const ADD_INTENTS: [Sculpt3dIntent; 4] = [
     Sculpt3dIntent::AddSphere,
     Sculpt3dIntent::AddCube,
@@ -212,16 +233,14 @@ pub(crate) fn apply_event(
             state::push_intent(Sculpt3dIntent::SetUi(ui));
             true
         }
-        WidgetEvent::Click(id) if index_of(&ids::SCULPT3D_ADD, id).is_some() => {
+        // ⚠️ **TRÊS grupos, UMA porta.** Os três respondiam a mesma coisa —
+        // *achou o índice, empurra a entrada `i` de uma tabela* — em três braços
+        // idênticos a menos do nome da tabela. O quarto teria nascido copiando o
+        // terceiro, e é assim que um deles ganha um `seam_reset_button` a menos
+        // sem ninguém ver.
+        WidgetEvent::Click(id) if table_intent(id).is_some() => {
             seam_reset_button(host, id);
-            let i = index_of(&ids::SCULPT3D_ADD, id).expect("guard casou");
-            state::push_intent(ADD_INTENTS[i]);
-            true
-        }
-        WidgetEvent::Click(id) if index_of(&ids::SCULPT3D_MASK_OP, id).is_some() => {
-            seam_reset_button(host, id);
-            let i = index_of(&ids::SCULPT3D_MASK_OP, id).expect("guard casou");
-            state::push_intent(MASK_INTENTS[i]);
+            state::push_intent(table_intent(id).expect("guard casou"));
             true
         }
         WidgetEvent::Click(id) if COMMANDS.iter().any(|(k, _)| *k == id) => {

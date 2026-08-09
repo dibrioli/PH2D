@@ -28,6 +28,7 @@ impl Sculpt3dScene {
     pub(crate) fn panel_snapshot(&self, has_bake_target: bool) -> Sculpt3dSnapshot {
         let light = self.rig.current();
         Sculpt3dSnapshot {
+            transform: self.transform_arm(),
             ui: Sculpt3dUi {
                 brush: self.brush,
                 // ⚠️ **O raio publicado é o CLAMPADO**, e não o `radius_px` cru:
@@ -120,6 +121,22 @@ impl Sculpt3dScene {
             // dentro do frame. Mesmo desenho do `Shift+B`.
             Sculpt3dIntent::BakeToSprite => return true,
             Sculpt3dIntent::SetUi(ui) => self.apply_ui(&ui),
+            // ⚠️ **Quem decide o desligamento é a CENA**, não o painel: o
+            // intent carrega o TIPO, e `arm_transform` compara com o que já
+            // está armado. Duas cópias dessa comparação divergiriam no dia em
+            // que o arm ganhasse um segundo escritor (uma tecla, um smoke).
+            Sculpt3dIntent::ArmTransform(kind) => {
+                let on = self.arm_transform(kind);
+                eprintln!(
+                    "[sculpt3d] transform: {} {}",
+                    kind.label(),
+                    if on {
+                        "ARMADO -- o botao esquerdo move a parte LIVRE (clique de novo para desarmar)"
+                    } else {
+                        "desarmado -- o botao esquerdo volta a esculpir"
+                    }
+                );
+            }
             Sculpt3dIntent::ToggleDyntopo => {
                 let (on, tris) = self.toggle_dyntopo();
                 eprintln!(

@@ -23,6 +23,13 @@ use crate::state::{self, Sculpt3dPanelState, set_last_content_h, set_last_visibl
 use crate::{Sculpt3dPanel, rows};
 
 mod body;
+/// **O QUE SE FAZ COM UMA MÁSCARA PINTADA** — irmão do [`body`], cortado por
+/// assunto quando o transform cruzou o teto de LOC dele.
+mod mask_tools;
+/// **OS WIDGETS** do painel. ⚠️ Ele subiu de dentro do [`body`] para cá quando
+/// ganhou um SEGUNDO consumidor: o arquivo sempre morou em `paint/`, e a
+/// declaração é que estava um nível abaixo do lugar dele.
+mod widgets;
 
 /// Calha do rótulo. Larga como a do painel de física porque estes rótulos também
 /// são palavras ("Plane Offset", "Light Height"), não uma aresta só.

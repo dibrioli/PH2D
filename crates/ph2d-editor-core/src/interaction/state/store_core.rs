@@ -398,6 +398,30 @@ impl WidgetStore {
         true
     }
 
+    /// **A porta de SAÍDA das duas acima** — este id não descreve mais um widget que existe.
+    ///
+    /// ⚠️ Para os vinte e três painéis escritos à mão isto nunca dispara: as tabelas deles são
+    /// `const`, e um widget existe pelo tempo de vida do build. Ela existe para o painel
+    /// **AUTORADO**, cuja tabela é o documento do artista — uma row some quando ele apaga a forma,
+    /// a despe, ou a renomeia.
+    ///
+    /// ⚠️ **E o dano de não a ter é herança de valor, não lixo:** o id de uma row autorada é o hash
+    /// do RÓTULO, então uma forma nova de mesmo nome e mesmo tipo cai no mesmo id — e o `adopt`,
+    /// vendo o discriminante bater, PRESERVA o estado. O controle novo nasce na posição de um que
+    /// o artista apagou. Medido, 2026-08-09; e o store é do APP, então a herança atravessa a troca
+    /// de projeto.
+    ///
+    /// ⚠️ **O `focus_order` sai junto, e não é higiene:** ele só cresce, e o `is_focusable` não
+    /// sabe de morte — deixar o id lá é o Tab a pousar num controle que já não existe, o que num
+    /// `TextInput` é digitar num campo invisível.
+    ///
+    /// Idempotente, e no-op para um id que nunca foi registado.
+    pub fn unregister(&mut self, id: NodeId) {
+        if self.states.remove(&id).is_some() {
+            self.focus_order.retain(|&f| f != id);
+        }
+    }
+
     pub fn get(&self, id: NodeId) -> Option<&InteractiveState> {
         self.states.get(&id)
     }

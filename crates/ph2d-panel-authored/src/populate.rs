@@ -136,6 +136,54 @@ fn chrome(store: &mut WidgetStore) {
     }
 }
 
+thread_local! {
+    /// **Os ids que este painel adotou no quadro anterior** — o único discriminador disponível.
+    ///
+    /// ⚠️ Ele existe porque o painel **não consegue distinguir *"a mesma forma"* de *"outra com o
+    /// mesmo nome"***: o id de uma row é o hash do RÓTULO, e é idêntico nos dois casos. O que os
+    /// separa é a AUSÊNCIA — a row sumiu da tabela viva por um quadro —, e é por isso que a cura é
+    /// retirar no desaparecimento em vez de comparar nomes.
+    static ADOPTED: std::cell::RefCell<std::collections::BTreeSet<ph2d_a11y::NodeId>> =
+        const { std::cell::RefCell::new(std::collections::BTreeSet::new()) };
+}
+
+/// **O que sumiu do documento sai do store** — a terceira metade da mesma lei.
+///
+/// ⚠️ As outras duas ([`adopt`]) dizem *"o estado segue o TIPO que a row veste agora"* e *"as
+/// marcas seguem o que a row É agora"*. Esta diz **"o id existe enquanto a row existir"**, e sem
+/// ela um controle novo herda a posição de um que o artista apagou: `register`/`register_if_absent`
+/// só inserem, e o `adopt` — vendo o discriminante bater — PRESERVA o estado do morto.
+///
+/// ⚠️ **Retirar é SEM PERDA, e é isso que a torna segura:** o valor durável de um controle mora no
+/// `VecWidgetValue` da ENTIDADE, e o `reconcile` do shell re-semeia o store na primeira vista.
+/// Delete+Ctrl+Z devolve a forma **e** o valor; o que não volta é o valor de um objeto que o
+/// artista apagou de propósito.
+///
+/// ⚠️ E as três marcas saem JUNTAS. Deixar a de seção ou a de picker para trás reproduziria, pela
+/// porta da morte, exatamente os dois defeitos que o `adopt` fecha pela porta da troca de tipo.
+pub(crate) fn retire_vanished(store: &mut WidgetStore) {
+    let mut live = std::collections::BTreeSet::new();
+    with_rows(|table| {
+        for row in table {
+            live.insert(row.id);
+            if row.kind.takes_options() {
+                for i in 0..row.options.len() {
+                    live.insert(ids::authored_option_id(&row.key, i));
+                }
+            }
+        }
+    });
+    ADOPTED.with(|a| {
+        let mut a = a.borrow_mut();
+        for gone in a.difference(&live) {
+            store.unregister(*gone);
+            store.unmark_collapsible_section(*gone);
+            store.unregister_picker_swatch(*gone);
+        }
+        *a = live;
+    });
+}
+
 pub fn populate(store: &mut WidgetStore) {
     button(store, ids::AUTHORED_CLOSE);
     chrome(store);

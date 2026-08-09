@@ -72,6 +72,11 @@ pub(crate) fn paint(_state: &mut AuthoredPanelState, ctx: &mut PaintCtx) {
     ctx.host
         .store_mut()
         .set_panel_rect(ids::AUTHORED_PANEL, rect);
+    // ⚠️ **O que sumiu do documento sai do store, e isto corre ANTES do corpo.** O `adopt` (dentro
+    // do `paint_body`) diz o que cada row VIVA é; esta diz quais ids ainda existem. Sem ela,
+    // apagar uma forma e criar outra de mesmo nome e mesmo tipo dá um controle que nasce na
+    // posição do morto — o id é o hash do RÓTULO, e o `adopt` vê o discriminante bater.
+    crate::populate::retire_vanished(ctx.host.store_mut());
 
     paint_panel_surface(rect, ctx.scene, theme);
     // ⚠️ O título é o `Name` da moldura, e não uma chave de i18n: ele é dado AUTORADO. Passá-lo

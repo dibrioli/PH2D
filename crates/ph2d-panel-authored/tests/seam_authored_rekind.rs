@@ -251,3 +251,60 @@ fn every_control_kind_survives_being_born_a_button() {
         "a varredura olhou {checked} tipos — o catalogo encolheu ou o filtro comeu-o"
     );
 }
+
+/// **Uma row que MORREU não deixa o valor dela para a próxima com o mesmo nome.**
+///
+/// ⚠️ O id de uma row é `authored_row_id(key_of(nome))` — **função do RÓTULO, não da forma**. E
+/// nada retirava uma entrada do `WidgetStore`: `register`/`register_if_absent` só inserem. Então
+/// apagar a forma `Speed` e criar outra chamada `Speed` do mesmo tipo dava um controle que **nasce
+/// na posição do morto** — o `adopt` vê o discriminante bater e PRESERVA o estado.
+///
+/// ⚠️ **E o store é do APP, não do documento:** nada no load o limpa, então a herança atravessa
+/// projetos.
+///
+/// ⚠️ **O painel não consegue distinguir *"a mesma forma"* de *"outra com o mesmo nome"*** — o id é
+/// o mesmo nos dois casos. O único discriminador que existe é a AUSÊNCIA: a row sumiu da tabela
+/// viva por um quadro. É por isso que a cura é retirar no desaparecimento, e não comparar nomes.
+///
+/// ⚠️ **E retirar é sem perda:** o valor durável mora no `VecWidgetValue` da ENTIDADE, e o
+/// `reconcile` re-semeia o store na primeira vista. Delete+Ctrl+Z devolve a forma *e* o valor; o
+/// que não volta é o valor de um objeto que o artista apagou de propósito.
+#[test]
+fn a_row_that_died_does_not_leave_its_value_to_the_next_one_of_the_same_name() {
+    rows::set_live_rows(None);
+    let mut h = MockPanelHost::with_panel::<AuthoredPanel>();
+    h.set_panel_visible(AuthoredPanel::ID, true);
+    let mut st = AuthoredPanelState;
+
+    // 1. A forma `Speed` veste um Toggle, e o artista o LIGA.
+    rows::set_live_rows(Some(vec![row("Speed", WidgetKind::Toggle)]));
+    let r = h
+        .painted_rect::<AuthoredPanel>(&mut st, VIEWPORT, ids::authored_row_id("Speed"))
+        .expect("a row nao foi pintada");
+    let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
+    h.dispatch_pointer_event(pointer(PointerKind::Down, cx, cy, SEC));
+    for ev in h.dispatch_pointer_event(pointer(PointerKind::Up, cx, cy, SEC + SEC / 100)) {
+        AuthoredPanel::apply_event(&mut st, &mut h, ev);
+    }
+    assert_eq!(
+        h.store().toggle(ids::authored_row_id("Speed")).map(|t| t.1),
+        Some(true),
+        "o gesto nao ligou o toggle — a premissa do gate nao vale"
+    );
+
+    // 2. O artista APAGA a forma: ela some da tabela viva.
+    rows::set_live_rows(Some(Vec::new()));
+    let _ = h.paint::<AuthoredPanel>(&mut st, VIEWPORT);
+
+    // 3. Outra forma, nome igual, tipo igual — um objeto NOVO.
+    rows::set_live_rows(Some(vec![row("Speed", WidgetKind::Toggle)]));
+    let _ = h.paint::<AuthoredPanel>(&mut st, VIEWPORT);
+
+    assert_eq!(
+        h.store().toggle(ids::authored_row_id("Speed")).map(|t| t.1),
+        Some(false),
+        "o controle NOVO nasceu ligado — ele herdou a posicao de um controle que o artista apagou, \
+         e o store guarda isso pelo resto da sessao, atravessando ate' a troca de projeto"
+    );
+    rows::set_live_rows(None);
+}

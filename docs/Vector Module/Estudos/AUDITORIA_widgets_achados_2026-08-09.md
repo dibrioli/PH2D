@@ -64,6 +64,11 @@ Escritas aqui porque a próxima LLM as vai encontrar e tomar por load-bearing.
 - **O `.max(0.0)` na altura da seleção/caret do `text_input`** — o `push_clip` logo acima já apara o
   retângulo invertido, então um gate escrito contra a CENA não distingue as duas versões. **O gate
   que eu tinha escrito passava com o defeito reinstalado e foi REMOVIDO em vez de shipado.**
+- **O recorte por célula do `key_value_list`** — mesma razão, e ela vale para **todo** recorte desta
+  camada: a cena **codifica** os glifos independentemente do clip, que só age na rasterização. ⚠️ Ele
+  é load-bearing no PRODUTO (sem ele uma chave de uma linha mais larga que a célula pinta sobre a
+  coluna do valor) e só seria gateável com rasterização. *A metade que se vê no encoding — o texto
+  ser UMA linha — é a que tem gate.*
 
 ---
 
@@ -111,10 +116,12 @@ mas cada uma é uma tinta que sai da moldura, e a moldura é o que o gizmo do ca
 12. ~~`tag`: o X derrapa~~ — **FECHADO** (`db5cd9615`).
 13. ~~`text_input`: seleção e caret~~ — **FECHADO** (`db5cd9615`).
 14. ~~`popover::anchor_below`~~ — **FECHADO** (`db5cd9615`).
-15. **`key_value_list` não recorta** — `widget/key_value_list.rs`, zero `push_clip`. A mesma
-    correção do `876055b9b` (`TextArea`), um widget adiante.
-16. **`list_item` usa a largura MEDIDA do texto sem teto** — o rótulo empurra o resto para fora da
-    row em vez de ser cortado.
+15. ~~`key_value_list` não recorta~~ — **FECHADO** (`042b6cb95`). ⚠️ E o **mecanismo não era o que
+    eu escrevi**: o transbordo é VERTICAL, não horizontal — o `paint_text` **quebra** no
+    `max_width`, e medido, uma chave de 53 chars numa row de 24 px pintava glifos de `y=11` a
+    `y=55`, sobre as duas rows seguintes.
+16. ~~`list_item` usa a largura MEDIDA do texto sem teto~~ — **FECHADO** (`042b6cb95`). Medido: 48
+    caracteres numa row de 200 px começavam **337 px à esquerda dela**.
 
 ### D. Medições que faltam
 

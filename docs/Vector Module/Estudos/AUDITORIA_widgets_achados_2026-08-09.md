@@ -123,17 +123,59 @@ mas cada uma é uma tinta que sai da moldura, e a moldura é o que o gizmo do ca
 16. ~~`list_item` usa a largura MEDIDA do texto sem teto~~ — **FECHADO** (`042b6cb95`). Medido: 48
     caracteres numa row de 200 px começavam **337 px à esquerda dela**.
 
-### D. Medições que faltam
+### D. Medições que faltavam — **AMBAS FEITAS** (`8770f7cae` + o commit dos docs)
 
-17. **A varredura do `Xl3` não está completa.** Os usos em `color_swatch.rs:46`,
-    `color_picker.rs:154`, `showcase/*` e `modal.rs:19` **não foram medidos** — alguns são
-    tamanhos naturais legítimos (o token *é* o tamanho do objeto), outros podem ser o defeito do
-    item 11. O `icon_button.rs:94` **já foi curado** e é o precedente escrito: *clamp, e não um
-    número novo*.
-18. **`Spacing::px()` devolve o valor AUTORADO** (`num_runtime::live` → `num_overrides`), não a
-    constante de fábrica — a escala de token virou editável na wave de UI/UX. ⚠️ Toda cópia de um
-    token como literal é **errada ao vivo**, não meramente latente. Não há varredura que prove que
-    não existem outras.
+17. ~~A varredura do `Xl3` não está completa~~ — **FEITA, e a tabela inteira dá NÃO-DEFEITO.**
+    Treze usos em produto; três já curados (`numeric_input_with_unit` · `icon_button` · `card`) e
+    os dez restantes caem em quatro categorias, cada uma medida:
+
+    | Sítio | Veredito |
+    |---|---|
+    | `selection.rs:94` (`badge_w`) | host é `tag_w = 220` **constante** — folga 116 px |
+    | `grid_snap/paint.rs:142` | é `reserve_right`, e o `paint_panel_title` já clampa `.max(0.0)` |
+    | `color_swatch.rs:46` (`Md => Xl3`) | o token **É** o tamanho do objeto |
+    | `pill_group.rs:49` | é o *default* de um builder cujo `preferred_width/height` **DERIVA** dele — a direção certa |
+    | `modal.rs:165` · `color_picker.rs:154` | ⚠️ **galeria-only: ZERO chamadores de produto** |
+    | `showcase/*` (3) | galeria |
+    | painter-layers `header_h` (4) | header vertical em painel que **ROLA** |
+
+    ⚠️ **O que a varredura ACHOU não estava na lista:** o defeito da família não era um `Xl3` — era
+    a `PANEL_HEADER_CLOSE_RESERVE`, uma **cópia** de `PANEL_HEAD_PAD + Spacing::Xl2` que nasceu
+    **2 px curta na escala de fábrica** e punha a faixa de arrasto por cima do botão de fechar num
+    dos dezasseis painéis. Fechado em `8770f7cae`.
+
+18. ~~`Spacing::px()` devolve o valor AUTORADO~~ — **VARRIDO, e a varredura tem uma FRONTEIRA
+    exata:** o `NumToken` cobre **três** famílias (`Spacing` · `Radius` · `Stroke`); a
+    **tipografia é `const fn`** e não é autorável, então todo literal derivado de `TypeToken` é
+    seguro por construção (é o caso do `PANEL_HEADER_H_DEFAULT`, cujo *"Lg.px(~18)"* é o
+    `TypeToken::Lg` e está **certo**). E `is_a_length` é só `finito && >= 0` — **não há teto**,
+    então onde a cópia existe ela é errada ao vivo por qualquer margem.
+
+    ⚠️ **A varredura devolveu DUAS classes com curas OPOSTAS, e eu quase escrevi a regra errada**
+    (*"troque o literal pelo token"*), que teria mudado o produto em metade dos casos:
+
+    - **Classe A — o comentário nomeia o token ERRADO.** O número está certo, o doc mente, e a
+      mentira convida à mudança: `SECTION_LABEL_TO_CONTROL_PX = 4.0` dizia `Xxs` (que vale **2**)
+      e `SECTION_INNER_ROW_GAP_PX = 8.0` dizia `Sm` (que vale **6**) — seguir os comentários
+      encolheria o gap de toda seção do app. Mais o doc do botão de fechar (*"32×32 com glifo de
+      16×16"*, sempre foi `Xl2` = 24) e o `TOPBAR_INTER_CHIP_GAP` (*"`Spacing::Xxs` equivalent"*
+      numa barra de topo **inteiramente literal-escalada** — 44/100/156: coincidência, não
+      derivação). **Cura = corrigir o DOC.**
+    - **Classe B — a derivação é real e a cópia deriva.** Um caso: a `PANEL_HEADER_CLOSE_RESERVE`.
+      **Cura = a PORTA pergunta** (não a constante virar função: são 21 crates de painel).
+
+    ⚠️ **E a `PANEL_HEADER_ADD_RESERVE` era uma terceira coisa** — *"2 × icon size + gap"* não
+    fecha com número nenhum do produto; medido, ela sobra **32 px** sobre o Add da Hierarquia
+    (um literal de 30). O número fica, a fórmula inventada sai.
+
+### D-resíduo — o que a varredura NOMEIA e não fecha
+
+O app mistura dimensões de chrome **literais** com dimensões de **token**, e desde a wave de UI/UX
+a escala de token é autorável **sem teto**. Isso cria uma classe de descasamento latente que
+**nenhuma correção pontual endereça** — um `Spacing::Xl3` autorado em 100 estoura o rodapé de 56
+de um modal, o header de 56 de um painel, e assim por diante. Fica **nomeado**: a decisão é de
+produto (limitar a faixa autorável? tornar o chrome derivado?), não uma dívida de engenharia com
+cura óbvia.
 
 ---
 

@@ -102,7 +102,12 @@ pub const PANEL_HEADER_CLOSE_RESERVE: f32 = 42.0; // LITERAL-PX-OK: PANEL_HEAD_P
 /// Width to leave clear on the right for a close-(X) + add-(+) pair.
 /// Used by Hierarchy (close + Add Entity) and any panel exposing more
 /// than one header affordance.
-pub const PANEL_HEADER_ADD_RESERVE: f32 = 80.0; // LITERAL-PX-OK: 2 × icon size + gap
+///
+/// ⚠️ **A derivação escrita aqui era "2 × icon size + gap" e não fecha com nenhum par de números
+/// do produto.** Medido: o único consumidor é a Hierarquia, cujo botão Add mede um literal de 30
+/// e começa em `w − PANEL_HEAD_PAD(18) − 30 = w − 48`, então esta reserva sobra **32 px** — larga
+/// e inofensiva. O número fica; o que sai é a fórmula inventada.
+pub const PANEL_HEADER_ADD_RESERVE: f32 = 80.0; // LITERAL-PX-OK: cobre o Add da Hierarquia com 32 px de folga
 
 /// Canonical panel header title — **the single source of truth for the
 /// panel name text.** Every `ph2d-panel-*` crate paints its title

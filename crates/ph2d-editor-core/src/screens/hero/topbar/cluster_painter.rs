@@ -34,7 +34,13 @@ pub(super) const TOPBAR_RAIL_CHIP_W: f32 = 44.0; // LITERAL-PX-OK: chip column w
 /// same multi-chip cluster (Play/Pause/Reset, Layers/Assets/Script,
 /// Image Tools row). Enio 2026-05-25: "crie um pequeno espaço
 /// entre os botões."
-pub(super) const TOPBAR_INTER_CHIP_GAP: f32 = 2.0; // LITERAL-PX-OK: inter-chip gap (Spacing::Xxs equivalent)
+///
+/// ⚠️ **O comentário dizia "(`Spacing::Xxs` equivalent)" e isso lê como uma DERIVAÇÃO que não
+/// existe.** Medido: a barra de topo inteira é literal-escalada — o `TOPBAR_RAIL_CHIP_W` é 44, o
+/// chip de tema 100, o de projeto 156 —, então este 2 é consistente com os vizinhos e **não** é
+/// uma cópia de token que fica para trás quando a escala é autorada. A coincidência com o `Xxs`
+/// é isso mesmo: coincidência.
+pub(super) const TOPBAR_INTER_CHIP_GAP: f32 = 2.0; // LITERAL-PX-OK: inter-chip gap (chrome-specific)
 
 pub(super) fn cluster_width(cluster: &fixture::TopBarCluster) -> f32 {
     use fixture::TopBarCluster;

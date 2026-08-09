@@ -38,7 +38,7 @@ color info) é inexprimível por construção — não por falta de um knob.*
 | `motion.tint` | idem | **colorir por LUMINÂNCIA** — AE **Tint** (*Map Black To / Map White To / Amount to Tint*); Cavalry Filter **Gradient Map** ([cavalry A.4 §113](../referencia_pesquisa_cavalry.md)) | ⛔ **SIM, e já é uma cena demo:** `… → motion.luminance → motion.color_ramp(t)`. O [doc 31 §cena](../31_make_point_luminance_nota_adr.md) monta exatamente `grid → color_ramp(Rainbow) → luminance → color_ramp(t, Heat)` | — | ⛔ **recusado com motivo** | — |
 | `motion.tint` | idem | **cor ALEATÓRIA por instância** — C4D Cloner Transform tab, *"**Color** (por clone, gradiente/**aleatória**)"* ([c4d §22/§101](../referencia_pesquisa_c4d_fields.md)) | ⛔ **SIM:** `value.instance_field(mode = Random)` → `motion.color_ramp.t` (o `Random` é hash `(seed, index)`, `value-instance-field/src/lib.rs:117`) ⇒ cor aleatória ao longo de uma rampa autorada | — | ⛔ **recusado com motivo** | — |
 | `motion.tint` | idem | *(adjacência, não gap)* o modo **Gradient** é uma rampa de **2 stops keyed no índice** — o `motion.color_ramp` faz o mesmo com N stops | **SIM**, com uma diferença que é o valor real do modo: `color_ramp` **SUBSTITUI** o `tint`; `tint` **LERPA sobre o existente pelo `falloff`**. O que o modo Gradient entrega e o `color_ramp` não é a MÁSCARA | natureza (duas leis de escrita diferentes) | **P2** | — |
-| `motion.color_ramp` | **0 `ParamSpec`** + **1 TEXT param `ramp`** → o editor da [doc 85](../85_gradient_editor_nota_adr.md): barra + **N marcadores arrastáveis** + **1 swatch OKLCH por stop** + botão de **interp** (cicla os 5: Linear/Ease/Constant/Cardinal/B-Spline) + `+`/`−` + **4 chips de preset**. Porta `t` (ladder 0/1/n com broadcast). GPU por **3 LUTs**. **Nó RICO, não magro** | **espaço de interpolação** (RGB / HSV / HSL + caminho de matiz Near/Far/CW/CCW) — Blender **Color Ramp** (`ColorRamp`/`ColorBand`), e o modelo **já os implementa**: `RampColorMode::{Rgb,Hsv,Hsl}` + `RampHue::{Near,Far,Cw,Ccw}` (`ph2d-color/src/color_ramp.rs:22-63`) | **NÃO — o espaço não é autorável em lugar nenhum.** `parse_gradient` **fixa** `RampColorMode::Rgb` (`color_ramp_text.rs:115`) e o editor só cicla o `interp`. Um azul→amarelo passa pelo cinza morto e não há como pedir outra coisa | **omissão** — o motor tem, o FORMATO e a UI não | **P0** | `space = Rgb`, `hue = Near` ⇒ toda string `g1`/`g2` existente rende byte a byte o que rende hoje |
+| `motion.color_ramp` | **0 `ParamSpec`** + **1 TEXT param `ramp`** → o editor da [doc 85](../85_gradient_editor_nota_adr.md): barra + **N marcadores arrastáveis** + **1 swatch OKLCH por stop** + botão de **interp** (cicla os 5: Linear/Ease/Constant/Cardinal/B-Spline) + `+`/`−` + **4 chips de preset**. Porta `t` (ladder 0/1/n com broadcast). GPU por **3 LUTs**. **Nó RICO, não magro** | **espaço de interpolação** (RGB / HSV / HSL + caminho de matiz Near/Far/CW/CCW) — Blender **Color Ramp** (`ColorRamp`/`ColorBand`), e o modelo **já os implementa**: `RampColorMode::{Rgb,Hsv,Hsl}` + `RampHue::{Near,Far,Cw,Ccw}` (`ph2d-color/src/color_ramp.rs:22-63`) | **NÃO — o espaço não é autorável em lugar nenhum.** `parse_gradient` **fixa** `RampColorMode::Rgb` (`color_ramp_text.rs:115`) e o editor só cicla o `interp`. Um azul→amarelo passa pelo cinza morto e não há como pedir outra coisa | **omissão** — o motor tem, o FORMATO e a UI não | ✅ **FEITO** (era P0) | `space = Rgb`, `hue = Near` ⇒ toda string `g1`/`g2` existente rende byte a byte o que rende hoje |
 | `motion.color_ramp` | idem | **interpolação POR STOP** — o *ramp parameter* do **Houdini** (cada ponto carrega a própria interpolação); o próprio [doc 63 §206](../63_pesquisa_industria_2026_e_plano_estado_da_arte.md) já lista *"interpolações por stop"* | **NÃO** — o `interp` é UM `u8` global na string (`color_ramp_text.rs:59,87`) e o botão do painel cicla o global | omissão | **P2** | stop sem interp própria ⇒ o interp global (a string de hoje é exatamente isso) |
 | `motion.color_ramp` | idem | ⚠️ **NÃO é gap de referência — é DIVERGÊNCIA CPU×GPU:** a **alfa por stop** existe no formato (`g2`, 2026-08-08) e no `ColorRamp::eval` (devolve `[f32;4]`), e o kernel escreve **`1.0` literal** (`color-ramp/src/lib.rs:151`) sobre **3 LUTs** (`cr_grad_r/g/b`, §185-204). O smoke que originou o `g2` foi *"a transparência das cores não está sendo respeitada no motion"* | — (é defeito). ⚠️ **E os dois gates de paridade são VERDES sobre ele**: usam presets e uma string **`g1`** opaca (`gpu_cpu_parity.rs:1290,1386`) ⇒ a fixture não contém o fenômeno | **omissão** (a wave do `g2` moveu formato + CPU e não o device) | ✅ **FEITO** (era P0 defeito) | a 4ª LUT (`cr_grad_a`) com fill `eval(t)[3]`: ramp opaco ⇒ 1.0 em toda entrada ⇒ byte-idêntico |
 | `motion.color_ramp` | idem | **máscara por falloff / campo** — C4D: o Color group do effector tem *"Use Alpha/**Strength**"* e a pilha de Fields tem **canal Color** (*"3 canais amostrados: Value + Color + Direction"*, [c4d §57/§116/§197](../referencia_pesquisa_c4d_fields.md)) | **NÃO.** O nó faz `out.set("tint", …)` incondicional (`lib.rs:252`) — nunca lê `falloff`. Tentado: fork do stream + `motion.mixer(Blend)` com `value.attribute("falloff")` no `blend` ⇒ **falha**, o `blend` do mixer é `v.first()`, um escalar global (`mixer/lib.rs:214`). Nada blenda dois `tint` por instância | **omissão** | ✅ **FEITO** (era P0) | `mask = 1` (ou `falloff` ausente ⇒ 1) ⇒ a substituição de hoje |
@@ -231,9 +231,44 @@ desta família chamava de pré-requisito do loop **aparência → simulação**.
   multiplicação-e-soma. A barra virou o `1e-5` da casa, e a mutação mostra que uma
   diferença de LEI vale **~0,79**: quatro ordens de grandeza acima do arredondamento.
 
-**Segue P0 nesta família:** o espaço de interpolação da rampa (`RampColorMode`, o motor tem
-e o formato não — a cerca já escolheu o mecanismo: um token `g3`, append-only, **nunca** uma
-reinterpretação de `g1`/`g2`) · hue/sat **sobre a cor existente**, que continua precisando da
+### O quinto P0 — **o ESPAÇO de interpolação da rampa** (2026-08-09)
+
+O motor **sempre soube** interpolar em HSV/HSL (`mix2`/`cubic` ramificam em `color_mode`
+desde que a crate nasceu, e o `unwrap_hues` do caminho cúbico existe só para isso) — o que
+faltava era **onde guardar a escolha**. `parse_gradient` cravava `RampColorMode::Rgb` e
+`ColorRamp::new` crava `RampHue::Near`, então um azul→amarelo passava pelo **cinza morto**
+e não havia como pedir outra coisa. **A capacidade estava construída e era inexprimível no
+formato** — a forma exata do defeito que o `g2` fechou para a alfa.
+
+- **O token `g3`**, o que a cerca do próprio módulo prescrevia (*"an HSV/HSL custom ramp is
+  a future token, not a reinterpretation of an old string"*):
+  `g3 <interp> <mode> <hue> <pos>:<r>,<g>,<b>,<a> …`. ⚠️ **A versão continua escolhida pelo
+  CONTEÚDO** — `g3` só sai quando `mode != Rgb || hue != Near`, então todo gradiente que
+  ninguém levou para fora do RGB serializa `g1`/`g2` **byte a byte** como antes.
+- ⚠️ **A régua é o que a rampa precisa EXPRIMIR (os campos), não o que hoje pinta um pixel:**
+  o matiz é inerte em RGB, e guardá-lo assim mesmo é o que faz a escolha do artista
+  **sobreviver a um desvio** por RGB e voltar (gate próprio). Uma regra por *liveness*
+  dropava o `Ccw` no caminho de volta.
+- ⚠️ **E o DISPOSITIVO herda de graça, sem uma linha de WGSL:** o LUT da GPU é assado **na
+  CPU** por `bake_into` → `eval`, pela MESMA `parse_gradient` — então não há segunda
+  expressão da lei para divergir. A afirmação virou gate (`the_baked_lut_takes_the_space_the_string_asked_for`):
+  as mesmas paradas em RGB e em HSV assam LUTs **diferentes**, e o de HSV concorda com o
+  `eval` ponto a ponto.
+- **Na UI:** um botão de **espaço** (RGB → HSV → HSL) ao lado do de interp, e um de
+  **matiz** (Near → Far → CW → CCW) que ⚠️ **só é pintado fora do RGB** — o braço `Rgb` do
+  `mix2` nunca chama `lerp_hue`, então ali ele seria um controle que gira e não muda um
+  pixel. Gate de presença **e ausência**; **3 mutações, 3 sangram**.
+- ⚠️ **E a header do editor virou uma LISTA:** a largura do rótulo era um literal com um
+  comentário contando os vãos (`- INTERP_W - BTN_W*2 - gap*3`), que envelhece no dia em que
+  um botão entra — e foi exatamente o que este espaço fez. Agora os botões são colocados da
+  direita para a esquerda e o rótulo fica com a **sobra**.
+
+O oráculo que decide a wave é de **APARÊNCIA, não de flag**: a saturação no meio de um
+azul→amarelo, medida `< 0,05` em RGB e `> 0,9` em HSV — a régua é `max−min` dos canais, que
+é a definição de saturação do HSV e vem de fora do nosso código. Um gate que comparasse
+`back.color_mode` ficaria verde com o `eval` ignorando o campo.
+
+**Segue P0 nesta família:** hue/sat **sobre a cor existente**, que continua precisando da
 metade de ESCRITA do loop (o W0-B-genérico) — o `luminance` fechou a metade de LEITURA.
 
 ---

@@ -220,6 +220,21 @@ pub(crate) fn param_grad_interp_id(slot: usize) -> NodeId {
     fnv_id(&format!("motion_param/grad/{slot}/interp"))
 }
 
+/// O botão de **ESPAÇO** da `slot`-ésima row de Gradiente — cicla RGB → HSV → HSL, o
+/// espaço em que dois stops vizinhos são interpolados (`RampColorMode`).
+pub(crate) fn param_grad_space_id(slot: usize) -> NodeId {
+    fnv_id(&format!("motion_param/grad/{slot}/space"))
+}
+
+/// O botão de **MATIZ** da `slot`-ésima row de Gradiente — cicla Near → Far → CW → CCW.
+///
+/// ⚠️ Ele só é PINTADO fora do RGB, onde o caminho de matiz de fato decide alguma coisa
+/// (o braço `Rgb` do `mix2` nunca chama `lerp_hue`); em RGB seria um botão que gira e não
+/// muda um pixel. O id existe sempre — quem decide é o pintor.
+pub(crate) fn param_grad_hue_id(slot: usize) -> NodeId {
+    fnv_id(&format!("motion_param/grad/{slot}/hue"))
+}
+
 /// The `slot`-th Gradient row's `p`-th **preset seed** chip (Rainbow / Heat / Ice /
 /// Grayscale) — clicking it LOADS that preset's stops into the editable ramp (doc 85).
 pub(crate) fn param_grad_preset_id(slot: usize, p: usize) -> NodeId {

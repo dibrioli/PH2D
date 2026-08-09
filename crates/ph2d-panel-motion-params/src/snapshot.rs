@@ -469,9 +469,9 @@ pub(crate) use ids::{
     CHANNELS_EXTRA_BASE, MAX_CURVE_POINTS, MAX_GRADIENT_STOPS, param_checkbox_id, param_chip_id,
     param_curve_add_id, param_curve_editor_id, param_curve_interp_id, param_curve_point_id,
     param_curve_remove_id, param_enum_id, param_grad_add_id, param_grad_editor_id,
-    param_grad_interp_id, param_grad_preset_id, param_grad_remove_id, param_grad_stop_id,
-    param_number_id, param_pal_add_id, param_pal_remove_id, param_reroll_id, param_reset_id,
-    param_slider_id, param_text_id,
+    param_grad_hue_id, param_grad_interp_id, param_grad_preset_id, param_grad_remove_id,
+    param_grad_space_id, param_grad_stop_id, param_number_id, param_pal_add_id,
+    param_pal_remove_id, param_reroll_id, param_reset_id, param_slider_id, param_text_id,
 };
 pub use ids::{
     MAX_ENUM_OPTIONS, MAX_PARAM_ROWS, param_grad_swatch_id, param_pal_swatch_id, param_swatch_id,

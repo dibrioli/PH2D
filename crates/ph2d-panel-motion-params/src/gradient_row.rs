@@ -14,13 +14,15 @@
 //! curve editor's reason for the same clamp.
 
 use crate::snapshot::{
-    GradientRow, MAX_GRADIENT_STOPS, param_grad_add_id, param_grad_editor_id, param_grad_interp_id,
-    param_grad_preset_id, param_grad_remove_id, param_grad_stop_id, param_grad_swatch_id,
+    GradientRow, MAX_GRADIENT_STOPS, param_grad_add_id, param_grad_editor_id, param_grad_hue_id,
+    param_grad_interp_id, param_grad_preset_id, param_grad_remove_id, param_grad_space_id,
+    param_grad_stop_id, param_grad_swatch_id,
 };
 use ph2d_a11y::NodeId;
 use ph2d_color::srgb::linear_to_srgb_byte;
 use ph2d_color::{
-    ColorRamp, GradientPreset, RampInterp, RampStop, parse_gradient, serialize_gradient,
+    ColorRamp, GradientPreset, RampColorMode, RampHue, RampInterp, RampStop, parse_gradient,
+    serialize_gradient,
 };
 use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
 use ph2d_editor_core::math::safe_clamp;
@@ -42,6 +44,7 @@ const GRID_W: f32 = 1.0; // LITERAL-PX-OK: border / ring stroke width
 const RING_W: f32 = 1.5; // LITERAL-PX-OK: selected-stop ring width
 const BTN_W: f32 = 22.0; // LITERAL-PX-OK: +/− button width
 const INTERP_W: f32 = 64.0; // LITERAL-PX-OK: interp cycle-button width
+const MODE_W: f32 = 40.0; // LITERAL-PX-OK: space / hue cycle-button width ("HSV", "Near")
 const MIN_DPOS: f32 = 0.001; // LITERAL-PX-OK: min position gap between stops (NORMALIZED 0..1)
 
 thread_local! {
@@ -144,7 +147,30 @@ pub(crate) fn paint_gradient_row(
     let n = ramp.len().min(MAX_GRADIENT_STOPS);
     let sel = selected_for(slot).filter(|&p| p < n);
 
-    // ── Header: label (left) + interp / + / − (right) ──
+    // ── Header: rótulo (esquerda) + os botões (direita) ──
+    //
+    // ⚠️ **A LISTA é a régua.** Os botões são colocados da direita para a esquerda e a
+    // largura do rótulo é a SOBRA — a constante escrita à mão que morava aqui
+    // (`- INTERP_W - BTN_W*2 - gap*3`, com um comentário contando os vãos) envelhece no
+    // dia em que um botão entra, e foi exatamente o que o espaço de interpolação fez.
+    //
+    // ⚠️ **O botão de MATIZ só existe fora do RGB**, onde ele decide alguma coisa: o braço
+    // `Rgb` do `mix2` nunca chama `lerp_hue`, então em RGB ele seria um controle que gira
+    // e não muda um pixel.
+    let mut buttons: Vec<(f32, &'static str, NodeId)> = Vec::with_capacity(5);
+    if ramp.color_mode != RampColorMode::Rgb {
+        buttons.push((MODE_W, ramp.hue.name(), param_grad_hue_id(slot)));
+    }
+    buttons.push((MODE_W, ramp.color_mode.name(), param_grad_space_id(slot)));
+    buttons.push((
+        INTERP_W,
+        interp_name(ramp.interp),
+        param_grad_interp_id(slot),
+    ));
+    buttons.push((BTN_W, "+", param_grad_add_id(slot)));
+    buttons.push((BTN_W, "\u{2212}", param_grad_remove_id(slot)));
+    // Um vão por botão: o do primeiro é o que o separa do rótulo.
+    let used: f32 = buttons.iter().map(|(bw, _, _)| bw + gap).sum();
     paint_text(
         text_system,
         scene,
@@ -152,17 +178,14 @@ pub(crate) fn paint_gradient_row(
         x,
         y + (ROW_H_PX - label_font) * 0.5,
         label_font,
-        w - INTERP_W - BTN_W * 2.0 - gap * 3.0, // LITERAL-PX-OK: CONTAGEM (3 vaos entre 4 elementos), nao medida
+        (w - used).max(0.0),
         resolve(ColorToken::Text2, theme),
     );
-    let rem = Rect::new(x + w - BTN_W, y, BTN_W, ROW_H_PX);
-    let add = Rect::new(rem.x - BTN_W - gap, y, BTN_W, ROW_H_PX);
-    let interp = Rect::new(add.x - INTERP_W - gap, y, INTERP_W, ROW_H_PX);
-    for (brect, label, id) in [
-        (interp, interp_name(ramp.interp), param_grad_interp_id(slot)),
-        (add, "+", param_grad_add_id(slot)),
-        (rem, "\u{2212}", param_grad_remove_id(slot)),
-    ] {
+    let mut bx = x + w;
+    for (bw, label, id) in buttons.into_iter().rev() {
+        bx -= bw;
+        let brect = Rect::new(bx, y, bw, ROW_H_PX);
+        bx -= gap;
         fill_rounded_rect(
             scene,
             brect,
@@ -369,6 +392,34 @@ pub(crate) fn cycle_interp(value: &str, _slot: usize) -> String {
         RampInterp::Constant => RampInterp::Cardinal,
         RampInterp::Cardinal => RampInterp::BSpline,
         RampInterp::BSpline => RampInterp::Linear,
+    };
+    serialize_gradient(&ramp)
+}
+
+/// Cicla o ESPAÇO de interpolação da rampa (RGB → HSV → HSL).
+///
+/// ⚠️ Sair do RGB muda a versão que o `serialize_gradient` emite (`g3`), e voltar ao RGB
+/// **não a devolve** enquanto o matiz não for o `Near` — de propósito: a escolha do artista
+/// sobrevive ao desvio (ver `a_hue_chosen_in_hsv_survives_a_detour_through_rgb`).
+pub(crate) fn cycle_space(value: &str, _slot: usize) -> String {
+    let mut ramp = working(value);
+    ramp.color_mode = match ramp.color_mode {
+        RampColorMode::Rgb => RampColorMode::Hsv,
+        RampColorMode::Hsv => RampColorMode::Hsl,
+        RampColorMode::Hsl => RampColorMode::Rgb,
+    };
+    serialize_gradient(&ramp)
+}
+
+/// Cicla o caminho de MATIZ (Near → Far → CW → CCW) — o arco que o HSV/HSL percorre
+/// entre dois stops.
+pub(crate) fn cycle_hue(value: &str, _slot: usize) -> String {
+    let mut ramp = working(value);
+    ramp.hue = match ramp.hue {
+        RampHue::Near => RampHue::Far,
+        RampHue::Far => RampHue::Cw,
+        RampHue::Cw => RampHue::Ccw,
+        RampHue::Ccw => RampHue::Near,
     };
     serialize_gradient(&ramp)
 }

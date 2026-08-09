@@ -4,6 +4,120 @@
 
 use super::*;
 
+/// Pinta uma row de Gradiente com `value` e devolve o host (vivo, para clicar) + os rects
+/// que o paint registrou. Existe porque os gates do ESPAÇO precisam pintar a MESMA row com
+/// duas rampas diferentes, e a metade que importa neles é *o que aparece*.
+fn painted_ramp(
+    value: &str,
+) -> (
+    ph2d_ui_testkit::MockPanelHost,
+    MotionParamsPanelState,
+    Vec<(ph2d_a11y::NodeId, ph2d_editor_core::zones::Rect)>,
+) {
+    set_current_params(Some(ParamsSnapshot {
+        node: 7,
+        title: "Color Ramp".into(),
+        modified: Default::default(),
+        sections: Vec::new(),
+        rows: vec![ParamRow::Gradient(GradientRow {
+            name: "ramp",
+            label: "Gradient".into(),
+            value: value.into(),
+        })],
+    }));
+    let mut host = ph2d_ui_testkit::MockPanelHost::with_panel::<MotionParamsPanel>();
+    let mut state = MotionParamsPanelState;
+    let rects = host.paint::<MotionParamsPanel>(
+        &mut state,
+        ph2d_editor_core::zones::Rect {
+            x: 0.0,
+            y: 0.0,
+            w: 1200.0,
+            h: 800.0,
+        },
+    );
+    (host, state, rects)
+}
+
+/// **O ESPAÇO DE INTERPOLAÇÃO É ALCANÇÁVEL, E O MATIZ SÓ EXISTE ONDE DECIDE ALGUMA COISA.**
+///
+/// As duas metades que a família *"verde e morto"* ensina, mais a que este botão exige:
+/// presença (o espaço pinta um rect vivo e um clique REAL sobre ele muda a string) **e
+/// AUSÊNCIA** (em RGB o matiz não pinta, porque o braço `Rgb` do `mix2` nunca chama
+/// `lerp_hue` — ele seria um botão que gira e não muda um pixel).
+#[test]
+fn the_space_button_cycles_and_the_hue_button_only_exists_outside_rgb() {
+    use crate::snapshot::{param_grad_hue_id, param_grad_space_id};
+    let _ = drain_param_intents();
+
+    // ── RGB: o espaço aparece, o matiz NÃO ──
+    let (mut host, mut state, rects) = painted_ramp("g1 2 0:0,0,1 1:1,1,0");
+    let live = |rects: &Vec<(ph2d_a11y::NodeId, ph2d_editor_core::zones::Rect)>,
+                id: ph2d_a11y::NodeId| {
+        rects
+            .iter()
+            .find(|(rid, r)| *rid == id && r.w > 0.0 && r.h > 0.0)
+            .map(|(_, r)| *r)
+    };
+    let space = live(&rects, param_grad_space_id(0)).expect("o botão de espaço pinta um rect vivo");
+    assert!(
+        live(&rects, param_grad_hue_id(0)).is_none(),
+        "em RGB o caminho de matiz não decide nada, então o botão não é oferecido"
+    );
+
+    // Um clique REAL sobre o rect que o paint registrou leva a rampa para HSV — e o `g3`
+    // no começo da string é a prova de que a escolha tem onde ser guardada.
+    for ev in host.click_at(space.x + space.w * 0.5, space.y + space.h * 0.5) {
+        host.apply_panel_event::<MotionParamsPanel>(&mut state, ev);
+    }
+    let out = drain_param_intents()
+        .into_iter()
+        .find_map(|it| match it {
+            MotionParamIntent::SetTextParam {
+                param: "ramp",
+                value,
+                ..
+            } => Some(value),
+            _ => None,
+        })
+        .expect("clicar o espaço emite um SetTextParam");
+    assert!(
+        out.starts_with("g3 "),
+        "sair do RGB pede o header novo: {out}"
+    );
+    assert_eq!(
+        ph2d_color::parse_gradient(&out).expect("válido").color_mode,
+        ph2d_color::RampColorMode::Hsv,
+        "RGB cicla para HSV"
+    );
+
+    // ── HSV: agora o matiz APARECE, e um clique real o cicla ──
+    let (mut host, mut state, rects) = painted_ramp(&out);
+    let hue = live(&rects, param_grad_hue_id(0)).expect("fora do RGB o matiz é oferecido");
+    for ev in host.click_at(hue.x + hue.w * 0.5, hue.y + hue.h * 0.5) {
+        host.apply_panel_event::<MotionParamsPanel>(&mut state, ev);
+    }
+    let cycled = drain_param_intents()
+        .into_iter()
+        .find_map(|it| match it {
+            MotionParamIntent::SetTextParam {
+                param: "ramp",
+                value,
+                ..
+            } => Some(value),
+            _ => None,
+        })
+        .expect("clicar o matiz emite um SetTextParam");
+    let back = ph2d_color::parse_gradient(&cycled).expect("válido");
+    assert_eq!(back.hue, ph2d_color::RampHue::Far, "Near cicla para Far");
+    assert_eq!(
+        back.color_mode,
+        ph2d_color::RampColorMode::Hsv,
+        "ciclar o matiz não mexe no espaço"
+    );
+    set_current_params(None);
+}
+
 /// The Gradient editor (doc 85) is **reachable and wired**: painting it registers each
 /// stop swatch as a live picker swatch (seeded with the stop's sRGB) and the position
 /// markers as `CurvePoint` handles, and a REAL pointer click on the `+` button (over the

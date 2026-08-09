@@ -185,6 +185,43 @@ fn the_lut_fill_samples_each_channel_and_falls_back() {
     );
 }
 
+/// **O ESPAÇO DE INTERPOLAÇÃO CHEGA AO DISPOSITIVO SEM UMA LINHA DE WGSL.**
+///
+/// O LUT da GPU é assado **na CPU** por `ColorRamp::bake_into` → `eval`, pela MESMA
+/// `parse_gradient` que o `eval` do nó usa — então honrar o `g3` no parse é tudo o que o
+/// device precisava. Este gate é o que torna essa frase verificável em vez de plausível:
+/// as MESMAS paradas em RGB e em HSV assam LUTs DIFERENTES, e o de HSV concorda com o
+/// `eval` da CPU ponto a ponto.
+///
+/// ⚠️ O oráculo é o azul→amarelo do meio: em RGB o canal verde no meio vale ~0,5 (a média
+/// dos dois zeros/uns), em HSV ele passa saturado pelo arco de matiz. Um gate que só
+/// comparasse *"as duas strings diferem"* ficaria verde com o bake ignorando o campo.
+#[test]
+fn the_baked_lut_takes_the_space_the_string_asked_for() {
+    // Mesmos stops (azul → amarelo), só o header difere. `RampColorMode`: Rgb = 0, Hsv = 1.
+    let rgb = "g1 2 0:0,0,1 1:1,1,0";
+    let hsv = "g3 2 1 0 0:0,0,1,1 1:1,1,0,1";
+    let (mut a, mut b) = ([0.0f32; 256], [0.0f32; 256]);
+    fill_grad_g(rgb, &mut a);
+    fill_grad_g(hsv, &mut b);
+    let mid = 128;
+    assert!(
+        (a[mid] - b[mid]).abs() > 0.2,
+        "os dois espaços assam LUTs diferentes (rgb {} vs hsv {})",
+        a[mid],
+        b[mid]
+    );
+    // E o LUT do HSV É o `eval` do HSV — a mesma porta, amostrada.
+    let ramp = parse_gradient(hsv).expect("g3 parses");
+    for k in [0usize, 64, 128, 192, 255] {
+        let t = k as f32 / 255.0;
+        assert!(
+            (b[k] - ramp.eval(t)[1]).abs() < 1e-6,
+            "LUT[{k}] == eval({t}) no espaço autorado"
+        );
+    }
+}
+
 /// Deterministic + cooks through the registry: writes the `tint` column at the full
 /// count and passes the geometry columns through. The ramp comes from the text param.
 #[test]

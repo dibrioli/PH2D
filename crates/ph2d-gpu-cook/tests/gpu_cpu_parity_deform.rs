@@ -246,17 +246,22 @@ fn the_spherize_deformer_matches_the_cpu_within_epsilon() {
     };
     let reg = registry();
     // amount ∈ {bulge, pinch}, radius spanning the lens sizes; the grid is
-    // shifted by `offset` so the centroid is off-origin.
-    for (amount, radius, offset) in [
-        (0.8f32, 6.0f32, [4.0f32, -2.5]),
-        (-0.6, 9.0, [-3.0, 1.5]),
-        (0.5, 4.0, [0.0, 0.0]),
+    // shifted by `translate` so the centroid is off-origin, and the lens is
+    // shifted off that centroid by `lens` — the two are DISTINCT so a kernel
+    // that swapped or dropped one is caught (see `spherize_chain`). The last
+    // row is the zero-offset control: the lens back on the centroid.
+    for (amount, radius, translate, lens) in [
+        (0.8f32, 6.0f32, [4.0f32, -2.5], [1.75f32, 0.9]),
+        (-0.6, 9.0, [-3.0, 1.5], [-2.25, -1.1]),
+        (0.5, 4.0, [0.0, 0.0], [0.0, 0.0]),
     ] {
-        let (g, out) = spherize_chain(&reg, amount, radius, offset);
+        let (g, out) = spherize_chain(&reg, amount, radius, translate, lens);
         let cpu = cook_cpu(&reg, &g, out);
         let dev = cook_gpu(&gpu, &reg, &g, out);
         compare(
-            &format!("spherize amount {amount} radius {radius} offset {offset:?}"),
+            &format!(
+                "spherize amount {amount} radius {radius} translate {translate:?} lens {lens:?}"
+            ),
             &cpu,
             &dev,
         );
@@ -429,11 +434,19 @@ fn kaleidoscope_chain(
 /// A grid, TRANSLATED (so the spherize's centroid is off-origin), spherized, then
 /// output. `amount` is a constant `value.lfo` at phase 0 (a fixed bulge/pinch —
 /// the LFO is how `amount` is authored, and a constant is the reproducible case).
+///
+/// ⚠️ **TWO displacements, and they must not be the same number.** `translate` moves
+/// the GRID (so the centroid is a number the `Sum` reduction has to compute) and
+/// `lens` moves the LENS off that centroid (`offset_x`/`offset_y`, doc 88 §9). A
+/// device kernel that dropped the lens offset — or that confused it with the grid
+/// translation — would agree with the CPU on every case where the two coincide, so
+/// the caller passes them distinct.
 fn spherize_chain(
     reg: &NodeRegistry,
     amount: f32,
     radius: f32,
-    offset: [f32; 2],
+    translate: [f32; 2],
+    lens: [f32; 2],
 ) -> (Graph, NodeId) {
     let mut g = Graph::new();
     let grid = g.add_node("motion.grid");
@@ -442,10 +455,12 @@ fn spherize_chain(
     g.set_param(grid, "gap_x", 0.35);
     g.set_param(grid, "gap_y", 0.25);
     let mv = g.add_node("motion.move");
-    g.set_param(mv, "dx", offset[0]);
-    g.set_param(mv, "dy", offset[1]);
+    g.set_param(mv, "dx", translate[0]);
+    g.set_param(mv, "dy", translate[1]);
     let sph = g.add_node("motion.spherize");
     g.set_param(sph, "radius", radius);
+    g.set_param(sph, "offset_x", lens[0]);
+    g.set_param(sph, "offset_y", lens[1]);
     // A constant amount: a `value.lfo` with amplitude carrying the level and a
     // period so long it does not move at the fixed playhead. Simpler: offset.
     let amt = g.add_node("value.lfo");

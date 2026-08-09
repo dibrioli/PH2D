@@ -206,6 +206,7 @@ mod label_live;
 mod layout_live;
 mod layout_reorder;
 mod layout_smoke;
+mod lens_smoke;
 mod mask_smoke;
 mod morph_fade_smoke;
 mod morph_live;

@@ -276,6 +276,10 @@ imprime o que montou.
 shell mediria o mesmo e custaria o app inteiro).
 
 **O retrato de 2026-08-08:** **118 nós · 411 params · 395 com hint · 105 com unidade.**
+⚠️ **Re-medido em 2026-08-09: 118 nós · 420 params · 404 com hint · 116 com unidade · 48
+magros** (era 50). *Um censo é um retrato COM DATA* — dois destes params são o `offset_x`/
+`offset_y` da §9.1 e os outros sete já estavam no `main` quando esta linha reabriu. Não
+acredite no número desta linha: rode a sonda.
 Só **um** nó tem param sem hint nenhum (`value.attribute`, cujo controle real é o picker
 de canais — o `f32` ali é o `mode` que o picker escreve). **Cinquenta** nós têm ≤ 2
 controles, e é aqui que a curadoria mora: *magro por natureza* e *magro por omissão* são
@@ -287,10 +291,86 @@ coisas diferentes, e o censo não sabe distingui-las — quem distingue é a ref
 |---|---|---|
 | **TRANSFORM** (`move` · `rotate` · `scale` · `transform` · `mirror` · `orbit`) | `scale` escrevia uma coluna **Vec2** a partir de **um** número; `mirror` pregava a linha no **centroide** | ✅ **FECHADA** (2026-08-08) — o 2º eixo e o `Axis Offset`, smoke `PH2D_TRANSFORM_SMOKE=1` |
 | **ECHO** (`motion.trail`) | 3 params contra os 8 da referência | ✅ **FECHADA no PADRÃO-OURO** (2026-08-08) — **SETE** knobs: `length · spacing · fade · shrink · hue_shift · saturation · spin`. Smoke `PH2D_ECHO_SMOKE=1`. ⚠️ O `spacing` **não custou estado novo** (a coluna `trail_age` já sabia há quantos ticks o último eco foi deixado ⇒ a promoção é pergunta ao ESTADO, não a um contador), e **nenhuma referência tem `spin`** |
-| **DEFORMERS** (`bend` · `twist` · `spherize` · `four_point_warp` · `lattice` · `kaleidoscope` · `slit_scan`) | `spherize` 1 · `slit_scan` 1 · o resto 3-8 | **ABERTA, a medir** — os dois magros podem ser magros por natureza |
+| **DEFORMERS** (`bend` · `twist` · `spherize` · `four_point_warp` · `kaleidoscope` · `slit_scan`) | `four_point_warp` 8 · `kaleidoscope` 4 · `bend`/`twist` 3 · **`spherize` 1** · **`slit_scan` 1** | ✅ **FECHADA** (2026-08-09) — **UM** dos dois magros era omissão: o `spherize` ganhou `offset_x`/`offset_y` (§9.1). O `slit_scan` é magro **por natureza**, com o mecanismo escrito (§9.2) |
 | **VALUE** (24 nós) | quase todos 1-2 params | ⛔ **RECUSADA COM MOTIVO** — um `value.unary` é *um verbo sobre um número*; um param a mais ali é cerimônia, e a §12 (domínio de valor) desenhou essa família justamente para ser pequena e componível |
 | **ESTRUTURAIS** (`util.reroute*` · `motion.combine` · `integrate` · `output` · `luminance` · `make_point` · `morph` · `sim.zone` · `value.switch` · `pulse.sample_hold`) | 0 params | ⛔ **RECUSADA** — zero params é o contrato deles, não uma lacuna |
 | **RIG** (`fk` · `ik_2bone` · `fabrik` · `rubber_hose` · `skin_deformer` · `skeleton`) | magros | ⏸ **ADIADA** — o CLAUDE.md §5 defere rig+skinning "pro FIM de tudo" |
+
+⚠️ **E o `motion.lattice` SAIU da linha dos deformers** — ele é `NodeUiCategory::Source`, um
+gerador de grade com jitter (`rows`/`cols`/`spacing`/`seed`), não um deformer. Estava ali por
+engano de classificação, e uma tabela que classifica errado é como alguém "completa" a família
+errada; os 4 params dele são a forma dos DISTRIBUIDORES, e é lá que ele deve ser julgado.
+
+### §9.1 — `motion.spherize`: magro por OMISSÃO (a lente não podia ser POSTA em lugar nenhum)
+
+Params medidos: **`radius`, e só.** O centro era o **centroide** do layout, derivado de duas
+reduções `Sum`, e **não era autorável**.
+
+**Por que isto passa na lei desta varredura** (*um param entra quando nomeia capacidade
+inexprimível no grafo inteiro*) — as três saídas foram tentadas e nenhuma existe:
+
+- `motion.move` antes do spherize **leva o centroide junto** ⇒ a lente nunca sai do meio.
+- O campo `falloff` mascara a **MISTURA**, não o **CENTRO** ⇒ ele só esmaece um bulge que
+  continua radial em torno do ponto errado.
+- Um elemento-isca longe para arrastar o centroide muda a CONTAGEM e a arte.
+
+E a evidência mais forte é interna: **a própria família já nomeia a capacidade** —
+`motion.bend`, `motion.twist` e `motion.kaleidoscope` carregam `pivot_x`/`pivot_y` desde que
+foram escritos. A lente era a única que não a exprimia. ⚠️ E **não havia cerca de Chesterton**:
+o [doc 24](24_four_point_warp_spherize_nota_adr.md) diz *"`radius` (world) centrado no
+centroide"* como FATO, nunca como decisão com motivo.
+
+⚠️ **É um OFFSET do centroide, não um centro absoluto — e a razão não é gosto:**
+
+1. **O default TEM de reduzir LITERALMENTE** (a lei desta §9): `c + (0,0)` **é** `c`. Um
+   `center_x`/`center_y` absoluto com default `0` seria a **origem do mundo**, e arrancaria a
+   lente do assunto em **todo documento já autorado**.
+2. **Uma lente sobre um conjunto VIVO segue o assunto** — estes streams derivam (um emitter os
+   alimenta, um `motion.move` os carrega), e um centro absoluto escorregaria do layout enquanto
+   o layout vai embora.
+3. **O nome é próprio** porque `pivot_x`/`pivot_y` significam *coordenada ABSOLUTA de mundo*
+   nos três irmãos; reusar a palavra para uma grandeza relativa poria dois sentidos num nome só
+   dentro da mesma família.
+
+**Três gates, três mutações, três sangram** — e cada uma no seu:
+
+| Mutação | `…can_be_placed_off_the_centroid` | `a_zero_offset_leaves_…on_the_centroid` | `…travels_with_its_subject` | paridade GPU |
+|---|---|---|---|---|
+| a CPU **ignora** o offset | 🔴 | verde | verde | verde |
+| o offset vira **absoluto** | verde | 🔴 | 🔴 | verde |
+| o **kernel do device** larga o offset | verde | verde | verde | 🔴 |
+
+⚠️ **O oráculo é o LUGAR, nunca uma magnitude:** a lente tem um **ponto fixo** (quem está
+exatamente no centro não tem direção para ser empurrado e volta verbatim), então *onde a lente
+está* se lê direto da saída, sem constante de tolerância. Mover a lente para `x=1` faz o
+elemento em `x=0` ser empurrado **para o outro lado** — uma troca de SINAL que nenhuma força
+falsifica.
+
+⚠️ **E o gate de paridade CPU×GPU tinha o buraco clássico — a fixture não continha o
+fenômeno.** O `spherize_chain` já tinha um `offset`, mas era a **TRANSLAÇÃO DA GRADE** (para o
+centroide não ser a origem por simetria); o offset da LENTE nunca era exercitado, então o
+device podia ignorar `params.offset_x`/`offset_y` com a paridade **verde nos dois lados em
+zero**. Agora a cadeia recebe **dois deslocamentos DISTINTOS** (`translate` e `lens`) — um
+kernel que os trocasse também sangraria — e a 3ª linha da tabela é o **controle** (lente de
+volta no centroide).
+
+### §9.2 — `motion.slit_scan`: magro por NATUREZA (o mecanismo, para ninguém o "completar")
+
+Param medido: **`lag`, e só.** A referência (o *Time Displacement* do AE, o Slit Scan da
+Cavalry) nomeia três coisas além do deslocamento máximo, e **as três já são exprimíveis**:
+
+- **O EIXO da varredura** — a rampa segue a ordem do stream, e o próprio doc-comment do nó
+  manda pôr um **`motion.sort`** a montante (ordenar por X faz o atraso crescer da esquerda
+  para a direita). É a arquitetura de GRAFO fazendo o que ela existe para fazer.
+- **A DIREÇÃO** — `motion.sort` tem `descending`, medido. Um param de "reverse" aqui seria a
+  segunda porta para uma pergunta que já tem dono.
+- **A FORMA da rampa** — o campo `falloff` multiplica o atraso **por elemento**, então um
+  `field.*` + `field.remap` com uma **Curva** molda a rampa arbitrariamente. Um "ease" próprio
+  duplicaria o canal de curva que a família `field.*` já entrega.
+
+*O que sobra — `Time Resolution` — é amostragem de raster e não tem sentido num stream de
+instâncias.* ⇒ **1 param é o número certo**, e fica escrito para que a próxima varredura não o
+leia como lacuna.
 
 ### ⚠️ O `motion.duplicator` tem ZERO params, e isso está quase todo CERTO
 

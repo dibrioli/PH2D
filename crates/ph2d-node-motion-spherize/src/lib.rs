@@ -16,7 +16,31 @@
 //! **`amount` is animatable** (the value domain): a `value.lfo` swells the field out
 //! and sucks it back. Unconnected `amount` reads as `0.5` (a gentle bulge, so a bare
 //! node shows something); `amount = 0` is the identity. `radius` (world units) sets the
-//! lens size, centred on the layout's centroid. Falloff-masked. `Effect::Pure`.
+//! lens size. Falloff-masked. `Effect::Pure`.
+//!
+//! ## Where the lens SITS — `offset_x` / `offset_y` (doc 88 §9, a varredura DEFORMERS)
+//!
+//! The centre is the layout **centroid, displaced by the offset** (`c' = c + offset`).
+//! Until this was added the lens was welded to the centroid, and that was the one
+//! capability of this family that the graph could not express **by any composition**:
+//! a `motion.move` upstream takes the centroid with it, so the lens never leaves the
+//! middle; a `falloff` field masks the *blend*, not the *centre*, so it can only fade a
+//! bulge that is still radial about the wrong point. Its three siblings — `motion.bend`,
+//! `motion.twist`, `motion.kaleidoscope` — have carried `pivot_x`/`pivot_y` since they
+//! were written: the family already named the capability, and the lens alone lacked it.
+//!
+//! ⚠️ **It is an OFFSET, not an absolute point, and the reason is not taste.**
+//!
+//! 1. **The default must reduce LITERALLY** (the law of doc 88 §9): `c + (0,0)` *is* `c`,
+//!    so every graph already authored bulges exactly where it did. An absolute
+//!    `center_x`/`center_y` defaulting to `0` would be the **world origin**, and would
+//!    yank the lens off the subject in every document that already exists.
+//! 2. **A lens over a LIVE set should follow its subject.** These streams drift — an
+//!    emitter feeds them, a `motion.move` carries them — and an absolute centre would
+//!    slide off the layout while the layout walks away.
+//! 3. **The name is its own** because `pivot_x`/`pivot_y` mean an *absolute world
+//!    coordinate* in bend/twist/kaleidoscope. Reusing that name for a relative quantity
+//!    would put two meanings on one word inside a single family.
 
 use ph2d_node_registry::{NodeRegistry, ParamUnit, ParamUnitDecl, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
@@ -57,10 +81,21 @@ pub const MANIFEST: NodeManifest = NodeManifest {
     effect: Effect::Pure,
     clock: Clock::Frame,
     params: &[
-        // The lens radius (world units), centred on the layout's centroid.
+        // The lens radius (world units).
         ParamSpec {
             name: "radius",
             default: 3.0,
+        },
+        // Where the lens sits, as a displacement from the layout's centroid.
+        // `0` is the centroid itself — the literal reduction to the pre-offset
+        // behaviour (see the module header).
+        ParamSpec {
+            name: "offset_x",
+            default: 0.0,
+        },
+        ParamSpec {
+            name: "offset_y",
+            default: 0.0,
         },
     ],
     lowerings: &[LoweringKind::Cpu],
@@ -118,7 +153,8 @@ static REDUCES: &[ReduceSpec] = &[
 /// index 0 makes a length-N input behave like the CPU's `first()`.
 const GPU_KERNEL: GpuKernel = GpuKernel {
     wgsl: "\
-        let sp_c = vec2<f32>(reduce_cx(), reduce_cy()) / f32(params.count);\n\
+        let sp_c = vec2<f32>(reduce_cx(), reduce_cy()) / f32(params.count)\n\
+        \x20   + vec2<f32>(params.offset_x, params.offset_y);\n\
         let sp_p = read_in_P(i);\n\
         let sp_d = sp_p - sp_c;\n\
         let sp_r = sqrt(sp_d.x * sp_d.x + sp_d.y * sp_d.y);\n\
@@ -158,7 +194,7 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
             port: 1,
         },
     ],
-    params: &["radius"],
+    params: &["radius", "offset_x", "offset_y"],
     count_law: None,
     variant_by_param: None,
     applicable: None,
@@ -184,9 +220,19 @@ fn falloff_at(vals: &[f32], i: usize) -> f32 {
     }
 }
 
-/// Bulge/pinch every element around the centroid within `radius`, blended per element
-/// by `falloff`. A pure function — the whole node.
-fn spherize(p: &[[f32; 2]], amount: f32, radius: f32, falloff: &[f32]) -> Vec<[f32; 2]> {
+/// Bulge/pinch every element around the lens centre within `radius`, blended per
+/// element by `falloff`. A pure function — the whole node.
+///
+/// The centre is the layout's centroid displaced by `offset`; `offset = [0, 0]` is
+/// the centroid itself, and `x + 0.0` is `x` in IEEE-754, so a graph that never
+/// touched the offset gets bit-for-bit the positions it always got.
+fn spherize(
+    p: &[[f32; 2]],
+    amount: f32,
+    radius: f32,
+    offset: [f32; 2],
+    falloff: &[f32],
+) -> Vec<[f32; 2]> {
     let n = p.len();
     if n == 0 {
         return Vec::new();
@@ -194,7 +240,7 @@ fn spherize(p: &[[f32; 2]], amount: f32, radius: f32, falloff: &[f32]) -> Vec<[f
     let mut c = p
         .iter()
         .fold([0.0f32; 2], |a, q| [a[0] + q[0], a[1] + q[1]]);
-    c = [c[0] / n as f32, c[1] / n as f32];
+    c = [c[0] / n as f32 + offset[0], c[1] / n as f32 + offset[1]];
     let r_max = radius.max(EPS);
     (0..n)
         .map(|i| {
@@ -224,6 +270,7 @@ impl NodeOp for MotionSpherize {
 
     fn eval(&self, ctx: &mut EvalCtx<'_>) {
         let radius = ctx.param("radius").max(EPS);
+        let offset = [ctx.param("offset_x"), ctx.param("offset_y")];
         let amount = amount_of(&scalar_col(ctx.input(1), VALUE_COL));
         let input = ctx.input(0);
         let n = input.count();
@@ -232,7 +279,7 @@ impl NodeOp for MotionSpherize {
             _ => vec![[0.0, 0.0]; n],
         };
         let falloff = scalar_col(input, "falloff");
-        let out_p = spherize(&p, amount, radius, &falloff);
+        let out_p = spherize(&p, amount, radius, offset, &falloff);
         let mut out = Stream::new(n);
         for (name, col) in input.columns() {
             if name != "P" {
@@ -268,14 +315,38 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
 
 use ph2d_node_registry::{ParamUiHint, ParamWidget};
 
-static PARAM_HINTS: &[ParamUiHint] = &[ParamUiHint {
-    param: "radius",
-    label: "Radius",
-    min: 0.1,
-    max: 20.0,
-    step: 0.05,
-    widget: ParamWidget::Slider,
-}];
+/// ⚠️ The offset range mirrors the `pivot_x`/`pivot_y` of `motion.bend` and
+/// `motion.twist` (`-10..10`, step `0.05`) — the same question ("where in the world
+/// does this deformer act?") answered on the same ruler, so an artist who learned one
+/// slider has learned all of them. No `ParamHardMax`: an offset has no value at which
+/// it becomes dysfunctional, it simply walks the lens off the layout and the node goes
+/// quiet — unlike a count, whose ceiling is a measured cost.
+static PARAM_HINTS: &[ParamUiHint] = &[
+    ParamUiHint {
+        param: "radius",
+        label: "Radius",
+        min: 0.1,
+        max: 20.0,
+        step: 0.05,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "offset_x",
+        label: "Offset X",
+        min: -10.0,
+        max: 10.0,
+        step: 0.05,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "offset_y",
+        label: "Offset Y",
+        min: -10.0,
+        max: 10.0,
+        step: 0.05,
+        widget: ParamWidget::Slider,
+    },
+];
 
 /// **What each of this node's numbers IS** (doc 88, Wave A) — never how it is
 /// shown. A `Length` is stored in world METRES and the panel resolves the face
@@ -286,10 +357,22 @@ static PARAM_HINTS: &[ParamUiHint] = &[ParamUiHint {
 /// here. A weight, a fraction, a rate and a count are left bare on purpose: a unit
 /// that is wrong is worse than a unit that is missing, because the artist can read
 /// a bare number but a mislabelled one teaches them something false.
-static PARAM_UNITS: &[ParamUnitDecl] = &[ParamUnitDecl {
-    param: "radius",
-    unit: ParamUnit::Length,
-}];
+static PARAM_UNITS: &[ParamUnitDecl] = &[
+    ParamUnitDecl {
+        param: "radius",
+        unit: ParamUnit::Length,
+    },
+    // A displacement in world units — the same `Length` that `motion.bend` declares
+    // for its pivot, so the panel shows it in whatever face the project reads.
+    ParamUnitDecl {
+        param: "offset_x",
+        unit: ParamUnit::Length,
+    },
+    ParamUnitDecl {
+        param: "offset_y",
+        unit: ParamUnit::Length,
+    },
+];
 
 #[cfg(test)]
 mod tests {
@@ -315,7 +398,7 @@ mod tests {
     #[test]
     fn zero_amount_is_the_identity() {
         let p = ring();
-        let out = spherize(&p, 0.0, 3.0, &[]);
+        let out = spherize(&p, 0.0, 3.0, [0.0, 0.0], &[]);
         for (o, q) in out.iter().zip(&p) {
             assert!((o[0] - q[0]).abs() < 1e-5 && (o[1] - q[1]).abs() < 1e-5);
         }
@@ -327,8 +410,8 @@ mod tests {
     fn bulge_pushes_out_and_pinch_pulls_in() {
         let p = ring();
         let base = radius_of(&p, 1); // 1.0
-        let bulged = spherize(&p, 0.6, 3.0, &[]);
-        let pinched = spherize(&p, -0.6, 3.0, &[]);
+        let bulged = spherize(&p, 0.6, 3.0, [0.0, 0.0], &[]);
+        let pinched = spherize(&p, -0.6, 3.0, [0.0, 0.0], &[]);
         assert!(radius_of(&bulged, 1) > base + 0.05, "bulge pushes out");
         assert!(radius_of(&pinched, 1) < base - 0.05, "pinch pulls in");
     }
@@ -341,7 +424,7 @@ mod tests {
         // Symmetric far points keep the centroid at the origin (radius 5 > lens 3).
         p.push([5.0, 0.0]);
         p.push([-5.0, 0.0]);
-        let out = spherize(&p, 0.9, 3.0, &[]);
+        let out = spherize(&p, 0.9, 3.0, [0.0, 0.0], &[]);
         assert_eq!(out[0], [0.0, 0.0], "the centre holds (centroid ~origin)");
         assert!(out.iter().all(|q| q[0].is_finite() && q[1].is_finite()));
         // The far points (distance from the centroid > radius) are unchanged.
@@ -356,12 +439,86 @@ mod tests {
     fn falloff_masks_the_bulge() {
         let p = ring();
         let falloff = vec![1.0, 0.0, 1.0, 1.0, 1.0]; // element 1 masked
-        let out = spherize(&p, 0.8, 3.0, &falloff);
+        let out = spherize(&p, 0.8, 3.0, [0.0, 0.0], &falloff);
         assert!(
             (out[1][0] - 1.0).abs() < 1e-5 && (out[1][1]).abs() < 1e-5,
             "falloff 0 → unchanged: {:?}",
             out[1]
         );
+    }
+
+    /// Five points on the X axis, centroid at the origin. The lens has a **FIXED
+    /// POINT** — whatever sits exactly at its centre has no direction to be pushed
+    /// in and comes back verbatim — so *where the lens is* can be read straight off
+    /// the output, with no magnitude and no tolerance constant in the way.
+    fn row() -> Vec<[f32; 2]> {
+        vec![[-2.0, 0.0], [-1.0, 0.0], [0.0, 0.0], [1.0, 0.0], [2.0, 0.0]]
+    }
+
+    /// The capability this param exists for: **the lens can sit somewhere other
+    /// than the centroid** — inexpressible before it (translating the set carries
+    /// the centroid along, and `falloff` masks the blend, not the centre).
+    ///
+    /// The oracle is the PLACE, never a strength: the fixed point moves with the
+    /// lens, and the element at the old centre reverses direction. A kernel that
+    /// ignored the offset returns the two runs identical and fails on the first
+    /// assertion of the second half.
+    #[test]
+    fn the_lens_can_be_placed_off_the_centroid() {
+        let p = row();
+        let on = spherize(&p, 0.6, 3.0, [0.0, 0.0], &[]);
+        let off = spherize(&p, 0.6, 3.0, [1.0, 0.0], &[]);
+
+        assert_eq!(on[2], [0.0, 0.0], "on the centroid: x=0 is the fixed point");
+        assert!(on[3][0] > 1.0, "…and x=1 is pushed outward: {:?}", on[3]);
+
+        assert_eq!(off[3], [1.0, 0.0], "lens at x=1: x=1 is the fixed point");
+        assert!(
+            off[2][0] < -0.05,
+            "…and x=0 is pushed the OTHER way, away from the new centre: {:?}",
+            off[2]
+        );
+    }
+
+    /// The literal reduction (doc 88 §9): at offset `0` the lens is on the
+    /// **centroid**, so every graph authored before the param bulges exactly where
+    /// it did.
+    ///
+    /// ⚠️ The set is deliberately **off-origin** (centroid at x=5) and the radius
+    /// wide enough to reach the origin: on a centred set "the centroid" and "the
+    /// world origin" are the same point, and the absolute-centre reading — the one
+    /// this design rejected — would pass unnoticed.
+    #[test]
+    fn a_zero_offset_leaves_the_lens_on_the_centroid() {
+        let p: Vec<[f32; 2]> = (3..=7).map(|x| [x as f32, 0.0]).collect();
+        let out = spherize(&p, 0.7, 10.0, [0.0, 0.0], &[]);
+        assert_eq!(
+            out[2],
+            [5.0, 0.0],
+            "the fixed point is the centroid, not the world origin"
+        );
+    }
+
+    /// Why the offset is RELATIVE: a lens over a live set follows its subject. The
+    /// same graph on a translated set produces the translated picture — the property
+    /// an absolute `center_x`/`center_y` would break the moment anything upstream
+    /// moved (an emitter drifting, a `motion.move`).
+    #[test]
+    fn the_lens_travels_with_its_subject() {
+        let lens = [1.0, 0.0];
+        let here = spherize(&row(), 0.6, 3.0, lens, &[]);
+        let shift = [4.0f32, -3.0];
+        let moved: Vec<[f32; 2]> = row()
+            .iter()
+            .map(|q| [q[0] + shift[0], q[1] + shift[1]])
+            .collect();
+        let there = spherize(&moved, 0.6, 3.0, lens, &[]);
+        for (a, b) in here.iter().zip(&there) {
+            assert!(
+                (a[0] + shift[0] - b[0]).abs() < 1e-4 && (a[1] + shift[1] - b[1]).abs() < 1e-4,
+                "the lens did not travel with the set: {a:?} vs {b:?}"
+            );
+        }
     }
 
     /// Cooks through the registry, copies columns and bulges P.

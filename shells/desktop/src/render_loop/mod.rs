@@ -865,6 +865,7 @@ impl crate::App {
         self.emitter_smoke();
         self.transform_family_smoke();
         self.echo_family_smoke();
+        self.lens_smoke();
         self.splice_smoke();
         self.value_noise_smoke();
         self.value_mix_smoke();

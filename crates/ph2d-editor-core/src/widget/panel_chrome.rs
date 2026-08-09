@@ -44,13 +44,20 @@ pub const PANEL_TITLE_BASELINE: f32 = 18.0; // LITERAL-PX-OK: canonical panel ti
 ///
 /// Doc: `docs/UI_Padrao/components/section_header.md` §"Vertical
 /// spacing — single source of truth".
-pub const SECTION_LABEL_TO_CONTROL_PX: f32 = 4.0; // LITERAL-PX-OK: ≈ Spacing::Xxs.px()
+///
+/// ⚠️ **O comentário desta linha nomeava `Spacing::Xxs` e `Xxs` vale 2, não 4** — o degrau de 4 é o
+/// `Spacing::Xs`. O número está certo e a derivação estava errada, que é a direção perigosa: quem
+/// "canonizasse" isto seguindo o comentário encolheria o gap de toda seção do app pela metade.
+pub const SECTION_LABEL_TO_CONTROL_PX: f32 = 4.0; // LITERAL-PX-OK: o degrau `Spacing::Xs` de fabrica
 
 /// Canonical vertical spacing between two consecutive rows INSIDE a
 /// section (e.g. Position → Rotation → Scale in Transform). Bigger
 /// than [`SECTION_LABEL_TO_CONTROL_PX`] so siblings read as separate
 /// rows, smaller than the inter-section separator.
-pub const SECTION_INNER_ROW_GAP_PX: f32 = 8.0; // LITERAL-PX-OK: ≈ Spacing::Sm.px()
+///
+/// ⚠️ **A mesma correção da irmã acima:** o comentário nomeava `Spacing::Sm`, que vale **6**; o
+/// degrau de 8 é o `Spacing::Md`.
+pub const SECTION_INNER_ROW_GAP_PX: f32 = 8.0; // LITERAL-PX-OK: o degrau `Spacing::Md` de fabrica
 
 /// Canonical vertical spacing AFTER the last control of a section and
 /// BEFORE the [`paint_section_separator`] call.
@@ -83,7 +90,14 @@ pub const PANEL_HEADER_H_DEFAULT: f32 = 56.0; // LITERAL-PX-OK: title-baseline (
 /// Width to leave clear on the right of the title bar for a single
 /// close-(X) icon button. Passed to [`panel_drag_handle_rect`] so the
 /// widened drag area doesn't shadow the close hit.
-pub const PANEL_HEADER_CLOSE_RESERVE: f32 = 40.0; // LITERAL-PX-OK: Xl2 close icon size + padding
+///
+/// ⚠️ **Ela é uma CÓPIA de `PANEL_HEAD_PAD + Spacing::Xl2` — a geometria que o
+/// [`panel_close_button_rect`] de facto usa — e nasceu 2 px CURTA** porque a derivação escrita ao
+/// lado dela somava um padding de 16 (o `Spacing::Xl`) onde o `PANEL_HEAD_PAD` é **18** (token de
+/// chrome). Quem faz cumprir o invariante é o próprio [`panel_drag_handle_rect`], que pergunta ao
+/// `panel_close_button_rect`; esta constante fica como a reserva que o chamador PEDE, e o pin em
+/// `tests/the_drag_band_never_reaches_the_close_button.rs` impede-a de driftar em silêncio.
+pub const PANEL_HEADER_CLOSE_RESERVE: f32 = 42.0; // LITERAL-PX-OK: PANEL_HEAD_PAD (18) + Spacing::Xl2 (24)
 
 /// Width to leave clear on the right for a close-(X) + add-(+) pair.
 /// Used by Hierarchy (close + Add Entity) and any panel exposing more
@@ -379,12 +393,19 @@ pub fn panel_resize_handle_rect(panel: Rect) -> Rect {
 ///   add / settings icons. [`PANEL_HEADER_CLOSE_RESERVE`] for just
 ///   an X; [`PANEL_HEADER_ADD_RESERVE`] for X + one more icon.
 pub fn panel_drag_handle_rect(panel: Rect, header_h: f32, right_reserve: f32) -> Rect {
-    Rect::new(
-        panel.x,
-        panel.y,
-        (panel.w - right_reserve).max(0.0),
-        header_h,
-    )
+    // ⚠️ **A porta PERGUNTA onde o fechar está, em vez de confiar no número que lhe passaram.** O
+    // `right_reserve` era uma CÓPIA da geometria do `panel_close_button_rect`, e as duas
+    // discordavam por 2 px já na escala de fábrica (a `PANEL_HEADER_CLOSE_RESERVE` somava um
+    // padding de 16 onde o `PANEL_HEAD_PAD` é 18) — num painel que registe a faixa por ÚLTIMO, e
+    // há um, esses 2 px arrastavam o painel em vez de fechar. Ver
+    // `tests/the_drag_band_never_reaches_the_close_button.rs`.
+    //
+    // ⚠️ O `min` **só ENCOLHE**: um chamador que reserve MAIS (a Hierarquia reserva o par
+    // fechar+adicionar) continua a mandar, e nenhum dos 21 chamadores pode passar a sombrear algo
+    // que não sombreava. É isso que torna esta lei segura sem lhes tocar.
+    let close_left = panel_close_button_rect(panel).x;
+    let right = (panel.x + panel.w - right_reserve).min(close_left);
+    Rect::new(panel.x, panel.y, (right - panel.x).max(0.0), header_h)
 }
 
 /// Rect of the bottom-LEFT resize-gripper hit zone for a panel whose
@@ -505,7 +526,10 @@ pub fn panel_close_button_rect(panel: Rect) -> Rect {
 /// that the panel's apply_event toggles via
 /// [`PanelHostInternal::set_panel_visible`].
 ///
-/// Visually: 32×32 hit zone with a 16×16 X glyph centered. Color
+/// Visually: a hit zone de `Spacing::Xl2` (24 px na escala de fábrica) com o X desenhado dentro
+/// dela — ⚠️ o doc dizia "32×32 com um glifo de 16×16" e o `panel_close_button_rect` sempre usou o
+/// `Spacing::Xl2`; nomear o TOKEN é o que mantém esta frase verdadeira sob uma escala autorada.
+/// Color
 /// `Text2` (matches subtitle weight — affordance reads as chrome,
 /// not a primary action). Sits inside the [`PANEL_HEADER_CLOSE_RESERVE`]
 /// slot the [`panel_drag_handle_rect`] leaves clear on the right

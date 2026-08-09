@@ -440,6 +440,55 @@ pub fn cursor_over_hero_panel(gfx: Option<&AppGfx>, x: f32, y: f32) -> bool {
         || inside(ph2d_editor::ids::TIMELINE_PANEL)
 }
 
+/// **Os fundos que a MOLDURA do app pinta** — o rail e as três faixas do topo.
+///
+/// ⚠️ **A lista é de BACKDROPS, não de botões, e é isso que a impede de apodrecer:** cada fundo
+/// abraça o GRUPO inteiro que desenha (o doc do `TOPBAR_LEFT_BACKDROP` diz literalmente *"cliques
+/// no espaço vazio do fundo caem aqui"*), então um pill NOVO nasce coberto no dia em que é
+/// pintado. Foi exatamente o que a enumeração de PAINÉIS não fez pelo pill do SCULPT: o `top bar`
+/// não é painel, não publica `panel_rect`, e com o barro na tela a cena 3D engolia o clique nele
+/// (Enio, 2026-08-09: *"a pill entra mas não sai do modo sculpt"*).
+///
+/// O gate `every_chrome_backdrop_is_known_to_the_scene` recusa um `*_BACKDROP` novo fora daqui.
+pub const CHROME_BACKDROPS: [ph2d_editor::NodeId; 4] = [
+    ph2d_editor::screens::hero::ids::RAIL_BACKDROP,
+    ph2d_editor::screens::hero::ids::TOPBAR_LEFT_BACKDROP,
+    ph2d_editor::screens::hero::ids::TOPBAR_RIGHT_BACKDROP,
+    ph2d_editor::screens::hero::ids::TOPBAR_IMAGE_TOOLS_BACKDROP,
+];
+
+/// **O cursor está sobre a moldura?** — a metade PURA, que um gate alcança sem GPU.
+///
+/// ⚠️ **Pergunta ao HIT INDEX, e não a um retângulo derivado:** o índice é o que o passe de pintura
+/// escreveu NESTE frame, então um grupo que não foi pintado não tem rect e não pode dar um falso
+/// positivo — `clear_for_frame` já é o ciclo de vida certo. Um rect re-derivado do `HeroLayout`
+/// seria uma segunda resposta a *"onde a moldura está"*, e a faixa do topo mede a largura INTEIRA
+/// da janela (incluindo o vão entre os dois grupos), o que roubaria barro que ninguém cobriu.
+pub fn hero_chrome_backdrop_at(
+    hero: &ph2d_editor::screens::hero::HeroScreen,
+    x: f32,
+    y: f32,
+) -> bool {
+    CHROME_BACKDROPS.iter().any(|id| {
+        hero.hit_index
+            .rect_for(*id)
+            .is_some_and(|r| r.contains(x, y))
+    })
+}
+
+/// **O clique é da moldura do app?** — painéis (o irmão acima) **ou** os fundos de chrome.
+///
+/// ⚠️ **O rail e o HUD não estão cobertos por RETÂNGULO DE COLUNA, de propósito:** a coluna do
+/// rail é quase toda transparente e o canvas 2D é alcançável através dela, então bloquear a
+/// coluna inteira carvaria uma faixa morta sobre o barro. O que a lista cobre é o fundo que o
+/// rail de fato PINTA — que é onde os chips estão.
+pub fn cursor_over_hero_chrome(gfx: Option<&AppGfx>, x: f32, y: f32) -> bool {
+    cursor_over_hero_panel(gfx, x, y)
+        || gfx
+            .and_then(|g| g.hero_screen.as_ref())
+            .is_some_and(|hero| hero_chrome_backdrop_at(hero, x, y))
+}
+
 /// ADR-0029 Phase C.2: resolve canvas-picked entity bits to a live
 /// Hierarchy entry via the panel-owned thread-local snapshot. Takes
 /// the `hero_live` field directly (not `&AppGfx`) so the caller can
@@ -484,6 +533,41 @@ mod tests {
         assert!(
             !expected_unhandled(&other),
             "a isencao alargou para o TIPO: o detector de seam morto ficou cego"
+        );
+    }
+
+    /// **O que a moldura PINTOU é da moldura; o resto é da cena.**
+    ///
+    /// ⚠️ **A fixture registra o rect à mão de propósito** — é literalmente o que o passe de
+    /// pintura faz, e assim o gate roda sem janela, sem GPU e sem layout. O que ele afirma é a
+    /// propriedade que decide o produto: um ponto DENTRO do fundo do topo é da moldura, um ponto
+    /// no meio do canvas não é.
+    ///
+    /// ⚠️ E a terceira asserção é a que impede a cura de virar uma parede: **um grupo que não foi
+    /// pintado neste frame não tem rect**, logo não pode recusar gesto nenhum. Sem ela, um
+    /// `rect_for` que devolvesse um retângulo velho tornaria a moldura permanentemente sólida
+    /// sobre o barro.
+    #[test]
+    fn the_chrome_owns_the_rectangles_it_painted_and_nothing_else() {
+        use ph2d_editor::screens::hero::{HeroScreen, ids};
+        use ph2d_editor::zones::Rect;
+
+        let mut hero = HeroScreen::new(ph2d_editor::NodeId(1));
+        assert!(
+            !hero_chrome_backdrop_at(&hero, 40.0, 20.0),
+            "sem nada pintado a moldura já reclama o ponto: a cena 3D nasceria sem canvas"
+        );
+
+        hero.hit_index
+            .register(ids::TOPBAR_LEFT_BACKDROP, Rect::new(8.0, 0.0, 300.0, 56.0));
+        assert!(
+            hero_chrome_backdrop_at(&hero, 40.0, 20.0),
+            "um ponto dentro do fundo do topo não é da moldura: o pill do SCULPT volta a morrer \
+             sob o mouse com o barro na tela"
+        );
+        assert!(
+            !hero_chrome_backdrop_at(&hero, 640.0, 400.0),
+            "o meio do canvas virou moldura: esculpir deixou de ser possível"
         );
     }
 

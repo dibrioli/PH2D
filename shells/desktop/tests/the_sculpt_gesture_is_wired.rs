@@ -122,24 +122,31 @@ fn the_model_follows_the_hand() {
 }
 
 #[test]
-fn a_click_on_a_panel_is_not_a_click_on_the_model() {
-    // Sem esta pergunta a cena 3D engolia TODO botão do app, inclusive os do
-    // rail — ela devolvia `true` incondicionalmente e o dispatch 2D nunca via o
-    // evento.
+fn a_click_on_the_chrome_is_not_a_click_on_the_model() {
+    // Sem esta pergunta a cena 3D engolia TODO botão do app — ela devolvia
+    // `true` incondicionalmente e o dispatch 2D nunca via o evento.
+    //
+    // ⚠️ **O gate perguntava pelo ENDEREÇO e o endereço estava estreito demais.**
+    // Ele exigia `cursor_over_hero_panel(`, e painel é só uma espécie de UI: a
+    // faixa do topo e o rail não publicam `panel_rect`, então este gate ficava
+    // VERDE enquanto todo pill do topo morria sob o mouse com o barro na tela
+    // (Enio, 2026-08-09). Hoje ele afirma a PROPRIEDADE — *o Down recusa o que é
+    // da moldura* — e a porta que a responde cobre as duas espécies.
     let src = sculpt_src();
     let down = function_body(&src, "sculpt3d_pointer_down");
     assert!(
-        down.contains("cursor_over_hero_panel("),
-        "o Down tem de recusar um clique sobre painel"
+        down.contains("cursor_over_hero_chrome("),
+        "o Down tem de recusar um clique que é da moldura do app"
     );
     // ⚠️ E o Move/Up NÃO podem fazer a mesma pergunta: um arrasto em curso
     // continua sendo do gesto que o abriu, mesmo que o cursor passeie sobre um
     // painel. É a regra de captura que todo gizmo deste shell segue, e gateá-la
     // aqui impede que alguém "complete" a correção e quebre o traço longo.
     for port in ["sculpt3d_pointer_move", "sculpt3d_pointer_up"] {
+        let body = function_body(&src, port);
         assert!(
-            !function_body(&src, port).contains("cursor_over_hero_panel("),
-            "`{port}` não pode largar um arrasto em curso ao cruzar um painel"
+            !body.contains("cursor_over_hero_chrome(") && !body.contains("cursor_over_hero_panel("),
+            "`{port}` não pode largar um arrasto em curso ao cruzar a moldura"
         );
     }
 }

@@ -125,3 +125,86 @@ fn entering_with_no_scene_creates_one_from_the_one_primitive_door() {
         "o toggle larga a cena em algum caminho — sair do modo passou a apagar a escultura"
     );
 }
+
+/// **A cena nunca toma um clique que é da MOLDURA — e é isto que faz o pill SAIR.**
+///
+/// ⚠️ **O defeito era maior que o pill:** a recusa perguntava *"o cursor está sobre um PAINEL?"*,
+/// e painel é só uma espécie de UI. A faixa do topo e o rail não publicam `panel_rect`, então com
+/// o barro na tela a cena 3D engolia o clique em TODO pill do topo — entrar funcionava (sem barro
+/// a recusa por `shows_clay` já devolvia o gesto) e sair não, que é exatamente a assimetria que o
+/// Enio reportou.
+///
+/// ⚠️ **A metade NEGATIVA é a que sangra:** a mutação natural é voltar a chamar o irmão de painel,
+/// e ela deixa a metade positiva verde num arquivo que ainda "pergunta alguma coisa".
+#[test]
+fn the_scene_never_takes_a_click_that_belongs_to_the_chrome() {
+    let src = fs::read_to_string("src/sculpt3d_input.rs").expect("o módulo do gesto existe");
+    assert!(
+        src.contains("fn sculpt3d_pointer_down"),
+        "controle positivo: o dono do gesto mudou de arquivo e este gate varreria o vazio"
+    );
+    assert_eq!(
+        src.matches("cursor_over_hero_chrome").count(),
+        2,
+        "as DUAS portas da cena (o botão e a roda) têm de perguntar pela moldura inteira"
+    );
+    assert!(
+        !src.contains("cursor_over_hero_panel"),
+        "a cena voltou a perguntar só pelos PAINÉIS: os pills do topo morrem sob o mouse com o \
+         barro na tela"
+    );
+}
+
+/// **Todo fundo de moldura é conhecido pela cena.**
+///
+/// ⚠️ **Uma lista escrita à mão apodrece; esta é conferida contra a FONTE dos ids.** Um `*_BACKDROP`
+/// novo (uma quarta faixa no topo, um segundo rail) nasceria fora da recusa e a cena voltaria a
+/// comer os cliques dele — em silêncio, porque nada além do smoke o notaria.
+///
+/// ⚠️ **E ele lê o BLOCO da constante, nunca o arquivo inteiro** — a 1ª versão casava com o
+/// arquivo, e o nome do fundo do topo aparece no doc-comment ao lado da lista: a mutação que o
+/// TIRA da lista passava, porque o gate estava reconhecendo a própria prosa. *Um oráculo que casa
+/// com a documentação de si mesmo não está olhando para o produto.*
+#[test]
+fn every_chrome_backdrop_is_known_to_the_scene() {
+    let src = fs::read_to_string("src/forwarding.rs").expect("a porta existe");
+    let (_, after) = src
+        .split_once("pub const CHROME_BACKDROPS")
+        .expect("controle positivo: a lista mudou de nome e este gate varreria o vazio");
+    let door = after
+        .split_once("];")
+        .expect("a lista não fecha: o bloco a conferir é o literal, não o arquivo")
+        .0;
+    let dir = "../../crates/ph2d-editor-core/src/ids/chrome";
+    let mut found = 0usize;
+    for entry in fs::read_dir(dir).expect("os ids da moldura existem") {
+        let path = entry.expect("entrada legível").path();
+        if path.extension().is_none_or(|e| e != "rs") {
+            continue;
+        }
+        let ids = fs::read_to_string(&path).expect("arquivo de ids legível");
+        for line in ids.lines() {
+            let Some((name, _)) = line
+                .trim()
+                .strip_prefix("pub const ")
+                .and_then(|rest| rest.split_once(':'))
+            else {
+                continue;
+            };
+            if !name.ends_with("_BACKDROP") {
+                continue;
+            }
+            found += 1;
+            assert!(
+                door.contains(name),
+                "o fundo de moldura `{name}` não está em `CHROME_BACKDROPS`: a cena 3D come os \
+                 cliques que caírem nele"
+            );
+        }
+    }
+    assert!(
+        found >= 4,
+        "controle positivo: a varredura achou {found} fundos — os ids mudaram de casa e este gate \
+         ficou verde por vácuo"
+    );
+}

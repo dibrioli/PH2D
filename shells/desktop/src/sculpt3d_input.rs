@@ -52,13 +52,17 @@ impl App {
     /// O botão apertou. Devolve `true` se a cena 3D tomou o gesto.
     pub(crate) fn sculpt3d_pointer_down(&mut self, button: winit::event::MouseButton) -> bool {
         let pos = self.last_pointer;
-        // ⚠️ Um clique SOBRE PAINEL não é da cena — e sem esta pergunta a cena 3D
-        // engolia todo botão do app, inclusive os do rail. O `Move` e o `Up` NÃO
-        // a fazem de propósito: um arrasto em curso continua sendo do gesto que
-        // o abriu, mesmo que o cursor passeie por cima de um painel (a regra de
-        // captura que todo gizmo deste shell segue). É a MESMA porta que a roda
-        // já usava.
-        if crate::forwarding::cursor_over_hero_panel(self.gfx.as_ref(), pos.0, pos.1) {
+        // ⚠️ Um clique SOBRE A MOLDURA não é da cena. A pergunta era *"está sobre
+        // um PAINEL?"*, e painel é só uma espécie de UI: a faixa do topo e o rail
+        // não publicam `panel_rect`, então com o barro na tela a cena engolia o
+        // clique em TODO pill do topo — inclusive no que existe para SAIR daqui
+        // (Enio, 2026-08-09: *"a pill entra mas não sai do modo sculpt"*). A porta
+        // nova cobre painéis E os fundos que a moldura pinta.
+        //
+        // O `Move` e o `Up` NÃO a fazem de propósito: um arrasto em curso continua
+        // sendo do gesto que o abriu, mesmo que o cursor passeie por cima de um
+        // painel (a regra de captura que todo gizmo deste shell segue).
+        if crate::forwarding::cursor_over_hero_chrome(self.gfx.as_ref(), pos.0, pos.1) {
             return false;
         }
         let mods = self.modifiers;
@@ -275,6 +279,16 @@ impl App {
 
     /// A roda aproxima.
     pub(crate) fn sculpt3d_wheel(&mut self, steps: f32) -> bool {
+        // A mesma lei do `pointer_down`: a moldura do app não é da cena. O
+        // despachante já pergunta pelo PAINEL antes de chamar aqui, e a metade
+        // que ele não faz é a dos fundos de chrome — mas a pergunta é feita
+        // INTEIRA e neste arquivo de propósito: quem decide de quem é o gesto é
+        // o módulo da cena, não o roteador. Sem isto, rolar sobre a barra do topo
+        // dá DOLLY na escultura por baixo, em silêncio.
+        let pos = self.last_pointer;
+        if crate::forwarding::cursor_over_hero_chrome(self.gfx.as_ref(), pos.0, pos.1) {
+            return false;
+        }
         let Some(scene) = self.sculpt3d_scene_mut() else {
             return false;
         };

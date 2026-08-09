@@ -156,3 +156,53 @@ fn a_request_with_no_gpu_is_spent_not_stored() {
         "o pedido sobreviveu ao frame: a cena nasceria sozinha quando a janela aparecesse"
     );
 }
+
+/// **O painel do modo acompanha o modo — nas BORDAS, e só nelas.**
+///
+/// As duas metades são os dois defeitos que o Enio reportou juntos (2026-08-09): *"o painel não
+/// está reabrindo quando fechado e não fecha quando sai do modo sculpt"*.
+///
+/// ⚠️ **A regra anterior era `None → Some` da CENA**, e a cena sobrevive à saída de propósito
+/// (sair nunca larga a escultura) — então ela não tinha segunda borda: fechar o painel uma vez o
+/// custava para o resto da sessão, e sair do modo deixava as ferramentas do modo na tela, sobre o
+/// slot do INSPECTOR.
+///
+/// ⚠️ **A asserção do MEIO é a que impede a cura de matar o `X`:** entre duas bordas o bridge não
+/// pode ter opinião nenhuma, senão re-abrir todo frame torna o botão de fechar um controle que não
+/// faz nada.
+#[test]
+#[ignore = "requires a GPU adapter (no GPU on CI); run with --ignored on a dev machine"]
+fn the_panel_follows_the_edges_of_the_clay_and_nothing_between_them() {
+    let gpu = gpu_or_skip!();
+    let mut scene = Sculpt3dScene::new(&gpu.device, uv_sphere(12, 24, 1.0), 1.0);
+
+    assert_eq!(
+        scene.take_clay_edge(),
+        Some(true),
+        "a cena nova não anuncia a entrada: o painel nasce fechado sobre uma escultura na tela"
+    );
+    assert_eq!(
+        scene.take_clay_edge(),
+        None,
+        "a borda sobrevive ao frame: o bridge re-afirmaria a visibilidade e o `X` viraria um botão \
+         morto"
+    );
+
+    scene.toggle_clay();
+    assert!(
+        !scene.shows_clay(),
+        "premissa: o pill tirou o barro da tela"
+    );
+    assert_eq!(
+        scene.take_clay_edge(),
+        Some(false),
+        "sair do modo não fecha o painel: as ferramentas do barro ficam sobre o slot do inspector"
+    );
+
+    scene.toggle_clay();
+    assert_eq!(
+        scene.take_clay_edge(),
+        Some(true),
+        "voltar ao modo não reabre o painel: um `X` custaria as ferramentas para o resto da sessão"
+    );
+}

@@ -85,6 +85,19 @@ impl Sculpt3dScene {
     pub(crate) fn clay_on_screen(&self) -> bool {
         self.role.draws_clay()
     }
+
+    /// **O barro ACABOU de entrar, ou de sair?** — `Some(entrou)` na borda, `None` entre elas.
+    ///
+    /// ⚠️ **É uma TESTEMUNHA, não uma enumeração de quem move o papel.** Hoje quem o move são o
+    /// pill e a tecla `D`; amanhã pode ser um terceiro. Uma lista de chamadores que avisam o painel
+    /// nasce incompleta no dia em que ela cresce — comparar com o valor anterior não.
+    ///
+    /// ⚠️ **E ela CONSOME a borda** (o nome diz `take`): um segundo leitor receberia `None` e
+    /// concluiria que nada mudou. O leitor é o `sculpt3d_panel_bridge`, e é um só.
+    pub(crate) fn take_clay_edge(&mut self) -> Option<bool> {
+        let now = self.clay_on_screen();
+        (now != std::mem::replace(&mut self.clay_was_on, now)).then_some(now)
+    }
 }
 
 /// **O pill DIZ o que a forma É** — escrito a cada frame, nunca guardado.

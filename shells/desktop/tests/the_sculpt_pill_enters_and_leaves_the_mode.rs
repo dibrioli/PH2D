@@ -208,3 +208,30 @@ fn every_chrome_backdrop_is_known_to_the_scene() {
          ficou verde por vácuo"
     );
 }
+
+/// **A visibilidade do painel é escrita pela BORDA, não por "a chave já existe".**
+///
+/// ⚠️ **Nenhum teste de unidade alcança isto** — o bridge quer um `HeroScreen` E uma cena, e a cena
+/// quer um device. Sobra ler o fonte, e o que se lê é a propriedade: o único sítio que escreve a
+/// visibilidade deste painel é o que a testemunha da borda alimenta.
+///
+/// A metade NEGATIVA é a que sangra: a regra anterior (`contains_key`) fica verde sobre um bridge
+/// que ainda "escreve alguma coisa" — e era ela que custava o painel para o resto da sessão.
+#[test]
+fn the_panel_visibility_is_written_by_the_edge_of_the_clay() {
+    let src = fs::read_to_string(BRIDGE).expect("a ponte do painel existe");
+    assert!(
+        src.contains("take_clay_edge()"),
+        "a ponte deixou de perguntar pela borda: o painel volta a ignorar a saída do modo"
+    );
+    assert_eq!(
+        src.matches("panel_visibility").count(),
+        1,
+        "há mais de um sítio decidindo a visibilidade deste painel — duas portas divergem, e a que \
+         não conhece a borda ganha em silêncio"
+    );
+    assert!(
+        !src.contains("contains_key"),
+        "a regra do `abre uma vez` voltou: fechar o painel passa a custá-lo para o resto da sessão"
+    );
+}

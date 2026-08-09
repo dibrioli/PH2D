@@ -486,6 +486,14 @@ pub(crate) struct Sculpt3dScene {
     /// primeira coisa que se faz com uma escultura é esculpi-la; a doação é o
     /// passo seguinte, e o `D` o dá.
     role: FormRole,
+    /// **A posição ANTERIOR do barro**, a testemunha de que o modo VIROU — ver
+    /// [`Sculpt3dScene::take_clay_edge`], a porta única que a lê.
+    ///
+    /// ⚠️ **Nasce `false` mesmo com o papel nascendo em `Clay`**, e é isso que
+    /// apaga o caso especial: o primeiro frame de uma cena nova produz a borda
+    /// *entrou*, então "abrir ao nascer" e "abrir ao voltar" deixam de ser duas
+    /// regras — são a MESMA.
+    clay_was_on: bool,
     /// O carimbo da última doação entregue — `None` enquanto nada foi doado.
     donated: Option<FormStamp>,
 }
@@ -558,6 +566,7 @@ impl Sculpt3dScene {
             redo: Vec::new(),
             edits: 0,
             role: FormRole::Clay,
+            clay_was_on: false,
             donated: None,
         }
     }

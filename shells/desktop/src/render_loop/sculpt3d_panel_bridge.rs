@@ -10,13 +10,27 @@
 //! O painel de física declara que **o artista** é o dono, e não faz edge-trigger:
 //! física existe em todo documento, então abri-lo sozinho seria chrome a
 //! dispensar. Aqui é o oposto e a diferença é factual: a cena 3D **não existe**
-//! na maioria dos documentos, e quando ela nasce ela é a única coisa na tela.
-//! Então este bridge a ABRE uma vez, na borda `None → Some`, e nunca mais toca
-//! nela — o `X` do painel fecha, e é o artista quem manda a partir daí.
+//! na maioria dos documentos, e este painel toma o slot do **INSPECTOR** — deixá-lo
+//! aberto depois que o artista volta a pintar esconde o inspector da cena 2D.
 //!
-//! ⚠️ **Uma vez, e não a cada frame:** re-abrir todo frame tornaria o botão de
-//! fechar um controle que não faz nada, que é a forma mais barata de chrome
-//! morto.
+//! Então a lei é: **o painel segue as BORDAS do barro** — entra o barro, ele abre;
+//! sai o barro, ele fecha; **entre** as bordas o artista manda, e o `X` continua
+//! sendo um controle vivo.
+//!
+//! ⚠️ **BORDA, e não estado por frame:** re-afirmar a visibilidade todo frame
+//! tornaria o botão de fechar um controle que não faz nada, que é a forma mais
+//! barata de chrome morto.
+//!
+//! ⚠️ **A lei ANTERIOR era *"abre uma vez, na borda `None → Some` da cena"*, e ela
+//! nasceu antes de existir um modo de que se SAI.** Ela deixava dois defeitos que
+//! o Enio reportou juntos (2026-08-09): o painel **não fechava** ao sair do modo
+//! (a cena continua viva — sair nunca larga a escultura) e **não reabria** depois
+//! de fechado (a chave já existia, e não há segunda borda `None → Some`), então um
+//! `X` custava o painel para o resto da sessão.
+//!
+//! ⚠️ **Preço nomeado:** a seção **Shading** governa a doação, que é o que se olha
+//! justamente no modo LUZ — e ela sai da tela junto. Alcançá-la exige voltar ao
+//! barro. É o trade de o painel ser do MODO; o slot do inspector é o que o decide.
 
 use ph2d_editor::screens::hero::HeroScreen;
 
@@ -48,13 +62,11 @@ pub(crate) fn dispatch(
         return Vec::new();
     };
 
-    // ── 1. Abrir, uma vez. ──
-    // O guard é `panel_visibility` NÃO ter a chave: `is_panel_visible` devolve
-    // `false` tanto para *fechado pelo artista* quanto para *nunca visto*, e as
-    // duas coisas são diferentes. A entrada existir é a marca de que este bridge
-    // já se pronunciou.
-    if !hero.panel_visibility.contains_key("sculpt3d") {
-        hero.panel_visibility.insert("sculpt3d", true);
+    // ── 1. O painel segue as BORDAS do barro. ──
+    // Entra o barro, ele abre; sai o barro, ele fecha; ENTRE as bordas o artista
+    // manda, e o `X` continua sendo um controle vivo.
+    if let Some(entered) = scene.take_clay_edge() {
+        hero.panel_visibility.insert("sculpt3d", entered);
     }
 
     // ── 2. Publicar. Toda row lê isto; o painel não guarda cópia. ──

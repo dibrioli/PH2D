@@ -42,6 +42,14 @@ const A11Y_OPT_OUT: &[(&str, &str)] = &[
     // quando o pai cruzou o teto de 500 LOC ao catálogo ganhar o `NumberInput` e o `LevelMeter`.
     // Mesma razão do irmão acima: módulo de teste, e quem tem a11y é o pintor real do catálogo.
     ("skin/frame_tests.rs", "test module; parent owns a11y"),
+    // O CANAL de parâmetro por-tipo (`SkinParam` + a lei do índice marcado), separado quando o pai
+    // cruzou o teto de 500 LOC. Ele é uma `struct` de dados e duas funções puras: não toca a cena,
+    // não regista nada, não anuncia nada — quem pinta (e portanto quem tem a11y) é o pintor real
+    // do catálogo, que o pai chama.
+    (
+        "skin/param.rs",
+        "data channel + pure helpers; paints nothing — parent owns a11y",
+    ),
     ("skin/kind_tests.rs", "test module; parent owns a11y"),
     ("skin/param_tests.rs", "test module; parent owns a11y"),
     ("skin/geometry_tests.rs", "test module; parent owns a11y"),

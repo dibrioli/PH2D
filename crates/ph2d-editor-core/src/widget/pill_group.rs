@@ -1,10 +1,21 @@
 //! [`PillGroup`] — horizontal `BgElev` chip grouping N icon-only
 //! Buttons (and similar children) in a single rounded surface.
 //!
-//! Used 5x in the editor TopBar (theme cluster, save chip, project
-//! chip, theme/play cluster, right cluster). Pure layout primitive:
-//! caller paints children into the slot rects we expose via
-//! [`PillGroup::child_rect`].
+//! Pure layout primitive: caller paints children into the slot rects
+//! we expose via [`PillGroup::child_rect`].
+//!
+//! ⚠️ **Esta nota dizia *"Used 5x in the editor TopBar (theme cluster,
+//! save chip, project chip, theme/play cluster, right cluster)"*, e
+//! isso é FALSO.** Medido por varredura: fora do `mod`/`pub use` do
+//! catálogo e de uma menção de token em `ph2d-tokens::chrome`, este
+//! widget tem **ZERO chamadores** — nenhum painel, nenhuma shell, nem
+//! o showcase. A TopBar que ele afirma vestir desenha os clusters dela
+//! por outro caminho.
+//!
+//! ⚠️ Ele fica (é primitivo de layout, testado, e barato de manter),
+//! mas a lista de consumidores sai: *um doc que nomeia cinco chamadores
+//! inexistentes faz a próxima LLM procurar ali a causa de um defeito da
+//! TopBar, e depois duvidar da própria varredura.*
 
 use crate::paint::{fill_rounded_rect, resolve, stroke_rounded_rect};
 use crate::zones::Rect;

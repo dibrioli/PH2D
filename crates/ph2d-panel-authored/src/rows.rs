@@ -81,13 +81,6 @@ pub struct Row {
 }
 
 impl Row {
-    /// **Esta row responde a um gesto?**
-    ///
-    /// ⚠️ A porta é ÚNICA: o `populate` pergunta para decidir se regista, o `paint` para decidir
-    /// se publica um retângulo de hit, e o `event` para decidir se rota. Três cópias divergiriam
-    /// no dia em que um tipo mudasse de lado — e o modo de falha de cada divergência é diferente
-    /// (registado-e-sem-rect = nunca clicado · rect-e-sem-registo = clique descartado em silêncio
-    /// · rotado-e-sem-registo = braço morto).
     /// **Esta row DOBRA a seção sob ela?**
     ///
     /// ⚠️ **Pergunta SEPARADA da [`Self::is_control`], e a separação é o ponto:** um cabeçalho de
@@ -129,6 +122,17 @@ impl Row {
         self.is_control() || self.folds_a_section() || self.opens_a_picker()
     }
 
+    /// **Esta row responde a um gesto?**
+    ///
+    /// ⚠️ A porta é ÚNICA: o `populate` pergunta para decidir se regista, o `paint` para decidir
+    /// se publica um retângulo de hit, e o `event` para decidir se rota. Três cópias divergiriam
+    /// no dia em que um tipo mudasse de lado — e o modo de falha de cada divergência é diferente
+    /// (registado-e-sem-rect = nunca clicado · rect-e-sem-registo = clique descartado em silêncio
+    /// · rotado-e-sem-registo = braço morto).
+    ///
+    /// ⚠️ **Este doc estava colado no `folds_a_section`**, sete linhas acima — a função que ele
+    /// descreve ficava sem nenhum, e a que ele vestia já tinha o seu. É a forma barata de um doc
+    /// mentir: ele não afirma nada falso, ele descreve *outra função*.
     #[must_use]
     pub fn is_control(&self) -> bool {
         matches!(
@@ -213,10 +217,18 @@ thread_local! {
 
 /// **O host publica o que o documento descreve** — `None` devolve o painel à tabela compilada.
 ///
-/// ⚠️ Ele publica **na mudança, não por quadro**: quem chama compara a descrição com a anterior e
-/// só resolve quando ela difere. Resolver por quadro seria um hash de string e um parser de SVG
-/// por row no laço de pintura — exactamente o que o `OnceLock` da tabela compilada existe para
-/// evitar.
+/// ⚠️ **Esta nota afirmava *"publica na mudança, não por quadro — quem chama compara a descrição
+/// com a anterior"*, e isso é FALSO.** Medido no único chamador (`render_loop/mod.rs`, a chamada
+/// do `live_rows`): ele publica **incondicionalmente, a cada quadro**, sem comparação nenhuma com
+/// o estado anterior. O gate irmão `seam_authored_sections` já descrevia a cadência VERDADEIRA
+/// (*"a viva chega por quadro"*) — dois docs a discordar, e o código estava do lado do gate.
+///
+/// ⚠️ **E o argumento de custo que ela usava era meio falso:** o parser de SVG **não** está nesta
+/// rota (o `live_rows` passa o `BezPath` adiante; quem faz `to_svg` é a outra representação, a do
+/// `PanelSpec`), mas o hash de string **está** — o `authored_row_id` formata uma `String` por row,
+/// por quadro. Não é uma wave de performance (um painel tem poucas rows), é uma frase que
+/// prometia um contrato que ninguém honra: quem escrever o próximo consumidor tem de saber que
+/// esta porta é chamada em todo quadro.
 pub fn set_live_rows(rows: Option<Vec<Row>>) {
     LIVE.with_borrow_mut(|slot| *slot = rows);
 }
@@ -363,13 +375,20 @@ pub fn row_key_for(id: NodeId) -> Option<String> {
     with_rows(|rows| rows.iter().find(|r| r.id == id).map(|r| r.key.clone()))
 }
 
-/// **Quantos rótulos o artista repetiu** — o readout que o painel mostra em vez de desempatar.
+/// **Quantos rótulos o artista repetiu.**
 ///
 /// ⚠️ Duas rows de mesmo rótulo têm a mesma chave, logo o mesmo id: elas passam a ser **um**
 /// controle sob o rato, e mexer numa mexe na outra. Inventar um sufixo (`opacity_2`) daria uma
 /// chave que o artista não escreveu, não vê e não consegue prever — e ela mudaria sozinha no dia
-/// em que ele reordenasse os filhos. O painel **diz** que há repetidos; quem desempata é ele, na
-/// Hierarquia, com o nome.
+/// em que ele reordenasse os filhos. Quem desempata é o artista, na Hierarquia, com o nome.
+///
+/// ⚠️ **Esta nota dizia *"o readout que o painel mostra"* e *"o painel DIZ que há repetidos"*, e
+/// as duas frases são FALSAS** — o painel não pinta readout nenhum, e o único chamador desta
+/// função é o gate que afirma que a cena gerada não tem chaves repetidas. Ela fica por isso: é a
+/// medição que torna aquele gate possível, e é a peça pronta do dia em que o aviso for
+/// construído. O que não pode ficar é a promessa — *um artista com dois "Opacity" na moldura hoje
+/// não é avisado de nada*, e um doc que diz o contrário faz a próxima LLM procurar o bug no
+/// pintor.
 #[must_use]
 pub fn duplicate_keys() -> usize {
     with_rows(|all| {

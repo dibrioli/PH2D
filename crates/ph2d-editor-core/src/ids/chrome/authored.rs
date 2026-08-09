@@ -57,11 +57,16 @@ pub fn authored_row_id(key: &str) -> NodeId {
 
 /// O id da opção `index` da row de chave `key` — a família da lista ABERTA.
 ///
-/// ⚠️ **Só quem esconde as opções precisa dela** ([`WidgetKind::defers_a_popover`]): nas abas, no
-/// rádio e na segmentada quem regista os segmentos é o pintor do catálogo, dentro do retângulo da
-/// row. Um dropdown aberto desenha as opções numa superfície que só existe enquanto está aberto,
-/// e cada uma precisa de um retângulo de hit PRÓPRIO — senão a lista pinta e o clique cai na row
-/// por baixo dela.
+/// ⚠️ **Esta nota dizia *"só quem esconde as opções precisa dela — nas abas, no rádio e na
+/// segmentada quem regista os segmentos é o pintor do catálogo"*, e isso é FALSO.** A pele do
+/// canvas constrói as opções com o `PREVIEW_ID` (o pintor não regista nada), então quem dá hit à
+/// família INLINE é o próprio painel: `paint.rs` percorre `inline_option_rect` e regista **esta**
+/// função por opção. É assim que uma aba fica clicável no painel compilado — os quatro tipos da
+/// família de lista passam por aqui, não só o dropdown.
+///
+/// ⚠️ O que é verdade sobre o dropdown é outra coisa: a lista dele vive numa superfície que só
+/// existe enquanto está aberta, e por isso ele regista as opções no passe DIFERIDO em vez de no
+/// retângulo da row — senão a lista pinta e o clique cai na row por baixo dela.
 ///
 /// ⚠️ **O índice, e não o rótulo.** Duas opções de mesmo nome são um documento que o artista pode
 /// legitimamente ter (dois filhos homónimos), e derivar do rótulo faria as duas responderem ao

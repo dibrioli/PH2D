@@ -131,3 +131,47 @@ As integrações não pegam isso (cada worktree tem `target/` real próprio); s�
 rodar** (abortam ao criar o `target/`). Se você "corrigir" código com base
 nesse ✗, está caçando fantasma. Cheque a mensagem real no log antes.
 Ver [[feedback_pipe_masks_script_exit_code]].
+
+## A terceira espécie de `✗`: o gate de RAZÃO que o RUNNER mata de fome (2026-08-08, 6 linhas)
+
+Um `✗` de nextest tem três causas, não duas — e a terceira parece as outras duas:
+
+1. **regressão** (o código quebrou),
+2. **flake de azar** (não reproduz),
+3. **fome de núcleo**: o gate mede uma RAZÃO entre um caminho serial e um
+   paralelo, e o nextest roda ~32 processos de teste ao mesmo tempo. O `rayon`
+   reporta os 32 threads e **não tem um núcleo livre**. Medido:
+   `serial 15,243 ms · paralelo 15,441 · ganho 0.99x`.
+
+**O par de medições que separa (3) de (1):** *reprova sob a suíte cheia* **E**
+*passa isolado*. Sem as duas metades você está a silenciar regressões.
+
+**A cura é `threads-required = 'num-cpus'`** em `.config/nextest.toml` (o mesmo
+mecanismo de override que o repo já usa para serializar o ISPC). ⚠️ Ela **não
+afrouxa barra nenhuma** — a asserção fica onde estava, feita com os núcleos de
+que ela precisa para ser verdadeira. Quatro gates entraram nesta rodada
+(`measure_normals_parallel_speedup`, `the_cost_of_depth_is_linear_not_explosive`,
+`the_cost_of_sampling_a_path_is_flat_in_its_anchors`,
+`the_cost_of_a_gated_stroke_follows_the_footprint_not_the_canvas`).
+
+⚠️ **A mensagem do próprio gate não pode nomear a causa**, e isso engana: ela
+oferece *"PAR_MIN alto demais? limiar invertido?"* — hipóteses sobre o código —
+porque o gate **não enxerga o runner que o está a matar de fome**. Ler a
+mensagem e ir consertar `PAR_MIN` é caçar fantasma.
+
+⚠️ **Enumere com `--no-fail-fast`** ([[feedback_ship_prep_no_fail_fast]]): o
+fail-fast revela UMA por corrida, então descobri-las pelo ship custa **uma
+corrida de ship por gate** — e cada corrida conserta o anterior e revela o
+seguinte, o que se lê como progresso e é uma fila.
+
+## E o `cargo fmt` do integrador pode carimbar um comentário no módulo ERRADO
+
+O rustfmt **reordena `mod` alfabeticamente** (`reorder_modules`), e um comentário
+de fim-de-linha fica preso à **POSIÇÃO**, não ao item. Dois casos na mesma rodada:
+*"o que um Down SIGNIFICA com várias figuras"* foi parar no `taper_tail_tests` (a
+ponta de um traço à mão livre) quando o dono é o `stroke_router`; e a *ponte de
+TOKENS* ficou no `sculpt3d_panel_bridge`, deixando `tokens_bridge` nu. **Depois de
+`cargo fmt --all`, leia o diff dos `mod`** — um comentário que descreve o módulo
+errado é pior que comentário nenhum, e o fmt não o inventa: ele o herda de um
+merge e o carimba. O dono verdadeiro costuma estar escrito no `//!` do próprio
+módulo.

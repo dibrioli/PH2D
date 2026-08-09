@@ -34,7 +34,7 @@ color info) é inexprimível por construção — não por falta de um knob.*
 | nó | params hoje | falta (referência CITADA) | exprimível? (a cadeia tentada) | natureza/omissão | P | default que reduz |
 |---|---|---|---|---|---|---|
 | `motion.tint` | **9 `ParamSpec` → 3 CONTROLES**: `mode` (`Enum` Solid/Gradient) + `r,g,b,a` (**1** `ParamWidget::Color` → swatch OKLCH) + `r2,g2,b2,a2` (**1** swatch). Sem text param. Lê a coluna `falloff` (máscara). GPU sim | **blending mode da cor** (Mix · Add · Subtract · Multiply · Divide) — C4D MoGraph Effector, *"Color group: Color Mode (Off · Effector Color · Fields Color · Custom Color) · **Blending Mode (Mix · Add · Subtract · Multiply · Divide)** · Color · Use Alpha/Strength"* ([`referencia_pesquisa_c4d_fields.md` §linha 116](../referencia_pesquisa_c4d_fields.md)); AE aplica o efeito Fill/Tint sob um blend de camada | **NÃO.** (a) `motion.mixer(Add)` soma **todas** as colunas comuns — `P` inclusive ⇒ dobra as posições; (b) o `blend` do mixer é `v.first()`, escalar global (`mixer/lib.rs:214`); (c) `motion.drive` só alcança o alfa (`channel.rs:74`). Não há nó que combine dois `tint` por instância | **omissão** — o kernel tem UMA lei (`mixed_tint` = lerp), e o enum de modo nunca foi escrito | **P1** | `blend = Mix (0)` ⇒ o `lerp(existing, target, falloff)` de hoje, bit a bit |
-| `motion.tint` | idem | **hue / saturation / lightness sobre a cor EXISTENTE** — Cavalry *"Color/Alpha/**HSV Material Override**, Swap Color, Material Sampler"* ([cavalry A.2 §73](../referencia_pesquisa_cavalry.md)); Blender **Hue Saturation Value** (Utilities▸Color, [blender GN §13/§24](../referencia_pesquisa_blender_gn.md)); AE **Hue/Saturation** (Master Hue/Saturation/Lightness) | **NÃO — e a razão é a §0.** Tentado: (a) `value.attribute` custom `"tint"` ⇒ **zeros** (Vec4 não é lido); (b) `motion.luminance → value.math → color_ramp` recupera só o BRILHO (o matiz já foi perdido); (c) `motion.drive` escreve o alfa. **Nenhuma cadeia lê R/G/B de volta** | **omissão** — falta a metade de LEITURA do loop, não um param | **P0** | `hue = 0 · sat = 1 · val = 1` ⇒ identidade sobre qualquer cor |
+| `motion.tint` | idem | **hue / saturation / lightness sobre a cor EXISTENTE** — Cavalry *"Color/Alpha/**HSV Material Override**, Swap Color, Material Sampler"* ([cavalry A.2 §73](../referencia_pesquisa_cavalry.md)); Blender **Hue Saturation Value** (Utilities▸Color, [blender GN §13/§24](../referencia_pesquisa_blender_gn.md)); AE **Hue/Saturation** (Master Hue/Saturation/Lightness) | **NÃO — e a razão é a §0.** Tentado: (a) `value.attribute` custom `"tint"` ⇒ **zeros** (Vec4 não é lido); (b) `motion.luminance → value.math → color_ramp` recupera só o BRILHO (o matiz já foi perdido); (c) `motion.drive` escreve o alfa. **Nenhuma cadeia lê R/G/B de volta** | **omissão** — falta a metade de LEITURA do loop, não um param | ✅ **FEITO** (era P0; fechado pelos canais Hue/Sat/Value do `motion.drive`, a metade de ESCRITA) | `hue = 0 · sat = 1 · val = 1` ⇒ identidade sobre qualquer cor |
 | `motion.tint` | idem | **colorir por LUMINÂNCIA** — AE **Tint** (*Map Black To / Map White To / Amount to Tint*); Cavalry Filter **Gradient Map** ([cavalry A.4 §113](../referencia_pesquisa_cavalry.md)) | ⛔ **SIM, e já é uma cena demo:** `… → motion.luminance → motion.color_ramp(t)`. O [doc 31 §cena](../31_make_point_luminance_nota_adr.md) monta exatamente `grid → color_ramp(Rainbow) → luminance → color_ramp(t, Heat)` | — | ⛔ **recusado com motivo** | — |
 | `motion.tint` | idem | **cor ALEATÓRIA por instância** — C4D Cloner Transform tab, *"**Color** (por clone, gradiente/**aleatória**)"* ([c4d §22/§101](../referencia_pesquisa_c4d_fields.md)) | ⛔ **SIM:** `value.instance_field(mode = Random)` → `motion.color_ramp.t` (o `Random` é hash `(seed, index)`, `value-instance-field/src/lib.rs:117`) ⇒ cor aleatória ao longo de uma rampa autorada | — | ⛔ **recusado com motivo** | — |
 | `motion.tint` | idem | *(adjacência, não gap)* o modo **Gradient** é uma rampa de **2 stops keyed no índice** — o `motion.color_ramp` faz o mesmo com N stops | **SIM**, com uma diferença que é o valor real do modo: `color_ramp` **SUBSTITUI** o `tint`; `tint` **LERPA sobre o existente pelo `falloff`**. O que o modo Gradient entrega e o `color_ramp` não é a MÁSCARA | natureza (duas leis de escrita diferentes) | **P2** | — |
@@ -268,8 +268,43 @@ azul→amarelo, medida `< 0,05` em RGB e `> 0,9` em HSV — a régua é `max−m
 é a definição de saturação do HSV e vem de fora do nosso código. Um gate que comparasse
 `back.color_mode` ficaria verde com o `eval` ignorando o campo.
 
-**Segue P0 nesta família:** hue/sat **sobre a cor existente**, que continua precisando da
-metade de ESCRITA do loop (o W0-B-genérico) — o `luminance` fechou a metade de LEITURA.
+### O sexto P0 — **a metade de ESCRITA do laço, e a família fecha** (2026-08-09)
+
+A §0 deste documento mediu que *nada no catálogo escrevia R/G/B a partir de um valor*: o
+único canal de cor do `motion.drive` era o `CH_OPACITY`, que escreve o **ALFA**. Com o
+`luminance` lendo as oito faces (a metade de LEITURA, fechada acima), faltava a porta de
+volta — e ela é o **espelho exato** da anterior: três canais novos no `motion.drive`,
+**Hue · Saturation · Value**, apendados depois do `Falloff`.
+
+- ⚠️ **Os modos de combinação JÁ eram o vocabulário da referência, sem um param novo:** o
+  *Master Hue* do AE / o `Hue` do Blender é um **deslocamento** (`Add`), e
+  *Saturation*/*Lightness* são **escalas** (`Multiply`). O `hue += 0 · sat ×1 · val ×1` que
+  a tabela pedia como default que reduz **é** o neutro dos modos que já existiam.
+- ⚠️ **Uma variante de GPU para os TRÊS, e a régua é a BINDING:** uma variante existe quando
+  a lista de colunas ligadas difere, e os três leem e escrevem exatamente o que o
+  `DRIVE_TINT` lê e escreve. Três seriam três cópias do mesmo par esperando divergir.
+- ⚠️ **Índices APENDADOS, nunca inseridos:** o índice é o que o grafo guarda, e uma ordem
+  mais bonita (as três cores ao lado do Opacity) trocaria o canal de todo documento já
+  autorado, em silêncio — o param é um `f32` sem versão. Medido antes: nenhum grafo do repo
+  usa 6/7/8 (o picker parava em 5 e o `channel_column` mandava o resto para `size`).
+- ⚠️ **O clamp da saturação é ESTRUTURAL, e o do valor não existe:** com `s > 1` o
+  `hsv_to_rgba` calcula `p = v·(1−s)` e devolve canais **negativos**. Já um teto no valor
+  seria uma regra que os outros produtores desta coluna não obedecem — a interpolação
+  `Cardinal` da rampa passa de 1 por construção, e o doc dela diz isso.
+- ⚠️ **E a identidade foi MEDIDA, não afirmada:** o doc pedia `hue = 0` como default que
+  reduz, e a versão honesta disso **não é byte-identidade** — a ida-e-volta RGB→HSV→RGB
+  passa por divisões. O gate mede o pior desvio sobre cinco cores (incluindo preto e
+  branco, onde a saturação é indefinida): **< 1e-6**. Nenhuma arte regride, porque os
+  canais não existiam.
+
+**O gate que fecha a família é o do LAÇO INTEIRO** (`the_colour_loop_closes_the_same_way_on_the_device`):
+`grid → color_ramp → luminance(canal) → drive(canal)`, os três canais, na CPU e no device.
+As duas metades nasceram em waves diferentes e **cada crate só prova a sua** — este é o
+único gate que as vê se encontrarem, e o oráculo dele é a COR resultante, não o valor
+intermediário (comparar o `v` seria repetir o gate do `luminance` e ficar verde com o
+`drive` escrevendo no lugar errado).
+
+**A W3 (fam. 9) está FECHADA** — os seis P0 da tabela caíram.
 
 ---
 

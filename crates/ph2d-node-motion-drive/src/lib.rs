@@ -36,7 +36,7 @@ use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, Param
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
 mod channel;
-use channel::{CH_FALLOFF, Combine, drive_channel};
+use channel::{CH_FALLOFF, CH_HUE, CH_SAT, CH_VAL, Combine, drive_channel};
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
 /// The value type — the continuous per-instance scalar field on the `v` column
@@ -250,6 +250,93 @@ const DRIVE_TINT: GpuKernel = GpuKernel {
     applicable: None,
 };
 
+/// O prólogo mais a ida-e-volta HSV, **verbatim** o que `ph2d_color::rgb_to_hsv` /
+/// `hsv_to_rgba` computam em Rust.
+///
+/// ⚠️ **É a segunda expressão da lei, e é inevitável** — o dispositivo não chama Rust. O que
+/// a mantém honesta é o gate de paridade CPU×GPU deste nó, não a disciplina de quem edita.
+/// (A `motion.luminance` carrega a metade da IDA pelo mesmo motivo; extrair as duas para um
+/// `wgsl_lib` compartilhado é wave própria — o substrato hoje só tem lib POR KERNEL, e a
+/// convenção da biblioteca é a mesma que já copia o `falloff_at` nove vezes.)
+const DRIVE_LIB_HSV: &str = concat!(
+    "\
+    fn drive_rgb_to_hsv(c: vec4<f32>) -> vec3<f32> {\n\
+        let mx = max(max(c.x, c.y), c.z);\n\
+        let mn = min(min(c.x, c.y), c.z);\n\
+        let d = mx - mn;\n\
+        var h = 0.0;\n\
+        if (d > 0.0) {\n\
+            if (mx == c.x) { h = (c.y - c.z) / d + select(0.0, 6.0, c.y < c.z); }\n\
+            else if (mx == c.y) { h = (c.z - c.x) / d + 2.0; }\n\
+            else { h = (c.x - c.y) / d + 4.0; }\n\
+            h = h / 6.0;\n\
+        }\n\
+        var s = 0.0;\n\
+        if (mx > 0.0) { s = d / mx; }\n\
+        return vec3<f32>(h, s, mx);\n\
+    }\n\
+    fn drive_hsv_to_rgb(h: f32, s: f32, v: f32) -> vec3<f32> {\n\
+        // `rem_euclid(1.0)` do Rust: o matiz envolve AQUI, como na porta de Rust.\n\
+        let hw = (h - floor(h)) * 6.0;\n\
+        let i = floor(hw);\n\
+        let f = hw - i;\n\
+        let p = v * (1.0 - s);\n\
+        let q = v * (1.0 - s * f);\n\
+        let t = v * (1.0 - s * (1.0 - f));\n\
+        let k = i32(i) % 6;\n\
+        if (k == 0) { return vec3<f32>(v, t, p); }\n\
+        if (k == 1) { return vec3<f32>(q, v, p); }\n\
+        if (k == 2) { return vec3<f32>(p, v, t); }\n\
+        if (k == 3) { return vec3<f32>(p, q, v); }\n\
+        if (k == 4) { return vec3<f32>(t, p, v); }\n\
+        return vec3<f32>(v, p, q);\n\
+    }\n",
+    "\
+    fn drive_round(x: f32) -> f32 {\n\
+        return select(ceil(x - 0.5), floor(x + 0.5), x >= 0.0);\n\
+    }\n\
+    fn drive_combine(cur: f32, v: f32, mode: i32) -> f32 {\n\
+        if (mode == 1) { return v; }\n\
+        if (mode == 2) { return cur * v; }\n\
+        return cur + v;\n\
+    }\n"
+);
+
+/// **A COR sobre a cor que já está lá** ([`CH_HUE`]) — matiz, saturação e valor do `tint`.
+///
+/// ⚠️ **UMA variante para os TRÊS canais, e a régua é a BINDING, não o gosto:** uma variante
+/// existe quando a lista de colunas ligadas difere (o módulo gerado só define `write_<col>`
+/// para coluna BOUND), e estes três leem e escrevem exatamente o que o [`DRIVE_TINT`] lê e
+/// escreve. Três variantes seriam três cópias do mesmo par de bindings esperando divergir; o
+/// `channel` é uniforme no dispatch inteiro, então o ramo não diverge entre invocações.
+const DRIVE_HSV: GpuKernel = GpuKernel {
+    wgsl: "\
+        let dr_mode = i32(drive_round(params.mode));\n\
+        let dr_ch = i32(drive_round(params.channel));\n\
+        let dr_t = read_in_tint(i);\n\
+        let dr_v = read_value_v(i) * params.scale;\n\
+        let dr_f = clamp(read_in_falloff(i), 0.0, 1.0);\n\
+        let dr_hsv = drive_rgb_to_hsv(dr_t);\n\
+        var dr_cur = dr_hsv.z;\n\
+        if (dr_ch == 6) { dr_cur = dr_hsv.x; }\n\
+        else if (dr_ch == 7) { dr_cur = dr_hsv.y; }\n\
+        let dr_next = dr_cur + (drive_combine(dr_cur, dr_v, dr_mode) - dr_cur) * dr_f;\n\
+        var dr_h = dr_hsv.x;\n\
+        var dr_s = dr_hsv.y;\n\
+        var dr_val = dr_hsv.z;\n\
+        if (dr_ch == 6) { dr_h = dr_next; }\n\
+        else if (dr_ch == 7) { dr_s = clamp(dr_next, 0.0, 1.0); }\n\
+        else { dr_val = max(dr_next, 0.0); }\n\
+        let dr_rgb = drive_hsv_to_rgb(dr_h, dr_s, dr_val);\n\
+        write_tint(i, vec4<f32>(dr_rgb.x, dr_rgb.y, dr_rgb.z, dr_t.w));\n",
+    wgsl_lib: DRIVE_LIB_HSV,
+    bindings: DRIVE_TINT.bindings,
+    params: DRIVE_PARAMS,
+    count_law: None,
+    variant_by_param: None,
+    applicable: None,
+};
+
 /// **The mask as a target** ([`CH_FALLOFF`]). The scalar template, with ONE difference that
 /// carries the whole decision: every other variant binds `falloff` as a `Read` to blend with,
 /// so this one — whose target IS `falloff` — binds it once as `ReadWrite` and simply has no
@@ -311,6 +398,7 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
             2 => &DRIVE_ROT,
             CH_OPACITY => &DRIVE_TINT,
             CH_FALLOFF => &DRIVE_FALLOFF,
+            CH_HUE | CH_SAT | CH_VAL => &DRIVE_HSV,
             0 | 1 => &DRIVE_P,
             _ => &DRIVE_SIZE,
         }
@@ -363,10 +451,23 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         param: "channel",
         label: "Channel",
         min: 0.0,
-        max: 5.0,
+        max: 8.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["X", "Y", "Rotation", "Size", "Opacity", "Falloff"],
+            // ⚠️ **Apendados**, nunca inseridos: o índice é o que o grafo guarda, então uma
+            // ordem "mais bonita" (as três cores ao lado do Opacity) trocaria o canal de todo
+            // documento já autorado — em silêncio, porque o param é um `f32` sem versão.
+            labels: &[
+                "X",
+                "Y",
+                "Rotation",
+                "Size",
+                "Opacity",
+                "Falloff",
+                "Hue",
+                "Saturation",
+                "Value",
+            ],
         },
     },
     ParamUiHint {
@@ -388,256 +489,6 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         },
     },
 ];
-
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use ph2d_nodegraph::attr::Stream;
-    use ph2d_nodegraph::cook::{Cook, OpResolver};
-    use ph2d_nodegraph::graph::{Edge, Graph, NodeId};
-
-    // A source: 2 instances at the origin, plus a value node emitting one value.
-    static GRID_MAN: NodeManifest = NodeManifest {
-        id: NodeTypeId::of("motion.drive.test.grid"),
-        name: "motion.drive.test.grid",
-        inputs: &[],
-        outputs: &[PortSpec {
-            name: "out",
-            ty: INST_VEC2,
-        }],
-        effect: Effect::Pure,
-        clock: Clock::Frame,
-        params: &[],
-        lowerings: &[LoweringKind::Cpu],
-    };
-    struct Grid;
-    impl NodeOp for Grid {
-        fn manifest(&self) -> &'static NodeManifest {
-            &GRID_MAN
-        }
-        fn eval(&self, ctx: &mut EvalCtx<'_>) {
-            ctx.emit(Stream::new(2).with("P", Column::Vec2(vec![[0.0, 0.0], [0.0, 0.0]])));
-        }
-    }
-    static VAL_MAN: NodeManifest = NodeManifest {
-        id: NodeTypeId::of("motion.drive.test.val"),
-        name: "motion.drive.test.val",
-        inputs: &[],
-        outputs: &[PortSpec {
-            name: "out",
-            ty: VALUE,
-        }],
-        effect: Effect::Pure,
-        clock: Clock::Frame,
-        params: &[],
-        lowerings: &[LoweringKind::Cpu],
-    };
-    struct Val;
-    impl NodeOp for Val {
-        fn manifest(&self) -> &'static NodeManifest {
-            &VAL_MAN
-        }
-        fn eval(&self, ctx: &mut EvalCtx<'_>) {
-            ctx.emit(Stream::new(1).with(VALUE_COL, Column::Scalar(vec![3.0])));
-        }
-    }
-    struct Ops;
-    impl OpResolver for Ops {
-        fn resolve(&self, ty: NodeTypeId) -> Option<&dyn NodeOp> {
-            match ty {
-                t if t == GRID_MAN.id => Some(&Grid),
-                t if t == VAL_MAN.id => Some(&Val),
-                t if t == MANIFEST.id => Some(&MotionDrive),
-                _ => None,
-            }
-        }
-    }
-
-    fn drive_graph(setup: impl FnOnce(&mut Graph, NodeId)) -> Vec<[f32; 2]> {
-        let mut g = Graph::new();
-        let grid = g.add_node("motion.drive.test.grid");
-        let val = g.add_node("motion.drive.test.val");
-        let drive = g.add_node("motion.drive");
-        g.connect(Edge {
-            from: (grid, 0),
-            to: (drive, 0),
-            delayed: false,
-        })
-        .unwrap();
-        g.connect(Edge {
-            from: (val, 0),
-            to: (drive, 1),
-            delayed: false,
-        })
-        .unwrap();
-        setup(&mut g, drive);
-        let mut cook = Cook::new();
-        let out = cook.cook(&g, &Ops, drive, 0.0).unwrap();
-        match out[0].as_stream().get("P").unwrap() {
-            Column::Vec2(v) => v.clone(),
-            _ => panic!("P"),
-        }
-    }
-
-    /// The end-to-end value path through the cook: a length-1 value from a
-    /// separate node drives a channel of the instance stream, broadcast to all
-    /// instances. This is what proves the value domain is wired (value produced
-    /// by one node, consumed by another, made visible).
-    #[test]
-    fn a_value_node_drives_the_grid_channel_through_the_cook() {
-        // scale 0.5, add → each instance X += 3 · 0.5 = 1.5.
-        let p = drive_graph(|g, d| {
-            g.set_param(d, "channel", 0.0); // X
-            g.set_param(d, "scale", 0.5);
-        });
-        assert_eq!(
-            p,
-            vec![[1.5, 0.0], [1.5, 0.0]],
-            "value broadcast to both, scaled"
-        );
-    }
-
-    /// The value-domain WIN a bundled node can't do: ONE value node fans out to
-    /// TWO drives — X and Rotation — off the same value. `motion.step` (reduce +
-    /// apply in one node) can only touch one channel; the split lets a single
-    /// count animate several. Proves the value is a first-class thing that flows,
-    /// not a private computation.
-    #[test]
-    fn one_value_fans_out_to_two_channels() {
-        let mut g = Graph::new();
-        let grid = g.add_node("motion.drive.test.grid");
-        let val = g.add_node("motion.drive.test.val"); // emits 3.0
-        let drive_x = g.add_node("motion.drive");
-        let drive_r = g.add_node("motion.drive");
-        // grid → drive_x.in → drive_r.in ; val → both drives' value port.
-        for (from, to) in [((grid, 0), (drive_x, 0)), ((drive_x, 0), (drive_r, 0))] {
-            g.connect(Edge {
-                from,
-                to,
-                delayed: false,
-            })
-            .unwrap();
-        }
-        for d in [drive_x, drive_r] {
-            g.connect(Edge {
-                from: (val, 0),
-                to: (d, 1),
-                delayed: false,
-            })
-            .unwrap();
-        }
-        g.set_param(drive_x, "channel", 0.0); // X += 3
-        g.set_param(drive_r, "channel", 2.0); // Rotation += 3
-        let mut cook = Cook::new();
-        let out = cook.cook(&g, &Ops, drive_r, 0.0).unwrap();
-        let s = out[0].as_stream();
-        match s.get("P").unwrap() {
-            Column::Vec2(v) => assert_eq!(v[0], [3.0, 0.0], "X driven by the value"),
-            _ => panic!("P"),
-        }
-        match s.get("rot").unwrap() {
-            Column::Scalar(v) => assert_eq!(v[0], 3.0, "Rotation driven by the SAME value"),
-            _ => panic!("rot"),
-        }
-    }
-
-    /// FALSIFICATION: with the value input UNCONNECTED (empty value field), the
-    /// drive is a no-op — the channel passes through untouched. A drive that
-    /// invented a value would move the grid off an empty input.
-    #[test]
-    fn an_unconnected_value_leaves_the_channel_untouched() {
-        let mut g = Graph::new();
-        let grid = g.add_node("motion.drive.test.grid");
-        let drive = g.add_node("motion.drive");
-        g.connect(Edge {
-            from: (grid, 0),
-            to: (drive, 0),
-            delayed: false,
-        })
-        .unwrap();
-        let mut cook = Cook::new();
-        let out = cook.cook(&g, &Ops, drive, 0.0).unwrap();
-        match out[0].as_stream().get("P").unwrap() {
-            Column::Vec2(v) => assert_eq!(v, &vec![[0.0, 0.0], [0.0, 0.0]], "no value → no move"),
-            _ => panic!("P"),
-        }
-    }
-
-    /// **A CPU e o device escrevem a MESMA coluna, canal por canal.**
-    ///
-    /// O doc do `variant_by_param` diz, com todas as letras, que ele espelha o `channel_column`
-    /// *"including its `_ => size` catch-all"* — ou seja: duas tabelas, uma pergunta. Acrescentar
-    /// um canal a UMA delas não quebra a compilação, não quebra nenhum gate de comportamento, e
-    /// faz a CPU escrever `falloff` enquanto o device escreve `size`.
-    ///
-    /// ⚠️ O modo de falha é mudo por construção: as duas rotas produzem um stream bem-formado,
-    /// de contagem certa, com uma coluna escrita — só que não a mesma. Uma cena que cozinha na
-    /// GPU e outra que cai na CPU desenhariam coisas diferentes, e nenhuma delas erraria.
-    ///
-    /// A varredura passa do intervalo válido de propósito: o catch-all é parte da resposta, e um
-    /// gate que só olhasse os canais nomeados deixaria justamente ele livre para divergir.
-    #[test]
-    fn the_cpu_and_the_device_write_the_same_column_for_every_channel() {
-        let pick = GPU_KERNEL
-            .variant_by_param
-            .expect("o drive escolhe variante por param — se deixou de escolher, este gate mente");
-        for ch in -2..=8 {
-            let cpu = channel::channel_column(ch);
-            let gpu = pick(&|_| ch as f32).bindings[0].column;
-            assert_eq!(
-                cpu, gpu,
-                "canal {ch}: a CPU escreve `{cpu}` e o device escreve `{gpu}` — as duas tabelas \
-                 deixaram de responder a mesma pergunta"
-            );
-        }
-    }
-
-    #[test]
-    fn registers_and_resolves() {
-        let mut reg = NodeRegistry::new();
-        register(&mut reg).unwrap();
-        assert!(reg.resolve(MANIFEST.id).is_some());
-    }
-    /// **Opacity is a channel** (doc 51): the drive writes the ALPHA of the tint, so a particle
-    /// can FADE — which is what "fades away" means, and what the library could not do at all.
-    ///
-    /// An uncoloured stream starts from opaque white, so driving the opacity of a stream nobody
-    /// tinted does exactly what it says instead of silently doing nothing.
-    #[test]
-    fn the_opacity_channel_fades_the_tint_and_starts_from_opaque_white() {
-        let plain = Stream::new(2).with("P", Column::Vec2(vec![[0.0, 0.0]; 2]));
-        let out = channel::drive_channel(
-            &plain,
-            channel::CH_OPACITY,
-            &[0.25, 0.75],
-            1.0,
-            Combine::Set,
-        );
-        match out.get("tint") {
-            Some(Column::Vec4(v)) => {
-                assert_eq!(v[0], [1.0, 1.0, 1.0, 0.25], "white, a quarter opaque");
-                assert_eq!(v[1][3], 0.75);
-            }
-            _ => panic!("the opacity drive minted a tint"),
-        }
-
-        // Multiply against an existing colour: the hue survives, the alpha bleeds.
-        let red = Stream::new(1)
-            .with("P", Column::Vec2(vec![[0.0, 0.0]]))
-            .with("tint", Column::Vec4(vec![[1.0, 0.0, 0.0, 1.0]]));
-        let faded =
-            channel::drive_channel(&red, channel::CH_OPACITY, &[0.5], 1.0, Combine::Multiply);
-        match faded.get("tint") {
-            Some(Column::Vec4(v)) => assert_eq!(v[0], [1.0, 0.0, 0.0, 0.5]),
-            _ => panic!("tint"),
-        }
-
-        // An alpha the renderer cannot use is not a brighter particle — it is a bug. Clamped.
-        let over =
-            channel::drive_channel(&plain, channel::CH_OPACITY, &[4.0, -2.0], 1.0, Combine::Set);
-        match over.get("tint") {
-            Some(Column::Vec4(v)) => assert_eq!((v[0][3], v[1][3]), (1.0, 0.0)),
-            _ => panic!("tint"),
-        }
-    }
-}
+#[path = "tests.rs"]
+mod tests;

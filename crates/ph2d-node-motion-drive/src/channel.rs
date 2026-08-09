@@ -83,13 +83,33 @@ pub(crate) const CH_OPACITY: i32 = 4;
 /// falloffs are `[0,1]` by construction. Clamping here would delete it before anyone used it.
 pub(crate) const CH_FALLOFF: i32 = 5;
 
+/// Os três canais de **COR sobre a cor que já está lá** — matiz, saturação e valor do
+/// `tint`, apendados depois do `CH_FALLOFF` para nenhum grafo já autorado mudar de canal.
+///
+/// ⚠️ **Eles são a metade de ESCRITA do laço de cor**, e a razão de existirem está medida na
+/// §0 do doc 89 fam. 9: *nada no catálogo escrevia R/G/B a partir de um valor* — o único
+/// canal de cor daqui era o `CH_OPACITY`, que escreve o ALFA. Com o `motion.luminance`
+/// lendo os oito canais (a metade de LEITURA, fechada na wave anterior), o laço
+/// `luminance(Hue) → value.math → drive(Hue)` passa a existir.
+///
+/// ⚠️ **E os modos de combinação já eram o vocabulário da referência**, sem um param novo:
+/// o *Master Hue* do AE / o `Hue` do Blender é um **deslocamento** (`Add`), e
+/// *Saturation*/*Lightness* são **escalas** (`Multiply`) — `hue += 0`, `sat *= 1`,
+/// `val *= 1` é a identidade que o doc pedia como default que reduz.
+pub(crate) const CH_HUE: i32 = 6;
+/// Ver [`CH_HUE`].
+pub(crate) const CH_SAT: i32 = 7;
+/// Ver [`CH_HUE`].
+pub(crate) const CH_VAL: i32 = 8;
+
 /// The stream column a channel index writes to: X/Y → `P`, Rotation → `rot`,
-/// Opacity → `tint` (its alpha), Size (or any out-of-range value) → `size`.
+/// Opacity → `tint` (its alpha), Hue/Saturation/Value → `tint` (its colour),
+/// Size (or any out-of-range value) → `size`.
 pub(crate) fn channel_column(channel: i32) -> &'static str {
     match channel {
         0 | 1 => "P",
         2 => "rot",
-        CH_OPACITY => "tint",
+        CH_OPACITY | CH_HUE | CH_SAT | CH_VAL => "tint",
         CH_FALLOFF => "falloff",
         _ => "size",
     }
@@ -182,6 +202,41 @@ pub(crate) fn drive_channel(
             for (i, ti) in t.iter_mut().enumerate() {
                 let driven = mode.apply(ti[3], value_at(vals, i) * scale);
                 ti[3] = blend(ti[3], driven, falloff_at(input, i)).clamp(0.0, 1.0); // CLAMP-OK: alpha
+            }
+            out.set("tint", Column::Vec4(t));
+        }
+        // **A COR que já está lá** — ver [`CH_HUE`]. A instância entra em HSV, UM componente
+        // é dirigido, e ela volta; o alfa atravessa intocado (quem o dirige é o `CH_OPACITY`).
+        //
+        // ⚠️ **O matiz NÃO é envolvido aqui, de propósito:** `hsv_to_rgba` já faz
+        // `rem_euclid(1.0)` na entrada, então envolver antes seria a segunda resposta à mesma
+        // pergunta — e a errada, porque o `blend` tem de ver o valor CONTÍNUO. Com `Add` (o
+        // default, e o *Master Hue* da referência) o blend vira `orig + delta·f`, ou seja
+        // *escale o DESLOCAMENTO*, que não tem ambiguidade de arco nenhuma.
+        //
+        // ⚠️ **A saturação é clampada porque é ESTRUTURAL, não gosto:** com `s > 1` o
+        // `hsv_to_rgba` calcula `p = v·(1−s)` e devolve canais NEGATIVOS. O valor tem só o
+        // piso em zero — um teto aqui seria uma regra que os outros produtores desta coluna
+        // não obedecem (a interpolação `Cardinal` da rampa passa de 1 por construção, e o
+        // doc dela diz isso).
+        CH_HUE | CH_SAT | CH_VAL => {
+            let mut t = base_vec4(input, "tint", n, [1.0, 1.0, 1.0, 1.0]);
+            for (i, ti) in t.iter_mut().enumerate() {
+                let (h, s, v) = ph2d_color::rgb_to_hsv(*ti);
+                let f = falloff_at(input, i);
+                let cur = match channel {
+                    CH_HUE => h,
+                    CH_SAT => s,
+                    _ => v,
+                };
+                let driven = mode.apply(cur, value_at(vals, i) * scale);
+                let next = blend(cur, driven, f);
+                let (h, s, v) = match channel {
+                    CH_HUE => (next, s, v),
+                    CH_SAT => (h, next.clamp(0.0, 1.0), v), // CLAMP-OK: s>1 => canais negativos
+                    _ => (h, s, next.max(0.0)),
+                };
+                *ti = ph2d_color::hsv_to_rgba(h, s, v, ti[3]);
             }
             out.set("tint", Column::Vec4(t));
         }

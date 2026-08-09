@@ -12,3 +12,8 @@ authors.workspace = true
 [dependencies]
 ph2d-nodegraph = { path = "../ph2d-nodegraph" }
 ph2d-node-registry = { path = "../ph2d-node-registry" }
+# O matiz/saturação/valor de uma cor tem UMA definição neste app, e ela mora aqui.
+# Este nó ESCREVE o que o `motion.luminance` LÊ, e as duas metades do laço têm de
+# concordar: uma cópia local seria um segundo matiz, divergindo no grafo que desloca
+# o matiz e o lê de volta.
+ph2d-color = { path = "../ph2d-color" }

@@ -10,11 +10,11 @@
 //! and indexes it per sample.
 
 pub(crate) mod convert;
-pub use convert::rgb_to_hsv;
 use convert::{
-    bspline_weights, catmull_rom_weights, cub, hsl_to_rgba, hsv_to_rgba, lerp, lerp_hue, lerp4,
-    rgb_to_hsl, smoothstep, unwrap_hues,
+    bspline_weights, catmull_rom_weights, cub, hsl_to_rgba, lerp, lerp_hue, lerp4, rgb_to_hsl,
+    smoothstep, unwrap_hues,
 };
+pub use convert::{hsv_to_rgba, rgb_to_hsv};
 
 /// Largest number of stops a ramp can hold (matches Blender's `MAXCOLORBAND`).
 pub const MAX_RAMP_STOPS: usize = 32;

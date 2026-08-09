@@ -2502,6 +2502,128 @@ fn every_colour_channel_reads_the_same_on_the_device() {
     }
 }
 
+/// **O LAÇO DE COR FECHA, E FECHA IGUAL NO DISPOSITIVO** — o grafo que a §0 do doc 89
+/// fam. 9 mediu como inexprimível: *ler* uma face da cor, mexer nela, e *escrevê-la de
+/// volta*.
+///
+/// `grid → color_ramp → luminance(canal) → drive(canal, Set, scale)`. As duas metades
+/// nasceram em waves diferentes (a de LEITURA nos oito canais do `luminance`, a de ESCRITA
+/// nos três canais de cor do `drive`) e este é o único gate que as vê juntas — cada crate
+/// prova a sua metade e nenhuma prova que elas se encontram.
+///
+/// ⚠️ **O oráculo é a COR resultante (`tint`), não o `v` intermediário:** um gate que
+/// comparasse o valor lido estaria a repetir o gate do `luminance`, e ficaria verde com o
+/// `drive` escrevendo no lugar errado. O que se compara é o que o artista vê.
+///
+/// ⚠️ **E o fixture-check é por CANAL:** a cor tem de MUDAR contra a entrada, senão um
+/// kernel que não escrevesse nada passaria — a rampa vai de azul opaco a âmbar
+/// translúcido, então os três canais têm o que mover.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn the_colour_loop_closes_the_same_way_on_the_device() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    // Hue (6) · Saturation (7) · Value (8) — os canais que o `motion.drive` apendou.
+    for ch in 6..9_i32 {
+        let mut g = Graph::new();
+        let grid = grid_node(&mut g, 10.0);
+        let tint = g.add_node("motion.color_ramp");
+        g.set_text_param(
+            tint,
+            "ramp",
+            "g2 2 0:0.05,0.11,0.83,1 1:0.91,0.74,0.07,0.25".to_string(),
+        );
+        let lum = g.add_node("motion.luminance");
+        g.set_param(lum, "channel", ch as f32);
+        let drv = g.add_node("motion.drive");
+        g.set_param(drv, "channel", ch as f32);
+        // `Set` com `scale`: o canal recebe METADE do que o `luminance` leu — a face é
+        // lida, transformada e escrita de volta, que é o laço inteiro em dois nós.
+        g.set_param(drv, "mode", 1.0);
+        g.set_param(drv, "scale", 0.5);
+        connect(&mut g, grid, tint);
+        connect(&mut g, tint, lum);
+        connect(&mut g, tint, drv);
+        let _ = g.connect(Edge {
+            from: (lum, 0),
+            to: (drv, 1),
+            delayed: false,
+        });
+        g.validate(&reg).expect("well-typed");
+
+        let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, drv);
+        assert!(
+            plan.is_fully_gpu(),
+            "canal {ch}: o laço inteiro cozinha no device"
+        );
+
+        let mut cook = Cook::new();
+        let cpu = cook.cook(&g, &reg, drv, PLAYHEAD).expect("cpu cook");
+        let cpu_t = match cpu[0].as_stream().get("tint") {
+            Some(ph2d_nodegraph::attr::Column::Vec4(v)) => v.clone(),
+            _ => panic!("canal {ch}: a CPU não emitiu `tint`"),
+        };
+        // Fixture check: a cor tem de MUDAR, senão um kernel mudo passaria.
+        let mut src = Cook::new();
+        let before = src
+            .cook(&g, &reg, tint, PLAYHEAD)
+            .expect("cpu cook da rampa");
+        let src_t = match before[0].as_stream().get("tint") {
+            Some(ph2d_nodegraph::attr::Column::Vec4(v)) => v.clone(),
+            _ => panic!("a rampa não emitiu `tint`"),
+        };
+        let moved = cpu_t
+            .iter()
+            .zip(&src_t)
+            .map(|(a, b)| (0..3).map(|k| (a[k] - b[k]).abs()).fold(0.0_f32, f32::max))
+            .fold(0.0_f32, f32::max);
+        assert!(
+            moved > 0.05,
+            "fixture check do canal {ch}: o drive tem de MOVER a cor (maior Δ {moved})"
+        );
+
+        let mut gc = ph2d_gpu_cook::GpuCook::new();
+        gc.retain_streams_for_debug(true);
+        gc.cook(
+            &gpu,
+            &g,
+            &reg,
+            &reg,
+            &plan,
+            &[],
+            CookClock::at(PLAYHEAD),
+            DEFAULT_UV,
+            DEFAULT_SIZE,
+        )
+        .expect("gpu cook");
+        let gpu_t = gc
+            .read_column_vec4(&gpu, drv, "tint")
+            .expect("`tint` reads back");
+        assert_eq!(gpu_t.len(), cpu_t.len(), "canal {ch}: contagem");
+
+        let (worst_i, worst) = gpu_t
+            .iter()
+            .zip(&cpu_t)
+            .enumerate()
+            .map(|(i, (a, b))| {
+                (
+                    i,
+                    (0..4).map(|k| (a[k] - b[k]).abs()).fold(0.0_f32, f32::max),
+                )
+            })
+            .fold((0, 0.0_f32), |acc, x| if x.1 > acc.1 { x } else { acc });
+        assert!(
+            worst < 1e-5,
+            "canal {ch}: pior instance {worst_i} tem cpu {:?} vs gpu {:?} (|Δ| {worst:e})",
+            cpu_t[worst_i],
+            gpu_t[worst_i]
+        );
+    }
+}
+
 /// **`motion.look_at` — the first kernel with two CONNECTED stream inputs, and
 /// the first that BROADCASTS.**
 ///

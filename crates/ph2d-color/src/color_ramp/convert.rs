@@ -131,7 +131,16 @@ pub fn rgb_to_hsv(c: [f32; 4]) -> (f32, f32, f32) {
     (rgb_hue(c, max, delta), s, max)
 }
 
-pub(super) fn hsv_to_rgba(h: f32, s: f32, v: f32, a: f32) -> [f32; 4] {
+/// **(hue, saturation, value) → RGBA linear** — a inversa exata do [`rgb_to_hsv`].
+///
+/// ⚠️ **`pub` pela MESMA razão que a ida** (o canal HSV do `motion.drive`): quem LÊ o matiz
+/// e quem o ESCREVE de volta têm de concordar, senão um grafo que desloca o matiz e o lê
+/// outra vez encontra dois matizes. Transcendental-free (HR-5).
+///
+/// ⚠️ **O matiz é ENVOLVIDO aqui** (`rem_euclid`), então o chamador pode somar livremente —
+/// e é por isso que o `motion.drive` não envolve nada por conta própria. ⚠️ **A saturação,
+/// não:** `s > 1` faz `p = v·(1−s)` ficar NEGATIVO, então quem chama é que decide o clamp.
+pub fn hsv_to_rgba(h: f32, s: f32, v: f32, a: f32) -> [f32; 4] {
     let h = h.rem_euclid(1.0) * 6.0;
     let i = h.floor();
     let f = h - i;

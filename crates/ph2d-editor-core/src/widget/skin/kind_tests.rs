@@ -27,6 +27,16 @@ fn the_codes_are_pinned_and_unique() {
     assert_eq!(WidgetKind::LevelMeter.code(), 14);
     assert_eq!(WidgetKind::ColorSwatch.code(), 15);
     assert_eq!(WidgetKind::IconButton.code(), 16);
+    // ⚠️ **A família de LISTA estava fora do pino, e a unicidade não a cobre.** Trocar `Tabs` por
+    // `Dropdown` entre si mantém os códigos únicos, mantém `ALL.len()` e mantém o round-trip total
+    // (o `from_code` é `ALL.find(...)`, logo tautológico dada a unicidade) — e **toda arte já
+    // salva com uma faixa de abas reabre como dropdown**, porque o `kind` é `Serialize` e viaja no
+    // `WorldSnapshot` de todo projeto. O doc do próprio componente nomeia o desastre: *"reordenar
+    // o catálogo re-pintaria em silêncio toda arte já salva"*.
+    assert_eq!(WidgetKind::Tabs.code(), 17);
+    assert_eq!(WidgetKind::RadioGroup.code(), 18);
+    assert_eq!(WidgetKind::SegmentedAdaptive.code(), 19);
+    assert_eq!(WidgetKind::Dropdown.code(), 20);
 
     let mut seen = std::collections::BTreeSet::new();
     for kind in WidgetKind::ALL {

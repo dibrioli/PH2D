@@ -173,6 +173,16 @@ fn a_seconds_row_wears_its_suffix_and_reaches_below_its_slider() {
 /// **The control.** Every param that declared nothing is byte-identical to the
 /// world before this wave: neutral scale, no suffix, the hint's own numbers. If
 /// this fails, the wave moved something it had no business moving.
+///
+/// ⚠️ **O `max` mudou DEPOIS deste gate nascer, e a mudança era o produto.** A
+/// wave *"o slider arrasta onde a MÃO trabalha"* baixou o teto de ARRASTO do
+/// `rate` de 12.000 para 1.200 de propósito — o `life` default é 3 s, então
+/// 12.000/s eram 36.000 vivas contra um `max` default de 512: os dois sliders
+/// descreviam cenas diferentes. Nada ficou inalcançável (a caixa numérica digita
+/// até o `hard_max` de 4.000.000, que este gate ainda afirma).
+///
+/// O que este gate diz continua sendo *a fronteira de exibição não toca um param
+/// que não declarou nada* — os números são os do HINT, e o hint se moveu.
 #[test]
 fn an_undeclared_row_is_untouched_by_the_display_boundary() {
     let row = scalar_row("motion.emitter", "rate", ProjectSettings::default());
@@ -180,7 +190,7 @@ fn an_undeclared_row_is_untouched_by_the_display_boundary() {
     assert_eq!(row.display.suffix, "");
     assert_eq!(row.display.scale, 1.0);
     assert_eq!(row.min, 0.0);
-    assert_eq!(row.max, 12_000.0);
+    assert_eq!(row.max, 1_200.0, "o teto de ARRASTO, onde a mao trabalha");
     assert_eq!(row.step, 1.0);
     assert_eq!(row.hard_max, 4_000_000.0, "the ceiling still reaches");
 }

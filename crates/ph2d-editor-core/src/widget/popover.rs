@@ -63,7 +63,12 @@ pub fn pop_popover_clip(scene: &mut VectorScene) {
 pub fn anchor_below(trigger: Rect, content: (f32, f32), viewport: Rect, gap: f32) -> Rect {
     let (w, h) = content;
     let center_x = trigger.x + (trigger.w - w) * 0.5;
-    let clamped_x = center_x.max(viewport.x).min(viewport.x + viewport.w - w);
+    // ⚠️ **A ORDEM do clamp É a lei.** Com `.max(esquerda).min(direita)` o `min` fala por último,
+    // e numa superfície mais LARGA que o viewport (`w > viewport.w`) o limite direito fica à
+    // ESQUERDA do esquerdo — o `min` vence e a popover começa fora da tela, pelo lado em que o
+    // conteúdo é lido primeiro. Invertida, o piso fala por último: ela encosta na borda esquerda
+    // e transborda pela direita, que é onde uma lista larga é cortada em toda interface.
+    let clamped_x = center_x.min(viewport.x + viewport.w - w).max(viewport.x);
     let y = trigger.y + trigger.h + gap;
     // Flip above the trigger if there isn't room below.
     let y = if y + h > viewport.y + viewport.h {
@@ -119,6 +124,26 @@ mod tests {
             Rect::new(10.0, 10.0, 200.0, 100.0),
             &mut scene,
             Theme::Forge,
+        );
+    }
+
+    /// **Uma popover mais larga que o viewport encosta na borda ESQUERDA, não sai por ela.**
+    ///
+    /// ⚠️ **O que este gate afirma é a ORDEM do clamp**, e ela é a lei: com `.max(esq).min(dir)` o
+    /// `min` fala por último, e quando o conteúdo é mais largo que a tela o limite direito fica à
+    /// ESQUERDA do esquerdo — a superfície começa fora da tela, pelo lado em que ela é lida
+    /// primeiro. Invertida, o piso fala por último e o transbordo cai à direita, que é onde toda
+    /// interface corta uma lista larga.
+    #[test]
+    fn a_popover_wider_than_the_viewport_pins_to_the_left_edge() {
+        let viewport = Rect::new(0.0, 0.0, 300.0, 600.0);
+        let trigger = Rect::new(120.0, 50.0, 60.0, 20.0);
+        let r = anchor_below(trigger, (900.0, 80.0), viewport, 4.0);
+        assert!(
+            r.x >= viewport.x - 1e-3,
+            "a popover comecou em {}, fora do viewport ({})",
+            r.x,
+            viewport.x
         );
     }
 }

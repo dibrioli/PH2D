@@ -98,8 +98,12 @@ impl Tag {
         }
         let pad_x = (host.h * 0.5).max(8.0); // LITERAL-PX-OK: tag pill horizontal pad scales with height (chrome geometry)
         let close_size = (host.h * 0.7).clamp(10.0, 16.0); // LITERAL-PX-OK: close icon scales 70% of pill height with min/max
+        // ⚠️ O `X` mora numa ESQUINA e o host é variável: `pad_x + close_size` pode passar da
+        // largura da pílula, e aí a borda esquerda do ícone cai FORA dela — por cima do rótulo,
+        // que é o vizinho da esquerda. O piso é `host.x`; num host mais estreito que o próprio
+        // ícone nada cabe, e transbordar pela DIREITA (na borda da pílula) é o menor dos males.
         Some(Rect::new(
-            host.x + host.w - pad_x - close_size,
+            (host.x + host.w - pad_x - close_size).max(host.x),
             host.y + (host.h - close_size) * 0.5,
             close_size,
             close_size,
@@ -270,5 +274,31 @@ mod tests {
             Tag::new(NodeId(1), "x").state(TagState::Disabled),
             Theme::Forge,
         );
+    }
+
+    /// **O `X` de uma tag nunca começa à esquerda da pílula.**
+    ///
+    /// ⚠️ O ícone mora numa ESQUINA e o host é variável: `pad_x + close_size` cresce com a ALTURA
+    /// da pílula, não com a largura, então uma tag baixa e estreita punha a borda esquerda do `X`
+    /// fora — por cima do rótulo, que é o vizinho da esquerda. O oráculo é a contenção do lado
+    /// que colide, não a fórmula.
+    #[test]
+    fn the_close_icon_never_starts_left_of_the_pill() {
+        let t = Tag::new(NodeId(1), "L").removable(true);
+        for (hw, hh) in [
+            (80.0_f32, 22.0_f32),
+            (30.0, 22.0),
+            (16.0, 22.0),
+            (4.0, 40.0),
+        ] {
+            let host = Rect::new(10.0, 5.0, hw, hh);
+            let r = t.close_rect(host).expect("removivel tem X");
+            assert!(
+                r.x >= host.x - 1e-3,
+                "host {hw}x{hh}: o X comeca em {}, a esquerda da pilula ({})",
+                r.x,
+                host.x
+            );
+        }
     }
 }

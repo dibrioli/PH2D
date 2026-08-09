@@ -106,8 +106,17 @@ impl NumericInputWithUnit {
     }
 
     /// Rect occupied by the unit chip.
+    ///
+    /// ⚠️ **A largura do chip é um número FIXO (`Spacing::Xl3`) e o host é VARIÁVEL**, então ela é
+    /// aparada pelo que o host tem. Sem isso, medido, um host mais estreito que 32 px punha a
+    /// borda esquerda do chip **fora** dele — até 32 px de derrame em `host.w = 0` —, e o derrame
+    /// é para a ESQUERDA, exactamente onde o campo numérico é desenhado.
+    ///
+    /// ⚠️ **Isto é LATENTE hoje e o fato fica escrito:** o único consumidor deste widget é o
+    /// showcase, onde o host é generoso. O que a aparadura compra é o próximo chamador nascer com
+    /// geometria correta em vez de descobrir isto num painel apertado.
     pub fn unit_rect(&self, host: Rect) -> Rect {
-        let chip = self.chip_w();
+        let chip = self.chip_w().min(host.w.max(0.0));
         Rect::new(host.x + host.w - chip, host.y, chip, host.h)
     }
 
@@ -266,5 +275,34 @@ mod tests {
     #[test]
     fn paint_smoke_disabled() {
         smoke(Unit::Degrees, TextInputState::Disabled, Theme::Sunstone);
+    }
+
+    /// **O chip de unidade nunca começa fora do host.**
+    ///
+    /// ⚠️ Um slot de largura FIXA (`Spacing::Xl3`) dentro de um host VARIÁVEL: medido antes da
+    /// aparadura, um host de 24 px punha a borda esquerda do chip 8 px fora, e um de 0 px punha-a
+    /// 32 px fora — para a ESQUERDA, sobre o campo numérico. O oráculo é a CONTENÇÃO (as duas
+    /// bordas dentro do host), não a fórmula: ele continua honesto se a largura do chip mudar.
+    #[test]
+    fn the_unit_chip_never_starts_outside_the_host() {
+        let w = NumericInputWithUnit::new(
+            NumberInput::new(ph2d_a11y::NodeId(1), "X", 0.0),
+            Unit::Degrees,
+        );
+        for hw in [200.0_f32, 40.0, 32.0, 24.0, 10.0, 0.0] {
+            let host = Rect::new(100.0, 50.0, hw, 24.0);
+            let u = w.unit_rect(host);
+            assert!(
+                u.x >= host.x - 1e-3,
+                "host.w={hw}: o chip comeca em {} , a esquerda do host ({})",
+                u.x,
+                host.x
+            );
+            assert!(
+                u.x + u.w <= host.x + host.w + 1e-3,
+                "host.w={hw}: o chip termina em {}, depois do fim do host",
+                u.x + u.w
+            );
+        }
     }
 }

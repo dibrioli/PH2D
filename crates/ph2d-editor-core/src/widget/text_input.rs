@@ -198,7 +198,22 @@ pub fn paint_text_input_with_buffer(
         let sel_x = text_x + prefix_w;
         let sel_w = mid_w;
         if sel_w > 0.0 {
-            let sel_rect = Rect::new(sel_x, rect.y + pad_y, sel_w, rect.h - pad_y * 2.0);
+            // ⚠️ O `pad_y` é fixo e a altura do host é variável: num campo mais baixo que dois
+            // paddings a subtração fica NEGATIVA — um retângulo que se estende para CIMA do
+            // próprio topo.
+            //
+            // ⚠️ **MEDIDO, e o piso é HIGIENE, não a cura de um defeito visível:** o `push_clip`
+            // acima já apara a seleção à caixa interna, então um retângulo invertido é recortado
+            // antes de chegar à tela — um gate escrito contra a CENA não consegue distinguir as
+            // duas versões, e o que eu tinha escrito passava com o defeito reinstalado. Ele fica
+            // porque geometria malformada é lida errada pelo próximo consumidor do retângulo (um
+            // hit-test, um recorte diferente), e custa uma chamada.
+            let sel_rect = Rect::new(
+                sel_x,
+                rect.y + pad_y,
+                sel_w,
+                (rect.h - pad_y * 2.0).max(0.0),
+            );
             fill_rounded_rect(scene, sel_rect, 1.0, resolve(ColorToken::AccentSoft, theme));
         }
     }
@@ -233,11 +248,13 @@ pub fn paint_text_input_with_buffer(
     }
 
     if let Some(caret_w) = caret_w {
+        // ⚠️ Mesma aritmética da seleção acima, o mesmo piso e a MESMA medição: o recorte apara,
+        // então isto é higiene de geometria, não a cura de algo que se vê.
         let caret_rect = Rect::new(
             text_x + caret_w,
             rect.y + pad_y,
             CARET_W,
-            rect.h - pad_y * 2.0,
+            (rect.h - pad_y * 2.0).max(0.0),
         );
         scene.fill_rect(
             crate::paint::rect_to_vello(caret_rect),

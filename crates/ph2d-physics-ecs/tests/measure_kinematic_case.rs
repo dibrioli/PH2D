@@ -101,10 +101,10 @@ fn measure_the_ramp_creep_today() {
 #[test]
 #[ignore = "sonda de medição"]
 fn measure_the_impact_penetration_today() {
-    println!("\n=== PENETRACAO NO IMPACTO (corpo DINAMICO) ===");
+    println!("\n=== PENETRACAO NO IMPACTO, NOS DOIS MODOS (§7.3) ===");
     println!(
-        "{:>10} {:>9} {:>14} {:>14}",
-        "queda (m)", "damping", "pior folga", "perdido (mm)"
+        "{:>10} {:>9} {:>12} {:>14} {:>14}",
+        "queda (m)", "damping", "modo", "pior folga", "perdido (mm)"
     );
     // ⚠️ **A coluna do amortecimento é o CONTROLE, e sem ela a tabela mente por
     // vácuo:** no teto o boost mata a velocidade relativa inteira em UM tique, e
@@ -112,9 +112,19 @@ fn measure_the_impact_penetration_today() {
     // default diria *"não há penetração"* quando o que ela mede é *"o knob está
     // no teto"* — e é essa distinção que decide se o modo cinemático compra algo.
     let ceiling = RideConfig::MAX_DAMPING;
-    for (drop, damping) in [0.5_f32, 2.0, 5.0, 10.0]
+    // ⚠️ **A régua é o repouso DAQUELE modo, e a primeira versão errou nisso.**
+    // Ela media `FLOAT_HEIGHT − pior`, e o `FLOAT_HEIGHT` é onde a cápsula
+    // FLUTUANTE descansa — o cinemático não flutua, ele assenta a ~0,51, então
+    // a tabela lhe cobrava **387 mm de penetração** por estar exactamente onde
+    // devia estar. Uma régua tomada do outro modo mede a diferença entre os
+    // modos e chama-lhe defeito.
+    let rest = |kin: bool| lowest_gap(0.0, ceiling, kin);
+    let (rest_dyn, rest_kin) = (rest(false), rest(true));
+    println!("  (repouso: dinamico {rest_dyn:.4} · cinematico {rest_kin:.4})");
+    for (drop, damping, kinematic) in [0.5_f32, 2.0, 5.0, 10.0]
         .into_iter()
         .flat_map(|d| [(d, ceiling), (d, 0.25 * ceiling)])
+        .flat_map(|(d, k)| [(d, k, false), (d, k, true)])
     {
         let mut sim = SimWorld::new();
         sim.world_mut().spawn((
@@ -151,17 +161,101 @@ fn measure_the_impact_penetration_today() {
             },
             Transform::from_translation(Vec2::new(0.0, FLOAT_HEIGHT + drop)),
         ));
+        if kinematic {
+            // Os DOIS campos, por UMA porta — escrever só o componente deixaria
+            // o corpo dinâmico e o `pose_owner` responderia `Solver`.
+            let who = {
+                let mut q = sim
+                    .world()
+                    .try_query::<(ph2d_ecs::Entity, &Name)>()
+                    .unwrap();
+                let mut found = None;
+                for (e, n) in q.iter(sim.world()) {
+                    if n.as_str() == "Player" {
+                        found = Some(e);
+                    }
+                }
+                found.expect("player")
+            };
+            let mut e = sim.world_mut().entity_mut(who);
+            e.insert(ph2d_physics_ecs::PlayerMode::Kinematic);
+            if let Some(mut rb) = e.get_mut::<RigidBody>() {
+                rb.kind = BodyKind::Kinematic;
+            }
+        }
+        let tag = if kinematic { "CINEMATICO" } else { "dinamico" };
         let mut bridge = PhysicsBridge::new();
         let mut worst = f32::INFINITY;
         for t in 1..=600u64 {
             bridge.dispatch(&mut sim, true, t);
             worst = worst.min(pose(&sim).1);
         }
+        let base = if kinematic { rest_kin } else { rest_dyn };
         println!(
-            "{drop:>10.1} {damping:>9.2} {worst:>14.4} {:>14.1}",
-            (FLOAT_HEIGHT - worst) * 1000.0
+            "{drop:>10.1} {damping:>9.2} {tag:>12} {worst:>14.4} {:>14.1}",
+            (base - worst) * 1000.0
         );
     }
+}
+
+/// A altura MAIS BAIXA a que o personagem chega, largado de `drop` acima da
+/// altura de flutuação. Com `drop = 0` ela é o REPOUSO daquele modo — a régua
+/// que a penetração usa.
+fn lowest_gap(drop: f32, damping: f32, kinematic: bool) -> f32 {
+    let mut sim = SimWorld::new();
+    sim.world_mut().spawn((
+        Name::new("Floor"),
+        RigidBody {
+            kind: BodyKind::Static,
+        },
+        Collider {
+            shape: ColliderShape::Cuboid {
+                half_x: 40.0,
+                half_y: 0.5,
+            },
+            ..Collider::default()
+        },
+        Transform::from_translation(Vec2::new(0.0, -0.5)),
+    ));
+    let who = sim
+        .world_mut()
+        .spawn((
+            Name::new("Player"),
+            RigidBody {
+                kind: if kinematic {
+                    BodyKind::Kinematic
+                } else {
+                    BodyKind::Dynamic
+                },
+            },
+            Collider {
+                shape: ColliderShape::Capsule {
+                    half_height: 0.3,
+                    radius: 0.2,
+                },
+                ..Collider::default()
+            },
+            LockRotation,
+            PlatformPlayer {
+                float_height: FLOAT_HEIGHT,
+                spring_damping: damping,
+                ..PlatformPlayer::default()
+            },
+            Transform::from_translation(Vec2::new(0.0, FLOAT_HEIGHT + drop)),
+        ))
+        .id();
+    if kinematic {
+        sim.world_mut()
+            .entity_mut(who)
+            .insert(ph2d_physics_ecs::PlayerMode::Kinematic);
+    }
+    let mut bridge = PhysicsBridge::new();
+    let mut worst = f32::INFINITY;
+    for t in 1..=600u64 {
+        bridge.dispatch(&mut sim, true, t);
+        worst = worst.min(pose(&sim).1);
+    }
+    worst
 }
 
 fn raft_y(sim: &SimWorld, raft: ph2d_ecs::Entity) -> f32 {

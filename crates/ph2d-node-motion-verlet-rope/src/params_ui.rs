@@ -82,6 +82,16 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
             labels: &["Free", "Pinned"],
         },
     },
+    // ⚠️ A pista começa em `0` porque `0` é o DESLIGADO — um piso aqui esconderia
+    // o neutro, e é ele que mantém toda corda já autorada byte-idêntica.
+    ParamUiHint {
+        param: "bend",
+        label: "Bend Stiffness",
+        min: 0.0,
+        max: 1.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
 ];
 
 /// **What each of this node's numbers IS** (doc 88, Wave A) — never how it is

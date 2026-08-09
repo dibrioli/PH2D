@@ -127,6 +127,13 @@ pub fn populate(store: &mut WidgetStore) {
             debug_assert!(Row::is_control(row), "registado sem ser controle");
             store.register(row.id, st);
         }
+        // ⚠️ **Um cabeçalho não é registado como widget** — ele não tem `InteractiveState`, e o
+        // despacho o trata ANTES do `switch` justamente por isso. O que ele precisa é de ser
+        // MARCADO: sem esta linha o chevron desenha, o retângulo de hit existe, o clique chega —
+        // e não dobra nada, porque o despacho não sabe que aquele id é uma seção.
+        if row.folds_a_section() {
+            store.mark_collapsible_section(row.id);
+        }
     }
 }
 

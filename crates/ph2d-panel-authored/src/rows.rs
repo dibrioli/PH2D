@@ -72,6 +72,30 @@ impl Row {
     /// no dia em que um tipo mudasse de lado — e o modo de falha de cada divergência é diferente
     /// (registado-e-sem-rect = nunca clicado · rect-e-sem-registo = clique descartado em silêncio
     /// · rotado-e-sem-registo = braço morto).
+    /// **Esta row DOBRA a seção sob ela?**
+    ///
+    /// ⚠️ **Pergunta SEPARADA da [`Self::is_control`], e a separação é o ponto:** um cabeçalho de
+    /// seção não é um controle — ele não tem valor, não emite intent, e registá-lo como widget
+    /// daria um `InteractiveState` que ninguém lê. Mas ele **é clicável**, porque dobrar é um
+    /// gesto de VISTA e não uma edição do documento.
+    ///
+    /// Colapsar as duas perguntas numa quebraria uma das duas metades: ou o cabeçalho vira um
+    /// controle que emite um intent que ninguém pediu, ou ele fica sem retângulo de hit e a seção
+    /// nunca dobra — *pintada, com o chevron desenhado, e morta sob o rato*.
+    #[must_use]
+    pub fn folds_a_section(&self) -> bool {
+        matches!(self.kind, WidgetKind::SectionHeader)
+    }
+
+    /// **Esta row quer o PONTEIRO?** — a porta única do retângulo de hit.
+    ///
+    /// A soma das duas perguntas acima, e ela existe para o `paint` não as repetir: um `||`
+    /// escrito no laço de pintura seria a regra que o próximo caso especial nasce sem.
+    #[must_use]
+    pub fn wants_pointer(&self) -> bool {
+        self.is_control() || self.folds_a_section()
+    }
+
     #[must_use]
     pub fn is_control(&self) -> bool {
         matches!(

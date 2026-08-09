@@ -88,12 +88,17 @@ fn every_control_row_is_alive_under_a_real_pointer() {
 
 /// **E a que só DESENHA não é clicável.**
 ///
-/// ⚠️ A metade oposta, e ela é o que separa *"esta row é um controle"* de *"esta row existe"*: um
-/// painel que registasse tudo passaria no gate acima e daria um cabeçalho de seção que acende sob
-/// o rato e não faz nada.
+/// ⚠️ A metade oposta, e ela é o que separa *"esta row responde"* de *"esta row existe"*: um painel
+/// que registasse tudo daria uma `ColorSwatch` que acende sob o rato e não faz nada.
+///
+/// ⚠️ **A pergunta é ao `wants_pointer`, e não ao `is_control` — a premissa antiga MORREU.** Ela
+/// dizia *"não-controle ⇒ não clicável"*, e o colapso de seção a tornou falsa: um cabeçalho não é
+/// um controle (não tem valor, não emite intent) **e é clicável**, porque dobrar é um gesto de
+/// vista. Manter o `is_control` aqui teria sido pedir que a seção deixasse de dobrar para o gate
+/// ficar verde — o oposto da cura.
 #[test]
 fn a_display_only_row_is_not_clickable() {
-    let Some(row) = rows::rows().iter().find(|r| !r.is_control()) else {
+    let Some(row) = rows::rows().iter().find(|r| !r.wants_pointer()) else {
         panic!("a tabela gerada perdeu a row de desenho puro — o CONTROLE deste gate");
     };
     let (mut h, mut st) = host();
@@ -102,6 +107,92 @@ fn a_display_only_row_is_not_clickable() {
             .is_none(),
         "a row `{}` so' desenha e publicou retangulo de hit",
         row.key
+    );
+}
+
+/// **O CABEÇALHO é clicável, e o clique DOBRA a seção — sumindo com as rows dela.**
+///
+/// ⚠️ Três coisas num gate porque as três falham separadas e o produto só funciona com as três: o
+/// retângulo de hit (senão o chevron desenha e o rato não o alcança), a MARCA de seção colapsável
+/// (senão o clique chega e o despacho não sabe que aquele id dobra — o caso mais enganoso, porque
+/// tudo parece ligado), e as rows a sumirem de facto.
+///
+/// ⚠️ E o cabeçalho **continua pintado** dobrado: ele é a alça de volta. Um colapso que escondesse
+/// o próprio cabeçalho seria uma seção que o artista fecha e não consegue reabrir.
+#[test]
+fn clicking_a_section_header_folds_the_rows_under_it() {
+    let Some(header) = rows::rows().iter().find(|r| r.folds_a_section()) else {
+        panic!("a tabela gerada perdeu o cabecalho de secao — o SUJEITO deste gate");
+    };
+    let Some(under) = rows::rows()
+        .iter()
+        .skip_while(|r| r.id != header.id)
+        .find(|r| r.wants_pointer() && r.id != header.id)
+    else {
+        panic!("nao ha row clicavel sob o cabecalho — o gate mediria o vazio");
+    };
+
+    let (mut h, mut st) = host();
+    let hr = h
+        .painted_rect::<AuthoredPanel>(&mut st, VIEWPORT, header.id)
+        .expect("o cabecalho nao publicou retangulo de hit — o chevron desenha e nao dobra");
+    assert!(
+        h.painted_rect::<AuthoredPanel>(&mut st, VIEWPORT, under.id)
+            .is_some(),
+        "a row sob o cabecalho ja' estava escondida antes do clique"
+    );
+
+    let (cx, cy) = (hr.x + hr.w * 0.5, hr.y + hr.h * 0.5);
+    h.dispatch_pointer_event(pointer(PointerKind::Down, cx, cy, SEC));
+    h.dispatch_pointer_event(pointer(PointerKind::Up, cx, cy, SEC + SEC / 100));
+
+    assert!(
+        h.painted_rect::<AuthoredPanel>(&mut st, VIEWPORT, header.id)
+            .is_some(),
+        "o cabecalho sumiu com a propria secao — nao ha alca de volta"
+    );
+    assert!(
+        h.painted_rect::<AuthoredPanel>(&mut st, VIEWPORT, under.id)
+            .is_none(),
+        "a secao nao dobrou: a row `{}` continua pintada",
+        under.key
+    );
+}
+
+/// **DOBRAR ENCOLHE a altura reportada** — a propriedade de que o scrollbar depende.
+///
+/// ⚠️ Este gate não é redundante com o de cima, e a diferença é o modo de falha: uma implementação
+/// que escondesse as rows **e continuasse a avançar o `y`** passaria lá (elas não são pintadas) e
+/// cairia aqui — o painel ficaria com um buraco do tamanho da seção e um scrollbar a prometer
+/// conteúdo que não existe. É a lição do `the_reported_height_is_the_true_height_of_the_rows`: uma
+/// altura que não é a das rows convence o painel de coisas que não são verdade.
+#[test]
+fn folding_a_section_shrinks_the_reported_height() {
+    let Some(header) = rows::rows().iter().find(|r| r.folds_a_section()) else {
+        panic!("a tabela gerada perdeu o cabecalho de secao");
+    };
+    let (mut h, mut st) = host();
+    let hr = h
+        .painted_rect::<AuthoredPanel>(&mut st, VIEWPORT, header.id)
+        .expect("o cabecalho nao publicou retangulo de hit");
+    let open_h = h
+        .store()
+        .panel_content_h(ids::AUTHORED_PANEL)
+        .expect("o painel nao publicou a altura do conteudo");
+
+    let (cx, cy) = (hr.x + hr.w * 0.5, hr.y + hr.h * 0.5);
+    h.dispatch_pointer_event(pointer(PointerKind::Down, cx, cy, SEC));
+    h.dispatch_pointer_event(pointer(PointerKind::Up, cx, cy, SEC + SEC / 100));
+    h.painted_rect::<AuthoredPanel>(&mut st, VIEWPORT, header.id);
+    let folded_h = h
+        .store()
+        .panel_content_h(ids::AUTHORED_PANEL)
+        .expect("o painel nao publicou a altura do conteudo");
+
+    assert!(
+        folded_h < open_h,
+        "dobrar nao encolheu o conteudo ({open_h} -> {folded_h}) — as rows sumiram e o `y` \
+         continuou a andar, deixando um buraco e um scrollbar a mentir"
     );
 }
 

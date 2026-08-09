@@ -334,6 +334,13 @@ fn announce(app: &mut crate::App) {
     eprintln!("     escolha outro glifo: o canvas E o painel mudam juntos. Escolha **Drawing** no");
     eprintln!("     topo da lista e ele volta a desenhar a estrela — tirar a escolha E' voltar ao");
     eprintln!("     desenho, nao um terceiro estado.");
+    eprintln!(" 17. ⚠️ **A SECAO DOBRA**: clique no cabecalho **Appearance** do painel. Todas as");
+    eprintln!("     rows sob ele somem e o painel ENCOLHE — nao fica um buraco do tamanho delas.");
+    eprintln!(
+        "     O cabecalho continua la' (e' a alca de volta); clique outra vez e elas voltam."
+    );
+    eprintln!("     ⚠️ E o colapso e' o do APP, o mesmo dos 23 paineis escritos a' mao — nao um");
+    eprintln!("     segundo que dobraria por regras proprias.");
 }
 
 #[cfg(test)]

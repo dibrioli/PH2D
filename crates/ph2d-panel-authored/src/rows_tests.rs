@@ -178,3 +178,39 @@ fn the_paint_hands_what_it_knows_to_the_skin() {
          painel poderiam escolher rotas diferentes, com toda a suite verde"
     );
 }
+
+/// **Quem DOBRA é exactamente o cabeçalho de seção — e ele NÃO é um controle.**
+///
+/// ⚠️ As duas metades, e a segunda é a que mantém o modelo: se `folds_a_section` e `is_control`
+/// coincidissem em alguém, aquele tipo emitiria um intent ao ser dobrado (uma edição do documento
+/// causada por um gesto de VISTA) ou ganharia um `InteractiveState` que o despacho de colapso
+/// ignora — e o clique cairia no `switch` errado.
+#[test]
+fn only_the_section_header_folds_and_it_is_never_a_control() {
+    let row = |kind| Row {
+        kind,
+        label: "x",
+        key: "x",
+        id: ph2d_a11y::NodeId(1),
+        rgba: None,
+        icon: None,
+        icon_id: None,
+    };
+    for kind in WidgetKind::ALL {
+        let r = row(kind);
+        assert_eq!(
+            r.folds_a_section(),
+            kind == WidgetKind::SectionHeader,
+            "{kind:?} discorda sobre dobrar uma secao"
+        );
+        assert!(
+            !(r.folds_a_section() && r.is_control()),
+            "{kind:?} e' controle E dobra — o clique dele cairia no switch errado"
+        );
+        assert_eq!(
+            r.wants_pointer(),
+            r.is_control() || r.folds_a_section(),
+            "{kind:?}: a porta do ponteiro divergiu das duas perguntas que ela soma"
+        );
+    }
+}

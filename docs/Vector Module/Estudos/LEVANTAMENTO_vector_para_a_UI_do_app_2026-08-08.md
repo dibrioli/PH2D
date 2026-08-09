@@ -104,7 +104,7 @@ falta é a fatia.
 |---|---|
 | rola | ✅ (`AUTHORED_SCROLLBAR_ID`, `scrollbar_is_needed`) |
 | fecha pelo X | ✅ (e escreve a MESMA visibilidade que o abridor lê) |
-| **colapsa seção** | ❌ — **9 dos 23** painéis reais usam colapso; o `SectionHeader` vestível é só o cabeçalho |
+| **colapsa seção** | ✅ (2026-08-09) — um cabeçalho manda nas rows **até o próximo**, pelo colapso do APP (`WidgetStore::is_collapsed`) |
 | **o valor sobrevive ao arquivo** | ❌ — ele vive no `WidgetStore`, que é de runtime. Nomeado no `vec_widget_drive.rs`: *"reabrir o projeto devolve os controles ao default"* |
 
 ### 3.3 ⚠️ O canal de intent **não tem consumidor**, e o doc dele MENTE
@@ -134,7 +134,7 @@ próximo item da fila que o Enio deu.
 | ordem | wave | ganho medido | custo |
 |---|---|---|---|
 | **1** | **os quatro por OMISSÃO** | 67,1% → **85,4%** de cobertura | fiação; o molde da W6.2 já existe |
-| **2** | **colapso de seção** | 9 dos 23 painéis reais | comportamento, não tipo novo |
+| ~~2~~ | **colapso de seção** | 9 dos 23 painéis reais | ✅ **feito** (2026-08-09) |
 | **3** | a família da **LISTA** (filhos autorados) | 85,4% → **~100%** | desenho novo: *como uma sub-árvore diz "estas são as minhas opções"* |
 | **4** | multi-painel | N painéis por build | a decisão está tomada (§3.1) |
 | **5** | persistir o valor de uma row | o painel lembra | W4b/W8a |
@@ -240,6 +240,6 @@ desenho* — sem um terceiro estado a dizer qual rota está activa, então elas 
 |---|---|---|---|
 | ~~1~~ | `NumberInput` + `LevelMeter` | 67,1% → **72,4%** | ✅ **feito** |
 | **1** | `ColorSwatch` pelo canal do §6.1 | 72,4% → **80,6%** | as duas metades juntas |
-| **2** | colapso de seção | — | 9 dos 23 painéis reais |
+| **2** | colapso de seção | — | ✅ **feito** — comportamento, zero tipo novo |
 | **3** | `IconButton` | 80,6% → **85,4%** | ✅ **feito** — as DUAS rotas (§6.2) |
 | **4** | a família da **LISTA** | → **~100%** | filhos autorados |

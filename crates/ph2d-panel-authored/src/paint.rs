@@ -123,15 +123,32 @@ pub(crate) fn paint(_state: &mut AuthoredPanelState, ctx: &mut PaintCtx) {
     );
 }
 
+/// **UM cabeçalho manda nas rows ATÉ o próximo** — o colapso de seção (plano UI/UX, §6.3 item 2).
+///
+/// ⚠️ **O cabeçalho é sempre pintado, dobrado ou não**: ele é a alça de volta. E as rows dobradas
+/// nem pintam **nem avançam o `y`** — é isso que faz a seção *encolher* em vez de deixar um vão, e
+/// é também o que mantém a altura honesta: o `content_h` sai do MESMO caminho (`y_after`), então o
+/// scrollbar não pode descrever um corpo que não foi desenhado.
+///
+/// ⚠️ **O estado do colapso é o do app, e não um segundo** (`WidgetStore::is_collapsed`, alternado
+/// pelo despacho genérico via `mark_collapsible_section`). Um mapa próprio aqui daria um painel
+/// gerado que dobra por regras diferentes das dos vinte e três painéis escritos à mão.
 fn paint_body(ctx: &mut PaintCtx, theme: Theme, x: f32, w: f32, mut y: f32) -> f32 {
+    let mut folded = false;
     for row in rows() {
+        if row.folds_a_section() {
+            folded = ctx.host.store().is_collapsed(row.id);
+        } else if folded {
+            continue;
+        }
         let r = Rect::new(x, y, w, ROW_H_PX);
         let scene = &mut *ctx.scene;
         let text_system = &mut *ctx.text_system;
         let (store, hit_index) = ctx.host.store_and_hit_index_mut();
-        // ⚠️ Só quem RESPONDE ganha retângulo de hit. Um `Divider` registado seria um controle que
-        // acende sob o rato e não faz nada — o item-de-menu-morto pintado com outro nome.
-        if row.is_control() {
+        // ⚠️ Quem RESPONDE ou quem DOBRA ganha retângulo de hit — a pergunta é feita UMA vez, ao
+        // `wants_pointer`. Um `Divider` registado seria um controle que acende sob o rato e não
+        // faz nada; um cabeçalho SEM registo seria um chevron desenhado que não dobra.
+        if row.wants_pointer() {
             hit_index.register(row.id, r);
         }
         paint_widget_skin_with(

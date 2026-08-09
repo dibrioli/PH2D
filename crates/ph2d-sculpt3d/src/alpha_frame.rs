@@ -25,22 +25,39 @@ use ph2d_painter_brush::texture::rotate_by_degrees;
 /// porque a pose deste módulo tem escala ESCALAR. Uma escala não-uniforme
 /// cisalharia o par, e o frame deixaria de ser uma base — a mesma razão pela qual
 /// o collider da física nomeia o skew como limite honesto em vez de fingir.
+///
+/// ⚠️ **Ele é o FRUSTUM, e não uma régua num ponto — e essa é a diferença que o
+/// primeiro corte pagou.** A versão anterior guardava *quantas unidades de objeto
+/// a altura da tela abrange*, um número que só é verdade numa PROFUNDIDADE; quem
+/// o montava tinha de escolher onde perguntar, e os dois consumidores escolheram
+/// pontos diferentes — o dab no ACERTO, o preview no CENTRO da peça. Medido na
+/// cena do smoke: **+24,8%** de diferença de tamanho na frente do modelo e −16,6%
+/// atrás, ou seja *a tinta que o artista via não era a que a ferramenta
+/// depositava* (Enio, 2026-08-09). Guardando o olho e a RAZÃO, a profundidade
+/// entra por vértice e **a pergunta "onde eu meço?" deixa de existir** — a
+/// representação apaga o caso especial, como a bola limitada do Inflate apagou as
+/// quatro cercas do Painter.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct AlphaStencil {
     /// A direita da TELA, em espaço local, unitária.
     pub right: [f32; 3],
     /// O cima da TELA, em espaço local, unitário.
     pub up: [f32; 3],
-    /// **Quantas unidades de OBJETO a ALTURA da tela abrange**, na profundidade
-    /// do modelo.
+    /// **O OLHO**, em espaço local — de onde as linhas de visão saem.
+    pub eye: [f32; 3],
+    /// **Quantas unidades de objeto a ALTURA da tela abrange POR UNIDADE DE
+    /// PROFUNDIDADE** — `2·tan(fov/2)`, a razão que define o frustum.
     ///
-    /// ⚠️ **É esta a régua que torna o estêncil imune ao ZOOM**, e ela é UM
-    /// número de propósito: aproximar reduz quantas unidades de objeto cabem na
-    /// tela, então um ladrilho medido em fração-de-tela encolhe em unidades de
-    /// objeto na mesma proporção — e fica do mesmo tamanho para quem olha. Duas
-    /// grandezas separadas (pixels e uma altura de viewport) seriam dois números
-    /// que precisam concordar.
-    pub view_units: f32,
+    /// ⚠️ **É uma RAZÃO, e é por isso que ela não precisa da pose:** ela é
+    /// adimensional, então vale igual em mundo e em espaço local por mais que a
+    /// peça esteja escalada. A escala entra uma única vez, no [`Self::eye`].
+    ///
+    /// ⚠️ **E é ela que torna o carimbo imune ao ZOOM sem escolher um ponto:**
+    /// aproximar não muda a razão — muda a profundidade de cada vértice —, então
+    /// um ladrilho medido em fração de tela encolhe em unidades de objeto na
+    /// proporção exata e fica do mesmo tamanho para quem olha, **em toda parte do
+    /// modelo ao mesmo tempo**.
+    pub height_per_depth: f32,
 }
 
 impl AlphaStencil {
@@ -50,10 +67,18 @@ impl AlphaStencil {
     /// estêncil de frente**: o retrato do painel. Um swatch que montasse a
     /// própria base seria a segunda resposta a *"como um estêncil é lido?"*, e a
     /// que mente é a que o artista está olhando.
+    ///
+    /// ⚠️ **O olho a uma unidade e a razão em 1,0 não são números bonitos — eles
+    /// tornam o retrato BYTE-IDÊNTICO ao que ele já desenhava.** O swatch amostra
+    /// o plano `z = 0`, cuja profundidade contra este olho é exatamente `1`, e a
+    /// divisão de perspectiva vira `1.0 / (1.0 · 1.0)`: multiplicar por um é
+    /// exato em IEEE-754, então o retrato sai sem distorção nenhuma — que é o que
+    /// um retrato deve ser.
     pub const CANONICAL: Self = Self {
         right: [1.0, 0.0, 0.0],
         up: [0.0, 1.0, 0.0],
-        view_units: 1.0,
+        eye: [0.0, 0.0, 1.0],
+        height_per_depth: 1.0,
     };
 }
 
@@ -101,7 +126,28 @@ pub struct AlphaFrame {
     /// ⚠️ **`[0, 0]` é BYTE-IDÊNTICO ao mundo sem deslocamento:** `x - 0.0` é `x`
     /// ao bit em IEEE-754 para todo finito — inclusive `-0.0`.
     offset: [f32; 2],
+    /// **De onde as linhas de visão saem**, em espaço de objeto — `[0, 0, 0]`
+    /// para os nove procedurais, que não têm olho nenhum.
+    eye: [f32; 3],
+    /// **A razão do frustum**, ou `0.0` para dizer *"não há perspectiva aqui"*.
+    ///
+    /// ⚠️ **Zero é o desligado, e não um `Option`, porque o laço é QUENTE:** o
+    /// `weight_at` corre por vértice sobre milhões deles, e um `Option` obrigaria
+    /// a mesma pergunta a ser feita como `match` no meio da aritmética. Com o
+    /// zero, o caminho dos nove reduz **literalmente** — `p − 0.0` é `p` ao bit e
+    /// o ramo é o mesmo para a malha inteira, logo previsto pelo processador.
+    persp: f32,
 }
+
+/// O piso da profundidade, em unidades de objeto.
+///
+/// ⚠️ **É guarda de REPRESENTAÇÃO, não de gosto:** a câmera pode entrar DENTRO do
+/// modelo (é o que um zoom fundo faz), e ali os vértices atrás do olho têm
+/// profundidade negativa — a divisão viraria o carimbo do avesso e o zero a faria
+/// explodir. Quem está atrás do olho não é visto, então o que o padrão desenha
+/// lá não é uma escolha de aparência: é o que impede um `inf` de escorrer para o
+/// peso de um vértice.
+const MIN_STENCIL_DEPTH: f32 = 1e-4;
 
 impl AlphaFrame {
     /// O frame de um eixo autorado em GRAUS (azimute `0..360`, elevação `0..=90`).
@@ -151,7 +197,17 @@ impl AlphaFrame {
             n[2] * t[0] - n[0] * t[2],
             n[0] * t[1] - n[1] * t[0],
         ];
-        Self { n, t, b, offset }
+        Self {
+            n,
+            t,
+            b,
+            offset,
+            // ⚠️ **O olho na origem e a razão em zero REDUZEM literalmente**, e é
+            // isso que mantém os nove procedurais byte-idênticos: `p − 0.0` é `p`
+            // ao bit para todo finito, e o ramo de perspectiva não é tomado.
+            eye: [0.0; 3],
+            persp: 0.0,
+        }
     }
 
     /// **O frame de um ESTÊNCIL** — a tela é o plano, e o eixo é a direção de
@@ -189,14 +245,18 @@ impl AlphaFrame {
             t[2] * b[0] - t[0] * b[2],
             t[0] * b[1] - t[1] * b[0],
         ];
-        // ⚠️ **O deslocamento é FRAÇÃO DA VISTA e vira unidades de objeto aqui**,
-        // porque é aqui que a régua da vista existe. Convertê-lo no chamador
-        // seria a conversão feita em dois sítios — e o segundo nasceria sem ela.
+        // ⚠️ **O deslocamento fica em FRAÇÃO DA VISTA, sem conversão nenhuma** —
+        // e a ausência é a wave: a [`Self::project`] devolve fração de tela para
+        // um estêncil, então o deslocamento já está na régua do resultado. A
+        // versão anterior o multiplicava pela régua de UM ponto, e por isso o
+        // carimbo pousava em lugares diferentes conforme quem o montava.
         Self {
             n,
             t,
             b,
-            offset: [offset[0] * s.view_units, offset[1] * s.view_units],
+            offset,
+            eye: s.eye,
+            persp: s.height_per_depth,
         }
     }
 
@@ -208,17 +268,39 @@ impl AlphaFrame {
 
     /// O ponto `p` nas coordenadas do frame: `(ao longo de t, ao longo de b, ao
     /// longo do EIXO)`.
+    ///
+    /// ⚠️ **Para um ESTÊNCIL as duas primeiras saem em FRAÇÃO DA TELA**, não em
+    /// unidades de objeto — é a divisão de perspectiva, e é ela que faz do
+    /// carimbo uma folha presa ao viewport em vez de um plano colado ao barro na
+    /// profundidade em que alguém escolheu medir. Dois pontos que caem no MESMO
+    /// pixel recebem a MESMA coordenada de carimbo, por construção, seja qual for
+    /// a profundidade de cada um.
+    ///
+    /// ⚠️ **E os nove procedurais atravessam isto ao BIT:** com `eye = [0,0,0]` a
+    /// subtração é a identidade em IEEE-754 e com `persp = 0` o ramo não é
+    /// tomado, então a expressão que sobra é literalmente a de antes.
     pub(super) fn project(&self, p: [f32; 3]) -> [f32; 3] {
+        let d = [p[0] - self.eye[0], p[1] - self.eye[1], p[2] - self.eye[2]];
+        let x = d[0] * self.t[0] + d[1] * self.t[1] + d[2] * self.t[2];
+        let y = d[0] * self.b[0] + d[1] * self.b[1] + d[2] * self.b[2];
+        let z = d[0] * self.n[0] + d[1] * self.n[1] + d[2] * self.n[2];
         // ⚠️ **O deslocamento sai das DUAS coordenadas do plano e NUNCA do
         // eixo.** Ele descreve onde o carimbo pousa NA superfície; subtraí-lo do
         // `q[2]` moveria o padrão ao longo da direção de projeção, que para uma
         // imagem não significa nada e para o Strata seria um terceiro controle
         // que ninguém pediu.
-        [
-            (p[0] * self.t[0] + p[1] * self.t[1] + p[2] * self.t[2]) - self.offset[0],
-            (p[0] * self.b[0] + p[1] * self.b[1] + p[2] * self.b[2]) - self.offset[1],
-            p[0] * self.n[0] + p[1] * self.n[1] + p[2] * self.n[2],
-        ]
+        if self.persp > 0.0 {
+            // ⚠️ **O eixo aponta para QUEM OLHA** (ele é `t × b`, e a base da
+            // tela é destra), então o que está à frente da câmera tem `z`
+            // NEGATIVO — a profundidade é o negativo dele. Ler o sinal errado
+            // aqui põe o carimbo atrás do observador, que é a única forma de
+            // este ramo falhar em silêncio.
+            let depth = (-z).max(MIN_STENCIL_DEPTH);
+            let k = 1.0 / (depth * self.persp);
+            [x * k - self.offset[0], y * k - self.offset[1], z]
+        } else {
+            [x - self.offset[0], y - self.offset[1], z]
+        }
     }
 }
 

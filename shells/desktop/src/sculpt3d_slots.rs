@@ -137,14 +137,19 @@ impl Sculpt3dScene {
             // vazia; o barro ficaria com o padrão de antes do traço.
             {
                 // ⚠️ **O estêncil é o DESTA peça** — a base da tela em espaço
-                // local depende da POSE dela, e o `stencil_at` é a mesma porta
+                // local depende da POSE dela, e o `stencil_for` é a mesma porta
                 // que o dab usa. Um preview montado com a vista de outra peça
                 // desenharia o carimbo torto em tudo o que estivesse girado em
                 // relação à selecionada.
+                //
+                // ⚠️ **E ela não recebe mais um PONTO.** Enquanto recebia, este
+                // sítio passava o centro da peça e o dab passava o acerto — dois
+                // pontos, duas réguas, e o carimbo pintado no barro saía 24,8%
+                // maior que o depositado. Com o frustum, os dois consumidores
+                // fazem literalmente a mesma chamada.
                 let pose = self.objects[i].pose;
-                let centre = pose.point_to_world(self.objects[i].stack.mesh().bounds().center());
                 let brush = ph2d_sculpt3d::Brush {
-                    alpha_stencil: Some(self.stencil_at(pose, centre)),
+                    alpha_stencil: Some(self.stencil_for(pose)),
                     ..self.brush.clone()
                 };
                 let armed = self.alpha_preview;

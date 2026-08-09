@@ -251,6 +251,26 @@ impl Camera3d {
         (eye + side * (depth / along) - Vec3::from(at)).length()
     }
 
+    /// **QUANTO MUNDO A ALTURA DA TELA ABRANGE, POR UNIDADE DE PROFUNDIDADE** —
+    /// a razão que define o frustum, `2·tan(fov/2)`.
+    ///
+    /// ⚠️ **Ela sai da porta que já existe, e NÃO da forma fechada.** A conta
+    /// direta é mais curta e seria a segunda cópia das mesmas grandezas — o que o
+    /// doc da [`Self::world_radius_for_screen_px`] já adverte, e as duas
+    /// divergiriam por um fator pequeno e constante que nenhum teste de nenhuma
+    /// das metades enxerga. Aqui a régua é medida no alvo, cuja profundidade é
+    /// **exatamente** [`Self::distance`] por definição de `eye`/`target`.
+    ///
+    /// ⚠️ **E é uma RAZÃO, então o ponto onde ela é medida não importa** — a
+    /// régua é proporcional à profundidade —, que é precisamente o que a torna
+    /// útil a quem não pode escolher um ponto: um estêncil preso ao viewport é
+    /// lido por vértice, em profundidades diferentes, e nenhuma delas é *a* certa.
+    #[must_use]
+    pub fn view_height_per_depth(&self, size: (u32, u32)) -> f32 {
+        let h = self.world_radius_for_screen_px(self.target.into(), size.1.max(1) as f32, size);
+        h / self.distance.max(1e-6)
+    }
+
     /// O deslocamento de MUNDO que corresponde a `(dx, dy)` pixels de tela, na
     /// profundidade de `at` — **o gesto do Grab**.
     ///

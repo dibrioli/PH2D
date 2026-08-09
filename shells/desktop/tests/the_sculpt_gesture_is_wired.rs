@@ -192,33 +192,41 @@ fn the_brush_radius_is_screen_pixels_converted_against_the_camera() {
     // E nada mais pode responder "de que tamanho é o pincel": um segundo sítio
     // é como o cursor e a tinta passam a discordar.
     //
-    // ⚠️ **A contagem era UM e virou DOIS, e a mudança é de PERGUNTA, não de
-    // frouxidão.** Este gate contava as menções de uma ajudante da câmera como
-    // procuração para *"quantas respostas há sobre o tamanho do pincel"* — e o
-    // estêncil do alpha passou a fazer uma pergunta DIFERENTE com a mesma
-    // ajudante (*quantas unidades de objeto a ALTURA DA TELA abrange*). Contar
-    // o nome não distingue as duas, então o gate reprovou produto correto.
+    // ⚠️ **Este gate já contou o NOME de uma ajudante da câmera como procuração
+    // para *"quantas respostas há sobre o tamanho do pincel"*, e reprovou
+    // produto correto por isso** — o estêncil do alpha passou a fazer uma
+    // pergunta DIFERENTE com a mesma ajudante, e contar o nome não distingue as
+    // duas. Ele afirma o que importa: **cada pergunta tem UM sítio**.
     //
-    // Agora ele afirma o que de fato importa: **cada pergunta tem UM sítio, e
-    // não existe um terceiro**. Uma resposta nova para *"de que tamanho é o
-    // pincel"* segue sangrando aqui, que é a razão de este gate existir.
-    let stencil = function_body(&src, "stencil_at");
+    // ⚠️ **E as duas perguntas deixaram de partilhar a ajudante:** o pincel
+    // pergunta *quanto mundo cabe em N pixels AQUI* (que depende do ponto), e o
+    // estêncil pergunta a RAZÃO do frustum (que não depende de ponto nenhum —
+    // foi essa diferença que curou o carimbo que discordava do dab). São duas
+    // portas distintas, e o gate conta cada uma no seu sítio.
+    let stencil = function_body(&src, "stencil_of");
     assert_eq!(
         armed.matches("world_radius_for_screen_px(").count(),
         1,
         "o tamanho do pincel tem de sair da câmera UMA vez"
     );
     assert_eq!(
-        stencil.matches("world_radius_for_screen_px(").count(),
+        stencil.matches("view_height_per_depth(").count(),
         1,
-        "a régua da VISTA (o estêncil) tem de sair da câmera UMA vez"
+        "a razão do frustum (o estêncil) tem de sair da câmera UMA vez"
     );
     assert_eq!(
         src.matches("world_radius_for_screen_px(").count(),
-        2,
-        "apareceu um TERCEIRO sítio convertendo tela→mundo: ou é uma pergunta \
+        1,
+        "apareceu um SEGUNDO sítio convertendo pixels→mundo: ou é uma pergunta \
          nova (e ela precisa de nome e de linha aqui), ou é a segunda resposta \
          a uma que já tem dono"
+    );
+    assert_eq!(
+        src.matches("view_height_per_depth(").count(),
+        1,
+        "apareceu um SEGUNDO sítio medindo a razão do frustum — e duas réguas \
+         de vista é exactamente como o preview e o dab passaram a desenhar \
+         carimbos de tamanhos diferentes"
     );
 }
 

@@ -34,22 +34,27 @@ impl Brush {
         }
     }
 
-    /// **O tamanho de uma feature em unidades de OBJETO** — a régua que o motor
-    /// de fato usa, seja ela autorada no modelo ou na tela.
+    /// **O tamanho de uma feature na régua que o motor usa** — unidades de OBJETO
+    /// para os nove padrões, fração da ALTURA DA TELA para um carimbo.
     ///
-    /// ⚠️ **Porta ÚNICA, e ela existe porque a UNIDADE passou a depender do
-    /// modo.** Um estêncil é medido em fração da ALTURA DA TELA, e converter no
-    /// chamador seria a conversão escrita uma vez por consumidor — com o
-    /// próximo consumidor nascendo sem ela, exatamente como o `arc_len` do
-    /// Painter chegou a 2 de 7 rotas em silêncio. Aqui o dab, o preview no barro
-    /// e o retrato do painel perguntam à mesma função.
+    /// ⚠️ **Porta ÚNICA, e ela existe porque a UNIDADE depende do modo.** O dab,
+    /// o preview no barro e o retrato do painel perguntam à mesma função; um
+    /// deles que resolvesse por conta própria seria a conversão escrita uma vez
+    /// por consumidor, com o próximo nascendo sem ela — exatamente como o
+    /// `arc_len` do Painter chegou a 2 de 7 rotas em silêncio.
+    ///
+    /// ⚠️ **E para um carimbo ela não CONVERTE nada, o que é a wave inteira numa
+    /// linha:** a fração vai crua ao kernel porque a
+    /// [`crate::AlphaFrame::project`] já devolve fração de tela. Converter aqui
+    /// exigiria uma profundidade — *qual?* —, e foi essa pergunta sem resposta
+    /// única que fez o preview desenhar um carimbo 24,8% maior que o depositado.
     ///
     /// ⚠️ **Sem estêncil devolve o campo CRU** — `alpha_scale` sem tocar num
     /// bit —, e é isso que mantém todo padrão procedural byte-idêntico.
     #[must_use]
     pub fn alpha_scale_resolved(&self) -> f32 {
         match self.stencil() {
-            Some(s) => self.alpha_stencil_scale * s.view_units,
+            Some(_) => self.alpha_stencil_scale,
             None => self.alpha_scale,
         }
     }

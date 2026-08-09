@@ -7,8 +7,8 @@
 //! e toda conversão entre os dois espaços mora neste arquivo, num lugar só.
 
 use super::{
-    Brush, Hit, Mesh, ObjectId, Pose, RADIUS_MAX_FRAC_OF_HEIGHT, RADIUS_MIN_PX, Ray, SceneObject,
-    Sculpt3dScene,
+    Brush, Camera3d, Hit, Mesh, ObjectId, Pose, RADIUS_MAX_FRAC_OF_HEIGHT, RADIUS_MIN_PX, Ray,
+    SceneObject, Sculpt3dScene,
 };
 
 impl Sculpt3dScene {
@@ -204,7 +204,7 @@ impl Sculpt3dScene {
             .world_radius_for_screen_px(world, self.radius_px(), self.viewport);
         Brush {
             radius: (radius / pose.scale()).max(1e-6),
-            alpha_stencil: Some(self.stencil_at(pose, world)),
+            alpha_stencil: Some(self.stencil_for(pose)),
             ..self.brush.clone()
         }
     }
@@ -217,32 +217,19 @@ impl Sculpt3dScene {
     /// (`Brush::alpha_frame`), e repeti-la aqui seria a segunda cópia de uma
     /// regra que já mudou uma vez nesta linha.
     ///
-    /// ⚠️ **A profundidade é a de UM ponto, e não a de cada vértice.** Um
-    /// estêncil por-vértice seria perspectivamente correto e mudaria de tamanho
-    /// ao longo da peça — que não é o que um estêncil é: ele é uma folha na
-    /// frente da tela. O ponto é o ACERTO quando há um (o dab) e o centro da
-    /// peça quando não há (o preview), que é onde o artista está olhando nos
-    /// dois casos.
+    /// ⚠️ **Ela NÃO recebe um ponto, e a ausência é a correção.** O primeiro
+    /// corte pedia *onde medir a régua da vista*, e os dois consumidores
+    /// respondiam diferente — o dab no ACERTO, o preview no CENTRO da peça —, o
+    /// que fazia a tinta desenhada no barro divergir da depositada em **+24,8%**
+    /// de tamanho na frente do modelo (Enio, 2026-08-09). Entregando o FRUSTUM,
+    /// a profundidade passa a entrar por vértice e não há mais o que escolher:
+    /// duas chamadas com a mesma pose devolvem o mesmo estêncil por construção.
     ///
     /// ⚠️ **`right`/`up` continuam ortonormais em espaço local** porque a pose
     /// deste módulo escala por um ESCALAR; uma escala não-uniforme cisalharia o
     /// par e o frame deixaria de ser uma base.
-    pub(super) fn stencil_at(&self, pose: Pose, at_world: [f32; 3]) -> ph2d_sculpt3d::AlphaStencil {
-        let (right, up) = self.camera.screen_basis();
-        // A ALTURA da tela em unidades de objeto: a régua que torna o carimbo
-        // imune ao zoom. O piso existe porque um viewport degenerado (altura 0,
-        // ou o ponto atrás do olho) devolveria 0 — e um ladrilho de tamanho zero
-        // é uma divisão por zero no motor.
-        let span_world = self.camera.world_radius_for_screen_px(
-            at_world,
-            self.viewport.1.max(1) as f32,
-            self.viewport,
-        );
-        ph2d_sculpt3d::AlphaStencil {
-            right: Self::dir_to_local_of(pose, right.into()),
-            up: Self::dir_to_local_of(pose, up.into()),
-            view_units: (span_world / pose.scale()).max(1e-6),
-        }
+    pub(super) fn stencil_for(&self, pose: Pose) -> ph2d_sculpt3d::AlphaStencil {
+        stencil_of(&self.camera, self.viewport, pose)
     }
 
     /// **Quem o cursor aponta, e ONDE nele** — `(objeto, acerto em coordenadas
@@ -388,3 +375,36 @@ impl Sculpt3dScene {
         self.camera.ray_through(x, y, self.viewport)
     }
 }
+
+/// **O FRUSTUM desta câmera, no espaço desta peça** — a função PURA por trás de
+/// [`Sculpt3dScene::stencil_for`].
+///
+/// ⚠️ **Ela é livre e não um método, e o motivo é gate:** montar uma
+/// [`Sculpt3dScene`] exige um `wgpu::Device`, então nenhum teste de CPU alcança o
+/// método — e a única coisa que este cálculo precisa é uma câmera, um viewport e
+/// uma pose. É a mesma cirurgia que a `line/anim` fez no overlay do motion path
+/// pela mesma razão.
+///
+/// ⚠️ **A razão do frustum NÃO é dividida pela escala da peça, e não é
+/// esquecimento:** ela é adimensional (mundo por mundo), então vale igual em
+/// qualquer espaço. A pose entra **uma vez só**, no olho — e um segundo lugar
+/// dividindo por ela encolheria o carimbo pelo quadrado da escala.
+pub(super) fn stencil_of(
+    cam: &Camera3d,
+    viewport: (u32, u32),
+    pose: Pose,
+) -> ph2d_sculpt3d::AlphaStencil {
+    let (right, up) = cam.screen_basis();
+    ph2d_sculpt3d::AlphaStencil {
+        right: Sculpt3dScene::dir_to_local_of(pose, right.into()),
+        up: Sculpt3dScene::dir_to_local_of(pose, up.into()),
+        eye: pose.point_to_local(cam.eye().into()),
+        // O piso existe porque um viewport degenerado (altura 0) devolveria zero,
+        // e o motor divide por esta razão.
+        height_per_depth: cam.view_height_per_depth(viewport).max(1e-6),
+    }
+}
+
+#[cfg(test)]
+#[path = "sculpt3d_space_tests.rs"]
+mod tests;

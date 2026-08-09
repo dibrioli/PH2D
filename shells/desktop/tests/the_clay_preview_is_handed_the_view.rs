@@ -12,8 +12,21 @@
 //! dab** (que passa por outra porta) e volta a colar no barro **para o
 //! preview** — as duas metades da mesma ferramenta discordando sobre onde o
 //! padrão está, com o artista mirando pelo que ele vê.
+//!
+//! ⚠️ **E ele ganhou uma segunda metade, porque o defeito voltou por outra
+//! porta:** o preview RECEBIA a vista e mesmo assim discordava do dab, porque a
+//! montava com outra ÂNCORA (o centro da peça contra o acerto do cursor).
+//! Medido, o carimbo desenhado no barro saía **24,8% maior** que o depositado.
+//! Hoje a chamada não tem âncora — e é isso que este gate afirma: **os dois
+//! consumidores fazem a MESMA chamada, letra por letra**. Um parâmetro novo ali
+//! é a forma exata de a divergência renascer.
 
 use std::fs;
+
+/// A chamada que os dois sítios têm de fazer. ⚠️ **O argumento faz parte da
+/// afirmação:** *"pergunte a vista desta peça"* é uma pergunta sem ponto, e um
+/// `stencil_for(pose, algo)` seria a âncora de volta.
+const CALL: &str = "alpha_stencil: Some(self.stencil_for(pose))";
 
 /// Onde o laço de slots mora. ⚠️ **A família e não o nome**: este módulo já
 /// partiu dois arquivos por teto de LOC, e um gate que fixasse o endereço ficaria
@@ -40,7 +53,7 @@ fn the_clay_preview_is_handed_the_view() {
         // A janela é o bloco ANTES da chamada: é ali que o pincel é montado.
         let head = &src[..call];
         let from = head.len().saturating_sub(900);
-        if head[from..].contains("alpha_stencil: Some(self.stencil_at(") {
+        if head[from..].contains(CALL) {
             ok = true;
         }
     }
@@ -51,8 +64,31 @@ fn the_clay_preview_is_handed_the_view() {
     );
     assert!(
         ok,
-        "o pincel entregue ao preview do barro não carrega o estêncil desta peça: \
-         o carimbo volta a colar no barro para quem OLHA, enquanto o dab segue \
-         preso à tela"
+        "o pincel entregue ao preview do barro não carrega o estêncil desta peça \
+         por `{CALL}`: ou ele não recebe a vista — e o carimbo volta a colar no \
+         barro para quem OLHA —, ou ele a pede com uma ÂNCORA, e aí os dois \
+         desenham tamanhos diferentes"
+    );
+}
+
+/// **E O DAB PERGUNTA A MESMA COISA** — a outra ponta da divergência.
+///
+/// ⚠️ **Sem esta metade o gate acima é satisfeito por um preview correto ao lado
+/// de um dab que pergunta de outro jeito** — que é exatamente o estado que o
+/// report de 2026-08-09 descreve: *a tinta da máscara projetada no objeto não
+/// corresponde ao que realmente está sendo esculpido*.
+#[test]
+fn the_dab_asks_the_view_the_same_way_the_preview_does() {
+    let src = fs::read_to_string("src/sculpt3d_space.rs").expect("o dono do espaço da cena existe");
+    // O controle positivo: se o `armed_brush` se mudar de arquivo, isto falha
+    // ALTO em vez de varrer o vazio e passar.
+    assert!(
+        src.contains("fn armed_brush"),
+        "o `armed_brush` mudou-se de arquivo — este gate estaria a ler o vazio"
+    );
+    assert!(
+        src.contains(CALL),
+        "o pincel do DAB não pede a vista por `{CALL}`: os dois consumidores \
+         voltaram a montar o estêncil de jeitos diferentes"
     );
 }

@@ -299,9 +299,13 @@ fn a_dab_walks_the_window_not_the_whole_field() {
 /// ⚠️ **É o gate do modo de estêncil no barro** (Enio, 2026-08-09: *"projeção
 /// frontal que não muda com a rotação do objeto"*). Um carimbo preso ao viewport
 /// muda de lugar na malha a cada movimento da câmera, e nenhum vértice se move —
-/// então, outra vez, a CHAVE é a única coisa capaz de pedir o recálculo. Ela
-/// carrega o `frame` (que gira com a órbita) e a escala RESOLVIDA (que encolhe
-/// com o zoom), e é por isso que as duas metades estão aqui.
+/// então, outra vez, a CHAVE é a única coisa capaz de pedir o recálculo.
+///
+/// ⚠️ **Quem carrega as DUAS metades é o `frame`**, e isso mudou com o frustum: a
+/// órbita entra nele pela base da tela e o zoom pelo OLHO. A escala resolvida de
+/// um carimbo é uma fração de tela e **não** responde mais ao zoom — ela era a
+/// outra metade enquanto a régua era medida num ponto, e uma chave que contasse
+/// com isso hoje deixaria de pedir o campo depois de um dolly.
 ///
 /// ⚠️ **E o CONTROLE é a terceira asserção:** um padrão de OBJETO tem de ficar
 /// quieto sob a mesma câmera. Sem ele, uma chave que simplesmente incluísse a
@@ -312,17 +316,23 @@ fn a_dab_walks_the_window_not_the_whole_field() {
 fn orbiting_or_zooming_asks_for_the_whole_field_of_a_stamp_only() {
     let m = mesh();
     let s = stamp();
+    // O olho fica no eixo que a própria base da tela define — `right × up` —,
+    // que é como a cena o monta; um olho de outro lado descreveria um frustum
+    // torto e o gate ficaria verde sobre ele.
     let front = ph2d_sculpt3d::AlphaStencil {
         right: [1.0, 0.0, 0.0],
         up: [0.0, 1.0, 0.0],
-        view_units: 2.0,
+        eye: [0.0, 0.0, 5.0],
+        height_per_depth: 0.828_427,
     };
     let turned = ph2d_sculpt3d::AlphaStencil {
         right: [0.0, 0.0, -1.0],
+        eye: [5.0, 0.0, 0.0],
         ..front
     };
+    // O zoom é o OLHO que se aproxima, e não uma régua trocada.
     let near = ph2d_sculpt3d::AlphaStencil {
-        view_units: 1.0,
+        eye: [0.0, 0.0, 2.0],
         ..front
     };
     let viewed = |st, alpha: &Alpha| Brush {

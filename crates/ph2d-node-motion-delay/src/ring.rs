@@ -1,9 +1,16 @@
 //! **The delay line — and it follows the ELEMENT, not the row.**
 //!
-//! The past `MAX_LAG` ticks of every element's position, carried as plain columns on the node's
-//! own output (the sequential-node convention: the `pre` self-loop hands them back next tick).
-//! `slot(k)` holds the position from **k ticks ago**, so a lookback of `k` is a column read, not a
-//! search. Slot 0 does not exist: it is the live input.
+//! The past `MAX_LAG` ticks of every element's *channel value*, carried as plain columns on the
+//! node's own output (the sequential-node convention: the `pre` self-loop hands them back next
+//! tick). `slot(k)` holds the value from **k ticks ago**, so a lookback of `k` is a column read,
+//! not a search. Slot 0 does not exist: it is the live input.
+//!
+//! ## The line is a buffer of FLOATS, not of positions
+//!
+//! Everything here works on `dim` floats per element, because **the filter does not care what it
+//! is lagging**: a position is two floats, an angle is one, a colour is four, and lerp / boxcar /
+//! one-pole are the same arithmetic per component. The channel decides `dim` and which column the
+//! caller reads and writes; the ring never learns the difference.
 //!
 //! ## Why this ring is not `motion.slit_scan`'s
 //!
@@ -26,7 +33,8 @@ use std::collections::BTreeMap;
 
 /// The deepest lookback, in ticks. At 60 Hz this is half a second, and it **bounds the state a
 /// document can ask for** — the `ticks` param is clamped to it, so a hand-edited value cannot
-/// allocate an unbounded ring.
+/// allocate an unbounded ring. The line costs `MAX_LAG · dim` floats per element, so the widest
+/// channel (Colour, `dim = 4`) is twice the cost of the default one.
 pub(crate) const MAX_LAG: usize = 32;
 
 /// The column names of the delay line, indexed by `k - 1`. Spelled out rather than formatted per
@@ -47,7 +55,16 @@ const SLOTS: [&str; MAX_LAG] = [
 /// the recurrence exact and costs one column.
 const PREV_OUT: &str = "dl_out";
 
-/// The name of the slot holding the position `k` ticks ago (`1 ..= MAX_LAG`).
+/// **Which channel this line is the history OF.**
+///
+/// A line is only history if it is history of the *same quantity*. Without this tag, switching the
+/// channel would hand the old line to the new one and the type would not object — Position and
+/// Size are both `Vec2`, X and Rotation are both `Scalar` — so the sprites would inherit a
+/// position line as their scale and explode. Carried per element like every other column (it is a
+/// property of the LINE, so any row answers; the first one is read).
+const CHANNEL_TAG: &str = "dl_ch";
+
+/// The name of the slot holding the value `k` ticks ago (`1 ..= MAX_LAG`).
 pub(crate) fn slot(k: usize) -> &'static str {
     SLOTS[k.clamp(1, MAX_LAG) - 1] // CLAMP-OK: the ring's own bounds, 1-based
 }
@@ -55,7 +72,40 @@ pub(crate) fn slot(k: usize) -> &'static str {
 /// Whether `name` is one of this node's own state columns — the caller strips them before
 /// rewriting, so they never accumulate stale duplicates.
 pub(crate) fn is_state(name: &str) -> bool {
-    name == PREV_OUT || SLOTS.contains(&name)
+    name == PREV_OUT || name == CHANNEL_TAG || SLOTS.contains(&name)
+}
+
+/// Whether `state` is the history of `channel`. A line built for another channel is **not** old
+/// history, it is someone else's — the caller treats it as absent and seeds flat.
+pub(crate) fn is_for_channel(state: &Stream, channel: i32) -> bool {
+    match state.get(CHANNEL_TAG) {
+        Some(Column::Scalar(v)) => v.first().map(|c| c.round() as i32) == Some(channel),
+        _ => false,
+    }
+}
+
+/// A column flattened to `w` floats per element. The one place the ring meets a `Column`.
+pub(crate) fn flat(col: &Column) -> (Vec<f32>, usize) {
+    match col {
+        Column::Scalar(v) => (v.clone(), 1),
+        Column::Vec2(v) => (v.iter().flatten().copied().collect(), 2),
+        Column::Vec3(v) => (v.iter().flatten().copied().collect(), 3),
+        Column::Vec4(v) => (v.iter().flatten().copied().collect(), 4),
+    }
+}
+
+/// The inverse of [`flat`]: `w` floats per element back into the column variant of that width.
+pub(crate) fn unflat(v: Vec<f32>, w: usize) -> Column {
+    match w {
+        1 => Column::Scalar(v),
+        2 => Column::Vec2(v.chunks_exact(2).map(|c| [c[0], c[1]]).collect()),
+        3 => Column::Vec3(v.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect()),
+        _ => Column::Vec4(
+            v.chunks_exact(4)
+                .map(|c| [c[0], c[1], c[2], c[3]])
+                .collect(),
+        ),
+    }
 }
 
 /// Where each LIVE row's history lives in the state stream — `None` for an element the state has
@@ -81,57 +131,80 @@ pub(crate) fn rows_of(state: &Stream, live: &Stream) -> Vec<Option<usize>> {
     }
 }
 
-/// One Vec2 column of the state, gathered onto the live rows. A row with no past (or a state
-/// column that is missing / the wrong length) reads as its own LIVE value: the line seeds **flat**
-/// rather than pairing unrelated elements, so the delay forms over the next `ticks` ticks instead
-/// of snapping to nonsense.
-fn gather(state: &Stream, name: &str, rows: &[Option<usize>], live: &[[f32; 2]]) -> Vec<[f32; 2]> {
-    let col = match state.get(name) {
-        Some(Column::Vec2(v)) => Some(v),
+/// One column of the state, gathered onto the live rows as `dim` floats each. A row with no past
+/// (or a state column that is missing / the wrong width / short) reads as its own LIVE value: the
+/// line seeds **flat** rather than pairing unrelated elements, so the delay forms over the next
+/// `ticks` ticks instead of snapping to nonsense.
+fn gather(
+    state: &Stream,
+    name: &str,
+    rows: &[Option<usize>],
+    live: &[f32],
+    dim: usize,
+) -> Vec<f32> {
+    let col = match state.get(name).map(flat) {
+        Some((v, w)) if w == dim => Some(v),
         _ => None,
     };
-    rows.iter()
-        .enumerate()
-        .map(|(i, r)| {
-            match (col, r) {
-                (Some(v), Some(j)) => v.get(*j).copied().unwrap_or(live[i]),
-                _ => live[i], // newborn, or no such column yet: it starts where it is
-            }
-        })
-        .collect()
+    let mut out = Vec::with_capacity(rows.len() * dim);
+    for (i, r) in rows.iter().enumerate() {
+        for k in 0..dim {
+            let mine = live.get(i * dim + k).copied().unwrap_or(0.0);
+            let past = match (&col, r) {
+                (Some(v), Some(j)) => v.get(j * dim + k).copied().unwrap_or(mine),
+                _ => mine, // newborn, or no such column yet: it starts where it is
+            };
+            out.push(past);
+        }
+    }
+    out
 }
 
-/// The past positions, `[k - 1] = k ticks ago`, gathered onto the live rows.
+/// The past values, `[k - 1] = k ticks ago`, gathered onto the live rows.
 pub(crate) fn past(
     state: &Stream,
     rows: &[Option<usize>],
-    live: &[[f32; 2]],
-) -> Vec<Vec<[f32; 2]>> {
+    live: &[f32],
+    dim: usize,
+) -> Vec<Vec<f32>> {
     (1..=MAX_LAG)
-        .map(|k| gather(state, slot(k), rows, live))
+        .map(|k| gather(state, slot(k), rows, live, dim))
         .collect()
 }
 
-/// The node's previous output, gathered onto the live rows (a newborn's is its live position, so
-/// the one-pole starts settled instead of easing in from a stranger's place).
-pub(crate) fn prev_out(state: &Stream, rows: &[Option<usize>], live: &[[f32; 2]]) -> Vec<[f32; 2]> {
-    gather(state, PREV_OUT, rows, live)
+/// The node's previous output, gathered onto the live rows (a newborn's is its live value, so the
+/// one-pole starts settled instead of easing in from a stranger's place).
+pub(crate) fn prev_out(
+    state: &Stream,
+    rows: &[Option<usize>],
+    live: &[f32],
+    dim: usize,
+) -> Vec<f32> {
+    gather(state, PREV_OUT, rows, live, dim)
 }
 
-/// Advance the line one tick and write it (plus this tick's output) onto `out`: the live positions
-/// become "1 tick ago" and every other slot shifts one deeper — the oldest falls off the end.
+/// Advance the line one tick and write it (plus this tick's output and the channel it belongs to)
+/// onto `out`: the live values become "1 tick ago" and every other slot shifts one deeper — the
+/// oldest falls off the end.
 pub(crate) fn push(
     out: &mut Stream,
-    past: Vec<Vec<[f32; 2]>>,
-    live: &[[f32; 2]],
-    emitted: &[[f32; 2]],
+    past: Vec<Vec<f32>>,
+    live: &[f32],
+    emitted: &[f32],
+    dim: usize,
+    channel: i32,
 ) {
     let mut shifted = live.to_vec();
     for (k, mut older) in past.into_iter().enumerate().take(MAX_LAG) {
         // `shifted` enters holding what belongs in slot k+1; swap it out and carry the slot's
         // previous contents into the next, deeper slot.
         std::mem::swap(&mut shifted, &mut older);
-        out.set(slot(k + 1), Column::Vec2(older));
+        out.set(slot(k + 1), unflat(older, dim));
     }
-    out.set(PREV_OUT, Column::Vec2(emitted.to_vec()));
+    out.set(PREV_OUT, unflat(emitted.to_vec(), dim));
+    // `dim` is 1, 2 or 4 — every arm of the channel table names one, so there is no zero to guard.
+    out.set(
+        CHANNEL_TAG,
+        Column::Scalar(vec![channel as f32; live.len() / dim]),
+    );
 }

@@ -51,12 +51,12 @@ Um segundo fato transversal: **os cinco nós são `LoweringKind::Cpu`**. Nenhum 
 | `motion.trail` | idem | **Path Type: linha contínua / ribbon** ([cavalry §Trails](../referencia_pesquisa_cavalry.md): *Path Type: Béziers/Lines*); [niagara §113](../referencia_pesquisa_niagara_stardust.md): *"Ribbon/Strip renderer — **PARCIAL** (`motion.trail` = eco; ribbon contínuo?)"*; doc 63 §3.2 linha 200 | **NÃO** — não existe primitiva de fita no motion; a saída é sempre N instâncias | **natureza** (falta a primitiva, não o knob) — mecanismo: o stream é `(Instances, Vec2)`, uma fita é geometria | **P2** | — (não é param) |
 | `motion.trail` | idem | **compute velocity** ([houdini_mops §65](../referencia_pesquisa_houdini_mops.md): *"Trail — rastro/eco + **computa `v` por diferença** entre frames; o 'compute velocity' como serviço FALTA"*) | **NÃO** — o rastro tem `P` de dois ticks na mão, mas não há subtração de streams: `motion.mixer` Add SOMA, `value.math` opera na coluna `v` (valor), não em `P`. Tentado `delay(Delay,1) + mixer(Add)` ⇒ dá a soma, não a diferença | omissão (barato: já tem os dois lados no mesmo tick) | **P1** | coluna `v` ausente hoje ⇒ escrevê-la é aditivo |
 | `motion.trail` | idem | ⚠️ **`MAX_INSTANCES = 65_536` é um teto NÃO-MEDIDO** — CLAUDE.md §0. O comentário justifica com *"4096 vivas × 32 ecos já é 131k quads"*; a `line/gpu-nodes` **mediu 4,19 M partículas em 3,6 ms na GPU** | n/a (é medição, não composição) | **omissão** — o teto do rastro é o do caminho lento (CPU), no nó cujo custo é multiplicativo | **P1** | o número que a MEDIÇÃO der |
-| `motion.delay` | **2** (`mode 2=Blend` Enum[Delay/Average/Blend] · `ticks 8`) · lê `falloff` + declara `Coupling` · **sem `ParamUnit`** | **atrasar mais que a POSIÇÃO**: C4D Delay Effector ([OEDELAY](https://help.maxon.net/c4d/en-us/Content/html/OEDELAY.html), citado em [c4d_fields §127](../referencia_pesquisa_c4d_fields.md)) — *"…with regard to **position, scale and rotation**"*; o **Delay FIELD** ([FLDELAY](https://help.maxon.net/c4d/en-us/Content/html/FLDELAY.html), §163) inclui *"**color** changes"* | **NÃO** — o nó tem um canal só (`P`) e um segundo `motion.delay` a jusante volta a atrasar `P`. A cura já tem vocabulário no repo: o enum `channel` X/Y/Rotation/Size de `step`/`noise`/`oscillator` | **omissão** | **P0** | `channel = Position` ⇒ o de hoje |
+| `motion.delay` | **2** (`mode 2=Blend` Enum[Delay/Average/Blend] · `ticks 8`) · lê `falloff` + declara `Coupling` · **sem `ParamUnit`** | **atrasar mais que a POSIÇÃO**: C4D Delay Effector ([OEDELAY](https://help.maxon.net/c4d/en-us/Content/html/OEDELAY.html), citado em [c4d_fields §127](../referencia_pesquisa_c4d_fields.md)) — *"…with regard to **position, scale and rotation**"*; o **Delay FIELD** ([FLDELAY](https://help.maxon.net/c4d/en-us/Content/html/FLDELAY.html), §163) inclui *"**color** changes"* | **NÃO** — o nó tem um canal só (`P`) e um segundo `motion.delay` a jusante volta a atrasar `P`. A cura já tem vocabulário no repo: o enum `channel` X/Y/Rotation/Size de `step`/`noise`/`oscillator` | **omissão** | ✅ **FEITO** (era P0) | `channel = Position` ⇒ o de hoje (o prefixo `0..3` fica com o significado compartilhado; Position e Colour entram em `4`/`5` — §6) |
 | `motion.delay` | idem | **attack ≠ release** — TD **Lag CHOP** (a referência que o próprio `value.smooth` cita: *"O Filter/Lag CHOP de TouchDesigner"*): *Lag up / Lag down* separados | **NÃO** — um `ticks` só governa os dois sentidos | omissão (barato) | **P1** | `ticks_down = ticks_up` ⇒ simétrico, o de hoje |
 | `motion.delay` | idem | **Strength [%]** global (C4D Delay: *"quanto do passado segura"*) | ⛔ **REFUTADO** — o `falloff` já É isto, por elemento (`lerp(live, delayed, falloff_at(i))`), e um `field.*` de valor constante dá a versão global | — | ⛔ | — |
 | `motion.delay` | idem | **delay em CASCATA por índice** ([minicavalry §delay](../referencia_catalogo_nodes_minicavalry.md): `perIndex 0.05s`) e **por falloff** ([MOPs Delay §115/§308](../referencia_pesquisa_houdini_mops.md)) | ⛔ **REFUTADO** — é o `motion.slit_scan` (`lag · i/(n−1)`, e o `falloff` dele atenua o delay). A tabela do próprio `motion.delay` já mapeia isso, linhas 17-23 | — | ⛔ | — |
 | `motion.delay` | idem | **modo Spring** (C4D tem os três num nó) | ⛔ **REFUTADO** — `motion.spring`, e o header do nó declara: *"we already have a spring and it is a better one"* | — | ⛔ | — |
-| `motion.delay` | idem | `ticks` **sem `ParamUnit::Count`**, enquanto `trail.spacing` e `strobe.decay` — a MESMA grandeza — declaram (doc 88, lei da unidade) | n/a | omissão (higiene) | **P2** | a unidade não muda o número |
+| `motion.delay` | idem | `ticks` **sem `ParamUnit::Count`**, enquanto `trail.spacing` e `strobe.decay` — a MESMA grandeza — declaram (doc 88, lei da unidade) | n/a | omissão (higiene) | ✅ **FEITO** (era P2, fechou junto do canal) | a unidade não muda o número |
 | `motion.strobe` | **6** (`decay 34` "Flash Length" ticks·`size_boost .8`·`flash_r/g/b`+`flash_amount` num `ParamWidget::Color`) · lê `falloff` · **NÃO declara `Coupling`** | **ATTACK** — MOPs/Houdini **Trigger** ([houdini_mops §82/§287](../referencia_pesquisa_houdini_mops.md)): envelope *Delay→**Attack**(len+shape)→Peak→Decay→Sustain(level)→Release(len+shape)* + **retrigger delay** | **NÃO** — `glow_of` crava `1.0` no pulso; o envelope sobe em 1 tick sempre. O nó se auto-declara *"the minimal ADSR"* | omissão | **P1** | `attack = 0` ⇒ subida instantânea, a de hoje |
 | `motion.strobe` | idem | **HOLD/SUSTAIN** (o platô antes de decair) — mesma fonte | **NÃO** | omissão | **P1** | `hold = 0` |
 | `motion.strobe` | idem | **forma do decay** (hoje exponencial fixo; o Trigger tem *shape* por trecho) | **PARCIAL, a 3 nós** — o `glow` SAI como coluna, então `value.attribute("glow") → value.curve → motion.drive` reconstrói a curva. Três nós para um knob = o critério P1 da §7 | omissão | **P1** | curva não-setada = identidade (a lei do `value.curve`) |
@@ -234,8 +234,51 @@ derivá-lo por elemento faria dois ecos da mesma idade desbotarem diferente.
 shipava (o `falloff_at` devolve `1.0` na ausência), e o oráculo disso é o STREAM inteiro —
 uma contagem igual sobre posições diferentes passaria.
 
-**Seguem P0 nesta família:** o canal do `motion.delay` (hoje só atrasa `P`) · e o **reset**
-do `motion.step`.
+### O terceiro P0 — **o `motion.delay` só atrasava a POSIÇÃO**
+
+C4D lags a set *"with regard to position, scale and rotation"* e o Delay **Field** acrescenta
+*"colour changes"*; o nosso atrasava `P` e nada mais, e um segundo `motion.delay` a jusante
+**voltava a atrasar `P`** — as outras três quantidades eram inalcançáveis pelo grafo.
+
+⚠️ **A folha prescrevia *"o enum `channel` X/Y/Rotation/Size"* e a régua é mais funda que
+isso.** Os quatro primeiros índices FICAM com o significado que já têm — *o índice é o que o
+DOCUMENTO guarda*, e as seis crates que carregam a cópia do mesmo `channel.rs` são
+exatamente as que uma wave futura vai querer colapsar numa porta; um nó que re-numerasse o
+prefixo compartilhado transformaria esse colapso numa **mudança silenciosa de comportamento
+em todo grafo salvo**. Passado o prefixo cada nó estende por conta própria (o
+`motion.drive` já acrescentou Opacity/Falloff/Hue/Sat/Val em `4..8`), e este acrescenta
+**`4` Position e `5` Colour** — as duas *quantidades inteiras* que a referência nomeia.
+**Position é o default**, porque é o que o nó fazia antes de o param existir.
+
+⚠️ **Encadear é como se pede várias:** `delay(Position) → delay(Rotation)` são duas linhas
+com o seu próprio `ticks`, estritamente mais que o ajuste compartilhado do C4D.
+
+⚠️ **E o `ticks` NÃO declara `ParamUnit::FromChannel`** — aquela variante existe para a
+*magnitude* que muda de unidade com o canal (metros / graus / escala); oito ticks são oito
+ticks atrasando um ponto, um ângulo ou uma cor, então ela declara `Count` e o nó nunca toca
+a tabela `channel_unit` do shell.
+
+**O filtro não sabe o que atrasa.** Tudo passou a trabalhar em **`dim` floats por
+elemento** — uma posição são dois, um ângulo é um, uma cor são quatro, e lerp / boxcar /
+one-pole são a mesma aritmética por componente; é por isso que a Position ficou
+**byte-idêntica** através da mudança (os seis gates que já existiam passaram sem edição).
+
+⚠️ **Duas coisas SABEM, e as duas são defeito se esquecidas:**
+
+- **um ângulo é um círculo e um filtro não é** — o `motion.look_at` escreve `atan2`, então
+  um alvo circulando faz `rot` serrar entre `+180` e `−180`, e um one-pole entregue esses
+  dois números **desanda quase uma volta inteira** na única emenda que um giro cruza a cada
+  revolução (medido: **71,5° de varredura para TRÁS**). A linha passa a guardar o ângulo
+  **desenrolado**, e o nó inteiro fica igual atrás disso;
+- **uma linha só é história se for história da MESMA quantidade** — Position e Size são
+  ambos `Vec2`, X e Rotation são ambos `Scalar`, então o tipo **não objetaria**: o estado
+  carrega o canal para o qual foi construído, e trocar re-semeia liso (mutação: a `size`
+  herda a linha de posição e sai em `[0,25; 21,43]`).
+
+**4 gates, 4 mutações, 4 sangram** — e ⚠️ **cada uma sangra um gate DIFERENTE**, que é o
+que mostra que os quatro medem coisas distintas em vez de se sobreporem.
+
+**Segue P0 nesta família:** o **reset** do `motion.step`.
 
 ---
 

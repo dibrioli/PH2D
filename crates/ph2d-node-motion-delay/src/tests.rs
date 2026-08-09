@@ -100,6 +100,254 @@ fn run(params: &[(&str, f32)], path: &[f32]) -> Vec<f32> {
     out
 }
 
+/// A source that emits whatever stream the test last handed it — the rig for the CHANNEL gates,
+/// which need `rot` / `size` / `tint` and not just a marching `P`.
+struct Any(std::sync::Mutex<Stream>);
+static ANY_MAN: NodeManifest = NodeManifest {
+    id: NodeTypeId::of("motion.delay.test.any"),
+    name: "motion.delay.test.any",
+    inputs: &[],
+    outputs: &[PortSpec {
+        name: "out",
+        ty: INST_VEC2,
+    }],
+    effect: Effect::Temporal, // it changes per tick, and the cook must not memoize it away
+    clock: Clock::Frame,
+    params: &[],
+    lowerings: &[LoweringKind::Cpu],
+};
+impl NodeOp for Any {
+    fn manifest(&self) -> &'static NodeManifest {
+        &ANY_MAN
+    }
+    fn eval(&self, ctx: &mut EvalCtx<'_>) {
+        let s = self.0.lock().expect("test").clone();
+        ctx.emit(s);
+    }
+}
+struct OpsAny(Any);
+impl OpResolver for OpsAny {
+    fn resolve(&self, ty: NodeTypeId) -> Option<&dyn NodeOp> {
+        if ty == MANIFEST.id {
+            Some(&MotionDelay as &dyn NodeOp)
+        } else if ty == ANY_MAN.id {
+            Some(&self.0 as &dyn NodeOp)
+        } else {
+            None
+        }
+    }
+}
+
+/// Run `frames` ticks over the flexible source, handing tick `t` the stream `at` returns, and
+/// collect what the node emitted each tick. `at` also gets the graph and the delay's id, so a gate
+/// can change a param mid-run (which is exactly what switching the channel is).
+fn run_any(
+    params: &[(&str, f32)],
+    frames: usize,
+    mut at: impl FnMut(&mut Graph, NodeId, usize) -> Stream,
+) -> Vec<Stream> {
+    let mut g = Graph::new();
+    let src = g.add_node("motion.delay.test.any");
+    let dly = g.add_node("motion.delay");
+    g.connect(Edge {
+        from: (src, 0),
+        to: (dly, 0),
+        delayed: false,
+    })
+    .unwrap();
+    g.connect(Edge {
+        from: (dly, 0),
+        to: (dly, 1),
+        delayed: true,
+    })
+    .unwrap();
+    for (k, v) in params {
+        g.set_param(dly, *k, *v);
+    }
+    let ops = OpsAny(Any(std::sync::Mutex::new(Stream::new(0))));
+    let mut cook = Cook::new();
+    let mut out = Vec::new();
+    for t in 0..frames {
+        let s = at(&mut g, dly, t);
+        *ops.0.0.lock().expect("test") = s;
+        let cooked = cook.cook(&g, &ops, dly, t as f64).unwrap();
+        out.push(cooked[0].as_stream().clone());
+        cook.advance_tick(&g, &ops, t as f64).unwrap();
+    }
+    out
+}
+
+/// One column of an emitted stream, as plain floats.
+///
+/// ⚠️ Deliberately **not** `ring::flat`: an oracle that reshapes with the code under test agrees
+/// with it precisely when the reshaping is what is wrong.
+fn col(s: &Stream, name: &str) -> Vec<f32> {
+    match s
+        .get(name)
+        .unwrap_or_else(|| panic!("the stream has no `{name}` column"))
+    {
+        Column::Scalar(v) => v.clone(),
+        Column::Vec2(v) => v.iter().flat_map(|c| [c[0], c[1]]).collect(),
+        Column::Vec3(v) => v.iter().flat_map(|c| [c[0], c[1], c[2]]).collect(),
+        Column::Vec4(v) => v.iter().flat_map(|c| [c[0], c[1], c[2], c[3]]).collect(),
+    }
+}
+
+/// **The channel picks WHAT arrives late — and nothing else moves.**
+///
+/// C4D's Delay Effector lags a set *"with regard to position, scale and rotation"* and its Field
+/// adds colour; ours lagged position and a second `motion.delay` downstream just lagged position
+/// again, so the other quantities were unreachable through the graph.
+///
+/// One source carrying all four columns, one lag, six channels: the chosen slice reads `t − LAG`
+/// and **every other component reads `t`**. The second half is the one that catches a channel
+/// that lags too much — the X channel must hand `P.y` through live.
+#[test]
+fn each_channel_lags_its_own_quantity_and_leaves_the_others_live() {
+    // (channel, the column it owns, which components of it)
+    const CASES: &[(f32, &str, &[usize])] = &[
+        (0.0, "P", &[0]),
+        (1.0, "P", &[1]),
+        (2.0, "rot", &[0]),
+        (3.0, "size", &[0, 1]),
+        (4.0, "P", &[0, 1]),
+        (5.0, "tint", &[0, 1, 2, 3]),
+    ];
+    const LAG: usize = 3;
+    for (ch, owned_col, owned) in CASES {
+        let outs = run_any(
+            &[("mode", 0.0), ("ticks", LAG as f32), ("channel", *ch)],
+            10,
+            |_, _, t| {
+                let v = t as f32;
+                Stream::new(1)
+                    .with("P", Column::Vec2(vec![[v, v]]))
+                    .with("rot", Column::Scalar(vec![v]))
+                    .with("size", Column::Vec2(vec![[v, v]]))
+                    .with("tint", Column::Vec4(vec![[v, v, v, v]]))
+            },
+        );
+        for (t, s) in outs.iter().enumerate().skip(LAG) {
+            for (name, width) in [("P", 2usize), ("rot", 1), ("size", 2), ("tint", 4)] {
+                let got = col(s, name);
+                for (k, g) in got.iter().enumerate().take(width) {
+                    let lagged = name == *owned_col && owned.contains(&k);
+                    let want = t as f32 - if lagged { LAG as f32 } else { 0.0 };
+                    assert!(
+                        (g - want).abs() < 1e-4,
+                        "channel {ch}: {name}[{k}] at tick {t} should be {want}, got {g}"
+                    );
+                }
+            }
+        }
+    }
+}
+
+/// **An angle is a circle and a filter is not.**
+///
+/// `motion.look_at` writes an `atan2`, so a target circling an element makes `rot` saw-tooth
+/// between `+180` and `−180`. A one-pole handed those two numbers eases the LONG way — the sprite
+/// unwinds most of a turn over `ticks` frames, at the one seam a spin crosses every revolution.
+///
+/// The oracle is the APPEARANCE, not the unwrapper: a smoother following a steady spin must keep
+/// turning **the same way**.
+#[test]
+fn the_rotation_channel_does_not_unwind_at_the_seam() {
+    // Written the way `look_at` writes it: folded into (−180, 180].
+    let wrapped = |t: usize| {
+        let a = 20.0 * t as f32;
+        a - 360.0 * (a / 360.0 + 0.5).floor()
+    };
+    let outs = run_any(
+        &[("mode", 2.0), ("ticks", 4.0), ("channel", 2.0)],
+        40,
+        |_, _, t| Stream::new(1).with("rot", Column::Scalar(vec![wrapped(t)])),
+    );
+
+    // The fixture CONTAINS the phenomenon: the input really does step backwards at the seam.
+    let worst_in = (1..40)
+        .map(|t| wrapped(t - 1) - wrapped(t))
+        .fold(0.0f32, f32::max);
+    assert!(worst_in > 300.0, "the input never wraps: {worst_in}");
+
+    let rot: Vec<f32> = outs.iter().map(|s| col(s, "rot")[0]).collect();
+    let worst_back = rot.windows(2).map(|w| w[0] - w[1]).fold(0.0f32, f32::max);
+    assert!(
+        worst_back < 1e-3,
+        "the smoother swept BACK {worst_back} degrees at the seam: {rot:?}"
+    );
+    // …and it really did follow the spin, rather than sitting still.
+    assert!(
+        rot.last().expect("ticks") - rot[0] > 600.0,
+        "the output barely moved: {:?}",
+        rot.last()
+    );
+}
+
+/// **A line is only history if it is history of the same quantity.**
+///
+/// Position and Size are both `Vec2`, so a state built for one would be handed to the other with
+/// the types raising no objection — and the sprites would inherit a position line as their scale.
+/// The state carries the channel it was built for; switching re-seeds flat.
+#[test]
+fn switching_the_channel_re_seeds_the_line() {
+    const SIZE: f32 = 2.0;
+    let outs = run_any(
+        &[("mode", 2.0), ("ticks", 8.0), ("channel", 4.0)],
+        12,
+        |g, dly, t| {
+            if t == 11 {
+                g.set_param(dly, "channel", 3.0); // Size — for the last tick only
+            }
+            let y = t as f32 * 5.0;
+            Stream::new(1)
+                .with("P", Column::Vec2(vec![[0.0, y]]))
+                .with("size", Column::Vec2(vec![[SIZE, SIZE]]))
+        },
+    );
+
+    // The position line is FULL and far from the size: it is worth inheriting wrongly.
+    let carried = col(&outs[10], "P")[1];
+    assert!(
+        carried > 10.0,
+        "the position line never got far from the size, so the gate proves nothing: {carried}"
+    );
+    let s = col(&outs[11], "size");
+    assert!(
+        (s[0] - SIZE).abs() < 1e-4 && (s[1] - SIZE).abs() < 1e-4,
+        "the size channel inherited the position line: {s:?}"
+    );
+}
+
+/// **You cannot lag a quantity that is not there** — and the node must not invent one.
+///
+/// Materialising an identity `size` where the artist had none would ADD a column downstream (a
+/// delayed constant is the constant anyway), and keeping a line for it would carry 33 columns of
+/// nothing.
+#[test]
+fn a_channel_the_stream_does_not_carry_is_a_pass_through() {
+    let outs = run_any(
+        &[("mode", 2.0), ("ticks", 8.0), ("channel", 3.0)],
+        6,
+        |_, _, t| Stream::new(1).with("P", Column::Vec2(vec![[0.0, t as f32]])),
+    );
+    for (t, s) in outs.iter().enumerate() {
+        assert!(
+            s.get("size").is_none(),
+            "tick {t}: the node invented a `size` column for a stream that had none"
+        );
+        assert_eq!(
+            col(s, "P"),
+            vec![0.0, t as f32],
+            "tick {t}: …and it must hand the rest of the stream through untouched"
+        );
+        assert!(
+            s.get("dl_1").is_none() && s.get("dl_out").is_none(),
+            "tick {t}: it kept a delay line for a quantity that is not there"
+        );
+    }
+}
+
 /// **The neutral point is byte-identical.** Dropping the node into a chain must change NOTHING
 /// until it is asked for something — in every mode, not just the default.
 #[test]

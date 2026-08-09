@@ -273,6 +273,9 @@ fn announce(app: &mut crate::App) {
         ph2d_ui_codegen::emit(&spec)
     );
     eprintln!("[ui-panel] o roteiro:");
+    eprintln!("  (⚠️ **'re-rodar'** abaixo = feche o app e rode o MESMO comando de novo. Ele");
+    eprintln!("   importa porque o BLOCO DE CODIGO acima e' derivado da cena a CADA lancamento,");
+    eprintln!("   enquanto o painel compilado so' muda pelo passo 9.)");
     eprintln!("  1. ⚠️ **A PROVA DA WAVE** esta' acima: o bloco de codigo. Cada row dele e' um");
     eprintln!("     filho VESTIDO da moldura, na ordem em que voce os ve na Hierarquia.");
     eprintln!("  2. ⚠️ **O CONTROLE**: o 'Backdrop' e' filho da moldura e NAO aparece no codigo.");
@@ -321,7 +324,10 @@ fn announce(app: &mut crate::App) {
     eprintln!("     encaixada na caixa de 24x24 do icone, com a moldura do botao a' volta. No");
     eprintln!("     canvas e no painel tem de ser **a mesma estrela**: se so' um dos dois a");
     eprintln!("     mostrar, PARE — e' exatamente a divergencia que a porta unica existe para");
-    eprintln!("     impedir. Edite os nos dela no modo Node e re-rode: o glifo acompanha.");
+    eprintln!("     impedir. E o glifo SEGUE o desenho, com TRES relogios diferentes: edite os");
+    eprintln!("     nos da estrela no modo Node e o CANVAS muda na hora (a pele e' cozida a cada");
+    eprintln!("     frame); o bloco de codigo do log so' muda ao re-rodar; e o PAINEL compilado");
+    eprintln!("     so' muda pelo passo 9. Um re-run NAO basta para o painel.");
     eprintln!("     ⚠️ **O limite, dito:** girar a forma pelo gizmo NAO gira o glifo — ele e' o");
     eprintln!("     desenho autorado, nao a pose.");
     eprintln!(

@@ -34,6 +34,18 @@
 //! maior encosta nos 24, o outro centra-se. É a mesma lei que o [`paint_icon_path`] aplica depois
 //! ao encaixar a viewbox no retângulo do botão — a de lá é sobre a CAIXA, a daqui sobre a FIGURA.
 //!
+//! # ⚠️ E ela INVERTE Y, porque os dois espaços discordam
+//!
+//! O documento é **Y para CIMA** (é a câmera quem inverte: `world_to_screen_affine` multiplica por
+//! `scale_non_uniform(k, -k)`), e a caixa de 24×24 do ícone é **Y para BAIXO** — ela é a viewbox do
+//! SVG, que é de onde todo glifo do catálogo nasce. O [`paint_icon_path`] mapeia essa caixa para o
+//! retângulo do botão **sem inverter nada**, e está certo: para um `IconId` as duas pontas já
+//! falam Y-down.
+//!
+//! Esta função é o ÚNICO ponto em que uma geometria de documento entra naquela caixa, logo é aqui
+//! que a conversão pertence. Sem ela o desenho do artista chega ao botão **de cabeça para baixo**
+//! (report do Enio, 2026-08-09) — e chegava nas DUAS metades, porque as duas passam por aqui.
+//!
 //! [`paint_icon_path`]: ph2d_editor::paint::paint_icon_path
 
 use ph2d_vec_render::build_bezpath;
@@ -69,9 +81,13 @@ pub(crate) fn icon_face(path: &VecPath) -> Option<BezPath> {
     // Centra a figura escalada na caixa: o lado maior encosta nas bordas, o menor sobra em partes
     // iguais. O `−bb.x0` leva a origem da bbox ao zero ANTES da escala, e é por isso que a
     // translação vem multiplicada por `s`.
+    //
+    // ⚠️ O `-s` no eixo Y é a conversão de convenção (ver o cabeçalho), e é ele que decide qual
+    // ponta da bbox ancora: sob a inversão o TOPO do mundo (`bb.y1`) é quem tem de pousar no
+    // menor Y da caixa, então o termo é `+ bb.y1 * s` e não `- bb.y0 * s`.
     let tx = (ICON_VIEWBOX - w * s) * 0.5 - bb.x0 * s;
-    let ty = (ICON_VIEWBOX - h * s) * 0.5 - bb.y0 * s;
-    bp.apply_affine(Affine::translate((tx, ty)) * Affine::scale(s));
+    let ty = (ICON_VIEWBOX - h * s) * 0.5 + bb.y1 * s;
+    bp.apply_affine(Affine::translate((tx, ty)) * Affine::scale_non_uniform(s, -s));
     Some(bp)
 }
 

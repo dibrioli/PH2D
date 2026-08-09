@@ -86,6 +86,91 @@ fn a_straight_line_still_has_a_face() {
     assert!(bb.height() < 1e-9, "a reta ganhou altura: {bb:?}");
 }
 
+/// Todo ponto de âncora e de controle de um caminho, para perguntar por EXTREMOS.
+fn points(bp: &BezPath) -> Vec<ph2d_vector::Point> {
+    use ph2d_vector::PathEl;
+    let mut v = Vec::new();
+    for el in bp.elements() {
+        match *el {
+            PathEl::MoveTo(p) | PathEl::LineTo(p) => v.push(p),
+            PathEl::QuadTo(a, b) => v.extend([a, b]),
+            PathEl::CurveTo(a, b, c) => v.extend([a, b, c]),
+            PathEl::ClosePath => {}
+        }
+    }
+    v
+}
+
+/// A posição de `p` na largura da própria figura — 0 na borda esquerda, 1 na direita.
+///
+/// ⚠️ É RELATIVA de propósito: assim o oráculo não precisa conhecer a escala nem a translação que
+/// a normalização escolheu, e não vira espelho dela.
+fn along_x(p: ph2d_vector::Point, bb: ph2d_vector::Rect) -> f64 {
+    (p.x - bb.x0) / bb.width()
+}
+
+/// **O PONTO MAIS ALTO NO DOCUMENTO É O PONTO MAIS ALTO NA TELA** (report do Enio, 2026-08-09:
+/// *"o ícone desenhado pelo usuário fica de cabeça para baixo no botão"*).
+///
+/// ⚠️ **É o gate que faltava, e o motivo de o defeito ter shipado está nos irmãos acima:** todos
+/// medem a CAIXA — extensão, centragem, razão de aspecto, degeneração — e **uma caixa é simétrica
+/// sob inversão**. Nenhum deles pode distinguir a figura da figura espelhada, então os cinco
+/// ficavam verdes sobre um ícone de ponta-cabeça.
+///
+/// O oráculo não conhece a fórmula: ele pergunta **qual VÉRTICE** está no topo de cada lado, e
+/// identifica-o pela posição relativa na largura. Se a inversão sumir, o vértice do topo passa a
+/// ser outro e a posição não bate.
+#[test]
+fn the_glyph_is_not_upside_down() {
+    let src = wide_star();
+    let world = ph2d_vec_render::build_bezpath(&src.cooked());
+    let glyph = icon_face(&src).expect("a estrela tem figura");
+    let (wbb, gbb) = (world.bounding_box(), glyph.bounding_box());
+
+    // No documento Y aponta para CIMA, logo o topo é o MAIOR y.
+    let top_world = points(&world)
+        .into_iter()
+        .max_by(|a, b| a.y.total_cmp(&b.y))
+        .expect("a estrela tem pontos");
+    // Na viewbox do ícone Y aponta para BAIXO, logo o topo é o MENOR y.
+    let top_glyph = points(&glyph)
+        .into_iter()
+        .min_by(|a, b| a.y.total_cmp(&b.y))
+        .expect("o glifo tem pontos");
+
+    let (a, b) = (along_x(top_world, wbb), along_x(top_glyph, gbb));
+    assert!(
+        (a - b).abs() < 1e-9,
+        "o vertice do topo mudou de lugar ({a} no documento, {b} no glifo): o icone esta' \
+         espelhado em Y — e' o desenho do artista de cabeca para baixo dentro do botao"
+    );
+}
+
+/// **A PREMISSA: os dois espaços discordam sobre onde é em cima.**
+///
+/// ⚠️ Sem isto o gate acima afirma *"há uma inversão"* sem dizer **por quê**, e alguém que a leia
+/// não distingue uma lei de um acidente da implementação. Aqui a expectativa é derivada da
+/// **CÂMERA**, que é a autoridade sobre a direção de Y do documento — não de `icon_face`.
+///
+/// E é ele que fala no dia em que a convenção do canvas mudar: se a câmera deixar de inverter, é
+/// este gate que sangra e aponta para a porta única em vez de deixar o ícone virar sozinho.
+#[test]
+fn the_document_is_y_up_and_the_icon_viewbox_is_y_down() {
+    use ph2d_host::events::WindowSize;
+    use ph2d_render::Camera2d;
+    use ph2d_vector::Point;
+
+    let cam = Camera2d::default();
+    let to_screen = cam.world_to_screen_affine(WindowSize::new(800, 600));
+    let origin = to_screen * Point::new(0.0, 0.0);
+    let higher = to_screen * Point::new(0.0, 1.0);
+    assert!(
+        higher.y < origin.y,
+        "premissa falsa: a camera parou de inverter Y, e entao a conversao do `icon_face` \
+         passou a ser a ERRADA (origem {origin:?}, acima {higher:?})"
+    );
+}
+
 /// **O CANVAS E O PAINEL LEEM O MESMO GLIFO** — o gate que carrega a fatia.
 ///
 /// As duas metades precisam do glifo por motivos diferentes (o canvas pinta uma curva, o codegen

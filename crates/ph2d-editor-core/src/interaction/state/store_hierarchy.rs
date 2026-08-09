@@ -264,6 +264,27 @@ impl WidgetStore {
         self.picker_swatch_ids.insert(id);
     }
 
+    /// The sibling of [`register_picker_swatch`](Self::register_picker_swatch): this id is **no
+    /// longer** a picker swatch.
+    ///
+    /// ⚠️ For the hand-written panels this never fires — Painter's brush colour and Vector's
+    /// Stroke/Fill are swatches for the lifetime of the build. It exists for the **authored**
+    /// panel, whose table is the artist's document: a row that wore a `ColorSwatch` a moment ago
+    /// can wear a `Checkbox` now.
+    ///
+    /// ⚠️ **The failure mode is worse than the section mark's**, and it is `pointer_down` that
+    /// makes it so: the picker branch **returns out of the whole Down** before focus is computed,
+    /// so the widget never gets considered at all. A stale mark means the artist clicks a
+    /// checkbox, the shared OKLCH picker opens over it, and whatever colour is chosen paints
+    /// nothing — the panel looks for a swatch on that row and finds none, because it is not one
+    /// any more. Measured, 2026-08-09.
+    ///
+    /// Idempotent, and a no-op for an id that was never registered: the caller asks *"is this a
+    /// swatch?"* once and states the answer, rather than adding a mark it can never take back.
+    pub fn unregister_picker_swatch(&mut self, id: NodeId) {
+        self.picker_swatch_ids.remove(&id);
+    }
+
     /// Does a Down on `id` open the canonical color picker?
     pub fn is_picker_swatch(&self, id: NodeId) -> bool {
         self.picker_swatch_ids.contains(&id)

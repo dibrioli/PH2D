@@ -210,11 +210,19 @@ pub(crate) fn adopt(store: &mut WidgetStore, row: &Row) {
     // do editor abre o picker OKLCH partilhado para qualquer id marcado assim, semeando-o com o
     // `widget_color` — então publicar a cor é o que faz o picker abrir na cor da forma em vez de
     // num cinzento inventado. É o padrão do painel de vetor (Stroke/Fill), aqui derivado da row.
+    //
+    // ⚠️ **E o `else` é obrigatório pela MESMA razão da marca de seção, com um preço maior:** o
+    // ramo do picker no `pointer_down` **corta o Down inteiro** antes de o foco ser computado, então
+    // uma marca que sobreviva à troca de tipo não desvia o clique — ela o ENGOLE. O artista clica
+    // no checkbox, o picker OKLCH abre por cima, e a cor escolhida não pinta nada (o `picker_shape`
+    // procura uma swatch naquela moldura e não acha nenhuma). Medido.
     if row.opens_a_picker() {
         store.register_picker_swatch(row.id);
         if let Some(rgba) = row.rgba {
             store.set_widget_color(row.id, rgba);
         }
+    } else {
+        store.unregister_picker_swatch(row.id);
     }
     options(store, row);
 }

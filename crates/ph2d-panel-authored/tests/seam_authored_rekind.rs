@@ -161,6 +161,58 @@ fn a_control_that_was_born_a_section_header_no_longer_folds() {
     rows::set_live_rows(None);
 }
 
+/// **E o TERCEIRO canal que sobrevive à troca de tipo: o alvo do PICKER.**
+///
+/// ⚠️ Esta é a irmã exata da marca de seção, e foi introduzida a consertar aquela: o `adopt`
+/// REGISTA a swatch como alvo de picker e **nunca a retira**, então uma row que vestiu
+/// `ColorSwatch` um momento atrás carrega a marca para sempre.
+///
+/// ⚠️ **O modo de falha é pior que o da seção**, e é por onde o `pointer_down` está escrito: o
+/// ramo do picker **corta o Down inteiro** (`return`) antes de o foco ser computado, logo antes de
+/// o widget existir para o despacho. O artista clica na caixa, o **picker OKLCH abre por cima**, e
+/// o que ele escolher não pinta nada — o `picker_shape` procura uma swatch naquela moldura e não
+/// acha nenhuma, porque a row já não é uma. Um modal que se abre sobre o controle errado e não faz
+/// nada.
+///
+/// ⚠️ E ele **não se cura sozinho**: `picker_swatch_ids` não tinha porta de saída nenhuma no
+/// codebase inteiro — o id fica no conjunto pelo resto da sessão.
+#[test]
+fn a_control_that_was_born_a_colour_swatch_no_longer_opens_the_picker() {
+    rows::set_live_rows(None);
+    let mut h = MockPanelHost::with_panel::<AuthoredPanel>();
+    h.set_panel_visible(AuthoredPanel::ID, true);
+    let mut st = AuthoredPanelState;
+    let mut swatch = row("mine", WidgetKind::ColorSwatch);
+    swatch.rgba = Some([0x20, 0x80, 0xC0, 0xFF]);
+    rows::set_live_rows(Some(vec![swatch]));
+    let _ = h.paint::<AuthoredPanel>(&mut st, VIEWPORT);
+    rows::set_live_rows(Some(vec![row("mine", WidgetKind::Checkbox)]));
+    let _ = drain_intents();
+
+    let r = h
+        .painted_rect::<AuthoredPanel>(&mut st, VIEWPORT, ids::authored_row_id("mine"))
+        .expect("a row nao foi pintada");
+    let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
+    h.dispatch_pointer_event(pointer(PointerKind::Down, cx, cy, SEC));
+    for ev in h.dispatch_pointer_event(pointer(PointerKind::Up, cx, cy, SEC + SEC / 100)) {
+        AuthoredPanel::apply_event(&mut st, &mut h, ev);
+    }
+
+    assert!(
+        h.store().picker_target().is_none(),
+        "o Down abriu o picker de cor sobre um CHECKBOX — a marca de swatch sobreviveu a' troca \
+         de tipo, e o ramo do picker corta o Down antes de o widget sequer ser considerado"
+    );
+    assert_eq!(
+        h.store()
+            .checkbox(ids::authored_row_id("mine"))
+            .map(|c| c.1),
+        Some(CheckboxValue::Checked),
+        "o clique nao marcou a caixa"
+    );
+    rows::set_live_rows(None);
+}
+
 /// **A família inteira, e não só o checkbox** — o Enio pediu-o ao dizer *"o Toggle está igual"*.
 ///
 /// ⚠️ Uma lista de tipos escrita à mão apodreceria no dia do próximo; esta varre o CATÁLOGO e

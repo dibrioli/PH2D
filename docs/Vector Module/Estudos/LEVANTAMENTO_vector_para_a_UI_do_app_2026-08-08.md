@@ -239,7 +239,16 @@ desenho* — sem um terceiro estado a dizer qual rota está activa, então elas 
 | ordem | wave | cobertura | estado |
 |---|---|---|---|
 | ~~1~~ | `NumberInput` + `LevelMeter` | 67,1% → **72,4%** | ✅ **feito** |
-| **1** | `ColorSwatch` pelo canal do §6.1 | 72,4% → **80,6%** | as duas metades juntas |
-| **2** | colapso de seção | — | ✅ **feito** — comportamento, zero tipo novo |
-| **3** | `IconButton` | 80,6% → **85,4%** | ✅ **feito** — as DUAS rotas (§6.2) |
-| **4** | a família da **LISTA** | → **~100%** | filhos autorados |
+| ~~1~~ | `ColorSwatch` pelo canal do §6.1 | 72,4% → **80,6%** | ✅ **feito** — as duas metades juntas |
+| ~~2~~ | colapso de seção | — | ✅ **feito** — comportamento, zero tipo novo |
+| ~~3~~ | `IconButton` | 80,6% → **85,4%** | ✅ **feito** — as DUAS rotas (§6.2) |
+| ~~4~~ | a família da **LISTA** | → **~100%** | ✅ **feito** — os filhos autorados são as opções |
+
+⚠️ **O PLANO DESTE LEVANTAMENTO ESTÁ FECHADO** (2026-08-09). `WidgetKind::ALL` mede **20**, e as
+quatro waves da tabela acima saíram. O buraco que este documento existia para medir — os 32,9% que
+o vetor não vestia — **não existe mais**; o que sobra é o que a §6.4 chama de horizonte, e ele pede
+plano NOVO, não a continuação deste.
+
+⚠️ *E este placar ficou stale entre o commit que fechou a wave 4 e esta linha* — a mesma classe de
+doc mentiroso que a auditoria irmã passou a jornada a curar. **A fonte é o `WidgetKind::ALL`; esta
+tabela é o espelho, e espelho enverga.**

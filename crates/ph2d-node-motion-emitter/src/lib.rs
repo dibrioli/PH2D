@@ -30,10 +30,32 @@
 //! oldest-first — so `motion.tint` in Gradient mode paints the stream by age
 //! for free).
 //!
-//! Params: `rate` (particles/sec), `life` (sec), `speed`, `angle` (degrees CCW
-//! from +X; `90` is up in this Y-up world), `spread` (degrees of cone),
-//! `x`/`y` (origin), `seed`, `max` (hard cap — the newest `max` survive), and
-//! `size` (world-space side of each particle quad).
+//! Params: `rate` (particles/sec), `life` (sec), `speed`, `speed_random`,
+//! `angle` (degrees CCW from +X; `90` is up in this Y-up world), `spread`
+//! (degrees of cone), `x`/`y` (origin), `seed`, `max` (hard cap — the newest
+//! `max` survive), and `size` (world-space side of each particle quad).
+//!
+//! ## `speed_random` — the muzzle velocity varies per particle
+//!
+//! Every particle left the barrel at exactly the same speed, so a fountain read as a rigid
+//! arc rather than a spray. The reference has the knob everywhere (Particular *Velocity
+//! Random*, Niagara's *Add Velocity in Cone* taking `Velocity Strength` as a range, Cavalry's
+//! per-particle behaviours on *Initial Speed*).
+//!
+//! ⚠️ **Nothing downstream could supply it, and that is why it is a param and not a chain.**
+//! The emitter closes `P = origin + v·age` *inside* the node, so a `motion.drive` downstream
+//! only adds a CONSTANT displacement; scaling the launch would mean re-deriving `v·age` per
+//! particle, and `vel` is a **Vec2** column that the scalar `value.attribute` cannot take apart.
+//!
+//! The draw is `speed × (1 + (h − ½)·r·2)` on its own hash lane, so it is the same stateless,
+//! scrub-exact identity the cone angle already uses — **not** a sequence, and **not**
+//! `value.instance_field(Random)`, which hashes the *index*: in an emitter the alive window
+//! slides, so a particle's index changes the moment an older one dies and anything built on it
+//! **flickers**. `r = 0` is byte-identical (`speed × 1.0`).
+//!
+//! ⚠️ Above `r = 1` the multiplier goes negative and the particle launches into the opposite
+//! half of the cone. That is not guarded — it is `spread`'s job, expressed better — but it IS
+//! mirrored, so the two paths agree about it.
 
 use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
@@ -90,6 +112,10 @@ const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::F
 const MAX_ALIVE: usize = 4 * 1024 * 1024;
 /// Hash lane for the launch angle draw (see [`hash::rand01`]).
 const LANE_ANGLE: u32 = 0;
+/// Hash lane for the launch SPEED draw. A lane of its own, never a re-use of
+/// [`LANE_ANGLE`]: sharing one would tie a particle's speed to its direction, so the fast ones
+/// would all sit on the same side of the cone and the spray would read as a fan.
+const LANE_SPEED: u32 = 1;
 
 /// The static contract of this node type (ADR-0031).
 pub const MANIFEST: NodeManifest = NodeManifest {
@@ -115,6 +141,13 @@ pub const MANIFEST: NodeManifest = NodeManifest {
         ParamSpec {
             name: "speed",
             default: 4.0,
+        },
+        // How much the muzzle velocity varies per particle, as a fraction of `speed`:
+        // `1` spreads it over `0 .. 2×`. APPENDED, and `0` is the single speed that
+        // always shipped, byte for byte.
+        ParamSpec {
+            name: "speed_random",
+            default: 0.0,
         },
         ParamSpec {
             name: "angle",
@@ -160,6 +193,7 @@ impl NodeOp for MotionEmitter {
             rate: ctx.param("rate"),
             life: ctx.param("life"),
             speed: ctx.param("speed"),
+            speed_random: ctx.param("speed_random"),
             angle: ctx.param("angle"),
             spread: ctx.param("spread"),
             origin: [ctx.param("x"), ctx.param("y")],
@@ -176,6 +210,8 @@ struct Spec {
     rate: f32,
     life: f32,
     speed: f32,
+    /// Per-particle spread of the muzzle velocity, as a fraction of `speed`.
+    speed_random: f32,
     angle: f32,
     spread: f32,
     origin: [f32; 2],
@@ -242,8 +278,12 @@ fn emit(spec: &Spec, t: f32) -> Stream {
         let jitter = rand01(spec.seed, id, LANE_ANGLE) - 0.5;
         let deg = spec.angle + jitter * spec.spread;
         let (cx, sy) = cos_sin_cycles(deg / 360.0);
+        // Its own lane, and the SAME term order the kernel runs: parity here is bit-exact by
+        // construction, not by epsilon. With `speed_random = 0` the factor is `1.0` exactly.
+        let js = rand01(spec.seed, id, LANE_SPEED) - 0.5;
+        let speed = spec.speed * (1.0 + js * spec.speed_random * 2.0);
         p.push(spec.origin);
-        vel.push([cx * spec.speed, sy * spec.speed]);
+        vel.push([cx * speed, sy * speed]);
         ids.push(id as f32);
         // The SAME two-step the kernel runs (`age_first − k/rate`), not
         // `t − id/rate`: the kernel has to mirror this arithmetic exactly, and
@@ -289,8 +329,10 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         let em_jitter = em_rand01(em_seed, em_id, 0u) - 0.5;\n\
         let em_deg = params.angle + em_jitter * params.spread;\n\
         let em_cs = em_cos_sin_cycles(em_deg / 360.0);\n\
+        let em_sj = em_rand01(em_seed, em_id, 1u) - 0.5;\n\
+        let em_spd = params.speed * (1.0 + em_sj * params.speed_random * 2.0);\n\
         write_P(i, vec2<f32>(params.x, params.y));\n\
-        write_vel(i, vec2<f32>(em_cs.x * params.speed, em_cs.y * params.speed));\n\
+        write_vel(i, vec2<f32>(em_cs.x * em_spd, em_cs.y * em_spd));\n\
         write_id(i, f32(em_id));\n\
         write_age(i, params.window_age - f32(i) / params.rate);\n\
         write_life(i, params.life);\n\
@@ -384,7 +426,16 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         },
     ],
     params: &[
-        "rate", "life", "speed", "angle", "spread", "x", "y", "seed", "size",
+        "rate",
+        "life",
+        "speed",
+        "speed_random",
+        "angle",
+        "spread",
+        "x",
+        "y",
+        "seed",
+        "size",
     ],
     // Playhead-dependent (ADR-0130): the alive-window length `n(t)`, mirroring `emit`'s count.
     count_law: Some(|c| {

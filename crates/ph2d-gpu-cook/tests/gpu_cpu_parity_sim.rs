@@ -1493,6 +1493,12 @@ fn emitter_sim(
     // A wide cone so the muzzle velocity really DIFFERS per id: a positional
     // mispair then gives a survivor a stranger's velocity, which parity sees.
     g.set_param(em, "spread", 120.0);
+    // ⚠️ And it differs in MAGNITUDE too, not only in direction — which does two jobs at once:
+    // a mispair now shows up in the speed as well as the heading, and this is the ONLY place
+    // the emitter's second hash lane (`LANE_SPEED`) is walked down BOTH paths. The kernel's
+    // `speed_random` term is a hand-written mirror of the Rust one; with this at 0 it would be
+    // dead code on the device and nothing would notice it drifting.
+    g.set_param(em, "speed_random", 0.6);
     g.set_param(em, "x", 0.5);
     g.set_param(em, "y", -0.25);
     g.set_param(em, "seed", 7.0);

@@ -125,6 +125,17 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         step: 0.1,
         widget: ParamWidget::Slider,
     },
+    // ⚠️ A FRACTION of `speed`, so `0 .. 1` is the whole meaningful range and the row carries
+    // no ceiling entry: above 1 the multiplier turns negative and the particle launches into
+    // the opposite half of the cone, which is `spread`'s job and better said there.
+    ParamUiHint {
+        param: "speed_random",
+        label: "Speed Random",
+        min: 0.0,
+        max: 1.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
     ParamUiHint {
         param: "angle",
         label: "Angle",
@@ -193,9 +204,12 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
 /// As SEÇÕES deste nó (doc 88 B3). Dez controles numa lista plana são uma parede; a pergunta
 /// que cada seção responde é uma só.
 ///
-/// ⚠️ O `seed` está em **Velocity** por MEDIÇÃO, não por hábito: ele alimenta um único lane
-/// (`LANE_ANGLE`), ou seja é a aleatoriedade do `spread` — pô-lo numa seção "Random" o
-/// separaria justamente do número que ele randomiza.
+/// ⚠️ O `seed` está em **Velocity** por MEDIÇÃO, não por hábito: os lanes que ele alimenta são
+/// `LANE_ANGLE` e `LANE_SPEED`, ou seja ele é a aleatoriedade do `spread` **e** do
+/// `speed_random` — os dois moram aqui, e pô-lo numa seção "Random" o separaria justamente dos
+/// números que ele randomiza. *(A frase anterior dizia "um único lane"; o segundo chegou com o
+/// `speed_random` e a razão sobreviveu porque o lane novo caiu na mesma seção — o dia em que um
+/// lane nascer noutra, esta nota deixa de valer.)*
 ///
 /// ⚠️ E ficam SOLTOS `rate`, `life`, `size` e `max`: os três primeiros são o que um emissor
 /// É (com que frequência, por quanto tempo, de que tamanho) e o quarto é o orçamento. Param
@@ -203,6 +217,7 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
 pub static PARAM_GROUPS: &[ParamGroup] = &[
     // Como a partícula é lançada.
     ParamGroup::new("speed", "Velocity"),
+    ParamGroup::new("speed_random", "Velocity"),
     ParamGroup::new("angle", "Velocity"),
     ParamGroup::new("spread", "Velocity"),
     ParamGroup::new("seed", "Velocity"),

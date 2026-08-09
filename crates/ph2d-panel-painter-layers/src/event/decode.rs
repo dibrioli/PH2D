@@ -8,7 +8,7 @@ use ph2d_a11y::NodeId;
 use ph2d_editor_core::ids as core_ids;
 use ph2d_tool_painter::{
     MAX_BRUSH_BLEND_MODES, MAX_FALLOFF, PaintMedia, RampAlphaMode, RampColorMode, RampInterp,
-    TextureKind, TextureMapping,
+    StrokeMethod, TextureKind, TextureMapping,
 };
 
 /// Decode a top-of-panel **Preset** popover option id → its preset idx (`0` = Digital, `1` = Watercolor).
@@ -42,10 +42,15 @@ pub(super) fn decode_brush_falloff_option(id: NodeId) -> Option<u8> {
     (0..MAX_FALLOFF).find(|&p| core_ids::painter_brush_falloff_option_id(p) == id)
 }
 
-/// Decode a Stroke-Method popover option id → its `StrokeMethod` wire `u8` (the 10 methods: the 7
-/// Blender ones `0..=6` + the PH2D `Ellipse` (7) + `Polygon` (8) + `FreeHand` (9) extensions).
+/// Decode a Stroke-Method popover option id → its `StrokeMethod` wire `u8`.
+///
+/// ⚠️ A faixa vem do **enum** (`StrokeMethod::COUNT`), nunca de um literal: ela era `0..10` e o
+/// `GridStamp` (10) ficava de fora, então clicar na última opção do dropdown **não fazia nada** —
+/// o id não decodificava, nenhum comando era emitido, e o único vestígio era um
+/// `[hero] unhandled event: Click(..)` no log. É a reincidência exata do bug `Ellipse = 7` que o
+/// cabeçalho deste módulo já descrevia; o literal é que era a doença.
 pub(super) fn decode_stroke_method_option(id: NodeId) -> Option<u8> {
-    (0..10).find(|&m| core_ids::painter_brush_stroke_method_option_id(m) == id)
+    (0..StrokeMethod::COUNT).find(|&m| core_ids::painter_brush_stroke_method_option_id(m) == id)
 }
 
 /// Decode a Jitter-Unit popover option id → its wire `u8` (`0` = Brush, `1` = View).

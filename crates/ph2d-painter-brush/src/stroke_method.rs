@@ -64,6 +64,17 @@ pub enum StrokeMethod {
 }
 
 impl StrokeMethod {
+    /// Quantos métodos existem — ou seja, o menor `u8` que **não** é um método.
+    ///
+    /// ⚠️ Existe porque um decodificador de opção de dropdown tem de varrer a faixa INTEIRA dos
+    /// discriminantes, e as três varreduras que existiam eram **literais** (`0..10`, `0..9`): cada
+    /// método novo nascia com o clique caído no chão — sem erro e sem aviso, porque um id que não
+    /// decodifica simplesmente não vira comando. Já aconteceu com o `Ellipse` (7) e reincidiu no
+    /// `GridStamp` (10). O número mora aqui, ao lado do `match` que o define, e o gate
+    /// `the_count_is_exactly_the_number_of_real_methods` o prende ao [`Self::from_u8`] — não a uma
+    /// segunda cópia do literal.
+    pub const COUNT: u8 = 11;
+
     /// Wire discriminant (matches Blender's `eBrushStrokeType` value).
     #[must_use]
     pub fn to_u8(self) -> u8 {
@@ -323,6 +334,33 @@ mod tests {
         assert_eq!(StrokeMethod::default(), StrokeMethod::Space);
         // Unknown → Space (paints), not Dots.
         assert_eq!(StrokeMethod::from_u8(200), StrokeMethod::Space);
+    }
+
+    /// **`COUNT` é exatamente o número de métodos REAIS**, e a prova sai do [`StrokeMethod::from_u8`],
+    /// nunca de uma segunda cópia do número.
+    ///
+    /// Todo discriminante abaixo de `COUNT` **volta para si mesmo**; o discriminante `COUNT` **não**
+    /// (cai no fallback). É isso que torna a constante não-apodrecível: acrescentar um método sem
+    /// bumpar o `COUNT` faz o novo passar a voltar para si mesmo e a segunda asserção sangra na hora.
+    ///
+    /// **Mutação que deve sangrar:** `COUNT: u8 = 10` (o valor de antes do Grid Stamp).
+    #[test]
+    fn the_count_is_exactly_the_number_of_real_methods() {
+        for m in 0..StrokeMethod::COUNT {
+            assert_eq!(
+                StrokeMethod::from_u8(m).to_u8(),
+                m,
+                "o discriminante {m} está abaixo de COUNT e NÃO é um método — a faixa que os \
+                 decodificadores varrem inclui um buraco"
+            );
+        }
+        assert_ne!(
+            StrokeMethod::from_u8(StrokeMethod::COUNT).to_u8(),
+            StrokeMethod::COUNT,
+            "existe um método no discriminante {} e o COUNT não o inclui — o clique na ÚLTIMA opção \
+             do dropdown cai no chão, sem erro e sem aviso (a regressão Ellipse = 7 / GridStamp = 10)",
+            StrokeMethod::COUNT
+        );
     }
 
     #[test]

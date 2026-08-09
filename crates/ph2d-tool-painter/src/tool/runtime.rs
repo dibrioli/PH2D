@@ -237,7 +237,19 @@ impl PainterTool {
             active_rgba: &self.canvas_rgba,
             images: &self.images,
         };
-        let rgba = composite(&self.layers, &src, w, h);
+        let mut rgba = composite(&self.layers, &src, w, h);
+        // ⚠️ **O relevo entra AQUI, e pela mesma função que o BAKE chama.**
+        //
+        // Esta porta responde *"com o que este documento se parece?"* para o Grain, o Paper e a
+        // Granulation do menu "Use as …" — e o `run_full` (o Apply) responde a MESMA pergunta,
+        // dizendo no próprio doc-comment por quê: *"o campo de altura não sobrevive ao Apply, então
+        // a sombra tem de ser assada, senão o Apply jogaria o relevo fora em silêncio e devolveria
+        // tinta chapada"*. Sem esta linha as duas portas discordavam exatamente pela luz (medido:
+        // 523 de 3600 texels, pior delta 68), e o sintoma era o do report do Enio (2026-08-09) — um
+        // sprite JÁ assado da hierarquia levava a sombra do relevo, e o documento ATIVO não.
+        //
+        // Sem relevo o passe multiplica por 1 e soma 0, então isto é byte-idêntico ao que já shipava.
+        self.apply_impasto_light(&mut rgba, Region { x: 0, y: 0, w, h });
         let lum = rgba
             .chunks_exact(4)
             .map(|p| {

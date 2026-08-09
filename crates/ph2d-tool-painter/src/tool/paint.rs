@@ -248,8 +248,13 @@ pub(crate) use state::PaintState;
 // verbs in `curve_commit`; drag-preview stamping in `stamp_preview`; `union_region` in `region`.
 use region::union_region;
 
+/// O **ganho** que o relevo impõe à aparência — a sombra do impasto como grandeza sem cor, para
+/// alcançar o que não é pixel (a silhueta do slot Shape). [LOC split de `impasto_light`].
+mod impasto_gain;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod use_as_relief_tests; // sonda: o que os quatro "Use as ..." leem (report do Enio 2026-08-09)
 // Each gate family below gets its own file rather than the end of the 21k-line `tests` — a wave's
 // worth of gates appended there is a wave's worth of gates nobody can find again.
 #[cfg(test)]

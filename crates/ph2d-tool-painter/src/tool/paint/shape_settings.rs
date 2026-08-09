@@ -267,7 +267,30 @@ impl PainterTool {
     /// choke point, called by everything that changes what the silhouette should look like.
     pub(super) fn reflatten_shape_image(&mut self) {
         match self.paint.shape_layers.flatten() {
-            Some((lum, w, h)) => {
+            Some((mut lum, w, h)) => {
+                // ⚠️ **O RELEVO chega à silhueta como um GANHO, não como uma cor.**
+                //
+                // O slot Shape é uma MÁSCARA e a captura do documento ativo lê COBERTURA — e a
+                // cobertura é alpha, que o passe de luz nunca escreve (ele multiplica COR). Então
+                // "iluminar a silhueta" seria provadamente um no-op, e era por isso que o relevo não
+                // alcançava o pincel (report do Enio, 2026-08-09).
+                //
+                // O ganho é COR-INDEPENDENTE de propósito: um desenho a tinta PRETA sobre tela
+                // transparente continua imprimindo a própria cobertura — trocar a silhueta pela
+                // luminância (o que as outras portas do slot leem) o tornaria um carimbo invisível.
+                // O que o relevo faz é modular o que já está lá.
+                //
+                // Sem relevo o ganho é `FLAT_PROBE` em todo texel e a divisão devolve o mesmo byte,
+                // então nada num documento sem escultura se move.
+                if let Some(gain) = self.relief_shade_gain()
+                    && gain.len() >= lum.len()
+                {
+                    for (a, &g) in lum.iter_mut().zip(gain.iter()) {
+                        let v = u32::from(*a) * u32::from(g)
+                            / u32::from(super::impasto_gain::FLAT_PROBE);
+                        *a = v.min(255) as u8;
+                    }
+                }
                 self.paint.shape_image = Some(BrushTextureImage::new(lum, w, h));
                 self.paint.brush.shape.kind = TextureKind::Image;
             }

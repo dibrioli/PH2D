@@ -71,7 +71,6 @@ fn enabled(feature: &str) -> bool {
         "panel-flip" => cfg!(feature = "panel-flip"),
         "panel-tokens" => cfg!(feature = "panel-tokens"),
         "panel-authored" => cfg!(feature = "panel-authored"),
-        "panel-tokens" => cfg!(feature = "panel-tokens"),
         "panel-sculpt3d" => cfg!(feature = "panel-sculpt3d"),
         other => panic!("unknown feature in SHELL_DRIVEN_PANELS: {other}"),
     }

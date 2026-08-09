@@ -35,3 +35,39 @@ retries = 10
 # box) so it becomes a failure the `retries` then re-attempts — extending the
 # existing retry strategy to the hang mode. Scoped to asset-cooker only.
 slow-timeout = { period = "60s", terminate-after = 2 }
+
+# ── Os gates que precisam da MÁQUINA para medir o que afirmam ────────────────
+#
+# Um gate de RAZÃO entre um caminho serial e um paralelo não pode correr ao lado
+# de trinta e um outros processos de teste: o `rayon` reporta os 32 threads e não
+# tem um núcleo livre para usar, então o paralelo mede o mesmo que o serial e o
+# gate reprova código correto. Medido no ship de 2026-08-08:
+#
+#     serial 15.243 ms · paralelo 15.441 ms · ganho 0.99x   (32 threads)
+#
+# ⚠️ **Isto NÃO afrouxa a barra** — a asserção fica onde estava; o que muda é que
+# ela passa a ser feita com a máquina que ela precisa para ser verdadeira. E a
+# mensagem do próprio gate mostra por que a cura tinha de vir para cá: ela oferece
+# duas hipóteses (*"PAR_MIN alto demais? limiar invertido?"*) e nenhuma delas é a
+# causa, porque o gate não pode ver o runner que o está a matar de fome.
+#
+# ⚠️ **A lista é MEDIDA, não adivinhada:** só entra o gate que foi visto reprovar
+# sob a suíte cheia **e passar isolado** — esse par é que separa *fome de núcleo*
+# de *regressão*. Um filtro largo por convenção de nome (`measure_*`) serializaria
+# dezenas de sondas que não medem razão nenhuma.
+#
+# ⚠️ **E a lista foi enumerada com `--no-fail-fast`, o que não é detalhe:** o
+# `fail-fast` revela UMA falha por corrida, então descobri-las pelo ship custa uma
+# corrida de ship por gate — e cada corrida "conserta" o anterior e revela o
+# seguinte, o que se lê como progresso e é uma fila. Uma passada com
+# `--no-fail-fast` deu as quatro de uma vez.
+#
+# As quatro, com o que cada uma mede e o número que ela viu sob a suíte cheia:
+#   · measure_normals_parallel_speedup ............ serial÷paralelo · 0.99x
+#   · the_cost_of_sampling_a_path_is_flat_in_its_anchors · custo×âncoras
+#   · the_cost_of_depth_is_linear_not_explosive .... 3.00x contra barra 2.9
+#   · the_cost_of_a_gated_stroke_follows_the_footprint_not_the_canvas
+#                                                   1.72x (varrer o plano daria 4x)
+[[profile.default.overrides]]
+filter = 'test(measure_normals_parallel_speedup) + test(the_cost_of_sampling_a_path_is_flat_in_its_anchors) + test(the_cost_of_depth_is_linear_not_explosive) + test(the_cost_of_a_gated_stroke_follows_the_footprint_not_the_canvas)'
+threads-required = 'num-cpus'

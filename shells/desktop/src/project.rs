@@ -336,18 +336,15 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// v65 (physics, W14 — O ARRANQUE): o `PlatformPlayer` ganhou **`dash_speed`**,
 /// **`dash_time`** e **`dash_cooldown`**. Três campos apendados ao componente, pelo
 /// mesmo raciocínio posicional de todos os degraus acima.
-
 /// v66 (physics, W15 — O AGACHAR): o `PlatformPlayer` ganhou **`crouch_height`** e
 /// **`crouch_speed`**. Dois campos apendados, e o motivo do bump é o de sempre —
 /// postcard é posicional. ⚠️ Note o que este degrau **não** traz: nenhuma forma de
 /// collider muda, porque agachar aqui é uma perna mais CURTA e não um corpo menor.
-
 /// v67 (physics, W17 — A CORRIDA SOBREVIVE AO ARQUIVO): campo de ARQUIVO novo,
 /// `player_tape`, com o que o dedo do jogador fez tique a tique. ⚠️ Ele fecha o
 /// último item aberto do §4 do plano 06, e é o **bake da W16** que o torna útil:
 /// a fita é a entrada que o bake replaya, então reabrir um projeto e apertar Bake
 /// devolve a corrida de ontem. Medido: 60 s de corrida pesam **28,1 kB**.
-
 /// v68 (physics, W23 — O AGARRAR-SE): o `PlatformPlayer` ganhou
 /// **`wall_grab_stamina`**. Um campo apendado ao componente, pelo mesmo
 /// raciocínio posicional de todos os degraus acima.
@@ -357,7 +354,6 @@ use crate::undo::{ProjectState, ProjectUndo};
 /// desta wave volta com o agarrar em zero, que é o que ela de facto tinha; um
 /// campo novo na tupla teria custado o bump por si só e recusado todo arquivo já
 /// salvo.
-
 /// v69 (`line/motion-value`, doc 88 D3 — AS SETTINGS DO PROJETO viajam no arquivo):
 /// campo de ARQUIVO novo, `settings` (`SavedSettings`) — a escala do mundo
 /// (`pixels_per_meter`), a unidade que o artista LÊ, os dois snaps do gizmo e o modo

@@ -575,6 +575,37 @@ EXPRESSO = "EXPRESSO"
 extrator = "extrator"
 refere = "refere"
 metalness = "metalness"
+# Jornada de 2026-08-08 (Vector · sculpt3d · physics · motion-value · Painter ·
+# runtime). ⚠️ Estes chegaram TODOS juntos ao ship do integrador, e a razão é
+# estrutural: cada linha fecha com `cargo test -p`, e o `typos` é project-wide —
+# só o ship o roda. Quatro são variantes de CAIXA, que este arquivo trata como
+# entradas próprias (o precedente do `EXPRESSO` acima).
+sensores = "sensores"
+SENSORES = "SENSORES"
+repor = "repor"
+Repor = "Repor"
+prestes = "prestes"
+validador = "validador"
+monitores = "monitores"
+horizontes = "horizontes"
+fale = "fale"
+serie = "serie"
+satelite = "satelite"
+represente = "represente"
+percentil = "percentil"
+PERCENTIL = "PERCENTIL"
+fabricas = "fabricas"
+destroi = "destroi"
+deposite = "deposite"
+continuos = "continuos"
+alternativos = "alternativos"
+# `moer` é o verbo (a histerese que impede o par de MOER), não um "more" torto.
+moer = "moer"
+MOER = "MOER"
+# `dout` é IDENTIFICADOR (`d` + `out`: `let dout = d.add_node("motion.output")`),
+# e `unparseable` é a grafia técnica que o typos quer trocar por "unparsable".
+dout = "dout"
+unparseable = "unparseable"
 
 [files]
 extend-exclude = [

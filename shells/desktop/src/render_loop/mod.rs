@@ -190,17 +190,17 @@ pub(crate) mod physics_panel_bridge;
 #[cfg(test)]
 mod push_look_probe;
 pub(crate) mod record_fit;
-/// **A ponte do painel de TOKENS** (plano UI/UX W6) — o read-back do picker e os intents de
-/// Reset. A shell é o único escritor da camada de override de cor.
+/// A porta única dos verbos de FITA (descartar / devolver a corrida gravada).
+mod run_stash;
 /// O painel da cena 3D (ADR-0150 W12) — irmão do `physics_panel_bridge` e do
 /// `tokens_bridge`: um painel de MUNDO, publicado e drenado na mesma fase.
 #[cfg(feature = "sculpt3d")]
 pub(crate) mod sculpt3d_panel_bridge;
-/// A porta única dos verbos de FITA (descartar / devolver a corrida gravada).
-mod run_stash;
 pub(crate) mod timeline_bridge;
 pub(crate) mod timeline_onion;
 mod timeline_presets;
+/// **A ponte do painel de TOKENS** (plano UI/UX W6) — o read-back do picker e os intents de
+/// Reset. A shell é o único escritor da camada de override de cor.
 pub(crate) mod tokens_bridge;
 pub(crate) mod tokens_bridge_dtcg;
 #[cfg(test)]

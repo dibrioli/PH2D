@@ -70,8 +70,52 @@ pub(crate) fn key_of(label: &str) -> String {
 /// seria o dia em que o slider mudaria de cor por o artista ter pintado a forma.
 fn colour_of(sim: &SimWorld, scene: &VecScene, e: Entity) -> Option<[u8; 4]> {
     let id: VecPathId = sim.world().get::<VecPathRef>(e)?.0;
+    colour_of_path(scene, id)
+}
+
+/// A metade de [`colour_of`] que só olha o DESENHO — a que a viagem de volta também precisa.
+///
+/// ⚠️ Ela é extraída, e não copiada, porque quem PUBLICA a cor e quem decide se a ESCREVE têm de
+/// concordar sobre o que "a cor desta forma" quer dizer. Duas leituras do preenchimento
+/// divergiriam no dia em que uma delas aprendesse sobre uma variante nova de
+/// [`ph2d_vec_scene::Paint`] — e a divergência apareceria como uma escrita que ninguém pediu.
+fn colour_of_path(scene: &VecScene, id: VecPathId) -> Option<[u8; 4]> {
     let c = scene.path(id)?.fill.as_ref()?.primary_color();
     Some([c.r, c.g, c.b, c.a])
+}
+
+/// **A viagem de volta: a cor escolhida pinta a forma** — e a IGUAL é recusada.
+///
+/// ⚠️ **A recusa não é higiene, é o que impede a escrita de acontecer ao ABRIR.** O `pointer_down`
+/// SEMEIA o picker no clique da swatch (`set_widget_color` + `set_blender_value`), então no quadro
+/// seguinte ele já devolve `Some` com a cor que a row publicou — sem esta guarda o simples gesto
+/// de *olhar* a cor escreve o documento. É a mesma lei do `set_piece_colour`, que a declara pelo
+/// outro sintoma: o picker aberto gravaria um passo de undo por quadro.
+///
+/// ⚠️ **E o preço de não a ter é maior que um passo de undo: um GRADIENTE seria ACHATADO.** O que
+/// a swatch mostra é o `primary_color()` — o primeiro stop —, e o que se escreve é um
+/// `Paint::Solid`. Abrir o picker sobre uma forma de preenchimento em rampa e apertar Esc
+/// destruiria a rampa, sem gesto nenhum e sem volta. Comparando contra o que a row PUBLICOU, o
+/// caso *"abriu e não escolheu"* não escreve — e a rampa sobrevive.
+///
+/// ⚠️ Achatar continua a ser o que acontece quando o artista **escolhe** outra cor, e isso é
+/// deliberado: a swatch mostra UMA cor e ele escolheu UMA cor. O que se recusa é a escrita que
+/// ninguém pediu.
+///
+/// O comparando sai de [`colour_of`], a MESMA função que publica a row — duas leituras do
+/// preenchimento divergiriam no dia em que uma delas aprendesse sobre uma variante nova de
+/// [`ph2d_vec_scene::Paint`].
+pub(crate) fn paint_swatch_colour(scene: &mut VecScene, id: VecPathId, rgba: [u8; 4]) -> bool {
+    if colour_of_path(scene, id) == Some(rgba) {
+        return false;
+    }
+    let Some(p) = scene.path_mut(id) else {
+        return false;
+    };
+    p.fill = Some(ph2d_vec_scene::Paint::Solid(ph2d_vec_scene::Rgba8::new(
+        rgba[0], rgba[1], rgba[2], rgba[3],
+    )));
+    true
 }
 
 /// **O glifo que uma row desenha**, quando o tipo dela É um botão de ícone — a forma que veste o

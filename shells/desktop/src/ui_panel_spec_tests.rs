@@ -318,3 +318,63 @@ fn the_chosen_icon_wins_in_the_plan_and_the_two_fields_are_exclusive() {
     // código gerado.
     assert_eq!(build(Some("nao-existe")), (true, None));
 }
+
+/// **Abrir o picker não escreve o documento — e é um GRADIENTE que o prova.**
+///
+/// ⚠️ Gate red-first. O `pointer_down` SEMEIA o picker no clique da swatch com a cor que a row
+/// publicou (`primary_color()`, o primeiro stop), então no quadro seguinte ele devolve `Some` sem
+/// que o artista tenha escolhido nada. Sem a recusa da cor igual, esse `Some` escrevia um
+/// `Paint::Solid` por cima da rampa: **abrir o picker e apertar Esc destruía o gradiente**, sem
+/// gesto e sem volta.
+///
+/// ⚠️ A fixture é uma rampa **de propósito**: com um `Solid` a escrita seria idempotente e o
+/// defeito ficaria invisível — o `Rgba8` volta byte a byte, e o gate passaria com a guarda
+/// removida. *A fixture tem de conter o fenômeno.*
+#[test]
+fn opening_the_picker_does_not_flatten_a_gradient() {
+    use ph2d_vec_scene::{GradientStop, Paint, Rgba8};
+    let mut scene = VecScene::new();
+    let id = scene.push_path(ph2d_vec_scene::VecPath::default());
+    let ramp = Paint::Linear {
+        stops: vec![
+            GradientStop {
+                offset: 0.0,
+                color: Rgba8::new(0x20, 0x80, 0xC0, 0xFF),
+            },
+            GradientStop {
+                offset: 1.0,
+                color: Rgba8::new(0xF0, 0x10, 0x10, 0xFF),
+            },
+        ],
+        start: [0.0, 0.0],
+        end: [1.0, 0.0],
+    };
+    scene.path_mut(id).expect("o caminho existe").fill = Some(ramp);
+
+    // O que o `pointer_down` semeia é exatamente o que a row publicou.
+    let seed = colour_of_path(&scene, id).expect("a row publica o primeiro stop");
+    assert_eq!(seed, [0x20, 0x80, 0xC0, 0xFF]);
+
+    assert!(
+        !paint_swatch_colour(&mut scene, id, seed),
+        "a cor SEMEADA foi escrita — abrir o picker escreve o documento"
+    );
+    assert!(
+        matches!(
+            scene.path(id).and_then(|p| p.fill.as_ref()),
+            Some(Paint::Linear { .. })
+        ),
+        "o gradiente foi ACHATADO por um gesto que nao escolheu cor nenhuma"
+    );
+
+    // E o gesto que ESCOLHE continua a pintar — a recusa é da escrita que ninguem pediu.
+    assert!(
+        paint_swatch_colour(&mut scene, id, [0x11, 0x22, 0x33, 0xFF]),
+        "escolher uma cor diferente nao pintou a forma"
+    );
+    assert_eq!(
+        colour_of_path(&scene, id),
+        Some([0x11, 0x22, 0x33, 0xFF]),
+        "a cor escolhida nao chegou ao desenho"
+    );
+}

@@ -7421,12 +7421,12 @@ impl crate::App {
                 && let Some((value, _, _, _)) = hero
                     .store
                     .blender_picker(ph2d_editor::ids::INSP_BLENDER_PICKER)
-                && let Some(p) = vec_scene.path_mut(path)
             {
-                let c = value.rgba;
-                p.fill = Some(ph2d_vec_scene::Paint::Solid(ph2d_vec_scene::Rgba8::new(
-                    c[0], c[1], c[2], c[3],
-                )));
+                // ⚠️ A porta RECUSA a cor igual, e é ela que impede a escrita ao ABRIR: o
+                // `pointer_down` semeia o picker no clique da swatch, então sem a recusa o gesto
+                // de *olhar* a cor escreveria o documento — achatando um gradiente e gravando um
+                // passo de undo por quadro. A lei é a do `set_piece_colour`, ali em cima.
+                crate::ui_panel_spec::paint_swatch_colour(vec_scene, path, value.rgba);
             }
             let live_rows =
                 authored_frame.map(|f| crate::ui_panel_spec::live_rows(sim, vec_scene, f));

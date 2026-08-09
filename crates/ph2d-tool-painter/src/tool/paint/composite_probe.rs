@@ -191,3 +191,68 @@ fn the_composite_stack_lays_the_whole_stroke() {
         "a pilha perdeu tinta: {whole} de 141 colunas entintadas ao longo do caminho"
     );
 }
+
+/// SONDA — a COSTURA vertical que sobrou (Enio 2026-08-09, foto com a seta).
+///
+/// ⚠️ **ELA NÃO REPRODUZ AQUI, e o resultado negativo é o achado:** as quatro pilhas medem **3 níveis**
+/// de degrau, idêntico ao Brush sozinho ⇒ a fixture **não contém o fenômeno**, e escrever mais uma dobra
+/// contra ela seria um chute (já foram três). O que a foto mostra é uma **coluna VERTICAL de altura
+/// inteira**, não a bbox de um dab — a fronteira de uma região do pipeline de DISPLAY (composite parcial
+/// · upload parcial de GPU · a banda de um passe paralelo), não da operação que esta wave consertou.
+///
+/// **O que a fixture não tem, e provavelmente é o que falta:** pincel grande, traço CURVO, muitos batches
+/// e canvas do tamanho do produto — o Enio observa a costura com o Smear na pilha, então a suspeita é a
+/// REGIÃO que o render de smear reescreve, não o mapa que ele acumula.
+///
+/// ⇒ O próximo passo **não é código**: é a armadilha que o BUGS_painter #11 já deixou armada —
+/// `PH2D_PREVIEW_DIAG=1` diz qual produtor tem o slot e que bbox subiu, e `PH2D_PREVIEW_DUMP=<dir>` grava
+/// o composite EXATO antes de qualquer overlay. Retângulo nos PNGs ⇒ está no composite; PNGs limpos com a
+/// costura na tela ⇒ é upload ou overlay. É literalmente a lição daquele bug: *pare o harness mais cedo e
+/// instrumente o app*.
+///
+/// O gate de colunas entintadas é **cego a isto**: uma costura não tira tinta, ela põe um degrau. Aqui o
+/// oráculo é o maior salto HORIZONTAL entre colunas vizinhas ao longo de uma linha — um degrau
+/// axis-aligned aparece como um pico isolado, e uma borda honesta de pincel não.
+#[test]
+fn probe_composite_vertical_seam() {
+    const SIZE: u32 = 200;
+    for (name, ops) in [
+        ("Brush só", vec![CompositeOp::Brush]),
+        ("Brush + Blur", vec![CompositeOp::Brush, CompositeOp::Blur]),
+        (
+            "Brush + Smear",
+            vec![CompositeOp::Brush, CompositeOp::Smear],
+        ),
+        (
+            "Brush + Blur + Smear",
+            vec![CompositeOp::Brush, CompositeOp::Blur, CompositeOp::Smear],
+        ),
+    ] {
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; (SIZE * SIZE * 4) as usize], SIZE, SIZE);
+        t.paint.brush.radius_px = 14.0;
+        t.paint.brush.color = [0.6, 0.0, 0.0];
+        t.paint.brush.space_attenuation = false;
+        t.paint.composite_enabled = true;
+        for pos in 0..3 {
+            t.paint.composite[pos] = CompositeLayer {
+                op: *ops.get(pos).unwrap_or(&CompositeOp::Brush),
+                strength: if pos < ops.len() { 0.6 } else { 0.0 },
+            };
+        }
+        t.paint.composite[0].strength = 1.0;
+        drag(&mut t, 100.0, 30.0, 170.0);
+        // A linha do EIXO satura; a costura mora no ombro, onde o valor varia devagar.
+        let px = &t.canvas_rgba;
+        let at = |x: u32| i32::from(px[((88 * SIZE + x) * 4) as usize]);
+        let (mut worst, mut wx) = (0i32, 0u32);
+        for x in 31..170 {
+            let d = (at(x) - at(x - 1)).abs();
+            if d > worst {
+                worst = d;
+                wx = x;
+            }
+        }
+        eprintln!("{name}: maior degrau {worst} niveis em x={wx}");
+    }
+}

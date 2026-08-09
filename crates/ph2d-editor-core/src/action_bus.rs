@@ -128,6 +128,21 @@ pub enum EditorAction {
     /// panels' Cancel buttons (BgRemoval + Padding).
     CancelActiveTool,
 
+    /// **Entra ou sai do modo escultura 3D** (ADR-0150). Levantada pelo pill SCULPT
+    /// (`chrome::sculpt3d_toggle`); o shell drena pondo o barro na tela — ou tirando-o.
+    ///
+    /// ⚠️ **Não é [`Self::ActivateTool`], e a diferença é a que o ADR-0150 protege:** a cena 3D
+    /// **não é uma [`crate::tool::Tool`]** (a navegação orbital mora no shell de propósito, e é
+    /// isso que mantém a superfície congelada `Tool=12` fora do caminho), então não há `tool_id`
+    /// que a registry saiba ativar. Uma variante própria é o canal honesto.
+    ///
+    /// ⚠️ **Sem carga útil, e é deliberado:** *o que* "entrar" significa — criar a cena se não
+    /// houver, pôr o papel no barro se houver — é conhecimento do shell, o único lado que tem o
+    /// device, o tamanho da superfície e a escultura. Um `bool` aqui obrigaria o pill a saber o
+    /// estado da cena para dizer o oposto dele, e as duas metades divergiriam no primeiro frame
+    /// em que o `D` mudasse o papel.
+    ToggleSculpt3d,
+
     /// Re-decode the entity's sprite source asset at the current
     /// `ProjectSettings::pixels_per_meter` and write the recomputed
     /// world size back to `Sprite.size`. Payload: `entity.to_bits()`.

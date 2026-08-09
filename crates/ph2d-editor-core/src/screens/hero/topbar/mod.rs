@@ -42,6 +42,9 @@ pub fn populate(store: &mut WidgetStore) {
         ids::TOPBAR_PHYSICS,
         ids::TOPBAR_TOKENS,
         ids::TOPBAR_AUTHORED,
+        // Sculpt 3D (ADR-0150) — mesma exigência de paridade dos pills acima: sem registro AQUI
+        // ele desenha e nasce morto sob o mouse.
+        ids::TOPBAR_SCULPT3D,
         ids::TOPBAR_WIDGET_GALLERY,
         ids::TOPBAR_GRID_SETTINGS,
         ids::TOPBAR_SETTINGS,
@@ -115,6 +118,8 @@ pub fn populate(store: &mut WidgetStore) {
         (ids::TOPBAR_PHYSICS, "Physics \u{00b7} W"),
         (ids::TOPBAR_TOKENS, "Tokens \u{00b7} T"),
         (ids::TOPBAR_AUTHORED, "Authored UI"),
+        // ⚠️ Nomeia a tecla da OUTRA pergunta: o pill entra e sai, o `D` percorre as três posições.
+        (ids::TOPBAR_SCULPT3D, "Sculpt 3D \u{00b7} D cycles"),
         (ids::TOPBAR_GRID_SETTINGS, "Grid Settings"),
         (
             ids::IMAGE_ACTION_TRIM,

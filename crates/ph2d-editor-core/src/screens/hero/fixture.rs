@@ -104,6 +104,19 @@ pub fn topbar_clusters() -> Vec<(ph2d_a11y::NodeId, TopBarCluster)> {
             ids::TOPBAR_FLIP,
             TopBarCluster::single("FLIP", IconId::Flip),
         ),
+        // A escultura 3D (ADR-0150) — **entra e sai** do modo. Ao lado dos três de cima porque a
+        // espécie é a mesma do ponto de vista do artista: clico, e o canvas passa a ser de outra
+        // coisa. ⚠️ Ele NÃO é uma tool (a navegação 3D mora no shell, ADR-0150), então o clique
+        // não passa pelo `ActivateTool` dos vizinhos — ver `chrome::sculpt3d_toggle`.
+        //
+        // ⚠️ **Depois do FLIP, e não ao lado do PHYS**, por uma razão de layout que o `split` do
+        // `paint_top_bar` torna concreta: os sete primeiros clusters são o grupo da ESQUERDA, e
+        // entrar entre eles empurraria o vizinho de baixo para o outro lado da tela — o mesmo
+        // acidente que o comentário do `split` já registra.
+        (
+            ids::TOPBAR_SCULPT3D,
+            TopBarCluster::single("SCULPT", IconId::Cube),
+        ),
         (ids::TOPBAR_PLAY_BUTTON, TopBarCluster::play()),
         (ids::TOPBAR_RIGHT_LAYERS, TopBarCluster::right()),
         // Widget Gallery (palette) — toggles a floating reference

@@ -6,9 +6,10 @@
 //! cada gesto. É também o que mantém o contrato congelado intacto (ADR-0150) —
 //! nenhum método novo em `Tool`.
 //!
-//! ⚠️ **Tudo isto é inerte sem a cena armada.** `AppGfx.sculpt3d` nasce `None` e
-//! só o smoke a cria, então num run normal cada porta daqui devolve `false` no
-//! primeiro `if` e o frame 2D é byte-idêntico.
+//! ⚠️ **Tudo isto é inerte sem a cena armada.** `AppGfx.sculpt3d` nasce `None`, então enquanto
+//! ninguém a cria cada porta daqui devolve `false` no primeiro `if` e o frame 2D é byte-idêntico.
+//! ⚠️ **Três coisas a criam, e a terceira é a que o artista alcança:** o smoke (`PH2D_SCULPT3D_SMOKE`),
+//! um projeto que traz uma escultura dentro, e o **pill SCULPT** — ver [`mode`].
 
 use ph2d_light::LightRig;
 use ph2d_mesh::{Hit, Mesh, Multires, Pose, Ray};
@@ -43,6 +44,12 @@ mod keys;
 /// e o mais estreito: *onde o gesto vai pousar*, e nada além.
 #[path = "sculpt3d_cursor.rs"]
 mod cursor;
+
+/// **ENTRAR E SAIR** — o pill SCULPT. Irmão do [`input`] e do [`keys`], e o corte é o mesmo com
+/// outro sujeito: aqueles perguntam *o que a mão faz com o barro*, este *quem é dono da tela*.
+#[path = "sculpt3d_mode.rs"]
+mod mode;
+pub(crate) use mode::sync_pill;
 
 pub(crate) use cursor::{OFF_SURFACE_RGBA, ON_SURFACE_RGBA};
 

@@ -544,6 +544,13 @@ pub(crate) struct App {
     /// pixels de um sprite precisa do mundo, do renderizador e do mapa de atlas,
     /// e os três só estão em escopo dentro do laço de frame.
     pub(crate) sculpt3d_alpha_request: bool,
+    /// **O pill SCULPT pediu para ENTRAR ou SAIR do modo escultura** (ADR-0150).
+    ///
+    /// ⚠️ **Terceiro irmão dos dois acima, e pela mesma razão, que aqui é mais forte:** entrar
+    /// pode ter de CRIAR a cena, o que exige o `device` e o tamanho da superfície — e os dois só
+    /// existem depois de a janela nascer. Sem `cfg` pelo motivo dos vizinhos: um `bool` não é um
+    /// símbolo do módulo 3D, e gateá-lo obrigaria a gatear o braço do dreno.
+    pub(crate) sculpt3d_toggle_request: bool,
     /// **O documento de escultura como veio do arquivo.** ⚠️ **Sem `cfg`, e é
     /// deliberado:** ele é `Vec<u8>` opaco, não um símbolo do módulo, e é isso
     /// que faz um binário construído SEM a escultura ser um **passa-adiante** em

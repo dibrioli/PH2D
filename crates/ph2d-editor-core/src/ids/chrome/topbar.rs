@@ -94,3 +94,18 @@ pub const TOPBAR_TOKENS: NodeId = hash_node_id("topbar_tokens");
 /// ⚠️ Terceiro irmão do PHYS e do TOK, e pela mesma queixa: o único abridor era o chip *Show as
 /// Panel*, que exige a ferramenta Vector **e** a moldura selecionada.
 pub const TOPBAR_AUTHORED: NodeId = hash_node_id("topbar_authored");
+
+/// O pill **SCULPT** — **entra e sai** do modo escultura 3D (ADR-0150).
+///
+/// ⚠️ **Ele NÃO é irmão do PHYS/TOK/UI, e a diferença decide o desenho:** aqueles três abrem um
+/// PAINEL, e um painel aberto não toma o canvas. Este muda quem é dono do PONTEIRO — com o barro
+/// na tela todo clique é da cena 3D, então sem uma saída visível o artista fica preso nela (a
+/// queixa do Enio, 2026-08-09: *"não consigo configurar a textura da sprite já que não posso sair
+/// do modo escultura"*). A vizinhança certa é a dos pills de MODO (VECTOR/MOTION/FLIP), que é onde
+/// ele está.
+///
+/// ⚠️ **Ele não é uma [`crate::tool::Tool`], e o hash diz isso:** a chave é `"topbar_sculpt3d"` e
+/// não um id de manifesto, porque a navegação 3D mora no SHELL de propósito (ADR-0150) — é essa
+/// decisão que mantém a superfície congelada (`Tool=12`) fora do caminho, e um id de manifesto aqui
+/// faria o reconcile de ferramenta ativa procurar uma tool que não existe.
+pub const TOPBAR_SCULPT3D: NodeId = hash_node_id("topbar_sculpt3d");

@@ -836,6 +836,13 @@ impl crate::App {
         // load não tinha (ADR-0150 W8.3).
         #[cfg(feature = "sculpt3d")]
         self.sculpt3d_install_pending();
+        // O pill SCULPT: entrar (criando a cena se não houver) ou sair. ⚠️ **Aqui e não no dreno
+        // da ação**, pela razão que o `install_pending` acima já enfrenta: criar uma cena precisa
+        // do `device` e do tamanho da superfície, e ali eles estão emprestados pelo laço.
+        // ⚠️ E ANTES do `donate_form`: o papel que este toggle escreve é justamente o que decide se
+        // a forma doa, e rodar depois deixaria a doação um frame atrás do que o artista vê.
+        #[cfg(feature = "sculpt3d")]
+        self.sculpt3d_apply_toggle();
         // A DOAÇÃO: rasteriza a forma no tamanho que o Painter publicou no frame anterior e deixa o
         // plano no canal. Quase sempre não faz nada — sem cena armada sai no primeiro `if`.
         #[cfg(feature = "sculpt3d")]
@@ -3252,6 +3259,11 @@ impl crate::App {
                             self.title_dirty = true;
                         }
                     }
+                    // O pill SCULPT (ADR-0150). ⚠️ **Um pedido, drenado no topo do frame
+                    // SEGUINTE** — a mesma rota do `Shift+B` e do padrão do sprite, e pelo mesmo
+                    // motivo, que aqui é mais forte: entrar pode ter de CRIAR a cena, e o `device`
+                    // está emprestado neste ponto do laço.
+                    EditorAction::ToggleSculpt3d => self.sculpt3d_toggle_request = true,
                     EditorAction::UndoImageEdit => undo_image_edit = true,
                     // Os botões Undo/Redo da barra: MESMO caminho do Ctrl+Z. O despacho
                     // espera o fim do frame (`post_frame_undo`) porque `undo_or_redo`

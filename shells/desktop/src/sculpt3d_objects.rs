@@ -151,7 +151,10 @@ impl Primitive {
     /// servir para as quatro: sem essa normalização a escala da pose teria de
     /// depender da forma, e o artista veria o cubo nascer de outro tamanho que a
     /// esfera pelo mesmo gesto.
-    fn mesh(self) -> Mesh {
+    /// ⚠️ `pub(crate)` porque o pill SCULPT ENTRA criando uma peça (`sculpt3d_mode`), e ela tem de
+    /// ser a MESMA que o verbo de acrescentar cria — duas malhas iniciais seriam duas respostas a
+    /// *com que forma uma escultura começa*.
+    pub(crate) fn mesh(self) -> Mesh {
         match self {
             Self::Sphere => shapes::uv_sphere(SEGMENTS / 2, SEGMENTS, 1.0),
             // `size` é a ARESTA, então a diagonal de um cubo de aresta 2/√3

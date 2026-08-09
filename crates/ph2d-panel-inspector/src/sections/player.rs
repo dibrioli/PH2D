@@ -171,7 +171,7 @@ const REACT_ROWS: [PlayerRow; 3] = [
     (
         "Push on Bodies",
         ids::INSP_PLAYER_REACT_PUSH,
-        "How hard he shoves what he walks into. KINEMATIC only: a dynamic body already pushes.",
+        "How hard he shoves what he walks into. A dynamic body already pushes through the solver.",
     ),
 ];
 
@@ -400,6 +400,7 @@ pub(crate) fn paint_player_section(
         w,
         yy,
         info.reaction_is_live,
+        info.push_is_live,
     );
 
     // ⚠️ **O piso geométrico, dito em voz alta — e pelo controle que o resolve.**
@@ -535,7 +536,13 @@ fn paint_cards(
     w: f32,
     mut yy: f32,
     reaction_is_live: bool,
+    push_is_live: bool,
 ) -> f32 {
+    // ⚠️ **UMA regra, e o pintor E a moldura a perguntam** — o `card_frame`
+    // recebe a CONTAGEM das rows e desenha a caixa por ela, então medir com uma
+    // lista e preencher com outra é como a seção seguinte pinta por cima dos
+    // controles (a lição que o `segmented_row_counts` do Painter já pagou).
+    let shown = |id: ph2d_a11y::NodeId| push_is_live || id != ids::INSP_PLAYER_REACT_PUSH;
     for (title, card_id, rows) in PLAYER_CARDS {
         // ⚠️ **O card da 3ª lei some no modo que não a tem** (W-KinPure) — não é
         // arrumação, é a lei do knob-morto: sob o *puro sangue* NENHUM dos três
@@ -552,9 +559,12 @@ fn paint_cards(
         if !reaction_is_live && card_id == ids::INSP_PLAYER_CARD_REACT {
             continue;
         }
-        let (ix, iw, mut ry, next_y) =
-            card_frame(scene, text_system, theme, x, w, yy, title, rows.len());
+        let n = rows.iter().filter(|(_, id, _)| shown(*id)).count();
+        let (ix, iw, mut ry, next_y) = card_frame(scene, text_system, theme, x, w, yy, title, n);
         for (label, id, _tip) in rows {
+            if !shown(*id) {
+                continue;
+            }
             ry = num_row(
                 scene,
                 text_system,

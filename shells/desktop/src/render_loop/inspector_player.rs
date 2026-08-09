@@ -75,6 +75,9 @@ pub(crate) fn build_player_info(
         // ⚠️ A pergunta é feita à PORTA do modo, aqui na shell — o painel recebe
         // a resposta, nunca o mapeamento (W-KinPure).
         reaction_is_live: mode.transmits(),
+        // ⚠️ E o empurrão lateral é mais estreito que o card: só o cinemático o
+        // lê (um corpo dinâmico já empurra pelo solver). A porta é do MODO.
+        push_is_live: mode.pushes_bodies(),
         float_height: p.float_height,
         min_float_height: min.unwrap_or(0.0),
         min_float_known: min.is_some(),

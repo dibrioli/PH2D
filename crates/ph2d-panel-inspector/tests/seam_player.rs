@@ -42,6 +42,7 @@ fn player() -> InspectorPlayerInfo {
         min_float_height: 0.58,
         mode_tag: 0,
         reaction_is_live: true,
+        push_is_live: true,
         min_float_known: true,
         cling_distance: 0.25,
         spring_strength: 400.0,
@@ -402,6 +403,7 @@ fn a_shape_without_a_known_floor_gets_no_fit_button() {
     let boxed = InspectorPlayerInfo {
         mode_tag: 0,
         reaction_is_live: true,
+        push_is_live: true,
         min_float_known: false,
         ..player()
     };
@@ -674,6 +676,7 @@ fn the_crouch_fit_button_appears_only_when_the_crouch_is_armed() {
         min_float_height: 0.58,
         mode_tag: 0,
         reaction_is_live: true,
+        push_is_live: true,
         min_float_known: true,
         ..player()
     };
@@ -689,6 +692,7 @@ fn the_crouch_fit_button_appears_only_when_the_crouch_is_armed() {
         min_float_height: 0.58,
         mode_tag: 0,
         reaction_is_live: true,
+        push_is_live: true,
         min_float_known: true,
         ..player()
     };
@@ -712,6 +716,7 @@ fn a_shape_without_a_known_floor_gets_no_crouch_fit_either() {
         crouch_height: 0.30,
         mode_tag: 0,
         reaction_is_live: true,
+        push_is_live: true,
         min_float_known: false,
         ..player()
     };
@@ -831,6 +836,7 @@ fn the_mode_chip_is_painted_in_both_modes() {
         // O *puro sangue* é o único cujo mundo não o ouve — e o chip que o
         // desfaz tem de continuar na tela, senão ele é um beco sem saída.
         info.reaction_is_live = tag != 2;
+        info.push_is_live = tag == 1;
         let rects = painted(info);
         for &id in &ids::INSP_PLAYER_MODE_IDS {
             assert!(
@@ -868,6 +874,7 @@ fn the_reaction_card_follows_who_is_heard_by_the_world() {
     let mut scenery = player();
     scenery.mode_tag = 2;
     scenery.reaction_is_live = false;
+    scenery.push_is_live = false;
     let rects = painted(scenery);
     for id in REACT {
         assert!(
@@ -880,5 +887,49 @@ fn the_reaction_card_follows_who_is_heard_by_the_world() {
     assert!(
         rects.iter().any(|(n, _)| *n == ids::INSP_PLAYER_SPEED),
         "os outros cards seguem pintados"
+    );
+}
+
+/// **O `Push on Bodies` só é OFERECIDO a quem o lê** (report do Enio,
+/// 2026-08-09: *"para Dynamic parece não funcionar; se não se aplica deve ser
+/// retirado do painel, assim como qualquer input morto"*).
+///
+/// ⚠️ **E os DOIS VIZINHOS são o controle, não decoração:** *Weight on Ground* e
+/// *Push on Ground* são aplicados pela MOLA e portanto vivos em Dynamic. Sem
+/// eles no gate, a cura preguiçosa — esconder o card inteiro, que é o que o
+/// precedente do `Pure` faz — passaria, e tiraria do artista dois controles que
+/// funcionam.
+///
+/// A terceira asserção é a que impede o oposto: escondê-lo TAMBÉM no cinemático
+/// seria trocar um knob morto por um knob que falta.
+#[test]
+fn the_shove_is_offered_only_to_the_mode_that_reads_it() {
+    let mut dynamic = player();
+    dynamic.mode_tag = 0;
+    dynamic.reaction_is_live = true;
+    dynamic.push_is_live = false;
+    let rects = painted(dynamic);
+    assert!(
+        !rects.iter().any(|(n, _)| *n == ids::INSP_PLAYER_REACT_PUSH),
+        "em Dynamic o empurrao lateral nao e' lido por ninguem, e um slider \
+         inerte ensina a desconfiar dos outros"
+    );
+    for live in [
+        ids::INSP_PLAYER_REACT_SUPPORT,
+        ids::INSP_PLAYER_REACT_MOVEMENT,
+    ] {
+        assert!(
+            rects.iter().any(|(n, _)| *n == live),
+            "os vizinhos sao aplicados pela MOLA e continuam vivos em Dynamic: \
+             {live:?} sumiu -- esconder o card inteiro nao e' a cura"
+        );
+    }
+
+    let mut kinematic = player();
+    kinematic.mode_tag = 1;
+    let rects = painted(kinematic);
+    assert!(
+        rects.iter().any(|(n, _)| *n == ids::INSP_PLAYER_REACT_PUSH),
+        "e no modo que o LE' ele tem de estar la'"
     );
 }

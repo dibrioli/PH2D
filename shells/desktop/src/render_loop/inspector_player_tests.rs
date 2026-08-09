@@ -545,6 +545,16 @@ fn choosing_pure_turns_the_world_into_scenery() {
             mode_tag != 2,
             "e o card REACTION segue quem o mundo ouve"
         );
+        // ⚠️ **A OFERTA fica ao lado da MEDIÇÃO, de propósito** (report do Enio,
+        // 2026-08-09): o `push` é lido só pelo cinemático, e o número que este
+        // helper devolve logo abaixo é o que prova a frase. Um gate de painel
+        // sozinho afirmaria que a row some; este afirma que ela some **onde
+        // não faz nada** — que é a razão.
+        assert_eq!(
+            info.push_is_live,
+            mode_tag == 1,
+            "o `Push on Bodies` so' e' oferecido a quem o le'"
+        );
 
         let mut bridge = ph2d_physics_ecs::PhysicsBridge::new();
         for t in 1..=60u64 {
@@ -570,5 +580,14 @@ fn choosing_pure_turns_the_world_into_scenery() {
     assert!(
         pure.abs() < 0.01,
         "e o puro sangue nao: {pure:.4} m (contra {snap:.4})"
+    );
+    // ⚠️ **E o DINÂMICO fecha o triângulo:** ele empurra sem o knob, porque quem
+    // o empurra é o SOLVER (16,55 m medidos pela sonda da W-KinPush contra
+    // 0,0000 do cinemático sem a wave). É por isso que oferecer-lhe o slider era
+    // um controle morto, e é por isso que escondê-lo não lhe tira nada.
+    let dynamic = crate_travel(0);
+    assert!(
+        dynamic > 1.0,
+        "o dinamico empurra pelo solver, sem knob nenhum: {dynamic:.4} m"
     );
 }

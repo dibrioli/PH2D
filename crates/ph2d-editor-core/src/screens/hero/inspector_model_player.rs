@@ -41,6 +41,18 @@ pub struct InspectorPlayerInfo {
     /// mortos é pior que a ausência dele.
     pub reaction_is_live: bool,
 
+    /// **E o `Push on Bodies` é MAIS estreito que o card que o contém** — só o
+    /// modo cinemático o lê (report do Enio, 2026-08-09).
+    ///
+    /// ⚠️ **Um segundo booleano, e não uma condição composta no pintor:** os
+    /// dois vizinhos do card (*Weight on Ground* e *Push on Ground*) são VIVOS
+    /// em Dynamic — quem os aplica é a mola —, então o card fica e só esta row
+    /// sai. Esconder o card inteiro tiraria dois controles que funcionam.
+    ///
+    /// A pergunta é resolvida na shell, pela porta `PlayerMode::pushes_bodies`;
+    /// o painel recebe a resposta e nunca o mapeamento.
+    pub push_is_live: bool,
+
     /// A altura a que ele paira, metros (do centro do corpo para baixo).
     pub float_height: f32,
     /// A altura MÍNIMA que a forma deste corpo exige para de fato flutuar —

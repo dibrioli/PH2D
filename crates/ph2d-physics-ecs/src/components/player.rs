@@ -386,6 +386,30 @@ impl PlayerMode {
         !matches!(self, PlayerMode::Pure)
     }
 
+    /// **Alguém LÊ o `react.push` deste personagem?** (report do Enio,
+    /// 2026-08-09: *"Push on Bodies parece não funcionar em Dynamic"*.)
+    ///
+    /// Ele não funcionava, e não é defeito — é a wave: o empurrão lateral
+    /// (W-KinPush) existe porque um corpo **cinemático** tem massa infinita
+    /// para o solver e desliza contra um caixote sem lhe transmitir nada,
+    /// enquanto o **dinâmico já empurra pelo solver** (medido: 16,55 m contra
+    /// 0,0000). ⇒ `push_from_hits` só corre no laço dos `KinMove`, e sob
+    /// `Pure` a `ReactionConfig` inteira é zerada.
+    ///
+    /// ⚠️ **O que ERA defeito é o painel oferecer o slider assim mesmo**, com
+    /// um tooltip a confessar *"KINEMATIC only"*. Uma dica não é o remédio
+    /// deste app: *"deve ser retirado do painel para dynamic, assim como
+    /// qualquer input morto"*. Esta é a porta que o painel pergunta.
+    ///
+    /// ⚠️ **A composição é deliberada** (`drives_itself && transmits`, e não um
+    /// `matches!(Kinematic)`): as duas metades são os dois mecanismos REAIS que
+    /// o silenciam, então um quarto modo herda a resposta certa em vez de a
+    /// esquecer.
+    #[must_use]
+    pub fn pushes_bodies(self) -> bool {
+        self.drives_itself() && self.transmits()
+    }
+
     /// O `u8` com que este modo atravessa a fronteira da UI, e volta.
     ///
     /// Uma porta, as duas direções — o precedente literal do

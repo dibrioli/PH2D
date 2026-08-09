@@ -1013,6 +1013,55 @@ crescer em silêncio e obriga a cura a atualizá-lo.
 
 ---
 
+## §8.2 — NA FILA: o caixote rodopia quando o cinemático o empurra (2026-08-09)
+
+Report do Enio, no smoke da cena `=102`: *"se o caixote não tiver com rotação
+travada, o contato com o player kinematic causa rotação exagerada"*.
+
+⚠️ **A wave sabia e escondeu na FIXTURE.** A cena `=102` trava a rotação dos
+caixotes com um comentário que o admite (*"sem isto os caixotes TOMBAM… e a cena
+passa a medir tombo, não empurrão"*). Era a decisão certa para aquela cena e a
+errada para o módulo: *um defeito contornado por uma fixture não é um defeito
+nomeado*.
+
+Medido (`measure_push_spin`), giro total DESENROLADO em 3 s de empurrão:
+
+| caixote (meia-extensão) | dinâmico | **cinemático** | alavanca |
+|---|---|---|---|
+| 0,30 | 0,3175 rad | **74,2906** (≈12 voltas) | 0,600 |
+| 0,50 | 0,0043 | **12,8937** | 0,400 |
+| 0,80 | 0,0007 | 0,0418 | 0,100 |
+| 1,00 | 0,0006 | 0,0021 | −0,100 |
+
+**O giro segue a ALAVANCA** — a altura do contato acima do centro de massa do
+caixote — e desaparece quando ela desaparece. ⇒ o mecanismo é o `at` do
+`apply_impulse_at_point`: o bloqueio inteiro do tique entra como **UM impulso
+num ponto alto**, e `r × F` faz o resto. O dinâmico empurra com força
+**sustentada por sub-passo**; o cinemático com uma **martelada por tique**.
+
+⚠️ **A metade LINEAR está calibrada** (a W-KinPush mediu `16,54` contra os
+`16,55` do dinâmico) — o que ninguém escolheu foi o torque que veio junto.
+
+**As três saídas, com o preço de cada uma — decisão do Enio:**
+
+1. **Impulso CENTRAL no empurrão lateral** (`apply_impulse`, sem ponto). Uma
+   linha, e o giro vai a zero. ⚠️ Preço: **a porta é COMPARTILHADA** com a
+   reação vertical da W6, onde o ponto é a razão de a jangada INCLINAR sob o
+   personagem (a cena `=103` demonstra) — separar exige um 2º canal na porta, e
+   *"um caixote empurrado no peito não tomba nunca"* é uma escolha de produto.
+2. **Espalhar o impulso pelos sub-passos** em vez de o entregar de uma vez.
+   Aproxima o dinâmico pelo mecanismo certo (é literalmente a diferença medida),
+   mas mexe no laço de empurrão e no `physics_ecs_c9`.
+3. **Um teto de torque** derivado da inércia do corpo atingido. Mantém o tombo
+   honesto e corta o rodopio, ao preço de um número novo a calibrar — e a §0
+   exige que ele saia de uma medição, não de um palpite.
+
+O número está pinado em `the_pushed_crate_still_tumbles_and_this_is_its_number`
+(uma RAZÃO contra o controle dinâmico, porque um caixote a dar doze voltas é
+caótico e um valor literal seria derrubado por qualquer mudança sem relação).
+
+---
+
 ## §8 — O que NÃO entra (nomeado, não esquecido)
 
 - ~~**Empurrar de LADO**~~ — **ENTROU** (a `W-KinPush`) por ordem do Enio de

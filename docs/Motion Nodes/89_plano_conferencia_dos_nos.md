@@ -456,7 +456,7 @@ não a exceção dela.
 |---|---|---|---|
 | **W1** | **SIMULAÇÃO** (fam. 3) | 8 → **~7** | o maior bloco que o W0 não toca — e o item de cabeça é *os 3 geradores não consomem `accel`*, ou seja **a família `force.*` inteira não alcança simulação nenhuma**. É um segundo desbloqueador, barato (uma leitura de coluna) e com fan-out de 6 nós — **W1-A ✅**, ver abaixo |
 | **W2** | **SOURCE** (fam. 14) | 4 | **39 formas já construídas e pagas são inalcançáveis do grafo** — é FIAÇÃO, não geometria: o melhor retorno por linha da conferência inteira |
-| **W3** | **COR** (fam. 9) | 6 → **~3** | o W0 mata hue/sat/luminance; sobra a alfa que não chega ao device (**defeito**) e a máscara por campo |
+| **W3** ✅ | **COR** (fam. 9) | 6 → **~3** → **2 FEITOS** | o W0 mata hue/sat/luminance; sobra a alfa que não chega ao device (**defeito**) e a máscara por campo — **os dois fecharam em 2026-08-09** ([§3 do 09_cor](89_conferencia/09_cor.md)); segue P0 o espaço de interpolação da rampa, o canal do `luminance` e as duas portas do alfa |
 | **W4** | **TEMPO / ESTILÍSTICOS** (fam. 7) | 4 | o `motion.morph` que **descarta `texture_id`/`geometry_id`** é regressão visível desde que o doc 86 pôs objetos no grafo |
 | **W5** | **DISTRIBUIÇÃO + EMISSÃO** (fam. 1) | 4 → **~3** | o W0 mata a tangente; sobram a FORMA do emissor e o arco radial |
 | **W6** | **PULSE** (fam. 12) | 2 | o *nível* é o gargalo único: com ele, gate/AND/OR/sequenciador/burst caem juntos |

@@ -2,7 +2,8 @@
 
 **Conferência do [plano 89](../89_plano_conferencia_dos_nos.md)** · **Data:** 2026-08-09 · **Linha:** `line/motion-value`
 **Nós:** `motion.tint` · `motion.color_ramp` · `motion.color_array` · `motion.luminance`
-**Status:** claims. Nada implementado, nenhuma prioridade final, nenhuma wave aberta (§4 lei 9).
+**Status:** ⬛ **W3 ABERTA E PARCIALMENTE FECHADA** (2026-08-09) — ver §3 abaixo. O resto da
+tabela segue como claims.
 
 ---
 
@@ -39,13 +40,13 @@ color info) é inexprimível por construção — não por falta de um knob.*
 | `motion.tint` | idem | *(adjacência, não gap)* o modo **Gradient** é uma rampa de **2 stops keyed no índice** — o `motion.color_ramp` faz o mesmo com N stops | **SIM**, com uma diferença que é o valor real do modo: `color_ramp` **SUBSTITUI** o `tint`; `tint` **LERPA sobre o existente pelo `falloff`**. O que o modo Gradient entrega e o `color_ramp` não é a MÁSCARA | natureza (duas leis de escrita diferentes) | **P2** | — |
 | `motion.color_ramp` | **0 `ParamSpec`** + **1 TEXT param `ramp`** → o editor da [doc 85](../85_gradient_editor_nota_adr.md): barra + **N marcadores arrastáveis** + **1 swatch OKLCH por stop** + botão de **interp** (cicla os 5: Linear/Ease/Constant/Cardinal/B-Spline) + `+`/`−` + **4 chips de preset**. Porta `t` (ladder 0/1/n com broadcast). GPU por **3 LUTs**. **Nó RICO, não magro** | **espaço de interpolação** (RGB / HSV / HSL + caminho de matiz Near/Far/CW/CCW) — Blender **Color Ramp** (`ColorRamp`/`ColorBand`), e o modelo **já os implementa**: `RampColorMode::{Rgb,Hsv,Hsl}` + `RampHue::{Near,Far,Cw,Ccw}` (`ph2d-color/src/color_ramp.rs:22-63`) | **NÃO — o espaço não é autorável em lugar nenhum.** `parse_gradient` **fixa** `RampColorMode::Rgb` (`color_ramp_text.rs:115`) e o editor só cicla o `interp`. Um azul→amarelo passa pelo cinza morto e não há como pedir outra coisa | **omissão** — o motor tem, o FORMATO e a UI não | **P0** | `space = Rgb`, `hue = Near` ⇒ toda string `g1`/`g2` existente rende byte a byte o que rende hoje |
 | `motion.color_ramp` | idem | **interpolação POR STOP** — o *ramp parameter* do **Houdini** (cada ponto carrega a própria interpolação); o próprio [doc 63 §206](../63_pesquisa_industria_2026_e_plano_estado_da_arte.md) já lista *"interpolações por stop"* | **NÃO** — o `interp` é UM `u8` global na string (`color_ramp_text.rs:59,87`) e o botão do painel cicla o global | omissão | **P2** | stop sem interp própria ⇒ o interp global (a string de hoje é exatamente isso) |
-| `motion.color_ramp` | idem | ⚠️ **NÃO é gap de referência — é DIVERGÊNCIA CPU×GPU:** a **alfa por stop** existe no formato (`g2`, 2026-08-08) e no `ColorRamp::eval` (devolve `[f32;4]`), e o kernel escreve **`1.0` literal** (`color-ramp/src/lib.rs:151`) sobre **3 LUTs** (`cr_grad_r/g/b`, §185-204). O smoke que originou o `g2` foi *"a transparência das cores não está sendo respeitada no motion"* | — (é defeito). ⚠️ **E os dois gates de paridade são VERDES sobre ele**: usam presets e uma string **`g1`** opaca (`gpu_cpu_parity.rs:1290,1386`) ⇒ a fixture não contém o fenômeno | **omissão** (a wave do `g2` moveu formato + CPU e não o device) | **P0 (defeito)** | a 4ª LUT (`cr_grad_a`) com fill `eval(t)[3]`: ramp opaco ⇒ 1.0 em toda entrada ⇒ byte-idêntico |
-| `motion.color_ramp` | idem | **máscara por falloff / campo** — C4D: o Color group do effector tem *"Use Alpha/**Strength**"* e a pilha de Fields tem **canal Color** (*"3 canais amostrados: Value + Color + Direction"*, [c4d §57/§116/§197](../referencia_pesquisa_c4d_fields.md)) | **NÃO.** O nó faz `out.set("tint", …)` incondicional (`lib.rs:252`) — nunca lê `falloff`. Tentado: fork do stream + `motion.mixer(Blend)` com `value.attribute("falloff")` no `blend` ⇒ **falha**, o `blend` do mixer é `v.first()`, um escalar global (`mixer/lib.rs:214`). Nada blenda dois `tint` por instância | **omissão** | **P0** | `mask = 1` (ou `falloff` ausente ⇒ 1) ⇒ a substituição de hoje |
+| `motion.color_ramp` | idem | ⚠️ **NÃO é gap de referência — é DIVERGÊNCIA CPU×GPU:** a **alfa por stop** existe no formato (`g2`, 2026-08-08) e no `ColorRamp::eval` (devolve `[f32;4]`), e o kernel escreve **`1.0` literal** (`color-ramp/src/lib.rs:151`) sobre **3 LUTs** (`cr_grad_r/g/b`, §185-204). O smoke que originou o `g2` foi *"a transparência das cores não está sendo respeitada no motion"* | — (é defeito). ⚠️ **E os dois gates de paridade são VERDES sobre ele**: usam presets e uma string **`g1`** opaca (`gpu_cpu_parity.rs:1290,1386`) ⇒ a fixture não contém o fenômeno | **omissão** (a wave do `g2` moveu formato + CPU e não o device) | ✅ **FEITO** (era P0 defeito) | a 4ª LUT (`cr_grad_a`) com fill `eval(t)[3]`: ramp opaco ⇒ 1.0 em toda entrada ⇒ byte-idêntico |
+| `motion.color_ramp` | idem | **máscara por falloff / campo** — C4D: o Color group do effector tem *"Use Alpha/**Strength**"* e a pilha de Fields tem **canal Color** (*"3 canais amostrados: Value + Color + Direction"*, [c4d §57/§116/§197](../referencia_pesquisa_c4d_fields.md)) | **NÃO.** O nó faz `out.set("tint", …)` incondicional (`lib.rs:252`) — nunca lê `falloff`. Tentado: fork do stream + `motion.mixer(Blend)` com `value.attribute("falloff")` no `blend` ⇒ **falha**, o `blend` do mixer é `v.first()`, um escalar global (`mixer/lib.rs:214`). Nada blenda dois `tint` por instância | **omissão** | ✅ **FEITO** (era P0) | `mask = 1` (ou `falloff` ausente ⇒ 1) ⇒ a substituição de hoje |
 | `motion.color_ramp` | idem | **teto de stops:** Blender permite **32** (`MAXCOLORBAND`; o nosso `ph2d_color::MAX_RAMP_STOPS` **é 32**), o editor corta em **8** (`snapshot_ids.rs:50`) | **N/A** — é cap de UI. ⚠️ O motivo escrito é *"o painel é estreito e a faixa tem de ficar legível"*, **sem medição** (§0 do CLAUDE.md: um teto legítimo diz de que RECURSO é). A row de **paleta** provou o padrão oposto no mesmo painel (envolve, altura em função da contagem) | omissão (cap de conforto) | **P2** | `MAX_GRADIENT_STOPS` medido ⇒ ramp de ≤8 stops idêntico |
 | `motion.color_ramp` | idem | **Cycle Repetitions + Phase Shift** do gradiente — AE **Colorama** | ⛔ **SIM:** `value.instance_field(Ramp)` → `value.gain(×N)` → `value.wrap` → `color_ramp.t` (repetição) e `value.math(+φ)` antes do wrap (fase) | — | ⛔ **recusado com motivo** (P2 de ergonomia, não de capacidade) | — |
 | `motion.color_ramp` | idem | **gradiente ESPACIAL** (linear/radial ancorado no canvas) — AE **Gradient Ramp**; Cavalry Shaders *Gradient / Multi-Point Gradient* ([cavalry A.4 §114](../referencia_pesquisa_cavalry.md)) | ⛔ **SIM, e mais forte que a referência:** `field.box` / `field.radial_sweep` escrevem a coluna `falloff` (`field-box/src/lib.rs:3,152,196`) → `value.attribute(Custom "falloff")` → `color_ramp.t`. Os `field.*` COMPÕEM (combine/remap) e têm gizmo de canvas; o Gradient Ramp do AE é fechado | — | ⛔ **recusado com motivo** (o que falta é ergonomia: ver `SUPERAR:` 2) | — |
 | `motion.color_array` | **0 `ParamSpec`** + **1 TEXT param `palette`** → o editor: **strip de swatches OKLCH que ENVOLVE, sem cap de comprimento** + `+`/`−`. Porta `offset`. **Sem lowering de GPU** | **o `offset` / índice tem de ser um CAMPO por instância** — Cavalry: *"Color Array … arrays indexáveis de cada tipo (**cor por índice do clone**)"* + os **Index Context / Velocity Context** que alimentam esse índice ([cavalry A.3 §90/§99](../referencia_pesquisa_cavalry.md)). Hoje `scalar_first(...).first()` (`lib.rs:79-84,104`) ⇒ **um campo por-instância é silenciosamente DESCARTADO** | **PARCIAL, a um custo que ninguém paga.** Tentado: `motion.sort(key = Random)` → `color_array` — funciona (a permutação carrega TODAS as colunas, os pontos não se movem) mas **destrói a ordem de índice** para tudo a jusante (`stagger`, `cull`, `trail`, o `t` posicional do próprio `color_ramp`). Pelo caminho direto: **NÃO** | **omissão** — o ladder 0/1/n existe no catálogo (`colorize`, `drive`, `mixer` de posição) e este nó ficou no `.first()` | **P1** | campo de comprimento 1 continua lido como o escalar de hoje ⇒ byte-idêntico; o par per-elemento é caminho novo |
-| `motion.color_array` | idem | **máscara por falloff** — mesma citação C4D da linha do `color_ramp` | **NÃO** — mesmo mecanismo (`out.set("tint", …)` incondicional, `lib.rs:116`; e o mixer não blenda por instância) | omissão | **P1** | `mask = 1` ⇒ hoje |
+| `motion.color_array` | idem | **máscara por falloff** — mesma citação C4D da linha do `color_ramp` | **NÃO** — mesmo mecanismo (`out.set("tint", …)` incondicional, `lib.rs:116`; e o mixer não blenda por instância) | omissão | ✅ **FEITO** (era P1) | `mask = 1` ⇒ hoje |
 | `motion.color_array` | idem | ⚠️ **sem GPU** (0 `register_gpu_kernel`, contra 1 em cada um dos outros três da família) ⇒ um grafo que o usa perde a aceleração inteira | **N/A.** Mecanismo: a paleta é uma **lista de comprimento variável** e o device só tem uniforme fixo (`params`) e **LUT escalar**. ⚠️ Mas *"a i-ésima cor de uma lista"* **É** uma rampa `Constant` de stops equiespaçados ⇒ o canal de LUT que o `color_ramp` já usa serve, sem infra nova (ver `SUPERAR:` 4) | omissão | **P1** | o kernel é aditivo (side-metadata no registry); a rota CPU segue oráculo |
 | `motion.color_array` | idem | *(não-gap)* interpolar entre slots | ⛔ **recusado por natureza, com mecanismo:** este é o nó **DISCRETO** de propósito (listras duras), e o contínuo já existe — `color_ramp` com `RampInterp::Constant` sobre stops equiespaçados dá o mesmo, e com `Linear` dá a versão interpolada. Um slider "blend" aqui seria a 2ª resposta à pergunta do vizinho ([`palette_text.rs` §"por que uma paleta não é um gradiente"](../../../crates/ph2d-color/src/palette_text.rs)) | natureza | ⛔ | — |
 | `motion.luminance` | **0 `ParamSpec`, 0 text params.** Adapter puro `(in) → out(VALUE)`, Rec.709. GPU sim | **qual canal extrair** — AE **Colorama** *"Get Phase From"* (Lightness · **Hue** · **Saturation** · Red · Green · Blue · Alpha); Cavalry **Color Info** (*"amostra pixels de imagem→valores/cores"*, [cavalry A.3 §107](../referencia_pesquisa_cavalry.md) — marcado *TEMOS (motion.luminance) / **PARCIAL***); Blender **Separate Color** (RGB/HSV/HSL, [blender GN §13](../referencia_pesquisa_blender_gn.md)) | **NÃO — este nó É a única porta de leitura de cor do sistema** (§0). `value.attribute` devolve zeros num `Vec4`; nenhuma outra rota existe. Hoje o sistema sabe responder *"quão claro?"* e **nada mais** sobre a cor de uma instância | **omissão** — um nó de 0 params aqui é **magro por OMISSÃO**, não por natureza: a referência dá 7 canais e nós damos 1 | **P0** | `channel = Luma` ⇒ `0.2126·R + 0.7152·G + 0.0722·B`, bit a bit o de hoje |
@@ -159,6 +160,47 @@ escolhidos.
   "TEMOS (motion.luminance) / PARCIAL": a coluna `status vs PH2D` está CERTA e o "PARCIAL" nunca foi
   desdobrado.** Esta tabela desdobra: o que falta em Cavalry §73 é **ler e ajustar** a cor
   (hue/sat/swap), e em §107 é **escolher o canal** do Color Info.
+
+---
+
+## §3 — O que a W3 fechou, e o que ela mediu no caminho (2026-08-09)
+
+**Dois commits, dois P0.**
+
+**(A) A alfa chega ao device.** A 4ª LUT (`cr_grad_a`), exatamente o *default que reduz* da
+tabela. ⚠️ **E a prova de que os dois gates de paridade eram verdes sobre o defeito é
+executável:** no estado que shipava (3 LUTs + o `1.0` literal) o gate novo sangra com
+**|Δ| = 1e0** e os dois irmãos **passam** — a fixture deles não continha o fenômeno.
+⚠️ O gate nasceu com um número que MENTIA: comparação fail-fast reporta o primeiro instance
+que o scan alcança, e perto da ponta opaca isso é ~um épsilon (0,006), que se lê como
+*"a tolerância está um fio apertada"* e esconde que o device escreve uma CONSTANTE.
+
+**(B) A máscara por campo**, nos DOIS nós de cor, com a lei do `motion.tint`
+(`existing·(1−f) + target·f`). O neutro não é promessa, é aritmética: `falloff` ausente lê
+`1.0` e a forma é endpoint-exata, então um grafo sem campo é **byte-idêntico** — os 8 gates
+que já existiam passaram sem edição de expectativa, porque usam stream vazio.
+
+**Medido no caminho, e vale mais que os dois itens:**
+
+- ⚠️ **O orçamento de bindings do cook contava só as COLUNAS.** O módulo também declara os
+  dois arrays da grade, um buffer por redução e um por LUT ⇒ o check concedia um orçamento
+  que o dispatch estourava. `motion.four_point_warp` declara **8** onde as colunas dizem 4.
+  Corrigido com porta única (`codegen::storage_buffers`) + gate cujo oráculo é o TEXTO do
+  módulo gerado. O pior kernel declara **13**, e é por isso que a 4ª LUT (6 no total) não
+  chega perto de teto nenhum — **medido, não suposto**.
+- ⚠️ **O helper `falloff_at` já estava copiado em NOVE+ crates-nó** antes desta wave, todos
+  idênticos. A porta única já foi decidida ao contrário por acréscimo; colapsá-las toca nove
+  crates e nenhuma é de cor ⇒ **wave própria**, nomeada em vez de contrabandeada.
+- ⚠️ **Dois vermelhos-latentes pré-existentes**, provados no HEAD com o diff fora. Um
+  CORRIGIDO (`the_bare_emitters…` semeava o `color_ramp` com os params `a_*`/`b_*` do
+  manifesto de dois stops — a família exata da integração de 30/07); o outro **NOMEADO**
+  (`value_slope…` falha por 1,05e-4 contra barra 1e-4: barra **absoluta** sobre coordenada
+  cuja magnitude a fixture escolhe — outra família, outro oráculo).
+
+**Segue P0 nesta família:** o espaço de interpolação da rampa (`RampColorMode`, o motor tem
+e o formato não) · o canal do `motion.luminance` · as DUAS PORTAS do alfa
+(`drive` escreve `tint[3]`, o picker oferece `"opacity"`) · hue/sat sobre a cor existente,
+que continua precisando da metade de ESCRITA do loop (o W0-B-genérico).
 
 ---
 

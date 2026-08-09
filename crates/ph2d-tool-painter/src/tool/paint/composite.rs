@@ -169,13 +169,11 @@ impl PainterTool {
             match layer.op {
                 CompositeOp::Brush => {
                     // The brush route expects already-tiled dabs (the Smear/Blur routes tile internally).
-                    if tiled {
-                        let wrapped = super::tiling::tiled_dabs(dabs, self.source_size, tiling);
-                        self.stamp_dabs_inner(&wrapped);
-                    } else {
-                        self.stamp_dabs_inner(dabs);
-                    }
-                    self.fold_brush_into_smear_base(dabs);
+                    let wrapped =
+                        tiled.then(|| super::tiling::tiled_dabs(dabs, self.source_size, tiling));
+                    let d: &[Dab] = wrapped.as_deref().unwrap_or(dabs);
+                    self.lay_brush_into_smear_base(d);
+                    self.stamp_dabs_inner(d);
                 }
                 CompositeOp::Smear => self.stamp_dabs_smear(dabs, w, h),
                 CompositeOp::Blur => self.stamp_dabs_blur(dabs, w, h),
@@ -186,49 +184,43 @@ impl PainterTool {
 }
 
 impl PainterTool {
-    /// Let the smear session's frozen source ABSORB the ink this batch's Brush layer just laid.
+    /// Lay the Brush layer's deposit into the smear session's frozen source **by the same door that lays
+    /// it on the canvas** — the plane is swapped into `canvas_rgba` for the stamp and swapped back.
     ///
-    /// ⚠️ **Without this the stack cannot paint more than one blob** (Enio 2026-08-09), and the
-    /// mechanism is a collision of two lifetimes that are each correct alone. Since the smear became a
-    /// FIELD, a smudge *accumulates a displacement map and resolves ONCE from the pixels frozen at
-    /// pen-down* — the law that killed the filament. The composite promises the opposite: *each op
-    /// processes the canvas as the one below it left it*, which is per BATCH. So the next batch's smear
-    /// render rewrote the region from a base that had never seen the Brush, carrying away what the Brush
-    /// had just put there — measured, 108 of 141 columns inked, the gaps periodic with the batch rects
-    /// (the "rectangular streaks" of the report).
+    /// ⚠️ **Sem dobra nenhuma a pilha não pinta mais que uma mancha** (Enio 2026-08-09): desde que o smear
+    /// virou CAMPO, uma esfregada *acumula um mapa de deslocamento e resolve UMA vez a partir dos pixels
+    /// congelados no pen-down* — a lei que matou o filamento —, enquanto o composite promete o oposto,
+    /// *cada operação processa o canvas como a de baixo o deixou*, que é por BATCH. O render de smear do
+    /// batch seguinte reescrevia a região a partir de uma base que nunca vira o Brush (108 de 141 colunas).
     ///
-    /// Folding is what the card already promises the stack does — *paint, then smudge what you painted* —
-    /// and it keeps the field law intact: the map is still composed once and the IMAGE is still resampled
-    /// once per render. What changes is only that the source gains ink while the stroke runs.
+    /// ⚠️ **TRÊS dobras reconstruídas de FORA do depósito foram construídas, e cada uma falhou de um jeito
+    /// — a terceira é a razão desta existir:** copiar a REGIÃO do canvas dá 141 colunas mas escreve a bbox
+    /// do batch na FONTE (⇒ a escada axis-aligned que o smoke fotografou, e o smear já feito volta para
+    /// dentro ⇒ as estrias) · SOMAR o delta do Brush dá **131** (sobre pixel já esfregado o incremento é
+    /// pequeno ⇒ perde tinta) · recuperar `a` de `after = before·(1−a) + C·a` dá **108**, zero em toda
+    /// parte, porque a cor e o espaço com que o depósito compõe não são `brush.color` em sRGB de 8 bits.
     ///
-    /// ⚠️ **It folds at the PAINTED position, not at the pre-image**, and that is a named approximation:
-    /// ink folded at batch `k` is then carried by the displacement accumulated over the WHOLE stroke, not
-    /// only from `k` onward, so a long smudge drags fresh paint slightly further than a physical
-    /// relay would. Folding at `p − disp(p)` instead would be exact and is a SCATTER, which can leave
-    /// holes in the source; that trade is not worth taking blind — if a smoke shows fresh paint sliding
-    /// too far, the inverse-map fold is the next step and this comment is where it starts.
+    /// ⇒ **Só quem deposita sabe `(C, a)` por texel.** Trocar o plano para dentro do canvas durante o
+    /// stamp é o padrão que este repo já usa duas vezes (o scratch da máscara · o plano `free` do gate de
+    /// proteção) e dá o resultado **exato por construção**: a fonte recebe a MESMA composição, delimitada
+    /// pelo **falloff do dab** — nenhuma borda de retângulo pode nascer, porque não existe retângulo em
+    /// parte alguma da operação.
     ///
-    /// **Mutation that must bleed:** delete the call in the `Brush` arm of `stamp_dabs_composite`.
-    fn fold_brush_into_smear_base(&mut self, dabs: &[Dab]) {
-        // Only a live smear session has a frozen source to keep honest; the plain Brush has none.
+    /// ⚠️ **`DrawTo::Color` no passe da fonte, e é obrigatório:** sem ele o segundo depósito acumularia o
+    /// envelope de relevo uma segunda vez, e o CORPO da tinta passaria a ser função de haver uma sessão de
+    /// smear viva — o relevo dependendo de qual camada está na pilha.
+    ///
+    /// **Mutação que must bleed:** apagar a chamada ⇒ 108 de 141.
+    fn lay_brush_into_smear_base(&mut self, dabs: &[Dab]) {
         if !self.paint.warp.active || self.paint.warp.pre.len() != self.canvas_rgba.len() {
             return;
         }
-        let (w, h) = self.source_size;
-        let Some(rect) = dabs
-            .iter()
-            .filter_map(|d| self.dab_bbox(d.center, d.radius_px))
-            .reduce(super::union_region)
-        else {
-            return;
-        };
-        let canvas = Arc::clone(&self.canvas_rgba);
-        let pre = Arc::make_mut(&mut self.paint.warp.pre);
-        let (x0, x1) = (rect.x.min(w), (rect.x + rect.w).min(w));
-        for y in rect.y..(rect.y + rect.h).min(h) {
-            let row = (y * w) as usize * 4;
-            let (a, b) = (row + x0 as usize * 4, row + x1 as usize * 4);
-            pre[a..b].copy_from_slice(&canvas[a..b]);
-        }
+        let plane = Arc::clone(&self.paint.warp.pre);
+        let canvas = std::mem::replace(&mut self.canvas_rgba, plane);
+        let saved = self.paint.brush.impasto_draw_to;
+        self.paint.brush.impasto_draw_to = ph2d_painter_brush::DrawTo::Color;
+        self.stamp_dabs_inner(dabs);
+        self.paint.brush.impasto_draw_to = saved;
+        self.paint.warp.pre = std::mem::replace(&mut self.canvas_rgba, canvas);
     }
 }

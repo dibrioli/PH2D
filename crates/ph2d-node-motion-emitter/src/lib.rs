@@ -69,7 +69,9 @@ mod hash;
 mod params_ui;
 mod trig;
 use hash::rand01;
-use params_ui::{PARAM_GROUPS, PARAM_HARD_MAX, PARAM_HARD_MIN, PARAM_HINTS, PARAM_UNITS};
+use params_ui::{
+    PARAM_GATES, PARAM_GROUPS, PARAM_HARD_MAX, PARAM_HARD_MIN, PARAM_HINTS, PARAM_UNITS,
+};
 use trig::cos_sin_cycles;
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
@@ -184,6 +186,63 @@ fn birth_offset(shape: Shape, w: f32, h: f32, seed: u32, id: u32) -> Option<[f32
     })
 }
 
+/// **Which way a particle leaves** — along the artist's `angle`, or along its own radius.
+///
+/// `Outwards`/`Inwards` are only a question once a particle is born somewhere OTHER than the
+/// origin, so this param arrived with the shape and not before it (the sheet marked it
+/// *"not expressible without a shape"*, and the shape is what moved that number).
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+enum DirMode {
+    /// The cone `angle ± spread/2` — what always shipped.
+    Angle,
+    /// Away from the emitter's centre, through the birth place.
+    Outwards,
+    /// Towards it.
+    Inwards,
+}
+
+impl DirMode {
+    fn from_param(v: f32) -> Self {
+        match v.round() as i32 {
+            1 => Self::Outwards,
+            2 => Self::Inwards,
+            _ => Self::Angle,
+        }
+    }
+}
+
+/// The unit axis a particle leaves along, BEFORE the cone's jitter — or `None` when there is
+/// no radius to leave along and the artist's `angle` is the only direction there is.
+///
+/// ⚠️ **`None` is the whole reason `Angle` stays byte-identical.** The caller keeps its single
+/// `cos_sin_cycles(angle + jitter·spread)` on that arm — the same expression, not an equivalent
+/// one — and only the radial arms ROTATE. Two `cos_sin` calls composed are not the same `f32` as
+/// one call on the summed angle, so folding the two arms together would have moved every existing
+/// emitter by an ulp and taken the GPU parity with it.
+///
+/// ⚠️ **And the axis is ROTATED, never re-derived.** The birth offset is already a vector; asking
+/// `atan2` for its angle, adding the jitter and calling `cos_sin` back would spend two
+/// approximations to learn what a 2×2 rotation composes exactly — the lesson the radial array's
+/// `align` paid a wave earlier.
+///
+/// A particle born exactly at the centre has no radial direction (a `Point` emitter, a zero-sized
+/// shape, or a `Disc` draw that lands on the middle), so it falls back to the cone. That is the
+/// honest answer, not a special case: "outwards" from a zero-length vector is not a direction.
+fn radial_axis(dir: DirMode, offset: Option<[f32; 2]>) -> Option<[f32; 2]> {
+    let sign = match dir {
+        DirMode::Angle => return None,
+        DirMode::Outwards => 1.0,
+        DirMode::Inwards => -1.0,
+    };
+    let d = offset?;
+    let len2 = d[0] * d[0] + d[1] * d[1];
+    if len2 <= 0.0 {
+        return None;
+    }
+    let inv = sign / len2.sqrt();
+    Some([d[0] * inv, d[1] * inv])
+}
+
 /// The static contract of this node type (ADR-0031).
 pub const MANIFEST: NodeManifest = NodeManifest {
     id: NodeTypeId::of("motion.emitter"),
@@ -246,6 +305,12 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "shape_h",
             default: 1.0,
         },
+        // APPENDED, and `0` = Angle: a saved graph reads it as absent and launches down the
+        // cone it always launched down.
+        ParamSpec {
+            name: "dir_mode",
+            default: 0.0,
+        },
         ParamSpec {
             name: "seed",
             default: 0.0,
@@ -280,6 +345,7 @@ impl NodeOp for MotionEmitter {
             origin: [ctx.param("x"), ctx.param("y")],
             shape: Shape::from_param(ctx.param("shape_mode")),
             shape_wh: [ctx.param("shape_w"), ctx.param("shape_h")],
+            dir: DirMode::from_param(ctx.param("dir_mode")),
             seed: ctx.param("seed").max(0.0) as u32,
             max: (ctx.param("max").max(0.0) as usize).min(MAX_ALIVE),
             size: ctx.param("size").max(0.0),
@@ -302,6 +368,8 @@ struct Spec {
     shape: Shape,
     /// The shape's half-extents (radii for [`Shape::Disc`]/[`Shape::Ring`]), world units.
     shape_wh: [f32; 2],
+    /// Which way a particle leaves (`Angle` unless a shape gives it a radius).
+    dir: DirMode,
     seed: u32,
     max: usize,
     /// World-space side of each particle quad. Emitted as the `size` column, so
@@ -360,27 +428,36 @@ fn emit(spec: &Spec, t: f32) -> Stream {
     let (mut index, mut count) = (Vec::with_capacity(n), Vec::with_capacity(n));
     for k in 0..n {
         let id = (w.first + k as u32) % ID_WRAP;
+        // Where it is born — read BEFORE the direction now, because `Outwards`/`Inwards` are a
+        // question about the offset. Pure, so hoisting it moves no value.
+        let off = birth_offset(
+            spec.shape,
+            spec.shape_wh[0],
+            spec.shape_wh[1],
+            spec.seed,
+            id,
+        );
         // Launch direction: the cone `angle ± spread/2`, drawn from the
         // particle's identity (never from a sequence) — see `hash`.
         let jitter = rand01(spec.seed, id, LANE_ANGLE) - 0.5;
-        let deg = spec.angle + jitter * spec.spread;
-        let (cx, sy) = cos_sin_cycles(deg / 360.0);
+        let (cx, sy) = match radial_axis(spec.dir, off) {
+            // The expression that always shipped, character for character — see `radial_axis`.
+            None => cos_sin_cycles((spec.angle + jitter * spec.spread) / 360.0),
+            // The cone is the SAME half-width here; only what it opens around changed, so
+            // `spread` keeps meaning one thing in all three modes.
+            Some(a) => {
+                let (rc, rs) = cos_sin_cycles(jitter * spec.spread / 360.0);
+                (a[0] * rc - a[1] * rs, a[0] * rs + a[1] * rc)
+            }
+        };
         // Its own lane, and the SAME term order the kernel runs: parity here is bit-exact by
         // construction, not by epsilon. With `speed_random = 0` the factor is `1.0` exactly.
         let js = rand01(spec.seed, id, LANE_SPEED) - 0.5;
         let speed = spec.speed * (1.0 + js * spec.speed_random * 2.0);
-        p.push(
-            match birth_offset(
-                spec.shape,
-                spec.shape_wh[0],
-                spec.shape_wh[1],
-                spec.seed,
-                id,
-            ) {
-                Some(d) => [spec.origin[0] + d[0], spec.origin[1] + d[1]],
-                None => spec.origin,
-            },
-        );
+        p.push(match off {
+            Some(d) => [spec.origin[0] + d[0], spec.origin[1] + d[1]],
+            None => spec.origin,
+        });
         vel.push([cx * speed, sy * speed]);
         ids.push(id as f32);
         // The SAME two-step the kernel runs (`age_first − k/rate`), not
@@ -426,7 +503,14 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         let em_seed = u32(max(params.seed, 0.0));\n\
         let em_jitter = em_rand01(em_seed, em_id, 0u) - 0.5;\n\
         let em_deg = params.angle + em_jitter * params.spread;\n\
-        let em_cs = em_cos_sin_cycles(em_deg / 360.0);\n\
+        var em_cs = em_cos_sin_cycles(em_deg / 360.0);\n\
+        let em_ax = em_axis(em_seed, em_id, params.shape_mode, params.shape_w,\n\
+            params.shape_h, params.dir_mode);\n\
+        if (dot(em_ax, em_ax) > 0.0) {\n\
+            let em_rot = em_cos_sin_cycles(em_jitter * params.spread / 360.0);\n\
+            em_cs = vec2<f32>(em_ax.x * em_rot.x - em_ax.y * em_rot.y,\n\
+                em_ax.x * em_rot.y + em_ax.y * em_rot.x);\n\
+        }\n\
         let em_sj = em_rand01(em_seed, em_id, 1u) - 0.5;\n\
         let em_spd = params.speed * (1.0 + em_sj * params.speed_random * 2.0);\n\
         write_P(i, em_birth(em_seed, em_id, params.shape_mode, params.shape_w,\n\
@@ -465,6 +549,16 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         }\n\
         fn em_cos_sin_cycles(phase: f32) -> vec2<f32> {\n\
             return vec2<f32>(em_sin_cycles(phase + 0.25), em_sin_cycles(phase));\n\
+        }\n\
+        fn em_axis(seed: u32, id: u32, shape: f32, w: f32, h: f32, dir: f32) -> vec2<f32> {\n\
+            let d = i32(round(dir));\n\
+            if (d < 1 || d > 2) { return vec2<f32>(0.0, 0.0); }\n\
+            let off = em_birth(seed, id, shape, w, h, vec2<f32>(0.0, 0.0));\n\
+            let l2 = dot(off, off);\n\
+            if (l2 <= 0.0) { return vec2<f32>(0.0, 0.0); }\n\
+            var sgn = 1.0;\n\
+            if (d == 2) { sgn = -1.0; }\n\
+            return off * (sgn / sqrt(l2));\n\
         }\n\
         fn em_birth(seed: u32, id: u32, mode: f32, w: f32, h: f32, o: vec2<f32>) -> vec2<f32> {\n\
             let m = i32(round(mode));\n\
@@ -550,6 +644,7 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         "shape_mode",
         "shape_w",
         "shape_h",
+        "dir_mode",
         "seed",
         "size",
     ],
@@ -583,6 +678,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
     reg.register_param_groups(MANIFEST.id, PARAM_GROUPS);
+    reg.register_param_gates(MANIFEST.id, PARAM_GATES);
     reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
     reg.register_param_hard_min(MANIFEST.id, PARAM_HARD_MIN);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);

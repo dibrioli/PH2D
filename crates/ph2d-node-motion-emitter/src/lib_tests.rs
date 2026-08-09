@@ -22,6 +22,9 @@ fn spec() -> Spec {
         // inherited, for the same reason `speed_random` is.
         shape: Shape::Point,
         shape_wh: [1.0, 1.0],
+        // The cone the node had before `dir_mode` existed — declared, never inherited, the same
+        // reason `speed_random` and `shape` are.
+        dir: DirMode::Angle,
         seed: 0,
         max: 1024,
         size: 0.2,
@@ -683,3 +686,6 @@ fn registers_and_resolves() {
     register(&mut reg).unwrap();
     assert!(reg.resolve(MANIFEST.id).is_some());
 }
+
+#[path = "lib_tests_launch.rs"]
+mod launch;

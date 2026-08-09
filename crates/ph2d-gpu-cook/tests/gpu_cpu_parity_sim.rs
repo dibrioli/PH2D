@@ -1499,6 +1499,19 @@ fn emitter_sim(
     // `speed_random` term is a hand-written mirror of the Rust one; with this at 0 it would be
     // dead code on the device and nothing would notice it drifting.
     g.set_param(em, "speed_random", 0.6);
+    // ⚠️ And the launch is RADIAL, for exactly the same reason and in the same place: the
+    // kernel's `em_axis` (normalise the birth offset, sign it, rotate the cone onto it) is a
+    // hand-written mirror, and with the default `Angle` it returns the zero vector for every
+    // particle and is dead code on the device.
+    //
+    // ⚠️ It has to be HERE and not in the generator gate next door: that one compares
+    // `RenderInstance`s, and an emitter with no integrator never turns `vel` into a position —
+    // so the whole launch is invisible there. Measured, not assumed: the mutation that makes
+    // the kernel ignore `dir_mode` SURVIVES the generator gate and bleeds this one.
+    g.set_param(em, "shape_mode", 2.0); // Ring: every particle has a radius to leave along
+    g.set_param(em, "shape_w", 1.5);
+    g.set_param(em, "shape_h", 0.8);
+    g.set_param(em, "dir_mode", 1.0); // Outwards
     g.set_param(em, "x", 0.5);
     g.set_param(em, "y", -0.25);
     g.set_param(em, "seed", 7.0);

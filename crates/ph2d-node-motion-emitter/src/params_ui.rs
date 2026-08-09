@@ -208,6 +208,18 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         step: 0.05,
         widget: ParamWidget::Slider,
     },
+    // ⚠️ `dir_mode`, not `direction`: the artist reads the LABEL, and the param name is what the
+    // catalogue's `a_mode_wears_words_not_an_index` scans for (`mode` / `*_mode`).
+    ParamUiHint {
+        param: "dir_mode",
+        label: "Direction",
+        min: 0.0,
+        max: 2.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: &["Angle", "Outwards", "Inwards"],
+        },
+    },
     ParamUiHint {
         param: "seed",
         label: "Seed",
@@ -267,4 +279,19 @@ pub static PARAM_GROUPS: &[ParamGroup] = &[
     ParamGroup::new("shape_mode", "Origin"),
     ParamGroup::new("shape_w", "Origin"),
     ParamGroup::new("shape_h", "Origin"),
+    // It answers *which way does a particle LEAVE?*, so it lives with the launch and not with
+    // the birth place it happens to be derived from.
+    ParamGroup::new("dir_mode", "Velocity"),
 ];
+
+/// **`Direction` is only offered once a shape gives a particle a radius.**
+///
+/// With `Point` every birth is the origin, so `Outwards`/`Inwards` fall back to the cone for
+/// EVERY particle — the control would be provably inert, which is the dead knob this
+/// side-channel exists to prevent. `angle`/`spread` stay visible in all three modes: the cone is
+/// still the cone, it just opens around a different axis.
+pub static PARAM_GATES: &[ph2d_node_registry::ParamGate] = &[ph2d_node_registry::ParamGate {
+    param: "dir_mode",
+    when: "shape_mode",
+    values: &[1, 2, 3],
+}];

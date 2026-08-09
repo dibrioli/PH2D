@@ -1251,6 +1251,57 @@ lado (com chão, absorve).
 
 ---
 
+## §8.4 — NA FILA: a ÁGUA não existe para o modo cinemático (2026-08-09)
+
+Pergunta do Enio: *"testou o kinemático na água? ou ele não funciona lá?"* —
+**não tinha sido testado**, e as três sondas do `measure_player_in_water` são
+dinâmico-only. Medido agora (poça funda, 4 s, sem input, `measure_the_kinematic_player_in_water`):
+
+| sujeito | y final | afundou |
+|---|---|---|
+| cápsula solta (CONTROLE) | 0,3928 | **1,1072 m** — boia |
+| player dinâmico | 0,4107 | **1,0893 m** — boia |
+| player **CINEMÁTICO** | **−138,17** | **139,6739 m** |
+
+Ele atravessa a poça em **queda livre** — 1,78× os 78,5 m analíticos de 4 s, que
+é o `fall_gravity` do platformer a trabalhar. A água não o toca.
+
+### O mecanismo, e ele já estava escrito noutro lugar
+
+O empuxo e o arrasto de uma zona chegam por `apply_impulse` no CORPO, e um corpo
+cinemático tem **massa infinita** para o solver. É literalmente a frase que a
+`W-KinPush` escreveu para explicar por que o `move_shape` não empurrava um
+caixote: *"um corpo cinemático tem massa INFINITA para o solver, então o
+`move_shape` desliza contra um caixote solto sem lhe transmitir nada"*. A mesma
+assimetria, do outro lado — ali ele não DAVA, aqui ele não RECEBE.
+
+⚠️ **E METADE da água já atravessa**, o que torna o estado atual pior que uma
+ausência limpa: a `Buoyed` é lida por `PhysicsWorld::buoyed` e entregue à lei
+**fora** do ramo de modo (`bridge/player.rs:376`), então a trava do fluido
+(`JumpState::waterborne`, W-Submerged) e tudo o que ela governa **valem nos dois
+modos**. O personagem cinemático *sabe* que está molhado — o arco do pulo dele
+muda — e **afunda como uma pedra na mesma poça**.
+
+### As três saídas, com o preço de cada uma — decisão do Enio
+
+1. **A lei integra a água, como já integra a gravidade.** O `kinematic_advance`
+   já é o lugar onde *"a gravidade é aplicada AQUI, e é a assimetria central dos
+   dois modos"*; o empuxo e o arrasto entram pela mesma porta, a partir da
+   `Buoyed` que a ponte **já lê**. ⚠️ Preço: a lei passa a precisar da
+   densidade/arrasto da zona, não só de *"quanto peso ela carrega"* — a
+   `Buoyed` de hoje é um escalar.
+2. **A ponte converte a zona num MOTOR** e deixa a lei intacta. Mais barato, e
+   é a 2ª resposta para *"o que a água faz a este corpo?"* — divergiria do
+   caminho dinâmico no dia em que um dos dois ganhasse um caso.
+3. **Aceitar**, e então o modo cinemático é documentado como *"para cenas
+   secas"*. ⚠️ Custa a metade que JÁ funciona: o personagem continuaria a saber
+   que está molhado enquanto afunda, que é o pior dos três estados.
+
+**Recomendação: (1).** É a que põe a água no lugar onde a gravidade já está, e a
+única em que as duas metades da água passam a concordar.
+
+---
+
 ## §8 — O que NÃO entra (nomeado, não esquecido)
 
 - ~~**Empurrar de LADO**~~ — **ENTROU** (a `W-KinPush`) por ordem do Enio de

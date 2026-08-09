@@ -258,3 +258,64 @@ fn measure_current() {
         println!("{label:<20} {x:>10.4} {y:>10.4}");
     }
 }
+
+/// **E O MODO CINEMÁTICO NA ÁGUA?** — a pergunta do Enio de 2026-08-09, e ela
+/// não tinha resposta: as três sondas acima são **dinâmico-only**.
+///
+/// # A suspeita, antes do número
+///
+/// O empuxo e o arrasto de uma zona chegam por `apply_impulse` no corpo, e um
+/// corpo cinemático tem **massa infinita** para o solver — é a mesma frase que
+/// explica por que o `move_shape` não empurrava um caixote antes da `W-KinPush`.
+/// Se ela valer aqui, um personagem cinemático **atravessa a poça como se ela
+/// não existisse**.
+///
+/// ⚠️ **Mas metade da água NÃO passa pelo solver:** a `Buoyed` é lida por
+/// `PhysicsWorld::buoyed` e entregue à lei **fora** do ramo de modo, então a
+/// trava do fluido (`JumpState::waterborne`, W-Submerged) e tudo o que ela
+/// governa valem nos dois. As duas metades podem ter vereditos opostos, e é
+/// isso que esta sonda separa.
+///
+/// O CONTROLE é a cápsula solta, como nas irmãs.
+#[test]
+#[ignore = "sonda de medição"]
+fn measure_the_kinematic_player_in_water() {
+    println!("\n=== A AGUA E O MODO CINEMATICO (poca funda, 4 s, sem input) ===");
+    println!("{:<26} {:>12} {:>14}", "sujeito", "y final", "afundou (m)");
+    const START: f32 = 1.5;
+    for (label, player, kinematic) in [
+        ("capsula solta (CONTROLE)", false, false),
+        ("player dinamico", true, false),
+        ("player CINEMATICO", true, true),
+    ] {
+        let mut sim = SimWorld::new();
+        pool(&mut sim, 0.0);
+        let who = subject(&mut sim, player, START);
+        if kinematic {
+            let mut e = sim.world_mut().entity_mut(who);
+            e.insert(ph2d_physics_ecs::PlayerMode::Kinematic);
+            if let Some(mut rb) = e.get_mut::<RigidBody>() {
+                rb.kind = BodyKind::Kinematic;
+            }
+        }
+        let mut bridge = PhysicsBridge::new();
+        let (_, y) = run(
+            &mut sim,
+            &mut bridge,
+            who,
+            player,
+            PlayerInput::default(),
+            240,
+        );
+        println!("{label:<26} {y:>12.4} {:>14.4}", START - y);
+    }
+    println!(
+        "\nLEITURA: se o CINEMATICO afundar como se a poca nao existisse enquanto\n\
+         o dinamico e o controle boiam, o empuxo nao alcanca massa infinita.\n"
+    );
+    println!(
+        "MEDIDO (2026-08-09): controle 1,1072 m · dinamico 1,0893 · CINEMATICO\n\
+         139,6739 -- ele atravessa a poca em queda livre, com o multiplicador de\n\
+         queda (1,78x os 78,5 m analiticos de 4 s). A agua NAO existe para ele.\n"
+    );
+}

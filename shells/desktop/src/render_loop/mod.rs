@@ -1889,6 +1889,25 @@ impl crate::App {
                 sig.other.to_bits(),
             ));
         }
+        // **O PAINEL AUTORADO publica no MESMO outbox** — a ponte que faltava.
+        //
+        // ⚠️ Ela fecha DOIS defeitos de uma vez, e o menor deles é o vazamento: a fila de intents
+        // era a única do app sem ponte (physics, sculpt3d, tokens, motion e timeline todas
+        // drenam), então ela **crescia sem teto** com o painel aberto — um arrasto de slider
+        // empurrava um intent com duas `String` por quadro. O maior é que **todo botão autorado
+        // era um controle MORTO**: um aperto não tem valor no store, então este canal é o único
+        // que o carrega, e ninguém o lia.
+        //
+        // ⚠️ **Só o `Fired` vira sinal.** Um slider e um toggle já dizem o que valem pelo
+        // `WidgetStore`, que é quem dirige a arte (`vec_widget_drive`); publicá-los também aqui
+        // poria o mesmo facto em dois fios — a divergência que este repo passa a vida a curar.
+        // Os outros são drenados e descartados, e é o dreno que era a metade que faltava.
+        for intent in ph2d_panel_authored::drain_intents() {
+            if let ph2d_panel_authored::AuthoredIntent::Fired { key } = intent {
+                self.signals
+                    .publish(ph2d_runtime::Signal::from_control(&key));
+            }
+        }
         // **O DRENO — o único lugar do app onde um sinal encontra quem escuta.**
         //
         // Ele roda DEPOIS dos dois produtores, e é por isso que a entrega é no MESMO quadro:
@@ -1914,6 +1933,9 @@ impl crate::App {
                             "[signal] {} <- fisica, {} tocou {}",
                             sig.name, source.0, other.0
                         );
+                    }
+                    ph2d_runtime::SignalOrigin::Control => {
+                        eprintln!("[signal] {} <- controle autorado", sig.name);
                     }
                 }
             }

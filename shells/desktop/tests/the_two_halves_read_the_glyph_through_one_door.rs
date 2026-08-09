@@ -67,3 +67,44 @@ fn the_one_door_is_where_it_says_it_is() {
         "a porta mudou de nome — os gates irmaos falhariam pela razao errada"
     );
 }
+
+/// **A FILA DE INTENTS DO PAINEL AUTORADO TEM UM DRENO** — o gate que o vazamento merecia.
+///
+/// ⚠️ **É arch-gate porque a falha é de FIAÇÃO.** Um teste de unidade prova que `drain_intents`
+/// funciona; o que estava errado é que **ninguém a chamava** — o painel autorado era o único do
+/// app sem ponte, e a fila crescia sem teto com ele aberto. Nenhum gate de comportamento pode ver
+/// isso, porque o defeito é a ausência de uma chamada.
+///
+/// ⚠️ E a segunda metade é a ORDEM: publicar DEPOIS do dreno de sinais entregaria o aperto um
+/// quadro atrasado — invisível num toast e visível no dia em que o consumidor for som. O gate
+/// afirma que o dreno do painel precede o dos sinais.
+#[test]
+fn the_authored_intent_queue_has_a_drain_and_it_runs_before_the_signal_drain() {
+    let src = std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("src")
+            .join("render_loop")
+            .join("mod.rs"),
+    )
+    .expect("o render_loop sumiu");
+
+    let drain = src
+        .find("ph2d_panel_authored::drain_intents()")
+        .expect("a fila de intents do painel autorado nao tem dreno — ela cresce sem teto");
+    let signals = src
+        .find("self.signals.read(&mut self.signal_toast_reader)")
+        .expect("o dreno de sinais mudou de forma — este gate mede a ordem contra ele");
+    assert!(
+        drain < signals,
+        "o painel autorado publica DEPOIS do dreno de sinais: o aperto do botao chegaria um \
+         quadro atrasado"
+    );
+
+    let turn = src
+        .find("self.signals.advance_frame()")
+        .expect("o quadro de sinais nao vira");
+    assert!(
+        turn < drain,
+        "o painel publica ANTES de o quadro virar — o sinal dele seria aposentado na hora"
+    );
+}

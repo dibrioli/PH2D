@@ -79,6 +79,14 @@ pub enum SignalOrigin {
         /// Quem chegou, ou quem saiu.
         other: EntityBits,
     },
+    /// Um CONTROLE autorado foi apertado — um botão que o artista desenhou no painel.
+    ///
+    /// ⚠️ **Sem carga, e isso não é um variant pobre — é a origem em que o nome É tudo.** Um
+    /// marker traz o instante e um contato traz quem bateu em quem porque esse detalhe se
+    /// perderia; um aperto de botão não tem detalhe nenhum além de *aconteceu, e chama-se assim*.
+    /// A origem fica porque um consumidor pode querer ROTEAR pela fonte (e o log imprime-a), não
+    /// porque ela carregue dado.
+    Control,
 }
 
 /// Um sinal publicado neste quadro.
@@ -113,6 +121,20 @@ impl Signal {
                 source: EntityBits(source),
                 other: EntityBits(other),
             },
+        }
+    }
+
+    /// Um sinal que um controle autorado emitiu ao ser apertado.
+    ///
+    /// ⚠️ **Só o que NÃO tem outro canal vem por aqui.** Um slider e um toggle já dizem o que
+    /// valem pelo `WidgetStore`, que é quem dirige a arte; publicá-los TAMBÉM como sinal poria o
+    /// mesmo facto em dois fios. Um APERTO não tem estado — ele não é um valor que se leia depois
+    /// —, então este é o único canal que o carrega.
+    #[must_use]
+    pub fn from_control(name: &str) -> Self {
+        Self {
+            name: Arc::from(name),
+            origin: SignalOrigin::Control,
         }
     }
 

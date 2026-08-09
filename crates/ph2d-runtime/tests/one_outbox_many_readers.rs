@@ -34,6 +34,7 @@ impl Host {
                 SignalOrigin::Contact { source, other } => {
                     format!("{} {}->{}", sig.name, source.0, other.0)
                 }
+                SignalOrigin::Control => format!("{} <controle>", sig.name),
             });
         }
     }

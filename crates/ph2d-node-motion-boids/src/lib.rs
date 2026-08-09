@@ -190,6 +190,24 @@ fn vec2_col(s: &Stream, name: &str) -> Vec<[f32; 2]> {
     }
 }
 
+/// The transient `accel` the state carries, at exactly `n` — **absent is zeros**.
+///
+/// A `force.*` wired into this flock's `state` chain (`boids.out --pre-->
+/// force.curl --> boids.state`) accumulates world-units/s² here, and this one
+/// read hands the flock the whole force family: curl (which IS Reynolds'
+/// *wander*), wind, an attractor, a vortex, drag (doc 89 §2.1). It joins the
+/// three flocking urges as a fourth term, so `max_speed` still bounds it.
+///
+/// ⚠️ **Consumed, never emitted** (the stream carries `P`/`vel`/`sim_t`), so
+/// every tick starts from zero acceleration; and zeros are the IDENTITY, so a
+/// flock no force reaches is byte-identical to the one that shipped.
+fn accel_col(s: &Stream, n: usize) -> Vec<[f32; 2]> {
+    match s.get("accel") {
+        Some(Column::Vec2(v)) if v.len() == n => v.clone(),
+        _ => vec![[0.0, 0.0]; n],
+    }
+}
+
 /// The value coordinate for the (single) target: **unconnected → 0.0** (origin).
 fn value_head(vals: &[f32]) -> f32 {
     vals.first().copied().unwrap_or(0.0)
@@ -229,6 +247,7 @@ fn seed(home: [f32; 2], p: &Params) -> (Vec<[f32; 2]>, Vec<[f32; 2]>) {
 fn step(
     pos: &[[f32; 2]],
     vel: &[[f32; 2]],
+    ext_accel: &[[f32; 2]],
     target: [f32; 2],
     dt: f32,
     p: &Params,
@@ -282,6 +301,13 @@ fn step(
         // Seek/home: a linear spring toward the target — herds AND bounds.
         accel[0] += (target[0] - pi[0]) * p.seek;
         accel[1] += (target[1] - pi[1]) * p.seek;
+        // The EXTERNAL urge, from a `force.*` in this flock's state chain: a
+        // fourth term beside the three Reynolds ones, added BEFORE the speed
+        // clamp on purpose — `max_speed` still bounds the flock, which is what
+        // makes `force.curl` read as Reynolds' *wander* instead of a shove.
+        let ext = ext_accel.get(i).copied().unwrap_or([0.0, 0.0]);
+        accel[0] += ext[0];
+        accel[1] += ext[1];
 
         // Integrate, then clamp the speed into [min, max] so the flock glides.
         let mut nv = [vi[0] + accel[0] * dt, vi[1] + accel[1] * dt];
@@ -315,7 +341,8 @@ fn simulate(target: [f32; 2], state: &Stream, playhead: f32, p: &Params) -> Stre
             .copied()
             .unwrap_or(playhead);
         let dt = (playhead - t_prev).clamp(0.0, MAX_DT);
-        step(&s_pos, &s_vel, target, dt, p)
+        let accel = accel_col(state, p.count);
+        step(&s_pos, &s_vel, &accel, target, dt, p)
     } else {
         seed(target, p)
     };
@@ -377,6 +404,14 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
     reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
     reg.register_param_groups(MANIFEST.id, PARAM_GROUPS);
+    // ADR-0155: this flock CONSUMES `accel`, so a `force.*` in its state chain
+    // is live instead of inert — and the diagnose stops offering to splice a
+    // `motion.integrate`, which is `Temporal` and would stamp `sim_t = playhead`
+    // on the way past, handing this node `dt = 0` and FREEZING the flock.
+    reg.register_couplings(
+        MANIFEST.id,
+        &[ph2d_node_registry::Coupling::Consumes("accel")],
+    );
     Ok(())
 }
 

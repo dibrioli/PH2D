@@ -39,7 +39,10 @@
 //! `motion.spring`. Deterministic → `Effect::Temporal` (reads the playhead), replays
 //! bit-for-bit.
 
-use ph2d_node_registry::{NodeRegistry, ParamUnit, ParamUnitDecl, RegistryError};
+use ph2d_node_registry::{NodeRegistry, RegistryError};
+
+mod params_ui;
+use params_ui::{PARAM_HARD_MAX, PARAM_HINTS, PARAM_UNITS};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
@@ -148,6 +151,31 @@ fn vec2_col(s: &Stream, name: &str) -> Vec<[f32; 2]> {
     }
 }
 
+/// The transient `accel` the state carries, at exactly `n` — **absent is zeros**.
+///
+/// ## What this one column buys
+///
+/// A `force.*` node wired into this rope's `state` chain (`rope.out --pre-->
+/// force.wind --> rope.state`) accumulates world-units/s² here, and reading it
+/// hands the rope the WHOLE force family at once: gravity with a DIRECTION,
+/// wind, curl, an attractor, a vortex, drag. None of that is a kernel this crate
+/// has to grow — it is one column, read once (doc 89 §2.1).
+///
+/// ⚠️ **Consumed, never emitted.** The emitted stream carries `P`/`rope_prev`/
+/// `sim_t` and nothing else, so every tick starts from zero acceleration — the
+/// same discipline `motion.integrate` states in its own docs. A rope that
+/// forwarded `accel` would integrate last tick's wind forever.
+///
+/// ⚠️ **Zeros are the IDENTITY, so a rope no force reaches is byte-identical to
+/// the one that shipped**: `x + 0.0 * dt²` is `x`. That is a property of the
+/// arithmetic, not a fast path to keep in step with a slow one.
+fn accel_col(s: &Stream, n: usize) -> Vec<[f32; 2]> {
+    match s.get("accel") {
+        Some(Column::Vec2(v)) if v.len() == n => v.clone(),
+        _ => vec![[0.0, 0.0]; n],
+    }
+}
+
 /// The simulation parameters resolved at eval (all arithmetic-ready).
 struct Params {
     count: usize,
@@ -177,6 +205,7 @@ fn seed(anchor: [f32; 2], p: &Params) -> (Vec<[f32; 2]>, Vec<[f32; 2]>) {
 fn step(
     mut pos: Vec<[f32; 2]>,
     prev: &[[f32; 2]],
+    accel: &[[f32; 2]],
     anchor: [f32; 2],
     tail_pin: [f32; 2],
     dt: f32,
@@ -186,14 +215,22 @@ fn step(
     // Verlet's memory for the NEXT tick is this tick's entry positions.
     let prev_out = pos.clone();
     let keep = 1.0 - p.damping;
+    // ⚠️ `ga` keeps its ORIGINAL association `(gravity·dt)·dt` — IEEE-754
+    // multiplication is not associative, and re-grouping it as `gravity·dt²`
+    // moves the ulp on every rope that ever hung. `dt2` is for the term that is
+    // NEW here, where there is no earlier grouping to preserve.
+    let dt2 = dt * dt;
     let ga = p.gravity * dt * dt; // a·dt² (downward, so subtract from y)
 
     // Integrate every point; the pins are overwritten right after.
     for i in 0..n {
         let (c, pv) = (pos[i], prev[i]);
+        // The external `accel` enters exactly where the built-in gravity does —
+        // both are accelerations, and Verlet takes an acceleration as `a·dt²`.
+        let a = accel.get(i).copied().unwrap_or([0.0, 0.0]);
         let mut np = [
-            c[0] + (c[0] - pv[0]) * keep,
-            c[1] + (c[1] - pv[1]) * keep - ga,
+            c[0] + (c[0] - pv[0]) * keep + a[0] * dt2,
+            c[1] + (c[1] - pv[1]) * keep - ga + a[1] * dt2,
         ];
         // NaN/∞ guard (reference parity): a diverged point recovers at the anchor.
         if !(np[0].is_finite() && np[1].is_finite()) {
@@ -264,7 +301,8 @@ fn simulate(anchor: [f32; 2], state: &Stream, playhead: f32, p: &Params) -> Stre
             .copied()
             .unwrap_or(playhead);
         let dt = (playhead - t_prev).clamp(0.0, MAX_DT);
-        step(s_pos, &s_prev, anchor, tail_pin, dt, p)
+        let accel = accel_col(state, p.count);
+        step(s_pos, &s_prev, &accel, anchor, tail_pin, dt, p)
     } else {
         // Tick 0 (Empty state) or a count change → re-seed the strand.
         seed(anchor, p)
@@ -322,103 +360,18 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
     reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
+    // ADR-0155: this rope CONSUMES `accel`, so a `force.*` wired into its state
+    // chain is live rather than inert — and the diagnose sees a consumer where
+    // it would otherwise offer to splice a `motion.integrate`. That offer would
+    // be poison here: an integrator is `Temporal`, it stamps `sim_t = playhead`
+    // on the way past, and this node derives `dt` from the state's own `sim_t`
+    // — so the "cure" would hand the rope `dt = 0` and FREEZE it.
+    reg.register_couplings(
+        MANIFEST.id,
+        &[ph2d_node_registry::Coupling::Consumes("accel")],
+    );
     Ok(())
 }
-
-use ph2d_node_registry::{ParamHardMax, ParamUiHint, ParamWidget};
-/// **O teto DURO de `count` — MEDIDO** (doc 88 A1 · §0), enquanto o slider fica nos 200 que cobrem
-/// uma corda de autoria confortável.
-///
-/// A relaxação é Gauss-Seidel por aresta — **sequencial por semântica**, mas LINEAR na contagem.
-/// Medido pela porta do produto (`measure_the_count_ceiling`, com a aresta `pre` de estado ligada;
-/// sem ela o `eval` semeia e a tabela reporta **300× menos**):
-///
-/// | partículas | cook |
-/// |---|---|
-/// | 10.000 | 2,040 ms |
-/// | **50.000** | **~10 ms** (interpolado do linear) |
-/// | 100.000 | 20,533 ms |
-/// | 400.000 | 83,267 ms |
-///
-/// Cem mil já passa de um quadro de 60 fps; cinquenta mil fica em ~60% dele — 250× o que o slider
-/// alcança. O teto é onde a medição parou de caber.
-static PARAM_HARD_MAX: &[ParamHardMax] = &[
-    ParamHardMax {
-        param: "damping",
-        max: 0.5,
-    },
-    ParamHardMax {
-        param: "count",
-        max: 50_000.0,
-    },
-];
-
-static PARAM_HINTS: &[ParamUiHint] = &[
-    ParamUiHint {
-        param: "count",
-        label: "Points",
-        min: 2.0,
-        max: 200.0,
-        step: 1.0,
-        widget: ParamWidget::Slider,
-    },
-    ParamUiHint {
-        param: "length",
-        label: "Length",
-        min: 0.5,
-        max: 40.0,
-        step: 0.1,
-        widget: ParamWidget::Slider,
-    },
-    ParamUiHint {
-        param: "gravity",
-        label: "Gravity",
-        min: 0.0,
-        max: 40.0,
-        step: 0.1,
-        widget: ParamWidget::Slider,
-    },
-    ParamUiHint {
-        param: "iterations",
-        label: "Stiffness",
-        min: 1.0,
-        max: 128.0,
-        step: 1.0,
-        widget: ParamWidget::Slider,
-    },
-    ParamUiHint {
-        param: "damping",
-        label: "Damping",
-        min: 0.0,
-        max: 0.2,
-        step: 0.01,
-        widget: ParamWidget::Slider,
-    },
-    ParamUiHint {
-        param: "pin_tail",
-        label: "Pin Tail",
-        min: 0.0,
-        max: 1.0,
-        step: 1.0,
-        widget: ParamWidget::Enum {
-            labels: &["Free", "Pinned"],
-        },
-    },
-];
-
-/// **What each of this node's numbers IS** (doc 88, Wave A) — never how it is
-/// shown. A `Length` is stored in world METRES and the panel resolves the face
-/// the artist reads (`px` or `m`) from `ProjectSettings::display_unit`; a node
-/// that could pin one would be overriding a setting it does not own.
-///
-/// Only params whose value is a world COORDINATE or a world DISTANCE are declared
-/// here. A weight, a fraction, a rate and a count are left bare on purpose: a unit
-/// that is wrong is worse than a unit that is missing, because the artist can read
-/// a bare number but a mislabelled one teaches them something false.
-static PARAM_UNITS: &[ParamUnitDecl] = &[ParamUnitDecl {
-    param: "length",
-    unit: ParamUnit::Length,
-}];
 
 #[cfg(test)]
 mod tests {

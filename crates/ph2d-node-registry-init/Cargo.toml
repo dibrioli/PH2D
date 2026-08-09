@@ -135,3 +135,8 @@ ph2d-node-value-wrap = { path = "../ph2d-node-value-wrap" }
 
 [dev-dependencies]
 ph2d-node-sync = { path = "../../tools/ph2d-node-sync" }
+# Só os gates cozinham um grafo (o `Cook`/`Graph` de `generators_consume_accel`).
+# A lib desta crate apenas REGISTRA nós, e não fala de grafos — manter isto em
+# `[dev-dependencies]` é o que impede o registro de crescer uma opinião sobre
+# cook (o mesmo cerco que a `ph2d-gpu-cook` põe nas crates-nó dela).
+ph2d-nodegraph = { path = "../ph2d-nodegraph" }

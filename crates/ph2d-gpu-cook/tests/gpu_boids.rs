@@ -34,6 +34,7 @@ fn registry() -> NodeRegistry {
     let mut reg = NodeRegistry::new();
     ph2d_node_motion_boids::register(&mut reg).unwrap();
     ph2d_node_motion_output::register(&mut reg).unwrap();
+    ph2d_node_force_wind::register(&mut reg).unwrap();
     reg
 }
 
@@ -75,6 +76,50 @@ fn boids_graph_spread(count: f32, spread: bool) -> (Graph, NodeId) {
     (g, out)
 }
 
+/// `boids ──pre──> force.wind ──> boids.state`, plus the render edge — the flock
+/// with a wind in its state chain (doc 89 §2.1, W1).
+///
+/// ⚠️ **Esta fixture existe porque as outras NÃO CONTÊM O FENÔMENO.** As quatro
+/// paridades acima montam `boids ──> output` com o self-loop nu, então a coluna
+/// `accel` está AUSENTE nas duas rotas e elas concordam sobre um termo que
+/// nenhuma das duas avalia: apagar o `read_state_accel(i)` do WGSL deixa as
+/// quatro VERDES, com a CPU levando o vento e a GPU não. É o modo de falha que o
+/// repo mais encontra — duas respostas para a mesma pergunta, divergindo no único
+/// lugar onde ninguém lê um número.
+fn boids_in_a_wind(count: f32, strength: f32) -> (Graph, NodeId) {
+    let mut g = Graph::new();
+    let boids = g.add_node("motion.boids");
+    g.set_param(boids, "count", count);
+    g.set_param(boids, "seed", 1.0);
+    g.set_param(boids, "radius", 2.3);
+    g.set_param(boids, "separation", 1.4);
+    g.set_param(boids, "alignment", 0.9);
+    g.set_param(boids, "cohesion", 0.7);
+    // Sem seek: a mola do alvo mascararia o vento puxando tudo de volta.
+    g.set_param(boids, "seek", 0.0);
+    g.set_param(boids, "max_speed", 4.0);
+    let wind = g.add_node("force.wind");
+    g.set_param(wind, "angle", 30.0);
+    g.set_param(wind, "strength", strength);
+    g.set_param(wind, "gust", 0.0);
+    let out = g.add_node("motion.output");
+    // `out --pre--> wind` (a aresta DELAYED sai do gerador, como o plumbing a
+    // escreve) · `wind --> state` · a aresta de cena.
+    for (from, to, port, delayed) in [
+        (boids, wind, 0u16, true),
+        (wind, boids, 2u16, false),
+        (boids, out, 0u16, false),
+    ] {
+        g.connect(Edge {
+            from: (from, 0),
+            to: (to, port),
+            delayed,
+        })
+        .unwrap();
+    }
+    (g, out)
+}
+
 /// Cook `0..=ticks` on the canonical CPU path; return each tick's lowering.
 fn cpu_ticks(g: &Graph, reg: &NodeRegistry, out: NodeId, ticks: u64) -> Vec<Vec<RenderInstance>> {
     let mut cook = Cook::new();
@@ -107,14 +152,19 @@ fn gpu_ticks(
     reg: &NodeRegistry,
     out: NodeId,
     ticks: u64,
+    stages: usize,
 ) -> Vec<RenderInstance> {
     let plan = plan(g, reg, reg, out);
     assert!(plan.is_fully_gpu(), "boundaries: {:?}", plan.boundaries);
     assert!(plan.drives_a_loop(), "the flock state must live on the GPU");
+    // ⚠️ A contagem é EXATA por fixture, não `>= 1`: ela é o que prova que não
+    // houve fallback silencioso para a CPU (que compararia CPU com CPU) — e o
+    // grafo com vento tem legitimamente DOIS estágios, o flock e a força. Afrouxar
+    // para `>= 1` trocaria a prova por uma frase.
     assert_eq!(
         plan.dispatching_stages(reg),
-        1,
-        "boids dispatches; output is pass-through"
+        stages,
+        "estagios que despacham (output e pass-through)"
     );
     let mut gc = GpuCook::new();
     for t in 0..=ticks {
@@ -168,7 +218,7 @@ fn the_boids_seed_matches_the_cpu_bit_for_bit() {
     let reg = registry();
     let (g, out) = boids_graph(400.0);
     let cpu = cpu_ticks(&g, &reg, out, 0);
-    let gpu_out = gpu_ticks(&gpu, &g, &reg, out, 0);
+    let gpu_out = gpu_ticks(&gpu, &g, &reg, out, 0, 1);
     // The seed is the integer `hash3` on both sides → bit-exact.
     parity("seed", &cpu[0], &gpu_out, 0.0);
 }
@@ -186,7 +236,7 @@ fn one_boids_step_matches_the_cpu_within_epsilon() {
     // so the three urges + seek all fire. The neighbour SET is identical (grid =
     // all-pairs within radius); only the float SUM order differs ⇒ ε.
     let cpu = cpu_ticks(&g, &reg, out, 1);
-    let gpu_out = gpu_ticks(&gpu, &g, &reg, out, 1);
+    let gpu_out = gpu_ticks(&gpu, &g, &reg, out, 1, 1);
     parity("one step", &cpu[1], &gpu_out, 2e-3);
 }
 
@@ -203,7 +253,7 @@ fn the_spread_seed_matches_the_cpu_within_epsilon() {
     // where 400 (=√6.25=2.5 exact) would have hidden it at 0.
     let (g, out) = boids_graph_spread(300.0, true);
     let cpu = cpu_ticks(&g, &reg, out, 0);
-    let gpu_out = gpu_ticks(&gpu, &g, &reg, out, 0);
+    let gpu_out = gpu_ticks(&gpu, &g, &reg, out, 0, 1);
     // Half-extent ≈ 3·√(300/64) ≈ 6.5 world units → a 1-ULP sqrt is ~1e-6.
     parity("spread seed", &cpu[0], &gpu_out, 1e-4);
 }
@@ -218,6 +268,48 @@ fn one_spread_step_matches_the_cpu_within_epsilon() {
     let reg = registry();
     let (g, out) = boids_graph_spread(400.0, true);
     let cpu = cpu_ticks(&g, &reg, out, 1);
-    let gpu_out = gpu_ticks(&gpu, &g, &reg, out, 1);
+    let gpu_out = gpu_ticks(&gpu, &g, &reg, out, 1, 1);
     parity("spread step", &cpu[1], &gpu_out, 2e-3);
+}
+
+/// **O vento na cadeia de estado chega às DUAS rotas.** A CPU soma o `accel` como
+/// um quarto termo de steering; o WGSL faz o mesmo com `read_state_accel(i)`.
+/// FALSIFICADO por apagar a linha do WGSL ou por a CPU parar de ler a coluna.
+#[test]
+#[ignore = "needs a GPU adapter"]
+fn one_boids_step_in_a_wind_matches_the_cpu_within_epsilon() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping gpu_boids");
+        return;
+    };
+    let reg = registry();
+    let (g, out) = boids_in_a_wind(400.0, 18.0);
+    let cpu = cpu_ticks(&g, &reg, out, 1);
+    // DOIS estágios: o flock e a força que alimenta a cadeia de estado dele.
+    let gpu_out = gpu_ticks(&gpu, &g, &reg, out, 1, 2);
+    parity("one step in a wind", &cpu[1], &gpu_out, 2e-3);
+}
+
+/// **O CONTROLE da fixture acima: o vento de fato MOVE a rota da CPU.** Sem ele a
+/// paridade seria verde por vácuo — duas rotas concordando sobre um termo que
+/// nenhuma avalia. Roda sem adapter de propósito: é uma afirmação sobre a
+/// FIXTURE, não sobre o dispositivo.
+#[test]
+fn the_wind_fixture_actually_moves_the_flock() {
+    let reg = registry();
+    // A MESMA topologia nos dois lados — só a intensidade varia, então o que a
+    // diferença mede é o vento e nada mais.
+    let (windy, out_w) = boids_in_a_wind(64.0, 18.0);
+    let (still, out_s) = boids_in_a_wind(64.0, 0.0);
+    let mean_x =
+        |v: &[RenderInstance]| v.iter().map(|i| i.world_pos[0]).sum::<f32>() / v.len() as f32;
+    let a = cpu_ticks(&windy, &reg, out_w, 8);
+    let b = cpu_ticks(&still, &reg, out_s, 8);
+    assert!(
+        (mean_x(&a[8]) - mean_x(&b[8])).abs() > 0.1,
+        "a fixture do vento tem de MOVER o bando, senao a paridade e verde por vacuo: \
+         {} contra {}",
+        mean_x(&a[8]),
+        mean_x(&b[8])
+    );
 }

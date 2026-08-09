@@ -187,6 +187,26 @@ fn value_head(vals: &[f32]) -> f32 {
     vals.first().copied().unwrap_or(0.0)
 }
 
+/// The transient `accel` the state carries, at exactly `n` — **absent is zeros**.
+///
+/// A `force.*` wired into this body's `state` chain (`soft_body.out --pre-->
+/// force.vortex --> soft_body.state`) accumulates world-units/s² here, and this
+/// one read hands the gelatin the whole force family: gravity with a DIRECTION,
+/// wind, curl, an attractor, drag (doc 89 §2.1). It enters the PREDICTION, which
+/// is where an acceleration belongs in a position-based step — the shape match
+/// then answers it, which is exactly how a soft body should respond to being
+/// blown on.
+///
+/// ⚠️ **Consumed, never emitted** (the stream carries `P`/`sb_vel`/`sim_t`), so
+/// every tick starts from zero acceleration; and zeros are the IDENTITY, so a
+/// body no force reaches is byte-identical to the one that shipped.
+fn accel_col(s: &Stream, n: usize) -> Vec<[f32; 2]> {
+    match s.get("accel") {
+        Some(Column::Vec2(v)) if v.len() == n => v.clone(),
+        _ => vec![[0.0, 0.0]; n],
+    }
+}
+
 /// The pinned target for the top-row particle at grid column `c`: the anchor plus
 /// that particle's rest offset, so the top edge stays a rigid bar sliding with the
 /// anchor.
@@ -199,21 +219,28 @@ fn pin_target(anchor: [f32; 2], rest: &[[f32; 2]], i: usize) -> [f32; 2] {
 fn step(
     pos: &[[f32; 2]],
     vel: &[[f32; 2]],
+    accel: &[[f32; 2]],
     anchor: [f32; 2],
     rest: &[[f32; 2]],
     dt: f32,
     p: &Params,
 ) -> (Vec<[f32; 2]>, Vec<[f32; 2]>) {
     let n = pos.len();
+    let dt2 = dt * dt;
     // Predict under inertia + gravity; pinned particles jump to their pin target.
     let mut pred = vec![[0.0f32; 2]; n];
     for i in 0..n {
         if p.is_pinned(i) {
             pred[i] = pin_target(anchor, rest, i);
         } else {
+            // The external `accel` lands beside the built-in gravity: both are
+            // accelerations, and a prediction takes one as `a·dt²`. A pinned
+            // particle is unmoved by it ON PURPOSE — a pin is a constraint, and
+            // a force that could drag the pin would make the pin a suggestion.
+            let a = accel.get(i).copied().unwrap_or([0.0, 0.0]);
             pred[i] = [
-                pos[i][0] + vel[i][0] * dt,
-                pos[i][1] + vel[i][1] * dt - p.gravity * dt * dt,
+                pos[i][0] + vel[i][0] * dt + a[0] * dt2,
+                pos[i][1] + vel[i][1] * dt - p.gravity * dt * dt + a[1] * dt2,
             ];
         }
     }
@@ -263,7 +290,8 @@ fn simulate(anchor: [f32; 2], state: &Stream, playhead: f32, p: &Params) -> Stre
         if dt < EPS {
             (s_pos, s_vel) // loop-wrap / same tick → hold
         } else {
-            step(&s_pos, &s_vel, anchor, &rest, dt, p)
+            let accel = accel_col(state, n);
+            step(&s_pos, &s_vel, &accel, anchor, &rest, dt, p)
         }
     } else {
         // Seed the rest mesh at the anchor, at rest (zero velocity).
@@ -325,6 +353,14 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
     reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
+    // ADR-0155: this body CONSUMES `accel`, so a `force.*` in its state chain is
+    // live instead of inert — and the diagnose stops offering to splice a
+    // `motion.integrate`, which is `Temporal` and would stamp `sim_t = playhead`
+    // on the way past, handing this node `dt = 0` and FREEZING it.
+    reg.register_couplings(
+        MANIFEST.id,
+        &[ph2d_node_registry::Coupling::Consumes("accel")],
+    );
     Ok(())
 }
 
@@ -623,9 +659,21 @@ mod cost_probe {
                 pin: true,
             };
             let vel = vec![[0.0f32; 2]; n];
+            // The zeros the product materialises when no force reaches the body
+            // — `simulate` always hands `step` a full-length slice, so measuring
+            // with one is measuring what ships.
+            let accel = vec![[0.0f32; 2]; n];
             let t0 = std::time::Instant::now();
             for _ in 0..REPS {
-                std::hint::black_box(super::step(&pred, &vel, [0.0, 0.0], &rest, 1.0 / 60.0, &p));
+                std::hint::black_box(super::step(
+                    &pred,
+                    &vel,
+                    &accel,
+                    [0.0, 0.0],
+                    &rest,
+                    1.0 / 60.0,
+                    &p,
+                ));
             }
             let tick = t0.elapsed().as_secs_f64() * 1e3 / f64::from(REPS);
             eprintln!(

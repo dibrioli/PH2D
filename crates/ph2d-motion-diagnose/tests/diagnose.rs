@@ -505,3 +505,59 @@ fn a_duplicator_with_both_inputs_is_clean() {
         "both required inputs are wired — not missing"
     );
 }
+
+/// **Uma força na cadeia de ESTADO de uma simulação é diagnosticada LIMPA** —
+/// os três geradores (`motion.verlet_rope` · `motion.soft_body` · `motion.boids`)
+/// passaram a declarar `Consumes("accel")` (doc 89 §2.1, W1), então o vento que
+/// o artista pendura na corda tem consumidor.
+///
+/// ⚠️ **Isto não é higiene: a "cura" que o diagnose ofereceria é POISON.** Sem a
+/// coupling, `Deficit::InertProducer("accel")` traz `Fix::Insert("motion.integrate")`
+/// — e um integrador é `Temporal`, carimba `sim_t = playhead` na saída, enquanto
+/// estes geradores derivam `dt = playhead − sim_t(state)`. O grafo "curado"
+/// entregaria `dt = 0` e **CONGELARIA** a simulação, com o badge apagado e o
+/// artista sem nada para ler. Declarar o consumo e ensinar o diagnose a vê-lo
+/// são a MESMA mudança, e é por isso que viajam no mesmo commit.
+///
+/// FALSIFICADO por remover a coupling de qualquer um dos três (a força volta a
+/// ser inerte aos olhos do diagnose e o integrador é oferecido de novo).
+#[test]
+fn a_force_in_a_sims_state_chain_is_clean_because_the_sim_consumes_accel() {
+    let reg = registry();
+    for ty in ["motion.verlet_rope", "motion.soft_body", "motion.boids"] {
+        let mut g = Graph::new();
+        let sim = g.add_node(ty);
+        let wind = g.add_node("force.wind");
+        let out = g.add_node("motion.output");
+        // `sim.out --pre--> wind --> sim.state` (a porta 2 dos três), mais a
+        // saída de cena, que é como o grafo do artista de fato existe.
+        g.connect(Edge {
+            from: (sim, 0),
+            to: (wind, 0),
+            delayed: true,
+        })
+        .expect("out --pre--> wind");
+        g.connect(Edge {
+            from: (wind, 0),
+            to: (sim, 2),
+            delayed: false,
+        })
+        .expect("wind --> state");
+        g.connect(Edge {
+            from: (sim, 0),
+            to: (out, 0),
+            delayed: false,
+        })
+        .expect("sim --> output");
+
+        let inert: Vec<_> = diagnose(&g, &reg)
+            .into_iter()
+            .filter(|d| d.deficit == Deficit::InertProducer("accel"))
+            .collect();
+        assert!(
+            inert.is_empty(),
+            "{ty} CONSOME accel — a forca na cadeia de estado dele nao e inerte, \
+             e a cura oferecida (inserir um integrador) congelaria a simulacao: {inert:?}"
+        );
+    }
+}

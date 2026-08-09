@@ -454,13 +454,60 @@ não a exceção dela.
 
 | ordem | wave | P0 restantes | por que aqui |
 |---|---|---|---|
-| **W1** | **SIMULAÇÃO** (fam. 3) | 8 → **~7** | o maior bloco que o W0 não toca — e o item de cabeça é *os 3 geradores não consomem `accel`*, ou seja **a família `force.*` inteira não alcança simulação nenhuma**. É um segundo desbloqueador, barato (uma leitura de coluna) e com fan-out de 6 nós |
+| **W1** | **SIMULAÇÃO** (fam. 3) | 8 → **~7** | o maior bloco que o W0 não toca — e o item de cabeça é *os 3 geradores não consomem `accel`*, ou seja **a família `force.*` inteira não alcança simulação nenhuma**. É um segundo desbloqueador, barato (uma leitura de coluna) e com fan-out de 6 nós — **W1-A ✅**, ver abaixo |
 | **W2** | **SOURCE** (fam. 14) | 4 | **39 formas já construídas e pagas são inalcançáveis do grafo** — é FIAÇÃO, não geometria: o melhor retorno por linha da conferência inteira |
 | **W3** | **COR** (fam. 9) | 6 → **~3** | o W0 mata hue/sat/luminance; sobra a alfa que não chega ao device (**defeito**) e a máscara por campo |
 | **W4** | **TEMPO / ESTILÍSTICOS** (fam. 7) | 4 | o `motion.morph` que **descarta `texture_id`/`geometry_id`** é regressão visível desde que o doc 86 pôs objetos no grafo |
 | **W5** | **DISTRIBUIÇÃO + EMISSÃO** (fam. 1) | 4 → **~3** | o W0 mata a tangente; sobram a FORMA do emissor e o arco radial |
 | **W6** | **PULSE** (fam. 12) | 2 | o *nível* é o gargalo único: com ele, gate/AND/OR/sequenciador/burst caem juntos |
 | **W7** | **SIM.\*** (fam. 13) | 3 | o estágio de EVENTOS depende do W6 (um pulso com nível) |
+
+#### W1-A ✅ — os três geradores consomem `accel`  ·  *o segundo desbloqueador*
+
+`motion.verlet_rope` · `motion.soft_body` · `motion.boids` liam **nenhuma** coluna. Agora leem
+`accel`, e isso entrega **de uma vez** a família `force.*` inteira a uma corda, a uma gelatina e a
+um bando: gravidade com DIREÇÃO, vento, curl (= o *wander* do Reynolds), atrator, vórtice, arrasto.
+A fiação já existia, o vocabulário já existia; faltava a leitura.
+
+- **Entra onde a aceleração já entrava**, então não há kernel novo: `p += a·dt²` no Verlet e na
+  predição do shape matching, `v += a·dt` como quarto termo de steering no boids — antes do clamp
+  de `max_speed`, que é o que faz o `force.curl` ler como *wander* e não como empurrão.
+- **Consumido, nunca reemitido** (os três emitem o próprio estado e mais nada), então todo tique
+  começa de aceleração zero — a disciplina que o `motion.integrate` já declara.
+- **Zeros são a IDENTIDADE** ⇒ uma simulação que nenhuma força alcança é **byte-idêntica** à que
+  shipou. ⚠️ E a associação importa: `p.gravity * dt * dt` é `(g·dt)·dt`, então re-agrupá-lo como
+  `g·dt²` **move o ulp de toda corda que já pendurou** — o `dt2` só serve ao termo NOVO.
+- **A metade do ADR-0155 viaja no mesmo commit**, e não é higiene: sem a `Coupling::Consumes`, o
+  diagnose vê um `Produces("accel")` órfão e oferece **inserir um `motion.integrate`** — que é
+  `Temporal`, carimba `sim_t = playhead` de passagem, e entregaria `dt = 0` ao gerador,
+  **CONGELANDO** a simulação. Declarar o consumo e ensinar o diagnose a vê-lo são a mesma mudança.
+- ⚠️ **O boids tem kernel de GPU, então a leitura é DUPLA** (`read_state_accel` no WGSL, binding
+  `Consume` na porta de estado) — shipar só a CPU seria a divergência que o T5 catalogou.
+
+**Duas coisas que a MEDIÇÃO corrigiu, e as duas ficam escritas:**
+
+1. **A barra do gate da gelatina era um palpite meu.** O cisalhamento **satura** (o corpo cede até
+   a restauração elástica equilibrar o vento): `5 → 0,073` · `20 → 0,282` · **`60 → 0,743`** ·
+   `180 → 1,348`. A barra é `0,3` sobre a medição de `60`, com o modo de falha medindo zero.
+2. ⚠️ **Os quatro gates de paridade do boids NÃO CONTINHAM O FENÔMENO.** Eles montam
+   `boids → output` com o self-loop nu, então `accel` está **ausente nas duas rotas** e elas
+   concordam sobre um termo que nenhuma avalia: apagar a linha do WGSL deixa os quatro **VERDES**,
+   com a CPU levando o vento e a GPU não. Fixture nova com a força na cadeia (`2,4e-7` no device),
+   e a mutação sangra **só** ela.
+3. ⚠️ **E uma afirmação MINHA sobre `Consume` era FALSA** — eu escrevi que trocá-lo por `Read`
+   seria pego por um gate. Não é: a supressão de ride-through corre pela porta BASE, e a porta 0
+   do boids é `VALUE` contra um output `INST_VEC2` ⇒ `rides_base = false`, a saída nasce vazia e
+   `Consume` remove uma coluna que nunca esteve lá. Medido, não suposto. A palavra fica (é a certa,
+   e é a que o `motion.integrate` usa), **sem gate**, porque um gate que não pode falhar pelo
+   motivo que alega é pior que nenhum. Um gate de dois passos foi escrito para pegá-lo e
+   **descartado** quando a mutação sobreviveu a ele também.
+
+**O que SOBRA da família 3** (os ~7 P0): o teto de 2 000 do boids (o caminho da CPU definindo o do
+device — §0.0) · `max_force` · `pressure` e os clusters do soft body · o `bend stiffness` da corda ·
+e o `spread` do `motion.collide`, que **colapsa uma coluna inteira em `vals.first()`** (T5).
+⚠️ E **dois P0 mudaram de natureza com esta wave**: a *gravidade VETOR* da corda e da gelatina
+passa a ser **exprimível por composição** (uma `force.wind` em qualquer ângulo, com `gravity = 0`)
+— o que era gap virou ergonomia, e é isso que um desbloqueador faz com a tabela que o precede.
 
 **Fora da fila, com motivo escrito:**
 - **FX (fam. 11)** — P0 = 0, e a cerca do módulo de pós-produção já recusa a classe (**T7**).

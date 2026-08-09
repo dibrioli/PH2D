@@ -47,6 +47,32 @@ static BINDINGS: &[ColumnBinding] = &[
         identity: [0.0; 4],
         port: 2,
     },
+    // The external urge a `force.*` in the state chain accumulated. Absent ⇒ the
+    // identity zeros, so a flock no force reaches produces the module it always
+    // produced.
+    //
+    // ⚠️ **`Consume` states the transient discipline — and today it is NOT
+    // observable, which is measured, not assumed.** It is the right word (the
+    // flock's output must never carry `accel` forward, or next tick's forces
+    // would add onto a stale value while the CPU's fresh stream starts at zero),
+    // and it is what `motion.integrate` declares for the same column. But the
+    // ride-through it suppresses runs off the BASE port, and this node's base
+    // (port 0, a `VALUE`) does not match its output (`INST_VEC2`), so
+    // `encode::rides_base` is false and the output starts empty: `Consume`
+    // removes a column that was never there.
+    //
+    // Mutating it to `Read` therefore passes every gate — **run, not guessed**.
+    // No gate is written for it, because a gate that cannot fail for the reason
+    // it names is worse than none; the day this node's port 0 becomes an
+    // instance stream, the word here is already correct and the parity gate
+    // above starts earning it.
+    ColumnBinding {
+        column: "accel",
+        dim: Dim::Vec2,
+        access: ColumnAccess::Consume,
+        identity: [0.0; 4],
+        port: 2,
+    },
     ColumnBinding {
         column: "v",
         dim: Dim::Scalar,
@@ -180,6 +206,7 @@ const WGSL: &str = r#"
         accel = accel + sep * params.separation;
     }
     accel = accel + (home - pi) * params.seek;
+    accel = accel + read_state_accel(i);
     var nv = vi + accel * dt;
     let speed = sqrt(dot(nv, nv));
     let min_speed = params.max_speed * BOIDS_MIN_SPEED_FRAC;

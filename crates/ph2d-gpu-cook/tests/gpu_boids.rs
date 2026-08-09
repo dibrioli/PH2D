@@ -313,3 +313,125 @@ fn the_wind_fixture_actually_moves_the_flock() {
         mean_x(&b[8])
     );
 }
+
+/// O bando com um ORÇAMENTO DE STEERING (Reynolds GDC 1999) — a mesma topologia
+/// nua das quatro paridades acima, só com `max_force` armado.
+///
+/// ⚠️ **Fixture própria pela MESMA razão do vento:** com o default `0` o clamp
+/// nem entra no ramo, então as paridades existentes concordam sobre um termo que
+/// nenhuma das duas avalia — apagar o bloco do WGSL as deixaria todas VERDES,
+/// com a CPU truncando a aceleração e o device não.
+fn boids_graph_clamped(count: f32, max_force: f32) -> (Graph, NodeId) {
+    let (mut g, out) = boids_graph_spread(count, false);
+    let boids = g
+        .nodes()
+        .iter()
+        .position(|n| n.type_name == "motion.boids")
+        .map(|i| NodeId(i as u32))
+        .expect("a fixture monta um motion.boids");
+    g.set_param(boids, "max_force", max_force);
+    (g, out)
+}
+
+/// **O clamp de steering roda IGUAL nas duas rotas.** A CPU trunca por `norm()`
+/// (comprimento, early-out no EPS, unidade × orçamento) e o WGSL repete a mesma
+/// ordem de operações. FALSIFICADO por apagar o bloco `max_force` do WGSL.
+///
+/// ⚠️ **QUATRO tiques, e o número decide** (`probe_what_the_steering_budget_changes`):
+/// o sinal que um device sem o clamp produziria é a divergência por instância
+/// contra o mesmo bando sem teto, e ela **compõe com o tempo** — `0,0047` em um
+/// tique contra `0,0441` em quatro. Com o eps de `2e-3` das irmãs, um tique só
+/// daria fosso de **2,4×** e quatro dão **22×**. *Um gate cujo sinal mal passa do
+/// próprio eps é um gate que a próxima mudança de ordem de soma silencia.*
+#[test]
+#[ignore = "needs a GPU adapter"]
+fn a_clamped_boids_run_matches_the_cpu_within_epsilon() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping gpu_boids");
+        return;
+    };
+    let reg = registry();
+    let (g, out) = boids_graph_clamped(400.0, 0.6);
+    let cpu = cpu_ticks(&g, &reg, out, 4);
+    // UM estágio: o bando sozinho, sem nó de força na cadeia.
+    let gpu_out = gpu_ticks(&gpu, &g, &reg, out, 4, 1);
+    parity("four clamped steps", &cpu[4], &gpu_out, 2e-3);
+}
+
+/// **O CONTROLE: o orçamento de fato MORDE na rota da CPU.** Sem esta afirmação a
+/// paridade acima seria verde por vácuo — duas rotas concordando sobre um ramo em
+/// que nenhuma entra. Roda sem adapter de propósito: é sobre a FIXTURE.
+///
+/// ⚠️ **O oráculo é a DISPERSÃO, e as duas primeiras tentativas erraram.** A
+/// média de `|posição|` num bando quase simétrico não separa nada (medido:
+/// `2,5829` contra `2,5835`), e quatro tiques não separam **estatística nenhuma**
+/// — um clamp de aceleração precisa de tempo para compor. O que o orçamento faz
+/// fisicamente é **impedir o bando de se AGRUPAR** (a coesão e o seek não podem
+/// puxar forte), então o discriminante é o raio médio em torno do próprio centro,
+/// e ele é monotônico no orçamento (`probe_what_the_steering_budget_changes`,
+/// 120 tiques): sem teto **3,0592** · `2,0` → 3,5504 · `0,6` → 4,0613 ·
+/// `0,1` → **4,2801**. A barra de `0,5` deixa fosso de 2,4×.
+#[test]
+fn the_clamped_fixture_actually_bounds_the_steering() {
+    let reg = registry();
+    // A MESMA topologia nos dois lados — só o orçamento varia.
+    let (tight, out_t) = boids_graph_clamped(64.0, 0.1);
+    let (open, out_o) = boids_graph_clamped(64.0, 0.0);
+    let a = cpu_ticks(&tight, &reg, out_t, 120);
+    let b = cpu_ticks(&open, &reg, out_o, 120);
+    let (ra, rb) = (mean_radius(&a[120]), mean_radius(&b[120]));
+    assert!(
+        ra - rb > 0.5,
+        "um orcamento apertado tem de deixar o bando MAIS espalhado (ele nao consegue \
+         se agrupar), senao a paridade e verde por vacuo: apertado {ra} contra aberto {rb}"
+    );
+}
+
+/// O raio médio em torno do próprio centro — a DISPERSÃO do bando.
+fn mean_radius(v: &[RenderInstance]) -> f32 {
+    let n = v.len() as f32;
+    let mx = v.iter().map(|i| i.world_pos[0]).sum::<f32>() / n;
+    let my = v.iter().map(|i| i.world_pos[1]).sum::<f32>() / n;
+    v.iter()
+        .map(|i| {
+            let d = [i.world_pos[0] - mx, i.world_pos[1] - my];
+            (d[0] * d[0] + d[1] * d[1]).sqrt()
+        })
+        .sum::<f32>()
+        / n
+}
+
+/// **SONDA — o que o orçamento de steering muda, e em quanto tempo.** É dela que
+/// saem as duas barras acima: a dispersão (o oráculo do controle) e a divergência
+/// por instância (o fosso que o eps da paridade precisa bater).
+///
+/// ```text
+/// cargo test -p ph2d-gpu-cook --test gpu_boids probe_what_the_steering_budget_changes -- --ignored --nocapture
+/// ```
+#[test]
+#[ignore = "sonda: imprime a tabela que calibra as barras acima"]
+fn probe_what_the_steering_budget_changes() {
+    let reg = registry();
+    for ticks in [1u64, 4, 8, 30, 120] {
+        let (base, out_b) = boids_graph_clamped(64.0, 0.0);
+        let b = cpu_ticks(&base, &reg, out_b, ticks);
+        for mf in [0.0f32, 2.0, 0.6, 0.1] {
+            let (g, out) = boids_graph_clamped(64.0, mf);
+            let v = cpu_ticks(&g, &reg, out, ticks);
+            let worst = v[ticks as usize]
+                .iter()
+                .zip(b[ticks as usize].iter())
+                .map(|(a, c)| {
+                    (a.world_pos[0] - c.world_pos[0])
+                        .abs()
+                        .max((a.world_pos[1] - c.world_pos[1]).abs())
+                })
+                .fold(0.0f32, f32::max);
+            eprintln!(
+                "ticks {ticks:>3}  max_force {mf:>4}  raio medio {:>7.4}  \
+                 pior divergencia/instancia contra sem-teto {worst:>9.6}",
+                mean_radius(&v[ticks as usize])
+            );
+        }
+    }
+}

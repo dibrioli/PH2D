@@ -295,25 +295,53 @@ fn the_typed_ceiling_reaches_past_the_slider() {
     }
 }
 
-/// **E o QUADRÁTICO da vizinhança mantém teto apertado pelo mesmo motivo do `scatter`.**
+/// **A PREMISSA deste gate morreu, e ele é o registro disso** (doc 89 W1 · §0.0).
 ///
-/// O boids varre a vizinhança de cada agente contra todos os outros — medido pela porta do
-/// produto (com a aresta `pre` de estado ligada, sem a qual ele SEMEIA em vez de dar o passo):
-/// 500 → 0,475 ms · 2.000 → 10,392 ms · 8.000 → **186,388 ms**. Quadruplicar multiplica por ~18.
+/// Ele afirmava que o boids — *uma simulação `O(n²)`* — não podia oferecer a caixa de um gerador
+/// linear, e ⚠️ **a LEI continua certa**: o irmão `the_quadratic_node_keeps_a_tight_ceiling` a
+/// sustenta sobre o `scatter`, que é quadrático em **toda** configuração e **não tem escape**.
 ///
-/// Este gate existe pelo motivo que o irmão do `scatter` nomeia: para que ninguém "harmonize"
-/// este teto com o milhão dos nós lineares desta mesma wave. E ele afirma a **família**, não o
-/// literal — o número mora no nó, com a tabela; aqui mora a lei de que uma simulação `O(n²)`
-/// não pode oferecer a caixa de um gerador linear.
+/// O que mudou foi o SUJEITO. Os `10,392 ms por 2.000 agentes` eram do caminho de **REFERÊNCIA**
+/// (o `Cook` do registry); o nó tem `register_grid` + kernel WGSL e a GPU shipa **ligada por
+/// default**. Medido pela porta do produto
+/// (`gpu_boids_scale::where_the_flock_leaves_the_frame_budget`): nos MESMOS 2.000 agentes o
+/// device custa **0,476 ms** — 21,8× —, e com a densidade limitada ele faz **1.048.576 em
+/// 14,283 ms**, que é o que o `PH2D_GPU_COOK_DEMO=7` shipa. *O caminho mais lento definia o teto
+/// do mais rápido*, que é o caso literal do §0.0.
+///
+/// ⚠️ **E a cerca fez o trabalho dela:** ela não impediu a mudança, ela exigiu a MEDIÇÃO. O que
+/// ela proibia — "harmonizar" um teto com o dos lineares sem medir — continua proibido; o que
+/// aconteceu foi o oposto.
+///
+/// ⚠️ **O preço da configuração PADRÃO fica NOMEADO, porque ele não sumiu:** sem `spread` a
+/// semeadura é uma caixa fixa, a grade não acelera nada e **o device também é `O(N²)`**, saindo
+/// do quadro entre 32.768 e 65.536. É por isso que o gate que sobra afirma o **ESCAPE**: o teto
+/// de um milhão só é honesto enquanto existe uma configuração que o alcança dentro do quadro, e
+/// apagar `spread` tornaria o teto uma promessa que nenhum regime cumpre. Quem afirma o outro
+/// lado — *o número que o demo SHIPA tem de ser digitável* — é
+/// `the_boid_count_ceiling_quotes_the_device_not_the_reference_path`.
+/// ⚠️ **A pergunta é se o artista ALCANÇA o escape, não se o manifesto o declara** — por isso
+/// esta varredura passa pela mesma porta do painel que o `row_of`, e não pelo registry: um
+/// `spread` declarado e não pintado seria um escape que só o código conhece.
 #[test]
-fn the_neighbourhood_simulation_keeps_a_tight_ceiling() {
-    let boids = row_of("motion.boids", "count");
-    let linear = row_of("motion.fibonacci", "count");
+fn the_raised_boid_ceiling_still_has_the_escape_that_justifies_it() {
+    use ph2d_panel_motion_params::ParamRow;
+    let mut motion = MotionState::new();
+    let node = motion.doc.graph.add_node("motion.boids");
+    ph2d_panel_motion_graph::set_graph_selection(vec![node.0]);
+    let rows = build_params_snapshot(&motion, ProjectSettings::default())
+        .expect("motion.boids resolve")
+        .rows;
+    ph2d_panel_motion_graph::set_graph_selection(Vec::new());
+    let has_escape = rows.iter().any(|r| match r {
+        ParamRow::Scalar(s) => s.name == "spread",
+        ParamRow::Toggle(t) => t.name == "spread",
+        _ => false,
+    });
     assert!(
-        boids.hard_max < linear.hard_max / 100.0,
-        "o teto do boids ({}) tem de ficar ORDENS abaixo do de um gerador linear ({})",
-        boids.hard_max,
-        linear.hard_max
+        has_escape,
+        "o `spread` do boids e a UNICA configuracao em que o teto de um milhao cabe num quadro; \
+         sem ele na tela o teto vira promessa que nenhum regime alcancavel cumpre"
     );
 }
 

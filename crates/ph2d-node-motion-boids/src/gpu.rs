@@ -206,6 +206,16 @@ const WGSL: &str = r#"
         accel = accel + sep * params.separation;
     }
     accel = accel + (home - pi) * params.seek;
+    // Reynolds' steering budget — the CPU's `norm()` verbatim: length, the EPS
+    // early-out, then unit·budget in that order (divide, then multiply), so the
+    // two routes agree to the bit and not merely to an epsilon.
+    if (params.max_force > 0.0) {
+        let steer_len = sqrt(dot(accel, accel));
+        if (steer_len >= BOIDS_EPS && steer_len > params.max_force) {
+            let unit = accel / steer_len;
+            accel = unit * params.max_force;
+        }
+    }
     accel = accel + read_state_accel(i);
     var nv = vi + accel * dt;
     let speed = sqrt(dot(nv, nv));
@@ -238,6 +248,7 @@ pub const GPU_KERNEL: GpuKernel = GpuKernel {
         "cohesion",
         "seek",
         "max_speed",
+        "max_force",
         "spread",
     ],
     count_law: Some(count_law),

@@ -13,6 +13,10 @@ fn params(count: usize) -> Params {
         cohesion: 0.0,
         seek: 0.0,
         max_speed: 4.0,
+        // A fixture DECLARA o neutro em vez de o herdar: o `0` é *sem teto de
+        // steering*, e escrevê-lo aqui é o que impede estes testes de mudarem de
+        // sentido em silêncio no dia em que o default se mover.
+        max_force: 0.0,
         spread: false,
     }
 }

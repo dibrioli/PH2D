@@ -134,6 +134,12 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "max_speed",
             default: 4.0,
         },
+        // Reynolds' OTHER clamp — the steering budget (**0 = off**, the default,
+        // so every flock authored before this param is byte-identical).
+        ParamSpec {
+            name: "max_force",
+            default: 0.0,
+        },
         // √N seed spread (0 = fixed, the default; 1 = density-bounded). Off is
         // byte-identical at EVERY count — it only decides whether a bigger flock
         // is a denser ball or a wider murmuration (the latter keeps the spatial
@@ -156,6 +162,18 @@ struct Params {
     cohesion: f32,
     seek: f32,
     max_speed: f32,
+    /// **O orçamento de DIREÇÃO** — o segundo clamp de Reynolds (*Steering
+    /// Behaviors For Autonomous Characters*, GDC 1999). `max_speed` limita quão
+    /// RÁPIDO um agente vai; este limita quão FORTE ele consegue virar, e o
+    /// modelo canônico tem os dois: sem ele um bando com `cohesion` alta faz
+    /// curvas de ângulo reto, porque a aceleração de steering não tem teto.
+    ///
+    /// ⚠️ **`0` é DESLIGADO, e o encoding não custa capacidade:** um orçamento
+    /// de steering exatamente zero é o agente que não vira nada, e isso já é
+    /// alcançável zerando os quatro pesos (`separation`/`alignment`/`cohesion`/
+    /// `seek`) — então o zero está livre para carregar *sem teto*. A
+    /// alternativa (default `∞`) poria `inf` na caixa numérica do artista.
+    max_force: f32,
     /// √N seed spread: when on, the seed cloud grows with the count so the
     /// density stays bounded and the spatial grid stays `O(N)` — the difference
     /// between a dense ball and a murmuration at a million agents. Off (the
@@ -301,6 +319,20 @@ fn step(
         // Seek/home: a linear spring toward the target — herds AND bounds.
         accel[0] += (target[0] - pi[0]) * p.seek;
         accel[1] += (target[1] - pi[1]) * p.seek;
+        // Reynolds' STEERING BUDGET (GDC 1999) — truncate what the agent's own
+        // muscle may ask for, before anything the WORLD does to it. `0` is off.
+        //
+        // ⚠️ The external accel is deliberately OUTSIDE this: `max_force` is how
+        // hard a boid can TURN, not how much wind it can ignore. Clamping the
+        // two together would let a steering budget cancel a gale — a flock that
+        // resists arbitrary force is not a flock, and it would quietly undo the
+        // whole point of a `force.*` reaching the state chain.
+        if p.max_force > 0.0 {
+            let (unit, mag) = norm(accel);
+            if mag > p.max_force {
+                accel = [unit[0] * p.max_force, unit[1] * p.max_force];
+            }
+        }
         // The EXTERNAL urge, from a `force.*` in this flock's state chain: a
         // fourth term beside the three Reynolds ones, added BEFORE the speed
         // clamp on purpose — `max_speed` still bounds the flock, which is what
@@ -372,6 +404,7 @@ impl NodeOp for MotionBoids {
             cohesion: ctx.param("cohesion").max(0.0),
             seek: ctx.param("seek").max(0.0),
             max_speed: ctx.param("max_speed").max(0.01),
+            max_force: ctx.param("max_force").max(0.0),
             spread: ctx.param("spread") > 0.5,
         };
         let playhead = ctx.playhead() as f32;
@@ -481,6 +514,7 @@ static PARAM_GROUPS: &[ParamGroup] = &[
     // Para onde o bando é levado, e quão rápido pode ir.
     ParamGroup::new("seek", "Steering"),
     ParamGroup::new("max_speed", "Steering"),
+    ParamGroup::new("max_force", "Steering"),
     // Como a nuvem inicial nasce.
     ParamGroup::new("seed", "Spawn"),
     ParamGroup::new("spread", "Spawn"),
@@ -547,6 +581,19 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         param: "max_speed",
         label: "Max Speed",
         min: 0.1,
+        max: 20.0,
+        step: 0.1,
+        widget: ParamWidget::Slider,
+    },
+    // ⚠️ A pista **começa em 0 porque 0 é o DESLIGADO**, não porque um orçamento
+    // de zero seja útil — o piso de um slider aqui esconderia o neutro. O topo
+    // acompanha o `max_speed`: as duas grandezas vivem na mesma escala de mundo
+    // (uma por segundo, a outra por segundo²), e um teto muito acima dele seria
+    // pista onde o clamp já não morde.
+    ParamUiHint {
+        param: "max_force",
+        label: "Max Force",
+        min: 0.0,
         max: 20.0,
         step: 0.1,
         widget: ParamWidget::Slider,

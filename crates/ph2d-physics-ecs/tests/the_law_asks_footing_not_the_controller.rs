@@ -98,18 +98,39 @@ fn the_controllers_grounded_only_reaches_the_integrator() {
 /// `was.kin.velocity` compila, roda, e a única coisa que muda é para onde o
 /// personagem anda ao pousar.
 ///
+/// ⚠️ **E a absorção pergunta ao `footing`, NUNCA ao `was.kin.grounded`.** A 1ª
+/// versão deste gate afirmava o CONTRÁRIO (`arm.contains("was.kin.grounded")`,
+/// com a prosa a chamar-lhe *"a porta COMPARTILHADA com o integrador"*) — ele
+/// **pinava o defeito**, num arquivo cujo próprio nome diz o oposto. As duas
+/// perguntas parecem a mesma e não são: a do integrador é *"eu TOQUEI no
+/// mundo?"*, respondida pelo tique ANTERIOR, que no tique do CONTATO ainda diz
+/// *no ar*; a da lei é o `footing` (K4), e ele já respondeu quando a lei corre,
+/// porque o cast lê a pose de DEPOIS do `settle`. Com a pergunta velha o tique
+/// do contato entrava na lei com a queda inteira: medido, **22,8 mm** de
+/// deslocamento lateral num pouso vertical sobre rampa estática.
+///
 /// A metade comportamental é o
-/// `player_kinematic::the_kinematic_landing_does_not_keep_creeping_uphill`; esta
-/// é a que diz **onde** a resposta tem de ser tomada.
+/// `player_kinematic::the_kinematic_landing_does_not_slide_along_the_ramp_normal`;
+/// esta é a que diz **onde** a resposta tem de ser tomada.
 #[test]
 fn the_law_is_handed_the_velocity_the_ground_already_holds() {
     let src = bridge_player();
+    let stand = src
+        .find("let stand = footing(")
+        .expect("a resposta da lei sobre chao tem de existir");
     let bind = src
         .find("let vel = if owner.writes_own_pose()")
         .expect("o slot da velocidade da lei tem de existir");
     let motor = src
         .find("let step = player_motor(")
         .expect("a chamada da lei tem de existir");
+    // ⚠️ **A ordem é a correção**, e são DOIS degraus: o chão fresco existe
+    // antes de a velocidade ser escolhida, e a velocidade antes de a lei correr.
+    assert!(
+        stand < bind,
+        "o `footing` fresco e' resolvido ANTES de a velocidade ser absorvida \
+         (senao a absorcao so' tem a resposta do tique anterior)"
+    );
     assert!(
         bind < motor,
         "a velocidade e' escolhida ANTES de a lei correr"
@@ -119,10 +140,13 @@ fn the_law_is_handed_the_velocity_the_ground_already_holds() {
         arm.contains("supported_velocity("),
         "o ramo Snap tem de passar pela porta da absorcao. Trecho:\n{arm}"
     );
-    // E pela porta COMPARTILHADA com o integrador — uma segunda cópia da regra
-    // divergiria no dia em que o eixo do `up` deixasse de ser o eixo da perna.
     assert!(
-        arm.contains("was.kin.grounded"),
-        "e com o `grounded` do INTEGRADOR, que e' quem tocou no mundo. Trecho:\n{arm}"
+        arm.contains("stand.is_some()"),
+        "e com a resposta da LEI sobre chao (`footing`), que e' fresca. Trecho:\n{arm}"
+    );
+    assert!(
+        !arm.contains("was.kin.grounded"),
+        "e NUNCA com o `grounded` do integrador, que no tique do contato ainda \
+         diz `no ar`. Trecho:\n{arm}"
     );
 }

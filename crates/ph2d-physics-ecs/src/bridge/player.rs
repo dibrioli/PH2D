@@ -338,23 +338,6 @@ impl PhysicsBridge {
                 continue;
             };
             let was = self.player_state.get(&entity).copied().unwrap_or_default();
-            // ⚠️ **Sob Snap a velocidade é a NOSSA** (K5): um corpo cinemático
-            // não tem velocidade que o solver possua — o que o rapier reporta é
-            // derivado da pose que nós escrevemos no tique ANTERIOR, ou seja um
-            // eco atrasado do que a lei já sabe. Ler o eco faria o pulo e a
-            // caminhada decidirem sobre um estado de um tique atrás.
-            //
-            // ⚠️ **E ela vem SEM a parte que o chão já segura** — a mesma porta
-            // que o integrador usa (`supported_velocity`), chamada aqui porque a
-            // ORDEM importa: o `settle` deixa no estado a queda que o mundo
-            // bloqueou, o `kinematic_advance` a apaga, e entre os dois corre a
-            // LEI. Enquanto ela via essa queda, o freio da caminhada a lia como
-            // escorregão e empurrava morro acima — ver `supported_velocity`.
-            let vel = if owner.writes_own_pose() {
-                ph2d_platformer::supported_velocity(was.kin.velocity, was.kin.grounded, UP)
-            } else {
-                solver_vel
-            };
 
             let mut cfg = cfg.config();
             // ⚠️ **Sob Snap a PERNA é o próprio corpo** — ver
@@ -410,6 +393,35 @@ impl PhysicsBridge {
             // Sem sensor a lei devolve deslocamento zero, então o custo dos
             // raios só existe onde a assistência pode agir.
             let stand = footing(&cfg, sample.as_ref(), UP);
+
+            // ⚠️ **Sob Snap a velocidade é a NOSSA** (K5): um corpo cinemático
+            // não tem velocidade que o solver possua — o que o rapier reporta é
+            // derivado da pose que nós escrevemos no tique ANTERIOR, ou seja um
+            // eco atrasado do que a lei já sabe. Ler o eco faria o pulo e a
+            // caminhada decidirem sobre um estado de um tique atrás.
+            //
+            // ⚠️ **E ela vem SEM a parte que o chão já segura** — a mesma porta
+            // que o integrador usa (`supported_velocity`), chamada aqui porque a
+            // ORDEM importa: o `settle` deixa no estado a queda que o mundo
+            // bloqueou, o `kinematic_advance` a apaga, e entre os dois corre a
+            // LEI. Enquanto ela via essa queda, o freio da caminhada a lia como
+            // escorregão e empurrava morro acima — ver `supported_velocity`.
+            //
+            // ⚠️ **E quem responde *"há chão?"* é o `footing`, NUNCA o
+            // `was.kin.grounded`** — as duas perguntas parecem a mesma e não
+            // são: a do integrador é *"eu TOQUEI no mundo?"*, respondida pelo
+            // tique ANTERIOR, e no tique do CONTATO ela ainda diz *no ar*. A da
+            // lei é o `footing` (K4), e ele já respondeu — o cast acima corre
+            // sobre a pose de DEPOIS do `settle`. Por isso este bloco mora aqui
+            // embaixo e não junto do `was`: **a ordem é a correção**. Com a
+            // pergunta velha o tique do contato entrava na lei com a queda
+            // inteira e saía deslocado ao longo da NORMAL da rampa.
+            let vel = if owner.writes_own_pose() {
+                ph2d_platformer::supported_velocity(was.kin.velocity, stand.is_some(), UP)
+            } else {
+                solver_vel
+            };
+
             let rel_up = relative_rise(stand, vel, UP);
             let ceiling = if corner_probe_wanted(&cfg.jump, stand.is_some(), rel_up) {
                 probe_ceiling(&self.world, b.handle, b.rest.layer, &cfg, rel_up, dt)

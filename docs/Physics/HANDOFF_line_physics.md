@@ -9211,7 +9211,31 @@ ADR** · **zero `Cargo.toml`** · contrato congelado intacto.
 
 ---
 
-## W-KinMove — O SEGUNDO MODO (2026-08-08, cena `=101`, **RE-SMOKE pendente**)
+## W-KinMove — O SEGUNDO MODO (2026-08-08, cena `=101`, **2º RE-SMOKE pendente**)
+
+> ✅ **2º smoke (2026-08-09): o CIANO fechou.** O *"pula-pula"* era a cena a
+> rodar com o `spring_damping` de fixture; hoje ela roda no default e o Enio
+> aprovou aquela metade.
+>
+> ⛔ **E o LARANJA ainda deslizava** (*"quando pousa na rampa ainda se desloca um
+> pouquinho para cima"*, com foto). **A minha nota de resíduo estava errada nas
+> duas metades** — detalhe medido no plano 07 §6:
+>
+> - o gate media o deslocamento **depois** do contato porque a janela dele
+>   começava *no* tique que primeiro se move e **não somava o `dx` dele**; esse
+>   tique carregava **17 dos 22,8 mm**. *Uma janela que começa depois do evento
+>   não mede o evento.*
+> - e fechá-lo **não** quebra a K4: a cura dá à lei a velocidade certa, decidida
+>   pelo **`footing`** — que a K4 já nomeia como a resposta da lei sobre chão nos
+>   dois modos. O defeito era a absorção perguntar ao `was.kin.grounded`, que é a
+>   pergunta do INTEGRADOR e é do tique ANTERIOR.
+>
+> **Medido: 22,8 mm → 0,0 mm** (cai reto, `x` inalterado até a 4ª decimal);
+> dinâmico byte-intocado; `physics_ecs_c9` **`dd5230d7…`** inalterado.
+>
+> ⚠️ **Um dos dois gates PINAVA o defeito** (`arm.contains("was.kin.grounded")`)
+> num arquivo chamado `the_law_asks_footing_not_the_controller.rs`.
+
 
 > ⚠️ **O 1º smoke REPROVOU, e os dois reports tinham causas DIFERENTES**
 > (2026-08-08). Detalhe medido no plano 07 §6 (`W-KinMove`); em uma linha cada:

@@ -453,16 +453,25 @@ fn probe_the_numbers_scene_101_claims() {
 /// bloqueou, o `kinematic_advance` a apaga — e entre os dois corria a LEI. Hoje
 /// a ponte chama a MESMA porta (`supported_velocity`) antes de a lei ler.
 ///
-/// ⚠️ **O oráculo é o que a correção de facto remove:** o tique de CONTATO
-/// continua a dar um chute (ali o personagem está mesmo no ar, e nenhuma
-/// absorção é devida), e o que somem são os tiques SEGUINTES, em que a lei
-/// relia uma queda já morta. Medido numa queda de 3 m: **4,4 mm** contra os
-/// **39,0 mm** da mutação — 8,8×.
+/// ⚠️ **O ORÁCULO É A QUEDA INTEIRA, e a 1ª versão deste gate EXCLUÍA o tique
+/// que fazia o estrago.** Ele acumulava só depois de detectar o contato
+/// (`else if dx.abs() > 1e-4 { touched = true }`), então o `dx` do PRÓPRIO
+/// tique de contato — 17 dos 23 mm — nunca entrava na soma; ele media a CAUDA,
+/// reportava 4,4 mm e ficava **verde sobre um defeito que o artista via na
+/// tela** (smoke de 2026-08-09: *"o laranja ao pousar ainda se desloca um
+/// pouquinho para cima"*). Uma janela que começa DEPOIS do evento não mede o
+/// evento.
 ///
-/// ⚠️ O SINAL é da fixture, não da lei: aqui quem gira é o CHÃO inteiro, então
-/// morro-acima é `+x`; na sonda da cena 101 (`probe_scene_101`) a rampa desce
-/// para a direita e o mesmo defeito sai negativo. O oráculo é `abs`.
-fn uphill_after_contact(drop: f32) -> f32 {
+/// Hoje o oráculo não precisa achar tique nenhum: a cápsula é largada **na
+/// vertical** sobre uma rampa **estática**, então *todo* deslocamento lateral é
+/// o defeito, e a medida é `|x_repouso − x_largada|`.
+///
+/// ⚠️ E a causa da metade que faltava era a PERGUNTA, não a lei: a absorção
+/// consultava `was.kin.grounded` — *"eu TOQUEI no mundo?"*, do INTEGRADOR e do
+/// tique ANTERIOR, que no contato ainda diz *no ar* — em vez do `footing`, que
+/// é a resposta da LEI sobre chão nos dois modos (K4) e já está pronta quando a
+/// lei corre. Ver `bridge/player.rs`.
+fn landing_slide(drop: f32) -> f32 {
     let (mut sim, mut bridge, who) = platform::scene(30.0_f32.to_radians(), 0.0);
     make_kinematic(&mut sim, who);
     {
@@ -471,30 +480,30 @@ fn uphill_after_contact(drop: f32) -> f32 {
             t.translation.y += drop;
         }
     }
-    let mut prev = pose(&sim).0;
+    let start = pose(&sim).0;
+    let mut prev = (start, pose(&sim).1);
     let mut touched = false;
-    let mut after = 0.0_f32;
     for t in 1..=240u64 {
         bridge.dispatch(&mut sim, true, t);
-        let now = pose(&sim).0;
-        let dx = now - prev;
-        if touched {
-            after += dx;
-        } else if dx.abs() > 1.0e-4 {
+        let now = pose(&sim);
+        // O contato é o 1º tique em que a queda PARA de ser queda livre — a
+        // fixture tem de o CONTER, senão o gate mede uma cápsula ainda no ar.
+        if !touched && (now.1 - prev.1).abs() < 1.0e-4 {
             touched = true;
         }
         prev = now;
     }
     assert!(touched, "a fixture tem de CONTER o pouso");
-    after
+    prev.0 - start
 }
 
 #[test]
-fn the_kinematic_landing_does_not_keep_creeping_uphill() {
-    let after = uphill_after_contact(3.0);
+fn the_kinematic_landing_does_not_slide_along_the_ramp_normal() {
+    let slide = landing_slide(3.0);
     assert!(
-        after.abs() < 0.015,
-        "depois do tique de contato o personagem ainda andou {after:+.5} m \
-         (a mutacao — a lei a ler a queda que o integrador ja ia apagar — da' 0,039)"
+        slide.abs() < 0.002,
+        "largado na VERTICAL sobre uma rampa estatica, o personagem pousou \
+         {slide:+.5} m ao lado (a mutacao — a absorcao a perguntar ao \
+         `was.kin.grounded` em vez do `footing` — da' 0,023)"
     );
 }

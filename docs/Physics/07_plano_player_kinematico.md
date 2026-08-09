@@ -570,6 +570,46 @@ remove são os tiques SEGUINTES — medido no deslocamento **depois** do contato
 inteiro exigiria a `walk` perguntar ao **controlador** se está apoiada, o que
 quebra a K4 — decisão de produto, não dívida mecânica.
 
+##### ⛔ O parágrafo acima está ERRADO nas DUAS metades (smoke de 2026-08-09)
+
+O Enio voltou com foto: *"o laranja quando pousa na rampa ainda se desloca um
+pouquinho para cima"*. Ele estava certo, e as duas afirmações do parágrafo caem:
+
+1. **Não era resíduo pequeno.** O gate media o deslocamento **depois** do
+   contato porque a sua janela começava *no* tique em que o `dx` aparece —
+   `else if dx.abs() > 1e-4 { touched = true }` marca o contato e **não soma o
+   `dx` desse tique**. Ele media a CAUDA. Pela sonda da cena 101, o pouso
+   inteiro desliza **22,8 mm**, e **17 deles são o tique do contato**: *uma
+   janela que começa depois do evento não mede o evento*.
+2. **A cura não toca a K4.** Ela não põe a `walk` a perguntar ao controlador —
+   ela dá à lei a velocidade certa, e quem decide *"há chão?"* passa a ser o
+   **`footing`**, que a K4 já nomeia como a resposta da lei nos dois modos. O
+   defeito era a absorção consultar `was.kin.grounded`: a pergunta do
+   **INTEGRADOR** (*"eu TOQUEI no mundo?"*), respondida pelo tique **ANTERIOR**,
+   que no contato ainda diz *no ar*. O `footing` já respondeu quando a lei
+   corre — o cast lê a pose de **depois** do `settle`.
+
+**A cura é de ORDEM outra vez:** o bloco que escolhe `vel` desceu para **depois**
+do `let stand = footing(...)`, e pergunta `stand.is_some()`. Medido pela mesma
+sonda, largando na vertical sobre a rampa estática:
+
+| | deslize do pouso | dinâmico afunda | c9 |
+|---|---|---|---|
+| antes | **22,8 mm** (uphill) | 0,0000 | `dd5230d7…` |
+| depois | **0,0 mm** — cai reto | 0,0000 | `dd5230d7…` |
+
+⚠️ **Os dois gates que deviam ter pego isto estavam VERDES, e um deles pinava o
+defeito:** o arch-gate `the_law_is_handed_the_velocity_the_ground_already_holds`
+afirmava `arm.contains("was.kin.grounded")` — com a prosa a chamar-lhe *"a porta
+COMPARTILHADA com o integrador"* — **num arquivo chamado
+`the_law_asks_footing_not_the_controller.rs`**. Hoje ele exige `stand.is_some()`,
+proíbe o `was.kin.grounded` e afirma o degrau novo (`footing` resolvido **antes**
+da absorção); o comportamental virou
+`the_kinematic_landing_does_not_slide_along_the_ramp_normal`, cujo oráculo não
+precisa achar tique nenhum: *largado na vertical sobre rampa estática, todo
+deslocamento lateral é o defeito*. As duas mutações sangram (22,8 mm · o gate de
+ordem).
+
 #### ⚠️ E a §0 deste plano ganhou a coluna que lhe faltava
 
 A tabela do topo mede o **dinâmico** no default e conclui, corretamente, que o

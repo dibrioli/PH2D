@@ -4,17 +4,20 @@
 //!
 //! *Eu desenhei um painel, e o app me devolveu o CÓDIGO dele.*
 //!
-//! Uma moldura chamada **Color** com cinco filhos: quatro vestidos (o cabeçalho, um slider, um
-//! toggle, um botão) e **um que é só desenho**. No fim ela imprime, no stderr, o código-fonte que
-//! o gerador escreveu — que é o artefato desta wave.
+//! Uma moldura chamada **Color** com filhos VESTIDOS — duas seções, um slider, um toggle, um
+//! botão, uma swatch, dois botões de ícone, uma faixa de abas e um dropdown — e **um que é só
+//! desenho**. No fim ela imprime, no stderr, o código-fonte que o gerador escreveu, que é o
+//! artefato desta wave.
 //!
 //! ⚠️ **O filho de desenho puro é o CONTROLE da cena**, e ele não é decoração: ele prova que *só
 //! quem VESTE vira row*. Sem ele, um gerador que transformasse todo filho em linha passaria
 //! despercebido, e o painel gerado teria uma row que não faz nada — o item-de-menu-morto na sua
 //! forma mais cara.
 //!
-//! ⚠️ **E a cena imprime o número que a torna válida:** quantas rows o plano tem. Se não forem
-//! quatro, PARE — o resto não diz nada.
+//! ⚠️ **E a cena imprime o número que a torna válida:** quantas rows o plano tem, comparado com o
+//! que a tabela [`AUTHORED`] descreve. Se o log disser **PARE**, pare — o resto não diz nada.
+//! (O número não é escrito aqui de propósito: ele já esteve errado neste cabeçalho, que dizia
+//! *"se não forem quatro"* enquanto a cena tinha nove. Quem o conta é o [`expected_rows`].)
 //!
 //! # A W8b.3 põe a ARTE do outro lado do fio
 //!
@@ -40,7 +43,7 @@ use ph2d_vec_scene::{Paint, Rgba8, VecPath, VecPathId, rectangle, star};
 /// staleness (`the_generated_panel_is_not_stale`) constrói o mundo a partir dela para emitir o
 /// código e comparar com o arquivo commitado. Uma segunda lista escrita à mão no gate divergiria
 /// desta no dia em que uma row entrasse — e o gate ficaria verde sobre o painel errado.
-pub(crate) const AUTHORED: [([f64; 4], &str, Option<WidgetKind>); 17] = [
+pub(crate) const AUTHORED: [([f64; 4], &str, Option<WidgetKind>); 20] = [
     ([-2.0, -4.9, 2.0, 2.4], "Color", None),
     (
         [-1.8, 1.4, 1.8, 2.2],
@@ -84,6 +87,22 @@ pub(crate) const AUTHORED: [([f64; 4], &str, Option<WidgetKind>); 17] = [
     ([-1.7, -6.6, 1.7, -6.1], "Normal", None),
     ([-1.7, -7.6, 1.7, -7.1], "Multiply", None),
     ([-1.7, -8.6, 1.7, -8.1], "Screen", None),
+    // **A SEGUNDA SEÇÃO** — e ela é o que torna a lei do colapso VERIFICÁVEL a olho.
+    //
+    // ⚠️ Com um cabeçalho só, *"esconde as rows até o PRÓXIMO"* e *"esconde tudo abaixo"* dão a
+    // mesma foto: não há nada depois para a diferença aparecer. Com duas, dobrar a de cima tem
+    // de deixar a de baixo inteira na tela — e é essa a pergunta de olho que o passo 20 faz.
+    (
+        [-1.8, -9.7, 1.8, -8.9],
+        "Advanced",
+        Some(WidgetKind::SectionHeader),
+    ),
+    ([-1.8, -10.7, 1.8, -10.0], "Seed", Some(WidgetKind::Slider)),
+    (
+        [-1.8, -11.7, 1.8, -11.0],
+        "Dither",
+        Some(WidgetKind::Checkbox),
+    ),
 ];
 
 /// **Quem POSSUI quem** — os controles de lista da cena e os filhos que são as opções deles.
@@ -442,6 +461,27 @@ fn announce(app: &mut crate::App) {
     );
     eprintln!("     do fundo da tela e abra outra vez. A lista tem de virar para CIMA — e as");
     eprintln!("     opcoes tem de responder ao clique **onde estao desenhadas**.");
+    eprintln!(" 20. ⚠️ **A SEGUNDA SECAO, e e' ela que torna o passo 17 uma PROVA:** ha' agora um");
+    eprintln!("     cabecalho **Advanced** com 'Seed' e 'Dither' sob ele. Dobre o **Appearance**:");
+    eprintln!("     as rows dele somem, o painel encolhe, e o **Advanced com as suas duas rows");
+    eprintln!("     continua inteiro na tela**. Com um cabecalho so', 'esconde ate' o PROXIMO' e");
+    eprintln!("     'esconde tudo abaixo' davam a mesma foto — nao havia nada depois para a");
+    eprintln!("     diferenca aparecer. Dobre os dois: o painel fica so' com os dois cabecalhos.");
+    eprintln!(
+        "     ⚠️ E o defeito que este passo achou NAO era o colapso: era o REGISTO. A tabela"
+    );
+    eprintln!(
+        "     viva e' publicada por quadro e o `populate` corria uma vez, no arranque, sobre"
+    );
+    eprintln!("     a tabela COMPILADA — entao qualquer row que voce autora e o codigo colado");
+    eprintln!("     ainda nao tem nascia *pintada, com retangulo de hit, e morta sob o rato*. Era");
+    eprintln!("     invisivel porque as chaves COINCIDIAM: o golden vem desta mesma cena.");
+    eprintln!(" 21. ⚠️ **O CONTROLE do passo 20**: desenhe voce um retangulo NOVO dentro da");
+    eprintln!("     moldura, de-lhe um nome e vista-o de **Section Header** pela secao Widget");
+    eprintln!("     Skin. Ele aparece no painel **e dobra na hora** — sem colar codigo nenhum e");
+    eprintln!("     sem recompilar. E' o passo 9 pelo avesso: o que a tabela viva ACRESCENTA");
+    eprintln!("     responde ja'; o que ela RENOMEIA no codigo colado continua a precisar do");
+    eprintln!("     passo 9.");
 }
 
 #[cfg(test)]

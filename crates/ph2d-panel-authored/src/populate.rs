@@ -100,8 +100,11 @@ fn initial(kind: WidgetKind) -> Option<InteractiveState> {
     })
 }
 
+/// ⚠️ **`register_if_absent`, pela razão do [`adopt`]:** as opções são re-adotadas a cada quadro,
+/// e um `register` reporia `Normal` por cima do `Pressed` no meio do clique — a opção acenderia e
+/// apagaria debaixo do dedo.
 fn button(store: &mut WidgetStore, id: ph2d_a11y::NodeId) {
-    store.register(
+    store.register_if_absent(
         id,
         InteractiveState::Button {
             state: ButtonState::Normal,
@@ -138,23 +141,43 @@ pub fn populate(store: &mut WidgetStore) {
     chrome(store);
     with_rows(|table| {
         for row in table {
-            // A pergunta é feita ao `is_control`, e o `initial` a espelha. As duas concordam por
-            // construção — há gate a exigi-lo, porque uma delas mudar sozinha é o caminho para um
-            // controle registado que o `paint` não desenha (ou o contrário).
-            if let Some(st) = initial(row.kind) {
-                debug_assert!(Row::is_control(row), "registado sem ser controle");
-                store.register(row.id, st);
-            }
-            // ⚠️ **Um cabeçalho não é registado como widget** — ele não tem `InteractiveState`, e o
-            // despacho o trata ANTES do `switch` justamente por isso. O que ele precisa é de ser
-            // MARCADO: sem esta linha o chevron desenha, o retângulo de hit existe, o clique chega —
-            // e não dobra nada, porque o despacho não sabe que aquele id é uma seção.
-            if row.folds_a_section() {
-                store.mark_collapsible_section(row.id);
-            }
-            options(store, row);
+            adopt(store, row);
         }
     });
+}
+
+/// **UMA row entra no store** — a porta única, e ela tem DOIS chamadores por uma razão de TEMPO.
+///
+/// ⚠️ **O `populate` corre uma vez; o documento muda por quadro.** A tabela viva é publicada a
+/// cada frame pelo `render_loop`, mas o registo acontecia só no arranque, sobre a tabela
+/// COMPILADA — então toda row que o artista autora e o `generated/panel.rs` ainda não conhece
+/// nascia com um id que ninguém registou: `is_focusable` diz `false`, e o dispatcher **larga o
+/// clique em silêncio**. Pintada, com retângulo de hit, e morta.
+///
+/// ⚠️ **Era invisível porque as chaves COINCIDIAM:** o golden foi gerado da mesma cena do smoke,
+/// então as rows vivas tinham exatamente os ids que o `populate` já registara. Bastou o artista
+/// desenhar uma seção a mais para o vão aparecer (report do Enio, 2026-08-09: *"não consigo
+/// contraí-la"*) — e o modo de falha é o mesmo para um controle novo, não só para um cabeçalho.
+///
+/// ⚠️ **`register_if_absent`, nunca `register`, e a diferença é o produto inteiro:** quem pinta
+/// chama isto a cada quadro, e um `register` devolveria o slider ao zero e o botão a `Normal`
+/// **enquanto o dedo está em cima** — o valor do artista apagado sessenta vezes por segundo.
+pub(crate) fn adopt(store: &mut WidgetStore, row: &Row) {
+    // A pergunta é feita ao `is_control`, e o `initial` a espelha. As duas concordam por
+    // construção — há gate a exigi-lo, porque uma delas mudar sozinha é o caminho para um
+    // controle registado que o `paint` não desenha (ou o contrário).
+    if let Some(st) = initial(row.kind) {
+        debug_assert!(Row::is_control(row), "registado sem ser controle");
+        store.register_if_absent(row.id, st);
+    }
+    // ⚠️ **Um cabeçalho não é registado como widget** — ele não tem `InteractiveState`, e o
+    // despacho o trata ANTES do `switch` justamente por isso. O que ele precisa é de ser
+    // MARCADO: sem esta linha o chevron desenha, o retângulo de hit existe, o clique chega —
+    // e não dobra nada, porque o despacho não sabe que aquele id é uma seção.
+    if row.folds_a_section() {
+        store.mark_collapsible_section(row.id);
+    }
+    options(store, row);
 }
 
 /// **As opções de um controle de LISTA** — as quatro variantes, e a escondida mesmo fechada.

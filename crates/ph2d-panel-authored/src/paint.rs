@@ -215,6 +215,12 @@ fn paint_body(
     // ⚠️ A tabela vem por CLOSURE porque a viva não é `'static` — ver `rows::with_rows`.
     crate::rows::with_rows(|table| {
         for row in table {
+            // ⚠️ **A row entra no store AQUI, pela mesma lista que a pinta** — ver o doc do
+            // [`crate::populate::adopt`]. O `populate` corre uma vez, no arranque, e o documento
+            // muda por quadro: sem esta linha, toda row que o artista autora e o código colado
+            // ainda não tem fica *pintada, com retângulo de hit, e morta sob o rato*. É a lei da
+            // crate — *uma tabela, quatro consumidores* — aplicada ao consumidor que faltava.
+            crate::populate::adopt(ctx.host.store_mut(), row);
             if row.folds_a_section() {
                 folded = ctx.host.store().is_collapsed(row.id);
             } else if folded {

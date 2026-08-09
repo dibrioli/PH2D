@@ -174,8 +174,19 @@ impl PainterTool {
         self.paint.last_smear_pos = from;
         self.paint.tex_rng = dab_rng.finish();
         if let Some(rect) = touched {
+            // ⚠️ O render é sobre TUDO que a sessão já deslocou, não só o que este batch deslocou. A
+            // fonte deixou de ser imutável — a camada Brush do Composite deposita dentro dela para a
+            // pilha não perder tinta —, então um texel com `disp` ≠ 0 fora deste batch mostraria o
+            // render de uma fonte que não existe mais, e a fronteira entre os dois seria a união dos
+            // rects do batch: uma **escada axis-aligned** (Enio 2026-08-09).
+            let all = self
+                .paint
+                .warp
+                .touched_all
+                .map_or(rect, |acc| union_region(acc, rect));
+            self.paint.warp.touched_all = Some(all);
             // One resample of the frozen source over everything that moved — colour and body together.
-            self.warp_render_from_session(rect);
+            self.warp_render_from_session(all);
             self.mark_dirty(rect);
         }
         true

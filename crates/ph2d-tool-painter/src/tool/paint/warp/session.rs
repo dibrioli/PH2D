@@ -70,6 +70,15 @@ pub(crate) struct WarpSession {
     /// active — entity bits are recycled, and the wrong layer must not wear the old layer's body.
     pub(crate) relief_layer: Option<crate::tool::RtLayerId>,
     /// A session is live (`pre` captured).
+    /// Everything this session has ever displaced, in canvas texels.
+    ///
+    /// ⚠️ **O render lê a FONTE, e a fonte deixou de ser imutável.** `out(p) = pre(p − disp(p))`, e
+    /// enquanto `pre` era congelado bastava re-renderizar o que ESTE batch deslocou: todo o resto já
+    /// tinha sido resolvido da mesma fonte. Desde que a camada Brush do Composite passou a depositar
+    /// dentro de `pre` (para a pilha não perder tinta), um texto com `disp` ≠ 0 **fora** do batch atual
+    /// segue mostrando o render de uma fonte que não existe mais — e a fronteira é a união dos rects do
+    /// batch, ou seja uma **escada axis-aligned** (Enio 2026-08-09, foto com a seta).
+    pub(crate) touched_all: Option<super::Region>,
     pub(crate) active: bool,
     /// **Session cumulative displacement** (`[dx, dy]` px per texel) — o **CACHE** de [`Self::dabs`].
     /// Contribuidores o **COMPÕEM** (`D_k = v_k + D_{k−1}(p − v_k)`, a lei do `apply`/`smear_field`);
@@ -121,6 +130,7 @@ impl Default for WarpSession {
             pre_mats: Arc::new(Vec::new()),
             relief_layer: None,
             active: false,
+            touched_all: None,
             disp: Arc::new(Vec::new()),
             dabs: Arc::new(Vec::new()),
             derived: true,
@@ -147,6 +157,9 @@ impl PainterTool {
             self.paint.warp.pre = Arc::clone(&self.canvas_rgba);
             self.paint.warp.disp = Arc::new(vec![[0.0, 0.0]; n]);
             self.paint.warp.dabs = Arc::new(Vec::new());
+            // Sessão nova, nada deslocado ainda: herdar a região da sessão anterior faria o 1º batch
+            // re-renderizar sobre uma fonte que não é a dela.
+            self.paint.warp.touched_all = None;
             self.paint.warp.derived = true;
             // The impasto planes freeze BESIDE the pixels — all of them, at the same instant, whatever the
             // Affect Relief toggle currently says (three refcount bumps; a layer with no relief pays

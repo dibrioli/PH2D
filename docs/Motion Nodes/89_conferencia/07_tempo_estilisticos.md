@@ -44,7 +44,7 @@ Um segundo fato transversal: **os cinco nós são `LoweringKind::Cpu`**. Nenhum 
 
 | nó | params hoje | falta (referência CITADA) | exprimível? (a cadeia tentada) | natureza/omissão | P | default que reduz |
 |---|---|---|---|---|---|---|
-| `motion.trail` | **7** (`length 8`·`fade .10`·`shrink .65`·`spacing 1`·`hue_shift 0`·`saturation 1`·`spin 0`), 7 hints, 7 unidades, 2 seções · **não lê `falloff`** | **máscara por CAMPO** — todo effector do C4D tem Strength + Fields ([c4d_fields §Effector base](../referencia_pesquisa_c4d_fields.md), "Use Alpha/Strength"); doc 63 §3.1 cluster **STRENGTH/weight**: *"todo modificador multiplicável por campo de peso"* | **NÃO** — o nó não lê a coluna. Tentado `field.box → motion.cull → trail`: o cull remove a LINHA do stream inteiro (some o elemento, não só o rastro dele). Tentado `trail → field.*`: o campo pousa depois, e não há como distinguir eco de cabeça a jusante (`trail_age` existe, mas nenhum nó a lê como máscara) | **omissão** — é o ÚNICO behaviour da família sem falloff | **P0** | `falloff` ausente ⇒ `1.0` (a lei do `falloff_at` de `delay`/`step`/`strobe`) |
+| `motion.trail` | **7** (`length 8`·`fade .10`·`shrink .65`·`spacing 1`·`hue_shift 0`·`saturation 1`·`spin 0`), 7 hints, 7 unidades, 2 seções · **não lê `falloff`** | **máscara por CAMPO** — todo effector do C4D tem Strength + Fields ([c4d_fields §Effector base](../referencia_pesquisa_c4d_fields.md), "Use Alpha/Strength"); doc 63 §3.1 cluster **STRENGTH/weight**: *"todo modificador multiplicável por campo de peso"* | **NÃO** — o nó não lê a coluna. Tentado `field.box → motion.cull → trail`: o cull remove a LINHA do stream inteiro (some o elemento, não só o rastro dele). Tentado `trail → field.*`: o campo pousa depois, e não há como distinguir eco de cabeça a jusante (`trail_age` existe, mas nenhum nó a lê como máscara) | **omissão** — era o ÚNICO behaviour da família sem falloff | ✅ **FEITO** (era P0) | `falloff` ausente ⇒ `1.0` (a lei do `falloff_at` de `delay`/`step`/`strobe`) |
 | `motion.trail` | idem | **eco para a FRENTE**: AE **Echo** *Echo Time* **positivo = ecos de frames FUTUROS**; AE **CC Wide Time** *Forward Steps* + *Backward Steps* | **NÃO neste nó** (o estado É o passado, por construção). **PARCIAL fora dele** para sub-árvore PURA: `time_remap(offset > 0)` cozinha o futuro — ver `SUPERAR:` S1 | omissão (estrutural) | **P1** | `forward = 0` ⇒ só passado, o de hoje |
 | `motion.trail` | idem | **Echo Operator** (AE): o modo de composição de cada eco (Add/Screen/Maximum/…) — o look canônico de rastro de LUZ | **NÃO** — hoje é sempre alpha-over com a cauda atrás (`concat(carried, head)`). O blend mode vive no renderer (`lower_to_instances`), não há coluna de convenção para ele (≠ `texture_id`/`geometry_id`, que existem) | omissão | **P1** | operador `Over` ⇒ o `concat` de hoje |
 | `motion.trail` | idem | **`includeOriginal`** e **`opacityMax`/`satMax`** ([minicavalry §motionTrail](../referencia_catalogo_nodes_minicavalry.md): `length 12`·`spacing 2`·`scaleFade .6`·`includeOriginal true`·`opacityMax/Min 1/0`·`satMax/Min 1/1`) — a cabeça viva é sempre desenhada e sempre a 1.0 | **PARCIAL** — `trail → motion.tint` escurece tudo, **inclusive a cabeça**; o alvo do eco mais NOVO é inalcançável (só o mais VELHO é autorado) | omissão | **P2** | `include_original = on`, `alpha_max = 1` ⇒ hoje |
@@ -207,9 +207,35 @@ o `eval`, e a função morreu.
 **5 gates novos, 2 mutações, 2 sangram** (reinstalar o descarte derruba os cinco; pôr o
 `texture_id` na lista branca dá textura **1,4 e 5,6** — que o `as u32` trunca em 1 e 5).
 
-**Seguem P0 nesta família:** a máscara por campo do `motion.trail` (o único behaviour da
-família que não lê `falloff`) · o canal do `motion.delay` (hoje só atrasa `P`) · e o
-**reset** do `motion.step`.
+### O segundo P0 — **a máscara por campo do `motion.trail`**
+
+Ele era o **único behaviour da família que não lia `falloff`**, e a cadeia óbvia não
+substituía: `field.* → motion.cull → trail` remove a LINHA do stream inteiro (some o
+elemento, não só o rastro dele), e um campo posto DEPOIS não distingue eco de cabeça.
+
+⚠️ **A lei é a da família aplicada ao que ESTE nó faz.** Todo irmão lerpa o resultado de
+volta para a entrada não-modificada, e aqui a entrada não-modificada é *o elemento sem eco
+nenhum* — então `falloff = 0` dá **só a cabeça viva** (o elemento continua desenhado, o
+rastro é que some) e `1` dá a cauda inteira. O que interpola entre os dois é a **CONTAGEM**
+de ecos, que é discreta: um `0,5` encurta, não apaga (medido: 1 · 2 · 3 · 4 · 5 linhas para
+0 · 0,25 · 0,5 · 0,75 · 1).
+
+⚠️ **E o fantasma HERDA a máscara do ancestral sem uma linha escrita para isso** — o
+`gather` já carrega toda coluna, então o `falloff` viaja com o eco. É o que mantém o rastro
+estável enquanto o elemento atravessa um campo espacial: o eco lembra o peso que o gerou em
+vez de ser re-julgado por onde ficou. **Só o gate da herança pega a mutação** que lê a
+máscara da cabeça viva.
+
+⚠️ **Consequência NOMEADA:** a taxa de decaimento continua UMA, derivada do vão global — a
+cauda encurtada não alcança o `fade` autorado na ponta dela. O alvo descreve a cauda do NÓ;
+derivá-lo por elemento faria dois ecos da mesma idade desbotarem diferente.
+
+**4 gates, 3 mutações, 3 sangram.** Sem a coluna o rastro é **byte-idêntico** ao que já
+shipava (o `falloff_at` devolve `1.0` na ausência), e o oráculo disso é o STREAM inteiro —
+uma contagem igual sobre posições diferentes passaria.
+
+**Seguem P0 nesta família:** o canal do `motion.delay` (hoje só atrasa `P`) · e o **reset**
+do `motion.step`.
 
 ---
 

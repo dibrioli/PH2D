@@ -243,6 +243,46 @@ fn promotes_head(prev_ages: &[f32], s: usize) -> bool {
         .any(|&a| a >= 1.0 && (a as usize) < s.max(1))
 }
 
+/// O peso multiplicativo do `falloff` para a linha `i` (ausente → `1.0`).
+///
+/// ⚠️ É a décima cópia deste helper na biblioteca de nós, e as nove anteriores estão
+/// idênticas — colapsá-las numa porta é melhoria real e wave própria (o doc do
+/// `motion.color_ramp` já a nomeia). Copiá-la aqui segue a convenção que a biblioteca já
+/// escolheu; o que NÃO era convenção é este nó não a ler de todo.
+fn falloff_at(stream: &Stream, i: usize) -> f32 {
+    match stream.get("falloff") {
+        Some(Column::Scalar(v)) => v.get(i).copied().unwrap_or(1.0),
+        _ => 1.0,
+    }
+}
+
+/// **A JANELA DE IDADE DESTA LINHA** — a máscara por campo (doc 89 fam. 7).
+///
+/// O `motion.trail` era o **único behaviour da família que não lia `falloff`**, e a cadeia
+/// óbvia não substitui: `field.* → motion.cull → trail` remove a LINHA do stream inteiro
+/// (some o elemento, não só o rastro dele), e um campo POSTO DEPOIS não distingue eco de
+/// cabeça a jusante.
+///
+/// ⚠️ **A lei é a da família aplicada ao que este nó FAZ:** todo irmão lerpa o resultado
+/// de volta para a entrada não-modificada, e aqui a entrada não-modificada é *o elemento
+/// sem eco nenhum*. Então `falloff = 0` dá janela **1** — só a cabeça viva, nenhum
+/// fantasma — e `1` dá a janela inteira. O que interpola entre os dois é a CONTAGEM de
+/// ecos, que é discreta: um `0,5` encurta a cauda, não a apaga.
+///
+/// ⚠️ **E o fantasma HERDA a máscara do ancestral sem uma linha para isso** — o `gather`
+/// carrega toda coluna, então o `falloff` viaja com o eco. É o que torna a máscara estável
+/// enquanto o elemento se move através de um campo espacial: o eco lembra o peso que o
+/// gerou, em vez de ser re-julgado por onde ele ficou.
+///
+/// ⚠️ **Consequência NOMEADA, não escondida:** a taxa de decaimento continua UMA, derivada
+/// do vão global — então a cauda encurtada não alcança o `fade` autorado na ponta dela. O
+/// alvo descreve a cauda do NÓ, não a de cada elemento; derivar por elemento exigiria uma
+/// taxa por linha e faria dois elementos com a mesma idade desbotarem diferente.
+fn masked_window(window: usize, falloff: f32) -> usize {
+    let f = falloff.clamp(0.0, 1.0); // CLAMP-OK: peso de máscara
+    1 + (((window - 1) as f32) * f).round() as usize
+}
+
 /// **O PISO de um alvo multiplicativo.**
 ///
 /// ⚠️ Um alvo de exatamente zero faria a taxa ser zero, e a cauda inteira colapsaria no
@@ -390,8 +430,9 @@ fn step(live: &Stream, state: &Stream, length: f32, decay: Decay, spacing: f32) 
         .filter(|&i| {
             let bumped = (prev_ages[i] as usize) + 1;
             // A cabeça do tick anterior (`age 0`) só sobrevive se for PROMOVIDA; os
-            // fantasmas já promovidos apenas envelhecem.
-            bumped < window && (prev_ages[i] >= 1.0 || promote)
+            // fantasmas já promovidos apenas envelhecem. E a janela é a DESTA linha —
+            // ver [`masked_window`]: o campo decide quem deixa rastro.
+            bumped < masked_window(window, falloff_at(state, i)) && (prev_ages[i] >= 1.0 || promote)
         })
         .collect();
     let mut carried = gather(state, &keep);

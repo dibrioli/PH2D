@@ -168,6 +168,18 @@ pub const SCULPT3D_CAVITY: NodeId = hash_node_id("sculpt3d.cavity");
 /// Chip ligado a [`SCULPT3D_CAVITY`].
 pub const SCULPT3D_CAVITY_NUM: NodeId = hash_node_id("sculpt3d.cavity_num");
 
+/// **QUANTO DO AMBIENTE COM DIREÇÃO ENTRA** — o piso da difusa dizendo de onde
+/// a luz de preenchimento vem.
+///
+/// ⚠️ **Ele NÃO é uma segunda luz**, e é por isso que o rótulo diz *ambiente* e
+/// não *intensidade*: o número é o MESMO `ph2d_light::AMBIENT` de sempre,
+/// redistribuído — céu em cima, ricochete do chão embaixo —, com a média sobre
+/// todas as normais preservada. Subi-lo não clareia a peça; ele tira luz de baixo
+/// e põe em cima.
+pub const SCULPT3D_ENV: NodeId = hash_node_id("sculpt3d.env");
+/// Chip ligado a [`SCULPT3D_ENV`].
+pub const SCULPT3D_ENV_NUM: NodeId = hash_node_id("sculpt3d.env_num");
+
 /// **QUANTO DO AO ASSADO ENTRA** — irmão da cavidade no painel, e o oposto dela
 /// na origem: a cavidade é derivada e existe sempre, o AO só existe depois de um
 /// bake explícito.

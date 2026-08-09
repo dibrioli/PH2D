@@ -71,6 +71,24 @@ pub(crate) fn occlusion_donation_scene() -> bool {
     std::env::var("PH2D_SCULPT3D_SMOKE").ok().as_deref() == Some("20")
 }
 
+/// `=24` — a cena do **AMBIENTE COM DIREÇÃO** (`docs/3D/05.1` §5, o IBL).
+///
+/// ⚠️ **A peça nasce ENRUGADA, e é a fixture inteira.** O termo redistribui o
+/// piso da difusa — o que a lâmpada NÃO alcança —, então ele só é visível onde há
+/// sombra **e** onde a sombra tem superfícies viradas para lados diferentes. Numa
+/// esfera lisa o artista veria um degradê e não teria como separar *"o ambiente
+/// tem direção"* de *"alguém mexeu no contraste"*; com as rugas em escada, cada
+/// degrau tem um topo que olha para o céu e um beiral que olha para o chão, e a
+/// diferença entre os dois é o efeito inteiro.
+///
+/// ⚠️ **É a MESMA malha da `=15`, de propósito**, e as duas não se confundem: lá
+/// a cavidade nasce em **zero** e o smoke a LIGA; aqui o ambiente nasce em **um**
+/// e o smoke o DESLIGA. As duas perguntas são sobre a mesma escada por acidente
+/// feliz — a escada é a forma que separa *"a luz mostra"* de *"a luz não mostra"*.
+pub(crate) fn env_scene() -> bool {
+    std::env::var("PH2D_SCULPT3D_SMOKE").ok().as_deref() == Some("24")
+}
+
 /// **A peça com que a cena ABRE**, para as cenas que têm elenco próprio.
 ///
 /// ⚠️ **Ela existe por causa de um defeito que a aritmética achou e nenhum gate via.** O
@@ -98,6 +116,9 @@ pub(crate) fn primary_mesh() -> Option<ph2d_mesh::Mesh> {
     }
     if occlusion_donation_scene() {
         return Some(grooved_sphere());
+    }
+    if env_scene() {
+        return Some(crate::sculpt3d::fixtures::wrinkled_sphere());
     }
     None
 }
@@ -152,6 +173,17 @@ fn grooved_sphere() -> ph2d_mesh::Mesh {
 /// cena não tem peça nenhuma"* são respostas diferentes, e colapsá-las faria o
 /// roteador do pai sair do caminho normal em silêncio.
 pub(crate) fn scene_objects() -> Option<Vec<(ph2d_mesh::Mesh, Pose)>> {
+    if env_scene() {
+        // ⚠️ **O elenco é UMA peça, e ela já é a primária — mas a cena tem de
+        // dizer isso pelas DUAS portas.** `Some(vec![])` significa *"esta cena é
+        // dona do próprio elenco, e ele não tem extras"*; devolver `None` aqui
+        // significaria *"nenhuma destas está armada"*, e o roteador do pai
+        // sairia pelo caminho normal — pondo a esfera lisa de 96×144 por cima da
+        // enrugada, não convidada. Foi assim que a `=19` enterrou uma das três
+        // bolas da escada, e o `a_shading_scene_owns_its_whole_cast` me pegou
+        // aqui na hora, com a metade que faltava.
+        return Some(Vec::new());
+    }
     if sss_scene() {
         // ⚠️ **Esferas LISAS, e de propósito.** O que este canal desenha é o
         // TERMINADOR — a fronteira entre o lado aceso e o escuro —, e num barro

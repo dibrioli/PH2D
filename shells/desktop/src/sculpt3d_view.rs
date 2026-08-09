@@ -73,6 +73,7 @@ impl Sculpt3dScene {
     pub(crate) fn shade(&self) -> ph2d_mesh_render::Shade {
         ph2d_mesh_render::Shade {
             cavity: self.cavity,
+            env: self.env,
             ao: self.ao,
             ssao: self.ssao,
             // ⚠️ **A força é do artista e o alcance é da PEÇA** — o mesmo corte do

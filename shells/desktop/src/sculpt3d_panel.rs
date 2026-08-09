@@ -43,6 +43,7 @@ impl Sculpt3dScene {
                 alpha_preview: self.alpha_preview,
                 wireframe: self.wireframe,
                 cavity: self.cavity,
+                env: self.env,
                 ao: self.ao,
                 ssao: self.ssao,
                 sss: self.sss,
@@ -88,6 +89,7 @@ impl Sculpt3dScene {
         self.alpha_preview = ui.alpha_preview;
         self.wireframe = ui.wireframe;
         self.cavity = ui.cavity;
+        self.env = ui.env;
         self.ao = ui.ao;
         self.ssao = ui.ssao;
         self.sss = ui.sss;

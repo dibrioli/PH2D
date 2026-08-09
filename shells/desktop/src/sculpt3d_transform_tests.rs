@@ -258,7 +258,7 @@ fn measure_how_far_the_pen_down_ray_tilts_from_the_eye_pivot_line() {
         [v[0] / l, v[1] / l, v[2] / l]
     };
     println!("\n=== O EIXO: inclinação do raio de pen-down ===");
-    println!("  offset do pivô | inclinação vs a reta olho→pivô");
+    println!("  offset do pivô | inclinação vs a reta olho-pivô");
     println!("  ---------------+-------------------------------");
     for off in [0.0f32, 50.0, 120.0, 220.0, 340.0] {
         let d = s.ray_at(c.0 + off, c.1).dir();

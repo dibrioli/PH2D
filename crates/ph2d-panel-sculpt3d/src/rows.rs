@@ -398,6 +398,25 @@ static SHADING: &[Row] = &[
         place: Place::Knobs,
     },
     Row {
+        label: "panel.sculpt3d.env",
+        slider: ids::SCULPT3D_ENV,
+        chip: ids::SCULPT3D_ENV_NUM,
+        min: 0.0,
+        max: 1.0,
+        step: 0.05, // LITERAL-PX-OK: passo de um knob adimensional, não métrica de layout
+        decimals: 2,
+        get: |u| u.env,
+        set: |u, v| u.env = v,
+        // ⚠️ **Só sob o rig, e pela razão mais forte desta tabela: um matcap JÁ
+        // É um ambiente.** Ele é uma esfera de iluminação capturada — o piso, o
+        // céu e o realce dele vêm todos da mesma imagem —, então o termo do
+        // estúdio não entra naquele caminho (o `mesh.wgsl` nem chega ao piso) e
+        // o slider seria um controle que não faz nada. É a mesma lei das duas
+        // pistas de lâmpada logo abaixo.
+        show: under_the_rig,
+        place: Place::Knobs,
+    },
+    Row {
         label: "panel.sculpt3d.ao",
         slider: ids::SCULPT3D_AO,
         chip: ids::SCULPT3D_AO_NUM,

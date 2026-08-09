@@ -71,6 +71,59 @@ pub const MIN_ELEV_DEG: u16 = 5;
 /// byte-identidade sobrevive. // CLAMP-OK
 pub const AMBIENT: f32 = 0.35;
 
+/// **A CHROMA do ambiente na média** — a cor que o piso [`AMBIENT`] tem quando
+/// se olha para todas as direções de uma vez. Luminância exatamente **1**.
+///
+/// ⚠️ **É luminância 1 por construção, e é isso que faz o ambiente REDISTRIBUIR
+/// em vez de expor:** ligar o termo não deixa a peça mais clara nem mais escura
+/// na média — ele tira luz de baixo e põe em cima. A exposição continua sendo o
+/// [`AMBIENT`], um número, no lugar onde ela sempre esteve.
+///
+/// A média em luminância é preservada; **a chroma não é**, e ela é metade do
+/// efeito: a sombra de um estúdio é FRIA, porque o que a preenche é o céu.
+pub const ENV_BASE: [f32; 3] = [0.946, 1.002, 1.137];
+
+/// **O GRADIENTE do ambiente**, já convolvido com o lóbulo cosseno.
+///
+/// A irradiância de um ambiente que varia linearmente com a altura é
+/// `E(n) = c + (2/3)·k·(n·cima)` — e o `2/3` **não é uma aproximação**: é o fator
+/// `Â₁` da convolução de um harmônico zonal de grau 1 com o lóbulo cosseno
+/// (Ramamoorthi & Hanrahan 2001). ⚠️ **Um ambiente LINEAR não tem termo de grau
+/// 2**, então esta forma de dois termos é a resposta EXATA, não a barata: a sonda
+/// `env_probe` mede **0,000003** contra a integral numérica — o erro da própria
+/// quadratura.
+///
+/// ⚠️ **E o candidato mais sofisticado foi MEDIDO e REPROVADO:** um ambiente de
+/// três zonas (céu, horizonte claro, chão) — a forma de um HDRI de estúdio — dá
+/// contraste cima/baixo de **1,83×** contra os **2,20×** deste, precisa de um
+/// terceiro coeficiente e ainda deixa **0,0042** de resíduo. *O ambiente mais
+/// rico mede pior justamente na coisa para a qual o termo existe.*
+pub const ENV_SLOPE: [f32; 3] = [0.300, 0.383, 0.518];
+
+/// **O piso ambiente NA DIREÇÃO da normal** — o [`AMBIENT`] com direção.
+///
+/// ⚠️ **`n` está no referencial do CANVAS, onde `y` cresce para BAIXO** — o mesmo
+/// em que as lâmpadas deste rig são autoradas (azimute/elevação de tela) e o
+/// mesmo que o `canvas_normal` do barro produz. É por isso que o gradiente entra
+/// **subtraindo**: o céu é o topo da TELA, e o topo da tela é `−y`. O módulo já
+/// pagou este sinal uma vez — *"sem esta negação a mesma lâmpada acende a pintura
+/// por cima e a escultura por baixo, no mesmo documento, sob o mesmo card"* —, e
+/// o oráculo dele é um RENDER, nunca a aritmética.
+///
+/// ⚠️ **O ambiente é ancorado na TELA e não no MUNDO, e isso é obrigatório aqui:**
+/// as lâmpadas são de tela, e um estúdio cujo céu gira enquanto as luzes ficam
+/// paradas não é um estúdio. Um ambiente de mundo é outra decisão — e ela chega
+/// junto com um rig de mundo, não antes.
+#[must_use]
+pub fn env_ambient(n_canvas: [f32; 3]) -> [f32; 3] {
+    let up = -n_canvas[1];
+    [
+        AMBIENT * ENV_SLOPE[0].mul_add(up, ENV_BASE[0]),
+        AMBIENT * ENV_SLOPE[1].mul_add(up, ENV_BASE[1]),
+        AMBIENT * ENV_SLOPE[2].mul_add(up, ENV_BASE[2]),
+    ]
+}
+
 /// **O REALCE do barro** — quanto do especular entra na superfície de argila.
 ///
 /// ⚠️ **Ele mora AQUI e não na crate do renderizador de malha, e a razão não é organização:** um
@@ -277,3 +330,7 @@ pub fn resolve(rig: &LightRig) -> Option<ResolvedRig> {
 #[cfg(test)]
 #[path = "rig_tests.rs"]
 mod rig_tests;
+
+#[cfg(test)]
+#[path = "env_tests.rs"]
+mod env_tests;

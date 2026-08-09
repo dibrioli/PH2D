@@ -36,6 +36,42 @@ pub(crate) fn for_scene(mesh: &ph2d_mesh::Mesh) {
              [sculpt3d]    Depois de tapada, K subdivide e o modelo fica solido de verdade."
         );
     }
+    if crate::sculpt3d::env_scene() {
+        // ⚠️ **A cena MEDE o que ela promete**, como as vizinhas: o número aqui é
+        // o CONTRASTE entre o piso que uma face virada para o topo da tela recebe
+        // e o que uma virada para o fundo recebe. Sem ele o roteiro pediria ao
+        // artista que julgasse uma propriedade sem dizer de que tamanho ela é.
+        let up = ph2d_light::env_ambient([0.0, -1.0, 0.0]);
+        let down = ph2d_light::env_ambient([0.0, 1.0, 0.0]);
+        let l = |c: [f32; 3]| 0.2126f32.mul_add(c[0], 0.7152f32.mul_add(c[1], 0.0722 * c[2]));
+        eprintln!(
+            "[sculpt3d] =24 O AMBIENTE TEM DIRECAO -- uma esfera com rugas EM ESCADA.\n\
+             [sculpt3d]    O piso da difusa (o que uma face virada para longe da luz devolve)\n\
+             [sculpt3d]    deixou de ser UM numero para toda direcao: para o topo da tela ele\n\
+             [sculpt3d]    vale {:.3} e para o fundo {:.3} -- {:.2}x de contraste, com a MEDIA\n\
+             [sculpt3d]    sobre todas as normais inalterada (o termo redistribui, nao expoe).\n\
+             [sculpt3d]    Abra o painel com a CRASE (`) -- o slider 'Environment' fica na\n\
+             [sculpt3d]    secao Shading, entre Cavity e AO.\n\
+             [sculpt3d]    (1) Olhe o lado da peca que a lampada NAO alcanca (embaixo, a direita).\n\
+             [sculpt3d]        Cada degrau tem um topo virado para o ceu e um beiral virado para\n\
+             [sculpt3d]        o chao.\n\
+             [sculpt3d]    (2) A PERGUNTA DA WAVE: o slider nasce em ZERO -- a sombra inteira e'\n\
+             [sculpt3d]        UM cinza chapado, os degraus somem ali, e e' assim que o barro era\n\
+             [sculpt3d]        ate' ontem. Arraste 'Environment' ate' 1: os topos ficam frios e\n\
+             [sculpt3d]        claros e os beirais quentes e escuros. Volte a 0 e a imagem tem de\n\
+             [sculpt3d]        voltar EXATAMENTE a que abriu.\n\
+             [sculpt3d]    (3) O SINAL, e ele e' de olho: o CLARO tem de ficar EM CIMA. Se a\n\
+             [sculpt3d]        sombra clarear por BAIXO, o ceu esta' no chao -- PARE.\n\
+             [sculpt3d]    (4) Q/E giram a lampada. O ambiente NAO gira com ela: ele e' o\n\
+             [sculpt3d]        estudio, e o estudio nao se move quando voce move uma luz.\n\
+             [sculpt3d]    (5) Escolha um MATCAP na secao Shading: o slider 'Environment' tem de\n\
+             [sculpt3d]        SUMIR. Um matcap ja' E' um ambiente -- somar o nosso em cima\n\
+             [sculpt3d]        seriam dois, e o slider seria um controle que nao faz nada.",
+            l(up),
+            l(down),
+            l(up) / l(down)
+        );
+    }
     if crate::sculpt3d::cavity_scene() {
         // ⚠️ **A cena MEDE a escada antes de falar dela.** Um roteiro que
         // dissesse *"há sete sulcos de profundidades diferentes"* sem contar os

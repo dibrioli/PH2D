@@ -333,6 +333,103 @@ fn the_key_light_falls_where_the_artist_put_it() {
     );
 }
 
+/// **O AMBIENTE TEM DIREÇÃO: a sombra de cima é céu, a de baixo é chão.**
+///
+/// ⚠️ **A LÂMPADA VEM DE LADO, e é a fixture inteira.** Com o rig default (a
+/// principal em cima e à esquerda) o topo da esfera está ACESO e o fundo na
+/// sombra, então qualquer diferença entre os dois mede o rig e não o ambiente. De
+/// lado, o topo e o fundo recebem `N·L = 0` **iguais** — e o realce também zera
+/// nos dois —, então tudo o que os separa é o piso da difusa.
+///
+/// ⚠️ **E é por isso que este gate mede o DEFEITO junto com a cura:** com o termo
+/// desligado os dois pixels são o MESMO número, que é exatamente o que um piso
+/// escalar significa — *na região que a lâmpada não alcança, a escultura não tem
+/// leitura de forma nenhuma*.
+///
+/// ⚠️ **A primeira versão deste gate afirmava a coisa errada e a medição a
+/// corrigiu:** eu esperava que o topo CLAREASSE, e ele escureceu de 254,0 para
+/// 248,8. O modelo é relativo (`m = piso + (1 − piso)·ratio`) e o topo estava
+/// aceso com `ratio > 1` — ali um piso maior COMPRIME, que é o que um ambiente
+/// faz numa imagem de verdade: ele levanta o preto e reduz o contraste. O termo
+/// não é uma segunda luz somada; é o chão da razão mudando de altura.
+#[test]
+#[ignore = "precisa de adapter"]
+fn the_ambient_comes_from_the_sky_above_and_the_ground_below() {
+    let Some((device, queue)) = device() else {
+        eprintln!("sem adapter — skip");
+        return;
+    };
+    let mesh = shapes::uv_sphere(40, 56, 1.0);
+    let cam = camera_for(&mesh);
+    // Uma lâmpada só, rasa e vinda da direita: o eixo vertical da esfera fica
+    // fora do alcance dela, e o que sobra ali é o ambiente puro.
+    let rig = LightRig {
+        lights: [
+            ph2d_light::Light {
+                angle_deg: 0,
+                elev_deg: ph2d_light::MIN_ELEV_DEG,
+                ..ph2d_light::Light::KEY
+            },
+            ph2d_light::Light::FILL,
+            ph2d_light::Light::FILL,
+            ph2d_light::Light::FILL,
+        ],
+        selected: 0,
+    };
+    let mut renderer = MeshRenderer::new(&device, FORMAT);
+    renderer.upload_at(&device, &queue, 0, &mesh, &[]);
+
+    let shot = |r: &mut MeshRenderer, env: f32| {
+        render_using_rig_shade(
+            &device,
+            &queue,
+            r,
+            &cam,
+            &rig,
+            ph2d_mesh_render::Shade {
+                env,
+                ..ph2d_mesh_render::Shade::default()
+            },
+        )
+    };
+    let off = shot(&mut renderer, 0.0);
+    let on = shot(&mut renderer, 1.0);
+
+    // ⚠️ **Os dois pontos ficam do lado OPOSTO à lâmpada, e é a terceira correção
+    // desta fixture.** Na coluna central eles mediam 178 — quase totalmente
+    // acesos: o modelo é RELATIVO e divide pela resposta plana, que com uma
+    // lâmpada rasa é minúscula, então tudo o que olha para o observador conta como
+    // iluminado. Com a lâmpada à direita, a sombra é a ESQUERDA — ali `N·L < 0`, a
+    // difusa é zero, a razão é zero, e `m` é o piso **exatamente**.
+    //
+    // ⚠️ E os deslocamentos (`W/5`, `H/5`) são os do gate irmão, que já provou
+    // que caem dentro da silhueta.
+    let x = W / 2 - W / 5;
+    let (ty, by) = (H / 2 - H / 5, H / 2 + H / 5);
+    let (t_off, b_off) = (lum(&off, x, ty), lum(&off, x, by));
+    let (t_on, b_on) = (lum(&on, x, ty), lum(&on, x, by));
+    println!(
+        "desligado: topo {t_off:.1} fundo {b_off:.1}  |  ligado: topo {t_on:.1} fundo {b_on:.1}"
+    );
+    assert!(
+        t_off > 8.0 && b_off > 8.0,
+        "os dois pontos têm de estar na malha (topo {t_off:.1}, fundo {b_off:.1})"
+    );
+    // **O DEFEITO**: sem o termo, uma face virada para cima e uma virada para
+    // baixo, ambas na sombra, são o MESMO pixel.
+    assert!(
+        (t_off - b_off).abs() < 1.5,
+        "com o piso escalar o topo ({t_off:.1}) e o fundo ({b_off:.1}) tinham de \
+         ser o mesmo número -- a fixture não está isolando o ambiente"
+    );
+    // **A CURA**, e o SINAL: o topo olha para o céu.
+    assert!(
+        t_on > b_on * 1.25,
+        "o topo ({t_on:.1}) olha para o CÉU e o fundo ({b_on:.1}) para o CHÃO -- \
+         com esta razão o céu está no lugar errado ou o termo não chegou"
+    );
+}
+
 /// **A wave inteira, numa afirmação: mover a lâmpada reacende a FORMA.**
 ///
 /// Sob o matcap da W1 as direções eram literais no shader, então o card do artista

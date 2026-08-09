@@ -52,6 +52,9 @@ pub struct Sculpt3dUi {
     pub symmetry: Symmetry,
     /// Quanto a curvatura escurece a fresta e clareia a crista.
     pub cavity: f32,
+    /// **Quanto do AMBIENTE COM DIREÇÃO entra.** `0` = o piso escalar de ontem,
+    /// ao byte; `1` = o estúdio (céu em cima, ricochete embaixo).
+    pub env: f32,
     /// Quanto do AO ASSADO entra. Nasce em zero, e não por timidez: o canal só
     /// existe depois de um bake, então qualquer default acima de zero faria a
     /// peça escurecer sozinha no instante do primeiro bake.
@@ -106,6 +109,11 @@ impl Default for Sculpt3dUi {
             radius_px: 50.0, // LITERAL-PX-OK: espelha o DEFAULT_RADIUS_PX do shell (raio de pincel, medido)
             symmetry: Symmetry::default(),
             cavity: 0.0,
+            // ⚠️ **ZERO, como a `cavity` acima**: é um canal que muda a leitura de
+            // toda escultura já feita, e dois gates de GPU cobram que a luz do
+            // barro e a da tinta concordem no estado inicial. Como os vizinhos, o
+            // valor que vale é o que o snapshot do shell escreve.
+            env: 0.0,
             ao: 0.0,
             // ⚠️ **LIGADO, ao contrário do vizinho.** O assado nasce em zero
             // porque é um canal que não existe até alguém apertar um botão; este

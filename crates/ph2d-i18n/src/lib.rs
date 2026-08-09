@@ -363,6 +363,7 @@ pub fn tr(key: &str) -> &'static str {
         // "Cavity" e não "Curvature": é o nome que Blender, ZBrush e Substance
         // dão ao MESMO canal, e o artista o procura por ele.
         "panel.sculpt3d.cavity" => "Cavity",
+        "panel.sculpt3d.env" => "Environment",
         "panel.sculpt3d.ao" => "Ambient Occlusion",
         "panel.sculpt3d.bake_ao" => "Bake Occlusion + Thickness",
         // ⚠️ O rótulo nomeia o ALVO, não só o verbo. Este painel tem DOIS bakes

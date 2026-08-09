@@ -84,6 +84,35 @@ pub const DEFAULT_AO_STRENGTH: f32 = 0.0;
 /// então este `1.0` é *"mostre o que foi medido"*, não *"escureça"*.
 pub const DEFAULT_SSAO_STRENGTH: f32 = 1.0;
 
+/// **Quanto do AMBIENTE COM DIREÇÃO entra por default: NADA.**
+///
+/// ⚠️ **Ele segue o [`DEFAULT_CAVITY`] e não o [`DEFAULT_SSAO_STRENGTH`], e eu
+/// tinha escolhido o irmão errado.** A régua que eu apliquei foi *o canal
+/// existe?* — e por ela o ambiente nasceria ligado, porque ele existe sempre que
+/// existe uma normal. A régua CERTA é a que a cavidade já escreve uma constante
+/// acima: *este canal muda a leitura de toda escultura que já foi feita?* A
+/// cavidade nasce em zero porque *"o barro liso é o que a W3 entregou e o Enio
+/// aprovou"*, e isto vale aqui palavra por palavra.
+///
+/// ⚠️ **E DOIS GATES DE GPU cobraram isso antes de qualquer humano ver**, o que
+/// torna a escolha um fato e não um gosto: o
+/// `the_two_lights_agree_where_the_form_turns_away` afirma que a luz do BARRO e a
+/// da TINTA concordam onde a forma vira — a carta da `ph2d-light` em forma
+/// executável —, e um piso direcional só no barro as separa. Ligá-lo por default
+/// seria shipar essa divergência para todo mundo.
+///
+/// ⚠️ **Levantar o slider CONTINUA divergindo, e isso é aceito** — é a mesma
+/// classe de escolher um MATCAP, que faz o barro acender por uma lei que a tinta
+/// não tem e que ninguém chama de defeito: são modos de VISTA do viewport de
+/// escultura. O que não se pode é entregá-la como o estado inicial.
+///
+/// ⚠️ **A adoção pela tinta é o follow-up, e o preço está medido:** o `channel`
+/// dos dois passes do impasto (GPU e CPU) **não recebe a normal** — ela morre
+/// upstream —, então levar o ambiente para lá é enfiar um parâmetro pela via
+/// quente do Painter, com a paridade CPU/GPU pinada byte a byte. É uma wave do
+/// dono daquele módulo, não um apêndice desta.
+pub const DEFAULT_ENV: f32 = 0.0;
+
 /// **OS MATERIAIS DO MATCAP**, na ordem em que o shader os numera.
 ///
 /// ⚠️ **Os NÚMEROS ficam no WGSL e os NOMES aqui, e não há uma terceira cópia.**
@@ -138,6 +167,15 @@ pub struct Shade {
     /// dentro*), o [`crate::sss::SssParams`] é quem sabe semeá-las pelo tamanho
     /// da peça, e ele é a porta única de empacotamento.
     pub sss: crate::sss::SssParams,
+    /// **QUANTO DO AMBIENTE COM DIREÇÃO entra** — `0` = o piso escalar de
+    /// ontem, ao byte; `1` = o estúdio ([`ph2d_light::env_ambient`]).
+    ///
+    /// ⚠️ **Ele NÃO é um segundo AMBIENT, é o MESMO redistribuído:** a média
+    /// sobre todas as normais continua sendo `ph2d_light::AMBIENT` (gate na
+    /// crate dele), então subir este knob não clareia a peça — ele tira luz de
+    /// baixo e põe em cima, que é o que separa *"o ambiente tem direção"* de
+    /// *"a cena ficou mais clara"*.
+    pub env: f32,
     /// A malha desenhada por cima da forma.
     ///
     /// ⚠️ Ele viaja aqui e **não entra no [`ShadeRaw`]**: é um segundo PASSE, não
@@ -151,6 +189,7 @@ impl Default for Shade {
     fn default() -> Self {
         Self {
             cavity: DEFAULT_CAVITY,
+            env: DEFAULT_ENV,
             ao: DEFAULT_AO_STRENGTH,
             ssao: DEFAULT_SSAO_STRENGTH,
             sss: crate::sss::SssParams::default(),
@@ -207,11 +246,13 @@ pub struct ShadeRaw {
     /// nada dentro deste material* ⇒ opaco), em vez de um `inf` que o
     /// interpolador transformaria em `NaN`.
     pub trans_scale: f32,
-    /// Padding explícito até 32 B. ⚠️ Ele existe para o `size_of` do Rust e o
-    /// tamanho que o WGSL calcula concordarem **sem depender do que o compilador
-    /// resolve fazer** — um uniform em que os dois discordam lê campos deslocados,
-    /// e o sintoma é um sombreamento levemente errado que ninguém consegue nomear.
-    pub _pad: [f32; 1],
+    /// **Quanto do ambiente com direção entra.** `0` = o piso escalar, ao byte.
+    ///
+    /// ⚠️ **Ele ocupa o ÚLTIMO `_pad`**, exatamente o que o comentário do
+    /// `trans_scale` acima anunciava (*"sobra um"*). O `size_of` fica em 32 B e o
+    /// gate de layout não se move — a terceira vez seguida que este uniform
+    /// cresce sem crescer.
+    pub env: f32,
 }
 
 impl Default for ShadeRaw {
@@ -251,7 +292,11 @@ impl ShadeRaw {
             sss_strength: crate::sss::SssRaw::pack(shade.sss).params[0],
             sss_scale: crate::sss::SssRaw::pack(shade.sss).params[1],
             trans_scale: crate::sss::SssRaw::pack(shade.sss).params[2],
-            _pad: [0.0; 1],
+            // Clampado como os vizinhos, e pelo mesmo motivo: o device não tem
+            // opinião, e um `env` de 3 extrapolaria o `mix` para fora do
+            // gradiente — a sombra de cima estouraria e a de baixo iria a
+            // negativo.
+            env: shade.env.clamp(0.0, 1.0),
         }
     }
 }

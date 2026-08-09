@@ -157,6 +157,7 @@ pub(crate) use announce_mod::announce;
 #[path = "sculpt3d_fixtures.rs"]
 mod fixtures;
 
+pub(crate) use scenes::shading::env_scene;
 pub(crate) use scenes::{
     alpha_scene, bake_scene, cavity_scene, directional_alpha_scene, donation_scene, dyntopo_scene,
     extract_scene, fuse_scene, holes_scene, masked_dome_counts, remesh_scene, reopen_scene,
@@ -410,6 +411,16 @@ pub(crate) struct Sculpt3dScene {
     /// W3 entregou e o Enio aprovou, e um canal de sombreamento que se arma
     /// sozinho muda a arte de todo mundo que já esculpiu. O `Shift+C` o liga.
     cavity: f32,
+    /// **Quanto do AMBIENTE COM DIREÇÃO entra** — o piso da difusa deixando de
+    /// ser o mesmo número em toda direção.
+    ///
+    /// ⚠️ **Nasce em ZERO, como a `cavity` logo acima e pela mesma razão**: é um
+    /// canal que muda a leitura de toda escultura já feita. E dois gates de GPU
+    /// cobraram isso — o `the_two_lights_agree_where_the_form_turns_away` afirma
+    /// que a luz do barro e a da tinta concordam onde a forma vira, e um piso
+    /// direcional só no barro as separa. Levantar o slider diverge, e isso é
+    /// aceito (é a classe do matcap); entregá-lo divergido não.
+    env: f32,
     /// Quanto do AO ASSADO entra no sombreamento — o irmão da `cavity`, e o
     /// oposto dela na origem: a cavidade é derivada e existe sempre, o AO só
     /// existe depois de o artista pedir um bake.
@@ -526,6 +537,7 @@ impl Sculpt3dScene {
             symmetry: Symmetry::default(),
             rig: LightRig::default(),
             cavity: ph2d_mesh_render::DEFAULT_CAVITY,
+            env: ph2d_mesh_render::DEFAULT_ENV,
             ao: ph2d_mesh_render::DEFAULT_AO_STRENGTH,
             ssao: ph2d_mesh_render::DEFAULT_SSAO_STRENGTH,
             sss: ph2d_mesh_render::SssParams::default().strength,

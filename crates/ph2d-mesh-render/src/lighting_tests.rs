@@ -87,6 +87,42 @@ fn the_clay_folds_the_ratio_by_the_same_ambient_floor() {
     );
 }
 
+/// **O AMBIENTE COM DIREÇÃO é o do rig, e não uma segunda cópia.**
+///
+/// Irmão do gate acima, e pela mesma razão: o piso do barro e o da tinta têm de
+/// ser o MESMO estúdio. ⚠️ **E aqui a segunda cópia é mais perigosa que no
+/// escalar**, porque um vetor erra em silêncio de mais maneiras — um canal
+/// trocado deixa a sombra verde em vez de fria, e ninguém consegue nomear isso
+/// olhando uma escultura.
+///
+/// As strings são DERIVADAS das constantes, nas duas direções: o WGSL driftar e
+/// o Rust driftar quebram os dois igual.
+#[test]
+fn the_clay_lights_the_shadow_with_the_rigs_environment() {
+    for (name, v) in [
+        ("ENV_BASE", ph2d_light::ENV_BASE),
+        ("ENV_SLOPE", ph2d_light::ENV_SLOPE),
+    ] {
+        let decl = format!(
+            "const {name}: vec3<f32> = vec3<f32>({}, {}, {});",
+            v[0], v[1], v[2]
+        );
+        assert!(
+            crate::pipeline::MESH_WGSL.contains(&decl),
+            "mesh.wgsl tem de declarar `{decl}` — o ambiente é o de `ph2d_light`"
+        );
+    }
+    // ⚠️ **E o SINAL, que é o que um referencial trocado leva embora.** O céu é o
+    // topo da TELA e neste frame o topo é `-y`, então o gradiente SUBTRAI. Um
+    // `+` aqui põe o céu no chão, e o barro passa a parecer iluminado de um
+    // porão — o FATO é medido por um render (`gpu_render.rs`), este é o proxy
+    // que sobrevive numa máquina sem adapter.
+    assert!(
+        crate::pipeline::MESH_WGSL.contains("ENV_BASE - ENV_SLOPE * n.y"),
+        "o gradiente tem de SUBTRAIR: o céu é o topo da tela, que aqui é `-y`"
+    );
+}
+
 /// **A conversão de espaço está NO shader, e ela é a única.**
 ///
 /// O rig é autorado em espaço de tela (`y` para baixo) e a normal chega em espaço de vista (`y` para

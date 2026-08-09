@@ -87,10 +87,12 @@ struct Shade {
     sss_scale: f32,
     // `1 / scatter` — o coeficiente da transmitancia. Ver `sss::SssRaw::pack`.
     trans_scale: f32,
-    // ⚠️ **UM `_pad` só.** O `trans_scale` ocupou o outro, que era exatamente o
-    // que o comentário do `ShadeRaw` reservava — e o `size_of` continua em 32 B,
-    // que é o que o gate de layout afirma.
-    _pad0: f32,
+    // **QUANTO DO AMBIENTE COM DIREÇÃO ENTRA.** `0` = o piso escalar de ontem,
+    // ao byte; `1` = o estúdio (`ph2d_light::env_ambient`).
+    //
+    // ⚠️ **Ele ocupou o ÚLTIMO `_pad`** — o `trans_scale` tinha levado o outro, e
+    // o comentário de lá dizia *"sobra um"*. O `size_of` continua em 32 B.
+    env: f32,
 };
 
 @group(0) @binding(0) var<uniform> cam: Camera;
@@ -104,6 +106,18 @@ struct Shade {
 // duas cópias dariam uma escultura mais escura na sombra que a pintura ao lado
 // dela, sob a MESMA lâmpada.
 const AMBIENT: f32 = 0.35;
+
+// **O AMBIENTE COM DIREÇÃO** — o piso acima, redistribuído por onde a normal
+// olha. ⚠️ São `ph2d_light::ENV_BASE` e `ph2d_light::ENV_SLOPE`, e a igualdade é
+// gateada pelo MESMO teste que já pina o AMBIENT: duas cópias dariam uma sombra
+// de estúdio no barro diferente da que a tinta ao lado recebe, sob o mesmo card.
+//
+// A irradiância de um ambiente linear na altura é `c + (2/3)·k·(n·cima)`, e o
+// `2/3` é o `Â₁` da convolução zonal com o lóbulo cosseno (Ramamoorthi &
+// Hanrahan 2001) — já embutido no SLOPE. Um ambiente linear **não tem** grau 2,
+// então isto é a resposta EXATA e não a barata (medido: 3e-6 contra a integral).
+const ENV_BASE: vec3<f32> = vec3<f32>(0.946, 1.002, 1.137);
+const ENV_SLOPE: vec3<f32> = vec3<f32>(0.3, 0.383, 0.518);
 
 // Piso do divisor. Um canal a que o rig não dá luz nenhuma (uma lâmpada pura
 // vermelha, no canal azul) dividiria por zero; a difusa dele também é zero, então
@@ -497,6 +511,26 @@ fn canvas_normal(n_view: vec3<f32>) -> vec3<f32> {
     return vec3<f32>(n.x, -n.y, n.z);
 }
 
+// **O PISO DA DIFUSA, NA DIREÇÃO DA NORMAL.**
+//
+// Hoje o barro devolvia `AMBIENT` — o MESMO número em toda direção — para
+// qualquer face virada para longe da luz: duas faces na sombra, uma olhando para
+// cima e outra para baixo, saíam idênticas, e na região que a lâmpada não
+// alcança a escultura não tinha leitura de forma nenhuma.
+//
+// ⚠️ **O céu é o topo da TELA, e neste referencial o topo é `-y`** — o
+// `canvas_normal` acabou de virar a normal para o frame em que o rig é autorado,
+// onde `y` cresce para BAIXO. É a mesma negação que aquele comentário nomeia, e
+// o oráculo dela é um RENDER: com o sinal trocado o céu ilumina por baixo, e
+// isso é uma escultura que parece estar num porão.
+//
+// ⚠️ **Ancorado na TELA e não no mundo**, porque as lâmpadas são de tela: um
+// estúdio cujo céu gira enquanto as luzes ficam paradas não é um estúdio.
+fn ambient_floor(n: vec3<f32>) -> vec3<f32> {
+    let e = AMBIENT * (ENV_BASE - ENV_SLOPE * n.y);
+    return mix(vec3<f32>(AMBIENT), e, shade.env);
+}
+
 // **A OCLUSÃO DE FORMA — a porta ÚNICA, e a razão de ela existir.**
 //
 // Os três canais que este número compõe não são iluminação: são **leitura de
@@ -665,7 +699,12 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
 
     let flat_c = select(vec3<f32>(1.0), flat_d, flat_d > vec3<f32>(FLAT_FLOOR));
     let ratio = clamp(diffuse / flat_c, vec3<f32>(0.0), vec3<f32>(2.0));
-    let m = vec3<f32>(AMBIENT) + (1.0 - AMBIENT) * ratio;
+    // ⚠️ **O piso virou um VETOR e a dobra não mudou**, e é isso que preserva o
+    // contrato: em `ratio = 1` — uma superfície PLANA de frente para a luz — o
+    // resultado é exatamente `1` para QUALQUER piso. O ambiente redistribui a
+    // SOMBRA e não toca no que está aceso.
+    let floor_e = ambient_floor(nc);
+    let m = floor_e + (vec3<f32>(1.0) - floor_e) * ratio;
 
     // **A CAVIDADE** — o canal que faz a escultura ser LIDA (`docs/3D/05.1` §4) —
     // é resolvida no topo da função, porque ela vale nos dois modos.

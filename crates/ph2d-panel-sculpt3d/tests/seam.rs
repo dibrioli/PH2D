@@ -845,15 +845,27 @@ fn the_wireframe_toggle_flips_only_the_view() {
     }
 }
 
-/// **As duas pistas de LÂMPADA somem sob um matcap** — e estão lá sob o rig.
+/// **AS ROWS QUE LEEM O RIG somem sob um matcap** — e estão lá sob o rig.
 ///
 /// ⚠️ Um matcap é sombreamento função apenas da normal de vista: ele não lê o
 /// rig, por definição. As duas metades são um gate só de propósito — a de
 /// presença sozinha ficaria verde com o `show` cravado em `true`, e a de
 /// ausência sozinha ficaria verde com ele cravado em `false`.
+///
+/// ⚠️ **O AMBIENTE entrou nesta lista e não ganhou gate próprio**, e a razão é
+/// que a lei é *a mesma*: um matcap **já É um ambiente** — uma esfera de
+/// iluminação capturada, de onde saem o piso, o céu e o realce de uma vez —,
+/// então o termo do estúdio não entra naquele caminho e o slider seria um
+/// controle que não faz nada. Um segundo gate aqui seria a segunda cópia de
+/// *"esta row lê o rig"*, e ele divergiria no dia em que a terceira row entrasse
+/// só numa das duas listas.
 #[test]
-fn the_lamp_rows_are_absent_under_a_matcap_and_present_under_the_rig() {
-    let lamps = [ids::SCULPT3D_LIGHT_AZ, ids::SCULPT3D_LIGHT_ELEV];
+fn the_rows_that_read_the_rig_vanish_under_a_matcap() {
+    let lamps = [
+        ids::SCULPT3D_LIGHT_AZ,
+        ids::SCULPT3D_LIGHT_ELEV,
+        ids::SCULPT3D_ENV,
+    ];
     for (matcap, want) in [(None, true), (Some(0), false), (Some(3), false)] {
         let (mut host, mut state) = arrange(Sculpt3dUi {
             matcap,
@@ -864,7 +876,7 @@ fn the_lamp_rows_are_absent_under_a_matcap_and_present_under_the_rig() {
             assert_eq!(
                 painted.iter().any(|(pid, _)| *pid == id),
                 want,
-                "com matcap {matcap:?} a pista de lâmpada devia {}",
+                "com matcap {matcap:?} a row {id:?} devia {}",
                 if want { "estar lá" } else { "sumir" }
             );
         }

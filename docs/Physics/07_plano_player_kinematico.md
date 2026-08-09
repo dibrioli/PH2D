@@ -1374,6 +1374,32 @@ esta wave removeu, e virou `the_scale_is_the_density_ratio_…`. Ele estava cert
 enquanto o único consumidor perguntava `> 0`; *quem acrescenta o consumidor que
 precisa da magnitude reconfere a nota que a capava.*
 
+### A cena: `PH2D_PHYSICS_SMOKE=104`
+
+Uma poça **funda** e **três cápsulas idênticas** largadas de `y = 1,5` no mesmo
+instante — **verde** a solta (sem lei de player), **âmbar** o dinâmico, **azul**
+o cinemático. ⚠️ **Os três sujeitos são a cena inteira**, porque o oráculo desta
+wave é a paridade e uma paridade precisa de dois lados na tela; um número não se
+lê num screenshot. Gate próprio afirma que eles **diferem só no que a wave muda**
+(mesma forma, mesma densidade, mesma altura de largada) — sem ele a cena mostraria
+uma diferença que não é a que a wave produziu, e o artista concluiria o oposto.
+
+| sujeito | afunda em 4 s | oscila (3.º→6.º s) |
+|---|---|---|
+| cápsula solta (controle) | 1,1070 m | 0,8097 |
+| player **dinâmico** | 1,0855 m | **1,4357** |
+| player **cinemático** | 1,0860 m | **1,4394** |
+
+⚠️ **A poça é funda de propósito:** com fundo ao alcance da perna o sensor de chão
+responde, o personagem fica de pé e a água deixa de ser a única coisa a agi-lo —
+a cena mediria outra pergunta (há gate na premissa, porque premissa só escrita em
+prosa é a que a próxima edição apaga).
+
+⚠️ **E o gate da mensagem pegou o meu próprio erro:** a primeira versão dos
+números veio da fixture **irmã** (a poça do `measure_player_in_water`, que tem
+outra geometria) e ele reprovou — *uma cena cuja mensagem cita números tem de
+medir os DELA*. Sonda: `probe_smoke_104`.
+
 **Aberto:** `form_drag` não alcança a lei (é um kernel por-aresta sobre o
 polígono, não um escalar do meio) · a **força** da zona (acima) · e **nadar** —
 controlar a subida dentro d'água — é produto, não correção.

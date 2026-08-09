@@ -20,6 +20,9 @@ pub(crate) fn is_forwardable_brush_slider(id: NodeId) -> bool {
         || id == core_ids::PAINTER_BRUSH_STABILIZE
         || id == core_ids::PAINTER_BRUSH_RATE
         || id == core_ids::PAINTER_BRUSH_SYMMETRY_SEGMENTS
+        // Grid Stamp lattice (cell size + origin offset, per axis).
+        || core_ids::PAINTER_BRUSH_GRID_CELL.contains(&id)
+        || core_ids::PAINTER_BRUSH_GRID_OFFSET.contains(&id)
         || id == core_ids::PAINTER_INPAINT_PATCH_SLIDER
         || id == core_ids::PAINTER_INPAINT_QUALITY_SLIDER
         || id == core_ids::PAINTER_INPAINT_SEARCH_SLIDER

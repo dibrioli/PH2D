@@ -235,6 +235,13 @@ pub struct BrushSettings {
     pub airbrush_rate_s: f32,
     /// "Edge to Edge" toggle — Anchored only (the stamp spans anchor→cursor, not grows from the anchor).
     pub edge_to_edge: bool,
+    /// **Grid Stamp** cell size per axis, as the `0..1` slider track (same quadratic ruler as the brush
+    /// size — see `set_grid_cell_norm`). Grid Stamp only.
+    pub grid_cell: [f32; 2],
+    /// **Grid Stamp** lattice offset per axis, as the `0..1` slider track. Grid Stamp only.
+    pub grid_offset: [f32; 2],
+    /// **Grid Stamp** "Show Grid" — draw the lattice on the canvas. Display only (it never moves a dab).
+    pub grid_show: bool,
 
     // ── Texture section (the brush texture mask; raw values — the panel maps to slider tracks) ──
     /// Texture kind wire discriminant ([`TextureKind::to_u8`]; `0` = None = no texture assigned).

@@ -239,6 +239,18 @@ impl PainterTool {
             stabilizer: b.stabilizer,
             airbrush_rate_s: b.airbrush_rate_s,
             edge_to_edge: b.edge_to_edge,
+            // Grid Stamp: the two px-valued pairs are published as their `0..1` TRACKS (the panel draws
+            // thumbs, not pixels), through the same inverse the drag writes — seed == sample, or the
+            // thumb jumps the moment it is touched.
+            grid_cell: [
+                self.grid_cell_norm(super::GridAxis::X),
+                self.grid_cell_norm(super::GridAxis::Y),
+            ],
+            grid_offset: [
+                self.grid_offset_norm(super::GridAxis::X),
+                self.grid_offset_norm(super::GridAxis::Y),
+            ],
+            grid_show: self.grid_show(),
             texture_kind: b.texture.kind.to_u8(),
             texture_mapping: b.texture.mapping.to_u8(),
             texture_angle_deg: b.texture.angle_deg,

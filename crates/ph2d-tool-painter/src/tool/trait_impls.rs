@@ -129,6 +129,9 @@ impl Tool for PainterTool {
             PanelEvent::Click(id) if id == core_ids::PAINTER_BRUSH_ACCUMULATE => {
                 self.toggle_brush_accumulate();
             }
+            PanelEvent::Click(id) if id == core_ids::PAINTER_BRUSH_GRID_SHOW => {
+                self.toggle_grid_show();
+            }
             PanelEvent::Click(id) if id == core_ids::PAINTER_BRUSH_EDGE_TO_EDGE => {
                 self.toggle_brush_edge_to_edge();
             }
@@ -219,6 +222,18 @@ impl Tool for PainterTool {
                     self.set_brush_stabilizer(v as f32);
                 } else if id == core_ids::PAINTER_BRUSH_RATE {
                     self.set_brush_airbrush_rate_norm(v as f32);
+                } else if let Some(axis) = core_ids::PAINTER_BRUSH_GRID_CELL
+                    .iter()
+                    .position(|&p| p == id)
+                    .and_then(crate::GridAxis::from_slot)
+                {
+                    self.set_grid_cell_norm(axis, v as f32);
+                } else if let Some(axis) = core_ids::PAINTER_BRUSH_GRID_OFFSET
+                    .iter()
+                    .position(|&p| p == id)
+                    .and_then(crate::GridAxis::from_slot)
+                {
+                    self.set_grid_offset_norm(axis, v as f32);
                 } else if id == core_ids::PAINTER_BRUSH_TEXTURE_ANGLE {
                     self.set_brush_texture_angle(v as f32);
                 } else if id == core_ids::PAINTER_BRUSH_TEXTURE_OFFSET_X {

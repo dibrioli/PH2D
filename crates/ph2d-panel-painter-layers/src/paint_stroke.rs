@@ -61,6 +61,11 @@ pub(crate) fn paint_stroke_section(
     // ── Method dropdown (always) + the Save-As-Object button beside it (split out for the fn LOC cap) ──
     y = paint_method_row(ctx, theme, x, content_w, y, brush);
 
+    // ── Grid Stamp — its own lattice: cell size + origin offset per axis, and the Show Grid toggle. ──
+    if matches!(method, StrokeMethod::GridStamp) {
+        y = paint_grid_stamp_card(ctx, theme, x, content_w, y, brush);
+    }
+
     // ── Dimensions — Line only: the live dx/dy distances + corner angles drawn while placing points. ──
     if matches!(method, StrokeMethod::Line) {
         y = paint_checkbox_row(
@@ -576,8 +581,11 @@ fn jitter_unit_options() -> Vec<DropdownOption<u8>> {
 
 /// The Apply / Apply & Keep / Delete button row (split out for the LOC cap).
 mod apply;
+/// The Grid Stamp card (its own lattice's rows) — a child module, like the two beside it.
+mod grid_card;
 mod op_card;
 use apply::{paint_apply_row, paint_merge_row, paint_offset_card, paint_simplify_row};
+use grid_card::paint_grid_stamp_card;
 
 #[cfg(test)]
 mod tests;

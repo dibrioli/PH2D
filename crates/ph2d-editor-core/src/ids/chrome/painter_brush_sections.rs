@@ -70,6 +70,43 @@ pub const PAINTER_BRUSH_JITTER_ROTATE_CHIP: NodeId =
 pub const PAINTER_BRUSH_JITTER_SPACING_CHIP: NodeId =
     hash_node_id("painter_brush.jitter_spacing_chip");
 
+// ── Grid Stamp card (the `StrokeMethod::GridStamp` rows; painted only in that method) ────────────
+// The stamp lands at the centre of its own grid's cell, stretched to fill it. Two numbers describe
+// the grid — the CELL (how big a cell is) and the OFFSET (where the grid's origin sits) — one pair
+// per axis, so a rectangular cell and a shifted lattice are both expressible. `Show Grid` draws it.
+//
+// ⚠️ The cell/offset pairs live in the `BrushSpec` (they decide WHERE the next dab lands — the same
+// kind of thing as Spacing) and `Show Grid` lives in the tool's `PaintState` (drawing the lattice is
+// DISPLAY, the `impasto_show` precedent). Two homes, because they answer two different questions.
+/// Cell size, per axis — the `0..1` slider track, mapped by the tool's `set_grid_cell_norm` through
+/// the SAME quadratic ruler as the brush size (a cell is an image-pixel measure, and giving it a
+/// second curve would make the same gesture mean different sizes in two places the artist reads as
+/// siblings). `[0]` = X (width) · `[1]` = Y (height).
+pub const PAINTER_BRUSH_GRID_CELL: [NodeId; 2] = [
+    hash_node_id("painter_brush.grid_cell_x"),
+    hash_node_id("painter_brush.grid_cell_y"),
+];
+/// The editable numeric chips paired 1:1 with [`PAINTER_BRUSH_GRID_CELL`].
+pub const PAINTER_BRUSH_GRID_CELL_CHIPS: [NodeId; 2] = [
+    hash_node_id("painter_brush.grid_cell_x_chip"),
+    hash_node_id("painter_brush.grid_cell_y_chip"),
+];
+/// Grid origin offset, per axis (`0..1` track → `set_grid_offset_norm`). It is PERIODIC in the cell,
+/// so every reachable lattice already lives in `[0, cell)`; the track runs further on purpose, so
+/// the artist can keep nudging without changing units when the cell size changes.
+pub const PAINTER_BRUSH_GRID_OFFSET: [NodeId; 2] = [
+    hash_node_id("painter_brush.grid_offset_x"),
+    hash_node_id("painter_brush.grid_offset_y"),
+];
+/// The editable numeric chips paired 1:1 with [`PAINTER_BRUSH_GRID_OFFSET`].
+pub const PAINTER_BRUSH_GRID_OFFSET_CHIPS: [NodeId; 2] = [
+    hash_node_id("painter_brush.grid_offset_x_chip"),
+    hash_node_id("painter_brush.grid_offset_y_chip"),
+];
+/// "Show Grid" checkbox — draws the lattice on the canvas. `Click` → `toggle_grid_show`. Display
+/// only: the stamp lands on the same cells with it on or off, and there is a gate saying so.
+pub const PAINTER_BRUSH_GRID_SHOW: NodeId = hash_node_id("painter_brush.grid_show");
+
 // ── Composite Brush card (below Strength, above Accumulate) ─────────────────────────────────────
 // A checkbox that turns the Brush into a stack of 3 reorderable operation layers (Brush / Smear /
 // Blur), each with its own Strength. The stroke runs the layers bottom→top per dab, so each op

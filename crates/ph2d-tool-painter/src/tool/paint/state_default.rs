@@ -193,9 +193,11 @@ impl Default for PaintState {
             relief: Default::default(),
             // Impasto lighting (canvas-level). Inert until some layer actually has relief.
             impasto_show: true,
-            // A grade nasce APAGADA: ela só faz sentido com o Grid Stamp escolhido, e o método
-            // default é o Space. Quem a acende é o checkbox, que o painel só pinta no método dela.
-            grid_show: false,
+            // Grid Stamp's lattice is drawn by DEFAULT (Enio 2026-08-09: "um checkbox checado por
+            // padrão para exibir o grid"). It costs nothing outside that method — both the checkbox
+            // and the overlay are gated on Grid Stamp being the selected method — and a stamp that
+            // snaps to a lattice you cannot see is a stamp whose rule the artist has to infer.
+            grid_show: true,
             // "Adjust Last Stroke" is OFF by default (Enio 2026-07-19). Finished paint stays finished:
             // dialling the brush in for the NEXT stroke must not silently reach back and rewrite the one
             // already on the canvas. The historical default was ON, which made every knob a retroactive

@@ -32,6 +32,19 @@ impl GridAxis {
             Self::Y => 1,
         }
     }
+
+    /// The axis a per-axis id ARRAY slot names, or `None` for a slot that is not an axis. The panel's
+    /// `PAINTER_BRUSH_GRID_*` ids are two-element arrays, so the router asks for the position and this
+    /// turns it back into the named axis — the conversion happens **here** and not at each call site,
+    /// which is what keeps `0`/`1` from being re-derived (and eventually re-derived wrong) per router.
+    #[must_use]
+    pub const fn from_slot(slot: usize) -> Option<Self> {
+        match slot {
+            0 => Some(Self::X),
+            1 => Some(Self::Y),
+            _ => None,
+        }
+    }
 }
 
 impl PainterTool {
@@ -180,19 +193,33 @@ mod tests {
 
     /// **Show Grid é só DESENHO.** Ligá-lo e desligá-lo não pode mover um texel de tinta — senão a
     /// grade deixaria de ser uma ajuda de visão e viraria um parâmetro escondido do carimbo.
+    ///
+    /// ⚠️ A asserção é sobre o **FLIP**, nunca sobre o valor que o toggle produz: escrita como
+    /// `assert!(t.grid_show())` ela **passa a testar o default por acidente** e sangra no dia em que
+    /// o default se move — que foi exatamente o que ela fez.
     #[test]
     fn show_grid_is_display_only() {
-        assert!(
-            !PainterTool::default().grid_show(),
-            "default: a grade nasce apagada até o método a pedir"
-        );
         let mut t = PainterTool::default();
         let before = t.paint.brush;
+        let was = t.grid_show();
         t.toggle_grid_show();
-        assert!(t.grid_show());
+        assert_eq!(t.grid_show(), !was, "o toggle não inverteu a grade");
+        t.toggle_grid_show();
+        assert_eq!(t.grid_show(), was, "o toggle não é a própria inversa");
         assert_eq!(
             t.paint.brush, before,
             "o interruptor da grade tocou o pincel — ele é de exibição"
+        );
+    }
+
+    /// O **default** que o Enio pediu, num teste que não menciona nenhum gesto — *um default só é
+    /// testado por um teste que não o menciona* (a lição do W6.3 do vetor).
+    #[test]
+    fn the_lattice_is_drawn_by_default() {
+        assert!(
+            PainterTool::default().grid_show(),
+            "Enio 2026-08-09: 'um checkbox checado por padrão para exibir o grid' — e uma regra de \
+             encaixe que não se vê é uma regra que o artista tem de adivinhar"
         );
     }
 }

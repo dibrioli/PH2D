@@ -109,7 +109,7 @@ pub use tool::{
     BRUSH_AIRBRUSH_RATE_MAX_S, BRUSH_AIRBRUSH_RATE_MIN_S, BRUSH_COUNT_SLIDER_MAX,
     BRUSH_JITTER_ABS_MAX_PX, BRUSH_SIZE_MAX_PX, BRUSH_SIZE_MIN_PX, BRUSH_SPACING_MAX,
     BrushSettings, CurveOverlay, DEFORM_TEMPERAMENT_NONE, DEFORM_TEMPERAMENT_RESHAPE,
-    DEFORM_TEMPERAMENT_TRANSFORM, DrainBranch, EllipseOverlay, FilterScope, ImpastoLamp,
+    DEFORM_TEMPERAMENT_TRANSFORM, DrainBranch, EllipseOverlay, FilterScope, GridAxis, ImpastoLamp,
     ImpastoLight, ImpastoPlanes, LightRig, LineCornerGizmo, LineDimensions, LineOverlay,
     MAX_IMPASTO_LIGHTS, MAX_SHAPE_LAYERS, MIN_ELEV_DEG, PANEL_RAMP_STOPS, PaintMedia, PainterTool,
     PolygonOverlay, SelectionGizmoView, StencilOverlay, StencilPreview, StrokeOpBadge,

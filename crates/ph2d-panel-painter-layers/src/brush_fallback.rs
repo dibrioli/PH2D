@@ -133,6 +133,10 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     stabilizer: 0.5,
     airbrush_rate_s: 0.1, // LITERAL-PX-OK: Blender default (DNA_brush_types.h:232)
     edge_to_edge: false,
+    // Grid Stamp: the default 32 px cell as its `0..1` track, no lattice offset, lattice drawn.
+    grid_cell: [0.2440442, 0.2440442], // LITERAL-PX-OK: sqrt((32 - 1) / (512 - 1)) — 32 px on the size ruler
+    grid_offset: [0.0, 0.0],
+    grid_show: true,
     // Texture section (mirrors TextureSettings::default — no texture assigned).
     texture_kind: 0,    // None
     texture_mapping: 0, // View Plane

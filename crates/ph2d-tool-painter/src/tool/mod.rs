@@ -421,6 +421,7 @@ pub use paint::impasto_gpu::{ImpastoLamp, ImpastoPlanes};
 pub mod persist;
 // The parametric selection shape list is part of the model snapshot (undo/redo), so `crate::undo` needs
 // to name its entry type — re-export it crate-wide without opening the rest of `paint`.
+pub use paint::GridAxis;
 pub use paint::media::PaintMedia;
 pub(crate) use paint::selection_shapes::SelectionEntry;
 pub use paint::{

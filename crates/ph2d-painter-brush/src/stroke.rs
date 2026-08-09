@@ -528,66 +528,6 @@ impl Stroke {
         self.tot_samples = self.tot_samples.wrapping_add(1);
     }
 
-    /// **Grid Stamp** — percorre `from → to` e carimba toda célula NOVA que o caminho atravessa.
-    ///
-    /// O passo é meia célula (o menor lado), então amostras consecutivas nunca ficam a mais de uma
-    /// célula de distância em cada eixo — é isso que impede um arrasto rápido de deixar buracos, sem
-    /// precisar de um rasterizador supercover.
-    fn walk_grid_cells(&mut self, from: [f32; 2], to: [f32; 2], out: &mut Vec<Dab>) {
-        let c = self.spec.grid_cell();
-        let step = 0.5 * c[0].min(c[1]);
-        let d = [to[0] - from[0], to[1] - from[1]];
-        let len = (d[0] * d[0] + d[1] * d[1]).sqrt();
-        let n = if len > 0.0 {
-            ((len / step).ceil() as u32).max(1)
-        } else {
-            1
-        };
-        for i in 1..=n {
-            let t = f64::from(i) / f64::from(n);
-            let p = [from[0] + d[0] * t as f32, from[1] + d[1] * t as f32];
-            self.stamp_cell(self.spec.grid_cell_at(p), out);
-        }
-    }
-
-    /// Carimba UMA célula — no centro dela — se ela não for a última carimbada.
-    ///
-    /// ⚠️ **A cópia de Symmetry é RE-ENCAIXADA na própria célula.** O espelho de um centro de célula
-    /// não é, em geral, o centro de uma célula, e a promessa inteira deste método é que todo carimbo
-    /// pousa num centro. Deixar a cópia onde o espelho a põe daria uma metade fora da grade — o único
-    /// defeito que este método não pode ter. (A alternativa — não espelhar — mataria Symmetry aqui
-    /// sem necessidade.)
-    fn stamp_cell(&mut self, cell: [i32; 2], out: &mut Vec<Dab>) {
-        if self.last_cell == Some(cell) {
-            return;
-        }
-        self.last_cell = Some(cell);
-        let dab = self.grid_dab(self.spec.grid_cell_center(cell));
-        let first = out.len();
-        crate::symmetry::push_symmetric(out, dab, &self.spec.symmetry);
-        for d in &mut out[first..] {
-            d.center = self.spec.grid_cell_center(self.spec.grid_cell_at(d.center));
-        }
-        self.tot_samples = self.tot_samples.wrapping_add(1);
-    }
-
-    /// O dab de um carimbo de grade: o raio vem da CÉLULA (a porta única
-    /// [`BrushSpec::grid_stamp_frame`]), a pressão é cheia e não há heading — um carimbo de grade é
-    /// alinhado à REDE, não ao traço, então girá-lo com a mão brigaria com a célula que ele preenche.
-    fn grid_dab(&self, center: [f32; 2]) -> Dab {
-        let (radius, _, _) = self.spec.grid_stamp_frame();
-        Dab {
-            center,
-            radius_px: radius.clamp(0.0, MAX_BRUSH_RADIUS_PX),
-            coverage: self.spec.strength.clamp(0.0, 1.0),
-            color: self.spec.color,
-            rotation: [1.0, 0.0],
-            dir: [0.0, 0.0],
-            arc_len: 0.0,
-            stroke_radius_px: radius,
-        }
-    }
-
     /// Build the Anchored stamp's single dab at `center` with the drag-defined `radius_px`. No
     /// jitter (Blender disables it for Anchored, `paint_stroke_use_jitter`), full pressure
     /// (coverage = strength); the falloff / hardness / blend / colour come from the spec at stamp
@@ -729,34 +669,6 @@ impl Stroke {
     }
 }
 
-#[inline]
-fn dist(a: [f32; 2], b: [f32; 2]) -> f32 {
-    let dx = b[0] - a[0];
-    let dy = b[1] - a[1];
-    (dx * dx + dy * dy).sqrt()
-}
-
-#[inline]
-fn lerp(a: f32, b: f32, t: f32) -> f32 {
-    a + (b - a) * t
-}
-
-/// Cubic Hermite at `t∈[0,1]`: endpoints `p0`,`p1` with tangents `m0`,`m1`. With Catmull-Rom
-/// tangents this evaluates the spline segment between two input points.
-#[inline]
-fn hermite(p0: [f32; 2], m0: [f32; 2], p1: [f32; 2], m1: [f32; 2], t: f32) -> [f32; 2] {
-    let t2 = t * t;
-    let t3 = t2 * t;
-    let h00 = 2.0 * t3 - 3.0 * t2 + 1.0;
-    let h10 = t3 - 2.0 * t2 + t;
-    let h01 = -2.0 * t3 + 3.0 * t2;
-    let h11 = t3 - t2;
-    [
-        h00 * p0[0] + h10 * m0[0] + h01 * p1[0] + h11 * m1[0],
-        h00 * p0[1] + h10 * m0[1] + h01 * p1[1] + h11 * m1[1],
-    ]
-}
-
 /// The Arc stroke method’s fill + the shared Catmull-Rom flattener (child module, as the others below).
 mod curve;
 pub use curve::flatten_catmull_rom;
@@ -771,6 +683,14 @@ mod ends;
 /// The lazy-mouse stabilizer (`stabilize`/`settle`/`lazy_mouse_step`) — split out for the LOC-cap reason.
 pub mod stabilize;
 use ends::TaperSpan;
+/// A aritmética de CAMINHO partilhada (`dist` / `lerp` / `hermite`) — três consumidores
+/// (o caminhador, o achatador de Catmull-Rom e o estabilizador) e nenhum deles é o dono do fato.
+mod geom;
+/// **Grid Stamp** emission (`walk_grid_cells` / `stamp_cell` / `grid_dab`) — split out for the
+/// LOC-cap reason, and by SUBJECT: how a stroke that snaps to a lattice emits its dabs is a
+/// different question from how a free stroke walks a path.
+mod grid;
+use geom::{dist, hermite, lerp};
 mod warmup;
 
 #[cfg(test)]

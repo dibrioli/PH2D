@@ -956,10 +956,55 @@ Reservada de propósito: `autostep` afinado, `min_slope_slide_angle` exposto, ou
 | 2 | **deriva de rampa** nos dois modos, varrendo `θ` | a fixture do gate 1, a mesma varredura que produziu a lei do `ride.rs` |
 | 3 | **penetração** no impacto nos dois modos | a fixture da W2a |
 | 4 | `snap_to_ground` mínimo útil | contra a altura do degrau que o `autostep` sobe |
-| 5 | quanto o `offset` (a folga do controlador) custa em aparência | o personagem paira `offset` acima do chão — é a D1 outra vez, num número menor |
+| 5 | quanto o `offset` (a folga do controlador) custa em aparência | ✅ **MEDIDO 2026-08-09** (`measure_foot_gap`) — e **a pergunta estava mal colocada**: a folga não é o `offset` (1 cm relativo), é **onde o último sweep parou**, de **1,0 a 4,5 cm** conforme a aproximação, com amplitude zero. O dinâmico é aritmética exacta (`float − meia-extensão`). ⚠️ **E a caçada achou um defeito MAIOR, ABERTO** — ver a §8.1 |
 | 6 | **o que a jangada afunda** nos dois modos (K2) | a cena `=72` |
 | 7 | **o que uma perna RÍGIDA custa** (`W-Landing`) — o solavanco ao subir um degrau e o pico da reação na jangada | a cena `=91` (a escada de pranchas) e a `=100`, varrendo `k` |
 | 8 | a **deriva de rampa contra a rigidez** — a lei publicada varreu o amortecimento, **não** o `k` | ✅ **MEDIDO 2026-08-09** (`measure_the_drift_against_the_stiffness`): planas a 5 decimais numa faixa de **64×** ⇒ **a lei não tem termo em `k`**, e a resposta a *"deriva"* é UM knob. Gate `the_drift_law_has_no_stiffness_term` |
+
+---
+
+## §8.1 — ABERTO: o personagem DESCE a rampa aos pulos (2026-08-09)
+
+⚠️ **Achado por uma mutação que SOBREVIVEU.** Neutralizar o `snap_to_ground`
+passava em toda a suíte, e a razão é que nenhuma fixture do módulo continha uma
+**descida caminhada** — o knob tem duas metades e só a do plano estava sob
+oráculo.
+
+Escrita a fixture, o modo cinemático salta da superfície e o **dinâmico é
+`0,0000` EXACTO nas nove células**:
+
+| salto (m) | 1 m/s | 3 m/s | 6 m/s |
+|---|---|---|---|
+| 10° | 0,0170 | 0,0329 | 0,0806 |
+| 25° | 0,0412 | 0,1459 | **0,5652** |
+| 40° | 0,0654 | 0,4434 | **1,3258** |
+
+A 40°/6 m/s ele se afasta **mais que a própria altura**, e não é transiente — o
+traço mostra a folga a bater entre 0,51 e 1,07 m a descida inteira.
+
+**Mecanismo, atribuído por ablação:** a `supported_velocity` absorve ao longo do
+`up`, e numa rampa a descer isso cancela a componente vertical da velocidade —
+que é exactamente a parte da caminhada que o faz seguir a superfície. Trocado o
+eixo pela NORMAL, o salto vai a **0,0000** a 25° e 40° em toda velocidade. É a
+mesma premissa que a W11 corrigiu no `damping_axis` (*"verdadeira só no plano"*)
+e que ficou por corrigir aqui.
+
+⛔ **A CURA DO EIXO FOI CONSTRUÍDA, MEDIDA E REVERTIDA — não refaça.** Com a
+normal, o personagem **parado** deriva **0,7297 m** (contra ~0,001) e **nunca
+assenta**; sangram o `..._does_not_creep_up_a_ramp` e o
+`..._landing_does_not_slide_along_the_ramp_normal`. O `up` está lá de propósito
+— é o `floor_stop_on_slope` do Godot, que o doc do `kinematic.rs` nomeia.
+
+**As duas metades pedem coisas OPOSTAS do mesmo eixo**, e a `supported_velocity`
+não distingue a deriva da GRAVIDADE da descida COMANDADA pela caminhada porque,
+quando ela corre, as duas já estão somadas num `v` só. A cura de verdade é
+separá-las antes da soma — absorver só o que o motor **não** comandou —, e isso
+é desenho com cena própria, não uma linha.
+
+O número está pinado num gate VERDE
+(`the_descent_hop_is_still_there_and_this_is_its_number`, o precedente do
+Painter): ele não afirma que o produto está certo, ele impede o defeito de
+crescer em silêncio e obriga a cura a atualizá-lo.
 
 ---
 

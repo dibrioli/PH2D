@@ -19,7 +19,7 @@ em cada item aberto abaixo.
 
 ---
 
-## §1 — Fechados (catorze commits)
+## §1 — Fechados (dezassete commits)
 
 | Commit | O achado |
 |---|---|
@@ -37,11 +37,29 @@ em cada item aberto abaixo.
 | `b4e7c2764` | Nada do cartão sai da caixa que lhe foi dada (cabeça `Xl3` + rodapé dentro de um host variável). |
 | `dd6278dec` | **O gate do topo do Chroma media `M/M`** — empurrava com `oklch_set_channel` e lia com `oklch_norm_channels`, inversas exactas ⇒ `1.0` para qualquer máximo, **incluindo `0.001`, que é o bug reportado**. |
 | `d9017f9a8` | Os quatro gates de roteamento podiam passar VAZIOS (`else { return; }` sobre a tabela GERADA). |
+| `8474398bc` | **`SkinParam.options`/`selected` sem gate, e o doc do `selected` FALSO em metade da família** — três comportamentos saíam de um campo (Tabs/Segmented clampam ⇒ marcam a ÚLTIMA; Radio/Dropdown no-opam ⇒ nenhuma). |
+| `db5cd9615` | Um slot de largura FIXA dentro de um host VARIÁVEL (o chip de unidade · o `X` da tag · **a ORDEM do clamp** no `anchor_below`). |
+| `4928fcb86` | Cinco docs que descreviam um produto que não existe (`set_live_rows` · `duplicate_keys` · `authored_option_id` · `PillGroup` · o doc órfão do `is_control`). |
 
 ⚠️ **O `41a95074e` e o `d9017f9a8` são a mesma lição por dois lados:** o primeiro põe a
 reconciliação na **porta por-quadro** (`populate::adopt`, onde o tipo, a marca de secção, a marca de
 picker e a morte da row já são estabelecidos) em vez de em cada sítio que lê; o segundo tira um
 gate da dependência de **conteúdo autorado**, que o Enio pode reautorar a qualquer momento.
+
+---
+
+## §1b — E DUAS defesas que a mutação provou INERTES
+
+Escritas aqui porque a próxima LLM as vai encontrar e tomar por load-bearing.
+
+- **`skin::marked_option`** — substituí-la por `Some(param.selected)` deixa os **29 gates da pele
+  VERDES**: os quatro braços honram a lei por acidentes downstream *diferentes* (o pintor de abas
+  compara `i == selected`; os dois `select` no-opam num valor desconhecido). O que de facto conserta
+  o defeito é **não passar pelo construtor `Tabs::selected`**, que clampa. Ela fica porque sem ela a
+  lei não está escrita em lugar nenhum.
+- **O `.max(0.0)` na altura da seleção/caret do `text_input`** — o `push_clip` logo acima já apara o
+  retângulo invertido, então um gate escrito contra a CENA não distingue as duas versões. **O gate
+  que eu tinha escrito passava com o defeito reinstalado e foi REMOVIDO em vez de shipado.**
 
 ---
 
@@ -51,19 +69,7 @@ gate da dependência de **conteúdo autorado**, que o Enio pode reautorar a qual
 
 O lote mais caro: enquanto vivem, **a suíte inteira vale menos do que parece**.
 
-1. **`SkinParam.options` / `SkinParam.selected` — canal público, ZERO gates.**
-   `crates/ph2d-editor-core/src/widget/skin.rs:141,143` · gates em `skin/param_tests.rs`.
-   Os dois canais gateados (`rgba`, `icon`) têm cada um um **par** — *chega ao braço que o declara*
-   e *é inerte em todos os outros*. A família de LISTA não tem nem um nem outro, e é consumida por
-   quatro braços (`Tabs`, `RadioGroup`, `SegmentedAdaptive`, `Dropdown`).
-   ⚠️ **E o doc do campo promete uma lei que três dos quatro não honram:** ele diz *"Fora do alcance
-   ⇒ nenhuma"*, mas `Tabs::selected` **CLAMPA** (`tabs.rs:63`, `idx.min(len-1)`) ⇒ marca a ÚLTIMA;
-   `RadioGroup::select` (`radio_group.rs:85`) e `Dropdown::select` (`dropdown/mod.rs:139`) **no-opam
-   em silêncio** ⇒ não marcam nenhuma. Três comportamentos, um campo.
-   *Alcançável hoje?* Não pelos dois consumidores atuais (o canvas passa `selected: 0` fixo,
-   `widget_live.rs:200`; o painel clampa desde o `41a95074e`). **É o próximo consumidor que herda a
-   promessa falsa** — e o canal existe precisamente para que consumidores novos entrem barato.
-
+1. ~~`SkinParam.options` / `selected` sem gate~~ — **FECHADO** (`8474398bc`).
 2. **`segment_hover_state_is_read_from_the_store`** — `widget/segmented_adaptive.rs:299`.
 3. **`preferred_height_sums_entries`** — `widget/tool_rail/tests.rs:24`.
 4. **`field_rects_partition_host`** — `widget/vector3_editor.rs:195` (e o irmão
@@ -77,38 +83,20 @@ O lote mais caro: enquanto vivem, **a suíte inteira vale menos do que parece**.
 
 Um comentário que contradiz o código shipado é pior que comentário nenhum.
 
-7. **`PillGroup` diz *"Used 5x in the editor TopBar"* e tem ZERO chamadores.**
-   `widget/pill_group.rs` — medido: só `mod`/`pub use` em `widget/mod.rs:37,101` e uma menção de
-   token em `ph2d-tokens/src/chrome.rs:63`. Nenhum painel, nenhuma shell.
-8. **`duplicate_keys()` promete um readout que o painel não pinta.**
-   `panel-authored/src/rows.rs:374` — o doc diz *"o readout que o painel mostra em vez de
-   desempatar"* e *"o painel **diz** que há repetidos"*. Único chamador: `rows_tests.rs:141`.
-   Ou o painel passa a dizer, ou o doc para de prometer. **Repetidos partilham id**, então o defeito
-   que ele descreve (duas rows como um controle) é real e invisível.
-9. **`authored_option_id` diz que só o dropdown precisa dela.**
-   `ids/chrome/authored.rs` (doc do `authored_option_id`): *"Só quem esconde as opções precisa dela
-   … nas abas, no rádio e na segmentada quem regista os segmentos é o pintor do catálogo"*. Falso —
-   `panel-authored/src/paint.rs:296` regista a família INLINE por `inline_option_rect` +
-   `authored_option_id`, e é assim que uma aba fica clicável no painel compilado.
-10. **A afirmação de cadência do `set_live_rows`** — a nota diz *"por quadro"* onde a fixture e o
-    produto discordam sobre quando a tabela viva é publicada e devolvida.
+7. ~~`PillGroup` diz…~~ — **FECHADO** (`4928fcb86`).
+8. ~~`duplicate_keys()` promete…~~ — **FECHADO** (`4928fcb86`).
+9. ~~`authored_option_id` diz…~~ — **FECHADO** (`4928fcb86`).
+10. ~~A afirmação de cadência do `set_live_rows`…~~ — **FECHADO** (`4928fcb86`).
 
 ### C. Geometria: um slot fixo dentro de um host variável
 
 A família do `b4e7c2764`, que fechou só o cartão. Todas de baixo impacto e custo de uma linha —
 mas cada uma é uma tinta que sai da moldura, e a moldura é o que o gizmo do canvas abraça.
 
-11. **`numeric_input_with_unit::unit_rect`** — `widget/numeric_input_with_unit.rs:99,112`.
-    `chip_w` é `Spacing::Xl3` (32) e `unit_rect` é `host.x + host.w - chip`: num host mais estreito
-    que 32 o chip começa **à esquerda do host**. O irmão `input_rect` já tem `.max(0.0)`.
-12. **`tag`: o X derrapa para a esquerda** — `widget/tag.rs:101`
-    (`host.x + host.w - pad_x - close_size`, sem piso). O rótulo ao lado já tem `.max(0.0)`.
-13. **`text_input`: seleção e caret com altura NEGATIVA** — `widget/text_input.rs:201` e `:236-240`
-    (`rect.h - pad_y * 2.0`, sem `.max(0.0)`).
-14. **`popover::anchor_below` pode devolver `x` fora do viewport** — `widget/popover.rs:66`:
-    `center_x.max(viewport.x).min(viewport.x + viewport.w - w)`. Com `w > viewport.w` o `.min()`
-    vence e a superfície começa à esquerda da tela. **A ordem do clamp é a lei**, e aqui ela está
-    invertida em relação ao `popover_rect_clamped` que o dropdown usa.
+11. ~~`numeric_input_with_unit::unit_rect`~~ — **FECHADO** (`db5cd9615`).
+12. ~~`tag`: o X derrapa~~ — **FECHADO** (`db5cd9615`).
+13. ~~`text_input`: seleção e caret~~ — **FECHADO** (`db5cd9615`).
+14. ~~`popover::anchor_below`~~ — **FECHADO** (`db5cd9615`).
 15. **`key_value_list` não recorta** — `widget/key_value_list.rs`, zero `push_clip`. A mesma
     correção do `876055b9b` (`TextArea`), um widget adiante.
 16. **`list_item` usa a largura MEDIDA do texto sem teto** — o rótulo empurra o resto para fora da

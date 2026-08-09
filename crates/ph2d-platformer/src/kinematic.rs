@@ -245,9 +245,27 @@ pub fn kinematic_advance(
         state.velocity[1] + (gravity[1] + motor.accel[1]) * dt + motor.boost[1],
     ];
 
-    // Ver [`supported_velocity`]: a pergunta do INTEGRADOR, não a da lei — e a
-    // MESMA porta que a ponte usa para não entregar à lei uma queda que este
-    // passo vai apagar.
+    // ⚠️ **A absorção pede as DUAS respostas** (§8.3), e é a correção que a
+    // varredura de rampa de 2026-08-09 obrigou.
+    //
+    // As duas perguntas parecem uma e são duas:
+    //
+    // - `state.grounded` — *"eu TOQUEI no mundo?"*, do INTEGRADOR, respondida
+    //   pelo tique passado. Ela é o que impede a lei de receber uma queda que o
+    //   passo vai apagar, e é ela que gateia o piso da §8.1 (a continuidade).
+    // - `footing.is_some()` — *"isto é CHÃO?"*, a **K4**, que conhece o limite
+    //   de rampa autorado.
+    //
+    // Só com a primeira, um personagem encostado numa parede de 60° tem a
+    // gravidade absorvida e **fica imóvel numa rampa que a própria lei recusou**
+    // (medido: `x = 0,0000` exato em 300 tiques a 60° e a 80°, contra o corpo
+    // dinâmico a sair de quadro). O `max_slope` deixava de significar o que diz
+    // — a metade *descer* do defeito que a W9 curou no *subir*.
+    //
+    // ⚠️ **Chão plano e rampa caminhável ficam BYTE-IDÊNTICOS**: ali as duas são
+    // verdadeiras. Só muda o caso *toco-mas-não-é-chão*, e nele o deslizamento
+    // do controlador já sabe o que fazer — ele só precisava de deslocamento para
+    // redirecionar.
     //
     // ⚠️ **A superfície entra por aqui** (§8.1): sem ela a absorção cancela a
     // descida que a caminhada comandou e o personagem desce a rampa aos pulos.
@@ -256,7 +274,7 @@ pub fn kinematic_advance(
     // ⚠️ **A referência é `state.velocity`, o que ele tinha ANTES deste tique**,
     // e não o `v` de duas linhas acima: ver o aviso do [`surface_descent`].
     let floor = surface_descent(state.velocity, footing.map_or(up, |s| s.normal), up);
-    let v = supported_velocity(v, state.grounded, up, floor);
+    let v = supported_velocity(v, state.grounded && footing.is_some(), up, floor);
 
     let wanted = [(v[0] + carry[0]) * dt, (v[1] + carry[1]) * dt];
     (

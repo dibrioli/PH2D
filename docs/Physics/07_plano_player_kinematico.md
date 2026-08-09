@@ -1107,7 +1107,7 @@ caótico e um valor literal seria derrubado por qualquer mudança sem relação)
 
 ---
 
-## §8.3 — NA FILA: o cinemático fica PARADO numa rampa que o próprio `max_slope` recusa (2026-08-09)
+## §8.3 — FECHADO: o cinemático ficava PARADO numa rampa que o próprio `max_slope` recusa (2026-08-09)
 
 Achado a fechar o item 2 do §7, não por reporte. O dinâmico escorrega de uma
 rampa de 50°/60° e sai de quadro (24,2 m / 16,5 m em 5 s); **o cinemático fica
@@ -1167,8 +1167,45 @@ usa para não entregar à lei uma queda que este passo vai apagar"*), então ist
 3. **Aceitar**, e então o `max_slope` passa a ser documentado como *"o que ele
    consegue SUBIR"* e nada mais. Custa uma linha de doc e uma promessa a menos.
 
-**Recomendação: (1).** É a que faz o número autorado voltar a significar o que
-diz, e a que tem o menor conjunto de casos alterados.
+**Escolha do Enio: (1).**
+
+### A cura
+
+`kinematic_advance` passa a absorver com `state.grounded && footing.is_some()`.
+
+| rampa | limite 45, ANTES | limite 45, DEPOIS | limite 90 | limite 5 |
+|---|---|---|---|---|
+| 45° | `1,3175` | **`1,3175`** (igual) | 1,3174 | escorrega |
+| 60° | `1,8101` (imóvel) | **escorrega −0,71** | fica (é caminhável) | escorrega |
+| 80° | `3,7754` (imóvel) | **escorrega −7,58** | fica | escorrega |
+
+⚠️ **As colunas caminháveis são byte-idênticas** (10° a 45°, a varredura do §7.2
+inteira) — ali as duas respostas são verdadeiras, então a expressão não muda. E
+o knob voltou a MOVER o comportamento: antes 45/90/5 davam a mesma pose.
+
+⚠️ **O ritmo do escorregão cresce com a inclinação** (0,98 m em 10 s a 50° ·
+1,45 a 60° · quase queda livre a 80°): o `kinematic_settle` devolve a velocidade
+que o mundo não deixou acontecer, então perto do limite ele escorrega devagar.
+Não é o mesmo número do corpo dinâmico (24 m) e **não devia ser** — um corpo
+dinâmico em queda por uma rampa não tem controlador a segurá-lo.
+
+⚠️ **Uma fixture da lei mudou de sentido, e era o que devia acontecer:** o
+`the_ground_absorbs_only_what_points_into_it` declarava `grounded: true` e
+passava amostra `None` — *"estou no chão"* sem fornecer chão nenhum. Isso agora
+descreve **tocar numa parede**, que é o caso oposto; ela recebeu um `flat()`.
+
+⚠️ **E o hash de determinismo era CEGO à mudança** — a lane `C9 Ramp` da §8.1 é
+de −20°, caminhável, onde as duas respostas coincidem. Lane nova **`C9 Steep`**
+(60°, o dobro do limite): 115 → **117 corpos**, hash
+`49f223f8…` (debug ≡ release). ⚠️ **A primeira versão dela não discriminava:** a
+fita é UMA para todos os players (`drive = +1` nos primeiros 90 tiques) e a
+rampa descia para a direita, então o personagem escorregava empurrado pela
+própria fita nas DUAS leis — *cobertura aparente sobre um fixture que não
+continha o fenômeno*. Subindo para a direita, o empurrão trabalha CONTRA o
+escorregão e só a lei nova o deixa descer (299,88 contra 300,15).
+
+Gate novo `nothing_is_absorbed_on_a_surface_the_law_refused`, com o CONTROLE ao
+lado (com chão, absorve).
 
 ---
 

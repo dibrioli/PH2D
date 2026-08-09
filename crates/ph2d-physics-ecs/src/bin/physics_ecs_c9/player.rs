@@ -404,4 +404,59 @@ pub fn spawn(sim: &mut SimWorld) {
         // Acima da face da rampa naquele x, com folga para assentar.
         Transform::from_translation(Vec2::new(RAMP_X - 6.0, 6.0 * slope.abs().tan() + 1.1)),
     ));
+
+    // ── A RAMPA QUE A LEI RECUSA (§8.3) ─────────────────────────────────────
+    //
+    // ⚠️ **Pelo MESMO motivo da lane acima, e o hash provou-o outra vez:** a
+    // absorção passou a pedir as duas respostas (`grounded` E `footing`), e o
+    // hash **não se moveu** — porque a rampa de −20° é caminhável e ali as duas
+    // são verdadeiras. A lane que exercita a mudança é uma rampa mais INGREME
+    // que o `max_slope` autorado, onde o `footing` recusa e o `grounded` não.
+    //
+    // ⚠️ **A rampa sobe para a DIREITA, e o sinal é load-bearing.** A fita é
+    // uma só para todos os players (`drive = +1` nos primeiros 90 tiques), e a
+    // primeira versão desta lane pôs a rampa a DESCER para a direita: o
+    // personagem escorregava ladeira abaixo empurrado pela própria fita, nas
+    // DUAS leis, e a lane media o mesmo nos dois lados — cobertura aparente
+    // sobre um fixture que não continha o fenômeno. Subindo, o empurrão trabalha
+    // CONTRA o escorregão, e só a lei nova o deixa descer.
+    const STEEP_X: f32 = 300.0;
+    let steep = 60.0_f32.to_radians();
+    sim.world_mut().spawn((
+        Name::new("C9 Steep"),
+        RigidBody {
+            kind: BodyKind::Static,
+        },
+        Collider {
+            shape: ColliderShape::Cuboid {
+                half_x: 14.0,
+                half_y: 0.25,
+            },
+            ..Collider::default()
+        },
+        Transform {
+            rotation: steep,
+            ..Transform::from_translation(Vec2::new(STEEP_X, 0.0))
+        },
+    ));
+    sim.world_mut().spawn((
+        Name::new("C9 Steep Player"),
+        RigidBody {
+            kind: BodyKind::Kinematic,
+        },
+        Collider {
+            shape: ColliderShape::Capsule {
+                half_height: 0.3,
+                radius: 0.2,
+            },
+            ..Collider::default()
+        },
+        LockRotation,
+        ph2d_physics_ecs::PlayerMode::Kinematic,
+        PlatformPlayer {
+            float_height: 0.9,
+            ..PlatformPlayer::default()
+        },
+        Transform::from_translation(Vec2::new(STEEP_X, 0.25 / steep.cos() + 1.0)),
+    ));
 }

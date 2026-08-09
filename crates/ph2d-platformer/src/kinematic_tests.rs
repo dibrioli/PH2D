@@ -19,6 +19,19 @@ fn resting() -> KinematicState {
     }
 }
 
+/// Chão PLANO e PARADO — o que uma fixture que diz *"em repouso no chão"* tem
+/// de fornecer.
+///
+/// ⚠️ **Ela nasceu da §8.3.** O `the_ground_absorbs_only_what_points_into_it`
+/// passava `None` como amostra enquanto afirmava que o personagem estava no
+/// chão, e isso só funcionava porque a absorção perguntava ao
+/// [`KinematicState::grounded`] sozinho. Agora ela pede as DUAS respostas, e uma
+/// fixture que declara chão sem o fornecer descreve *"a tocar numa parede"* —
+/// que é precisamente o caso oposto.
+fn flat() -> GroundSample {
+    floor_moving([0.0, 0.0])
+}
+
 /// Chão PLANO que se move — a única fixture que estas leis precisam do sensor.
 fn floor_moving(gv: Vec2) -> GroundSample {
     GroundSample {
@@ -50,9 +63,10 @@ fn gravity_is_integrated_by_this_law_when_airborne() {
 /// exactamente o tique da decolagem, e zerar o eixo inteiro mataria o salto.
 #[test]
 fn the_ground_absorbs_only_what_points_into_it() {
+    let ground = flat();
     let mut st = resting();
     for _ in 0..600 {
-        st = kinematic_advance(st, Motor::default(), None, G, UP, DT).0;
+        st = kinematic_advance(st, Motor::default(), Some(&ground), G, UP, DT).0;
     }
     assert_eq!(
         st.velocity[1], 0.0,
@@ -63,7 +77,7 @@ fn the_ground_absorbs_only_what_points_into_it() {
         velocity: [0.0, 5.0],
         grounded: true,
     };
-    let (up_st, _) = kinematic_advance(takeoff, Motor::default(), None, G, UP, DT);
+    let (up_st, _) = kinematic_advance(takeoff, Motor::default(), Some(&ground), G, UP, DT);
     assert!(
         up_st.velocity[1] > 4.8,
         "o tique da decolagem ve' o chao e NAO pode ser zerado: {}",
@@ -268,5 +282,42 @@ fn the_floor_never_lifts_and_a_climb_is_untouched() {
         surface_descent([9.0, -3.0], UP, UP),
         0.0,
         "chao plano tem de dar piso zero EXATO"
+    );
+}
+
+/// **A ABSORÇÃO PEDE AS DUAS RESPOSTAS** (§8.3) — e a metade que faltava é a do
+/// `footing`.
+///
+/// ⚠️ **O defeito que ele existe para pegar:** encostado numa superfície que a
+/// lei RECUSOU por inclinação, o integrador diz *"toquei"* e a absorção comia a
+/// gravidade inteira — o personagem ficava imóvel numa rampa de 60°, e o
+/// `max_slope` que o artista escreve deixava de significar o que diz.
+///
+/// A fixture é o par mínimo que os distingue: **o mesmo estado**, a mesma
+/// gravidade, e só a resposta do `footing` a mudar.
+#[test]
+fn nothing_is_absorbed_on_a_surface_the_law_refused() {
+    let ground = flat();
+
+    // CONTROLE: com chão a lei absorve, como sempre.
+    let (on_floor, _) = kinematic_advance(resting(), Motor::default(), Some(&ground), G, UP, DT);
+    assert_eq!(
+        on_floor.velocity[1], 0.0,
+        "o controle tem de absorver: com chão a queda sai inteira"
+    );
+
+    // E sem chão ACEITO — o `grounded` do integrador segue verdadeiro, porque
+    // ele DE FACTO tocou — a gravidade tem de sobreviver, senão não sobra
+    // deslocamento para o deslizamento do controlador redirecionar.
+    let (steep, wanted) = kinematic_advance(resting(), Motor::default(), None, G, UP, DT);
+    assert!(
+        (steep.velocity[1] - G[1] * DT).abs() < 1.0e-6,
+        "tocar numa rampa recusada nao e' estar no chao: a queda tem de sobreviver ({})",
+        steep.velocity[1]
+    );
+    assert!(
+        wanted[1] < 0.0,
+        "e o deslocamento pedido tem de apontar para baixo ({})",
+        wanted[1]
     );
 }

@@ -18,6 +18,7 @@ fn params(rows: usize, cols: usize, gravity: f32, stiffness: f32, pin: bool) -> 
         // volume*, e escreve-lo aqui e o que impede estes testes de mudarem de
         // sentido em silencio no dia em que o default se mover.
         pressure: 0.0,
+        clusters: 1,
         pin,
     }
 }
@@ -238,6 +239,7 @@ fn pressured(stiffness: f32, pressure: f32) -> Params {
         beta: 0.0,
         damping: 0.03,
         pressure,
+        clusters: 1,
         pin: true,
     }
 }
@@ -327,4 +329,106 @@ fn pressure_at_zero_stiffness_leaves_the_body_alone() {
         mean_y < -0.3,
         "o corpo caiu em vez de ser remontado no pino: y medio {mean_y}"
     );
+}
+
+// ---------------------------------------------------------------------------
+// Clusters — the body that can bend, through the real sequential simulation.
+// ---------------------------------------------------------------------------
+
+/// The worst deviation of the row centroids from the straight line through the
+/// first and last, as a fraction of the body's length. Zero for anything that has
+/// only been translated, rotated or uniformly scaled — which is precisely the set
+/// of poses one shape-matched frame can produce.
+fn worst_spine_bend(p: &Params, ticks: usize, shake: f32) -> f32 {
+    let mut state = Stream::new(0);
+    let mut worst = 0.0f32;
+    for k in 0..=ticks {
+        let t = k as f32 / 60.0;
+        state = simulate([(t * 7.0).sin() * shake, 0.0], &state, t, p);
+        if k > 60 {
+            let pos = vec2_col(&state, "P");
+            let centre = |r: usize| {
+                let s = pos[r * p.cols..(r + 1) * p.cols]
+                    .iter()
+                    .fold([0.0f32; 2], |a, q| [a[0] + q[0], a[1] + q[1]]);
+                [s[0] / p.cols as f32, s[1] / p.cols as f32]
+            };
+            let (a, b) = (centre(0), centre(p.rows - 1));
+            let d = [b[0] - a[0], b[1] - a[1]];
+            let len = (d[0] * d[0] + d[1] * d[1]).sqrt();
+            if len > 1e-6 {
+                for r in 1..p.rows - 1 {
+                    let q = centre(r);
+                    let off = ((q[0] - a[0]) * d[1] - (q[1] - a[1]) * d[0]).abs() / len;
+                    worst = worst.max(off / len);
+                }
+            }
+        }
+    }
+    worst
+}
+
+fn snake(clusters: usize) -> Params {
+    Params {
+        rows: 32,
+        cols: 4,
+        spacing: 0.7,
+        gravity: 12.0,
+        stiffness: 0.4,
+        beta: 0.0,
+        damping: 0.03,
+        pressure: 0.0,
+        clusters,
+        pin: true,
+    }
+}
+
+/// **A snake stops being a plate.** With one frame the model can only translate and
+/// rotate the rest shape, so a body whipped by its anchor swings as a stick; with
+/// overlapping clusters it curves.
+///
+/// ⚠️ **The anchor SHAKES, and the first version of this fixture did not.** A body
+/// hanging from a symmetric pin under uniform gravity has no reason to bend — every
+/// cluster sees the same rotation — and the probe read **0,0000 at every cluster
+/// count**, which is indistinguishable from a feature that does nothing. The load
+/// has to be the one that asks the question.
+#[test]
+fn clusters_let_a_whipped_snake_bend_instead_of_swinging_as_a_stick() {
+    let stick = worst_spine_bend(&snake(1), 300, 2.5);
+    let bendy = worst_spine_bend(&snake(4), 300, 2.5);
+    assert!(
+        stick < 0.06,
+        "CONTROLE: um frame so mal se afasta da reta, e afastou-se {stick}"
+    );
+    assert!(
+        bendy > stick * 3.0,
+        "com clusters a espinha tem de curvar de verdade: {stick} -> {bendy}"
+    );
+}
+
+/// One cluster is the body that shipped, and the whole sequential simulation says
+/// so — not just the goal projection. This is the regression net for the nine facts
+/// above, stated once: the clustered route is never entered at all.
+#[test]
+fn one_cluster_replays_the_body_that_shipped_to_the_bit() {
+    let run = |p: &Params| {
+        let mut state = Stream::new(0);
+        for k in 0..120 {
+            state = simulate(
+                [(k as f32 / 60.0 * 3.0).sin(), 0.0],
+                &state,
+                k as f32 / 60.0,
+                p,
+            );
+        }
+        vec2_col(&state, "P")
+    };
+    // `clusters` is clamped to at least 1 in `eval`, so zero and one are the same
+    // request; both have to give the untouched body.
+    assert_eq!(run(&snake(1)), run(&snake(1)));
+    let one = run(&snake(1));
+    assert!(one.iter().all(|q| q[0].is_finite()));
+    // And the clustered route is a DIFFERENT body — otherwise the gate above is
+    // comparing the shipping path with itself.
+    assert_ne!(one, run(&snake(4)));
 }

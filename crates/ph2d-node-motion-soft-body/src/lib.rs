@@ -52,7 +52,9 @@ use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
 mod params_ui;
 use params_ui::{PARAM_HARD_MAX, PARAM_HINTS, PARAM_UNITS};
+mod cluster;
 mod shape;
+use cluster::cluster_goals;
 use shape::{boundary_area, pressure_scale, rest_shape, shape_goals};
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
@@ -79,6 +81,21 @@ const EPS: f32 = 1e-6;
 /// ⚠️ At the cap the binding constraint is no longer the SIM — it is the
 /// RENDER: 262 144 quads is exactly where the zone scene measured the frame
 /// drop (2026-07-20). Reaching this number is a deliberate act, not a default.
+///
+/// ⚠️ **And this number was measured against ONE shape match, which `clusters`
+/// stops being.** Overlapping regions cover the mesh about four times over, so
+/// the match is paid roughly that many times: MEASURED
+/// (`what_clusters_buy_and_what_they_cost`, one tick) 512² costs **1,77 ms with a
+/// single frame and 5,3–5,9 ms clustered** — 3,4×, or 275-297% of the sub-budget
+/// this cap was chosen to fit. Clustered, the budget holds to about **300 a
+/// side** (256² measures 1,22-1,36 ms = 61-68%).
+///
+/// The cap is NOT lowered when clusters are on, and that is deliberate: a
+/// resolution ceiling that moved with another knob would take a mesh the artist
+/// already authored away from them, and the right value would be a function of
+/// the neighbour — the shape this codebase calls an ergonomics bug. The two
+/// numbers multiply, they are both on the panel, and this is where the product
+/// is written down.
 const MAX_SIDE: i64 = 512;
 
 /// The static contract of this node type (ADR-0031).
@@ -151,6 +168,13 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "pressure",
             default: 0.0,
         },
+        // Overlapping shape-match regions along the body's longer side (Müller
+        // 2005 §4.3). 1 = the single global frame that shipped. See
+        // `Params::clusters`.
+        ParamSpec {
+            name: "clusters",
+            default: 1.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
@@ -181,6 +205,22 @@ struct Params {
     /// `0` is off, and off is byte-identical: the shoelace never runs and the goal
     /// is the expression that shipped.
     pressure: f32,
+    /// **How many overlapping regions the body is matched in** (Müller et al. 2005
+    /// §4.3), counted along its longer side.
+    ///
+    /// ⚠️ `1` is not merely the neutral, it is the ONLY pose vocabulary the node
+    /// had: one best-fit frame can translate, rotate and (with `stretch`) shear
+    /// the rest shape uniformly, and none of those bends anything. MEASURED
+    /// (`how_much_can_a_long_body_bend_today`): a 32×4 body's spine deviates from
+    /// a straight line by **0,0000** of its own length — at every stiffness, and
+    /// with the linear mode fully on. The plate is not a stiffness setting, it is
+    /// the shape of the model.
+    ///
+    /// Composing several `motion.soft_body` nodes does not reach this: they would
+    /// be independent bodies, and a cluster exists precisely because neighbouring
+    /// regions SHARE particles whose averaged goal drags the two frames into
+    /// agreement. Without a shared particle there is no seam to carry a curve.
+    clusters: usize,
     pin: bool,
 }
 
@@ -295,7 +335,11 @@ fn step(
     } else {
         1.0
     };
-    let goals = shape_goals(&pred, rest, p.beta, scale);
+    let goals = if p.clusters > 1 {
+        cluster_goals(&pred, rest, p.rows, p.cols, p.beta, scale, p.clusters)
+    } else {
+        shape_goals(&pred, rest, p.beta, scale)
+    };
     let mut out_pos = vec![[0.0f32; 2]; n];
     let mut out_vel = vec![[0.0f32; 2]; n];
     let keep = 1.0 - p.damping;
@@ -376,6 +420,7 @@ impl NodeOp for MotionSoftBody {
             beta: ctx.param("stretch").clamp(0.0, 1.0),
             damping: ctx.param("damping").clamp(0.0, 0.99),
             pressure: ctx.param("pressure").max(0.0),
+            clusters: (ctx.param("clusters").round() as i64).clamp(1, MAX_SIDE) as usize,
             pin: ctx.param("pin") >= 0.5,
         };
         let playhead = ctx.playhead() as f32;

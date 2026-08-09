@@ -68,6 +68,7 @@ fn what_does_the_area_do_under_load() {
         beta: 0.0,
         damping: 0.03,
         pressure: 0.0,
+        clusters: 1,
         pin,
     };
     eprintln!("  (razao area/repouso; 1.000 = defende o volume sozinho)");
@@ -135,6 +136,7 @@ fn what_each_pressure_settles_at() {
             beta: 0.0,
             damping: 0.03,
             pressure: gain,
+            clusters: 1,
             pin: true,
         };
         let mut state = Stream::new(0);
@@ -204,6 +206,7 @@ fn is_the_useful_pressure_coupled_to_stiffness() {
             beta: 0.0,
             damping: 0.03,
             pressure: gain,
+            clusters: 1,
             pin: true,
         };
         let mut state = Stream::new(0);
@@ -300,6 +303,7 @@ fn what_does_the_shape_match_cost_per_tick() {
             beta: 0.3,
             damping: 0.02,
             pressure: 0.0,
+            clusters: 1,
             pin: true,
         };
         let vel = vec![[0.0f32; 2]; n];
@@ -324,4 +328,213 @@ fn what_does_the_shape_match_cost_per_tick() {
             "  {side:>4}x{side:<4} = {n:>9} partículas: núcleo {core:>7.3} ms · TICK {tick:>7.3} ms"
         );
     }
+}
+
+/// MEASUREMENT, before a line of clusters is written: **does a long body actually
+/// move like a plate?** The plan says a 32×4 snake "balança como uma placa"
+/// because shape matching fits ONE rigid frame to the whole cloud, so the goal it
+/// projects is the rest shape rotated — a shape with no bend in it anywhere.
+///
+/// The statistic is the SPINE's curvature: take each row's centroid, fit a line
+/// through them, and report the worst distance from it, in units of the body's own
+/// length. A body that only translates and rotates reads ~0 whatever it is doing;
+/// a body that bends reads a number.
+///
+///   cargo test -p ph2d-node-motion-soft-body --release -- --ignored --nocapture spine
+#[test]
+#[ignore = "measurement — run alone with --nocapture"]
+fn how_much_can_a_long_body_bend_today() {
+    let bend_of = |rows: usize, cols: usize, stiff: f32, beta: f32, shake: f32| -> f32 {
+        let p = Params {
+            rows,
+            cols,
+            spacing: 0.7,
+            gravity: 12.0,
+            stiffness: stiff,
+            beta,
+            damping: 0.03,
+            pressure: 0.0,
+            clusters: 1,
+            pin: true,
+        };
+        let mut state = Stream::new(0);
+        let mut worst = 0.0f32;
+        for k in 0..=300usize {
+            let t = k as f32 / 60.0;
+            state = simulate([(t * 7.0).sin() * shake, 0.0], &state, t, &p);
+            if k > 60 {
+                worst = worst.max(spine_bend(&vec2_col(&state, "P"), rows, cols));
+            }
+        }
+        worst
+    };
+    eprintln!("  desvio maximo da espinha em relacao a RETA, como fracao do comprimento");
+    for (r, c, name) in [
+        (32usize, 4usize, "cobra 32x4"),
+        (16, 8, "corpo 16x8"),
+        (8, 8, "quadrado 8x8"),
+    ] {
+        eprintln!(
+            "  {name:<14} rigido={:.4}  linear(beta 1)={:.4}  mole(stiff .1)={:.4}  sacudido={:.4}",
+            bend_of(r, c, 0.4, 0.0, 0.0),
+            bend_of(r, c, 0.4, 1.0, 0.0),
+            bend_of(r, c, 0.1, 0.0, 0.0),
+            bend_of(r, c, 0.4, 0.0, 2.5),
+        );
+    }
+}
+
+/// The worst distance from a row-centroid to the straight line through the first
+/// and last of them, as a fraction of the body's rest length. Zero for anything
+/// that is only translated, rotated or uniformly scaled — which is exactly the set
+/// of poses a single rigid frame can produce.
+fn spine_bend(pos: &[[f32; 2]], rows: usize, cols: usize) -> f32 {
+    if rows < 3 || pos.len() < rows * cols {
+        return 0.0;
+    }
+    let centre = |r: usize| {
+        let s = pos[r * cols..(r + 1) * cols]
+            .iter()
+            .fold([0.0f32; 2], |a, q| [a[0] + q[0], a[1] + q[1]]);
+        [s[0] / cols as f32, s[1] / cols as f32]
+    };
+    let (a, b) = (centre(0), centre(rows - 1));
+    let d = [b[0] - a[0], b[1] - a[1]];
+    let len = (d[0] * d[0] + d[1] * d[1]).sqrt();
+    if len < 1e-6 {
+        return 0.0;
+    }
+    let mut worst = 0.0f32;
+    for r in 1..rows - 1 {
+        let p = centre(r);
+        // |(p − a) × d| / |d| — the perpendicular distance to the chord.
+        let off = ((p[0] - a[0]) * d[1] - (p[1] - a[1]) * d[0]).abs() / len;
+        worst = worst.max(off);
+    }
+    worst / len
+}
+
+/// CALIBRATION: what each cluster count buys in BEND, and what it costs per tick.
+/// The knob's slider band and its typable ceiling come from here, and so does the
+/// honest statement about the node's 512² cap — which was measured against a
+/// SINGLE shape match, and clusters overlap on purpose.
+///
+///   cargo test -p ph2d-node-motion-soft-body --release -- --ignored --nocapture clusters_buy
+#[test]
+#[ignore = "measurement — run alone with --nocapture"]
+fn what_clusters_buy_and_what_they_cost() {
+    let bend_of = |rows: usize, cols: usize, n: usize| -> f32 {
+        let p = Params {
+            rows,
+            cols,
+            spacing: 0.7,
+            gravity: 12.0,
+            stiffness: 0.4,
+            beta: 0.0,
+            damping: 0.03,
+            pressure: 0.0,
+            clusters: n,
+            pin: true,
+        };
+        let mut state = Stream::new(0);
+        let mut worst = 0.0f32;
+        for k in 0..=300usize {
+            let t = k as f32 / 60.0;
+            // ⚠️ The anchor SHAKES, and the earlier version of this probe did not.
+            // A body hanging from a symmetric pin under uniform gravity has no
+            // reason to curve: every cluster sees the same rotation and the spine
+            // is straight whatever the model can express. It reported 0,0000 for
+            // every cluster count and would have read as the feature being inert.
+            state = simulate([(t * 7.0).sin() * 2.5, 0.0], &state, t, &p);
+            if k > 60 {
+                worst = worst.max(spine_bend(&vec2_col(&state, "P"), rows, cols));
+            }
+        }
+        worst
+    };
+    eprintln!("  desvio da espinha (fracao do comprimento), ancora SACUDIDA");
+    for (r, c, name) in [
+        (32usize, 4usize, "cobra 32x4"),
+        (16, 8, "corpo 16x8"),
+        (8, 8, "quadrado 8x8"),
+    ] {
+        let mut line = String::new();
+        for n in [1usize, 2, 3, 4, 6, 8, 12, 16] {
+            line.push_str(&format!(" {n}:{:.4}", bend_of(r, c, n)));
+        }
+        eprintln!("  {name:<14}{line}");
+    }
+
+    eprintln!("  custo de um TICK (ms) -- o cap de 512 do no foi medido com 1 cluster");
+    for side in [64usize, 128, 256, 512] {
+        let mut line = String::new();
+        for n in [1usize, 2, 4, 8] {
+            let p = Params {
+                rows: side,
+                cols: side,
+                spacing: 1.0,
+                gravity: 9.8,
+                stiffness: 0.6,
+                beta: 0.3,
+                damping: 0.02,
+                pressure: 0.0,
+                clusters: n,
+                pin: true,
+            };
+            let rest = rest_shape(side, side, 1.0);
+            let pred: Vec<[f32; 2]> = rest.iter().map(|q| [q[0] * 1.1, q[1] * 0.9]).collect();
+            let vel = vec![[0.0f32; 2]; side * side];
+            let accel = vec![[0.0f32; 2]; side * side];
+            const REPS: u32 = 10;
+            let t0 = std::time::Instant::now();
+            for _ in 0..REPS {
+                std::hint::black_box(step(&pred, &vel, &accel, [0.0, 0.0], &rest, 1.0 / 60.0, &p));
+            }
+            let ms = t0.elapsed().as_secs_f64() * 1e3 / f64::from(REPS);
+            line.push_str(&format!(" {n}:{ms:>7.3}"));
+        }
+        eprintln!("  {side:>4}x{side:<4}{line}");
+    }
+}
+
+/// Does a clustered match REPRESENT a bend at all? Bend the rest mesh into a known
+/// arc, ask for the goals, and report how far they land from the arc. One global
+/// frame can only answer with a straight body, so its number is the arc's own
+/// sagitta; a clustered match should follow.
+///
+///   cargo test -p ph2d-node-motion-soft-body --release -- --ignored --nocapture can_a_cluster
+#[test]
+#[ignore = "measurement — run alone with --nocapture"]
+fn can_a_clustered_match_follow_an_arc() {
+    let (rows, cols) = (32usize, 4usize);
+    let rest = rest_shape(rows, cols, 0.7);
+    // Bend the whole mesh around a circle: map y (along the length) to an angle.
+    let h = (rows as f32 - 1.0) * 0.7;
+    let radius = h / 1.2; // ~1.2 rad of arc — a clear, non-subtle curve
+    let bent: Vec<[f32; 2]> = rest
+        .iter()
+        .map(|q| {
+            let a = q[1] / radius;
+            let r = radius - q[0];
+            [r * a.sin(), r * a.cos() - radius]
+        })
+        .collect();
+    eprintln!("  distancia RMS entre o GOAL e o arco real (unidades de mundo)");
+    for n in [1usize, 2, 3, 4, 6, 8, 12, 16] {
+        let goals = if n > 1 {
+            crate::cluster::cluster_goals(&bent, &rest, rows, cols, 0.0, 1.0, n)
+        } else {
+            shape_goals(&bent, &rest, 0.0, 1.0)
+        };
+        let rms = (goals
+            .iter()
+            .zip(&bent)
+            .map(|(g, b)| (g[0] - b[0]).powi(2) + (g[1] - b[1]).powi(2))
+            .sum::<f32>()
+            / goals.len() as f32)
+            .sqrt();
+        let (nr, nc) = crate::cluster::counts(rows, cols, n);
+        eprint!("  {n}({nr}x{nc}):{rms:.3}");
+    }
+    eprintln!();
 }

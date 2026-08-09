@@ -51,7 +51,7 @@ só o `spring` consome `falloff`. Conferido por grep em `register_couplings`.
 | `motion.verlet_rope` | 6 | pinar índice arbitrário (não só head/tail) | **NÃO** — fence declarada: [doc 34 §7](../34_pin_constraint_e_slit_scan_nota_adr.md) (*"não há como um stream entrar neles"*) | **omissão CONHECIDA** | **P1** | — |
 | `motion.verlet_rope` | 6 | `length`/`gravity`/`iterations` sem `ParamHardMax` (o slider — 40/40/128 — É o teto) | **N/A** | **omissão** — a lei do doc 88 B2 só alcançou `count` e `damping` | **P1** | metadata ⇒ bit-idêntico |
 | `motion.soft_body` | 9 | **`pressure`** (Cavalry Forge Soft Body, **verbatim**: *"stiffness, damping, **pressure**, shape matching, particle radius"*, dump cavalry §Forge; Houdini Vellum *Balloon*) | **NÃO** — é um termo dentro da projeção ao goal | **FEITO no W1** — `pressure`, a defesa do VOLUME | ✅ | `0` = off, byte-idêntico; a lei é o passo *deadbeat* `1 + (1−k)/k·(1−√(A/A₀))` |
-| `motion.soft_body` | 8 | **shape matching por CLUSTERS sobrepostos** (Müller et al., *Meshless Deformations Based on Shape Matching*, SIGGRAPH 2005, **§4.3 — o PRÓPRIO paper que o nó cita**; Cavalry expõe *"shape matching"* como opção, dump cavalry §Forge) | **NÃO.** Compor N `motion.soft_body` dá N corpos INDEPENDENTES — clusters existem justamente porque as regiões **compartilham partículas** e os frames se misturam nas emendas; sem partícula compartilhada não há emenda | **omissão** — hoje um corpo longo tem UM frame rígido global, então uma cobra de 32×4 balança como uma placa | **P0** | `clusters = 1` ⇒ o frame único de hoje |
+| `motion.soft_body` | 10 | **shape matching por CLUSTERS sobrepostos** (Müller et al., *Meshless Deformations Based on Shape Matching*, SIGGRAPH 2005, **§4.3 — o PRÓPRIO paper que o nó cita**; Cavalry expõe *"shape matching"* como opção, dump cavalry §Forge) | **NÃO.** Compor N `motion.soft_body` dá N corpos INDEPENDENTES — clusters existem justamente porque as regiões **compartilham partículas** e os frames se misturam nas emendas; sem partícula compartilhada não há emenda | **FEITO no W1** — regiões sobrepostas, goal = média sobre quem contém a partícula | ✅ | `clusters = 1` ⇒ o frame único de hoje (early-out; a rota agrupada nem é entrada) |
 | `motion.soft_body` | 8 | **particle radius / auto-colisão** (Cavalry Forge Soft Body verbatim) | **A MESMA cadeia do rope** (`soft_body.out --pre--> motion.collide → soft_body.state`) — `motion.collide` é Pure e repassa `sb_vel`/`sim_t`. **Não rodei** | omissão/ergonomia (o teste decide) | **P1**→**P2** | — |
 | `motion.soft_body` | 8 | **gravidade VETOR** | **SIM** — idêntico ao rope (mesma família, mesmo mecanismo), e a medição cobre os DOIS na mesma varredura | **DISSOLVIDO no W1-A** | ~~P0~~ | o mesmo gate |
 | `motion.soft_body` | 8 | forma inicial ≠ retângulo `rows×cols` (Cavalry põe soft body em QUALQUER shape; Vellum em qualquer geo) | **NÃO** — sem porta `in`, o corpo é o `rest_shape(rows, cols, spacing)` | **omissão** | **P1** | `rows×cols` segue o default |
@@ -76,12 +76,29 @@ só o `spring` consome `falloff`. Conferido por grep em `register_couplings`.
 | `motion.pin_constraint` | 3 | `Activation` por-nó (*"padrão de TODO POP"*, dump houdini §B, `popforce.html`) | ⛔ **REFUTADO** — é o **BYPASS (H)** do editor, semântico e no fingerprint do cook (CLAUDE.md §5, record `y`) | natureza | ⛔ | — |
 | `motion.pin_constraint` | 3 | alcançar `boids`/`verlet_rope`/`soft_body` | **NÃO** — fence do [doc 34 §7](../34_pin_constraint_e_slit_scan_nota_adr.md) | **omissão CONHECIDA** (é o SUPERAR §2.1) | **P1** | — |
 
-**Placar (atualizado na execução do W1):** **P0 = 8** → **1 aberto** · **P1 = 17** · **P2 = 6** · **⛔ refutados = 8**.
+**Placar (atualizado na execução do W1):** **P0 = 8** → **ZERO abertos** · **P1 = 17** · **P2 = 6** · **⛔ refutados = 8**.
 
 > **O que o W1 fechou, e como:** o **`bend stiffness`** da corda e o **`pressure`** do soft body (as duas
 > últimas omissões de MODELO da família) · o **teto de `count`** do boids (medido no device: 1.048.576 em 14,283 ms contra os 10,392 ms que a CPU cobra por 2.000) · o **`max_force`** (o segundo clamp de Reynolds) · e ⚠️ **DOIS itens que DISSOLVERAM sem uma linha de feature** — as duas gravidades vetor, cujo mecanismo declarado era exatamente *"o nó não lê `accel`"*, removido pelo W1-A. O raio por-elemento do `motion.collide` virou a **W1-B** (a divergência CPU×GPU que ele escondia está FECHADA; o que falta é o `Max` reduce que o alcance da grade exige, máquina que nenhum kernel do repo tem).
 >
-> **Abertos na família:** os clusters do soft body.
+> **Abertos na família:** nenhum. Os oito P0 fecharam — cinco construídos, dois DISSOLVIDOS
+> por medição e um (o raio por-elemento do `motion.collide`) transferido para a W1-B com a
+> máquina que lhe falta nomeada.
+>
+> ⚠️ **Os CLUSTERS fecharam com o oposto do que a fila supunha:** o item estava marcado
+> *"omissão"* e a medição mostrou que era pior — o desvio da espinha de uma cobra 32×4 em
+> relação à reta é **0,0000** do próprio comprimento, em toda stiffness e com o modo linear
+> no máximo. Um frame só translada, gira e cisalha uniformemente; o corpo **não conseguia
+> dobrar**, e nenhum ajuste alcançava isso. Com regiões sobrepostas o erro contra um arco
+> conhecido cai **1,075 → 0,017** (63×, monotônico, na razão `1/n²` que um ajuste rígido
+> contra um arco tem), e a espinha de uma cobra chicoteada desvia **5,6×** mais.
+>
+> ⚠️ **E o custo interage com o cap de 512 do nó, que foi medido contra UM shape match.**
+> Clusters cobrem a malha ~4 vezes: 512² custa **1,77 ms com um frame e 5,3-5,9 agrupado**
+> (3,4×, ou 275-297% do sub-orçamento). O cap **não** foi baixado quando há clusters — um
+> teto de resolução que se mexesse com outro knob tiraria do artista uma malha que ele já
+> autorou, e o valor certo seria função do vizinho. Os dois números multiplicam, os dois
+> estão no painel, e a medição está escrita no `MAX_SIDE`.
 >
 > ⚠️ **O `pressure` fechou com a medição a decidir a LEI, não só o valor.** O plano dizia
 > *"um termo dentro da projeção ao goal"*, e a primeira pergunta era se havia sequer o que

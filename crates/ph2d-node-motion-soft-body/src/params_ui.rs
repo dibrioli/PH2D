@@ -28,6 +28,19 @@ pub(crate) static PARAM_HARD_MAX: &[ParamHardMax] = &[
         param: "pressure",
         max: 4.0,
     },
+    // The largest count any legal mesh can HONOUR: a cluster needs two particles
+    // on an axis to have a frame fitted to it, so `counts` caps the split at
+    // `side / 2`, and the biggest side this node allows is `MAX_SIDE`. Typing more
+    // than this could never be obeyed by any body, which is the box accepting and
+    // lying (doc 88 B2); typing less than this IS obeyed, by a mesh big enough.
+    //
+    // ⚠️ A given body clamps it further — a 4-row snake honours 2 — and that limit
+    // is VISIBLE rather than silent: the body simply stops changing as the number
+    // goes up.
+    ParamHardMax {
+        param: "clusters",
+        max: 256.0,
+    },
 ];
 
 pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
@@ -96,6 +109,19 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         min: 0.0,
         max: 2.0,
         step: 0.05,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "clusters",
+        label: "Clusters",
+        // The finger's range is the band the measurement found USEFUL. Fitting a
+        // rigid frame to a chord of an arc leaves an error that falls as the
+        // square of the piece, and the arc probe reads it: 1 → 1,075 · 2 → 0,503 ·
+        // 4 → 0,135 · 8 → 0,044 · 16 → 0,017. Past sixteen the curve has been
+        // bought and what is left is the cost.
+        min: 1.0,
+        max: 16.0,
+        step: 1.0,
         widget: ParamWidget::Slider,
     },
     ParamUiHint {

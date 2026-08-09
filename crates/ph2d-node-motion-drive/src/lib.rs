@@ -36,7 +36,7 @@ use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, Param
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
 mod channel;
-use channel::{Combine, drive_channel};
+use channel::{CH_FALLOFF, Combine, drive_channel};
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
 /// The value type — the continuous per-instance scalar field on the `v` column
@@ -250,6 +250,39 @@ const DRIVE_TINT: GpuKernel = GpuKernel {
     applicable: None,
 };
 
+/// **The mask as a target** ([`CH_FALLOFF`]). The scalar template, with ONE difference that
+/// carries the whole decision: every other variant binds `falloff` as a `Read` to blend with,
+/// so this one — whose target IS `falloff` — binds it once as `ReadWrite` and simply has no
+/// common read. The self-mask is not refused by taste; it is **inexpressible** in the binding
+/// list, which is the kind of refusal that survives the next person.
+///
+/// No `dr_f` blend and no clamp, mirroring the CPU arm line for line.
+const DRIVE_FALLOFF: GpuKernel = GpuKernel {
+    wgsl: "\
+        let dr_mode = i32(drive_round(params.mode));\n\
+        let dr_cur = read_in_falloff(i);\n\
+        let dr_v = read_value_v(i) * params.scale;\n\
+        write_falloff(i, drive_combine(dr_cur, dr_v, dr_mode));\n",
+    wgsl_lib: DRIVE_LIB,
+    bindings: &[
+        ColumnBinding {
+            column: "falloff",
+            dim: Dim::Scalar,
+            access: ColumnAccess::ReadWrite,
+            // Absent falloff = 1.0 — every reader's fallback, and the CPU's `base_scalar`
+            // identity. A writer that started from 0 would disagree with the whole library
+            // about what "no mask" means.
+            identity: [1.0, 0.0, 0.0, 0.0],
+            port: 0,
+        },
+        drive_common!()[1],
+    ],
+    params: DRIVE_PARAMS,
+    count_law: None,
+    variant_by_param: None,
+    applicable: None,
+};
+
 /// GPU compute kernel (ADR-0126) — the value domain's WRITE side on the device,
 /// and the node that named [`GpuKernel::variant_by_param`].
 ///
@@ -277,6 +310,7 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         match param("channel").round() as i32 {
             2 => &DRIVE_ROT,
             CH_OPACITY => &DRIVE_TINT,
+            CH_FALLOFF => &DRIVE_FALLOFF,
             0 | 1 => &DRIVE_P,
             _ => &DRIVE_SIZE,
         }
@@ -329,10 +363,10 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         param: "channel",
         label: "Channel",
         min: 0.0,
-        max: 4.0,
+        max: 5.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["X", "Y", "Rotation", "Size", "Opacity"],
+            labels: &["X", "Y", "Rotation", "Size", "Opacity", "Falloff"],
         },
     },
     ParamUiHint {
@@ -526,6 +560,35 @@ mod tests {
         match out[0].as_stream().get("P").unwrap() {
             Column::Vec2(v) => assert_eq!(v, &vec![[0.0, 0.0], [0.0, 0.0]], "no value → no move"),
             _ => panic!("P"),
+        }
+    }
+
+    /// **A CPU e o device escrevem a MESMA coluna, canal por canal.**
+    ///
+    /// O doc do `variant_by_param` diz, com todas as letras, que ele espelha o `channel_column`
+    /// *"including its `_ => size` catch-all"* — ou seja: duas tabelas, uma pergunta. Acrescentar
+    /// um canal a UMA delas não quebra a compilação, não quebra nenhum gate de comportamento, e
+    /// faz a CPU escrever `falloff` enquanto o device escreve `size`.
+    ///
+    /// ⚠️ O modo de falha é mudo por construção: as duas rotas produzem um stream bem-formado,
+    /// de contagem certa, com uma coluna escrita — só que não a mesma. Uma cena que cozinha na
+    /// GPU e outra que cai na CPU desenhariam coisas diferentes, e nenhuma delas erraria.
+    ///
+    /// A varredura passa do intervalo válido de propósito: o catch-all é parte da resposta, e um
+    /// gate que só olhasse os canais nomeados deixaria justamente ele livre para divergir.
+    #[test]
+    fn the_cpu_and_the_device_write_the_same_column_for_every_channel() {
+        let pick = GPU_KERNEL
+            .variant_by_param
+            .expect("o drive escolhe variante por param — se deixou de escolher, este gate mente");
+        for ch in -2..=8 {
+            let cpu = channel::channel_column(ch);
+            let gpu = pick(&|_| ch as f32).bindings[0].column;
+            assert_eq!(
+                cpu, gpu,
+                "canal {ch}: a CPU escreve `{cpu}` e o device escreve `{gpu}` — as duas tabelas \
+                 deixaram de responder a mesma pergunta"
+            );
         }
     }
 

@@ -423,6 +423,30 @@ não a exceção dela.
 | **Cai de graça** | `field.from_value` (a máscara é uma coluna) · `make_point` para `vel` · hue/sat/lightness · o pivô-centroide · `@P.x` na fórmula |
 | **Default que reduz** | os cinco canais atuais, os dois modos atuais — bit a bit |
 
+**Estado: A ✅ · B ✅ (a metade que desbloqueia) · B-genérico ⏳ (wave própria, com o preço medido).**
+
+- **A — o leitor** (`53b54a773`): `value.attribute` lê **pista a pista** (`MODE_COMPONENT_BASE + k`),
+  um degrau para Vec2/Vec3/Vec4 ⇒ o caso da COR cai junto. CPU **e** device, porque o
+  `encode_project` replica a escada e shipar meia levaria à divergência que o T5 catalogou.
+- **B — o escritor, pela porta barata:** a família FIELD nomeou **duas** formas do destravador —
+  *"`field.from_value` **ou o canal `Falloff` no `motion.drive`**"* — e a segunda é **binding
+  ESTÁTICO**, ou seja GPU-nativa pela máquina que já existe. `motion.drive` ganhou o 6º canal:
+  um número computado vira **a máscara que cinco famílias leem**.
+  - ⚠️ **Não auto-mascara, e não foi escolha:** todo outro variante binda `falloff` como `Read`
+    para misturar, então o variante cujo ALVO é `falloff` o binda uma vez como `ReadWrite` e o
+    read comum simplesmente não existe — a auto-máscara é **inexprimível na lista de bindings**,
+    que é o tipo de recusa que sobrevive à próxima pessoa.
+  - ⚠️ **Não clampa em `[0,1]`, de propósito:** um peso NEGATIVO inverte a força que o consome —
+    a capacidade que a família FORCE achou ser nossa e não do C4D/Cavalry (que são `[0,1]` por
+    construção). Clampar aqui a apagaria antes de alguém a usar.
+  - ⚠️ **Identidade `1.0`, não `0.0`:** coluna ausente significa *efeito cheio* para todo leitor
+    da biblioteca, e um escritor que começasse do zero discordaria de todos eles.
+- **B-genérico — o que SOBRA e por que é wave própria:** escrever uma coluna **por NOME** (`vel`,
+  `parent`, `len` — as famílias 13 e 16) precisa do análogo de ESCRITA do `StreamOp::Project`,
+  porque um nome dinâmico não é binding estático. É maquinaria de sequenciador com pipes e
+  paridade próprios, **não um apêndice**. O canal `Falloff` já mata a linha mais cara da tabela
+  da §10.0; as outras três esperam essa wave.
+
 ⚠️ **A metade A vem primeiro e sozinha**, porque é conserto de uma resposta errada: hoje
 `_ => vec![0.0; n]` entrega zeros com cara de dado. Um defeito não espera priorização de produto.
 

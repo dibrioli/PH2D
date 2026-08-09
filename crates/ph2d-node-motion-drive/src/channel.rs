@@ -65,13 +65,32 @@ impl Combine {
 /// The channel index of Opacity — the alpha of the `tint` column.
 pub(crate) const CH_OPACITY: i32 = 4;
 
+/// The channel index of **Falloff** — the MASK itself, and the reason this channel exists.
+///
+/// The `falloff` column is the vocabulary five families share (the `field.*`, the `force.*`, the
+/// deformers, the transforms, the stylistics all READ it), and until now it could only be
+/// DERIVED FROM GEOMETRY: nothing computed could become a mask. That is the wall doc 89 §10.0
+/// measured — a noise field, a per-instance density, force-over-life and luma-as-mask were all
+/// inexpressible for the same one reason.
+///
+/// ⚠️ It does NOT self-mask, and the machinery is what decides that rather than taste: every
+/// other variant binds `falloff` as a READ to blend with, so a variant whose TARGET is `falloff`
+/// binds it once as `ReadWrite` and the common read is simply not there. Masking the writing of
+/// the mask by the mask makes `Set` non-idempotent and means nothing to an artist.
+///
+/// ⚠️ And it is NOT clamped to `[0, 1]`, deliberately: a NEGATIVE weight inverts the force that
+/// consumes it — a capability the conference found we have and C4D/Cavalry do not, because their
+/// falloffs are `[0,1]` by construction. Clamping here would delete it before anyone used it.
+pub(crate) const CH_FALLOFF: i32 = 5;
+
 /// The stream column a channel index writes to: X/Y → `P`, Rotation → `rot`,
 /// Opacity → `tint` (its alpha), Size (or any out-of-range value) → `size`.
-fn channel_column(channel: i32) -> &'static str {
+pub(crate) fn channel_column(channel: i32) -> &'static str {
     match channel {
         0 | 1 => "P",
         2 => "rot",
         CH_OPACITY => "tint",
+        CH_FALLOFF => "falloff",
         _ => "size",
     }
 }
@@ -92,12 +111,16 @@ fn base_vec4(input: &Stream, name: &str, n: usize, identity: [f32; 4]) -> Vec<[f
     v.resize(n, identity);
     v
 }
-fn base_scalar(input: &Stream, name: &str, n: usize) -> Vec<f32> {
+/// A scalar column, materialised at full length from `identity` where it is absent.
+/// ⚠️ The identity is a PARAMETER because it is not always `0`: an absent `falloff` means
+/// `1.0` to every reader in the library (`falloff_at`'s own fallback), and a writer that
+/// started it from `0` would disagree with every consumer about what "no mask" means.
+fn base_scalar(input: &Stream, name: &str, n: usize, identity: f32) -> Vec<f32> {
     let mut v = match input.get(name) {
         Some(Column::Scalar(v)) => v.clone(),
         _ => Vec::new(),
     };
-    v.resize(n, 0.0);
+    v.resize(n, identity);
     v
 }
 
@@ -141,7 +164,7 @@ pub(crate) fn drive_channel(
             out.set("P", Column::Vec2(p));
         }
         2 => {
-            let mut r = base_scalar(input, "rot", n);
+            let mut r = base_scalar(input, "rot", n, 0.0);
             for (i, ri) in r.iter_mut().enumerate() {
                 let driven = mode.apply(*ri, value_at(vals, i) * scale);
                 *ri = blend(*ri, driven, falloff_at(input, i));
@@ -161,6 +184,15 @@ pub(crate) fn drive_channel(
                 ti[3] = blend(ti[3], driven, falloff_at(input, i)).clamp(0.0, 1.0); // CLAMP-OK: alpha
             }
             out.set("tint", Column::Vec4(t));
+        }
+        // **The mask itself** — see [`CH_FALLOFF`]. No blend (nothing sensible masks the
+        // writing of the mask) and no clamp (a negative weight inverts the force downstream).
+        CH_FALLOFF => {
+            let mut f = base_scalar(input, "falloff", n, 1.0);
+            for (i, fi) in f.iter_mut().enumerate() {
+                *fi = mode.apply(*fi, value_at(vals, i) * scale);
+            }
+            out.set("falloff", Column::Scalar(f));
         }
         _ => {
             let mut s = base_vec2(input, "size", n, [1.0, 1.0]);
@@ -242,5 +274,85 @@ mod tests {
             Column::Vec2(v) => v[0][0],
             _ => panic!(),
         }
+    }
+}
+
+#[cfg(test)]
+mod falloff_tests {
+    use super::*;
+
+    /// **A computed number becomes a MASK.** The wall five families hit at once (doc 89 §10.0):
+    /// the `falloff` column is what the `field.*`, the `force.*`, the deformers, the transforms
+    /// and the stylistics all read, and it could only ever be DERIVED FROM GEOMETRY. Nothing
+    /// computed — a noise, a luma, an age — could become one.
+    #[test]
+    fn a_value_field_becomes_the_mask_itself() {
+        let input = Stream::new(3).with("P", Column::Vec2(vec![[0.0, 0.0]; 3]));
+        let out = drive_channel(&input, CH_FALLOFF, &[0.25, 0.5, 1.0], 1.0, Combine::Set);
+        match out
+            .get("falloff")
+            .expect("the mask is now a column anyone can write")
+        {
+            Column::Scalar(v) => assert_eq!(v, &vec![0.25, 0.5, 1.0]),
+            _ => panic!("the mask is a scalar column"),
+        }
+    }
+
+    /// **An absent mask is `1.0`, not `0.0`** — every reader in the library falls back to full
+    /// effect (`falloff_at`), so a writer that started from zero would disagree with all of them
+    /// about what "no mask" means, and `Add` would silently halve the world.
+    #[test]
+    fn an_absent_mask_starts_at_full_effect() {
+        let input = Stream::new(2).with("P", Column::Vec2(vec![[0.0, 0.0]; 2]));
+        let out = drive_channel(&input, CH_FALLOFF, &[0.0], 1.0, Combine::Add);
+        match out.get("falloff").unwrap() {
+            Column::Scalar(v) => assert_eq!(v, &vec![1.0, 1.0], "1.0 + 0.0, not 0.0 + 0.0"),
+            _ => panic!(),
+        }
+    }
+
+    /// **The mask does not mask ITSELF.** Every other channel lerps its result toward the
+    /// original by `falloff`; doing that here would make `Set` non-idempotent and would mean
+    /// nothing to an artist. ⚠️ On the device this is not a choice at all — a variant whose
+    /// target is `falloff` binds it once as `ReadWrite`, so the common read is absent and the
+    /// self-mask is *inexpressible*.
+    #[test]
+    fn the_mask_does_not_mask_itself() {
+        let input = Stream::new(2)
+            .with("P", Column::Vec2(vec![[0.0, 0.0]; 2]))
+            .with("falloff", Column::Scalar(vec![0.0, 0.5]));
+        let out = drive_channel(&input, CH_FALLOFF, &[1.0], 1.0, Combine::Set);
+        match out.get("falloff").unwrap() {
+            // Self-masking would have pinned the first element at 0.0 forever — a mask you
+            // could never turn back on.
+            Column::Scalar(v) => assert_eq!(v, &vec![1.0, 1.0]),
+            _ => panic!(),
+        }
+    }
+
+    /// **A NEGATIVE weight survives** — and it is not an oversight. A negative `falloff` inverts
+    /// the force that consumes it, which the conference found is ours alone (C4D and Cavalry are
+    /// `[0,1]` by construction). Clamping here would delete the capability before anyone used it.
+    #[test]
+    fn a_negative_mask_is_not_clamped_away() {
+        let input = Stream::new(1).with("P", Column::Vec2(vec![[0.0, 0.0]]));
+        let out = drive_channel(&input, CH_FALLOFF, &[-1.0], 1.0, Combine::Set);
+        match out.get("falloff").unwrap() {
+            Column::Scalar(v) => assert_eq!(v, &vec![-1.0]),
+            _ => panic!(),
+        }
+    }
+
+    /// **The five channels that shipped are untouched** — the new one is a sixth index, so
+    /// already-authored art cannot move.
+    #[test]
+    fn the_channels_that_shipped_are_untouched() {
+        let input = Stream::new(1).with("P", Column::Vec2(vec![[3.0, 7.0]]));
+        let out = drive_channel(&input, 0, &[1.0], 1.0, Combine::Add);
+        match out.get("P").unwrap() {
+            Column::Vec2(v) => assert_eq!(v, &vec![[4.0, 7.0]]),
+            _ => panic!(),
+        }
+        assert!(out.get("falloff").is_none(), "driving X invents no mask");
     }
 }

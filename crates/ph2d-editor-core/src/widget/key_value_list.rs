@@ -165,7 +165,18 @@ fn paint_field(
         rect.x + Spacing::Sm.px(),
         rect.y + (rect.h - font) * 0.5,
         font,
-        (rect.w - Spacing::Sm.px() * 2.0).max(0.0),
+        // ⚠️ **`INFINITY`, e a lição é literalmente a do `TextInput`:** *"um campo de texto é uma
+        // LINHA, então ele RECORTA — ele não quebra"*. Um `max_width` finito faz o `paint_text`
+        // QUEBRAR o texto, e o transbordo deixa de ser horizontal (aparado pelo recorte da
+        // célula, no laço) para ser VERTICAL — medido, uma chave de 53 caracteres numa row de 24
+        // px punha glifos de `y = 11` a `y = 55`, três linhas, **sobre as rows seguintes**.
+        //
+        // ⚠️ E a diferença não é só de gosto: o recorte da célula apara o excesso horizontal, mas
+        // **não apara o vertical de forma observável** — a cena CODIFICA os glifos de qualquer
+        // maneira e o recorte só age na rasterização, então uma segunda linha é tinta que nenhum
+        // gate desta camada consegue ver. Com uma linha só, a propriedade *"a chave fica na banda
+        // da row"* passa a ser mensurável.
+        f32::INFINITY,
         resolve(color, theme),
     );
 }
@@ -186,6 +197,24 @@ pub fn paint_key_value_list(
         let key_rect = KeyValueList::key_rect(row, row_h);
         let value_rect = KeyValueList::value_rect(row, row_h);
         let remove_rect = KeyValueList::remove_rect(row, row_h);
+        // ⚠️ **O RECORTE, e a lição é a mesma do `TextInput`:** o `paint_field` passa um
+        // `max_width` ao `paint_text`, e o `paint_text` **QUEBRA** o texto nesse limite em vez de
+        // o cortar. O transbordo aqui não é horizontal — é VERTICAL: medido, uma chave de 53
+        // caracteres numa row de 24 px pinta glifos de `y = 11` a `y = 55`, ou seja três linhas,
+        // **por cima das rows seguintes**. E uma lista de pares chave/valor é precisamente onde o
+        // artista digita nomes que ele inventou.
+        //
+        // O recorte é da CÉLULA e não da row: assim a chave também não invade a coluna do valor
+        // se a régua das colunas mudar. Numa row cujo texto cabe isto é no-op.
+        //
+        // ⚠️ **MEDIDO: removê-lo NÃO derruba gate nenhum, e isso é sobre o ORÁCULO, não sobre o
+        // valor dele.** A cena codifica os glifos independentemente de qualquer recorte — a camada
+        // só age na rasterização —, então nenhum gate desta altura consegue distinguir *aparado*
+        // de *não aparado*. Ele é load-bearing no PRODUTO (uma chave de uma linha mais larga que a
+        // célula pinta por cima da coluna do valor sem ele) e só seria gateável com rasterização,
+        // que esta camada não tem. Quem tem gate aqui é a metade que se vê no encoding: o texto
+        // ser UMA linha.
+        scene.push_clip(&crate::paint::rect_to_vello(key_rect));
         paint_field(
             &entry.key,
             key_rect,
@@ -194,6 +223,8 @@ pub fn paint_key_value_list(
             text_system,
             theme,
         );
+        scene.pop_layer();
+        scene.push_clip(&crate::paint::rect_to_vello(value_rect));
         paint_field(
             &entry.value,
             value_rect,
@@ -202,6 +233,7 @@ pub fn paint_key_value_list(
             text_system,
             theme,
         );
+        scene.pop_layer();
         let remove = Button::new(entry.remove_id, "Remove").kind(ButtonKind::IconOnly {
             icon: IconId::Trash,
         });
@@ -295,6 +327,71 @@ mod tests {
             &mut scene,
             &mut text,
             Theme::Blueprint,
+        );
+    }
+
+    /// **Uma chave comprida fica DENTRO da célula dela** — não desce sobre as rows seguintes.
+    ///
+    /// ⚠️ O `paint_field` passa um `max_width`, e o `paint_text` **quebra** o texto nele em vez de
+    /// o cortar: medido antes do recorte, uma chave de 53 caracteres numa row de 24 px pintava
+    /// glifos de `y = 11` a `y = 55` — três linhas, sobre as duas rows seguintes.
+    ///
+    /// ⚠️ **O oráculo são os GLIFOS que a cena emite**, não o retângulo que o layout devolve: o
+    /// layout sempre esteve certo (a célula tem a altura da row); quem saía era a tinta. E a
+    /// primeira metade é o CONTROLE — sem uma chave que de facto transborde, o gate mede uma
+    /// lista que caberia de qualquer maneira.
+    #[test]
+    fn a_long_key_stays_inside_its_cell() {
+        let mut ts = TextSystem::without_system_fonts();
+        let row_h = 24.0;
+        let host = Rect::new(0.0, 0.0, 300.0, 60.0);
+        let long = "um nome de chave bastante comprido para a coluna dela";
+
+        let glyph_span = |key: &str, ts: &mut TextSystem| {
+            let mut scene = VectorScene::new();
+            let list = KeyValueList::new(
+                NodeId(1),
+                "Custom",
+                vec![KeyValueEntry::new(
+                    NodeId(2),
+                    NodeId(3),
+                    NodeId(4),
+                    key,
+                    "v",
+                )],
+                NodeId(5),
+            );
+            paint_key_value_list(&list, host, row_h, &mut scene, ts, Theme::Forge);
+            let ys: Vec<f32> = scene
+                .inner()
+                .encoding()
+                .resources
+                .glyphs
+                .iter()
+                .map(|g| g.y)
+                .collect();
+            let lo = ys.iter().cloned().fold(f32::INFINITY, f32::min);
+            let hi = ys.iter().cloned().fold(f32::NEG_INFINITY, f32::max);
+            (lo, hi, ys.len())
+        };
+
+        // CONTROLE: a chave escolhida de facto quebra em mais de uma linha sem recorte — senão
+        // este gate mediria uma lista que cabia de qualquer maneira.
+        let short = glyph_span("k", &mut ts);
+        let (lo, hi, n) = glyph_span(long, &mut ts);
+        assert!(
+            n > short.2 + 10,
+            "a fixture nao contem o fenomeno: a chave longa emitiu {n} glifos contra {} da curta",
+            short.2
+        );
+
+        let row = KeyValueList::row_rect(host, row_h, 0);
+        assert!(
+            lo >= row.y - 1e-3 && hi <= row.y + row.h + 1e-3,
+            "os glifos da chave vao de y={lo} a y={hi}, fora da row [{}, {}] — o texto desceu \
+             sobre as rows seguintes",
+            row.y,
+            row.y + row.h
         );
     }
 }

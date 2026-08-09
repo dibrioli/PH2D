@@ -32,6 +32,33 @@
 //! single-tick pulses, but the step is robust to any producer (a sustained
 //! Cavalry-style 0/1 level counts once, not once-per-tick).
 //!
+//! ## The `reset` port — and why it is LEVEL where the count is EDGE
+//!
+//! A monotonic tick with nothing that can zero it is a counter that only ever
+//! climbs: lowering `count_max` just refolds the same tick, and no other node in
+//! the catalogue can write another node's `pre` state. Every mature counter ships
+//! the way back — TD's **Count CHOP** has *Reset* + *Reset Condition* + *Reset
+//! Value*, and the minicavalry `counter`/`stateMachine` both list
+//! `reset(pulse)`. A fourth input takes one: high ⇒ the tick becomes `reset_to`.
+//!
+//! ⚠️ **The count needs the edge and the reset does not, and that asymmetry is
+//! the design:** *the edge matters where the effect ACCUMULATES*. Counting
+//! accumulates, so a held level must count once; resetting is **idempotent**, so
+//! a held level simply holds the counter down — which is exactly TD's `While On`,
+//! while a single-tick pulse is exactly its `Off to On` button. One law gives
+//! both, so there is no *Reset Condition* param to choose between them and no
+//! second edge-memory column to carry.
+//!
+//! ⚠️ **The reset WINS its tick:** a reset arriving alongside a pulse lands on
+//! `reset_to`, not `reset_to + 1` — the order is the meaning of the word.
+//! It does **not** touch `count_prev`: a counting pulse that was already high
+//! stays counted, so no phantom edge is manufactured when the reset lets go.
+//!
+//! **An unwired `reset` is byte-identical** (the port cooks to an empty stream,
+//! the column reads `0.0`, and `reset_to` is never consulted), so the port is
+//! append-only in every sense: the three existing port indices do not move and
+//! every saved graph keeps meaning what it meant.
+//!
 //! Positional per-instance (v1), matching the family: `in`/`pulse`/`state` pair
 //! by row order. Under a uniform clock every row shares one count (a global beat);
 //! per-instance generalises to per-dot pulses for free. **Known limitation
@@ -86,6 +113,13 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "state",
             ty: INST_VEC2,
         },
+        // APPENDED (see the header): high ⇒ the tick becomes `reset_to`. Last, so
+        // the three indices a saved graph already stores keep pointing where they
+        // pointed; unwired it cooks to an empty stream and changes nothing.
+        PortSpec {
+            name: "reset",
+            ty: PULSE,
+        },
     ],
     outputs: &[PortSpec {
         name: "out",
@@ -113,6 +147,12 @@ pub const MANIFEST: NodeManifest = NodeManifest {
         // 0 Wrap · 1 Clamp · 2 Zigzag — the TD Count CHOP limit-mode vocabulary.
         ParamSpec {
             name: "mode",
+            default: 0.0,
+        },
+        // TD's *Reset Value*: where the staircase restarts. **0 is the neutral**
+        // point — with the port unwired it is never read at all.
+        ParamSpec {
+            name: "reset_to",
             default: 0.0,
         },
     ],
@@ -145,10 +185,20 @@ struct Params {
     step: f32,
     count_max: i64,
     mode: LimitMode,
+    reset_to: f32,
 }
 
-/// The monotonic tick after this frame: +1 only on the pulse's rising edge.
-fn advance_tick(pulse: f32, prev_pulse: f32, prev_tick: f32) -> f32 {
+/// The monotonic tick after this frame: +1 only on the pulse's rising edge, and
+/// `reset_to` whenever the reset is HIGH.
+///
+/// The reset is read as a **level** while the count reads an **edge** — see the
+/// header: counting accumulates (so a held pulse must count once) and resetting
+/// is idempotent (so a held reset simply holds). It is applied **last**, so a
+/// reset arriving with a pulse lands on `reset_to` rather than one past it.
+fn advance_tick(pulse: f32, prev_pulse: f32, prev_tick: f32, reset: f32, reset_to: f32) -> f32 {
+    if reset > 0.5 {
+        return reset_to;
+    }
     let rising = pulse > 0.5 && prev_pulse <= 0.5;
     if rising { prev_tick + 1.0 } else { prev_tick }
 }
@@ -180,17 +230,26 @@ fn scalar_col(s: &Stream, name: &str, n: usize, id: f32) -> Vec<f32> {
     v
 }
 
-fn step(input: &Stream, pulse: &Stream, state: &Stream, p: &Params) -> Stream {
+fn step(input: &Stream, pulse: &Stream, state: &Stream, reset: &Stream, p: &Params) -> Stream {
     let n = input.count();
     let pulses = scalar_col(pulse, PULSE_COL, n, 0.0);
     let prev_tick = scalar_col(state, TICK_COL, n, 0.0);
     let prev_pulse = scalar_col(state, PREV_COL, n, 0.0);
+    // An unwired `reset` cooks to an empty stream, so this reads all-zero and the
+    // node is byte-identical to the one that had no fourth port.
+    let resets = scalar_col(reset, PULSE_COL, n, 0.0);
 
     let mut tick = Vec::with_capacity(n);
     let mut count = Vec::with_capacity(n);
     let mut deltas = Vec::with_capacity(n);
     for i in 0..n {
-        let t = advance_tick(pulses[i], prev_pulse[i], prev_tick[i]);
+        let t = advance_tick(
+            pulses[i],
+            prev_pulse[i],
+            prev_tick[i],
+            resets[i],
+            p.reset_to,
+        );
         let disp = displayed(t as i64, p.count_max, p.mode) as f32;
         tick.push(t);
         count.push(disp);
@@ -220,8 +279,10 @@ impl NodeOp for MotionStep {
             step: ctx.param("step"),
             count_max: (ctx.param("count_max").round() as i64).max(1),
             mode: LimitMode::from_param(ctx.param("mode")),
+            // A count is a whole number of steps; the tick it seeds is an integer.
+            reset_to: ctx.param("reset_to").round(),
         };
-        let out = step(ctx.input(0), ctx.input(1), ctx.input(2), &p);
+        let out = step(ctx.input(0), ctx.input(1), ctx.input(2), ctx.input(3), &p);
         ctx.emit(out);
     }
 }
@@ -241,6 +302,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     // CPU-only: this node reads `falloff` only at eval runtime (no GPU kernel), so the
     // diagnoser cannot derive the role from a `ColumnBinding` — declare it (ADR-0155).
     reg.register_couplings(
@@ -250,7 +312,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     Ok(())
 }
 
-use ph2d_node_registry::{ParamUiHint, ParamWidget};
+use ph2d_node_registry::{ParamUiHint, ParamUnit, ParamUnitDecl, ParamWidget};
 
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
@@ -289,167 +351,38 @@ static PARAM_HINTS: &[ParamUiHint] = &[
             labels: &["Wrap", "Clamp", "Zigzag"],
         },
     },
+    ParamUiHint {
+        param: "reset_to",
+        label: "Reset To",
+        // The slider stops at 0 because a staircase restarting BELOW its own
+        // floor is a fourth limit-mode nobody asked for; the modes above describe
+        // the range `0..count_max` and nothing else.
+        min: 0.0,
+        max: 32.0,
+        step: 1.0,
+        widget: ParamWidget::Slider,
+    },
+];
+
+/// Both numbers are whole counts of steps — the unit the row shows is what the
+/// number IS (doc 88). `channel` and `mode` are enums and `step` is a
+/// displacement whose unit is the CHANNEL's, which is what
+/// [`ParamUnit::FromChannel`] exists to say.
+static PARAM_UNITS: &[ParamUnitDecl] = &[
+    ParamUnitDecl {
+        param: "count_max",
+        unit: ParamUnit::Count,
+    },
+    ParamUnitDecl {
+        param: "reset_to",
+        unit: ParamUnit::Count,
+    },
+    ParamUnitDecl {
+        param: "step",
+        unit: ParamUnit::FromChannel,
+    },
 ];
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn dot(x: f32) -> Stream {
-        Stream::new(1).with("P", Column::Vec2(vec![[x, 0.0]]))
-    }
-    fn fire(v: f32) -> Stream {
-        Stream::new(1).with(PULSE_COL, Column::Scalar(vec![v]))
-    }
-    fn params(count_max: i64, mode: LimitMode) -> Params {
-        Params {
-            channel: 0, // X
-            step: 1.0,
-            count_max,
-            mode,
-        }
-    }
-    fn count(s: &Stream) -> f32 {
-        match s.get(COUNT_COL).unwrap() {
-            Column::Scalar(v) => v[0],
-            _ => panic!(),
-        }
-    }
-    fn x(s: &Stream) -> f32 {
-        match s.get("P").unwrap() {
-            Column::Vec2(v) => v[0][0],
-            _ => panic!(),
-        }
-    }
-
-    /// FALSIFICATION of edge-safety: a pulse HELD high for several ticks advances
-    /// the count exactly ONCE (on the rising edge), not once per tick. Counting
-    /// `pulse > 0.5` every tick — the bug — would reach 5 after a 5-tick hold.
-    #[test]
-    fn a_held_pulse_counts_once_not_once_per_tick() {
-        let p = params(16, LimitMode::Wrap);
-        let mut state = Stream::new(1);
-        // The pulse rises at tick 0 and STAYS high for five ticks.
-        for _ in 0..5 {
-            state = step(&dot(0.0), &fire(1.0), &state, &p);
-        }
-        assert_eq!(count(&state), 1.0, "one rising edge = one count, not five");
-        // It drops, then rises again → the second edge counts.
-        state = step(&dot(0.0), &fire(0.0), &state, &p);
-        state = step(&dot(0.0), &fire(1.0), &state, &p);
-        assert_eq!(count(&state), 2.0, "the next rising edge counts once more");
-    }
-
-    /// Wrap mode: the count climbs 0..N-1 and returns HOME (0) on the Nth pulse —
-    /// the displacement is `count · step`, so the grid slides out and snaps back.
-    #[test]
-    fn wrap_mode_returns_home_after_count_max() {
-        let p = params(4, LimitMode::Wrap); // counts 0,1,2,3 then wraps
-        let mut state = Stream::new(1);
-        let mut seq = Vec::new();
-        // Ten single-tick pulses (a 0 between each so every 1.0 is a fresh edge).
-        for _ in 0..10 {
-            state = step(&dot(0.0), &fire(1.0), &state, &p);
-            seq.push(count(&state));
-            state = step(&dot(0.0), &fire(0.0), &state, &p);
-        }
-        // 1,2,3,0,1,2,3,0,1,2 — home at every 4th pulse.
-        assert_eq!(seq, vec![1.0, 2.0, 3.0, 0.0, 1.0, 2.0, 3.0, 0.0, 1.0, 2.0]);
-    }
-
-    /// Clamp mode: the count plateaus at N-1 and never wraps — the staircase holds
-    /// at the top instead of returning home.
-    #[test]
-    fn clamp_mode_plateaus_at_the_top() {
-        let p = params(3, LimitMode::Clamp); // 0,1,2 then holds at 2
-        let mut state = Stream::new(1);
-        let mut seq = Vec::new();
-        for _ in 0..6 {
-            state = step(&dot(0.0), &fire(1.0), &state, &p);
-            seq.push(count(&state));
-            state = step(&dot(0.0), &fire(0.0), &state, &p);
-        }
-        assert_eq!(seq, vec![1.0, 2.0, 2.0, 2.0, 2.0, 2.0], "holds at N-1");
-    }
-
-    /// Zigzag mode: a triangle — up to N-1 then back down to 0 and up again
-    /// (period `2(N-1)`). This is the smooth ping-pong sweep the demo uses.
-    #[test]
-    fn zigzag_mode_pingpongs_up_then_down() {
-        let p = params(4, LimitMode::Zigzag); // triangle 0..3..0, period 6
-        let mut state = Stream::new(1);
-        let mut seq = Vec::new();
-        for _ in 0..8 {
-            state = step(&dot(0.0), &fire(1.0), &state, &p);
-            seq.push(count(&state));
-            state = step(&dot(0.0), &fire(0.0), &state, &p);
-        }
-        // 1,2,3,2,1,0,1,2 — climbs to 3, folds back to 0, climbs again.
-        assert_eq!(seq, vec![1.0, 2.0, 3.0, 2.0, 1.0, 0.0, 1.0, 2.0]);
-    }
-
-    /// FALSIFICATION of "apply to fresh input, never compound": after three
-    /// counts the X displacement is `count · step` off the FRESH base (3·1 = 3),
-    /// NOT the sum of every step applied to an ever-growing state (1+2+3 = 6).
-    #[test]
-    fn the_displacement_never_compounds_across_ticks() {
-        let p = params(16, LimitMode::Wrap);
-        let mut state = Stream::new(1);
-        for _ in 0..3 {
-            // Every tick feeds the SAME fresh base X = 10.0.
-            state = step(&dot(10.0), &fire(1.0), &state, &p);
-            state = step(&dot(10.0), &fire(0.0), &state, &p);
-        }
-        // count 3, step 1 → X = 10 + 3 = 13, not 10 + (1+2+3) = 16.
-        assert_eq!(count(&state), 3.0);
-        assert_eq!(
-            x(&state),
-            13.0,
-            "displacement is count·step off the fresh base"
-        );
-    }
-
-    /// A degenerate `count_max = 1` never divides by zero and stays home (count 0,
-    /// zero displacement) no matter how many pulses arrive.
-    #[test]
-    fn count_max_one_stays_home_without_dividing_by_zero() {
-        let p = params(1, LimitMode::Zigzag); // period 2(N-1) would be 0 — guarded
-        let mut state = Stream::new(1);
-        for _ in 0..5 {
-            state = step(&dot(0.0), &fire(1.0), &state, &p);
-            state = step(&dot(0.0), &fire(0.0), &state, &p);
-        }
-        assert_eq!(count(&state), 0.0);
-        assert_eq!(x(&state), 0.0, "no displacement, no panic");
-    }
-
-    /// A STABLE multi-instance stream steps in lockstep under a global beat
-    /// (audit 2026-07-10: every test above uses n = 1, so the positional
-    /// pairing across rows was untested). Three dots, two beats: every row
-    /// carries the same count and the same displacement off its own base.
-    #[test]
-    fn a_stable_multi_instance_stream_steps_in_lockstep() {
-        let p = params(16, LimitMode::Wrap);
-        let three = || {
-            Stream::new(3).with(
-                "P",
-                Column::Vec2(vec![[0.0, 0.0], [10.0, 0.0], [20.0, 0.0]]),
-            )
-        };
-        let fire3 = |v: f32| Stream::new(3).with(PULSE_COL, Column::Scalar(vec![v; 3]));
-        let mut state = Stream::new(3);
-        for _ in 0..2 {
-            state = step(&three(), &fire3(1.0), &state, &p);
-            state = step(&three(), &fire3(0.0), &state, &p);
-        }
-        match state.get(COUNT_COL).unwrap() {
-            Column::Scalar(v) => assert_eq!(v, &vec![2.0; 3], "one count, all rows"),
-            _ => panic!(),
-        }
-        match state.get("P").unwrap() {
-            // count 2 · step 1 off each row's OWN fresh base.
-            Column::Vec2(v) => assert_eq!(v, &vec![[2.0, 0.0], [12.0, 0.0], [22.0, 0.0]]),
-            _ => panic!(),
-        }
-    }
-}
+#[path = "tests.rs"]
+mod tests;

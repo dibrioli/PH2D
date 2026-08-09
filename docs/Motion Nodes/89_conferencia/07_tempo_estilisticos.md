@@ -64,11 +64,11 @@ Um segundo fato transversal: **os cinco nós são `LoweringKind::Cpu`**. Nenhum 
 | `motion.strobe` | idem | **Strobe Operator / Blend With Original** (AE) | **NÃO** — mesma causa do Echo Operator do trail (o blend é do renderer). **Um conserto serve os dois nós** | omissão | **P2** | operador `Mix` ⇒ o lerp de hoje |
 | `motion.strobe` | idem | **Strobe Period / Strobe Duration** (AE) | ⛔ **REFUTADO** — `pulse.beat(period, offset)` dá o período e `Flash Length` a duração; e o nosso é **melhor** por ser dirigido por PULSO (o mesmo strobe aceita `pulse.threshold`, `pulse.compare` ou uma colisão do `sim.collide`) | — | ⛔ | — |
 | `motion.strobe` | idem | ⚠️ **defeito de side-metadata, não de param:** o nó **lê `falloff`** (`step`, linha 159) e **não** chama `register_couplings(Consumes("falloff"))`, enquanto `delay` e `step` chamam — com o comentário ADR-0155 idêntico (*"CPU-only … o diagnoser não consegue derivar o papel de um `ColumnBinding` — declare"*) | n/a | **omissão** (achado da conferência; ~4 linhas) | **P1** | declarar não muda nenhum pixel |
-| `motion.step` | **4** (`channel` Enum[X/Y/Rot/Size]·`step .5`·`count_max 6`·`mode` Enum[Wrap/Clamp/Zigzag]) · lê `falloff` + declara `Coupling` · sem unidades | **RESET** — TD **Count CHOP** (a referência nomeada no próprio header): entrada de *Reset* + *Reset Condition* + *Reset Value*; [minicavalry §counter](../referencia_catalogo_nodes_minicavalry.md) e §stateMachine: *"Inputs: trigger(pulse); **reset(pulse)**"* — **os dois têm** | **NÃO** — o `count_tick` monotônico vive no `pre` self-loop e **nada mais escreve nele**; baixar `count_max` só re-dobra o mesmo tick. Não há nó que zere o estado de outro | **omissão** | **P0** | 4ª porta `reset: PULSE` vazia ⇒ byte-idêntico |
+| `motion.step` | **4** (`channel` Enum[X/Y/Rot/Size]·`step .5`·`count_max 6`·`mode` Enum[Wrap/Clamp/Zigzag]) · lê `falloff` + declara `Coupling` · sem unidades | **RESET** — TD **Count CHOP** (a referência nomeada no próprio header): entrada de *Reset* + *Reset Condition* + *Reset Value*; [minicavalry §counter](../referencia_catalogo_nodes_minicavalry.md) e §stateMachine: *"Inputs: trigger(pulse); **reset(pulse)**"* — **os dois têm** | **NÃO** — o `count_tick` monotônico vive no `pre` self-loop e **nada mais escreve nele**; baixar `count_max` só re-dobra o mesmo tick. Não há nó que zere o estado de outro | **omissão** | ✅ **FEITO** (era P0) | 4ª porta `reset: PULSE` vazia ⇒ byte-idêntico — e o *Reset Value* veio junto (`reset_to = 0`); a *Reset Condition* **não existe**, porque a lei nível-vs-borda entrega as duas (§6) |
 | `motion.step` | idem | **Increment ≠ 1** e **Limit Min ≠ 0** (TD Count CHOP) | Increment: **PARCIAL** — `step` escala o DESLOCAMENTO, mas a coluna `count` publicada (que `value.attribute("count")` lê) anda de 1 em 1; escalá-la custa `value.attribute → value.gain`. Limit Min: **NÃO** | omissão | **P2** | `increment = 1`, `min = 0` |
 | `motion.step` | idem | **contar para BAIXO** (TD tem uma 2ª entrada de count-down) | **PARCIAL** — `step` negativo desce o DESLOCAMENTO, mas o `count` publicado continua subindo ⇒ quem consome o índice (`value.attribute("count") → value.switch`) não desce | omissão | **P2** | direção `Up` |
 | `motion.step` | idem | ⚠️ **limitação estrutural AUTO-DECLARADA** (header, linhas 38-41): pareamento **POSICIONAL** — *"uma mudança de CONTAGEM desalinha as linhas … uma stream que roda (o emitter) dessincroniza um beat 'global'. Id-keyed pairing … é o follow-up v2"* | **NÃO** contornável no grafo | omissão — e a cura já existe no repo (`motion.integrate`/`motion.spring` pareiam por id) | **P1** | pareamento por id é byte-idêntico onde a contagem é estável |
-| `motion.step` | idem | `count_max` **sem `ParamUnit::Count`** (doc 88) | n/a | omissão (higiene) | **P2** | — |
+| `motion.step` | idem | `count_max` **sem `ParamUnit::Count`** (doc 88) | n/a | omissão (higiene) | ✅ **FEITO** (era P2, fechou junto do reset) | `count_max`/`reset_to` = `Count`, `step` = `FromChannel` |
 | `motion.morph` | **0** — o `blend` é PORTA de valor (animável) | ⚠️ **o nó emite APENAS `P`**: `ctx.emit(Stream::new(n).with("P", …))` descarta `size`·`tint`·`rot`·`id`·`uv_rect`·**`texture_id`**·**`geometry_id`**. Referência: [Cavalry Blend Shape/Morph §56](../referencia_pesquisa_cavalry.md) e [Houdini Blend Shapes §66](../referencia_pesquisa_houdini_mops.md) interpolam a GEOMETRIA inteira; o irmão `motion.mixer` do nosso repo **"reduz toda coluna presente em todas as entradas"** | **NÃO** — o descarte é do nó; a jusante dá para RE-pintar, nunca para recuperar identidade. ⚠️ Consequência medível: morfar dois `source.object`/`source.shape` **perde a aparência** (as convenções `texture_id`/`geometry_id` do doc 86 / ADR-0154 somem, e o fallback é a tile 0) | **omissão** — não é param, é contrato de stream | ✅ **FEITO** (era P0 DEFEITO) | interpolar/propagar as colunas **é** o que a ausência delas significava (o `min` de comprimento não muda) |
 | `motion.morph` | idem | **N formas com PESO** ([Houdini Blend Shapes §66](../referencia_pesquisa_houdini_mops.md): *"interpola N formas com pesos"*) | **PARCIAL** — `motion.mixer` tem 4 entradas, mas `Blend` dele é lerp de DUAS e `Avg` é média SEM pesos; `morph(morph(a,b,t1),c,t2)` funciona geometricamente mas os `t` **compõem** (não são pesos independentes). ⚠️ **A casa é o `motion.mixer`**, e o doc 63 §3.2 linha 205 já pede "peso POR entrada" lá — **não duplicar no morph** | omissão (de outro nó) | **P2** | peso ausente ⇒ média, a de hoje |
 | `motion.morph` | idem | **morph guiado por CAMPO** ([c4d_fields §130, Inheritance](../referencia_pesquisa_c4d_fields.md): *"Morph entre dois arranjos MoGraph (origem→destino guiado pelo campo)"*) | ⛔ **REFUTADO** — `field.box → value.attribute("falloff") → morph.blend` fecha: o `value.attribute` lê qualquer coluna nomeada (doc 50) e emite VALUE, que é o tipo da porta `blend`, e o `blend` já é **por elemento** | — | ⛔ | — |
@@ -278,7 +278,46 @@ one-pole são a mesma aritmética por componente; é por isso que a Position fic
 **4 gates, 4 mutações, 4 sangram** — e ⚠️ **cada uma sangra um gate DIFERENTE**, que é o
 que mostra que os quatro medem coisas distintas em vez de se sobreporem.
 
-**Segue P0 nesta família:** o **reset** do `motion.step`.
+### O quarto P0 — **o `motion.step` não tinha volta**
+
+Um tique monotônico sem nada que o zere é um contador que **só sobe**: baixar o `count_max`
+só re-dobra o mesmo tique, e nenhum nó do catálogo escreve o estado `pre` de outro. Toda
+referência madura traz a volta — o **Count CHOP** do TD tem *Reset* + *Reset Condition* +
+*Reset Value*, e o `counter`/`stateMachine` do minicavalry listam `reset(pulse)`. Uma
+**quarta porta** (`reset: PULSE`) a traz: alto ⇒ o tique vira `reset_to`.
+
+⚠️ **A porta é APENDADA, e é isso que a torna barata:** um grafo salvo guarda a aresta como
+`(nó, ÍNDICE de porta)`, então pôr o `reset` por último deixa `in`/`pulse`/`state` exatamente
+onde estavam. Não-ligada ela cozinha para um **stream vazio** (`CookValue::Empty`), a coluna
+lê `0.0` e o `reset_to` nunca é consultado ⇒ **byte-idêntica**. E a prova disso não é uma
+afirmação: os **nove gates que já existiam passam sem uma edição**, roteados por um helper que
+é a porta do produto com a porta vazia — a configuração exata do nó que ninguém ligou.
+
+⚠️ **A CONTAGEM precisa da borda e o RESET não, e a assimetria é o desenho inteiro:** *a borda
+importa onde o efeito ACUMULA*. Contar acumula, então um nível segurado tem de contar **uma
+vez** (a razão de existir do nó, que o header dele já declarava); resetar é **idempotente**,
+então um nível segurado simplesmente **segura o contador embaixo** — que é literalmente o
+`While On` do TD, enquanto um pulso de um tique é o botão `Off to On` dele. **Uma lei entrega
+as duas**, e é por isso que não há param *Reset Condition* para escolher entre elas nem uma
+segunda coluna de memória de borda para carregar.
+
+⚠️ **O reset GANHA o tique que divide com um pulso** (`reset_to`, nunca um a mais — a ordem é
+o significado da palavra) e **não toca o `count_prev`**: um pulso que já estava alto continua
+contado, então soltar o reset não fabrica uma borda fantasma.
+
+Mais o *Reset Value* da referência (`reset_to`, default **0** = o neutro) e — de carona, pela
+mesma linha da tabela — as **unidades** que faltavam: `count_max` e `reset_to` são `Count`, e
+o `step` é `FromChannel`, que é exatamente o que aquela variante existe para dizer (a
+magnitude vale metros em Position, graus em Rotation e um fator em Size).
+
+**5 gates, 5 mutações, 5 sangram.** ⚠️ **E a quinta achou um defeito na minha FIXTURE antes
+de eu achar nela:** ler o reset como BORDA deixa cada pulso empurrar a contagem para 1
+enquanto o reset é segurado, e ela só parece em casa **no tique em que o pulso cai** — a minha
+asserção de fim-de-laço media precisamente o instante em que o defeito é invisível, e a
+mutação passava. O gate passou a afirmar a contagem em **TODO tique do hold**, que é o que a
+frase *"um reset segurado segura o contador embaixo"* de fato diz.
+
+**A família 7 FECHOU** — os quatro P0 caíram.
 
 ---
 

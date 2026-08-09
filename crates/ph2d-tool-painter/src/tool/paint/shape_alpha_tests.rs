@@ -102,7 +102,7 @@ fn the_switch_is_offered_only_when_the_other_law_exists() {
     assert!(t.brush_shape_has_alpha_choice());
 }
 
-/// **O RELEVO sobrevive à troca** — ele é um GANHO sobre a silhueta, e as duas leis o carregam.
+/// **O RELEVO sobrevive à troca da silhueta** — e o CANAL por onde ele chega é o que este gate fixa.
 ///
 /// ⚠️ **O controle varia o GANHO e nada mais**, e as duas primeiras versões deste gate erraram nisso.
 /// A primeira pedia que a silhueta VARIASSE — e a luminância de um desenho varia sozinha (é a cor da
@@ -113,28 +113,64 @@ fn the_switch_is_offered_only_when_the_other_law_exists() {
 /// O que segura o documento fixo é o `impasto_show` — ele é EXIBIÇÃO (`impasto_visible` é quem o lê),
 /// não muda um byte do canvas, e é exatamente o interruptor de que o ganho depende.
 ///
-/// **Mutação que tem de sangrar:** `rebuild_masks` deixar de multiplicar pelo ganho.
+/// ⚠️ **A PREMISSA deste gate mudou no MESMO dia, e a mudança é o report seguinte do Enio:** o ganho
+/// do relevo era multiplicado na MÁSCARA, e ele voltou com a foto do carimbo furado (*"aparece um
+/// alpha, o branco no lugar da sombra"*). Hoje o ganho pertence à COR, e o que este gate afirma é a
+/// lei nova, que é mais afiada do que a antiga porque distingue as duas leis de silhueta:
+///
+/// - por **TOM**, a silhueta continua sentindo o relevo — ela É a cor, e tinta esculpida tem sombra;
+/// - por **ALPHA**, ela deixa de o sentir, porque o alpha é AUTORADO e uma sombra não é um recorte;
+/// - a **COR** sente nas duas, que é por onde o relevo de fato chega ao carimbo.
+///
+/// **Mutações que têm de sangrar:** `rebuild_derived` deixar de aplicar o ganho na cor (a 1ª e a 3ª
+/// metades morrem); voltar a aplicá-lo na máscara (a 2ª morre).
 #[test]
-fn the_relief_survives_the_switch() {
-    let silhouette = |show_relief: bool, alpha_law: bool| -> Vec<u8> {
+fn the_relief_reaches_the_tone_and_the_colour_but_never_the_authored_alpha() {
+    let capture = |show_relief: bool, alpha_law: bool| -> (Vec<u8>, Vec<u8>) {
         let mut t = super::use_as_relief_tests::ridge_for_alpha_gate();
         t.paint.impasto_show = show_relief;
         t.capture_layers_as_brush_shape();
         if t.brush_shape_alpha_from_image() != alpha_law {
             t.toggle_brush_shape_alpha_from_image();
         }
-        t.brush_shape_image().expect("silhueta").0.to_vec()
+        let sil = t.brush_shape_image().expect("silhueta").0.to_vec();
+        let rgb = t
+            .paint
+            .shape_layers
+            .rgb_image(0)
+            .expect("cor da camada")
+            .rgb
+            .to_vec();
+        (sil, rgb)
     };
-    for (law, name) in [(true, "alpha"), (false, "luminância")] {
-        let lit = silhouette(true, law);
-        let unlit = silhouette(false, law);
-        let differing = lit.iter().zip(unlit.iter()).filter(|(a, b)| a != b).count();
-        assert!(
-            differing > 100,
-            "a lei {name} perdeu o relevo: só {differing} texels diferem da MESMA captura com a luz \
-             desligada — o ganho tem de valer para as DUAS"
-        );
-    }
+    let differing = |a: &[u8], b: &[u8]| a.iter().zip(b.iter()).filter(|(x, y)| x != y).count();
+
+    // Por TOM: a silhueta É a cor, então o relevo continua valendo.
+    let (tone_lit, _) = capture(true, false);
+    let (tone_unlit, _) = capture(false, false);
+    assert!(
+        differing(&tone_lit, &tone_unlit) > 100,
+        "a lei do TOM perdeu o relevo: so {} texels diferem da MESMA captura com a luz desligada",
+        differing(&tone_lit, &tone_unlit)
+    );
+
+    // Por ALPHA: ela NÃO sente — e é isto que impede o carimbo furado da foto.
+    let (alpha_lit, colour_lit) = capture(true, true);
+    let (alpha_unlit, colour_unlit) = capture(false, true);
+    assert_eq!(
+        differing(&alpha_lit, &alpha_unlit),
+        0,
+        "o alpha AUTORADO mudou com a luz do relevo — a sombra virou transparencia, que e \
+         exatamente o defeito reportado"
+    );
+
+    // E a COR sente nas DUAS leis: é por ela que o relevo chega ao pincel.
+    assert!(
+        differing(&colour_lit, &colour_unlit) > 100,
+        "a cor capturada nao sentiu o relevo ({} texels) — ele nao chegou ao carimbo por canal \
+         nenhum",
+        differing(&colour_lit, &colour_unlit)
+    );
 }
 
 /// **A escolha do artista sobrevive a uma re-captura da MESMA fonte**, como as cores por camada — o

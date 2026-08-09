@@ -103,6 +103,23 @@ fn spread(a: &[u8], b: &[u8]) -> (usize, i32) {
     (diff, worst)
 }
 
+/// A COR que o slot Shape capturou, com o relevo LIGADO ou DESLIGADO — o par que isola o ganho.
+///
+/// ⚠️ O interruptor é o `impasto_show`, e a escolha é load-bearing: ele é EXIBIÇÃO (quem o lê é o
+/// `impasto_visible`) e não move um byte do canvas, então a única coisa que difere entre as duas
+/// capturas é o ganho. Comparar contra um gesto construído SEM impasto compararia o canvas.
+fn captured_colour(show_relief: bool) -> Vec<u8> {
+    let mut t = ridge(255, true, [0.1, 0.2, 0.3]);
+    t.paint.impasto_show = show_relief;
+    t.capture_layers_as_brush_shape();
+    t.paint
+        .shape_layers
+        .rgb_image(0)
+        .expect("a captura guarda a cor da camada")
+        .rgb
+        .to_vec()
+}
+
 fn silhouette(t: &mut PainterTool) -> Vec<u8> {
     t.capture_layers_as_brush_shape();
     t.brush_shape_image()
@@ -152,36 +169,67 @@ fn a_document_without_relief_is_untouched_to_the_byte() {
     );
 }
 
-/// **O relevo CHEGA à silhueta do pincel** — o report, medido no lugar onde ele foi feito.
+/// **O relevo CHEGA ao pincel pela COR** — o report de 2026-08-09 (*"Use as Brush Shape não
+/// transfere para o brush os relevos criados por Impasto"*), medido depois de a 2ª rodada do MESMO
+/// dia dizer onde ele NÃO pode chegar.
 ///
-/// A fixture é o papel OPACO de propósito: é o caso do sprite importado, onde a cobertura vale 255
-/// em todo texel e a silhueta capturada era um quadrado sem feição nenhuma (medido antes:
-/// `255..255`, um carimbo quadrado). Se o relevo não entra, não há nada aqui que o artista possa
-/// usar como ponta de pincel.
+/// ⚠️ **A 1ª versão levava o relevo à SILHUETA, e o Enio devolveu a foto:** a sombra de um relevo é
+/// ganho `< 1`, então na cobertura ela vira transparência e a tela aparece através dela — um
+/// documento opaco carimbava FURADO exatamente onde ele esculpiu (*"aparece um alpha, o branco no
+/// lugar da sombra"*). O relevo SOMBREIA a tinta; ele não a perfura.
 ///
-/// **Mutação que deve sangrar:** remover a multiplicação pelo ganho no `reflatten_shape_image`.
+/// As duas metades, e nenhuma sozinha basta: a cor capturada tem de VARIAR com o relevo (senão ele
+/// não chegou a lugar nenhum) **e** a silhueta por alpha tem de ficar CHEIA (senão ele chegou pelo
+/// canal errado, que é o defeito reportado).
+///
+/// **Mutação que deve sangrar:** aplicar o ganho na máscara em vez de na cor.
 #[test]
-fn the_relief_reaches_the_brush_silhouette() {
-    let sil = silhouette(&mut ridge(255, true, [0.1, 0.2, 0.3]));
-    let (min, max) = sil
+fn the_relief_reaches_the_brushs_colour_and_never_its_coverage() {
+    // ⚠️ **O controle varia o GANHO e nada mais** — `impasto_show` é EXIBIÇÃO e não move um byte do
+    // canvas. Pedir só que a cor VARIE seria verde por vácuo: a cor de um desenho varia sozinha (é a
+    // tinta sobre o papel), e a mutação que tira o ganho da cor passaria. Foi o que ela fez.
+    let differing = captured_colour(true)
         .iter()
-        .fold((255u8, 0u8), |(a, b), &v| (a.min(v), b.max(v)));
+        .zip(captured_colour(false).iter())
+        .filter(|(a, b)| a != b)
+        .count();
     assert!(
-        max - min > 32,
-        "a silhueta capturada e chata ({min}..{max}) — o relevo esculpido nao alcancou o pincel, e \
-         um documento opaco vira um carimbo QUADRADO"
+        differing > 100,
+        "so {differing} texels da cor capturada diferem da MESMA captura com a luz do relevo \
+         desligada — o relevo esculpido nao alcancou o pincel"
     );
-    // E o CONTROLE ao lado: o mesmo gesto sem impasto continua sendo o quadrado, que é o que uma
-    // cobertura opaca honestamente é. Sem esta metade o gate passaria por qualquer silhueta variada.
-    let flat = silhouette(&mut ridge(255, false, [0.1, 0.2, 0.3]));
-    let (fmin, fmax) = flat
+    // A outra metade: a silhueta por ALPHA de um papel OPACO e o quadrado CHEIO. Era ela que o
+    // ganho perfurava, e e a foto do report.
+    let sil = silhouette(&mut ridge(255, true, [0.1, 0.2, 0.3]));
+    let (smin, smax) = sil
         .iter()
         .fold((255u8, 0u8), |(a, b), &v| (a.min(v), b.max(v)));
     assert_eq!(
-        (fmin, fmax),
+        (smin, smax),
         (255, 255),
-        "controle: sem relevo a cobertura de um papel opaco E constante — se ela variar, o gate \
-         acima nao esta medindo o relevo"
+        "a silhueta de um papel opaco saiu {smin}..{smax} — o relevo voltou a entrar pela COBERTURA \
+         e o carimbo pinta furado onde o artista esculpiu"
+    );
+}
+
+/// ⚠️ **O PREÇO da correção acima, pinado em vez de escondido:** sem cor para sombrear, o relevo não
+/// alcança o carimbo.
+///
+/// Com **Per-Layer Color desligado** o carimbo pinta uma cor CHAPADA através da silhueta, e a
+/// silhueta é o alpha autorado — não há canal onde a sombra caiba. É o estreitamento que a 2ª rodada
+/// do report impôs: a alternativa é a cobertura, que é o defeito. Quem quiser o relevo no pincel liga
+/// Texture Color, que é o modo da própria foto do Enio.
+///
+/// Este gate não julga o desenho; ele impede que a ausência seja lida como esquecimento.
+#[test]
+fn without_a_colour_to_shade_the_relief_does_not_reach_the_stamp() {
+    let lit = silhouette(&mut ridge(255, true, [0.1, 0.2, 0.3]));
+    let flat = silhouette(&mut ridge(255, false, [0.1, 0.2, 0.3]));
+    assert_eq!(
+        spread(&lit, &flat),
+        (0, 0),
+        "a silhueta de um papel opaco mudou com o relevo — ou o ganho voltou a cobertura, ou este \
+         gate parou de medir a rota de cor chapada"
     );
 }
 
@@ -255,25 +303,40 @@ fn the_gain_resolves_both_sides_of_the_relief() {
 /// do conserto cobria metade das rotas.
 ///
 /// ⚠️ O caminho de imagem única passa pelo `flatten`; o **Per-Layer Color** não — ele carimba pelas
-/// **máscaras cruas** (`shape_layers.masks()` → `accumulate_shape_layers_rgba_batch`). Com o ganho
-/// aplicado no flatten, o relevo alcançava o pincel exatamente enquanto o artista não ligasse o modo
-/// que pinta com as cores da textura, que é o modo que o report do Enio pedia (2026-08-09).
+/// máscaras cruas e pela COR por camada. Com o ganho aplicado no flatten, o relevo alcançava o
+/// pincel exatamente enquanto o artista não ligasse o modo que pinta com as cores da textura, que é
+/// o modo que o report do Enio pedia (2026-08-09).
 ///
-/// **Mutação que deve sangrar:** mover o ganho de volta para o `reflatten_shape_image`.
+/// ⚠️ **O canal mudou na 2ª rodada do mesmo report** (era a máscara, é a cor), e o gate mudou com
+/// ele: uma máscara que varia AQUI é o carimbo furado da foto.
+///
+/// **Mutação que deve sangrar:** aplicar o ganho na máscara em vez de na cor.
 #[test]
 fn the_relief_reaches_the_per_layer_colour_route_too() {
     let mut t = ridge(255, true, [0.1, 0.2, 0.3]);
     t.capture_layers_as_brush_shape();
     let masks = t.paint.shape_layers.masks();
     assert_eq!(masks.len(), 1, "a fixture tem uma camada");
-    let (min, max) = masks[0]
+    let (mmin, mmax) = masks[0]
         .lum
         .iter()
         .fold((255u8, 0u8), |(a, b), &v| (a.min(v), b.max(v)));
+    assert_eq!(
+        (mmin, mmax),
+        (255, 255),
+        "a MASCARA que o Per-Layer Color carimba saiu {mmin}..{mmax} — o relevo esta entrando pela \
+         cobertura e o carimbo pinta furado"
+    );
+    // A cor, contra o MESMO gesto com a luz do relevo desligada (o controle que isola o ganho).
+    let differing = captured_colour(true)
+        .iter()
+        .zip(captured_colour(false).iter())
+        .filter(|(a, b)| a != b)
+        .count();
     assert!(
-        max - min > 32,
-        "a MASCARA que o Per-Layer Color carimba e chata ({min}..{max}) — o relevo parou no flatten \
-         e nao alcancou a rota que pinta com as cores da textura"
+        differing > 100,
+        "so {differing} texels da COR que o Per-Layer Color carimba diferem da captura sem a luz do \
+         relevo — ele parou antes da rota que pinta com as cores da textura"
     );
 }
 

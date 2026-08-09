@@ -30,8 +30,8 @@ pub const MAX_SHAPE_LAYERS: usize = 16;
 /// two-way with that layer's Layers-panel slider (guarded to the captured source, never the wrong layer).
 #[derive(Default)]
 pub(super) struct ShapeLayers {
-    /// The ACTIVE silhouette per layer — **derived**, never authored: [`Self::rebuild_masks`] builds
-    /// it from [`Self::src`] or from the luminance of [`Self::rgb`], scaled by [`Self::gain`].
+    /// The ACTIVE silhouette per layer — **derived**, never authored: [`Self::rebuild_derived`] builds
+    /// it from [`Self::src`] (o alpha autorado) or from the luminance of [`Self::lit`].
     layers: Vec<BrushTextureImage>,
     /// The **source plane** each layer was captured with: its ALPHA. Kept pristine (un-gained,
     /// un-chosen) because the silhouette law is a TOGGLE — deriving into `layers` and throwing the
@@ -42,9 +42,25 @@ pub(super) struct ShapeLayers {
     /// que o stack pesava. É o preço de o interruptor ser instantâneo em vez de destrutivo.
     src: Vec<BrushTextureImage>,
     /// O **ganho do relevo** do documento de origem (um byte por texel, [`super::impasto_gain`]),
-    /// vazio quando não há relevo. Guardado em vez de pré-multiplicado na captura porque a máscara é
-    /// re-derivada a cada troca de fonte, e um ganho já assado nela seria aplicado duas vezes.
+    /// vazio quando não há relevo. Guardado em vez de pré-multiplicado na captura porque o derivado é
+    /// re-construído a cada troca de fonte, e um ganho já assado nele seria aplicado duas vezes.
+    ///
+    /// ⚠️ **Ele pertence à COR, nunca à cobertura** (report do Enio, 2026-08-09, com foto: *"mesmo
+    /// sem alpha na imagem … aparece um alpha, o branco no lugar da sombra, no carimbo pintado"*). A
+    /// 1ª versão o multiplicava na MÁSCARA, e a consequência é aritmética: a sombra de um relevo é
+    /// ganho `< 1`, então ela virava **cobertura parcial** e a tela aparecia através dela — um
+    /// documento opaco passava a carimbar furado exatamente onde o artista esculpiu. O relevo
+    /// SOMBREIA a tinta; ele não a perfura.
     gain: Vec<u8>,
+    /// A cor capturada **com o relevo já sombreado** — `rgb × gain`, derivada como as máscaras e pela
+    /// MESMA porta. É por aqui que o *"Use as Brush Shape não transfere os relevos"* (Enio, mesmo
+    /// dia) chega ao carimbo: o slot pinta a APARÊNCIA do documento, e a aparência de tinta esculpida
+    /// inclui a sombra dela.
+    ///
+    /// ⚠️ **A luminância lê DAQUI, não do `rgb` cru** — e é isso que mantém a metade que já shipava:
+    /// no modo de silhueta por TOM a sombra continua a valer, porque o tom de tinta esculpida É mais
+    /// escuro. O modo por ALPHA é que deixa de a sentir, que é precisamente o report.
+    lit: Vec<Vec<u8>>,
     /// **A silhueta vem do ALPHA da imagem** (em vez das diferenças de claro e escuro dela).
     ///
     /// O default é o comportamento que cada rota JÁ tinha — a captura de documento silhueta pelo
@@ -108,7 +124,7 @@ impl ShapeLayers {
         self.manual_blend = vec![0; n];
         self.opacity = vec![1.0; n];
         self.doc_ids = vec![0; n];
-        self.rebuild_masks();
+        self.rebuild_derived();
     }
 
     /// Re-derive the ACTIVE masks from the pristine sources. Bumps the version.
@@ -118,8 +134,30 @@ impl ShapeLayers {
     /// caminho de imagem única lê o `flatten()`; os dois derivam DESTE plano, então não há um segundo
     /// sítio onde alguém possa esquecer a escolha do artista (é exatamente o defeito que o ganho do
     /// relevo teve em 2026-08-09, aplicado no flatten e ausente do modo colorido).
-    fn rebuild_masks(&mut self) {
-        let gain_len = self.gain.len();
+    fn rebuild_derived(&mut self) {
+        // (1) A COR sombreada pelo relevo. Ela vem primeiro porque a silhueta por TOM lê dela.
+        let gain = &self.gain;
+        self.lit = self
+            .rgb
+            .iter()
+            .map(|rgb| {
+                if gain.len() * 3 < rgb.len() {
+                    // Sem relevo (ou de outra medida) o ganho não se aplica: a cor é a capturada, ao
+                    // byte. É esta linha que faz de todo documento sem escultura um no-op exato.
+                    return rgb.clone();
+                }
+                let mut out = rgb.clone();
+                for (k, px) in out.chunks_exact_mut(3).enumerate() {
+                    let g = u32::from(gain[k]);
+                    for c in px {
+                        let v = u32::from(*c) * g / u32::from(super::impasto_gain::FLAT_PROBE);
+                        *c = v.min(255) as u8;
+                    }
+                }
+                out
+            })
+            .collect();
+        // (2) A SILHUETA: o alpha autorado, ou o tom — e o tom sai da cor JÁ sombreada.
         self.layers = self
             .src
             .iter()
@@ -130,7 +168,7 @@ impl ShapeLayers {
                 // A luminância sai do RGB já capturado — guardar um terceiro plano para ela seria
                 // guardar o que já está ali (Rec.601, os mesmos pesos 77/150/29 do resto do tool).
                 let lum = (!self.alpha_from_image)
-                    .then(|| self.rgb.get(i))
+                    .then(|| self.lit.get(i))
                     .flatten()
                     .filter(|rgb| rgb.len() >= n * 3)
                     .map(|rgb| {
@@ -143,15 +181,7 @@ impl ShapeLayers {
                             })
                             .collect::<Vec<u8>>()
                     });
-                let mut mask = lum.unwrap_or_else(|| alpha.to_vec());
-                if gain_len >= n {
-                    for (m, &g) in mask.iter_mut().zip(self.gain.iter()) {
-                        let v = u32::from(*m) * u32::from(g)
-                            / u32::from(super::impasto_gain::FLAT_PROBE);
-                        *m = v.min(255) as u8;
-                    }
-                }
-                BrushTextureImage::new(mask, w, h)
+                BrushTextureImage::new(lum.unwrap_or_else(|| alpha.to_vec()), w, h)
             })
             .collect();
         self.version = self.version.wrapping_add(1);
@@ -179,13 +209,13 @@ impl ShapeLayers {
     /// arquivo pode nem ter um).
     pub(super) fn set_alpha_from_image(&mut self, on: bool) {
         self.alpha_from_image = on;
-        self.rebuild_masks();
+        self.rebuild_derived();
     }
 
     /// Instala o **ganho do relevo** do documento de origem e re-deriva. Vazio = sem relevo.
     pub(super) fn set_gain(&mut self, gain: Vec<u8>) {
         self.gain = gain;
-        self.rebuild_masks();
+        self.rebuild_derived();
     }
 
     /// Fill the per-layer captured metadata in lock-step with [`Self::set_layers`] (same order / count):
@@ -215,7 +245,7 @@ impl ShapeLayers {
         }
         // O RGB é a fonte do ramo de LUMINÂNCIA — instalá-lo sem re-derivar deixaria a máscara
         // descrevendo a captura anterior.
-        self.rebuild_masks();
+        self.rebuild_derived();
     }
 
     /// Drop the stack (revert to the single-image / falloff Shape).
@@ -223,6 +253,7 @@ impl ShapeLayers {
         self.layers.clear();
         self.src.clear();
         self.gain.clear();
+        self.lit.clear();
         self.alpha_from_image = false;
         self.color_on.clear();
         self.color.clear();
@@ -308,7 +339,7 @@ impl ShapeLayers {
         // ⚠️ A escolha da silhueta é do ARTISTA e sobrevive a uma re-captura da MESMA fonte, como as
         // cores; uma fonte NOVA volta ao default medido dela, que é o certo (é outra imagem).
         self.alpha_from_image = alpha_from_image;
-        self.rebuild_masks();
+        self.rebuild_derived();
     }
 
     /// Flatten the stack into one luminance silhouette (alpha-over, bottom→top) for the OFF-mode / ramp /
@@ -406,7 +437,7 @@ impl ShapeLayers {
         if self.color_on.get(i).copied().unwrap_or(false) {
             return None;
         }
-        let rgb = self.rgb.get(i)?;
+        let rgb = self.lit.get(i)?;
         if rgb.is_empty() {
             return None;
         }

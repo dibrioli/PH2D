@@ -109,26 +109,21 @@ pub fn accumulate_color_stamps_fused(
         return None;
     }
     let inv_radius = 1.0 / radius;
-    let s = size as f32;
-    let si = size as i64;
     let sz = size as usize;
-    let clamp = |c: i64| c.clamp(0, si - 1) as usize;
     let mut touched = false;
     for py in y0..y1 {
         let v = ((py as f32 + 0.5) - cy) * inv_radius;
-        let my = (v + 1.0) * 0.5 * s - 0.5;
-        let fy = my.floor();
-        let ty = my - fy;
-        let yr0 = clamp(fy as i64) * sz;
-        let yr1 = clamp(fy as i64 + 1) * sz;
+        // Fora da ponta não há dab, e a linha inteira sai de uma vez ([`crate::tip::axis_taps`]).
+        let Some((ty0, ty1, ty)) = crate::tip::axis_taps(v, size) else {
+            continue;
+        };
+        let (yr0, yr1) = (ty0 * sz, ty1 * sz);
         let row = (py as usize) * (width as usize);
         for px in x0..x1 {
             let u = ((px as f32 + 0.5) - cx) * inv_radius;
-            let mx = (u + 1.0) * 0.5 * s - 0.5;
-            let fx = mx.floor();
-            let tx = mx - fx;
-            let xc0 = clamp(fx as i64);
-            let xc1 = clamp(fx as i64 + 1);
+            let Some((xc0, xc1, tx)) = crate::tip::axis_taps(u, size) else {
+                continue;
+            };
             // The four alpha-texel byte offsets, shared by every layer (all stamps share `size`).
             let o00 = (yr0 + xc0) * 4 + 3;
             let o10 = (yr0 + xc1) * 4 + 3;

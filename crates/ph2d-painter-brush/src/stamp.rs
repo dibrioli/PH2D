@@ -296,20 +296,19 @@ fn blit_band(ctx: &BlitCtx, dst: &mut [u8], band_y0: i64) -> bool {
 /// silhueta de Shape ou um Grain), então `Constant` sozinho pintava simétrico. Com um **Grain** ligado
 /// ele entra, e a fuga aparece: `Constant` + Grain pintava um disco de raio 20 em **41** colunas, e
 /// hoje pinta **40**.
+///
+/// ⚠️ **E corrigir ISTO não corrigiu o defeito**, porque o corte foi escrito aqui e este é **um de
+/// CINCO** amostradores do mesmo stamp. O Enio voltou com a mesma foto no mesmo dia, pela rota que o
+/// checkbox **Use Texture Colors** escolhe. Hoje a lei mora na porta [`crate::tip::axis_taps`], que
+/// PRODUZ os texels — os cinco a perguntam, e o sexto não tem de onde tirar índices sem ela.
 pub(crate) fn sample_mask(mask: &StampMask, u: f32, v: f32) -> f32 {
-    if u.abs() > 1.0 || v.abs() > 1.0 {
+    let (Some((x0, x1, tx)), Some((y0, y1, ty))) = (
+        crate::tip::axis_taps(u, mask.size),
+        crate::tip::axis_taps(v, mask.size),
+    ) else {
         return 0.0;
-    }
-    let s = mask.size as f32;
-    let mx = (u + 1.0) * 0.5 * s - 0.5;
-    let my = (v + 1.0) * 0.5 * s - 0.5;
-    let (fx, fy) = (mx.floor(), my.floor());
-    let (tx, ty) = (mx - fx, my - fy);
-    let si = mask.size as i64;
+    };
     let sz = mask.size as usize;
-    let clamp = |c: i64| c.clamp(0, si - 1) as usize;
-    let (x0, x1) = (clamp(fx as i64), clamp(fx as i64 + 1));
-    let (y0, y1) = (clamp(fy as i64), clamp(fy as i64 + 1));
     let at = |xi: usize, yi: usize| f32::from(mask.data[yi * sz + xi]) / 255.0;
     let top = at(x0, y0) + (at(x1, y0) - at(x0, y0)) * tx;
     let bot = at(x0, y1) + (at(x1, y1) - at(x0, y1)) * tx;

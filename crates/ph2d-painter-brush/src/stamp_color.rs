@@ -346,19 +346,28 @@ fn blit_color_band(ctx: &ColorBlitCtx, dst: &mut [u8], band_y0: i64) -> bool {
 }
 
 /// Bilinear (straight RGB, coverage) from the premultiplied `stamp` at the dab-relative unit coord
-/// `(u, v) ∈ [-1, 1]`, clamp-to-edge. Samples premultiplied (fringe-free across the alpha edge) then
-/// un-premultiplies the colour. Returns `([0; 3], 0.0)` where the composite is transparent.
+/// `(u, v) ∈ [-1, 1]`, clamp-to-edge INSIDE a ponta. Samples premultiplied (fringe-free across the
+/// alpha edge) then un-premultiplies the colour. Returns `([0; 3], 0.0)` where the composite is
+/// transparent — **e fora do quadrado unitário, onde não há dab**.
+///
+/// ⚠️ **É esta a rota do report do Enio de 2026-08-09** (*"o carimbo invadindo o grid à direita e
+/// abaixo … a borda da imagem cortada à esquerda e acima"*): com **Use Texture Colors** ligado o
+/// roteador toma o carimbo COLORIDO, e ele estendia a borda opaca do stamp para fora da ponta, até
+/// onde o retângulo assimétrico do blit fosse (`floor(c−r)` de um lado, `ceil(c+r) + 1` do outro).
+/// MEDIDO pela porta do artista: numa célula de **40** px o carimbo pintava **41** colunas, **64 → 65**
+/// e **256 → 257** — sempre UMA coluna a mais, sempre à direita e abaixo. As duas metades da frase dele
+/// são as duas pontas do mesmo defeito: a coluna extra é a borda DUPLICADA, então a margem da imagem
+/// engorda à direita e embaixo e lê-se como cortada à esquerda e acima.
+///
+/// A lei vem da porta única [`crate::tip::axis_taps`] — ver o porquê de ela existir lá.
 fn sample_color_mask(stamp: &ColorStampMask, u: f32, v: f32) -> ([f32; 3], f32) {
-    let s = stamp.size as f32;
-    let mx = (u + 1.0) * 0.5 * s - 0.5;
-    let my = (v + 1.0) * 0.5 * s - 0.5;
-    let (fx, fy) = (mx.floor(), my.floor());
-    let (tx, ty) = (mx - fx, my - fy);
-    let si = stamp.size as i64;
+    let (Some((x0, x1, tx)), Some((y0, y1, ty))) = (
+        crate::tip::axis_taps(u, stamp.size),
+        crate::tip::axis_taps(v, stamp.size),
+    ) else {
+        return ([0.0; 3], 0.0);
+    };
     let sz = stamp.size as usize;
-    let clamp = |c: i64| c.clamp(0, si - 1) as usize;
-    let (x0, x1) = (clamp(fx as i64), clamp(fx as i64 + 1));
-    let (y0, y1) = (clamp(fy as i64), clamp(fy as i64 + 1));
     let ch = |xi: usize, yi: usize, k: usize| f32::from(stamp.data[(yi * sz + xi) * 4 + k]) / 255.0;
     let lerp2 = |k: usize| {
         let top = ch(x0, y0, k) + (ch(x1, y0, k) - ch(x0, y0, k)) * tx;

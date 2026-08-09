@@ -146,8 +146,6 @@ pub fn accumulate_color_stamps_fused_batch(
     if size == 0 || stamps.iter().any(|s| s.size != size) {
         return None; // a mixed-size batch would index `stamps[i].data` with stamps[0]'s stride
     }
-    let s = size as f32;
-    let si = size as i64;
     let sz = size as usize;
     let boxes = &boxes;
     // Per-band touched flags (one per dab), OR-merged after the join so the returned union rect is
@@ -160,26 +158,23 @@ pub fn accumulate_color_stamps_fused_batch(
                 scope.spawn(move || {
                     let band_y0 = (gy0 + bi * rpb) as i64;
                     let band_y1 = band_y0 + (maps[0].len() / wus) as i64;
-                    let clamp = |c: i64| c.clamp(0, si - 1) as usize;
                     let mut touched = vec![false; dabs.len()];
                     for b in boxes {
                         let y0 = b.y0.max(band_y0);
                         let y1 = b.y1.min(band_y1);
                         for py in y0..y1 {
                             let v = ((py as f32 + 0.5) - b.cy) * b.inv_radius;
-                            let my = (v + 1.0) * 0.5 * s - 0.5;
-                            let fy = my.floor();
-                            let ty = my - fy;
-                            let yr0 = clamp(fy as i64) * sz;
-                            let yr1 = clamp(fy as i64 + 1) * sz;
+                            // Fora da ponta não há dab ([`crate::tip::axis_taps`]).
+                            let Some((ty0, ty1, ty)) = crate::tip::axis_taps(v, size) else {
+                                continue;
+                            };
+                            let (yr0, yr1) = (ty0 * sz, ty1 * sz);
                             let row = ((py - band_y0) as usize) * wus;
                             for px in b.x0..b.x1 {
                                 let u = ((px as f32 + 0.5) - b.cx) * b.inv_radius;
-                                let mx = (u + 1.0) * 0.5 * s - 0.5;
-                                let fx = mx.floor();
-                                let tx = mx - fx;
-                                let xc0 = clamp(fx as i64);
-                                let xc1 = clamp(fx as i64 + 1);
+                                let Some((xc0, xc1, tx)) = crate::tip::axis_taps(u, size) else {
+                                    continue;
+                                };
                                 let o00 = (yr0 + xc0) * 4 + 3;
                                 let o10 = (yr0 + xc1) * 4 + 3;
                                 let o01 = (yr1 + xc0) * 4 + 3;
@@ -584,8 +579,6 @@ pub fn accumulate_color_stamps_rgba_batch(
             rest = tail;
         }
     }
-    let s = size as f32;
-    let si = size as i64;
     let sz = size as usize;
     let boxes = &boxes;
     let touched_by_band: Vec<Vec<bool>> = std::thread::scope(|scope| {
@@ -596,26 +589,23 @@ pub fn accumulate_color_stamps_rgba_batch(
                 scope.spawn(move || {
                     let band_y0 = (gy0 + bi * rpb) as i64;
                     let band_y1 = band_y0 + (maps[0].len() / (wus * 4)) as i64;
-                    let clamp = |c: i64| c.clamp(0, si - 1) as usize;
                     let mut touched = vec![false; dabs.len()];
                     for b in boxes {
                         let y0 = b.y0.max(band_y0);
                         let y1 = b.y1.min(band_y1);
                         for py in y0..y1 {
                             let v = ((py as f32 + 0.5) - b.cy) * b.inv_radius;
-                            let my = (v + 1.0) * 0.5 * s - 0.5;
-                            let fy = my.floor();
-                            let ty = my - fy;
-                            let yr0 = clamp(fy as i64) * sz;
-                            let yr1 = clamp(fy as i64 + 1) * sz;
+                            // Fora da ponta não há dab ([`crate::tip::axis_taps`]).
+                            let Some((ty0, ty1, ty)) = crate::tip::axis_taps(v, size) else {
+                                continue;
+                            };
+                            let (yr0, yr1) = (ty0 * sz, ty1 * sz);
                             let row = ((py - band_y0) as usize) * wus;
                             for px in b.x0..b.x1 {
                                 let u = ((px as f32 + 0.5) - b.cx) * b.inv_radius;
-                                let mx = (u + 1.0) * 0.5 * s - 0.5;
-                                let fx = mx.floor();
-                                let tx = mx - fx;
-                                let xc0 = clamp(fx as i64);
-                                let xc1 = clamp(fx as i64 + 1);
+                                let Some((xc0, xc1, tx)) = crate::tip::axis_taps(u, size) else {
+                                    continue;
+                                };
                                 // The four texel byte offsets, shared by every layer.
                                 let o00 = (yr0 + xc0) * 4;
                                 let o10 = (yr0 + xc1) * 4;

@@ -88,6 +88,94 @@ fn a_shape_stamp_paints_the_cell_and_not_one_texel_more() {
     }
 }
 
+/// ⚠️ **E a CÉLULA é a mesma por QUALQUER rota do roteador** — o gate acima media UMA, e foi por isso
+/// que o defeito voltou no mesmo dia.
+///
+/// O corte *"fora do quadrado unitário não há dab"* foi escrito em 2026-08-09 no amostrador do
+/// carimbo em tons de cinza, e o motor tem **cinco** amostradores do mesmo stamp. O Enio voltou com a
+/// mesma foto — *"o carimbo invadindo o grid à direita e abaixo … a borda da imagem cortada à esquerda
+/// e acima"* — pela rota que o checkbox **Use Texture Colors** escolhe. MEDIDO ali: célula **40 → 41**
+/// colunas, **64 → 65**, **256 → 257**; sempre UMA coluna a mais, sempre à direita e abaixo (o
+/// retângulo do blit é assimétrico), e essa coluna é a borda DUPLICADA pelo clamp — as duas metades da
+/// frase dele são as duas pontas do mesmo defeito.
+///
+/// ⚠️ **A varredura é pelos CONTROLES do artista, não pelos nomes das funções internas.** É o que a
+/// torna capaz de cobrir uma rota que ela não conhece: o roteador escolhe pelo estado do pincel, então
+/// varrer o estado varre as rotas. Hoje as quatro combinações abaixo caem em quatro caminhos de
+/// carimbo diferentes.
+///
+/// **Mutação que tem de sangrar:** devolver texels fora da ponta em [`ph2d_painter_brush::tip`] (ou
+/// desviar qualquer um dos amostradores da porta).
+#[test]
+fn every_route_paints_the_cell_and_not_one_texel_more() {
+    let size = 200u32;
+    let cell = 64.0f32;
+    // Uma fonte RGBA OPACA de ponta a ponta — é ela que expõe o defeito: com um aro transparente o
+    // clamp não tem tinta para estender, e a fixture ficaria verde sobre todas as rotas.
+    let n = 64u32;
+    let mut rgba = vec![0u8; (n * n * 4) as usize];
+    for p in rgba.chunks_exact_mut(4) {
+        p[0] = 20;
+        p[3] = 255;
+    }
+    /// Como uma configuração do artista é ARMADA — o roteador escolhe a rota a partir dela.
+    type Arm = fn(&mut PainterTool, &[u8], u32);
+    let routes: [(&str, Arm); 5] = [
+        ("silhueta em tons de cinza", |t, _rgba, n| {
+            t.set_brush_shape_image(vec![255u8; (n * n) as usize], n, n);
+        }),
+        ("captura RGBA, cor por camada DESLIGADA", |t, rgba, n| {
+            t.set_brush_shape_image_rgba(rgba, n, n, Some(7));
+        }),
+        ("Use Texture Colors (a rota do report)", |t, rgba, n| {
+            t.set_brush_shape_image_rgba(rgba, n, n, Some(7));
+            t.toggle_brush_shape_per_layer_color();
+        }),
+        ("Use Texture Colors + Follow (por-dab)", |t, rgba, n| {
+            t.set_brush_shape_image_rgba(rgba, n, n, Some(7));
+            t.toggle_brush_shape_per_layer_color();
+            t.set_brush_shape_follow(1); // Rake: cada dab tem a sua base
+        }),
+        // Camadas SEM cor de textura (o carimbo como estêncil de várias camadas, cada uma com o seu
+        // tom) — o outro ramo do roteador colorido.
+        //
+        // ⚠️ **E ela NÃO alcança o acumulador fundido, medido:** neutralizado para não pintar nada,
+        // este gate fica VERDE. A cobertura daquele kernel mora onde a lei mora — no
+        // `tip_kernel_tests` da `ph2d-painter-brush`, que o chama direto e não passa por roteador
+        // nenhum. Um gate de produto cobre a rota que o roteador ESCOLHE, e é exatamente por isso que
+        // ele não pode ser a única casa desta lei.
+        ("cor por camada, sem cor de textura", |t, _rgba, n| {
+            // ⚠️ O `set_brush_shape_image` ARMA o slot (`kind = Image`); só `set_brush_shape_layers`
+            // deixa a silhueta INATIVA, e a entrada cairia calada na rota em tons de cinza — uma
+            // entrada que não alcança a rota que nomeia lê-se como cobertura sem o ser.
+            t.set_brush_shape_image(vec![255u8; (n * n) as usize], n, n);
+            t.set_brush_shape_layers(vec![
+                (vec![255u8; (n * n) as usize], n, n),
+                (vec![255u8; (n * n) as usize], n, n),
+            ]);
+            t.toggle_brush_shape_per_layer_color();
+        }),
+    ];
+    for (name, arm) in routes {
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+        t.set_brush_stroke_method(ph2d_painter_brush::StrokeMethod::GridStamp.to_u8());
+        t.set_grid_cell_px(super::grid_stamp_settings::GridAxis::X, cell);
+        t.set_grid_cell_px(super::grid_stamp_settings::GridAxis::Y, cell);
+        arm(&mut t, &rgba, n);
+        t.paint.brush.color = [0.0, 0.0, 0.0];
+        t.paint.brush.strength = 1.0;
+        tap(&mut t, [1.0, 1.0]);
+        let got = painted_box(&t, size);
+        let hi = cell as i64 - 1;
+        assert_eq!(
+            got,
+            (0, hi, 0, hi),
+            "{name}: a tinta caiu em {got:?} e a célula é [0, {hi}] nos dois eixos"
+        );
+    }
+}
+
 /// **O Cell Fit encolhe e cresce em torno do MESMO centro** (Enio, 2026-08-09) — a metade que o gate
 /// acima não vê, porque ele mede só o encaixe exato.
 ///

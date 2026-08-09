@@ -86,6 +86,11 @@ pub mod taper;
 #[cfg(test)]
 mod taper_tests;
 pub mod texture;
+/// **O quadrado unitário do carimbo** — a porta única de *onde, no stamp, está esta coordenada de dab,
+/// e ela está DENTRO?*. Existe porque a resposta estava escrita cinco vezes e o corte foi para uma só.
+pub(crate) mod tip;
+#[cfg(test)]
+mod tip_kernel_tests;
 
 pub use blend::{BrushBlend, MAX_BRUSH_BLEND_MODES, blend_over};
 pub use blur::{blur_blit_stamp, blur_dab};

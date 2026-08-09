@@ -152,17 +152,46 @@ fn oklch_norm_channels_in_unit_range() {
     }
 }
 
+/// **O topo do slider de Chroma pousa NA fronteira do gamut** — o report *"Chroma quase nunca
+/// chega a 1"*.
+///
+/// ⚠️ **Este gate media `M/M` e nao podia falhar pelo motivo que o nome declara.** Ele empurrava a
+/// cromancia a `norm = 1` com o `oklch_set_channel` (que guarda `n * max_in_gamut_chroma(l,h)`) e
+/// lia de volta com o `oklch_norm_channels` (que devolve `c / max_in_gamut_chroma(l,h)`): as duas
+/// sao inversas exactas ATRAVES DA MESMA funcao, entao o resultado e' `1.0` para QUALQUER maximo,
+/// incluindo um completamente errado. Medido: com `max_in_gamut_chroma` cravado em `0.001` -- o
+/// slider a nao chegar nem perto do gamut, que e' literalmente o bug reportado -- ele ficava VERDE.
+/// (Quem apanhava a mutacao era o `max_in_gamut_chroma_zero_at_lightness_extremes`, um gate com
+/// outro nome; o que carrega o report era vacuo.)
+///
+/// ⚠️ **O oraculo agora e' o `oklch_in_gamut`**, o predicado INDEPENDENTE do `ph2d-tokens` -- e nao
+/// o par set/norm que se anula. As duas metades sao as duas metades do report:
+///
+///   - **na fronteira**: a cor cabe no gamut e um por cento a mais NAO cabe (medido: `c = 0.1297`
+///     passa, `c * 1.01 = 0.1309` nao -- e a margem e' 0.0013 contra os ~4e-7 de precisao das 20
+///     bisseccoes, tres mil vezes o ruido);
+///   - **e ela de facto SATUROU**: 2.08x a cromancia do base, com o azul a zerar
+///     (`[120,80,60]` -> `[147,62,0]`). Sem esta metade, um maximo cravado em zero poria a cor
+///     "na fronteira" de um gamut degenerado e o gate voltaria a ser vacuo pelo outro lado.
 #[test]
-fn chroma_slider_top_is_reachable() {
-    // "Chroma quase nunca chega a 1": with gamut-relative normalization,
-    // pushing chroma to norm=1 produces a value whose displayed chroma
-    // reads back at ~1 (the gamut boundary), not pinned far below.
+fn chroma_at_the_top_of_the_slider_sits_on_the_gamut_boundary() {
     let base = ColorValue::from_rgba8(120, 80, 60, 255);
     let maxed = oklch_set_channel(base.oklch, 1, 1.0);
-    let displayed_c = oklch_norm_channels(maxed.oklch)[1];
+    let (l, c, h, _) = maxed.oklch;
     assert!(
-        displayed_c > 0.9,
-        "chroma slider should reach ~1 (gamut-relative), got {displayed_c}"
+        ph2d_tokens::oklch_in_gamut(l, c, h),
+        "a cor do topo do slider caiu FORA do gamut: L={l:.4} C={c:.4} H={h:.1}"
+    );
+    assert!(
+        !ph2d_tokens::oklch_in_gamut(l, c * 1.01, h),
+        "um por cento acima do topo ainda cabe no gamut (C={:.4}) — o slider para ANTES da \
+         fronteira, que e' o report *\"Chroma quase nunca chega a 1\"*",
+        c * 1.01
+    );
+    assert!(
+        c > base.oklch.1 * 1.5,
+        "o topo do slider mal saturou: {c:.4} contra {:.4} do base",
+        base.oklch.1
     );
 }
 

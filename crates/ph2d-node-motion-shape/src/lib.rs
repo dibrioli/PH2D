@@ -1,6 +1,15 @@
 #![forbid(unsafe_code)]
 //! `source.shape` — **generate a parametric vector shape** (ADR-0154).
 //!
+//! ⚠️ **The geometry is `ph2d_vec_scene::cook`, whose doc calls itself the single
+//! door for parametric shapes** — *"o `ShapeTool` e o re-cook da forma viva passam
+//! os dois por aqui, então o que se desenha e o que se guarda nunca divergem"* —
+//! and this node was the one caller that built its own. That is why 35 shapes the
+//! editor could already draw were unreachable from a graph: the geometry was never
+//! missing, the wiring was. The shell owns the translation (this node cannot reach
+//! the vector library, by design), and the catalogue is now the fillable half of
+//! that crate's 47.
+//!
 //! The state of the art (Cavalry, After Effects shape layers, Blender Geometry
 //! Nodes, Rive) treats a shape as **live vector geometry** that flows through the
 //! graph and renders resolution-independent on GPU. This node is that door for
@@ -37,12 +46,27 @@ use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
 
 /// **The shape family.** The index the `kind` param stores (`0.0..`) maps here; the
-/// labels drive the `ParamWidget::Enum` dropdown. A superset of MiniCavalry's 7
-/// (Circle..Heart) plus **Gear** (from `ph2d-vec-scene`, which MiniCavalry lacks).
-/// All eight are FILLABLE closed shapes; Arc (wedge) and Spiral are follow-ups
-/// (they need wedge-close / stroke, which the fill-based draw entry doesn't do).
-/// Order is the wire format for the `kind` index — **append only** (Arc/Spiral will
-/// append at 8/9).
+/// labels drive the `ParamWidget::Enum` dropdown.
+///
+/// ⚠️ **Order is the wire format for the `kind` index — APPEND ONLY.** A saved graph
+/// stores the index, so moving one renames every shape an artist already chose. The
+/// first eight are exactly the eight that shipped, in exactly their old positions,
+/// and the thirty-five after them were appended: every document made before this
+/// list grew cooks the shape it always cooked.
+///
+/// ⚠️ **And the shell's translation table is what makes this list real** — the node
+/// is handed params and nothing else (that is what lets the cook memoize and replay
+/// bit-exactly), so it cannot name `ph2d_vec_scene::ShapeKind`. The two orders
+/// DIFFER (here `Circle = 0`; there `Rectangle = 0`), and a naive *"just use
+/// `cook()`"* would silently renumber every saved graph. The mapping lives in
+/// `motion_shape_gen`, is exhaustive by the compiler, and is gated.
+///
+/// The catalogue is the FILLABLE half of `ph2d_vec_scene::ALL_SHAPES`, and which
+/// half that is was MEASURED rather than assumed (`which_shapes_close`): 42 of the
+/// 47 close. The five that do not — **Spiral · Line · Arc · NoteBracket · Brace** —
+/// need a stroke to be visible at all, and the fill-based draw entry has none; they
+/// wait for the stroke wave. ⚠️ The fence this replaces named only two of those
+/// five, so it was right about the class and short about the membership.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ShapeKind {
     Circle,
@@ -53,6 +77,42 @@ pub enum ShapeKind {
     Star,
     Heart,
     Gear,
+    // ——— appended when the catalogue was wired to `cook()` (doc 89 §14) ———
+    Pie,
+    Segment,
+    ArrowRight,
+    ArrowDouble,
+    ArrowBent,
+    Chevron,
+    Diamond,
+    Pill,
+    Parallelogram,
+    Trapezoid,
+    TrapezoidFlip,
+    HexagonFlat,
+    Cylinder,
+    Document,
+    Delay,
+    Display,
+    PredefinedProcess,
+    OffPage,
+    Junction,
+    SpeechRect,
+    SpeechOval,
+    Thought,
+    Burst,
+    Cloud,
+    Bolt,
+    Moon,
+    Drop,
+    Shield,
+    Tag,
+    Cross,
+    Check,
+    Banner,
+    IsoCube,
+    IsoCone,
+    IsoPyramid,
 }
 
 /// The dropdown labels — index-aligned to [`ShapeKind`] (the `Enum` widget stores
@@ -66,6 +126,90 @@ pub static KIND_LABELS: &[&str] = &[
     "Star",
     "Heart",
     "Gear",
+    "Pie",
+    "Segment",
+    "Arrow",
+    "Arrow Double",
+    "Arrow Bent",
+    "Chevron",
+    "Diamond",
+    "Pill",
+    "Parallelogram",
+    "Trapezoid",
+    "Trapezoid Flip",
+    "Hexagon",
+    "Cylinder",
+    "Document",
+    "Delay",
+    "Display",
+    "Process",
+    "Off-Page",
+    "Junction",
+    "Speech Box",
+    "Speech Oval",
+    "Thought",
+    "Burst",
+    "Cloud",
+    "Bolt",
+    "Moon",
+    "Drop",
+    "Shield",
+    "Tag",
+    "Cross",
+    "Check",
+    "Banner",
+    "Iso Cube",
+    "Iso Cone",
+    "Iso Pyramid",
+];
+
+/// Every kind, in WIRE ORDER — the one list `from_index`, the labels and the
+/// shell's translation all index into. Index-aligned to [`KIND_LABELS`] by a gate:
+/// a label with no kind behind it would be a dropdown row that draws nothing.
+pub static ALL_KINDS: &[ShapeKind] = &[
+    ShapeKind::Circle,
+    ShapeKind::Square,
+    ShapeKind::Ellipse,
+    ShapeKind::Rectangle,
+    ShapeKind::Polygon,
+    ShapeKind::Star,
+    ShapeKind::Heart,
+    ShapeKind::Gear,
+    ShapeKind::Pie,
+    ShapeKind::Segment,
+    ShapeKind::ArrowRight,
+    ShapeKind::ArrowDouble,
+    ShapeKind::ArrowBent,
+    ShapeKind::Chevron,
+    ShapeKind::Diamond,
+    ShapeKind::Pill,
+    ShapeKind::Parallelogram,
+    ShapeKind::Trapezoid,
+    ShapeKind::TrapezoidFlip,
+    ShapeKind::HexagonFlat,
+    ShapeKind::Cylinder,
+    ShapeKind::Document,
+    ShapeKind::Delay,
+    ShapeKind::Display,
+    ShapeKind::PredefinedProcess,
+    ShapeKind::OffPage,
+    ShapeKind::Junction,
+    ShapeKind::SpeechRect,
+    ShapeKind::SpeechOval,
+    ShapeKind::Thought,
+    ShapeKind::Burst,
+    ShapeKind::Cloud,
+    ShapeKind::Bolt,
+    ShapeKind::Moon,
+    ShapeKind::Drop,
+    ShapeKind::Shield,
+    ShapeKind::Tag,
+    ShapeKind::Cross,
+    ShapeKind::Check,
+    ShapeKind::Banner,
+    ShapeKind::IsoCube,
+    ShapeKind::IsoCone,
+    ShapeKind::IsoPyramid,
 ];
 
 impl ShapeKind {
@@ -74,16 +218,16 @@ impl ShapeKind {
     /// which shape an index names.
     #[must_use]
     pub fn from_index(idx: f32) -> ShapeKind {
-        match (idx.round() as i64).clamp(0, KIND_LABELS.len() as i64 - 1) {
-            0 => ShapeKind::Circle,
-            1 => ShapeKind::Square,
-            2 => ShapeKind::Ellipse,
-            3 => ShapeKind::Rectangle,
-            4 => ShapeKind::Polygon,
-            5 => ShapeKind::Star,
-            6 => ShapeKind::Heart,
-            _ => ShapeKind::Gear,
-        }
+        let i = (idx.round() as i64).clamp(0, ALL_KINDS.len() as i64 - 1);
+        ALL_KINDS[i as usize]
+    }
+
+    /// This kind's wire index — the inverse of [`from_index`], and the only place
+    /// that direction is spelled. A `match` written by hand here is how the two
+    /// directions drift apart the day a shape is appended.
+    #[must_use]
+    pub fn index(self) -> usize {
+        self as usize
     }
 }
 
@@ -373,10 +517,52 @@ static PARAM_UNITS: &[ParamUnitDecl] = &[ParamUnitDecl {
 /// (always shown). This is the SAME per-kind truth the builder keys off, so a
 /// shown control is a control that does something.
 static PARAM_GATES: &[ParamGate] = &[
+    // ⚠️ `aspect` vale para TUDO que é cortado de uma caixa, e as trinta e cinco
+    // formas do catálogo são: a receita as corta de `[-s,-ry]..[s,ry]`. Deixá-las
+    // de fora esconderia um controlo VIVO — o inverso exato do botão morto, e o
+    // gate `no_kind_hides_a_live_knob_or_shows_a_dead_one` recusa os dois sentidos.
     ParamGate {
         param: param::ASPECT,
         when: param::KIND,
-        values: &[ShapeKind::Ellipse as i32, ShapeKind::Rectangle as i32],
+        values: &[
+            ShapeKind::Ellipse as i32,
+            ShapeKind::Rectangle as i32,
+            ShapeKind::Pie as i32,
+            ShapeKind::Segment as i32,
+            ShapeKind::ArrowRight as i32,
+            ShapeKind::ArrowDouble as i32,
+            ShapeKind::ArrowBent as i32,
+            ShapeKind::Chevron as i32,
+            ShapeKind::Diamond as i32,
+            ShapeKind::Pill as i32,
+            ShapeKind::Parallelogram as i32,
+            ShapeKind::Trapezoid as i32,
+            ShapeKind::TrapezoidFlip as i32,
+            ShapeKind::HexagonFlat as i32,
+            ShapeKind::Cylinder as i32,
+            ShapeKind::Document as i32,
+            ShapeKind::Delay as i32,
+            ShapeKind::Display as i32,
+            ShapeKind::PredefinedProcess as i32,
+            ShapeKind::OffPage as i32,
+            ShapeKind::Junction as i32,
+            ShapeKind::SpeechRect as i32,
+            ShapeKind::SpeechOval as i32,
+            ShapeKind::Thought as i32,
+            ShapeKind::Burst as i32,
+            ShapeKind::Cloud as i32,
+            ShapeKind::Bolt as i32,
+            ShapeKind::Moon as i32,
+            ShapeKind::Drop as i32,
+            ShapeKind::Shield as i32,
+            ShapeKind::Tag as i32,
+            ShapeKind::Cross as i32,
+            ShapeKind::Check as i32,
+            ShapeKind::Banner as i32,
+            ShapeKind::IsoCube as i32,
+            ShapeKind::IsoCone as i32,
+            ShapeKind::IsoPyramid as i32,
+        ],
     },
     ParamGate {
         param: param::SIDES,

@@ -7,19 +7,49 @@ use super::*;
 /// Every kind index the dropdown offers decodes to a distinct kind, and the label
 /// list is index-aligned to the enum (the `Enum` widget stores the index).
 /// FALSIFIED by a missing arm or a mis-ordered label.
+///
+/// ⚠️ **The count is asserted so that growing the catalogue is a DECISION**, and
+/// this gate did its job: it fired the moment the list went from eight to
+/// forty-three. It was 8 while the node built geometry by hand; it is 43 now that
+/// it goes through `ph2d_vec_scene::cook`, which is the fillable half of that
+/// crate's 47 (measured — `which_shapes_close` — the other five need a stroke).
 #[test]
 fn kind_index_round_trips_and_labels_align() {
-    assert_eq!(KIND_LABELS.len(), 8, "eight fillable shape families");
+    assert_eq!(KIND_LABELS.len(), 43, "the fillable catalogue");
+    assert_eq!(ALL_KINDS.len(), KIND_LABELS.len(), "a label per kind");
     let mut seen = std::collections::BTreeSet::new();
     for i in 0..KIND_LABELS.len() {
         let k = ShapeKind::from_index(i as f32);
         assert!(seen.insert(k), "index {i} decodes to a DISTINCT kind");
+        assert_eq!(k.index(), i, "and the round trip closes");
     }
+
+    // ⚠️ **The wire-format claim, spelled out.** A saved graph stores the INDEX, so
+    // these eight positions are file format: moving one renames the shape in every
+    // document that already chose it. Appending is the only safe growth, and this
+    // is what makes that a rule rather than an intention.
+    for (i, want) in [
+        (0, ShapeKind::Circle),
+        (1, ShapeKind::Square),
+        (2, ShapeKind::Ellipse),
+        (3, ShapeKind::Rectangle),
+        (4, ShapeKind::Polygon),
+        (5, ShapeKind::Star),
+        (6, ShapeKind::Heart),
+        (7, ShapeKind::Gear),
+    ] {
+        assert_eq!(
+            ShapeKind::from_index(i as f32),
+            want,
+            "o indice {i} e FORMATO DE ARQUIVO e mudou de forma"
+        );
+    }
+
     // The index is rounded and clamped: 4.4 → Polygon (4), and out-of-range
     // saturates to the last kind rather than panicking.
     assert_eq!(ShapeKind::from_index(4.4), ShapeKind::Polygon);
     assert_eq!(ShapeKind::from_index(-3.0), ShapeKind::Circle);
-    assert_eq!(ShapeKind::from_index(999.0), ShapeKind::Gear);
+    assert_eq!(ShapeKind::from_index(999.0), ShapeKind::IsoPyramid);
 }
 
 /// The content key is a pure function of the descriptor: identical params give

@@ -20,9 +20,9 @@ use std::collections::BTreeMap;
 use ph2d_eval_motion::VectorInstance;
 use ph2d_node_motion_shape::{MANIFEST, ShapeKind, ShapeParams, shape_key};
 use ph2d_nodegraph::attr::{Column, Stream};
-use ph2d_vec_scene::{
-    VecPath, ellipse, gear, heart, regular_polygon_rounded, rounded_rect, star_rounded,
-};
+use ph2d_vec_scene::{ShapeKind as VecKind, VecPath, cook};
+#[cfg(test)]
+use ph2d_vec_scene::{ellipse, gear, heart, regular_polygon_rounded, rounded_rect, star_rounded};
 use ph2d_vector::{Affine, VectorScene};
 
 use crate::motion_state::MotionState;
@@ -98,15 +98,148 @@ pub(crate) fn read_params(overrides: Option<&BTreeMap<String, f32>>) -> ShapePar
     })
 }
 
+/// **The translation** — this node's kind to the vector library's, and the box and
+/// values `cook` wants. The ONE place the two orders meet.
+///
+/// ⚠️ The two enums are ordered DIFFERENTLY (`Circle = 0` here, `Rectangle = 0`
+/// there) and this node's index is WIRE FORMAT, so a table is not tidiness: reading
+/// one order as the other renames every shape in every saved graph. The `match` is
+/// exhaustive by the compiler, which is what makes a dropdown label without
+/// geometry behind it impossible to ship.
+///
+/// The first eight rows reproduce, value for value, what the node built before it
+/// was wired to `cook()` — gated byte-for-byte against the frozen builder. The rest
+/// take the library's own canonical proportions (`VecKind::defaults`), so a shape
+/// arrives looking like itself; the knobs that tune each one are the next wave, and
+/// `size`/`aspect` already drive the box every one of them is cut from.
+fn vec_recipe(p: &ShapeParams) -> (VecKind, [f64; 2], [f64; 2], Vec<f64>) {
+    let s = f64::from(p.size.max(0.01));
+    let ry = s * f64::from(p.aspect.clamp(0.05, 20.0));
+    let sides = f64::from(p.sides.clamp(3, 32));
+    // `corner` is a FRACTION of the size -> a world-unit radius that scales.
+    let corner = f64::from(p.corner.clamp(0.0, 1.0)) * s;
+    let sq = ([-s, -s], [s, s]);
+    let box_ = ([-s, -ry], [s, ry]);
+    match p.kind {
+        // ——— the eight that shipped, reproduced exactly ———
+        // `ellipse_sweep` with sweep/start/inner all zero is the plain ellipse: the
+        // sweep field reads "unset" as a full turn, which is what makes the legacy
+        // circle survive the move.
+        ShapeKind::Circle => (VecKind::Ellipse, sq.0, sq.1, vec![0.0, 0.0, 0.0]),
+        ShapeKind::Ellipse => (VecKind::Ellipse, box_.0, box_.1, vec![0.0, 0.0, 0.0]),
+        // The three per-corner offsets and the smoothing were APPENDED to the
+        // round-rect's values and are all neutral at zero, so `[r, 0, 0, 0, 0]` is
+        // the uniform round-rect the node always built.
+        ShapeKind::Square => (
+            VecKind::RoundRect,
+            sq.0,
+            sq.1,
+            vec![corner.min(s), 0.0, 0.0, 0.0, 0.0],
+        ),
+        ShapeKind::Rectangle => (
+            VecKind::RoundRect,
+            box_.0,
+            box_.1,
+            vec![corner.min(s.min(ry)), 0.0, 0.0, 0.0, 0.0],
+        ),
+        ShapeKind::Polygon => (VecKind::Polygon, sq.0, sq.1, vec![sides, corner]),
+        ShapeKind::Star => (
+            VecKind::Star,
+            sq.0,
+            sq.1,
+            vec![
+                sides,
+                f64::from(p.star_depth.clamp(0.05, 0.95)),
+                corner,
+                corner,
+            ],
+        ),
+        ShapeKind::Heart => (
+            VecKind::Heart,
+            sq.0,
+            sq.1,
+            vec![f64::from(p.cleft.clamp(0.02, 0.45))],
+        ),
+        ShapeKind::Gear => (
+            VecKind::Gear,
+            sq.0,
+            sq.1,
+            vec![
+                sides,
+                f64::from(p.tooth_depth.clamp(0.05, 0.6)),
+                f64::from(p.hole.clamp(0.0, 1.0)),
+            ],
+        ),
+        // ——— the catalogue, at the library's own proportions ———
+        other => {
+            let k = match other {
+                ShapeKind::Pie => VecKind::Pie,
+                ShapeKind::Segment => VecKind::Segment,
+                ShapeKind::ArrowRight => VecKind::ArrowRight,
+                ShapeKind::ArrowDouble => VecKind::ArrowDouble,
+                ShapeKind::ArrowBent => VecKind::ArrowBent,
+                ShapeKind::Chevron => VecKind::Chevron,
+                ShapeKind::Diamond => VecKind::Diamond,
+                ShapeKind::Pill => VecKind::Pill,
+                ShapeKind::Parallelogram => VecKind::Parallelogram,
+                ShapeKind::Trapezoid => VecKind::Trapezoid,
+                ShapeKind::TrapezoidFlip => VecKind::TrapezoidFlip,
+                ShapeKind::HexagonFlat => VecKind::HexagonFlat,
+                ShapeKind::Cylinder => VecKind::Cylinder,
+                ShapeKind::Document => VecKind::Document,
+                ShapeKind::Delay => VecKind::Delay,
+                ShapeKind::Display => VecKind::Display,
+                ShapeKind::PredefinedProcess => VecKind::PredefinedProcess,
+                ShapeKind::OffPage => VecKind::OffPage,
+                ShapeKind::Junction => VecKind::Junction,
+                ShapeKind::SpeechRect => VecKind::SpeechRect,
+                ShapeKind::SpeechOval => VecKind::SpeechOval,
+                ShapeKind::Thought => VecKind::Thought,
+                ShapeKind::Burst => VecKind::Burst,
+                ShapeKind::Cloud => VecKind::Cloud,
+                ShapeKind::Bolt => VecKind::Bolt,
+                ShapeKind::Moon => VecKind::Moon,
+                ShapeKind::Drop => VecKind::Drop,
+                ShapeKind::Shield => VecKind::Shield,
+                ShapeKind::Tag => VecKind::Tag,
+                ShapeKind::Cross => VecKind::Cross,
+                ShapeKind::Check => VecKind::Check,
+                ShapeKind::Banner => VecKind::Banner,
+                ShapeKind::IsoCube => VecKind::IsoCube,
+                ShapeKind::IsoCone => VecKind::IsoCone,
+                ShapeKind::IsoPyramid => VecKind::IsoPyramid,
+                // The eight above are handled by name; this arm cannot be reached
+                // for them, and the compiler is what keeps that true when a kind is
+                // appended.
+                _ => unreachable!("as oito primeiras tem braco proprio"),
+            };
+            (k, box_.0, box_.1, k.defaults().to_vec())
+        }
+    }
+}
+
 /// Build the `VecPath` for a shape descriptor (ADR-0154). World-unit geometry,
 /// centred at the origin; the instance transform places, rotates and scales it.
-/// `corner` is absolute world units. Eight FILLABLE closed shapes (the draw entry
-/// fills; open curves like arc/spiral are follow-ups).
+///
+/// Everything goes through `ph2d_vec_scene::cook`, which declares itself the single
+/// door for parametric geometry — *"o `ShapeTool` e o re-cook da forma viva passam
+/// os dois por aqui"* — and until now this node was the one caller that did not.
+/// That is why 35 shapes the editor could already draw were unreachable from a
+/// graph: not geometry missing, wiring missing.
 pub(crate) fn build_shape_path(p: &ShapeParams) -> VecPath {
+    let (kind, a, b, v) = vec_recipe(p);
+    cook(kind, a, b, &v)
+}
+
+/// The builder EXACTLY as it shipped before the catalogue was wired to `cook()`,
+/// frozen under `cfg(test)` as the oracle for "the eight that shipped still cook
+/// what they cooked". A `pub(crate)` copy without the `cfg` would be a second door
+/// waiting for a caller (the `warp_axis` / `serial_side` precedent).
+#[cfg(test)]
+pub(crate) fn build_shape_path_as_it_shipped(p: &ShapeParams) -> VecPath {
     let s = f64::from(p.size.max(0.01));
     let ry = s * f64::from(p.aspect.clamp(0.05, 20.0));
     let sides = p.sides.clamp(3, 32);
-    // `corner` is a FRACTION of the size → a world-unit radius that scales.
     let corner = f64::from(p.corner.clamp(0.0, 1.0)) * s;
     match p.kind {
         ShapeKind::Circle => ellipse([0.0, 0.0], s, s),
@@ -120,11 +253,11 @@ pub(crate) fn build_shape_path(p: &ShapeParams) -> VecPath {
         }
         ShapeKind::Heart => heart([-s, -s], [s, s], f64::from(p.cleft.clamp(0.02, 0.45))),
         ShapeKind::Gear => {
-            // `sides` = teeth; `tooth_depth` = fraction of radius; `hole` = centre bore.
             let depth = f64::from(p.tooth_depth.clamp(0.05, 0.6));
             let hole = f64::from(p.hole.clamp(0.0, 1.0));
             gear([-s, -s], [s, s], f64::from(sides), depth, hole)
         }
+        _ => unreachable!("o oraculo so conhece as oito que shipavam"),
     }
 }
 

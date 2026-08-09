@@ -117,3 +117,70 @@ fn a_two_position_slider_is_a_toggle() {
          pinta-lo como arrasto continuo promete um meio-termo que o eval nao le: {wrong:?}"
     );
 }
+
+/// **Os params que o painel desenharia com o NOME CRU** — a 4ª lei, e a única escrita
+/// do lado dos PARAMS em vez do lado dos hints.
+///
+/// As três acima varrem os hints e perguntam *este widget é o certo?*. Nenhuma delas vê
+/// um param que **não tem widget nenhum**: ele cai no slider genérico `0..1` com o
+/// identificador de fio no rótulo (`flash_g`, `tint_a`) — exatamente a tela que a Wave A
+/// do doc 88 existiu para remover, e o mesmo modo de falha por STRAGGLER que este arquivo
+/// documenta, um degrau abaixo.
+///
+/// ⚠️ **Um param sem hint PRÓPRIO não é um defeito** — o catálogo tem DOIS widgets que se
+/// declaram num hint só e desenham params VIZINHOS, e uma varredura que não os conheça
+/// acusa nós corretos:
+///
+/// - [`ParamWidget::Color`] ancora num param e desenha os **quatro** canais RGBA como uma
+///   amostra só (é assim que `motion.tint` cobre nove params com três hints);
+/// - [`ParamWidget::Channels`] ancora num TEXT param e dobra o `mode_param` **f32** irmão
+///   dentro do próprio seletor (*"mode gets no row of its own — folded in"*).
+///
+/// ⚠️ **E foi uma mutação que NÃO sangrou que achou isto.** O 1º corte deste gate conhecia
+/// só o `Color` e isentava `value.attribute.mode` numa allowlist "com o motivo escrito" —
+/// e o motivo estava ERRADO: aquele param não é uma exceção, ele é **coberto**, pelo mesmo
+/// mecanismo que um canal de cor. A allowlist não estava documentando uma decisão, estava
+/// escondendo um buraco na varredura; um segundo nó `Channels` teria sido acusado, e a
+/// cura óbvia — mais uma linha na tabela — teria entrincheirado o erro.
+///
+/// A pergunta certa é de COBERTURA, nunca de presença: *existe algum widget que desenha
+/// este número?*
+#[test]
+fn every_declared_param_is_drawn_by_some_widget() {
+    let reg = registry();
+    let mut scanned = 0usize;
+    let mut raw = Vec::new();
+
+    for m in reg.manifests() {
+        let hints = reg.param_ui(m.id).unwrap_or(&[]);
+        // Os params que os widgets AGRUPADORES deste nó já desenham.
+        let mut folded: Vec<&str> = Vec::new();
+        for h in hints {
+            match h.widget {
+                ParamWidget::Color { channels } => folded.extend_from_slice(&channels),
+                ParamWidget::Channels { mode_param, .. } => folded.push(mode_param),
+                _ => {}
+            }
+        }
+        for p in m.params {
+            scanned += 1;
+            if hints.iter().any(|h| h.param == p.name) || folded.contains(&p.name) {
+                continue;
+            }
+            raw.push(format!("{}.{}", m.name, p.name));
+        }
+    }
+
+    // Controle positivo: uma varredura vazia passaria calada.
+    assert!(
+        scanned > 300,
+        "a varredura tem de ver o catalogo inteiro, viu {scanned} params"
+    );
+    assert!(
+        raw.is_empty(),
+        "estes params nao tem widget nenhum, e o painel os desenha com o nome de FIO num \
+         slider 0..1 generico -- declare um `ParamUiHint` ou dobre-os num widget \
+         agrupador (`Color` / `Channels`):\n  {}",
+        raw.join("\n  ")
+    );
+}

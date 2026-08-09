@@ -372,6 +372,49 @@ Cavalry) nomeia três coisas além do deslocamento máximo, e **as três já sã
 instâncias.* ⇒ **1 param é o número certo**, e fica escrito para que a próxima varredura não o
 leia como lacuna.
 
+### §9.3 — O MAPA cobre 54 dos 118 nós, e o resto foi varrido por PROPRIEDADE
+
+⚠️ **A tabela acima diz *"o veredito de cada família"* e nomeia SEIS** — TRANSFORM (6 nós) ·
+ECHO (1) · DEFORMERS (6) · VALUE (23) · ESTRUTURAIS (12) · RIG (6) = **54 de 118**. Os outros
+**64** (`field.*` · `force.*` · `fx.*` · `pulse.*` · `sim.*` · `source.*` · distribuições ·
+simulação · cor · streams) nunca tiveram linha, e uma tabela que se anuncia completa e não é
+faz a próxima varredura parar cedo.
+
+Varridos pelo censo, o retrato deles é gordo (`field.remap` 12 · `field.radial_sweep` 10 ·
+`motion.emitter` 10 · `motion.spline_wrap` 10 · `boids`/`noise`/`oscillator`/`source.shape`/
+`value.pattern` 9). Os magros restantes são magros **por natureza** pelo mesmo teste do
+`slit_scan`: `force.drag` (1) é *um coeficiente de arrasto*, `sim.step` (1) é *um passo*,
+`value.unary`/`median`/`slope`/`smooth`/`normalize`/`reduce` (1) são a família já recusada
+com motivo.
+
+**O que a varredura ACHOU foi outra coisa, e num eixo que o mapa não olha:** quatro nós com
+mais params do que hints — `motion.tint` 9/3 · `fx.glow` 9/6 · `fx.drop_shadow` 6/3 ·
+`motion.strobe` 6/3. A leitura ingênua é *"quinze params desenhados com o nome de fio"*, que é
+exatamente a tela que a Wave A existiu para remover. **Ela está errada, e os quatro estão
+certos:** o catálogo tem DOIS widgets que se declaram num hint só e desenham params vizinhos —
+`ParamWidget::Color` (os quatro canais RGBA numa amostra) e `ParamWidget::Channels` (o
+`mode_param` f32 dobrado dentro do seletor). ⚠️ O único que não fecha à primeira vista é o
+`motion.strobe`, cujo 4º canal de cor é `flash_amount` e não um alfa — e **o arquivo dele já
+carrega a explicação**: o kernel faz `a = flash_amount · glow` e compõe por `over`, então
+aquele número **é** o alfa daquela cor.
+
+⇒ **Zero defeitos, e a medição vira LEI:** `every_declared_param_is_drawn_by_some_widget`
+(a 4ª do `param_widget_conventions`, e a única escrita do lado dos PARAMS). Três mutações,
+três sangram, cada uma nomeando o param: um hint renomeado ⇒ `motion.bend.pivot_y` · um canal
+fora do grupo de cor ⇒ `motion.tint.a` · a varredura esquecer o `Channels` ⇒
+`value.attribute.mode`.
+
+⚠️ **E a 3ª mutação é o achado do processo, não um rodapé.** O 1º corte do gate conhecia só o
+`Color` e isentava `value.attribute.mode` numa allowlist *"com o motivo escrito"* — o motivo
+estava **ERRADO**: aquele param não é exceção, ele é **coberto**. A allowlist não documentava
+uma decisão, escondia um buraco na varredura; um segundo nó `Channels` teria sido acusado e a
+cura óbvia — mais uma linha na tabela — teria entrincheirado o erro. Quem expôs isso foi uma
+**mutação que NÃO sangrou** (e que era, ela própria, inválida: `register_param_ui` é um
+`insert`, e a chamada injetada vinha ANTES da original). *Uma mutação que não sangra é um
+buraco de gate ou uma mutação inválida — e a única forma de saber qual é ir ver.* A allowlist
+e o gate de staleness dela foram **deletados**: tabela vazia mais gate que a itera é um gate
+que não pode falhar.
+
 ### ⚠️ O `motion.duplicator` tem ZERO params, e isso está quase todo CERTO
 
 A tabela §B da pesquisa do Cavalry é grande (Distribution · Shape Position/Rotation/Scale

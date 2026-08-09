@@ -1,8 +1,8 @@
 # HANDOFF DE INTEGRAÇÃO — `line/Vector`, o painel autorado fica VIVO (2026-08-09)
 
-> **12 commits · 66 arquivos · +5.404/−779.**
-> ⚠️ **Os smokes aprovados pelo Enio cobrem os 9 primeiros commits.** Os três últimos — a
-> família de LISTA e o dropdown — estão **pendentes de smoke**; ver a §4.
+> **15 commits · 68 arquivos · +5.762/−778.**
+> **Todos os smokes aprovados pelo Enio** — os oito passos da cena, incluindo a família de
+> LISTA, o dropdown e a seleção de aba.
 > Supersede nada: é a continuação da jornada de UI/UX que integrou em 08/08.
 
 ## §1 — O que esta linha entrega
@@ -17,8 +17,9 @@ fecharam:
    **glifo** de um botão de ícone.
 3. **O painel deixa de ser um SNAPSHOT** — ele segue o documento aberto, quadro a quadro.
 4. **A família de LISTA** — `Tabs`, `RadioGroup`, `SegmentedAdaptive` e `Dropdown`
-   (catálogo **16 → 20**), com as opções a virem dos **filhos que o artista desenhou**.
-   Era o maior buraco estrutural do levantamento de 08/08: **14,6% da UI real**.
+   (catálogo **16 → 20**), com as opções a virem dos **filhos que o artista desenhou** e
+   **clicáveis uma a uma**. Era o maior buraco estrutural do levantamento de 08/08:
+   **14,6% da UI real**.
 
 ## §2 — As leis, e onde cada uma mora
 
@@ -148,6 +149,36 @@ vez de duas.** Ela responde duas perguntas de uma vez (*este controle É de esco
 controle de opções tem de desenhar alguma marcada, e o `event` precisa do `None` para saber
 que aquela row não emite escolha.
 
+### Clicar numa opção SELECIONA aquela opção — e a geometria sai de UMA porta
+
+⚠️ **Defeito reportado pelo Enio no smoke, e a hipótese dele estava errada de um jeito útil**
+(*"Tabs não seleciona as tabs no painel vivo, talvez porque não tenha nada dentro"*): as três
+opções **estavam lá** e a faixa desenhava-as. Faltavam duas coisas, e cada uma sozinha já
+bastava para o defeito.
+
+1. **A row publicava UM retângulo de hit** para a faixa inteira — o clique chegava sem poder
+   dizer *qual* aba.
+2. **Nada neste repo escreve `InteractiveState::Tabs` nem `::Radio`** — nem o despacho
+   genérico, nem pintor nenhum. Medido por grep, não suposto.
+
+⚠️ **E o defeito é da própria linha, um commit antes:** o dropdown ganhou ids por opção e os
+três irmãos em linha ficaram na lei antiga. O doc-comment do `skin.rs` já dizia *"quem precisa
+de id por opção é o painel COMPILADO, que os deriva da chave"* — a regra estava escrita e foi
+aplicada a um membro só da família.
+
+**`skin::inline_option_rect(kind, host, i, n)` é a porta única da geometria**, e mora ao lado
+da pele porque é ela que decide *como um tipo é desenhado*, logo é ela que pode responder
+*onde a opção `i` caiu*. Uma cópia no painel acenderia a aba num lugar e a faria responder
+noutro. Ela devolve `None` para quem não toma opções **e para o Dropdown** (a lista dele não
+está na row), então o painel não precisa de um `if` por tipo.
+
+**`rows::select_in` é a IRMÃ EXATA do `selected_of`** — se as duas discordarem sobre qual campo
+da variante guarda a seleção, o controle desenha uma opção e devolve outra ao ser clicado.
+
+⚠️ **Os dois gates não são redundantes, e a mutação prova:** *"toda opção ocupa a row inteira"*
+**não é vista pelo seam** (com todas sobrepostas o hit é *último-registado-ganha* e o clique
+ainda acerta alguma), e só o gate de geometria a pega.
+
 ## §3 — Colisão: o que esta linha move
 
 | Eixo | Estado |
@@ -173,8 +204,8 @@ o `tr` de toda chave `panel.vector.*` continua a resolver.
 **`env PH2D_BUILD_SMOKE=62 cargo run -p ph2d-host-desktop --release`** — a cena imprime
 o que montou; ⚠️ **se a linha `[ui-panel] … 9 row(s)` não aparecer, PARE.**
 
-Os passos 1-6 estão **aprovados**; os 7-8 são o que a família de LISTA acrescentou e seguem
-**pendentes**.
+Os oito passos estão **aprovados** — os 1-6 na primeira rodada, os 7-8 depois da família de
+LISTA e do dropdown.
 
 1. A swatch **Tint** mostra o preenchimento *dela*, não o dos irmãos.
 2. **Play** desenha a ESTRELA que o artista fez — **em pé**, e igual no canvas e no painel.
@@ -184,7 +215,9 @@ Os passos 1-6 estão **aprovados**; os 7-8 são o que a família de LISTA acresc
 6. Com `PH2D_SIGNAL_LOG=1`, clicar um botão dá toast + `[signal] … <- controle autorado`.
 7. ⚠️ **A row `View` é uma faixa de ABAS**, e as opções dela são os três filhos `Design` /
    `Preview` / `Code`. Renomeie um na Hierarquia: a aba muda de nome. **Se em vez disso
-   aparecer uma linha nova solta no painel, a lei de posse quebrou.**
+   aparecer uma linha nova solta no painel, a lei de posse quebrou.** E **clique na aba
+   `Code`: ela acende** — é o defeito reportado no smoke de 09/08, e ele tinha DUAS causas
+   (um retângulo de hit para a faixa inteira · ninguém a escrever a seleção).
 8. ⚠️ **A row `Blend` ESCONDE as opções.** Clique no chip: a lista abre **por cima de tudo**,
    inclusive do canto de redimensionar. Escolha `Screen`: ela **fecha** e o chip passa a
    dizer `Screen`. **Se a lista ficar aberta depois da escolha, PARE.** E a pergunta de olho:
@@ -221,6 +254,15 @@ Os passos 1-6 estão **aprovados**; os 7-8 são o que a família de LISTA acresc
   (`ui_panel_smoke::expected_rows`). Um número escrito à mão só sabe dizer *"mudou"*, e a
   pergunta é outra: *a lei de posse continua de pé?* — ele tem de disparar quando uma opção
   escapa para a moldura e ficar quieto quando alguém acrescenta um controle.
+- ⚠️ **`skin/geometry.rs` e `skin/geometry_tests.rs` estão no `A11Y_OPT_OUT`** do
+  `hr12_widgets_a11y`, com o motivo escrito ao lado: o primeiro é **layout puro** (não pinta
+  nada) e o segundo é módulo de teste. Um arquivo novo em `src/widget/**` que PINTE não pode
+  entrar nessa lista.
+- ⚠️ **DUAS corridas de mutação saíram CONTAMINADAS e a lição vale mais que o conserto:** a
+  porta nova cruzou o teto de LOC do `skin.rs` e depois o arquivo do split tropeçou no HR-12
+  — **os dois falhavam na BASELINE**, então todo veredito *"SANGRA"* das duas primeiras
+  rodadas era do gate errado. Só a terceira, com a árvore verde, mede o que alega.
+  *Confira a baseline VERDE antes de acreditar num `SANGRA`.*
 - ⚠️ **O parentesco da cena é por NOME, numa porta única** (`authored_parent`), e isso é
   cicatriz: a versão por índice contou a tabela à mão, errou por um, pendurou as opções na
   entidade errada — e **a contagem de rows deu certa por acidente** (a entidade adotada não
@@ -228,7 +270,7 @@ Os passos 1-6 estão **aprovados**; os 7-8 são o que a família de LISTA acresc
 
 ## §7 — Gate de fechamento
 
-`scripts/nextest-impacted.sh` **8512/8512 verdes** · `cargo clippy --workspace
+`scripts/nextest-impacted.sh` **8515/8515 verdes** · `cargo clippy --workspace
 --all-targets` **limpo** · `cargo fmt --all` aplicado · golden do painel **em dia**.
 
 ⚠️ **Uma flake ALHEIA, medida e exonerada:** `ph2d-flip::flip_smooth::…::the_fit_rebuilds_the_

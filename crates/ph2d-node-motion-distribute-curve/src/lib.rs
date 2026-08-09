@@ -30,6 +30,39 @@
 //!
 //! **Default off** (`align = 0`): a graph that never heard of this param emits `P` and nothing
 //! else, byte for byte, exactly as it did before.
+//!
+//! ## `mode` — ask for a COUNT, or ask for a SPACING
+//!
+//! *"Thirty dots along this curve"* and *"a dot every 25 cm"* are different questions, and only
+//! the first was askable. Blender's *Curve to Points* has had the pair since it landed
+//! (`Mode: Evaluated / Count / Length`), and nothing downstream could supply the second: `count`
+//! was the only knob, and no node re-spaces a set without re-sampling the curve it came from.
+//!
+//! ⚠️ **The mode does not change WHERE the points go — it changes which number decides HOW MANY.**
+//! The layout law is untouched (even arc-length, cell-centred, wrapping); `Length` divides the
+//! curve's measured length by the asked spacing and hands the result to the same loop. That is why
+//! `Count` is byte-identical by CONSTRUCTION rather than by a promise: it is the same call.
+//!
+//! ⚠️ **A curve's length is rarely a whole multiple of the spacing**, so the count is the one whose
+//! ACTUAL spacing lands closest to what was asked (`round`, not `floor`). Flooring would bias every
+//! request the same way — ask for `0.5` on a `3.4` curve and get `0.57` — while rounding is off by
+//! at most half a step in either direction.
+//!
+//! ⚠️ **The two modes share ONE guard, and it is the substrate's** (`RECOMMENDED_MAX_ELEMENTS`) —
+//! not the ceiling in [`PARAM_HARD_MAX`]. The first draft of this wave clamped the derived count at
+//! the measured typed-ceiling, arguing *"a second door must not skip the measurement"*; reading it
+//! back against the code, the two numbers answer different questions and conflating them would have
+//! silently NARROWED `count`, which nobody asked for. `PARAM_HARD_MAX` is how far the artist's TEXT
+//! BOX reaches; `RECOMMENDED_MAX_ELEMENTS` is what the layout may allocate. `Length` has no text box
+//! for a count at all, so there was no second door to the first number.
+//!
+//! ⚠️ And the floor is the `spacing` **slider's own min**, which costs no new number: a box with no
+//! [`ParamHardMin`] entry clamps at it, so `spacing = 0` is not reachable by authoring. A graph
+//! loaded from TEXT can still carry one — it asks for infinitely many points and gets the element
+//! cap, exactly as a `count` of `1e9` already did, so the two modes stay the same shape.
+//!
+//! **Default `mode = Count`**: a graph that never heard of either param reads them as absent, takes
+//! the defaults, and lays out exactly the set it always laid out.
 
 use ph2d_node_registry::{NodeRegistry, ParamUnit, ParamUnitDecl, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
@@ -43,7 +76,7 @@ use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
 mod curve;
 mod trig;
-use curve::{P2, arc_lut, eval, t_at_arclen, tangent};
+use curve::{P2, arc_lut, eval, t_at_arclen, tangent, total_len};
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
 /// The value type of the `offset` input (mirror of `motion.look_at::VALUE`).
@@ -113,6 +146,20 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "align",
             default: 0.0,
         },
+        // APPENDED. `0` = Count, the rule that always shipped: a saved graph reads both as
+        // absent and lays out the same set.
+        ParamSpec {
+            name: "mode",
+            default: 0.0,
+        },
+        // The arc distance between neighbours, in world units — read only in `Length`.
+        // **0.25 is measured, not chosen**: the default curve is 7.30 units long, so it lands
+        // 29 points next to the `count` default of 32. Flipping the mode on an untouched node
+        // is a nudge in density, not a jump.
+        ParamSpec {
+            name: "spacing",
+            default: 0.25,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
@@ -143,6 +190,26 @@ fn distribute(cp: &[P2; 4], count: usize, offset: f32, align: bool) -> (Vec<P2>,
     (pos, rot)
 }
 
+/// **How many points the artist asked for** — the one door the two modes come through.
+///
+/// `Count` reads the number; `Length` divides the curve's measured length ([`total_len`]) by the
+/// asked spacing and ROUNDS, so the actual spacing lands as close to the request as a whole number
+/// of points allows (module docs). Both end at the SAME guard, `RECOMMENDED_MAX_ELEMENTS`.
+///
+/// ⚠️ The `Count` arm is `param_as_count` with the argument it always had, so a graph in `Count`
+/// does not merely *behave* the same — it runs the same call.
+///
+/// Totally defined on hostile input, because a param is an `f32` an artist can type into: `as
+/// usize` in Rust saturates and maps NaN to `0`, so a zero/NaN/negative `spacing` lands on the
+/// clamp instead of on a panic.
+fn resolve_count(cp: &[P2; 4], mode: f32, count: f32, spacing: f32) -> usize {
+    if mode.round() as i32 != 1 {
+        return param_as_count(count, RECOMMENDED_MAX_ELEMENTS);
+    }
+    let n = (total_len(&arc_lut(cp)) / spacing).round() as usize;
+    n.clamp(1, RECOMMENDED_MAX_ELEMENTS)
+}
+
 struct MotionDistributeCurve;
 
 impl NodeOp for MotionDistributeCurve {
@@ -151,13 +218,18 @@ impl NodeOp for MotionDistributeCurve {
     }
 
     fn eval(&self, ctx: &mut EvalCtx<'_>) {
-        let count = param_as_count(ctx.param("count"), RECOMMENDED_MAX_ELEMENTS);
         let cp = [
             [ctx.param("p0x"), ctx.param("p0y")],
             [ctx.param("p1x"), ctx.param("p1y")],
             [ctx.param("p2x"), ctx.param("p2y")],
             [ctx.param("p3x"), ctx.param("p3y")],
         ];
+        let count = resolve_count(
+            &cp,
+            ctx.param("mode"),
+            ctx.param("count"),
+            ctx.param("spacing"),
+        );
         let offset = match ctx.input(0).get(VALUE_COL) {
             Some(Column::Scalar(v)) => v.first().copied().unwrap_or(0.0),
             _ => 0.0,
@@ -188,6 +260,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
     reg.register_param_groups(MANIFEST.id, PARAM_GROUPS);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
+    reg.register_param_gates(MANIFEST.id, PARAM_GATES);
     Ok(())
 }
 
@@ -254,6 +327,44 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         step: 1.0,
         widget: ParamWidget::Toggle,
     },
+    ParamUiHint {
+        param: "mode",
+        label: "Mode",
+        min: 0.0,
+        max: 1.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: &["Count", "Length"],
+        },
+    },
+    // ⚠️ The slider's `min` IS this param's floor — there is no `ParamHardMin` entry, so the box
+    // clamps here too, and a spacing of zero is unreachable by authoring (module docs). `0.01` on
+    // the 7.30-unit default curve is 730 points; the drag range tops out where a spacing stops
+    // being a spacing and becomes "one point".
+    ParamUiHint {
+        param: "spacing",
+        label: "Spacing",
+        min: 0.01,
+        max: 2.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
+];
+
+/// **Each mode shows only the number it reads.** `count` in `Count`, `spacing` in `Length` —
+/// the other would be a knob the layout provably ignores, which is the dead control this
+/// side-channel exists to prevent.
+static PARAM_GATES: &[ph2d_node_registry::ParamGate] = &[
+    ph2d_node_registry::ParamGate {
+        param: "count",
+        when: "mode",
+        values: &[0],
+    },
+    ph2d_node_registry::ParamGate {
+        param: "spacing",
+        when: "mode",
+        values: &[1],
+    },
 ];
 
 /// **What each of this node's numbers IS** (doc 88, Wave A) — never how it is
@@ -266,6 +377,12 @@ static PARAM_HINTS: &[ParamUiHint] = &[
 /// that is wrong is worse than a unit that is missing, because the artist can read
 /// a bare number but a mislabelled one teaches them something false.
 static PARAM_UNITS: &[ParamUnitDecl] = &[
+    // A world DISTANCE along the arc, by the same trace as the control points: it is
+    // divided into the length they describe.
+    ParamUnitDecl {
+        param: "spacing",
+        unit: ParamUnit::Length,
+    },
     ParamUnitDecl {
         param: "p0x",
         unit: ParamUnit::Length,
@@ -312,161 +429,5 @@ const fn pt(param: &'static str, label: &'static str) -> ParamUiHint {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    const LINE: [P2; 4] = [[0.0, 0.0], [1.0, 0.0], [2.0, 0.0], [3.0, 0.0]];
-
-    /// The exact count is emitted, and on a straight line the points are evenly spaced
-    /// (equal chords). FALSIFIED by parameter-space sampling, which bunches at the ends.
-    #[test]
-    fn count_is_exact_and_evenly_spaced_on_a_line() {
-        let pts = distribute(&LINE, 6, 0.0, false).0;
-        assert_eq!(pts.len(), 6);
-        let gaps: Vec<f32> = pts.windows(2).map(|w| w[1][0] - w[0][0]).collect();
-        let g0 = gaps[0];
-        for g in &gaps {
-            assert!((g - g0).abs() < 2e-2, "even gaps: {gaps:?}");
-        }
-    }
-
-    /// Every point lies ON the curve — for the S-curve default, each sample equals a
-    /// Bézier evaluation (no drift). A crude on-curve check: the y at the sampled x is
-    /// consistent with the curve.
-    #[test]
-    fn points_sit_on_the_curve() {
-        let cp = [[-3.0, -1.5], [-1.0, 2.0], [1.0, -2.0], [3.0, 1.5]];
-        let pts = distribute(&cp, 10, 0.0, false).0;
-        for p in &pts {
-            // Find the nearest LUT-sampled curve point; it should be within the sampling
-            // resolution (the point came from an eval, so this is tight).
-            let near = (0..=64)
-                .map(|k| eval(&cp, k as f32 / 64.0))
-                .map(|q| {
-                    let (dx, dy) = (q[0] - p[0], q[1] - p[1]);
-                    dx * dx + dy * dy
-                })
-                .fold(f32::MAX, f32::min);
-            assert!(near < 0.05, "on the curve (nearest² {near})");
-        }
-    }
-
-    /// `offset` slides the points along the arc. A small offset (no wrap-around) shifts
-    /// every point uniformly along the length-3 line: `0.05 · 3 = +0.15` in x. FALSIFIED
-    /// by a dead offset (identical sets).
-    #[test]
-    fn offset_slides_along_the_arc() {
-        let a = distribute(&LINE, 6, 0.0, false).0;
-        let b = distribute(&LINE, 6, 0.05, false).0;
-        for (pa, pb) in a.iter().zip(&b) {
-            assert!(
-                (pb[0] - pa[0] - 0.15).abs() < 2e-2,
-                "slid +0.15: {pa:?} {pb:?}"
-            );
-        }
-    }
-
-    /// The S-curve of the defaults — it turns hard both ways, which is what makes it able to
-    /// tell a per-point heading from a single shared one.
-    const S: [P2; 4] = [[-3.0, -1.5], [-1.0, 2.0], [1.0, -2.0], [3.0, 1.5]];
-
-    /// **The heading is the direction the curve travels there** — and the oracle is the curve's
-    /// own SHAPE, not the tangent formula: the centred difference `p[i+1] − p[i−1]` approximates
-    /// the direction at `i` to second order, and it is computed with the standard-library
-    /// `atan2` in degrees, so it shares no code with the thing under test.
-    ///
-    /// FALSIFIED by: one shared angle for every point · swapped `atan2` arguments · radians on
-    /// the wire · the tangent read at the arc fraction `s` instead of the curve parameter `t`.
-    #[test]
-    fn the_heading_matches_the_direction_the_curve_travels() {
-        let (pos, rot) = distribute(&S, 64, 0.0, true);
-        assert_eq!(rot.len(), 64, "one heading per point");
-
-        let mut worst = 0.0f32;
-        for i in 1..pos.len() - 1 {
-            let (dx, dy) = (pos[i + 1][0] - pos[i - 1][0], pos[i + 1][1] - pos[i - 1][1]);
-            let want = dy.atan2(dx).to_degrees();
-            let mut err = (rot[i] - want).abs();
-            if err > 180.0 {
-                err = 360.0 - err; // the seam is a wrap, not a disagreement
-            }
-            worst = worst.max(err);
-        }
-        assert!(worst < 1.0, "worst heading error {worst} deg");
-    }
-
-    /// Degrees, and the axis that says so: on a straight line UP every instance reads **+90**.
-    /// A horizontal line reads 0 — which is also what a dead `align` and a radian wire read,
-    /// so the vertical half is the one with teeth.
-    #[test]
-    fn a_vertical_line_reads_ninety_degrees() {
-        let up = [[0.0, 0.0], [0.0, 1.0], [0.0, 2.0], [0.0, 3.0]];
-        for r in distribute(&up, 5, 0.0, true).1 {
-            assert!((r - 90.0).abs() < 0.2, "up is +90 deg, got {r}");
-        }
-        for r in distribute(&LINE, 5, 0.0, true).1 {
-            assert!(r.abs() < 0.2, "+x is 0 deg, got {r}");
-        }
-    }
-
-    /// **Aligning does not move a single point** — byte for byte, on a curve chosen for being
-    /// hard to sample. The heading is something the node *also* reports, never something that
-    /// re-decides where an instance goes.
-    #[test]
-    fn aligning_does_not_move_a_single_point() {
-        let plain = distribute(&S, 33, 0.17, false);
-        let aligned = distribute(&S, 33, 0.17, true);
-        assert_eq!(plain.0, aligned.0, "positions are untouched by align");
-        assert!(plain.1.is_empty(), "align off reports no heading");
-    }
-
-    /// **A graph that never heard of `align` emits `P` and nothing else.** It does not name the
-    /// default — it exercises it, which is the only way a default is actually under test.
-    #[test]
-    fn a_graph_that_never_heard_of_align_emits_no_rotation() {
-        use ph2d_nodegraph::cook::{Cook, OpResolver};
-        use ph2d_nodegraph::graph::Graph;
-
-        struct Ops;
-        impl OpResolver for Ops {
-            fn resolve(&self, ty: NodeTypeId) -> Option<&dyn NodeOp> {
-                (ty == MANIFEST.id).then_some(&MotionDistributeCurve as &dyn NodeOp)
-            }
-        }
-        let mut g = Graph::new();
-        let n = g.add_node("motion.distribute_curve");
-        g.set_param(n, "count", 8.0);
-        let mut cook = Cook::new();
-        let out = cook.cook(&g, &Ops, n, 0.0).unwrap();
-        let s = out[0].as_stream();
-        assert!(s.get("P").is_some(), "still places points");
-        assert!(s.get("rot").is_none(), "and reports no heading");
-    }
-
-    /// Deterministic + cooks through the registry, emitting `P` at the exact count.
-    #[test]
-    fn registers_and_cooks() {
-        use ph2d_nodegraph::cook::{Cook, OpResolver};
-        use ph2d_nodegraph::graph::Graph;
-
-        struct Ops;
-        impl OpResolver for Ops {
-            fn resolve(&self, ty: NodeTypeId) -> Option<&dyn NodeOp> {
-                (ty == MANIFEST.id).then_some(&MotionDistributeCurve as &dyn NodeOp)
-            }
-        }
-        let mut reg = NodeRegistry::new();
-        register(&mut reg).unwrap();
-        assert!(reg.resolve(MANIFEST.id).is_some());
-
-        let mut g = Graph::new();
-        let n = g.add_node("motion.distribute_curve");
-        g.set_param(n, "count", 20.0);
-        let mut cook = Cook::new();
-        let out = cook.cook(&g, &Ops, n, 0.0).unwrap();
-        match out[0].as_stream().get("P").unwrap() {
-            Column::Vec2(v) => assert_eq!(v.len(), 20),
-            _ => panic!("P"),
-        }
-    }
-}
+#[path = "lib_tests.rs"]
+mod tests;

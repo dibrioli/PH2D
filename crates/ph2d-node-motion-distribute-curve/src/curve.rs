@@ -53,6 +53,16 @@ pub(crate) fn arc_lut(cp: &[P2; 4]) -> ArcLut {
     lut
 }
 
+/// The curve's total arc length, as the LUT measured it.
+///
+/// ⚠️ It is the **64-chord** length, not the analytic one — a polyline through the same
+/// samples the layout walks, so it under-measures a tight bend by a hair. That is the
+/// point: the number a `Length` spacing divides has to be the number the placement
+/// honours, or the artist's spacing would be exact against a length nothing uses.
+pub(crate) fn total_len(lut: &ArcLut) -> f32 {
+    lut[LUT_SAMPLES]
+}
+
 /// The parameter `t` at normalised arc position `s ∈ [0, 1]` — invert the LUT (find the
 /// bracketing segment, lerp within it). A degenerate (zero-length) curve maps `s → t`.
 pub(crate) fn t_at_arclen(lut: &ArcLut, s: f32) -> f32 {

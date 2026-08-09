@@ -47,10 +47,14 @@
 //!
 //! # ⚠️ E a caçada achou um SEGUNDO defeito, maior — que fica ABERTO
 //!
-//! A mutação `snap_to_ground: None` sobrevivia a toda a suíte, e o motivo era
-//! que nenhuma fixture do módulo continha uma **descida caminhada**. Escrita
-//! uma, o modo cinemático **desce a rampa aos pulos**, e o modo dinâmico é
-//! `0,0000` EXACTO em toda a varredura:
+//! A mutação `snap_to_ground: None` sobrevivia a toda a suíte, e eu atribuí
+//! isso a *"nenhuma fixture continha uma descida caminhada"*. ⚠️ **A atribuição
+//! estava ERRADA, e o `measure_snap_and_step` a mediu no dia seguinte:** com a
+//! fixture escrita a mutação **continua invisível** — ela produz a MESMA tabela,
+//! número por número, porque o `snap_to_ground` deste produto **nunca dispara**
+//! (o rapier exige `result.translation.dot(up) < -1e-5` e a lei zera a vertical
+//! enquanto no chão). *A fixture era necessária e não era suficiente: não havia
+//! o que detectar.* A fixture, ainda assim, achou o defeito abaixo:
 //!
 //! ```text
 //!   salto da superficie (m)      1 m/s    3 m/s    6 m/s

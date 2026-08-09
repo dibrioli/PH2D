@@ -955,7 +955,7 @@ Reservada de propósito: `autostep` afinado, `min_slope_slide_angle` exposto, ou
 | 1 | **custo de um `move_shape`** por player por tique, contra o cast+solver de hoje | ✅ **MEDIDO 2026-08-09** (`measure_player_budget`): **+0,34 µs/player, +37%** sobre o dinâmico, linear em N (µs/player plano de 10 a 200) ⇒ **~1200 personagens cinemáticos** cabem nos 1,5 ms do HR-4 (contra ~1648 dinâmicos) nesta máquina. **O orçamento não é o teto deste modo.** Gate de FORMA `the_cost_of_a_player_is_linear_in_their_number` |
 | 2 | **deriva de rampa** nos dois modos, varrendo `θ` | a fixture do gate 1, a mesma varredura que produziu a lei do `ride.rs` |
 | 3 | **penetração** no impacto nos dois modos | a fixture da W2a |
-| 4 | `snap_to_ground` mínimo útil | contra a altura do degrau que o `autostep` sobe |
+| 4 | `snap_to_ground` mínimo útil | ✅ **MEDIDO 2026-08-09** (`measure_snap_and_step`) — e **os dois números são UM** (`snap_distance` e `step_height` saem ambos da `cling_distance`). **SUBIR segue o número 1:1** (cling 0,15/0,25/0,40/0,60 → degrau 0,20/0,28/0,40/0,60; a cápsula sozinha sobe 0,06). **DESCER é INERTE:** variar o `cling` de 0,05 a 2,00 deixa as 24 células **idênticas**, e a mutação `snap_to_ground: None` dá a **mesma tabela** — o rapier o gateia em `translation.dot(up) < -1e-5` e a lei zera a vertical no chão ⇒ *o mínimo útil não existe, porque nenhum valor faz nada*. **É o MESMO mecanismo da §8.1.** Gate `the_step_it_climbs_is_the_number_the_artist_authored` |
 | 5 | quanto o `offset` (a folga do controlador) custa em aparência | ✅ **MEDIDO 2026-08-09** (`measure_foot_gap`) — e **a pergunta estava mal colocada**: a folga não é o `offset` (1 cm relativo), é **onde o último sweep parou**, de **1,0 a 4,5 cm** conforme a aproximação, com amplitude zero. O dinâmico é aritmética exacta (`float − meia-extensão`). ⚠️ **E a caçada achou um defeito MAIOR, ABERTO** — ver a §8.1 |
 | 6 | **o que a jangada afunda** nos dois modos (K2) | a cena `=72` |
 | 7 | **o que uma perna RÍGIDA custa** (`W-Landing`) — o solavanco ao subir um degrau e o pico da reação na jangada | a cena `=91` (a escada de pranchas) e a `=100`, varrendo `k` |
@@ -966,9 +966,14 @@ Reservada de propósito: `autostep` afinado, `min_slope_slide_angle` exposto, ou
 ## §8.1 — ABERTO: o personagem DESCE a rampa aos pulos (2026-08-09)
 
 ⚠️ **Achado por uma mutação que SOBREVIVEU.** Neutralizar o `snap_to_ground`
-passava em toda a suíte, e a razão é que nenhuma fixture do módulo continha uma
-**descida caminhada** — o knob tem duas metades e só a do plano estava sob
-oráculo.
+passava em toda a suíte, e eu atribuí isso à falta de uma fixture com **descida
+caminhada**. ⚠️ **A atribuição estava ERRADA** (medido em 2026-08-09 pelo
+`measure_snap_and_step`, ver §7.4): com a fixture escrita a mutação **continua
+invisível**, porque o `snap_to_ground` **nunca dispara neste produto** — o
+rapier o gateia em `result.translation.dot(up) < -1e-5` e a lei cinemática zera
+a vertical enquanto no chão. *A fixture era necessária e não suficiente: não
+havia o que detectar.* E o mecanismo do snap inerte **é o mesmo** que o do salto
+abaixo — curar um devolve o outro de graça.
 
 Escrita a fixture, o modo cinemático salta da superfície e o **dinâmico é
 `0,0000` EXACTO nas nove células**:

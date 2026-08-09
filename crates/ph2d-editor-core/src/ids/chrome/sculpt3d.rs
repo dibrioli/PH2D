@@ -271,3 +271,19 @@ pub const SCULPT3D_MASK_OP: [NodeId; 4] = [
     hash_node_id("sculpt3d.mask_op.2"),
     hash_node_id("sculpt3d.mask_op.3"),
 ];
+
+/// **O EXTRACT** — a máscara vira uma PEÇA.
+///
+/// ⚠️ Ele mora ao lado das quatro operações e **não** na seção da cena, embora
+/// o que ele produza seja um objeto: quem acabou de pintar uma máscara procura o
+/// que fazer com ela onde a pintou, e é a mesma frase que pôs as outras quatro
+/// aqui. A CONSEQUÊNCIA aparece na seção da cena, no número de peças.
+pub const SCULPT3D_EXTRACT: NodeId = hash_node_id("sculpt3d.extract");
+/// Espessura da casca que o extract produz. Zero é uma folha só.
+pub const SCULPT3D_EXTRACT_THICK: NodeId = hash_node_id("sculpt3d.extract_thick");
+/// Chip ligado a [`SCULPT3D_EXTRACT_THICK`].
+pub const SCULPT3D_EXTRACT_THICK_NUM: NodeId = hash_node_id("sculpt3d.extract_thick_num");
+/// Quantas passadas de relaxamento a costura do extract recebe.
+pub const SCULPT3D_EXTRACT_SMOOTH: NodeId = hash_node_id("sculpt3d.extract_smooth");
+/// Chip ligado a [`SCULPT3D_EXTRACT_SMOOTH`].
+pub const SCULPT3D_EXTRACT_SMOOTH_NUM: NodeId = hash_node_id("sculpt3d.extract_smooth_num");

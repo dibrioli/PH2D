@@ -49,6 +49,7 @@ impl Sculpt3dScene {
                 light_az_deg: f32::from(light.angle_deg),
                 light_elev_deg: f32::from(light.elev_deg),
                 detail: detail_index(self.dyntopo.detail),
+                extract: self.extract,
             },
             dyntopo: self.dyntopo.armed,
             level: self.level(),
@@ -97,6 +98,7 @@ impl Sculpt3dScene {
         l.elev_deg =
             (ui.light_elev_deg.round().max(0.0) as u16).clamp(ph2d_light::MIN_ELEV_DEG, 90);
         self.dyntopo.detail = DETAIL_STEPS[(ui.detail as usize).min(DETAIL_STEPS.len() - 1)].0;
+        self.extract = ui.extract;
     }
 
     /// **Um gesto do painel**, traduzido para a cena — os mesmos desfechos que as
@@ -228,6 +230,24 @@ impl Sculpt3dScene {
                 }
                 super::Merge::Stack => {
                     eprintln!("[sculpt3d] nao' funde com a pilha montada: reverta os niveis antes")
+                }
+            },
+            // ⚠️ **Os TRÊS desfechos, e não só o bem-sucedido** — a mesma
+            // razão do Merge acima, e aqui ela é mais afiada: a peça nova nasce
+            // EXATAMENTE em cima da que a gerou (é uma casca), então a silhueta
+            // da cena não muda e o artista não tem como saber se o botão fez
+            // alguma coisa. A contagem de peças é a evidência.
+            Sculpt3dIntent::Extract => match self.extract_masked(self.extract) {
+                super::Extracted::Done { verts, faces } => eprintln!(
+                    "[sculpt3d] EXTRAIU: peca nova com {verts} vertices / {faces} faces \
+                     (a cena tem {}) -- ela nasce EM CIMA da origem e vira a ativa; Ctrl+Z a tira",
+                    self.objects.len()
+                ),
+                super::Extracted::NoMask => eprintln!(
+                    "[sculpt3d] nao ha' o que extrair: pinte uma mascara antes (verbo Mask, tecla M)"
+                ),
+                super::Extracted::Nothing => {
+                    eprintln!("[sculpt3d] a cena esta' VAZIA: nao ha' peca de onde extrair")
                 }
             },
             Sculpt3dIntent::MaskClear => self.mask_from_panel(MaskOp::Clear),

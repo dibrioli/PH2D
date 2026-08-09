@@ -35,6 +35,21 @@ pub(crate) enum Merge {
     Stack,
 }
 
+/// O que o gesto de EXTRAIR fez — ou por que ele não fez.
+///
+/// ⚠️ **Duas recusas, e elas pedem conselhos opostos** (a mesma razão do
+/// [`Merge`] acima): *não há peça* manda pôr uma na mesa, *não há máscara* manda
+/// pintar uma. Um `None` obrigaria o log a escolher uma frase e a estar errado
+/// em metade das vezes.
+pub(crate) enum Extracted {
+    /// Saiu uma peça: o tamanho dela.
+    Done { verts: usize, faces: usize },
+    /// A peça ativa não tem máscara pintada.
+    NoMask,
+    /// A cena está vazia.
+    Nothing,
+}
+
 /// A identidade **DURÁVEL** de um objeto.
 ///
 /// ⚠️ **Um ÍNDICE não serve para a fila de undo**, e o mecanismo é conhecido:
@@ -180,6 +195,39 @@ impl Sculpt3dScene {
         self.record(StrokeUndo::AddedObject);
         self.mesh_rebuilt();
         self.active
+    }
+
+    /// **RECORTA a região mascarada numa peça NOVA** — ver
+    /// [`ph2d_mesh::extract_masked`].
+    ///
+    /// ⚠️ **A peça nasce com a POSE da origem**, e não deslocada como a do
+    /// `duplicate_active`: a cópia precisa saltar para o lado porque é
+    /// indistinguível do original, e esta precisa do contrário — ela é uma casca
+    /// que só faz sentido **onde a máscara foi pintada**. Movê-la seria desfazer
+    /// o gesto no instante em que ele acontece.
+    ///
+    /// ⚠️ **Ela NÃO recusa com a pilha de multires montada**, e a diferença para
+    /// o remesh, o tapar buraco e a fusão é o que a autoriza: aqueles trocam a
+    /// BASE, e todo nível acima dela é uma subdivisão que passaria a descrever
+    /// uma malha que não existe mais. Extrair não toca a origem — ele lê o nível
+    /// vivo e escreve noutro objeto.
+    pub(super) fn extract_masked(&mut self, opts: ph2d_mesh::Extract) -> Extracted {
+        let Some(src) = self.obj() else {
+            return Extracted::Nothing;
+        };
+        let pose = src.pose;
+        let Some(mesh) = ph2d_mesh::extract_masked(src.stack.mesh(), opts) else {
+            return Extracted::NoMask;
+        };
+        let (verts, faces) = (mesh.vert_count(), mesh.face_count());
+        let id = self.mint_id();
+        self.objects.push(SceneObject::new(id, mesh, pose));
+        // A peça recém-cortada vira a ativa: o artista acabou de dizer que é
+        // nela que quer trabalhar — a mesma frase do `add_primitive`.
+        self.active = self.objects.len() - 1;
+        self.record(StrokeUndo::AddedObject);
+        self.mesh_rebuilt();
+        Extracted::Done { verts, faces }
     }
 
     /// **DUPLICA a peça ativa**, deslocada para o lado NA TELA.

@@ -27,6 +27,11 @@ ph2d-i18n = { path = "../ph2d-i18n" }
 # guarda uma segunda cópia de nenhum destes números, e os NOMES dos chips saem
 # de `Verb::label()`/`Falloff::label()`, nunca de uma tabela paralela.
 ph2d-sculpt3d = { path = "../ph2d-sculpt3d" }
+# **`Extract`, e só ele.** Os dois números do extract (a espessura e as passadas
+# de costura) são AUTORADOS aqui, e o `Extract::default()` é a fonte deles — dois
+# `f32` soltos nesta struct seriam um segundo lugar para o default morar, e o
+# dia em que o kernel mudasse o dele o painel continuaria mostrando o antigo.
+ph2d-mesh = { path = "../ph2d-mesh" }
 # O PISO da elevação da lâmpada (`MIN_ELEV_DEG`) — a faixa do slider é a do
 # resolvedor de luz, não um número escolhido no painel.
 ph2d-light = { path = "../ph2d-light" }

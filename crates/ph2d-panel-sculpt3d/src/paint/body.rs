@@ -195,8 +195,8 @@ fn paint_brush_tail(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32,
     // no bloco de knobs acima, que é onde ela nasceu e onde o smoke a perdeu:
     // lá ela aparecia do nada, separada do seletor pela fileira do Falloff, e o
     // artista lia um número sem saber de que ele era. A row continua na tabela
-    // (ver `Row::in_tail`); o que mudou é onde ela é desenhada.
-    for row in rows::rows().filter(|r| r.in_tail && (r.show)(&snap.ui)) {
+    // (ver `Row::place`); o que mudou é onde ela é desenhada.
+    for row in rows::rows().filter(|r| r.place == rows::Place::AfterAlpha && (r.show)(&snap.ui)) {
         y = paint_one_row(ctx, snap, row, x, w, y);
     }
     // **O PREVIEW**, logo ABAIXO das pistas que o mudam — e a posição é a mesma
@@ -241,7 +241,7 @@ fn paint_brush_tail(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32,
     // um artista que acabou de pintar máscara procura o que fazer com ela onde
     // ele a pintou, não numa seção própria três rolagens abaixo.
     let mask: Vec<&str> = MASK_LABELS.iter().map(|k| tr(k)).collect();
-    labelled_seg(
+    let mut y = labelled_seg(
         ctx,
         tr("panel.sculpt3d.mask"),
         ids::SCULPT3D_SEC_BRUSH,
@@ -254,7 +254,26 @@ fn paint_brush_tail(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32,
         x,
         w,
         y,
-    )
+    );
+    // **O EXTRACT**, e os dois números que ele lê, logo abaixo das quatro
+    // operações — a quinta coisa que se faz com uma máscara pintada, e a única
+    // que produz uma PEÇA. Ela aparece na seção da cena, no número de peças; o
+    // gesto fica onde a máscara foi pintada.
+    //
+    // ⚠️ **Os knobs vêm DEPOIS do botão**, e não antes: eles são os argumentos
+    // dele, e um argumento acima do verbo lê como um knob solto do pincel.
+    y = command(
+        ctx,
+        ids::SCULPT3D_EXTRACT,
+        tr("panel.sculpt3d.extract"),
+        x,
+        w,
+        y,
+    ) + Spacing::Sm.px();
+    for row in rows::rows().filter(|r| r.place == rows::Place::AfterExtract && (r.show)(&snap.ui)) {
+        y = paint_one_row(ctx, snap, row, x, w, y);
+    }
+    y
 }
 
 /// **O ESPELHO** — três botões INDEPENDENTES.
@@ -544,8 +563,8 @@ fn knob_section(
         // apagado que ainda despacha mente, e um que não despacha é a affordance
         // morta que esta casa varre.
         // E a row de CAUDA é pulada aqui porque quem a desenha é o `tail`, ao
-        // lado do controle que a governa — ver `Row::in_tail`.
-        if row.in_tail || !(row.show)(&snap.ui) {
+        // lado do controle que a governa — ver `Row::place`.
+        if row.place != rows::Place::Knobs || !(row.show)(&snap.ui) {
             continue;
         }
         y = paint_one_row(ctx, snap, row, x, w, y);

@@ -7125,6 +7125,7 @@ dependencies = [
  "ph2d-editor-core",
  "ph2d-i18n",
  "ph2d-light",
+ "ph2d-mesh",
  "ph2d-sculpt3d",
  "ph2d-tokens",
  "ph2d-ui-testkit",

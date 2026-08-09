@@ -33,6 +33,7 @@ pub(crate) const COMMANDS: &[(ph2d_a11y::NodeId, Sculpt3dIntent)] = &[
     (ids::SCULPT3D_DELETE, Sculpt3dIntent::Delete),
     (ids::SCULPT3D_ISOLATE, Sculpt3dIntent::ToggleIsolate),
     (ids::SCULPT3D_MERGE, Sculpt3dIntent::Merge),
+    (ids::SCULPT3D_EXTRACT, Sculpt3dIntent::Extract),
 ];
 
 /// As quatro primitivas e as quatro operações de máscara, na ordem em que o

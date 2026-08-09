@@ -153,8 +153,8 @@ mod fixtures;
 
 pub(crate) use scenes::{
     alpha_scene, bake_scene, cavity_scene, directional_alpha_scene, donation_scene, dyntopo_scene,
-    fuse_scene, holes_scene, remesh_scene, reopen_scene, reversion_scene, scene_objects,
-    smoke_armed, smoke_mesh, turn_scene, wants_canvas,
+    extract_scene, fuse_scene, holes_scene, masked_dome_counts, remesh_scene, reopen_scene,
+    reversion_scene, scene_objects, smoke_armed, smoke_mesh, turn_scene, wants_canvas,
 };
 
 /// O que o arrasto está fazendo.
@@ -196,7 +196,7 @@ mod objects;
 #[path = "sculpt3d_preview.rs"]
 mod sculpt3d_preview;
 
-pub(crate) use objects::{Merge, Primitive};
+pub(crate) use objects::{Extracted, Merge, Primitive};
 
 /// **ONDE as coisas estão** — as portas de espaço. Filho (`#[path]`) pelo motivo
 /// dos outros: o corte é de responsabilidade, e este é o assunto que a lista de
@@ -426,6 +426,12 @@ pub(crate) struct Sculpt3dScene {
     /// FRAÇÃO mantém as duas: o alcance segue sendo função da peça, e o slider é
     /// o veredito de aparência, que nenhuma medição responde.
     sss_scatter: f32,
+    /// **O que o botão de extract vai fazer** — ver [`ph2d_mesh::Extract`].
+    ///
+    /// ⚠️ Autorado, e por isso ele mora aqui e não num argumento do gesto: o
+    /// artista ajusta a espessura, olha, extrai de novo. O tipo é o do KERNEL —
+    /// dois `f32` soltos seriam um segundo lugar para o default morar.
+    extract: ph2d_mesh::Extract,
     stroke: SculptStroke,
     undo: Vec<Entry>,
     /// **O futuro guardado** — o que um Ctrl+Z tirou e um Ctrl+Shift+Z devolve.
@@ -501,6 +507,7 @@ impl Sculpt3dScene {
             ssao: ph2d_mesh_render::DEFAULT_SSAO_STRENGTH,
             sss: ph2d_mesh_render::SssParams::default().strength,
             sss_scatter: ph2d_mesh_render::SSS_SCATTER_FRACTION,
+            extract: ph2d_mesh::Extract::default(),
             stroke: SculptStroke::default(),
             undo: Vec::new(),
             redo: Vec::new(),

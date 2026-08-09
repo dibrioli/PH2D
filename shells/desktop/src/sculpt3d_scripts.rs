@@ -369,6 +369,39 @@ pub(crate) fn for_scene(mesh: &ph2d_mesh::Mesh) {
              [sculpt3d]        Painter continua movendo as sombras dele -- sem cena 3D nenhuma."
         );
     }
+    if crate::sculpt3d::extract_scene() {
+        // ⚠️ **A cena DECLARA quantos vértices ela mascarou**, e é esse número
+        // que a torna válida: sem ele, *"apertei e nada saiu"* e *"apertei e
+        // saiu uma casca de dois triângulos"* seriam a mesma queixa.
+        eprintln!(
+            "[sculpt3d] =22 O EXTRACT -- a mascara vira uma PECA. DUAS esferas:\n\
+             [sculpt3d]    a da DIREITA ja' vem com uma calota mascarada ({} de {} vertices);\n\
+             [sculpt3d]    a da ESQUERDA vem NUA. Se as duas nao aparecerem, PARE.\n\
+             [sculpt3d]    Abra o painel com a CRASE (`) -- o botao 'Extract Mask' e os dois\n\
+             [sculpt3d]    numeros dele ficam no fim da secao Brush, logo abaixo das quatro\n\
+             [sculpt3d]    operacoes de mascara.\n\
+             [sculpt3d]    (1) Clique na esfera da DIREITA e aperte 'Extract Mask'. O log diz o\n\
+             [sculpt3d]        tamanho da peca nova. Ela nasce EM CIMA da calota -- e' uma casca,\n\
+             [sculpt3d]        entao a silhueta da cena quase nao muda. Arraste-a para o lado\n\
+             [sculpt3d]        (gizmo) e olhe: e' uma calota com ESPESSURA, fechada, sem furo na\n\
+             [sculpt3d]        beira. Se ela aparecer VAZADA ou com a luz pelo avesso, PARE.\n\
+             [sculpt3d]    (2) Ctrl+Z tira a peca. Ponha 'Extract Thickness' em ZERO e extraia de\n\
+             [sculpt3d]        novo: agora sai uma FOLHA, uma casca de uma camada so'. Gire a\n\
+             [sculpt3d]        camera: ela tem de ficar visivel dos dois lados.\n\
+             [sculpt3d]    (3) Ctrl+Z. Ponha a espessura NEGATIVA (-0,15) e extraia: a casca\n\
+             [sculpt3d]        cresce para DENTRO da esfera, nao para fora.\n\
+             [sculpt3d]    (4) A METADE QUE PROVA A COSTURA: clique na esfera da ESQUERDA, pegue\n\
+             [sculpt3d]        o verbo Mask (tecla M) e pinte uma mancha IRREGULAR, bem\n\
+             [sculpt3d]        serrilhada de proposito. Extraia com 'Extract Smooth' em ZERO e\n\
+             [sculpt3d]        olhe a beira: ela segue o serrilhado. Ctrl+Z, ponha o Smooth em 8\n\
+             [sculpt3d]        e extraia de novo -- a beira tem de ficar CALMA, e a peca NAO pode\n\
+             [sculpt3d]        encolher para dentro da mancha que voce pintou.\n\
+             [sculpt3d]    (5) Extraia com a mascara LIMPA (tecla C na esfera da esquerda): o log\n\
+             [sculpt3d]        tem de RECUSAR com uma frase, e nao criar uma peca vazia.",
+            crate::sculpt3d::masked_dome_counts().0,
+            crate::sculpt3d::masked_dome_counts().1,
+        );
+    }
     if crate::sculpt3d::fuse_scene() {
         // ⚠️ **A cena DECLARA quantas peças montou**, e o número é o oráculo dos
         // dois verbos: fundir e isolar mudam a CONTAGEM, e o log de cada um diz

@@ -234,6 +234,12 @@ pub(crate) fn scene_objects() -> Vec<(ph2d_mesh::Mesh, ph2d_mesh::Pose)> {
             ),
         ];
     }
+    if extract_scene() {
+        // ⚠️ **A da direita é a MASCARADA**, e a esquerda é a que a cena já abre
+        // (nua, pelo `smoke_mesh`). Sem a nua ao lado, o smoke provaria só que
+        // o botão lê uma máscara que ELE não viu ser pintada.
+        return vec![(masked_dome(), ph2d_mesh::Pose::new([2.6, 0.0, 0.0], 1.0))];
+    }
     if !objects_scene() {
         return Vec::new();
     }
@@ -323,6 +329,55 @@ pub(crate) fn alpha_scene() -> bool {
 /// lugar. O roteiro manda escolher; a cena entrega o barro.
 pub(crate) fn directional_alpha_scene() -> bool {
     std::env::var("PH2D_SCULPT3D_SMOKE").ok().as_deref() == Some("21")
+}
+
+/// `=22` — a cena do **EXTRACT**: a máscara vira uma PEÇA.
+///
+/// ⚠️ **Duas esferas, e a assimetria é o smoke inteiro.** A da DIREITA já vem
+/// mascarada: o artista aperta o botão e julga a GEOMETRIA — a espessura, a
+/// costura, o lado para onde a casca cresce — sem o confundidor de ter acabado
+/// de pintar uma máscara à mão. A da ESQUERDA vem NUA: ele pinta a máscara dele
+/// e extrai de novo, e é essa metade que prova a costura *pincel → botão*.
+///
+/// ⚠️ **Só a da direita é armada por baixo do pano**, e a lei que o doc do
+/// `impasto_smoke` do Painter pregou continua honrada — *a cena que arma estado
+/// pula justamente a costura que ela devia provar*. Ela não a pula: ela a põe na
+/// peça ao lado.
+pub(crate) fn extract_scene() -> bool {
+    std::env::var("PH2D_SCULPT3D_SMOKE").ok().as_deref() == Some("22")
+}
+
+/// **Quantos vértices a calota da `=22` mascara, e de quantos** — o número que
+/// torna aquele smoke válido.
+///
+/// ⚠️ Ele sai da MESMA [`masked_dome`] que a cena monta, e não de uma conta
+/// paralela: um roteiro que anuncia um número que a peça não tem é pior que um
+/// roteiro sem número — ele faz o artista procurar um defeito que não existe.
+#[must_use]
+pub(crate) fn masked_dome_counts() -> (usize, usize) {
+    let m = masked_dome();
+    let total = m.vert_count();
+    let masked = m
+        .masks()
+        .map_or(0, |k| k.iter().filter(|&&v| v >= 0.5).count());
+    (masked, total)
+}
+
+/// A esfera que a cena `=22` abre à direita, **já mascarada** com uma calota.
+///
+/// ⚠️ A máscara é uma calota `y > 0,35` — grande o bastante para a casca ser
+/// legível a qualquer distância, e com fronteira LONGA, que é onde a costura
+/// vive e onde um erro de enrolamento se vê.
+#[must_use]
+fn masked_dome() -> ph2d_mesh::Mesh {
+    let mut m = ph2d_mesh::shapes::uv_sphere(96, 144, 1.0);
+    let n = m.vert_count();
+    let cap: Vec<bool> = (0..n).map(|i| m.positions()[i][1] > 0.35).collect();
+    let mask = m.masks_mut();
+    for i in 0..n {
+        mask[i] = f32::from(u8::from(cap[i]));
+    }
+    m
 }
 
 /// A malha com que cada cena abre.

@@ -22,6 +22,7 @@
 //! coisa que ACONTECE, e enfiá-los num `SetUi` faria toda mexida de slider ter
 //! de decidir se o remesh já rodou.
 
+use ph2d_mesh::Extract;
 use ph2d_sculpt3d::{Brush, Symmetry};
 use std::cell::{Cell, RefCell};
 
@@ -88,6 +89,14 @@ pub struct Sculpt3dUi {
     pub wireframe: bool,
     /// Qual degrau de detalhe a topologia dinâmica usa (índice em `DETAIL_STEPS`).
     pub detail: u8,
+    /// **O que o botão de extract vai fazer** — a espessura da casca e quantas
+    /// passadas a costura recebe.
+    ///
+    /// ⚠️ **O tipo é o do KERNEL**, e não dois `f32` soltos: o
+    /// `Extract::default()` é a única fonte destes dois números, e copiá-los
+    /// para cá deixaria o painel mostrando o default antigo no dia em que o
+    /// kernel mudasse o dele.
+    pub extract: Extract,
 }
 
 impl Default for Sculpt3dUi {
@@ -120,6 +129,7 @@ impl Default for Sculpt3dUi {
             alpha_preview: true,
             wireframe: false,
             detail: 1,
+            extract: Extract::default(),
         }
     }
 }
@@ -243,6 +253,14 @@ pub enum Sculpt3dIntent {
     MaskInvert,
     MaskBlur,
     MaskSharpen,
+    /// **Recorta a região mascarada numa peça nova** — ver
+    /// [`ph2d_mesh::extract_masked`].
+    ///
+    /// ⚠️ Um comando, e não um `SetUi`: extrair não é ajustar um número, é uma
+    /// peça que passa a EXISTIR. Os dois knobs que ele lê viajam no
+    /// [`Sculpt3dUi::extract`], que é estado autorado — o comando só diz
+    /// *agora*.
+    Extract,
 }
 
 /// Estado retido por-instância. Vazio de propósito: a autoridade é a

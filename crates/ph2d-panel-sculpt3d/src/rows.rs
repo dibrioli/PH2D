@@ -27,6 +27,16 @@ use crate::state::Sculpt3dUi;
 /// é honesta; uma que mostra um número que o pincel não usa não é.
 const RADIUS_TRACK_MAX_PX: f32 = 200.0; // LITERAL-PX-OK: extensao da PISTA, nao metrica de design (o teto real e 1/8 da altura do viewport)
 
+/// O teto da pista de **Extract Smooth**, em passadas.
+///
+/// ⚠️ **OITO, e o número é MEDIDO** (`ph2d-mesh/tests/measure_extract.rs`): o
+/// relaxamento da costura **CONVERGE**, e o que ele compra por passada cai
+/// rápido. Numa costura serrilhada — a que uma mão pintada deixa — a rugosidade
+/// da beira vai de **0,09369 a 0,05117 em oito passadas (−45%)**, e da oitava em
+/// diante cada uma compra **0,4%**. Uma pista mais longa seria uma faixa onde
+/// arrastar não faz nada, que é o controle morto que esta casa varre a cada wave.
+const MAX_EXTRACT_SMOOTH: f32 = 8.0; // LITERAL-PX-OK: contagem de passadas MEDIDA, nao metrica de design
+
 /// Uma row de slider+chip: que número ela edita, sobre que faixa, e **quando ela
 /// existe**.
 pub struct Row {
@@ -59,7 +69,7 @@ pub struct Row {
     /// varre a cada wave. A pergunta é feita à porta do MOTOR
     /// (`Verb::uses_plane`), nunca a uma lista paralela de nomes.
     pub show: fn(&Sculpt3dUi) -> bool,
-    /// **Esta row é pintada pela CAUDA da seção, e não no bloco de knobs.**
+    /// **ONDE, na seção, esta row é desenhada.**
     ///
     /// ⚠️ Ela existe porque *posição na tela* é uma pergunta que a tabela não
     /// respondia, e a resposta errada custou um smoke: a pista de `Alpha Scale`
@@ -72,7 +82,24 @@ pub struct Row {
     /// viva e varrida como qualquer outra. O que este campo move é **onde ela é
     /// desenhada**, e só isso — a alternativa (tirá-la da tabela e pintá-la à
     /// mão) a tiraria das três listas de uma vez.
-    pub in_tail: bool,
+    pub place: Place,
+}
+
+/// Em que ponto da seção a row é pintada.
+///
+/// ⚠️ **Era um `bool`, e o terceiro valor o obrigou a virar isto.** Enquanto
+/// havia só *no bloco* × *na cauda*, dois estados bastavam; os dois números do
+/// extract são argumentos de um BOTÃO que mora no fim da seção, e pintá-los onde
+/// as pistas do alpha moram os separaria do gesto que os lê. Um `bool` com um
+/// `if` por id ao lado seria a enumeração que apodrece na quarta row.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Place {
+    /// O bloco de knobs contínuos, no topo da seção.
+    Knobs,
+    /// Logo abaixo do seletor de padrão, colada aos chips que a governa.
+    AfterAlpha,
+    /// No fim da seção, colada ao botão de extract que a lê.
+    AfterExtract,
 }
 
 impl Row {
@@ -144,7 +171,7 @@ static BRUSH: &[Row] = &[
         get: |u| u.radius_px,
         set: |u, v| u.radius_px = v,
         show: always,
-        in_tail: false,
+        place: Place::Knobs,
     },
     Row {
         label: "panel.sculpt3d.strength",
@@ -157,7 +184,7 @@ static BRUSH: &[Row] = &[
         get: |u| u.brush.strength,
         set: |u, v| u.brush.strength = v,
         show: always,
-        in_tail: false,
+        place: Place::Knobs,
     },
     Row {
         label: "panel.sculpt3d.plane_offset",
@@ -172,7 +199,7 @@ static BRUSH: &[Row] = &[
         get: |u| u.brush.plane_offset,
         set: |u, v| u.brush.plane_offset = v,
         show: |u| u.brush.verb.uses_plane(),
-        in_tail: false,
+        place: Place::Knobs,
     },
     Row {
         label: "panel.sculpt3d.pinch",
@@ -185,7 +212,7 @@ static BRUSH: &[Row] = &[
         get: |u| u.brush.pinch,
         set: |u, v| u.brush.pinch = v,
         show: |u| u.brush.verb == Verb::Crease,
-        in_tail: false,
+        place: Place::Knobs,
     },
     Row {
         label: "panel.sculpt3d.alpha_scale",
@@ -205,7 +232,7 @@ static BRUSH: &[Row] = &[
         // pistas de lâmpada sob um matcap — uma row condicional é PULADA, nunca
         // pintada apagada, porque um controle que desenha e não responde mente.
         show: |u| u.brush.alpha.is_some(),
-        in_tail: true,
+        place: Place::AfterAlpha,
     },
     Row {
         label: "panel.sculpt3d.alpha_az",
@@ -222,7 +249,7 @@ static BRUSH: &[Row] = &[
         get: |u| f32::from(u.brush.alpha_az_deg),
         set: |u, v| u.brush.alpha_az_deg = degrees(v),
         show: directional_alpha,
-        in_tail: true,
+        place: Place::AfterAlpha,
     },
     Row {
         label: "panel.sculpt3d.alpha_elev",
@@ -243,7 +270,46 @@ static BRUSH: &[Row] = &[
         get: |u| f32::from(u.brush.alpha_elev_deg),
         set: |u, v| u.brush.alpha_elev_deg = degrees(v),
         show: directional_alpha,
-        in_tail: true,
+        place: Place::AfterAlpha,
+    },
+    // ── Os dois números do EXTRACT ──────────────────────────────────────────
+    //
+    // ⚠️ **Eles são os ARGUMENTOS de um botão, e ficam colados nele** — não são
+    // knobs do pincel. É a mesma decisão que trouxe a pista de `Alpha Scale`
+    // para a cauda: um controle e o que ele governa têm de estar no campo de
+    // visão um do outro.
+    Row {
+        label: "panel.sculpt3d.extract_thickness",
+        slider: ids::SCULPT3D_EXTRACT_THICK,
+        chip: ids::SCULPT3D_EXTRACT_THICK_NUM,
+        // ⚠️ **A faixa é sobre a ESCALA LOCAL da malha, e as primitivas desta
+        // casa nascem com raio 1** — meia unidade é meia peça, e é a faixa
+        // confortável do arrasto. O sinal escolhe o lado: para fora é armadura,
+        // para dentro é forro. **Zero é uma folha só**, e é ele que está no meio
+        // da pista de propósito.
+        min: -0.5,
+        max: 0.5,
+        step: 0.01, // LITERAL-PX-OK: passo de uma espessura em unidades de malha
+        decimals: 3,
+        get: |u| u.extract.thickness,
+        set: |u, v| u.extract.thickness = v,
+        show: |_| true,
+        place: Place::AfterExtract,
+    },
+    Row {
+        label: "panel.sculpt3d.extract_smooth",
+        slider: ids::SCULPT3D_EXTRACT_SMOOTH,
+        chip: ids::SCULPT3D_EXTRACT_SMOOTH_NUM,
+        min: 0.0,
+        max: MAX_EXTRACT_SMOOTH,
+        step: 1.0, // LITERAL-PX-OK: uma passada e' inteira
+        decimals: 0,
+        get: |u| u.extract.smooth as f32,
+        // ⚠️ O `round` é a fronteira de DISPLAY: a pista fala em `f32` como toda
+        // row desta tabela, e o que o kernel conta é uma passada inteira.
+        set: |u, v| u.extract.smooth = v.round().max(0.0) as u32,
+        show: |_| true,
+        place: Place::AfterExtract,
     },
 ];
 
@@ -298,7 +364,7 @@ static SHADING: &[Row] = &[
         get: |u| u.cavity,
         set: |u, v| u.cavity = v,
         show: always,
-        in_tail: false,
+        place: Place::Knobs,
     },
     Row {
         label: "panel.sculpt3d.light_az",
@@ -313,7 +379,7 @@ static SHADING: &[Row] = &[
         get: |u| u.light_az_deg,
         set: |u, v| u.light_az_deg = v,
         show: under_the_rig,
-        in_tail: false,
+        place: Place::Knobs,
     },
     Row {
         label: "panel.sculpt3d.light_elev",
@@ -329,7 +395,7 @@ static SHADING: &[Row] = &[
         get: |u| u.light_elev_deg,
         set: |u, v| u.light_elev_deg = v,
         show: under_the_rig,
-        in_tail: false,
+        place: Place::Knobs,
     },
     Row {
         label: "panel.sculpt3d.ao",
@@ -342,7 +408,7 @@ static SHADING: &[Row] = &[
         get: |u| u.ao,
         set: |u, v| u.ao = v,
         show: always,
-        in_tail: false,
+        place: Place::Knobs,
     },
     Row {
         label: "panel.sculpt3d.ssao",
@@ -355,7 +421,7 @@ static SHADING: &[Row] = &[
         get: |u| u.ssao,
         set: |u, v| u.ssao = v,
         show: always,
-        in_tail: false,
+        place: Place::Knobs,
     },
     Row {
         label: "panel.sculpt3d.sss",
@@ -368,7 +434,7 @@ static SHADING: &[Row] = &[
         get: |u| u.sss,
         set: |u, v| u.sss = v,
         show: always,
-        in_tail: false,
+        place: Place::Knobs,
     },
     Row {
         label: "panel.sculpt3d.sss_scatter",
@@ -390,7 +456,7 @@ static SHADING: &[Row] = &[
         // não faz nada é o que esta casa varre a cada wave. É a mesma lei do
         // `Plane Offset`, que só existe nos verbos que leem um plano.
         show: |u| u.sss > 0.0,
-        in_tail: false,
+        place: Place::Knobs,
     },
 ];
 

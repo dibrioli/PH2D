@@ -174,6 +174,15 @@ fn the_composite_stack_lays_the_whole_stroke() {
     t.paint.composite_enabled = true;
     t.paint.composite[0] = CompositeLayer {
         op: CompositeOp::Brush,
+        // ⚠️ **1,0, e o caso do CAP fica NÃO MEDIDO — dito em vez de fingido.** Uma lente de auditoria
+        // apontou que `stroke_cover_wanted` é `!accumulate && strength < 1.0`, então Strength 1,0 é o
+        // único valor que DESARMA o cap de Accumulate, e que com ele armado o passe da fonte poderia
+        // esgotar o `stroke_mask` e deixar o passe do canvas depositando zero. Tentei medir a 0,6 e a
+        // RÉGUA não alcança: o controle (o mesmo pincel SEM a pilha) entinta **0** colunas acima do
+        // limiar, porque tinta a 60% de força é clara demais para ele — a pilha media 20, isto é MAIS
+        // que o controle. Um limiar relativo ao que o pincel de fato deita é o que falta; até lá o caso
+        // fica NOMEADO e sem gate, e a defesa é de MECANISMO (o `stroke_mask` e o `tex_rng` são salvos e
+        // repostos em volta do passe da fonte, em `lay_into_smear_base`), não de medição.
         strength: 1.0,
     };
     t.paint.composite[1] = CompositeLayer {
@@ -186,9 +195,19 @@ fn the_composite_stack_lays_the_whole_stroke() {
     };
     drag(&mut t, 100.0, 30.0, 170.0);
     let whole = inked_columns(&t, 100, SIZE, 30..171);
+    // ⚠️ CONTROLE: o MESMO pincel sem a pilha. Sem ele, baixar a Strength para 0,6 (que é o que arma o
+    // cap) também clareia a tinta, e uma queda na contagem seria da RÉGUA e não do produto.
+    let control = {
+        let mut c = PainterTool::default();
+        c.set_source(vec![255u8; (SIZE * SIZE * 4) as usize], SIZE, SIZE);
+        c.paint.brush = t.paint.brush;
+        drag(&mut c, 100.0, 30.0, 170.0);
+        inked_columns(&c, 100, SIZE, 30..171)
+    };
+    eprintln!("pilha {whole} · controle {control}");
     assert_eq!(
-        whole, 141,
-        "a pilha perdeu tinta: {whole} de 141 colunas entintadas ao longo do caminho"
+        whole, control,
+        "a pilha perdeu tinta: {whole} colunas contra {control} do MESMO pincel sem a pilha"
     );
 }
 
@@ -344,4 +363,126 @@ fn probe_composite_edge_ramp() {
             _ => eprintln!("{name}: rampa NAO MEDIDA (hi={hi:?} lo={lo:?}, peak={peak:.3})"),
         }
     }
+}
+
+/// SONDA — o SPACING é a régua do endurecimento? (o candidato que a §13.10 deixou vivo)
+///
+/// O endurecimento é função de quantos dabs passam por um texel; o Spacing governa exatamente isso. Se a
+/// rampa depender dele, o default é o botão — e é uma linha, não uma lei nova.
+#[test]
+fn probe_hardening_vs_spacing() {
+    const SIZE: u32 = 240;
+    for sp in [0.02f32, 0.05, 0.10, 0.25, 0.50] {
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; (SIZE * SIZE * 4) as usize], SIZE, SIZE);
+        t.paint.brush.radius_px = 20.0;
+        t.paint.brush.color = [0.6, 0.0, 0.0];
+        t.paint.brush.space_attenuation = false;
+        t.paint.brush.spacing = sp;
+        for _ in 0..5 {
+            drag(&mut t, 120.0, 40.0, 200.0);
+        }
+        let px = &t.canvas_rgba;
+        let at = |y: u32| f32::from(255 - px[((y * SIZE + 120) * 4) as usize]) / 255.0;
+        let peak = (100..120).map(at).fold(0.0f32, f32::max);
+        let (mut hi, mut lo) = (None, None);
+        for y in 120..180 {
+            let v = at(y) / peak.max(1e-6);
+            if hi.is_none() && v < 0.9 {
+                hi = Some(y);
+            }
+            if lo.is_none() && v < 0.1 {
+                lo = Some(y);
+                break;
+            }
+        }
+        // E o OUTRO lado do trade: espaçar demais deixa o traço em CONTAS. A ondulação vive no OMBRO — o
+        // eixo satura em qualquer lei, que foi a medição que enganou a §13.10 —, então ela é lida numa
+        // linha logo dentro da borda.
+        let sh: Vec<f32> = (60..180)
+            .map(|x| f32::from(255 - px[((112 * SIZE + x) * 4) as usize]))
+            .collect();
+        let ripple =
+            sh.iter().cloned().fold(0.0f32, f32::max) - sh.iter().cloned().fold(255.0f32, f32::min);
+        match (hi, lo) {
+            (Some(a), Some(b)) => {
+                eprintln!(
+                    "spacing {sp:.2}: rampa {} texels · ondulacao {ripple:.0} niveis",
+                    b - a
+                )
+            }
+            _ => eprintln!("spacing {sp:.2}: NAO MEDIDA"),
+        }
+    }
+}
+
+/// SONDA — a ESCADA (o que a foto do Enio mostra), com o oráculo certo.
+///
+/// ⚠️ Largura de rampa é o oráculo ERRADO: uma borda bem anti-aliased tem rampa ESTREITA com valores
+/// intermediários. O que se vê como escada é a posição da borda **saltando em pixels inteiros ao longo
+/// do traço**. Então o oráculo é a posição SUB-PIXEL da borda por coluna (onde a tinta cruza 50%,
+/// interpolada) e quantos valores DISTINTOS ela toma: uma borda contínua varre um contínuo, uma
+/// serrilhada quantiza em inteiros.
+#[test]
+fn probe_edge_staircase() {
+    const SIZE: u32 = 240;
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; (SIZE * SIZE * 4) as usize], SIZE, SIZE);
+    t.paint.brush.radius_px = 20.0;
+    t.paint.brush.color = [0.6, 0.0, 0.0];
+    t.paint.brush.space_attenuation = false;
+    // Um traço INCLINADO: numa borda paralela a um eixo a escada não existe, e a fixture ficaria verde
+    // por vácuo — a foto do Enio é de traços em diagonal.
+    t.on_canvas_pointer(cp([40.0, 90.0], PointerPhase::Down));
+    let mut x = 40.0f32;
+    while x < 200.0 {
+        x += 1.0;
+        t.on_canvas_pointer(cp([x, 90.0 + (x - 40.0) * 0.35], PointerPhase::Move));
+    }
+    t.on_canvas_pointer(cp([200.0, 146.0], PointerPhase::Up));
+    let px = &t.canvas_rgba;
+    let ink = |x: u32, y: u32| f32::from(255 - px[((y * SIZE + x) * 4) as usize]) / 255.0;
+    let mut edges = Vec::new();
+    for x in 70..180 {
+        let peak = (0..SIZE).map(|y| ink(x, y)).fold(0.0f32, f32::max);
+        if peak < 0.2 {
+            continue;
+        }
+        // Descendo pela borda de baixo do traço até cruzar metade do pico.
+        let mut prev = None;
+        for y in 60..SIZE - 1 {
+            let (a, b) = (ink(x, y), ink(x, y + 1));
+            if a >= peak * 0.5 && b < peak * 0.5 {
+                let f = (a - peak * 0.5) / (a - b).max(1e-6);
+                prev = Some(y as f32 + f);
+                break;
+            }
+        }
+        if let Some(e) = prev {
+            edges.push(e);
+        }
+    }
+    // A borda de um traço reto é uma RETA: o resíduo contra o ajuste linear é a serrilha.
+    let n = edges.len() as f32;
+    let (sx, sy): (f32, f32) = (
+        (0..edges.len()).map(|i| i as f32).sum(),
+        edges.iter().sum::<f32>(),
+    );
+    let (mx, my) = (sx / n, sy / n);
+    let num: f32 = edges
+        .iter()
+        .enumerate()
+        .map(|(i, e)| (i as f32 - mx) * (e - my))
+        .sum();
+    let den: f32 = (0..edges.len()).map(|i| (i as f32 - mx).powi(2)).sum();
+    let k = num / den.max(1e-6);
+    let worst = edges
+        .iter()
+        .enumerate()
+        .map(|(i, e)| (e - (my + k * (i as f32 - mx))).abs())
+        .fold(0.0f32, f32::max);
+    eprintln!(
+        "serrilha: {worst:.3} px de desvio da reta ({} colunas)",
+        edges.len()
+    );
 }

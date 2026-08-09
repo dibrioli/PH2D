@@ -17,7 +17,6 @@ use super::PaintMode;
 use crate::tool::PainterTool;
 use ph2d_editor_core::tool::PanelEvent;
 use ph2d_painter_brush::Dab;
-use std::sync::Arc;
 
 /// One of the three composite operations. Wire discriminant (`to_u8`) travels in the panel snapshot so
 /// the panel can label each row; the panel maps it back to a name.
@@ -172,11 +171,18 @@ impl PainterTool {
                     let wrapped =
                         tiled.then(|| super::tiling::tiled_dabs(dabs, self.source_size, tiling));
                     let d: &[Dab] = wrapped.as_deref().unwrap_or(dabs);
-                    self.lay_brush_into_smear_base(d);
+                    self.lay_into_smear_base(|t| t.stamp_dabs_inner(d));
                     self.stamp_dabs_inner(d);
                 }
                 CompositeOp::Smear => self.stamp_dabs_smear(dabs, w, h),
-                CompositeOp::Blur => self.stamp_dabs_blur(dabs, w, h),
+                CompositeOp::Blur => {
+                    // ⚠️ O Blur precisa da MESMA porta que o Brush, pelo mesmo motivo: ele escreve só o
+                    // canvas, e o render do smear do batch seguinte reescreve a região a partir de
+                    // `pre` — que nunca viu o blur. O resultado era o blur DESFEITO dentro da região
+                    // renderizada e vivo fora dela, com a união de rects como fronteira.
+                    self.lay_into_smear_base(|t| t.stamp_dabs_blur(dabs, w, h));
+                    self.stamp_dabs_blur(dabs, w, h);
+                }
             }
         }
         self.paint.brush.strength = saved_strength;
@@ -210,17 +216,43 @@ impl PainterTool {
     /// envelope de relevo uma segunda vez, e o CORPO da tinta passaria a ser função de haver uma sessão de
     /// smear viva — o relevo dependendo de qual camada está na pilha.
     ///
+    /// ⚠️ **O Blur usa a MESMA porta** — toda camada da pilha que NÃO é o smear precisa dela, senão o
+    /// render do smear desfaz o trabalho dela dentro da região que re-resolve.
+    ///
     /// **Mutação que must bleed:** apagar a chamada ⇒ 108 de 141.
-    fn lay_brush_into_smear_base(&mut self, dabs: &[Dab]) {
+    fn lay_into_smear_base(&mut self, op: impl FnOnce(&mut Self)) {
         if !self.paint.warp.active || self.paint.warp.pre.len() != self.canvas_rgba.len() {
             return;
         }
-        let plane = Arc::clone(&self.paint.warp.pre);
-        let canvas = std::mem::replace(&mut self.canvas_rgba, plane);
-        let saved = self.paint.brush.impasto_draw_to;
+        // ⚠️ Pela PORTA, não por `mem::replace` cru: é ela que chama `toggle_foreign_plane`, e sem isso
+        // todo `fork_canvas` das rotas captura os bytes da FONTE achando que são a tela — e *a primeira
+        // captura de cada tile é a que vale*, então a poluição do journal é permanente.
+        let mut plane = std::mem::take(&mut self.paint.warp.pre);
+        super::plane_fork::swap_canvas_plane(
+            &mut self.canvas_rgba,
+            &mut plane,
+            &self.undo.write_state,
+        );
+        // ⚠️ Este passe roda o depósito uma SEGUNDA vez no mesmo batch, e os estados que ele consome
+        // são por-TRAÇO, não por-passe. Sem os salvar aqui:
+        // • `stroke_mask` é o cap de Accumulate — com Strength < 1 o passe da fonte leva a cobertura ao
+        //   teto e o passe do canvas deposita **ZERO**, e a tinta só reaparece onde o smear a traz de
+        //   volta da fonte: dentro de um retângulo, com fronteira axis-aligned;
+        // • `tex_rng` é um stream CONSUMIDO, não copiado — sem salvá-lo a fonte recebe uma realização
+        //   de Grain/Random/Randomize e o canvas recebe a SEGUINTE, quebrando a promessa desta função.
+        let saved_mask = self.paint.stroke_mask.clone();
+        let saved_rng = self.paint.tex_rng;
+        let saved_draw = self.paint.brush.impasto_draw_to;
         self.paint.brush.impasto_draw_to = ph2d_painter_brush::DrawTo::Color;
-        self.stamp_dabs_inner(dabs);
-        self.paint.brush.impasto_draw_to = saved;
-        self.paint.warp.pre = std::mem::replace(&mut self.canvas_rgba, canvas);
+        op(self);
+        self.paint.brush.impasto_draw_to = saved_draw;
+        self.paint.tex_rng = saved_rng;
+        self.paint.stroke_mask = saved_mask;
+        super::plane_fork::swap_canvas_plane(
+            &mut self.canvas_rgba,
+            &mut plane,
+            &self.undo.write_state,
+        );
+        self.paint.warp.pre = plane;
     }
 }

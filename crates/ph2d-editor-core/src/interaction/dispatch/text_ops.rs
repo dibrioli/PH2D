@@ -95,9 +95,15 @@ pub(super) fn byte_offset_from_click_xy(
                 // Hex field paints label "Hex" + value text at Sm.
                 (text.as_str(), rect.x + 8.0 + 36.0, rect.y, font_sm, false)
             } else if text.contains('\n') {
-                // TextArea: pad_x = Spacing::Lg, pad_y = Spacing::Md,
-                // line_h = font_size + 4 (matches the painter).
-                (text.as_str(), rect.x + 12.0, rect.y + 8.0, font_base, true)
+                // ⚠️ **Pela porta do WIDGET, e não por uma cópia dos números dele.** Estas três
+                // grandezas eram `rect.x + 12.0`, `rect.y + 8.0` e `font_size + 4.0` sob um
+                // comentário que dizia *"matches the painter"* — e eram os valores de FÁBRICA de
+                // `Spacing::Lg`/`Md`/`Xs`. Desde que a escala numérica virou autorável o pintor lê
+                // os VIVOS e esta cópia não, então bastava o artista mexer no `spacing.md` para o
+                // caret deixar de cair onde ele clicou: medido com `md = 20`, clicar no meio de
+                // **qualquer** linha punha o caret na linha SEGUINTE.
+                let m = crate::widget::text_area_metrics(rect);
+                (text.as_str(), m.inner_x, m.inner_y, font_base, true)
             } else {
                 (text.as_str(), rect.x + 12.0, rect.y, font_base, false)
             }
@@ -127,7 +133,7 @@ pub(super) fn byte_offset_from_click_xy(
         // glyph — fixes the "clicking right of short line on line
         // 1 lands the caret at end of line 2" feel reported by the
         // user (TextArea bug log).
-        let line_h = font_size + 4.0;
+        let line_h = crate::widget::text_area_metrics(rect).line_h;
         let rel_y = (click_y - text_start_y).max(0.0);
         let mut line_idx = (rel_y / line_h).floor() as usize;
         let line_count = text.split('\n').count();

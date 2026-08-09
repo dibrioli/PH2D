@@ -53,7 +53,12 @@ pub(super) fn paint_inputs_section(
     y += field_h() + row_gap();
 
     // TextArea (3 lines tall).
-    let area_h = 60.0_f32; // LITERAL-PX-OK: 3-line TextArea showcase height (chrome-specific demo dim)
+    //
+    // ⚠️ **Pela porta do widget, e não por um número.** Isto era `60.0` com um marcador de
+    // literal, e o widget promete TRÊS linhas: medido, ele precisa de **67** na escala de fábrica —
+    // a vitrine desenhava a própria `TextArea` sete pixels curta demais, e ficaria mais curta ainda
+    // no dia em que o artista autorasse o `spacing`.
+    let area_h = crate::widget::text_area_min_height();
     let r = Rect::new(x, y, w, area_h);
     hit_index.register(ids::INSP_SAMPLE_TEXTAREA, r);
     let (ta_state, ta_text, ta_caret, ta_anchor) =

@@ -165,6 +165,81 @@ fn textarea_click_line2_places_caret_on_line2() {
     );
 }
 
+/// **O caret cai onde o artista clicou — inclusive com a escala AUTORADA.**
+///
+/// ⚠️ **A régua do despacho era uma CÓPIA dos números do pintor** (`rect.x + 12.0`,
+/// `rect.y + 8.0`, `font_size + 4.0`) sob um comentário que dizia *"matches the painter"* — e eram
+/// os valores de FÁBRICA de `Spacing::Lg`/`Md`/`Xs`. Desde que a escala numérica virou autorável o
+/// pintor lê os VIVOS e a cópia não, então bastava mexer no `spacing.md` para os dois discordarem.
+///
+/// ⚠️ **O par de escalas é o gate, e a de fábrica é o CONTROLE.** Sozinha, ela é verde sobre o
+/// produto quebrado (é o mundo em que a cópia acerta por coincidência); sozinha, a autorada não
+/// distinguiria *"o despacho lê a porta"* de *"a fixture está torta"*. Juntas dizem a propriedade
+/// que importa: **a resposta não depende de a escala ser a de fábrica.**
+///
+/// ⚠️ E o clique sai da porta do WIDGET (`text_area_metrics`), que é a mesma que o pintor
+/// destrutura — pedir a posição a uma terceira régua escrita aqui seria repetir o defeito dentro
+/// do gate que o mede. Medido antes da cura, com `md = 20`: clicar no meio de **qualquer** linha
+/// punha o caret na linha SEGUINTE.
+#[test]
+fn textarea_click_lands_on_the_line_the_painter_drew_even_with_an_authored_scale() {
+    use ph2d_tokens::num::NumToken;
+    use ph2d_tokens::num_overrides::{NumValue, clear_num_overrides, set_num_override};
+    use ph2d_tokens::{Spacing, Theme, num_runtime};
+
+    // ⚠️ **TRÊS linhas, e a terceira é o que torna o gate capaz de falhar.** Com duas, o
+    // `line_idx >= line_count` do despacho CLAMPA o excesso de volta para a última — o caret
+    // acertava a linha 2 por saturação, e a mutação que repõe os números literais ficava VERDE.
+    // "abc" (3) + '\n' + "defgh" (5) + '\n' + "xyz": a linha 2 é 4..=9, a 3 é 10..=13.
+    let clique_na_linha_2 = || {
+        let (mut store, hits, rect) = textarea_setup("abc\ndefgh\nxyz");
+        let m = crate::widget::text_area_metrics(rect);
+        let arena = Bump::new();
+        let _ = dispatch_pointer(
+            &mut store,
+            &hits,
+            pointer(
+                PointerKind::Down,
+                m.inner_x + 1.0,
+                m.inner_y + m.line_h * 1.5,
+            ),
+            &arena,
+        );
+        match store.get(NodeId(42)) {
+            Some(InteractiveState::TextInput { caret, .. }) => *caret,
+            _ => 0,
+        }
+    };
+
+    // O CONTROLE: com a escala de fábrica isto já passava, e é sobre este mundo que a cópia
+    // acertava.
+    clear_num_overrides();
+    num_runtime::publish(Theme::Forge);
+    let fábrica = clique_na_linha_2();
+    assert!(
+        (4..=9).contains(&fábrica),
+        "controle: com a escala de fabrica o caret devia cair na linha 2 (byte >= 4), veio {fábrica}"
+    );
+
+    // E agora o mundo que a cópia não conhecia.
+    set_num_override(
+        Theme::Forge,
+        NumToken::Spacing(Spacing::Md),
+        Some(NumValue::Literal(20.0)),
+    )
+    .expect("o override de spacing.md foi recusado");
+    num_runtime::publish(Theme::Forge);
+    let autorada = clique_na_linha_2();
+    clear_num_overrides();
+    num_runtime::publish(Theme::Forge);
+
+    assert!(
+        (4..=9).contains(&autorada),
+        "com `spacing.md` autorado o caret caiu no byte {autorada} — o pintor desenha a linha 2 \
+         onde o despacho procura a 3, e o artista clica numa letra e escreve noutra"
+    );
+}
+
 #[test]
 fn textarea_click_far_right_snaps_to_end_of_line() {
     // Line 1 is short ("abc"); clicking far right of line 1 must

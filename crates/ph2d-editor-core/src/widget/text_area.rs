@@ -62,9 +62,57 @@ impl TextArea {
     }
 }
 
-/// Suggested minimum height = 3 rows at body font size.
-pub fn min_height(font_size: f32) -> f32 {
-    font_size * 3.0 + Spacing::Md.px() * 2.0 // LITERAL-PX-OK: 3 rows of body text (row count)
+/// **Onde o texto de uma `TextArea` pousa** — a régua ÚNICA.
+///
+/// ⚠️ Ela existe porque a mesma regra estava escrita em **três** sítios com **três** graus de
+/// fidelidade: o pintor lia os tokens VIVOS, o `min_height` reservava três alturas de FONTE (e não
+/// três alturas de LINHA), e o `byte_offset_from_click_xy` do despacho copiava os números
+/// (`rect.x + 12.0`, `rect.y + 8.0`, `font_size + 4.0`) sob um comentário que dizia *"matches the
+/// painter"*.
+///
+/// ⚠️ **E a cópia não era latente, era VIVA:** `Spacing::px()` devolve o valor **autorado** desde
+/// que a escala numérica virou editável, então bastava o artista mexer no `spacing.md` para o
+/// caret deixar de cair onde ele clicou. Medido com `md = 20`: clicar no meio de **qualquer** linha
+/// punha o caret na linha SEGUINTE — o pintor desenhava a linha 0 em `y = 220` e o despacho
+/// procurava-a em `y = 208`.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct TextAreaMetrics {
+    /// A margem esquerda do texto.
+    pub inner_x: f32,
+    /// O topo da PRIMEIRA linha.
+    pub inner_y: f32,
+    /// A largura útil.
+    pub inner_w: f32,
+    /// O passo vertical entre linhas — ⚠️ **maior que a fonte**, e é essa diferença que o
+    /// `min_height` reservava a menos.
+    pub line_h: f32,
+}
+
+/// A régua de `rect`, nos tokens VIVOS.
+#[must_use]
+pub fn metrics(rect: Rect) -> TextAreaMetrics {
+    let pad_x = Spacing::Lg.px();
+    let pad_y = Spacing::Md.px();
+    TextAreaMetrics {
+        inner_x: rect.x + pad_x,
+        inner_y: rect.y + pad_y,
+        inner_w: (rect.w - pad_x * 2.0).max(0.0),
+        line_h: TypeToken::Base.px() + Spacing::Xs.px(),
+    }
+}
+
+/// **Altura mínima para as três linhas que este widget PROMETE.**
+///
+/// ⚠️ **Não recebe mais a fonte, e o parâmetro era uma mentira:** o pintor desenha sempre em
+/// `TypeToken::Base`, então um chamador que passasse outro tamanho recebia a altura de uma fonte
+/// que o widget não usa. A fonte é do WIDGET.
+///
+/// ⚠️ E ela reservava três alturas de **FONTE** onde o pintor gasta três alturas de **LINHA** —
+/// medido, 55 px contra os 67 que ele precisa: a terceira linha caía 12 px para fora da caixa.
+#[must_use]
+pub fn min_height() -> f32 {
+    let m = metrics(Rect::new(0.0, 0.0, 0.0, 0.0));
+    m.line_h * 3.0 + Spacing::Md.px() * 2.0 // LITERAL-PX-OK: 3 = as tres linhas que o widget promete (contagem)
 }
 
 pub fn paint_text_area(
@@ -110,14 +158,16 @@ pub fn paint_text_area_with_state(
         resolve(border_token(area.state), theme),
     );
 
-    let pad_x = Spacing::Lg.px();
-    let pad_y = Spacing::Md.px();
-    let inner_x = rect.x + pad_x;
-    let inner_y = rect.y + pad_y;
-    let inner_w = (rect.w - pad_x * 2.0).max(0.0);
+    // ⚠️ Pela porta ÚNICA, e não por uma segunda cópia da regra: o despacho de clique lê a MESMA,
+    // e é isso que faz o caret cair onde o artista clicou depois de a escala ser autorada.
+    let TextAreaMetrics {
+        inner_x,
+        inner_y,
+        inner_w,
+        line_h,
+    } = metrics(rect);
     let inner_right = inner_x + inner_w;
     let font_size = TypeToken::Base.px();
-    let line_h = font_size + Spacing::Xs.px();
 
     let focused = area.state == TextInputState::Focused;
     let displayed = area.value.as_str();
@@ -252,10 +302,27 @@ mod tests {
         assert_eq!(a.state, TextInputState::Normal);
     }
 
+    /// **A terceira linha CABE numa caixa da altura reservada.**
+    ///
+    /// ⚠️ O `min_height` reservava tres alturas de FONTE onde o pintor gasta tres alturas de
+    /// LINHA — medido, 55 px contra os 67 que ele precisa. A terceira linha caia 12 px para fora
+    /// da caixa que o widget diz bastar.
+    ///
+    /// ⚠️ **O oraculo e' o fundo da terceira linha contra o fundo da CAIXA**, e nao a formula do
+    /// `min_height` reescrita aqui: a primeira versao deste gate afirmava `min_height() >=
+    /// line_h * 3.0` — verdadeira TAMBEM na versao quebrada (55 >= 51), porque esquecia o
+    /// enchimento que a propria caixa declara. Ela ficou VERDE sobre a mutacao que repoe o
+    /// defeito, e foi a mutacao quem a denunciou.
     #[test]
-    fn min_height_is_3_rows_plus_padding() {
-        let h = min_height(14.0);
-        assert!(h >= 14.0 * 3.0);
+    fn the_third_line_fits_inside_a_box_of_the_reserved_height() {
+        let rect = Rect::new(0.0, 0.0, 200.0, min_height());
+        let m = metrics(rect);
+        let fundo_da_terceira = m.inner_y + m.line_h * 3.0;
+        assert!(
+            fundo_da_terceira <= rect.y + rect.h,
+            "a terceira linha acaba em {fundo_da_terceira} e a caixa acaba em {} — ela e'              desenhada para fora do que o widget diz reservar",
+            rect.y + rect.h
+        );
     }
 
     #[test]

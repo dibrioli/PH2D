@@ -26,8 +26,8 @@ use ph2d_editor_core::widget::panel_chrome::{
     panel_resize_handle_rect, panel_resize_handle_rect_bl,
 };
 use ph2d_editor_core::widget::{
-    AUTHORED_SCROLLBAR_ID, Dropdown, DropdownOption, SkinParam, icon_glyph, inline_option_rect,
-    paint_dropdown_popover_in_viewport, paint_scrollbar, paint_widget_skin_with,
+    AUTHORED_SCROLLBAR_ID, DROPDOWN_SCROLLBAR_ID, Dropdown, DropdownOption, SkinParam, icon_glyph,
+    inline_option_rect, paint_dropdown_popover_scrolled, paint_scrollbar, paint_widget_skin_with,
     scrollbar_is_needed, scrollbar_thumb_rect, scrollbar_track_rect,
 };
 use ph2d_editor_core::zones::Rect;
@@ -180,6 +180,7 @@ fn paint_open_list(ctx: &mut PaintCtx, open: &OpenList, theme: Theme) {
     if open.options.is_empty() {
         return;
     }
+    let id = ids::authored_row_id(&open.key);
     let opts: Vec<DropdownOption<usize>> = open
         .options
         .iter()
@@ -187,24 +188,58 @@ fn paint_open_list(ctx: &mut PaintCtx, open: &OpenList, theme: Theme) {
         .map(|(i, o)| DropdownOption::new(ids::authored_option_id(&open.key, i), i, o.clone()))
         .collect();
     // O rótulo vai VAZIO: o chip já o mostra, e o pintor da lista não o desenha.
-    let mut dd = Dropdown::new(ids::authored_row_id(&open.key), "", opts).open(true);
+    let mut dd = Dropdown::new(id, "", opts).open(true);
     dd.select(open.selected);
-    let viewport = ctx.viewport;
-    // ⚠️ **`_clamped` e o pintor `_in_viewport` derivam o painel da MESMA regra** — se o chip está
-    // perto do fundo da tela a lista vira para CIMA, e um retângulo de hit computado pela regra
-    // não-clampada ficaria onde a lista não foi desenhada: opções visíveis e mortas sob o rato.
-    let panel = dd.popover_rect_clamped(open.chip, viewport);
-    paint_dropdown_popover_in_viewport(
+    // ⚠️ **`_clamped` e o pintor derivam o painel da MESMA regra** — se o chip está perto do fundo
+    // da tela a lista vira para CIMA, e um retângulo de hit computado pela regra não-clampada
+    // ficaria onde a lista não foi desenhada: opções visíveis e mortas sob o rato.
+    let panel = dd.popover_rect_clamped(open.chip, ctx.viewport);
+    let content_h = dd.content_height(open.chip.h);
+    let visible_h = panel.h;
+    let max_scroll = (content_h - visible_h).max(0.0);
+    // ⚠️ **Os três factos são PUBLICADOS, e não é higiene:** é por eles que o `dispatch_wheel`
+    // sabe que a roda sobre aquele retângulo move a LISTA e não o corpo do painel por baixo. Sem o
+    // `set_dropdown_popover` a lista longa fica imóvel sob o rato enquanto o painel rola atrás
+    // dela.
+    {
+        let store = ctx.host.store_mut();
+        store.set_dropdown_popover(id, panel);
+        store.set_panel_content_h(id, content_h);
+        store.set_panel_visible_h(id, visible_h);
+        if store.panel_scroll(id) > max_scroll {
+            store.set_panel_scroll(id, max_scroll);
+        }
+    }
+    let scroll = ctx.host.store().panel_scroll(id).clamp(0.0, max_scroll); // CLAMP-OK: 0.0 literal; max_scroll is a non-negative px extent
+    let scrollbar_active = matches!(ctx.host.store().scrollbar_drag(), Some(d) if d.panel == id);
+    paint_dropdown_popover_scrolled(
         &dd,
         open.chip,
-        Some(viewport),
+        panel,
+        scroll,
+        scrollbar_active,
         ctx.scene,
         ctx.text_system,
         theme,
     );
+    // ⚠️ **Só a parte VISÍVEL de cada linha é oferecida, e é isto que faltava.** O
+    // `popover_rect_clamped` encolhe o PAINEL quando nem abaixo nem acima cabe a lista inteira, mas
+    // as linhas continuam dispostas a `row_h * index` a partir do topo dele — então as últimas
+    // saíam por baixo. Medido, 30 opções num viewport de 900: as opções 26 a 29 pousavam em
+    // `y = 900..1012`, **fora da tela**, desenhadas e vivas para o dispatcher.
     let hit_index = ctx.host.hit_index_mut();
     for (i, opt) in dd.options.iter().enumerate() {
-        hit_index.register(opt.id, dd.option_rect_in(open.chip, panel, i));
+        let r = dd.option_rect_in_scrolled(open.chip, panel, i, scroll);
+        let top = r.y.max(panel.y);
+        let bot = (r.y + r.h).min(panel.y + panel.h);
+        if bot - top >= 1.0 {
+            hit_index.register(opt.id, Rect::new(r.x, top, r.w, bot - top));
+        }
+    }
+    if scrollbar_is_needed(content_h, visible_h) {
+        ctx.host
+            .hit_index_mut()
+            .register(DROPDOWN_SCROLLBAR_ID, scrollbar_track_rect(panel));
     }
 }
 

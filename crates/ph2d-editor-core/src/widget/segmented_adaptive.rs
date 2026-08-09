@@ -292,37 +292,70 @@ mod tests {
         );
     }
 
-    /// A segment whose store `ButtonState` is Hovered/Pressed still paints + stays hit-registered — proves
-    /// the paint now READS the dispatcher-set hover/press state (Enio 2026-07-04; before, segmented buttons
-    /// ignored it and showed no hover/press feedback).
+    /// **O realce de hover é o que o STORE diz** — e não o que o pintor decide sozinho.
+    ///
+    /// ⚠️ **Este gate estava VERDE sobre o defeito que o próprio nome dele nomeia.** Ele afirmava
+    /// *"prova que o paint LÊ o estado de hover posto pelo despachante"* (Enio, 2026-07-04:
+    /// segmentos não mostravam feedback nenhum) e o corpo dele checava… **hit-registration** — que
+    /// acontece para TODO segmento, por um caminho que não passa perto do store. Medido: com
+    /// `seg_state` trocado por `|_| ButtonState::Normal`, isto é, com a leitura do store
+    /// **inteiramente deletada**, ele passava.
+    ///
+    /// ⚠️ **O oráculo agora é a TINTA**, pela mesma razão do `the_colour_reaches_the_paint` da
+    /// pele: o hover é uma cor diferente, então duas cenas pintadas de stores diferentes têm de
+    /// SER diferentes. E a metade da registação fica — ela é uma segunda propriedade (o segmento
+    /// realçado continua clicável), só não é a que o nome promete.
+    ///
+    /// ⚠️ **E a fixture teve de mudar de segmento, o que é um achado por si:** o gate antigo
+    /// realçava o `NodeId(3)`, que é o **SELECIONADO** (`fixture()` faz `.selected(1)`) — e no
+    /// pintor um segmento selecionado usa `Bg2` em `Normal` **e** em `Hovered`, só `Pressed`
+    /// difere. Ou seja, ele apontava para o único segmento onde a resposta ao hover não existe por
+    /// desenho. A minha primeira versão herdou o mesmo id e nasceu VERMELHA sobre produto correto;
+    /// o segmento realçado agora é um NÃO-selecionado, onde `Bg3 → BgElev` é o feedback.
     #[test]
     fn segment_hover_state_is_read_from_the_store() {
         use crate::interaction::InteractiveState;
         use crate::widget::ButtonState;
-        let mut scene = VectorScene::new();
-        let mut text = TextSystem::without_system_fonts();
-        let mut hit = HitIndex::default();
-        let mut store = WidgetStore::with_capacity(4);
-        // What the dispatcher does when the cursor enters the second segment.
-        store.register(
-            NodeId(3),
-            InteractiveState::Button {
-                state: ButtonState::Hovered,
-            },
+        // NÃO o selecionado: ver a nota acima.
+        const HOVERED_SEG: NodeId = NodeId(4);
+        let paint_with = |state: Option<ButtonState>| {
+            let mut scene = VectorScene::new();
+            let mut text = TextSystem::without_system_fonts();
+            let mut hit = HitIndex::default();
+            let mut store = WidgetStore::with_capacity(4);
+            if let Some(state) = state {
+                // O que o despachante faz quando o cursor entra no segundo segmento.
+                store.register(HOVERED_SEG, InteractiveState::Button { state });
+            }
+            paint_segmented_adaptive(
+                &fixture(),
+                Rect::new(0.0, 0.0, 400.0, 28.0),
+                &mut scene,
+                &mut text,
+                Theme::Forge,
+                &store,
+                &mut hit,
+            );
+            let e = scene.inner().encoding();
+            let registered = hit.iter_registrations().any(|(id, _)| id == HOVERED_SEG);
+            (e.path_data.clone(), e.draw_data.clone(), registered)
+        };
+        let idle = paint_with(None);
+        let hovered = paint_with(Some(ButtonState::Hovered));
+        let pressed = paint_with(Some(ButtonState::Pressed));
+        assert_ne!(
+            (&idle.0, &idle.1),
+            (&hovered.0, &hovered.1),
+            "um segmento com hover no store pintou IGUAL a um em repouso — o pintor nao le' o \
+             estado que o despachante poe la'"
         );
-        paint_segmented_adaptive(
-            &fixture(),
-            Rect::new(0.0, 0.0, 400.0, 28.0),
-            &mut scene,
-            &mut text,
-            Theme::Forge,
-            &store,
-            &mut hit,
+        assert_ne!(
+            (&hovered.0, &hovered.1),
+            (&pressed.0, &pressed.1),
+            "hover e press pintaram igual — o pintor distingue 'tem estado' de 'nao tem', e nao o \
+             estado em si"
         );
-        assert!(
-            hit.iter_registrations().any(|(id, _)| id == NodeId(3)),
-            "the hovered segment is painted + hit-registered"
-        );
+        assert!(hovered.2, "o segmento realcado deixou de ser clicavel");
     }
 
     #[test]

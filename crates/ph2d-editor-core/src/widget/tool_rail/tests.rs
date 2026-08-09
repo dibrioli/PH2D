@@ -20,11 +20,45 @@ fn fixture() -> ToolRail {
     )
 }
 
+/// **A altura é a SOMA das entradas, com um gap entre cada par.**
+///
+/// ⚠️ **Este gate afirmava `h > chip_px * 5.0` e chamava-se *"sums entries"*.** Com onze entradas
+/// esse piso fica muito abaixo da altura real, então ele não media soma nenhuma: medido, apagar
+/// **todos os gaps** do laço deixa-o VERDE.
+///
+/// ⚠️ **O oráculo é DIFERENCIAL, e é por isso que ele não re-implementa a função sob teste** —
+/// somar as entradas aqui seria escrever o mesmo laço num segundo lugar, e um oráculo que computa
+/// a expectativa com a mesma aritmética do produto concorda com ele mesmo estando os dois errados.
+/// A propriedade *"soma as entradas com um gap entre pares"* é exactamente: acrescentar uma
+/// entrada custa **ela mais UM gap**, e a lista vazia custa **zero** (nenhum gap de cabeça).
 #[test]
 fn preferred_height_sums_entries() {
     let size = RailButtonSize::default();
-    let h = fixture().preferred_height(size);
-    assert!(h > size.chip_px() * 5.0);
+    let gap = Spacing::Xs.px();
+
+    let empty = ToolRail::new(NodeId(1), "empty", vec![]);
+    assert_eq!(
+        empty.preferred_height(size),
+        0.0,
+        "uma barra vazia tem altura zero — um gap de cabeca seria um vao que ninguem pediu"
+    );
+
+    // Cada entrada nova custa ELA + um gap, e o teste percorre uma barra que cresce.
+    let mut entries: Vec<ToolRailEntry> = Vec::new();
+    let mut previous = 0.0_f32;
+    for (n, e) in fixture().entries.into_iter().enumerate() {
+        let own = e.height(size);
+        entries.push(e);
+        let now = ToolRail::new(NodeId(1), "growing", entries.clone()).preferred_height(size);
+        let expected = if n == 0 { own } else { previous + gap + own };
+        assert!(
+            (now - expected).abs() < 1e-3,
+            "com {} entradas a altura deu {now}, esperava {expected} (anterior {previous} + gap \
+             {gap} + a propria {own})",
+            n + 1
+        );
+        previous = now;
+    }
 }
 
 #[test]

@@ -301,20 +301,17 @@ impl PainterTool {
             return;
         }
         let (w, h) = self.source_size;
-        let mut brush = self.paint.brush;
         // ── GRID STAMP: o footprint é o da CÉLULA, não o do tamanho do pincel ────────────────────
-        // O motor já emitiu o dab com `radius_px` da célula (`grid_stamp_frame`); aqui o SPEC recebe
-        // o mesmo raio mais o achatamento e o ângulo que esticam a silhueta até as bordas dela — pela
-        // MESMA porta, senão o dab e o sampler falariam de retângulos diferentes e a tinta encostaria
-        // num lado e sobraria do outro.
+        // A MESMA porta que abriu o traço (`stroke_spec`): o motor emitiu cada dab com o `radius_px`
+        // que ela resolveu, e aqui o SPEC recebe o mesmo raio mais o achatamento e o ângulo que
+        // esticam a silhueta até as bordas da célula. Duas derivações fariam o dab e o sampler
+        // falarem de retângulos diferentes, e a tinta encostaria num lado e sobraria do outro.
         //
         // ⚠️ É neste choke point, e não numa rota própria, pelo mesmo argumento do Wet Paint logo
         // abaixo: pendurado aqui o método herda Symmetry, Tiling, Selection, proteção, relevo e o
         // undo sem uma linha por feature. Uma rota paralela é como nasce "Tiling não funciona no
         // Grid Stamp" daqui a seis meses.
-        if brush.stroke_method == StrokeMethod::GridStamp {
-            brush = brush.as_grid_stamp();
-        }
+        let mut brush = self.stroke_spec();
         // ── WET PAINT: the fluid engine owns the whole deposit ───────────────────────────────────
         // Before even the impasto height pass: in this mode the dabs are not the final paint (the
         // pigment FLOWS), so relief laid on the dab footprint would outlive paint that moved away.

@@ -20,6 +20,19 @@ use crate::spec::BrushSpec;
 /// "centro da célula" não é mais um lugar distinto de suas bordas.
 pub const GRID_CELL_MIN_PX: f32 = 1.0;
 
+/// O quanto o carimbo pode ENCOLHER em relação à célula, como fração dela ([`BrushSpec::grid_fit`]).
+/// `−0.5` deixa o carimbo com metade da célula — meia célula de espaço em volta de cada um.
+pub const GRID_FIT_MIN: f32 = -0.5;
+
+/// O quanto o carimbo pode CRESCER em relação à célula ([`BrushSpec::grid_fit`]). `+0.5` o deixa com
+/// uma célula e meia — vizinhos se sobrepõem por meia célula.
+///
+/// ⚠️ A faixa é a que o Enio pediu (2026-08-09), e ela **não é um limite de recurso**: um carimbo é
+/// um dab como qualquer outro e o motor pinta raios muito maiores. Ela é o alcance ÚTIL do gesto —
+/// fora de `[-0.5, 0.5]` a relação com a célula deixa de ser legível (a menos de meia célula o
+/// carimbo é um ponto perdido no meio da rede; a mais de uma e meia ele cobre o vizinho do vizinho).
+pub const GRID_FIT_MAX: f32 = 0.5;
+
 impl BrushSpec {
     /// A célula desta grade, saneada (nunca zero, nunca negativa, nunca NaN).
     #[must_use]
@@ -49,6 +62,19 @@ impl BrushSpec {
         ]
     }
 
+    /// O quanto o carimbo mede em relação à célula: `1.0` a preenche exatamente, e
+    /// [`BrushSpec::grid_fit`] em `[`[`GRID_FIT_MIN`]`, `[`GRID_FIT_MAX`]`]` dá folga ou
+    /// sobreposição. Saneado aqui (um NaN vindo de uma caixa de texto não pode virar um raio NaN).
+    #[must_use]
+    pub fn grid_fit_scale(&self) -> f32 {
+        let fit = if self.grid_fit.is_finite() {
+            self.grid_fit.clamp(GRID_FIT_MIN, GRID_FIT_MAX)
+        } else {
+            0.0
+        };
+        1.0 + fit
+    }
+
     /// O footprint de um carimbo de grade: **`(raio, achatamento, ângulo em graus)`**, derivado da
     /// CÉLULA e não do tamanho do pincel.
     ///
@@ -67,16 +93,25 @@ impl BrushSpec {
     ///
     /// É a MESMA correção — e a MESMA porta — que a âncora do bow wave pagou em 2026-07-15: *o aro
     /// nascia em `t = 1` do footprint enquanto a tinta macia termina em `t ≈ 0,61`*. Uma ponta dura
-    /// (Constant, hardness ≥ 1) tem `t0 = 1` e o raio é meia célula, exatamente como antes.
+    /// (Constant, hardness ≥ 1) tem `t0 = 1` e o raio é meia célula, exatamente como antes — e uma
+    /// silhueta de **Shape** também, que é o que `has_shape` diz.
     #[must_use]
-    pub fn grid_stamp_frame(&self) -> (f32, f32, u16) {
+    pub fn grid_stamp_frame(&self, has_shape: bool) -> (f32, f32, u16) {
         let [w, h] = self.grid_cell();
         let (major, minor, angle) = if w >= h { (w, h, 0) } else { (h, w, 90) };
         let flatten = (1.0 - minor / major).clamp(0.0, crate::DAB_FLATTEN_MAX);
-        // `body_edge_t` é monotônico e nunca zero para um falloff válido; o piso é defesa contra um
-        // perfil custom degenerado, que produziria um raio infinito.
-        let t0 = crate::height_film::body_edge_t(self).max(0.05);
-        (major * 0.5 / t0, flatten, angle)
+        // ⚠️ **`has_shape` é a MESMA pergunta que o aro do bow wave faz, pela MESMA porta**
+        // ([`crate::height_push::rim_t0`]): *onde a tinta deste dab ACABA?* Um falloff macio acaba
+        // em `t ≈ 0,61`, então o raio o compensa; uma silhueta de **Shape** (imagem ou procedural)
+        // acaba no aro geométrico, `t = 1`, e compensá-la assim mesmo é o defeito que o Enio
+        // reportou em 2026-08-09 — *"a imagem extrapola a célula do grid"*: a imagem saía **1,64×**
+        // a célula, e as vizinhas se comiam.
+        //
+        // Perguntar à porta em vez de re-derivar aqui é o que impede o carimbo de discordar do aro
+        // sobre onde a tinta termina — eles são a mesma afirmação sobre o mesmo pincel.
+        // O piso é defesa contra um perfil custom degenerado, que produziria um raio infinito.
+        let t0 = crate::height_push::rim_t0(self, has_shape).max(0.05);
+        (major * self.grid_fit_scale() * 0.5 / t0, flatten, angle)
     }
 
     /// **As LINHAS da grade num eixo**, dentro de `[lo, hi]` (px de imagem): `(primeira, passo,
@@ -106,11 +141,14 @@ impl BrushSpec {
 
     /// Este spec, reescrito para carimbar UMA célula: raio, achatamento e ângulo saem da grade.
     ///
-    /// É a porta que o tool usa antes de estampar — assim o dab que o motor emitiu (cujo `radius_px`
-    /// veio de [`Self::grid_stamp_frame`]) e a silhueta que o sampler avalia falam do mesmo retângulo.
+    /// **É a porta ÚNICA**, e o motor não tem outra: o tool a aplica ao spec ANTES de abrir o traço
+    /// ([`crate::Stroke::new`]), então o `radius_px` que o `grid_dab` emite é este mesmo — e a
+    /// aplica de novo antes de estampar, o que é seguro porque ela é **idempotente** (o frame sai da
+    /// célula, que ela não toca). Era o motor quem chamava o frame, e ali `has_shape` é
+    /// inalcançável: os pixels do Shape vivem no tool, não no `BrushSpec`, que é `Copy`.
     #[must_use]
-    pub fn as_grid_stamp(&self) -> Self {
-        let (radius, flatten, angle) = self.grid_stamp_frame();
+    pub fn as_grid_stamp(&self, has_shape: bool) -> Self {
+        let (radius, flatten, angle) = self.grid_stamp_frame(has_shape);
         Self {
             radius_px: radius,
             dab_flatten: flatten,
@@ -291,14 +329,14 @@ mod tests {
     fn the_footprint_is_the_cell_not_the_brush_size() {
         // O ACHATAMENTO e o ÂNGULO são pura razão de aspecto da célula — o RAIO tem lei própria (a
         // âncora na borda da tinta), gateada em `the_radius_is_anchored_on_the_paints_edge`.
-        let (_, f, a) = spec([40.0, 40.0], [0.0; 2]).grid_stamp_frame();
+        let (_, f, a) = spec([40.0, 40.0], [0.0; 2]).grid_stamp_frame(false);
         assert_eq!((f, a), (0.0, 0), "quadrada: sem achatamento");
 
-        let (_, f, a) = spec([40.0, 10.0], [0.0; 2]).grid_stamp_frame();
+        let (_, f, a) = spec([40.0, 10.0], [0.0; 2]).grid_stamp_frame(false);
         assert_eq!(a, 0, "deitada: eixo maior horizontal");
         assert!((f - 0.75).abs() < 1e-6, "menor = 10 = 40*(1-0.75)");
 
-        let (_, f, a) = spec([10.0, 40.0], [0.0; 2]).grid_stamp_frame();
+        let (_, f, a) = spec([10.0, 40.0], [0.0; 2]).grid_stamp_frame(false);
         assert_eq!(
             a, 90,
             "em pé: eixo maior VERTICAL — o ângulo é quem diz isso"
@@ -318,14 +356,14 @@ mod tests {
             falloff: crate::Falloff::Constant,
             ..spec([40.0, 40.0], [0.0; 2])
         };
-        let (r, _, _) = hard.grid_stamp_frame();
+        let (r, _, _) = hard.grid_stamp_frame(false);
         assert!(
             (r - 20.0).abs() < 1e-3,
             "ponta dura: o raio É meia célula ({r})"
         );
 
         let soft = spec([40.0, 40.0], [0.0; 2]); // o falloff default, macio
-        let (r_soft, _, _) = soft.grid_stamp_frame();
+        let (r_soft, _, _) = soft.grid_stamp_frame(false);
         let t0 = crate::height_film::body_edge_t(&soft);
         assert!(
             t0 < 0.8,
@@ -342,9 +380,9 @@ mod tests {
     /// afinar porque um eixo menor zero não é pintável. Um gate, não um comentário.
     #[test]
     fn the_aspect_the_stamp_can_honour_tops_out_at_twenty_to_one() {
-        let (_, f, _) = spec([200.0, 10.0], [0.0; 2]).grid_stamp_frame();
+        let (_, f, _) = spec([200.0, 10.0], [0.0; 2]).grid_stamp_frame(false);
         assert!((f - 0.95).abs() < 1e-6, "1:20 é exatamente o teto");
-        let (_, f, _) = spec([2000.0, 10.0], [0.0; 2]).grid_stamp_frame();
+        let (_, f, _) = spec([2000.0, 10.0], [0.0; 2]).grid_stamp_frame(false);
         assert!((f - 0.95).abs() < 1e-6, "1:200 não afina mais que 1:20");
     }
 
@@ -462,28 +500,101 @@ mod tests {
     }
 
     /// O raio do dab emitido é o da CÉLULA, não o do pincel: é o que faz o carimbo caber nela.
+    ///
+    /// ⚠️ **O traço é aberto com o spec que passou por [`BrushSpec::as_grid_stamp`]** — a porta
+    /// única, e a única que sabe se o slot de Shape carrega uma silhueta. É o contrato que o tool
+    /// honra (`stroke_spec`), e a 2ª metade deste gate é o que o torna afirmação e não decoração:
+    /// aberto com o spec CRU o motor emite o pincel, então quem largar a porta vê o carimbo encolher
+    /// para o tamanho do pincel em vez de silenciosamente pintar o número errado.
     #[test]
     fn the_emitted_radius_comes_from_the_cell_not_the_brush() {
-        let s = BrushSpec {
+        let raw = BrushSpec {
             stroke_method: crate::StrokeMethod::GridStamp,
             radius_px: 3.0, // um pincel minúsculo — e irrelevante aqui
             ..spec([80.0, 20.0], [0.0, 0.0])
         };
-        let mut st = crate::Stroke::new(s, crate::Dynamics::default(), 0);
         let mut out = Vec::new();
+        let mut st = crate::Stroke::new(raw.as_grid_stamp(false), crate::Dynamics::default(), 0);
         st.begin(pt(10.0, 10.0), &mut out);
-        let want = BrushSpec {
-            stroke_method: crate::StrokeMethod::GridStamp,
-            radius_px: 3.0,
-            ..spec([80.0, 20.0], [0.0, 0.0])
-        }
-        .grid_stamp_frame()
-        .0;
+        let want = raw.grid_stamp_frame(false).0;
         assert_eq!(out[0].radius_px, want, "o raio emitido é o da CÉLULA");
         assert!(
             want > 40.0,
             "…e ancorado na borda da tinta, logo > meia célula"
         );
+
+        let mut st = crate::Stroke::new(raw, crate::Dynamics::default(), 0);
+        st.begin(pt(10.0, 10.0), &mut out);
+        assert_eq!(
+            out[0].radius_px, 3.0,
+            "sem a porta o motor carimba o PINCEL — a falha é visível, não muda o número em silêncio"
+        );
+    }
+
+    /// ⚠️ **Uma silhueta de Shape enche a célula EXATAMENTE** — o report do Enio de 2026-08-09 (*"a
+    /// imagem extrapola a célula do grid"*). Um carimbo de imagem pinta até o aro geométrico, então
+    /// compensá-lo pela cauda de um falloff que ele não tem o esticava **1,64×** para fora da célula.
+    ///
+    /// O **CONTROLE** é o falloff macio ao lado, que continua compensado: é ele que prova que a
+    /// correção não é um fator inventado, e que o carimbo macio não passou a sub-encher.
+    ///
+    /// **Mutação que tem de sangrar:** `rim_t0(self, has_shape)` → `body_edge_t(self)`.
+    #[test]
+    fn a_shape_silhouette_fills_the_cell_exactly() {
+        let s = spec([40.0, 40.0], [0.0; 2]);
+        let (shaped, _, _) = s.grid_stamp_frame(true);
+        assert!(
+            (shaped - 20.0).abs() < 1e-3,
+            "com silhueta o raio É meia célula ({shaped}) — a tinta acaba no aro"
+        );
+        let (soft, _, _) = s.grid_stamp_frame(false);
+        assert!(
+            soft > 20.0 * 1.5,
+            "controle: sem silhueta o falloff macio segue compensado ({soft}), senão o gate não \
+             distingue a correção de um raio simplesmente menor"
+        );
+    }
+
+    /// **O Cell Fit abre espaço e sobrepõe** (Enio, 2026-08-09), e não mexe na REDE: o centro da
+    /// célula e a contagem de linhas ficam onde estavam — é o que cada célula DESENHA que muda.
+    ///
+    /// **Mutação que tem de sangrar:** ignorar `grid_fit_scale()` no raio.
+    #[test]
+    fn the_cell_fit_grows_and_shrinks_the_stamp_without_moving_the_lattice() {
+        let base = spec([40.0, 40.0], [0.0; 2]);
+        let full = base.grid_stamp_frame(true).0;
+        for (fit, want) in [(GRID_FIT_MIN, 0.5f32), (0.0, 1.0), (GRID_FIT_MAX, 1.5)] {
+            let s = BrushSpec {
+                grid_fit: fit,
+                ..base
+            };
+            let r = s.grid_stamp_frame(true).0;
+            assert!(
+                (r / full - want).abs() < 1e-4,
+                "fit {fit} devia dar {want}× a célula, deu {}×",
+                r / full
+            );
+            // A rede não se move: mesmo centro, mesma célula sob o mesmo ponto.
+            assert_eq!(s.grid_cell_center([2, 3]), base.grid_cell_center([2, 3]));
+            assert_eq!(
+                s.grid_cell_at([57.0, 91.0]),
+                base.grid_cell_at([57.0, 91.0])
+            );
+        }
+    }
+
+    /// Um `grid_fit` degenerado (NaN, ou fora da faixa) não produz um raio degenerado — a caixa de
+    /// texto do chip é uma entrada de usuário como qualquer outra.
+    #[test]
+    fn a_degenerate_fit_never_reaches_the_radius() {
+        for bad in [f32::NAN, f32::INFINITY, -5.0, 5.0] {
+            let s = BrushSpec {
+                grid_fit: bad,
+                ..spec([40.0, 40.0], [0.0; 2])
+            };
+            let r = s.grid_stamp_frame(true).0;
+            assert!(r.is_finite() && r > 0.0, "fit {bad} deu raio {r}");
+        }
     }
 
     /// `as_grid_stamp` e `grid_stamp_frame` têm de concordar — são a MESMA resposta, e se divergirem
@@ -491,8 +602,8 @@ mod tests {
     #[test]
     fn the_stamp_spec_carries_exactly_the_frame() {
         let s = spec([48.0, 16.0], [0.0; 2]);
-        let (r, f, a) = s.grid_stamp_frame();
-        let g = s.as_grid_stamp();
+        let (r, f, a) = s.grid_stamp_frame(false);
+        let g = s.as_grid_stamp(false);
         assert_eq!((g.radius_px, g.dab_flatten, g.dab_angle_deg), (r, f, a));
         // …e nada mais mudou: a cor, o falloff e o blend do artista atravessam intactos.
         assert_eq!(g.color, s.color);

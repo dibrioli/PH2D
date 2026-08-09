@@ -74,12 +74,11 @@ impl PainterTool {
     /// Como [`Self::set_brush_shape_image`], mas **guardando também a COR** do sprite — o slot passa a
     /// ser um Shape de UMA camada, e o checkbox de cor de textura tem o que ligar.
     ///
-    /// ⚠️ **A silhueta não muda: continua sendo a LUMINÂNCIA**, byte a byte (gate
-    /// `installing_a_sprite_with_colour_keeps_the_silhouette_it_always_had`). O que existia antes era
-    /// só a máscara; a cor era descartada na conversão para cinza, e por isso *"usar as cores da
-    /// textura original"* era inexprimível para um sprite que não fosse o documento aberto (Enio,
-    /// 2026-08-09). Trocar a silhueta pela COBERTURA aqui seria o outro conserto possível e está
-    /// recusado com motivo: um sprite opaco viraria um carimbo quadrado.
+    /// ⚠️ **A silhueta é ESCOLHIDA, e o default é MEDIDO** (Enio, 2026-08-09 — *"só coloca
+    /// transparência onde há transparência na imagem usada"*): um sprite com recorte silhueta pelo
+    /// próprio ALPHA, um opaco de ponta a ponta silhueta pela LUMINÂNCIA, que é a única silhueta que
+    /// ele tem — tomar o alpha dele faria um carimbo quadrado. Os dois planos ficam guardados e o
+    /// checkbox do painel troca sem re-importar nada.
     ///
     /// `source_doc` são os bits da entidade de onde os pixels vieram. Ele não é decoração: sem ele o
     /// `refresh_shape_source_if_changed` — que dispara quando a fonte capturada É o documento aberto —
@@ -96,24 +95,21 @@ impl PainterTool {
         if n == 0 || rgba.len() < n * 4 {
             return;
         }
-        let lum: Vec<u8> = (0..n)
-            .map(|i| {
-                ((u32::from(rgba[i * 4]) * 77
-                    + u32::from(rgba[i * 4 + 1]) * 150
-                    + u32::from(rgba[i * 4 + 2]) * 29)
-                    >> 8) as u8
-            })
-            .collect();
+        let alpha: Vec<u8> = (0..n).map(|i| rgba[i * 4 + 3]).collect();
         let mut rgb = Vec::with_capacity(n * 3);
         for i in 0..n {
             rgb.push(rgba[i * 4]);
             rgb.push(rgba[i * 4 + 1]);
             rgb.push(rgba[i * 4 + 2]);
         }
-        self.set_brush_shape_layers(vec![(lum, width, height)]);
+        self.set_brush_shape_layers(vec![(alpha, width, height)]);
         self.paint
             .shape_layers
             .set_layers_meta(vec![rgb], vec![1.0], vec![0], vec![0]);
+        // ⚠️ **A lei desta rota é a LUMINÂNCIA**, e ela é declarada aqui em vez de assumida: uma
+        // imagem importada pode não ter alpha nenhum, e tomar o dela como silhueta faria de todo
+        // `.jpg` opaco um carimbo quadrado. O alpha fica guardado — é o que o checkbox liga.
+        self.paint.shape_layers.set_alpha_from_image(false);
         self.reflatten_shape_image();
         self.shape_source_doc = source_doc;
         self.shape_source_revision = self.shape_source_content_revision();
@@ -216,31 +212,11 @@ impl PainterTool {
             if rgba.len() < n * 4 {
                 continue;
             }
-            // The silhouette = the layer's RAW alpha channel (no opacity folded in — the per-layer opacity
-            // is applied at recomposite from `opacity[i]`, which mirrors the source layer's opacity)…
-            let mut lum: Vec<u8> = (0..n).map(|i| rgba[i * 4 + 3]).collect();
-            // …modulada pelo **ganho do relevo**, aqui e não no flatten (Enio, 2026-08-09).
-            //
-            // ⚠️ **A primeira versão o aplicou no `reflatten_shape_image`, e aquilo cobria METADE das
-            // rotas:** o modo **Per-Layer Color** não passa pelo flatten — ele carimba pelas máscaras
-            // CRUAS (`shape_layers.masks()`, o caminho `accumulate_shape_layers_rgba_batch`) —, então
-            // o relevo chegava ao pincel exatamente enquanto o artista não ligasse o modo que pinta
-            // com as cores da textura. Modulando na CAPTURA, as duas rotas leem a mesma silhueta e
-            // não há um segundo sítio para alguém esquecer.
-            //
-            // ⚠️ **Consequência nomeada:** o flatten compõe coberturas JÁ moduladas, então onde duas
-            // camadas se sobrepõem o resultado é `over(a₁g, a₂g)` e não `g·over(a₁, a₂)`. As duas são
-            // leituras defensáveis (o relevo modula a tinta de cada camada × modula o composto), e a
-            // exata custaria um par de buffers do tamanho da tela POR LOTE no caminho que o comentário
-            // do `stamp_color_dynamic` chama de "the live FPS 60→10 wall". Numa camada só — o caso em
-            // que se esculpe — elas são idênticas.
-            if let Some(gain) = relief_gain.as_ref() {
-                for (a, &g) in lum.iter_mut().zip(gain.iter()) {
-                    let v =
-                        u32::from(*a) * u32::from(g) / u32::from(super::impasto_gain::FLAT_PROBE);
-                    *a = v.min(255) as u8;
-                }
-            }
+            // A FONTE da silhueta: o canal ALPHA cru da camada (sem a opacidade dobrada — ela é
+            // aplicada no recomposite a partir de `opacity[i]`, que espelha a da camada de origem).
+            // O ganho do relevo e a escolha alpha-vs-luminância entram no `rebuild_masks`, a porta
+            // única — aqui a captura só ENTREGA o que leu.
+            let alpha: Vec<u8> = (0..n).map(|i| rgba[i * 4 + 3]).collect();
             // The straight per-pixel RGB — the default paint colour for the layer (Texture Color).
             let mut rgb = Vec::with_capacity(n * 3);
             for i in 0..n {
@@ -248,7 +224,7 @@ impl PainterTool {
                 rgb.push(rgba[i * 4 + 1]);
                 rgb.push(rgba[i * 4 + 2]);
             }
-            layers.push((lum, w, h));
+            layers.push((alpha, w, h));
             rgb_layers.push(rgb);
             opacity.push(layer.opacity.clamp(0.0, 1.0));
             blend.push(layer.blend_mode.to_u8());
@@ -265,11 +241,26 @@ impl PainterTool {
             self.paint
                 .shape_layers
                 .set_layers_meta(rgb_layers, opacity, blend, doc_ids);
+            // ⚠️ **O ganho do relevo é do DOCUMENTO** (a luz dobra a pilha), não de uma camada, e
+            // entra como FONTE em vez de já assado nas máscaras: elas são re-derivadas a cada troca
+            // da silhueta, e um ganho pré-multiplicado seria aplicado de novo em cada re-derivação.
+            //
+            // ⚠️ **Consequência nomeada:** o flatten compõe coberturas JÁ moduladas, então onde duas
+            // camadas se sobrepõem o resultado é `over(a₁g, a₂g)` e não `g·over(a₁, a₂)`. As duas são
+            // leituras defensáveis (o relevo modula a tinta de cada camada × modula o composto), e a
+            // exata custaria um par de buffers do tamanho da tela POR LOTE no caminho que o comentário
+            // do `stamp_color_dynamic` chama de "the live FPS 60→10 wall". Numa camada só — o caso em
+            // que se esculpe — elas são idênticas.
+            if let Some(gain) = relief_gain {
+                self.paint.shape_layers.set_gain(gain);
+            }
             // The real opacities only land HERE — `set_layers` above reset them to 1.0 and the flatten
             // inside `set_brush_shape_layers` baked that. Re-bake now that the metadata is in.
             self.reflatten_shape_image();
-            if let Some((on, color)) = assignments {
-                self.paint.shape_layers.restore_assignments(&on, &color);
+            if let Some((on, color, alpha_from_image)) = assignments {
+                self.paint
+                    .shape_layers
+                    .restore_assignments(&on, &color, alpha_from_image);
             }
             self.shape_source_doc = self.bound_doc;
             self.shape_source_revision = self.shape_source_content_revision();
@@ -351,6 +342,31 @@ impl PainterTool {
         }
         self.paint.shape_image_pending = false;
         self.paint.shape_image_version = self.paint.shape_image_version.wrapping_add(1);
+    }
+
+    /// **A silhueta vem do ALPHA da imagem?** (o checkbox acima do de cor de textura).
+    #[must_use]
+    pub fn brush_shape_alpha_from_image(&self) -> bool {
+        self.paint.shape_layers.alpha_from_image()
+    }
+
+    /// O interruptor da silhueta tem para onde virar — há RGB capturado, logo a luminância existe.
+    /// Sem isso o checkbox seria pintado e inerte, que é o controle morto que este painel recusa.
+    #[must_use]
+    pub fn brush_shape_has_alpha_choice(&self) -> bool {
+        self.paint.shape_layers.has_alpha_choice()
+    }
+
+    /// Vira a fonte da silhueta entre o **ALPHA** da imagem e as diferenças de claro e escuro dela.
+    ///
+    /// ⚠️ **O relevo e a cor sobrevivem à troca**: as máscaras são re-derivadas das fontes pristinas
+    /// (o alpha guardado, o RGB capturado, o ganho do relevo), então virar o interruptor não é uma
+    /// re-importação — é escolher qual dos dois planos que já estão ali é a silhueta.
+    pub fn toggle_brush_shape_alpha_from_image(&mut self) {
+        self.paint.shape_layers.toggle_alpha_from_image();
+        // A imagem única (o caminho do ramo de cor / do preview) é o flatten das máscaras — re-assá-la
+        // aqui é o que faz a troca aparecer nas DUAS rotas com um gesto só.
+        self.reflatten_shape_image();
     }
 
     /// Toggle the **Per-Layer Color** mode (each layer paints its own colour; the higher above the

@@ -277,7 +277,39 @@ fn register_mask_and_selection(store: &mut WidgetStore) {
 
 /// Checkbox/action Buttons (swatches, toggles, ramp + stroke-editor actions, Watercolor
 /// chrome), Symmetry clickables, tooltips and the Dropdown chips.
+/// Os botões das DUAS rampas de cor (Grain Colors + Shape Colors) — mesma família, mesmo conjunto de
+/// verbos (enable / add / remove / invert / B&W / caixa de cor), e por isso um helper e não mais
+/// catorze linhas no meio da lista geral. Cortado daqui quando o `Alpha From Image` levou o pai a
+/// 201 do teto de 200: um corte por ASSUNTO, que é o que o gate pede em vez de uma allowlist.
+fn register_ramp_buttons(store: &mut WidgetStore) {
+    for id in [
+        // Grain Colors ramp: enable + add / remove / invert / B&W + colour-box buttons.
+        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RAMP_ENABLE,
+        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RAMP_ADD,
+        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RAMP_REMOVE,
+        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RAMP_INVERT,
+        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RAMP_BW,
+        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RAMP_SWATCH,
+        // Shape Color ramp: enable + add / remove / invert / B&W + colour-box + section reset.
+        ph2d_editor_core::ids::PAINTER_SHAPE_RAMP_ENABLE,
+        ph2d_editor_core::ids::PAINTER_SHAPE_RAMP_ADD,
+        ph2d_editor_core::ids::PAINTER_SHAPE_RAMP_REMOVE,
+        ph2d_editor_core::ids::PAINTER_SHAPE_RAMP_INVERT,
+        ph2d_editor_core::ids::PAINTER_SHAPE_RAMP_BW,
+        ph2d_editor_core::ids::PAINTER_SHAPE_RAMP_SWATCH,
+        ph2d_editor_core::ids::PAINTER_SHAPE_RAMP_RESET,
+    ] {
+        store.register(
+            id,
+            InteractiveState::Button {
+                state: ButtonState::Normal,
+            },
+        );
+    }
+}
+
 fn register_toggles_and_dropdowns(store: &mut WidgetStore) {
+    register_ramp_buttons(store);
     // Colour swatch + Eraser toggle + the Stroke-section "Adjust Strength" toggle —
     // Buttons. MUST be registered here or the dispatcher drops the click (the
     // populate-register gotcha).
@@ -326,21 +358,7 @@ fn register_toggles_and_dropdowns(store: &mut WidgetStore) {
         // checkboxes + swatches are factory ids, registered at paint time). Forward as a Button Click.
         ph2d_editor_core::ids::PAINTER_SHAPE_USE_LAYERS,
         ph2d_editor_core::ids::PAINTER_SHAPE_PER_LAYER_COLOR,
-        // Grain Colors ramp: enable + add / remove / invert / B&W + colour-box buttons.
-        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RAMP_ENABLE,
-        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RAMP_ADD,
-        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RAMP_REMOVE,
-        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RAMP_INVERT,
-        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RAMP_BW,
-        ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RAMP_SWATCH,
-        // Shape Color ramp: enable + add / remove / invert / B&W + colour-box + section reset.
-        ph2d_editor_core::ids::PAINTER_SHAPE_RAMP_ENABLE,
-        ph2d_editor_core::ids::PAINTER_SHAPE_RAMP_ADD,
-        ph2d_editor_core::ids::PAINTER_SHAPE_RAMP_REMOVE,
-        ph2d_editor_core::ids::PAINTER_SHAPE_RAMP_INVERT,
-        ph2d_editor_core::ids::PAINTER_SHAPE_RAMP_BW,
-        ph2d_editor_core::ids::PAINTER_SHAPE_RAMP_SWATCH,
-        ph2d_editor_core::ids::PAINTER_SHAPE_RAMP_RESET,
+        ph2d_editor_core::ids::PAINTER_SHAPE_ALPHA_FROM_IMAGE,
         // Per-section reset icon buttons (Inspector-Transform pattern).
         ph2d_editor_core::ids::PAINTER_BRUSH_RANDOMIZE_RESET,
         ph2d_editor_core::ids::PAINTER_BRUSH_TEXTURE_RESET,

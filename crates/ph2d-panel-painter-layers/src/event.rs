@@ -402,6 +402,7 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
                 || id == core_ids::PAINTER_SHAPE_RESET
                 || id == core_ids::PAINTER_SHAPE_USE_LAYERS
                 || id == core_ids::PAINTER_SHAPE_PER_LAYER_COLOR
+                || id == core_ids::PAINTER_SHAPE_ALPHA_FROM_IMAGE
                 || core_ids::PAINTER_BRUSH_TEXTURE_RAMP_BUTTONS.contains(&id)
                 || core_ids::PAINTER_SHAPE_RAMP_BUTTONS.contains(&id)
                 || id == core_ids::PAINTER_BRUSH_FALLOFF_ADD // Custom-falloff "+" point button

@@ -53,11 +53,18 @@ impl Stroke {
         self.tot_samples = self.tot_samples.wrapping_add(1);
     }
 
-    /// O dab de um carimbo de grade: o raio vem da CÉLULA (a porta única
-    /// [`BrushSpec::grid_stamp_frame`]), a pressão é cheia e não há heading — um carimbo de grade é
-    /// alinhado à REDE, não ao traço, então girá-lo com a mão brigaria com a célula que ele preenche.
+    /// O dab de um carimbo de grade: o raio vem da CÉLULA, a pressão é cheia e não há heading — um
+    /// carimbo de grade é alinhado à REDE, não ao traço, então girá-lo com a mão brigaria com a
+    /// célula que ele preenche.
+    ///
+    /// ⚠️ **O raio é lido do spec, não re-derivado aqui.** O tool abre o traço com o spec já passado
+    /// por [`BrushSpec::as_grid_stamp`] — a porta única, e a única que sabe se o slot de **Shape**
+    /// carrega uma silhueta (os pixels dela vivem no tool). Chamar o frame daqui obrigava o motor a
+    /// responder uma pergunta que ele não pode responder, e a resposta errada era um carimbo **1,64×**
+    /// a célula. Um traço de grade aberto com um spec CRU carimba o tamanho do pincel, e é o
+    /// `the_emitted_radius_comes_from_the_cell_not_the_brush` que prova que o produto não faz isso.
     fn grid_dab(&self, center: [f32; 2]) -> Dab {
-        let (radius, _, _) = self.spec.grid_stamp_frame();
+        let radius = self.spec.radius_px;
         Dab {
             center,
             radius_px: radius.clamp(0.0, MAX_BRUSH_RADIUS_PX),

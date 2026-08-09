@@ -70,6 +70,10 @@ pub use ph2d_color::srgb::{linear_to_srgb_byte, srgb_to_linear_byte};
 pub use ph2d_color::{ColorRamp, RampColorMode, RampInterp, RampStop, ValueRamp, ValueStop};
 // Re-export the brush blend + falloff surface so the layers panel's Brush
 // section can name + enumerate them without a direct `ph2d-painter-brush` import.
+// A lei de "que métodos de traço este pincel oferece" — o painel a pergunta para PINTAR o dropdown e
+// o tool ao trocar de meio, e re-exportá-la aqui é o que evita uma aresta direta do painel para o
+// motor só por causa dela.
+pub use ph2d_painter_brush::stroke_method::{MethodOffer, offered_methods};
 pub use ph2d_painter_brush::{
     BrushBlend,
     DAB_FLATTEN_MAX,

@@ -71,6 +71,15 @@ pub struct BrushSpec {
     /// **Grid Stamp — o deslocamento da grade** em px de imagem, `[x, y]`. Afasta a rede das bordas
     /// do documento; um valor de meia-célula põe o carimbo onde antes havia uma linha da grade.
     pub grid_offset_px: [f32; 2],
+    /// **Grid Stamp — o tamanho do CARIMBO em relação à célula**, como fração dela
+    /// (`[`[`crate::grid_stamp::GRID_FIT_MIN`]`, `[`crate::grid_stamp::GRID_FIT_MAX`]`]`, `0` = enche
+    /// a célula exatamente). Negativo abre **espaço** entre os carimbos, positivo os faz **sobrepor**.
+    ///
+    /// ⚠️ É um segundo *offset*, e não uma segunda **grade**: a rede não se move (o
+    /// [`Self::grid_offset_px`] é quem a desloca) e a contagem de células não muda — o que cresce ou
+    /// encolhe é o que cada célula DESENHA. Manter a rede fixa é o que permite pedir sobreposição
+    /// sem que o padrão inteiro se re-espace por baixo.
+    pub grid_fit: f32,
     /// "Adjust Strength for Spacing" — normalise total deposited opacity so a densely-spaced
     /// stroke doesn't pile up to full opacity (Blender `BRUSH_SPACE_ATTEN`, default ON,
     /// `DNA_brush_types.h:206`). Only applies for spacing < 100% (see [`Self::space_overlap_factor`]).

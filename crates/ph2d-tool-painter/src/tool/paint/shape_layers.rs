@@ -30,7 +30,27 @@ pub const MAX_SHAPE_LAYERS: usize = 16;
 /// two-way with that layer's Layers-panel slider (guarded to the captured source, never the wrong layer).
 #[derive(Default)]
 pub(super) struct ShapeLayers {
+    /// The ACTIVE silhouette per layer — **derived**, never authored: [`Self::rebuild_masks`] builds
+    /// it from [`Self::src`] or from the luminance of [`Self::rgb`], scaled by [`Self::gain`].
     layers: Vec<BrushTextureImage>,
+    /// The **source plane** each layer was captured with: its ALPHA. Kept pristine (un-gained,
+    /// un-chosen) because the silhouette law is a TOGGLE — deriving into `layers` and throwing the
+    /// source away would make flipping the checkbox a re-capture, which the file / sprite paths
+    /// cannot do (the document they came from may not even be open).
+    ///
+    /// ⚠️ **Custa um plano de `w·h` por camada** — ao lado dos `w·h·3` que a cor já guarda, +25 % do
+    /// que o stack pesava. É o preço de o interruptor ser instantâneo em vez de destrutivo.
+    src: Vec<BrushTextureImage>,
+    /// O **ganho do relevo** do documento de origem (um byte por texel, [`super::impasto_gain`]),
+    /// vazio quando não há relevo. Guardado em vez de pré-multiplicado na captura porque a máscara é
+    /// re-derivada a cada troca de fonte, e um ganho já assado nela seria aplicado duas vezes.
+    gain: Vec<u8>,
+    /// **A silhueta vem do ALPHA da imagem** (em vez das diferenças de claro e escuro dela).
+    ///
+    /// O default é o comportamento que cada rota JÁ tinha — a captura de documento silhueta pelo
+    /// alpha autorado das camadas, uma imagem importada silhueta pelo tom —, e o checkbox é a
+    /// escolha que faltava. Ele sobrevive a uma re-captura da MESMA fonte, como as cores por camada.
+    alpha_from_image: bool,
     /// The mode toggle (the "Per-Layer Color" checkbox). Only meaningful with ≥ 1 captured layer.
     per_layer_color: bool,
     /// Per-layer "use a custom colour" toggle (the "Layer N Color" checkbox). `false` (default) ⇒ the
@@ -62,11 +82,22 @@ impl ShapeLayers {
     /// until the artist assigns a custom one). Does NOT change the mode toggle. Bumps the version.
     pub(super) fn set_layers(&mut self, layers: Vec<(Vec<u8>, u32, u32)>) {
         let n = layers.len().min(MAX_SHAPE_LAYERS);
-        self.layers = layers
+        self.src = layers
             .into_iter()
             .take(n)
             .map(|(lum, w, h)| BrushTextureImage::new(lum, w, h))
             .collect();
+        // O plano instalado É a silhueta, e esse é o default de TODA rota — o que muda é quem o
+        // instala: a captura entrega o alpha autorado de cada camada, o arquivo entrega o que
+        // ele tem. Quem quiser a outra lei chama [`Self::set_alpha_from_image`] logo em seguida.
+        //
+        // ⚠️ **Um default MEDIDO foi construído aqui e descartado** (*alpha quando ele recorta algo,
+        // luminância quando é opaco*): ele é defensável e mudava o comportamento em DUAS direções
+        // que ninguém pediu — uma captura toda opaca deixava de ser o quadrado que shipava, e um
+        // `.png` recortado deixava de ser silhuetado pelo tom. O pedido era um CHECKBOX; o default
+        // fica onde estava e a escolha passa a existir.
+        self.alpha_from_image = true;
+        self.gain.clear();
         self.color_on = vec![false; n];
         self.color = vec![[0.0, 0.0, 0.0]; n];
         // The captured `rgb` / `opacity` / `doc_ids` are re-filled by the capture path via
@@ -77,7 +108,84 @@ impl ShapeLayers {
         self.manual_blend = vec![0; n];
         self.opacity = vec![1.0; n];
         self.doc_ids = vec![0; n];
+        self.rebuild_masks();
+    }
+
+    /// Re-derive the ACTIVE masks from the pristine sources. Bumps the version.
+    ///
+    /// ⚠️ **UMA porta decide de onde a silhueta vem**, e ela é perguntada aqui — não no carimbo, não
+    /// no flatten, não na captura. O carimbo por-camada (**Per-Layer Color**) lê `masks()` cruas e o
+    /// caminho de imagem única lê o `flatten()`; os dois derivam DESTE plano, então não há um segundo
+    /// sítio onde alguém possa esquecer a escolha do artista (é exatamente o defeito que o ganho do
+    /// relevo teve em 2026-08-09, aplicado no flatten e ausente do modo colorido).
+    fn rebuild_masks(&mut self) {
+        let gain_len = self.gain.len();
+        self.layers = self
+            .src
+            .iter()
+            .enumerate()
+            .map(|(i, plane)| {
+                let (alpha, w, h) = plane.parts();
+                let n = (w as usize) * (h as usize);
+                // A luminância sai do RGB já capturado — guardar um terceiro plano para ela seria
+                // guardar o que já está ali (Rec.601, os mesmos pesos 77/150/29 do resto do tool).
+                let lum = (!self.alpha_from_image)
+                    .then(|| self.rgb.get(i))
+                    .flatten()
+                    .filter(|rgb| rgb.len() >= n * 3)
+                    .map(|rgb| {
+                        (0..n)
+                            .map(|k| {
+                                ((u32::from(rgb[k * 3]) * 77
+                                    + u32::from(rgb[k * 3 + 1]) * 150
+                                    + u32::from(rgb[k * 3 + 2]) * 29)
+                                    >> 8) as u8
+                            })
+                            .collect::<Vec<u8>>()
+                    });
+                let mut mask = lum.unwrap_or_else(|| alpha.to_vec());
+                if gain_len >= n {
+                    for (m, &g) in mask.iter_mut().zip(self.gain.iter()) {
+                        let v = u32::from(*m) * u32::from(g)
+                            / u32::from(super::impasto_gain::FLAT_PROBE);
+                        *m = v.min(255) as u8;
+                    }
+                }
+                BrushTextureImage::new(mask, w, h)
+            })
+            .collect();
         self.version = self.version.wrapping_add(1);
+    }
+
+    /// A silhueta vem do ALPHA da imagem?
+    pub(super) fn alpha_from_image(&self) -> bool {
+        self.alpha_from_image
+    }
+
+    /// Há uma fonte ALTERNATIVA para a silhueta — ou seja, o interruptor tem para onde virar. Sem RGB
+    /// capturado a luminância não existe, e um checkbox que não muda nada é o controle morto que este
+    /// painel recusa a pintar.
+    pub(super) fn has_alpha_choice(&self) -> bool {
+        !self.src.is_empty() && self.rgb.iter().any(|r| !r.is_empty())
+    }
+
+    /// Vira o interruptor da silhueta e re-deriva as máscaras.
+    pub(super) fn toggle_alpha_from_image(&mut self) {
+        self.set_alpha_from_image(!self.alpha_from_image);
+    }
+
+    /// Declara de onde a silhueta vem e re-deriva. Chamado por quem INSTALA os planos quando a lei
+    /// da sua rota não é o default (uma imagem importada silhueta pelo TOM, não pelo alpha — o
+    /// arquivo pode nem ter um).
+    pub(super) fn set_alpha_from_image(&mut self, on: bool) {
+        self.alpha_from_image = on;
+        self.rebuild_masks();
+    }
+
+    /// Instala o **ganho do relevo** do documento de origem e re-deriva. Vazio = sem relevo.
+    pub(super) fn set_gain(&mut self, gain: Vec<u8>) {
+        self.gain = gain;
+        self.rebuild_masks();
     }
 
     /// Fill the per-layer captured metadata in lock-step with [`Self::set_layers`] (same order / count):
@@ -105,12 +213,17 @@ impl ShapeLayers {
                 self.doc_ids[i] = d;
             }
         }
-        self.version = self.version.wrapping_add(1);
+        // O RGB é a fonte do ramo de LUMINÂNCIA — instalá-lo sem re-derivar deixaria a máscara
+        // descrevendo a captura anterior.
+        self.rebuild_masks();
     }
 
     /// Drop the stack (revert to the single-image / falloff Shape).
     pub(super) fn clear(&mut self) {
         self.layers.clear();
+        self.src.clear();
+        self.gain.clear();
+        self.alpha_from_image = false;
         self.color_on.clear();
         self.color.clear();
         self.rgb.clear();
@@ -170,20 +283,32 @@ impl ShapeLayers {
     /// for re-applying across an automatic re-capture of the same Shape source (so editing the source
     /// sprite keeps the custom colours). The captured `rgb` / `opacity` / `blend` / `doc_ids` are NOT
     /// snapshotted: opacity + blend MIRROR the live source layer, so they are re-read fresh each capture.
-    pub(super) fn assignments_snapshot(&self) -> (Vec<bool>, Vec<[f32; 3]>) {
-        (self.color_on.clone(), self.color.clone())
+    pub(super) fn assignments_snapshot(&self) -> (Vec<bool>, Vec<[f32; 3]>, bool) {
+        (
+            self.color_on.clone(),
+            self.color.clone(),
+            self.alpha_from_image,
+        )
     }
 
     /// Re-apply an [`Self::assignments_snapshot`] by index (up to the current layer count) after a
     /// re-capture, bumping the version so the cached stamps + preview re-bake with the restored state.
-    pub(super) fn restore_assignments(&mut self, on: &[bool], color: &[[f32; 3]]) {
+    pub(super) fn restore_assignments(
+        &mut self,
+        on: &[bool],
+        color: &[[f32; 3]],
+        alpha_from_image: bool,
+    ) {
         for i in 0..self.layers.len() {
             if let (Some(&o), Some(c)) = (on.get(i), color.get(i)) {
                 self.color_on[i] = o;
                 self.color[i] = *c;
             }
         }
-        self.version = self.version.wrapping_add(1);
+        // ⚠️ A escolha da silhueta é do ARTISTA e sobrevive a uma re-captura da MESMA fonte, como as
+        // cores; uma fonte NOVA volta ao default medido dela, que é o certo (é outra imagem).
+        self.alpha_from_image = alpha_from_image;
+        self.rebuild_masks();
     }
 
     /// Flatten the stack into one luminance silhouette (alpha-over, bottom→top) for the OFF-mode / ramp /

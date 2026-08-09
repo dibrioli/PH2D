@@ -69,6 +69,19 @@ fn ridge(paper_alpha: u8, impasto: bool, color: [f32; 3]) -> PainterTool {
     t
 }
 
+/// A MESMA fixture, para o gate irmão de `shape_alpha_tests` — um documento com relevo esculpido.
+/// Emprestada em vez de re-escrita: duas fixtures do mesmo documento derivam, e a segunda passa a
+/// medir um relevo que não é o que esta mede.
+pub(super) fn ridge_for_alpha_gate() -> PainterTool {
+    ridge_for_alpha_gate_with(true)
+}
+
+/// A mesma, com o impasto como PARÂMETRO — o gate irmão precisa do controle sem relevo, e ele tem de
+/// ser o mesmo documento em tudo o mais.
+pub(super) fn ridge_for_alpha_gate_with(impasto: bool) -> PainterTool {
+    ridge(0, impasto, [0.1, 0.2, 0.3])
+}
+
 fn lum(rgba: &[u8]) -> Vec<u8> {
     rgba.chunks_exact(4)
         .map(|p| ((u32::from(p[0]) * 77 + u32::from(p[1]) * 150 + u32::from(p[2]) * 29) >> 8) as u8)

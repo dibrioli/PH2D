@@ -240,6 +240,9 @@ pub struct BrushSettings {
     pub grid_cell: [f32; 2],
     /// **Grid Stamp** lattice offset per axis, as the `0..1` slider track. Grid Stamp only.
     pub grid_offset: [f32; 2],
+    /// **Grid Stamp** stamp size relative to the cell, as the `0..1` slider track (centre = fills the
+    /// cell exactly; below it the stamps stand apart, above it they overlap). Grid Stamp only.
+    pub grid_fit: f32,
     /// **Grid Stamp** "Show Grid" — draw the lattice on the canvas. Display only (it never moves a dab).
     pub grid_show: bool,
 
@@ -290,6 +293,10 @@ pub struct BrushSettings {
     pub document_layer_count: u8,
     /// "Per-Layer Color" mode — each Shape layer paints its own colour, higher above lower; hides the ramp.
     pub shape_per_layer_color: bool,
+    /// **A silhueta do Shape vem do ALPHA da imagem** (em vez das diferenças de claro e escuro dela).
+    pub shape_alpha_from_image: bool,
+    /// Há uma fonte alternativa para a silhueta (RGB capturado) — o interruptor tem para onde virar.
+    pub shape_has_alpha_choice: bool,
     /// Per-layer "use a custom colour" toggle (entries `0..shape_layer_count` valid).
     pub shape_layer_color_on: [bool; MAX_SHAPE_LAYERS],
     /// Per-layer custom colour (straight RGB), used when [`Self::shape_layer_color_on`]`[i]`. With the

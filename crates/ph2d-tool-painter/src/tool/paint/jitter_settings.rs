@@ -285,6 +285,10 @@ impl PainterTool {
                 self.toggle_brush_shape_per_layer_color();
                 true
             }
+            PanelEvent::Click(id) if *id == core_ids::PAINTER_SHAPE_ALPHA_FROM_IMAGE => {
+                self.toggle_brush_shape_alpha_from_image();
+                true
+            }
             PanelEvent::Click(id) => {
                 for i in 0..super::shape_layers::MAX_SHAPE_LAYERS as u8 {
                     if *id == core_ids::painter_shape_layer_color_check_id(i) {

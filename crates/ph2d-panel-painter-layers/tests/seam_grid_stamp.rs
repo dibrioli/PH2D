@@ -25,13 +25,18 @@ fn viewport() -> Rect {
     Rect::new(0.0, 0.0, 1600.0, 900.0)
 }
 
-/// As cinco rows da grade, pelos ids que o painel de fato pinta.
-fn grid_rows() -> [NodeId; 5] {
+/// As SEIS rows da grade, pelos ids que o painel de fato pinta.
+///
+/// ⚠️ A contagem se CONTA: o `Cell Fit` (Enio, 2026-08-09) entrou aqui no mesmo commit em que nasceu,
+/// senão as duas metades deste arquivo — *existem no Grid Stamp* e *não existem fora dele* — passariam
+/// a falar de uma lista menor que a que a tela desenha, e a row nova nasceria sem as duas.
+fn grid_rows() -> [NodeId; 6] {
     [
         core_ids::PAINTER_BRUSH_GRID_CELL[0],
         core_ids::PAINTER_BRUSH_GRID_CELL[1],
         core_ids::PAINTER_BRUSH_GRID_OFFSET[0],
         core_ids::PAINTER_BRUSH_GRID_OFFSET[1],
+        core_ids::PAINTER_BRUSH_GRID_FIT,
         core_ids::PAINTER_BRUSH_GRID_SHOW,
     ]
 }
@@ -175,6 +180,7 @@ fn each_grid_slider_writes_only_its_own_number() {
         (core_ids::PAINTER_BRUSH_GRID_CELL[1], 1),
         (core_ids::PAINTER_BRUSH_GRID_OFFSET[0], 2),
         (core_ids::PAINTER_BRUSH_GRID_OFFSET[1], 3),
+        (core_ids::PAINTER_BRUSH_GRID_FIT, 4),
     ];
     for (id, slot) in sliders {
         let mut tool = tool_with(StrokeMethod::GridStamp);
@@ -190,18 +196,20 @@ fn each_grid_slider_writes_only_its_own_number() {
             before.grid_cell[1],
             before.grid_offset[0],
             before.grid_offset[1],
+            before.grid_fit,
         ];
         let a = [
             after.grid_cell[0],
             after.grid_cell[1],
             after.grid_offset[0],
             after.grid_offset[1],
+            after.grid_fit,
         ];
         assert_ne!(
             a[slot], b[slot],
             "arrastar {id:?} não moveu o número que ele nomeia — a costura está morta"
         );
-        for other in 0..4 {
+        for other in 0..5 {
             if other != slot {
                 assert!(
                     (a[other] - b[other]).abs() < 1e-6,

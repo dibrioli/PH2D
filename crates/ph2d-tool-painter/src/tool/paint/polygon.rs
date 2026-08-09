@@ -289,7 +289,7 @@ impl PainterTool {
         let (center, u, rx, ry, sides, seed) = (ed.center, ed.u, ed.rx, ed.ry, ed.sides, ed.seed);
         let off = self.shape_offset_px();
         let (erx, ery) = ((rx + off).max(0.5), (ry + off).max(0.5));
-        let mut stroke = Stroke::new(self.paint.brush, self.paint.dynamics, seed);
+        let mut stroke = Stroke::new(self.stroke_spec(), self.paint.dynamics, seed);
         let mut dabs = std::mem::take(&mut self.paint.dabs);
         stroke.fill_polygon_preview(center, u, erx, ery, sides, &mut dabs);
         self.restamp_shapes_preview(&dabs); // active shape + every parked shape onto one baseline

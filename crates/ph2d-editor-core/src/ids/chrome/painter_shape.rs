@@ -94,6 +94,17 @@ pub const PAINTER_SHAPE_USE_LAYERS: NodeId = hash_node_id("painter_brush.shape_u
 pub const PAINTER_SHAPE_PER_LAYER_COLOR: NodeId =
     hash_node_id("painter_brush.shape_per_layer_color");
 
+/// "Alpha From Image" — the Shape silhouette comes from the image's own ALPHA instead of from its
+/// light/dark differences. `Click` -> `toggle_brush_shape_alpha_from_image`.
+///
+/// Painted above the texture-colour checkbox, and only when there IS an alternative (captured RGB,
+/// so a luminance exists to switch to) — a checkbox with one reachable value is a dead control. The
+/// DEFAULT is measured at capture, not chosen: alpha when it carries any transparency, luminance
+/// when the image is opaque edge to edge, because an opaque image's alpha is not a silhouette (it
+/// would make every photo a square stamp).
+pub const PAINTER_SHAPE_ALPHA_FROM_IMAGE: NodeId =
+    hash_node_id("painter_brush.shape_alpha_from_image");
+
 /// Stable [`NodeId`] for Shape layer `i`'s **colour checkbox** (the "Layer i+1 Color" row, shown when
 /// Per-Layer Color is on). A FACTORY id (paint-time registration; only `0..layer_count` rows are
 /// painted, so the `format!` is bounded). `Click` → `toggle_brush_shape_layer_color(i)`.

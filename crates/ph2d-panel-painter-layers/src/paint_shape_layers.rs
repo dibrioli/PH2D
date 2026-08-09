@@ -77,6 +77,21 @@ pub(crate) fn paint_shape_per_layer_color(
     // ⚠️ **E o rotulo muda com a contagem, o ESTADO nao.** Um id novo seria uma segunda porta para o
     // mesmo bit — a falha que este painel ja pagou —, mas *"Per-Layer Color"* sobre uma camada nomeia
     // uma divisao que nao existe. Uma pergunta, um estado, duas maneiras honestas de a fazer.
+    // ⚠️ **De onde vem a transparência** — acima do checkbox de cor porque ele decide o que a forma É,
+    // e o de baixo decide com que tinta ela pinta. Oferecido só quando há RGB capturado: sem ele a
+    // luminância não existe, e um checkbox com um valor alcançável só é um controle morto.
+    if brush.shape_has_alpha_choice {
+        y = paint_checkbox_row(
+            ctx,
+            theme,
+            x,
+            content_w,
+            y,
+            core_ids::PAINTER_SHAPE_ALPHA_FROM_IMAGE,
+            "Alpha From Image",
+            brush.shape_alpha_from_image,
+        );
+    }
     let single = count == 1;
     y = paint_checkbox_row(
         ctx,

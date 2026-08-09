@@ -280,7 +280,7 @@ impl PainterTool {
             for contour in self.stroke_boolean_contours(&bool_shapes, off) {
                 if contour.len() >= 2 {
                     let mut stroke =
-                        Stroke::new(self.paint.brush, self.paint.dynamics, self.paint.seed);
+                        Stroke::new(self.stroke_spec(), self.paint.dynamics, self.paint.seed);
                     scratch.clear();
                     stroke.fill_polyline_preview(&contour, &mut scratch);
                     dabs.extend_from_slice(&scratch);
@@ -308,17 +308,17 @@ impl PainterTool {
             S::Curve(c) => {
                 // DRAWING-ONLY offset (Enio 2026-07-05): the PERFECT CAD offset spine, control points pristine.
                 let spine = self.offset_curve_spine(&c.points, &c.handles, c.closed, off);
-                stroke = Stroke::new(self.paint.brush, self.paint.dynamics, c.seed);
+                stroke = Stroke::new(self.stroke_spec(), self.paint.dynamics, c.seed);
                 stroke.fill_polyline_preview(&spine, out);
             }
             S::Ellipse(e) => {
                 let (erx, ery) = self.ellipse_offset_radii(e.rx, e.ry);
-                stroke = Stroke::new(self.paint.brush, self.paint.dynamics, e.seed);
+                stroke = Stroke::new(self.stroke_spec(), self.paint.dynamics, e.seed);
                 stroke.fill_ellipse_preview(e.center, e.u, erx, ery, out);
             }
             S::Polygon(p) => {
                 let (erx, ery) = ((p.rx + off).max(0.5), (p.ry + off).max(0.5));
-                stroke = Stroke::new(self.paint.brush, self.paint.dynamics, p.seed);
+                stroke = Stroke::new(self.stroke_spec(), self.paint.dynamics, p.seed);
                 stroke.fill_polygon_preview(p.center, p.u, erx, ery, p.sides, out);
             }
             S::Line(l) => {
@@ -339,7 +339,7 @@ impl PainterTool {
                     };
                 }
                 if path.len() >= 2 {
-                    stroke = Stroke::new(self.paint.brush, self.paint.dynamics, l.seed);
+                    stroke = Stroke::new(self.stroke_spec(), self.paint.dynamics, l.seed);
                     stroke.fill_polyline_preview(&path, out);
                 }
             }

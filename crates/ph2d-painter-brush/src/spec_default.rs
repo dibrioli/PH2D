@@ -38,6 +38,7 @@ impl Default for BrushSpec {
             // artista reconhece antes de tocar num slider.
             grid_cell_px: [32.0, 32.0],
             grid_offset_px: [0.0, 0.0],
+            grid_fit: 0.0,
             space_attenuation: false, // Adjust Strength off by default (Enio 2026-06-24)
             accumulate: false,
             dash_ratio: 1.0,

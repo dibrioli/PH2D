@@ -103,6 +103,17 @@ pub const PAINTER_BRUSH_GRID_OFFSET_CHIPS: [NodeId; 2] = [
     hash_node_id("painter_brush.grid_offset_x_chip"),
     hash_node_id("painter_brush.grid_offset_y_chip"),
 ];
+/// Stamp size **relative to the cell** (`0..1` track → `set_grid_fit_norm`, centre = fills the cell
+/// exactly). Below the centre the stamps stand apart, above it they overlap.
+///
+/// It is a second OFFSET, not a second lattice: the grid keeps its spacing and its cell count, and
+/// what grows or shrinks is what each cell DRAWS — which is what lets the artist ask for overlap
+/// without the whole pattern re-spacing underneath. The ruler is LINEAR (unlike the cell size's
+/// quadratic one) because this is a signed ratio whose interesting value is zero, and the middle of
+/// the track is where the hand must find it.
+pub const PAINTER_BRUSH_GRID_FIT: NodeId = hash_node_id("painter_brush.grid_fit");
+/// The editable numeric chip paired with [`PAINTER_BRUSH_GRID_FIT`].
+pub const PAINTER_BRUSH_GRID_FIT_CHIP: NodeId = hash_node_id("painter_brush.grid_fit_chip");
 /// "Show Grid" checkbox — draws the lattice on the canvas. `Click` → `toggle_grid_show`. Display
 /// only: the stamp lands on the same cells with it on or off, and there is a gate saying so.
 pub const PAINTER_BRUSH_GRID_SHOW: NodeId = hash_node_id("painter_brush.grid_show");

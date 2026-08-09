@@ -31,6 +31,10 @@ pub(crate) fn register_grid_stamp(store: &mut WidgetStore) {
             core_ids::PAINTER_BRUSH_GRID_OFFSET[1],
             core_ids::PAINTER_BRUSH_GRID_OFFSET_CHIPS[1],
         ),
+        (
+            core_ids::PAINTER_BRUSH_GRID_FIT,
+            core_ids::PAINTER_BRUSH_GRID_FIT_CHIP,
+        ),
     ];
     for (slider, chip) in pairs {
         store.register(

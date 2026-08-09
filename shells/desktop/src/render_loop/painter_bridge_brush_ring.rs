@@ -58,6 +58,16 @@ pub(super) fn draw_brush_ring(
                     window_size,
                 );
                 let c = affine.as_coeffs();
+                // ── GRID STAMP: o cursor É a célula, encaixada ──────────────────────────────────
+                // Neste método o dab não pousa onde o ponteiro está — ele pousa no CENTRO da célula
+                // que o ponteiro cobre, com o tamanho dela. Um anel elíptico preso ao ponteiro
+                // desenha, então, um lugar onde nada vai acontecer e um tamanho que não é o do
+                // carimbo (Enio, 2026-08-09). A célula sai da porta do carimbo (`grid_cell_rect_at`),
+                // nunca de uma rede re-derivada aqui.
+                if let Some((centre, half)) = grid_cell_under(painter, affine, cursor) {
+                    draw_grid_cell(vector_scene, affine, centre, half);
+                    return;
+                }
                 let scale = (c[0] * c[0] + c[1] * c[1]).sqrt();
                 // Deform uses its OWN (round) brush footprint — the deform radius, no flatten/rotation — so
                 // the ring shows the deform size, not the paint brush's (Enio 2026-07-04).
@@ -120,4 +130,67 @@ pub(super) fn draw_brush_ring(
             }
         }
     }
+}
+
+/// A célula do Grid Stamp sob o cursor, em px de IMAGEM: `(centro, meia-extensão)`. `None` fora do
+/// método, ou sob um afim que não se inverte.
+///
+/// ⚠️ **O afim degenerado é recusado, não aproximado.** Uma sprite com escala zero num eixo (ou um
+/// zoom que colapsou) tem determinante zero, e a inversa devolveria `inf`/`NaN` — que `grid_cell_at`
+/// converteria em `as i32` SATURADO, desenhando uma célula a um bilhão de pixels de onde o cursor
+/// está. Devolver `None` deixa o anel normal aparecer, que é a degradação honesta.
+fn grid_cell_under(
+    painter: &PainterTool,
+    affine: ph2d_vector::Affine,
+    cursor: (f32, f32),
+) -> Option<([f32; 2], [f32; 2])> {
+    // ⚠️ **O Deform tem footprint PRÓPRIO** (o raio dele, sem achatamento nem grade) e não passa pelo
+    // carimbo, então com o Grid Stamp armado por baixo o cursor mostraria uma célula onde o gesto de
+    // deformar não encaixa em nada. Smear / Blur / Clone NÃO entram nesta recusa: eles carimbam pelo
+    // mesmo `stamp_dabs_inner`, logo pousam na célula de verdade.
+    if painter.is_deform_mode() {
+        return None;
+    }
+    let c = affine.as_coeffs();
+    let det = c[0] * c[3] - c[1] * c[2];
+    if !det.is_finite() || det.abs() < f64::EPSILON {
+        return None;
+    }
+    let p = affine.inverse() * ph2d_vector::Point::new(f64::from(cursor.0), f64::from(cursor.1));
+    painter.grid_cell_rect_at([p.x as f32, p.y as f32])
+}
+
+/// Desenha o retângulo da célula (px de imagem) pelo afim COMPLETO — com translação, ao contrário do
+/// anel elíptico, que é ancorado no cursor: uma célula tem um lugar próprio, e é esse lugar que o
+/// desenho tem de contar.
+fn draw_grid_cell(
+    vector_scene: &mut ph2d_vector::VectorScene,
+    affine: ph2d_vector::Affine,
+    centre: [f32; 2],
+    half: [f32; 2],
+) {
+    use ph2d_vector::{Affine, BezPath, Brush, Color, Point, Stroke};
+    let (cx, cy) = (f64::from(centre[0]), f64::from(centre[1]));
+    let (hx, hy) = (f64::from(half[0]), f64::from(half[1]));
+    let mut path = BezPath::new();
+    for (i, (sx, sy)) in [(-1.0, -1.0), (1.0, -1.0), (1.0, 1.0), (-1.0, 1.0)]
+        .into_iter()
+        .enumerate()
+    {
+        let p = affine * Point::new(cx + sx * hx, cy + sy * hy);
+        if i == 0 {
+            path.move_to(p);
+        } else {
+            path.line_to(p);
+        }
+    }
+    path.close_path();
+    let color = Color::new([0.78, 0.78, 0.78, 0.85]); // LITERAL-COLOR-OK: overlay cursor
+    vector_scene.inner_mut().stroke(
+        &Stroke::new(1.5),
+        Affine::IDENTITY,
+        &Brush::Solid(color),
+        None,
+        &path,
+    );
 }

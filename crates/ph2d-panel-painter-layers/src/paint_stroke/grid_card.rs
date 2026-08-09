@@ -52,6 +52,19 @@ pub(super) fn paint_grid_stamp_card(
             brush.grid_offset[axis],
         );
     }
+    // O tamanho do carimbo em relação à célula — o segundo *offset*, logo abaixo do primeiro: os dois
+    // dizem "onde/quanto", e separá-los por um checkbox no meio esconderia o parentesco.
+    y = paint_slider_chip_row(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        "Cell Fit",
+        core_ids::PAINTER_BRUSH_GRID_FIT,
+        core_ids::PAINTER_BRUSH_GRID_FIT_CHIP,
+        brush.grid_fit,
+    );
     paint_checkbox_row(
         ctx,
         theme,

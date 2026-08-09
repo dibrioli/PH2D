@@ -547,7 +547,7 @@ impl PainterTool {
     /// spine matches the overlay guide exactly.
     fn curve_fill(&mut self, pts: &[[f32; 2]], handles: &[[[f32; 2]; 2]], closed: bool, seed: u64) {
         let spine = self.offset_curve_spine(pts, handles, closed, self.shape_offset_px());
-        let mut stroke = Stroke::new(self.paint.brush, self.paint.dynamics, seed);
+        let mut stroke = Stroke::new(self.stroke_spec(), self.paint.dynamics, seed);
         let mut dabs = std::mem::take(&mut self.paint.dabs);
         stroke.fill_polyline_preview(&spine, &mut dabs);
         self.restamp_shapes_preview(&dabs); // active shape + every parked shape onto one baseline

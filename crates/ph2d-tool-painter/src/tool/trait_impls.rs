@@ -234,6 +234,8 @@ impl Tool for PainterTool {
                     .and_then(crate::GridAxis::from_slot)
                 {
                     self.set_grid_offset_norm(axis, v as f32);
+                } else if id == core_ids::PAINTER_BRUSH_GRID_FIT {
+                    self.set_grid_fit_norm(v as f32);
                 } else if id == core_ids::PAINTER_BRUSH_TEXTURE_ANGLE {
                     self.set_brush_texture_angle(v as f32);
                 } else if id == core_ids::PAINTER_BRUSH_TEXTURE_OFFSET_X {

@@ -252,9 +252,11 @@ use region::union_region;
 /// alcançar o que não é pixel (a silhueta do slot Shape). [LOC split de `impasto_light`].
 mod impasto_gain;
 #[cfg(test)]
+mod shape_alpha_tests;
+#[cfg(test)]
 mod tests;
 #[cfg(test)]
-mod use_as_relief_tests; // sonda: o que os quatro "Use as ..." leem (report do Enio 2026-08-09)
+mod use_as_relief_tests; // sonda: o que os quatro "Use as ..." leem (report do Enio 2026-08-09) // de onde a silhueta do Shape vem (report do Enio 2026-08-09)
 // Each gate family below gets its own file rather than the end of the 21k-line `tests` — a wave's
 // worth of gates appended there is a wave's worth of gates nobody can find again.
 #[cfg(test)]

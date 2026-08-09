@@ -125,7 +125,7 @@ impl PainterTool {
         // Clone ignores Symmetry (its panel section is hidden): mirrored dabs would clone from mirrored
         // source positions, which is nonsensical — strip it from the captured spec so a leftover-enabled
         // flag can't silently mirror. Other modes keep Symmetry.
-        let mut spec = self.paint.brush;
+        let mut spec = self.stroke_spec();
         if matches!(self.paint.paint_mode, PaintMode::Clone) {
             spec.symmetry.enabled = false;
         }

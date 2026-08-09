@@ -307,7 +307,7 @@ impl PainterTool {
         };
         let (center, u, rx, ry, seed) = (ed.center, ed.u, ed.rx, ed.ry, ed.seed);
         let (erx, ery) = self.ellipse_offset_radii(rx, ry);
-        let mut stroke = Stroke::new(self.paint.brush, self.paint.dynamics, seed);
+        let mut stroke = Stroke::new(self.stroke_spec(), self.paint.dynamics, seed);
         let mut dabs = std::mem::take(&mut self.paint.dabs);
         stroke.fill_ellipse_preview(center, u, erx, ery, &mut dabs);
         self.restamp_shapes_preview(&dabs); // active shape + every parked shape onto one baseline

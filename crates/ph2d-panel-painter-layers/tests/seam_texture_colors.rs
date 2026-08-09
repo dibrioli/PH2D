@@ -144,3 +144,47 @@ fn no_shape_no_texture_colour_checkbox() {
         "sem Shape capturada nao ha cor de textura para ligar, e o checkbox nao pode existir"
     );
 }
+
+/// **De onde a transparência vem** — o checkbox do report de 2026-08-09, e ele é oferecido só quando
+/// há uma segunda lei para escolher.
+///
+/// Mutação que tem de sangrar: o gate `brush.shape_has_alpha_choice` no painel.
+#[test]
+fn the_alpha_source_checkbox_is_offered_with_a_choice_and_the_click_lands() {
+    // Uma máscara CRUA (sem cor capturada): existe silhueta, mas não existe a outra lei.
+    let mut bare = PainterTool::default();
+    bare.set_brush_shape_layers(vec![(vec![200u8; 16], 4, 4)]);
+    let (_h, _s, rects) = painted(&bare);
+    assert!(
+        rect_of(&rects, core_ids::PAINTER_SHAPE_ALPHA_FROM_IMAGE).is_none(),
+        "sem RGB capturado a luminância não existe — o checkbox seria um controle morto"
+    );
+
+    let mut tool = tool_with_shape_layers(1);
+    let (mut host, mut st, rects) = painted(&tool);
+    let r = rect_of(&rects, core_ids::PAINTER_SHAPE_ALPHA_FROM_IMAGE)
+        .expect("com cor capturada há duas leis — o checkbox tem de ser pintado");
+    let before = tool.brush_shape_alpha_from_image();
+    click_through(&mut host, &mut st, &mut tool, r);
+    assert_eq!(
+        tool.brush_shape_alpha_from_image(),
+        !before,
+        "o checkbox foi pintado e o clique não chegou ao motor"
+    );
+}
+
+/// **Ele fica ACIMA do de cor** (Enio: *"um novo checkbox acima de use texture color"*), e a ordem
+/// não é decoração: um decide o que a forma É, o outro com que tinta ela pinta.
+#[test]
+fn the_alpha_source_sits_above_the_texture_colour_checkbox() {
+    let tool = tool_with_shape_layers(1);
+    let (_h, _s, rects) = painted(&tool);
+    let alpha = rect_of(&rects, core_ids::PAINTER_SHAPE_ALPHA_FROM_IMAGE).expect("alpha");
+    let colour = rect_of(&rects, core_ids::PAINTER_SHAPE_PER_LAYER_COLOR).expect("cor");
+    assert!(
+        alpha.y < colour.y,
+        "o checkbox da silhueta ({}) tem de vir antes do de cor ({})",
+        alpha.y,
+        colour.y
+    );
+}

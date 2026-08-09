@@ -136,6 +136,7 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     // Grid Stamp: the default 32 px cell as its `0..1` track, no lattice offset, lattice drawn.
     grid_cell: [0.2440442, 0.2440442], // LITERAL-PX-OK: sqrt((32 - 1) / (512 - 1)) — 32 px on the size ruler
     grid_offset: [0.0, 0.0],
+    grid_fit: 0.5, // o meio do trilho: o carimbo enche a célula exatamente
     grid_show: true,
     // Texture section (mirrors TextureSettings::default — no texture assigned).
     texture_kind: 0,    // None
@@ -166,6 +167,8 @@ pub(crate) const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     shape_layer_count: 0,
     document_layer_count: 0,
     shape_per_layer_color: false,
+    shape_alpha_from_image: false,
+    shape_has_alpha_choice: false,
     shape_layer_color_on: [false; ph2d_tool_painter::MAX_SHAPE_LAYERS],
     shape_layer_color: [[0.0; 3]; ph2d_tool_painter::MAX_SHAPE_LAYERS],
     shape_layer_blend: [0; ph2d_tool_painter::MAX_SHAPE_LAYERS],

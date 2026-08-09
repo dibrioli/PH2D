@@ -63,6 +63,49 @@ pub enum StrokeMethod {
     GridStamp,
 }
 
+/// Os fatos de que a lista de métodos oferecidos depende, **nomeados** — três `bool` posicionais são
+/// três jeitos de trocar dois sem o compilador reclamar.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct MethodOffer {
+    /// O pincel CLONA (o Clone processa uma cadeia de dabs por movimento).
+    pub is_clone: bool,
+    /// O pincel não deposita cor própria (Smear / Blur / Sculpt / Inpaint).
+    pub paints_no_color: bool,
+    /// O meio de pintura é o **Digital** (os outros três têm lei própria sobre onde a tinta pousa).
+    pub digital: bool,
+}
+
+/// **Que métodos de traço este pincel oferece**, em ordem de menu (discriminantes de fio).
+///
+/// ⚠️ **Uma lei, dois consumidores.** O painel a pergunta para PINTAR o dropdown; o tool a pergunta
+/// ao trocar de meio para saber se o método vigente sobrevive. Duas cópias divergem, e a forma dessa
+/// divergência é precisa: um método que o menu não oferece mas que fica ARMADO — o artista escolhe
+/// Watercolor com o Grid Stamp na mão, o dropdown deixa de mostrá-lo, e a ferramenta segue
+/// carimbando numa grade que nada na tela nomeia (Enio, 2026-08-09).
+///
+/// - **Clone**: os incrementais + Anchored (um carimbo parado que cresce clona bem sem movimento,
+///   ao contrário do Smear); os métodos de preenchimento / curva editável não produzem a cadeia de
+///   dabs por-movimento que ele processa.
+/// - **Smear / Blur** (`paints_no_color`): só os incrementais.
+/// - **Wet Paint**: a lista CHEIA (doc 21 — deposit-at-commit) menos o Grid Stamp.
+/// - **Grid Stamp (10) só no DIGITAL**: a grade quantiza a posição e deriva o footprint da célula, e
+///   cada um dos outros três meios já tem uma lei própria sobre onde a tinta pousa (o fluido a leva,
+///   a aquarela a espalha, o impasto lhe dá corpo).
+///
+/// O primeiro da lista é o método para o qual se cai quando o vigente deixa de ser oferecido.
+#[must_use]
+pub fn offered_methods(o: MethodOffer) -> &'static [u8] {
+    if o.is_clone {
+        &[0, 1, 3, 4]
+    } else if o.paints_no_color {
+        &[0, 1, 3]
+    } else if o.digital {
+        &[0, 4, 3, 1, 2, 5, 6, 7, 8, 9, 10]
+    } else {
+        &[0, 4, 3, 1, 2, 5, 6, 7, 8, 9]
+    }
+}
+
 impl StrokeMethod {
     /// Quantos métodos existem — ou seja, o menor `u8` que **não** é um método.
     ///

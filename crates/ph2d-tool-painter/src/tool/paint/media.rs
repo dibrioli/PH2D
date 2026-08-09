@@ -180,6 +180,35 @@ impl crate::tool::PainterTool {
             PaintMedia::Impasto => self.set_brush_impasto(true),
             PaintMedia::WetPaint => self.set_wetpaint_armed(true),
         }
+        self.settle_stroke_method();
+    }
+
+    /// Deixa o método de traço num que o meio vigente de fato OFERECE — chamado no fim de
+    /// [`Self::set_paint_media`], depois de o meio estar armado e a ferramenta assentada.
+    ///
+    /// ⚠️ **É a outra metade da lei do dropdown, e sem ela o método sobrevive ao menu.** O
+    /// `offered_methods` já dizia que o **Grid Stamp** é exclusivo do Digital, mas nada perguntava a
+    /// ele na TROCA: o artista escolhia Watercolor com o Grid Stamp na mão, o dropdown parava de
+    /// mostrá-lo, e a ferramenta seguia carimbando numa grade que nada na tela nomeava — um estado
+    /// que a UI não sabia exprimir e, por isso, que ele não sabia desfazer (Enio, 2026-08-09).
+    ///
+    /// O destino é o **primeiro** da lista oferecida, e não um método escolhido aqui: um literal
+    /// seria uma segunda opinião sobre qual é o método de partida daquele pincel.
+    fn settle_stroke_method(&mut self) {
+        let bs = self.brush_settings();
+        let offered = ph2d_painter_brush::stroke_method::offered_methods(
+            ph2d_painter_brush::stroke_method::MethodOffer {
+                is_clone: bs.is_clone,
+                paints_no_color: bs.paints_no_color(),
+                digital: bs.media == PaintMedia::Digital.to_u8(),
+            },
+        );
+        let now = self.paint.brush.stroke_method.to_u8();
+        if !offered.contains(&now)
+            && let Some(&first) = offered.first()
+        {
+            self.set_brush_stroke_method(first);
+        }
     }
 }
 

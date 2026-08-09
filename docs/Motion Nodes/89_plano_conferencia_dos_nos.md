@@ -323,9 +323,18 @@ por um caminho diferente (o pivô-centroide · a leitura de matiz · o *"vire pa
 _ => vec![0.0; n],                    // ← Vec4, Vec2 em X/Y, escalar-em-Length
 ```
 
-⚠️ **`_ => vec![0.0; n]` não é "capacidade que falta": é uma resposta errada apresentada como
-dado.** Pedir o X de uma coluna Vec2, ou qualquer canal de uma Vec4 de cor, devolve **zeros** —
-sem erro, sem log, sem porta vermelha. O grafo cozinha, a cena desenha, e o número é falso.
+⚠️ **CORREÇÃO MINHA, aplicando a lei 5 a mim mesmo:** eu escrevi que isto era *"uma resposta
+errada apresentada como dado"* — **defeito**. Fui ler o `_` antes de codificar e ele tem **cerca
+escrita**: o módulo declara *"A missing column is `0`, not a crash"* com o raciocínio (*"um nó que
+desse erro derrubaria o grafo inteiro porque o artista digitou `ag` em vez de `age`"*), e o lado
+GPU diz literalmente *"wrong dim for the mode — is zeros, never an error"*. **É política, não
+bug**, e eu a teria "consertado" chamando-a de defeito.
+
+**O que sobrevive à cerca — e é o gap de verdade:** o raciocínio dela é sobre **TYPO**, e não se
+estende ao caso novo. Pedir o X de uma `Vec2` que EXISTE não é um engano de digitação: é uma
+pergunta legítima que o nó **não sabe fazer**, e a política a atende com zeros porque não há
+outra resposta a dar. ⇒ a cura não é remover o `_`; é **acrescentar os modos**, deixando o `_`
+exatamente onde está para o caso que ele foi escrito para cobrir.
 
 E o `motion.expression` **não é o escape**: o MANIFEST dele é `INST_VEC2 → VALUE`, ou seja ele é
 **fonte de valor e nunca transformador** — não tem porta VALUE de entrada, e o `fn attr` dele lê
@@ -391,6 +400,52 @@ o `field.box`, irmão dele, **tem**. Uma rampa linear em ângulo qualquer — qu
 *Direction* — não pede nó novo, pede **um param**. ⚠️ E o doc 63 §198 chama o `motion.falloff` de
 *"alias/compat"*: seguir aquela nota teria **apagado** o único campo linear e radial do catálogo,
 do qual 5 das 13 composições da família FORCE dependem.
+
+## §10.2 — A ORDENAÇÃO GLOBAL DAS WAVES (o produto do plano)
+
+**A régua da §7 foi escrita antes dos resultados e não se mexe.** O que os resultados
+acrescentam é uma coisa que a régua não previa: **~12 dos ~52 P0 são o MESMO gap**, visto de oito
+famílias diferentes. Ordenar por família colocaria a mesma construção em oito waves.
+
+⚠️ **Isto NÃO revoga a §8** (*uma wave por família*). A §8 existe porque uma família partilha
+kernel, gates e cena de smoke — e o muro da §10.0 **não pertence a família nenhuma**: ele é o
+substrato que todas consomem. Uma wave foundational antes das de família é a consequência da §8,
+não a exceção dela.
+
+### W0 — O LEITOR E O ESCRITOR DE COLUNA  ·  *o desbloqueador*
+
+| | |
+|---|---|
+| **Mata** | ~12 P0 em **8 famílias** (1 · 4 · 5 · 6 · 8 · 9 · 10 · 15) |
+| **Custo** | dois nós que **já existem** ganham simetria; zero contrato congelado, zero schema |
+| **Metade A (LER)** | `value.attribute` passa a devolver componentes X/Y de `Vec2` e canais de `Vec4` — e **para de devolver zeros em silêncio** (é DEFEITO, não feature) |
+| **Metade B (ESCREVER)** | `motion.drive` toma o canal por **NOME**, o espelho exato do `value.attribute` Custom — os cinco de hoje viram os cinco nomes de sempre |
+| **Cai de graça** | `field.from_value` (a máscara é uma coluna) · `make_point` para `vel` · hue/sat/lightness · o pivô-centroide · `@P.x` na fórmula |
+| **Default que reduz** | os cinco canais atuais, os dois modos atuais — bit a bit |
+
+⚠️ **A metade A vem primeiro e sozinha**, porque é conserto de uma resposta errada: hoje
+`_ => vec![0.0; n]` entrega zeros com cara de dado. Um defeito não espera priorização de produto.
+
+### W1..W7 — as famílias, pelo P0 que SOBRA depois do W0
+
+| ordem | wave | P0 restantes | por que aqui |
+|---|---|---|---|
+| **W1** | **SIMULAÇÃO** (fam. 3) | 8 → **~7** | o maior bloco que o W0 não toca — e o item de cabeça é *os 3 geradores não consomem `accel`*, ou seja **a família `force.*` inteira não alcança simulação nenhuma**. É um segundo desbloqueador, barato (uma leitura de coluna) e com fan-out de 6 nós |
+| **W2** | **SOURCE** (fam. 14) | 4 | **39 formas já construídas e pagas são inalcançáveis do grafo** — é FIAÇÃO, não geometria: o melhor retorno por linha da conferência inteira |
+| **W3** | **COR** (fam. 9) | 6 → **~3** | o W0 mata hue/sat/luminance; sobra a alfa que não chega ao device (**defeito**) e a máscara por campo |
+| **W4** | **TEMPO / ESTILÍSTICOS** (fam. 7) | 4 | o `motion.morph` que **descarta `texture_id`/`geometry_id`** é regressão visível desde que o doc 86 pôs objetos no grafo |
+| **W5** | **DISTRIBUIÇÃO + EMISSÃO** (fam. 1) | 4 → **~3** | o W0 mata a tangente; sobram a FORMA do emissor e o arco radial |
+| **W6** | **PULSE** (fam. 12) | 2 | o *nível* é o gargalo único: com ele, gate/AND/OR/sequenciador/burst caem juntos |
+| **W7** | **SIM.\*** (fam. 13) | 3 | o estágio de EVENTOS depende do W6 (um pulso com nível) |
+
+**Fora da fila, com motivo escrito:**
+- **FX (fam. 11)** — P0 = 0, e a cerca do módulo de pós-produção já recusa a classe (**T7**).
+- **RIG (fam. 16)** — deferida por decisão sua; a tabela existe para quando for retomada.
+- **DEFORMERS · TRANSFORM · VALUE · STREAM · ANIMADORES · ZERO-PARAM** — o P0 delas **é** o W0.
+  Depois dele, o que sobra é P1, e P1 entra por família na segunda volta.
+
+**Os dois DEFEITOS (T5) não entram nesta fila** — eles são conserto e andam junto da wave que
+tocar o arquivo: a alfa da rampa no W3, o `spread` do `collide` no W1.
 
 ## §11 — Estado da conferência
 

@@ -5085,3 +5085,51 @@ fn a_mixed_length_broadcast_port_refuses_the_cook_to_the_cpu() {
     )
     .expect("a per-element field still cooks");
 }
+
+/// **As duas cópias das constantes de projeção não podem divergir.**
+///
+/// `value.attribute`'s modes are declared TWICE — once in the node crate, once inside
+/// `encode_project`. That duplication is structural and deliberate: this crate reaches the node
+/// crate only as a `[dev-dependencies]`, because the cook engine must not depend on the nodes it
+/// cooks (machete-safe, the pattern the deformer crates established). So the engine cannot
+/// `use` the constant, and a gate is what stands in for the import.
+///
+/// ⚠️ It reads the SOURCE rather than calling the code because the GPU-side constants live
+/// inside a private `fn` — unreachable to any caller, including this one. A behavioural gate
+/// would need a device and would therefore be `#[ignore]`d, i.e. exactly the gate that does not
+/// run on the machine where someone edits one of the two numbers.
+///
+/// The failure this prevents is silent: a drifted mode makes the projection fall through to the
+/// ladder's zeros, which is a legal answer for a mistyped column — so the device would return a
+/// full-length field of plausible zeros while the CPU returned the component.
+#[test]
+fn the_projection_modes_agree_across_the_dev_dependency_fence() {
+    let src = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/src/stream_op.rs"))
+        .expect("the projection's source is where the second copy lives");
+    for (name, cpu) in [
+        ("MODE_LENGTH", ph2d_node_value_attribute::MODE_LENGTH),
+        (
+            "MODE_COMPONENT_BASE",
+            ph2d_node_value_attribute::MODE_COMPONENT_BASE,
+        ),
+    ] {
+        let needle = format!("const {name}: i32 = ");
+        let at = src.find(&needle).unwrap_or_else(|| {
+            panic!(
+                "`{name}` deixou de ser declarado em `encode_project` — se \
+                 ele mudou de casa, este gate tem de mudar junto (um gate que nao acha o que \
+                 vigia passa por VACUO)"
+            )
+        });
+        let tail = &src[at + needle.len()..];
+        let got: i32 = tail[..tail.find(';').expect("a declaracao termina em ;")]
+            .trim()
+            .parse()
+            .expect("o valor duplicado e um literal");
+        assert_eq!(
+            got, cpu,
+            "`{name}`: a projecao da GPU diz {got}, o no diz {cpu} — as duas metades da escada \
+             deixariam de descrever a mesma pergunta, e o device responderia ZEROS em silencio"
+        );
+    }
+}

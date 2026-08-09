@@ -47,7 +47,29 @@ pub const ATTR_KEY: &str = "attr";
 
 /// 0 = the scalar column itself · 1 = the LENGTH of a Vec2 column (so `vel` reads as *speed*,
 /// which is what an artist asking for "speed" means).
-const MODE_LENGTH: i32 = 1;
+pub const MODE_LENGTH: i32 = 1;
+
+/// `MODE_COMPONENT_BASE + k` = **lane `k`** of a vector column — X·Y·Z·W, and for a colour
+/// column R·G·B·A.
+///
+/// ## Why one rung and not a case per dimension
+///
+/// *"Give me lane k"* has ONE answer whatever the column's width is, so the ladder does not grow
+/// an arm for `Vec2`, another for `Vec3` and another for `Vec4`. That matters beyond tidiness:
+/// the GPU projection replays this ladder rung for rung (`stream_op.rs`), and every arm here is
+/// an arm that has to be mirrored there without drifting.
+///
+/// ## What this unblocks, and why it was the gap
+///
+/// The value domain could already READ any column by name and could only ever get a scalar or a
+/// magnitude back. A direction — the tangent in `vel`, the position in `P`, a channel of `tint` —
+/// was unreachable, which is why *"turn to face where you're going"* had no path through this
+/// library (doc 89 §10.0, found by five families at once).
+///
+/// ⚠️ A lane the column does not have (`Z` of a `Vec2`) is the ladder's ORDINARY miss: zeros at
+/// full length, exactly like a mistyped name. The module's fence stands — this rung adds a
+/// question the node can answer, it does not change what happens when it cannot.
+pub const MODE_COMPONENT_BASE: i32 = 2;
 
 pub const MANIFEST: NodeManifest = NodeManifest {
     id: NodeTypeId::of("value.attribute"),
@@ -72,10 +94,35 @@ pub const MANIFEST: NodeManifest = NodeManifest {
     lowerings: &[LoweringKind::Cpu],
 };
 
+/// Lane `k` of a column, at full length — the one rung that serves every width.
+///
+/// Lane 0 of a SCALAR column is the column itself: a scalar is a one-lane vector, and answering
+/// anything else would be inventing a distinction the data does not have.
+fn component(c: &Column, k: usize, n: usize) -> Vec<f32> {
+    fn lane<const W: usize>(v: &[[f32; W]], k: usize, n: usize) -> Vec<f32> {
+        if k >= W || v.len() != n {
+            return vec![0.0; n];
+        }
+        v.iter().map(|p| p[k]).collect()
+    }
+    match c {
+        Column::Scalar(v) if k == 0 && v.len() == n => v.clone(),
+        Column::Vec2(v) => lane(v, k, n),
+        Column::Vec3(v) => lane(v, k, n),
+        Column::Vec4(v) => lane(v, k, n),
+        _ => vec![0.0; n],
+    }
+}
+
 /// The named column as a length-N field. Missing / mistyped → zeros (see the module docs).
 fn field(s: &Stream, name: &str, mode: i32) -> Vec<f32> {
     let n = s.count();
     match (s.get(name), mode) {
+        // The component rung goes FIRST so the two arms below stay textually what they were:
+        // modes 0 and 1 are byte-identical to the day before this rung existed.
+        (Some(c), m) if m >= MODE_COMPONENT_BASE => {
+            component(c, (m - MODE_COMPONENT_BASE) as usize, n)
+        }
         (Some(Column::Scalar(v)), m) if m != MODE_LENGTH && v.len() == n => v.clone(),
         (Some(Column::Vec2(v)), MODE_LENGTH) if v.len() == n => v
             .iter()

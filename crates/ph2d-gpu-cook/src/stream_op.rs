@@ -68,11 +68,17 @@ pub(crate) struct StreamOpPipes {
     /// mode, the same expression as the CPU's (not WGSL `length()`, which
     /// carries no cross-vendor bit guarantee).
     length: wgpu::ComputePipeline,
+    /// `dst[i] = src[i·stride + lane]` — `value.attribute`'s COMPONENT mode. One
+    /// pipeline serves every width because the width rides the `stride` uniform
+    /// the gather already carries: asking for lane `k` of a `Vec2`, a `Vec3` or a
+    /// `Vec4` is the same strided read, which is exactly why the CPU ladder has
+    /// one arm for it too.
+    component: wgpu::ComputePipeline,
 }
 
 fn simple_module(bindings: &str, body: &str) -> String {
     format!(
-        "struct U {{ n: u32, stride: u32 }}\n\
+        "struct U {{ n: u32, stride: u32, lane: u32 }}\n\
          @group(0) @binding(0) var<uniform> u: U;\n\
          {bindings}\n\
          @compute @workgroup_size({WG})\n\
@@ -120,6 +126,11 @@ impl StreamOpPipes {
              \x20   let y = src[2u * i + 1u];\n\
              \x20   dst[i] = sqrt(x * x + y * y);",
         );
+        let component = simple_module(
+            "@group(0) @binding(1) var<storage, read> src: array<f32>;\n\
+             @group(0) @binding(2) var<storage, read_write> dst: array<f32>;",
+            "\x20   dst[i] = src[i * u.stride + u.lane];",
+        );
         StreamOpPipes {
             scan: Scan::new(gpu),
             convert: create_pipeline(gpu, &convert, "ph2d-stream-op convert"),
@@ -135,6 +146,7 @@ impl StreamOpPipes {
                 "ph2d-stream-op gather-f32",
             ),
             length: create_pipeline(gpu, &length, "ph2d-stream-op length"),
+            component: create_pipeline(gpu, &component, "ph2d-stream-op component"),
         }
     }
 
@@ -149,6 +161,7 @@ impl StreamOpPipes {
         pipeline: &wgpu::ComputePipeline,
         n: u32,
         stride: u32,
+        lane: u32,
         buffers: &[&wgpu::Buffer],
         hold: &mut Vec<wgpu::Buffer>,
     ) {
@@ -158,9 +171,10 @@ impl StreamOpPipes {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
-        let mut bytes = [0u8; 8];
+        let mut bytes = [0u8; 12];
         bytes[0..4].copy_from_slice(&n.to_le_bytes());
         bytes[4..8].copy_from_slice(&stride.to_le_bytes());
+        bytes[8..12].copy_from_slice(&lane.to_le_bytes());
         gpu.queue.write_buffer(&uni, 0, &bytes);
         let mut entries = vec![wgpu::BindGroupEntry {
             binding: 0,
@@ -285,6 +299,7 @@ impl GpuCook {
                 &pipes.convert,
                 n,
                 1,
+                0,
                 &[&flags, &scan_buf],
                 &mut hold,
             );
@@ -297,6 +312,7 @@ impl GpuCook {
                 &pipes.rows,
                 n,
                 1,
+                0,
                 &[&flags, &scan_buf, &rows_buf],
                 &mut hold,
             );
@@ -365,6 +381,7 @@ impl GpuCook {
                     &pipes.gather_u32,
                     total,
                     (stride / 4) as u32,
+                    0,
                     &[&rows_buf, &col.buffer, &dst],
                     &mut hold,
                 );
@@ -433,6 +450,7 @@ impl GpuCook {
                     &pipes.gather_f32,
                     count,
                     (stream::element_stride(src.dim) / 4) as u32,
+                    0,
                     &[&rows, &src.buffer, &dstcol.buffer],
                     &mut hold,
                 );
@@ -517,7 +535,13 @@ impl GpuCook {
         mode_param: &str,
         inputs: &[GpuStream],
     ) -> GpuStream {
-        const MODE_LENGTH: i32 = 1; // `value.attribute`'s own constant
+        // `value.attribute`'s own constants. ⚠️ They are DUPLICATED here on purpose and the
+        // duplication is structural, not laziness: the node crate reaches this one only as a
+        // `[dev-dependencies]` (machete-safe — the cook engine must not depend on the nodes it
+        // cooks). What keeps them from drifting is a gate in the parity suite, which CAN see
+        // both: `the_projection_modes_agree_across_the_dev_dependency_fence`.
+        const MODE_LENGTH: i32 = 1;
+        const MODE_COMPONENT_BASE: i32 = 2;
         let src_stream = inputs.first().cloned().unwrap_or_default();
         let n = src_stream.count;
         if n == 0 {
@@ -545,6 +569,30 @@ impl GpuCook {
                     &pipes.length,
                     n,
                     1,
+                    0,
+                    &[&c.buffer, &dst],
+                    &mut hold,
+                );
+            }
+            // The COMPONENT rung — the CPU's `component()`, lane for lane. The width
+            // rides `stride`, so ONE pipeline serves Vec2/Vec3/Vec4 exactly as one CPU
+            // arm does; a lane the column does not have falls through to the zeros
+            // below, which is the CPU's ordinary miss and not a special case here.
+            (Some(c), m)
+                if m >= MODE_COMPONENT_BASE
+                    && ((m - MODE_COMPONENT_BASE) as u32)
+                        < (stream::element_stride(c.dim) / 4) as u32 =>
+            {
+                let pipes = self
+                    .stream_op_pipes
+                    .get_or_insert_with(|| StreamOpPipes::new(gpu));
+                pipes.pass(
+                    gpu,
+                    encoder,
+                    &pipes.component,
+                    n,
+                    (stream::element_stride(c.dim) / 4) as u32,
+                    (m - MODE_COMPONENT_BASE) as u32,
                     &[&c.buffer, &dst],
                     &mut hold,
                 );

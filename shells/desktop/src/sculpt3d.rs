@@ -535,7 +535,9 @@ impl Sculpt3dScene {
             // coincide com a posição do mouse"*. Um default que só se descobre
             // por acidente é pior que um default menos ambicioso; o `X` liga.
             symmetry: Symmetry::default(),
-            rig: LightRig::default(),
+            // ⚠️ **A cena pode ser dona da própria LUZ**, e uma cena de
+            // sombreamento quase sempre é: ver [`scenes::shading::scene_rig`].
+            rig: scenes::shading::scene_rig().unwrap_or_default(),
             cavity: ph2d_mesh_render::DEFAULT_CAVITY,
             env: ph2d_mesh_render::DEFAULT_ENV,
             ao: ph2d_mesh_render::DEFAULT_AO_STRENGTH,

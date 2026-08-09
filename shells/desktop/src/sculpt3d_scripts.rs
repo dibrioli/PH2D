@@ -50,18 +50,25 @@ pub(crate) fn for_scene(mesh: &ph2d_mesh::Mesh) {
              [sculpt3d]    deixou de ser UM numero para toda direcao: para o topo da tela ele\n\
              [sculpt3d]    vale {:.3} e para o fundo {:.3} -- {:.2}x de contraste, com a MEDIA\n\
              [sculpt3d]    sobre todas as normais inalterada (o termo redistribui, nao expoe).\n\
+             [sculpt3d]    ⚠️ Esta cena traz LUZ PROPRIA: uma lampada RASANTE vinda da DIREITA,\n\
+             [sculpt3d]       entao a sombra e' a METADE ESQUERDA inteira, de cima a baixo. O rig\n\
+             [sculpt3d]       de todo dia vem de CIMA -- do mesmo lado em que este ambiente poe o\n\
+             [sculpt3d]       ceu --, e sob ele apenas 11,5% da sombra visivel recebe a metade\n\
+             [sculpt3d]       CLARA do termo: o artista veria so' escurecer.\n\
              [sculpt3d]    Abra o painel com a CRASE (`) -- o slider 'Environment' fica na\n\
              [sculpt3d]    secao Shading, entre Cavity e AO.\n\
-             [sculpt3d]    (1) Olhe o lado da peca que a lampada NAO alcanca (embaixo, a direita).\n\
+             [sculpt3d]    (1) Olhe a METADE ESQUERDA da peca -- a que a lampada nao alcanca.\n\
              [sculpt3d]        Cada degrau tem um topo virado para o ceu e um beiral virado para\n\
              [sculpt3d]        o chao.\n\
              [sculpt3d]    (2) A PERGUNTA DA WAVE: o slider nasce em ZERO -- a sombra inteira e'\n\
              [sculpt3d]        UM cinza chapado, os degraus somem ali, e e' assim que o barro era\n\
-             [sculpt3d]        ate' ontem. Arraste 'Environment' ate' 1: os topos ficam frios e\n\
-             [sculpt3d]        claros e os beirais quentes e escuros. Volte a 0 e a imagem tem de\n\
+             [sculpt3d]        ate' ontem. Arraste 'Environment' ate' 1: o ALTO da sombra CLAREIA\n\
+             [sculpt3d]        e esfria, o BAIXO escurece e esquenta. Volte a 0 e a imagem tem de\n\
              [sculpt3d]        voltar EXATAMENTE a que abriu.\n\
-             [sculpt3d]    (3) O SINAL, e ele e' de olho: o CLARO tem de ficar EM CIMA. Se a\n\
-             [sculpt3d]        sombra clarear por BAIXO, o ceu esta' no chao -- PARE.\n\
+             [sculpt3d]    (3) O SINAL, e ele e' de olho: o CLARO tem de ficar EM CIMA -- os dois\n\
+             [sculpt3d]        lados do termo tem de aparecer, nao so' o escuro. O gate mede, na\n\
+             [sculpt3d]        mesma geometria, 62,6/62,6 desligado contra 75,2 no alto e 50,4 no\n\
+             [sculpt3d]        fundo. Se a sombra so' escurecer, ou clarear por BAIXO -- PARE.\n\
              [sculpt3d]    (4) Q/E giram a lampada. O ambiente NAO gira com ela: ele e' o\n\
              [sculpt3d]        estudio, e o estudio nao se move quando voce move uma luz.\n\
              [sculpt3d]    (5) Escolha um MATCAP na secao Shading: o slider 'Environment' tem de\n\

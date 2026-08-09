@@ -81,10 +81,15 @@ pub(crate) fn occlusion_donation_scene() -> bool {
 /// degrau tem um topo que olha para o céu e um beiral que olha para o chão, e a
 /// diferença entre os dois é o efeito inteiro.
 ///
-/// ⚠️ **É a MESMA malha da `=15`, de propósito**, e as duas não se confundem: lá
-/// a cavidade nasce em **zero** e o smoke a LIGA; aqui o ambiente nasce em **um**
-/// e o smoke o DESLIGA. As duas perguntas são sobre a mesma escada por acidente
-/// feliz — a escada é a forma que separa *"a luz mostra"* de *"a luz não mostra"*.
+/// ⚠️ **É a MESMA malha da `=15`, de propósito**, e as duas não se confundem
+/// apesar de os dois canais nascerem em **zero**: a `=15` pergunta se a CAVIDADE
+/// escurece o vinco (uma medida da forma), esta pergunta se o PISO da difusa tem
+/// direção (uma medida do estúdio). A escada serve às duas porque ela é a forma
+/// que separa *"a luz mostra"* de *"a luz não mostra"*.
+///
+/// ⚠️ **E esta cena é dona da própria LUZ** — ver [`scene_rig`]. Sob o rig
+/// default o termo seria quase invisível pela metade certa, e foi assim que o 1º
+/// smoke desta wave voltou.
 pub(crate) fn env_scene() -> bool {
     std::env::var("PH2D_SCULPT3D_SMOKE").ok().as_deref() == Some("24")
 }
@@ -165,6 +170,70 @@ fn grooved_sphere() -> ph2d_mesh::Mesh {
     m.rebuild();
     m.triangulate();
     m
+}
+
+/// **A LUZ que esta cena abre**, quando ela não é a de todo dia.
+///
+/// ⚠️ **Numa cena de sombreamento a lâmpada é ELENCO.** As irmãs desta acendem
+/// com o rig default porque o que elas julgam — a fresta, a espessura, a
+/// curvatura — é sobre a MALHA, e a malha lê igual sob qualquer luz. O ambiente
+/// não: ele só aparece **onde a lâmpada não chega**, então a lâmpada decide de
+/// que tamanho é a tela em que ele pinta.
+///
+/// ⚠️ **E o rig default é o pior caso possível para ele — medido, não estimado.**
+/// A `Light::KEY` fica a 230°/30°, cuja direção tem `dir.y = −0,663`: ela vem de
+/// CIMA. Como o céu deste ambiente também está em cima, *o hemisfério ACESO É o
+/// hemisfério do CÉU*, e o que sobra para o termo pintar é quase só o chão. A
+/// sonda `ph2d-light::measure_how_much_shadow_the_sky_reaches` mede a área de
+/// TELA que a lâmpada não alcança e classifica cada direção dela:
+///
+/// | rig | sombra na silhueta | dela, olha p/ o céu | fator médio |
+/// |---|---|---|---|
+/// | default (230°/30°) | 25,0% | **11,5%** | **0,817** |
+/// | alta (230°/60°) | 6,7% | 7,5% | 0,772 |
+/// | **lateral rasa (0°/5°)** | **45,6%** | **50,0%** | **1,000** |
+/// | lateral (0°/30°) | 25,0% | 50,0% | 1,000 |
+///
+/// Sob o default o artista vê **um** dos dois lados do termo — a sombra inteira
+/// 18% mais escura — e conclui, com razão, que o ambiente é um botão de
+/// escurecer. *O termo estava certo; a fixture não continha metade dele.* Esta é
+/// a correção do 1º smoke da W16.
+///
+/// **Por que 0°/5°, e o mecanismo é exato:** com azimute 0 a direção resolvida é
+/// `[0,9962, 0,0000, 0,0872]` — **`dir.y` é ZERO ao bit** —, então o terminador
+/// contém o eixo vertical e a sombra fica **metade acima e metade abaixo do
+/// horizonte**. Não é uma fração feliz que uma amostragem mediu: é uma
+/// consequência algébrica de a lâmpada não ter componente vertical, e é isso que
+/// o gate afirma. A elevação só decide o TAMANHO da sombra (5° é o
+/// [`ph2d_light::MIN_ELEV_DEG`], que a torna máxima).
+///
+/// ⚠️ **É o rig do gate `the_ambient_comes_from_the_sky_above_and_the_ground_below`,
+/// VERBATIM** — mesmo azimute, mesma elevação. Reusá-lo é o que faz o smoke
+/// julgar o que o gate mede, ao número: lá o topo da sombra sai **75,2** e o
+/// fundo **50,4**, contra **62,6 e 62,6** com o termo desligado. Um espelho
+/// (azimute 180, a luz vindo da esquerda como no resto do app) mostraria o mesmo
+/// fenômeno e o artista não poderia comparar com o número escrito no gate.
+pub(crate) fn env_ambient_rig() -> ph2d_light::LightRig {
+    ph2d_light::LightRig {
+        lights: [
+            ph2d_light::Light {
+                angle_deg: 0,
+                elev_deg: ph2d_light::MIN_ELEV_DEG,
+                ..ph2d_light::Light::KEY
+            },
+            ph2d_light::Light::FILL,
+            ph2d_light::Light::FILL,
+            ph2d_light::Light::FILL,
+        ],
+        selected: 0,
+    }
+}
+
+pub(crate) fn scene_rig() -> Option<ph2d_light::LightRig> {
+    if env_scene() {
+        return Some(env_ambient_rig());
+    }
+    None
 }
 
 /// A cena de um destes canais, **se alguma estiver armada**.
@@ -292,3 +361,7 @@ pub(crate) fn scene_objects() -> Option<Vec<(ph2d_mesh::Mesh, Pose)>> {
     }
     None
 }
+
+#[cfg(test)]
+#[path = "sculpt3d_scenes_shading_tests.rs"]
+mod tests;

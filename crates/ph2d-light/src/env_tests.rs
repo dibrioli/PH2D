@@ -394,3 +394,97 @@ fn the_constants_are_the_measured_gradient() {
         );
     }
 }
+
+/// **SONDA — quanto da sombra VISÍVEL o céu de fato alcança, sob um rig dado.**
+///
+/// Ela nasceu de um reporte de smoke que descrevia METADE do termo: *"mais
+/// escuro onde a luz não bate"*. O termo redistribui — o que vai para baixo tem
+/// de sair de cima —, então *"só escureceu"* ou é um sinal trocado ou é uma
+/// FIXTURE que não contém a metade clara. Esta sonda separa os dois, e a
+/// separação é geometria pura: não precisa de GPU, de malha nem de pixel.
+///
+/// O que ela mede, por rig: da área de TELA que a lâmpada não alcança (onde a
+/// razão é zero e o piso aparece inteiro), quanto olha para o **céu**
+/// (`up > 0`), quanto olha para o **chão**, e qual o fator de luminância médio
+/// que aquela região recebe.
+///
+/// ```text
+/// cargo test -p ph2d-light --release env_tests::measure_how_much_shadow_the_sky_reaches -- --ignored --nocapture
+/// ```
+#[test]
+#[ignore = "sonda de medição"]
+fn measure_how_much_shadow_the_sky_reaches() {
+    // Área de tela de um retalho do hemisfério visível: o `sin θ` do jacobiano
+    // vezes o `n.z` do encurtamento. É o peso do que o OLHO vê, não o da esfera.
+    fn report(rig: &crate::LightRig) -> (f32, f32, f32, f32, f32) {
+        let r = crate::resolve(rig).expect("rig aceso");
+        let (mut vis, mut shade, mut sky, mut fsum) = (0.0f64, 0.0f64, 0.0f64, 0.0f64);
+        let mut worst: f32 = f32::MAX;
+        for i in 0..NTHETA {
+            let theta = (i as f32 + 0.5) * std::f32::consts::PI / NTHETA as f32;
+            let (st, ct) = (theta.sin(), theta.cos());
+            for j in 0..NPHI {
+                let phi = (j as f32 + 0.5) * std::f32::consts::TAU / NPHI as f32;
+                let n = [st * phi.cos(), st * phi.sin(), ct];
+                if n[2] <= 0.0 {
+                    continue;
+                }
+                let w = f64::from(n[2] * st);
+                vis += w;
+                let lit = r.lamps().iter().any(|l| {
+                    n[0].mul_add(l.dir[0], n[1].mul_add(l.dir[1], n[2] * l.dir[2])) > 0.0
+                        && lum(l.tint) > 0.0
+                });
+                if lit {
+                    continue;
+                }
+                shade += w;
+                let f = lum(crate::env_ambient(n)) / crate::AMBIENT;
+                if f > 1.0 {
+                    sky += w;
+                }
+                fsum += w * f64::from(f);
+                worst = worst.min(f);
+            }
+        }
+        #[allow(clippy::cast_possible_truncation)]
+        (
+            (shade / vis) as f32,
+            (sky / shade.max(1e-9)) as f32,
+            (fsum / shade.max(1e-9)) as f32,
+            worst,
+            0.0,
+        )
+    }
+
+    let key = |az: u16, el: u16| crate::LightRig {
+        lights: [
+            crate::Light {
+                angle_deg: az,
+                elev_deg: el,
+                ..crate::Light::KEY
+            },
+            crate::Light::FILL,
+            crate::Light::FILL,
+            crate::Light::FILL,
+        ],
+        selected: 0,
+    };
+    for (nome, rig) in [
+        ("default (KEY 230 / 30)", crate::LightRig::default()),
+        ("lateral rasa   (0 / 5)", key(0, crate::MIN_ELEV_DEG)),
+        ("lateral         (0 / 30)", key(0, 30)),
+        ("da esquerda   (180 / 5)", key(180, crate::MIN_ELEV_DEG)),
+        ("da esquerda   (180 / 20)", key(180, 20)),
+        ("da esquerda   (180 / 30)", key(180, 30)),
+        ("alta            (230 / 60)", key(230, 60)),
+    ] {
+        let (frac, sky, mean, worst, _) = report(&rig);
+        println!(
+            "{nome:32} | sombra {:5.1}% da silhueta | dela, {:5.1}% olha para o CEU | \
+             fator medio {mean:.3} | mais escuro {worst:.3}",
+            frac * 100.0,
+            sky * 100.0
+        );
+    }
+}

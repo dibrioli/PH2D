@@ -17,6 +17,10 @@ que rola (três painéis) · o recorte do `TextInput` · o idioma do `expect` no
 A correção foi *entrar na fila que já existe*, não inventar mecanismo. Vale procurar isso primeiro
 em cada item aberto abaixo.
 
+⚠️ **E DOIS itens deste inventário dissolveram na medição** (§2 A5 e A6) — os dois porque eu
+classifiquei pela FORMA em vez do mecanismo. *Um item de auditoria também é uma afirmação, e ele
+se mede antes de virar trabalho.*
+
 ---
 
 ## §1 — Fechados (dezassete commits)
@@ -70,14 +74,24 @@ Escritas aqui porque a próxima LLM as vai encontrar e tomar por load-bearing.
 O lote mais caro: enquanto vivem, **a suíte inteira vale menos do que parece**.
 
 1. ~~`SkinParam.options` / `selected` sem gate~~ — **FECHADO** (`8474398bc`).
-2. **`segment_hover_state_is_read_from_the_store`** — `widget/segmented_adaptive.rs:299`.
-3. **`preferred_height_sums_entries`** — `widget/tool_rail/tests.rs:24`.
-4. **`field_rects_partition_host`** — `widget/vector3_editor.rs:195` (e o irmão
-   `field_rects_partition_host_left_to_right`, `rect2_editor.rs:334`).
-5. **`without_an_override_the_track_is_the_panel_law`** — `widget/slider.rs:229`.
-6. **A comparação golden omite `options`** — `panel-authored/src/populate.rs:205` nomeia o
-   mecanismo (*"era invisível porque as chaves COINCIDIAM: o golden foi gerado da mesma cena do
-   smoke"*); a comparação do golden compilado não confere a lista de opções.
+2. ~~`segment_hover_state_is_read_from_the_store`~~ — **FECHADO** (`e46fb49c9`). Ele checava
+   hit-registration; medido, a leitura do store **inteiramente deletada** o deixava verde.
+3. ~~`preferred_height_sums_entries`~~ — **FECHADO** (`e46fb49c9`). `h > chip_px * 5.0` sobre onze
+   entradas: apagar **todos** os gaps o deixava verde.
+4. ~~`field_rects_partition_host`~~ — **FECHADO** (`1e3ae8764`). Media ordem e largura positiva;
+   deixar **um quarto do host vazio** o deixava verde.
+5. ⛔ **`without_an_override_the_track_is_the_panel_law` — NÃO era achado.** Eu o listei como
+   auto-referente por ele escrever a expectativa com a fórmula do produto. **Medido: trocar `0.25`
+   por `0.40` no produto o derruba.** Ele é um **PIN** — a fórmula no teste é um literal reescrito
+   à mão, e o propósito declarado dele é fazer a lei custar duas edições. ⚠️ A diferença para o
+   gate do Chroma é exacta: *aquele empurrava e lia pela mesma FUNÇÃO* (inversas, logo `M/M`);
+   *este restata a lei*. **A forma se parece; o mecanismo não.**
+6. ⛔ **"A comparação golden omite `options`" — NÃO EXISTE comparação golden.** Eu li *"o golden"*
+   no doc do `populate.rs` como um teste de arquivo-golden; ali a palavra nomeia o próprio
+   `generated/panel.rs`. O `golden/` da crate do gerador está **vazio e nem versionado**.
+   ⚠️ **Mas a varredura que provou isso achou coisa MAIOR, e ela FECHOU** (`1e3ae8764`): o
+   cabeçalho do gerado prometia um gate de staleness que **não existia** — nada chamava `emit()`
+   fora dos testes de unidade do próprio gerador.
 
 ### B. Docs que mentem
 

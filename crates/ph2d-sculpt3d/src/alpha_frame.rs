@@ -13,6 +13,50 @@
 
 use ph2d_painter_brush::texture::rotate_by_degrees;
 
+/// **A VISTA, entregue ao pincel** — o que faz de uma imagem um ESTÊNCIL preso ao
+/// viewport em vez de um padrão colado no barro.
+///
+/// ⚠️ **Ele é a resposta a *"onde está a tela, deste objeto?"*, e por isso vem em
+/// espaço LOCAL do objeto** — que é o espaço em que o `weight_at` recebe os
+/// pontos. Converter no motor exigiria que ele conhecesse poses e câmeras; quem
+/// as conhece é a cena, e ela responde uma vez por peça por quadro.
+///
+/// ⚠️ **`right` e `up` são ORTONORMAIS e continuam ortonormais em espaço local**
+/// porque a pose deste módulo tem escala ESCALAR. Uma escala não-uniforme
+/// cisalharia o par, e o frame deixaria de ser uma base — a mesma razão pela qual
+/// o collider da física nomeia o skew como limite honesto em vez de fingir.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct AlphaStencil {
+    /// A direita da TELA, em espaço local, unitária.
+    pub right: [f32; 3],
+    /// O cima da TELA, em espaço local, unitário.
+    pub up: [f32; 3],
+    /// **Quantas unidades de OBJETO a ALTURA da tela abrange**, na profundidade
+    /// do modelo.
+    ///
+    /// ⚠️ **É esta a régua que torna o estêncil imune ao ZOOM**, e ela é UM
+    /// número de propósito: aproximar reduz quantas unidades de objeto cabem na
+    /// tela, então um ladrilho medido em fração-de-tela encolhe em unidades de
+    /// objeto na mesma proporção — e fica do mesmo tamanho para quem olha. Duas
+    /// grandezas separadas (pixels e uma altura de viewport) seriam dois números
+    /// que precisam concordar.
+    pub view_units: f32,
+}
+
+impl AlphaStencil {
+    /// A vista CANÔNICA — a tela olhando por `−Z`, sem pose nenhuma.
+    ///
+    /// ⚠️ **Ela existe para quem NÃO tem câmera e ainda assim tem de desenhar o
+    /// estêncil de frente**: o retrato do painel. Um swatch que montasse a
+    /// própria base seria a segunda resposta a *"como um estêncil é lido?"*, e a
+    /// que mente é a que o artista está olhando.
+    pub const CANONICAL: Self = Self {
+        right: [1.0, 0.0, 0.0],
+        up: [0.0, 1.0, 0.0],
+        view_units: 1.0,
+    };
+}
+
 /// **O FRAME em que um padrão DIRECIONAL é lido** — três eixos ortonormais em
 /// espaço de OBJETO.
 ///
@@ -108,6 +152,52 @@ impl AlphaFrame {
             n[0] * t[1] - n[1] * t[0],
         ];
         Self { n, t, b, offset }
+    }
+
+    /// **O frame de um ESTÊNCIL** — a tela é o plano, e o eixo é a direção de
+    /// quem olha.
+    ///
+    /// ⚠️ **O `roll` é o MESMO `Pattern Angle` do padrão procedural, e ele muda
+    /// de significado com o modo — o que é honesto, porque a pergunta muda:** num
+    /// campo 3-D ele diz *para que lado os estratos empilham*; num carimbo preso
+    /// à tela ele diz *quanto o carimbo está torto na tela*. As duas são a mesma
+    /// palavra do artista (*gire isto*), e é por isso que continuam UMA row em
+    /// vez de duas que ele teria de escolher entre.
+    ///
+    /// ⚠️ **A ELEVAÇÃO não entra, e não é omissão:** o eixo de um estêncil é a
+    /// vista, por definição. Um segundo controle que o inclinasse tiraria o
+    /// carimbo da frente — que é exatamente o que este modo existe para impedir —,
+    /// e por isso a row dele **some** quando há uma imagem armada.
+    pub(crate) fn stencil(s: &AlphaStencil, roll_deg: u16, offset: [f32; 2]) -> Self {
+        let r = rotate_by_degrees(roll_deg % 360);
+        // O giro acontece DENTRO do plano da tela: a base nova é a antiga
+        // rodada, e o eixo (a normal) não é tocado por construção.
+        let t = [
+            r[0] * s.right[0] + r[1] * s.up[0],
+            r[0] * s.right[1] + r[1] * s.up[1],
+            r[0] * s.right[2] + r[1] * s.up[2],
+        ];
+        let b = [
+            r[0] * s.up[0] - r[1] * s.right[0],
+            r[0] * s.up[1] - r[1] * s.right[1],
+            r[0] * s.up[2] - r[1] * s.right[2],
+        ];
+        // `n = t × b` — o eixo sai da PRÓPRIA base, e não de um terceiro vetor
+        // guardado ao lado: assim ele não pode discordar dela.
+        let n = [
+            t[1] * b[2] - t[2] * b[1],
+            t[2] * b[0] - t[0] * b[2],
+            t[0] * b[1] - t[1] * b[0],
+        ];
+        // ⚠️ **O deslocamento é FRAÇÃO DA VISTA e vira unidades de objeto aqui**,
+        // porque é aqui que a régua da vista existe. Convertê-lo no chamador
+        // seria a conversão feita em dois sítios — e o segundo nasceria sem ela.
+        Self {
+            n,
+            t,
+            b,
+            offset: [offset[0] * s.view_units, offset[1] * s.view_units],
+        }
     }
 
     /// O eixo autorado — o que o overlay desenharia e o que o gate mede.

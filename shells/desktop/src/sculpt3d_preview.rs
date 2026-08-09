@@ -81,7 +81,13 @@ impl PreviewKey {
     pub(crate) fn of(brush: &Brush, mesh: &Mesh) -> Self {
         Self {
             alpha: brush.alpha.clone(),
-            scale: brush.alpha_scale,
+            // ⚠️ **A escala RESOLVIDA, e não o campo autorado.** Um estêncil é
+            // medido em fração da TELA, então a régua dele em unidades de objeto
+            // muda a cada `dolly` — e a chave com o número cru diria *"nada
+            // mudou"* enquanto o carimbo encolhe no barro. É a mesma classe do
+            // `frame` abaixo: *o que o motor recebe, e não o que o artista
+            // digitou*.
+            scale: brush.alpha_scale_resolved(),
             frame: brush.alpha_frame(),
             gated: !brush.verb.paints_mask(),
             verts: mesh.vert_count(),

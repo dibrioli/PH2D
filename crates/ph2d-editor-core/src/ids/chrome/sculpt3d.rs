@@ -115,8 +115,19 @@ pub const SCULPT3D_ALPHA: [NodeId; 11] = [
     hash_node_id("sculpt3d.alpha.8"),
     hash_node_id("sculpt3d.alpha.image"),
 ];
-/// **ONDE o carimbo POUSA**, ao longo da tangente do frame e em unidades de
-/// objeto — ver `ph2d_sculpt3d::Brush::alpha_offset`.
+/// **O TAMANHO DO CARIMBO, em fração da ALTURA DA TELA** — ver
+/// `ph2d_sculpt3d::Brush::alpha_stencil_scale`.
+///
+/// ⚠️ **Id PRÓPRIO, e não o do `Pattern Size`.** Uma imagem é um estêncil preso
+/// ao viewport e é medida na TELA; os nove procedurais são campos 3-D e são
+/// medidos no MODELO. O mesmo widget com duas réguas trocaria de significado em
+/// silêncio ao trocar de padrão — e o artista não teria como saber qual das duas
+/// está segurando.
+pub const SCULPT3D_STAMP_SCALE: NodeId = hash_node_id("sculpt3d.stamp_scale");
+/// Chip ligado a [`SCULPT3D_STAMP_SCALE`].
+pub const SCULPT3D_STAMP_SCALE_NUM: NodeId = hash_node_id("sculpt3d.stamp_scale_num");
+/// **ONDE o carimbo POUSA**, ao longo da tangente do frame e em fração da
+/// ALTURA DA TELA — ver `ph2d_sculpt3d::Brush::alpha_offset`.
 ///
 /// ⚠️ **Dois ids e não um par XY num controle só**, porque as duas pistas deste
 /// painel são de UM número: um widget de dois eixos seria o primeiro do painel e

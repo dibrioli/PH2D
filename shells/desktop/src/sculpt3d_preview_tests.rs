@@ -292,3 +292,76 @@ fn a_dab_walks_the_window_not_the_whole_field() {
         "o vértice movido não foi reescrito: a janela é decorativa"
     );
 }
+
+/// **ORBITAR E APROXIMAR PEDEM O CAMPO INTEIRO — para um CARIMBO, e só para
+/// ele.**
+///
+/// ⚠️ **É o gate do modo de estêncil no barro** (Enio, 2026-08-09: *"projeção
+/// frontal que não muda com a rotação do objeto"*). Um carimbo preso ao viewport
+/// muda de lugar na malha a cada movimento da câmera, e nenhum vértice se move —
+/// então, outra vez, a CHAVE é a única coisa capaz de pedir o recálculo. Ela
+/// carrega o `frame` (que gira com a órbita) e a escala RESOLVIDA (que encolhe
+/// com o zoom), e é por isso que as duas metades estão aqui.
+///
+/// ⚠️ **E o CONTROLE é a terceira asserção:** um padrão de OBJETO tem de ficar
+/// quieto sob a mesma câmera. Sem ele, uma chave que simplesmente incluísse a
+/// vista passaria — e recalcularia a malha inteira a cada órbita para todo mundo,
+/// que é o custo que este módulo existe para não pagar (medido: 37,9 ms num
+/// Noise de 426k vértices).
+#[test]
+fn orbiting_or_zooming_asks_for_the_whole_field_of_a_stamp_only() {
+    let m = mesh();
+    let s = stamp();
+    let front = ph2d_sculpt3d::AlphaStencil {
+        right: [1.0, 0.0, 0.0],
+        up: [0.0, 1.0, 0.0],
+        view_units: 2.0,
+    };
+    let turned = ph2d_sculpt3d::AlphaStencil {
+        right: [0.0, 0.0, -1.0],
+        ..front
+    };
+    let near = ph2d_sculpt3d::AlphaStencil {
+        view_units: 1.0,
+        ..front
+    };
+    let viewed = |st, alpha: &Alpha| Brush {
+        alpha: Some(alpha.clone()),
+        alpha_stencil: Some(st),
+        ..stamped(&s, [0.0, 0.0])
+    };
+
+    for (name, moved) in [("a órbita", turned), ("o zoom", near)] {
+        let mut st = PreviewState::default();
+        st.refresh(&m, &viewed(front, &s), true, &[]);
+        let before = st.values.clone();
+        st.whole_dirty = false;
+
+        st.refresh(&m, &viewed(moved, &s), true, &[]);
+        assert!(
+            st.whole_dirty,
+            "{name} não pediu o campo inteiro — o carimbo fica onde estava \
+             enquanto o barro passa por baixo dele"
+        );
+        assert!(
+            st.values
+                .iter()
+                .zip(&before)
+                .any(|(a, b)| (a - b).abs() > 1e-6),
+            "{name} recalculou e devolveu o mesmo campo: a vista não chega ao valor"
+        );
+    }
+
+    // O CONTROLE: um padrão de OBJETO ignora a câmera, e é isso que mantém o
+    // custo de uma órbita em zero para os nove procedurais.
+    let ground = Alpha::Strata;
+    let mut st = PreviewState::default();
+    st.refresh(&m, &viewed(front, &ground), true, &[]);
+    st.whole_dirty = false;
+    st.refresh(&m, &viewed(turned, &ground), true, &[]);
+    assert!(
+        !st.whole_dirty,
+        "uma órbita pediu o campo inteiro de um padrão de OBJETO — todo giro de \
+         câmera passou a custar a malha inteira"
+    );
+}

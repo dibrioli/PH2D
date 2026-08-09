@@ -204,7 +204,44 @@ impl Sculpt3dScene {
             .world_radius_for_screen_px(world, self.radius_px(), self.viewport);
         Brush {
             radius: (radius / pose.scale()).max(1e-6),
+            alpha_stencil: Some(self.stencil_at(pose, world)),
             ..self.brush.clone()
+        }
+    }
+
+    /// **A VISTA, do ponto de vista desta peça** — o que faz de uma imagem um
+    /// ESTÊNCIL preso ao viewport (ver [`ph2d_sculpt3d::AlphaStencil`]).
+    ///
+    /// ⚠️ **Ela é carimbada SEMPRE, e quem decide se ela governa é o PINCEL.**
+    /// A pergunta *"este padrão é um carimbo?"* já tem dono lá dentro
+    /// (`Brush::alpha_frame`), e repeti-la aqui seria a segunda cópia de uma
+    /// regra que já mudou uma vez nesta linha.
+    ///
+    /// ⚠️ **A profundidade é a de UM ponto, e não a de cada vértice.** Um
+    /// estêncil por-vértice seria perspectivamente correto e mudaria de tamanho
+    /// ao longo da peça — que não é o que um estêncil é: ele é uma folha na
+    /// frente da tela. O ponto é o ACERTO quando há um (o dab) e o centro da
+    /// peça quando não há (o preview), que é onde o artista está olhando nos
+    /// dois casos.
+    ///
+    /// ⚠️ **`right`/`up` continuam ortonormais em espaço local** porque a pose
+    /// deste módulo escala por um ESCALAR; uma escala não-uniforme cisalharia o
+    /// par e o frame deixaria de ser uma base.
+    pub(super) fn stencil_at(&self, pose: Pose, at_world: [f32; 3]) -> ph2d_sculpt3d::AlphaStencil {
+        let (right, up) = self.camera.screen_basis();
+        // A ALTURA da tela em unidades de objeto: a régua que torna o carimbo
+        // imune ao zoom. O piso existe porque um viewport degenerado (altura 0,
+        // ou o ponto atrás do olho) devolveria 0 — e um ladrilho de tamanho zero
+        // é uma divisão por zero no motor.
+        let span_world = self.camera.world_radius_for_screen_px(
+            at_world,
+            self.viewport.1.max(1) as f32,
+            self.viewport,
+        );
+        ph2d_sculpt3d::AlphaStencil {
+            right: Self::dir_to_local_of(pose, right.into()),
+            up: Self::dir_to_local_of(pose, up.into()),
+            view_units: (span_world / pose.scale()).max(1e-6),
         }
     }
 
@@ -293,7 +330,17 @@ impl Sculpt3dScene {
     /// rotação pousa: um call site que dispensasse a conversão continuaria
     /// compilando e começaria a mentir no dia em que um objeto girar.
     pub(super) fn dir_to_local(&self, d: [f32; 3]) -> [f32; 3] {
-        let v = self.pose().vector_to_local(d);
+        Self::dir_to_local_of(self.pose(), d)
+    }
+
+    /// A mesma conversão, para uma pose DADA.
+    ///
+    /// ⚠️ Ela existe porque o preview percorre TODAS as peças à vista, e cada uma
+    /// tem a sua pose — perguntar pela pose ATIVA ali daria a mesma base para
+    /// todas, e o estêncil sairia torto em qualquer peça que estivesse girada em
+    /// relação à que está selecionada.
+    pub(super) fn dir_to_local_of(pose: Pose, d: [f32; 3]) -> [f32; 3] {
+        let v = pose.vector_to_local(d);
         let len = (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]).sqrt();
         if len > 0.0 {
             [v[0] / len, v[1] / len, v[2] / len]

@@ -4,7 +4,7 @@
 //! resto: **o `Dab` é onde e com que força a mão apertou; o `Brush` é que
 //! ferramenta está na mão.** Um traço é uma lista de dabs contra UM brush.
 
-use crate::{Alpha, AlphaFrame};
+use crate::{Alpha, AlphaStencil};
 
 /// A curva de peso do pincel, do centro (`t = 0`) à borda (`t = 1`).
 ///
@@ -503,6 +503,28 @@ pub struct Brush {
     /// [`Brush::alpha_frame`], que é onde a neutralidade é garantida por
     /// CONSTRUÇÃO em vez de por convenção.
     pub alpha_offset: [f32; 2],
+    /// **A VISTA, quando ela é conhecida** — o que faz de uma imagem um
+    /// ESTÊNCIL preso ao viewport. Ver [`AlphaStencil`].
+    ///
+    /// ⚠️ **`None` é o mundo pré-estêncil, ao bit**: sem ele o
+    /// [`Brush::alpha_frame`] devolve exatamente o frame autorado de antes. É o
+    /// que mantém os nove procedurais — e todo gate de kernel — intocados.
+    ///
+    /// ⚠️ **Ele é ESTADO DE QUADRO, não estado autorado:** quem o preenche é a
+    /// cena, uma vez por peça por quadro, porque só ela conhece a câmera e a
+    /// pose. Guardá-lo como ajuste do pincel seria congelar uma vista que o
+    /// artista move a cada gesto.
+    pub alpha_stencil: Option<AlphaStencil>,
+    /// **O tamanho de um ladrilho do ESTÊNCIL, em fração da ALTURA DA TELA.**
+    ///
+    /// ⚠️ **Um campo PRÓPRIO, e não uma reinterpretação do `alpha_scale`.** Os
+    /// dois respondem a perguntas diferentes — *que tamanho tem esta feature no
+    /// MODELO* contra *que tamanho tem este carimbo na TELA* — e um número só
+    /// com duas unidades trocaria de significado em silêncio no instante em que
+    /// o artista trocasse de padrão, que é a doença que este módulo varre a cada
+    /// wave. Duas perguntas, dois números, duas rows: cada uma aparece no modo
+    /// em que está viva.
+    pub alpha_stencil_scale: f32,
     /// Raio de influência, em unidades de MUNDO.
     pub radius: f32,
     /// Intensidade em `[0, 1]` — o que multiplica o falloff para virar o peso.
@@ -534,6 +556,12 @@ impl Default for Brush {
             alpha_az_deg: 90,
             alpha_elev_deg: 0,
             alpha_offset: [0.0, 0.0],
+            alpha_stencil: None,
+            // Um quarto da altura da tela por ladrilho — quatro carimbos
+            // atravessando o que se vê. ⚠️ E ele **não** é semeado do modelo: um
+            // estêncil não sabe o tamanho da peça, e é essa independência que o
+            // artista pediu.
+            alpha_stencil_scale: 0.25,
             radius: 0.25,
             strength: 0.5,
             invert: false,
@@ -544,55 +572,6 @@ impl Default for Brush {
 }
 
 impl Brush {
-    /// **O peso do alpha no ponto `p`** (posição em espaço de OBJETO), ou `1.0`
-    /// se não há alpha armado.
-    ///
-    /// **Porta única** — o motor multiplica o falloff por isto, e é a mesma
-    /// função que o gate e a sonda perguntam. Um segundo sítio que resolvesse
-    /// `Option` + escala por conta própria divergiria no dia em que a escala
-    /// ganhasse um clamp diferente.
-    ///
-    /// ⚠️ **`None` devolve `1.0` EXATO, e é isso que dá a byte-identidade** —
-    /// `x * 1.0` é `x` ao bit no IEEE-754, então o pincel liso continua a
-    /// produzir a aritmética que ele produzia antes desta wave, sem um `if` no
-    /// laço quente para provar.
-    #[must_use]
-    pub fn alpha_weight(&self, p: [f32; 3], frame: &AlphaFrame) -> f32 {
-        match &self.alpha {
-            Some(a) => a.weight_at(p, self.alpha_scale, frame),
-            None => 1.0,
-        }
-    }
-
-    /// **O FRAME que orienta um padrão direcional** — os dois ângulos autorados,
-    /// resolvidos.
-    ///
-    /// ⚠️ **Chame UMA vez por dab, nunca por vértice.** O rotor deste app é a
-    /// rotação de um grau ACUMULADA, ou seja **O(graus)** — até 359 iterações —,
-    /// e por vértice ele custaria mais que o padrão inteiro que orienta. É por
-    /// isso que [`Self::alpha_weight`] o RECEBE em vez de o derivar: a assinatura
-    /// é o que impede o caminho quente de pagar o preço errado.
-    ///
-    /// ⚠️ **É o ÚNICO construtor de [`AlphaFrame`] que o produto tem** (ele não
-    /// implementa `Default`), então o frame que chega ao padrão é sempre o do
-    /// pincel que o carrega — o mesmo desenho do `ShapeFrame` do Painter 2D.
-    #[must_use]
-    pub fn alpha_frame(&self) -> AlphaFrame {
-        // ⚠️ **O deslocamento é a colocação de um CARIMBO, e por isso ele só
-        // chega ao motor com uma imagem armada.** Os nove procedurais são
-        // CAMPOS homogêneos e infinitos: eles não têm posição, só fase, e uma
-        // fase é outro controle (uma semente) que este módulo não tem. Zerar
-        // aqui — e não esconder a row e torcer — é o que torna impossível um
-        // padrão herdar em silêncio um deslocamento que ninguém pode ver nem
-        // desfazer, porque a row dele não está na tela.
-        let offset = if self.alpha.as_ref().is_some_and(Alpha::is_image) {
-            self.alpha_offset
-        } else {
-            [0.0, 0.0]
-        };
-        AlphaFrame::placed(self.alpha_az_deg, self.alpha_elev_deg, offset)
-    }
-
     /// O deslocamento, com sinal, que um dab deste pincel alcança — em unidades
     /// de mundo. Porta única: Draw, Inflate, Clay e Crease perguntam aqui.
     ///
@@ -620,6 +599,10 @@ impl Brush {
         radius * REACH_FRACTION * s
     }
 }
+
+/// **AS PORTAS DO ALPHA** — ver [`alpha_doors`].
+#[path = "brush_alpha.rs"]
+mod alpha_doors;
 
 /// Os espelhos que multiplicam um dab.
 ///

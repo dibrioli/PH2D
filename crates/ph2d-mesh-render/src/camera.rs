@@ -271,12 +271,24 @@ impl Camera3d {
         dy: f32,
         size: (u32, u32),
     ) -> [f32; 3] {
-        let axis = (self.eye() - self.target).normalize_or(Vec3::Z);
-        let right = Vec3::Y.cross(axis).normalize_or(Vec3::X);
-        let up = axis.cross(right);
+        let (right, up) = self.screen_basis();
         // A régua é a MESMA do raio de tela: quantos mundos vale um pixel ali.
         let per_px = self.world_radius_for_screen_px(at, 1.0, size);
         (right * (dx * per_px) + up * (-dy * per_px)).into()
+    }
+
+    /// **ONDE ESTÁ A TELA, EM MUNDO** — a direita e o cima do viewport.
+    ///
+    /// ⚠️ **Porta única, e ela nasceu porque ganhou um SEGUNDO consumidor.** O
+    /// Grab já derivava esta base para levar o barro atrás do dedo; o estêncil
+    /// do alpha precisa dela para se prender ao viewport. Duas derivações do
+    /// mesmo par divergiriam no dia em que a convenção de *para cima* mudasse —
+    /// e a que mente é a que o artista está olhando.
+    #[must_use]
+    pub fn screen_basis(&self) -> (Vec3, Vec3) {
+        let axis = (self.eye() - self.target).normalize_or(Vec3::Z);
+        let right = Vec3::Y.cross(axis).normalize_or(Vec3::X);
+        (right, axis.cross(right))
     }
 
     /// Gira. `dx`/`dy` em radianos — a shell decide quantos radianos vale um

@@ -136,7 +136,17 @@ impl Sculpt3dScene {
             // descrever. Depois do upload a lista está limpa e a janela seria
             // vazia; o barro ficaria com o padrão de antes do traço.
             {
-                let brush = self.brush.clone();
+                // ⚠️ **O estêncil é o DESTA peça** — a base da tela em espaço
+                // local depende da POSE dela, e o `stencil_at` é a mesma porta
+                // que o dab usa. Um preview montado com a vista de outra peça
+                // desenharia o carimbo torto em tudo o que estivesse girado em
+                // relação à selecionada.
+                let pose = self.objects[i].pose;
+                let centre = pose.point_to_world(self.objects[i].stack.mesh().bounds().center());
+                let brush = ph2d_sculpt3d::Brush {
+                    alpha_stencil: Some(self.stencil_at(pose, centre)),
+                    ..self.brush.clone()
+                };
                 let armed = self.alpha_preview;
                 let obj = &mut self.objects[i];
                 let mesh = obj.stack.mesh();

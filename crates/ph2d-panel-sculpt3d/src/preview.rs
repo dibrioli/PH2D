@@ -130,15 +130,32 @@ pub(crate) fn with_swatch<R>(
     f: impl FnOnce(&std::sync::Arc<Vec<u8>>) -> R,
 ) -> Option<R> {
     let alpha = ui.brush.alpha.clone()?;
-    let span = span_of(model_span);
+    // ⚠️ **O retrato de um ESTÊNCIL não é sobre o modelo, e por isso ele não usa
+    // a régua do modelo.** Um carimbo preso ao viewport é medido em fração da
+    // ALTURA DA TELA, então o swatch abrange exatamente UMA tela — e quantos
+    // ladrilhos aparecem nele é `1 / Stamp Size`, que é a resposta à única
+    // pergunta que o artista tem ali (*quão grande isto vai sair?*). Continuar
+    // medindo o modelo diria *"para a SUA peça"* sobre algo que não sabe o
+    // tamanho da peça.
+    //
+    // ⚠️ **E a vista CANÔNICA é armada aqui**, para as duas portas do pincel
+    // (`alpha_frame` e `alpha_scale_resolved`) responderem como respondem no
+    // barro. Sem ela o retrato cairia no frame AUTORADO — o carimbo de lado,
+    // que é exatamente o defeito que a wave anterior consertou por outra via.
+    let stamp = ph2d_sculpt3d::Alpha::is_image(&alpha);
+    let brush = ph2d_sculpt3d::Brush {
+        alpha_stencil: stamp.then_some(ph2d_sculpt3d::AlphaStencil::CANONICAL),
+        ..ui.brush.clone()
+    };
+    let span = if stamp { 1.0 } else { span_of(model_span) };
     let key = Key {
         alpha,
-        scale: ui.brush.alpha_scale,
+        scale: brush.alpha_scale_resolved(),
         // ⚠️ **Pedido ao PINCEL DO ARTISTA, e não montado aqui.** É a mesma porta
         // que o dab pergunta, então o swatch não consegue desenhar um frame que o
         // barro não vai receber — inclusive a neutralidade do deslocamento para
         // os nove procedurais, que mora dentro dela.
-        frame: ui.brush.alpha_frame(),
+        frame: brush.alpha_frame(),
         span,
         theme,
     };

@@ -90,7 +90,7 @@
 /// **EM QUE DIREÇÃO** — ver [`frame`].
 #[path = "alpha_frame.rs"]
 mod frame;
-pub use frame::{AlphaFrame, MAX_AXIS_ELEV_DEG};
+pub use frame::{AlphaFrame, AlphaStencil, MAX_AXIS_ELEV_DEG};
 
 /// **OS PIXELS QUE UM PADRÃO AUTORADO CARREGA** — ver [`image`].
 #[path = "alpha_image.rs"]
@@ -280,7 +280,17 @@ impl Alpha {
         if !p[0].is_finite() || !p[1].is_finite() || !p[2].is_finite() {
             return 0.0;
         }
-        let s = scale.clamp(MIN_ALPHA_SCALE, MAX_ALPHA_SCALE);
+        // ⚠️ **Só o PISO, e o teto saiu de propósito.** O piso é guarda de
+        // RECURSO: `k = frequency / s` explode com um `s` zerado ou negativo, e
+        // isso não é opinião de ninguém. O teto de `MAX_ALPHA_SCALE` é a faixa
+        // confortável do SLIDER — uma afirmação sobre unidades de OBJETO —, e um
+        // ESTÊNCIL mede em fração da VISTA: a régua da vista de um modelo
+        // enquadrado vale 2-3 unidades de objeto, então um carimbo de um quarto
+        // de tela resolve em 0,5-0,75 e era **saturado** aqui, ficando do mesmo
+        // tamanho em toda a metade de cima da pista. *Um teto de UI aplicado no
+        // kernel é o mesmo número respondendo a duas perguntas.* A row segue
+        // clampando o valor AUTORADO, que é onde essa pergunta mora.
+        let s = scale.max(MIN_ALPHA_SCALE);
         let k = self.frequency() / s;
         // ⚠️ **Os seis isotrópicos NÃO passam pelo frame, e é isso que os deixa
         // BYTE-IDÊNTICOS ao mundo pré-direcional.** Eles leem igual de qualquer

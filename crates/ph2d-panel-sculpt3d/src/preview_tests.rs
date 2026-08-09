@@ -57,7 +57,19 @@ fn stamp() -> Alpha {
 /// Um pincel com o carimbo DADO armado e o eixo ENCARANDO a vista, que é como o
 /// produto o semeia (`Sculpt3dScene::seed_alpha_placement`).
 fn ui_stamped(stamp: &Alpha, offset: [f32; 2]) -> Sculpt3dUi {
-    let mut ui = ui_with(stamp.clone(), 0.25, 90, ph2d_sculpt3d::MAX_AXIS_ELEV_DEG);
+    // ⚠️ **Roll ZERO, e a fixture aprendeu isso apanhando.** Com o `az = 90` de
+    // fábrica o carimbo entra girado um quarto de volta na TELA, e aí um
+    // deslocamento em X corre as LINHAS — o gate da translação procurava colunas
+    // e não achava nenhuma. O produto estava certo: era o `Pattern Angle`
+    // fazendo exatamente o que ele passou a significar neste modo.
+    let mut ui = ui_with(stamp.clone(), 0.25, 0, ph2d_sculpt3d::MAX_AXIS_ELEV_DEG);
+    // ⚠️ **UM ladrilho por tela, e o número é sobre o ORÁCULO.** As bandas
+    // repetem a cada oitavo de ladrilho, então com o default (um quarto de tela)
+    // o período seriam 4 colunas — e uma busca por translação **ALIASA**: um
+    // deslocamento de 3 é indistinguível de um de −1, e o gate reprovou produto
+    // correto dizendo `Some(1)` onde pedia `Some(3)`. *Um oráculo de translação
+    // precisa de um período maior que o dobro do que ele mede.*
+    ui.brush.alpha_stencil_scale = 1.0;
     ui.brush.alpha_offset = offset;
     ui
 }
@@ -236,13 +248,16 @@ fn the_cache_key_carries_every_input() {
 #[test]
 fn placing_the_stamp_slides_the_preview() {
     let span = 2.0;
-    // ⚠️ **O texel do swatch mede `span_of(span)`, não `span`** — ele abrange um
-    // OITAVO do modelo ([`SPAN_FRACTION`]). A primeira versão deste gate dividiu
-    // pelo modelo inteiro e pediu 3 texels achando que pedia 3 colunas: eram 24,
-    // que no período de 16 do carimbo caem em 8 — e o gate acusou o PRODUTO por
-    // um erro da própria régua. *A conversão que o oráculo usa é a mesma que o
-    // desenho usa, ou o oráculo mede outra coisa.*
-    let step = span_of(span) / SWATCH as f32;
+    // ⚠️ **A régua de um CARIMBO é a TELA, e o swatch abrange UMA** — ver o
+    // `with_swatch`. Então um texel vale `1 / SWATCH` de vista, que é a mesma
+    // unidade em que o deslocamento é autorado.
+    //
+    // ⚠️ **A primeira versão deste gate usou a régua do MODELO** (`span_of`, um
+    // oitavo dele) e pediu 3 texels achando que pedia 3 colunas: eram 24, que no
+    // período de 16 do carimbo caem em 8 — e o gate acusou o PRODUTO por um erro
+    // da própria régua. *A conversão que o oráculo usa é a mesma que o desenho
+    // usa, ou o oráculo mede outra coisa.*
+    let step = 1.0 / SWATCH as f32;
     // ⚠️ **UM carimbo para todos os estados** — ver o doc de [`stamp`]: com dois
     // `Arc` o cache nunca acertaria, e o gate deixaria de julgar a chave.
     let s = stamp();

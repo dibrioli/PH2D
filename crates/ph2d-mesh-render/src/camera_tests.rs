@@ -527,3 +527,56 @@ fn a_point_behind_the_eye_has_no_screen_radius() {
         0.0
     );
 }
+
+/// **A BASE DA TELA É ORTONORMAL E SEGUE A ÓRBITA** — a porta que o estêncil do
+/// alpha e o Grab compartilham.
+///
+/// ⚠️ **O gate mede as três propriedades que os dois consumidores usam** —
+/// unitária, perpendicular entre si e perpendicular à direção de quem olha —,
+/// porque uma base que perdesse qualquer uma delas ainda compilaria e sairia
+/// como um carimbo cisalhado que ninguém consegue nomear.
+#[test]
+fn the_screen_basis_is_orthonormal_and_follows_the_orbit() {
+    let mut c = Camera3d::default();
+    let len = |v: Vec3| v.length();
+    let (r0, u0) = c.screen_basis();
+    let axis0 = (c.eye() - c.target).normalize();
+    assert!((len(r0) - 1.0).abs() < 1e-5, "a direita não é unitária");
+    assert!((len(u0) - 1.0).abs() < 1e-5, "o cima não é unitário");
+    assert!(r0.dot(u0).abs() < 1e-5, "a base não é ortogonal");
+    assert!(
+        r0.dot(axis0).abs() < 1e-5,
+        "a direita não está no plano da tela"
+    );
+
+    c.orbit(0.7, 0.3);
+    let (r1, u1) = c.screen_basis();
+    assert!(
+        (r1 - r0).length() > 1e-3 || (u1 - u0).length() > 1e-3,
+        "a base não acompanhou a órbita — um estêncil preso a ela ficaria preso \
+         ao BARRO, que é o oposto do que ele é"
+    );
+    let axis1 = (c.eye() - c.target).normalize();
+    assert!((len(r1) - 1.0).abs() < 1e-5 && r1.dot(axis1).abs() < 1e-5);
+}
+
+/// **O GRAB E O ESTÊNCIL LEEM A MESMA TELA** — o gate da porta única.
+///
+/// ⚠️ Sem ele, a extração que criou a [`Camera3d::screen_basis`] poderia ter
+/// deixado o Grab com uma base própria: as duas responderiam à mesma pergunta e
+/// só divergiriam no dia em que a convenção de *para cima* mudasse — com o barro
+/// indo para um lado e o carimbo para o outro.
+#[test]
+fn the_grab_and_the_stencil_read_the_same_screen() {
+    let c = Camera3d::default();
+    let size = (800, 600);
+    let at = [0.0, 0.0, 0.0];
+    let (right, up) = c.screen_basis();
+    let per_px = c.world_radius_for_screen_px(at, 1.0, size);
+    let want = right * (3.0 * per_px) + up * (5.0 * per_px);
+    let got = Vec3::from(c.screen_delta_to_world(at, 3.0, -5.0, size));
+    assert!(
+        (got - want).length() < 1e-5,
+        "o deslocamento do Grab deixou de sair da base da tela"
+    );
+}

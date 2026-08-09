@@ -231,7 +231,31 @@ static BRUSH: &[Row] = &[
         // tamanho de uma feature que não existe. É o mesmo mecanismo das duas
         // pistas de lâmpada sob um matcap — uma row condicional é PULADA, nunca
         // pintada apagada, porque um controle que desenha e não responde mente.
-        show: |u| u.brush.alpha.is_some(),
+        //
+        // ⚠️ **E ela some também sob um CARIMBO**, porque a pergunta muda de
+        // régua: um estêncil é medido na TELA, não no modelo, e quem responde
+        // por ele é a row seguinte. Reusar este número com duas unidades faria
+        // ele trocar de significado em silêncio ao trocar de padrão.
+        show: |u| u.brush.alpha.is_some() && !stamp_alpha(u),
+        place: Place::AfterAlpha,
+    },
+    Row {
+        label: "panel.sculpt3d.stamp_scale",
+        slider: ids::SCULPT3D_STAMP_SCALE,
+        chip: ids::SCULPT3D_STAMP_SCALE_NUM,
+        // ⚠️ **A faixa é em FRAÇÃO DA ALTURA DA TELA**, e por isso ela não fala
+        // do modelo: `1,0` é um ladrilho ocupando a tela inteira e `0,02` são
+        // cinquenta atravessando-a. Um estêncil não sabe o tamanho da peça — é
+        // justamente essa independência que o artista pediu —, então herdar a
+        // pista de `Pattern Size` (unidades de OBJETO, semeada pela densidade da
+        // malha) seria herdar a régua errada.
+        min: 0.02,  // LITERAL-PX-OK: fração da altura da vista, não métrica de layout
+        max: 1.0,   // LITERAL-PX-OK: idem
+        step: 0.01, // LITERAL-PX-OK: idem
+        decimals: 2,
+        get: |u| u.brush.alpha_stencil_scale,
+        set: |u, v| u.brush.alpha_stencil_scale = v,
+        show: stamp_alpha,
         place: Place::AfterAlpha,
     },
     Row {
@@ -299,7 +323,12 @@ static BRUSH: &[Row] = &[
         decimals: 0,
         get: |u| f32::from(u.brush.alpha_elev_deg),
         set: |u, v| u.brush.alpha_elev_deg = degrees(v),
-        show: directional_alpha,
+        // ⚠️ **Ela some sob um CARIMBO, e é o modo inteiro numa linha:** o eixo
+        // de um estêncil é a VISTA, por definição. Um controle que o inclinasse
+        // tiraria o carimbo da frente — exatamente o que este modo existe para
+        // impedir —, então ele não é oferecido em vez de ser oferecido e
+        // ignorado.
+        show: |u| directional_alpha(u) && !stamp_alpha(u),
         place: Place::AfterAlpha,
     },
     // ── Os dois números do EXTRACT ──────────────────────────────────────────

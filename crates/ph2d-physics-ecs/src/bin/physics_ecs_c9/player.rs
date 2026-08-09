@@ -243,7 +243,16 @@ pub fn spawn(sim: &mut SimWorld) {
             density: 16.0,
             ..Collider::default()
         },
-        LockRotation,
+        // ⚠️ **SEM `LockRotation`, e a ausência é o gate** (§8.2). A W-KinPush
+        // travava a rotação aqui pelo mesmo motivo que a cena `=102`: sem isso
+        // o caixote TOMBAVA e a lane passava a medir tombo em vez de empurrão.
+        // Era a decisão certa para aquela wave e a errada para o harness — *um
+        // defeito contornado por uma fixture não é um defeito nomeado*, e o
+        // rodopio de 74,29 rad viveu meses atrás desta linha.
+        //
+        // Com o empurrão a entrar no CENTRO de massa o giro é residual, então a
+        // rotação livre é um número estável que o hash pode carregar — e um
+        // ponto de volta na porta lateral o move na hora.
         Transform::from_translation(Vec2::new(PUSH_X + 1.5, 0.4)),
     ));
     sim.world_mut().spawn((

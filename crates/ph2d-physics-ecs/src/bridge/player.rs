@@ -581,18 +581,24 @@ impl PhysicsBridge {
             // de movimento duas vezes ao mesmo caixote.
             push::push_from_hits(&m.react, m.wanted, got.translation, &hits, &mut pushes);
             for &(body, transfer, at) in &pushes {
-                // ⚠️ **A MESMA porta da reação vertical**, e a conversão é a
-                // dela: um deslocamento de um tique É uma velocidade quando
-                // dividido pelo tique, que é exatamente o que o canal `boost`
-                // significa (`Δv·m`). Uma segunda porta aqui seria uma segunda
-                // resposta para *"o que este player deve àquele corpo?"*.
-                self.world.apply_player_reaction(
-                    body,
-                    m.handle,
-                    [0.0, 0.0],
-                    [transfer[0] / dt, transfer[1] / dt],
-                    at,
-                );
+                // ⚠️ **A conversão é a da reação vertical**: um deslocamento de
+                // um tique É uma velocidade quando dividido pelo tique, que é
+                // exatamente o que o canal `boost` significa (`Δv·m`).
+                //
+                // ⚠️ **Mas a ENTREGA é por SUB-PASSO** (§8.2, escolha do Enio),
+                // e é o que separa esta metade da vertical. Entregue de uma vez,
+                // o bloqueio inteiro do tique entrava como UMA martelada num
+                // ponto alto do caixote e `r × F` fazia o resto — medido, um
+                // caixote pequeno dava **12 voltas em 3 s** (74,29 rad) contra
+                // 0,3175 do corpo dinâmico, e o giro seguia a ALAVANCA (some
+                // quando o contato desce até o centro de massa).
+                //
+                // O dinâmico empurra com força SUSTENTADA por sub-passo, e essa
+                // é literalmente a diferença medida — então a cura é entregar
+                // pelo mesmo mecanismo, não capar o torque com um número novo.
+                let _ = at;
+                self.world
+                    .apply_player_push(body, m.handle, [transfer[0] / dt, transfer[1] / dt]);
             }
             if let Some(pose) = self.world.body_pose(m.handle) {
                 // ⚠️ **`set_next_kinematic_pose`, nunca uma escrita direta:** é

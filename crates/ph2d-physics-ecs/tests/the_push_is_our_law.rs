@@ -72,14 +72,27 @@ fn the_libraries_approximate_solver_is_not_the_law() {
     }
 }
 
-/// **O empurrão sai pela MESMA porta da reação vertical**, com a massa do
-/// player, e a lei que o dimensiona é a PURA.
+/// **O empurrão sai pela porta CENTRAL, e a lei que o dimensiona é a PURA.**
 ///
-/// ⚠️ Uma segunda porta aqui seria uma segunda resposta para *"o que este player
-/// deve àquele corpo?"* — e as duas divergiriam no dia em que a conversão
-/// massa→impulso mudasse num lado só.
+/// # ⚠️ Esta cerca foi DERRUBADA com medição, não apagada (§8.2)
+///
+/// A versão anterior exigia a porta da reação VERTICAL, argumentando que *"uma
+/// segunda porta seria uma segunda resposta para o que este player deve àquele
+/// corpo"*. O argumento estava certo sobre a CONVERSÃO e errado sobre a
+/// pergunta: as duas metades **não perguntam a mesma coisa**.
+///
+/// - A vertical pergunta **ONDE** — o ponto dela é a razão de a jangada
+///   INCLINAR sob o personagem (cena `=103`, aprovada).
+/// - A lateral pergunta **QUANTO** — e o mesmo ponto ali produzia um rodopio de
+///   **12 voltas em 3 s** (74,29 rad contra 0,3175 do dinâmico), que ainda
+///   realimentava a linha (21,36 m contra 7,13).
+///
+/// Com a porta central o giro fica residual e o deslocamento passa a bater com
+/// o dinâmico (7,27 contra 7,13). O que o gate protege agora é a separação, e a
+/// metade do argumento antigo que sobrevive: **as duas convertem com a massa do
+/// PLAYER**, então a conversão não pode divergir num lado só.
 #[test]
-fn the_push_goes_through_the_reaction_door_with_the_pure_law() {
+fn the_push_goes_through_the_central_door_with_the_pure_law() {
     let push = read("src/bridge/player_push.rs");
     assert!(
         push.contains("push_transfer(react, blocked, h.normal)"),
@@ -91,11 +104,29 @@ fn the_push_goes_through_the_reaction_door_with_the_pure_law() {
         .expect("a dedup tem de ser chamada");
     let tail = &bridge[call..];
     let apply = tail
-        .find("apply_player_reaction(")
-        .expect("o empurrao tem de ser aplicado pela porta da reacao");
+        .find("apply_player_push(")
+        .expect("o empurrao lateral tem de sair pela porta CENTRAL");
     assert!(
-        apply < 900,
+        apply < 1600,
         "a aplicacao tem de ficar junto da dedup que a produziu (achei {apply} bytes depois)"
+    );
+    // ⚠️ **E a porta central NÃO pode tomar um ponto** — é isso que a distingue
+    // da irmã, e um `apply_impulse_at_point` ali reinstalaria o rodopio inteiro
+    // com todos os outros numeros certos.
+    let world = read("../ph2d-physics/src/world/player.rs");
+    let door = world
+        .find("pub fn apply_player_push(")
+        .expect("a porta central tem de existir");
+    let body = &world[door..door + 1200];
+    assert!(
+        !body.contains("apply_impulse_at_point("),
+        "o empurrao lateral entra no CENTRO de massa -- um ponto aqui e' o rodopio de volta"
+    );
+    // A metade do argumento antigo que sobrevive: as duas convertem com a massa
+    // de QUEM EMPURRA.
+    assert!(
+        body.contains(".get(player)"),
+        "a conversao massa->impulso tem de ler a massa do PLAYER, como a irma vertical"
     );
 }
 

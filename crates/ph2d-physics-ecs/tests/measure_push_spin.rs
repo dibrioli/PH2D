@@ -212,35 +212,58 @@ fn measure_how_much_the_crate_spins() {
     );
 }
 
-/// **O CAIXOTE AINDA RODOPIA, E ESTE É O NÚMERO DELE** (report do Enio,
-/// 2026-08-09).
+/// **O CAIXOTE NÃO RODOPIA MAIS — e o empurrão LINEAR passou a bater com o
+/// dinâmico** (§8.2, report do Enio de 2026-08-09).
 ///
-/// ⚠️ **Um gate VERDE sobre um defeito**, o precedente do
-/// `the_documented_hardening_is_still_there_and_this_is_its_number` do Painter e
-/// do irmão do salto da descida: ele não diz que o produto está certo — ele
-/// impede o número de CRESCER em silêncio e obriga a cura a atualizá-lo.
+/// ⚠️ Este gate **substitui** o `the_pushed_crate_still_tumbles_and_this_is_its_number`,
+/// que era um verde SOBRE o defeito (o precedente do
+/// `the_documented_hardening_is_still_there…` do Painter) e cuja própria
+/// mensagem mandava reescrevê-lo no dia em que o número diminuísse. Diminuiu.
 ///
-/// ⚠️ **A afirmação é uma RAZÃO contra o controle dinâmico, não um valor**: um
-/// caixote a dar doze voltas é caótico, e pinar `74,29` seria um gate que
-/// qualquer mudança sem relação derruba. A razão é robusta e diz a mesma coisa.
+/// # As duas metades, e a segunda é a que ninguém tinha medido
+///
+/// 1. **O giro vai a zero** — o empurrão lateral entra pelo CENTRO de massa
+///    ([`ph2d_physics::PhysicsWorld::apply_player_push`]), então não há `r × F`.
+/// 2. ⚠️ **E o DESLOCAMENTO passou a bater com o corpo dinâmico**: 7,27 contra
+///    7,13 m no caixote pequeno, onde antes eram **21,36**. A viagem
+///    descontrolada era realimentação do próprio rodopio — um caixote a girar
+///    apresenta faces diferentes ao sweep, é bloqueado mais e recebe mais
+///    empurrão. Curar o torque calibrou a linha em TODO tamanho, e não só no
+///    caso de rotação travada em que a `W-KinPush` a mediu.
+///
+/// ⚠️ **O CONTROLE dinâmico continua a girar um pouco** (0,3175 rad no menor), e
+/// é isso que torna a primeira metade uma afirmação e não uma tautologia: o zero
+/// do cinemático é uma escolha de produto sobre um mundo em que tombar é
+/// possível.
 #[test]
-fn the_pushed_crate_still_tumbles_and_this_is_its_number() {
+fn the_pushed_crate_no_longer_spins_and_the_shove_matches_the_dynamic() {
     let (ran_k, spun_k, _) = push(true, 0.3);
     let (ran_d, spun_d, _) = push(false, 0.3);
     assert!(
         ran_k > 1.0 && ran_d > 1.0,
         "a fixture tem de CONTER o empurrao nos dois modos: {ran_k:.2} e {ran_d:.2} m"
     );
+    // O CONTROLE: no mundo dinâmico um caixote empurrado acima do centro de
+    // massa TOMBA. Sem isto o zero abaixo seria verdade por vácuo.
     assert!(
-        spun_d < 1.0,
-        "o CONTROLE mal gira ({spun_d:.4} rad) -- se ele passar a girar, a \
-         fixture deixou de isolar o modo"
+        spun_d > 0.05,
+        "o controle tem de TOMBAR ({spun_d:.4} rad) -- se ele parar, a fixture          deixou de conter o fenomeno e o zero do cinematico nao afirma nada"
     );
+    // ⚠️ **A barra é uma RAZÃO e não um zero, e o resíduo tem dono:** medido,
+    // sobram `4,5e-5 rad` — o empurrão lateral não produz torque nenhum (ele é
+    // central), mas a reação VERTICAL da K6 ainda entra num PONTO e o solver de
+    // contato tem atrito. Um `assert_eq!(0.0)` afirmaria mais do que a cura
+    // promete. `1%` do controle dá 70x de folga sobre o medido.
     assert!(
-        spun_k > 50.0 * spun_d.max(1.0e-3),
-        "o cinematico girava 234x o dinamico (74,29 contra 0,3175) e agora gira \
-         {:.1}x ({spun_k:.4} contra {spun_d:.4}) -- se DIMINUIU, alguem curou o \
-         defeito e este gate tem de ser reescrito",
-        spun_k / spun_d.max(1.0e-3)
+        spun_k < 0.01 * spun_d,
+        "o empurrao lateral entra no CENTRO de massa, entao o giro tem de ser \
+         residual: {spun_k:.6} contra {spun_d:.4} do controle"
+    );
+    // ⚠️ E a metade que a cura do torque trouxe de brinde: a razao de
+    // deslocamento. Antes eram 21,36 contra 7,13 = 3,0x.
+    let ratio = ran_k / ran_d;
+    assert!(
+        (0.8..=1.25).contains(&ratio),
+        "o empurrao LINEAR tem de bater com o dinamico (medido 1,02x):          {ran_k:.4} contra {ran_d:.4} = {ratio:.2}x"
     );
 }

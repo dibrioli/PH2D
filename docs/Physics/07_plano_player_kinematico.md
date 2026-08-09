@@ -1058,7 +1058,7 @@ nova**. Lane acrescentada (`C9 Ramp`): 113 → **115 corpos**, hash
 
 ---
 
-## §8.2 — NA FILA: o caixote rodopia quando o cinemático o empurra (2026-08-09)
+## §8.2 — FECHADO: o caixote rodopiava quando o cinemático o empurra (2026-08-09)
 
 Report do Enio, no smoke da cena `=102`: *"se o caixote não tiver com rotação
 travada, o contato com o player kinematic causa rotação exagerada"*.
@@ -1101,9 +1101,51 @@ num ponto alto**, e `r × F` faz o resto. O dinâmico empurra com força
    honesto e corta o rodopio, ao preço de um número novo a calibrar — e a §0
    exige que ele saia de uma medição, não de um palpite.
 
-O número está pinado em `the_pushed_crate_still_tumbles_and_this_is_its_number`
-(uma RAZÃO contra o controle dinâmico, porque um caixote a dar doze voltas é
-caótico e um valor literal seria derrubado por qualquer mudança sem relação).
+### A cura, e o caminho até ela
+
+**Escolha do Enio: (2).** ⛔ **E ela foi CONSTRUÍDA, MEDIDA e REVERTIDA — não
+refaça.** A hipótese era que o braço de alavanca encolhe enquanto o caixote
+tomba, então `N` fatias somariam menos torque que uma martelada. Em 16 ms o
+caixote quase não gira: medido, **77,51 rad** — *pior* que os 74,29 de origem.
+
+⚠️ **O que a tentativa deixou de bom foi a PORTA.** Separar a metade lateral da
+vertical era exatamente a objeção que encarecia a opção (1), e construir (2)
+produziu essa separação de graça. Com ela, (1) custa uma linha:
+
+| caixote | dinâmico (andou/girou) | cinemático ANTES | cinemático DEPOIS |
+|---|---|---|---|
+| 0,30 | 7,13 / 0,3175 | 21,36 / **74,29** | **7,27 / 0,00005** |
+| 0,50 | 7,02 / 0,0043 | 7,57 / **13,93** | 6,99 / 0,00 |
+| 0,80 | 6,25 / 0,0007 | 6,03 / 0,0311 | 6,05 / 0,00 |
+
+⚠️ **E o deslocamento passou a bater com o dinâmico** (7,27 contra 7,13, onde
+antes eram 21,36): a viagem descontrolada era **realimentação do próprio
+rodopio** — um caixote a girar apresenta faces diferentes ao sweep, é bloqueado
+mais e recebe mais empurrão. Curar o torque calibrou a linha em **todo tamanho**,
+e não só no caso de rotação travada em que a `W-KinPush` a mediu.
+
+⚠️ **O trade fica NOMEADO:** um caixote empurrado no peito **nunca tomba**,
+enquanto o dinâmico tomba um pouco. É escolha de produto.
+
+⚠️ **O resíduo tem dono:** sobram `4,5e-5 rad`, do PONTO da reação vertical (que
+fica) e do atrito do solver — por isso o gate afirma uma RAZÃO (`< 1%` do
+controle) e não um zero.
+
+⚠️ **Uma cerca foi DERRUBADA com medição, não apagada:** o arch-gate exigia a
+porta compartilhada, argumentando que *"uma segunda porta seria uma segunda
+resposta"*. O argumento estava certo sobre a CONVERSÃO e errado sobre a
+pergunta — a vertical pergunta **ONDE** (o ponto é a inclinação da jangada), a
+lateral pergunta **QUANTO**. Ele passou a afirmar a separação, mais a metade que
+sobrevive: as duas convertem com a massa do PLAYER.
+
+⚠️ **E o hash era CEGO outra vez, pela MESMA fixture que escondeu o defeito:** o
+caixote do `C9 Push` tinha `LockRotation`, como a cena `=102`. Removido — 117
+corpos, hash **`fb27f676…`** (debug ≡ release), e um ponto de volta na porta
+lateral o move na hora (`463b40f9…`).
+
+Gate: `the_pushed_crate_no_longer_spins_and_the_shove_matches_the_dynamic`, que
+substitui o verde-sobre-o-defeito e cuja própria mensagem mandava reescrevê-lo
+no dia em que o número diminuísse.
 
 ---
 

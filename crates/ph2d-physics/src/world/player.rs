@@ -180,6 +180,67 @@ impl PhysicsWorld {
         self.player_accels.len()
     }
 
+    /// **O EMPURRÃO LATERAL do player** (§8.2) — a metade horizontal da 3ª lei,
+    /// e ela é uma porta PRÓPRIA porque a pergunta é outra.
+    ///
+    /// # ⚠️ `apply_impulse`, no CENTRO — o oposto da irmã vertical
+    ///
+    /// A [`Self::apply_player_reaction`] empurra **num ponto** de propósito: é o
+    /// `r × F` dela que faz a jangada INCLINAR sob o personagem (cena `=103`,
+    /// aprovada). Aqui o mesmo ponto produzia um **rodopio**: o bloqueio inteiro
+    /// do tique entra como uma martelada num ponto ALTO do caixote, e medido
+    /// (`measure_push_spin`) um caixote pequeno dava **12 voltas em 3 s**
+    /// (74,29 rad) contra 0,3175 do corpo dinâmico — o giro seguindo a ALAVANCA
+    /// e a desaparecer quando o contato desce ao centro de massa.
+    ///
+    /// ⚠️ **E o rodopio não era só feio, ele REALIMENTAVA:** um caixote a girar
+    /// apresenta faces diferentes ao sweep, é bloqueado mais, recebe mais
+    /// empurrão e gira mais — o caixote pequeno viajava **21,36 m** contra os
+    /// 7,13 do dinâmico. Com o impulso central ele viaja **7,26**, ou seja o
+    /// empurrão LINEAR passou a bater com o dinâmico em todo tamanho, e não só
+    /// no caso de rotação travada em que a `W-KinPush` o calibrou.
+    ///
+    /// ⛔ **Espalhar o impulso pelos sub-passos foi CONSTRUÍDO, MEDIDO e
+    /// REVERTIDO — não refaça.** A hipótese era que o braço de alavanca encolhe
+    /// enquanto o caixote tomba, então `N` fatias somariam menos torque que uma
+    /// martelada. Em 16 ms o caixote quase não gira: medido, **77,51 rad** (pior
+    /// que os 74,29 de origem). O que a tentativa deixou de bom foi esta porta —
+    /// separar as duas metades é o que torna o impulso central barato, e era
+    /// justamente a objeção que encarecia esta escolha.
+    ///
+    /// ⚠️ **O trade fica NOMEADO:** um caixote empurrado no peito **nunca
+    /// tomba**, enquanto o dinâmico tomba um pouco (0,3175 rad no menor). É
+    /// escolha de produto, não descuido.
+    ///
+    /// A massa é lida do PLAYER e o impulso vai no CHÃO, como na irmã; um corpo
+    /// morto de qualquer lado é no-op silencioso.
+    pub fn apply_player_push(
+        &mut self,
+        ground: RigidBodyHandle,
+        player: RigidBodyHandle,
+        boost: [f32; 2],
+    ) {
+        let Some(mass) = self
+            .bodies
+            .get(player)
+            .map(rapier2d::dynamics::RigidBody::mass)
+        else {
+            return;
+        };
+        if !mass.is_finite() || mass <= 0.0 {
+            return;
+        }
+        let Some(body) = self.bodies.get_mut(ground) else {
+            return;
+        };
+        let (jx, jy) = (boost[0] * mass, boost[1] * mass);
+        if jx == 0.0 && jy == 0.0 {
+            return;
+        }
+        // O `true` é o despertar, pela mesma razão da irmã vertical.
+        body.apply_impulse(Vector2::new(jx, jy), true);
+    }
+
     /// **A REAÇÃO da 3ª lei** (W6): devolver ao CHÃO o que a perna do player lhe
     /// tirou, **no ponto onde o raio o encontrou**.
     ///

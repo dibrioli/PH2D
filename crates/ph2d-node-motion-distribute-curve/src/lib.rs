@@ -11,8 +11,25 @@
 //! vector document), so this stays a pure `ph2d-nodegraph` drop-crate — the vector-fed
 //! `motion.distribute-path` is a separate, later, cross-module node. The arc-length
 //! machinery is in the sibling `curve.rs` (Bézier + cumulative-length LUT). Transcendental-
-//! free (HR-5): polynomial curve + `sqrt` chord lengths, no trig. `Effect::Pure` (the
-//! offset animation arrives through the value input).
+//! free (HR-5): polynomial curve + `sqrt` chord lengths + the Rajan `atan2` (`trig.rs`).
+//! `Effect::Pure` (the offset animation arrives through the value input).
+//!
+//! ## `align` — the instance turns to face the way the curve is going
+//!
+//! Placing a point is half of walking a curve; the other half is **which way it looks**, and it is
+//! the half every reference ships (Blender *Curve to Points* hands back Tangent · Normal ·
+//! Rotation; a Cavalry Duplicator over a Path distribution orients its copies). Nothing downstream
+//! could supply it: `motion.look_at` aims at a **target point**, and no node in the catalogue
+//! differentiates a cubic — so this was a **hole**, not a choice. The sibling that walks a DRAWN
+//! shape (`motion.path`) has had it since it landed, and two nodes that do the same distribution
+//! disagreeing about orienting is the divergence this closes.
+//!
+//! ⚠️ The rotation is the **analytic** tangent at the same `t` the point was evaluated at — never a
+//! chord between neighbours, which would make the angle a fact of the *count* instead of a fact of
+//! the *curve* (and would leave the last instance with no successor to differ against).
+//!
+//! **Default off** (`align = 0`): a graph that never heard of this param emits `P` and nothing
+//! else, byte for byte, exactly as it did before.
 
 use ph2d_node_registry::{NodeRegistry, ParamUnit, ParamUnitDecl, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
@@ -25,7 +42,8 @@ use ph2d_nodegraph::node::{
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
 mod curve;
-use curve::{P2, arc_lut, eval, t_at_arclen};
+mod trig;
+use curve::{P2, arc_lut, eval, t_at_arclen, tangent};
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
 /// The value type of the `offset` input (mirror of `motion.look_at::VALUE`).
@@ -88,23 +106,41 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "p3y",
             default: 1.5,
         },
+        // 1 = turn each instance to face the way the curve is going (the `rot` column, in
+        // degrees). APPENDED, and 0 by default: a saved graph reads it as absent and cooks
+        // byte-identically.
+        ParamSpec {
+            name: "align",
+            default: 0.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
 
 /// Sample `count` points at even arc-length along the Bézier `cp`, all slid by `offset`
 /// (wrapping). Cell-centred (`(i+0.5)/count`) so the set stays symmetric as it flows.
-fn distribute(cp: &[P2; 4], count: usize, offset: f32) -> Vec<P2> {
+///
+/// With `align`, each point also reports the **heading of the curve there**, in degrees — the
+/// analytic derivative at the *same* `t` the point came from, so the two can never describe
+/// different places on the curve. Without it the second vector is empty and the position
+/// expression is the one that always shipped, verbatim.
+fn distribute(cp: &[P2; 4], count: usize, offset: f32, align: bool) -> (Vec<P2>, Vec<f32>) {
     if count == 0 {
-        return Vec::new();
+        return (Vec::new(), Vec::new());
     }
     let lut = arc_lut(cp);
-    (0..count)
-        .map(|i| {
-            let s = ((i as f32 + 0.5) / count as f32 + offset).rem_euclid(1.0);
-            eval(cp, t_at_arclen(&lut, s))
-        })
-        .collect()
+    let mut pos = Vec::with_capacity(count);
+    let mut rot = Vec::with_capacity(if align { count } else { 0 });
+    for i in 0..count {
+        let s = ((i as f32 + 0.5) / count as f32 + offset).rem_euclid(1.0);
+        let t = t_at_arclen(&lut, s);
+        pos.push(eval(cp, t));
+        if align {
+            let d = tangent(cp, t);
+            rot.push(trig::deg(trig::atan2_approx(d[1], d[0])));
+        }
+    }
+    (pos, rot)
 }
 
 struct MotionDistributeCurve;
@@ -126,8 +162,13 @@ impl NodeOp for MotionDistributeCurve {
             Some(Column::Scalar(v)) => v.first().copied().unwrap_or(0.0),
             _ => 0.0,
         };
-        let positions = distribute(&cp, count, offset);
-        ctx.emit(Stream::new(positions.len()).with("P", Column::Vec2(positions)));
+        let align = ctx.param("align") >= 0.5;
+        let (positions, rot) = distribute(&cp, count, offset, align);
+        let mut out = Stream::new(positions.len()).with("P", Column::Vec2(positions));
+        if align {
+            out = out.with("rot", Column::Scalar(rot));
+        }
+        ctx.emit(out);
     }
 }
 
@@ -201,6 +242,18 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     pt("p2y", "P2 Y"),
     pt("p3x", "P3 X"),
     pt("p3y", "P3 Y"),
+    // ⚠️ "Align To **Curve**", not the sibling's "Align To Path": the two nodes walk different
+    // objects, and this node's own vocabulary for its object is `Curve` (the group name it
+    // shares with `motion.spline_wrap`). A label naming the wrong object is worse than a
+    // label that differs from a cousin's.
+    ParamUiHint {
+        param: "align",
+        label: "Align To Curve",
+        min: 0.0,
+        max: 1.0,
+        step: 1.0,
+        widget: ParamWidget::Toggle,
+    },
 ];
 
 /// **What each of this node's numbers IS** (doc 88, Wave A) — never how it is
@@ -268,7 +321,7 @@ mod tests {
     /// (equal chords). FALSIFIED by parameter-space sampling, which bunches at the ends.
     #[test]
     fn count_is_exact_and_evenly_spaced_on_a_line() {
-        let pts = distribute(&LINE, 6, 0.0);
+        let pts = distribute(&LINE, 6, 0.0, false).0;
         assert_eq!(pts.len(), 6);
         let gaps: Vec<f32> = pts.windows(2).map(|w| w[1][0] - w[0][0]).collect();
         let g0 = gaps[0];
@@ -283,7 +336,7 @@ mod tests {
     #[test]
     fn points_sit_on_the_curve() {
         let cp = [[-3.0, -1.5], [-1.0, 2.0], [1.0, -2.0], [3.0, 1.5]];
-        let pts = distribute(&cp, 10, 0.0);
+        let pts = distribute(&cp, 10, 0.0, false).0;
         for p in &pts {
             // Find the nearest LUT-sampled curve point; it should be within the sampling
             // resolution (the point came from an eval, so this is tight).
@@ -303,14 +356,91 @@ mod tests {
     /// by a dead offset (identical sets).
     #[test]
     fn offset_slides_along_the_arc() {
-        let a = distribute(&LINE, 6, 0.0);
-        let b = distribute(&LINE, 6, 0.05);
+        let a = distribute(&LINE, 6, 0.0, false).0;
+        let b = distribute(&LINE, 6, 0.05, false).0;
         for (pa, pb) in a.iter().zip(&b) {
             assert!(
                 (pb[0] - pa[0] - 0.15).abs() < 2e-2,
                 "slid +0.15: {pa:?} {pb:?}"
             );
         }
+    }
+
+    /// The S-curve of the defaults — it turns hard both ways, which is what makes it able to
+    /// tell a per-point heading from a single shared one.
+    const S: [P2; 4] = [[-3.0, -1.5], [-1.0, 2.0], [1.0, -2.0], [3.0, 1.5]];
+
+    /// **The heading is the direction the curve travels there** — and the oracle is the curve's
+    /// own SHAPE, not the tangent formula: the centred difference `p[i+1] − p[i−1]` approximates
+    /// the direction at `i` to second order, and it is computed with the standard-library
+    /// `atan2` in degrees, so it shares no code with the thing under test.
+    ///
+    /// FALSIFIED by: one shared angle for every point · swapped `atan2` arguments · radians on
+    /// the wire · the tangent read at the arc fraction `s` instead of the curve parameter `t`.
+    #[test]
+    fn the_heading_matches_the_direction_the_curve_travels() {
+        let (pos, rot) = distribute(&S, 64, 0.0, true);
+        assert_eq!(rot.len(), 64, "one heading per point");
+
+        let mut worst = 0.0f32;
+        for i in 1..pos.len() - 1 {
+            let (dx, dy) = (pos[i + 1][0] - pos[i - 1][0], pos[i + 1][1] - pos[i - 1][1]);
+            let want = dy.atan2(dx).to_degrees();
+            let mut err = (rot[i] - want).abs();
+            if err > 180.0 {
+                err = 360.0 - err; // the seam is a wrap, not a disagreement
+            }
+            worst = worst.max(err);
+        }
+        assert!(worst < 1.0, "worst heading error {worst} deg");
+    }
+
+    /// Degrees, and the axis that says so: on a straight line UP every instance reads **+90**.
+    /// A horizontal line reads 0 — which is also what a dead `align` and a radian wire read,
+    /// so the vertical half is the one with teeth.
+    #[test]
+    fn a_vertical_line_reads_ninety_degrees() {
+        let up = [[0.0, 0.0], [0.0, 1.0], [0.0, 2.0], [0.0, 3.0]];
+        for r in distribute(&up, 5, 0.0, true).1 {
+            assert!((r - 90.0).abs() < 0.2, "up is +90 deg, got {r}");
+        }
+        for r in distribute(&LINE, 5, 0.0, true).1 {
+            assert!(r.abs() < 0.2, "+x is 0 deg, got {r}");
+        }
+    }
+
+    /// **Aligning does not move a single point** — byte for byte, on a curve chosen for being
+    /// hard to sample. The heading is something the node *also* reports, never something that
+    /// re-decides where an instance goes.
+    #[test]
+    fn aligning_does_not_move_a_single_point() {
+        let plain = distribute(&S, 33, 0.17, false);
+        let aligned = distribute(&S, 33, 0.17, true);
+        assert_eq!(plain.0, aligned.0, "positions are untouched by align");
+        assert!(plain.1.is_empty(), "align off reports no heading");
+    }
+
+    /// **A graph that never heard of `align` emits `P` and nothing else.** It does not name the
+    /// default — it exercises it, which is the only way a default is actually under test.
+    #[test]
+    fn a_graph_that_never_heard_of_align_emits_no_rotation() {
+        use ph2d_nodegraph::cook::{Cook, OpResolver};
+        use ph2d_nodegraph::graph::Graph;
+
+        struct Ops;
+        impl OpResolver for Ops {
+            fn resolve(&self, ty: NodeTypeId) -> Option<&dyn NodeOp> {
+                (ty == MANIFEST.id).then_some(&MotionDistributeCurve as &dyn NodeOp)
+            }
+        }
+        let mut g = Graph::new();
+        let n = g.add_node("motion.distribute_curve");
+        g.set_param(n, "count", 8.0);
+        let mut cook = Cook::new();
+        let out = cook.cook(&g, &Ops, n, 0.0).unwrap();
+        let s = out[0].as_stream();
+        assert!(s.get("P").is_some(), "still places points");
+        assert!(s.get("rot").is_none(), "and reports no heading");
     }
 
     /// Deterministic + cooks through the registry, emitting `P` at the exact count.

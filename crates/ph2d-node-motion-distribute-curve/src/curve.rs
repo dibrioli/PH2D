@@ -26,9 +26,9 @@ pub(crate) fn eval(cp: &[P2; 4], t: f32) -> P2 {
     ]
 }
 
-/// The (non-unit) tangent — the derivative `dB/dt` — at `t`. (Used via `frame_at`; a
-/// consumer that only distributes points won't call it — hence the leaf allow.)
-#[allow(dead_code)]
+/// The (non-unit) tangent — the derivative `dB/dt` — at `t`. **Non-unit is the point**: the
+/// `align` consumer feeds it straight to `atan2`, which is scale-invariant, so normalising it
+/// would buy a `sqrt` and nothing else.
 pub(crate) fn tangent(cp: &[P2; 4], t: f32) -> P2 {
     let u = 1.0 - t;
     let (a, b, c) = (3.0 * u * u, 6.0 * u * t, 3.0 * t * t);

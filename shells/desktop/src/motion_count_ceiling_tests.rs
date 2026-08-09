@@ -142,11 +142,16 @@ mod tests {
         // 400k custou **208 SEGUNDOS** num número que ninguém vai usar, e varrer a grade só até
         // 10k esconderia que ela é barata. A faixa de cada linha é a faixa em que a resposta
         // daquele nó de fato muda.
-        /// Um sujeito: `(nó, param, soft de hoje, fixos, faixa, fonte)`.
+        /// Um sujeito: `(nó, param, fixos, faixa, fonte)`.
+        ///
+        /// ⚠️ **O soft NÃO está aqui** — ele é lido do registry na hora de imprimir. A versão
+        /// anterior o carregava como literal por sujeito, e DOIS envelheceram sem ninguém ver
+        /// (o `distribute_curve` anunciava `soft=2000` sobre um slider de **320**, o
+        /// `distribute_radial` o mesmo sobre **600**): uma sonda de TETO imprimindo o teto
+        /// errado. Um número copiado à mão para um readout é um número que vai mentir.
         type Subject = (
             &'static str,
             &'static str,
-            f32,
             &'static [(&'static str, f32)],
             &'static [f32],
             Option<f32>,
@@ -154,26 +159,24 @@ mod tests {
         const DEEP: &[f32] = &[100_000.0, 400_000.0, 1_000_000.0];
         let subjects: &[Subject] = &[
             // Os LINEARES e baratos — a varredura vai fundo porque eles aguentam.
-            ("motion.grid", "rows", 20.0, &[("cols", 1.0)], DEEP, None),
-            ("motion.fibonacci", "count", 2_000.0, &[], DEEP, None),
+            ("motion.grid", "rows", &[("cols", 1.0)], DEEP, None),
+            ("motion.fibonacci", "count", &[], DEEP, None),
             (
                 "motion.distribute_radial",
                 "count",
-                2_000.0,
                 &[("rings", 1.0)],
                 DEEP,
                 None,
             ),
-            ("motion.distribute_curve", "count", 2_000.0, &[], DEEP, None),
+            ("motion.distribute_curve", "count", &[], DEEP, None),
             // Os DEFORMADORES de grade — `rows × cols`, então `cols = 1` mantém o eixo medido
             // sendo o pedido (a mesma cautela da grade).
-            ("motion.lattice", "rows", 60.0, &[("cols", 1.0)], DEEP, None),
+            ("motion.lattice", "rows", &[("cols", 1.0)], DEEP, None),
             // ⚠️ O `motion.wave` é `Effect::Temporal` — um cook num playhead fixo mede UM passo,
             // que é o que um quadro paga; a faixa é menor porque ele carrega estado por célula.
             (
                 "motion.wave",
                 "rows",
-                60.0,
                 &[("cols", 2.0)],
                 &[10_000.0, 100_000.0, 400_000.0],
                 None,
@@ -183,7 +186,6 @@ mod tests {
             (
                 "motion.boids",
                 "count",
-                500.0,
                 &[],
                 &[500.0, 2_000.0, 8_000.0],
                 None,
@@ -191,7 +193,6 @@ mod tests {
             (
                 "motion.verlet_rope",
                 "count",
-                200.0,
                 &[],
                 &[10_000.0, 100_000.0, 400_000.0],
                 None,
@@ -201,7 +202,6 @@ mod tests {
             (
                 "motion.scatter",
                 "count",
-                2_000.0,
                 &[],
                 &[2_000.0, 3_000.0, 4_000.0, 6_000.0],
                 None,
@@ -211,7 +211,6 @@ mod tests {
             (
                 "motion.clone",
                 "count",
-                32.0,
                 &[],
                 &[100.0, 1_000.0, 10_000.0],
                 Some(100.0),
@@ -219,7 +218,6 @@ mod tests {
             (
                 "motion.kaleidoscope",
                 "segments",
-                64.0,
                 &[],
                 &[100.0, 1_000.0, 10_000.0],
                 Some(100.0),
@@ -229,7 +227,6 @@ mod tests {
             (
                 "motion.pin_constraint",
                 "count",
-                4_096.0,
                 &[],
                 &[4_096.0, 40_000.0, 200_000.0],
                 Some(200_000.0),
@@ -240,7 +237,6 @@ mod tests {
             (
                 "motion.voronoi",
                 "count",
-                165_000.0,
                 &[],
                 &[1_000.0, 4_000.0, 8_000.0],
                 None,
@@ -256,7 +252,16 @@ mod tests {
             .unwrap_or_else(|| "?".into());
         println!("\n=== custo de UM cook (ms) x contagem pedida — orçamento 16,6 ms/quadro ===");
         println!("    (load average {load} — acima de ~5 a tabela mede a MÁQUINA, não o código)");
-        for (ty, param, soft, fixed, counts, source) in subjects {
+        let reg = &MotionState::new().registry;
+        let soft_of = |ty: &str, param: &str| -> f32 {
+            reg.manifests()
+                .find(|m| m.name == ty)
+                .and_then(|m| reg.param_ui(m.id))
+                .and_then(|hints| hints.iter().find(|h| h.param == param))
+                .map_or(f32::NAN, |h| h.max)
+        };
+        for (ty, param, fixed, counts, source) in subjects {
+            let soft = soft_of(ty, param);
             let mut row = format!("{ty:26} soft={soft:<9.0} ");
             let mut first = None;
             let mut last = None;

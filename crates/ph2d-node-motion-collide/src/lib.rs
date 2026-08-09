@@ -106,6 +106,25 @@ pub const MANIFEST: NodeManifest = NodeManifest {
 };
 
 /// The `spread` multiplier: unconnected (empty) → 1.0; else the first element.
+///
+/// ⚠️ **É GLOBAL de propósito, e o device lê a MESMA linha** (`read_spread_v(0u)`
+/// no WGSL, não `read_spread_v(i)`). A porta é de VALOR — logo, por tipo, um campo
+/// por-instância —, mas o que este nó quer dela é a *respiração* animável: um
+/// multiplicador só para todos os discos.
+///
+/// A simetria não é zelo: `ColumnAccess::ReadBroadcast` só faz broadcast quando a
+/// porta traz **um** valor, e com N ela devolve `in[i]`. Enquanto o WGSL lia por
+/// elemento, alimentar a porta com um campo variável dava DOIS desenhos — medido,
+/// a CPU devolvia a grade intocada (o `vals[0]` era 0 ⇒ raio 0 ⇒ identidade) e o
+/// device empurrava: `0,165` de divergência de posição, com todos os gates verdes
+/// porque as fixtures alimentavam comprimento 1.
+///
+/// **O raio POR ELEMENTO é capacidade real e desejada** (o `pscale` do Houdini POP
+/// Interact) e **não é isto**: a lei honesta é `r_i + r_j` — simétrica, e
+/// byte-idêntica à de hoje sob spread uniforme —, que na grade do device exige
+/// limitar o alcance pelo raio MÁXIMO, ou seja um `Max` reduce sobre a coluna.
+/// Nenhum kernel do repo combina `register_grid` com `reduces()` hoje, então é
+/// wave própria (plano 89 §10.2, W1-B), não uma linha.
 fn spread_amount(vals: &[f32]) -> f32 {
     vals.first().copied().unwrap_or(1.0)
 }

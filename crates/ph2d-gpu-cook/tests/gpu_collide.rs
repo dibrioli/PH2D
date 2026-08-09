@@ -91,11 +91,25 @@ fn cpu_cook(g: &Graph, reg: &NodeRegistry, out: NodeId) -> Vec<RenderInstance> {
 }
 
 fn gpu_cook(gpu: &GpuContext, g: &Graph, reg: &NodeRegistry, out: NodeId) -> Vec<RenderInstance> {
+    gpu_cook_stages(gpu, g, reg, out, 2)
+}
+
+/// Como [`gpu_cook`], com a contagem de estágios EXPLÍCITA — grid + collide são 2,
+/// e uma fixture que acrescenta um nó (o campo por-elemento) tem 3.
+///
+/// ⚠️ A contagem é EXATA e não `>= 1`: é ela que prova que não houve fallback
+/// silencioso para a CPU, que compararia a CPU com ela mesma e passaria sobre um
+/// kernel que nunca rodou. Afrouxá-la trocaria a prova por uma frase.
+fn gpu_cook_stages(
+    gpu: &GpuContext,
+    g: &Graph,
+    reg: &NodeRegistry,
+    out: NodeId,
+    stages: usize,
+) -> Vec<RenderInstance> {
     let plan = plan(g, reg, reg, out);
     assert!(plan.is_fully_gpu(), "boundaries: {:?}", plan.boundaries);
-    // grid + collide dispatch; `output` is pass-through. A silent CPU fallback
-    // would compare the CPU against itself and pass on a kernel that never ran.
-    assert_eq!(plan.dispatching_stages(reg), 2);
+    assert_eq!(plan.dispatching_stages(reg), stages);
     let mut gc = GpuCook::new();
     gc.cook(
         gpu,
@@ -423,4 +437,82 @@ fn crossing_the_reach_boundary_does_not_step_the_cost() {
         "the cook stepped {ratio:.3}× across the reach boundary ({under:.3} → {over:.3} ms): \
          a disc is paying for cells it cannot reach"
     );
+}
+
+/// **O `spread` é GLOBAL nas DUAS rotas, mesmo alimentado por um campo
+/// POR ELEMENTO** — e este gate existe porque elas discordavam.
+///
+/// O `motion.collide` toma o `spread` numa porta de VALOR, e a doc das bindings
+/// declara a intenção: *"broadcast (ausente ⇒ 1)"*, o multiplicador global
+/// animável (a "respiração"). Mas `ColumnAccess::ReadBroadcast` só faz broadcast
+/// quando a porta traz **um** valor; com N ela devolve `in[i]`, e o WGSL lia
+/// `read_spread_v(i)` — por elemento — enquanto a CPU faz `vals.first()`.
+///
+/// ⚠️ **MEDIDO antes do conserto, e não era ε:** com um `value.instance_field` em
+/// modo Ramp (`i/(N−1)`) a CPU devolvia a grade INTOCADA (o `vals[0]` é 0 ⇒ raio
+/// 0 ⇒ a identidade precoce) enquanto o device empurrava — área `1,5625` contra
+/// `2,2039`, pior `|Δpos| = 1,65e-1`. Dois produtores, dois desenhos, e nenhum
+/// gate: as fixtures irmãs alimentam `spread` de comprimento 1 ou nenhum, então
+/// **não continham o fenômeno**.
+///
+/// O raio POR ELEMENTO é capacidade real e desejada; ela **não é isto** (a lei
+/// certa é `r_i + r_j`, simétrica) e é wave própria — plano 89 §10.2, W1-B.
+/// FALSIFICADO por o WGSL voltar a ler `read_spread_v(i)`.
+#[test]
+#[ignore = "needs a GPU adapter"]
+fn a_per_element_spread_reads_the_same_on_both_routes() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let mut reg = registry();
+    ph2d_node_value_instance_field::register(&mut reg).unwrap();
+
+    let mut g = Graph::new();
+    let src = g.add_node("motion.grid");
+    g.set_param(src, "rows", 6.0);
+    g.set_param(src, "cols", 6.0);
+    g.set_param(src, "gap_x", 0.25);
+    g.set_param(src, "gap_y", 0.25);
+    let field = g.add_node("value.instance_field");
+    g.set_param(field, "mode", 1.0); // Ramp: i/(N−1)
+    let col = g.add_node("motion.collide");
+    g.set_param(col, "radius", 0.3);
+    g.set_param(col, "iterations", 4.0);
+    g.set_param(col, "strength", 0.85);
+    let out = g.add_node("motion.output");
+    for (from, to, port) in [
+        (src, col, 0u16),
+        (src, field, 0u16),
+        (field, col, 1u16),
+        (col, out, 0u16),
+    ] {
+        g.connect(Edge {
+            from: (from, 0),
+            to: (to, port),
+            delayed: false,
+        })
+        .unwrap();
+    }
+
+    let cpu = cpu_cook(&g, &reg, out);
+    let dev = gpu_cook_stages(&gpu, &g, &reg, out, 3);
+    let spread_of = |v: &[RenderInstance]| {
+        let (mut lo, mut hi) = ([f32::MAX; 2], [f32::MIN; 2]);
+        for i in v {
+            for k in 0..2 {
+                lo[k] = lo[k].min(i.world_pos[k]);
+                hi[k] = hi[k].max(i.world_pos[k]);
+            }
+        }
+        (hi[0] - lo[0]) * (hi[1] - lo[1])
+    };
+    eprintln!(
+        "spread por elemento: area cpu {:.4} · gpu {:.4}",
+        spread_of(&cpu),
+        spread_of(&dev)
+    );
+    // Zero, não ε: as duas rotas leem a MESMA linha da coluna, então não há
+    // ordem de soma a divergir.
+    parity("per-element spread", &cpu, &dev, 0.0);
 }

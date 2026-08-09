@@ -81,7 +81,21 @@ fn collide_w(x: f32) -> f32 {
 /// times (`GridSpec::sweeps_param`), rebuilding the grid between sweeps.
 const WGSL: &str = r#"
     let pi = read_in_P(i);
-    let radius = params.radius * read_spread_v(i);
+    // ⚠️ `0u`, NÃO `i` — o `spread` é um multiplicador GLOBAL (a "respiração"
+    // animável que a doc das bindings declara), e a CPU o lê como `vals.first()`.
+    // `ReadBroadcast` só faz broadcast quando a porta traz UM valor; com N ela
+    // devolve `in[i]`, e ler assim aqui dava ao device uma lei que a rota
+    // canônica não tem — MEDIDO num campo por-elemento: a CPU devolvia a grade
+    // intocada (raio 0 vindo de `vals[0]`) e o device empurrava, `0,165` de
+    // divergência de posição. Não era ε: eram dois desenhos.
+    //
+    // O RAIO POR ELEMENTO é uma capacidade real e desejada (Houdini POP Interact
+    // por `pscale`), e ela **não é isto**: a lei honesta é `r_i + r_j` (simétrica,
+    // e byte-idêntica ao de hoje sob spread uniforme), que na grade exige limitar
+    // o alcance pelo raio MÁXIMO — um `Max` reduce sobre a coluna. Nenhum kernel
+    // do repo hoje combina `register_grid` com `reduces()`, então isso é wave
+    // própria, não uma linha. Ver o plano 89 §10.2 (W1-B).
+    let radius = params.radius * read_spread_v(0u);
     let min_dist = 2.0 * radius;
     // The CPU's early identity, to the letter: fewer than two discs, no radius,
     // or no strength ⇒ the input is returned untouched.

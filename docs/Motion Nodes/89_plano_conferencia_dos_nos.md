@@ -502,9 +502,39 @@ A fiação já existia, o vocabulário já existia; faltava a leitura.
    motivo que alega é pior que nenhum. Um gate de dois passos foi escrito para pegá-lo e
    **descartado** quando a mutação sobreviveu a ele também.
 
+#### W1-B ⏳ — o `spread` do `motion.collide`: o defeito era MAIOR, e a cura é OUTRA
+
+A conferência classificou isto como *"entrada descartada"* (`spread_amount = vals.first()`
+colapsa uma coluna por-instância) e prescreveu *"ler a coluna"*. A verificação achou uma coisa
+pior e mudou a cura:
+
+⚠️ **A GPU já lia por elemento** (`read_spread_v(i)`), e a CPU não — logo isto não era entrada
+descartada, era **DIVERGÊNCIA CPU×GPU não gateada**. Medido com um `value.instance_field` em modo
+Ramp na porta: a CPU devolve a grade **INTOCADA** (o `vals[0]` é `0` ⇒ raio `0` ⇒ a identidade
+precoce dispara) enquanto o device empurra — **área 1,5625 contra 2,2039**, pior `|Δpos| = 1,65e-1`.
+Não é ε: são dois desenhos. ⚠️ **E as fixtures irmãs não continham o fenômeno** (alimentam `spread`
+de comprimento 1 ou nenhum), então os gates estavam todos verdes por cima.
+
+⚠️ **O caminho por-elemento do device era ACIDENTE, não desenho:** a doc das bindings dele declara
+*"broadcast (ausente ⇒ 1)"* — a *respiração* animável —, e `ColumnAccess::ReadBroadcast` só faz
+broadcast com **um** valor; com N ele devolve `in[i]`. A lei que o acidente produzia é ainda
+**assimétrica** (`min_dist = 2·r_i`, o raio de quem olha), então dois discos discordariam sobre
+estarem se tocando.
+
+**Fechado agora:** o device honra a intenção que ele mesmo declara (`read_spread_v(0u)`) ⇒ as duas
+rotas são **bit-exatas** (`0e0`) e **nenhuma cena se move** (a CPU era a referência e não mudou).
+
+**Aberto, com o desenho escrito — W1-B:** o raio **POR ELEMENTO** é capacidade real e desejada
+(o `pscale` do Houdini POP Interact; o tamanho do clone no Push Apart do C4D), e a lei honesta é
+**`r_i + r_j`** — simétrica, e **byte-idêntica à de hoje sob spread uniforme** (`r+r = 2r`). O que
+a torna wave e não linha é o device: com raios variáveis o alcance da grade tem de ser limitado
+pelo raio **MÁXIMO**, ou seja um `Max` reduce sobre a coluna — e **nenhum kernel do repo combina
+`register_grid` com `reduces()` hoje**. É máquina nova, com paridade própria.
+
 **O que SOBRA da família 3** (os ~7 P0): o teto de 2 000 do boids (o caminho da CPU definindo o do
 device — §0.0) · `max_force` · `pressure` e os clusters do soft body · o `bend stiffness` da corda ·
-e o `spread` do `motion.collide`, que **colapsa uma coluna inteira em `vals.first()`** (T5).
+e o raio por-elemento do `motion.collide` (**W1-B** acima — o defeito de divergência que ele
+escondia está FECHADO).
 ⚠️ E **dois P0 mudaram de natureza com esta wave**: a *gravidade VETOR* da corda e da gelatina
 passa a ser **exprimível por composição** (uma `force.wind` em qualquer ângulo, com `gravity = 0`)
 — o que era gap virou ergonomia, e é isso que um desbloqueador faz com a tabela que o precede.

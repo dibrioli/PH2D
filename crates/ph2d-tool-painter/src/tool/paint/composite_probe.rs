@@ -256,3 +256,92 @@ fn probe_composite_vertical_seam() {
         eprintln!("{name}: maior degrau {worst} niveis em x={wx}");
     }
 }
+
+/// SONDA — a LARGURA DA RAMPA da borda (Enio 2026-08-09: *"margens duras e pixeladas"*).
+///
+/// ⚠️ **VEREDITO: a pilha está INOCENTE, e o controle é a prova.** Medido (`PROBE_PASSES=n`):
+///
+/// | passadas | Brush só | + Smear | + Blur | + Blur + Smear |
+/// |---|---|---|---|---|
+/// | 1 | 7 texels | 7 | 7 | 7 |
+/// | 5 | 3 | 3 | 4 | 3 |
+/// | 15 | **2** | 2 | 3 | 2 |
+///
+/// O **brush digital sozinho** endurece exatamente igual ⇒ o que a foto mostra é o **defeito ABERTO** que
+/// a §13.10 do [doc 25](../../../../docs/Painter/25_avaliacao_gpu.md) já mede e nomeia
+/// (`the_documented_hardening_is_still_there_and_this_is_its_number`), e **não** uma consequência do
+/// Composite Brush nem da wave que consertou a dobra do smear.
+///
+/// ⚠️ **E isto fecha o Bug #16 como pista falsa para cá:** a cura dele (a fração como alpha LINEAR na
+/// aparência) mora no render da AQUARELA, e a rota digital tem outra doença — não a saturação óptica
+/// comendo o AA, mas o **produto por-dab afiando a cauda do falloff**. A §13.10 já tentou as duas leis de
+/// acúmulo possíveis, e cada uma tem artefato (produto = endurece · envelope = CONTAS), então a próxima
+/// hipótese **não pode ser uma terceira lei** — os candidatos que sobram estão escritos lá: o overlay, os
+/// defaults do pincel (o Spacing governa quantos dabs por texel) ou aceitar o endurecimento.
+///
+/// ⚠️ **Por que a pilha o torna mais VISÍVEL sem o causar** (hipótese, não medida): o Smear e o Blur
+/// re-tocam a MESMA região a cada batch, então um traço da pilha atravessa a mesma cauda de falloff
+/// muitas vezes onde o Brush sozinho a atravessa uma. É a mesma aritmética das quinze passadas, dentro de
+/// um gesto só.
+///
+/// O oráculo é o do Bug #16: quantos texels a borda leva para ir de tinta a papel. Uma borda honesta de
+/// pincel tem rampa de ~0,4·raio; um degrau binário mede ~1. Medido no OMBRO de um traço, perpendicular
+/// a ele, no MEIO (a ponta tem o taper e mediria outra coisa).
+#[test]
+fn probe_composite_edge_ramp() {
+    const SIZE: u32 = 240;
+    for (name, ops) in [
+        ("Brush só (controle)", vec![CompositeOp::Brush]),
+        (
+            "Brush + Smear",
+            vec![CompositeOp::Brush, CompositeOp::Smear],
+        ),
+        ("Brush + Blur", vec![CompositeOp::Brush, CompositeOp::Blur]),
+        (
+            "Brush + Blur + Smear",
+            vec![CompositeOp::Brush, CompositeOp::Blur, CompositeOp::Smear],
+        ),
+    ] {
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; (SIZE * SIZE * 4) as usize], SIZE, SIZE);
+        t.paint.brush.radius_px = 20.0;
+        t.paint.brush.color = [0.6, 0.0, 0.0];
+        t.paint.brush.space_attenuation = false;
+        t.paint.composite_enabled = true;
+        for pos in 0..3 {
+            t.paint.composite[pos] = CompositeLayer {
+                op: *ops.get(pos).unwrap_or(&CompositeOp::Brush),
+                strength: if pos < ops.len() { 0.6 } else { 0.0 },
+            };
+        }
+        t.paint.composite[0].strength = 1.0;
+        // ⚠️ A doença desta família é de REPETIÇÃO, não de um traço: a §13.10 mediu a banda indo de
+        // 3,53 px numa passada para 1,38 em quinze. Uma passada só não a contém.
+        let passes: u32 = std::env::var("PROBE_PASSES")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(1);
+        for _ in 0..passes {
+            drag(&mut t, 120.0, 40.0, 200.0);
+        }
+        // Coluna no MEIO do traço, varrendo para fora: quantos texels entre 90% e 10% da tinta.
+        let px = &t.canvas_rgba;
+        let at = |y: u32| f32::from(255 - px[((y * SIZE + 120) * 4) as usize]) / 255.0;
+        let peak = (100..120).map(at).fold(0.0f32, f32::max);
+        let (mut hi, mut lo) = (None, None);
+        for y in 120..170 {
+            let v = at(y) / peak.max(1e-6);
+            if hi.is_none() && v < 0.9 {
+                hi = Some(y);
+            }
+            if lo.is_none() && v < 0.1 {
+                lo = Some(y);
+                break;
+            }
+        }
+        match (hi, lo) {
+            (Some(a), Some(b)) => eprintln!("{name}: rampa {} texels (90%..10%)", b - a),
+            _ => eprintln!("{name}: rampa NAO MEDIDA (hi={hi:?} lo={lo:?}, peak={peak:.3})"),
+        }
+    }
+}

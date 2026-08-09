@@ -91,6 +91,15 @@ pub struct RowSpec {
     /// normalizar nada e não vai aprender. Quem produz a string é o dono do documento, exactamente
     /// como o `kind` chega aqui já resolvido em texto.
     pub icon: Option<String>,
+    /// **O ícone ESCOLHIDO do catálogo do editor**, pelo slug — a outra rota do glifo.
+    ///
+    /// ⚠️ **O SLUG, nunca o número:** o discriminante de `IconId` é a posição alfabética do
+    /// arquivo SVG, então acrescentar um ícone empurra todos os que vêm depois dele — e um número
+    /// no código gerado passaria a nomear outro glifo, em silêncio, em todo painel já commitado.
+    ///
+    /// ⚠️ Ele e o [`Self::icon`] são **mutuamente exclusivos por construção**: quem os preenche
+    /// pergunta a precedência à porta única do catálogo, e ela devolve UM dos dois.
+    pub icon_slug: Option<String>,
 }
 
 /// **O painel que uma árvore autorada descreve.**
@@ -146,18 +155,25 @@ pub fn emit(spec: &PanelSpec) -> String {
             }
         }
         out.push_str(",\n        icon: ");
-        match &r.icon {
-            None => out.push_str("None"),
-            Some(d) => {
-                out.push_str("Some(");
-                push_str_literal(&mut out, d);
-                out.push(')');
-            }
-        }
+        push_opt_str(&mut out, r.icon.as_deref());
+        out.push_str(",\n        icon_slug: ");
+        push_opt_str(&mut out, r.icon_slug.as_deref());
         out.push_str(",\n    },\n");
     }
     out.push_str("];\n");
     out
+}
+
+/// `Some("…")` ou `None` — o campo opcional de texto, escapado.
+fn push_opt_str(out: &mut String, v: Option<&str>) {
+    match v {
+        None => out.push_str("None"),
+        Some(d) => {
+            out.push_str("Some(");
+            push_str_literal(out, d);
+            out.push(')');
+        }
+    }
 }
 
 /// Um literal de string Rust, com o que precisa de escape **escapado**.

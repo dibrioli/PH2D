@@ -25,7 +25,7 @@ use ph2d_editor_core::widget::panel_chrome::{
     panel_resize_handle_rect_bl,
 };
 use ph2d_editor_core::widget::{
-    AUTHORED_SCROLLBAR_ID, IconGlyph, SkinParam, paint_scrollbar, paint_widget_skin_with,
+    AUTHORED_SCROLLBAR_ID, SkinParam, icon_glyph, paint_scrollbar, paint_widget_skin_with,
     scrollbar_is_needed, scrollbar_thumb_rect, scrollbar_track_rect,
 };
 use ph2d_editor_core::zones::Rect;
@@ -141,7 +141,9 @@ fn paint_body(ctx: &mut PaintCtx, theme: Theme, x: f32, w: f32, mut y: f32) -> f
             store.get(row.id),
             SkinParam {
                 rgba: row.rgba,
-                icon: row.icon.as_ref().map(IconGlyph::Path),
+                // ⚠️ A precedência sai da porta única do catálogo — a MESMA que o canvas
+                // percorre. Um `if` aqui seria a terceira cópia da regra.
+                icon: icon_glyph(row.icon_id, row.icon.as_ref()),
             },
             r,
             scene,

@@ -200,18 +200,39 @@ metades, ou nenhuma.
 neutro, nunca argumento novo nem variante de contrato). Hoje um campo (`rgba`); o `RowSpec` ganha o
 espelho dele e o codegen o emite.
 
-### 6.2 ⛔ O `IconButton` NÃO entra pelo mesmo canal, e a razão é medida
+### 6.2 ✅ O `IconButton` entrou pelo MESMO canal — e as DUAS rotas (2026-08-09)
 
-O parâmetro dele é **GEOMETRIA** (`IconGlyph::Path(&BezPath)`), não um escalar de 4 bytes. As duas
-respostas candidatas são desenho de produto, não fiação:
+⚠️ **Esta seção dizia o contrário, e a construção derrubou três afirmações dela.** Fica escrita a
+correção, porque cada uma custaria a próxima LLM uma decisão errada.
 
-- **o artista DESENHA o ícone** (a forma que veste o `IconButton` *é* o glifo) — a resposta nativa
-  de um editor vetorial, e ela obriga o **código gerado a carregar um `BezPath`**;
-- **o artista ESCOLHE do `IconId`** — barato de emitir, mas é o primeiro campo autorado que o
-  `VecWidget` teria, logo **schema**.
+Ela dizia *"o parâmetro dele é GEOMETRIA, não um escalar de 4 bytes ⇒ não entra pelo mesmo canal"*.
+**Entra:** um canal *side-metadata* é um **campo com neutro**, e nada nessa forma exige que o campo
+seja pequeno. O campo é um `Option<IconGlyph<'a>>` — e a escolha do TIPO é o que fez a segunda rota
+custar quase nada, porque o `IconGlyph` do catálogo já tinha exactamente os dois braços que a
+pergunta admite.
 
-⇒ Ele fica **nomeado e não construído**. Colapsar os dois num enum antes de a segunda forma ser
-conhecida seria inventar a lista — a mesma armadilha que a família da LISTA (§2) evita.
+Ela dizia que a rota do `IconId` *"é o primeiro campo autorado que o `VecWidget` teria, logo
+**schema**"*. ⚠️ **Verdade só se for um CAMPO.** Um **componente próprio** (`VecWidgetIcon`) cunha
+a própria chave de blob e **não move o `PROJECT_SCHEMA`** — é o precedente do `PhysicsJoint` e do
+`GravityScale`, e o registro do `ph2d-ecs` é o único número que sobe.
+
+E ela dizia que colapsar as duas *"seria inventar a lista"*. ⚠️ **A lista não foi inventada: ela já
+existia**, escrita há muito no `IconGlyph`, e o que faltava era ver que aquele enum É a resposta.
+
+**As duas rotas, como ficaram:**
+
+| rota | onde vive | o que o gerado carrega |
+|---|---|---|
+| **o artista DESENHA** (default) | a própria forma que veste o botão | o `d` do SVG, normalizado em 24×24 |
+| **o artista ESCOLHE** (override) | `ph2d_ecs::VecWidgetIcon { slug }` | o **slug** do glifo |
+
+⚠️ **O SLUG, nunca o número.** O discriminante do `IconId` é a **posição alfabética do arquivo
+SVG** — o `enum_order_matches_svgs` pina isso —, então acrescentar um ícone empurra todos os que
+vêm depois dele, e um número guardado num documento passaria a nomear outro glifo em silêncio.
+
+⚠️ **E a precedência tem UMA porta** (`widget::icon_glyph`), perguntada pelos TRÊS consumidores (a
+ponte do canvas, o plano do painel, o painel compilado): *a escolha vence, e a ausência dela É o
+desenho* — sem um terceiro estado a dizer qual rota está activa, então elas nunca podem discordar.
 
 ### 6.3 A ordem da §4, corrigida
 
@@ -220,5 +241,5 @@ conhecida seria inventar a lista — a mesma armadilha que a família da LISTA (
 | ~~1~~ | `NumberInput` + `LevelMeter` | 67,1% → **72,4%** | ✅ **feito** |
 | **1** | `ColorSwatch` pelo canal do §6.1 | 72,4% → **80,6%** | as duas metades juntas |
 | **2** | colapso de seção | — | 9 dos 23 painéis reais |
-| **3** | `IconButton` | 80,6% → **85,4%** | ⚠️ decisão de produto (§6.2) |
+| **3** | `IconButton` | 80,6% → **85,4%** | ✅ **feito** — as DUAS rotas (§6.2) |
 | **4** | a família da **LISTA** | → **~100%** | filhos autorados |

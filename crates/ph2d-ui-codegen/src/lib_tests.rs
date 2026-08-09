@@ -9,6 +9,7 @@ fn row(kind: &str, label: &str, key: &str) -> RowSpec {
         key: key.into(),
         rgba: None,
         icon: None,
+        icon_slug: None,
     }
 }
 
@@ -20,10 +21,18 @@ fn row_tinted(kind: &str, label: &str, key: &str, rgba: [u8; 4]) -> RowSpec {
     }
 }
 
-/// A mesma row, com o glifo que só um botão de ícone carrega.
+/// A mesma row, com o glifo DESENHADO que só um botão de ícone carrega.
 fn row_iconed(kind: &str, label: &str, key: &str, d: &str) -> RowSpec {
     RowSpec {
         icon: Some(d.into()),
+        ..row(kind, label, key)
+    }
+}
+
+/// A mesma row, com o ícone ESCOLHIDO — a outra rota do glifo.
+fn row_chosen(kind: &str, label: &str, key: &str, slug: &str) -> RowSpec {
+    RowSpec {
+        icon_slug: Some(slug.into()),
         ..row(kind, label, key)
     }
 }
@@ -173,5 +182,31 @@ fn the_glyph_comes_out_as_a_string_only_where_it_exists() {
     assert!(
         src.contains(r#"icon: Some("M0,0 L2,1 \"Z\""),"#),
         "o glifo nao saiu escapado:\n{src}"
+    );
+}
+
+/// **O ícone ESCOLHIDO sai pelo SLUG, e nunca ao lado do desenho.**
+///
+/// ⚠️ A segunda metade é a que importa: os dois campos são mutuamente exclusivos por construção
+/// (quem os preenche pergunta a precedência à porta única do catálogo), e um emissor que
+/// escrevesse os dois deixaria o painel compilado a escolher sozinho — uma segunda resposta a
+/// *qual ícone?*, escondida dentro do gerado.
+#[test]
+fn the_chosen_icon_comes_out_as_a_slug_and_never_beside_a_drawing() {
+    let src = emit(&PanelSpec {
+        id: "demo".into(),
+        title: "Demo".into(),
+        rows: vec![
+            row_chosen("IconButton", "Trash", "trash", "trash"),
+            row_iconed("IconButton", "Play", "play", "M0,0 L2,1 Z"),
+        ],
+    });
+    assert!(
+        src.contains("icon: None,\n        icon_slug: Some(\"trash\"),"),
+        "o slug nao saiu, ou saiu ao lado de um desenho:\n{src}"
+    );
+    assert!(
+        src.contains("icon: Some(\"M0,0 L2,1 Z\"),\n        icon_slug: None,"),
+        "o desenho saiu ao lado de um slug:\n{src}"
     );
 }

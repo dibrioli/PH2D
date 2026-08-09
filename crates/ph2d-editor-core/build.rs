@@ -199,6 +199,24 @@ fn slug_to_const(slug: &str) -> String {
     slug.replace('-', "_").to_uppercase()
 }
 
+/// Convert `"my-slug-name"` → `"MySlugName"` — the `IconId` variant identifier.
+///
+/// ⚠️ It is the SAME transform `icons.rs` applies by hand when a variant is declared, and that is
+/// the point: emitting the variant list from here makes a missing (or misspelt) variant a
+/// **compile error in the generated file**, instead of a runtime list that silently drifts from
+/// the enum.
+fn slug_to_variant(slug: &str) -> String {
+    slug.split('-')
+        .map(|w| {
+            let mut c = w.chars();
+            match c.next() {
+                Some(f) => f.to_uppercase().collect::<String>() + c.as_str(),
+                None => String::new(),
+            }
+        })
+        .collect()
+}
+
 /// Emit Rust source for `icons_generated.rs`.
 fn emit_rust(svgs: &[(String, String)]) -> String {
     let mut s = String::new();
@@ -266,6 +284,23 @@ fn emit_rust(svgs: &[(String, String)]) -> String {
     );
     for (slug, _) in svgs {
         s.push_str(&format!("    {:?},\n", slug));
+    }
+    s.push_str("];\n\n");
+
+    // ⚠️ **A lista de VARIANTES, emitida daqui e não escrita à mão.** Um `ALL_ICONS` mantido no
+    // `icons.rs` seria uma segunda cópia do enum, e ela drifta em silêncio; aqui, um variante que
+    // falte (ou esteja mal escrito) faz o **arquivo gerado não compilar**, que é a falha alta que
+    // se quer de código gerado. A ordem é a mesma dos dois vizinhos: indexável por `IconId as usize`.
+    s.push_str(
+        "/// Every canonical icon, in alphabetical-slug order — indexable by `IconId as usize`,\n\
+         /// same order as `ALL_ICON_SLUGS` and `ICON_CMDS_BY_ID`.\n\
+         pub const ALL_ICON_IDS: &[crate::icons::IconId] = &[\n",
+    );
+    for (slug, _) in svgs {
+        s.push_str(&format!(
+            "    crate::icons::IconId::{},\n",
+            slug_to_variant(slug)
+        ));
     }
     s.push_str("];\n");
 

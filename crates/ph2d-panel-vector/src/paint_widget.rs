@@ -13,6 +13,9 @@
 //! artista procuraria um campo que não existe e concluiria que o controle é mudo — a mesma razão
 //! pela qual a instância órfã tem um readout em vez de um silêncio.
 
+use ph2d_editor_core::interaction::InteractiveState;
+use ph2d_editor_core::widget::{Dropdown, DropdownOption, paint_dropdown_chip};
+use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 
 use crate::ids;
@@ -68,12 +71,48 @@ impl BodyCtx<'_> {
             );
         }
         y = self.label_line(tr("panel.vector.widget.label_is_name"), y);
+        y = self.icon_row(&s, y);
         y = self.drives_rows(&s, y);
         self.action_button(
             ids::VECTOR_WIDGET_REMOVE,
             tr("panel.vector.widget.remove"),
             y,
         )
+    }
+
+    /// **QUAL ícone este botão desenha** (W8b §6.2) — o chip que abre o picker.
+    ///
+    /// ⚠️ A row inteira some para um tipo que não tem ícone, em vez de aparecer apagada: um chip
+    /// *"Icon: —"* num `Slider` diria que falta escolher, quando o que falta é o tipo ter face.
+    /// É a mesma lei do [`Self::drives_rows`] ao lado.
+    ///
+    /// ⚠️ E o chip mostra **`Drawing`** quando não há escolha, nunca um vazio: *o botão desenha a
+    /// forma que o veste* é uma resposta, e um traço no lugar dela leria como um campo por
+    /// preencher.
+    fn icon_row(&mut self, s: &state::WidgetSkinState, y: f32) -> f32 {
+        // ⚠️ O rótulo sai da porta do PICKER, não de um `unwrap_or` local: a palavra para
+        // *nenhum glifo escolhido* aparece na lista E no chip, e duas cópias divergem.
+        let Some(label) = crate::icon_dropdown::chip_label(s) else {
+            return y;
+        };
+        let chip = Rect::new(self.inner_x, y, self.inner_w, self.row_h);
+        let open = matches!(
+            self.store.get(ids::VECTOR_WIDGET_ICON_DD),
+            Some(InteractiveState::Dropdown { open: true, .. })
+        );
+        let dd = Dropdown::new(
+            ids::VECTOR_WIDGET_ICON_DD,
+            "",
+            vec![DropdownOption::new(ids::VECTOR_WIDGET_ICON_DD, (), label)],
+        )
+        .selected(())
+        .open(open);
+        paint_dropdown_chip(&dd, chip, self.scene, self.text_system, self.theme);
+        self.hit_index.register(ids::VECTOR_WIDGET_ICON_DD, chip);
+        if open {
+            state::set_pending_icon_dd(Some(chip));
+        }
+        y + self.row_h + self.row_gap
     }
 
     /// **O que esta row dirige** — o readout + o conta-gotas (W8b.3).

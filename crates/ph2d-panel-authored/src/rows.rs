@@ -14,6 +14,7 @@
 //! fazer nada, que é o item-de-menu-morto pintado com outro nome.
 
 use ph2d_a11y::NodeId;
+use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::ids;
 use ph2d_editor_core::widget::WidgetKind;
 use ph2d_vector::BezPath;
@@ -38,6 +39,8 @@ pub struct RowConst {
     pub rgba: Option<[u8; 4]>,
     /// O glifo, em texto SVG — ver [`Row::icon`], que é a curva reconstituída dele.
     pub icon: Option<&'static str>,
+    /// O slug do ícone ESCOLHIDO do catálogo — a outra rota, exclusiva com a de cima.
+    pub icon_slug: Option<&'static str>,
 }
 
 /// Uma linha do painel, com o id já derivado da chave.
@@ -50,12 +53,15 @@ pub struct Row {
     pub id: NodeId,
     /// A cor que esta row mostra, quando o tipo dela É uma cor — ver [`ph2d_editor_core::widget::SkinParam`].
     pub rgba: Option<[u8; 4]>,
-    /// O glifo que esta row desenha, quando o tipo dela É um botão de ícone.
+    /// O glifo DESENHADO, quando o tipo dela É um botão de ícone e o artista não escolheu um.
     ///
     /// ⚠️ **Curva, e não o texto SVG que o gerado carrega** — a conversão acontece UMA vez, aqui
     /// no `OnceLock`, ao lado da derivação do id. Reparsear por quadro seria um parser de string
     /// no laço de pintura.
     pub icon: Option<BezPath>,
+    /// O ícone ESCOLHIDO do catálogo, resolvido do slug. ⚠️ Um slug que este build não conhece
+    /// vira `None` e o desenho assume — o mesmo canal de compatibilidade do `kind`.
+    pub icon_id: Option<IconId>,
 }
 
 impl Row {
@@ -105,6 +111,7 @@ pub fn rows() -> &'static [Row] {
                 // trocaria um ícone ausente pela aplicação inteira. Sem curva, o botão desenha a
                 // moldura, que é o neutro que o pintor já tem.
                 icon: r.icon.and_then(|d| BezPath::from_svg(d).ok()),
+                icon_id: r.icon_slug.and_then(IconId::from_slug),
             })
             .collect()
     })

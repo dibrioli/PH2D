@@ -40,8 +40,8 @@ use ph2d_vec_scene::{Paint, Rgba8, VecPath, VecPathId, rectangle, star};
 /// staleness (`the_generated_panel_is_not_stale`) constrói o mundo a partir dela para emitir o
 /// código e comparar com o arquivo commitado. Uma segunda lista escrita à mão no gate divergiria
 /// desta no dia em que uma row entrasse — e o gate ficaria verde sobre o painel errado.
-pub(crate) const AUTHORED: [([f64; 4], &str, Option<WidgetKind>); 8] = [
-    ([-2.0, -3.9, 2.0, 2.4], "Color", None),
+pub(crate) const AUTHORED: [([f64; 4], &str, Option<WidgetKind>); 9] = [
+    ([-2.0, -4.9, 2.0, 2.4], "Color", None),
     (
         [-1.8, 1.4, 1.8, 2.2],
         "Appearance",
@@ -60,8 +60,27 @@ pub(crate) const AUTHORED: [([f64; 4], &str, Option<WidgetKind>); 8] = [
         "Play",
         Some(WidgetKind::IconButton),
     ),
+    (
+        [-0.4, -4.7, 0.4, -3.9],
+        "Trash",
+        Some(WidgetKind::IconButton),
+    ),
     ([-1.7, 1.25, 1.7, 1.35], "Backdrop", None),
 ];
+
+/// **O ícone ESCOLHIDO de uma row**, quando o artista escolheu um em vez de desenhar.
+///
+/// ⚠️ **Porta única, e chaveada pelo NOME e não pela posição** — o irmão do [`authored_fill`]. A
+/// tabela acima já é uma tupla de três, e o `clippy::type_complexity` acabou de cobrar a quinta
+/// posição no código gerado: um quarto elemento aqui repetiria a lição na mesma sessão.
+///
+/// ⚠️ **A cena leva as DUAS rotas lado a lado, e é isso que a torna uma prova:** *Play* desenha a
+/// ESTRELA que o artista fez, *Trash* mostra o glifo do catálogo. Com só uma delas, *"a escolha
+/// vence"* e *"o botão sempre desenha a forma"* seriam a mesma foto.
+#[must_use]
+pub(crate) fn authored_icon(name: &str) -> Option<&'static str> {
+    (name == "Trash").then_some("trash")
+}
 
 /// **A GEOMETRIA de cada forma da tabela** — e para UMA delas ela é o GLIFO.
 ///
@@ -182,6 +201,9 @@ fn name_and_parent(app: &mut crate::App) {
         if let Some(k) = kind {
             ent.insert(ph2d_ecs::VecWidget { kind: k.code() });
         }
+        if let Some(slug) = authored_icon(name) {
+            ent.insert(ph2d_ecs::VecWidgetIcon { slug: slug.into() });
+        }
         if i != FRAME {
             ent.insert(ph2d_ecs::ChildOf(frame_e));
         }
@@ -242,8 +264,8 @@ fn announce(app: &mut crate::App) {
         spec.title,
         spec.rows.len()
     );
-    if spec.rows.len() != 6 {
-        eprintln!("[ui-panel] ⚠️ **PARE**: eram para ser 6 rows (o 'Backdrop' e' desenho puro).");
+    if spec.rows.len() != 7 {
+        eprintln!("[ui-panel] ⚠️ **PARE**: eram para ser 7 rows (o 'Backdrop' e' desenho puro).");
         return;
     }
     eprintln!(
@@ -302,6 +324,16 @@ fn announce(app: &mut crate::App) {
     eprintln!("     impedir. Edite os nos dela no modo Node e re-rode: o glifo acompanha.");
     eprintln!("     ⚠️ **O limite, dito:** girar a forma pelo gizmo NAO gira o glifo — ele e' o");
     eprintln!("     desenho autorado, nao a pose.");
+    eprintln!(
+        " 16. ⚠️ **A SEGUNDA ROTA, na row de baixo:** 'Trash' e' um botao de icone tambem, e"
+    );
+    eprintln!("     ele NAO mostra a forma que o veste — mostra o LIXO do catalogo do editor,");
+    eprintln!("     porque o artista ESCOLHEU. As duas rotas estao lado a lado de proposito: com");
+    eprintln!("     so uma delas, 'a escolha vence' e 'o botao sempre desenha a forma' seriam a");
+    eprintln!("     mesma foto. Selecione 'Trash', na secao Widget Skin aperte **Icon...** e");
+    eprintln!("     escolha outro glifo: o canvas E o painel mudam juntos. Escolha **Drawing** no");
+    eprintln!("     topo da lista e ele volta a desenhar a estrela — tirar a escolha E' voltar ao");
+    eprintln!("     desenho, nao um terceiro estado.");
 }
 
 #[cfg(test)]

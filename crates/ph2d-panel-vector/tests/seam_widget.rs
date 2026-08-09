@@ -49,6 +49,15 @@ fn skin(sel: Option<usize>, unknown: bool) -> WidgetSkinState {
         selected: sel,
         unknown,
         drives: None,
+        icon: None,
+    }
+}
+
+/// A mesma pele, mas de um tipo que TEM face de ícone — `chosen` diz se já há um glifo escolhido.
+fn iconed(chosen: Option<&str>) -> WidgetSkinState {
+    WidgetSkinState {
+        icon: Some(chosen.map(str::to_string)),
+        ..skin(Some(0), false)
     }
 }
 
@@ -206,4 +215,84 @@ fn the_bind_row_exists_only_where_it_means_something() {
     clear();
     assert!(rect_under(driving(2, true), ids::VECTOR_WIDGET_UNBIND).is_some());
     clear();
+}
+
+/// **O chip do PICKER é vivo sob o rato, e o gesto ABRE a lista.**
+///
+/// ⚠️ Ele é um `Dropdown` e não um botão, então o que se prova não é um `Click` no barramento —
+/// abrir é **panel-local** — e sim que o ponteiro REAL sobre o retângulo pintado chega ao
+/// despacho genérico. É aí que ele podia nascer *pintado e morto*: o gesto passa pela checagem de
+/// focabilidade que um `WidgetEvent` sintético pula.
+#[test]
+fn the_icon_picker_chip_is_alive_and_opens_the_list() {
+    state::set_widget_skin_state(Some(iconed(None)), 0);
+    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut ps = VectorPanelState;
+    let r = host
+        .painted_rect::<VectorPanel>(&mut ps, VIEWPORT, ids::VECTOR_WIDGET_ICON_DD)
+        .expect("o chip do picker nao foi PINTADO com area clicavel");
+    let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
+    host.dispatch_pointer_event(pointer(PointerKind::Down, cx, cy, SEC));
+    host.dispatch_pointer_event(pointer(PointerKind::Up, cx, cy, SEC + SEC / 100));
+    assert_eq!(
+        host.dropdown_is_open(ids::VECTOR_WIDGET_ICON_DD),
+        Some(true),
+        "o ponteiro sobre o chip nao abriu a lista — ele esta' desenhado e nao existe para o \
+         dispatcher"
+    );
+    clear();
+}
+
+/// **Uma LINHA da lista aberta chega ao barramento** — e é ela que muda o documento.
+///
+/// ⚠️ Esta é a metade que importa e a que o chip não prova: as rows nascem no passe DIFERIDO do
+/// popover, um lugar onde é fácil pintar sem registar (e o clique cairia no corpo do painel, em
+/// silêncio). ⚠️ E a linha escolhida é a **zero, o `Drawing`** de propósito: ela é o verbo que
+/// TIRA a escolha, e é o que um picker feito só de glifos deixaria sem porta.
+#[test]
+fn a_row_of_the_open_list_reaches_the_bus() {
+    state::set_widget_skin_state(Some(iconed(Some("trash"))), 0);
+    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut ps = VectorPanelState;
+    // Pinta uma vez para o `populate` registar o chip, abre-o, e pinta outra vez: o popover só
+    // existe no frame em que o chip está aberto.
+    host.painted_rect::<VectorPanel>(&mut ps, VIEWPORT, ids::VECTOR_WIDGET_ICON_DD);
+    host.set_dropdown_open(ids::VECTOR_WIDGET_ICON_DD, true);
+    let row = ids::vector_widget_icon_option_id(0);
+    let r = host
+        .painted_rect::<VectorPanel>(&mut ps, VIEWPORT, row)
+        .expect("a linha 'Drawing' da lista aberta nao foi pintada com area clicavel");
+    let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
+    host.dispatch_pointer_event(pointer(PointerKind::Down, cx, cy, SEC));
+    let evs = host.dispatch_pointer_event(pointer(PointerKind::Up, cx, cy, SEC + SEC / 100));
+    assert!(
+        evs.iter()
+            .any(|e| matches!(e, WidgetEvent::Click(c) if *c == row)),
+        "o ponteiro sobre a linha nao virou Click"
+    );
+    for ev in evs {
+        host.apply_panel_event::<VectorPanel>(&mut ps, ev);
+    }
+    assert!(
+        host.drained_actions().into_iter().any(|a| matches!(
+            a,
+            EditorAction::ToolPanelEvent(PanelEvent::Click(c)) if c == row
+        )),
+        "o Click da linha nao chegou ao bus — ela acende sob o mouse e nao faz nada (falta a \
+         linha na allowlist do event_clicks)"
+    );
+    clear();
+}
+
+/// **A row do picker NÃO é pintada para um tipo sem face de ícone.**
+///
+/// ⚠️ A metade da ausência, e ela é a que mantém a fronteira escrita: um chip *"Icon: Drawing"*
+/// num `Slider` diria que falta escolher, quando o que falta é o tipo ter face. É a mesma lei da
+/// linha *Drives*, que some para quem não dirige.
+#[test]
+fn a_kind_without_an_icon_face_gets_no_picker_row() {
+    assert!(
+        rect_under(skin(Some(0), false), ids::VECTOR_WIDGET_ICON_DD).is_none(),
+        "um tipo sem face de icone ganhou o chip do picker"
+    );
 }

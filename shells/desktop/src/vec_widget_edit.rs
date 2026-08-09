@@ -5,7 +5,8 @@
 //! despir. Não há um quarto porque não há um segundo número — o rótulo é o `Name` e a aparência
 //! é dos tokens.
 
-use ph2d_ecs::{Entity, SimWorld, VecWidget};
+use ph2d_ecs::{Entity, SimWorld, VecWidget, VecWidgetIcon};
+use ph2d_editor::icons::IconId;
 use ph2d_editor::widget::WidgetKind;
 use ph2d_vec_scene::VecPathId;
 
@@ -28,6 +29,13 @@ pub(crate) enum WidgetEdit {
     Bind,
     /// **Unbind** — solta a forma dirigida.
     Unbind,
+    /// A linha `i` do picker de ícone: `0` é **Drawing** (tirar a escolha), `1 + n` é
+    /// `IconId::all()[n]`.
+    ///
+    /// ⚠️ O índice é de RUNTIME e morre no frame; o que fica no documento é o **slug**. Guardar o
+    /// índice seria guardar a posição alfabética do arquivo SVG, que se move quando um ícone
+    /// novo nasce — ver o doc do `ph2d_ecs::VecWidgetIcon`.
+    Icon(usize),
 }
 
 /// Este id é um verbo de pele? **Porta única** do roteador.
@@ -44,7 +52,12 @@ pub(crate) fn widget_edit_for_id(id: ph2d_editor::NodeId) -> Option<WidgetEdit> 
         _ if id == ph2d_editor::ids::VECTOR_WIDGET_UNBIND => Some(WidgetEdit::Unbind),
         _ => (0..ph2d_editor::ids::MAX_WIDGET_KINDS)
             .find(|&i| ph2d_editor::ids::vector_widget_kind_id(i) == id)
-            .map(WidgetEdit::Kind),
+            .map(WidgetEdit::Kind)
+            .or_else(|| {
+                (0..=IconId::all().len())
+                    .find(|&i| ph2d_editor::ids::vector_widget_icon_option_id(i) == id)
+                    .map(WidgetEdit::Icon)
+            }),
     }
 }
 
@@ -73,6 +86,10 @@ pub(crate) fn apply(
             });
         }
         WidgetEdit::Remove => {
+            // ⚠️ Despir leva o ÍCONE junto, pelo mesmo argumento do vínculo abaixo: uma escolha
+            // de glifo sobre uma forma que já não veste viajaria no save e ressuscitaria no dia
+            // em que alguém a vestisse outra vez.
+            sim.world_mut().entity_mut(e).remove::<VecWidgetIcon>();
             // ⚠️ Despir leva o VÍNCULO junto: um `VecWidgetBind` sobre uma forma que já não veste
             // é um fio pendurado em nada — ele viajaria no save, entraria no diff do undo e
             // ressuscitaria dirigindo no dia em que alguém a vestisse outra vez.
@@ -87,6 +104,21 @@ pub(crate) fn apply(
             sim.world_mut()
                 .entity_mut(e)
                 .remove::<ph2d_ecs::VecWidgetBind>();
+        }
+        WidgetEdit::Icon(i) => {
+            // ⚠️ **`Drawing` REMOVE o componente**, em vez de escrever um slug vazio: a ausência
+            // É a rota do desenho, e um `Some("")` seria um terceiro estado que a porta da
+            // precedência teria de aprender a ignorar.
+            match i.checked_sub(1).and_then(|n| IconId::all().get(n)) {
+                Some(id) => {
+                    sim.world_mut().entity_mut(e).insert(VecWidgetIcon {
+                        slug: id.slug().to_string(),
+                    });
+                }
+                None => {
+                    sim.world_mut().entity_mut(e).remove::<VecWidgetIcon>();
+                }
+            }
         }
         WidgetEdit::Kind(i) => {
             // ⚠️ Um índice fora do catálogo é um chip que o painel não pintou — ignorar é a
@@ -177,8 +209,19 @@ pub(crate) fn publish(
                 .and_then(|t| sim.world().get::<ph2d_ecs::Name>(t))
                 .map(|n| n.0.to_string())
         });
+    // ⚠️ A row do picker existe para os tipos que TÊM face de ícone, e a pergunta é feita à porta
+    // única do catálogo — a MESMA que os dois construtores de parâmetro perguntam.
+    let icon = known.filter(|k| k.takes_icon()).map(|_| {
+        sim.world()
+            .get::<VecWidgetIcon>(e)
+            .map(|c| c.slug.clone())
+            // Um slug que este build não conhece mostra-se como DESENHO — o mesmo que ele
+            // de facto pinta. Mostrar o slug cru diria que a escolha vale, e ela não vale.
+            .filter(|s| IconId::from_slug(s).is_some())
+    });
     let state = ph2d_panel_vector::state::WidgetSkinState {
         drives,
+        icon,
         selected: known.and_then(|k| WidgetKind::ALL.iter().position(|&x| x == k)),
         // ⚠️ Vestida COM tipo desconhecido é um terceiro estado, e não *"não vestida"*: a forma
         // desenha como vetor mas o documento carrega uma pele, e o botão que faz sentido é

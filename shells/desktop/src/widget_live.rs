@@ -40,8 +40,9 @@
 //! (`ProjectSettings::pixels_per_meter`) — puxá-la para cá seria uma segunda resposta a *"quanto
 //! mede um pixel"*.
 
-use ph2d_ecs::{Entity, Name, SimWorld, VecWidget};
-use ph2d_editor::widget::{IconGlyph, SkinParam, WidgetKind, paint_widget_skin};
+use ph2d_ecs::{Entity, Name, SimWorld, VecWidget, VecWidgetIcon};
+use ph2d_editor::icons::IconId;
+use ph2d_editor::widget::{SkinParam, WidgetKind, icon_glyph, paint_widget_skin};
 use ph2d_editor::zones::Rect;
 use ph2d_text::TextSystem;
 use ph2d_tokens::Theme;
@@ -58,6 +59,17 @@ pub(crate) fn spec_of(sim: &SimWorld, map: &VecEntityMap, id: VecPathId) -> Opti
     sim.world()
         .get::<VecWidget>(Entity::from_bits(bits))
         .copied()
+}
+
+/// **O ícone ESCOLHIDO** desta forma, se o artista escolheu um.
+///
+/// ⚠️ Um slug que este build não conhece devolve `None` — e o `None` cai no DESENHO pela porta da
+/// precedência, que é o canal de compatibilidade de sempre. Recusar aqui deixaria o botão sem
+/// glifo nenhum num documento que outro build escreveu.
+fn chosen_icon(sim: &SimWorld, map: &VecEntityMap, id: VecPathId) -> Option<IconId> {
+    let &bits = map.get(&id)?;
+    let c = sim.world().get::<VecWidgetIcon>(Entity::from_bits(bits))?;
+    IconId::from_slug(&c.slug)
 }
 
 /// O rótulo que o widget mostra: o `Name` da entidade, ou vazio.
@@ -142,12 +154,18 @@ pub(crate) fn build(
         // `BezPath`, então normalizá-lo dentro do construtor do `SkinParam` deixaria o temporário
         // morrer antes da chamada. Uma `Option` nomeada é o que dá ao empréstimo um dono.
         let face = kind.takes_icon().then(|| icon_face(path)).flatten();
+        let chosen = kind
+            .takes_icon()
+            .then(|| chosen_icon(sim, map, path.id))
+            .flatten();
         let param = SkinParam {
             rgba: kind
                 .takes_colour()
                 .then(|| path.fill.as_ref().map(colour_of))
                 .flatten(),
-            icon: face.as_ref().map(IconGlyph::Path),
+            // ⚠️ A precedência **não é decidida aqui**: ela mora na porta única do catálogo, que
+            // o painel gerado percorre também. Um `if` local seria a terceira cópia dela.
+            icon: icon_glyph(chosen, face.as_ref()),
         };
         paint_widget_skin(kind, &label, param, rect, &mut skin, text, theme);
         out.insert(path.id, skin);

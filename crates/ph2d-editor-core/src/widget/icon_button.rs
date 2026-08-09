@@ -32,6 +32,28 @@ pub enum IconGlyph<'a> {
     Path(&'a BezPath),
 }
 
+/// **QUAL das duas rotas o botão desenha** — a lei, num lugar só.
+///
+/// Um `IconButton` autorado tem duas respostas possíveis para *qual ícone?*: **o desenho** da forma
+/// que o veste (o default de um editor vetorial) e **a escolha** de um glifo do catálogo. Esta
+/// função diz qual vence, e ela existe porque a pergunta é feita em TRÊS lugares — a ponte do
+/// canvas, o plano do painel gerado e o painel compilado.
+///
+/// ⚠️ **A escolha vence, e a ausência dela É o desenho.** Não há um terceiro estado a dizer qual
+/// rota está activa: tirar a escolha é literalmente voltar ao desenho, então as duas nunca podem
+/// discordar. E um slug que este build não conhece chega aqui como `None` — logo **degrada para o
+/// desenho**, que é o canal de compatibilidade de sempre.
+///
+/// ⚠️ Três cópias desta precedência divergiriam com modos de falha diferentes: o canvas mostraria
+/// o desenho e o painel o glifo escolhido (a divergência que só uma screenshot revela), ou o painel
+/// gerado emitiria os dois e o compilado escolheria sozinho.
+#[must_use]
+pub fn icon_glyph<'a>(chosen: Option<IconId>, drawn: Option<&'a BezPath>) -> Option<IconGlyph<'a>> {
+    chosen
+        .map(IconGlyph::Builtin)
+        .or_else(|| drawn.map(IconGlyph::Path))
+}
+
 /// Visual style. The chrome differs; the glyph draw is shared. Each
 /// reproduces an existing TopBar look exactly (no visual change on
 /// migration) — only the call site moves from inline to canonical.

@@ -308,3 +308,51 @@ fn the_icon_button_on_the_canvas_wears_its_own_drawing() {
          fala de geometria"
     );
 }
+
+/// **A ESCOLHA vence o desenho, no canvas** — e tirá-la devolve o desenho.
+///
+/// ⚠️ A segunda metade é a que prova o modelo: não há um terceiro estado a dizer qual rota está
+/// activa, então *voltar ao desenho* tem de ser exactamente *não ter o componente*. Sem ela, um
+/// `chosen_icon` que devolvesse `Some` para todo mundo ficaria verde na primeira asserção e o
+/// artista nunca mais veria a forma que desenhou.
+#[test]
+fn the_chosen_icon_beats_the_drawing_and_removing_it_gives_the_drawing_back() {
+    let skin_of = |chosen: Option<&str>| {
+        let (mut scene, mut sim, map, xf, id) =
+            scene_with(Some(WidgetKind::IconButton.code()), Some("Play"));
+        *scene.path_mut(id).expect("a forma existe") =
+            ph2d_vec_scene::star([0.0, 0.0], 1.0, 0.4, 5, 0.45);
+        if let Some(slug) = chosen {
+            let e = ph2d_ecs::Entity::from_bits(*map.get(&id).expect("a forma tem entidade"));
+            sim.world_mut()
+                .entity_mut(e)
+                .insert(ph2d_ecs::VecWidgetIcon { slug: slug.into() });
+        }
+        let skins = build_for(&scene, &sim, &map, &xf);
+        let e = skins
+            .get(&id)
+            .expect("a forma marcada tem pele")
+            .inner()
+            .encoding();
+        (e.n_paths, e.path_data.clone(), e.draw_data.clone())
+    };
+
+    let drawn = skin_of(None);
+    let trash = skin_of(Some("trash"));
+    assert_ne!(
+        drawn, trash,
+        "a escolha nao venceu o desenho — a ponte nao le o componente"
+    );
+    assert_ne!(
+        trash,
+        skin_of(Some("bolt")),
+        "dois glifos escolhidos pintaram igual — so' a PRESENCA do componente chega ao pintor"
+    );
+    // ⚠️ Um slug que este build não conhece **degrada para o desenho**, byte a byte — o canal de
+    // compatibilidade, e a razão de o `from_slug` devolver `Option`.
+    assert_eq!(
+        skin_of(Some("nao-existe")),
+        drawn,
+        "um slug desconhecido nao caiu no desenho"
+    );
+}

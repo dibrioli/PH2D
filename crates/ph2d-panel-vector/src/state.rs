@@ -96,7 +96,9 @@ pub(crate) use layout_state::{layout_flow, layout_item, layout_pad_each, set_lay
 #[path = "state_widget.rs"]
 mod widget_state;
 pub use widget_state::{WidgetSkinState, set_widget_skin_state};
-pub(crate) use widget_state::{widget_kinds_beyond, widget_skin_state};
+pub(crate) use widget_state::{
+    set_pending_icon_dd, take_pending_icon_dd, widget_kinds_beyond, widget_skin_state,
+};
 
 /// **OS ESTADOS de UI da seleção** (plano UI/UX W7) — que poses ela tem, e quanto tempo o tween
 /// entre elas leva.

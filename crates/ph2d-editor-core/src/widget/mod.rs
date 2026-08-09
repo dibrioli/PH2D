@@ -86,7 +86,7 @@ pub use dropdown::{
     paint_dropdown, paint_dropdown_chip, paint_dropdown_popover,
     paint_dropdown_popover_in_viewport, paint_dropdown_popover_scrolled,
 };
-pub use icon_button::{IconButtonStyle, IconGlyph, paint_icon_button};
+pub use icon_button::{IconButtonStyle, IconGlyph, icon_glyph, paint_icon_button};
 pub use key_value_list::{KeyValueEntry, KeyValueList, paint_key_value_list};
 pub use level_meter::{LevelMeter, paint_level_meter};
 pub use list_item::{ListItem, ListItemState, paint_list_item};

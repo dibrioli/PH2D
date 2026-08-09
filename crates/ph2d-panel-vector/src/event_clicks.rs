@@ -324,6 +324,11 @@ fn is_prefab_click(id: ph2d_a11y::NodeId) -> bool {
     || id == ids::VECTOR_WIDGET_BIND
     || id == ids::VECTOR_WIDGET_UNBIND
     || (0..ids::MAX_WIDGET_KINDS).any(|i| ids::vector_widget_kind_id(i) == id)
+    // As linhas do picker de ÍCONE. ⚠️ A varredura é sobre o CATÁLOGO + 1 (o *Drawing*), e não
+    // sobre um `MAX_*`: o id é hash de runtime, então não há teto de tabela a decidir quantos
+    // glifos são alcançáveis — é a razão de o picker ser um dropdown e não uma segmentada.
+    || (0..=ph2d_editor_core::icons::IconId::all().len())
+        .any(|i| ids::vector_widget_icon_option_id(i) == id)
     // **OS ESTADOS de UI** (W7) — a tabela mora no DOCUMENTO (`ProjectState`), então os três
     // verbos atravessam o barramento; o painel só mostra que verbos fazem sentido agora.
     || (0..ids::MAX_STATE_ROLES).any(|i| {

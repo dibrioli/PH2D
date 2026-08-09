@@ -39,6 +39,11 @@ pub(crate) fn world_from_authored() -> (SimWorld, VecScene, Entity) {
                 .entity_mut(e)
                 .insert(VecWidget { kind: k.code() });
         }
+        if let Some(slug) = super::authored_icon(name) {
+            sim.world_mut()
+                .entity_mut(e)
+                .insert(ph2d_ecs::VecWidgetIcon { slug: slug.into() });
+        }
     }
     (
         sim,
@@ -64,7 +69,7 @@ fn the_scene_keeps_a_child_that_is_only_drawing() {
         .skip(1)
         .filter(|(_, _, k)| k.is_none())
         .count();
-    assert_eq!(dressed, 6, "a cena deixou de ter seis filhos vestidos");
+    assert_eq!(dressed, 7, "a cena deixou de ter sete filhos vestidos");
     assert!(
         plain >= 1,
         "a cena perdeu o filho de desenho puro — o CONTROLE"
@@ -124,6 +129,11 @@ fn the_compiled_golden_carries_the_same_panel() {
         assert_eq!(got.key, want.key, "a chave da row divergiu");
         assert_eq!(got.rgba, want.rgba, "a cor da row divergiu");
         assert_eq!(got.icon, want.icon.as_deref(), "o icone da row divergiu");
+        assert_eq!(
+            got.icon_slug,
+            want.icon_slug.as_deref(),
+            "o icone ESCOLHIDO da row divergiu"
+        );
     }
 }
 

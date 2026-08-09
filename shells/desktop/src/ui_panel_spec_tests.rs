@@ -263,3 +263,58 @@ fn only_the_icon_button_carries_the_shapes_drawing() {
         "o glifo nao saiu do desenho, ou vazou para quem nao o consome"
     );
 }
+
+/// **A ESCOLHA vence o desenho, no plano do painel** — e os dois campos são exclusivos.
+///
+/// ⚠️ A exclusividade é o ponto: se o spec emitisse os dois, o painel compilado teria de escolher
+/// sozinho — uma segunda resposta a *qual ícone?*, escondida dentro do gerado, capaz de discordar
+/// do canvas sem um teste falhar.
+#[test]
+fn the_chosen_icon_wins_in_the_plan_and_the_two_fields_are_exclusive() {
+    use ph2d_ecs::VecWidgetIcon;
+    use ph2d_vec_scene::star;
+
+    let build = |chosen: Option<&str>| {
+        let mut sim = SimWorld::new();
+        let mut scene = VecScene::new();
+        let frame = sim
+            .world_mut()
+            .spawn((Name("Bar".into()), Transform::IDENTITY))
+            .id();
+        let id = scene.push_path(star([0.0, 0.0], 1.0, 1.0, 5, 0.45));
+        let e = sim
+            .world_mut()
+            .spawn((
+                Name("Play".into()),
+                Transform::IDENTITY,
+                VecPathRef(id),
+                VecWidget {
+                    kind: WidgetKind::IconButton.code(),
+                },
+            ))
+            .id();
+        sim.world_mut().entity_mut(e).insert(ChildOf(frame));
+        if let Some(slug) = chosen {
+            sim.world_mut()
+                .entity_mut(e)
+                .insert(VecWidgetIcon { slug: slug.into() });
+        }
+        let spec = of(&sim, &scene, frame);
+        let r = &spec.rows[0];
+        (r.icon.is_some(), r.icon_slug.clone())
+    };
+
+    assert_eq!(
+        build(None),
+        (true, None),
+        "sem escolha o plano perdeu o desenho"
+    );
+    assert_eq!(
+        build(Some("trash")),
+        (false, Some("trash".to_string())),
+        "com escolha o plano nao emitiu o slug sozinho"
+    );
+    // Um slug do futuro degrada para o desenho — dos DOIS lados, e por isso ele nunca chega ao
+    // código gerado.
+    assert_eq!(build(Some("nao-existe")), (true, None));
+}

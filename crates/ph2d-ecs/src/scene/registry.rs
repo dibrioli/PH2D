@@ -300,6 +300,10 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     reg.register::<crate::VecWidget>("ph2d::ecs::VecWidget");
     reg.register::<crate::VecWidgetBind>("ph2d::ecs::VecWidgetBind");
     reg.register::<crate::VecWidgetValue>("ph2d::ecs::VecWidgetValue");
+    // O ÍCONE escolhido de um botão de ícone (plano UI/UX W8b, §6.2). Sem o registro, reabrir o
+    // projeto devolveria o botão desenhando a FORMA — a escolha do artista evaporaria e o glifo
+    // trocaria sozinho, que é o modo de falha mais enganoso: nada some, e o desenho está errado.
+    reg.register::<crate::VecWidgetIcon>("ph2d::ecs::VecWidgetIcon");
     // A MOLDURA: que esta entidade CONTÉM, e se ela esconde o transbordo. Sem o registro, um
     // Ctrl+Z (ou reabrir o projeto) devolveria a moldura como um retângulo comum — a arte
     // continuaria toda lá, e o recorte simplesmente teria evaporado. É o modo de falha mais
@@ -422,7 +426,8 @@ mod tests {
         // + 1 resize-box (VecResizeBox, plano UI/UX W3b)
         // + 1 pele por-widget (VecWidget, plano UI/UX W6.2)
         // + 1 vinculo row -> forma (VecWidgetBind, plano UI/UX W8b.3)
-        // + 1 posicao do controle (VecWidgetValue, plano UI/UX W8b.4).
+        // + 1 posicao do controle (VecWidgetValue, plano UI/UX W8b.4)
+        // + 1 icone escolhido (VecWidgetIcon, plano UI/UX W8b §6.2).
         //
         // **Este número existe para doer.** Um componente que não passa por aqui é
         // DESCARTADO em silêncio pelo snapshot — o undo e o save o perdem, e o bug só
@@ -434,12 +439,13 @@ mod tests {
         // `VecConnector`, e as duas linhas, sozinhas, diziam 27 — por motivos diferentes. A
         // árvore combinada tem 28. Escolher "um dos lados" aqui é o erro que deixa o
         // workspace vermelho com dois merges verdes.
-        assert_eq!(reg.len(), 54);
+        assert_eq!(reg.len(), 55);
         assert!(reg.get_by_name("ph2d::ecs::VecAnchors").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecResizeBox").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecWidget").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecWidgetBind").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecWidgetValue").is_some());
+        assert!(reg.get_by_name("ph2d::ecs::VecWidgetIcon").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecBindings").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecLayout").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecLayoutItem").is_some());

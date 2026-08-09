@@ -78,6 +78,17 @@ pub(super) fn component_controls(store: &mut WidgetStore) {
             },
         );
     }
+    // O chip do PICKER de ícone: um `Dropdown`, para o despacho genérico abrir/fechar o popover.
+    // ⚠️ As LINHAS dele não são registadas aqui — elas nascem no `paint` do popover, como as do
+    // dropdown de fontes: são 137 e só existem enquanto a lista está aberta.
+    store.register(
+        ids::VECTOR_WIDGET_ICON_DD,
+        InteractiveState::Dropdown {
+            state: ph2d_editor_core::widget::DropdownState::Normal,
+            open: false,
+            selected_index: None,
+        },
+    );
     // **OS ESTADOS de UI** (W7): três verbos por papel. Registados para TODO papel do catálogo e
     // não só para os que a seleção de agora tem — o `populate` corre uma vez na instalação do
     // painel, quando não existe seleção nenhuma, então registar "o que faz sentido agora" seria

@@ -23,6 +23,13 @@ fn the_rows_are_the_generated_table_in_order() {
             c.icon.map(str::to_string),
             "a curva reconstituida nao e' a que o gerado carrega"
         );
+        // ⚠️ O slug faz a viagem inversa: ele é resolvido para `IconId`, e o que se compara é o
+        // slug DE VOLTA — um `from_slug` que devolvesse o ícone da posição errada sangraria aqui.
+        assert_eq!(
+            r.icon_id.map(ph2d_editor_core::icons::IconId::slug),
+            c.icon_slug,
+            "o icone escolhido nao voltou do proprio slug"
+        );
     }
 }
 
@@ -74,6 +81,7 @@ fn only_the_kinds_that_respond_are_controls() {
             id: ph2d_a11y::NodeId(1),
             rgba: None,
             icon: None,
+            icon_id: None,
         }
         .is_control()
     };
@@ -164,8 +172,9 @@ fn the_paint_hands_what_it_knows_to_the_skin() {
          sempre, com o pintor correto e toda a suite verde"
     );
     assert!(
-        window.contains("icon: row.icon"),
-        "a pele recebe um glifo que nao e' o da row — o botao de icone pintaria a moldura vazia \
-         para sempre, com o pintor correto e toda a suite verde"
+        window.contains("icon: icon_glyph(row.icon_id, row.icon.as_ref())"),
+        "a pele recebe um glifo que nao e' o da row, ou a precedencia foi re-escrita aqui — no \
+         primeiro caso o botao pintaria a moldura vazia para sempre; no segundo, o canvas e o \
+         painel poderiam escolher rotas diferentes, com toda a suite verde"
     );
 }

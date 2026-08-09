@@ -89,8 +89,12 @@ pub enum IconId {
     Close,
     Cmd,
     Collider,
-    ColorEqualization,
+    // ⚠️ **`Color` ANTES de `ColorEqualization`, e a ordem é o glifo.** `"color"` ordena antes de
+    // `"color-equalization"` (prefixo), e a posição do variante É o índice nas tabelas geradas.
+    // Declarados ao contrário, `IconId::Color` desenhava os SLIDERS e `IconId::ColorEqualization`
+    // desenhava a PALETA — ver o gate `every_variant_is_named_after_its_slug`.
     Color,
+    ColorEqualization,
     Command,
     Console,
     Copy,
@@ -230,6 +234,35 @@ impl IconId {
     pub fn slug(self) -> &'static str {
         icons_generated::ALL_ICON_SLUGS[self as usize]
     }
+
+    /// **Todo ícone canônico**, na ordem alfabética de slug — emitida pelo `build.rs`.
+    ///
+    /// ⚠️ Ela vem do gerador e **não é escrita à mão**: uma lista mantida aqui seria uma segunda
+    /// cópia do enum, e ela drifta em silêncio no dia em que alguém acrescentar um variante sem a
+    /// tocar. Do lado do gerador, um variante que falte faz o arquivo gerado **não compilar**.
+    #[must_use]
+    pub fn all() -> &'static [IconId] {
+        icons_generated::ALL_ICON_IDS
+    }
+
+    /// **De volta ao ícone, a partir do SLUG** — a chave durável.
+    ///
+    /// ⚠️ **O DISCRIMINANTE NÃO É DURÁVEL, e é por isso que esta porta existe.** O
+    /// `enum_order_matches_svgs` abaixo pina *ordem do enum == ordem alfabética dos SVGs*, então
+    /// acrescentar `docs/design/icons/blob.svg` empurra **todo ícone depois de `blob`** uma casa —
+    /// e um número guardado num documento passaria a nomear outro glifo, em silêncio. O slug é o
+    /// nome do arquivo: ele não se move quando um vizinho nasce.
+    ///
+    /// `None` para um slug que este build não conhece — o mesmo caminho de compatibilidade do
+    /// `WidgetKind::from_code`: um documento autorado por um build mais novo **degrada**, nunca
+    /// recusa.
+    #[must_use]
+    pub fn from_slug(slug: &str) -> Option<Self> {
+        icons_generated::ALL_ICON_SLUGS
+            .iter()
+            .position(|s| *s == slug)
+            .map(|i| icons_generated::ALL_ICON_IDS[i])
+    }
 }
 
 /// Convert a polyline-style point string ("x1 y1 x2 y2 ...") into an
@@ -303,6 +336,66 @@ pub fn cmd_to_path(cmd: IconCmd) -> BezPath {
 mod tests {
     use super::*;
 
+    /// **O slug ida-e-volta é TOTAL, e um desconhecido degrada.**
+    ///
+    /// ⚠️ Ele é o gate da chave durável: sem ele, um `from_slug` que devolvesse o ícone da posição
+    /// errada pintaria outro glifo com toda a suíte verde — a lista e os slugs são indexados pelo
+    /// MESMO número, então uma mistura entre eles é invisível a olho.
+    #[test]
+    fn the_slug_round_trip_is_total_and_the_unknown_degrades() {
+        assert_eq!(IconId::all().len(), icons_generated::ALL_ICON_SLUGS.len());
+        for id in IconId::all() {
+            assert_eq!(
+                IconId::from_slug(id.slug()),
+                Some(*id),
+                "{id:?} nao voltou do proprio slug ({})",
+                id.slug()
+            );
+        }
+        assert_eq!(IconId::from_slug("nao-existe"), None);
+        assert_eq!(IconId::from_slug(""), None);
+    }
+
+    /// **O NOME de cada variante é a PascalCase do slug dele** — e isto não é estilo.
+    ///
+    /// # O defeito VIVO que este gate encontrou (2026-08-09)
+    ///
+    /// O `enum_order_matches_svgs` ao lado pina `*id as usize == i`, que é **trivialmente
+    /// verdadeiro para qualquer lista em ordem de declaração** — ele prova que a lista está
+    /// completa, nunca que cada variante está no lugar certo. E dois não estavam: o enum declarava
+    /// `ColorEqualization, Color` sobre os slugs `color, color-equalization`, então
+    /// **`IconId::Color` desenhava os sliders e `IconId::ColorEqualization` desenhava a paleta**.
+    ///
+    /// ⚠️ **Com consequência de produto:** o botão *"Add adjustment"* do painel de camadas do
+    /// Painter pede `ColorEqualization` — e recebia a PALETA. Um ano de screenshots com o glifo
+    /// errado, e nenhum teste a falhar, porque o único gate media a contagem e a ordem.
+    ///
+    /// ⚠️ E é ele que torna o `ALL_ICON_IDS` do `build.rs` **provado** em vez de meramente
+    /// mecânico: o gerador impede um variante AUSENTE (o arquivo não compila) e é cego a um
+    /// variante MAL-NOMEADO — que é exactamente a forma que este defeito tinha.
+    #[test]
+    fn every_variant_is_named_after_its_slug() {
+        let pascal = |slug: &str| -> String {
+            slug.split('-')
+                .map(|w| {
+                    let mut c = w.chars();
+                    match c.next() {
+                        Some(f) => f.to_uppercase().collect::<String>() + c.as_str(),
+                        None => String::new(),
+                    }
+                })
+                .collect()
+        };
+        for id in IconId::all() {
+            assert_eq!(
+                format!("{id:?}"),
+                pascal(id.slug()),
+                "o variante {id:?} esta' na posicao do slug {:?} — ele desenha OUTRO glifo",
+                id.slug()
+            );
+        }
+    }
+
     /// Every icon must produce at least one drawing command.
     #[test]
     fn every_icon_has_at_least_one_cmd() {
@@ -325,6 +418,16 @@ mod tests {
             ALL_ICONS.len(),
             icons_generated::ALL_ICON_SLUGS.len(),
             "IconId variant count must match SVG count"
+        );
+        // ⚠️ **As duas listas têm papéis DIFERENTES, e é por isso que ambas existem.** Esta,
+        // escrita à mão a partir do ENUM, é o que apanha um variante que ninguém desenhou (o
+        // gerador só conhece os SVGs, então um variante a mais é invisível para ele); a gerada é
+        // o que apanha um SVG que ninguém declarou (o arquivo não compila). Esta linha é o que
+        // as ata — sem ela, cada uma vigiaria metade e nenhuma diria que discordam.
+        assert_eq!(
+            ALL_ICONS,
+            IconId::all(),
+            "a lista escrita a mao e a gerada discordam"
         );
         for (i, id) in ALL_ICONS.iter().enumerate() {
             let expected_slug = icons_generated::ALL_ICON_SLUGS[i];
@@ -437,8 +540,8 @@ mod tests {
         IconId::Close,
         IconId::Cmd,
         IconId::Collider,
-        IconId::ColorEqualization,
         IconId::Color,
+        IconId::ColorEqualization,
         IconId::Command,
         IconId::Console,
         IconId::Copy,

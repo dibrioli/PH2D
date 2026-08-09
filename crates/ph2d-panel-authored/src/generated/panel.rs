@@ -16,6 +16,7 @@ pub const ROWS: &[RowConst] = &[
         key: "appearance",
         rgba: None,
         icon: None,
+        icon_slug: None,
     },
     RowConst {
         kind: WidgetKind::Slider,
@@ -23,6 +24,7 @@ pub const ROWS: &[RowConst] = &[
         key: "opacity",
         rgba: None,
         icon: None,
+        icon_slug: None,
     },
     RowConst {
         kind: WidgetKind::Toggle,
@@ -30,6 +32,7 @@ pub const ROWS: &[RowConst] = &[
         key: "visible",
         rgba: None,
         icon: None,
+        icon_slug: None,
     },
     RowConst {
         kind: WidgetKind::Button,
@@ -37,6 +40,7 @@ pub const ROWS: &[RowConst] = &[
         key: "reset",
         rgba: None,
         icon: None,
+        icon_slug: None,
     },
     RowConst {
         kind: WidgetKind::ColorSwatch,
@@ -44,6 +48,7 @@ pub const ROWS: &[RowConst] = &[
         key: "tint",
         rgba: Some([214, 92, 64, 255]),
         icon: None,
+        icon_slug: None,
     },
     RowConst {
         kind: WidgetKind::IconButton,
@@ -51,5 +56,14 @@ pub const ROWS: &[RowConst] = &[
         key: "play",
         rgba: None,
         icon: Some("M11.999999999999998,23.412678195541844 C11.999999999999998,23.412678195541844 8.662616460750566,15.38864586978363 8.662616460750566,15.38864586978363 C8.662616460750566,15.38864586978363 0,14.694167859477503 0,14.694167859477503 C0,14.694167859477503 6.599999999999998,9.040565145024928 6.599999999999998,9.040565145024928 C6.599999999999998,9.040565145024928 4.583592135001259,0.5873218044581421 4.583592135001259,0.5873218044581421 C4.583592135001259,0.5873218044581421 11.999999999999996,5.117235493795974 11.999999999999996,5.117235493795974 C11.999999999999996,5.117235493795974 19.41640786499873,0.5873218044581421 19.41640786499873,0.5873218044581421 C19.41640786499873,0.5873218044581421 17.4,9.040565145024928 17.4,9.040565145024928 C17.4,9.040565145024928 24,14.694167859477503 24,14.694167859477503 C24,14.694167859477503 15.337383539249432,15.38864586978363 15.337383539249432,15.38864586978363 C15.337383539249432,15.38864586978363 11.999999999999998,23.412678195541844 11.999999999999998,23.412678195541844 Z"),
+        icon_slug: None,
+    },
+    RowConst {
+        kind: WidgetKind::IconButton,
+        label: "Trash",
+        key: "trash",
+        rgba: None,
+        icon: None,
+        icon_slug: Some("trash"),
     },
 ];

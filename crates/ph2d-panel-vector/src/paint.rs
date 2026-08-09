@@ -367,6 +367,10 @@ pub(crate) fn paint(_state: &mut VectorPanelState, ctx: &mut PaintCtx) {
     }
     // Idem para o popover de CATEGORIA do catálogo de formas: sem o passe diferido o
     // `push_clip` do scroll o cortaria na borda da seção.
+    // Idem para o picker de ÍCONE de um botão de ícone autorado (W8b §6.2).
+    if let Some(chip_rect) = state::take_pending_icon_dd() {
+        crate::icon_dropdown::paint(ctx, chip_rect, theme);
+    }
     if let Some(chip_rect) = state::take_pending_group_dd() {
         crate::paint_catalog::paint_group_popover(ctx, chip_rect, theme);
     }

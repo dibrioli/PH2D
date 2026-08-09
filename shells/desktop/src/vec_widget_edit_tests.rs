@@ -46,6 +46,16 @@ fn every_painted_id_becomes_a_verb() {
             "o chip {i} chega ao barramento e vira NADA"
         );
     }
+    // ⚠️ E as linhas do PICKER, o catálogo INTEIRO + o `Drawing`: sem esta varredura o dropdown
+    // podia pintar 137 linhas vivas cujo clique atravessa o barramento e vira NADA — que é
+    // literalmente a lição que o cabeçalho deste arquivo conta.
+    for i in 0..=ph2d_editor::icons::IconId::all().len() {
+        assert_eq!(
+            widget_edit_for_id(ph2d_editor::ids::vector_widget_icon_option_id(i)),
+            Some(WidgetEdit::Icon(i)),
+            "a linha {i} do picker chega ao barramento e vira NADA"
+        );
+    }
     // E um id alheio não é sequestrado.
     assert_eq!(
         widget_edit_for_id(ph2d_editor::ids::VECTOR_COMPONENT_SWAP),
@@ -249,4 +259,69 @@ fn the_panel_offers_the_bind_row_only_where_it_drives() {
     let (st, _) = publish(&sim, &map, &[w]).expect("a secao e' oferecida");
     assert_eq!(st.drives, None, "um Button nao produz valor — sem linha");
     let _ = &mut sim;
+}
+
+/// **O picker escreve o SLUG, e `Drawing` REMOVE o componente.**
+///
+/// ⚠️ A segunda metade é a que decide o modelo: a rota do desenho é a **ausência** do componente,
+/// não um slug vazio. Um `Some("")` seria um terceiro estado que a porta da precedência teria de
+/// aprender a ignorar — e o dia em que ela esquecesse, o botão desenharia a moldura vazia para
+/// sempre, com toda a suíte verde.
+#[test]
+fn the_picker_writes_the_slug_and_drawing_removes_it() {
+    use ph2d_ecs::VecWidgetIcon;
+    let (mut sim, map, sel) = scene_with(Some(WidgetKind::IconButton.code()));
+    let e = ph2d_ecs::Entity::from_bits(*map.get(&sel[0]).expect("a forma tem entidade"));
+
+    // A terceira linha da lista é o segundo glifo do catálogo (a zero é o Drawing).
+    let want = ph2d_editor::icons::IconId::all()[1];
+    apply(&mut sim, &map, &sel, WidgetEdit::Icon(2));
+    assert_eq!(
+        sim.world().get::<VecWidgetIcon>(e).map(|c| c.slug.clone()),
+        Some(want.slug().to_string()),
+        "o picker nao escreveu o slug do glifo escolhido"
+    );
+
+    apply(&mut sim, &map, &sel, WidgetEdit::Icon(0));
+    assert!(
+        sim.world().get::<VecWidgetIcon>(e).is_none(),
+        "'Drawing' deixou o componente para tras — a rota do desenho e' a AUSENCIA dele"
+    );
+}
+
+/// **Despir leva o ícone junto.**
+///
+/// ⚠️ O irmão exacto do vínculo: uma escolha de glifo sobre uma forma que já não veste viajaria no
+/// save, entraria no diff do undo, e **ressuscitaria** no dia em que alguém a vestisse outra vez —
+/// com um ícone que o artista não escolheu para aquele botão.
+#[test]
+fn taking_the_skin_off_takes_the_icon_with_it() {
+    use ph2d_ecs::VecWidgetIcon;
+    let (mut sim, map, sel) = scene_with(Some(WidgetKind::IconButton.code()));
+    let e = ph2d_ecs::Entity::from_bits(*map.get(&sel[0]).expect("a forma tem entidade"));
+    apply(&mut sim, &map, &sel, WidgetEdit::Icon(1));
+    assert!(sim.world().get::<VecWidgetIcon>(e).is_some());
+
+    apply(&mut sim, &map, &sel, WidgetEdit::Remove);
+    assert!(
+        sim.world().get::<VecWidgetIcon>(e).is_none(),
+        "o icone sobreviveu ao 'Back to Drawing'"
+    );
+}
+
+/// **A row do picker é oferecida ao botão de ícone e a mais ninguém.**
+///
+/// ⚠️ E a pergunta é feita à porta do catálogo (`takes_icon`), não a um `matches!` local: um `if`
+/// aqui seria a terceira cópia da fronteira, e ela divergiria da que o pintor da pele usa.
+#[test]
+fn only_the_icon_button_is_offered_the_picker() {
+    for kind in WidgetKind::ALL {
+        let (sim, map, sel) = scene_with(Some(kind.code()));
+        let (state, _) = publish(&sim, &map, &sel).expect("a secao e' oferecida");
+        assert_eq!(
+            state.icon.is_some(),
+            kind.takes_icon(),
+            "{kind:?} discorda do catalogo sobre ter face de icone"
+        );
+    }
 }

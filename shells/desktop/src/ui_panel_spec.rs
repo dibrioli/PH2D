@@ -23,8 +23,9 @@
 //! `None` de propósito (um documento autorado por um build mais novo), e inventar um tipo aqui
 //! seria gerar código para um widget que não existe.
 
-use ph2d_ecs::{Children, Entity, Name, SimWorld, VecPathRef, VecWidget};
-use ph2d_editor::widget::WidgetKind;
+use ph2d_ecs::{Children, Entity, Name, SimWorld, VecPathRef, VecWidget, VecWidgetIcon};
+use ph2d_editor::icons::IconId;
+use ph2d_editor::widget::{IconGlyph, WidgetKind, icon_glyph};
 use ph2d_ui_codegen::{PanelSpec, RowSpec};
 use ph2d_vec_scene::{VecPathId, VecScene};
 
@@ -81,9 +82,24 @@ fn colour_of(sim: &SimWorld, scene: &VecScene, e: Entity) -> Option<[u8; 4]> {
 /// ⚠️ E, como o `label` e a cor ao lado, ele é um **SNAPSHOT**: o painel gerado desenha o ícone
 /// que a forma tinha quando alguém apertou o botão. Quem quer o glifo VIVO olha a moldura no
 /// canvas, que relê o documento a cada quadro.
-fn icon_of(sim: &SimWorld, scene: &VecScene, e: Entity) -> Option<String> {
+fn icon_of(
+    sim: &SimWorld,
+    scene: &VecScene,
+    e: Entity,
+) -> Option<(Option<String>, Option<String>)> {
     let id: VecPathId = sim.world().get::<VecPathRef>(e)?.0;
-    crate::widget_icon::icon_face(scene.path(id)?).map(|p| p.to_svg())
+    let chosen = sim
+        .world()
+        .get::<VecWidgetIcon>(e)
+        .and_then(|c| IconId::from_slug(&c.slug));
+    let drawn = crate::widget_icon::icon_face(scene.path(id)?);
+    // ⚠️ **A precedência é perguntada, não repetida** — a MESMA porta que o canvas e o painel
+    // compilado percorrem. E é ela que garante que um slug desconhecido nunca chega ao código
+    // gerado: ele vira `None` e o desenho assume, dos dois lados.
+    match icon_glyph(chosen, drawn.as_ref())? {
+        IconGlyph::Builtin(id) => Some((None, Some(id.slug().to_string()))),
+        IconGlyph::Path(p) => Some((Some(p.to_svg()), None)),
+    }
 }
 
 /// Percorre a sub-árvore de `frame` **na ordem dos filhos**, juntando quem veste.
@@ -96,13 +112,18 @@ fn walk(sim: &SimWorld, scene: &VecScene, e: Entity, out: &mut Vec<RowSpec>) {
             .takes_colour()
             .then(|| colour_of(sim, scene, e))
             .flatten();
-        let icon = kind.takes_icon().then(|| icon_of(sim, scene, e)).flatten();
+        let (icon, icon_slug) = kind
+            .takes_icon()
+            .then(|| icon_of(sim, scene, e))
+            .flatten()
+            .unwrap_or((None, None));
         out.push(RowSpec {
             kind: kind.ident().to_string(),
             key: key_of(&label),
             label,
             rgba,
             icon,
+            icon_slug,
         });
     }
     // ⚠️ `Children` preserva a ordem de inserção da hierarquia, que é a ordem que o layout flui e

@@ -169,6 +169,22 @@ pub fn paint_text_area_with_state(
     let inner_right = inner_x + inner_w;
     let font_size = TypeToken::Base.px();
 
+    // ⚠️ **O RECORTE, e o irmão de uma linha já o fazia** — a razão está escrita nele, num report
+    // do Enio (2026-07-16): *"renaming a clip to a long name drew a SECOND line that ran out of the
+    // box and over the buttons below it"*. O `TextInput` ganhou-o naquele dia; este, que por
+    // construção guarda MAIS texto, ficou sem — e ao contrário dele **não scrolla**, então tudo o
+    // que não coubesse era pintado por cima do que estivesse por baixo.
+    //
+    // ⚠️ **A moldura é a do irmão, verbatim:** horizontalmente o box INTERNO (um glifo não pisa a
+    // borda nem o enchimento), verticalmente o rect INTEIRO — o enchimento de baixo existe para a
+    // última linha ter onde descer, e cortá-lo ali decepava as descidas das letras.
+    //
+    // ⚠️ E o que **não** vem com ele está nomeado: uma `TextArea` cheia demais deixa de mostrar o
+    // fim do texto, em vez de o mostrar fora da caixa. Rolar é uma FEATURE (o irmão a tem porque
+    // uma linha só precisa de perseguir o caret na horizontal), e inventá-la aqui de passagem seria
+    // contrabandear uma decisão de produto dentro de uma correção de desenho.
+    scene.push_clip(&rect_to_vello(Rect::new(inner_x, rect.y, inner_w, rect.h)));
+
     let focused = area.state == TextInputState::Focused;
     let displayed = area.value.as_str();
 
@@ -289,6 +305,10 @@ pub fn paint_text_area_with_state(
             resolve(ColorToken::Accent, theme),
         );
     }
+
+    // ⚠️ Fecha o recorte aberto no topo. Uma camada deixada aberta não corta só este widget: ela
+    // corta **tudo o que for pintado depois dele** — o gate afirma `n_open_clips == 0` por isso.
+    scene.pop_layer();
 }
 
 #[cfg(test)]
@@ -341,6 +361,41 @@ mod tests {
             &mut text,
             theme,
         );
+    }
+
+    /// **O texto que passa da caixa e' CORTADO, nao desenhado por cima do que houver ali.**
+    ///
+    /// ⚠️ **O irmao de UMA linha ja' faz isto, e a razao esta' escrita nele — um report do Enio
+    /// (2026-07-16):** *"renaming a clip to a long name drew a SECOND line that ran out of the box
+    /// and over the buttons below it"*. O `TextInput` ganhou o recorte naquele dia; o `TextArea`,
+    /// que por construcao guarda MAIS texto, ficou sem — e ele nem sequer scrolla, entao tudo o que
+    /// nao cabe era pintado para fora.
+    ///
+    /// ⚠️ O oraculo e' o MESMO do irmao (`n_clips` / `n_open_clips` da codificacao), e nao uma
+    /// segunda maneira de perguntar *"isto ficou dentro da caixa?"*.
+    #[test]
+    fn text_past_the_box_is_clipped_instead_of_spilling_over_what_is_below() {
+        let mut scene = VectorScene::new();
+        let mut text = TextSystem::without_system_fonts();
+        // Seis linhas numa caixa dimensionada para as tres que o widget promete.
+        let a = TextArea::new(NodeId(1), "Notes")
+            .value("um\ndois\ntres\nquatro\ncinco\nseis")
+            .state(TextInputState::Focused);
+        paint_text_area_with_state(
+            &a,
+            Some(0),
+            None,
+            Rect::new(0.0, 0.0, 240.0, min_height()),
+            &mut scene,
+            &mut text,
+            Theme::Forge,
+        );
+        let enc = scene.inner().encoding();
+        assert!(
+            enc.n_clips >= 1,
+            "a caixa nao recorta o proprio texto — a quarta linha em diante e' desenhada por cima              do que estiver por baixo dela"
+        );
+        assert_eq!(enc.n_open_clips, 0, "o recorte ficou aberto");
     }
 
     #[test]

@@ -151,20 +151,38 @@ impl NodeOp for ValueAttribute {
     }
 }
 
-/// The artist-facing channels (plan §1.1): a human word, the column it reads, and
-/// whether that column is a scalar (`0`) or a Vec2 whose MAGNITUDE we want (`1`, e.g.
-/// `vel` read as *speed*). Seven of them + the panel's "Custom…" = 8 = the segmented
-/// selector's ceiling. Custom keeps the arbitrary-column reach the node was built for.
+/// The artist-facing channels (plan §1.1): a human word, the column it reads, and HOW —
+/// the scalar itself (`0`), a Vec2's MAGNITUDE (`MODE_LENGTH`, so `vel` reads as *speed*)
+/// or one LANE of a vector column (`MODE_COMPONENT_BASE + k`, which is how "Opacity"
+/// reaches the alpha inside `tint`). Seven of them + the panel's "Custom…" = 8 = the
+/// segmented selector's ceiling. Custom keeps the arbitrary-column reach the node was
+/// built for.
+///
+/// ⚠️ **Every entry must name a column something WRITES** — an entry is a promise that a
+/// word yields a quantity, and a word that resolves to nothing takes the module's ordinary
+/// miss (zeros at full length) with no way for the artist to tell it apart from a typo.
+/// The gate that holds this builds the stream a producer leaves and reads it back through
+/// the entry itself, rather than comparing the table against a second list of names.
 const READ_CHANNELS: &[ReadChannel] = &[
     ReadChannel {
         label: "Speed",
         column: "vel",
         mode: MODE_LENGTH,
     },
+    // ⚠️ **`tint` lane 3, not a column called `"opacity"`.** This entry used to name a
+    // column that NOTHING in the library writes: `motion.drive`'s opacity channel writes
+    // `tint` (`CH_OPACITY => "tint"`, lane 3) and `lower_to_instances` reads the alpha from
+    // exactly there — `RenderInstance.opacity` is hardcoded to `1.0`, there is no
+    // per-instance opacity surface. So picking "Opacity" took the module's ORDINARY MISS
+    // and handed back zeros at full length, in silence, indistinguishable from a typo:
+    // reading back the opacity a `motion.drive` had just written was inexpressible.
+    //
+    // The lane rung (`MODE_COMPONENT_BASE`, W0-A) is what makes the honest answer sayable —
+    // before it, a `Vec4` column had no reachable channel at all.
     ReadChannel {
         label: "Opacity",
-        column: "opacity",
-        mode: 0,
+        column: "tint",
+        mode: MODE_COMPONENT_BASE + 3,
     },
     ReadChannel {
         label: "Rotation",

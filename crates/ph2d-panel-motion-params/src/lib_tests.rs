@@ -184,7 +184,7 @@ fn channels_snapshot(selected: usize, custom: &str) -> ParamsSnapshot {
             label: "Read".into(),
             text_param: "attr",
             mode_param: "mode",
-            channels: vec![("Speed", "vel", 1), ("Opacity", "opacity", 0)],
+            channels: vec![("Speed", "vel", 1), ("Opacity", "tint", 5)],
             selected,
             custom: custom.into(),
             extra: Vec::new(),
@@ -199,7 +199,7 @@ fn channels_snapshot(selected: usize, custom: &str) -> ParamsSnapshot {
 #[test]
 fn picking_a_channel_writes_the_column_and_its_mode() {
     let _ = drain_param_intents();
-    set_current_params(Some(channels_snapshot(1, "opacity"))); // Opacity currently
+    set_current_params(Some(channels_snapshot(1, "tint"))); // Opacity currently
     let mut host = ph2d_ui_testkit::MockPanelHost::with_panel::<MotionParamsPanel>();
     let mut state = MotionParamsPanelState;
     // Segment 0 is "Speed".
@@ -284,7 +284,7 @@ fn clicking_a_live_column_chip_writes_that_column_with_scalar_mode() {
             label: "Read".into(),
             text_param: "attr",
             mode_param: "mode",
-            channels: vec![("Speed", "vel", 1), ("Opacity", "opacity", 0)],
+            channels: vec![("Speed", "vel", 1), ("Opacity", "tint", 5)],
             selected: 2, // Custom
             custom: String::new(),
             extra: vec!["id".into(), "inv_mass".into()],

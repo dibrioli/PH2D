@@ -109,3 +109,50 @@ fn the_modes_that_shipped_are_untouched() {
     assert_eq!(field(&stream(), "vel", 0), vec![0.0; 3], "Vec2 in Scalar");
     assert_eq!(field(&stream(), "age", MODE_LENGTH), vec![0.0; 3]);
 }
+
+/// **Every channel the picker offers must name a column something WRITES.**
+///
+/// A picker entry is a promise: the artist chooses a word and gets that quantity. The
+/// entry named "Opacity" pointed at a column `"opacity"` — and nothing in the node library
+/// writes one. `motion.drive`'s opacity channel writes **`tint` lane 3**
+/// (`drive::channel::CH_OPACITY => "tint"`), and `lower_to_instances` reads the alpha from
+/// exactly there (`RenderInstance.opacity` is hardcoded to `1.0` — there is no per-instance
+/// opacity surface). So the entry resolved to the module's ORDINARY MISS: zeros at full
+/// length, in silence, indistinguishable from a mistyped attribute.
+///
+/// This gate is written against the DATA, not against a list of channel names: it builds a
+/// stream the way `motion.drive` leaves one and asserts the picker's own entry reads back
+/// what was written. A gate that compared `column` to the literal `"tint"` would be a
+/// mirror of the fix rather than a check on it.
+#[test]
+fn every_offered_channel_reads_a_column_the_library_actually_writes() {
+    // A stream as `motion.drive`'s opacity channel leaves it: the alpha lives in `tint`.
+    let drove = Stream::new(3).with(
+        "tint",
+        Column::Vec4(vec![
+            [1.0, 1.0, 1.0, 0.25],
+            [1.0, 1.0, 1.0, 0.50],
+            [1.0, 1.0, 1.0, 0.75],
+        ]),
+    );
+    let opacity = READ_CHANNELS
+        .iter()
+        .find(|c| c.label == "Opacity")
+        .expect("the picker offers an Opacity channel");
+    assert_eq!(
+        field(&drove, opacity.column, opacity.mode),
+        vec![0.25, 0.50, 0.75],
+        "picking `Opacity` must read back the alpha `motion.drive` wrote"
+    );
+}
+
+/// The other entries are not collateral of the fix: each still reads its own column.
+/// (Without this, pointing every channel at `tint` would satisfy the gate above.)
+#[test]
+fn the_other_channels_still_read_their_own_columns() {
+    let s = Stream::new(3)
+        .with("age", Column::Scalar(vec![0.1, 0.2, 0.3]))
+        .with("tint", Column::Vec4(vec![[1.0, 1.0, 1.0, 0.9]; 3]));
+    let age = READ_CHANNELS.iter().find(|c| c.label == "Age").unwrap();
+    assert_eq!(field(&s, age.column, age.mode), vec![0.1, 0.2, 0.3]);
+}

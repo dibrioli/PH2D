@@ -26,7 +26,7 @@ use ph2d_editor_core::widget::panel_chrome::{
     panel_resize_handle_rect_bl,
 };
 use ph2d_editor_core::widget::{
-    AUTHORED_SCROLLBAR_ID, Dropdown, DropdownOption, SkinParam, icon_glyph,
+    AUTHORED_SCROLLBAR_ID, Dropdown, DropdownOption, SkinParam, icon_glyph, inline_option_rect,
     paint_dropdown_popover_in_viewport, paint_scrollbar, paint_widget_skin_with,
     scrollbar_is_needed, scrollbar_thumb_rect, scrollbar_track_rect,
 };
@@ -229,6 +229,17 @@ fn paint_body(
             // faz nada; um cabeçalho SEM registo seria um chevron desenhado que não dobra.
             if row.wants_pointer() {
                 hit_index.register(row.id, r);
+            }
+            // ⚠️ **Uma faixa de abas é N controles, não um** — e é isto que faltava quando o Enio
+            // reportou *"Tabs não seleciona as tabs"*: a row publicava **um** retângulo para a
+            // faixa inteira, então o clique chegava sem poder dizer QUAL aba. Cada opção ganha o
+            // seu, DEPOIS do da row (o hit é último-registado-ganha), e a geometria sai da porta
+            // única do catálogo — recomputar a divisão aqui acenderia a aba num lugar e a faria
+            // responder noutro.
+            for i in 0..row.options.len() {
+                if let Some(or) = inline_option_rect(row.kind, r, i, row.options.len()) {
+                    hit_index.register(ids::authored_option_id(&row.key, i), or);
+                }
             }
             // ⚠️ **A pergunta é ao TIPO e ao STORE, nesta ordem, e as duas metades são precisas:**
             // o tipo diz que este controle TEM uma segunda superfície; o store diz que ela está

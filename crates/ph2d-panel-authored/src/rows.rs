@@ -244,6 +244,37 @@ pub fn selected_of(live: Option<&InteractiveState>) -> Option<usize> {
     }
 }
 
+/// **MARCA a opção `index`** — a irmã de ESCRITA do [`selected_of`], e a lista aberta FECHA.
+///
+/// ⚠️ **Duas portas para o mesmo campo, e é por isso que elas moram lado a lado:** a de leitura
+/// diz ao `paint` qual desenhar, a de escrita diz ao `event` qual marcar. Se discordarem sobre
+/// qual variante guarda o quê, o controle desenha uma opção e devolve outra ao ser clicado — e o
+/// artista vê a aba certa acesa a fazer a coisa errada.
+///
+/// ⚠️ **Fechar é da lista ESCONDIDA, e só dela.** O despacho genérico alterna o `open` de quem foi
+/// CLICADO, e quem foi clicado é a opção, não o chip — sem esta linha a lista fica aberta depois
+/// da escolha e o clique seguinte, o que o artista dá para a fechar, escolhe outra coisa. Uma
+/// faixa de abas não tem nada a fechar, e é por isso que o braço dela não menciona `open`.
+///
+/// Devolve `false` quando o estado não é de escolha — o chamador larga o gesto em vez de o
+/// inventar.
+pub fn select_in(live: &mut InteractiveState, index: usize) -> bool {
+    match live {
+        InteractiveState::Tabs { selected } => *selected = index,
+        InteractiveState::Radio { selected_index, .. } => *selected_index = index,
+        InteractiveState::Dropdown {
+            open,
+            selected_index,
+            ..
+        } => {
+            *open = false;
+            *selected_index = Some(index);
+        }
+        _ => return false,
+    }
+    true
+}
+
 /// **A que row e a que opção pertence este id** — a inversa do [`ids::authored_option_id`].
 ///
 /// ⚠️ **Ela procura, em vez de decodificar.** O id é um HASH, então não há nada a inverter: a
@@ -251,13 +282,17 @@ pub fn selected_of(live: Option<&InteractiveState>) -> Option<usize> {
 /// desenho do [`row_key_for`], e o custo é o mesmo que o do hit-test que já aconteceu — uma vez
 /// por clique, nunca por quadro.
 ///
-/// ⚠️ E só as rows que ESCONDEM as opções entram na varredura: nas outras três da família quem
-/// regista os segmentos é o pintor do catálogo, com ids próprios que este painel não cunha.
+/// ⚠️ **A varredura é da família INTEIRA, e não só de quem esconde as opções.** A primeira versão
+/// filtrava por `defers_a_popover` — a leitura era que os três em linha teriam os segmentos
+/// registados pelo pintor do catálogo. **Medido: nenhum pintor da pele regista nada**, e nenhum
+/// lugar deste repo escreve `InteractiveState::Tabs`, então a faixa desenhava as três abas, ficava
+/// viva sob o rato como **uma** row, e clicar nela não mudava a marcada (report do Enio,
+/// 2026-08-09). Quem cunha o id de cada opção é este painel, para as quatro.
 #[must_use]
 pub fn option_for(id: NodeId) -> Option<(String, usize)> {
     with_rows(|rows| {
         rows.iter()
-            .filter(|r| r.kind.defers_a_popover())
+            .filter(|r| r.kind.takes_options())
             .find_map(|r| {
                 (0..r.options.len())
                     .find(|i| ids::authored_option_id(&r.key, *i) == id)

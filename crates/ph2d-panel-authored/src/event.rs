@@ -5,7 +5,7 @@
 //! o que garante que o número que sai daqui é o mesmo que o `paint` desenha no frame seguinte.
 
 use ph2d_editor_core::ids;
-use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent};
+use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::{EventOutcome, Panel, PanelHostInternal};
 use ph2d_editor_core::widget::CheckboxValue;
 
@@ -40,18 +40,11 @@ pub(crate) fn apply_event(
     // correta: uma opção não tem `key` própria (o `row_key_for` devolveria `None`), e cair no
     // caminho da row daria `Ignored` — a lista pintaria, o clique chegaria, e nada aconteceria.
     if let Some((key, index)) = crate::rows::option_for(id) {
-        // ⚠️ **FECHAR é metade do gesto, e é esta metade que o despacho genérico não faz:** ele
-        // alterna o `open` de quem foi CLICADO, e quem foi clicado aqui é a opção, não o chip. Sem
-        // esta linha a lista fica aberta depois de escolher — e o clique seguinte, que o artista
-        // dá para a fechar, escolhe outra coisa.
-        if let Some(InteractiveState::Dropdown {
-            open,
-            selected_index,
-            ..
-        }) = host.store_mut().get_mut(ids::authored_row_id(&key))
-        {
-            *open = false;
-            *selected_index = Some(index);
+        // ⚠️ **Nada mais no repo escreve esta seleção.** O despacho genérico não tem braço para
+        // `InteractiveState::Tabs` nem para `::Radio` — medido —, então sem esta linha a faixa
+        // desenha as N opções, fica viva sob o rato e **não muda a marcada** ao ser clicada.
+        if let Some(live) = host.store_mut().get_mut(ids::authored_row_id(&key)) {
+            crate::rows::select_in(live, index);
         }
         push_intent(AuthoredIntent::Choice { key, index });
         return EventOutcome::Consumed;

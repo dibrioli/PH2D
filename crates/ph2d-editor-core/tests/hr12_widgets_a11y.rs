@@ -44,10 +44,14 @@ const A11Y_OPT_OUT: &[(&str, &str)] = &[
     ("skin/frame_tests.rs", "test module; parent owns a11y"),
     ("skin/kind_tests.rs", "test module; parent owns a11y"),
     ("skin/param_tests.rs", "test module; parent owns a11y"),
+    ("skin/geometry_tests.rs", "test module; parent owns a11y"),
     // ⚠️ Este NÃO é módulo de teste: é o CATÁLOGO (o enum `WidgetKind` e o que cada tipo É), o
     // irmão de assunto do pintor. Ele não desenha nada, então não há nó de a11y a construir — o
     // `skin.rs` ao lado é quem pinta, e é ele quem responde pela árvore.
     ("skin/kind.rs", "type catalogue; paints nothing"),
+    // ⚠️ Ela responde ONDE a opção `i` caiu, e não desenha uma linha — quem pinta a família de
+    // LISTA é o `skin.rs` ao lado, e é ele quem responde pela árvore de a11y das rows.
+    ("skin/geometry.rs", "pure layout; paints nothing"),
     // Unit tests for `tool_rail` (split out for the widget LOC cap) — no user-facing widget; the
     // parent `tool_rail.rs` owns the a11y wiring (build_a11y / build_entry_a11y).
     ("tool_rail/tests.rs", "test module; parent owns a11y"),

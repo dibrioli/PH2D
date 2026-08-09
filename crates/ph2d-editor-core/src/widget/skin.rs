@@ -58,6 +58,7 @@ use crate::widget::{
 };
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
+
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Radius, StrokeToken, Theme};
 use ph2d_vector::{BezPath, VectorScene};
@@ -182,6 +183,8 @@ fn skin_slider_track_px(rect: Rect) -> f32 {
     rect.h
 }
 
+mod geometry;
+pub use geometry::inline_option_rect;
 mod kind;
 pub use kind::WidgetKind;
 

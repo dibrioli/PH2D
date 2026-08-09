@@ -259,3 +259,58 @@ fn dragging_a_slider_row_moves_the_value_the_paint_reads() {
         row.key
     );
 }
+
+/// **Clicar numa aba SELECIONA aquela aba** — o defeito que o Enio reportou em 2026-08-09.
+///
+/// ⚠️ **A hipótese dele era *"talvez porque não tenha nada dentro"*, e a medição diz outra coisa:**
+/// as três opções estão lá e a faixa desenha-as. O que faltava era que a row publicava **um**
+/// retângulo de hit para a faixa inteira, então o clique chegava sem poder dizer QUAL aba — e
+/// **nada no repo escreve `InteractiveState::Tabs`**, então o despacho genérico também não o
+/// fazia. A faixa desenhava, ficava viva sob o rato, e a marcada nunca mudava.
+///
+/// ⚠️ **O gate clica na ÚLTIMA aba**, e é isso que o torna capaz de falhar: a seleção nasce em `0`,
+/// então um teste que clicasse na primeira ficaria verde sobre um painel que não faz nada.
+///
+/// ⚠️ E ele varre a família INTEIRA que mostra as opções em linha — um tipo novo com `takes_options`
+/// nasce coberto, em vez de precisar de alguém que se lembre de o acrescentar aqui.
+#[test]
+fn clicking_a_tab_selects_that_tab() {
+    let mut checked = 0;
+    for row in rows::baked() {
+        if !row.kind.takes_options() || row.kind.defers_a_popover() || row.options.len() < 2 {
+            continue;
+        }
+        let pick = row.options.len() - 1;
+        let opt_id = ids::authored_option_id(&row.key, pick);
+
+        let _ = drain_intents();
+        let (mut h, mut st) = host();
+        let r = h
+            .painted_rect::<AuthoredPanel>(&mut st, VIEWPORT, opt_id)
+            .unwrap_or_else(|| {
+                panic!(
+                    "a opcao {pick} de `{}` nao publicou retangulo proprio — a faixa e' UM \
+                     retangulo, e o clique nao consegue dizer QUAL",
+                    row.key
+                )
+            });
+        let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
+        let mut evs = h.dispatch_pointer_event(pointer(PointerKind::Down, cx, cy, SEC));
+        evs.extend(h.dispatch_pointer_event(pointer(PointerKind::Up, cx, cy, SEC + SEC / 100)));
+        for ev in evs {
+            AuthoredPanel::apply_event(&mut st, &mut h, ev);
+        }
+
+        assert_eq!(
+            rows::selected_of(h.store().get(row.id)),
+            Some(pick),
+            "clicar na opcao {pick} de `{}` nao mudou a marcada",
+            row.key
+        );
+        checked += 1;
+    }
+    assert!(
+        checked > 0,
+        "a tabela gerada nao tem controle de lista em linha — este gate deixou de medir algo"
+    );
+}

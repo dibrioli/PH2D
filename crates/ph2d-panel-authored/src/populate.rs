@@ -157,7 +157,7 @@ pub fn populate(store: &mut WidgetStore) {
     });
 }
 
-/// **As opções de uma lista ESCONDIDA** — registadas mesmo fechadas.
+/// **As opções de um controle de LISTA** — as quatro variantes, e a escondida mesmo fechada.
 ///
 /// ⚠️ **Foi o seam quem achou isto, na primeira corrida, e é a falha que ele existe para pegar:**
 /// as opções eram pintadas e ganhavam retângulo de hit no passe diferido, e o clique nelas era
@@ -174,7 +174,7 @@ pub fn populate(store: &mut WidgetStore) {
 /// focusável **depois** de o passe de pintura já ter registado o retângulo dele — a mesma corrida,
 /// um frame adiante.
 fn options(store: &mut WidgetStore, row: &Row) {
-    if !row.kind.defers_a_popover() {
+    if !row.kind.takes_options() {
         return;
     }
     for i in 0..row.options.len() {

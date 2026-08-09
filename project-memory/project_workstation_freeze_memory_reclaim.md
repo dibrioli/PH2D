@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 9a6dfcf7-82e6-4724-98ca-49062b0eb660
-  modified: 2026-08-08T20:31:52.695Z
+  modified: 2026-08-09T01:37:33.780Z
 ---
 
 A workstation (9950X, 123 GiB, CachyOS 7.1.6) **travou duas vezes**, a 2ª em
@@ -34,8 +34,17 @@ btrfs cacheando isso. Pico da sessão medido em 2 boots: **116,7 e 115 GiB de
 `/etc/default/earlyoom`): `min_free_kbytes` 66 MB→1 GiB e
 `watermark_scale_factor` 10→200 (marcas d'água: min 65→1008 MB, low 189→3494 MB)
 · **earlyoom** com `--prefer` nos builds e `--avoid` em `code`/`claude`/`node`
-(as janelas de agente) · journal 47 MB→2 GB · zram 123→32 GiB e `nowatchdog`
-removido + `panic=30` (**os dois só no próximo boot**).
+(as janelas de agente) · journal 47 MB→2 GB · zram 123→32 GiB · `nowatchdog`
+removido do cmdline + `panic=30`. Confira com **`ph2d-check-memoria`** (9 OK).
+
+⚠️ **Tirar `nowatchdog` do cmdline liga só METADE do watchdog.** O CachyOS
+também zera `kernel.nmi_watchdog` em `/usr/lib/sysctl.d/70-cachyos-settings.conf`
+linha 30, então o detector de **hard** lockup (CPU que parou de atender
+interrupção — o silêncio total das 14:10) continuava desligado com o cmdline já
+correto. Sobreposto no `99-ph2d-memoria.conf`, que ordena depois. Custo: um
+contador de PMU por CPU. `hardlockup_panic` ficou **de fora de propósito** — a
+taxa de falso-positivo nesta máquina não foi medida, e um panic derruba os
+agentes.
 
 **Why:** um agente sobrevive a um `rustc` morto e tenta de novo; não sobrevive à
 máquina travada. E sem watchdog o próximo travamento também não deixa evidência.

@@ -116,6 +116,73 @@ const LANE_ANGLE: u32 = 0;
 /// [`LANE_ANGLE`]: sharing one would tie a particle's speed to its direction, so the fast ones
 /// would all sit on the same side of the cone and the spray would read as a fan.
 const LANE_SPEED: u32 = 1;
+/// The two hash lanes for the birth POSITION inside the emitter's shape. Two, because a filled
+/// area is a two-dimensional draw and one number cannot fill one — reusing a single lane for
+/// both would lay every particle on a diagonal.
+const LANE_SHAPE_U: u32 = 2;
+const LANE_SHAPE_V: u32 = 3;
+
+/// Where a particle is born, relative to the emitter's origin.
+///
+/// The **integer** the `shape_mode` param carries; anything else reads as [`Self::Point`], which
+/// is what every graph that predates the param means.
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+enum Shape {
+    /// All from one spot — the emitter that always shipped.
+    Point,
+    /// Anywhere inside the ellipse `shape_w × shape_h`.
+    Disc,
+    /// On its outline only.
+    Ring,
+    /// Anywhere inside the rectangle of half-extents `shape_w × shape_h`.
+    Rect,
+}
+
+impl Shape {
+    fn from_param(v: f32) -> Self {
+        match v.round() as i32 {
+            1 => Self::Disc,
+            2 => Self::Ring,
+            3 => Self::Rect,
+            _ => Self::Point,
+        }
+    }
+}
+
+/// The birth offset of particle `id` inside `shape`, in the emitter's own frame — or `None`
+/// when the shape is a point and there is **no offset at all**.
+///
+/// ⚠️ **The `None` is what makes the default byte-identical rather than merely zero.** Returning
+/// `[0.0, 0.0]` would have the caller add it, and `-0.0 + 0.0` is `+0.0`: an origin the artist
+/// typed as `-0` would come back with its sign flipped. The type says *there is nothing to add*,
+/// so there is one place that knows it and no unreachable arm anywhere.
+///
+/// The draws are **uniform over the AREA**, not over the parameter: a disc sampled with a raw
+/// radius piles up in the middle, which reads as a bright core the artist did not author — hence
+/// the `sqrt`. Both lanes are the particle's own identity, so a birth place is as scrub-exact as
+/// its velocity. The kernel mirrors this term for term.
+fn birth_offset(shape: Shape, w: f32, h: f32, seed: u32, id: u32) -> Option<[f32; 2]> {
+    if shape == Shape::Point {
+        return None;
+    }
+    let u = rand01(seed, id, LANE_SHAPE_U);
+    let v = rand01(seed, id, LANE_SHAPE_V);
+    Some(match shape {
+        Shape::Rect => [(u - 0.5) * 2.0 * w, (v - 0.5) * 2.0 * h],
+        // The outline: one draw is enough, and the second lane stays unread so the ring does
+        // not silently depend on a number it has no use for.
+        Shape::Ring => {
+            let (c, s) = cos_sin_cycles(u);
+            [c * w, s * h]
+        }
+        // `sqrt(u)` is the area-uniform radius; the affine `w`/`h` carries it to an ellipse.
+        Shape::Disc | Shape::Point => {
+            let r = u.sqrt();
+            let (c, s) = cos_sin_cycles(v);
+            [c * w * r, s * h * r]
+        }
+    })
+}
 
 /// The static contract of this node type (ADR-0031).
 pub const MANIFEST: NodeManifest = NodeManifest {
@@ -165,6 +232,20 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "y",
             default: 0.0,
         },
+        // WHERE a particle is born — `0` is the point emitter that always shipped, and the two
+        // extents are inert under it. APPENDED, so a saved graph reads all three as absent.
+        ParamSpec {
+            name: "shape_mode",
+            default: 0.0,
+        },
+        ParamSpec {
+            name: "shape_w",
+            default: 1.0,
+        },
+        ParamSpec {
+            name: "shape_h",
+            default: 1.0,
+        },
         ParamSpec {
             name: "seed",
             default: 0.0,
@@ -197,6 +278,8 @@ impl NodeOp for MotionEmitter {
             angle: ctx.param("angle"),
             spread: ctx.param("spread"),
             origin: [ctx.param("x"), ctx.param("y")],
+            shape: Shape::from_param(ctx.param("shape_mode")),
+            shape_wh: [ctx.param("shape_w"), ctx.param("shape_h")],
             seed: ctx.param("seed").max(0.0) as u32,
             max: (ctx.param("max").max(0.0) as usize).min(MAX_ALIVE),
             size: ctx.param("size").max(0.0),
@@ -215,6 +298,10 @@ struct Spec {
     angle: f32,
     spread: f32,
     origin: [f32; 2],
+    /// WHERE inside the emitter a particle is born.
+    shape: Shape,
+    /// The shape's half-extents (radii for [`Shape::Disc`]/[`Shape::Ring`]), world units.
+    shape_wh: [f32; 2],
     seed: u32,
     max: usize,
     /// World-space side of each particle quad. Emitted as the `size` column, so
@@ -282,7 +369,18 @@ fn emit(spec: &Spec, t: f32) -> Stream {
         // construction, not by epsilon. With `speed_random = 0` the factor is `1.0` exactly.
         let js = rand01(spec.seed, id, LANE_SPEED) - 0.5;
         let speed = spec.speed * (1.0 + js * spec.speed_random * 2.0);
-        p.push(spec.origin);
+        p.push(
+            match birth_offset(
+                spec.shape,
+                spec.shape_wh[0],
+                spec.shape_wh[1],
+                spec.seed,
+                id,
+            ) {
+                Some(d) => [spec.origin[0] + d[0], spec.origin[1] + d[1]],
+                None => spec.origin,
+            },
+        );
         vel.push([cx * speed, sy * speed]);
         ids.push(id as f32);
         // The SAME two-step the kernel runs (`age_first − k/rate`), not
@@ -331,7 +429,8 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         let em_cs = em_cos_sin_cycles(em_deg / 360.0);\n\
         let em_sj = em_rand01(em_seed, em_id, 1u) - 0.5;\n\
         let em_spd = params.speed * (1.0 + em_sj * params.speed_random * 2.0);\n\
-        write_P(i, vec2<f32>(params.x, params.y));\n\
+        write_P(i, em_birth(em_seed, em_id, params.shape_mode, params.shape_w,\n\
+            params.shape_h, vec2<f32>(params.x, params.y)));\n\
         write_vel(i, vec2<f32>(em_cs.x * em_spd, em_cs.y * em_spd));\n\
         write_id(i, f32(em_id));\n\
         write_age(i, params.window_age - f32(i) / params.rate);\n\
@@ -366,6 +465,20 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         }\n\
         fn em_cos_sin_cycles(phase: f32) -> vec2<f32> {\n\
             return vec2<f32>(em_sin_cycles(phase + 0.25), em_sin_cycles(phase));\n\
+        }\n\
+        fn em_birth(seed: u32, id: u32, mode: f32, w: f32, h: f32, o: vec2<f32>) -> vec2<f32> {\n\
+            let m = i32(round(mode));\n\
+            if (m < 1 || m > 3) { return o; }\n\
+            let u = em_rand01(seed, id, 2u);\n\
+            let v = em_rand01(seed, id, 3u);\n\
+            if (m == 3) { return o + vec2<f32>((u - 0.5) * 2.0 * w, (v - 0.5) * 2.0 * h); }\n\
+            if (m == 2) {\n\
+                let cs = em_cos_sin_cycles(u);\n\
+                return o + vec2<f32>(cs.x * w, cs.y * h);\n\
+            }\n\
+            let r = sqrt(u);\n\
+            let cs = em_cos_sin_cycles(v);\n\
+            return o + vec2<f32>(cs.x * w * r, cs.y * h * r);\n\
         }\n",
     bindings: &[
         ColumnBinding {
@@ -434,6 +547,9 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         "spread",
         "x",
         "y",
+        "shape_mode",
+        "shape_w",
+        "shape_h",
         "seed",
         "size",
     ],

@@ -1712,6 +1712,14 @@ fn emitter_graph(reg: &NodeRegistry, life: f32, max: f32) -> (Graph, NodeId) {
     g.set_param(em, "y", -0.25);
     g.set_param(em, "seed", 7.0);
     g.set_param(em, "size", 0.15);
+    // ⚠️ A SHAPED emitter, and it is what turns this gate into the shape's proof: with the
+    // default point emitter every particle sits on the origin, so `assert_parity` compares the
+    // same pair of numbers N times and the kernel's `em_birth` — a hand-written mirror of the
+    // Rust `birth_offset` — is dead code on the device that nothing would notice drifting. A
+    // disc gives every id its own place, which is exactly what parity reads.
+    g.set_param(em, "shape_mode", 1.0);
+    g.set_param(em, "shape_w", 1.5);
+    g.set_param(em, "shape_h", 0.8);
     let out = g.add_node("motion.output");
     g.connect(Edge {
         from: (em, 0),
@@ -1724,11 +1732,15 @@ fn emitter_graph(reg: &NodeRegistry, life: f32, max: f32) -> (Graph, NodeId) {
 }
 
 /// The **count law** (ADR-0130 fatia do emitter): `source_count`'s `n(t)` and
-/// that the generator dispatches on the GPU. Every particle sits at the origin
-/// until a force moves it, so what render parity sees here is the origin + the
-/// size; the per-particle `vel` (from the hash) and the `id` gather are the
-/// SIM's to prove (`emitter → integrate`, the next slice). This gate's job is
-/// the one thing that is visible at emission — HOW MANY, and WHERE they start.
+/// that the generator dispatches on the GPU. Nothing has moved yet, so what render
+/// parity sees here is where each particle was BORN plus its size; the per-particle
+/// `vel` (from the hash) and the `id` gather are the SIM's to prove (`emitter →
+/// integrate`, the next slice). This gate's job is the one thing that is visible at
+/// emission — HOW MANY, and WHERE they start.
+///
+/// ⚠️ And *where they start* stopped being one number the day the emitter got a SHAPE: the
+/// fixture emits from a disc, so each id has its own birthplace and this gate is the only
+/// thing holding the kernel's `em_birth` to the Rust `birth_offset`.
 #[test]
 #[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
 fn the_emitter_generator_matches_the_cpu() {

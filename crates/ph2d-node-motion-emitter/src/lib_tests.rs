@@ -18,6 +18,10 @@ fn spec() -> Spec {
         angle: 90.0,
         spread: 0.0, // a pencil beam: the launch is exactly `angle`
         origin: [1.0, -1.0],
+        // The point emitter the node had before `shape_mode` existed — declared, never
+        // inherited, for the same reason `speed_random` is.
+        shape: Shape::Point,
+        shape_wh: [1.0, 1.0],
         seed: 0,
         max: 1024,
         size: 0.2,
@@ -168,6 +172,193 @@ fn the_authored_speed_random_reaches_the_launch() {
         .iter()
         .fold((f32::MAX, 0.0f32), |(l, h), &x| (l.min(x), h.max(x)));
     assert!(hi - lo > 1.0, "the authored spread arrived: {lo} .. {hi}");
+}
+
+fn pos_of(s: &Stream) -> Vec<[f32; 2]> {
+    match s.get("P").unwrap() {
+        Column::Vec2(v) => v.clone(),
+        _ => panic!("P is Vec2"),
+    }
+}
+
+/// A shaped emitter with a big enough window to say something about a distribution.
+fn shaped(shape: Shape, wh: [f32; 2]) -> Spec {
+    let mut s = spec();
+    s.shape = shape;
+    s.shape_wh = wh;
+    s.rate = 400.0;
+    s.life = 2.0;
+    s.seed = 17;
+    s
+}
+
+/// **A point emitter is byte-identical to the one that shipped** — and the fixture is the case
+/// that a lazier implementation gets wrong: an origin the artist typed as `-0`.
+///
+/// ⚠️ Compared through `to_bits`, because `-0.0 == 0.0` is TRUE in IEEE-754: an `assert_eq!` on
+/// the floats would pass over exactly the divergence this gate exists for. Summing a `[0.0,0.0]`
+/// offset instead of returning `None` flips that sign, and only the bits can see it.
+#[test]
+fn a_point_emitter_is_byte_identical_to_the_one_that_shipped() {
+    let mut s = shaped(Shape::Point, [3.0, 3.0]);
+    s.origin = [-0.0, 5.0];
+    let pts = pos_of(&emit(&s, 4.0));
+    assert!(pts.len() > 100, "a populated window: {}", pts.len());
+    for p in &pts {
+        assert_eq!(p[0].to_bits(), (-0.0f32).to_bits(), "the origin, verbatim");
+        assert_eq!(p[1].to_bits(), 5.0f32.to_bits());
+    }
+}
+
+/// **A disc is filled, and filled EVENLY OVER ITS AREA** — the property the `sqrt` exists for.
+///
+/// A raw-radius draw is the obvious wrong answer and it does not look wrong at a glance: the
+/// points still fill the circle, they just pile into the middle, which reads as a bright core the
+/// artist never authored. The oracle separates the two exactly — for an area-uniform disc **half**
+/// the points fall inside `r/√2`; for a radius-uniform one it is `1/√2 ≈ 71%`.
+#[test]
+fn a_disc_is_filled_evenly_over_its_area() {
+    let s = shaped(Shape::Disc, [2.0, 3.0]);
+    let pts = pos_of(&emit(&s, 4.0));
+    assert!(pts.len() > 700, "a big sample: {}", pts.len());
+
+    let mut inside_half_area = 0usize;
+    let mut reached = 0.0f32;
+    for p in &pts {
+        let (dx, dy) = (p[0] - s.origin[0], p[1] - s.origin[1]);
+        // Normalised radius in the ellipse's own frame.
+        let rn = ((dx / 2.0).powi(2) + (dy / 3.0).powi(2)).sqrt();
+        assert!(rn <= 1.02, "inside the ellipse: {rn}");
+        reached = reached.max(rn);
+        if rn <= std::f32::consts::FRAC_1_SQRT_2 {
+            inside_half_area += 1;
+        }
+    }
+    assert!(reached > 0.95, "the rim is reached: {reached}");
+    let half = inside_half_area as f32 / pts.len() as f32;
+    assert!(
+        (half - 0.5).abs() < 0.06,
+        "area-uniform: {half} of the points inside r/sqrt(2) (0.5 even, 0.71 radius-uniform)"
+    );
+}
+
+/// **A ring is only the outline.** Every particle sits ON the ellipse, none inside it.
+#[test]
+fn a_ring_is_only_its_outline() {
+    let s = shaped(Shape::Ring, [2.0, 1.0]);
+    let pts = pos_of(&emit(&s, 4.0));
+    assert!(pts.len() > 700, "a big sample");
+    for p in &pts {
+        let (dx, dy) = (p[0] - s.origin[0], p[1] - s.origin[1]);
+        let rn = ((dx / 2.0).powi(2) + (dy / 1.0).powi(2)).sqrt();
+        // The parabolic wave is ~0.09% off the unit circle — the band is its error, not slack.
+        assert!((rn - 1.0).abs() < 0.01, "on the outline: {rn}");
+    }
+}
+
+/// **A rect fills its extents, and its two axes are INDEPENDENT.** Sharing one hash lane between
+/// them would lay every particle on the diagonal — a rect emitter that emits a line.
+#[test]
+fn a_rect_fills_its_extents_on_two_independent_axes() {
+    let s = shaped(Shape::Rect, [2.0, 0.5]);
+    let pts = pos_of(&emit(&s, 4.0));
+    assert!(pts.len() > 700, "a big sample");
+
+    let d: Vec<[f32; 2]> = pts
+        .iter()
+        .map(|p| [p[0] - s.origin[0], p[1] - s.origin[1]])
+        .collect();
+    let (mut mx, mut my) = (0.0f32, 0.0f32);
+    for q in &d {
+        assert!(q[0].abs() <= 2.001 && q[1].abs() <= 0.501, "inside: {q:?}");
+        mx = mx.max(q[0].abs());
+        my = my.max(q[1].abs());
+    }
+    assert!(mx > 1.9 && my > 0.47, "both extents reached: {mx}, {my}");
+
+    // Independence, read off the emitted positions: exactly ±1 with the lanes shared.
+    let n = d.len() as f32;
+    let (ax, ay) = d
+        .iter()
+        .fold((0.0f32, 0.0f32), |(a, b), q| (a + q[0] / n, b + q[1] / n));
+    let (mut cov, mut vx, mut vy) = (0.0f32, 0.0f32, 0.0f32);
+    for q in &d {
+        let (ex, ey) = (q[0] - ax, q[1] - ay);
+        cov += ex * ey;
+        vx += ex * ex;
+        vy += ey * ey;
+    }
+    let corr = cov / (vx.sqrt() * vy.sqrt());
+    assert!(corr.abs() < 0.2, "the two axes are separate draws: {corr}");
+}
+
+/// **A particle keeps its birthplace while the window slides** — the same identity property the
+/// speed has, on the lanes the shape uses. An index-hashed birthplace would make the whole cloud
+/// jump every time an older particle died.
+#[test]
+fn a_particle_keeps_its_birthplace_while_the_window_slides() {
+    let mut s = shaped(Shape::Disc, [2.0, 2.0]);
+    // ⚠️ **TWO premises, and the first version of this gate broke each in turn** — both caught by
+    // its own controls rather than by a false green. `shaped` sets a 2 s life for a big sample and
+    // nothing dies inside it, so the window had never SLID; shortening the life to 0.5 s fixed
+    // that and broke the other half, because the two samples were 0.55 s apart and every particle
+    // of the first frame was dead by the second, so there was nothing left to compare. The gap has
+    // to be shorter than the life **and** long enough to kill somebody.
+    s.life = 0.5;
+    let sample = |t: f32| -> Vec<(u32, [f32; 2])> {
+        let out = emit(&s, t);
+        ids_of(&out)
+            .into_iter()
+            .map(|i| i as u32)
+            .zip(pos_of(&out))
+            .collect()
+    };
+    let (early, later) = (sample(1.0), sample(1.3));
+    assert!(early[0].0 != later[0].0, "the window really slid");
+    let mut shared = 0usize;
+    for (id, p) in &early {
+        if let Some((_, q)) = later.iter().find(|(i, _)| i == id) {
+            assert_eq!(p, q, "id {id} kept its birthplace");
+            shared += 1;
+        }
+    }
+    assert!(shared >= 3, "the frames overlap: {shared}");
+}
+
+/// **The authored shape REACHES the birth.** Every gate above builds a `Spec` by hand, so all of
+/// them stay green with the three params unread — this walks the seam from `set_param` to a
+/// placed particle, and its first half never names the default it is testing.
+#[test]
+fn the_authored_shape_reaches_the_birth() {
+    use ph2d_nodegraph::cook::{Cook, OpResolver};
+    use ph2d_nodegraph::graph::Graph;
+    struct Ops;
+    impl OpResolver for Ops {
+        fn resolve(&self, ty: NodeTypeId) -> Option<&dyn NodeOp> {
+            (ty == MANIFEST.id).then_some(&MotionEmitter as &dyn NodeOp)
+        }
+    }
+    let cook_spread = |shape: Option<f32>| -> f32 {
+        let mut g = Graph::new();
+        let em = g.add_node("motion.emitter");
+        g.set_param(em, "rate", 200.0);
+        g.set_param(em, "life", 2.0);
+        g.set_param(em, "x", 1.0);
+        g.set_param(em, "y", 2.0);
+        if let Some(m) = shape {
+            g.set_param(em, "shape_mode", m);
+            g.set_param(em, "shape_w", 3.0);
+            g.set_param(em, "shape_h", 3.0);
+        }
+        let mut cook = Cook::new();
+        let out = cook.cook(&g, &Ops, em, 3.0).unwrap();
+        pos_of(out[0].as_stream())
+            .into_iter()
+            .fold(0.0f32, |m, p| m.max((p[0] - 1.0).hypot(p[1] - 2.0)))
+    };
+    assert_eq!(cook_spread(None), 0.0, "untouched: one spot, at the origin");
+    assert!(cook_spread(Some(1.0)) > 2.8, "a disc arrived");
+    assert!(cook_spread(Some(3.0)) > 2.8, "a rect arrived");
 }
 
 /// **How fast a particle leaves is not a function of WHERE in the cone it leaves.** Sharing one

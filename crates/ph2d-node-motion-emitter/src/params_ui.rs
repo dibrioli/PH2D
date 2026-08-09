@@ -38,6 +38,16 @@ pub(crate) static PARAM_UNITS: &[ParamUnitDecl] = &[
         param: "size",
         unit: ParamUnit::Length,
     },
+    // The shape's half-extents are world distances by the same trace as `x`/`y`: they are added
+    // to them, and the sum becomes the `P` column.
+    ParamUnitDecl {
+        param: "shape_w",
+        unit: ParamUnit::Length,
+    },
+    ParamUnitDecl {
+        param: "shape_h",
+        unit: ParamUnit::Length,
+    },
     ParamUnitDecl {
         param: "life",
         unit: ParamUnit::Seconds,
@@ -168,6 +178,36 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         step: 0.1,
         widget: ParamWidget::Slider,
     },
+    // ⚠️ `shape_mode`, not `shape`: the artist reads the LABEL, and the param name is what the
+    // catalogue's `a_mode_wears_words_not_an_index` scans for (`mode` / `*_mode`). Calling it
+    // `shape` would have put a choice outside the one gate that exists to stop choices being
+    // painted as raw indices — for nothing, since the name is internal.
+    ParamUiHint {
+        param: "shape_mode",
+        label: "Shape",
+        min: 0.0,
+        max: 3.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: &["Point", "Disc", "Ring", "Rect"],
+        },
+    },
+    ParamUiHint {
+        param: "shape_w",
+        label: "Shape W",
+        min: 0.0,
+        max: 10.0,
+        step: 0.05,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "shape_h",
+        label: "Shape H",
+        min: 0.0,
+        max: 10.0,
+        step: 0.05,
+        widget: ParamWidget::Slider,
+    },
     ParamUiHint {
         param: "seed",
         label: "Seed",
@@ -204,12 +244,13 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
 /// As SEÇÕES deste nó (doc 88 B3). Dez controles numa lista plana são uma parede; a pergunta
 /// que cada seção responde é uma só.
 ///
-/// ⚠️ O `seed` está em **Velocity** por MEDIÇÃO, não por hábito: os lanes que ele alimenta são
-/// `LANE_ANGLE` e `LANE_SPEED`, ou seja ele é a aleatoriedade do `spread` **e** do
-/// `speed_random` — os dois moram aqui, e pô-lo numa seção "Random" o separaria justamente dos
-/// números que ele randomiza. *(A frase anterior dizia "um único lane"; o segundo chegou com o
-/// `speed_random` e a razão sobreviveu porque o lane novo caiu na mesma seção — o dia em que um
-/// lane nascer noutra, esta nota deixa de valer.)*
+/// ⚠️ **O `seed` ficou SOLTO, e a nota anterior previu o dia.** Ela o punha em *Velocity*
+/// argumentando que ele alimentava só o `LANE_ANGLE`, ou seja que era a aleatoriedade do
+/// `spread`, e dizia que *"o dia em que um lane nascer noutra seção, esta nota deixa de valer"*.
+/// Nasceram dois: `LANE_SHAPE_U`/`LANE_SHAPE_V` randomizam onde a partícula nasce, que é
+/// **Origin**. Um `seed` que alimenta quatro lanes em duas seções não é um controle de
+/// velocidade — é a aleatoriedade do NÓ, e o lugar de um número que não pertence a nenhuma
+/// seção é fora de todas, junto dos essenciais.
 ///
 /// ⚠️ E ficam SOLTOS `rate`, `life`, `size` e `max`: os três primeiros são o que um emissor
 /// É (com que frequência, por quanto tempo, de que tamanho) e o quarto é o orçamento. Param
@@ -220,8 +261,10 @@ pub static PARAM_GROUPS: &[ParamGroup] = &[
     ParamGroup::new("speed_random", "Velocity"),
     ParamGroup::new("angle", "Velocity"),
     ParamGroup::new("spread", "Velocity"),
-    ParamGroup::new("seed", "Velocity"),
     // De onde.
     ParamGroup::new("x", "Origin"),
     ParamGroup::new("y", "Origin"),
+    ParamGroup::new("shape_mode", "Origin"),
+    ParamGroup::new("shape_w", "Origin"),
+    ParamGroup::new("shape_h", "Origin"),
 ];

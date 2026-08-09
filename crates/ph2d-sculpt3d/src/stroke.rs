@@ -435,7 +435,7 @@ impl SculptStroke {
             // A máscara é lida do estado CONGELADO: um traço de Mask não pode
             // mudar o quanto ele próprio já mascarou no meio do gesto.
             let keep = if gated_by_mask {
-                1.0 - self.base_mask[s]
+                crate::mask_ops::free_weight(self.base_mask[s])
             } else {
                 1.0
             };

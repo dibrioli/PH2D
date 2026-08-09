@@ -40,6 +40,7 @@ pub mod mask_ops;
 mod preview;
 mod spacing;
 mod stroke;
+mod transform;
 
 pub use alpha::{
     Alpha, AlphaFrame, DEFAULT_ALPHA_SCALE, MAX_ALPHA_SCALE, MAX_AXIS_ELEV_DEG, MIN_ALPHA_SCALE,
@@ -49,3 +50,4 @@ pub use brush::{Amount, Brush, Falloff, Grip, REACH_FRACTION, Symmetry, Verb};
 pub use preview::{NO_PREVIEW, preview_into, preview_verts};
 pub use spacing::{ACCUM_PER_DAB, MIN_SPACING_FRACTION, Walk, min_spacing, walk};
 pub use stroke::{Dab, SculptStroke};
+pub use transform::{Gesture, MIN_SCALE_FACTOR, MaskTransform, TransformKind};

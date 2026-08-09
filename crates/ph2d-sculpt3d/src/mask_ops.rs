@@ -18,6 +18,25 @@
 
 use ph2d_mesh::{DEFAULT_MASK, Mesh};
 
+/// **Quanto deste vértice está LIVRE para se mexer** — a convenção acima, numa
+/// porta só.
+///
+/// A pergunta *"que fração deste vértice o gesto pode mover?"* tem **dois**
+/// perguntadores: o traço (todo verbo pesa o dab por isto) e o
+/// [`crate::MaskTransform`]. Duas cópias de `1 − m` não divergem por aritmética
+/// — divergem no dia em que alguém portar mais um pedaço do SculptGL e escrever
+/// `m` porque *lá* é assim.
+///
+/// ⚠️ É `1 − m` e não um clamp: a máscara já vive em `[0, 1]` por construção
+/// (quem a escreve são [`blur`], [`sharpen`], [`invert`] e o verbo `Mask`, e os
+/// quatro clampam), e um clamp aqui esconderia uma máscara envenenada em vez de
+/// a deixar aparecer.
+#[inline]
+#[must_use]
+pub fn free_weight(mask: f32) -> f32 {
+    1.0 - mask
+}
+
 /// Quanto um passo de [`blur`] mistura com a vizinhança.
 ///
 /// ⚠️ **Meio, e não um: um laplaciano cheio (`m = média dos vizinhos`) apaga a

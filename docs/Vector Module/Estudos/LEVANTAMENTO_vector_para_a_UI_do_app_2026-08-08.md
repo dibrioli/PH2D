@@ -153,3 +153,72 @@ onde os dois lados já estão medidos.
   descreve uma lista FIXA, e o Inspector é uma lista **função da seleção**.
 - **Não trata da UI dos JOGOS** (o outro consumidor que o pedido de 2026-08-01 nomeia). Aquele é o
   W8a, e a fronteira dele é o runtime.
+
+---
+
+## §6 — ⚠️ CORREÇÃO (2026-08-09): o teste do `Vec` era NECESSÁRIO e não SUFICIENTE
+
+A §2 separou *omissão* de *estrutural* perguntando ***"o construtor tem um `Vec`?"*** — que é a lei
+do `skin.rs` verbatim. Construindo o item 1 da §4, ela partiu.
+
+**A lei fina:** *todo parâmetro tem de ser determinado pelo **retângulo**, pelo **rótulo**, pelos
+**tokens** ou pelo **estado vivo**.* Nenhum dos quatro tem `Vec`; **dois deles falham a lei fina**:
+
+| widget | % | o parâmetro extra | determinado? |
+|---|---:|---|---|
+| `NumberInput` | 4,8% | `value` · `step` · `min` · `max` | ✅ `InteractiveState::NumberInput` já existia |
+| `LevelMeter` | 0,5% | `rms` · `peak_hold` · `clipped` | ✅ readout — prévia, como o `ProgressBar` |
+| **`ColorSwatch`** | **8,2%** | **`rgba`** | ⛔ é **o valor que ela existe para mostrar** |
+| **`IconButton`** | **4,8%** | **`IconGlyph`** | ⛔ *qual ícone?* |
+
+⇒ **os ausentes são TRÊS famílias, não duas.** A do meio — *pede parâmetro por-tipo* — é a que o
+`skin.rs` já tinha previsto, textualmente: *"ele nasce no dia em que um tipo precisar de um
+parâmetro que o token não exprime."* E o número que aquela cerca usava para se justificar
+(*"uma tabela de 44 casos especiais"*) está agora medido: **2 de 16.**
+
+**Entregue (commit `6d5cb682c`):** `NumberInput` + `LevelMeter`. Cobertura **67,1% → 72,4%**.
+
+### 6.1 O desenho do canal — e por que ele não pode ser shipado pela metade
+
+O parâmetro **não pede autoria nova**: a cor de uma swatch é o **PREENCHIMENTO da forma** que a
+veste. O artista desenha um retângulo, pinta-o de azul, veste-o de `ColorSwatch` — a swatch é azul.
+Zero widget novo, zero campo no `VecWidget`, **zero schema**: o fill já viaja no documento.
+
+⚠️ **Mas os dois consumidores da porta única têm informação DIFERENTE**, e é isso que decide a forma:
+
+| consumidor | o que ele tem | de onde tira a `rgba` |
+|---|---|---|
+| a prévia do canvas (`widget_live::build`) | a `VecScene` e o `VecPath` | lê o fill **ao vivo** |
+| o painel GERADO (`ph2d-panel-authored::paint`) | a tabela `ROWS` e o `WidgetStore` | só se a `rgba` **viajar no `RowSpec`** |
+
+⇒ **construir só a metade do canvas produziria exactamente a divergência que a porta única existe
+para impedir** — a swatch azul no canvas e cinza no painel, visível só numa screenshot. Ou as duas
+metades, ou nenhuma.
+
+**A forma:** `SkinParam` — um `Copy` struct de campos opcionais ao lado do `kind`, no molde
+*side-metadata* que o `KernelResolver` dos Motion Nodes usa (canal novo = campo novo com default
+neutro, nunca argumento novo nem variante de contrato). Hoje um campo (`rgba`); o `RowSpec` ganha o
+espelho dele e o codegen o emite.
+
+### 6.2 ⛔ O `IconButton` NÃO entra pelo mesmo canal, e a razão é medida
+
+O parâmetro dele é **GEOMETRIA** (`IconGlyph::Path(&BezPath)`), não um escalar de 4 bytes. As duas
+respostas candidatas são desenho de produto, não fiação:
+
+- **o artista DESENHA o ícone** (a forma que veste o `IconButton` *é* o glifo) — a resposta nativa
+  de um editor vetorial, e ela obriga o **código gerado a carregar um `BezPath`**;
+- **o artista ESCOLHE do `IconId`** — barato de emitir, mas é o primeiro campo autorado que o
+  `VecWidget` teria, logo **schema**.
+
+⇒ Ele fica **nomeado e não construído**. Colapsar os dois num enum antes de a segunda forma ser
+conhecida seria inventar a lista — a mesma armadilha que a família da LISTA (§2) evita.
+
+### 6.3 A ordem da §4, corrigida
+
+| ordem | wave | cobertura | estado |
+|---|---|---|---|
+| ~~1~~ | `NumberInput` + `LevelMeter` | 67,1% → **72,4%** | ✅ **feito** |
+| **1** | `ColorSwatch` pelo canal do §6.1 | 72,4% → **80,6%** | as duas metades juntas |
+| **2** | colapso de seção | — | 9 dos 23 painéis reais |
+| **3** | `IconButton` | 80,6% → **85,4%** | ⚠️ decisão de produto (§6.2) |
+| **4** | a família da **LISTA** | → **~100%** | filhos autorados |

@@ -307,60 +307,19 @@ impl SculptStroke {
     /// derrete enquanto o artista segura o botão parado.
     /// A média do anel — o alvo do Smooth, e o **oposto** do Sharpen.
     ///
-    /// ⚠️ **Duas regras de BORDA, e as duas existem porque uma malha aberta tem
-    /// beira** (o `vertOnEdge` do `Mesh.js`):
+    /// ⚠️ **A LEI mora em [`ph2d_mesh::ring_average`], e não aqui.** Ela tem as
+    /// duas regras de borda que uma malha aberta exige, e ganhou um SEGUNDO
+    /// consumidor quando o **extract** passou a relaxar a costura de uma peça
+    /// recém-cortada: é o mesmo laplaciano, e duas cópias divergiriam exatamente
+    /// no lugar que já custou uma medição (a boca do `open_tube3` sugada de 2
+    /// para 1,3597 em seis passes).
     ///
-    /// 1. **Valência ≤ 2 CONGELA.** Com dois vizinhos a média é o ponto médio da
-    ///    corda entre eles, então suavizar a ponta de uma tira a escorrega para
-    ///    dentro da corda — a geometria some, e é um caminho só de ida.
-    /// 2. **Um vértice de borda medeia só com vizinhos TAMBÉM de borda.** Com o
-    ///    anel inteiro, a média inclui os vizinhos do anel de DENTRO e a boca é
-    ///    sugada para o miolo: medido no `open_tube3`, a altura cai de **2 para
-    ///    1,3597** em seis passes — a peça encolhe pelas duas pontas e nada na
-    ///    ferramenta diz por quê. Restrita à borda, os vizinhos estão no MESMO
-    ///    anel, logo na mesma altura, e a beira alisa ao longo dela mesma.
-    ///
-    /// ⚠️ **Fora de uma malha aberta as duas são inertes**: numa `uv_sphere` não
-    /// há vértice de borda nem valência < 3 (medido, zero de ambos). Foi por isso
-    /// que a classe inteira ficou invisível até existir uma fixture que a
-    /// contivesse.
+    /// ⚠️ **O que fica AQUI é de onde a posição vem:** o traço lê o `pre`
+    /// CONGELADO no pen-down, e é isso que o torna idempotente — um pincel
+    /// parado suaviza uma vez, e a superfície não derrete enquanto o artista
+    /// segura o botão. O extract entrega a posição viva pela mesma porta.
     fn neighbour_average(&self, mesh: &Mesh, v: u32, base: [f32; 3]) -> [f32; 3] {
-        let vi = v as usize;
-        let adj = mesh.adjacency();
-        let ring = adj.vert_verts.neighbours(vi);
-        if adj.valence(vi) <= 2 {
-            return base;
-        }
-        let border = adj.is_border(vi);
-        let mut acc = [0.0f32; 3];
-        let mut n = 0u32;
-        for &nb in ring {
-            // Um vértice de borda só ouve a própria borda; um interior ouve tudo.
-            if border && !adj.is_border(nb as usize) {
-                continue;
-            }
-            let p = self.base_pos_of(mesh, nb);
-            for k in 0..3 {
-                acc[k] += p[k];
-            }
-            n += 1;
-        }
-        // ⚠️ `< 2` e não `== 0`: um único vizinho de borda dá uma "média" que é a
-        // posição dele, e o vértice saltaria para cima do vizinho.
-        //
-        // ⚠️ **DEFESA EM CAMADAS, e ela é inalcançável em malha manifold —
-        // MEDIDO, não suposto.** A curva de borda de uma superfície manifold é um
-        // LOOP FECHADO, então todo vértice nela tem exatamente dois vizinhos de
-        // borda: no `open_tube3` são 12 de 12. Só entrada não-manifold (que
-        // apenas o `from_obj` pode trazer, e ele não tem chamador de produção)
-        // alcança este ramo, então ele fica documentado em vez de gateado —
-        // fabricar uma quinta fixture para ele seria construir a classe antes do
-        // consumidor.
-        if n < 2 {
-            return base;
-        }
-        let inv = 1.0 / n as f32;
-        [acc[0] * inv, acc[1] * inv, acc[2] * inv]
+        ph2d_mesh::ring_average(mesh.adjacency(), v, base, |nb| self.base_pos_of(mesh, nb))
     }
 }
 

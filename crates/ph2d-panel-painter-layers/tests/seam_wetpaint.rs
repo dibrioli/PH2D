@@ -170,9 +170,27 @@ fn the_method_menu_offers_every_method_while_wet_is_armed() {
     let mut wet = PainterTool::default();
     wet.set_wetpaint_armed(true);
     let offered = offered_stroke_methods(Some(&wet.brush_settings()));
+    // ⚠️ O lado direito é o menu do DIGITAL, e desde 2026-08-09 ele carrega um método a mais: o
+    // **Grid Stamp (10)**, exclusivo daquele meio. Ele não é uma exceção a este gate — é uma pergunta
+    // diferente: aqui a afirmação é *"nada é retirado POR o pincel estar molhado"*, e o que o Digital
+    // tem a mais nunca esteve disponível ao wet para ser retirado. Comparar contra a lista crua faria
+    // este gate reprovar toda vez que o Digital ganhasse um método próprio — falha pelo motivo errado.
+    const DIGITAL_ONLY: u8 = 10; // Grid Stamp
+    let shared: Vec<u8> = full
+        .iter()
+        .copied()
+        .filter(|m| *m != DIGITAL_ONLY)
+        .collect();
     assert_eq!(
-        offered, full,
+        offered, shared,
         "wet mode narrows the Method menu — deposit-at-commit made every method valid"
+    );
+    // CONTROLE: a lista compartilhada não é vazia nem degenerada, senão a igualdade acima seria
+    // verdadeira por vácuo no dia em que a filtragem levasse tudo.
+    assert!(shared.len() >= 9, "fixture: sobrou menu para comparar");
+    assert!(
+        !offered.contains(&DIGITAL_ONLY),
+        "o Grid Stamp é exclusivo do Digital e não pode aparecer no menu do Wet Paint"
     );
 }
 

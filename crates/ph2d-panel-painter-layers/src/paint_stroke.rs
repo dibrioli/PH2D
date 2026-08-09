@@ -525,6 +525,7 @@ fn stroke_method_name(m: u8) -> &'static str {
         StrokeMethod::Ellipse => "Ellipse",
         StrokeMethod::Polygon => "Polygon",
         StrokeMethod::FreeHand => "Free Hand",
+        StrokeMethod::GridStamp => "Grid Stamp",
     }
 }
 

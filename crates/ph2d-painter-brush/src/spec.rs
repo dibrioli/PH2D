@@ -61,6 +61,16 @@ pub struct BrushSpec {
     /// How the pointer path becomes dabs (Blender `stroke_method`, default `Space`,
     /// `DNA_brush_types.h:213`).
     pub stroke_method: StrokeMethod,
+    /// **Grid Stamp — o tamanho da célula em px de imagem** (`[largura, altura]`). Só
+    /// [`StrokeMethod::GridStamp`] o lê; nos demais métodos é inerte, e por isso o painel não o pinta.
+    ///
+    /// ⚠️ Ele mora aqui, ao lado do Spacing, porque é **o mesmo tipo de coisa**: o número que decide
+    /// ONDE o próximo dab cai. A grade do editor (snap/réguas) e o Tiling (a pintura wrap-around) são
+    /// outras duas grades, de outros donos — esta existe só enquanto este método está escolhido.
+    pub grid_cell_px: [f32; 2],
+    /// **Grid Stamp — o deslocamento da grade** em px de imagem, `[x, y]`. Afasta a rede das bordas
+    /// do documento; um valor de meia-célula põe o carimbo onde antes havia uma linha da grade.
+    pub grid_offset_px: [f32; 2],
     /// "Adjust Strength for Spacing" — normalise total deposited opacity so a densely-spaced
     /// stroke doesn't pile up to full opacity (Blender `BRUSH_SPACE_ATTEN`, default ON,
     /// `DNA_brush_types.h:206`). Only applies for spacing < 100% (see [`Self::space_overlap_factor`]).

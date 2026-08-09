@@ -75,6 +75,10 @@ pub struct Stroke {
     /// Last point the path was walked to — the spacing segment start AND the stabilize spring
     /// anchor (Blender's `last_mouse_position`).
     last_pos: [f32; 2],
+    /// **Grid Stamp** — a última célula carimbada, para o carimbo ser *uma vez por célula* em vez de
+    /// uma vez por evento: o ponteiro treme dentro de uma célula e não pode re-depositar por isso.
+    /// `None` até o primeiro carimbo do gesto.
+    last_cell: Option<[i32; 2]>,
     last_pressure: f32,
     /// Distance travelled since the last emitted dab (carried across segments).
     accum: f32,
@@ -145,6 +149,7 @@ impl Stroke {
             spec,
             dynamics,
             last_pos: [0.0, 0.0],
+            last_cell: None,
             last_pressure: 1.0,
             accum: 0.0,
             spacing_mult: 1.0,
@@ -193,6 +198,7 @@ impl Stroke {
         self.last_raw_pressure = p.pressure;
         self.heading = [0.0, 0.0]; // fresh stroke → heading re-aims from the first travel (Rake from Angle)
         self.arc_len = 0.0; // fresh stroke → the Flow along-coordinate starts at the pen-down
+        self.last_cell = None; // Grid Stamp: gesto novo, nenhuma célula carimbada ainda
         // Rake warm-up (see [`mod@self::warmup`]): hold the opening dabs until travel defines the heading.
         self.warm_buf.clear();
         self.warm_dist = 0.0;
@@ -209,7 +215,11 @@ impl Stroke {
                 || self.spec.effective_impasto_push() > 0.0);
         self.sampler.reset(p);
         self.started = true;
-        if self.spec.stroke_method.emits_on_begin() {
+        if self.spec.stroke_method == StrokeMethod::GridStamp {
+            // O pen-down carimba a célula sob o cursor: um clique tem de pintar uma célula, senão o
+            // método só funcionaria arrastando.
+            self.stamp_cell(self.spec.grid_cell_at(p.pos), out);
+        } else if self.spec.stroke_method.emits_on_begin() {
             let pr = self.method_pressure(p.pressure);
             let dab = self.dab_at(p.pos, pr, self.method_overlap(), self.arc_len);
             crate::symmetry::push_symmetric(out, dab, &self.spec.symmetry);
@@ -299,6 +309,16 @@ impl Stroke {
             | StrokeMethod::Ellipse
             | StrokeMethod::Polygon
             | StrokeMethod::FreeHand => {
+                self.advance_anchor(avg);
+            }
+            // **Grid Stamp** — o percurso desde a amostra anterior é percorrido em passos de meia
+            // célula e cada célula NOVA recebe um carimbo no seu centro. ⚠️ O passo é meia célula (o
+            // menor lado) porque assim duas amostras consecutivas caem na mesma célula ou numa
+            // vizinha: nenhuma célula ATRAVESSADA é pulada num arrasto rápido. Um caminho que corta
+            // exatamente uma quina não carimba as duas células adjacentes — ele não entra nelas, e
+            // carimbar mesmo assim seria a ferramenta pintando onde a mão não passou.
+            StrokeMethod::GridStamp => {
+                self.walk_grid_cells(self.last_pos, avg.pos, out);
                 self.advance_anchor(avg);
             }
         }
@@ -506,6 +526,66 @@ impl Stroke {
         let d = self.dab_at(pos, pressure, 1.0, arc);
         crate::symmetry::push_symmetric(out, d, &self.spec.symmetry);
         self.tot_samples = self.tot_samples.wrapping_add(1);
+    }
+
+    /// **Grid Stamp** — percorre `from → to` e carimba toda célula NOVA que o caminho atravessa.
+    ///
+    /// O passo é meia célula (o menor lado), então amostras consecutivas nunca ficam a mais de uma
+    /// célula de distância em cada eixo — é isso que impede um arrasto rápido de deixar buracos, sem
+    /// precisar de um rasterizador supercover.
+    fn walk_grid_cells(&mut self, from: [f32; 2], to: [f32; 2], out: &mut Vec<Dab>) {
+        let c = self.spec.grid_cell();
+        let step = 0.5 * c[0].min(c[1]);
+        let d = [to[0] - from[0], to[1] - from[1]];
+        let len = (d[0] * d[0] + d[1] * d[1]).sqrt();
+        let n = if len > 0.0 {
+            ((len / step).ceil() as u32).max(1)
+        } else {
+            1
+        };
+        for i in 1..=n {
+            let t = f64::from(i) / f64::from(n);
+            let p = [from[0] + d[0] * t as f32, from[1] + d[1] * t as f32];
+            self.stamp_cell(self.spec.grid_cell_at(p), out);
+        }
+    }
+
+    /// Carimba UMA célula — no centro dela — se ela não for a última carimbada.
+    ///
+    /// ⚠️ **A cópia de Symmetry é RE-ENCAIXADA na própria célula.** O espelho de um centro de célula
+    /// não é, em geral, o centro de uma célula, e a promessa inteira deste método é que todo carimbo
+    /// pousa num centro. Deixar a cópia onde o espelho a põe daria uma metade fora da grade — o único
+    /// defeito que este método não pode ter. (A alternativa — não espelhar — mataria Symmetry aqui
+    /// sem necessidade.)
+    fn stamp_cell(&mut self, cell: [i32; 2], out: &mut Vec<Dab>) {
+        if self.last_cell == Some(cell) {
+            return;
+        }
+        self.last_cell = Some(cell);
+        let dab = self.grid_dab(self.spec.grid_cell_center(cell));
+        let first = out.len();
+        crate::symmetry::push_symmetric(out, dab, &self.spec.symmetry);
+        for d in &mut out[first..] {
+            d.center = self.spec.grid_cell_center(self.spec.grid_cell_at(d.center));
+        }
+        self.tot_samples = self.tot_samples.wrapping_add(1);
+    }
+
+    /// O dab de um carimbo de grade: o raio vem da CÉLULA (a porta única
+    /// [`BrushSpec::grid_stamp_frame`]), a pressão é cheia e não há heading — um carimbo de grade é
+    /// alinhado à REDE, não ao traço, então girá-lo com a mão brigaria com a célula que ele preenche.
+    fn grid_dab(&self, center: [f32; 2]) -> Dab {
+        let (radius, _, _) = self.spec.grid_stamp_frame();
+        Dab {
+            center,
+            radius_px: radius.clamp(0.0, MAX_BRUSH_RADIUS_PX),
+            coverage: self.spec.strength.clamp(0.0, 1.0),
+            color: self.spec.color,
+            rotation: [1.0, 0.0],
+            dir: [0.0, 0.0],
+            arc_len: 0.0,
+            stroke_radius_px: radius,
+        }
     }
 
     /// Build the Anchored stamp's single dab at `center` with the drag-defined `radius_px`. No

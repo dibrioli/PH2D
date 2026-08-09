@@ -46,6 +46,21 @@ pub enum StrokeMethod {
     /// simplified into the same editable control-point curve as [`Self::Arc`] (handles for later
     /// manipulation / re-apply), its spine filled with spaced dabs on finalise. Wire discriminant `9`.
     FreeHand,
+    /// **PH2D extension — Grid Stamp.** O carimbo do pincel, **preso a uma grade PRÓPRIA**: o dab não
+    /// pousa onde o cursor está, mas no **centro da célula** que o cursor cobre, esticado/comprimido
+    /// para caber exatamente nela. Um passe deposita **uma vez por célula**; arrastar preenche a
+    /// trilha de células que o ponteiro atravessou, e voltar sobre uma célula já carimbada não a
+    /// re-carimba. Wire discriminant `10`.
+    ///
+    /// É o parente de [`DragDot`](Self::DragDot) — um carimbo, pressão forçada, sem jitter nem
+    /// suavização —, com **três** diferenças que decidem os predicados abaixo: a posição é
+    /// **quantizada**, o footprint é **derivado da célula** (não do raio), e o depósito é
+    /// **idempotente por célula**.
+    ///
+    /// ⚠️ **A grade é do MÉTODO, não do documento.** Ela não é a grade de snap do editor nem a do
+    /// Tiling (a pintura wrap-around): tem tamanho e deslocamento próprios, vive no `BrushSpec` ao
+    /// lado do Spacing, e existe só enquanto este método está escolhido.
+    GridStamp,
 }
 
 impl StrokeMethod {
@@ -63,6 +78,7 @@ impl StrokeMethod {
             Self::Ellipse => 7,
             Self::Polygon => 8,
             Self::FreeHand => 9,
+            Self::GridStamp => 10,
         }
     }
 
@@ -80,6 +96,7 @@ impl StrokeMethod {
             7 => Self::Ellipse,
             8 => Self::Polygon,
             9 => Self::FreeHand,
+            10 => Self::GridStamp,
             _ => Self::Space,
         }
     }
@@ -102,7 +119,10 @@ impl StrokeMethod {
     /// deposits once at commit — non-incremental is an authoring cadence, not an exclusion.)
     #[must_use]
     pub fn is_incremental(self) -> bool {
-        matches!(self, Self::Dots | Self::Airbrush | Self::Space)
+        matches!(
+            self,
+            Self::Dots | Self::Airbrush | Self::Space | Self::GridStamp
+        )
     }
 
     /// Whether this method only ever shows the **latest** pointer position, so a host may coalesce a burst
@@ -179,7 +199,10 @@ impl StrokeMethod {
     /// True when this method forces pressure to 1.0 (Blender: DRAG_DOT, ANCHORED, LINE).
     #[must_use]
     pub fn forces_full_pressure(self) -> bool {
-        matches!(self, Self::DragDot | Self::Anchored | Self::Line)
+        matches!(
+            self,
+            Self::DragDot | Self::Anchored | Self::Line | Self::GridStamp
+        )
     }
 
     /// True when the engine emits a dab at the down point on stroke begin (the continuous methods).
@@ -195,7 +218,7 @@ impl StrokeMethod {
     /// True when per-dab position jitter applies (Blender disables it for DRAG_DOT/ANCHORED).
     #[must_use]
     pub fn allows_jitter(self) -> bool {
-        !matches!(self, Self::DragDot | Self::Anchored)
+        !matches!(self, Self::DragDot | Self::Anchored | Self::GridStamp)
     }
 
     /// True for the freehand methods that drive the texture **Rake** warm-up: the stroke holds its
@@ -287,6 +310,7 @@ mod tests {
             StrokeMethod::Ellipse,
             StrokeMethod::Polygon,
             StrokeMethod::FreeHand,
+            StrokeMethod::GridStamp,
         ] {
             assert_eq!(StrokeMethod::from_u8(m.to_u8()), m);
         }
@@ -295,6 +319,7 @@ mod tests {
         assert_eq!(StrokeMethod::Ellipse.to_u8(), 7);
         assert_eq!(StrokeMethod::Polygon.to_u8(), 8);
         assert_eq!(StrokeMethod::FreeHand.to_u8(), 9);
+        assert_eq!(StrokeMethod::GridStamp.to_u8(), 10);
         assert_eq!(StrokeMethod::default(), StrokeMethod::Space);
         // Unknown → Space (paints), not Dots.
         assert_eq!(StrokeMethod::from_u8(200), StrokeMethod::Space);
@@ -302,7 +327,9 @@ mod tests {
 
     #[test]
     fn stroke_panel_visibility_matches_blender() {
-        use StrokeMethod::{Airbrush, Anchored, Arc, Dots, DragDot, Ellipse, Line, Polygon, Space};
+        use StrokeMethod::{
+            Airbrush, Anchored, Arc, Dots, DragDot, Ellipse, GridStamp, Line, Polygon, Space,
+        };
         // The Blender "Stroke" panel row matrix (Spacing/Dash, Jitter) per method. Input
         // Samples is always shown, so it is not in the table. This locks the per-method gate
         // the layers panel paints against — a predicate edit that breaks parity goes red here,
@@ -318,6 +345,9 @@ mod tests {
             (Arc, true, true, true, false, false, false),
             (Ellipse, true, true, true, false, false, false),
             (Polygon, true, true, true, false, false, false),
+            // Grid Stamp: a posicao e' QUANTIZADA e o footprint vem da CELULA — nenhuma das seis
+            // linhas do painel de Stroke tem o que governar aqui (DIRETIVA §2: nada de no-op mudo).
+            (GridStamp, false, false, false, false, false, false),
         ];
         for (m, spacing, dash, jitter, stabilizer, rate, edge) in rows {
             assert_eq!(m.uses_spacing(), spacing, "{m:?} Spacing visibility");
@@ -351,6 +381,7 @@ mod tests {
             StrokeMethod::DragDot,
             StrokeMethod::Airbrush,
             StrokeMethod::Anchored,
+            StrokeMethod::GridStamp,
         ] {
             assert!(
                 !m.has_open_shape(),

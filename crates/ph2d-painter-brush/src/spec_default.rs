@@ -33,6 +33,11 @@ impl Default for BrushSpec {
             color: [0.0, 0.0, 0.0],
             custom_falloff: FalloffCurve::default(),
             stroke_method: StrokeMethod::Space,
+            // Grid Stamp: 32x32 px, sem deslocamento. 32 e' a celula de tile mais comum do 2D
+            // (e o dobro do 16 de sprite classico), entao o primeiro carimbo cai numa grade que o
+            // artista reconhece antes de tocar num slider.
+            grid_cell_px: [32.0, 32.0],
+            grid_offset_px: [0.0, 0.0],
             space_attenuation: false, // Adjust Strength off by default (Enio 2026-06-24)
             accumulate: false,
             dash_ratio: 1.0,

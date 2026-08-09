@@ -76,6 +76,9 @@ pub mod stamp_ramped;
 pub mod stroke;
 // A aritmética do cap por-traço (Accumulate OFF), numa cópia só. Arquivo próprio: é uma LEI, não um
 // helper — e o módulo registra a lei alternativa que foi construída e REPROVADA (doc 25 §13.10).
+/// **Grid Stamp** — a geometria da grade própria do método: a célula sob um ponto, o centro dela,
+/// e o footprint que estica o carimbo até as bordas. Uma porta, três consumidores (motor, tool, overlay).
+pub mod grid_stamp;
 pub(crate) mod stroke_cover;
 pub mod stroke_method;
 pub mod symmetry;

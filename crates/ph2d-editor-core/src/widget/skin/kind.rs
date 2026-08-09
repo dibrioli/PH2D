@@ -39,6 +39,8 @@ pub enum WidgetKind {
     RadioGroup,
     /// Uma segmentada que se adapta à largura — N opções, uma marcada.
     SegmentedAdaptive,
+    /// Um select — N opções, uma marcada, e as outras **escondidas até se pedir**.
+    Dropdown,
 }
 
 impl WidgetKind {
@@ -58,17 +60,20 @@ impl WidgetKind {
     ///
     /// | natureza | tipos | o que falta |
     /// |---|---|---|
-    /// | vestível **hoje** | os dezasseis desta lista | nada |
-    /// | pede **filhos autorados** | `Tabs` · `Dropdown` · `RadioGroup` · `SegmentedAdaptive` | a LISTA vem dos filhos (degrau 3) |
+    /// | vestível **hoje** | os dezanove desta lista | nada |
     ///
-    /// ⚠️ **A segunda família ESVAZIOU-SE, e é isso que o canal existia para fazer:** os dois que
-    /// pediam um parâmetro por-tipo — a `ColorSwatch` e o `IconButton` — entraram pelo
-    /// [`SkinParam`](super::SkinParam), um campo com neutro cada. O que resta ausente é só a
-    /// família da LISTA.
+    /// ⚠️ **A tabela ESVAZIOU-SE, e é isso que o canal existia para fazer.** Os dois que pediam um
+    /// parâmetro por-tipo — a `ColorSwatch` e o `IconButton` — entraram pelo
+    /// [`SkinParam`](super::SkinParam), um campo com neutro cada; e a família da LISTA
+    /// (`Tabs` · `RadioGroup` · `SegmentedAdaptive` · `Dropdown`) entrou pelo MESMO canal, com a
+    /// lista a vir dos FILHOS que o artista desenhou (ver [`Self::takes_options`]).
     ///
-    /// ⚠️ Pôr um dela aqui obrigaria a inventar a lista, e a prévia mostraria itens que o documento
-    /// não tem.
-    pub const ALL: [WidgetKind; 19] = [
+    /// ⚠️ **A premissa que a família da LISTA derrubou está escrita aqui de propósito:** o
+    /// levantamento de 2026-08-08 chamou-lhe *estrutural*, por oposição a *omissão de fiação*, e a
+    /// leitura implícita era que o canal de side-metadata não a alcançava. Nada no molde do canal
+    /// exige que o campo seja **pequeno** — `options: &[String]` é um campo com neutro (a lista
+    /// vazia) exactamente como `rgba: Option<_>` é.
+    pub const ALL: [WidgetKind; 20] = [
         WidgetKind::Button,
         WidgetKind::Toggle,
         WidgetKind::Checkbox,
@@ -88,6 +93,7 @@ impl WidgetKind {
         WidgetKind::Tabs,
         WidgetKind::RadioGroup,
         WidgetKind::SegmentedAdaptive,
+        WidgetKind::Dropdown,
     ];
 
     /// O código que viaja no documento. Estável para sempre.
@@ -113,6 +119,7 @@ impl WidgetKind {
             WidgetKind::Tabs => 17,
             WidgetKind::RadioGroup => 18,
             WidgetKind::SegmentedAdaptive => 19,
+            WidgetKind::Dropdown => 20,
         }
     }
 
@@ -158,8 +165,33 @@ impl WidgetKind {
     pub const fn takes_options(self) -> bool {
         matches!(
             self,
-            WidgetKind::Tabs | WidgetKind::RadioGroup | WidgetKind::SegmentedAdaptive
+            WidgetKind::Tabs
+                | WidgetKind::RadioGroup
+                | WidgetKind::SegmentedAdaptive
+                | WidgetKind::Dropdown
         )
+    }
+
+    /// **Este tipo esconde as opções até se pedir?** — a porta única da SEGUNDA superfície.
+    ///
+    /// ⚠️ **É a pergunta que divide a família de LISTA em duas, e a divisão é de LAYOUT, não de
+    /// gosto.** Uma faixa de abas, um grupo de rádio e uma segmentada desenham as N opções DENTRO
+    /// do retângulo que lhes foi dado — quem os pinta acabou o trabalho quando a função retorna.
+    /// Um dropdown desenha **um chip** e guarda a lista para uma superfície que tem de aparecer
+    /// **por cima de tudo o que for pintado depois dela**.
+    ///
+    /// Isso torna-o o único do catálogo que um painel não consegue pintar num passe só: o corpo é
+    /// recortado (senão as rows escapavam pelo cabeçalho), e uma lista aberta na última row seria
+    /// **cortada pelo próprio recorte** — ou, sem recorte, desenhada por baixo das rows seguintes.
+    /// Quem responde `true` aqui exige do painel um **passe diferido**, e é por isso que a pergunta
+    /// tem nome em vez de ser um `matches!` escrito dentro do laço de pintura.
+    ///
+    /// ⚠️ **A pele NUNCA o pinta aberto** — nem no painel, nem na prévia do canvas. Ela desenha o
+    /// chip; a lista é do passe de quem tem `hit_index` para registar as opções, que a prévia não
+    /// tem e (§2 do plano) não deve ter.
+    #[must_use]
+    pub const fn defers_a_popover(self) -> bool {
+        matches!(self, WidgetKind::Dropdown)
     }
 
     /// A tradução de volta. **`None` é o caso que este canal existe para suportar**: um documento
@@ -204,6 +236,7 @@ impl WidgetKind {
             WidgetKind::Tabs => "Tabs",
             WidgetKind::RadioGroup => "RadioGroup",
             WidgetKind::SegmentedAdaptive => "SegmentedAdaptive",
+            WidgetKind::Dropdown => "Dropdown",
         }
     }
 
@@ -230,6 +263,7 @@ impl WidgetKind {
             WidgetKind::Tabs => "panel.vector.widget.kind.tabs",
             WidgetKind::RadioGroup => "panel.vector.widget.kind.radio_group",
             WidgetKind::SegmentedAdaptive => "panel.vector.widget.kind.segmented_adaptive",
+            WidgetKind::Dropdown => "panel.vector.widget.kind.dropdown",
         }
     }
 }

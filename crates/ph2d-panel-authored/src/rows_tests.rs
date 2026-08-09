@@ -103,6 +103,10 @@ fn only_the_kinds_that_respond_are_controls() {
         WidgetKind::Tabs,
         WidgetKind::RadioGroup,
         WidgetKind::SegmentedAdaptive,
+        // ⚠️ O dropdown responde por **duas** superfícies: o chip (que abre) e cada opção da
+        // lista. Só o chip é uma row — as opções não estão na tabela, e por isso a `is_control`
+        // não sabe nada sobre elas (ver `seam_authored_popover`).
+        WidgetKind::Dropdown,
     ];
     let draws = [
         WidgetKind::ProgressBar,

@@ -9,8 +9,8 @@
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{BlenderHitKind, InteractiveState, WidgetStore};
 use ph2d_editor_core::widget::{
-    ButtonState, CheckboxState, CheckboxValue, ListItemState, SliderOrientation, SliderState,
-    TagState, TextInputState, ToggleState, WidgetKind, format_number,
+    ButtonState, CheckboxState, CheckboxValue, DropdownState, ListItemState, SliderOrientation,
+    SliderState, TagState, TextInputState, ToggleState, WidgetKind, format_number,
 };
 
 use crate::rows::{Row, with_rows};
@@ -38,6 +38,14 @@ fn initial(kind: WidgetKind) -> Option<InteractiveState> {
         WidgetKind::RadioGroup => InteractiveState::Radio {
             state: ButtonState::Normal,
             selected_index: 0,
+        },
+        // ⚠️ **`open: false`, e o despacho GENÉRICO é quem o alterna** — um clique no chip de um
+        // `InteractiveState::Dropdown` registado já vira `open` (`dropdown_click_toggles_open`).
+        // Nada neste painel abre a lista: ele só a PINTA quando o store diz que ela está aberta.
+        WidgetKind::Dropdown => InteractiveState::Dropdown {
+            state: DropdownState::Normal,
+            open: false,
+            selected_index: Some(0),
         },
         WidgetKind::Toggle => InteractiveState::Toggle {
             state: ToggleState::Normal,
@@ -144,8 +152,34 @@ pub fn populate(store: &mut WidgetStore) {
             if row.folds_a_section() {
                 store.mark_collapsible_section(row.id);
             }
+            options(store, row);
         }
     });
+}
+
+/// **As opções de uma lista ESCONDIDA** — registadas mesmo fechadas.
+///
+/// ⚠️ **Foi o seam quem achou isto, na primeira corrida, e é a falha que ele existe para pegar:**
+/// as opções eram pintadas e ganhavam retângulo de hit no passe diferido, e o clique nelas era
+/// **descartado em silêncio** — sem `InteractiveState` o `is_focusable` diz `false` e o despacho
+/// larga o evento antes de chegar ao painel. Lista aberta, opção acesa, clique morto.
+///
+/// ⚠️ **`Button`, e é o mesmo raciocínio dos dois botões acima:** a linha de uma opção é clicada e
+/// mais nada — o que ela DESENHA (o realce, o tique da marcada) é do pintor da lista, que lê o
+/// estado do DROPDOWN e não o da opção. Um `InteractiveState` próprio seria um segundo nome para
+/// *pressionado*, guardado onde ninguém o lê.
+///
+/// ⚠️ **E o registo é incondicional, não gateado no `open`.** O `populate` corre uma vez, e o
+/// `open` é estado que muda com o clique: registar só quando aberto daria um id que nasce
+/// focusável **depois** de o passe de pintura já ter registado o retângulo dele — a mesma corrida,
+/// um frame adiante.
+fn options(store: &mut WidgetStore, row: &Row) {
+    if !row.kind.defers_a_popover() {
+        return;
+    }
+    for i in 0..row.options.len() {
+        button(store, ids::authored_option_id(&row.key, i));
+    }
 }
 
 #[cfg(test)]

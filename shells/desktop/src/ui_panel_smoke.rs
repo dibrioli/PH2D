@@ -40,7 +40,7 @@ use ph2d_vec_scene::{Paint, Rgba8, VecPath, VecPathId, rectangle, star};
 /// staleness (`the_generated_panel_is_not_stale`) constrói o mundo a partir dela para emitir o
 /// código e comparar com o arquivo commitado. Uma segunda lista escrita à mão no gate divergiria
 /// desta no dia em que uma row entrasse — e o gate ficaria verde sobre o painel errado.
-pub(crate) const AUTHORED: [([f64; 4], &str, Option<WidgetKind>); 13] = [
+pub(crate) const AUTHORED: [([f64; 4], &str, Option<WidgetKind>); 17] = [
     ([-2.0, -4.9, 2.0, 2.4], "Color", None),
     (
         [-1.8, 1.4, 1.8, 2.2],
@@ -69,25 +69,38 @@ pub(crate) const AUTHORED: [([f64; 4], &str, Option<WidgetKind>); 13] = [
     // **A FAMÍLIA DE LISTA** — uma faixa de abas e os TRÊS filhos que são as opções dela.
     //
     // ⚠️ As três não são rows, e é a lei de posse (`takes_options`): elas vivem DENTRO do
-    // controle, então quem as reclama é ele. A prova está na contagem — treze entidades vestidas
-    // ou nomeadas, **oito** rows.
+    // controle, então quem as reclama é ele. A prova está na contagem, que o `expected_rows`
+    // deriva desta mesma tabela.
     ([-1.8, -5.7, 1.8, -5.0], "View", Some(WidgetKind::Tabs)),
     ([-1.7, -5.6, -0.7, -5.1], "Design", None),
     ([-0.6, -5.6, 0.4, -5.1], "Preview", None),
     ([0.5, -5.6, 1.7, -5.1], "Code", None),
+    // **O DROPDOWN** — a mesma família, e a única cujas opções ficam ESCONDIDAS até se pedir.
+    //
+    // ⚠️ Ele é o que separa *"o controle desenha as N opções"* de *"o controle desenha uma e
+    // guarda o resto"*: as três acima estão na tela desde que a moldura abriu, e estas três só
+    // existem depois de um clique. Sem ele, o passe diferido não teria nada a diferir.
+    ([-1.8, -6.7, 1.8, -6.0], "Blend", Some(WidgetKind::Dropdown)),
+    ([-1.7, -6.6, 1.7, -6.1], "Normal", None),
+    ([-1.7, -7.6, 1.7, -7.1], "Multiply", None),
+    ([-1.7, -8.6, 1.7, -8.1], "Screen", None),
 ];
 
-/// **As opções da faixa `View`** — os filhos que ela POSSUI, por NOME.
+/// **Quem POSSUI quem** — os controles de lista da cena e os filhos que são as opções deles.
 ///
 /// ⚠️ **Por nome e não por índice, e a razão é um defeito que este arquivo já produziu:** a versão
 /// por índice contou a tabela à mão, errou por um, e pendurou as opções na entidade errada. O
 /// sintoma foi a faixa sair **sem opção nenhuma** — e a contagem de rows deu **certa por acidente**
 /// (a entidade adotada não vestia widget, então não virou row), o que fez o `PARE` passar sobre o
 /// painel errado. Um índice contado à mão numa tabela que cresce é um erro à espera; o nome não.
-const TAB_OPTIONS: [&str; 3] = ["Design", "Preview", "Code"];
-
-/// O nome da faixa que possui as opções acima.
-const TABS_OWNER: &str = "View";
+///
+/// ⚠️ **E ela é uma LISTA desde o segundo dono**, não um par de consts: a versão anterior tinha
+/// `TAB_OPTIONS` e `TABS_OWNER` soltos, o que é a forma que só descreve **um** controle — o
+/// dropdown teria de duplicar as duas, e o terceiro dono duplicá-las-ia outra vez.
+const OPTION_OWNERS: [(&str, &[&str]); 2] = [
+    ("View", &["Design", "Preview", "Code"]),
+    ("Blend", &["Normal", "Multiply", "Screen"]),
+];
 
 /// **DE QUEM cada linha da tabela é filha** — a porta única do parentesco.
 ///
@@ -101,10 +114,28 @@ pub(crate) fn authored_parent(i: usize) -> Option<usize> {
     if i == FRAME {
         return None;
     }
-    if TAB_OPTIONS.contains(&AUTHORED[i].1) {
-        return AUTHORED.iter().position(|(_, n, _)| *n == TABS_OWNER);
+    if let Some((owner, _)) = OPTION_OWNERS
+        .iter()
+        .find(|(_, opts)| opts.contains(&AUTHORED[i].1))
+    {
+        return AUTHORED.iter().position(|(_, n, _)| n == owner);
     }
     Some(FRAME)
+}
+
+/// **Quantas rows esta tabela descreve** — vestida **e** filha directa da moldura.
+///
+/// ⚠️ **DERIVADA, e não um literal.** Um `8` escrito à mão só sabe dizer *"o número mudou"*, e a
+/// pergunta que o `PARE` faz é outra: *a lei de posse continua de pé?* Derivá-la da MESMA
+/// [`authored_parent`] que constrói a árvore é o que faz o aviso disparar quando uma opção escapa
+/// para a moldura — e ficar quieto quando alguém simplesmente acrescenta um controle.
+#[must_use]
+pub(crate) fn expected_rows() -> usize {
+    AUTHORED
+        .iter()
+        .enumerate()
+        .filter(|(i, (_, _, k))| k.is_some() && authored_parent(*i) == Some(FRAME))
+        .count()
 }
 
 /// **O ícone ESCOLHIDO de uma row**, quando o artista escolheu um em vez de desenhar.
@@ -307,11 +338,12 @@ fn announce(app: &mut crate::App) {
         spec.title,
         spec.rows.len()
     );
-    if spec.rows.len() != 8 {
+    if spec.rows.len() != expected_rows() {
         eprintln!(
-            "[ui-panel] ⚠️ **PARE**: eram para ser 8 rows. O 'Backdrop' e' desenho puro, e as \
-             TRES opcoes da faixa 'View' pertencem a ELA — se aparecerem como linhas soltas, a \
-             lei de posse quebrou."
+            "[ui-panel] ⚠️ **PARE**: eram para ser {} rows. O 'Backdrop' e' desenho puro, e as \
+             SEIS opcoes ('View' e 'Blend') pertencem aos controles delas — se aparecerem como \
+             linhas soltas, a lei de posse quebrou.",
+            expected_rows()
         );
         return;
     }
@@ -394,6 +426,22 @@ fn announce(app: &mut crate::App) {
     );
     eprintln!("     ⚠️ E o colapso e' o do APP, o mesmo dos 23 paineis escritos a' mao — nao um");
     eprintln!("     segundo que dobraria por regras proprias.");
+    eprintln!(" 18. ⚠️ **A FAMILIA DE LISTA: as opcoes sao os FILHOS.** A row **View** e' uma");
+    eprintln!("     faixa de abas com tres opcoes — 'Design', 'Preview', 'Code' —, e elas nao sao");
+    eprintln!("     rows: sao filhos QUE ELA POSSUI. Renomeie um deles na Hierarquia e a aba muda");
+    eprintln!("     de nome; se em vez disso aparecer uma linha nova solta no painel, a lei de");
+    eprintln!("     posse quebrou. Clique noutra aba: ela acende.");
+    eprintln!(" 19. ⚠️ **E a ultima row, 'Blend', ESCONDE as opcoes ate' se pedir** — e' um");
+    eprintln!("     dropdown, o unico do catalogo que nao cabe num passe de pintura so'. Clique");
+    eprintln!("     no chip: a lista abre POR CIMA de tudo, inclusive do canto de");
+    eprintln!("     redimensionar. Escolha 'Screen': ela **fecha** e o chip passa a dizer");
+    eprintln!("     'Screen'. Se a lista ficar aberta depois da escolha, PARE — o clique");
+    eprintln!("     seguinte, que voce daria para a fechar, escolheria outra coisa.");
+    eprintln!(
+        "     ⚠️ **A pergunta de olho**: arraste o painel para BAIXO ate' o chip ficar perto"
+    );
+    eprintln!("     do fundo da tela e abra outra vez. A lista tem de virar para CIMA — e as");
+    eprintln!("     opcoes tem de responder ao clique **onde estao desenhadas**.");
 }
 
 #[cfg(test)]

@@ -82,4 +82,13 @@ pub const ROWS: &[RowConst] = &[
         icon_slug: None,
         options: &["Design", "Preview", "Code"],
     },
+    RowConst {
+        kind: WidgetKind::Dropdown,
+        label: "Blend",
+        key: "blend",
+        rgba: None,
+        icon: None,
+        icon_slug: None,
+        options: &["Normal", "Multiply", "Screen"],
+    },
 ];

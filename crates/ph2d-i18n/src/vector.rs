@@ -109,6 +109,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.vector.widget.kind.tabs" => "Tabs",
         "panel.vector.widget.kind.radio_group" => "Radio Group",
         "panel.vector.widget.kind.segmented_adaptive" => "Segmented",
+        "panel.vector.widget.kind.dropdown" => "Dropdown",
         "panel.vector.section.layout" => "Layout",
         "panel.vector.layout.dir" => "Direction",
         "panel.vector.layout.dir.off" => "Off",

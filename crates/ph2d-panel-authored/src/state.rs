@@ -35,6 +35,18 @@ pub enum AuthoredIntent {
     Flag { key: String, on: bool },
     /// Um campo de texto mudou.
     Text { key: String, text: String },
+    /// **Uma das N opções foi escolhida** (`Tabs`, `RadioGroup`, `SegmentedAdaptive`, `Dropdown`).
+    ///
+    /// ⚠️ **O ÍNDICE, e aqui ele é o dado certo — ao contrário da `key`.** O doc do enum diz que a
+    /// chave viaja porque o índice de uma ROW muda quando o artista reordena a Hierarquia; a opção
+    /// é o caso oposto, porque a posição dela **é** o que o controle marca (`selected_index`), e o
+    /// rótulo pode repetir-se entre filhos irmãos. Quem quiser o nome tem-no: ele é o `Name` do
+    /// filho, e a chave da row mais o índice o alcançam.
+    ///
+    /// ⚠️ **E este variante fecha um vão que a família de LISTA shipou em 2026-08-09:** as três
+    /// primeiras caíam em [`Self::Fired`], que diz *"alguém mexeu neste controle"* e **não diz
+    /// QUAL opção** — o ouvinte recebia um gesto sem a informação inteira que ele carrega.
+    Choice { key: String, index: usize },
     /// Um gesto sem valor (`Button`, `Tag`, `ListItem`).
     Fired { key: String },
 }

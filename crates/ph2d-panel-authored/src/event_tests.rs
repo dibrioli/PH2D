@@ -134,3 +134,31 @@ fn an_id_that_is_not_a_row_is_ignored() {
     assert_eq!(out, EventOutcome::Ignored);
     assert!(drain_intents().is_empty());
 }
+
+/// **A família de LISTA diz QUAL opção está marcada, não só que alguém mexeu.**
+///
+/// ⚠️ **Este gate nasce a fechar um vão que a wave anterior shipou:** as três primeiras da família
+/// (`Tabs`, `RadioGroup`, `SegmentedAdaptive`) caíam em [`AuthoredIntent::Fired`] — o intent que
+/// diz *"este controle foi accionado"* e **não** diz o que foi escolhido. Um ouvinte a ligar uma
+/// faixa de abas a uma propriedade recebia o gesto sem a informação inteira que ele carrega.
+///
+/// ⚠️ E ele é dirigido pela **porta única** (`rows::selected_of`), a mesma que o `paint` lê para
+/// desenhar a marcada — é isso que impede o controle de desenhar uma opção e devolver outra.
+#[test]
+fn a_list_control_says_which_option_is_marked() {
+    let Some((row_id, row_key)) = row_of(WidgetKind::Tabs) else {
+        return;
+    };
+    let out = fire(
+        |s| s.register(row_id, InteractiveState::Tabs { selected: 2 }),
+        WidgetEvent::Click(row_id),
+    );
+    assert_eq!(
+        out,
+        vec![AuthoredIntent::Choice {
+            key: row_key,
+            index: 2,
+        }],
+        "a faixa de abas emitiu um gesto sem dizer QUAL aba"
+    );
+}

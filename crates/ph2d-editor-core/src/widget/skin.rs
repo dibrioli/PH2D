@@ -53,8 +53,8 @@ use crate::widget::{
     paint_text_input, paint_toggle,
 };
 use crate::widget::{
-    RadioGroup, RadioOption, RadioOrientation, SegmentedAdaptive, SegmentedOption, TabItem, Tabs,
-    paint_radio_group_with_labels, paint_tabs,
+    Dropdown, DropdownOption, RadioGroup, RadioOption, RadioOrientation, SegmentedAdaptive,
+    SegmentedOption, TabItem, Tabs, paint_dropdown_chip, paint_radio_group_with_labels, paint_tabs,
 };
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
@@ -438,6 +438,25 @@ pub fn paint_widget_skin_with(
                 .variant(crate::widget::TabsVariant::Segmented)
                 .selected(param.selected);
             paint_tabs(&t, rect, scene, text_system, theme);
+        }
+        // ⚠️ **O chip, e NUNCA a lista** — ver [`WidgetKind::defers_a_popover`]. Chamar o
+        // `paint_dropdown` de conveniência aqui desenharia a lista aberta dentro do recorte do
+        // corpo do painel (cortada) e por baixo das rows seguintes (que são pintadas depois). A
+        // segunda superfície é do passe diferido de quem tem `hit_index`.
+        //
+        // ⚠️ **E ele NÃO precisa do guard de lista vazia** que os três irmãos acima têm, porque o
+        // chip não itera opções: ele desenha a moldura, o rótulo e o galo. Um dropdown sem opções
+        // desenha-se sozinho como *"nada escolhido"* — que é o `placeholder`, e é honesto.
+        WidgetKind::Dropdown => {
+            let opts: Vec<DropdownOption<usize>> = param
+                .options
+                .iter()
+                .enumerate()
+                .map(|(i, o)| DropdownOption::new(PREVIEW_ID, i, o.clone()))
+                .collect();
+            let mut dd = Dropdown::new(id, label, opts);
+            dd.select(param.selected);
+            paint_dropdown_chip(&dd, rect, scene, text_system, theme);
         }
         WidgetKind::IconButton => {
             // ⚠️ **`Compact`, e não `Chip`** — o `Chip` é a PÍLULA da TopBar (`Radius::Xl`, *"hero

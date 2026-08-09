@@ -16,6 +16,7 @@
 //! com que está a montar a moldura. É a doca do painel de Wet Tuning, pelo mesmo motivo.
 
 use ph2d_editor_core::ids;
+use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::paint::rect_to_vello;
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
@@ -25,7 +26,8 @@ use ph2d_editor_core::widget::panel_chrome::{
     panel_resize_handle_rect_bl,
 };
 use ph2d_editor_core::widget::{
-    AUTHORED_SCROLLBAR_ID, SkinParam, icon_glyph, paint_scrollbar, paint_widget_skin_with,
+    AUTHORED_SCROLLBAR_ID, Dropdown, DropdownOption, SkinParam, icon_glyph,
+    paint_dropdown_popover_in_viewport, paint_scrollbar, paint_widget_skin_with,
     scrollbar_is_needed, scrollbar_thumb_rect, scrollbar_track_rect,
 };
 use ph2d_editor_core::zones::Rect;
@@ -99,7 +101,7 @@ pub(crate) fn paint(_state: &mut AuthoredPanelState, ctx: &mut PaintCtx) {
     ctx.scene.push_clip(&rect_to_vello(body_rect));
     let x = rect.x + PANEL_HEAD_PAD;
     let w = (rect.w - PANEL_HEAD_PAD * 2.0).max(0.0);
-    let y_after = paint_body(ctx, theme, x, w, body_top - scroll);
+    let (y_after, open_lists) = paint_body(ctx, theme, x, w, body_top - scroll);
     let content_h = (y_after + scroll) - body_top + PANEL_HEAD_PAD;
     ctx.scene.pop_layer();
 
@@ -120,6 +122,75 @@ pub(crate) fn paint(_state: &mut AuthoredPanelState, ctx: &mut PaintCtx) {
         ids::AUTHORED_RESIZE_HANDLE_BL,
         panel_resize_handle_rect_bl(rect),
     );
+
+    // ⚠️ **O passe DIFERIDO, e ele é o ÚLTIMO de propósito** — as três coisas que a ordem decide:
+    //
+    // 1. **Depois do `pop_layer`**, senão a lista de uma row perto do fim é cortada pelo recorte do
+    //    corpo — a lista aberta é a única superfície deste painel que legitimamente sai dele.
+    // 2. **Depois das rows**, senão as rows abaixo do chip pintam POR CIMA da lista.
+    // 3. **Depois dos punhos de chrome**, porque o hit é *último-registado-ganha*: uma lista aberta
+    //    sobre o canto de redimensionar tem de tomar o clique. Registá-la antes daria uma opção
+    //    desenhada que, ao ser clicada, arrasta o tamanho do painel.
+    for open in &open_lists {
+        paint_open_list(ctx, open, theme);
+    }
+}
+
+/// **Uma lista ABERTA que o corpo encontrou** — o dado que atravessa o recorte.
+///
+/// ⚠️ Os campos são OWNED porque a row vive sob o `thread_local` da tabela viva (ver
+/// [`crate::rows::with_rows`]): uma referência não escapa da closure, e é o compilador que o diz.
+struct OpenList {
+    key: String,
+    options: Vec<String>,
+    selected: usize,
+    /// O retângulo do CHIP — a lista pende dele, e ele é onde a row de facto foi desenhada
+    /// (rolagem já aplicada).
+    chip: Rect,
+}
+
+/// ⚠️ **A lista de um dropdown SEM opções não é pintada, e isso não é o mesmo caso da moldura
+/// vazia** que a pele desenha para as abas. Ali o controle é a superfície toda, e não desenhar
+/// nada deixaria o artista sem nada em que clicar para lhe dar filhos. Aqui o controle **já está
+/// visível** — é o chip, que a pele desenhou —, e a lista seria um painel flutuante vazio a pairar
+/// sobre o resto, dizendo nada.
+///
+/// ⚠️ **NENHUM GATE VÊ ESTA GUARDA, e a razão está medida:** a mutação que a remove **sobreviveu**
+/// à suíte inteira. Um popover vazio não regista opção nenhuma (não há nenhuma para registar),
+/// então ele **não come cliques** — a primeira versão deste comentário afirmava que sim, e a
+/// mutação foi quem a desmentiu. O efeito dela é **só visual**, e o harness de painel deste repo
+/// lê retângulos de hit, nunca a cena. Ela fica por ser barata e correcta, **declarada** em vez de
+/// coberta — o precedente das defesas em camada que o ADR-0145 documentou em vez de gatear.
+fn paint_open_list(ctx: &mut PaintCtx, open: &OpenList, theme: Theme) {
+    if open.options.is_empty() {
+        return;
+    }
+    let opts: Vec<DropdownOption<usize>> = open
+        .options
+        .iter()
+        .enumerate()
+        .map(|(i, o)| DropdownOption::new(ids::authored_option_id(&open.key, i), i, o.clone()))
+        .collect();
+    // O rótulo vai VAZIO: o chip já o mostra, e o pintor da lista não o desenha.
+    let mut dd = Dropdown::new(ids::authored_row_id(&open.key), "", opts).open(true);
+    dd.select(open.selected);
+    let viewport = ctx.viewport;
+    // ⚠️ **`_clamped` e o pintor `_in_viewport` derivam o painel da MESMA regra** — se o chip está
+    // perto do fundo da tela a lista vira para CIMA, e um retângulo de hit computado pela regra
+    // não-clampada ficaria onde a lista não foi desenhada: opções visíveis e mortas sob o rato.
+    let panel = dd.popover_rect_clamped(open.chip, viewport);
+    paint_dropdown_popover_in_viewport(
+        &dd,
+        open.chip,
+        Some(viewport),
+        ctx.scene,
+        ctx.text_system,
+        theme,
+    );
+    let hit_index = ctx.host.hit_index_mut();
+    for (i, opt) in dd.options.iter().enumerate() {
+        hit_index.register(opt.id, dd.option_rect_in(open.chip, panel, i));
+    }
 }
 
 /// **UM cabeçalho manda nas rows ATÉ o próximo** — o colapso de seção (plano UI/UX, §6.3 item 2).
@@ -132,8 +203,15 @@ pub(crate) fn paint(_state: &mut AuthoredPanelState, ctx: &mut PaintCtx) {
 /// ⚠️ **O estado do colapso é o do app, e não um segundo** (`WidgetStore::is_collapsed`, alternado
 /// pelo despacho genérico via `mark_collapsible_section`). Um mapa próprio aqui daria um painel
 /// gerado que dobra por regras diferentes das dos vinte e três painéis escritos à mão.
-fn paint_body(ctx: &mut PaintCtx, theme: Theme, x: f32, w: f32, mut y: f32) -> f32 {
+fn paint_body(
+    ctx: &mut PaintCtx,
+    theme: Theme,
+    x: f32,
+    w: f32,
+    mut y: f32,
+) -> (f32, Vec<OpenList>) {
     let mut folded = false;
+    let mut open_lists: Vec<OpenList> = Vec::new();
     // ⚠️ A tabela vem por CLOSURE porque a viva não é `'static` — ver `rows::with_rows`.
     crate::rows::with_rows(|table| {
         for row in table {
@@ -152,6 +230,24 @@ fn paint_body(ctx: &mut PaintCtx, theme: Theme, x: f32, w: f32, mut y: f32) -> f
             if row.wants_pointer() {
                 hit_index.register(row.id, r);
             }
+            // ⚠️ **A pergunta é ao TIPO e ao STORE, nesta ordem, e as duas metades são precisas:**
+            // o tipo diz que este controle TEM uma segunda superfície; o store diz que ela está
+            // aberta AGORA. Sem a primeira, um `open` guardado por outro tipo de widget de mesmo
+            // id abriria uma lista onde não há lista; sem a segunda, toda row de dropdown pintaria
+            // a lista sempre.
+            if row.kind.defers_a_popover()
+                && matches!(
+                    store.get(row.id),
+                    Some(InteractiveState::Dropdown { open: true, .. })
+                )
+            {
+                open_lists.push(OpenList {
+                    key: row.key.clone(),
+                    options: row.options.clone(),
+                    selected: crate::rows::selected_of(store.get(row.id)).unwrap_or(0),
+                    chip: r,
+                });
+            }
             paint_widget_skin_with(
                 row.kind,
                 &row.label,
@@ -163,7 +259,7 @@ fn paint_body(ctx: &mut PaintCtx, theme: Theme, x: f32, w: f32, mut y: f32) -> f
                     // A seleção é estado VIVO, e mora onde a de todo controle do app mora — o
                     // `WidgetStore`. Um mapa próprio aqui seria um painel gerado que seleciona
                     // por regras diferentes das dos vinte e três painéis escritos à mão.
-                    selected: crate::rows::selected_of(store.get(row.id)),
+                    selected: crate::rows::selected_of(store.get(row.id)).unwrap_or(0),
                     // ⚠️ A precedência sai da porta única do catálogo — a MESMA que o canvas
                     // percorre. Um `if` aqui seria a terceira cópia da regra.
                     icon: icon_glyph(row.icon_id, row.icon.as_ref()),
@@ -176,7 +272,7 @@ fn paint_body(ctx: &mut PaintCtx, theme: Theme, x: f32, w: f32, mut y: f32) -> f
             y += ROW_H_PX + Spacing::Xs.px();
         }
     });
-    y
+    (y, open_lists)
 }
 
 fn paint_scrollbar_and_publish(

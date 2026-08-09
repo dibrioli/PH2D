@@ -54,3 +54,26 @@ pub const AUTHORED_RESIZE_HANDLE_BL: NodeId = hash_node_id("authored.resize_hand
 pub fn authored_row_id(key: &str) -> NodeId {
     fnv_node_id_runtime(&format!("authored.row.{key}"))
 }
+
+/// O id da opção `index` da row de chave `key` — a família da lista ABERTA.
+///
+/// ⚠️ **Só quem esconde as opções precisa dela** ([`WidgetKind::defers_a_popover`]): nas abas, no
+/// rádio e na segmentada quem regista os segmentos é o pintor do catálogo, dentro do retângulo da
+/// row. Um dropdown aberto desenha as opções numa superfície que só existe enquanto está aberto,
+/// e cada uma precisa de um retângulo de hit PRÓPRIO — senão a lista pinta e o clique cai na row
+/// por baixo dela.
+///
+/// ⚠️ **O índice, e não o rótulo.** Duas opções de mesmo nome são um documento que o artista pode
+/// legitimamente ter (dois filhos homónimos), e derivar do rótulo faria as duas responderem ao
+/// mesmo clique — o defeito que a chave da ROW aceita de propósito (ver a nota acima) e que aqui
+/// **não** é preciso aceitar, porque a posição na lista é um fato que o documento já tem.
+///
+/// ⚠️ E o prefixo é `authored.opt.`, disjunto de `authored.row.` **por construção**: um rótulo
+/// que começasse por `opt.` não pode colidir com uma opção, porque o índice é numérico e o
+/// separador vem depois da chave inteira.
+///
+/// [`WidgetKind::defers_a_popover`]: crate::widget::WidgetKind::defers_a_popover
+#[must_use]
+pub fn authored_option_id(key: &str, index: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("authored.opt.{key}.{index}"))
+}

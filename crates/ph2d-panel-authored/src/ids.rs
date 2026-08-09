@@ -5,5 +5,5 @@
 
 pub use ph2d_editor_core::ids::{
     AUTHORED_CLOSE, AUTHORED_DRAG_HANDLE, AUTHORED_PANEL, AUTHORED_RESIZE_HANDLE,
-    AUTHORED_RESIZE_HANDLE_BL, authored_row_id,
+    AUTHORED_RESIZE_HANDLE_BL, authored_option_id, authored_row_id,
 };

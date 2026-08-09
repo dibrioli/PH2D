@@ -128,6 +128,7 @@ impl Row {
                 | WidgetKind::Tabs
                 | WidgetKind::RadioGroup
                 | WidgetKind::SegmentedAdaptive
+                | WidgetKind::Dropdown
         )
     }
 }
@@ -221,18 +222,48 @@ pub fn with_rows<R>(f: impl FnOnce(&[Row]) -> R) -> R {
 
 /// **Qual opção este estado vivo diz que está marcada** — a porta única da seleção.
 ///
-/// ⚠️ Três variantes do catálogo guardam uma seleção e cada uma a chama de outra coisa
+/// ⚠️ Quatro variantes do catálogo guardam uma seleção e cada uma a chama de outra coisa
 /// (`Tabs.selected`, `Radio.selected_index`, `Dropdown.selected_index`). Perguntar aqui, uma vez,
 /// é o que impede o `paint` e o `event` de discordarem sobre qual delas ler — e o modo de falha
 /// dessa discordância é o controle desenhar uma opção marcada e devolver outra ao ser clicado.
+///
+/// ⚠️ **`Option`, e o `None` é o que torna a porta ÚNICA em vez de duas.** Ele responde duas
+/// perguntas de uma vez — *este controle É de escolha?* e *qual?* — e os dois consumidores querem
+/// metades diferentes: o `paint` cai em `0` porque um controle de opções tem de desenhar ALGUMA
+/// marcada, e o `event` precisa do `None` para saber que aquela row não emite uma escolha. Um
+/// `usize` com zero de reserva daria ao `event` um índice inventado para toda row do painel.
 #[must_use]
-pub fn selected_of(live: Option<&InteractiveState>) -> usize {
+pub fn selected_of(live: Option<&InteractiveState>) -> Option<usize> {
     match live {
-        Some(InteractiveState::Tabs { selected }) => *selected,
-        Some(InteractiveState::Radio { selected_index, .. }) => *selected_index,
-        Some(InteractiveState::Dropdown { selected_index, .. }) => selected_index.unwrap_or(0),
-        _ => 0,
+        Some(InteractiveState::Tabs { selected }) => Some(*selected),
+        Some(InteractiveState::Radio { selected_index, .. }) => Some(*selected_index),
+        Some(InteractiveState::Dropdown { selected_index, .. }) => {
+            Some(selected_index.unwrap_or(0))
+        }
+        _ => None,
     }
+}
+
+/// **A que row e a que opção pertence este id** — a inversa do [`ids::authored_option_id`].
+///
+/// ⚠️ **Ela procura, em vez de decodificar.** O id é um HASH, então não há nada a inverter: a
+/// resposta sai de re-derivar o id de cada opção de cada row de lista e comparar. É o mesmo
+/// desenho do [`row_key_for`], e o custo é o mesmo que o do hit-test que já aconteceu — uma vez
+/// por clique, nunca por quadro.
+///
+/// ⚠️ E só as rows que ESCONDEM as opções entram na varredura: nas outras três da família quem
+/// regista os segmentos é o pintor do catálogo, com ids próprios que este painel não cunha.
+#[must_use]
+pub fn option_for(id: NodeId) -> Option<(String, usize)> {
+    with_rows(|rows| {
+        rows.iter()
+            .filter(|r| r.kind.defers_a_popover())
+            .find_map(|r| {
+                (0..r.options.len())
+                    .find(|i| ids::authored_option_id(&r.key, *i) == id)
+                    .map(|i| (r.key.clone(), i))
+            })
+    })
 }
 
 /// A CHAVE da row a que `id` pertence, se alguma.

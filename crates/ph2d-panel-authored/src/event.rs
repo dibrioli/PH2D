@@ -5,7 +5,7 @@
 //! o que garante que o número que sai daqui é o mesmo que o `paint` desenha no frame seguinte.
 
 use ph2d_editor_core::ids;
-use ph2d_editor_core::interaction::WidgetEvent;
+use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent};
 use ph2d_editor_core::panel::{EventOutcome, Panel, PanelHostInternal};
 use ph2d_editor_core::widget::CheckboxValue;
 
@@ -35,6 +35,28 @@ pub(crate) fn apply_event(
         | WidgetEvent::TextChanged(id) => id,
         _ => return EventOutcome::Ignored,
     };
+
+    // ⚠️ **A opção de uma lista aberta é resolvida ANTES da row**, e a ordem é o que a torna
+    // correta: uma opção não tem `key` própria (o `row_key_for` devolveria `None`), e cair no
+    // caminho da row daria `Ignored` — a lista pintaria, o clique chegaria, e nada aconteceria.
+    if let Some((key, index)) = crate::rows::option_for(id) {
+        // ⚠️ **FECHAR é metade do gesto, e é esta metade que o despacho genérico não faz:** ele
+        // alterna o `open` de quem foi CLICADO, e quem foi clicado aqui é a opção, não o chip. Sem
+        // esta linha a lista fica aberta depois de escolher — e o clique seguinte, que o artista
+        // dá para a fechar, escolhe outra coisa.
+        if let Some(InteractiveState::Dropdown {
+            open,
+            selected_index,
+            ..
+        }) = host.store_mut().get_mut(ids::authored_row_id(&key))
+        {
+            *open = false;
+            *selected_index = Some(index);
+        }
+        push_intent(AuthoredIntent::Choice { key, index });
+        return EventOutcome::Consumed;
+    }
+
     let Some(key) = row_key_for(id) else {
         return EventOutcome::Ignored;
     };
@@ -55,6 +77,11 @@ pub(crate) fn apply_event(
             key,
             text: text.to_string(),
         }
+    } else if let Some(index) = crate::rows::selected_of(store.get(id)) {
+        // ⚠️ A família de LISTA inteira, pela MESMA porta do `paint`. Um `matches!` sobre os quatro
+        // tipos escrito aqui seria a segunda resposta a *"onde mora a seleção deste widget?"*, e o
+        // quinto membro da família nasceria a emitir `Fired`.
+        AuthoredIntent::Choice { key, index }
     } else {
         AuthoredIntent::Fired { key }
     };

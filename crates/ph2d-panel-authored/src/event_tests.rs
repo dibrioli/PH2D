@@ -7,16 +7,35 @@ use ph2d_ui_testkit::MockPanelHost;
 
 use crate::state::{AuthoredIntent, drain_intents};
 
-/// O `(id, chave)` da row do tipo pedido, ou `None` se a tabela não a contém.
+/// **PUBLICA** uma row do tipo pedido e devolve o `(id, chave)` dela.
+///
+/// ⚠️ **Ele PROCURAVA na tabela gerada, e os quatro gates abaixo saíam com `else { return; }`** —
+/// se a cena que gerou o `panel.rs` não tivesse aquele tipo, o teste passava **sem testar nada**,
+/// em silêncio. E a tabela gerada é conteúdo AUTORADO: o Enio pode reautorar o painel a qualquer
+/// momento e deixar os quatro verdes sobre um barramento de intents que ninguém verifica.
+///
+/// ⚠️ **A cura não é um `expect`, é não depender da cena.** O irmão `seam_authored_popover` usa
+/// `expect` porque o SUJEITO dele é a lista aberta *daquele* dropdown; aqui o sujeito é o
+/// ROTEAMENTO, que não é sobre nenhuma row em particular. Publicar a tabela viva — o mesmo canal
+/// que a autoria usa, e o que os outros seams desta crate já fazem — torna os gates
+/// determinísticos **e** cobre tipos que a cena por acaso não tem.
 ///
 /// ⚠️ Devolve os DADOS e não a `Row`: a tabela viva vive sob um `RefCell` thread-local, então uma
-/// referência não escapa — e o que os gates abaixo precisam é do id e da chave.
-fn row_of(kind: WidgetKind) -> Option<(ph2d_a11y::NodeId, String)> {
-    crate::rows::with_rows(|t| {
-        t.iter()
-            .find(|r| r.kind == kind)
-            .map(|r| (r.id, r.key.clone()))
-    })
+/// referência não escapa dela.
+fn row_of(kind: WidgetKind) -> (ph2d_a11y::NodeId, String) {
+    let key = "mode".to_string();
+    let id = crate::ids::authored_row_id(&key);
+    crate::rows::set_live_rows(Some(vec![crate::rows::Row {
+        kind,
+        label: key.clone(),
+        key: key.clone(),
+        id,
+        rgba: None,
+        icon: None,
+        icon_id: None,
+        options: vec!["A".into(), "B".into(), "C".into()],
+    }]));
+    (id, key)
 }
 
 /// Dirige um evento e devolve o que o painel enfileirou.
@@ -28,6 +47,12 @@ fn fire(store_edit: impl FnOnce(&mut WidgetStore), ev: WidgetEvent) -> Vec<Autho
     store_edit(host.store_mut());
     let mut st = AuthoredPanelState;
     apply_event(&mut st, &mut host, ev);
+    // ⚠️ Devolve a tabela ao estado gerado DEPOIS de o evento ser roteado (o `apply_event` lê-a).
+    // Não consegui fazer o vazamento aparecer — nem em seis corridas, nem sob `--test-threads=1`,
+    // nem com `--nocapture` —, e a linha fica na mesma: a ausência de prova de vazamento não é
+    // prova de ausência, e o preço dela é zero. O que ela garante é que um teste futuro nesta
+    // mesma thread lê a tabela GERADA, e não a que este publicou.
+    crate::rows::set_live_rows(None);
     drain_intents()
 }
 
@@ -37,9 +62,7 @@ fn fire(store_edit: impl FnOnce(&mut WidgetStore), ev: WidgetEvent) -> Vec<Autho
 /// o que garante que o número que sai daqui é o mesmo que o `paint` desenha no frame seguinte.
 #[test]
 fn a_slider_says_which_key_changed_and_to_what() {
-    let Some((row_id, row_key)) = row_of(WidgetKind::Slider) else {
-        return;
-    };
+    let (row_id, row_key) = row_of(WidgetKind::Slider);
     let out = fire(
         |s| {
             s.register(
@@ -65,9 +88,7 @@ fn a_slider_says_which_key_changed_and_to_what() {
 /// **Um toggle diz o estado que ele PASSOU a ter.**
 #[test]
 fn a_toggle_says_the_flag_it_now_carries() {
-    let Some((row_id, row_key)) = row_of(WidgetKind::Toggle) else {
-        return;
-    };
+    let (row_id, row_key) = row_of(WidgetKind::Toggle);
     let out = fire(
         |s| {
             s.register(
@@ -92,9 +113,7 @@ fn a_toggle_says_the_flag_it_now_carries() {
 /// **Um botão DISPARA — sem valor, porque ele não tem nenhum.**
 #[test]
 fn a_button_fires_without_a_value() {
-    let Some((row_id, row_key)) = row_of(WidgetKind::Button) else {
-        return;
-    };
+    let (row_id, row_key) = row_of(WidgetKind::Button);
     let out = fire(|_| {}, WidgetEvent::Click(row_id));
     assert_eq!(
         out,
@@ -146,9 +165,7 @@ fn an_id_that_is_not_a_row_is_ignored() {
 /// desenhar a marcada — é isso que impede o controle de desenhar uma opção e devolver outra.
 #[test]
 fn a_list_control_says_which_option_is_marked() {
-    let Some((row_id, row_key)) = row_of(WidgetKind::Tabs) else {
-        return;
-    };
+    let (row_id, row_key) = row_of(WidgetKind::Tabs);
     let out = fire(
         |s| s.register(row_id, InteractiveState::Tabs { selected: 2 }),
         WidgetEvent::Click(row_id),

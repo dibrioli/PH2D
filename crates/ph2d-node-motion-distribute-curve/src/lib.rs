@@ -151,9 +151,10 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
 }
 
 use ph2d_node_registry::{ParamGroup, ParamHardMax, ParamUiHint, ParamWidget};
-/// **O teto DURO de `count` — MEDIDO** (doc 88 A1 · §0), enquanto o slider fica nos 2.000 que
-/// cobrem a autoria confortável. Distribuir ao longo de uma curva é um laço linear, e o cook
-/// mediu pela porta do produto (`measure_the_count_ceiling`):
+/// **O teto DURO de `count` — MEDIDO** (doc 88 A1 · §0). Distribuir ao longo de uma curva é um
+/// laço linear, e o cook
+/// mediu pela porta do produto (`measure_the_count_ceiling`), enquanto o slider fica nos **320**
+/// onde a mão trabalha (default 32 ⇒ ~2 instâncias por pixel de arrasto):
 ///
 /// | instâncias | cook |
 /// |---|---|
@@ -161,19 +162,13 @@ use ph2d_node_registry::{ParamGroup, ParamHardMax, ParamUiHint, ParamWidget};
 /// | 400.000 | 3,936 ms |
 /// | **1.000.000** | **9,826 ms** |
 ///
-/// Um milhão de pontos custa **59% de um quadro de 60 fps** — caro, e ainda assim 500× o que o
-/// slider alcança. É o dobro do custo dos irmãos lineares (grade, fibonacci, radial) na mesma
+/// Um milhão de pontos custa **59% de um quadro de 60 fps** — caro, e ainda assim **3.125×** o
+/// que o slider alcança. É o dobro do custo dos irmãos lineares (grade, fibonacci, radial) na mesma
 /// contagem, porque cada ponto paga uma avaliação de curva.
-static PARAM_HARD_MAX: &[ParamHardMax] = &[
-    ParamHardMax {
-        param: "count",
-        max: 2000.0,
-    },
-    ParamHardMax {
-        param: "count",
-        max: 1_000_000.0,
-    },
-];
+static PARAM_HARD_MAX: &[ParamHardMax] = &[ParamHardMax {
+    param: "count",
+    max: 1_000_000.0,
+}];
 
 /// As SEÇÕES deste nó (doc 88 B3). O mesmo corte do `motion.spline_wrap`, e com o mesmo nome
 /// de propósito: as oito coordenadas são o polígono de controle de uma cúbica nos dois nós, e

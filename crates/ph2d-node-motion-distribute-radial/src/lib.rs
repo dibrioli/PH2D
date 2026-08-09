@@ -146,7 +146,8 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
 }
 
 use ph2d_node_registry::{ParamHardMax, ParamUiHint, ParamWidget};
-/// **O teto DURO de `count` — MEDIDO** (doc 88 A1 · §0); o slider fica nos 2.000 da autoria.
+/// **O teto DURO de `count` — MEDIDO** (doc 88 A1 · §0); o slider fica nos **600** onde a mão
+/// trabalha (default 60 ⇒ ~4 instâncias por pixel de arrasto), e o teto é **1.667×** ele.
 /// A distribuição é um laço linear, e o cook mediu pela porta do produto (`rings = 1`, para o eixo
 /// ser o que a linha nomeia):
 ///
@@ -161,15 +162,11 @@ use ph2d_node_registry::{ParamHardMax, ParamUiHint, ParamWidget};
 pub(crate) static PARAM_HARD_MAX: &[ParamHardMax] = &[
     ParamHardMax {
         param: "count",
-        max: 2000.0,
+        max: 1_000_000.0,
     },
     ParamHardMax {
         param: "inner",
         max: 20.0,
-    },
-    ParamHardMax {
-        param: "count",
-        max: 1_000_000.0,
     },
 ];
 

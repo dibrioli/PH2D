@@ -157,3 +157,80 @@ fn every_declared_hard_max_is_registered() {
         "PARAM_HARD_MAX declarado e NUNCA registrado (o painel nunca o ve): {orphans:?}"
     );
 }
+
+/// **TODA entrada da tabela de teto é ALCANÇÁVEL.**
+///
+/// A resolução é um `find` — *a primeira entrada com aquele nome vence* —, então um param
+/// listado **duas vezes** mantém a primeira e **descarta a segunda em silêncio**. Nada no
+/// compilador reclama (a tabela é um `static` bem-formado), nenhum gate de faixa reclama
+/// (o irmão `a_hard_ceiling_only_ever_widens_the_slider` só compara o teto RESOLVIDO com o
+/// slider, e um duplicado o resolve para um número perfeitamente legal), e o que evapora é
+/// justamente a entrada que alguém acrescentou depois — a MEDIDA.
+///
+/// ⚠️ Achado assim: `motion.distribute_curve` e `motion.distribute_radial` traziam
+/// `{count, 2000}` na frente de `{count, 1_000_000}`, com a tabela de medição ao lado
+/// (1 M pontos = 9,826 ms na curva, 4,584 ms no radial) descrevendo um teto que a caixa de
+/// texto **parava em 2.000**.
+///
+/// O oráculo é a PROPRIEDADE, não a contagem: para cada entrada declarada, o que o registry
+/// resolve tem de ser aquela entrada. Um duplicado é a única forma de as duas discordarem.
+#[test]
+fn every_declared_ceiling_entry_is_reachable() {
+    let reg = registry();
+    let mut scanned = 0usize;
+    let mut shadowed = Vec::new();
+
+    for m in reg.manifests() {
+        for e in reg.param_hard_max_table(m.id).unwrap_or(&[]) {
+            scanned += 1;
+            if reg.param_hard_max(m.id, e.param) != Some(e.max) {
+                shadowed.push(format!("{} teto {}={}", m.name, e.param, e.max));
+            }
+        }
+        for e in reg.param_hard_min_table(m.id).unwrap_or(&[]) {
+            scanned += 1;
+            if reg.param_hard_min(m.id, e.param) != Some(e.min) {
+                shadowed.push(format!("{} piso {}={}", m.name, e.param, e.min));
+            }
+        }
+    }
+
+    // CONTROLE POSITIVO: sem entradas para varrer o gate não afirma nada, e uma varredura
+    // vazia passaria para sempre no dia em que o acessor devolvesse `None`.
+    assert!(
+        scanned >= 20,
+        "varri {scanned} entradas de teto/piso -- o acessor quebrou, nao o catalogo"
+    );
+    assert!(
+        shadowed.is_empty(),
+        "entrada de teto/piso SOMBREADA por uma anterior de mesmo param (o `find` \
+         mantem a primeira e descarta esta): {shadowed:?}"
+    );
+}
+
+/// Sonda: o slider e o teto digitável que o painel de fato resolve, lado a lado.
+///
+/// Rodar: `cargo test -p ph2d-node-registry-init --test param_range_conventions -- --ignored --nocapture`
+#[test]
+#[ignore = "sonda de diagnostico"]
+fn what_the_ceilings_resolve_to() {
+    let reg = registry();
+    println!("{:34} {:>10} {:>14}", "no.param", "slider", "digitavel");
+    for m in reg.manifests() {
+        let hints = reg.param_ui(m.id).unwrap_or(&[]);
+        for p in m.params {
+            let (Some(h), Some(hard)) = (
+                hints.iter().find(|h| h.param == p.name).map(|h| h.max),
+                reg.param_hard_max(m.id, p.name),
+            ) else {
+                continue;
+            };
+            println!(
+                "{:34} {:>10} {:>14}",
+                format!("{}.{}", m.name, p.name),
+                h,
+                hard
+            );
+        }
+    }
+}

@@ -274,6 +274,17 @@ impl NodeRegistry {
         self.param_hard_max.insert(id, limits);
     }
 
+    /// The whole ceiling TABLE as it was registered — the twin of [`Self::param_ui`],
+    /// and the only way a gate can ask *"is every entry I declared reachable?"*.
+    ///
+    /// ⚠️ It exists because [`Self::param_hard_max`] resolves with `find`, so a param
+    /// listed TWICE silently keeps the first entry and drops the second; the resolved
+    /// answer alone cannot tell a table with one entry from a table with two.
+    #[must_use]
+    pub fn param_hard_max_table(&self, id: NodeTypeId) -> Option<&'static [ParamHardMax]> {
+        self.param_hard_max.get(&id).copied()
+    }
+
     /// The typed-entry ceiling for `(id, param)`, if one was registered. `None`
     /// means "the slider's `max`", which is what every param without an entry
     /// has always meant.
@@ -329,6 +340,13 @@ impl NodeRegistry {
     /// Additive; last write wins.
     pub fn register_param_hard_min(&mut self, id: NodeTypeId, limits: &'static [ParamHardMin]) {
         self.param_hard_min.insert(id, limits);
+    }
+
+    /// The whole FLOOR table as it was registered — the twin of
+    /// [`Self::param_hard_max_table`], for the same reason: `find` hides a duplicate.
+    #[must_use]
+    pub fn param_hard_min_table(&self, id: NodeTypeId) -> Option<&'static [ParamHardMin]> {
+        self.param_hard_min.get(&id).copied()
     }
 
     /// The typed-entry floor for `(id, param)`, if one was registered. `None`

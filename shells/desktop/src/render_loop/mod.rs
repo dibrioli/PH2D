@@ -8512,7 +8512,18 @@ impl crate::App {
                                     .downcast_mut::<ph2d_tool_painter::PainterTool>()
                             }) {
                                 if as_shape {
-                                    painter.set_brush_shape_image(lum, w, h);
+                                    // ⚠️ A COR do sprite viaja junto (Enio, 2026-08-09): a silhueta
+                                    // continua sendo a mesma luminância, byte a byte, mas o slot passa a
+                                    // guardar uma camada com o RGB, e é isso que dá ao checkbox "Use
+                                    // Texture Colors" o que ligar. Antes daqui saía só a máscara — a cor
+                                    // morria na conversão para cinza, e pintar com as cores da textura
+                                    // era possível apenas para o documento ABERTO no Painter.
+                                    painter.set_brush_shape_image_rgba(
+                                        &src.image.pixels,
+                                        w,
+                                        h,
+                                        Some(bits),
+                                    );
                                     toasts.push(ph2d_editor::Toast::success(
                                         "Brush shape set from sprite",
                                     ));

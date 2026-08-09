@@ -238,6 +238,32 @@ fn the_gain_resolves_both_sides_of_the_relief() {
 /// decide o que está lá.
 ///
 /// **Mutação que deve sangrar:** a silhueta passar a ser a luminância do composite.
+/// **O relevo chega também ao modo PER-LAYER COLOR** — e este gate existe porque a primeira versão
+/// do conserto cobria metade das rotas.
+///
+/// ⚠️ O caminho de imagem única passa pelo `flatten`; o **Per-Layer Color** não — ele carimba pelas
+/// **máscaras cruas** (`shape_layers.masks()` → `accumulate_shape_layers_rgba_batch`). Com o ganho
+/// aplicado no flatten, o relevo alcançava o pincel exatamente enquanto o artista não ligasse o modo
+/// que pinta com as cores da textura, que é o modo que o report do Enio pedia (2026-08-09).
+///
+/// **Mutação que deve sangrar:** mover o ganho de volta para o `reflatten_shape_image`.
+#[test]
+fn the_relief_reaches_the_per_layer_colour_route_too() {
+    let mut t = ridge(255, true, [0.1, 0.2, 0.3]);
+    t.capture_layers_as_brush_shape();
+    let masks = t.paint.shape_layers.masks();
+    assert_eq!(masks.len(), 1, "a fixture tem uma camada");
+    let (min, max) = masks[0]
+        .lum
+        .iter()
+        .fold((255u8, 0u8), |(a, b), &v| (a.min(v), b.max(v)));
+    assert!(
+        max - min > 32,
+        "a MASCARA que o Per-Layer Color carimba e chata ({min}..{max}) — o relevo parou no flatten \
+         e nao alcancou a rota que pinta com as cores da textura"
+    );
+}
+
 /// ⚠️ **A primeira versão deste gate tomava o MÁXIMO sobre a tela e passava sob a mutação.** O papel
 /// transparente tem alpha 0 e RGB 255, então a luminância dele é 255 — o máximo media o PAPEL, não a
 /// pincelada. Um oráculo global sobre uma tela cujo fundo domina não fala sobre o traço; a asserção é
@@ -250,6 +276,80 @@ fn a_black_drawing_still_prints() {
         at_stroke > 200,
         "uma pincelada PRETA sobre tela transparente imprime {at_stroke} no proprio traco — a \
          silhueta virou luminancia e o carimbo ficou invisivel"
+    );
+}
+
+/// **Guardar a cor não move a silhueta** — a rota do sprite plano continua entregando exatamente a
+/// máscara de luminância que sempre entregou.
+///
+/// ⚠️ Sem este gate, "o slot agora guarda uma camada" seria uma afirmação sobre uma estrutura, e o
+/// artista julgaria pelo carimbo: trocar a silhueta pela COBERTURA aqui faria todo sprite opaco virar
+/// um quadrado, que é o defeito que o próprio relatório desta jornada mediu do outro lado.
+///
+/// **Mutação que deve sangrar:** `set_brush_shape_image_rgba` guardar o alpha em vez da luminância.
+#[test]
+fn installing_a_sprite_with_colour_keeps_the_silhouette_it_always_had() {
+    // Um sprite com cor E alpha variando de formas DIFERENTES — senão luminância e cobertura
+    // coincidem e a mutação não teria como divergir.
+    let (w, h) = (8u32, 8u32);
+    let n = (w * h) as usize;
+    let mut px = vec![0u8; n * 4];
+    for (i, p) in px.chunks_exact_mut(4).enumerate() {
+        p[0] = (i * 3) as u8;
+        p[1] = (i * 5) as u8;
+        p[2] = (i * 7) as u8;
+        p[3] = 255 - (i * 2) as u8;
+    }
+    let lum: Vec<u8> = px
+        .chunks_exact(4)
+        .map(|p| ((u32::from(p[0]) * 77 + u32::from(p[1]) * 150 + u32::from(p[2]) * 29) >> 8) as u8)
+        .collect();
+
+    let mut old = PainterTool::default();
+    old.set_brush_shape_image(lum, w, h);
+    let before = old.brush_shape_image().expect("silhueta").0.to_vec();
+
+    let mut new = PainterTool::default();
+    new.set_brush_shape_image_rgba(&px, w, h, Some(7));
+    let after = new.brush_shape_image().expect("silhueta").0.to_vec();
+
+    assert_eq!(
+        spread(&before, &after),
+        (0, 0),
+        "guardar a cor mudou a silhueta — o carimbo do artista nao e o mesmo"
+    );
+}
+
+/// **Um sprite de UMA camada pinta com as próprias cores** — o report, no mecanismo.
+///
+/// A capacidade sempre existiu (o modo liga um bit, e `color_on` desligado já significa *"a camada
+/// pinta as cores que capturou"*); o que faltava era **ter cor guardada** nesta rota e a UI que a
+/// liga. Aqui está a metade do modelo; a metade da UI é o seam do painel.
+///
+/// **Mutação que deve sangrar:** `set_brush_shape_image_rgba` delegar ao `set_brush_shape_image`.
+#[test]
+fn a_single_layer_sprite_can_paint_its_own_colours() {
+    let (w, h) = (4u32, 4u32);
+    let mut px = vec![255u8; (w * h) as usize * 4];
+    for (i, p) in px.chunks_exact_mut(4).enumerate() {
+        p[0] = (i * 11) as u8;
+    }
+    let mut t = PainterTool::default();
+    t.set_brush_shape_image_rgba(&px, w, h, Some(7));
+    assert_eq!(
+        t.brush_settings().shape_layer_count,
+        1,
+        "o sprite tem de chegar como UMA camada, senao nao ha o que colorir"
+    );
+    t.toggle_brush_shape_per_layer_color();
+    assert!(
+        t.brush_settings().shape_per_layer_color,
+        "o modo nao liga — o checkbox ficaria pintado e inerte"
+    );
+    assert!(
+        t.paint.shape_layers.rgb_image(0).is_some(),
+        "a camada nao carrega o RGB do sprite — o modo pintaria com a cor do pincel, que e o que \
+         desligar o checkbox ja faz"
     );
 }
 

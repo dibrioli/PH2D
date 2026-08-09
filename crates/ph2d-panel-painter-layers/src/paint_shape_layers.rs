@@ -66,9 +66,18 @@ pub(crate) fn paint_shape_per_layer_color(
     brush: BrushSettings,
 ) -> f32 {
     let count = brush.shape_layer_count as usize;
-    if count <= 1 {
-        return y; // single-layer image (or none) ⇒ no per-layer-colour UI
+    if count == 0 {
+        return y; // nenhuma Shape capturada ⇒ nao ha cor de textura para ligar
     }
+    // ⚠️ **UMA camada tambem tem cor** (Enio, 2026-08-09): o gate era `count <= 1`, entao um sprite de
+    // uma camada so nao tinha como pintar com as proprias cores — a capacidade existia (o modo liga o
+    // mesmo bit, e `color_on` desligado ja significa *"a camada pinta as cores que capturou"*) e a UI
+    // dela era a unica coisa que faltava.
+    //
+    // ⚠️ **E o rotulo muda com a contagem, o ESTADO nao.** Um id novo seria uma segunda porta para o
+    // mesmo bit — a falha que este painel ja pagou —, mas *"Per-Layer Color"* sobre uma camada nomeia
+    // uma divisao que nao existe. Uma pergunta, um estado, duas maneiras honestas de a fazer.
+    let single = count == 1;
     y = paint_checkbox_row(
         ctx,
         theme,
@@ -76,10 +85,17 @@ pub(crate) fn paint_shape_per_layer_color(
         content_w,
         y,
         core_ids::PAINTER_SHAPE_PER_LAYER_COLOR,
-        "Per-Layer Color",
+        if single {
+            "Use Texture Colors"
+        } else {
+            "Per-Layer Color"
+        },
         brush.shape_per_layer_color,
     );
-    if !brush.shape_per_layer_color {
+    if !brush.shape_per_layer_color || single {
+        // Numa camada so as rows por-camada nao sao oferecidas: *"Layer 1 Color"* seria uma segunda
+        // forma de dizer *"pinte com a cor do pincel"*, que e exatamente o que desmarcar o checkbox
+        // acima ja faz — o item de menu morto que este codebase mantem uma tabela por menu para evitar.
         return y;
     }
     let n = count.min(brush.shape_layer_color_on.len());

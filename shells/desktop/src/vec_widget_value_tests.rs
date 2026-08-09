@@ -242,3 +242,66 @@ fn the_boolean_kinds_survive_the_round_trip_through_the_world() {
         assert_eq!(authored(&sim, &map, id), Some(0.0), "{kind:?} desligado");
     }
 }
+
+/// **Um memo do documento ANTERIOR faz o valor salvo do NOVO ser destruído.**
+///
+/// ⚠️ Este é o gate da consequência, e ele existe porque a causa é uma **ausência**: o
+/// `vec_widget_applied` vive no `App`, é chaveado por `VecPathId` — e os `VecPathId` são
+/// **reciclados entre documentos** (a cena nova conta do zero). O `project_forget.rs` enuncia
+/// exatamente essa lei no doc-header dele, para os sete produtores vivos, e este memo **não estava
+/// na lista**.
+///
+/// ⚠️ **O caminho pelo qual o dano acontece é o ramo da PRIMEIRA VISTA**, e ele é a metade certa
+/// do desenho: sem memo, um valor autorado no arquivo MANDA (é um load). Com um memo herdado, esse
+/// ramo é **pulado**, cai-se em *"o artista ganha"* — e o artista aqui é o documento morto.
+///
+/// ⚠️ E o defeito **desaparece na fixture mais fácil de escrever:** se os dois documentos usarem o
+/// mesmo rótulo, `memo == live` e cai-se no ramo do mundo, onde o arquivo vence por acidente. A
+/// fixture tem de ter memo **diferente** do vivo.
+#[test]
+fn a_memo_from_the_previous_document_destroys_the_value_the_file_carries() {
+    let (mut sim, map, id) = scene(WidgetKind::Slider, "Volume");
+    // O que o arquivo do projeto B carrega.
+    let &bits = map.get(&id).expect("o widget esta' no mapa");
+    sim.world_mut()
+        .entity_mut(Entity::from_bits(bits))
+        .insert(VecWidgetValue { value: 0.8 });
+    // O painel ainda não adotou a row quando o load corre; o `adopt` a regista com o NEUTRO.
+    let mut store = store_with("Volume", slider(0.0));
+
+    // (a) Memo LIMPO — o que um load correto entrega: o arquivo manda.
+    let mut fresh = Applied::new();
+    assert!(
+        !reconcile(&mut sim, &map, &mut store, &mut fresh),
+        "propagar do arquivo para o store nao e' uma edicao"
+    );
+    assert_eq!(
+        store.get(row_id("Volume")).and_then(value_of),
+        Some(0.8),
+        "o valor salvo nao chegou ao controle"
+    );
+    assert_eq!(authored(&sim, &map, id), Some(0.8), "o mundo foi tocado");
+
+    // (b) Memo HERDADO do documento anterior, para a MESMA chave e com valor diferente do vivo.
+    let (mut sim, map, id) = scene(WidgetKind::Slider, "Volume");
+    let &bits = map.get(&id).expect("o widget esta' no mapa");
+    sim.world_mut()
+        .entity_mut(Entity::from_bits(bits))
+        .insert(VecWidgetValue { value: 0.8 });
+    let mut store = store_with("Volume", slider(0.0));
+    let mut stale = Applied::new();
+    stale.insert(id, 0.3); // o slider `Speed` do projeto A, no mesmo VecPathId
+
+    reconcile(&mut sim, &map, &mut store, &mut stale);
+    // ⚠️ **Isto PINA o mecanismo, e não o desejo** — a cura é a MONTANTE. Consertar o `reconcile`
+    // para ser defensivo contra um memo herdado seria dar-lhe uma segunda opinião sobre de quem é
+    // o documento, e o ramo *"o artista ganha"* existe e está certo. Quem sabe que o documento
+    // trocou é o load, e é ele que esvazia — `App::forget_live_producers`, cujo gate é o irmão
+    // `the_load_forgets_the_authored_control_memo`.
+    assert_eq!(
+        authored(&sim, &map, id),
+        Some(0.0),
+        "o memo herdado deixou de destruir o valor do arquivo — se isto mudou, o `reconcile` ganhou \
+         uma defesa que ele nao devia ter, e o gate do LOAD passou a ser a unica coisa a segurar"
+    );
+}

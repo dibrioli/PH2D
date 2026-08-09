@@ -959,7 +959,7 @@ Reservada de propósito: `autostep` afinado, `min_slope_slide_angle` exposto, ou
 | 5 | quanto o `offset` (a folga do controlador) custa em aparência | o personagem paira `offset` acima do chão — é a D1 outra vez, num número menor |
 | 6 | **o que a jangada afunda** nos dois modos (K2) | a cena `=72` |
 | 7 | **o que uma perna RÍGIDA custa** (`W-Landing`) — o solavanco ao subir um degrau e o pico da reação na jangada | a cena `=91` (a escada de pranchas) e a `=100`, varrendo `k` |
-| 8 | a **deriva de rampa contra a rigidez** — a lei publicada varreu o amortecimento, **não** o `k` | a varredura do `platform_idle`, com `k` no eixo |
+| 8 | a **deriva de rampa contra a rigidez** — a lei publicada varreu o amortecimento, **não** o `k` | ✅ **MEDIDO 2026-08-09** (`measure_the_drift_against_the_stiffness`): planas a 5 decimais numa faixa de **64×** ⇒ **a lei não tem termo em `k`**, e a resposta a *"deriva"* é UM knob. Gate `the_drift_law_has_no_stiffness_term` |
 
 ---
 

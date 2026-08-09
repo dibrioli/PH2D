@@ -113,6 +113,21 @@ fn rig_k(slope_deg: f32, damping: f32, substeps: u32, k: f32) -> (SimWorld, Phys
     (sim, bridge)
 }
 
+/// A mesma viagem, com a RIGIDEZ escolhida — o eixo que a lei publicada não
+/// varreu (§7.8 do plano 07).
+fn idle_travel_k(slope_deg: f32, secs: u64, damping: f32, substeps: u32, k: f32) -> f32 {
+    let (mut sim, mut bridge) = rig_k(slope_deg, damping, substeps, k);
+    for t in 1..=SETTLE_SECS * 60 {
+        bridge.dispatch(&mut sim, true, t);
+    }
+    let start = pose(&sim);
+    for t in SETTLE_SECS * 60 + 1..=(SETTLE_SECS + secs) * 60 {
+        bridge.dispatch(&mut sim, true, t);
+    }
+    let end = pose(&sim);
+    ((end.0 - start.0).powi(2) + (end.1 - start.1).powi(2)).sqrt()
+}
+
 /// Quanto o personagem VIAJOU em `secs` segundos sem ninguém tocar nele.
 fn idle_travel(slope_deg: f32, secs: u64, damping: f32, substeps: u32) -> f32 {
     let (mut sim, mut bridge) = rig(slope_deg, damping, substeps);
@@ -471,4 +486,83 @@ fn measure_whether_substeps_buy_the_bounce_back() {
             landing_bounce_mm(1.0, n)
         );
     }
+}
+
+/// **A DERIVA DE RAMPA CONTRA A RIGIDEZ** — o §7.8 do plano 07, e o eixo que a
+/// lei publicada não varreu.
+///
+/// A lei que o doc do `RideConfig` publica é
+/// `deriva(10 s) = 0,153 · sen θ · (1 − d)` — **sem termo em `k`** —, e ela
+/// nasceu de uma varredura do AMORTECIMENTO. Se a rigidez a mover, a lei está
+/// incompleta e o artista tem um segundo knob a mexer sem saber; se não mover,
+/// a lei fica completa e a resposta a *"o meu personagem deriva"* é **um** knob.
+///
+/// Rodar: `cargo test -p ph2d-physics-ecs --release --test measure_substep
+/// -- --ignored --nocapture measure_the_drift_against_the_stiffness`
+#[test]
+#[ignore = "sonda"]
+fn measure_the_drift_against_the_stiffness() {
+    println!("\n=== A DERIVA DE RAMPA CONTRA A RIGIDEZ (30 graus, 10 s) ===");
+    println!("lei publicada: 0,153 · sen(theta) · (1 - d), SEM termo em k\n");
+    println!(
+        "{:>8}  {:>12}  {:>12}  {:>12}  {:>12}",
+        "k", "d = 0.00", "d = 0.25", "d = 0.50", "d = 1.00"
+    );
+    for k in [100.0_f32, 200.0, 400.0, 800.0, 1600.0, 3200.0, 6400.0] {
+        let cols: Vec<f32> = [0.0_f32, 0.25, 0.5, 1.0]
+            .iter()
+            .map(|&d| idle_travel_k(30.0, 10, d, 4, k))
+            .collect();
+        println!(
+            "{k:>8.0}  {:>12.5}  {:>12.5}  {:>12.5}  {:>12.5}",
+            cols[0], cols[1], cols[2], cols[3]
+        );
+    }
+    let pred = 0.153 * 30.0_f32.to_radians().sin();
+    println!(
+        "\nprevisao da lei (independente de k):  d=0 -> {:.5}   d=0.25 -> {:.5}   \
+         d=0.50 -> {:.5}   d=1.00 -> {:.5}",
+        pred,
+        pred * 0.75,
+        pred * 0.5,
+        0.0
+    );
+    println!(
+        "\nLEITURA: se as colunas forem PLANAS na vertical, a lei esta completa\n\
+         e a resposta a \"o meu personagem deriva\" e' UM knob (o amortecimento).\n"
+    );
+}
+
+/// **A LEI DA DERIVA NÃO TEM TERMO EM `k`** — a resposta a *"o meu personagem
+/// deriva"* é UM knob (§7.8 do plano 07).
+///
+/// # ⚠️ Porque isto precisa de gate e não só de uma linha no doc
+///
+/// A lei publicada no `RideConfig` é `0,153 · sen θ · (1 − d)` e nasceu de uma
+/// varredura do **amortecimento**; o eixo da RIGIDEZ nunca tinha sido varrido
+/// contra a deriva (ele foi, contra o *piso* do amortecimento no plano, e
+/// contra o *quique* do pouso — duas perguntas diferentes).
+///
+/// Medido numa faixa de **64×** em `k` (`measure_the_drift_against_the_stiffness`):
+/// as colunas saem planas a cinco decimais. Sem este gate, uma wave futura que
+/// acoplasse o amortecimento à rigidez — *"mola mais dura deve amortecer
+/// mais"*, que é uma frase plausível — daria ao artista um segundo knob que
+/// move a deriva **sem nada dizer**, e a lei publicada passaria a mentir.
+#[test]
+fn the_drift_law_has_no_stiffness_term() {
+    // Um amortecimento do MEIO: no teto a deriva é zero em todo `k` e o gate
+    // ficaria verde por vácuo; em zero ela é a mais ruidosa das quatro colunas.
+    const D: f32 = 0.5;
+    let soft = idle_travel_k(30.0, 10, D, 4, 200.0);
+    let stiff = idle_travel_k(30.0, 10, D, 4, 6400.0);
+    assert!(
+        soft > 0.02,
+        "a fixture tem de CONTER o fenomeno: com d = {D} a deriva medida foi \
+         {soft:.5} m, e um zero nao distingue lei nenhuma"
+    );
+    assert!(
+        (soft - stiff).abs() < 0.002,
+        "32x de rigidez (200 -> 6400) nao pode mover a deriva: {soft:.5} m contra \
+         {stiff:.5} m — a lei publicada `0,153·sen(theta)·(1-d)` ficou incompleta"
+    );
 }

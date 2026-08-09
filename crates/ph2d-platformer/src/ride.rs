@@ -113,6 +113,24 @@ impl RideConfig {
     /// **exacto em toda inclinação** — não um cruzamento calibrado a 30°, que
     /// era a suspeita que a varredura foi escrita para matar.
     ///
+    /// ## ⚠️ E o eixo que ela NÃO tem é a rigidez (medido 2026-08-09)
+    ///
+    /// A lei acima nasceu de uma varredura do amortecimento, então *"sem termo
+    /// em `k`"* era uma ausência e não um facto. Varrida a rigidez numa faixa
+    /// de **64×** (`measure_the_drift_against_the_stiffness`, 100 a 6400), as
+    /// colunas saem **planas a cinco decimais** (`d = 0,25` dá `0,05747` nas
+    /// sete linhas; `d = 0,50` dá `0,03834`) e batem com a previsão a 0,2%.
+    ///
+    /// ⇒ **A resposta a *"o meu personagem deriva"* é UM knob.** Mexer na
+    /// rigidez não move a deriva — ela move o *quique do pouso*
+    /// (`measure_landing_against_stiffness`), que é a outra pergunta.
+    ///
+    /// ⚠️ Duas notas de borda, honestas: em `k = 100` o teto do amortecimento
+    /// deixa **0,31 mm** em vez de zero exacto (a mola mais mole da faixa não
+    /// cancela tudo), e a coluna `d = 0` tem **±1,4%** de dispersão sem
+    /// tendência — é ruído do caso não-amortecido, não uma dependência.
+    /// Gate: `the_drift_law_has_no_stiffness_term`.
+    ///
     /// ## ⚠️ E a lei tem um TERCEIRO eixo, que esta tabela esconde (W26)
     ///
     /// A tabela é medida no `substeps = 4` do produto, e as duas colunas do meio

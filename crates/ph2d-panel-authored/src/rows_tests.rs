@@ -215,14 +215,29 @@ fn only_the_section_header_folds_and_it_is_never_a_control() {
             kind == WidgetKind::SectionHeader,
             "{kind:?} discorda sobre dobrar uma secao"
         );
+        assert_eq!(
+            r.opens_a_picker(),
+            kind == WidgetKind::ColorSwatch,
+            "{kind:?} discorda sobre abrir o picker"
+        );
+        // ⚠️ **As três são MUTUAMENTE EXCLUSIVAS, e é isso que o gate afirma agora.** A versão
+        // anterior repetia a soma (`wants_pointer == is_control || folds_a_section`) — uma cópia
+        // da implementação, que só sabe dizer *"a soma mudou"* e foi exactamente o que ela disse
+        // no dia em que a swatch entrou. O que importa é que **um clique tem UM significado**: um
+        // tipo que fosse controle E cabeçalho emitiria um intent ao ser dobrado; um que fosse
+        // controle E picker abriria o picker e nunca chegaria ao próprio switch.
+        let claims = [r.is_control(), r.folds_a_section(), r.opens_a_picker()]
+            .into_iter()
+            .filter(|b| *b)
+            .count();
         assert!(
-            !(r.folds_a_section() && r.is_control()),
-            "{kind:?} e' controle E dobra — o clique dele cairia no switch errado"
+            claims <= 1,
+            "{kind:?} reclama {claims} significados para o mesmo clique"
         );
         assert_eq!(
             r.wants_pointer(),
-            r.is_control() || r.folds_a_section(),
-            "{kind:?}: a porta do ponteiro divergiu das duas perguntas que ela soma"
+            claims == 1,
+            "{kind:?}: a porta do ponteiro discorda das perguntas que ela soma"
         );
     }
 }

@@ -82,6 +82,28 @@ pub enum IconButtonStyle {
     Compact,
 }
 
+/// **Onde o glifo de um botão EMOLDURADO cai** — a porta única da geometria.
+///
+/// A caixa é `Spacing::Xl3`, centrada, **e nunca passa do botão menos o padding do tema**. Ela é
+/// `pub` para que um gate possa afirmar as duas metades: *não transborda* e *quem cabia não se
+/// moveu*. Sem ela, a única forma de as medir seria ler a cena pintada, e o que se leria era a
+/// curva já escalada — o oráculo estaria a inspecionar o glifo em vez da moldura dele.
+#[must_use]
+pub fn glyph_box(rect: Rect) -> Rect {
+    let pad = Spacing::Xs.px();
+    let d = Spacing::Xl3
+        .px()
+        .min(rect.w - 2.0 * pad)
+        .min(rect.h - 2.0 * pad)
+        .max(0.0);
+    Rect::new(
+        rect.x + (rect.w - d) * 0.5,
+        rect.y + (rect.h - d) * 0.5,
+        d,
+        d,
+    )
+}
+
 /// State→glyph tint for the `Chip` / `Plain` styles (the canonical
 /// `icon_button_fg`): idle `Text2`, hover/focus `Text1`, pressed
 /// `Accent`, disabled `TextDisabled`.
@@ -119,14 +141,24 @@ pub fn paint_icon_button(
                 StrokeToken::Default.px(),
                 resolve(ColorToken::Border, theme),
             );
-            let d = Spacing::Xl3.px();
-            let ir = Rect::new(
-                rect.x + (rect.w - d) * 0.5,
-                rect.y + (rect.h - d) * 0.5,
-                d,
-                d,
-            );
-            (ir, resolve(icon_tint(state), theme))
+            // **A caixa do glifo é `Xl3` — mas ela nunca passa do botão.**
+            //
+            // ⚠️ O `Xl3` (32 px) veio da TopBar, onde o chip é maior que ele. Numa **row de
+            // painel** não é: `ROW_H_PX` mede **28**, então a caixa era 4 px MAIS ALTA que o
+            // botão que a contém e o glifo transbordava 2 px em cima e 2 embaixo (medido,
+            // 2026-08-09).
+            //
+            // ⚠️ **O defeito é antigo e só um glifo que PREENCHE a viewbox o revela.** Os ícones
+            // do catálogo deixam margem dentro dos 24×24 deles, então o transbordo cabia na folga
+            // e ninguém o via; a estrela que o artista desenha é normalizada para encher a caixa,
+            // e aí ele aparece — foi assim que o Enio o encontrou (*"Icon Button sem ajustes de
+            // padding"*).
+            //
+            // ⚠️ **Clamp, e não um número novo:** quem já cabia continua com `Xl3` ao pixel (um
+            // chip de 56×40 dá `min(32, 48, 32) = 32`), então nenhum botão que hoje está certo se
+            // move — a lei dos estilos é *"no visual change on migration"*. Só encolhe quem estava
+            // a transbordar, e o mínimo do padding é o do próprio tema.
+            (glyph_box(rect), resolve(icon_tint(state), theme))
         }
         IconButtonStyle::Primary => {
             let bg = match state {
@@ -163,6 +195,51 @@ mod tests {
             &mut scene,
             Theme::Forge,
         );
+    }
+
+    /// **O glifo NUNCA passa do botão** — a metade que o report do Enio nomeou.
+    ///
+    /// ⚠️ Numa row de painel (`ROW_H_PX = 28`) a caixa era `Spacing::Xl3 = 32`: **4 px mais alta
+    /// que o botão**, transbordando 2 em cima e 2 embaixo. Só um glifo que PREENCHE a viewbox o
+    /// revela — os do catálogo deixam margem dentro dos 24×24 deles, e o transbordo cabia nela.
+    #[test]
+    fn the_glyph_never_spills_out_of_a_dense_button() {
+        let r = Rect::new(10.0, 20.0, 120.0, ph2d_tokens::ROW_H_PX);
+        let g = glyph_box(r);
+        assert!(
+            g.x >= r.x && g.y >= r.y && g.x + g.w <= r.x + r.w && g.y + g.h <= r.y + r.h,
+            "a caixa do glifo {g:?} sai do botao {r:?}"
+        );
+        assert!(g.w > 0.0 && g.h > 0.0, "a caixa do glifo colapsou: {g:?}");
+    }
+
+    /// **Quem já cabia NÃO se moveu** — a lei dos estilos é *"no visual change on migration"*.
+    ///
+    /// ⚠️ Sem esta metade, a cura seria indistinguível de *"encolher todo botão de ícone do app"*,
+    /// e os chips da TopBar mudariam de tamanho por causa de uma row de painel.
+    #[test]
+    fn a_button_with_room_keeps_the_full_token_box() {
+        let g = glyph_box(Rect::new(0.0, 0.0, 56.0, 40.0));
+        assert_eq!(
+            g.w,
+            Spacing::Xl3.px(),
+            "um botao com folga deixou de usar a caixa do token"
+        );
+        assert_eq!(g.h, Spacing::Xl3.px());
+    }
+
+    /// **A caixa é CENTRADA** — a propriedade que sobrevive ao clamp.
+    #[test]
+    fn the_glyph_box_stays_centred() {
+        for (w, h) in [(120.0, 28.0), (56.0, 40.0), (18.0, 18.0)] {
+            let r = Rect::new(7.0, 3.0, w, h);
+            let g = glyph_box(r);
+            assert!(
+                ((g.x + g.w * 0.5) - (r.x + r.w * 0.5)).abs() < 0.01
+                    && ((g.y + g.h * 0.5) - (r.y + r.h * 0.5)).abs() < 0.01,
+                "a caixa {g:?} nao esta' centrada em {r:?}"
+            );
+        }
     }
 
     #[test]

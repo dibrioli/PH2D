@@ -43,7 +43,7 @@ use ph2d_vec_scene::{Paint, Rgba8, VecPath, VecPathId, rectangle, star};
 /// staleness (`the_generated_panel_is_not_stale`) constrói o mundo a partir dela para emitir o
 /// código e comparar com o arquivo commitado. Uma segunda lista escrita à mão no gate divergiria
 /// desta no dia em que uma row entrasse — e o gate ficaria verde sobre o painel errado.
-pub(crate) const AUTHORED: [([f64; 4], &str, Option<WidgetKind>); 20] = [
+pub(crate) const AUTHORED: [([f64; 4], &str, Option<WidgetKind>); 21] = [
     ([-2.0, -4.9, 2.0, 2.4], "Color", None),
     (
         [-1.8, 1.4, 1.8, 2.2],
@@ -102,6 +102,17 @@ pub(crate) const AUTHORED: [([f64; 4], &str, Option<WidgetKind>); 20] = [
         [-1.8, -11.7, 1.8, -11.0],
         "Dither",
         Some(WidgetKind::Checkbox),
+    ),
+    // **O READOUT** — e ele e' o CONTROLE de um gate, nao enfeite.
+    //
+    // ⚠️ Uma barra de progresso DESENHA e nunca responde, e o `a_display_only_row_is_not_clickable`
+    // precisa de exactamente uma dessas na tabela para ter sujeito. Ele ficou sem uma no dia em
+    // que a swatch passou a abrir o picker — e **recusou-se a medir o vazio** em vez de ficar
+    // verde, que e' a razao de o controle positivo dele existir.
+    (
+        [-1.8, -12.7, 1.8, -12.0],
+        "Loading",
+        Some(WidgetKind::ProgressBar),
     ),
 ];
 
@@ -498,6 +509,29 @@ fn announce(app: &mut crate::App) {
     eprintln!("     PH2D_SIGNAL_LOG=1, um checkbox NAO pode imprimir '[signal]'; um Button pode.");
     eprintln!("     ⚠️ E o inverso tambem: um **Section Header** que vira Checkbox tem de MARCAR,");
     eprintln!("     nao dobrar — a marca de secao e' consultada ANTES do tipo do widget.");
+    eprintln!(" 23. ⚠️ **A SWATCH ABRE O PICKER, e a cor VOLTA para a forma.** Clique na row");
+    eprintln!("     **Tint**: o picker OKLCH abre **na cor da forma**, nao num cinzento. Escolha");
+    eprintln!("     outra: a swatch acompanha E o retangulo do canvas que a veste muda junto —");
+    eprintln!("     eles sao a MESMA cor, lida do preenchimento do desenho. Se a swatch voltar a'");
+    eprintln!("     cor antiga no quadro seguinte, PARE: o picker abriu e a viagem de volta nao");
+    eprintln!("     aconteceu, que e' pior que uma swatch muda porque PARECE funcionar.");
+    eprintln!(
+        "     ⚠️ O picker e' o do APP, o mesmo do Painter e do Vector — o `pointer_down` diz"
+    );
+    eprintln!("     em codigo que qualquer painel que pinte uma ColorSwatch e a registe o ganha.");
+    eprintln!(" 24. ⚠️ **O ICONE NAO TRANSBORDA MAIS.** Olhe as rows **Play** e **Trash**: a");
+    eprintln!("     estrela e o lixo ficam DENTRO da moldura do botao, com folga. A caixa do");
+    eprintln!("     glifo media 32 px numa row de 28 — 4 px mais alta que o botao que a contem —,");
+    eprintln!(
+        "     e so' um glifo que PREENCHE a viewbox o revelava: os do catalogo deixam margem"
+    );
+    eprintln!("     dentro dos 24x24 deles, a estrela do artista nao. Compare com os chips da");
+    eprintln!("     TopBar: eles NAO se moveram (tem folga de sobra, e a lei do estilo e' 'no");
+    eprintln!("     visual change on migration').");
+    eprintln!(" 25. ⚠️ **O CONTROLE do passo 24**: a row **Loading** e' uma barra de progresso —");
+    eprintln!("     ela DESENHA e nunca responde. Clique nela: nada acontece, e nada deve. Ela");
+    eprintln!("     esta' na cena porque um gate precisa de exactamente uma row assim para ter");
+    eprintln!("     sujeito, e ele ficou sem uma no dia em que a swatch passou a abrir o picker.");
 }
 
 #[cfg(test)]

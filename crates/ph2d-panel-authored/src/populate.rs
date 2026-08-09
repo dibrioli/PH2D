@@ -206,6 +206,16 @@ pub(crate) fn adopt(store: &mut WidgetStore, row: &Row) {
     } else {
         store.unmark_collapsible_section(row.id);
     }
+    // ⚠️ **A swatch é ALVO DE PICKER, e a cor dela é PUBLICADA a cada quadro.** O `pointer_down`
+    // do editor abre o picker OKLCH partilhado para qualquer id marcado assim, semeando-o com o
+    // `widget_color` — então publicar a cor é o que faz o picker abrir na cor da forma em vez de
+    // num cinzento inventado. É o padrão do painel de vetor (Stroke/Fill), aqui derivado da row.
+    if row.opens_a_picker() {
+        store.register_picker_swatch(row.id);
+        if let Some(rgba) = row.rgba {
+            store.set_widget_color(row.id, rgba);
+        }
+    }
     options(store, row);
 }
 

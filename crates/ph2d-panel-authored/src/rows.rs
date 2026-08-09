@@ -103,13 +103,30 @@ impl Row {
         matches!(self.kind, WidgetKind::SectionHeader)
     }
 
+    /// **Esta row abre o PICKER?** — a terceira espécie de clique deste painel.
+    ///
+    /// ⚠️ **Uma swatch não é um controle e não é um cabeçalho**, e por isso ficava de fora das
+    /// duas perguntas acima: ela não tem `InteractiveState` (não há o que registar) e não dobra
+    /// nada. O resultado é que ela nascia sem retângulo de hit — *pintada, com a cor da forma que
+    /// a veste, e muda ao clique* (report do Enio, 2026-08-09: *"Color não abre o picker"*).
+    ///
+    /// ⚠️ **O picker não é deste painel, e é isso que torna a resposta uma linha:** o
+    /// `pointer_down` do editor já diz, em código, que *qualquer* painel que pinte uma
+    /// `ColorSwatch` e chame `register_picker_swatch(id)` ganha o picker OKLCH partilhado. O que
+    /// faltava era a chamada.
+    #[must_use]
+    pub fn opens_a_picker(&self) -> bool {
+        matches!(self.kind, WidgetKind::ColorSwatch)
+    }
+
     /// **Esta row quer o PONTEIRO?** — a porta única do retângulo de hit.
     ///
-    /// A soma das duas perguntas acima, e ela existe para o `paint` não as repetir: um `||`
-    /// escrito no laço de pintura seria a regra que o próximo caso especial nasce sem.
+    /// A soma das três perguntas acima, e ela existe para o `paint` não as repetir: um `||`
+    /// escrito no laço de pintura seria a regra que o próximo caso especial nasce sem — e a
+    /// swatch foi exactamente esse próximo caso.
     #[must_use]
     pub fn wants_pointer(&self) -> bool {
-        self.is_control() || self.folds_a_section()
+        self.is_control() || self.folds_a_section() || self.opens_a_picker()
     }
 
     #[must_use]

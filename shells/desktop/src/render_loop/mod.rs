@@ -7398,15 +7398,38 @@ impl crate::App {
             // painel é trabalho de autoria, não de quadro. Fechado, ele não paga nada — e a
             // publicação de `None` devolve o painel à tabela compilada, que é o que um build sem
             // documento autorado tem de mostrar.
-            let live_rows = hero
+            let authored_frame = hero
                 .is_panel_visible(
                     <ph2d_panel_authored::AuthoredPanel as ph2d_editor::panel::Panel>::ID,
                 )
-                .then(|| {
-                    crate::ui_panel_spec::authored_frame(sim, vec_scene)
-                        .map(|f| crate::ui_panel_spec::live_rows(sim, vec_scene, f))
-                })
+                .then(|| crate::ui_panel_spec::authored_frame(sim, vec_scene))
                 .flatten();
+            // **O RETORNO DO PICKER** — a cor escolhida pinta a forma que veste a swatch.
+            //
+            // ⚠️ **ANTES de derivar as rows, e a ordem é o assunto:** a row publica o
+            // preenchimento da forma, então escrever a cor depois de a ler daria uma swatch a
+            // mostrar a cor ANTIGA por um quadro — o piscar que faz o artista clicar duas vezes.
+            //
+            // ⚠️ E o alvo do picker é PARTILHADO (Painter, Vector, timeline usam o mesmo canal);
+            // o `picker_shape` devolve `None` quando ele não é uma row desta moldura, que é o caso
+            // comum. Escrever sem essa pergunta pintaria a forma errada a cada vez que outro
+            // painel abrisse o picker.
+            if let Some(frame) = authored_frame
+                && let Some(target) = hero.store.picker_target()
+                && let Some(path) =
+                    crate::ui_panel_spec::picker_shape(sim, vec_scene, frame, target)
+                && let Some((value, _, _, _)) = hero
+                    .store
+                    .blender_picker(ph2d_editor::ids::INSP_BLENDER_PICKER)
+                && let Some(p) = vec_scene.path_mut(path)
+            {
+                let c = value.rgba;
+                p.fill = Some(ph2d_vec_scene::Paint::Solid(ph2d_vec_scene::Rgba8::new(
+                    c[0], c[1], c[2], c[3],
+                )));
+            }
+            let live_rows =
+                authored_frame.map(|f| crate::ui_panel_spec::live_rows(sim, vec_scene, f));
             ph2d_panel_authored::rows::set_live_rows(live_rows);
             let vec_skins = crate::widget_live::build(
                 vec_scene,

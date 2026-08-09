@@ -111,6 +111,12 @@ fn icon_of(sim: &SimWorld, scene: &VecScene, e: Entity) -> (Option<BezPath>, Opt
 /// painel compilado de descreverem árvores diferentes — a divergência que só uma screenshot revela.
 pub(crate) struct Authored {
     kind: WidgetKind,
+    /// A forma que veste esta row — o caminho no documento.
+    ///
+    /// ⚠️ Ela existe para o retorno do PICKER: a swatch publica a cor da forma, e a cor que o
+    /// artista escolhe tem de voltar para essa MESMA forma. Sem o caminho aqui, o único elo entre
+    /// a row e o desenho seria o rótulo, e um rótulo não é um endereço.
+    pub(crate) path: Option<VecPathId>,
     label: String,
     key: String,
     rgba: Option<[u8; 4]>,
@@ -163,6 +169,7 @@ fn walk(sim: &SimWorld, scene: &VecScene, e: Entity, out: &mut Vec<Authored>) {
         let owns_children = kind.takes_options();
         out.push(Authored {
             kind,
+            path: sim.world().get::<VecPathRef>(e).map(|r| r.0),
             key: key_of(&label),
             label,
             rgba,
@@ -247,6 +254,32 @@ pub(crate) fn live_rows(sim: &SimWorld, scene: &VecScene, frame: Entity) -> Vec<
             options: a.options,
         })
         .collect()
+}
+
+/// **A forma de uma swatch cujo picker está aberto** — o elo de volta.
+///
+/// ⚠️ **Ela existe porque a cor tem de fazer a viagem de VOLTA.** A swatch publica o
+/// preenchimento da forma que a veste (`register_picker_swatch` + `set_widget_color`), e o
+/// `pointer_down` do editor abre o picker OKLCH semeado com ele. Sem este elo, o artista escolhe
+/// uma cor, o picker a mostra, e a swatch **volta à antiga no quadro seguinte** — porque a row é
+/// re-derivada do documento a cada quadro e o documento não mudou. Um picker que abre e não pinta
+/// é pior que uma swatch muda: ele parece funcionar.
+///
+/// Devolve `None` quando o alvo do picker não é uma row desta moldura — é o caso comum (as
+/// swatches do Painter, do Vector e da timeline usam o mesmo canal).
+#[must_use]
+pub(crate) fn picker_shape(
+    sim: &SimWorld,
+    scene: &VecScene,
+    frame: Entity,
+    target: ph2d_editor::NodeId,
+) -> Option<VecPathId> {
+    authored(sim, scene, frame)
+        .into_iter()
+        .find(|a| {
+            a.kind == WidgetKind::ColorSwatch && ph2d_editor::ids::authored_row_id(&a.key) == target
+        })
+        .and_then(|a| a.path)
 }
 
 /// **A moldura que descreve um painel**, se houver alguma no documento.

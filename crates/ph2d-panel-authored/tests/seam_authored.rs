@@ -47,6 +47,36 @@ fn host() -> (MockPanelHost, AuthoredPanelState) {
     (h, AuthoredPanelState)
 }
 
+/// **A SWATCH abre o picker** — pintada, sob o ponteiro, e marcada como alvo.
+///
+/// ⚠️ Ela não é um controle (não tem `InteractiveState`) nem um cabeçalho, então ficava fora das
+/// duas perguntas do `wants_pointer` e nascia **sem retângulo de hit**: pintada com a cor da forma
+/// que a veste, e muda ao clique (report do Enio, 2026-08-09 — *"Color não abre o picker"*).
+///
+/// ⚠️ O oráculo tem DUAS metades porque há duas maneiras de falhar: sem área ela nunca é
+/// alcançada, e sem `register_picker_swatch` o `pointer_down` do editor não sabe que aquele id
+/// abre o picker — o clique chegaria e não faria nada.
+#[test]
+fn a_colour_swatch_is_a_picker_target_under_the_pointer() {
+    let Some(sw) = rows::baked().iter().find(|r| r.opens_a_picker()) else {
+        panic!("a tabela gerada perdeu a swatch — o SUJEITO deste gate");
+    };
+    let (mut h, mut st) = host();
+    let r = h
+        .painted_rect::<AuthoredPanel>(&mut st, VIEWPORT, sw.id)
+        .expect("a swatch nao foi PINTADA com area clicavel");
+    assert!(r.w > 0.0 && r.h > 0.0);
+    assert!(
+        h.store().is_picker_swatch(sw.id),
+        "a swatch nao esta' registada como alvo de picker — o `pointer_down` nao a reconhece"
+    );
+    assert_eq!(
+        h.store().widget_color(sw.id),
+        sw.rgba,
+        "a cor publicada nao e' a da forma: o picker abriria num cinzento inventado"
+    );
+}
+
 /// **Toda row que RESPONDE é pintada com área e vive sob o ponteiro.**
 ///
 /// ⚠️ É a metade que os unit gates não alcançam. E ela varre a tabela GERADA — a lista que o

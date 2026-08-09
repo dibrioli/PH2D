@@ -118,4 +118,13 @@ pub const ROWS: &[RowConst] = &[
         icon_slug: None,
         options: &[],
     },
+    RowConst {
+        kind: WidgetKind::ProgressBar,
+        label: "Loading",
+        key: "loading",
+        rgba: None,
+        icon: None,
+        icon_slug: None,
+        options: &[],
+    },
 ];

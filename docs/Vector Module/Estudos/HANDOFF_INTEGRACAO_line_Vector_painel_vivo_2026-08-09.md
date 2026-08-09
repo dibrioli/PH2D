@@ -1,15 +1,24 @@
-# HANDOFF DE INTEGRAÇÃO — `line/Vector`, o painel autorado fica VIVO (2026-08-09)
+# HANDOFF DE INTEGRAÇÃO — `line/Vector`: o painel autorado fica VIVO, e o sistema de widgets é AUDITADO (2026-08-09)
 
-> **45 commits · 100 arquivos · +9.363/−917.**
-> **Todos os smokes aprovados pelo Enio** — os oito passos da cena, incluindo a família de
-> LISTA, o dropdown e a seleção de aba.
+> **A LINHA ESTÁ FECHADA e pede ordem de integração.**
+> **47 commits · 100 arquivos · +9.420/−917**, sobre `17a0f6d6d`.
 > Supersede nada: é a continuação da jornada de UI/UX que integrou em 08/08.
 >
-> ⚠️ **A jornada tem DUAS metades e a segunda não tem smoke, de propósito:** os 15 primeiros
-> commits são a FEATURE (o painel autorado fica vivo, smokada); os 30 seguintes são a
-> **AUDITORIA do sistema de widgets** — dezoito achados, e nenhum deles muda o que o artista
-> vê exceto onde o desenho estava errado. O inventário fechado vive ao lado, em
+> ⚠️ **A jornada tem DUAS metades, e elas se lêem de formas diferentes:**
+>
+> | | commits | o que é | como se julga |
+> |---|---|---|---|
+> | **A — a FEATURE** | 15 (até `f3ba220c8`) | o painel autorado fica vivo | **smokada** — os oito passos da cena `=62`, aprovados pelo Enio |
+> | **B — a AUDITORIA** | 32 (de `228a0d6e9`) | dezoito achados no sistema de widgets | **gates** — não há smoke, e o §4b diz por quê |
+>
+> A metade B **não tem cena própria de propósito**: catorze das correções são de geometria e
+> de gate, e as que o artista veria são *bugs a desaparecer*, não features a demonstrar. O que
+> ela pede do integrador é a **varredura**, não o olho. O inventário fechado vive ao lado, em
 > [`AUDITORIA_widgets_achados_2026-08-09.md`](AUDITORIA_widgets_achados_2026-08-09.md).
+>
+> ⚠️ **O plano que esta linha executava está FECHADO** — `WidgetKind::ALL` mede **20**, e as
+> quatro waves do levantamento de 08/08 saíram todas (cobertura 67,1% → ~100%). A linha está
+> num limite natural: não há trabalho cortado ao meio aqui dentro.
 
 ## §1 — O que esta linha entrega
 
@@ -27,16 +36,45 @@ fecharam:
    **clicáveis uma a uma**. Era o maior buraco estrutural do levantamento de 08/08:
    **14,6% da UI real**.
 
-5. **A AUDITORIA do sistema de widgets** (30 commits) — dezoito achados com **um mecanismo
-   só**: *um fato com duas cópias que discordam*. Saíram como **catorze correções**, **três
-   itens que DISSOLVERAM na medição** e **um resíduo nomeado**. Os que mudam o produto:
-   a opção marcada podia não existir · a lista longa saía da tela em vez de rolar · a
-   `TextArea` tinha DUAS réguas (o caret caía na linha errada) · o texto de uma row saía
-   dela (337 px à esquerda; três linhas por cima das seguintes) · quatro slots de largura
-   FIXA dentro de hosts VARIÁVEIS · e **a faixa de arrasto do título comia 2 px do botão de
-   fechar** num painel real. Os que mudam a SUÍTE: seis gates que não podiam falhar pelo
-   motivo que alegavam, e **o gate de staleness que o cabeçalho do painel gerado prometia e
-   que não existia em lugar nenhum**.
+## §1b — E a metade B: a AUDITORIA (32 commits)
+
+Dezoito achados, **um mecanismo só**: *um fato com duas cópias que discordam.* O índice da
+opção contra a contagem de opções · a régua do pintor contra a cópia que o dispatch faz dos
+números dela · a moldura do cartão contra a caixa que lhe deram · **o NOME de um gate contra
+o que o corpo dele mede**.
+
+**O que muda o PRODUTO** (o artista vê a diferença):
+
+| | o defeito, com o número que o mediu |
+|---|---|
+| `41a95074e` | a opção marcada podia **não existir** — índice fora da contagem, e a família reagia de **três** maneiras diferentes |
+| `82966f7c3` | a lista longa **saía da tela** em vez de rolar |
+| `101c98b2a` | a `TextArea` tinha **DUAS réguas** — o dispatch copiava os números do pintor, e o caret caía na linha errada |
+| `042b6cb95` | o texto de uma row saía dela: **337 px à esquerda** no `list_item`, **três linhas por cima das seguintes** no `key_value_list` |
+| `db5cd9615` · `b4e7c2764` | cinco slots de largura **FIXA** dentro de hosts **VARIÁVEIS** (o chip de unidade · o `X` da tag · a ORDEM do clamp do popover · o cartão) |
+| `8770f7cae` | **a faixa de arrasto do título comia 2 px do botão de FECHAR** — e num dos dezasseis painéis o X **arrastava em vez de fechar** |
+| `9ba26966f` · `aa68663b9` · `6900a8283` · `df43a5c08` · `85f0c2f02` | o thumb saía do corpo · o load esquecia a posição autorada · uma row morta legava o valor · abrir o picker **escrevia o documento** · a borda da 1ª row era da faixa de arraste |
+
+**O que muda a SUÍTE** (o produto não muda; o que muda é quanto ela vale):
+
+- **Seis gates não podiam falhar pelo motivo que alegavam** — o do topo do Chroma media
+  `M/M` (empurrava e lia pela **mesma função**, inversas exatas ⇒ `1.0` para qualquer
+  máximo, *incluindo o `0.001` que era o bug reportado*) · quatro gates de roteamento
+  passavam **VAZIOS** · dois mediam ordem e largura positiva onde a pergunta era a **borda**.
+- **O gate de staleness que o cabeçalho do painel gerado PROMETIA não existia** — o arquivo
+  abria com *"NÃO EDITE À MÃO — editar a saída de um gerador é o que deixa o gate de
+  staleness vermelho"* e nada chamava `emit()` fora dos testes do próprio gerador. Agora
+  existe, e **disparou no primeiro uso real**.
+- **Cinco doc-comments descreviam um produto que não existe**, e quatro deles nomeavam uma
+  **derivação de token errada** — `SECTION_LABEL_TO_CONTROL_PX = 4.0` dizia `Xxs` (que vale
+  **2**) ⇒ seguir o comentário encolheria o gap de toda seção do app.
+
+⚠️ **E TRÊS itens do inventário DISSOLVERAM na medição** — dois porque eu classifiquei pela
+FORMA em vez do mecanismo (um gate que *parece* auto-referente e é um **pin** legítimo; uma
+"comparação golden" que **não existe**), e o bloco inteiro do `Xl3`, cujos treze sítios medem
+não-defeito. **As duas varreduras falsas foram as que mais renderam**: uma achou o gate de
+staleness ausente, a outra achou os 2 px do botão de fechar. *O valor de varrer um item falso
+é o que se tropeça no caminho.*
 
 ## §2 — As leis, e onde cada uma mora
 
@@ -249,6 +287,22 @@ LISTA e do dropdown.
    arraste o painel para baixo até o chip ficar perto do fundo, abra outra vez — a lista tem
    de virar para **CIMA**, e as opções têm de responder ao clique **onde estão desenhadas**.
 
+## §4b — A metade B não tem smoke, e isto é o argumento
+
+⚠️ **Não escrevi cena para a auditoria de propósito, e vale ler o porquê antes de pedir uma.**
+Das catorze correções, seis mudam **gates** (o produto não se move) e as oito que mudam o
+produto são **bugs a desaparecer** — um caret que passa a cair onde o dedo clicou, um texto
+que deixa de sair da row, 2 px de botão que voltam a fechar em vez de arrastar. Uma cena que
+os *demonstrasse* teria de encenar cada defeito, e o oráculo de cada um já é um gate com
+mutação provada — que é uma pergunta mais afiada do que a que o olho faz aqui.
+
+**O que a metade B pede do integrador é a VARREDURA**, e ela está no §7. As duas coisas que
+o olho ainda decide — e que aparecem na cena `=62` que já existe — são: **a lista longa ROLA**
+(passo 8) e **o painel não deforma** depois das cinco correções de geometria.
+
+⚠️ **UMA mudança de comportamento é do app inteiro, não desta cena:** a faixa de arrasto do
+título encolheu **2 px à direita em TODOS os painéis**. Se algo se arrastar diferente, é aqui.
+
 ## §5 — Aberto, com o preço ao lado
 
 - ⚠️ **A guarda do popover VAZIO não tem gate, e está medido:** a mutação que a remove
@@ -316,13 +370,46 @@ LISTA e do dropdown.
   `the_event_core_is_a_leaf` continua de pé. A adjacência que o handoff do R0 nomeia (*o
   runtime de UI querer este nome*) **não aconteceu aqui**.
 
-## §7 — Gate de fechamento
+## §7 — Gate de fechamento, e o que o integrador re-roda
 
-`scripts/nextest-impacted.sh` **8560/8560 verdes, 834 skipped** · `cargo clippy` limpo nas
-crates tocadas · `cargo fmt --all` aplicado · golden do painel **em dia**.
+**Medido no tip da linha, `516532271`:** `scripts/nextest-impacted.sh` **8560/8560 verdes,
+834 skipped** · `cargo clippy` limpo nas crates tocadas · `cargo fmt --all` aplicado · golden
+do painel **em dia**.
 
-⚠️ **Uma flake ALHEIA, medida e exonerada:** `ph2d-flip::flip_smooth::…::the_fit_rebuilds_the_
-neighbourhood_not_the_whole_stroke` falhou duas vezes sob a suíte cheia e passou isolada e na
-terceira corrida cheia. É gate de RAZÃO morto de fome pelo runner, e a linha toca **zero
-arquivos** daquela crate (`git diff main -- crates/ph2d-flip` vazio). Re-rode sozinho antes
-de suspeitar de um merge.
+Na árvore COMBINADA, além do gate padrão, estes quatro são os que esta linha pode derrubar —
+cada um por um motivo diferente, e nenhum deles é alcançado por um `cargo test -p` filtrado:
+
+| rode | porque ESTA linha o move |
+|---|---|
+| `cargo test -p ph2d-ecs -p ph2d-render -p ph2d-script registry` | o registro foi **54→55** e os **DOIS** espelhos **55→56** — o contador é TRÊS e cada um roda só na suíte da própria crate |
+| `cargo test -p ph2d-i18n` + um `tr` de `panel.vector.*` | o `lib.rs` foi **PARTIDO**; uma chave nova fundida no arquivo de onde a tabela saiu compila e **não resolve** |
+| `cargo test -p ph2d-editor-core --test architecture_widget_loc_cap --test hr12_widgets_a11y` | quatro splits de LOC e duas entradas novas no `A11Y_OPT_OUT` |
+| `cargo test -p ph2d-panel-authored` | o gate de staleness do gerado; se um merge mover o emissor, a resposta é a porta `regenerate`, **nunca** editar o gerado |
+
+⚠️ **DUAS flakes ALHEIAS, medidas e exoneradas** — as duas de CARGA, e as duas em crates que
+esta linha **não toca** (`git diff main` vazio nas duas):
+
+- `ph2d-host-desktop::flip_smooth::…::the_fit_rebuilds_the_neighbourhood_not_the_whole_stroke`
+  — falhou sob a suíte cheia com **`load average 40,21`** em 32 núcleos e passou **11/11
+  isolada**. É gate de RAZÃO morto de fome pelo runner.
+- `ph2d-timeline::the_cost_of_depth_is_linear_not_explosive` — já registada no `CLAUDE.md §5`
+  como flake pré-existente da mesma família.
+
+**A regra do repo:** *nenhum smoke desta máquina significa nada com o load acima de ~5.*
+Re-rode sozinho antes de suspeitar de um merge.
+
+## §8 — Ordem, e o que NÃO fazer
+
+- ⚠️ **Nenhuma ordem interna é load-bearing** — os 47 commits podem ser rebaseados na ordem
+  em que estão; não há par de commits cuja troca quebre uma premissa (ao contrário da jornada
+  de física de 08/08, que tinha um).
+- ⚠️ **O `PROJECT_SCHEMA` fica em 69 e o `project.rs` tem diff VAZIO** ⇒ esta linha está
+  **fora de toda disputa de número** desta janela. Se um conflito aparecer ali, ele **não é
+  desta linha**.
+- ⚠️ **Nenhum ADR** ⇒ fora da disputa de número de ADR também.
+- ⛔ **Não "canonize" os quatro literais cuja derivação foi corrigida** — os NÚMEROS estão
+  certos e os comentários é que estavam errados. Trocar `SECTION_LABEL_TO_CONTROL_PX` pelo
+  `Spacing::Xxs` que o comentário antigo nomeava **encolhe o gap de toda seção do app**.
+- ⛔ **Não reverta a `PANEL_HEADER_CLOSE_RESERVE` para 40** — ela era 2 px curta na escala de
+  **fábrica**, e o pin `the_reserve_is_the_pad_plus_the_icon_at_factory_scale` existe para
+  fazer essa reversão custar duas edições.

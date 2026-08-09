@@ -3,6 +3,10 @@
 > Linha `line/Vector`, sobre `e71bad551`. Este documento existe porque o inventário vivia no
 > scrollback de uma sessão, e **um achado que só existe numa janela de conversa deixa de existir
 > quando a janela fecha**. Ele não é um handoff de integração: é a lista de trabalho da linha.
+>
+> **ESTADO: a lista está FECHADA.** Os dezoito itens saíram como **catorze correções**, **três
+> itens que DISSOLVERAM na medição** (§2 A5 · A6 · o bloco D inteiro) e **um resíduo NOMEADO e
+> não-fechado** (§D-resíduo). O que sobrevive à lista são as lições, não as pendências.
 
 ## §0 — A forma que todos os achados têm
 
@@ -14,16 +18,23 @@ que lhe deram · o NOME de um gate contra o que o corpo dele mede.
 
 ⚠️ **E em quatro dos casos fechados a resposta certa já existia noutro lugar do repo** — o popover
 que rola (três painéis) · o recorte do `TextInput` · o idioma do `expect` no `seam_authored_popover`.
-A correção foi *entrar na fila que já existe*, não inventar mecanismo. Vale procurar isso primeiro
-em cada item aberto abaixo.
+A correção foi *entrar na fila que já existe*, não inventar mecanismo — vale procurar isso primeiro
+em qualquer achado desta família.
 
-⚠️ **E DOIS itens deste inventário dissolveram na medição** (§2 A5 e A6) — os dois porque eu
-classifiquei pela FORMA em vez do mecanismo. *Um item de auditoria também é uma afirmação, e ele
-se mede antes de virar trabalho.*
+⚠️ **E TRÊS itens deste inventário dissolveram na medição** — o A5 e o A6 porque eu classifiquei
+pela FORMA em vez do mecanismo, e o **bloco D inteiro** (a varredura do `Xl3`) porque os treze
+sítios medem NÃO-DEFEITO. *Um item de auditoria também é uma afirmação, e ele se mede antes de
+virar trabalho.*
+
+⚠️ **E as duas varreduras que dissolveram acharam o que a lista NÃO tinha:** a do "golden"
+inexistente achou o **gate de staleness que o cabeçalho do gerado prometia e não existia**, e a do
+`Xl3` achou a **`PANEL_HEADER_CLOSE_RESERVE` 2 px curta na fábrica**, pondo a faixa de arrasto por
+cima do botão de fechar num painel real. *O valor de varrer um item falso é o que se tropeça no
+caminho.*
 
 ---
 
-## §1 — Fechados (dezassete commits)
+## §1 — Fechados (dezanove commits)
 
 | Commit | O achado |
 |---|---|
@@ -44,6 +55,8 @@ se mede antes de virar trabalho.*
 | `8474398bc` | **`SkinParam.options`/`selected` sem gate, e o doc do `selected` FALSO em metade da família** — três comportamentos saíam de um campo (Tabs/Segmented clampam ⇒ marcam a ÚLTIMA; Radio/Dropdown no-opam ⇒ nenhuma). |
 | `db5cd9615` | Um slot de largura FIXA dentro de um host VARIÁVEL (o chip de unidade · o `X` da tag · **a ORDEM do clamp** no `anchor_below`). |
 | `4928fcb86` | Cinco docs que descreviam um produto que não existe (`set_live_rows` · `duplicate_keys` · `authored_option_id` · `PillGroup` · o doc órfão do `is_control`). |
+| `8770f7cae` | **A faixa de arrasto do título comia 2 px do botão de FECHAR** — a reserva era uma CÓPIA de `PANEL_HEAD_PAD + Xl2` e nasceu 2 px curta na FÁBRICA; num dos dezasseis painéis o X arrastava em vez de fechar. |
+| `deb7c39d4` | A varredura do item 18 — **duas classes com curas OPOSTAS**, e quatro docs cuja derivação nomeava o token errado (seguir o comentário encolheria toda seção do app). |
 
 ⚠️ **O `41a95074e` e o `d9017f9a8` são a mesma lição por dois lados:** o primeiro põe a
 reconciliação na **porta por-quadro** (`populate::adopt`, onde o tipo, a marca de secção, a marca de
@@ -72,7 +85,7 @@ Escritas aqui porque a próxima LLM as vai encontrar e tomar por load-bearing.
 
 ---
 
-## §2 — Abertos, por ordem de quanto fazem o resto valer menos
+## §2 — A lista, por ordem de quanto fazia o resto valer menos (TODA fechada)
 
 ### A. Gates que não podem falhar pelo motivo que alegam
 

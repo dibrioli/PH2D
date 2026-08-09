@@ -66,6 +66,31 @@ fn measure_the_ramp_creep_today() {
         "\n  (o plano 07 cita 0,164 m para o default; o default de hoje e' {:.2} = o teto)",
         RideConfig::STARTING_POINT.spring_damping
     );
+
+    // ⚠️ **`0,0000` em 10 s pode ser uma deriva LENTA que a janela não conteve**,
+    // e é isso que decide se o item do Enio (*"o player sobe sozinho bem
+    // devagar"*) está morto ou só escondido. Duas varreduras: o TEMPO, para uma
+    // deriva lenta aparecer, e a INCLINAÇÃO, porque a força que escorrega é
+    // função dela — um zero só a 30° não diz nada sobre 45°.
+    let d = RideConfig::STARTING_POINT.spring_damping;
+    println!("\n=== O DEFAULT AO LONGO DO TEMPO (rampa de 30 graus) ===");
+    println!("{:<34} {:>10}", "parado por", "viajou (m)");
+    for secs in [10u64, 30, 60, 120] {
+        println!(
+            "{:<34} {:>10.4}",
+            format!("{secs} s"),
+            idle_travel(30.0, secs, d)
+        );
+    }
+    println!("\n=== O DEFAULT AO LONGO DA INCLINACAO (parado 60 s) ===");
+    println!("{:<34} {:>10}", "rampa", "viajou (m)");
+    for deg in [10.0f32, 20.0, 30.0, 40.0, 44.0] {
+        println!(
+            "{:<34} {:>10.4}",
+            format!("{deg:.0} graus"),
+            idle_travel(deg, 60, d)
+        );
+    }
 }
 
 /// **A PENETRAÇÃO no impacto, hoje** — o segundo defeito que o plano nomeia.
